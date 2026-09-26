@@ -5,7 +5,7 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 ## Current state
 
 - Chapter: 1 — A World That Lives Without You
-- Stage: 1.3–1.5 in progress (worldgen terrain done; climate/water and vegetation/fire/biome implemented and tuned headless; settlement, volcano sites and tanker lanes come with 1.7)
+- Stage: 1.7 (villages/people/ships + worldgen settle + perf pass) and 1.9 (camera/HUD/inspector) in progress in parallel (sim/ vs game/). Done: 1.1, 1.2, 1.6, 1.8; 1.3–1.5 implemented (settle part of 1.3 and P10 land with 1.7).
 - Plan for the rest of Chapter 1: ocean life + oil + fauna (1.6) → villages/people/ships + worldgen settle + detectors (1.7) → rendering to docs/ART_DIRECTION.md (1.8) → camera/HUD/inspector (1.9) → hardening + playtest report (1.10).
 - Blockers needing the human: none
 - Last human feedback read: none yet (Arjun shared the target look mid-session → docs/ART_DIRECTION.md)
@@ -26,6 +26,16 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 - Bundle size: 2.66 MB release
 
 ## Stage entries
+
+### [ch1.s8] Planet rendering — DONE 2026-09-27 (commit fe7baaf)
+- What: terrain + sea in one level-5 mesh (61k verts; colours from a per-cell texture sampled in the vertex shader; coasts from interpolated elevation + noise), 80 batched prop chunk meshes (~12k procedural trees/pines/palms/bushes/fields/houses/ruins; rebuilt per chunk on value change, 2.5 ms budget), sky gradient + streaks, fresnel rim, pooled clouds/deer/wolves/fire meshes, bridge camera presets/run_ticks/freeze/new_world.
+- Tests: test:web 4/4 (W01, W02-lite ×2, W07 view); lint clean. Shots: 13 PNGs in out/shots/latest (reviewed: matches ART_DIRECTION on sky, rim, ocean halos, dense trees + limb silhouettes; issues: white HTML footer strip, mottled snow over forest, default planet a bit small; being fixed in 1.9).
+- Numbers: 37–45 real draw calls at planet view, 5.7k–9.5k props drawn, view 0.7 ms/frame (release, Lua). Load ≈ 11 s (spin-up dominates → pre-spun default world later).
+
+### [ch1.s6] Oceans & animals — DONE 2026-09-27 (commit d97afff)
+- What: ocean.lua (plankton/fish/oil with seasonal currents, sparse oil set, beaching), fauna.lua (Holling II + refuge, migration flows with tags, sea-ice bridges, browsing/grazing/crop raids, cull hooks), detectors.lua (boom/crash/extinction/fish collapse/oil spreading & beached/drought/flood with re-tagging), named regions, test hooks, scenario framework; "release" blame (D-013); save bug fix (D-016).
+- Tests: test:sim 54/54 quick (171 s; P06 500 y dominates → trimmed in 1.7); --full passes; S02 and S04-oil 10/10 seeds.
+- Numbers (3 seeds × 200 y): forest 0.24–0.42, grass 0.22–0.33, desert 0.05–0.15, ice 0.13–0.15, predator CV 0.22–0.28, no extinctions. ocean+fauna+detectors ≈ +9% tick.
 
 ### [ch1.s2] Sim foundation — DONE 2026-09-27 02:20 IST
 - What: `sim/` core in pure Lua 5.1: rng (counter-based, 16-bit-split mul32), grid (icosphere + neighbours sorted CCW, areas, nearest, BFS), calendar, fields (catalogue, SoA, prev buffers, year-boundary 16-bit snap with a sqrt mode for small values), events (records + flat parent/root arrays so chains survive GC, aggregation, cooldowns, descendants), blame (fixed-arity step with fast path, inflow tags), ledger (global co2/aerosol/g_temp ledgers), world (tick orchestration, commands queue/log, state_hash, profiling hook), save (text-safe format, capture at year boundary, restore + replay). Tools: run_sim (summary/series/events/maps), map_dump + pure-Lua PNG writer, zonal diagnostics, bench (LuaJIT) + bench:web (real HTML5 runtime via bridge).
