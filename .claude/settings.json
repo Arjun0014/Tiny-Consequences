@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(npm ci)",
+      "Bash(npm test *)",
+      "Bash(npx playwright *)",
+      "Bash(node *)",
+      "Bash(luajit *)",
+      "Bash(lua *)",
+      "Bash(lua5.1 *)",
+      "Bash(java -version)",
+      "Bash(java --version)",
+      "Bash(java -jar tools/bob/bob.jar *)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git stash *)",
+      "Bash(git rev-parse *)",
+      "Bash(git restore *)",
+      "Bash(git mv *)",
+      "Bash(git rm *)",
+      "Bash(rm -rf dist)",
+      "Bash(rm -rf dist/*)",
+      "Bash(rm -rf out)",
+      "Bash(rm -rf out/*)",
+      "Bash(rm -rf build)",
+      "Bash(rm -rf build/*)",
+      "Bash(rm -rf .internal)",
+      "Bash(date *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(touch *)",
+      "WebSearch",
+      "WebFetch(domain:defold.com)",
+      "WebFetch(domain:*.defold.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:docs.wavedash.com)",
+      "WebFetch(domain:luajit.org)",
+      "WebFetch(domain:playwright.dev)"
+    ],
+    "ask": [
+      "Bash(git push *)"
+    ],
+    "deny": [
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard *)",
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ]
+  }
+}
