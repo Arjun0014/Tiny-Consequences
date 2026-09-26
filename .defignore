@@ -1,0 +1,11 @@
+/node_modules
+/dist
+/out
+/tools
+/tests
+/scripts
+/docs
+/assets_inbox
+/test-results
+/playwright-report
+/.wolf

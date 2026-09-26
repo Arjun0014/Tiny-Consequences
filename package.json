@@ -1,0 +1,29 @@
+{
+  "name": "tiny-consequences",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tiny Consequences — Defold Game Jam 2026 (Chain Reaction)",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "sim": "node scripts/lua.mjs tools/run_sim.lua",
+    "lint:lua": "node scripts/lint_lua.mjs",
+    "test:sim": "node scripts/test_sim.mjs",
+    "bench": "node scripts/lua.mjs tools/bench.lua",
+    "build": "node scripts/build.mjs --variant debug",
+    "build:release": "node scripts/build.mjs --variant release",
+    "build:wavedash": "node scripts/stub.mjs build:wavedash \"Stage 4.5\"",
+    "serve": "node scripts/serve.mjs",
+    "test:web": "node scripts/test_web.mjs",
+    "shots": "node scripts/shots.mjs",
+    "play": "node scripts/play.mjs",
+    "package:itch": "node scripts/stub.mjs package:itch \"Stage 4.5\"",
+    "deploy:wavedash": "node scripts/stub.mjs deploy:wavedash \"Stage 4.5\""
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

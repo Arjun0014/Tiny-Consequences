@@ -1,0 +1,168 @@
+mouse_trigger {
+  input: MOUSE_BUTTON_LEFT
+  action: "touch"
+}
+mouse_trigger {
+  input: MOUSE_BUTTON_RIGHT
+  action: "mouse_right"
+}
+mouse_trigger {
+  input: MOUSE_BUTTON_MIDDLE
+  action: "mouse_middle"
+}
+mouse_trigger {
+  input: MOUSE_WHEEL_UP
+  action: "wheel_up"
+}
+mouse_trigger {
+  input: MOUSE_WHEEL_DOWN
+  action: "wheel_down"
+}
+key_trigger {
+  input: KEY_SPACE
+  action: "key_space"
+}
+key_trigger {
+  input: KEY_0
+  action: "key_0"
+}
+key_trigger {
+  input: KEY_1
+  action: "key_1"
+}
+key_trigger {
+  input: KEY_2
+  action: "key_2"
+}
+key_trigger {
+  input: KEY_3
+  action: "key_3"
+}
+key_trigger {
+  input: KEY_4
+  action: "key_4"
+}
+key_trigger {
+  input: KEY_5
+  action: "key_5"
+}
+key_trigger {
+  input: KEY_6
+  action: "key_6"
+}
+key_trigger {
+  input: KEY_7
+  action: "key_7"
+}
+key_trigger {
+  input: KEY_8
+  action: "key_8"
+}
+key_trigger {
+  input: KEY_9
+  action: "key_9"
+}
+key_trigger {
+  input: KEY_F3
+  action: "key_f3"
+}
+key_trigger {
+  input: KEY_ESC
+  action: "key_esc"
+}
+key_trigger {
+  input: KEY_LSHIFT
+  action: "key_shift"
+}
+key_trigger {
+  input: KEY_RSHIFT
+  action: "key_shift"
+}
+key_trigger {
+  input: KEY_LCTRL
+  action: "key_ctrl"
+}
+key_trigger {
+  input: KEY_RCTRL
+  action: "key_ctrl"
+}
+key_trigger {
+  input: KEY_TAB
+  action: "key_tab"
+}
+key_trigger {
+  input: KEY_ENTER
+  action: "key_enter"
+}
+key_trigger {
+  input: KEY_BACKSPACE
+  action: "key_backspace"
+}
+key_trigger {
+  input: KEY_F
+  action: "key_f"
+}
+key_trigger {
+  input: KEY_C
+  action: "key_c"
+}
+key_trigger {
+  input: KEY_H
+  action: "key_h"
+}
+key_trigger {
+  input: KEY_W
+  action: "key_up"
+}
+key_trigger {
+  input: KEY_UP
+  action: "key_up"
+}
+key_trigger {
+  input: KEY_S
+  action: "key_down"
+}
+key_trigger {
+  input: KEY_DOWN
+  action: "key_down"
+}
+key_trigger {
+  input: KEY_A
+  action: "key_left"
+}
+key_trigger {
+  input: KEY_LEFT
+  action: "key_left"
+}
+key_trigger {
+  input: KEY_D
+  action: "key_right"
+}
+key_trigger {
+  input: KEY_RIGHT
+  action: "key_right"
+}
+key_trigger {
+  input: KEY_EQUALS
+  action: "zoom_in"
+}
+key_trigger {
+  input: KEY_PLUS
+  action: "zoom_in"
+}
+key_trigger {
+  input: KEY_KP_ADD
+  action: "zoom_in"
+}
+key_trigger {
+  input: KEY_MINUS
+  action: "zoom_out"
+}
+key_trigger {
+  input: KEY_KP_SUBTRACT
+  action: "zoom_out"
+}
+text_trigger {
+  input: TEXT
+  action: "text"
+}

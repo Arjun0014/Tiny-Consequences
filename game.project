@@ -1,0 +1,83 @@
+[project]
+title = Tiny Consequences
+version = 0.1.0
+developer = Arjun
+publisher = Arjun
+write_log_file = 0
+compress_archive = 1
+
+[bootstrap]
+main_collection = /game/main.collectionc
+render = /game/render/game.renderc
+
+[input]
+game_binding = /game/game.input_bindingc
+use_accelerometer = 0
+
+[display]
+width = 1280
+height = 720
+high_dpi = 1
+samples = 0
+vsync = 1
+update_frequency = 0
+
+[script]
+shared_state = 1
+
+[graphics]
+default_texture_min_filter = linear
+default_texture_mag_filter = linear
+max_draw_calls = 4096
+max_characters = 16384
+max_debug_vertices = 20000
+
+[collection]
+max_instances = 4096
+max_input_stack_entries = 32
+
+[model]
+max_count = 1024
+
+[mesh]
+max_count = 256
+
+[factory]
+max_count = 64
+
+[collection_factory]
+max_count = 64
+
+[sprite]
+max_count = 512
+
+[label]
+max_count = 256
+
+[gui]
+max_count = 64
+max_animation_count = 2048
+max_particle_count = 1024
+
+[particle_fx]
+max_count = 128
+max_emitter_count = 512
+max_particle_count = 4096
+
+[sound]
+max_component_count = 64
+max_sound_instances = 256
+max_sound_sources = 32
+
+[html5]
+scale_mode = stretch
+show_fullscreen_button = 1
+show_made_with_defold = 0
+show_console_banner = 0
+heap_size = 256
+engine_arguments = --verify-graphics-calls=false
+archive_location_prefix = archive
+
+[engine]
+run_while_iconified = 0
+max_time_step = 0.1

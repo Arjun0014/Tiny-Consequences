@@ -1,0 +1,165 @@
+-- Tiny Consequences render script.
+-- Stage 1.1: behaves like Defold's builtin default renderer (models, sprites/tiles,
+-- particles, GUI, debug text; camera components take precedence over the default
+-- stretch projection), with a sky-blue clear colour. Later stages add planet passes.
+
+local MSG_CLEAR_COLOR      = hash("clear_color")
+local MSG_WINDOW_RESIZED   = hash("window_resized")
+local MSG_SET_VIEW_PROJ    = hash("set_view_projection")
+local MSG_USE_CAMERA_PROJ  = hash("use_camera_projection")
+local MSG_USE_STRETCH_PROJ = hash("use_stretch_projection")
+local MSG_USE_FIXED_PROJ   = hash("use_fixed_projection")
+local MSG_USE_FIXED_FIT    = hash("use_fixed_fit_projection")
+
+-- #5FD0F0
+local SKY_R, SKY_G, SKY_B = 95 / 255, 208 / 255, 240 / 255
+
+local function stretch_projection(self)
+	return vmath.matrix4_orthographic(0, self.width, 0, self.height, self.near, self.far)
+end
+
+local function fixed_projection(self)
+	local zoom = self.zoom or 1
+	local pw = self.window_width / zoom
+	local ph = self.window_height / zoom
+	local left = -(pw - self.width) / 2
+	local bottom = -(ph - self.height) / 2
+	return vmath.matrix4_orthographic(left, left + pw, bottom, bottom + ph, self.near, self.far)
+end
+
+local function fixed_fit_projection(self)
+	self.zoom = math.min(self.window_width / self.width, self.window_height / self.height)
+	return fixed_projection(self)
+end
+
+local function refresh(self)
+	self.window_width = render.get_window_width()
+	self.window_height = render.get_window_height()
+	self.width = render.get_width()
+	self.height = render.get_height()
+	self.valid = self.window_width > 0 and self.window_height > 0
+	if not self.valid then
+		return
+	end
+	if self.projection_fn then
+		self.world_proj = self.projection_fn(self)
+	end
+	self.world_frustum.frustum = self.world_proj * self.world_view
+	self.gui_proj = vmath.matrix4_orthographic(0, self.window_width, 0, self.window_height, -1, 1)
+	self.gui_frustum.frustum = self.gui_proj
+end
+
+local function use_projection(self, fn, message)
+	self.projection_fn = fn
+	self.near = (message and message.near) or -1
+	self.far = (message and message.far) or 1
+	self.zoom = (message and message.zoom) or 1
+	refresh(self)
+end
+
+function init(self)
+	self.pred_model = render.predicate({ "model" })
+	self.pred_tile = render.predicate({ "tile" })
+	self.pred_particle = render.predicate({ "particle" })
+	self.pred_gui = render.predicate({ "gui" })
+	self.pred_debug_text = render.predicate({ "debug_text" })
+
+	self.clear_buffers = {
+		[graphics.BUFFER_TYPE_COLOR0_BIT] = vmath.vector4(SKY_R, SKY_G, SKY_B, 1),
+		[graphics.BUFFER_TYPE_DEPTH_BIT] = 1,
+		[graphics.BUFFER_TYPE_STENCIL_BIT] = 0,
+	}
+
+	self.world_view = vmath.matrix4()
+	self.world_proj = vmath.matrix4()
+	self.gui_view = vmath.matrix4()
+	self.gui_proj = vmath.matrix4()
+	self.world_frustum = {}
+	self.gui_frustum = {}
+	self.camera_options = {}
+	use_projection(self, stretch_projection, nil)
+end
+
+-- Returns the draw options for world predicates, binding the last enabled camera
+-- component if one exists, else the script-managed view/projection.
+local function bind_world_camera(self)
+	local cams = camera.get_cameras()
+	for i = #cams, 1, -1 do
+		if camera.get_enabled(cams[i]) then
+			self.bound_camera = cams[i]
+			render.set_camera(cams[i], { use_frustum = true })
+			return self.camera_options
+		end
+	end
+	render.set_view(self.world_view)
+	render.set_projection(self.world_proj)
+	return self.world_frustum
+end
+
+function update(self)
+	if not self.valid or render.get_window_width() ~= self.window_width
+		or render.get_window_height() ~= self.window_height then
+		refresh(self)
+		if not self.valid then
+			return
+		end
+	end
+
+	render.set_depth_mask(true)
+	render.set_stencil_mask(0xff)
+	render.clear(self.clear_buffers)
+
+	render.set_viewport(0, 0, self.window_width, self.window_height)
+	local world_opts = bind_world_camera(self)
+
+	render.set_blend_func(graphics.BLEND_FACTOR_SRC_ALPHA, graphics.BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+	render.enable_state(graphics.STATE_DEPTH_TEST)
+
+	render.enable_state(graphics.STATE_CULL_FACE)
+	render.draw(self.pred_model, world_opts)
+	render.set_depth_mask(false)
+	render.disable_state(graphics.STATE_CULL_FACE)
+
+	render.enable_state(graphics.STATE_BLEND)
+	render.draw(self.pred_tile, world_opts)
+	render.draw(self.pred_particle, world_opts)
+	render.disable_state(graphics.STATE_DEPTH_TEST)
+
+	render.draw_debug3d()
+
+	if self.bound_camera then
+		self.bound_camera = nil
+		render.set_camera()
+	end
+
+	render.set_view(self.gui_view)
+	render.set_projection(self.gui_proj)
+	render.enable_state(graphics.STATE_STENCIL_TEST)
+	render.draw(self.pred_gui, self.gui_frustum)
+	render.draw(self.pred_debug_text, self.gui_frustum)
+	render.disable_state(graphics.STATE_STENCIL_TEST)
+	render.disable_state(graphics.STATE_BLEND)
+end
+
+function on_message(self, message_id, message)
+	if message_id == MSG_CLEAR_COLOR then
+		if message.color then
+			self.clear_buffers[graphics.BUFFER_TYPE_COLOR0_BIT] = message.color
+		end
+	elseif message_id == MSG_WINDOW_RESIZED then
+		refresh(self)
+	elseif message_id == MSG_SET_VIEW_PROJ then
+		self.world_view = message.view
+		self.camera_projection = message.projection or vmath.matrix4()
+		refresh(self)
+	elseif message_id == MSG_USE_CAMERA_PROJ then
+		self.projection_fn = function() return self.camera_projection or vmath.matrix4() end
+		refresh(self)
+	elseif message_id == MSG_USE_STRETCH_PROJ then
+		use_projection(self, stretch_projection, message)
+	elseif message_id == MSG_USE_FIXED_PROJ then
+		use_projection(self, fixed_projection, message)
+	elseif message_id == MSG_USE_FIXED_FIT then
+		use_projection(self, fixed_fit_projection, message)
+	end
+end

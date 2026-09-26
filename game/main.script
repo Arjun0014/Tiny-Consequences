@@ -1,0 +1,112 @@
+-- Tiny Consequences: main game object script.
+-- Stage 1.1 skeleton: logs the sim version (proves sim/ modules bundle), runs the
+-- speed controller with a placeholder tick, drives the test bridge, handles keys.
+
+local sim_version = require("sim.version")
+local bridge = require("game.platform.bridge")
+local clock = require("game.platform.clock")
+local speed = require("game.platform.speed")
+local query = require("game.platform.query")
+
+local H_SPACE = hash("key_space")
+local H_SHIFT = hash("key_shift")
+local H_F3 = hash("key_f3")
+local SPEED_KEYS = {
+	[hash("key_1")] = 1, [hash("key_2")] = 2, [hash("key_3")] = 3, [hash("key_4")] = 4,
+}
+
+local DEBUG_PRINT_INTERVAL = 1.0 -- seconds; F3 / ?debug=1 status line (GUI overlay comes with the HUD)
+
+local function placeholder_tick()
+	-- The world tick plugs in here once sim/world.lua exists.
+end
+
+function init(self)
+	msg.post(".", "acquire_input_focus")
+	print(string.format("[tc] Tiny Consequences — SIM_VERSION %d, SAVE_VERSION %d",
+		sim_version.SIM_VERSION, sim_version.SAVE_VERSION))
+
+	self.seed = query.number("seed", 1)
+	self.view_ms = 0
+	self.frames = 0
+	self.ready = false
+	self.shift = false
+	self.paused_speed = speed.NORMAL
+	self.show_debug = query.flag("debug")
+	self.debug_timer = 0
+
+	local start_speed = query.number("speed", nil)
+	if start_speed then
+		local ok, err = pcall(speed.set, start_speed)
+		if not ok then print("[tc] ignoring ?speed=: " .. tostring(err)) end
+	end
+
+	bridge.init()
+	bridge.set_provider(function()
+		local avg, max = speed.stats()
+		return {
+			ready = self.ready,
+			seed = self.seed,
+			tick = speed.ticks(),
+			year = 0,
+			speed = speed.get(),
+			sim_ms_avg = avg,
+			sim_ms_max = max,
+			view_ms = self.view_ms,
+			sim_version = sim_version.SIM_VERSION,
+		}
+	end)
+end
+
+function update(self, dt)
+	local t0 = clock.now_ms()
+	speed.step(dt, placeholder_tick)
+	local t1 = clock.now_ms()
+
+	-- (view work goes here)
+	if self.show_debug then
+		self.debug_timer = self.debug_timer + dt
+		if self.debug_timer >= DEBUG_PRINT_INTERVAL then
+			self.debug_timer = 0
+			local avg, max = speed.stats()
+			print(string.format("[tc] speed %d  tick %d  sim %.2f/%.2f ms  view %.2f ms",
+				speed.get(), speed.ticks(), avg, max, self.view_ms))
+		end
+	end
+
+	self.view_ms = clock.now_ms() - t1
+	self.frames = self.frames + 1
+	if not self.ready and self.frames >= 2 then
+		self.ready = true
+		print(string.format("[tc] ready (init+2 frames, %.0f ms)", t0))
+	end
+	bridge.update(dt)
+end
+
+function on_input(self, action_id, action)
+	if action_id == H_SHIFT then
+		if action.pressed then self.shift = true elseif action.released then self.shift = false end
+		return false
+	end
+	if not action.pressed then
+		return false
+	end
+	if action_id == H_SPACE then
+		if speed.get() == speed.PAUSE then
+			speed.set(self.paused_speed)
+		else
+			self.paused_speed = speed.get()
+			speed.set(speed.PAUSE)
+		end
+		return true
+	elseif action_id == H_F3 then
+		self.show_debug = not self.show_debug
+		return true
+	end
+	local lvl = SPEED_KEYS[action_id]
+	if lvl and not self.shift then
+		speed.set(lvl)
+		return true
+	end
+	return false
+end
