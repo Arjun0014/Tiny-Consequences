@@ -21,7 +21,8 @@
     "shots": "node scripts/shots.mjs",
     "play": "node scripts/play.mjs",
     "package:itch": "node scripts/stub.mjs package:itch \"Stage 4.5\"",
-    "deploy:wavedash": "node scripts/stub.mjs deploy:wavedash \"Stage 4.5\""
+    "deploy:wavedash": "node scripts/stub.mjs deploy:wavedash \"Stage 4.5\"",
+    "bench:web": "node scripts/bench_web.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"

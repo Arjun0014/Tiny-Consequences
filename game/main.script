@@ -42,6 +42,13 @@ function init(self)
 	end
 
 	bridge.init()
+	-- Sim benchmark in the real HTML5 runtime (Stage 1.2 SIM_LEVEL decision, W08 later).
+	bridge.register("bench", function(args)
+		local bench = require("sim.bench")
+		local res = bench.run({ level = args.level, seed = args.seed or 42, ticks = args.ticks or 96,
+			warm = args.warm or 24, clock = clock.now_ms })
+		return res
+	end)
 	bridge.set_provider(function()
 		local avg, max = speed.stats()
 		return {
