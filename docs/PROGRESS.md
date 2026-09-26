@@ -5,7 +5,7 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 ## Current state
 
 - Chapter: 1 — A World That Lives Without You
-- Stage: 1.7 (villages/people/ships + worldgen settle + perf pass) and 1.9 (camera/HUD/inspector) in progress in parallel (sim/ vs game/). Done: 1.1, 1.2, 1.6, 1.8; 1.3–1.5 implemented (settle part of 1.3 and P10 land with 1.7).
+- Stage: 1.9 (camera/HUD/inspector, game/) and 1.10 sim hardening (full-profile robustness: population regulation, S01 ≥ 7/10; pre-spun default world) in progress in parallel. Done: 1.1–1.8 (1.3–1.5 folded into the 1.2/1.6/1.7 commits; P10 20/20).
 - Plan for the rest of Chapter 1: ocean life + oil + fauna (1.6) → villages/people/ships + worldgen settle + detectors (1.7) → rendering to docs/ART_DIRECTION.md (1.8) → camera/HUD/inspector (1.9) → hardening + playtest report (1.10).
 - Blockers needing the human: none
 - Last human feedback read: none yet (Arjun shared the target look mid-session → docs/ART_DIRECTION.md)
@@ -26,6 +26,12 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 - Bundle size: 2.66 MB release
 
 ## Stage entries
+
+### [ch1.s7] Villages & people — DONE 2026-09-27 (commit afde000)
+- What: villages.lua (farms, crops, harvest, granary, fishing, hunting/culls, wood CO₂, migration, founding, abandonment, ruins, memories), people.lua (individual lives), ships.lua (tankers on lanes, boats, sinking → oil), worldgen settle at spin-up y15 (villages, lanes, volcano sites), village detectors; perf pass (tick 343k → 225k Lua VM instructions, ≈3.4 ms est. HTML5).
+- Tests: quick 64/64 in 29 s (S01 3/3, S02 2/3, S03 3/3, S04 3/3, P02, P03, P10 20/20). Full: S01 5/10 (population regulation too crude on poor worlds), S02 9/10, S03 8/10, S04 10/10 → hardening in progress.
+- Numbers (quick seeds, 200 y): pop 159–392, g_temp at y200 +1.24…+1.48 (human drift), fires 5–8/decade, headlines 0.33–0.43/yr, forest 0.21–0.37, desert 0.06–0.16. Save 301 KB at y40.
+- Chains seen: test_burn_farms → fire_started → crop_failure → famine → migration → village_founded; test_oil → fish_collapse → famine → migration.
 
 ### [ch1.s8] Planet rendering — DONE 2026-09-27 (commit fe7baaf)
 - What: terrain + sea in one level-5 mesh (61k verts; colours from a per-cell texture sampled in the vertex shader; coasts from interpolated elevation + noise), 80 batched prop chunk meshes (~12k procedural trees/pines/palms/bushes/fields/houses/ruins; rebuilt per chunk on value change, 2.5 ms budget), sky gradient + streaks, fresnel rim, pooled clouds/deer/wolves/fire meshes, bridge camera presets/run_ticks/freeze/new_world.
