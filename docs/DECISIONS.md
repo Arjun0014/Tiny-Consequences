@@ -156,3 +156,28 @@ Evidence: natural-land forest on the 10 seeds 0.20–0.40, grassland 0.21–0.42
 Context: 07 §4 P07 needs a regression gate on per-system tick cost. Wall-clock timings on the dev machine swing 3× with concurrent load (bob builds, browsers), which makes a 30% gate either flaky or blind.
 Decision: P07 counts Lua VM instructions per tick per system (debug count hook, LuaJIT interpreter with the JIT switched off and flushed while measuring) on a fixed world (seed 42, level 3, one year after spin-up, 192 ticks), via `tools/perf.lua`. The committed `tests/bench-baseline.json` holds the per-system counts, date and calibration; the test fails when a system grows > 30% (and by > 2,000 instructions, so tiny systems don't trip on a few lines) or the whole tick > 15%. Intentional updates: `npm run bench -- --update-baseline` (plus a DECISIONS entry); `npm run bench -- --check` runs the gate alone. Calibration against the real target: the HTML5 release build ran the `sim/bench.lua` configuration at 1.70 ms median for 230,910 instructions/tick, i.e. ≈ 7.4 ns per instruction (6–10 ns per system). This supersedes the ≈ 15 ns estimate in D-019, which came from the older 4.6 ms (D-004) measurement.
 Consequences: exact and repeatable (0.6 s); it counts LuaJIT bytecodes, not PUC Lua 5.1's, and C calls count as one instruction, so it tracks cost changes in Lua code, not constant-factor differences between runtimes — re-check the calibration with `npm run bench:web -- --release` at chapter ends.
+
+## D-030 · 2026-09-27 · SIM_LEVEL 3 finalised
+Context: 02 §2 asks to finalise SIM_LEVEL from a browser benchmark of the realistic tick (after 1.5). With all Chapter-1 systems (weather, hydrology, vegetation, fire, biome, ocean, fauna, villages, ships, detectors) after the 1.7 performance pass, `npm run bench:web -- --release` measures **1.70 ms median, 2.5 ms p95** per tick at level 3 in the HTML5 release build (headless Chromium). Level 4 would be ≈ 4× (≈ 6.8 ms), over the 4 ms budget.
+Decision: SIM_LEVEL = 3 is final for the jam. The headroom (~2×) is reserved for Chapter 2–3 systems (powers, geology, epoch mode) and lets ⏩ run ~4 ticks per frame.
+Consequences: P07 (D-029) guards the budget.
+
+## D-031 · 2026-09-27 · Terrain and sea are one mesh coloured from a per-cell texture
+Context: 05 §7 describes separate terrain and ocean meshes with per-vertex colours rewritten incrementally.
+Decision: one level-5 render icosphere (61k vertices) carries land and sea. Each render vertex interpolates elevation from its 3 nearest sim cells, and land/sea comes from an interpolated coast value plus noise, so coasts are organic despite the 642-cell sim. Colours come from a small per-cell texture (2 px per sim cell) sampled in the vertex shader. A recolour is one pass over 642 cells (≤ 4×/s, amortised) plus one texture upload, not a rewrite of 61k vertices.
+Consequences: cheap updates; sea-level changes (Chapter 3) rebuild the mesh in one step, which is acceptable because it's rare.
+
+## D-032 · 2026-09-27 · Props: procedural Lua meshes in 80 chunks; budget raised
+Context: D-009 chose batched chunk meshes. 06 §1 suggested a Node→glTF generator and 05 §9 budgeted ≤ 2,500 props.
+Decision: prop geometry (tree species, bushes, tufts, rocks, stumps, fields, houses, huts, ruins) is generated procedurally in Lua at startup and baked into 80 chunk meshes. No glTF pipeline: the chunks need raw triangles anyway. Budget: ~12k props baked, ≤ ~9.5k visible, 37–50 real draw calls at the planet view. Near chunks switch to richer templates when the camera zooms in.
+Consequences: the dense "miniature forest" look (ART_DIRECTION.md) within the draw-call budget.
+
+## D-033 · 2026-09-27 · Movers, fire and batching
+Decision: moving things (clouds, deer, wolves, people, boats, tankers, fire/smoke pieces) are pooled game objects in world-space-vertex materials, so the engine batches them into one draw call per material. They draw in their own unsorted render predicate, because depth sorting between chunks broke the batches. Fire and smoke use pooled unlit meshes, because Defold particles don't face the camera for this use.
+Consequences: ≤ 300 movers at a handful of draw calls.
+
+## D-034 · 2026-09-27 · UI built in code, fonts, HTML template
+Decision: the HUD and inspector are built in code on a Defold GUI scene and batched by layers (119 → 47 draw calls). They use Fredoka and Nunito static instances cut from the Google Fonts variable fonts (OFL, `assets/fonts`; Fredoka has no "₂" glyph, so CO₂ uses Nunito), and a custom HTML template so the canvas fills the window with no footer strip. HUD animal numbers are density sums shown with fixed display scales (presentation only).
+
+## D-035 · 2026-09-27 · Camera framing
+Decision: a trackball orbit with no pole lock. The default zoom is closer than "whole planet with margin": the planet fills ~85% of the frame height, like the reference image. Zooming out still reaches the whole planet. The camera idles in a slow auto-rotate.
