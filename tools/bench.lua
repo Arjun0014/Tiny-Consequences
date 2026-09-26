@@ -1,5 +1,6 @@
 -- npm run bench [-- --level 4 --ticks 192 --seed 42]
 package.path = "./?.lua;./?/init.lua;" .. package.path
+if rawget(_G, "jit") then jit.opt.start("maxtrace=8000", "maxmcode=8192", "maxrecord=8000") end -- lint:allow luajit-only
 local bench = require("sim.bench")
 local args = { level = nil, ticks = 192, seed = 42 }
 local i = 1

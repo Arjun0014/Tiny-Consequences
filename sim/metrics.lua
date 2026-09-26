@@ -54,6 +54,40 @@ function metrics.compute(W)
   for _, c in ipairs(geo.land_cells) do gsum = gsum + F.grass[c] * area[c]; fsum = fsum + F.forest[c] * area[c] end
   m.grass_mean, m.forest_mean = gsum / L, fsum / L
   m.fires_burning = W.S.fire and #W.S.fire.list or 0
+  -- animals (mean density over land; per continent c1..c3) and ocean life (mean over ocean)
+  local cont = geo.continent
+  local gz, pd = F.grazers, F.predators
+  local cg, cp, ca = { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }
+  local gs, ps = 0, 0
+  local land_cells = geo.land_cells
+  for i = 1, #land_cells do
+    local c = land_cells[i]
+    local a = area[c]
+    gs = gs + gz[c] * a
+    ps = ps + pd[c] * a
+    local k = cont[c]
+    if k >= 1 and k <= 3 then cg[k] = cg[k] + gz[c] * a; cp[k] = cp[k] + pd[c] * a; ca[k] = ca[k] + a end
+  end
+  m.grazers, m.predators = gs / L, ps / L
+  for k = 1, 3 do
+    m["grazers_c" .. k] = ca[k] > 0 and cg[k] / ca[k] or 0
+    m["predators_c" .. k] = ca[k] > 0 and cp[k] / ca[k] or 0
+  end
+  local fs, pls, oa, ot = 0, 0, 0, 0
+  local oil = F.oil
+  for c = 1, n do
+    if ocean[c] == 1 then
+      local a = area[c]
+      fs = fs + F.fish[c] * a
+      pls = pls + F.plankton[c] * a
+      oa = oa + a
+    end
+    ot = ot + oil[c] * area[c]
+  end
+  m.fish = oa > 0 and fs / oa or 0
+  m.plankton = oa > 0 and pls / oa or 0
+  m.oil = ot
+  m.oil_cells = W.S.ocean and W.S.ocean.oil_n or 0
   -- extension point: systems may add metrics
   for _, fn in ipairs(metrics.extra) do fn(W, m, area, tot, land) end
   return m
@@ -63,6 +97,8 @@ metrics.extra = {}
 
 metrics.SERIES_COLS = { "year", "tick", "temp_mean", "precip_mean", "land_precip", "soil_mean",
   "ice_fraction", "g_temp", "co2", "aerosol", "sea_level", "forest_cover", "grassland", "desert",
-  "tundra", "barren", "ice_sheet", "marsh", "grass_mean", "forest_mean", "fires_burning" }
+  "tundra", "barren", "ice_sheet", "marsh", "grass_mean", "forest_mean", "fires_burning",
+  "grazers", "predators", "grazers_c1", "predators_c1", "grazers_c2", "predators_c2",
+  "grazers_c3", "predators_c3", "fish", "plankton", "oil", "oil_cells" }
 
 return metrics

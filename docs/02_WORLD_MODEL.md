@@ -62,7 +62,7 @@ Every constant mentioned here is a **starting value**. All of them live in `sim/
 | `coast_dist` | graph distance to nearest coast (land and ocean sides) |
 | `downhill` | drainage target (neighbour with lowest elev, or 0 for basin/ocean) |
 | `wind_w[season]` | upwind neighbour weights for advection (precomputed per season) |
-| `current_w` | ocean current upstream weights (ocean cells) |
+| `current_w` | ocean current weights (ocean cells; mass-conserving push weights, D-015) |
 | `upwelling` | static nutrient bonus for some ocean cells (worldgen) |
 
 A cell is **ocean** if `elev < sea_level`. That can change (sea level rise/fall, new islands).
@@ -223,7 +223,7 @@ fertility += k_regen * (base_fert(biome) − fertility) − crop_depletion − e
 ```
 
 - `seed_in`: tiny recolonisation from neighbours that have that vegetation (no spontaneous generation).
-- `browsing`: grazers eat saplings — strongest when forest is low (this is what makes predator removal stop forest recovery).
+- `browsing`: grazers eat saplings — strongest when forest is low, and hungry grazers (near their food limit, e.g. with no predators) strip far more (this is what makes predator removal stop forest recovery; D-017).
 - Forest growth is slow: from bare land to mature forest ≈ 30–60 years. Grass recovers in 1–3 years.
 - `veg_cover = clamp01(grass + forest)`; `fuel = (0.5 grass + forest) * dryness`, `dryness = 1 − soil_water / field_capacity`.
 
@@ -259,7 +259,8 @@ predation = a * P * max(0, H − H_refuge) / (1 + a * t_h * max(0, H − H_refug
 predators += e * predation − m * predators − culled_by_villagers
 ```
 
-- **Migration** each tick: a fraction moves to neighbours weighted by attractiveness (grazers: food, few predators; predators: prey). Flows carry blame tags.
+- **Migration** each tick (implemented multi-rate, D-012): a fraction moves to neighbours weighted by attractiveness (grazers: food, few predators; predators: prey). Flows carry blame tags.
+- Animals return the carbon they eat (CO₂), keeping the untouched biosphere carbon-neutral (D-008, D-017).
 - Animals cannot cross ocean. They **can** cross sea ice with `ice ≥ 0.8` (ice-age land bridges) and newly exposed land (sea level drops).
 - **Villagers cull predators** near farms with some probability (emergent loop: villages expand → wolves culled → deer boom → crops raided).
 - Species presence is per continent through connectivity; **global extinction is permanent** unless the player reintroduces the species.

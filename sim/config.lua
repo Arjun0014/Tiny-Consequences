@@ -132,11 +132,98 @@ C.BIOME = {
   marsh_enter = 0.85, marsh_exit = 0.75, marsh_max_elev = 0.4,
   desert_soil = 0.15, desert_veg = 0.15, desert_min_temp = 5, desert_exit_veg = 0.3, desert_exit_soil = 0.25,
   tundra_temp = 0, tundra_veg = 0.4, tundra_exit_veg = 0.5,
-  jungle_enter = 0.6, jungle_exit = 0.5, jungle_temp = 22, jungle_soil = 0.5,
+  jungle_enter = 0.6, jungle_exit = 0.5, jungle_temp = 22, jungle_soil = 0.5, jungle_soil_exit = 0.35,
   forest_enter = 0.5, forest_exit = 0.4, grass_enter = 0.25, grass_exit = 0.18,
   dwell = 12, dwell_long = 48,
 }
 
 C.LEDGER = { decay_per_year = 0.03, dominant_share = 0.4 }
+
+-- Regions (named places for events; 02_WORLD_MODEL.md §2, D-011) ---------------------------------------------
+C.REGIONS = {
+  split_frac = 0.4,                       -- continents holding more than this share of land split in two
+  seas_per_ocean = 12,                    -- seas ≈ ocean fraction × this, clamped to [seas_min, seas_max]
+  seas_min = 6, seas_max = 10,
+  sea_jitter = 0.8,                       -- next sea centre drawn among cells ≥ this × max distance
+}
+
+-- Ocean life, currents & oil (§5.8) ----------------------------------------------------------------------------
+C.OCEAN = {
+  stride = 8,                             -- each ocean cell's life update runs every N ticks (dt = N), staggered
+  r_plankton = 0.08,                      -- plankton growth per tick at ideal light/nutrients/temperature
+  nut_base = 0.35, nut_up = 0.65,         -- nutrients = base + up × upwelling + river pulse
+  nut_river = 0.6, river_ref = 0.5,       -- river-mouth nutrient pulse: nut_river × min(1, flow / river_ref)
+  sst_lo = 10, sst_hi = 26,               -- plankton temperature optimum (°C)
+  sst_cold_min = -2, cold_floor = 0.35,   -- cold seas still grow at this fraction
+  sst_hot = 30, heat_die = 0.06,          -- marine heatwave: no growth above sst_hot, die-off per tick per °C above
+  light_amp = 0.4,
+  graze = 0.03,                           -- plankton eaten per tick per unit fish
+  k_oil_p = 2.0, oil_kill_p = 0.1,        -- plankton growth loss per unit oil; direct kill per tick per unit oil
+  r_fish = 0.03, h_fish = 0.15,           -- fish growth per tick; plankton half-saturation
+  m_fish = 0.006,                         -- natural fish mortality per tick
+  k_oil_f = 0.45,                         -- fish killed per tick per unit oil
+  heat_fish_t = 31, heat_fish = 0.02,     -- direct heat stress per tick per °C above
+  silt_pen = 0.01, silt_ref = 0.01,       -- fish spawning loss per tick at silt ≥ silt_ref
+  fish_mig = 0.03,                        -- fish diffusion per tick at level-4 spacing (/sscale²)
+  flow_tag_frac = 0.05,                   -- fish inflow passes its tag only if ≥ this × fish per update
+  ref_months = 60,                        -- per-cell "normal" fish (5-year EMA) for collapse detection
+  min_pop = 1e-5,                         -- below this a population is gone (no spawning from nothing)
+  init_plankton = 0.4, init_fish = 0.4,
+  -- currents (push weights, D-015) and oil
+  current_speed = 0.5, courant_max = 0.5,
+  oil_diffusion = 0.03,                   -- per tick at level-4 spacing (/sscale²)
+  oil_half_life = 96,                     -- ticks (≈ 2 years)
+  oil_min = 1e-4,                         -- oil below this is gone (leaves the active set)
+  beach = 0.06,                           -- fraction of a coastal ocean cell's oil washed ashore per tick
+  shore_half_life = 24, leach = 0.02,     -- beached oil: half-life (ticks); fraction leaching back to sea per tick
+  shore_grass = 0.08, shore_fert = 0.003, -- beached oil damage per tick per unit oil (grass fraction; fertility)
+}
+
+-- Land animals (§5.9) --------------------------------------------------------------------------------------------
+C.FAUNA = {
+  stride = 4,                             -- local dynamics per land cell every N ticks (dt = N), staggered
+  migrate_every = 8,                      -- each species migrates every N ticks (species staggered, rate × N)
+  r_grazer = 0.03, K_grazer = 1.0,        -- grazer births per tick; capacity at abundant food
+  h_food = 0.15, crop_food = 0.5,         -- food half-saturation; crop counts half (raids)
+  snow_block = 0.8,                       -- snow/ice cover hides this fraction of food (winter starvation)
+  starve_max = 0.03,                      -- max starvation loss per tick
+  a_pred = 1.5, t_handle = 4,             -- Holling II attack rate, handling time (ticks)
+  refuge = 0.022,                         -- prey refuge density (never eaten); larger damps the cycles
+  e_pred = 0.1, m_pred = 0.010,           -- predator conversion efficiency; mortality per tick
+                                          -- (predator units are 1/3 of grazer units: a×3, t_h/3, e/3)
+  graze = 0.004, h_graze = 0.1,           -- grass eaten per tick per unit grazer (saturating in grass)
+  browse = 0.001, h_browse = 0.08,        -- forest browsed: browse × H × (browse_base + hunger) × f/(f + h):
+  browse_base = 0.05,                    --   per unit strongest when forest is low; hunger = H / K_eff (≤ 1)
+  raid = 0.01, h_raid = 0.1,              -- crop raided per tick per unit grazer
+  fire_mort = 0.3,                        -- mortality per tick per unit fire intensity
+  mig_grazer = 0.04, mig_pred = 0.04,     -- migration per edge per tick at level-4 spacing (/sscale²); × migrate_every ≤ ~0.1
+  fear = 30,                              -- grazer attractiveness ÷ (1 + fear × predators)
+  attract0 = 0.05,                        -- base attractiveness (random wandering)
+  ice_walk = 0.8,                         -- sea ice this thick is walkable
+  pressure_above = 1.25,                  -- grazing/predation carry the animals' tag only above this × normal
+  release_frac = 0.5,                     -- "release" blame: local density below this × its normal ...
+  release_min = { grazers = 0.02, predators = 0.002 },  -- ... and the normal above this
+  ref_months = 60,                        -- per-cell "normal" density (5-year EMA)
+  flow_tag_frac = 0.05,                   -- migration passes its tag only if net inflow ≥ this × population
+  min_pop = 1e-5,
+  init_grazers = 0.3, init_predators = 0.013,
+}
+
+-- Detectors (03_CAUSALITY.md §4) -----------------------------------------------------------------------------------
+C.DETECT = {
+  avg_months = 60,                        -- regional 5-year average (EMA of monthly samples)
+  boom = 2.0, boom_exit = 1.4,            -- × 5-year average (entry / exit)
+  crash = 0.5, crash_exit = 0.75,
+  cooldown = 96,                          -- ticks between boom/crash events per region + species
+  min_density = { grazers = 0.01, predators = 0.001 },   -- regional mean below this: too few to judge
+  extinct_density = 1e-4, present_density = 1e-3,
+  dominant_share = 0.2,                   -- a tag must cover this share of the region's cells to be the parent
+  fish_low = 0.5, fish_exit = 0.75, fish_min_ref = 0.05,
+  fish_cells = 6,                         -- level-4-equivalent cells in a collapsed fishing ground (min 2)
+  oil_spread_cells = 10,                  -- level-4-equivalent cells in a connected slick (min 3)
+  oil_spread_min = 0.01, oil_beach_min = 0.005,
+  drought_soil = 0.2, drought_anom = 0.75, drought_months = 3, drought_exit = 0.25,
+  flood_cooldown = 24,                    -- ticks before the same cell floods again (as an event)
+}
 
 return C

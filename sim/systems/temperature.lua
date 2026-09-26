@@ -21,7 +21,7 @@ function sys.rebuild(W)
   local cfg = cfgmod.TEMP
   local n, g = W.n, W.grid
   local geo = W.geo
-  local elev, sea = W.static.elev, W.G.sea_level
+  local elev, sea = W.static.elev, W.G.sea_built or W.G.sea_level
   local T = W.temp_static or {}
   W.temp_static = T
   T.base, T.amp, T.hemi, T.lapse = T.base or {}, T.amp or {}, T.hemi or {}, T.lapse or {}

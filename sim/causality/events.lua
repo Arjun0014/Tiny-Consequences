@@ -25,9 +25,11 @@ function events.new()
 end
 
 local function region_of(W, cell)
-  if cell and cell > 0 and W.region then return W.region[cell] or 0 end
+  local reg = W.static and W.static.region
+  if cell and cell > 0 and reg then return reg[cell] or 0 end
   return 0
 end
+events.region_of = region_of
 
 -- Emit an event. Returns the id (possibly an existing id when aggregated), or 0 when
 -- suppressed by a cooldown. opts: {key=string for cooldown, headline=bool override,

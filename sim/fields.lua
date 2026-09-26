@@ -21,10 +21,10 @@ fields.LIST = {
   { name = "fertility",  min = 0,   max = 1,   causal = true, eps = 0.0002, hold = 240 },
   { name = "fire",       min = 0,   max = 1,   causal = true, eps = 0.001, hold = 8 },
   { name = "plankton",   min = 0,   max = 1,   causal = true, eps = 0.0005, hold = 96 },
-  { name = "fish",       min = 0,   max = 1,   causal = true, eps = 0.0002, hold = 144 },
+  { name = "fish",       min = 0,   max = 1,   causal = true, eps = 0.0002, hold = 144, spatial = true },
   { name = "oil",        min = 0,   max = 1,   causal = true, eps = 0.0005, hold = 96, spatial = true },
-  { name = "grazers",    min = 0,   max = 1,   causal = true, eps = 0.0002, hold = 144, spatial = true },
-  { name = "predators",  min = 0,   max = 1,   causal = true, eps = 0.0001, hold = 144, spatial = true },
+  { name = "grazers",    min = 0,   max = 1,   causal = true, eps = 0.0002, hold = 48, spatial = true },
+  { name = "predators",  min = 0,   max = 1,   causal = true, eps = 0.0001, hold = 48, spatial = true },
   { name = "stress",     min = 0,   max = 1,   causal = true, eps = 0.001, hold = 48 },
   { name = "silt",       min = 0,   max = 1e6, causal = true, eps = 0.0005, hold = 48 },
   -- non-causal

@@ -56,7 +56,7 @@ function world.new(seed, opts)
   local W = {
     seed = seed, level = level, tick = 0,
     G = { co2 = 280, aerosol = 0, g_temp = 0, ice_fraction = 0, ice_volume = 0,
-          sea_level = 0, era = "garden" },
+          sea_level = 0, sea_built = 0, era = "garden" },
     static = {}, ent = {}, D = {}, S = {}, names = {}, cmdlog = {}, pending = {},
     E = events.new(),
     cfg = config,
@@ -82,6 +82,13 @@ function world.bind_grid(W)
   W.grid = g
   W.n = g.n
   W.sscale = g.spacing / world.SPACING_L4
+end
+
+-- Sea level the derived tables (coastline, lapse, upwind elevation) were built for. G.sea_level
+-- drifts every year; derived data follows it only at a coastline rebuild (set G.sea_built =
+-- G.sea_level, then rebuild_derived), so a reloaded world rebuilds exactly what the live one had.
+function world.sea_built(W)
+  return W.G.sea_built or W.G.sea_level
 end
 
 -- Rebuild derived data for every system (after worldgen, load, or coastline change).

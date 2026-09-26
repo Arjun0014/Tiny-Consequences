@@ -59,6 +59,18 @@ function blame.step(tags, idle, c, delta, eps, hold, v1, t1, v2, t2, v3, t3, v4,
   end
 end
 
+-- True if event `tag` descends from `ancestor` (walks the flat parent array, ≤ 16 links).
+-- Used so an upstream cause never overwrites the more-derived event it already produced.
+function blame.descends(parent, tag, ancestor)
+  local p, guard = parent[tag], 0
+  while p and p ~= 0 and guard < 16 do
+    if p == ancestor then return true end
+    p = parent[p]
+    guard = guard + 1
+  end
+  return false
+end
+
 -- Directly set a tag (root events at their origin, detector re-tagging).
 function blame.set(tags, idle, c, tag)
   tags[c] = tag

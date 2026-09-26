@@ -64,6 +64,11 @@ Implementation constraints:
 - Only track the top two terms; never store the full term list.
 - Budget: blame adds ≤ 25% to tick cost. Measure it.
 
+### Release and tag hygiene (D-013)
+
+- **Release**: when a pressure disappears (e.g. predators far below their normal and carrying a tag), the growth it no longer holds back carries the pressure's tag — so "wolves culled → deer boom" is blamed on the cull, not on baseline.
+- Pressures carry their tag only while clearly above normal; flows pass a tag only when they really drive the change; an upstream cause never overwrites a more-derived event it already produced.
+
 ### Flows
 
 Anything that moves between cells (moisture, oil, animals migrating, fire spreading, silt, people migrating) carries the **source cell's tag** as the tag of the inflow term. This is what lets a cause travel across the planet.
@@ -100,7 +105,7 @@ Detectors (initial set; each has entry/exit thresholds and cooldowns to avoid sp
 | migration | a family leaves a village | famine / disaster event |
 | village_founded | a new village forms | the migration event that produced the settlers |
 | village_abandoned | village population reaches 0 | last famine/disaster event |
-| overfishing / fish_collapse | regional fish −50% vs 5-year average | fish cause tag |
+| overfishing / fish_collapse | a connected fishing ground's fish −50% vs its 5-year average (named by sea, D-014) | fish cause tag |
 | tanker_sunk | a tanker or boat sinks | the power or natural event that sank it |
 | oil_spreading | a connected oil slick reaches ≥ 10 ocean cells | the oil's tag (tanker_sunk or the spill power) |
 | oil_beached | oil reaches a coast | the oil's tag |

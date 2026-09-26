@@ -79,6 +79,36 @@ function R.write_maps(W, a, dir, year)
 end
 R.extra_maps = {}
 
+-- Animals, fish and oil (end-of-year snapshot). Land/ocean backgrounds keep the coastline readable.
+local LIFE_STOPS = { { 0, 60, 55, 50 }, { 0.15, 150, 120, 60 }, { 0.4, 240, 200, 80 }, { 1, 255, 250, 220 } }
+local PRED_STOPS = { { 0, 60, 55, 50 }, { 0.04, 140, 60, 50 }, { 0.12, 230, 90, 60 }, { 0.3, 255, 220, 200 } }
+local FISH_STOPS = { { 0, 20, 25, 60 }, { 0.3, 30, 90, 150 }, { 0.6, 60, 190, 200 }, { 1, 210, 255, 250 } }
+R.extra_maps[#R.extra_maps + 1] = function(W, a, dir, tag)
+  local ocean, F = W.geo.ocean, W.F
+  map.write(W, dir .. "/grazers" .. tag, function(c)
+    if ocean[c] == 1 then return 25, 40, 70 end
+    return map.ramp(LIFE_STOPS, F.grazers[c])
+  end)
+  map.write(W, dir .. "/predators" .. tag, function(c)
+    if ocean[c] == 1 then return 25, 40, 70 end
+    return map.ramp(PRED_STOPS, F.predators[c])
+  end)
+  map.write(W, dir .. "/fish" .. tag, function(c)
+    if ocean[c] == 0 then return 90, 85, 75 end
+    return map.ramp(FISH_STOPS, F.fish[c])
+  end)
+  map.write(W, dir .. "/oil" .. tag, function(c)
+    local o = F.oil[c]
+    local r, g, b = 40, 70, 130
+    if ocean[c] == 0 then r, g, b = 120, 150, 100 end
+    if o > 0 then
+      local t = math.min(1, math.sqrt(o / 0.5))
+      r, g, b = r + (27 - r) * t, g + (20 - g) * t, b + (36 - b) * t
+    end
+    return r, g, b
+  end)
+end
+
 function R.line(W, m)
   local parts = { string.format("Y%4d", m.year), string.format("T%.1f", m.temp_mean),
     string.format("P%.3f", m.land_precip), string.format("soil %.2f", m.soil_mean),
@@ -89,6 +119,9 @@ function R.line(W, m)
   return table.concat(parts, " | ")
 end
 R.extra_line = {}
+R.extra_line[#R.extra_line + 1] = function(W, m)
+  return string.format("grz %.3f pred %.4f fish %.3f oil %.2f", m.grazers or 0, m.predators or 0, m.fish or 0, m.oil or 0)
+end
 
 function R.describe_event(W, r)
   local d = { string.format("#%d %s %s cell=%d mag=%.3g actor=%s parent=%d root=%d%s",

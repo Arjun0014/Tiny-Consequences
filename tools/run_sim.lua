@@ -4,6 +4,7 @@
 -- Writes out/sim/seed<N>/: summary.json, series.csv (yearly; --monthly adds monthly rows),
 -- events.txt, maps/<kind>_y<year>.png
 package.path = "./?.lua;./?/init.lua;" .. package.path
+if rawget(_G, "jit") then jit.opt.start("maxtrace=8000", "maxmcode=8192", "maxrecord=8000") end -- lint:allow luajit-only
 local worldgen = require("sim.worldgen.init")
 local world = require("sim.world")
 local metrics = require("sim.metrics")

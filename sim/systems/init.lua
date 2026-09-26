@@ -7,5 +7,8 @@ return {
   require("sim.systems.hydrology"),
   require("sim.systems.vegetation"),
   require("sim.systems.fire"),
+  require("sim.systems.ocean"),
+  require("sim.systems.fauna"),
   require("sim.systems.biome"),
+  require("sim.causality.detectors"),
 }

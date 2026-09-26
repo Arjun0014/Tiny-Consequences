@@ -52,7 +52,8 @@ function sys.classify(W, c, cur)
   end
   local fthr = cur == B.forest and cfg.forest_exit or cfg.forest_enter
   local jthr = cur == B.jungle and cfg.jungle_exit or cfg.jungle_enter
-  if forest >= jthr and tmean >= cfg.jungle_temp and soil >= cfg.jungle_soil then return B.jungle, "forest" end
+  local jsoil = cur == B.jungle and cfg.jungle_soil_exit or cfg.jungle_soil
+  if forest >= jthr and tmean >= cfg.jungle_temp and soil >= jsoil then return B.jungle, "forest" end
   if forest >= fthr then return B.forest, "forest" end
   if grass >= (cur == B.grassland and cfg.grass_exit or cfg.grass_enter) then return B.grassland, "grass" end
   return B.barren, "grass"

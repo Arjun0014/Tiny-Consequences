@@ -20,6 +20,10 @@ function ci.apply(W)
     if geo.ocean[c] == 1 then
       F.sst[c] = math.max(cfg.sst_min, t)
       F.ice[c] = t < -6 and 1 or 0
+      F.plankton[c] = cfgmod.OCEAN.init_plankton
+      F.fish[c] = cfgmod.OCEAN.init_fish
+      W.P.fish[c] = F.fish[c]
+      if W.S.ocean then W.S.ocean.fish_ref[c] = F.fish[c] end
     else
       F.soil_water[c] = 0.4
       F.ice[c] = t < -4 and 1 or 0
@@ -44,6 +48,32 @@ function ci.vegetation(W)
       F.grass[c] = math.min(1, 0.6 * warm * math.max(0.15, math.min(1, s / 0.3)))
       F.fertility[c] = 0.3 + 0.4 * wet
       W.P.grass[c], W.P.forest[c] = F.grass[c], F.forest[c]
+    end
+  end
+end
+
+-- Seed land animals once vegetation exists (spin-up; never later): grazers and predators on the
+-- continents only — animals can't swim, so small islands start untouched (no grazers, no
+-- predators) until something walks over sea ice or the player introduces them.
+function ci.fauna(W)
+  local cfg = cfgmod.FAUNA
+  local F, n = W.F, W.n
+  local geo = W.geo
+  local ocean, cont = geo.ocean, geo.continent
+  local min_frac = cfgmod.WORLDGEN.continent_min_frac * 0.9
+  for c = 1, n do
+    if ocean[c] == 0 then
+      local gr = F.grass[c]
+      local comp = geo.components[cont[c]]
+      if comp and comp.size / n >= min_frac then
+        F.grazers[c] = cfg.init_grazers * math.min(1, gr / 0.4)
+        F.predators[c] = gr > 0.05 and cfg.init_predators or 0
+      else
+        F.grazers[c], F.predators[c] = 0, 0
+      end
+      W.P.grazers[c], W.P.predators[c] = F.grazers[c], F.predators[c]
+      local S = W.S.fauna
+      if S then S.hnorm[c], S.pnorm[c] = F.grazers[c], F.predators[c] end
     end
   end
 end

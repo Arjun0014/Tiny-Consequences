@@ -48,7 +48,7 @@ function sys.rebuild(W)
   local n, g = W.n, W.grid
   local X, Y, Z = g.X, g.Y, g.Z
   local nbr, cnt = g.nbr, g.nbr_count
-  local elev, sea = W.static.elev, W.G.sea_level
+  local elev, sea = W.static.elev, W.G.sea_built or W.G.sea_level
   local geo = W.geo
   local wt = W.wind or {}
   W.wind = wt

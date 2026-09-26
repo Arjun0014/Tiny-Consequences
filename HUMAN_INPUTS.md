@@ -10,7 +10,7 @@ Values only Arjun can provide. Claude Code reads this file at session start. Fil
 | Name to credit ("Made by ...") | Arjun | Stage 4.2 |
 | Studio/company name for credits (optional) | Yukimi | Stage 4.2 |
 | Music track placed in `assets_inbox/`? Licence? | | Stage 4.3 |
-| Your OS for testing (Windows / macOS / Linux / WSL) | | any time |
+| Your OS for testing (Windows / macOS / Linux / WSL) | Windows 11 (native; detected by Claude Code) | any time |
 
 Notes for Claude Code (anything else Arjun wants you to know):
 

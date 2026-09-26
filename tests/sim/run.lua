@@ -2,6 +2,9 @@
 -- Usage (from repo root): luajit tests/sim/run.lua [--full] [--chapter N] [--only PATTERN]
 --                         [--unit] [--props] [--scenarios] [--seeds N]
 package.path = "./?.lua;./?/init.lua;" .. package.path
+-- LuaJIT: the whole sim exceeds the default trace cache, which then flushes and re-records all
+-- the time (3–4× slower). Plain Lua 5.1 ignores this.
+if rawget(_G, "jit") then jit.opt.start("maxtrace=8000", "maxmcode=8192", "maxrecord=8000") end -- lint:allow luajit-only
 
 local T = require("tests.sim.lib")
 
@@ -37,6 +40,10 @@ for _, g in ipairs(groups) do
     if not ok then
       T.record(modname, false, "load error: " .. tostring(mod))
     else
+      if type(mod) == "table" and mod.expect then
+        -- scenario spec (pure data) -> test module
+        mod = require("tests.sim.scenarios.lib").as_module(mod, args)
+      end
       T.run_module(modname, mod)
     end
   end

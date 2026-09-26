@@ -5,6 +5,8 @@ local config = require("sim.config")
 local terrain = require("sim.worldgen.terrain")
 local geo = require("sim.geo")
 local climate_init = require("sim.worldgen.climate_init")
+local regions = require("sim.worldgen.regions")
+require("sim.testhooks")   -- registers the test_action command (07_TESTING.md §3)
 
 local worldgen = {}
 
@@ -52,6 +54,7 @@ function worldgen.generate(seed, opts)
   end
   if not W then error("worldgen failed for seed " .. tostring(seed)) end
   W.worldgen_report = rep
+  regions.generate(W)
   world.set_systems(opts.systems or require("sim.systems.init"))
   world.rebuild_derived(W)
   world.init_systems(W)
@@ -72,6 +75,7 @@ function worldgen.spinup(W, years, progress)
     world.tick(W)
     if t == veg_at then
       climate_init.vegetation(W)
+      climate_init.fauna(W)
       require("sim.systems.biome").reset(W)
     end
     if progress and t % 48 == 0 then progress(t / ticks) end

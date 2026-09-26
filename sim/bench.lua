@@ -16,6 +16,7 @@ function bench.run(opts)
     -- no spin-up: settle climate briefly, seed vegetation so every system has work to do
     for _ = 1, 48 do world.tick(W) end
     climate_init.vegetation(W)
+    climate_init.fauna(W)
     require("sim.systems.biome").reset(W)
   end
   local tgen = clock() - t0

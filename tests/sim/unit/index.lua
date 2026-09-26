@@ -6,4 +6,11 @@ return {
   "tests.sim.unit.test_blame",
   "tests.sim.unit.test_save",
   "tests.sim.unit.test_names",
+  "tests.sim.unit.test_regions",
+  "tests.sim.unit.test_detectors",
+  "tests.sim.unit.test_testhooks",
+  "tests.sim.unit.test_ocean",
+  "tests.sim.unit.test_fauna",
+  "tests.sim.unit.test_ice_bridge",
+  "tests.sim.unit.test_save_world",
 }

@@ -8,7 +8,7 @@ function geo.rebuild(W)
   local n, g = W.n, W.grid
   local nbr, cnt = g.nbr, g.nbr_count
   local elev = W.static.elev
-  local sea = W.G.sea_level
+  local sea = W.G.sea_built or W.G.sea_level   -- see world.sea_built (derived data is pinned)
   local G = W.geo or {}
   W.geo = G
 
