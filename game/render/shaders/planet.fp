@@ -45,10 +45,10 @@ void main()
         base = mix(base, base * vec3(1.08, 1.06, 0.80), clamp(fn * 2.0 + 0.4, 0.0, 1.0) * 0.3);
         float beach = smoothstep(0.085, 0.03, s + fn * 0.05) * smoothstep(0.45, 0.08, h);
         base = mix(base, SAND, beach * 0.92);
-        float rock = smoothstep(1.7, 2.6, h + nz * 0.8 + fn * 0.6);
-        base = mix(base, ROCK, rock * 0.45);
-        float snow = smoothstep(0.42, 0.62, var_land.a + fn * 0.35);
-        snow = max(snow, smoothstep(2.5, 3.0, h + fn * 1.2));
+        float rock = smoothstep(2.6, 3.4, h + nz * 0.8 + fn * 0.6);
+        base = mix(base, ROCK, rock * 0.35);
+        // snow only where the ice field is substantial; soft edge, little noise (no mottling)
+        float snow = smoothstep(0.5, 0.85, var_land.a + fn * 0.08);
         base = mix(base, SNOW, snow);
         vec3 N = normalize(var_normal);
         col = tc_light(base, N, up, V, L, snow * 0.15);
@@ -78,7 +78,7 @@ void main()
         col = tc_light(wc, N, up, V, L, 0.06);
         vec3 H = normalize(L + V);
         vec3 Ns = normalize(up + rn * 0.018);
-        float spec = pow(max(dot(Ns, H), 0.0), 380.0) * 0.9 + pow(max(dot(N, H), 0.0), 40.0) * 0.05;
+        float spec = pow(max(dot(Ns, H), 0.0), 420.0) * 0.8 + pow(max(dot(N, H), 0.0), 60.0) * 0.035;
         float fres = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 5.0);
         col = mix(col, vec3(0.70, 0.90, 1.0), fres * 0.35);
         // coastal foam line

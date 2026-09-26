@@ -308,10 +308,11 @@ function P.build(W, opts)
   }
 end
 
---- Nearest render vertex to unit direction (x,y,z) by greedy walk (starts from the last hit).
-function P.nearest(PL, x, y, z)
+--- Nearest render vertex to unit direction (x,y,z) by greedy walk (from `start`, else the
+-- last hit; movers pass their own previous vertex so walks stay a step or two long).
+function P.nearest(PL, x, y, z, start)
   local X, Y, Z, rn, rcnt = PL.X, PL.Y, PL.Z, PL.rn, PL.rcnt
-  local v = PL.walk
+  local v = start or PL.walk
   local best = X[v] * x + Y[v] * y + Z[v] * z
   while true do
     local moved = false
@@ -328,10 +329,11 @@ function P.nearest(PL, x, y, z)
 end
 
 --- Approximate surface radius (land height or sea level) at unit direction (x,y,z).
-function P.surface_radius(PL, x, y, z)
-  local v = P.nearest(PL, x, y, z)
+-- Returns radius, vertex (pass the vertex back as `start` next time).
+function P.surface_radius(PL, x, y, z, start)
+  local v = P.nearest(PL, x, y, z, start)
   local h = PL.h[v]
-  return PL.R + (h > 0 and h * PL.EXAG or 0)
+  return PL.R + (h > 0 and h * PL.EXAG or 0), v
 end
 
 --- Surface radius at a unit direction's nearest render vertex (approximate; for placement).

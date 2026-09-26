@@ -1,0 +1,2 @@
+prototype: "/game/view/tanker.go"
+load_dynamically: false

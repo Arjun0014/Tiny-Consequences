@@ -29,12 +29,12 @@ test('W01 smoke: ready within 20 s, canvas renders, no errors @ch1', async ({ pa
   const png = await page.screenshot();
   await testInfo.attach('w01', { body: png, contentType: 'image/png' });
   const img = decodePng(png);
-  const top = averageRgb(img, Math.round(box.x + 40), Math.round(box.y + 8), 8, 4);
+  const top = averageRgb(img, Math.round(box.x + box.width - 24), Math.round(box.y + 6), 8, 4);
   for (let i = 0; i < 3; i++) {
     expect(Math.abs(top[i] - SKY_TOP[i]), `top-left sky ${top.map(Math.round)} vs ${SKY_TOP}`).toBeLessThan(40);
   }
   const centre = averageRgb(img, Math.round(box.x + box.width / 2), Math.round(box.y + box.height * 0.55), 24, 24);
-  const skyAt = averageRgb(img, Math.round(box.x + 40), Math.round(box.y + box.height * 0.55), 8, 8);
+  const skyAt = averageRgb(img, Math.round(box.x + 30), Math.round(box.y + box.height * 0.4), 8, 8);
   const diff = centre.reduce((a, v, i) => a + Math.abs(v - skyAt[i]), 0);
   expect(diff, `planet centre ${centre.map(Math.round)} vs sky ${skyAt.map(Math.round)}`).toBeGreaterThan(40);
   expect(tc.prop_total, 'props baked').toBeGreaterThan(1000);

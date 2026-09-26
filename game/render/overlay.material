@@ -1,0 +1,10 @@
+name: "overlay"
+tags: "overlay"
+vertex_program: "/game/render/shaders/fx.vp"
+fragment_program: "/game/render/shaders/fx.fp"
+vertex_space: VERTEX_SPACE_WORLD
+vertex_constants {
+  name: "view_proj"
+  type: CONSTANT_TYPE_VIEWPROJ
+}
+max_page_count: 0

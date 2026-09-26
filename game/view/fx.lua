@@ -73,7 +73,9 @@ local function place(obj, W, cell, off_a, off_b, lift, s, sh)
   local lon = g.lon[cell] + off_b * sp / max(0.2, cos(g.lat[cell]))
   local cl = cos(lat)
   local x, y, z = cl * cos(lon), sin(lat), cl * sin(lon)
-  local r = M.surface(x, y, z) + lift
+  local r, v = M.surface(x, y, z, obj.v)
+  obj.v = v
+  r = r + lift
   pos.x, pos.y, pos.z = x * r, y * r, z * r
   go.set_position(pos, obj.id)
   go.set_rotation(vmx.set_up_yaw(rot, x, y, z, 0), obj.id)

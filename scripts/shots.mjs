@@ -21,6 +21,7 @@ const port = Number(getFlag(args, '--port', 8182));
 const seed = String(getFlag(args, '--seed', '1'));
 const years = Number(getFlag(args, '--years', 50));
 const PRESETS = (getFlag(args, '--only', 'continent_a,continent_b,pole,village,close')).split(',');
+const UI_SHOTS = !hasFlag(args, '--no-ui');
 if (!hasFlag(args, '--no-build')) await build({ variant, ifStale: true, quiet: true });
 
 const outDir = path.join(ROOT, 'out', 'shots', 'latest');
@@ -51,10 +52,10 @@ async function settle(page) {
   await page.waitForTimeout(900);
 }
 
-async function shoot(page, label, preset) {
-  const cam = await cmd(page, { cmd: 'camera', preset });
+async function shoot(page, label, preset, name = null) {
+  const cam = preset ? await cmd(page, { cmd: 'camera', preset }) : null;
   await settle(page);
-  const file = path.join(outDir, `${label}_${preset}.png`);
+  const file = path.join(outDir, name ? `${name}.png` : `${label}_${preset}.png`);
   await page.screenshot({ path: file });
   const tc = await page.evaluate(() => window.__TC);
   const gl = await page.evaluate(() => (window.__TC_GL ? window.__TC_GL.samples.slice(-10) : []));
@@ -96,7 +97,39 @@ try {
   await page.waitForFunction(() => window.__TC && window.__TC.ready === true, null, { timeout: 120_000 });
   report.ready_ms = Date.now() - t0;
   console.log(`shots: world ready in ${report.ready_ms} ms`);
+  await cmd(page, { cmd: 'ui', debug: false });
+  await cmd(page, { cmd: 'select', none: true });
   for (const p of PRESETS) await shoot(page, 'y000', p);
+  if (UI_SHOTS) {
+    // 07 §7 item 8: HUD at 1280x720 and 1920x1080 (planet inspector open), item 7: inspector
+    // on a person; plus village and cell inspectors and the debug overlay.
+    await cmd(page, { cmd: 'select', planet: true });
+    await page.mouse.move(520, 41);   // hover a HUD item: shows its tooltip + hover state
+    await shoot(page, 'ui', 'default', 'hud_1280x720');
+    await page.mouse.move(640, 700);
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.waitForTimeout(1500);
+    await shoot(page, 'ui', 'default', 'hud_1920x1080');
+    await page.setViewportSize(VIEWPORT);
+    await page.waitForTimeout(1500);
+    const tc0 = await page.evaluate(() => window.__TC);
+    if (tc0.villages > 0) {
+      await cmd(page, { cmd: 'select', village: 'first' });
+      await cmd(page, { cmd: 'camera', preset: 'village' });
+      await cmd(page, { cmd: 'select', village: 'first', fly: true, zoom: 0.62 });
+      await shoot(page, 'ui', null, 'inspector_village');
+      await cmd(page, { cmd: 'select', person: 'first', fly: true, zoom: 0.95 });
+      await page.waitForTimeout(2500);
+      await shoot(page, 'ui', null, 'inspector_person');
+    }
+    await cmd(page, { cmd: 'camera', preset: 'default' });
+    await cmd(page, { cmd: 'pick', x: 560, y: 330 });
+    await shoot(page, 'ui', null, 'inspector_cell');
+    await cmd(page, { cmd: 'select', none: true });
+    await cmd(page, { cmd: 'ui', debug: true });
+    await shoot(page, 'ui', 'default', 'debug_overlay');
+    await cmd(page, { cmd: 'ui', debug: false });
+  }
   if (!hasFlag(args, '--no-later') && years > 0) {
     const t1 = Date.now();
     await cmd(page, { cmd: 'run_ticks', n: years * 48 });

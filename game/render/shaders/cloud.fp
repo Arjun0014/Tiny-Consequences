@@ -21,7 +21,9 @@ void main()
     vec3 shadow = vec3(0.74, 0.84, 0.95);
     vec3 col = mix(shadow, vec3(1.0, 0.995, 0.97), wrap) * mix(0.9, 1.04, var_shade);
     float edge = clamp(dot(N, V), 0.0, 1.0);
-    float a = smoothstep(0.05, 0.7, edge) * 0.88;
-    col += (1.0 - edge) * 0.1;
+    // soft, fluffy silhouettes: wide alpha falloff broken up by a little noise
+    float n = fract(sin(dot(floor(var_wpos * 40.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+    float a = pow(smoothstep(0.0, 0.85, edge + (n - 0.5) * 0.12), 0.9) * 0.9;
+    col += (1.0 - edge) * 0.12;
     out_color = vec4(col * a, a);
 }

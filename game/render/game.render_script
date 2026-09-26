@@ -17,9 +17,11 @@ function init(self)
 	self.pred_sky = render.predicate({ "sky" })
 	self.pred_planet = render.predicate({ "planet" })
 	self.pred_props = render.predicate({ "props" })
+	self.pred_movers = render.predicate({ "movers" })
 	self.pred_atmo = render.predicate({ "atmo" })
 	self.pred_cloud = render.predicate({ "cloud" })
 	self.pred_fx = render.predicate({ "fx" })
+	self.pred_overlay = render.predicate({ "overlay" })
 	self.pred_particle = render.predicate({ "particle" })
 	self.pred_gui = render.predicate({ "gui" })
 	self.pred_text = render.predicate({ "text" })
@@ -33,6 +35,8 @@ function init(self)
 	self.cb = render.constant_buffer()
 	self.gui_view = vmath.matrix4()
 	self.world_opts = { frustum = nil, constants = self.cb }
+	-- movers in creation order (not depth-sorted) so same-buffer pool runs batch together
+	self.mover_opts = { frustum = nil, constants = self.cb, sort_order = render.SORT_NONE }
 	self.plain_opts = { constants = self.cb }
 	self.gui_opts = {}
 end
@@ -93,6 +97,8 @@ function update(self)
 		render.draw(self.pred_planet, self.world_opts)
 		render.disable_state(graphics.STATE_CULL_FACE)
 		render.draw(self.pred_props, self.world_opts)
+		self.mover_opts.frustum = self.world_opts.frustum
+		render.draw(self.pred_movers, self.mover_opts)
 
 		-- transparent: premultiplied alpha, depth-tested, no depth writes
 		render.set_depth_mask(false)
@@ -105,6 +111,9 @@ function update(self)
 		render.disable_state(graphics.STATE_CULL_FACE)
 		render.draw(self.pred_fx, self.world_opts)
 		render.draw(self.pred_particle, self.world_opts)
+		-- selection ring: always visible on top (hidden by the view when behind the planet)
+		render.disable_state(graphics.STATE_DEPTH_TEST)
+		render.draw(self.pred_overlay, self.world_opts)
 		render.draw_debug3d()
 	end
 

@@ -10,6 +10,7 @@ const args = process.argv.slice(2);
 const variant = hasFlag(args, '--release') ? 'release' : 'debug';
 const port = Number(getFlag(args, '--port', 8184));
 const params = JSON.parse(getFlag(args, '--params', '{}'));
+// usage: [--shot out.png [--wait ms]] after the commands
 const cmds = args.filter((a) => a.startsWith('{') && a !== getFlag(args, '--params'));
 if (!hasFlag(args, '--no-build')) await build({ variant, ifStale: true, quiet: true });
 const server = await startServer({ port, quiet: true });
@@ -30,6 +31,8 @@ try {
       id, { timeout: 600_000, polling: 100 });
     console.log(JSON.stringify(await h.jsonValue(), null, 1));
   }
+  const shot = getFlag(args, '--shot', null);
+  if (shot) { await page.waitForTimeout(Number(getFlag(args, '--wait', 1500))); await page.screenshot({ path: shot }); console.log(`screenshot: ${shot}`); }
   const tc = await page.evaluate(() => window.__TC);
   delete tc.last_cmd;
   console.log('__TC', JSON.stringify(tc));

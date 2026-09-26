@@ -1,15 +1,20 @@
 -- Tiny Consequences: main game object script.
--- Boots the world (worldgen + spin-up in a coroutine behind a loading screen), builds the view
--- (Stage 1.8 planet rendering), runs the speed controller, drives the test bridge, handles keys.
+-- Boots the world (worldgen + spin-up in a coroutine behind a loading screen), builds the view,
+-- runs the speed controller on the real world tick, routes input (GUI first, then camera /
+-- picking), drives the test bridge and the debug overlay.
 
 local sim_version = require("sim.version")
 local bridge = require("game.platform.bridge")
 local clock = require("game.platform.clock")
 local speed = require("game.platform.speed")
 local query = require("game.platform.query")
+local commands = require("game.platform.commands")
 local state = require("game.view.state")
 local camera = require("game.view.camera")
 local view = require("game.view.view")
+local controls = require("game.view.controls")
+local uistate = require("game.ui.uistate")
+local selection = require("game.ui.selection")
 
 local H_SPACE = hash("key_space")
 local H_SHIFT = hash("key_shift")
@@ -29,6 +34,10 @@ local URLS = {
 	wolf_factory = "/main#wolf_factory",
 	flame_factory = "/main#flame_factory",
 	smoke_factory = "/main#smoke_factory",
+	person_factory = "/main#person_factory",
+	tanker_factory = "/main#tanker_factory",
+	boat_factory = "/main#boat_factory",
+	ring_factory = "/main#ring_factory",
 	atmo = "/atmo#mesh",
 	terrain = "/terrain#mesh",
 }
@@ -55,14 +64,29 @@ local function start_loading(self, seed)
 		end
 		state.loading.text = "Raising continents..."
 		coroutine.yield()
-		local worldgen = require("sim.worldgen.init")
-		local W = worldgen.generate(seed, {
-			progress = function(f)
-				state.loading.frac = 0.05 + 0.7 * f
-				state.loading.text = "Letting the weather settle... " .. math.floor(f * 100) .. "%"
-				maybe_yield()
-			end,
-		})
+		local W = nil
+		if self.use_prespun then
+			-- pre-spun Year-0 world (assets/worlds/default.tcsave, custom resource): no spin-up
+			self.use_prespun = false
+			local ok_mod, worlds = pcall(require, "sim.worlds")
+			local data = ok_mod and sys.load_resource("/assets/worlds/default.tcsave") or nil
+			if data and worlds.from_save_string then
+				state.loading.text = "Unpacking a tiny world..."
+				local ok, res = pcall(worlds.from_save_string, data)
+				if ok and res then W = res; self.seed = W.seed or seed
+				else print("[tc] pre-spun world failed, generating: " .. tostring(res)) end
+			end
+		end
+		if not W then
+			local worldgen = require("sim.worldgen.init")
+			W = worldgen.generate(seed, {
+				progress = function(f)
+					state.loading.frac = 0.05 + 0.7 * f
+					state.loading.text = "Letting the weather settle... " .. math.floor(f * 100) .. "%"
+					maybe_yield()
+				end,
+			})
+		end
 		state.loading.frac = 0.75
 		view.build(W, URLS, function(text, f)
 			state.loading.text = text .. "..."
@@ -85,119 +109,28 @@ local function finish_loading(self)
 	local lat, lon, zoom = camera.preset(cam or "default", self.W)
 	if not lat then lat, lon, zoom = camera.preset("default", self.W) end
 	camera.set(lat, lon, zoom, true)
+	self.tps_tick0, self.tps_t0, self.tps = self.W.tick, clock.now_ms(), 0
 	print(string.format("[tc] world %d ready in %.0f ms (%d props, %d chunks)", self.seed,
 		clock.now_ms() - self.load_t0, view.stats().prop_total, #require("game.view.props").chunks))
-end
-
--- Bridge commands ---------------------------------------------------------------------------
-
-local function register_commands(self)
-	-- camera{preset="continent_a"|"continent_b"|"pole"|"village"|"close"} or {lat, lon, zoom}
-	-- (degrees for lat/lon). Instant unless tween=true.
-	bridge.register("camera", function(args)
-		assert(self.W, "world not ready")
-		local lat, lon, zoom
-		if args.preset then
-			lat, lon, zoom = camera.preset(args.preset, self.W)
-			assert(lat, "unknown camera preset " .. tostring(args.preset))
-		else
-			lat = args.lat and math.rad(args.lat) or camera.tlat
-			lon = args.lon and math.rad(args.lon) or camera.tlon
-			zoom = args.zoom or camera.tzoom
-		end
-		camera.set(lat, lon, zoom, not args.tween)
-		return { lat = math.deg(camera.tlat), lon = math.deg(camera.tlon), zoom = camera.tzoom,
-			focus_cell = camera.focus_cell }
-	end)
-	-- run_ticks{n}: chunked fast-forward; __TC.ff_remaining reaches 0 when done.
-	bridge.register("run_ticks", function(args)
-		assert(self.W, "world not ready")
-		local n = math.floor(tonumber(args.n) or 0)
-		assert(n >= 0, "run_ticks: n must be >= 0")
-		self.ff = { target = self.W.tick + n, t0 = clock.now_ms() }
-		return { from = self.W.tick, to = self.ff.target }
-	end)
-	bridge.register("freeze_visuals", function(args)
-		view.set_frozen(args.on ~= false)
-		return { frozen = state.frozen }
-	end)
-	bridge.register("new_world", function(args)
-		start_loading(self, math.floor(tonumber(args.seed) or self.seed))
-		return { seed = self.seed }
-	end)
-	-- preview_village{cell?}: view-only art preview of a village + farms at the focus cell
-	-- (Stage 1.7 villages don't exist yet). {off=true} clears it. Never touches the sim.
-	bridge.register("preview_village", function(args)
-		assert(self.W, "world not ready")
-		local props = require("game.view.props")
-		if args.off then props.set_preview(nil); return { off = true } end
-		local W = self.W
-		local c = args.cell or camera.focus_cell or camera.focus_candidate(W)
-		local map = { [c] = -1 }
-		local g = W.grid
-		local base = c * 6 - 6
-		for k = 1, g.nbr_count[c] do
-			local j = g.nbr[base + k]
-			if W.geo.ocean[j] == 0 and k % 2 == 1 then map[j] = 1 end
-		end
-		props.set_preview(map)
-		return { cell = c }
-	end)
-	-- bench_update{n}: runs view.update n times back-to-back in one frame (pure Lua cost,
-	-- without GPU contention from the software rasteriser); returns min/median ms.
-	bridge.register("bench_update", function(args)
-		local n = args.n or 30
-		local t = {}
-		if args.nogc then collectgarbage("stop") end
-		for i = 1, n do
-			local t0 = clock.now_ms()
-			view.update(1 / 60)
-			t[i] = clock.now_ms() - t0
-		end
-		if args.nogc then collectgarbage("restart") end
-		table.sort(t)
-		return { min = t[1], median = t[math.floor(n / 2) + 1], max = t[n], kb = collectgarbage("count") }
-	end)
-	bridge.register("flush_view", function()
-		local t0 = clock.now_ms()
-		view.flush()
-		return { ms = clock.now_ms() - t0 }
-	end)
-	bridge.register("view_stats", function()
-		return view.stats()
-	end)
-	-- View benchmark: stream write speed, planet build, prop bake in the real HTML5 Lua.
-	bridge.register("bench_view", function(args)
-		local res = {}
-		local n = args.n or 100000
-		local t0 = clock.now_ms()
-		local buf = buffer.create(n, { { name = hash("position"), type = buffer.VALUE_TYPE_FLOAT32, count = 3 } })
-		local pos = buffer.get_stream(buf, hash("position"))
-		for i = 1, n * 3 do pos[i] = i * 0.5 end
-		res.write_ms_per_100k = (clock.now_ms() - t0) / (n * 3) * 1e5
-		if view.PL then
-			t0 = clock.now_ms()
-			require("game.view.planet").build(self.W, {})
-			res.planet_ms = clock.now_ms() - t0
-		end
-		return res
-	end)
 end
 
 -- Lifecycle -------------------------------------------------------------------------------
 
 function init(self)
+	-- input stack: main first, then the HUD on top (the GUI sees input first and swallows
+	-- clicks on its panels)
 	msg.post(".", "acquire_input_focus")
+	msg.post("/hud", "acquire_input_focus")
 	print(string.format("[tc] Tiny Consequences — SIM_VERSION %d, SAVE_VERSION %d",
 		sim_version.SIM_VERSION, sim_version.SAVE_VERSION))
 
-	self.view_ms = 0
 	self.frames = 0
 	self.ready = false
 	self.shift = false
 	self.paused_speed = speed.NORMAL
-	self.show_debug = query.flag("debug")
 	self.debug_timer = 0
+	self.fps, self.fps_frames, self.fps_time = 0, 0, 0
+	uistate.debug = query.flag("debug") or query.flag("test")
 
 	local start_speed = query.number("speed", nil)
 	if start_speed then
@@ -206,19 +139,14 @@ function init(self)
 	end
 	if query.flag("freeze") then view.set_frozen(true) end
 
+	self.start_loading = start_loading
 	bridge.init()
-	-- Sim benchmark in the real HTML5 runtime (Stage 1.2 SIM_LEVEL decision, W08 later).
-	bridge.register("bench", function(args)
-		local bench = require("sim.bench")
-		local res = bench.run({ level = args.level, seed = args.seed or 42, ticks = args.ticks or 96,
-			warm = args.warm or 24, clock = clock.now_ms })
-		return res
-	end)
-	register_commands(self)
+	commands.register(self)
 	bridge.set_provider(function()
 		local avg, max = speed.stats()
 		local W = self.W
 		local vs = view.stats()
+		local sel = selection.sel
 		return {
 			ready = self.ready,
 			loading = state.loading.active,
@@ -227,6 +155,7 @@ function init(self)
 			tick = W and W.tick or 0,
 			year = W and math.floor(W.tick / 48) or 0,
 			speed = speed.get(),
+			ticks_per_s = self.tps or 0,
 			sim_ms_avg = avg,
 			sim_ms_max = max,
 			view_ms = vs.view_ms,
@@ -246,30 +175,57 @@ function init(self)
 			cloud_cover = vs.cloud_cover,
 			fires = vs.fires,
 			puppets = vs.puppets,
+			people_puppets = vs.people_puppets,
+			ships = vs.ships,
 			cam = vs.cam,
 			frozen = state.frozen,
+			selection = sel and { kind = sel.kind, cell = sel.cell, id = sel.id } or false,
+			population = W and require("game.view.ents").population(W) or 0,
+			villages = W and #require("game.view.ents").villages(W) or 0,
+			events = W and W.E and W.E.total or 0,
 			ff_remaining = self.ff and (self.ff.target - W.tick) or 0,
+			last_input = self.last_input or false,
 			sim_version = sim_version.SIM_VERSION,
 		}
 	end)
 
+	-- default start: the pre-spun world when it ships; ?seed=N always generates
+	self.use_prespun = query.get().seed == nil
 	start_loading(self, query.number("seed", 1))
 end
 
 local function update_debug(self, dt)
-	if not self.show_debug then
-		state.debug_text = nil
-		return
+	self.fps_frames = self.fps_frames + 1
+	self.fps_time = self.fps_time + dt
+	if self.fps_time >= 0.5 then
+		self.fps = self.fps_frames / self.fps_time
+		self.fps_frames, self.fps_time = 0, 0
 	end
+	if self.ready then
+		local now = clock.now_ms()
+		if now - self.tps_t0 >= 1000 then
+			self.tps = (self.W.tick - self.tps_tick0) * 1000 / (now - self.tps_t0)
+			self.tps_tick0, self.tps_t0 = self.W.tick, now
+		end
+	end
+	if not uistate.debug then return end
 	self.debug_timer = self.debug_timer + dt
 	if self.debug_timer < DEBUG_INTERVAL then return end
 	self.debug_timer = 0
 	local avg, max = speed.stats()
 	local s = view.stats()
-	state.debug_text = string.format(
-		"tick %d  speed %d  sim %.2f/%.2f ms  view %.2f ms  props %d/%d  chunks %d (rebuilt %d)  draws ~%d  clouds %d",
-		self.W and self.W.tick or 0, speed.get(), avg, max, s.view_ms, s.prop_count, s.prop_total,
-		s.chunks_visible, s.chunks_rebuilt, s.draw_calls, s.clouds)
+	uistate.debug_lines = string.format(
+		"fps %.0f   speed %d   ticks/s %.1f   tick %d\n" ..
+		"sim %.2f ms avg / %.2f max per frame\n" ..
+		"view %.2f ms (p90 %.2f)   draw calls ~%d\n" ..
+		"props %d visible / %d total   chunks %d (rebuilt %d)\n" ..
+		"clouds %d   movers %d   fires %d   events %d\n" ..
+		"Lua heap %.1f MB",
+		self.fps, speed.get(), self.tps or 0, self.W and self.W.tick or 0,
+		avg, max, s.view_ms or 0, s.view_ms_p90 or 0, s.draw_calls,
+		s.prop_count, s.prop_total, s.chunks_visible, s.chunks_rebuilt,
+		s.clouds, s.puppets, s.fires, self.W and self.W.E and self.W.E.total or 0,
+		collectgarbage("count") / 1024)
 end
 
 function update(self, dt)
@@ -298,8 +254,15 @@ function update(self, dt)
 		else
 			speed.step(dt, self.world_tick_fn)
 		end
+		-- GUI requests
+		local r = uistate.pop_request()
+		while r do
+			if r.cmd == "fly_to_sel" then controls.fly_to_selection(W) end
+			r = uistate.pop_request()
+		end
 	end
 
+	controls.tick(dt)
 	view.update(dt)
 	update_debug(self, dt)
 
@@ -308,9 +271,17 @@ function update(self, dt)
 end
 
 function on_input(self, action_id, action)
+	if action_id ~= nil then
+		self.input_count = (self.input_count or 0) + 1
+		self.last_input = { id = tostring(action_id), pressed = action.pressed, released = action.released,
+			x = action.screen_x, y = action.screen_y, n = self.input_count }
+	end
 	if action_id == H_SHIFT then
 		if action.pressed then self.shift = true elseif action.released then self.shift = false end
 		return false
+	end
+	if action_id ~= nil and self.ready and not self.shift then
+		if controls.on_input(self.W, action_id, action) then return true end
 	end
 	if not action.pressed then
 		return false
@@ -324,7 +295,7 @@ function on_input(self, action_id, action)
 		end
 		return true
 	elseif action_id == H_F3 then
-		self.show_debug = not self.show_debug
+		uistate.debug = not uistate.debug
 		return true
 	end
 	local lvl = SPEED_KEYS[action_id]

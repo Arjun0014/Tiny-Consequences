@@ -301,9 +301,9 @@ function M.mover_template(kind)
   local t = new_tpl()
   if kind == "cloud" then
     -- a cluster of soft puffs, ~1.0 across (scaled per cloud)
-    blob(t, 0.0, 0.34, 0.26, 7, 1, 0.78, 0, 2)
+    blob(t, 0.0, 0.34, 0.26, 9, 1, 0.78, 0, 2)
     local function puff(ox, oy, oz, r)
-      local s = new_tpl(); blob(s, 0, r, r * 0.82, 7, 1, 0.78, 0, 2)
+      local s = new_tpl(); blob(s, 0, r, r * 0.82, 9, 1, 0.78, 0, 2)
       for i = 0, s.nv - 1 do
         local o = i * 9
         push(t, s.d[o + 1] + ox, s.d[o + 2] + oy, s.d[o + 3] + oz, s.d[o + 4], s.d[o + 5], s.d[o + 6],
@@ -314,7 +314,41 @@ function M.mover_template(kind)
     puff(-0.05, -0.06, 0.2, 0.2)
     return t
   end
-  if kind == "flame" then
+  if kind == "person" then
+    -- body (slot 1, job colour) + head (slot 2, skin); ~0.05 tall at scale 1
+    cone(t, -0.004, 0.034, 0.013, 6, 1, 0.75, 0)
+    local hd = new_tpl(); blob(hd, 0.0, 0.0095, 0.0095, 6, 2, 0.85, 0, 1)
+    for i = 0, hd.nv - 1 do
+      local o = i * 9
+      push(t, hd.d[o + 1], hd.d[o + 2] + 0.04, hd.d[o + 3], hd.d[o + 4], hd.d[o + 5], hd.d[o + 6], 2, hd.d[o + 8], 0)
+    end
+    return t
+  elseif kind == "tanker" then
+    -- hull (slot 1) along local x, deck house (slot 2) at the stern; ~0.36 long
+    box(t, -0.18, 0.18, -0.02, 0.03, -0.045, 0.045, 1, true, 0.75)
+    tri(t, { 0.18, -0.02, -0.045 }, { 0.24, 0.03, 0.0 }, { 0.18, 0.03, -0.045 }, nil, nil, nil, 1, nil, nil, 1, 0, -1)
+    tri(t, { 0.18, -0.02, 0.045 }, { 0.18, 0.03, 0.045 }, { 0.24, 0.03, 0.0 }, nil, nil, nil, 1, nil, nil, 1, 0, 1)
+    tri(t, { 0.18, 0.03, -0.045 }, { 0.24, 0.03, 0.0 }, { 0.18, 0.03, 0.045 }, nil, nil, nil, 1, nil, nil, 0, 1, 0)
+    box(t, -0.16, -0.09, 0.03, 0.09, -0.035, 0.035, 2, true, 0.85)
+    box(t, -0.14, -0.12, 0.09, 0.13, -0.008, 0.008, 1, true, 0.85)
+    return t
+  elseif kind == "boat" then
+    box(t, -0.05, 0.05, -0.01, 0.015, -0.02, 0.02, 1, true, 0.8)
+    tri(t, { 0.0, 0.015, 0.0 }, { 0.0, 0.1, 0.0 }, { 0.045, 0.02, 0.0 }, nil, nil, nil, 2, nil, nil, 0, 0, 1)
+    tri(t, { 0.0, 0.015, 0.0 }, { 0.045, 0.02, 0.0 }, { 0.0, 0.1, 0.0 }, nil, nil, nil, 2, nil, nil, 0, 0, -1)
+    return t
+  elseif kind == "ring" then
+    -- flat annulus in the local xz plane, radius 1 (scaled per selection)
+    local n = 40
+    for k = 0, n - 1 do
+      local a0, a1 = k / n * 2 * pi, (k + 1) / n * 2 * pi
+      local p0o, p1o = { cos(a0), 0, sin(a0) }, { cos(a1), 0, sin(a1) }
+      local p0i, p1i = { cos(a0) * 0.8, 0, sin(a0) * 0.8 }, { cos(a1) * 0.8, 0, sin(a1) * 0.8 }
+      tri(t, p0i, p0o, p1o, nil, nil, nil, 1, nil, { 1, 1, 1 }, 0, 1, 0)
+      tri(t, p0i, p1o, p1i, nil, nil, nil, 1, nil, { 1, 1, 1 }, 0, 1, 0)
+    end
+    return t
+  elseif kind == "flame" then
     cone(t, -0.05, 1.0, 0.32, 5, 1, 0.75, 1)
     cone(t, -0.05, 0.62, 0.2, 5, 2, 0.9, 1, 0.5)
     return t
@@ -425,7 +459,7 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
   local W, PL = ctx.W, ctx.PL
   local F = W.F
   local forest, grass, biome, land_use = F.forest, F.grass, F.biome, F.land_use
-  local fire, scar, crop = F.fire, F.burn_scar, F.crop
+  local fire, scar, crop, ice = F.fire, F.burn_scar, F.crop, F.ice
   local ocean, cdist = W.geo.ocean, W.geo.coast_dist
   local T = W.temp_static
   local gtemp = W.G.g_temp or 0
@@ -447,6 +481,10 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
       local c = a1
       if ocean[c] == 0 then
         local fo = forest[a1] * w1 + forest[a2] * w2 + forest[a3] * w3
+        local ic = ice[a1] * w1 + ice[a2] * w2 + ice[a3] * w3
+        -- no trees standing on snowfields: fade out between 30% and 55% ice cover
+        local snowfade = ic <= 0.3 and 1 or (ic >= 0.55 and 0 or (0.55 - ic) / 0.25)
+        fo = fo * snowfade
         local gr = grass[a1] * w1 + grass[a2] * w2 + grass[a3] * w3
         local bi = biome[c]
         local lu = land_use[c]
@@ -498,7 +536,7 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
             if u3 < 0.03 then kind = K.rock end
           else
             if u3 < tree_p then
-              if tmean < -3 then kind = K.snowpine
+              if tmean < -3 or ic > 0.3 then kind = K.snowpine
               elseif tmean < 6 then kind = (u4 < 0.85) and K.pine or K.tree
               elseif tmean > 21 and bi == 11 then kind = (u4 < 0.3 and cdist[c] <= 1) and K.palm or K.jungle
               elseif tmean > 21 then kind = (u4 < 0.35 and cdist[c] <= 1) and K.palm or K.tree

@@ -8,6 +8,7 @@ local props = require("game.view.props")
 local clouds = require("game.view.clouds")
 local puppets = require("game.view.puppets")
 local fx = require("game.view.fx")
+local selring = require("game.view.selring")
 local grid = require("sim.grid")
 local clock = require("game.platform.clock")
 
@@ -46,9 +47,9 @@ local function build_atmo()
   resource.set_buffer(go.get(M.urls.atmo, "vertices"), buf)
 end
 
-function M.surface(x, y, z)
+function M.surface(x, y, z, start)
   if not M.PL then return state.R end
-  return planet.surface_radius(M.PL, x, y, z)
+  return planet.surface_radius(M.PL, x, y, z, start)
 end
 
 --- Builds all view data for world W. step(text, frac) is called often (it may yield).
@@ -69,7 +70,8 @@ function M.build(W, urls, step)
   props.build_all(function(f) step("Planting forests", f) end)
   step("Gathering clouds", 0)
   clouds.init(W, urls.cloud_factory)
-  puppets.init(W, urls.deer_factory, urls.wolf_factory, M.surface)
+  puppets.init(W, urls, M.surface)
+  selring.init(urls.ring_factory, M.surface)
   fx.init(W, urls.flame_factory, urls.smoke_factory, M.surface)
   camera.height_fn = function(x, y, z) return M.surface(x, y, z) end
   camera.focus_cell = nil
@@ -99,27 +101,29 @@ function M.set_frozen(on)
   state.frozen = on and true or false
 end
 
--- Village entities (Stage 1.7) -> props.set_villages hook. Defensive about the entity shape:
--- { cell | centre, houses | population | pop, ruin | abandoned }. Until entities exist the props
--- fall back to the land_use field (villages on land_use < 0 cells, crops on land_use > 0).
+-- Village entities (sim/systems/villages.lua) -> props.set_villages hook: living villages
+-- (alive ~= false) get houses (v.houses, else pop / 4); dead ones show ruins only while
+-- v.ruin is set (v.abandoned keeps its tick after the ruins decay). Before Stage 1.7 the props
+-- fall back to the land_use field (village centre < 0, farms > 0).
 local village_sig = nil
 local function sync_villages(W)
   local list = W.ent and W.ent.villages
   if type(list) ~= "table" then return end
   local out, sig = {}, 0
-  local keys = {}
-  for k in pairs(list) do keys[#keys + 1] = k end
-  table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
-  for _, k in ipairs(keys) do
-    local v = list[k]
-    if type(v) == "table" then
-      local cell = v.cell or v.centre or v.center
-      if type(cell) == "number" then
-        local pop = v.population or v.pop or (type(v.people) == "table" and #v.people) or 0
-        local houses = v.houses or math.max(3, math.min(14, math.ceil(pop / 6)))
-        local ruin = (v.ruin or v.abandoned or v.dead) and true or false
-        out[#out + 1] = { cell = cell, houses = houses, ruin = ruin }
-        sig = sig + cell * 7 + houses * 131 + (ruin and 997 or 0)
+  for i = 1, #list do
+    local v = list[i]
+    if type(v) == "table" and type(v.cell) == "number" then
+      local entry = nil
+      if v.alive ~= false then
+        local pop = tonumber(v.pop) or (type(v.members) == "table" and #v.members) or 0
+        local houses = tonumber(v.houses) or math.max(3, math.ceil(pop / 4))
+        entry = { cell = v.cell, houses = houses, ruin = false }
+      elseif v.ruin then
+        entry = { cell = v.cell, houses = 0, ruin = true }
+      end
+      if entry then
+        out[#out + 1] = entry
+        sig = sig + v.cell * 7 + entry.houses * 131 + (entry.ruin and 997 or 0)
       end
     end
   end
@@ -156,6 +160,7 @@ function M.update(dt)
     local d = clock.now_ms()
     puppets.update(W, dt, camera.zoom, state.frozen)
     fx.update(W, dt, state.frozen)
+    selring.update(W, dt)
     local e = clock.now_ms()
     P.terrain = P.terrain + (b - a - P.terrain) * 0.05
     P.props = P.props + (c - b - P.props) * 0.05
@@ -175,6 +180,11 @@ function M.update(dt)
   end
 end
 
+function M.cam_info()
+  local lat, lon = camera.latlon()
+  return { lat = math.deg(lat), lon = math.deg(lon), zoom = camera.zoom }
+end
+
 --- Numbers for the bridge / debug overlay.
 function M.stats()
   local ps = props.stats
@@ -183,8 +193,9 @@ function M.stats()
     draw = draw + 1 + 1                           -- terrain, atmosphere
       + ps.visible                                -- prop chunks in view
       + ((clouds.stats.active > 0) and 1 or 0)
-      + ((puppets.stats.active > 0) and 1 or 0)
-      + ((fx.stats.fires > 0) and 1 or 0)
+      + (puppets.stats.draws or 0) + (puppets.stats.ship_draws or 0)
+      + ((fx.stats.fires > 0) and 2 or 0)
+      + (selring.on and 1 or 0)
   end
   return {
     view_ms = M.view_ms_med,
@@ -202,13 +213,15 @@ function M.stats()
     chunks_visible = ps.visible,
     chunks_rebuilt = ps.rebuilt,
     chunks_dirty = ps.dirty or 0,
-    draw_calls = draw + 2,                        -- + GUI
+    draw_calls = draw + 5,                        -- + GUI (layer-batched: boxes + 3 fonts + top)
     clouds = clouds.stats.active,
     cloud_cover = clouds.stats.cover,
     puppets = puppets.stats.active,
     fires = fx.stats.fires,
     recolours = terrain.stats.recolours,
-    cam = { lat = camera.lat, lon = camera.lon, zoom = camera.zoom },
+    cam = M.cam_info(),
+    people_puppets = puppets.stats.people,
+    ships = puppets.stats.ships,
   }
 end
 

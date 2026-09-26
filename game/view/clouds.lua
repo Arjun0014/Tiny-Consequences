@@ -146,6 +146,8 @@ function M.update(W, dt, frozen)
   local active, area = 0, 0
   local eye = state.eye
   local ex, ey, ez = eye.x, eye.y, eye.z
+  local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
+  local zoom = require("game.view.camera").zoom
   local cap = M.MAX_COVER * 4 * math.pi * R * R
   for _, c in ipairs(M.clouds) do
     if not frozen then
@@ -164,6 +166,7 @@ function M.update(W, dt, frozen)
       end
     end
     local sz = c.size * c.s
+    if M.hidden then sz = 0 end
     if sz > 0.01 then
       -- shrink clouds that would sit in front of a zoomed-in camera
       local cl = cos(c.lat)
@@ -172,6 +175,12 @@ function M.update(W, dt, frozen)
       local de = sqrt(dx * dx + dy * dy + dz * dz)
       local t = (de - M.NEAR_HIDE[1]) / (M.NEAR_HIDE[2] - M.NEAR_HIDE[1])
       if t < 1 then sz = sz * max(0, t) end
+      -- zoomed in: keep the view focus clear of clouds
+      if zoom > 0.35 then
+        local fd = (cl * cos(c.lon) * fx + sin(c.lat) * fy + cl * sin(c.lon) * fz)
+        local k = (fd - 0.955) / (0.985 - 0.955)
+        if k > 0 then sz = sz * max(0, 1 - k * min(1, (zoom - 0.35) * 4)) end
+      end
     end
     if sz > 0.01 then
       local a = math.pi * (sz * 0.55) ^ 2

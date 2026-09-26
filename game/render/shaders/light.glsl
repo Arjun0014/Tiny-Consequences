@@ -29,8 +29,8 @@ vec3 tc_light(vec3 albedo, vec3 N, vec3 up, vec3 V, vec3 L, float ambient_boost)
 vec3 tc_limb(vec3 col, vec3 up, vec3 V, float amount)
 {
     float f = 1.0 - clamp(dot(up, V), 0.0, 1.0);
-    float haze = pow(f, 3.0) * amount;
-    return mix(col, TC_HAZE, clamp(haze, 0.0, 0.8));
+    float haze = pow(f, 3.2) * amount;
+    return mix(col, TC_HAZE, clamp(haze, 0.0, 0.6));
 }
 
 // Cheap 3D value noise (fragment detail: ice/snow/beach edges, colour mottling).

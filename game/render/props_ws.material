@@ -1,5 +1,5 @@
 name: "props_ws"
-tags: "props"
+tags: "movers"
 vertex_program: "/game/render/shaders/props_ws.vp"
 fragment_program: "/game/render/shaders/props.fp"
 vertex_space: VERTEX_SPACE_WORLD

@@ -5,6 +5,7 @@ developer = Arjun
 publisher = Arjun
 write_log_file = 0
 compress_archive = 1
+custom_resources = /assets/worlds
 
 [bootstrap]
 main_collection = /game/main.collectionc
@@ -71,7 +72,8 @@ max_sound_sources = 32
 
 [html5]
 scale_mode = stretch
-show_fullscreen_button = 1
+show_fullscreen_button = 0
+htmlfile = /game/html/engine_template.html
 show_made_with_defold = 0
 show_console_banner = 0
 heap_size = 256

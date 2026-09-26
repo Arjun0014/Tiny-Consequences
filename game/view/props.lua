@@ -65,6 +65,8 @@ local function signature(W, c)
   local v = M.villages and M.villages[c]
   if v then q = q + 16000 + (v.houses or 0) * 32000 + (v.ruin and 7 or 0) end
   if lu > 0 then q = q + floor(F.crop[c] * 4 + 0.5) * 100000 end
+  local ic = F.ice[c]
+  q = q + (ic > 0.55 and 2 or (ic > 0.3 and 1 or 0)) * 500000
   if M.preview and M.preview[c] then q = q + 1e7 * (M.preview[c] + 2) end
   return q
 end

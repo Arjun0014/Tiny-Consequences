@@ -1,0 +1,2 @@
+prototype: "/game/view/person.go"
+load_dynamically: false
