@@ -1,0 +1,2 @@
+prototype: "/game/view/chunk.go"
+load_dynamically: false

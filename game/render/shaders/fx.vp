@@ -1,0 +1,21 @@
+#version 140
+// Unlit effect meshes (flames, smoke): pooled game objects, world-space (engine-batched).
+#include "/game/render/shaders/unpack.glsl"
+
+in highp vec4 position;
+in highp vec2 color;
+
+uniform vs_uniforms
+{
+    highp mat4 view_proj;
+};
+
+out mediump vec4 var_color;
+
+void main()
+{
+    vec4 c = tc_unpack(color);
+    // sway bits carry opacity for effects (0..7 -> 0.25..1)
+    var_color = vec4(c.rgb, 0.25 + 0.75 * c.w);
+    gl_Position = view_proj * vec4(position.xyz, 1.0);
+}

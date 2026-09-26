@@ -1,0 +1,25 @@
+-- Loading screen + debug overlay (Stage 1.8). The HUD proper arrives in Stage 1.9.
+-- Reads the shared view state (shared_state = 1); no messages needed.
+local state = require("game.view.state")
+
+function init(self)
+	self.loading = gui.get_node("loading")
+	self.label = gui.get_node("label")
+	self.bar = gui.get_node("bar")
+	self.debug = gui.get_node("debug")
+	self.shown = true
+end
+
+function update(self, dt)
+	local L = state.loading
+	if L.active then
+		if not self.shown then gui.set_enabled(self.loading, true); self.shown = true end
+		gui.set_text(self.label, L.text or "")
+		local w = math.max(4, math.min(396, 396 * (L.frac or 0)))
+		gui.set_size(self.bar, vmath.vector3(w, 10, 0))
+	elseif self.shown then
+		gui.set_enabled(self.loading, false)
+		self.shown = false
+	end
+	gui.set_text(self.debug, state.debug_text or "")
+end

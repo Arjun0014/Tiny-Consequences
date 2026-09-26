@@ -1,0 +1,2 @@
+prototype: "/game/view/wolf.go"
+load_dynamically: false

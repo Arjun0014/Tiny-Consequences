@@ -2,7 +2,7 @@
   "name": "tiny-consequences",
   "version": "0.1.0",
   "private": true,
-  "description": "Tiny Consequences — Defold Game Jam 2026 (Chain Reaction)",
+  "description": "Tiny Consequences \u2014 Defold Game Jam 2026 (Chain Reaction)",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -22,7 +22,8 @@
     "play": "node scripts/play.mjs",
     "package:itch": "node scripts/stub.mjs package:itch \"Stage 4.5\"",
     "deploy:wavedash": "node scripts/stub.mjs deploy:wavedash \"Stage 4.5\"",
-    "bench:web": "node scripts/bench_web.mjs"
+    "bench:web": "node scripts/bench_web.mjs",
+    "bridge": "node scripts/bridge_cmd.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"

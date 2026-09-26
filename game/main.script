@@ -1,12 +1,15 @@
 -- Tiny Consequences: main game object script.
--- Stage 1.1 skeleton: logs the sim version (proves sim/ modules bundle), runs the
--- speed controller with a placeholder tick, drives the test bridge, handles keys.
+-- Boots the world (worldgen + spin-up in a coroutine behind a loading screen), builds the view
+-- (Stage 1.8 planet rendering), runs the speed controller, drives the test bridge, handles keys.
 
 local sim_version = require("sim.version")
 local bridge = require("game.platform.bridge")
 local clock = require("game.platform.clock")
 local speed = require("game.platform.speed")
 local query = require("game.platform.query")
+local state = require("game.view.state")
+local camera = require("game.view.camera")
+local view = require("game.view.view")
 
 local H_SPACE = hash("key_space")
 local H_SHIFT = hash("key_shift")
@@ -15,18 +18,179 @@ local SPEED_KEYS = {
 	[hash("key_1")] = 1, [hash("key_2")] = 2, [hash("key_3")] = 3, [hash("key_4")] = 4,
 }
 
-local DEBUG_PRINT_INTERVAL = 1.0 -- seconds; F3 / ?debug=1 status line (GUI overlay comes with the HUD)
+local FF_BUDGET_MS = 200       -- run_ticks: sim time per frame while fast-forwarding (tests)
+local LOAD_SLICE_MS = 40       -- loading: work per frame before yielding to render a frame
+local DEBUG_INTERVAL = 0.25
 
-local function placeholder_tick()
-	-- The world tick plugs in here once sim/world.lua exists.
+local URLS = {
+	chunk_factory = "/main#chunk_factory",
+	cloud_factory = "/main#cloud_factory",
+	deer_factory = "/main#deer_factory",
+	wolf_factory = "/main#wolf_factory",
+	flame_factory = "/main#flame_factory",
+	smoke_factory = "/main#smoke_factory",
+	atmo = "/atmo#mesh",
+	terrain = "/terrain#mesh",
+}
+
+-- Loading -----------------------------------------------------------------------------------
+
+local function start_loading(self, seed)
+	self.seed = seed
+	self.W = nil
+	self.ready = false
+	self.ff = nil
+	state.planet_on = false
+	state.loading.active = true
+	state.loading.frac = 0
+	state.loading.text = "Growing a tiny world..."
+	self.load_t0 = clock.now_ms()
+	self.loader = coroutine.create(function()
+		local slice_start = clock.now_ms()
+		local function maybe_yield()
+			if clock.now_ms() - slice_start > LOAD_SLICE_MS then
+				coroutine.yield()
+				slice_start = clock.now_ms()
+			end
+		end
+		state.loading.text = "Raising continents..."
+		coroutine.yield()
+		local worldgen = require("sim.worldgen.init")
+		local W = worldgen.generate(seed, {
+			progress = function(f)
+				state.loading.frac = 0.05 + 0.7 * f
+				state.loading.text = "Letting the weather settle... " .. math.floor(f * 100) .. "%"
+				maybe_yield()
+			end,
+		})
+		state.loading.frac = 0.75
+		view.build(W, URLS, function(text, f)
+			state.loading.text = text .. "..."
+			state.loading.frac = 0.75 + 0.25 * f
+			maybe_yield()
+		end)
+		self.W = W
+	end)
 end
+
+local function finish_loading(self)
+	self.loader = nil
+	self.ready = true
+	collectgarbage("collect")   -- drop worldgen/view-build garbage behind the loading screen
+	state.loading.active = false
+	self.world_tick_fn = function()
+		require("sim.world").tick(self.W)
+	end
+	local cam = query.get().cam
+	local lat, lon, zoom = camera.preset(cam or "default", self.W)
+	if not lat then lat, lon, zoom = camera.preset("default", self.W) end
+	camera.set(lat, lon, zoom, true)
+	print(string.format("[tc] world %d ready in %.0f ms (%d props, %d chunks)", self.seed,
+		clock.now_ms() - self.load_t0, view.stats().prop_total, #require("game.view.props").chunks))
+end
+
+-- Bridge commands ---------------------------------------------------------------------------
+
+local function register_commands(self)
+	-- camera{preset="continent_a"|"continent_b"|"pole"|"village"|"close"} or {lat, lon, zoom}
+	-- (degrees for lat/lon). Instant unless tween=true.
+	bridge.register("camera", function(args)
+		assert(self.W, "world not ready")
+		local lat, lon, zoom
+		if args.preset then
+			lat, lon, zoom = camera.preset(args.preset, self.W)
+			assert(lat, "unknown camera preset " .. tostring(args.preset))
+		else
+			lat = args.lat and math.rad(args.lat) or camera.tlat
+			lon = args.lon and math.rad(args.lon) or camera.tlon
+			zoom = args.zoom or camera.tzoom
+		end
+		camera.set(lat, lon, zoom, not args.tween)
+		return { lat = math.deg(camera.tlat), lon = math.deg(camera.tlon), zoom = camera.tzoom,
+			focus_cell = camera.focus_cell }
+	end)
+	-- run_ticks{n}: chunked fast-forward; __TC.ff_remaining reaches 0 when done.
+	bridge.register("run_ticks", function(args)
+		assert(self.W, "world not ready")
+		local n = math.floor(tonumber(args.n) or 0)
+		assert(n >= 0, "run_ticks: n must be >= 0")
+		self.ff = { target = self.W.tick + n, t0 = clock.now_ms() }
+		return { from = self.W.tick, to = self.ff.target }
+	end)
+	bridge.register("freeze_visuals", function(args)
+		view.set_frozen(args.on ~= false)
+		return { frozen = state.frozen }
+	end)
+	bridge.register("new_world", function(args)
+		start_loading(self, math.floor(tonumber(args.seed) or self.seed))
+		return { seed = self.seed }
+	end)
+	-- preview_village{cell?}: view-only art preview of a village + farms at the focus cell
+	-- (Stage 1.7 villages don't exist yet). {off=true} clears it. Never touches the sim.
+	bridge.register("preview_village", function(args)
+		assert(self.W, "world not ready")
+		local props = require("game.view.props")
+		if args.off then props.set_preview(nil); return { off = true } end
+		local W = self.W
+		local c = args.cell or camera.focus_cell or camera.focus_candidate(W)
+		local map = { [c] = -1 }
+		local g = W.grid
+		local base = c * 6 - 6
+		for k = 1, g.nbr_count[c] do
+			local j = g.nbr[base + k]
+			if W.geo.ocean[j] == 0 and k % 2 == 1 then map[j] = 1 end
+		end
+		props.set_preview(map)
+		return { cell = c }
+	end)
+	-- bench_update{n}: runs view.update n times back-to-back in one frame (pure Lua cost,
+	-- without GPU contention from the software rasteriser); returns min/median ms.
+	bridge.register("bench_update", function(args)
+		local n = args.n or 30
+		local t = {}
+		if args.nogc then collectgarbage("stop") end
+		for i = 1, n do
+			local t0 = clock.now_ms()
+			view.update(1 / 60)
+			t[i] = clock.now_ms() - t0
+		end
+		if args.nogc then collectgarbage("restart") end
+		table.sort(t)
+		return { min = t[1], median = t[math.floor(n / 2) + 1], max = t[n], kb = collectgarbage("count") }
+	end)
+	bridge.register("flush_view", function()
+		local t0 = clock.now_ms()
+		view.flush()
+		return { ms = clock.now_ms() - t0 }
+	end)
+	bridge.register("view_stats", function()
+		return view.stats()
+	end)
+	-- View benchmark: stream write speed, planet build, prop bake in the real HTML5 Lua.
+	bridge.register("bench_view", function(args)
+		local res = {}
+		local n = args.n or 100000
+		local t0 = clock.now_ms()
+		local buf = buffer.create(n, { { name = hash("position"), type = buffer.VALUE_TYPE_FLOAT32, count = 3 } })
+		local pos = buffer.get_stream(buf, hash("position"))
+		for i = 1, n * 3 do pos[i] = i * 0.5 end
+		res.write_ms_per_100k = (clock.now_ms() - t0) / (n * 3) * 1e5
+		if view.PL then
+			t0 = clock.now_ms()
+			require("game.view.planet").build(self.W, {})
+			res.planet_ms = clock.now_ms() - t0
+		end
+		return res
+	end)
+end
+
+-- Lifecycle -------------------------------------------------------------------------------
 
 function init(self)
 	msg.post(".", "acquire_input_focus")
 	print(string.format("[tc] Tiny Consequences — SIM_VERSION %d, SAVE_VERSION %d",
 		sim_version.SIM_VERSION, sim_version.SAVE_VERSION))
 
-	self.seed = query.number("seed", 1)
 	self.view_ms = 0
 	self.frames = 0
 	self.ready = false
@@ -40,6 +204,7 @@ function init(self)
 		local ok, err = pcall(speed.set, start_speed)
 		if not ok then print("[tc] ignoring ?speed=: " .. tostring(err)) end
 	end
+	if query.flag("freeze") then view.set_frozen(true) end
 
 	bridge.init()
 	-- Sim benchmark in the real HTML5 runtime (Stage 1.2 SIM_LEVEL decision, W08 later).
@@ -49,44 +214,96 @@ function init(self)
 			warm = args.warm or 24, clock = clock.now_ms })
 		return res
 	end)
+	register_commands(self)
 	bridge.set_provider(function()
 		local avg, max = speed.stats()
+		local W = self.W
+		local vs = view.stats()
 		return {
 			ready = self.ready,
+			loading = state.loading.active,
+			loading_frac = state.loading.frac,
 			seed = self.seed,
-			tick = speed.ticks(),
-			year = 0,
+			tick = W and W.tick or 0,
+			year = W and math.floor(W.tick / 48) or 0,
 			speed = speed.get(),
 			sim_ms_avg = avg,
 			sim_ms_max = max,
-			view_ms = self.view_ms,
+			view_ms = vs.view_ms,
+			view_ms_max = vs.view_ms_max,
+			view_ms_avg = vs.view_ms_avg,
+			view_ms_p90 = vs.view_ms_p90,
+			view_parts = vs.view_parts,
+			lua_kb = math.floor(collectgarbage("count")),
+			prop_count = vs.prop_count,
+			prop_total = vs.prop_total,
+			prop_verts = vs.prop_verts,
+			draw_calls = vs.draw_calls,
+			chunks_rebuilt = vs.chunks_rebuilt,
+			chunks_visible = vs.chunks_visible,
+			chunks_dirty = vs.chunks_dirty,
+			clouds = vs.clouds,
+			cloud_cover = vs.cloud_cover,
+			fires = vs.fires,
+			puppets = vs.puppets,
+			cam = vs.cam,
+			frozen = state.frozen,
+			ff_remaining = self.ff and (self.ff.target - W.tick) or 0,
 			sim_version = sim_version.SIM_VERSION,
 		}
 	end)
+
+	start_loading(self, query.number("seed", 1))
+end
+
+local function update_debug(self, dt)
+	if not self.show_debug then
+		state.debug_text = nil
+		return
+	end
+	self.debug_timer = self.debug_timer + dt
+	if self.debug_timer < DEBUG_INTERVAL then return end
+	self.debug_timer = 0
+	local avg, max = speed.stats()
+	local s = view.stats()
+	state.debug_text = string.format(
+		"tick %d  speed %d  sim %.2f/%.2f ms  view %.2f ms  props %d/%d  chunks %d (rebuilt %d)  draws ~%d  clouds %d",
+		self.W and self.W.tick or 0, speed.get(), avg, max, s.view_ms, s.prop_count, s.prop_total,
+		s.chunks_visible, s.chunks_rebuilt, s.draw_calls, s.clouds)
 end
 
 function update(self, dt)
-	local t0 = clock.now_ms()
-	speed.step(dt, placeholder_tick)
-	local t1 = clock.now_ms()
-
-	-- (view work goes here)
-	if self.show_debug then
-		self.debug_timer = self.debug_timer + dt
-		if self.debug_timer >= DEBUG_PRINT_INTERVAL then
-			self.debug_timer = 0
-			local avg, max = speed.stats()
-			print(string.format("[tc] speed %d  tick %d  sim %.2f/%.2f ms  view %.2f ms",
-				speed.get(), speed.ticks(), avg, max, self.view_ms))
+	if self.loader then
+		local ok, err = coroutine.resume(self.loader)
+		if not ok then
+			bridge.error("loading: " .. tostring(err))
+			self.loader = nil
+			state.loading.text = "Something went wrong :("
+		elseif coroutine.status(self.loader) == "dead" then
+			finish_loading(self)
+		end
+	elseif self.ready then
+		local W = self.W
+		if self.ff then
+			local t0 = clock.now_ms()
+			local world = require("sim.world")
+			while W.tick < self.ff.target and clock.now_ms() - t0 < FF_BUDGET_MS do
+				world.tick(W)
+			end
+			if W.tick >= self.ff.target then
+				print(string.format("[tc] run_ticks done at tick %d (%.0f ms)", W.tick, clock.now_ms() - self.ff.t0))
+				self.ff = nil
+				bridge.publish()
+			end
+		else
+			speed.step(dt, self.world_tick_fn)
 		end
 	end
 
-	self.view_ms = clock.now_ms() - t1
+	view.update(dt)
+	update_debug(self, dt)
+
 	self.frames = self.frames + 1
-	if not self.ready and self.frames >= 2 then
-		self.ready = true
-		print(string.format("[tc] ready (init+2 frames, %.0f ms)", t0))
-	end
 	bridge.update(dt)
 end
 

@@ -1,0 +1,52 @@
+#version 140
+// Terrain + sea surface in one mesh. Per-vertex sim-cell colours come from the cell data
+// texture (2 texels per sim cell; see game/view/cellcolor.lua), blended over the 3 sim cells
+// of the vertex's sim triangle, so colour updates never touch the vertex buffer.
+
+in highp vec4 position;
+in mediump vec3 normal;
+in highp vec4 cella;   // uv of cell a, uv of cell b
+in highp vec4 cellc;   // uv of cell c, weight a, weight b
+in highp vec4 vinfo;   // height km (negative = depth), noise, 0, coast field (>0 land)
+
+uniform highp sampler2D celltex;
+
+uniform vs_uniforms
+{
+    highp mat4 mtx_world;
+    highp mat4 mtx_view;
+    highp mat4 mtx_proj;
+    highp vec4 u_tex;  // x = texel height (offset to a cell's second texel)
+};
+
+out highp vec3 var_wpos;
+out mediump vec3 var_normal;
+out mediump vec4 var_land;   // ground rgb + snow
+out mediump vec4 var_fx;     // land: fire, ash, crop, village / water: sea ice, oil, plankton
+out highp vec4 var_info;
+
+void main()
+{
+    vec4 wp = mtx_world * vec4(position.xyz, 1.0);
+    var_wpos = wp.xyz;
+    var_normal = normalize(mat3(mtx_world) * normal);
+    float wa = cellc.z;
+    float wb = cellc.w;
+    float wc = max(0.0, 1.0 - wa - wb);
+    vec2 dv = vec2(0.0, u_tex.x);
+    vec4 A = textureLod(celltex, cella.xy, 0.0) * wa
+           + textureLod(celltex, cella.zw, 0.0) * wb
+           + textureLod(celltex, cellc.xy, 0.0) * wc;
+    vec4 B = textureLod(celltex, cella.xy + dv, 0.0) * wa
+           + textureLod(celltex, cella.zw + dv, 0.0) * wb
+           + textureLod(celltex, cellc.xy + dv, 0.0) * wc;
+    if (vinfo.w > 0.0) {
+        var_land = A;
+        var_fx = B;
+    } else {
+        var_land = vec4(0.95, 0.88, 0.66, 0.0);   // shore sand for the land side of coasts
+        var_fx = vec4(A.a, B.g, B.b, 0.0);
+    }
+    var_info = vinfo;
+    gl_Position = mtx_proj * mtx_view * wp;
+}

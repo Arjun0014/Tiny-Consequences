@@ -1,0 +1,22 @@
+#version 140
+// Puffy clouds: pooled game objects, world-space material (engine-batched).
+in highp vec4 position;
+in mediump vec3 normal;
+in highp vec2 color;
+
+uniform vs_uniforms
+{
+    highp mat4 view_proj;
+};
+
+out highp vec3 var_wpos;
+out mediump vec3 var_normal;
+out mediump float var_shade;
+
+void main()
+{
+    var_wpos = position.xyz;
+    var_normal = normalize(normal);
+    var_shade = floor(floor(color.y + 0.5) / 8.0) / 62.0 + 0.5;
+    gl_Position = view_proj * vec4(position.xyz, 1.0);
+}

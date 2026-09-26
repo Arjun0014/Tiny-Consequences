@@ -1,0 +1,48 @@
+name: "props"
+tags: "props"
+vertex_program: "/game/render/shaders/props.vp"
+fragment_program: "/game/render/shaders/props.fp"
+vertex_space: VERTEX_SPACE_LOCAL
+vertex_constants {
+  name: "mtx_world"
+  type: CONSTANT_TYPE_WORLD
+}
+vertex_constants {
+  name: "mtx_view"
+  type: CONSTANT_TYPE_VIEW
+}
+vertex_constants {
+  name: "mtx_proj"
+  type: CONSTANT_TYPE_PROJECTION
+}
+vertex_constants {
+  name: "u_anim"
+  type: CONSTANT_TYPE_USER
+  value {
+    x: 0
+    y: 0
+    z: 0
+    w: 0
+  }
+}
+fragment_constants {
+  name: "u_cam"
+  type: CONSTANT_TYPE_USER
+  value {
+    x: 0
+    y: 0
+    z: 54
+    w: 0
+  }
+}
+fragment_constants {
+  name: "u_sun"
+  type: CONSTANT_TYPE_USER
+  value {
+    x: -0.5
+    y: 0.6
+    z: 0.6
+    w: 0
+  }
+}
+max_page_count: 0

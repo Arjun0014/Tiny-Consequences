@@ -1,0 +1,18 @@
+#version 140
+in highp vec4 position;
+
+uniform vs_uniforms
+{
+    highp mat4 mtx_world;
+    highp mat4 mtx_view;
+    highp mat4 mtx_proj;
+};
+
+out highp vec3 var_wpos;
+
+void main()
+{
+    vec4 wp = mtx_world * vec4(position.xyz, 1.0);
+    var_wpos = wp.xyz;
+    gl_Position = mtx_proj * mtx_view * wp;
+}

@@ -1,0 +1,5 @@
+material: "/game/render/props.material"
+vertices: "/game/view/props.buffer"
+primitive_type: PRIMITIVE_TRIANGLES
+position_stream: "position"
+normal_stream: "normal"

@@ -1,0 +1,5 @@
+material: "/game/render/props_ws.material"
+vertices: "/game/view/deer.buffer"
+primitive_type: PRIMITIVE_TRIANGLES
+position_stream: "position"
+normal_stream: "normal"

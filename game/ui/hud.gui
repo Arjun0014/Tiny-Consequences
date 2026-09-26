@@ -1,0 +1,240 @@
+script: "/game/ui/hud.gui_script"
+fonts {
+  name: "default"
+  font: "/builtins/fonts/default.font"
+}
+background_color {
+  x: 0.0
+  y: 0.0
+  z: 0.0
+  w: 0.0
+}
+nodes {
+  position {
+    x: 640.0
+    y: 250.0
+    z: 0.0
+    w: 1.0
+  }
+  rotation {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+  scale {
+    x: 1.0
+    y: 1.0
+    z: 1.0
+    w: 1.0
+  }
+  size {
+    x: 1.0
+    y: 1.0
+    z: 0.0
+    w: 1.0
+  }
+  color {
+    x: 1.0
+    y: 1.0
+    z: 1.0
+    w: 0.0
+  }
+  type: TYPE_BOX
+  id: "loading"
+  xanchor: XANCHOR_NONE
+  yanchor: YANCHOR_NONE
+  adjust_mode: ADJUST_MODE_FIT
+  inherit_alpha: true
+  blend_mode: BLEND_MODE_ALPHA
+  pivot: PIVOT_CENTER
+  size_mode: SIZE_MODE_MANUAL
+}
+nodes {
+  position {
+    x: 0.0
+    y: 40.0
+    z: 0.0
+    w: 1.0
+  }
+  rotation {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+  scale {
+    x: 1.6
+    y: 1.6
+    z: 1.0
+    w: 1.0
+  }
+  size {
+    x: 600.0
+    y: 40.0
+    z: 0.0
+    w: 1.0
+  }
+  color {
+    x: 1.0
+    y: 0.973
+    z: 0.925
+    w: 1.0
+  }
+  type: TYPE_TEXT
+  id: "label"
+  xanchor: XANCHOR_NONE
+  yanchor: YANCHOR_NONE
+  adjust_mode: ADJUST_MODE_FIT
+  inherit_alpha: true
+  parent: "loading"
+  text: "Growing a tiny world..."
+  font: "default"
+  pivot: PIVOT_CENTER
+  line_break: false
+  outline {
+    x: 0.16
+    y: 0.14
+    z: 0.21
+    w: 1.0
+  }
+  outline_alpha: 1.0
+  shadow_alpha: 0.0
+}
+nodes {
+  position {
+    x: -200.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+  rotation {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+  scale {
+    x: 1.0
+    y: 1.0
+    z: 1.0
+    w: 1.0
+  }
+  size {
+    x: 400.0
+    y: 14.0
+    z: 0.0
+    w: 1.0
+  }
+  color {
+    x: 1.0
+    y: 0.973
+    z: 0.925
+    w: 0.55
+  }
+  type: TYPE_BOX
+  id: "bar_bg"
+  xanchor: XANCHOR_NONE
+  yanchor: YANCHOR_NONE
+  adjust_mode: ADJUST_MODE_FIT
+  inherit_alpha: true
+  parent: "loading"
+  blend_mode: BLEND_MODE_ALPHA
+  pivot: PIVOT_W
+  size_mode: SIZE_MODE_MANUAL
+}
+nodes {
+  position {
+    x: -198.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+  rotation {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+  scale {
+    x: 1.0
+    y: 1.0
+    z: 1.0
+    w: 1.0
+  }
+  size {
+    x: 4.0
+    y: 10.0
+    z: 0.0
+    w: 1.0
+  }
+  color {
+    x: 0.949
+    y: 0.698
+    z: 0.2
+    w: 1.0
+  }
+  type: TYPE_BOX
+  id: "bar"
+  xanchor: XANCHOR_NONE
+  yanchor: YANCHOR_NONE
+  adjust_mode: ADJUST_MODE_FIT
+  inherit_alpha: true
+  parent: "loading"
+  blend_mode: BLEND_MODE_ALPHA
+  pivot: PIVOT_W
+  size_mode: SIZE_MODE_MANUAL
+}
+nodes {
+  position {
+    x: 12.0
+    y: 708.0
+    z: 0.0
+    w: 1.0
+  }
+  rotation {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+  scale {
+    x: 1.0
+    y: 1.0
+    z: 1.0
+    w: 1.0
+  }
+  size {
+    x: 900.0
+    y: 20.0
+    z: 0.0
+    w: 1.0
+  }
+  color {
+    x: 1.0
+    y: 1.0
+    z: 1.0
+    w: 1.0
+  }
+  type: TYPE_TEXT
+  id: "debug"
+  xanchor: XANCHOR_NONE
+  yanchor: YANCHOR_NONE
+  adjust_mode: ADJUST_MODE_FIT
+  inherit_alpha: true
+  text: ""
+  font: "default"
+  pivot: PIVOT_NW
+  line_break: false
+  outline {
+    x: 0.16
+    y: 0.14
+    z: 0.21
+    w: 1.0
+  }
+  outline_alpha: 1.0
+  shadow_alpha: 0.0
+}
+material: "/builtins/materials/gui.material"
+adjust_reference: ADJUST_REFERENCE_PARENT
+max_nodes: 64

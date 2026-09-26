@@ -1,0 +1,30 @@
+name: "cloud"
+tags: "cloud"
+vertex_program: "/game/render/shaders/cloud.vp"
+fragment_program: "/game/render/shaders/cloud.fp"
+vertex_space: VERTEX_SPACE_WORLD
+vertex_constants {
+  name: "view_proj"
+  type: CONSTANT_TYPE_VIEWPROJ
+}
+fragment_constants {
+  name: "u_cam"
+  type: CONSTANT_TYPE_USER
+  value {
+    x: 0
+    y: 0
+    z: 54
+    w: 0
+  }
+}
+fragment_constants {
+  name: "u_sun"
+  type: CONSTANT_TYPE_USER
+  value {
+    x: -0.5
+    y: 0.6
+    z: 0.6
+    w: 0
+  }
+}
+max_page_count: 0

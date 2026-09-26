@@ -1,0 +1,25 @@
+#version 140
+// Pooled movers (animals, people later): world-space material so the engine batches them.
+#include "/game/render/shaders/unpack.glsl"
+
+in highp vec4 position;
+in mediump vec3 normal;
+in highp vec2 color;
+
+uniform vs_uniforms
+{
+    highp mat4 view_proj;
+};
+
+out highp vec3 var_wpos;
+out mediump vec3 var_normal;
+out mediump vec3 var_color;
+
+void main()
+{
+    vec4 c = tc_unpack(color);
+    var_wpos = position.xyz;
+    var_normal = normalize(normal);
+    var_color = c.rgb;
+    gl_Position = view_proj * vec4(position.xyz, 1.0);
+}

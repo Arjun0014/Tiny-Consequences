@@ -1,0 +1,2 @@
+prototype: "/game/view/smoke.go"
+load_dynamically: false

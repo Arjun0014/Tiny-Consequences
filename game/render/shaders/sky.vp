@@ -1,0 +1,10 @@
+#version 140
+// Full-screen sky: the quad is already in clip space.
+in highp vec4 position;
+out highp vec2 var_uv;
+
+void main()
+{
+    var_uv = position.xy * 0.5 + 0.5;
+    gl_Position = vec4(position.xy, 0.9999, 1.0);
+}

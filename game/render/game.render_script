@@ -1,67 +1,28 @@
--- Tiny Consequences render script.
--- Stage 1.1: behaves like Defold's builtin default renderer (models, sprites/tiles,
--- particles, GUI, debug text; camera components take precedence over the default
--- stretch projection), with a sky-blue clear colour. Later stages add planet passes.
+-- Tiny Consequences render script (Stage 1.8).
+-- Passes: full-screen sky gradient -> planet (terrain + sea) -> props (chunks, movers) ->
+-- atmosphere rim + clouds + effects (premultiplied blending, no depth write) -> GUI.
+-- Camera matrices and shader inputs come from the shared module game.view.state
+-- (shared_state = 1), so there is no per-frame message traffic.
+local state = require("game.view.state")
 
-local MSG_CLEAR_COLOR      = hash("clear_color")
-local MSG_WINDOW_RESIZED   = hash("window_resized")
-local MSG_SET_VIEW_PROJ    = hash("set_view_projection")
-local MSG_USE_CAMERA_PROJ  = hash("use_camera_projection")
-local MSG_USE_STRETCH_PROJ = hash("use_stretch_projection")
-local MSG_USE_FIXED_PROJ   = hash("use_fixed_projection")
-local MSG_USE_FIXED_FIT    = hash("use_fixed_fit_projection")
+local MSG_CLEAR_COLOR = hash("clear_color")
+local MSG_WINDOW_RESIZED = hash("window_resized")
 
--- #5FD0F0
+-- #5FD0F0 (also what the loading screen shows behind the sky pass)
 local SKY_R, SKY_G, SKY_B = 95 / 255, 208 / 255, 240 / 255
 
-local function stretch_projection(self)
-	return vmath.matrix4_orthographic(0, self.width, 0, self.height, self.near, self.far)
-end
-
-local function fixed_projection(self)
-	local zoom = self.zoom or 1
-	local pw = self.window_width / zoom
-	local ph = self.window_height / zoom
-	local left = -(pw - self.width) / 2
-	local bottom = -(ph - self.height) / 2
-	return vmath.matrix4_orthographic(left, left + pw, bottom, bottom + ph, self.near, self.far)
-end
-
-local function fixed_fit_projection(self)
-	self.zoom = math.min(self.window_width / self.width, self.window_height / self.height)
-	return fixed_projection(self)
-end
-
-local function refresh(self)
-	self.window_width = render.get_window_width()
-	self.window_height = render.get_window_height()
-	self.width = render.get_width()
-	self.height = render.get_height()
-	self.valid = self.window_width > 0 and self.window_height > 0
-	if not self.valid then
-		return
-	end
-	if self.projection_fn then
-		self.world_proj = self.projection_fn(self)
-	end
-	self.world_frustum.frustum = self.world_proj * self.world_view
-	self.gui_proj = vmath.matrix4_orthographic(0, self.window_width, 0, self.window_height, -1, 1)
-	self.gui_frustum.frustum = self.gui_proj
-end
-
-local function use_projection(self, fn, message)
-	self.projection_fn = fn
-	self.near = (message and message.near) or -1
-	self.far = (message and message.far) or 1
-	self.zoom = (message and message.zoom) or 1
-	refresh(self)
-end
+local IDENTITY = vmath.matrix4()
 
 function init(self)
-	self.pred_model = render.predicate({ "model" })
-	self.pred_tile = render.predicate({ "tile" })
+	self.pred_sky = render.predicate({ "sky" })
+	self.pred_planet = render.predicate({ "planet" })
+	self.pred_props = render.predicate({ "props" })
+	self.pred_atmo = render.predicate({ "atmo" })
+	self.pred_cloud = render.predicate({ "cloud" })
+	self.pred_fx = render.predicate({ "fx" })
 	self.pred_particle = render.predicate({ "particle" })
 	self.pred_gui = render.predicate({ "gui" })
+	self.pred_text = render.predicate({ "text" })
 	self.pred_debug_text = render.predicate({ "debug_text" })
 
 	self.clear_buffers = {
@@ -69,74 +30,95 @@ function init(self)
 		[graphics.BUFFER_TYPE_DEPTH_BIT] = 1,
 		[graphics.BUFFER_TYPE_STENCIL_BIT] = 0,
 	}
-
-	self.world_view = vmath.matrix4()
-	self.world_proj = vmath.matrix4()
+	self.cb = render.constant_buffer()
 	self.gui_view = vmath.matrix4()
-	self.gui_proj = vmath.matrix4()
-	self.world_frustum = {}
-	self.gui_frustum = {}
-	self.camera_options = {}
-	use_projection(self, stretch_projection, nil)
+	self.world_opts = { frustum = nil, constants = self.cb }
+	self.plain_opts = { constants = self.cb }
+	self.gui_opts = {}
 end
 
--- Returns the draw options for world predicates, binding the last enabled camera
--- component if one exists, else the script-managed view/projection.
-local function bind_world_camera(self)
-	local cams = camera.get_cameras()
-	for i = #cams, 1, -1 do
-		if camera.get_enabled(cams[i]) then
-			self.bound_camera = cams[i]
-			render.set_camera(cams[i], { use_frustum = true })
-			return self.camera_options
-		end
-	end
-	render.set_view(self.world_view)
-	render.set_projection(self.world_proj)
-	return self.world_frustum
+local function refresh(self)
+	self.ww = render.get_window_width()
+	self.wh = render.get_window_height()
+	self.gui_proj = vmath.matrix4_orthographic(0, self.ww, 0, self.wh, -1, 1)
+	self.gui_opts.frustum = self.gui_proj
+	state.window_w, state.window_h = self.ww, self.wh
 end
 
 function update(self)
-	if not self.valid or render.get_window_width() ~= self.window_width
-		or render.get_window_height() ~= self.window_height then
+	if self.ww ~= render.get_window_width() or self.wh ~= render.get_window_height() then
 		refresh(self)
-		if not self.valid then
-			return
-		end
 	end
+	if self.ww <= 0 or self.wh <= 0 then
+		return
+	end
+	local aspect = self.ww / self.wh
 
 	render.set_depth_mask(true)
 	render.set_stencil_mask(0xff)
 	render.clear(self.clear_buffers)
+	render.set_viewport(0, 0, self.ww, self.wh)
 
-	render.set_viewport(0, 0, self.window_width, self.window_height)
-	local world_opts = bind_world_camera(self)
+	-- shader inputs
+	local cb = self.cb
+	state.u_sky.y = aspect
+	cb.u_cam = state.u_cam
+	cb.u_sun = state.u_sun
+	cb.u_tex = state.u_tex
+	cb.u_anim = state.u_anim
+	cb.u_sky = state.u_sky
+	cb.u_atmo = state.u_atmo
 
-	render.set_blend_func(graphics.BLEND_FACTOR_SRC_ALPHA, graphics.BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
-	render.enable_state(graphics.STATE_DEPTH_TEST)
-
-	render.enable_state(graphics.STATE_CULL_FACE)
-	render.draw(self.pred_model, world_opts)
-	render.set_depth_mask(false)
-	render.disable_state(graphics.STATE_CULL_FACE)
-
-	render.enable_state(graphics.STATE_BLEND)
-	render.draw(self.pred_tile, world_opts)
-	render.draw(self.pred_particle, world_opts)
+	-- sky (vertices already in clip space)
+	render.set_view(IDENTITY)
+	render.set_projection(IDENTITY)
 	render.disable_state(graphics.STATE_DEPTH_TEST)
+	render.set_depth_mask(false)
+	render.disable_state(graphics.STATE_BLEND)
+	render.disable_state(graphics.STATE_CULL_FACE)
+	render.draw(self.pred_sky, self.plain_opts)
 
-	render.draw_debug3d()
+	if state.planet_on then
+		local proj = vmath.matrix4_perspective(state.fov, aspect, state.near, state.far)
+		state.proj = proj
+		render.set_view(state.view)
+		render.set_projection(proj)
+		self.world_opts.frustum = proj * state.view
 
-	if self.bound_camera then
-		self.bound_camera = nil
-		render.set_camera()
+		-- opaque world
+		render.enable_state(graphics.STATE_DEPTH_TEST)
+		render.set_depth_mask(true)
+		render.enable_state(graphics.STATE_CULL_FACE)
+		render.set_cull_face(graphics.FACE_TYPE_BACK)
+		render.draw(self.pred_planet, self.world_opts)
+		render.disable_state(graphics.STATE_CULL_FACE)
+		render.draw(self.pred_props, self.world_opts)
+
+		-- transparent: premultiplied alpha, depth-tested, no depth writes
+		render.set_depth_mask(false)
+		render.enable_state(graphics.STATE_BLEND)
+		render.set_blend_func(graphics.BLEND_FACTOR_ONE, graphics.BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+		render.enable_state(graphics.STATE_CULL_FACE)
+		render.set_cull_face(graphics.FACE_TYPE_BACK)
+		render.draw(self.pred_atmo, self.plain_opts)
+		render.draw(self.pred_cloud, self.world_opts)
+		render.disable_state(graphics.STATE_CULL_FACE)
+		render.draw(self.pred_fx, self.world_opts)
+		render.draw(self.pred_particle, self.world_opts)
+		render.draw_debug3d()
 	end
 
+	-- GUI
+	render.disable_state(graphics.STATE_DEPTH_TEST)
+	render.disable_state(graphics.STATE_CULL_FACE)
+	render.enable_state(graphics.STATE_BLEND)
+	render.set_blend_func(graphics.BLEND_FACTOR_SRC_ALPHA, graphics.BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
 	render.set_view(self.gui_view)
 	render.set_projection(self.gui_proj)
 	render.enable_state(graphics.STATE_STENCIL_TEST)
-	render.draw(self.pred_gui, self.gui_frustum)
-	render.draw(self.pred_debug_text, self.gui_frustum)
+	render.draw(self.pred_gui, self.gui_opts)
+	render.draw(self.pred_text, self.gui_opts)
+	render.draw(self.pred_debug_text, self.gui_opts)
 	render.disable_state(graphics.STATE_STENCIL_TEST)
 	render.disable_state(graphics.STATE_BLEND)
 end
@@ -148,18 +130,5 @@ function on_message(self, message_id, message)
 		end
 	elseif message_id == MSG_WINDOW_RESIZED then
 		refresh(self)
-	elseif message_id == MSG_SET_VIEW_PROJ then
-		self.world_view = message.view
-		self.camera_projection = message.projection or vmath.matrix4()
-		refresh(self)
-	elseif message_id == MSG_USE_CAMERA_PROJ then
-		self.projection_fn = function() return self.camera_projection or vmath.matrix4() end
-		refresh(self)
-	elseif message_id == MSG_USE_STRETCH_PROJ then
-		use_projection(self, stretch_projection, message)
-	elseif message_id == MSG_USE_FIXED_PROJ then
-		use_projection(self, fixed_projection, message)
-	elseif message_id == MSG_USE_FIXED_FIT then
-		use_projection(self, fixed_fit_projection, message)
 	end
 end

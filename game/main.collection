@@ -1,10 +1,54 @@
 name: "main"
+instances {
+  id: "sky"
+  prototype: "/game/view/sky.go"
+}
+instances {
+  id: "terrain"
+  prototype: "/game/view/terrain.go"
+}
+instances {
+  id: "atmo"
+  prototype: "/game/view/atmo.go"
+}
 scale_along_z: 0
 embedded_instances {
   id: "main"
   data: "components {\n"
   "  id: \"main\"\n"
   "  component: \"/game/main.script\"\n"
+  "}\n"
+  "components {\n"
+  "  id: \"chunk_factory\"\n"
+  "  component: \"/game/view/chunk.factory\"\n"
+  "}\n"
+  "components {\n"
+  "  id: \"cloud_factory\"\n"
+  "  component: \"/game/view/cloud.factory\"\n"
+  "}\n"
+  "components {\n"
+  "  id: \"deer_factory\"\n"
+  "  component: \"/game/view/deer.factory\"\n"
+  "}\n"
+  "components {\n"
+  "  id: \"wolf_factory\"\n"
+  "  component: \"/game/view/wolf.factory\"\n"
+  "}\n"
+  "components {\n"
+  "  id: \"flame_factory\"\n"
+  "  component: \"/game/view/flame.factory\"\n"
+  "}\n"
+  "components {\n"
+  "  id: \"smoke_factory\"\n"
+  "  component: \"/game/view/smoke.factory\"\n"
+  "}\n"
+  ""
+}
+embedded_instances {
+  id: "hud"
+  data: "components {\n"
+  "  id: \"hud\"\n"
+  "  component: \"/game/ui/hud.gui\"\n"
   "}\n"
   ""
 }
