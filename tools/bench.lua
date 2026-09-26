@@ -1,4 +1,8 @@
 -- npm run bench [-- --level 4 --ticks 192 --seed 42] [--iso]
+--   --update-baseline: re-measure the P07 baseline (VM instructions per system on the fixed
+--                      world, tools/perf.lua) and write tests/bench-baseline.json (intentional
+--                      changes only; log them in DECISIONS.md)
+--   --check:           compare against tests/bench-baseline.json (what P07 does)
 --   default: representative-tick benchmark (sim/bench.lua, shared with the browser bridge)
 --   --iso:   whole-tick mean + per-system means, each the best of --reps runs (default 3) of
 --            --ticks ticks (os.clock has ~1 ms resolution on Windows, and other processes add
@@ -14,10 +18,34 @@ while arg[i] do
   elseif arg[i] == "--ticks" then i = i + 1; args.ticks = tonumber(arg[i])
   elseif arg[i] == "--reps" then i = i + 1; args.reps = tonumber(arg[i])
   elseif arg[i] == "--iso" then args.iso = true
+  elseif arg[i] == "--update-baseline" then args.update = true
+  elseif arg[i] == "--check" then args.check = true
   elseif arg[i] == "--seed" then i = i + 1; args.seed = tonumber(arg[i]) end
   i = i + 1
 end
 local clock = function() return os.clock() * 1000 end
+
+if args.update or args.check then
+  local perf = require("tools.perf")
+  local res = perf.measure()
+  local rows = {}
+  for _, name in ipairs(res.order) do rows[#rows + 1] = string.format("%s %d", name, res.systems[name]) end
+  print(string.format("instructions/tick %d (other %d): %s", res.total, res.other, table.concat(rows, ", ")))
+  if args.update then
+    perf.write_baseline(nil, res, nil, {
+      date = os.date("%Y-%m-%d"),
+      calibration = "HTML5 release build, sim/bench.lua config (seed 42, level 3, 192 ticks): 1.70 ms median "
+        .. "for 230,910 instructions/tick, i.e. ~7.4 ns per instruction (6-10 ns per system), 2026-09-27",
+    })
+    print("wrote " .. perf.BASELINE)
+  else
+    local base = assert(perf.load_baseline(), "no baseline: npm run bench -- --update-baseline")
+    local ok, lines = perf.compare(res, base)
+    print(ok and "P07 ok" or ("P07 REGRESSION: " .. table.concat(lines, "; ")))
+    os.exit(ok and 0 or 1)
+  end
+  return
+end
 
 if args.iso then
   local worldgen = require("sim.worldgen.init")

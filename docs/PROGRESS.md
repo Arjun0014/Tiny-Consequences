@@ -19,10 +19,27 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Key numbers (update as they change)
 
-- SIM_LEVEL: 3 (provisional, D-004) — 642 cells
-- Detailed tick, weather+veg+fire+biome only (HTML5 release, headless Chromium): L3 4.6 ms median, L4 18.9 ms. LuaJIT headless L3 ≈ 1 ms.
+- SIM_LEVEL: 3 (D-004) — 642 cells
+- Detailed tick (HTML5 release, headless Chromium, level 3, bench config seed 42, 192 ticks, 2026-09-27): **1.70 ms median, p95 2.5 ms** (budget 4 ms / 8 ms). Per system: moisture 0.49, hydrology 0.31, temperature 0.19, vegetation 0.17, fauna 0.13, villages 0.11, biome 0.09, ocean 0.07, ice 0.06, fire 0.05, detectors 0.03 ms. L4 (pre-1.6 systems) was 18.9 ms.
+- P07 baseline (`tests/bench-baseline.json`, D-029): 233,790 VM instructions/tick on the fixed world; browser ≈ 7.4 ns/instruction.
 - Epoch tick (HTML5 release): —
-- Baseline bands (level 3, 4 seeds × 200 y, no villages yet): forest 27–40%, grassland 27–36%, desert 4–15% (seed 1 low), ice 12.6–15%, g_temp +0.1…+0.16, fires 117–175 per 200 y, wildfires (≥3 cells ≈ 10 L4 cells) 22–30 per 200 y
+- S01 baseline bands (level 3, 10 seeds × 200 y, full profile 7/10; vegetation shares of natural land, D-028):
+
+  | seed | forest (varies) | grass | desert | ice | g_temp y200 | population y5+ | headlines/y | S01 |
+  |---|---|---|---|---|---|---|---|---|
+  | 1 | .40 (.11) | .29 | .06 | .14 | +1.48 | 231–324 | .49 | ok |
+  | 2 | .199 (.09) | .37 | .18 | .13 | +1.73 | 293–379 | .38 | forest |
+  | 3 | .36 (.08) | .23 | .14 | .11 | +1.45 | 247–382 | .34 | ok |
+  | 4 | .25 (.04) | .21 | .21 | .15 | +1.41 | 245–329 | .22 | forest varies |
+  | 5 | .26 (.10) | .24 | .20 | .13 | +1.02 | 157–271 | .20 | ok |
+  | 6 | .32 (.09) | .22 | .18 | .15 | +1.44 | 241–383 | .45 | ok |
+  | 7 | .27 (.09) | .42 | .18 | .12 | +0.86 | 119–286 | .93 | population |
+  | 8 | .24 (.13) | .31 | .23 | .12 | +1.56 | 281–368 | .35 | ok |
+  | 9 | .21 (.08) | .27 | .19 | .13 | +1.31 | 206–325 | .42 | ok |
+  | 10 | .29 (.09) | .21 | .24 | .13 | +1.15 | 179–307 | .47 | ok |
+
+  All seeds: predator CV ≥ 0.15, no extinctions, fish stable, fires 4.6–8.6/decade, a wildfire in every 50-year window.
+- Save size: ≈ 187 KB at year 40 (D-026); default world `assets/worlds/default.tcsave` (seed 3, 158 KB, D-027)
 - Bundle size: 2.66 MB release
 
 ## Stage entries

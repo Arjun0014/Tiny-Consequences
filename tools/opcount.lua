@@ -2,9 +2,10 @@
 --   luajit -joff tools/opcount.lua [--seed 42] [--ticks 480] [--level 3]
 -- Counts come from a debug count hook (every 100 instructions, so each system's count is ±100 per
 -- call, unbiased over many ticks). C functions (math.exp, ...) count as one call instruction.
--- Calibration (D-019): the HTML5 release tick of the pre-1.6 systems measured 4.6 ms for ≈ 314k
--- instructions, i.e. ≈ 15 ns per instruction in the browser, so instructions/tick × 15 ns ≈ browser
--- ms. Wall-clock timings on a busy machine are unreliable; these counts are exact.
+-- Calibration (D-029): the HTML5 release build ran the bench configuration (sim/bench.lua, seed
+-- 42, level 3, 192 ticks) at 1.70 ms median for 230,910 instructions/tick, i.e. ≈ 7.4 ns per
+-- instruction (per system 6–10 ns). Wall-clock timings on a busy machine are unreliable; these
+-- counts are exact. P07 (tests/sim/props/p07_perf.lua) uses the same measure via tools/perf.lua.
 package.path = "./?.lua;./?/init.lua;" .. package.path
 local args = { seed = 42, ticks = 480 }
 local i = 1
@@ -27,7 +28,7 @@ local a = cnt
 for _ = 1, n do world.tick(W) end
 local total = (cnt - a) * STEP / n
 debug.sethook()
-local NS = 15e-6   -- ms per instruction in the HTML5 build (calibrated, see header)
+local NS = 7.4e-6  -- ms per instruction in the HTML5 build (calibrated, see header)
 print(string.format("level %d (%d cells), seed %d, %d ticks: %.0f instructions/tick (≈ %.2f ms in the browser)",
   W.level, W.n, args.seed, n, total, total * NS))
 local sum = 0
