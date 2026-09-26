@@ -71,7 +71,6 @@ function ci.fauna(W)
       else
         F.grazers[c], F.predators[c] = 0, 0
       end
-      W.P.grazers[c], W.P.predators[c] = F.grazers[c], F.predators[c]
       local S = W.S.fauna
       if S then S.hnorm[c], S.pnorm[c] = F.grazers[c], F.predators[c] end
     end

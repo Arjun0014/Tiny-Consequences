@@ -67,7 +67,7 @@ function people.create(W, v, opts)
     id = id, key = key, name = names.person(u, v.culture, sex), surname = surname, sex = sex,
     born = born, village = v.id, job = "child", health = 100, hunger = 0, partner = 0,
     mother = opts.mother or 0, father = opts.father or 0, children = 0, traits = traits,
-    mem = {}, mood = 0, u = rng.float(seed, rng.S.PERSON, key, 1, 0),
+    mem = {}, mood = 0, u = floor(rng.float(seed, rng.S.PERSON, key, 1, 0) * 1048576) / 1048576,
   }
   E.people[id] = p
   local m = v.members
@@ -283,7 +283,10 @@ function people.month(W, v, ctx)
   local births = 0
   local fs_f = ((ctx.fs or 0) - cfg.birth_fs[1]) / (cfg.birth_fs[2] - cfg.birth_fs[1])
   if fs_f > 1 then fs_f = 1 elseif fs_f < 0 then fs_f = 0 end
-  local pb = cfg.birth_rate * fs_f * (ctx.crowd or 1)
+  -- the planet's hard cap (02 §5.10) is approached softly: births taper over the last cap_soft
+  local gcap = (cfg.global_cap - (ctx.pop_total or 0)) / (cfg.global_cap * cfg.cap_soft)
+  if gcap > 1 then gcap = 1 elseif gcap < 0 then gcap = 0 end
+  local pb = cfg.birth_rate * fs_f * (ctx.crowd or 1) * gcap
   if pb > 0 then
     local capped = (ctx.pop_total or 0) >= cfg.global_cap
     local n0 = #m
@@ -304,6 +307,57 @@ function people.month(W, v, ctx)
   end
   v.pop = #m
   return nonage, dtag, births
+end
+
+-- Save form (D-026): people as positional records, same data. Field order is part of the save
+-- format (bump SAVE_VERSION when it changes).
+local JOBS = { "child", "farmer", "fisher", "woodcutter", "elder" }
+local JOB_ID = {}
+for i = 1, #JOBS do JOB_ID[JOBS[i]] = i end
+
+function people.pack(map)
+  local ids = {}
+  for id in pairs(map) do ids[#ids + 1] = id end
+  table.sort(ids)
+  local out = {}
+  for i = 1, #ids do
+    local p = map[ids[i]]
+    out[i] = { p.id, p.key, p.name, p.surname, p.sex == "f" and 1 or 0, p.born, p.village,
+      JOB_ID[p.job] or 1, p.health, p.hunger, p.partner, p.mother, p.father, p.children,
+      table.concat(p.traits, ","), p.mem, p.mood, p.u, p.dead or false, p.died_of or "", p.death_tag or 0 }
+  end
+  return out
+end
+
+function people.unpack(list)
+  local map = {}
+  for i = 1, #list do
+    local r = list[i]
+    local traits = {}
+    for t in r[15]:gmatch("[^,]+") do traits[#traits + 1] = t end
+    local p = { id = r[1], key = r[2], name = r[3], surname = r[4], sex = r[5] == 1 and "f" or "m",
+      born = r[6], village = r[7], job = JOBS[r[8]], health = r[9], hunger = r[10], partner = r[11],
+      mother = r[12], father = r[13], children = r[14], traits = traits, mem = r[16], mood = r[17],
+      u = r[18] }
+    if r[19] then p.dead = r[19]; p.died_of = r[20]; p.death_tag = r[21] end
+    map[p.id] = p
+  end
+  return map
+end
+
+-- Year-boundary snap: round the continuous person state so saves are small (and a reloaded
+-- world equals the live one, which is rounded the same way).
+function people.snap(W)
+  local P = W.ent.people
+  if not P then return end
+  local r = 0.01
+  for _, p in pairs(P) do   -- independent per person: order-free
+    p.health = floor(p.health / r + 0.5) * r
+    p.hunger = floor(p.hunger / r + 0.5) * r
+    p.mood = floor(p.mood / r + 0.5) * r
+    local mem = p.mem
+    for k = 2, #mem, 2 do mem[k] = floor(mem[k] * 1000 + 0.5) / 1000 end
+  end
 end
 
 -- Yearly housekeeping: prune the long dead (kept for family trees / inspector).

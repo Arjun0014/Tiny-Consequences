@@ -109,7 +109,7 @@ Detectors (initial set; each has entry/exit thresholds and cooldowns to avoid sp
 | tanker_sunk | a tanker or boat sinks | the power or natural event that sank it |
 | oil_spreading | a connected oil slick reaches ≥ 10 ocean cells | the oil's tag (tanker_sunk or the spill power) |
 | oil_beached | oil reaches a coast | the oil's tag |
-| population_boom / crash | regional grazers or predators ×2 or ÷2 vs 5-year average | the species' cause tag |
+| population_boom / crash | regional grazers or predators ×2 or ÷2 vs 5-year average; a boom also fires for a connected patch ≥ 2.2× its own normal (D-028) | the species' cause tag |
 | extinction_regional / extinction_global | a species disappears from a continent / the planet | species cause tag |
 | flood | the flood condition in 02_WORLD_MODEL.md §5.5 | precip/moisture tag |
 | drought | a region's soil water stays < 0.2 for a season | moisture/precip tag |

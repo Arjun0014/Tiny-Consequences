@@ -23,8 +23,8 @@ fields.LIST = {
   { name = "plankton",   min = 0,   max = 1,   causal = true, eps = 0.0005, hold = 96 },
   { name = "fish",       min = 0,   max = 1,   causal = true, eps = 0.0002, hold = 144, spatial = true },
   { name = "oil",        min = 0,   max = 1,   causal = true, eps = 0.0005, hold = 96, spatial = true },
-  { name = "grazers",    min = 0,   max = 1,   causal = true, eps = 0.0002, hold = 48, spatial = true },
-  { name = "predators",  min = 0,   max = 1,   causal = true, eps = 0.0001, hold = 48, spatial = true },
+  { name = "grazers",    min = 0,   max = 1,   causal = true, eps = 0.0002, hold = 48 },
+  { name = "predators",  min = 0,   max = 1,   causal = true, eps = 0.0001, hold = 48 },
   { name = "stress",     min = 0,   max = 1,   causal = true, eps = 0.001, hold = 48 },
   { name = "silt",       min = 0,   max = 1e6, causal = true, eps = 0.0005, hold = 48 },
   -- non-causal
@@ -109,6 +109,13 @@ local function snap_array(a, n, r)
 end
 fields.snap_array = snap_array
 
+-- Persistent per-cell system arrays (W.S.<system>.<name>) snapped with the fields at the year
+-- boundary and saved in the same compact 16-bit form (D-026).
+fields.SYSTEM_Q = {
+  { "fauna", "hnorm", { 0, 1, true } }, { "fauna", "pnorm", { 0, 1, true } },
+  { "hydro", "flow_mean", { 0, 1000, true } }, { "ocean", "fish_ref", { 0, 1, true } },
+}
+
 function fields.snap_all(W)
   local n = W.n
   for _, f in ipairs(fields.LIST) do
@@ -118,6 +125,12 @@ function fields.snap_all(W)
       local p = W.P[f.name]
       if p then snap_array(p, n, r) end
     end
+  end
+  local S = W.S
+  for _, e in ipairs(fields.SYSTEM_Q) do
+    local t = S and S[e[1]]
+    local a = t and t[e[2]]
+    if a then snap_array(a, #a, e[3]) end
   end
 end
 

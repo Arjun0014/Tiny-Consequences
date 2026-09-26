@@ -281,8 +281,13 @@ function settle.run(W)
     if W.ent.villages[i].placeholder then W.ent.villages[i] = nil end
   end
   local used = {}
+  -- people are shared out by what each site can feed (with some luck)
   local weights, wsum = {}, 0
-  for i = 1, #sites do weights[i] = 0.6 + u(); wsum = wsum + weights[i] end
+  for i = 1, #sites do
+    local cap = villages.site_capacity(W, sites[i])
+    weights[i] = cap * (0.8 + 0.4 * u())
+    wsum = wsum + weights[i]
+  end
   local placed = 0
   for i = 1, #sites do
     local c = sites[i]
@@ -295,7 +300,7 @@ function settle.run(W)
     stock = stock * vcfg.fish_q * W.sscale * W.sscale
     local target = (i == #sites) and (total - placed) or floor(total * weights[i] / wsum + 0.5)
     if target < 12 then target = 12 end
-    v.fish_jobs = floor(stock * 0.25 / vcfg.fisher_max)
+    v.fish_jobs = floor(stock / vcfg.fisher_max)
     local fmax = floor(target * 0.7 * vcfg.fish_share)
     if v.fish_jobs > fmax then v.fish_jobs = fmax end
     local up = ufactory(W, rng.S.SETTLE, 100 + i)

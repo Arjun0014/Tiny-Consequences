@@ -285,7 +285,7 @@ Monthly per village:
 
 Population: soft carrying capacity per village from farms + fishing; global hard cap 500 (births blocked at cap; log when it happens). Target range 120–400.
 
-Implementation notes (D-020): food is counted in person-months; a granary holds 6 months of needs (the excess spoils); births follow the depth of the hungry gap (the lowest recent food security) with a capacity backstop; hungry villages clear more fields and exhausted fields return to the wild (shifting cultivation); famine ends only when the hungry gap has closed. Entity schema: D-021 and the headers of `sim/systems/villages.lua`, `people.lua`, `ships.lua`.
+Implementation notes (D-020, D-025): births follow each village's real food margin (production / consumption over ~3 years) and the hungry gap; chronic deficits send families away; food is counted in person-months; a granary holds 6 months of needs (the excess spoils); births follow the depth of the hungry gap (the lowest recent food security) with a capacity backstop; hungry villages clear more fields and exhausted fields return to the wild (shifting cultivation); famine ends only when the hungry gap has closed. Entity schema: D-021 and the headers of `sim/systems/villages.lua`, `people.lua`, `ships.lua`.
 
 Staggering: village `i` updates on ticks where `(tick + i) % 4 == 0`, so each village updates once per month and the cost is spread.
 
@@ -426,7 +426,7 @@ The headless suite asserts these (07_TESTING.md). Adjust bands only with a DECIS
 
 | Metric | Band |
 |---|---|
-| Forest cover (fraction of land) | 20–55%, and must vary by ≥ 5 percentage points over the run ("alive") |
+| Forest cover (fraction of natural land: land minus villages, farms, ruins; D-028) | 20–55%, and must vary by ≥ 5 percentage points over the run ("alive") |
 | Grassland | 20–50% of land |
 | Desert | 5–25% of land |
 | Ice fraction (global) | 5–20% |

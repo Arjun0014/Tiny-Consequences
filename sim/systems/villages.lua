@@ -15,7 +15,8 @@
 --     state          "new" | "thriving" | "struggling" | "famine" | "abandoned"
 --     cause          event id: the dominant reason its food fell (03 §3 Entities), 0 = none
 --     alive          false once abandoned; abandoned = tick; ruin = ruins still standing
---     capacity       people the land and sea around it can feed (estimate)
+--     capacity       people its actual food production feeds with a comfortable margin
+--     food_ratio     production / consumption, ~3-year averages (prod_avg, need_avg)
 --     (internal: harvests, last_harvest, harvest_year, plant_year, catch, catch_avg, low_months,
 --      famine, plenty, deaths, death_tag, ev_seen, jobs, fish_jobs, harvest_tag, harvest_new,
 --      fs_low = depth of the hungry gap: drops with food security, recovers over a year)
@@ -202,6 +203,14 @@ end
 
 sys.capacity = capacity
 
+-- Rough people-fed estimate for a would-be village at cell c (settle shares people by it).
+function sys.site_capacity(W, c)
+  local probe = { id = -1, cell = c }
+  local geom = geometry(W, probe)
+  probe.fishing = geom.fishing
+  return capacity(W, probe, geom)
+end
+
 -- Move person p from village a to village b.
 local function move(W, p, a, b)
   local m = b.members
@@ -216,7 +225,11 @@ local function family(W, v, taken)
   local P = W.ent.people
   local m = v.members
   local cfg = cfgmod.PEOPLE
-  for i = 1, #m do
+  local nm = #m
+  -- which family goes is a village-month roll (not always the founders)
+  local off = floor(rng.float(W.seed, rng.S.MIGRATION, v.key_cell, W.tick, 0) * nm)
+  for ii = 1, nm do
+    local i = (ii + off - 1) % nm + 1
     local p = P[m[i]]
     if not taken[p.id] and p.job ~= "child" then
       local fam = { p }
@@ -376,6 +389,10 @@ local function land_use(W, v, geom, farmers, need)
     if by_food > by_labour then by_food = by_labour end
     if by_food > want then want = by_food end
   end
+  -- fields within walking distance: at most max_farm_l4 level-4 cells of them
+  local maxf = floor(cfg.max_farm_l4 / ss2 + 0.5)
+  if maxf < 1 then maxf = 1 end
+  if want > maxf then want = maxf end
   if farmers > 0 and want < 1 then want = 1 end
   local farms = v.farms
   -- drop farms that are no longer ours / usable
@@ -667,7 +684,7 @@ local function month(W, v, pop_total)
   -- 2. fishing (desired fishers follow the sustainable catch)
   local catch, stock = fishing(W, v, fishers)
   local working = adults
-  local fj = floor((stock or 0) * 0.25 / cfg.fisher_max)
+  local fj = floor((stock or 0) / cfg.fisher_max)
   local fmax = floor(working * cfg.fish_share)
   if fj > fmax then fj = fmax end
   v.fish_jobs = fj
@@ -720,6 +737,17 @@ local function month(W, v, pop_total)
     food = 0
   end
   v.food = food
+  -- food history (D-025): what the village really produces vs what it eats, ~3-year EMAs.
+  -- Their ratio is its food margin; capacity = the people that production feeds with comfort.
+  local kh = 1 / cfg.hist_months
+  local pa = v.prod_avg or need * cfg.comfort
+  local na = v.need_avg or need
+  pa = pa + (harvest + catch + meat - pa) * kh
+  na = na + (need - na) * kh
+  v.prod_avg, v.need_avg = pa, na
+  local rho = pa / (na > 1 and na or 1)
+  v.food_ratio = rho
+  v.capacity = v.pop * rho / cfg.comfort
   -- cause of falling food: failed harvest or failing catch (the tag of the dominant loss)
   local cand = 0
   if v.harvest_new and v.harvest_tag ~= 0 then cand = v.harvest_tag end
@@ -750,9 +778,11 @@ local function month(W, v, pop_total)
     v.houses = floor(v.houses * 0.85)
   end
   -- 7. people: hunger, health, deaths, pairing, births
-  local cap = v.capacity > 1 and v.capacity or 1
-  local crowd = (cfg.cap_margin - v.pop / cap) / cfg.crowd_band
+  -- births follow the real food margin (a floor: families keep having children in lean
+  -- years; acute hunger — the hungry gap — stops them in people.month)
+  local crowd = (rho - cfg.birth_rho[1]) / (cfg.birth_rho[2] - cfg.birth_rho[1])
   if crowd > 1 then crowd = 1 elseif crowd < 0 then crowd = 0 end
+  crowd = cfg.birth_floor + (1 - cfg.birth_floor) * crowd
   local nonage, dtag = people.month(W, v, {
     shortfall = shortfall, starve_tag = v.cause, exposure = exposure, fs = v.fs_low or v.food_security,
     crowd = crowd, pop_total = pop_total,
@@ -780,7 +810,12 @@ local function month(W, v, pop_total)
   v.boats = ceil(fishers / cfgmod.SHIPS.fishers_per_boat)
   -- 9. memories, migration, abandonment
   memories(W, v, geom)
-  if v.pop > 0 and v.low_months >= cfg.migrate_months then migrate(W, v) end
+  -- families leave in acute hunger (a deep hungry gap for months) or a chronic deficit
+  if rho < cfg.migrate_rho and tick - v.founded > 3 * 48 then v.chronic = (v.chronic or 0) + 1 else v.chronic = 0 end
+  if v.pop > 0 and (v.low_months >= cfg.migrate_months or v.chronic >= cfg.chronic_months) then
+    migrate(W, v)
+    v.chronic = 0
+  end
   if v.pop == 0 then abandon(W, v) end
 end
 
@@ -793,7 +828,6 @@ local function yearly(W)
   for i = 1, #vs do
     local v = vs[i]
     if v.alive then
-      v.capacity = capacity(W, v, W.vgeo[v.id])
       local m = v.members
       for k = 1, #m do people.fade_memories(P[m[k]], f) end
     elseif v.ruin and W.tick - v.abandoned >= cfg.ruins_years * 48 then
@@ -819,6 +853,11 @@ function sys.update(W)
     local v = vs[i]
     if v.alive and (tick + i) % 4 == 0 then month(W, v, total) end
   end
+end
+
+-- Year-boundary snap (before the save capture): people's continuous state is rounded.
+function sys.snap(W)
+  people.snap(W)
 end
 
 -- After the harvest was checked by the detectors: roll the 5-year history.

@@ -14,6 +14,7 @@
 local world = require("sim.world")
 local fields = require("sim.fields")
 local version = require("sim.version")
+local people = require("sim.systems.people")
 
 local save = {}
 
@@ -230,11 +231,84 @@ end
 -- Public API ------------------------------------------------------------------------------------
 -- Serialise: snapshot (from save.capture) + commands since + current tick + extras (settings,
 -- goals, real timestamp, recent command log...). Returns a text-safe string.
+-- Event records <-> positional records (field order is part of the save format).
+local EV_FIELDS = { "id", "kind", "tick", "cell", "actor", "parent", "root", "mag", "data", "region",
+  "desc", "count", "headline" }
+function save.pack_events(rec, order)
+  local out = {}
+  if not order then
+    order = {}
+    for id in pairs(rec) do order[#order + 1] = id end
+    table.sort(order)
+  end
+  for i = 1, #order do
+    local r = rec[order[i]]
+    if r then
+      local t = {}
+      for k = 1, #EV_FIELDS do
+        local v = r[EV_FIELDS[k]]
+        if v == nil then v = false end
+        t[k] = v
+      end
+      out[#out + 1] = t
+    end
+  end
+  return out
+end
+function save.unpack_events(list)
+  local rec = {}
+  for i = 1, #list do
+    local t = list[i]
+    local r = {}
+    for k = 1, #EV_FIELDS do
+      local v = t[k]
+      if v ~= false or EV_FIELDS[k] == "headline" then r[EV_FIELDS[k]] = v end
+    end
+    rec[r.id] = r
+  end
+  return rec
+end
+
+local function shallow(t)
+  local c = {}
+  for k, v in pairs(t) do c[k] = v end
+  return c
+end
+
 function save.encode(snap, cmds_since, current_tick, extras)
   local out = { "TCSAVE1|", tostring(version.SAVE_VERSION), "|" }
   local doc = {}
   for k, v in pairs(snap) do doc[k] = v end
   doc.F, doc.P = nil, nil
+  -- quantised per-cell system arrays travel in their own compact section (D-026)
+  local qs = {}
+  if snap.S then
+    local S2 = shallow(snap.S)
+    for _, e in ipairs(fields.SYSTEM_Q) do
+      local sub = S2[e[1]]
+      if sub and sub[e[2]] then
+        sub = shallow(sub)
+        qs[#qs + 1] = { e, sub[e[2]] }
+        sub[e[2]] = nil
+        S2[e[1]] = sub
+      end
+    end
+    doc.S = S2
+  end
+  -- event records as positional records too
+  if snap.E and snap.E.rec then
+    local E2 = shallow(snap.E)
+    E2.rec_packed = save.pack_events(snap.E.rec, snap.E.order)
+    E2.rec = nil
+    doc.E = E2
+  end
+  -- people as positional records (same data, far fewer bytes)
+  if snap.ent and snap.ent.people then
+    local ent = shallow(snap.ent)
+    ent.people = nil
+    ent.people_packed = people.pack(snap.ent.people)
+    doc.ent = ent
+  end
   doc.cmds_since = cmds_since or {}
   doc.current_tick = current_tick or snap.tick
   doc.extras = extras or {}
@@ -242,6 +316,13 @@ function save.encode(snap, cmds_since, current_tick, extras)
   out[#out + 1] = "|"
   enc_fieldset(out, snap.F)
   enc_fieldset(out, snap.P)
+  out[#out + 1] = "{"
+  for i = 1, #qs do
+    local e, arr = qs[i][1], qs[i][2]
+    enc(out, e[1] .. "." .. e[2])
+    enc(out, arr, e[3])
+  end
+  out[#out + 1] = "}"
   return concat(out)
 end
 
@@ -253,6 +334,22 @@ function save.decode(str)
   if rest:sub(p, p) ~= "|" then return nil, "corrupt" end
   doc.F, p = dec(rest, p + 1)
   doc.P, p = dec(rest, p)
+  local qs
+  qs, p = dec(rest, p)
+  if doc.S then
+    for _, e in ipairs(fields.SYSTEM_Q) do
+      local a = qs[e[1] .. "." .. e[2]]
+      if a and doc.S[e[1]] then doc.S[e[1]][e[2]] = a end
+    end
+  end
+  if doc.E and doc.E.rec_packed then
+    doc.E.rec = save.unpack_events(doc.E.rec_packed)
+    doc.E.rec_packed = nil
+  end
+  if doc.ent and doc.ent.people_packed then
+    doc.ent.people = people.unpack(doc.ent.people_packed)
+    doc.ent.people_packed = nil
+  end
   return doc
 end
 

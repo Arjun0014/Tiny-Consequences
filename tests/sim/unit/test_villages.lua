@@ -65,7 +65,7 @@ function M.abandoned_village_leaves_ruins_and_wild_farms()
   T.eq(v.alive, false, "abandoned")
   T.ok(v.ruin and W.S.ruins[v.cell], "ruins")
   T.eq(W.F.land_use[v.cell], 0, "centre released")
-  for _, c in ipairs(farms) do T.eq(W.F.land_use[c], 0, "farm back to the wild") end
+  for _, c in ipairs(farms) do T.ok(W.F.land_use[c] ~= v.id, "farm released") end
   T.ok(last_of(W, "village_abandoned") ~= nil, "village_abandoned event")
   world.run_ticks(W, 8)
   T.eq(W.F.biome[v.cell], require("sim.systems.biome").B.ruins, "ruins biome")

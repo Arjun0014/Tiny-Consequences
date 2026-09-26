@@ -389,7 +389,7 @@ baseline_seed = function(spec, seed)
     elseif e.headline_rate then
       local rate = r.yearly[Y].headlines / Y
       ok = rate >= e.headline_rate[1] and rate <= e.headline_rate[2]
-      txt = string.format("headlines %.2f/y", rate)
+      txt = string.format("headlines %.3f/y", rate)
     elseif e.cross_seed == "turnover" then
       local y = r.yearly[Y]
       extra.turnover = (y.villages_founded + y.villages_abandoned) > 0

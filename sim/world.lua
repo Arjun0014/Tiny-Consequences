@@ -30,6 +30,7 @@ world.SAVE_KEYS = { "seed", "level", "tick", "G", "F", "C", "I", "P", "static", 
 
 -- Systems in tick order (02_WORLD_MODEL.md §4). Each module may define:
 --   init(W)            once after worldgen / restore (allocate scratch; no state changes)
+--   snap(W)            at a year boundary, right after the field snap: quantise saved state
 --   rebuild(W)         rebuild derived tables (on load, coastline/elevation change)
 --   update(W)          every tick
 --   year(W)            at a year boundary, before update (after snap)
@@ -140,6 +141,10 @@ function world.tick(W)
   local t = W.tick
   if t % 48 == 0 then
     fields.snap_all(W)
+    for i = 1, #world.systems do
+      local s = world.systems[i]
+      if s.snap then s.snap(W) end                         -- quantise system state for saving
+    end
     if W.on_year_boundary then W.on_year_boundary(W) end   -- e.g. save.capture
     for i = 1, #world.systems do
       local s = world.systems[i]

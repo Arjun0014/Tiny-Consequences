@@ -41,6 +41,13 @@ function metrics.compute(W)
     if ocean[c] == 0 then counts[biome[c]] = counts[biome[c]] + area[c] end
   end
   local L = land > 0 and land or 1
+  -- natural land = land minus villages, farms and ruins (the §10 vegetation bands, D-025)
+  local nat = L - counts[4] - counts[5] - counts[6]
+  if nat <= 0 then nat = 1 end
+  m.human_land = (counts[4] + counts[5] + counts[6]) / L
+  m.forest_nat = (counts[12] + counts[11]) / nat
+  m.grass_nat = counts[13] / nat
+  m.desert_nat = counts[9] / nat
   m.forest_cover = (counts[12] + counts[11]) / L
   m.grassland = counts[13] / L
   m.desert = counts[9] / L
@@ -123,6 +130,6 @@ metrics.SERIES_COLS = { "year", "tick", "temp_mean", "precip_mean", "land_precip
   "grazers", "predators", "grazers_c1", "predators_c1", "grazers_c2", "predators_c2",
   "grazers_c3", "predators_c3", "fish", "plankton", "oil", "oil_cells",
   "population", "villages", "villages_founded", "villages_abandoned", "food_security", "headlines",
-  "headline_rate", "tankers" }
+  "headline_rate", "tankers", "human_land", "forest_nat", "grass_nat", "desert_nat" }
 
 return metrics

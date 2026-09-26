@@ -184,6 +184,68 @@ local function village_near(W, c)
   return nil
 end
 
+-- Local booms (D-025): a connected patch of land where a species exceeds boom_local × its own
+-- 5-year normal (fauna's per-cell normals) — the boom can be real on part of a landmass while
+-- hunting elsewhere holds the regional average down. Shares the regional state/cooldown.
+local function local_boom(W, cfg, sp, record)
+  local FS = W.S.fauna
+  if not FS or not record then return end
+  local R = W.regions
+  local D = W.D.fauna[sp]
+  local vals, tags, idle = W.F[sp], W.C[sp], W.I[sp]
+  local norm = sp == "grazers" and FS.hnorm or FS.pnorm
+  local minn = cfg.min_density[sp]
+  local thr = cfg.boom_local
+  local need = ceil(cfg.boom_cells / (W.sscale * W.sscale) - 0.01)
+  if need < 2 then need = 2 end
+  local g = W.grid
+  local nbr, cnt = g.nbr, g.nbr_count
+  local reg = W.static.region
+  local sc = W.scratch
+  local mark, q = sc.det_mark, sc.det_q
+  local stamp = sc.det_stamp + 1
+  sc.det_stamp = stamp
+  local tick = W.tick
+  local land = W.geo.land_cells
+  for i = 1, #land do
+    local src = land[i]
+    local r = reg[src]
+    if mark[src] ~= stamp and norm[src] > minn and vals[src] > thr * norm[src]
+      and D.state[r] == 0 and tick - D.last[r] >= cfg.cooldown then
+      mark[src] = stamp
+      local m, head = 1, 1
+      q[1] = src
+      while head <= m do
+        local c = q[head]; head = head + 1
+        local b = c * 6 - 6
+        for k = 1, cnt[c] do
+          local j = nbr[b + k]
+          if mark[j] ~= stamp and reg[j] == r and norm[j] > minn and vals[j] > thr * norm[j] then
+            mark[j] = stamp; m = m + 1; q[m] = j
+          end
+        end
+      end
+      if m >= need then
+        D.last[r] = tick
+        local parent = dominant(W, q, m, tags, cfg.dominant_share)
+        local sv, sn = 0, 0
+        for k = 1, m do sv = sv + vals[q[k]]; sn = sn + norm[q[k]] end
+        local ratio = sn > 0 and sv / sn or 0
+        local rec = W.names.regions[r]
+        local id = events.emit(W, "population_boom", src, parent, ratio,
+          { species = sp, ratio = ratio, cells = m, ["local"] = true }, { region = r })
+        if id ~= 0 then
+          for k = 1, m do
+            local c = q[k]
+            if tags[c] == parent then tags[c] = id; idle[c] = 0 end
+          end
+        end
+        if rec then rec = nil end
+      end
+    end
+  end
+end
+
 -- Population boom / crash / regional + global extinction for one species.
 local function fauna_species(W, cfg, sp, record)
   local R = W.regions
@@ -513,6 +575,7 @@ function sys.update(W)
   -- monthly
   if W.regions.n > 0 then
     for i = 1, #SPECIES do fauna_species(W, cfg, SPECIES[i], record) end
+    for i = 1, #SPECIES do local_boom(W, cfg, SPECIES[i], record) end
     drought(W, cfg, record)
   end
   if record then oil_detect(W, cfg) end
