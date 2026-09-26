@@ -160,6 +160,30 @@ local function emit_region(W, kind, r, parent, mag, data)
   return events.emit(W, kind, rec and rec.centre or 0, parent, mag, data, { region = r })
 end
 
+-- Which living village fishes / lives near a cell (small loops: villages are few).
+local function village_fishing(W, c)
+  local vs = W.ent.villages
+  if not vs then return nil end
+  for i = 1, #vs do
+    local v = vs[i]
+    if v.alive then
+      local f = v.fishing
+      for k = 1, #f do if f[k] == c then return v end end
+    end
+  end
+  return nil
+end
+
+local function village_near(W, c)
+  local vs = W.ent.villages
+  if not vs or not W.vgeo then return nil end
+  for i = 1, #vs do
+    local v = vs[i]
+    if v.alive and W.vgeo[i] and W.vgeo[i].near[c] then return v end
+  end
+  return nil
+end
+
 -- Population boom / crash / regional + global extinction for one species.
 local function fauna_species(W, cfg, sp, record)
   local R = W.regions
@@ -292,7 +316,14 @@ local function fish_collapse(W, cfg, record)
           retag(q, m, cfish, ifish, fish, 0, parent)
         else
           local drop = sr > 0 and floor(100 * (1 - sf / sr) + 0.5) or 0
-          local id = events.emit(W, "fish_collapse", src, parent, drop, { cells = m, drop = drop })
+          -- a fishing ground: attribute to the village; with no other cause, it's overfishing
+          local vil = nil
+          for k = 1, m do
+            vil = village_fishing(W, q[k])
+            if vil then break end
+          end
+          local kind = (vil and parent == 0) and "overfishing" or "fish_collapse"
+          local id = events.emit(W, kind, src, parent, drop, { cells = m, drop = drop, village = vil and vil.id or nil })
           if id ~= 0 then retag(q, m, cfish, ifish, fish, parent, id) end
         end
       end
@@ -347,9 +378,71 @@ local function oil_detect(W, cfg)
     if ocean[c] == 0 and oil[c] >= bmin then
       local t = coil[c]
       if t ~= 0 and kind_of(W, t) ~= "oil_beached" then
-        local id = events.emit(W, "oil_beached", c, t, 1, nil)
+        local vil = village_near(W, c)
+        local id = events.emit(W, "oil_beached", c, t, 1, vil and { village = vil.id } or nil)
         if id ~= 0 then coil[c] = id; ioil[c] = 0 end
       end
+    end
+  end
+end
+
+-- Villages (03 §4): crop_failure at harvest (< 50% of the 5-year average), famine (food
+-- security < 1 month; exit > 2; cooldown), deaths_spike (≥ 3 non-age deaths in a month).
+-- Each re-tags the village's cause. migration / village_founded / village_abandoned are
+-- emitted by the village system when they happen.
+local function village_detect(W, cfg, record)
+  local vs = W.ent.villages
+  if not vs then return end
+  local vcfg = cfgmod.VILLAGE
+  local vilsys = require("sim.systems.villages")
+  local tick = W.tick
+  local ccrop, icrop = W.C.crop, W.I.crop
+  for i = 1, #vs do
+    local v = vs[i]
+    if v.alive then
+      if v.harvest_new then
+        local h = v.harvests
+        if #h >= 3 then
+          local s = 0
+          for k = 1, #h do s = s + h[k] end
+          local avg = s / #h
+          if avg > 0 and v.last_harvest < cfg.crop_failure * avg and record then
+            local parent = v.harvest_tag
+            local pct = floor(100 * (1 - v.last_harvest / avg) + 0.5)
+            local id = events.emit(W, "crop_failure", v.cell, parent, pct,
+              { village = v.id, harvest = v.last_harvest, avg = avg })
+            if id ~= 0 then
+              v.cause = id
+              v.plenty = 0
+              local farms = v.farms
+              for k = 1, #farms do
+                local c = farms[k]
+                if ccrop[c] == parent then ccrop[c] = id; icrop[c] = 0 end
+              end
+            end
+          end
+        end
+        vilsys.push_harvest(v)
+      end
+      local fs = v.food_security
+      if not v.famine then
+        if fs < vcfg.famine_fs and tick - v.famine_last >= cfg.famine_cooldown then
+          v.famine = true
+          v.famine_last = tick
+          if record then
+            local id = events.emit(W, "famine", v.cell, v.cause, v.pop, { village = v.id })
+            if id ~= 0 then v.cause = id; v.plenty = 0 end
+          end
+        end
+      elseif (v.fs_low or fs) > vcfg.famine_exit then
+        v.famine = false   -- over only when the hungry gap has closed, not at the next harvest
+      end
+      if v.deaths >= cfg.deaths_spike and record then
+        local parent = v.death_tag ~= 0 and v.death_tag or v.cause
+        events.emit(W, "deaths_spike", v.cell, parent, v.deaths, { village = v.id })
+      end
+      v.deaths = 0
+      v.death_tag = 0
     end
   end
 end
@@ -424,6 +517,7 @@ function sys.update(W)
   end
   if record then oil_detect(W, cfg) end
   fish_collapse(W, cfg, record)
+  village_detect(W, cfg, record)
 end
 
 return sys

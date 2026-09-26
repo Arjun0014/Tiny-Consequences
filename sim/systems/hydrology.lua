@@ -25,12 +25,26 @@ function sys.init(W)
   end
 end
 
+-- River-mouth ocean cells (downhill target of some land cell): the only ocean cells that ever
+-- receive flow or silt, so the per-tick loops visit land cells + mouths only (D-019).
+function sys.rebuild(W)
+  local geo = W.geo
+  local seen, mouths = {}, {}
+  local land = geo.land_cells
+  for i = 1, #land do
+    local d = geo.downhill[land[i]]
+    if d ~= 0 and geo.ocean[d] == 1 and not seen[d] then seen[d] = true; mouths[#mouths + 1] = d end
+  end
+  table.sort(mouths)
+  W.hydro_static = { mouths = mouths }
+end
+
 function sys.update(W)
   local cfg = cfgmod.HYDRO
   local n = W.n
   local F, C, I = W.F, W.C, W.I
   local soil, precip, temp, flow, silt = F.soil_water, F.precip, F.temp, F.flow, F.silt
-  local grass, forest, fert = F.grass, F.forest, F.fertility
+  local grass, forest, fert, crop = F.grass, F.forest, F.fertility, F.crop
   local csoil, isoil, cp, ct = C.soil_water, I.soil_water, C.precip, C.temp
   local cflow, iflow, csilt, isilt = C.flow, I.flow, C.silt, I.silt
   local cgrass, cforest, cfert, ifert = C.grass, C.forest, C.fertility, I.fertility
@@ -45,12 +59,18 @@ function sys.update(W)
   local k_ero, ero_max = cfg.k_ero, cfg.erosion_max
   local lake_evap = cfg.lake_evap
 
-  -- 1. soil water balance, local runoff, erosion (land); reset accumulators
-  for c = 1, n do
-    flow[c] = 0
-    silt[c] = 0
+  -- 1. soil water balance, local runoff, erosion (land); reset accumulators (land + mouths)
+  local land = geo.land_cells
+  local mouths = W.hydro_static.mouths
+  for i = 1, #mouths do
+    local c = mouths[i]
+    flow[c], silt[c] = 0, 0
     fbest[c], fbtag[c], sbest[c], sbtag[c] = 0, 0, 0, 0
-    if ocean[c] == 0 then
+  end
+  for i = 1, #land do
+    local c = land[i]
+    fbest[c], fbtag[c], sbest[c], sbtag[c] = 0, 0, 0, 0
+    do
       local old = soil[c]
       local rain = temp[c] >= 0 and precip[c] or 0
       local inp = (rain + melt[c]) * k_ps
@@ -66,8 +86,8 @@ function sys.update(W)
       soil[c] = s
       runoff[c] = ro
       flow[c] = ro
-      -- erosion: rain on bare slopes strips fertility into silt
-      local veg = grass[c] + forest[c]
+      -- erosion: rain on bare slopes strips fertility into silt (standing crops cover the soil)
+      local veg = grass[c] + forest[c] + crop[c]
       if veg > 1 then veg = 1 end
       local ero = precip[c] * slope[c] * (1 - veg) * k_ero
       if ero > ero_max then ero = ero_max end
@@ -91,8 +111,6 @@ function sys.update(W)
       end
       fbtag[c] = ts ~= 0 and ts or tpc
       fbest[c] = ro
-    else
-      runoff[c] = 0
     end
   end
 
@@ -140,22 +158,25 @@ function sys.update(W)
   local floods = sc.flood
   for k = #floods, 1, -1 do floods[k] = nil end
   local ema = cfg.flow_ema
-  local bank_min, fmult = cfg.bankfull_min, cfg.flood_mult
-  for c = 1, n do
+  local bank_min, fmult, rthr = cfg.bankfull_min, cfg.flood_mult, cfg.river_threshold
+  for i = 1, #mouths do
+    local c = mouths[i]
     local fv = flow[c]
-    if ocean[c] == 1 then
-      if fv > 0 then
-        local ft = fbtag[c]
-        if ft ~= 0 then blame.set(cflow, iflow, c, ft) end
-        local st = sbtag[c]
-        if st ~= 0 then blame.set(csilt, isilt, c, st) end
-      end
-    else
-      local mean = fmean[c]
-      local bank = mean > bank_min and mean or bank_min
-      if fv > fmult * bank and fv > cfg.river_threshold then floods[#floods + 1] = c end
+    if fv > 0 then
+      local ft = fbtag[c]
+      if ft ~= 0 then blame.set(cflow, iflow, c, ft) end
+      local st = sbtag[c]
+      if st ~= 0 then blame.set(csilt, isilt, c, st) end
     end
     fmean[c] = fmean[c] + (fv - fmean[c]) * ema
+  end
+  for i = 1, #land do
+    local c = land[i]
+    local fv = flow[c]
+    local mean = fmean[c]
+    local bank = mean > bank_min and mean or bank_min
+    if fv > fmult * bank and fv > rthr then floods[#floods + 1] = c end
+    fmean[c] = mean + (fv - mean) * ema
   end
 end
 

@@ -17,6 +17,7 @@ function bench.run(opts)
     for _ = 1, 48 do world.tick(W) end
     climate_init.vegetation(W)
     climate_init.fauna(W)
+    require("sim.worldgen.settle").run(W)
     require("sim.systems.biome").reset(W)
   end
   local tgen = clock() - t0

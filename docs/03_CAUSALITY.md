@@ -100,7 +100,7 @@ Detectors (initial set; each has entry/exit thresholds and cooldowns to avoid sp
 | fire_started | a cell ignites | the ignition source (lightning event, player, lava) |
 | wildfire | a connected fire reaches ≥ 10 cells | the first fire_started in that cluster |
 | crop_failure | a village harvest < 50% of its 5-year average | dominant tag among its farm cells' crop losses |
-| famine | village food_security < 1 month | village cause tag |
+| famine | village food_security < 1 month (ends when the hungry gap closes, D-020) | village cause tag |
 | deaths_spike | ≥ 3 deaths in a village in a month from non-age causes | tag of the dominant death cause |
 | migration | a family leaves a village | famine / disaster event |
 | village_founded | a new village forms | the migration event that produced the settlers |

@@ -59,6 +59,8 @@ function sys.classify(W, c, cur)
   return B.barren, "grass"
 end
 
+-- Multi-rate (D-019): a rotating 1/stride of the cells is classified each tick; dwell is
+-- counted in ticks (+stride per visit), so dwell times keep their meaning.
 function sys.update(W)
   local cfg = cfgmod.BIOME
   local n = W.n
@@ -67,14 +69,15 @@ function sys.update(W)
   local classify = sys.classify
   local dw_default, dw_long = cfg.dwell, cfg.dwell_long
   local rec = W.record_events
-  for c = 1, n do
+  local stride = cfg.stride
+  for c = 1 + W.tick % stride, n, stride do
     local cur = biome[c]
     local b, driver = classify(W, c, cur)
     if b == cur then
       dwell[c] = 0
       cand[c] = cur
     else
-      if b == cand[c] then dwell[c] = dwell[c] + 1 else cand[c] = b; dwell[c] = 1 end
+      if b == cand[c] then dwell[c] = dwell[c] + stride else cand[c] = b; dwell[c] = stride end
       local need = (b == B.desert or b == B.ice_sheet) and dw_long or dw_default
       if b == B.village or b == B.farmland or b == B.ash or b == B.ocean or cur == B.ocean then need = 1 end
       if dwell[c] >= need then

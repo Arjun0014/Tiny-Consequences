@@ -1,6 +1,6 @@
 -- Headless sim runner.
 -- npm run sim -- --seed 42 --years 100 [--map] [--map-every 10] [--level 4] [--out DIR]
---   [--no-spinup] [--monthly]
+--   [--no-spinup] [--monthly] [--chains famine,village_founded]  (prints the first chains of those kinds)
 -- Writes out/sim/seed<N>/: summary.json, series.csv (yearly; --monthly adds monthly rows),
 -- events.txt, maps/<kind>_y<year>.png
 package.path = "./?.lua;./?/init.lua;" .. package.path
@@ -24,6 +24,7 @@ while arg[i] do
   elseif a == "--no-spinup" then args.no_spinup = true
   elseif a == "--monthly" then args.monthly = true
   elseif a == "--quiet" then args.quiet = true
+  elseif a == "--chains" then i = i + 1; args.chains = arg[i]
   end
   i = i + 1
 end
@@ -86,5 +87,29 @@ m.sim_seconds = elapsed
 m.seed = args.seed
 report.write_json(out .. "/summary.json", m)
 print(string.format("ran %d years in %.2fs: tick median %.2f ms, p95 %.2f ms", args.years, elapsed, med * 1000, p95 * 1000))
+if args.chains then
+  local events = require("sim.causality.events")
+  local calendar = require("sim.calendar")
+  for kind in args.chains:gmatch("[^,]+") do
+    local shown = 0
+    for k = 1, #W.E.order do
+      local rr = W.E.rec[W.E.order[k]]
+      if rr.kind == kind and shown < 2 then
+        shown = shown + 1
+        local ch = events.chain(W, rr.id)
+        local parts = {}
+        for j = 1, #ch do
+          local e = ch[j]
+          local where = ""
+          local d = e.data
+          if type(d) == "table" and d.village and W.ent.villages[d.village] then where = " @" .. W.ent.villages[d.village].name
+          elseif W.names.regions and W.names.regions[e.region] then where = " @" .. W.names.regions[e.region].name end
+          parts[#parts + 1] = string.format("%s %s%s", calendar.label(e.tick), e.kind, where)
+        end
+        print(kind .. " chain: " .. table.concat(parts, "  ->  "))
+      end
+    end
+  end
+end
 print(report.line(W, m))
 print("out: " .. out)

@@ -42,6 +42,10 @@ function sys.rebuild(W)
     T.hemi[c] = lat >= 0 and 1 or -1
     local h = elev[c] - sea
     T.lapse[c] = h > 0 and cfg.lapse * h or 0
+    T.bl = T.bl or {}
+    T.ha = T.ha or {}
+    T.bl[c] = T.base[c] + T.lapse[c]     -- per-tick shortcuts
+    T.ha[c] = T.hemi[c] * amp
     for k = 1, nb do
       T.wob[k][c] = noise.fbm(W.seed, 900 + k * 13, g.X[c], g.Y[c], g.Z[c], 1.6, 2, 0.5) * 2
     end
@@ -66,7 +70,7 @@ function sys.update(W)
   local csst, isst = C.sst, I.sst
   local cha = C.heat_anom
   local T = W.temp_static
-  local base, amp, hemi, lapse = T.base, T.amp, T.hemi, T.lapse
+  local bl, hamp = T.bl, T.ha
   local ocean = W.geo.ocean
   local G = W.G
   local tick = W.tick
@@ -105,7 +109,7 @@ function sys.update(W)
       ha[c] = h
     end
     local wobble = a1 * w1[c] + a2 * w2[c] + a3 * w3[c]
-    local t = base[c] + season * hemi[c] * amp[c] + lapse[c] + offset + h + wobble
+    local t = bl[c] + season * hamp[c] + offset + h + wobble
     temp[c] = t
     -- blame (anomaly attribution): cheap fast path when nothing is tagged
     local th = cha[c]

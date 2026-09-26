@@ -97,6 +97,32 @@ R.extra_maps[#R.extra_maps + 1] = function(W, a, dir, tag)
     if ocean[c] == 0 then return 90, 85, 75 end
     return map.ramp(FISH_STOPS, F.fish[c])
   end)
+  -- people: village centres (brighter = bigger), farms, fishing waters, ruins, tanker lanes
+  local lu = F.land_use
+  local vs = W.ent.villages or {}
+  local fishing, lane = {}, {}
+  for i = 1, #vs do
+    local v = vs[i]
+    if v.alive then for k = 1, #v.fishing do fishing[v.fishing[k]] = true end end
+  end
+  local lanes = W.static.lanes or {}
+  for i = 1, #lanes do for k = 1, #lanes[i].cells do lane[lanes[i].cells[k]] = true end end
+  local ruins = W.S.ruins or {}
+  map.write(W, dir .. "/people" .. tag, function(c)
+    local l = lu[c]
+    if l < 0 then
+      local v = vs[-l]
+      local t = math.min(1, (v and v.pop or 0) / 120)
+      return 200 + 55 * t, 40 + 60 * t, 40
+    elseif l > 0 then return 230, 200, 90
+    elseif ruins[c] then return 120, 110, 100 end
+    if ocean[c] == 1 then
+      if fishing[c] then return 70, 150, 200 end
+      if lane[c] then return 20, 30, 60 end
+      return 40, 70, 130
+    end
+    return 110 + 60 * F.grass[c], 120 + 60 * F.grass[c], 90
+  end)
   map.write(W, dir .. "/oil" .. tag, function(c)
     local o = F.oil[c]
     local r, g, b = 40, 70, 130
@@ -120,7 +146,9 @@ function R.line(W, m)
 end
 R.extra_line = {}
 R.extra_line[#R.extra_line + 1] = function(W, m)
-  return string.format("grz %.3f pred %.4f fish %.3f oil %.2f", m.grazers or 0, m.predators or 0, m.fish or 0, m.oil or 0)
+  return string.format("grz %.3f pred %.4f fish %.3f oil %.2f | pop %d vil %d (+%d -%d) fs %.1f",
+    m.grazers or 0, m.predators or 0, m.fish or 0, m.oil or 0, m.population or 0, m.villages or 0,
+    m.villages_founded or 0, m.villages_abandoned or 0, m.food_security or 0)
 end
 
 function R.describe_event(W, r)

@@ -6,6 +6,7 @@ local terrain = require("sim.worldgen.terrain")
 local geo = require("sim.geo")
 local climate_init = require("sim.worldgen.climate_init")
 local regions = require("sim.worldgen.regions")
+local settle = require("sim.worldgen.settle")
 require("sim.testhooks")   -- registers the test_action command (07_TESTING.md §3)
 
 local worldgen = {}
@@ -71,6 +72,7 @@ function worldgen.spinup(W, years, progress)
   W.G.calibrating = true
   local ticks = years * 48
   local veg_at = math.min(ticks, config.SPINUP_VEG_YEAR * 48)
+  local settle_at = math.min(ticks, config.SETTLE.year * 48)
   for t = 1, ticks do
     world.tick(W)
     if t == veg_at then
@@ -78,6 +80,7 @@ function worldgen.spinup(W, years, progress)
       climate_init.fauna(W)
       require("sim.systems.biome").reset(W)
     end
+    if t == settle_at then settle.run(W) end
     if progress and t % 48 == 0 then progress(t / ticks) end
   end
   W.G.calibrating = false

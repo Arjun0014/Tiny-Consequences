@@ -9,9 +9,7 @@
 -- without (baseline), in lockstep, sampling metrics monthly. ratio_to_baseline passes if the
 -- ratio satisfies op at any sample within `within_years` after the action.
 local world = require("sim.world")
-local worldgen = require("sim.worldgen.init")
 local events = require("sim.causality.events")
-local save = require("sim.save")
 
 local L = {}
 
@@ -20,45 +18,9 @@ L.SEEDS = {
   full = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 },
 }
 
--- Worlds after worldgen + spin-up, cached per seed (deep copies of the persistent state).
-local cache = {}
-
-local function snapshot(W)
-  local snap = {}
-  for _, k in ipairs(world.SAVE_KEYS) do
-    if k ~= "cmdlog" and k ~= "pending" then snap[k] = save.deepcopy(W[k]) end
-  end
-  return snap
-end
-
-local function restore(snap)
-  -- other tests (the toy world) swap the global system list; always run the real one here
-  world.set_systems(require("sim.systems.init"))
-  local W = world.new(snap.seed, { level = snap.level })
-  for _, k in ipairs(world.SAVE_KEYS) do
-    if k == "E" then
-      local src = save.deepcopy(snap.E)
-      for kk, vv in pairs(src) do W.E[kk] = vv end
-      W.E.feed = {}
-    elseif k ~= "cmdlog" and k ~= "pending" and snap[k] ~= nil then
-      W[k] = save.deepcopy(snap[k])
-    end
-  end
-  W.cmdlog, W.pending = {}, {}
-  world.rebuild_derived(W)
-  world.init_systems(W)
-  return W
-end
-
-function L.fresh_world(seed)
-  local snap = cache[seed]
-  if not snap then
-    local W = worldgen.generate(seed)
-    snap = snapshot(W)
-    cache[seed] = snap
-  end
-  return restore(snap)
-end
+-- Worlds after worldgen + spin-up, cached per seed (tests/sim/support/worlds.lua).
+local worlds = require("tests.sim.support.worlds")
+L.fresh_world = worlds.fresh
 
 -- Target selectors -------------------------------------------------------------------------------
 -- Returns { cell = representative cell, cells = list, label = text } or nil.
@@ -111,6 +73,35 @@ function L.select(W, spec)
       end
     end
     return nil
+  elseif kind == "village" then
+    -- "inland": the biggest living village without fishing waters; "fishing": the biggest with
+    local best, bp = nil, -1
+    for _, v in ipairs(W.ent.villages or {}) do
+      if v.alive then
+        local ok = (rest == "inland" and #v.fishing == 0) or (rest == "fishing" and #v.fishing > 0 and (v.fish_jobs or 0) > 0)
+        if ok and v.pop > bp then best, bp = v, v.pop end
+      end
+    end
+    if not best then return nil end
+    local cells = {}
+    for i = 1, #best.farms do cells[i] = best.farms[i] end
+    if #cells == 0 then cells[1] = best.cell end
+    return { cell = best.cell, cells = cells, village = best.id, label = "village " .. best.name }
+  elseif kind == "ocean_near" and rest == "village:fishing" and (W.ent.villages and #W.ent.villages > 0) then
+    local vt = L.select(W, "village:fishing")
+    if vt then
+      local v = W.ent.villages[vt.village]
+      local g = W.grid
+      local best, bs = nil, -1
+      for _, c in ipairs(v.fishing) do
+        local b = c * 6 - 6
+        local no = 0
+        for k = 1, g.nbr_count[c] do if geo.ocean[g.nbr[b + k]] == 1 then no = no + 1 end end
+        if no > bs then best, bs = c, no end
+      end
+      return { cell = best, cells = ocean_ring(W, best, 2), village = v.id, label = "sea of " .. v.name }
+    end
+    return L.select(W, "ocean_near:coast:largest")
   elseif kind == "ocean_near" then
     -- "coast:largest" (and, until villages exist, "village:fishing"): a fishing-ground-like
     -- coastal ocean cell next to the largest continent — ice-free, |lat| ≤ 55°, open water, good
@@ -138,6 +129,13 @@ end
 
 -- Metrics -----------------------------------------------------------------------------------------
 local function metric_value(W, name, target)
+  local vf = name:match("^([%w_]+)@village$")
+  if vf then
+    local v = W.ent.villages[target.village]
+    if not v then return 0 end
+    if vf == "pop" then return v.pop end
+    return v[vf] or 0
+  end
   local field = name:match("^([%w_]+)@target$")
   local arr = W.F[field]
   if not arr then error("unknown metric " .. name) end
@@ -164,6 +162,10 @@ local function apply_action(W, a, target)
     p.cells = target.cells
   elseif hook == "oil" then
     p.cell = target.cell
+  elseif hook == "burn_farms" then
+    p.village = target.village
+  elseif hook == "sink_tanker" then
+    p.tanker = target.tanker
   end
   world.test_action(W, hook, p)
   return hook
@@ -189,8 +191,10 @@ local function eval_chain(W, root, e)
   local desc = events.descendants(W, root)
   local best_len, best = 0, nil
   local ok = false
+  local limit = e.within_years and (W.E.rec[root].tick + e.within_years * 48) or math.huge
   for i = 1, #desc do
     local ks = chain_kinds(W, desc[i].id)
+    if desc[i].tick > limit then ks = {} end
     local good = #ks >= (e.min_links or 1) and includes_in_order(ks, e.must_include or {})
     if good and (not ok or #ks > best_len) then ok, best_len, best = true, #ks, ks
     elseif not ok and #ks > best_len then best_len, best = #ks, ks end
@@ -199,7 +203,9 @@ local function eval_chain(W, root, e)
 end
 
 -- Run one seed. Returns pass(bool), detail(string), per-expectation results.
+local baseline_seed
 function L.run_seed(spec, seed, opts)
+  if spec.baseline_only then return baseline_seed(spec, seed) end
   opts = opts or {}
   local Wa = L.fresh_world(seed)
   local Wb = L.fresh_world(seed)
@@ -297,6 +303,104 @@ function L.run_seed(spec, seed, opts)
   return all, table.concat(parts, "; "), res
 end
 
+-- Baseline-only specs (S01): bands over one untouched run per seed.
+baseline_seed = function(spec, seed)
+  local B = require("tests.sim.support.baseline")
+  local cfgmod = require("sim.config")
+  local r = B.run(seed, spec.run_years)
+  local W = r.W
+  local Y = spec.run_years
+  local all, parts = true, {}
+  local extra = {}
+  for _, e in ipairs(spec.expect) do
+    local ok, txt = true, nil
+    if e.band then
+      local from = e.from_year or 5
+      if e.stat == "final" then
+        local v = r.yearly[Y][e.band]
+        ok = v >= e.min and v <= e.max
+        txt = string.format("%s@y%d %.2f", e.band, Y, v)
+      elseif e.stat == "all" then
+        local lo, hi = math.huge, -math.huge
+        for y = from, Y do
+          local v = r.yearly[y][e.band]
+          if v < lo then lo = v end
+          if v > hi then hi = v end
+        end
+        ok = lo >= e.min and hi <= e.max
+        txt = string.format("%s %.4g..%.4g", e.band, lo, hi)
+      else
+        local s, n = 0, 0
+        for y = from, Y do s = s + r.yearly[y][e.band]; n = n + 1 end
+        local m = s / n
+        ok = m >= e.min and m <= e.max
+        txt = string.format("%s %.2f", e.band, m)
+      end
+      if not ok then txt = txt .. string.format(" (band %.4g..%.4g)", e.min, e.max) end
+    elseif e.vary then
+      local lo, hi = math.huge, -math.huge
+      for y = 5, Y do
+        local v = r.yearly[y][e.vary]
+        if v < lo then lo = v end
+        if v > hi then hi = v end
+      end
+      ok = hi - lo >= e.min
+      txt = string.format("%s varies %.2f", e.vary, hi - lo)
+    elseif e.fauna then
+      local ext = cfgmod.DETECT.extinct_density
+      local cvsum, bad = 0, {}
+      for k = 1, #r.conts do
+        local gmin = B.minmax(r.g[k], 1)
+        local pmin = B.minmax(r.p[k], 1)
+        if gmin < ext then bad[#bad + 1] = "grazers" end
+        if pmin < ext then bad[#bad + 1] = "predators" end
+        cvsum = cvsum + B.cv(r.p[k], 61)
+      end
+      local cv = cvsum / #r.conts
+      local fmin = B.minmax(r.fish, 1)
+      local sorted = {}
+      for i = 1, #r.fish do sorted[i] = r.fish[i] end
+      table.sort(sorted)
+      local fmed = sorted[math.floor(#sorted / 2) + 1]
+      ok = #bad == 0 and cv >= 0.15 and fmin >= 0.5 * fmed
+      txt = string.format("pred CV %.2f%s fish %.2f/%.2f", cv, #bad > 0 and (" EXTINCT " .. table.concat(bad, ",")) or "", fmin, fmed)
+    elseif e.events_per_decade then
+      local n = 0
+      local E = W.E
+      for i = 1, #E.order do
+        local rec = E.rec[E.order[i]]
+        if rec.kind == e.events_per_decade and rec.tick < Y * 48 then n = n + 1 end
+      end
+      local per = n / (Y / 10)
+      ok = per >= e.min
+      txt = string.format("%s %.1f/decade", e.events_per_decade, per)
+    elseif e.wildfire_every_years then
+      local win = e.wildfire_every_years
+      local have = {}
+      local E = W.E
+      for i = 1, #E.order do
+        local rec = E.rec[E.order[i]]
+        if rec.kind == "wildfire" and rec.tick < Y * 48 then have[math.floor(rec.tick / (win * 48))] = true end
+      end
+      local miss = 0
+      for w = 0, math.floor(Y / win) - 1 do if not have[w] then miss = miss + 1 end end
+      ok = miss == 0
+      txt = string.format("wildfire in %d/%d windows of %dy", math.floor(Y / win) - miss, math.floor(Y / win), win)
+    elseif e.headline_rate then
+      local rate = r.yearly[Y].headlines / Y
+      ok = rate >= e.headline_rate[1] and rate <= e.headline_rate[2]
+      txt = string.format("headlines %.2f/y", rate)
+    elseif e.cross_seed == "turnover" then
+      local y = r.yearly[Y]
+      extra.turnover = (y.villages_founded + y.villages_abandoned) > 0
+      txt = string.format("villages +%d -%d", y.villages_founded, y.villages_abandoned)
+    end
+    if txt then parts[#parts + 1] = (ok and "" or "!") .. txt end
+    if not ok then all = false end
+  end
+  return all, table.concat(parts, "; "), extra
+end
+
 -- Wrap a spec as a test module for tests/sim/run.lua.
 function L.as_module(spec, args)
   args = args or {}
@@ -310,14 +414,26 @@ function L.as_module(spec, args)
           for s = 1, args.seeds do seeds[s] = s end
         end
         local pass_n, lines = 0, {}
+        local turnover = 0
         for _, seed in ipairs(seeds) do
-          local ok, detail = L.run_seed(spec, seed, { dump = true })
+          local ok, detail, extra
+          if spec.baseline_only then ok, detail, extra = baseline_seed(spec, seed)
+          else ok, detail = L.run_seed(spec, seed, { dump = true }) end
           if ok then pass_n = pass_n + 1 end
+          if extra and extra.turnover then turnover = turnover + 1 end
           lines[#lines + 1] = string.format("s%d %s: %s", seed, ok and "ok" or "FAIL", detail)
         end
         local need = math.ceil(#seeds * (spec.pass_ratio[profile] or 1) - 1e-9)
-        local summary = string.format("%d/%d seeds (need %d)\n      %s", pass_n, #seeds, need, table.concat(lines, "\n      "))
-        if pass_n < need then error(summary, 0) end
+        local cross_ok, cross_txt = true, ""
+        for _, e in ipairs(spec.expect) do
+          if e.cross_seed == "turnover" then
+            local want = math.ceil(#seeds * e.min_share - 1e-9)
+            cross_ok = turnover >= want
+            cross_txt = string.format("; village turnover in %d/%d seeds (need %d)", turnover, #seeds, want)
+          end
+        end
+        local summary = string.format("%d/%d seeds (need %d)%s\n      %s", pass_n, #seeds, need, cross_txt, table.concat(lines, "\n      "))
+        if pass_n < need or not cross_ok then error(summary, 0) end
         return summary
       end, chapter = spec.chapter or 1 },
     },

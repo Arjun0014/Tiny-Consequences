@@ -9,7 +9,9 @@
 --   add_grazers      { cell = c | cells = {...}, amount = density added (default 0.5) }
 --   kill_fish        { cells = {...} | cell = c, fraction = 0..1 (default 1) }
 --   heat             { cells = {...} | cell = c, amount = °C of heat anomaly (default 10) }
---   burn_farms       { village = id | cells = {...} }  (Stage 1.7: ignites farm cells)
+--   burn_farms       { village = id | cells = {...} }  ignites the village's farm cells; crops
+--                    that don't catch are destroyed outright (fuel may be too thin to burn)
+--   sink_tanker      { tanker = ship id (default: the first afloat) }
 local world = require("sim.world")
 local events = require("sim.causality.events")
 local blame = require("sim.causality.blame")
@@ -135,7 +137,25 @@ function hooks.burn_farms(W, p)
   end
   local id = root(W, "burn_farms", cells, #cells)
   local fire = require("sim.systems.fire")
-  for i = 1, #cells do fire.ignite(W, cells[i], id) end
+  local crop, cc, ic = W.F.crop, W.C.crop, W.I.crop
+  for i = 1, #cells do
+    local c = cells[i]
+    if not fire.ignite(W, c, id) and crop[c] > 0 then
+      crop[c] = 0
+      blame.set(cc, ic, c, id)
+    end
+  end
+  return id
+end
+
+function hooks.sink_tanker(W, p)
+  local ships = W.ent.ships or {}
+  local t = p.tanker and ships[p.tanker]
+  if not t then
+    for i = 1, #ships do if ships[i].alive then t = ships[i]; break end end
+  end
+  local id = root(W, "sink_tanker", { t and t.cell or 0 }, 1, { tanker = t and t.id or 0 })
+  if t then require("sim.systems.ships").sink(W, t, id) end
   return id
 end
 

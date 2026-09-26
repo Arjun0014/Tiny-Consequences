@@ -12,5 +12,6 @@ return {
   "tests.sim.unit.test_ocean",
   "tests.sim.unit.test_fauna",
   "tests.sim.unit.test_ice_bridge",
+  "tests.sim.unit.test_villages",
   "tests.sim.unit.test_save_world",
 }

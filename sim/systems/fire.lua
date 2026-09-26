@@ -138,11 +138,12 @@ function sys.update(W)
                   cl.size = cl.size + 1
                   cl.burning = cl.burning + 1
                   if cl.wild == 0 and cl.size >= sys.wildfire_cells(W) and W.record_events then
-                    cl.wild = events.emit(W, "wildfire", j, cl.first, cl.size)
+                    -- magnitude in level-4-equivalent cells, so "≥ 10 cells" means the same at any level
+                    cl.wild = events.emit(W, "wildfire", j, cl.first, cl.size * ss * ss)
                     if cl.wild ~= 0 then cl.tag = cl.wild end
                   elseif cl.wild ~= 0 then
                     local r = events.get(W, cl.wild)
-                    if r then r.mag = cl.size; events.update_headline(W, r) end
+                    if r then r.mag = cl.size * ss * ss; events.update_headline(W, r) end
                   end
                   tag = cl.tag
                 end

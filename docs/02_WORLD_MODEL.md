@@ -285,6 +285,8 @@ Monthly per village:
 
 Population: soft carrying capacity per village from farms + fishing; global hard cap 500 (births blocked at cap; log when it happens). Target range 120–400.
 
+Implementation notes (D-020): food is counted in person-months; a granary holds 6 months of needs (the excess spoils); births follow the depth of the hungry gap (the lowest recent food security) with a capacity backstop; hungry villages clear more fields and exhausted fields return to the wild (shifting cultivation); famine ends only when the hungry gap has closed. Entity schema: D-021 and the headers of `sim/systems/villages.lua`, `people.lua`, `ships.lua`.
+
 Staggering: village `i` updates on ticks where `(tick + i) % 4 == 0`, so each village updates once per month and the cost is spread.
 
 ### 5.11 Tankers & boats

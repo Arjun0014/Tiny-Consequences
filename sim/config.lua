@@ -98,6 +98,7 @@ C.CLIMATE = {
 
 -- Vegetation & soil (§5.6) -----------------------------------------------------------------------------------
 C.VEG = {
+  stride = 2,                             -- each land cell updates every N ticks (dt = N), staggered (D-019)
   r_grass = 0.06, r_forest = 0.006,       -- per tick at ideal conditions (grass 1–3 y, forest 30–60 y)
   K_grass = 1.0, K_forest = 0.95,
   die_grass = 0.03, die_forest = 0.0025,  -- per tick under full water stress
@@ -113,10 +114,10 @@ C.VEG = {
 
 -- Fire (§5.7) --------------------------------------------------------------------------------------------------
 C.FIRE = {
-  k_lightning = 1.5e-3,                   -- ignition probability scale per land cell per tick
+  k_lightning = 1.7e-3,                   -- ignition probability scale per land cell per tick
   storm_precip = 5,                       -- summer storms: more lightning where it rains a little
   min_fuel = 0.08, start_intensity = 0.6,
-  k_spread = 0.42, wind_boost = 1.5,
+  k_spread = 0.46, wind_boost = 1.5,
   burn_grass = 0.6, burn_forest = 0.25,   -- fraction consumed per tick at intensity 1
   intensity_per_fuel = 1.5, min_intensity = 0.12,
   rain_extinguish = 4,                    -- intensity loss per unit precip
@@ -130,11 +131,12 @@ C.BIOME = {
   sea_ice_enter = 0.5, sea_ice_exit = 0.35, ice_sheet_enter = 0.8, ice_sheet_exit = 0.6,
   ash_ticks = 24,
   marsh_enter = 0.85, marsh_exit = 0.75, marsh_max_elev = 0.4,
-  desert_soil = 0.15, desert_veg = 0.15, desert_min_temp = 5, desert_exit_veg = 0.3, desert_exit_soil = 0.25,
+  desert_soil = 0.17, desert_veg = 0.17, desert_min_temp = 5, desert_exit_veg = 0.3, desert_exit_soil = 0.25,
   tundra_temp = 0, tundra_veg = 0.4, tundra_exit_veg = 0.5,
   jungle_enter = 0.6, jungle_exit = 0.5, jungle_temp = 22, jungle_soil = 0.5, jungle_soil_exit = 0.35,
-  forest_enter = 0.5, forest_exit = 0.4, grass_enter = 0.25, grass_exit = 0.18,
-  dwell = 12, dwell_long = 48,
+  forest_enter = 0.45, forest_exit = 0.36, grass_enter = 0.25, grass_exit = 0.18,
+  dwell = 12, dwell_long = 48,           -- ticks
+  stride = 4,                             -- a rotating 1/stride of the cells is classified per tick (D-019)
 }
 
 C.LEDGER = { decay_per_year = 0.03, dominant_share = 0.4 }
@@ -188,7 +190,7 @@ C.FAUNA = {
   snow_block = 0.8,                       -- snow/ice cover hides this fraction of food (winter starvation)
   starve_max = 0.03,                      -- max starvation loss per tick
   a_pred = 1.5, t_handle = 4,             -- Holling II attack rate, handling time (ticks)
-  refuge = 0.022,                         -- prey refuge density (never eaten); larger damps the cycles
+  refuge = 0.02,                          -- prey refuge density (never eaten); larger damps the cycles
   e_pred = 0.1, m_pred = 0.010,           -- predator conversion efficiency; mortality per tick
                                           -- (predator units are 1/3 of grazer units: a×3, t_h/3, e/3)
   graze = 0.004, h_graze = 0.1,           -- grass eaten per tick per unit grazer (saturating in grass)
@@ -209,6 +211,78 @@ C.FAUNA = {
   init_grazers = 0.3, init_predators = 0.013,
 }
 
+-- Villages (§5.10) ------------------------------------------------------------------------------------------------
+-- Food is counted in person-months (an adult eats 1 per month, a child 0.6).
+C.VILLAGE = {
+  ring = 2, near = 3,                     -- farm/fishing radius and "affects the village" radius, level-4 steps
+  k_farm = 0.45,                          -- level-4 farm cells per farmer
+  yield = 80,                             -- person-months per unit crop per level-4 cell per harvest
+  farmer_max = 30,                        -- person-months a farmer can bring in per year
+  crop_seed = 0.1, r_crop = 0.6,          -- planted in spring; logistic growth per tick at ideal conditions
+  crop_t = { 8, 32 }, crop_soil_half = 0.2,
+  plant_toy = 12, harvest_toy = 32,       -- planting before tick-of-year 12 (spring); harvest from 32
+  drought_soil = 0.12, k_drought = 0.05,  -- crop loss per tick when the soil is this dry
+  frost_temp = -2, k_frost = 0.08,        -- crop loss per tick in frost during the season
+  k_oil_crop = 0.5,                       -- crop loss per tick per unit of beached oil
+  k_blight = 0.15,                        -- crop loss per tick on blighted farms (hook: W.S.blight[c] = tag)
+  deplete = 0.006,                        -- fertility lost per unit crop harvested
+  fallow_fert = 0.22,                     -- below this a farm lies fallow for a year
+  spoil = 0.08,                           -- per month, of the store beyond `granary` months of needs
+  granary = 6,                            -- months of needs a granary holds; the rest spoils
+  fish_q = 50,                            -- catchable person-months per unit fish per level-4 cell per month
+  fisher_max = 2.5,                       -- person-months a fisher can land per month
+  fish_units = 400,                       -- person-months of fish per unit density per level-4 cell
+  fish_share = 0.45,                      -- at most this share of working adults fish
+  hunt = 0.004,                           -- grazer fraction taken per tick per hunter per level-4 cell
+  meat_units = 300,                       -- person-months per unit grazer density per level-4 cell
+  cull_threshold = 0.004, cull_rate = 0.02, cull_prob = 0.12,   -- predators near farms: monthly chance to cull
+  k_burn = 0.00045,                       -- ppm co2 per person-month of wood burning (x (1 + winter cold))
+  wood = 0.00001,                         -- forest removed per person-month from the village cells
+  k_clear_co2 = 0.4,                      -- ppm per unit forest cleared for fields
+  eat_adult = 1.0, eat_child = 0.6,
+  fs_smooth = 0.5,                        -- food security EMA per month
+  famine_fs = 1, famine_exit = 2,         -- months of food
+  migrate_months = 6, migrate_to_fs = 3, min_founders = 4, min_spacing = 3,
+  houses_per = 4,
+  accident = 1.5e-5,                      -- village fire: ignition chance per person-month x dryness
+  start_food = 8,                         -- months of food when founded
+  ruins_years = 20,
+  cause_hold = 12,                        -- months with food to spare (a full harvest cycle) before the cause clears
+  cap_margin = 1.6,                       -- births stop at this x the village's estimated capacity (backstop;
+  crowd_band = 0.5,                       --   food security regulates first), slowing over the band below it
+  comfort = 1.4,                          -- capacity = people fed with this margin (a store to last the year)
+  fishing_cap_share = 0.5,                -- sustainable share of fish regrowth counted in capacity
+}
+
+C.PEOPLE = {
+  adult_age = 14, elder_age = 60, woodcutter_share = 0.08,
+  memories = 6, grief_salience = 1.0, memory_fade = 0.8,
+  hunger_rate = 0.5, hunger_hurts = 30, health_loss = 0.25, health_regen = 5,
+  child_hazard = 0.0015, adult_hazard = 0.0004,   -- per month
+  old_age = 50, old_hazard = 0.0012, old_scale = 8,  -- + old_hazard x exp((age - old_age) / old_scale)
+  frail = 40, frail_hazard = 0.004,       -- health below frail: + (frail - health) x this per month
+  pair_min = 18, pair_max = 50, pair_rate = 0.1,
+  birth_min = 18, birth_max = 40, birth_rate = 0.02,    -- per month for partnered women
+  birth_fs = { 0.5, 2.5 },                -- births scale 0 -> full as the hungry gap (fs_low) goes 0.5 -> 2.5 months
+  global_cap = 500, keep_dead_years = 30,
+}
+
+-- Ships (§5.11) -------------------------------------------------------------------------------------------------
+C.SHIPS = {
+  tanker_speed = 0.12,                    -- level-4 cells per tick (scaled by sscale)
+  cargo = 6,                              -- oil released when a tanker sinks (cell-units, as the oil hook)
+  replace_years = { 3, 5 },               -- a replacement tanker arrives after this long (≥ 2 villages)
+  fishers_per_boat = 3,
+}
+
+-- Worldgen settle (§2) --------------------------------------------------------------------------------------------
+C.SETTLE = {
+  year = 15,                              -- spin-up year at which the first villages are founded
+  villages = { 3, 5 }, people = { 150, 250 },
+  lanes = { 1, 2 },
+  arcs = { 5, 10 }, hotspots = { 1, 3 }, volcano_spacing = 3,
+}
+
 -- Detectors (03_CAUSALITY.md §4) -----------------------------------------------------------------------------------
 C.DETECT = {
   avg_months = 60,                        -- regional 5-year average (EMA of monthly samples)
@@ -224,6 +298,9 @@ C.DETECT = {
   oil_spread_min = 0.01, oil_beach_min = 0.005,
   drought_soil = 0.2, drought_anom = 0.75, drought_months = 3, drought_exit = 0.25,
   flood_cooldown = 24,                    -- ticks before the same cell floods again (as an event)
+  crop_failure = 0.5,                     -- harvest below this x the village's 5-year average
+  famine_cooldown = 24,
+  deaths_spike = 3,                       -- non-age deaths in a village in one month
 }
 
 return C

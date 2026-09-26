@@ -9,6 +9,8 @@ return {
   require("sim.systems.fire"),
   require("sim.systems.ocean"),
   require("sim.systems.fauna"),
+  require("sim.systems.villages"),
+  require("sim.systems.ships"),
   require("sim.systems.biome"),
   require("sim.causality.detectors"),
 }

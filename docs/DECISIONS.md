@@ -102,3 +102,33 @@ Consequences: baseline bands hold (3 seeds × 200 y: forest 0.25–0.42, grassla
 Context: the jungle condition (soil ≥ 0.5) had no exit threshold (02 §0.3), so jungle↔forest flipped every season: ~270 biome_shift events per century on seed 42, forming long flip-flop "chains".
 Decision: `BIOME.jungle_soil_exit = 0.35`.
 Consequences: jungle↔forest shifts ≈ 8 per century; forest cover (forest + jungle) unchanged.
+
+## D-019 · 2026-09-27 · Performance pass for the full Chapter-1 tick
+Context: before villages the HTML5 tick was ≈ 5 ms against the 4 ms budget; wall-clock benchmarks on the dev machine swing 3× while bob builds run in parallel.
+Decision: (1) vegetation runs each land cell every 2 ticks (dt = 2; a cell reads its own values from the live field and its neighbours' from the prev buffer, which it publishes after its update); (2) biome classifies a rotating quarter of the cells per tick (dwell counted in ticks); (3) moisture swaps its buffers instead of copying, precomputes the static capacity factor per season, and skips inflow-tag tracking when no moisture tag existed last tick (count kept in `W.S.moist_tags`, so a reloaded world takes the same path); (4) hydrology visits land cells + river mouths only; (5) ice skips cells that cannot change. Cost is measured deterministically with `tools/opcount.lua` (VM instructions per system; browser ≈ 15 ns per instruction, calibrated on the 4.6 ms D-004 measurement).
+Consequences: 343k → 225k instructions/tick with villages and ships included (≈ 5.1 → 3.4 ms in the browser). Bands and scenarios unchanged within noise.
+
+## D-020 · 2026-09-27 · Village economy and demography
+Context: 02 §5.10 gives the shape; the numbers must give a population of 120–400 with occasional famines, not a famine every year.
+Decision: food in person-months (adult 1/month, child 0.6). Farms ≈ farmers × 0.45 level-4 cells (1 ring at level 3), crops planted in spring, grown monthly (temperature bell 8–32 °C, soil water, fertility; drought, frost and beached-oil losses, fire from the fire system, raids from fauna), harvested once from tick-of-year 32 (≤ farmers × 30 person-months). Hungry villages clear extra fields as far as labour allows; exhausted fields (fertility < 0.22) return to the wild when a fresher ring cell is free (shifting cultivation); standing crops count as ground cover against erosion. A granary holds 6 months of needs; the excess spoils at 8% a month. Births are regulated by the depth of the hungry gap (`fs_low`, a minimum of food security that recovers over a year: 0 below 0.5 months, full above 2.5) plus a capacity backstop (1.6 × the land/sea estimate). Famine starts below 1 month of food and ends only when the hungry gap has closed (`fs_low` > 2); migration counts months with `fs_low` < 1. Fishing: catch = min(Σ fish × q, fishers × 2.5/month), removed from the fish (overfishing emerges). Hunting and predator culls go through the fauna hooks. Wood burning + clearing are the villagers' CO₂ source (ledger "villagers"; tuned for ≈ +1.2…+1.5 °C by year 200).
+Consequences: S01 quick 3/3; full profile 5/10 (some worlds' populations dip under 120 or overshoot 400: the capacity estimate is the weak point, see PROGRESS).
+
+## D-021 · 2026-09-27 · Entity schema and rng keys for people
+Context: the renderer and inspector consume villages, people and ships; rolls must be local (05 §5).
+Decision: `W.ent.villages` (array, ids = indices, abandoned villages stay with alive = false, `ruin` while ruins stand), `W.ent.people` (id → person; the dead kept 30 years), `W.ent.ships` (tankers, stable ids), `W.ent.boats` (rebuilt monthly), `W.ent.volcanoes`, `W.static.lanes`, `W.S.ruins` (cell → tick). Schemas are documented in the headers of villages.lua, people.lua and ships.lua. A person's rng key = hash(village founding cell, birth tick, index among that tick's births); monthly rolls are frac(village-month base + u × φᵏ) with u = the person's fixed random fraction (a Weyl offset: one hash per village-month instead of one per person per roll).
+Consequences: an extra birth anywhere changes nobody else's fate; the village update costs ≈ 8k instructions/tick.
+
+## D-022 · 2026-09-27 · Worldgen settle inside the spin-up
+Context: 02 §2 requires villages, lanes and volcano sites, and a lived-in Year 0.
+Decision: `sim/worldgen/settle.lua` runs at spin-up year 15 (15 years before Year 0): cultures per landmass, 3–5 villages (fishing, inland, second continent first, then the best free sites ≥ 3 level-4 steps apart), 150–250 people as households, tanker lanes as closed ocean loops A (next to a coastal village) → far B → far C → A with 1–2 tankers each, 5–10 arc volcano sites on convergent boundaries + 1–3 hotspots (≥ 1 in the ocean). P10 checks the settle report on 20/20 seeds (villages may later die or move — that is turnover, not a worldgen failure).
+Consequences: spin-up costs ≈ +0.1 s; the settle report lives in `W.worldgen_report.settle` (not saved).
+
+## D-023 · 2026-09-27 · Level-independent wildfire magnitude; small biome threshold nudges
+Context: at level 3 wildfires (≥ 3 cells) never reached the 10-cell headline minimum, so P09 ran at ≈ 0.1 headlines/year; some worlds sat on knife edges of the desert/forest bands.
+Decision: wildfire magnitude is reported in level-4-equivalent cells (cells × sscale²). Biome thresholds: desert entry at soil and veg < 0.17 (was 0.15), forest entry/exit 0.45/0.36 (was 0.5/0.4). Fire spread 0.46 (was 0.42), lightning 1.7e-3 (was 1.5e-3), prey refuge 0.02.
+Consequences: headline rate 0.23–0.43/year on the S01 seeds; bands hold on the quick seeds.
+
+## D-024 · 2026-09-27 · Test profile changes for Stage 1.7
+Context: 07 §4 asks for P06 over 500 years; the quick profile must stay ≈ 3 minutes.
+Decision: P06 quick = 1 seed × 200 years (shared with S01), full = 2 seeds × 500 years. S01 is a baseline-only scenario sharing the cached baseline runs (tests/sim/support/baseline.lua). S04 targets `ocean_near:village:fishing` and adds "village food security ≤ 0.7× baseline within 2 years". The S03 chain check only counts events within one year of the fire.
+Consequences: quick `npm run test:sim` ≈ 40 s.

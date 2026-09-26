@@ -88,6 +88,28 @@ function metrics.compute(W)
   m.plankton = oa > 0 and pls / oa or 0
   m.oil = ot
   m.oil_cells = W.S.ocean and W.S.ocean.oil_n or 0
+  -- people and villages
+  local vs = W.ent.villages or {}
+  local pop, alive, fsum = 0, 0, 0
+  for i = 1, #vs do
+    local v = vs[i]
+    if v.alive then
+      alive = alive + 1
+      pop = pop + v.pop
+      fsum = fsum + v.food_security
+    end
+  end
+  m.population, m.villages = pop, alive
+  m.food_security = alive > 0 and fsum / alive or 0
+  local SV = W.S.villages
+  m.villages_founded = SV and SV.founded or 0
+  m.villages_abandoned = SV and SV.abandoned or 0
+  m.headlines = W.E.headline_count or 0
+  m.headline_rate = m.headlines / math.max(1, m.year)
+  local ships = W.ent.ships or {}
+  local t = 0
+  for i = 1, #ships do if ships[i].alive then t = t + 1 end end
+  m.tankers = t
   -- extension point: systems may add metrics
   for _, fn in ipairs(metrics.extra) do fn(W, m, area, tot, land) end
   return m
@@ -99,6 +121,8 @@ metrics.SERIES_COLS = { "year", "tick", "temp_mean", "precip_mean", "land_precip
   "ice_fraction", "g_temp", "co2", "aerosol", "sea_level", "forest_cover", "grassland", "desert",
   "tundra", "barren", "ice_sheet", "marsh", "grass_mean", "forest_mean", "fires_burning",
   "grazers", "predators", "grazers_c1", "predators_c1", "grazers_c2", "predators_c2",
-  "grazers_c3", "predators_c3", "fish", "plankton", "oil", "oil_cells" }
+  "grazers_c3", "predators_c3", "fish", "plankton", "oil", "oil_cells",
+  "population", "villages", "villages_founded", "villages_abandoned", "food_security", "headlines",
+  "headline_rate", "tankers" }
 
 return metrics

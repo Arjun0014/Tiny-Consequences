@@ -100,6 +100,14 @@ function sys.rebuild(W)
       local shift = cfg.band_shift[s + 1]
       local a = abs(g.lat[c] / rad - shift)
       t.cap[c] = prof(cfg.cap_profile, a)
+      -- static part of the capacity: k_cap × Hadley multiplier × orographic lift factor
+      local h = geo.ocean[c] == 1 and sea or elev[c]
+      local lift = h - t.eup[c]
+      if lift < 0 then lift = 0 end
+      local lf = 1 - cfg.k_oro * lift
+      if lf < 0.15 then lf = 0.15 end
+      t.capf = t.capf or {}
+      t.capf[c] = cfg.k_cap * t.cap[c] * lf
     end
   end
 end
@@ -115,51 +123,59 @@ function sys.update(W)
   local n, g = W.n, W.grid
   local nbr, cnt = g.nbr, g.nbr_count
   local F, C, I, P = W.F, W.C, W.I, W.P
-  fields.snapshot(W, "moisture")
-  local m, pm = F.moisture, P.moisture
+  -- swap buffers (every cell is rewritten below): pm = last tick, m = this tick
+  local pm, m = F.moisture, P.moisture
+  F.moisture, P.moisture = m, pm
   local precip, temp, sst, ice, soil = F.precip, F.temp, F.sst, F.ice, F.soil_water
   local grass, forest = F.grass, F.forest
   local cm, im = C.moisture, I.moisture
   local cp, ip = C.precip, I.precip
   local csst, csoil, ctemp = C.sst, C.soil_water, C.temp
-  local elev, sea = W.static.elev, W.G.sea_level
   local ocean = W.geo.ocean
   local season = math.floor((W.tick % 48) / 12)
   local t = W.wind[season + 1]
-  local wv, wself, eup, capm = t.w, t.self, t.eup, t.cap
+  local wv, wself, capf = t.w, t.self, t.capf
   local evl = W.scratch.evap_land
-  local k_eo, k_el, k_cap, k_oro = cfg.k_eo, cfg.k_el, cfg.k_cap, cfg.k_oro
+  local k_eo, k_el = cfg.k_eo, cfg.k_el
   local k_rain, k_drizzle = cfg.k_rain, cfg.k_drizzle
   local eps, hold = 0.002, 12
   local share = cfg.inflow_share
   local force = W.S.weather_force   -- sparse player/test forcing (Chapter 2), may be nil
+  -- inflow tags only need tracking when some cell carried a moisture tag last tick
+  -- (persistent count, so a reloaded world takes the same path)
+  local track = (W.S.moist_tags or 1) > 0
+  local ntags = 0
   for c = 1, n do
     local b = c * 6 - 6
     local k_n = cnt[c]
-    -- advection (+diffusion) from last tick; track the dominant tagged inflow
+    -- advection (+diffusion) from last tick
     local old = pm[c]
-    local inflow, tot_in, best_in, tag_in = 0, 0, 0, 0
+    local inflow = 0
     for k = 1, k_n do
-      local j = nbr[b + k]
-      local w = wv[b + k]
-      if w > 0 then
-        local contrib = w * pm[j]
-        inflow = inflow + contrib
-        local tj = cm[j]
-        if tj ~= 0 and contrib > best_in then best_in, tag_in = contrib, tj end
-      end
+      inflow = inflow + wv[b + k] * pm[nbr[b + k]]
     end
-    if tag_in ~= 0 and best_in < share * inflow then tag_in = 0 end
+    local tag_in = 0
+    if track then
+      local best_in = 0
+      for k = 1, k_n do
+        local j = nbr[b + k]
+        local tj = cm[j]
+        if tj ~= 0 then
+          local contrib = wv[b + k] * pm[j]
+          if contrib > best_in then best_in, tag_in = contrib, tj end
+        end
+      end
+      if tag_in ~= 0 and best_in < share * inflow then tag_in = 0 end
+    end
     local mv = wself[c] * old + inflow
     -- evaporation
-    local e, etag = 0, 0
+    local e, etag
     local tc = temp[c]
     if ocean[c] == 1 then
       local f = exp(0.07 * (sst[c] - 15))
       if f < 0.1 then f = 0.1 elseif f > 4 then f = 4 end
       e = k_eo * f * (1 - ice[c])
       etag = csst[c]
-      evl[c] = 0
     else
       local veg = grass[c] + forest[c]
       if veg > 1 then veg = 1 end
@@ -170,14 +186,8 @@ function sys.update(W)
       etag = csoil[c]
     end
     mv = mv + e
-    -- precipitation: excess over capacity rains out; orographic lift lowers capacity
-    local h = (ocean[c] == 1) and sea or elev[c]
-    local lift = h - eup[c]
-    if lift < 0 then lift = 0 end
-    local lf = 1 - k_oro * lift
-    if lf < 0.15 then lf = 0.15 end
-    local cap = k_cap * exp(0.06 * tc) * capm[c] * lf
-    local ex = mv - cap
+    -- precipitation: excess over capacity rains out (orographic lift is in capf)
+    local ex = mv - capf[c] * exp(0.06 * tc)
     local p = mv * k_drizzle
     if ex > 0 then p = p + ex * k_rain end
     local ptag = 0
@@ -199,6 +209,7 @@ function sys.update(W)
     if cur ~= 0 or tag_in ~= 0 or etag ~= 0 then
       local adv = inflow - (1 - wself[c]) * old
       blame.step(cm, im, c, mv - old, eps, hold, adv, tag_in, e, etag, -p, ptag, 0, 0)
+      if cm[c] ~= 0 then ntags = ntags + 1 end
     end
     local pc = cp[c]
     if ptag ~= 0 then
@@ -213,6 +224,7 @@ function sys.update(W)
       end
     end
   end
+  W.S.moist_tags = ntags
 end
 
 return sys

@@ -4,7 +4,7 @@
 local world = require("sim.world")
 local fields = require("sim.fields")
 local metrics = require("sim.metrics")
-local scen = require("tests.sim.scenarios.lib")
+local worlds = require("tests.sim.support.worlds")
 local cfgmod = require("sim.config")
 
 local B = {}
@@ -52,7 +52,7 @@ B.continents = continents
 function B.run(seed, years)
   local r = cache[seed]
   if not r then
-    local W = scen.fresh_world(seed)
+    local W = worlds.fresh(seed)
     local conts = continents(W)
     r = { W = W, seed = seed, years = 0, violations = {}, yearly = {}, conts = conts,
           g = {}, p = {}, fish = {} }
@@ -91,8 +91,8 @@ function B.run(seed, years)
     r.years = r.years + 1
     check_ranges(W, r.violations, 10)
     local m = metrics.compute(W)
-    r.yearly[r.years] = { forest = m.forest_cover, grass = m.grassland, desert = m.desert,
-      ice = m.ice_fraction, g_temp = m.g_temp, headlines = W.E.headline_count }
+    m.forest, m.grass, m.ice = m.forest_cover, m.grassland, m.ice_fraction
+    r.yearly[r.years] = m
   end
   return r
 end
