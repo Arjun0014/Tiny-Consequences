@@ -1,6 +1,6 @@
 -- Headless test runner: unit tests, property tests, scenario tests.
 -- Usage (from repo root): luajit tests/sim/run.lua [--full] [--chapter N] [--only PATTERN]
---                         [--unit] [--props] [--scenarios] [--seeds N]
+--                         [--unit] [--props] [--scenarios] [--seeds N] [--level L]
 package.path = "./?.lua;./?/init.lua;" .. package.path
 -- LuaJIT: the whole sim exceeds the default trace cache, which then flushes and re-records all
 -- the time (3–4× slower). Plain Lua 5.1 ignores this.
@@ -19,6 +19,7 @@ while arg and arg[i] do
   elseif a == "--props" then args.props = true
   elseif a == "--scenarios" then args.scenarios = true
   elseif a == "--seeds" then i = i + 1; args.seeds = tonumber(arg[i])
+  elseif a == "--level" then i = i + 1; args.level = tonumber(arg[i])
   elseif a == "--verbose" or a == "-v" then args.verbose = true
   end
   i = i + 1
@@ -27,6 +28,7 @@ if not (args.unit or args.props or args.scenarios) then
   args.unit, args.props, args.scenarios = true, true, true
 end
 T.args = args
+if args.level then require("sim.config").SIM_LEVEL = args.level end
 
 local groups = {}
 if args.unit then groups[#groups + 1] = { "unit", require("tests.sim.unit.index") } end

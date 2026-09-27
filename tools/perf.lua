@@ -15,8 +15,8 @@ local json = require("tools.json")
 local perf = {}
 
 perf.BASELINE = "tests/bench-baseline.json"
--- Fixed measurement world: seed 42, level 3, one year after spin-up, 192 ticks.
-perf.CONFIG = { seed = 42, level = 3, warm_years = 1, ticks = 192, step = 100 }
+-- Fixed measurement world: seed 42, level 12 (f12, D-047), one year after spin-up, 192 ticks.
+perf.CONFIG = { seed = 42, level = 12, warm_years = 1, ticks = 192, step = 100 }
 perf.LIMITS = { system = 0.30, total = 0.15, min_abs = 2000 }
 
 local function jit_off()

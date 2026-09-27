@@ -25,6 +25,23 @@ vec3 tc_light(vec3 albedo, vec3 N, vec3 up, vec3 V, vec3 L, float ambient_boost)
     return col;
 }
 
+// Same, with a sun shadow factor sh (1 lit, 0 shadowed): shadows remove the sun term and a
+// little of the ambient (contact occlusion), so they read clearly without going muddy.
+vec3 tc_light_sh(vec3 albedo, vec3 N, vec3 up, vec3 V, vec3 L, float ambient_boost, float sh)
+{
+    float ndl = dot(N, L);
+    float wrap = clamp((ndl + 0.35) / 1.35, 0.0, 1.0);
+    float w3 = wrap * 3.0;
+    float band = (floor(w3) + smoothstep(0.35, 0.65, fract(w3))) / 3.0;
+    float diff = mix(wrap, band, 0.2) * sh;
+    float hemi = clamp(0.5 + 0.5 * dot(N, up), 0.0, 1.0);
+    vec3 amb = mix(TC_GROUND_AMB, TC_SKY_AMB, hemi) * (0.48 + ambient_boost) * mix(0.82, 1.0, sh);
+    vec3 col = albedo * (amb + TC_SUN * diff * 0.82);
+    float rim = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.0);
+    col += rim * 0.10 * TC_HAZE;
+    return col;
+}
+
 // Close to the surface the limb haze would wash out far forests: scale it down with the eye's
 // distance from the planet centre (R = 10).
 float tc_haze_scale(vec3 eye)

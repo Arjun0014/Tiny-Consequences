@@ -1,0 +1,32 @@
+#version 140
+// River ribbons (renderer v2, D-048): planet-space mesh from game/view/rivers.lua.
+in highp vec4 position;
+in mediump vec3 normal;
+in highp vec4 color;    // x = distance along the river, y = across (-1..1), z = half width, w = width
+
+uniform vs_uniforms
+{
+    highp mat4 mtx_world;
+    highp mat4 mtx_view;
+    highp mat4 mtx_proj;
+    highp vec4 u_sh0;
+    highp vec4 u_sh1;
+    highp vec4 u_sh2;
+    highp vec4 u_shn;
+};
+
+out highp vec3 var_wpos;
+out mediump vec3 var_normal;
+out highp vec3 var_uvw;
+out highp vec3 var_sc;
+
+void main()
+{
+    vec4 wp = mtx_world * vec4(position.xyz, 1.0);
+    var_wpos = wp.xyz;
+    var_normal = normalize(mat3(mtx_world) * normal);
+    var_uvw = color.xyz;
+    highp vec3 sp = wp.xyz + var_normal * u_shn.x;
+    var_sc = vec3(dot(u_sh0, vec4(sp, 1.0)), dot(u_sh1, vec4(sp, 1.0)), dot(u_sh2, vec4(sp, 1.0)));
+    gl_Position = mtx_proj * mtx_view * wp;
+}

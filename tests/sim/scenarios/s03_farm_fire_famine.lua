@@ -9,6 +9,9 @@ return {
   chapter = 1,
   actions = {
     { year = 1.55, hook = "burn_farms", target = "village:inland", local_calendar = true },
+    -- a determined player burns the next harvest too: at 1,442 cells the inland village can
+    -- store more than a year of food, so one lost harvest only empties the granary (D-047)
+    { year = 2.55, hook = "burn_farms", target = "village:inland", local_calendar = true },
   },
   expect = {
     -- crop_failure then famine within a year, in one chain of ≥ 3 links from the fire

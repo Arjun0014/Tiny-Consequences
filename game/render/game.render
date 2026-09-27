@@ -1,1 +1,25 @@
 script: "/game/render/game.render_script"
+materials {
+  name: "shadow"
+  material: "/game/render/shadow.material"
+}
+materials {
+  name: "shadow_ws"
+  material: "/game/render/shadow_ws.material"
+}
+materials {
+  name: "shadow_cloud"
+  material: "/game/render/shadow_cloud.material"
+}
+materials {
+  name: "post_down"
+  material: "/game/render/post_down.material"
+}
+materials {
+  name: "post_blur"
+  material: "/game/render/post_blur.material"
+}
+materials {
+  name: "post_comp"
+  material: "/game/render/post_comp.material"
+}

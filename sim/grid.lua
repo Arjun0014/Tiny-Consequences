@@ -1,5 +1,8 @@
 -- Icosphere graph (02_WORLD_MODEL.md §2). Pure Lua 5.1.
 -- Cells are vertices of a subdivided icosahedron: level L has 10*4^L + 2 cells.
+-- Resolution codes >= 10 are geodesic frequencies instead (D-047): every icosahedron edge is
+-- split into f parts, giving 10*f^2 + 2 cells (12 -> 1,442, between level 3 = 642 and
+-- level 4 = 2,562).
 -- Planet axis is +Y (Defold is y-up): lat = asin(y), lon = atan2(z, x).
 --
 -- Returned grid (struct-of-arrays, 1-based):
@@ -13,6 +16,8 @@ local function normalize(x, y, z)
   local l = math.sqrt(x * x + y * y + z * z)
   return x / l, y / l, z / l
 end
+
+local subdivide
 
 local function build_icosphere(level)
   local phi = (1 + math.sqrt(5)) / 2
@@ -31,8 +36,12 @@ local function build_icosphere(level)
     4, 10, 5, 4, 5, 3, 4, 3, 7, 4, 7, 9, 4, 9, 10,
     5, 10, 6, 3, 5, 12, 7, 3, 11, 9, 7, 8, 10, 9, 2,
   }
-  local n = 12
-  for _ = 1, level do
+  return subdivide(12, X, Y, Z, F, level)
+end
+
+-- `levels` rounds of midpoint subdivision (each face -> 4, new points projected to the sphere).
+subdivide = function(n, X, Y, Z, F, levels)
+  for _ = 1, levels do
     local cache = {}
     local NF = {}
     local function mid(a, b)
@@ -61,10 +70,76 @@ local function build_icosphere(level)
   return n, X, Y, Z, F
 end
 
+-- Class-I geodesic subdivision with frequency f = m * 2^k (m odd): points on each flat
+-- icosahedron face at barycentric steps of 1/m, projected to the sphere, then k rounds of
+-- midpoint subdivision (keeps cell areas as even as the plain icosphere's). Shared edge/corner
+-- points are merged by their (corner, edge, step) identity, so the numbering is deterministic.
+local function build_geodesic(freq)
+  local f, levels = freq, 0
+  while f % 2 == 0 do f = f / 2; levels = levels + 1 end
+  local n, X, Y, Z, F0 = build_icosphere(0)
+  local F = {}
+  local ek = {}                  -- edge points: key "a:b:k" with a < b
+  local function point(a, b, c, i, j)
+    -- barycentric weights (1 - (i+j)/f, i/f, j/f) over corners a, b, c
+    local k0 = f - i - j
+    if i == 0 and j == 0 then return a end
+    if i == f then return b end
+    if j == f then return c end
+    local key
+    if j == 0 then
+      local lo, hi, t = a, b, i
+      if lo > hi then lo, hi, t = hi, lo, f - i end
+      key = lo * 1000000 + hi * 1000 + t
+    elseif i == 0 then
+      local lo, hi, t = a, c, j
+      if lo > hi then lo, hi, t = hi, lo, f - j end
+      key = lo * 1000000 + hi * 1000 + t
+    elseif k0 == 0 then
+      local lo, hi, t = b, c, j
+      if lo > hi then lo, hi, t = hi, lo, f - j end
+      key = lo * 1000000 + hi * 1000 + t
+    end
+    if key then
+      local v = ek[key]
+      if v then return v end
+    end
+    n = n + 1
+    local wa, wb, wc = k0 / f, i / f, j / f
+    X[n], Y[n], Z[n] = normalize(X[a] * wa + X[b] * wb + X[c] * wc, Y[a] * wa + Y[b] * wb + Y[c] * wc,
+      Z[a] * wa + Z[b] * wb + Z[c] * wc)
+    if key then ek[key] = n end
+    return n
+  end
+  local k = 0
+  for fi = 1, #F0, 3 do
+    local a, b, c = F0[fi], F0[fi + 1], F0[fi + 2]
+    local row = {}
+    for i = 0, f do
+      row[i] = {}
+      for j = 0, f - i do row[i][j] = point(a, b, c, i, j) end
+    end
+    for i = 0, f - 1 do
+      for j = 0, f - 1 - i do
+        F[k + 1], F[k + 2], F[k + 3] = row[i][j], row[i + 1][j], row[i][j + 1]
+        k = k + 3
+        if i + j <= f - 2 then
+          F[k + 1], F[k + 2], F[k + 3] = row[i + 1][j], row[i + 1][j + 1], row[i][j + 1]
+          k = k + 3
+        end
+      end
+    end
+  end
+  return subdivide(n, X, Y, Z, F, levels)
+end
+
 -- Build the grid. opts.neighbours (default true) sorts neighbours by angle (CCW from outside).
+-- level: icosphere level (0..8), or a geodesic frequency (>= 10, D-047).
 function grid.build(level, opts)
   opts = opts or {}
-  local n, X, Y, Z, F = build_icosphere(level)
+  local n, X, Y, Z, F
+  if level >= 10 then n, X, Y, Z, F = build_geodesic(level)
+  else n, X, Y, Z, F = build_icosphere(level) end
   local g = { level = level, n = n, X = X, Y = Y, Z = Z, faces = F, nfaces = #F / 3 }
   local lat, lon = {}, {}
   local asin, atan2 = math.asin, math.atan2

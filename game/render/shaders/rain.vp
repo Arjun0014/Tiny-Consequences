@@ -1,0 +1,35 @@
+#version 140
+// Rain and snow curtains under raining clouds (renderer v2, D-048): pooled world-space meshes.
+// Each streak/flake quad falls along the planet's radial direction and wraps from the cloud
+// base to the ground: offset = fract(time * speed + phase) * drop. color.x = phase (0..1),
+// color.y = 0 rain / 1 snow, color.z = vertex corner (0..3), color.w = side (for snow drift).
+in highp vec4 position;
+in highp vec4 color;
+
+uniform vs_uniforms
+{
+    highp mat4 view_proj;
+    highp vec4 u_anim;   // x = time
+};
+
+out mediump vec4 var_color;
+
+void main()
+{
+    highp vec3 wp = position.xyz;
+    vec3 up = normalize(wp);
+    float snow = color.y;
+    float speed = mix(1.7, 0.28, snow);
+    float drop = 0.5;
+    float f = fract(u_anim.x * speed + color.x);
+    wp -= up * f * drop;
+    if (snow > 0.5) {
+        vec3 side = normalize(cross(up, vec3(0.3, 1.0, 0.2)));
+        wp += side * sin(u_anim.x * 2.0 + color.x * 31.0) * 0.012;
+    }
+    // fade in under the cloud and out near the ground
+    float a = smoothstep(0.0, 0.12, f) * (1.0 - smoothstep(0.78, 1.0, f));
+    vec3 c = mix(vec3(0.72, 0.84, 0.98), vec3(1.0), snow);
+    var_color = vec4(c, a * mix(0.55, 0.9, snow));
+    gl_Position = view_proj * vec4(wp, 1.0);
+}

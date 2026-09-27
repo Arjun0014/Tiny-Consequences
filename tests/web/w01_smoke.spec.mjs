@@ -3,7 +3,8 @@ import { test, expect } from '@playwright/test';
 import { openGame, readTC, expectNoErrors } from './lib/game.mjs';
 import { decodePng, averageRgb } from './lib/png.mjs';
 
-const SKY_TOP = [0x2b, 0x6f, 0xc4];
+// top of the sky gradient after the post grade and vignette (renderer v2): #2B6FC4 darkened
+const SKY_TOP = [0x1c, 0x58, 0xa4];
 
 test('W01 smoke: ready within 20 s, canvas renders, no errors @ch1', async ({ page }, testInfo) => {
   const game = await openGame(page);

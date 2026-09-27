@@ -14,7 +14,7 @@ return {
     { band = "forest_nat", min = 0.20, max = 0.55, stat = "mean" },
     { vary = "forest_nat", min = 0.05 },
     { band = "grass_nat", min = 0.20, max = 0.50, stat = "mean" },
-    { band = "desert_nat", min = 0.05, max = 0.25, stat = "mean" },
+    { band = "desert_nat", min = 0.05, max = 0.30, stat = "mean" },   -- 0.25 until D-047 (1,442 cells resolve arid interiors)
     { band = "ice", min = 0.05, max = 0.20, stat = "mean" },
     { band = "g_temp", min = -1.5, max = 3.5, stat = "all" },
     { band = "g_temp", min = 0.0, max = 2.0, stat = "final" },

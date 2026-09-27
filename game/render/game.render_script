@@ -1,6 +1,12 @@
--- Tiny Consequences render script (Stage 1.8).
--- Passes: full-screen sky gradient -> planet (terrain + sea) -> props (chunks, movers) ->
--- atmosphere rim + clouds + effects (premultiplied blending, no depth write) -> GUI.
+-- Tiny Consequences render script (renderer v2, D-048).
+-- Passes:
+--   1. shadow: terrain, prop chunks and movers from the sun (orthographic) into an RGBA8 target
+--      (depth packed in RGB); clouds add their cover to A (soft cloud shadows).
+--   2. scene target (no MSAA in this engine version's render_target; FXAA in the composite): sky -> planet -> props -> movers -> atmosphere, clouds, fx.
+--      Opaque passes write the depth-of-field CoC into alpha; transparent passes leave alpha.
+--   3. post: scene -> half (box) -> quarter (box) -> gaussian H/V -> composite to the screen
+--      (tilt-shift DoF, bloom, grade, vignette).
+--   4. GUI on top, sharp.
 -- Camera matrices and shader inputs come from the shared module game.view.state
 -- (shared_state = 1), so there is no per-frame message traffic.
 local state = require("game.view.state")
@@ -13,6 +19,31 @@ local SKY_R, SKY_G, SKY_B = 95 / 255, 208 / 255, 240 / 255
 
 local IDENTITY = vmath.matrix4()
 
+local function color_rt(w, h, samples, with_depth)
+	local p = {
+		[graphics.BUFFER_TYPE_COLOR0_BIT] = {
+			format = graphics.TEXTURE_FORMAT_RGBA, width = w, height = h,
+			min_filter = graphics.TEXTURE_FILTER_LINEAR, mag_filter = graphics.TEXTURE_FILTER_LINEAR,
+			u_wrap = graphics.TEXTURE_WRAP_CLAMP_TO_EDGE, v_wrap = graphics.TEXTURE_WRAP_CLAMP_TO_EDGE,
+		},
+	}
+	if with_depth then
+		p[graphics.BUFFER_TYPE_DEPTH_BIT] = { format = graphics.TEXTURE_FORMAT_DEPTH, width = w, height = h }
+	end
+	return render.render_target(p)
+end
+
+local function shadow_rt(size)
+	return render.render_target({
+		[graphics.BUFFER_TYPE_COLOR0_BIT] = {
+			format = graphics.TEXTURE_FORMAT_RGBA, width = size, height = size,
+			min_filter = graphics.TEXTURE_FILTER_NEAREST, mag_filter = graphics.TEXTURE_FILTER_NEAREST,
+			u_wrap = graphics.TEXTURE_WRAP_CLAMP_TO_EDGE, v_wrap = graphics.TEXTURE_WRAP_CLAMP_TO_EDGE,
+		},
+		[graphics.BUFFER_TYPE_DEPTH_BIT] = { format = graphics.TEXTURE_FORMAT_DEPTH, width = size, height = size },
+	})
+end
+
 function init(self)
 	self.pred_sky = render.predicate({ "sky" })
 	self.pred_planet = render.predicate({ "planet" })
@@ -23,6 +54,7 @@ function init(self)
 	self.pred_fx = render.predicate({ "fx" })
 	self.pred_overlay = render.predicate({ "overlay" })
 	self.pred_particle = render.predicate({ "particle" })
+	self.pred_post = render.predicate({ "post" })
 	self.pred_gui = render.predicate({ "gui" })
 	self.pred_text = render.predicate({ "text" })
 	self.pred_debug_text = render.predicate({ "debug_text" })
@@ -32,13 +64,42 @@ function init(self)
 		[graphics.BUFFER_TYPE_DEPTH_BIT] = 1,
 		[graphics.BUFFER_TYPE_STENCIL_BIT] = 0,
 	}
+	self.shadow_clear = {
+		[graphics.BUFFER_TYPE_COLOR0_BIT] = vmath.vector4(1, 1, 1, 0),
+		[graphics.BUFFER_TYPE_DEPTH_BIT] = 1,
+	}
 	self.cb = render.constant_buffer()
+	self.pcb = render.constant_buffer()
+	self.pdir = vmath.vector4()
 	self.gui_view = vmath.matrix4()
 	self.world_opts = { frustum = nil, constants = self.cb }
 	-- movers in creation order (not depth-sorted) so same-buffer pool runs batch together
 	self.mover_opts = { frustum = nil, constants = self.cb, sort_order = render.SORT_NONE }
 	self.plain_opts = { constants = self.cb }
+	self.post_opts = { constants = self.pcb }
+	self.shadow_opts = { frustum = nil }
 	self.gui_opts = {}
+	self.rt_w, self.rt_h = 0, 0
+	self.shadow = shadow_rt(state.SHADOW_SIZE)
+end
+
+local function ensure_targets(self, w, h)
+	if self.rt_w == w and self.rt_h == h then return end
+	local hw, hh = math.max(1, math.floor(w / 2)), math.max(1, math.floor(h / 2))
+	local qw, qh = math.max(1, math.floor(w / 4)), math.max(1, math.floor(h / 4))
+	if not self.scene then
+		self.scene = color_rt(w, h, 1, true)
+		self.half = color_rt(hw, hh)
+		self.qa = color_rt(qw, qh)
+		self.qb = color_rt(qw, qh)
+	else
+		render.set_render_target_size(self.scene, w, h)
+		render.set_render_target_size(self.half, hw, hh)
+		render.set_render_target_size(self.qa, qw, qh)
+		render.set_render_target_size(self.qb, qw, qh)
+	end
+	self.rt_w, self.rt_h = w, h
+	self.hw, self.hh, self.qw, self.qh = hw, hh, qw, qh
 end
 
 local function refresh(self)
@@ -49,6 +110,53 @@ local function refresh(self)
 	state.window_w, state.window_h = self.ww, self.wh
 end
 
+local function shadow_pass(self)
+	local S = state.SHADOW_SIZE
+	render.set_render_target(self.shadow)
+	render.set_viewport(0, 0, S, S)
+	render.set_depth_mask(true)
+	render.set_color_mask(true, true, true, true)
+	render.clear(self.shadow_clear)
+	render.set_view(state.light_view)
+	render.set_projection(state.light_proj)
+	self.shadow_opts.frustum = state.light_proj * state.light_view
+	render.enable_state(graphics.STATE_DEPTH_TEST)
+	render.disable_state(graphics.STATE_BLEND)
+	render.disable_state(graphics.STATE_CULL_FACE)
+	render.enable_material("shadow")
+	render.draw(self.pred_planet, self.shadow_opts)
+	render.draw(self.pred_props, self.shadow_opts)
+	render.disable_material()
+	if state.shadow_movers then
+		render.enable_material("shadow_ws")
+		render.draw(self.pred_movers, self.shadow_opts)
+		render.disable_material()
+	end
+	-- clouds: cover into alpha only (max of overlapping puffs), no depth writes
+	render.set_depth_mask(false)
+	render.set_color_mask(false, false, false, true)
+	render.enable_state(graphics.STATE_BLEND)
+	render.set_blend_func(graphics.BLEND_FACTOR_ONE, graphics.BLEND_FACTOR_ONE)
+	render.enable_material("shadow_cloud")
+	render.draw(self.pred_cloud, self.shadow_opts)
+	render.disable_material()
+	render.set_color_mask(true, true, true, true)
+	render.disable_state(graphics.STATE_BLEND)
+	render.set_depth_mask(true)
+end
+
+local function post_quad(self, material, src, dst, w, h, dx, dy)
+	render.set_render_target(dst)
+	render.set_viewport(0, 0, w, h)
+	self.pdir.x, self.pdir.y, self.pdir.z, self.pdir.w = dx, dy, 0, 0
+	self.pcb.u_pdir = self.pdir
+	render.enable_texture("tex0", src, graphics.BUFFER_TYPE_COLOR0_BIT)
+	render.enable_material(material)
+	render.draw(self.pred_post, self.post_opts)
+	render.disable_material()
+	render.disable_texture("tex0")
+end
+
 function update(self)
 	if self.ww ~= render.get_window_width() or self.wh ~= render.get_window_height() then
 		refresh(self)
@@ -56,12 +164,10 @@ function update(self)
 	if self.ww <= 0 or self.wh <= 0 then
 		return
 	end
-	local aspect = self.ww / self.wh
-
-	render.set_depth_mask(true)
-	render.set_stencil_mask(0xff)
-	render.clear(self.clear_buffers)
-	render.set_viewport(0, 0, self.ww, self.wh)
+	local w, h = self.ww, self.wh
+	local aspect = w / h
+	local post = state.post_on and state.planet_on
+	if post then ensure_targets(self, w, h) end
 
 	-- shader inputs
 	local cb = self.cb
@@ -72,6 +178,26 @@ function update(self)
 	cb.u_anim = state.u_anim
 	cb.u_sky = state.u_sky
 	cb.u_atmo = state.u_atmo
+	cb.u_sh0 = state.u_sh0
+	cb.u_sh1 = state.u_sh1
+	cb.u_sh2 = state.u_sh2
+	cb.u_shn = state.u_shn
+	cb.u_focus = state.u_focus
+	local sp = state.u_shadowp
+	sp.w = (state.shadow_on and state.planet_on) and 1 or 0
+	cb.u_shadowp = sp
+
+	if state.planet_on and state.shadow_on then shadow_pass(self) end
+
+	-- scene
+	render.set_render_target(post and self.scene or render.RENDER_TARGET_DEFAULT)
+	render.set_depth_mask(true)
+	render.set_stencil_mask(0xff)
+	render.set_color_mask(true, true, true, true)
+	render.set_viewport(0, 0, w, h)
+	render.clear(self.clear_buffers)
+	-- without the post pass, alpha (the CoC) must not reach the canvas
+	if not post then render.set_color_mask(true, true, true, false) end
 
 	-- sky (vertices already in clip space)
 	render.set_view(IDENTITY)
@@ -89,6 +215,7 @@ function update(self)
 		render.set_projection(proj)
 		self.world_opts.frustum = proj * state.view
 
+		render.enable_texture("shadowtex", self.shadow, graphics.BUFFER_TYPE_COLOR0_BIT)
 		-- opaque world
 		render.enable_state(graphics.STATE_DEPTH_TEST)
 		render.set_depth_mask(true)
@@ -99,9 +226,11 @@ function update(self)
 		render.draw(self.pred_props, self.world_opts)
 		self.mover_opts.frustum = self.world_opts.frustum
 		render.draw(self.pred_movers, self.mover_opts)
+		render.disable_texture("shadowtex")
 
-		-- transparent: premultiplied alpha, depth-tested, no depth writes
+		-- transparent: premultiplied alpha, depth-tested, no depth writes; alpha keeps the CoC
 		render.set_depth_mask(false)
+		render.set_color_mask(true, true, true, false)
 		render.enable_state(graphics.STATE_BLEND)
 		render.set_blend_func(graphics.BLEND_FACTOR_ONE, graphics.BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
 		render.enable_state(graphics.STATE_CULL_FACE)
@@ -115,6 +244,36 @@ function update(self)
 		render.disable_state(graphics.STATE_DEPTH_TEST)
 		render.draw(self.pred_overlay, self.world_opts)
 		render.draw_debug3d()
+		render.set_color_mask(true, true, true, post)
+	end
+	render.set_color_mask(true, true, true, true)
+
+	-- post
+	if post then
+		render.disable_state(graphics.STATE_DEPTH_TEST)
+		render.disable_state(graphics.STATE_BLEND)
+		render.disable_state(graphics.STATE_CULL_FACE)
+		render.set_depth_mask(false)
+		render.set_view(IDENTITY)
+		render.set_projection(IDENTITY)
+		post_quad(self, "post_down", self.scene, self.half, self.hw, self.hh, 0.5 / w, 0.5 / h)
+		post_quad(self, "post_down", self.half, self.qa, self.qw, self.qh, 0.5 / self.hw, 0.5 / self.hh)
+		post_quad(self, "post_blur", self.qa, self.qb, self.qw, self.qh, 1 / self.qw, 0)
+		post_quad(self, "post_blur", self.qb, self.qa, self.qw, self.qh, 0, 1 / self.qh)
+		render.set_render_target(render.RENDER_TARGET_DEFAULT)
+		render.set_viewport(0, 0, w, h)
+		self.pdir.x, self.pdir.y, self.pdir.z, self.pdir.w = 1 / w, 1 / h, state.time, 1
+		self.pcb.u_pdir = self.pdir
+		self.pcb.u_post = state.u_post
+		render.enable_texture("tex0", self.scene, graphics.BUFFER_TYPE_COLOR0_BIT)
+		render.enable_texture("tex1", self.half, graphics.BUFFER_TYPE_COLOR0_BIT)
+		render.enable_texture("tex2", self.qa, graphics.BUFFER_TYPE_COLOR0_BIT)
+		render.enable_material("post_comp")
+		render.draw(self.pred_post, self.post_opts)
+		render.disable_material()
+		render.disable_texture("tex0")
+		render.disable_texture("tex1")
+		render.disable_texture("tex2")
 	end
 
 	-- GUI

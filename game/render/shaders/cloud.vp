@@ -12,11 +12,16 @@ uniform vs_uniforms
 out highp vec3 var_wpos;
 out mediump vec3 var_normal;
 out mediump float var_shade;
+out mediump vec3 var_tint;
 
 void main()
 {
     var_wpos = position.xyz;
     var_normal = normalize(normal);
     var_shade = floor(floor(color.y + 0.5) / 8.0) / 62.0 + 0.5;
+    float v = floor(color.x + 0.5);
+    float b = mod(v, 128.0);
+    v = floor(v / 128.0);
+    var_tint = vec3(floor(v / 128.0), mod(v, 128.0), b) / 127.0;
     gl_Position = view_proj * vec4(position.xyz, 1.0);
 }

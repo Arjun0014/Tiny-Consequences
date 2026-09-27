@@ -233,6 +233,45 @@ function M.update(dt)
   state.sun.x, state.sun.y, state.sun.z = lx, ly, lz
   state.u_cam.x, state.u_cam.y, state.u_cam.z = eye.x, eye.y, eye.z
   state.u_sun.x, state.u_sun.y, state.u_sun.z = lx, ly, lz
+  M.fit_shadow(tx, ty, tz, dist, lx, ly, lz, ux, uy, uz, z)
+  -- depth of field (tilt-shift): stronger the closer the camera gets to the surface
+  local near_k = smoothstep(0.3, 0.95, z)
+  state.u_focus.x = dist
+  state.u_focus.y = 0.5 + 1.5 * near_k
+  state.u_focus.z = 0.1 - 0.04 * near_k
+  state.u_focus.w = 0.12 + 0.88 * smoothstep(0.35, 0.85, z)
+end
+
+-- Sun shadow map frame (renderer v2, D-048): an orthographic sun view covering the whole planet
+-- when zoomed out, and the region around the look target when zoomed in (sharper shadows).
+local lv_eye, lv_tgt, lv_up = vmath.vector3(), vmath.vector3(), vmath.vector3()
+function M.fit_shadow(tx, ty, tz, dist, lx, ly, lz, ux, uy, uz, z)
+  local R = state.R
+  local t = smoothstep(0.28, 0.7, z)
+  local r = R * 1.12 + (max(1.6, dist * 0.95) - R * 1.12) * t
+  local cx, cy, cz = tx * t, ty * t, tz * t
+  -- snap the centre to whole shadow texels in the sun's frame (steadier edges while zooming)
+  local size = state.SHADOW_SIZE
+  local texel = 2 * r / size
+  local D = 40
+  lv_eye.x, lv_eye.y, lv_eye.z = cx + lx * D, cy + ly * D, cz + lz * D
+  lv_tgt.x, lv_tgt.y, lv_tgt.z = cx, cy, cz
+  lv_up.x, lv_up.y, lv_up.z = ux, uy, uz
+  local V = vmath.matrix4_look_at(lv_eye, lv_tgt, lv_up)
+  -- the world origin's position in the sun frame, kept on the texel lattice
+  local ox, oy = V.m03, V.m13
+  local fx = ox - texel * math.floor(ox / texel)
+  local fy = oy - texel * math.floor(oy / texel)
+  local P = vmath.matrix4_orthographic(-r - fx, r - fx, -r - fy, r - fy, D - 23, D + 23)
+  local PV = P * V
+  state.light_view, state.light_proj = V, P
+  local s0, s1, s2 = state.u_sh0, state.u_sh1, state.u_sh2
+  s0.x, s0.y, s0.z, s0.w = 0.5 * PV.m00, 0.5 * PV.m01, 0.5 * PV.m02, 0.5 * PV.m03 + 0.5
+  s1.x, s1.y, s1.z, s1.w = 0.5 * PV.m10, 0.5 * PV.m11, 0.5 * PV.m12, 0.5 * PV.m13 + 0.5
+  s2.x, s2.y, s2.z, s2.w = 0.5 * PV.m20, 0.5 * PV.m21, 0.5 * PV.m22, 0.5 * PV.m23 + 0.5
+  state.u_shn.x = texel * 1.5
+  state.u_shadowp.x = 1 / size
+  state.u_shadowp.y = texel * 1.2 / 46
 end
 
 -- Screen <-> world ---------------------------------------------------------------------------

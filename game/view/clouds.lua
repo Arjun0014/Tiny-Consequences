@@ -2,6 +2,8 @@
 -- (the engine batches them). Clouds live over moist cells, drift with the zonal winds of
 -- sim/config.lua MOIST.zonal, and shrink away when the air under them dries out; new ones
 -- grow over the wettest cells. Total cloud area stays below MAX_COVER of the planet surface.
+-- Renderer v2 (D-048): clouds over cells where the sim is raining trail a rain curtain (snow
+-- where it is freezing), and heavy rain turns them into grey storm clouds.
 local propgen = require("game.view.propgen")
 local state = require("game.view.state")
 local grid = require("sim.grid")
@@ -42,10 +44,61 @@ local function rnd()
   return seed_h / 2147483647
 end
 
+M.RAIN_MIN = 0.05       -- precipitation (sim units per tick) for a visible rain curtain
+M.STORM_MIN = 0.12      -- ... for a grey storm cloud
+M.rains = {}
+
+-- Rain/snow curtain: crossed quads (rain streaks) or small flakes in a disc under the cloud.
+local function rain_buffer(snow)
+  local n = 90
+  local nv = n * 12
+  local buf = buffer.create(nv, {
+    { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+    { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+    { name = H_COL, type = buffer.VALUE_TYPE_FLOAT32, count = 4 },
+  })
+  local pos, nrm, col = buffer.get_stream(buf, H_POS), buffer.get_stream(buf, H_NRM), buffer.get_stream(buf, H_COL)
+  local h = 17
+  local function u() h = (h * 48271) % 2147483647; return h / 2147483647 end
+  local len = snow and 0.012 or 0.07
+  local wid = snow and 0.012 or 0.0035
+  local v = 0
+  for i = 1, n do
+    local a, r = u() * 6.283, math.sqrt(u()) * 0.45
+    local x, z = math.cos(a) * r, math.sin(a) * r
+    local ph = u()
+    for q = 0, 1 do
+      local dx, dz = (q == 0) and wid or 0, (q == 0) and 0 or wid
+      local corners = { { x - dx, 0, z - dz }, { x + dx, 0, z + dz }, { x + dx, len, z + dz }, { x - dx, len, z - dz } }
+      local order = { 1, 2, 3, 1, 3, 4 }
+      for k = 1, 6 do
+        local c = corners[order[k]]
+        local p, cc = v * 3, v * 4
+        pos[p + 1], pos[p + 2], pos[p + 3] = c[1], c[2] - len, c[3]
+        nrm[p + 1], nrm[p + 2], nrm[p + 3] = 0, 1, 0
+        col[cc + 1], col[cc + 2], col[cc + 3], col[cc + 4] = ph, snow and 1 or 0, order[k] - 1, q
+        v = v + 1
+      end
+    end
+  end
+  return buf
+end
+
 --- Creates the pool and the shared cloud geometry.
-function M.init(W, factory_url)
+function M.init(W, factory_url, rain_factory)
   M.W = W
   seed_h = ((W.seed or 1) * 7919) % 2147483646 + 1
+  if #M.rains == 0 and rain_factory then
+    M.rain_res = resource.create_buffer("/tc/rain.bufferc", { buffer = rain_buffer(false) })
+    M.snow_res = resource.create_buffer("/tc/snow.bufferc", { buffer = rain_buffer(true) })
+    for i = 1, M.COUNT do
+      local id = factory.create(rain_factory, vmath.vector3(0, 0, 0), nil, nil, vmath.vector3(0.001))
+      local url = msg.url(nil, id, "mesh")
+      go.set(url, "vertices", M.rain_res)
+      msg.post(url, MSG_DISABLE)
+      M.rains[i] = { id = id, url = url, on = false, snow = false }
+    end
+  end
   if #M.clouds == 0 then
     local t = propgen.mover_template("cloud")
     local buf = buffer.create(t.nv, {
@@ -55,6 +108,14 @@ function M.init(W, factory_url)
     })
     propgen.write_template(t, buffer.get_stream(buf, H_POS), buffer.get_stream(buf, H_NRM),
       buffer.get_stream(buf, H_COL), { 1, 1, 1 }, nil, 1)
+    local sbuf = buffer.create(t.nv, {
+      { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+      { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+      { name = H_COL, type = buffer.VALUE_TYPE_FLOAT32, count = 2 },
+    })
+    propgen.write_template(t, buffer.get_stream(sbuf, H_POS), buffer.get_stream(sbuf, H_NRM),
+      buffer.get_stream(sbuf, H_COL), { 0.6, 0.64, 0.7 }, nil, 1)
+    M.storm_res = resource.create_buffer("/tc/storm_cloud.bufferc", { buffer = sbuf })
     for i = 1, M.COUNT do
       local id = factory.create(factory_url, vmath.vector3(0, 0, 0), nil, nil, vmath.vector3(0.001))
       M.clouds[i] = { id = id, url = msg.url(nil, id, "mesh"), lat = 0, lon = 0, s = 0, target = 0,
@@ -62,6 +123,7 @@ function M.init(W, factory_url)
       if i == 1 then
         local res = go.get(msg.url(nil, id, "mesh"), "vertices")
         resource.set_buffer(res, buf)
+        M.cloud_res = res
       end
     end
   end
@@ -210,11 +272,35 @@ function M.update(W, dt, frozen)
         go.set_position(pos, c.id)
         go.set_rotation(rot, c.id)
         go.set_scale(scl, c.id)
+        -- weather under the cloud, from the sim cell it is over
+        local rn = M.rains[i]
+        if rn then
+          local pr = c.cell and W.F.precip[c.cell] or 0
+          local raining = pr > M.RAIN_MIN and c.s > 0.5
+          local storm = pr > M.STORM_MIN
+          if storm ~= (c.storm or false) and M.storm_res then
+            c.storm = storm
+            go.set(c.url, "vertices", storm and M.storm_res or M.cloud_res)
+          end
+          if raining then
+            local snow = W.F.temp[c.cell] < 0
+            if snow ~= rn.snow then rn.snow = snow; go.set(rn.url, "vertices", snow and M.snow_res or M.rain_res) end
+            scl.x, scl.y, scl.z = sz, 1, sz
+            local r2 = R + M.ALT - 0.02 * sz
+            pos.x, pos.y, pos.z = x * r2, y * r2, z * r2
+            go.set_position(pos, rn.id)
+            go.set_rotation(rot, rn.id)
+            go.set_scale(scl, rn.id)
+          end
+          if raining ~= rn.on then rn.on = raining; msg.post(rn.url, raining and MSG_ENABLE or MSG_DISABLE) end
+        end
       end
     end
     if show ~= c.shown then
       c.shown = show
       msg.post(c.url, show and MSG_ENABLE or MSG_DISABLE)
+      local rn = M.rains[i]
+      if not show and rn and rn.on then rn.on = false; msg.post(rn.url, MSG_DISABLE) end
     end
   end
   M.stats.active = active

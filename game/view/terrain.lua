@@ -1,7 +1,7 @@
--- Terrain + sea surface mesh and the sim-cell data texture (Stage 1.8).
+-- Terrain + sea surface mesh and the sim-cell data texture (Stage 1.8; renderer v2 D-048).
 --
 -- The mesh (render icosphere, non-indexed) is static: rebuilt only when the coastline or
--- sea level changes. Colours live in a small RGBA texture with 2 texels per sim cell
+-- sea level changes. Colours live in a small RGBA texture with 4 texels per sim cell
 -- (game/view/cellcolor.lua) that the vertex shader blends; recolouring is O(sim cells),
 -- amortised over a few frames and at most MAX_RATE times per second, and only texels whose
 -- bytes changed are rewritten before one texture upload.
@@ -13,6 +13,8 @@ local M = {}
 M.TW = 64            -- texture width in cells
 M.MAX_RATE = 4       -- colour refreshes per second (max)
 M.CELLS_PER_FRAME = 200
+M.BUDGET_MS = 1.2    -- per-frame time budget for a recolour pass (checked every 16 cells)
+local clock = require("game.platform.clock")
 
 local H_POS, H_NRM, H_CA, H_CC, H_VI = hash("position"), hash("normal"), hash("cella"), hash("cellc"), hash("vinfo")
 local H_RGBA = hash("rgba")
@@ -21,10 +23,13 @@ local MESH_URL = "/terrain#mesh"
 local gen = 0
 M.stats = { recolours = 0, texels_changed = 0, last_ms = 0 }
 
+local ROWS = 4        -- texels per cell (stacked vertically)
+M.ROWS = ROWS
+
 local function cell_uv(c, th)
   local i = c - 1
   local x = i % M.TW
-  local y = math.floor(i / M.TW) * 2
+  local y = math.floor(i / M.TW) * ROWS
   return (x + 0.5) / M.TW, (y + 0.5) / th
 end
 
@@ -43,7 +48,7 @@ function M.build(PL, W, step)
   })
   local pos, nrm = buffer.get_stream(buf, H_POS), buffer.get_stream(buf, H_NRM)
   local sca, scc, svi = buffer.get_stream(buf, H_CA), buffer.get_stream(buf, H_CC), buffer.get_stream(buf, H_VI)
-  local th = 2 * math.ceil(W.n / M.TW)
+  local th = ROWS * math.ceil(W.n / M.TW)
   M.TH = th
   -- per sim cell uv
   local cu, cv = {}, {}
@@ -88,6 +93,8 @@ function M.build(PL, W, step)
     go.set(MESH_URL, "texture0", M.tex)
   end
   state.u_tex.x = 1 / th
+  state.u_tex.y = M.TW
+  state.u_tex.z = th
   M.bytes = {}
   M.W = W
   M.pass_cell = 0
@@ -98,25 +105,26 @@ function M.build(PL, W, step)
   return nverts
 end
 
--- Writes cell c's 8 bytes into the texture stream if they changed. Returns true if changed.
-local tmp = { 0, 0, 0, 0, 0, 0, 0, 0 }
+-- Writes cell c's 16 bytes into the texture stream if they changed. Returns true if changed.
+local tmp = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 local function update_cell(W, c)
   cellcolor.cell(W, c, tmp, 0)
   local bytes = M.bytes
-  local base = c * 8 - 8
+  local base = c * 16 - 16
   local changed = false
-  for k = 1, 8 do
+  for k = 1, 16 do
     if bytes[base + k] ~= tmp[k] then changed = true; bytes[base + k] = tmp[k] end
   end
   if changed then
     local i = c - 1
     local x = i % M.TW
-    local y = math.floor(i / M.TW) * 2
-    local sa = (y * M.TW + x) * 4
-    local sb = ((y + 1) * M.TW + x) * 4
+    local y = math.floor(i / M.TW) * ROWS
     local st = M.texstream
-    st[sa + 1], st[sa + 2], st[sa + 3], st[sa + 4] = tmp[1], tmp[2], tmp[3], tmp[4]
-    st[sb + 1], st[sb + 2], st[sb + 3], st[sb + 4] = tmp[5], tmp[6], tmp[7], tmp[8]
+    for r = 0, ROWS - 1 do
+      local s0 = ((y + r) * M.TW + x) * 4
+      local t0 = r * 4
+      st[s0 + 1], st[s0 + 2], st[s0 + 3], st[s0 + 4] = tmp[t0 + 1], tmp[t0 + 2], tmp[t0 + 3], tmp[t0 + 4]
+    end
   end
   return changed
 end
@@ -144,8 +152,10 @@ function M.update(W, dt)
     M.pass_changed = 0
   end
   local last = math.min(W.n, M.pass_cell + M.CELLS_PER_FRAME - 1)
+  local t0 = clock.now_ms()
   for c = M.pass_cell, last do
     if update_cell(W, c) then M.pass_dirty = true; M.pass_changed = M.pass_changed + 1 end
+    if c % 16 == 0 and c < last and clock.now_ms() - t0 > M.BUDGET_MS then last = c; break end
   end
   if last >= W.n then
     M.pass_cell = 0

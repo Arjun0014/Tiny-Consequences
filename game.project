@@ -41,7 +41,7 @@ max_input_stack_entries = 32
 max_count = 1024
 
 [mesh]
-max_count = 512
+max_count = 1024
 
 [factory]
 max_count = 64

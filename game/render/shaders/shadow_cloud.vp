@@ -1,0 +1,16 @@
+#version 140
+in highp vec4 position;
+in mediump vec3 normal;
+
+uniform vs_uniforms
+{
+    highp mat4 view_proj;
+};
+
+out mediump vec3 var_normal;
+
+void main()
+{
+    var_normal = normal;
+    gl_Position = view_proj * vec4(position.xyz, 1.0);
+}

@@ -51,7 +51,8 @@ function M.oil_advects_conservatively_and_carries_its_tag()
   world.tick(W)               -- applies the spill, then one transport step
   local root = last_of(W, "test_oil").id
   local before = total_oil(W)
-  T.near(before, 2 * dec, 1e-9, "first step: mass x decay")
+  -- spill amounts are level-4-equivalent cells of cover (D-047): cell units = amount / sscale²
+  T.near(before, 2 / (W.sscale * W.sscale) * dec, 1e-3, "first step: mass x decay")
   ocean_sys.update(W)
   local after = total_oil(W)
   -- offshore (no beaching): mass x decay, minus traces below oil_min at the fringe

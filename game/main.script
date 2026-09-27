@@ -33,6 +33,7 @@ local URLS = {
 	deer_factory = "/main#deer_factory",
 	wolf_factory = "/main#wolf_factory",
 	flame_factory = "/main#flame_factory",
+	rain_factory = "/main#rain_factory",
 	smoke_factory = "/main#smoke_factory",
 	person_factory = "/main#person_factory",
 	tanker_factory = "/main#tanker_factory",
@@ -153,6 +154,12 @@ function init(self)
 		if not ok then print("[tc] ignoring ?speed=: " .. tostring(err)) end
 	end
 	if query.flag("freeze") then view.set_frozen(true) end
+	-- gfx=low: no shadow map and no post pipeline (functional browser tests: headless Chromium
+	-- rasterises on the CPU, where the full pipeline costs seconds per frame)
+	if query.get().gfx == "low" then
+		state.shadow_on = false
+		state.post_on = false
+	end
 
 	self.start_loading = start_loading
 	-- W08 performance accumulators (per-tick ms ring, per-frame sim/view ms)

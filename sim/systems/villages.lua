@@ -59,6 +59,7 @@ local function radius(W, steps)
   if r < 1 then r = 1 end
   return r
 end
+sys.radius = radius   -- level-4 steps -> steps on this grid (>= 1)
 
 -- Cells within r steps of c (BFS), ordered by distance then index. filter(j) optional.
 local function rings(W, c, r)
@@ -913,6 +914,16 @@ local function month(W, v, pop_total)
   if F.fire[v.cell] > 0 then
     exposure = { kind = "fire", p = 0.01 * F.fire[v.cell], tag = C.fire[v.cell] }
     v.houses = floor(v.houses * 0.7)
+    -- the granary burns with the houses: stores lost to the fire, whose tag becomes the cause
+    local burnt = v.food * min(cfg.granary_burn_max, cfg.granary_burn * F.fire[v.cell])
+    if burnt > 0 then
+      v.food = v.food - burnt
+      local tg = C.fire[v.cell]
+      if tg ~= 0 and tg ~= v.cause and not blame.descends(W.E.parent, v.cause, tg) then
+        v.cause = tg
+        v.plenty = 0
+      end
+    end
   elseif W.D.flood_last and tick - W.D.flood_last[v.cell] < 4 then
     exposure = { kind = "flood", p = 0.004, tag = C.flow[v.cell] }
     local h0 = v.houses

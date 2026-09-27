@@ -254,8 +254,10 @@ function settle.run(W)
   -- 1. the fishing village, 2. the inland farming village, 3. one on another continent
   add(best_site(W, function(c) return coast[c] == 1 and cont_ok(c) and has_fish(W, c) end)
     or best_site(W, function(c) return coast[c] == 1 and has_fish(W, c) end))
-  add(best_site(W, function(c) return cdist[c] >= 2 and cont_ok(c) end)
-    or best_site(W, function(c) return cdist[c] >= 2 end))
+  -- inland: no sea within the fishing radius (grid steps depend on the resolution, D-047)
+  local inland_d = villages.radius(W, vcfg.ring) + 1
+  add(best_site(W, function(c) return cdist[c] >= inland_d and cont_ok(c) end)
+    or best_site(W, function(c) return cdist[c] >= inland_d end))
   local conts = {}
   for i = 1, #sites do conts[geo.continent[sites[i]]] = true end
   local nconts = 0
@@ -336,7 +338,7 @@ function settle.run(W)
     local v = W.ent.villages[i]
     rep.people = rep.people + v.pop
     if #v.fishing > 0 then rep.fishing = true end
-    if cdist[v.cell] >= 2 then rep.inland = true end
+    if #v.fishing == 0 then rep.inland = true end
     if cont_ok(v.cell) then vc[geo.continent[v.cell]] = true end
   end
   for _ in pairs(vc) do rep.continents = rep.continents + 1 end

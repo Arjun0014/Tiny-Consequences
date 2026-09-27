@@ -7,6 +7,7 @@ out vec4 out_color;
 uniform fs_uniforms
 {
     highp vec4 u_sky;   // x = time, y = aspect (w/h)
+    highp vec4 u_focus; // w = CoC of the sky (depth of field)
 };
 
 const vec3 TOP = vec3(0.169, 0.435, 0.769);
@@ -41,5 +42,5 @@ void main()
             + streak(r * vec2(2.0, 1.0), 5.0, 0.05, 0.03, 4.7, t) * 0.16;
     w *= smoothstep(0.0, 0.3, y) * (1.0 - smoothstep(0.9, 1.0, y) * 0.5);
     col = mix(col, vec3(1.0), w);
-    out_color = vec4(col, 1.0);
+    out_color = vec4(col, u_focus.w);
 }

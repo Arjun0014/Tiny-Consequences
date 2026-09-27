@@ -1,33 +1,105 @@
 #version 140
-// Batched static props (chunk meshes baked in planet space, local vertex space).
-#include "/game/render/shaders/unpack.glsl"
+// Batched static props (chunk meshes baked in planet space, local vertex space), renderer v2.
+// Each vertex knows its sim cell and material class (propgen.lua), so the props follow the
+// living world without rebuilding: deciduous crowns turn gold and red in autumn, go bare in
+// winter and blossom in spring (by the local season: the south is half a year off), grass and
+// flowers brown in droughts and cold, snow settles on roofs, conifers and rocks, fires glow.
 
 in highp vec4 position;
 in mediump vec3 normal;
-in highp vec2 color;
+in highp vec4 color;   // x packed rgb, y shade*8+sway, z sim cell id, w material class
+
+uniform highp sampler2D celltex;
 
 uniform vs_uniforms
 {
     highp mat4 mtx_world;
     highp mat4 mtx_view;
     highp mat4 mtx_proj;
-    highp vec4 u_anim;   // x = time, y = sway strength
+    highp vec4 u_anim;   // x = time, y = sway strength, z = tick of year (0..48), w = seasons on
+    highp vec4 u_tex;    // x = 1 / texture height, y = texture width (cells), z = texture height
+    highp vec4 u_sh0;
+    highp vec4 u_sh1;
+    highp vec4 u_sh2;
+    highp vec4 u_shn;
 };
 
 out highp vec3 var_wpos;
 out mediump vec3 var_normal;
 out mediump vec3 var_color;
+out highp vec3 var_sc;
+out mediump vec3 var_mat;   // x = snow cover for this surface, y = fire, z = class
 
 void main()
 {
-    vec4 c = tc_unpack(color);
+    // unpack colour, shade (AO) and sway
+    float v = floor(color.x + 0.5);
+    float b = mod(v, 128.0);
+    v = floor(v / 128.0);
+    float g = mod(v, 128.0);
+    float r = floor(v / 128.0);
+    vec3 col = vec3(r, g, b) / 127.0;
+    float s = floor(color.y + 0.5);
+    float sway = mod(s, 8.0) / 7.0;
+    float shade = floor(s / 8.0) / 62.0 + 0.5;
+    float cls = floor(color.w + 0.5);
+
     vec4 wp = mtx_world * vec4(position.xyz, 1.0);
     vec3 up = normalize(wp.xyz);
     vec3 east = normalize(cross(vec3(0.0, 1.0, 0.0), up) + vec3(0.0001, 0.0, 0.0));
     float ph = dot(wp.xyz, vec3(3.1, 1.7, 2.3));
-    wp.xyz += east * sin(u_anim.x * 1.7 + ph) * 0.007 * c.w * u_anim.y;
+    wp.xyz += east * (sin(u_anim.x * 1.7 + ph) + 0.4 * sin(u_anim.x * 3.1 + ph * 1.7)) * 0.006 * sway * u_anim.y;
+
+    float snow = 0.0;
+    float fire = 0.0;
+    if (color.z > 0.5 && u_anim.w > 0.5) {
+        float id = floor(color.z + 0.5) - 1.0;
+        float tx = mod(id, u_tex.y);
+        float ty = floor(id / u_tex.y) * 4.0;
+        vec2 uv = vec2((tx + 0.5) / u_tex.y, (ty + 0.5) * u_tex.x);
+        vec4 A = textureLod(celltex, uv, 0.0);
+        vec4 B = textureLod(celltex, uv + vec2(0.0, u_tex.x), 0.0);
+        vec4 D = textureLod(celltex, uv + vec2(0.0, 3.0 * u_tex.x), 0.0);
+        float temp = D.r * 70.0 - 30.0;
+        snow = smoothstep(0.2, 0.65, A.a);
+        fire = B.r;
+        float toy = mod(u_anim.z + (wp.y < 0.0 ? 24.0 : 0.0), 48.0);
+        // no seasons in the tropics: the colour year fades out toward the equator
+        float seasonal = smoothstep(0.18, 0.42, abs(up.y));
+        float hv = fract(sin(dot(floor(position.xyz * 23.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+        if (cls == 1.0) {
+            // deciduous foliage through the year
+            float autumn = smoothstep(23.0, 29.0, toy) * (1.0 - smoothstep(41.0, 45.0, toy));
+            autumn *= 1.0 - smoothstep(9.0, 20.0, temp);
+            vec3 aut = mix(vec3(0.95, 0.63, 0.16), vec3(0.86, 0.32, 0.13), hv);
+            aut = mix(aut, vec3(0.97, 0.82, 0.26), step(0.72, hv));
+            autumn *= seasonal;
+            col = mix(col, aut, autumn * 0.92);
+            float winter = clamp(smoothstep(35.0, 39.0, toy) + 1.0 - smoothstep(1.0, 5.0, toy), 0.0, 1.0);
+            winter *= (1.0 - smoothstep(2.0, 9.0, temp)) * seasonal;
+            col = mix(col, vec3(0.50, 0.42, 0.36), winter * 0.85);
+            float spring = smoothstep(2.0, 5.0, toy) * (1.0 - smoothstep(9.0, 13.0, toy)) * seasonal;
+            col = mix(col, vec3(0.99, 0.88, 0.92), spring * step(0.84, hv) * smoothstep(3.0, 9.0, temp) * 0.85);
+            col = mix(col, col * vec3(1.06, 1.14, 0.82), spring * 0.45);
+            snow *= 0.45;
+        } else if (cls == 4.0) {
+            // the snow caps of snowy conifers only show when there is snow
+            col = mix(vec3(0.19, 0.42, 0.28), col, snow);
+            snow = 0.0;
+        } else if (cls == 7.0) {
+            float brown = max(B.b, 1.0 - smoothstep(-1.0, 7.0, temp));
+            col = mix(col, vec3(0.76, 0.66, 0.40), brown * 0.75);
+            snow = smoothstep(0.1, 0.4, A.a);
+        } else if (cls == 3.0) {
+            col = mix(col, vec3(0.72, 0.66, 0.36), B.b * 0.6);
+            snow *= 0.5;
+        }
+    }
+    var_mat = vec3(snow, fire, cls);
     var_wpos = wp.xyz;
     var_normal = normalize(mat3(mtx_world) * normal);
-    var_color = c.rgb;
+    var_color = col * shade;
+    highp vec3 sp = wp.xyz + var_normal * u_shn.x;
+    var_sc = vec3(dot(u_sh0, vec4(sp, 1.0)), dot(u_sh1, vec4(sp, 1.0)), dot(u_sh2, vec4(sp, 1.0)));
     gl_Position = mtx_proj * mtx_view * wp;
 }

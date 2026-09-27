@@ -71,6 +71,15 @@ function M.register(G)
     return { from = G.W.tick, to = G.ff.target }
   end)
 
+  -- renderer toggles (debugging / quality): shadow, post, near (near-LOD props), movers
+  bridge.register("gfx", function(args)
+    if args.shadow ~= nil then state.shadow_on = args.shadow and true or false end
+    if args.post ~= nil then state.post_on = args.post and true or false end
+    if args.near ~= nil then require("game.view.props").NEAR_ZOOM = args.near and 0.45 or 99 end
+    if args.shadow_size then state.SHADOW_SIZE = args.shadow_size end
+    if args.movers ~= nil then require("game.view.puppets").MIN_ZOOM = args.movers and 0.55 or 99 end
+    return { shadow = state.shadow_on, post = state.post_on }
+  end)
   bridge.register("freeze_visuals", function(args)
     view.set_frozen(args.on ~= false)
     return { frozen = state.frozen }

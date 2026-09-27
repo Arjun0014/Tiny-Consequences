@@ -5,7 +5,7 @@
 local C = {}
 
 -- Grid --------------------------------------------------------------------------------------
-C.SIM_LEVEL = 3            -- icosphere level: 4 = 2,562 cells (target), 3 = 642 (fallback); D-004
+C.SIM_LEVEL = 12           -- grid: icosphere level (3 = 642, 4 = 2,562 cells) or geodesic frequency >= 10 (12 = 1,442 cells); D-004, D-030, D-047
 
 -- Time --------------------------------------------------------------------------------------
 C.TICKS_PER_YEAR = 48
@@ -55,7 +55,7 @@ C.MOIST = {
   zonal = { { 0, -1 }, { 15, -0.9 }, { 30, 0 }, { 45, 1 }, { 60, 0 }, { 75, -0.6 }, { 90, 0 } },
   merid = { { 0, 0 }, { 10, -0.35 }, { 25, -0.2 }, { 30, 0 }, { 45, 0.25 }, { 60, 0 }, { 75, -0.25 }, { 90, 0 } },
   wind_speed = 0.8, courant_max = 0.85,   -- advection fraction per tick per unit wind
-  diffusion = 0.04,
+  diffusion = 0.06,                       -- at level-4 spacing (/sscale²); 0.04 at level 3 (finer grids have less numerical diffusion, D-047)
   k_eo = 0.08,                            -- ocean evaporation per tick at sst 15 °C
   k_el = 0.06,                            -- land evapotranspiration scale
   k_cap = 1.0,                            -- capacity at 0 °C (x exp(0.06 T))
@@ -133,7 +133,7 @@ C.FIRE = {
   rain_extinguish = 4,                    -- intensity loss per unit precip
   k_co2 = 0.4,                            -- ppm per unit biomass burned
   k_heat = 3,                             -- heat_anom °C per unit intensity per tick
-  wildfire_cells = 10, ash_fertility = 0.15,
+  wildfire_cells = 8, ash_fertility = 0.15,          -- wildfire: level-4-equivalent cells burning (8 since D-047)
 }
 
 -- Biomes (§5.15): entry / exit thresholds (hysteresis) and dwell ------------------------------------------
@@ -226,6 +226,7 @@ C.FAUNA = {
 C.VILLAGE = {
   ring = 2, near = 3,                     -- farm/fishing radius and "affects the village" radius, level-4 steps
   k_farm = 0.45,                          -- level-4 farm cells per farmer
+  granary_burn = 0.8, granary_burn_max = 0.6, -- share of the store lost per month of fire in the village (x intensity, capped)
   max_farm_l4 = 99,                       -- a village farms at most this many level-4 cells (99: no limit)
   yield = 66,                             -- person-months per unit crop per level-4 cell per harvest
   farmer_max = 30,                        -- person-months a farmer can bring in per year
@@ -252,7 +253,7 @@ C.VILLAGE = {
   hunt = 0.004,                           -- grazer fraction taken per tick per hunter per level-4 cell
   meat_units = 300,                       -- person-months per unit grazer density per level-4 cell
   cull_threshold = 0.004, cull_rate = 0.02, cull_prob = 0.12,   -- predators near farms: monthly chance to cull
-  k_burn = 0.00045,                       -- ppm co2 per person-month of wood burning (x (1 + winter cold))
+  k_burn = 0.00042,                       -- ppm co2 per person-month of wood burning (x (1 + winter cold))
   wood = 0.00001,                         -- forest removed per person-month from the village cells
   k_clear_co2 = 0.4,                      -- ppm per unit forest cleared for fields
   eat_adult = 1.0, eat_child = 0.6,
@@ -300,7 +301,7 @@ C.PEOPLE = {
 -- Ships (§5.11) -------------------------------------------------------------------------------------------------
 C.SHIPS = {
   tanker_speed = 0.12,                    -- level-4 cells per tick (scaled by sscale)
-  cargo = 6,                              -- oil released when a tanker sinks (cell-units, as the oil hook)
+  cargo = 36,                             -- oil released when a tanker sinks (level-4-equivalent cells of full cover; D-047)
   replace_years = { 3, 5 },               -- a replacement tanker arrives after this long (≥ 2 villages)
   fishers_per_boat = 3,
 }
@@ -319,7 +320,7 @@ C.DETECT = {
   boom = 2.0, boom_exit = 1.4,            -- × 5-year average (entry / exit)
   boom_local = 2.2, boom_cells = 10,      -- local boom: connected cells ≥ 2.2 × their own normal, ≥ 10 level-4 cells
   crash = 0.5, crash_exit = 0.75,
-  news_years = 15,                        -- a region's natural boom/crash headlines at most this often
+  news_years = 10,                        -- a region's natural boom/crash headlines at most this often (D-047)
   cooldown = 96,                          -- ticks between boom/crash events per region + species
   min_density = { grazers = 0.01, predators = 0.001 },   -- regional mean below this: too few to judge
   extinct_density = 1e-4, present_density = 1e-3,

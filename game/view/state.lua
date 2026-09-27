@@ -23,6 +23,21 @@ M.u_anim = vmath.vector4(0, 1, 0, 0)
 M.u_sky = vmath.vector4(0, 16 / 9, 0, 0)
 M.u_atmo = vmath.vector4(10, 0.02, 0.11, 1)
 
+-- Renderer v2 (D-048): sun shadow map + post (tilt-shift DoF, bloom, grade)
+M.shadow_on = true
+M.shadow_movers = true
+M.post_on = true
+M.SHADOW_SIZE = 2048
+M.light_view = vmath.matrix4()
+M.light_proj = vmath.matrix4()
+M.u_sh0 = vmath.vector4(0, 0, 0, 0)          -- rows of bias * sun proj * sun view
+M.u_sh1 = vmath.vector4(0, 0, 0, 0)
+M.u_sh2 = vmath.vector4(0, 0, 0, 0)
+M.u_shn = vmath.vector4(0.02, 0, 0, 0)       -- x = normal offset (world units)
+M.u_shadowp = vmath.vector4(1 / 2048, 0.0003, 0.9, 1)  -- 1/size, depth bias, strength, on
+M.u_focus = vmath.vector4(40, 0.6, 0.08, 0.2) -- focus distance, strength, in-focus band, sky CoC
+M.u_post = vmath.vector4(0.35, 0.28, 1.1, 1.05) -- bloom, vignette, saturation, contrast
+
 -- Filled by the render script each frame (used by picking/projection later)
 M.proj = vmath.matrix4()
 M.window_w, M.window_h = 1280, 720

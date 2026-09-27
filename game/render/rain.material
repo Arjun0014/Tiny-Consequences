@@ -1,0 +1,20 @@
+name: "rain"
+tags: "fx"
+vertex_program: "/game/render/shaders/rain.vp"
+fragment_program: "/game/render/shaders/rain.fp"
+vertex_space: VERTEX_SPACE_WORLD
+vertex_constants {
+  name: "view_proj"
+  type: CONSTANT_TYPE_VIEWPROJ
+}
+vertex_constants {
+  name: "u_anim"
+  type: CONSTANT_TYPE_USER
+  value {
+    x: 0
+    y: 0
+    z: 0
+    w: 0
+  }
+}
+max_page_count: 0

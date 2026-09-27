@@ -9,6 +9,8 @@ local clouds = require("game.view.clouds")
 local puppets = require("game.view.puppets")
 local fx = require("game.view.fx")
 local selring = require("game.view.selring")
+local rivers = require("game.view.rivers")
+local feed = require("game.view.feed")
 local grid = require("sim.grid")
 local clock = require("game.platform.clock")
 local speed = require("game.platform.speed")
@@ -65,17 +67,23 @@ function M.build(W, urls, step)
   M.PL = PL
   step("Painting the land", 0)
   terrain.build(PL, W, function(f) step("Painting the land", f) end)
+  rivers.init(W, PL, "/rivers#mesh")
+  rivers.rebuild(W)
   if not M.atmo_built then build_atmo(); M.atmo_built = true end
   step("Planting forests", 0)
-  props.init(PL, W, urls.chunk_factory)
+  props.init(PL, W, urls.chunk_factory, terrain.tex)
+  M.village_sig = nil
+  M.sync_villages(W)
   props.build_all(function(f) step("Planting forests", f) end)
   step("Gathering clouds", 0)
-  clouds.init(W, urls.cloud_factory)
+  clouds.init(W, urls.cloud_factory, urls.rain_factory)
   puppets.init(W, urls, M.surface)
+  puppets.height = function(v) return M.PL.h[v] end
   selring.init(urls.ring_factory, M.surface)
   fx.init(W, urls.flame_factory, urls.smoke_factory, M.surface)
   camera.height_fn = function(x, y, z) return M.surface(x, y, z) end
   camera.focus_cell = nil
+  feed.reset(W)
   M.ready = true
   state.planet_on = true
   step("Ready", 1)
@@ -86,7 +94,11 @@ function M.rebuild_geometry()
   local W = M.W
   M.PL = planet.build(W, {})
   terrain.build(M.PL, W)
-  props.init(M.PL, W, M.urls.chunk_factory)
+  rivers.init(W, M.PL, "/rivers#mesh")
+  rivers.rebuild(W)
+  props.init(M.PL, W, M.urls.chunk_factory, terrain.tex)
+  M.village_sig = nil
+  M.sync_villages(W)
   props.build_all()
 end
 
@@ -102,12 +114,17 @@ function M.set_frozen(on)
   state.frozen = on and true or false
 end
 
--- Village entities (sim/systems/villages.lua) -> props.set_villages hook: living villages
--- (alive ~= false) get houses (v.houses, else pop / 4); dead ones show ruins only while
--- v.ruin is set (v.abandoned keeps its tick after the ruins decay). Before Stage 1.7 the props
--- fall back to the land_use field (village centre < 0, farms > 0).
-local village_sig = nil
-local function sync_villages(W)
+-- Village entities (sim/systems/villages.lua) -> props.set_villages: living villages
+-- (alive ~= false) get a settlement sized by v.houses (else pop / 4), in their culture's
+-- style, with a pier if they fish and haystacks after their own harvest; dead ones show ruins
+-- only while v.ruin is set.
+local function local_toy(W, v)
+  local geo = W.vgeo and W.vgeo[v.id]
+  local shift = geo and geo.shift or 0
+  return (W.tick + shift) % 48
+end
+
+function M.sync_villages(W)
   local list = W.ent and W.ent.villages
   if type(list) ~= "table" then return end
   local out, sig = {}, 0
@@ -118,22 +135,25 @@ local function sync_villages(W)
       if v.alive ~= false then
         local pop = tonumber(v.pop) or (type(v.members) == "table" and #v.members) or 0
         local houses = tonumber(v.houses) or math.max(3, math.ceil(pop / 4))
-        entry = { cell = v.cell, houses = houses, ruin = false }
+        local toy = local_toy(W, v)
+        entry = { cell = v.cell, houses = houses, ruin = false, culture = v.culture or 1,
+          fishing = type(v.fishing) == "table" and #v.fishing > 0, harvest = toy >= 32 }
       elseif v.ruin then
-        entry = { cell = v.cell, houses = 0, ruin = true }
+        entry = { cell = v.cell, houses = 0, ruin = true, culture = v.culture or 1 }
       end
       if entry then
         out[#out + 1] = entry
-        sig = sig + v.cell * 7 + entry.houses * 131 + (entry.ruin and 997 or 0)
+        sig = sig + v.cell * 7 + entry.houses * 131 + (entry.ruin and 997 or 0) + (entry.harvest and 5 or 0)
       end
     end
   end
   sig = sig + #out * 100003
-  if sig ~= village_sig then
-    village_sig = sig
+  if sig ~= M.village_sig then
+    M.village_sig = sig
     props.set_villages(out)
   end
 end
+local sync_villages = M.sync_villages
 
 --- Per-frame update. dt = real seconds.
 function M.update(dt)
@@ -142,6 +162,10 @@ function M.update(dt)
   camera.update(dt)
   state.u_cam.w = state.time
   state.u_anim.x = state.time
+  if M.W then
+    state.u_anim.z = M.W.tick % 48
+    state.u_anim.w = 1
+  end
   state.u_sky.x = state.time
   local P = M.parts
   if M.ready then
@@ -154,14 +178,22 @@ function M.update(dt)
     end
     -- at high sim speeds the world changes every frame: spend less per frame on refreshes
     -- (05 §9: view updates <= 4 ms per frame amortised)
-    local fast = speed.get() >= 3
+    local sp_level = speed.get()
+    local fast = sp_level >= 3
+    puppets.speed_k = (sp_level <= 1 and 1) or (sp_level == 2 and 1.5) or (sp_level == 3 and 2.5) or 3
     props.BUDGET_MS = fast and 1.4 or 2.5
     props.JOB_GAP_MS = fast and 250 or 0      -- at most ~4 chunk rebuilds a second at high speed
-    terrain.CELLS_PER_FRAME = fast and 110 or 200
+    terrain.CELLS_PER_FRAME = fast and 160 or 240
+    terrain.BUDGET_MS = fast and 0.9 or 1.4
+    rivers.REBUILD_S = fast and 4 or 1.5
     terrain.MAX_RATE = fast and 3 or 4
     local a = clock.now_ms()
     terrain.update(W, dt)
     local b = clock.now_ms()
+    rivers.update(W, dt)
+    feed.poll(W)
+    local b2 = clock.now_ms()
+    local b3 = clock.now_ms()
     props.update(W, dt, camera.zoom)
     local c = clock.now_ms()
     clouds.update(W, dt, state.frozen)
@@ -171,7 +203,8 @@ function M.update(dt)
     selring.update(W, dt)
     local e = clock.now_ms()
     P.terrain = P.terrain + (b - a - P.terrain) * 0.05
-    P.props = P.props + (c - b - P.props) * 0.05
+    P.rivers = (P.rivers or 0) + (b2 - b - (P.rivers or 0)) * 0.05
+    P.props = P.props + (c - b3 - P.props) * 0.05
     P.clouds = P.clouds + (d - c - P.clouds) * 0.05
     P.movers = P.movers + (e - d - P.movers) * 0.05
   end

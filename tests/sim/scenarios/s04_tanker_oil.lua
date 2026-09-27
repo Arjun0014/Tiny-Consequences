@@ -8,7 +8,7 @@ return {
   run_years = 3,
   chapter = 1,
   actions = {
-    { year = 1, hook = "oil", target = "ocean_near:village:fishing", amount = 6 },
+    { year = 1, hook = "oil", target = "ocean_near:village:fishing", amount = 36 },   -- a tanker cargo, level-4-equivalent cells (D-047)
   },
   expect = {
     { metric = "fish@target", compare = "ratio_to_baseline", op = "<=", value = 0.5, within_years = 1 },

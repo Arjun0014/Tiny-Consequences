@@ -1,0 +1,13 @@
+#version 140
+// Shadow pass for world-space movers (engine-batched): view_proj is the sun's.
+in highp vec4 position;
+
+uniform vs_uniforms
+{
+    highp mat4 view_proj;
+};
+
+void main()
+{
+    gl_Position = view_proj * vec4(position.xyz, 1.0);
+}

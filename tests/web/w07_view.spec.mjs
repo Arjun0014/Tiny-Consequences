@@ -9,11 +9,13 @@ const PRESETS = ['continent_a', 'continent_b', 'pole', 'village', 'close'];
 
 test('W07 view: presets, budgets, run_ticks, new_world @ch1', async ({ page }, testInfo) => {
   test.setTimeout(240_000);
-  const game = await openGame(page, { freeze: '1', speed: '0' }, { readyTimeout: 60_000 });
+  const game = await openGame(page, { freeze: '1', speed: '0', gfx: 'low' }, { readyTimeout: 60_000 });
   for (const preset of PRESETS) {
     const res = await sendCmd(page, { cmd: 'camera', preset });
     expect(res.ok, JSON.stringify(res)).toBe(true);
     await page.waitForTimeout(400);
+    // finish LOD/dirty rebuilds synchronously (the headless CPU rasteriser makes frames slow)
+    await sendCmd(page, { cmd: 'flush_view' }, 120_000);
     await waitForTC(page, (tc) => tc.chunks_dirty === 0, null, { timeout: 60_000 });
     const tc = await readTC(page);
     testInfo.annotations.push({ type: preset, description: `props ${tc.prop_count}/${tc.prop_total} draws ~${tc.draw_calls}` });

@@ -1,25 +1,59 @@
 #version 140
-// Pooled movers (animals, people later): world-space material so the engine batches them.
+// Pooled movers (people, animals, boats): world-space material so the engine batches them.
+// Renderer v2 (D-048): limbs swing in a walk cycle. Limb vertices carry the body's forward axis
+// as their normal (propgen.write_template) and color = (packed rgb, shade*8 + limb code, local
+// x, local y above the limb's pivot); codes 1/2 legs, 3/4 arms (opposite phase), 0 none. The
+// body's up is the planet radial direction. (A separate stream crashed the engine's world-space
+// batching.) Buffers with a 2-component colour read z = 0, w = 1 and have code 0.
 #include "/game/render/shaders/unpack.glsl"
 
 in highp vec4 position;
 in mediump vec3 normal;
-in highp vec2 color;
+in highp vec4 color;
 
 uniform vs_uniforms
 {
     highp mat4 view_proj;
+    highp vec4 u_sh0;
+    highp vec4 u_sh1;
+    highp vec4 u_sh2;
+    highp vec4 u_shn;
+    highp vec4 u_anim;   // x = time
 };
 
 out highp vec3 var_wpos;
 out mediump vec3 var_normal;
 out mediump vec3 var_color;
+out highp vec3 var_sc;
+out mediump vec3 var_mat;   // (snow, fire, class): unused for movers
 
 void main()
 {
-    vec4 c = tc_unpack(color);
-    var_wpos = position.xyz;
-    var_normal = normalize(normal);
+    vec4 c = tc_unpack(color.xy);
+    highp vec3 wp = position.xyz;
+    vec3 N = normalize(normal);
+    float code = mod(floor(color.y + 0.5), 8.0);
+    if (code > 0.5 && code < 4.5) {
+        vec3 up = normalize(wp);
+        vec3 fwd = normalize(N - up * dot(N, up) + vec3(1e-5));
+        highp vec3 origin = wp - fwd * color.z;
+        origin -= up * dot(origin, up);
+        float ph = u_anim.x * 7.0 + dot(origin, vec3(37.0, 53.0, 41.0));
+        float leg = step(code, 2.5);
+        float sgn = (code == 1.0 || code == 4.0) ? 1.0 : -1.0;
+        float a = sin(ph) * sgn * mix(0.45, 0.55, leg);
+        float ca = cos(a), sa = sin(a);
+        vec2 r = vec2(color.z, color.w);
+        vec2 rr = vec2(r.x * ca - r.y * sa, r.x * sa + r.y * ca);
+        vec2 d = rr - r;
+        wp += fwd * d.x + up * d.y;
+        N = normalize(up * 0.8 + fwd * 0.2);
+    }
+    var_mat = vec3(0.0);
+    var_wpos = wp;
+    var_normal = N;
     var_color = c.rgb;
-    gl_Position = view_proj * vec4(position.xyz, 1.0);
+    highp vec3 sp = wp + N * u_shn.x;
+    var_sc = vec3(dot(u_sh0, vec4(sp, 1.0)), dot(u_sh1, vec4(sp, 1.0)), dot(u_sh2, vec4(sp, 1.0)));
+    gl_Position = view_proj * vec4(wp, 1.0);
 }

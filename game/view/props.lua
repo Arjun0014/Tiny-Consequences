@@ -12,6 +12,7 @@
 --     rest through the buffer AABB. LOD: chunks near a zoomed-in camera are rebuilt with the
 --     near templates and more slots; the rest use the cheap far set.
 local propgen = require("game.view.propgen")
+local planet = require("game.view.planet")
 local state = require("game.view.state")
 local clock = require("game.platform.clock")
 
@@ -36,15 +37,77 @@ M.stats = { rebuilt = 0, instances = 0, verts = 0, visible = 0, visible_instance
 local job = nil
 local gen = 0
 
---- Hook for Stage 1.7+ villages: list of { cell = c, houses = n, ruin = bool }.
+--- Villages: list of { cell, houses, ruin, culture, fishing, harvest } (view.lua).
+-- Each settlement is laid out by the chunk that owns its centre (propgen.plan_village).
 function M.set_villages(list)
   local map = {}
+  local owned = {}
   for i = 1, #(list or {}) do
     local v = list[i]
-    map[v.cell] = { houses = v.houses or 6, ruin = v.ruin and true or false }
+    local e = { cell = v.cell, houses = v.houses or 6, ruin = v.ruin and true or false,
+      culture = v.culture or 1, fishing = v.fishing and true or false, harvest = v.harvest and true or false }
+    map[v.cell] = e
+    local k = M.owner_chunk(v.cell)
+    if k then
+      owned[k] = owned[k] or {}
+      local l = owned[k]
+      l[#l + 1] = v.cell
+      if M.chunks[k] then M.chunks[k].dirty = true end
+    end
   end
+  for _, l in pairs(owned) do table.sort(l) end
   M.villages = map
+  M.owned = owned
   M.force_signatures = true
+end
+
+--- Chunk whose faces contain the centre of sim cell c.
+function M.owner_chunk(c)
+  local PL, W = M.PL, M.W
+  if not PL or not W or not M.vface then return nil end
+  local g = W.grid
+  local v = planet.nearest(PL, g.X[c], g.Y[c], g.Z[c])
+  local f = M.vface[v]
+  return f and PL.tchunk[f]
+end
+
+-- Surface radius and height (km, <= 0 water) at a unit direction.
+local function surface(x, y, z)
+  local PL = M.PL
+  local r, v = planet.surface_radius(PL, x, y, z)
+  return r, PL.h[v]
+end
+
+-- Nearest shore to a village centre (unit dir): returns the last land vertex before the
+-- water (unit vector) and the unit direction out to sea, or nil if the sea is far.
+local function shore(x, y, z)
+  local PL = M.PL
+  local rn, rcnt, h = PL.rn, PL.rcnt, PL.h
+  local X, Y, Z = PL.X, PL.Y, PL.Z
+  local start = planet.nearest(PL, x, y, z)
+  local seen = { [start] = 0 }
+  local q = { start }
+  local head = 1
+  while head <= #q do
+    local v = q[head]; head = head + 1
+    local d = seen[v]
+    if d < 4 then
+      local base = v * 6 - 6
+      for k = 1, rcnt[v] do
+        local j = rn[base + k]
+        if seen[j] == nil then
+          seen[j] = d + 1
+          if h[j] <= 0 and h[v] > 0.02 then
+            local dx, dy, dz = X[j] - X[v], Y[j] - Y[v], Z[j] - Z[v]
+            local l = math.sqrt(dx * dx + dy * dy + dz * dz)
+            return X[v], Y[v], Z[v], dx / l, dy / l, dz / l
+          end
+          q[#q + 1] = j
+        end
+      end
+    end
+  end
+  return nil
 end
 
 --- Debug preview (view-only; never touches the sim): cell -> -1 (village) / 1 (farm), so the
@@ -65,7 +128,7 @@ local function signature(W, c)
   if F.fire[c] > 0 or (scar > 0 and scar < 240) then q = q + 4000 end
   if W.S and W.S.ruins and W.S.ruins[c] then q = q + 8000 end
   local v = M.villages and M.villages[c]
-  if v then q = q + 16000 + (v.houses or 0) * 32000 + (v.ruin and 7 or 0) end
+  if v then q = q + 16000 + (v.houses or 0) * 32000 + (v.ruin and 7 or 0) + (v.harvest and 13 or 0) end
   if lu > 0 then q = q + floor(F.crop[c] * 4 + 0.5) * 100000 end
   local ic = F.ice[c]
   q = q + (ic > 0.55 and 2 or (ic > 0.3 and 1 or 0)) * 500000
@@ -74,15 +137,29 @@ local function signature(W, c)
 end
 
 --- Creates the chunk game objects and plans the initial far-LOD build (baked by build_all).
-function M.init(PL, W, factory_url)
+function M.init(PL, W, factory_url, celltex)
   gen = gen + 1
   M.PL, M.W = PL, W
-  M.ctx = { W = W, PL = PL, seed = W.seed, villages = M.villages, lod = 2 }
+  M.ctx = { W = W, PL = PL, seed = W.seed, villages = M.villages, lod = 2, surface = surface, shore = shore }
+  -- a face for every render vertex (settlement ownership)
+  M.vface = {}
+  local faces = PL.faces
+  for f = 1, PL.nf do
+    local i = f * 3 - 2
+    for q = 0, 2 do
+      local v = faces[i + q]
+      if not M.vface[v] then M.vface[v] = f end
+    end
+  end
+  M.owned = {}
   if #M.chunks == 0 then
     for k = 1, #PL.chunks do
       local id = factory.create(factory_url, vmath.vector3(0, 0, 0))
       M.chunks[k] = { id = id, url = msg.url(nil, id, "mesh"), res = nil, enabled = true }
     end
+  end
+  if celltex then
+    for k = 1, #M.chunks do go.set(M.chunks[k].url, "texture0", celltex) end
   end
   M.cell_chunks = {}
   for k, ch in ipairs(PL.chunks) do
@@ -106,7 +183,7 @@ function M.init(PL, W, factory_url)
         if z > z1 then z1 = z end
       end
     end
-    local m = 0.45
+    local m = 0.9     -- props stand up to ~0.4 high; settlements reach past their chunk's faces
     c.aabb = { x0 - m, y0 - m, z0 - m, x1 + m, y1 + m, z1 + m }
     for _, cell in ipairs(ch.cells) do
       local l = M.cell_chunks[cell]
@@ -131,6 +208,7 @@ end
 
 -- small batches: the frame budget is checked between batches, so they bound the overshoot
 local FACE_BATCH, INST_BATCH = 8, 3
+local INST_BATCH_NEAR = 1
 
 -- Advances job j until done or the deadline passes. Returns true when finished.
 local function run_job(j, deadline)
@@ -140,6 +218,7 @@ local function run_job(j, deadline)
     M.ctx.lod = j.lod
     M.ctx.villages = M.villages
     M.ctx.preview = M.preview
+    M.ctx.owned = M.owned and M.owned[j.k]
     local nfaces = #ch.faces
     while j.face <= nfaces do
       local t0 = clock.now_ms()
@@ -160,7 +239,7 @@ local function run_job(j, deadline)
     j.buf = buffer.create(j.nv, {
       { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
       { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
-      { name = H_COL, type = buffer.VALUE_TYPE_FLOAT32, count = 2 },
+      { name = H_COL, type = buffer.VALUE_TYPE_FLOAT32, count = 4 },
     })
     j.pos = buffer.get_stream(j.buf, H_POS)
     j.nrm = buffer.get_stream(j.buf, H_NRM)
@@ -170,7 +249,7 @@ local function run_job(j, deadline)
   end
   if j.phase == 2 then
     while j.next <= j.n do
-      local last = min(j.n, j.next + INST_BATCH - 1)
+      local last = min(j.n, j.next + (j.lod == 1 and INST_BATCH_NEAR or INST_BATCH) - 1)
       local tw = clock.now_ms()
       j.v = propgen.write(j.pos, j.nrm, j.col, j.v, j.next, last)
       M.stats.write_max = max(M.stats.write_max or 0, clock.now_ms() - tw)

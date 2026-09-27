@@ -11,6 +11,14 @@ instances {
   id: "atmo"
   prototype: "/game/view/atmo.go"
 }
+instances {
+  id: "post"
+  prototype: "/game/view/post.go"
+}
+instances {
+  id: "rivers"
+  prototype: "/game/view/rivers.go"
+}
 scale_along_z: 0
 embedded_instances {
   id: "main"
@@ -33,6 +41,10 @@ embedded_instances {
   "components {\n"
   "  id: \"wolf_factory\"\n"
   "  component: \"/game/view/wolf.factory\"\n"
+  "}\n"
+  "components {\n"
+  "  id: \"rain_factory\"\n"
+  "  component: \"/game/view/rain.factory\"\n"
   "}\n"
   "components {\n"
   "  id: \"flame_factory\"\n"

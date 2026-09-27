@@ -1,0 +1,2 @@
+prototype: "/game/view/rain.go"
+load_dynamically: false

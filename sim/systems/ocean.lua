@@ -145,7 +145,10 @@ end
 
 -- Add `amount` of oil (cell-units) around ocean cell c, filling rings outward (≤ 1 per cell),
 -- tagged `tag`. Used by test hooks, tankers and the Oil power. Returns cells touched.
+-- amount: oil in level-4-equivalent cells of full cover (area-based, so a spill covers the
+-- same part of the sea at any grid resolution, D-047).
 function sys.spill(W, c, amount, tag)
+  amount = amount / (W.sscale * W.sscale)
   local S = W.S.ocean
   local oil, coil, ioil = W.F.oil, W.C.oil, W.I.oil
   local ocean = W.geo.ocean

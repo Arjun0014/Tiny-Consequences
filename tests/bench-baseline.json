@@ -1,34 +1,34 @@
 {
   "calibration": "HTML5 release build, sim/bench.lua config (seed 42, level 3, 192 ticks): 1.70 ms median for 230,910 instructions/tick, i.e. ~7.4 ns per instruction (6-10 ns per system), 2026-09-27",
   "config": {
-    "level": 3,
+    "level": 12,
     "seed": 42,
     "step": 100,
     "ticks": 192,
     "warm_years": 1
   },
   "date": "2026-09-27",
-  "instructions_per_tick": 241170,
+  "instructions_per_tick": 513763,
   "limits": {
     "min_abs": 2000,
     "system": 0.3,
     "total": 0.15
   },
-  "other": 6461,
+  "other": 14083,
   "systems": {
-    "biome": 8664,
-    "detectors": 4361,
-    "fauna": 19948,
-    "fire": 4588,
-    "globalclimate": 1077,
-    "hydrology": 33719,
-    "ice": 9353,
-    "moisture": 78565,
-    "ocean": 9099,
-    "ships": 179,
-    "temperature": 26952,
-    "vegetation": 26583,
-    "villages": 11621
+    "biome": 19451,
+    "detectors": 9219,
+    "fauna": 40403,
+    "fire": 9344,
+    "globalclimate": 2378,
+    "hydrology": 73446,
+    "ice": 20945,
+    "moisture": 174178,
+    "ocean": 20295,
+    "ships": 216,
+    "temperature": 57185,
+    "vegetation": 59053,
+    "villages": 13567
   },
   "update": "npm run bench -- --update-baseline  (intentional changes only; log them in DECISIONS.md)",
   "what": "P07 perf baseline: Lua VM instructions per tick (LuaJIT interpreter, JIT off) on a fixed world"

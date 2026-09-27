@@ -4,12 +4,35 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Current state
 
-- Chapter: 1 — A World That Lives Without You — **COMPLETE (27 Sep, 14:45 IST), waiting for Arjun's playtest.** Report: `docs/playtests/chapter-1.md`.
-- Next: read `docs/playtests/chapter-1-feedback.md` when it exists, turn it into tasks, then start Chapter 2 (Stage 2.1 Powers). Do not start Chapter 2 before the feedback.
-- All Chapter-1 stages 1.1–1.10 done. Test status at the chapter commit: `npm run test:sim -- --full` 67/67, `npm run test:sim` (quick) 67/67, `npm run test:web` 8/8 (debug and `--release`), `npm run shots` 17 PNGs reviewed.
+- Chapter: **1b — Playtest-1 feedback (visual + living-world upgrade)**, then Chapter 2 from Stage 2.1. Started 27 Sep ~17:30 IST.
+- Feedback read: `docs/playtests/chapter-1-feedback.md` (27 Sep). Tasks below (F-tasks). Do them before Stage 2.1; they are not minor polish.
 - Blockers needing the human: none.
-- Last human feedback read: none yet (Arjun shared the target look mid-session → docs/ART_DIRECTION.md).
 - Machine note: this laptop (12 threads, 11.6 GB RAM) also runs Arjun's other workloads; on 27 Sep a 12-process Python job exhausted the commit limit and process creation failed for a while. Run seed sweeps sequentially when memory is low (`cmd //c systeminfo | grep -i memory`).
+
+### Playtest-1 feedback tasks (F-tasks)
+
+**F1 Visual quality: a major upgrade, not polish.** Reassess the rendering/art approach. Measure GPU/CPU cost as detail rises instead of keeping the Chapter-1 budget (05 §9 prop budget is to be revised with evidence).
+- [x] F1.1 Before-set: capture the Chapter-1 shot set (planet, mid zoom, close zoom, villagers, pole) to `out/shots/before_ch1/` for comparison.
+- [x] F1.2 Terrain (v1, D-048; level-5 mesh kept): finer render mesh, per-pixel material treatment (grass/forest floor/rock/sand/snow/farm textures from procedural noise, slope and altitude rock, beaches, snow caps), softer biome blending, better relief shading.
+- [x] F1.3 Water (caustic shallows, rolling foam, glitter; rivers still to do): ocean shader with animated waves/ripples, depth colour, shore foam, specular glints, shelf halo; rivers/lakes readable.
+- [x] F1.4 Atmosphere & composition (sun shadows incl. clouds, tilt-shift DoF, bloom, grade, FXAA): rim/scattering, sky, soft shadows/AO where affordable, colour grading, the miniature (tilt-shift) feel.
+- [x] F1.5 Trees and vegetation (modelkit, 8 species + ground cover; seasonal shader): new tree models (layered crowns, trunks, colour variation per tree, several species per biome), bushes, grass tufts, flowers, reeds, cacti, rocks; wind sway; denser near-camera detail (LOD tiers).
+- [x] F1.6 Settlements (laid-out villages, 4 culture styles, piers, granary, chimney smoke): better houses (walls, roofs, chimneys, doors), size variety with population, fences, paths, wells/granaries, docks; farm fields as real crop rows with growth stages; chimney smoke.
+- [x] F1.7 People (new model, walk cycle, job activities): new villager model (proportions, head/hair, clothing by job, arms/legs), walking animation, visible activities (farming in fields, fishing boats going out, woodcutting, carrying).
+- [x] F1.8 Animals (deer with antlers, wolves; walk cycle; no birds yet): better deer/wolves, herds, animation; birds/fish jumps if cheap.
+- [ ] F1.9 Performance measured at every step (release build, bridge numbers, draw calls, vertex counts); record new budgets in DECISIONS.
+- [ ] F1.10 After-set: same shots after the upgrade; compare side by side and iterate until the difference is substantial.
+
+**F2 A world that visibly lives.** No scripted events: improve the real simulation and how it is shown.
+- [x] F2.1 Resolution study (D-047: 642 / 1,442 / 2,562 cells measured) (profiling, not the old benchmark): measure the full tick at 642 / 1,442 (f=12) / 2,562 cells in LuaJIT (P07 instruction counts) and in the HTML5 release build; per-system cost; which systems could run multi-rate; whether a hierarchical scheme (coarse climate, finer land/ecology) buys richer local behaviour; also check whether the visual problem is resolution or update rules/visualisation. Decide with evidence → DECISIONS.
+- [x] F2.2 Apply the decision (f12, re-tuned, default world seed 22) (grid level and/or multi-rate/hierarchy), re-tune bands, keep S01–S04, P01–P10 green, regenerate default.tcsave.
+- [x] F2.3 Visible seasons (terrain + props from the cell texture): spring bloom, summer green, autumn colour, winter snow cover on land (from sim temp/ice), crops that visibly grow and get harvested, grass that browns in drought.
+- [~] F2.4 Visible weather from the sim (rain/snow curtains, storm clouds done; lightning flashes with the Lightning power): clouds that form/move with moisture and wind, rain/snow falling where `precip` is, storm darkening, lightning flashes for real lightning strikes, fog.
+- [ ] F2.5 Visible life: villagers with daily activity (to fields, boats, woodcutting, home), herds that move with the sim's animal densities and migrations, visible births/deaths/migrations (migrant columns walking to a new village), houses that appear/disappear with population, fields that expand/contract with land use, ruins decaying, fire fronts and regrowth.
+- [ ] F2.6 More local dynamics in the sim where profiling allows (finer cells, per-cell variety), checked against the tuning bands and headline rates.
+- [ ] F2.7 Visible consequences: event FX on the planet for real events (fire, flood water, drought cracks, famine icons, oil sheen, crop failure).
+
+**Then Chapter 2** from Stage 2.1 (powers, real S02–S04, S05–S07/S10–S12, tutorial world + S15), 2.2, 2.3 (chain popup and "Why?"), and onward.
 
 ## Environment (verified 27 Sep)
 
@@ -20,7 +43,7 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Key numbers (update as they change)
 
-- SIM_LEVEL: 3 (D-004, final D-030) — 642 cells
+- SIM_LEVEL: 12 (geodesic f12, D-047) — 1,442 cells (was 3 = 642, D-030)
 - Sim tick, real default world, HTML5 release, synchronous (W08, 27 Sep): **1.9 ms median, p95 3.3–4.0 ms** (budget 4 / 8). Wall-clock numbers on this machine swing up to 2× with other load; use P07 instruction counts to compare.
 - P07 baseline (`tests/bench-baseline.json`, D-046): 241,170 VM instructions/tick (moisture 78.6k, hydrology 33.7k, temperature 27.0k, vegetation 26.6k, fauna 19.9k, villages 11.6k, ice 9.4k, ocean 9.1k, biome 8.7k, fire 4.6k, detectors 4.4k); ≈ 7.9 ns/instruction in the browser. Year-boundary tick ≈ 540k.
 - In-game at ⏩ under headless SwiftShader (not representative of a GPU): tick 5–13 ms median (CPU contention with the rasteriser: 13.8 ms at 1280×720 vs 6.8 at 320×180), view 4.5–8 ms/frame at 640×360. Real-GPU numbers come from the playtest.
@@ -46,6 +69,12 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 - Bundle size: 3.12 MB release
 
 ## Stage entries
+
+### [ch1b] Playtest-1 feedback I: f12 sim + renderer v2 — 2026-09-28 ~01:15 IST
+- Resolution study (D-047): browser tick 2.0 ms (642 cells) / 4.2 ms (1,442, geodesic f12) / 7.9 ms (2,562). Switched to f12: `grid.build` takes geodesic frequencies ≥ 10. Re-tuned (moisture diffusion, area-based oil spills, wildfire headline size, news fatigue, villager CO₂), village fires burn granaries, S01 desert band 5–30%, S03 burns two harvests, S04 spills a tanker cargo. Default world seed 22. P07 re-baselined 513,763 instr/tick.
+- Renderer v2 (D-048): shadow map + post pipeline (DoF/bloom/grade/FXAA), terrain materials with real farm plots, model kit (trees, plants, buildings, villagers, animals), settlement layouts, seasonal/snow/fire props from the cell texture, walk cycles, job activities, rain/snow/storm clouds, chimney smoke.
+- Pitfalls found: `render.render_target` in 1.13.1 has no `sample_count`; a props material sampler order bug bound the shadow map as the cell texture (everything "on fire"); an extra vertex stream on world-space movers crashed batching; mover buffers must declare the same colour width as their .buffer files; mesh.max_count raised to 1024.
+- Tests: `npm run test:sim` 67/67, `--full` 67/67 (S01 8/10, S02 10/10, S03 9/10, S04 8/10). Shots: out/shots/before_ch1 vs out/shots/latest.
 
 ### [ch1.s10] Chapter 1 hardening → PLAYTEST 1 — DONE 2026-09-27 14:45 IST
 - Browser: pre-spun default world verified in the build (`prespun` flag, load ≈ 2–3.5 s). W06 now runs the self-test through `sim/selftest.lua` and compares with LuaJIT (`tools/selftest.lua`): identical hashes, so the headless suite speaks for HTML5. W08 measures the real default world's tick synchronously (1.9 ms median) and the speed controller's frame contract at ⏩; W02/W08 run at 640×360 (CPU rasteriser).
