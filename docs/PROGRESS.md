@@ -4,11 +4,12 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Current state
 
-- Chapter: 2 — Hand of God. Playtest-1 feedback work done first (commit 74d9fe0). Stage 2.1 Powers **done** (except one flaky W03 check, see below); Stage 2.2 Causality **mostly done** (P08/P09, heatwave/cold-snap/sea-ice detectors; events.txt review not done); Stage 2.3 **started** (`content/event_text.lua` only). Session ended 27 Sep 21:10 IST at ~1M context (handoff overdue: keep to ~700K next time).
-- Next: read `docs/SESSION_HANDOFF.md`, then: fix W03 flakiness, run `npm run test:sim -- --full` once (last full run predates the heat/sea-ice detectors), then Stage 2.3 chain popup / "Why?" / event log.
-- Feedback read: `docs/playtests/chapter-1-feedback.md` (27 Sep). F-tasks below: F1 and F2.1–F2.3 done; F2.4 partly; F2.5–F2.7 partly (see list).
+- **Direction reset (D-050, 27 Sep 22:30 IST).** Arjun: the simulation is theatre; build the genuinely living tiny world first, jams secondary. Roadmap v2: `docs/world/17_ROADMAP.md`. Spec for the new world: `docs/world/00_RESEARCH.md` (sources), `01_AUDIT.md`, `10_WORLD_SYSTEMS.md` … `16_CAUSALITY_VISUALS.md`. Stage 2.3 of the old roadmap is **not** being continued.
+- Phase: **W1 (time: hourly clock, local solar time, day length, daily weather, speeds, sun)** next; then W2 settlements (households, buildings, labour, wood, construction, fields, boats), W3 merchant ships/trade, W4 herds, W5 visuals (incl. clouds), W6 profiling.
+- Baseline at 4e108b7 (verified 27 Sep): `npm run test:sim` 79/80; the failure is P07 (detectors +55% since the heat/sea-ice detectors; not re-baselined). W03 flaky pulse checks remain from the previous session.
+- No subagents in this work (Arjun's instruction for this session).
 - Blockers needing the human: none.
-- Machine note: this laptop (12 threads, 11.6 GB RAM) also runs Arjun's other workloads; on 27 Sep a 12-process Python job exhausted the commit limit and process creation failed for a while. Run seed sweeps sequentially when memory is low (`cmd //c systeminfo | grep -i memory`).
+- Machine note: this laptop (12 threads, 11.6 GB RAM) also runs Arjun's other workloads; run seed sweeps sequentially when memory is low (`cmd //c systeminfo | grep -i memory`).
 
 ### Playtest-1 feedback tasks (F-tasks)
 

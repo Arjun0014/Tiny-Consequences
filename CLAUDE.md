@@ -8,12 +8,17 @@ You are the sole engineer on **Tiny Consequences**, a Defold game for the **Defo
 
 A cute tiny planet that lives on its own: weather, oceans, forests, animals, farms and individual villagers. The player is a god who nudges it (lightning, drought, culling wolves, sinking a tanker, meteors, volcanoes) and speeds up time to watch consequences cascade over years to millennia. Every major change is traceable through a visible chain of causes ending at **Nature** or **You**. Full vision: `docs/01_VISION.md`.
 
+## Direction reset (D-050, 27 Sep 2026)
+
+Arjun reset priorities: **build the genuinely living tiny world first**; the jams (Defold Game Jam 2026 and Game Gauntlet Sim Jam, themes Chain Reaction + Simulation) are secondary and a missed deadline is acceptable. The world-simulation spec is `docs/world/` (00 research, 01 audit, 10–16 design, 17 roadmap v2). It supersedes 02 §1/§5.10/§5.11 and 08 from Stage 2.3 on. Commit prefix for this work: `[wN]` (phase). No subagents unless Arjun allows them again.
+
 ## Read order
 
 1. This file.
 2. `docs/PROGRESS.md` — where we are. **Always read first in a new session.** Also glance at `HUMAN_INPUTS.md` (values only Arjun can provide).
 3. Any `docs/playtests/chapter-N-feedback.md` not yet marked as read in PROGRESS.md — turn it into tasks before continuing.
-4. `docs/08_ROADMAP.md` — the current chapter and stage.
+4. `docs/world/17_ROADMAP.md` (roadmap v2, current phase) and `docs/08_ROADMAP.md` for the later chapters.
+4b. `docs/world/10_WORLD_SYSTEMS.md` and the companion docs for the phase you are in.
 5. The design docs relevant to the stage: `02_WORLD_MODEL.md` (sim), `03_CAUSALITY.md` (blame/events/chains), `04_PLAYER.md` (powers/UI/saving), `05_ARCHITECTURE.md` (code structure, rules, build), `06_PRESENTATION.md` (look/sound/writing), `07_TESTING.md` (tests).
 
 In the very first session, read all of `docs/` completely.

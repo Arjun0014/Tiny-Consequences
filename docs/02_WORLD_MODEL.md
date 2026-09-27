@@ -1,5 +1,7 @@
 # 02 — World Model (the game's DNA)
 
+> **D-050 (27 Sep 2026):** time (§1), people & villages (§5.10) and tankers & boats (§5.11) are superseded, and animals (§5.9) extended, by `docs/world/10_WORLD_SYSTEMS.md` and its companions (`11`–`16`). The planet-layer sections remain the spec.
+
 This is the most important document. It defines what the planet *is*: the grid, the state each cell holds, the systems that change that state, and how they couple. Code in `sim/` implements this document. When the code and this document disagree, fix one of them and log the decision in DECISIONS.md.
 
 Every constant mentioned here is a **starting value**. All of them live in `sim/config.lua` and are expected to be tuned. Never hard-code a tunable inside a system.

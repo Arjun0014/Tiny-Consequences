@@ -1,5 +1,7 @@
 # 08 — Roadmap: chapters and stages
 
+> **D-050 (27 Sep 2026):** from Stage 2.3 on, the order of work is `docs/world/17_ROADMAP.md` (roadmap v2: build the living world first, phases W1–W6). The jams are secondary. The later stages below remain the plan after W6.
+
 - A **chapter** ends with a human playtest. Claude Code works through all stages of a chapter autonomously, then writes the playtest report and stops.
 - A **stage** is a unit of work with a clear "done when". Finish it (tests green, committed, PROGRESS.md updated) before starting the next.
 - Dates are IST (UTC+5:30). Jam deadline: **5 Oct 03:29 IST** (4 Oct 23:59 CEST). Internal submission target: **4 Oct 20:00 IST**.
