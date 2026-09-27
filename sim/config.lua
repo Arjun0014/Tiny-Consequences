@@ -262,10 +262,12 @@ C.VILLAGE = {
   min_site_people = 20,                   -- a new village's site must be able to feed this many (capacity)
   -- daughter villages: a village of >= bud_pop with >= bud_fs months of food whose food margin fell
   -- under bud_rho (land filling up) sends bud_share of its people (young families, adults <= bud_age)
-  -- to found a village; monthly chance bud_prob, at most once per bud_years, while the planet has
-  -- fewer than bud_total people and fewer than max_villages villages
-  bud_pop = 60, bud_fs = 5, bud_rho = 1.25, bud_share = 0.2, bud_age = 35, bud_prob = 0.02,
+  -- with start_food months of provisions to found a village; a monthly chance bud_prob in the
+  -- spring months before planting, at most once per bud_years, while the planet has fewer than
+  -- bud_total people and fewer than max_villages villages
+  bud_pop = 60, bud_fs = 5, bud_rho = 1.25, bud_share = 0.2, bud_age = 35, bud_prob = 0.1,
   bud_years = 15, bud_total = 330, max_villages = 8,
+  bud_big = 100,                          -- ... or a village this big splits whatever its food margin
   houses_per = 4,
   accident = 1.5e-5,                      -- village fire: ignition chance per person-month x dryness
   start_food = 8,                         -- months of food when founded
@@ -317,7 +319,7 @@ C.DETECT = {
   boom = 2.0, boom_exit = 1.4,            -- × 5-year average (entry / exit)
   boom_local = 2.2, boom_cells = 10,      -- local boom: connected cells ≥ 2.2 × their own normal, ≥ 10 level-4 cells
   crash = 0.5, crash_exit = 0.75,
-  news_years = 25,                        -- a region's natural boom/crash headlines at most this often
+  news_years = 15,                        -- a region's natural boom/crash headlines at most this often
   cooldown = 96,                          -- ticks between boom/crash events per region + species
   min_density = { grazers = 0.01, predators = 0.001 },   -- regional mean below this: too few to judge
   extinct_density = 1e-4, present_density = 1e-3,

@@ -307,7 +307,8 @@ local function emit(W, kind, cell, parent, mag, data)
 end
 
 -- A group from village v founds a new village at `site`; `parent` is the migration event.
-local function found_from(W, v, group, site, parent)
+-- `food`: provisions they take (default: their share of the store).
+local function found_from(W, v, group, site, parent, food)
   local cfg = cfgmod.VILLAGE
   local vs = W.ent.villages
   local ctr = 0
@@ -321,8 +322,14 @@ local function found_from(W, v, group, site, parent)
   local name = names.unique(u, function(uu) return names.new_village(uu, v.culture, v.name) end, used)
   local nv = sys.found(W, site, { name = name, culture = v.culture })
   nv.from = v.id
+  -- fishing jobs from the new waters before anyone is given a job (as at worldgen settle)
+  local stock = 0
+  for i = 1, #nv.fishing do stock = stock + W.F.fish[nv.fishing[i]] end
+  nv.fish_jobs = floor(stock * cfg.fish_q * W.sscale * W.sscale / cfg.fisher_max)
+  local fmax = floor(#group * 0.7 * cfg.fish_share + 0.5)
+  if nv.fish_jobs > fmax then nv.fish_jobs = fmax end
   -- the founders bring what food they can carry
-  local share = v.pop > 0 and v.food * #group / v.pop or 0
+  local share = food or (v.pop > 0 and v.food * #group / v.pop or 0)
   v.food = v.food - share
   nv.food = share
   for i = 1, #group do move(W, group[i], v, nv) end
@@ -382,10 +389,12 @@ local function migrate(W, v)
 end
 
 -- Daughter villages: a big, well-fed village whose land is filling up (its food margin has
--- fallen to where births slow) sends young families to found a village on free land that can
--- feed them. The natural counterpart of abandonment: the human footprint spreads over time.
+-- fallen to where births slow), or that has simply grown large, sends young families to found a
+-- village on free land that can feed them. The natural counterpart of abandonment: the human
+-- footprint spreads over time.
 local function bud(W, v)
   local cfg = cfgmod.VILLAGE
+  local prev = v.bud_last
   v.bud_last = W.tick
   local living = 0
   local vs = W.ent.villages
@@ -393,6 +402,8 @@ local function bud(W, v)
   if living >= cfg.max_villages then return end
   local site = sys.best_site(W, v.continent, #v.fishing > 0 and v.boats > 0)
   if not site then return end
+  -- they must arrive in time to plant: early spring by the new site's own calendar
+  if (W.tick + sys.season_shift(W, site)) % 48 >= cfg.plant_toy - 4 then v.bud_last = prev; return end
   local want = floor(v.pop * cfg.bud_share)
   if want < cfg.min_founders then want = cfg.min_founders end
   local taken, group = {}, {}
@@ -402,8 +413,45 @@ local function bud(W, v)
     for i = 1, #f do group[#group + 1] = f[i] end
   end
   if #group < cfg.min_founders then return end
+  -- provisions until their first harvest (they leave in spring, before planting)
+  local need = 0
+  local pcfg = cfgmod.PEOPLE
+  for i = 1, #group do
+    need = need + (people.age(W, group[i]) < pcfg.adult_age and cfg.eat_child or cfg.eat_adult)
+  end
+  local food = need * cfg.start_food
+  if food > v.food * 0.5 then food = v.food * 0.5 end
   local mid = emit(W, "migration", v.cell, 0, #group, { from = v.id, to = 0, colonists = true })
-  found_from(W, v, group, site, mid)
+  found_from(W, v, group, site, mid, food)
+end
+
+-- Only children left (their parents died or left): the nearest village with food takes them in,
+-- the one they came from first. Returns true when they moved.
+local function rehome_children(W, v)
+  local cfg = cfgmod.VILLAGE
+  local vs = W.ent.villages
+  local g = W.grid
+  local dest = v.from and vs[v.from]
+  if not (dest and dest.alive and dest.food_security > 1) then
+    dest = nil
+    local bd = -2
+    for i = 1, #vs do
+      local u = vs[i]
+      if u.alive and u ~= v and u.food_security > 1 and (u.continent == v.continent or #v.fishing > 0) then
+        local d = g.X[u.cell] * g.X[v.cell] + g.Y[u.cell] * g.Y[v.cell] + g.Z[u.cell] * g.Z[v.cell]
+        if d > bd then dest, bd = u, d end
+      end
+    end
+  end
+  if not dest then return false end
+  local P = W.ent.people
+  local m = v.members
+  local n = #m
+  for i = 1, n do move(W, P[m[i]], v, dest) end
+  for i = n, 1, -1 do m[i] = nil end
+  v.pop = 0
+  emit(W, "migration", v.cell, v.cause, n, { from = v.id, to = dest.id, orphans = true })
+  return true
 end
 
 local function abandon(W, v)
@@ -734,6 +782,14 @@ local function memories(W, v, geom)
   v.ev_seen = last
 end
 
+local function adults_left(W, v)
+  local P = W.ent.people
+  local m = v.members
+  local n = 0
+  for i = 1, #m do if P[m[i]].job ~= "child" then n = n + 1 end end
+  return n
+end
+
 local function month(W, v, pop_total)
   local cfg = cfgmod.VILLAGE
   local pcfg = cfgmod.PEOPLE
@@ -760,9 +816,18 @@ local function month(W, v, pop_total)
   local catch, stock = fishing(W, v, fishers)
   local working = adults
   local fj = floor((stock or 0) / cfg.fisher_max)
-  local fmax = floor(working * cfg.fish_share)
+  -- at most fish_share of the workers fish; with no fields to work, anyone may
+  local fmax = #v.farms == 0 and working or floor(working * cfg.fish_share)
   if fj > fmax then fj = fmax end
   v.fish_jobs = fj
+  -- farmers with no land to farm take to the boats (an islet, fields lost to the sea or ice)
+  if #v.farms == 0 and farmers > 0 and fishers < fj then
+    for i = 1, #m do
+      if fishers >= fj then break end
+      local p = P[m[i]]
+      if p.job == "farmer" then p.job = "fisher"; fishers = fishers + 1; farmers = farmers - 1 end
+    end
+  end
   -- 3. hunting / culling
   local meat = hunting(W, v, geom, hunters)
   v.meat = meat
@@ -897,9 +962,13 @@ local function month(W, v, pop_total)
     migrate(W, v)
     v.chronic = 0
   end
+  if v.pop > 0 and adults_left(W, v) == 0 then rehome_children(W, v) end
   if v.pop == 0 then abandon(W, v) return end
-  -- 10. daughter villages (a monthly roll while the village is big, fed and filling its land)
-  if v.pop >= cfg.bud_pop and not v.famine and fs >= cfg.bud_fs and rho < cfg.bud_rho
+  -- 10. daughter villages (a monthly roll in spring, before planting, while the village is big,
+  -- fed and filling its land)
+  local ltoy = (tick + geom.shift) % 48
+  if ltoy < cfg.plant_toy - 4 and v.pop >= cfg.bud_pop and not v.famine and fs >= cfg.bud_fs
+    and (rho < cfg.bud_rho or v.pop >= cfg.bud_big)
     and tick - (v.bud_last or v.founded) >= cfg.bud_years * 48 and pop_total < cfg.bud_total
     and rng.float(W.seed, rng.S.MIGRATION, v.key_cell, tick, 3) < cfg.bud_prob then
     bud(W, v)

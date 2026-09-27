@@ -8,27 +8,27 @@
     "warm_years": 1
   },
   "date": "2026-09-27",
-  "instructions_per_tick": 233790,
+  "instructions_per_tick": 241170,
   "limits": {
     "min_abs": 2000,
     "system": 0.3,
     "total": 0.15
   },
-  "other": 6145,
+  "other": 6461,
   "systems": {
-    "biome": 8621,
-    "detectors": 3643,
-    "fauna": 20197,
-    "fire": 4603,
-    "globalclimate": 1072,
-    "hydrology": 32843,
-    "ice": 9358,
-    "moisture": 72443,
-    "ocean": 9097,
-    "ships": 186,
-    "temperature": 26949,
-    "vegetation": 26567,
-    "villages": 12066
+    "biome": 8664,
+    "detectors": 4361,
+    "fauna": 19948,
+    "fire": 4588,
+    "globalclimate": 1077,
+    "hydrology": 33719,
+    "ice": 9353,
+    "moisture": 78565,
+    "ocean": 9099,
+    "ships": 179,
+    "temperature": 26952,
+    "vegetation": 26583,
+    "villages": 11621
   },
   "update": "npm run bench -- --update-baseline  (intentional changes only; log them in DECISIONS.md)",
   "what": "P07 perf baseline: Lua VM instructions per tick (LuaJIT interpreter, JIT off) on a fixed world"
