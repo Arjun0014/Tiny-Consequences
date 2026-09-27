@@ -94,7 +94,7 @@ void main()
         // sea ice: matte, bright
         highp float inz = tc_fbm(var_wpos * 3.1) - 0.5;
         highp float inz2 = tc_fbm(var_wpos * 0.45 + 3.7) - 0.5;
-        float ice = smoothstep(0.44, 0.54, var_fx.r + inz * 0.3 + inz2 * 0.9);
+        float ice = smoothstep(0.44, 0.54, var_fx.a + inz * 0.3 + inz2 * 0.9);
         float floe = tc_noise(var_wpos * 7.0);
         vec3 icecol = tc_light(SEA_ICE * (0.92 + 0.1 * floe), up, up, V, L, 0.08);
         icecol = mix(icecol, vec3(0.62, 0.84, 0.95), smoothstep(0.35, 0.0, ice) * 0.5);

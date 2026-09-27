@@ -18,7 +18,7 @@ M.GRAZER_MIN, M.PRED_MIN = 0.12, 0.08
 M.PER_CELL = 6
 M.PER_VILLAGE = 16
 M.SCALE = 1.3
-M.PERSON_SCALE = 1.9   -- villagers are a touch oversized so they read at close zoom
+M.PERSON_SCALE = 2.8   -- villagers are oversized (toy-like) so they read among the houses at close zoom
 
 local H_POS, H_NRM, H_COL = hash("position"), hash("normal"), hash("color")
 local MSG_ENABLE, MSG_DISABLE = hash("enable"), hash("disable")
@@ -192,7 +192,7 @@ local function assign_people(W, fx, fy, fz)
       if not p then break end
       p.pid = w.pid
       p.cell = w.cell
-      local sp = g.spacing * 0.22
+      local sp = g.spacing * 0.5          -- spread among the houses (the village cluster)
       p.home_lat, p.home_lon = g.lat[w.cell], g.lon[w.cell]
       p.lat = p.home_lat + (rnd() - 0.5) * sp
       p.lon = p.home_lon + (rnd() - 0.5) * sp
@@ -326,7 +326,7 @@ function M.update(W, dt, zoom, frozen)
   for _, p in ipairs(M.people) do
     if p.on then
       np = np + 1
-      walk(p, dt, frozen, 0.0025, sp * 0.18)
+      walk(p, dt, frozen, 0.0025, sp * 0.36)
       local x, y, z = unit(p.lat, p.lon)
       local r, v = M.surface(x, y, z, p.v)
       p.v = v

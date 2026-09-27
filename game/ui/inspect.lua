@@ -127,13 +127,15 @@ local function village_items(W, v, items)
   if farms then add(items, { t = "row", icon = "wheat", label = "Farms", value = tostring(farms) }) end
   local boats = type(v.boats) == "table" and #v.boats or tonumber(v.boats)
   local fishing = type(v.fishing) == "table" and #v.fishing or nil
-  if boats or fishing then
-    add(items, { t = "row", icon = "boat", label = "Fishing", value = (boats or 0) .. " boats" .. (fishing and (", " .. fishing .. " waters") or "") })
+  if (boats and boats > 0) or (fishing and fishing > 0) then
+    add(items, { t = "row", icon = "boat", label = "Fishing", value = (boats or 0) == 1 and "1 boat" or ((boats or 0) .. " boats") })
   end
   local houses = tonumber(v.houses)
   if houses then add(items, { t = "row", icon = "house", label = "Houses", value = tostring(houses) }) end
   if type(v.founded) == "number" then
-    add(items, { t = "row", icon = "hourglass", label = "Founded", value = "Year " .. floor(v.founded / 48) })
+    local parent = v.from and W.ent and W.ent.villages and W.ent.villages[v.from]
+    add(items, { t = "row", icon = "hourglass", label = "Founded", value = (v.founded < 0 and "Long ago" or ("Year " .. floor(v.founded / 48)))
+      .. (parent and parent.name and (", from " .. parent.name) or "") })
   end
   if v.alive == false then
     add(items, { t = "row", icon = "skull", label = "Abandoned", value = type(v.abandoned) == "number" and ("Year " .. floor(v.abandoned / 48)) or "yes", hl = true })
@@ -167,14 +169,14 @@ local function village_items(W, v, items)
     local p = ents.person(W, pid)
     if p and ents.is_alive(W, pid) then
       shown = shown + 1
-      if shown <= 12 then
+      if shown <= 8 then
         local age = ents.age(W, p)
         add(items, { t = "row", icon = M.JOB_ICON[p.job] or "person", label = p.name or ("#" .. tostring(pid)),
           value = cap(p.job or "") .. (age and (", " .. age) or ""), link = { kind = "person", id = pid } })
       end
     end
   end
-  if shown > 12 then add(items, { t = "text", text = "…and " .. (shown - 12) .. " more" }) end
+  if shown > 8 then add(items, { t = "text", text = "…and " .. (shown - 8) .. " more" }) end
   if shown == 0 then add(items, { t = "text", text = "Nobody lives here any more." }) end
 end
 

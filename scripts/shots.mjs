@@ -5,8 +5,9 @@
 // Builds if stale, serves the bundle on a private port, drives the game through the test
 // bridge in headless Chromium (SwiftShader WebGL) with ?freeze=1, and writes
 // out/shots/latest/<year>_<preset>.png plus shots.json (bridge numbers per shot + console).
-// Flags: --release, --no-build, --port N (default 8182), --seed N (default 1),
-//        --years N (default 50), --only a,b (preset subset), --no-later (skip the year-N set)
+// Flags: --release, --no-build, --port N (default 8182), --seed N (default: the pre-spun default
+//        world the player sees), --years N (default 50), --only a,b (preset subset),
+//        --no-later (skip the year-N set), --preview (the pre-1.7 view-only village art preview)
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from '@playwright/test';
@@ -18,7 +19,8 @@ import { startServer } from './serve.mjs';
 const args = process.argv.slice(2);
 const variant = hasFlag(args, '--release') ? 'release' : 'debug';
 const port = Number(getFlag(args, '--port', 8182));
-const seed = String(getFlag(args, '--seed', '1'));
+const seedFlag = getFlag(args, '--seed', null);
+const seed = seedFlag === null ? 'default world' : String(seedFlag);
 const years = Number(getFlag(args, '--years', 50));
 const PRESETS = (getFlag(args, '--only', 'continent_a,continent_b,pole,village,close')).split(',');
 const UI_SHOTS = !hasFlag(args, '--no-ui');
@@ -91,7 +93,9 @@ try {
   page.on('console', (m) => report.console.push(`[${m.type()}] ${m.text()}`));
   page.on('pageerror', (e) => report.console.push(`[pageerror] ${e.message}`));
   const t0 = Date.now();
-  await page.goto(gameUrl(`http://127.0.0.1:${port}`, { freeze: '1', seed, speed: '0' }));
+  const q = { freeze: '1', speed: '0' };
+  if (seedFlag !== null) q.seed = String(seedFlag);
+  await page.goto(gameUrl(`http://127.0.0.1:${port}`, q));
   await page.waitForFunction(() => window.__TC && window.__TC.loading === true && window.__TC.loading_frac > 0.2, null, { timeout: 60_000 }).catch(() => {});
   await page.screenshot({ path: path.join(outDir, 'loading.png') });
   await page.waitForFunction(() => window.__TC && window.__TC.ready === true, null, { timeout: 120_000 });
@@ -140,7 +144,7 @@ try {
     const label = `y${String(years).padStart(3, '0')}`;
     for (const p of PRESETS) await shoot(page, label, p);
   }
-  if (!hasFlag(args, '--no-preview')) {
+  if (hasFlag(args, '--preview')) {
     // Art preview only: a view-side village + farms (no sim villages exist before Stage 1.7).
     await cmd(page, { cmd: 'preview_village' });
     await page.waitForTimeout(1200);

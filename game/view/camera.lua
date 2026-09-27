@@ -340,6 +340,15 @@ end
 function M.preset(name, W)
   local comps = W.geo.components or {}
   local g = W.grid
+  if name == "default" or name == "title" then
+    -- open on life: the biggest village, pulled a little toward the equator so the globe
+    -- (not a pole) fills the frame; landmass 1 when there are no villages
+    local best, bp = nil, -1
+    for _, v in ipairs(W.ent and W.ent.villages or {}) do
+      if v.alive ~= false and (v.pop or 0) > bp then best, bp = v, v.pop or 0 end
+    end
+    if best then return g.lat[best.cell] * 0.75, g.lon[best.cell], M.ZOOM_DEFAULT end
+  end
   if name == "continent_a" or name == "continent_b" or name == "default" or name == "title" then
     local comp = comps[name == "continent_b" and 2 or 1] or comps[1]
     local lat, lon = 0, 0

@@ -22,7 +22,7 @@ uniform vs_uniforms
 out highp vec3 var_wpos;
 out mediump vec3 var_normal;
 out mediump vec4 var_land;   // ground rgb + snow
-out mediump vec4 var_fx;     // land: fire, ash, crop, village / water: sea ice, oil, plankton
+out mediump vec4 var_fx;     // r fire (land), g oil, b plankton (water), a ice/snow (both)
 out highp vec4 var_info;
 
 void main()
@@ -40,12 +40,14 @@ void main()
     vec4 B = textureLod(celltex, cella.xy + dv, 0.0) * wa
            + textureLod(celltex, cella.zw + dv, 0.0) * wb
            + textureLod(celltex, cellc.xy + dv, 0.0) * wc;
+    // Each channel means one thing on both sides of a coast: triangles that straddle it
+    // interpolate between a land and a water vertex (sea ice once bled into land as "fire").
     if (vinfo.w > 0.0) {
         var_land = A;
-        var_fx = B;
+        var_fx = vec4(B.r, 0.0, 0.0, A.a);
     } else {
         var_land = vec4(0.95, 0.88, 0.66, 0.0);   // shore sand for the land side of coasts
-        var_fx = vec4(A.a, B.g, B.b, 0.0);
+        var_fx = vec4(0.0, B.g, B.b, A.a);
     }
     var_info = vinfo;
     gl_Position = mtx_proj * mtx_view * wp;
