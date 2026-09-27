@@ -11,6 +11,8 @@ C.SIM_LEVEL = 3            -- icosphere level: 4 = 2,562 cells (target), 3 = 642
 C.TICKS_PER_YEAR = 48
 C.SPINUP_YEARS = 30        -- worldgen spin-up (no events recorded)
 C.SPINUP_VEG_YEAR = 4      -- spin-up year at which vegetation is seeded from the settled climate
+C.SPINUP_FERT_BOOST = 8    -- during spin-up, fertility regeneration and erosion run this much faster: soils
+                           --   reach their equilibrium (a ~40-year relaxation) before Year 0 instead of drifting
 
 -- Events --------------------------------------------------------------------------------------
 C.EVENT_CAP = 8192
@@ -62,6 +64,10 @@ C.MOIST = {
   -- capacity multiplier by |lat| (degrees, band-shifted): ITCZ wet, subtropics dry
   cap_profile = { { 0, 0.7 }, { 8, 0.75 }, { 15, 1.0 }, { 22, 1.5 }, { 30, 1.7 }, { 38, 1.2 }, { 50, 0.95 }, { 65, 1.0 }, { 90, 1.2 } },
   inflow_share = 0.3,                     -- a tagged inflow must carry ≥ 30% to pass its tag on
+  -- evaporation wobble (interannual variability): sea evaporation x (1 + amp x sum of pattern x coefficient)
+  rain_wobble_patterns = 2, rain_wobble_freq = 1.3, rain_wobble_amp = 0.6,
+  rain_wobble_years = 2,                  -- coefficient knots every 2 years (multi-year dry/wet spells)
+  rain_wobble_floor = 0.3,                -- evaporation factor never below this
 }
 
 -- Ice (§5.4) -------------------------------------------------------------------------------------------
@@ -77,7 +83,11 @@ C.HYDRO = {
   field_capacity = 0.7, k_run = 0.5, k_base = 0.01,
   k_ero = 0.02, erosion_max = 0.002, silt_carry = 0.9,
   lake_evap = 0.05, river_threshold = 0.15, tag_share = 0.3,
-  flow_ema = 0.01, bankfull_min = 0.2, flood_mult = 1.5,
+  flow_ema = 0.01,
+  bankfull_ema = 0.15,                    -- per year: bankfull = EMA of the yearly peak flow (mean annual flood)
+  flood_mult = 2.0, flood_min = 0.05,     -- flood when flow > flood_mult x bankfull on a river of at least flood_min
+  floodplain = 0.05,                      -- km: land neighbours up to this much higher are flooded too
+  flood_silt = 0.01,                      -- fertility left per tick of overbank flow (x overflow share, <= 1)
 }
 
 -- Global climate (§5.13) -----------------------------------------------------------------------------------
@@ -107,7 +117,7 @@ C.VEG = {
   seed_grass = 0.01, seed_forest = 0.002, -- recolonisation from neighbours
   grass_t = { 0, 36 }, forest_t = { 2, 36 },   -- temperature bells (°C)
   light_amp = 0.4,
-  k_regen = 0.0005, fert_base = { 0.25, 0.75 },  -- fertility target from bare to fully vegetated
+  k_regen = 0.0005, fert_base = { 0.3, 0.8 },  -- fertility target from bare to fully vegetated
   fire_block_ticks = 96, scar_expire = 480,      -- recent burns slow forest establishment
   k_co2 = 0.4,                            -- ppm per unit biomass (growth absorbs, burning emits)
 }
@@ -226,8 +236,12 @@ C.VILLAGE = {
   frost_temp = -2, k_frost = 0.08,        -- crop loss per tick in frost during the season
   k_oil_crop = 0.5,                       -- crop loss per tick per unit of beached oil
   k_blight = 0.15,                        -- crop loss per tick on blighted farms (hook: W.S.blight[c] = tag)
+  k_flood_crop = 0.6,                     -- share of the standing crop a river flood drowns
+  flood_news_years = 5,                   -- a village's floods make the news at most this often
   deplete = 0.003,                        -- fertility lost per unit crop harvested
-  fallow_fert = 0.22,                     -- below this a farm lies fallow for a year
+  fallow_fert = 0.22,                     -- below this a farm lies fallow for a year (if the village can afford it)
+  fallow_fs = 6,                          -- months of food security below which exhausted fields are planted anyway
+  poor_fert = 0.05,                       -- a hungry village clears fields down to this fertility
   spoil = 0.08,                           -- per month, of the store beyond `granary` months of needs
   granary = 9,                            -- months of needs a granary holds; the rest spoils
   fish_q = 20,                            -- catchable person-months per unit fish per level-4 cell per month
@@ -245,6 +259,13 @@ C.VILLAGE = {
   fs_smooth = 0.5,                        -- food security EMA per month
   famine_fs = 1, famine_exit = 2,         -- months of food
   migrate_months = 6, migrate_to_fs = 3, min_founders = 4, min_spacing = 3,
+  min_site_people = 20,                   -- a new village's site must be able to feed this many (capacity)
+  -- daughter villages: a village of >= bud_pop with >= bud_fs months of food whose food margin fell
+  -- under bud_rho (land filling up) sends bud_share of its people (young families, adults <= bud_age)
+  -- to found a village; monthly chance bud_prob, at most once per bud_years, while the planet has
+  -- fewer than bud_total people and fewer than max_villages villages
+  bud_pop = 60, bud_fs = 5, bud_rho = 1.25, bud_share = 0.2, bud_age = 35, bud_prob = 0.02,
+  bud_years = 15, bud_total = 330, max_villages = 8,
   houses_per = 4,
   accident = 1.5e-5,                      -- village fire: ignition chance per person-month x dryness
   start_food = 8,                         -- months of food when founded
@@ -262,13 +283,15 @@ C.PEOPLE = {
   adult_age = 14, elder_age = 60, woodcutter_share = 0.08,
   memories = 6, grief_salience = 1.0, memory_fade = 0.8,
   hunger_rate = 0.5, hunger_hurts = 30, health_loss = 0.4, health_regen = 5,
+  vulnerable_young = 5, vulnerable_mult = 2,      -- children under 5 and elders lose health this much faster
   child_hazard = 0.0015, adult_hazard = 0.0004,   -- per month
   old_age = 50, old_hazard = 0.0012, old_scale = 8,  -- + old_hazard x exp((age - old_age) / old_scale)
   frail = 40, frail_hazard = 0.006,       -- health below frail: + (frail - health) x this per month
   pair_min = 18, pair_max = 50, pair_rate = 0.1,
   birth_min = 18, birth_max = 40, birth_rate = 0.02,    -- per month for partnered women
   birth_fs = { 0.5, 2.5 },                -- births scale 0 -> full as the hungry gap (fs_low) goes 0.5 -> 2.5 months
-  global_cap = 500, cap_soft = 0.55,      -- births taper to 0 over the last 55% below the cap
+  global_cap = 500, global_soft = 450, cap_soft = 0.55,   -- hard cap; births taper to 0 over the last
+                                          --   55% below the soft ceiling (keeps the planet under ~400)
   keep_dead_years = 10,
 }
 
@@ -294,6 +317,7 @@ C.DETECT = {
   boom = 2.0, boom_exit = 1.4,            -- × 5-year average (entry / exit)
   boom_local = 2.2, boom_cells = 10,      -- local boom: connected cells ≥ 2.2 × their own normal, ≥ 10 level-4 cells
   crash = 0.5, crash_exit = 0.75,
+  news_years = 25,                        -- a region's natural boom/crash headlines at most this often
   cooldown = 96,                          -- ticks between boom/crash events per region + species
   min_density = { grazers = 0.01, predators = 0.001 },   -- regional mean below this: too few to judge
   extinct_density = 1e-4, present_density = 1e-3,
@@ -302,7 +326,9 @@ C.DETECT = {
   fish_cells = 6,                         -- level-4-equivalent cells in a collapsed fishing ground (min 2)
   oil_spread_cells = 10,                  -- level-4-equivalent cells in a connected slick (min 3)
   oil_spread_min = 0.01, oil_beach_min = 0.005,
-  drought_soil = 0.2, drought_anom = 0.75, drought_months = 3, drought_exit = 0.25,
+  -- drought: connected land (>= drought_cells level-4 cells) whose soil water stayed below drought_anom x
+  -- its own seasonal normal (>= drought_norm_min) for drought_months; a cell recovers at drought_exit_anom
+  drought_anom = 0.7, drought_months = 3, drought_cells = 12, drought_norm_min = 0.12, drought_exit_anom = 0.9,
   flood_cooldown = 24,                    -- ticks before the same cell floods again (as an event)
   crop_failure = 0.5,                     -- harvest below this x the village's 5-year average
   famine_cooldown = 24,

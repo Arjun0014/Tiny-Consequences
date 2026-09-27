@@ -9,6 +9,8 @@
 local cfgmod = require("sim.config")
 local fields = require("sim.fields")
 local blame = require("sim.causality.blame")
+local noise = require("sim.worldgen.noise")
+local rng = require("sim.rng")
 
 local sys = { name = "moisture" }
 local sin, cos, abs, sqrt, exp, max, min = math.sin, math.cos, math.abs, math.sqrt, math.exp, math.max, math.min
@@ -43,9 +45,46 @@ function sys.wind_at(W, c, s)
   return u * ex + vn * nx, u * ey + vn * ny, u * ez + vn * nz, u, vn
 end
 
+-- Ocean-evaporation wobble (02 §8 "noise with memory"; like Earth's sea-surface oscillations):
+-- smooth planet-scale patterns whose strength drifts from year to year (knots every
+-- rain_wobble_years, smoothstep between them) scale evaporation from the sea, so the land
+-- downwind of a "warm" patch has wet years and the land downwind of a "cool" one dry years.
+-- Natural variability carries no cause tag.
+local function build_wobble(W)
+  local cfg = cfgmod.MOIST
+  local g = W.grid
+  local pats = {}
+  for k = 1, cfg.rain_wobble_patterns do
+    local p, mx = {}, 1e-9
+    for c = 1, W.n do
+      local v = noise.fbm(W.seed, 950 + k * 17, g.X[c], g.Y[c], g.Z[c], cfg.rain_wobble_freq, 2, 0.5)
+      p[c] = v
+      if v > mx then mx = v elseif -v > mx then mx = -v end
+    end
+    for c = 1, W.n do p[c] = p[c] / mx end   -- unit peak: amp is the largest possible anomaly
+    pats[k] = p
+  end
+  W.rain_wobble = pats
+end
+
+local function knot(W, k, i)
+  return rng.float(W.seed, rng.S.WEATHER_WOBBLE, 5000 + i, k, 1) * 2 - 1
+end
+
+-- Wobble coefficient of pattern k at tick t (deterministic, smooth).
+function sys.rain_coef(W, k, t)
+  local span = cfgmod.MOIST.rain_wobble_years * 48
+  local i = math.floor(t / span)
+  local f = (t - i * span) / span
+  f = f * f * (3 - 2 * f)
+  local a, b = knot(W, k, i), knot(W, k, i + 1)
+  return a + (b - a) * f
+end
+
 function sys.rebuild(W)
   local cfg = cfgmod.MOIST
   local n, g = W.n, W.grid
+  build_wobble(W)
   local X, Y, Z = g.X, g.Y, g.Z
   local nbr, cnt = g.nbr, g.nbr_count
   local elev, sea = W.static.elev, W.G.sea_built or W.G.sea_level
@@ -118,6 +157,7 @@ function sys.init(W)
   sc.evap_land = sc.evap_land or fields.filled(W.n, 0)
 end
 
+
 function sys.update(W)
   local cfg = cfgmod.MOIST
   local n, g = W.n, W.grid
@@ -141,6 +181,15 @@ function sys.update(W)
   local eps, hold = 0.002, 12
   local share = cfg.inflow_share
   local force = W.S.weather_force   -- sparse player/test forcing (Chapter 2), may be nil
+  -- evaporation wobble: this tick's pattern strengths (at most 3 patterns)
+  local wob = W.rain_wobble
+  local amp = cfg.rain_wobble_amp
+  local np = #wob
+  local w1, w2, w3 = wob[1], wob[2] or wob[1], wob[3] or wob[1]
+  local a1 = np >= 1 and amp * sys.rain_coef(W, 1, W.tick) or 0
+  local a2 = np >= 2 and amp * sys.rain_coef(W, 2, W.tick) or 0
+  local a3 = np >= 3 and amp * sys.rain_coef(W, 3, W.tick) or 0
+  local cap_floor = cfg.rain_wobble_floor
   -- inflow tags only need tracking when some cell carried a moisture tag last tick
   -- (persistent count, so a reloaded world takes the same path)
   local track = (W.S.moist_tags or 1) > 0
@@ -174,7 +223,9 @@ function sys.update(W)
     if ocean[c] == 1 then
       local f = exp(0.07 * (sst[c] - 15))
       if f < 0.1 then f = 0.1 elseif f > 4 then f = 4 end
-      e = k_eo * f * (1 - ice[c])
+      local wf = 1 + a1 * w1[c] + a2 * w2[c] + a3 * w3[c]
+      if wf < cap_floor then wf = cap_floor end
+      e = k_eo * f * (1 - ice[c]) * wf
       etag = csst[c]
     else
       local veg = grass[c] + forest[c]

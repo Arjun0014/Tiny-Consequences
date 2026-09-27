@@ -12,9 +12,9 @@
 --                5-year EMA; entry/exit thresholds + cooldown), extinction_regional /
 --                extinction_global, fish_collapse (connected fishing grounds whose fish fell
 --                below 50% of their per-cell 5-year normal, D-014), oil_spreading (connected
---                slick ≥ 10 level-4-equivalent cells), oil_beached (oil ashore), drought (a
---                normally wetter region's land soil water < 0.2 and < 75% of its normal for a
---                season).
+--                slick ≥ 10 level-4-equivalent cells), oil_beached (oil ashore), drought
+--                (connected land whose soil water has been below drought_anom × its own
+--                seasonal 5-year normal for drought_months, D-036).
 local cfgmod = require("sim.config")
 local fields = require("sim.fields")
 local events = require("sim.causality.events")
@@ -62,9 +62,11 @@ function sys.init(W)
   if not D.fauna then
     D.fauna = {}
     for _, sp in ipairs(SPECIES) do
-      D.fauna[sp] = { avg = f(nr, -1), state = f(nr, 0), last = f(nr, -1000000), ext = f(nr, 0), gext = 0 }
+      D.fauna[sp] = { avg = f(nr, -1), state = f(nr, 0), last = f(nr, -1000000), ext = f(nr, 0), gext = 0,
+        ev = f(nr, 0), news = f(nr, -1000000) }
     end
-    D.soil = { avg = f(nr, -1), months = f(nr, 0), on = f(nr, 0) }
+    -- drought: per-cell seasonal soil-water normals (5-year EMAs), dry-month counters, on flags
+    D.soil = { n1 = f(n, -1), n2 = f(n, -1), n3 = f(n, -1), n4 = f(n, -1), dry = f(n, 0), on = f(n, 0) }
     D.fish_low = f(n, 0)
     D.flood_last = f(n, -1000000)
   end
@@ -83,6 +85,8 @@ function sys.shift_ticks(W, dt)
   for _, sp in ipairs(SPECIES) do
     local l = D.fauna[sp].last
     for r = 1, #l do l[r] = l[r] + dt end
+    local nw = D.fauna[sp].news
+    if nw then for r = 1, #nw do nw[r] = nw[r] + dt end end
   end
   local fl = D.flood_last
   for c = 1, #fl do fl[c] = fl[c] + dt end
@@ -252,8 +256,12 @@ local function fauna_species(W, cfg, sp, record)
   local D = W.D.fauna[sp]
   local vals, tags, idle = W.F[sp], W.C[sp], W.I[sp]
   local area = W.grid.area
-  local avg, state, last, ext = D.avg, D.state, D.last, D.ext
+  local avg, state, last, ext, evs, news = D.avg, D.state, D.last, D.ext, D.ev, D.news
   local tick = W.tick
+  local E = W.E
+  -- news fatigue: a region's natural boom/crash (its predator-prey rhythm) makes the chronicle at
+  -- most once per news_years; the events themselves are always recorded (chains, "Why?")
+  local fresh = cfg.news_years * 48
   local mind = cfg.min_density[sp]
   local share = cfg.dominant_share
   local am = cfg.avg_months
@@ -284,16 +292,37 @@ local function fauna_species(W, cfg, sp, record)
         if kind and tick - last[r] >= cfg.cooldown then
           state[r] = nst
           last[r] = tick
+          evs[r] = 0
           if record then
             local parent = dominant(W, cells, m, tags, share)
-            local id = emit_region(W, kind, r, parent, ratio, { species = sp, ratio = ratio })
+            local opts = { region = r }
+            if parent == 0 and tick - news[r] < fresh then opts.headline = false end
+            local rec = W.names.regions[r]
+            local id = events.emit(W, kind, rec and rec.centre or 0, parent, ratio, { species = sp, ratio = ratio }, opts)
             if id ~= 0 then retag_species(W, cells, m, sp, parent, id, nst, cfg) end
+            evs[r] = id
+            local er = E.rec[id]
+            if er and er.headline and parent == 0 then news[r] = tick end
           end
         end
-      elseif st == 1 and ratio < cfg.boom_exit then state[r] = 0
-      elseif st == -1 and ratio > cfg.crash_exit then state[r] = 0 end
+      elseif st == 1 and ratio < cfg.boom_exit then state[r] = 0; evs[r] = 0
+      elseif st == -1 and ratio > cfg.crash_exit then state[r] = 0; evs[r] = 0
+      elseif evs[r] ~= 0 then
+        -- while it lasts, the event records the peak / the trough; a deep one becomes a headline
+        -- (an ordinary predator–prey trough stays a quiet event: 03 §5 headline minimums)
+        local rec = E.rec[evs[r]]
+        if rec and ((st == -1 and ratio < rec.mag) or (st == 1 and ratio > rec.mag)) then
+          rec.mag = ratio
+          if type(rec.data) == "table" then rec.data.ratio = ratio end
+          if not rec.headline and (rec.parent ~= 0 or tick - news[r] >= fresh) then
+            events.update_headline(W, rec)
+            if rec.headline and rec.parent == 0 then news[r] = tick end
+          end
+        end
+      end
     elseif st ~= 0 then
       state[r] = 0
+      evs[r] = 0
     end
     -- regional extinction (permanent unless animals migrate back in)
     if ext[r] == 0 then
@@ -511,40 +540,70 @@ end
 
 -- Drought: a region's land soil water < drought_soil and < drought_anom × its normal for a season.
 local function drought(W, cfg, record)
-  local R = W.regions
   local D = W.D.soil
   local soil, cs, is = W.F.soil_water, W.C.soil_water, W.I.soil_water
-  local area = W.grid.area
-  local ids = R.land_ids
-  for q = 1, #ids do
-    local r = ids[q]
-    local cells = R.lcells[r]
-    local m = #cells
-    local s = 0
-    for i = 1, m do local c = cells[i]; s = s + soil[c] * area[c] end
-    local la = R.larea[r]
-    local cur = la > 0 and s / la or 0
-    local a = D.avg[r]
-    if a < 0 then a = cur end
-    -- only regions that are normally wetter than the drought line (deserts aren't in drought)
-    if cur < cfg.drought_soil and cur < cfg.drought_anom * a and a >= cfg.drought_soil then
-      D.months[r] = D.months[r] + 1
+  local ice = W.F.ice
+  local land = W.geo.land_cells
+  local season = floor((W.tick % 48) / 12) + 1
+  local norm = season == 1 and D.n1 or season == 2 and D.n2 or season == 3 and D.n3 or D.n4
+  local dry, on = D.dry, D.on
+  local anom, exitk, minn, months = cfg.drought_anom, cfg.drought_exit_anom, cfg.drought_norm_min, cfg.drought_months
+  local k = 1 / (cfg.avg_months / 4)      -- a season is sampled 3 months a year: ~5-year memory
+  local sc = W.scratch
+  local newl = sc.det_new
+  local nnew = 0
+  for i = 1, #land do
+    local c = land[i]
+    local s0, nm = soil[c], norm[c]
+    if nm < 0 then nm = s0 end
+    if nm >= minn and ice[c] < 0.5 and s0 < anom * nm then
+      dry[c] = dry[c] + 1
+      if on[c] == 0 and dry[c] >= months then nnew = nnew + 1; newl[nnew] = c end
     else
-      D.months[r] = 0
+      dry[c] = 0
+      if on[c] == 1 and s0 >= exitk * nm then on[c] = 0 end
     end
-    if D.on[r] == 0 then
-      if D.months[r] >= cfg.drought_months then
-        D.on[r] = 1
-        if record then
-          local parent = dominant(W, cells, m, cs, cfg.dominant_share)
-          local id = emit_region(W, "drought", r, parent, cur, { soil = cur })
-          if id ~= 0 then retag(cells, m, cs, is, soil, parent, id) end
+    norm[c] = nm + (s0 - nm) * k
+  end
+  if nnew == 0 then return end
+  -- connected dry land (a drought has a size); cells join while dry for >= drought_months
+  local need = ceil(cfg.drought_cells / (W.sscale * W.sscale) - 0.01)
+  if need < 2 then need = 2 end
+  local g = W.grid
+  local nbr, cnt = g.nbr, g.nbr_count
+  local ocean = W.geo.ocean
+  local mark, q = sc.det_mark, sc.det_q
+  local stamp = sc.det_stamp + 1
+  sc.det_stamp = stamp
+  for s = 1, nnew do
+    local src = newl[s]
+    if mark[src] ~= stamp and on[src] == 0 then
+      mark[src] = stamp
+      local m, head = 1, 1
+      q[1] = src
+      local ssum, nsum = 0, 0
+      while head <= m do
+        local c = q[head]; head = head + 1
+        ssum = ssum + soil[c]; nsum = nsum + norm[c]
+        local b = c * 6 - 6
+        for kk = 1, cnt[c] do
+          local j = nbr[b + kk]
+          if ocean[j] == 0 and dry[j] >= months and mark[j] ~= stamp then
+            mark[j] = stamp; m = m + 1; q[m] = j
+          end
         end
       end
-    elseif cur >= cfg.drought_exit or cur >= 0.9 * a then
-      D.on[r] = 0
+      if m >= need then
+        for kk = 1, m do on[q[kk]] = 1 end
+        if record then
+          local parent = dominant(W, q, m, cs, cfg.dominant_share)
+          local pct = nsum > 0 and floor(100 * (1 - ssum / nsum) + 0.5) or 0
+          local id = events.emit(W, "drought", src, parent, m * W.sscale * W.sscale,
+            { cells = m, drop = pct })
+          if id ~= 0 then retag(q, m, cs, is, soil, parent, id) end
+        end
+      end
     end
-    D.avg[r] = a + (cur - a) / cfg.avg_months
   end
 end
 

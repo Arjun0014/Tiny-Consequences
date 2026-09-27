@@ -114,6 +114,7 @@ fields.snap_array = snap_array
 fields.SYSTEM_Q = {
   { "fauna", "hnorm", { 0, 1, true } }, { "fauna", "pnorm", { 0, 1, true } },
   { "hydro", "flow_mean", { 0, 1000, true } }, { "ocean", "fish_ref", { 0, 1, true } },
+  { "hydro", "bankfull", { 0, 1000, true } }, { "hydro", "flow_peak", { 0, 1000, true } },
 }
 
 function fields.snap_all(W)

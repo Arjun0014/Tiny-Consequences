@@ -1,11 +1,11 @@
 -- Pre-spin a world (02 §2): worldgen + spin-up, saved at Year 0 so the game starts instantly.
---   luajit tools/make_world.lua --seed 3 --out assets/worlds/default.tcsave
+--   luajit tools/make_world.lua --seed 27 --out assets/worlds/default.tcsave
 -- The game loads it with require("sim.worlds").from_save_string(str). Regenerate whenever the
 -- sim changes in a save-incompatible or behaviour-changing way (the unit test
 -- test_worlds.default_world_matches_fresh_generation fails when the file is stale).
 package.path = "./?.lua;./?/init.lua;" .. package.path
 if rawget(_G, "jit") then jit.opt.start("maxtrace=8000", "maxmcode=8192", "maxrecord=8000") end -- lint:allow luajit-only
-local args = { seed = 3, out = "assets/worlds/default.tcsave" }
+local args = { seed = 27, out = "assets/worlds/default.tcsave" }
 local i = 1
 while arg[i] do
   if arg[i] == "--seed" then i = i + 1; args.seed = tonumber(arg[i])

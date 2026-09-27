@@ -152,10 +152,20 @@ R.extra_line[#R.extra_line + 1] = function(W, m)
 end
 
 function R.describe_event(W, r)
-  local d = { string.format("#%d %s %s cell=%d mag=%.3g actor=%s parent=%d root=%d%s",
+  local s = string.format("#%d %s %s cell=%d mag=%.3g actor=%s parent=%d root=%d%s",
     r.id, calendar.label(r.tick), r.kind, r.cell, r.mag, r.actor, r.parent, r.root,
-    r.headline and " HEADLINE" or "") }
-  return d[1]
+    r.headline and " HEADLINE" or "")
+  -- place and a few data fields (species, village) for reading chains
+  local reg = W.names.regions and W.names.regions[r.region]
+  if reg then s = s .. " @" .. reg.name end
+  local d = r.data
+  if type(d) == "table" then
+    if d.species then s = s .. " species=" .. d.species end
+    local vid = d.village or d.from
+    local v = vid and W.ent.villages and W.ent.villages[vid]
+    if v then s = s .. " village=" .. v.name end
+  end
+  return s
 end
 
 function R.write_events(W, path)

@@ -129,6 +129,23 @@ end
 
 -- Metrics -----------------------------------------------------------------------------------------
 local function metric_value(W, name, target)
+  -- pop@community: the village plus the villages its people founded after the action (a
+  -- daughter village moves people without losing them, so budding doesn't count as loss)
+  if name == "pop@community" then
+    local vs = W.ent.villages
+    local v = vs[target.village]
+    if not v then return 0 end
+    local total = v.pop
+    local member = { [v.id] = true }
+    for i = v.id + 1, #vs do
+      local u = vs[i]
+      if u.from and member[u.from] and u.founded >= (target.tick or 0) then
+        member[u.id] = true
+        if u.alive then total = total + u.pop end
+      end
+    end
+    return total
+  end
   local vf = name:match("^([%w_]+)@village$")
   if vf then
     local v = W.ent.villages[target.village]
@@ -149,7 +166,8 @@ end
 local function apply_action(W, a, target)
   local p = {}
   for k, v in pairs(a) do
-    if k ~= "year" and k ~= "hook" and k ~= "helper" and k ~= "target" and k ~= "species" then p[k] = v end
+    if k ~= "year" and k ~= "hook" and k ~= "helper" and k ~= "target" and k ~= "species"
+      and k ~= "local_calendar" then p[k] = v end
   end
   local hook = a.hook
   if a.helper == "cull_all" then
@@ -217,14 +235,24 @@ function L.run_seed(spec, seed, opts)
     if e.metric then series[i] = {} end
   end
   local pending_root = {}
+  local due = {}
   for t = 0, ticks - 1 do
     for ai, a in ipairs(acts) do
       if t == math.floor((a.year or 0) * 48) then
         local tg = L.select(Wa, a.target)
         if not tg then return false, "target " .. a.target .. " not found", {} end
         targets[ai] = tg
+        tg.tick = Wa.tick
+        due[ai] = t
+        -- local_calendar: `year` is in the target village's own farming calendar (southern
+        -- villages farm half a year later, sim/systems/villages.lua season_shift)
+        if a.local_calendar and tg.village then
+          due[ai] = t + require("sim.systems.villages").season_shift(Wa, Wa.ent.villages[tg.village].cell)
+        end
+      end
+      if due[ai] == t and not act_tick[ai] then
         act_tick[ai] = t
-        pending_root[ai] = apply_action(Wa, a, tg)
+        pending_root[ai] = apply_action(Wa, a, targets[ai])
       end
     end
     world.tick(Wa)

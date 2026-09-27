@@ -53,18 +53,10 @@ local function cultures(W, u)
   return out
 end
 
--- Best free site by score among land cells passing filter(c).
+-- Best free site by score among land cells passing filter(c), preferring sites whose land and
+-- sea can feed a village (VILLAGE.min_site_people); the best-scoring site if none can.
 local function best_site(W, filter)
-  local best, bs = nil, -math.huge
-  local land = W.geo.land_cells
-  for i = 1, #land do
-    local c = land[i]
-    if filter(c) then
-      local s = villages.site_score(W, c)
-      if s > -1 and s > bs and villages.free_site(W, c) then best, bs = c, s end
-    end
-  end
-  return best
+  return villages.pick_site(W, filter, cfgmod.VILLAGE.min_site_people, true)
 end
 
 local function has_fish(W, c)

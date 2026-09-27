@@ -5,7 +5,8 @@
 --   W.ent.villages   array in founding order; ids are indices and never change (abandoned
 --                    villages stay in the array with alive = false)
 --     id, key_cell, key_tick   rng key = founding cell + founding tick (never shifted)
---     name, cell, culture, continent (landmass id), founded (tick)
+--     name, cell, culture, continent (landmass id), founded (tick), from (id of the village
+--                    its founders came from; nil for worldgen villages)
 --     members        array of person ids (living residents, stable order)
 --     pop            #members
 --     food           store, person-months;  food_security: smoothed months of food
@@ -26,7 +27,8 @@
 --   W.S.blight       hook (Chapter 2 Blight power): farm cell -> cause tag of the infection; blighted
 --                    crops die back (spread between farms/villages arrives with the power)
 -- Derived (not saved): W.vgeo[id] = { ring = cells (farm candidates, nearest first),
---   fishing = ocean cells, near = set of cells within the "affects the village" radius }
+--   fishing = ocean cells, near = set of cells within the "affects the village" radius,
+--   shift = ticks from the planet clock to the village's farming calendar (24 in the south) }
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local blame = require("sim.causality.blame")
@@ -82,6 +84,12 @@ local function rings(W, c, r)
 end
 sys.rings = rings
 
+-- Ticks to add to the planet clock to get a village's own farming calendar: the season labels
+-- are northern (02 §1), so southern villages plant half a year later, in their own spring.
+function sys.season_shift(W, cell)
+  return W.grid.lat[cell] < 0 and 24 or 0
+end
+
 local function geometry(W, v)
   local cfg = cfgmod.VILLAGE
   local ocean = W.geo.ocean
@@ -95,7 +103,7 @@ local function geometry(W, v)
   local near = {}
   local nc = rings(W, v.cell, radius(W, cfg.near))
   for i = 1, #nc do near[nc[i]] = true end
-  return { ring = ring, fishing = fishing, near = near }
+  return { ring = ring, fishing = fishing, near = near, shift = sys.season_shift(W, v.cell) }
 end
 
 function sys.rebuild(W)
@@ -105,7 +113,22 @@ function sys.rebuild(W)
   for i = 1, #vs do W.vgeo[i] = geometry(W, vs[i]) end
 end
 
--- How good a cell is to live on (worldgen settle, new villages). -1 = unusable.
+-- How warm a cell's growing season is for crops, 0..1: the crop temperature bell at summer
+-- warmth (mean + 0.7 x the seasonal amplitude, in whichever hemisphere).
+local function growing_warmth(W, c)
+  local cfg = cfgmod.VILLAGE
+  local T = W.temp_static
+  local lo, hi = cfg.crop_t[1], cfg.crop_t[2]
+  local ts = T.base[c] + T.lapse[c] + W.G.g_temp + T.amp[c] * 0.7
+  local x = (ts - (lo + hi) * 0.5) / ((hi - lo) * 0.5)
+  local tf = 1 - x * x
+  if tf < 0 then tf = 0 end
+  return min(1, tf * 1.6)
+end
+sys.growing_warmth = growing_warmth
+
+-- How good a cell is to live on (worldgen settle, new villages). -1 = unusable. Soil, water,
+-- open land, a coast or a river, scaled by how well crops grow there in summer.
 function sys.site_score(W, c)
   local F = W.F
   local geo = W.geo
@@ -118,6 +141,7 @@ function sys.site_score(W, c)
   if geo.coast[c] == 1 then s = s + 0.25 end
   if (W.S.hydro and W.S.hydro.flow_mean[c] or 0) > cfgmod.HYDRO.river_threshold then s = s + 0.25 end
   if W.S.ruins[c] then s = s - 0.3 end
+  if s > 0 then s = s * (0.4 + 0.6 * growing_warmth(W, c)) end
   return s
 end
 
@@ -177,20 +201,12 @@ local function capacity(W, v, geom)
   local ss2 = W.sscale * W.sscale
   local food = 0
   local ring = geom.ring
-  local T = W.temp_static
-  local lo, hi = cfg.crop_t[1], cfg.crop_t[2]
-  local mid, half = (lo + hi) * 0.5, (hi - lo) * 0.5
   for i = 1, #ring do
     local c = ring[i]
     local lu = F.land_use[c]
     if (lu == 0 or lu == v.id) and F.ice[c] < 0.5 then
       local f = F.fertility[c]
-      -- growing-season warmth: summer ≈ mean + seasonal amplitude
-      local ts = T.base[c] + T.lapse[c] + W.G.g_temp + T.amp[c] * 0.7
-      local x = (ts - mid) / half
-      local tf = 1 - x * x
-      if tf < 0 then tf = 0 end
-      tf = min(1, tf * 1.6)
+      local tf = growing_warmth(W, c)
       food = food + cfg.yield * ss2 * 0.75 * tf * (0.3 + 0.7 * f) * min(1, F.soil_water[c] / 0.3)
     end
   end
@@ -220,18 +236,18 @@ local function move(W, p, a, b)
   if p.job ~= "child" and p.job ~= "elder" then p.job = "child"; people.set_job(W, b, p) end
 end
 
--- The family of the first adult in member order that is still here: adult, partner, children.
-local function family(W, v, taken)
+-- A family: an adult (from a village-month roll over the members, so not always the founders;
+-- no older than max_age when given), their partner if here, and their children.
+local function family(W, v, taken, max_age)
   local P = W.ent.people
   local m = v.members
   local cfg = cfgmod.PEOPLE
   local nm = #m
-  -- which family goes is a village-month roll (not always the founders)
   local off = floor(rng.float(W.seed, rng.S.MIGRATION, v.key_cell, W.tick, 0) * nm)
   for ii = 1, nm do
     local i = (ii + off - 1) % nm + 1
     local p = P[m[i]]
-    if not taken[p.id] and p.job ~= "child" then
+    if not taken[p.id] and p.job ~= "child" and (not max_age or people.age(W, p) <= max_age) then
       local fam = { p }
       taken[p.id] = true
       if p.partner ~= 0 and P[p.partner] and P[p.partner].village == v.id and not taken[p.partner] then
@@ -253,23 +269,69 @@ local function family(W, v, taken)
   return nil
 end
 
--- Best free site (same landmass, or any coastal site when the migrants have boats).
-function sys.best_site(W, continent, coastal)
-  local best, bs = nil, 0
+-- Best free site among land cells passing filter(c): the highest site score whose land and sea
+-- could feed at least `min_people` (sys.site_capacity; checked lazily, best score first).
+-- Falls back to the best-scoring site when none can (worldgen must place its villages).
+function sys.pick_site(W, filter, min_people, fallback)
   local land = W.geo.land_cells
+  local cand, score = {}, {}
   for i = 1, #land do
     local c = land[i]
-    if W.geo.continent[c] == continent or (coastal and W.geo.coast[c] == 1) then
+    if filter(c) then
       local s = sys.site_score(W, c)
-      if s > bs and sys.free_site(W, c) then best, bs = c, s end
+      if s > -1 and sys.free_site(W, c) then cand[#cand + 1] = c; score[c] = s end
     end
   end
-  return best
+  table.sort(cand, function(a, b)
+    if score[a] ~= score[b] then return score[a] > score[b] end
+    return a < b
+  end)
+  for i = 1, #cand do
+    if sys.site_capacity(W, cand[i]) >= min_people then return cand[i] end
+  end
+  if fallback then return cand[1] end
+  return nil
+end
+
+-- Best free site for migrants (same landmass, or any coastal site when they have boats).
+function sys.best_site(W, continent, coastal)
+  local geo = W.geo
+  return sys.pick_site(W, function(c)
+    return geo.continent[c] == continent or (coastal and geo.coast[c] == 1)
+  end, cfgmod.VILLAGE.min_site_people)
 end
 
 local function emit(W, kind, cell, parent, mag, data)
   if not W.record_events then return 0 end
   return events.emit(W, kind, cell, parent, mag, data)
+end
+
+-- A group from village v founds a new village at `site`; `parent` is the migration event.
+local function found_from(W, v, group, site, parent)
+  local cfg = cfgmod.VILLAGE
+  local vs = W.ent.villages
+  local ctr = 0
+  local key = rng.hash(W.seed, rng.S.NAMES, site, W.tick, 77)
+  local function u()
+    ctr = ctr + 1
+    return rng.float(W.seed, rng.S.NAMES, key, ctr, 0)
+  end
+  local used = {}
+  for i = 1, #vs do used[vs[i].name] = true end
+  local name = names.unique(u, function(uu) return names.new_village(uu, v.culture, v.name) end, used)
+  local nv = sys.found(W, site, { name = name, culture = v.culture })
+  nv.from = v.id
+  -- the founders bring what food they can carry
+  local share = v.pop > 0 and v.food * #group / v.pop or 0
+  v.food = v.food - share
+  nv.food = share
+  for i = 1, #group do move(W, group[i], v, nv) end
+  people.compact(W, v)
+  nv.food_security = cfg.start_food
+  local fid = emit(W, "village_founded", site, parent, #group, { village = nv.id, from = v.id })
+  nv.cause = 0
+  if fid ~= 0 then nv.founded_event = fid end
+  return nv
 end
 
 -- Famine-driven migration: one family per month leaves.
@@ -308,27 +370,7 @@ local function migrate(W, v)
   local site = #group >= cfg.min_founders and sys.best_site(W, v.continent, coastal) or nil
   local mid = emit(W, "migration", v.cell, parent, #group, { from = v.id, to = 0 })
   if site then
-    local ctr = 0
-    local key = rng.hash(W.seed, rng.S.NAMES, site, W.tick, 77)
-    local function u()
-      ctr = ctr + 1
-      return rng.float(W.seed, rng.S.NAMES, key, ctr, 0)
-    end
-    local used = {}
-    for i = 1, #vs do used[vs[i].name] = true end
-    local name = names.unique(u, function(uu) return names.new_village(uu, v.culture, v.name) end, used)
-    local nv = sys.found(W, site, { name = name, culture = v.culture })
-    nv.food = 0
-    -- the founders bring what food they can carry
-    local share = v.pop > 0 and v.food * #group / v.pop or 0
-    v.food = v.food - share
-    nv.food = share
-    for i = 1, #group do move(W, group[i], v, nv) end
-    people.compact(W, v)
-    nv.food_security = cfg.start_food
-    local fid = emit(W, "village_founded", site, mid, #group, { village = nv.id, from = v.id })
-    nv.cause = 0
-    if fid ~= 0 then nv.founded_event = fid end
+    found_from(W, v, group, site, mid)
     return
   end
   -- wanderers: too few to found anything; they rarely make it
@@ -337,6 +379,31 @@ local function migrate(W, v)
     people.kill(W, v, p, "wander", mid ~= 0 and mid or parent)
   end
   people.compact(W, v)
+end
+
+-- Daughter villages: a big, well-fed village whose land is filling up (its food margin has
+-- fallen to where births slow) sends young families to found a village on free land that can
+-- feed them. The natural counterpart of abandonment: the human footprint spreads over time.
+local function bud(W, v)
+  local cfg = cfgmod.VILLAGE
+  v.bud_last = W.tick
+  local living = 0
+  local vs = W.ent.villages
+  for i = 1, #vs do if vs[i].alive then living = living + 1 end end
+  if living >= cfg.max_villages then return end
+  local site = sys.best_site(W, v.continent, #v.fishing > 0 and v.boats > 0)
+  if not site then return end
+  local want = floor(v.pop * cfg.bud_share)
+  if want < cfg.min_founders then want = cfg.min_founders end
+  local taken, group = {}, {}
+  while #group < want do
+    local f = family(W, v, taken, cfg.bud_age)
+    if not f then break end
+    for i = 1, #f do group[#group + 1] = f[i] end
+  end
+  if #group < cfg.min_founders then return end
+  local mid = emit(W, "migration", v.cell, 0, #group, { from = v.id, to = 0, colonists = true })
+  found_from(W, v, group, site, mid)
 end
 
 local function abandon(W, v)
@@ -406,7 +473,7 @@ local function land_use(W, v, geom, farmers, need)
   local fresh = cfg.fallow_fert + 0.08
   -- shifting cultivation (between seasons): an exhausted field returns to the wild when a
   -- fresher one is free
-  local toy = W.tick % 48
+  local toy = (W.tick + geom.shift) % 48
   if toy >= cfg.harvest_toy or toy < cfg.plant_toy then
     for i = #farms, 1, -1 do
       local c = farms[i]
@@ -436,11 +503,13 @@ local function land_use(W, v, geom, farmers, need)
     F.crop[c] = 0
     table.remove(farms, wi)
   end
+  -- new fields: fertile ones; a hungry village also breaks poor ground
+  local min_fert = v.food_security < cfg.fallow_fs and cfg.poor_fert or cfg.fallow_fert
   while #farms < want do
     local best, bs = nil, -math.huge
     for i = 1, #ring do
       local c = ring[i]
-      if lu[c] == 0 and ice[c] < 0.5 and soil[c] > 0.08 and fert[c] >= cfg.fallow_fert then
+      if lu[c] == 0 and ice[c] < 0.5 and soil[c] > 0.08 and fert[c] >= min_fert then
         local s = farm_score(F, c)
         if s > bs then best, bs = c, s end
       end
@@ -467,18 +536,22 @@ local function crops(W, v, farmers)
   local F, C, I = W.F, W.C, W.I
   local crop, temp, soil, fert, oil = F.crop, F.temp, F.soil_water, F.fertility, F.oil
   local ccrop, icrop = C.crop, I.crop
-  local tick = W.tick
+  -- the village's own calendar: southern villages plant in their spring, half a year later
+  local tick = W.tick + W.vgeo[v.id].shift
   local toy = tick % 48
   local year = floor(tick / 48)
   local farms = v.farms
   local income = 0
   local blight = W.S.blight
+  local flood_last = W.D.flood_last
   if toy < cfg.plant_toy then
     if v.plant_year ~= year then
       v.plant_year = year
+      -- an exhausted field rests for a year, unless the store is too low to afford it
+      local rest = v.food_security >= cfg.fallow_fs and cfg.fallow_fert or 0
       for i = 1, #farms do
         local c = farms[i]
-        if fert[c] >= cfg.fallow_fert then
+        if fert[c] >= rest then
           crop[c] = cfg.crop_seed
           if ccrop[c] ~= 0 then ccrop[c] = 0; icrop[c] = 0 end
         else
@@ -515,6 +588,8 @@ local function crops(W, v, farmers)
           local to = C.oil[c]
           local bt = blight and blight[c]
           if bt then oilx = oilx + dt * cfg.k_blight * c0; to = bt end
+          -- a river flood this month drowns part of the standing crop (the flood's tag)
+          if flood_last and W.tick - flood_last[c] < 4 then oilx = oilx + cfg.k_flood_crop * c0; to = C.flow[c] end
           local c1 = c0 + grow - dry - frost - oilx
           if c1 < 0 then c1 = 0 elseif c1 > 1 then c1 = 1 end
           crop[c] = c1
@@ -775,7 +850,13 @@ local function month(W, v, pop_total)
     v.houses = floor(v.houses * 0.7)
   elseif W.D.flood_last and tick - W.D.flood_last[v.cell] < 4 then
     exposure = { kind = "flood", p = 0.004, tag = C.flow[v.cell] }
+    local h0 = v.houses
     v.houses = floor(v.houses * 0.85)
+    -- the river comes through the village: news (a flood-prone village makes it every few years)
+    if tick - (v.flooded or -1000000) >= cfg.flood_news_years * 48 then
+      v.flooded = tick
+      emit(W, "flooded_village", v.cell, C.flow[v.cell], h0 - v.houses, { village = v.id })
+    end
   end
   -- 7. people: hunger, health, deaths, pairing, births
   -- births follow the real food margin (a floor: families keep having children in lean
@@ -816,7 +897,13 @@ local function month(W, v, pop_total)
     migrate(W, v)
     v.chronic = 0
   end
-  if v.pop == 0 then abandon(W, v) end
+  if v.pop == 0 then abandon(W, v) return end
+  -- 10. daughter villages (a monthly roll while the village is big, fed and filling its land)
+  if v.pop >= cfg.bud_pop and not v.famine and fs >= cfg.bud_fs and rho < cfg.bud_rho
+    and tick - (v.bud_last or v.founded) >= cfg.bud_years * 48 and pop_total < cfg.bud_total
+    and rng.float(W.seed, rng.S.MIGRATION, v.key_cell, tick, 3) < cfg.bud_prob then
+    bud(W, v)
+  end
 end
 
 -- Yearly housekeeping: capacities, harvest history, memories fade, ruins decay, prune the dead.
@@ -879,6 +966,8 @@ function sys.shift_ticks(W, dt)
     v.plant_year = v.plant_year + dy
     v.famine_last = v.famine_last + dt
     if v.abandoned then v.abandoned = v.abandoned + dt end
+    if v.bud_last then v.bud_last = v.bud_last + dt end
+    if v.flooded then v.flooded = v.flooded + dt end
   end
   local P = W.ent.people
   local ids = {}

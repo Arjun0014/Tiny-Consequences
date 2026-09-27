@@ -61,7 +61,8 @@ function sys.update(W)
   local die_g, die_f = cfg.die_grass * dt, cfg.die_forest * dt
   local h_g, h_f = cfg.soil_half_grass, cfg.soil_half_forest
   local seed_g, seed_f = cfg.seed_grass / W.sscale * dt, cfg.seed_forest / W.sscale * dt
-  local k_regen, fire_block = cfg.k_regen * dt, cfg.fire_block_ticks
+  -- spin-up runs soil fertility's slow relaxation faster (same equilibrium, see config.SPINUP_FERT_BOOST)
+  local k_regen, fire_block = cfg.k_regen * dt * (W.G.calibrating and cfgmod.SPINUP_FERT_BOOST or 1), cfg.fire_block_ticks
   local glo, ghi, flo, fhi = cfg.grass_t[1], cfg.grass_t[2], cfg.forest_t[1], cfg.forest_t[2]
   local gmid, ghalf = (glo + ghi) * 0.5, (ghi - glo) * 0.5
   local fmid, fhalf = (flo + fhi) * 0.5, (fhi - flo) * 0.5

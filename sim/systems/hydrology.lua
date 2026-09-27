@@ -2,8 +2,11 @@
 -- order), floods, erosion & silt. Rain = precip when temp ≥ 0 (snow goes to ice).
 -- Flow and silt carry tags downstream (the dominant upstream contributor's tag).
 --
--- Per-cell state beyond the field budget: hydro.flow_mean (EMA of flow, "bankfull" reference
--- for floods) — see DECISIONS.md D-006.
+-- Per-cell state beyond the field budget (D-006, D-036): hydro.flow_mean (EMA of flow: rivers
+-- for village siting), hydro.bankfull (EMA of the yearly peak flow — the "mean annual flood",
+-- a river's bankfull reference) and hydro.flow_peak (this year's peak so far).
+-- Flood (02 §5.5): flow > flood_mult x bankfull on a real river, spilling onto low neighbours;
+-- overbank water leaves silt (fertility). Crops, houses and people are hit in villages.lua.
 local cfgmod = require("sim.config")
 local fields = require("sim.fields")
 local blame = require("sim.causality.blame")
@@ -23,6 +26,10 @@ function sys.init(W)
     H = { flow_mean = fields.filled(W.n, 0) }
     W.S.hydro = H
   end
+  H.bankfull = H.bankfull or fields.filled(W.n, 0)
+  H.flow_peak = H.flow_peak or fields.filled(W.n, 0)
+  sc.flood_mark = sc.flood_mark or fields.filled(W.n, 0)
+  sc.flood_stamp = sc.flood_stamp or 0
 end
 
 -- River-mouth ocean cells (downhill target of some land cell): the only ocean cells that ever
@@ -57,6 +64,7 @@ function sys.update(W)
   local fmean = W.S.hydro.flow_mean
   local k_ps, k_es, fc, k_run, k_base = cfg.k_ps, cfg.k_es, cfg.field_capacity, cfg.k_run, cfg.k_base
   local k_ero, ero_max = cfg.k_ero, cfg.erosion_max
+  local fboost = W.G.calibrating and cfgmod.SPINUP_FERT_BOOST or 1   -- spin-up: fertility loss runs faster
   local lake_evap = cfg.lake_evap
 
   -- 1. soil water balance, local runoff, erosion (land); reset accumulators (land + mouths)
@@ -93,7 +101,9 @@ function sys.update(W)
       if ero > ero_max then ero = ero_max end
       local f0 = fert[c]
       if ero > f0 then ero = f0 end
-      fert[c] = f0 - ero
+      local lost = ero * fboost
+      if lost > f0 then lost = f0 end
+      fert[c] = f0 - lost
       silt[c] = ero
       -- blame: soil water (rain vs melt vs evaporation)
       local ts, tpc, ttc = csoil[c], cp[c], ct[c]
@@ -158,7 +168,16 @@ function sys.update(W)
   local floods = sc.flood
   for k = #floods, 1, -1 do floods[k] = nil end
   local ema = cfg.flow_ema
-  local bank_min, fmult, rthr = cfg.bankfull_min, cfg.flood_mult, cfg.river_threshold
+  local H = W.S.hydro
+  local bankfull, peak = H.bankfull, H.flow_peak
+  local fmult, fmin = cfg.flood_mult, cfg.flood_min
+  local mark = sc.flood_mark
+  local stamp = sc.flood_stamp + 1
+  sc.flood_stamp = stamp
+  local g = W.grid
+  local nbr, cnt = g.nbr, g.nbr_count
+  local elev = W.static.elev
+  local plain, silt_k = cfg.floodplain, cfg.flood_silt
   for i = 1, #mouths do
     local c = mouths[i]
     local fv = flow[c]
@@ -174,9 +193,37 @@ function sys.update(W)
     local c = land[i]
     local fv = flow[c]
     local mean = fmean[c]
-    local bank = mean > bank_min and mean or bank_min
-    if fv > fmult * bank and fv > rthr then floods[#floods + 1] = c end
+    if fv > peak[c] then peak[c] = fv end
+    local thr = fmult * bankfull[c]
+    if fv > thr and fv > fmin and thr > 0 then
+      -- over the banks: this cell and its low neighbours (the floodplain); silt is left behind
+      local over = (fv - thr) / thr
+      if over > 1 then over = 1 end
+      local e0 = elev[c] + plain
+      if mark[c] ~= stamp then mark[c] = stamp; floods[#floods + 1] = c end
+      local f = fert[c] + silt_k * over
+      fert[c] = f < 1 and f or 1
+      local b = c * 6 - 6
+      for k = 1, cnt[c] do
+        local j = nbr[b + k]
+        if ocean[j] == 0 and elev[j] <= e0 and mark[j] ~= stamp then
+          mark[j] = stamp
+          floods[#floods + 1] = j
+          if flow[j] < fmin then cflow[j] = cflow[c]; iflow[j] = 0 end   -- the flood's water is the river's
+        end
+      end
+    end
     fmean[c] = mean + (fv - mean) * ema
+  end
+  -- the yearly peak becomes part of the river's bankfull reference (mean annual flood)
+  if W.tick % 48 == 47 then
+    local kb = cfg.bankfull_ema
+    for i = 1, #land do
+      local c = land[i]
+      local bk = bankfull[c]
+      bankfull[c] = bk > 0 and bk + (peak[c] - bk) * kb or peak[c]
+      peak[c] = 0
+    end
   end
 end
 

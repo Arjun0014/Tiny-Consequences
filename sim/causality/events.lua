@@ -102,7 +102,8 @@ end
 
 function events.update_headline(W, r)
   local k = KINDS[r.kind]
-  if k.headline and not r.headline and r.mag >= (k.hmin or 0) then
+  local hmax = (r.actor == "nature" and k.hmax_nature) or k.hmax or math.huge
+  if k.headline and not r.headline and r.mag >= (k.hmin or 0) and r.mag <= hmax then
     r.headline = true
     W.E.headline_count = W.E.headline_count + 1
     W.E.last_headline = r.id

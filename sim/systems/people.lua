@@ -216,7 +216,10 @@ function people.month(W, v, ctx)
     if h < 0.5 then h = 0 end
     p.hunger = h
     local hp = p.health
-    if h > cfg.hunger_hurts then hp = hp - (h - cfg.hunger_hurts) * cfg.health_loss
+    if h > cfg.hunger_hurts then
+      -- small children and the old weaken fastest
+      local vul = (age < cfg.vulnerable_young or age >= cfg.elder_age) and cfg.vulnerable_mult or 1
+      hp = hp - (h - cfg.hunger_hurts) * cfg.health_loss * vul
     else hp = hp + cfg.health_regen end
     if hp > 100 then hp = 100 elseif hp < 0 then hp = 0 end
     p.health = hp
@@ -283,8 +286,9 @@ function people.month(W, v, ctx)
   local births = 0
   local fs_f = ((ctx.fs or 0) - cfg.birth_fs[1]) / (cfg.birth_fs[2] - cfg.birth_fs[1])
   if fs_f > 1 then fs_f = 1 elseif fs_f < 0 then fs_f = 0 end
-  -- the planet's hard cap (02 §5.10) is approached softly: births taper over the last cap_soft
-  local gcap = (cfg.global_cap - (ctx.pop_total or 0)) / (cfg.global_cap * cfg.cap_soft)
+  -- the planet's hard cap (02 §5.10) is approached softly: births taper to 0 at global_soft over
+  -- the last cap_soft of it
+  local gcap = (cfg.global_soft - (ctx.pop_total or 0)) / (cfg.global_soft * cfg.cap_soft)
   if gcap > 1 then gcap = 1 elseif gcap < 0 then gcap = 0 end
   local pb = cfg.birth_rate * fs_f * (ctx.crowd or 1) * gcap
   if pb > 0 then

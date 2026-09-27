@@ -2,7 +2,7 @@
   "name": "tiny-consequences",
   "version": "0.1.0",
   "private": true,
-  "description": "Tiny Consequences \u2014 Defold Game Jam 2026 (Chain Reaction)",
+  "description": "Tiny Consequences — Defold Game Jam 2026 (Chain Reaction)",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -10,6 +10,8 @@
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "sim": "node scripts/lua.mjs tools/run_sim.lua",
+    "sim:villages": "node scripts/lua.mjs tools/village_trace.lua",
+    "sim:scout": "node scripts/lua.mjs tools/seed_scout.lua",
     "lint:lua": "node scripts/lint_lua.mjs",
     "test:sim": "node scripts/test_sim.mjs",
     "bench": "node scripts/lua.mjs tools/bench.lua",

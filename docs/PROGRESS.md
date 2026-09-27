@@ -44,6 +44,19 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Stage entries
 
+### [ch1.s10] Sim hardening II: living-world causes — 2026-09-27 13:10 IST
+- Diagnosed with new tools `npm run sim:villages` (month-by-month village economy + chains) and `npm run sim:scout` (seed liveliness):
+  - Rialora starving (Years 3–4, default world): southern villages farmed on the northern calendar → frost every season. Fixed with per-village farming calendars + growing-season site scoring + capacity-gated site picking (D-036).
+  - Churn (seed 7 +24/−26): same bug + villages founded on unfarmable sites. Now 1–8 founded / 0–5 abandoned per 200 y.
+  - Slow starvation decades in (seed 10 Venmere): soils were not at equilibrium after spin-up → accelerated fertility spin-up (D-037); hungry villages plant exhausted fields.
+  - No new villages ever → daughter villages (D-038). Population now 213–352 on the full profile (soft ceiling 450).
+  - Floods and droughts had never fired on any seed (near-perfect climate loop) → ocean-evaporation wobble, bankfull = mean annual flood, flood crop damage + `flooded_village`, per-cell seasonal drought detector (D-039).
+  - Crash headline pile-up (~60% of headlines were ordinary deer-cycle troughs) → trough tracking, nature/caused headline depth, 25-year regional news fatigue (D-040).
+  - A lost harvest killed nobody → children/elders weaken 2× faster (D-041).
+- Default world is now seed 27 (D-042), regenerated. S03 uses the village's own calendar and `pop@community` (D-043).
+- Tests: `npm run test:sim -- --full` 67/67 (S01 7/10, S02 9/10, S03 7/10, S04 9/10, P02/P03, P06 500 y, P07 241k instr/tick (+3.3%), P10 20/20).
+- Headline mix per seed (200 y): 0.17–0.42/y; wildfires, village floods, booms, deep crashes, famines, village founding/abandonment.
+
 ### [ch1.s7] Villages & people — DONE 2026-09-27 (commit afde000)
 - What: villages.lua (farms, crops, harvest, granary, fishing, hunting/culls, wood CO₂, migration, founding, abandonment, ruins, memories), people.lua (individual lives), ships.lua (tankers on lanes, boats, sinking → oil), worldgen settle at spin-up y15 (villages, lanes, volcano sites), village detectors; perf pass (tick 343k → 225k Lua VM instructions, ≈3.4 ms est. HTML5).
 - Tests: quick 64/64 in 29 s (S01 3/3, S02 2/3, S03 3/3, S04 3/3, P02, P03, P10 20/20). Full: S01 5/10 (population regulation too crude on poor worlds), S02 9/10, S03 8/10, S04 10/10 → hardening in progress.

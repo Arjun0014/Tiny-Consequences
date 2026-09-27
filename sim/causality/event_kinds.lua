@@ -1,6 +1,8 @@
 -- Event kinds (03_CAUSALITY.md §6). One data table; no kind-specific logic scattered in code.
 -- Fields: actor ("player" | "nature" | "derived"), icon (short text id the view maps to a glyph),
--- headline (in the headline set), hmin (headline minimum magnitude), cooldown (ticks, per
+-- headline (in the headline set), hmin / hmax (headline minimum / maximum magnitude: a crash's
+-- magnitude is a ratio, so smaller is bigger news; hmax_nature applies to nature-rooted events),
+-- cooldown (ticks, per
 -- kind+key, enforced by events.emit when a key is given), agg (aggregation window in ticks:
 -- same kind + same parent + same region within the window merges into one event), text (short
 -- fallback label; chronicle templates live in content/).
@@ -47,7 +49,10 @@ def("tanker_sunk",      { actor = "derived", icon = "tanker", headline = true, t
 def("oil_spreading",    { actor = "derived", icon = "oil", text = "Oil spreads" })
 def("oil_beached",      { actor = "derived", icon = "oil", headline = true, agg = 48, text = "Oil reaches the coast" })
 def("population_boom",  { actor = "derived", icon = "boom", headline = true, text = "Population boom" })
-def("population_crash", { actor = "derived", icon = "crash", headline = true, text = "Population crash" })
+-- a crash with a cause is news at ÷2; a natural one only when it is deeper than the ordinary
+-- predator–prey trough (deer troughs sit at 0.25–0.45 of their 5-year normal)
+def("population_crash", { actor = "derived", icon = "crash", headline = true, hmax = 0.5, hmax_nature = 0.33,
+  text = "Population crash" })
 def("extinction_regional", { actor = "derived", icon = "extinct", headline = true, text = "Regional extinction" })
 def("extinction_global",   { actor = "derived", icon = "extinct", headline = true, text = "Extinction" })
 def("flood",            { actor = "derived", icon = "flood", agg = 12, text = "Flood" })
