@@ -25,8 +25,8 @@ local floor, min, max = math.floor, math.min, math.max
 local FFOREST = fields.BY_NAME.forest
 local FGRAZ = fields.BY_NAME.grazers
 
-local FARM = { harvest = true, sow = true, tend = true, clear = true }
-local LIGHT = { harvest = true, tend = true, fuel = true, sow = true, brush = true, forage = true }   -- children plant, elders glean
+local FARM = { harvest = true, sow = true, tend = true, clear = true, care = true }
+local LIGHT = { harvest = true, tend = true, fuel = true, sow = true, brush = true, forage = true, care = true }   -- children plant, elders glean
 local AFFINITY = { farmer = FARM, fisher = { fish = true }, woodcutter = { fuel = true, timber = true, brush = true },
   builder = { build = true } }
 
@@ -222,6 +222,7 @@ function M.assign(W, v, hours_day)
   demand("sow", field_target, 90, FD.sow)
   demand("tend", field_target, 50, FD.tend)
   demand("clear", field_target, 40, FD.clear)
+  demand("care", field_target, 33, FD.care)
   -- fuel: bring wood up to its target
   local T = W.F.temp[v.cell]
   local fday = M.fuel_day(W, v, T)

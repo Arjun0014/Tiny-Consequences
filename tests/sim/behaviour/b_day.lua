@@ -26,12 +26,14 @@ function M.b12_b13_days_and_nights_follow_the_local_sun()
     for _, id in ipairs(v.members) do
       local p = P[id]
       schedule.where(W, v, p, t, out)
+      if p.away == 0 then   -- (porters on an errand camp on the road)
       n = n + 1
       if out.act == "sleep" then asleep = asleep + 1 end
       local hc, hl = schedule.home_of(W, p)
       if hc then
         T.eq(out.place, "home", "asleep at home")
         T.ok(out.cell == hc and out.lot == hl, "in their own household's home")
+      end
       end
     end
     T.eq(asleep, n, v.name .. ": everyone asleep at 02:00")

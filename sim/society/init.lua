@@ -23,6 +23,7 @@ local construction = require("sim.society.construction")
 local economy = require("sim.society.economy")
 local life = require("sim.society.life")
 local mobility = require("sim.society.mobility")
+local relations = require("sim.society.relations")
 local events = require("sim.causality.events")
 
 local sys = { name = "villages" }   -- keeps the old slot name (profiles, P07)
@@ -43,6 +44,21 @@ function sys.geo(W, v)
   return G
 end
 
+-- How many living villages reach each land cell with their fields (derived): free land that two
+-- neighbours could both farm is shared between them in their capacity estimates.
+function sys.ring_counts(W)
+  local rc = {}
+  local vs = W.ent.villages
+  for i = 1, #vs do
+    local v = vs[i]
+    if v.alive and not v.placeholder then
+      local ring = sys.geo(W, v).ring
+      for k = 1, #ring do local c = ring[k]; rc[c] = (rc[c] or 0) + 1 end
+    end
+  end
+  W.soc.ring_count = rc
+end
+
 function sys.register_village(W, v)
   local b = v.bucket
   local B = W.soc.buckets
@@ -52,14 +68,17 @@ function sys.register_village(W, v)
   l[#l + 1] = v.id
   table.sort(l)
   sys.geo(W, v)
+  sys.ring_counts(W)
 end
 
 function sys.unregister_village(W, v)
   local l = W.soc.buckets[v.bucket]
   if l then ents.remove_id(l, v.id) end
+  sys.ring_counts(W)
 end
 
 mobility.on_register = function(W, v) sys.register_village(W, v) end
+relations.depart = mobility.depart
 mobility.on_unregister = function(W, v) sys.unregister_village(W, v) end
 
 function sys.init(W)
@@ -76,6 +95,7 @@ function sys.rebuild(W)
     local v = vs[i]
     if v.alive and not v.placeholder then sys.register_village(W, v) end
   end
+  sys.ring_counts(W)
 end
 
 -- Fire and floods in the village (weekly): damage, burned stores, exposure deaths; hearth fires.
@@ -165,6 +185,7 @@ local function village_month(W, v)
   life.monthly(W, v)
   economy.monthly(W, v)
   mobility.monthly(W, v)
+  if v.alive and v.pop > 0 then relations.monthly(W, v) end
   local cd = v.month_cold or 0
   local cm = v.cold_months or 0
   if cd > 5 then cm = min(12, cm + 1) elseif cm > 0 then cm = cm - 0.5 end
@@ -182,6 +203,11 @@ local function day_step(W, v)
     labour.execute(W, v, plan.hours or 0, plan)
     v.wk_grain = (v.wk_grain or 0) + v.day_grain
     v.wk_fresh = (v.wk_fresh or 0) + v.day_fresh + landed
+    v.wk_catch = (v.wk_catch or 0) + landed
+    -- (a lost boat explains a poor catch only until the village has as many boats again, or for
+    -- two years: then it is the new normal)
+    if v.boat_tag and v.boat_tag ~= 0 and (#v.boats >= (v.boats_before or 0)
+      or h0 - (v.boat_tag_h or h0) > 2 * 8064) then v.boat_tag = 0 end
     if landed + v.day_fresh < v.norm.fresh_in / 7 * 0.5 then
       v.fresh_tag = ftag ~= 0 and ftag or (v.boat_tag or 0)
     elseif ftag ~= 0 then
@@ -344,6 +370,7 @@ function sys.shift_ticks(W, dt)
   shift_map(E.households, function(h)
     h.formed = h.formed + dh
     if h.homeless_since then h.homeless_since = h.homeless_since + dh end
+    if h.arrived then h.arrived = h.arrived + dh end
   end)
   shift_map(E.buildings, function(b)
     b.started = b.started + dh

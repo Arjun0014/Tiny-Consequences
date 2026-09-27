@@ -98,19 +98,29 @@ end
 
 -- Most frequent non-zero tag among cells[1..m] (from an array list `cells` or scratch queue),
 -- if it covers ≥ share of them; else 0. Allocation-free (scratch arrays).
-local function dominant(W, cells, m, tags, share)
+-- wts (optional, by position in cells): each cell's vote weight (e.g. how far its density moved);
+-- share is then a share of the total weight instead of the cell count.
+local function dominant(W, cells, m, tags, share, wts)
   local tk, tc = W.scratch.det_tk, W.scratch.det_tc
   local k = 0
+  local total = m
+  if wts then
+    total = 0
+    for i = 1, m do total = total + wts[i] end
+    if total <= 0 then wts, total = nil, m end
+  end
   for i = 1, m do
     local t = tags[cells[i]]
-    if t ~= 0 then
+    local w = wts and wts[i] or 1
+    if t ~= 0 and w > 0 then
       local found = false
       for j = 1, k do
-        if tk[j] == t then tc[j] = tc[j] + 1; found = true; break end
+        if tk[j] == t then tc[j] = tc[j] + w; found = true; break end
       end
-      if not found then k = k + 1; tk[k] = t; tc[k] = 1 end
+      if not found then k = k + 1; tk[k] = t; tc[k] = w end
     end
   end
+  m = total
   local best, bc = 0, 0
   for j = 1, k do
     if tc[j] > bc or (tc[j] == bc and tk[j] < best) then best, bc = tk[j], tc[j] end
@@ -322,8 +332,37 @@ local function fauna_species(W, cfg, sp, record)
           last[r] = tick
           evs[r] = 0
           if record then
-            local parent = dominant(W, cells, m, tags, share)
+            -- the cells that moved most decide: a region crashing because a Cull emptied a
+            -- few of its cells is the Cull's crash, not the tail of the last natural trough
+            local wts = W.scratch.det_w
+            if not wts then wts = {}; W.scratch.det_w = wts end
+            for i = 1, m do
+              local c = cells[i]
+              local dv = (nst == -1) and (a - vals[c]) or (vals[c] - a)
+              wts[i] = dv > 0 and dv * area[c] or 0
+            end
+            local parent = dominant(W, cells, m, tags, share, wts)
             local opts = { region = r }
+            -- a player tag behind a sizeable share of the change is a contributing cause
+            if W.E and not events.is_player_rooted(W, parent) then
+              local tot, best, bw = 0, 0, 0
+              for i = 1, m do tot = tot + wts[i] end
+              if tot > 0 then
+                local tk, tw = W.scratch.det_ptk or {}, W.scratch.det_ptw or {}
+                W.scratch.det_ptk, W.scratch.det_ptw = tk, tw
+                local n = 0
+                for i = 1, m do
+                  local t = tags[cells[i]]
+                  if t ~= 0 and wts[i] > 0 and events.is_player_rooted(W, t) then
+                    local f = false
+                    for j = 1, n do if tk[j] == t then tw[j] = tw[j] + wts[i]; f = true; break end end
+                    if not f then n = n + 1; tk[n], tw[n] = t, wts[i] end
+                  end
+                end
+                for j = 1, n do if tw[j] > bw or (tw[j] == bw and tk[j] < best) then best, bw = tk[j], tw[j] end end
+                if best ~= 0 and bw >= 0.15 * tot then opts.co = best end
+              end
+            end
             if parent == 0 and tick - news[r] < fresh then opts.headline = false end
             local rec = W.names.regions[r]
             local id = events.emit(W, kind, rec and rec.centre or 0, parent, ratio, { species = sp, ratio = ratio }, opts)

@@ -19,7 +19,9 @@ test.use({ viewport: { width: 640, height: 360 } });   // lighter CPU rasterisat
 
 test('W08 perf: sim tick and max-speed frame budget @ch1', async ({ page }, testInfo) => {
   test.setTimeout(240_000);
-  const game = await openGame(page, { speed: '0' }, { readyTimeout: 60_000 });
+  // gfx=low: the CPU rasteriser (SwiftShader) cannot draw the full renderer-v3 scene at more than a
+  // few frames a second; what W08 checks is the sim tick and the speed controller's frame contract
+  const game = await openGame(page, { speed: '0', gfx: 'low' }, { readyTimeout: 60_000 });
   const tc0 = await readTC(page);
   expect(tc0.prespun, 'default start uses the pre-spun world').toBe(true);
   const release = tc0.engine_debug === false;

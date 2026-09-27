@@ -1,23 +1,30 @@
--- Puffy clouds (Stage 1.8): a pool of cloud game objects sharing one world-space mesh buffer
--- (the engine batches them). Clouds live over moist cells, drift with the zonal winds of
--- sim/config.lua MOIST.zonal, and shrink away when the air under them dries out; new ones
--- grow over the wettest cells. Total cloud area stays below MAX_COVER of the planet surface.
--- Renderer v2 (D-048): clouds over cells where the sim is raining trail a rain curtain (snow
--- where it is freezing), and heavy rain turns them into grey storm clouds.
+-- Clouds from the sim's weather (renderer v3, docs/world/16 §5): a pool of cloud clusters placed
+-- where the weather is — today's wet/dry day and rain amount per cell from the sim's daily
+-- weather (sim/society/weather_day.lua, the same days the villagers work or shelter in), the
+-- week's precipitation and moisture when the sim runs so fast that days flash by. Each cloud is
+-- keyed to a (cell, day) and drifts with the zonal wind through that day, so what you see is
+-- where it is raining and what the people under it are living through:
+--   fair-weather cumulus over humid dry days, grey rain decks over wet days (rain curtains, snow
+--   when freezing), dark storm towers over storm days.
+-- Altitude: a cloud floats above the highest ground and the tallest trees around its cell (never
+-- clipping terrain, forests or houses). Zoomed in, clouds are not shrunk: the cloud shader cuts
+-- away only what sits between the camera and the view focus (state.u_cut), so the sky around
+-- stays full. The pool is spent on the visible hemisphere.
 local propgen = require("game.view.propgen")
 local state = require("game.view.state")
-local grid = require("sim.grid")
 local cfgmod = require("sim.config")
 local vmx = require("game.view.vmx")
+local wday = require("sim.society.weather_day")
 
 local M = {}
 
-M.COUNT = 56
-M.MAX_COVER = 0.12       -- of total surface area (half of it is visible: never > ~30% in view)
-M.ALT = 0.5              -- height above the surface (world units)
-M.NEAR_HIDE = { 3.0, 7.0 } -- clouds closer than this to the eye shrink away (zoomed-in views)
-M.DRIFT = 0.018          -- radians per second per unit zonal wind at 1x visual speed
-M.RESCAN = 2.0           -- seconds between moisture rescans
+M.COUNT = 120
+M.ALT_MIN = 1.05          -- cloud base above sea level (world units) at the least
+M.CLEAR = 0.85            -- clearance above the local ground (the tallest far-LOD trees are ~0.6)
+M.RESCAN = 1.0            -- seconds between placement rescans
+M.DRIFT = 0.012           -- radians per sim hour per unit zonal wind (a third of a cell a day)
+M.FAST_HPS = 12           -- hours per second above which clouds follow weeks, not days
+M.EXAG = 0.13             -- planet.lua P.EXAG (world units per km)
 
 local H_POS, H_NRM, H_COL = hash("position"), hash("normal"), hash("color")
 local MSG_ENABLE, MSG_DISABLE = hash("enable"), hash("disable")
@@ -25,7 +32,8 @@ local sin, cos, sqrt, max, min, abs, floor, exp = math.sin, math.cos, math.sqrt,
   math.abs, math.floor, math.exp
 
 M.clouds = {}
-M.stats = { active = 0, cover = 0 }
+M.rains = {}
+M.stats = { active = 0, cover = 0, kinds = {} }
 
 local function prof(tbl, a)
   if a <= tbl[1][1] then return tbl[1][2] end
@@ -38,19 +46,17 @@ local function prof(tbl, a)
   return tbl[#tbl][2]
 end
 
-local seed_h = 1
-local function rnd()
-  seed_h = (seed_h * 48271) % 2147483647
-  return seed_h / 2147483647
+-- deterministic fractions per (cell, key, salt)
+local function h01(c, key, salt)
+  local x = (c * 73856093 + key * 19349663 + salt * 83492791) % 2147483647
+  x = (x * 48271) % 2147483647
+  x = (x * 48271) % 2147483647
+  return x / 2147483647
 end
-
-M.RAIN_MIN = 0.05       -- precipitation (sim units per tick) for a visible rain curtain
-M.STORM_MIN = 0.12      -- ... for a grey storm cloud
-M.rains = {}
 
 -- Rain/snow curtain: crossed quads (rain streaks) or small flakes in a disc under the cloud.
 local function rain_buffer(snow)
-  local n = 90
+  local n = 110
   local nv = n * 12
   local buf = buffer.create(nv, {
     { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
@@ -60,8 +66,8 @@ local function rain_buffer(snow)
   local pos, nrm, col = buffer.get_stream(buf, H_POS), buffer.get_stream(buf, H_NRM), buffer.get_stream(buf, H_COL)
   local h = 17
   local function u() h = (h * 48271) % 2147483647; return h / 2147483647 end
-  local len = snow and 0.012 or 0.07
-  local wid = snow and 0.012 or 0.0035
+  local len = snow and 0.02 or 0.09
+  local wid = snow and 0.012 or 0.0018
   local v = 0
   for i = 1, n do
     local a, r = u() * 6.283, math.sqrt(u()) * 0.45
@@ -84,10 +90,38 @@ local function rain_buffer(snow)
   return buf
 end
 
+local function cloud_res(kind, rgb, name)
+  local t = propgen.mover_template(kind)
+  local buf = buffer.create(t.nv, {
+    { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+    { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+    { name = H_COL, type = buffer.VALUE_TYPE_FLOAT32, count = 2 },
+  })
+  propgen.write_template(t, buffer.get_stream(buf, H_POS), buffer.get_stream(buf, H_NRM),
+    buffer.get_stream(buf, H_COL), rgb, nil, 1)
+  return resource.create_buffer("/tc/" .. name .. ".bufferc", { buffer = buf })
+end
+
+-- Highest ground around each cell (km above sea level: the cell and its neighbours).
+local function ceilings(W)
+  local g = W.grid
+  local elev, sea = W.static.elev, W.G.sea_level or 0
+  local out = {}
+  for c = 1, W.n do
+    local m = elev[c] - sea
+    local b = c * 6 - 6
+    for k = 1, g.nbr_count[c] do
+      local e = elev[g.nbr[b + k]] - sea
+      if e > m then m = e end
+    end
+    out[c] = m > 0 and m or 0
+  end
+  return out
+end
+
 --- Creates the pool and the shared cloud geometry.
 function M.init(W, factory_url, rain_factory)
   M.W = W
-  seed_h = ((W.seed or 1) * 7919) % 2147483646 + 1
   if #M.rains == 0 and rain_factory then
     M.rain_res = resource.create_buffer("/tc/rain.bufferc", { buffer = rain_buffer(false) })
     M.snow_res = resource.create_buffer("/tc/snow.bufferc", { buffer = rain_buffer(true) })
@@ -100,96 +134,105 @@ function M.init(W, factory_url, rain_factory)
     end
   end
   if #M.clouds == 0 then
-    local t = propgen.mover_template("cloud")
-    local buf = buffer.create(t.nv, {
-      { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
-      { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
-      { name = H_COL, type = buffer.VALUE_TYPE_FLOAT32, count = 2 },
-    })
-    propgen.write_template(t, buffer.get_stream(buf, H_POS), buffer.get_stream(buf, H_NRM),
-      buffer.get_stream(buf, H_COL), { 1, 1, 1 }, nil, 1)
-    local sbuf = buffer.create(t.nv, {
-      { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
-      { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
-      { name = H_COL, type = buffer.VALUE_TYPE_FLOAT32, count = 2 },
-    })
-    propgen.write_template(t, buffer.get_stream(sbuf, H_POS), buffer.get_stream(sbuf, H_NRM),
-      buffer.get_stream(sbuf, H_COL), { 0.6, 0.64, 0.7 }, nil, 1)
-    M.storm_res = resource.create_buffer("/tc/storm_cloud.bufferc", { buffer = sbuf })
+    M.res = {
+      cu1 = cloud_res("cloud_cu1", { 1, 1, 1 }, "cloud_cu1"),
+      cu2 = cloud_res("cloud_cu2", { 0.98, 0.98, 1 }, "cloud_cu2"),
+      deck = cloud_res("cloud_deck", { 0.80, 0.82, 0.86 }, "cloud_deck"),
+      tower = cloud_res("cloud_tower", { 0.60, 0.62, 0.68 }, "cloud_tower"),
+    }
     for i = 1, M.COUNT do
       local id = factory.create(factory_url, vmath.vector3(0, 0, 0), nil, nil, vmath.vector3(0.001))
-      M.clouds[i] = { id = id, url = msg.url(nil, id, "mesh"), lat = 0, lon = 0, s = 0, target = 0,
-        size = 1, yaw = 0, alive = false, shown = true }
-      if i == 1 then
-        local res = go.get(msg.url(nil, id, "mesh"), "vertices")
-        resource.set_buffer(res, buf)
-        M.cloud_res = res
+      local url = msg.url(nil, id, "mesh")
+      go.set(url, "vertices", M.res.cu1)
+      msg.post(url, MSG_DISABLE)
+      M.clouds[i] = { id = id, url = url, s = 0, target = 0, kind = "cu1", shown = false, key = nil }
+    end
+  end
+  M.ceil = ceilings(W)
+  for _, c in ipairs(M.clouds) do c.s, c.target, c.key, c.cell = 0, 0, nil, nil end
+  M.since = 1e9
+  M.scan(W, true)
+end
+
+local wx = {}
+
+-- Choose the clouds for the visible hemisphere: every cell under weather gets a weight (today's
+-- rain, storms, humid dry days); the heaviest cells (with a per-day jitter so decks are ragged)
+-- get a cloud. Slots keep their (cell, key) while it stays chosen; others fade out and are reused.
+function M.scan(W, instant)
+  local F, g = W.F, W.grid
+  local hf = state.hour_f or W.hour
+  local fast = (require("game.platform.speed").hours_per_second() or 0) > M.FAST_HPS
+  local ex, ey, ez = state.eye.x, state.eye.y, state.eye.z
+  local el = sqrt(ex * ex + ey * ey + ez * ez)
+  ex, ey, ez = ex / el, ey / el, ez / el
+  local cfgw = cfgmod.WEATHER_DAY
+  local cand = {}
+  for c = 1, W.n do
+    local d = g.X[c] * ex + g.Y[c] * ey + g.Z[c] * ez
+    if d > -0.05 then
+      local P = F.precip[c]
+      local pw = P / cfgw.wet_week
+      local w, kind = 0, nil
+      local key
+      if fast then
+        key = floor(hf / 168)
+        if pw > 1.2 then w, kind = 1.2 + pw * 0.3, "deck"
+        elseif pw > 0.35 then w, kind = pw, (h01(c, key, 3) < 0.5 and "cu1" or "cu2") end
+      else
+        key = floor(hf / 24)
+        local day = wday.for_local_day(W, c, hf, wx)
+        if day.storm and day.wet then w, kind = 3 + day.rain * 20, "tower"
+        elseif day.wet then w, kind = 1.4 + day.rain * 25, "deck"
+        elseif pw > 0.2 then w, kind = 0.3 + pw * 0.8, (h01(c, key, 3) < 0.5 and "cu1" or "cu2") end
+      end
+      if kind then
+        -- the pool goes to the face of the planet you look at (the limb gets what is left)
+        w = w * (0.6 + 0.8 * h01(c, key, 1)) * (0.35 + 0.65 * (d > 0 and d or 0))
+        if w > 0.25 then cand[#cand + 1] = { c = c, w = w, kind = kind, key = key, rain = not fast and wx.wet, snow = F.temp[c] < 0 } end
       end
     end
   end
-  M.scan(W)
-  for _, c in ipairs(M.clouds) do
-    c.alive = false
-    c.s = 0
+  table.sort(cand, function(a, b) if a.w ~= b.w then return a.w > b.w end return a.c < b.c end)
+  local want = {}
+  local nmax = min(#cand, M.MAX_ACTIVE or M.COUNT)
+  for i = 1, nmax do
+    local e = cand[i]
+    want[e.c * 1e6 + e.key] = e
   end
-  M.respawn_all(W, true)
-  M.since = 0
-end
-
--- Candidate cells: moist cells, weighted by how much wetter than the median they are.
-function M.scan(W)
-  local F = W.F
-  local m = F.moisture
-  local vals = {}
-  for c = 1, W.n do vals[c] = m[c] end
-  table.sort(vals)
-  local thr = vals[floor(W.n * 0.55)] or 0
-  M.thr = thr
-  local cand, wsum = {}, 0
-  for c = 1, W.n do
-    local w = m[c] - thr
-    if w > 0 then
-      w = w + F.precip[c] * 2
-      cand[#cand + 1] = c
-      wsum = wsum + w
-      cand[#cand + 1] = wsum
+  -- keep slots that are still wanted, release the rest
+  local placed = {}
+  for _, cl in ipairs(M.clouds) do
+    local e = cl.cell and want[cl.cell * 1e6 + (cl.key or -1)]
+    if e then
+      placed[cl.cell * 1e6 + cl.key] = true
+      cl.target, cl.kind_want, cl.rain, cl.snow = 1, e.kind, e.rain, e.snow
+    else
+      cl.target = 0
     end
   end
-  M.cand, M.wsum = cand, wsum
-end
-
-local function pick_cell()
-  local cand = M.cand
-  if not cand or #cand == 0 then return nil end
-  local r = rnd() * M.wsum
-  for i = 2, #cand, 2 do
-    if cand[i] >= r then return cand[i - 1] end
-  end
-  return cand[#cand - 1]
-end
-
-local function spawn(c, W, grown)
-  local cell = pick_cell()
-  if not cell then c.alive = false; c.target = 0; return end
-  local g = W.grid
-  c.lat = g.lat[cell] + (rnd() - 0.5) * g.spacing
-  c.lon = g.lon[cell] + (rnd() - 0.5) * g.spacing
-  c.size = 1.1 + rnd() * 1.0
-  c.yaw = rnd() * 6.283
-  c.alive = true
-  c.target = 1
-  c.s = grown and 1 or 0
-  c.cell = cell
-  c.flat = 0.5 + rnd() * 0.2
-end
-
-function M.respawn_all(W, grown)
-  local area = 0
-  local cap = M.MAX_COVER * 4 * math.pi * state.R * state.R
-  for _, c in ipairs(M.clouds) do
-    spawn(c, W, grown)
-    local a = math.pi * (c.size * 0.55) ^ 2
-    if area + a > cap then c.alive = false; c.target = 0; c.s = 0 else area = area + a end
+  local free = 1
+  for i = 1, nmax do
+    local e = cand[i]
+    local k = e.c * 1e6 + e.key
+    if not placed[k] then
+      while M.clouds[free] and (M.clouds[free].target > 0 or M.clouds[free].s > 0.02) do free = free + 1 end
+      local cl = M.clouds[free]
+      if not cl then break end
+      cl.cell, cl.key, cl.target, cl.kind_want = e.c, e.key, 1, e.kind
+      cl.rain, cl.snow = e.rain, e.snow
+      cl.s = instant and 1 or 0
+      cl.t0 = fast and e.key * 168 or e.key * 24
+      -- where in its cell, how big, which way
+      local sp = g.spacing
+      cl.dlat = (h01(e.c, e.key, 5) - 0.5) * sp * 0.9
+      cl.dlon = (h01(e.c, e.key, 6) - 0.5) * sp * 0.9
+      cl.size = (e.kind == "tower" and 1.25 or (e.kind == "deck" and 1.35 or 0.8)) * (0.8 + 0.5 * h01(e.c, e.key, 7))
+      cl.yaw = h01(e.c, e.key, 8) * 6.283
+      local ce = M.ceil[e.c] or 0
+      cl.alt = max(M.ALT_MIN, ce * M.EXAG + M.CLEAR) + 0.08 * h01(e.c, e.key, 9)
+      free = free + 1
+    end
   end
 end
 
@@ -198,102 +241,58 @@ local pos, rot, scl = vmath.vector3(), vmath.quat(), vmath.vector3()
 function M.update(W, dt, frozen)
   local zonal = cfgmod.MOIST.zonal
   local R = state.R
-  M.since = (M.since or 0) + dt
-  if M.since > M.RESCAN and not frozen then
-    M.since = 0
-    M.scan(W)
-  end
   local g = W.grid
-  local m = W.F.moisture
+  M.since = (M.since or 0) + dt
+  if M.since > M.RESCAN then
+    M.since = 0
+    M.scan(W, frozen)   -- frozen visuals (screenshots): new clouds appear at once
+  end
+  local hf = state.hour_f or W.hour
   local active, area = 0, 0
-  local eye = state.eye
-  local ex, ey, ez = eye.x, eye.y, eye.z
-  local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
-  local zoom = require("game.view.camera").zoom
-  local cap = M.MAX_COVER * 4 * math.pi * R * R
-  -- clouds drift slowly: each one moves (and has its transform written) every other frame, with
-  -- twice the step, which halves the per-frame cost (05 §9 view budget)
+  local kinds = M.stats.kinds
+  kinds.cu1, kinds.cu2, kinds.deck, kinds.tower = 0, 0, 0, 0
   M.frame = (M.frame or 0) + 1
   local par = M.frame % 2
-  local dt2 = dt * 2
+  local k = 1 - exp(-dt * 2 * 1.2)
   for i, c in ipairs(M.clouds) do
     local mine = i % 2 == par
-    if not frozen and mine then
-      local dt = dt2
-      if c.alive then
-        local u = prof(zonal, abs(c.lat) * 57.2958)
-        c.lon = c.lon + u * M.DRIFT * dt / max(0.2, cos(c.lat))
-        -- dry air under the cloud: fade out
-        local x, y, z = cos(c.lat) * cos(c.lon), sin(c.lat), cos(c.lat) * sin(c.lon)
-        c.cell = grid.nearest(g, x, y, z, c.cell)
-        if m[c.cell] < (M.thr or 0) * 0.9 then c.target = 0 end
-      end
-      local k = 1 - exp(-dt * 0.8)
+    if mine and not frozen then
       c.s = c.s + (c.target - c.s) * k
-      if c.target == 0 and c.s < 0.02 then
-        spawn(c, W, false)
-      end
+      if c.target == 0 and c.s < 0.02 then c.s = 0 end
     end
-    local sz = c.size * c.s
-    if M.hidden then sz = 0 end
-    if sz > 0.01 then
-      -- shrink clouds that would sit in front of a zoomed-in camera
-      local cl = cos(c.lat)
-      local r = R + M.ALT
-      local dx, dy, dz = cl * cos(c.lon) * r - ex, sin(c.lat) * r - ey, cl * sin(c.lon) * r - ez
-      local de = sqrt(dx * dx + dy * dy + dz * dz)
-      local t = (de - M.NEAR_HIDE[1]) / (M.NEAR_HIDE[2] - M.NEAR_HIDE[1])
-      if t < 1 then sz = sz * max(0, t) end
-      -- zoomed in: keep the view focus clear of clouds
-      if zoom > 0.35 then
-        local fd = (cl * cos(c.lon) * fx + sin(c.lat) * fy + cl * sin(c.lon) * fz)
-        local k = (fd - 0.955) / (0.985 - 0.955)
-        if k > 0 then sz = sz * max(0, 1 - k * min(1, (zoom - 0.35) * 4)) end
-      end
-    end
-    if sz > 0.01 then
-      local a = math.pi * (sz * 0.55) ^ 2
-      if area + a <= cap then
-        area = area + a
-        active = active + 1
-      else
-        sz = 0
-      end
-    end
-    local show = sz > 0.01
+    local show = c.cell ~= nil and c.s > 0.02 and not M.hidden
     if show and (mine or not c.shown) then
-      do
-        local cl = cos(c.lat)
-        local x, y, z = cl * cos(c.lon), sin(c.lat), cl * sin(c.lon)
-        local r = R + M.ALT
-        pos.x, pos.y, pos.z = x * r, y * r, z * r
-        vmx.set_up_yaw(rot, x, y, z, c.yaw)
-        scl.x, scl.y, scl.z = sz, sz * c.flat, sz
-        go.set_position(pos, c.id)
-        go.set_rotation(rot, c.id)
-        go.set_scale(scl, c.id)
-        -- weather under the cloud, from the sim cell it is over
-        local rn = M.rains[i]
-        if rn then
-          local pr = c.cell and W.F.precip[c.cell] or 0
-          local raining = pr > M.RAIN_MIN and c.s > 0.5
-          local storm = pr > M.STORM_MIN
-          if storm ~= (c.storm or false) and M.storm_res then
-            c.storm = storm
-            go.set(c.url, "vertices", storm and M.storm_res or M.cloud_res)
-          end
-          if raining then
-            local snow = W.F.temp[c.cell] < 0
-            if snow ~= rn.snow then rn.snow = snow; go.set(rn.url, "vertices", snow and M.snow_res or M.rain_res) end
-            scl.x, scl.y, scl.z = sz, 1, sz
-            local r2 = R + M.ALT - 0.02 * sz
-            pos.x, pos.y, pos.z = x * r2, y * r2, z * r2
-            go.set_position(pos, rn.id)
-            go.set_rotation(rot, rn.id)
-            go.set_scale(scl, rn.id)
-          end
-          if raining ~= rn.on then rn.on = raining; msg.post(rn.url, raining and MSG_ENABLE or MSG_DISABLE) end
+      if c.kind_want and c.kind_want ~= c.kind and (c.s < 0.3 or not c.shown) then
+        c.kind = c.kind_want
+        go.set(c.url, "vertices", M.res[c.kind])
+      end
+      local lat0 = g.lat[c.cell] + c.dlat
+      local u = prof(zonal, abs(lat0) * 57.2958)
+      local lon = g.lon[c.cell] + c.dlon + u * M.DRIFT * (hf - (c.t0 or hf)) / max(0.2, cos(lat0))
+      local cl = cos(lat0)
+      local x, y, z = cl * cos(lon), sin(lat0), cl * sin(lon)
+      local r = R + c.alt
+      pos.x, pos.y, pos.z = x * r, y * r, z * r
+      vmx.set_up_yaw(rot, x, y, z, c.yaw)
+      local sz = c.size * (0.35 + 0.65 * c.s)
+      scl.x, scl.y, scl.z = sz, sz * (0.6 + 0.4 * c.s), sz
+      go.set_position(pos, c.id)
+      go.set_rotation(rot, c.id)
+      go.set_scale(scl, c.id)
+      local rn = M.rains[i]
+      if rn then
+        local raining = c.rain and c.s > 0.5 and (c.kind == "deck" or c.kind == "tower")
+        if raining then
+          if c.snow ~= rn.snow then rn.snow = c.snow; go.set(rn.url, "vertices", c.snow and M.snow_res or M.rain_res) end
+          -- the curtain reaches from the cloud base down to the ground
+          scl.x, scl.y, scl.z = sz, 1, sz
+          local r2 = R + c.alt - 0.02
+          pos.x, pos.y, pos.z = x * r2, y * r2, z * r2
+          go.set_position(pos, rn.id)
+          go.set_rotation(rot, rn.id)
+          go.set_scale(scl, rn.id)
         end
+        if raining ~= rn.on then rn.on = raining; msg.post(rn.url, raining and MSG_ENABLE or MSG_DISABLE) end
       end
     end
     if show ~= c.shown then
@@ -302,9 +301,23 @@ function M.update(W, dt, frozen)
       local rn = M.rains[i]
       if not show and rn and rn.on then rn.on = false; msg.post(rn.url, MSG_DISABLE) end
     end
+    if show then
+      active = active + 1
+      area = area + math.pi * (c.size * 0.55) ^ 2
+      kinds[c.kind] = (kinds[c.kind] or 0) + 1
+    end
   end
   M.stats.active = active
   M.stats.cover = area / (4 * math.pi * R * R)
+  -- the cut-away: clouds between the camera and the view focus fade (cloud.fp), more when close
+  local zoom = require("game.view.camera").zoom
+  local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
+  local cut = state.u_cut
+  if cut then
+    local rs = R + 0.2
+    cut.x, cut.y, cut.z = fx * rs, fy * rs, fz * rs
+    cut.w = min(1, max(0, (zoom - 0.25) * 2.5))
+  end
 end
 
 return M

@@ -58,7 +58,7 @@ test('W09 UI: inspector for cell/village/person/planet, HUD layout, speed button
     r = await sendCmd(page, { cmd: 'select', village: 'first' });
     expect(r.ok, JSON.stringify(r)).toBe(true);
     expect(r.result.kind).toBe('village');
-    expect(r.result.rows.join('|')).toContain('Population');
+    expect(r.result.rows.join('|')).toContain('People');
     r = await sendCmd(page, { cmd: 'select', person: 'first' });
     expect(r.ok, JSON.stringify(r)).toBe(true);
     expect(r.result.kind).toBe('person');

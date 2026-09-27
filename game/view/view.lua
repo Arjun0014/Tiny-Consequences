@@ -119,37 +119,34 @@ function M.set_frozen(on)
   state.frozen = on and true or false
 end
 
--- Village entities (sim/systems/villages.lua) -> props.set_villages: living villages
--- (alive ~= false) get a settlement sized by v.houses (else pop / 4), in their culture's
--- style, with a pier if they fish and haystacks after their own harvest; dead ones show ruins
--- only while v.ruin is set.
-local function local_toy(W, v)
-  local geo = W.vgeo and W.vgeo[v.id]
-  local shift = geo and geo.shift or 0
-  return (W.tick + shift) % 48
-end
+-- Village entities (sim/society) -> props.set_villages: every living village, and every
+-- abandoned one whose ruins still stand, is drawn from its buildings (propgen.plan_village);
+-- the signature changes when a building's stage or condition or a visible stock changes.
+local propgen = require("game.view.propgen")
+local layout = require("sim.society.layout")
 
 function M.sync_villages(W)
   local list = W.ent and W.ent.villages
   if type(list) ~= "table" then return end
   local out, sig = {}, 0
+  local B = W.ent.buildings or {}
   for i = 1, #list do
     local v = list[i]
-    if type(v) == "table" and type(v.cell) == "number" then
-      local entry = nil
-      if v.alive ~= false then
-        local pop = tonumber(v.pop) or (type(v.members) == "table" and #v.members) or 0
-        local houses = tonumber(v.houses) or math.max(3, math.ceil(pop / 4))
-        local toy = local_toy(W, v)
-        entry = { cell = v.cell, houses = houses, ruin = false, culture = v.culture or 1,
-          fishing = type(v.fishing) == "table" and #v.fishing > 0, harvest = toy >= 32 }
-      elseif v.ruin then
-        entry = { cell = v.cell, houses = 0, ruin = true, culture = v.culture or 1 }
+    if type(v) == "table" and type(v.cell) == "number" and (v.alive ~= false or v.ruin) then
+      local vs = propgen.village_sig(W, v)
+      -- the cleared ground: out to the outermost ring of lots used on the centre cell
+      local kmax = 1
+      for k = 1, #(v.buildings or {}) do
+        local b = B[v.buildings[k]]
+        if b and b.cell == v.cell and b.lot > 0 and b.state ~= "gone" then
+          local ring = layout.ring_of(b.lot)
+          if ring > kmax then kmax = ring end
+        end
       end
-      if entry then
-        out[#out + 1] = entry
-        sig = sig + v.cell * 7 + entry.houses * 131 + (entry.ruin and 997 or 0) + (entry.harvest and 5 or 0)
-      end
+      local radius = state.R * require("sim.config").SOCIETY.lot_r * (kmax + 0.75)
+      out[#out + 1] = { cell = v.cell, id = v.id, ruin = v.alive == false, culture = v.culture or 1, sig = vs,
+        radius = radius }
+      sig = (sig * 17 + vs + v.cell * 7 + (v.alive == false and 997 or 0)) % 1000000007
     end
   end
   sig = sig + #out * 100003

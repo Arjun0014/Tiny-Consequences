@@ -11,6 +11,9 @@ return {
   },
   expect = {
     { metric = "blight_villages", compare = "absolute", op = ">=", value = 2, within_years = 2 },
-    { chain_from_action = 1, min_links = 3, must_include = { "crop_failure", "famine" } },
+    -- (W2, D-054: villages keep a year or more in store — research §2: overproduction and
+    -- storage are the normal answer to crop-failure risk — so one blight need not end in hunger;
+    -- it must spread and fail harvests)
+    { chain_from_action = 1, min_links = 3, must_include = { "crop_failure" } },
   },
 }

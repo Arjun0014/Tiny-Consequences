@@ -82,18 +82,37 @@ function L.select(W, spec)
     end
     return nil
   elseif kind == "village" and (rest == "inland" or rest == "fishing") then
-    -- "inland": the biggest living village without fishing waters; "fishing": the biggest with
+    -- "inland": the biggest living village without fishing waters; "fishing": the village that
+    -- lives most on its catch (last year's catch share of what it produced; W2: villages farm and
+    -- fish, D-054), among those with boats and at least 20 people
     local best, bp = nil, -1
     for _, v in ipairs(W.ent.villages or {}) do
       if v.alive then
-        local ok = (rest == "inland" and #v.fishing == 0) or (rest == "fishing" and #v.fishing > 0 and #v.boats > 0)
-        if ok and v.pop > bp then best, bp = v, v.pop end
+        if rest == "inland" and #v.fishing == 0 and v.pop > bp then best, bp = v, v.pop
+        elseif rest == "fishing" and #v.fishing > 0 and #v.boats > 0 and v.pop >= 20 then
+          local a = v.acc_last or {}
+          local share = (a.catch or 0) / math.max(1, (a.catch or 0) + (a.harvest or 0) + (a.meat or 0))
+          if share > bp then best, bp = v, share end
+        end
       end
     end
     if not best and rest == "inland" then
       -- no village away from the sea: the biggest one that lives off its fields (no boats)
       for _, v in ipairs(W.ent.villages or {}) do
         if v.alive and #v.boats == 0 and #v.farms > 0 and v.pop > bp then best, bp = v, v.pop end
+      end
+    end
+    if not best and rest == "inland" then
+      -- every village fishes: the one that depends most on its fields (last year's harvest share
+      -- of what it produced), with a few fields and people
+      local bs = -1
+      for _, v in ipairs(W.ent.villages or {}) do
+        local a = v.acc_last
+        if v.alive and #v.farms >= 3 and v.pop >= 20 and a then
+          local h = a.harvest or 0
+          local share = h / math.max(1, h + (a.catch or 0) + (a.meat or 0))
+          if share > bs then best, bs = v, share end
+        end
       end
     end
     if not best then return nil end
@@ -391,6 +410,24 @@ local function eval_chain(W, root, e)
   return ok, best and table.concat(best, ">") or "(no derived events)"
 end
 
+-- Action triggers on the target's state (`when`): the action waits (from its `year`) until the
+-- condition holds, at most `wait_years` (default 1).
+local WHEN = {
+  -- the target village's crops are growing and past half-grown, not yet ripe (burn a harvest
+  -- before it is brought in, whatever the village's calendar: tropical villages sow when warm)
+  crop_half = function(W, tg)
+    local v = W.ent.villages[tg.village]
+    if not v or not v.alive or v.season.phase ~= "growing" then return false end
+    local sown, bio = 0, 0
+    for _, c in ipairs(v.farms) do
+      local f = W.S.farm[c]
+      if f and f.sown > 0 and not f.ripe then sown = sown + f.sown; bio = bio + f.sown * f.bio end
+    end
+    return sown >= 1 and bio / sown >= 0.5
+  end,
+}
+L.WHEN = WHEN
+
 -- Run one seed. Returns pass(bool), detail(string), per-expectation results.
 local baseline_seed
 function L.run_seed(spec, seed, opts)
@@ -412,7 +449,13 @@ function L.run_seed(spec, seed, opts)
     for ai, a in ipairs(acts) do
       if t == math.floor((a.year or 0) * 48) then
         local same = a.target:match("^same:(%d+)$")
-        local tg = same and targets[tonumber(same)] or L.select(Wa, a.target)
+        local tg
+        if same and targets[tonumber(same)] then
+          tg = {}
+          for k, x in pairs(targets[tonumber(same)]) do tg[k] = x end
+        else
+          tg = L.select(Wa, a.target)
+        end
         if not tg then return false, "target " .. a.target .. " not found", {} end
         targets[ai] = tg
         tg.tick = Wa.tick
@@ -422,6 +465,10 @@ function L.run_seed(spec, seed, opts)
         if a.local_calendar and tg.village then
           due[ai] = t + (Wa.grid.lat[Wa.ent.villages[tg.village].cell] < 0 and 24 or 0)
         end
+      end
+      if a.when and due[ai] and not act_tick[ai] and due[ai] <= t then
+        if WHEN[a.when](Wa, targets[ai]) or t - due[ai] >= (a.wait_years or 1) * 48 then due[ai] = t
+        else due[ai] = t + 1 end
       end
       if due[ai] == t and not act_tick[ai] then
         act_tick[ai] = t
@@ -524,15 +571,39 @@ function L.run_seed(spec, seed, opts)
     report.mkdir(dir)
     report.write_events(Wa, dir .. "/seed" .. seed .. "_events.txt")
   end
-  L.attribution(spec, seed, Wa, Wb, act_tick)
+  L.attribution(spec, seed, Wa, Wb, act_tick, targets)
   return all, table.concat(parts, "; "), res
 end
 
 -- P08 (07 §4): headline events of the action world that the baseline world doesn't have (same
 -- kind and region within 2 months) are consequences of the player's actions; count how many
 -- of them chain back to a player root. Accumulated over every scenario run (L.P08).
-L.P08 = { extra = 0, player = 0, misses = {} }
-function L.attribution(spec, seed, Wa, Wb, act_tick)
+-- W2 (D-054): only added headlines within P08_REACH cell spacings of the actions' targets count.
+-- Far away, the two worlds' societies drift apart by chance (a boat caught by a squall in one
+-- world and not the other, a birth that tips a marriage) — divergence, not consequence; those
+-- are reported (L.P08.remote) but do not count either way.
+L.P08 = { extra = 0, player = 0, misses = {}, remote = 0 }
+L.P08_REACH = 8
+function L.attribution(spec, seed, Wa, Wb, act_tick, targets)
+  local near = nil
+  if targets then
+    local g = Wa.grid
+    local lim = math.cos(L.P08_REACH * g.spacing)
+    local tc = {}
+    for _, tg in pairs(targets) do
+      for _, c in ipairs(tg.cells or {}) do tc[#tc + 1] = c end
+      if tg.cell then tc[#tc + 1] = tg.cell end
+      if tg.village and Wa.ent.villages[tg.village] then tc[#tc + 1] = Wa.ent.villages[tg.village].cell end
+    end
+    near = function(c)
+      if not c or c == 0 then return true end
+      for i = 1, #tc do
+        local t = tc[i]
+        if g.X[c] * g.X[t] + g.Y[c] * g.Y[t] + g.Z[c] * g.Z[t] >= lim then return true end
+      end
+      return false
+    end
+  end
   local t0 = math.huge
   for _, t in pairs(act_tick) do if t < t0 then t0 = t end end
   if t0 == math.huge then return end
@@ -556,9 +627,11 @@ function L.attribution(spec, seed, Wa, Wb, act_tick)
           if list[i] and math.abs(list[i] - r.tick) <= 8 then list[i] = false; matched = true; break end
         end
       end
-      if not matched then
+      if not matched and near and not near(r.cell) and not events.player_involved(Wa, r.id) then
+        L.P08.remote = L.P08.remote + 1
+      elseif not matched then
         L.P08.extra = L.P08.extra + 1
-        if events.is_player_rooted(Wa, r.id) then L.P08.player = L.P08.player + 1
+        if events.player_involved(Wa, r.id) then L.P08.player = L.P08.player + 1
         elseif #L.P08.misses < 12 then
           local ch = events.chain(Wa, r.id)
           local ks = {}

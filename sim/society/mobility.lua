@@ -11,8 +11,14 @@ local rng = require("sim.rng")
 local names = require("content.names")
 local events = require("sim.causality.events")
 local ents = require("sim.society.entities")
+local cotag = require("sim.society.cotag")
 local sites = require("sim.society.sites")
 local farming = require("sim.society.farming")
+local relations = require("sim.society.relations")
+
+-- Parties whose members stay members of their village and household while away: porters carrying
+-- goods between villages and walking home again (sim/society/relations.lua).
+local ERRAND = { porters = true, returning = true }
 
 local M = {}
 local floor, ceil, min, max = math.floor, math.ceil, math.min, math.max
@@ -24,7 +30,9 @@ M.on_unregister = function() end
 
 local function emit(W, kind, cell, parent, mag, data)
   if not W.record_events then return 0 end
-  return events.emit(W, kind, cell, parent, mag, data)
+  local v = data and W.ent.villages[data.village or data.from or 0]
+  local co = v and cotag.co_of(W, v)
+  return events.emit(W, kind, cell, parent, mag, data, co and { co = co } or nil)
 end
 
 -- Land path from cell a to cell b (BFS over land; nil if unreachable within limit steps).
@@ -67,11 +75,15 @@ local function walk_hours(n_steps)
 end
 
 -- Send a group of people from village v as a party toward village `to` (or a site cell).
-function M.depart(W, v, members, to, site, kind, reason, food, seed)
+-- cargo (optional): goods carried (porters); from_cell (optional): where they set off from, if
+-- not v's centre (porters walking home from the village they visited).
+function M.depart(W, v, members, to, site, kind, reason, food, seed, cargo, from_cell)
   local E = W.ent
   local P = E.people
   local target_cell = to ~= 0 and E.villages[to].cell or site
-  local path = M.land_path(W, v.cell, target_cell, 80) or { v.cell, target_cell }
+  local start = from_cell or v.cell
+  local path = M.land_path(W, start, target_cell, 80) or { start, target_cell }
+  local errand = ERRAND[kind]
   local id = E.next_party
   E.next_party = id + 1
   -- decisions are taken at the village's local midnight; they set off at first light
@@ -79,24 +91,28 @@ function M.depart(W, v, members, to, site, kind, reason, food, seed)
   local party = { id = id, key = rng.hash(W.seed, rng.S.PARTY, v.key_cell, W.hour, #members), members = {},
     from = v.id, to = to, site = site or 0, culture = v.culture, path = path, depart = dep,
     arrive = dep + max(2, walk_hours(#path - 1)), food = food or 0, seed = seed or 0, reason = reason or 0,
-    kind = kind }
+    kind = kind, cargo = cargo }
   for i = 1, #members do
     local p = members[i]
-    local h = E.households[p.household]
-    if h then ents.remove_id(h.members, p.id) end
-    ents.remove_id(v.members, p.id)
-    p.household = 0
+    if not errand then
+      local h = E.households[p.household]
+      if h then ents.remove_id(h.members, p.id) end
+      ents.remove_id(v.members, p.id)
+      p.household = 0
+    end
     p.away = id
     p.task, p.site = "travel", 0
     party.members[#party.members + 1] = p.id
   end
-  v.pop = #v.members
-  v.hh_dirty = true
-  v.acc.mig_out = (v.acc.mig_out or 0) + #members
+  if not errand then
+    v.pop = #v.members
+    v.hh_dirty = true
+    v.acc.mig_out = (v.acc.mig_out or 0) + #members
+    W.S.society.migrated = W.S.society.migrated + #members
+  end
   E.parties[id] = party
   E.party_list = E.party_list or {}
   E.party_list[#E.party_list + 1] = id
-  W.S.society.migrated = W.S.society.migrated + #members
   return party
 end
 
@@ -108,6 +124,19 @@ local function arrive(W, party)
   for i = 1, #party.members do
     local p = P[party.members[i]]
     if p and not p.dead then p.away = 0; living[#living + 1] = p end
+  end
+  if party.kind == "porters" then
+    -- goods delivered; they turn round (relations.porters_arrive sends them home)
+    local dest = party.to ~= 0 and E.villages[party.to] or nil
+    if #living > 0 then relations.porters_arrive(W, party, dest, living)
+    else
+      local home = party.cargo and E.villages[party.cargo.back_to]
+      if home then home.porters_out = nil end
+    end
+    return
+  elseif party.kind == "returning" then
+    relations.returning_arrive(W, party, E.villages[party.to])
+    return
   end
   if #living == 0 then return end
   local dest, founded
@@ -166,6 +195,7 @@ local function arrive(W, party)
     local group = by_old[order[i]]
     local h = ents.new_household(W, dest, 0)
     h.arrived = W.hour
+    h.came_from = party.from
     for j = 1, #group do ents.move_person(W, group[j], dest, h) end
   end
   dest.stock.grain = dest.stock.grain + party.food
@@ -331,6 +361,7 @@ end
 
 -- Where would a household from v go? Returns the best destination village and its pull.
 local function best_destination(W, v, h, housing, added)
+  local hour = W.hour
   local E = W.ent
   local P = E.people
   local vs = E.villages
@@ -346,24 +377,41 @@ local function best_destination(W, v, h, housing, added)
         -- households of this village already set on going there this month count too
         local a = added[u.id]
         local pull = prospects(W, u, need + (a and a[2] or 0), #h.members + (a and a[1] or 0))
+        -- kin living there (they take kin in, even when times are hard)
+        local kin = false
+        for j = 1, #h.members do
+          local p = P[h.members[j]]
+          for _, rid in ipairs({ p.mother, p.father }) do
+            local q = rid ~= 0 and P[rid]
+            if q and not q.dead and q.village == u.id then kin = true; break end
+          end
+          if kin then break end
+        end
+        -- hospitality: a village that is short itself, or whose land already feeds all it can,
+        -- turns strangers away (neighbours know when a village is rationing); and a household does
+        -- not go straight back to the village it fled
+        local inc = incoming(W, u) + (a and a[1] or 0)
+        local room = (u.capacity or u.pop) - u.pop - inc
+        -- ... and it can only share what its store holds beyond its own needs to the next harvest
+        local wait = farming.days_to_harvest(W, u) + 30
+        local spare = (u.stock.grain + u.stock.fresh - u.need_day * wait) / (0.9 * wait) - inc
+        -- (kin open their doors even when times are hard, but they cannot share food they do not have)
+        local closed = ((u.rationing or u.famine or room < #h.members) and not kin)
+          or spare < #h.members * (kin and 0.5 or 1)
+        if h.came_from == u.id and hour - (h.arrived or -1e9) < cfg.return_years * 8064 then closed = true end
+        if closed then pull = -1e9 end
         -- a roof matters to those without one (or crowded, or a couple waiting to marry)
         if housing then
           if require("sim.society.life").vacant(W, u) then pull = pull + 0.5
           elseif u.stock.wood > cfg.build.house.wood then pull = pull + 0.25 end
         end
-        -- kin living there
-        for j = 1, #h.members do
-          local p = P[h.members[j]]
-          for _, rid in ipairs({ p.mother, p.father }) do
-            local q = rid ~= 0 and P[rid]
-            if q and not q.dead and q.village == u.id then pull = pull + 0.3; break end
-          end
-        end
+        if kin then pull = pull + 0.3 end
         pull = pull - d * cfg.walk_h * 1.5 / 10 * 0.05
         if pull > bp then best, bp = u, pull end
       end
     end
   end
+  if bp < -1e8 then return nil, bp end   -- every door is closed
   return best, bp
 end
 
@@ -482,8 +530,11 @@ function M.monthly(W, v)
   -- it after its own needs to the next harvest.
   local living = 0
   for i = 1, #E.villages do if E.villages[i].alive then living = living + 1 end end
-  if v.pop >= 30 and not v.famine and not v.rationing and living < cfg.max_villages
-    and hour - (v.bud_last or v.founded) > 6 * 8064 then
+  -- a village whose land already feeds all it can (or more) sends young households off too, not
+  -- only couples waiting for a house: village fission, the old answer to a full valley
+  local over = v.pop > (v.capacity or 1e9) * 0.95
+  if v.pop >= 30 and not v.famine and (over or not v.rationing) and living < cfg.max_villages
+    and hour - (v.bud_last or v.founded) > (over and 3 or 6) * 8064 then
     local waiting = {}
     for i = 1, #v.members do
       local p = P[v.members[i]]
@@ -492,28 +543,54 @@ function M.monthly(W, v)
         if q and not q.dead and q.village == v.id then waiting[#waiting + 1] = p; waiting[#waiting + 1] = q end
       end
     end
-    if #waiting >= 4 and rng.float(W.seed, rng.S.MIGRATION, v.key_cell, month, 5) < 0.5 then
+    local units
+    local group = {}
+    for i = 1, min(#waiting, 8) do group[#group + 1] = waiting[i] end
+    units = floor(#group / 2)
+    if over then
+      -- young families (the wife under 32): whole households go
+      for i = 1, #v.households do
+        if units >= cfg.found_max_households or #group >= 24 then break end
+        local h = H[v.households[i]]
+        if h and #h.members >= 2 and #h.members <= 6 then
+          local young = false
+          for j = 1, #h.members do
+            local p = P[h.members[j]]
+            local a = ents.age(W, p)
+            if p.sex == "f" and p.partner ~= 0 and a >= cfg.adult_age and a < 32 then young = true end
+            if a >= 40 then young = false; break end
+          end
+          if young then
+            for j = 1, #h.members do group[#group + 1] = P[h.members[j]] end
+            units = units + 1
+          end
+        end
+      end
+    end
+    local adults = 0
+    for i = 1, #group do if ents.age(W, group[i]) >= cfg.adult_age then adults = adults + 1 end end
+    if units >= 2 and adults >= 4 and rng.float(W.seed, rng.S.MIGRATION, v.key_cell, month, 5) < 0.5 then
       local site = sites.near_site(W, v.cell, cfg.bud_radius)
       local swk = site and farming.local_week_at(W, site)
       if site and (swk >= 42 or swk < 4) then
-        local group = {}
-        for i = 1, min(#waiting, 8) do group[#group + 1] = waiting[i] end
+        local need = 0
+        for i = 1, #group do need = need + ents.need_of(W, group[i]) end
         local days = ((cfg.first_harvest_weeks + (6 - swk) % 48) * 7) + cfg.bud_food_margin
-        local food_full = #group * cfgmod.SOCIETY.eat.adult * days
+        local food_full = need * days
         local food = food_full
         local seed = cfg.seed * cfg.found_seed_cells
         local keep = v.need_day * (farming.days_to_harvest(W, v) + 60)
         local spare = v.stock.grain + v.stock.seed - keep - seed
         if spare < food then food = spare end
-        if food >= food_full * cfg.bud_min_provision then
+        if food >= food_full * (over and cfg.bud_min_provision * 0.5 or cfg.bud_min_provision) then
           v.bud_last = hour
           local from_seed = min(v.stock.seed, seed)
           v.stock.seed = v.stock.seed - from_seed
           v.stock.grain = v.stock.grain - food - (seed - from_seed)
-          -- they marry as they leave: a new village starts with households
-          for i = 1, #group, 2 do
-            local a, b = group[i], group[i + 1]
-            if a and b then a.partner, b.partner = b.id, a.id; a.betrothed, b.betrothed = 0, 0 end
+          -- the betrothed marry as they leave: a new village starts with households
+          for i = 1, min(#waiting, 8), 2 do
+            local a, b = waiting[i], waiting[i + 1]
+            if a and b and a.betrothed == b.id then a.partner, b.partner = b.id, a.id; a.betrothed, b.betrothed = 0, 0 end
           end
           local mid = emit(W, "migration", v.cell, 0, #group, { from = v.id, to = 0, colonists = true })
           M.depart(W, v, group, 0, site, "colonists", mid, food, seed)

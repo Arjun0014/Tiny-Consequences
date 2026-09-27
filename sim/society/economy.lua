@@ -9,6 +9,7 @@ local blame = require("sim.causality.blame")
 local events = require("sim.causality.events")
 local ledger = require("sim.ledger")
 local ents = require("sim.society.entities")
+local cotag = require("sim.society.cotag")
 local farming = require("sim.society.farming")
 local labour = require("sim.society.labour")
 local construction = require("sim.society.construction")
@@ -26,6 +27,12 @@ M.GRAIN, M.FRESH, M.WOOD = 1, 2, 3
 
 local function emit(W, kind, cell, parent, mag, data, opts)
   if not W.record_events then return 0 end
+  local v = data and data.village and W.ent.villages[data.village]
+  local co = v and cotag.co_of(W, v)
+  if co then
+    opts = opts or {}
+    opts.co = co
+  end
   return events.emit(W, kind, cell, parent, mag, data, opts)
 end
 M.emit = emit
@@ -167,7 +174,8 @@ function M.weekly(W, v)
   N.fresh_in = N.fresh_in + (f_in - N.fresh_in) * k
   N.food_out = N.food_out + (out - N.food_out) * k
   N.imports = N.imports + (imp - N.imports) * k
-  v.wk_grain, v.wk_fresh, v.wk_eaten, v.wk_imports = 0, 0, 0, 0
+  N.catch_in = (N.catch_in or f_in) + ((v.wk_catch or 0) - (N.catch_in or f_in)) * k
+  v.wk_grain, v.wk_fresh, v.wk_eaten, v.wk_imports, v.wk_catch = 0, 0, 0, 0, 0
   -- food tag: the dominant driver of the food stock's deviation (poor harvest, fish or boats
   -- lost, imports stopped, more mouths)
   local tg = v.harvest_bad and v.harvest_tag or 0
@@ -259,6 +267,7 @@ function M.weekly(W, v)
   elseif (v.workforce or 0) >= 0.95 * (v.workforce_norm or 0) then
     v.labour_tag = 0
   end
+  cotag.note_tags(W, v)
   -- storage capacities (for spoilage)
   v.grain_cap, v.wood_cap = construction.capacities(W, v)
 end

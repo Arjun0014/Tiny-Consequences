@@ -8,7 +8,8 @@ M.tests[1] = { "p08_player_consequences_are_attributed", function()
   local s = L.P08
   if s.extra < 10 then return string.format("only %d added headlines (run the scenarios first)", s.extra) end
   local share = s.player / s.extra
-  local txt = string.format("%d/%d added headlines chain to the player (%.0f%%)", s.player, s.extra, 100 * share)
+  local txt = string.format("%d/%d added headlines chain to the player (%.0f%%; %d remote divergences not counted)",
+    s.player, s.extra, 100 * share, s.remote or 0)
   if share < 0.9 then error(txt .. "; e.g. " .. table.concat(s.misses, " | "), 0) end
   return txt
 end }

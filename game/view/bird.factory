@@ -1,0 +1,2 @@
+prototype: "/game/view/bird.go"
+load_dynamically: false

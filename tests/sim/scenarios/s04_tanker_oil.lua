@@ -16,6 +16,7 @@ return {
     { descendant_kind = "oil_beached", from_action = 1 },
     -- oil → fish → the village's food
     { chain_from_action = 1, min_links = 2, must_include = { "power_oil", "fish_collapse" } },
-    { metric = "food_security@village", compare = "ratio_to_baseline", op = "<=", value = 0.7, within_years = 2 },
+    -- (0.8, was 0.7: the most fish-dependent village also farms and keeps stores, D-054)
+    { metric = "food_security@village", compare = "ratio_to_baseline", op = "<=", value = 0.8, within_years = 2 },
   },
 }

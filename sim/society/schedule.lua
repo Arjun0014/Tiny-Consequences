@@ -20,8 +20,9 @@ local sites = require("sim.society.sites")
 
 local M = {}
 local floor = math.floor
+local LEISURE_H, leisure
 
-local OUTDOOR = { sow = true, tend = true, harvest = true, clear = true, fuel = true, timber = true,
+local OUTDOOR = { sow = true, tend = true, harvest = true, clear = true, care = true, fuel = true, timber = true,
   brush = true, hunt = true, build = true, forage = true }
 
 -- The home (cell, lot) of person p (nil when homeless: they sleep by the square).
@@ -79,6 +80,36 @@ function M.party_pos(W, party, t)
   return i + 1, s - i, moving
 end
 
+-- Free-time spot of person p in leisure slot `slot` of day `day`: "home" (their yard), "square"
+-- (the well) or a neighbour's house ("home" place at another household's lot). Children play
+-- about the square and the lanes, elders sit at home or by the well, adults mostly at home with
+-- visits and gatherings — a fixed habit per person that varies with the hour.
+LEISURE_H = 1.5
+leisure = function(W, v, p, slot, day, evening, hc, hl, t)
+  local u = p.u
+  local age = (t - p.born) / 8064
+  local r = (floor(u * 977) + slot * 7 + day * 3) % 10
+  if age < 12 then
+    if r < 5 then return "square", v.cell, 0 end
+    return "home", hc, hl
+  elseif age >= 60 then
+    if r < 3 then return "square", v.cell, 0 end
+    return "home", hc, hl
+  end
+  if r < (evening and 3 or 2) then return "square", v.cell, 0 end
+  if r < 4 then
+    -- visiting another household of the village
+    local hs = v.households
+    local n = #hs
+    if n > 1 then
+      local h = W.ent.households[hs[(floor(u * 131) + day * 5 + slot) % n + 1]]
+      local b = h and h.home ~= 0 and W.ent.buildings[h.home]
+      if b and b.state == "standing" then return "home", b.cell, b.lot end
+    end
+  end
+  return "home", hc, hl
+end
+
 -- Where is person p (of village v) at absolute hour t?
 function M.where(W, v, p, t, out)
   out = out or {}
@@ -128,13 +159,19 @@ function M.where(W, v, p, t, out)
       return set(out, "work", place, tc, tl, id)
     end
   end
-  -- leisure and evenings: the well for some, home for the rest (a fixed habit per person)
-  local u = p.u
-  if lh >= we and lh < sleep - 1 and u < 0.35 then return set(out, "square", "square", v.cell, 0) end
-  if lh >= ws and lh < we and (task == "" or storm) and not storm and u < 0.6 then
-    return set(out, "square", "square", v.cell, 0)
+  -- free time (no work today, evenings): people move between home, the well and neighbours'
+  -- houses in slots of LEISURE_H hours, each person on their own rhythm (their fixed fraction u
+  -- and the day); a short walk between spots. Storms keep everyone in.
+  if storm then return set(out, "home", "home", hc, hl) end
+  local slot = floor(lh / LEISURE_H)
+  local day = floor(t / 24)
+  local pl, c1, l1 = leisure(W, v, p, slot, day, lh >= we, hc, hl, t)
+  local e = (lh - slot * LEISURE_H) / LEISURE_H
+  if e < 0.15 and lh - LEISURE_H >= wake then
+    local _, c0, l0 = leisure(W, v, p, slot - 1, day, lh - LEISURE_H >= we, hc, hl, t)
+    if c0 ~= c1 or l0 ~= l1 then return walking(out, c0, l0, c1, l1, e / 0.15, pl, 0) end
   end
-  return set(out, "home", "home", hc, hl)
+  return set(out, pl, pl, c1, l1)
 end
 
 return M

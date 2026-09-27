@@ -79,5 +79,9 @@ def("shipment_lost",    { actor = "derived", icon = "tanker", headline = true, t
 def("house_built",      { actor = "derived", icon = "house", text = "House built" })
 def("village_expanded", { actor = "derived", icon = "house", text = "Village grows" })
 def("fields_abandoned", { actor = "derived", icon = "crop", text = "Fields abandoned" })
+-- villages that know each other (W7, docs/world/18 §2.3)
+def("relief",           { actor = "derived", icon = "wheat", text = "Grain sent by neighbours" })
+def("trade",            { actor = "derived", icon = "boat", agg = 48, text = "Trade" })
+def("bride",            { actor = "derived", icon = "heart", text = "A bride leaves for another village" })
 
 return K

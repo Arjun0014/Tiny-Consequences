@@ -12,6 +12,7 @@
 -- are laid out as settlements (houses in rings facing a well or hall, fences, granaries,
 -- woodpiles, piers for fishing villages) from their size and culture.
 local kit = require("game.view.modelkit")
+local layout = require("sim.society.layout")
 
 local M = {}
 
@@ -20,14 +21,15 @@ local sqrt, floor, min, max, abs, cos, sin, pi, atan2 = math.sqrt, math.floor, m
 
 M.SCALE = 1.25         -- global prop scale, near LOD
 M.SCALE_FAR = 1.7      -- far LOD props are bigger and fewer so forests still read from orbit
-M.BUILDING = 1.3       -- buildings are drawn a little large (miniature-model proportions)
-M.SLOTS = 7            -- prop slots per render face, near
-M.SLOTS_FAR = 3
+M.BUILDING = 1.15      -- buildings are drawn a little large (miniature-model proportions)
+M.SLOTS = 11           -- prop slots per render face, near (renderer v3: denser, D-054)
+M.SLOTS_FAR = 4
 
 -- Kinds (index into NAMES; templates by name)
 local NAMES = { "oak", "birch", "spruce", "snowpine", "pine", "palm", "jungle", "acacia", "snag", "stump",
   "bush", "tuft", "flower", "reed", "rock", "cactus", "cottage", "longhouse", "townhouse", "hut",
-  "granary", "hall", "well", "fence", "haystack", "woodpile", "ruin", "pier" }
+  "granary", "hall", "well", "fence", "haystack", "woodpile", "ruin", "pier",
+  "stakes", "frame", "walls", "sodhouse", "woodshed", "sacks", "fishrack", "hull", "stook", "logs" }
 local K = {}
 for i, n in ipairs(NAMES) do K[n] = i end
 M.K, M.NAMES = K, NAMES
@@ -41,6 +43,8 @@ cls("palm", 3, 6); cls("jungle", 3, 6); cls("acacia", 3, 6); cls("snag", 6); cls
 cls("bush", 1); cls("tuft", 7); cls("flower", 7, 7); cls("reed", 7); cls("rock", 0); cls("cactus", 3)
 for _, n in ipairs({ "cottage", "longhouse", "townhouse", "hut", "granary", "hall", "well" }) do cls(n, 5, 0) end
 cls("fence"); cls("haystack", 7); cls("woodpile"); cls("ruin"); cls("pier")
+cls("stakes"); cls("frame"); cls("walls", 0, 0); cls("sodhouse", 7, 0); cls("woodshed", 5); cls("sacks")
+cls("fishrack"); cls("hull"); cls("stook", 7); cls("logs")
 
 local TPL = { {}, {} }
 M.TPL = TPL
@@ -220,119 +224,198 @@ local function to_world(x, y, z, ux, uy, uz, yaw, s, lx, ly, lz)
   return x + ex * lx + ux * ly + fx * lz, y + ey * lx + uy * ly + fy * lz, z + ez * lx + uz * ly + fz * lz
 end
 
---- Lays out village v ({ cell, houses, ruin, culture, id, fishing, harvest }) into the
--- instance list. ctx.surface(x, y, z) -> radius, height (km; <= 0 = water).
-function M.plan_village(ctx, v)
+-- The settlement is drawn from the sim's buildings (W2c, docs/world/16 §4): every house, hut,
+-- granary, woodshed and pier stands on the lot the sim gave it (sim/society/layout.lua, the same
+-- pure function the sim uses); sites show their construction stage (staked lot, timber frame,
+-- walls under open rafters); earth houses where timber is scarce; ruins where buildings were
+-- abandoned; weathered roofs on houses in poor repair. Stocks are visible: woodpiles by the
+-- houses in proportion to the wood store, sacks by the granary for the grain, fish racks by
+-- the pier for the fresh catch. Nothing here is invented: no building exists without its entity.
+local SACK = { 0.86, 0.78, 0.6 }
+local FISH = { 0.72, 0.78, 0.82 }
+local PLANK = { 0.62, 0.44, 0.28 }
+local EARTH_WALL = { 0.66, 0.52, 0.38 }
+local TURF = { 0.42, 0.55, 0.28 }
+
+--- Lays out village entry e ({ cell, id, ruin, culture }) into the instance list.
+-- ctx.surface(x, y, z) -> radius, height (km; <= 0 = water).
+function M.plan_village(ctx, e)
   local W = ctx.W
+  local v = W.ent and W.ent.villages and W.ent.villages[e.id]
+  if not v then return end
+  local B = W.ent.buildings or {}
   local g = W.grid
   local c = v.cell
-  local cx, cy, cz = g.X[c], g.Y[c], g.Z[c]
-  local ex, ey, ez, nx, ny, nz = frame(cx, cy, cz)
-  local S = ((ctx.lod == 2) and M.SCALE_FAR or M.SCALE) * M.BUILDING
+  local S = M.SCALE * M.BUILDING
   local style = STYLES[((v.culture or 1) - 1) % #STYLES + 1]
   local roofs, walls = ROOFS[style.roof], WALLS[style.wall]
-  local h = (c * 7919 + (ctx.seed or 1) * 104729 + 17) % 2147483647
-  if h == 0 then h = 1 end
-  local function u() h = pm(h); return h / 2147483647 end
-  local placed = {}
   local chim = {}
   M.chimneys[c] = chim
-  local function put(kind, lx, lz, yaw, sc, cc1, cc2, clear)
-    -- local (east, north) offset in world units -> surface point; skip water and crowding
-    local px, py, pz = cx * 10 + ex * lx + nx * lz, cy * 10 + ey * lx + ny * lz, cz * 10 + ez * lx + nz * lz
-    local l = sqrt(px * px + py * py + pz * pz)
-    local ux, uy, uz = px / l, py / l, pz / l
-    local r, hk = ctx.surface(ux, uy, uz)
-    if hk <= 0.02 then return false end
-    clear = clear or 0.05 * S
-    for i = 1, #placed do
-      local q = placed[i]
-      local dx, dz = q[1] - lx, q[2] - lz
-      if dx * dx + dz * dz < (clear + q[3]) * (clear + q[3]) then return false end
+  -- a land point for a lot: lots whose ring crosses the shore are pulled in toward the cell centre
+  local function land_point(bc, x, y, z)
+    local cx, cy, cz = g.X[bc], g.Y[bc], g.Z[bc]
+    for k = 0, 4 do
+      local f = k * 0.22
+      local px, py, pz = x + (cx - x) * f, y + (cy - y) * f, z + (cz - z) * f
+      local l = sqrt(px * px + py * py + pz * pz)
+      px, py, pz = px / l, py / l, pz / l
+      local r, hk = ctx.surface(px, py, pz)
+      if hk > 0.02 then return px, py, pz, r end
     end
-    placed[#placed + 1] = { lx, lz, clear }
-    add(kind, ux * r, uy * r, uz * r, ux, uy, uz, yaw, sc * S, 1, cc1, cc2, 0, c)
+    return nil
+  end
+  -- yaw so that the model's +z (door) faces unit vector (tx, ty, tz) from (x, y, z)
+  local function yaw_to(x, y, z, tx, ty, tz)
+    local ex, ey, ez, nx, ny, nz = frame(x, y, z)
+    local dx, dy, dz = tx - x, ty - y, tz - z
+    return atan2(dx * ex + dy * ey + dz * ez, dx * nx + dy * ny + dz * nz)
+  end
+  local function put(kind, x, y, z, r, yaw, sc, c1, c2)
+    add(kind, x * r, y * r, z * r, x, y, z, yaw, sc * S, 1, c1, c2, 0, c)
     local ch = CHIMNEY[NAMES[kind]]
     if ch then
-      local wx, wy, wz = to_world(ux * r, uy * r, uz * r, ux, uy, uz, yaw, sc * S, ch[1], ch[2], ch[3])
+      local wx, wy, wz = to_world(x * r, y * r, z * r, x, y, z, yaw, sc * S, ch[1], ch[2], ch[3])
       chim[#chim + 1] = { wx, wy, wz }
     end
-    return true
   end
-  local function face_centre(lx, lz) return atan2(-lx, -lz) end
-  local houses = v.houses or 6
-  if v.ruin then
-    local n = max(3, min(10, houses))
-    for i = 1, n do
-      local a = u() * 2 * pi
-      local rr = (0.04 + u() * 0.18) * S
-      put(K.ruin, cos(a) * rr, sin(a) * rr, u() * 2 * pi, 0.9 + u() * 0.3, pack_rgb(0.55, 0.52, 0.48), 0)
-    end
-    return
+  -- a point `d` world units from unit vector (x, y, z) at angle a in its tangent plane
+  local function offset(x, y, z, a, d)
+    local ex, ey, ez, nx, ny, nz = frame(x, y, z)
+    local dd = d / 10
+    local px, py, pz = x + (ex * cos(a) + nx * sin(a)) * dd, y + (ey * cos(a) + ny * sin(a)) * dd,
+      z + (ez * cos(a) + nz * sin(a)) * dd
+    local l = sqrt(px * px + py * py + pz * pz)
+    return px / l, py / l, pz / l
   end
-  -- centre: a hall for big villages, else a well in a little square
-  if houses >= 12 then
-    put(K.hall, 0, 0, u() * 2 * pi, 1.0, pack_rgb(unpack(roofs[1])), pack_rgb(unpack(walls[1])), 0.09 * S)
-  else
-    put(K.well, 0, 0, u() * 2 * pi, 1.1, pack_rgb(unpack(roofs[1])), 0, 0.05 * S)
+  local alive = v.alive ~= false
+  -- the well on the square (a living village)
+  local wx, wy, wz = layout.pos(W, v, c, 0)
+  if alive then
+    local r = ctx.surface(wx, wy, wz)
+    put(K.well, wx, wy, wz, r, (v.key_cell or 0) % 7, 1.1, pack_rgb(unpack(roofs[1])), 0)
   end
-  -- houses on rings around the square, doors facing the centre
-  local left = houses
-  local ring = 0
-  while left > 0 and ring < 6 do
-    ring = ring + 1
-    local rr = (0.075 + 0.068 * ring) * S
-    local cap = floor(2 * pi * rr / (0.092 * S))
-    local nk = min(left, cap)
-    local a0 = u() * 2 * pi
-    for k = 1, nk do
-      local a = a0 + (k - 1 + (u() - 0.5) * 0.35) / cap * 2 * pi
-      local r2 = rr + (u() - 0.5) * 0.03 * S
-      local lx, lz = cos(a) * r2, sin(a) * r2
-      local kind = K[style.houses[floor(u() * #style.houses) + 1]]
-      if ring == 1 and u() < 0.25 then kind = K.townhouse end
-      local roof = roofs[floor(u() * #roofs) + 1]
-      local wall = walls[floor(u() * #walls) + 1]
-      local j = 0.92 + u() * 0.14
-      local yaw = face_centre(lx, lz) + (u() - 0.5) * 0.3
-      if put(kind, lx, lz, yaw, 0.95 + u() * 0.15, pack_rgb(roof[1] * j, roof[2] * j, roof[3] * j),
-          pack_rgb(wall[1], wall[2], wall[3]), 0.045 * S) then
-        left = left - 1
-        -- yard details: a fence, a woodpile or a haystack after the harvest
-        local w = u()
-        if w < 0.3 then
-          local fa = a + 0.5 / cap * 2 * pi
-          put(K.fence, cos(fa) * (r2 + 0.03 * S), sin(fa) * (r2 + 0.03 * S), fa + pi / 2, 0.9, 0, 0, 0.012 * S)
-        elseif w < 0.45 then
-          put(K.woodpile, cos(a) * (r2 + 0.045 * S), sin(a) * (r2 + 0.045 * S), a, 1.0, 0, 0, 0.015 * S)
-        elseif w < 0.6 and v.harvest then
-          local hs = PAL[K.haystack][1]
-          put(K.haystack, cos(a) * (r2 + 0.06 * S), sin(a) * (r2 + 0.06 * S), u() * 6, 1.0,
-            pack_rgb(hs[1], hs[2], hs[3]), 0, 0.02 * S)
-        end
+  local houses, granary, pier = {}, nil, nil
+  local list = v.buildings or {}
+  for i = 1, #list do
+    local b = B[list[i]]
+    if b and b.state ~= "gone" then
+      local lot = b.lot
+      local bx, by, bz
+      if b.kind == "boat" then
+        -- boats are built on the shore by the pier
+        local pl = v.pier_lot or 1
+        bx, by, bz = layout.pos(W, v, v.cell, pl)
+        bx, by, bz = offset(bx, by, bz, (b.id % 5) * 1.3, 0.05)
       else
-        left = left - 1   -- no room here (water or crowding): the village is smaller on this side
+        bx, by, bz = layout.pos(W, v, b.cell, lot)
+      end
+      local x, y, z, r = land_point(b.cell, bx, by, bz)
+      if x then
+        local key = b.key or b.id
+        local sx, sy, sz = layout.pos(W, v, b.cell, 0)
+        local yaw = yaw_to(x, y, z, sx, sy, sz) + ((key % 97) / 97 - 0.5) * 0.3
+        local st = b.state
+        local roof = roofs[key % #roofs + 1]
+        local wall = walls[floor(key / 7) % #walls + 1]
+        local cond = b.condition or 1
+        local wear = cond < 0.5 and 0.72 or (cond < 0.8 and 0.88 or 1)
+        local c1 = pack_rgb(roof[1] * wear, roof[2] * wear, roof[3] * wear)
+        local ww = 0.9 + 0.1 * wear
+        local c2 = pack_rgb(wall[1] * ww, wall[2] * ww, wall[3] * ww)
+        local sc = 0.95 + (key % 13) / 13 * 0.12
+        if st == "ruin" then
+          put(K.ruin, x, y, z, r, yaw, 0.95, pack_rgb(0.55, 0.52, 0.48), 0)
+        elseif b.kind == "pier" then
+          -- the pier reaches from the shore out toward the mooring
+          local mc = v.mooring
+          if mc and st == "standing" then
+            local pyaw = yaw_to(x, y, z, g.X[mc], g.Y[mc], g.Z[mc])
+            put(K.pier, x, y, z, r, pyaw, 1.0, 0, 0)
+            pier = { x, y, z, r, pyaw }
+          elseif st == "site" then
+            put(K.stakes, x, y, z, r, yaw, 0.8, 0, 0)
+          end
+        elseif b.kind == "boat" then
+          if st == "site" then put(K.hull, x, y, z, r, yaw, 1.0, pack_rgb(PLANK[1], PLANK[2], PLANK[3]), 0) end
+        elseif st == "site" then
+          local pg = b.progress or 0
+          local kind = pg < 0.25 and K.stakes or (pg < 0.6 and K.frame or K.walls)
+          local cw = c2
+          if b.material == "earth" then
+            cw = pack_rgb(EARTH_WALL[1], EARTH_WALL[2], EARTH_WALL[3])
+            if pg >= 0.6 then kind = K.sodhouse; c1 = pack_rgb(TURF[1] * 0.8, TURF[2] * 0.7, TURF[3] * 0.6) end
+          end
+          put(kind, x, y, z, r, yaw, sc, c1, cw)
+        elseif st == "standing" then
+          local kind
+          if b.kind == "house" then
+            if b.material == "earth" then
+              kind = K.sodhouse
+              c1 = pack_rgb(TURF[1], TURF[2], TURF[3])
+              c2 = pack_rgb(EARTH_WALL[1] * wear, EARTH_WALL[2] * wear, EARTH_WALL[3] * wear)
+            else
+              kind = K[style.houses[key % #style.houses + 1]]
+            end
+          elseif b.kind == "hut" then kind = K.hut
+          elseif b.kind == "granary" then kind = K.granary; granary = { x, y, z, r }
+          elseif b.kind == "woodshed" then kind = K.woodshed
+          end
+          if kind then
+            put(kind, x, y, z, r, yaw, sc, c1, c2)
+            if b.kind == "house" or b.kind == "hut" then houses[#houses + 1] = { x, y, z, r, yaw, key } end
+          end
+        end
       end
     end
   end
-  if houses >= 7 then
-    local a = u() * 2 * pi
-    local rr = (0.085 + 0.075 * (ring + 1)) * S
-    put(K.granary, cos(a) * rr, sin(a) * rr, 0, 1.0, pack_rgb(unpack(roofs[1])), 0, 0.04 * S)
+  if not alive then return end
+  local st = v.stock or {}
+  -- woodpiles beside the houses: one per ~80 WU in store
+  local nw = min(#houses, floor((st.wood or 0) / 80))
+  for i = 1, nw do
+    local h = houses[i]
+    local px, py, pz = offset(h[1], h[2], h[3], h[5] + pi * 0.5 + ((h[6] % 2) * pi), 0.075)
+    local r, hk = ctx.surface(px, py, pz)
+    if hk > 0.02 then put(K.woodpile, px, py, pz, r, h[5], 1.0, 0, 0) end
   end
-  -- fishing villages: a pier from the nearest shore
-  if v.fishing and ctx.shore then
-    local sx, sy, sz, dir_x, dir_y, dir_z = ctx.shore(cx, cy, cz)
-    if sx then
-      local r = ctx.surface(sx, sy, sz)
-      -- yaw so that local +z points out to sea
-      local sex, sey, sez, snx, sny, snz = frame(sx, sy, sz)
-      local de = dir_x * sex + dir_y * sey + dir_z * sez
-      local dn = dir_x * snx + dir_y * sny + dir_z * snz
-      local yaw = atan2(de, dn)
-      add(K.pier, sx * r, sy * r, sz * r, sx, sy, sz, yaw, S, 1, 0, 0, 0, c)
+  -- grain sacks by the granary (or the square): one per ~2,500 FU
+  local ns = min(8, floor(((st.grain or 0) + (st.seed or 0)) / 2500))
+  local gx, gy, gz = wx, wy, wz
+  if granary then gx, gy, gz = granary[1], granary[2], granary[3] end
+  for i = 1, ns do
+    local px, py, pz = offset(gx, gy, gz, i * 2.4, granary and 0.06 or 0.045)
+    local r, hk = ctx.surface(px, py, pz)
+    if hk > 0.02 then put(K.sacks, px, py, pz, r, i * 1.7, 1.0, pack_rgb(SACK[1], SACK[2], SACK[3]), 0) end
+  end
+  -- fish racks by the pier while the catch is in
+  if pier then
+    local nf = min(4, floor((st.fresh or 0) / 120))
+    for i = 1, nf do
+      local px, py, pz = offset(pier[1], pier[2], pier[3], pier[5] + pi + (i - 2.5) * 0.7, 0.07)
+      local r, hk = ctx.surface(px, py, pz)
+      if hk > 0.02 then put(K.fishrack, px, py, pz, r, pier[5] + pi * 0.5, 1.0, pack_rgb(FISH[1], FISH[2], FISH[3]), 0) end
     end
   end
+end
+
+--- Signature of what plan_village draws for village v (rebuild the chunk when it changes).
+function M.village_sig(W, v)
+  local B = W.ent.buildings or {}
+  local s = 0
+  local list = v.buildings or {}
+  for i = 1, #list do
+    local b = B[list[i]]
+    if b and b.state ~= "gone" then
+      local stage = b.state == "site" and (1 + floor((b.progress or 0) * 3.3)) or (b.state == "ruin" and 7 or 9)
+      local cond = b.condition or 1
+      local wear = cond < 0.5 and 2 or (cond < 0.8 and 1 or 0)
+      s = (s * 31 + b.id * 16 + stage * 3 + wear) % 1000000007
+    end
+  end
+  local st = v.stock or {}
+  s = (s + floor((st.wood or 0) / 80) * 7919 + floor(((st.grain or 0) + (st.seed or 0)) / 2500) * 104729
+    + floor((st.fresh or 0) / 120) * 1299709) % 1000000007
+  return s
 end
 
 ---------------------------------------------------------------------------------------------
@@ -354,6 +437,7 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
   local gtemp = W.G.g_temp or 0
   local ruins = W.S and W.S.ruins
   local villages = ctx.villages
+  local farm = W.S and W.S.farm
   local faces, px, py, pz, ph = PL.faces, PL.px, PL.py, PL.pz, PL.h
   local tland, tc1, tc2, tc3, tw1, tw2, tw3 = PL.tland, PL.tc1, PL.tc2, PL.tc3, PL.tw1, PL.tw2, PL.tw3
   local SX, SY, SZ = W.grid.X, W.grid.Y, W.grid.Z
@@ -382,6 +466,7 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
         local tmean = T and T.base and (T.base[c] + T.lapse[c] + gtemp) or 10
         local burnt = fire[c] > 0 or (scar[c] > 0 and scar[c] < 240)
         local vil = villages and villages[c]
+        local logged = ctx.logged and ctx.logged[c]
         local is_ruin = (ruins and ruins[c]) or (vil and vil.ruin) or bi == 6
         local i = f * 3 - 2
         local va, vb, vc = faces[i], faces[i + 1], faces[i + 2]
@@ -404,7 +489,7 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
             if vv and not vv.ruin then
               local dot = (mx * SX[vc] + my * SY[vc] + mz * SZ[vc]) / ml
               local dw = sqrt(max(0, 2 * (1 - dot))) * PL.R
-              local rv = M.SCALE * M.BUILDING * (0.16 + 0.07 * sqrt((vv.houses or 6) / 3))
+              local rv = vv.radius or 0.3
               if dw < rv then in_village = true end
             end
           end
@@ -427,8 +512,12 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
           elseif is_ruin and dcell < 0.4 then
             if u3 < tree_p * 0.5 + 0.1 then kind = K.bush end
           elseif lu > 0 then
-            -- farm: the plots are drawn by the terrain shader; a few hedge trees and bushes
-            if j > 2 and u3 < 0.05 then kind = K.oak; scale = 0.8 + u5 * 0.4
+            -- farm: the plots are drawn by the terrain shader; a few hedge trees and bushes; stooks
+            -- of sheaves where the harvest has been cut (the sim's field state)
+            local fs = farm and farm[c]
+            local cut = fs and fs.sown > 0 and fs.harvested > 0.03 and fs.harvested * fs.sown or 0
+            if j <= 4 and u2 < cut * 0.85 then kind = K.stook; scale = 0.85 + u5 * 0.3
+            elseif j > 2 and u3 < 0.05 then kind = K.oak; scale = 0.8 + u5 * 0.4
             elseif j > 3 and u3 < 0.1 then kind = K.bush end
           elseif burnt then
             if u3 < tree_p * 0.6 + 0.15 then kind = (u4 < 0.55) and K.snag or K.stump; scale = 0.8 + u5 * 0.5 end
@@ -438,8 +527,19 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
             kind = tree_kind(tmean, ic, bi, soil[c], cdist[c] <= 1, u4)
             scale = 0.72 + u5 * 0.55
             hs = 0.88 + u2 * 0.3
+          elseif logged and u3 < tree_p + 0.22 then
+            -- woodcutters were here lately: stumps and felled logs where trees stood
+            kind = (u4 < 0.7) and K.stump or K.logs; scale = 0.8 + u5 * 0.4
           elseif rocky and u3 < tree_p + 0.14 then
             kind = K.rock; scale = 0.6 + u5 * 1.0
+          elseif cdist[c] <= 1 and hmin < 0.1 and (hmax - hmin) > 0.22 and u3 < tree_p + 0.2 then
+            -- a rocky shore: boulders where the land drops steeply into the sea
+            kind = K.rock; scale = 0.5 + u5 * 0.9
+          elseif cdist[c] <= 1 and hmin < 0.05 and u3 < tree_p + 0.03 and bi ~= 3 then
+            kind = K.logs; scale = 0.7 + u5 * 0.4        -- driftwood on the beach
+          elseif fo > 0.3 and u3 < tree_p + 0.3 * fo and bi ~= 3 then
+            -- understory: shrubs and ferns under the canopy
+            kind = (u4 < 0.45) and K.bush or K.tuft; scale = 0.6 + u5 * 0.5
           elseif bi == 9 then
             if u3 < tree_p + 0.05 then kind = K.rock; scale = 0.6 + u5 * 0.8
             elseif u3 < tree_p + 0.09 and tmean > 18 then kind = K.cactus; scale = 0.8 + u5 * 0.5 end
@@ -558,6 +658,9 @@ function M.mover_template(kind)
   if kind == "person_straw" then return kit.person("straw") end
   if kind == "person_cap" then return kit.person("cap") end
   local t = kit.new()
+  if kind == "cloud_cu1" or kind == "cloud_cu2" or kind == "cloud_deck" or kind == "cloud_tower" then
+    return M.cloud_template(kind)
+  end
   if kind == "cloud" then
     -- a cluster of soft puffs, ~1.0 across (scaled per cloud)
     kit.seed(3)
@@ -566,6 +669,16 @@ function M.mover_template(kind)
         { -0.05, -0.06, 0.22, 0.2 }, { 0.12, 0.02, -0.22, 0.2 }, { -0.18, 0.08, 0.12, 0.18 } }) do
       kit.place(t, kit.lump(nil, q[4], q[4] * 0.82, q[4], 9, 4, 1, 0.8, 1.0, 0, 0.08), q[1], q[2], q[3], 1)
     end
+    return t
+  elseif kind == "bird" then
+    -- a bird gliding: body along +x, wings a V (tips up). The view beats the wings by scaling
+    -- local y (the V flattens and lifts), so they flap without a buffer swap.
+    kit.place(t, kit.lump(nil, 0.012, 0.004, 0.0045, 5, 2, 1, 0.8, 1.0, 0, 0), 0, 0, 0, 1)
+    kit.tri(t, { 0.004, 0, 0.002 }, { -0.004, 0, 0.002 }, { -0.002, 0.014, 0.03 }, nil, nil, nil, 2, 0.85, 0.85, 1.0, 0, 0, 0, 0, 1, 0)
+    kit.tri(t, { -0.004, 0, 0.002 }, { 0.004, 0, 0.002 }, { -0.002, 0.014, 0.03 }, nil, nil, nil, 2, 0.8, 0.8, 0.95, 0, 0, 0, 0, -1, 0)
+    kit.tri(t, { -0.004, 0, -0.002 }, { 0.004, 0, -0.002 }, { -0.002, 0.014, -0.03 }, nil, nil, nil, 2, 0.85, 0.85, 1.0, 0, 0, 0, 0, 1, 0)
+    kit.tri(t, { 0.004, 0, -0.002 }, { -0.004, 0, -0.002 }, { -0.002, 0.014, -0.03 }, nil, nil, nil, 2, 0.8, 0.8, 0.95, 0, 0, 0, 0, -1, 0)
+    kit.tri(t, { -0.01, 0, 0 }, { -0.018, 0.001, 0.005 }, { -0.018, 0.001, -0.005 }, nil, nil, nil, 1, 0.8, 0.9, 0.9, 0, 0, 0, 0, 1, 0)
     return t
   elseif kind == "tanker" then
     -- hull (slot 1) along local x, deck house (slot 2) at the stern, funnel; ~0.36 long
@@ -621,6 +734,76 @@ function M.mover_template(kind)
   elseif kind == "smoke" then
     kit.lump(t, 0.5, 0.42, 0.5, 6, 3, 1, 0.8, 1.0, 0, 0.1)
     return t
+  end
+  return t
+end
+
+-- Cloud clusters (renderer v3): many soft lumps over a flat base, ~1.0 across at scale 1.
+-- cu1/cu2: fair-weather cumulus (heaped tops); deck: a wide, low rain deck; tower: a storm
+-- tower (stacked heaps under a flat anvil). Shade (baked AO) runs from grey bases to bright tops.
+local function flatten(t, ybase)
+  local d = t.d
+  for k = 0, t.nv - 1 do
+    local o = k * 9
+    if d[o + 2] < ybase then
+      d[o + 2] = ybase
+      d[o + 5] = -0.6
+      d[o + 8] = 0.55
+    end
+  end
+  return t
+end
+
+function M.cloud_template(kind)
+  local t = kit.new()
+  local seed = kind == "cloud_cu1" and 3 or (kind == "cloud_cu2" and 7 or (kind == "cloud_deck" and 11 or 17))
+  kit.seed(seed)
+  local h = seed * 7919 + 1
+  local function u() h = (h * 48271) % 2147483647; return h / 2147483647 end
+  local function lump(x, y, z, r, ry)
+    kit.place(t, kit.lump(nil, r, ry or r * 0.85, r, 7, 4, 1, 0.62, 1.0, 0, 0.1), x, y, z, 1)
+  end
+  if kind == "cloud_cu1" or kind == "cloud_cu2" then
+    local long = kind == "cloud_cu2" and 1.5 or 1.0
+    lump(0, 0.14, 0, 0.3)
+    for k = 1, 9 do
+      local a = k / 9 * 6.283 + u() * 0.5
+      local d = 0.22 + u() * 0.18
+      lump(cos(a) * d * long, 0.04 + u() * 0.08, sin(a) * d, 0.14 + u() * 0.1)
+    end
+    for k = 1, 4 do
+      local a = u() * 6.283
+      lump(cos(a) * 0.12 * long, 0.3 + u() * 0.1, sin(a) * 0.1, 0.13 + u() * 0.07)
+    end
+    flatten(t, -0.02)
+  elseif kind == "cloud_deck" then
+    for k = 1, 16 do
+      local a, d = u() * 6.283, math.sqrt(u())
+      lump(cos(a) * d * 0.55, 0.02 + u() * 0.06, sin(a) * d * 0.38, 0.14 + u() * 0.1, 0.09 + u() * 0.05)
+    end
+    for k = 1, 5 do
+      local a, d = u() * 6.283, u() * 0.3
+      lump(cos(a) * d, 0.1 + u() * 0.05, sin(a) * d * 0.7, 0.12 + u() * 0.06, 0.1)
+    end
+    flatten(t, -0.03)
+  else
+    -- storm tower: a broad dark base, heaped columns, an anvil spreading at the top
+    for k = 1, 8 do
+      local a, d = u() * 6.283, 0.15 + u() * 0.25
+      lump(cos(a) * d, 0.04 + u() * 0.05, sin(a) * d, 0.16 + u() * 0.08, 0.12)
+    end
+    for lvl = 1, 5 do
+      local y = 0.1 + lvl * 0.13
+      for k = 1, 3 do
+        local a = u() * 6.283
+        lump(cos(a) * 0.08, y, sin(a) * 0.08, 0.17 - lvl * 0.012 + u() * 0.04)
+      end
+    end
+    for k = 1, 7 do
+      local a, d = u() * 6.283, 0.1 + u() * 0.35
+      lump(cos(a) * d * 1.2, 0.86 + u() * 0.05, sin(a) * d, 0.16 + u() * 0.06, 0.06)
+    end
+    flatten(t, -0.03)
   end
   return t
 end

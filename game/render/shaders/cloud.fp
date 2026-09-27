@@ -11,6 +11,7 @@ uniform fs_uniforms
 {
     highp vec4 u_cam;
     highp vec4 u_sun;
+    highp vec4 u_cut;     // xyz: view focus on the ground (world), w: cut-away strength (zoomed in)
 };
 
 void main()
@@ -25,6 +26,18 @@ void main()
     // soft, fluffy silhouettes: wide alpha falloff broken up by a little noise
     float n = fract(sin(dot(floor(var_wpos * 40.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
     float a = pow(smoothstep(0.0, 0.85, edge + (n - 0.5) * 0.12), 0.9) * 0.9;
+    // cut-away: fade what lies between the eye and the view focus, in a cone that widens toward
+    // the ground (the sky around stays full of clouds)
+    if (u_cut.w > 0.0) {
+        vec3 D = u_cut.xyz - u_cam.xyz;
+        float dd = dot(D, D);
+        vec3 F = var_wpos - u_cam.xyz;
+        float t = clamp(dot(F, D) / dd, 0.0, 1.2);
+        float perp = length(F - D * t);
+        float rad = sqrt(dd) * (0.08 + 0.32 * t);
+        float keep = smoothstep(rad * 0.55, rad * 1.15, perp);
+        a *= mix(1.0, keep, u_cut.w * step(t, 1.05));
+    }
     col += (1.0 - edge) * 0.12;
     // night side: moonlit grey-blue clouds; warm edges at the terminator (D-050)
     float sd = dot(normalize(var_wpos), L);

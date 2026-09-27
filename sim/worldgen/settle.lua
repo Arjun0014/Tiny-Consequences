@@ -356,6 +356,8 @@ function settle.run(W)
     populate(W, v, target, up)
     placed = placed + v.pop
   end
+  -- the first villages of a landmass come of common stock: kin ties between neighbours
+  require("sim.society.relations").seed(W)
   -- lanes (next to coastal villages) and tankers
   local nl = pick_range(u, cfg.lanes)
   local lanes = {}

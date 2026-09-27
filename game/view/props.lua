@@ -37,15 +37,16 @@ M.stats = { rebuilt = 0, instances = 0, verts = 0, visible = 0, visible_instance
 local job = nil
 local gen = 0
 
---- Villages: list of { cell, houses, ruin, culture, fishing, harvest } (view.lua).
--- Each settlement is laid out by the chunk that owns its centre (propgen.plan_village).
+--- Villages: list of { cell, id, ruin, culture, sig, radius } (view.lua sync_villages).
+-- Each settlement is laid out from its sim buildings by the chunk that owns its centre
+-- (propgen.plan_village); sig changes when a building or a visible stock changes.
 function M.set_villages(list)
   local map = {}
   local owned = {}
   for i = 1, #(list or {}) do
     local v = list[i]
-    local e = { cell = v.cell, houses = v.houses or 6, ruin = v.ruin and true or false,
-      culture = v.culture or 1, fishing = v.fishing and true or false, harvest = v.harvest and true or false }
+    local e = { cell = v.cell, id = v.id, ruin = v.ruin and true or false, culture = v.culture or 1,
+      sig = v.sig or 0, radius = v.radius or 0.3 }
     map[v.cell] = e
     local k = M.owner_chunk(v.cell)
     if k then
@@ -117,6 +118,21 @@ function M.set_preview(map)
   M.force_signatures = true
 end
 
+-- Cells woodcutters worked in the last half year (the villages' logging records): stumps and logs.
+function M.scan_logged(W)
+  local set = {}
+  local vs = W.ent and W.ent.villages or {}
+  for i = 1, #vs do
+    local lg = vs[i].alive ~= false and vs[i].logged
+    if lg then
+      for c, h in pairs(lg) do
+        if W.hour - h < 4032 then set[c] = true end
+      end
+    end
+  end
+  M.logged = set
+end
+
 local function signature(W, c)
   local F = W.F
   -- forest in eighths; grass only matters for bushes/tufts: two levels (cuts seasonal churn)
@@ -128,8 +144,13 @@ local function signature(W, c)
   if F.fire[c] > 0 or (scar > 0 and scar < 240) then q = q + 4000 end
   if W.S and W.S.ruins and W.S.ruins[c] then q = q + 8000 end
   local v = M.villages and M.villages[c]
-  if v then q = q + 16000 + (v.houses or 0) * 32000 + (v.ruin and 7 or 0) + (v.harvest and 13 or 0) end
-  if lu > 0 then q = q + floor(F.crop[c] * 4 + 0.5) * 100000 end
+  if v then q = q + 16000 + (v.sig % 999983) * 32000 + (v.ruin and 7 or 0) end
+  if lu > 0 then
+    q = q + floor(F.crop[c] * 4 + 0.5) * 100000
+    local fs = W.S and W.S.farm and W.S.farm[c]
+    if fs and fs.sown > 0 then q = q + floor(fs.harvested * fs.sown * 5) * 3e6 end
+  end
+  if M.logged and M.logged[c] then q = q + 7e7 end
   local ic = F.ice[c]
   q = q + (ic > 0.55 and 2 or (ic > 0.3 and 1 or 0)) * 500000
   if M.preview and M.preview[c] then q = q + 1e7 * (M.preview[c] + 2) end
@@ -192,6 +213,7 @@ function M.init(PL, W, factory_url, celltex)
     end
   end
   M.sig = {}
+  M.scan_logged(W)
   for c = 1, W.n do M.sig[c] = signature(W, c) end
   M.since = 0
   M.last_tick = W.tick
@@ -217,6 +239,7 @@ local function run_job(j, deadline)
   if j.phase == 1 then
     M.ctx.lod = j.lod
     M.ctx.villages = M.villages
+    M.ctx.logged = M.logged
     M.ctx.preview = M.preview
     M.ctx.owned = M.owned and M.owned[j.k]
     local nfaces = #ch.faces
@@ -382,6 +405,7 @@ function M.update(W, dt, zoom)
   if M.since >= M.DIRTY_INTERVAL and (W.tick ~= M.last_tick or M.force_signatures) then
     M.since = 0
     M.last_tick = W.tick
+    M.scan_logged(W)
     check_dirty(W)
   end
 

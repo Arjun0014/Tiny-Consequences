@@ -514,6 +514,96 @@ local function build_near()
     M.place(t, M.box(nil, 0.004, 0.03, 0.004, 6, 0.6, 0.8, false), -0.013, -0.01, z, 1)
   end
   N.pier = t
+  -- construction stages of a house (W2c: buildings from the sim's sites) ---------------------
+  -- staked lot: corner stakes and a string outline on the footprint of a cottage
+  t = M.new()
+  for _, q in ipairs({ { -0.035, -0.025 }, { 0.035, -0.025 }, { 0.035, 0.025 }, { -0.035, 0.025 } }) do
+    M.place(t, M.box(nil, 0.003, 0.016, 0.003, 6, 0.7, 0.95, false), q[1], 0.008, q[2], 1)
+  end
+  M.place(t, M.box(nil, 0.07, 0.0012, 0.0012, 7, 0.9, 1.0, true), 0, 0.012, -0.025, 1)
+  M.place(t, M.box(nil, 0.07, 0.0012, 0.0012, 7, 0.9, 1.0, true), 0, 0.012, 0.025, 1)
+  M.place(t, M.box(nil, 0.0012, 0.0012, 0.05, 7, 0.9, 1.0, true), -0.035, 0.012, 0, 1)
+  M.place(t, M.box(nil, 0.0012, 0.0012, 0.05, 7, 0.9, 1.0, true), 0.035, 0.012, 0, 1)
+  M.place(t, M.box(nil, 0.074, 0.004, 0.054, 5, 0.6, 0.8, false), 0, 0.0, 0, 1)
+  N.stakes = t
+  -- timber frame: posts, wall plates, gable posts and rafters
+  t = M.new()
+  for _, q in ipairs({ { -0.035, -0.025 }, { 0.035, -0.025 }, { 0.035, 0.025 }, { -0.035, 0.025 }, { 0, -0.025 }, { 0, 0.025 } }) do
+    M.place(t, M.box(nil, 0.004, 0.042, 0.004, 6, 0.65, 0.95, false), q[1], 0.021, q[2], 1)
+  end
+  M.place(t, M.box(nil, 0.074, 0.003, 0.003, 6, 0.8, 1.0, true), 0, 0.042, -0.025, 1)
+  M.place(t, M.box(nil, 0.074, 0.003, 0.003, 6, 0.8, 1.0, true), 0, 0.042, 0.025, 1)
+  M.place(t, M.box(nil, 0.074, 0.003, 0.003, 6, 0.8, 1.0, true), 0, 0.074, 0, 1)
+  local ang = math.atan2(0.032, 0.025)
+  local rl = math.sqrt(0.032 * 0.032 + 0.025 * 0.025)
+  for _, x in ipairs({ -0.035, -0.012, 0.012, 0.035 }) do
+    M.place(t, M.box(nil, 0.0025, 0.0025, rl, 6, 0.75, 1.0, true), x, 0.058, -0.0125, 1, 1, 1, 0, ang, 0)
+    M.place(t, M.box(nil, 0.0025, 0.0025, rl, 6, 0.75, 1.0, true), x, 0.058, 0.0125, 1, 1, 1, 0, -ang, 0)
+  end
+  M.place(t, M.box(nil, 0.074, 0.006, 0.054, 5, 0.6, 0.8, false), 0, 0.0, 0, 1)
+  N.frame = t
+  -- walls up, roof still open (rafters only)
+  t = M.new()
+  M.place(t, M.box(nil, 0.07, 0.042, 0.05, 2, 0.62, 0.95, false), 0, 0.021, 0, 1)
+  M.place(t, M.quad(nil, 0.013, 0.024, 6, 0.8), -0.012, 0.012, 0.0252, 1)
+  for _, x in ipairs({ -0.035, -0.012, 0.012, 0.035 }) do
+    M.place(t, M.box(nil, 0.0025, 0.0025, rl, 6, 0.75, 1.0, true), x, 0.058, -0.0125, 1, 1, 1, 0, ang, 0)
+    M.place(t, M.box(nil, 0.0025, 0.0025, rl, 6, 0.75, 1.0, true), x, 0.058, 0.0125, 1, 1, 1, 0, -ang, 0)
+  end
+  M.place(t, M.box(nil, 0.074, 0.003, 0.003, 6, 0.8, 1.0, true), 0, 0.074, 0, 1)
+  M.place(t, M.box(nil, 0.074, 0.006, 0.054, 5, 0.6, 0.8, false), 0, 0.0, 0, 1)
+  N.walls = t
+  -- sod / mud-brick house where timber is scarce: low thick walls, rounded turf roof
+  t = M.new()
+  M.place(t, M.box(nil, 0.068, 0.026, 0.05, 2, 0.6, 0.9, false), 0, 0.013, 0, 1)
+  M.place(t, M.lump(nil, 0.04, 0.02, 0.03, 8, 3, 1, 0.7, 1.0, 0, 0.06), 0, 0.026, 0, 1)
+  M.place(t, M.quad(nil, 0.012, 0.018, 6, 0.75), 0.0, 0.009, 0.0252, 1)
+  N.sodhouse = t
+  -- woodshed: a lean-to roof on posts over stacked logs
+  t = M.new()
+  for _, q in ipairs({ { -0.025, -0.014 }, { 0.025, -0.014 }, { -0.025, 0.014 }, { 0.025, 0.014 } }) do
+    M.place(t, M.box(nil, 0.003, q[2] < 0 and 0.036 or 0.028, 0.003, 6, 0.65, 0.95, false), q[1], q[2] < 0 and 0.018 or 0.014, q[2], 1)
+  end
+  M.place(t, M.box(nil, 0.058, 0.003, 0.036, 1, 0.75, 1.0, true), 0, 0.033, 0, 1, 1, 1, 0, -0.22, 0)
+  for i = 0, 2 do
+    M.place(t, M.cyl(nil, 0.0045, 0.0045, -0.022, 0.022, 5, 6, 0.6, 0.9, 0, true), 0, 0.005 + i * 0.008, -0.006 + (i % 2) * 0.006, 1, 1, 1, 0, pi / 2, 0)
+  end
+  N.woodshed = t
+  -- grain sacks (stock by the granary / houses)
+  t = M.new()
+  M.place(t, M.lump(nil, 0.008, 0.011, 0.007, 6, 3, 1, 0.65, 1.0, 0, 0.1), -0.008, 0.009, 0, 1)
+  M.place(t, M.lump(nil, 0.008, 0.011, 0.007, 6, 3, 1, 0.65, 1.0, 0, 0.1), 0.008, 0.009, 0.002, 1)
+  M.place(t, M.lump(nil, 0.008, 0.009, 0.007, 6, 3, 1, 0.7, 1.0, 0, 0.1), 0.0, 0.021, 0.001, 1)
+  N.sacks = t
+  -- fish drying rack: two posts, a pole, hanging fish (slot 1 = silver)
+  t = M.new()
+  M.place(t, M.box(nil, 0.0025, 0.03, 0.0025, 6, 0.65, 0.95, false), -0.022, 0.015, 0, 1)
+  M.place(t, M.box(nil, 0.0025, 0.03, 0.0025, 6, 0.65, 0.95, false), 0.022, 0.015, 0, 1)
+  M.place(t, M.box(nil, 0.048, 0.002, 0.002, 6, 0.8, 1.0, true), 0, 0.029, 0, 1)
+  for k = 0, 4 do
+    M.place(t, M.lump(nil, 0.0022, 0.007, 0.0016, 4, 2, 1, 0.7, 1.0, 0.4, 0), -0.016 + k * 0.008, 0.021, 0, 1)
+  end
+  N.fishrack = t
+  -- a boat hull on trestles (a boat being built at the shore; slot 1 = planks)
+  t = M.new()
+  M.place(t, M.box(nil, 0.1, 0.018, 0.034, 1, 0.65, 0.95, false), 0, 0.02, 0, 1)
+  tri(t, { 0.05, 0.011, -0.017 }, { 0.075, 0.029, 0.0 }, { 0.05, 0.029, -0.017 }, nil, nil, nil, 1, 0.8, 0.9, 0.9, 0, 0, 0, 1, 0, -1)
+  tri(t, { 0.05, 0.011, 0.017 }, { 0.05, 0.029, 0.017 }, { 0.075, 0.029, 0.0 }, nil, nil, nil, 1, 0.8, 0.9, 0.9, 0, 0, 0, 1, 0, 1)
+  for _, x in ipairs({ -0.03, 0.03 }) do
+    M.place(t, M.box(nil, 0.004, 0.012, 0.04, 6, 0.6, 0.85, false), x, 0.006, 0, 1)
+  end
+  N.hull = t
+  -- a stook of sheaves on a harvested field (slot 1 = straw)
+  t = M.new()
+  M.cone(t, 0.0, 0.026, 0.009, 6, 1, 0.65, 1.0, 0.2, 0, 0.002)
+  M.place(t, M.lump(nil, 0.005, 0.004, 0.005, 5, 2, 1, 0.8, 1.0, 0, 0), 0, 0.026, 0, 1)
+  N.stook = t
+  -- felled logs on the ground (a woodcutters' clearing)
+  t = M.new()
+  for i = 0, 1 do
+    M.place(t, M.cyl(nil, 0.004, 0.0035, -0.02, 0.02, 5, 6, 0.6, 0.9, 0, true), 0.004 * i, 0.004 + i * 0.006, -0.004 + i * 0.006, 1, 1, 1, 0.2 * i, pi / 2, 0)
+  end
+  N.logs = t
 end
 
 local function build_far()
@@ -576,6 +666,9 @@ local function build_far()
   F.pier = M.T[1].pier
   F.haystack = M.T[1].haystack
   F.woodpile = M.T[1].woodpile
+  for _, n in ipairs({ "stakes", "frame", "walls", "sodhouse", "woodshed", "sacks", "fishrack", "hull", "stook", "logs" }) do
+    F[n] = M.T[1][n]
+  end
   -- ground cover is near-only (far LOD skips these kinds)
 end
 

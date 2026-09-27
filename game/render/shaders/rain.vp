@@ -10,6 +10,7 @@ uniform vs_uniforms
 {
     highp mat4 view_proj;
     highp vec4 u_anim;   // x = time
+    highp vec4 u_sun;    // direction to the sun (night: faint, moonlit streaks)
 };
 
 out mediump vec4 var_color;
@@ -20,7 +21,7 @@ void main()
     vec3 up = normalize(wp);
     float snow = color.y;
     float speed = mix(1.7, 0.28, snow);
-    float drop = 0.5;
+    float drop = 1.0;    // from the cloud base (game/view/clouds.lua ALT_MIN) to near the ground
     float f = fract(u_anim.x * speed + color.x);
     wp -= up * f * drop;
     if (snow > 0.5) {
@@ -30,6 +31,8 @@ void main()
     // fade in under the cloud and out near the ground
     float a = smoothstep(0.0, 0.12, f) * (1.0 - smoothstep(0.78, 1.0, f));
     vec3 c = mix(vec3(0.72, 0.84, 0.98), vec3(1.0), snow);
-    var_color = vec4(c, a * mix(0.55, 0.9, snow));
+    float day = smoothstep(-0.3, 0.15, dot(up, normalize(u_sun.xyz)));
+    c *= mix(0.35, 1.0, day);
+    var_color = vec4(c, a * mix(0.38, 0.8, snow) * mix(0.35, 1.0, day));
     gl_Position = view_proj * vec4(wp, 1.0);
 }

@@ -354,8 +354,9 @@ C.TIME = {
 C.WEATHER_DAY = {
   wet_week = 0.08,                        -- weekly precip (moisture units) of a typically wet week
   p_dw = { 0.03, 0.6 },                   -- P(wet | dry yesterday) = a + b x wetness, clamped
-  p_dw_max = 0.85, p_ww_add = 0.25, p_ww_max = 0.92,
+  p_dw_max = 0.5, p_ww_add = 0.22, p_ww_max = 0.72,   -- even the wettest places see sun ~1 day in 3
   storm_day = 0.028,                      -- a wet day with at least this much rain is a storm
+  storm_rel = 3.5,                        -- ... and at least this many times the week's mean daily rain
   storm_week_min = 0.04,                  -- ... in a week at least this wet
   gale = 0.04,                            -- daily chance of a gale (boats stay in) at |lat| > 35 deg in deep winter
   gale_tropics = 0.3,                     -- relative gale chance in the tropics
@@ -431,6 +432,8 @@ C.SOCIETY = {
   fields_per_worker = 0.45,               -- labour bound on cropped fields
   farm_radius = 3,                        -- level-4 steps (scaled): fields within (walking cost in the plan)
   clear_h = 600,                          -- hours to clear a unit of forest for a field
+  care_h = 700, care_gain = 0.45,         -- intensification (Boserup): hours of extra care per full field
+                                          --   for up to +45% grain (diminishing returns)
   fallow_fert = 0.22, poor_fert = 0.05, fallow_food_months = 6,
   -- crop growth (weekly; the old villages constants)
   crop_seed = 0.1, r_crop = 0.6, crop_t = { 8, 32 }, crop_soil_half = 0.2,
@@ -476,7 +479,7 @@ C.SOCIETY = {
   repair_below = 0.5, repair_gain = 0.4,
   max_sites_base = 1, sites_per_pop = 25, builders_per_site = 4,
   ruin_years = { 20, 40 },
-  lot_r = 0.013,                          -- radians between lot rings (0.13 world units at R = 10)
+  lot_r = 0.016,                          -- radians between lot rings (0.16 world units at R = 10)
   lot_rings = 3,
   -- migration and founding (monthly per household)
   hunger_full = 0.95,                     -- monthly mean ration below this counts as hunger
@@ -489,6 +492,7 @@ C.SOCIETY = {
   migrate_prob_famine = 0.5,              -- monthly chance a pushed household acts, in a famine
   home_ties = 0.3, home_own = 0.2,        -- pull of home: kin, fields, graves; more with a house of one's own
   settle_months = 24,                     -- newly arrived households stay at least this long
+  return_years = 5,                       -- ... and do not go back to the village they left for this long
   walk_hours_day = 10, party_food_days = 14,
   found_food_days = 60, found_seed_cells = 2,
   first_harvest_weeks = 20,               -- sowing to the first harvest of a new village (planning)
@@ -500,6 +504,12 @@ C.SOCIETY = {
   site_walk_penalty = 0.03,               -- site score lost per cell spacing of walking
   min_site_people = 20, min_spacing = 3,
   max_villages = 12, soft_cap = 900,      -- performance guard: births taper toward soft_cap people
+  -- villages that know each other (W7, docs/world/18 §2.2-2.3)
+  relief_margin_days = 60,                -- a giver keeps its need to its next harvest + this
+  relief_reach = 16, trade_reach = 12, bride_reach = 12,   -- cell spacings (a few days' walk)
+  porters = 6, porter_fu = 30,            -- porters per errand, FU (or WU) a porter carries a trip
+  bride_prob = 0.35,                      -- monthly chance a village with unmatched women looks abroad
+  seed_kin = 2,                           -- kin ties between a landmass's first villages of one culture
 }
 
 -- Player powers (04_PLAYER.md §2, sim/powers.lua) ------------------------------------------------

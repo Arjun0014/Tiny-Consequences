@@ -82,7 +82,8 @@ local function compute_week(W, c, wk)
     local a = 0
     if WET[d] and wsum > 0 then a = P * AMT[d] / wsum end
     AMT[d] = a
-    STORM[d] = WET[d] and a >= cfg.storm_day and P >= cfg.storm_week_min
+    -- a storm is a downpour for its place and week, not every rainy day of a wet climate
+    STORM[d] = WET[d] and a >= cfg.storm_day and a >= cfg.storm_rel * P / 7 and P >= cfg.storm_week_min
     GALE[d] = u() < pg
     TW[d] = T + (u() - 0.5) * 2 * cfg.temp_wobble - (WET[d] and 1 or 0)
   end

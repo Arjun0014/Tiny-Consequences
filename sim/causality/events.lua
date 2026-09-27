@@ -33,7 +33,10 @@ events.region_of = region_of
 
 -- Emit an event. Returns the id (possibly an existing id when aggregated), or 0 when
 -- suppressed by a cooldown. opts: {key=string for cooldown, headline=bool override,
--- actor=override, region=override}
+-- actor=override, region=override, co=contributing cause id}
+-- A contributing cause (D-054) is a second, weaker parent: the flood that tipped a village into
+-- famine is the parent; the player's cull that had already emptied its stores is the co-cause.
+-- Chains follow parents; "Why?" and attribution also look at co-causes (player_involved).
 function events.emit(W, kind, cell, parent, magnitude, data, opts)
   local E = W.E
   local k = KINDS[kind]
@@ -73,6 +76,8 @@ function events.emit(W, kind, cell, parent, magnitude, data, opts)
     root = root, mag = magnitude or 1, data = data, region = region, desc = 0, count = 1,
     headline = false,
   }
+  local co = opts and opts.co
+  if co and co ~= 0 and co ~= parent and E.parent[co] ~= nil and E.root[co] ~= root then r.co = co end
   E.parent[id] = parent
   E.root[id] = root
   E.rec[id] = r
@@ -141,6 +146,23 @@ function events.is_player_rooted(W, id)
   local root = W.E.root[id]
   local r = root and W.E.rec[root]
   return r ~= nil and r.actor == "player"
+end
+
+-- Does the player stand behind event id — through its chain of parents, or through a
+-- contributing cause anywhere along that chain (depth-limited)?
+function events.player_involved(W, id, depth)
+  depth = depth or 0
+  if events.is_player_rooted(W, id) then return true end
+  if depth > 3 then return false end
+  local E = W.E
+  local p, guard = id, 0
+  while p and p ~= 0 and guard < 64 do
+    local r = E.rec[p]
+    if r and r.co and events.player_involved(W, r.co, depth + 1) then return true end
+    p = E.parent[p]
+    guard = guard + 1
+  end
+  return false
 end
 
 -- All descendants of `root_id` (walks kept records; O(records)). For tests / chain queries.

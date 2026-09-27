@@ -1,6 +1,7 @@
 -- S03 farm_fire_famine (07_TESTING.md §3): burn an inland farming village's fields shortly
--- before the harvest (tick-of-year ≈ 26 of the village's own farming calendar; harvest from 32).
--- Stage 2.1: Lightning on every farm cell (the fire spreads through the ripening crops).
+-- before the harvest. Stage 2.1: Lightning on every farm cell (the fire spreads through the
+-- ripening crops). W2: the strike waits for the village's own crops to be past half-grown
+-- (`when = "crop_half"`: villages sow by their own climate, tropical ones whenever warm).
 return {
   name = "farm_fire_famine",
   seeds = "standard",
@@ -8,10 +9,10 @@ return {
   run_years = 4,
   chapter = 1,
   actions = {
-    { year = 1.55, power = "lightning", helper = "lightning_farms", target = "village:inland", local_calendar = true },
+    { year = 1.0, when = "crop_half", power = "lightning", helper = "lightning_farms", target = "village:inland" },
     -- a determined player burns the next harvest too: at 1,442 cells the inland village can
     -- store more than a year of food, so one lost harvest only empties the granary (D-047)
-    { year = 2.55, power = "lightning", helper = "lightning_farms", target = "village:inland", local_calendar = true },
+    { year = 2.0, when = "crop_half", power = "lightning", helper = "lightning_farms", target = "same:1" },
   },
   expect = {
     -- crop_failure then famine within a year, in one chain of ≥ 3 links from the fire

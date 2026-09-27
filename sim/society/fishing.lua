@@ -208,7 +208,12 @@ function M.lose(W, v, b, parent, why)
     id = events.emit(W, "boat_lost", out and out.ground or b.home, parent or 0, #b.crew,
       { village = v.id, boat = b.id, why = why })
   end
-  if id ~= 0 then v.boat_tag = id end
+  if id ~= 0 then
+    v.boat_tag, v.boat_tag_h = id, W.hour
+    local alive = 0
+    for i = 1, #v.boats do local o = W.ent.boats[v.boats[i]]; if o and o.state ~= "lost" then alive = alive + 1 end end
+    v.boats_before = alive + 1
+  end
   -- crew out at sea may drown
   if out then
     local P = W.ent.people

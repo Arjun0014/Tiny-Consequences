@@ -183,6 +183,7 @@ function update(self)
 	cb.u_sh2 = state.u_sh2
 	cb.u_shn = state.u_shn
 	cb.u_focus = state.u_focus
+	cb.u_cut = state.u_cut
 	local sp = state.u_shadowp
 	sp.w = (state.shadow_on and state.planet_on) and 1 or 0
 	cb.u_shadowp = sp

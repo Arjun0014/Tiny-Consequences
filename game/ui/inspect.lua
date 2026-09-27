@@ -111,46 +111,122 @@ local function cell_items(W, c, items)
   add(items, { t = "bar", icon = "snow", label = ocean and "Sea ice" or "Snow & ice", frac = ice, value = pct(ice) .. (ice_hl and " (unusual here)" or ""), hl = ice_hl })
 end
 
+-- What a task looks like in words (the sim's task codes, sim/society/labour.lua).
+M.TASK_TEXT = {
+  sow = "Sowing", tend = "Weeding", care = "Manuring the fields", harvest = "Harvesting", clear = "Clearing land",
+  fuel = "Cutting firewood", timber = "Felling timber", brush = "Gathering brush", build = "Building",
+  fish = "Fishing", forage = "Foraging", hunt = "Hunting", travel = "Travelling",
+}
+M.TASK_GROUP = { sow = "farming", tend = "farming", care = "farming", harvest = "farming", clear = "farming",
+  fuel = "wood", timber = "wood", brush = "wood", build = "building", fish = "fishing", forage = "foraging",
+  hunt = "hunting" }
+local PLACE_TEXT = { field = "a field", wood = "the woods", site = "a building site", boat = "the boat",
+  square = "the well", home = "home", path = "the road" }
+
+local function year_of(h)
+  if type(h) ~= "number" then return nil end
+  if h < 0 then return "long ago" end
+  return "Year " .. floor(h / 8064)
+end
+M.year_of = year_of
+
 local function village_items(W, v, items)
   local mem = type(v.members) == "table" and v.members or {}
-  local alive = 0
-  for k = 1, #mem do if ents.is_alive(W, mem[k]) then alive = alive + 1 end end
-  local g = W.grid
-  add(items, { t = "row", icon = "people", label = "Population", value = tostring(alive) })
-  local fm = v.food_months or v.food_security
-  if type(fm) == "number" then
-    add(items, { t = "row", icon = "bread", label = "Food", value = num(fm) .. " months" .. (fm < 2 and " (hungry)" or ""), hl = fm < 2 })
-  elseif type(v.food) == "number" then
-    add(items, { t = "row", icon = "bread", label = "Food store", value = num(v.food) })
+  local P = W.ent.people or {}
+  local B = W.ent.buildings or {}
+  local alive = v.pop or #mem
+  local homes, sites, ruins = 0, 0, 0
+  for _, bid in ipairs(v.buildings or {}) do
+    local b = B[bid]
+    if b then
+      if b.state == "standing" and (b.kind == "house" or b.kind == "hut") then homes = homes + 1
+      elseif b.state == "site" then sites = sites + 1
+      elseif b.state == "ruin" then ruins = ruins + 1 end
+    end
   end
-  local farms = type(v.farms) == "table" and #v.farms or tonumber(v.farms)
-  if farms then add(items, { t = "row", icon = "wheat", label = "Farms", value = tostring(farms) }) end
-  local boats = type(v.boats) == "table" and #v.boats or tonumber(v.boats)
-  local fishing = type(v.fishing) == "table" and #v.fishing or nil
-  if (boats and boats > 0) or (fishing and fishing > 0) then
-    add(items, { t = "row", icon = "boat", label = "Fishing", value = (boats or 0) == 1 and "1 boat" or ((boats or 0) .. " boats") })
-  end
-  local houses = tonumber(v.houses)
-  if houses then add(items, { t = "row", icon = "house", label = "Houses", value = tostring(houses) }) end
-  if type(v.founded) == "number" then
-    local parent = v.from and W.ent and W.ent.villages and W.ent.villages[v.from]
-    add(items, { t = "row", icon = "hourglass", label = "Founded", value = (v.founded < 0 and "Long ago" or ("Year " .. floor(v.founded / 48)))
-      .. (parent and parent.name and (", from " .. parent.name) or "") })
-  end
-  if v.alive == false then
-    add(items, { t = "row", icon = "skull", label = "Abandoned", value = type(v.abandoned) == "number" and ("Year " .. floor(v.abandoned / 48)) or "yes", hl = true })
-  end
+  local hh = type(v.households) == "table" and #v.households or 0
+  add(items, { t = "row", icon = "people", label = "People", value = alive .. " in " .. hh .. " households" })
+  add(items, { t = "row", icon = "house", label = "Homes", value = homes .. (sites > 0 and (" (+" .. sites .. " being built)") or "")
+    .. (ruins > 0 and (", " .. ruins .. " ruins") or "") })
   if v.state then
     local st = tostring(v.state)
-    local bad = st == "famine" or st == "struggling" or st == "abandoned"
-    add(items, { t = "row", icon = bad and "skull" or "heart", label = "Mood", value = cap(st), hl = bad })
+    local bad = st == "famine" or st == "struggling" or st == "abandoned" or st == "rationing"
+    local extra = (v.ration and v.ration < 0.99) and string.format(" (eating %d%%)", floor(v.ration * 100 + 0.5)) or ""
+    add(items, { t = "row", icon = bad and "skull" or "heart", label = "State", value = cap(st) .. extra, hl = bad })
   end
-  local conts = W.names and W.names.continents
-  local home = conts and v.continent and conts[v.continent]
-  if type(home) == "table" then home = home.name end
-  if type(home) == "string" then add(items, { t = "row", icon = "globe", label = "Homeland", value = home })
-  elseif type(v.culture) == "string" then add(items, { t = "row", icon = "globe", label = "Culture", value = cap(v.culture) }) end
+  local st = v.stock or {}
+  if type(v.food_days) == "number" and v.alive ~= false then
+    local fd = v.food_days
+    add(items, { t = "row", icon = "bread", label = "Food", value = string.format("%d days", floor(min(fd, 9999))) .. (fd < 30 and " (short)" or ""), hl = fd < 30 })
+    add(items, { t = "text", icon = "wheat", text = string.format("Grain %d · fish %d · seed %d", floor(st.grain or 0), floor(st.fresh or 0), floor(st.seed or 0)) })
+    local wd = v.wood_days or 0
+    add(items, { t = "row", icon = "tree", label = "Firewood", value = string.format("%d days (%d stacked)", floor(min(wd, 9999)), floor(st.wood or 0))
+      .. (wd < 10 and " (cold)" or ""), hl = wd < 10 })
+  end
+  local farms = type(v.farms) == "table" and #v.farms or 0
+  if farms > 0 then
+    local sown, ripe = 0, 0
+    for _, c in ipairs(v.farms) do
+      local f = W.S.farm and W.S.farm[c]
+      if f then sown = sown + (f.sown or 0) * (1 - (f.harvested or 0)); if f.ripe then ripe = ripe + 1 end end
+    end
+    local phase = v.season and v.season.phase or "?"
+    add(items, { t = "row", icon = "wheat", label = "Fields", value = string.format("%d (%s%s)", farms, phase,
+      sown > 0.05 and string.format(", %.1f sown", sown) or "") .. (v.intensify and ", tilled hard" or "") })
+  end
+  local nb = type(v.boats) == "table" and #v.boats or 0
+  if nb > 0 or (type(v.fishing) == "table" and #v.fishing > 0) then
+    local out = 0
+    local Bo = W.ent.boats or {}
+    for _, id in ipairs(v.boats or {}) do
+      local b = Bo[id]
+      if b and b.trip and b.trip.ret and W.hour < b.trip.ret and W.hour >= b.trip.depart - 1 then out = out + 1 end
+    end
+    add(items, { t = "row", icon = "boat", label = "Boats", value = nb .. (out > 0 and (" (" .. out .. " out today)") or " (moored)") })
+  end
+  -- what people are doing this week (the labour plan)
+  local counts, idle, kids = {}, 0, 0
+  for k = 1, #mem do
+    local p = P[mem[k]]
+    if p then
+      local g = M.TASK_GROUP[p.task]
+      if g then counts[g] = (counts[g] or 0) + 1
+      elseif (ents.age(W, p) or 0) < 14 then kids = kids + 1
+      else idle = idle + 1 end
+    end
+  end
+  local parts = {}
+  for _, g in ipairs({ "farming", "fishing", "wood", "building", "foraging", "hunting" }) do
+    if counts[g] then parts[#parts + 1] = g .. " " .. counts[g] end
+  end
+  if idle > 0 then parts[#parts + 1] = "free " .. idle end
+  if #parts > 0 then add(items, { t = "text", icon = "pickaxe", text = "This week: " .. table.concat(parts, " · ") }) end
+  local a = v.acc_last
+  if type(a) == "table" then
+    add(items, { t = "head", text = "Last year" })
+    add(items, { t = "text", icon = "wheat", text = string.format("Harvest %d · catch %d · foraged %d · hunted %d",
+      floor(a.harvest or 0), floor(a.catch or 0), floor(a.forage or 0), floor(a.meat or 0)) })
+    add(items, { t = "text", icon = "people", text = string.format("%d born · %d died · %d weddings · %d came · %d left",
+      a.births or 0, a.deaths or 0, a.marriages or 0, a.mig_in or 0, a.mig_out or 0) })
+    add(items, { t = "text", icon = "tree", text = string.format("Wood cut %d · burned %d", floor((a.wood_cut or 0) + (a.brush or 0)), floor(a.burned or 0)) })
+    local ex = {}
+    if (a.relief_in or 0) > 0 then ex[#ex + 1] = string.format("grain received %d", floor(a.relief_in)) end
+    if (a.relief_out or 0) > 0 then ex[#ex + 1] = string.format("grain given %d", floor(a.relief_out)) end
+    if (a.wood_bought or 0) > 0 then ex[#ex + 1] = string.format("wood bought %d", floor(a.wood_bought)) end
+    if (a.wood_sold or 0) > 0 then ex[#ex + 1] = string.format("wood sold %d", floor(a.wood_sold)) end
+    if #ex > 0 then add(items, { t = "text", icon = "boat", text = cap(table.concat(ex, " · ")) }) end
+  end
+  if type(v.founded) == "number" then
+    local parent = v.from and W.ent and W.ent.villages and W.ent.villages[v.from]
+    add(items, { t = "row", icon = "hourglass", label = "Founded", value = cap(year_of(v.founded))
+      .. (parent and parent.name and (", from " .. parent.name) or ""),
+      link = parent and { kind = "village", id = parent.id, cell = parent.cell } or nil })
+  end
+  if v.alive == false then
+    add(items, { t = "row", icon = "skull", label = "Abandoned", value = cap(year_of(v.abandoned) or "yes"), hl = true })
+  end
   -- recent events around the village and its farms
+  local g = W.grid
   local cells = { [v.cell] = true }
   if type(v.farms) == "table" then for _, f in ipairs(v.farms) do if type(f) == "number" then cells[f] = true end end end
   local base = v.cell * 6 - 6
@@ -166,18 +242,38 @@ local function village_items(W, v, items)
   local shown = 0
   for k = 1, #mem do
     local pid = mem[k]
-    local p = ents.person(W, pid)
-    if p and ents.is_alive(W, pid) then
+    local p = P[pid]
+    if p and not p.dead then
       shown = shown + 1
       if shown <= 8 then
         local age = ents.age(W, p)
+        local doing = M.TASK_TEXT[p.task]
         add(items, { t = "row", icon = M.JOB_ICON[p.job] or "person", label = p.name or ("#" .. tostring(pid)),
-          value = cap(p.job or "") .. (age and (", " .. age) or ""), link = { kind = "person", id = pid } })
+          value = cap(p.job or "") .. (age and (", " .. age) or "") .. (doing and (" · " .. doing:lower()) or ""),
+          link = { kind = "person", id = pid } })
       end
     end
   end
   if shown > 8 then add(items, { t = "text", text = "…and " .. (shown - 8) .. " more" }) end
   if shown == 0 then add(items, { t = "text", text = "Nobody lives here any more." }) end
+end
+
+-- Where a person is and what they are doing right now, in words (the sim's schedule).
+local function doing_now(W, v, p)
+  if p.dead then return nil end
+  local schedule = require("sim.society.schedule")
+  local w = schedule.where(W, v, p, W.hour, {})
+  local act = w.act
+  if act == "sleep" then return "Asleep at home" end
+  if act == "travel" then return "On the road" end
+  if act == "camp" then return "Camped for the night on the road" end
+  if act == "fish" then return "Out fishing" end
+  if act == "square" then return "At the well" end
+  if act == "home" then return "At home" end
+  local task = M.TASK_TEXT[p.task]
+  if act == "walk" then return "Walking to " .. (PLACE_TEXT[w.place] or "work") end
+  if act == "work" then return (task or "Working") .. (w.place and PLACE_TEXT[w.place] and (" at " .. PLACE_TEXT[w.place]) or "") end
+  return cap(act)
 end
 
 local function person_link(W, pid)
@@ -199,10 +295,28 @@ local function person_items(W, pid, p, items)
   add(items, { t = "row", icon = "hourglass", label = "Age", value = age and (age .. " years") or "?" })
   add(items, { t = "row", icon = M.JOB_ICON[p.job] or "pickaxe", label = "Job", value = cap(p.job or "none") })
   if v then add(items, { t = "row", icon = "house", label = "Village", value = v.name or "?", link = { kind = "village", id = v.id, cell = v.cell } }) end
+  if v and not p.dead then
+    local now = doing_now(W, v, p)
+    if now then add(items, { t = "row", icon = "pin", label = "Now", value = now }) end
+    local task = M.TASK_TEXT[p.task]
+    if task then add(items, { t = "row", icon = "pickaxe", label = "This week", value = task }) end
+    local h = W.ent.households and W.ent.households[p.household]
+    if h then
+      local home = h.home ~= 0 and W.ent.buildings and W.ent.buildings[h.home]
+      local where = (home and home.state == "standing") and (home.material == "earth" and "an earth house" or ("a " .. home.kind))
+        or "no home of their own"
+      add(items, { t = "row", icon = "house", label = "Home", value = cap(where) .. ", " .. #h.members .. " living there",
+        hl = not (home and home.state == "standing") })
+    end
+  end
   local function bar01(x) if type(x) ~= "number" then return nil end if x > 1 then return x / 100 end return x end
-  local hunger, health = bar01(p.hunger), bar01(p.health)
+  local health = bar01(p.health)
   if health then add(items, { t = "bar", icon = "heart", label = "Health", frac = health, value = pct(health) .. (health < 0.3 and " (ill)" or ""), hl = health < 0.3 }) end
-  if hunger then add(items, { t = "bar", icon = "bread", label = "Hunger", frac = hunger, value = pct(hunger) .. (hunger > 0.6 and " (starving)" or ""), hl = hunger > 0.6 }) end
+  if type(p.nutrition) == "number" then
+    local n = p.nutrition
+    add(items, { t = "bar", icon = "bread", label = "Fed", frac = n, value = pct(n) .. (n < 0.6 and " (hungry)" or ""), hl = n < 0.6 })
+  end
+  if (p.preg_due or 0) > W.hour then add(items, { t = "row", icon = "heart", label = "Expecting", value = "a child in " .. floor((p.preg_due - W.hour) / 672 + 0.5) .. " months" }) end
   if p.mood ~= nil then
     local mv = p.mood
     local word = type(mv) == "number" and ((mv > 0.35 and "cheerful") or (mv > 0.05 and "content") or (mv > -0.3 and "worried") or "miserable") or cap(mv)
@@ -273,7 +387,7 @@ local function person_items(W, pid, p, items)
     end
   end
   if p.dead then
-    add(items, { t = "row", icon = "skull", label = "Died", value = "Year " .. floor(p.dead / 48) .. (p.died_of and (", " .. cap(p.died_of)) or ""), hl = true })
+    add(items, { t = "row", icon = "skull", label = "Died", value = cap(year_of(p.dead)) .. (p.died_of and (", " .. cap(p.died_of)) or ""), hl = true })
   end
 end
 
@@ -397,6 +511,15 @@ function M.build(W, sel)
     else
       local hv = ents.village(W, s.village)
       if hv then add(items, { t = "row", icon = "house", label = "Home port", value = hv.name or "a village", link = { kind = "village", id = hv.id, cell = hv.cell } }) end
+      local tr = s.trip
+      local status = "Moored"
+      if s.laid_up then status = "Laid up for repairs"
+      elseif tr and tr.ret and W.hour < tr.ret and W.hour >= tr.depart then
+        status = W.hour < tr.at and "Sailing out to the fishing ground" or (W.hour < tr.leave and "Fishing" or "Coming home")
+      end
+      add(items, { t = "row", icon = "boat", label = "Now", value = status })
+      add(items, { t = "row", icon = "people", label = "Crew", value = tostring(type(s.crew) == "table" and #s.crew or 0) })
+      add(items, { t = "bar", icon = "pickaxe", label = "Condition", frac = s.condition or 1, value = pct(s.condition or 1) })
     end
     if s.cell then add(items, { t = "row", icon = "wave", label = "Waters", value = M.region_name(W, s.cell) or "open sea" }) end
   elseif sel.kind == "animal" then

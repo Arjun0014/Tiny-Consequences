@@ -97,7 +97,9 @@ function M.plan(W, v, workers)
   local F = W.F
   local lu, fert, soil, ice = F.land_use, F.fertility, F.soil_water, F.ice
   local need_year = v.need_day * 336
-  local fresh_part = v.norm.fresh_in * 48        -- what the boats and hunters bring in a year (weekly normal)
+  -- what the boats bring in a year (weekly normal of the catch; famine foods — foraging, hunting —
+  -- are not a harvest anyone plans on)
+  local fresh_part = (v.norm.catch_in or 0) * 48
   -- fish and meat count for half (the sea is less reliable than stored grain); fields are planned
   -- with what this village's fields really gave (learned from its harvests)
   local per_field = v.yield_field or cfg.yield * 0.5
@@ -168,6 +170,9 @@ function M.plan(W, v, workers)
     end
     cropped = cropped + 1
   end
+  -- Boserup: where the land within reach can't give the fields the village wants, its people put
+  -- more work into the fields they have (weeding, manuring, careful husbandry)
+  v.intensify = cropped < want or v.pop > (v.capacity or 1e9) * 0.9
 end
 
 -- Season machine and weekly crop growth (runs with the planet week, after temperatures).
@@ -185,7 +190,7 @@ function M.weekly(W, v)
       S.phase, S.year, S.week = "sowing", lyear, lwk
       for i = 1, #v.farms do
         local f = field(W, v.farms[i])
-        f.sown, f.bio, f.harvested, f.gdd, f.ripe, f.weeds, f.weeks = 0, 0, 0, 0, false, 0, 0
+        f.sown, f.bio, f.harvested, f.gdd, f.ripe, f.weeds, f.weeks, f.care = 0, 0, 0, 0, false, 0, 0, 0
       end
       v.replan = true
     end
@@ -286,8 +291,9 @@ function M.sowing_done(W, v)
   v.area_short = short - seed
   if v.area_short >= 0.3 and planned >= 2 and W.record_events then
     local parent = v.labour_tag ~= 0 and v.labour_tag or v.cause
+    local co = require("sim.society.cotag").co_of(W, v)
     local id = require("sim.causality.events").emit(W, "labour_shortage", v.cell, parent,
-      floor(v.area_short * 100 + 0.5), { village = v.id, unsown = planned - sown })
+      floor(v.area_short * 100 + 0.5), { village = v.id, unsown = planned - sown }, co and { co = co } or nil)
     if id ~= 0 and v.labour_tag ~= 0 then v.labour_tag = id end
   end
 end
@@ -344,7 +350,7 @@ end
 function M.demands(W, v, out)
   local cfg = cfgmod.SOCIETY
   local S = v.season
-  out.sow, out.tend, out.harvest, out.clear = 0, 0, 0, 0
+  out.sow, out.tend, out.harvest, out.clear, out.care = 0, 0, 0, 0, 0
   local seed_fields = (v.stock.seed + max(0, v.stock.grain - v.need_day * 14)) / cfg.seed
   for i = 1, #v.farms do
     local f = field(W, v.farms[i])
@@ -360,6 +366,7 @@ function M.demands(W, v, out)
         out.harvest = out.harvest + (1 - f.harvested) * f.sown * cfg.harvest_h
       elseif S.phase == "growing" or S.phase == "sowing" then
         out.tend = out.tend + cfg.tend_h * f.sown / 14
+        if v.intensify and (f.care or 0) < 1 then out.care = out.care + cfg.care_h * f.sown / 12 end
       end
     end
   end
@@ -376,6 +383,8 @@ local function field_need(cfg, S, f, kind)
     if f.ripe and f.sown > 0 and f.harvested < 1 then return (1 - f.harvested) * f.sown * cfg.harvest_h end
   elseif kind == "clear" then
     if f.plan == "clear" then return f.clear end
+  elseif kind == "care" then
+    if f.sown > 0 and not f.ripe and f.harvested < 1 then return (1 - (f.care or 0)) * cfg.care_h * f.sown end
   end
   return 0
 end
@@ -448,12 +457,20 @@ function M.work(W, v, kind, hours)
         f.tended = f.tended + h
         left = left - h
       end
+    elseif kind == "care" and f.sown > 0 and not f.ripe and f.harvested < 1 and (f.care or 0) < 1 then
+      local want = (1 - (f.care or 0)) * cfg.care_h * f.sown
+      local h = min(left, want)
+      f.care = min(1, (f.care or 0) + h / (cfg.care_h * f.sown))
+      left = left - h
     elseif kind == "harvest" and f.ripe and f.sown > 0 and f.harvested < 1 then
       sync_bio(F, f, c)
       local want = (1 - f.harvested) * f.sown * cfg.harvest_h
       local h = min(left, want)
       local dh = h / (f.sown * cfg.harvest_h)
-      local grain = dh * f.sown * f.bio * cfg.yield * (1 - 0.5 * f.weeds)
+      -- careful husbandry pays with diminishing returns (the first hours of manuring and
+      -- weeding count most)
+      local care = f.care or 0
+      local grain = dh * f.sown * f.bio * cfg.yield * (1 - 0.5 * f.weeds) * (1 + cfg.care_gain * care * (2 - care))
       f.harvested = min(1, f.harvested + dh)
       -- fertility: the crop takes nutrients with it
       local fe = F.fertility[c] - cfg.deplete * dh * f.bio * 4
@@ -515,13 +532,17 @@ function M.capacity(W, v)
   local G = W.vgeo[v.id]
   local ring = G and G.ring or sites.rings(W, v.cell, sites.radius(W, cfg.farm_radius))
   local per_field = v.yield_field or cfg.yield * 0.5
+  local rc = W.soc and W.soc.ring_count
   local fields = 0
   for i = 1, #ring do
     local c = ring[i]
     local lu = F.land_use[c]
     if W.geo.ocean[c] == 0 and (lu == 0 or lu == v.id) and F.ice[c] < 0.5 and F.soil_water[c] > 0.08
       and F.fertility[c] >= cfg.poor_fert then
-      fields = fields + 1
+      -- its own fields count whole; free land within a neighbour's reach too is only half ours
+      local share = 1
+      if lu == 0 and rc and (rc[c] or 1) > 1 then share = 1 / rc[c] end
+      fields = fields + share
     end
   end
   local food = fields * 0.8 * per_field

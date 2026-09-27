@@ -59,6 +59,27 @@ Research (`00`), audit (`01`), design (`10`–`16`), this roadmap, D-050.
 - Browser profile of planet + society at the target speeds; per-system costs; decide on grid
   resolution / multi-rate / hierarchy changes with evidence; P07 re-baselined.
 
+### W7 — Villages that know each other (`18_DEEP_WORLD.md` §2.2–2.3)
+- Relations graph (kin, reciprocity ledger, grievance, distance); famine relief carried by real
+  parties; barter trade between complementary villages (porters overland, boats along coasts);
+  imports in the field plan (specialisation); trails where people walk; spouses from friendly
+  villages.
+- **Done when**: a bad harvest in one village draws grain from a kin village in runs (chain
+  `crop_failure > relief`), trade flows appear in the ledgers, parties with cargo are visible,
+  seed-sweep populations are stabler (fewer famines at the land limit), tests green.
+
+### W8 — Status, leaders and conflict (§2.1, §2.4)
+- Lineages, household wealth and prestige, leaders and succession; raids as parties with real
+  casualties, loot and fire; grievance and feuds; palisades; defensive aggregation.
+
+### W9 — Polities (§2.5)
+- Tribute after defeat or from daughter villages; paramount redistribution; the tribute graph's
+  tiers named by the chronicle (chiefdom, complex chiefdom, state only with ≥ 4 tiers); territory.
+
+### W10 — Households' own work and animals (§2.6)
+- Livestock herds (milk, meat, manure, wool, wealth), crafts in the slack season, wild herds and
+  packs as agents (old W4).
+
 ### Then
 Chain popup and "Why?" (old 2.3), chronicle (2.4), dialogue (2.5), saving and coming back (2.6),
 onboarding and audio (2.7), playtest; deep time (Chapter 3, with an aggregate society mode for

@@ -244,7 +244,7 @@ end
 -- goals, real timestamp, recent command log...). Returns a text-safe string.
 -- Event records <-> positional records (field order is part of the save format).
 local EV_FIELDS = { "id", "kind", "tick", "cell", "actor", "parent", "root", "mag", "data", "region",
-  "desc", "count", "headline", "hour" }
+  "desc", "count", "headline", "hour", "co" }
 function save.pack_events(rec, order)
   local out = {}
   if not order then

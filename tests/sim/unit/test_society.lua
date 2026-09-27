@@ -72,8 +72,12 @@ function M.abandoned_village_leaves_ruins_and_wild_farms()
   T.ok(ruins > 0, "houses are ruins")
   T.eq(#v.boats, 0, "boats gone")
   T.ok(last_of(W, "village_abandoned") ~= nil, "village_abandoned event")
-  world.run_ticks(W, 8)
-  T.eq(W.F.biome[v.cell], require("sim.systems.biome").B.ruins, "ruins biome")
+  world.run_ticks(W, 16)
+  -- the ruins stand until someone resettles the site (colonists may pick a cleared site at once)
+  local resettled = W.F.land_use[v.cell] < 0 and W.ent.villages[-W.F.land_use[v.cell]].alive
+  T.ok(W.F.biome[v.cell] == require("sim.systems.biome").B.ruins or resettled,
+    "ruins biome (or resettled): biome " .. W.F.biome[v.cell] .. " land_use " .. W.F.land_use[v.cell]
+    .. " ruins " .. tostring(W.S.ruins[v.cell]))
   T.ok(check.check(W) == nil, "invariants after abandonment")
 end
 

@@ -16,6 +16,8 @@ local sin, cos, exp, log, sqrt, max, min, abs, pi, acos = math.sin, math.cos, ma
 M.D_FAR = 58        -- eye distance from the look target at zoom 0 (planet ~65% of height)
 M.D_NEAR = 4.6      -- eye distance from the surface target at zoom 1
 M.ZOOM_EXP = 1.35   -- distance curve: log-lerp on zoom^ZOOM_EXP
+M.ZOOM_MAX = 1.35   -- beyond 1: down among the villagers (W2c: watch one person's day)
+M.D_CLOSE = 1.5     -- eye distance at ZOOM_MAX
 M.ZOOM_DEFAULT = 0.16   -- title/default framing: planet ~85% of the frame height
 M.TILT = math.rad(62)
 M.LOW = 0.26        -- planet sits this many radii below the frame centre when zoomed out
@@ -107,7 +109,7 @@ end
 
 function M.set_frame(sx, sy, sz, ux, uy, uz, zoom, instant)
   TSx, TSy, TSz, TUx, TUy, TUz = ortho(sx, sy, sz, ux, uy, uz)
-  if zoom then M.tzoom = max(0, min(1, zoom)) end
+  if zoom then M.tzoom = max(0, min(M.ZOOM_MAX, zoom)) end
   M.tweening = true
   M.idle = 0
   if instant then
@@ -149,7 +151,7 @@ function M.drag(dx, dy)
 end
 
 function M.zoom_by(step)
-  M.tzoom = max(0, min(1, M.tzoom + step))
+  M.tzoom = max(0, min(M.ZOOM_MAX, M.tzoom + step))
   M.idle = 0
 end
 
@@ -210,7 +212,12 @@ function M.update(dt)
   local tx = Sx * rs * s + ux * low
   local ty = Sy * rs * s + uy * low
   local tz = Sz * rs * s + uz * low
-  local dist = exp(log(M.D_FAR) + (log(M.D_NEAR) - log(M.D_FAR)) * (z ^ M.ZOOM_EXP))
+  local dist
+  if z <= 1 then
+    dist = exp(log(M.D_FAR) + (log(M.D_NEAR) - log(M.D_FAR)) * (z ^ M.ZOOM_EXP))
+  else
+    dist = exp(log(M.D_NEAR) + (log(M.D_CLOSE) - log(M.D_NEAR)) * (z - 1) / (M.ZOOM_MAX - 1))
+  end
   target.x, target.y, target.z = tx, ty, tz
   eye.x, eye.y, eye.z = tx + dx * dist, ty + dy * dist, tz + dz * dist
   upv.x, upv.y, upv.z = ux, uy, uz
@@ -437,8 +444,8 @@ function M.preset(name, W)
         if g.lat[c] > 0 then n_ice = n_ice + 1 else s_ice = s_ice + 1 end
       end
     end
-    local lat0, lon0 = 0, 0
-    if comps[1] then lat0, lon0 = centre_of(W, comps[1].cells) end
+    -- seen from the sunlit side (the sun is real: from the night side a pole is a dark disc)
+    local _, lon0 = require("sim.society.daylight").subsolar(W.hour or 0)
     return (n_ice >= s_ice) and 1.12 or -1.12, lon0, M.ZOOM_DEFAULT
   elseif name == "village" or name == "close" then
     local c = M.focus_cell or M.focus_candidate(W)

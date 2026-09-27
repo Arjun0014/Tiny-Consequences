@@ -138,11 +138,11 @@ function M.volcanoes(W)
   return e and tbl(e.volcanoes) or {}
 end
 
---- Age in whole years from a birth tick.
+--- Age in whole years (the settlement layer stores births as absolute hours, 8,064 a year).
 function M.age(W, p)
-  local b = p and (p.birth or p.born or p.birth_tick)
+  local b = p and p.born
   if type(b) ~= "number" then return nil end
-  return math.floor((W.tick - b) / 48)
+  return math.floor(((W.hour or 0) - b) / 8064)
 end
 
 function M.name_of(W, pid)

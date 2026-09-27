@@ -16,7 +16,11 @@ function M.check(W)
         if not p then return v.name .. ": member " .. id .. " missing" end
         if p.dead then return v.name .. ": dead member " .. id end
         if p.village ~= v.id then return v.name .. ": member " .. id .. " lives in " .. p.village end
-        if p.away ~= 0 then return v.name .. ": member " .. id .. " is away" end
+        if p.away ~= 0 then
+          -- only porters on an errand stay members while away (sim/society/relations.lua)
+          local pa = W.ent.parties and W.ent.parties[p.away]
+          if not pa or (pa.kind ~= "porters" and pa.kind ~= "returning") then return v.name .. ": member " .. id .. " is away" end
+        end
         if owner[id] then return "person " .. id .. " in two villages" end
         owner[id] = v.id
         local h = H[p.household]

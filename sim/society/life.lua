@@ -419,7 +419,7 @@ function M.memories(W, v)
     if r then
       local sal = 0
       local d = r.data
-      if type(d) == "table" and (d.village == v.id or d.from == v.id) then sal = SAL_OWN[r.kind] or 0.4
+      if type(d) == "table" and (d.village == v.id or d.from == v.id) then sal = SAL_OWN[r.kind] or 0.15
       elseif near and near[r.cell] then
         if r.actor == "player" and r.parent == 0 then sal = 0.8 else sal = SAL_NEAR[r.kind] or 0 end
       end

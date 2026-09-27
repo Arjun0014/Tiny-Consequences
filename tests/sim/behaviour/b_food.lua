@@ -41,7 +41,20 @@ local function farm_village(W)
   return vs[1]
 end
 
+local b08_body
 function M.b08_famine_changes_behaviour()
+  -- the body's and household's own response to hunger: exchange between villages (W7: relief,
+  -- barter, brides — relations.lua) would change the village and its store, so it is off here
+  local cfg0 = require("sim.config").SOCIETY
+  local r0, t0, b0 = cfg0.relief_reach, cfg0.trade_reach, cfg0.bride_prob
+  cfg0.relief_reach, cfg0.trade_reach, cfg0.bride_prob = 0, 0, 0
+  local ok, err = pcall(b08_body)
+  cfg0.relief_reach, cfg0.trade_reach, cfg0.bride_prob = r0, t0, b0
+  if not ok then error(err, 0) end
+  return err
+end
+
+b08_body = function()
   local Wa, Wb = worlds.fresh(1), worlds.fresh(1)
   local va = farm_village(Wa)
   local vb = Wb.ent.villages[va.id]

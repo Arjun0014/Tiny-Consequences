@@ -19,6 +19,25 @@ local function first_village(W)
   return nil
 end
 
+local function biggest_village(W)
+  local best, bp = nil, -1
+  for _, v in ents.each_village(W) do
+    if (v.pop or 0) > bp then best, bp = v, v.pop or 0 end
+  end
+  return best
+end
+
+-- someone of the biggest village with work this week (inspector shots)
+local function a_worker(W)
+  local v = biggest_village(W)
+  if not v then return nil end
+  for k = 1, #v.members do
+    local p = ents.person(W, v.members[k])
+    if p and not p.dead and p.task and p.task ~= "" then return v.members[k] end
+  end
+  return v.members[1]
+end
+
 local function first_person(W)
   for _, v in ents.each_village(W) do
     if type(v.members) == "table" then
@@ -190,11 +209,12 @@ function M.register(G)
       assert(c >= 1 and c <= W.n, "cell out of range")
       sel = { kind = "cell", cell = c }
     elseif args.village then
-      local v = args.village == "first" and first_village(W) or ents.village(W, args.village)
+      local v = (args.village == "first" and first_village(W)) or (args.village == "biggest" and biggest_village(W))
+        or ents.village(W, args.village)
       assert(v, "no such village (villages: " .. #ents.villages(W) .. ")")
       sel = { kind = "village", id = v.id, cell = v.cell }
     elseif args.person then
-      local pid = args.person == "first" and first_person(W) or args.person
+      local pid = (args.person == "first" and first_person(W)) or (args.person == "worker" and a_worker(W)) or args.person
       assert(pid and ents.person(W, pid), "no such person")
       sel = { kind = "person", id = pid }
     elseif args.planet then

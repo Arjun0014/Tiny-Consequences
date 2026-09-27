@@ -120,7 +120,8 @@ M.tests[2] = { "vegetation_bands_with_fauna_200y", function()
         -- browsing effect on a world sitting at the edge is ecology, not a broken band)
         note = note .. string.format(" [%s out of band; without grazing %.3f%s]", k, ref[k],
           moved and " -> caused by animals" or (in_band and " -> animals nudge an edge case" or " -> geography"))
-        if moved then bad[#bad + 1] = "s" .. seed .. " " .. k end
+        -- (a world already out of band without animals — geography, villages' clearing — is S01's)
+        if moved and in_band then bad[#bad + 1] = "s" .. seed .. " " .. k end
       end
     end
     lines[#lines + 1] = string.format("s%d: %s%s", seed, table.concat(parts, ", "), note)
