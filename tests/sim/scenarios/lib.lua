@@ -59,12 +59,20 @@ function L.select(W, spec)
     local c = tonumber(rest)
     return { cell = c, cells = { c }, label = "cell " .. c }
   elseif kind == "island" and rest == "no_predators" then
-    for i = 1, #geo.components do
+    -- a small island (<= 40 level-4-equivalent... cells of this grid scaled to area) with
+    -- vegetation and no wolves; smallest first
+    local order = {}
+    for i = 1, #geo.components do order[#order + 1] = i end
+    table.sort(order, function(a, b) return geo.components[a].size < geo.components[b].size end)
+    local max_cells = math.max(6, math.floor(60 / (W.sscale * W.sscale)))
+    for _, i in ipairs(order) do
       local comp = geo.components[i]
-      if comp.size / W.n < 0.1 then
+      if comp.size <= max_cells then
         local p = 0
         for k = 1, #comp.cells do p = p + W.F.predators[comp.cells[k]] end
-        if p == 0 then
+        local veg = 0
+        for k = 1, #comp.cells do veg = veg + W.F.grass[comp.cells[k]] + W.F.forest[comp.cells[k]] end
+        if p == 0 and veg / #comp.cells > 0.3 then
           local cells = {}
           for k = 1, #comp.cells do cells[k] = comp.cells[k] end
           table.sort(cells)
@@ -73,7 +81,7 @@ function L.select(W, spec)
       end
     end
     return nil
-  elseif kind == "village" then
+  elseif kind == "village" and (rest == "inland" or rest == "fishing") then
     -- "inland": the biggest living village without fishing waters; "fishing": the biggest with
     local best, bp = nil, -1
     for _, v in ipairs(W.ent.villages or {}) do
@@ -87,6 +95,110 @@ function L.select(W, spec)
     for i = 1, #best.farms do cells[i] = best.farms[i] end
     if #cells == 0 then cells[1] = best.cell end
     return { cell = best.cell, cells = cells, village = best.id, label = "village " .. best.name }
+  elseif kind == "village" and rest == "farming" then
+    -- the biggest village with several farms and another village within blight's trade reach
+    local g = W.grid
+    local best, bp = nil, -1
+    local vs = W.ent.villages or {}
+    for _, v in ipairs(vs) do
+      if v.alive and #v.farms >= 3 then
+        local near = 0
+        for _, o in ipairs(vs) do
+          if o.alive and o.id ~= v.id and #o.farms > 0 then
+            local d = g.X[o.cell] * g.X[v.cell] + g.Y[o.cell] * g.Y[v.cell] + g.Z[o.cell] * g.Z[v.cell]
+            if math.acos(math.max(-1, math.min(1, d))) / 0.07553 <= require("sim.config").POWERS.blight_trade_steps then near = near + 1 end
+          end
+        end
+        if near > 0 and v.pop > bp then best, bp = v, v.pop end
+      end
+    end
+    if not best then return nil end
+    return { cell = best.farms[1], cells = { best.farms[1] }, village = best.id, label = "fields of " .. best.name }
+  elseif kind == "near" and rest == "village" then
+    -- a land cell next to the biggest village (meteor target)
+    local best, bp = nil, -1
+    for _, v in ipairs(W.ent.villages or {}) do
+      if v.alive and v.pop > bp then best, bp = v, v.pop end
+    end
+    if not best then return nil end
+    local g = W.grid
+    local b = best.cell * 6 - 6
+    local c = best.cell
+    for k = 1, g.nbr_count[best.cell] do
+      local j = g.nbr[b + k]
+      if geo.ocean[j] == 0 and W.F.land_use[j] >= 0 then c = j; break end
+    end
+    return { cell = c, cells = { c }, village = best.id, label = "near " .. best.name }
+  elseif kind == "forest" and rest == "dry" then
+    -- a dry spot in thick forest: forest around it (fuel for the fire to spread) and dry soil
+    local g = W.grid
+    local best, bs = nil, -1e9
+    for c = 1, W.n do
+      if geo.ocean[c] == 0 and W.F.forest[c] >= 0.35 and W.F.ice[c] < 0.2 and W.F.land_use[c] == 0 then
+        local fsum, b = W.F.forest[c], c * 6 - 6
+        for k = 1, g.nbr_count[c] do fsum = fsum + W.F.forest[g.nbr[b + k]] end
+        local score = fsum - 3 * W.F.soil_water[c]
+        if score > bs then best, bs = c, score end
+      end
+    end
+    if not best then return nil end
+    return { cell = best, cells = { best }, label = "dry forest at " .. best }
+  elseif kind == "ocean_upwind" and rest == "land" then
+    -- a coastal ocean cell that is upwind of the most land (this season's wind table); the
+    -- metric cells are the land downwind within 3 steps
+    local g = W.grid
+    local season = math.floor((W.tick % 48) / 12)
+    local wt = W.wind[season + 1]
+    local best, bs, bcells = nil, -1, nil
+    for c = 1, W.n do
+      if geo.ocean[c] == 1 and W.F.ice[c] == 0 and geo.coast_dist[c] <= 1 then
+        -- land cells that list c as an upwind neighbour, then 2 more steps downwind of them
+        local down = {}
+        local b = c * 6 - 6
+        for k = 1, g.nbr_count[c] do
+          local j = g.nbr[b + k]
+          if geo.ocean[j] == 0 then
+            local bj = j * 6 - 6
+            for q = 1, g.nbr_count[j] do
+              if g.nbr[bj + q] == c and wt.w[bj + q] > 0.08 then down[#down + 1] = j end
+            end
+          end
+        end
+        if #down > bs then best, bs, bcells = c, #down, down end
+      end
+    end
+    if not best then return nil end
+    local cells, seen = {}, {}
+    local frontier = bcells
+    for step = 1, 2 do
+      local nxt = {}
+      for _, x in ipairs(frontier) do
+        if not seen[x] and geo.ocean[x] == 0 then
+          seen[x] = true
+          cells[#cells + 1] = x
+          local b = x * 6 - 6
+          for k = 1, g.nbr_count[x] do nxt[#nxt + 1] = g.nbr[b + k] end
+        end
+      end
+      frontier = nxt
+    end
+    table.sort(cells)
+    return { cell = best, cells = cells, label = "land downwind of " .. best }
+  elseif kind == "tanker" and rest == "tutorial" then
+    -- the tanker nearest a fishing village (tools/tutorial_scout.lua), struck where it is
+    local t, _, v = require("sim.tutorial").pick(W)
+    if not t then return nil end
+    return { cell = t.cell, cells = { t.cell }, ship = t.id, village = v.id, label = "tanker " .. t.name }
+  elseif kind == "ocean" and rest == "cold_coast" then
+    -- the coldest ice-free coastal sea (a Chill can freeze it); target = the sea around it
+    local best, bt = nil, 1e9
+    for c = 1, W.n do
+      if geo.ocean[c] == 1 and geo.coast_dist[c] <= 1 and W.F.ice[c] < 0.05 and W.F.sst[c] > 0 then
+        if W.F.sst[c] < bt then best, bt = c, W.F.sst[c] end
+      end
+    end
+    if not best then return nil end
+    return { cell = best, cells = ocean_ring(W, best, 1), label = "cold coast at " .. best }
   elseif kind == "ocean_near" and rest == "village:fishing" and (W.ent.villages and #W.ent.villages > 0) then
     local vt = L.select(W, "village:fishing")
     if vt then
@@ -146,6 +258,22 @@ local function metric_value(W, name, target)
     end
     return total
   end
+  if name == "aerosol@global" then return W.G.aerosol or 0 end
+  if name == "blight_villages" then
+    local S = W.S.powers
+    if not S then return 0 end
+    local seen, n = {}, 0
+    for _, b in ipairs(S.blight) do
+      local vid = W.F.land_use[b.cell]
+      if vid > 0 and not seen[vid] then seen[vid] = true; n = n + 1 end
+    end
+    return n
+  end
+  if name == "veg@target" then
+    local s, cells = 0, target.cells
+    for i = 1, #cells do s = s + W.F.grass[cells[i]] + W.F.forest[cells[i]] end
+    return s / #cells
+  end
   local vf = name:match("^([%w_]+)@village$")
   if vf then
     local v = W.ent.villages[target.village]
@@ -163,7 +291,44 @@ local function metric_value(W, name, target)
 end
 
 -- Actions -------------------------------------------------------------------------------------------
+-- Power actions (Stage 2.1): queue `power` commands like a player would. Helpers:
+--   cull_all        Cull (radius 2) on every cluster of the species in the target cells
+--   lightning_farms Lightning on every farm cell of the target village
+-- Returns the root event kind to collect (power_<kind>).
+local ROOT_KIND = { weather = { rain = "power_rain", drought = "power_drought" },
+  temperature = { heat = "power_heat", chill = "power_chill" } }
+local function apply_power(W, a, target)
+  local pw = a.power
+  local base = { power = pw, mode = a.mode, species = a.species, radius = a.radius, ship = target.ship }
+  local function cast(c)
+    local q = {}
+    for k, v in pairs(base) do q[k] = v end
+    q.cell = c
+    world.command(W, "power", q)
+  end
+  if a.helper == "cull_all" then
+    local fld = W.F[a.species or "predators"]
+    local covered = {}
+    local area = require("sim.powers").area
+    for _, c in ipairs(target.cells) do
+      if not covered[c] and fld[c] > 1e-4 then
+        cast(c)
+        for _, x in ipairs(area(W, c, 2)) do covered[x] = true end
+      end
+    end
+  elseif a.helper == "lightning_farms" then
+    local v = W.ent.villages[target.village]
+    for _, c in ipairs(v and v.farms or target.cells) do cast(c) end
+  else
+    cast(target.cell)
+  end
+  local rk = ROOT_KIND[pw]
+  if rk then return rk[a.mode or (pw == "weather" and "rain" or "heat")] end
+  return "power_" .. pw
+end
+
 local function apply_action(W, a, target)
+  if a.power then return apply_power(W, a, target) end
   local p = {}
   for k, v in pairs(a) do
     if k ~= "year" and k ~= "hook" and k ~= "helper" and k ~= "target" and k ~= "species"
@@ -186,7 +351,7 @@ local function apply_action(W, a, target)
     p.tanker = target.tanker
   end
   world.test_action(W, hook, p)
-  return hook
+  return "test_" .. hook
 end
 
 -- Chains --------------------------------------------------------------------------------------------
@@ -230,6 +395,7 @@ function L.run_seed(spec, seed, opts)
   local ticks = spec.run_years * 48
   local acts = spec.actions or {}
   local roots, targets, act_tick = {}, {}, {}
+  local roots_all = {}
   local series = {}
   for i, e in ipairs(spec.expect) do
     if e.metric then series[i] = {} end
@@ -239,7 +405,8 @@ function L.run_seed(spec, seed, opts)
   for t = 0, ticks - 1 do
     for ai, a in ipairs(acts) do
       if t == math.floor((a.year or 0) * 48) then
-        local tg = L.select(Wa, a.target)
+        local same = a.target:match("^same:(%d+)$")
+        local tg = same and targets[tonumber(same)] or L.select(Wa, a.target)
         if not tg then return false, "target " .. a.target .. " not found", {} end
         targets[ai] = tg
         tg.tick = Wa.tick
@@ -257,14 +424,18 @@ function L.run_seed(spec, seed, opts)
     end
     world.tick(Wa)
     world.tick(Wb)
-    for ai, hook in pairs(pending_root) do
-      -- find the root event this action created
+    for ai, rkind in pairs(pending_root) do
+      -- find the root event(s) this action created (a helper can cast several powers)
       local E = Wa.E
+      local all = {}
       for k = #E.order, 1, -1 do
         local r = E.rec[E.order[k]]
         if r.tick < act_tick[ai] then break end
-        if r.kind == "test_" .. hook and r.parent == 0 then roots[ai] = r.id; break end
+        if r.kind == rkind and r.parent == 0 then all[#all + 1] = r.id end
       end
+      table.sort(all)
+      roots[ai] = all[1]
+      roots_all[ai] = all
       pending_root[ai] = nil
     end
     if t % 4 == 3 then
@@ -287,12 +458,24 @@ function L.run_seed(spec, seed, opts)
   local res = {}
   for i, e in ipairs(spec.expect) do
     local ok, txt = false, ""
-    if e.metric then
+    if e.metric and e.mean then
+      -- ratio of the means over the window (noisy weekly fields such as precipitation)
       local win = (e.within_years or spec.run_years) * 48
+      local sa, sb = 0, 0
+      for _, smp in ipairs(series[i]) do
+        if smp.t <= win then sa, sb = sa + smp.a, sb + smp.b end
+      end
+      local r = sb > 0 and sa / sb or 0
+      if os.getenv("TC_DEBUG") then print("MEAN", e.metric, #series[i], sa, sb) end
+      ok = (e.op == ">=" and r >= e.value) or (e.op == "<=" and r <= e.value)
+      txt = string.format("%s mean x%.2f over %.1fy%s", e.metric, r, win / 48, ok and "" or string.format(" (need %s %.2f)", e.op, e.value))
+    elseif e.metric then
+      local win = (e.within_years or spec.run_years) * 48
+      local absolute = e.compare == "absolute"
       local best, bt = nil, 0
       for _, smp in ipairs(series[i]) do
-        if smp.t <= win and smp.b > 0 then
-          local r = smp.a / smp.b
+        if smp.t <= win and (absolute or smp.b > 0) then
+          local r = absolute and smp.a or smp.a / smp.b
           local hit = (e.op == ">=" and r >= e.value) or (e.op == "<=" and r <= e.value)
           if best == nil or (e.op == ">=" and r > best) or (e.op == "<=" and r < best) then best, bt = r, smp.t end
           if hit and not ok then ok = true; txt = string.format("%s x%.2f@%.1fy", e.metric, r, smp.t / 48) end
@@ -301,20 +484,27 @@ function L.run_seed(spec, seed, opts)
       if ok then txt = txt .. string.format(" (best x%.2f)", best) end
       if not ok then txt = string.format("%s best x%.2f@%.1fy (need %s %.2f)", e.metric, best or 0, bt / 48, e.op, e.value) end
     elseif e.chain_from_action then
-      local root = roots[e.chain_from_action]
-      if root then
-        local good, ch = eval_chain(Wa, root, e)
-        ok = good
-        txt = "chain " .. ch
+      -- the best chain from any of the action's roots (helpers cast several powers)
+      local list = roots_all[e.chain_from_action] or {}
+      if #list > 0 then
+        local best_txt, best_len = nil, -1
+        for _, root in ipairs(list) do
+          local good, ch = eval_chain(Wa, root, e)
+          local len = select(2, ch:gsub(">", ">"))
+          if good and not ok then ok = true; best_txt = ch
+          elseif not ok and len > best_len then best_len, best_txt = len, ch end
+          if ok then break end
+        end
+        txt = "chain " .. best_txt
       else
         txt = "no root event"
       end
     elseif e.descendant_kind then
-      local root = roots[e.from_action or 1]
-      if root then
+      for _, root in ipairs(roots_all[e.from_action or 1] or {}) do
         for _, d in ipairs(events.descendants(Wa, root)) do
           if d.kind == e.descendant_kind then ok = true; break end
         end
+        if ok then break end
       end
       txt = e.descendant_kind .. (ok and " yes" or " MISSING")
     end
@@ -328,7 +518,50 @@ function L.run_seed(spec, seed, opts)
     report.mkdir(dir)
     report.write_events(Wa, dir .. "/seed" .. seed .. "_events.txt")
   end
+  L.attribution(spec, seed, Wa, Wb, act_tick)
   return all, table.concat(parts, "; "), res
+end
+
+-- P08 (07 §4): headline events of the action world that the baseline world doesn't have (same
+-- kind and region within 2 months) are consequences of the player's actions; count how many
+-- of them chain back to a player root. Accumulated over every scenario run (L.P08).
+L.P08 = { extra = 0, player = 0, misses = {} }
+function L.attribution(spec, seed, Wa, Wb, act_tick)
+  local t0 = math.huge
+  for _, t in pairs(act_tick) do if t < t0 then t0 = t end end
+  if t0 == math.huge then return end
+  local pool = {}
+  for _, id in ipairs(Wb.E.order) do
+    local r = Wb.E.rec[id]
+    if r and r.headline and r.tick >= t0 then
+      local k = r.kind .. "|" .. tostring(r.region)
+      pool[k] = pool[k] or {}
+      table.insert(pool[k], r.tick)
+    end
+  end
+  for _, id in ipairs(Wa.E.order) do
+    local r = Wa.E.rec[id]
+    if r and r.headline and r.tick >= t0 then
+      local k = r.kind .. "|" .. tostring(r.region)
+      local list = pool[k]
+      local matched = false
+      if list then
+        for i = 1, #list do
+          if list[i] and math.abs(list[i] - r.tick) <= 8 then list[i] = false; matched = true; break end
+        end
+      end
+      if not matched then
+        L.P08.extra = L.P08.extra + 1
+        if events.is_player_rooted(Wa, r.id) then L.P08.player = L.P08.player + 1
+        elseif #L.P08.misses < 12 then
+          local ch = events.chain(Wa, r.id)
+          local ks = {}
+          for q = 1, #ch do ks[q] = ch[q].kind end
+          L.P08.misses[#L.P08.misses + 1] = spec.name .. " s" .. seed .. ": " .. table.concat(ks, ">")
+        end
+      end
+    end
+  end
 end
 
 -- Baseline-only specs (S01): bands over one untouched run per seed.
@@ -436,7 +669,7 @@ function L.as_module(spec, args)
     tests = {
       { spec.name, function()
         local profile = args.full and "full" or "quick"
-        local seeds = L.SEEDS[profile]
+        local seeds = type(spec.seeds) == "table" and spec.seeds or L.SEEDS[profile]
         if args.seeds then
           seeds = {}
           for s = 1, args.seeds do seeds[s] = s end

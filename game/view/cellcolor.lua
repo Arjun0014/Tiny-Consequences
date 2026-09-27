@@ -3,7 +3,7 @@
 --   land cell : A = ground colour rgb + snow cover
 --               B = fire, ash (burn scar), dryness (drought), grass
 --               C = farm, crop stage, village, forest
---               D = temperature ((t + 30) / 70), soil water, 0, 0   (props: seasons, snow)
+--               D = temperature ((t + 30) / 70), soil water, blight, 0   (props: seasons, snow)
 --   ocean cell: A = 0,0,0 + sea ice
 --               B = 0, oil, plankton, fish
 --               C = 0, 0, 0, 0
@@ -124,7 +124,19 @@ function M.cell(W, c, out, base)
   out[base + 12] = byte(clamp01(forest))
   out[base + 13] = byte((temp + 30) / 70)
   out[base + 14] = byte(clamp01(soil))
-  out[base + 15], out[base + 16] = 0, 0
+  out[base + 15] = M.blighted and M.blighted[c] and 255 or 0
+  out[base + 16] = 0
+end
+
+--- Marks infected farm cells (the Blight power's sparse set) for this recolour pass.
+function M.prepare(W)
+  local S = W.S and W.S.powers
+  local b = M.blighted or {}
+  for k in pairs(b) do b[k] = nil end
+  if S and S.blight then
+    for i = 1, #S.blight do b[S.blight[i].cell] = true end
+  end
+  M.blighted = b
 end
 
 return M

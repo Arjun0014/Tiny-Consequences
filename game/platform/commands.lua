@@ -71,6 +71,76 @@ function M.register(G)
     return { from = G.W.tick, to = G.ff.target }
   end)
 
+  -- powers (Stage 2.1): cast through the same path as the power bar. args: power, cell (or
+  -- target = "tanker" | "village" | "focus"), mode, species, ship, force (ignore cooldown)
+  -- resolve a power target: args.cell, or target = "tanker" | "village" | "farm" | "sea" |
+  -- "land" (near the first village) | nil (the view focus). Returns cell, ship id.
+  local function power_target(W, args)
+    local cell, ship = args.cell, args.ship
+    if not cell and args.target == "tanker" then
+      local t = require("sim.tutorial").pick(W)
+      if t then cell, ship = t.cell, t.id end
+    elseif not cell and args.target == "village" then
+      local v = first_village(W)
+      cell = v and v.cell
+    elseif not cell and args.target == "farm" then
+      local v = first_village(W)
+      cell = v and v.farms and v.farms[1]
+    elseif not cell and (args.target == "sea" or args.target == "land") then
+      local v = first_village(W)
+      local g = W.grid
+      local want = args.target == "sea" and 1 or 0
+      local best, bd = nil, -2
+      for c = 1, W.n do
+        if W.geo.ocean[c] == want and (want == 1 or c ~= v.cell) and W.F.land_use[c] == 0 then
+          local d = g.X[c] * g.X[v.cell] + g.Y[c] * g.Y[v.cell] + g.Z[c] * g.Z[v.cell]
+          if d > bd then best, bd = c, d end
+        end
+      end
+      cell = best
+    elseif not cell then
+      cell = camera.focus_cell or require("game.view.picking").cell_at(W, (state.window_w or 1280) / 2, (state.window_h or 720) / 2)
+    end
+    return cell, ship
+  end
+
+  local function screen_of(W, cell)
+    local g = W.grid
+    local r = view.surface(g.X[cell], g.Y[cell], g.Z[cell])
+    return camera.project(g.X[cell] * r, g.Y[cell] * r, g.Z[cell] * r)
+  end
+
+  -- point the camera at a power target (tests, screenshots)
+  bridge.register("look", function(args)
+    local W = G.W
+    local cell = power_target(W, args)
+    if not cell then error("no target", 0) end
+    local g = W.grid
+    camera.fly_to_dir(g.X[cell], g.Y[cell], g.Z[cell], args.zoom or 0.62, true)
+    camera.update(0)
+    view.flush()
+    local sx, sy = screen_of(W, cell)
+    return { cell = cell, sx = sx, sy = sy }
+  end)
+
+  -- powers (Stage 2.1): cast through the same path as the power bar. args: power, cell or
+  -- target (see power_target), mode, species, ship, force (ignore cooldown; default on)
+  bridge.register("power", function(args)
+    local powers = require("game.ui.powers")
+    local W = G.W
+    local cell, ship = power_target(W, args)
+    local opts = { mode = args.mode, species = args.species, ship = ship, force = args.force ~= false }
+    local p, why = powers.cast(W, args.power, cell, opts)
+    if not p then error(why or "power refused", 0) end
+    local sx, sy = screen_of(W, cell)
+    return { cell = cell, power = args.power, tick = W.tick, sx = sx, sy = sy }
+  end)
+  bridge.register("arm", function(args)
+    local powers = require("game.ui.powers")
+    powers.armed = args.index
+    if args.option then powers.mode[powers.DEFS[args.index].id] = args.option end
+    return { armed = powers.armed }
+  end)
   -- renderer toggles (debugging / quality): shadow, post, near (near-LOD props), movers
   bridge.register("gfx", function(args)
     if args.shadow ~= nil then state.shadow_on = args.shadow and true or false end

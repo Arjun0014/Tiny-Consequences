@@ -8,14 +8,14 @@ return {
   run_years = 3,
   chapter = 1,
   actions = {
-    { year = 1, hook = "oil", target = "ocean_near:village:fishing", amount = 36 },   -- a tanker cargo, level-4-equivalent cells (D-047)
+    { year = 1, power = "oil", target = "ocean_near:village:fishing" },   -- the Oil Spill power: a tanker-sized pulse
   },
   expect = {
     { metric = "fish@target", compare = "ratio_to_baseline", op = "<=", value = 0.5, within_years = 1 },
     { descendant_kind = "oil_spreading", from_action = 1 },
     { descendant_kind = "oil_beached", from_action = 1 },
     -- oil → fish → the village's food
-    { chain_from_action = 1, min_links = 2, must_include = { "test_oil", "fish_collapse" } },
+    { chain_from_action = 1, min_links = 2, must_include = { "power_oil", "fish_collapse" } },
     { metric = "food_security@village", compare = "ratio_to_baseline", op = "<=", value = 0.7, within_years = 2 },
   },
 }

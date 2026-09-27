@@ -10,6 +10,15 @@ local M = {}
 M.FLAMES, M.SMOKE = 36, 36
 M.CHIMNEY = 48          -- chimney smoke puffs (villages near the view, zoomed in)
 M.BOLTS = 4             -- lightning bolts (real lightning strikes from the event feed; powers)
+M.PULSES = 8            -- expanding rings where a power lands
+M.PULSE_LIFE = 1.1
+-- ring colours per power root event
+M.PULSE_COLORS = {
+  power_rain = { 0.45, 0.72, 1.0 }, power_drought = { 1.0, 0.72, 0.30 }, power_heat = { 1.0, 0.42, 0.25 },
+  power_chill = { 0.62, 0.92, 1.0 }, power_cull = { 0.72, 0.62, 0.86 }, power_introduce = { 0.55, 0.92, 0.45 },
+  power_blight = { 0.66, 0.40, 0.78 }, power_oil = { 0.25, 0.20, 0.32 }, power_meteor = { 1.0, 0.55, 0.20 },
+  power_lightning = { 1.0, 0.95, 0.70 },
+}
 M.BOLT_LIFE = 0.4
 M.MAX_FIRES = 12
 M.FIRE_MIN = 0.05
@@ -18,7 +27,8 @@ local H_POS, H_NRM, H_COL = hash("position"), hash("normal"), hash("color")
 local MSG_ENABLE, MSG_DISABLE = hash("enable"), hash("disable")
 local sin, cos, sqrt, max, min = math.sin, math.cos, math.sqrt, math.max, math.min
 
-M.flames, M.smoke, M.chim, M.bolts = {}, {}, {}, {}
+M.flames, M.smoke, M.chim, M.bolts, M.pulses = {}, {}, {}, {}, {}
+M.pulse_res = {}
 
 -- A jagged bolt from the ground (y = 0) to the cloud base (y = 1), crossed quads per segment.
 local function bolt_buffer(seed)
@@ -56,6 +66,39 @@ local function bolt_buffer(seed)
     end
   end
   return buf
+end
+
+-- Ring buffer (the annulus template) in one colour, for pulses.
+local function ring_buffer(col)
+  local t = require("game.view.propgen").mover_template("pulse")
+  local buf = buffer.create(t.nv, {
+    { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+    { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+    { name = H_COL, type = buffer.VALUE_TYPE_FLOAT32, count = 2 },
+  })
+  require("game.view.propgen").write_template(t, buffer.get_stream(buf, H_POS), buffer.get_stream(buf, H_NRM),
+    buffer.get_stream(buf, H_COL), col, nil, 1)
+  return buf
+end
+
+--- An expanding ring where a power landed (kind = the power's root event kind).
+function M.pulse(W, c, kind, radius)
+  if #M.pulses == 0 then return end
+  local col = M.PULSE_COLORS[kind] or { 1, 0.9, 0.6 }
+  local res = M.pulse_res[kind]
+  if not res then
+    res = resource.create_buffer("/tc/pulse_" .. kind .. ".bufferc", { buffer = ring_buffer(col) })
+    M.pulse_res[kind] = res
+  end
+  local p = M.pulses[M.pulse_next]
+  M.pulse_next = M.pulse_next % #M.pulses + 1
+  go.set(p.url, "vertices", res)
+  p.t, p.cell, p.r = 0, c, radius or 0.8
+end
+
+--- A meteor falling on cell c (then the pulse; the sim's fires follow).
+function M.meteor(W, c)
+  M.meteor_fx = { t = 0, cell = c }
 end
 
 --- Lightning bolt at sim cell c (natural strikes, the Lightning power).
@@ -109,7 +152,31 @@ function M.init(W, flame_factory, smoke_factory, surface)
       M.bolts[i] = { id = id, url = url, on = false, t = 99 }
     end
     M.bolt_next = 1
-    require("game.view.feed").on("lightning_strike", function(Wf, r) M.bolt(Wf, r.cell) end)
+    for i = 1, M.PULSES do
+      local id = factory.create(flame_factory, vmath.vector3(0, 0, 0))
+      local url = msg.url(nil, id, "mesh")
+      msg.post(url, MSG_DISABLE)
+      M.pulses[i] = { id = id, url = url, on = false, t = 99 }
+    end
+    M.pulse_next = 1
+    local fid = factory.create(flame_factory, vmath.vector3(0, 0, 0))
+    M.fireball = { id = fid, url = msg.url(nil, fid, "mesh"), on = false }
+    msg.post(M.fireball.url, MSG_DISABLE)
+    local feed = require("game.view.feed")
+    feed.on("lightning_strike", function(Wf, r) M.bolt(Wf, r.cell) end)
+    -- powers: every cast shows where it lands at once (even while paused; the sim applies
+    -- the command at the next tick)
+    local aim = require("game.view.aim")
+    local kinds = { weather = { rain = "power_rain", drought = "power_drought" },
+      temperature = { heat = "power_heat", chill = "power_chill" } }
+    local steps = { power_rain = 2, power_drought = 2, power_heat = 2, power_chill = 2, power_cull = 2,
+      power_introduce = 1, power_blight = 1, power_oil = 1, power_meteor = 2, power_lightning = 0.3 }
+    require("game.ui.powers").on_cast = function(Wc, id, cell, p)
+      local k = kinds[id] and kinds[id][p.mode] or ("power_" .. id)
+      if id == "lightning" then M.bolt(Wc, cell) end
+      if id == "meteor" then M.meteor(Wc, cell); return end
+      M.pulse(Wc, cell, k, aim.world_radius(Wc, steps[k] or 1))
+    end
   end
   M.chim_list = {}
   M.timer = 0
@@ -235,6 +302,56 @@ function M.update(W, dt, frozen)
       go.set_scale(scl, b.id)
     end
     if on ~= b.on then b.on = on; msg.post(b.url, on and MSG_ENABLE or MSG_DISABLE) end
+  end
+  -- power pulses: a ring grows from the target and vanishes
+  for _, p in ipairs(M.pulses) do
+    if not frozen then p.t = p.t + dt end
+    local on = p.t < M.PULSE_LIFE and p.cell ~= nil
+    if on then
+      local g = W.grid
+      local x, y, z = g.X[p.cell], g.Y[p.cell], g.Z[p.cell]
+      local r = M.surface(x, y, z) + 0.04
+      pos.x, pos.y, pos.z = x * r, y * r, z * r
+      go.set_position(pos, p.id)
+      go.set_rotation(vmx.set_up_yaw(rot, x, y, z, p.t), p.id)
+      local f = p.t / M.PULSE_LIFE
+      local s = p.r * (0.25 + 1.0 * math.sqrt(f)) * (f > 0.85 and (1 - f) / 0.15 or 1)
+      scl.x, scl.y, scl.z = s, s, s
+      go.set_scale(scl, p.id)
+    end
+    if on ~= p.on then p.on = on; msg.post(p.url, on and MSG_ENABLE or MSG_DISABLE) end
+  end
+  -- meteor: a fireball falls from the sky along a slant, then the blast ring
+  local m = M.meteor_fx
+  local fb = M.fireball
+  if m and fb then
+    if not frozen then m.t = m.t + dt end
+    local fall = 0.8
+    local on = m.t < fall
+    if on then
+      local g = W.grid
+      local x, y, z = g.X[m.cell], g.Y[m.cell], g.Z[m.cell]
+      local k = m.t / fall
+      local r = state.R + 7 * (1 - k) * (1 - k)
+      local ex, ez = z, -x
+      local el = sqrt(ex * ex + ez * ez) + 1e-6
+      local side = 2.5 * (1 - k)
+      pos.x, pos.y, pos.z = x * r + ex / el * side, y * r, z * r + ez / el * side
+      go.set_position(pos, fb.id)
+      go.set_rotation(vmx.set_up_yaw(rot, x, y, z, m.t * 9), fb.id)
+      local s = 0.35 + 0.25 * k
+      scl.x, scl.y, scl.z = s, s * 1.6, s
+      go.set_scale(scl, fb.id)
+    elseif not m.boom then
+      m.boom = true
+      local aim = require("game.view.aim")
+      M.pulse(W, m.cell, "power_meteor", aim.world_radius(W, 2.5))
+      M.pulse(W, m.cell, "power_heat", aim.world_radius(W, 1.2))
+      M.bolt(W, m.cell)
+      M.shake = 0.6
+    end
+    if on ~= fb.on then fb.on = on; msg.post(fb.url, on and MSG_ENABLE or MSG_DISABLE) end
+    if m.t > fall + 2 then M.meteor_fx = nil end
   end
   -- chimney smoke: each chimney gets a couple of puffs at different ages, rising and drifting
   local cl = M.chim_list or {}

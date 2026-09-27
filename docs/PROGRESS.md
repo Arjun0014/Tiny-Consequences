@@ -4,8 +4,9 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Current state
 
-- Chapter: **1b — Playtest-1 feedback (visual + living-world upgrade)**, then Chapter 2 from Stage 2.1. Started 27 Sep ~17:30 IST.
-- Feedback read: `docs/playtests/chapter-1-feedback.md` (27 Sep). Tasks below (F-tasks). Do them before Stage 2.1; they are not minor polish.
+- Chapter: 2 — Hand of God. Playtest-1 feedback work done first (commit 74d9fe0). Stage 2.1 Powers **done** (except one flaky W03 check, see below); Stage 2.2 Causality **mostly done** (P08/P09, heatwave/cold-snap/sea-ice detectors; events.txt review not done); Stage 2.3 **started** (`content/event_text.lua` only). Session ended 27 Sep 21:10 IST at ~1M context (handoff overdue: keep to ~700K next time).
+- Next: read `docs/SESSION_HANDOFF.md`, then: fix W03 flakiness, run `npm run test:sim -- --full` once (last full run predates the heat/sea-ice detectors), then Stage 2.3 chain popup / "Why?" / event log.
+- Feedback read: `docs/playtests/chapter-1-feedback.md` (27 Sep). F-tasks below: F1 and F2.1–F2.3 done; F2.4 partly; F2.5–F2.7 partly (see list).
 - Blockers needing the human: none.
 - Machine note: this laptop (12 threads, 11.6 GB RAM) also runs Arjun's other workloads; on 27 Sep a 12-process Python job exhausted the commit limit and process creation failed for a while. Run seed sweeps sequentially when memory is low (`cmd //c systeminfo | grep -i memory`).
 
@@ -20,17 +21,17 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 - [x] F1.6 Settlements (laid-out villages, 4 culture styles, piers, granary, chimney smoke): better houses (walls, roofs, chimneys, doors), size variety with population, fences, paths, wells/granaries, docks; farm fields as real crop rows with growth stages; chimney smoke.
 - [x] F1.7 People (new model, walk cycle, job activities): new villager model (proportions, head/hair, clothing by job, arms/legs), walking animation, visible activities (farming in fields, fishing boats going out, woodcutting, carrying).
 - [x] F1.8 Animals (deer with antlers, wolves; walk cycle; no birds yet): better deer/wolves, herds, animation; birds/fish jumps if cheap.
-- [ ] F1.9 Performance measured at every step (release build, bridge numbers, draw calls, vertex counts); record new budgets in DECISIONS.
-- [ ] F1.10 After-set: same shots after the upgrade; compare side by side and iterate until the difference is substantial.
+- [~] F1.9 Performance measured (CPU side only: view ≈ 7 ms/frame avg in headless release; real-GPU fps unknown — ask Arjun) at every step (release build, bridge numbers, draw calls, vertex counts); record new budgets in DECISIONS.
+- [x] F1.10 After-set (out/shots/latest vs out/shots/before_ch1): same shots after the upgrade; compare side by side and iterate until the difference is substantial.
 
 **F2 A world that visibly lives.** No scripted events: improve the real simulation and how it is shown.
 - [x] F2.1 Resolution study (D-047: 642 / 1,442 / 2,562 cells measured) (profiling, not the old benchmark): measure the full tick at 642 / 1,442 (f=12) / 2,562 cells in LuaJIT (P07 instruction counts) and in the HTML5 release build; per-system cost; which systems could run multi-rate; whether a hierarchical scheme (coarse climate, finer land/ecology) buys richer local behaviour; also check whether the visual problem is resolution or update rules/visualisation. Decide with evidence → DECISIONS.
 - [x] F2.2 Apply the decision (f12, re-tuned, default world seed 22) (grid level and/or multi-rate/hierarchy), re-tune bands, keep S01–S04, P01–P10 green, regenerate default.tcsave.
 - [x] F2.3 Visible seasons (terrain + props from the cell texture): spring bloom, summer green, autumn colour, winter snow cover on land (from sim temp/ice), crops that visibly grow and get harvested, grass that browns in drought.
-- [~] F2.4 Visible weather from the sim (rain/snow curtains, storm clouds done; lightning flashes with the Lightning power): clouds that form/move with moisture and wind, rain/snow falling where `precip` is, storm darkening, lightning flashes for real lightning strikes, fog.
-- [ ] F2.5 Visible life: villagers with daily activity (to fields, boats, woodcutting, home), herds that move with the sim's animal densities and migrations, visible births/deaths/migrations (migrant columns walking to a new village), houses that appear/disappear with population, fields that expand/contract with land use, ruins decaying, fire fronts and regrowth.
-- [ ] F2.6 More local dynamics in the sim where profiling allows (finer cells, per-cell variety), checked against the tuning bands and headline rates.
-- [ ] F2.7 Visible consequences: event FX on the planet for real events (fire, flood water, drought cracks, famine icons, oil sheen, crop failure).
+- [x] F2.4 Visible weather from the sim (rain/snow curtains, storm clouds, bolts for natural lightning and the Lightning power): clouds that form/move with moisture and wind, rain/snow falling where `precip` is, storm darkening, lightning flashes for real lightning strikes, fog.
+- [~] F2.5 Visible life (done: job activities, walk cycles, migrant columns, houses follow population, fields follow land use; not done: birth/death pops): villagers with daily activity (to fields, boats, woodcutting, home), herds that move with the sim's animal densities and migrations, visible births/deaths/migrations (migrant columns walking to a new village), houses that appear/disappear with population, fields that expand/contract with land use, ruins decaying, fire fronts and regrowth.
+- [x] F2.6 More local dynamics (via f12, D-047) in the sim where profiling allows (finer cells, per-cell variety), checked against the tuning bands and headline rates.
+- [~] F2.7 Visible consequences (done: fire, drought browning, oil, blight tint, burnt snags, rivers swell in floods; not done: flood water sheet, famine icons): event FX on the planet for real events (fire, flood water, drought cracks, famine icons, oil sheen, crop failure).
 
 **Then Chapter 2** from Stage 2.1 (powers, real S02–S04, S05–S07/S10–S12, tutorial world + S15), 2.2, 2.3 (chain popup and "Why?"), and onward.
 
@@ -44,6 +45,8 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 ## Key numbers (update as they change)
 
 - SIM_LEVEL: 12 (geodesic f12, D-047) — 1,442 cells (was 3 = 642, D-030)
+- Sim tick at f12, HTML5 release, synchronous: 4.2 ms median (bench:web, D-047); W08 3.8 ms median. P07 baseline 513,763 instr/tick (level 12).
+- Default world: seed 22 (D-047). Tutorial world: seed 8 (D-049).
 - Sim tick, real default world, HTML5 release, synchronous (W08, 27 Sep): **1.9 ms median, p95 3.3–4.0 ms** (budget 4 / 8). Wall-clock numbers on this machine swing up to 2× with other load; use P07 instruction counts to compare.
 - P07 baseline (`tests/bench-baseline.json`, D-046): 241,170 VM instructions/tick (moisture 78.6k, hydrology 33.7k, temperature 27.0k, vegetation 26.6k, fauna 19.9k, villages 11.6k, ice 9.4k, ocean 9.1k, biome 8.7k, fire 4.6k, detectors 4.4k); ≈ 7.9 ns/instruction in the browser. Year-boundary tick ≈ 540k.
 - In-game at ⏩ under headless SwiftShader (not representative of a GPU): tick 5–13 ms median (CPU contention with the rasteriser: 13.8 ms at 1280×720 vs 6.8 at 320×180), view 4.5–8 ms/frame at 640×360. Real-GPU numbers come from the playtest.
@@ -70,7 +73,14 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Stage entries
 
-### [ch1b] Playtest-1 feedback I: f12 sim + renderer v2 — 2026-09-28 ~01:15 IST
+### [ch2.s1 + s2 partial] Powers, causality completeness — 2026-09-27 21:10 IST (uncommitted work committed at handoff)
+- Sim: `sim/powers.lua` (8 powers, logged command `power`, root events power_*, tags on every field touched; weather/temperature forcings and blight in a new first system `powers`), `villages.settlers`, `sim/tutorial.lua` (tutorial world = seed 8, `assets/worlds/tutorial.tcsave`), detectors credit a player "volley" (same power, same tick) and re-tag across it, starving herds overgraze (`overgraze`), heatwave / cold_snap / sea_ice_formed detectors, blight_spread headline kind. D-049.
+- Tests: scenarios now use powers (S02 Cull on every pack, S03 Lightning on every farm ×2 harvests, S04 Oil power) + new S05, S06, S07 (threshold 0.6, D-049), S10 (meteor part), S11, S12 (sea ice only), S15 (tutorial chain: lightning > tanker_sunk > fish_collapse > famine > deaths_spike); P08 attribution (96% of added headlines chain to the player), P09 headline rate (0.29/y); unit `test_powers`. Last full profile 78/78 (S01 9/10, S02 8/10, S03 9/10, S04 8/10, S05 7/10, S06 8/10, S07 10/10, S10 10/10, S11 9/10, S12 10/10, S15 1/1) — before the heat/sea-ice detectors; afterwards quick scenarios + P08 + P09 green, full not re-run.
+- Game: `game/ui/powers.lua` (defs, modes/species, cooldowns, target checks, cast via the command queue), power bar in the HUD (Shift+1..8, choice row), `game/view/aim.lua` aiming ring, cast effects at once (bolt, pulse disc, falling meteor), blight tint on fields, bridge commands `power`, `arm`, `look`, `gfx`, URL param `gfx=low` for functional web tests. New icons in `scripts/gen_ui.py`.
+- Web: W03 (new) passes lightning, rain, drought, heat, cull, introduce, blight, oil, meteor in one run or another, but the pulse-only checks are borderline (chill 4.1 vs 5 in the last run) — make the test wait for the sim's effect or boost pulse contrast. W06 green after rebuild. W01, W02, W07, W08, W09 green at the last full run.
+
+
+### [ch1b] Playtest-1 feedback I: f12 sim + renderer v2 — 2026-09-27 ~20:00 IST
 - Resolution study (D-047): browser tick 2.0 ms (642 cells) / 4.2 ms (1,442, geodesic f12) / 7.9 ms (2,562). Switched to f12: `grid.build` takes geodesic frequencies ≥ 10. Re-tuned (moisture diffusion, area-based oil spills, wildfire headline size, news fatigue, villager CO₂), village fires burn granaries, S01 desert band 5–30%, S03 burns two harvests, S04 spills a tanker cargo. Default world seed 22. P07 re-baselined 513,763 instr/tick.
 - Renderer v2 (D-048): shadow map + post pipeline (DoF/bloom/grade/FXAA), terrain materials with real farm plots, model kit (trees, plants, buildings, villagers, animals), settlement layouts, seasonal/snow/fire props from the cell texture, walk cycles, job activities, rain/snow/storm clouds, chimney smoke.
 - Pitfalls found: `render.render_target` in 1.13.1 has no `sample_count`; a props material sampler order bug bound the shadow map as the cell texture (everything "on fire"); an extra vertex stream on world-space movers crashed batching; mover buffers must declare the same colour width as their .buffer files; mesh.max_count raised to 1024.

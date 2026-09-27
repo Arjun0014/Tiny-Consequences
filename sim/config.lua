@@ -204,7 +204,8 @@ C.FAUNA = {
   e_pred = 0.1, m_pred = 0.010,           -- predator conversion efficiency; mortality per tick
                                           -- (predator units are 1/3 of grazer units: a×3, t_h/3, e/3)
   graze = 0.004, h_graze = 0.1,           -- grass eaten per tick per unit grazer (saturating in grass)
-  browse = 0.001, h_browse = 0.08,        -- forest browsed: browse × H × (browse_base + hunger) × f/(f + h):
+  overgraze = 3.0, overgraze_from = 0.7,  -- starving herds (hunger = H / K_eff above 0.7) graze up to 4x as hard (D-049)
+  browse = 0.0013, h_browse = 0.08,       -- forest browsed (0.001 until D-049): browse × H × (browse_base + hunger) × f/(f + h):
   browse_base = 0.05,                    --   per unit strongest when forest is low; hunger = H / K_eff (≤ 1)
   raid = 0.01, h_raid = 0.1,              -- crop raided per tick per unit grazer
   fire_mort = 0.3,                        -- mortality per tick per unit fire intensity
@@ -332,10 +333,35 @@ C.DETECT = {
   -- drought: connected land (>= drought_cells level-4 cells) whose soil water stayed below drought_anom x
   -- its own seasonal normal (>= drought_norm_min) for drought_months; a cell recovers at drought_exit_anom
   drought_anom = 0.7, drought_months = 3, drought_cells = 12, drought_norm_min = 0.12, drought_exit_anom = 0.9,
+  heat_anom = 4, heat_exit = 2, heat_cells = 6,   -- heatwave / cold snap: |heat anomaly| >= 4 °C over >= 6 level-4 cells
+  sea_ice_on = 0.5, sea_ice_off = 0.2, sea_ice_cells = 6,   -- sea ice formed (caused freezes only)
   flood_cooldown = 24,                    -- ticks before the same cell floods again (as an event)
   crop_failure = 0.5,                     -- harvest below this x the village's 5-year average
   famine_cooldown = 24,
   deaths_spike = 3,                       -- non-age deaths in a village in one month
+}
+
+-- Player powers (04_PLAYER.md §2, sim/powers.lua) ------------------------------------------------
+C.POWERS = {
+  radius = 2, introduce_radius = 1,       -- level-4 steps
+  season_ticks = 12,                      -- Weather / Temperature last one season
+  deluge_mult = 2.5, deluge_add = 0.04,   -- forced rain: precip x mult + add (moisture units per tick)
+  drought_mult = 0.05, drought_heat = 3,  -- drought: rain blocked, +3 °C heat anomaly (drier soil)
+  temp_anom = 6,                          -- Heat / Chill: ± °C heat anomaly held for the season
+  sea_factor = 2,                         -- ... times this over open water (the sea holds it)
+  cull_fraction = 0.9,
+  introduce = { grazers = 0.35, predators = 0.12, fish = 0.35 },  -- density added per cell
+  settlers = 5,
+  lightning_heat = 4,                     -- °C of heat anomaly where lightning strikes land
+  boat_oil = 3,                           -- oil from a sunk fishing boat (level-4-equivalent cells)
+  oil = 36,                               -- Oil Spill pulse on open water, a tanker cargo (a tanker there is sunk instead)
+  blight_dieback = 0.6,                   -- share of an infected farm's standing crop lost per month
+  blight_spread = 0.3,                    -- monthly chance per neighbouring farm cell
+  blight_trade = 0.08, blight_trade_steps = 12, -- monthly chance to reach another village within 12 level-4 steps (villages are sparse)
+  blight_winters = 2,                     -- burns out after two winters
+  meteor_radius = 2, meteor_heat = 12, meteor_kill = 0.8,
+  meteor_deaths_centre = 0.6, meteor_deaths_ring = 0.15,
+  meteor_aerosol = 1.2,                   -- impact winter (aerosol units; k_aer cools the whole planet)
 }
 
 return C

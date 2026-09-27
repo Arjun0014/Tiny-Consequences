@@ -11,6 +11,7 @@ local hudstats = require("game.ui.hudstats")
 local speed = require("game.platform.speed")
 local view = require("game.view.view")
 local camera = require("game.view.camera")
+local powers = require("game.ui.powers")
 
 local C = ui.C
 local V3 = vmath.vector3
@@ -253,11 +254,82 @@ local function build_misc(self)
 	gui.set_enabled(edge, false)
 end
 
+-- Power bar (Stage 2.1, 04 §5): 8 round buttons with cooldown pies; the armed power glows gold
+-- and, if it has modes or species, shows a row of choices above it.
+local PB_BTN, PB_GAP = 54, 10
+
+local function build_powers(self)
+	local n = #powers.DEFS
+	local w = n * PB_BTN + (n - 1) * PB_GAP + 28
+	local h = PB_BTN + 20
+	local bar, bar_sh = ui.panel(nil, REF_W / 2, 14 + h / 2, w, h)
+	ui.anchor(bar, gui.ANCHOR_NONE, gui.ANCHOR_BOTTOM)
+	ui.anchor(bar_sh, gui.ANCHOR_NONE, gui.ANCHOR_BOTTOM)
+	self.pbar = bar
+	self.pbar_sh = bar_sh
+	self.pbtns = {}
+	for i, d in ipairs(powers.DEFS) do
+		local x = -w / 2 + 14 + PB_BTN / 2 + (i - 1) * (PB_BTN + PB_GAP)
+		local b = ui.box(bar, x, 0, PB_BTN, PB_BTN, "circle", C.soft)
+		local ic = ui.icon(b, 0, 1, d.icon, 30, C.text)
+		local pie = gui.new_pie_node(V3(0, 0, 0), V3(PB_BTN, PB_BTN, 0))
+		gui.set_texture(pie, "ui")
+		gui.play_flipbook(pie, "circle")
+		gui.set_color(pie, vmath.vector4(0.16, 0.14, 0.21, 0.5))
+		gui.set_fill_angle(pie, 0)
+		gui.set_layer(pie, "box")
+		gui.set_parent(pie, b, false)
+		local key = ui.text(b, PB_BTN / 2 - 9, -PB_BTN / 2 + 8, tostring(i), "fredoka", 12, C.muted, gui.PIVOT_CENTER)
+		self.pbtns[i] = { node = b, icon = ic, pie = pie, key = key, power = i, tip = d.tip .. "   (Shift+" .. i .. ")" }
+	end
+	-- choices for the armed power (modes / species), above the bar
+	self.popts = {}
+	for k = 1, 4 do
+		local b = ui.box(bar, 0, h / 2 + 30, 42, 42, "circle", C.panel_solid)
+		local ic = ui.icon(b, 0, 0, "info", 24, C.text)
+		gui.set_enabled(b, false)
+		self.popts[k] = { node = b, icon = ic, opt = k }
+	end
+	self.phint = ui.text(bar, 0, h / 2 + 64, "", "nunito_semi", 16, C.coral, gui.PIVOT_CENTER)
+	gui.set_enabled(bar, false)
+	gui.set_enabled(bar_sh, false)
+end
+
+local function update_powers(self)
+	local armed = powers.armed
+	for i, b in ipairs(self.pbtns) do
+		local d = powers.DEFS[i]
+		local cd = powers.cool[d.id] or 0
+		gui.set_fill_angle(b.pie, cd > 0 and 360 * cd / d.cooldown or 0)
+		local col = (armed == i) and C.gold or (self.hover == b and C.hover or C.soft)
+		gui.set_color(b.node, col)
+		ui.set_icon(b.icon, powers.icon(d))
+	end
+	local d = armed and powers.DEFS[armed]
+	local list = d and (d.modes or d.species)
+	local bx = d and gui.get_position(self.pbtns[armed].node).x or 0
+	for k, o in ipairs(self.popts) do
+		local item = list and list[k]
+		gui.set_enabled(o.node, item ~= nil)
+		if item then
+			local x = bx + (k - (#list + 1) / 2) * 48
+			gui.set_position(o.node, V3(x, gui.get_position(o.node).y, 0))
+			ui.set_icon(o.icon, item.icon)
+			local sel = (powers.mode[d.id] or 1) == k
+			gui.set_color(o.node, sel and C.gold or (self.hover == o and C.hover or C.panel_solid))
+			o.tip = item.name
+			o.power = armed
+		end
+	end
+	gui.set_text(self.phint, powers.hint and powers.hint.text or "")
+end
+
 -- Lifecycle ----------------------------------------------------------------------------------
 
 function init(self)
 	build_top(self)
 	build_inspector(self)
+	build_powers(self)
 	build_misc(self)
 	build_loading(self)
 	self.sel_version = -1
@@ -373,6 +445,7 @@ function update(self, dt)
 		gui.set_size(self.load_bar, V3(math.max(14, 380 * (L.frac or 0)), 14, 0))
 		if self.shown.top then
 			gui.set_enabled(self.clock, false); gui.set_enabled(self.stats, false)
+			gui.set_enabled(self.pbar, false); gui.set_enabled(self.pbar_sh, false)
 			gui.set_enabled(self.ins_root, false)
 			self.shown.top = false
 		end
@@ -384,8 +457,10 @@ function update(self, dt)
 	if not W then return end
 	if not self.shown.top then
 		gui.set_enabled(self.clock, true); gui.set_enabled(self.stats, true)
+		gui.set_enabled(self.pbar, true); gui.set_enabled(self.pbar_sh, true)
 		self.shown.top = true
 	end
+	update_powers(self)
 	self.refresh = self.refresh - dt
 	local sel = selection.sel
 	local rebuild = selection.version ~= self.sel_version
@@ -450,6 +525,15 @@ local function hit(self, x, y)
 			if gui.pick_node(self.ins_panel, x, y) then return "panel" end
 		end
 	end
+	if gui.is_enabled(self.pbar) then
+		for _, o in ipairs(self.popts) do
+			if gui.is_enabled(o.node) and gui.pick_node(o.node, x, y) then return o end
+		end
+		for _, b in ipairs(self.pbtns) do
+			if gui.pick_node(b.node, x, y) then return b end
+		end
+		if gui.pick_node(self.pbar, x, y) then return "panel" end
+	end
 	if gui.is_enabled(self.edge) and gui.pick_node(self.edge, x, y) then return "edge" end
 	return nil
 end
@@ -473,6 +557,11 @@ local function activate(self, h)
 			local l = math.sqrt(t.x ^ 2 + t.y ^ 2 + t.z ^ 2)
 			camera.fly_to_dir(t.x / l, t.y / l, t.z / l)
 		end
+	elseif type(h) == "table" and h.opt then
+		local d = powers.DEFS[h.power]
+		if d then powers.cycle_option(d, h.opt) end
+	elseif type(h) == "table" and h.power then
+		powers.arm(h.power)
 	elseif type(h) == "table" and h.level then
 		speed.set(h.level)
 	elseif type(h) == "table" and h.key then
@@ -489,9 +578,10 @@ function on_input(self, action_id, action)
 		local h = hit(self, action.x, action.y)
 		self.hover = (h ~= "panel") and h or nil
 		uistate.pointer_over_ui = h ~= nil
-		if type(h) == "table" and h.tip then
-			local gy = gui.get_screen_position(self.clock).y
-			local _ = gy
+		if type(h) == "table" and h.tip and (h.power or h.opt) then
+			local bx = gui.get_position(self.pbar).x + gui.get_position(h.node).x
+			show_tip(self, h.tip, bx, h.opt and 176 or 120)
+		elseif type(h) == "table" and h.tip then
 			show_tip(self, h.tip, h.level and (gui.get_position(h.node).x + gui.get_position(self.clock).x) or (gui.get_position(self.stats).x + h.x), REF_H - 92)
 		else
 			show_tip(self, nil)

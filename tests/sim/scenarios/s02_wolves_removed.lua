@@ -1,5 +1,5 @@
--- S02 wolves_removed (07_TESTING.md §3): remove every predator on the largest continent.
--- Chapter 1 uses the test hook (via the cull_all helper); Stage 2.1 switches to the Cull power.
+-- S02 wolves_removed (07_TESTING.md §3): cull every predator cluster on the largest continent.
+-- Stage 2.1: the Cull power (radius 2, 90%) on every cluster, like a determined player.
 return {
   name = "wolves_removed",
   seeds = "standard",
@@ -7,7 +7,7 @@ return {
   run_years = 10,
   chapter = 1,
   actions = {
-    { year = 1, helper = "cull_all", species = "predators", target = "continent:largest" },
+    { year = 1, power = "cull", helper = "cull_all", species = "predators", target = "continent:largest" },
   },
   expect = {
     { metric = "grazers@target", compare = "ratio_to_baseline", op = ">=", value = 2.0, within_years = 4 },

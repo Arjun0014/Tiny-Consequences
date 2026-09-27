@@ -11,6 +11,8 @@ local fx = require("game.view.fx")
 local selring = require("game.view.selring")
 local rivers = require("game.view.rivers")
 local feed = require("game.view.feed")
+local aim = require("game.view.aim")
+local powers_ui = require("game.ui.powers")
 local grid = require("sim.grid")
 local clock = require("game.platform.clock")
 local speed = require("game.platform.speed")
@@ -80,6 +82,7 @@ function M.build(W, urls, step)
   puppets.init(W, urls, M.surface)
   puppets.height = function(v) return M.PL.h[v] end
   selring.init(urls.ring_factory, M.surface)
+  aim.init(urls.ring_factory, M.surface)
   fx.init(W, urls.flame_factory, urls.smoke_factory, M.surface)
   camera.height_fn = function(x, y, z) return M.surface(x, y, z) end
   camera.focus_cell = nil
@@ -201,6 +204,8 @@ function M.update(dt)
     puppets.update(W, dt, camera.zoom, state.frozen)
     fx.update(W, dt, state.frozen)
     selring.update(W, dt)
+    local armed = powers_ui.armed and powers_ui.DEFS[powers_ui.armed]
+    aim.update(W, dt, armed and M.aim_cell or nil, armed and armed.radius or 0)
     local e = clock.now_ms()
     P.terrain = P.terrain + (b - a - P.terrain) * 0.05
     P.rivers = (P.rivers or 0) + (b2 - b - (P.rivers or 0)) * 0.05

@@ -165,6 +165,12 @@ void main()
         if (farmk > 0.01) {
             highp float fh = 0.0;
             vec3 fc = tc_fields(var_wpos, up, var_farm.y, detail, fh);
+            // blight: the crops rot purple-brown in blotches
+            float bl = var_fx2.w;
+            if (bl > 0.02) {
+                float blot = smoothstep(0.35, 0.65, tc_noise(var_wpos * 30.0) + bl * 0.5);
+                fc = mix(fc, vec3(0.42, 0.26, 0.36) * (0.8 + 0.3 * tc_noise(var_wpos * 90.0)), blot * min(1.0, bl * 1.4));
+            }
             base = mix(base, fc, farmk);
             hgt += fh * farmk;
         }

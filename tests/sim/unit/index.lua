@@ -9,6 +9,7 @@ return {
   "tests.sim.unit.test_regions",
   "tests.sim.unit.test_detectors",
   "tests.sim.unit.test_testhooks",
+  "tests.sim.unit.test_powers",
   "tests.sim.unit.test_ocean",
   "tests.sim.unit.test_fauna",
   "tests.sim.unit.test_ice_bridge",

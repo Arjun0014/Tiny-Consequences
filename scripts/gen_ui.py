@@ -341,6 +341,87 @@ def _(d):
     circle(d, 32, 32, 28); circle(d, 32, 32, 22, CLEAR); circle(d, 32, 20, 4); rrect(d, 29, 28, 35, 46, 2)
 
 
+# --- power icons (Stage 2.1) ----------------------------------------------------------------
+
+
+@icon('bolt')
+def _(d):
+    poly(d, [(36, 2), (12, 36), (28, 36), (22, 62), (52, 24), (35, 24), (44, 2)])
+
+
+@icon('rain')
+def _(d):
+    circle(d, 22, 26, 12); circle(d, 36, 20, 15); circle(d, 48, 28, 10); rrect(d, 12, 26, 56, 38, 6)
+    for x in (18, 32, 46):
+        line(d, [(x + 2, 44), (x - 3, 58)], 4)
+
+
+@icon('drought')
+def _(d):
+    circle(d, 32, 26, 12)
+    for k in range(8):
+        a = k * math.pi / 4
+        line(d, [(32 + math.cos(a) * 17, 26 + math.sin(a) * 17), (32 + math.cos(a) * 24, 26 + math.sin(a) * 24)], 4)
+    line(d, [(6, 56), (22, 52), (30, 58), (42, 51), (58, 56)], 4)
+
+
+@icon('heat')
+def _(d):
+    rrect(d, 26, 4, 38, 42, 6); circle(d, 32, 48, 12)
+    for y in (12, 20, 28):
+        line(d, [(42, y), (50, y)], 3)
+    poly(d, [(8, 22), (14, 10), (18, 22)]); poly(d, [(46, 50), (54, 38), (58, 50)])
+
+
+@icon('chill')
+def _(d):
+    for k in range(3):
+        a = k * math.pi / 3
+        line(d, [(32 + math.cos(a) * 26, 32 + math.sin(a) * 26), (32 - math.cos(a) * 26, 32 - math.sin(a) * 26)], 5)
+    for k in range(6):
+        a = k * math.pi / 3
+        cx, cy = 32 + math.cos(a) * 17, 32 + math.sin(a) * 17
+        line(d, [(cx, cy), (cx + math.cos(a + 0.8) * 7, cy + math.sin(a + 0.8) * 7)], 3)
+        line(d, [(cx, cy), (cx + math.cos(a - 0.8) * 7, cy + math.sin(a - 0.8) * 7)], 3)
+
+
+@icon('paw')
+def _(d):
+    circle(d, 32, 42, 13)
+    circle(d, 15, 26, 7); circle(d, 25, 14, 7); circle(d, 39, 14, 7); circle(d, 49, 26, 7)
+
+
+@icon('blight')
+def _(d):
+    circle(d, 32, 32, 16)
+    for k in range(8):
+        a = k * math.pi / 4
+        line(d, [(32 + math.cos(a) * 16, 32 + math.sin(a) * 16), (32 + math.cos(a) * 26, 32 + math.sin(a) * 26)], 4)
+        circle(d, 32 + math.cos(a) * 27, 32 + math.sin(a) * 27, 4)
+    circle(d, 27, 28, 4, CLEAR); circle(d, 37, 36, 3, CLEAR)
+
+
+@icon('oil')
+def _(d):
+    poly(d, [(32, 4), (48, 32), (16, 32)]); circle(d, 32, 38, 16)
+    circle(d, 26, 38, 4, CLEAR)
+
+
+@icon('meteor')
+def _(d):
+    circle(d, 40, 40, 14)
+    line(d, [(6, 6), (30, 30)], 6); line(d, [(18, 4), (34, 22)], 4); line(d, [(4, 18), (22, 34)], 4)
+    circle(d, 36, 36, 3, CLEAR); circle(d, 45, 44, 2, CLEAR)
+
+
+@icon('settlers')
+def _(d):
+    poly(d, [(6, 42), (58, 42), (50, 56), (14, 56)])
+    line(d, [(32, 8), (32, 42)], 3)
+    poly(d, [(34, 10), (54, 36), (34, 36)])
+    circle(d, 22, 30, 5)
+
+
 for name, fn in ICONS.items():
     img, d = canvas(64)
     fn(d)

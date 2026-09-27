@@ -37,6 +37,7 @@ def("biome_shift",      { actor = "derived", icon = "biome", agg = 48, text = "L
 def("fire_started",     { actor = "derived", icon = "fire", agg = 4, text = "Fire" })
 def("wildfire",         { actor = "derived", icon = "wildfire", headline = true, hmin = 10, text = "Wildfire" })
 def("crop_failure",     { actor = "derived", icon = "crop", text = "Crop failure" })
+def("blight_spread",    { actor = "derived", icon = "blight", headline = true, text = "Blight spreads" })
 def("famine",           { actor = "derived", icon = "famine", headline = true, text = "Famine" })
 def("deaths_spike",     { actor = "derived", icon = "death", text = "Deaths" })
 def("person_died",      { actor = "derived", icon = "ghost", text = "Death" })
@@ -65,7 +66,6 @@ def("sea_level_change", { actor = "derived", icon = "sea", headline = true, text
 def("era_change",       { actor = "derived", icon = "era", headline = true, text = "New era" })
 def("tsunami",          { actor = "derived", icon = "wave", headline = true, text = "Tsunami" })
 def("new_island",       { actor = "derived", icon = "island", headline = true, text = "New island" })
-def("blight_spread",    { actor = "derived", icon = "blight", text = "Blight spreads" })
 def("flooded_village",  { actor = "derived", icon = "flood", headline = true, text = "Village flooded" })
 
 return K

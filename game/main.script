@@ -19,6 +19,10 @@ local selection = require("game.ui.selection")
 local H_SPACE = hash("key_space")
 local H_SHIFT = hash("key_shift")
 local H_F3 = hash("key_f3")
+local POWER_KEYS = {
+	[hash("key_1")] = 1, [hash("key_2")] = 2, [hash("key_3")] = 3, [hash("key_4")] = 4,
+	[hash("key_5")] = 5, [hash("key_6")] = 6, [hash("key_7")] = 7, [hash("key_8")] = 8,
+}
 local SPEED_KEYS = {
 	[hash("key_1")] = 1, [hash("key_2")] = 2, [hash("key_3")] = 3, [hash("key_4")] = 4,
 }
@@ -211,6 +215,15 @@ function init(self)
 			population = W and require("game.view.ents").population(W) or 0,
 			villages = W and #require("game.view.ents").villages(W) or 0,
 			events = W and W.E and W.E.total or 0,
+			last_power = (function()
+				if not (W and W.E) then return "" end
+				local o = W.E.order
+				for k = #o, math.max(1, #o - 200), -1 do
+					local r = W.E.rec[o[k]]
+					if r and r.parent == 0 and r.kind:sub(1, 6) == "power_" then return r.kind .. "#" .. r.id end
+				end
+				return ""
+			end)(),
 			ff_remaining = self.ff and (self.ff.target - W.tick) or 0,
 			last_input = self.last_input or false,
 			sim_version = sim_version.SIM_VERSION,
@@ -305,6 +318,7 @@ function update(self, dt)
 	end
 
 	controls.tick(dt)
+	require("game.ui.powers").tick(dt)
 	view.update(dt)
 	if self.ready and self.perf then
 		local p = self.perf
@@ -327,9 +341,10 @@ function on_input(self, action_id, action)
 		if action.pressed then self.shift = true elseif action.released then self.shift = false end
 		return false
 	end
-	if action_id ~= nil and self.ready and not self.shift then
+	if self.ready and not self.shift then
 		if controls.on_input(self.W, action_id, action) then return true end
 	end
+	if action_id == nil then return false end
 	if not action.pressed then
 		return false
 	end
@@ -343,6 +358,13 @@ function on_input(self, action_id, action)
 		return true
 	elseif action_id == H_F3 then
 		uistate.debug = not uistate.debug
+		return true
+	end
+	if self.shift and self.ready and POWER_KEYS[action_id] then
+		-- Shift+1..8: arm a power (04 §2)
+		local powers = require("game.ui.powers")
+		local n = POWER_KEYS[action_id]
+		if powers.DEFS[n] then powers.arm(n) end
 		return true
 	end
 	local lvl = SPEED_KEYS[action_id]

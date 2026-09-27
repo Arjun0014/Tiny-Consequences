@@ -70,6 +70,10 @@ function sys.init(W)
     D.fish_low = f(n, 0)
     D.flood_last = f(n, -1000000)
   end
+  -- heatwave / cold snap: +1 / -1 while a cell is in one (added in Stage 2.2)
+  D.heat_on = D.heat_on or f(n, 0)
+  -- sea ice: 1 while a sea cell is frozen over (ice >= sea_ice_on)
+  D.sea_ice = D.sea_ice or f(n, 0)
   local sc = W.scratch
   sc.det_tk = sc.det_tk or {}
   sc.det_tc = sc.det_tc or {}
@@ -112,6 +116,16 @@ local function dominant(W, cells, m, tags, share)
     if tc[j] > bc or (tc[j] == bc and tk[j] < best) then best, bc = tk[j], tc[j] end
   end
   if bc > 0 and bc >= share * m then return best end
+  -- many separate player actions (e.g. a Cull on every wolf pack) jointly caused it: credit
+  -- the player's largest one when the player's tags together cover the share
+  local ps, pb, pc = 0, 0, 0
+  for j = 1, k do
+    if W.E and events.is_player_rooted(W, tk[j]) then
+      ps = ps + tc[j]
+      if tc[j] > pc or (tc[j] == pc and tk[j] < pb) then pb, pc = tk[j], tc[j] end
+    end
+  end
+  if pc > 0 and ps >= share * m then return pb end
   return 0
 end
 sys.dominant = dominant
@@ -123,10 +137,23 @@ end
 
 -- Re-tag cells whose tag == parent with id (cells with a different cause keep theirs). With
 -- parent 0 (a natural event) only cells where the field is present are claimed.
+-- A player "volley": several root events of one power cast in the same tick (a Cull on every
+-- wolf pack). An event parented to one of them claims the cells tagged by the others too.
+local CUR_W = nil
+local function same_volley(t, parent)
+  local W = CUR_W
+  if not W or t == 0 or parent == 0 or t == parent then return t == parent end
+  local E = W.E
+  if E.parent[t] ~= 0 or E.parent[parent] ~= 0 then return false end
+  local a, b = E.rec[t], E.rec[parent]
+  return a ~= nil and b ~= nil and a.actor == "player" and a.kind == b.kind and a.tick == b.tick
+end
+
 local function retag(cells, m, tags, idle, vals, parent, id)
   for i = 1, m do
     local c = cells[i]
-    if tags[c] == parent and (parent ~= 0 or vals[c] > 0) then tags[c] = id; idle[c] = 0 end
+    local t = tags[c]
+    if (t == parent or same_volley(t, parent)) and (parent ~= 0 or vals[c] > 0) then tags[c] = id; idle[c] = 0 end
   end
 end
 
@@ -139,7 +166,8 @@ local function retag_species(W, cells, m, sp, parent, id, dir, cfg)
   if parent ~= 0 then
     for i = 1, m do
       local c = cells[i]
-      if tags[c] == parent then tags[c] = id; idle[c] = 0 end
+      local t = tags[c]
+      if t == parent or same_volley(t, parent) then tags[c] = id; idle[c] = 0 end
     end
     return
   end
@@ -539,6 +567,118 @@ local function village_detect(W, cfg, record)
 end
 
 -- Drought: a region's land soil water < drought_soil and < drought_anom × its normal for a season.
+-- Heatwaves and cold snaps (03 §4): a connected patch where the local heat anomaly holds
+-- beyond ±heat_anom for the month (fires, the player's Heat / Chill, eruptions). The event's
+-- parent is the anomaly's dominant cause; the patch is re-tagged so what the heat does next
+-- (crops cooked, soil dried, sea ice) chains to it.
+local function heat_detect(W, cfg, record)
+  local D = W.D
+  local on = D.heat_on
+  local ha, ch, ih = W.F.heat_anom, W.C.heat_anom, W.I.heat_anom
+  local thr, exit_ = cfg.heat_anom, cfg.heat_exit
+  local sc = W.scratch
+  local newl = sc.det_new
+  local nnew = 0
+  local n = W.n
+  for c = 1, n do
+    local h = ha[c]
+    local s = (h >= thr and 1) or (h <= -thr and -1) or 0
+    if s ~= 0 and on[c] ~= s then nnew = nnew + 1; newl[nnew] = c
+    elseif on[c] ~= 0 and (h < exit_ and h > -exit_) then on[c] = 0 end
+  end
+  if nnew == 0 then return end
+  local need = ceil(cfg.heat_cells / (W.sscale * W.sscale) - 0.01)
+  if need < 2 then need = 2 end
+  local g = W.grid
+  local nbr, cnt = g.nbr, g.nbr_count
+  local mark, q = sc.det_mark, sc.det_q
+  local stamp = sc.det_stamp + 1
+  sc.det_stamp = stamp
+  for s = 1, nnew do
+    local src = newl[s]
+    local sign = ha[src] > 0 and 1 or -1
+    if mark[src] ~= stamp and on[src] ~= sign then
+      mark[src] = stamp
+      local m, head = 1, 1
+      q[1] = src
+      local sum = 0
+      while head <= m do
+        local c = q[head]; head = head + 1
+        sum = sum + ha[c]
+        local b = c * 6 - 6
+        for kk = 1, cnt[c] do
+          local j = nbr[b + kk]
+          if mark[j] ~= stamp and ha[j] * sign >= thr then mark[j] = stamp; m = m + 1; q[m] = j end
+        end
+      end
+      if m >= need then
+        for kk = 1, m do on[q[kk]] = sign end
+        if record then
+          local parent = dominant(W, q, m, ch, cfg.dominant_share)
+          local id = events.emit(W, sign > 0 and "heatwave" or "cold_snap", src, parent, floor(sum / m * 10 + 0.5) / 10,
+            { cells = m })
+          if id ~= 0 then retag(q, m, ch, ih, ha, parent, id) end
+        end
+      end
+    end
+  end
+end
+
+-- Sea ice forming / melting over a connected stretch of sea (03 §4: fishing grounds under
+-- ice, ice bridges). Parent: the sea temperature's cause (a Chill, a cold era).
+local function sea_ice_detect(W, cfg, record)
+  local D = W.D
+  local on = D.sea_ice
+  local ice = W.F.ice
+  local ocean_cells = W.geo.ocean_cells
+  local thr, exit_ = cfg.sea_ice_on, cfg.sea_ice_off
+  local sc = W.scratch
+  local newl = sc.det_new
+  local nnew = 0
+  for i = 1, #ocean_cells do
+    local c = ocean_cells[i]
+    if on[c] == 0 and ice[c] >= thr then nnew = nnew + 1; newl[nnew] = c
+    elseif on[c] == 1 and ice[c] < exit_ then on[c] = 0 end
+  end
+  if nnew == 0 then return end
+  local need = ceil(cfg.sea_ice_cells / (W.sscale * W.sscale) - 0.01)
+  if need < 2 then need = 2 end
+  local g = W.grid
+  local nbr, cnt = g.nbr, g.nbr_count
+  local ocean = W.geo.ocean
+  local mark, q = sc.det_mark, sc.det_q
+  local stamp = sc.det_stamp + 1
+  sc.det_stamp = stamp
+  local csst, isst = W.C.sst, W.I.sst
+  local cice, iice = W.C.ice, W.I.ice
+  for s = 1, nnew do
+    local src = newl[s]
+    if mark[src] ~= stamp and on[src] == 0 then
+      mark[src] = stamp
+      local m, head = 1, 1
+      q[1] = src
+      while head <= m do
+        local c = q[head]; head = head + 1
+        local b = c * 6 - 6
+        for kk = 1, cnt[c] do
+          local j = nbr[b + kk]
+          if mark[j] ~= stamp and ocean[j] == 1 and ice[j] >= thr then mark[j] = stamp; m = m + 1; q[m] = j end
+        end
+      end
+      for kk = 1, m do on[q[kk]] = 1 end
+      -- natural polar sea ice comes and goes every year: only a caused freeze is news
+      if record and m >= need then
+        local parent = dominant(W, q, m, csst, cfg.dominant_share)
+        if parent == 0 then parent = dominant(W, q, m, cice, cfg.dominant_share) end
+        if parent ~= 0 then
+          local id = events.emit(W, "sea_ice_formed", src, parent, m * W.sscale * W.sscale, { cells = m })
+          if id ~= 0 then retag(q, m, cice, iice, ice, 0, id); retag(q, m, cice, iice, ice, parent, id) end
+        end
+      end
+    end
+  end
+end
+
 local function drought(W, cfg, record)
   local D = W.D.soil
   local soil, cs, is = W.F.soil_water, W.C.soil_water, W.I.soil_water
@@ -608,6 +748,7 @@ local function drought(W, cfg, record)
 end
 
 function sys.update(W)
+  CUR_W = W
   local cfg = cfgmod.DETECT
   local record = W.record_events
   local tick = W.tick
@@ -637,6 +778,8 @@ function sys.update(W)
     for i = 1, #SPECIES do local_boom(W, cfg, SPECIES[i], record) end
     drought(W, cfg, record)
   end
+  heat_detect(W, cfg, record)
+  sea_ice_detect(W, cfg, record)
   if record then oil_detect(W, cfg) end
   fish_collapse(W, cfg, record)
   village_detect(W, cfg, record)

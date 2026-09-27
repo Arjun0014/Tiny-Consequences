@@ -180,7 +180,7 @@ function sys.update(W)
   local k_rain, k_drizzle = cfg.k_rain, cfg.k_drizzle
   local eps, hold = 0.002, 12
   local share = cfg.inflow_share
-  local force = W.S.weather_force   -- sparse player/test forcing (Chapter 2), may be nil
+  local force = W.scratch.weather_on and W.scratch.weather_force   -- player Weather power (sim/powers.lua)
   -- evaporation wobble: this tick's pattern strengths (at most 3 patterns)
   local wob = W.rain_wobble
   local amp = cfg.rain_wobble_amp

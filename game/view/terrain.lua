@@ -130,6 +130,7 @@ local function update_cell(W, c)
 end
 
 function M.recolour_all(W)
+  cellcolor.prepare(W)
   local n = 0
   for c = 1, W.n do
     if update_cell(W, c) then n = n + 1 end
@@ -148,6 +149,7 @@ function M.update(W, dt)
     M.since = 0
     M.last_tick = W.tick
     M.pass_cell = 1
+    cellcolor.prepare(W)
     M.pass_dirty = false
     M.pass_changed = 0
   end

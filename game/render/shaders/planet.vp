@@ -27,7 +27,7 @@ out highp vec3 var_wpos;
 out mediump vec3 var_normal;
 out mediump vec4 var_land;   // ground rgb + snow (land); shore sand (water side)
 out mediump vec4 var_fx;     // r fire (land), g oil, b plankton (water), a ice/snow (both)
-out mediump vec4 var_fx2;    // land: ash, dryness, grass, 0     water: 0, 0, 0, fish
+out mediump vec4 var_fx2;    // land: ash, dryness, grass, blight     water: 0, 0, 0, fish
 out mediump vec4 var_farm;   // land: farm, crop stage, village, forest
 out highp vec4 var_info;
 out highp vec3 var_sc;
@@ -55,7 +55,8 @@ void main()
     if (vinfo.w > 0.0) {
         var_land = A;
         var_fx = vec4(B.r, 0.0, 0.0, A.a);
-        var_fx2 = vec4(B.g, B.b, B.a, 0.0);
+        vec4 Dd = cellmix(vec2(0.0, 3.0 * u_tex.x), wa, wb, wc);
+        var_fx2 = vec4(B.g, B.b, B.a, Dd.b);
         var_farm = C;
     } else {
         var_land = vec4(0.95, 0.88, 0.66, 0.0);   // shore sand for the land side of coasts

@@ -121,6 +121,7 @@ local function local_step(W, S, cfg, ph, dt)
   local rg, Kg, hfood, cfood, sblock, smax = cfg.r_grazer, cfg.K_grazer, cfg.h_food, cfg.crop_food, cfg.snow_block, cfg.starve_max
   local ap, th, refuge, ep, mp = cfg.a_pred, cfg.t_handle, cfg.refuge, cfg.e_pred, cfg.m_pred
   local kgr, hgr, kbr, hbr, kra, hra = cfg.graze, cfg.h_graze, cfg.browse, cfg.h_browse, cfg.raid, cfg.h_raid
+  local kov, hstart = cfg.overgraze, cfg.overgraze_from
   local bbase = cfg.browse_base
   local fmort = cfg.fire_mort
   local relf, above = cfg.release_frac, cfg.pressure_above
@@ -162,12 +163,14 @@ local function local_step(W, S, cfg, ph, dt)
       if tP ~= 0 and P > above * pn then tPa = tP end
       -- vegetation pressure
       if H > 0 then
-        local gg = dt * kgr * H * gr / (gr + hgr)
-        if gg > gr then gg = gr end
-        grass[c] = gr - gg
-        -- hungry grazers (near their food limit) strip saplings; well-fed ones barely browse
+        -- hungry grazers (near their food limit) strip saplings and graze to the roots;
+        -- well-fed ones barely browse (a herd without wolves overgrazes its range)
         local hunger = keff > 1e-6 and H / keff or 1
         if hunger > 1 then hunger = 1 end
+        local starve = hunger > hstart and (hunger - hstart) / (1 - hstart) or 0
+        local gg = dt * kgr * H * (1 + kov * starve) * gr / (gr + hgr)
+        if gg > gr then gg = gr end
+        grass[c] = gr - gg
         local bb = dt * kbr * H * (bbase + hunger) * fo / (fo + hbr)
         if bb > fo then bb = fo end
         forest[c] = fo - bb

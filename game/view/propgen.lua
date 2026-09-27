@@ -600,6 +600,20 @@ function M.mover_template(kind)
       kit.tri(t, p0i, p1o, p1i, nil, nil, nil, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0)
     end
     return t
+  elseif kind == "pulse" then
+    -- area-of-effect pulse: a translucent disc (sway = opacity) with a bright rim, radius 1
+    local n = 40
+    for k = 0, n - 1 do
+      local a0, a1 = k / n * 2 * pi, (k + 1) / n * 2 * pi
+      local c0, s0, c1, s1 = cos(a0), sin(a0), cos(a1), sin(a1)
+      kit.tri(t, { 0, 0, 0 }, { c0 * 0.86, 0, s0 * 0.86 }, { c1 * 0.86, 0, s1 * 0.86 }, nil, nil, nil, 1,
+        1, 1, 1, 0.0, 0.14, 0.14, 0, 1, 0)
+      local p0i, p1i = { c0 * 0.86, 0, s0 * 0.86 }, { c1 * 0.86, 0, s1 * 0.86 }
+      local p0o, p1o = { c0, 0.002, s0 }, { c1, 0.002, s1 }
+      kit.tri(t, p0i, p0o, p1o, nil, nil, nil, 1, 1, 1, 1, 0.6, 1, 1, 0, 1, 0)
+      kit.tri(t, p0i, p1o, p1i, nil, nil, nil, 1, 1, 1, 1, 0.6, 1, 0.6, 0, 1, 0)
+    end
+    return t
   elseif kind == "flame" then
     kit.cone(t, -0.05, 1.0, 0.32, 5, 1, 0.75, 1.0, 1)
     kit.cone(t, -0.05, 0.62, 0.2, 5, 2, 0.9, 1.0, 1, 0.5)

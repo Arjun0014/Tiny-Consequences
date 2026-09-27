@@ -7,6 +7,8 @@ local picking = require("game.view.picking")
 local selection = require("game.ui.selection")
 local selring = require("game.view.selring")
 local uistate = require("game.ui.uistate")
+local powers = require("game.ui.powers")
+local H_MOUSE_RIGHT = hash("mouse_right")
 
 local M = {}
 
@@ -53,7 +55,35 @@ function M.fly_to_selection(W, zoom)
   if x then camera.fly_to_dir(x, y, z, zoom or math.max(camera.tzoom, 0.6)) end
 end
 
+-- Cast the armed power at the pointer (Lightning prefers a ship or villager under it).
+function M.cast(W, sx, sy)
+  local d = powers.DEFS[powers.armed]
+  local c = picking.cell_at(W, sx, sy)
+  if not c then return false end
+  local opts = {}
+  if d.id == "lightning" or d.id == "oil" then
+    local sel = picking.pick(W, sx, sy)
+    if sel and sel.kind == "ship" then
+      local list = require("game.view.ents").ship_list(W, sel.list)
+      local s = list and list[sel.index]
+      if s then opts.ship, opts.list = s.id or sel.index, sel.list; c = s.cell or c end
+    elseif sel and sel.kind == "person" and d.id == "lightning" then
+      opts.person = sel.id
+    end
+  end
+  powers.cast(W, d.id, c, opts)
+  return true
+end
+
+--- Pointer position while aiming: the cell under it (for the aiming ring).
+function M.hover(W, sx, sy)
+  if not powers.armed or not W then return end
+  local view = require("game.view.view")
+  view.aim_cell = picking.cell_at(W, sx, sy)
+end
+
 function M.click(W, sx, sy)
+  if powers.armed then return M.cast(W, sx, sy) end
   local sel = picking.pick(W, sx, sy)
   local now = clock_s
   local dbl = last_click and now - last_click.t < M.DOUBLE_CLICK_S
@@ -71,6 +101,14 @@ end
 
 --- Returns true when the action was consumed.
 function M.on_input(W, action_id, action)
+  if action_id == nil then
+    M.hover(W, action.screen_x, action.screen_y)
+    return false
+  end
+  if action_id == H_MOUSE_RIGHT and powers.armed then
+    if action.pressed then powers.disarm() end
+    return true
+  end
   if action_id == H_TOUCH then
     if action.pressed then
       press = { x = action.screen_x, y = action.screen_y, dragging = false }
@@ -114,6 +152,7 @@ function M.on_input(W, action_id, action)
     if W then follow_selection(W) end
     return true
   elseif action_id == H_ESC then
+    if powers.armed then powers.disarm(); return true end
     selection.clear()
     camera.follow = nil
     return true

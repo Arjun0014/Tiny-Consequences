@@ -342,6 +342,62 @@ local function found_from(W, v, group, site, parent, food)
   return nv
 end
 
+-- Settlers (the Introduce power, 04 §2): `n` people arrive by boat and found a village at
+-- `cell` (the nearest free land if that cell is sea or taken). Two couples and their children;
+-- they bring a few months of food. `parent` is the power's root event. Returns the village.
+function sys.settlers(W, cell, n, parent)
+  local cfg = cfgmod.VILLAGE
+  local g = W.grid
+  local site = cell
+  if W.geo.ocean[site] == 1 or not sys.free_site(W, site) then
+    -- nearest free land by rings
+    local best, bd = nil, 1e9
+    for c = 1, W.n do
+      if W.geo.ocean[c] == 0 and W.F.ice[c] < 0.5 and sys.free_site(W, c) then
+        local d = 1 - (g.X[c] * g.X[cell] + g.Y[c] * g.Y[cell] + g.Z[c] * g.Z[cell])
+        if d < bd then best, bd = c, d end
+      end
+    end
+    site = best
+  end
+  if not site then return nil end
+  local culture = (W.names.cultures and W.names.cultures[W.geo.continent[site]]) or 1
+  local ctr = 0
+  local key = rng.hash(W.seed, rng.S.NAMES, site, W.tick, 91)
+  local function u()
+    ctr = ctr + 1
+    return rng.float(W.seed, rng.S.NAMES, key, ctr, 0)
+  end
+  local vs = W.ent.villages
+  local used = {}
+  for i = 1, #vs do used[vs[i].name] = true end
+  local name = names.unique(u, function(uu) return names.village(uu, culture) end, used)
+  local v = sys.found(W, site, { name = name, culture = culture })
+  local stock = 0
+  for i = 1, #v.fishing do stock = stock + W.F.fish[v.fishing[i]] end
+  v.fish_jobs = floor(stock * cfg.fish_q * W.sscale * W.sscale / cfg.fisher_max)
+  local ages = { 27, 25, 31, 29, 7, 4, 33, 30 }
+  local sexes = { "m", "f", "m", "f", "f", "m", "m", "f" }
+  local made = {}
+  for i = 1, n do
+    local k = (i - 1) % #ages + 1
+    made[i] = people.create(W, v, { born = W.tick - ages[k] * 48 - i, idx = i, sex = sexes[k] })
+  end
+  -- couples: 1+2, 3+4, 7+8
+  for i = 1, n - 1, 2 do
+    local a, b = made[i], made[i + 1]
+    if a and b and people.age(W, a) >= 18 and people.age(W, b) >= 18 then
+      a.partner, b.partner = b.id, a.id
+    end
+  end
+  v.food = n * cfg.start_food
+  v.food_security = cfg.start_food
+  local fid = emit(W, "village_founded", site, parent or 0, n, { village = v.id, settlers = true })
+  if fid ~= 0 then v.founded_event = fid end
+  v.cause = 0
+  return v
+end
+
 -- Famine-driven migration: one family per month leaves.
 local function migrate(W, v)
   local cfg = cfgmod.VILLAGE

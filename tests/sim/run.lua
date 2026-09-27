@@ -8,7 +8,7 @@ if rawget(_G, "jit") then jit.opt.start("maxtrace=8000", "maxmcode=8192", "maxre
 
 local T = require("tests.sim.lib")
 
-local args = { chapter = 1 }
+local args = { chapter = 2 }   -- current chapter (PROGRESS.md): scenarios up to it run
 local i = 1
 while arg and arg[i] do
   local a = arg[i]
