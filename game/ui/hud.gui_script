@@ -233,10 +233,10 @@ end
 -- Debug overlay, tooltip, edge indicator ----------------------------------------------------------
 
 local function build_misc(self)
-	local dbg = ui.box(nil, 12, 12, 560, 116, "panel", vmath.vector4(1, 0.973, 0.925, 0.82), gui.PIVOT_SW)
+	local dbg = ui.box(nil, 12, 12, 560, 132, "panel", vmath.vector4(1, 0.973, 0.925, 0.82), gui.PIVOT_SW)
 	ui.anchor(dbg, gui.ANCHOR_LEFT, gui.ANCHOR_BOTTOM)
 	self.dbg = dbg
-	self.dbg_text = ui.text(dbg, 12, 104, "", "nunito_semi", 13, C.text, gui.PIVOT_NW)
+	self.dbg_text = ui.text(dbg, 12, 122, "", "nunito_semi", 13, C.text, gui.PIVOT_NW)
 	gui.set_enabled(dbg, false)
 
 	ui.top = true
