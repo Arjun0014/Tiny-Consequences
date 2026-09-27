@@ -6,13 +6,19 @@ local climate_init = require("sim.worldgen.climate_init")
 
 local bench = {}
 
--- opts: level, seed, warm (ticks before measuring), ticks, clock (fn -> ms), spinup_years
+-- opts: level, seed, warm (ticks before measuring), ticks, clock (fn -> ms), spinup_years,
+-- save (a save string, e.g. the pre-spun default world: measured instead of a fresh world)
 function bench.run(opts)
   local clock = assert(opts.clock, "clock required")
   local t0 = clock()
-  local W = worldgen.generate(opts.seed or 42, { level = opts.level, spinup_years = opts.spinup_years or 0,
-    no_spinup = (opts.spinup_years or 0) == 0 })
-  if (opts.spinup_years or 0) == 0 then
+  local W
+  if opts.save then
+    W = assert(require("sim.worlds").from_save_string(opts.save))
+  else
+    W = worldgen.generate(opts.seed or 42, { level = opts.level, spinup_years = opts.spinup_years or 0,
+      no_spinup = (opts.spinup_years or 0) == 0 })
+  end
+  if not opts.save and (opts.spinup_years or 0) == 0 then
     -- no spin-up: settle climate briefly, seed vegetation so every system has work to do
     for _ = 1, 48 do world.tick(W) end
     climate_init.vegetation(W)

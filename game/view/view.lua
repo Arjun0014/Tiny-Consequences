@@ -11,6 +11,7 @@ local fx = require("game.view.fx")
 local selring = require("game.view.selring")
 local grid = require("sim.grid")
 local clock = require("game.platform.clock")
+local speed = require("game.platform.speed")
 
 local M = {}
 
@@ -151,6 +152,13 @@ function M.update(dt)
       M.village_timer = 1.0
       sync_villages(W)
     end
+    -- at high sim speeds the world changes every frame: spend less per frame on refreshes
+    -- (05 §9: view updates <= 4 ms per frame amortised)
+    local fast = speed.get() >= 3
+    props.BUDGET_MS = fast and 1.4 or 2.5
+    props.JOB_GAP_MS = fast and 250 or 0      -- at most ~4 chunk rebuilds a second at high speed
+    terrain.CELLS_PER_FRAME = fast and 110 or 200
+    terrain.MAX_RATE = fast and 3 or 4
     local a = clock.now_ms()
     terrain.update(W, dt)
     local b = clock.now_ms()

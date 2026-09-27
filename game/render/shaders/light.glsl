@@ -25,6 +25,13 @@ vec3 tc_light(vec3 albedo, vec3 N, vec3 up, vec3 V, vec3 L, float ambient_boost)
     return col;
 }
 
+// Close to the surface the limb haze would wash out far forests: scale it down with the eye's
+// distance from the planet centre (R = 10).
+float tc_haze_scale(vec3 eye)
+{
+    return clamp((length(eye) - 13.0) / 25.0, 0.3, 1.0);
+}
+
 // Pale atmospheric haze toward the planet limb (uses the radial direction, not the normal).
 vec3 tc_limb(vec3 col, vec3 up, vec3 V, float amount)
 {

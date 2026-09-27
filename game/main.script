@@ -48,6 +48,7 @@ local function start_loading(self, seed)
 	self.seed = seed
 	self.W = nil
 	self.ready = false
+	self.prespun = false
 	self.ff = nil
 	state.planet_on = false
 	state.loading.active = true
@@ -72,9 +73,14 @@ local function start_loading(self, seed)
 			local data = ok_mod and sys.load_resource("/assets/worlds/default.tcsave") or nil
 			if data and worlds.from_save_string then
 				state.loading.text = "Unpacking a tiny world..."
-				local ok, res = pcall(worlds.from_save_string, data)
-				if ok and res then W = res; self.seed = W.seed or seed
-				else print("[tc] pre-spun world failed, generating: " .. tostring(res)) end
+				local ok, res, err = pcall(worlds.from_save_string, data)
+				if ok and res then
+					W = res
+					self.seed = W.seed or seed
+					self.prespun = true
+				else
+					bridge.error("pre-spun world failed, generating instead: " .. tostring(ok and err or res))
+				end
 			end
 		end
 		if not W then
@@ -102,16 +108,25 @@ local function finish_loading(self)
 	self.ready = true
 	collectgarbage("collect")   -- drop worldgen/view-build garbage behind the loading screen
 	state.loading.active = false
+	local world = require("sim.world")
+	self.perf = self.perf or {}
 	self.world_tick_fn = function()
-		require("sim.world").tick(self.W)
+		local a = clock.now_ms()
+		world.tick(self.W)
+		local p = self.perf
+		p.n = (p.n or 0) + 1
+		p.ticks[(p.n - 1) % 2048 + 1] = clock.now_ms() - a
 	end
+	self.perf_reset(self)
 	local cam = query.get().cam
 	local lat, lon, zoom = camera.preset(cam or "default", self.W)
 	if not lat then lat, lon, zoom = camera.preset("default", self.W) end
 	camera.set(lat, lon, zoom, true)
 	self.tps_tick0, self.tps_t0, self.tps = self.W.tick, clock.now_ms(), 0
-	print(string.format("[tc] world %d ready in %.0f ms (%d props, %d chunks)", self.seed,
-		clock.now_ms() - self.load_t0, view.stats().prop_total, #require("game.view.props").chunks))
+	self.load_ms = clock.now_ms() - self.load_t0
+	print(string.format("[tc] world %d ready in %.0f ms (%s, %d props, %d chunks)", self.seed,
+		self.load_ms, self.prespun and "pre-spun" or "generated", view.stats().prop_total,
+		#require("game.view.props").chunks))
 end
 
 -- Lifecycle -------------------------------------------------------------------------------
@@ -140,6 +155,12 @@ function init(self)
 	if query.flag("freeze") then view.set_frozen(true) end
 
 	self.start_loading = start_loading
+	-- W08 performance accumulators (per-tick ms ring, per-frame sim/view ms)
+	self.perf_reset = function(s)
+		s.perf = { n = 0, ticks = {}, frames = 0, sim_sum = 0, sim_max = 0, view_sum = 0, view = {}, multi = 0, multi_over = 0,
+			t0 = clock.now_ms(), tick0 = s.W and s.W.tick or 0 }
+	end
+	self.perf_reset(self)
 	bridge.init()
 	commands.register(self)
 	bridge.set_provider(function()
@@ -186,6 +207,9 @@ function init(self)
 			ff_remaining = self.ff and (self.ff.target - W.tick) or 0,
 			last_input = self.last_input or false,
 			sim_version = sim_version.SIM_VERSION,
+			engine_debug = sys.get_engine_info().is_debug,
+			prespun = self.prespun or false,
+			load_ms = self.load_ms or 0,
 		}
 	end)
 
@@ -253,6 +277,17 @@ function update(self, dt)
 			end
 		else
 			speed.step(dt, self.world_tick_fn)
+			local _, _, frame_ms, frame_ticks = speed.stats()
+			local p = self.perf
+			p.frames = p.frames + 1
+			p.sim_sum = p.sim_sum + frame_ms
+			if frame_ms > p.sim_max then p.sim_max = frame_ms end
+			-- the controller's contract: a frame that ran several ticks stays within its budget
+			-- (one tick may exceed it on a slow frame: the sim must still advance)
+			if frame_ticks >= 2 then
+				p.multi = p.multi + 1
+				if frame_ms > speed.SIM_BUDGET_MS[speed.get()] + 1 then p.multi_over = p.multi_over + 1 end
+			end
 		end
 		-- GUI requests
 		local r = uistate.pop_request()
@@ -264,6 +299,11 @@ function update(self, dt)
 
 	controls.tick(dt)
 	view.update(dt)
+	if self.ready and self.perf then
+		local p = self.perf
+		p.view_sum = p.view_sum + view.view_ms
+		p.view[(p.frames - 1) % 2048 + 1] = view.view_ms
+	end
 	update_debug(self, dt)
 
 	self.frames = self.frames + 1

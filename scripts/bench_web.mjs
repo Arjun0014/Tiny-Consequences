@@ -1,4 +1,4 @@
-// npm run bench:web [-- --release --level 3,4 --ticks 96]
+// npm run bench:web [-- --release --level 3,4 --ticks 96 --default]
 // Runs sim/bench.lua inside the HTML5 build (the real Lua 5.1 runtime) via the test bridge and
 // prints per-tick timings per system. Used for the SIM_LEVEL decision and W08.
 import { chromium } from '@playwright/test';
@@ -12,6 +12,7 @@ const variant = hasFlag(args, '--release') ? 'release' : 'debug';
 const port = Number(getFlag(args, '--port', 8183));
 const levels = String(getFlag(args, '--level', '3,4')).split(',').map(Number);
 const ticks = Number(getFlag(args, '--ticks', 96));
+const useDefault = hasFlag(args, '--default');   // measure the pre-spun default world instead
 if (!hasFlag(args, '--no-build')) await build({ variant, ifStale: true, quiet: true });
 const server = await startServer({ port, quiet: true });
 const browser = await chromium.launch({ headless: true, args: CHROMIUM_ARGS });
@@ -24,7 +25,7 @@ try {
   for (const level of levels) {
     const id = `bench${level}`;
     await page.evaluate((c) => { (window.__TC_CMDS = window.__TC_CMDS || []).push(c); },
-      { cmd: 'bench', id, level, ticks });
+      { cmd: 'bench', id, level, ticks, default: useDefault, seed: Number(getFlag(args, '--seed', 42)), spinup_years: Number(getFlag(args, '--spinup', 0)) });
     const h = await page.waitForFunction((w) => window.__TC && window.__TC.last_cmd && window.__TC.last_cmd.id === w && window.__TC.last_cmd,
       id, { timeout: 600_000, polling: 250 });
     const r = await h.jsonValue();

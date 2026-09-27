@@ -22,6 +22,7 @@ local ticks_total = 0
 local stat_frames, stat_sum, stat_max = 0, 0, 0
 local last_avg, last_max = 0, 0
 local last_frame_ms, last_frame_ticks = 0, 0
+local tick_est = 2   -- ms, running estimate of one tick (budget prediction)
 
 function M.set(n)
 	n = tonumber(n)
@@ -68,10 +69,17 @@ function M.step(dt, tick_fn)
 	local t0 = clock.now_ms()
 	local ran = 0
 	while ticks_due >= 1 and ran < M.MAX_TICKS_PER_FRAME do
+		local a = clock.now_ms()
 		tick_fn()
+		local b = clock.now_ms()
+		-- robust running estimate: rare slow ticks (year boundaries, GC) don't inflate it
+		local sample = math.min(b - a, tick_est * 1.5 + 0.2)
+		tick_est = tick_est + (sample - tick_est) * 0.1
 		ticks_due = ticks_due - 1
 		ran = ran + 1
-		if clock.now_ms() - t0 >= budget then
+		-- stop before a tick that would overrun the frame budget (at least one tick per frame);
+		-- the estimate gets a 25% margin because single ticks spike (GC, a busy machine)
+		if b - t0 + tick_est * 1.25 > budget then
 			break
 		end
 	end
@@ -95,6 +103,11 @@ function M.step(dt, tick_fn)
 		stat_frames, stat_sum, stat_max = 0, 0, 0
 	end
 	return ran
+end
+
+--- Running estimate of one tick in ms (budget prediction).
+function M.tick_estimate()
+	return tick_est
 end
 
 --- sim_ms_avg / sim_ms_max over the last full stats window (ms of sim work per frame).

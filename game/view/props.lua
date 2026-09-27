@@ -18,6 +18,7 @@ local clock = require("game.platform.clock")
 local M = {}
 
 M.BUDGET_MS = 2.5
+M.JOB_GAP_MS = 0            -- min real ms between starting chunk rebuilds (raised at high sim speeds)
 M.DIRTY_INTERVAL = 0.5
 M.NEAR_DIST = 7.5           -- eye-to-chunk distance (world units) for near LOD
 M.NEAR_ZOOM = 0.45          -- camera zoom needed before any chunk goes near
@@ -55,7 +56,8 @@ end
 
 local function signature(W, c)
   local F = W.F
-  local q = floor(F.forest[c] * 10 + 0.5) + 11 * floor(F.grass[c] * 4 + 0.5)
+  -- forest in eighths; grass only matters for bushes/tufts: two levels (cuts seasonal churn)
+  local q = floor(F.forest[c] * 8 + 0.5) + 11 * (F.grass[c] > 0.35 and 1 or 0)
     + 61 * F.biome[c]
   local lu = F.land_use[c]
   q = q + 1000 * (lu < 0 and 1 or (lu > 0 and 2 or 0))
@@ -127,7 +129,8 @@ local function start_job(k)
   return { k = k, lod = c.want_lod, phase = 1, face = 1, next = 1, v = 0 }
 end
 
-local FACE_BATCH, INST_BATCH = 24, 8
+-- small batches: the frame budget is checked between batches, so they bound the overshoot
+local FACE_BATCH, INST_BATCH = 8, 3
 
 -- Advances job j until done or the deadline passes. Returns true when finished.
 local function run_job(j, deadline)
@@ -310,6 +313,7 @@ function M.update(W, dt, zoom)
   while clock.now_ms() < deadline and guard < 8 do
     guard = guard + 1
     if not job then
+      if M.JOB_GAP_MS > 0 and t_start - (M.last_job_ms or -1e9) < M.JOB_GAP_MS then break end
       local pick, best = nil, -1
       for k, c in ipairs(M.chunks) do
         if c.dirty then
@@ -319,6 +323,7 @@ function M.update(W, dt, zoom)
       end
       if not pick then break end
       job = start_job(pick)
+      M.last_job_ms = t_start
       M.stats.jobs = M.stats.jobs + 1
     end
     if run_job(job, deadline) then

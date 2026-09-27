@@ -149,8 +149,15 @@ function M.update(W, dt, frozen)
   local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
   local zoom = require("game.view.camera").zoom
   local cap = M.MAX_COVER * 4 * math.pi * R * R
-  for _, c in ipairs(M.clouds) do
-    if not frozen then
+  -- clouds drift slowly: each one moves (and has its transform written) every other frame, with
+  -- twice the step, which halves the per-frame cost (05 §9 view budget)
+  M.frame = (M.frame or 0) + 1
+  local par = M.frame % 2
+  local dt2 = dt * 2
+  for i, c in ipairs(M.clouds) do
+    local mine = i % 2 == par
+    if not frozen and mine then
+      local dt = dt2
       if c.alive then
         local u = prof(zonal, abs(c.lat) * 57.2958)
         c.lon = c.lon + u * M.DRIFT * dt / max(0.2, cos(c.lat))
@@ -187,6 +194,13 @@ function M.update(W, dt, frozen)
       if area + a <= cap then
         area = area + a
         active = active + 1
+      else
+        sz = 0
+      end
+    end
+    local show = sz > 0.01
+    if show and (mine or not c.shown) then
+      do
         local cl = cos(c.lat)
         local x, y, z = cl * cos(c.lon), sin(c.lat), cl * sin(c.lon)
         local r = R + M.ALT
@@ -196,11 +210,8 @@ function M.update(W, dt, frozen)
         go.set_position(pos, c.id)
         go.set_rotation(rot, c.id)
         go.set_scale(scl, c.id)
-      else
-        sz = 0
       end
     end
-    local show = sz > 0.01
     if show ~= c.shown then
       c.shown = show
       msg.post(c.url, show and MSG_ENABLE or MSG_DISABLE)

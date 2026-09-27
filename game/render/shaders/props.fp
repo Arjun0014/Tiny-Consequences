@@ -24,6 +24,6 @@ void main()
     // slightly glossy toy finish
     vec3 H = normalize(L + V);
     col += pow(max(dot(N, H), 0.0), 28.0) * 0.14 * vec3(1.0, 0.97, 0.9);
-    col = tc_limb(col, up, V, 0.4);
+    col = tc_limb(col, up, V, 0.4 * tc_haze_scale(u_cam.xyz));
     out_color = vec4(col, 1.0);
 }

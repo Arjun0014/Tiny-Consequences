@@ -101,6 +101,6 @@ void main()
         col = mix(col, icecol, ice);
         col += spec * (1.0 - ice) * vec3(1.0, 0.97, 0.9);
     }
-    col = tc_limb(col, up, V, 0.45);
+    col = tc_limb(col, up, V, 0.45 * tc_haze_scale(u_cam.xyz));
     out_color = vec4(col, 1.0);
 }

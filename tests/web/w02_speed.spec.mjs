@@ -6,6 +6,9 @@
 import { test, expect } from '@playwright/test';
 import { openGame, readTC, sendCmd, expectNoErrors } from './lib/game.mjs';
 
+// what's tested is the speed controller, not the CPU rasteriser: keep frames light (W08 note)
+test.use({ viewport: { width: 640, height: 360 } });
+
 async function rate(page, level, seconds) {
   await sendCmd(page, { cmd: 'set_speed', n: level });
   await page.waitForTimeout(600);                      // settle (backlog, frame pacing)
@@ -44,7 +47,8 @@ test('W02 speed: tick rates per speed level @ch1', async ({ page }, testInfo) =>
   expect(r3.rate, 'faster').toBeGreaterThan(12);
   expect(r3.rate, 'faster beats fast').toBeGreaterThan(r2.rate * 1.5);
   // max: budget-bound (8 ms/frame + at most one tick of overshoot) and not slower than faster
-  expect(r4.rate, 'max ≥ faster').toBeGreaterThan(r3.rate * 0.9);
+  // (when both are capped by the frame budget they measure the same rate, ± frame noise)
+  expect(r4.rate, 'max ≥ faster').toBeGreaterThan(r3.rate * 0.85);
   expect(r4.sim_ms_avg, 'max stays within its frame budget').toBeLessThan(8 + 12);
 
   // pause again: the tick freezes

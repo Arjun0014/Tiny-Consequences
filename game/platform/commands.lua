@@ -188,8 +188,9 @@ function M.register(G)
   -- bench{level, seed, ticks}: sim tick benchmark in the real HTML5 runtime (SIM_LEVEL, W08).
   bridge.register("bench", function(args)
     local bench = require("sim.bench")
-    return bench.run({ level = args.level, seed = args.seed or 42, ticks = args.ticks or 96,
-      warm = args.warm or 24, clock = clock.now_ms })
+    local save = args.default and sys.load_resource("/assets/worlds/default.tcsave") or nil
+    return bench.run({ level = args.level, seed = args.seed or 42, ticks = args.ticks or 96, spinup_years = args.spinup_years,
+      warm = args.warm or 24, clock = clock.now_ms, save = save })
   end)
 
   -- debug_cell{x, y}: sim cell under a window pixel with its display bytes (texture) and fields.
@@ -208,6 +209,75 @@ function M.register(G)
       wa = PL.vwa[v], wb = PL.vwb[v], wc = PL.vwc[v],
       bytes_a = { terrain.bytes[PL.va[v] * 8 - 4], terrain.bytes[PL.vb[v] * 8 - 4], terrain.bytes[PL.vc[v] * 8 - 4] } }
   end)
+  -- selftest{years=2, seed?}: W06 determinism in the real HTML5 runtime. Builds the same
+  -- world twice (the pre-spun default world, or worldgen for `seed`), applies the same test
+  -- action (ignite 3 forested cells), runs `years`, and returns both state hashes. Runs
+  -- synchronously on private worlds; the live world's hash is reported before and after.
+  bridge.register("selftest", function(args)
+    local world = require("sim.world")
+    local selftest = require("sim.selftest")
+    local years = tonumber(args.years) or 2
+    local live_before = G.W and world.state_hash(G.W) or 0
+    local live_tick = G.W and G.W.tick or 0
+    local data = (not args.seed) and sys.load_resource("/assets/worlds/default.tcsave") or nil
+    local t0 = clock.now_ms()
+    local opts = { save = data, seed = tonumber(args.seed) or 5, years = years }
+    local a = selftest.run(opts)
+    local b = selftest.run(opts)
+    local live_after = G.W and world.state_hash(G.W) or 0
+    return {
+      hash1 = a.hash, hash2 = b.hash, same = a.hash == b.hash, tick1 = a.tick, tick2 = b.tick,
+      events1 = a.events, events2 = b.events, ignited = a.ignited,
+      source = data and "default.tcsave" or ("seed " .. tostring(args.seed or 5)),
+      live_unchanged = live_before == live_after and (G.W == nil or G.W.tick == live_tick),
+      live_hash = live_after, ms = clock.now_ms() - t0,
+    }
+  end)
+
+  -- perf{reset=true} starts a measuring window; perf{} reports it (W08): per-tick ms
+  -- (median / p95 / max), per-frame sim ms (avg / max), ticks/s, view ms (avg / p90).
+  bridge.register("perf", function(args)
+    if args.reset then G.perf_reset(G); return { reset = true } end
+    local p = G.perf
+    local n = math.min(p.n, 2048)
+    local t = {}
+    local tsum = 0
+    for i = 1, n do t[i] = p.ticks[i]; tsum = tsum + t[i] end
+    table.sort(t)
+    local vf = math.min(p.frames, 2048)
+    local v = {}
+    for i = 1, vf do v[i] = p.view[i] or 0 end
+    table.sort(v)
+    local secs = (clock.now_ms() - p.t0) / 1000
+    local speed = require("game.platform.speed")
+    return {
+      seconds = secs, ticks = p.n, frames = p.frames,
+      ticks_per_s = secs > 0 and p.n / secs or 0,
+      tick_median = n > 0 and t[math.floor(n * 0.5) + 1] or 0,
+      tick_mean = n > 0 and tsum / n or 0,
+      tick_p95 = n > 0 and t[math.min(n, math.floor(n * 0.95) + 1)] or 0,
+      tick_max = n > 0 and t[n] or 0,
+      sim_ms_avg = p.frames > 0 and p.sim_sum / p.frames or 0,
+      sim_ms_max = p.sim_max,
+      view_ms_avg = p.frames > 0 and p.view_sum / p.frames or 0,
+      view_ms_p90 = vf > 0 and v[math.min(vf, math.floor(vf * 0.9) + 1)] or 0,
+      view_ms_max = vf > 0 and v[vf] or 0,
+      tick_estimate = speed.tick_estimate(),
+      multi_frames = p.multi, multi_over = p.multi_over,
+      heap_kb = collectgarbage("count"),
+      chunks_rebuilt = view.stats().chunks_rebuilt,
+    }
+  end)
+
+  -- gc{op="count"|"stop"|"restart"|"collect", pause=, stepmul=}: Lua heap diagnostics (W08)
+  bridge.register("gc", function(args)
+    local op = args.op or "count"
+    if op == "stop" or op == "restart" or op == "collect" then collectgarbage(op) end
+    if args.pause then collectgarbage("setpause", args.pause) end
+    if args.stepmul then collectgarbage("setstepmul", args.stepmul) end
+    return { kb = collectgarbage("count") }
+  end)
+
   bridge.register("picking_info", function()
     return { last_cell = picking.last_cell }
   end)
