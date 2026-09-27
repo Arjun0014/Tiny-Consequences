@@ -4,45 +4,55 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Current state
 
-- Chapter: 1 — A World That Lives Without You
-- Stage: 1.9 (camera/HUD/inspector, game/) and 1.10 sim hardening (full-profile robustness: population regulation, S01 ≥ 7/10; pre-spun default world) in progress in parallel. Done: 1.1–1.8 (1.3–1.5 folded into the 1.2/1.6/1.7 commits; P10 20/20).
-- Plan for the rest of Chapter 1: ocean life + oil + fauna (1.6) → villages/people/ships + worldgen settle + detectors (1.7) → rendering to docs/ART_DIRECTION.md (1.8) → camera/HUD/inspector (1.9) → hardening + playtest report (1.10).
-- Blockers needing the human: none
-- Last human feedback read: none yet (Arjun shared the target look mid-session → docs/ART_DIRECTION.md)
+- Chapter: 1 — A World That Lives Without You — **COMPLETE (27 Sep, 14:45 IST), waiting for Arjun's playtest.** Report: `docs/playtests/chapter-1.md`.
+- Next: read `docs/playtests/chapter-1-feedback.md` when it exists, turn it into tasks, then start Chapter 2 (Stage 2.1 Powers). Do not start Chapter 2 before the feedback.
+- All Chapter-1 stages 1.1–1.10 done. Test status at the chapter commit: `npm run test:sim -- --full` 67/67, `npm run test:sim` (quick) 67/67, `npm run test:web` 8/8 (debug and `--release`), `npm run shots` 17 PNGs reviewed.
+- Blockers needing the human: none.
+- Last human feedback read: none yet (Arjun shared the target look mid-session → docs/ART_DIRECTION.md).
+- Machine note: this laptop (12 threads, 11.6 GB RAM) also runs Arjun's other workloads; on 27 Sep a 12-process Python job exhausted the commit limit and process creation failed for a while. Run seed sweeps sequentially when memory is low (`cmd //c systeminfo | grep -i memory`).
 
 ## Environment (verified 27 Sep)
 
 - Windows 11, Git Bash. Node 22.14, npm 10.9, Java 26 (Oracle), Git 2.46.
-- LuaJIT 2.1 installed with `winget install DEVCOM.LuaJIT` to `C:\Users\aswin\AppData\Local\Programs\LuaJIT\bin\luajit.exe` (on the user PATH for new shells; `scripts/lua.mjs` resolves it anyway). No lua5.1 (optional).
+- LuaJIT 2.1 installed with `winget install DEVCOM.LuaJIT` to `C:\Users\aswin\AppData\Local\Programs\LuaJIT\bin\luajit.exe` (on the user PATH for new shells; `scripts/lua.mjs` resolves it anyway). No lua5.1 (optional; W06 now proves LuaJIT and the HTML5 Lua 5.1 runtime produce identical state hashes).
 - Defold 1.13.1 bob in `tools/bob/bob.jar` (`npm run setup` re-downloads). Bob platform flag is `wasm-web` (not `js-web`). The bundle lands in `dist/web/app/`.
-- Python is `python` (3.13), not `python3`; set `PYTHONUTF8=1` when writing files with it.
+- Python is `python` (3.13), not `python3`; set `PYTHONUTF8=1` when writing files with it. Git Bash heredocs containing apostrophes break in this harness: write patch scripts with a file.
 
 ## Key numbers (update as they change)
 
-- SIM_LEVEL: 3 (D-004) — 642 cells
-- Detailed tick (HTML5 release, headless Chromium, level 3, bench config seed 42, 192 ticks, 2026-09-27): **1.70 ms median, p95 2.5 ms** (budget 4 ms / 8 ms). Per system: moisture 0.49, hydrology 0.31, temperature 0.19, vegetation 0.17, fauna 0.13, villages 0.11, biome 0.09, ocean 0.07, ice 0.06, fire 0.05, detectors 0.03 ms. L4 (pre-1.6 systems) was 18.9 ms.
-- P07 baseline (`tests/bench-baseline.json`, D-029): 233,790 VM instructions/tick on the fixed world; browser ≈ 7.4 ns/instruction.
+- SIM_LEVEL: 3 (D-004, final D-030) — 642 cells
+- Sim tick, real default world, HTML5 release, synchronous (W08, 27 Sep): **1.9 ms median, p95 3.3–4.0 ms** (budget 4 / 8). Wall-clock numbers on this machine swing up to 2× with other load; use P07 instruction counts to compare.
+- P07 baseline (`tests/bench-baseline.json`, D-046): 241,170 VM instructions/tick (moisture 78.6k, hydrology 33.7k, temperature 27.0k, vegetation 26.6k, fauna 19.9k, villages 11.6k, ice 9.4k, ocean 9.1k, biome 8.7k, fire 4.6k, detectors 4.4k); ≈ 7.9 ns/instruction in the browser. Year-boundary tick ≈ 540k.
+- In-game at ⏩ under headless SwiftShader (not representative of a GPU): tick 5–13 ms median (CPU contention with the rasteriser: 13.8 ms at 1280×720 vs 6.8 at 320×180), view 4.5–8 ms/frame at 640×360. Real-GPU numbers come from the playtest.
 - Epoch tick (HTML5 release): —
-- S01 baseline bands (level 3, 10 seeds × 200 y, full profile 7/10; vegetation shares of natural land, D-028):
+- S01 baseline bands (level 3, 10 seeds × 200 y, full profile 7/10, turnover 10/10; vegetation shares of natural land, D-028):
 
-  | seed | forest (varies) | grass | desert | ice | g_temp y200 | population y5+ | headlines/y | S01 |
-  |---|---|---|---|---|---|---|---|---|
-  | 1 | .40 (.11) | .29 | .06 | .14 | +1.48 | 231–324 | .49 | ok |
-  | 2 | .199 (.09) | .37 | .18 | .13 | +1.73 | 293–379 | .38 | forest |
-  | 3 | .36 (.08) | .23 | .14 | .11 | +1.45 | 247–382 | .34 | ok |
-  | 4 | .25 (.04) | .21 | .21 | .15 | +1.41 | 245–329 | .22 | forest varies |
-  | 5 | .26 (.10) | .24 | .20 | .13 | +1.02 | 157–271 | .20 | ok |
-  | 6 | .32 (.09) | .22 | .18 | .15 | +1.44 | 241–383 | .45 | ok |
-  | 7 | .27 (.09) | .42 | .18 | .12 | +0.86 | 119–286 | .93 | population |
-  | 8 | .24 (.13) | .31 | .23 | .12 | +1.56 | 281–368 | .35 | ok |
-  | 9 | .21 (.08) | .27 | .19 | .13 | +1.31 | 206–325 | .42 | ok |
-  | 10 | .29 (.09) | .21 | .24 | .13 | +1.15 | 179–307 | .47 | ok |
+  | seed | forest (varies) | grass | desert | ice | g_temp y200 | population y5+ | headlines/y | villages +/− | S01 |
+  |---|---|---|---|---|---|---|---|---|---|
+  | 1 | .37 (.13) | .32 | .08 | .14 | +1.65 | 262–355 | .45 | +2 −0 | ok |
+  | 2 | .19 (.11) | .38 | .19 | .13 | +1.61 | 257–352 | .34 | +1 −1 | forest (dry world) |
+  | 3 | .35 (.08) | .24 | .14 | .11 | +1.59 | 278–343 | .22 | +1 −0 | ok |
+  | 4 | .23 (.06) | .22 | .22 | .15 | +1.57 | 281–343 | .165 | +1 −1 | headlines |
+  | 5 | .25 (.09) | .24 | .22 | .13 | +1.50 | 261–354 | .27 | +3 −0 | ok |
+  | 6 | .30 (.09) | .22 | .20 | .15 | +1.38 | 193–339 | .25 | +3 −1 | ok |
+  | 7 | .27 (.08) | .41 | .20 | .11 | +1.52 | 254–348 | .34 | +4 −1 | ok |
+  | 8 | .25 (.12) | .29 | .23 | .12 | +1.54 | 244–338 | .29 | +2 −0 | ok |
+  | 9 | .19 (.10) | .27 | .21 | .13 | +1.51 | 240–342 | .28 | +3 −2 | forest (dry world) |
+  | 10 | .26 (.09) | .22 | .25 | .13 | +1.62 | 226–343 | .28 | +4 −0 | ok |
 
-  All seeds: predator CV ≥ 0.15, no extinctions, fish stable, fires 4.6–8.6/decade, a wildfire in every 50-year window.
-- Save size: ≈ 187 KB at year 40 (D-026); default world `assets/worlds/default.tcsave` (seed 3, 158 KB, D-027)
-- Bundle size: 2.66 MB release
+  All seeds: predator CV ≥ 0.19, no extinctions, fish stable, wildfire in every 50-year window. Floods, droughts (re-tagging soil), village floods, famines, colonies and abandonments all occur naturally (D-039, D-044).
+- Default world (`assets/worlds/default.tcsave`, seed 27, 186 KB, D-042): Year 0 has 5 villages / 299 people; first 100 years: 24 headlines (flood at Whewhist Drift Y3, lightning wildfire + deer boom Y14–17, colonists found New Robecombe Y39 and Plan B Y94), population 276–335, g_temp +1.0 °C by Y60. Loads in ≈ 2–3.5 s (pre-spun).
+- Save size: ≈ 232 KB at year 40 (P02)
+- Bundle size: 3.12 MB release
 
 ## Stage entries
+
+### [ch1.s10] Chapter 1 hardening → PLAYTEST 1 — DONE 2026-09-27 14:45 IST
+- Browser: pre-spun default world verified in the build (`prespun` flag, load ≈ 2–3.5 s). W06 now runs the self-test through `sim/selftest.lua` and compares with LuaJIT (`tools/selftest.lua`): identical hashes, so the headless suite speaks for HTML5. W08 measures the real default world's tick synchronously (1.9 ms median) and the speed controller's frame contract at ⏩; W02/W08 run at 640×360 (CPU rasteriser).
+- Perf diagnosis (`npm run perf:probe`, `bench:web --default`): in-game timings are inflated 2–4× by SwiftShader; props chunk rebuilds overshot their budget → finer batches and ≤ 4 rebuild starts/s at high speed; clouds update on alternate frames; the controller predicts ticks with a 25% margin.
+- Colonies (D-044): leave in early spring by the destination's calendar with provisions; fishing jobs set before settlers get jobs; landless farmers fish; orphans are taken in; villages ≥ 100 split. S03 threshold 0.95, news fatigue 15 y (D-045). P07 re-baselined 241,170 (D-046).
+- Visual pass (06 §6 checklist on 17 shots): fixed an orange band along ice coasts (sea ice leaking into the land fire channel across coast triangles), the opening camera (now the biggest village, was an ice cap), bunched/tiny villagers, the village inspector's misleading "+4 more", the F3 panel's clipped last line. Year 0 → 50 shows a wildfire scar, forest spread, CO₂ 280 → 341, +0.8 °C, +11 m sea level.
+- Tests: full 67/67, quick 67/67, web 8/8 (debug + release). Commits 6741b5b, 1dc240e, 6534fa2, 0e5ef19, c487556 (playtest build) and the report commit.
 
 ### [ch1.s10] Sim hardening II: living-world causes — 2026-09-27 13:10 IST
 - Diagnosed with new tools `npm run sim:villages` (month-by-month village economy + chains) and `npm run sim:scout` (seed liveliness):
@@ -56,6 +66,12 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 - Default world is now seed 27 (D-042), regenerated. S03 uses the village's own calendar and `pop@community` (D-043).
 - Tests: `npm run test:sim -- --full` 67/67 (S01 7/10, S02 9/10, S03 7/10, S04 9/10, P02/P03, P06 500 y, P07 241k instr/tick (+3.3%), P10 20/20).
 - Headline mix per seed (200 y): 0.17–0.42/y; wildfires, village floods, booms, deep crashes, famines, village founding/abandonment.
+
+### [ch1.s10] Sim hardening I + P07 — 2026-09-27 (commits 64a294f, c9f1a58, c9cb374; previous session)
+- Food-history population regulation (D-025), compact saves (D-026), pre-spun default world (D-027), natural-land vegetation bands (D-028), P07 on VM instruction counts (D-029), SIM_LEVEL 3 final (D-030), rendering/UI decisions (D-031..D-035). Full profile 66/66 at the time.
+
+### [ch1.s9] Camera, time, HUD, inspector — DONE 2026-09-27 (commit b341c2c; previous session)
+- Trackball camera, fly-to/follow, picking (cell/village/person/animal/ship), speed controller + buttons, HUD, inspector for cell/village/person/planet, F3 debug overlay, edge-indicator stub. W02 and W09 pass.
 
 ### [ch1.s7] Villages & people — DONE 2026-09-27 (commit afde000)
 - What: villages.lua (farms, crops, harvest, granary, fishing, hunting/culls, wood CO₂, migration, founding, abandonment, ruins, memories), people.lua (individual lives), ships.lua (tankers on lanes, boats, sinking → oil), worldgen settle at spin-up y15 (villages, lanes, volcano sites), village detectors; perf pass (tick 343k → 225k Lua VM instructions, ≈3.4 ms est. HTML5).
