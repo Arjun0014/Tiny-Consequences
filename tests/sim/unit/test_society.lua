@@ -61,7 +61,9 @@ function M.abandoned_village_leaves_ruins_and_wild_farms()
   T.eq(v.alive, false, "abandoned")
   T.ok(v.ruin and W.S.ruins[v.cell], "ruins")
   T.eq(W.F.land_use[v.cell], 0, "centre released")
-  for _, c in ipairs(farms) do T.ok(W.F.land_use[c] ~= v.id and W.S.farm[c] == nil, "farm released") end
+  for _, c in ipairs(farms) do
+    T.ok(W.F.land_use[c] ~= v.id and (W.S.farm[c] == nil or W.S.farm[c].v ~= v.id), "farm released")
+  end
   local ruins = 0
   for _, id in ipairs(v.buildings) do
     local b = W.ent.buildings[id]
@@ -78,7 +80,9 @@ end
 function M.save_keeps_every_person_field()
   local W = worlds.fresh(1)
   local P = W.ent.people
-  local p = P[W.ent.villages[1].members[1]]
+  local v
+  for _, u in ipairs(W.ent.villages) do if u.alive and u.members[1] then v = u; break end end
+  local p = P[v.members[1]]
   p.wait_since = 1234
   p.some_new_field = { 1, 2 }
   local packed = ents.pack_people(P)

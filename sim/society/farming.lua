@@ -34,6 +34,13 @@ function M.local_week(W, v)
   return wk % 48, floor(wk / 48)
 end
 
+-- local week of year at a cell (for a village not founded yet)
+function M.local_week_at(W, cell)
+  local wk = floor(W.hour / 168)
+  if W.grid.lat[cell] < 0 then wk = wk + 24 end
+  return wk % 48
+end
+
 local function field(W, c) return W.S.farm[c] end
 
 local function sync_bio(F, f, c)
@@ -95,7 +102,11 @@ function M.plan(W, v, workers)
   -- with what this village's fields really gave (learned from its harvests)
   local per_field = v.yield_field or cfg.yield * 0.5
   if per_field < cfg.yield * 0.2 then per_field = cfg.yield * 0.2 end
-  local want = ceil(need_year * cfg.field_margin / per_field - 0.05) - floor(fresh_part * 0.5 / per_field)
+  -- the grain the village must grow: its need less the fish and meat it usually brings in (counted
+  -- at 80%: the sea is less reliable than a granary), with a margin for bad years
+  local grain_need = need_year - fresh_part * 0.8
+  if grain_need < need_year * 0.25 then grain_need = need_year * 0.25 end
+  local want = ceil(grain_need * cfg.field_margin / per_field - 0.05)
   -- Chayanov: with more than a year and a half of grain in store, nobody breaks their back
   -- for more; fields go fallow until the stores run down
   local grain_years = v.stock.grain / max(1, need_year)
@@ -168,7 +179,9 @@ function M.weekly(W, v)
   local T = F.temp[v.cell]
   -- phase changes
   if S.phase == "winter" then
-    if S.year ~= lyear and lwk < 22 and T >= cfg.sow_temp and F.ice[v.cell] < 0.3 then
+    -- the local spring (or, in the tropics, whenever it is warm: no winter to wait out)
+    local tropics = math.abs(W.grid.lat[v.cell]) < cfg.tropics_lat
+    if S.year ~= lyear and (lwk < 22 or tropics) and T >= cfg.sow_temp and F.ice[v.cell] < 0.3 then
       S.phase, S.year, S.week = "sowing", lyear, lwk
       for i = 1, #v.farms do
         local f = field(W, v.farms[i])
@@ -370,21 +383,21 @@ M.field_need = field_need
 
 -- Which field each worker of a `kind` group goes to: the fields in the order work() spends hours
 -- on them (v.farms order), each filled with workers until their week's capacity covers its need.
--- people = list of persons, caps = capacity (0-1) by person id, week_h = working hours this week.
-function M.field_sites(W, v, kind, people, caps, week_h)
+-- people[1..n] = persons, caps[1..n] = their capacity (0-1), week_h = working hours this week.
+function M.field_sites(W, v, kind, people, caps, n, week_h)
   local cfg = cfgmod.SOCIETY
   local S = v.season
   local farms = v.farms
   local fi, left = 0, 0
   local last = farms[1] or v.cell
-  for i = 1, #people do
+  for i = 1, n do
     while left <= 0 and fi < #farms do
       fi = fi + 1
       left = field_need(cfg, S, field(W, farms[fi]), kind)
       if left > 0 then last = farms[fi] end
     end
     people[i].site = last
-    left = left - (caps[people[i].id] or 0) * week_h
+    left = left - caps[i] * week_h
   end
 end
 
@@ -525,7 +538,7 @@ function M.days_to_harvest(W, v)
   local S = v.season
   local lwk = M.local_week(W, v)
   if S.phase == "harvest" then return 7 end
-  if not v.farms[1] then return 336 end
+  if not v.farms[1] and v.season.harvest_week then return 336 end
   if S.phase == "growing" or S.phase == "sowing" then
     -- the crop's progress toward ripeness at this summer's pace
     local g, n = 0, 0
@@ -537,8 +550,13 @@ function M.days_to_harvest(W, v)
     local left = n > 0 and max(0, cfg.gdd_ripe - g / n) or cfg.gdd_ripe
     return min(200, left / rate * 7 + 14)
   end
-  local hw = S.harvest_week or 30
-  local d = ((hw - lwk) % 48) * 7
+  if not S.harvest_week then
+    -- no harvest here yet (a new village): the local spring's sowing plus a growing season
+    local T = W.F.temp[v.cell]
+    local wait = T >= cfg.sow_temp and 0 or ((6 - lwk) % 48)
+    return min(336, (wait + cfg.first_harvest_weeks) * 7)
+  end
+  local d = ((S.harvest_week - lwk) % 48) * 7
   if d < 14 then d = d + 336 end
   return d
 end

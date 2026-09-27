@@ -57,14 +57,21 @@ function M.daily(W, v, wx)
   -- rationing: make the food last to the next harvest (+ a margin)
   local food = st.fresh + st.grain
   local dth = farming.days_to_harvest(W, v)
-  -- the food expected to come in before then (the boats' and hunters' usual catch, discounted)
-  local income = v.norm.fresh_in / 7 * dth * 0.7
-  local required = need * (dth + cfg.ration_margin_days) - income
-  if required < need * 14 then required = need * 14 end
+  -- will the store last to the next harvest? What the boats, hunters and foragers usually bring in
+  -- counts (discounted: the sea is fickle); a buffer of ration_margin_days of the store's share of
+  -- the diet is kept back. Short of that, everyone eats less so the store lasts (rationing).
+  local income = v.norm.fresh_in / 7 * cfg.income_trust
+  if income > need then income = need end
+  local from_store = need - income
+  local buffer = need * cfg.ration_safety_days + from_store * min(dth, cfg.ration_margin_days) * 0.5
   local r = 1
-  if need > 0 and food < required then
-    r = food / required
-    if r < cfg.ration_min then r = cfg.ration_min end
+  if need > 0 then
+    local avail = food + income * dth - buffer
+    local want = need * dth
+    if avail < want then
+      r = avail / want
+      if r < cfg.ration_min then r = cfg.ration_min end
+    end
   end
   local eat = need * r
   if eat > food and st.seed > 0 then

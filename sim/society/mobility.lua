@@ -17,6 +17,11 @@ local farming = require("sim.society.farming")
 local M = {}
 local floor, ceil, min, max = math.floor, math.ceil, math.min, math.max
 
+-- Set by sim/society/init.lua (the village day-step registry): callbacks, so this module need not
+-- require init (the Defold build rejects require cycles).
+M.on_register = function() end
+M.on_unregister = function() end
+
 local function emit(W, kind, cell, parent, mag, data)
   if not W.record_events then return 0 end
   return events.emit(W, kind, cell, parent, mag, data)
@@ -86,6 +91,8 @@ function M.depart(W, v, members, to, site, kind, reason, food, seed)
     party.members[#party.members + 1] = p.id
   end
   v.pop = #v.members
+  v.hh_dirty = true
+  v.acc.mig_out = (v.acc.mig_out or 0) + #members
   E.parties[id] = party
   E.party_list = E.party_list or {}
   E.party_list[#E.party_list + 1] = id
@@ -103,7 +110,7 @@ local function arrive(W, party)
     if p and not p.dead then p.away = 0; living[#living + 1] = p end
   end
   if #living == 0 then return end
-  local dest
+  local dest, founded
   if party.to ~= 0 then
     dest = E.villages[party.to]
     if not dest.alive then dest = nil end
@@ -130,10 +137,11 @@ local function arrive(W, party)
     end
     local name = names.unique(u, function(uu) return names.new_village(uu, party.culture, from and from.name or "Old") end, used)
     dest = ents.found_village(W, site, { name = name, culture = party.culture, from = party.from })
+    founded = true
     local id = emit(W, "village_founded", site, party.reason, #living, { village = dest.id, from = party.from })
     if id ~= 0 then dest.founded_event = id end
     dest.stock.seed = party.seed
-    require("sim.society.init").register_village(W, dest)
+    M.on_register(W, dest)
   end
   -- households travel as units: re-form them at the destination (people keep partners)
   local by_old = {}
@@ -157,12 +165,22 @@ local function arrive(W, party)
   for i = 1, #order do
     local group = by_old[order[i]]
     local h = ents.new_household(W, dest, 0)
+    h.arrived = W.hour
     for j = 1, #group do ents.move_person(W, group[j], dest, h) end
   end
   dest.stock.grain = dest.stock.grain + party.food
+  dest.acc.mig_in = (dest.acc.mig_in or 0) + #living
   dest.arrivals_tag = party.reason
   dest.need_day = 0
   require("sim.society.life").households(W, dest)
+  if founded then
+    -- the founders lay out their fields on the first day (clearing where the land is wooded)
+    require("sim.society.economy").need_day(W, dest)
+    local adults = 0
+    for i = 1, #dest.members do if ents.age(W, P[dest.members[i]]) >= cfgmod.SOCIETY.adult_age then adults = adults + 1 end end
+    farming.plan(W, dest, adults)
+    dest.need_pop = dest.pop
+  end
 end
 
 -- Settlers (the Introduce power, 04 §2): `n` people arrive by boat and found a village at the
@@ -195,7 +213,7 @@ function M.settlers(W, cell, n, parent)
   for i = 1, #E.villages do used[E.villages[i].name] = true end
   local name = names.unique(u, function(uu) return names.village(uu, culture) end, used)
   local v = ents.found_village(W, site, { name = name, culture = culture })
-  require("sim.society.init").register_village(W, v)
+  M.on_register(W, v)
   local ages = { 27, 25, 31, 29, 7, 4, 33, 30 }
   local sexes = { "m", "f", "m", "f", "f", "m", "m", "f" }
   local made = {}
@@ -277,22 +295,62 @@ function M.abandon(W, v)
   end
   if W.record_events then W.S.society.abandoned = W.S.society.abandoned + 1 end
   emit(W, "village_abandoned", v.cell, v.cause, 1, { village = v.id })
-  require("sim.society.init").unregister_village(W, v)
+  M.on_unregister(W, v)
+end
+
+-- How a village looks to a household thinking of moving there (or staying): food per head once
+-- they are there (months, capped at a year), a roof (a vacant house, or timber to build one),
+-- kin, and whether it is hungry itself (neighbours know when a village is rationing).
+-- People already on the road to village u (they will need feeding too).
+local function incoming(W, u)
+  local E = W.ent
+  local list = E.party_list
+  local n = 0
+  if list then
+    for i = 1, #list do
+      local pa = E.parties[list[i]]
+      if pa and pa.to == u.id then n = n + #pa.members end
+    end
+  end
+  return n
+end
+
+local function prospects(W, u, extra_need, extra_people)
+  local inc = u.id and incoming(W, u) or 0
+  extra_people = (extra_people or 0) + inc
+  extra_need = extra_need + inc * 0.9
+  local need = u.need_day + extra_need
+  local months = need > 0 and (u.stock.grain + u.stock.fresh) / need / 28 or 12
+  -- the store now, and the land and sea for the years after (what it can feed per head)
+  local room = (u.capacity or u.pop) / max(1, u.pop + (extra_people or 0))
+  if room > 1.5 then room = 1.5 end
+  local p = 0.5 * min(12, months) / 12 + 0.5 * room
+  if u.famine then p = p - 1 elseif u.rationing then p = p - 0.4 end
+  return p
 end
 
 -- Where would a household from v go? Returns the best destination village and its pull.
-local function best_destination(W, v, h)
+local function best_destination(W, v, h, housing, added)
   local E = W.ent
   local P = E.people
   local vs = E.villages
+  local cfg = cfgmod.SOCIETY
+  local need = 0
+  for j = 1, #h.members do need = need + ents.need_of(W, P[h.members[j]]) end
   local best, bp = nil, -1e9
   for i = 1, #vs do
     local u = vs[i]
     if u.alive and u ~= v and u.continent == v.continent then
       local d = sites.dist(W, v.cell, u.cell)
       if d < 30 then
-        local pull = min(12, u.food_security) / 12
-        if require("sim.society.life").vacant(W, u) or u.stock.wood > 80 then pull = pull + 0.5 end
+        -- households of this village already set on going there this month count too
+        local a = added[u.id]
+        local pull = prospects(W, u, need + (a and a[2] or 0), #h.members + (a and a[1] or 0))
+        -- a roof matters to those without one (or crowded, or a couple waiting to marry)
+        if housing then
+          if require("sim.society.life").vacant(W, u) then pull = pull + 0.5
+          elseif u.stock.wood > cfg.build.house.wood then pull = pull + 0.25 end
+        end
         -- kin living there
         for j = 1, #h.members do
           local p = P[h.members[j]]
@@ -301,8 +359,7 @@ local function best_destination(W, v, h)
             if q and not q.dead and q.village == u.id then pull = pull + 0.3; break end
           end
         end
-        pull = pull - d * cfgmod.SOCIETY.walk_h * 1.5 / 10 * 0.05
-        if u.famine then pull = pull - 1 end
+        pull = pull - d * cfg.walk_h * 1.5 / 10 * 0.05
         if pull > bp then best, bp = u, pull end
       end
     end
@@ -316,52 +373,75 @@ function M.monthly(W, v)
   local E = W.ent
   local P, H = E.people, E.households
   local hour = W.hour
-  -- hunger months (rolling year): a month whose mean ration was < 0.8
+  -- hunger (rolling year): each month's shortfall below a full diet; two months of hard rationing
+  -- or one of famine outweigh the ties of home (Ó Gráda: migration is the third coping step)
   local mr = v.month_ration_n and v.month_ration_n > 0 and v.month_ration_sum / v.month_ration_n or 1
   v.month_ration_sum, v.month_ration_n = 0, 0
   local hm = v.hunger_months or {}
   v.hunger_months = hm
-  hm[#hm + 1] = mr < 0.8 and 1 or 0
+  local short = cfg.hunger_full - mr
+  hm[#hm + 1] = short > 0 and floor(short * 1000 + 0.5) / 1000 or 0
   if #hm > 12 then table.remove(hm, 1) end
   local hungry = 0
   for i = 1, #hm do hungry = hungry + hm[i] end
   local cm = v.cold_months or 0
   local month = floor(hour / 672)
   local u0 = rng.float(W.seed, rng.S.MIGRATION, v.key_cell, month, v.key_hour % 65536)
-  local home_pull = min(12, v.food_security) / 12 + 0.3
+  local home_pull0 = prospects(W, v, 0) + cfg.home_ties
   local leavers = {}
+  local added = {}
   local reason = v.cause
   for i = 1, #v.households do
     local h = H[v.households[i]]
-    if h and #h.members > 0 then
-      local push = min(6, hungry) * cfg.push_hunger + min(3, cm) * cfg.push_cold
+    -- a household that moved here lately stays and tries (it has spent what it had) — unless the
+    -- village is starving
+    local since = hour - (h and h.arrived or -1e9)
+    if h and #h.members > 0 and (since > cfg.settle_months * 672 or (v.famine and since > 6 * 672)) then
+      local home_pull = home_pull0 + (h.home ~= 0 and cfg.home_own or 0)
+      -- each household's own hunger (a few months' memory): newcomers bring their own story
+      h.hunger = floor(((h.hunger or 0) * cfg.hunger_memory + (short > 0 and short or 0)) * 1000 + 0.5) / 1000
+      local push = min(cfg.push_hunger_max, h.hunger * cfg.push_hunger) + min(3, cm) * cfg.push_cold
+      if v.famine then push = push + cfg.push_famine end
       if h.home == 0 then
         h.homeless_since = h.homeless_since or hour
         if hour - h.homeless_since > 3 * 672 then push = push + cfg.push_homeless end
       else
         h.homeless_since = nil
       end
+      local housing_push = false
       for j = 1, #h.members do
         local p = P[h.members[j]]
         if p.betrothed ~= 0 and p.wait_since and hour - p.wait_since > cfg.wait_migrate_months * 672 then
           push = push + cfg.push_wait
+          housing_push = true
           break
         end
       end
-      if v.pop < 6 then push = push + cfg.push_small end
+      -- a dwindling village (not a young colony, which starts small)
+      if v.pop < 6 and hour - v.founded > cfg.colony_years * 8064 then push = push + cfg.push_small end
       if push >= 1 then
-        local dest, pull = best_destination(W, v, h)
+        local dest, pull = best_destination(W, v, h, h.home == 0 or housing_push, added)
         local u = (u0 + (h.key % 1000) / 1000 * 1.618) % 1
-        if dest and pull > home_pull - push + cfg.pull_margin and u < cfg.migrate_prob then
+        -- the destination must look clearly better than home; desperation lowers the bar a little
+        local margin = cfg.pull_margin - min(0.3, 0.1 * (push - 1))
+        if v.famine and margin > 0 then margin = 0 end   -- starving: anywhere that is not worse
+        local prob = v.famine and cfg.migrate_prob_famine or cfg.migrate_prob
+        if dest and pull > home_pull + margin and u < prob then
           leavers[#leavers + 1] = { h = h, dest = dest }
-        elseif not dest and push >= 1.5 and u < cfg.migrate_prob then
+          local a = added[dest.id]
+          if not a then a = { 0, 0 }; added[dest.id] = a end
+          a[1] = a[1] + #h.members
+          for j = 1, #h.members do a[2] = a[2] + ents.need_of(W, P[h.members[j]]) end
+        elseif not dest and v.famine and push >= 1.5 and u < prob
+          and hour - v.founded > cfg.colony_years * 8064 then
+          -- nowhere to go on this land: the desperate strike out to settle somewhere new
           leavers[#leavers + 1] = { h = h, dest = nil }
         end
       end
     end
   end
   -- go: households with a destination walk there; those without gather to found a village
-  local founders, found_food = {}, 0
+  local founders, found_food, nfound = {}, 0, 0
   for i = 1, #leavers do
     local l = leavers[i]
     local members = {}
@@ -374,14 +454,19 @@ function M.monthly(W, v)
       local mid = emit(W, "migration", v.cell, reason, #members, { from = v.id, to = l.dest.id })
       M.depart(W, v, members, l.dest.id, nil, "migrants", mid ~= 0 and mid or reason, food, 0)
       v.labour_candidate = mid ~= 0 and mid or v.labour_candidate
-    else
+    elseif nfound < cfg.found_max_households
+      and hour - (v.refuge_last or -1e9) > (v.famine and 672 or 8064) then
+      -- (a starving village with nowhere to go scatters: a party a month, not a year)
+      -- a founding party is a handful of households (the rest stay and try to hold on)
       for j = 1, #members do founders[#founders + 1] = members[j] end
       found_food = found_food + food
+      nfound = nfound + 1
     end
   end
-  if #founders >= 3 then
-    local site = sites.best_site(W, v.continent, false)
+  if #founders >= 3 and nfound >= 2 then
+    local site = sites.near_site(W, v.cell, cfg.refuge_radius)
     if site then
+      v.refuge_last = hour
       v.stock.grain = v.stock.grain - found_food
       local seed = min(v.stock.seed, cfg.seed * cfg.found_seed_cells)
       v.stock.seed = v.stock.seed - seed
@@ -390,12 +475,14 @@ function M.monthly(W, v)
       v.labour_candidate = mid ~= 0 and mid or v.labour_candidate
     end
   end
-  -- daughter villages: a crowded, fed village whose young couples wait for homes sends them to
-  -- found a village on free land, in the local early spring (so they can sow on arrival)
-  local lwk = farming.local_week(W, v)
+  -- daughter villages: a crowded, fed village whose young couples wait for homes (no house, or no
+  -- land to feed another household) sends them to found a village on free land a few days' walk
+  -- away, leaving in the late winter of the new site so they can build huts and sow in its spring.
+  -- They carry grain to their first harvest and seed for two fields — only if the parent can spare
+  -- it after its own needs to the next harvest.
   local living = 0
   for i = 1, #E.villages do if E.villages[i].alive then living = living + 1 end end
-  if lwk < 6 and v.pop >= 30 and v.food_days > 90 and not v.famine and living < cfg.max_villages
+  if v.pop >= 30 and not v.famine and not v.rationing and living < cfg.max_villages
     and hour - (v.bud_last or v.founded) > 6 * 8064 then
     local waiting = {}
     for i = 1, #v.members do
@@ -405,23 +492,32 @@ function M.monthly(W, v)
         if q and not q.dead and q.village == v.id then waiting[#waiting + 1] = p; waiting[#waiting + 1] = q end
       end
     end
-    if #waiting >= 4 and rng.float(W.seed, rng.S.MIGRATION, v.key_cell, month, 5) < 0.35 then
-      local site = sites.best_site(W, v.continent, false)
-      if site then
-        v.bud_last = hour
+    if #waiting >= 4 and rng.float(W.seed, rng.S.MIGRATION, v.key_cell, month, 5) < 0.5 then
+      local site = sites.near_site(W, v.cell, cfg.bud_radius)
+      local swk = site and farming.local_week_at(W, site)
+      if site and (swk >= 42 or swk < 4) then
         local group = {}
         for i = 1, min(#waiting, 8) do group[#group + 1] = waiting[i] end
-        local food = min(v.stock.grain * 0.4, #group * cfg.found_food_days)
-        local seed = min(v.stock.seed * 0.5, cfg.seed * cfg.found_seed_cells)
-        v.stock.grain = v.stock.grain - food
-        v.stock.seed = v.stock.seed - seed
-        -- they marry as they leave: a new village starts with households
-        for i = 1, #group, 2 do
-          local a, b = group[i], group[i + 1]
-          if a and b then a.partner, b.partner = b.id, a.id; a.betrothed, b.betrothed = 0, 0 end
+        local days = ((cfg.first_harvest_weeks + (6 - swk) % 48) * 7) + cfg.bud_food_margin
+        local food_full = #group * cfgmod.SOCIETY.eat.adult * days
+        local food = food_full
+        local seed = cfg.seed * cfg.found_seed_cells
+        local keep = v.need_day * (farming.days_to_harvest(W, v) + 60)
+        local spare = v.stock.grain + v.stock.seed - keep - seed
+        if spare < food then food = spare end
+        if food >= food_full * cfg.bud_min_provision then
+          v.bud_last = hour
+          local from_seed = min(v.stock.seed, seed)
+          v.stock.seed = v.stock.seed - from_seed
+          v.stock.grain = v.stock.grain - food - (seed - from_seed)
+          -- they marry as they leave: a new village starts with households
+          for i = 1, #group, 2 do
+            local a, b = group[i], group[i + 1]
+            if a and b then a.partner, b.partner = b.id, a.id; a.betrothed, b.betrothed = 0, 0 end
+          end
+          local mid = emit(W, "migration", v.cell, 0, #group, { from = v.id, to = 0, colonists = true })
+          M.depart(W, v, group, 0, site, "colonists", mid, food, seed)
         end
-        local mid = emit(W, "migration", v.cell, 0, #group, { from = v.id, to = 0, colonists = true })
-        M.depart(W, v, group, 0, site, "colonists", mid, food, seed)
       end
     end
   end

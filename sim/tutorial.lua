@@ -12,7 +12,7 @@ function M.pick(W)
   for _, t in ipairs(W.ent.ships or {}) do
     if t.alive and not t.sunk then
       for _, v in ipairs(W.ent.villages) do
-        if v.alive and #v.fishing > 0 and (v.fish_jobs or 0) > 0 then
+        if v.alive and #v.fishing > 0 and #v.boats > 0 then
           local d = g.X[t.cell] * g.X[v.cell] + g.Y[t.cell] * g.Y[v.cell] + g.Z[t.cell] * g.Z[v.cell]
           local steps = math.acos(math.max(-1, math.min(1, d))) / 0.07553
           if steps < bd then best, bd, bv = t, steps, v end

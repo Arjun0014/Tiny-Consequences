@@ -1,74 +1,74 @@
-# Session handoff — World reset, W1 done, W2 in progress (27–28 Sep 2026)
+# Session handoff — W2: sim core done, view not ported (28 Sep 2026, ~01:00 IST)
 
-`docs/PROGRESS.md` is the source of truth for state and numbers. The design spec for this work is
-`docs/world/` (00 research, 01 audit, 10–16 design, 17 roadmap v2). Decisions D-050–D-052.
-Arjun's instructions for this phase: **build the living world first, jams secondary; no
-subagents; hand off at ~700K context.**
+`docs/PROGRESS.md` is the source of truth for state and numbers. Spec: `docs/world/` (10–17).
+Decisions: D-050–D-053 (D-053 is this session). Arjun's rules for this phase: **living world first,
+jams secondary; no subagents; hand off at ~700K context.**
 
 ## State at handoff
-- **W0 (reset)**: committed c80a47e — research with sources, audit, design docs, roadmap v2.
-- **W1 (time)**: committed 4318145 — hourly master clock, local solar time, day length, daily
-  weather, speed ladder, real day/night in the view. Quick suite was 85/85 at that commit.
-- **W2 (settlements)**: committed as **WIP** at handoff (see the commit after 2a62d26). The new
-  settlement layer runs (`sim/society/*`), replacing `sim/systems/villages.lua` and
-  `people.lua` in the systems list (the old files are still in the tree, unused except by old
-  tests). Headless, six seeds survive 80 years with 180–630 people, daughter villages,
-  abandonments, recoveries, and emergent chains such as
-  `lightning_strike > fire_started > wildfire > crop_failure > famine > deaths_spike > seed_eaten >
-  migration > village_abandoned`.
-- **Not yet done in W2**: tests ported, saves bit-identical, pre-spun worlds regenerated, the view
-  and inspector reading the new schema, tools (`sim:villages`, `sim:scout`, `sim:tutorial`)
-  ported. **The game build probably breaks** where the view reads old fields (`v.boats` is now a
-  list of boat ids; `W.ent.boats` is a map of real boats; people have `born` in hours).
+- **W2 sim core**: done and committed. Saves reload bit-identically, worlds regenerated, unit +
+  behaviour tests green (B01, B04–B10, B12, B13), the retired `villages.lua`/`people.lua` deleted.
+  The society's mechanisms were reworked from what the ledger tools showed (D-053 lists them).
+- **Quick suite** (`npm run test:sim`): 90/95 on the run before the last fixes; since then B07 and
+  `test_society.save_keeps_every_person_field` fixed, S01 re-banded (check the S01/S15 re-run in
+  `out/test_s01.txt`, `out/test_s15.txt` if they finished). Known failing:
+  - **S03** farm fire → famine: the scenario strikes at `year = 1.55` of the village's calendar, but
+    tropical villages now sow whenever it is warm (D-053), so the fields are already harvested when
+    the lightning comes. Port: trigger the action on the village's state (fields ripening,
+    `season.phase == "growing"` and a crop past half) instead of a calendar date (needs a small
+    `when` hook in `tests/sim/scenarios/lib.lua`). Also check the famine really follows two burned
+    harvests now that villages keep stores, fish, forage and emigrate.
+  - **S15** tutorial chain (tanker sunk → fish collapse → famine): the regenerated tutorial world
+    (seed 8) has different villages; re-scout with `npm run sim:tutorial` (port the tool to the new
+    schema first if it breaks) and/or pick another seed; update `sim/tutorial.lua` and D-049.
+  - **P08** attribution 82% (< 90%): in S02 (wolves removed) the treated and control worlds' societies
+    diverge (famines/migrations/foundings in one and not the other) and those added headlines don't
+    chain to the player. Decide with evidence whether (a) P08 should compare only headlines whose
+    region the intervention touched, (b) society events should inherit the player's tag when their
+    driver (hunting yield, grazers) carries it, or (c) both. Don't just lower the threshold.
+- **Web**: `npm run build` OK (require cycles fixed with callbacks). W01 failed on the sky colour
+  (the opening camera showed a village at night); `game/view/camera.lua` now opens on the biggest
+  village in daylight — re-run `npm run test:web` (W01, W02, W07, W09).
+- **P07** re-baselined at 772,714 instr/tick (society 258,732 at ~400 people).
 
 ## First things to do next session (in order)
-1. `npm run lint:lua` (clean at handoff) and `node scripts/lua.mjs tests/sim/run.lua --unit`
-   (58/63 at handoff). Fix:
-   - **Save determinism** (`test_save_world`, `test_worlds`): derived caches that change behaviour
-     must be rebuilt identically after a load. Culprit found: `fishing.rank` fills
-     `W.vgeo[id].grounds` weekly, but after a restore it is rebuilt lazily inside `fishing.plan`
-     with a different hours argument. Fix: rank in `sys.rebuild`/on load with the same inputs,
-     or store the ranked list in saved state (`v.grounds`). Audit the other caches (`G.woods`,
-     `G.walkd`, `G.fishd` are pure distance caches — fine; `v.fuel_n`, `v.need_pop` are saved —
-     fine).
-   - `test_worlds`: regenerate `assets/worlds/default.tcsave` and `tutorial.tcsave`
-     (`node scripts/lua.mjs tools/make_world.lua` and `... --seed 8 --out
-     assets/worlds/tutorial.tcsave`) after the save fix. `init.lua:49` "table index is nil" is the
-     stale save (villages without `bucket`).
-   - Rewrite `tests/sim/unit/test_villages.lua` for the new schema, then add the behaviour tests
-     B01, B04–B10, B12, B13 (`docs/world/17_ROADMAP.md`).
-2. Run the scenario/property suites (`--props`, `--scenarios`) and port what breaks (S03 uses
-   village farms/pop@community, S04 food_security, S11 blight on `v.farms`, S15 the tutorial
-   chain, P10 settle report, P08). Old fields kept for compatibility: `pop`, `members`, `farms`,
-   `fishing`, `food_security` (months), `houses` (count, weekly), `state`, `cause`, `alive`.
-3. Tune toward bands (see PROGRESS): village churn is high (12–18 founded, 7–14 abandoned per 80
-   years); populations grow ~1%/yr on rich seeds; refugee colonies often fail. Then set the new
-   S01 society bands (D-052 lists candidates).
-4. Performance: society ≈ 390k VM instructions per week at ~375 people (planet ≈ 500k). Hot:
-   `labour.assign` (~16k per call), `life.weekly` (~160 per person), `fishing.settle` (a hash per
-   boat per day for squalls — use one hash per village-day). Re-baseline P07 with a DECISIONS
-   entry once stable (P07 now profiles hourly systems as `villages:hour`).
-5. W2c view: buildings from `W.ent.buildings` (lots via `sim/society/layout.lua`), people from
-   their task/site + the day rhythm (write `sim/society/schedule.lua`), boats from `trip`,
-   parties walking their `path`. Then the inspector (village stocks, `v.acc` yearly flows,
-   households, fields).
+1. `npm run test:sim` (quick) and `npm run test:web`; fix what the handoff fixes broke.
+2. Port S03, S15, P08 as above.
+3. **Seed 9 chronic famine** (`node scripts/lua.mjs tools/society_ledger.lua --seed 9 --years 100
+   --summary`, then `--from 70`; `out/tmp/mig.lua 9 70 90` for flows): after year 70 villages at or
+   over their land capacity cycle through famine and migration (3,000 moves a decade) and lose half
+   the population in years 90–100. Suspects: the capacity estimate (`farming.capacity`: all ring
+   cells x learned yield + 8% of fish) is too generous, so marriages and in-migration continue past
+   what the land feeds; soil exhaustion lowers yields later; and there is no relief between villages
+   (W3 trade / kin gifts). Look at yields per field and fertility over time in that seed first.
+4. **W2c view** (the user's section 5): houses/sites/ruins from `W.ent.buildings` via
+   `sim/society/layout.lua` (replace `v.houses` counts in `game/view/view.lua`/`props.lua`/
+   `propgen.lua`); people from `sim/society/schedule.lua` (replace the random targets in
+   `game/view/puppets.lua` ~line 281); boats from `b.trip` (depart/at/leave/ret, ground; moored
+   otherwise; `W.ent.boats` is a map id → boat, not an array — `game/view/ents.lua` `M.boats`);
+   parties from `path`/`depart`/`arrive` via `schedule.party_pos`; fields from `W.S.farm[c]`
+   (sown/bio/ripe/harvested); construction progress; the inspector (stocks, `v.acc_last`,
+   households and homes, fields, boats, people's task/site). Then screenshots (`npm run shots`).
+5. Performance (W6, with the view): multi-rate person updates (half the village each week),
+   `labour.assign` (~14k/village-week) and `life.weekly` (~11.5k) are the largest items
+   (`out/tmp/prof_soc.lua <seed> <years>`).
 
-## Tools worth knowing (new)
-- `node scripts/lua.mjs tools/society_trace.lua --seed 22 --years 30 --every 12 [--events] [--village N]`
-  — generates a world and prints every village (pop, households, homes/sites, couples waiting,
-  boats, fields/sown, season phase, food days with grain/fresh/seed, wood days, ration, labour
-  groups) plus society events with their chains.
-- Debug scripts in `out/tmp/` (gitignored): `bal_trace.lua` (yearly flows per village from `v.acc`
-  through the spin-up), `spin_trace.lua`, `ev_trace.lua`, `plan_dbg.lua`, `prof_soc.lua`
-  (instruction counts per society function).
-- Bridge: `run_hours {n | to_local}`; `__TC.hour`, `hour_f`.
+## Tools
+- `node scripts/lua.mjs tools/society_ledger.lua --seed 22 --years 30 [--spinup] [--summary] [--village N] [--from Y]`
+  — yearly flows per village from `v.acc_last`: births, deaths by cause, marriages, migrants,
+  harvest/catch/forage/meat, eaten vs need, spoilage, wood, hours by task, jobs.
+- `node scripts/lua.mjs tools/save_check.lua --seed N --weeks W --hours H` — save mid-year, reload,
+  step both, diff the first divergence path.
+- `tools/society_trace.lua` (village snapshots + event chains), `out/tmp/prof_soc.lua`,
+  `out/tmp/mig.lua`, `out/tmp/field_dbg.lua` (a village's fields week by week in the spin-up).
 
 ## Pitfalls met
-- Git Bash heredocs mangle backslashes (`\194` became a control byte) — write Python patch
-  scripts to files with the Write tool and run them.
-- `local fx` in `view.lua` shadowed the effects module `fx` — watch local names in big modules.
-- Loops over `v.boats` must go backwards when a boat can be lost (removed) inside the loop.
-- A profiler wrapper must return all results (`unpack` of a packed table).
-- The Browser pane stops rendering frames while hidden; use `scripts/bridge_cmd.mjs --shot` for
-  screenshots instead.
-- Units: weekly EMAs (`v.norm.*_in`) vs daily needs — multiply weekly by 48 for a year.
+- Git Bash heredocs break on apostrophes: write Python patch scripts with the Write tool.
+- Background jobs started with `( ... ) &` inside one Bash call may die with the shell: use the
+  tool's `run_in_background`.
+- A table with keys 1..n plus holes can pass a "count == #t" array test (fixed in `sim/save.lua`).
+- Bob rejects require cycles even through lazy `require` inside functions: use callbacks.
+- The yearly account (`v.acc`) rolls over at the UTC year boundary: a crisis straddling it is split
+  between two ledger years (it looked like people "vanished").
+- Behaviour changes change the spin-up, so the Year-0 worlds change: regenerate
+  `assets/worlds/*.tcsave` after any sim change (`tools/make_world.lua`, `--seed 8 --out
+  assets/worlds/tutorial.tcsave`), then `unit.test_worlds` passes.

@@ -22,7 +22,7 @@ local M = {}
 local floor = math.floor
 
 local OUTDOOR = { sow = true, tend = true, harvest = true, clear = true, fuel = true, timber = true,
-  brush = true, hunt = true, build = true }
+  brush = true, hunt = true, build = true, forage = true }
 
 -- The home (cell, lot) of person p (nil when homeless: they sleep by the square).
 function M.home_of(W, p)
@@ -40,7 +40,7 @@ local function task_place(W, v, p)
     local b = W.ent.buildings[p.site]
     if b then return b.cell, b.lot, "site", b.id end
     return v.cell, 0, "square", 0
-  elseif k == "fuel" or k == "timber" or k == "brush" then
+  elseif k == "fuel" or k == "timber" or k == "brush" or k == "forage" then
     return p.site ~= 0 and p.site or v.cell, -1, "wood", 0
   elseif k == "hunt" then
     return v.hunt_cell or v.cell, -1, "wood", 0

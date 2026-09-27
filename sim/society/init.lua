@@ -59,6 +59,9 @@ function sys.unregister_village(W, v)
   if l then ents.remove_id(l, v.id) end
 end
 
+mobility.on_register = function(W, v) sys.register_village(W, v) end
+mobility.on_unregister = function(W, v) sys.unregister_village(W, v) end
+
 function sys.init(W)
   ents.init(W)
   W.scratch.wx = W.scratch.wx or {}

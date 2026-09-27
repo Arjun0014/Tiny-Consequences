@@ -26,7 +26,7 @@ local FFOREST = fields.BY_NAME.forest
 local FGRAZ = fields.BY_NAME.grazers
 
 local FARM = { harvest = true, sow = true, tend = true, clear = true }
-local LIGHT = { harvest = true, tend = true, fuel = true, sow = true, brush = true }   -- children plant, elders glean
+local LIGHT = { harvest = true, tend = true, fuel = true, sow = true, brush = true, forage = true }   -- children plant, elders glean
 local AFFINITY = { farmer = FARM, fisher = { fish = true }, woodcutter = { fuel = true, timber = true, brush = true },
   builder = { build = true } }
 
@@ -108,6 +108,44 @@ function M.brush(W, v, hours_day)
   return best, bs
 end
 
+-- Wild food (roots, seeds, greens, nuts, fruit, shellfish at the shore): the famine food of every
+-- farming people. The best patch near the village by vegetation after walking; the take comes out
+-- of the patch's grass (roots and seeds). Returns cell, score (FU per day-hour equivalent).
+function M.forage_cell(W, v, hours_day)
+  local cfg = cfgmod.SOCIETY
+  local F = W.F
+  local G = W.vgeo[v.id]
+  local ring = G.ring
+  local lu = F.land_use
+  local best, bs = nil, 0
+  for i = 1, #ring do
+    local c = ring[i]
+    if W.geo.ocean[c] == 0 and lu[c] <= 0 and F.fire[c] == 0 then
+      local veg = F.grass[c] + 0.6 * F.forest[c]
+      if veg > 0.05 then
+        local dc = G.walkd
+        if not dc then dc = {}; G.walkd = dc end
+        local h = hours_day - 2 * sites.dist_cached(W, dc, v.cell, c) * cfg.walk_h
+        if h > 0.5 then
+          local s = veg / (veg + cfg.forage_half) * h
+          if s > bs then best, bs = c, s end
+        end
+      end
+    end
+  end
+  return best, bs
+end
+
+-- Wild food gathered in `eff` effective hours at cell c (season: plants give little in the cold).
+local function forage_yield(W, c, eff)
+  local cfg = cfgmod.SOCIETY
+  local F = W.F
+  local veg = F.grass[c] + 0.6 * F.forest[c]
+  local T = F.temp[c]
+  local season = T <= 0 and 0.15 or (T >= 10 and 1 or 0.15 + 0.085 * T)
+  return eff * cfg.forage_rate * veg / (veg + cfg.forage_half) * season
+end
+
 -- Worker capacity (0..1) and whether they can only do light work.
 local function capacity(W, p, hour)
   local cfg = cfgmod.SOCIETY
@@ -126,6 +164,41 @@ M.capacity = capacity
 
 local D = {}   -- scratch demand list (entries reused)
 local FD = {}
+local LIST, FREE, FCAP, FLIGHT, POOL, REST = {}, {}, {}, {}, {}, {}
+local CURSOR = { farmer = 1, fisher = 1, woodcutter = 1, builder = 1 }
+
+local function by_prio(a, b)
+  if a.prio ~= b.prio then return a.prio > b.prio end
+  return a.ord < b.ord
+end
+
+local function site_prio(b)
+  if b.state == "site" then return construction.PRIO[b.kind] or 30 end
+  return construction.PRIO.repair
+end
+local function by_site(a, b)
+  local pa, pb = site_prio(a), site_prio(b)
+  if pa ~= pb then return pa > pb end
+  return a.id < b.id
+end
+
+-- Person p (capacity c) takes demand d for the week.
+local function take(Bo, p, c, d, week_h)
+  p.task, p.site = d.kind, d.target
+  d.got = d.got + c * week_h
+  d.n = d.n + 1
+  d.cap = d.cap + c
+  if d.kind == "fish" then
+    local bo = Bo[d.target]
+    if bo then bo.crew[#bo.crew + 1] = p.id end
+  elseif FARM[d.kind] then
+    local n = d.nwho + 1
+    d.nwho = n
+    local who, wc = d.who, d.whocap
+    if not who then who = {}; wc = {}; d.who, d.whocap = who, wc end
+    who[n], wc[n] = p, c
+  end
+end
 
 -- Weekly assignment. hours_day: expected working hours per day this week.
 function M.assign(W, v, hours_day)
@@ -184,100 +257,133 @@ function M.assign(W, v, hours_day)
   -- fishing: crews for the boats, sized to the fresh food the village wants
   if #v.boats > 0 and #v.fishing > 0 then
     local prio = v.food_days < 60 and 70 or 45
-    local want_boats = #v.boats
-    if v.food_days >= 120 and v.stock.fresh > v.need_day * 5 then want_boats = max(1, floor(#v.boats * 0.5)) end
+    -- crews for the boats the village has been sending out (and one more), not for idle hulls
+    local want_boats = min(#v.boats, floor((v.boats_used or #v.boats) + 1.5))
+    if v.food_days < 60 then want_boats = #v.boats end
     for i = 1, min(want_boats, #v.boats) do
       demand("fish", v.boats[i], prio, cfg.crew * hours_day * cfg.work_days, cfg.crew)
     end
   end
   -- building (only where wood exists or is coming)
-  table.sort(sites_list, function(a, b2)
-    local pa = a.state == "site" and (construction.PRIO[a.kind] or 30) or construction.PRIO.repair
-    local pb = b2.state == "site" and (construction.PRIO[b2.kind] or 30) or construction.PRIO.repair
-    if pa ~= pb then return pa > pb end
-    return a.id < b2.id
-  end)
+  table.sort(sites_list, by_site)
   for i = 1, #sites_list do
     local b = sites_list[i]
     local h = construction.remaining(b)
-    local prio = b.state == "site" and (construction.PRIO[b.kind] or 30) or construction.PRIO.repair
+    local prio = site_prio(b)
     if v.stock.wood > 1 or timber <= 0 then demand("build", b.id, prio, h, cfg.builders_per_site) end
+  end
+  -- foraging when food runs short: everyone who can walks out for wild food
+  if v.food_days < cfg.forage_days and hours_day > 1 then
+    local fc, fs = M.forage_cell(W, v, hours_day)
+    if fc and fs > 0.5 then
+      local rate = cfg.forage_rate * fs / max(0.5, hours_day)
+      local share = v.food_days < 14 and 0.6 or 0.3
+      demand("forage", fc, v.food_days < 14 and 75 or 62, v.need_day * 7 * share / max(0.05, rate), nil)
+    end
   end
   -- hunting when food runs short (until the herds of W4)
   if v.food_days < 90 then demand("hunt", v.cell, v.food_days < 30 and 55 or 25, hours_day * 12, 4) end
   -- sort by priority (stable: insertion order breaks ties)
   for i = 1, nd do D[i].ord = i end
-  for i = nd + 1, #D do D[i].prio = -1 end
-  local list = {}
+  local list = LIST
   for i = 1, nd do list[i] = D[i] end
-  table.sort(list, function(a, b2)
-    if a.prio ~= b2.prio then return a.prio > b2.prio end
-    return a.ord < b2.ord
-  end)
+  for i = #list, nd + 1, -1 do list[i] = nil end
+  table.sort(list, by_prio)
   -- clear crews
-  for i = 1, #v.boats do local bo = Bo[v.boats[i]]; if bo then bo.crew = {} end end
+  for i = 1, #v.boats do
+    local bo = Bo[v.boats[i]]
+    if bo then local cr = bo.crew; for k = #cr, 1, -1 do cr[k] = nil end end
+  end
   local week_h = hours_day * cfg.work_days
-  local free = {}
-  local fcap, flight = {}, {}
-  for i = 1, #v.members do
-    local p = P[v.members[i]]
-    local c, light = capacity(W, p, hour)
+  -- the able: people and their capacity (scratch arrays by position, no per-call allocation)
+  local nf = 0
+  local mem = v.members
+  for i = 1, #mem do
+    local p = P[mem[i]]
     p.task, p.site = "", 0
-    if c > 0 then free[#free + 1] = p; fcap[p.id] = c; flight[p.id] = light end
+    local c, light = capacity(W, p, hour)
+    if c > 0 then
+      nf = nf + 1
+      FREE[nf], FCAP[nf], FLIGHT[nf] = p, c, light
+    end
   end
-  local function take(p, d)
-    p.task, p.site = d.kind, d.target
-    d.got = d.got + fcap[p.id] * week_h
-    d.n = d.n + 1
-    d.cap = d.cap + fcap[p.id]
-    if d.kind == "fish" then local bo = Bo[d.target]; if bo then bo.crew[#bo.crew + 1] = p.id end end
+  for i = 1, nd do local d = list[i]; d.nwho = 0 end
+  -- pass 0: sowing and harvest windows are short — everyone lends a hand (fishers too unless the
+  -- village lives on the catch, woodcutters unless the fire is going out)
+  local need_fish = v.food_days < 60
+  local need_wood = v.stock.wood < fday * 14
+  local np = 0
+  for i = 1, nf do
+    local p = FREE[i]
+    local urgent = false
+    if not (p.job == "fisher" and need_fish) and not (p.job == "woodcutter" and need_wood) then
+      local light = FLIGHT[i]
+      for k = 1, nd do
+        local d = list[k]
+        if d.prio < 85 then break end
+        if d.got < d.need and d.n < d.maxw and (not light or LIGHT[d.kind]) then
+          take(Bo, p, FCAP[i], d, week_h); urgent = true; break
+        end
+      end
+    end
+    if not urgent then np = np + 1; POOL[np] = i end
   end
-  local function open(d, light)
-    if d.got >= d.need or d.n >= d.maxw then return false end
-    if light and not LIGHT[d.kind] then return false end
-    return true
-  end
-  -- pass 1: occupations (a fisher keeps their boat, a farmer farms)
-  local rest = {}
-  for i = 1, #free do
-    local p = free[i]
+  -- pass 1: occupations (a fisher keeps their boat, a farmer farms). Demands only ever fill up,
+  -- so each trade keeps a cursor at its first open demand (no rescans: O(people + demands)).
+  for k in pairs(CURSOR) do CURSOR[k] = 1 end
+  local nr = 0
+  for j = 1, np do
+    local i = POOL[j]
+    local p = FREE[i]
     local aff = AFFINITY[p.job]
     local done = false
-    if aff and not flight[p.id] then
-      for k = 1, #list do
+    if aff and not FLIGHT[i] then
+      local k = CURSOR[p.job] or 1
+      while k <= nd do
         local d = list[k]
-        if aff[d.kind] and open(d, false) then take(p, d); done = true; break end
+        if aff[d.kind] and d.got < d.need and d.n < d.maxw then take(Bo, p, FCAP[i], d, week_h); done = true; break end
+        k = k + 1
       end
+      CURSOR[p.job] = k
     end
-    if not done then rest[#rest + 1] = p end
+    if not done then nr = nr + 1; REST[nr] = i end
   end
-  -- pass 2: everyone else to the most urgent unmet need
-  for i = 1, #rest do
-    local p = rest[i]
-    for k = 1, #list do
+  -- pass 2: everyone else to the most urgent unmet need (a cursor for the able, one for light work)
+  local ka, kl = 1, 1
+  for j = 1, nr do
+    local i = REST[j]
+    local light = FLIGHT[i]
+    local k = light and kl or ka
+    while k <= nd do
       local d = list[k]
-      if open(d, flight[p.id]) then take(p, d); break end
+      if d.got < d.need and d.n < d.maxw and (not light or LIGHT[d.kind]) then
+        take(Bo, FREE[i], FCAP[i], d, week_h); break
+      end
+      k = k + 1
     end
+    if light then kl = k else ka = k end
   end
-  -- groups for the daily execution; farm workers are sent to the fields their hours will go to
-  local groups = {}
-  for k = 1, #list do
+  -- groups for the daily execution (saved: reused in place); farm workers are sent to the
+  -- fields their hours will go to
+  local groups = v.plan.groups
+  local ng = 0
+  for k = 1, nd do
     local d = list[k]
     if d.n > 0 then
-      groups[#groups + 1] = { kind = d.kind, target = d.target, cap = d.cap, n = d.n }
-      if FARM[d.kind] then
-        local who = {}
-        for i = 1, #free do if free[i].task == d.kind then who[#who + 1] = free[i] end end
-        farming.field_sites(W, v, d.kind, who, fcap, week_h)
-      end
+      ng = ng + 1
+      local g = groups[ng]
+      if not g then g = {}; groups[ng] = g end
+      g.kind, g.target, g.cap, g.n = d.kind, d.target, d.cap, d.n
+      if FARM[d.kind] then farming.field_sites(W, v, d.kind, d.who, d.whocap, d.nwho, week_h) end
     end
   end
-  v.plan.groups = groups
+  for k = #groups, ng + 1, -1 do groups[k] = nil end
   v.plan.assigned = hour
   v.replan = false
   -- workforce accounting (labour_tag: why the workforce is below normal)
   local cap = 0
-  for i = 1, #free do cap = cap + fcap[free[i].id] end
+  for i = 1, nf do cap = cap + FCAP[i] end
+  for i = 1, nf do FREE[i] = nil end
   v.workforce = cap
   if (v.workforce_norm or 0) <= 0 then v.workforce_norm = cap end
   v.workforce_norm = v.workforce_norm + (cap - v.workforce_norm) / 104
@@ -364,6 +470,16 @@ function M.execute(W, v, hours_day, wx)
         else
           v.replan = true
         end
+      elseif k == "forage" then
+        local c = g.target
+        local food = forage_yield(W, c, eff)
+        local gr = F.grass[c]
+        local dg = food / cfg.forage_fu
+        if dg > gr * 0.1 then dg = gr * 0.1; food = dg * cfg.forage_fu end
+        F.grass[c] = gr - dg
+        v.stock.fresh = v.stock.fresh + food
+        v.day_fresh = (v.day_fresh or 0) + food
+        acc(v, "forage", food)
       elseif k == "hunt" then
         -- the best grazer cell near the village (fauna densities until W4's herds)
         local ring = W.vgeo[v.id].ring

@@ -11,17 +11,21 @@ return {
   baseline_only = true,
   expect = {
     -- vegetation bands on natural land (land minus villages, farms, ruins; D-025)
-    { band = "forest_nat", min = 0.20, max = 0.55, stat = "mean" },
+    -- villages cut fuel and timber and clear fields (D-053): forests thin around them, but at
+    -- least a tenth of the natural land stays forested
+    { band = "forest_nat", min = 0.10, max = 0.55, stat = "mean" },
     { vary = "forest_nat", min = 0.05 },
     { band = "grass_nat", min = 0.20, max = 0.50, stat = "mean" },
     { band = "desert_nat", min = 0.05, max = 0.30, stat = "mean" },   -- 0.25 until D-047 (1,442 cells resolve arid interiors)
     { band = "ice", min = 0.05, max = 0.20, stat = "mean" },
     { band = "g_temp", min = -1.5, max = 3.5, stat = "all" },
     { band = "g_temp", min = 0.0, max = 2.0, stat = "final" },
-    { band = "population", min = 120, max = 400, stat = "all", from_year = 5 },
+    -- the settlement layer grows to its land's capacity (and the soft cap, a performance guard)
+    { band = "population", min = 150, max = 900, stat = "all", from_year = 5 },
     { fauna = true },                                    -- no continental extinction, predator CV >= 0.15, fish
     { events_per_decade = "fire_started", min = 3 },
-    { wildfire_every_years = 50 },
+    -- (70, was 50: villages cut and clear the forests around them, and fewer big fires follow, D-053)
+    { wildfire_every_years = 70 },
     { headline_rate = { 0.2, 3.0 } },
     { cross_seed = "turnover", min_share = 0.5 },        -- >= 1 village founded or abandoned by year 200
   },

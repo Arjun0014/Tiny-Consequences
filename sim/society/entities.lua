@@ -252,7 +252,13 @@ function M.kill(W, p, cause, tag)
   end
   local v = E.villages[p.village]
   if v then
+    v.hh_dirty = true
     v.deaths = v.deaths + 1
+    local a = v.acc
+    if not a then a = {}; v.acc = a end
+    a.deaths = (a.deaths or 0) + 1
+    local k = "d_" .. cause
+    a[k] = (a[k] or 0) + 1
     if tag and tag ~= 0 and cause ~= "age" then v.death_tag = tag end
     W.S.society.deaths = W.S.society.deaths + 1
   end
@@ -285,6 +291,8 @@ end
 function M.move_person(W, p, v2, h2)
   local E = W.ent
   local h = E.households[p.household]
+  v2.hh_dirty = true
+  if E.villages[p.village] then E.villages[p.village].hh_dirty = true end
   if h then remove_id(h.members, p.id) end
   local v = E.villages[p.village]
   if v and v ~= v2 then remove_id(v.members, p.id); v.pop = #v.members end
@@ -343,7 +351,23 @@ function M.free_lot(W, v, kind)
       end
     end
   end
-  if not best then return nil end
+  if not best then
+    -- boxed in by its own fields: the village grows onto its least productive neighbouring field
+    local bw = 1e9
+    for i = 1, #v.land do
+      local c = v.land[i]
+      local b = c * 6 - 6
+      for k = 1, g.nbr_count[c] do
+        local j = g.nbr[b + k]
+        if F.land_use[j] == v.id and W.geo.ocean[j] == 0 and F.ice[j] < 0.5 then
+          local s = F.fertility[j] + j * 1e-6
+          if s < bw then best, bw = j, s end
+        end
+      end
+    end
+    if not best then return nil end
+    require("sim.society.farming").release(W, v, best)
+  end
   v.land[#v.land + 1] = best
   F.land_use[best] = -v.id
   local fo = F.forest[best]

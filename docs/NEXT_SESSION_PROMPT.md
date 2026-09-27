@@ -1,9 +1,11 @@
-Continue Tiny Consequences. Chapter 1 is complete (build c487556, report commit "[ch1] Chapter 1 complete"); Arjun has playtested it.
+Continue Tiny Consequences: W2 of the living-world rewrite (docs/world/17_ROADMAP.md). The sim core of W2 is done (D-053); the view still draws the old theatre.
 
-Read, in order: CLAUDE.md; docs/PROGRESS.md; docs/SESSION_HANDOFF.md; docs/playtests/chapter-1.md; docs/playtests/chapter-1-feedback.md (turn every point into a task in PROGRESS.md before anything else); docs/DECISIONS.md (D-036..D-046 are the latest); the Chapter 2 section of docs/08_ROADMAP.md; then 04_PLAYER.md and 03_CAUSALITY.md §5 (powers, chain popup, "Why?").
+Rules: no subagents; the living-world simulation is the #1 priority; hand off at ~700K context (commit, PROGRESS, DECISIONS, SESSION_HANDOFF, this file).
 
-Start with the session checklist (date in IST, git status/log, node/java/luajit). Verify the baseline before changing anything: `npm run test:sim` (quick, 67/67), `npm run test:sim -- --full` (67/67), `npm run build` + `npm run test:web` (8/8).
+Read, in order: CLAUDE.md; docs/PROGRESS.md; docs/SESSION_HANDOFF.md (exact next steps); docs/DECISIONS.md D-050..D-053; docs/world/10–17 as needed (16 §4 for the view).
 
-Then address the playtest feedback, and continue with Chapter 2 from Stage 2.1 (Powers: command framework, powers 1–8, switch S02–S04 to real powers, add S05–S07/S10–S12, choose and pre-spin the tutorial world with `npm run sim:scout`, add S15).
+Session checklist first (date IST, git status/log, node/java/luajit). Verify: `npm run test:sim` (quick) and `npm run test:web`.
 
-Keep the rules: no scripted consequences; every change blamed; regenerate assets/worlds/default.tcsave after behaviour-changing sim edits; check both test profiles after sim changes; record decisions; commit per stage. Handoff at ~700K context.
+Then, in order: port S03 (act on the village's crop state, not a calendar date), S15 (re-scout the tutorial world), P08 (decide with evidence how society divergence is attributed — don't just lower the threshold); investigate seed 9's chronic famine regime (tools/society_ledger.lua) and fix the mechanism; then W2c: draw the real simulation — buildings/sites/ruins from W.ent.buildings + sim/society/layout.lua, people from sim/society/schedule.lua, boats from their trips, migrant parties on their paths, fields from W.S.farm, construction progress, and the inspector (stocks, yearly flows v.acc_last, households, fields, boats, each person's task and home). Verify in the browser with screenshots; nothing may move without a sim reason. Then profile (multi-rate person updates) and re-baseline P07 with a DECISIONS entry.
+
+Keep: no scripted consequences; everything blamed; saves bit-identical (tools/save_check.lua); regenerate assets/worlds after sim changes; commit with [w2] prefix.

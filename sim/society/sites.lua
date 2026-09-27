@@ -144,14 +144,17 @@ end
 -- Best free site among land cells passing filter(c): the highest site score whose land and sea
 -- could feed at least `min_people` (checked lazily, best first). Falls back to the best-scoring
 -- site when none can (worldgen must place its villages).
-function M.pick_site(W, filter, min_people, fallback)
+function M.pick_site(W, filter, min_people, fallback, adjust)
   local land = W.geo.land_cells
   local cand, score = {}, {}
   for i = 1, #land do
     local c = land[i]
     if filter(c) then
       local s = M.site_score(W, c)
-      if s > -1 and M.free_site(W, c) then cand[#cand + 1] = c; score[c] = s end
+      if s > -1 and M.free_site(W, c) then
+        cand[#cand + 1] = c
+        score[c] = adjust and adjust(c, s) or s
+      end
     end
   end
   table.sort(cand, function(a, b)
@@ -163,6 +166,21 @@ function M.pick_site(W, filter, min_people, fallback)
   end
   if fallback then return cand[1] end
   return nil
+end
+
+-- The best free site within `radius` cell spacings of `cell` on its landmass (daughter villages
+-- and refugees settle within a few days' walk): site score minus a walking penalty, checked best
+-- first against the land and sea it could feed. nil if none.
+function M.near_site(W, cell, radius)
+  local g = W.grid
+  local cont = W.geo.continent[cell]
+  local lim = math.cos(radius * g.spacing)
+  local X, Y, Z = g.X, g.Y, g.Z
+  local cx, cy, cz = X[cell], Y[cell], Z[cell]
+  local cfg = cfgmod.SOCIETY
+  return M.pick_site(W, function(c)
+    return W.geo.continent[c] == cont and X[c] * cx + Y[c] * cy + Z[c] * cz >= lim
+  end, cfg.min_site_people, false, function(c, s) return s - cfg.site_walk_penalty * M.dist(W, cell, c) end)
 end
 
 -- Best free site reachable from a village on landmass `continent` (by boat: any coastal site).

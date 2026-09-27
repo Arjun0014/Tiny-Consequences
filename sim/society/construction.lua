@@ -10,6 +10,10 @@ local ents = require("sim.society.entities")
 local M = {}
 local floor, min, max = math.floor, math.min, math.max
 
+-- Set by sim/society/life.lua (who moves in): a callback, so this module need not require life
+-- (the Defold build rejects require cycles).
+M.on_house_ready = function() end
+
 local PRIO = { house = 65, hut = 70, pier = 55, boat = 50, granary = 30, woodshed = 25, repair = 35 }
 M.PRIO = PRIO
 
@@ -56,14 +60,33 @@ end
 M.vacant_houses = vacant_houses
 
 -- Weekly: decide what to build and open sites (at most max_sites at once).
-function M.plan(W, v)
-  local cfg = cfgmod.SOCIETY
+-- One pass over the village's buildings: counts by kind and by kind:state (scratch, reused).
+local CNT = {}
+local CNT_KEYS = {}
+local function tally(W, v)
   local B = W.ent.buildings
-  local sites_open = 0
+  for i = 1, #CNT_KEYS do CNT[CNT_KEYS[i]] = 0 end
+  local function inc(k)
+    local x = CNT[k]
+    if not x then CNT_KEYS[#CNT_KEYS + 1] = k; x = 0 end
+    CNT[k] = x + 1
+  end
   for i = 1, #v.buildings do
     local b = B[v.buildings[i]]
-    if b and b.state == "site" then sites_open = sites_open + 1 end
+    if b then
+      inc(b.kind)
+      inc(b.kind .. ":" .. b.state)
+      if b.state == "site" then inc("sites") end
+      if b.state == "standing" and (b.kind == "house" or b.kind == "hut") and b.household == 0 then inc("vacant") end
+    end
   end
+end
+local function cnt(k) return CNT[k] or 0 end
+
+function M.plan(W, v)
+  local cfg = cfgmod.SOCIETY
+  tally(W, v)
+  local sites_open = cnt("sites")
   local max_sites = cfg.max_sites_base + floor(v.pop / cfg.sites_per_pop)
   local function open(kind)
     if sites_open >= max_sites then return false end
@@ -82,34 +105,35 @@ function M.plan(W, v)
     return b
   end
   -- 1. a pier for a fishing village
-  if v.mooring and count_kind(W, v, "pier") == 0 then open("pier") end
+  if v.mooring and cnt("pier") == 0 then open("pier") end
   -- 2. homes: households without one, couples waiting, crowded households (vacant houses first)
   local homeless, couples, crowded = M.housing_need(W, v)
   if (v.capacity or 1e9) < v.pop * 1.05 then couples = 0 end
-  local want = homeless + couples + floor(crowded * 0.5 + 0.5) - vacant_houses(W, v)
-  local building = count_kind(W, v, "house", "site") + count_kind(W, v, "hut", "site")
+  local want = homeless + couples + floor(crowded * 0.5 + 0.5) - cnt("vacant")
+  local building = cnt("house:site") + cnt("hut:site")
+  local roofs = cnt("house:standing") + cnt("hut:standing")
   local guard = 0
   while want - building > 0 and guard < 4 do
     guard = guard + 1
     -- founders put up quick huts first when they have no roof at all
-    local kind = (homeless > 0 and count_kind(W, v, "house", "standing") + count_kind(W, v, "hut", "standing") == 0) and "hut" or "house"
+    local kind = (homeless > 0 and roofs == 0) and "hut" or "house"
     if not open(kind) then break end
     building = building + 1
   end
   -- 3. boats for fishers without one (a pier is needed)
-  if v.pier_lot and count_kind(W, v, "pier", "standing") > 0 then
+  if v.pier_lot and cnt("pier:standing") > 0 then
     local fishers = 0
     local P = W.ent.people
     for i = 1, #v.members do if P[v.members[i]].job == "fisher" then fishers = fishers + 1 end end
-    local boats = #v.boats + count_kind(W, v, "boat", "site")
+    local boats = #v.boats + cnt("boat:site")
     if (fishers > boats * cfg.crew or boats == 0) and #v.fishing > 0 then open("boat") end
   end
   -- 4. storage when stocks overflow (at most a granary per 40 people: surplus beyond that rots)
   local gcap, wcap = M.capacities(W, v)
-  if v.stock.grain > gcap * 0.9 and count_kind(W, v, "granary", "site") == 0
-    and count_kind(W, v, "granary") < 1 + floor(v.pop / 40) then open("granary") end
-  if v.stock.wood > wcap * 0.9 and count_kind(W, v, "woodshed", "site") == 0
-    and count_kind(W, v, "woodshed") < 1 + floor(v.pop / 60) then open("woodshed") end
+  if v.stock.grain > gcap * 0.9 and cnt("granary:site") == 0
+    and cnt("granary") < 1 + floor(v.pop / 40) then open("granary") end
+  if v.stock.wood > wcap * 0.9 and cnt("woodshed:site") == 0
+    and cnt("woodshed") < 1 + floor(v.pop / 60) then open("woodshed") end
 end
 
 -- Storage capacities from one pass over the buildings: grain, wood.
@@ -178,10 +202,10 @@ function M.work(W, v, b, hours)
   if b.state == "site" then
     b.progress = min(1, done)
     b.wood_used = b.wood_used + wood
-    if b.progress >= 0.999 then M.complete(W, v, b) end
+    if b.progress >= 1 - 1e-9 then M.complete(W, v, b) end
   else
     b.repair = done
-    if done >= 0.999 then
+    if done >= 1 - 1e-9 then
       b.condition = min(1, b.condition + cfg.repair_gain)
       b.repair = nil
     end
@@ -205,7 +229,7 @@ function M.complete(W, v, b)
   b.state = "standing"
   b.condition = 1
   if b.kind == "house" or b.kind == "hut" then
-    require("sim.society.life").house_ready(W, v, b)
+    M.on_house_ready(W, v, b)
     if W.record_events then events.emit(W, "house_built", b.cell, v.housing_tag or 0, 1, { village = v.id, building = b.id }) end
   end
 end
@@ -228,6 +252,7 @@ function M.decay(W, v)
         local h = H[b.household]
         if h then h.home = 0 end
         b.household = 0
+        v.hh_dirty = true
       end
     end
   end
@@ -249,6 +274,7 @@ function M.damage(W, v, share, cell)
           local h = H[b.household]
           if h then h.home = 0 end
           b.household = 0
+          v.hh_dirty = true
         end
       end
     end

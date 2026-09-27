@@ -51,15 +51,38 @@ function M.b08_famine_changes_behaviour()
   local members = {}
   for _, id in ipairs(va.members) do members[id] = true end
   local min_ra, min_rb, hungry_a = 1, 1, 0
-  local function watch()
-    if va.alive then min_ra = math.min(min_ra, va.ration); if va.ration < 0.95 then hungry_a = hungry_a + 1 end end
-    min_rb = math.min(min_rb, vb.ration)
+  local cfg = cfgmod.SOCIETY
+  -- conceptions among the married women living in the village (per woman-month)
+  local conc = { a = { n = 0, wm = 0 }, b = { n = 0, wm = 0 } }
+  local function count(W, v, c)
+    if not v.alive then return end
+    local P = W.ent.people
+    for _, id in ipairs(v.members) do
+      local p = P[id]
+      local age = (W.hour - p.born) / 8064
+      if p.sex == "f" and p.partner ~= 0 and age >= cfg.fecund[1] and age <= cfg.fecund[2] then
+        c.wm = c.wm + 1
+        local conceived = p.preg_due > 0 and p.preg_due - cfg.preg_days * 24 or -1e9
+        if conceived > W.hour - 672 then c.n = c.n + 1 end
+      end
+    end
   end
-  for _ = 1, 96 do world.tick(Wa); world.tick(Wb); watch() end
+  local hz0a, pw0a, hz0b, pw0b, hza, hzb = 0, 0, 0, 0, 0, 0
+  for m = 1, 24 do
+    world.run_ticks(Wa, 4); world.run_ticks(Wb, 4)
+    if va.alive then min_ra = math.min(min_ra, va.ration) end
+    min_rb = math.min(min_rb, vb.ration)
+    if m >= 2 and m <= 14 then count(Wa, va, conc.a); count(Wb, vb, conc.b) end
+    if m == 1 then hz0a, pw0a, hz0b, pw0b = va.acc.hz or 0, va.acc.pw or 0, vb.acc.hz or 0, vb.acc.pw or 0 end
+    if m == 7 then
+      -- expected deaths per person-week (the summed weekly hazards) over the hungry months
+      hza = ((va.acc.hz or 0) - hz0a) / math.max(1, (va.acc.pw or 0) - pw0a)
+      hzb = ((vb.acc.hz or 0) - hz0b) / math.max(1, (vb.acc.pw or 0) - pw0b)
+    end
+  end
   local function outcome(W)
     local births, deaths = 0, 0
     for id, p in pairs(W.ent.people) do
-      if p.born > t0 + 9 * 672 and members[p.mother] then births = births + 1 end
       if members[id] and p.dead and p.dead > t0 and p.died_of ~= "age" then deaths = deaths + 1 end
     end
     return births, deaths
@@ -68,8 +91,11 @@ function M.b08_famine_changes_behaviour()
   local bb, db = outcome(Wb)
   T.ok(min_ra < 0.8, "rations fall (min " .. min_ra .. ")")
   T.ok(min_rb > min_ra, "the control village eats better")
-  T.ok(ba < bb, string.format("conceptions drop: births %d vs %d", ba, bb))
-  T.ok(da > db, string.format("mortality rises: deaths %d vs %d", da, db))
+  local cra = conc.a.n / math.max(1, conc.a.wm)
+  local crb = conc.b.n / math.max(1, conc.b.wm)
+  T.ok(conc.b.n > 0 and cra < crb * 0.5, string.format("conceptions drop: %.3f vs %.3f per woman-month", cra, crb))
+  T.ok(hza > hzb * 1.5, string.format("mortality rises: weekly death hazard %.5f vs %.5f", hza, hzb))
+  T.ok(da >= db, string.format("deaths %d vs %d", da, db))
   local mig = U.events_of(Wa, "migration", va.id, t0)
   local rooted = 0
   for _, r in ipairs(mig) do
@@ -80,8 +106,8 @@ function M.b08_famine_changes_behaviour()
   local ra = U.events_of(Wa, "rationing", va.id, t0)
   T.ok(#ra >= 1 and (U.root_kind(Wa, ra[1].id) == "test_empty_stores" or U.root_kind(Wa, ra[1].id) == "test_burn_farms"),
     "rationing chains back to the intervention")
-  return string.format("%s: ration min %.2f (control %.2f), births %d vs %d, deaths %d vs %d, %d migrations",
-    va.name, min_ra, min_rb, ba, bb, da, db, #mig)
+  return string.format("%s: ration min %.2f (control %.2f), conceptions %.3f vs %.3f, deaths %d vs %d, %d migrations",
+    va.name, min_ra, min_rb, cra, crb, da, db, #mig)
 end
 
 function M.b09_losing_workers_shrinks_the_sown_area_and_harvest()
@@ -135,7 +161,7 @@ function M.b10_no_growth_in_the_cold_and_sowing_waits_for_spring()
     for _, v in ipairs(vs) do
       if v.alive then
         for _, c in ipairs(v.farms) do
-          if v.season.phase ~= "sowing" and phase0[v.id] ~= "sowing" then
+          if before[c] and v.season.phase ~= "sowing" and phase0[v.id] ~= "sowing" then
             if W.F.temp[c] <= lo then
               T.ok(W.F.crop[c] <= before[c] + 1e-9, string.format("no crop growth at %.1f C", W.F.temp[c]))
               checked = checked + 1

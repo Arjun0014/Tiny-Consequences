@@ -73,7 +73,7 @@ function M.settlers_found_a_village()
   local n0 = #W.ent.villages
   local site = nil
   for _, c in ipairs(W.geo.land_cells) do
-    if require("sim.systems.villages").free_site(W, c) and W.F.ice[c] < 0.3 then site = c; break end
+    if require("sim.society.sites").free_site(W, c) and W.F.ice[c] < 0.3 then site = c; break end
   end
   cast(W, { power = "introduce", cell = site, species = "settlers" })
   T.eq(#W.ent.villages, n0 + 1, "a new village")

@@ -404,10 +404,19 @@ function M.preset(name, W)
   if name == "default" or name == "title" then
     -- open on life: the biggest village, pulled a little toward the equator so the globe
     -- (not a pole) fills the frame; landmass 1 when there are no villages
-    local best, bp = nil, -1
+    -- (the biggest one where it is daytime now: the sun is real, and a first look at a village
+    -- asleep in the dark reads as an empty planet)
+    local daylight = require("sim.society.daylight")
+    local best, bp, dbest, dbp = nil, -1, nil, -1
     for _, v in ipairs(W.ent and W.ent.villages or {}) do
-      if v.alive ~= false and (v.pop or 0) > bp then best, bp = v, v.pop or 0 end
+      if v.alive ~= false then
+        local pop = v.pop or 0
+        if pop > bp then best, bp = v, pop end
+        local lh = daylight.local_hour(W.hour or 0, g.lon[v.cell])
+        if lh >= 7 and lh <= 17 and pop > dbp then dbest, dbp = v, pop end
+      end
     end
+    best = dbest or best
     if best then return g.lat[best.cell] * 0.75, g.lon[best.cell], M.ZOOM_DEFAULT end
   end
   if name == "continent_a" or name == "continent_b" or name == "default" or name == "title" then

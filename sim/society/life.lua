@@ -26,8 +26,12 @@ function M.set_occupation(W, v, p)
     if n[q.job] then n[q.job] = n[q.job] + 1; adults = adults + 1 end
   end
   local boats = #v.boats
-  local want_fish = (#v.fishing > 0) and max(boats * cfg.crew, v.mooring and 2 or 0) or 0
-  if #v.fishing > 0 and v.land_fields and #v.farms >= v.land_fields then want_fish = want_fish + cfg.crew end
+  -- fishers for the boats the village actually sends out (plus one crew while the boats are busy)
+  local used = v.boats_used or boats
+  local want_fish = (#v.fishing > 0) and max(floor(used + 0.5) * cfg.crew, v.mooring and 2 or 0) or 0
+  if #v.fishing > 0 and used >= boats * 0.8 and v.land_fields and #v.farms >= v.land_fields then
+    want_fish = want_fish + cfg.crew
+  end
   if #v.fishing > 0 and #v.farms == 0 then want_fish = adults + 1 end
   if n.fisher < want_fish then p.job = "fisher"
   elseif n.woodcutter < 1 + floor(adults / 12) then p.job = "woodcutter"
@@ -51,6 +55,7 @@ function M.weekly(W, v)
   v.cold_days = 0
   local Tw = W.F.temp[v.cell]
   local nonage, dtag, dtag_n = 0, 0, 0
+  local hsum = 0   -- the week's summed death hazard (expected deaths): the account's mortality
   local m = v.members
   local dead_any = false
   -- the planet's soft cap (performance guard): births taper to 0 at soft_cap
@@ -67,8 +72,22 @@ function M.weekly(W, v)
     local n = p.nutrition + (ration - p.nutrition) * cfg.nutrition_rate
     p.nutrition = n
     local vul = (a < 5 or a >= cfg.elder_age) and cfg.vulnerable_mult or 1
+    -- health follows what the diet can sustain: a thin diet wears people down to a weakened
+    -- steady state (not to death); only a diet far below need makes them frail
     local hp = p.health
-    if n < 0.85 then hp = hp - (0.85 - n) * cfg.hunger_health * vul else hp = hp + cfg.health_regen end
+    local target = 100
+    if n < cfg.fed_n then
+      target = (n - cfg.starve_n + 0.05) / (cfg.fed_n - cfg.starve_n + 0.05) * 100
+      if vul > 1 then target = target - 15 end
+      if target < 0 then target = 0 end
+    end
+    if hp > target then
+      hp = hp - cfg.hunger_health * vul
+      if hp < target then hp = target end
+    elseif hp < target then
+      hp = hp + cfg.health_regen
+      if hp > target then hp = target end
+    end
     if cold > 0 and Tw < cfg.cold_temp then hp = hp - (cfg.cold_temp - Tw) * cfg.cold_health * vul * cold / 7 end
     if hp > 100 then hp = 100 elseif hp < 0 then hp = 0 end
     p.health = hp
@@ -77,20 +96,30 @@ function M.weekly(W, v)
     if a < 1 then base = cfg.mort_infant elseif a < 5 then base = cfg.mort_child
     elseif a < 15 then base = cfg.mort_youth else base = cfg.mort_adult end
     if a > cfg.mort_old_age then base = base + cfg.mort_old * exp((a - cfg.mort_old_age) / cfg.mort_old_scale) end
-    local hz = base / 48
+    -- the malnourished catch what the fed shake off (famine kills mostly through disease)
+    local mal = n < cfg.fed_n and 1 + cfg.malnutrition_mult * (cfg.fed_n - n) / cfg.fed_n or 1
+    local hz = base * mal / 48
     local h = H[p.household]
     local home = h and B[h.home]
     local crowded = (not home or home.state ~= "standing") or (h and #h.members > ents.capacity_of(home))
     if crowded then hz = hz * cfg.crowd_hazard end
     local cause, tag = "age", 0
+    if mal > 2 then cause, tag = "hunger", v.foodtag[1] ~= 0 and v.foodtag[1] or v.cause end
     if hp < cfg.frail_health then
       local ph = (cfg.frail_health - hp) * cfg.frail_hazard * vul
       if ph > hz then
-        if n < 0.85 then cause, tag = "hunger", v.foodtag[1] ~= 0 and v.foodtag[1] or v.cause
+        if n < cfg.fed_n then cause, tag = "hunger", v.foodtag[1] ~= 0 and v.foodtag[1] or v.cause
         else cause, tag = "cold", v.foodtag[3] end
       end
       hz = hz + ph
     end
+    -- starvation: a body without food for weeks does not linger for months
+    if n < cfg.starve_n then
+      local sh = (cfg.starve_n - n) * cfg.starve_hazard
+      if sh > hz * 0.5 then cause, tag = "hunger", v.foodtag[1] ~= 0 and v.foodtag[1] or v.cause end
+      hz = hz + sh
+    end
+    hsum = hsum + hz
     if (ud + p.u) % 1 < hz then
       ents.kill(W, p, cause, tag)
       dead_any = true
@@ -118,6 +147,7 @@ function M.weekly(W, v)
               -- lost pregnancy: nothing, she may conceive again
             else
               p.preg_due = hour + cfg.preg_days * 24
+              p.preg_father = q.id   -- the child's father even if he dies before the birth
               local pl = v.preg
               if not pl then pl = {}; v.preg = pl end
               pl[#pl + 1] = p.id
@@ -125,19 +155,34 @@ function M.weekly(W, v)
           end
         end
       end
-      -- mood (for dialogue)
-      local bad = 0
-      local mem = p.mem
-      for k = 2, #mem, 2 do bad = bad + mem[k] end
-      local mood = 0.8 * n + 0.4 * (hp / 100) - 0.15 * bad - 0.6
-      if mood > 1 then mood = 1 elseif mood < -1 then mood = -1 end
-      p.mood = mood
     end
   end
+  local a = v.acc
+  a.hz = (a.hz or 0) + hsum
+  a.pw = (a.pw or 0) + #m
   if dead_any then ents.compact(W, v) end
   v.nonage = (v.nonage or 0) + nonage
   if dtag ~= 0 then v.death_tag = dtag end
-  M.households(W, v)
+  -- household housekeeping only when someone died, came or went, or lost a home
+  if dead_any or v.hh_dirty then
+    v.hh_dirty = false
+    M.households(W, v)
+  end
+end
+
+-- Monthly: moods (for dialogue and the inspector) from nutrition, health and memories.
+local function moods(W, v)
+  local P = W.ent.people
+  local m = v.members
+  for i = 1, #m do
+    local p = P[m[i]]
+    local bad = 0
+    local mem = p.mem
+    for k = 2, #mem, 2 do bad = bad + mem[k] end
+    local mood = 0.8 * p.nutrition + 0.4 * (p.health / 100) - 0.15 * bad - 0.6
+    if mood > 1 then mood = 1 elseif mood < -1 then mood = -1 end
+    p.mood = mood
+  end
 end
 
 -- Births due (checked at the village's day step).
@@ -158,10 +203,13 @@ function M.births(W, v)
       p.preg_due = 0
       local h = E.households[p.household]
       idx = idx + 1
-      local child = ents.new_person(W, v, h, { born = hour, mother = p.id, father = p.partner, idx = idx })
+      local father = p.preg_father or p.partner
+      p.preg_father = nil
+      local child = ents.new_person(W, v, h, { born = hour, mother = p.id, father = father, idx = idx })
       child.job = "child"
       p.nursing_until = hour + cfg.nursing_days * 24
       v.births = v.births + 1
+      v.acc.births = (v.acc.births or 0) + 1
       W.S.society.births = W.S.society.births + 1
       if rng.float(W.seed, rng.S.BIRTH, p.key, hour, 3) < cfg.maternal_death then
         ents.kill(W, p, "childbirth", 0)
@@ -186,6 +234,8 @@ function M.house_ready(W, v, b)
   end
   M.marry_waiting(W, v)
 end
+
+construction.on_house_ready = M.house_ready
 
 -- Vacant homes of the village (standing, nobody in them).
 local function vacant(W, v)
@@ -220,6 +270,7 @@ function M.marry_waiting(W, v)
         p.betrothed, q.betrothed = 0, 0
         p.partner, q.partner = q.id, p.id
         p.wait_since, q.wait_since = nil, nil
+        v.acc.marriages = (v.acc.marriages or 0) + 1
       end
     end
   end
@@ -328,6 +379,26 @@ function M.monthly(W, v)
     end
   end
   M.marry_waiting(W, v)
+  M.retrain(W, v)
+  moods(W, v)
+end
+
+-- A chronically overstaffed trade re-trains one person a month: fishers without boats to sail
+-- take up farming (the youngest first: member order is age-agnostic, so pick by birth).
+function M.retrain(W, v)
+  if #v.fishing == 0 then return end
+  local cfg = cfgmod.SOCIETY
+  local P = W.ent.people
+  local fishers, young = 0, nil
+  for i = 1, #v.members do
+    local p = P[v.members[i]]
+    if p.job == "fisher" then
+      fishers = fishers + 1
+      if not young or p.born > young.born then young = p end
+    end
+  end
+  local want = floor((v.boats_used or #v.boats) + 0.5) * cfg.crew + cfg.crew
+  if young and fishers > want then young.job = "farmer" end
 end
 
 -- New events near/about the village become memories of everyone living there.

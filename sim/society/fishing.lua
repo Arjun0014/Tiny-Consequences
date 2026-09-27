@@ -66,6 +66,13 @@ function M.plan(W, v, h0, ws, we, weather)
   if not dcache then dcache = {}; G.fishd = dcache end
   local home = v.mooring or v.cell
   for k = 1, M.RANK do TAKEN[k] = 0 end
+  -- how much fish the village wants landed today (Chayanov: needs, not maximums): its share of the
+  -- day's food, more while the store is short (the surplus is dried for the store), less the fresh
+  -- fish still in hand. Boats go out in order until their expected catch covers it.
+  local cfg0 = cfg
+  local share = v.food_days < cfg0.fish_store_days and cfg0.fish_share_short or cfg0.fish_share
+  local goal = v.need_day * share - v.stock.fresh * 0.5
+  local planned, wanted = 0, 0
   for i = 1, #v.boats do
     local b = B[v.boats[i]]
     b.trip = false
@@ -73,11 +80,18 @@ function M.plan(W, v, h0, ws, we, weather)
       b.state = "moored"
       local crew = b.crew
       local fit = 0
-      for k = 1, #crew do
-        local p = P[crew[k]]
-        if p and not p.dead then fit = fit + (0.35 + 0.65 * p.nutrition) * min(1, p.health / 40) end
+      -- (boats beyond the day's need stay in: no need to look at their crews or the grounds)
+      if planned < goal then
+        for k = 1, #crew do
+          local p = P[crew[k]]
+          if p and not p.dead then fit = fit + (0.35 + 0.65 * p.nutrition) * min(1, p.health / 40) end
+        end
       end
       local iced = F.ice[b.home] >= 0.5
+      -- a worn boat is laid up and mended (planks, caulking, nets) before it goes out again
+      if b.condition < cfg.boat_layup then b.laid_up = true
+      elseif b.laid_up and b.condition >= cfg.boat_relaunch then b.laid_up = nil end
+      if b.laid_up then fit = 0 end
       local grounds = v.grounds
       if not grounds then M.rank(W, v, we - ws); grounds = v.grounds end
       if fit > 0 and not weather.storm and not iced and #grounds > 0 then
@@ -93,20 +107,25 @@ function M.plan(W, v, h0, ws, we, weather)
             end
           end
         end
+        if best and planned >= goal then best = nil end
         if best then
           local catch = cfg.fish_q * fish[best] * fit * bh
           if catch > cfg.hold then catch = cfg.hold end
           local stock = fish[best] * cfg.fish_fu
           if catch > stock * 0.5 then catch = stock * 0.5 end
           TAKEN[bj] = TAKEN[bj] + (stock > 0 and catch / stock or 1)
+          planned = planned + catch
           local dep = h0 + ws
           b.trip = { depart = dep, ground = best, at = dep + bt, leave = dep + bt + bh, ret = dep + 2 * bt + bh,
-            catch = catch }
+            catch = catch, wet = weather.wet or false }
           b.state = "out"
+          wanted = wanted + 1
         end
       end
     end
   end
+  -- boats the village needed today (slow average): how many fishers it keeps (life.set_occupation)
+  v.boats_used = (v.boats_used or #v.boats) * 0.98 + wanted * 0.02
 end
 
 -- Land yesterday's catches (at the village's next day step). Returns fresh food landed and the
@@ -117,6 +136,8 @@ function M.settle(W, v)
   local B = W.ent.boats
   local landed = 0
   local tag, tag_n = 0, 0
+  -- one hash per village-day; each boat's squall roll is a fixed offset from it (Weyl, D-021)
+  local u0 = rng.float(W.seed, rng.S.BOAT, v.key_cell, floor(W.hour / 24), 1)
   -- backwards: a lost boat leaves the list
   for i = #v.boats, 1, -1 do
     local b = B[v.boats[i]]
@@ -124,7 +145,7 @@ function M.settle(W, v)
     if t and b.state ~= "lost" then
       local g = t.ground
       -- a squall now and then catches a boat
-      if rng.float(W.seed, rng.S.BOAT, b.key, floor(t.depart / 24), 1) < cfg.squall then
+      if (u0 + (b.key % 1000003) * 6.18034e-7) % 1 < cfg.squall * (t.wet and cfg.squall_wet or 1) then
         M.lose(W, v, b, 0, "squall")
       else
         local d = t.catch / cfg.fish_fu
@@ -139,6 +160,7 @@ function M.settle(W, v)
         end
         local catch = d * cfg.fish_fu
         landed = landed + catch
+        acc(v, "trips", 1)
         b.catch = catch
         local ft = C.fish[g]
         if ft ~= 0 and ft ~= vt then
@@ -149,8 +171,13 @@ function M.settle(W, v)
     if b.state ~= "lost" then
       if t then
         b.condition = b.condition - cfg.boat_decay / 150   -- worn by use (a trip a day)
+      elseif b.laid_up and #b.crew > 0 and v.stock.wood >= cfg.boat_mend_wood then
+        -- a day's work on the laid-up boat by its crew, with timber from the store
+        v.stock.wood = v.stock.wood - cfg.boat_mend_wood
+        acc(v, "boat_wood", cfg.boat_mend_wood)
+        b.condition = math.min(1, b.condition + cfg.boat_refit)
       elseif #b.crew > 0 or v.pop > 0 then
-        b.condition = math.min(1, b.condition + cfg.boat_mend)   -- mended in port
+        b.condition = math.min(1, b.condition + cfg.boat_mend)   -- nets and gear mended in port
       end
       b.trip = false
       b.state = "moored"
@@ -159,6 +186,14 @@ function M.settle(W, v)
   end
   v.stock.fresh = v.stock.fresh + landed
   acc(v, "catch", landed)
+  -- fresh fish beyond a few days' eating is split, salted and dried for the store (with losses)
+  local keep = v.need_day * cfg.fresh_keep_days
+  if v.stock.fresh > keep then
+    local dry = (v.stock.fresh - keep) * cfg.dry_share
+    v.stock.fresh = v.stock.fresh - dry
+    v.stock.grain = v.stock.grain + dry * cfg.dry_yield
+    acc(v, "dried", dry * cfg.dry_yield)
+  end
   return landed, tag
 end
 

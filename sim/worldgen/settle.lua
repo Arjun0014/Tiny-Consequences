@@ -364,13 +364,18 @@ function settle.run(W)
     local v = W.ent.villages[i]
     if #v.fishing > 0 then coastal[#coastal + 1] = v end
   end
-  for li = 1, nl do
-    local v = coastal[((li - 1) % math.max(1, #coastal)) + 1]
-    if v then
-      local start = v.fishing[1 + floor(u() * #v.fishing)]
-      local loop = make_lane(W, start, u)
-      if loop and #loop >= 6 then lanes[#lanes + 1] = { cells = loop, village = v.id, replace_at = -1 } end
-    end
+  -- villages on the widest waters first (a village on a lake or an inlet can't host a lane)
+  table.sort(coastal, function(a, b)
+    if #a.fishing ~= #b.fishing then return #a.fishing > #b.fishing end
+    return a.id < b.id
+  end)
+  local ci = 0
+  while #lanes < nl and ci < 2 * #coastal do
+    ci = ci + 1
+    local v = coastal[((ci - 1) % #coastal) + 1]
+    local start = v.fishing[1 + floor(u() * #v.fishing)]
+    local loop = make_lane(W, start, u)
+    if loop and #loop >= 6 then lanes[#lanes + 1] = { cells = loop, village = v.id, replace_at = -1 } end
   end
   W.static.lanes = lanes
   local ships = require("sim.systems.ships")

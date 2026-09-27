@@ -382,13 +382,20 @@ C.SOCIETY = {
   store_granary = 6000, store_woodshed = 1500,
   -- rationing and coping (research: rationing -> seed eaten -> migration)
   ration_min = 0.55,
-  ration_margin_days = 30,                -- food must cover the days to the next harvest + this
+  ration_margin_days = 30,                -- ... plus half of this many days of the store's share of the
+  ration_safety_days = 10,                --   diet (less as the harvest nears): the buffer kept back
+                                          --   when deciding whether the store lasts to the harvest
+  income_trust = 0.85,                    -- share of the usual catch/forage counted on until the harvest
   rationing_days = 3, famine_ration = 0.7, famine_weeks = 4,
   seed_eat_days = 14,                     -- food below this many days: the seed grain is eaten
   -- body
   nutrition_rate = 0.35,                  -- per week toward the ration
-  hunger_health = 30,                     -- health lost per week per unit of nutrition below 0.85
+  fed_n = 0.85,                           -- nutrition at which the body is fully fed
+  hunger_health = 8,                      -- health lost per week toward what the diet sustains
+                                          --   (100 when fed, 0 at starve_n - 0.05; the young and old
+                                          --   15 lower and twice as fast)
   health_regen = 4,                       -- per week when fed and warm
+  malnutrition_mult = 4,                  -- base mortality x (1 + this x shortfall share): disease
   cold_temp = 5, cold_health = 0.8,       -- per week per °C below cold_temp without fuel
   vulnerable_mult = 2,                    -- infants (< 5) and elders lose health this much faster
   crowd_hazard = 1.3,                     -- disease hazard multiplier when overcrowded or homeless
@@ -396,6 +403,7 @@ C.SOCIETY = {
   mort_infant = 0.12, mort_child = 0.025, mort_youth = 0.005, mort_adult = 0.006,
   mort_old = 0.0012, mort_old_age = 45, mort_old_scale = 8,
   frail_health = 40, frail_hazard = 0.0006,   -- per week per health point below frail_health
+  starve_n = 0.4, starve_hazard = 0.5,    -- weekly death hazard per unit of nutrition below starve_n
   -- fertility
   fecund = { 16, 44 },
   conceive_day = 0.005,                   -- daily conception chance, fecund, fed, not nursing
@@ -414,8 +422,10 @@ C.SOCIETY = {
   seed = 480,                             -- FU of seed grain to sow a full cell
   sow_h = 450, tend_h = 300, harvest_h = 600,  -- ~15 person-days per person fed; peaks saturate labour
   sow_temp = 7, sow_weeks = 8,            -- the spring sowing season (weeks)
+  tropics_lat = 0.41,                     -- radians (23.5 deg): no winter, sow once a year when warm
   gdd_base = 5, gdd_ripe = 1400,
-  ripe_loss = 0.02, ripe_loss_wet = 0.04, -- per day, standing ripe crop
+  ripe_loss = 0.004, ripe_loss_wet = 0.012, -- per day, standing ripe crop (shattering, birds, sprouting
+                                          --   in the wet): a two-week harvest loses ~5-10%
   weed_rate = 0.02,                       -- weeds per untended week (share of tending not done)
   field_margin = 1.3,                     -- fields for need x this
   fields_per_worker = 0.45,               -- labour bound on cropped fields
@@ -434,6 +444,10 @@ C.SOCIETY = {
   brush_rate = 1.2,                       -- WU per hour of brush, dung and straw gathering (fuel only)
   brush_half = 0.3,                       -- grass density at half the brush rate
   earth_wood = 18, earth_h = 360,         -- an earth (sod / mud-brick) house where timber is scarce
+  forage_rate = 0.6,                      -- FU of wild food per hour in lush country (~1,500 kcal/h)
+  forage_half = 0.3,                      -- vegetation (grass + 0.6 forest) at half the rate
+  forage_fu = 6000,                       -- FU of wild food per unit of grass density in a cell
+  forage_days = 45,                       -- food below this many days: people forage
   fuel_days = 60, fuel_days_winter = 90,
   -- fishing
   fish_q = 2.2,                           -- FU per crew-hour at fish density 1 (~8 FU a fisher-day on a
@@ -442,10 +456,16 @@ C.SOCIETY = {
   fish_fu = 18000,                        -- FU of fish in a sim cell at density 1
   sail_h = 0.3,                           -- hours to sail one cell spacing
   fish_radius = 5,
-  squall = 0.0002,                        -- chance a trip is caught by weather (~5% of boats a year)
+  squall = 0.00002, squall_wet = 6,       -- chance a trip on a dry / wet day is caught by a squall
+                                          --   (storms keep boats in: ~1% of boats a year)
+  boat_layup = 0.45, boat_relaunch = 0.9, -- worn boats are laid up and refitted before going out again
+  boat_refit = 0.05, boat_mend_wood = 0.5,-- condition per crew-day of refitting, and its timber (WU)
   boat_decay = 0.08,                      -- condition lost per ~150 trips (a busy year)
   boat_mend = 0.004,                      -- condition regained per day in port (crews mend boats and nets)
-  fresh_share = 0.5,                      -- fishing aims to cover this share of daily need
+  fish_share = 0.6, fish_share_short = 1.4,  -- daily catch goal (x need) when stores are fine / short
+  fish_store_days = 200,                  -- stores below this many days of food: fish for the store
+  fresh_keep_days = 4, dry_share = 0.5, dry_yield = 0.7,  -- fresh fish beyond this is dried (daily share,
+                                          --   what survives salting and drying)
   -- construction (timber WU, labour h)
   build = {
     house = { wood = 60, h = 240 }, hut = { wood = 15, h = 60 }, granary = { wood = 50, h = 200 },
@@ -459,10 +479,25 @@ C.SOCIETY = {
   lot_r = 0.013,                          -- radians between lot rings (0.13 world units at R = 10)
   lot_rings = 3,
   -- migration and founding (monthly per household)
-  push_hunger = 0.15, push_wait = 0.4, push_homeless = 0.4, push_cold = 0.1, push_small = 1.0,
-  push_disaster = 0.3, pull_margin = 0.3, migrate_prob = 0.3,
+  hunger_full = 0.95,                     -- monthly mean ration below this counts as hunger
+  hunger_memory = 0.8,                    -- a household's hunger: monthly shortfall summed with this decay
+  push_hunger = 2.0, push_hunger_max = 3, -- push per unit of a household's hunger
+  push_famine = 0.5,                      -- a famine now
+  colony_years = 5,                       -- a village younger than this is a colony (small by design)
+  push_wait = 0.4, push_homeless = 0.4, push_cold = 0.1, push_small = 1.0,
+  push_disaster = 0.3, pull_margin = 0.3, migrate_prob = 0.15,
+  migrate_prob_famine = 0.5,              -- monthly chance a pushed household acts, in a famine
+  home_ties = 0.3, home_own = 0.2,        -- pull of home: kin, fields, graves; more with a house of one's own
+  settle_months = 24,                     -- newly arrived households stay at least this long
   walk_hours_day = 10, party_food_days = 14,
   found_food_days = 60, found_seed_cells = 2,
+  first_harvest_weeks = 20,               -- sowing to the first harvest of a new village (planning)
+  bud_food_margin = 60,                   -- colonists carry food to their first harvest + this many days
+  bud_min_provision = 0.4,                -- ... or at least this share of it (they forage and hunt the rest)
+  bud_radius = 14,                        -- daughter villages within this many cell spacings (days' walk)
+  refuge_radius = 20,                     -- refugees without a destination settle within this range
+  found_max_households = 5,               -- households in a refugees' founding party (one a year per village)
+  site_walk_penalty = 0.03,               -- site score lost per cell spacing of walking
   min_site_people = 20, min_spacing = 3,
   max_villages = 12, soft_cap = 900,      -- performance guard: births taper toward soft_cap people
 }

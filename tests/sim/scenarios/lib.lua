@@ -86,8 +86,14 @@ function L.select(W, spec)
     local best, bp = nil, -1
     for _, v in ipairs(W.ent.villages or {}) do
       if v.alive then
-        local ok = (rest == "inland" and #v.fishing == 0) or (rest == "fishing" and #v.fishing > 0 and (v.fish_jobs or 0) > 0)
+        local ok = (rest == "inland" and #v.fishing == 0) or (rest == "fishing" and #v.fishing > 0 and #v.boats > 0)
         if ok and v.pop > bp then best, bp = v, v.pop end
+      end
+    end
+    if not best and rest == "inland" then
+      -- no village away from the sea: the biggest one that lives off its fields (no boats)
+      for _, v in ipairs(W.ent.villages or {}) do
+        if v.alive and #v.boats == 0 and #v.farms > 0 and v.pop > bp then best, bp = v, v.pop end
       end
     end
     if not best then return nil end
@@ -414,7 +420,7 @@ function L.run_seed(spec, seed, opts)
         -- local_calendar: `year` is in the target village's own farming calendar (southern
         -- villages farm half a year later, sim/systems/villages.lua season_shift)
         if a.local_calendar and tg.village then
-          due[ai] = t + require("sim.systems.villages").season_shift(Wa, Wa.ent.villages[tg.village].cell)
+          due[ai] = t + (Wa.grid.lat[Wa.ent.villages[tg.village].cell] < 0 and 24 or 0)
         end
       end
       if due[ai] == t and not act_tick[ai] then

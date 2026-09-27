@@ -52,11 +52,15 @@ function save.capture(W)
 end
 
 -- Encoder -------------------------------------------------------------------------------------
+-- An array has exactly the keys 1..n. (Counting keys is not enough: a sparse id map such as
+-- {1, 3, 4, 6, 7, 9, 10} can have 7 keys and a border # of 7.)
 local function is_array(t)
   local n = #t
   local c = 0
   for _ in pairs(t) do c = c + 1 end
-  return c == n
+  if c ~= n then return false end
+  for i = 1, n do if t[i] == nil then return false end end
+  return true
 end
 
 local function enc_int_array_rle(out, a)
@@ -119,13 +123,20 @@ enc = function(out, v, qhint)
     if is_array(v) then
       if #v >= 64 and all_ints(v) then enc_int_array_rle(out, v); return end
       out[#out + 1] = "["
-      for i = 1, #v do enc(out, v[i]) end
+      for i = 1, #v do
+        if v[i] == nil then error("cannot encode a hole at [" .. i .. "] of an array of " .. #v) end
+        enc(out, v[i])
+      end
       out[#out + 1] = "]"
     else
       out[#out + 1] = "{"
       local nk, sk = sorted_keys(v)
       for i = 1, #nk do enc(out, nk[i]); enc(out, v[nk[i]]) end
-      for i = 1, #sk do enc(out, sk[i]); enc(out, v[sk[i]]) end
+      for i = 1, #sk do
+        local x = v[sk[i]]
+        if x == nil then error("cannot encode key " .. sk[i] .. " (not a string or number key)") end
+        enc(out, sk[i]); enc(out, x)
+      end
       out[#out + 1] = "}"
     end
   else
