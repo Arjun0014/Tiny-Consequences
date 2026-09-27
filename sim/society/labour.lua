@@ -259,12 +259,17 @@ function M.assign(W, v, hours_day)
       if open(d, flight[p.id]) then take(p, d); break end
     end
   end
-  -- groups for the daily execution
+  -- groups for the daily execution; farm workers are sent to the fields their hours will go to
   local groups = {}
   for k = 1, #list do
     local d = list[k]
     if d.n > 0 then
       groups[#groups + 1] = { kind = d.kind, target = d.target, cap = d.cap, n = d.n }
+      if FARM[d.kind] then
+        local who = {}
+        for i = 1, #free do if free[i].task == d.kind then who[#who + 1] = free[i] end end
+        farming.field_sites(W, v, d.kind, who, fcap, week_h)
+      end
     end
   end
   v.plan.groups = groups
@@ -369,6 +374,7 @@ function M.execute(W, v, hours_day, wx)
             if W.geo.ocean[c] == 0 and F.grazers[c] > bg then best, bg = c, F.grazers[c] end
           end
         end
+        v.hunt_cell = best
         if best and bg > 0.01 then
           local meat = eff * 1.6 * bg / (bg + 0.15)
           local d = meat / 16000

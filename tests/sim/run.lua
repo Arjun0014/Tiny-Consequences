@@ -1,6 +1,6 @@
 -- Headless test runner: unit tests, property tests, scenario tests.
 -- Usage (from repo root): luajit tests/sim/run.lua [--full] [--chapter N] [--only PATTERN]
---                         [--unit] [--props] [--scenarios] [--seeds N] [--level L]
+--                         [--unit] [--behaviour] [--props] [--scenarios] [--seeds N] [--level L]
 package.path = "./?.lua;./?/init.lua;" .. package.path
 -- LuaJIT: the whole sim exceeds the default trace cache, which then flushes and re-records all
 -- the time (3–4× slower). Plain Lua 5.1 ignores this.
@@ -16,6 +16,7 @@ while arg and arg[i] do
   elseif a == "--chapter" then i = i + 1; args.chapter = tonumber(arg[i])
   elseif a == "--only" then i = i + 1; args.only = arg[i]
   elseif a == "--unit" then args.unit = true
+  elseif a == "--behaviour" then args.behaviour = true
   elseif a == "--props" then args.props = true
   elseif a == "--scenarios" then args.scenarios = true
   elseif a == "--seeds" then i = i + 1; args.seeds = tonumber(arg[i])
@@ -24,14 +25,15 @@ while arg and arg[i] do
   end
   i = i + 1
 end
-if not (args.unit or args.props or args.scenarios) then
-  args.unit, args.props, args.scenarios = true, true, true
+if not (args.unit or args.behaviour or args.props or args.scenarios) then
+  args.unit, args.behaviour, args.props, args.scenarios = true, true, true, true
 end
 T.args = args
 if args.level then require("sim.config").SIM_LEVEL = args.level end
 
 local groups = {}
 if args.unit then groups[#groups + 1] = { "unit", require("tests.sim.unit.index") } end
+if args.behaviour then groups[#groups + 1] = { "behaviour", require("tests.sim.behaviour.index") } end
 if args.props then groups[#groups + 1] = { "props", require("tests.sim.props.index") } end
 if args.scenarios then groups[#groups + 1] = { "scenarios", require("tests.sim.scenarios.index") } end
 

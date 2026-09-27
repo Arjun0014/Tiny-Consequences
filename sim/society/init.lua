@@ -255,6 +255,10 @@ function sys.year(W)
     local v = vs[i]
     if v.alive then
       for k = 1, #v.members do ents.fade_memories(P[v.members[k]], f) end
+      -- last year's flows (harvest, catch, eaten, wood cut and burned, hours by task...) for the
+      -- inspector and the tools; this year's account starts empty
+      v.acc_last = v.acc
+      v.acc = {}
     end
   end
   -- ruins decay; abandoned villages' ruins vanish after ruin_years

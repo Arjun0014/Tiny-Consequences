@@ -26,7 +26,8 @@ local FFISH = fields.BY_NAME.fish
 local TAKEN = {}   -- scratch: share of a ground's fish already targeted today (cleared per village)
 
 -- Weekly: rank the village's grounds by fish x fishing hours (a typical day's window); the daily
--- plan considers the best RANK of them. (Fish change weekly with the planet.)
+-- plan considers the best RANK of them. (Fish change weekly with the planet.) The ranking steers
+-- behaviour, so it is saved state (v.grounds): a reloaded world must fish the same grounds.
 M.RANK = 8
 function M.rank(W, v, hours)
   local cfg = cfgmod.SOCIETY
@@ -49,7 +50,7 @@ function M.rank(W, v, hours)
     return a < b
   end)
   for k = #list, M.RANK + 1, -1 do list[k] = nil end
-  G.grounds = list
+  v.grounds = list
 end
 
 -- Plan today's trips. h0 = absolute hour of the village's local midnight, ws/we = its work
@@ -77,8 +78,8 @@ function M.plan(W, v, h0, ws, we, weather)
         if p and not p.dead then fit = fit + (0.35 + 0.65 * p.nutrition) * min(1, p.health / 40) end
       end
       local iced = F.ice[b.home] >= 0.5
-      local grounds = G.grounds
-      if not grounds then M.rank(W, v, we - ws); grounds = G.grounds end
+      local grounds = v.grounds
+      if not grounds then M.rank(W, v, we - ws); grounds = v.grounds end
       if fit > 0 and not weather.storm and not iced and #grounds > 0 then
         local best, bs, bh, bt, bj = nil, 0, 0, 0, 0
         for j = 1, #grounds do

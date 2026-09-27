@@ -12,6 +12,9 @@
 --   burn_farms       { village = id | cells = {...} }  ignites the village's farm cells; crops
 --                    that don't catch are destroyed outright (fuel may be too thin to burn)
 --   sink_tanker      { tanker = ship id (default: the first afloat) }
+--   empty_stores     { village = id }  the village's grain, fresh food and seed are lost (a store fire)
+--   emigrate         { village = id, fraction = 0..1 }  that share of its households leaves for the
+--                    nearest other village as a walking party (a labour loss with a cause)
 local world = require("sim.world")
 local events = require("sim.causality.events")
 local blame = require("sim.causality.blame")
@@ -154,6 +157,47 @@ function hooks.sink_tanker(W, p)
   end
   local id = root(W, "sink_tanker", { t and t.cell or 0 }, 1, { tanker = t and t.id or 0 })
   if t then require("sim.systems.ships").sink(W, t, id) end
+  return id
+end
+
+function hooks.empty_stores(W, p)
+  local v = W.ent.villages[p.village]
+  local id = root(W, "empty_stores", { v.cell }, 1, { village = v.id })
+  v.stock.grain, v.stock.fresh, v.stock.seed = 0, 0, 0
+  v.foodtag[1], v.foodidle[1] = id, 0
+  v.cause = id
+  return id
+end
+
+function hooks.emigrate(W, p)
+  local v = W.ent.villages[p.village]
+  local E = W.ent
+  local id = root(W, "emigrate", { v.cell }, 1, { village = v.id })
+  local dest, bd = nil, math.huge
+  local sites = require("sim.society.sites")
+  for i = 1, #E.villages do
+    local u = E.villages[i]
+    if u.alive and u ~= v and u.continent == v.continent then
+      local d = sites.dist(W, v.cell, u.cell)
+      if d < bd then dest, bd = u, d end
+    end
+  end
+  local nh = math.floor(#v.households * (p.fraction or 0.5) + 0.5)
+  local members = {}
+  local P, H = E.people, E.households
+  for i = 1, nh do
+    local h = H[v.households[i]]
+    if h then for j = 1, #h.members do members[#members + 1] = P[h.members[j]] end end
+  end
+  local mob = require("sim.society.mobility")
+  local mid = events.emit(W, "migration", v.cell, id, #members, { from = v.id, to = dest and dest.id or 0 })
+  if dest then
+    mob.depart(W, v, members, dest.id, nil, "migrants", mid, 0, 0)
+  else
+    for i = 1, #members do require("sim.society.entities").kill(W, members[i], "test", id) end
+    require("sim.society.entities").compact(W, v)
+  end
+  v.labour_candidate = mid
   return id
 end
 

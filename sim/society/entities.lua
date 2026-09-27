@@ -397,6 +397,13 @@ local JOBS = { "child", "farmer", "fisher", "woodcutter", "builder", "elder" }
 local JOB_ID = {}
 for i = 1, #JOBS do JOB_ID[JOBS[i]] = i end
 
+-- Fields stored positionally; any other key a person carries (wait_since, ...) travels in a trailing
+-- map, so the save can never silently drop state (a dropped key breaks reload determinism).
+local PACKED = { id = 1, key = 1, name = 1, surname = 1, sex = 1, born = 1, village = 1, job = 1, health = 1,
+  nutrition = 1, partner = 1, mother = 1, father = 1, children = 1, traits = 1, mem = 1, mood = 1, u = 1,
+  dead = 1, died_of = 1, death_tag = 1, household = 1, task = 1, site = 1, betrothed = 1, preg_due = 1,
+  nursing_until = 1, away = 1, homeless = 1 }
+
 function M.pack_people(map)
   local ids = {}
   for id in pairs(map) do ids[#ids + 1] = id end
@@ -404,10 +411,17 @@ function M.pack_people(map)
   local out = {}
   for i = 1, #ids do
     local p = map[ids[i]]
+    local extra = false
+    for k, x in pairs(p) do
+      if not PACKED[k] then
+        extra = extra or {}
+        extra[k] = x
+      end
+    end
     out[i] = { p.id, p.key, p.name, p.surname, p.sex == "f" and 1 or 0, p.born, p.village,
       JOB_ID[p.job] or 1, p.health, p.nutrition, p.partner, p.mother, p.father, p.children,
       table.concat(p.traits, ","), p.mem, p.mood, p.u, p.dead or false, p.died_of or "", p.death_tag or 0,
-      p.household, p.task, p.site, p.betrothed, p.preg_due, p.nursing_until, p.away, p.homeless }
+      p.household, p.task, p.site, p.betrothed, p.preg_due, p.nursing_until, p.away, p.homeless, extra }
   end
   return out
 end
@@ -424,6 +438,13 @@ function M.unpack_people(list)
       u = r[18], household = r[22], task = r[23], site = r[24], betrothed = r[25], preg_due = r[26],
       nursing_until = r[27], away = r[28], homeless = r[29] }
     if r[19] then p.dead = r[19]; p.died_of = r[20]; p.death_tag = r[21] end
+    local extra = r[30]
+    if extra then
+      local keys = {}
+      for k in pairs(extra) do keys[#keys + 1] = k end
+      table.sort(keys)
+      for k = 1, #keys do p[keys[k]] = extra[keys[k]] end
+    end
     map[p.id] = p
   end
   return map

@@ -69,9 +69,11 @@ function M.depart(W, v, members, to, site, kind, reason, food, seed)
   local path = M.land_path(W, v.cell, target_cell, 80) or { v.cell, target_cell }
   local id = E.next_party
   E.next_party = id + 1
+  -- decisions are taken at the village's local midnight; they set off at first light
+  local dep = W.hour + floor(v.plan.ws or 6)
   local party = { id = id, key = rng.hash(W.seed, rng.S.PARTY, v.key_cell, W.hour, #members), members = {},
-    from = v.id, to = to, site = site or 0, culture = v.culture, path = path, depart = W.hour,
-    arrive = W.hour + max(2, walk_hours(#path - 1)), food = food or 0, seed = seed or 0, reason = reason or 0,
+    from = v.id, to = to, site = site or 0, culture = v.culture, path = path, depart = dep,
+    arrive = dep + max(2, walk_hours(#path - 1)), food = food or 0, seed = seed or 0, reason = reason or 0,
     kind = kind }
   for i = 1, #members do
     local p = members[i]

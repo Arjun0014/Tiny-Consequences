@@ -182,7 +182,11 @@ function M.weekly(W, v)
       local f = field(W, v.farms[i])
       if f.plan == "crop" and f.sown < 0.999 then all = false end
     end
-    if all or ((lwk - S.week) % 48) >= cfg.sow_weeks then S.phase = "growing"; v.replan = true end
+    if all or ((lwk - S.week) % 48) >= cfg.sow_weeks then
+      S.phase = "growing"
+      v.replan = true
+      M.sowing_done(W, v)
+    end
   end
   -- growth (sown fields, until harvested)
   local ccrop, icrop = C.crop, I.crop
@@ -253,6 +257,28 @@ function M.weekly(W, v)
   S.t_prev = T
 end
 
+-- The sowing window closed: how much of the planned cropland stayed unsown, and why — missing
+-- seed (the grain stock's cause) or missing hands (the labour tag). A window closing with >= 30%
+-- undone for lack of hands is a labour shortage (16 §3).
+function M.sowing_done(W, v)
+  local planned, sown = 0, 0
+  for i = 1, #v.farms do
+    local f = field(W, v.farms[i])
+    if f.plan == "crop" then planned = planned + 1; sown = sown + f.sown end
+  end
+  local short = planned > 0 and (planned - sown) / planned or 0
+  local seed = planned > 0 and min(short, (v.seed_short_fields or 0) / planned) or 0
+  v.seed_short_fields = 0
+  v.seed_short = seed
+  v.area_short = short - seed
+  if v.area_short >= 0.3 and planned >= 2 and W.record_events then
+    local parent = v.labour_tag ~= 0 and v.labour_tag or v.cause
+    local id = require("sim.causality.events").emit(W, "labour_shortage", v.cell, parent,
+      floor(v.area_short * 100 + 0.5), { village = v.id, unsown = planned - sown })
+    if id ~= 0 and v.labour_tag ~= 0 then v.labour_tag = id end
+  end
+end
+
 -- The harvest season is over: record it (crop_failure detection) and reset the fields.
 function M.end_season(W, v)
   local S = v.season
@@ -282,8 +308,12 @@ function M.end_season(W, v)
       if n > bc or (n == bc and t < best) then best, bc = t, n end
     end
   end
-  if v.area_short and v.area_short > 0.3 and v.labour_tag ~= 0 then best = v.labour_tag end
-  if v.seed_short and v.seed_short > 0.3 and v.foodtag[1] ~= 0 then best = v.foodtag[1] end
+  -- ripe grain lost in the fields while waiting for hands
+  local lost = v.harvest_lost or 0
+  local lost_share = lost / max(1, lost + v.harvest_acc)
+  v.harvest_lost = 0
+  if ((v.area_short or 0) > 0.3 or lost_share > 0.3) and v.labour_tag ~= 0 then best = v.labour_tag end
+  if (v.seed_short or 0) > 0.3 and v.foodtag[1] ~= 0 then best = v.foodtag[1] end
   v.harvest_tag = best
   v.area_short, v.seed_short = 0, 0
   local F = W.F
@@ -323,6 +353,41 @@ function M.demands(W, v, out)
   return out
 end
 
+-- Hours of `kind` work field f still needs this week (0 if none).
+local function field_need(cfg, S, f, kind)
+  if kind == "sow" then
+    if S.phase == "sowing" and f.plan == "crop" and f.sown < 1 then return (1 - f.sown) * cfg.sow_h end
+  elseif kind == "tend" then
+    if f.sown > 0 and not f.ripe and f.harvested < 1 then return max(0, cfg.tend_h * f.sown / 14 - f.tended) end
+  elseif kind == "harvest" then
+    if f.ripe and f.sown > 0 and f.harvested < 1 then return (1 - f.harvested) * f.sown * cfg.harvest_h end
+  elseif kind == "clear" then
+    if f.plan == "clear" then return f.clear end
+  end
+  return 0
+end
+M.field_need = field_need
+
+-- Which field each worker of a `kind` group goes to: the fields in the order work() spends hours
+-- on them (v.farms order), each filled with workers until their week's capacity covers its need.
+-- people = list of persons, caps = capacity (0-1) by person id, week_h = working hours this week.
+function M.field_sites(W, v, kind, people, caps, week_h)
+  local cfg = cfgmod.SOCIETY
+  local S = v.season
+  local farms = v.farms
+  local fi, left = 0, 0
+  local last = farms[1] or v.cell
+  for i = 1, #people do
+    while left <= 0 and fi < #farms do
+      fi = fi + 1
+      left = field_need(cfg, S, field(W, farms[fi]), kind)
+      if left > 0 then last = farms[fi] end
+    end
+    people[i].site = last
+    left = left - (caps[people[i].id] or 0) * week_h
+  end
+end
+
 -- Apply `hours` of work of `kind` on the village's fields (spread over the fields that need it,
 -- nearest first). Returns hours used. Harvests add grain to the store.
 function M.work(W, v, kind, hours)
@@ -347,7 +412,7 @@ function M.work(W, v, kind, hours)
         -- not enough seed: sow what the grain allows
         local ok = (from_seed + avail) / cfg.seed
         if ok < ds then
-          v.seed_short = (v.seed_short or 0) + (ds - ok)
+          v.seed_short_fields = (v.seed_short_fields or 0) + (ds - ok)
           ds = ok
           h = ds * cfg.sow_h
         end
@@ -421,6 +486,7 @@ function M.daily(W, v, wet)
     local f = field(W, c)
     if f.ripe and f.sown > 0 and f.harvested < 1 then
       sync_bio(F, f, c)
+      v.harvest_lost = (v.harvest_lost or 0) + f.bio * loss * f.sown * (1 - f.harvested) * cfg.yield
       f.bio = f.bio * (1 - loss)
       write_crop(F, f, c)
       if f.bio < 0.02 then f.harvested = 1; write_crop(F, f, c) end
