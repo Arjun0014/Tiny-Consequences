@@ -25,9 +25,15 @@ jams secondary; no subagents; hand off at ~700K context.**
     chain to the player. Decide with evidence whether (a) P08 should compare only headlines whose
     region the intervention touched, (b) society events should inherit the player's tag when their
     driver (hunting yield, grazers) carries it, or (c) both. Don't just lower the threshold.
-- **Web**: `npm run build` OK (require cycles fixed with callbacks). W01 failed on the sky colour
-  (the opening camera showed a village at night); `game/view/camera.lua` now opens on the biggest
-  village in daylight — re-run `npm run test:web` (W01, W02, W07, W09).
+- **Web**: `npm run build` OK (require cycles fixed with callbacks). W01 passes again (the opening
+  camera now picks the biggest village in daylight), W09 passes. **W07 fails** "pole: centre vs sky":
+  since W1's real sun the pole preset looks at polar night at hour 0 — make the check light-aware
+  (or look at the sunlit pole). W02/W03/W06/W08 not re-run this session.
+- **S01** passes 2/3 after re-banding (s2 forest_nat 0.10 sits exactly on the new floor — watch it;
+  s3 g_temp@y200 2.01 > 2.0 from villagers' wood smoke and 1/2 wildfire windows). **S15** fails:
+  the lightning sinks the tanker and the oil spreads/beaches, but the chain stops at `biome_shift`
+  (no `fish_collapse > famine`): the fishing village no longer starves from one spill (it farms,
+  forages, dries fish) — re-scout the tutorial world.
 - **P07** re-baselined at 772,714 instr/tick (society 258,732 at ~400 people).
 
 ## First things to do next session (in order)
