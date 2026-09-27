@@ -303,6 +303,47 @@ function M.register(G)
     return { min = t[1], median = t[math.floor(n / 2) + 1], max = t[n], kb = collectgarbage("count") }
   end)
 
+  -- bench_view{chunks, lod}: the Lua cost of baking prop chunks (plan + write into a real buffer)
+  -- and of rebuilding cloud sectors, in this runtime.
+  bridge.register("bench_view", function(args)
+    local W = assert(G.W, "world not ready")
+    local props = require("game.view.props")
+    local propgen = require("game.view.propgen")
+    local clouds = require("game.view.clouds")
+    local lod = args.lod or 1
+    local n = args.chunks or 4
+    local out = { lod = lod }
+    local tp, tw, verts, inst = 0, 0, 0, 0
+    local ctx = props.ctx
+    ctx.lod = lod
+    for k = 1, math.min(n, #props.chunks) do
+      local ch = props.chunks[k * 7 % #props.chunks + 1].ch
+      local a = clock.now_ms()
+      local ni, nv = propgen.plan_chunk(ctx, ch)
+      local b = clock.now_ms()
+      if nv > 0 then
+        local buf = buffer.create(nv, propgen.chunk_decl())
+        local S = { inst = buffer.get_stream(buf, propgen.H_INST), inst2 = buffer.get_stream(buf, propgen.H_INST2),
+          inst3 = buffer.get_stream(buf, propgen.H_INST3) }
+        propgen.write(buf, S, 0, 1, ni)
+      end
+      tw = tw + clock.now_ms() - b
+      tp = tp + b - a
+      verts, inst = verts + nv, inst + ni
+    end
+    out.plan_ms, out.write_ms, out.verts, out.instances = tp, tw, verts, inst
+    out.us_per_vertex = tw * 1000 / math.max(1, verts)
+    local r0 = clouds.stats.rebuilt
+    local t0 = clock.now_ms()
+    for _, sec in ipairs(clouds.sectors) do sec.key = -99 end
+    clouds.update(W, 0, false, true)
+    out.cloud_sectors = clouds.stats.rebuilt - r0
+    out.cloud_ms_per_sector = (clock.now_ms() - t0) / math.max(1, out.cloud_sectors)
+    out.cloud_puffs = clouds.stats.puffs
+    props.flush(W, camera.zoom)
+    return out
+  end)
+
   -- bench{level, seed, ticks}: sim tick benchmark in the real HTML5 runtime (SIM_LEVEL, W08).
   bridge.register("bench", function(args)
     local bench = require("sim.bench")

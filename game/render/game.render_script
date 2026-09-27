@@ -77,7 +77,7 @@ function init(self)
 	self.mover_opts = { frustum = nil, constants = self.cb, sort_order = render.SORT_NONE }
 	self.plain_opts = { constants = self.cb }
 	self.post_opts = { constants = self.pcb }
-	self.shadow_opts = { frustum = nil }
+	self.shadow_opts = { frustum = nil, constants = self.cb }
 	self.gui_opts = {}
 	self.rt_w, self.rt_h = 0, 0
 	self.shadow = shadow_rt(state.SHADOW_SIZE)
@@ -125,6 +125,8 @@ local function shadow_pass(self)
 	render.disable_state(graphics.STATE_CULL_FACE)
 	render.enable_material("shadow")
 	render.draw(self.pred_planet, self.shadow_opts)
+	render.disable_material()
+	render.enable_material("shadow_props")
 	render.draw(self.pred_props, self.shadow_opts)
 	render.disable_material()
 	if state.shadow_movers then
@@ -184,6 +186,8 @@ function update(self)
 	cb.u_shn = state.u_shn
 	cb.u_focus = state.u_focus
 	cb.u_cut = state.u_cut
+	cb.u_cloud = state.u_cloud
+	cb.u_eye = state.u_cam
 	local sp = state.u_shadowp
 	sp.w = (state.shadow_on and state.planet_on) and 1 or 0
 	cb.u_shadowp = sp
@@ -228,6 +232,8 @@ function update(self)
 		self.mover_opts.frustum = self.world_opts.frustum
 		render.draw(self.pred_movers, self.mover_opts)
 		render.disable_texture("shadowtex")
+		-- clouds, solid cores: ray-traced puffs write their own depth and the CoC (cloud.fp)
+		render.draw(self.pred_cloud, self.world_opts)
 
 		-- transparent: premultiplied alpha, depth-tested, no depth writes; alpha keeps the CoC
 		render.set_depth_mask(false)
@@ -237,8 +243,11 @@ function update(self)
 		render.enable_state(graphics.STATE_CULL_FACE)
 		render.set_cull_face(graphics.FACE_TYPE_BACK)
 		render.draw(self.pred_atmo, self.plain_opts)
-		render.draw(self.pred_cloud, self.world_opts)
 		render.disable_state(graphics.STATE_CULL_FACE)
+		-- clouds, soft rims and wisps over their cores
+		render.enable_material("cloud_edge")
+		render.draw(self.pred_cloud, self.world_opts)
+		render.disable_material()
 		render.draw(self.pred_fx, self.world_opts)
 		render.draw(self.pred_particle, self.world_opts)
 		-- selection ring: always visible on top (hidden by the view when behind the planet)

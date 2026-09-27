@@ -56,6 +56,7 @@ function M.weekly(W, v)
   local Tw = W.F.temp[v.cell]
   local nonage, dtag, dtag_n = 0, 0, 0
   local hsum = 0   -- the week's summed death hazard (expected deaths): the account's mortality
+  local csum, cn = 0, 0   -- the week's summed conception chance over the women who could conceive
   local m = v.members
   local dead_any = false
   -- the planet's soft cap (performance guard): births taper to 0 at soft_cap
@@ -142,6 +143,7 @@ function M.weekly(W, v)
           if nf > 1 then nf = 1 elseif nf < 0 then nf = 0 end
           local pday = cfg.conceive_day * af * nf * gcap
           local pweek = 1 - (1 - pday) ^ 7
+          csum, cn = csum + pweek, cn + 1
           if (ub + p.u * PHI) % 1 < pweek then
             if (ub + p.u * PHI3) % 1 < cfg.fetal_loss then
               -- lost pregnancy: nothing, she may conceive again
@@ -160,6 +162,7 @@ function M.weekly(W, v)
   local a = v.acc
   a.hz = (a.hz or 0) + hsum
   a.pw = (a.pw or 0) + #m
+  if cn > 0 then a.cz, a.cw = (a.cz or 0) + csum, (a.cw or 0) + cn end
   if dead_any then ents.compact(W, v) end
   v.nonage = (v.nonage or 0) + nonage
   if dtag ~= 0 then v.death_tag = dtag end

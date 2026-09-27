@@ -33,7 +33,12 @@ local function norm3(x, y, z)
 end
 M.norm3 = norm3
 
-function M.new() return { d = {}, nv = 0 } end
+function M.new() return { d = {}, nv = 0, tn = {} } end
+
+-- Per-vertex tint (-1..1) of the lumps being built: sunlit lumps lean yellow-green (+), deep
+-- ones blue-green (-) (props.vp). Set it around primitives with M.set_tint(x).
+M.cur_tint = 0
+function M.set_tint(x) M.cur_tint = x or 0 end
 
 local function push(t, x, y, z, nx, ny, nz, slot, shade, sway)
   local d, o = t.d, t.nv * 9
@@ -41,6 +46,8 @@ local function push(t, x, y, z, nx, ny, nz, slot, shade, sway)
   d[o + 4], d[o + 5], d[o + 6] = nx, ny, nz
   d[o + 7], d[o + 8], d[o + 9] = slot, shade, sway
   t.nv = t.nv + 1
+  local tn = t.tn
+  if tn then tn[t.nv] = M.cur_tint end
 end
 M.push = push
 
@@ -90,9 +97,11 @@ local function rot_matrix(yaw, tx, tz)
     -sy * a11 + cy * a31, -sy * a12 + cy * a32, -sy * a13 + cy * a33
 end
 
-function M.place(dst, src, ox, oy, oz, sx, sy, sz, yaw, tiltx, tiltz, remap, shade_mul, sway_mul)
+function M.place(dst, src, ox, oy, oz, sx, sy, sz, yaw, tiltx, tiltz, remap, shade_mul, sway_mul, tint_add)
   local r11, r12, r13, r21, r22, r23, r31, r32, r33 = rot_matrix(yaw, tiltx, tiltz)
   local d = src.d
+  local stn = src.tn
+  local keep = M.cur_tint
   sy = sy or sx; sz = sz or sx
   for k = 0, src.nv - 1 do
     local o = k * 9
@@ -106,8 +115,10 @@ function M.place(dst, src, ox, oy, oz, sx, sy, sz, yaw, tiltx, tiltz, remap, sha
     local slot = d[o + 7]
     if remap and remap[slot] then slot = remap[slot] end
     local sh = d[o + 8] * (shade_mul or 1)
+    M.cur_tint = (stn and stn[k + 1] or 0) + (tint_add or 0)
     push(dst, px + ox, py + oy, pz + oz, mx, my, mz, slot, sh, d[o + 9] * (sway_mul or 1))
   end
+  M.cur_tint = keep
   return dst
 end
 

@@ -4,12 +4,20 @@ materials {
   material: "/game/render/shadow.material"
 }
 materials {
+  name: "shadow_props"
+  material: "/game/render/shadow_props.material"
+}
+materials {
   name: "shadow_ws"
   material: "/game/render/shadow_ws.material"
 }
 materials {
   name: "shadow_cloud"
   material: "/game/render/shadow_cloud.material"
+}
+materials {
+  name: "cloud_edge"
+  material: "/game/render/cloud_edge.material"
 }
 materials {
   name: "post_down"

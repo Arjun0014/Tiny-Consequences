@@ -86,7 +86,9 @@ end
 M.tests[2] = { "vegetation_bands_with_fauna_200y", function()
   local list = seeds()
   local lines, bad = {}, {}
-  local BANDS = { forest = { 0.20, 0.55 }, grass = { 0.20, 0.50 } }
+  -- forest/grass bands of natural land as S01 has them since villages clear and log (D-054: forest
+  -- >= 0.10, grass <= 0.55; the pre-society 0.20 floor sat above what woodcutting leaves)
+  local BANDS = { forest = { 0.10, 0.55 }, grass = { 0.20, 0.55 } }
   for _, seed in ipairs(list) do
     local r = B.run(seed, B.STATS_YEARS)
     local s = { forest = {}, grass = {}, desert = {}, ice = {} }

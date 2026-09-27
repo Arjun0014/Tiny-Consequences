@@ -45,17 +45,19 @@ local b08_body
 function M.b08_famine_changes_behaviour()
   -- the body's and household's own response to hunger: exchange between villages (W7: relief,
   -- barter, brides — relations.lua) would change the village and its store, so it is off here
+  -- the worlds are made before the switch: worldgen's spin-up runs the society, so generating
+  -- seed 1 with exchange off (when no earlier test cached it) would test a different world
+  local Wa, Wb = worlds.fresh(1), worlds.fresh(1)
   local cfg0 = require("sim.config").SOCIETY
   local r0, t0, b0 = cfg0.relief_reach, cfg0.trade_reach, cfg0.bride_prob
   cfg0.relief_reach, cfg0.trade_reach, cfg0.bride_prob = 0, 0, 0
-  local ok, err = pcall(b08_body)
+  local ok, err = pcall(b08_body, Wa, Wb)
   cfg0.relief_reach, cfg0.trade_reach, cfg0.bride_prob = r0, t0, b0
   if not ok then error(err, 0) end
   return err
 end
 
-b08_body = function()
-  local Wa, Wb = worlds.fresh(1), worlds.fresh(1)
+b08_body = function(Wa, Wb)
   local va = farm_village(Wa)
   local vb = Wb.ent.villages[va.id]
   world.test_action(Wa, "empty_stores", { village = va.id })
@@ -65,27 +67,31 @@ b08_body = function()
   for _, id in ipairs(va.members) do members[id] = true end
   local min_ra, min_rb, hungry_a = 1, 1, 0
   local cfg = cfgmod.SOCIETY
-  -- conceptions among the married women living in the village (per woman-month)
-  local conc = { a = { n = 0, wm = 0 }, b = { n = 0, wm = 0 } }
-  local function count(W, v, c)
-    if not v.alive then return end
-    local P = W.ent.people
-    for _, id in ipairs(v.members) do
-      local p = P[id]
-      local age = (W.hour - p.born) / 8064
-      if p.sex == "f" and p.partner ~= 0 and age >= cfg.fecund[1] and age <= cfg.fecund[2] then
-        c.wm = c.wm + 1
-        local conceived = p.preg_due > 0 and p.preg_due - cfg.preg_days * 24 or -1e9
-        if conceived > W.hour - 672 then c.n = c.n + 1 end
-      end
-    end
+  -- conception: the summed weekly chance of the women who could conceive (married, fecund, at
+  -- home, not pregnant or nursing; life.weekly's account), per woman-week over the hungry months
+  -- (a mechanism-level rate like the death hazard below: a small village's few conceptions are
+  -- too noisy to compare)
+  local function tracker(v)
+    return { v = v, acc = v.acc, cz = v.acc.cz or 0, cw = v.acc.cw or 0, sz = 0, sw = 0 }
   end
+  local function track(t)
+    local v = t.v
+    if v.acc ~= t.acc then
+      -- the yearly rollover: finish the old account, start on the new one
+      local o = v.acc_last or {}
+      t.sz, t.sw = t.sz + (o.cz or 0) - t.cz, t.sw + (o.cw or 0) - t.cw
+      t.acc, t.cz, t.cw = v.acc, 0, 0
+    end
+    t.sz, t.sw = t.sz + (v.acc.cz or 0) - t.cz, t.sw + (v.acc.cw or 0) - t.cw
+    t.cz, t.cw = v.acc.cz or 0, v.acc.cw or 0
+  end
+  local ca, cb = tracker(va), tracker(vb)
   local hz0a, pw0a, hz0b, pw0b, hza, hzb = 0, 0, 0, 0, 0, 0
   for m = 1, 24 do
     world.run_ticks(Wa, 4); world.run_ticks(Wb, 4)
     if va.alive then min_ra = math.min(min_ra, va.ration) end
     min_rb = math.min(min_rb, vb.ration)
-    if m >= 2 and m <= 14 then count(Wa, va, conc.a); count(Wb, vb, conc.b) end
+    if m <= 3 then track(ca); track(cb) end
     if m == 1 then hz0a, pw0a, hz0b, pw0b = va.acc.hz or 0, va.acc.pw or 0, vb.acc.hz or 0, vb.acc.pw or 0 end
     if m == 7 then
       -- expected deaths per person-week (the summed weekly hazards) over the hungry months
@@ -104,9 +110,10 @@ b08_body = function()
   local bb, db = outcome(Wb)
   T.ok(min_ra < 0.8, "rations fall (min " .. min_ra .. ")")
   T.ok(min_rb > min_ra, "the control village eats better")
-  local cra = conc.a.n / math.max(1, conc.a.wm)
-  local crb = conc.b.n / math.max(1, conc.b.wm)
-  T.ok(conc.b.n > 0 and cra < crb * 0.5, string.format("conceptions drop: %.3f vs %.3f per woman-month", cra, crb))
+  local cra = ca.sz / math.max(1, ca.sw)
+  local crb = cb.sz / math.max(1, cb.sw)
+  T.ok(ca.sw >= 10 and cb.sw >= 10, string.format("women who could conceive: %d vs %d woman-weeks", ca.sw, cb.sw))
+  T.ok(crb > 0 and cra < crb * 0.5, string.format("conceptions drop: weekly chance %.4f vs %.4f", cra, crb))
   T.ok(hza > hzb * 1.5, string.format("mortality rises: weekly death hazard %.5f vs %.5f", hza, hzb))
   T.ok(da >= db, string.format("deaths %d vs %d", da, db))
   local mig = U.events_of(Wa, "migration", va.id, t0)
@@ -119,7 +126,7 @@ b08_body = function()
   local ra = U.events_of(Wa, "rationing", va.id, t0)
   T.ok(#ra >= 1 and (U.root_kind(Wa, ra[1].id) == "test_empty_stores" or U.root_kind(Wa, ra[1].id) == "test_burn_farms"),
     "rationing chains back to the intervention")
-  return string.format("%s: ration min %.2f (control %.2f), conceptions %.3f vs %.3f, deaths %d vs %d, %d migrations",
+  return string.format("%s: ration min %.2f (control %.2f), conception chance %.4f vs %.4f/week, deaths %d vs %d, %d migrations",
     va.name, min_ra, min_rb, cra, crb, da, db, #mig)
 end
 

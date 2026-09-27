@@ -22,14 +22,17 @@ local sqrt, floor, min, max, abs, cos, sin, pi, atan2 = math.sqrt, math.floor, m
 M.SCALE = 1.25         -- global prop scale, near LOD
 M.SCALE_FAR = 1.7      -- far LOD props are bigger and fewer so forests still read from orbit
 M.BUILDING = 1.15      -- buildings are drawn a little large (miniature-model proportions)
-M.SLOTS = 11           -- prop slots per render face, near (renderer v3: denser, D-054)
-M.SLOTS_FAR = 4
+M.SLOTS = 24           -- prop slots per render face, near: 10 canopy, 3 understory, 4 shrubs,
+                       -- 5 floor, 1 deadwood, 1 rock (renderer v4, D-056)
+M.SLOTS_FAR = 7        -- 5 canopy, 1 shrub, 1 rock
 
 -- Kinds (index into NAMES; templates by name)
 local NAMES = { "oak", "birch", "spruce", "snowpine", "pine", "palm", "jungle", "acacia", "snag", "stump",
   "bush", "tuft", "flower", "reed", "rock", "cactus", "cottage", "longhouse", "townhouse", "hut",
   "granary", "hall", "well", "fence", "haystack", "woodpile", "ruin", "pier",
   "stakes", "frame", "walls", "sodhouse", "woodshed", "sacks", "fishrack", "hull", "stook", "logs" }
+local flora = require("game.view.flora")
+for _, n in ipairs(flora.NAMES) do NAMES[#NAMES + 1] = n end
 local K = {}
 for i, n in ipairs(NAMES) do K[n] = i end
 M.K, M.NAMES = K, NAMES
@@ -45,6 +48,14 @@ for _, n in ipairs({ "cottage", "longhouse", "townhouse", "hut", "granary", "hal
 cls("fence"); cls("haystack", 7); cls("woodpile"); cls("ruin"); cls("pier")
 cls("stakes"); cls("frame"); cls("walls", 0, 0); cls("sodhouse", 7, 0); cls("woodshed", 5); cls("sacks")
 cls("fishrack"); cls("hull"); cls("stook", 7); cls("logs")
+for _, n in ipairs({ "oak1", "oak2", "oak3", "beech1", "beech2", "birch1", "birch2", "poplar", "sapling_b" }) do cls(n, 1, 6) end
+for _, n in ipairs({ "spruce1", "spruce2", "spruce3", "fir1", "pine1", "pine2", "sapling_c" }) do cls(n, 2, 6) end
+cls("snowpine1", 2, 6, 4); cls("snowpine2", 2, 6, 4)
+for _, n in ipairs({ "jungle1", "jungle2", "jungle3", "palm1", "palm2", "acacia1", "acacia2" }) do cls(n, 3, 6) end
+cls("snag1", 0, 6); cls("burnt1"); cls("deadfall", 0, 6, 0)
+cls("bush1", 1); cls("bush2", 1); cls("berry", 1, 6); cls("juniper", 2); cls("heather", 7); cls("dryshrub", 3)
+cls("fern", 7); cls("fern2", 7); cls("grass1", 7); cls("grass2", 7); cls("meadow", 7, 7); cls("tallgrass", 7)
+cls("shroom", 0, 0, 0); cls("boulder"); cls("mossrock", 0, 0, 0); cls("slab")
 
 local TPL = { {}, {} }
 M.TPL = TPL
@@ -72,6 +83,7 @@ end
 
 local function build_templates()
   kit.build()
+  if not kit.T[1].oak1 then flora.build() end
   for lod = 1, 2 do
     for i, n in ipairs(NAMES) do
       local t = kit.T[lod][n]
@@ -118,12 +130,59 @@ local PAL = {
   [K.cactus] = hexes({ "#5E9E57", "#6BA85F" }),
   [K.haystack] = hexes({ "#E0C064", "#D6B458" }),
 }
+-- flora palettes (renderer v4): species hues, several per species; stands shift them further
+local OAKS = hexes({ "#4E9A3E", "#5AA844", "#63B04A", "#4A9240", "#6EB24C", "#548F3C", "#7DB852", "#5E9F47", "#468A3A" })
+local BEECH = hexes({ "#6DB348", "#78BC4E", "#62A843", "#86C258", "#5C9E40" })
+local BIRCH = hexes({ "#93C653", "#A2CE5E", "#86BD4E", "#B0D468", "#9CC45A" })
+local POPLAR = hexes({ "#5E9E43", "#6BAA4A", "#7AB350" })
+local SPRUCE = hexes({ "#2C6A45", "#285F40", "#33744C", "#3B7A4F", "#2A5E48", "#335F3F" })
+local FIR = hexes({ "#2A5A48", "#2F644D", "#264F42" })
+local PINE = hexes({ "#3D7C4C", "#468454", "#3A7447", "#4C8B55" })
+local JUNGLE = hexes({ "#2A8040", "#28753C", "#328C46", "#237038", "#3A9148", "#2E7A36" })
+local PALM = hexes({ "#56B34A", "#62BE50", "#4DAA45", "#6CBF4E" })
+local ACACIA = hexes({ "#86A94A", "#7CA044", "#93B052", "#8FA24A" })
+local SHRUB = hexes({ "#5FA84A", "#6FB450", "#539A45", "#7EBB57", "#4E8F40" })
+for _, n in ipairs({ "oak1", "oak2", "oak3", "jungle3" }) do PAL[K[n]] = OAKS end
+PAL[K.beech1], PAL[K.beech2] = BEECH, BEECH
+PAL[K.birch1], PAL[K.birch2], PAL[K.sapling_b] = BIRCH, BIRCH, BIRCH
+PAL[K.poplar] = POPLAR
+for _, n in ipairs({ "spruce1", "spruce2", "spruce3", "sapling_c", "snowpine1", "snowpine2" }) do PAL[K[n]] = SPRUCE end
+PAL[K.fir1] = FIR
+PAL[K.pine1], PAL[K.pine2] = PINE, PINE
+PAL[K.jungle1], PAL[K.jungle2] = JUNGLE, JUNGLE
+PAL[K.palm1], PAL[K.palm2] = PALM, PALM
+PAL[K.acacia1], PAL[K.acacia2] = ACACIA, ACACIA
+PAL[K.bush1], PAL[K.bush2], PAL[K.berry] = SHRUB, SHRUB, SHRUB
+PAL[K.juniper] = hexes({ "#3F6E4E", "#46785A", "#3A6648" })
+PAL[K.heather] = hexes({ "#9A6A9E", "#8C5F92", "#A77AA8", "#7F6A86" })
+PAL[K.dryshrub] = hexes({ "#8E9A55", "#9AA05A", "#7F8C4E", "#A39A5C" })
+PAL[K.fern], PAL[K.fern2] = hexes({ "#4F9E3E", "#5BAA46", "#45913A", "#68B04C" }), hexes({ "#5AA743", "#4C9A3B" })
+PAL[K.grass1], PAL[K.grass2] = hexes({ "#86C150", "#93C95A", "#7AB84A", "#9CCB63" }), hexes({ "#7FBB4B", "#8DC456" })
+PAL[K.meadow] = hexes({ "#8CC455", "#9ACB5B", "#82BC50" })
+PAL[K.tallgrass] = hexes({ "#B7B25E", "#C2B866", "#A9A857", "#9FAE55" })
+PAL[K.snag1] = hexes({ "#6E6258", "#7A6C60", "#5F564E" })
+PAL[K.burnt1] = hexes({ "#2F2B29", "#3A3532" })
+PAL[K.deadfall] = hexes({ "#6B5B4A", "#75624E" })
+PAL[K.shroom] = hexes({ "#EDE3D0" })
+PAL[K.boulder] = hexes({ "#9A938A", "#A9A095", "#8B857D", "#B2A99C", "#958D82" })
+PAL[K.mossrock] = PAL[K.boulder]
+PAL[K.slab] = hexes({ "#A59E92", "#968F85", "#B3AB9E" })
 M.PAL = PAL
 local BARK = {
   [K.oak] = hex("#7A5236"), [K.birch] = hex("#E9E4D8"), [K.spruce] = hex("#6E4A32"),
   [K.snowpine] = hex("#6E4A32"), [K.pine] = hex("#9A6244"), [K.palm] = hex("#A57C52"),
   [K.jungle] = hex("#6E4C34"), [K.acacia] = hex("#7C5A3E"), [K.flower] = hex("#5E9E4A"),
 }
+for _, n in ipairs({ "oak1", "oak2", "oak3", "jungle3", "beech1", "beech2" }) do BARK[K[n]] = n:sub(1, 5) == "beech" and hex("#8E8A80") or hex("#6E4C34") end
+BARK[K.birch1], BARK[K.birch2], BARK[K.sapling_b] = hex("#ECE7DC"), hex("#E6E1D5"), hex("#9C8F7C")
+BARK[K.poplar] = hex("#8A7A62")
+for _, n in ipairs({ "spruce1", "spruce2", "spruce3", "fir1", "snowpine1", "snowpine2", "sapling_c" }) do BARK[K[n]] = hex("#5E4030") end
+BARK[K.pine1], BARK[K.pine2] = hex("#A8603A"), hex("#9C5A38")
+BARK[K.jungle1], BARK[K.jungle2] = hex("#7A6650"), hex("#6E5A44")
+BARK[K.palm1], BARK[K.palm2] = hex("#A57C52"), hex("#9A7450")
+BARK[K.acacia1], BARK[K.acacia2] = hex("#6E5040"), hex("#7C5A3E")
+BARK[K.snag1], BARK[K.deadfall] = hex("#7C6E60"), hex("#6B5B4A")
+BARK[K.berry], BARK[K.meadow], BARK[K.shroom] = hex("#5E4A3A"), hex("#5E9E4A"), hex("#EDE3D0")
 local SNOW = hex("#F4F8FF")
 -- building palettes by culture: roofs, walls
 local ROOFS = {
@@ -153,11 +212,12 @@ M.STYLES = STYLES
 local L = {
   n = 0, verts = 0, lod = 2,
   kind = {}, x = {}, y = {}, z = {}, ux = {}, uy = {}, uz = {}, yaw = {}, sc = {}, sh = {},
-  c1 = {}, c2 = {}, c3 = {}, cell = {},
+  c1 = {}, c2 = {}, c3 = {}, cell = {}, rnd = {},
 }
 M.list = L
 
-local function add(kind, x, y, z, ux, uy, uz, yaw, sc, sh, c1, c2, c3, cell)
+-- rnd: a per-instance random 0..1 (its own seasonal calendar, sway phase); default from yaw
+local function add(kind, x, y, z, ux, uy, uz, yaw, sc, sh, c1, c2, c3, cell, rnd)
   local t = TPL[L.lod][kind]
   if not t then return end
   local i = L.n + 1
@@ -166,6 +226,7 @@ local function add(kind, x, y, z, ux, uy, uz, yaw, sc, sh, c1, c2, c3, cell)
   L.ux[i], L.uy[i], L.uz[i], L.yaw[i], L.sc[i], L.sh[i] = ux, uy, uz, yaw, sc, sh
   L.c1[i], L.c2[i], L.c3[i] = c1, c2, c3
   L.cell[i] = cell or 0
+  L.rnd[i] = rnd or ((yaw * 0.6180339) % 1)
   L.verts = L.verts + t.nv
 end
 M.add = add
@@ -175,6 +236,61 @@ local function pm(h) return (h * 48271) % 2147483647 end
 
 local P_SNOW = pack_rgb(SNOW[1], SNOW[2], SNOW[3])
 local P_GREEN = pack_rgb(0.37, 0.62, 0.29)
+
+local vnoise = require("game.view.vnoise")
+local NOISE = {}
+function M.noise_for(seed)
+  local n = NOISE[seed]
+  if not n then n = vnoise.new(seed * 131 + 71); NOISE[seed] = n end
+  return n
+end
+
+-- Accent colours (slot 3): berries, meadow flowers, mushroom caps, moss.
+local ACCENT = {
+  [K.berry] = hexes({ "#C8323C", "#8E2F6E", "#3E4FA0", "#D8452E" }),
+  [K.meadow] = hexes({ "#F2F2F0", "#F4D03F", "#E8746B", "#B98BE0", "#F29BC4", "#F5A94A", "#8FB8F0" }),
+  [K.shroom] = hexes({ "#C8412F", "#B98A57", "#D9B98A", "#8E5A3A" }),
+  [K.mossrock] = hexes({ "#6A9A45", "#5E8E3E", "#79A652" }),
+  [K.deadfall] = hexes({ "#6A9A45", "#5E8E3E" }),
+}
+for k, list in pairs(ACCENT) do
+  for i, c in ipairs(list) do list[i] = pack_rgb(c[1], c[2], c[3]) end
+end
+
+-- The tree species of a place: climate, soil and the coast choose the pool; `stand` (low-frequency
+-- noise) makes patches of one species within a forest (birch groves in oak woods, pine stands).
+local function pick_tree(tmean, ic, bi, soil, coast, u, stand)
+  if tmean < -3 or ic > 0.3 then return u < 0.6 and K.snowpine1 or K.snowpine2 end
+  if tmean < 3 then
+    if stand < 0.28 then return u < 0.6 and K.birch2 or K.birch1 end
+    if stand > 0.72 then return u < 0.5 and K.pine1 or K.pine2 end
+    return u < 0.4 and K.spruce1 or (u < 0.75 and K.spruce2 or K.fir1)
+  end
+  if tmean < 9 then
+    if stand < 0.3 then return u < 0.5 and K.birch1 or K.birch2 end
+    if stand > 0.7 then return u < 0.55 and K.spruce1 or K.spruce2 end
+    if u < 0.35 then return K.beech1 elseif u < 0.55 then return K.beech2 elseif u < 0.8 then return K.oak1 end
+    return K.oak3
+  end
+  if tmean < 19 then
+    if stand > 0.78 then return u < 0.5 and K.pine1 or K.pine2 end
+    if stand < 0.2 then return u < 0.55 and K.birch1 or K.poplar end
+    if u < 0.3 then return K.oak1 elseif u < 0.5 then return K.oak2 elseif u < 0.65 then return K.oak3
+    elseif u < 0.85 then return K.beech2 end
+    return K.beech1
+  end
+  if bi == 11 then
+    if coast and u < 0.3 then return u < 0.15 and K.palm1 or K.palm2 end
+    return u < 0.35 and K.jungle1 or (u < 0.7 and K.jungle2 or K.jungle3)
+  end
+  if soil < 0.32 then
+    if u < 0.7 then return u < 0.35 and K.acacia1 or K.acacia2 end
+    return K.oak2
+  end
+  if coast and u < 0.4 then return u < 0.2 and K.palm1 or K.palm2 end
+  return u < 0.3 and K.oak2 or (u < 0.55 and K.jungle3 or (u < 0.75 and K.jungle2 or K.oak1))
+end
+M.pick_tree = pick_tree
 
 local function tree_kind(tmean, ic, bi, soil, coast, u)
   if tmean < -3 or ic > 0.3 then return K.snowpine end
@@ -432,6 +548,8 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
   local F = W.F
   local forest, grass, biome, land_use = F.forest, F.grass, F.biome, F.land_use
   local fire, scar, ice, soil = F.fire, F.burn_scar, F.ice, F.soil_water
+  local grazers = F.grazers
+  local NZ = M.noise_for(ctx.seed or 1)
   local ocean, cdist = W.geo.ocean, W.geo.coast_dist
   local T = W.temp_static
   local gtemp = W.G.g_temp or 0
@@ -497,6 +615,21 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
         if lu < 0 and dcell < 0.3 then in_village = true end
         local tree_p = min(1, fo * 1.35) ^ 0.85
         local rocky = hmax > 2.2 or (hmax - hmin) > 0.5
+        local coast = cdist[c] <= 1
+        local sw = soil[c]
+        local grz = grazers[c]
+        -- forest structure from low-frequency noise over the face (stable per world): glades
+        -- (windthrow, old clearings) open the canopy of dense forests; stands give patches of one
+        -- species and hue instead of salt-and-pepper mixes
+        local fx, fy, fz = mx / ml, my / ml, mz / ml
+        local glade = 0
+        if fo > 0.45 then
+          local n = vnoise.value(NZ, fx * 26 + 3.1, fy * 26 - 1.7, fz * 26 + 0.4)
+          glade = n <= 0.66 and 0 or (n >= 0.8 and 1 or (n - 0.66) / 0.14)
+        end
+        local stand = vnoise.value(NZ, fx * 14 - 5.3, fy * 14 + 2.2, fz * 14 + 7.9)
+        local canopy = min(1, fo * (1 - 0.85 * glade) * 1.35) ^ 0.85
+        local young = burnt and (fire[c] > 0 or scar[c] < 48)
         local h = (f * 7919 + seed * 104729) % 2147483647
         if h == 0 then h = 1 end
         for j = 1, slots do
@@ -507,54 +640,116 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
           h = pm(h); local u5 = h / 2147483647
           local kind = nil
           local scale, hs = 1, 1
+          -- slot roles: 1 canopy trees, 2 understory, 3 shrubs, 4 forest floor / ground cover,
+          -- 5 deadwood, 6 rocks (the far set keeps trees, a shrub and a rock)
+          local role
+          if near then
+            role = (j <= 10 and 1) or (j <= 13 and 2) or (j <= 17 and 3) or (j <= 22 and 4) or (j == 23 and 5) or 6
+          else
+            role = (j <= 5 and 1) or (j == 6 and 3) or 6
+          end
           if in_village then
             -- the settlement layout owns the village square
           elseif is_ruin and dcell < 0.4 then
-            if u3 < tree_p * 0.5 + 0.1 then kind = K.bush end
+            -- nature takes the ruins back: bushes, grass, saplings
+            if role == 3 and u3 < 0.5 then kind = K.bush1; scale = 0.7 + u5 * 0.4
+            elseif role == 4 and u3 < 0.6 then kind = K.grass2
+            elseif role == 2 and u3 < 0.35 then kind = K.sapling_b; scale = 0.8 + u5 * 0.6 end
           elseif lu > 0 then
-            -- farm: the plots are drawn by the terrain shader; a few hedge trees and bushes; stooks
-            -- of sheaves where the harvest has been cut (the sim's field state)
+            -- farm: the plots are drawn by the terrain shader; stooks where the harvest has been
+            -- cut (the sim's field state); hedgerows along the field margins
             local fs = farm and farm[c]
             local cut = fs and fs.sown > 0 and fs.harvested > 0.03 and fs.harvested * fs.sown or 0
-            if j <= 4 and u2 < cut * 0.85 then kind = K.stook; scale = 0.85 + u5 * 0.3
-            elseif j > 2 and u3 < 0.05 then kind = K.oak; scale = 0.8 + u5 * 0.4
-            elseif j > 3 and u3 < 0.1 then kind = K.bush end
+            if role == 1 and j <= 4 and u2 < cut * 0.85 then kind = K.stook; scale = 0.85 + u5 * 0.3
+            elseif role == 1 and dcell > 0.34 and u3 < 0.06 then
+              kind = pick_tree(tmean, ic, bi, sw, coast, u4, stand); scale = 0.75 + u5 * 0.4
+            elseif role == 3 and dcell > 0.32 and u3 < 0.3 then kind = (u4 < 0.6) and K.bush1 or K.berry; scale = 0.7 + u5 * 0.4
+            elseif role == 4 and dcell > 0.3 and u3 < 0.35 then kind = (u4 < 0.4 and tmean > 4) and K.meadow or K.grass2 end
           elseif burnt then
-            if u3 < tree_p * 0.6 + 0.15 then kind = (u4 < 0.55) and K.snag or K.stump; scale = 0.8 + u5 * 0.5 end
+            -- a burnt stand: black snags; then fireweed, bushes and saplings come back
+            if role == 1 then
+              if u3 < tree_p * 0.6 + 0.15 then kind = (young or u4 < 0.6) and K.burnt1 or K.snag1; scale = 0.8 + u5 * 0.5
+              elseif u3 < tree_p * 0.6 + 0.3 then kind = K.stump; scale = 0.8 + u5 * 0.4 end
+            elseif role == 5 and u3 < 0.5 then kind = K.deadfall; scale = 0.8 + u5 * 0.4
+            elseif not young then
+              if role == 2 and u3 < 0.7 then kind = (tmean < 6) and K.sapling_c or K.sapling_b; scale = 0.6 + u5 * 0.8
+              elseif role == 3 and u3 < 0.35 then kind = K.bush1; scale = 0.6 + u5 * 0.4
+              elseif role == 4 and u3 < 0.55 then kind = (u4 < 0.5) and K.meadow or K.grass1 end
+            end
           elseif bi == 3 then
-            if u3 < 0.03 then kind = K.rock end
-          elseif u3 < tree_p then
-            kind = tree_kind(tmean, ic, bi, soil[c], cdist[c] <= 1, u4)
-            scale = 0.72 + u5 * 0.55
-            hs = 0.88 + u2 * 0.3
-          elseif logged and u3 < tree_p + 0.22 then
-            -- woodcutters were here lately: stumps and felled logs where trees stood
-            kind = (u4 < 0.7) and K.stump or K.logs; scale = 0.8 + u5 * 0.4
-          elseif rocky and u3 < tree_p + 0.14 then
-            kind = K.rock; scale = 0.6 + u5 * 1.0
-          elseif cdist[c] <= 1 and hmin < 0.1 and (hmax - hmin) > 0.22 and u3 < tree_p + 0.2 then
-            -- a rocky shore: boulders where the land drops steeply into the sea
-            kind = K.rock; scale = 0.5 + u5 * 0.9
-          elseif cdist[c] <= 1 and hmin < 0.05 and u3 < tree_p + 0.03 and bi ~= 3 then
-            kind = K.logs; scale = 0.7 + u5 * 0.4        -- driftwood on the beach
-          elseif fo > 0.3 and u3 < tree_p + 0.3 * fo and bi ~= 3 then
-            -- understory: shrubs and ferns under the canopy
-            kind = (u4 < 0.45) and K.bush or K.tuft; scale = 0.6 + u5 * 0.5
+            if role == 6 and u3 < 0.2 then kind = K.boulder; scale = 0.6 + u5 * 0.8 end
           elseif bi == 9 then
-            if u3 < tree_p + 0.05 then kind = K.rock; scale = 0.6 + u5 * 0.8
-            elseif u3 < tree_p + 0.09 and tmean > 18 then kind = K.cactus; scale = 0.8 + u5 * 0.5 end
+            -- desert: rock, scattered dry shrubs, cacti where it is hot
+            if role == 6 and u3 < 0.25 then kind = (u4 < 0.5) and K.slab or K.boulder; scale = 0.6 + u5 * 0.8
+            elseif role == 3 and u3 < 0.12 + gr * 0.3 then kind = (tmean > 18 and u4 < 0.4) and K.cactus or K.dryshrub; scale = 0.7 + u5 * 0.5
+            elseif role == 4 and u3 < gr * 0.4 then kind = K.tallgrass; scale = 0.6 + u5 * 0.4
+            elseif role == 1 and u3 < tree_p then kind = pick_tree(tmean, ic, bi, sw, coast, u4, stand); scale = 0.6 + u5 * 0.4 end
           elseif bi == 8 then
-            if u3 < tree_p + 0.35 then kind = K.reed; scale = 0.8 + u5 * 0.5 end
-          elseif bi == 14 or bi == 10 then
-            if u3 < tree_p + 0.08 then kind = K.rock; scale = 0.6 + u5 * 0.7
-            elseif u3 < tree_p + 0.25 then kind = K.tuft end
+            -- marsh: reeds and rushes, willow-like bushes, a few trees
+            if (role == 4 or role == 3) and u3 < 0.55 then kind = (u4 < 0.7) and K.reed or K.tallgrass; scale = 0.8 + u5 * 0.5
+            elseif role == 2 and u3 < 0.25 then kind = K.bush2; scale = 0.8 + u5 * 0.5
+            elseif role == 1 and u3 < tree_p * 0.6 then kind = pick_tree(tmean, ic, bi, sw, coast, u4, stand); scale = 0.7 + u5 * 0.4 end
+          elseif (bi == 10 or bi == 14) and fo < 0.3 then
+            -- tundra and barren ground: rocks, heather, low junipers, thin grass
+            if role == 6 and u3 < 0.3 then kind = (u4 < 0.5) and K.slab or K.boulder; scale = 0.5 + u5 * 0.8
+            elseif role == 4 and u3 < 0.45 then kind = (tmean < 5 and u4 < 0.5) and K.heather or K.grass2; scale = 0.7 + u5 * 0.5
+            elseif role == 3 and u3 < 0.12 then kind = K.juniper; scale = 0.6 + u5 * 0.5
+            elseif role == 1 and u3 < tree_p then kind = pick_tree(tmean, ic, bi, sw, coast, u4, stand); scale = 0.55 + u5 * 0.4 end
+          elseif role == 1 then
+            if u3 < canopy then
+              kind = pick_tree(tmean, ic, bi, sw, coast, u4, stand)
+              -- denser forests grow taller; a few veterans stand over the canopy
+              scale = (0.72 + u5 * 0.5) * (0.78 + 0.32 * fo)
+              if u5 > 0.94 and fo > 0.6 then scale = scale * 1.25 end
+              hs = 0.88 + u2 * 0.3
+            elseif logged and u3 < tree_p + 0.22 then
+              -- woodcutters were here lately: stumps and felled logs where trees stood
+              kind = (u4 < 0.7) and K.stump or K.logs; scale = 0.8 + u5 * 0.4
+            elseif not near and fo < 0.3 and u3 < canopy + gr * 0.08 then
+              kind = (tmean > 18 and sw < 0.35) and K.acacia2 or K.bush2; scale = 0.8 + u5 * 0.5
+            end
+          elseif role == 2 then
+            -- understory: young trees where light reaches the floor (edges, glades, thin canopy)
+            local p = fo * 0.55 * (0.35 + 0.65 * (1 - canopy)) + glade * 0.35
+            if u3 < p then
+              if tmean < 6 then kind = (u4 < 0.6) and K.sapling_c or K.spruce3
+              elseif bi == 11 or tmean > 20 then kind = (u4 < 0.5) and K.bush2 or K.jungle3
+              else kind = (u4 < 0.45) and K.sapling_b or ((u4 < 0.75) and K.birch2 or K.bush2) end
+              scale = 0.45 + u5 * 0.45
+            end
+          elseif role == 3 then
+            -- shrubs: forest edges and open woods; browsing deer keep them down
+            local p = (0.06 + 1.1 * fo * (1 - fo) + gr * 0.12) * (1 - min(0.7, grz * 1.5))
+            if u3 < p then
+              if tmean < 3 then kind = (u4 < 0.6) and K.juniper or K.berry
+              elseif tmean > 18 and sw < 0.35 then kind = K.dryshrub
+              elseif bi == 11 then kind = K.bush2
+              else kind = (u4 < 0.4) and K.bush1 or ((u4 < 0.75) and K.bush2 or K.berry) end
+              scale = 0.6 + u5 * 0.55
+            elseif coast and hmin < 0.12 and u3 < p + 0.1 then kind = K.reed; scale = 0.8 + u5 * 0.4 end
+          elseif role == 4 then
+            if fo > 0.4 and sw > 0.3 and u3 < fo * 0.75 then
+              -- the forest floor: ferns in moist woods, the odd ring of mushrooms
+              kind = (u4 < 0.08) and K.shroom or ((u4 < 0.55) and K.fern or K.fern2); scale = 0.7 + u5 * 0.6
+            elseif fo < 0.6 and u3 < gr * 0.95 + glade * 0.4 then
+              -- open ground: grass, meadow flowers in the warm, tall dry grass in savannas, heather in the cold
+              if tmean > 18 and sw < 0.4 then kind = K.tallgrass
+              elseif tmean < 4 and u4 < 0.4 then kind = K.heather
+              elseif tmean > 4 and u4 < 0.35 + glade * 0.3 then kind = K.meadow
+              else kind = (u4 < 0.7) and K.grass1 or K.grass2 end
+              scale = 0.75 + u5 * 0.5
+            end
+          elseif role == 5 then
+            -- deadwood: standing snags and fallen trunks in old forests and glades
+            if u3 < fo * 0.1 + glade * 0.3 then kind = (u4 < 0.6) and K.deadfall or K.snag1; scale = 0.7 + u5 * 0.5
+            elseif coast and hmin < 0.05 and u3 < 0.12 then kind = K.logs; scale = 0.7 + u5 * 0.4   -- driftwood
+            end
           else
-            local gp = gr * 0.35
-            if u3 < tree_p + gp * 0.3 then kind = K.bush; scale = 0.7 + u5 * 0.6
-            elseif u3 < tree_p + gp * 0.8 then kind = K.tuft; scale = 0.8 + u5 * 0.6
-            elseif u3 < tree_p + gp * 1.05 and tmean > 4 then kind = K.flower; scale = 0.9 + u5 * 0.4
-            elseif u3 < tree_p + gp * 1.05 + 0.012 then kind = K.rock; scale = 0.4 + u5 * 0.5
-            elseif cdist[c] <= 1 and hmin < 0.12 and u3 < tree_p + gp * 1.05 + 0.1 then kind = K.reed end
+            -- rocks: outcrops on steep or high ground, boulders on rocky shores, mossy stones in woods
+            if rocky and u3 < 0.35 then kind = (u4 < 0.4) and K.slab or K.boulder; scale = 0.5 + u5 * 1.0
+            elseif coast and hmin < 0.1 and (hmax - hmin) > 0.22 and u3 < 0.4 then kind = K.boulder; scale = 0.5 + u5 * 0.9
+            elseif fo > 0.5 and sw > 0.35 and u3 < 0.12 then kind = K.mossrock; scale = 0.5 + u5 * 0.7
+            elseif u3 < 0.025 then kind = K.boulder; scale = 0.4 + u5 * 0.5 end
           end
           if kind and TPL[L.lod][kind] then
             -- uniform point in the triangle
@@ -566,12 +761,16 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
             local z = az * ka + bz * kb + cz * kc
             local l = sqrt(x * x + y * y + z * z)
             local pal = PAL[kind]
-            local col = pal and pal[floor(u4 * 9973) % #pal + 1] or { 0.6, 0.6, 0.6 }
+            -- stands bias the hue pick, so neighbouring trees of a stand look related
+            local pick = u4 * 0.55 + stand * 0.45
+            local col = pal and pal[floor(pick * 0.9999 * #pal) + 1] or { 0.6, 0.6, 0.6 }
             local jit = 0.88 + u5 * 0.24
             local c1 = pack_rgb(col[1] * jit, col[2] * jit, col[3] * jit)
             local bark = BARK[kind]
             local c2 = bark and pack_rgb(bark[1], bark[2], bark[3]) or c1
-            add(kind, x, y, z, x / l, y / l, z / l, yaw, scale * S, hs, c1, c2, P_SNOW, c)
+            local acc = ACCENT[kind]
+            local c3 = acc and acc[floor(u3 * 9973) % #acc + 1] or P_SNOW
+            add(kind, x, y, z, x / l, y / l, z / l, yaw, scale * S, hs, c1, c2, c3, c, (u1 * 7.31 + u5) % 1)
           end
         end
       end
@@ -590,60 +789,88 @@ end
 ---------------------------------------------------------------------------------------------
 -- Baking into streams
 
---- Writes instances [i0..i1] of M.list into streams starting at vertex `vbase` (0-based).
--- pos(3) / nrm(3) / col(4) are buffer streams (or Lua arrays in tests). Returns the next
--- vertex index.
-function M.write(pos, nrm, col, vbase, i0, i1)
-  local kind, X, Y, Z = L.kind, L.x, L.y, L.z
-  local UX, UY, UZ, YAW, SC, SH = L.ux, L.uy, L.uz, L.yaw, L.sc, L.sh
-  local C1, C2, C3, CELL = L.c1, L.c2, L.c3, L.cell
+-- Template buffers (renderer v4 "instanced bake", D-056): every template's vertices once, as a
+-- Defold buffer with the chunk's template streams (position, normal, tattr = slot, shade, sway,
+-- fixed rgb or tint). Chunks copy them natively (buffer.copy_buffer); the instance data (origin,
+-- yaw, scale, cell, classes, colours, random) is written once per instance and replicated over
+-- its vertices by doubling copies, and props.vp does the transform.
+local H_POS, H_NRM, H_TATTR = hash("position"), hash("normal"), hash("tattr")
+local H_INST, H_INST2, H_INST3 = hash("inst"), hash("inst2"), hash("inst3")
+M.H_INST, M.H_INST2, M.H_INST3 = H_INST, H_INST2, H_INST3
+local TBUF = { {}, {} }
+
+--- The stream declaration of prop chunk buffers.
+function M.chunk_decl()
+  return {
+    { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+    { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+    { name = H_TATTR, type = buffer.VALUE_TYPE_FLOAT32, count = 4 },
+    { name = H_INST, type = buffer.VALUE_TYPE_FLOAT32, count = 4 },
+    { name = H_INST2, type = buffer.VALUE_TYPE_FLOAT32, count = 4 },
+    { name = H_INST3, type = buffer.VALUE_TYPE_FLOAT32, count = 4 },
+  }
+end
+
+function M.template_buffer(lod, kind)
+  local tb = TBUF[lod][kind]
+  if tb then return tb end
+  local t = TPL[lod][kind]
+  tb = buffer.create(t.nv, {
+    { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+    { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+    { name = H_TATTR, type = buffer.VALUE_TYPE_FLOAT32, count = 4 },
+  })
+  local pos, nrm, ta = buffer.get_stream(tb, H_POS), buffer.get_stream(tb, H_NRM), buffer.get_stream(tb, H_TATTR)
+  local d, tn = t.d, t.tn
   local FIXED = M.FIXED
-  local tpls = TPL[L.lod]
+  for k = 0, t.nv - 1 do
+    local o = k * 9
+    local p, q = k * 3, k * 4
+    pos[p + 1], pos[p + 2], pos[p + 3] = d[o + 1], d[o + 2], d[o + 3]
+    nrm[p + 1], nrm[p + 2], nrm[p + 3] = d[o + 4], d[o + 5], d[o + 6]
+    local slot = d[o + 7]
+    ta[q + 1] = slot
+    ta[q + 2] = min(1, max(0.5, d[o + 8]))
+    ta[q + 3] = min(1, max(0, d[o + 9]))
+    if slot >= 4 then ta[q + 4] = FIXED[slot] or 0
+    else ta[q + 4] = tn and tn[k + 1] or 0 end
+  end
+  TBUF[lod][kind] = tb
+  return tb
+end
+
+--- Writes instances [i0..i1] of M.list into chunk buffer `buf` (streams from M.chunk_decl;
+-- S = { inst, inst2, inst3 } streams of buf) starting at vertex `vbase` (0-based). Returns the
+-- next vertex index.
+function M.write(buf, S, vbase, i0, i1)
+  local copy = buffer.copy_buffer
+  local kind, X, Y, Z = L.kind, L.x, L.y, L.z
+  local YAW, SC, SH = L.yaw, L.sc, L.sh
+  local C1, C2, C3, CELL, RND = L.c1, L.c2, L.c3, L.cell, L.rnd
+  local lod = L.lod
+  local tpls, tbufs = TPL[lod], TBUF[lod]
+  local inst, inst2, inst3 = S.inst, S.inst2, S.inst3
   local v = vbase
   for i = i0, i1 do
     local kd = kind[i]
-    local t = tpls[kd]
-    local d, nv, ss = t.d, t.nv, t.ss
-    local cl = CLASS[kd] or { 0, 0, 0 }
-    local cl1, cl2, cl3 = cl[1], cl[2], cl[3]
-    local ux, uy, uz = UX[i], UY[i], UZ[i]
-    -- tangent frame: T = normalize(Yaxis x U) (east), B = T x U
-    local tx, tz = uz, -ux
-    local tl = sqrt(tx * tx + tz * tz)
-    if tl < 1e-4 then tx, tz, tl = 1, 0, 1 end
-    tx, tz = tx / tl, tz / tl
-    local bx, by, bz = -tz * uy, tz * ux - tx * uz, tx * uy
-    local cyw, syw = cos(YAW[i]), sin(YAW[i])
-    local ex, ey, ez = tx * cyw + bx * syw, by * syw, tz * cyw + bz * syw
-    local fx, fy, fz = bx * cyw - tx * syw, by * cyw, bz * cyw - tz * syw
-    local s, hs = SC[i], SC[i] * SH[i]
-    local ox, oy, oz = X[i], Y[i], Z[i]
-    local c1, c2, c3 = C1[i], C2[i], C3[i]
-    local cell = CELL[i]
-    local p, q = v * 3, v * 4
-    for k = 0, nv - 1 do
-      local o = k * 9
-      local lx, ly, lz = d[o + 1] * s, d[o + 2] * hs, d[o + 3] * s
-      pos[p + 1] = ox + ex * lx + ux * ly + fx * lz
-      pos[p + 2] = oy + ey * lx + uy * ly + fy * lz
-      pos[p + 3] = oz + ez * lx + uz * ly + fz * lz
-      local nlx, nly, nlz = d[o + 4], d[o + 5], d[o + 6]
-      nrm[p + 1] = ex * nlx + ux * nly + fx * nlz
-      nrm[p + 2] = ey * nlx + uy * nly + fy * nlz
-      nrm[p + 3] = ez * nlx + uz * nly + fz * nlz
-      local slot = d[o + 7]
-      local cc, mc
-      if slot == 1 then cc, mc = c1, cl1
-      elseif slot == 2 then cc, mc = c2, cl2
-      elseif slot == 3 then cc, mc = c3, cl3
-      else cc, mc = FIXED[slot] or c1, (slot == 6) and 6 or 0 end
-      if cc == 0 then cc = c1 end
-      col[q + 1] = cc
-      col[q + 2] = ss[k + 1]
-      col[q + 3] = cell
-      col[q + 4] = mc
-      p, q = p + 3, q + 4
+    local nv = tpls[kd].nv
+    local tb = tbufs[kd] or M.template_buffer(lod, kd)
+    local cl = CLASS[kd]
+    local a = v * 4
+    local s = SC[i]
+    inst[a + 1], inst[a + 2], inst[a + 3], inst[a + 4] = X[i], Y[i], Z[i], YAW[i]
+    inst2[a + 1], inst2[a + 2], inst2[a + 3] = s, s * SH[i], CELL[i]
+    inst2[a + 4] = cl and (cl[1] + cl[2] * 8 + cl[3] * 64) or 0
+    inst3[a + 1], inst3[a + 2], inst3[a + 3], inst3[a + 4] = C1[i], C2[i], C3[i], RND[i]
+    -- replicate the instance over its vertices (doubling), then lay the template over them
+    local k = 1
+    while k < nv do
+      local cnt = nv - k
+      if cnt > k then cnt = k end
+      copy(buf, v + k, buf, v, cnt)
+      k = k + cnt
     end
+    copy(buf, v, tb, 0, nv)
     v = v + nv
   end
   return v

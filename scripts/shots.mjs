@@ -7,7 +7,8 @@
 // out/shots/latest/<year>_<preset>.png plus shots.json (bridge numbers per shot + console).
 // Flags: --release, --no-build, --port N (default 8182), --seed N (default: the pre-spun default
 //        world the player sees), --years N (default 50), --only a,b (preset subset),
-//        --no-later (skip the year-N set), --preview (the pre-1.7 view-only village art preview)
+//        --no-later (skip the year-N set), --preview (the pre-1.7 view-only village art preview),
+//        --hour H (local hour at the focus for each shot, default 13; 'none' = as is)
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from '@playwright/test';
@@ -24,6 +25,10 @@ const seed = seedFlag === null ? 'default world' : String(seedFlag);
 const years = Number(getFlag(args, '--years', 50));
 const PRESETS = (getFlag(args, '--only', 'continent_a,continent_b,pole,village,close')).split(',');
 const UI_SHOTS = !hasFlag(args, '--no-ui');
+// --hour H: before each shot, run the sim to local solar hour H at the view focus (default 13,
+// daylight for review; --hour none keeps the world's clock)
+const HOUR_FLAG = getFlag(args, '--hour', '13');
+const HOUR = HOUR_FLAG === 'none' ? null : Number(HOUR_FLAG);
 if (!hasFlag(args, '--no-build')) await build({ variant, ifStale: true, quiet: true });
 
 const outDir = path.join(ROOT, 'out', 'shots', 'latest');
@@ -56,6 +61,7 @@ async function settle(page) {
 
 async function shoot(page, label, preset, name = null) {
   const cam = preset ? await cmd(page, { cmd: 'camera', preset }) : null;
+  if (HOUR !== null && preset) await cmd(page, { cmd: 'run_hours', to_local: HOUR }, 300_000);
   await settle(page);
   const file = path.join(outDir, name ? `${name}.png` : `${label}_${preset}.png`);
   await page.screenshot({ path: file });

@@ -172,7 +172,7 @@ function init(self)
 	if query.get().gfx == "low" then
 		state.shadow_on = false
 		state.post_on = false
-		require("game.view.clouds").MAX_ACTIVE = 40
+		require("game.view.clouds").DENSITY = 0.45
 		require("game.view.puppets").BIRD_ZOOM = 99
 	end
 

@@ -1,0 +1,30 @@
+#version 140
+// Shadow pass for prop chunks (instanced bake, see props.vp): the same instance transform, the
+// sun's view/projection set by the render script.
+in highp vec4 position;
+in highp vec4 inst;
+in highp vec4 inst2;
+
+uniform vs_uniforms
+{
+    highp mat4 mtx_world;
+    highp mat4 mtx_view;
+    highp mat4 mtx_proj;
+};
+
+void main()
+{
+    vec3 O = inst.xyz;
+    vec3 U = normalize(O);
+    vec3 T = vec3(U.z, 0.0, -U.x);
+    float tl = length(T);
+    T = tl < 1e-4 ? vec3(1.0, 0.0, 0.0) : T / tl;
+    vec3 Bv = vec3(-T.z * U.y, T.z * U.x - T.x * U.z, T.x * U.y);
+    float cy = cos(inst.w);
+    float sy = sin(inst.w);
+    vec3 E = T * cy + Bv * sy;
+    vec3 Fv = Bv * cy - T * sy;
+    vec3 lp = position.xyz * vec3(inst2.x, inst2.y, inst2.x);
+    vec3 pos = O + E * lp.x + U * lp.y + Fv * lp.z;
+    gl_Position = mtx_proj * mtx_view * mtx_world * vec4(pos, 1.0);
+}

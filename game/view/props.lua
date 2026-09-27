@@ -229,8 +229,8 @@ local function start_job(k)
 end
 
 -- small batches: the frame budget is checked between batches, so they bound the overshoot
-local FACE_BATCH, INST_BATCH = 8, 3
-local INST_BATCH_NEAR = 1
+local FACE_BATCH, INST_BATCH = 8, 24
+local INST_BATCH_NEAR = 12
 
 -- Advances job j until done or the deadline passes. Returns true when finished.
 local function run_job(j, deadline)
@@ -259,14 +259,9 @@ local function run_job(j, deadline)
       return true
     end
     local tb = clock.now_ms()
-    j.buf = buffer.create(j.nv, {
-      { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
-      { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
-      { name = H_COL, type = buffer.VALUE_TYPE_FLOAT32, count = 4 },
-    })
-    j.pos = buffer.get_stream(j.buf, H_POS)
-    j.nrm = buffer.get_stream(j.buf, H_NRM)
-    j.col = buffer.get_stream(j.buf, H_COL)
+    j.buf = buffer.create(j.nv, propgen.chunk_decl())
+    j.S = { inst = buffer.get_stream(j.buf, propgen.H_INST), inst2 = buffer.get_stream(j.buf, propgen.H_INST2),
+      inst3 = buffer.get_stream(j.buf, propgen.H_INST3) }
     M.stats.create_max = max(M.stats.create_max or 0, clock.now_ms() - tb)
     j.phase = 2
   end
@@ -274,7 +269,7 @@ local function run_job(j, deadline)
     while j.next <= j.n do
       local last = min(j.n, j.next + (j.lod == 1 and INST_BATCH_NEAR or INST_BATCH) - 1)
       local tw = clock.now_ms()
-      j.v = propgen.write(j.pos, j.nrm, j.col, j.v, j.next, last)
+      j.v = propgen.write(j.buf, j.S, j.v, j.next, last)
       M.stats.write_max = max(M.stats.write_max or 0, clock.now_ms() - tw)
       j.next = last + 1
       if clock.now_ms() > deadline then return j.next > j.n and M.finish(j) end

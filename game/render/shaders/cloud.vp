@@ -1,27 +1,54 @@
 #version 140
-// Puffy clouds: pooled game objects, world-space material (engine-batched).
-in highp vec4 position;
-in mediump vec3 normal;
-in highp vec2 color;
+// Cloud puffs (renderer v4, docs/world/16 §5): every puff is a flat-based spheroid drawn as a
+// camera-facing triangle and ray-traced in the fragment shader (cloud.fp), so banks of
+// overlapping puffs intersect like solid cotton with true depth and smooth normals. Puffs are
+// written in planet space by game/view/clouds.lua from the sim's daily weather; they drift with
+// the zonal wind (a rotation about the polar axis at the puff's own rate) and grow in and shrink
+// out over their day's life window, all here on the GPU (no per-frame work in Lua).
+in highp vec4 position;   // puff centre (planet space) when born
+in mediump vec3 normal;   // radial up (unused; the mesh format wants a normal stream)
+in highp vec4 puff;       // corner x, corner y (triangle circumscribing the unit circle), radius, squash
+in highp vec4 puff2;      // base offset below the centre (world units, <= 0), shade (AO), drift (rad/h), opacity
+in highp vec4 puff3;      // born, gone (view-epoch hours), darkness, noise seed
 
 uniform vs_uniforms
 {
     highp mat4 view_proj;
+    highp mat4 mtx_view;
+    highp vec4 u_eye;
+    highp vec4 u_cloud;   // x = hour (view epoch), y = fade hours
 };
 
+out highp vec3 var_c;
+out highp vec4 var_p;     // radius, squash, base offset, opacity * life
+out highp vec4 var_q;     // shade, darkness, seed, life
 out highp vec3 var_wpos;
-out mediump vec3 var_normal;
-out mediump float var_shade;
-out mediump vec3 var_tint;
 
 void main()
 {
-    var_wpos = position.xyz;
-    var_normal = normalize(normal);
-    var_shade = floor(floor(color.y + 0.5) / 8.0) / 62.0 + 0.5;
-    float v = floor(color.x + 0.5);
-    float b = mod(v, 128.0);
-    v = floor(v / 128.0);
-    var_tint = vec3(floor(v / 128.0), mod(v, 128.0), b) / 127.0;
-    gl_Position = view_proj * vec4(position.xyz, 1.0);
+    float hour = u_cloud.x;
+    float F = max(0.01, min(u_cloud.y, (puff3.y - puff3.x) * 0.25));
+    float life = smoothstep(puff3.x, puff3.x + F, hour) * (1.0 - smoothstep(puff3.y - F, puff3.y, hour));
+    vec3 c = position.xyz;
+    float a = puff2.z * (hour - puff3.x);
+    float ca = cos(a);
+    float sa = sin(a);
+    c = vec3(c.x * ca - c.z * sa, c.y, c.x * sa + c.z * ca);
+    // grow from a seed as the puff forms; the flat base stays where it is
+    float g = 0.3 + 0.7 * life;
+    float r = puff.z * g;
+    vec3 up = normalize(c);
+    float hb = puff2.x * g;
+    c += up * (puff2.x - hb);
+    var_c = c;
+    var_p = vec4(r, puff.w, hb, puff2.w * life);
+    var_q = vec4(puff2.y, puff3.z, puff3.w, life);
+    vec3 right = vec3(mtx_view[0][0], mtx_view[1][0], mtx_view[2][0]);
+    vec3 vup = vec3(mtx_view[0][1], mtx_view[1][1], mtx_view[2][1]);
+    // a sphere seen from close by covers more than its radius
+    float d = length(u_eye.xyz - c);
+    float k = 1.08 / sqrt(max(0.06, 1.0 - (r * r) / max(d * d, 1e-4)));
+    vec3 wp = c + (right * puff.x + vup * puff.y) * r * k;
+    var_wpos = wp;
+    gl_Position = life > 0.002 ? view_proj * vec4(wp, 1.0) : vec4(2.0, 2.0, 2.0, 1.0);
 }
