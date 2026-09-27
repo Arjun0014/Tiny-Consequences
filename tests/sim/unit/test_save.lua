@@ -20,7 +20,7 @@ function M.encode_decode_values()
   T.eq(doc.F.grass[2], snap.F.grass[2])
   T.eq(doc.F.biome[3], 2)
   T.eq(doc.P.oil[3], 1)
-  T.eq(doc.current_tick, 100)
+  T.eq(doc.current_hour, 100)
   T.eq(doc.extras.hello, "world")
 end
 
@@ -36,14 +36,18 @@ function M.world_round_trip_bit_identical()
   local W = toy.make_world(11, 3)
   save.enable_capture(W)
   world.run_ticks(W, 48 * 2 + 10)
+  for _ = 1, 50 do world.step(W) end          -- mid-week, mid-day: the clock is in hours
   world.command(W, "toy_spill", { cell = 17 })
   world.run_ticks(W, 5)
+  for _ = 1, 30 do world.step(W) end
   local s = save.save_world(W, { cmdlog = W.cmdlog })
+  local hour = W.hour
   world.run_ticks(W, 48 * 3)
   local h1 = world.state_hash(W)
   local doc = assert(save.decode(s))
   local W2 = save.restore(doc)
-  T.eq(W2.tick, 48 * 2 + 15)
+  T.eq(W2.hour, hour, "restored to the saved hour")
+  T.eq(W2.tick, math.ceil(hour / 168), "weeks completed")
   world.run_ticks(W2, 48 * 3)
   local h2 = world.state_hash(W2)
   T.eq(h1, h2, "state hash after reload")

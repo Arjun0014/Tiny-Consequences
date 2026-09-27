@@ -341,6 +341,28 @@ C.DETECT = {
   deaths_spike = 3,                       -- non-age deaths in a village in one month
 }
 
+-- Time, sun and daily weather (docs/world/15_CLIMATE_TIME.md) -----------------------------------
+C.TIME = {
+  tilt = 23.44,                           -- degrees: axial tilt (declination amplitude)
+  sunrise_angle = 0.8333,                 -- degrees below the horizon at sunrise/sunset (Forsythe CBM)
+  wake_before_sunrise = 0.5, wake_min = 4, wake_max = 8,     -- hours (Yetish et al. 2015)
+  sleep_after_sunset = 3.3, sleep_min = 19, sleep_max = 23.5,
+  work_max = 10,                          -- working hours in a day (a meal hour on top)
+  work_min = 3,                           -- even in polar night people work a few hours by lamplight
+}
+
+C.WEATHER_DAY = {
+  wet_week = 0.08,                        -- weekly precip (moisture units) of a typically wet week
+  p_dw = { 0.03, 0.6 },                   -- P(wet | dry yesterday) = a + b x wetness, clamped
+  p_dw_max = 0.85, p_ww_add = 0.25, p_ww_max = 0.92,
+  storm_day = 0.028,                      -- a wet day with at least this much rain is a storm
+  storm_week_min = 0.04,                  -- ... in a week at least this wet
+  gale = 0.04,                            -- daily chance of a gale (boats stay in) at |lat| > 35 deg in deep winter
+  gale_tropics = 0.3,                     -- relative gale chance in the tropics
+  temp_wobble = 1.5,                      -- °C day-to-day wobble around the weekly temperature
+  diurnal = { 4, 12 },                    -- °C day-night range: wet/coastal -> dry/inland
+}
+
 -- Player powers (04_PLAYER.md §2, sim/powers.lua) ------------------------------------------------
 C.POWERS = {
   radius = 2, introduce_radius = 1,       -- level-4 steps

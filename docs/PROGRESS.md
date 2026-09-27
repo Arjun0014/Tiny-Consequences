@@ -5,7 +5,7 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 ## Current state
 
 - **Direction reset (D-050, 27 Sep 22:30 IST).** Arjun: the simulation is theatre; build the genuinely living tiny world first, jams secondary. Roadmap v2: `docs/world/17_ROADMAP.md`. Spec for the new world: `docs/world/00_RESEARCH.md` (sources), `01_AUDIT.md`, `10_WORLD_SYSTEMS.md` … `16_CAUSALITY_VISUALS.md`. Stage 2.3 of the old roadmap is **not** being continued.
-- Phase: **W1 (time: hourly clock, local solar time, day length, daily weather, speeds, sun)** next; then W2 settlements (households, buildings, labour, wood, construction, fields, boats), W3 merchant ships/trade, W4 herds, W5 visuals (incl. clouds), W6 profiling.
+- Phase: W1 (time) **done** (D-051). Next: **W2 settlements** (households, buildings, labour, wood, construction, fields, boats) per `docs/world/11`–`13`; then W3 merchant ships/trade, W4 herds, W5 visuals (incl. clouds, village lights), W6 profiling.
 - Baseline at 4e108b7 (verified 27 Sep): `npm run test:sim` 79/80; the failure is P07 (detectors +55% since the heat/sea-ice detectors; not re-baselined). W03 flaky pulse checks remain from the previous session.
 - No subagents in this work (Arjun's instruction for this session).
 - Blockers needing the human: none.
@@ -73,6 +73,12 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 - Bundle size: 3.12 MB release
 
 ## Stage entries
+
+### [w1] Time: hourly clock, sun, daily weather — 2026-09-27 ~23:40 IST
+- Sim: `W.hour` master clock, `world.step` (hour) / `world.tick` (week), hourly systems hook, commands/saves/events on hours (SAVE_VERSION 3); `sim/society/daylight.lua`, `sim/society/weather_day.lua`; calendar hour helpers; rng streams 30–38 reserved for the society layer.
+- Game: speed ladder in hours/s (7 HUD buttons, keys 1–6), HUD local time at the focus, real sun with slerp to the camera sun at fast speeds, night ambient/sky/stars/clouds/atmosphere; bridge `run_hours {n | to_local}`; `__TC.hour`, `hour_f`.
+- Tests: quick 85/85 (new `unit.test_daylight`: almanac day lengths, opposite hemispheres, local time, rhythm, weekly rain conserved); W01, W02, W02-lite pass (rates 0.2 / 1.3 / 8.1 / 174 / 1,124 / 1,230 h/s in the headless debug build). P07 re-baselined 524,752 (D-051).
+- Shots: out/peek/t13.png (noon), t18.png (dusk terminator), t1.png (night).
 
 ### [ch2.s1 + s2 partial] Powers, causality completeness — 2026-09-27 21:10 IST (uncommitted work committed at handoff)
 - Sim: `sim/powers.lua` (8 powers, logged command `power`, root events power_*, tags on every field touched; weather/temperature forcings and blight in a new first system `powers`), `villages.settlers`, `sim/tutorial.lua` (tutorial world = seed 8, `assets/worlds/tutorial.tcsave`), detectors credit a player "volley" (same power, same tick) and re-tag across it, starving herds overgraze (`overgraze`), heatwave / cold_snap / sea_ice_formed detectors, blight_spread headline kind. D-049.

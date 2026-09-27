@@ -14,6 +14,10 @@ M.sun = vmath.vector3(-0.5, 0.6, 0.6)
 M.time = 0                       -- visual time (stops while frozen)
 M.frozen = false
 M.planet_on = false              -- world meshes ready to draw
+M.hour_f = 0                     -- view clock: sim hour + fraction of the next hour (D-050)
+M.focus_lon = 0                  -- longitude under the camera (the HUD shows local time there)
+M.sun_real = vmath.vector3(1, 0, 0)  -- direction to the sim's sun (subsolar point)
+M.daynight = 1                   -- 1: light from the real sun; 0: camera-side sun (fast speeds)
 
 -- Shader inputs (vector4s reused every frame; the render script copies them into a buffer)
 M.u_cam = vmath.vector4(0, 0, 54, 0)

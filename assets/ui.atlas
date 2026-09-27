@@ -47,6 +47,10 @@ images {
   sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
+  image: "/assets/ui/i_cycle.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
+}
+images {
   image: "/assets/ui/i_deer.png"
   sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
@@ -64,6 +68,10 @@ images {
 }
 images {
   image: "/assets/ui/i_fast.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
+}
+images {
+  image: "/assets/ui/i_fast4.png"
   sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {

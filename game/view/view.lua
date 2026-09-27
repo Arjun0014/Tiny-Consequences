@@ -16,10 +16,12 @@ local powers_ui = require("game.ui.powers")
 local grid = require("sim.grid")
 local clock = require("game.platform.clock")
 local speed = require("game.platform.speed")
+local daylight = require("sim.society.daylight")
 
 local M = {}
 
 M.ATMO_RADIUS = 1.3      -- shell radius in planet radii (glow fades well inside it)
+M.DAY_MIN_S = 3          -- real seconds a day must last for real day/night lighting (D-050)
 
 local H_POS, H_NRM = hash("position"), hash("normal")
 
@@ -166,13 +168,30 @@ function M.update(dt)
   state.u_cam.w = state.time
   state.u_anim.x = state.time
   if M.W then
-    state.u_anim.z = M.W.tick % 48
+    state.u_anim.z = (M.W.hour / 168) % 48
     state.u_anim.w = 1
   end
   state.u_sky.x = state.time
   local P = M.parts
   if M.ready then
     local W = M.W
+    -- view clock and the sun (D-050)
+    local hf = W.hour + speed.alpha()
+    state.hour_f = hf
+    local _, flon = camera.latlon()
+    state.focus_lon = flon
+    local sx, sy, sz = daylight.sun_dir(hf)
+    state.sun_real.x, state.sun_real.y, state.sun_real.z = sx, sy, sz
+    local hps = speed.hours_per_second()
+    if hps > 0 then
+      local target = (24 / hps >= M.DAY_MIN_S) and 1 or 0
+      state.daynight = state.daynight + (target - state.daynight) * math.min(1, dt * 1.5)
+    end
+    -- night at the view focus darkens the sky (with the real sun only)
+    local qx, qy, qz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
+    local fd = qx * sx + qy * sy + qz * sz
+    local night = 1 - math.min(1, math.max(0, (fd + 0.25) / 0.4))
+    state.u_sky.z = night * state.daynight
     if math.abs((W.G.sea_level or 0) - M.PL.sea_level) > 0.05 then M.rebuild_geometry() end
     M.village_timer = (M.village_timer or 0) - dt
     if M.village_timer <= 0 then

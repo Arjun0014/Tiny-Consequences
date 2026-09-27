@@ -1,9 +1,9 @@
 -- Save/load (05_ARCHITECTURE.md §8). Pure Lua 5.1, string in / string out, text-safe.
 --
 -- A save = the snapped world state at the most recent year boundary (captured by
--- save.capture at the start of that tick) + the commands issued since + the current tick.
--- Loading restores the snapshot and replays commands up to the saved tick, so a reloaded world
--- is bit-identical to one that never stopped (P02).
+-- save.capture at the start of that hour) + the commands issued since + the current hour.
+-- Loading restores the snapshot and replays commands up to the saved hour, so a reloaded world
+-- is bit-identical to one that never stopped (P02). The clock is in hours (D-050).
 --
 -- Encoding: a small deterministic token format.
 --   numbers: integers as "i<digits>;", others as "n<%.17g>;"   strings: "s<len>:<bytes>"
@@ -233,7 +233,7 @@ end
 -- goals, real timestamp, recent command log...). Returns a text-safe string.
 -- Event records <-> positional records (field order is part of the save format).
 local EV_FIELDS = { "id", "kind", "tick", "cell", "actor", "parent", "root", "mag", "data", "region",
-  "desc", "count", "headline" }
+  "desc", "count", "headline", "hour" }
 function save.pack_events(rec, order)
   local out = {}
   if not order then
@@ -275,7 +275,7 @@ local function shallow(t)
   return c
 end
 
-function save.encode(snap, cmds_since, current_tick, extras)
+function save.encode(snap, cmds_since, current_hour, extras)
   local out = { "TCSAVE1|", tostring(version.SAVE_VERSION), "|" }
   local doc = {}
   for k, v in pairs(snap) do doc[k] = v end
@@ -310,7 +310,7 @@ function save.encode(snap, cmds_since, current_tick, extras)
     doc.ent = ent
   end
   doc.cmds_since = cmds_since or {}
-  doc.current_tick = current_tick or snap.tick
+  doc.current_hour = current_hour or snap.hour
   doc.extras = extras or {}
   enc(out, doc)
   out[#out + 1] = "|"
@@ -354,8 +354,8 @@ function save.decode(str)
 end
 
 -- Build a live world from a decoded save doc: restore state, rebuild derived data, re-queue
--- commands since the snapshot and replay up to current_tick. opts.replay=false stops at the
--- snapshot tick.
+-- commands since the snapshot and replay up to current_hour. opts.replay=false stops at the
+-- snapshot hour.
 function save.restore(doc, opts)
   opts = opts or {}
   local W = world.new(doc.seed, { level = doc.level })
@@ -374,14 +374,14 @@ function save.restore(doc, opts)
   W.pending = {}
   local cmds = doc.cmds_since or {}
   if opts.replay ~= false then
-    local target = doc.current_tick or W.tick
+    local target = doc.current_hour or W.hour
     local ci = 1
-    while W.tick < target do
-      while cmds[ci] and cmds[ci].tick <= W.tick do
-        W.pending[#W.pending + 1] = { tick = cmds[ci].tick, type = cmds[ci].type, params = cmds[ci].params }
+    while W.hour < target do
+      while cmds[ci] and cmds[ci].hour <= W.hour do
+        W.pending[#W.pending + 1] = { hour = cmds[ci].hour, type = cmds[ci].type, params = cmds[ci].params }
         ci = ci + 1
       end
-      world.tick(W)
+      world.step(W)
     end
     while cmds[ci] do
       W.pending[#W.pending + 1] = cmds[ci]
@@ -399,7 +399,7 @@ function save.save_world(W, extras)
   for i = snap.cmdlog_len + 1, #W.cmdlog do since[#since + 1] = W.cmdlog[i] end
   -- commands queued but not yet applied also belong to the save
   for i = 1, #W.pending do since[#since + 1] = W.pending[i] end
-  return save.encode(snap, since, W.tick, extras)
+  return save.encode(snap, since, W.hour, extras)
 end
 
 -- Enable automatic capture at every year boundary.

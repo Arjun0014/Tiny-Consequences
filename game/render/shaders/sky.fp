@@ -6,7 +6,7 @@ out vec4 out_color;
 
 uniform fs_uniforms
 {
-    highp vec4 u_sky;   // x = time, y = aspect (w/h)
+    highp vec4 u_sky;   // x = time, y = aspect (w/h), z = night (0 day .. 1 night at the view focus)
     highp vec4 u_focus; // w = CoC of the sky (depth of field)
 };
 
@@ -42,5 +42,17 @@ void main()
             + streak(r * vec2(2.0, 1.0), 5.0, 0.05, 0.03, 4.7, t) * 0.16;
     w *= smoothstep(0.0, 0.3, y) * (1.0 - smoothstep(0.9, 1.0, y) * 0.5);
     col = mix(col, vec3(1.0), w);
+    // night at the view focus (D-050): deep blue sky, a faint warm horizon, stars
+    float night = clamp(u_sky.z, 0.0, 1.0);
+    if (night > 0.001) {
+        vec3 ncol = mix(vec3(0.035, 0.05, 0.13), vec3(0.08, 0.12, 0.27), smoothstep(0.0, 0.7, 1.0 - y));
+        ncol = mix(vec3(0.30, 0.22, 0.30), ncol, smoothstep(0.0, 0.16, y));
+        vec2 g = floor(p * 90.0);
+        float h = fract(sin(dot(g, vec2(12.9898, 78.233))) * 43758.5453);
+        vec2 f = fract(p * 90.0) - 0.5;
+        float star = step(0.985, h) * smoothstep(0.18, 0.0, length(f)) * (0.6 + 0.4 * sin(t * 2.0 + h * 40.0));
+        ncol += vec3(0.9, 0.92, 1.0) * star * smoothstep(0.1, 0.4, y);
+        col = mix(col, ncol, night);
+    }
     out_color = vec4(col, u_focus.w);
 }

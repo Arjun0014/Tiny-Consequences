@@ -71,6 +71,25 @@ function M.register(G)
     return { from = G.W.tick, to = G.ff.target }
   end)
 
+  -- run_hours{n | to_local = h}: step the world synchronously by n hours, or until the local
+  -- solar hour at the view focus reaches `to_local` (0..24). The hour clock (D-050).
+  bridge.register("run_hours", function(args)
+    assert(G.W, "world not ready")
+    local world = require("sim.world")
+    local daylight = require("sim.society.daylight")
+    local W = G.W
+    local n = math.floor(tonumber(args.n) or 0)
+    if args.to_local then
+      local _, lon = camera.target_latlon()
+      local want = tonumber(args.to_local) % 24
+      local here = daylight.local_hour(W.hour, lon)
+      n = math.floor((want - here) % 24 + 0.5)
+    end
+    local t0 = clock.now_ms()
+    for _ = 1, n do world.step(W) end
+    return { hour = W.hour, ran = n, ms = clock.now_ms() - t0 }
+  end)
+
   -- powers (Stage 2.1): cast through the same path as the power bar. args: power, cell (or
   -- target = "tanker" | "village" | "focus"), mode, species, ship, force (ignore cooldown)
   -- resolve a power target: args.cell, or target = "tanker" | "village" | "farm" | "sea" |

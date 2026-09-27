@@ -69,7 +69,7 @@ function events.emit(W, kind, cell, parent, magnitude, data, opts)
   local root = id
   if parent ~= 0 then root = E.root[parent] end
   local r = {
-    id = id, kind = kind, tick = tick, cell = cell or 0, actor = actor, parent = parent,
+    id = id, kind = kind, tick = tick, hour = W.hour or 0, cell = cell or 0, actor = actor, parent = parent,
     root = root, mag = magnitude or 1, data = data, region = region, desc = 0, count = 1,
     headline = false,
   }

@@ -8,6 +8,15 @@ const vec3 TC_SUN = vec3(1.0, 0.94, 0.80);
 const vec3 TC_SKY_AMB = vec3(0.70, 0.84, 1.0);
 const vec3 TC_GROUND_AMB = vec3(0.62, 0.60, 0.52);
 const vec3 TC_HAZE = vec3(0.80, 0.95, 1.0);
+const vec3 TC_NIGHT_AMB = vec3(0.11, 0.15, 0.30);   // moonlit blue on the night side (D-050)
+
+// 1 on the day side, 0 on the night side, a soft twilight band around the terminator (up = the
+// planet radial at the point, L = to the sun). With the camera-side sun (fast speeds) the visible
+// hemisphere is all day.
+float tc_daylight(vec3 up, vec3 L)
+{
+    return smoothstep(-0.30, 0.10, dot(up, L));
+}
 
 // albedo lit by sun + hemisphere ambient; N = surface normal, up = planet radial, V = to eye
 vec3 tc_light(vec3 albedo, vec3 N, vec3 up, vec3 V, vec3 L, float ambient_boost)
@@ -19,9 +28,11 @@ vec3 tc_light(vec3 albedo, vec3 N, vec3 up, vec3 V, vec3 L, float ambient_boost)
     float diff = mix(wrap, band, 0.3);
     float hemi = clamp(0.5 + 0.5 * dot(N, up), 0.0, 1.0);
     vec3 amb = mix(TC_GROUND_AMB, TC_SKY_AMB, hemi) * (0.52 + ambient_boost);
+    float day = tc_daylight(up, L);
+    amb = mix(TC_NIGHT_AMB * (1.0 + ambient_boost), amb, day);
     vec3 col = albedo * (amb + TC_SUN * diff * 0.72);
     float rim = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.0);
-    col += rim * 0.10 * TC_HAZE;
+    col += rim * 0.10 * TC_HAZE * (0.25 + 0.75 * day);
     return col;
 }
 
@@ -36,9 +47,11 @@ vec3 tc_light_sh(vec3 albedo, vec3 N, vec3 up, vec3 V, vec3 L, float ambient_boo
     float diff = mix(wrap, band, 0.2) * sh;
     float hemi = clamp(0.5 + 0.5 * dot(N, up), 0.0, 1.0);
     vec3 amb = mix(TC_GROUND_AMB, TC_SKY_AMB, hemi) * (0.48 + ambient_boost) * mix(0.82, 1.0, sh);
+    float day = tc_daylight(up, L);
+    amb = mix(TC_NIGHT_AMB * (1.0 + ambient_boost), amb, day);
     vec3 col = albedo * (amb + TC_SUN * diff * 0.82);
     float rim = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.0);
-    col += rim * 0.10 * TC_HAZE;
+    col += rim * 0.10 * TC_HAZE * (0.25 + 0.75 * day);
     return col;
 }
 

@@ -24,10 +24,12 @@ local ROW_H = 24.5
 
 local SPEEDS = {
 	{ level = 0, icon = "pause", tip = "Pause  (Space)" },
-	{ level = 1, icon = "play", tip = "Normal  (1)" },
-	{ level = 2, icon = "fast", tip = "Fast  (2)" },
-	{ level = 3, icon = "faster", tip = "Faster  (3)" },
-	{ level = 4, icon = "max", tip = "Max  (4)" },
+	{ level = 1, icon = "play", tip = "Watch: an hour every 5 s  (1)" },
+	{ level = 2, icon = "fast", tip = "Brisk: a day in 20 s  (2)" },
+	{ level = 3, icon = "faster", tip = "Days: a day in 3 s  (3)" },
+	{ level = 4, icon = "fast4", tip = "Weeks: a week a second  (4)" },
+	{ level = 5, icon = "cycle", tip = "Seasons: a year in 3 s  (5)" },
+	{ level = 6, icon = "max", tip = "Max: as fast as it goes  (6)" },
 }
 
 -- Loading ------------------------------------------------------------------------------------
@@ -44,7 +46,7 @@ end
 
 local function build_top(self)
 	-- clock + speed buttons (top-left)
-	local cw, ch = 400, 58
+	local cw, ch = 440, 58
 	local clock, clock_sh = ui.panel(nil, 12 + cw / 2, REF_H - 12 - ch / 2, cw, ch)
 	ui.anchor(clock, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
 	ui.anchor(clock_sh, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
@@ -54,9 +56,9 @@ local function build_top(self)
 	self.clock_season = ui.text(clock, -cw / 2 + 51, -13, "Early Spring", "nunito_semi", 14, C.muted)
 	self.speed_btns = {}
 	for i, sp in ipairs(SPEEDS) do
-		local x = -12 + (i - 1) * 42
-		local b = ui.box(clock, x, 0, 38, 38, "circle", C.soft)
-		local ic = ui.icon(b, 0, 0, sp.icon, 20, C.text)
+		local x = -12 + (i - 1) * 36
+		local b = ui.box(clock, x, 0, 33, 33, "circle", C.soft)
+		local ic = ui.icon(b, 0, 0, sp.icon, 18, C.text)
 		self.speed_btns[i] = { node = b, icon = ic, level = sp.level, tip = sp.tip }
 	end
 
@@ -366,7 +368,7 @@ local function update_top(self)
 	local s = hudstats.cur
 	if not s then return end
 	gui.set_text(self.clock_year, "Year " .. s.year)
-	gui.set_text(self.clock_season, s.part .. " " .. s.season)
+	gui.set_text(self.clock_season, s.part .. " " .. s.season .. "  \194\183  " .. s.clock)
 	local season_icon = ({ Spring = "leaf", Summer = "sun", Autumn = "leaf", Winter = "snow" })[s.season] or "sun"
 	ui.set_icon(self.clock_icon, season_icon)
 	gui.set_color(self.clock_icon, s.season == "Winter" and C.teal or (s.season == "Autumn" and C.coral or C.gold))
@@ -466,7 +468,7 @@ function update(self, dt)
 	local rebuild = selection.version ~= self.sel_version
 	if self.refresh <= 0 then
 		self.refresh = 0.5
-		hudstats.update(W)
+		hudstats.update(W, state.hour_f, state.focus_lon)
 		rebuild = true
 	end
 	update_top(self)

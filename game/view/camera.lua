@@ -230,6 +230,28 @@ function M.update(dt)
   local ly = -ry * 0.55 + uy * 0.62 - fy * 0.58
   local lz = -rz * 0.55 + uz * 0.62 - fz * 0.58
   lx, ly, lz = norm(lx, ly, lz)
+  -- the real sun (D-050): at speeds where a day lasts seconds or more, light comes from the
+  -- sim's subsolar point, so the terminator sweeps the planet; at high speeds it blends back to
+  -- the camera-side sun so the planet doesn't strobe (state.daynight 0..1, set by the view)
+  local k = state.daynight or 0
+  if k > 0.001 and state.sun_real then
+    local r = state.sun_real
+    local d = lx * r.x + ly * r.y + lz * r.z
+    if d < -0.999 then
+      lx, ly, lz = ux, uy, uz   -- opposite: pass through "up" (only for an instant)
+      d = lx * r.x + ly * r.y + lz * r.z
+    end
+    if d > 1 then d = 1 end
+    local ang = math.acos(d)
+    local sa = math.sin(ang)
+    if sa < 1e-5 then
+      lx, ly, lz = r.x, r.y, r.z
+    else
+      local a = math.sin((1 - k) * ang) / sa
+      local b = math.sin(k * ang) / sa
+      lx, ly, lz = norm(lx * a + r.x * b, ly * a + r.y * b, lz * a + r.z * b)
+    end
+  end
   state.sun.x, state.sun.y, state.sun.z = lx, ly, lz
   state.u_cam.x, state.u_cam.y, state.u_cam.z = eye.x, eye.y, eye.z
   state.u_sun.x, state.u_sun.y, state.u_sun.z = lx, ly, lz

@@ -11,6 +11,7 @@ uniform fs_uniforms
 {
     highp vec4 u_cam;   // eye xyz, time
     highp vec4 u_atmo;  // x = planet radius, y = rim thickness, z = halo thickness, w = strength
+    highp vec4 u_sun;   // xyz = direction to the sun (the real sun since D-050)
 };
 
 void main()
@@ -36,5 +37,13 @@ void main()
         col = mix(vec3(0.75, 0.93, 1.0), vec3(0.97, 1.0, 1.0), inner);
     }
     a *= u_atmo.w * (1.0 - smoothstep(1.14, 1.27, b / R));   // fade before the shell edge (1.3 R)
+    // the glow is sunlight scattered by the air: bright over the day side, a thin dim blue line at
+    // night, warm at the terminator
+    vec3 L = normalize(u_sun.xyz);
+    float sd = dot(normalize(closest), L);
+    float day = smoothstep(-0.35, 0.2, sd);
+    float dusk = smoothstep(-0.35, -0.05, sd) * (1.0 - smoothstep(-0.05, 0.3, sd));
+    col = mix(vec3(0.25, 0.35, 0.65), col, day) + vec3(0.45, 0.18, 0.0) * dusk;
+    a *= mix(0.28, 1.0, day);
     out_color = vec4(col * a, a);
 }

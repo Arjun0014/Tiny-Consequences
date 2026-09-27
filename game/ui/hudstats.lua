@@ -2,6 +2,7 @@
 -- Trends compare the current totals with a sample taken about a year earlier.
 local inspect = require("game.ui.inspect")
 local calendar = require("sim.calendar")
+local daylight = require("sim.society.daylight")
 
 local M = { cur = nil, hist = {} }
 
@@ -13,10 +14,13 @@ local function trend(now, before)
   return "flat"
 end
 
-function M.update(W)
+-- hour_f: the view's clock (sim hour + the fraction of the next hour); focus_lon: longitude
+-- under the camera (the clock shows local solar time there).
+function M.update(W, hour_f, focus_lon)
   local T = inspect.totals(W)
   local G = W.G
   local tick = W.tick
+  hour_f = hour_f or W.hour
   -- keep one sample per quarter year, ~1.25 years deep
   local h = M.hist
   if #h == 0 or tick - h[#h].tick >= 12 or tick < h[#h].tick then
@@ -29,9 +33,13 @@ function M.update(W)
     if tick - h[i].tick >= 40 then old = h[i]; break end
   end
   old = old or h[1]
-  local toy = tick % 48
+  local toy = math.floor(hour_f / 168) % 48
+  local lh = daylight.local_hour(hour_f, focus_lon or 0)
+  local hh = math.floor(lh)
+  local mm = math.floor((lh - hh) * 60 / 5) * 5
   M.cur = {
-    year = math.floor(tick / 48),
+    year = math.floor(hour_f / 8064),
+    clock = string.format("%02d:%02d", hh, mm), local_hour = lh,
     season = calendar.SEASONS[math.floor(toy / 12) + 1],
     part = ({ "Early", "Mid", "Late" })[math.floor((toy % 12) / 4) + 1],
     population = T.population, villages = T.villages,

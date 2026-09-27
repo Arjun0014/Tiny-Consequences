@@ -19,15 +19,15 @@ test('W02-lite bridge: ping + set_speed round-trip @ch1', async ({ page }) => {
     expect(tc.speed).toBe(n);
   }
 
-  // Paused: tick must not advance. Fast: it must.
+  // Paused: the clock must not advance. Days (3): it must (8 h/s).
   await sendCmd(page, { cmd: 'set_speed', n: 0 });
-  const t0 = (await readTC(page)).tick;
+  const t0 = (await readTC(page)).hour;
   await page.waitForTimeout(700);
   await sendCmd(page, { cmd: 'publish' });
-  expect((await readTC(page)).tick).toBe(t0);
+  expect((await readTC(page)).hour).toBe(t0);
 
-  await sendCmd(page, { cmd: 'set_speed', n: 2 });
-  await waitForTC(page, (tc, start) => tc.tick >= start + 4, t0, { timeout: 5_000 });
+  await sendCmd(page, { cmd: 'set_speed', n: 3 });
+  await waitForTC(page, (tc, start) => tc.hour >= start + 4, t0, { timeout: 5_000 });
 
   expectNoErrors(await readTC(page), game.consoleErrors);
 });

@@ -3,7 +3,9 @@
 -- Persistent state lives under the keys in world.SAVE_KEYS (saved/restored/hashed generically).
 -- Everything else on W is derived and rebuilt from that state by world.rebuild_derived().
 --
---   W.seed, W.level, W.tick (ticks completed; the next tick to process is W.tick)
+--   W.seed, W.level
+--   W.hour    master clock: hours elapsed (the next hour to process is W.hour; D-050)
+--   W.tick    planet weeks completed (= ceil(W.hour / 168)); planet systems run at week starts
 --   W.G       globals (co2, aerosol, g_temp, ice_fraction, ice_volume, sea_level, era, ...)
 --   W.F/C/I/P field values / cause tags / idle counters / prev-tick copies (sim/fields.lua)
 --   W.static  per-cell static(ish) data: elev, plate, boundary, upwelling, region, ...
@@ -25,19 +27,32 @@ local calendar = require("sim.calendar")
 
 local world = {}
 
-world.SAVE_KEYS = { "seed", "level", "tick", "G", "F", "C", "I", "P", "static", "ent", "E",
+world.SAVE_KEYS = { "seed", "level", "hour", "tick", "G", "F", "C", "I", "P", "static", "ent", "E",
   "D", "S", "names", "cmdlog", "pending" }
 
 -- Systems in tick order (02_WORLD_MODEL.md §4). Each module may define:
 --   init(W)            once after worldgen / restore (allocate scratch; no state changes)
 --   snap(W)            at a year boundary, right after the field snap: quantise saved state
 --   rebuild(W)         rebuild derived tables (on load, coastline/elevation change)
---   update(W)          every tick
+--   update(W)          every planet week (the hour a UTC week starts)
+--   hour(W)            every hour (the settlement and agent layer, docs/world/10 §5)
 --   year(W)            at a year boundary, before update (after snap)
 world.systems = {}
+world.weekly = {}
+world.hourly = {}
+
+world.HOURS_PER_DAY = 24
+world.HOURS_PER_WEEK = 168
+world.HOURS_PER_YEAR = 8064
 
 function world.set_systems(list)
   world.systems = list
+  local wk, hr = {}, {}
+  for i = 1, #list do
+    if list[i].update then wk[#wk + 1] = list[i] end
+    if list[i].hour then hr[#hr + 1] = list[i] end
+  end
+  world.weekly, world.hourly = wk, hr
 end
 
 local grid_cache = {}
@@ -55,7 +70,7 @@ function world.new(seed, opts)
   opts = opts or {}
   local level = opts.level or config.SIM_LEVEL
   local W = {
-    seed = seed, level = level, tick = 0,
+    seed = seed, level = level, hour = 0, tick = 0,
     G = { co2 = 280, aerosol = 0, g_temp = 0, ice_fraction = 0, ice_volume = 0,
           sea_level = 0, sea_built = 0, era = "garden" },
     static = {}, ent = {}, D = {}, S = {}, names = {}, cmdlog = {}, pending = {},
@@ -112,21 +127,22 @@ end
 -- Handlers: world.COMMANDS[type] = function(W, params) ... end
 world.COMMANDS = {}
 
--- Queue a command; it's applied at the start of the next tick processed and logged then.
+-- Queue a command; it's applied at the start of the next hour processed and logged then.
 function world.command(W, ctype, params)
   if not world.COMMANDS[ctype] then error("unknown command " .. tostring(ctype)) end
   local p = W.pending
-  p[#p + 1] = { tick = W.tick, type = ctype, params = params or {} }
+  p[#p + 1] = { hour = W.hour, type = ctype, params = params or {} }
 end
 
 local function apply_commands(W)
   local p = W.pending
   if #p == 0 then return end
   local keep = {}
+  local h = W.hour
   for i = 1, #p do
     local cmd = p[i]
-    if cmd.tick <= W.tick then
-      cmd.tick = W.tick
+    if cmd.hour <= h then
+      cmd.hour = h
       W.cmdlog[#W.cmdlog + 1] = cmd
       world.COMMANDS[cmd.type](W, cmd.params)
     else
@@ -136,23 +152,27 @@ local function apply_commands(W)
   W.pending = keep
 end
 
--- Tick ------------------------------------------------------------------------------------
-function world.tick(W)
-  local t = W.tick
-  if t % 48 == 0 then
-    fields.snap_all(W)
-    for i = 1, #world.systems do
-      local s = world.systems[i]
-      if s.snap then s.snap(W) end                         -- quantise system state for saving
-    end
-    if W.on_year_boundary then W.on_year_boundary(W) end   -- e.g. save.capture
-    for i = 1, #world.systems do
-      local s = world.systems[i]
-      if s.year then s.year(W) end
-    end
-  end
-  apply_commands(W)
+-- Clock -----------------------------------------------------------------------------------
+-- world.step advances one hour. At the start of a UTC week the planet systems run (the old weekly
+-- tick); at a year boundary the fields are snapped and the save snapshot captured first, before
+-- that hour's commands (so the snapshot + the commands since reproduce the live world). Hourly
+-- systems (the settlement and agent layer) run every hour after the planet update.
+local function year_boundary(W)
+  fields.snap_all(W)
   local systems = world.systems
+  for i = 1, #systems do
+    local s = systems[i]
+    if s.snap then s.snap(W) end                         -- quantise system state for saving
+  end
+  if W.on_year_boundary then W.on_year_boundary(W) end   -- e.g. save.capture
+  for i = 1, #systems do
+    local s = systems[i]
+    if s.year then s.year(W) end
+  end
+end
+
+local function planet_week(W)
+  local systems = world.weekly
   local prof = W.profile   -- optional: {clock = fn() -> ms (host-supplied), ms = {name -> total}}
   if prof then
     local clock, ms = prof.clock, prof.ms
@@ -168,13 +188,31 @@ function world.tick(W)
       systems[i].update(W)
     end
   end
-  W.tick = t + 1
+  W.tick = W.tick + 1
 end
 
--- Shift every stored absolute tick by dt (used once after worldgen spin-up so the player's
--- clock starts at Year 0). Systems holding ticks implement shift_ticks(W, dt).
+function world.step(W)
+  local h = W.hour
+  local week_start = h % 168 == 0
+  if week_start and W.tick % 48 == 0 then year_boundary(W) end
+  apply_commands(W)
+  if week_start then planet_week(W) end
+  local hs = world.hourly
+  for i = 1, #hs do hs[i].hour(W) end
+  W.hour = h + 1
+end
+
+-- One planet week: step hours until the next UTC week starts (168 steps from a week start).
+function world.tick(W)
+  repeat world.step(W) until W.hour % 168 == 0
+end
+
+-- Shift every stored absolute tick by dt weeks (used once after worldgen spin-up so the player's
+-- clock starts at Year 0). Systems holding ticks or hours implement shift_ticks(W, dt) (dt in
+-- weeks; hours shift by dt × 168).
 function world.shift_ticks(W, dt)
   W.tick = W.tick + dt
+  W.hour = W.hour + dt * 168
   for i = 1, #world.systems do
     local s = world.systems[i]
     if s.shift_ticks then s.shift_ticks(W, dt) end
@@ -189,7 +227,8 @@ function world.run_years(W, y)
   world.run_ticks(W, calendar.ticks(y))
 end
 
-function world.year(W) return math.floor(W.tick / 48) end
+function world.year(W) return math.floor(W.hour / 8064) end
+function world.day(W) return math.floor(W.hour / 24) end
 
 -- Hashing -----------------------------------------------------------------------------------
 -- Deterministic hash of the persistent state: quantised fields + entities + clock.

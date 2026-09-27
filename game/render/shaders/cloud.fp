@@ -26,5 +26,10 @@ void main()
     float n = fract(sin(dot(floor(var_wpos * 40.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
     float a = pow(smoothstep(0.0, 0.85, edge + (n - 0.5) * 0.12), 0.9) * 0.9;
     col += (1.0 - edge) * 0.12;
+    // night side: moonlit grey-blue clouds; warm edges at the terminator (D-050)
+    float sd = dot(normalize(var_wpos), L);
+    float day = smoothstep(-0.30, 0.12, sd);
+    float dusk = smoothstep(-0.25, 0.0, sd) * (1.0 - smoothstep(0.0, 0.25, sd));
+    col = col * mix(vec3(0.16, 0.19, 0.30), vec3(1.0), day) + vec3(0.30, 0.12, 0.02) * dusk;
     out_color = vec4(col * a, a);
 }
