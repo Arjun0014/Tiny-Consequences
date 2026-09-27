@@ -11,8 +11,12 @@
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local names = require("content.names")
-local villages = require("sim.systems.villages")
-local people = require("sim.systems.people")
+local sites = require("sim.society.sites")
+local ents = require("sim.society.entities")
+local farming = require("sim.society.farming")
+local life = require("sim.society.life")
+local economy = require("sim.society.economy")
+local labour = require("sim.society.labour")
 
 local settle = {}
 local floor = math.floor
@@ -55,8 +59,10 @@ end
 
 -- Best free site by score among land cells passing filter(c), preferring sites whose land and
 -- sea can feed a village (VILLAGE.min_site_people); the best-scoring site if none can.
+local sites_mod = sites
+
 local function best_site(W, filter)
-  return villages.pick_site(W, filter, cfgmod.VILLAGE.min_site_people, true)
+  return sites.pick_site(W, filter, cfgmod.SOCIETY.min_site_people, true)
 end
 
 local function has_fish(W, c)
@@ -69,50 +75,104 @@ local function has_fish(W, c)
   return false
 end
 
--- Households until the village holds `target` people.
+-- Households until the village holds `target` people (docs/world/12 §2): couples with children,
+-- elder couples, young couples, and single adults living with relatives. Then the physical
+-- village: a house per household, a pier and boats for a fishing village, a granary and woodshed,
+-- fields for its needs, and stocks to last until the first harvest.
 local function populate(W, v, target, u)
-  local tick = W.tick
-  local P = W.ent.people
+  local cfg = cfgmod.SOCIETY
+  local hour = W.hour
   local idx = 0
-  local function new(sex, age, mother, father)
+  local function new(h, sex, age, mother, father)
     idx = idx + 1
-    local born = tick - age * 48 - floor(u() * 48)
-    return people.create(W, v, { sex = sex, born = born, mother = mother, father = father, idx = idx })
+    local born = hour - age * 8064 - floor(u() * 8064)
+    return ents.new_person(W, v, h, { sex = sex, born = born, mother = mother, father = father, idx = idx })
   end
+  local H = W.ent.households
   while v.pop < target do
     local r = u()
     if r < 0.62 then
-      -- a couple with children
+      local h = ents.new_household(W, v, 0)
       local fa = 20 + floor(u() * 24)
       local ma = fa + floor(u() * 9) - 3
-      local f = new("f", fa)
-      local m = new("m", ma)
+      local f = new(h, "f", fa)
+      local m = new(h, "m", ma)
       f.partner, m.partner = m.id, f.id
       local kids = floor(u() * 4.5)
       for _ = 1, kids do
         local ka = floor(u() * math.min(14, fa - 17))
-        if ka >= 0 then new(nil, ka, f.id, m.id) end
+        if ka >= 0 then new(h, nil, ka, f.id, m.id) end
       end
     elseif r < 0.77 then
+      local h = ents.new_household(W, v, 0)
       local a = 55 + floor(u() * 18)
-      local f = new("f", a)
-      local m = new("m", a + floor(u() * 5) - 2)
+      local f = new(h, "f", a)
+      local m = new(h, "m", a + floor(u() * 5) - 2)
       f.partner, m.partner = m.id, f.id
-    elseif r < 0.9 then
-      new(nil, 16 + floor(u() * 30))
+    elseif r < 0.9 and #v.households > 0 then
+      -- a single adult living with relatives
+      local h = H[v.households[1 + floor(u() * #v.households)]]
+      new(h, nil, 16 + floor(u() * 20))
     else
-      local f = new("f", 18 + floor(u() * 6))
-      local m = new("m", 19 + floor(u() * 6))
+      local h = ents.new_household(W, v, 0)
+      local f = new(h, "f", 18 + floor(u() * 6))
+      local m = new(h, "m", 19 + floor(u() * 6))
       f.partner, m.partner = m.id, f.id
     end
   end
-  -- jobs with the village's needs known
+  local P = W.ent.people
+  local adults = 0
+  for i = 1, #v.members do if ents.age(W, P[v.members[i]]) >= cfg.adult_age then adults = adults + 1 end end
+  -- houses (one per household, weathered), the pier, storage
+  for i = 1, #v.households do
+    local h = H[v.households[i]]
+    local cell, lot = ents.free_lot(W, v, "house")
+    if cell then
+      local b = ents.new_building(W, v, "house", cell, lot, "standing")
+      b.condition = 0.6 + 0.4 * u()
+      b.built = hour - floor(u() * 20 * 8064)
+      h.home = b.id
+      b.household = h.id
+    end
+  end
+  if v.mooring then ents.new_building(W, v, "pier", v.cell, v.pier_lot, "standing") end
+  local c1, l1 = ents.free_lot(W, v, "granary")
+  if c1 then ents.new_building(W, v, "granary", c1, l1, "standing") end
+  local c2, l2 = ents.free_lot(W, v, "woodshed")
+  if c2 then ents.new_building(W, v, "woodshed", c2, l2, "standing") end
+  -- boats for a fishing village (crews of 3 from about a third of the adults)
+  local fish = 0
+  for i = 1, #v.fishing do fish = fish + W.F.fish[v.fishing[i]] end
+  if v.mooring and fish > 0.5 then
+    local nb = math.max(1, floor(adults * 0.3 / cfg.crew + 0.5))
+    for _ = 1, nb do ents.new_boat(W, v) end
+  end
+  -- fields for its needs, then occupations
+  economy.need_day(W, v)
+  farming.plan(W, v, adults)
+  -- an established village: its fields are already cleared
+  for i = 1, #v.farms do
+    local c = v.farms[i]
+    local f = W.S.farm[c]
+    if f.plan == "clear" then
+      f.plan, f.clear = "crop", 0
+      W.F.forest[c] = 0
+      W.P.forest[c] = 0
+    end
+  end
   for i = 1, #v.members do
     local p = P[v.members[i]]
-    if p.job ~= "child" and p.job ~= "elder" then p.job = "child" end
+    local a = ents.age(W, p)
+    if a >= cfg.elder_age then p.job = "elder"
+    elseif a >= cfg.adult_age then life.set_occupation(W, v, p)
+    else p.job = "child" end
   end
-  v.jobs = {}
-  for i = 1, #v.members do people.set_job(W, v, P[v.members[i]]) end
+  -- stocks: grain to the first harvest and beyond, wood for two months, seed for the fields
+  v.stock.grain = v.need_day * 300
+  v.stock.seed = #v.farms * cfg.seed
+  v.stock.wood = labour.fuel_day(W, v, W.F.temp[v.cell]) * 60 + 60
+  v.food_days = 240
+  v.food_security = 240 / 28
 end
 
 -- BFS through ocean cells from a; returns dist table and parent table.
@@ -255,7 +315,7 @@ function settle.run(W)
   add(best_site(W, function(c) return coast[c] == 1 and cont_ok(c) and has_fish(W, c) end)
     or best_site(W, function(c) return coast[c] == 1 and has_fish(W, c) end))
   -- inland: no sea within the fishing radius (grid steps depend on the resolution, D-047)
-  local inland_d = villages.radius(W, vcfg.ring) + 1
+  local inland_d = sites_mod.radius(W, cfgmod.SOCIETY.farm_radius) + 1
   add(best_site(W, function(c) return cdist[c] >= inland_d and cont_ok(c) end)
     or best_site(W, function(c) return cdist[c] >= inland_d end))
   local conts = {}
@@ -278,34 +338,23 @@ function settle.run(W)
   -- people are shared out by what each site can feed (with some luck)
   local weights, wsum = {}, 0
   for i = 1, #sites do
-    local cap = villages.site_capacity(W, sites[i])
+    local cap = sites_mod.site_capacity(W, sites[i])
     weights[i] = cap * (0.8 + 0.4 * u())
     wsum = wsum + weights[i]
   end
   local placed = 0
+  local soc = require("sim.society.init")
   for i = 1, #sites do
     local c = sites[i]
     local culture = cult[geo.continent[c]] or 1
     local name = names.unique(un, function(uu) return names.village(uu, culture) end, used)
-    local v = villages.found(W, c, { name = name, culture = culture })
-    -- desired fishers from the fish on the doorstep
-    local stock = 0
-    for k = 1, #v.fishing do stock = stock + W.F.fish[v.fishing[k]] end
-    stock = stock * vcfg.fish_q * W.sscale * W.sscale
+    local v = ents.found_village(W, c, { name = name, culture = culture })
+    soc.register_village(W, v)
     local target = (i == #sites) and (total - placed) or floor(total * weights[i] / wsum + 0.5)
     if target < 12 then target = 12 end
-    v.fish_jobs = floor(stock / vcfg.fisher_max)
-    local fmax = floor(target * 0.7 * vcfg.fish_share)
-    if v.fish_jobs > fmax then v.fish_jobs = fmax end
     local up = ufactory(W, rng.S.SETTLE, 100 + i)
     populate(W, v, target, up)
     placed = placed + v.pop
-    v.capacity = villages.capacity(W, v, W.vgeo[v.id])
-    local need = 0
-    for k = 1, #v.members do
-      need = need + (W.ent.people[v.members[k]].job == "child" and vcfg.eat_child or vcfg.eat_adult)
-    end
-    v.food = vcfg.start_food * need
   end
   -- lanes (next to coastal villages) and tankers
   local nl = pick_range(u, cfg.lanes)

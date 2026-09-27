@@ -19,17 +19,29 @@ local floor, log, sin, abs, pi = math.floor, math.log, math.sin, math.abs, math.
 local S_WD = rng.S.WEATHER_DAY
 local DEG = pi / 180
 
--- one-week cache (pure: recomputed identically on a miss)
-local cache_c, cache_wk, cache_seed, cache_P, cache_T = -1, -1, -1, -1, -1
-local WET, AMT, STORM, GALE, TW = {}, {}, {}, {}, {}
+-- Per-cell week cache (pure: a miss recomputes exactly the same values). Randomness: one keyed
+-- hash per (cell, week) seeds a 32-bit linear congruential sequence (x = 69069 x + 1 mod 2^32:
+-- every product stays below 2^53, so it is exact in doubles on every runtime).
+local CACHE = {}   -- cell -> { wk, seed, P, T, wet[7], amt[7], storm[7], gale[7], temp[7] }
+local M32 = 4294967296
 
 local function compute_week(W, c, wk)
   local cfg = cfgmod.WEATHER_DAY
   local P = W.F.precip[c]
   local T = W.F.temp[c]
-  if cache_c == c and cache_wk == wk and cache_seed == W.seed and cache_P == P and cache_T == T then return end
-  cache_c, cache_wk, cache_seed, cache_P, cache_T = c, wk, W.seed, P, T
-  local seed = W.seed
+  local e = CACHE[c]
+  if e and e.wk == wk and e.seed == W.seed and e.P == P and e.T == T then return e end
+  if not e then
+    e = { wet = {}, amt = {}, storm = {}, gale = {}, temp = {} }
+    CACHE[c] = e
+  end
+  e.wk, e.seed, e.P, e.T = wk, W.seed, P, T
+  local WET, AMT, STORM, GALE, TW = e.wet, e.amt, e.storm, e.gale, e.temp
+  local x = rng.hash(W.seed, S_WD, c, wk, 0)
+  local function u()
+    x = (x * 69069 + 1) % M32
+    return x / M32
+  end
   local pw = P / cfg.wet_week
   if pw > 1.5 then pw = 1.5 elseif pw < 0 then pw = 0 end
   local pdw = cfg.p_dw[1] + cfg.p_dw[2] * pw
@@ -37,24 +49,25 @@ local function compute_week(W, c, wk)
   local pww = pdw + cfg.p_ww_add
   if pww > cfg.p_ww_max then pww = cfg.p_ww_max end
   local stationary = pdw / (1 - pww + pdw)
-  local prev = rng.float(seed, S_WD, c, wk, 0) < stationary
+  local prev = u() < stationary
   local n, wsum = 0, 0
   for d = 1, 7 do
-    local wet = rng.float(seed, S_WD, c, wk, d) < (prev and pww or pdw)
+    local wet = u() < (prev and pww or pdw)
     local w = 0
+    local uw = u()
     if wet then
-      local u = rng.float(seed, S_WD, c, wk, 10 + d)
-      if u < 1e-6 then u = 1e-6 end
-      w = -log(u) + 0.15
+      if uw < 1e-6 then uw = 1e-6 end
+      w = -log(uw) + 0.15
       n = n + 1
       wsum = wsum + w
     end
     WET[d], AMT[d] = wet, w
     prev = wet
   end
+  local uf = u()
   if n == 0 and P > 0.002 then
     -- the week rained: at least one wet day carries it
-    local d = 1 + floor(rng.float(seed, S_WD, c, wk, 9) * 7)
+    local d = 1 + floor(uf * 7)
     WET[d], AMT[d] = true, 1
     wsum = 1
   end
@@ -70,9 +83,10 @@ local function compute_week(W, c, wk)
     if WET[d] and wsum > 0 then a = P * AMT[d] / wsum end
     AMT[d] = a
     STORM[d] = WET[d] and a >= cfg.storm_day and P >= cfg.storm_week_min
-    GALE[d] = rng.float(seed, S_WD, c, wk, 20 + d) < pg
-    TW[d] = T + (rng.float(seed, S_WD, c, wk, 30 + d) - 0.5) * 2 * cfg.temp_wobble - (WET[d] and 1 or 0)
+    GALE[d] = u() < pg
+    TW[d] = T + (u() - 0.5) * 2 * cfg.temp_wobble - (WET[d] and 1 or 0)
   end
+  return e
 end
 
 -- Weather of the day that starts at absolute hour `hour` (a village's day-step hour) at cell c.
@@ -81,16 +95,17 @@ end
 function M.get(W, c, hour, out)
   local wk = floor(hour / 168)
   local d = floor(hour / 24) % 7 + 1
-  compute_week(W, c, wk)
+  local e = compute_week(W, c, wk)
   local cfg = cfgmod.WEATHER_DAY
-  out.wet = WET[d]
-  out.rain = AMT[d]
-  out.storm = STORM[d] or GALE[d]
-  out.gale = GALE[d]
-  out.temp = TW[d]
-  out.snow = WET[d] and TW[d] < 0
+  local wet = e.wet[d]
+  out.wet = wet
+  out.rain = e.amt[d]
+  out.storm = e.storm[d] or e.gale[d]
+  out.gale = e.gale[d]
+  out.temp = e.temp[d]
+  out.snow = wet and e.temp[d] < 0
   local dry = 1 - (W.F.soil_water[c] or 0.5)
-  local wetf = WET[d] and 0.3 or 1
+  local wetf = wet and 0.3 or 1
   out.range = cfg.diurnal[1] + (cfg.diurnal[2] - cfg.diurnal[1]) * wetf * (0.4 + 0.6 * dry)
   return out
 end

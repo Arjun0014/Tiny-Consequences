@@ -198,7 +198,19 @@ function world.step(W)
   apply_commands(W)
   if week_start then planet_week(W) end
   local hs = world.hourly
-  for i = 1, #hs do hs[i].hour(W) end
+  local prof = W.profile
+  if prof then
+    local clock, ms = prof.clock, prof.ms
+    for i = 1, #hs do
+      local s = hs[i]
+      local a = clock()
+      s.hour(W)
+      local key = s.name .. ":hour"
+      ms[key] = (ms[key] or 0) + clock() - a
+    end
+  else
+    for i = 1, #hs do hs[i].hour(W) end
+  end
   W.hour = h + 1
 end
 

@@ -68,4 +68,16 @@ def("tsunami",          { actor = "derived", icon = "wave", headline = true, tex
 def("new_island",       { actor = "derived", icon = "island", headline = true, text = "New island" })
 def("flooded_village",  { actor = "derived", icon = "flood", headline = true, text = "Village flooded" })
 
+-- settlement layer (docs/world/16_CAUSALITY_VISUALS.md §3, D-050)
+def("rationing",        { actor = "derived", icon = "famine", text = "Rationing" })
+def("seed_eaten",       { actor = "derived", icon = "crop", headline = true, text = "Seed grain eaten" })
+def("wood_shortage",    { actor = "derived", icon = "wood", text = "No firewood" })
+def("housing_shortage", { actor = "derived", icon = "house", text = "No homes" })
+def("labour_shortage",  { actor = "derived", icon = "people", text = "Too few hands" })
+def("boat_lost",        { actor = "derived", icon = "boat", text = "Boat lost" })
+def("shipment_lost",    { actor = "derived", icon = "tanker", headline = true, text = "Shipment lost" })
+def("house_built",      { actor = "derived", icon = "house", text = "House built" })
+def("village_expanded", { actor = "derived", icon = "house", text = "Village grows" })
+def("fields_abandoned", { actor = "derived", icon = "crop", text = "Fields abandoned" })
+
 return K

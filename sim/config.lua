@@ -363,6 +363,110 @@ C.WEATHER_DAY = {
   diurnal = { 4, 12 },                    -- °C day-night range: wet/coastal -> dry/inland
 }
 
+-- Settlement and agent layer (docs/world/11_ECONOMY.md, 12_PEOPLE_VILLAGES.md, 13_TRANSPORT.md) --
+-- Units: FU = one adult-day of food; WU = wood (one household-day of cooking fuel ~ 0.25 of a cold
+-- day's fuel); h = person-hours at full fitness. Distances in cell spacings of the sim grid.
+C.SOCIETY = {
+  -- needs
+  eat = { child = 0.6, adult = 1.0, elder = 0.8 },   -- FU per person-day
+  adult_age = 14, elder_age = 60, light_work_age = 10, frail_age = 70,
+  fuel_cook = 0.25,                       -- WU per household-day
+  fuel_heat = 0.045,                      -- WU per household-day per °C below fuel_comfort
+  fuel_comfort = 15,                      -- °C daily mean
+  -- stocks and storage
+  grain_spoil = 0.0005,                   -- per day (≈ 15% a year)
+  fresh_spoil = 0.04,                     -- per day
+  wood_rot = 0.001,                       -- per day, beyond sheltered storage
+  overflow_spoil = 0.007,                 -- per day, grain beyond storage capacity
+  store_house_grain = 400, store_house_wood = 150,
+  store_granary = 6000, store_woodshed = 1500,
+  -- rationing and coping (research: rationing -> seed eaten -> migration)
+  ration_min = 0.55,
+  ration_margin_days = 30,                -- food must cover the days to the next harvest + this
+  rationing_days = 3, famine_ration = 0.7, famine_weeks = 4,
+  seed_eat_days = 14,                     -- food below this many days: the seed grain is eaten
+  -- body
+  nutrition_rate = 0.35,                  -- per week toward the ration
+  hunger_health = 30,                     -- health lost per week per unit of nutrition below 0.85
+  health_regen = 4,                       -- per week when fed and warm
+  cold_temp = 5, cold_health = 0.8,       -- per week per °C below cold_temp without fuel
+  vulnerable_mult = 2,                    -- infants (< 5) and elders lose health this much faster
+  crowd_hazard = 1.3,                     -- disease hazard multiplier when overcrowded or homeless
+  -- mortality (annual base hazards; weekly = / 48). Gentler than Model West 3 (docs/world/12 §1.3)
+  mort_infant = 0.12, mort_child = 0.025, mort_youth = 0.005, mort_adult = 0.006,
+  mort_old = 0.0012, mort_old_age = 45, mort_old_scale = 8,
+  frail_health = 40, frail_hazard = 0.0006,   -- per week per health point below frail_health
+  -- fertility
+  fecund = { 16, 44 },
+  conceive_day = 0.005,                   -- daily conception chance, fecund, fed, not nursing
+  preg_days = 252, fetal_loss = 0.15, maternal_death = 0.008, nursing_days = 504,  -- ~18 months of nursing
+  -- courtship and households (Hajnal: marriage waits for a home)
+  court_age = { f = 19, m = 21 }, court_max_age = 45, court_prob = 0.15,   -- late marriage (Hajnal)
+  house_capacity = 7, hut_capacity = 5,
+  wait_migrate_months = 24,
+  -- work
+  work_days = 6,                          -- days a week people work (planning)
+  walk_h = 0.33,                          -- hours to walk one cell spacing
+  weather_rain = 0.4, weather_storm = 0.0, weather_snow_farm = 0.0,
+  -- farming (per sim cell)
+  yield = 4000,                           -- FU of grain from a fully sown, fully grown, harvested cell
+                                          --   (crops rarely reach full biomass: ~2,000-2,800 in practice)
+  seed = 480,                             -- FU of seed grain to sow a full cell
+  sow_h = 450, tend_h = 300, harvest_h = 600,  -- ~15 person-days per person fed; peaks saturate labour
+  sow_temp = 7, sow_weeks = 8,            -- the spring sowing season (weeks)
+  gdd_base = 5, gdd_ripe = 1400,
+  ripe_loss = 0.02, ripe_loss_wet = 0.04, -- per day, standing ripe crop
+  weed_rate = 0.02,                       -- weeds per untended week (share of tending not done)
+  field_margin = 1.3,                     -- fields for need x this
+  fields_per_worker = 0.45,               -- labour bound on cropped fields
+  farm_radius = 3,                        -- level-4 steps (scaled): fields within (walking cost in the plan)
+  clear_h = 600,                          -- hours to clear a unit of forest for a field
+  fallow_fert = 0.22, poor_fert = 0.05, fallow_food_months = 6,
+  -- crop growth (weekly; the old villages constants)
+  crop_seed = 0.1, r_crop = 0.6, crop_t = { 8, 32 }, crop_soil_half = 0.2,
+  drought_soil = 0.12, k_drought = 0.05, frost_temp = -2, k_frost = 0.08, k_oil_crop = 0.5,
+  k_blight = 0.15, k_flood_crop = 0.6, deplete = 0.003,
+  -- forestry
+  wood_rate = 3.0,                        -- WU per productive hour in dense forest
+  wood_half = 0.25,                       -- forest density at half the rate
+  forest_wu = 4250,                       -- WU in a fully forested sim cell
+  wood_radius = 6,                        -- cells to look for woods (walking eats into the day)
+  brush_rate = 1.2,                       -- WU per hour of brush, dung and straw gathering (fuel only)
+  brush_half = 0.3,                       -- grass density at half the brush rate
+  earth_wood = 18, earth_h = 360,         -- an earth (sod / mud-brick) house where timber is scarce
+  fuel_days = 60, fuel_days_winter = 90,
+  -- fishing
+  fish_q = 2.2,                           -- FU per crew-hour at fish density 1 (~8 FU a fisher-day on a
+                                          --   healthy ground: 5-10 kg of fish)
+  hold = 150, crew = 3,
+  fish_fu = 18000,                        -- FU of fish in a sim cell at density 1
+  sail_h = 0.3,                           -- hours to sail one cell spacing
+  fish_radius = 5,
+  squall = 0.0002,                        -- chance a trip is caught by weather (~5% of boats a year)
+  boat_decay = 0.08,                      -- condition lost per ~150 trips (a busy year)
+  boat_mend = 0.004,                      -- condition regained per day in port (crews mend boats and nets)
+  fresh_share = 0.5,                      -- fishing aims to cover this share of daily need
+  -- construction (timber WU, labour h)
+  build = {
+    house = { wood = 60, h = 240 }, hut = { wood = 15, h = 60 }, granary = { wood = 50, h = 200 },
+    woodshed = { wood = 25, h = 80 }, pier = { wood = 30, h = 150 }, boat = { wood = 25, h = 160 },
+    repair = { wood = 12, h = 40 },
+  },
+  house_decay = 0.06, hut_decay = 0.25,   -- condition per year
+  repair_below = 0.5, repair_gain = 0.4,
+  max_sites_base = 1, sites_per_pop = 25, builders_per_site = 4,
+  ruin_years = { 20, 40 },
+  lot_r = 0.013,                          -- radians between lot rings (0.13 world units at R = 10)
+  lot_rings = 3,
+  -- migration and founding (monthly per household)
+  push_hunger = 0.15, push_wait = 0.4, push_homeless = 0.4, push_cold = 0.1, push_small = 1.0,
+  push_disaster = 0.3, pull_margin = 0.3, migrate_prob = 0.3,
+  walk_hours_day = 10, party_food_days = 14,
+  found_food_days = 60, found_seed_cells = 2,
+  min_site_people = 20, min_spacing = 3,
+  max_villages = 12, soft_cap = 900,      -- performance guard: births taper toward soft_cap people
+}
+
 -- Player powers (04_PLAYER.md §2, sim/powers.lua) ------------------------------------------------
 C.POWERS = {
   radius = 2, introduce_radius = 1,       -- level-4 steps

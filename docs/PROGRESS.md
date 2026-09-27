@@ -5,7 +5,8 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 ## Current state
 
 - **Direction reset (D-050, 27 Sep 22:30 IST).** Arjun: the simulation is theatre; build the genuinely living tiny world first, jams secondary. Roadmap v2: `docs/world/17_ROADMAP.md`. Spec for the new world: `docs/world/00_RESEARCH.md` (sources), `01_AUDIT.md`, `10_WORLD_SYSTEMS.md` … `16_CAUSALITY_VISUALS.md`. Stage 2.3 of the old roadmap is **not** being continued.
-- Phase: W1 (time) **done** (D-051). Next: **W2 settlements** (households, buildings, labour, wood, construction, fields, boats) per `docs/world/11`–`13`; then W3 merchant ships/trade, W4 herds, W5 visuals (incl. clouds, village lights), W6 profiling.
+- Phase: W1 (time) **done** (D-051). **W2 settlements in progress** (D-052): the settlement layer (`sim/society/`) runs headless and replaces villages/people in the systems list; **not yet ported**: tests (unit 58/63; scenarios/props not run), save bit-identity, pre-spun worlds, the view/inspector, tools. The game build likely breaks on the old schema until W2c. **Read `docs/SESSION_HANDOFF.md` first** — it lists the exact next steps.
+- Then: W3 merchant ships/trade, W4 herds, W5 visuals (incl. clouds, village lights), W6 profiling.
 - Baseline at 4e108b7 (verified 27 Sep): `npm run test:sim` 79/80; the failure is P07 (detectors +55% since the heat/sea-ice detectors; not re-baselined). W03 flaky pulse checks remain from the previous session.
 - No subagents in this work (Arjun's instruction for this session).
 - Blockers needing the human: none.
@@ -73,6 +74,12 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 - Bundle size: 3.12 MB release
 
 ## Stage entries
+
+### [w2 WIP] Settlement layer, first calibration — 2026-09-28 ~01:45 IST (handoff at ~700K context)
+- Sim: `sim/society/` — entities (villages, households, people, buildings, boats, parties), sites, layout (lots), farming (fields, climate calendar, sow/tend/harvest labour, seed, weekly crop growth with blame, learned yields, capacity), fishing (daily trips, Schaefer catch, squalls, mending), labour (weekly assignment by need and occupation, daily execution with daylight/weather/travel/fitness; woodcutting, brush, hunting), construction (sites, timber + labour, earth houses, repairs, decay, storage), economy (consumption, rationing, seed coping, fuel and cold, spoilage, stock tags, society events), life (bodies, mortality, conception/pregnancy/birth, courtship, Hajnal marriage gated by home + capacity, households, occupations, memories), mobility (push/pull migration, walking parties, founding, daughter villages, settlers, abandonment), init (hourly dispatch by local midnight, weekly/monthly rhythms, hazards, snap, shift). Worldgen settle builds households, houses, piers, boats, fields and stocks. Powers (lightning on boats/people, settlers, meteor) and save packing use the new entities; village detectors moved into the society layer; ships no longer fake boats. New event kinds (rationing, seed_eaten, wood_shortage, boat_lost, shipment_lost, house_built…). `tools/society_trace.lua`.
+- Runs (80 y): seeds 22 / 3 / 7 / 1 / 5 / 9 → 629 / 580 / 237 / 426 / 501 / 183 people; founded 18 / 17 / 14 / 12 / 14 / 5, abandoned 12 / 11 / 10 / 7 / 10 / 4. Chains seen: lightning > wildfire > crop_failure > famine > deaths > seed_eaten > migration > abandoned; boat_lost > rationing > famine > migration; flood > crop_failure.
+- Tests: lint clean; unit 58/63 (old village schema test; save/reload divergence from lazily rebuilt fishing-ground ranks; stale pre-spun worlds). Scenario/property suites not run since the society switch.
+- Perf: society ≈ 390k VM instr/week at ~375 people (planet ≈ 500k).
 
 ### [w1] Time: hourly clock, sun, daily weather — 2026-09-27 ~23:40 IST
 - Sim: `W.hour` master clock, `world.step` (hour) / `world.tick` (week), hourly systems hook, commands/saves/events on hours (SAVE_VERSION 3); `sim/society/daylight.lua`, `sim/society/weather_day.lua`; calendar hour helpers; rng streams 30–38 reserved for the society layer.

@@ -14,7 +14,7 @@
 local world = require("sim.world")
 local fields = require("sim.fields")
 local version = require("sim.version")
-local people = require("sim.systems.people")
+local people = require("sim.society.entities")
 
 local save = {}
 
@@ -306,7 +306,7 @@ function save.encode(snap, cmds_since, current_hour, extras)
   if snap.ent and snap.ent.people then
     local ent = shallow(snap.ent)
     ent.people = nil
-    ent.people_packed = people.pack(snap.ent.people)
+    ent.people_packed = people.pack_people(snap.ent.people)
     doc.ent = ent
   end
   doc.cmds_since = cmds_since or {}
@@ -347,7 +347,7 @@ function save.decode(str)
     doc.E.rec_packed = nil
   end
   if doc.ent and doc.ent.people_packed then
-    doc.ent.people = people.unpack(doc.ent.people_packed)
+    doc.ent.people = people.unpack_people(doc.ent.people_packed)
     doc.ent.people_packed = nil
   end
   return doc

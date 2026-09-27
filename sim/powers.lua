@@ -86,15 +86,22 @@ function P.lightning(W, p)
   local ents = W.ent
   -- a ship on the cell (or the one aimed at)
   if p.ship then
-    local list = (p.list == "boats") and ents.boats or ents.ships
-    local t = list and list[p.ship]
-    if t and t.alive ~= false and not t.sunk then
-      if t.kind == "tanker" or p.list ~= "boats" then
-        require("sim.systems.ships").sink(W, t, id)
-      else
-        require("sim.systems.ocean").spill(W, t.cell or c, cfg().boat_oil, id)
+    if p.list == "boats" then
+      -- a village's fishing boat (sim/society/fishing.lua): lost with its catch, maybe its crew
+      local b = ents.boats and ents.boats[p.ship]
+      if b and b.state ~= "lost" then
+        local v = ents.villages[b.village]
+        local at = (b.trip and b.trip.ground) or b.home
+        require("sim.society.fishing").lose(W, v, b, id, "lightning")
+        require("sim.systems.ocean").spill(W, at, cfg().boat_oil, id)
+        return id
       end
-      return id
+    else
+      local t = ents.ships and ents.ships[p.ship]
+      if t and t.alive ~= false and not t.sunk then
+        require("sim.systems.ships").sink(W, t, id)
+        return id
+      end
     end
   end
   for _, t in ipairs(ents.ships or {}) do
@@ -108,9 +115,9 @@ function P.lightning(W, p)
     local person = ents.people[p.person]
     if person and not person.dead then
       local v = ents.villages[person.village]
-      local people = require("sim.systems.people")
-      people.kill(W, v, person, "lightning", id)
-      if v then people.compact(W, v) end
+      local sents = require("sim.society.entities")
+      sents.kill(W, person, "lightning", id)
+      if v then sents.compact(W, v); v.labour_candidate = id end
     end
   end
   -- the ground: fire if there is fuel, and a little heat
@@ -173,7 +180,7 @@ function P.introduce(W, p)
   local sp = p.species or "grazers"
   if sp == "settlers" then
     local id = root(W, "introduce", p.cell, cfg().settlers, { species = "settlers" })
-    require("sim.systems.villages").settlers(W, p.cell, cfg().settlers, id)
+    require("sim.society.mobility").settlers(W, p.cell, cfg().settlers, id)
     return id
   end
   local cells = area(W, p.cell, p.radius or cfg().introduce_radius)
@@ -258,7 +265,8 @@ function P.meteor(W, p)
     end
   end
   -- villages in the blast: houses and people
-  local people = require("sim.systems.people")
+  local sents = require("sim.society.entities")
+  local construction = require("sim.society.construction")
   local set = {}
   for i = 1, #cells do set[cells[i]] = true end
   for _, v in ipairs(W.ent.villages or {}) do
@@ -270,11 +278,13 @@ function P.meteor(W, p)
         local person = W.ent.people[m[k]]
         if person and not person.dead then
           local u = rng.float(W.seed, rng.S.DEATH, person.key, W.tick, 911)
-          if u < share then people.kill(W, v, person, "meteor", id) end
+          if u < share then sents.kill(W, person, "meteor", id) end
         end
       end
-      people.compact(W, v)
-      v.houses = floor(v.houses * (near and 0.2 or 0.6))
+      sents.compact(W, v)
+      construction.damage(W, v, near and 0.8 or 0.4)
+      v.stock.grain = v.stock.grain * (near and 0.3 or 0.7)
+      v.labour_candidate = id
       if v.cause == 0 then v.cause = id end
     end
   end

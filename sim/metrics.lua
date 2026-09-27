@@ -108,7 +108,7 @@ function metrics.compute(W)
   end
   m.population, m.villages = pop, alive
   m.food_security = alive > 0 and fsum / alive or 0
-  local SV = W.S.villages
+  local SV = W.S.society
   m.villages_founded = SV and SV.founded or 0
   m.villages_abandoned = SV and SV.abandoned or 0
   m.headlines = W.E.headline_count or 0

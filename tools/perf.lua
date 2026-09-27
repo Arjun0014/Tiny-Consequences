@@ -56,6 +56,13 @@ function perf.measure(cfg)
     res.systems[s.name] = v
     res.order[#res.order + 1] = s.name
     sum = sum + v
+    if s.hour then
+      local key = s.name .. ":hour"
+      local vh = math.floor((W.profile.ms[key] or 0) / cfg.ticks + 0.5)
+      res.systems[key] = vh
+      res.order[#res.order + 1] = key
+      sum = sum + vh
+    end
   end
   res.other = res.total - sum
   W.profile = nil

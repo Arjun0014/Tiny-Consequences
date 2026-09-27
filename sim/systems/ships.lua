@@ -20,7 +20,6 @@ local floor = math.floor
 
 function sys.init(W)
   W.ent.ships = W.ent.ships or {}
-  W.ent.boats = W.ent.boats or {}
   W.static.lanes = W.static.lanes or {}
 end
 
@@ -87,27 +86,6 @@ function sys.update(W)
         lane.replace_at = tick + 48   -- try again next year
       end
     end
-  end
-  -- boats, monthly: one per few fishers, spread over the village's fishing cells
-  if tick % 4 == 0 then
-    local boats = W.ent.boats
-    local k = 0
-    local vs = W.ent.villages or {}
-    local month = floor(tick / 4)
-    for i = 1, #vs do
-      local v = vs[i]
-      if v.alive and v.boats > 0 and #v.fishing > 0 then
-        local f = v.fishing
-        for j = 1, v.boats do
-          k = k + 1
-          local b = boats[k]
-          if not b then b = {}; boats[k] = b end
-          b.village = v.id
-          b.cell = f[(j + month) % #f + 1]
-        end
-      end
-    end
-    for j = #boats, k + 1, -1 do boats[j] = nil end
   end
 end
 

@@ -10,7 +10,7 @@ return {
   require("sim.systems.fire"),
   require("sim.systems.ocean"),
   require("sim.systems.fauna"),
-  require("sim.systems.villages"),
+  require("sim.society.init"),         -- settlements and people (D-050; slot name "villages")
   require("sim.systems.ships"),
   require("sim.systems.biome"),
   require("sim.causality.detectors"),
