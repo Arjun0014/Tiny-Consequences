@@ -1,65 +1,56 @@
-# Session handoff — session 5 end (28 Sep 2026)
+# Session handoff — session 6 end (28 Sep 2026, stopped early at Arjun's request)
 
-`docs/PROGRESS.md` is the source of truth for state and numbers (the stage entries marked
-session 5). Decisions this session: **D-066** (ties that fade: kin from living parents both ways,
-fading trades/debts/daughter ties; bad blood from contested splits; rivals for overgrazed pasture
-and fished-out grounds; raid motives), **D-067** (the carbon books balance: grass at one weight in
-every flux), **D-068** (expected imports; related blame terms merged; no ghost deliveries; B15a/b),
-**D-069** (performance: the woodcutters move on alone; hash-checked inlining; one-round RNG draws),
-**D-070** (wild herds and packs as group agents — on branch `wip/wild-agents`, not merged).
-Arjun's rules: living world first, jams secondary, **no subagents**, hand off before the context
-runs out.
+`docs/PROGRESS.md` is the source of truth (session 6 stage entry). Decisions this session:
+**D-071** (wild ecology v2 — on branch `wip/wild-agents`, not merged), **D-072** (memory of hunger:
+the store it asks for cannot exist). Arjun's rules: living world first, jams secondary, **no
+subagents**, hand off before the context runs out.
 
 ## State
-- **main**: everything of session 4 plus D-066..D-069. Seed 22 now has grain raids and a
-  submission (none before); seeds 9/3: 63/44 raids, 5/2 submissions over 150 years; grazing and
-  fishing disputes with causes (lightning > fire > grazing_dispute; crop_failure > fishing_dispute).
-  An uninhabited world's CO₂ holds; seed 9 at year 200: 313 ppm, +0.56 °C (was 392, +1.79).
-  B15a/b: a grain cargo lost at sea propagates (re-purchase at the partner's cost / rationing and
-  relief: `power_lightning > boat_lost > rationing > relief`).
-- **Branch `wip/wild-agents`** (bb37a24, on top of main's session-5 work minus D-069's final
-  merge — rebase or merge main before continuing): herds and packs as entities, derived fields,
-  migration, dispersal, real hunting, powers on groups, the view drawing real groups, the herd/pack
-  inspector, `npm run shots:wild`. Fails only fauna stability (predator CV 0.05 < 0.15).
-- **Tests**: the final lines of the session-5 commit message on main give the sim and web results.
+- **main** (behaviour unchanged since session 5): sim 102/102, web 8/8 verified at session start.
+  New on main: `tools/dread_ab.lua` + `tools/dread_ab.py` (A/B of dread), docs.
+- **Branch `wip/wild-agents`**, checked out in the worktree **`../tc-wild`** (d5bae5c). Contains
+  main plus the ecology v2 (D-071; `docs/world/14_ECOLOGY.md` §5 on the branch). The worktree has
+  no `node_modules`/`tools/bob`: run Lua there (`luajit tests/sim/run.lua ...`); build and shoot
+  from main after merging (or copy those folders — never junction them).
+- Branch tests: B18/B19/B20, B04, B15a pass; S07 10/10 and S02 9/10 on the full profile earlier in
+  the session. **Open**:
+  - **P07**: fauna 154k vs 41k VM instructions a tick (+12% total). Cheap cuts: densities are
+    computed twice a month (update and derive), each herd's range is copied from its cached table,
+    the village-cell key is hashed over all land cells on every call. Cut, then re-baseline with a
+    DECISIONS entry.
+  - **B15b**: in the new worlds the only island village trading over the sea (seed 5, Bomox)
+    fishes 62% of its diet and rations even with its cargo, so its rationing does not descend from
+    the loss. Find a subject that depends on bought grain (search more seeds), or a store level at
+    which the control does not ration.
+  - **Worlds**: regenerate default and tutorial.
+  - **Full profile on d5bae5c**: fauna stability, S02, S07, P08, P09, S01 (the pack-size
+    interference, winter carry-over, snow cost 0.8 and kin pairing came after the last full runs).
 
 ## Next (in order)
-1. `npm run test:sim` and `npm run test:web` on main.
-2. **Wild herds and packs** (branch): restore predator-prey cycles through a real mechanism —
-   synchrony from a shared winter severity (snow raises kill success and starvation everywhere at
-   once), the pack's response to prey near its den rather than its territory's mean; keep S02/S07
-   passing; then P08/P09 and the full profile; merge; regenerate worlds; shots.
-3. **Dread evidence** (D-064): several seeds, longer runs, with and without dread
-   (`economy.dread` → `farming.field_want`); if no effect, find out why (is the store the binding
-   constraint? do famines come from causes a bigger store can't absorb?).
-4. **Scale**: a 4,800-person run (soft_cap, max_villages) profiled with `tools/line_profile.lua`;
-   next hot spots: labour.assign's weekly full pass (400 k), life.weekly (250 k), construction.plan.
-5. Agent depth: prestige from contribution (work, catches, gifts) rather than lineage alone;
-   leadership consequences; children's inherited social context.
+1. Branch: optimise fauna; `luajit tests/sim/run.lua` (quick) and `--full --only s02` / `s07` /
+   `fauna`; fix B15b; merge into main; regenerate worlds (`luajit tools/make_world.lua --seed 22`,
+   `--seed 8 --out assets/worlds/tutorial.tcsave`); `npm run test:sim`; `npm run test:web`;
+   `npm run shots:wild` (look at the herds and packs); update D-071; commit.
+2. Dread A/B (D-072): 4+ seeds x on/off, 150 years, 2,400 cap, run **sequentially** (memory);
+   then dread-scaled granaries and surplus-to-gifts/feasts (social storage and prestige).
+3. The 4,800-person scale run with `tools/line_profile.lua` / `tools/society_profile.lua`.
+4. Agent depth: prestige from contribution; leadership consequences; inherited social context.
 
 ## Tools (new this session)
-- `luajit tools/raid_diag.lua <seed|save> <years> [every] [--quiet] [--save out.tcsave]` — why
-  villages do or don't raid (score parts, reckoning, gate) and the political history with chains.
-- `luajit tools/carbon_budget.lua <seed|save> [years] [every] [--no-society]` — sources, sinks,
-  standing biomass per decade.
-- `luajit tools/line_profile.lua <seed|save> [years] [weeks] [pattern] [top] [warm]` — VM
-  instructions by source line and function (warm-up weeks first).
-- `luajit tools/hash_check.lua <save|seed> [weeks] [every] [--nojit] [--warm N]` — state hashes
-  for behaviour-neutral refactors, interpreter timing.
-- Branch only: `tools/wild_report.lua`, `npm run shots:wild` (bridge `wild_spots`).
+- `luajit tools/wild_dyn.lua <seed> [years] [--no-society] [--series] [--groups N] [--monthly Y]`
+  (branch; also runs on main's field model): continental CVs (monthly and yearly), cycle lags,
+  patch synchrony by distance, yearly flows (pups, starvation, dispersal fates, fawns, predation,
+  winter lows).
+- `luajit tools/dread_ab.lua <seed> [years] [--nodread] [--cap N] [--out f.csv]`, then
+  `python tools/dread_ab.py out/dread_*.csv`.
 
 ## Pitfalls
-- VM instruction counts miss C-side costs (string concatenation, table creation, GC): check with
-  `hash_check.lua --nojit`.
-- Profiles right after loading a save include cache rebuilds (sea routes, landings): warm up first.
-- The default world must be regenerated after any sim change (`luajit tools/make_world.lua --seed
-  22` and `--seed 8 --out assets/worlds/tutorial.tcsave`), never while a test run is going.
-- A test run loads sim modules once at start: editing files during a run is safe for it, but not
-  for background tools started later.
-- Bob rejects require cycles even through lazy requires; a `local` declared mid-file is nil in
-  functions defined above it (conflict.lua's `ringset` sits before `M.encroach` for that reason).
-- Git Bash heredocs with apostrophes break: write patch scripts with the Write tool.
-- A second worktree for a clean baseline run works (`git worktree add ../tc-base HEAD`), but never
-  junction `node_modules` / `tools/bob` into it: `git worktree remove --force` followed the junctions
-  and emptied the main checkout's copies (restored with `npm install` and `npm run setup`). Copy
-  them instead, or run the baseline with `git stash`.
+- The laptop had under 1 GB free for much of the session (other Python processes): run long seeds
+  one at a time; check with `cmd //c systeminfo | grep -i "Available Physical"`.
+- Behaviour tests tied to one world's layout (B15) break when worldgen changes: search seeds for a
+  subject that fits the premise instead of hard-coding one.
+- Fauna flow counters: set `W.scratch.wl_dbg = { ..., only = cellset }` (see `tools/wild_dyn.lua`
+  and `tests/sim/behaviour/b_wild.lua`).
+- Session 5 pitfalls still apply: VM counts miss C-side costs; warm up profiles; regenerate worlds
+  after sim changes (never while a test runs); Git Bash heredocs containing apostrophes break —
+  write files with the Write tool.
