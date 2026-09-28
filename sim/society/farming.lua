@@ -97,10 +97,10 @@ end
 
 -- Field plan (weekly, outside the growing season): as many cropped fields as the village needs
 -- with a margin, bounded by the labour it can put into sowing and harvest.
-function M.plan(W, v, workers)
+-- The number of fields village v wants cropped this season (need, imports, margin, remembered
+-- hunger, the store it is content with, the hands it has).
+function M.field_want(W, v, workers)
   local cfg = cfgmod.SOCIETY
-  local F = W.F
-  local lu, fert, soil, ice = F.land_use, F.fertility, F.soil_water, F.ice
   local need_year = v.need_day * 336
   -- what the boats bring in a year (weekly normal of the catch; famine foods — foraging, hunting —
   -- are not a harvest anyone plans on)
@@ -116,15 +116,26 @@ function M.plan(W, v, workers)
   -- food it need not grow; food it usually sells must be grown too
   grain_need = grain_need - (v.norm.food_imp or 0) * 48 * cfg.import_trust + (v.norm.food_exp or 0) * 48 * cfg.export_trust
   if grain_need < need_year * 0.25 then grain_need = need_year * 0.25 end
-  local want = ceil(grain_need * cfg.field_margin / per_field - 0.05)
+  -- a village that remembers hunger sows a wider margin and keeps more in store (D-064)
+  local dread = v.dread or 0
+  local want = ceil(grain_need * cfg.field_margin * (1 + cfg.dread_margin * dread) / per_field - 0.05)
   -- Chayanov: with more than a year and a half of grain in store, nobody breaks their back
   -- for more; fields go fallow until the stores run down
   local grain_years = v.stock.grain / max(1, need_year)
-  if grain_years > 1.5 then want = floor(want * math.max(0.4, 1 - (grain_years - 1.5) * 0.4)) end
+  local enough = 1.5 + cfg.dread_store * dread
+  if grain_years > enough then want = floor(want * math.max(0.4, 1 - (grain_years - enough) * 0.4)) end
   local by_labour = floor(workers * cfg.fields_per_worker + 0.5)
   if want > by_labour then want = by_labour end
   if workers > 0 and want < 1 then want = 1 end
   if want < 0 then want = 0 end
+  return want
+end
+
+function M.plan(W, v, workers)
+  local cfg = cfgmod.SOCIETY
+  local F = W.F
+  local lu, fert, soil, ice = F.land_use, F.fertility, F.soil_water, F.ice
+  local want = M.field_want(W, v, workers)
   -- drop fields that are no longer usable
   for i = #v.farms, 1, -1 do
     local c = v.farms[i]

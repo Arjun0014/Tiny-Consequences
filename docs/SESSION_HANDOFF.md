@@ -1,6 +1,8 @@
 # Session handoff — sea passage, conflict deepened, towns (28 Sep 2026, session 4 checkpoint)
 
-`docs/PROGRESS.md` is the source of truth for state and numbers (latest stage entry: session 4).
+`docs/PROGRESS.md` is the source of truth for state and numbers (latest stage entries: session 4).
+Later in session 4: **D-061** (household herds and bride-wealth, coppicing, polity names and banners),
+**D-062** (friendship; view at speed), **D-063** (skills), **D-064** (generational memory of hunger).
 Spec: `docs/world/` (10–18). Decisions since the last handoff: **D-056** (clouds v4, instanced bake,
 flora v1, exchange & crafts, trails), **D-057** (status, leaders, conflict, scale 2,400), **D-058**
 (tribute polities, herds, society carbon), **D-059** (sea passage in the villages' own boats, weather
@@ -23,14 +25,14 @@ secondary, **no subagents**, hand off at ~900K context.
   (`out/web7.txt`, before the town/conflict changes: re-run).
 
 ## Next (in order)
-1. `npm run test:sim` and `npm run test:web` (re-run web after the towns/raid view changes).
-2. Longer runs at full scale (`luajit tools/exchange_report.lua --seed 9 --years 300 --every 50`):
-   do grain raids and polities appear as land fills (allies now defend kin, D-060)? climate and
-   forests at 2,400 people over centuries? S01 `--full`.
-3. B15 (a trade disruption propagating into rationing/emigration/fields), polity names and a view of
-   them (banners/territory), household wealth (herd shares, tribute to the leader's household).
-4. W6: per-person cost (monthly bodies; `tools/society_profile.lua <seed> <years>`) before any
-   further cap increase.
+1. `npm run test:sim` and `npm run test:web`.
+2. The dry world's climate (seed 9: savanna and CO₂ ≈410 ppm by year 200 at 2,400 people): decide
+   whether the small planet's carbon response needs calibrating (k_co2 for society releases, ocean
+   sink) or is the story; `exchange_report` prints mean forest cover now.
+3. Grain raids and polities are rare within 300 years (allies defend kin, D-060): check 500-year
+   runs; if they never come, revisit the friend threshold or land pressure.
+4. B15 (a trade disruption propagating); wild herds and packs as agents (old W4).
+5. W6: labour.assign and life.weekly are ~33% of the society's cost (per-person work).
 
 ## Tools
 - `luajit tools/exchange_report.lua --seed N --years Y --every K` (trade, raids, cattle raids,

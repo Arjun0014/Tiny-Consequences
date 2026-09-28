@@ -432,6 +432,7 @@ C.SOCIETY = {
                                           --   in the wet): a two-week harvest loses ~5-10%
   weed_rate = 0.02,                       -- weeds per untended week (share of tending not done)
   field_margin = 1.3,                     -- fields for need x this
+  dread_margin = 0.2, dread_store = 1.0,  -- a village remembering hunger (dread 0..1, D-064): margin x (1 + 0.2 dread), store years + dread
   fields_per_worker = 0.11,               -- labour bound on cropped fields
   farm_radius = 3,                        -- level-4 steps (scaled): fields within (walking cost in the plan)
   clear_h = 600,                          -- hours to clear a unit of forest for a field

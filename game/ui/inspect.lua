@@ -346,6 +346,12 @@ local function village_items(W, v, items)
   end
   -- society (W8-W10): leader, lineages, herd, crafts and trade, lord and tributaries, feuds
   M.society_items(W, v, items)
+  -- the hunger it remembers (D-064)
+  if (v.dread or 0) >= 0.15 then
+    local r = v.dread_ev and W.E and W.E.rec and W.E.rec[v.dread_ev]
+    local what = r and string.format("the %s of year %d", tostring(r.kind):gsub("_", " "), floor((r.tick or 0) / 48)) or "hunger"
+    add(items, { t = "text", icon = "bread", text = string.format("They remember %s (dread %d%%): they sow more and keep more in store", what, floor(v.dread * 100 + 0.5)) })
+  end
   -- its chronicle: the last entries, oldest first
   local ch = M.chronicle(W, v)
   if #ch > 0 then
@@ -469,7 +475,11 @@ function M.reason(W, v, p)
   local t = p.task
   local fd = v.food_days or 0
   if t == "sow" or t == "tend" or t == "care" or t == "harvest" or t == "clear" then
-    return string.format("%d fields feed %d people; grain in store for %s", #(v.farms or {}), v.pop or 0, days_text(fd))
+    local rem = ""
+    if (v.dread or 0) >= 0.25 and v.dread_ev and W.E and W.E.rec and W.E.rec[v.dread_ev] then
+      rem = string.format("; they remember the %s of year %d", tostring(W.E.rec[v.dread_ev].kind):gsub("_", " "), floor((W.E.rec[v.dread_ev].tick or 0) / 48))
+    end
+    return string.format("%d fields feed %d people; grain in store for %s%s", #(v.farms or {}), v.pop or 0, days_text(fd), rem)
   elseif t == "fuel" or t == "brush" then
     return "The woodpile holds " .. days_text(v.wood_days) .. " of fuel"
   elseif t == "timber" then

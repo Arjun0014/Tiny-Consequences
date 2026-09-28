@@ -8,4 +8,5 @@ return {
   "tests.sim.behaviour.b_day",
   "tests.sim.behaviour.b_sea",
   "tests.sim.behaviour.b_conflict",
+  "tests.sim.behaviour.b_memory",
 }

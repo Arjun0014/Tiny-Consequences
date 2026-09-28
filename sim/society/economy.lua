@@ -148,6 +148,40 @@ function M.daily(W, v, wx)
   v.wood_days = fuel > 0 and st.wood / fuel or 999
 end
 
+-- Monthly: the village's dread of hunger (D-064) — how strongly its grown-ups remember going
+-- hungry (famine, seed eaten, a failed harvest; each person's strongest such memory), 0..1, and
+-- the event most of them remember. The remembered famine makes a village sow and store more.
+local DREAD = { famine = 1.0, seed_eaten = 0.7, crop_failure = 0.45, rationing = 0.3 }
+function M.dread(W, v)
+  local P = W.ent.people
+  local rec = W.E and W.E.rec or {}
+  local hour = W.hour
+  local sum, n = 0, 0
+  local count, best, bn = {}, 0, 0
+  for i = 1, #v.members do
+    local p = P[v.members[i]]
+    if p and (hour - p.born) >= 16 * 8064 then
+      n = n + 1
+      local mem = p.mem
+      local w, we = 0, 0
+      for k = 1, #mem - 1, 2 do
+        local r = rec[mem[k]]
+        local d = r and DREAD[r.kind]
+        if d and d * mem[k + 1] > w then w, we = d * mem[k + 1], mem[k] end
+      end
+      sum = sum + w
+      if we ~= 0 then
+        local c = (count[we] or 0) + 1
+        count[we] = c
+        if c > bn or (c == bn and we < best) then best, bn = we, c end
+      end
+    end
+  end
+  v.dread = n > 0 and floor(sum / n * 1000 + 0.5) / 1000 or 0
+  v.dread_ev = best ~= 0 and best or nil
+  return v.dread
+end
+
 -- Weekly: stock tags, famine, wood shortage, crop failure, deaths spike, labour tag.
 function M.weekly(W, v)
   local cfg = cfgmod.SOCIETY

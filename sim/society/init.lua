@@ -212,6 +212,7 @@ end
 local function village_month(W, v)
   life.monthly(W, v)
   economy.monthly(W, v)
+  economy.dread(W, v)
   mobility.monthly(W, v)
   if v.alive and v.pop > 0 then
     status.monthly(W, v)

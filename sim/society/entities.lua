@@ -231,7 +231,10 @@ function M.fade_memories(p, f)
   local mem = p.mem
   local k = 0
   for i = 1, #mem, 2 do
-    local s = mem[i + 1] * f
+    -- (the worst things are remembered longest: a famine for decades, a smoky week for a year)
+    local s0 = mem[i + 1]
+    local w = s0 * 1.3
+    local s = s0 * f ^ (1 - 0.95 * (w < 1 and w or 1))
     if s >= 0.05 then
       k = k + 2
       mem[k - 1] = mem[i]
@@ -278,12 +281,20 @@ function M.kill(W, p, cause, tag)
     if tag and tag ~= 0 and cause ~= "age" then v.death_tag = tag end
     W.S.society.deaths = W.S.society.deaths + 1
   end
-  -- family grief: a personal memory of the cause for the partner and parents
+  -- family grief: a personal memory of the cause for the partner and parents; friends grieve
+  -- too, less (D-062)
   if tag and tag ~= 0 then
     local sal = cfgmod.PEOPLE.grief_salience
     for _, rid in ipairs({ p.partner, p.mother, p.father }) do
       local q = rid ~= 0 and E.people[rid]
       if q and not q.dead then M.remember(q, tag, sal) end
+    end
+    local f = p.friends
+    if f then
+      for i = 1, #f do
+        local q = E.people[f[i]]
+        if q and not q.dead then M.remember(q, tag, sal * 0.5) end
+      end
     end
   end
 end
