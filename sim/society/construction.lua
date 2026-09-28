@@ -63,6 +63,7 @@ M.vacant_houses = vacant_houses
 -- One pass over the village's buildings: counts by kind and by kind:state (scratch, reused).
 local CNT = {}
 local CNT_KEYS = {}
+local KS = {}   -- KS[kind][state] = kind .. ":" .. state (made once, not per building per week)
 local function tally(W, v)
   local B = W.ent.buildings
   for i = 1, #CNT_KEYS do CNT[CNT_KEYS[i]] = 0 end
@@ -74,8 +75,13 @@ local function tally(W, v)
   for i = 1, #v.buildings do
     local b = B[v.buildings[i]]
     if b then
-      inc(b.kind)
-      inc(b.kind .. ":" .. b.state)
+      local kind, state = b.kind, b.state
+      inc(kind)
+      local ks = KS[kind]
+      if not ks then ks = {}; KS[kind] = ks end
+      local key = ks[state]
+      if not key then key = kind .. ":" .. state; ks[state] = key end
+      inc(key)
       if b.state == "site" then inc("sites") end
       if b.state == "standing" and (b.kind == "house" or b.kind == "hut") and b.household == 0 then inc("vacant") end
     end

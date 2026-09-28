@@ -1,6 +1,7 @@
 -- Line-level cost of the simulation: Lua VM instructions sampled by source line (the JIT off,
 -- a count hook every STEP instructions: load-independent, like society_profile).
---   luajit tools/line_profile.lua <seed | world.tcsave> [years=0] [weeks=8] [pattern=society] [top=60]
+--   luajit tools/line_profile.lua <seed | world.tcsave> [years=0] [weeks=8] [pattern=society] [top=60] [warm=4]
+-- (the first `warm` weeks run unprofiled: derived caches — sea routes, landings — fill after a load)
 -- Prints the hottest lines (instructions per planet week) and a per-function summary for the
 -- source files matching `pattern`, plus each file's share of the whole.
 package.path = "./?.lua;./?/init.lua;" .. package.path
@@ -17,6 +18,8 @@ if years > 0 then world.run_years(W, years) end
 local weeks = tonumber(arg[3]) or 8
 local pat = arg[4] or "society"
 local top = tonumber(arg[5]) or 60
+local warm = tonumber(arg[6]) or 4
+for _ = 1, warm do world.tick(W) end
 local STEP = 7
 local lines, funcs, files = {}, {}, {}
 local total = 0
