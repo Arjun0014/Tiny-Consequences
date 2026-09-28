@@ -61,11 +61,15 @@ local function ledger(r, a, b)
   return r.gba, r.gab
 end
 
+-- a came to b's help (allies in a fight, conflict.battle): a gift of `days` need-days of help
+function M.helped(W, a, b, days) return M.give_days(W, a, b, days) end
+
 local function give(W, a, b, days)
   local r = M.get(W, a, b, true)
   if a < b then r.gab = r.gab + days else r.gba = r.gba + days end
   r.last = W.hour
 end
+M.give_days = give
 
 -- How well disposed village u is toward village v (>= 0 friendly): the parent/daughter tie, kin,
 -- past trades, and the balance of gifts (a village that took much and gave little asks in vain).
@@ -79,7 +83,10 @@ function M.score(W, u, v)
   end
   local r = M.get(W, u.id, v.id)
   if r then
-    s = s + 0.25 * min(6, r.kin) + 0.15 * min(5, r.trades)
+    -- kin by share: a handful of in-laws bind two hamlets, not two towns (per 30 people of the
+    -- smaller village)
+    local small = min(u.pop or 30, v.pop or 30)
+    s = s + 0.25 * min(6, r.kin * 30 / max(30, small)) + 0.15 * min(5, r.trades)
     local gave, got = ledger(r, u.id, v.id)
     s = s - 0.004 * max(0, gave - got)   -- ~250 need-days unreturned cancel a daughter tie
     -- grievance (W8): what u holds against v

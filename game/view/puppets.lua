@@ -887,14 +887,33 @@ function M.update_stock(W, dt, frozen, t)
         end
       end
     end
+    -- beasts driven home by cattle raiders (W8): they trail the raiding party
+    local E = W.ent
+    for _, id in ipairs(E.party_list or {}) do
+      local party = E.parties and E.parties[id]
+      local b = party and party.kind == "raid_home" and party.cargo and party.cargo.beasts
+      if b then
+        local pi = schedule.party_pos(W, party, t)
+        local c = party.path[pi]
+        if c and g.X[c] * fx + g.Y[c] * fy + g.Z[c] * fz > dot then
+          local tot = (b.sheep or 0) + (b.goats or 0) + (b.cattle or 0)
+          local n = math.min(10, floor(herds.se(b) / 6 + 0.5))
+          for k = 1, n do
+            local f = (k - 0.5) / n * tot
+            local kind = f < (b.sheep or 0) and "sheep" or (f < (b.sheep or 0) + (b.goats or 0) and "goats" or "cattle")
+            want[#want + 1] = { party = party, k = k, kind = kind }
+          end
+        end
+      end
+    end
     for i, p in ipairs(M.stock) do
       local w = want[i]
       if w then
         if p.kind2 ~= w.kind then p.kind2 = w.kind; go.set(p.url, "vertices", M.stock_res[w.kind]) end
-        p.v, p.k = w.v, w.k
+        p.v, p.k, p.party = w.v, w.k, w.party
         set_on(p, true)
       else
-        p.v = nil
+        p.v, p.party = nil, nil
         set_on(p, false)
       end
     end
@@ -902,7 +921,22 @@ function M.update_stock(W, dt, frozen, t)
   local ns = 0
   for _, p in ipairs(M.stock) do
     local v = p.v
-    if p.on and v then
+    if p.on and p.party then
+      -- driven along the raiders' road, a little behind them
+      local party = p.party
+      if W.ent.parties and W.ent.parties[party.id] then
+        ns = ns + 1
+        local k = #party.members + p.k
+        local x, y, z, _, hx, hy, hz = locate_traveller(W, party, k, t)
+        local a = (p.k * 2.39996) % 6.283
+        x, y, z = offset(x, y, z, a, 0.006)
+        local r, vv = M.surface(x, y, z, p.vtx)
+        p.vtx = vv
+        place(p, x, y, z, r, -heading(x, y, z, hx, hy, hz), M.SCALE)
+      else
+        set_on(p, false)
+      end
+    elseif p.on and v then
       ns = ns + 1
       local lh = daylight.local_hour(t, g.lon[v.cell])
       local plan = v.plan

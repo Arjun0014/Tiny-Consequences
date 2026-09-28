@@ -566,6 +566,27 @@ C.CONFLICT = {
   win_prestige = 1.5, raider_prestige = 0.4,
   palisade_years = 12,                    -- villages raided within this many years build a palisade
   gift_forgives = 0.02,                   -- grievance washed away per need-day of relief received
+  -- allies (a village's lord, and villages that hold it dear within a day's walk) come to its defence
+  ally_score = 1.0, ally_reach = 6,       -- relation score and distance (cell spacings)
+  ally_share = 0.3, ally_lord_share = 0.5,  -- share of their fighting men who come
+  ally_grievance = 1.0,                   -- the allies' grudge against the raiders
+  ally_days = 3,                          -- need-days of help each allied man counts for (reciprocity)
+  -- fear: households of a village raided within fear_years look for safety (defensive aggregation)
+  fear_years = 6, push_raided = 0.6, safety_pull = 0.5,
+  -- cattle raids: a small party runs off a neighbour's herd from its pasture
+  cattle_party = 10, cattle_share = 0.3,  -- raiders: at most, and the share of the fighting men
+  cattle_per_raider = 12,                 -- sheep-equivalents a raider drives home
+  cattle_alarm = 0.05,                    -- share of the village's men the alarm brings to the pasture
+  cattle_surprise = 2.0,                  -- raiders strike the pasture by night
+  cattle_reach = 9, cattle_min_se = 30,   -- cell spacings; herds worth raiding
+  cattle_lack = 1.0, cattle_bachelors = 0.3,  -- motives: beasts lacking, young men without wives
+  cattle_risk = 0.2,                      -- the cost of a failed raid (value units: they run when outmatched)
+  cattle_grievance = 1.5,                 -- the grudge a cattle raid leaves (+ per herder killed)
+  cattle_threshold = 0.4,                 -- a cattle raid must promise this much (value units)
+  -- feuds: revenge taken settles the raider's own grudge; after truce_after raids between two
+  -- villages their leaders may make a truce (monthly chance x raids beyond it, less for warlike leaders)
+  revenge_satisfies = 1.5,
+  truce_after = 3, truce_prob = 0.03, truce_years = 20, truce_prestige = 0.8,
   want_breaks_ties = 0.9,                 -- hunger / land want lets a village raid this much better friends
   encroach_grievance = 0.6,               -- a land-short village's grievance when a neighbour takes a shared field
   -- tribute (W9, D-058)

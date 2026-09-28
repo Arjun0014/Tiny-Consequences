@@ -156,6 +156,8 @@ function M.depart(W, v, members, to, site, kind, reason, food, seed, cargo, from
   E.next_party = id + 1
   -- decisions are taken at the village's local midnight; they set off at first light
   local dep = W.hour + floor(v.plan.ws or 6)
+  -- (raiders flee with their loot at once)
+  if kind == "raid_home" then dep = W.hour end
   local hours, hl, hs = walk_hours(W, path, si, sj)
   -- a crossing waits out a storm at the mooring (a day at a time, three at most)
   if si then dep = sea.weather_wait(W, path[si], dep) end
@@ -475,6 +477,22 @@ local function prospects(W, u, extra_need, extra_people)
   return p
 end
 
+-- A standing palisade (W8).
+local function walled(W, u)
+  local B = W.ent.buildings
+  for i = 1, #u.buildings do
+    local b = B[u.buildings[i]]
+    if b and b.kind == "palisade" and b.state == "standing" and (b.condition or 1) > 0.3 then return true end
+  end
+  return false
+end
+
+-- Afraid: v was raided within fear_years and has no wall (defensive aggregation, W8).
+local function afraid(W, v)
+  local cc = cfgmod.CONFLICT
+  return v.raided and W.hour - v.raided < cc.fear_years * 8064 and not walled(W, v)
+end
+
 -- Where would a household from v go? Returns the best destination village and its pull.
 local function best_destination(W, v, h, housing, added)
   local hour = W.hour
@@ -484,6 +502,7 @@ local function best_destination(W, v, h, housing, added)
   local cfg = cfgmod.SOCIETY
   local need = 0
   for j = 1, #h.members do need = need + ents.need_of(W, P[h.members[j]]) end
+  local fear = afraid(W, v)
   local best, bp = nil, -1e9
   for i = 1, #vs do
     local u = vs[i]
@@ -524,6 +543,8 @@ local function best_destination(W, v, h, housing, added)
           elseif u.stock.wood > cfg.build.house.wood then pull = pull + 0.25 end
         end
         if kin then pull = pull + 0.3 end
+        -- the frightened look for safety: a walled village, or one far stronger than home
+        if fear and (walled(W, u) or u.pop >= v.pop * 2.5) then pull = pull + cfgmod.CONFLICT.safety_pull end
         pull = pull - d * cfg.walk_h * 1.5 / 10 * 0.05
         if pull > bp then best, bp = u, pull end
       end
@@ -554,6 +575,7 @@ function M.monthly(W, v)
   local month = floor(hour / 672)
   local u0 = rng.float(W.seed, rng.S.MIGRATION, v.key_cell, month, v.key_hour % 65536)
   local home_pull0 = prospects(W, v, 0) + cfg.home_ties
+  local fear_here = afraid(W, v)
   local leavers = {}
   local added = {}
   local reason = v.cause
@@ -585,6 +607,8 @@ function M.monthly(W, v)
       end
       -- a dwindling village (not a young colony, which starts small)
       if v.pop < 6 and hour - v.founded > cfg.colony_years * 8064 then push = push + cfg.push_small end
+      -- raided and unwalled: fear (defensive aggregation: hamlets empty into walled villages)
+      if fear_here then push = push + cfgmod.CONFLICT.push_raided end
       if push >= 1 then
         local dest, pull = best_destination(W, v, h, h.home == 0 or housing_push, added)
         local u = (u0 + (h.key % 1000) / 1000 * 1.618) % 1

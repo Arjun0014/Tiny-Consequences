@@ -18,7 +18,7 @@ for _, p in ipairs({ "lightning", "rain", "drought", "heat", "chill", "cull", "i
 end
 -- test roots (actor player, used by scenario hooks before powers exist)
 for _, t in ipairs({ "remove_predators", "ignite", "oil", "burn_farms", "add_grazers",
-  "heat", "drought", "kill_fish", "sink_tanker", "generic", "empty_stores", "emigrate", "voyage" }) do
+  "heat", "drought", "kill_fish", "sink_tanker", "generic", "empty_stores", "emigrate", "voyage", "cattle_raid" }) do
   def("test_" .. t, { actor = "player", icon = "test", headline = false, text = "Test: " .. t })
 end
 
@@ -88,6 +88,9 @@ def("new_leader",       { actor = "derived", icon = "people", text = "A new lead
 def("village_split",    { actor = "derived", icon = "people", headline = true, text = "A lineage leaves to found its own village" })
 def("raid",             { actor = "derived", icon = "fire", headline = true, text = "Raided" })
 def("raid_repelled",    { actor = "derived", icon = "people", headline = true, text = "A raid beaten off" })
+def("cattle_raid",      { actor = "derived", icon = "deer", headline = true, text = "Herds driven off by raiders" })
+def("cattle_raid_repelled", { actor = "derived", icon = "people", text = "Cattle raiders chased off" })
+def("truce",            { actor = "derived", icon = "people", headline = true, text = "A feud ends in a truce" })
 -- tribute and polities (W9, docs/world/18 §2.5)
 def("submission",       { actor = "derived", icon = "people", headline = true, text = "Submits and pays tribute" })
 def("secession",        { actor = "derived", icon = "people", headline = true, text = "Stops paying tribute" })

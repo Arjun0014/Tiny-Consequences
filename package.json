@@ -30,7 +30,8 @@
     "sim:tutorial": "node scripts/lua.mjs tools/tutorial_scout.lua",
     "shots:village": "node scripts/shots_village.mjs",
     "shots:biomes": "node scripts/shots_biomes.mjs",
-    "shots:voyage": "node scripts/shots_voyage.mjs"
+    "shots:voyage": "node scripts/shots_voyage.mjs",
+    "shots:raid": "node scripts/shots_raid.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"

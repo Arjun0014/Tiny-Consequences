@@ -237,6 +237,42 @@ function hooks.voyage(W, p)
   return id
 end
 
+-- A cattle raid (D-060): the largest village with men to spare sends raiders against the nearest
+-- herd on its landmass (or p.from / p.to).
+function hooks.cattle_raid(W, p)
+  local conflict = require("sim.society.conflict")
+  local herds = require("sim.society.herds")
+  local sites = require("sim.society.sites")
+  local vs = W.ent.villages
+  local best, bu, bd = nil, nil, 1e9
+  for _, v in ipairs(vs) do
+    if v.alive and (not p.from or v.id == p.from) and not v.raid_out and conflict.fighters(W, v) >= 8 then
+      for _, u in ipairs(vs) do
+        if u ~= v and u.alive and u.continent == v.continent and u.herd and herds.se(u.herd) >= 30
+          and (not p.to or u.id == p.to) then
+          local d = sites.dist(W, v.cell, u.cell)
+          if d < bd then best, bu, bd = v, u, d end
+        end
+      end
+    end
+  end
+  if not best then return 0 end
+  hooks.last_probe = { from = best.id, to = bu.id }
+  if p.probe then return 0 end
+  local list = {}
+  conflict.fighters(W, best, list)
+  table.sort(list, function(a, b) if a.health ~= b.health then return a.health > b.health end return a.id < b.id end)
+  local party = {}
+  for i = 1, math.min(p.n or 6, #list) do party[i] = list[i] end
+  local id = root(W, "cattle_raid", { best.cell }, #party, { from = best.id, to = bu.id })
+  best.raid_out = true
+  best.raid_last = W.hour
+  local pa = require("sim.society.mobility").depart(W, best, party, bu.id, nil, "raid", id, 0, 0,
+    { target = bu.id, home = best.id, pwin = 0.5, cattle = true })
+  hooks.last_raid = pa.id
+  return id
+end
+
 world.COMMANDS.test_action = function(W, params)
   local fn = hooks[params.name]
   if not fn then error("unknown test hook " .. tostring(params.name)) end

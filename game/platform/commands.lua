@@ -198,6 +198,45 @@ function M.register(G)
       si = party.si, sj = party.sj, cell = mid, lat = math.deg(g.lat[mid]), lon = math.deg(g.lon[mid]),
       boat = party.boats and party.boats[1] }
   end)
+  -- a cattle raid (sim/testhooks.lua cattle_raid), for screenshots: returns the party and the
+  -- raiders' village
+  bridge.register("cattle_raid", function(args)
+    local W = G.W
+    local world = require("sim.world")
+    local hooks = require("sim.testhooks")
+    hooks.last_raid = nil
+    if args.probe then
+      hooks.cattle_raid(W, { from = args.from, to = args.to, probe = true })
+      local pr = hooks.last_probe
+      if not pr then error("no raid possible", 0) end
+      local c = W.ent.villages[pr.from].cell
+      return { from = pr.from, to = pr.to, lat = math.deg(W.grid.lat[c]), lon = math.deg(W.grid.lon[c]) }
+    end
+    world.test_action(W, "cattle_raid", { from = args.from, to = args.to, n = args.n })
+    world.step(W)
+    local party = hooks.last_raid and W.ent.parties[hooks.last_raid]
+    if not party then error("no raid possible", 0) end
+    local g = W.grid
+    local c = W.ent.villages[party.cargo.target].cell
+    return { party = party.id, from = party.from, to = party.to, depart = party.depart, arrive = party.arrive,
+      hour = W.hour, lat = math.deg(g.lat[c]), lon = math.deg(g.lon[c]) }
+  end)
+  -- where a party is now (any kind; follows the raiders home: the newest party from their target)
+  bridge.register("party_pos", function(args)
+    local W = G.W
+    local g = W.grid
+    local party = W.ent.parties and W.ent.parties[args.party or 0]
+    if not party and args.home then
+      for id, q in pairs(W.ent.parties or {}) do
+        if q.to == args.home and (q.kind == "raid_home" or q.kind == "returning") and (not party or id > party.id) then party = q end
+      end
+    end
+    if not party then error("no such party", 0) end
+    local i = require("sim.society.schedule").party_pos(W, party, W.hour)
+    local c = party.path[i]
+    return { party = party.id, kind = party.kind, hour = W.hour, cell = c, lat = math.deg(g.lat[c]), lon = math.deg(g.lon[c]),
+      arrive = party.arrive }
+  end)
   -- where a voyage is now: its boat (at sea, beached, sailing home), else the party on land
   bridge.register("voyage_pos", function(args)
     local W = G.W

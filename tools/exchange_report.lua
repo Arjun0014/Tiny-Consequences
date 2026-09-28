@@ -30,7 +30,7 @@ for y = 1, args.years do
     if r then
       count(r.kind)
       if r.kind == "trade" and r.data then count("trade_" .. tostring(r.data.give) .. "_for_" .. tostring(r.data.get)); count("get_" .. tostring(r.data.get)) end
-      if (r.kind == "raid" or r.kind == "raid_repelled" or r.kind == "village_split" or r.kind == "submission" or r.kind == "secession") and #chains < 30 then
+      if (r.kind == "raid" or r.kind == "raid_repelled" or r.kind == "truce" or r.kind == "submission" or r.kind == "secession") and #chains < 30 then
         local ch = events.chain(W, id)
         local ks = {}
         for q = 1, #ch do ks[q] = ch[q].kind end
@@ -75,8 +75,15 @@ for y = 1, args.years do
     local ps = {}
     for k, t in pairs(pol) do ps[#ps + 1] = k .. " (" .. t .. " tiers)" end
     table.sort(ps)
-    print(string.format("      raids %d repelled %d splits %d leaders %d palisades %d | submissions %d secessions %d tribute %d | polities: %s",
-      counts.raid or 0, counts.raid_repelled or 0, counts.village_split or 0, counts.new_leader or 0, pal,
+    local raid_dead, allied = 0, 0
+    for _, v in ipairs(W.ent.villages) do
+      local a = v.acc_last or {}
+      raid_dead = raid_dead + (a.d_raid or 0)
+      allied = allied + (a.allied or 0)
+    end
+    print(string.format("      raids %d repelled %d cattle raids %d chased off %d (raid deaths last year %d, allied last year %d) truces %d splits %d leaders %d palisades %d | submissions %d secessions %d tribute %d | polities: %s",
+      counts.raid or 0, counts.raid_repelled or 0, counts.cattle_raid or 0, counts.cattle_raid_repelled or 0, raid_dead, allied, counts.truce or 0,
+      counts.village_split or 0, counts.new_leader or 0, pal,
       counts.submission or 0, counts.secession or 0, counts.tribute or 0, table.concat(ps, ", ")))
     print(string.format("y%3d villages %2d pop %4d rel %2d | relief %3d trade %3d (food %d wood %d tools %d pots %d cloth %d) bride %3d | famine %2d rationing %3d migration %3d | trails %3d cells (max %.0f)",
       y, alive, pop, nrel, counts.relief or 0, counts.trade or 0, counts.get_food or 0, counts.get_wood or 0,
