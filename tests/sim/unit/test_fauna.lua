@@ -7,14 +7,22 @@ local fauna = require("sim.systems.fauna")
 local cfgmod = require("sim.config")
 local M = {}
 
--- Herds and packs (W4, D-070): with births, deaths and predation switched off, moving, migrating,
--- splitting and joining neither make nor lose animals, and the herds do move.
+-- Herds and packs (W4, D-070, D-071): with births, deaths and predation switched off, moving,
+-- migrating, splitting, joining and the wolves' dispersal neither make nor lose animals, and the
+-- herds do move.
 function M.groups_move_and_conserve_animals()
   local W = scen.fresh_world(1)
   local F = cfgmod.FAUNA
   local Wc = cfgmod.WILD
-  local keep = { F.r_grazer, F.a_pred, F.e_pred, F.m_pred, F.fire_mort, Wc.hunt_rate, F.starve_max }
-  F.r_grazer, F.a_pred, F.e_pred, F.m_pred, F.fire_mort, Wc.hunt_rate, F.starve_max = 0, 0, 0, 0, 0, 0, 0
+  -- (every birth and death off: predation, fire, hunting, fawns and litters, starvation, old age,
+  -- deaths on the way; dispersal, moving, splitting and joining stay on)
+  local KF = { "a_pred", "fire_mort" }
+  local KW = { "hunt_rate", "fawns", "litter", "h_starve_max", "p_starve_max", "h_mort", "p_mort" }
+  local keep = {}
+  for _, k in ipairs(KF) do keep["F" .. k] = F[k]; F[k] = 0 end
+  for _, k in ipairs(KW) do keep["W" .. k] = Wc[k]; Wc[k] = 0 end
+  keep.surv = Wc.disperse_survival
+  Wc.disperse_survival = 1
   local ok, err = pcall(function()
     local A = W.S.wild
     local function sums()
@@ -39,7 +47,9 @@ function M.groups_move_and_conserve_animals()
     T.ok(moved > 0, "herds moved")
     return string.format("%d herds (%.0f animals), %d packs (%.0f): %d herds moved in two years", A.nh, h1, A.np, p1, moved)
   end)
-  F.r_grazer, F.a_pred, F.e_pred, F.m_pred, F.fire_mort, Wc.hunt_rate, F.starve_max = keep[1], keep[2], keep[3], keep[4], keep[5], keep[6], keep[7]
+  for _, k in ipairs(KF) do F[k] = keep["F" .. k] end
+  for _, k in ipairs(KW) do Wc[k] = keep["W" .. k] end
+  Wc.disperse_survival = keep.surv
   if not ok then error(err, 0) end
   return err
 end

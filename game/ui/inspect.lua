@@ -931,7 +931,17 @@ function M.build(W, sel)
         add(items, { t = "row", icon = "deer", label = "Ranges", value = "summers " .. (M.region_name(W, A.h_home[i]) or "here")
           .. ", winters " .. (M.region_name(W, wint) or "nearby") .. (going and " (on the way)" or "") })
       end
+      -- body condition (D-071): the reserves a herd fattens in summer and lives on in winter
+      local cond = A.h_cond and A.h_cond[i] or 0.6
+      local cw = cond >= 0.8 and "fat" or cond >= 0.55 and "in fair shape" or cond >= 0.3 and "thin" or "starving"
+      add(items, { t = "bar", icon = "deer", label = "Condition", frac = cond, value = cw })
       add(items, { t = "bar", icon = "leaf", label = "Grass here", frac = F.grass[c], value = pct(F.grass[c]) })
+      local why
+      if F.ice[c] > 0.3 then why = "Snow hides the grass: they dig for it, browse the trees and live on their fat."
+      elseif cond < 0.3 then why = "Too many for the grass: the weak are starving, the does will have few fawns."
+      elseif cond < 0.55 then why = "The grass barely feeds them: they turn to the trees, and wolves take the weak."
+      else why = "Well fed: the does will fawn well in the spring." end
+      add(items, { t = "text", text = why })
       local wolves = floor(F.predators[c] * wcfg.ppc + 0.5)
       add(items, { t = "row", icon = "wolf", label = "Hunted by", value = wolves > 0 and (wolves .. " wolves ranging here") or "no pack ranges here" })
       if W.hour - A.h_moved[i] < 8064 then
@@ -952,6 +962,15 @@ function M.build(W, sel)
       prey = F.grazers[c]
       for k = 1, g.nbr_count[c] do prey = prey + F.grazers[g.nbr[b + k]] end
       add(items, { t = "row", icon = "deer", label = "Prey about the den", value = floor(prey * wcfg.gpc + 0.5) .. " grazers" })
+      local cond = A.p_cond and A.p_cond[i] or 0.6
+      local cw = cond >= 0.75 and "well fed" or cond >= 0.45 and "getting by" or cond >= wcfg.p_starve and "hungry" or "starving"
+      add(items, { t = "bar", icon = "wolf", label = "Condition", frac = cond, value = cw })
+      local why
+      if A.p_n[i] < 2 then why = "A lone wolf: it holds this ground and roams far for a mate."
+      elseif cond < wcfg.p_starve then why = "Starving: the pack is breaking up, the ones it cannot feed are leaving."
+      elseif cond < 0.45 then why = "Few kills: there will be few pups, and the young will leave in the autumn."
+      else why = "Good hunting: a big litter in the spring, and young enough to found packs of their own." end
+      add(items, { t = "text", text = why })
       if W.hour - A.p_moved[i] < 8064 and A.p_prev[i] ~= c then
         add(items, { t = "row", icon = "wolf", label = "Moved", value = "followed the herds from " .. (M.region_name(W, A.p_prev[i]) or "nearby") })
       end

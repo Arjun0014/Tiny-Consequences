@@ -1,28 +1,41 @@
--- Wild animals as herds and packs (docs/world/14_ECOLOGY.md §3, W4; session 5, D-070).
+-- Wild animals as herds and packs (docs/world/14_ECOLOGY.md §3, W4; D-070, D-071).
 --
 -- The animals live in groups that are real entities: a herd of deer, reindeer, antelope or boar
 -- (W.S.wild h_*) and a pack of wolves or big cats (p_*), each with a centre cell, a head count, a
--- cause tag and its last move. A herd spends 40% of its time on its centre cell and the rest on
--- the cells about it (its range); a pack ranges two cells from its den (its territory). The
--- ecology is the calibrated density model of the planet layer (02 §5.9, D-012), evaluated on the
--- densities the groups make — so the planet fields F.grazers and F.predators are derived views
--- (animals per cell / WILD.gpc, WILD.ppc) and vegetation pressure, the detectors, the release
--- blame, powers and hunting keep their meaning:
---   food       = (grass + 0.5 crop) × (1 − snow_block × ice)          -- snow hides food in winter
---   K_eff      = K × food / (food + h_food)
---   a herd    += n (r × season − r H / K_eff  [≥ −starve_max]  − predation/H − fire − hunting)
---              (births come in the local spring and summer; the year's mean is r)
---   predation  = a P max(0, H − refuge) / (1 + a t_h max(0, H − refuge))   -- Holling II + refuge
---   a pack    += n (e predation / P − m − fire − culling)
--- where H and P are the cell densities all groups make and a group's rate is the mean over its
--- range, weighted by the time it spends on each cell. What a group does is its own:
+-- body condition (fat reserves, 0..1), a cause tag and its last move. A herd spends 40% of its
+-- time on its centre cell and the rest on the cells about it (its range); a pack ranges two cells
+-- from its den (its territory). The planet fields F.grazers and F.predators are derived views
+-- (animals per cell / WILD.gpc, WILD.ppc), so vegetation pressure, the detectors, the release
+-- blame, powers and hunting keep their meaning. H and P below are the cell densities all groups
+-- make; a group feels the cells of its range, weighted by its time on each.
+--   food       = (grass + 0.5 crop) × (1 − snow_block × snow)           -- snow hides food in winter
+--   forage     = min(i_max, food / (φ H + ψ)) − snow_cost × snow        -- per head; 1 = enough
+--                (deep snow costs energy to wade through as well as hiding the grass)
+--   condition += h_gain × (forage − 1) a month: herds fatten in summer and live on their reserves
+--                through a snowy winter or a dry season
+--   fawns      once a year in the local late spring: n × fawns × f(condition) — a hard winter
+--                is paid for in the next spring's fawns
+--   starvation when the reserves are spent; a little old age
+--   predation  = a' P max(0, H − refuge) / (1 + a' t_h max(0, H − refuge))   -- Holling II + refuge
+--                a' = a × (1 + snow_kill × snow) × (1 + weak_kill × weakness of the prey there):
+--                wolves kill two or three times as often in deep snow and take the weak (Nelson &
+--                Mech 1986; Post et al. 1999)
+--   a pack's condition += p_gain × (kills per wolf / need − 1) a month; one litter a year in the
+--                spring (the breeding pair's), its size by the pack's condition; starvation when
+--                the reserves are spent; in the autumn a pack keeps as many as it can feed and
+--                the rest disperse — far, toward prey, to found a pack on empty ground, to pair
+--                with a lone wolf, or to be taken into a pack that has room; many die on the way
+-- So winters shared across a region (the climate's year-to-year wobble) weaken the herds and feed
+-- the packs everywhere at once, the packs' numbers answer a spring later, and dispersers carry
+-- wolves from hungry country to prey-rich country: the cycles are regional (the Moran effect and
+-- dispersal) rather than a patchwork of unrelated local ones. What a group does is its own:
 --   herds      move to a better neighbouring cell (food per head after the other herds, safety from
 --              packs, suited to the species, away from villages, fields and fire); reindeer and
 --              antelope walk between a summer and a winter (dry-season) range every year; herds
 --              past their size split, dwindled ones join a herd of their kind or are gone.
 --   packs      hunt the herds of their territory; a hungry pack moves its den toward prey (never
---              onto another pack's ground); a big pack sends a pair away to found a pack where prey
---              is and no pack is; a dwindled pack is gone.
+--              onto another pack's ground); dispersers leave in the autumn (above); a pack with
+--              no wolves left is gone.
 -- Nothing is spawned: a species gone from a landmass returns only by walking (sea ice ≥ 0.8) or by
 -- the player's Introduce. Villagers hunt real herds (sys.hunt); powers cull and kill real groups
 -- (sys.kill_in, sys.spawn).
@@ -35,6 +48,7 @@
 local cfgmod = require("sim.config")
 local fields = require("sim.fields")
 local blame = require("sim.causality.blame")
+local rng = require("sim.rng")
 
 local sys = { name = "fauna" }
 local floor, min, max = math.floor, math.min, math.max
@@ -42,8 +56,8 @@ local floor, min, max = math.floor, math.min, math.max
 local FGZ, FPD = fields.BY_NAME.grazers, fields.BY_NAME.predators
 local FGR, FFO, FCR = fields.BY_NAME.grass, fields.BY_NAME.forest, fields.BY_NAME.crop
 
-local HK = { "h_id", "h_sp", "h_cell", "h_home", "h_wint", "h_n", "h_tag", "h_idle", "h_prev", "h_moved" }
-local PK = { "p_id", "p_sp", "p_cell", "p_n", "p_tag", "p_idle", "p_prev", "p_moved", "p_disp" }
+local HK = { "h_id", "h_sp", "h_cell", "h_home", "h_wint", "h_n", "h_tag", "h_idle", "h_prev", "h_moved", "h_cond" }
+local PK = { "p_id", "p_sp", "p_cell", "p_n", "p_tag", "p_idle", "p_prev", "p_moved", "p_disp", "p_cond", "p_kin" }
 sys.HK, sys.PK = HK, PK
 
 local function scratch(W)
@@ -52,11 +66,12 @@ local function scratch(W)
   local n = W.n
   local f = fields.filled
   for _, k in ipairs({ "H", "P", "dd", "pp", "fm", "pr", "gt", "pt", "ft", "gn", "rp", "best", "bw",
-    "seen", "den", "owner" }) do sc["wl_" .. k] = f(n, 0) end
+    "seen", "den", "owner", "wk", "nt", "st", "claim" }) do sc["wl_" .. k] = f(n, 0) end
   sc.wl_stamp, sc.wl_dstamp = 0, 0
   sc.wl_rc, sc.wl_rw, sc.wl_rs, sc.wl_rl = {}, {}, {}, {}
   sc.wl_qc, sc.wl_qw, sc.wl_qs, sc.wl_ql = {}, {}, {}, {}
   sc.wl_list = {}
+  sc.wl_mstamp, sc.wl_midx = {}, {}
   return sc
 end
 
@@ -83,6 +98,11 @@ function sys.init(W)
       if any then sys.seed(W) end
     end
   end
+  -- (groups saved before they had a body condition start in fair shape)
+  local A = W.S.wild
+  if not A.h_cond then A.h_cond = {}; for i = 1, A.nh do A.h_cond[i] = cfgmod.WILD.cond0 end end
+  if not A.p_cond then A.p_cond = {}; for i = 1, A.np do A.p_cond[i] = cfgmod.WILD.cond0 end end
+  if not A.p_kin then A.p_kin = {}; for i = 1, A.np do A.p_kin[i] = 0; A.p_n[i] = floor(A.p_n[i] + 0.5) end end
 end
 
 -- Walkable domain (derived; rebuilt when the coastline changes).
@@ -105,6 +125,15 @@ function sys.rebuild(W)
   local warm = {}
   for c = 1, n do warm[c] = T and T.base and T.base[c] and (T.base[c] + T.lapse[c]) or 10 end
   FZ.warm = warm
+  -- the mean distance between neighbouring cells (chord, unit sphere): lone wolves' reach
+  local g = W.grid
+  local sd, sn = 0, 0
+  for c = 1, n, 7 do
+    local j = g.nbr[c * 6 - 5]
+    local dx, dy, dz = g.X[c] - g.X[j], g.Y[c] - g.Y[j], g.Z[c] - g.Z[j]
+    sd, sn = sd + math.sqrt(dx * dx + dy * dy + dz * dz), sn + 1
+  end
+  FZ.step = sn > 0 and sd / sn or 0.1
   FZ.ice_list, FZ.nice = {}, 0
   sys.refresh_ice(W)
 end
@@ -178,23 +207,26 @@ end
 ---------------------------------------------------------------------------------------------
 -- Groups
 
-local function add_herd(W, sp, cell, n, tag)
+local function add_herd(W, sp, cell, n, tag, cond)
   local A = W.S.wild
   local i = A.nh + 1
   A.nh = i
   A.h_id[i], A.h_sp[i], A.h_cell[i], A.h_home[i], A.h_wint[i] = A.next_id, sp, cell, cell, 0
   A.h_n[i], A.h_tag[i], A.h_idle[i], A.h_prev[i], A.h_moved[i] = n, tag or 0, 0, cell, W.hour or 0
+  A.h_cond[i] = cond or cfgmod.WILD.cond0
   A.next_id = A.next_id + 1
   return i
 end
 
-local function add_pack(W, sp, cell, n, tag)
+local function add_pack(W, sp, cell, n, tag, cond)
   local A = W.S.wild
   local i = A.np + 1
   A.np = i
-  A.p_id[i], A.p_sp[i], A.p_cell[i], A.p_n[i] = A.next_id, sp, cell, n
+  A.p_id[i], A.p_sp[i], A.p_cell[i], A.p_n[i] = A.next_id, sp, cell, floor(n + 0.5)   -- (whole wolves)
   A.p_tag[i], A.p_idle[i], A.p_prev[i], A.p_moved[i] = tag or 0, 0, cell, W.hour or 0
   A.p_disp[i] = floor((W.hour or 0) / 8064)
+  A.p_cond[i] = cond or cfgmod.WILD.cond0
+  A.p_kin[i] = 0
   A.next_id = A.next_id + 1
   return i
 end
@@ -273,7 +305,7 @@ end
 -- Every group's range (cells and time shares, in the scratch lists) and the densities they make;
 -- returns the touched cells.
 local function densities(W, A, sc, cfg)
-  local H, P = sc.wl_H, sc.wl_P
+  local H, P, Wk = sc.wl_H, sc.wl_P, sc.wl_wk
   local seen = sc.wl_seen
   local stamp = sc.wl_stamp + 1
   sc.wl_stamp = stamp
@@ -320,10 +352,12 @@ local function densities(W, A, sc, cfg)
     rc[off + L], rw[off + L] = c, t.w0
     rs[i], rl[i] = off, L
     local n = A.h_n[i] * igpc
+    local nw = n * (1 - A.h_cond[i])
     for k = off + 1, off + L do
       local x = rc[k]
-      if seen[x] ~= stamp then seen[x] = stamp; H[x], P[x] = 0, 0; nl = nl + 1; list[nl] = x end
+      if seen[x] ~= stamp then seen[x] = stamp; H[x], P[x], Wk[x] = 0, 0, 0; nl = nl + 1; list[nl] = x end
       H[x] = H[x] + n * rw[k]
+      Wk[x] = Wk[x] + nw * rw[k]
     end
     off = off + L
   end
@@ -369,7 +403,7 @@ local function densities(W, A, sc, cfg)
     local n = A.p_n[i] * ippc
     for k = off + 1, off + L do
       local x = qc[k]
-      if seen[x] ~= stamp then seen[x] = stamp; H[x], P[x] = 0, 0; nl = nl + 1; list[nl] = x end
+      if seen[x] ~= stamp then seen[x] = stamp; H[x], P[x], Wk[x] = 0, 0, 0; nl = nl + 1; list[nl] = x end
       P[x] = P[x] + n * qw[k]
     end
     off = off + L
@@ -388,48 +422,62 @@ end
 ---------------------------------------------------------------------------------------------
 -- The step (every WILD.every ticks, dt = that)
 
--- Per cell: the per-head rates (density-dependent deaths, predation, fire; the packs' net), the
--- causes of each, and the vegetation the grazers take.
+-- Per cell: forage per head, the per-head rates (predation, fire; the packs' kills per head),
+-- the causes of each, and the vegetation the grazers take.
 local function ecology(W, sc, fcfg, dt, list, nl)
   local F, C, I = W.F, W.C, W.I
   local S = W.S.fauna
+  local wcfg = cfgmod.WILD
   local grass, forest, crop, ice, fire = F.grass, F.forest, F.crop, F.ice, F.fire
-  local H, P = sc.wl_H, sc.wl_P
-  local dd_, pp_, fm_, pr_ = sc.wl_dd, sc.wl_pp, sc.wl_fm, sc.wl_pr
+  local H, P, Wk = sc.wl_H, sc.wl_P, sc.wl_wk
+  local dd_, pp_, fm_, pr_, nt_, st_ = sc.wl_dd, sc.wl_pp, sc.wl_fm, sc.wl_pr, sc.wl_nt, sc.wl_st
   local gt, pt, ft, gn, rp = sc.wl_gt, sc.wl_pt, sc.wl_ft, sc.wl_gn, sc.wl_rp
-  local cull = S.cull
   local hnorm, pnorm = S.hnorm, S.pnorm
   local Kg, hfood, cfood, sblock = fcfg.K_grazer, fcfg.h_food, fcfg.crop_food, fcfg.snow_block
-  local ap, th, refuge, ep, mp = fcfg.a_pred, fcfg.t_handle, fcfg.refuge, fcfg.e_pred, fcfg.m_pred
+  local ap, th, refuge = fcfg.a_pred, fcfg.t_handle, fcfg.refuge
   local kgr, hgr, kbr, hbr, kra, hra = fcfg.graze, fcfg.h_graze, fcfg.browse, fcfg.h_browse, fcfg.raid, fcfg.h_raid
   local kov, hstart, bbase, fmort = fcfg.overgraze, fcfg.overgraze_from, fcfg.browse_base, fcfg.fire_mort
-  local bmax = cfgmod.WILD.browse_crowd
+  local bmax, bworth = wcfg.browse_crowd, wcfg.browse_worth
+  local phi, psi, imax, scost = wcfg.phi, wcfg.psi, wcfg.i_max, wcfg.snow_cost
+  local skill, wkill = wcfg.snow_kill, wcfg.weak_kill
   local relf, above = fcfg.release_frac, fcfg.pressure_above
   local rmin_h, rmin_p = fcfg.release_min.grazers, fcfg.release_min.predators
   local descends, eparent = blame.descends, W.E.parent
   local cgz, cpd = C.grazers, C.predators
   local cgr, igr, cfo, ifo, ccr, icr = C.grass, I.grass, C.forest, I.forest, C.crop, I.crop
-  local cfire = C.fire
+  local cfire, cice = C.fire, C.ice
   local greps, grhold, foeps, fohold = FGR.eps, FGR.hold, FFO.eps, FFO.hold
   local grass_c = cfgmod.VEG.grass_c
-  local rg = fcfg.r_grazer
   local eaten = 0
   for i = 1, nl do
     local c = list[i]
     local Hc, Pc = H[c], P[c]
     local hn, pn = hnorm[c], pnorm[c]
     local gr, fo, cr = grass[c], forest[c], crop[c]
-    local food = (gr + cfood * cr) * (1 - sblock * ice[c])
+    local sn = ice[c]
+    local food = (gr + cfood * cr) * (1 - sblock * sn)
     local keff = Kg * food / (food + hfood)
-    dd_[c] = keff > 1e-6 and rg * Hc / keff or 1e9
+    dd_[c] = keff > 1e-6 and Hc / keff or 1e9      -- crowding: animals against what the grass carries
+    -- forage per head (1 = enough to hold condition), less the cost of wading through snow
+    local it = food / (phi * Hc + psi)
+    if it > imax then it = imax end
+    nt_[c] = it - scost * sn
+    -- the cause of a lean month here: the snow's (a chill, a meteor winter) or the grass's
+    local ts = 0
+    if sn > 0.3 then ts = cice[c] end
+    if ts == 0 then ts = cgr[c] end
+    st_[c] = ts
+    -- predation: easier in deep snow and on weak animals
+    local wk = Hc > 0 and Wk[c] / Hc or 0
+    local av = ap * (1 + skill * sn) * (0.7 + wkill * wk)
     local hx = Hc - refuge
     local pred = 0
-    if hx > 0 and Pc > 0 then pred = ap * Pc * hx / (1 + ap * th * hx) end
+    if hx > 0 and Pc > 0 then pred = av * Pc * hx / (1 + av * th * hx) end
     pp_[c] = Hc > 0 and pred / Hc or 0
     local fi = fire[c]
     local fm = fi > 0 and fmort * fi or 0
     fm_[c] = fm
-    pr_[c] = Pc > 0 and (ep * pred / Pc) or 0   -- the packs' gain per head (their losses below)
+    pr_[c] = Pc > 0 and pred / Pc or 0   -- kills per head of the packs here (grazer units / week)
     -- causes: a pressure carries its cause only above normal (D-013); a missing pressure's cause
     -- travels into the growth it allows (release); starving grazers carry the food's cause
     local tH, tP = cgz[c], cpd[c]
@@ -443,7 +491,6 @@ local function ecology(W, sc, fcfg, dt, list, nl)
       relg = tP
       if tH ~= 0 and tH ~= tP and descends(eparent, tH, tP) then relg = tH end
     end
-    if Hc > keff then relg = cgr[c] end
     gt[c] = relg
     local relp = 0
     if tH ~= 0 and hn > rmin_h and Hc < relf * hn then
@@ -460,9 +507,12 @@ local function ecology(W, sc, fcfg, dt, list, nl)
       local gg = dt * kgr * Hc * (1 + kov * starve) * gr / (gr + hgr)
       if gg > gr then gg = gr end
       grass[c] = gr - gg
-      -- (a herd crowded past what the grass feeds turns to the trees: saplings, bark, leaves —
-      -- how too many deer stop a forest regrowing; up to bmax x the browsing of a full range)
-      local bb = dt * kbr * Hc * (bbase + over) * fo / (fo + hbr)
+      -- (animals the grass cannot feed — crowded, or the grass under snow or burnt by drought —
+      -- turn to the trees for what they lack: saplings, twigs, bark. How too many deer, or a
+      -- hard winter, stop a forest regrowing. Well-fed herds only nibble: browse_base.)
+      local lack = 1 - food / (phi * Hc + psi) + scost * sn
+      if lack < 0 then lack = 0 elseif lack > 1 then lack = 1 end
+      local bb = dt * Hc * (kbr * bbase + kgr * lack / bworth) * fo / (fo + hbr)
       if bb > fo then bb = fo end
       forest[c] = fo - bb
       eaten = eaten + grass_c * gg + bb
@@ -481,27 +531,38 @@ local function ecology(W, sc, fcfg, dt, list, nl)
   if eaten > 0 then W.G.co2_forest = (W.G.co2_forest or 0) - eaten * cfgmod.VEG.k_co2 end
 end
 
--- Each group's numbers by its range's per-head rates, blamed on the group.
+-- 0..1 ramp
+local function ramp(x, lo, hi)
+  if x <= lo then return 0 elseif x >= hi then return 1 end
+  return (x - lo) / (hi - lo)
+end
+
+-- Each group's condition and numbers from its range, blamed on the group.
 local function demography(W, A, sc, cfg, fcfg, dt)
-  local dd_, pp_, fm_, pr_ = sc.wl_dd, sc.wl_pp, sc.wl_fm, sc.wl_pr
+  local pp_, fm_, pr_, nt_, st_ = sc.wl_pp, sc.wl_fm, sc.wl_pr, sc.wl_nt, sc.wl_st
   local gt, pt, ft, gn, rp = sc.wl_gt, sc.wl_pt, sc.wl_ft, sc.wl_gn, sc.wl_rp
   local rc, rw, rs, rl = sc.wl_rc, sc.wl_rw, sc.wl_rs, sc.wl_rl
   local qc, qw, qs, ql = sc.wl_qc, sc.wl_qw, sc.wl_qs, sc.wl_ql
   local S = W.S.fauna
   local hunt, htag, ctag, cull = S.hunt, S.hunt_tag, S.cull_tag, S.cull
-  local mp = fcfg.m_pred
-  local rg, smax = fcfg.r_grazer, fcfg.starve_max
-  local season = cfg.birth_season
+  local months = dt / 4
   local geps, ghold, peps, phold = FGZ.eps * cfg.gpc, FGZ.hold, FPD.eps * cfg.ppc, FPD.hold
+  local hgain, fawns, fc0, fc1 = cfg.h_gain * months, cfg.fawns, cfg.fawn_cond[1], cfg.fawn_cond[2]
+  local hst, hstm, hmort = cfg.h_starve, cfg.h_starve_max * months, cfg.h_mort * months
+  local pgain, pneed, fmax = cfg.p_gain * months, fcfg.m_pred / fcfg.e_pred, cfg.p_food_max
+  local litter, lc0, lc1 = cfg.litter, cfg.litter_cond[1], cfg.litter_cond[2]
+  local pst, pstm, pmort = cfg.p_starve, cfg.p_starve_max * months, cfg.p_mort * months
+  local alt = cfg.small_game
+  local bw0, pw0 = cfg.fawn_week, cfg.pup_week
+  local rb = rng.base(W.seed, rng.S.FAUNA, W.tick)
   for i = 1, A.nh do
     local o, L = rs[i], rl[i]
-    local births = rg * season[floor(local_week(W, A.h_cell[i]) / 12) + 1]
-    local dd, pp, fm, hu = 0, 0, 0, 0
-    local tg, tp, tf, th = 0, 0, 0, 0
-    local wg, wp, wf, wh = 0, 0, 0, 0
+    local nt, pp, fm, hu = 0, 0, 0, 0
+    local tg, tp, tf, th, ts = 0, 0, 0, 0, 0
+    local wg, wp, wf, wh, ws, wrel = 0, 0, 0, 0, 0, 0
     for k = o + 1, o + L do
       local c, w = rc[k], rw[k]
-      dd = dd + w * dd_[c]
+      nt = nt + w * nt_[c]
       pp = pp + w * pp_[c]
       fm = fm + w * fm_[c]
       hu = hu + w * hunt[c]
@@ -509,44 +570,88 @@ local function demography(W, A, sc, cfg, fcfg, dt)
       if pt[c] ~= 0 and w > wp then tp, wp = pt[c], w end
       if ft[c] ~= 0 and w > wf then tf, wf = ft[c], w end
       if htag[c] ~= 0 and w > wh then th, wh = htag[c], w end
+      if st_[c] ~= 0 and w > ws then ts, ws = st_[c], w end
+      if gt[c] ~= 0 then wrel = wrel + w end
     end
-    local growth = births - dd
-    if growth < -smax then growth = -smax end
+    -- a herd living where the packs it knew are gone owes its numbers to their absence: it takes
+    -- that cause at once (not only at the next fawning), unless it already carries what came of it
+    if tg ~= 0 and wrel >= 0.5 then
+      local cur = A.h_tag[i]
+      if cur ~= tg and not (cur ~= 0 and blame.descends(W.E.parent, cur, tg)) then A.h_tag[i], A.h_idle[i] = tg, 0 end
+    end
+    -- the reserves: fattening on plenty, spent in a lean month
+    local cond = A.h_cond[i] + hgain * (nt - 1)
+    if cond < 0 then cond = 0 elseif cond > 1 then cond = 1 end
+    A.h_cond[i] = cond
+    -- the year's fawns in the local late spring, as many as the does' condition allows
+    local births = 0
+    local lw = local_week(W, A.h_cell[i])
+    if lw >= bw0 and lw < bw0 + dt then births = fawns * ramp(cond, fc0, fc1) end
+    local starve = cond < hst and hstm * (hst - cond) / hst or 0
     local n = A.h_n[i]
-    local d = n * dt * (growth - pp - fm - hu)
+    local born = n * births
+    local lost_s = n * (starve + hmort)
+    local lost_p, lost_f, lost_h = n * dt * pp, n * dt * fm, n * dt * hu
+    local d = born - lost_s - lost_p - lost_f - lost_h
+    local dbg = sc.wl_dbg
+    if dbg and (not dbg.only or dbg.only[A.h_cell[i]]) then dbg.born = dbg.born + born; dbg.hstarve = dbg.hstarve + lost_s; dbg.pred = dbg.pred + lost_p; dbg.hunt = dbg.hunt + lost_h end
     local n1 = n + d
     if n1 < 0 then n1 = 0; d = -n end
     A.h_n[i] = n1
-    if A.h_tag[i] ~= 0 or tg ~= 0 or tp ~= 0 or tf ~= 0 or th ~= 0 then
-      blame.step(A.h_tag, A.h_idle, i, d, geps, ghold, n * dt * growth, tg, -n * dt * pp, tp,
-        -n * dt * fm, tf, -n * dt * hu, th)
+    if A.h_tag[i] ~= 0 or tg ~= 0 or tp ~= 0 or tf ~= 0 or th ~= 0 or ts ~= 0 then
+      -- fawns carry the cause of a missing pressure (release); starvation the lean month's
+      -- (the snow's, the grass's); predation the packs'; fire or the hunters, whichever took more
+      local v4, t4 = -lost_f, tf
+      if lost_h > lost_f then v4, t4 = -lost_h, th end
+      blame.step(A.h_tag, A.h_idle, i, d, geps, ghold, born, tg, -lost_s, ts, -lost_p, tp, v4, t4)
     end
   end
   for i = 1, A.np do
     local o, L = qs[i], ql[i]
-    local gain, loss = 0, 0
+    local kills, loss = 0, 0
     local tg, tr, tf, tc = 0, 0, 0, 0
     local wg, wr, wf, wc = 0, 0, 0, 0
     for k = o + 1, o + L do
       local c, w = qc[k], qw[k]
-      gain = gain + w * pr_[c]
+      kills = kills + w * pr_[c]
       loss = loss + w * (fm_[c] + cull[c])
       if gn[c] ~= 0 and w > wg then tg, wg = gn[c], w end
       if rp[c] ~= 0 and w > wr then tr, wr = rp[c], w end
       if ft[c] ~= 0 and w > wf then tf, wf = ft[c], w end
       if ctag[c] ~= 0 and w > wc then tc, wc = ctag[c], w end
     end
-    -- wolves breed once a year: what the pack eats becomes pups in the spring (the year's gain,
-    -- by season as the herds' births), so the packs answer the herds a season late
-    local rate = gain * season[floor(local_week(W, A.p_cell[i]) / 12) + 1] - mp - loss
+    -- the pack's reserves by what it kills against what it needs, and the small game of its
+    -- ground (hares, beavers, carrion: enough for a lone wolf or a pair, little for a big pack)
     local n = A.p_n[i]
-    local d = n * dt * rate
+    local f = kills / pneed + (n > 0 and alt / n or 0)
+    if f > fmax then f = fmax end
+    local cond = A.p_cond[i] + pgain * (f - 1)
+    if cond < 0 then cond = 0 elseif cond > 1 then cond = 1 end
+    A.p_cond[i] = cond
+    -- (a pack is so many wolves: each birth and death is drawn, deterministically by the pack and
+    -- the month, with the chances the pack's state gives)
+    local key = A.p_id[i] * 4
+    -- one litter a year (the breeding pair's), the pups that live by the pack's condition
+    local pups = 0
+    local lw = local_week(W, A.p_cell[i])
+    if n >= 2 and lw >= pw0 and lw < pw0 + dt then pups = floor(litter * ramp(cond, lc0, lc1) + rng.fbase(rb, key)) end
+    local starve = cond < pst and pstm * (pst - cond) / pst or 0
+    local lost_s = floor(n * (starve + pmort) + rng.fbase(rb, key + 1))
+    if lost_s > n then lost_s = n end
+    local lost_o = floor((n - lost_s) * dt * loss + rng.fbase(rb, key + 2))
+    if lost_o > n - lost_s then lost_o = n - lost_s end
+    local d = pups - lost_s - lost_o
+    local dbg = sc.wl_dbg
+    if dbg and (not dbg.only or dbg.only[A.p_cell[i]]) then dbg.pups = dbg.pups + pups; dbg.pstarve = dbg.pstarve + lost_s; dbg.pmort = dbg.pmort + n * pmort; dbg.pother = dbg.pother + lost_o end
     local n1 = n + d
     if n1 < 0 then n1 = 0; d = -n end
     A.p_n[i] = n1
     if A.p_tag[i] ~= 0 or tg ~= 0 or tr ~= 0 or tf ~= 0 or tc ~= 0 then
-      -- (the prey's cause when it grows, the release when prey is missing; fire, culling)
-      blame.step(A.p_tag, A.p_idle, i, d, peps, phold, d > 0 and d or 0, tg, d < 0 and d or 0, tr, 0, tf, 0, tc)
+      -- (pups: the prey's cause when it is abnormally plentiful; hunger: the prey's missing;
+      -- fire, culling)
+      local v4, t4 = 0, tf
+      if tc ~= 0 then v4, t4 = -lost_o, tc elseif tf ~= 0 then v4 = -lost_o end
+      blame.step(A.p_tag, A.p_idle, i, d, peps, phold, pups, tg, -lost_s, tr, 0, 0, v4, t4)
     end
   end
 end
@@ -563,6 +668,16 @@ local function score(W, sc, cfg, fcfg, sp, x, own)
   return s
 end
 
+-- A pack's territory is its own: no new pack founds a den within two steps of another's.
+function sys.claim(W, claim, c, ds)
+  claim[c] = ds
+  local g = W.grid
+  local b = c * 6 - 6
+  for k = 1, g.nbr_count[c] do claim[g.nbr[b + k]] = ds end
+  local r2 = ring2(W, c)
+  for k = 1, #r2 do claim[r2[k]] = ds end
+end
+
 -- Herds move, migrate, split and join; packs follow their prey and disperse; the dwindled go.
 local function behave(W, A, sc, cfg, fcfg)
   local g = W.grid
@@ -575,7 +690,6 @@ local function behave(W, A, sc, cfg, fcfg)
   local igpc = 1 / cfg.gpc
   local upd = floor(W.tick / cfg.every)
   local dd_ = sc.wl_dd
-  local rgi = 1 / fcfg.r_grazer
   local rc, rw, rs, rl = sc.wl_rc, sc.wl_rw, sc.wl_rs, sc.wl_rl
   local nh0 = A.nh
   local i = 1
@@ -585,7 +699,7 @@ local function behave(W, A, sc, cfg, fcfg)
     -- how crowded its range is: animals against what the grass carries (H / K_eff)
     local sat = 0
     if i <= nh0 and rs[i] then
-      for k = rs[i] + 1, rs[i] + rl[i] do sat = sat + rw[k] * dd_[rc[k]] * rgi end
+      for k = rs[i] + 1, rs[i] + rl[i] do sat = sat + rw[k] * dd_[rc[k]] end
     end
     local own = n * igpc * cfg.herd_w0
     local migrates = cfg.migrates[sp]
@@ -662,7 +776,7 @@ local function behave(W, A, sc, cfg, fcfg)
       if cb then
         local part = n * cfg.split_share
         A.h_n[i] = n - part
-        local ni = add_herd(W, sp, cb, part, A.h_tag[i])
+        local ni = add_herd(W, sp, cb, part, A.h_tag[i], A.h_cond[i])
         A.h_prev[ni] = c1
       end
     end
@@ -675,23 +789,55 @@ local function behave(W, A, sc, cfg, fcfg)
           local cj = A.h_cell[jx]
           local near = cj == c1
           if not near then for k = 1, cnt[c1] do if nbr[b1 + k] == cj then near = true; break end end end
-          if near then A.h_n[jx] = A.h_n[jx] + A.h_n[i]; A.h_n[i] = 0; break end
+          if near then
+            local a, b = A.h_n[jx], A.h_n[i]
+            A.h_cond[jx] = (A.h_cond[jx] * a + A.h_cond[i] * b) / (a + b)
+            A.h_n[jx] = a + b; A.h_n[i] = 0
+            break
+          end
         end
       end
     end
     if A.h_n[i] < cfg.gone then drop(A, HK, i, "nh") else i = i + 1 end
   end
+  -- fission-fusion: herds of a kind that meet on the same ground become one (up to their size)
+  local ms, mi = sc.wl_mstamp, sc.wl_midx
+  local mst = (sc.wl_mst or 0) + 1
+  sc.wl_mst = mst
+  i = 1
+  while i <= A.nh do
+    local key = A.h_cell[i] * 4 + A.h_sp[i]
+    local j = ms[key] == mst and mi[key] or nil
+    local merged = false
+    if j then
+      local a, b = A.h_n[j], A.h_n[i]
+      if a + b <= cfg.grazers[A.h_sp[i]].max then
+        A.h_cond[j] = (A.h_cond[j] * a + A.h_cond[i] * b) / (a + b)
+        if b > a then A.h_tag[j], A.h_idle[j] = A.h_tag[i], A.h_idle[i] end
+        A.h_n[j] = a + b
+        drop(A, HK, i, "nh")
+        merged = true
+      end
+    end
+    if not merged then
+      if not j then ms[key], mi[key] = mst, i end
+      i = i + 1
+    end
+  end
   -- packs: the dens and the ground about them (stamped: another pack's ground)
   local den, owner = sc.wl_den, sc.wl_owner
   local ds = sc.wl_dstamp + 1
   sc.wl_dstamp = ds
+  local claim = sc.wl_claim
   for p = 1, A.np do
     local c = A.p_cell[p]
     den[c], owner[c] = ds, A.p_id[p]
     local b = c * 6 - 6
     for k = 1, cnt[c] do local j = nbr[b + k]; den[j], owner[j] = ds, A.p_id[p] end
+    sys.claim(W, claim, c, ds)
   end
   local ocean = W.geo.ocean
+  local np0 = A.np
   i = 1
   while i <= A.np do
     local sp, c = A.p_sp[i], A.p_cell[i]
@@ -702,7 +848,7 @@ local function behave(W, A, sc, cfg, fcfg)
       local b = c * 6 - 6
       local here = 2 * H[c]
       for k = 1, cnt[c] do here = here + H[nbr[b + k]] end
-      if here < cfg.pack_hungry or fire[c] > 0 then
+      if A.p_cond[i] < cfg.den_move_cond or fire[c] > 0 then
         local best, bs = nil, here
         local me = A.p_id[i]
         for k = 1, cnt[c] do
@@ -721,58 +867,162 @@ local function behave(W, A, sc, cfg, fcfg)
         end
       end
     end
-    -- young wolves leave in the spring (every year from a pack big enough, or when it is too big):
-    -- a pair founds a pack where prey is and no pack is — how wolves colonise new ground
+    -- in the autumn a pack keeps as many as it can feed; the rest (and the pack's surplus young)
+    -- leave to find a place of their own
     local year = floor(hour / 8064)
     local lw = local_week(W, A.p_cell[i])
-    if n > spc.max or (n >= cfg.disperse_min and A.p_disp[i] ~= year and lw >= 8 and lw < 12) then
-      A.p_disp[i] = year
-      local site = sys.pack_site(W, A, A.p_cell[i])
-      if site then
-        A.p_n[i] = n - 2
-        local ni = add_pack(W, sp, site, 2, A.p_tag[i])
-        A.p_prev[ni] = A.p_cell[i]
-        den[site], owner[site] = ds, A.p_id[ni]
+    local autumn = A.p_disp[i] ~= year and lw >= cfg.disperse_week and lw < cfg.disperse_week + cfg.every
+    -- (a starving pack breaks up whatever the season: those it cannot feed go)
+    if i <= np0 and (autumn or A.p_cond[i] < cfg.p_starve) then
+      if autumn then A.p_disp[i] = year end
+      local keep = cfg.keep[1] + cfg.keep[2] * A.p_cond[i]
+      if keep > spc.max then keep = spc.max end
+      local k = floor(n - keep)
+      if k >= 1 then
+        A.p_n[i] = n - k
+        sys.disperse(W, A, i, k, ds, den, owner, claim)
       end
     end
+    if A.p_n[i] < cfg.gone then
+      if sc.wl_dbg then sc.wl_dbg.gonepacks = sc.wl_dbg.gonepacks + 1 end
+      drop(A, PK, i, "np")
+    else i = i + 1 end
+  end
+  sys.pair_lone(W, A, cfg)
+end
+
+-- Lone wolves roam far for a mate: two that are no kin of each other, on the same land and within
+-- reach, pair up at the better den (the other gives its up). Without this a crash that leaves
+-- only lone wolves ends the species there.
+function sys.pair_lone(W, A, cfg)
+  local g = W.grid
+  local X, Y, Z = g.X, g.Y, g.Z
+  local cont = W.geo.continent
+  local H = scratch(W).wl_H
+  local lone = {}
+  for p = 1, A.np do if A.p_n[p] == 1 then lone[#lone + 1] = p end end
+  if #lone < 2 then return end
+  local r = cfg.mate_reach * W.fauna_static.step
+  local r2 = r * r
+  local gone = {}
+  for a = 1, #lone do
+    local pa = lone[a]
+    if not gone[pa] then
+      local ca = A.p_cell[pa]
+      local best, bd = nil, r2
+      for b = a + 1, #lone do
+        local pb = lone[b]
+        if not gone[pb] and A.p_sp[pb] == A.p_sp[pa] and cont[A.p_cell[pb]] == cont[ca]
+          and (A.p_kin[pa] == 0 or A.p_kin[pa] ~= A.p_kin[pb]) then
+          local cb = A.p_cell[pb]
+          local dx, dy, dz = X[ca] - X[cb], Y[ca] - Y[cb], Z[ca] - Z[cb]
+          local d = dx * dx + dy * dy + dz * dz
+          if d <= bd then best, bd = pb, d end
+        end
+      end
+      if best then
+        -- the pair keeps the den with more prey about it
+        local keep, go = pa, best
+        if H[A.p_cell[best]] > H[ca] then keep, go = best, pa end
+        A.p_n[keep], A.p_kin[keep] = 2, 0
+        A.p_cond[keep] = (A.p_cond[keep] + A.p_cond[go]) / 2
+        A.p_n[go] = 0
+        gone[pa], gone[best] = true, true
+        if scratch(W).wl_dbg then scratch(W).wl_dbg.paired = (scratch(W).wl_dbg.paired or 0) + 1 end
+      end
+    end
+  end
+  -- (the wolf that moved leaves an empty record)
+  local i = 1
+  while i <= A.np do
     if A.p_n[i] < cfg.gone then drop(A, PK, i, "np") else i = i + 1 end
   end
 end
 
--- A den for a dispersing pair: the land cell 3-6 steps from `from` with the most prey about it
--- and no other pack's den within two steps.
-function sys.pack_site(W, A, from)
+-- `k` wolves leave pack i, one by one (siblings rarely go together). Those that live through the
+-- journey (disperse_survival) settle where life looks best within reach: a lone wolf that is no
+-- kin of theirs (a mate: the pair founds a pack), free ground with prey (they hold it, alone, for
+-- a mate), or a pack with room that takes them in; the pull of prey is weighed against the packs
+-- already there.
+function sys.disperse(W, A, i, k, ds, den, owner, claim)
   local cfg = cfgmod.WILD
   local g = W.grid
+  local nbr, cnt = g.nbr, g.nbr_count
   local sc = scratch(W)
-  local H = sc.wl_H
-  local walk = W.fauna_static.walk
-  local ocean = W.geo.ocean
-  -- ground claimed: two steps about every den
-  local claimed = {}
-  for p = 1, A.np do
-    local d = A.p_cell[p]
-    claimed[d] = true
-    local b = d * 6 - 6
-    for k = 1, g.nbr_count[d] do claimed[g.nbr[b + k]] = true end
-    for _, j in ipairs(ring2(W, d)) do claimed[j] = true end
-  end
+  local H, P = sc.wl_H, sc.wl_P
+  local walk, ocean = W.fauna_static.walk, W.geo.ocean
+  local from, sp, tag, kin = A.p_cell[i], A.p_sp[i], A.p_tag[i], A.p_id[i]
+  local spc = cfg.predators[sp]
+  local rb = rng.base(W.seed, rng.S.FAUNA, W.tick + 1)
+  local live = floor(k * cfg.disperse_survival + rng.fbase(rb, kin * 4 + 3))
+  local dbg = sc.wl_dbg
+  if dbg then dbg.left = dbg.left + k; dbg.live = dbg.live + live end
+  if live < 1 then return end
+  -- the packs by id (slots), for the ground's owners
+  local slot = {}
+  for p = 1, A.np do slot[A.p_id[p]] = p end
+  -- the ground within reach (breadth-first over walkable cells, not back onto the home range)
   local seen = { [from] = 0 }
   local q, head = { from }, 1
-  local best, bs = nil, cfg.pack_min_prey
   while head <= #q do
     local x = q[head]; head = head + 1
     local d = seen[x]
-    if d >= 3 and ocean[x] == 0 and not claimed[x] and H[x] > bs then best, bs = x, H[x] end
-    if d < 6 then
+    if d < cfg.disperse_reach then
       local b = x * 6 - 6
-      for k = 1, g.nbr_count[x] do
-        local j = g.nbr[b + k]
+      for kk = 1, cnt[x] do
+        local j = nbr[b + kk]
         if seen[j] == nil and walk[j] == 1 then seen[j] = d + 1; q[#q + 1] = j end
       end
     end
   end
-  return best
+  for w = 1, live do
+    local best, bs, bkind, bp = nil, 0, 0, 0
+    for qi = 1, #q do
+      local x = q[qi]
+      if seen[x] >= 2 and ocean[x] == 0 then
+        local b = x * 6 - 6
+        local prey = 2 * H[x]
+        for kk = 1, cnt[x] do prey = prey + H[nbr[b + kk]] end
+        local s, kind, p = 0, 0, 0
+        if den[x] == ds then
+          p = slot[owner[x]] or 0
+          if p > 0 and A.p_sp[p] == sp then
+            if A.p_n[p] < 2 and A.p_cell[p] == x and A.p_kin[p] ~= kin then
+              s, kind = prey * cfg.mate_pull, 1                         -- a mate
+            elseif A.p_n[p] >= 2 and A.p_n[p] < spc.max then
+              s, kind = prey * cfg.adopt / (1 + cfg.rival_fear * 2 * P[x]), 2   -- taken in
+            end
+          end
+        elseif prey >= cfg.pack_min_prey and claim[x] ~= ds then
+          s, kind = prey / (1 + cfg.rival_fear * 2 * P[x]), 3              -- free ground
+        end
+        if s > bs then best, bs, bkind, bp = x, s, kind, p end
+      end
+    end
+    if not best then
+      -- (nowhere to go: the rest stay at home, for now)
+      A.p_n[i] = A.p_n[i] + live - w + 1
+      if dbg then dbg.stayed = (dbg.stayed or 0) + live - w + 1 end
+      return
+    end
+    if bkind == 1 or bkind == 2 then
+      A.p_n[bp] = A.p_n[bp] + 1
+      if bkind == 1 then A.p_kin[bp] = 0 end   -- (a pair: its pups are the next generation's kin)
+      if dbg then dbg.joined = dbg.joined + 1; if bkind == 1 then dbg.paired = (dbg.paired or 0) + 1 end end
+    else
+      if dbg then dbg.founded = dbg.founded + 1; dbg.newpacks = dbg.newpacks + 1 end
+      local ni = add_pack(W, sp, best, 1, tag, cfg.cond0)
+      A.p_prev[ni] = from
+      A.p_disp[ni] = floor(W.hour / 8064)
+      A.p_kin[ni] = kin
+      local me = A.p_id[ni]
+      slot[me] = ni
+      den[best], owner[best] = ds, me
+      local b = best * 6 - 6
+      for kk = 1, cnt[best] do local j = nbr[b + kk]; if den[j] ~= ds then den[j], owner[j] = ds, me end end
+      sys.claim(W, claim, best, ds)
+    end
+  end
 end
 
 -- The derived views: F.grazers / F.predators (density, capped at 1), their prev buffers, the
@@ -972,17 +1222,31 @@ function sys.kill_in(W, cells, species, frac, tag)
   local Id = herds and A.h_idle or A.p_idle
   local count = herds and A.nh or A.np
   local killed = 0
+  local rb = rng.base(W.seed, rng.S.CULL, W.hour)
   for i = 1, count do
     local share = 0
     for k = ss[i] + 1, ss[i] + ls[i] do if set[cs[k]] then share = share + ws[k] end end
     if share > 0 then
       local d = N[i] * frac * share
+      -- (wolves die whole)
+      if not herds then d = floor(d + rng.fbase(rb, A.p_id[i])); if d > N[i] then d = N[i] end end
       N[i] = N[i] - d
       killed = killed + d
       if tag and tag ~= 0 then T[i], Id[i] = tag, 0 end
     end
   end
   sys.refresh(W)
+  -- the cells the animals were killed on carry the cause (an emptied cell has no group left to
+  -- lend it one: the packs a Cull wipes out leave their ground tagged, and what follows there —
+  -- the herds' release, a regional extinction — chains to it)
+  if tag and tag ~= 0 then
+    local fld = W.F[species]
+    local ct, it = W.C[species], W.I[species]
+    for k = 1, #cells do
+      local c = cells[k]
+      if W.geo.ocean[c] == 0 and (fld[c] > 0 or killed > 0) then ct[c], it[c] = tag, 0 end
+    end
+  end
   return killed
 end
 

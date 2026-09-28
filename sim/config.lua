@@ -228,13 +228,39 @@ C.FAUNA = {
 -- Wild herds and packs as entities (docs/world/14_ECOLOGY.md §3, sim/systems/fauna.lua, D-070). The per-cell
 -- ecology is FAUNA's (above); these are the groups': sizes, ranges, movement, migration, hunting.
 C.WILD = {
-  every = 4,                              -- herds and packs update every N ticks (dt = N: the old local step's stride)
+  every = 4,                              -- herds and packs update every N ticks (dt = N: a month)
   look_every = 2,                         -- a settled herd reconsiders its range every this many updates
   gpc = 100, ppc = 25,                    -- animals per unit of the grazers / predators field (at the old equilibrium
                                           --   ~13 deer and ~1 wolf per cell; a wolf takes ~15-20 deer a year)
   herd_w0 = 0.4,                          -- a herd's time on its centre cell (the rest on the cells about it)
   pack_w = { 0.25, 0.4, 0.35 },           -- a pack's time at its den, on the first ring, on the second
-  birth_season = { 2.0, 1.3, 0.5, 0.2 },  -- births by local season, spring .. winter (mean 1: the year's r)
+  cond0 = 0.6,                            -- body condition (fat reserves 0..1) of a new group
+  -- herds (D-071): forage per head = min(i_max, food / (phi H + psi)) - snow_cost x snow; 1 holds condition
+  phi = 0.6, psi = 0.02, i_max = 1.5,     --   (1 where the herds reach what the grass carries, K_eff)
+  snow_cost = 0.6,                        --   wading through deep snow costs this much forage
+  h_gain = 0.2,                           -- condition per month per unit of forage above / below 1
+  fawns = 1.4, fawn_cond = { 0.2, 0.7 },  -- fawns per head a year, by the herd's condition in the late spring (ramp)
+  fawn_week = 16,                         -- local week of the fawning (one monthly update)
+  h_starve = 0.25, h_starve_max = 0.25,   -- below this condition the weak starve (a month's share at condition 0)
+  h_mort = 0.01,                          -- old age and accidents, a month
+  -- predation: a' = a_pred x (1 + snow_kill x snow) x (0.7 + weak_kill x weakness of the prey), weakness = 1 - condition
+  snow_kill = 1.5, weak_kill = 0.75,      --   (wolves kill 2-3x as often in deep snow and take the weak)
+  -- packs: kills per wolf against need (FAUNA m_pred / e_pred); one litter a year
+  p_gain = 0.15, p_food_max = 2,          -- condition per month per unit of kills above / below need (capped)
+  small_game = 1.2,                       -- a territory's small game and carrion feed this many wolves (/ pack size)
+  litter = 5, litter_cond = { 0.25, 0.75 },  -- pups a year from a pack with a breeding pair, by its condition (ramp)
+  pup_week = 12,                          -- local week of the whelping
+  p_starve = 0.3, p_starve_max = 0.3,     -- below this condition wolves starve (a month's share at condition 0)
+  p_mort = 0.015,                         -- old age, strife, accidents, a month
+  den_move_cond = 0.35,                   -- a pack this thin moves its den toward prey (monthly at most)
+  disperse_week = 32,                     -- local week of the autumn dispersal
+  keep = { 2, 6 },                        -- a pack keeps 2 + 6 x condition wolves; the rest leave
+  disperse_survival = 0.6,                -- share of dispersers that live to settle
+  disperse_reach = 7,                     -- steps a disperser searches
+  rival_fear = 20,                        -- a site's appeal / (1 + this x (packs there: 2 P + 1 at a den))
+  pack_min_prey = 0.3,                    -- prey about a site (2 x its density + its first ring) a disperser needs
+  mate_pull = 3, adopt = 0.3,
+  mate_reach = 8,                         -- steps a lone wolf roams for a mate             -- a lone wolf (no kin) draws a disperser this x its prey; a pack with room this x
   grazers = {                             -- herd sizes: past max a herd splits; below min it joins its kind
     { name = "deer", max = 60, min = 4 },
     { name = "reindeer", max = 150, min = 8 },
@@ -250,11 +276,9 @@ C.WILD = {
   fields_fear = 0.5,                      -- fields are half as inviting (people about by day)
   split_share = 0.4,                      -- share of a herd that leaves when it splits
   disperse_sat = 1.1,                     -- a herd whose range holds this x what its grass carries sends a part away
-  browse_crowd = 2.0,                     -- herds crowded past their grass browse the trees up to this x as hard
+  browse_crowd = 2.0,                     -- (grazing: herds crowded past their grass graze it up to this x as hard)
+  browse_worth = 0.5,                     -- what herds lack of grass they take from the trees (twigs, bark), worth this much grass
   gone = 0.5,                             -- a group below this many animals is gone
-  pack_hungry = 0.4,                      -- prey about the den (2 x den + first ring, density) below which a pack moves
-  pack_min_prey = 0.03,                   -- a dispersing pair needs this prey density at its new den
-  disperse_min = 6,                       -- a pack this big sends a young pair away each spring
   seed_herd = 36, seed_pack = 7,          -- group sizes gathered from the fields at worldgen
   hunt_rate = 0.04, hunt_max = 0.05,      -- hunters: animals per effective hour (x density/(density + 0.15)); at most
   meat = 40,                              --   this share of a herd a day; FU of meat per animal
