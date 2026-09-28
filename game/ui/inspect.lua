@@ -71,7 +71,25 @@ function M.recent_events(W, cells, years, n)
   return out
 end
 
-local function add(items, t) items[#items + 1] = t end
+-- Text rows are one line in the panel: long texts wrap onto following rows at word breaks
+-- (M.WRAP characters of the panel's body font; continuation rows carry no icon).
+M.WRAP = 44
+local function add(items, t)
+  if t.t == "text" and t.text and #t.text > M.WRAP then
+    local line, first = "", true
+    for word in t.text:gmatch("%S+") do
+      if line ~= "" and #line + 1 + #word > (first and M.WRAP or M.WRAP + 3) then
+        items[#items + 1] = { t = "text", icon = first and t.icon or nil, text = line, hl = t.hl }
+        line, first = word, false
+      else
+        line = line == "" and word or (line .. " " .. word)
+      end
+    end
+    if line ~= "" then items[#items + 1] = { t = "text", icon = first and t.icon or nil, text = line, hl = t.hl } end
+    return
+  end
+  items[#items + 1] = t
+end
 
 local function cell_items(W, c, items)
   local F = W.F
@@ -116,6 +134,8 @@ M.TASK_TEXT = {
   sow = "Sowing", tend = "Weeding", care = "Manuring the fields", harvest = "Harvesting", clear = "Clearing land",
   fuel = "Cutting firewood", timber = "Felling timber", brush = "Gathering brush", build = "Building",
   fish = "Fishing", forage = "Foraging", hunt = "Hunting", travel = "Travelling",
+  craft_tools = "Knapping stone tools", craft_pots = "Making pots", craft_cloth = "Spinning and weaving",
+  herd = "Minding the flocks",
 }
 M.TASK_GROUP = { sow = "farming", tend = "farming", care = "farming", harvest = "farming", clear = "farming",
   fuel = "wood", timber = "wood", brush = "wood", build = "building", fish = "fishing", forage = "foraging",
@@ -355,6 +375,13 @@ local function doing_now(W, v, p)
   local w = schedule.where(W, v, p, W.hour, {})
   local act = w.act
   if act == "sleep" then return "Asleep at home" end
+  if act == "travel" or act == "camp" then
+    local party = p.away and p.away ~= 0 and W.ent.parties and W.ent.parties[p.away]
+    if party and party.si then
+      local i = schedule.party_pos(W, party, W.hour)
+      if i >= party.si - 1 and i <= party.sj then return "At sea, in the boat" end
+    end
+  end
   if act == "travel" then return "On the road" end
   if act == "camp" then return "Camped for the night on the road" end
   if act == "fish" then return "Out fishing" end
@@ -364,6 +391,81 @@ local function doing_now(W, v, p)
   if act == "walk" then return "Walking to " .. (PLACE_TEXT[w.place] or "work") end
   if act == "work" then return (task or "Working") .. (w.place and PLACE_TEXT[w.place] and (" at " .. PLACE_TEXT[w.place]) or "") end
   return cap(act)
+end
+
+-- Why person p is doing what they do: the village's own state behind the task (the labour
+-- demands it answers, sim/society/labour.lua), or the errand of the party they travel with.
+local PARTY_WHY = {
+  porters = "carrying goods", returning = "coming home from an errand", bride = "going to marry",
+  migrants = "leaving to live elsewhere", colonists = "setting out to found a village", orphans = "taken in by another village",
+  raid = "on a raid", raid_home = "coming home from a raid",
+}
+local function days_text(d)
+  d = floor((d or 0) + 0.5)
+  if d > 400 then return "over a year" end
+  if d >= 60 then return floor(d / 28 + 0.5) .. " months" end
+  return d .. " days"
+end
+function M.reason(W, v, p)
+  local E = W.ent
+  local vs = E.villages or {}
+  if p.away and p.away ~= 0 then
+    local party = E.parties and E.parties[p.away]
+    if not party then return nil end
+    local to = party.to ~= 0 and vs[party.to]
+    local where = to and to.name or "new land"
+    local c = party.cargo or {}
+    local sea = party.si and " by boat" or ""
+    local k = party.kind
+    if k == "porters" then
+      if c.tribute then return string.format("Carrying %d grain to %s: tribute to its lord%s", floor(c.grain or 0), where, sea) end
+      if c.gift then return string.format("Carrying %d grain to %s, who are going hungry%s", floor(c.grain or 0), where, sea) end
+      if c.get then return string.format("Trading %s for %s with %s%s", c.give or "goods", c.get, where, sea) end
+    elseif k == "returning" and c.get and (c.got or 0) > 0 then
+      return string.format("Bringing home %d %s from trade%s", floor(c.got), c.get, sea)
+    elseif k == "raid" then
+      local r = W.E and W.E.rec and W.E.rec[party.reason or 0]
+      local why = r and r.kind and (r.kind == "raid" and "to avenge a raid" or ("after " .. r.kind:gsub("_", " "))) or "for plunder"
+      return string.format("Raiding %s, %s%s", where, why, sea)
+    elseif k == "raid_home" then
+      return string.format("Coming home from the raid with %d grain%s", floor(c.grain or 0), sea)
+    elseif k == "bride" then
+      return "Going to " .. where .. " to marry" .. sea
+    elseif k == "migrants" or k == "colonists" then
+      local r = W.E and W.E.rec and W.E.rec[party.reason or 0]
+      local why = r and r.kind and r.kind ~= "migration" and (" (" .. r.kind:gsub("_", " ") .. ")") or ""
+      return cap(PARTY_WHY[k]) .. ": to " .. where .. why .. sea
+    end
+    return cap(PARTY_WHY[k] or "travelling") .. sea
+  end
+  local t = p.task
+  local fd = v.food_days or 0
+  if t == "sow" or t == "tend" or t == "care" or t == "harvest" or t == "clear" then
+    return string.format("%d fields feed %d people; grain in store for %s", #(v.farms or {}), v.pop or 0, days_text(fd))
+  elseif t == "fuel" or t == "brush" then
+    return "The woodpile holds " .. days_text(v.wood_days) .. " of fuel"
+  elseif t == "timber" then
+    return "Timber for the village's building sites"
+  elseif t == "build" then
+    local b = E.buildings and E.buildings[p.site]
+    if b then
+      local hh = b.household and b.household ~= 0 and E.households and E.households[b.household]
+      local lead = hh and hh.members and hh.members[1] and E.people[hh.members[1]]
+      return "Raising a " .. (b.kind or "building") .. (lead and (" for " .. (lead.name or "a household")) or "")
+    end
+  elseif t == "fish" then
+    return fd < 60 and ("Food is short: " .. days_text(fd) .. " in store") or "Fresh fish for the village's tables"
+  elseif t == "forage" or t == "hunt" then
+    return "Food is short: " .. days_text(fd) .. " in store"
+  elseif t == "craft_tools" or t == "craft_pots" or t == "craft_cloth" then
+    local g = t:sub(7)
+    local h = v.have and v.have[g]
+    return h and h < 0.6 and ("The village's " .. g .. " are worn and too few") or ("Making " .. g .. " in the slack season")
+  elseif t == "herd" then
+    local h = v.herd
+    if h then return string.format("%d sheep, %d goats and %d cattle need minding (wolves about)", floor(h.sheep or 0), floor(h.goats or 0), floor(h.cattle or 0)) end
+  end
+  return nil
 end
 
 local function person_link(W, pid)
@@ -390,6 +492,8 @@ local function person_items(W, pid, p, items)
     if now then add(items, { t = "row", icon = "pin", label = "Now", value = now }) end
     local task = M.TASK_TEXT[p.task]
     if task then add(items, { t = "row", icon = "pickaxe", label = "This week", value = task }) end
+    local why = M.reason(W, v, p)
+    if why then add(items, { t = "text", icon = "bubble", text = "Why: " .. why }) end
     local h = W.ent.households and W.ent.households[p.household]
     if h then
       local home = h.home ~= 0 and W.ent.buildings and W.ent.buildings[h.home]

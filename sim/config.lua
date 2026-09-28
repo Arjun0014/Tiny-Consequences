@@ -470,6 +470,7 @@ C.SOCIETY = {
   boat_seats = 6,                         -- people (with their loads) a boat carries
   beach_wait_days = 30,                   -- a boat waits this long at a foreign shore for its people
   drown = 0.6,                            -- chance each person aboard drowns when a boat sinks
+  voyage_squall = 0.0004,                 -- chance per sea step a crossing is caught by a squall (x squall_wet on a wet day)
   fish_radius = 5,
   squall = 0.00002, squall_wet = 6,       -- chance a trip on a dry / wet day is caught by a squall
                                           --   (storms keep boats in: ~1% of boats a year)

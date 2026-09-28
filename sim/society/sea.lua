@@ -23,6 +23,7 @@ local M = {}
 local floor, min, max, ceil = math.floor, math.min, math.max, math.ceil
 
 M.arriving = nil       -- the party whose arrival is being handled (its boats pass to the next leg)
+M.lose = function() end   -- fishing.lose (set by sim/society/init.lua: the build rejects require cycles)
 
 -- Sea distances from village v's mooring (derived, cached).
 function M.field(W, v)
@@ -184,6 +185,52 @@ function M.take_boats(W, owner, n)
     end
   end
   return out
+end
+
+local WX = {}   -- scratch: the day's weather at a mooring
+
+-- The hour a crossing from sea cell c can set off at, from `dep`: storm days are waited out
+-- (three at most; then they go anyway).
+function M.weather_wait(W, c, dep)
+  local wday = require("sim.society.weather_day")
+  for _ = 1, 3 do
+    if not wday.get(W, c, dep, WX).storm then return dep end
+    dep = dep + 24
+  end
+  return dep
+end
+
+-- A crossing may be caught by a squall (more likely on a wet day): decided when it sets off,
+-- deterministically; party.wreck = the hour, somewhere on the sea leg.
+function M.squall_roll(W, party)
+  local cfg = cfgmod.SOCIETY
+  local n1, n2 = party.si - 1, party.sj - party.si
+  if n2 <= 0 then return end
+  local wx = require("sim.society.weather_day").get(W, party.path[party.si], party.depart, WX)
+  local p = cfg.voyage_squall * n2 * (wx.wet and cfg.squall_wet or 1)
+  local u = rng.float(W.seed, rng.S.BOAT, party.key, party.depart, 11)
+  if u >= p then return end
+  -- the moving hour of the wreck, inside the sea leg, then the wall hour (days of walk_hours_day)
+  local x = n1 * party.hl + (0.15 + 0.7 * (u / p)) * n2 * party.hs
+  local whd = cfg.walk_hours_day
+  local days = floor(x / whd)
+  party.wreck = party.depart + days * 24 + (x - days * whd)
+end
+
+-- The squall strikes: a storm at sea (nature) sinks the party's boats.
+function M.wreck(W, party)
+  local B = W.ent.boats
+  local vs = W.ent.villages
+  local i = require("sim.society.schedule").party_pos(W, party, W.hour)
+  local c = party.path[min(max(i, party.si), party.sj)]
+  local id = events.emit(W, "storm", c, 0, 1, { at_sea = true, party = party.id })
+  local ids = {}
+  for k = 1, #(party.boats or {}) do ids[k] = party.boats[k] end
+  for k = 1, #ids do
+    local b = B[ids[k]]
+    local owner = b and vs[b.village]
+    if b and owner and b.state == "voyage" then M.lose(W, owner, b, id, "storm") end
+  end
 end
 
 -- The party sets sail (mobility.depart): its boats go with it.

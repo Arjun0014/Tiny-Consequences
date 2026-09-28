@@ -130,4 +130,41 @@ function M.b03_boat_sunk_at_sea_loses_the_shipment()
   return string.format("received %.0f (control %.0f); chain %s", got, got_control, s)
 end
 
+function M.b03b_a_squall_at_sea_sinks_the_crossing()
+  -- (every crossing caught: the storm is nature's, the chain starts there)
+  local cfg = cfgmod.SOCIETY
+  local q0 = cfg.voyage_squall
+  cfg.voyage_squall = 1
+  local ok, err = pcall(function()
+    local W = worlds.fresh(22)
+    local a, b = pair(W)
+    local log, restore = watch_deliveries()
+    local party = ship(W, a, b, 180)
+    T.ok(party.wreck and party.wreck > party.depart and party.wreck < party.arrive, "the squall falls during the crossing")
+    local boat = W.ent.boats[party.boats[1]]
+    for _ = 1, 24 * 4 do
+      world.step(W)
+      if not W.ent.parties[party.id] then break end
+    end
+    restore()
+    T.eq(boat.state, "lost", "the boat is lost")
+    local got = 0
+    for _, e in ipairs(log) do if e.party == party.id then got = got + e.delta end end
+    T.near(got, 0, 1e-9, "nothing delivered")
+    local lost
+    for _, id in ipairs(W.E.order) do
+      local r = W.E.rec[id]
+      if r and r.kind == "shipment_lost" then lost = r end
+    end
+    T.ok(lost, "shipment_lost recorded")
+    local ch = events.chain(W, lost.id)
+    local kinds = {}
+    for i = 1, #ch do kinds[i] = ch[i].kind end
+    T.eq(table.concat(kinds, ">"), "storm>boat_lost>shipment_lost", "the chain starts with the storm")
+  end)
+  cfg.voyage_squall = q0
+  if not ok then error(err, 0) end
+  return "storm>boat_lost>shipment_lost"
+end
+
 return M

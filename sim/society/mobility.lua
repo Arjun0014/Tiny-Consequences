@@ -157,12 +157,17 @@ function M.depart(W, v, members, to, site, kind, reason, food, seed, cargo, from
   -- decisions are taken at the village's local midnight; they set off at first light
   local dep = W.hour + floor(v.plan.ws or 6)
   local hours, hl, hs = walk_hours(W, path, si, sj)
+  -- a crossing waits out a storm at the mooring (a day at a time, three at most)
+  if si then dep = sea.weather_wait(W, path[si], dep) end
   local party = { id = id, key = rng.hash(W.seed, rng.S.PARTY, v.key_cell, W.hour, #members), members = {},
     from = v.id, to = to, site = site or 0, culture = v.culture, path = path, depart = dep,
     arrive = dep + max(2, hours), food = food or 0, seed = seed or 0, reason = reason or 0,
     kind = kind, cargo = cargo, no_route = no_route or nil }
   if si then party.si, party.sj, party.hl, party.hs = si, sj, hl, hs end
-  if boats and #boats > 0 then sea.embark(W, party, boats) end
+  if boats and #boats > 0 then
+    sea.embark(W, party, boats)
+    sea.squall_roll(W, party)
+  end
   wear(W, path, #members, si, sj)
   for i = 1, #members do
     local p = members[i]
@@ -372,6 +377,11 @@ function M.hour(W)
     local id = list[i]
     local party = E.parties[id]
     if party then
+      -- caught by a squall at sea (sea.squall_roll)
+      if party.wreck and W.hour >= party.wreck then
+        party.wreck = nil
+        sea.wreck(W, party)
+      end
       if W.hour >= party.arrive then
         arrive(W, party)
         E.parties[id] = nil
