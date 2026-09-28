@@ -72,6 +72,18 @@ function M.free_boats(W, v)
   return out
 end
 
+-- How many boats of v are free (no list).
+function M.n_free(W, v)
+  if not v.mooring or W.F.ice[v.mooring] >= 0.5 then return 0 end
+  local B = W.ent.boats
+  local n = 0
+  for i = 1, #v.boats do
+    local b = B[v.boats[i]]
+    if b and (b.state == "moored" or b.state == "out") and not b.laid_up then n = n + 1 end
+  end
+  return n
+end
+
 -- Boats needed for n people.
 function M.boats_needed(n)
   return max(1, ceil(n / cfgmod.SOCIETY.boat_seats))
@@ -82,6 +94,14 @@ end
 -- coastal land cell, sea steps, land steps (coast -> cell), or nil.
 function M.landing(W, v, cell)
   local f = M.field(W, v)
+  -- (static geography: cached per destination)
+  local lc = f.land
+  if not lc then lc = {}; f.land = lc end
+  local e = lc[cell]
+  if e ~= nil then
+    if e == false then return nil end
+    return e[1], e[2], e[3], e[4]
+  end
   local dist = f.dist
   local g = W.grid
   local ocean = W.geo.ocean
@@ -110,7 +130,8 @@ function M.landing(W, v, cell)
       end
     end
   end
-  if not bs then return nil end
+  if not bs then lc[cell] = false; return nil end
+  lc[cell] = { bs, bc, bn, bl }
   return bs, bc, bn, bl
 end
 
@@ -118,8 +139,7 @@ end
 -- reach `cell` by sea with n people, or nil (no mooring, no free boats enough, out of reach).
 function M.cost(W, v, cell, n)
   if not v.mooring then return nil end
-  local fb = M.free_boats(W, v)
-  if #fb < M.boats_needed(n or 1) then return nil end
+  if M.n_free(W, v) < M.boats_needed(n or 1) then return nil end
   local s, _, sn, ln = M.landing(W, v, cell)
   if not s then return nil end
   local cfg = cfgmod.SOCIETY

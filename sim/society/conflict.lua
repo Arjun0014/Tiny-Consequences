@@ -163,6 +163,15 @@ local function fighters(W, u, out)
 end
 M.fighters = fighters
 
+-- The count alone, kept for the week (the monthly raid and defence reckonings ask it of every
+-- neighbour; people's health and absences change slowly).
+local function nfighters(W, u)
+  local wk = floor(W.hour / 168)
+  if u.fight_wk ~= wk then u.fight_wk, u.fight_n = wk, fighters(W, u) end
+  return u.fight_n
+end
+M.nfighters = nfighters
+
 -- Allies who come to u's defence: its lord (bound to protect its tributaries) and villages that
 -- hold it dear (kin, daughters, old friends) within a day's walk send a share of their fighting
 -- men. Returns the allied men and the list { village, men } (scratch table `out`).
@@ -178,7 +187,7 @@ function M.allies(W, u, attacker, out)
       local s = lord and 9 or M.rel.score(W, a, u)
       if s >= cfg.ally_score and sites.dist(W, a.cell, u.cell) <= cfg.ally_reach
         and not (attacker and (attacker.lord == a.id or a.lord == attacker.id)) then
-        local m = floor(fighters(W, a) * (lord and cfg.ally_lord_share or cfg.ally_share))
+        local m = floor(nfighters(W, a) * (lord and cfg.ally_lord_share or cfg.ally_share))
         if m > 0 then
           n = n + m
           out[#out + 1] = { a, m }
@@ -193,9 +202,9 @@ local ALLY = {}
 
 -- The defence of village u against `attacker` (optional): its fighting men (and a little from
 -- everyone else), the allies who come, its palisade.
-function M.defence(W, u, attacker)
+function M.defence(W, u, attacker, exact)
   local cfg = cfgmod.CONFLICT
-  local men = fighters(W, u)
+  local men = exact and fighters(W, u) or nfighters(W, u)
   local others = max(0, u.pop - men) * cfg.other_defence
   local allied = M.allies(W, u, attacker, ALLY)
   local d = men + others + allied
@@ -233,7 +242,7 @@ function M.monthly(W, v)
   local best, bv, bp, bd, bg, bge, bA = nil, 0, 0, 0, 0, 0, 0
   local A0 = min(nf * cfg.raid_share, nf)
   -- raiders by sea: as many as the village's free boats seat
-  local seats = v.mooring and #sea.free_boats(W, v) * cfgmod.SOCIETY.boat_seats or 0
+  local seats = v.mooring and sea.n_free(W, v) * cfgmod.SOCIETY.boat_seats or 0
   for i = 1, #vs do
     local u = vs[i]
     if u ~= v and u.alive and u.pop >= cfg.min_target and u.lord ~= v.id and v.lord ~= u.id and not M.truce(W, v.id, u.id) then
@@ -295,7 +304,7 @@ local function herd_guard(W, u)
   if not h then return 0 end
   local se = M.herds.se(h)
   -- (herders are mostly boys and girls: half a fighter each)
-  return se / cfgmod.HERDS.herder_se * 0.5 + fighters(W, u) * cfg.cattle_alarm
+  return se / cfgmod.HERDS.herder_se * 0.5 + nfighters(W, u) * cfg.cattle_alarm
 end
 
 -- The best cattle raid for v: returns target, value, pwin, distance, grievance, its event, raiders.
@@ -307,12 +316,18 @@ function M.cattle_target(W, v, nf, hunger, war)
   local want_se = v.herd_target or (v.pop * hc.per_person[1])
   local lack = want_se > 0 and max(0, 1 - se_v / want_se) or 0
   local P = W.ent.people
+  local H = W.ent.households
+  local mean_b = 0
+  for i = 1, #v.households do local hh = H[v.households[i]]; if hh then mean_b = mean_b + (hh.beasts or 0) end end
+  mean_b = #v.households > 0 and mean_b / #v.households or 0
   local bach = 0
   for i = 1, #v.members do
     local p = P[v.members[i]]
     if p.sex == "m" and p.partner == 0 and p.away == 0 then
       local a = (W.hour - p.born) / 8064
-      if a >= 16 and a < 30 then bach = bach + 1 end
+      -- (young men whose families cannot find the bride-wealth, D-061)
+      local h = H[p.household]
+      if a >= 16 and a < 30 and (not h or (h.beasts or 0) * hc.bride_share < hc.bride_price * mean_b * 0.5) then bach = bach + 1 end
     end
   end
   local motive = lack * cfg.cattle_lack + min(1, bach / max(1, nf)) * cfg.cattle_bachelors + hunger * 0.5
@@ -358,7 +373,7 @@ function M.battle(W, party, living)
   local A = 0
   for i = 1, #living do A = A + living[i].health / 100 end
   if party.cargo.cattle then return M.cattle_raid(W, party, living, home, u, A) end
-  local D, men, allied = M.defence(W, u, home)
+  local D, men, allied = M.defence(W, u, home, true)
   local allies = {}
   for i = 1, #ALLY do allies[i] = ALLY[i] end
   local key = party.key
@@ -537,6 +552,16 @@ function M.raiders_home(W, party, home)
     local b = party.cargo and party.cargo.beasts
     if b and home.herd then
       for _, k in ipairs({ "sheep", "goats", "cattle" }) do home.herd[k] = (home.herd[k] or 0) + (b[k] or 0) end
+      -- the spoils belong to the raiders' households (D-061)
+      local se = M.herds.se(b)
+      local H, P = W.ent.households, W.ent.people
+      local hs = {}
+      for i = 1, #party.members do
+        local p = P[party.members[i]]
+        local h = p and not p.dead and H[p.household]
+        if h then hs[#hs + 1] = h end
+      end
+      for i = 1, #hs do hs[i].beasts = (hs[i].beasts or 0) + se / #hs end
     end
     home.acc.loot = (home.acc.loot or 0) + g
     home.wk_imports = (home.wk_imports or 0) + g
@@ -621,6 +646,16 @@ function M.polity(W, v)
     guard = guard + 1
   end
   return top, depth
+end
+
+-- The polity's name: its paramount's, and what its tiers of tribute make it (a chiefdom of two
+-- tiers, a paramount chiefdom of three, a kingdom of four or more — Wright and Johnson's
+-- administrative levels).
+function M.polity_name(W, top)
+  local t = M.tiers(W, top)
+  if t <= 1 then return nil, 1 end
+  local kind = t >= 4 and "kingdom" or (t == 3 and "paramount chiefdom" or "chiefdom")
+  return string.format("the %s %s", top.name or "?", kind), t
 end
 
 -- Tiers of the polity headed by paramount village `top` (1 = a lone village).

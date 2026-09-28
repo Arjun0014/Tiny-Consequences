@@ -161,6 +161,69 @@ function M.weekly(W, v)
     end
   end
   h.base_se = h.base_se and (h.base_se + (M.se(h) - h.base_se) / 48) or M.se(h)
+  M.sync(W, v)
+end
+
+---------------------------------------------------------------------------------------------
+-- Household herds (W8, D-061): each household owns h.beasts sheep-equivalents; the village herd
+-- (v.herd, by species) is their sum. What befalls the whole herd (births, deaths, slaughter, a raid
+-- suffered) is shared in proportion; transfers (bride-wealth, raiders' spoils, emigrants' beasts,
+-- a son's portion) move beasts between particular households.
+
+-- Rescale the households' beasts to the village herd (after whole-herd changes). Households with
+-- none yet (old saves, a new village) are given shares by size.
+function M.sync(W, v)
+  local H = W.ent.households
+  local se = v.herd and M.se(v.herd) or 0
+  local tot, n = 0, 0
+  for i = 1, #v.households do
+    local h = H[v.households[i]]
+    if h then tot = tot + (h.beasts or 0); n = n + #h.members end
+  end
+  if tot <= 1e-9 then
+    for i = 1, #v.households do
+      local h = H[v.households[i]]
+      if h then h.beasts = n > 0 and se * #h.members / n or 0 end
+    end
+    return
+  end
+  local f = se / tot
+  for i = 1, #v.households do
+    local h = H[v.households[i]]
+    if h then h.beasts = (h.beasts or 0) * f end
+  end
+end
+
+-- Take `se` sheep-equivalents out of village v's herd (species in proportion); returns the beasts
+-- by species (for a party to drive, or to add to another herd).
+function M.take(v, se)
+  local h = v.herd
+  local tot = h and M.se(h) or 0
+  if tot <= 0 or se <= 0 then return nil end
+  local f = math.min(1, se / tot)
+  local out = {}
+  for _, k in ipairs(M.KINDS) do
+    local x = (h[k] or 0) * f
+    h[k] = (h[k] or 0) - x
+    out[k] = x
+  end
+  return out
+end
+
+-- Add beasts (by species) to village v's herd.
+function M.add(v, beasts)
+  if not beasts then return end
+  local h = v.herd
+  if not h then h = { sheep = 0, goats = 0, cattle = 0 }; v.herd = h end
+  for _, k in ipairs(M.KINDS) do h[k] = (h[k] or 0) + (beasts[k] or 0) end
+end
+
+-- Move `se` from household a (village va) to household b (village vb).
+function M.give(W, va, a, vb, b, se)
+  if se <= 0 then return end
+  a.beasts = (a.beasts or 0) - se
+  b.beasts = (b.beasts or 0) + se
+  if va ~= vb then M.add(vb, M.take(va, se)) end
 end
 
 -- Herding hours worked today (labour.execute).

@@ -59,6 +59,7 @@ function M.weekly(W, v)
   local nonage, dtag, dtag_n = 0, 0, 0
   local hsum = 0   -- the week's summed death hazard (expected deaths): the account's mortality
   local csum, cn = 0, 0   -- the week's summed conception chance over the women who could conceive
+  local cnf = 0           -- ... and their summed fecundity factor from nutrition (the tests' account)
   local m = v.members
   local dead_any = false
   -- the planet's soft cap (performance guard): births taper to 0 at soft_cap
@@ -147,7 +148,7 @@ function M.weekly(W, v)
           if nf > 1 then nf = 1 elseif nf < 0 then nf = 0 end
           local pday = cfg.conceive_day * af * nf * gcap
           local pweek = 1 - (1 - pday) ^ 7
-          csum, cn = csum + pweek, cn + 1
+          csum, cn, cnf = csum + pweek, cn + 1, cnf + nf
           if (ub + p.u * PHI) % 1 < pweek then
             if (ub + p.u * PHI3) % 1 < cfg.fetal_loss then
               -- lost pregnancy: nothing, she may conceive again
@@ -166,7 +167,7 @@ function M.weekly(W, v)
   local a = v.acc
   a.hz = (a.hz or 0) + hsum
   a.pw = (a.pw or 0) + #m
-  if cn > 0 then a.cz, a.cw = (a.cz or 0) + csum, (a.cw or 0) + cn end
+  if cn > 0 then a.cz, a.cw, a.cf = (a.cz or 0) + csum, (a.cw or 0) + cn, (a.cf or 0) + cnf end
   if dead_any then ents.compact(W, v) end
   v.nonage = (v.nonage or 0) + nonage
   if dtag ~= 0 then v.death_tag = dtag end
@@ -257,6 +258,62 @@ M.vacant = vacant
 
 -- Betrothed couples marry while vacant homes exist and the village can feed another household
 -- (Hajnal: marriage needed a livelihood; oldest betrothal first: member order).
+-- Bride-wealth (W8, D-061): the groom's family gives beasts to the bride's (wherever it lives:
+-- beasts cross between villages along marriages). A family that cannot find half the price makes
+-- the couple wait (up to bride_wait_years; then they marry anyway). Returns ok, the groom's family.
+local herds = require("sim.society.herds")
+-- The couple marries: a new household in `home`, the son's portion of his family's herd.
+local function marry(W, v, p, q, home, gh)
+  local h = ents.new_household(W, v, home.id)
+  if gh and (gh.beasts or 0) > 0 then
+    local portion = gh.beasts * cfgmod.HERDS.heir_share
+    gh.beasts = gh.beasts - portion
+    h.beasts = (h.beasts or 0) + portion
+  end
+  ents.move_person(W, p, v, h)
+  ents.move_person(W, q, v, h)
+  p.betrothed, q.betrothed = 0, 0
+  p.partner, q.partner = q.id, p.id
+  p.wait_since, q.wait_since = nil, nil
+  v.acc.marriages = (v.acc.marriages or 0) + 1
+end
+
+-- What the groom's family would give: the payment, the families (nil when none is due), and
+-- whether it is enough to marry now. Pure (budding asks it too).
+function M.bride_terms(W, v, bride, groom)
+  local E = W.ent
+  local H, P = E.households, E.people
+  local hc = cfgmod.HERDS
+  local gh = H[groom.household]
+  local mom, dad = P[bride.mother], P[bride.father]
+  local par = (mom and not mom.dead and mom) or (dad and not dad.dead and dad)
+  local bh = par and H[par.household]
+  if not gh or not bh or gh == bh then return 0, gh, nil, true end
+  -- the going rate: a share of the groom's village's mean family herd
+  local mean, n = 0, 0
+  for i = 1, #v.households do
+    local h = H[v.households[i]]
+    if h then mean = mean + (h.beasts or 0); n = n + 1 end
+  end
+  mean = n > 0 and mean / n or 0
+  local price = hc.bride_price * mean
+  if price < 0.5 then return 0, gh, nil, true end
+  local pay = min(price, (gh.beasts or 0) * hc.bride_share)
+  local ok = pay >= price * 0.5 or W.hour - (bride.wait_since or W.hour) >= hc.bride_wait_years * 8064
+  return pay, gh, bh, ok
+end
+
+local function bride_wealth(W, v, bride, groom)
+  local E = W.ent
+  local pay, gh, bh, ok = M.bride_terms(W, v, bride, groom)
+  if not ok then return false, gh end
+  if not bh then return true, gh end
+  local vb = E.villages[bh.village]
+  if vb then herds.give(W, v, gh, vb, bh, pay) end
+  v.acc.bride_wealth = (v.acc.bride_wealth or 0) + pay
+  return true, gh
+end
+
 function M.marry_waiting(W, v)
   local E = W.ent
   local P = E.people
@@ -271,13 +328,10 @@ function M.marry_waiting(W, v)
       elseif q.village == v.id then
         local home = vacant(W, v)
         if not home then return end
-        local h = ents.new_household(W, v, home.id)
-        ents.move_person(W, p, v, h)
-        ents.move_person(W, q, v, h)
-        p.betrothed, q.betrothed = 0, 0
-        p.partner, q.partner = q.id, p.id
-        p.wait_since, q.wait_since = nil, nil
-        v.acc.marriages = (v.acc.marriages or 0) + 1
+        local ok, gh = bride_wealth(W, v, p, q)
+        if ok then
+          marry(W, v, p, q, home, gh)
+        end
       end
     end
   end

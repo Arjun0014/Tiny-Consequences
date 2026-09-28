@@ -50,6 +50,9 @@ for _, x in ipairs({
   { wday, "wday", { "get" } },
   { daylight, "daylight", { "sun_times", "rhythm" } },
   { sites, "sites", { "dist", "rings" } },
+  { require("sim.society.herds"), "herds", { "weekly", "sync", "capacity" } },
+  { require("sim.society.sea"), "sea", { "daily", "cost", "landing", "field", "site" } },
+  { conflict, "conflict", { "cattle_target", "defence", "allies" } },
 }) do
   for _, fn in ipairs(x[3]) do wrap(x[1], x[2], fn) end
 end

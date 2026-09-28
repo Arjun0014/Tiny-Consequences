@@ -60,6 +60,12 @@ function M.fuel_households(W, v)
 end
 
 -- The best woodlot for a village: forest density x hours left after walking, within reach.
+-- The forest cover a village leaves standing in a woodlot (coppice stools regrow fast; D-061).
+function M.coppice_floor(v)
+  local cfg = cfgmod.SOCIETY
+  return (v.wood_days or 99) < cfg.coppice_desperate_days and 0.02 or cfg.coppice_floor
+end
+
 function M.woodlot(W, v, hours_day)
   local cfg = cfgmod.SOCIETY
   local F = W.F
@@ -70,10 +76,13 @@ function M.woodlot(W, v, hours_day)
     G.woods = cand
   end
   local best, bs = nil, 0
+  -- coppicing: woods are cut back to their stools and left to regrow (not below the floor, unless
+  -- the woodpile is nearly empty)
+  local floor_f = M.coppice_floor(v)
   for i = 1, #cand do
     local c = cand[i]
     local f = F.forest[c]
-    if f > 0.02 and F.fire[c] == 0 then
+    if f > floor_f + 0.02 and F.fire[c] == 0 then
       local dc = G.walkd
       if not dc then dc = {}; G.walkd = dc end
       local walk = sites.dist_cached(W, dc, v.cell, c) * cfg.walk_h
@@ -462,7 +471,8 @@ function M.execute(W, v, hours_day, wx)
         local f = F.forest[c]
         local wood = eff * cfg.wood_rate * f / (f + cfg.wood_half)
         local df = wood / cfg.forest_wu
-        if df > f then df = f; wood = f * cfg.forest_wu end
+        local keep = min(f, M.coppice_floor(v))
+        if df > f - keep then df = f - keep; wood = df * cfg.forest_wu end
         if df > 0 then
           F.forest[c] = f - df
           W.P.forest[c] = F.forest[c]
@@ -477,7 +487,7 @@ function M.execute(W, v, hours_day, wx)
           v.logged = v.logged or {}
           v.logged[c] = W.hour
         end
-        if F.forest[c] < 0.03 then v.replan = true end
+        if F.forest[c] < M.coppice_floor(v) + 0.03 then v.replan = true end
       elseif k == "build" then
         local b = B[g.target]
         if b and (b.state == "site" or b.repair) then

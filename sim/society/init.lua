@@ -85,6 +85,7 @@ mobility.on_register = function(W, v) sys.register_village(W, v) end
 relations.depart = mobility.depart
 status.depart = mobility.depart
 require("sim.society.sea").lose = fishing.lose
+mobility.bride_terms = life.bride_terms
 status.best_site = function(W, v)
   -- (a lineage leaving an island with no room left sails for another shore)
   return sites.near_site(W, v.cell, cfgmod.SOCIETY.bud_radius) or require("sim.society.sea").site(W, v, 12)

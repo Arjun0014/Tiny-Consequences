@@ -80,28 +80,32 @@ b08_body = function(Wa, Wb)
   -- home, not pregnant or nursing; life.weekly's account), per woman-week over the hungry months
   -- (a mechanism-level rate like the death hazard below: a small village's few conceptions are
   -- too noisy to compare)
+  -- (cf: the same women's summed fecundity factor from nutrition, what the drop should follow)
   local function tracker(v)
-    return { v = v, acc = v.acc, cz = v.acc.cz or 0, cw = v.acc.cw or 0, sz = 0, sw = 0 }
+    return { v = v, acc = v.acc, cz = v.acc.cz or 0, cw = v.acc.cw or 0, cf = v.acc.cf or 0, sz = 0, sw = 0, sf = 0 }
   end
   local function track(t)
     local v = t.v
     if v.acc ~= t.acc then
       -- the yearly rollover: finish the old account, start on the new one
       local o = v.acc_last or {}
-      t.sz, t.sw = t.sz + (o.cz or 0) - t.cz, t.sw + (o.cw or 0) - t.cw
-      t.acc, t.cz, t.cw = v.acc, 0, 0
+      t.sz, t.sw, t.sf = t.sz + (o.cz or 0) - t.cz, t.sw + (o.cw or 0) - t.cw, t.sf + (o.cf or 0) - t.cf
+      t.acc, t.cz, t.cw, t.cf = v.acc, 0, 0, 0
     end
-    t.sz, t.sw = t.sz + (v.acc.cz or 0) - t.cz, t.sw + (v.acc.cw or 0) - t.cw
-    t.cz, t.cw = v.acc.cz or 0, v.acc.cw or 0
+    t.sz, t.sw, t.sf = t.sz + (v.acc.cz or 0) - t.cz, t.sw + (v.acc.cw or 0) - t.cw, t.sf + (v.acc.cf or 0) - t.cf
+    t.cz, t.cw, t.cf = v.acc.cz or 0, v.acc.cw or 0, v.acc.cf or 0
   end
   local ca, cb = tracker(va), tracker(vb)
-  -- the women's nutrition over the same months (what the fecundity curve responds to)
-  local na, nb = { s = 0, n = 0 }, { s = 0, n = 0 }
+  -- the women's nutrition over the same months (what the fecundity curve responds to): each
+  -- woman conceives by her own nutrition, so the expectation is the mean of f(n), not f of the
+  -- mean (nutrition is spread about the curve's knee in a famine)
+  local function f(x) x = (x - 0.55) / 0.3; return x < 0 and 0 or (x > 1 and 1 or x) end
+  local na, nb = { s = 0, n = 0, f = 0 }, { s = 0, n = 0, f = 0 }
   local function nut(W, v, t)
     local P = W.ent.people
     for _, id in ipairs(v.members) do
       local p = P[id]
-      if p.sex == "f" and p.partner ~= 0 then t.s, t.n = t.s + p.nutrition, t.n + 1 end
+      if p.sex == "f" and p.partner ~= 0 then t.s, t.n, t.f = t.s + p.nutrition, t.n + 1, t.f + f(p.nutrition) end
     end
   end
   local hz0a, pw0a, hz0b, pw0b, hza, hzb = 0, 0, 0, 0, 0, 0
@@ -133,9 +137,10 @@ b08_body = function(Wa, Wb)
   T.ok(ca.sw >= 10 and cb.sw >= 10, string.format("women who could conceive: %d vs %d woman-weeks", ca.sw, cb.sw))
   -- conceptions fall as the fecundity curve says for the women's nutrition (life.weekly: chance
   -- x clamp((n - 0.55) / 0.3)), and clearly (the famine's depth depends on the wild food about)
-  local function f(x) x = (x - 0.55) / 0.3; return x < 0 and 0 or (x > 1 and 1 or x) end
   local mna, mnb = na.s / math.max(1, na.n), nb.s / math.max(1, nb.n)
-  local predicted = f(mna) / math.max(1e-6, f(mnb))
+  -- expected: the ratio of the fecundity factor over the very woman-weeks counted (age and the
+  -- population cap act alike in both worlds)
+  local predicted = (ca.sf / math.max(1, ca.sw)) / math.max(1e-6, cb.sf / math.max(1, cb.sw))
   T.ok(crb > 0 and cra < crb * 0.9 and cra <= crb * (predicted + 0.15),
     string.format("conceptions drop: weekly chance %.4f vs %.4f (women's nutrition %.2f vs %.2f: expected x%.2f)", cra, crb, mna, mnb, predicted))
   T.ok(hza > hzb * 1.5, string.format("mortality rises: weekly death hazard %.5f vs %.5f", hza, hzb))

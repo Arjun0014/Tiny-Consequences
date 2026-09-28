@@ -450,6 +450,8 @@ C.SOCIETY = {
                                           --   woodland is ~170 ha, thousands of household-years of fuel)
   wood_radius = 6,                        -- cells to look for woods (walking eats into the day)
   brush_rate = 1.2,                       -- WU per hour of brush, dung and straw gathering (fuel only)
+  coppice_floor = 0.3,                    -- forest cover left on a cut woodlot (stools regrow; D-061)
+  coppice_desperate_days = 10,            -- ... unless the woodpile holds fewer days than this
   brush_half = 0.3,                       -- grass density at half the brush rate
   earth_wood = 18, earth_h = 360,         -- an earth (sod / mud-brick) house where timber is scarce
   forage_rate = 0.6,                      -- FU of wild food per hour in lush country (~1,500 kcal/h)
@@ -618,6 +620,12 @@ C.HERDS = {
   manure = 0.0000015, manure_max = 0.0004,  -- weekly fertility per se per field (capped)
   sheep_per_person = 1.2,                 -- sheep for a village's wool to clothe everyone
   raid_take = 0.2,                        -- share of the herd raiders drive off
+  -- household herds (D-061): bride-wealth from the groom's family to the bride's, the son's portion
+  bride_price = 0.4,                      -- the going rate: this share of the village's mean family herd
+  bride_share = 0.5,                      -- at most this share of the family's beasts
+  bride_wait_years = 3,                   -- a couple waits this long for the price, then marries anyway
+  heir_share = 0.2,                       -- a son marrying takes this share of his family's beasts
+  wealth_prestige = 0.03,                 -- monthly standing per unit of beasts above the village mean share
 }
 
 -- Crafts (docs/world/18 §2.6, sim/society/crafts.lua, D-056): one unit = a person's (tools: a

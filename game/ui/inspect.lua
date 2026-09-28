@@ -185,9 +185,18 @@ function M.society_items(W, v, items)
   if #parts > 0 then add(items, { t = "text", icon = "people", text = "Lineages: " .. table.concat(parts, " · ") .. (#order > 4 and " …" or "") }) end
   local h = v.herd
   if h then
-    local cap = v.herd_cap and floor(v.herd_cap) or nil
     add(items, { t = "row", icon = "deer", label = "Herd", value = string.format("%d sheep · %d goats · %d cattle",
       floor(h.sheep or 0), floor(h.goats or 0), floor(h.cattle or 0)) })
+    -- how it is shared among the households (D-061): the richest fifth's share
+    local H = E.households or {}
+    local b = {}
+    for _, id in ipairs(v.households or {}) do local hh = H[id]; if hh then b[#b + 1] = hh.beasts or 0 end end
+    if #b >= 5 then
+      table.sort(b, function(x, y) return x > y end)
+      local tot, top = 0, 0
+      for i = 1, #b do tot = tot + b[i]; if i <= math.ceil(#b / 5) then top = top + b[i] end end
+      if tot > 1 then add(items, { t = "text", icon = "star", text = string.format("The richest fifth of the families own %d%% of the herd", floor(top / tot * 100 + 0.5)) }) end
+    end
   end
   -- crafts: what the village makes well, what it buys
   local crafts_ok, crafts = pcall(require, "sim.society.crafts")
@@ -214,6 +223,17 @@ function M.society_items(W, v, items)
     if u.alive and u.lord == v.id then tribs[#tribs + 1] = u.name end
   end
   if #tribs > 0 then add(items, { t = "text", icon = "star", text = "Rules: " .. table.concat(tribs, ", ") }) end
+  -- the polity it belongs to (W9): named for its paramount, sized by its tiers of tribute
+  local conflict_ok, conflict = pcall(require, "sim.society.conflict")
+  if conflict_ok and (v.lord or #tribs > 0) then
+    local top = conflict.polity(W, v)
+    local name, tiers = conflict.polity_name(W, top)
+    if name then
+      local n = 0
+      for i = 1, #vs do if vs[i].alive and conflict.polity(W, vs[i]) == top then n = n + 1 end end
+      add(items, { t = "text", icon = "star", text = string.format("Part of %s: %d villages, %d tiers", name, n, tiers) })
+    end
+  end
   -- the strongest grievance and the wrong behind it
   local worst, wg, wev = nil, 0, 0
   local R = E.rel or {}
@@ -501,6 +521,14 @@ local function person_items(W, pid, p, items)
         or "no home of their own"
       add(items, { t = "row", icon = "house", label = "Home", value = cap(where) .. ", " .. #h.members .. " living there",
         hl = not (home and home.state == "standing") })
+      -- the family's beasts (their wealth, D-061)
+      if (h.beasts or 0) >= 0.5 then
+        local vh = v.herd
+        local tot = vh and ((vh.sheep or 0) + (vh.goats or 0) * 0.9 + (vh.cattle or 0) * 5) or 0
+        local share = tot > 0 and h.beasts / tot or 0
+        local word = share * #v.households > 2.5 and " (among the richest)" or (share * #v.households < 0.3 and " (poor)" or "")
+        add(items, { t = "row", icon = "deer", label = "Family herd", value = string.format("%d sheep-equivalents%s", floor(h.beasts + 0.5), word) })
+      end
     end
   end
   local function bar01(x) if type(x) ~= "number" then return nil end if x > 1 then return x / 100 end return x end

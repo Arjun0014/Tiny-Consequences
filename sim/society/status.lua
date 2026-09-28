@@ -84,10 +84,16 @@ function M.monthly(W, v)
     local p = P[v.members[i]]
     if p and p.lin then lin_n[p.lin] = (lin_n[p.lin] or 0) + 1 end
   end
+  -- the village's mean herd per household (wealth brings standing, D-061)
+  local mean = 0
+  for i = 1, #v.households do local h = H[v.households[i]]; if h then mean = mean + (h.beasts or 0) end end
+  mean = #v.households > 0 and mean / #v.households or 0
+  local wp = cfgmod.HERDS.wealth_prestige
   for i = 1, #v.households do
     local h = H[v.households[i]]
     if h then
       local pr = (h.prestige or 0) * cfg.decay
+      if mean > 0.5 then pr = pr + wp * max(-1, min(3, (h.beasts or 0) / mean - 1)) end
       local hd = M.head(W, h)
       if hd then
         local age = (hour - hd.born) / 8064

@@ -69,7 +69,7 @@ for y = 1, args.years do
     for _, v in ipairs(W.ent.villages) do
       if v.alive and v.lord then
         local top = conflict.polity(W, v)
-        pol[top.name] = conflict.tiers(W, top)
+        pol[conflict.polity_name(W, top) or top.name] = conflict.tiers(W, top)
       end
     end
     local ps = {}

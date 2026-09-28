@@ -16,6 +16,7 @@ local sites = require("sim.society.sites")
 local farming = require("sim.society.farming")
 local relations = require("sim.society.relations")
 local sea = require("sim.society.sea")
+local herds = require("sim.society.herds")
 
 -- Parties whose members stay members of their village and household while away: porters carrying
 -- goods between villages and walking home again (sim/society/relations.lua).
@@ -29,6 +30,7 @@ local floor, ceil, min, max = math.floor, math.ceil, math.min, math.max
 M.on_register = function() end
 M.on_unregister = function() end
 M.battle = function() end          -- conflict.battle (set by init)
+M.bride_terms = function() return 0, nil, nil, true end   -- life.bride_terms (set by init)
 M.raiders_home = function() end    -- conflict.raiders_home
 
 local function emit(W, kind, cell, parent, mag, data)
@@ -158,6 +160,24 @@ function M.depart(W, v, members, to, site, kind, reason, food, seed, cargo, from
   local dep = W.hour + floor(v.plan.ws or 6)
   -- (raiders flee with their loot at once)
   if kind == "raid_home" then dep = W.hour end
+  -- whole households moving away drive their beasts along (D-061)
+  local beasts = nil
+  if not errand and (kind == "migrants" or kind == "colonists") and v.herd then
+    local H = E.households
+    local inparty, seen, hs = {}, {}, {}
+    for i = 1, #members do inparty[members[i].id] = true end
+    for i = 1, #members do
+      local h = H[members[i].household]
+      if h and not seen[h.id] then seen[h.id] = true; hs[#hs + 1] = h end
+    end
+    local take = 0
+    for i = 1, #hs do
+      local all = true
+      for j = 1, #hs[i].members do if not inparty[hs[i].members[j]] then all = false; break end end
+      if all then take = take + (hs[i].beasts or 0); hs[i].beasts = 0 end
+    end
+    if take > 0 then beasts = herds.take(v, take) end
+  end
   local hours, hl, hs = walk_hours(W, path, si, sj)
   -- a crossing waits out a storm at the mooring (a day at a time, three at most)
   if si then dep = sea.weather_wait(W, path[si], dep) end
@@ -166,6 +186,7 @@ function M.depart(W, v, members, to, site, kind, reason, food, seed, cargo, from
     arrive = dep + max(2, hours), food = food or 0, seed = seed or 0, reason = reason or 0,
     kind = kind, cargo = cargo, no_route = no_route or nil }
   if si then party.si, party.sj, party.hl, party.hs = si, sj, hl, hs end
+  party.beasts = beasts
   if boats and #boats > 0 then
     sea.embark(W, party, boats)
     sea.squall_roll(W, party)
@@ -277,12 +298,21 @@ local function arrive_here(W, party)
     local l = by_old[key]
     l[#l + 1] = p
   end
+  local newh = {}
   for i = 1, #order do
     local group = by_old[order[i]]
     local h = ents.new_household(W, dest, 0)
     h.arrived = W.hour
     h.came_from = party.from
     for j = 1, #group do ents.move_person(W, group[j], dest, h) end
+    newh[#newh + 1] = h
+  end
+  -- their beasts join the herd there (a new village has only what its founders drove)
+  if founded and not dest.herd then dest.herd = { sheep = 0, goats = 0, cattle = 0 } end
+  if party.beasts then
+    herds.add(dest, party.beasts)
+    local se = herds.se(party.beasts)
+    for i = 1, #newh do newh[i].beasts = (newh[i].beasts or 0) + se * #newh[i].members / max(1, #living) end
   end
   dest.stock.grain = dest.stock.grain + party.food
   dest.acc.mig_in = (dest.acc.mig_in or 0) + #living
@@ -682,7 +712,10 @@ function M.monthly(W, v)
       local p = P[v.members[i]]
       if p.sex == "f" and p.betrothed ~= 0 and p.wait_since and hour - p.wait_since > 12 * 672 then
         local q = P[p.betrothed]
-        if q and not q.dead and q.village == v.id then waiting[#waiting + 1] = p; waiting[#waiting + 1] = q end
+        -- (couples waiting for a house; those waiting for the bride-wealth stay)
+        if q and not q.dead and q.village == v.id and select(4, M.bride_terms(W, v, p, q)) then
+          waiting[#waiting + 1] = p; waiting[#waiting + 1] = q
+        end
       end
     end
     local units
