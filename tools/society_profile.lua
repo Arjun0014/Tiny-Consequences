@@ -61,6 +61,10 @@ for _, x in ipairs({
   { require("sim.society.herds"), "herds", { "weekly", "sync", "capacity" } },
   { require("sim.society.sea"), "sea", { "daily", "cost", "landing", "field", "site" } },
   { conflict, "conflict", { "cattle_target", "defence", "allies" } },
+  { farming, "farming", { "field_sites", "local_week" } },
+  { require("sim.society.herds"), "herds", { "demand" } },
+  { construction, "construction", { "remaining" } },
+  { labour, "labour", { "capacity" } },
 }) do
   for _, fn in ipairs(x[3]) do wrap(x[1], x[2], fn) end
 end

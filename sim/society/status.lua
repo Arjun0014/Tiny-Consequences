@@ -168,6 +168,7 @@ function M.split(W, v, lin, lead, parent)
   if not site then return end
   local members = {}
   local nh = 0
+  local going = {}
   for i = 1, #v.households do
     local h = H[v.households[i]]
     local hd = h and M.head(W, h)
@@ -175,10 +176,29 @@ function M.split(W, v, lin, lead, parent)
       nh = nh + 1
       for k = 1, #h.members do
         local p = P[h.members[k]]
-        if p and not p.dead and p.away == 0 then members[#members + 1] = p end
+        if p and not p.dead and p.away == 0 then members[#members + 1] = p; going[p.id] = true end
       end
     end
   end
+  -- the faction: other households whose head counts enough friends among those leaving (D-062)
+  local need = cfgmod.SOCIETY.friend_faction
+  local extra = 0
+  for i = 1, #v.households do
+    local h = H[v.households[i]]
+    local hd = h and M.head(W, h)
+    if hd and hd.lin ~= lin and hd.friends and extra < nh then
+      local n = 0
+      for k = 1, #hd.friends do if going[hd.friends[k]] then n = n + 1 end end
+      if n >= need then
+        extra = extra + 1
+        for k = 1, #h.members do
+          local p = P[h.members[k]]
+          if p and not p.dead and p.away == 0 then members[#members + 1] = p end
+        end
+      end
+    end
+  end
+  nh = nh + extra
   if #members < cfgmod.STATUS.split_min then return end
   local name = W.ent.lineages and W.ent.lineages[lin] and W.ent.lineages[lin].name or "?"
   local id = emit(W, "village_split", v.cell, parent, #members, { village = v.id, lineage = lin, name = name,

@@ -523,6 +523,13 @@ C.SOCIETY = {
   relief_margin_days = 60,                -- a giver keeps its need to its next harvest + this
   relief_reach = 16, trade_reach = 12, bride_reach = 12,   -- cell spacings (a few days' walk)
   bride_stranger = -0.25,                 -- a village no friend can match sends brides to strangers this well disposed
+  -- friendship (sim/society/friends.lua, D-062)
+  friend_prob = 0.08,                     -- monthly chance a person with room befriends a companion
+  friend_max = 4,                         -- friends a person keeps
+  friend_fade = 0.02,                     -- monthly chance a friend living elsewhere is lost
+  friend_mood = 0.07, friend_lonely = 0.08,  -- mood per friend at hand (up to three); an adult with none
+  friend_pull = 0.25,                     -- a household is drawn to a village where its friends live
+  friend_faction = 2,                     -- friends among a leaving lineage that take a household along
   porters = 6, porter_fu = 30,            -- porters per errand, FU (or WU) a porter carries a trip
   bride_prob = 0.35,                      -- monthly chance a village with unmatched women looks abroad
   seed_kin = 2,                           -- kin ties between a landmass's first villages of one culture

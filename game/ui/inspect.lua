@@ -488,6 +488,39 @@ function M.reason(W, v, p)
   return nil
 end
 
+-- What weighs on person p now (their needs unmet, D-062): hunger, cold, no home, no friends, a
+-- bride-wealth the family cannot find, grief, fear of raiders.
+function M.worries(W, v, p)
+  local out = {}
+  local E = W.ent
+  local a = (W.hour - (p.born or W.hour)) / 8064
+  if (p.nutrition or 1) < 0.6 then out[#out + 1] = "hunger" end
+  local temp = v.plan and v.plan.temp or 10
+  if temp < 5 and (v.stock and v.stock.wood or 1) <= 1 then out[#out + 1] = "the cold (no firewood)" end
+  local h = E.households and E.households[p.household]
+  if h and (h.home == 0 or not E.buildings[h.home] or E.buildings[h.home].state ~= "standing") then out[#out + 1] = "no home of their own" end
+  if a >= 14 and not p.friends then out[#out + 1] = "loneliness" end
+  if p.betrothed and p.betrothed ~= 0 and p.wait_since and W.hour - p.wait_since > 672 * 6 then
+    local q = E.people[p.betrothed]
+    local life = require("sim.society.life")
+    local bride = p.sex == "f" and p or q
+    local groom = p.sex == "f" and q or p
+    if bride and groom and not select(4, life.bride_terms(W, v, bride, groom)) then
+      out[#out + 1] = "the bride-wealth"
+    else
+      out[#out + 1] = "a house to marry into"
+    end
+  end
+  if p.mem then
+    local worst, ws = nil, 0.5
+    for i = 1, #p.mem - 1, 2 do if (p.mem[i + 1] or 0) > ws then worst, ws = p.mem[i], p.mem[i + 1] end end
+    local r = worst and W.E and W.E.rec and W.E.rec[worst]
+    if r then out[#out + 1] = "grief (" .. tostring(r.kind):gsub("_", " ") .. ")" end
+  end
+  if v.raided and W.hour - v.raided < 3 * 8064 then out[#out + 1] = "raiders" end
+  return out
+end
+
 local function person_link(W, pid)
   local p = ents.person(W, pid)
   if not p then return nil end
@@ -514,6 +547,8 @@ local function person_items(W, pid, p, items)
     if task then add(items, { t = "row", icon = "pickaxe", label = "This week", value = task }) end
     local why = M.reason(W, v, p)
     if why then add(items, { t = "text", icon = "bubble", text = "Why: " .. why }) end
+    local worries = M.worries(W, v, p)
+    if #worries > 0 then add(items, { t = "text", icon = "skull", text = "Worries: " .. table.concat(worries, ", "), hl = true }) end
     local h = W.ent.households and W.ent.households[p.household]
     if h then
       local home = h.home ~= 0 and W.ent.buildings and W.ent.buildings[h.home]
@@ -554,6 +589,16 @@ local function person_items(W, pid, p, items)
     local st = hh and hh.prestige or 0
     local word = lead and "leads the village" or (st > 3 and "much respected" or (st > 1 and "respected" or "ordinary"))
     add(items, { t = "row", icon = "star", label = "Lineage", value = (lin and ("the " .. lin.name .. " line") or "?") .. " · " .. word })
+  end
+  -- friends (D-062): the companions of their days
+  local fl = type(p.friends) == "table" and p.friends or {}
+  if #fl > 0 then
+    local names = {}
+    for i = 1, #fl do
+      local q = W.ent.people[fl[i]]
+      if q then names[#names + 1] = (q.name or "?") .. ((q.dead and " (died)") or (q.village ~= p.village and " (away)") or "") end
+    end
+    if #names > 0 then add(items, { t = "text", icon = "people", text = "Friends: " .. table.concat(names, ", ") }) end
   end
   add(items, { t = "head", text = "Family" })
   local any = false

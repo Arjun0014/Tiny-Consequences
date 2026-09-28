@@ -11,6 +11,8 @@ local construction = require("sim.society.construction")
 
 local crafts = require("sim.society.crafts")
 local M = {}
+local herds = require("sim.society.herds")
+local friends = require("sim.society.friends")
 local floor, min, max, exp = math.floor, math.min, math.max, math.exp
 local PHI, PHI2, PHI3 = 1.6180339887498949, 2.6180339887498949, 4.2360679774997898
 
@@ -187,7 +189,7 @@ local function moods(W, v)
     local bad = 0
     local mem = p.mem
     for k = 2, #mem, 2 do bad = bad + mem[k] end
-    local mood = 0.8 * p.nutrition + 0.4 * (p.health / 100) - 0.15 * bad - 0.6
+    local mood = 0.8 * p.nutrition + 0.4 * (p.health / 100) - 0.15 * bad - 0.6 + friends.mood(W, p)
     if mood > 1 then mood = 1 elseif mood < -1 then mood = -1 end
     p.mood = mood
   end
@@ -261,7 +263,6 @@ M.vacant = vacant
 -- Bride-wealth (W8, D-061): the groom's family gives beasts to the bride's (wherever it lives:
 -- beasts cross between villages along marriages). A family that cannot find half the price makes
 -- the couple wait (up to bride_wait_years; then they marry anyway). Returns ok, the groom's family.
-local herds = require("sim.society.herds")
 -- The couple marries: a new household in `home`, the son's portion of his family's herd.
 local function marry(W, v, p, q, home, gh)
   local h = ents.new_household(W, v, home.id)
@@ -425,12 +426,22 @@ function M.monthly(W, v)
     end
   end
   local mi = 1
+  local taken = {}
   for i = 1, #sf do
+    while mi <= #sm and taken[sm[mi]] do mi = mi + 1 end
     if mi > #sm then break end
     local f = sf[i]
     if (up + f.u * PHI2) % 1 < cfg.court_prob then
-      local mm = sm[mi]
-      mi = mi + 1
+      -- a man she knows first (a friend of hers), else the next single man
+      local mm
+      if f.friends then
+        for k = mi, #sm do
+          local q = sm[k]
+          if not taken[q] and friends.is_friend(f, q) then mm = q; break end
+        end
+      end
+      if not mm then mm = sm[mi]; mi = mi + 1 end
+      taken[mm] = true
       -- no marriages between parents and children or siblings
       local kin = mm.mother ~= 0 and (mm.mother == f.mother or mm.father == f.father)
       if not kin then
@@ -441,6 +452,7 @@ function M.monthly(W, v)
   end
   M.marry_waiting(W, v)
   M.retrain(W, v)
+  friends.monthly(W, v)
   moods(W, v)
 end
 

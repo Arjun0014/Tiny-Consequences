@@ -17,6 +17,7 @@ local farming = require("sim.society.farming")
 local relations = require("sim.society.relations")
 local sea = require("sim.society.sea")
 local herds = require("sim.society.herds")
+local friends = require("sim.society.friends")
 
 -- Parties whose members stay members of their village and household while away: porters carrying
 -- goods between villages and walking home again (sim/society/relations.lua).
@@ -573,6 +574,11 @@ local function best_destination(W, v, h, housing, added)
           elseif u.stock.wood > cfg.build.house.wood then pull = pull + 0.25 end
         end
         if kin then pull = pull + 0.3 end
+        -- friends who went before (D-062)
+        for j = 1, #h.members do
+          local p = P[h.members[j]]
+          if p.friends and friends.near(W, p, u.id) > 0 then pull = pull + cfg.friend_pull; break end
+        end
         -- the frightened look for safety: a walled village, or one far stronger than home
         if fear and (walled(W, u) or u.pop >= v.pop * 2.5) then pull = pull + cfgmod.CONFLICT.safety_pull end
         pull = pull - d * cfg.walk_h * 1.5 / 10 * 0.05
