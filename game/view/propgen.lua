@@ -198,6 +198,60 @@ local WALLS = {
   hexes({ "#DCCBA8", "#E3D3B2", "#D2BF9A" }),              -- clay
   hexes({ "#F4F1EA", "#E6EDF0", "#F0E4D0" }),              -- whitewash
 }
+-- building materials (houses are built of what the village's land gives, W10: its clay, stone
+-- and woods, the same sources its crafts use; the most respected households build best)
+local ROOF_MAT = {
+  thatch = hexes({ "#C9A55E", "#D6B36A", "#BE9A55", "#B89250" }),
+  shingle = hexes({ "#6E4A34", "#7A5238", "#5E3F2C", "#86603F" }),
+  slate = hexes({ "#5E6B7A", "#566273", "#6B7888", "#4F5A66" }),
+  tile = hexes({ "#C9553F", "#B84A3A", "#D4683F", "#A84638" }),
+}
+local WALL_MAT = {
+  daub = hexes({ "#DCCBA8", "#D2BF9A", "#E3D3B2", "#CDB894" }),
+  timber = hexes({ "#9A7450", "#A27E58", "#8C6A48", "#B08A62" }),
+  stone = hexes({ "#B8B2A6", "#A9A398", "#C4BEB2", "#9F998C" }),
+  plaster = hexes({ "#F2E8D5", "#F6EEDD", "#EFE2C8", "#F4F1EA" }),
+}
+M.ROOF_MAT, M.WALL_MAT = ROOF_MAT, WALL_MAT
+
+-- What a village builds with: 0..1 supplies of clay, stone and timber from its land.
+function M.village_supply(W, v)
+  local cr = v.crafts or {}
+  local clay = cr.pots and cr.pots.q or 0.2
+  local stone = cr.tools and cr.tools.q or 0.2
+  local g = W.grid
+  local F = W.F
+  local c = v.cell
+  local wood, n = F.forest[c], 1
+  local base = c * 6 - 6
+  for k = 1, g.nbr_count[c] do
+    local j = g.nbr[base + k]
+    if W.geo.ocean[j] == 0 then wood = wood + F.forest[j]; n = n + 1 end
+  end
+  return clay, stone, wood / n
+end
+
+-- Roof and wall colours of a house: materials scored by the village's supplies and the
+-- household's standing s (0..1), a fixed per-house choice among near ties (u, 0..1).
+function M.house_colours(style, clay, stone, wood, s, u, key)
+  local best, bs = "thatch", 0.5 + 0.2 * u
+  local function try(m, sc) if sc > bs then best, bs = m, sc end end
+  try("tile", clay * (0.45 + s) + 0.25 * ((u * 7.3) % 1))
+  try("slate", stone * (0.3 + s) + 0.25 * ((u * 3.7) % 1))
+  try("shingle", wood * 0.85 + 0.2 * ((u * 5.1) % 1))
+  local roofs = ROOF_MAT[best]
+  -- the most respected paint or tile in the culture's own colours
+  if s >= 0.85 then roofs = ROOFS[style.roof] end
+  local wm, ws = "daub", 0.45 + clay * 0.3 + 0.2 * ((u * 2.3) % 1)
+  local function tw(m, sc) if sc > ws then wm, ws = m, sc end end
+  tw("timber", wood * 0.9 + 0.2 * ((u * 4.9) % 1))
+  tw("stone", stone * (0.2 + s * 0.9) + 0.15 * ((u * 6.1) % 1))
+  tw("plaster", s * 0.95)
+  local walls = WALL_MAT[wm]
+  if s >= 0.85 then walls = WALLS[style.wall] end
+  return roofs[key % #roofs + 1], walls[floor(key / 7) % #walls + 1]
+end
+
 -- culture -> building mix { kinds..., roof palette, wall palette }
 local STYLES = {
   { houses = { "cottage", "cottage", "townhouse", "longhouse" }, roof = 1, wall = 1 },
@@ -367,6 +421,7 @@ function M.plan_village(ctx, e)
   local S = M.SCALE * M.BUILDING
   local style = STYLES[((v.culture or 1) - 1) % #STYLES + 1]
   local roofs, walls = ROOFS[style.roof], WALLS[style.wall]
+  local clay_q, stone_q, wood_q = M.village_supply(W, v)
   local chim = {}
   M.chimneys[c] = chim
   -- a land point for a lot: lots whose ring crosses the shore are pulled in toward the cell centre
@@ -414,6 +469,12 @@ function M.plan_village(ctx, e)
   end
   local houses, granary, pier = {}, nil, nil
   local list = v.buildings or {}
+  -- standing buildings per cell (crowded cells build tighter)
+  local crowd = {}
+  for i = 1, #list do
+    local b = B[list[i]]
+    if b and (b.state == "standing" or b.state == "site") then crowd[b.cell] = (crowd[b.cell] or 0) + 1 end
+  end
   -- the prestige of the top fifth of the village's households (two-storey houses)
   local H = W.ent.households or {}
   local prestige_hi = 0
@@ -445,14 +506,21 @@ function M.plan_village(ctx, e)
         local sx, sy, sz = layout.pos(W, v, b.cell, 0)
         local yaw = yaw_to(x, y, z, sx, sy, sz) + ((key % 97) / 97 - 0.5) * 0.3
         local st = b.state
-        local roof = roofs[key % #roofs + 1]
-        local wall = walls[floor(key / 7) % #walls + 1]
+        -- the household's standing among the village's (0..1) picks the better materials
+        local hh0 = b.household and b.household ~= 0 and H[b.household]
+        local stand = 0
+        if hh0 and prestige_hi > 0.3 then stand = min(1, (hh0.prestige or 0) / prestige_hi) end
+        if hh0 and hh0.id == v.leader_h then stand = 1 end
+        local roof, wall = M.house_colours(style, clay_q, stone_q, wood_q, stand, ((key * 0.6180339) % 1), key)
+        if b.kind == "hut" then roof = ROOF_MAT.thatch[key % 4 + 1] end
         local cond = b.condition or 1
         local wear = cond < 0.5 and 0.72 or (cond < 0.8 and 0.88 or 1)
         local c1 = pack_rgb(roof[1] * wear, roof[2] * wear, roof[3] * wear)
         local ww = 0.9 + 0.1 * wear
         local c2 = pack_rgb(wall[1] * ww, wall[2] * ww, wall[3] * ww)
         local sc = 0.95 + (key % 13) / 13 * 0.12
+        -- a crowded cell (a town) builds smaller, tighter houses
+        if (crowd[b.cell] or 0) > 14 then sc = sc * 0.84 end
         if st == "ruin" then
           put(K.ruin, x, y, z, r, yaw, 0.95, pack_rgb(0.55, 0.52, 0.48), 0)
         elseif b.kind == "pier" then
@@ -499,6 +567,8 @@ function M.plan_village(ctx, e)
           elseif b.kind == "woodshed" then kind = K.woodshed
           end
           if kind then
+            -- long buildings stand gable-on to the square where the ring is crowded
+            if (kind == K.longhouse or kind == K.hall) and (crowd[b.cell] or 0) > 14 then yaw = yaw + pi * 0.5 end
             put(kind, x, y, z, r, yaw, sc, c1, c2)
             if b.kind == "house" or b.kind == "hut" then houses[#houses + 1] = { x, y, z, r, yaw, key } end
           end

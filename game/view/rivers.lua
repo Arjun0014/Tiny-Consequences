@@ -5,6 +5,7 @@
 -- widen while a river floods (flow above its bankfull) and dry to thin streams in droughts.
 -- Rebuilt at most every REBUILD_S seconds when the quantised widths change.
 local planet = require("game.view.planet")
+local cfgmod = require("sim.config")
 
 local M = {}
 
@@ -13,6 +14,7 @@ M.SHARE = 0.22           -- share of land cells (by mean flow) that carry a visi
 M.MIN_FLOW = 0.004       -- ... but never below this mean flow
 M.SUB = 7                -- sub-segments per cell-to-cell link
 M.LIFT = 0.012           -- height above the terrain surface (world units)
+M.BYPASS = 3.6           -- lot rings out a river passes a village (outside its houses)
 
 local H_POS, H_NRM, H_COL = hash("position"), hash("normal"), hash("color")
 local sqrt, floor, max, min, sin, cos, abs, pi = math.sqrt, math.floor, math.max, math.min, math.sin,
@@ -89,13 +91,50 @@ local function widths(W)
   return out
 end
 
+-- Cells where a living village has buildings (their rivers skirt the houses).
+local function built_cells(W)
+  local out, n = {}, 0
+  local vs = W.ent and W.ent.villages
+  local B = W.ent and W.ent.buildings
+  if not vs or not B then return out, 0 end
+  for i = 1, #vs do
+    local v = vs[i]
+    if v.alive ~= false and v.buildings then
+      if not out[v.cell] then out[v.cell] = true; n = n + v.cell end
+      for k = 1, #v.buildings do
+        local b = B[v.buildings[k]]
+        if b and b.cell and not out[b.cell] and b.kind ~= "pier" and b.kind ~= "boat" then out[b.cell] = true; n = n + b.cell end
+      end
+    end
+  end
+  return out, n
+end
+
+-- The point a river passes through cell c: its centre, or beside the houses where a village
+-- stands (M.BYPASS lot rings out, across the flow), so the water runs past the village.
+local function junction(W, c, built)
+  local g = W.grid
+  local X, Y, Z = g.X, g.Y, g.Z
+  if not built[c] then return X[c], Y[c], Z[c] end
+  local d = W.geo.downhill[c]
+  if not d or d == 0 then return X[c], Y[c], Z[c] end
+  local x, y, z = X[c], Y[c], Z[c]
+  local tx, ty, tz = X[d] - x, Y[d] - y, Z[d] - z
+  local sx, sy, sz = y * tz - z * ty, z * tx - x * tz, x * ty - y * tx
+  local sl = sqrt(sx * sx + sy * sy + sz * sz) + 1e-9
+  local sgn = (c * 7919) % 2 == 0 and 1 or -1
+  local k = sgn * M.BYPASS * cfgmod.SOCIETY.lot_r / sl
+  return norm(x + sx * k, y + sy * k, z + sz * k)
+end
+
 function M.rebuild(W)
   local PL = M.PL
   local g = W.grid
   local geo = W.geo
   local down = geo.downhill
   local wd = widths(W)
-  local sig = signature(W, wd)
+  local built, bsig = built_cells(W)
+  local sig = (signature(W, wd) * 13 + bsig) % 2147483647
   if sig == M.sig then return false end
   M.sig = sig
   -- count links
@@ -124,8 +163,8 @@ function M.rebuild(W)
     local d = down[c]
     local w0 = wd[c]
     local w1 = wd[d] > 0 and wd[d] or w0 * 1.1
-    local ax, ay, az = X[c], Y[c], Z[c]
-    local bx, by, bz = X[d], Y[d], Z[d]
+    local ax, ay, az = junction(W, c, built)
+    local bx, by, bz = junction(W, d, built)
     -- meander: a smooth sideways offset, zero at both ends so links join up
     local hs = ((c * 7919) % 1000) / 1000
     local amp = 0.06 + 0.06 * hs

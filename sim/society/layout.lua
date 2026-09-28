@@ -46,8 +46,9 @@ function M.pos(W, v, cell, lot)
   local key = vkey(v)
   local rot = (rng.hash(W.seed, rng.S.BUILD, key, cell, 0) % 65536) / 65536 * 2 * pi
   local h = rng.hash(W.seed, rng.S.BUILD, key, cell, lot)
-  local jr = ((h % 1024) / 1024 - 0.5) * 0.35
-  local ja = ((floor(h / 1024) % 1024) / 1024 - 0.5) * 0.5 / k
+  -- (jitter kept below half a lot's spacing: neighbouring houses never stand in each other)
+  local jr = ((h % 1024) / 1024 - 0.5) * 0.16
+  local ja = ((floor(h / 1024) % 1024) / 1024 - 0.5) * 0.3 / k
   local a = 2 * pi * (i + 0.5 * (k % 2)) / n + rot + ja
   local r = k * cfgmod.SOCIETY.lot_r * (1 + jr)
   local ca, sa = cos(a) * r, sin(a) * r

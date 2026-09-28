@@ -292,6 +292,7 @@ function M.stats()
     cam = M.cam_info(),
     people_puppets = puppets.stats.people,
     stock_puppets = puppets.stats.stock or 0,
+    trail_links = trails.stats.links or 0, lanes = trails.stats.lanes or 0, trail_verts = trails.stats.verts or 0,
     ships = puppets.stats.ships,
   }
 end
