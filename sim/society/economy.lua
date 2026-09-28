@@ -13,6 +13,7 @@ local cotag = require("sim.society.cotag")
 local farming = require("sim.society.farming")
 local labour = require("sim.society.labour")
 local construction = require("sim.society.construction")
+local crafts = require("sim.society.crafts")
 
 local M = {}
 
@@ -24,6 +25,8 @@ local function acc(v, k, x)
 end
 local floor, min, max = math.floor, math.min, math.max
 M.GRAIN, M.FRESH, M.WOOD = 1, 2, 3
+M.on_harvest = function() end   -- set by init: tributaries pay their lord (conflict.pay_tribute)
+local TRADED = { "food", "wood", "tools", "pots", "cloth" }
 
 local function emit(W, kind, cell, parent, mag, data, opts)
   if not W.record_events then return 0 end
@@ -126,17 +129,13 @@ function M.daily(W, v, wx)
   st.wood = st.wood - burned
   v.wk_wood_out = (v.wk_wood_out or 0) + burned
   acc(v, "burned", burned)
-  if burned > 0 then
-    local co2 = burned / cfg.forest_wu * cfgmod.VEG.k_co2
-    W.G.co2_src = (W.G.co2_src or 0) + co2
-    ledger.add(W, "co2", co2, 0, "villagers")
-  end
+  -- (the fuel's carbon went to the air when it was cut or gathered: society/carbon.lua)
   v.fuel_day = fuel
   -- spoilage and storage
   acc(v, "spoil_f", st.fresh * cfg.fresh_spoil)
   st.fresh = st.fresh * (1 - cfg.fresh_spoil)
   local gcap = v.grain_cap or 1e9
-  local g = st.grain * (1 - cfg.grain_spoil)
+  local g = st.grain * (1 - cfg.grain_spoil * crafts.spoil_factor(v))
   if g > gcap then g = g - (g - gcap) * cfg.overflow_spoil end
   acc(v, "spoil_g", st.grain - g)
   st.grain = g
@@ -176,6 +175,16 @@ function M.weekly(W, v)
   N.imports = N.imports + (imp - N.imports) * k
   N.catch_in = (N.catch_in or f_in) + ((v.wk_catch or 0) - (N.catch_in or f_in)) * k
   v.wk_grain, v.wk_fresh, v.wk_eaten, v.wk_imports, v.wk_catch = 0, 0, 0, 0, 0
+  -- trade normals (W7b): goods usually bought and sold, for the field plan and the woodcutters
+  local kt = 1 / 48
+  for i = 1, #TRADED do
+    local g = TRADED[i]
+    local ki, ke = g .. "_imp", g .. "_exp"
+    local wi, we = "wk_" .. ki, "wk_" .. ke
+    N[ki] = (N[ki] or 0) + ((v[wi] or 0) - (N[ki] or 0)) * kt
+    N[ke] = (N[ke] or 0) + ((v[we] or 0) - (N[ke] or 0)) * kt
+    v[wi], v[we] = 0, 0
+  end
   -- food tag: the dominant driver of the food stock's deviation (poor harvest, fish or boats
   -- lost, imports stopped, more mouths)
   local tg = v.harvest_bad and v.harvest_tag or 0
@@ -251,6 +260,7 @@ function M.weekly(W, v)
     end
     h[#h + 1] = v.last_harvest
     if #h > 5 then table.remove(h, 1) end
+    M.on_harvest(W, v)
     -- set aside seed for next spring's fields
     local fields_next = 0
     for i = 1, #v.farms do if W.S.farm[v.farms[i]].plan ~= "fallow" then fields_next = fields_next + 1 end end

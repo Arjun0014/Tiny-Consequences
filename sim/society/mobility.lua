@@ -18,7 +18,7 @@ local relations = require("sim.society.relations")
 
 -- Parties whose members stay members of their village and household while away: porters carrying
 -- goods between villages and walking home again (sim/society/relations.lua).
-local ERRAND = { porters = true, returning = true }
+local ERRAND = { porters = true, returning = true, raid = true, raid_home = true }
 
 local M = {}
 local floor, ceil, min, max = math.floor, math.ceil, math.min, math.max
@@ -27,6 +27,8 @@ local floor, ceil, min, max = math.floor, math.ceil, math.min, math.max
 -- require init (the Defold build rejects require cycles).
 M.on_register = function() end
 M.on_unregister = function() end
+M.battle = function() end          -- conflict.battle (set by init)
+M.raiders_home = function() end    -- conflict.raiders_home
 
 local function emit(W, kind, cell, parent, mag, data)
   if not W.record_events then return 0 end
@@ -65,13 +67,52 @@ function M.land_path(W, a, b, limit)
   return path
 end
 
--- Travel time (hours) along a walking path: walk_h per step, walk_hours_day per day (camping at
--- night).
-local function walk_hours(n_steps)
+-- Trail key of the step between cells a and b (W.S.trails: key -> walkers a year).
+local function tkey(a, b)
+  if a > b then a, b = b, a end
+  return a * 4096 + b
+end
+M.tkey = tkey
+
+-- Travel time (hours) along a walking path: walk_h per step (faster on worn trails),
+-- walk_hours_day per day (camping at night).
+local function walk_hours(W, path)
   local cfg = cfgmod.SOCIETY
-  local h = n_steps * cfg.walk_h * 1.5   -- with loads, children, elders
+  local tr = W.S.trails
+  local h = 0
+  for i = 2, #path do
+    local t = tr and tr[tkey(path[i - 1], path[i])] or 0
+    local worn = t >= cfg.trail_full and 1 or t / cfg.trail_full
+    h = h + cfg.walk_h * 1.5 / (1 + cfg.trail_speed * worn)   -- with loads, children, elders
+  end
   local days = floor(h / cfg.walk_hours_day)
   return days * 24 + (h - days * cfg.walk_hours_day)
+end
+M.walk_hours = walk_hours
+
+-- Walkers wear a trail along their path (W.S.trails: step key -> walkers a year, decaying yearly).
+local function wear(W, path, n)
+  local tr = W.S.trails
+  if not tr then tr = {}; W.S.trails = tr end
+  for i = 2, #path do
+    local k = tkey(path[i - 1], path[i])
+    tr[k] = (tr[k] or 0) + n
+  end
+end
+
+--- Yearly: trails fade where nobody walks any more.
+function M.trails_year(W)
+  local tr = W.S.trails
+  if not tr then return end
+  local keep = cfgmod.SOCIETY.trail_decay
+  local keys = {}
+  for k in pairs(tr) do keys[#keys + 1] = k end
+  table.sort(keys)
+  for i = 1, #keys do
+    local k = keys[i]
+    local t = tr[k] * keep
+    if t < 1 then tr[k] = nil else tr[k] = floor(t * 100 + 0.5) / 100 end
+  end
 end
 
 -- Send a group of people from village v as a party toward village `to` (or a site cell).
@@ -90,8 +131,9 @@ function M.depart(W, v, members, to, site, kind, reason, food, seed, cargo, from
   local dep = W.hour + floor(v.plan.ws or 6)
   local party = { id = id, key = rng.hash(W.seed, rng.S.PARTY, v.key_cell, W.hour, #members), members = {},
     from = v.id, to = to, site = site or 0, culture = v.culture, path = path, depart = dep,
-    arrive = dep + max(2, walk_hours(#path - 1)), food = food or 0, seed = seed or 0, reason = reason or 0,
+    arrive = dep + max(2, walk_hours(W, path)), food = food or 0, seed = seed or 0, reason = reason or 0,
     kind = kind, cargo = cargo }
+  wear(W, path, #members)
   for i = 1, #members do
     local p = members[i]
     if not errand then
@@ -136,6 +178,12 @@ local function arrive(W, party)
     return
   elseif party.kind == "returning" then
     relations.returning_arrive(W, party, E.villages[party.to])
+    return
+  elseif party.kind == "raid" then
+    M.battle(W, party, living)
+    return
+  elseif party.kind == "raid_home" then
+    M.raiders_home(W, party, E.villages[party.to])
     return
   end
   if #living == 0 then return end
@@ -276,20 +324,36 @@ function M.hour(W)
   local E = W.ent
   local list = E.party_list
   if not list or #list == 0 then return end
+  local n0 = #list
   local k = 0
-  for i = 1, #list do
-    local party = E.parties[list[i]]
+  for i = 1, n0 do
+    local id = list[i]
+    local party = E.parties[id]
     if party then
       if W.hour >= party.arrive then
         arrive(W, party)
-        E.parties[list[i]] = nil
+        E.parties[id] = nil
       else
         k = k + 1
-        list[k] = list[i]
+        list[k] = id
       end
     end
   end
-  for i = #list, k + 1, -1 do list[i] = nil end
+  -- parties that set off during these arrivals (porters turning home) were appended after n0
+  local n1 = #list
+  for i = n0 + 1, n1 do k = k + 1; list[k] = list[i] end
+  for i = n1, k + 1, -1 do list[i] = nil end
+end
+
+--- Rebuild the travel list from the parties (older saves could lose parties that set off while
+-- others arrived: porters who never came home).
+function M.rebuild_list(W)
+  local E = W.ent
+  if not E.parties then return end
+  local ids = {}
+  for id in pairs(E.parties) do ids[#ids + 1] = id end
+  table.sort(ids)
+  E.party_list = ids
 end
 
 -- Abandonment: nobody is left.

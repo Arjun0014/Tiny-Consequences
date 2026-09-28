@@ -1,0 +1,5 @@
+material: "/game/render/trail.material"
+vertices: "/game/view/trails.buffer"
+primitive_type: PRIMITIVE_TRIANGLES
+position_stream: "position"
+normal_stream: "normal"

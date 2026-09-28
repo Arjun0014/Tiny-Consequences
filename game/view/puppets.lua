@@ -23,7 +23,9 @@ local layout = require("sim.society.layout")
 
 local M = {}
 
-M.DEER, M.WOLVES, M.PEOPLE, M.TANKERS, M.BOATS = 72, 28, 320, 8, 64
+M.DEER, M.WOLVES, M.PEOPLE, M.TANKERS, M.BOATS = 150, 44, 360, 8, 64
+M.DOLPHINS = 14
+M.STOCK = 120          -- livestock puppets (the herds of the villages near the view)
 M.BIRDS = 96
 M.BIRD_ZOOM = 0.5      -- birds show from this zoom in
 M.MIN_ZOOM = 0.5
@@ -53,6 +55,20 @@ local HAIR = { farmer = { 0.85, 0.72, 0.38 }, fisher = { 0.22, 0.30, 0.42 }, def
 local HAT = { farmer = "straw", fisher = "cap", hunter = "cap" }
 
 M.pool = {}           -- animals
+M.dolphins = {}       -- dolphins over rich fishing waters
+M.stock = {}          -- livestock
+-- Wild species by landscape (D-058): model, colours (body, dark parts, accents), scale, speed.
+M.SPECIES = {
+  deer = { model = "deer", c1 = { 0.70, 0.48, 0.30 }, c2 = { 0.40, 0.29, 0.21 }, c3 = { 0.86, 0.80, 0.70 }, scale = 1, speed = 1 },
+  reindeer = { model = "deer", c1 = { 0.55, 0.50, 0.44 }, c2 = { 0.30, 0.27, 0.24 }, c3 = { 0.92, 0.90, 0.86 }, scale = 1.12, speed = 0.9 },
+  antelope = { model = "deer", c1 = { 0.80, 0.60, 0.36 }, c2 = { 0.28, 0.22, 0.18 }, c3 = { 0.25, 0.2, 0.17 }, scale = 0.92, speed = 1.3 },
+  boar = { model = "boar", c1 = { 0.36, 0.28, 0.23 }, c2 = { 0.24, 0.19, 0.16 }, c3 = { 0.9, 0.86, 0.78 }, scale = 1, speed = 0.8 },
+  hare = { model = "hare", c1 = { 0.66, 0.52, 0.38 }, c2 = { 0.5, 0.4, 0.3 }, c3 = { 0.95, 0.93, 0.9 }, scale = 1, speed = 1.5 },
+  wolf = { model = "wolf", c1 = { 0.52, 0.54, 0.58 }, c2 = { 0.33, 0.34, 0.37 }, c3 = { 0.3, 0.3, 0.32 }, scale = 1, speed = 1.6 },
+  fox = { model = "wolf", c1 = { 0.85, 0.45, 0.2 }, c2 = { 0.25, 0.18, 0.14 }, c3 = { 0.95, 0.92, 0.88 }, scale = 0.62, speed = 1.8 },
+  cat = { model = "cat", c1 = { 0.80, 0.62, 0.36 }, c2 = { 0.5, 0.36, 0.2 }, c3 = { 0.3, 0.22, 0.16 }, scale = 1, speed = 1.3 },
+  bear = { model = "bear", c1 = { 0.40, 0.29, 0.20 }, c2 = { 0.22, 0.16, 0.12 }, c3 = { 0.3, 0.22, 0.16 }, scale = 1.1, speed = 0.7 },
+}
 M.people = {}         -- person puppets (residents and travellers)
 M.ships = {}          -- ship puppets
 M.stats = { active = 0, people = 0, ships = 0, travellers = 0 }
@@ -103,6 +119,24 @@ function M.init(W, urls, surface)
       { 0.86, 0.80, 0.70 }, M.SCALE))
     make_pool(M.pool, urls.wolf_factory, M.WOLVES, "wolf", make_buffer("wolf", { 0.52, 0.54, 0.58 }, { 0.33, 0.34, 0.37 }, 1,
       { 0.3, 0.3, 0.32 }, M.SCALE))
+    -- wild species by landscape (the sim's grazers and predators, drawn as the animals of their
+    -- biome): one buffer resource each, swapped onto the pooled animals
+    local SP = M.SPECIES
+    for name, sp in pairs(SP) do
+      sp.res = resource.create_buffer("/tc/animal_" .. name .. ".bufferc",
+        { buffer = make_buffer(sp.model, sp.c1, sp.c2, 1, sp.c3, M.SCALE) })
+    end
+    make_pool(M.dolphins, urls.deer_factory, M.DOLPHINS, "dolphin", nil)
+    -- livestock (W10)
+    M.stock_res = {
+      sheep = resource.create_buffer("/tc/stock_sheep.bufferc", { buffer = make_buffer("sheep", { 0.93, 0.91, 0.86 }, { 0.25, 0.22, 0.2 }, 1, { 0.9, 0.9, 0.9 }, M.SCALE) }),
+      goats = resource.create_buffer("/tc/stock_goat.bufferc", { buffer = make_buffer("goat", { 0.45, 0.33, 0.24 }, { 0.2, 0.17, 0.15 }, 1, { 0.8, 0.78, 0.7 }, M.SCALE) }),
+      cattle = resource.create_buffer("/tc/stock_cow.bufferc", { buffer = make_buffer("cow", { 0.55, 0.36, 0.24 }, { 0.3, 0.22, 0.16 }, 1, { 0.94, 0.92, 0.88 }, M.SCALE) }),
+    }
+    make_pool(M.stock, urls.deer_factory, M.STOCK, "stock", nil)
+    M.dolphin_res = resource.create_buffer("/tc/animal_dolphin.bufferc",
+      { buffer = make_buffer("dolphin", { 0.50, 0.56, 0.64 }, { 0.5, 0.56, 0.64 }, 1, { 0.86, 0.88, 0.9 }, M.SCALE, true) })
+    for _, d in ipairs(M.dolphins) do go.set(d.url, "vertices", M.dolphin_res) end
     make_pool(M.people, urls.person_factory, M.PEOPLE, "person", nil)
     if urls.bird_factory then
       M.gull_res = resource.create_buffer("/tc/bird_gull.bufferc",
@@ -128,8 +162,22 @@ function M.init(W, urls, surface)
       job_res_still[job] = resource.create_buffer("/tc/person_still_" .. job .. res_gen .. ".bufferc",
         { buffer = make_buffer(kind, col, skin, 1, hair, M.PERSON_SCALE, true) })
     end
+    -- porters with their loads (W7): a sack of grain or goods, or a bundle of logs
+    local tcol, skin = M.JOB_COLORS.trader, SKINS[2]
+    local rcol = { 0.62, 0.20, 0.18 }
+    job_res.raider = resource.create_buffer("/tc/person_raider" .. res_gen .. ".bufferc",
+      { buffer = make_buffer("person_spear", rcol, skin, 1, HAIR.default, M.PERSON_SCALE) })
+    job_res_still.raider = resource.create_buffer("/tc/person_still_raider" .. res_gen .. ".bufferc",
+      { buffer = make_buffer("person_spear", rcol, skin, 1, HAIR.default, M.PERSON_SCALE, true) })
+    for _, load in ipairs({ "sack", "logs" }) do
+      local key = "porter_" .. load
+      job_res[key] = resource.create_buffer("/tc/person_" .. key .. res_gen .. ".bufferc",
+        { buffer = make_buffer("person_" .. load, tcol, skin, 1, HAIR.default, M.PERSON_SCALE) })
+      job_res_still[key] = resource.create_buffer("/tc/person_still_" .. key .. res_gen .. ".bufferc",
+        { buffer = make_buffer("person_" .. load, tcol, skin, 1, HAIR.default, M.PERSON_SCALE, true) })
+    end
   end
-  for _, list in ipairs({ M.pool, M.people, M.ships, M.birds }) do
+  for _, list in ipairs({ M.pool, M.people, M.ships, M.birds, M.dolphins, M.stock }) do
     for _, p in ipairs(list) do
       if p.on then p.on = false; msg.post(p.url, MSG_DISABLE) end
       p.cell = 0
@@ -199,13 +247,37 @@ local function assign_animals(W, fx, fy, fz)
   table.sort(wants.deer, function(a, b) return a[2] > b[2] end)
   table.sort(wants.wolf, function(a, b) return a[2] > b[2] end)
   local used = { deer = 0, wolf = 0 }
-  for _, p in ipairs(M.pool) do
+  local T = W.temp_static
+  local gt = W.G.g_temp or 0
+  for i, p in ipairs(M.pool) do
     local list = wants[p.kind]
     local slot = list[floor(used[p.kind] / M.PER_CELL) + 1]
     if slot then
       used[p.kind] = used[p.kind] + 1
       if p.cell ~= slot[1] then
         p.cell = slot[1]
+        -- the species this landscape's grazers or predators are
+        local c = p.cell
+        local tm = T and T.base and (T.base[c] + T.lapse[c] + gt) or 10
+        local bi, fo, sw = F.biome[c], F.forest[c], F.soil_water[c]
+        local h = ((c * 7919 + i * 131) % 1000) / 1000
+        local sp
+        if p.kind == "deer" then
+          if tm < 1 or bi == 10 then sp = "reindeer"
+          elseif tm > 18 and fo < 0.5 then sp = (h < 0.8) and "antelope" or "hare"
+          elseif fo > 0.45 and h < 0.3 then sp = "boar"
+          elseif fo < 0.35 and h < 0.35 then sp = "hare"
+          else sp = "deer" end
+        else
+          if tm > 18 then sp = (h < 0.7) and "cat" or "fox"
+          elseif tm < 4 and fo > 0.3 and h < 0.35 then sp = "bear"
+          elseif fo < 0.4 and h < 0.4 then sp = "fox"
+          else sp = "wolf" end
+        end
+        if p.species ~= sp then
+          p.species = sp
+          go.set(p.url, "vertices", M.SPECIES[sp].res)
+        end
         local sp = g.spacing * 0.45
         p.lat = g.lat[p.cell] + (rnd() - 0.5) * sp
         p.lon = g.lon[p.cell] + (rnd() - 0.5) * sp
@@ -289,6 +361,20 @@ end
 M.spots, M.spots_n = {}, 0
 
 local WALKING = { walk = true, travel = true }
+
+-- What a travelling party's people carry (porters out with payment or a gift, home with goods).
+local function load_of(party)
+  local c = party.cargo
+  if not c then return nil end
+  if party.kind == "raid" then return "raider" end
+  if party.kind == "raid_home" then return (c.grain or 0) > 0 and "porter_sack" or "raider" end
+  if party.kind == "porters" then return c.give == "wood" and "porter_logs" or "porter_sack" end
+  if party.kind == "returning" then
+    if c.get == "wood" or (c.wood or 0) > 0 then return "porter_logs" end
+    if (c.got or 0) > 0 or (c.grain or 0) > 0 or (c.left or 0) > 0 then return "porter_sack" end
+  end
+  return nil
+end
 local HIDDEN = { sleep = true, fish = true }
 local out_where = {}
 
@@ -338,28 +424,41 @@ end
 
 -- Choose who to draw: residents of the villages nearest the focus who are outdoors now, and the
 -- members of parties on the road nearby. Pool entries keep their person when still wanted.
-local function assign_people(W, fx, fy, fz, t)
+M.LOCATE_BUDGET = 700   -- schedule lookups per reassignment (big towns: the nearest first)
+local function assign_people(W, fx, fy, fz, t, zoom)
   local g = W.grid
   local P = W.ent.people or {}
   local want = {}
   local vs = {}
+  -- the closer the camera, the smaller the circle of villages worth peopling
+  local dot = M.FOCUS_DOT + (0.992 - M.FOCUS_DOT) * min(1, max(0, ((zoom or 0.5) - 0.5) / 0.5))
   for _, v in ents.each_village(W) do
     local c = v.cell
     local d = g.X[c] * fx + g.Y[c] * fy + g.Z[c] * fz
-    if d > M.FOCUS_DOT and type(v.members) == "table" then vs[#vs + 1] = { v = v, d = d } end
+    if d > dot and type(v.members) == "table" then vs[#vs + 1] = { v = v, d = d } end
   end
   table.sort(vs, function(a, b) return a.d > b.d end)
+  local budget = M.LOCATE_BUDGET
+  local daylight = require("sim.society.daylight")
   for _, e in ipairs(vs) do
     local v = e.v
+    -- asleep: nobody out (travellers are found through their parties)
+    local lh = daylight.local_hour(t, g.lon[v.cell])
+    local plan = v.plan or {}
+    local awake = lh >= (plan.wake or 6) and lh < (plan.sleep or 21.5)
     local n = 0
-    for k = 1, #v.members do
-      local p = P[v.members[k]]
-      if p and not p.dead then
-        local x = locate(W, v, p, t)
-        if x then
-          want[#want + 1] = { pid = p.id, v = v, job = job_of(p) }
-          n = n + 1
-          if n >= M.PER_VILLAGE then break end
+    if awake then
+      for k = 1, #v.members do
+        if budget <= 0 or #want >= #M.people then break end
+        local p = P[v.members[k]]
+        if p and not p.dead then
+          budget = budget - 1
+          local x = locate(W, v, p, t)
+          if x then
+            want[#want + 1] = { pid = p.id, v = v, job = job_of(p) }
+            n = n + 1
+            if n >= M.PER_VILLAGE then break end
+          end
         end
       end
     end
@@ -374,7 +473,7 @@ local function assign_people(W, fx, fy, fz, t)
       if c and g.X[c] * fx + g.Y[c] * fy + g.Z[c] * fz > M.FOCUS_DOT - 0.02 then
         for k = 1, #party.members do
           local p = P[party.members[k]]
-          if p and not p.dead then want[#want + 1] = { pid = p.id, party = party, k = k, job = job_of(p) } end
+          if p and not p.dead then want[#want + 1] = { pid = p.id, party = party, k = k, job = load_of(party) or job_of(p) } end
         end
       end
     end
@@ -674,19 +773,22 @@ function M.update(W, dt, zoom, frozen)
     M.assign_timer = 0.6
     local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
     assign_animals(W, fx, fy, fz)
-    assign_people(W, fx, fy, fz, t)
+    assign_people(W, fx, fy, fz, t, zoom)
     assign_birds(W, fx, fy, fz, t)
   end
   update_birds(W, dt, zoom, frozen)
+  M.update_dolphins(W, dt, frozen)
+  M.update_stock(W, dt, frozen, t)
   local sp = W.grid.spacing
   for _, p in ipairs(M.pool) do
     if p.on then
       active = active + 1
-      walk(p, dt, frozen, 0.004 * (p.kind == "wolf" and 1.6 or 1.0), sp * 0.5)
+      local spc = M.SPECIES[p.species or p.kind] or M.SPECIES.deer
+      walk(p, dt, frozen, 0.004 * spc.speed, sp * 0.5)
       local x, y, z = unit(p.lat, p.lon)
       local r, v = M.surface(x, y, z, p.v)
       p.v = v
-      place(p, x, y, z, r, -p.head, M.SCALE)
+      place(p, x, y, z, r, -p.head, M.SCALE * spc.scale)
       ap[#ap + 1] = { kind = p.kind, cell = p.cell, x = x * r, y = y * r, z = z * r }
     end
   end
@@ -700,6 +802,142 @@ function M.update(W, dt, zoom, frozen)
     if p.on and not kinds[k] then kinds[k] = true; n = n + 1 end
   end
   M.stats.draws = n
+end
+
+-- Livestock (W10): each nearby village's herd (sim v.herd, one puppet per ~6 sheep-equivalents,
+-- the species in proportion) grazes its pasture (v.herd_cell) in the working day and stands in
+-- its pen by the village at night and in storms.
+local stock_timer = 0
+function M.update_stock(W, dt, frozen, t)
+  local herds = require("sim.society.herds")
+  local daylight = require("sim.society.daylight")
+  local g = W.grid
+  stock_timer = stock_timer - dt
+  if stock_timer <= 0 then
+    stock_timer = 1.0
+    local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
+    local want = {}
+    local zoom = require("game.view.camera").zoom or 0.5
+    local dot = M.FOCUS_DOT + (0.992 - M.FOCUS_DOT) * min(1, max(0, (zoom - 0.5) / 0.5))
+    for _, v in ents.each_village(W) do
+      local d = g.X[v.cell] * fx + g.Y[v.cell] * fy + g.Z[v.cell] * fz
+      if d > dot and v.herd then
+        local h = v.herd
+        local se = herds.se(h)
+        local n = math.min(40, floor(se / 6 + 0.5))
+        local tot = (h.sheep or 0) + (h.goats or 0) + (h.cattle or 0)
+        for k = 1, n do
+          local f = (k - 0.5) / n * tot
+          local kind = f < (h.sheep or 0) and "sheep" or (f < (h.sheep or 0) + (h.goats or 0) and "goats" or "cattle")
+          want[#want + 1] = { v = v, k = k, kind = kind }
+        end
+      end
+    end
+    for i, p in ipairs(M.stock) do
+      local w = want[i]
+      if w then
+        if p.kind2 ~= w.kind then p.kind2 = w.kind; go.set(p.url, "vertices", M.stock_res[w.kind]) end
+        p.v, p.k = w.v, w.k
+        set_on(p, true)
+      else
+        p.v = nil
+        set_on(p, false)
+      end
+    end
+  end
+  local ns = 0
+  for _, p in ipairs(M.stock) do
+    local v = p.v
+    if p.on and v then
+      ns = ns + 1
+      local lh = daylight.local_hour(t, g.lon[v.cell])
+      local plan = v.plan
+      local out = lh >= (plan.ws or 7) and lh < (plan.we or 18) and not plan.storm
+      local cx, cy, cz
+      if out then
+        local c = v.herd_cell or v.cell
+        cx, cy, cz = g.X[c], g.Y[c], g.Z[c]
+      else
+        local pen = propgen.pens[v.id]
+        if pen then cx, cy, cz = pen[1], pen[2], pen[3] else cx, cy, cz = g.X[v.cell], g.Y[v.cell], g.Z[v.cell] end
+      end
+      -- a loose flock: each beast its own spot around the centre, drifting as it grazes
+      local u = (p.k * 0.618034) % 1
+      local a = u * 6.283 + (out and t * 0.02 or 0)
+      local rad = (out and 0.012 or 0.0035) * (0.3 + 0.7 * ((p.k * 0.4142) % 1)) * (out and 1 or 1)
+      local lat0 = math.asin(cy)
+      local lon0 = math.atan2(cz, cx)
+      local lat = lat0 + math.cos(a) * rad
+      local lon = lon0 + math.sin(a) * rad / max(0.2, math.cos(lat0))
+      local x, y, z = unit(lat, lon)
+      local r, vv = M.surface(x, y, z, p.vtx)
+      p.vtx = vv
+      place(p, x, y, z, r, -(a + (out and 1.2 or 0)), M.SCALE)
+    end
+  end
+  M.stats.stock = ns
+end
+
+-- Dolphins: pods over the richest fishing waters near the view (the sim's fish), arcing out of
+-- the sea and back.
+local dolphin_timer = 0
+function M.update_dolphins(W, dt, frozen)
+  dolphin_timer = dolphin_timer - dt
+  local g = W.grid
+  if dolphin_timer <= 0 then
+    dolphin_timer = 1.5
+    local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
+    local best = {}
+    for c = 1, W.n do
+      if W.geo.ocean[c] == 1 and W.F.ice[c] < 0.2 and W.F.fish[c] > 0.55 then
+        local d = g.X[c] * fx + g.Y[c] * fy + g.Z[c] * fz
+        if d > 0.94 then best[#best + 1] = { c, W.F.fish[c] + d } end
+      end
+    end
+    table.sort(best, function(a, b) return a[2] > b[2] end)
+    for i, dph in ipairs(M.dolphins) do
+      local e = best[floor((i - 1) / 4) + 1]
+      if e then
+        if dph.cell ~= e[1] then
+          dph.cell = e[1]
+          local sp = g.spacing * 0.3
+          dph.lat = g.lat[e[1]] + (rnd() - 0.5) * sp
+          dph.lon = g.lon[e[1]] + (rnd() - 0.5) * sp
+          dph.home_lat, dph.home_lon = dph.lat, dph.lon
+          dph.head = rnd() * 6.283
+          dph.phase = rnd() * 6.283
+        end
+        set_on(dph, true)
+      else
+        dph.cell = 0
+        set_on(dph, false)
+      end
+    end
+  end
+  local R = state.R
+  local t = state.time
+  for _, dph in ipairs(M.dolphins) do
+    if dph.on then
+      if not frozen then
+        dph.head = dph.head + dt * 0.25
+        local step = dt * 0.006
+        dph.lat = dph.lat + cos(dph.head) * step
+        dph.lon = dph.lon + sin(dph.head) * step / max(0.2, cos(dph.lat))
+      end
+      -- a leap: out of the water for part of each cycle
+      local ph = (t * 0.9 + dph.phase) % 6.283
+      local up = sin(ph)
+      local alt = up > 0 and up * 0.05 or up * 0.03
+      local x, y, z = unit(dph.lat, dph.lon)
+      local r = R + alt
+      pos.x, pos.y, pos.z = x * r, y * r, z * r
+      go.set_position(pos, dph.id)
+      local pitch = cos(ph) * 0.9
+      local q = vmx.set_up_yaw(rot, x, y, z, -dph.head)
+      go.set_rotation(q * vmath.quat_rotation_z(-pitch), dph.id)
+      go.set_scale(M.SCALE, dph.id)
+    end
+  end
 end
 
 --- Unit direction of a ship puppet, or nil.

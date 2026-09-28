@@ -59,7 +59,7 @@ Research (`00`), audit (`01`), design (`10`–`16`), this roadmap, D-050.
 - Browser profile of planet + society at the target speeds; per-system costs; decide on grid
   resolution / multi-rate / hierarchy changes with evidence; P07 re-baselined.
 
-### W7 — Villages that know each other (`18_DEEP_WORLD.md` §2.2–2.3)
+### W7 — Villages that know each other (`18_DEEP_WORLD.md` §2.2–2.3) — done (D-055, D-056)
 - Relations graph (kin, reciprocity ledger, grievance, distance); famine relief carried by real
   parties; barter trade between complementary villages (porters overland, boats along coasts);
   imports in the field plan (specialisation); trails where people walk; spouses from friendly
@@ -68,17 +68,30 @@ Research (`00`), audit (`01`), design (`10`–`16`), this roadmap, D-050.
   `crop_failure > relief`), trade flows appear in the ledgers, parties with cargo are visible,
   seed-sweep populations are stabler (fewer famines at the land limit), tests green.
 
-### W8 — Status, leaders and conflict (§2.1, §2.4)
+### W8 — Status, leaders and conflict (§2.1, §2.4) — first vertical done (D-057)
 - Lineages, household wealth and prestige, leaders and succession; raids as parties with real
   casualties, loot and fire; grievance and feuds; palisades; defensive aggregation.
+- Done: lineages, prestige, leaders with temper, contested succession and scalar-stress splits,
+  grievances (raids, refused help, encroachment), raids with Lanchester battles, casualties, loot,
+  burned houses and driven-off livestock, palisades. Still to do: household wealth (own stores),
+  defensive aggregation in migration choices, allies joining a fight.
 
-### W9 — Polities (§2.5)
+### W9 — Polities (§2.5) — first vertical done (D-058)
 - Tribute after defeat or from daughter villages; paramount redistribution; the tribute graph's
   tiers named by the chronicle (chiefdom, complex chiefdom, state only with ≥ 4 tiers); territory.
+- Done: submission after repeated defeats by a hemmed-in or outmatched village, yearly tribute
+  carried by porters, lords protect (grievance for raids on tributaries), relieve first and never
+  raid their tributaries, secession when the lord weakens; `conflict.polity/tiers`. Still to do:
+  territory drawn, the chronicle's names, paramount redistribution beyond relief, daughter
+  villages' gifts.
 
-### W10 — Households' own work and animals (§2.6)
+### W10 — Households' own work and animals (§2.6) — crafts and village herds done (D-056, D-058)
 - Livestock herds (milk, meat, manure, wool, wealth), crafts in the slack season, wild herds and
   packs as agents (old W4).
+- Done: crafts (tools/pots/cloth from local sources, make-or-buy, trade), village herds (sheep,
+  goats, cattle: pasture, herders, spring births, milk, slaughter, manure, wool for cloth, wolves
+  on unguarded pastures, raiders drive beasts off). Still to do: household ownership, wild herds
+  and packs as agents.
 
 ### Then
 Chain popup and "Why?" (old 2.3), chronicle (2.4), dialogue (2.5), saving and coming back (2.6),

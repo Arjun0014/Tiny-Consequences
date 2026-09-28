@@ -1,0 +1,416 @@
+-- Conflict: grievances, raids and defence (docs/world/18 §2.4, W8, D-057).
+--
+-- Grievance (per pair of villages, relations W.ent.rel: ga = the lower id's grievance against the
+-- higher, gb the other way, gea/geb = the event of the last wrong): raids suffered and kin killed,
+-- help refused by a village with plenty; it fades slowly and gifts wash some of it away.
+--
+-- Raids (monthly decision): a village in want (rationing or famine that relief did not end, land
+-- too short to feed it) or nursing a grievance, with enough young men, may send a war party
+-- against a neutral or hostile village within a few days' walk whose store is worth the risk.
+-- The leader's temper matters (status.temper). The raiders are real people walking there
+-- (a mobility party). At dawn they fall on the village: the fight follows the numbers on each
+-- side (the defenders' men, the palisade if one stands, surprise) — Lanchester's square law;
+-- both sides lose people (deaths tagged with the raid event), the winners carry off grain and
+-- sometimes fire a house; the raiders walk home with the loot. The raided village remembers:
+-- grievance, a palisade (construction), households drawn to bigger or walled villages
+-- (mobility), revenge when it can. Feuds are emergent cycles, not scripts.
+local cfgmod = require("sim.config")
+local rng = require("sim.rng")
+local events = require("sim.causality.events")
+local ents = require("sim.society.entities")
+local sites = require("sim.society.sites")
+local cotag = require("sim.society.cotag")
+
+local M = {}
+local floor, min, max, ceil, sqrt = math.floor, math.min, math.max, math.ceil, math.sqrt
+
+-- Set by sim/society/init.lua (callbacks: no require cycles).
+M.depart = function() end
+M.rel = nil          -- sim/society/relations.lua
+M.status = nil       -- sim/society/status.lua
+-- A house fired in a raid (the first standing house by the village's building order).
+function M.burn(W, u, share)
+  local B = W.ent.buildings
+  local H = W.ent.households
+  for i = 1, #u.buildings do
+    local b = B[u.buildings[i]]
+    if b and b.state == "standing" and (b.kind == "house" or b.kind == "hut" or b.kind == "granary") then
+      b.condition = b.condition - share
+      if b.condition <= 0 then
+        b.state = "ruin"
+        b.ruined = W.hour
+        local h = H[b.household]
+        if h then h.home = 0 end
+        b.household = 0
+        u.hh_dirty = true
+      end
+      return b
+    end
+  end
+end
+
+local function emit(W, kind, cell, parent, mag, data, v)
+  if not W.record_events then return 0 end
+  local co = v and cotag.co_of(W, v)
+  return events.emit(W, kind, cell, parent, mag, data, co and { co = co } or nil)
+end
+
+-- Grievance of village a against village b (and the event behind it).
+function M.grievance(W, a, b)
+  local r = M.rel.get(W, a, b)
+  if not r then return 0, 0 end
+  if a < b then return r.ga or 0, r.gea or 0 end
+  return r.gb or 0, r.geb or 0
+end
+
+-- Add grievance of village a against village b, remembering event ev.
+function M.wrong(W, a, b, x, ev)
+  local r = M.rel.get(W, a, b, true)
+  if a < b then
+    r.ga = max(0, (r.ga or 0) + x)
+    if ev and ev ~= 0 then r.gea = ev end
+  else
+    r.gb = max(0, (r.gb or 0) + x)
+    if ev and ev ~= 0 then r.geb = ev end
+  end
+end
+
+-- Village v claimed field c, land that other villages also reached: where land is short, they
+-- hold it against v (the field by the river was theirs to take).
+function M.encroach(W, v, c)
+  local cfg = cfgmod.CONFLICT
+  local vs = W.ent.villages
+  for i = 1, #vs do
+    local u = vs[i]
+    if u ~= v and u.alive and u.intensify and W.vgeo[u.id] then
+      local G = W.vgeo[u.id]
+      local set = G.ringset
+      if not set then
+        set = {}
+        for k = 1, #G.ring do set[G.ring[k]] = true end
+        G.ringset = set
+      end
+      if set[c] then M.wrong(W, u.id, v.id, cfg.encroach_grievance, 0) end
+    end
+  end
+end
+
+-- Monthly: grievances fade (called once per relation by its lower-id village).
+function M.fade(W, v)
+  local vs = W.ent.villages
+  local k = cfgmod.CONFLICT.grievance_keep
+  for i = v.id + 1, #vs do
+    local r = M.rel.get(W, v.id, i)
+    if r then
+      if r.ga then r.ga = r.ga * k; if r.ga < 0.05 then r.ga, r.gea = nil, nil end end
+      if r.gb then r.gb = r.gb * k; if r.gb < 0.05 then r.gb, r.geb = nil, nil end end
+    end
+  end
+end
+
+-- Fighters of village u: men of fighting age, fit, at home.
+local function fighters(W, u, out)
+  local cfg = cfgmod.CONFLICT
+  local P = W.ent.people
+  local n = 0
+  for i = 1, #u.members do
+    local p = P[u.members[i]]
+    if p.sex == "m" and p.away == 0 and p.health >= 50 then
+      local a = (W.hour - p.born) / 8064
+      if a >= cfg.fight_age[1] and a <= cfg.fight_age[2] then
+        n = n + 1
+        if out then out[n] = p end
+      end
+    end
+  end
+  return n
+end
+M.fighters = fighters
+
+-- The defence of village u: its fighting men (and a little from everyone else), its palisade.
+function M.defence(W, u)
+  local cfg = cfgmod.CONFLICT
+  local men = fighters(W, u)
+  local others = max(0, u.pop - men) * cfg.other_defence
+  local d = men + others
+  local B = W.ent.buildings
+  for i = 1, #u.buildings do
+    local b = B[u.buildings[i]]
+    if b and b.kind == "palisade" and b.state == "standing" and b.condition > 0.3 then
+      d = d * (1 + (cfg.palisade - 1) * b.condition)
+      break
+    end
+  end
+  return d, men
+end
+
+-- Monthly for village v: go raiding?
+-- (diagnostics for tools: why villages did not raid; not state)
+M.why = {}
+local function why(k) M.why[k] = (M.why[k] or 0) + 1 end
+
+function M.monthly(W, v)
+  local cfg = cfgmod.CONFLICT
+  if v.pop < cfg.min_pop or v.raid_out then why("small_or_out"); return end
+  local hour = W.hour
+  if hour - (v.raid_last or -1e9) < cfg.raid_gap_months * 672 then why("gap"); return end
+  local list = {}
+  local nf = fighters(W, v, list)
+  if nf < cfg.min_raiders then why("fighters"); return end
+  -- want: hunger that relief did not end, land too short, grievance (per target)
+  local hunger = 0
+  if v.famine then hunger = 1.5 elseif v.rationing then hunger = 1 end
+  if hunger > 0 and hour - (v.relief_got or -1e9) < 3 * 672 then hunger = hunger * 0.3 end
+  local land = (v.intensify and v.food_days < 120) and 0.5 or 0
+  local _, war = M.status.temper(W, v)
+  local vs = W.ent.villages
+  local best, bv, bp, bd, bg, bge = nil, 0, 0, 0, 0, 0
+  local A = min(nf * cfg.raid_share, nf)
+  for i = 1, #vs do
+    local u = vs[i]
+    if u ~= v and u.alive and u.pop >= cfg.min_target and u.continent == v.continent and u.lord ~= v.id and v.lord ~= u.id then
+      local d = sites.dist(W, v.cell, u.cell)
+      if d <= cfg.raid_reach then
+        local s = M.rel.score(W, v, u)
+        local gr, gev = M.grievance(W, v.id, u.id)
+        -- kin, daughters and friends are not raided unless wronged
+        -- (hunger and want of land break the peace between kin)
+        local limit = cfg.friend_score + (hunger + land) * cfg.want_breaks_ties
+        if s >= limit and gr <= 1 then why("friend") end
+        if s < limit or gr > 1 then
+          local D = M.defence(W, u)
+          local pwin = A * A / (A * A + D * D * cfg.home_advantage)
+          local loot = min(u.stock.grain * cfg.loot_share, A * cfg.carry)
+          local gain = (hunger + land) * loot / max(1, v.need_day * 30) + gr * cfg.revenge_weight
+          local value = (pwin * gain - (1 - pwin) * cfg.risk) * war - d * 0.02
+          if value > bv then best, bv, bp, bd, bg, bge = u, value, pwin, d, gr, gev end
+        end
+      end
+    end
+  end
+  if hunger + land > 0 then why("wanting") end
+  if not best then why("no_target"); return end
+  if bv < cfg.threshold then why("low_value"); return end
+  if rng.float(W.seed, rng.S.CONFLICT, v.key_cell, floor(hour / 672), 1) > cfg.raid_prob then why("dice"); return end
+  why("raid")
+  -- the war party: the fittest of the fighting men
+  table.sort(list, function(a, b) if a.health ~= b.health then return a.health > b.health end return a.id < b.id end)
+  local party = {}
+  for i = 1, max(cfg.min_raiders, floor(A)) do party[i] = list[i] end
+  -- why: the village's want, or the wrong it avenges
+  local reason = (bg > 1 and bge ~= 0) and bge or (v.foodtag[1] ~= 0 and v.foodtag[1] or v.cause)
+  v.raid_out = true
+  v.raid_last = hour
+  M.depart(W, v, party, best.id, nil, "raid", reason, 0, 0, { target = best.id, home = v.id, pwin = bp })
+end
+
+-- A war party reaches its target (mobility): the fight.
+function M.battle(W, party, living)
+  local cfg = cfgmod.CONFLICT
+  local E = W.ent
+  local P = E.people
+  local home = E.villages[party.cargo.home]
+  local u = E.villages[party.cargo.target]
+  if not u or not u.alive or #living == 0 then
+    if home then M.home_again(W, party, living, home, 0) end
+    return
+  end
+  local hour = W.hour
+  local A = 0
+  for i = 1, #living do A = A + living[i].health / 100 end
+  local D, men = M.defence(W, u)
+  local key = party.key
+  local r1 = rng.float(W.seed, rng.S.CONFLICT, key, hour, 2)
+  local r2 = rng.float(W.seed, rng.S.CONFLICT, key, hour, 3)
+  local r3 = rng.float(W.seed, rng.S.CONFLICT, key, hour, 4)
+  local pwin = A * A * cfg.surprise / (A * A * cfg.surprise + D * D * cfg.home_advantage)
+  local win = r1 < pwin
+  -- losses: each side loses in proportion to the other's strength (and more when it loses)
+  local la = floor(#living * (0.05 + 0.2 * r2) * (win and 0.6 or 1.5) * min(2, D / max(1, A)) + 0.5)
+  local ld = floor(men * (0.05 + 0.2 * r3) * (win and 1.4 or 0.5) * min(2, A / max(1, D)) + 0.5)
+  if la > #living then la = #living end
+  local loot = 0
+  local beasts = nil
+  if win then
+    loot = min(u.stock.grain * cfg.loot_share * (0.6 + 0.4 * r2), #living * cfg.carry)
+    -- and the beasts they can drive off
+    local h = u.herd
+    if h then
+      local take = cfgmod.HERDS.raid_take * (0.6 + 0.4 * r3)
+      beasts = {}
+      for _, k in ipairs({ "sheep", "goats", "cattle" }) do
+        local x = (h[k] or 0) * take
+        h[k] = (h[k] or 0) - x
+        beasts[k] = x
+      end
+    end
+  end
+  local parent = party.reason or 0
+  local id = emit(W, win and "raid" or "raid_repelled", u.cell, parent, max(1, floor(loot)),
+    { village = u.id, from = home and home.id or 0, raiders = #living, dead_raiders = la, dead_defenders = ld,
+      loot = floor(loot) }, u)
+  -- the dead: raiders (the last in the party) and defenders (fighting men, the youngest last)
+  local dead_home = 0
+  for i = #living, #living - la + 1, -1 do
+    if living[i] then ents.kill(W, living[i], "raid", id); dead_home = dead_home + 1 end
+  end
+  local kept = {}
+  for i = 1, #living - la do kept[i] = living[i] end
+  if ld > 0 then
+    local list = {}
+    local n = fighters(W, u, list)
+    table.sort(list, function(a, b) return (a.u + a.id * 1e-9) < (b.u + b.id * 1e-9) end)
+    for i = 1, min(ld, n) do ents.kill(W, list[i], "raid", id) end
+    ents.compact(W, u)
+  end
+  -- the store, and a house fired now and then
+  if loot > 0 then
+    u.stock.grain = u.stock.grain - loot
+    u.foodtag[1], u.foodidle[1] = id, 0
+    u.cause = id
+    u.acc.raided_loss = (u.acc.raided_loss or 0) + loot
+    if r3 < cfg.burn_chance then M.burn(W, u, cfg.burn_damage) end
+  end
+  u.raided = hour
+  u.raid_tag = id
+  u.acc.raids_suffered = (u.acc.raids_suffered or 0) + 1
+  -- memory and standing
+  if home then
+    M.wrong(W, u.id, home.id, cfg.raid_grievance + ld * 0.5, id)
+    if dead_home > 0 then M.wrong(W, home.id, u.id, dead_home * 0.5, id) end
+    M.protect(W, u, home, id)
+    if win then
+      M.status.honour_leader(W, home, cfg.win_prestige)
+      M.status.honour_leader(W, u, -cfg.win_prestige * 0.5)
+      M.defeated(W, u, home, id)
+    else
+      M.status.honour_leader(W, u, cfg.win_prestige)
+      M.status.honour_leader(W, home, -cfg.win_prestige * 0.5)
+    end
+    for i = 1, #kept do
+      local p = kept[i]
+      if win then M.status.honour(W, p.household, cfg.raider_prestige) end
+    end
+    M.home_again(W, party, kept, home, loot, id, beasts)
+  end
+end
+
+-- The raiders walk home (with the loot).
+function M.home_again(W, party, living, home, loot, ev, beasts)
+  if #living == 0 or not home.alive then
+    if home then home.raid_out = nil end
+    return
+  end
+  M.depart(W, W.ent.villages[party.cargo.target] or home, living, home.id, nil, "raid_home", ev or party.reason, 0, 0,
+    { grain = loot, home = home.id, beasts = beasts }, party.path[#party.path])
+end
+
+-- Home again: the loot goes into the store.
+function M.raiders_home(W, party, home)
+  if home and home.alive then
+    local g = party.cargo and party.cargo.grain or 0
+    home.stock.grain = home.stock.grain + g
+    local b = party.cargo and party.cargo.beasts
+    if b and home.herd then
+      for _, k in ipairs({ "sheep", "goats", "cattle" }) do home.herd[k] = (home.herd[k] or 0) + (b[k] or 0) end
+    end
+    home.acc.loot = (home.acc.loot or 0) + g
+    home.wk_imports = (home.wk_imports or 0) + g
+    home.raid_out = nil
+  end
+end
+
+---------------------------------------------------------------------------------------------
+-- Tribute and polities (W9, docs/world/18 §2.5, D-058)
+--
+-- A village beaten again and again by the same raider, that cannot simply move away (its land
+-- is full, or it is much the weaker), submits: it pays a share of every harvest to its lord,
+-- carried by its porters (Carneiro's circumscription: where people cannot flee, war makes
+-- subjects). The lord stops raiding it, avenges raids on it (grievance against the raider),
+-- sends it relief first in a famine (staple finance), and its standing rises with every
+-- payment. A tributary whose lord is gone or has grown weaker than it stops paying (secession).
+-- A polity is a connected tree of lords and tributaries; its depth is its tiers (M.polity).
+
+-- The raider `a` beat village `u` (battle): count it, and maybe u submits.
+function M.defeated(W, u, a, ev)
+  local cfg = cfgmod.CONFLICT
+  local lost = u.lost_to
+  if not lost then lost = {}; u.lost_to = lost end
+  local k = tostring(a.id)
+  local e = lost[k]
+  if not e or W.hour - e.last > cfg.defeat_memory_years * 8064 then e = { n = 0, last = 0 }; lost[k] = e end
+  e.n, e.last = e.n + 1, W.hour
+  if u.lord or a.lord == u.id or e.n < cfg.submit_defeats then return end
+  local fu, fa = fighters(W, u), fighters(W, a)
+  -- can't flee (land full) or hopelessly outnumbered
+  if not (u.intensify or fu < fa * cfg.submit_ratio) then return end
+  u.lord = a.id
+  u.lord_since = W.hour
+  local id = emit(W, "submission", u.cell, ev, u.pop, { village = u.id, lord = a.id }, u)
+  u.lord_ev = id
+  M.status.honour_leader(W, a, cfg.submit_prestige)
+end
+
+-- Yearly after the harvest (economy): a tributary sends its lord a share of the harvest.
+function M.pay_tribute(W, v)
+  local cfg = cfgmod.CONFLICT
+  local L = v.lord and W.ent.villages[v.lord]
+  if not L then return end
+  if not L.alive or (fighters(W, L) < fighters(W, v) * cfg.secede_ratio) then
+    -- the lord is gone or weaker than us: we pay no more
+    local id = emit(W, "secession", v.cell, v.lord_ev or 0, v.pop, { village = v.id, lord = v.lord }, v)
+    if L.alive then M.wrong(W, L.id, v.id, 1.5, id) end
+    v.lord, v.lord_since, v.lord_ev = nil, nil, nil
+    return
+  end
+  local amount = min((v.last_harvest or 0) * cfg.tribute_share, max(0, v.stock.grain - v.need_day * 60))
+  if amount < v.need_day * 3 then return end
+  local ps = {}
+  local P = W.ent.people
+  for i = 1, #v.members do
+    local p = P[v.members[i]]
+    local a = (W.hour - p.born) / 8064
+    if p.away == 0 and a >= 16 and a < 50 and p.health >= 60 then ps[#ps + 1] = p end
+    if #ps >= max(2, min(8, ceil(amount / 120))) then break end
+  end
+  if #ps < 2 then return end
+  v.stock.grain = v.stock.grain - amount
+  local id = emit(W, "tribute", v.cell, v.lord_ev or 0, floor(amount), { village = v.id, lord = L.id, grain = floor(amount) }, nil)
+  M.depart(W, v, ps, L.id, nil, "porters", id, 0, 0, { gift = true, tribute = true, grain = amount, back_to = v.id })
+  v.acc.tribute_paid = (v.acc.tribute_paid or 0) + amount
+end
+
+-- A raid on a tributary wrongs its lord too (the lord will want revenge).
+function M.protect(W, u, attacker, ev)
+  local L = u.lord and W.ent.villages[u.lord]
+  if L and L.alive and L ~= attacker then M.wrong(W, L.id, attacker.id, cfgmod.CONFLICT.protect_grievance, ev) end
+end
+
+-- The polity of village v: its paramount (the lord at the top) and v's tier below it.
+function M.polity(W, v)
+  local vs = W.ent.villages
+  local top, depth = v, 0
+  local guard = 0
+  while top.lord and vs[top.lord] and vs[top.lord].alive and guard < 10 do
+    top = vs[top.lord]
+    depth = depth + 1
+    guard = guard + 1
+  end
+  return top, depth
+end
+
+-- Tiers of the polity headed by paramount village `top` (1 = a lone village).
+function M.tiers(W, top)
+  local vs = W.ent.villages
+  local best = 1
+  for i = 1, #vs do
+    local u = vs[i]
+    if u.alive and u.lord then
+      local t, d = M.polity(W, u)
+      if t == top and d + 1 > best then best = d + 1 end
+    end
+  end
+  return best
+end
+
+return M

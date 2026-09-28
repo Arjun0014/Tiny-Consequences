@@ -101,6 +101,8 @@ try {
   const t0 = Date.now();
   const q = { freeze: '1', speed: '0' };
   if (seedFlag !== null) q.seed = String(seedFlag);
+  const worldFlag = getFlag(args, '--world', null);
+  if (worldFlag !== null) q.world = String(worldFlag);
   await page.goto(gameUrl(`http://127.0.0.1:${port}`, q));
   await page.waitForFunction(() => window.__TC && window.__TC.loading === true && window.__TC.loading_frac > 0.2, null, { timeout: 60_000 }).catch(() => {});
   await page.screenshot({ path: path.join(outDir, 'loading.png') });

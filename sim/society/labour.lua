@@ -25,8 +25,12 @@ local floor, min, max = math.floor, math.min, math.max
 local FFOREST = fields.BY_NAME.forest
 local FGRAZ = fields.BY_NAME.grazers
 
+local crafts = require("sim.society.crafts")
+local herds = require("sim.society.herds")
+local carbon = require("sim.society.carbon")
 local FARM = { harvest = true, sow = true, tend = true, clear = true, care = true }
-local LIGHT = { harvest = true, tend = true, fuel = true, sow = true, brush = true, forage = true, care = true }   -- children plant, elders glean
+local CRAFT = { craft_tools = "tools", craft_pots = "pots", craft_cloth = "cloth" }
+local LIGHT = { harvest = true, tend = true, fuel = true, sow = true, brush = true, forage = true, care = true, herd = true }   -- children plant and mind the flocks, elders glean
 local AFFINITY = { farmer = FARM, fisher = { fish = true }, woodcutter = { fuel = true, timber = true, brush = true },
   builder = { build = true } }
 
@@ -228,7 +232,10 @@ function M.assign(W, v, hours_day)
   local fday = M.fuel_day(W, v, T)
   local lwk = farming.local_week(W, v)
   local days = (lwk >= 30 or lwk < 6) and cfg.fuel_days_winter or cfg.fuel_days
-  local wood_target = fday * days
+  -- (W7b) the wood partners usually buy is cut too; wood usually bought need not be
+  local N = v.norm
+  local wood_target = max(fday * days * 0.4, fday * days + ((N.wood_exp or 0) * cfg.export_trust
+    - (N.wood_imp or 0) * cfg.import_trust) / 7 * days)
   local lot, score = M.woodlot(W, v, hours_day)
   local fuel_kind = "fuel"
   if not lot or score < 1 then
@@ -284,6 +291,11 @@ function M.assign(W, v, hours_day)
   end
   -- hunting when food runs short (until the herds of W4)
   if v.food_days < 90 then demand("hunt", v.cell, v.food_days < 30 and 55 or 25, hours_day * 12, 4) end
+  -- crafts in the slack: tools, pots and cloth up to their targets (crafts.lua)
+  crafts.demands(W, v, demand, hours_day * cfg.work_days)
+  -- herders take the herd to pasture (herds.lua): unguarded beasts fall to wolves
+  local hh = herds.demand(W, v, hours_day)
+  if hh > 0 then demand("herd", v.herd_cell or v.cell, 58, hh, nil) end
   -- sort by priority (stable: insertion order breaks ties)
   for i = 1, nd do D[i].ord = i end
   local list = LIST
@@ -393,6 +405,7 @@ end
 -- Weather factor for outdoor work of `kind` today.
 local function weather_factor(kind, wx)
   local cfg = cfgmod.SOCIETY
+  if kind == "craft_cloth" then return 1 end
   if wx.storm then return 0 end
   if wx.snow then
     if FARM[kind] then return 0 end
@@ -427,7 +440,7 @@ function M.execute(W, v, hours_day, wx)
       end
       local h = (hours_day - 2 * travel) * wf
       if h < 0 then h = 0 end
-      local eff = h * g.cap
+      local eff = h * g.cap * crafts.tool_factor(v)
       acc(v, "h_" .. k, eff)
       if FARM[k] then
         local used = farming.work(W, v, k, eff)
@@ -437,9 +450,10 @@ function M.execute(W, v, hours_day, wx)
         local c = g.target
         local gr = F.grass[c]
         local wood = eff * cfg.brush_rate * gr / (gr + cfg.brush_half)
-        local dg = wood / cfg.forest_wu * 0.5
+        local dg = wood / cfg.brush_wu * 0.5
         if dg > gr * 0.1 then dg = gr * 0.1 end
         F.grass[c] = gr - dg
+        carbon.release(W, dg, "brush")
         v.stock.wood = v.stock.wood + wood
         v.day_wood = (v.day_wood or 0) + wood
         acc(v, "brush", wood)
@@ -452,6 +466,7 @@ function M.execute(W, v, hours_day, wx)
         if df > 0 then
           F.forest[c] = f - df
           W.P.forest[c] = F.forest[c]
+          carbon.release(W, df, "wood")
           local vt = v.cause
           if vt ~= 0 or C.forest[c] ~= 0 then
             blame.step(C.forest, I.forest, c, -df, FFOREST.eps, FFOREST.hold, -df, vt, 0, 0, 0, 0, 0, 0)
@@ -478,9 +493,14 @@ function M.execute(W, v, hours_day, wx)
         local dg = food / cfg.forage_fu
         if dg > gr * 0.1 then dg = gr * 0.1; food = dg * cfg.forage_fu end
         F.grass[c] = gr - dg
+        carbon.release(W, dg, "forage")
         v.stock.fresh = v.stock.fresh + food
         v.day_fresh = (v.day_fresh or 0) + food
         acc(v, "forage", food)
+      elseif CRAFT[k] then
+        crafts.work(W, v, CRAFT[k], eff)
+      elseif k == "herd" then
+        herds.work(W, v, eff)
       elseif k == "hunt" then
         -- the best grazer cell near the village (fauna densities until W4's herds)
         local ring = W.vgeo[v.id].ring

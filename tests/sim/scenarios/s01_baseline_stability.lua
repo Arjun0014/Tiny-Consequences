@@ -20,8 +20,9 @@ return {
     { band = "ice", min = 0.05, max = 0.20, stat = "mean" },
     { band = "g_temp", min = -1.5, max = 3.5, stat = "all" },
     { band = "g_temp", min = 0.0, max = 2.5, stat = "final" },      -- D-054: land clearing and fuel
-    -- the settlement layer grows to its land's capacity (and the soft cap, a performance guard)
-    { band = "population", min = 150, max = 900, stat = "all", from_year = 5 },
+    -- the settlement layer grows to its land's capacity (and the soft cap, a performance guard:
+    -- 2,400 since D-057, was 900)
+    { band = "population", min = 150, max = 2400, stat = "all", from_year = 5 },
     { fauna = true },                                    -- no continental extinction, predator CV >= 0.15, fish
     { events_per_decade = "fire_started", min = 3 },
     -- (100, was 70 (D-053), 50: villages cut and clear the forests around them and burn more fuel

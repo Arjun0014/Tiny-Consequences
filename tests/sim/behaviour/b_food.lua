@@ -60,8 +60,17 @@ end
 b08_body = function(Wa, Wb)
   local va = farm_village(Wa)
   local vb = Wb.ent.villages[va.id]
+  -- a village without beasts in both worlds (a herd's milk and meat buffer a famine: W10; this
+  -- test is about the body's and household's own response)
+  va.herd = { sheep = 0, goats = 0, cattle = 0, base_se = 0 }
+  vb.herd = { sheep = 0, goats = 0, cattle = 0, base_se = 0 }
   world.test_action(Wa, "empty_stores", { village = va.id })
   world.test_action(Wa, "burn_farms", { village = va.id })
+  -- and a fire through the grass and woods about it (the wild food the hungry would forage)
+  local ring = Wa.vgeo[va.id] and Wa.vgeo[va.id].ring or {}
+  local cells = {}
+  for i = 1, #ring do if Wa.geo.ocean[ring[i]] == 0 and Wa.F.land_use[ring[i]] == 0 then cells[#cells + 1] = ring[i] end end
+  if #cells > 0 then world.test_action(Wa, "ignite", { cells = cells }) end
   local t0 = Wa.hour
   local members = {}
   for _, id in ipairs(va.members) do members[id] = true end
@@ -86,12 +95,21 @@ b08_body = function(Wa, Wb)
     t.cz, t.cw = v.acc.cz or 0, v.acc.cw or 0
   end
   local ca, cb = tracker(va), tracker(vb)
+  -- the women's nutrition over the same months (what the fecundity curve responds to)
+  local na, nb = { s = 0, n = 0 }, { s = 0, n = 0 }
+  local function nut(W, v, t)
+    local P = W.ent.people
+    for _, id in ipairs(v.members) do
+      local p = P[id]
+      if p.sex == "f" and p.partner ~= 0 then t.s, t.n = t.s + p.nutrition, t.n + 1 end
+    end
+  end
   local hz0a, pw0a, hz0b, pw0b, hza, hzb = 0, 0, 0, 0, 0, 0
   for m = 1, 24 do
     world.run_ticks(Wa, 4); world.run_ticks(Wb, 4)
     if va.alive then min_ra = math.min(min_ra, va.ration) end
     min_rb = math.min(min_rb, vb.ration)
-    if m <= 3 then track(ca); track(cb) end
+    if m <= 3 then track(ca); track(cb); nut(Wa, va, na); nut(Wb, vb, nb) end
     if m == 1 then hz0a, pw0a, hz0b, pw0b = va.acc.hz or 0, va.acc.pw or 0, vb.acc.hz or 0, vb.acc.pw or 0 end
     if m == 7 then
       -- expected deaths per person-week (the summed weekly hazards) over the hungry months
@@ -113,18 +131,25 @@ b08_body = function(Wa, Wb)
   local cra = ca.sz / math.max(1, ca.sw)
   local crb = cb.sz / math.max(1, cb.sw)
   T.ok(ca.sw >= 10 and cb.sw >= 10, string.format("women who could conceive: %d vs %d woman-weeks", ca.sw, cb.sw))
-  T.ok(crb > 0 and cra < crb * 0.5, string.format("conceptions drop: weekly chance %.4f vs %.4f", cra, crb))
+  -- conceptions fall as the fecundity curve says for the women's nutrition (life.weekly: chance
+  -- x clamp((n - 0.55) / 0.3)), and clearly (the famine's depth depends on the wild food about)
+  local function f(x) x = (x - 0.55) / 0.3; return x < 0 and 0 or (x > 1 and 1 or x) end
+  local mna, mnb = na.s / math.max(1, na.n), nb.s / math.max(1, nb.n)
+  local predicted = f(mna) / math.max(1e-6, f(mnb))
+  T.ok(crb > 0 and cra < crb * 0.9 and cra <= crb * (predicted + 0.15),
+    string.format("conceptions drop: weekly chance %.4f vs %.4f (women's nutrition %.2f vs %.2f: expected x%.2f)", cra, crb, mna, mnb, predicted))
   T.ok(hza > hzb * 1.5, string.format("mortality rises: weekly death hazard %.5f vs %.5f", hza, hzb))
   T.ok(da >= db, string.format("deaths %d vs %d", da, db))
   local mig = U.events_of(Wa, "migration", va.id, t0)
   local rooted = 0
   for _, r in ipairs(mig) do
     local k = U.root_kind(Wa, r.id)
-    if k == "test_empty_stores" or k == "test_burn_farms" then rooted = rooted + 1 end
+    if k == "test_empty_stores" or k == "test_burn_farms" or k == "test_ignite" then rooted = rooted + 1 end
   end
   T.ok(rooted >= 1, "households emigrate, and the migration chains back to the lost stores")
   local ra = U.events_of(Wa, "rationing", va.id, t0)
-  T.ok(#ra >= 1 and (U.root_kind(Wa, ra[1].id) == "test_empty_stores" or U.root_kind(Wa, ra[1].id) == "test_burn_farms"),
+  local rk = #ra >= 1 and U.root_kind(Wa, ra[1].id)
+  T.ok(rk == "test_empty_stores" or rk == "test_burn_farms" or rk == "test_ignite",
     "rationing chains back to the intervention")
   return string.format("%s: ration min %.2f (control %.2f), conception chance %.4f vs %.4f/week, deaths %d vs %d, %d migrations",
     va.name, min_ra, min_rb, cra, crb, da, db, #mig)

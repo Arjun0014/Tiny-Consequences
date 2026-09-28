@@ -128,7 +128,15 @@ function M.plan(W, v)
     local boats = #v.boats + cnt("boat:site")
     if (fishers > boats * cfg.crew or boats == 0) and #v.fishing > 0 then open("boat") end
   end
-  -- 4. storage when stocks overflow (at most a granary per 40 people: surplus beyond that rots)
+  -- 4. a palisade after a raid (W8): timber walls round the village
+  local ccfg = cfgmod.CONFLICT
+  if v.raided and W.hour - v.raided < ccfg.palisade_years * 8064 and cnt("palisade") == 0 and v.pop >= 12
+    and sites_open < max_sites + 1 then
+    local b = ents.new_building(W, v, "palisade", v.cell, 62, "site")
+    b.prio = 72
+    sites_open = sites_open + 1
+  end
+  -- 5. storage when stocks overflow (at most a granary per 40 people: surplus beyond that rots)
   local gcap, wcap = M.capacities(W, v)
   if v.stock.grain > gcap * 0.9 and cnt("granary:site") == 0
     and cnt("granary") < 1 + floor(v.pop / 40) then open("granary") end

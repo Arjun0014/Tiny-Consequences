@@ -118,19 +118,25 @@ function M.set_preview(map)
   M.force_signatures = true
 end
 
--- Cells woodcutters worked in the last half year (the villages' logging records): stumps and logs.
+-- Cells woodcutters worked in the last half year (the villages' logging records): stumps and logs;
+-- stone sources villages quarry for their tools (crafts).
 function M.scan_logged(W)
   local set = {}
+  local q = {}
   local vs = W.ent and W.ent.villages or {}
   for i = 1, #vs do
-    local lg = vs[i].alive ~= false and vs[i].logged
+    local v = vs[i]
+    local lg = v.alive ~= false and v.logged
     if lg then
       for c, h in pairs(lg) do
         if W.hour - h < 4032 then set[c] = true end
       end
     end
+    local t = v.alive ~= false and v.crafts and v.crafts.tools
+    if t and ((v.acc and v.acc.made_tools or 0) + (v.acc_last and v.acc_last.made_tools or 0)) > 2 then q[t.cell] = true end
   end
   M.logged = set
+  M.quarries = q
 end
 
 local function signature(W, c)
@@ -151,6 +157,7 @@ local function signature(W, c)
     if fs and fs.sown > 0 then q = q + floor(fs.harvested * fs.sown * 5) * 3e6 end
   end
   if M.logged and M.logged[c] then q = q + 7e7 end
+  if M.quarries and M.quarries[c] then q = q + 1.3e8 end
   local ic = F.ice[c]
   q = q + (ic > 0.55 and 2 or (ic > 0.3 and 1 or 0)) * 500000
   if M.preview and M.preview[c] then q = q + 1e7 * (M.preview[c] + 2) end
@@ -240,6 +247,7 @@ local function run_job(j, deadline)
     M.ctx.lod = j.lod
     M.ctx.villages = M.villages
     M.ctx.logged = M.logged
+    M.ctx.quarries = M.quarries
     M.ctx.preview = M.preview
     M.ctx.owned = M.owned and M.owned[j.k]
     local nfaces = #ch.faces

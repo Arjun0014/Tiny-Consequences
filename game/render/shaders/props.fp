@@ -7,6 +7,7 @@ in mediump vec3 var_normal;
 in mediump vec3 var_color;
 in highp vec3 var_sc;
 in mediump vec3 var_mat;
+in mediump float var_bare;
 uniform highp sampler2D shadowtex;
 
 out vec4 out_color;
@@ -24,6 +25,12 @@ void main()
     vec3 up = normalize(var_wpos);
     vec3 V = normalize(u_cam.xyz - var_wpos);
     vec3 L = normalize(u_sun.xyz);
+    // bare deciduous crowns in winter: a stable world-space stipple leaves only twigs
+    if (var_bare > 0.01) {
+        highp vec3 q = floor(var_wpos * 160.0);
+        float n = fract(sin(dot(q, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+        if (n < var_bare) discard;
+    }
     vec3 N = normalize(var_normal);
     if (dot(N, V) < 0.0) N = -N;   // double-sided leaves / fronds
     float sh = tc_shadow(shadowtex, var_sc, u_shadowp);

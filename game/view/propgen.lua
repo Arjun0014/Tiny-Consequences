@@ -30,7 +30,8 @@ M.SLOTS_FAR = 7        -- 5 canopy, 1 shrub, 1 rock
 local NAMES = { "oak", "birch", "spruce", "snowpine", "pine", "palm", "jungle", "acacia", "snag", "stump",
   "bush", "tuft", "flower", "reed", "rock", "cactus", "cottage", "longhouse", "townhouse", "hut",
   "granary", "hall", "well", "fence", "haystack", "woodpile", "ruin", "pier",
-  "stakes", "frame", "walls", "sodhouse", "woodshed", "sacks", "fishrack", "hull", "stook", "logs" }
+  "stakes", "frame", "walls", "sodhouse", "woodshed", "sacks", "fishrack", "hull", "stook", "logs", "palisade",
+  "kiln", "pots", "pen" }
 local flora = require("game.view.flora")
 for _, n in ipairs(flora.NAMES) do NAMES[#NAMES + 1] = n end
 local K = {}
@@ -47,7 +48,7 @@ cls("bush", 1); cls("tuft", 7); cls("flower", 7, 7); cls("reed", 7); cls("rock",
 for _, n in ipairs({ "cottage", "longhouse", "townhouse", "hut", "granary", "hall", "well" }) do cls(n, 5, 0) end
 cls("fence"); cls("haystack", 7); cls("woodpile"); cls("ruin"); cls("pier")
 cls("stakes"); cls("frame"); cls("walls", 0, 0); cls("sodhouse", 7, 0); cls("woodshed", 5); cls("sacks")
-cls("fishrack"); cls("hull"); cls("stook", 7); cls("logs")
+cls("fishrack"); cls("hull"); cls("stook", 7); cls("logs"); cls("palisade"); cls("kiln"); cls("pots"); cls("pen")
 for _, n in ipairs({ "oak1", "oak2", "oak3", "beech1", "beech2", "birch1", "birch2", "poplar", "sapling_b" }) do cls(n, 1, 6) end
 for _, n in ipairs({ "spruce1", "spruce2", "spruce3", "fir1", "pine1", "pine2", "sapling_c" }) do cls(n, 2, 6) end
 cls("snowpine1", 2, 6, 4); cls("snowpine2", 2, 6, 4)
@@ -325,6 +326,7 @@ end
 -- chimney tops in the house templates' local frame (modelkit)
 local CHIMNEY = { cottage = { 0.022, 0.092, -0.008 }, townhouse = { -0.02, 0.122, 0.006 } }
 M.chimneys = {}         -- village cell -> list of { x, y, z } chimney tops (world), for fx smoke
+M.pens = {}             -- village id -> { x, y, z } unit direction of its pen (puppets: herds at night)
 
 -- World position of local point (lx, ly, lz) of an instance (same frame as M.write).
 local function to_world(x, y, z, ux, uy, uz, yaw, s, lx, ly, lz)
@@ -412,6 +414,18 @@ function M.plan_village(ctx, e)
   end
   local houses, granary, pier = {}, nil, nil
   local list = v.buildings or {}
+  -- the prestige of the top fifth of the village's households (two-storey houses)
+  local H = W.ent.households or {}
+  local prestige_hi = 0
+  do
+    local ps = {}
+    for i = 1, #(v.households or {}) do
+      local hh = H[v.households[i]]
+      if hh then ps[#ps + 1] = hh.prestige or 0 end
+    end
+    table.sort(ps)
+    if #ps >= 5 then prestige_hi = ps[floor(#ps * 0.8) + 1] end
+  end
   for i = 1, #list do
     local b = B[list[i]]
     if b and b.state ~= "gone" then
@@ -471,6 +485,14 @@ function M.plan_village(ctx, e)
               c2 = pack_rgb(EARTH_WALL[1] * wear, EARTH_WALL[2] * wear, EARTH_WALL[3] * wear)
             else
               kind = K[style.houses[key % #style.houses + 1]]
+              -- who lives there (W8): the leader's household in a hall, big households in
+              -- longhouses, the most respected in two-storey houses
+              local hh = b.household ~= 0 and H[b.household]
+              if hh then
+                if hh.id == v.leader_h then kind = K.hall
+                elseif #hh.members >= 7 then kind = K.longhouse
+                elseif (hh.prestige or 0) >= prestige_hi and prestige_hi > 0.3 then kind = K.townhouse end
+              end
             end
           elseif b.kind == "hut" then kind = K.hut
           elseif b.kind == "granary" then kind = K.granary; granary = { x, y, z, r }
@@ -479,6 +501,36 @@ function M.plan_village(ctx, e)
           if kind then
             put(kind, x, y, z, r, yaw, sc, c1, c2)
             if b.kind == "house" or b.kind == "hut" then houses[#houses + 1] = { x, y, z, r, yaw, key } end
+          end
+        end
+      end
+    end
+  end
+  -- a palisade (W8) rings the village at the edge of its lots: stakes all round when standing,
+  -- the part already raised while it is being built (a gap for the gate facing the sea or square)
+  for i = 1, #list do
+    local b = B[list[i]]
+    if b and b.kind == "palisade" and (b.state == "standing" or b.state == "site" or b.state == "ruin") then
+      local rad = (e.radius or 0.3) + 0.04
+      local circ = 2 * pi * rad
+      local nseg = max(8, floor(circ / (0.1 * S) + 0.5))
+      local frac = b.state == "site" and (b.progress or 0) or (b.state == "ruin" and 0.4 or 1)
+      local cond = b.condition or 1
+      local ex, ey, ez, nx, ny, nz = frame(wx, wy, wz)
+      local shown = floor(nseg * frac + 0.5)
+      for k = 0, shown - 1 do
+        if k ~= 0 then
+          local a = (k + 0.5) / nseg * 2 * pi
+          local d = rad / 10
+          local px, py, pz = wx + (ex * cos(a) + nx * sin(a)) * d, wy + (ey * cos(a) + ny * sin(a)) * d,
+            wz + (ez * cos(a) + nz * sin(a)) * d
+          local l = sqrt(px * px + py * py + pz * pz)
+          px, py, pz = px / l, py / l, pz / l
+          local r, hk = ctx.surface(px, py, pz)
+          if hk > 0.02 and (b.state ~= "ruin" or (k * 7) % 3 == 0) then
+            local yaw = yaw_to(px, py, pz, wx, wy, wz) + pi * 0.5
+            local w = cond < 0.5 and 0.75 or 1
+            put(K.palisade, px, py, pz, r, yaw, circ / nseg / (0.1 * S) * 1.02, pack_rgb(0.55 * w, 0.4 * w, 0.26 * w), 0)
           end
         end
       end
@@ -502,6 +554,32 @@ function M.plan_village(ctx, e)
     local px, py, pz = offset(gx, gy, gz, i * 2.4, granary and 0.06 or 0.045)
     local r, hk = ctx.surface(px, py, pz)
     if hk > 0.02 then put(K.sacks, px, py, pz, r, i * 1.7, 1.0, pack_rgb(SACK[1], SACK[2], SACK[3]), 0) end
+  end
+  -- the pen where the herd sleeps (W10), at the edge of the village away from the kiln
+  if v.herd and require("sim.society.herds").se(v.herd) > 5 then
+    local pa = ((v.key_cell or 0) % 17) / 17 * 2 * pi + pi
+    local px, py, pz = offset(wx, wy, wz, pa, (e.radius or 0.3) * 0.95)
+    local r, hk = ctx.surface(px, py, pz)
+    if hk > 0.02 then put(K.pen, px, py, pz, r, pa, 1.0, 0, 0) end
+    M.pens[v.id] = { px, py, pz }
+  end
+  -- a pottery (crafts): the kiln at the edge of the village while pots are being made, pots stacked
+  -- by it in proportion to the stock
+  local acc = v.acc or {}
+  local accl = v.acc_last or {}
+  if (acc.made_pots or 0) + (accl.made_pots or 0) > 3 then
+    local ka = ((v.key_cell or 0) % 17) / 17 * 2 * pi
+    local px, py, pz = offset(wx, wy, wz, ka, (e.radius or 0.3) * 0.85)
+    local r, hk = ctx.surface(px, py, pz)
+    if hk > 0.02 then
+      put(K.kiln, px, py, pz, r, ka, 1.0, 0, 0)
+      local np = min(4, floor((st.pots or 0) / max(1, v.pop * 0.15)))
+      for i = 1, np do
+        local qx, qy, qz = offset(px, py, pz, ka + i * 1.3, 0.05)
+        local r2, hk2 = ctx.surface(qx, qy, qz)
+        if hk2 > 0.02 then put(K.pots, qx, qy, qz, r2, i * 2.1, 0.9, 0, 0) end
+      end
+    end
   end
   -- fish racks by the pier while the catch is in
   if pier then
@@ -531,6 +609,9 @@ function M.village_sig(W, v)
   local st = v.stock or {}
   s = (s + floor((st.wood or 0) / 80) * 7919 + floor(((st.grain or 0) + (st.seed or 0)) / 2500) * 104729
     + floor((st.fresh or 0) / 120) * 1299709) % 1000000007
+  s = (s + (v.leader_h or 0) * 7727) % 1000000007
+  local pots = ((v.acc and v.acc.made_pots or 0) + (v.acc_last and v.acc_last.made_pots or 0) > 3) and 1 or 0
+  s = (s + pots * 15485863 + min(4, floor((st.pots or 0) / math.max(1, v.pop * 0.15))) * 32452843) % 1000000007
   return s
 end
 
@@ -630,6 +711,7 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
         local stand = vnoise.value(NZ, fx * 14 - 5.3, fy * 14 + 2.2, fz * 14 + 7.9)
         local canopy = min(1, fo * (1 - 0.85 * glade) * 1.35) ^ 0.85
         local young = burnt and (fire[c] > 0 or scar[c] < 48)
+        local quarry = ctx.quarries and ctx.quarries[c]
         local h = (f * 7919 + seed * 104729) % 2147483647
         if h == 0 then h = 1 end
         for j = 1, slots do
@@ -680,8 +762,8 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
             if role == 6 and u3 < 0.2 then kind = K.boulder; scale = 0.6 + u5 * 0.8 end
           elseif bi == 9 then
             -- desert: rock, scattered dry shrubs, cacti where it is hot
-            if role == 6 and u3 < 0.25 then kind = (u4 < 0.5) and K.slab or K.boulder; scale = 0.6 + u5 * 0.8
-            elseif role == 3 and u3 < 0.12 + gr * 0.3 then kind = (tmean > 18 and u4 < 0.4) and K.cactus or K.dryshrub; scale = 0.7 + u5 * 0.5
+            if role == 6 and u3 < 0.07 + (rocky and 0.2 or 0) then kind = (u4 < 0.5) and K.slab or K.boulder; scale = 0.4 + u5 * u5 * 1.6
+            elseif role == 3 and u3 < 0.1 + gr * 0.3 then kind = (tmean > 18 and u4 < 0.45) and K.cactus or K.dryshrub; scale = 0.7 + u5 * 0.6
             elseif role == 4 and u3 < gr * 0.4 then kind = K.tallgrass; scale = 0.6 + u5 * 0.4
             elseif role == 1 and u3 < tree_p then kind = pick_tree(tmean, ic, bi, sw, coast, u4, stand); scale = 0.6 + u5 * 0.4 end
           elseif bi == 8 then
@@ -745,8 +827,10 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
             elseif coast and hmin < 0.05 and u3 < 0.12 then kind = K.logs; scale = 0.7 + u5 * 0.4   -- driftwood
             end
           else
-            -- rocks: outcrops on steep or high ground, boulders on rocky shores, mossy stones in woods
-            if rocky and u3 < 0.35 then kind = (u4 < 0.4) and K.slab or K.boulder; scale = 0.5 + u5 * 1.0
+            -- rocks: outcrops on steep or high ground, boulders on rocky shores, mossy stones in woods;
+            -- a quarry where a village works its stone (crafts: tools)
+            if quarry and u3 < 0.7 then kind = (u4 < 0.6) and K.slab or K.boulder; scale = 0.4 + u5 * 0.7
+            elseif rocky and u3 < 0.35 then kind = (u4 < 0.4) and K.slab or K.boulder; scale = 0.5 + u5 * 1.0
             elseif coast and hmin < 0.1 and (hmax - hmin) > 0.22 and u3 < 0.4 then kind = K.boulder; scale = 0.5 + u5 * 0.9
             elseif fo > 0.5 and sw > 0.35 and u3 < 0.12 then kind = K.mossrock; scale = 0.5 + u5 * 0.7
             elseif u3 < 0.025 then kind = K.boulder; scale = 0.4 + u5 * 0.5 end
@@ -880,10 +964,17 @@ end
 -- tanker | boat | ring | flame | smoke
 function M.mover_template(kind)
   kit.build()
-  if kind == "deer" or kind == "wolf" then return kit.quadruped(kind) end
+  if kind == "deer" or kind == "wolf" or kind == "boar" or kind == "hare" or kind == "cat" or kind == "bear" then
+    return kit.quadruped(kind)
+  end
+  if kind == "dolphin" then return kit.dolphin() end
+  if kind == "sheep" or kind == "goat" or kind == "cow" then return kit.quadruped(kind) end
   if kind == "person" then return kit.person(nil) end
   if kind == "person_straw" then return kit.person("straw") end
   if kind == "person_cap" then return kit.person("cap") end
+  if kind == "person_sack" then return kit.person(nil, "sack") end
+  if kind == "person_logs" then return kit.person("cap", "logs") end
+  if kind == "person_spear" then return kit.person(nil, "spear") end
   local t = kit.new()
   if kind == "cloud_cu1" or kind == "cloud_cu2" or kind == "cloud_deck" or kind == "cloud_tower" then
     return M.cloud_template(kind)

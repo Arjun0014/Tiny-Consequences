@@ -130,6 +130,94 @@ local function year_of(h)
 end
 M.year_of = year_of
 
+-- The village's society: who leads, its herd, what it makes and trades, whom it pays or rules,
+-- whom it hates and why (the event behind the grievance).
+function M.society_items(W, v, items)
+  local E = W.ent
+  if not E or v.alive == false then return end
+  add(items, { t = "head", text = "Society" })
+  local P = E.people or {}
+  local L = E.lineages or {}
+  local ld = v.leader and P[v.leader]
+  if ld and not ld.dead then
+    local lin = ld.lin and L[ld.lin]
+    local since = v.leader_since and year_of(v.leader_since)
+    add(items, { t = "row", icon = "star", label = "Leader", value = (ld.name or "?") .. (lin and (" of the " .. lin.name .. " line") or "")
+      .. (since and (", since " .. since) or ""), link = { kind = "person", id = ld.id } })
+    local tr = ld.traits and table.concat(ld.traits, ", ")
+    if tr and tr ~= "" then add(items, { t = "text", icon = "bubble", text = "The leader is " .. tr }) end
+  end
+  -- lineages by size
+  local n, order = {}, {}
+  for _, id in ipairs(v.members or {}) do
+    local p = P[id]
+    if p and p.lin then
+      if not n[p.lin] then n[p.lin] = 0; order[#order + 1] = p.lin end
+      n[p.lin] = n[p.lin] + 1
+    end
+  end
+  table.sort(order, function(a, b) if n[a] ~= n[b] then return n[a] > n[b] end return a < b end)
+  local parts = {}
+  for i = 1, math.min(4, #order) do
+    local lin = L[order[i]]
+    parts[#parts + 1] = (lin and lin.name or "?") .. " " .. n[order[i]]
+  end
+  if #parts > 0 then add(items, { t = "text", icon = "people", text = "Lineages: " .. table.concat(parts, " · ") .. (#order > 4 and " …" or "") }) end
+  local h = v.herd
+  if h then
+    local cap = v.herd_cap and floor(v.herd_cap) or nil
+    add(items, { t = "row", icon = "deer", label = "Herd", value = string.format("%d sheep · %d goats · %d cattle",
+      floor(h.sheep or 0), floor(h.goats or 0), floor(h.cattle or 0)) })
+  end
+  -- crafts: what the village makes well, what it buys
+  local crafts_ok, crafts = pcall(require, "sim.society.crafts")
+  if crafts_ok and v.crafts then
+    local mk, buy = {}, {}
+    local a = v.acc_last or {}
+    for _, g in ipairs(crafts.GOODS) do
+      if (a[g .. "_sold"] or 0) > 0 then mk[#mk + 1] = string.format("%s (sold %d)", g, floor(a[g .. "_sold"])) end
+      if (a[g .. "_bought"] or 0) > 0 then buy[#buy + 1] = string.format("%s (%d)", g, floor(a[g .. "_bought"])) end
+    end
+    if #mk > 0 then add(items, { t = "text", icon = "pickaxe", text = "Makes for others: " .. table.concat(mk, ", ") }) end
+    if #buy > 0 then add(items, { t = "text", icon = "boat", text = "Buys: " .. table.concat(buy, ", ") }) end
+  end
+  -- lord and tributaries
+  local vs = E.villages or {}
+  if v.lord and vs[v.lord] then
+    local L2 = vs[v.lord]
+    add(items, { t = "row", icon = "wheat", label = "Pays tribute to", value = (L2.name or "?") .. (v.lord_since and (", since " .. year_of(v.lord_since)) or ""),
+      link = { kind = "village", id = L2.id, cell = L2.cell }, hl = true })
+  end
+  local tribs = {}
+  for i = 1, #vs do
+    local u = vs[i]
+    if u.alive and u.lord == v.id then tribs[#tribs + 1] = u.name end
+  end
+  if #tribs > 0 then add(items, { t = "text", icon = "star", text = "Rules: " .. table.concat(tribs, ", ") }) end
+  -- the strongest grievance and the wrong behind it
+  local worst, wg, wev = nil, 0, 0
+  local R = E.rel or {}
+  for i = 1, #vs do
+    local u = vs[i]
+    if u ~= v and u.alive then
+      local a, b = math.min(v.id, u.id), math.max(v.id, u.id)
+      local r = R[a .. "_" .. b]
+      if r then
+        local g = v.id < u.id and (r.ga or 0) or (r.gb or 0)
+        local ev = v.id < u.id and (r.gea or 0) or (r.geb or 0)
+        if g > wg then worst, wg, wev = u, g, ev end
+      end
+    end
+  end
+  if worst and wg >= 0.5 then
+    local why = ""
+    local rec = wev ~= 0 and W.E and W.E.rec and W.E.rec[wev]
+    if rec then why = string.format(" (%s, year %d)", cap(rec.kind), floor((rec.tick or 0) / 48)) end
+    add(items, { t = "row", icon = "skull", label = "Grievance", value = string.format("against %s%s", worst.name or "?", why),
+      link = { kind = "village", id = worst.id, cell = worst.cell }, hl = wg >= 2 })
+  end
+end
+
 local function village_items(W, v, items)
   local mem = type(v.members) == "table" and v.members or {}
   local P = W.ent.people or {}
@@ -216,6 +304,8 @@ local function village_items(W, v, items)
     if (a.wood_sold or 0) > 0 then ex[#ex + 1] = string.format("wood sold %d", floor(a.wood_sold)) end
     if #ex > 0 then add(items, { t = "text", icon = "boat", text = cap(table.concat(ex, " · ")) }) end
   end
+  -- society (W8-W10): leader, lineages, herd, crafts and trade, lord and tributaries, feuds
+  M.society_items(W, v, items)
   if type(v.founded) == "number" then
     local parent = v.from and W.ent and W.ent.villages and W.ent.villages[v.from]
     add(items, { t = "row", icon = "hourglass", label = "Founded", value = cap(year_of(v.founded))
@@ -321,6 +411,17 @@ local function person_items(W, pid, p, items)
     local mv = p.mood
     local word = type(mv) == "number" and ((mv > 0.35 and "cheerful") or (mv > 0.05 and "content") or (mv > -0.3 and "worried") or "miserable") or cap(mv)
     add(items, { t = "row", icon = "bubble", label = "Mood", value = word, hl = type(mv) == "number" and mv < -0.3 })
+  end
+  -- lineage and standing (W8)
+  local L = W.ent.lineages
+  local lin = p.lin and L and L[p.lin]
+  local hh = W.ent.households and W.ent.households[p.household]
+  if lin or hh then
+    local vv = W.ent.villages and W.ent.villages[p.village]
+    local lead = vv and vv.leader == p.id
+    local st = hh and hh.prestige or 0
+    local word = lead and "leads the village" or (st > 3 and "much respected" or (st > 1 and "respected" or "ordinary"))
+    add(items, { t = "row", icon = "star", label = "Lineage", value = (lin and ("the " .. lin.name .. " line") or "?") .. " · " .. word })
   end
   add(items, { t = "head", text = "Family" })
   local any = false

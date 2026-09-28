@@ -9,9 +9,14 @@
 --   relief   a village that is rationing asks the villages that are well disposed to it; one that
 --            has grain to spare beyond its own needs to its next harvest sends porters with a gift
 --            (social storage: Halstead & O'Shea 1989). The famine's chain gains a relief link.
---   barter   a village short of wood with grain to spare trades with a friendly village that has
---            wood to spare (grassland villages burning brush and dung buy timber from forest
---            villages): porters carry grain there and wood back.
+--   trade    a village short of one good and long in another trades with a friendly village that
+--            has the first to spare (grassland villages buy timber from forest villages with grain;
+--            forest villages short of food sell wood for grain): its porters carry its goods
+--            there and the partner's goods back. Deliveries are counted as the villages' imports
+--            and exports (weekly normals, economy.weekly): a village that can count on imports
+--            plans fewer fields or cuts less wood, one that usually exports grows or cuts more
+--            (specialisation, farming.plan and labour.assign); when a usual supplier cannot trade,
+--            its trouble (its own cause) is blamed for the missing imports.
 --   brides   a single woman with no match at home may be betrothed to a man of a friendly
 --            village; she walks there (kin ties follow the marriages).
 --
@@ -24,6 +29,7 @@ local ents = require("sim.society.entities")
 local sites = require("sim.society.sites")
 local farming = require("sim.society.farming")
 local cotag = require("sim.society.cotag")
+local crafts = require("sim.society.crafts")
 
 local M = {}
 local floor, min, max, ceil, log = math.floor, math.min, math.max, math.ceil, math.log
@@ -64,15 +70,30 @@ end
 -- past trades, and the balance of gifts (a village that took much and gave little asks in vain).
 function M.score(W, u, v)
   local s = 0
-  if u.from == v.id or v.from == u.id then s = s + 1 end
+  if u.from == v.id or v.from == u.id then
+    -- the parent/daughter tie fades as the daughter village grows up (to a kin tie's weight)
+    local young = u.from == v.id and u or v
+    local age = (W.hour - (young.founded or W.hour)) / 8064
+    s = s + max(0.3, 1 - age / 60)
+  end
   local r = M.get(W, u.id, v.id)
   if r then
     s = s + 0.25 * min(6, r.kin) + 0.15 * min(5, r.trades)
     local gave, got = ledger(r, u.id, v.id)
     s = s - 0.004 * max(0, gave - got)   -- ~250 need-days unreturned cancel a daughter tie
+    -- grievance (W8): what u holds against v
+    local gr = (u.id < v.id) and (r.ga or 0) or (r.gb or 0)
+    s = s - 0.3 * min(6, gr)
   end
+  -- lord and tributary (W9): bound to each other
+  if u.lord == v.id or v.lord == u.id then s = s + 1 end
   return s
 end
+
+-- Set by init (callbacks: sim/society/status.lua, conflict.lua).
+M.honour_leader = function() end
+M.wrong = function() end
+M.temper = function() return 1, 1 end
 
 -- Worldgen: villages of one culture on one landmass within marrying reach start with kin ties
 -- (their settlers came of common stock).
@@ -143,6 +164,12 @@ local function partners(W, v, reach)
   return out
 end
 
+-- Trades made between two villages.
+local function r_trades(W, a, b)
+  local r = M.get(W, a.id, b.id)
+  return r and r.trades or 0
+end
+
 -- Porters of village u: able adults not away, not the only hands of their household (members order).
 local function porters(W, u, n)
   local cfg = cfgmod.SOCIETY
@@ -183,11 +210,17 @@ function M.monthly(W, v)
         if short <= 0 or asked >= 3 then break end
         local e = list[i]
         local u = e.u
+        if e.s < 0 and not u.rationing and not u.famine and spare_food(W, u) > short * 3 then
+          -- a village with plenty that would not help: remembered
+          M.wrong(W, v.id, u.id, 0.4, 0)
+        end
         if e.s >= 0 and not u.rationing and not u.famine and not u.porters_out then
           asked = asked + 1
           local spare = spare_food(W, u)
-          -- kin and daughters give up to half their spare, friends a quarter
+          -- kin and daughters give up to half their spare, friends a quarter (as the giver's
+          -- leader is inclined: a hoarder gives less, the devout more)
           local share = (M.get(W, u.id, v.id) and M.get(W, u.id, v.id).kin > 0 or u.from == v.id or v.from == u.id) and 0.5 or 0.25
+          share = share * M.temper(W, u)
           local days = max(1, e.d * cfg.walk_h * 1.5 / cfg.walk_hours_day)
           -- what a few porters can carry in a month of back-and-forth trips
           local cap = cfg.porter_fu * cfg.porters * max(1, floor(28 / (2 * days + 1)))
@@ -207,40 +240,139 @@ function M.monthly(W, v)
       end
     end
   end
-  -- 2. barter: wood for grain
-  local fday = v.fuel_day or 0
-  local wood_short = fday > 0 and v.wood_days < 25
-  if wood_short and not v.porters_out and not v.rationing then
-    local spare = spare_food(W, v)
-    if spare > 200 then
-      local list = partners(W, v, cfg.trade_reach)
-      for i = 1, #list do
-        local e = list[i]
-        local u = e.u
-        local ufd = u.fuel_day or 1
-        local uspare = u.stock.wood - ufd * 120
-        if e.s >= -0.2 and uspare > 100 and not u.porters_out then
-          local days = max(1, e.d * cfg.walk_h * 1.5 / cfg.walk_hours_day)
-          local cap = cfg.porter_fu * cfg.porters * max(1, floor(28 / (2 * days + 1)))
-          local want = min(cap, fday * 60, uspare * 0.5, spare * 0.5)
-          if want >= 60 then
-            local ps = porters(W, v, min(cfg.porters, max(2, ceil(want / (cfg.porter_fu * 4)))))
-            if #ps >= 2 then
-              -- one WU of wood for one FU of grain, made a little dearer the farther it comes
-              local price = want * (1 + 0.03 * e.d)
-              v.stock.grain = v.stock.grain - price
-              local id = emit(W, "trade", v.cell, 0, floor(want), { village = v.id, to = u.id, wood = floor(want) }, v)
-              M.depart(W, v, ps, u.id, nil, "porters", id, 0, 0, { grain = price, back_to = v.id, buy_wood = want })
-              v.porters_out = true
-              break
-            end
-          end
+  -- 2. trade: what is short for what is long
+  M.market(W, v)
+  M.trade(W, v)
+  -- 3. brides from friendly villages: an unmatched woman may be betrothed to a man there
+  M.brides(W, v)
+end
+
+-- Wood a village can spare beyond its reserve of fuel days (WU).
+local function wood_spare(W, u)
+  local fd = max(0.5, u.fuel_day or 1)
+  return u.stock.wood - fd * cfgmod.SOCIETY.wood_keep_days
+end
+M.wood_spare = wood_spare
+
+-- Goods that travel between villages: stored food (grain, dried fish), wood, and the crafts.
+-- VALUE: what a unit is worth in days of food (roughly what its maker eats while making it);
+-- WEIGHT: a porter's load of it relative to food.
+local GOODS = { "food", "wood", "tools", "pots", "cloth" }
+local STOCK = { food = "grain", wood = "wood", tools = "tools", pots = "pots", cloth = "cloth" }
+local function value(g) return (g == "food" or g == "wood") and 1 or cfgmod.CRAFT[g].value end
+local function weight(g) return (g == "food" or g == "wood") and 1 or cfgmod.CRAFT[g].weight end
+M.GOODS, M.STOCK = GOODS, STOCK
+
+-- Units of good g village u can let go (beyond its own reserve).
+local function spare_of(W, u, g)
+  if g == "food" then return (u.rationing or u.famine) and 0 or spare_food(W, u) end
+  if g == "wood" then return wood_spare(W, u) end
+  return (u.stock[g] or 0) - crafts.need_year(W, u, g) * cfgmod.CRAFT.keep_years
+end
+M.spare_of = spare_of
+
+-- Units of good g village u wants to buy (0: none), and how urgent (lower = sooner).
+local function want_of(W, u, g)
+  local cfg = cfgmod.SOCIETY
+  if g == "food" then
+    if u.food_days < cfg.trade_food_days and not u.famine then return u.need_day * 45, u.food_days / cfg.trade_food_days end
+    return 0, 9
+  elseif g == "wood" then
+    local fd = u.fuel_day or 0
+    if fd > 0 and u.wood_days < cfg.trade_wood_days then return max(0.5, fd) * 60, u.wood_days / cfg.trade_wood_days end
+    return 0, 9
+  end
+  local need = crafts.need_year(W, u, g)
+  local have = u.stock[g] or 0
+  -- a village that buys a good rather than make it keeps a year's supply coming
+  local low = crafts.buys(u, g) and 0.7 or 0.35
+  if need > 0 and have < need * low then return need * (low + 0.45) - have, have / (need * low) + 0.5 end
+  return 0, 9
+end
+M.want_of = want_of
+
+-- Monthly: the best craft source among the villages v trades with or could (its partners within
+-- trading reach): what buying would cost (crafts.buys).
+function M.market(W, v)
+  local cfg = cfgmod.SOCIETY
+  local m = v.market
+  if not m then m = {}; v.market = m end
+  local list = partners(W, v, cfg.trade_reach)
+  for _, g in ipairs(crafts.GOODS) do
+    local best, bq, bd = nil, 0, 0
+    for i = 1, #list do
+      local e = list[i]
+      local s = e.u.crafts and e.u.crafts[g]
+      if e.s >= -0.2 and s and s.q > bq then best, bq, bd = e.u.id, s.q, e.d end
+    end
+    local x = m[g]
+    if not x then x = {}; m[g] = x end
+    x.id, x.q, x.d = best or 0, bq, bd
+  end
+end
+
+-- Monthly: a village short of a good trades with a friendly village that has it to spare, paying
+-- with what it has most of. Its porters carry the payment there and the good back.
+function M.trade(W, v)
+  local cfg = cfgmod.SOCIETY
+  if v.porters_out or v.famine then return end
+  -- the most urgent want
+  local gw, want, urg = nil, 0, 9
+  for i = 1, #GOODS do
+    local g = GOODS[i]
+    local w, u = want_of(W, v, g)
+    if w > 0 and u < urg then gw, want, urg = g, w, u end
+  end
+  if not gw then return end
+  -- what v pays with: its largest spare by value (not the good it wants)
+  local gp, pv = nil, 0
+  for i = 1, #GOODS do
+    local g = GOODS[i]
+    if g ~= gw then
+      local sp = spare_of(W, v, g)
+      if sp > 0 and sp * value(g) > pv then gp, pv = g, sp * value(g) end
+    end
+  end
+  if not gp or pv < 60 then return end
+  local list = partners(W, v, cfg.trade_reach)
+  local refused = nil
+  for i = 1, #list do
+    local e = list[i]
+    local u = e.u
+    if e.s >= -0.2 and not u.porters_out then
+      local theirs = spare_of(W, u, gw)
+      local days = max(1, e.d * cfg.walk_h * 1.5 / cfg.walk_hours_day)
+      local trips = max(1, floor(28 / (2 * days + 1)))
+      local cap = cfg.porter_fu * cfg.porters * trips
+      -- what can be got, carried there (payment) and back (goods)
+      local q = min(want, theirs * 0.5, cap / weight(gw))
+      local price = q * value(gw) * (1 + 0.03 * e.d)
+      local pay = price / value(gp)
+      local pmax = min(spare_of(W, v, gp) * 0.7, cap / weight(gp))
+      if pay > pmax then q = q * pmax / pay; pay = pmax end
+      if q * value(gw) >= 50 then
+        local load = max(pay * weight(gp), q * weight(gw))
+        local ps = porters(W, v, min(cfg.porters, max(2, ceil(load / (cfg.porter_fu * 4)))))
+        if #ps >= 2 then
+          local sk = STOCK[gp]
+          v.stock[sk] = (v.stock[sk] or 0) - pay
+          local id = emit(W, "trade", v.cell, 0, floor(q), { village = v.id, to = u.id, give = gp, get = gw,
+            amount = floor(q) }, v)
+          M.depart(W, v, ps, u.id, nil, "porters", id, 0, 0, { give = gp, amount = pay, get = gw, want = q,
+            back_to = v.id })
+          v.porters_out = true
         end
+        return
+      elseif r_trades(W, u, v) > 0 and not refused then
+        -- a usual partner can't trade now: its own trouble explains the missing goods
+        refused = u
       end
     end
   end
-  -- 3. brides from friendly villages: an unmatched woman may be betrothed to a man there
-  M.brides(W, v)
+  if refused and gw == "food" then
+    local t = refused.foodtag[1] ~= 0 and refused.foodtag[1] or refused.cause
+    if t ~= 0 then v.import_tag = t end
+  end
 end
 
 -- Unmatched singles look to the best-disposed village within reach: a woman of v is betrothed to
@@ -290,33 +422,57 @@ end
 
 -- A porter party arrives (mobility): deliver the cargo, trade, and set off home.
 function M.porters_arrive(W, party, dest, living)
-  local cfg = cfgmod.SOCIETY
   local home = W.ent.villages[party.cargo.back_to]
   local c = party.cargo
+  if c.buy_wood and not c.get then
+    -- (a barter party from an older save)
+    c.give, c.amount, c.get, c.want, c.grain = "food", c.grain, "wood", c.buy_wood, nil
+  end
   local back = { back_to = c.back_to }
   if dest and dest.alive then
-    if c.gift then
+    if c.tribute then
+      -- tribute delivered: the lord's store and standing grow
       dest.stock.grain = dest.stock.grain + c.grain
-      give(W, home.id, dest.id, c.grain / max(1, dest.need_day))
+      dest.wk_food_imp = (dest.wk_food_imp or 0) + c.grain
+      dest.acc.tribute_in = (dest.acc.tribute_in or 0) + c.grain
+      M.honour_leader(W, dest, c.grain / max(1, dest.need_day) * cfgmod.STATUS.gift_prestige)
+    elseif c.gift then
+      dest.stock.grain = dest.stock.grain + c.grain
+      local days = c.grain / max(1, dest.need_day)
+      give(W, home.id, dest.id, days)
+      dest.relief_got = W.hour
+      -- generosity is honoured; a gift washes away some of an old grievance
+      M.honour_leader(W, home, days * cfgmod.STATUS.gift_prestige)
+      M.wrong(W, dest.id, home.id, -days * cfgmod.CONFLICT.gift_forgives, 0)
       local a = dest.acc
       a.relief_in = (a.relief_in or 0) + c.grain
       home.acc.relief_out = (home.acc.relief_out or 0) + c.grain
-    elseif c.buy_wood then
-      -- the seller gives what it can still spare for the grain brought
-      local ufd = dest.fuel_day or 1
-      local can = max(0, min(c.buy_wood, dest.stock.wood - ufd * 90))
-      local paid = c.grain * can / c.buy_wood
-      dest.stock.wood = dest.stock.wood - can
-      dest.stock.grain = dest.stock.grain + paid
-      back.wood = can
-      back.grain = c.grain - paid     -- unspent grain goes home again
+    elseif c.get then
+      -- the partner gives what it can still spare of the good wanted, for the goods brought
+      local can = spare_of(W, dest, c.get)
+      if c.get == "food" then can = can + dest.need_day * 30 end
+      if c.get == "wood" then can = can + (dest.fuel_day or 1) * 30 end
+      can = max(0, min(c.want, can))
+      local paid = c.amount * can / c.want
+      local gs, ps = STOCK[c.get], STOCK[c.give]
+      dest.stock[gs] = (dest.stock[gs] or 0) - can
+      dest.stock[ps] = (dest.stock[ps] or 0) + paid
+      back.get, back.got = c.get, can
+      -- unspent payment goes home again
+      back.give, back.left = c.give, c.amount - paid
       local r = M.get(W, home.id, dest.id, true)
       r.trades = r.trades + 1
       r.last = W.hour
-      dest.acc.wood_sold = (dest.acc.wood_sold or 0) + can
-      home.acc.wood_bought = (home.acc.wood_bought or 0) + can
+      -- exports and imports (weekly normals: specialisation)
+      dest["wk_" .. c.give .. "_imp"] = (dest["wk_" .. c.give .. "_imp"] or 0) + paid
+      dest["wk_" .. c.get .. "_exp"] = (dest["wk_" .. c.get .. "_exp"] or 0) + can
+      home["wk_" .. c.give .. "_exp"] = (home["wk_" .. c.give .. "_exp"] or 0) + paid
+      dest.acc[c.get .. "_sold"] = (dest.acc[c.get .. "_sold"] or 0) + can
+      home.acc[c.get .. "_bought"] = (home.acc[c.get .. "_bought"] or 0) + can
+      if c.give == "food" then dest.wk_imports = (dest.wk_imports or 0) + paid end
     end
   else
+    back.give, back.left = c.give, c.amount
     back.grain = c.grain
   end
   if home and home.alive then
@@ -330,6 +486,16 @@ function M.returning_arrive(W, party, home)
   if home and home.alive then
     home.stock.wood = home.stock.wood + (c.wood or 0)
     home.stock.grain = home.stock.grain + (c.grain or 0)
+    if c.give and (c.left or 0) > 0 then
+      local k = STOCK[c.give]
+      home.stock[k] = (home.stock[k] or 0) + c.left
+    end
+    if c.get and (c.got or 0) > 0 then
+      local k = STOCK[c.get]
+      home.stock[k] = (home.stock[k] or 0) + c.got
+      home["wk_" .. c.get .. "_imp"] = (home["wk_" .. c.get .. "_imp"] or 0) + c.got
+      if c.get == "food" then home.wk_imports = (home.wk_imports or 0) + c.got end
+    end
     home.porters_out = nil
   end
 end

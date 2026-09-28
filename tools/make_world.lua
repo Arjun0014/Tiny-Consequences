@@ -9,7 +9,8 @@ local args = { seed = 22, out = "assets/worlds/default.tcsave" }
 local i = 1
 while arg[i] do
   if arg[i] == "--seed" then i = i + 1; args.seed = tonumber(arg[i])
-  elseif arg[i] == "--out" then i = i + 1; args.out = arg[i] end
+  elseif arg[i] == "--out" then i = i + 1; args.out = arg[i]
+  elseif arg[i] == "--years" then i = i + 1; args.years = tonumber(arg[i]) end
   i = i + 1
 end
 local worlds = require("sim.worlds")
@@ -17,6 +18,8 @@ local world = require("sim.world")
 local version = require("sim.version")
 local t0 = os.clock()
 local W = worlds.generate(args.seed)
+-- (dev: --years N saves the world N years on, for reviewing later worlds with ?world=NAME)
+if args.years and args.years > 0 then world.run_years(W, args.years) end
 local str = worlds.year0_save_string(W, { seed = args.seed, sim_version = version.SIM_VERSION,
   made_by = "tools/make_world.lua" })
 local dir = args.out:match("^(.*)/[^/]*$")

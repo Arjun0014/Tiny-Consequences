@@ -57,9 +57,14 @@ end
 
 -- Claim / release ------------------------------------------------------------------------------
 
+-- Set by sim/society/init.lua: a claimed field another village also reached (W8 encroachment).
+M.on_encroach = function() end
+
 function M.claim(W, v, c, plan)
   local F = W.F
   F.land_use[c] = v.id
+  local rc = W.soc and W.soc.ring_count
+  if rc and (rc[c] or 0) > 1 then M.on_encroach(W, v, c) end
   W.S.farm[c] = { v = v.id, plan = plan or "crop", sown = 0, bio = 0, harvested = 0, weeds = 0,
     gdd = 0, ripe = false, tended = 0, clear = 0 }
   local farms = v.farms
@@ -107,6 +112,9 @@ function M.plan(W, v, workers)
   -- the grain the village must grow: its need less the fish and meat it usually brings in (counted
   -- at 80%: the sea is less reliable than a granary), with a margin for bad years
   local grain_need = need_year - fresh_part * 0.8
+  -- specialisation (W7b): food a village can count on buying (its usual imports, discounted) is
+  -- food it need not grow; food it usually sells must be grown too
+  grain_need = grain_need - (v.norm.food_imp or 0) * 48 * cfg.import_trust + (v.norm.food_exp or 0) * 48 * cfg.export_trust
   if grain_need < need_year * 0.25 then grain_need = need_year * 0.25 end
   local want = ceil(grain_need * cfg.field_margin / per_field - 0.05)
   -- Chayanov: with more than a year and a half of grain in store, nobody breaks their back
@@ -333,6 +341,8 @@ function M.end_season(W, v)
   v.harvest_lost = 0
   if ((v.area_short or 0) > 0.3 or lost_share > 0.3) and v.labour_tag ~= 0 then best = v.labour_tag end
   if (v.seed_short or 0) > 0.3 and v.foodtag[1] ~= 0 then best = v.foodtag[1] end
+  -- nothing on the fields explains it, but the village was in a crisis all season: the crisis
+  if best == 0 and v.cause ~= 0 then best = v.cause end
   v.harvest_tag = best
   v.area_short, v.seed_short = 0, 0
   local F = W.F
@@ -491,9 +501,7 @@ function M.work(W, v, kind, hours)
         local fo = F.forest[c]
         local wood = fo * cfg.forest_wu * 0.5
         v.stock.wood = v.stock.wood + wood
-        local co2 = fo * 0.5 * cfgmod.VEG.k_co2
-        W.G.co2_src = (W.G.co2_src or 0) + co2
-        ledger.add(W, "co2", co2, 0, "villagers")
+        require("sim.society.carbon").release(W, fo, "clearing")
         F.forest[c] = 0
         W.P.forest[c] = 0
         blame.set(W.C.forest, W.I.forest, c, v.cause)

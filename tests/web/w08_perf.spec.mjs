@@ -53,7 +53,9 @@ test('W08 perf: sim tick and max-speed frame budget @ch1', async ({ page }, test
   testInfo.annotations.push({ type: 'max speed', description: JSON.stringify(summary) });
   console.log('W08 max speed', JSON.stringify(summary));
 
-  expect(r.ticks, 'the sim advances at max speed').toBeGreaterThan(seconds * 5);
+  // level 4 is one planet week per second on the hour ladder (D-050): the sim keeps at least
+  // 60% of that pace (D-057; the pre-D-050 threshold of 5 weeks/s predates the hourly clock)
+  expect(r.ticks, 'the sim advances at the level-4 pace').toBeGreaterThan(seconds * 0.6);
   if (r.multi_frames > 20) {
     // the controller predicts the next tick; unforeseeable spikes may push a few frames over
     expect(r.multi_over / r.multi_frames, 'multi-tick frames stay within the 8 ms budget').toBeLessThanOrEqual(0.2);

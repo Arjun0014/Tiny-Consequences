@@ -36,6 +36,7 @@ out mediump vec3 var_normal;
 out mediump vec3 var_color;
 out highp vec3 var_sc;
 out mediump vec3 var_mat;   // x = snow cover for this surface, y = fire, z = class
+out mediump float var_bare; // deciduous foliage gone (winter): the fragment shader thins it out
 
 vec3 unpack_rgb(float p)
 {
@@ -95,6 +96,7 @@ void main()
 
     float snow = 0.0;
     float fire = 0.0;
+    float bare = 0.0;
     if (inst2.z > 0.5 && u_anim.w > 0.5) {
         float id = floor(inst2.z + 0.5) - 1.0;
         float tx = mod(id, u_tex.y);
@@ -122,6 +124,9 @@ void main()
             float winter = clamp(smoothstep(35.0, 39.0, toy) + 1.0 - smoothstep(1.0, 5.0, toy), 0.0, 1.0);
             winter *= (1.0 - smoothstep(2.0, 9.0, temp)) * seasonal;
             col = mix(col, vec3(0.50, 0.42, 0.36), winter * 0.85);
+            // leaf fall: late autumn thins the crowns, winter leaves the branches bare
+            float leafless = clamp(smoothstep(32.0, 37.0, toy) + 1.0 - smoothstep(3.0, 8.0, toy), 0.0, 1.0);
+            bare = leafless * (1.0 - smoothstep(4.0, 11.0, temp)) * seasonal * 0.88;
             float spring = smoothstep(2.0, 5.0, toy) * (1.0 - smoothstep(9.0, 13.0, toy)) * seasonal;
             col = mix(col, vec3(0.99, 0.88, 0.92), spring * step(0.84, hv) * smoothstep(3.0, 9.0, temp) * 0.85);
             col = mix(col, col * vec3(1.06, 1.14, 0.82), spring * 0.45);
@@ -144,6 +149,7 @@ void main()
         }
     }
     var_mat = vec3(snow, fire, cls);
+    var_bare = bare;
     var_wpos = wp.xyz;
     var_normal = normalize(mat3(mtx_world) * nrm);
     var_color = col * shade;

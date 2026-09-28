@@ -9,6 +9,7 @@ local events = require("sim.causality.events")
 local ents = require("sim.society.entities")
 local construction = require("sim.society.construction")
 
+local crafts = require("sim.society.crafts")
 local M = {}
 local floor, min, max, exp = math.floor, math.min, math.max, math.exp
 local PHI, PHI2, PHI3 = 1.6180339887498949, 2.6180339887498949, 4.2360679774997898
@@ -53,6 +54,7 @@ function M.weekly(W, v)
   v.ration_sum, v.ration_n = 0, 0
   local cold = v.cold_days or 0
   v.cold_days = 0
+  local expo = crafts.cold_exposure(v)
   local Tw = W.F.temp[v.cell]
   local nonage, dtag, dtag_n = 0, 0, 0
   local hsum = 0   -- the week's summed death hazard (expected deaths): the account's mortality
@@ -90,6 +92,8 @@ function M.weekly(W, v)
       if hp > target then hp = target end
     end
     if cold > 0 and Tw < cfg.cold_temp then hp = hp - (cfg.cold_temp - Tw) * cfg.cold_health * vul * cold / 7 end
+    -- outdoors in the cold without enough cloth, even with a fire at home
+    if expo > 0 and Tw < cfg.cold_temp then hp = hp - (cfg.cold_temp - Tw) * expo * vul end
     if hp > 100 then hp = 100 elseif hp < 0 then hp = 0 end
     p.health = hp
     -- mortality

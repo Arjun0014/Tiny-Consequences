@@ -1,5 +1,5 @@
 name: "river"
-tags: "props"
+tags: "ground"
 vertex_program: "/game/render/shaders/river.vp"
 fragment_program: "/game/render/shaders/river.fp"
 vertex_space: VERTEX_SPACE_LOCAL

@@ -26,6 +26,7 @@ out mediump vec3 var_normal;
 out mediump vec3 var_color;
 out highp vec3 var_sc;
 out mediump vec3 var_mat;   // (snow, fire, class): unused for movers
+out mediump float var_bare; // unused for movers
 
 void main()
 {
@@ -50,6 +51,7 @@ void main()
         N = normalize(up * 0.8 + fwd * 0.2);
     }
     var_mat = vec3(0.0);
+    var_bare = 0.0;
     var_wpos = wp;
     var_normal = N;
     var_color = c.rgb;

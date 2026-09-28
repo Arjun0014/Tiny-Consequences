@@ -28,7 +28,8 @@
     "perf:probe": "node scripts/perf_probe.mjs",
     "bridge": "node scripts/bridge_cmd.mjs",
     "sim:tutorial": "node scripts/lua.mjs tools/tutorial_scout.lua",
-    "shots:village": "node scripts/shots_village.mjs"
+    "shots:village": "node scripts/shots_village.mjs",
+    "shots:biomes": "node scripts/shots_biomes.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"

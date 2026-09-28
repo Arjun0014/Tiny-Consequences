@@ -180,6 +180,11 @@ function M.new_person(W, v, h, opts)
     mem = {}, mood = 0, preg_due = 0, nursing_until = 0, away = 0, homeless = 0,
     u = floor(rng.float(seed, rng.S.PERSON, key, 1, 0) * 1048576) / 1048576,
   }
+  -- lineage (W8): through the father where the culture reckons descent through fathers (odd
+  -- cultures), through the mother otherwise; no known parent: a founder of a new lineage
+  local fl, ml = father and father.lin, mother and mother.lin
+  if (v.culture or 1) % 2 == 1 then p.lin = fl or ml else p.lin = ml or fl end
+  if not p.lin then p.lin = M.new_lineage(W, p, v) end
   E.people[id] = p
   v.members[#v.members + 1] = id
   v.pop = #v.members
@@ -187,6 +192,17 @@ function M.new_person(W, v, h, opts)
   if mother then mother.children = mother.children + 1 end
   if father then father.children = father.children + 1 end
   return p
+end
+
+-- A new lineage founded by person p of village v (W8, sim/society/status.lua).
+function M.new_lineage(W, p, v)
+  local E = W.ent
+  local id = E.next_lineage or 1
+  E.next_lineage = id + 1
+  local L = E.lineages
+  if not L then L = {}; E.lineages = L end
+  L[id] = { id = id, name = p.surname, founded = W.hour, village = v and v.id or 0, founder = p.id }
+  return id
 end
 
 -- Add a memory (event id, salience) keeping the most salient ones.
@@ -372,8 +388,9 @@ function M.free_lot(W, v, kind)
   F.land_use[best] = -v.id
   local fo = F.forest[best]
   if fo > 0 then
-    -- the clearing's timber goes to the village store
+    -- the clearing's timber goes to the village store; the forest's carbon to the air
     v.stock.wood = v.stock.wood + fo * cfgmod.SOCIETY.forest_wu * 0.4
+    require("sim.society.carbon").release(W, fo, "expansion")
     F.forest[best] = 0
     W.P.forest[best] = 0
   end
@@ -426,7 +443,7 @@ for i = 1, #JOBS do JOB_ID[JOBS[i]] = i end
 local PACKED = { id = 1, key = 1, name = 1, surname = 1, sex = 1, born = 1, village = 1, job = 1, health = 1,
   nutrition = 1, partner = 1, mother = 1, father = 1, children = 1, traits = 1, mem = 1, mood = 1, u = 1,
   dead = 1, died_of = 1, death_tag = 1, household = 1, task = 1, site = 1, betrothed = 1, preg_due = 1,
-  nursing_until = 1, away = 1, homeless = 1 }
+  nursing_until = 1, away = 1, homeless = 1, lin = 1 }
 
 function M.pack_people(map)
   local ids = {}
@@ -445,7 +462,8 @@ function M.pack_people(map)
     out[i] = { p.id, p.key, p.name, p.surname, p.sex == "f" and 1 or 0, p.born, p.village,
       JOB_ID[p.job] or 1, p.health, p.nutrition, p.partner, p.mother, p.father, p.children,
       table.concat(p.traits, ","), p.mem, p.mood, p.u, p.dead or false, p.died_of or "", p.death_tag or 0,
-      p.household, p.task, p.site, p.betrothed, p.preg_due, p.nursing_until, p.away, p.homeless, extra }
+      p.household, p.task, p.site, p.betrothed, p.preg_due, p.nursing_until, p.away, p.homeless, extra,
+      p.lin or false }
   end
   return out
 end
@@ -460,7 +478,7 @@ function M.unpack_people(list)
       born = r[6], village = r[7], job = JOBS[r[8]], health = r[9], nutrition = r[10], partner = r[11],
       mother = r[12], father = r[13], children = r[14], traits = traits, mem = r[16], mood = r[17],
       u = r[18], household = r[22], task = r[23], site = r[24], betrothed = r[25], preg_due = r[26],
-      nursing_until = r[27], away = r[28], homeless = r[29] }
+      nursing_until = r[27], away = r[28], homeless = r[29], lin = r[31] or nil }
     if r[19] then p.dead = r[19]; p.died_of = r[20]; p.death_tag = r[21] end
     local extra = r[30]
     if extra then

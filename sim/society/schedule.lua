@@ -23,7 +23,7 @@ local floor = math.floor
 local LEISURE_H, leisure
 
 local OUTDOOR = { sow = true, tend = true, harvest = true, clear = true, care = true, fuel = true, timber = true,
-  brush = true, hunt = true, build = true, forage = true }
+  brush = true, hunt = true, build = true, forage = true, craft_tools = true, craft_pots = true, herd = true }
 
 -- The home (cell, lot) of person p (nil when homeless: they sleep by the square).
 function M.home_of(W, p)
@@ -45,6 +45,16 @@ local function task_place(W, v, p)
     return p.site ~= 0 and p.site or v.cell, -1, "wood", 0
   elseif k == "hunt" then
     return v.hunt_cell or v.cell, -1, "wood", 0
+  elseif k == "herd" then
+    return p.site ~= 0 and p.site or (v.herd_cell or v.cell), -1, "pasture", 0
+  elseif k == "craft_cloth" then
+    -- spinning and weaving at home
+    local hc, hl = M.home_of(W, p)
+    if hc then return hc, hl, "home", 0 end
+    return v.cell, 0, "square", 0
+  elseif k == "craft_tools" or k == "craft_pots" then
+    -- at the quarry or the clay pit (the pots are fired by the village)
+    return p.site ~= 0 and p.site or v.cell, -1, "craft", 0
   end
   return p.site ~= 0 and p.site or v.cell, -1, "field", 0
 end
@@ -73,7 +83,13 @@ function M.party_pos(W, party, t)
   local into = e - days * 24
   local moving = into < cfg.walk_hours_day
   local walked = days * cfg.walk_hours_day + (moving and into or cfg.walk_hours_day)
-  local total = steps * cfg.walk_h * 1.5
+  -- the walking hours of the whole trip, from its own departure and arrival (worn trails are
+  -- quicker: mobility.walk_hours)
+  local et = party.arrive - party.depart
+  local dt = floor(et / 24)
+  local rt = et - dt * 24
+  local total = dt * cfg.walk_hours_day + (rt < cfg.walk_hours_day and rt or cfg.walk_hours_day)
+  if total <= 0 then total = steps * cfg.walk_h * 1.5 end
   local s = walked / total * steps
   if s >= steps then return #party.path, 0, false end
   local i = floor(s)

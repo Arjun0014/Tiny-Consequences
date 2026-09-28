@@ -30,6 +30,9 @@ if not (args.unit or args.behaviour or args.props or args.scenarios) then
 end
 T.args = args
 if args.level then require("sim.config").SIM_LEVEL = args.level end
+-- the quick suite checks the mechanisms at a moderate scale (the 200-year baselines at 2,400
+-- people take ~6 minutes each); --full runs the game's own population guard (D-057)
+if not args.full then require("sim.config").SOCIETY.soft_cap = 1200 end
 
 local groups = {}
 if args.unit then groups[#groups + 1] = { "unit", require("tests.sim.unit.index") } end

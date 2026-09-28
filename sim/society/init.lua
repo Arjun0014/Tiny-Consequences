@@ -24,6 +24,10 @@ local economy = require("sim.society.economy")
 local life = require("sim.society.life")
 local mobility = require("sim.society.mobility")
 local relations = require("sim.society.relations")
+local crafts = require("sim.society.crafts")
+local status = require("sim.society.status")
+local herds = require("sim.society.herds")
+local conflict = require("sim.society.conflict")
 local events = require("sim.causality.events")
 
 local sys = { name = "villages" }   -- keeps the old slot name (profiles, P07)
@@ -79,6 +83,20 @@ end
 
 mobility.on_register = function(W, v) sys.register_village(W, v) end
 relations.depart = mobility.depart
+status.depart = mobility.depart
+status.best_site = function(W, v)
+  return sites.near_site(W, v.cell, cfgmod.SOCIETY.bud_radius)
+end
+conflict.depart = mobility.depart
+conflict.rel = relations
+conflict.status = status
+mobility.battle = conflict.battle
+mobility.raiders_home = conflict.raiders_home
+relations.honour_leader = status.honour_leader
+relations.wrong = conflict.wrong
+relations.temper = status.temper
+farming.on_encroach = conflict.encroach
+economy.on_harvest = conflict.pay_tribute
 mobility.on_unregister = function(W, v) sys.unregister_village(W, v) end
 
 function sys.init(W)
@@ -91,6 +109,8 @@ function sys.rebuild(W)
   W.soc = { buckets = {} }
   local vs = W.ent.villages
   if not vs then return end
+  mobility.rebuild_list(W)
+  status.ensure(W)
   for i = 1, #vs do
     local v = vs[i]
     if v.alive and not v.placeholder then sys.register_village(W, v) end
@@ -168,6 +188,9 @@ local function village_week(W, v)
   end
   farming.capacity(W, v)
   construction.plan(W, v)
+  if not v.herd then herds.seed(W, v, 1) end
+  herds.weekly(W, v)
+  crafts.weekly(W, v)
   economy.weekly(W, v)
   if v.boats[1] then fishing.rank(W, v, v.plan.hours or 9) end
   life.memories(W, v)
@@ -185,7 +208,12 @@ local function village_month(W, v)
   life.monthly(W, v)
   economy.monthly(W, v)
   mobility.monthly(W, v)
-  if v.alive and v.pop > 0 then relations.monthly(W, v) end
+  if v.alive and v.pop > 0 then
+    status.monthly(W, v)
+    relations.monthly(W, v)
+    conflict.fade(W, v)
+    conflict.monthly(W, v)
+  end
   local cd = v.month_cold or 0
   local cm = v.cold_months or 0
   if cd > 5 then cm = min(12, cm + 1) elseif cm > 0 then cm = cm - 0.5 end
@@ -312,6 +340,7 @@ function sys.year(W)
     end
   end
   ents.prune(W)
+  mobility.trails_year(W)
 end
 
 -- Year-boundary snap: round continuous person state (smaller saves; live = reloaded).

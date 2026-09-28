@@ -186,6 +186,20 @@ function M.register(G)
     if args.near ~= nil then require("game.view.props").NEAR_ZOOM = args.near and 0.45 or 99 end
     if args.shadow_size then state.SHADOW_SIZE = args.shadow_size end
     if args.movers ~= nil then require("game.view.puppets").MIN_ZOOM = args.movers and 0.55 or 99 end
+    -- prop density (profiling the CPU rasteriser): every chunk rebuilds at the new slot counts
+    if args.slots or args.slots_far then
+      local propgen = require("game.view.propgen")
+      propgen.SLOTS = args.slots or propgen.SLOTS
+      propgen.SLOTS_FAR = args.slots_far or propgen.SLOTS_FAR
+      local props = require("game.view.props")
+      for _, c in ipairs(props.chunks) do c.dirty = true end
+      props.flush(G.W, camera.zoom)
+    end
+    if args.props ~= nil then
+      for _, c in ipairs(require("game.view.props").chunks) do
+        if c.url and not c.empty then msg.post(c.url, args.props and "enable" or "disable") end
+      end
+    end
     return { shadow = state.shadow_on, post = state.post_on }
   end)
   bridge.register("freeze_visuals", function(args)
@@ -313,6 +327,7 @@ function M.register(G)
     local lod = args.lod or 1
     local n = args.chunks or 4
     local out = { lod = lod }
+    props.flush(W, camera.zoom)      -- no rebuild job may be holding propgen's instance list
     local tp, tw, verts, inst = 0, 0, 0, 0
     local ctx = props.ctx
     ctx.lod = lod
@@ -344,10 +359,44 @@ function M.register(G)
     return out
   end)
 
+  -- biome_spots: a representative land cell per landscape (the densest temperate forest, boreal,
+  -- jungle, savanna, desert, tundra, marsh, mountains, coast) for review shots.
+  bridge.register("biome_spots", function()
+    local W = assert(G.W, "world not ready")
+    local F, g = W.F, W.grid
+    local T = W.temp_static
+    local best = {}
+    local function consider(name, c, score)
+      local b = best[name]
+      if not b or score > b.score then best[name] = { cell = c, score = score, lat = math.deg(g.lat[c]), lon = math.deg(g.lon[c]) } end
+    end
+    for c = 1, W.n do
+      if W.geo.ocean[c] == 0 and F.land_use[c] == 0 then
+        local tm = T.base[c] + T.lapse[c] + (W.G.g_temp or 0)
+        local fo, gr, bi, sw = F.forest[c], F.grass[c], F.biome[c], F.soil_water[c]
+        if bi == 11 then consider("jungle", c, fo) end
+        if fo > 0.5 and tm >= 9 and tm < 19 then consider("temperate", c, fo - math.abs(tm - 13) * 0.02) end
+        if fo > 0.4 and tm >= 3 and tm < 9 then consider("mixed", c, fo) end
+        if fo > 0.3 and tm < 3 and F.ice[c] < 0.3 then consider("boreal", c, fo) end
+        if tm > 18 and sw < 0.4 and gr > 0.2 then consider("savanna", c, gr + fo * 0.5) end
+        if bi == 9 then consider("desert", c, -sw) end
+        if bi == 10 then consider("tundra", c, gr) end
+        if bi == 8 then consider("marsh", c, sw) end
+        if bi == 13 then consider("grassland", c, gr) end
+        consider("mountain", c, W.static.elev[c] + fo * 0.5)
+      end
+    end
+    return best
+  end)
+
   -- bench{level, seed, ticks}: sim tick benchmark in the real HTML5 runtime (SIM_LEVEL, W08).
   bridge.register("bench", function(args)
     local bench = require("sim.bench")
     local save = args.default and sys.load_resource("/assets/worlds/default.tcsave") or nil
+    if args.world and tostring(args.world):match("^[%w_]+$") then
+      local ok, data = pcall(sys.load_resource, "/assets/worlds/" .. args.world .. ".tcsave")
+      if ok and data then save = data end
+    end
     return bench.run({ level = args.level, seed = args.seed or 42, ticks = args.ticks or 96, spinup_years = args.spinup_years,
       warm = args.warm or 24, clock = clock.now_ms, save = save })
   end)

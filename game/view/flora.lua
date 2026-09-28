@@ -70,19 +70,19 @@ local function broadleaf(o, far)
   local sides, rings = o.sides or (far and 5 or 6), o.rings or (far and 2 or 3)
   local n = far and max(3, floor(o.n * 0.45 + 0.5)) or o.n
   local flat = o.flat or 0
-  lump(t, cx, cy, cz, o.cw * 0.72, o.ch * 0.72 * (1 - flat * 0.3), o.cw * 0.7, sides, rings, -0.35, 0.5, 0.12)
+  lump(t, cx, cy, cz, o.cw * 0.82, o.ch * 0.8 * (1 - flat * 0.3), o.cw * 0.8, sides, rings, -0.3, 0.5, 0.12)
   for k = 1, n do
     local a = (k / n) * 2 * pi + u() * 0.9
     local el = uu(-0.35, 0.95)                   -- elevation on the shell (more at the top)
     local ce, se = cos(el * 1.2), sin(el * 1.2)
-    local rr = uu(0.55, 0.85)
+    local rr = uu(0.55, 0.9)
     local px = cx + cos(a) * ce * o.cw * rr
     local pz = cz + sin(a) * ce * o.cw * rr
     local py = cy + se * o.ch * (0.65 - flat * 0.3)
-    local s = uu(0.36, 0.56) * (1.05 - 0.25 * (el < 0 and 1 or 0))
+    local s = uu(0.28, 0.62) * (1.05 - 0.25 * (el < 0 and 1 or 0))
     local rx = o.cw * s
-    local tint = max(-1, min(1, el * 0.8 - 0.1 + (u() - 0.5) * 0.5))
-    lump(t, px, py, pz, rx, rx * uu(0.72, 0.92) * (1 - flat * 0.35), rx * uu(0.85, 1.05), sides, rings, tint, 0.55, 0.16)
+    local tint = max(-1, min(1, el * 0.75 - 0.1 + (u() - 0.5) * 0.35))
+    lump(t, px, py, pz, rx, rx * uu(0.62, 0.85) * (1 - flat * 0.35), rx * uu(0.85, 1.1), sides, rings, tint, 0.55, 0.18)
   end
   return t
 end
@@ -466,13 +466,13 @@ B.berry = function(far) return shrub({ seed = 233, w = 0.036, n = 4, berries = t
 B.juniper = function(far) return shrub({ seed = 234, w = 0.03, n = 3, tall = 1.5 }, far) end
 B.heather = function(far) return shrub({ seed = 235, w = 0.03, n = 5, tall = 0.45 }, far) end
 B.dryshrub = function(far) return shrub({ seed = 236, w = 0.03, n = 3, tall = 0.7, lift = 0.004 }, far) end
-B.fern = function() return fern({ seed = 241, len = 0.04, n = 7 }) end
-B.fern2 = function() return fern({ seed = 242, len = 0.03, n = 6 }) end
-B.grass1 = function() return grass_patch({ seed = 251, clumps = 4, w = 0.07, h = 0.03 }) end
-B.grass2 = function() return grass_patch({ seed = 252, clumps = 3, w = 0.05, h = 0.045 }) end
-B.meadow = function() return grass_patch({ seed = 253, clumps = 3, w = 0.07, h = 0.03, flowers = 5 }) end
-B.tallgrass = function() return grass_patch({ seed = 254, clumps = 4, w = 0.06, h = 0.07 }) end
-B.shroom = function() return mushrooms({ seed = 261, n = 4 }) end
+B.fern = function() return fern({ seed = 241, len = 0.058, n = 8 }) end
+B.fern2 = function() return fern({ seed = 242, len = 0.045, n = 7 }) end
+B.grass1 = function() return grass_patch({ seed = 251, clumps = 5, w = 0.09, h = 0.04 }) end
+B.grass2 = function() return grass_patch({ seed = 252, clumps = 4, w = 0.07, h = 0.055 }) end
+B.meadow = function() return grass_patch({ seed = 253, clumps = 4, w = 0.09, h = 0.04, flowers = 7 }) end
+B.tallgrass = function() return grass_patch({ seed = 254, clumps = 5, w = 0.08, h = 0.085 }) end
+B.shroom = function() return mushrooms({ seed = 261, n = 5 }) end
 B.boulder = function(far) return rock({ seed = 271, w = 0.035, h = 0.026, second = true }, far) end
 B.mossrock = function(far) return rock({ seed = 272, w = 0.03, h = 0.02, moss = true }, far) end
 B.slab = function(far) return rock({ seed = 273, w = 0.045, h = 0.014 }, far) end

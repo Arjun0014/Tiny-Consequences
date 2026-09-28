@@ -555,8 +555,8 @@ local function sector_visible(sec, ex, ey, ez)
   return false
 end
 
---- Per-frame: sector rebuilds, visibility, rain curtains, shader inputs.
--- frozen: screenshots and tests (stale sectors are rebuilt at once). instant: finish all now.
+--- Per-frame: sector rebuilds (budgeted), visibility, rain curtains, shader inputs.
+-- instant: finish every stale sector now (loading, M.flush before screenshots).
 function M.update(W, dt, frozen, instant)
   if not M.sectors[1] or not M.sectors[1].cells then return end
   local speed = require("game.platform.speed")
@@ -575,12 +575,12 @@ function M.update(W, dt, frozen, instant)
   local ex, ey, ez = state.eye.x, state.eye.y, state.eye.z
   local el = sqrt(ex * ex + ey * ey + ez * ez)
   ex, ey, ez = ex / el, ey / el, ez / el
-  instant = instant or frozen
   local t0 = clockm.now_ms()
   local t_end = t0 + (instant and 1e9 or M.BUDGET_MS)
   M.rr = (M.rr or 0) + dt
   local mode = fast and 1 or 0
-  for _ = 1, instant and 64 or 3 do
+  -- hidden (gfx=low, the bridge): no rebuilds at all
+  for _ = 1, M.hidden and 0 or (instant and 64 or 3) do
     if not M.job then
       local pick, best = nil, -1e9
       for s, sec in ipairs(M.sectors) do
@@ -715,6 +715,11 @@ function M.update_rain(W, hrel)
     if on ~= rn.on then rn.on = on; msg.post(rn.url, on and MSG_ENABLE or MSG_DISABLE) end
   end
   for i = 1, n do cand[i] = nil end
+end
+
+--- Rebuild every stale sector now (screenshots, tests: view.flush).
+function M.flush(W)
+  M.update(W, 0, true, true)
 end
 
 return M

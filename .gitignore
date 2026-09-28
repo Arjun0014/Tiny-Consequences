@@ -12,3 +12,4 @@ test-results/
 playwright-report/
 last_session.md
 *.stackdump
+assets/worlds/dev_*.tcsave

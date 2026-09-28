@@ -10,6 +10,7 @@ local puppets = require("game.view.puppets")
 local fx = require("game.view.fx")
 local selring = require("game.view.selring")
 local rivers = require("game.view.rivers")
+local trails = require("game.view.trails")
 local feed = require("game.view.feed")
 local aim = require("game.view.aim")
 local powers_ui = require("game.ui.powers")
@@ -73,6 +74,8 @@ function M.build(W, urls, step)
   terrain.build(PL, W, function(f) step("Painting the land", f) end)
   rivers.init(W, PL, "/rivers#mesh")
   rivers.rebuild(W)
+  trails.init(W, PL, "/trails#mesh")
+  trails.rebuild(W)
   if not M.atmo_built then build_atmo(); M.atmo_built = true end
   step("Planting forests", 0)
   props.init(PL, W, urls.chunk_factory, terrain.tex)
@@ -101,6 +104,8 @@ function M.rebuild_geometry()
   terrain.build(M.PL, W)
   rivers.init(W, M.PL, "/rivers#mesh")
   rivers.rebuild(W)
+  trails.init(W, M.PL, "/trails#mesh")
+  trails.rebuild(W)
   props.init(M.PL, W, M.urls.chunk_factory, terrain.tex)
   M.village_sig = nil
   M.sync_villages(W)
@@ -113,6 +118,8 @@ function M.flush()
   camera.update(0)
   terrain.recolour_all(M.W)
   props.flush(M.W, camera.zoom)
+  clouds.flush(M.W)
+  trails.rebuild(M.W)
 end
 
 function M.set_frozen(on)
@@ -210,6 +217,7 @@ function M.update(dt)
     terrain.update(W, dt)
     local b = clock.now_ms()
     rivers.update(W, dt)
+    trails.update(W, dt)
     feed.poll(W)
     local b2 = clock.now_ms()
     local b3 = clock.now_ms()
@@ -283,6 +291,7 @@ function M.stats()
     recolours = terrain.stats.recolours,
     cam = M.cam_info(),
     people_puppets = puppets.stats.people,
+    stock_puppets = puppets.stats.stock or 0,
     ships = puppets.stats.ships,
   }
 end

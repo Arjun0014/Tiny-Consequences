@@ -41,7 +41,8 @@ async function checkLayout(page, label, w, h) {
 
 test('W09 UI: inspector for cell/village/person/planet, HUD layout, speed buttons @ch1', async ({ page }, testInfo) => {
   test.setTimeout(180_000);
-  const game = await openGame(page, { freeze: '1', speed: '0' }, { readyTimeout: 60_000 });
+  // gfx=low: the UI is what is tested; the CPU rasteriser can't draw the full scene fast enough
+  const game = await openGame(page, { freeze: '1', speed: '0', gfx: 'low' }, { readyTimeout: 60_000 });
   let tc = await readTC(page);
 
   // cell (bridge) and planet

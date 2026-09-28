@@ -19,6 +19,10 @@ instances {
   id: "rivers"
   prototype: "/game/view/rivers.go"
 }
+instances {
+  id: "trails"
+  prototype: "/game/view/trails.go"
+}
 scale_along_z: 0
 embedded_instances {
   id: "main"

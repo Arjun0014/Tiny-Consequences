@@ -418,10 +418,12 @@ C.SOCIETY = {
   walk_h = 0.33,                          -- hours to walk one cell spacing
   weather_rain = 0.4, weather_storm = 0.0, weather_snow_farm = 0.0,
   -- farming (per sim cell)
-  yield = 4000,                           -- FU of grain from a fully sown, fully grown, harvested cell
-                                          --   (crops rarely reach full biomass: ~2,000-2,800 in practice)
-  seed = 480,                             -- FU of seed grain to sow a full cell
-  sow_h = 450, tend_h = 300, harvest_h = 600,  -- ~15 person-days per person fed; peaks saturate labour
+  -- (D-057: a field cell is four times the old one — a village's arable, not a plot: 4x the grain,
+  -- seed and work per cell, the same work per person fed, a quarter of the land)
+  yield = 16000,                          -- FU of grain from a fully sown, fully grown, harvested cell
+                                          --   (crops rarely reach full biomass: ~8,000-11,000 in practice)
+  seed = 1920,                            -- FU of seed grain to sow a full cell
+  sow_h = 1800, tend_h = 1200, harvest_h = 2400,  -- ~15 person-days per person fed; peaks saturate labour
   sow_temp = 7, sow_weeks = 8,            -- the spring sowing season (weeks)
   tropics_lat = 0.41,                     -- radians (23.5 deg): no winter, sow once a year when warm
   gdd_base = 5, gdd_ripe = 1400,
@@ -429,10 +431,10 @@ C.SOCIETY = {
                                           --   in the wet): a two-week harvest loses ~5-10%
   weed_rate = 0.02,                       -- weeds per untended week (share of tending not done)
   field_margin = 1.3,                     -- fields for need x this
-  fields_per_worker = 0.45,               -- labour bound on cropped fields
+  fields_per_worker = 0.11,               -- labour bound on cropped fields
   farm_radius = 3,                        -- level-4 steps (scaled): fields within (walking cost in the plan)
   clear_h = 600,                          -- hours to clear a unit of forest for a field
-  care_h = 700, care_gain = 0.45,         -- intensification (Boserup): hours of extra care per full field
+  care_h = 2800, care_gain = 0.45,        -- intensification (Boserup): hours of extra care per full field
                                           --   for up to +45% grain (diminishing returns)
   fallow_fert = 0.22, poor_fert = 0.05, fallow_food_months = 6,
   -- crop growth (weekly; the old villages constants)
@@ -442,7 +444,9 @@ C.SOCIETY = {
   -- forestry
   wood_rate = 3.0,                        -- WU per productive hour in dense forest
   wood_half = 0.25,                       -- forest density at half the rate
-  forest_wu = 4250,                       -- WU in a fully forested sim cell
+  brush_wu = 4250,                        -- WU of brush, dung and straw a full cell of grass stands for
+  forest_wu = 40000,                      -- WU in a fully forested sim cell (D-057: was 4,250 — a cell of
+                                          --   woodland is ~170 ha, thousands of household-years of fuel)
   wood_radius = 6,                        -- cells to look for woods (walking eats into the day)
   brush_rate = 1.2,                       -- WU per hour of brush, dung and straw gathering (fuel only)
   brush_half = 0.3,                       -- grass density at half the brush rate
@@ -473,7 +477,7 @@ C.SOCIETY = {
   build = {
     house = { wood = 60, h = 240 }, hut = { wood = 15, h = 60 }, granary = { wood = 50, h = 200 },
     woodshed = { wood = 25, h = 80 }, pier = { wood = 30, h = 150 }, boat = { wood = 25, h = 160 },
-    repair = { wood = 12, h = 40 },
+    repair = { wood = 12, h = 40 }, palisade = { wood = 220, h = 700 },
   },
   house_decay = 0.06, hut_decay = 0.25,   -- condition per year
   repair_below = 0.5, repair_gain = 0.4,
@@ -494,7 +498,7 @@ C.SOCIETY = {
   settle_months = 24,                     -- newly arrived households stay at least this long
   return_years = 5,                       -- ... and do not go back to the village they left for this long
   walk_hours_day = 10, party_food_days = 14,
-  found_food_days = 60, found_seed_cells = 2,
+  found_food_days = 60, found_seed_cells = 0.6,
   first_harvest_weeks = 20,               -- sowing to the first harvest of a new village (planning)
   bud_food_margin = 60,                   -- colonists carry food to their first harvest + this many days
   bud_min_provision = 0.4,                -- ... or at least this share of it (they forage and hunt the rest)
@@ -503,13 +507,101 @@ C.SOCIETY = {
   found_max_households = 5,               -- households in a refugees' founding party (one a year per village)
   site_walk_penalty = 0.03,               -- site score lost per cell spacing of walking
   min_site_people = 20, min_spacing = 3,
-  max_villages = 12, soft_cap = 900,      -- performance guard: births taper toward soft_cap people
+  max_villages = 30, soft_cap = 2400,     -- performance guard: births taper toward soft_cap people (D-057: was 12 / 900)
   -- villages that know each other (W7, docs/world/18 §2.2-2.3)
   relief_margin_days = 60,                -- a giver keeps its need to its next harvest + this
   relief_reach = 16, trade_reach = 12, bride_reach = 12,   -- cell spacings (a few days' walk)
   porters = 6, porter_fu = 30,            -- porters per errand, FU (or WU) a porter carries a trip
   bride_prob = 0.35,                      -- monthly chance a village with unmatched women looks abroad
   seed_kin = 2,                           -- kin ties between a landmass's first villages of one culture
+  -- exchange (W7b, D-056): what a village keeps before it trades a good away, when it wants one
+  wood_keep_days = 120,                   -- days of fuel kept back before wood is sold
+  trade_wood_days = 25, trade_food_days = 75,   -- below this many days of a good a village buys it
+  import_trust = 0.6, export_trust = 0.8, -- share of usual imports (exports) a field plan counts on
+  trail_decay = 0.75,                     -- yearly share of a trail's traffic that is remembered
+  trail_full = 150,                       -- walkers a year for a fully worn path
+  trail_speed = 0.6,                      -- a worn path is walked this much faster (1 / (1 + x))
+}
+
+-- Status and leaders (docs/world/18 §2.1, sim/society/status.lua, D-057)
+C.STATUS = {
+  decay = 0.97,                           -- monthly share of prestige remembered
+  elder_age = 50, elder_gain = 0.05,      -- a household with an elder head gains respect monthly
+  founder_gain = 0.04,                    -- households of the village's founding lineage
+  gift_prestige = 0.02,                   -- per need-day of relief the leader's household gives
+  split_pop = 40,                         -- contested successions can split villages this big
+  split_close = 0.75,                     -- the rival's prestige at least this share of the new leader's
+  split_share = 0.2,                      -- the rival lineage is at least this share of the village
+  split_prob = 0.5, split_gap_years = 15, split_min = 8,
+  stress_pop = 160, stress_prob = 0.02,   -- scalar stress: monthly split chance x (pop - 160) / 160
+}
+
+-- Conflict (docs/world/18 §2.4, sim/society/conflict.lua, D-057)
+C.CONFLICT = {
+  fight_age = { 16, 45 },
+  other_defence = 0.25,                   -- women, youths and elders count this much in defence
+  palisade = 2.0,                         -- a standing palisade multiplies the defence
+  home_advantage = 1.3, surprise = 1.25,  -- Lanchester weights: defenders at home, raiders at dawn
+  min_pop = 25, min_target = 12, min_raiders = 5,
+  raid_share = 0.6,                       -- share of the fighting men who go
+  raid_reach = 12,                        -- cell spacings
+  raid_gap_months = 6,
+  friend_score = 0.7,                     -- villages this well disposed are not raided unless wronged
+  loot_share = 0.45, carry = 30,          -- share of the store taken; FU a raider carries
+  revenge_weight = 0.35, risk = 0.6, threshold = 0.25, raid_prob = 0.5,
+  raid_grievance = 3,                     -- grievance a raid leaves (+ per defender killed)
+  grievance_keep = 0.985,                 -- monthly (a raid is remembered for decades)
+  burn_chance = 0.35, burn_damage = 0.8,
+  win_prestige = 1.5, raider_prestige = 0.4,
+  palisade_years = 12,                    -- villages raided within this many years build a palisade
+  gift_forgives = 0.02,                   -- grievance washed away per need-day of relief received
+  want_breaks_ties = 0.9,                 -- hunger / land want lets a village raid this much better friends
+  encroach_grievance = 0.6,               -- a land-short village's grievance when a neighbour takes a shared field
+  -- tribute (W9, D-058)
+  defeat_memory_years = 15, submit_defeats = 2,  -- beaten this often by one raider within the memory...
+  submit_ratio = 0.7,                     -- ...and hemmed in, or with fewer than this share of its fighters: submits
+  secede_ratio = 0.8,                     -- a tributary stops paying when its lord has fewer fighters than this share of its own
+  tribute_share = 0.12,                   -- of each harvest
+  submit_prestige = 3, protect_grievance = 2,
+}
+
+-- Livestock (docs/world/18 §2.6, sim/society/herds.lua, D-058): per head — milk (FU/day in its
+-- season), meat (FU), yearly births and deaths, grazing weight (sheep-equivalents)
+C.HERDS = {
+  sheep = { milk = 0.10, meat = 20, birth = 0.9, death = 0.10, graze = 1 },
+  goats = { milk = 0.18, meat = 18, birth = 1.0, death = 0.12, graze = 0.9 },
+  cattle = { milk = 0.9, meat = 160, birth = 0.55, death = 0.07, graze = 5 },
+  pasture = 500,                          -- sheep-equivalents one fully grassed cell carries (its regrowth
+                                          --   feeds ~1,000: a cell is ~170 ha of grass)
+  forest_browse = 0.25,                   -- woodland pasture counts this much of its forest as grass
+  graze_week = 0.000012,                  -- grass units a sheep-equivalent eats a week (~550 kg a year)
+  per_person = { 0.8, 2.5 },              -- herd kept per person: + this x the grassiness of the land
+  herder_se = 80,                         -- sheep-equivalents one herder minds
+  birth_weeks = { 4, 12 }, milk_weeks = { 6, 30 },   -- local weeks (spring lambing, summer milk)
+  hunger_loss = 0.02,                     -- weekly share lost per unit of overstocking
+  wolf_loss = 0.004,                      -- weekly share taken on an unguarded pasture among wolves
+  hungry_days = 25, hungry_cull = 0.04,   -- a village with fewer food days eats this share a week
+  breeding_share = 0.35,                  -- the herd kept whatever happens
+  dry_meat = 0.6,                         -- dried meat into the store (half of a slaughter)
+  manure = 0.0000015, manure_max = 0.0004,  -- weekly fertility per se per field (capped)
+  sheep_per_person = 1.2,                 -- sheep for a village's wool to clothe everyone
+  raid_take = 0.2,                        -- share of the herd raiders drive off
+}
+
+-- Crafts (docs/world/18 §2.6, sim/society/crafts.lua, D-056): one unit = a person's (tools: a
+-- worker's) use for a year; rate = units per effective hour at a source of quality 1.
+C.CRAFT = {
+  tools = { need = 1.0, rate = 0.012, value = 25, weight = 1.5, loss = 0.25 },   -- loss: work lost without tools
+  pots = { need = 0.6, rate = 0.03, value = 10, weight = 2, fuel = 0.8, spoil = 1.2 },  -- spoil: extra grain spoilage
+  cloth = { need = 0.5, rate = 0.008, value = 38, weight = 0.5, exposure = 0.18 },  -- health per week per °C of cold
+  min_q = 0.12,                           -- the poorest source anyone can use (slow work)
+  clay_flow = 60,                         -- river flow for the best clay banks
+  cover_years = 0.5,                      -- a good is fully covered with this many years in hand
+  target_years = 1.0,                     -- craft work aims at this many years of need in store
+  keep_years = 0.6,                       -- a village sells only beyond this many years of need
+  fu_hours = 3.3,                         -- hours of work a day's food is worth (make-or-buy)
+  buy_margin = 1.4,                       -- buy when making costs this much more than buying
+  buy_floor = 0.3,                        -- a buyer still keeps this many years' need made at home
 }
 
 -- Player powers (04_PLAYER.md §2, sim/powers.lua) ------------------------------------------------

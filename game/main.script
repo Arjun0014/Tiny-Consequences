@@ -77,7 +77,13 @@ local function start_loading(self, seed)
 			-- pre-spun Year-0 world (assets/worlds/default.tcsave, custom resource): no spin-up
 			self.use_prespun = false
 			local ok_mod, worlds = pcall(require, "sim.worlds")
-			local data = ok_mod and sys.load_resource("/assets/worlds/default.tcsave") or nil
+			-- ?world=NAME loads assets/worlds/NAME.tcsave (dev: worlds saved at a later year by
+			-- tools/make_world.lua --years N; not shipped when absent)
+			local wname = query.get().world
+			local path = "/assets/worlds/" .. (wname and wname:match("^[%w_]+$") and wname or "default") .. ".tcsave"
+			local okr, data = pcall(sys.load_resource, path)
+			if not okr or not data then data = ok_mod and sys.load_resource("/assets/worlds/default.tcsave") or nil end
+			data = ok_mod and data or nil
 			if data and worlds.from_save_string then
 				state.loading.text = "Unpacking a tiny world..."
 				local ok, res, err = pcall(worlds.from_save_string, data)
@@ -172,7 +178,14 @@ function init(self)
 	if query.get().gfx == "low" then
 		state.shadow_on = false
 		state.post_on = false
+		-- (ray-traced cloud puffs are per-pixel work a CPU rasteriser can't afford: none)
 		require("game.view.clouds").DENSITY = 0.45
+		require("game.view.clouds").hidden = true
+		-- the CPU rasteriser: a thinner forest (the prop placement is the same, fewer slots).
+		-- SwiftShader draws ~16 M prop vertices a second: full density is ~2 M at the whole-planet
+		-- view (6 fps), two far slots ~0.8 M (probe: gfx {slots_far=N}, 28 Sep)
+		local propgen = require("game.view.propgen")
+		propgen.SLOTS, propgen.SLOTS_FAR = 8, 2
 		require("game.view.puppets").BIRD_ZOOM = 99
 	end
 
