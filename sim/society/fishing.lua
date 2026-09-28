@@ -12,6 +12,7 @@ local blame = require("sim.causality.blame")
 local events = require("sim.causality.events")
 local sites = require("sim.society.sites")
 local ents = require("sim.society.entities")
+local skills = require("sim.society.skills")
 
 local M = {}
 
@@ -86,7 +87,7 @@ function M.plan(W, v, h0, ws, we, weather)
       if planned < goal then
         for k = 1, #crew do
           local p = P[crew[k]]
-          if p and not p.dead then fit = fit + (0.35 + 0.65 * p.nutrition) * min(1, p.health / 40) end
+          if p and not p.dead then fit = fit + (0.35 + 0.65 * p.nutrition) * min(1, p.health / 40) * skills.factor(p, "fish") end
         end
       end
       local iced = F.ice[b.home] >= 0.5

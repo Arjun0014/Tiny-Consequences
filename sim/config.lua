@@ -523,6 +523,10 @@ C.SOCIETY = {
   relief_margin_days = 60,                -- a giver keeps its need to its next harvest + this
   relief_reach = 16, trade_reach = 12, bride_reach = 12,   -- cell spacings (a few days' walk)
   bride_stranger = -0.25,                 -- a village no friend can match sends brides to strangers this well disposed
+  -- skills (sim/society/skills.lua, D-063): an hour's work x (lo + (hi - lo) x skill)
+  skill_lo = 0.7, skill_hi = 1.1,               -- (a practised hand, skill ~0.8, is ~1.0: the calibration)
+  skill_learn = 0.006,                    -- weekly share of the gap to mastery a week's practice closes
+  skill_keep = 0.9985,                    -- weekly share of an unpractised skill kept (half in ~9 years)
   -- friendship (sim/society/friends.lua, D-062)
   friend_prob = 0.08,                     -- monthly chance a person with room befriends a companion
   friend_max = 4,                         -- friends a person keeps

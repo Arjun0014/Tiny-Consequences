@@ -27,6 +27,7 @@ local FGRAZ = fields.BY_NAME.grazers
 
 local crafts = require("sim.society.crafts")
 local herds = require("sim.society.herds")
+local skills = require("sim.society.skills")
 local carbon = require("sim.society.carbon")
 local FARM = { harvest = true, sow = true, tend = true, clear = true, care = true }
 local CRAFT = { craft_tools = "tools", craft_pots = "pots", craft_cloth = "cloth" }
@@ -198,6 +199,8 @@ end
 -- Person p (capacity c) takes demand d for the week.
 local function take(Bo, p, c, d, week_h)
   p.task, p.site = d.kind, d.target
+  -- (what their hours achieve at this work: their skill, D-063)
+  c = c * skills.factor(p, d.kind)
   d.got = d.got + c * week_h
   d.n = d.n + 1
   d.cap = d.cap + c

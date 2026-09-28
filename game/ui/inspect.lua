@@ -662,6 +662,21 @@ local function person_items(W, pid, p, items)
     local word = lead and "leads the village" or (st > 3 and "much respected" or (st > 1 and "respected" or "ordinary"))
     add(items, { t = "row", icon = "star", label = "Lineage", value = (lin and ("the " .. lin.name .. " line") or "?") .. " · " .. word })
   end
+  -- skills (D-063): what they have practised
+  local ok_sk, skills = pcall(require, "sim.society.skills")
+  if ok_sk and type(p.sk) == "table" then
+    local best = skills.best(p, 3)
+    if #best > 0 then
+      local NOUN = { farm = "farmer", fish = "fisher", wood = "woodcutter", build = "builder", craft = "craftsman", herd = "herder" }
+      local parts = {}
+      for i = 1, #best do
+        local x = best[i][2]
+        local word = x >= 0.85 and "master" or (x >= 0.6 and "skilled" or (x >= 0.3 and "able" or "learning"))
+        parts[#parts + 1] = word .. " " .. NOUN[best[i][1]]
+      end
+      add(items, { t = "text", icon = "pickaxe", text = "Skills: " .. table.concat(parts, ", ") })
+    end
+  end
   -- friends (D-062): the companions of their days
   local fl = type(p.friends) == "table" and p.friends or {}
   if #fl > 0 then

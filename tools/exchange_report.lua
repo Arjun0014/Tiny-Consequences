@@ -60,8 +60,8 @@ for y = 1, args.years do
     local kk = {}
     for k, x in pairs(cb) do kk[#kk + 1] = string.format("%s %.1f", k, x) end
     table.sort(kk)
-    print(string.format("      co2 %.0f ppm, g_temp %+.2f, sea %+.1f m, forest_nat %.2f, farm cells %d | biomass released: %s", W.G.co2 or 0, W.G.g_temp or 0,
-      (W.G.sea_level or 0) * 1000, m.forest_nat or 0, farms, table.concat(kk, ", ")))
+    print(string.format("      co2 %.0f ppm, g_temp %+.2f, sea %+.1f m, forest_nat %.2f (mean cover %.2f), farm cells %d | biomass released: %s", W.G.co2 or 0, W.G.g_temp or 0,
+      (W.G.sea_level or 0) * 1000, m.forest_nat or 0, m.forest_mean or 0, farms, table.concat(kk, ", ")))
     local pal = 0
     for _, b in pairs(W.ent.buildings) do if b.kind == "palisade" and b.state == "standing" then pal = pal + 1 end end
     local conflict = require("sim.society.conflict")

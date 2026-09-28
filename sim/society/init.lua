@@ -194,6 +194,7 @@ local function village_week(W, v)
   construction.plan(W, v)
   if not v.herd then herds.seed(W, v, 1) end
   herds.weekly(W, v)
+  require("sim.society.skills").weekly(W, v)
   crafts.weekly(W, v)
   economy.weekly(W, v)
   if v.boats[1] then fishing.rank(W, v, v.plan.hours or 9) end
