@@ -121,6 +121,8 @@ C.VEG = {
   k_regen = 0.0005, fert_base = { 0.3, 0.8 },  -- fertility target from bare to fully vegetated
   fire_block_ticks = 96, scar_expire = 480,      -- recent burns slow forest establishment
   k_co2 = 0.4,                            -- ppm per unit biomass (growth absorbs, burning emits)
+  grass_c = 0.5,                          -- carbon in a unit of grass cover, in forest units: every flux
+                                          --   (growth, fire, grazing, gathering) counts grass at this weight
 }
 
 -- Fire (§5.7) --------------------------------------------------------------------------------------------------
@@ -388,6 +390,7 @@ C.SOCIETY = {
   ration_safety_days = 10,                --   diet (less as the harvest nears): the buffer kept back
                                           --   when deciding whether the store lasts to the harvest
   income_trust = 0.85,                    -- share of the usual catch/forage counted on until the harvest
+  expect_trust = 0.8,                     -- share of grain bought and on its way that the village eats by (B15)
   rationing_days = 3, famine_ration = 0.7, famine_weeks = 4,
   seed_eat_days = 14,                     -- food below this many days: the seed grain is eaten
   -- body
@@ -538,6 +541,10 @@ C.SOCIETY = {
   porters = 6, porter_fu = 30,            -- porters per errand, FU (or WU) a porter carries a trip
   bride_prob = 0.35,                      -- monthly chance a village with unmatched women looks abroad
   seed_kin = 2,                           -- kin ties between a landmass's first villages of one culture
+  -- ties that fade (session 5): the common stock of first villages, past trades, the daughter tie
+  anc_keep = 0.997,                       -- monthly share of a common-stock tie kept (half in ~20 years)
+  trade_keep = 0.985,                     -- monthly share of past trades remembered (half in ~4 years)
+  daughter_tie_years = 75,                -- a daughter village's tie to its mother fades out over this
   -- exchange (W7b, D-056): what a village keeps before it trades a good away, when it wants one
   wood_keep_days = 120,                   -- days of fuel kept back before wood is sold
   trade_wood_days = 25, trade_food_days = 75,   -- below this many days of a good a village buys it
@@ -559,6 +566,9 @@ C.STATUS = {
   split_prob = 0.5, split_gap_years = 15, split_min = 8,
   stress_pop = 160, stress_prob = 0.02,   -- scalar stress: monthly split chance x (pop - 160) / 160
   stress_share = 0.1,                     -- ... by the largest other lineage, if it is this share
+  -- a split leaves bad blood (Chagnon; Walker & Hill 2014): grievance both ways when the leavers
+  -- found their village — a contested succession, or the quarrels of a crowded village
+  split_grievance = { contested = 1.6, stress = 0.9 },
 }
 
 -- Conflict (docs/world/18 §2.4, sim/society/conflict.lua, D-057)
@@ -605,6 +615,11 @@ C.CONFLICT = {
   truce_after = 3, truce_prob = 0.03, truce_years = 20, truce_prestige = 0.8,
   want_breaks_ties = 0.9,                 -- hunger / land want lets a village raid this much better friends
   encroach_grievance = 0.6,               -- a land-short village's grievance when a neighbour takes a shared field
+  -- rivals for shared pasture and fishing grounds (session 5): monthly grievance at full shortfall,
+  -- x the share of the land (grounds) shared x the rival's share of the take
+  pasture_grievance = 0.4,                -- shortfall: beasts beyond what the grass carries (crowd - 1, up to 1)
+  fish_grievance = 0.4,                   -- shortfall: grounds below fish_rival x their recent state
+  fish_rival = 0.7,
   -- tribute (W9, D-058)
   defeat_memory_years = 15, submit_defeats = 2,  -- beaten this often by one raider within the memory...
   submit_ratio = 0.7,                     -- ...and hemmed in, or with fewer than this share of its fighters: submits

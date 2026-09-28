@@ -237,6 +237,11 @@ local function arrive_here(W, party)
     end
     return
   elseif party.kind == "returning" then
+    if #living == 0 and party.cargo then
+      -- nobody came home to unload it: the goods are lost with the porters
+      local c = party.cargo
+      c.got, c.left, c.grain, c.wood = 0, 0, 0, 0
+    end
     relations.returning_arrive(W, party, E.villages[party.to])
     return
   elseif party.kind == "raid" then
@@ -277,6 +282,17 @@ local function arrive_here(W, party)
     founded = true
     local id = emit(W, "village_founded", site, party.reason, #living, { village = dest.id, from = party.from })
     if id ~= 0 then dest.founded_event = id end
+    -- a lineage that split away in a quarrel: no daughter's tie, bad blood both ways (the
+    -- leavers were denied, the stayers deserted — and robbed of the store they took)
+    local why = party.cargo and party.cargo.split
+    if why and from and from.alive then
+      dest.split = why
+      local g = cfgmod.STATUS.split_grievance[why] or 0
+      if g > 0 then
+        relations.wrong(W, dest.id, from.id, g, party.reason)
+        relations.wrong(W, from.id, dest.id, g, party.reason)
+      end
+    end
     dest.stock.seed = party.seed
     M.on_register(W, dest)
   end

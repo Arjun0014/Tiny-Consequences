@@ -71,6 +71,7 @@ function sys.update(W)
   local scar_expire = cfg.scar_expire
   local geps, ghold, feps, fhold = 0.0005, 96, 0.0002, 480
   local netbio = 0
+  local grass_c = cfg.grass_c
   local ph = tick % stride
   for i = 1 + ph, #land, stride do
     local c = land[i]
@@ -131,7 +132,7 @@ function sys.update(W)
     if nf2 < 0 then nf2 = 0 elseif nf2 > 1 then nf2 = 1 end
     forest[c] = nf2
     pf[c] = nf2
-    netbio = netbio + (ng2 - gr) * 0.5 + (nf2 - fo)
+    netbio = netbio + (ng2 - gr) * grass_c + (nf2 - fo)
     -- fertility regenerates toward a vegetation-dependent base
     local veg = ng2 + nf2
     if veg > 1 then veg = 1 end

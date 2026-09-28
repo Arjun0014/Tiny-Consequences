@@ -17,4 +17,11 @@ function M.release(W, biomass, kind)
   ledger.add(W, "co2", co2, 0, "villagers")
 end
 
+-- Grass taken (grazed, gathered as brush or wild food): its carbon at the weight the vegetation's
+-- growth absorbed it (VEG.grass_c; session 5 — it was released at the forest's weight, twice
+-- what the grass had absorbed: a standing source of CO2 wherever beasts grazed).
+function M.release_grass(W, grass, kind)
+  M.release(W, grass * cfgmod.VEG.grass_c, kind)
+end
+
 return M

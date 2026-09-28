@@ -57,6 +57,17 @@ local function emit(W, kind, cell, parent, mag, data, v)
   return events.emit(W, kind, cell, parent, mag, data, co and { co = co } or nil)
 end
 
+-- A village's reach as a set of cells (derived, cached on its geometry).
+local function ringset(G)
+  local set = G.ringset
+  if not set then
+    set = {}
+    for k = 1, #G.ring do set[G.ring[k]] = true end
+    G.ringset = set
+  end
+  return set
+end
+
 -- Grievance of village a against village b (and the event behind it).
 function M.grievance(W, a, b)
   local r = M.rel.get(W, a, b)
@@ -85,14 +96,86 @@ function M.encroach(W, v, c)
   for i = 1, #vs do
     local u = vs[i]
     if u ~= v and u.alive and u.intensify and W.vgeo[u.id] then
-      local G = W.vgeo[u.id]
-      local set = G.ringset
-      if not set then
-        set = {}
-        for k = 1, #G.ring do set[G.ring[k]] = true end
-        G.ringset = set
+      if ringset(W.vgeo[u.id])[c] then M.wrong(W, u.id, v.id, cfg.encroach_grievance, 0) end
+    end
+  end
+end
+
+-- Rivals for the land's and the sea's gifts (monthly, session 5). A village whose pasture is
+-- overgrazed (more beasts than its grass carries: they are dying of it) holds it against the
+-- neighbours whose herds graze the same land; one whose fishing grounds are fished well below
+-- their recent state, against the villages whose boats fish them too. The grudge grows with the
+-- shortfall, the share of the land (grounds) shared and the rival's share of the take (herds,
+-- boats). When it first turns bitter (past 1) a dispute is recorded — its parent the cause of the
+-- shortfall (a drought on the grass, a fish collapse) — and a raid it leads to follows from it.
+function M.rivals(W, v)
+  local cfg = cfgmod.CONFLICT
+  local over = (v.herd_crowd or 0) - 1
+  if over > 1 then over = 1 end
+  -- the village's fishing grounds against their recent state
+  local fshort = 0
+  local grounds = v.grounds
+  local fref = W.S.ocean and W.S.ocean.fish_ref
+  if grounds and #grounds > 0 and fref and #v.boats > 0 then
+    local f, r = 0, 0
+    local fish = W.F.fish
+    for i = 1, #grounds do f = f + fish[grounds[i]]; r = r + fref[grounds[i]] end
+    if r > 0 then
+      fshort = 1 - (f / r) / cfg.fish_rival
+      if fshort < 0 then fshort = 0 end
+    end
+  end
+  if over <= 0.05 and fshort <= 0 then return end
+  local G = W.vgeo[v.id]
+  if not G then return end
+  local vs = W.ent.villages
+  local ocean, land_use = W.geo.ocean, W.F.land_use
+  local se_v = v.herd and M.herds.se(v.herd) or 0
+  -- the village's own pasture cells (land, not fields)
+  local nland = 0
+  if over > 0.05 then
+    for k = 1, #G.ring do local c = G.ring[k]; if ocean[c] == 0 and land_use[c] == 0 then nland = nland + 1 end end
+  end
+  for i = 1, #vs do
+    local u = vs[i]
+    if u ~= v and u.alive and u.continent == v.continent and W.vgeo[u.id] then
+      local g, parent, kind = 0, 0, nil
+      if over > 0.05 and nland > 0 and u.herd then
+        local se_u = M.herds.se(u.herd)
+        if se_u > 1 then
+          local set = ringset(W.vgeo[u.id])
+          local shared = 0
+          for k = 1, #G.ring do
+            local c = G.ring[k]
+            if set[c] and ocean[c] == 0 and land_use[c] == 0 then shared = shared + 1 end
+          end
+          if shared > 0 then
+            g = g + cfg.pasture_grievance * over * (shared / nland) * se_u / (se_u + se_v)
+            kind = "grazing_dispute"
+            parent = W.C.grass[v.herd_cell or v.cell] or 0
+          end
+        end
       end
-      if set[c] then M.wrong(W, u.id, v.id, cfg.encroach_grievance, 0) end
+      if fshort > 0 and u.grounds and #u.boats > 0 then
+        local shared = 0
+        local ug = u.grounds
+        for a = 1, #grounds do
+          for b = 1, #ug do if ug[b] == grounds[a] then shared = shared + 1; break end end
+        end
+        if shared > 0 then
+          local x = cfg.fish_grievance * fshort * (shared / #grounds) * #u.boats / (#u.boats + #v.boats)
+          if x > g * 0.5 then kind = "fishing_dispute"; parent = W.C.fish[grounds[1]] or 0 end
+          g = g + x
+        end
+      end
+      if g > 0 then
+        local before = M.grievance(W, v.id, u.id)
+        local ev = 0
+        if before <= 1 and before + g > 1 then
+          ev = emit(W, kind, v.cell, parent, 1, { village = v.id, other = u.id }, v)
+        end
+        M.wrong(W, v.id, u.id, g, ev)
+      end
     end
   end
 end
@@ -268,6 +351,7 @@ function M.monthly(W, v)
   end
   local vs = W.ent.villages
   local best, bv, bp, bd, bg, bge, bA = nil, 0, 0, 0, 0, 0, 0
+  local bm = nil   -- the best raid's strongest motive: "want", "revenge" or "ambition"
   local A0 = min(nf * cfg.raid_share, nf)
   -- raiders by sea: as many as the village's free boats seat
   local seats = v.mooring and sea.n_free(W, v) * cfgmod.SOCIETY.boat_seats or 0
@@ -291,11 +375,17 @@ function M.monthly(W, v)
           local D = M.defence(W, u, v)
           local pwin = A * A / (A * A + D * D * cfg.home_advantage)
           local loot = min(u.stock.grain * cfg.loot_share, A * cfg.carry)
-          local gain = (hunger + land) * loot / max(1, v.need_day * 30) + gr * cfg.revenge_weight
+          local g_want = (hunger + land) * loot / max(1, v.need_day * 30)
+          local g_rev = gr * cfg.revenge_weight
+          local g_amb = 0
           -- (ambition only against the clearly weaker, and not those who already pay it)
-          if amb > 0 and A > D * cfg.amb_edge and u.lord ~= v.id then gain = gain + amb * min(2, A / max(1, D) - 1) end
+          if amb > 0 and A > D * cfg.amb_edge and u.lord ~= v.id then g_amb = amb * min(2, A / max(1, D) - 1) end
+          local gain = g_want + g_rev + g_amb
           local value = (pwin * gain - (1 - pwin) * cfg.risk) * war - d * 0.02
-          if value > bv then best, bv, bp, bd, bg, bge, bA = u, value, pwin, d, gr, gev, A end
+          if value > bv then
+            best, bv, bp, bd, bg, bge, bA = u, value, pwin, d, gr, gev, A
+            bm = (g_amb >= g_want and g_amb >= g_rev) and "ambition" or (g_rev > g_want and "revenge" or "want")
+          end
         end
       end
     end
@@ -307,6 +397,7 @@ function M.monthly(W, v)
   local cb, cv, cp, cd, cg, cge, cA = M.cattle_target(W, v, nf, hunger, war)
   if cb and cv > bv and cv >= cfg.cattle_threshold then
     best, bv, bp, bd, bg, bge, bA = cb, cv, cp, cd, cg, cge, cA
+    bm = (cg > 1 and cge ~= 0) and "revenge" or "cattle"
     why("cattle")
   else
     cb = nil
@@ -320,11 +411,16 @@ function M.monthly(W, v)
   local party = {}
   for i = 1, max(cfg.min_raiders, floor(bA)) do party[i] = list[i] end
   -- why: the village's want, or the wrong it avenges
-  local reason = (bg > 1 and bge ~= 0) and bge or (v.foodtag[1] ~= 0 and v.foodtag[1] or v.cause)
+  -- (a raid for tribute and glory follows from the leader who seeks it: its chain starts at their
+  -- accession)
+  local reason
+  if bm == "ambition" and v.leader_ev then reason = v.leader_ev
+  elseif bg > 1 and bge ~= 0 then reason = bge
+  else reason = v.foodtag[1] ~= 0 and v.foodtag[1] or v.cause end
   v.raid_out = true
   v.raid_last = hour
   M.depart(W, v, party, best.id, nil, "raid", reason, 0, 0, { target = best.id, home = v.id, pwin = bp,
-    cattle = cb and true or nil })
+    cattle = cb and true or nil, motive = bm })
 end
 
 -- The herd's guard at village u: its herders on the pasture and the men the alarm brings.

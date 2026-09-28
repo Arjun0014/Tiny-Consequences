@@ -130,7 +130,8 @@ local function local_step(W, S, cfg, ph, dt)
   local ema = dt / (cfg.ref_months * 4)
   local minp = cfg.min_pop
   local geps, ghold, peps, phold = FGZ.eps, FGZ.hold, FPD.eps, FPD.hold
-  local eaten = 0   -- biomass eaten (grass counts half, like vegetation's net growth)
+  local eaten = 0   -- biomass eaten (grass at VEG.grass_c, like vegetation's net growth)
+  local grass_c = cfgmod.VEG.grass_c
   local greps, grhold, foeps, fohold = FGR.eps, FGR.hold, FFO.eps, FFO.hold
   for i = 1 + ph, #land, stride do
     local c = land[i]
@@ -174,14 +175,14 @@ local function local_step(W, S, cfg, ph, dt)
         local bb = dt * kbr * H * (bbase + hunger) * fo / (fo + hbr)
         if bb > fo then bb = fo end
         forest[c] = fo - bb
-        eaten = eaten + 0.5 * gg + bb
+        eaten = eaten + grass_c * gg + bb
         if tHa ~= 0 or cgr[c] ~= 0 then blame.step(cgr, igr, c, -gg, greps, grhold, -gg, tHa, 0, 0, 0, 0, 0, 0) end
         if tHa ~= 0 or cfo[c] ~= 0 then blame.step(cfo, ifo, c, -bb, foeps, fohold, -bb, tHa, 0, 0, 0, 0, 0, 0) end
         if cr > 0 then
           local rr = dt * kra * H * cr / (cr + hra)
           if rr > cr then rr = cr end
           crop[c] = cr - rr
-          eaten = eaten + 0.5 * rr
+          eaten = eaten + grass_c * rr
           if tHa ~= 0 or ccr[c] ~= 0 then blame.step(ccr, icr, c, -rr, FCR.eps, FCR.hold, -rr, tHa, 0, 0, 0, 0, 0, 0) end
         end
       end

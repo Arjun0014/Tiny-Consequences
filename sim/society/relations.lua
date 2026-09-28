@@ -81,10 +81,13 @@ M.give_days = give
 function M.score(W, u, v)
   local s = 0
   if u.from == v.id or v.from == u.id then
-    -- the parent/daughter tie fades as the daughter village grows up (to a kin tie's weight)
+    -- the parent/daughter tie fades as the daughter village grows up (living kin carry it on);
+    -- a village that split away in a quarrel has none
     local young = u.from == v.id and u or v
-    local age = (W.hour - (young.founded or W.hour)) / 8064
-    s = s + max(0.3, 1 - age / 60)
+    if not young.split then
+      local age = (W.hour - (young.founded or W.hour)) / 8064
+      s = s + max(0, 1 - age / cfgmod.SOCIETY.daughter_tie_years)
+    end
   end
   local r = M.get(W, u.id, v.id)
   if r then
@@ -118,37 +121,62 @@ function M.seed(W)
       local a, b = vs[i], vs[j]
       if a.alive and b.alive and a.continent == b.continent and a.culture == b.culture
         and sites.dist(W, a.cell, b.cell) <= cfg.bride_reach then
-        M.get(W, a.id, b.id, true).kin = cfg.seed_kin
+        local r = M.get(W, a.id, b.id, true)
+        r.anc, r.ka, r.kb, r.kin = cfg.seed_kin, 0, 0, cfg.seed_kin
       end
     end
   end
 end
 
--- Monthly: kin counts (people with a parent living in the other village).
+-- Monthly: kin — people with a living parent in the other village, counted both ways (v's side
+-- now; the other side in its own month: r.ka for the lower id's members, r.kb for the higher's).
+-- A tie lives as long as the parents do: villages that stop marrying drift apart within a
+-- generation, unless new marriages renew the tie. The common stock of a landmass's first villages
+-- (r.anc), past dealings (r.trades) and old debts (gab, gba) fade too — each pair aged once a
+-- month by its lower id.
+local SEEN = {}
 function M.kin_monthly(W, v)
   local P = W.ent.people
   local vs = W.ent.villages
-  local seen = {}
-  local order = {}
+  local cfg = cfgmod.SOCIETY
+  local seen = SEEN
+  local nv = #vs
+  for i = 1, nv do seen[i] = 0 end
+  local vid = v.id
   for i = 1, #v.members do
     local p = P[v.members[i]]
     if p and (p.mother ~= 0 or p.father ~= 0) then
-      for _, rid in ipairs({ p.mother, p.father }) do
-        local q = rid ~= 0 and P[rid]
-        if q and not q.dead and q.village ~= v.id and vs[q.village] and vs[q.village].alive then
-          local u = q.village
-          if not seen[u] then seen[u] = 0; order[#order + 1] = u end
-          seen[u] = seen[u] + 1
-          break
-        end
+      local u = 0
+      local q = p.mother ~= 0 and P[p.mother]
+      if q and not q.dead and q.village ~= vid then u = q.village end
+      if u == 0 then
+        q = p.father ~= 0 and P[p.father]
+        if q and not q.dead and q.village ~= vid then u = q.village end
       end
+      if u ~= 0 and vs[u] and vs[u].alive then seen[u] = seen[u] + 1 end
     end
   end
-  table.sort(order)
-  for i = 1, #order do
-    local r = M.get(W, v.id, order[i], true)
-    -- kin both ways: keep the larger of the two villages' counts this month
-    if seen[order[i]] > r.kin then r.kin = seen[order[i]] end
+  for i = 1, nv do
+    if i ~= vid then
+      local n = seen[i]
+      local r = M.get(W, vid, i, n > 0)
+      if r then
+        -- (a relation from before counts were kept both ways: its ratcheted kin becomes a
+        -- fading memory of common stock)
+        if r.ka == nil and r.kb == nil then r.anc = (r.anc or 0) + r.kin; r.ka, r.kb = 0, 0 end
+        if vid < i then r.ka = n else r.kb = n end
+        if vid < i then
+          local a = r.anc
+          if a then a = a * cfg.anc_keep; if a < 0.05 then a = nil end; r.anc = a end
+          local t = r.trades
+          if t > 0 then t = t * cfg.trade_keep; if t < 0.05 then t = 0 end; r.trades = t end
+          -- old debts are forgiven as the generation that owed them passes
+          if r.gab > 0 then r.gab = r.gab * cfg.anc_keep end
+          if r.gba > 0 then r.gba = r.gba * cfg.anc_keep end
+        end
+        r.kin = r.ka + r.kb + (r.anc or 0)
+      end
+    end
   end
 end
 
@@ -388,6 +416,10 @@ function M.trade(W, v)
           M.depart(W, v, ps, u.id, nil, "porters", id, 0, 0, { give = gp, amount = pay, get = gw, want = q,
             back_to = v.id })
           v.porters_out = true
+          -- paid for and on its way: the village counts on it (economy.daily eats by it)
+          local e = v.expect
+          if not e then e = {}; v.expect = e end
+          e[gw] = (e[gw] or 0) + q
         end
         return
       elseif r_trades(W, u, v) > 0 and not refused then
@@ -488,7 +520,11 @@ function M.porters_arrive(W, party, dest, living)
       local gs, ps = STOCK[c.get], STOCK[c.give]
       dest.stock[gs] = (dest.stock[gs] or 0) - can
       dest.stock[ps] = (dest.stock[ps] or 0) + paid
-      back.get, back.got = c.get, can
+      back.get, back.got, back.want = c.get, can, c.want
+      if can < c.want * 0.9 and home and c.get == "food" then
+        local t = dest.foodtag[1] ~= 0 and dest.foodtag[1] or dest.cause
+        if t ~= 0 then home.import_tag = t end
+      end
       -- unspent payment goes home again
       back.give, back.left = c.give, c.amount - paid
       local r = M.get(W, home.id, dest.id, true)
@@ -526,6 +562,17 @@ function M.returning_arrive(W, party, home)
       home.stock[k] = (home.stock[k] or 0) + c.got
       home["wk_" .. c.get .. "_imp"] = (home["wk_" .. c.get .. "_imp"] or 0) + c.got
       if c.get == "food" then home.wk_imports = (home.wk_imports or 0) + c.got end
+    end
+    -- what was counted on and did not come (lost at sea, a partner who could not give): an
+    -- import shortfall, blamed on its cause (import_tag) in the food account (economy.weekly)
+    if c.get and c.want then
+      local e = home.expect
+      if e and e[c.get] then
+        local x = e[c.get] - c.want
+        e[c.get] = x > 1e-6 and x or nil
+      end
+      local short = c.want - (c.got or 0)
+      if short > 0 and c.get == "food" then home.wk_import_short = (home.wk_import_short or 0) + short end
     end
     home.porters_out = nil
   end

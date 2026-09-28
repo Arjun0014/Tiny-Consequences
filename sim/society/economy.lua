@@ -76,7 +76,9 @@ function M.daily(W, v, wx)
   local buffer = need * cfg.ration_safety_days + from_store * min(dth, cfg.ration_margin_days) * 0.5
   local r = 1
   if need > 0 then
-    local avail = food + income * dth - buffer
+    -- (grain bought and on its way counts, discounted: B15)
+    local ex = v.expect and v.expect.food
+    local avail = food + income * dth - buffer + (ex and ex * cfg.expect_trust or 0)
     local want = need * dth
     if avail < want then
       r = avail / want
@@ -202,7 +204,8 @@ function M.weekly(W, v)
   local ag = g_in - N.grain_in
   local af = f_in - N.fresh_in
   local ac = -(out - N.food_out)
-  local ai = imp - N.imports
+  local ai = imp - N.imports - (v.wk_import_short or 0)
+  v.wk_import_short = 0
   N.grain_in = N.grain_in + (g_in - N.grain_in) * k
   N.fresh_in = N.fresh_in + (f_in - N.fresh_in) * k
   N.food_out = N.food_out + (out - N.food_out) * k
@@ -226,6 +229,13 @@ function M.weekly(W, v)
   local ti = v.import_tag or 0
   local tc = v.arrivals_tag or 0
   local delta = ag + af + ac + ai
+  -- two terms whose causes are one (a boat sunk with its cargo: the catch it no longer brings and
+  -- the grain it carried) are one cause, the older event (B15)
+  if tf ~= 0 and ti ~= 0 and tf ~= ti then
+    local par = W.E.parent
+    if blame.descends(par, ti, tf) then af, ai, ti = af + ai, 0, 0
+    elseif blame.descends(par, tf, ti) then ai, af, tf = ai + af, 0, 0 end
+  end
   if v.foodtag[1] ~= 0 or tg ~= 0 or tf ~= 0 or ti ~= 0 or tc ~= 0 then
     blame.step(v.foodtag, v.foodidle, 1, delta, v.need_day * 0.5 + 1, 26, ag, tg, af, tf, ai, ti, ac, tc)
   end

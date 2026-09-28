@@ -134,7 +134,7 @@ function M.monthly(W, v)
           if hd and hd.lin == rl and (h.prestige or 0) > lp then lead, lp = h, h.prestige or 0 end
         end
         if lead then
-          M.split(W, v, rl, lead, 0)
+          M.split(W, v, rl, lead, 0, "stress")
           return
         end
       end
@@ -147,20 +147,22 @@ function M.monthly(W, v)
     v.leader, v.leader_h, v.leader_lin = head.id, best.id, head.lin
     v.leader_since = hour
     local id = emit(W, "new_leader", v.cell, 0, 1, { village = v.id, person = head.id, lineage = head.lin }, nil)
+    v.leader_ev = id ~= 0 and id or nil
     -- a contested succession: the old leader died, and a second lineage of like standing and size
     -- will not follow the new leader
     if died and second and v.pop >= cfg.split_pop and hour - (v.split_last or -1e9) > cfg.split_gap_years * 8064 then
       local h2 = M.head(W, second)
       if h2 and h2.lin ~= head.lin and sp >= bp * cfg.split_close and (lin_n[h2.lin] or 0) >= v.pop * cfg.split_share then
         local u = rng.float(W.seed, rng.S.STATUS, v.key_cell, hour, 1)
-        if u < cfg.split_prob then M.split(W, v, h2.lin, second, id) end
+        if u < cfg.split_prob then M.split(W, v, h2.lin, second, id, "contested") end
       end
     end
   end
 end
 
--- The households of lineage `lin` leave village v to found their own (led by household `lead`).
-function M.split(W, v, lin, lead, parent)
+-- The households of lineage `lin` leave village v to found their own (led by household `lead`);
+-- why = "contested" (a succession they would not accept) or "stress" (a crowded village's quarrels).
+function M.split(W, v, lin, lead, parent, why)
   local cfg = cfgmod.SOCIETY
   local E = W.ent
   local H, P = E.households, E.people
@@ -210,7 +212,7 @@ function M.split(W, v, lin, lead, parent)
   local seed = v.stock.seed * share
   v.stock.grain = v.stock.grain - food
   v.stock.seed = v.stock.seed - seed
-  M.depart(W, v, members, 0, site, "colonists", id, food, seed)
+  M.depart(W, v, members, 0, site, "colonists", id, food, seed, { split = why or "stress" })
 end
 
 -- Lineages for people who have none (older saves): through a parent if they have one, else

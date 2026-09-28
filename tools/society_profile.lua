@@ -21,11 +21,13 @@ local function wrap(mod, modname, fname)
   local f = mod[fname]
   mod[fname] = function(...)
     local a = cnt
-    local r = { f(...) }
+    local r = { n = 0 }
+    local function keep(...) r.n = select("#", ...); for i = 1, r.n do r[i] = select(i, ...) end end
+    keep(f(...))
     local k = modname .. "." .. fname
     acc[k] = (acc[k] or 0) + (cnt - a) * STEP
     calls[k] = (calls[k] or 0) + 1
-    return unpack(r, 1, 6)
+    return unpack(r, 1, r.n)
   end
 end
 local labour = require("sim.society.labour")

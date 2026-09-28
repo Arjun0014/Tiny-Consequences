@@ -79,6 +79,14 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Stage entries
 
+### [w8/w9/w3] Ties that fade, rivals, carbon books, expected imports, B15 — 2026-09-28 (session 5)
+- Baseline verified first: sim 100/100 (`out/quick_s5a.txt`), web 8/8 on the committed code (`out/s5/web_base.txt`, run in a clean worktree).
+- D-066: kin from living parents both ways (was a ratchet), fading trades/debts/daughter ties, bad blood from contested splits, rivalry over overgrazed pasture and fished-out grounds (`grazing_dispute`, `fishing_dispute`), raid motives (ambition raids chain from the leader's accession). Seed 22 now has grain raids and a submission in 150 years; seeds 9/3: 63/44 raids, 5/2 submissions.
+- D-067: grass carbon at one weight in every flux — an uninhabited world no longer drifts (+13 ppm in 200 y before); seed 9 at year 200: 313 ppm, +0.56 °C (was 392, +1.79); the savanna itself is real (forest 0.265 → 0.04 from clearing and fuel).
+- D-068: expected imports (rationing counts grain on its way; a missing paid-for delivery is blamed), related blame terms merged, no ghost deliveries; **B15a/B15b** pass.
+- Tools: `tools/raid_diag.lua` (why villages do or don't raid, the political history with chains), `tools/carbon_budget.lua` (`--no-society`), `tools/line_profile.lua` (VM instructions by source line), `tools/hash_check.lua` (state hashes for behaviour-neutral refactors); `society_profile` no longer truncates return values.
+- Tests: sim 102/102 after regenerating the worlds; P07 +0.6%.
+
 ### [w9] Ambition: chiefdoms without scarcity — 2026-09-28 13:50 IST (session 4 end)
 - D-065: big villages with much-respected leaders raid clearly weaker non-kin for tribute. Seed 9 from year 100: 28 grain raids, 3 submissions, two lasting chiefdoms in 60 years. Seed 22 fresh 150 years: still no grain raids (kin/overseas neighbours) — open.
 - Tests: sim 100/100 (`out/quick31.txt`), P07 +0.6% vs the new baseline; web 8/8 at the last full run (`out/web9.txt`, before D-063..D-065 — view changes since are inspector text only; re-run next session).

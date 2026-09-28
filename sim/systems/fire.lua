@@ -159,6 +159,7 @@ function sys.update(W)
   -- 3. burn: consume fuel, emit co2 and heat, extinguish
   local keep = 0
   local co2_k, heat_k = cfg.k_co2, cfg.k_heat
+  local grass_c = cfgmod.VEG.grass_c
   local G = W.G
   for i = 1, #list do
     local c = list[i]
@@ -174,7 +175,9 @@ function sys.update(W)
     blame.step(cg, ig, c, -bg, 0.0005, 96, -bg, tag, 0, 0, 0, 0, 0, 0)
     blame.step(cfo, ifo, c, -bf, 0.0002, 480, -bf, tag, 0, 0, 0, 0, 0, 0)
     if oc > 0 then blame.set(ccrop, icrop, c, tag) end
-    local co2 = (bg + bf + oc) * co2_k
+    -- (grass at the weight its growth absorbed; crops' short cycle is not in the vegetation's
+    -- books, so their ash is not counted either)
+    local co2 = (bg * grass_c + bf) * co2_k
     G.co2_src = G.co2_src + co2
     local cl = find_cluster(S, S.cluster[c])
     local root = tag ~= 0 and W.E.root[tag]

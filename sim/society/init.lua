@@ -218,6 +218,7 @@ local function village_month(W, v)
     status.monthly(W, v)
     relations.monthly(W, v)
     conflict.fade(W, v)
+    conflict.rivals(W, v)
     conflict.monthly(W, v)
   end
   local cd = v.month_cold or 0

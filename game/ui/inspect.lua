@@ -459,7 +459,13 @@ function M.reason(W, v, p)
       return string.format("Bringing home %d %s from trade%s", floor(c.got), c.get, sea)
     elseif k == "raid" then
       local r = W.E and W.E.rec and W.E.rec[party.reason or 0]
-      local why = r and r.kind and (r.kind == "raid" and "to avenge a raid" or ("after " .. r.kind:gsub("_", " "))) or "for plunder"
+      local why
+      if c.motive == "ambition" then why = "for tribute and glory: their leader seeks it"
+      elseif c.motive == "cattle" then why = "for beasts: bride-wealth and herds"
+      elseif r and r.kind == "raid" then why = "to avenge a raid"
+      elseif r and (r.kind == "grazing_dispute" or r.kind == "fishing_dispute") then why = "over " .. (r.kind == "grazing_dispute" and "the pasture" or "the fishing grounds")
+      elseif r and r.kind then why = "after " .. r.kind:gsub("_", " ")
+      else why = "for plunder" end
       return string.format("Raiding %s, %s%s", where, why, sea)
     elseif k == "raid_home" then
       return string.format("Coming home from the raid with %d grain%s", floor(c.grain or 0), sea)
@@ -545,7 +551,7 @@ end
 local CHRON = { W = nil, last = 0, by = {} }
 local CHRON_KINDS = { village_founded = true, village_split = true, raid = true, raid_repelled = true,
   cattle_raid = true, cattle_raid_repelled = true, truce = true, submission = true, secession = true, famine = true,
-  shipment_lost = true, village_abandoned = true, bride = false }
+  shipment_lost = true, village_abandoned = true, bride = false, grazing_dispute = true, fishing_dispute = true }
 local function chron_add(vid, rec)
   if not vid or vid == 0 then return end
   local l = CHRON.by[vid]
@@ -594,6 +600,10 @@ function M.chronicle(W, v)
       if d.village == v.id then t = "Submitted to " .. nm(d.lord) .. " and pays tribute" else t = nm(d.village) .. " submitted and pays tribute" end
     elseif k == "secession" then
       if d.village == v.id then t = "Stopped paying tribute to " .. nm(d.lord) else t = nm(d.village) .. " stopped paying tribute" end
+    elseif k == "grazing_dispute" or k == "fishing_dispute" then
+      local what = k == "grazing_dispute" and "the overgrazed pasture" or "the fished-out grounds"
+      if d.village == v.id then t = "Quarrelled with " .. nm(d.other) .. " over " .. what
+      else t = nm(d.village) .. " blamed us for " .. what end
     elseif k == "famine" then t = "Famine"
     elseif k == "shipment_lost" then t = "A boat and its cargo lost at sea"
     elseif k == "village_abandoned" then t = "Abandoned"

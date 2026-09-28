@@ -91,6 +91,8 @@ def("raid_repelled",    { actor = "derived", icon = "people", headline = true, t
 def("cattle_raid",      { actor = "derived", icon = "deer", headline = true, text = "Herds driven off by raiders" })
 def("cattle_raid_repelled", { actor = "derived", icon = "people", text = "Cattle raiders chased off" })
 def("truce",            { actor = "derived", icon = "people", headline = true, text = "A feud ends in a truce" })
+def("grazing_dispute",  { actor = "derived", icon = "deer", text = "Neighbours quarrel over overgrazed pasture" })
+def("fishing_dispute",  { actor = "derived", icon = "fish", text = "Neighbours quarrel over fished-out grounds" })
 -- tribute and polities (W9, docs/world/18 §2.5)
 def("submission",       { actor = "derived", icon = "people", headline = true, text = "Submits and pays tribute" })
 def("secession",        { actor = "derived", icon = "people", headline = true, text = "Stops paying tribute" })

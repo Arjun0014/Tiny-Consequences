@@ -465,7 +465,7 @@ function M.execute(W, v, hours_day, wx)
         local dg = wood / cfg.brush_wu * 0.5
         if dg > gr * 0.1 then dg = gr * 0.1 end
         F.grass[c] = gr - dg
-        carbon.release(W, dg, "brush")
+        carbon.release_grass(W, dg, "brush")
         v.stock.wood = v.stock.wood + wood
         v.day_wood = (v.day_wood or 0) + wood
         acc(v, "brush", wood)
@@ -506,7 +506,7 @@ function M.execute(W, v, hours_day, wx)
         local dg = food / cfg.forage_fu
         if dg > gr * 0.1 then dg = gr * 0.1; food = dg * cfg.forage_fu end
         F.grass[c] = gr - dg
-        carbon.release(W, dg, "forage")
+        carbon.release_grass(W, dg, "forage")
         v.stock.fresh = v.stock.fresh + food
         v.day_fresh = (v.day_fresh or 0) + food
         acc(v, "forage", food)

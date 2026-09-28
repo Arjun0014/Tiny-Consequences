@@ -93,7 +93,7 @@ function M.weekly(W, v)
     end
   end
   -- beasts breathe out what they eat (the biosphere stays carbon-neutral, as with wild grazers)
-  require("sim.society.carbon").release(W, grazed, "grazing")
+  require("sim.society.carbon").release_grass(W, grazed, "grazing")
   -- guarded? the herders' hours this week against what the herd needs
   local need_h = se / cfg.herder_se * (v.plan and v.plan.hours or 9) * 6
   local guard = need_h > 0 and min(1, (v.herd_hours or 0) / need_h) or 1
@@ -101,6 +101,7 @@ function M.weekly(W, v)
   local wolves = F.predators[v.herd_cell or v.cell] or 0
   local room = target > 0 and se / target or 9      -- births stop at the herd the village wants
   local crowd = cap > 0 and se / cap or 9           -- hunger beyond what the pasture carries
+  v.herd_crowd = crowd                              -- (rivals for the pasture: conflict.rivals)
   local acc = v.acc
   for _, k in ipairs(M.KINDS) do
     local n = h[k] or 0
