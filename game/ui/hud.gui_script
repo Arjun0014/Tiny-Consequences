@@ -16,6 +16,7 @@ local powers = require("game.ui.powers")
 local C = ui.C
 local V3 = vmath.vector3
 local H_TOUCH = hash("touch")
+local H_WHEEL_UP, H_WHEEL_DOWN = hash("wheel_up"), hash("wheel_down")
 local REF_W, REF_H = 1280, 720
 
 local INS_W, INS_H = 330, 548
@@ -166,11 +167,17 @@ local function fill_inspector(self, data)
 	gui.set_color(self.ins_badge, tint)
 	gui.set_color(self.ins_icon, data.kind == "person" and C.text or C.white)
 	local items = data.items or {}
+	-- scrolling (mouse wheel over the panel): kept while the same subject is shown
+	local subject = tostring(data.kind) .. ":" .. tostring(data.title)
+	if subject ~= self.ins_subject then self.ins_subject, self.ins_scroll = subject, 0 end
+	local off = math.max(0, math.min(self.ins_scroll or 0, #items - ROWS))
+	self.ins_scroll = off
+	self.ins_count = #items
 	local shown = 0
 	for i = 1, ROWS do
 		local r = self.rows[i]
 		hide_row(r)
-		local it = items[i]
+		local it = items[i + off]
 		if it then
 			shown = i
 			if it.t == "head" then
@@ -222,8 +229,11 @@ local function fill_inspector(self, data)
 			end
 		end
 	end
-	local more = #items - shown
-	gui.set_text(self.ins_more, more > 0 and ("+" .. more .. " more") or "")
+	local more = #items - shown - off
+	local txt = more > 0 and ("+" .. more .. " more") or ""
+	if off > 0 then txt = off .. " above" .. (txt ~= "" and (" · " .. txt) or "") end
+	if more > 0 and off == 0 then txt = txt .. " (scroll)" end
+	gui.set_text(self.ins_more, txt)
 end
 
 local function set_collapsed(self, on)
@@ -486,7 +496,10 @@ function update(self, dt)
 			end
 		end
 		if data then fill_inspector(self, data) end
+	elseif self.ins_dirty and uistate.inspector_data then
+		fill_inspector(self, uistate.inspector_data)
 	end
+	self.ins_dirty = false
 	if uistate.inspector_collapsed ~= self.collapsed_applied then
 		self.collapsed_applied = uistate.inspector_collapsed
 		set_collapsed(self, uistate.inspector_collapsed)
@@ -577,6 +590,7 @@ end
 
 function on_input(self, action_id, action)
 	if action_id == nil then
+		self.px, self.py = action.x, action.y
 		local h = hit(self, action.x, action.y)
 		self.hover = (h ~= "panel") and h or nil
 		uistate.pointer_over_ui = h ~= nil
@@ -589,6 +603,15 @@ function on_input(self, action_id, action)
 			show_tip(self, nil)
 		end
 		return false
+	end
+	-- the wheel over the inspector scrolls it (and doesn't zoom the camera)
+	local wx, wy = action.x or self.px, action.y or self.py
+	if (action_id == H_WHEEL_UP or action_id == H_WHEEL_DOWN) and wx and gui.is_enabled(self.ins_root)
+		and not uistate.inspector_collapsed and gui.pick_node(self.ins_panel, wx, wy) then
+		local step = action_id == H_WHEEL_UP and -3 or 3
+		self.ins_scroll = math.max(0, math.min((self.ins_scroll or 0) + step, (self.ins_count or 0) - ROWS))
+		self.ins_dirty = true
+		return true
 	end
 	if action_id == H_TOUCH then
 		if action.pressed then

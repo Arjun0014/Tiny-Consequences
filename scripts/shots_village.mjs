@@ -83,6 +83,15 @@ try {
   }
   await cmd(page, { cmd: 'select', village: 'biggest' });
   await shoot(page, 'inspector_village');
+  // the rest of the village inspector: the mouse wheel over the panel scrolls it
+  const vp = page.viewportSize();
+  await page.mouse.move(vp.width - 170, vp.height / 2);
+  for (let k = 0; k < 4; k++) { await page.mouse.wheel(0, 120); await page.waitForTimeout(150); }
+  await page.waitForTimeout(600);
+  await shoot(page, 'inspector_village_2');
+  for (let k = 0; k < 6; k++) { await page.mouse.wheel(0, 120); await page.waitForTimeout(150); }
+  await page.waitForTimeout(600);
+  await shoot(page, 'inspector_village_3');
   await cmd(page, { cmd: 'select', person: 'worker' });
   await shoot(page, 'inspector_person');
   await cmd(page, { cmd: 'select', none: true });

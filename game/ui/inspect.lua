@@ -73,7 +73,7 @@ end
 
 -- Text rows are one line in the panel: long texts wrap onto following rows at word breaks
 -- (M.WRAP characters of the panel's body font; continuation rows carry no icon).
-M.WRAP = 44
+M.WRAP = 40
 local function add(items, t)
   if t.t == "text" and t.text and #t.text > M.WRAP then
     local line, first = "", true
@@ -162,8 +162,8 @@ function M.society_items(W, v, items)
   if ld and not ld.dead then
     local lin = ld.lin and L[ld.lin]
     local since = v.leader_since and year_of(v.leader_since)
-    add(items, { t = "row", icon = "star", label = "Leader", value = (ld.name or "?") .. (lin and (" of the " .. lin.name .. " line") or "")
-      .. (since and (", since " .. since) or ""), link = { kind = "person", id = ld.id } })
+    add(items, { t = "text", icon = "star", text = "Leader: " .. (ld.name or "?") .. (lin and (" of the " .. lin.name .. " line") or "")
+      .. (since and (", since " .. since) or "") })
     local tr = ld.traits and table.concat(ld.traits, ", ")
     if tr and tr ~= "" then add(items, { t = "text", icon = "bubble", text = "The leader is " .. tr }) end
   end
@@ -346,6 +346,14 @@ local function village_items(W, v, items)
   end
   -- society (W8-W10): leader, lineages, herd, crafts and trade, lord and tributaries, feuds
   M.society_items(W, v, items)
+  -- its chronicle: the last entries, oldest first
+  local ch = M.chronicle(W, v)
+  if #ch > 0 then
+    add(items, { t = "head", text = "Chronicle" })
+    local from = math.max(1, #ch - 5)
+    if from > 1 then add(items, { t = "text", text = string.format("… %d earlier entries", from - 1) }) end
+    for i = from, #ch do add(items, { t = "text", icon = "hourglass", text = "Year " .. ch[i].year .. ": " .. ch[i].text }) end
+  end
   if type(v.founded) == "number" then
     local parent = v.from and W.ent and W.ent.villages and W.ent.villages[v.from]
     add(items, { t = "row", icon = "hourglass", label = "Founded", value = cap(year_of(v.founded))
@@ -365,7 +373,7 @@ local function village_items(W, v, items)
   if #ev > 0 then
     add(items, { t = "head", text = "Recent events" })
     for _, e in ipairs(ev) do
-      add(items, { t = "row", icon = e.actor == "player" and "star" or "info", label = "Year " .. e.year, value = e.text })
+      add(items, { t = "text", icon = e.actor == "player" and "star" or "info", text = "Year " .. e.year .. ": " .. e.text })
     end
   end
   add(items, { t = "head", text = "Residents" })
@@ -518,6 +526,70 @@ function M.worries(W, v, p)
     if r then out[#out + 1] = "grief (" .. tostring(r.kind):gsub("_", " ") .. ")" end
   end
   if v.raided and W.hour - v.raided < 3 * 8064 then out[#out + 1] = "raiders" end
+  return out
+end
+
+-- The village's own history (D-062): founding, leaders, splits, raids given and suffered, feuds
+-- and truces, submission, famines and losses — from the event record, gathered incrementally
+-- (each inspector refresh reads only the events since the last).
+local CHRON = { W = nil, last = 0, by = {} }
+local CHRON_KINDS = { village_founded = true, village_split = true, raid = true, raid_repelled = true,
+  cattle_raid = true, cattle_raid_repelled = true, truce = true, submission = true, secession = true, famine = true,
+  shipment_lost = true, village_abandoned = true, bride = false }
+local function chron_add(vid, rec)
+  if not vid or vid == 0 then return end
+  local l = CHRON.by[vid]
+  if not l then l = {}; CHRON.by[vid] = l end
+  l[#l + 1] = rec
+end
+function M.chronicle(W, v)
+  local E = W.E
+  if not E or not E.order then return {} end
+  if CHRON.W ~= W then CHRON.W, CHRON.last, CHRON.by = W, 0, {} end
+  local order = E.order
+  for i = CHRON.last + 1, #order do
+    local r = E.rec[order[i]]
+    if r and CHRON_KINDS[r.kind] and type(r.data) == "table" then
+      local d = r.data
+      chron_add(d.village, r)
+      if d.from and d.from ~= d.village then chron_add(d.from, r) end
+      if d.lord then chron_add(d.lord, r) end
+      if d.other then chron_add(d.other, r) end
+    end
+  end
+  CHRON.last = #order
+  local vs = W.ent and W.ent.villages or {}
+  local P = W.ent and W.ent.people or {}
+  local function nm(id) local u = vs[id]; return u and u.name or "?" end
+  local out = {}
+  for _, r in ipairs(CHRON.by[v.id] or {}) do
+    local d, k = r.data, r.kind
+    local t
+    if k == "village_founded" and d.village == v.id then
+      t = d.settlers and "Founded by settlers from over the sea" or ("Founded by people from " .. nm(d.from))
+    elseif k == "village_founded" then t = "People from here founded " .. nm(d.village)
+    elseif k == "new_leader" then
+      local p = P[d.person]
+      t = (p and p.name or "Someone") .. " became the leader"
+    elseif k == "village_split" then t = "The " .. tostring(d.name or "?") .. " line left to found a village of their own"
+    elseif k == "raid" or k == "cattle_raid" then
+      local what = k == "raid" and "raided" or "had its herds driven off"
+      if d.village == v.id then t = string.format("%s by %s", cap(what), nm(d.from))
+      else t = string.format("Raided %s%s", nm(d.village), k == "cattle_raid" and " for cattle" or "") end
+      if (d.dead_defenders or 0) + (d.dead_raiders or 0) > 0 then t = t .. string.format(" (%d dead)", (d.dead_defenders or 0) + (d.dead_raiders or 0)) end
+    elseif k == "raid_repelled" or k == "cattle_raid_repelled" then
+      if d.village == v.id then t = "Beat off raiders from " .. nm(d.from) else t = "Raiders beaten off at " .. nm(d.village) end
+    elseif k == "truce" then t = "A truce with " .. nm(d.village == v.id and d.other or d.village) .. " after " .. tostring(d.raids or "many") .. " raids"
+    elseif k == "submission" then
+      if d.village == v.id then t = "Submitted to " .. nm(d.lord) .. " and pays tribute" else t = nm(d.village) .. " submitted and pays tribute" end
+    elseif k == "secession" then
+      if d.village == v.id then t = "Stopped paying tribute to " .. nm(d.lord) else t = nm(d.village) .. " stopped paying tribute" end
+    elseif k == "famine" then t = "Famine"
+    elseif k == "shipment_lost" then t = "A boat and its cargo lost at sea"
+    elseif k == "village_abandoned" then t = "Abandoned"
+    end
+    if t then out[#out + 1] = { year = floor((r.tick or 0) / 48), text = t } end
+  end
   return out
 end
 
