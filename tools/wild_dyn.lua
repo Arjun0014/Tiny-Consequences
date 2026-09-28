@@ -64,8 +64,29 @@ local mp, mg = {}, {}           -- monthly continental means (predators, grazers
 local yp, yg, ysnow = {}, {}, {}  -- yearly
 for k = 1, #conts do mp[k], mg[k], yp[k], yg[k], ysnow[k] = {}, {}, {}, {}, {} end
 local packs = {}                -- id -> { first year, yearly sizes }
+-- patches: ~20-cell Voronoi patches of land (synchrony against distance)
+local reg = {}
+local centres = {}
+do
+  local g = W.grid
+  for j = 1, #land, 20 do centres[#centres + 1] = land[j] end
+  for j = 1, #land do
+    local c = land[j]
+    local best, bd = 1, 1e9
+    for k = 1, #centres do
+      local x = centres[k]
+      if geo.continent[x] == geo.continent[c] then
+        local dx, dy, dz = g.X[c] - g.X[x], g.Y[c] - g.Y[x], g.Z[c] - g.Z[x]
+        local d = dx * dx + dy * dy + dz * dz
+        if d < bd then best, bd = k, d end
+      end
+    end
+    reg[c] = best
+  end
+end
+local regy = {}                 -- patch -> yearly mean predator density
 local A0 = W.S.wild
-local DBGK = { "pups", "pstarve", "pmort", "pother", "left", "live", "joined", "founded", "newpacks", "gonepacks", "born", "hstarve", "pred", "hunt" }
+local DBGK = { "lows", "lown", "conds", "lowbad", "pups", "pstarve", "pmort", "pother", "left", "live", "joined", "founded", "newpacks", "gonepacks", "born", "hstarve", "pred", "hunt" }
 local function dbg_reset() local d = {}; for _, k in ipairs(DBGK) do d[k] = 0 end; W.scratch.wl_dbg = d end
 if A0 and groups > 0 then dbg_reset() end
 local cellts = {}               -- field model: yearly predator density of every land cell
@@ -127,6 +148,17 @@ for y = 1, years do
   for k = 1, #conts do
     yp[k][y] = accp[k] / nacc[k]; yg[k][y] = accg[k] / nacc[k]; ysnow[k][y] = accs[k] / nacc[k]
   end
+  do
+    local rs, rn = {}, {}
+    for j = 1, #land do
+      local c = land[j]
+      local r = reg[c]
+      rs[r] = (rs[r] or 0) + W.F.predators[c]; rn[r] = (rn[r] or 0) + 1
+    end
+    for r, v in pairs(rs) do
+      if rn[r] >= 5 then regy[r] = regy[r] or {}; regy[r][y] = v / rn[r] end
+    end
+  end
   for id, v in pairs(packacc) do
     local r = packs[id]
     if not r then r = { first = y, s = {} }; packs[id] = r end
@@ -143,7 +175,8 @@ for y = 1, years do
     if d then
       print(string.format("       wolves: +%.0f pups, -%.0f starved, -%.0f old age, -%.0f fire/cull; %.0f left, %.0f lived, %.0f joined, %.0f founded %d packs; %d packs gone",
         d.pups, d.pstarve, d.pmort, d.pother, d.left, d.live, d.joined, d.founded, d.newpacks, d.gonepacks))
-      print(string.format("       grazers: +%.0f born, -%.0f starved/old, -%.0f preyed, -%.0f hunted", d.born, d.hstarve, d.pred, d.hunt))
+      print(string.format("       grazers: +%.0f born, -%.0f starved/old, -%.0f preyed, -%.0f hunted; at fawning: winter low %.2f, condition %.2f, low < 0.4 %.0f%%",
+        d.born, d.hstarve, d.pred, d.hunt, (d.lows or 0) / math.max(d.lown or 1, 1), (d.conds or 0) / math.max(d.lown or 1, 1), 100 * (d.lowbad or 0) / math.max(d.lown or 1, 1)))
       dbg_reset()
     end
   end
@@ -198,6 +231,32 @@ for a = 1, #ids do
       if r then cc = cc + r; m = m + 1 end
     end
   end
+end
+-- spatial synchrony: correlation of patches' yearly predator densities by distance (same continent)
+do
+  local g = W.grid
+  local ids = {}
+  for r in pairs(regy) do ids[#ids + 1] = r end
+  table.sort(ids)
+  local bins = { { 0.25, 0, 0 }, { 0.5, 0, 0 }, { 0.8, 0, 0 }, { 9, 0, 0 } }
+  for a = 1, #ids do
+    for b = a + 1, #ids do
+      local ca, cb = centres[ids[a]], centres[ids[b]]
+      if geo.continent[ca] == geo.continent[cb] then
+        local xa, xb = {}, {}
+        for y = 5, years do if regy[ids[a]][y] and regy[ids[b]][y] then xa[#xa + 1] = regy[ids[a]][y]; xb[#xb + 1] = regy[ids[b]][y] end end
+        local r = corr(xa, xb)
+        if r then
+          local dx, dy, dz = g.X[ca] - g.X[cb], g.Y[ca] - g.Y[cb], g.Z[ca] - g.Z[cb]
+          local d = math.sqrt(dx * dx + dy * dy + dz * dz)
+          for k = 1, #bins do if d < bins[k][1] then bins[k][2] = bins[k][2] + r; bins[k][3] = bins[k][3] + 1; break end end
+        end
+      end
+    end
+  end
+  local parts = {}
+  for k = 1, #bins do parts[#parts + 1] = string.format("<%.2f: %s (%d)", bins[k][1], bins[k][3] > 0 and string.format("%.2f", bins[k][2] / bins[k][3]) or "-", bins[k][3]) end
+  print("  synchrony of patch predators by distance: " .. table.concat(parts, "  "))
 end
 print(string.format("  %s living 15+ years: %d, mean CV of yearly size %.3f, mean pairwise correlation %.3f (%d pairs)",
   A0 and "packs" or "cells", n, n > 0 and cs / n or 0, m > 0 and cc / m or 0, m))

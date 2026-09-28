@@ -229,6 +229,10 @@ end
 -- Local booms (D-025): a connected patch of land where a species exceeds boom_local × its own
 -- 5-year normal (fauna's per-cell normals) — the boom can be real on part of a landmass while
 -- hunting elsewhere holds the regional average down. Shares the regional state/cooldown.
+-- Density and normal are both taken over the cell and its ring (D-071): the animals live in
+-- herds and packs that move, and a herd walking onto new ground is not a boom — its numbers
+-- growing is. A natural local boom is news at most once per news_years in its region, like a
+-- regional one.
 local function local_boom(W, cfg, sp, record)
   local FS = W.S.fauna
   if not FS or not record then return end
@@ -245,14 +249,25 @@ local function local_boom(W, cfg, sp, record)
   local reg = W.static.region
   local sc = W.scratch
   local mark, q = sc.det_mark, sc.det_q
+  local sv_, sn_ = sc.det_sv, sc.det_sn
+  if not sv_ then sv_, sn_ = {}, {}; sc.det_sv, sc.det_sn = sv_, sn_ end
   local stamp = sc.det_stamp + 1
   sc.det_stamp = stamp
   local tick = W.tick
   local land = W.geo.land_cells
+  -- the neighbourhood sums (cell + ring) of density and normal
+  for i = 1, #land do
+    local c = land[i]
+    local v, nn = vals[c], norm[c]
+    local b = c * 6 - 6
+    for k = 1, cnt[c] do local j = nbr[b + k]; v = v + vals[j]; nn = nn + norm[j] end
+    sv_[c], sn_[c] = v, nn
+  end
+  local fresh = cfg.news_years * 48
   for i = 1, #land do
     local src = land[i]
     local r = reg[src]
-    if mark[src] ~= stamp and norm[src] > minn and vals[src] > thr * norm[src]
+    if mark[src] ~= stamp and norm[src] > minn and sv_[src] > thr * sn_[src]
       and D.state[r] == 0 and tick - D.last[r] >= cfg.cooldown then
       mark[src] = stamp
       local m, head = 1, 1
@@ -262,7 +277,7 @@ local function local_boom(W, cfg, sp, record)
         local b = c * 6 - 6
         for k = 1, cnt[c] do
           local j = nbr[b + k]
-          if mark[j] ~= stamp and reg[j] == r and norm[j] > minn and vals[j] > thr * norm[j] then
+          if mark[j] ~= stamp and reg[j] == r and norm[j] > minn and sv_[j] and sv_[j] > thr * sn_[j] then
             mark[j] = stamp; m = m + 1; q[m] = j
           end
         end
@@ -273,16 +288,21 @@ local function local_boom(W, cfg, sp, record)
         local sv, sn = 0, 0
         for k = 1, m do sv = sv + vals[q[k]]; sn = sn + norm[q[k]] end
         local ratio = sn > 0 and sv / sn or 0
-        local rec = W.names.regions[r]
+        local opts = { region = r }
+        -- (nature's rhythm — a boom rooted in no one's hand, however many booms back — is news
+        -- once per news_years here; the player's consequences always are)
+        local natural = not events.is_player_rooted(W, parent)
+        if natural and tick - D.news[r] < fresh then opts.headline = false end
         local id = events.emit(W, "population_boom", src, parent, ratio,
-          { species = sp, ratio = ratio, cells = m, ["local"] = true }, { region = r })
+          { species = sp, ratio = ratio, cells = m, ["local"] = true }, opts)
         if id ~= 0 then
+          local er = W.E.rec[id]
+          if er and er.headline and natural then D.news[r] = tick end
           for k = 1, m do
             local c = q[k]
             if tags[c] == parent then tags[c] = id; idle[c] = 0 end
           end
         end
-        if rec then rec = nil end
       end
     end
   end
@@ -385,13 +405,14 @@ local function fauna_species(W, cfg, sp, record)
                 if best ~= 0 and bw >= 0.15 * tot then opts.co = best end
               end
             end
-            if parent == 0 and tick - news[r] < fresh then opts.headline = false end
+            local natural = not events.is_player_rooted(W, parent)
+            if natural and tick - news[r] < fresh then opts.headline = false end
             local rec = W.names.regions[r]
             local id = events.emit(W, kind, rec and rec.centre or 0, parent, ratio, { species = sp, ratio = ratio }, opts)
             if id ~= 0 then retag_species(W, cells, m, sp, parent, id, nst, cfg) end
             evs[r] = id
             local er = E.rec[id]
-            if er and er.headline and parent == 0 then news[r] = tick end
+            if er and er.headline and natural then news[r] = tick end
           end
         elseif kind and record then
           -- (in a natural event's cooldown: the player's hand is still news)
@@ -414,9 +435,10 @@ local function fauna_species(W, cfg, sp, record)
         if rec and ((st == -1 and ratio < rec.mag) or (st == 1 and ratio > rec.mag)) then
           rec.mag = ratio
           if type(rec.data) == "table" then rec.data.ratio = ratio end
-          if not rec.headline and (rec.parent ~= 0 or tick - news[r] >= fresh) then
+          local natural = not events.is_player_rooted(W, rec.parent)
+          if not rec.headline and (not natural or tick - news[r] >= fresh) then
             events.update_headline(W, rec)
-            if rec.headline and rec.parent == 0 then news[r] = tick end
+            if rec.headline and natural then news[r] = tick end
           end
         end
       end

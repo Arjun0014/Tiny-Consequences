@@ -237,7 +237,7 @@ C.WILD = {
   cond0 = 0.6,                            -- body condition (fat reserves 0..1) of a new group
   -- herds (D-071): forage per head = min(i_max, food / (phi H + psi)) - snow_cost x snow; 1 holds condition
   phi = 0.6, psi = 0.02, i_max = 1.5,     --   (1 where the herds reach what the grass carries, K_eff)
-  snow_cost = 0.6,                        --   wading through deep snow costs this much forage
+  snow_cost = 0.8,                        --   wading through deep snow costs this much forage
   h_gain = 0.2,                           -- condition per month per unit of forage above / below 1
   fawns = 1.4, fawn_cond = { 0.2, 0.7 },  -- fawns per head a year, by the herd's condition in the late spring (ramp)
   fawn_week = 16,                         -- local week of the fawning (one monthly update)
@@ -247,6 +247,7 @@ C.WILD = {
   snow_kill = 1.5, weak_kill = 0.75,      --   (wolves kill 2-3x as often in deep snow and take the weak)
   -- packs: kills per wolf against need (FAUNA m_pred / e_pred); one litter a year
   p_gain = 0.15, p_food_max = 2,          -- condition per month per unit of kills above / below need (capped)
+  pack_exp = 0.6, pack_ref = 5,           -- a pack's kills grow with (size / 5) ^ 0.6: bigger packs eat less a head (Schmidt & Mech 1997)
   small_game = 1.2,                       -- a territory's small game and carrion feed this many wolves (/ pack size)
   litter = 5, litter_cond = { 0.25, 0.75 },  -- pups a year from a pack with a breeding pair, by its condition (ramp)
   pup_week = 12,                          -- local week of the whelping
@@ -260,7 +261,8 @@ C.WILD = {
   rival_fear = 20,                        -- a site's appeal / (1 + this x (packs there: 2 P + 1 at a den))
   pack_min_prey = 0.3,                    -- prey about a site (2 x its density + its first ring) a disperser needs
   mate_pull = 3, adopt = 0.3,
-  mate_reach = 8,                         -- steps a lone wolf roams for a mate             -- a lone wolf (no kin) draws a disperser this x its prey; a pack with room this x
+  mate_reach = 8,                         -- steps a lone wolf roams for a mate
+  kin_wait_years = 1,                     -- a lone wolf that found no unrelated mate in this long pairs with kin             -- a lone wolf (no kin) draws a disperser this x its prey; a pack with room this x
   grazers = {                             -- herd sizes: past max a herd splits; below min it joins its kind
     { name = "deer", max = 60, min = 4 },
     { name = "reindeer", max = 150, min = 8 },

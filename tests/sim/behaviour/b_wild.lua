@@ -129,41 +129,41 @@ end
 
 function M.b20_lone_wolves_roam_for_a_mate_but_not_a_sibling()
   local W = worlds.fresh(1)
-  local A = W.S.wild
-  -- two cells two steps apart on land, far from other packs is not needed: lone wolves pair anywhere
-  local g = W.grid
-  local land = W.geo.land_cells
+  -- two land cells two steps apart where the same kind of predator lives
   local c1, c2
-  for _, c in ipairs(land) do
-    local r2 = fauna.ring2(W, c)
-    for _, j in ipairs(r2) do
+  for _, c in ipairs(W.geo.land_cells) do
+    for _, j in ipairs(fauna.ring2(W, c)) do
       if W.geo.ocean[j] == 0 and W.geo.continent[j] == W.geo.continent[c]
         and fauna.predator_species(W, j) == fauna.predator_species(W, c) then c1, c2 = c, j; break end
     end
     if c1 then break end
   end
   T.ok(c1 and c2, "two land cells")
-  local function lone_pair(kin1, kin2)
+  -- two lone wolves of the given natal packs, `alone` years on their ground; the pairing step alone
+  local function lone_pair(kin1, kin2, alone)
     local W2 = worlds.fresh(1)
     local A2 = W2.S.wild
-    -- (no other lone wolf anywhere: every lone wolf already found has a mate)
-    for i = 1, A2.np do if A2.p_n[i] == 1 then A2.p_n[i] = 2 end end
+    for i = 1, A2.np do if A2.p_n[i] == 1 then A2.p_n[i] = 2 end end   -- (no other lone wolf)
     fauna.spawn(W2, c1, "predators", 1, 0)
     local i1 = A2.np
     fauna.spawn(W2, c2, "predators", 1, 0)
     local i2 = A2.np
     A2.p_kin[i1], A2.p_kin[i2] = kin1, kin2
+    A2.p_moved[i1] = W2.hour - alone * 8064
+    A2.p_moved[i2] = W2.hour - alone * 8064
     local id1, id2 = A2.p_id[i1], A2.p_id[i2]
-    world.run_ticks(W2, 4)
+    fauna.pair_lone(W2, A2, cfgmod.WILD)
     local _, q1 = fauna.find(W2, id1)
     local _, q2 = fauna.find(W2, id2)
     return (q1 and A2.p_n[q1] or 0), (q2 and A2.p_n[q2] or 0)
   end
-  local a1, a2 = lone_pair(0, 0)
-  T.ok((a1 >= 2 and a2 == 0) or (a2 >= 2 and a1 == 0), string.format("strangers pair up: %d + %d", a1, a2))
-  local s1, s2 = lone_pair(777, 777)
+  local a1, a2 = lone_pair(0, 0, 0)
+  T.ok((a1 == 2 and a2 == 0) or (a2 == 2 and a1 == 0), string.format("strangers pair up: %d + %d", a1, a2))
+  local s1, s2 = lone_pair(777, 777, 0.2)
   T.ok(s1 == 1 and s2 == 1, string.format("siblings do not: %d + %d", s1, s2))
-  return string.format("strangers %d+%d, siblings %d+%d", a1, a2, s1, s2)
+  local k1, k2 = lone_pair(777, 777, 1.5)
+  T.ok((k1 == 2 and k2 == 0) or (k2 == 2 and k1 == 0), string.format("after a year alone with no other mate, siblings pair: %d + %d", k1, k2))
+  return string.format("strangers %d+%d, siblings %d+%d, siblings after a year alone %d+%d", a1, a2, s1, s2, k1, k2)
 end
 
 return M
