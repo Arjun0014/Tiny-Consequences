@@ -58,7 +58,7 @@ function M.pick(W, sx, sy)
     best = consider(best, "ship", { kind = "ship", index = s.index, list = s.list, ship_kind = s.kind }, s.x, s.y, s.z, sx, sy, radius)
   end
   for _, a in ipairs(puppets.animal_pos) do
-    best = consider(best, "animal", { kind = "animal", species = a.kind, cell = a.cell }, a.x, a.y, a.z, sx, sy, radius)
+    best = consider(best, "animal", { kind = "animal", species = a.kind, cell = a.cell, group = a.group }, a.x, a.y, a.z, sx, sy, radius)
   end
   for i, v in ipairs(ents.volcanoes(W)) do
     if type(v) == "table" and type(v.cell) == "number" then

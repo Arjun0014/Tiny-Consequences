@@ -87,7 +87,11 @@ function M.plan(W, v, h0, ws, we, weather)
       if planned < goal then
         for k = 1, #crew do
           local p = P[crew[k]]
-          if p and not p.dead then fit = fit + (0.35 + 0.65 * p.nutrition) * min(1, p.health / 40) * skills.factor(p, "fish") end
+          if p and not p.dead then
+            local sk = p.sk
+            fit = fit + (0.35 + 0.65 * p.nutrition) * min(1, p.health / 40)
+              * (cfg.skill_lo + (cfg.skill_hi - cfg.skill_lo) * ((sk and sk.fish) or 0))
+          end
         end
       end
       local iced = F.ice[b.home] >= 0.5
@@ -140,7 +144,11 @@ function M.settle(W, v)
   local landed = 0
   local tag, tag_n = 0, 0
   -- one hash per village-day; each boat's squall roll is a fixed offset from it (Weyl, D-021)
-  local u0 = rng.float(W.seed, rng.S.BOAT, v.key_cell, floor(W.hour / 24), 1)
+  -- (one full hash per day for the planet, a mixing round per village)
+  local day = floor(W.hour / 24)
+  local sc = W.scratch
+  if sc.boat_day ~= day then sc.boat_day, sc.boat_base = day, rng.hash(W.seed, rng.S.BOAT, day, 0, 1) end
+  local u0 = rng.fbase(sc.boat_base, v.key_cell)
   -- backwards: a lost boat leaves the list
   for i = #v.boats, 1, -1 do
     local b = B[v.boats[i]]

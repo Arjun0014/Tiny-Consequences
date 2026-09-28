@@ -43,6 +43,7 @@ function M.set_occupation(W, v, p)
 end
 
 -- Weekly body and demography for every member of village v.
+local CROWDED = {}   -- scratch: household id -> crowded this week
 function M.weekly(W, v)
   local cfg = cfgmod.SOCIETY
   local E = W.ent
@@ -68,68 +69,86 @@ function M.weekly(W, v)
   local total = W.S.society.pop or 0
   local gcap = 1 - max(0, total - cfg.soft_cap * 0.8) / (cfg.soft_cap * 0.2)
   if gcap < 0 then gcap = 0 end
+  -- (the body's constants as locals: this is the weekly pass over every person)
+  local nrate, eage, vmult = cfg.nutrition_rate, cfg.elder_age, cfg.vulnerable_mult
+  local fed_n, starve_n, hhealth, hregen = cfg.fed_n, cfg.starve_n, cfg.hunger_health, cfg.health_regen
+  local cold_t, cold_h = cfg.cold_temp, cfg.cold_health
+  local m_inf, m_child, m_youth, m_adult = cfg.mort_infant, cfg.mort_child, cfg.mort_youth, cfg.mort_adult
+  local m_old, m_old_age, m_old_scale = cfg.mort_old, cfg.mort_old_age, cfg.mort_old_scale
+  local malmult, crowdh, frail_h, frail_z, starve_z = cfg.malnutrition_mult, cfg.crowd_hazard, cfg.frail_health,
+    cfg.frail_hazard, cfg.starve_hazard
+  local adult_age = cfg.adult_age
+  local CROWD = CROWDED
+  for k in pairs(CROWD) do CROWD[k] = nil end
   for i = 1, #m do
     local p = P[m[i]]
     local a = age_of(p, hour)
     -- coming of age, retirement
-    if p.job == "child" and a >= cfg.adult_age then M.set_occupation(W, v, p)
-    elseif p.job ~= "elder" and p.job ~= "child" and a >= cfg.elder_age then p.job = "elder" end
+    if p.job == "child" and a >= adult_age then M.set_occupation(W, v, p)
+    elseif p.job ~= "elder" and p.job ~= "child" and a >= eage then p.job = "elder" end
     -- nutrition and health
-    local n = p.nutrition + (ration - p.nutrition) * cfg.nutrition_rate
+    local n = p.nutrition + (ration - p.nutrition) * nrate
     p.nutrition = n
-    local vul = (a < 5 or a >= cfg.elder_age) and cfg.vulnerable_mult or 1
+    local vul = (a < 5 or a >= eage) and vmult or 1
     -- health follows what the diet can sustain: a thin diet wears people down to a weakened
     -- steady state (not to death); only a diet far below need makes them frail
     local hp = p.health
     local target = 100
-    if n < cfg.fed_n then
-      target = (n - cfg.starve_n + 0.05) / (cfg.fed_n - cfg.starve_n + 0.05) * 100
+    if n < fed_n then
+      target = (n - starve_n + 0.05) / (fed_n - starve_n + 0.05) * 100
       if vul > 1 then target = target - 15 end
       if target < 0 then target = 0 end
     end
     if hp > target then
-      hp = hp - cfg.hunger_health * vul
+      hp = hp - hhealth * vul
       if hp < target then hp = target end
     elseif hp < target then
-      hp = hp + cfg.health_regen
+      hp = hp + hregen
       if hp > target then hp = target end
     end
-    if cold > 0 and Tw < cfg.cold_temp then hp = hp - (cfg.cold_temp - Tw) * cfg.cold_health * vul * cold / 7 end
+    if cold > 0 and Tw < cold_t then hp = hp - (cold_t - Tw) * cold_h * vul * cold / 7 end
     -- outdoors in the cold without enough cloth, even with a fire at home
-    if expo > 0 and Tw < cfg.cold_temp then hp = hp - (cfg.cold_temp - Tw) * expo * vul end
+    if expo > 0 and Tw < cold_t then hp = hp - (cold_t - Tw) * expo * vul end
     if hp > 100 then hp = 100 elseif hp < 0 then hp = 0 end
     p.health = hp
     -- mortality
     local base
-    if a < 1 then base = cfg.mort_infant elseif a < 5 then base = cfg.mort_child
-    elseif a < 15 then base = cfg.mort_youth else base = cfg.mort_adult end
-    if a > cfg.mort_old_age then base = base + cfg.mort_old * exp((a - cfg.mort_old_age) / cfg.mort_old_scale) end
+    if a < 1 then base = m_inf elseif a < 5 then base = m_child
+    elseif a < 15 then base = m_youth else base = m_adult end
+    if a > m_old_age then base = base + m_old * exp((a - m_old_age) / m_old_scale) end
     -- the malnourished catch what the fed shake off (famine kills mostly through disease)
-    local mal = n < cfg.fed_n and 1 + cfg.malnutrition_mult * (cfg.fed_n - n) / cfg.fed_n or 1
+    local mal = n < fed_n and 1 + malmult * (fed_n - n) / fed_n or 1
     local hz = base * mal / 48
     local h = H[p.household]
     local home = h and B[h.home]
-    local crowded = (not home or home.state ~= "standing") or (h and #h.members > ents.capacity_of(home))
-    if crowded then hz = hz * cfg.crowd_hazard end
+    -- (a household's crowding, reckoned once for all its members)
+    local hk = p.household or 0
+    local crowded = CROWD[hk]
+    if crowded == nil then
+      crowded = (not home or home.state ~= "standing") or (h and #h.members > ents.capacity_of(home)) or false
+      CROWD[hk] = crowded
+    end
+    if crowded then hz = hz * crowdh end
     local cause, tag = "age", 0
     if mal > 2 then cause, tag = "hunger", v.foodtag[1] ~= 0 and v.foodtag[1] or v.cause end
-    if hp < cfg.frail_health then
-      local ph = (cfg.frail_health - hp) * cfg.frail_hazard * vul
+    if hp < frail_h then
+      local ph = (frail_h - hp) * frail_z * vul
       if ph > hz then
-        if n < cfg.fed_n then cause, tag = "hunger", v.foodtag[1] ~= 0 and v.foodtag[1] or v.cause
+        if n < fed_n then cause, tag = "hunger", v.foodtag[1] ~= 0 and v.foodtag[1] or v.cause
         else cause, tag = "cold", v.foodtag[3] end
       end
       hz = hz + ph
     end
     -- starvation: a body without food for weeks does not linger for months
-    if n < cfg.starve_n then
-      local sh = (cfg.starve_n - n) * cfg.starve_hazard
+    if n < starve_n then
+      local sh = (starve_n - n) * starve_z
       if sh > hz * 0.5 then cause, tag = "hunger", v.foodtag[1] ~= 0 and v.foodtag[1] or v.cause end
       hz = hz + sh
     end
     hsum = hsum + hz
     if (ud + p.u) % 1 < hz then
       ents.kill(W, p, cause, tag)
+      CROWD[hk] = nil   -- (the household changed: its crowding is reckoned again)
       dead_any = true
       if cause ~= "age" then
         nonage = nonage + 1

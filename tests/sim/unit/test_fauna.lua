@@ -1,4 +1,5 @@
--- Land animals (sim/systems/fauna.lua): conservation, no spawning, release blame.
+-- Land animals (sim/systems/fauna.lua, herds and packs since D-070): conservation, no spawning,
+-- release blame.
 local T = require("tests.sim.lib")
 local scen = require("tests.sim.scenarios.lib")
 local world = require("sim.world")
@@ -6,21 +7,41 @@ local fauna = require("sim.systems.fauna")
 local cfgmod = require("sim.config")
 local M = {}
 
-local function total(W, arr)
-  local s = 0
-  for c = 1, W.n do s = s + arr[c] end
-  return s
-end
-
-function M.migration_conserves_animals()
+-- Herds and packs (W4, D-070): with births, deaths and predation switched off, moving, migrating,
+-- splitting and joining neither make nor lose animals, and the herds do move.
+function M.groups_move_and_conserve_animals()
   local W = scen.fresh_world(1)
-  for _, grazer in ipairs({ true, false }) do
-    local arr = grazer and W.F.grazers or W.F.predators
-    local before = total(W, arr)
-    fauna.migrate(W, cfgmod.FAUNA, grazer, 0.08)
-    local after = total(W, arr)
-    T.near(after, before, 1e-6 * before + 1e-9, grazer and "grazers conserved" or "predators conserved")
-  end
+  local F = cfgmod.FAUNA
+  local Wc = cfgmod.WILD
+  local keep = { F.r_grazer, F.a_pred, F.e_pred, F.m_pred, F.fire_mort, Wc.hunt_rate, F.starve_max }
+  F.r_grazer, F.a_pred, F.e_pred, F.m_pred, F.fire_mort, Wc.hunt_rate, F.starve_max = 0, 0, 0, 0, 0, 0, 0
+  local ok, err = pcall(function()
+    local A = W.S.wild
+    local function sums()
+      local h, p = 0, 0
+      for i = 1, A.nh do h = h + A.h_n[i] end
+      for i = 1, A.np do p = p + A.p_n[i] end
+      return h, p
+    end
+    local h0, p0 = sums()
+    local cells0 = {}
+    for i = 1, A.nh do cells0[A.h_id[i]] = A.h_cell[i] end
+    T.ok(A.nh > 20 and A.np > 3, "herds and packs from worldgen")
+    world.run_ticks(W, 48 * 2)
+    local h1, p1 = sums()
+    T.near(h1, h0, 1e-6 * h0 + 0.5 * 3, "grazers conserved")
+    T.near(p1, p0, 1e-6 * p0 + 0.5 * 3, "predators conserved")
+    local moved = 0
+    for i = 1, A.nh do
+      local c0 = cells0[A.h_id[i]]
+      if c0 and c0 ~= A.h_cell[i] then moved = moved + 1 end
+    end
+    T.ok(moved > 0, "herds moved")
+    return string.format("%d herds (%.0f animals), %d packs (%.0f): %d herds moved in two years", A.nh, h1, A.np, p1, moved)
+  end)
+  F.r_grazer, F.a_pred, F.e_pred, F.m_pred, F.fire_mort, Wc.hunt_rate, F.starve_max = keep[1], keep[2], keep[3], keep[4], keep[5], keep[6], keep[7]
+  if not ok then error(err, 0) end
+  return err
 end
 
 function M.nothing_spawns_on_empty_islands()

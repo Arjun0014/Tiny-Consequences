@@ -42,17 +42,8 @@ function hooks.remove_predators(W, p)
   local cells = cells_of(W, p)
   local frac = p.fraction or 1
   local id = root(W, "remove_predators", cells, #cells, { fraction = frac })
-  local pd = W.F.predators
-  local cp, ip = W.C.predators, W.I.predators
-  for i = 1, #cells do
-    local c = cells[i]
-    if pd[c] > 0 then
-      local v = pd[c] * (1 - frac)
-      if v < 1e-5 then v = 0 end
-      pd[c] = v
-    end
-    blame.set(cp, ip, c, id)
-  end
+  -- (the packs on these cells: W4)
+  require("sim.systems.fauna").kill_in(W, cells, "predators", frac, id)
   return id
 end
 
@@ -76,17 +67,11 @@ function hooks.add_grazers(W, p)
   local cells = cells_of(W, p)
   local amount = p.amount or 0.5
   local id = root(W, "add_grazers", cells, amount * #cells)
-  local gz = W.F.grazers
-  local cg, ig = W.C.grazers, W.I.grazers
-  local ocean = W.geo.ocean
+  -- (a herd per cell: W4)
+  local wildlife = require("sim.systems.fauna")
+  local per = require("sim.config").WILD.gpc
   for i = 1, #cells do
-    local c = cells[i]
-    if ocean[c] == 0 then
-      local v = gz[c] + amount
-      if v > 1 then v = 1 end
-      gz[c] = v
-      blame.set(cg, ig, c, id)
-    end
+    if W.geo.ocean[cells[i]] == 0 then wildlife.spawn(W, cells[i], "grazers", amount * per, id) end
   end
   return id
 end

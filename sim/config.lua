@@ -225,6 +225,41 @@ C.FAUNA = {
   init_grazers = 0.3, init_predators = 0.013,
 }
 
+-- Wild herds and packs as entities (docs/world/14_ECOLOGY.md §3, sim/systems/fauna.lua, D-070). The per-cell
+-- ecology is FAUNA's (above); these are the groups': sizes, ranges, movement, migration, hunting.
+C.WILD = {
+  every = 4,                              -- herds and packs update every N ticks (dt = N: the old local step's stride)
+  look_every = 2,                         -- a settled herd reconsiders its range every this many updates
+  gpc = 100, ppc = 25,                    -- animals per unit of the grazers / predators field (at the old equilibrium
+                                          --   ~13 deer and ~1 wolf per cell; a wolf takes ~15-20 deer a year)
+  herd_w0 = 0.4,                          -- a herd's time on its centre cell (the rest on the cells about it)
+  pack_w = { 0.25, 0.4, 0.35 },           -- a pack's time at its den, on the first ring, on the second
+  birth_season = { 2.0, 1.3, 0.5, 0.2 },  -- births by local season, spring .. winter (mean 1: the year's r)
+  grazers = {                             -- herd sizes: past max a herd splits; below min it joins its kind
+    { name = "deer", max = 60, min = 4 },
+    { name = "reindeer", max = 150, min = 8 },
+    { name = "antelope", max = 100, min = 6 },
+    { name = "boar", max = 20, min = 3 },
+  },
+  predators = { { name = "wolf", max = 12, min = 2 }, { name = "cat", max = 10, min = 2 } },
+  migrates = { false, true, true, false },   -- reindeer and antelope walk between summer and winter ranges
+  migrate_weeks = { 30, 6 },              -- local weeks: to the winter range from week 30, back from week 6
+  migrate_reach = 4,                      -- a winter range lies at most this many steps from the summer one
+  move_gain = 1.2,                        -- a herd moves when a neighbouring cell is this much better
+  crowd = 3,                              -- other herds lower a cell's appeal: / (1 + crowd x their density)
+  fields_fear = 0.5,                      -- fields are half as inviting (people about by day)
+  split_share = 0.4,                      -- share of a herd that leaves when it splits
+  disperse_sat = 1.1,                     -- a herd whose range holds this x what its grass carries sends a part away
+  browse_crowd = 2.0,                     -- herds crowded past their grass browse the trees up to this x as hard
+  gone = 0.5,                             -- a group below this many animals is gone
+  pack_hungry = 0.4,                      -- prey about the den (2 x den + first ring, density) below which a pack moves
+  pack_min_prey = 0.03,                   -- a dispersing pair needs this prey density at its new den
+  disperse_min = 6,                       -- a pack this big sends a young pair away each spring
+  seed_herd = 36, seed_pack = 7,          -- group sizes gathered from the fields at worldgen
+  hunt_rate = 0.04, hunt_max = 0.05,      -- hunters: animals per effective hour (x density/(density + 0.15)); at most
+  meat = 40,                              --   this share of a herd a day; FU of meat per animal
+}
+
 -- Villages (§5.10) ------------------------------------------------------------------------------------------------
 -- Food is counted in person-months (an adult eats 1 per month, a child 0.6).
 C.VILLAGE = {

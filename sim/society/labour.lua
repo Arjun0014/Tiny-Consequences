@@ -29,6 +29,7 @@ local crafts = require("sim.society.crafts")
 local herds = require("sim.society.herds")
 local skills = require("sim.society.skills")
 local carbon = require("sim.society.carbon")
+local wildlife = require("sim.systems.fauna")
 local FARM = { harvest = true, sow = true, tend = true, clear = true, care = true }
 local CRAFT = { craft_tools = "tools", craft_pots = "pots", craft_cloth = "cloth" }
 local LIGHT = { harvest = true, tend = true, fuel = true, sow = true, brush = true, forage = true, care = true, herd = true }   -- children plant and mind the flocks, elders glean
@@ -197,17 +198,21 @@ local function by_site(a, b)
 end
 
 -- Person p (capacity c) takes demand d for the week.
+local SKCAT = skills.CAT
 local function take(Bo, p, c, d, week_h)
-  p.task, p.site = d.kind, d.target
-  -- (what their hours achieve at this work: their skill, D-063)
-  c = c * skills.factor(p, d.kind)
+  local kind = d.kind
+  p.task, p.site = kind, d.target
+  -- (what their hours achieve at this work: their skill, D-063 — skills.factor inline)
+  local cfg = cfgmod.SOCIETY
+  local cat, sk = SKCAT[kind], p.sk
+  c = c * (cfg.skill_lo + (cfg.skill_hi - cfg.skill_lo) * ((cat and sk and sk[cat]) or 0))
   d.got = d.got + c * week_h
   d.n = d.n + 1
   d.cap = d.cap + c
-  if d.kind == "fish" then
+  if kind == "fish" then
     local bo = Bo[d.target]
     if bo then bo.crew[#bo.crew + 1] = p.id end
-  elseif FARM[d.kind] then
+  elseif FARM[kind] then
     local n = d.nwho + 1
     d.nwho = n
     local who, wc = d.who, d.whocap
@@ -323,13 +328,27 @@ function M.assign(W, v, hours_day)
   -- the able: people and their capacity (scratch arrays by position, no per-call allocation)
   local nf = 0
   local mem = v.members
+  -- (capacity() inline: the week's per-person pass is the society's hottest loop)
+  local lwa, fra, ada, ela = cfg.light_work_age, cfg.frail_age, cfg.adult_age, cfg.elder_age
+  local due = 30 * 24
   for i = 1, #mem do
     local p = P[mem[i]]
     p.task, p.site = "", 0
-    local c, light = capacity(W, p, hour)
-    if c > 0 then
-      nf = nf + 1
-      FREE[nf], FCAP[nf], FLIGHT[nf] = p, c, light
+    if p.away == 0 then
+      local age = (hour - p.born) / 8064
+      local hp = p.health
+      if age >= lwa and age < fra and hp >= 25 and not (p.preg_due > 0 and p.preg_due - hour < due) then
+        local h40 = hp / 40
+        if h40 > 1 then h40 = 1 end
+        local c = (0.35 + 0.65 * p.nutrition) * h40
+        local light = false
+        if age < ada or age >= ela then c = c * 0.5; light = true end
+        if p.nursing_until > hour then c = c * 0.5 end
+        if c > 0 then
+          nf = nf + 1
+          FREE[nf], FCAP[nf], FLIGHT[nf] = p, c, light
+        end
+      end
     end
   end
   for i = 1, nd do local d = list[i]; d.nwho = 0 end
@@ -407,11 +426,26 @@ function M.assign(W, v, hours_day)
   v.replan = false
   -- workforce accounting (labour_tag: why the workforce is below normal)
   local cap = 0
-  for i = 1, nf do cap = cap + FCAP[i] end
-  for i = 1, nf do FREE[i] = nil end
+  for i = 1, nf do cap = cap + FCAP[i]; FREE[i] = nil end
   v.workforce = cap
   if (v.workforce_norm or 0) <= 0 then v.workforce_norm = cap end
   v.workforce_norm = v.workforce_norm + (cap - v.workforce_norm) / 104
+end
+
+-- The woodcutters working copse `from` (fuel and timber groups, and their people's site) go to
+-- copse `to` instead.
+function M.retarget(W, v, from, to)
+  local groups = v.plan.groups
+  for i = 1, #groups do
+    local g = groups[i]
+    if g.target == from and (g.kind == "fuel" or g.kind == "timber") then g.target = to end
+  end
+  local P = W.ent.people
+  local m = v.members
+  for i = 1, #m do
+    local p = P[m[i]]
+    if p.site == from and (p.task == "fuel" or p.task == "timber") then p.site = to end
+  end
 end
 
 -- Weather factor for outdoor work of `kind` today.
@@ -432,6 +466,7 @@ local function weather_factor(kind, wx)
 end
 
 -- Daily execution: each group works today's hours. hours_day = the village's working hours today.
+local HK = {}   -- "h_" .. kind, made once
 function M.execute(W, v, hours_day, wx)
   local cfg = cfgmod.SOCIETY
   local F, C, I = W.F, W.C, W.I
@@ -453,7 +488,9 @@ function M.execute(W, v, hours_day, wx)
       local h = (hours_day - 2 * travel) * wf
       if h < 0 then h = 0 end
       local eff = h * g.cap * crafts.tool_factor(v)
-      acc(v, "h_" .. k, eff)
+      local hk = HK[k]
+      if not hk then hk = "h_" .. k; HK[k] = hk end
+      acc(v, hk, eff)
       if FARM[k] then
         local used = farming.work(W, v, k, eff)
         if eff > 0 and used < 1e-6 then v.replan = true end
@@ -490,7 +527,13 @@ function M.execute(W, v, hours_day, wx)
           v.logged = v.logged or {}
           v.logged[c] = W.hour
         end
-        if F.forest[c] < M.coppice_floor(v) + 0.03 then v.replan = true end
+        if F.forest[c] < M.coppice_floor(v) + 0.03 then
+          -- the copse is cut back to its stools: the woodcutters move on to the next one (the
+          -- rest of the village keeps its week's work; a full re-plan only if no wood is left)
+          local lot = M.woodlot(W, v, hours_day)
+          if lot and lot ~= c then M.retarget(W, v, c, lot)
+          elseif not lot then v.replan = true end
+        end
       elseif k == "build" then
         local b = B[g.target]
         if b and (b.state == "site" or b.repair) then
@@ -515,25 +558,13 @@ function M.execute(W, v, hours_day, wx)
       elseif k == "herd" then
         herds.work(W, v, eff)
       elseif k == "hunt" then
-        -- the best grazer cell near the village (fauna densities until W4's herds)
+        -- the hunters go after the biggest herd within the village's reach (W4: real animals of a
+        -- real herd; the village's trouble is their cause)
         local ring = W.vgeo[v.id].ring
-        local best, bg = nil, 0
-        if ring then
-          for j = 1, #ring do
-            local c = ring[j]
-            if W.geo.ocean[c] == 0 and F.grazers[c] > bg then best, bg = c, F.grazers[c] end
-          end
-        end
-        v.hunt_cell = best
-        if best and bg > 0.01 then
-          local meat = eff * 1.6 * bg / (bg + 0.15)
-          local d = meat / 16000
-          if d > bg * 0.2 then d = bg * 0.2; meat = d * 16000 end
-          F.grazers[best] = bg - d
-          local vt = v.cause
-          if vt ~= 0 or C.grazers[best] ~= 0 then
-            blame.step(C.grazers, I.grazers, best, -d, FGRAZ.eps, FGRAZ.hold, -d, vt, 0, 0, 0, 0, 0, 0)
-          end
+        local meat, c = 0, nil
+        if ring then meat, c = wildlife.hunt(W, ring, eff, v.cause) end
+        v.hunt_cell = c
+        if meat > 0 then
           v.stock.fresh = v.stock.fresh + meat
           v.day_fresh = (v.day_fresh or 0) + meat
           acc(v, "meat", meat)

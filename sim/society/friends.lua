@@ -48,11 +48,15 @@ function M.near(W, p, vid)
 end
 
 -- Monthly for village v: friends lost (dead, gone for years), new friends among companions.
+local TASK_ID, NTASK = {}, 0
 function M.monthly(W, v)
   local cfg = cfgmod.SOCIETY
   local P = W.ent.people
   local hour = W.hour
   local month = floor(hour / 672)
+  -- (one full hash per village-month; each person's draws are one mixing round from it)
+  local b_fade = rng.hash(W.seed, rng.S.FRIENDS, v.key_cell, month, 1)
+  local b_new = rng.hash(W.seed, rng.S.FRIENDS, v.key_cell, month, 2)
   local buckets, order = {}, {}
   for i = 1, #v.members do
     local p = P[v.members[i]]
@@ -63,18 +67,23 @@ function M.monthly(W, v)
         for k = #f, 1, -1 do
           local q = P[f[k]]
           if not q or q.dead then drop(p, f[k])
-          elseif q.village ~= p.village and rng.float(W.seed, rng.S.FRIENDS, p.key, month, k) < cfg.friend_fade then
+          elseif q.village ~= p.village and rng.fbase(b_fade, p.key + k) < cfg.friend_fade then
             drop(p, f[k])
           end
         end
       end
       if p.away == 0 then
         local a = (hour - p.born) / 8064
+        -- the company they keep: children of an age at play, the same task at the same site, the
+        -- elders at the well, the rest at home (numeric keys: no strings made per person)
         local key
         if a < 3 then key = nil
-        elseif a < 12 then key = "play" .. floor(a / 4)
-        elseif p.task ~= "" and p.task ~= nil then key = p.task .. ":" .. tostring(p.site)
-        else key = a >= 55 and "well" or "home" end
+        elseif a < 12 then key = -1 - floor(a / 4)
+        elseif p.task ~= "" and p.task ~= nil then
+          local ti = TASK_ID[p.task]
+          if not ti then NTASK = NTASK + 1; ti = NTASK; TASK_ID[p.task] = ti end
+          key = ti * 4194304 + (p.site or 0)
+        else key = a >= 55 and -10 or -11 end
         if key then
           local b = buckets[key]
           if not b then b = {}; buckets[key] = b; order[#order + 1] = key end
@@ -92,7 +101,7 @@ function M.monthly(W, v)
         local p = b[i]
         local nf = p.friends and #p.friends or 0
         if nf < maxf then
-          local u = rng.float(W.seed, rng.S.FRIENDS, p.key, month, 0)
+          local u = rng.fbase(b_new, p.key)
           if u < cfg.friend_prob then
             -- someone of the same company, picked by the same draw
             local j = floor(u / cfg.friend_prob * n) + 1

@@ -80,3 +80,27 @@ meat = kills × 40 FU into `fresh`. Removes animals from that herd, blamed with 
 ~500 land cells; GRAZER_PER_CELL = 20 animals per unit density; ≈ 60–150 herds and 10–25 packs.
 Weekly updates of ~150 entities cost less than the current per-cell fauna pass over all land
 cells (≈ 20k instructions), because empty cells cost nothing.
+
+## 5. Implementation status (session 5, branch `wip/wild-agents`, D-070)
+
+`sim/systems/fauna.lua` on this branch implements §3 as group agents: herds (deer, reindeer,
+antelope, boar) and packs (wolves, big cats) in `W.S.wild` (struct of arrays, saved), each with a
+centre cell, head count, cause tag and last move. The calibrated per-cell ecology of the field
+model is evaluated on the densities the groups make (a herd spends 40% of its time on its centre
+cell, a pack ranges two rings from its den; `WILD.gpc = 100`, `ppc = 25` animals per field unit),
+so `F.grazers`/`F.predators`, their tags and normals are derived views and detectors, powers,
+blame and vegetation pressure keep their interfaces. Herds move to better cells, migrate between
+summer and winter ranges (reindeer, antelope), split past their size or when crowded past their
+grass (density dispersal), join their kind when dwindled; crowded herds browse harder. Packs move
+their den toward prey (not onto another pack's ground) and send a young pair away each spring.
+Hunters take animals from real herds (40 FU of meat each); Cull, Introduce, the meteor and the
+test hooks act on the groups. The view draws each group's animals about its position (following
+its moves); the inspector names the herd or pack. Tools: `tools/wild_report.lua`,
+`npm run shots:wild`. Cost ≈116k VM instructions per week (old field model ≈36k).
+
+Passing: unit tests (conservation with rates off, no spawning, release blame, ice bridges by
+dispersal), S02 (2/3), S07 (2/3), vegetation bands. **Failing: fauna stability — the continental
+predator CV is 0.05 (spec ≥ 0.15)**: the group structure damps the wolf-deer cycles (neither a
+seasonal pup pulse nor removing density dispersal restores them). Next: synchrony (a shared
+winter severity driving kill success and starvation), the pack's functional response on its
+den's prey rather than the territory mean, then re-check S02/S07/P08.

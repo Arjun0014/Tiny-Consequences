@@ -75,6 +75,8 @@ function ci.fauna(W)
       if S then S.hnorm[c], S.pnorm[c] = F.grazers[c], F.predators[c] end
     end
   end
+  -- the animals live in herds and packs (W4, D-070): the densities gather into groups
+  require("sim.systems.fauna").seed(W)
 end
 
 return ci
