@@ -6,6 +6,7 @@
 -- Rebuilt at most every REBUILD_S seconds when the quantised widths change.
 local planet = require("game.view.planet")
 local cfgmod = require("sim.config")
+local speed = require("game.platform.speed")
 
 local M = {}
 
@@ -56,7 +57,8 @@ local function signature(W, widths)
   local s = 0
   for c = 1, W.n do
     local w = widths[c]
-    if w > 0 then s = (s * 31 + c * 7 + floor(w * 150)) % 2147483647 end
+    -- (quantised: a river is redrawn when it visibly swells or shrinks, not every week)
+    if w > 0 then s = (s * 31 + c * 7 + floor(w * 50)) % 2147483647 end
   end
   return s
 end
@@ -226,7 +228,10 @@ end
 function M.update(W, dt)
   if not M.PL then return end
   M.since = M.since + dt
-  if M.since < M.REBUILD_S then return end
+  -- (at weeks a second and faster the rivers are checked less often: the frame is the sim's)
+  local every = M.REBUILD_S
+  if speed.hours_per_second() > 60 then every = every * 4 end
+  if M.since < every then return end
   if W.tick == M.last_tick and M.sig then return end
   M.since = 0
   M.last_tick = W.tick

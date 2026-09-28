@@ -16,6 +16,7 @@
 -- Positions are exposed for picking (M.people_pos / M.animal_pos / M.ship_pos).
 local propgen = require("game.view.propgen")
 local state = require("game.view.state")
+local speed = require("game.platform.speed")
 local vmx = require("game.view.vmx")
 local ents = require("game.view.ents")
 local schedule = require("sim.society.schedule")
@@ -818,6 +819,8 @@ local function update_birds(W, dt, zoom, frozen)
   M.stats.birds = slot - 1
 end
 
+M.PEOPLE_MAX_HPS = 60   -- hours a second above which villagers and flocks are not drawn
+local AP_POOL = {}
 function M.update(W, dt, zoom, frozen)
   local t = state.hour_f or W.hour
   update_ships(W, t)
@@ -832,17 +835,26 @@ function M.update(W, dt, zoom, frozen)
     M.stats.active, M.stats.people, M.stats.draws = 0, 0, 0
     return
   end
+  -- at weeks a second and faster a person's day is a blur: villagers, travellers and flocks are
+  -- not drawn (their fields, buildings, trails and boats show what they do), and their per-frame
+  -- schedule lookups leave the frame to the sim
+  local fast = speed.hours_per_second() > M.PEOPLE_MAX_HPS
+  if fast and not M.was_fast then
+    for _, p in ipairs(M.people) do if p.on or p.pid then p.pid = nil; set_on(p, false) end end
+    for _, p in ipairs(M.stock) do if p.on then p.v, p.party = nil, nil; set_on(p, false) end end
+  end
+  M.was_fast = fast
   M.assign_timer = M.assign_timer - dt
   if M.assign_timer <= 0 then
     M.assign_timer = 0.6
     local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
     assign_animals(W, fx, fy, fz)
-    assign_people(W, fx, fy, fz, t, zoom)
+    if not fast then assign_people(W, fx, fy, fz, t, zoom) end
     assign_birds(W, fx, fy, fz, t)
   end
   update_birds(W, dt, zoom, frozen)
   M.update_dolphins(W, dt, frozen)
-  M.update_stock(W, dt, frozen, t)
+  if not fast then M.update_stock(W, dt, frozen, t) end
   local sp = W.grid.spacing
   for _, p in ipairs(M.pool) do
     if p.on then
@@ -853,10 +865,15 @@ function M.update(W, dt, zoom, frozen)
       local r, v = M.surface(x, y, z, p.v)
       p.v = v
       place(p, x, y, z, r, -p.head, M.SCALE * spc.scale)
-      ap[#ap + 1] = { kind = p.kind, cell = p.cell, x = x * r, y = y * r, z = z * r }
+      -- (reused entries: no garbage per animal per frame)
+      local k = #ap + 1
+      local e = AP_POOL[k]
+      if not e then e = {}; AP_POOL[k] = e end
+      e.kind, e.cell, e.x, e.y, e.z = p.kind, p.cell, x * r, y * r, z * r
+      ap[k] = e
     end
   end
-  local np = step_people(W, t, dt, frozen)
+  local np = fast and 0 or step_people(W, t, dt, frozen)
   M.stats.active = active + np
   -- draw-call estimate: one batch per distinct mover buffer in use
   local kinds, n = {}, 0

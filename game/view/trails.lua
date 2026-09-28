@@ -6,6 +6,7 @@
 -- traffic changes (at most every REBUILD_S seconds).
 local planet = require("game.view.planet")
 local cfgmod = require("sim.config")
+local speed = require("game.platform.speed")
 
 local M = {}
 
@@ -255,7 +256,9 @@ end
 function M.update(W, dt)
   if not M.PL then return end
   M.since = M.since + dt
-  if M.since < M.REBUILD_S then return end
+  local every = M.REBUILD_S
+  if speed.hours_per_second() > 60 then every = every * 4 end
+  if M.since < every then return end
   if W.tick == M.last_tick and M.sig then return end
   M.since = 0
   M.last_tick = W.tick
