@@ -501,6 +501,9 @@ function M.prune(W)
   for i = 1, #d do
     local p = E.people[d[i]]
     if p and W.hour - p.dead > keep then
+      -- (a dead person still listed by a village would outlive its record: drop it too)
+      local v = E.villages[p.village]
+      if v then remove_id(v.members, p.id) end
       E.people[d[i]] = nil
     else
       k = k + 1

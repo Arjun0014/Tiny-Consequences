@@ -24,6 +24,7 @@ end
 local floor, min, max = math.floor, math.min, math.max
 local FFISH = fields.BY_NAME.fish
 local TAKEN = {}   -- scratch: share of a ground's fish already targeted today (cleared per village)
+local AWAY = { voyage = true, beached = true, homeward = true }   -- boats off on the sea passage (sea.lua)
 
 -- Weekly: rank the village's grounds by fish x fishing hours (a typical day's window); the daily
 -- plan considers the best RANK of them. (Fish change weekly with the planet.) The ranking steers
@@ -76,7 +77,8 @@ function M.plan(W, v, h0, ws, we, weather)
   for i = 1, #v.boats do
     local b = B[v.boats[i]]
     b.trip = false
-    if b.state ~= "lost" then
+    -- (boats away on a voyage, beached at a foreign shore or sailing home don't fish: sea.lua)
+    if b.state == "moored" or b.state == "out" then
       b.state = "moored"
       local crew = b.crew
       local fit = 0
@@ -168,7 +170,7 @@ function M.settle(W, v)
         end
       end
     end
-    if b.state ~= "lost" then
+    if b.state ~= "lost" and not AWAY[b.state] then
       if t then
         b.condition = b.condition - cfg.boat_decay / 150   -- worn by use (a trip a day)
       elseif b.laid_up and #b.crew > 0 and v.stock.wood >= cfg.boat_mend_wood then
@@ -201,11 +203,13 @@ end
 function M.lose(W, v, b, parent, why)
   if b.state == "lost" then return 0 end
   local out = b.trip and b.trip or nil
+  local voyage = b.state == "voyage" and b.party
   b.state = "lost"
   b.lost = W.hour
   local id = 0
   if W.record_events then
-    id = events.emit(W, "boat_lost", out and out.ground or b.home, parent or 0, #b.crew,
+    local at = voyage and require("sim.society.sea").cell_of(W, b) or (out and out.ground) or b.home
+    id = events.emit(W, "boat_lost", at, parent or 0, voyage and 0 or #b.crew,
       { village = v.id, boat = b.id, why = why })
   end
   if id ~= 0 then
@@ -225,6 +229,8 @@ function M.lose(W, v, b, parent, why)
     end
     ents.compact(W, v)
   end
+  -- a boat carrying a party overseas: those aboard may drown, the cargo is lost (sea.lua)
+  if voyage then require("sim.society.sea").sunk(W, b, id ~= 0 and id or parent) end
   b.trip = false
   b.crew = {}
   ents.remove_id(v.boats, b.id)

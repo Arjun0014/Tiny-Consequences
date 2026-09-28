@@ -165,7 +165,9 @@ function M.b09_losing_workers_shrinks_the_sown_area_and_harvest()
   while not (va.season.phase == "winter" and farming.local_week(Wa, va) >= 40) and guard < 60 do
     world.tick(Wa); world.tick(Wb); guard = guard + 1
   end
-  world.test_action(Wa, "emigrate", { village = va.id, fraction = 0.5 })
+  -- (most of the households: a village keeps the fields it has cleared while its hands suffice —
+  -- fields are an investment, farming.plan — so the loss must leave it short of hands, D-059)
+  world.test_action(Wa, "emigrate", { village = va.id, fraction = 0.7 })
   local keys = { "sown", "harvest" }
   local sa = run_acc(Wa, va, 48, keys)
   local sb = run_acc(Wb, vb, 48, keys)

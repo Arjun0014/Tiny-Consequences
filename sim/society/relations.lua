@@ -28,6 +28,7 @@ local events = require("sim.causality.events")
 local ents = require("sim.society.entities")
 local sites = require("sim.society.sites")
 local farming = require("sim.society.farming")
+local sea = require("sim.society.sea")
 local cotag = require("sim.society.cotag")
 local crafts = require("sim.society.crafts")
 
@@ -146,15 +147,20 @@ local function spare_food(W, u)
 end
 M.spare_food = spare_food
 
--- The villages v could turn to: living, same landmass, within reach, best disposed first.
-local function partners(W, v, reach)
+-- The villages v could turn to: living, within reach, best disposed first. Overseas villages are
+-- in reach by boat (sea.lua): the sender's boats (u's when u_sends, else v's) must seat n people;
+-- d is then the crossing's cost in walking steps.
+local function partners(W, v, reach, u_sends, n)
   local out = {}
   local vs = W.ent.villages
   for i = 1, #vs do
     local u = vs[i]
-    if u.alive and u ~= v and u.continent == v.continent and u.pop > 0 then
-      local d = sites.dist(W, v.cell, u.cell)
-      if d <= reach then
+    if u.alive and u ~= v and u.pop > 0 then
+      local d
+      if u.continent == v.continent then d = sites.dist(W, v.cell, u.cell)
+      elseif u_sends then d = sea.cost(W, u, v.cell, n or 2)
+      else d = sea.cost(W, v, u.cell, n or 2) end
+      if d and d <= reach then
         local s = M.score(W, u, v) - 0.02 * d
         out[#out + 1] = { u = u, s = s, d = d }
       end
@@ -204,7 +210,7 @@ function M.monthly(W, v)
     local wait = farming.days_to_harvest(W, v) + 30
     local short = v.need_day * wait - (v.stock.grain + v.stock.fresh)
     if short > 0 then
-      local list = partners(W, v, cfg.relief_reach)
+      local list = partners(W, v, cfg.relief_reach, true, cfg.porters)
       local asked = 0
       for i = 1, #list do
         if short <= 0 or asked >= 3 then break end
@@ -334,7 +340,7 @@ function M.trade(W, v)
     end
   end
   if not gp or pv < 60 then return end
-  local list = partners(W, v, cfg.trade_reach)
+  local list = partners(W, v, cfg.trade_reach, false, cfg.porters)
   local refused = nil
   for i = 1, #list do
     local e = list[i]
@@ -399,21 +405,25 @@ function M.brides(W, v)
   if #men_here >= #women then return end
   local u0 = rng.float(W.seed, rng.S.PAIRING, v.key_cell, month, 17)
   if u0 > cfg.bride_prob then return end
-  local list = partners(W, v, cfg.bride_reach)
-  for i = 1, #list do
-    local e = list[i]
-    if e.s >= 0 then
-      local u = e.u
-      local men = singles(u, "m")
-      local women_there = singles(u, "f")
-      if #men > #women_there then
-        local w, m = women[#women], men[#men]
-        if not (w.mother ~= 0 and (w.mother == m.mother or w.father == m.father)) then
-          w.betrothed, m.betrothed = m.id, w.id
-          w.wait_since, m.wait_since = hour, hour
-          local id = emit(W, "bride", v.cell, 0, 1, { village = v.id, to = u.id }, nil)
-          M.depart(W, v, { w }, u.id, nil, "bride", id, v.need_day > 0 and 14 or 0, 0)
-          return
+  local list = partners(W, v, cfg.bride_reach, false, 1)
+  -- friends first; failing them, strangers who bear no grudge (how marriage networks spread to new
+  -- villages and across the water: the first bride makes the kin tie)
+  for pass = 1, 2 do
+    for i = 1, #list do
+      local e = list[i]
+      if (pass == 1 and e.s >= 0) or (pass == 2 and e.s < 0 and e.s >= cfg.bride_stranger) then
+        local u = e.u
+        local men = singles(u, "m")
+        local women_there = singles(u, "f")
+        if #men > #women_there then
+          local w, m = women[#women], men[#men]
+          if not (w.mother ~= 0 and (w.mother == m.mother or w.father == m.father)) then
+            w.betrothed, m.betrothed = m.id, w.id
+            w.wait_since, m.wait_since = hour, hour
+            local id = emit(W, "bride", v.cell, 0, 1, { village = v.id, to = u.id }, nil)
+            M.depart(W, v, { w }, u.id, nil, "bride", id, v.need_day > 0 and 14 or 0, 0)
+            return
+          end
         end
       end
     end

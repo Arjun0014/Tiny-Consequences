@@ -90,7 +90,20 @@ function M.party_pos(W, party, t)
   local rt = et - dt * 24
   local total = dt * cfg.walk_hours_day + (rt < cfg.walk_hours_day and rt or cfg.walk_hours_day)
   if total <= 0 then total = steps * cfg.walk_h * 1.5 end
-  local s = walked / total * steps
+  local s
+  local si = party.si
+  if si then
+    -- a crossing: land steps and sea steps take their own hours (mobility.walk_hours)
+    local n1, n2 = si - 1, party.sj - si
+    local n3 = steps - n1 - n2
+    local hl, hs = party.hl, party.hs
+    local x = walked / total * ((n1 + n3) * hl + n2 * hs)
+    if x < n1 * hl then s = x / hl
+    elseif x < n1 * hl + n2 * hs then s = n1 + (x - n1 * hl) / hs
+    else s = n1 + n2 + (x - n1 * hl - n2 * hs) / hl end
+  else
+    s = walked / total * steps
+  end
   if s >= steps then return #party.path, 0, false end
   local i = floor(s)
   return i + 1, s - i, moving

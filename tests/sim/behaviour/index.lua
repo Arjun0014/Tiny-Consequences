@@ -6,4 +6,5 @@ return {
   "tests.sim.behaviour.b_people",
   "tests.sim.behaviour.b_food",
   "tests.sim.behaviour.b_day",
+  "tests.sim.behaviour.b_sea",
 }

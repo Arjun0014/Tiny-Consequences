@@ -39,12 +39,17 @@ Research (`00`), audit (`01`), design (`10`–`16`), this roadmap, D-050.
   pass; P01–P03, P06 green; a 100-year run shows houses built from wood, clearings, births,
   deaths, migration, at least one founding; perf measured.
 
-### W3 — Transport and trade
+### W3 — Transport and trade — sea passage done (D-059)
 - Merchant ships (cargo, ports, circuits, passengers) replace tankers; import accounting and
   `import_tag`; `shipment_lost`; sea passage for migrants.
 - **Done when**: B02, B03, B15 pass; S04 and S15 pass on the new ships (tutorial re-scouted);
   chains like "ship sunk → shipment lost → rationing → migration → labour shortage → crop failure"
   appear in runs.
+- Done (D-059, instead of a company circuit): the villages' own boats carry their porters, brides,
+  migrants, colonists and raiders overseas (routes over the sea, boats taken from fishing, beached
+  at the landing, handed on or sailing home); overseas partners, raid targets, destinations and
+  colony sites; Lightning on a loaded boat → `shipment_lost` + the receiver's `import_tag`; B02,
+  B03 pass. Tankers stay as the oil lanes (tutorial). Still to do: B15, storms at sea.
 
 ### W4 — Ecology agents
 - Herds and packs (`14_ECOLOGY.md`), fields derived from them, hunting from herds, spawning season.

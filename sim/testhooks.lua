@@ -201,6 +201,42 @@ function hooks.emigrate(W, p)
   return id
 end
 
+-- A shipment overseas (D-059): the largest village with free boats sends porters with `grain`
+-- (default 150) to the nearest village on another landmass its boats reach (or p.from / p.to).
+function hooks.voyage(W, p)
+  local sea = require("sim.society.sea")
+  local E = W.ent
+  local vs = E.villages
+  local best, bu, bc = nil, nil, 1e9
+  for _, v in ipairs(vs) do
+    if v.alive and (not p.from or v.id == p.from) and v.mooring and #sea.free_boats(W, v) > 0 then
+      for _, u in ipairs(vs) do
+        if u.alive and u.continent ~= v.continent and (not p.to or u.id == p.to) then
+          local c = sea.cost(W, v, u.cell, 4)
+          if c and c < bc then best, bu, bc = v, u, c end
+        end
+      end
+    end
+  end
+  if not best then return 0 end
+  hooks.last_probe = { from = best.id, to = bu.id }
+  if p.probe then return 0 end
+  local ps = {}
+  for i = 1, #best.members do
+    local q = E.people[best.members[i]]
+    local age = (W.hour - q.born) / 8064
+    if q.away == 0 and age >= 18 and age < 45 and #ps < 4 then ps[#ps + 1] = q end
+  end
+  if #ps < 2 then return 0 end
+  local id = root(W, "voyage", { best.cell }, #ps, { from = best.id, to = bu.id })
+  local grain = math.min(p.grain or 150, best.stock.grain)
+  best.stock.grain = best.stock.grain - grain
+  local party = require("sim.society.mobility").depart(W, best, ps, bu.id, nil, "porters", id, 0, 0,
+    { gift = true, grain = grain, back_to = best.id })
+  hooks.last_voyage = party.id
+  return id
+end
+
 world.COMMANDS.test_action = function(W, params)
   local fn = hooks[params.name]
   if not fn then error("unknown test hook " .. tostring(params.name)) end

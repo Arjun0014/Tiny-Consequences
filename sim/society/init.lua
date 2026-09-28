@@ -85,7 +85,8 @@ mobility.on_register = function(W, v) sys.register_village(W, v) end
 relations.depart = mobility.depart
 status.depart = mobility.depart
 status.best_site = function(W, v)
-  return sites.near_site(W, v.cell, cfgmod.SOCIETY.bud_radius)
+  -- (a lineage leaving an island with no room left sails for another shore)
+  return sites.near_site(W, v.cell, cfgmod.SOCIETY.bud_radius) or require("sim.society.sea").site(W, v, 12)
 end
 conflict.depart = mobility.depart
 conflict.rel = relations
@@ -106,6 +107,7 @@ end
 
 function sys.rebuild(W)
   W.vgeo = {}
+  W.vsea = {}
   W.soc = { buckets = {} }
   local vs = W.ent.villages
   if not vs then return end
@@ -274,6 +276,7 @@ local function day_step(W, v)
   plan.wake, plan.ws, plan.we, plan.sleep, plan.hours = wake, ws, we, sleep, hours
   plan.wet, plan.storm, plan.snow, plan.temp, plan.rain = wx.wet, wx.storm, wx.snow, wx.temp, wx.rain
   if v.replan or not plan.assigned then labour.assign(W, v, hours) end
+  if v.boats[1] then require("sim.society.sea").daily(W, v) end
   fishing.plan(W, v, h0, ws, we, wx)
   farming.daily(W, v, wx.wet)
 end

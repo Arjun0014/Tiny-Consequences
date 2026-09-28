@@ -101,7 +101,8 @@ C.CLIMATE = {
   k_albedo = 8.0,                         -- °C per unit ice-fraction below the reference
   k_vapor = 0.1, tau_years = 10,
   g_temp_min = -30, g_temp_max = 20,
-  k_ice_sea = 1.0, k_thermal = 0.01,      -- km sea level per ice-volume fraction / per °C
+  k_ice_sea = 1.0, k_thermal = 0.004,     -- km sea level per ice-volume fraction / per °C (equilibrium)
+  tau_sea_years = 100,                    -- thermal expansion follows the temperature this slowly
   era_warm = 2, era_hothouse = 6, era_iceage = 0.35, era_snowball = 0.85,
   era_hysteresis = { ice = 0.03, temp = 0.3 },
 }
@@ -462,6 +463,13 @@ C.SOCIETY = {
   hold = 150, crew = 3,
   fish_fu = 18000,                        -- FU of fish in a sim cell at density 1
   sail_h = 0.3,                           -- hours to sail one cell spacing
+  -- sea passage (sim/society/sea.lua, D-059): the villages' own boats carry people overseas
+  sea_reach = 24,                         -- sea steps a village's boats sail (the BFS limit)
+  sea_inland = 3,                         -- land steps from the landing to an overseas destination
+  sea_bias = 2,                           -- extra walking steps a crossing weighs (risk, loading)
+  boat_seats = 6,                         -- people (with their loads) a boat carries
+  beach_wait_days = 30,                   -- a boat waits this long at a foreign shore for its people
+  drown = 0.6,                            -- chance each person aboard drowns when a boat sinks
   fish_radius = 5,
   squall = 0.00002, squall_wet = 6,       -- chance a trip on a dry / wet day is caught by a squall
                                           --   (storms keep boats in: ~1% of boats a year)
@@ -511,6 +519,7 @@ C.SOCIETY = {
   -- villages that know each other (W7, docs/world/18 §2.2-2.3)
   relief_margin_days = 60,                -- a giver keeps its need to its next harvest + this
   relief_reach = 16, trade_reach = 12, bride_reach = 12,   -- cell spacings (a few days' walk)
+  bride_stranger = -0.25,                 -- a village no friend can match sends brides to strangers this well disposed
   porters = 6, porter_fu = 30,            -- porters per errand, FU (or WU) a porter carries a trip
   bride_prob = 0.35,                      -- monthly chance a village with unmatched women looks abroad
   seed_kin = 2,                           -- kin ties between a landmass's first villages of one culture
@@ -534,6 +543,7 @@ C.STATUS = {
   split_share = 0.2,                      -- the rival lineage is at least this share of the village
   split_prob = 0.5, split_gap_years = 15, split_min = 8,
   stress_pop = 160, stress_prob = 0.02,   -- scalar stress: monthly split chance x (pop - 160) / 160
+  stress_share = 0.1,                     -- ... by the largest other lineage, if it is this share
 }
 
 -- Conflict (docs/world/18 §2.4, sim/society/conflict.lua, D-057)

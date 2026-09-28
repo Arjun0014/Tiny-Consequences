@@ -173,6 +173,47 @@ function M.register(G)
     local sx, sy = screen_of(W, cell)
     return { cell = cell, power = args.power, tick = W.tick, sx = sx, sy = sy }
   end)
+  -- a shipment overseas (sim/testhooks.lua voyage), for screenshots and tests: returns the party
+  bridge.register("voyage", function(args)
+    local W = G.W
+    local world = require("sim.world")
+    local hooks = require("sim.testhooks")
+    hooks.last_voyage = nil
+    if args.probe then
+      -- who would sail where (no command: nothing changes)
+      hooks.voyage(W, { from = args.from, to = args.to, probe = true })
+      local pr = hooks.last_probe
+      if not pr then error("no voyage possible", 0) end
+      local c = W.ent.villages[pr.from].cell
+      return { from = pr.from, to = pr.to, lat = math.deg(W.grid.lat[c]), lon = math.deg(W.grid.lon[c]) }
+    end
+    world.test_action(W, "voyage", { from = args.from, to = args.to, grain = args.grain })
+    world.step(W)
+    local id = hooks.last_voyage
+    local party = id and W.ent.parties and W.ent.parties[id]
+    if not party then error("no voyage possible", 0) end
+    local g = W.grid
+    local mid = party.path[math.floor((party.si + party.sj) / 2)]
+    return { party = id, from = party.from, to = party.to, depart = party.depart, arrive = party.arrive, hour = W.hour,
+      si = party.si, sj = party.sj, cell = mid, lat = math.deg(g.lat[mid]), lon = math.deg(g.lon[mid]),
+      boat = party.boats and party.boats[1] }
+  end)
+  -- where a voyage is now: its boat (at sea, beached, sailing home), else the party on land
+  bridge.register("voyage_pos", function(args)
+    local W = G.W
+    local g = W.grid
+    local sea = require("sim.society.sea")
+    local b = args.boat and W.ent.boats[args.boat]
+    local cell = b and sea.cell_of(W, b)
+    local party = W.ent.parties and W.ent.parties[args.party or 0]
+    if not cell and party then
+      local i = require("sim.society.schedule").party_pos(W, party, W.hour)
+      cell = party.path[i]
+    end
+    if not cell and b then cell = b.home end
+    return { hour = W.hour, cell = cell, lat = math.deg(g.lat[cell]), lon = math.deg(g.lon[cell]),
+      boat_state = b and b.state, party_alive = party ~= nil }
+  end)
   bridge.register("arm", function(args)
     local powers = require("game.ui.powers")
     powers.armed = args.index

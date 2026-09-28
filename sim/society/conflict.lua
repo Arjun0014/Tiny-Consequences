@@ -19,6 +19,7 @@ local rng = require("sim.rng")
 local events = require("sim.causality.events")
 local ents = require("sim.society.entities")
 local sites = require("sim.society.sites")
+local sea = require("sim.society.sea")
 local cotag = require("sim.society.cotag")
 
 local M = {}
@@ -164,13 +165,20 @@ function M.monthly(W, v)
   local land = (v.intensify and v.food_days < 120) and 0.5 or 0
   local _, war = M.status.temper(W, v)
   local vs = W.ent.villages
-  local best, bv, bp, bd, bg, bge = nil, 0, 0, 0, 0, 0
-  local A = min(nf * cfg.raid_share, nf)
+  local best, bv, bp, bd, bg, bge, bA = nil, 0, 0, 0, 0, 0, 0
+  local A0 = min(nf * cfg.raid_share, nf)
+  -- raiders by sea: as many as the village's free boats seat
+  local seats = v.mooring and #sea.free_boats(W, v) * cfgmod.SOCIETY.boat_seats or 0
   for i = 1, #vs do
     local u = vs[i]
-    if u ~= v and u.alive and u.pop >= cfg.min_target and u.continent == v.continent and u.lord ~= v.id and v.lord ~= u.id then
-      local d = sites.dist(W, v.cell, u.cell)
-      if d <= cfg.raid_reach then
+    if u ~= v and u.alive and u.pop >= cfg.min_target and u.lord ~= v.id and v.lord ~= u.id then
+      local d, A = nil, A0
+      if u.continent == v.continent then d = sites.dist(W, v.cell, u.cell)
+      elseif seats >= cfg.min_raiders then
+        A = min(A0, seats)
+        d = sea.cost(W, v, u.cell, A)
+      end
+      if d and d <= cfg.raid_reach then
         local s = M.rel.score(W, v, u)
         local gr, gev = M.grievance(W, v.id, u.id)
         -- kin, daughters and friends are not raided unless wronged
@@ -183,7 +191,7 @@ function M.monthly(W, v)
           local loot = min(u.stock.grain * cfg.loot_share, A * cfg.carry)
           local gain = (hunger + land) * loot / max(1, v.need_day * 30) + gr * cfg.revenge_weight
           local value = (pwin * gain - (1 - pwin) * cfg.risk) * war - d * 0.02
-          if value > bv then best, bv, bp, bd, bg, bge = u, value, pwin, d, gr, gev end
+          if value > bv then best, bv, bp, bd, bg, bge, bA = u, value, pwin, d, gr, gev, A end
         end
       end
     end
@@ -196,7 +204,7 @@ function M.monthly(W, v)
   -- the war party: the fittest of the fighting men
   table.sort(list, function(a, b) if a.health ~= b.health then return a.health > b.health end return a.id < b.id end)
   local party = {}
-  for i = 1, max(cfg.min_raiders, floor(A)) do party[i] = list[i] end
+  for i = 1, max(cfg.min_raiders, floor(bA)) do party[i] = list[i] end
   -- why: the village's want, or the wrong it avenges
   local reason = (bg > 1 and bge ~= 0) and bge or (v.foodtag[1] ~= 0 and v.foodtag[1] or v.cause)
   v.raid_out = true
@@ -254,6 +262,8 @@ function M.battle(W, party, living)
   for i = #living, #living - la + 1, -1 do
     if living[i] then ents.kill(W, living[i], "raid", id); dead_home = dead_home + 1 end
   end
+  -- (raiders stay members of their village while away: the dead leave its lists)
+  if dead_home > 0 and home then ents.compact(W, home) end
   local kept = {}
   for i = 1, #living - la do kept[i] = living[i] end
   if ld > 0 then

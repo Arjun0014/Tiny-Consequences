@@ -15,6 +15,7 @@ local cotag = require("sim.society.cotag")
 local sites = require("sim.society.sites")
 local farming = require("sim.society.farming")
 local relations = require("sim.society.relations")
+local sea = require("sim.society.sea")
 
 -- Parties whose members stay members of their village and household while away: porters carrying
 -- goods between villages and walking home again (sim/society/relations.lua).
@@ -74,29 +75,40 @@ local function tkey(a, b)
 end
 M.tkey = tkey
 
--- Travel time (hours) along a walking path: walk_h per step (faster on worn trails),
--- walk_hours_day per day (camping at night).
-local function walk_hours(W, path)
+-- Travel time (hours) along a path: walk_h per land step (faster on worn trails), sail_h per sea
+-- step (steps si..sj-1 when the path crosses the sea), walk_hours_day per day (camping at night
+-- - ashore, on a coastal passage). Also returns the mean hours of a land and of a sea step.
+local function walk_hours(W, path, si, sj)
   local cfg = cfgmod.SOCIETY
   local tr = W.S.trails
-  local h = 0
+  local h, hs, nl, ns = 0, 0, 0, 0
   for i = 2, #path do
-    local t = tr and tr[tkey(path[i - 1], path[i])] or 0
-    local worn = t >= cfg.trail_full and 1 or t / cfg.trail_full
-    h = h + cfg.walk_h * 1.5 / (1 + cfg.trail_speed * worn)   -- with loads, children, elders
+    if si and i - 1 >= si and i - 1 < sj then
+      hs = hs + cfg.sail_h
+      ns = ns + 1
+    else
+      local t = tr and tr[tkey(path[i - 1], path[i])] or 0
+      local worn = t >= cfg.trail_full and 1 or t / cfg.trail_full
+      h = h + cfg.walk_h * 1.5 / (1 + cfg.trail_speed * worn)   -- with loads, children, elders
+      nl = nl + 1
+    end
   end
-  local days = floor(h / cfg.walk_hours_day)
-  return days * 24 + (h - days * cfg.walk_hours_day)
+  local tot = h + hs
+  local days = floor(tot / cfg.walk_hours_day)
+  return days * 24 + (tot - days * cfg.walk_hours_day), nl > 0 and h / nl or cfg.walk_h * 1.5, ns > 0 and hs / ns or cfg.sail_h
 end
 M.walk_hours = walk_hours
 
--- Walkers wear a trail along their path (W.S.trails: step key -> walkers a year, decaying yearly).
-local function wear(W, path, n)
+-- Walkers wear a trail along their path (W.S.trails: step key -> walkers a year, decaying yearly);
+-- not at sea.
+local function wear(W, path, n, si, sj)
   local tr = W.S.trails
   if not tr then tr = {}; W.S.trails = tr end
   for i = 2, #path do
-    local k = tkey(path[i - 1], path[i])
-    tr[k] = (tr[k] or 0) + n
+    if not (si and i - 1 >= si and i - 1 < sj) then
+      local k = tkey(path[i - 1], path[i])
+      tr[k] = (tr[k] or 0) + n
+    end
   end
 end
 
@@ -123,17 +135,35 @@ function M.depart(W, v, members, to, site, kind, reason, food, seed, cargo, from
   local P = E.people
   local target_cell = to ~= 0 and E.villages[to].cell or site
   local start = from_cell or v.cell
-  local path = M.land_path(W, start, target_cell, 80) or { start, target_cell }
+  local path = M.land_path(W, start, target_cell, 80)
+  local si, sj, boats
+  if not path then
+    -- overseas: in the boats of the village the party's people belong to
+    local homeward = kind == "returning" or kind == "raid_home"
+    local owner = homeward and E.villages[to] or v
+    if owner and owner.mooring then
+      local p2, a, b = sea.route(W, owner, homeward and start or target_cell, homeward, M.land_path)
+      if p2 then
+        path, si, sj = p2, a, b
+        boats = sea.take_boats(W, owner, #members)
+      end
+    end
+  end
+  local no_route = path == nil
+  path = path or { start, target_cell }
   local errand = ERRAND[kind]
   local id = E.next_party
   E.next_party = id + 1
   -- decisions are taken at the village's local midnight; they set off at first light
   local dep = W.hour + floor(v.plan.ws or 6)
+  local hours, hl, hs = walk_hours(W, path, si, sj)
   local party = { id = id, key = rng.hash(W.seed, rng.S.PARTY, v.key_cell, W.hour, #members), members = {},
     from = v.id, to = to, site = site or 0, culture = v.culture, path = path, depart = dep,
-    arrive = dep + max(2, walk_hours(W, path)), food = food or 0, seed = seed or 0, reason = reason or 0,
-    kind = kind, cargo = cargo }
-  wear(W, path, #members)
+    arrive = dep + max(2, hours), food = food or 0, seed = seed or 0, reason = reason or 0,
+    kind = kind, cargo = cargo, no_route = no_route or nil }
+  if si then party.si, party.sj, party.hl, party.hs = si, sj, hl, hs end
+  if boats and #boats > 0 then sea.embark(W, party, boats) end
+  wear(W, path, #members, si, sj)
   for i = 1, #members do
     local p = members[i]
     if not errand then
@@ -158,8 +188,9 @@ function M.depart(W, v, members, to, site, kind, reason, food, seed, cargo, from
   return party
 end
 
--- A party arrives (hour step): join the destination, or found a village at the site.
-local function arrive(W, party)
+-- A party arrives (hour step): join the destination, or found a village at the site. Returns the
+-- village it joined (migrants, colonists).
+local function arrive_here(W, party)
   local E = W.ent
   local P = E.people
   local living = {}
@@ -259,6 +290,17 @@ local function arrive(W, party)
     farming.plan(W, dest, adults)
     dest.need_pop = dest.pop
   end
+  return dest
+end
+
+local function arrive(W, party)
+  if not party.boats then return arrive_here(W, party) end
+  -- by sea: the boats are beached (or home); the next leg (the trip home) takes them on
+  sea.landed(W, party)
+  sea.arriving = party
+  local joined = arrive_here(W, party)
+  sea.arriving = nil
+  sea.settle_boats(W, party, (party.kind == "migrants" or party.kind == "colonists") and joined or nil, ERRAND[party.kind])
 end
 
 -- Settlers (the Introduce power, 04 §2): `n` people arrive by boat and found a village at the
@@ -435,9 +477,11 @@ local function best_destination(W, v, h, housing, added)
   local best, bp = nil, -1e9
   for i = 1, #vs do
     local u = vs[i]
-    if u.alive and u ~= v and u.continent == v.continent then
-      local d = sites.dist(W, v.cell, u.cell)
-      if d < 30 then
+    if u.alive and u ~= v then
+      local d
+      if u.continent == v.continent then d = sites.dist(W, v.cell, u.cell)
+      else d = sea.cost(W, v, u.cell, #h.members) end   -- overseas, in the village's boats
+      if d and d < 30 then
         -- households of this village already set on going there this month count too
         local a = added[u.id]
         local pull = prospects(W, u, need + (a and a[2] or 0), #h.members + (a and a[1] or 0))
@@ -576,7 +620,7 @@ function M.monthly(W, v)
     end
   end
   if #founders >= 3 and nfound >= 2 then
-    local site = sites.near_site(W, v.cell, cfg.refuge_radius)
+    local site = sites.near_site(W, v.cell, cfg.refuge_radius) or sea.site(W, v, #founders)
     if site then
       v.refuge_last = hour
       v.stock.grain = v.stock.grain - found_food
@@ -634,7 +678,7 @@ function M.monthly(W, v)
     local adults = 0
     for i = 1, #group do if ents.age(W, group[i]) >= cfg.adult_age then adults = adults + 1 end end
     if units >= 2 and adults >= 4 and rng.float(W.seed, rng.S.MIGRATION, v.key_cell, month, 5) < 0.5 then
-      local site = sites.near_site(W, v.cell, cfg.bud_radius)
+      local site = sites.near_site(W, v.cell, cfg.bud_radius) or sea.site(W, v, #group)
       local swk = site and farming.local_week_at(W, site)
       if site and (swk >= 42 or swk < 4) then
         local need = 0

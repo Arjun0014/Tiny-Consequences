@@ -110,13 +110,28 @@ function M.monthly(W, v)
   local head = M.head(W, best)
   -- scalar stress (Johnson 1982): past a few hundred people, disputes outgrow what a leader and
   -- kin can settle; the largest lineage that is not the leader's may walk away
-  if v.pop > cfg.stress_pop and second and hour - (v.split_last or -1e9) > cfg.split_gap_years * 8064 then
-    local h2 = M.head(W, second)
+  if v.pop > cfg.stress_pop and hour - (v.split_last or -1e9) > cfg.split_gap_years * 8064 then
     local p = cfg.stress_prob * (v.pop - cfg.stress_pop) / cfg.stress_pop
-    if h2 and h2.lin ~= head.lin and (lin_n[h2.lin] or 0) >= v.pop * 0.1
-      and rng.float(W.seed, rng.S.STATUS, v.key_cell, floor(hour / 672), 2) < p then
-      M.split(W, v, h2.lin, second, 0)
-      return
+    if rng.float(W.seed, rng.S.STATUS, v.key_cell, floor(hour / 672), 2) < p then
+      -- the rival: the largest other lineage, led by its most respected household
+      local rl, rn = nil, 0
+      for i = 1, #v.members do
+        local q = P[v.members[i]]
+        local l = q and q.lin
+        if l and l ~= head.lin and (lin_n[l] > rn or (lin_n[l] == rn and l < rl)) then rl, rn = l, lin_n[l] end
+      end
+      if rl and rn >= v.pop * cfg.stress_share then
+        local lead, lp = nil, -1
+        for i = 1, #v.households do
+          local h = H[v.households[i]]
+          local hd = h and M.head(W, h)
+          if hd and hd.lin == rl and (h.prestige or 0) > lp then lead, lp = h, h.prestige or 0 end
+        end
+        if lead then
+          M.split(W, v, rl, lead, 0)
+          return
+        end
+      end
     end
   end
   local old = v.leader and P[v.leader]

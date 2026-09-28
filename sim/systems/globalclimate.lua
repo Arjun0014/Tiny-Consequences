@@ -121,7 +121,12 @@ function sys.year(W)
       + cfg.k_vapor * max(0, G.g_temp)
     G.g_temp = G.g_temp + (target - G.g_temp) / cfg.tau_years
     G.g_temp = max(cfg.g_temp_min, min(cfg.g_temp_max, G.g_temp))
-    G.sea_level = cfg.k_ice_sea * ((G.ice_volume_ref or vol) - vol) / W.n + cfg.k_thermal * G.g_temp
+    -- sea level: land ice melted (or grown) at the ice's own pace, and the ocean's thermal
+    -- expansion, which follows the temperature over a century (the deep ocean warms slowly)
+    local th = G.sea_thermal or 0
+    th = th + (cfg.k_thermal * G.g_temp - th) / cfg.tau_sea_years
+    G.sea_thermal = th
+    G.sea_level = cfg.k_ice_sea * ((G.ice_volume_ref or vol) - vol) / W.n + th
     -- g_temp ledger mirrors whichever driver dominates this year
     local era = classify_era(W, G.era)
     if era ~= G.era then

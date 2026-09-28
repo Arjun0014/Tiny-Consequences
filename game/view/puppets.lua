@@ -470,7 +470,9 @@ local function assign_people(W, fx, fy, fz, t, zoom)
     if party and party.path and #party.path > 0 then
       local pi, _ = schedule.party_pos(W, party, t)
       local c = party.path[pi]
-      if c and g.X[c] * fx + g.Y[c] * fy + g.Z[c] * fz > M.FOCUS_DOT - 0.02 then
+      -- (in their boats from boarding to the landing: the boats are drawn)
+      local afloat = party.si and pi >= party.si - 1 and pi <= party.sj and party.boats and #party.boats > 0
+      if c and not afloat and g.X[c] * fx + g.Y[c] * fy + g.Z[c] * fz > M.FOCUS_DOT - 0.02 then
         for k = 1, #party.members do
           local p = P[party.members[k]]
           if p and not p.dead then want[#want + 1] = { pid = p.id, party = party, k = k, job = load_of(party) or job_of(p) } end
@@ -579,8 +581,60 @@ local function mooring_pos(W, v, b, slot)
   return offset(x, y, z, 1.2 + slot * 1.9, 0.02 + 0.015 * (slot % 3))
 end
 
+-- A boat away from its mooring (sim/society/sea.lua): carrying a party overseas (the party's boats
+-- side by side), anchored off a foreign shore while its people are ashore, or sailing home empty.
+-- nil when it is at its mooring (a party still walking down to the boat).
+local function voyage_pos(W, b, t)
+  local g = W.grid
+  local st = b.state
+  if st == "voyage" then
+    local party = W.ent.parties and W.ent.parties[b.party or 0]
+    if not party or not party.si then return nil end
+    local i, f = schedule.party_pos(W, party, t)
+    local si, sj = party.si, party.sj
+    local path = party.path
+    local k = 1
+    local bl = party.boats or {}
+    for q = 1, #bl do if bl[q] == b.id then k = q end end
+    local c1, c2, ff
+    if i < si then
+      -- boarding: an outbound boat waits at its mooring (nil); on the way home it waits by the shore
+      if i < si - 1 or path[si] == W.ent.villages[b.village].mooring then return nil end
+      c1, c2, ff = path[si], path[si - 1], 0.42
+    elseif i >= sj then
+      -- the landing step: run up to the shore, where they step off
+      if i > sj then c1, c2, ff = path[sj], path[sj + 1] or path[sj], 0.42
+      else c1, c2, ff = path[sj], path[sj + 1] or path[sj], 0.42 * math.min(1, f * 2) end
+    else c1, c2, ff = path[i], path[i + 1], f end
+    local x, y, z = slerp(g.X[c1], g.Y[c1], g.Z[c1], g.X[c2], g.Y[c2], g.Z[c2], ff)
+    if k > 1 then x, y, z = offset(x, y, z, k * 2.4, 0.025 * (k - 1)) end
+    return x, y, z, g.X[c2], g.Y[c2], g.Z[c2]
+  elseif st == "beached" and b.at then
+    -- drawn up by the shore where its people landed
+    local c, s2 = b.at, b.coast or b.at
+    local x, y, z = slerp(g.X[c], g.Y[c], g.Z[c], g.X[s2], g.Y[s2], g.Z[s2], 0.42)
+    x, y, z = offset(x, y, z, (b.id * 1.7) % 6.283, 0.012)
+    return x, y, z, g.X[s2], g.Y[s2], g.Z[s2]
+  elseif st == "homeward" and b.back and #b.back > 0 then
+    local back = b.back
+    local n = #back
+    local u = (t - (b.t0 or t)) / max(0.01, (b.t1 or t) - (b.t0 or t))
+    if u < 0 then u = 0 elseif u > 1 then u = 1 end
+    local sidx = u * (n - 1)
+    local i = floor(sidx) + 1
+    local c1, c2 = back[i], back[math.min(n, i + 1)]
+    local x, y, z = slerp(g.X[c1], g.Y[c1], g.Z[c1], g.X[c2], g.Y[c2], g.Z[c2], sidx - (i - 1))
+    return x, y, z, g.X[c2], g.Y[c2], g.Z[c2]
+  end
+  return nil
+end
+
 local function boat_pos(W, v, b, slot, t)
   local g = W.grid
+  if b.state == "voyage" or b.state == "beached" or b.state == "homeward" then
+    local x, y, z, hx, hy, hz = voyage_pos(W, b, t)
+    if x then return x, y, z, hx, hy, hz end
+  end
   local mx, my, mz = mooring_pos(W, v, b, slot)
   local tr = b.trip
   if tr and tr.ground and t >= tr.depart and t < tr.ret then

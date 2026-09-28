@@ -91,7 +91,7 @@ function P.lightning(W, p)
       local b = ents.boats and ents.boats[p.ship]
       if b and b.state ~= "lost" then
         local v = ents.villages[b.village]
-        local at = (b.trip and b.trip.ground) or b.home
+        local at = require("sim.society.sea").cell_of(W, b) or (b.trip and b.trip.ground) or b.home
         require("sim.society.fishing").lose(W, v, b, id, "lightning")
         require("sim.systems.ocean").spill(W, at, cfg().boat_oil, id)
         return id
