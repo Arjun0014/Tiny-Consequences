@@ -587,6 +587,8 @@ C.CONFLICT = {
   ally_days = 3,                          -- need-days of help each allied man counts for (reciprocity)
   -- fear: households of a village raided within fear_years look for safety (defensive aggregation)
   fear_years = 6, push_raided = 0.6, safety_pull = 0.5,
+  -- ambition (D-065): a big village with a much respected leader raids weaker non-kin for tribute
+  ambition = 0.45, amb_min_pop = 120, amb_prestige = 4, amb_edge = 1.3,
   -- cattle raids: a small party runs off a neighbour's herd from its pasture
   cattle_party = 10, cattle_share = 0.3,  -- raiders: at most, and the share of the fighting men
   cattle_per_raider = 12,                 -- sheep-equivalents a raider drives home

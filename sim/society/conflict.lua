@@ -258,6 +258,14 @@ function M.monthly(W, v)
   if hunger > 0 and hour - (v.relief_got or -1e9) < 3 * 672 then hunger = hunger * 0.3 end
   local land = (v.intensify and v.food_days < 120) and 0.5 or 0
   local _, war = M.status.temper(W, v)
+  -- ambition (D-065): a big village whose leader is much respected seeks tribute and glory from
+  -- weaker neighbours who are not its kin (early chiefdoms grew by it, not only from want)
+  local amb = 0
+  if v.pop >= cfg.amb_min_pop and v.leader_h then
+    local lh = W.ent.households[v.leader_h]
+    local pr = lh and lh.prestige or 0
+    if pr > 0 then amb = cfg.ambition * min(1, pr / cfg.amb_prestige) end
+  end
   local vs = W.ent.villages
   local best, bv, bp, bd, bg, bge, bA = nil, 0, 0, 0, 0, 0, 0
   local A0 = min(nf * cfg.raid_share, nf)
@@ -284,6 +292,8 @@ function M.monthly(W, v)
           local pwin = A * A / (A * A + D * D * cfg.home_advantage)
           local loot = min(u.stock.grain * cfg.loot_share, A * cfg.carry)
           local gain = (hunger + land) * loot / max(1, v.need_day * 30) + gr * cfg.revenge_weight
+          -- (ambition only against the clearly weaker, and not those who already pay it)
+          if amb > 0 and A > D * cfg.amb_edge and u.lord ~= v.id then gain = gain + amb * min(2, A / max(1, D) - 1) end
           local value = (pwin * gain - (1 - pwin) * cfg.risk) * war - d * 0.02
           if value > bv then best, bv, bp, bd, bg, bge, bA = u, value, pwin, d, gr, gev, A end
         end
