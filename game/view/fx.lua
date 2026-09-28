@@ -368,13 +368,14 @@ function M.update(W, dt, frozen)
       local ux, uy, uz = x / r, y / r, z / r
       local ex, ez = uz, -ux
       local el = math.sqrt(ex * ex + ez * ez) + 1e-6
-      local drift = l * 0.08
-      pos.x = x + ux * l * 0.22 + ex / el * drift
-      pos.y = y + uy * l * 0.22
-      pos.z = z + uz * l * 0.22 + ez / el * drift
+      local drift = l * 0.1
+      pos.x = x + ux * l * 0.3 + ex / el * drift
+      pos.y = y + uy * l * 0.3
+      pos.z = z + uz * l * 0.3 + ez / el * drift
       go.set_position(pos, o.id)
       go.set_rotation(vmx.set_up_yaw(rot, ux, uy, uz, o.phase), o.id)
-      local s = (0.035 + 0.13 * l) * (1 - l * l * l) + 0.001
+      -- a small wisp at the chimney, swelling a little as it rises and thins away
+      local s = (0.018 + 0.075 * l) * (1 - l * l) + 0.001
       scl.x, scl.y, scl.z = s, s * 0.85, s
       go.set_scale(scl, o.id)
     end

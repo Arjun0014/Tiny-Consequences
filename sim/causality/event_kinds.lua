@@ -18,7 +18,7 @@ for _, p in ipairs({ "lightning", "rain", "drought", "heat", "chill", "cull", "i
 end
 -- test roots (actor player, used by scenario hooks before powers exist)
 for _, t in ipairs({ "remove_predators", "ignite", "oil", "burn_farms", "add_grazers",
-  "heat", "drought", "kill_fish", "sink_tanker", "generic", "empty_stores", "emigrate", "voyage", "cattle_raid" }) do
+  "heat", "drought", "kill_fish", "sink_tanker", "generic", "empty_stores", "emigrate", "voyage", "cattle_raid", "submit" }) do
   def("test_" .. t, { actor = "player", icon = "test", headline = false, text = "Test: " .. t })
 end
 

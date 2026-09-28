@@ -31,7 +31,7 @@ local NAMES = { "oak", "birch", "spruce", "snowpine", "pine", "palm", "jungle", 
   "bush", "tuft", "flower", "reed", "rock", "cactus", "cottage", "longhouse", "townhouse", "hut",
   "granary", "hall", "well", "fence", "haystack", "woodpile", "ruin", "pier",
   "stakes", "frame", "walls", "sodhouse", "woodshed", "sacks", "fishrack", "hull", "stook", "logs", "palisade",
-  "kiln", "pots", "pen" }
+  "kiln", "pots", "pen", "banner" }
 local flora = require("game.view.flora")
 for _, n in ipairs(flora.NAMES) do NAMES[#NAMES + 1] = n end
 local K = {}
@@ -49,6 +49,7 @@ for _, n in ipairs({ "cottage", "longhouse", "townhouse", "hut", "granary", "hal
 cls("fence"); cls("haystack", 7); cls("woodpile"); cls("ruin"); cls("pier")
 cls("stakes"); cls("frame"); cls("walls", 0, 0); cls("sodhouse", 7, 0); cls("woodshed", 5); cls("sacks")
 cls("fishrack"); cls("hull"); cls("stook", 7); cls("logs"); cls("palisade"); cls("kiln"); cls("pots"); cls("pen")
+cls("banner")
 for _, n in ipairs({ "oak1", "oak2", "oak3", "beech1", "beech2", "birch1", "birch2", "poplar", "sapling_b" }) do cls(n, 1, 6) end
 for _, n in ipairs({ "spruce1", "spruce2", "spruce3", "fir1", "pine1", "pine2", "sapling_c" }) do cls(n, 2, 6) end
 cls("snowpine1", 2, 6, 4); cls("snowpine2", 2, 6, 4)
@@ -466,6 +467,14 @@ function M.plan_village(ctx, e)
   if alive then
     local r = ctx.surface(wx, wy, wz)
     put(K.well, wx, wy, wz, r, (v.key_cell or 0) % 7, 1.1, pack_rgb(unpack(roofs[1])), 0)
+    -- the polity's banner beside the well (W9): the paramount's taller
+    local top = M.polity_of(W, v)
+    if top then
+      local c1, c2 = M.polity_colours(top)
+      local bx, by, bz = offset(wx, wy, wz, ((v.key_cell or 0) % 11) * 0.57 + 1.2, 0.05)
+      local rb = ctx.surface(bx, by, bz)
+      put(K.banner, bx, by, bz, rb, 0.4, top == v and 1.35 or 1.0, c1, c2)
+    end
   end
   local houses, granary, pier = {}, nil, nil
   local list = v.buildings or {}
@@ -663,6 +672,34 @@ function M.plan_village(ctx, e)
 end
 
 --- Signature of what plan_village draws for village v (rebuild the chunk when it changes).
+-- The paramount of the polity village v belongs to (nil when it stands alone).
+function M.polity_of(W, v)
+  local vs = W.ent and W.ent.villages
+  if not vs then return nil end
+  local top, guard = v, 0
+  while top.lord and vs[top.lord] and vs[top.lord].alive and guard < 10 do top = vs[top.lord]; guard = guard + 1 end
+  if top ~= v then return top end
+  -- a paramount: does anyone pay it?
+  for i = 1, #vs do
+    local u = vs[i]
+    if u.alive and u.lord == v.id then return v end
+  end
+  return nil
+end
+
+-- A polity's colours: from its paramount (a hue by its id, the stripe light).
+function M.polity_colours(top)
+  local h = ((top.id * 0.6180339) % 1) * 6
+  local k = floor(h)
+  local f = h - k
+  local r, g, b
+  if k == 0 then r, g, b = 1, f, 0 elseif k == 1 then r, g, b = 1 - f, 1, 0
+  elseif k == 2 then r, g, b = 0, 1, f elseif k == 3 then r, g, b = 0, 1 - f, 1
+  elseif k == 4 then r, g, b = f, 0, 1 else r, g, b = 1, 0, 1 - f end
+  local d = 0.78
+  return pack_rgb(0.12 + r * d * 0.8, 0.12 + g * d * 0.8, 0.12 + b * d * 0.8), pack_rgb(0.95, 0.93, 0.86)
+end
+
 function M.village_sig(W, v)
   local B = W.ent.buildings or {}
   local s = 0
@@ -680,6 +717,9 @@ function M.village_sig(W, v)
   s = (s + floor((st.wood or 0) / 80) * 7919 + floor(((st.grain or 0) + (st.seed or 0)) / 2500) * 104729
     + floor((st.fresh or 0) / 120) * 1299709) % 1000000007
   s = (s + (v.leader_h or 0) * 7727) % 1000000007
+  -- the polity it belongs to (a banner on the square)
+  local top = M.polity_of(W, v)
+  if top then s = (s + top.id * 49979687) % 1000000007 end
   local pots = ((v.acc and v.acc.made_pots or 0) + (v.acc_last and v.acc_last.made_pots or 0) > 3) and 1 or 0
   s = (s + pots * 15485863 + min(4, floor((st.pots or 0) / math.max(1, v.pop * 0.15))) * 32452843) % 1000000007
   return s
@@ -1120,7 +1160,8 @@ function M.mover_template(kind)
     kit.cone(t, -0.05, 0.62, 0.2, 5, 2, 0.9, 1.0, 1, 0.5)
     return t
   elseif kind == "smoke" then
-    kit.lump(t, 0.5, 0.42, 0.5, 6, 3, 1, 0.8, 1.0, 0, 0.1)
+    -- (round enough not to read as a hexagon when it swells near the camera)
+    kit.lump(t, 0.5, 0.42, 0.5, 10, 5, 1, 0.8, 1.0, 0, 0.1)
     return t
   end
   return t

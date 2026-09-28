@@ -237,9 +237,19 @@ local function assign_animals(W, fx, fy, fz)
   local F, g = W.F, W.grid
   local gz, pr = F.grazers, F.predators
   local wants = { deer = {}, wolf = {} }
+  -- wild beasts keep away from the villages (their cells' grazers are drawn in the cells about)
+  local settled = {}
+  local B = W.ent and W.ent.buildings or {}
+  for _, v in ents.each_village(W) do
+    settled[v.cell] = true
+    for _, id in ipairs(type(v.buildings) == "table" and v.buildings or {}) do
+      local b = B[id]
+      if b and b.cell then settled[b.cell] = true end
+    end
+  end
   for c = 1, W.n do
     local d = g.X[c] * fx + g.Y[c] * fy + g.Z[c] * fz
-    if d > 0.93 and W.geo.ocean[c] == 0 then
+    if d > 0.93 and W.geo.ocean[c] == 0 and not settled[c] then
       if gz[c] > M.GRAZER_MIN then wants.deer[#wants.deer + 1] = { c, gz[c] } end
       if pr[c] > M.PRED_MIN then wants.wolf[#wants.wolf + 1] = { c, pr[c] } end
     end

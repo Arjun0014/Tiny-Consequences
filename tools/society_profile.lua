@@ -1,11 +1,19 @@
 -- Society cost by function (W6): Lua VM instructions per planet week for the society's main
 -- functions, on a world run to a given year (the JIT off, a count hook: load-independent).
 --   luajit tools/society_profile.lua [seed] [years] [weeks]
+--   luajit tools/society_profile.lua <world.tcsave> 0 [weeks]
 package.path = "./?.lua;./?/init.lua;" .. package.path
 local worldgen = require("sim.worldgen.init")
 local world = require("sim.world")
-local W = worldgen.generate(tonumber(arg[1]) or 22)
-world.run_years(W, tonumber(arg[2]) or 30)
+local W
+if arg[1] and arg[1]:match("%.tcsave$") then
+  -- a saved world (e.g. assets/worlds/dev_y100.tcsave): profile it as it is
+  local f = assert(io.open(arg[1], "rb")); local str = f:read("*a"); f:close()
+  W = require("sim.worlds").from_save_string(str)
+else
+  W = worldgen.generate(tonumber(arg[1]) or 22)
+  world.run_years(W, tonumber(arg[2]) or 30)
+end
 local cnt = 0
 local STEP = 20
 local acc, calls = {}, {}

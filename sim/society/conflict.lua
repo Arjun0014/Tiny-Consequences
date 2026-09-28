@@ -175,24 +175,44 @@ M.nfighters = nfighters
 -- Allies who come to u's defence: its lord (bound to protect its tributaries) and villages that
 -- hold it dear (kin, daughters, old friends) within a day's walk send a share of their fighting
 -- men. Returns the allied men and the list { village, men } (scratch table `out`).
-function M.allies(W, u, attacker, out)
+-- (the villages that would come to u's help, reckoned once a week: ids and men)
+local function ally_base(W, u)
   local cfg = cfgmod.CONFLICT
+  local sc = W.scratch
+  if not sc then sc = {}; W.scratch = sc end
+  local memo = sc.allies
+  if not memo then memo = {}; sc.allies = memo end
+  local wk = floor(W.hour / 168)
+  local m = memo[u.id]
+  if m and m.wk == wk then return m end
+  m = { wk = wk }
+  local vs = W.ent.villages
+  for i = 1, #vs do
+    local a = vs[i]
+    if a ~= u and a.alive and a.continent == u.continent then
+      local lord = u.lord == a.id
+      local s = lord and 9 or M.rel.score(W, a, u)
+      if s >= cfg.ally_score and sites.dist(W, a.cell, u.cell) <= cfg.ally_reach then
+        local men = floor(nfighters(W, a) * (lord and cfg.ally_lord_share or cfg.ally_share))
+        if men > 0 then m[#m + 1] = a.id; m[#m + 1] = men end
+      end
+    end
+  end
+  memo[u.id] = m
+  return m
+end
+
+function M.allies(W, u, attacker, out)
   local vs = W.ent.villages
   local n = 0
   for i = #out, 1, -1 do out[i] = nil end
-  for i = 1, #vs do
-    local a = vs[i]
-    if a ~= u and a ~= attacker and a.alive and a.continent == u.continent and not a.raid_out then
-      local lord = u.lord == a.id
-      local s = lord and 9 or M.rel.score(W, a, u)
-      if s >= cfg.ally_score and sites.dist(W, a.cell, u.cell) <= cfg.ally_reach
-        and not (attacker and (attacker.lord == a.id or a.lord == attacker.id)) then
-        local m = floor(nfighters(W, a) * (lord and cfg.ally_lord_share or cfg.ally_share))
-        if m > 0 then
-          n = n + m
-          out[#out + 1] = { a, m }
-        end
-      end
+  local m = ally_base(W, u)
+  for i = 1, #m, 2 do
+    local a = vs[m[i]]
+    if a ~= attacker and a.alive and not a.raid_out
+      and not (attacker and (attacker.lord == a.id or a.lord == attacker.id)) then
+      n = n + m[i + 1]
+      out[#out + 1] = { a, m[i + 1] }
     end
   end
   return n, out

@@ -1,4 +1,4 @@
-// npm run perf:probe [-- --release --no-build --seconds 10 --speed 4 --viewport 640x360 --all]
+// npm run perf:probe [-- --release --no-build --seconds 10 --speed 4 --viewport 640x360 --all --world NAME --gfx low]
 // Plays the default world at a speed and reports the in-game perf window (bridge `perf`) under
 // three conditions: normal, Lua GC stopped for the window, and visuals frozen. Separates sim,
 // view and GC costs when W08 fails (headless WebGL is CPU-rendered: judge ms, not fps).
@@ -28,7 +28,12 @@ const fmt = (r) => `tick med ${r.tick_median.toFixed(2)} p95 ${r.tick_p95.toFixe
 try {
   const vw = getFlag(args, '--viewport', null);
   const page = await browser.newPage({ viewport: vw ? { width: Number(vw.split('x')[0]), height: Number(vw.split('x')[1]) } : VIEWPORT });
-  await page.goto(gameUrl(`http://127.0.0.1:${port}`, { speed: '0' }));
+  const q = { speed: '0' };
+  const wname = getFlag(args, '--world', null);
+  if (wname) q.world = wname;
+  const gfx = getFlag(args, '--gfx', null);
+  if (gfx) q.gfx = gfx;
+  await page.goto(gameUrl(`http://127.0.0.1:${port}`, q));
   await page.waitForFunction(() => window.__TC && window.__TC.ready === true, null, { timeout: 60_000 });
   const modes = hasFlag(args, '--all') ? ['normal', 'gc-stopped', 'frozen-view'] : ['normal'];
   for (const mode of modes) {

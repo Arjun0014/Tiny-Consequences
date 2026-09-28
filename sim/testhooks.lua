@@ -273,6 +273,33 @@ function hooks.cattle_raid(W, p)
   return id
 end
 
+-- Submission (W9): village p.village (default: the smallest) submits to p.lord (default: its
+-- nearest larger neighbour on its landmass) as if beaten twice — a polity for tests and pictures.
+function hooks.submit(W, p)
+  local sites = require("sim.society.sites")
+  local vs = W.ent.villages
+  local u = p.village and vs[p.village]
+  if not u then
+    for _, v in ipairs(vs) do if v.alive and not v.lord and (not u or v.pop < u.pop) then u = v end end
+  end
+  if not u then return 0 end
+  local lord = p.lord and vs[p.lord]
+  if not lord then
+    local bd = 1e9
+    for _, v in ipairs(vs) do
+      if v.alive and v ~= u and v.continent == u.continent and v.pop > u.pop and v.lord ~= u.id then
+        local d = sites.dist(W, u.cell, v.cell)
+        if d < bd then lord, bd = v, d end
+      end
+    end
+  end
+  if not lord then return 0 end
+  local id = root(W, "submit", { u.cell }, u.pop, { village = u.id, lord = lord.id })
+  u.lord, u.lord_since = lord.id, W.hour
+  u.lord_ev = events.emit(W, "submission", u.cell, id, u.pop, { village = u.id, lord = lord.id })
+  return id
+end
+
 world.COMMANDS.test_action = function(W, params)
   local fn = hooks[params.name]
   if not fn then error("unknown test hook " .. tostring(params.name)) end

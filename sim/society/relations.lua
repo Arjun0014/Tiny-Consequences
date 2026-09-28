@@ -38,9 +38,14 @@ local floor, min, max, ceil, log = math.floor, math.min, math.max, math.ceil, ma
 -- Set by sim/society/init.lua: mobility.depart (callbacks avoid require cycles).
 M.depart = function() end
 
+-- (the key strings are made once: lookups are the society's commonest operation)
+local KEYS = {}
 local function key(a, b)
   if a > b then a, b = b, a end
-  return a .. "_" .. b
+  local n = a * 65536 + b
+  local k = KEYS[n]
+  if not k then k = a .. "_" .. b; KEYS[n] = k end
+  return k
 end
 
 function M.get(W, a, b, create)
@@ -158,6 +163,14 @@ M.spare_food = spare_food
 -- in reach by boat (sea.lua): the sender's boats (u's when u_sends, else v's) must seat n people;
 -- d is then the crossing's cost in walking steps.
 local function partners(W, v, reach, u_sends, n)
+  -- (the same village's market reckoning and trade in the same step share one list)
+  local sc = W.scratch
+  if not sc then sc = {}; W.scratch = sc end
+  local memo = sc.partners
+  if not memo then memo = {}; sc.partners = memo end
+  local mk = v.id * 8 + (u_sends and 4 or 0) + min(3, sea.boats_needed(n or 2))
+  local m = memo[mk]
+  if m and m.hour == W.hour and m.reach == reach then return m.list end
   local out = {}
   local vs = W.ent.villages
   for i = 1, #vs do
@@ -174,6 +187,7 @@ local function partners(W, v, reach, u_sends, n)
     end
   end
   table.sort(out, function(a, b) if a.s ~= b.s then return a.s > b.s end return a.u.id < b.u.id end)
+  memo[mk] = { hour = W.hour, reach = reach, list = out }
   return out
 end
 

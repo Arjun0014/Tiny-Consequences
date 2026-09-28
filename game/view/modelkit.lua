@@ -638,6 +638,14 @@ local function build_near()
     M.place(t, M.cyl(nil, 0.004, 0.0048, 0, 0.004, 7, 14, 0.8, 1.0, 0), q[1], q[2] + 0.015, q[3], 1)
   end
   N.pots = t
+  -- a banner (W9, D-061): a tall pole with a cloth in the colours of the polity (slot 1 = the
+  -- field, slot 2 = the stripe) and a finial
+  t = M.new()
+  M.cyl(t, 0.0022, 0.0018, 0, 0.13, 5, 6, 0.6, 0.9, 0, false)
+  M.place(t, M.lump(nil, 0.004, 0.004, 0.004, 5, 2, 5, 0.9, 1.0, 0, 0), 0, 0.132, 0, 1)
+  M.place(t, M.box(nil, 0.04, 0.028, 0.0015, 1, 0.9, 1.0, false), 0.021, 0.108, 0, 1)
+  M.place(t, M.box(nil, 0.041, 0.007, 0.0017, 2, 0.95, 1.0, false), 0.021, 0.108, 0, 1)
+  N.banner = t
   -- a run of palisade (W8): sharpened stakes along x, 0.1 long, with a rail behind
   t = M.new()
   for k = 0, 6 do

@@ -46,6 +46,9 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Key numbers (update as they change)
 
+- **Scale at full size (28 Sep, session 4; year-100 world, seed 22: 2,372 people, 24 villages)**: society 2.96 M Lua VM instructions per planet week (≈1,250 per person-week; `luajit tools/society_profile.lua assets/worlds/dev_y100.tcsave 0 24`): labour.assign 23%, life.weekly 10%, fishing 10%, relations 8%, conflict 6%. ≈ 22 ms per week in a quiet browser (7.4 ns/instruction). Release build under headless SwiftShader on this (memory-pressured) laptop: week tick median 88 ms, p95 125 ms; view 33.5 ms/frame; "weeks" speed reached 0.4 weeks/s (`node scripts/perf_probe.mjs --release --world dev_y100 --gfx low`). Props: ~2 M vertices at the whole-planet view at full density (SwiftShader draws ~16 M/s). Save 2.0 MB at year 100. P07 (seed 42, level 3): 822 k instructions per tick (+6.4%).
+- Long runs at 2,400 (D-061): seed 22 holds its forests (natural forest 0.21-0.22 from year 150 to 250, CO₂ 360-365 ppm, +1.4-1.5 °C); seed 9 (dry) keeps 10% natural forest at year 150 with coppicing (was 1%). Village counts exceed `max_villages` (30) through splits and refugees: 41-51 by years 150-250.
+
 - SIM_LEVEL: 12 (geodesic f12, D-047) — 1,442 cells (was 3 = 642, D-030)
 - Sim tick at f12, HTML5 release, synchronous: 4.2 ms median (bench:web, D-047); W08 3.8 ms median. P07 baseline 513,763 instr/tick (level 12).
 - Default world: seed 22 (D-047). Tutorial world: seed 8 (D-049).

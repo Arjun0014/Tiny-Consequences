@@ -221,6 +221,21 @@ function M.register(G)
     return { party = party.id, from = party.from, to = party.to, depart = party.depart, arrive = party.arrive,
       hour = W.hour, lat = math.deg(g.lat[c]), lon = math.deg(g.lon[c]) }
   end)
+  -- a submission (sim/testhooks.lua submit): a polity for pictures; returns both villages
+  bridge.register("submit", function(args)
+    local W = G.W
+    local world = require("sim.world")
+    world.test_action(W, "submit", { village = args.village, lord = args.lord })
+    world.step(W)
+    local out = {}
+    for _, v in ipairs(W.ent.villages) do
+      if v.alive and v.lord then
+        local c = v.cell
+        out[#out + 1] = { village = v.id, lord = v.lord, lat = math.deg(W.grid.lat[c]), lon = math.deg(W.grid.lon[c]) }
+      end
+    end
+    return { tributaries = out }
+  end)
   -- where a party is now (any kind; follows the raiders home: the newest party from their target)
   bridge.register("party_pos", function(args)
     local W = G.W
