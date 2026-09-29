@@ -469,6 +469,7 @@ function M.abandon(W, v)
     local c = v.land[i]
     if F.land_use[c] == -v.id then F.land_use[c] = 0 end
   end
+  W.lu_ver = (W.lu_ver or 0) + 1   -- (village ground freed: fauna's herd ranges)
   farming.release_all(W, v)
   local B = W.ent.buildings
   for i = 1, #v.buildings do
@@ -482,11 +483,6 @@ function M.abandon(W, v)
     local bo = W.ent.boats[v.boats[i]]
     if bo then W.ent.boats[bo.id] = nil end
     v.boats[i] = nil
-  end
-  local FS = W.S.fauna
-  local G = W.vgeo[v.id]
-  if FS and G then
-    for i = 1, #G.ring do FS.hunt[G.ring[i]], FS.cull[G.ring[i]] = 0, 0 end
   end
   if W.record_events then W.S.society.abandoned = W.S.society.abandoned + 1 end
   emit(W, "village_abandoned", v.cell, v.cause, 1, { village = v.id })

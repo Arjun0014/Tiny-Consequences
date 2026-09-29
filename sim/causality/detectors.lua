@@ -249,26 +249,26 @@ local function local_boom(W, cfg, sp, record)
   local reg = W.static.region
   local sc = W.scratch
   local mark, q = sc.det_mark, sc.det_q
-  local sv_, sn_ = sc.det_sv, sc.det_sn
-  if not sv_ then sv_, sn_ = {}, {}; sc.det_sv, sc.det_sn = sv_, sn_ end
   local stamp = sc.det_stamp + 1
   sc.det_stamp = stamp
   local tick = W.tick
   local land = W.geo.land_cells
-  -- the neighbourhood sums (cell + ring) of density and normal
-  for i = 1, #land do
-    local c = land[i]
+  local ocean = W.geo.ocean
+  -- is a land cell's neighbourhood (cell + ring) above thr × its normal? (the sums of density and
+  -- normal; asked only of cells whose own normal counts, in regions open to a boom)
+  local function above(c)
     local v, nn = vals[c], norm[c]
     local b = c * 6 - 6
     for k = 1, cnt[c] do local j = nbr[b + k]; v = v + vals[j]; nn = nn + norm[j] end
-    sv_[c], sn_[c] = v, nn
+    return v > thr * nn
   end
   local fresh = cfg.news_years * 48
+  local state, last, cool = D.state, D.last, cfg.cooldown
   for i = 1, #land do
     local src = land[i]
     local r = reg[src]
-    if mark[src] ~= stamp and norm[src] > minn and sv_[src] > thr * sn_[src]
-      and D.state[r] == 0 and tick - D.last[r] >= cfg.cooldown then
+    if mark[src] ~= stamp and norm[src] > minn and state[r] == 0 and tick - last[r] >= cool
+      and above(src) then
       mark[src] = stamp
       local m, head = 1, 1
       q[1] = src
@@ -277,7 +277,7 @@ local function local_boom(W, cfg, sp, record)
         local b = c * 6 - 6
         for k = 1, cnt[c] do
           local j = nbr[b + k]
-          if mark[j] ~= stamp and reg[j] == r and norm[j] > minn and sv_[j] and sv_[j] > thr * sn_[j] then
+          if mark[j] ~= stamp and reg[j] == r and norm[j] > minn and ocean[j] == 0 and above(j) then
             mark[j] = stamp; m = m + 1; q[m] = j
           end
         end
