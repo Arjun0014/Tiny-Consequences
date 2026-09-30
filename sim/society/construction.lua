@@ -142,10 +142,18 @@ function M.plan(W, v)
     b.prio = 72
     sites_open = sites_open + 1
   end
-  -- 5. storage when stocks overflow (at most a granary per 40 people: surplus beyond that rots)
+  -- 5. storage when stocks overflow, up to the store the village is content with (store_years of
+  -- need), more when its grown-ups remember hunger (dread, D-074: they build against it; such a
+  -- granary carries the remembered famine as its cause). Beyond it, grain would rot: it is given
+  -- away or feasted (relations.surplus).
   local gcap, wcap = M.capacities(W, v)
+  local need_year = (v.need_day or 0) * 336
+  local dread = v.dread or 0
   if v.stock.grain > gcap * 0.9 and cnt("granary:site") == 0
-    and cnt("granary") < 1 + floor(v.pop / 40) then open("granary") end
+    and gcap < need_year * (cfg.store_years + cfg.dread_store * dread) then
+    local b = open("granary")
+    if b and dread > 0 and gcap >= need_year * cfg.store_years then b.dread_ev = v.dread_ev end
+  end
   if v.stock.wood > wcap * 0.9 and cnt("woodshed:site") == 0
     and cnt("woodshed") < 1 + floor(v.pop / 60) then open("woodshed") end
 end
@@ -242,6 +250,9 @@ function M.complete(W, v, b)
   end
   b.state = "standing"
   b.condition = 1
+  if b.kind == "granary" and b.dread_ev and W.record_events then
+    events.emit(W, "granary_built", b.cell, b.dread_ev, 1, { village = v.id, building = b.id })
+  end
   if b.kind == "house" or b.kind == "hut" then
     M.on_house_ready(W, v, b)
     if W.record_events then events.emit(W, "house_built", b.cell, v.housing_tag or 0, 1, { village = v.id, building = b.id }) end

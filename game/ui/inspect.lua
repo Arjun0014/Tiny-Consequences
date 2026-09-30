@@ -552,7 +552,8 @@ end
 local CHRON = { W = nil, last = 0, by = {} }
 local CHRON_KINDS = { village_founded = true, village_split = true, raid = true, raid_repelled = true,
   cattle_raid = true, cattle_raid_repelled = true, truce = true, submission = true, secession = true, famine = true,
-  shipment_lost = true, village_abandoned = true, bride = false, grazing_dispute = true, fishing_dispute = true }
+  shipment_lost = true, village_abandoned = true, bride = false, grazing_dispute = true, fishing_dispute = true,
+  relief = true, gift = true, feast = true, granary_built = true }
 local function chron_add(vid, rec)
   if not vid or vid == 0 then return end
   local l = CHRON.by[vid]
@@ -572,6 +573,7 @@ function M.chronicle(W, v)
       if d.from and d.from ~= d.village then chron_add(d.from, r) end
       if d.lord then chron_add(d.lord, r) end
       if d.other then chron_add(d.other, r) end
+      if d.to and d.to ~= d.village then chron_add(d.to, r) end
     end
   end
   CHRON.last = #order
@@ -606,6 +608,16 @@ function M.chronicle(W, v)
       if d.village == v.id then t = "Quarrelled with " .. nm(d.other) .. " over " .. what
       else t = nm(d.village) .. " blamed us for " .. what end
     elseif k == "famine" then t = "Famine"
+    elseif k == "relief" then
+      -- (D-074: what was given in hunger binds the taker; a gift that repays says so)
+      if d.village == v.id then t = "Fed in our hunger by " .. nm(d.from) .. ((d.repay or 0) > 0 and ", who owed us" or "")
+      else t = "Sent grain to " .. nm(d.village) .. " in their hunger" .. ((d.repay or 0) > 0 and ", repaying our debt" or "") end
+    elseif k == "gift" and (d.repay or 0) > 0 then
+      if d.village == v.id then t = "Sent our surplus to " .. nm(d.to) .. ", who fed us in our hunger"
+      else t = nm(d.village) .. " repaid the grain we gave them" end
+    elseif k == "feast" and d.village == v.id then
+      t = (d.guests or 0) > 0 and string.format("A harvest feast (%d villages our guests)", d.guests) or "A harvest feast"
+    elseif k == "granary_built" then t = "Built a granary against the memory of the famine"
     elseif k == "shipment_lost" then t = "A boat and its cargo lost at sea"
     elseif k == "village_abandoned" then t = "Abandoned"
     end

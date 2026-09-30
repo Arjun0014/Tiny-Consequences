@@ -499,6 +499,13 @@ C.SOCIETY = {
   weed_rate = 0.02,                       -- weeds per untended week (share of tending not done)
   field_margin = 1.3,                     -- fields for need x this
   dread_margin = 0.2, dread_store = 1.0,  -- a village remembering hunger (dread 0..1, D-064): margin x (1 + 0.2 dread), store years + dread
+  store_years = 1.5,                      -- the store a village is content with, in years of need (+ dread_store x dread: a
+                                          --   village that remembers hunger wants more, D-074): granaries are built while the
+                                          --   store overflows until they hold it, and beyond it nobody sows more (Chayanov)
+  gift_min_days = 10,                     -- a surplus gift is worth carrying at this many of the receiver's need-days (D-074)
+  feast_min_days = 4,                     -- grain beyond the granaries worth a harvest feast: this many of the village's need-days
+  guest_share = 0.3,                      -- share of a feast eaten by guests from friendly villages of the landmass
+  owe_w = 0.004, owe_cap = 250,           -- a village is disposed to help one it owes: per need-day (its own) taken and not returned
   fields_per_worker = 0.11,               -- labour bound on cropped fields
   farm_radius = 3,                        -- level-4 steps (scaled): fields within (walking cost in the plan)
   clear_h = 600,                          -- hours to clear a unit of forest for a field
@@ -623,6 +630,7 @@ C.STATUS = {
   elder_age = 50, elder_gain = 0.05,      -- a household with an elder head gains respect monthly
   founder_gain = 0.04,                    -- households of the village's founding lineage
   gift_prestige = 0.02,                   -- per need-day of relief the leader's household gives
+  feast_prestige = 0.01,                  -- per need-day of the village's food eaten at a feast it hosts (D-074)
   split_pop = 40,                         -- contested successions can split villages this big
   split_close = 0.75,                     -- the rival's prestige at least this share of the new leader's
   split_share = 0.2,                      -- the rival lineage is at least this share of the village

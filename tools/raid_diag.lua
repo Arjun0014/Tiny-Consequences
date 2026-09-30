@@ -38,7 +38,9 @@ local function parts(u, v)
     out.tr = 0.15 * math.min(5, r.trades)
     local gave, got
     if u.id < v.id then gave, got = r.gab, r.gba else gave, got = r.gba, r.gab end
-    out.led = -0.004 * math.max(0, gave - got)
+    local net = (gave - got) / math.max(1, u.need_day or 1)   -- (the ledger is in FU, D-074)
+    local sc = require("sim.config").SOCIETY
+    out.led = net > 0 and -0.004 * net or sc.owe_w * math.min(sc.owe_cap, -net)
     out.gr = -0.3 * math.min(6, (u.id < v.id) and (r.ga or 0) or (r.gb or 0))
     out.rawkin = r.kin
     out.rawtr = r.trades
