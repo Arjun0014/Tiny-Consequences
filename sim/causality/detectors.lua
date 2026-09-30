@@ -229,6 +229,10 @@ end
 -- Local booms (D-025): a connected patch of land where a species exceeds boom_local × its own
 -- 5-year normal (fauna's per-cell normals) — the boom can be real on part of a landmass while
 -- hunting elsewhere holds the regional average down. Shares the regional state/cooldown.
+-- Density and normal are both taken over the cell and its ring (D-071): the animals live in
+-- herds and packs that move, and a herd walking onto new ground is not a boom — its numbers
+-- growing is. A natural local boom is news at most once per news_years in its region, like a
+-- regional one.
 local function local_boom(W, cfg, sp, record)
   local FS = W.S.fauna
   if not FS or not record then return end
@@ -249,11 +253,22 @@ local function local_boom(W, cfg, sp, record)
   sc.det_stamp = stamp
   local tick = W.tick
   local land = W.geo.land_cells
+  local ocean = W.geo.ocean
+  -- is a land cell's neighbourhood (cell + ring) above thr × its normal? (the sums of density and
+  -- normal; asked only of cells whose own normal counts, in regions open to a boom)
+  local function above(c)
+    local v, nn = vals[c], norm[c]
+    local b = c * 6 - 6
+    for k = 1, cnt[c] do local j = nbr[b + k]; v = v + vals[j]; nn = nn + norm[j] end
+    return v > thr * nn
+  end
+  local fresh = cfg.news_years * 48
+  local state, last, cool = D.state, D.last, cfg.cooldown
   for i = 1, #land do
     local src = land[i]
     local r = reg[src]
-    if mark[src] ~= stamp and norm[src] > minn and vals[src] > thr * norm[src]
-      and D.state[r] == 0 and tick - D.last[r] >= cfg.cooldown then
+    if mark[src] ~= stamp and norm[src] > minn and state[r] == 0 and tick - last[r] >= cool
+      and above(src) then
       mark[src] = stamp
       local m, head = 1, 1
       q[1] = src
@@ -262,7 +277,7 @@ local function local_boom(W, cfg, sp, record)
         local b = c * 6 - 6
         for k = 1, cnt[c] do
           local j = nbr[b + k]
-          if mark[j] ~= stamp and reg[j] == r and norm[j] > minn and vals[j] > thr * norm[j] then
+          if mark[j] ~= stamp and reg[j] == r and norm[j] > minn and ocean[j] == 0 and above(j) then
             mark[j] = stamp; m = m + 1; q[m] = j
           end
         end
@@ -273,19 +288,46 @@ local function local_boom(W, cfg, sp, record)
         local sv, sn = 0, 0
         for k = 1, m do sv = sv + vals[q[k]]; sn = sn + norm[q[k]] end
         local ratio = sn > 0 and sv / sn or 0
-        local rec = W.names.regions[r]
+        local opts = { region = r }
+        -- (nature's rhythm — a boom rooted in no one's hand, however many booms back — is news
+        -- once per news_years here; the player's consequences always are)
+        local natural = not events.is_player_rooted(W, parent)
+        if natural and tick - D.news[r] < fresh then opts.headline = false end
         local id = events.emit(W, "population_boom", src, parent, ratio,
-          { species = sp, ratio = ratio, cells = m, ["local"] = true }, { region = r })
+          { species = sp, ratio = ratio, cells = m, ["local"] = true }, opts)
         if id ~= 0 then
+          local er = W.E.rec[id]
+          if er and er.headline and natural then D.news[r] = tick end
           for k = 1, m do
             local c = q[k]
             if tags[c] == parent then tags[c] = id; idle[c] = 0 end
           end
         end
-        if rec then rec = nil end
       end
     end
   end
+end
+
+-- A boom or crash the player's hand drives is news even while the region is in a natural event's
+-- cooldown or already in a natural trough/peak (a Cull on wolves that were already scarce): if the
+-- cells that moved most carry a player-rooted cause, a new event with that parent is recorded.
+-- Returns the new event id or 0.
+local function player_turn(W, cfg, sp, r, cells, m, a, ratio, kind, nst)
+  local vals, tags = W.F[sp], W.C[sp]
+  local area = W.grid.area
+  local wts = W.scratch.det_w
+  if not wts then wts = {}; W.scratch.det_w = wts end
+  for i = 1, m do
+    local c = cells[i]
+    local dv = (nst == -1) and (a - vals[c]) or (vals[c] - a)
+    wts[i] = dv > 0 and dv * area[c] or 0
+  end
+  local parent = dominant(W, cells, m, tags, cfg.dominant_share, wts)
+  if parent == 0 or not events.is_player_rooted(W, parent) then return 0 end
+  local rec = W.names.regions[r]
+  local id = events.emit(W, kind, rec and rec.centre or 0, parent, ratio, { species = sp, ratio = ratio }, { region = r })
+  if id ~= 0 then retag_species(W, cells, m, sp, parent, id, nst, cfg) end
+  return id
 end
 
 -- Population boom / crash / regional + global extinction for one species.
@@ -363,14 +405,19 @@ local function fauna_species(W, cfg, sp, record)
                 if best ~= 0 and bw >= 0.15 * tot then opts.co = best end
               end
             end
-            if parent == 0 and tick - news[r] < fresh then opts.headline = false end
+            local natural = not events.is_player_rooted(W, parent)
+            if natural and tick - news[r] < fresh then opts.headline = false end
             local rec = W.names.regions[r]
             local id = events.emit(W, kind, rec and rec.centre or 0, parent, ratio, { species = sp, ratio = ratio }, opts)
             if id ~= 0 then retag_species(W, cells, m, sp, parent, id, nst, cfg) end
             evs[r] = id
             local er = E.rec[id]
-            if er and er.headline and parent == 0 then news[r] = tick end
+            if er and er.headline and natural then news[r] = tick end
           end
+        elseif kind and record then
+          -- (in a natural event's cooldown: the player's hand is still news)
+          local id = player_turn(W, cfg, sp, r, cells, m, a, ratio, kind, nst)
+          if id ~= 0 then state[r], last[r], evs[r] = nst, tick, id end
         end
       elseif st == 1 and ratio < cfg.boom_exit then state[r] = 0; evs[r] = 0
       elseif st == -1 and ratio > cfg.crash_exit then state[r] = 0; evs[r] = 0
@@ -378,12 +425,20 @@ local function fauna_species(W, cfg, sp, record)
         -- while it lasts, the event records the peak / the trough; a deep one becomes a headline
         -- (an ordinary predator–prey trough stays a quiet event: 03 §5 headline minimums)
         local rec = E.rec[evs[r]]
+        -- (a natural trough or peak the player deepens: the deepening is the player's)
+        if record and rec and ((st == -1 and ratio < rec.mag * 0.8 and ratio <= cfg.crash)
+            or (st == 1 and ratio > rec.mag * 1.25 and ratio >= cfg.boom))
+            and not events.is_player_rooted(W, evs[r]) then
+          local id = player_turn(W, cfg, sp, r, cells, m, a, ratio, st == -1 and "population_crash" or "population_boom", st)
+          if id ~= 0 then last[r], evs[r] = tick, id; rec = E.rec[id] end
+        end
         if rec and ((st == -1 and ratio < rec.mag) or (st == 1 and ratio > rec.mag)) then
           rec.mag = ratio
           if type(rec.data) == "table" then rec.data.ratio = ratio end
-          if not rec.headline and (rec.parent ~= 0 or tick - news[r] >= fresh) then
+          local natural = not events.is_player_rooted(W, rec.parent)
+          if not rec.headline and (not natural or tick - news[r] >= fresh) then
             events.update_headline(W, rec)
-            if rec.headline and rec.parent == 0 then news[r] = tick end
+            if rec.headline and natural then news[r] = tick end
           end
         end
       end

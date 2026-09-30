@@ -157,6 +157,11 @@ function P.cull(W, p)
   local cells = area(W, p.cell, cfg().radius)
   local id = root(W, "cull", p.cell, #cells, { species = sp })
   local frac = cfg().cull_fraction
+  if sp == "grazers" or sp == "predators" then
+    -- the herds or packs on these cells (W4)
+    require("sim.systems.fauna").kill_in(W, cells, sp, frac, id)
+    return id
+  end
   local fieldname = (sp == "fish") and "fish" or sp
   local F, C, I = W.F, W.C, W.I
   local fld, cc, ic = F[fieldname], C[fieldname], I[fieldname]
@@ -185,6 +190,16 @@ function P.introduce(W, p)
   end
   local cells = area(W, p.cell, p.radius or cfg().introduce_radius)
   local id = root(W, "introduce", p.cell, #cells, { species = sp })
+  if sp == "grazers" or sp == "predators" then
+    -- a breeding population: herds or packs of the landscape's kind (W4), as many animals as the
+    -- density added over the land cells of the area
+    local land = 0
+    for i = 1, #cells do if W.geo.ocean[cells[i]] == 0 then land = land + 1 end end
+    local wcfg = require("sim.config").WILD
+    local per = sp == "grazers" and wcfg.gpc or wcfg.ppc
+    if land > 0 then require("sim.systems.fauna").spawn(W, p.cell, sp, (cfg().introduce[sp] or 0.3) * land * per, id) end
+    return id
+  end
   local F, C, I = W.F, W.C, W.I
   local fld, cc, ic = F[sp], C[sp], I[sp]
   local prev = W.P[sp]
@@ -256,14 +271,12 @@ function P.meteor(W, p)
       F.heat_anom[x] = F.heat_anom[x] + C.meteor_heat
       blame.set(W.C.heat_anom, W.I.heat_anom, x, id)
       fire.ignite(W, x, id)
-      for _, sp in ipairs({ "grazers", "predators" }) do
-        if F[sp][x] > 0 then
-          F[sp][x] = F[sp][x] * (1 - C.meteor_kill)
-          blame.set(W.C[sp], W.I[sp], x, id)
-        end
-      end
     end
   end
+  -- the animals in the blast (W4: herds and packs)
+  local wildlife = require("sim.systems.fauna")
+  wildlife.kill_in(W, cells, "grazers", C.meteor_kill, id)
+  wildlife.kill_in(W, cells, "predators", C.meteor_kill, id)
   -- villages in the blast: houses and people
   local sents = require("sim.society.entities")
   local construction = require("sim.society.construction")

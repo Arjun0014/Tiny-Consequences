@@ -79,7 +79,7 @@ end
 -- elder couples, young couples, and single adults living with relatives. Then the physical
 -- village: a house per household, a pier and boats for a fishing village, a granary and woodshed,
 -- fields for its needs, and stocks to last until the first harvest.
-local function populate(W, v, target, u)
+local function populate(W, v, target, u, exact)
   local cfg = cfgmod.SOCIETY
   local hour = W.hour
   local idx = 0
@@ -91,6 +91,10 @@ local function populate(W, v, target, u)
   local H = W.ent.households
   while v.pop < target do
     local r = u()
+    -- (exact: the last village of the world fills to what is left of its people, not past it — a
+    -- whole family would overshoot: a single relative or a young couple instead)
+    if exact and target - v.pop < 7 then r = (target - v.pop < 2 or v.pop == 0) and 0.8 or 0.95 end
+    if exact and r == 0.8 and #v.households == 0 then r = 0.95 end
     if r < 0.62 then
       local h = ents.new_household(W, v, 0)
       local fa = 20 + floor(u() * 24)
@@ -353,7 +357,7 @@ function settle.run(W)
     local target = (i == #sites) and (total - placed) or floor(total * weights[i] / wsum + 0.5)
     if target < 12 then target = 12 end
     local up = ufactory(W, rng.S.SETTLE, 100 + i)
-    populate(W, v, target, up)
+    populate(W, v, target, up, i == #sites)
     placed = placed + v.pop
   end
   -- the first villages of a landmass come of common stock: kin ties between neighbours

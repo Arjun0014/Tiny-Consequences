@@ -279,7 +279,8 @@ function M.damage(W, v, share, cell)
   for i = 1, #v.buildings do
     local b = B[v.buildings[i]]
     if b and (b.state == "standing" or b.state == "site") and (not cell or b.cell == cell) then
-      if b.state == "site" then b.progress = b.progress * (1 - share)
+      -- (a site loses the work and the timber in it alike: what is rebuilt is built of new wood)
+      if b.state == "site" then b.progress = b.progress * (1 - share); b.wood_used = b.wood_used * (1 - share)
       else
         b.condition = b.condition - share
         if b.condition <= 0 then

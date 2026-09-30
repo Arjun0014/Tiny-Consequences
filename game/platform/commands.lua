@@ -484,6 +484,35 @@ function M.register(G)
     return best
   end)
 
+  -- wild_spots: the biggest herd of each kind and the biggest pack of each kind (W4, D-070), for
+  -- review shots: { name = { cell, lat, lon, n, id } }.
+  bridge.register("wild_spots", function()
+    local W = assert(G.W, "world not ready")
+    local A = W.S and W.S.wild
+    local wcfg = require("sim.config").WILD
+    local g = W.grid
+    local best = {}
+    if A then
+      for i = 1, A.nh do
+        local nm = wcfg.grazers[A.h_sp[i]].name
+        local b = best[nm]
+        if not b or A.h_n[i] > b.n then
+          local c = A.h_cell[i]
+          best[nm] = { cell = c, lat = math.deg(g.lat[c]), lon = math.deg(g.lon[c]), n = A.h_n[i], id = A.h_id[i] }
+        end
+      end
+      for i = 1, A.np do
+        local nm = wcfg.predators[A.p_sp[i]].name
+        local b = best[nm]
+        if not b or A.p_n[i] > b.n then
+          local c = A.p_cell[i]
+          best[nm] = { cell = c, lat = math.deg(g.lat[c]), lon = math.deg(g.lon[c]), n = A.p_n[i], id = A.p_id[i] }
+        end
+      end
+    end
+    return best
+  end)
+
   -- bench{level, seed, ticks}: sim tick benchmark in the real HTML5 runtime (SIM_LEVEL, W08).
   bridge.register("bench", function(args)
     local bench = require("sim.bench")

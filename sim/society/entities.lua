@@ -92,6 +92,7 @@ function M.found_village(W, cell, opts)
   if mooring then v.pier_lot = layout.facing_lot(W, v, cell, mooring) end
   local F = W.F
   F.land_use[cell] = -id
+  W.lu_ver = (W.lu_ver or 0) + 1   -- (village ground changed: fauna's herd ranges)
   local fo = F.forest[cell]
   if fo > 0 then
     local co2 = fo * cfgmod.VEG.k_co2
@@ -397,6 +398,7 @@ function M.free_lot(W, v, kind)
   end
   v.land[#v.land + 1] = best
   F.land_use[best] = -v.id
+  W.lu_ver = (W.lu_ver or 0) + 1
   local fo = F.forest[best]
   if fo > 0 then
     -- the clearing's timber goes to the village store; the forest's carbon to the air

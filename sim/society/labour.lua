@@ -29,6 +29,7 @@ local crafts = require("sim.society.crafts")
 local herds = require("sim.society.herds")
 local skills = require("sim.society.skills")
 local carbon = require("sim.society.carbon")
+local wildlife = require("sim.systems.fauna")
 local FARM = { harvest = true, sow = true, tend = true, clear = true, care = true }
 local CRAFT = { craft_tools = "tools", craft_pots = "pots", craft_cloth = "cloth" }
 local LIGHT = { harvest = true, tend = true, fuel = true, sow = true, brush = true, forage = true, care = true, herd = true }   -- children plant and mind the flocks, elders glean
@@ -557,25 +558,13 @@ function M.execute(W, v, hours_day, wx)
       elseif k == "herd" then
         herds.work(W, v, eff)
       elseif k == "hunt" then
-        -- the best grazer cell near the village (fauna densities until W4's herds)
+        -- the hunters go after the biggest herd within the village's reach (W4: real animals of a
+        -- real herd; the village's trouble is their cause)
         local ring = W.vgeo[v.id].ring
-        local best, bg = nil, 0
-        if ring then
-          for j = 1, #ring do
-            local c = ring[j]
-            if W.geo.ocean[c] == 0 and F.grazers[c] > bg then best, bg = c, F.grazers[c] end
-          end
-        end
-        v.hunt_cell = best
-        if best and bg > 0.01 then
-          local meat = eff * 1.6 * bg / (bg + 0.15)
-          local d = meat / 16000
-          if d > bg * 0.2 then d = bg * 0.2; meat = d * 16000 end
-          F.grazers[best] = bg - d
-          local vt = v.cause
-          if vt ~= 0 or C.grazers[best] ~= 0 then
-            blame.step(C.grazers, I.grazers, best, -d, FGRAZ.eps, FGRAZ.hold, -d, vt, 0, 0, 0, 0, 0, 0)
-          end
+        local meat, c = 0, nil
+        if ring then meat, c = wildlife.hunt(W, ring, eff, v.cause) end
+        v.hunt_cell = c
+        if meat > 0 then
           v.stock.fresh = v.stock.fresh + meat
           v.day_fresh = (v.day_fresh or 0) + meat
           acc(v, "meat", meat)

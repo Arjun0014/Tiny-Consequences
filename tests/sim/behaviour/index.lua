@@ -10,4 +10,5 @@ return {
   "tests.sim.behaviour.b_conflict",
   "tests.sim.behaviour.b_memory",
   "tests.sim.behaviour.b_trade",
+  "tests.sim.behaviour.b_wild",
 }

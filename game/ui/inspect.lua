@@ -28,7 +28,8 @@ M.JOB_ICON = { farmer = "wheat", fisher = "fish", hunter = "deer", woodcutter = 
   trader = "boat", elder = "star", child = "heart", healer = "heart" }
 
 -- Display scales for densities (presentation only): individuals per cell at density 1.
-M.SCALE = { grazers = 120, predators = 20, fish = 600 }
+-- animals per unit of the planet fields (the sim's herds and packs, D-070: WILD.gpc / ppc)
+M.SCALE = { grazers = require("sim.config").WILD.gpc, predators = require("sim.config").WILD.ppc, fish = 600 }
 
 local function pct(x) return string.format("%d%%", floor((x or 0) * 100 + 0.5)) end
 local function num(x, d) return string.format("%." .. (d or 1) .. "f", x or 0) end
@@ -908,15 +909,82 @@ function M.build(W, sel)
     end
     if s.cell then add(items, { t = "row", icon = "wave", label = "Waters", value = M.region_name(W, s.cell) or "open sea" }) end
   elseif sel.kind == "animal" then
+    -- the sim's herd or pack this animal belongs to (W4, D-070)
+    local fauna = require("sim.systems.fauna")
+    local wcfg = require("sim.config").WILD
+    local A = W.S and W.S.wild
+    local what, i = nil, nil
+    if sel.group and A then what, i = fauna.find(W, sel.group) end
     local c = sel.cell
-    out.title = sel.species == "wolf" and "Wolves" or "Deer"
-    out.icon = sel.species == "wolf" and "wolf" or "deer"
-    out.subtitle = "A herd near " .. (M.region_name(W, c) or "here")
-    if c and c > 0 then
-      local F = W.F
-      add(items, { t = "row", icon = "deer", label = "Grazers here", value = tostring(floor(F.grazers[c] * M.SCALE.grazers + 0.5)) })
-      add(items, { t = "row", icon = "wolf", label = "Predators here", value = tostring(floor(F.predators[c] * M.SCALE.predators + 0.5)) })
-      add(items, { t = "bar", icon = "leaf", label = "Grass", frac = F.grass[c], value = pct(F.grass[c]) })
+    local F = W.F
+    local NAMES = { deer = "red deer", reindeer = "reindeer", antelope = "antelope", boar = "wild boar",
+      wolf = "wolves", cat = "big cats" }
+    if what == "herd" then
+      local spn = wcfg.grazers[A.h_sp[i]].name
+      c = A.h_cell[i]
+      out.title = string.format("A herd of %d %s", floor(A.h_n[i] + 0.5), NAMES[spn] or spn)
+      out.icon = "deer"
+      out.subtitle = M.region_name(W, c) or ""
+      local wint = A.h_wint[i]
+      if wcfg.migrates[A.h_sp[i]] and wint and wint ~= 0 then
+        local going = (c ~= wint and c ~= A.h_home[i])
+        add(items, { t = "row", icon = "deer", label = "Ranges", value = "summers " .. (M.region_name(W, A.h_home[i]) or "here")
+          .. ", winters " .. (M.region_name(W, wint) or "nearby") .. (going and " (on the way)" or "") })
+      end
+      -- body condition (D-071): the reserves a herd fattens in summer and lives on in winter
+      local cond = A.h_cond and A.h_cond[i] or 0.6
+      local cw = cond >= 0.8 and "fat" or cond >= 0.55 and "in fair shape" or cond >= 0.3 and "thin" or "starving"
+      add(items, { t = "bar", icon = "deer", label = "Condition", frac = cond, value = cw })
+      add(items, { t = "bar", icon = "leaf", label = "Grass here", frac = F.grass[c], value = pct(F.grass[c]) })
+      local why
+      if F.ice[c] > 0.3 then why = "Snow hides the grass: they dig for it, browse the trees and live on their fat."
+      elseif cond < 0.3 then why = "Too many for the grass: the weak are starving, the does will have few fawns."
+      elseif cond < 0.55 then why = "The grass barely feeds them: they turn to the trees, and wolves take the weak."
+      else why = "Well fed: the does will fawn well in the spring." end
+      add(items, { t = "text", text = why })
+      local wolves = floor(F.predators[c] * wcfg.ppc + 0.5)
+      add(items, { t = "row", icon = "wolf", label = "Hunted by", value = wolves > 0 and (wolves .. " wolves ranging here") or "no pack ranges here" })
+      if W.hour - A.h_moved[i] < 8064 then
+        add(items, { t = "row", icon = "deer", label = "Moved", value = "from " .. (M.region_name(W, A.h_prev[i]) or "nearby") .. ", " .. floor((W.hour - A.h_moved[i]) / 24) .. " days ago" })
+      end
+      local tag = A.h_tag[i]
+      local r = tag ~= 0 and W.E and W.E.rec[tag]
+      if r then add(items, { t = "text", text = "Why so many / so few: " .. ((kinds[r.kind] and kinds[r.kind].text) or r.kind:gsub("_", " ")) .. " (year " .. floor((r.tick or 0) / 48) .. ")" }) end
+    elseif what == "pack" then
+      local spn = wcfg.predators[A.p_sp[i]].name
+      c = A.p_cell[i]
+      out.title = string.format("A pack of %d %s", floor(A.p_n[i] + 0.5), NAMES[spn] or spn)
+      out.icon = "wolf"
+      out.subtitle = "Den near " .. (M.region_name(W, c) or "here")
+      local prey = 0
+      local g = W.grid
+      local b = c * 6 - 6
+      prey = F.grazers[c]
+      for k = 1, g.nbr_count[c] do prey = prey + F.grazers[g.nbr[b + k]] end
+      add(items, { t = "row", icon = "deer", label = "Prey about the den", value = floor(prey * wcfg.gpc + 0.5) .. " grazers" })
+      local cond = A.p_cond and A.p_cond[i] or 0.6
+      local cw = cond >= 0.75 and "well fed" or cond >= 0.45 and "getting by" or cond >= wcfg.p_starve and "hungry" or "starving"
+      add(items, { t = "bar", icon = "wolf", label = "Condition", frac = cond, value = cw })
+      local why
+      if A.p_n[i] < 2 then why = "A lone wolf: it holds this ground and roams far for a mate."
+      elseif cond < wcfg.p_starve then why = "Starving: the pack is breaking up, the ones it cannot feed are leaving."
+      elseif cond < 0.45 then why = "Few kills: there will be few pups, and the young will leave in the autumn."
+      else why = "Good hunting: a big litter in the spring, and young enough to found packs of their own." end
+      add(items, { t = "text", text = why })
+      if W.hour - A.p_moved[i] < 8064 and A.p_prev[i] ~= c then
+        add(items, { t = "row", icon = "wolf", label = "Moved", value = "followed the herds from " .. (M.region_name(W, A.p_prev[i]) or "nearby") })
+      end
+      local tag = A.p_tag[i]
+      local r = tag ~= 0 and W.E and W.E.rec[tag]
+      if r then add(items, { t = "text", text = "Why so many / so few: " .. ((kinds[r.kind] and kinds[r.kind].text) or r.kind:gsub("_", " ")) .. " (year " .. floor((r.tick or 0) / 48) .. ")" }) end
+    else
+      out.title = sel.species == "wolf" and "Wolves" or "Deer"
+      out.icon = sel.species == "wolf" and "wolf" or "deer"
+      out.subtitle = "Near " .. (M.region_name(W, c) or "here")
+      if c and c > 0 then
+        add(items, { t = "row", icon = "deer", label = "Grazers here", value = tostring(floor(F.grazers[c] * M.SCALE.grazers + 0.5)) })
+        add(items, { t = "row", icon = "wolf", label = "Predators here", value = tostring(floor(F.predators[c] * M.SCALE.predators + 0.5)) })
+      end
     end
   elseif sel.kind == "volcano" then
     local vo = ents.volcanoes(W)[sel.index]

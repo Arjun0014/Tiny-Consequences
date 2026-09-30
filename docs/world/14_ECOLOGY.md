@@ -77,6 +77,77 @@ meat = kills × 40 FU into `fresh`. Removes animals from that herd, blamed with 
 
 ## 4. Numbers and cost
 
-~500 land cells; GRAZER_PER_CELL = 20 animals per unit density; ≈ 60–150 herds and 10–25 packs.
-Weekly updates of ~150 entities cost less than the current per-cell fauna pass over all land
-cells (≈ 20k instructions), because empty cells cost nothing.
+~550 land cells at f12; ≈ 150–200 herds and 25–30 packs (the P07 world). The first estimate
+(cheaper than the field model, ≈ 20 k) was wrong: the groups update monthly but each touches its
+whole range several times (densities, forage and predation per cell, demography, behaviour, the
+derived fields and their causes), and ranges overlap. Measured (D-073): ≈ 125 k VM instructions a
+tick as first written, cut to ≈ 87 k with identical state hashes (ranges by reference, densities
+reused when no group changed, a village-ground version key, a land-only scan, memoised neighbour
+views); the field model cost ≈ 41 k. Per month: the ecology of ~500 touched cells and the
+demography of ~200 groups (each over its 7-19 range cells) are most of it.
+
+## 5. Implementation (D-070 groups, D-071 ecology v2)
+
+`sim/systems/fauna.lua`: herds (deer, reindeer, antelope, boar) and packs (wolves, big cats) are
+entities in `W.S.wild` (struct of arrays, saved): centre cell, head count, **body condition**
+(fat reserves 0..1), cause tag, last move; packs also their natal pack (kin). A herd spends 40% of
+its time on its centre cell and the rest on the ring about it; a pack ranges two rings from its
+den. The planet fields `F.grazers`/`F.predators` are derived views (animals per cell / 100, / 25),
+so vegetation pressure, detectors, release blame, powers and hunting keep their interfaces.
+Monthly update (every 4 ticks):
+
+- **Forage per head** on a cell = min(1.5, food / (0.6 H + 0.02)) + browse − 0.8 × snow, food =
+  (grass + 0.5 crop) × (1 − 0.8 snow). **Browse** (D-076): what the grass lacks of their need
+  (1 − food per head, up to half of it: a ruminant cannot live on woody browse alone) the herds
+  make up from the trees as far as the woods reach (× forest / (forest + 0.08)); it nourishes them,
+  and the forest loses it at twice the weight (browse is worth half as much as grass). The snow's
+  energy cost is not made up. **Condition** += 0.2 × (forage − 1) a month: herds fatten in summer
+  and live on their reserves and their trees through a snowy winter or a dry season.
+- **Fawns** once a year in the local late spring (week 16): 1.0 a head × ramp(the winter's lowest
+  condition 0.2..1.0; Verme 1977) × 1 / (1 + crowding²), crowding = the range's animals against
+  what its grass carries (D-073: density acts through juvenile survival near carrying capacity;
+  without it herds overshot their grass and starved almost to the last, taking the packs with
+  them). A hard winter is paid for in the next spring's fawns. **Starvation** below condition 0.25; old
+  age 1% a month. No logistic term: density dependence is food per head through condition.
+- **Predation** (Holling II + refuge on the cell densities) with the attack rate × (1 + 1.5 snow)
+  × (0.7 + 0.75 weakness): wolves kill 2-3× as often in deep snow and take the weak (Nelson & Mech
+  1986; Post et al. 1999).
+- **Hunger browsing**: what the grass lacks of a herd's need (crowding, snow, drought) it takes
+  from the trees at 0.5 of grass's worth, and lives on (above); well-fed herds only nibble. How too
+  many deer, or a hard winter, stop a forest regrowing — and how a herd on a predator-free island
+  holds on after its grass is gone, strips the woods and then dies out (St Matthew Island).
+- **Densities** are the sum of the groups' ranges, computed monthly; a cell no range reaches holds
+  no animals (D-076: before, cells the herds had left kept their old density, and dispersing
+  wolves settled on the ghost of prey long gone; a reloaded world diverged from the live one).
+- **Packs**: condition by kills per wolf against need (m/e of the old calibration) plus a
+  territory's **small game** (enough for 1.2 wolves / pack size); **one litter** a year (week 12,
+  the breeding pair's): 5 × ramp(condition 0.25..0.75); starvation below 0.3; old age and strife
+  1.5% a month. **Whole wolves**: births and deaths are drawn (FAUNA stream, keyed by pack and
+  month).
+- **Dispersal**: in the autumn (and whenever it is starving) a pack keeps 2 + 6 × condition
+  wolves; the rest leave one by one; 60% live to settle, within 7 steps, where prey per wolf is
+  best — a lone wolf that is no kin (a mate), free ground with prey (**territories are exclusive**:
+  no new den within two steps of another), or a pack with room. A disperser that finds nothing
+  stays home. **Lone wolves roam** 8 steps for a mate (no siblings). A starving pack moves its den
+  toward prey.
+- Herds move to better cells (food per head after the other herds, safety, habitat, away from
+  villages and fields), migrate (reindeer, antelope), split past their size or when crowded, and
+  **merge** with their kind on the same ground (fission-fusion); dwindled herds join one nearby.
+
+Why the cycles are regional and real: the group model of D-070 had local cycles (a pack's yearly
+CV 0.28) with no synchrony between packs (pairwise r ≈ 0.00), so ~24 packs a continent averaged
+them away (continental CV 0.05). The field model's synchrony came from an unrealistically strong
+cell-to-cell diffusion (patch synchrony 0.80-0.91 at every distance). Now: shared winters weaken
+herds and feed packs across a region at once (the climate's wobble; B18), packs answer a spring
+later (condition → litters), crashes leave lone wolves that pair up again, and dispersers carry
+wolves from hungry to prey-rich country. Measured (seed 1, 100 years, `tools/wild_dyn.lua`):
+continental predator CV 0.28-0.42 year to year (~8-year cycles: lag-4 autocorrelation −0.5 to
+−0.6), prey CV 0.31-0.52, patch synchrony decaying with distance 0.50 → 0.39 → 0.33 (the shape of
+real populations; Liebhold et al. 2004).
+
+Tests: fauna unit tests (conservation with rates off, no spawning, release blame), B18 (a hard
+winter: herd condition 0.74 vs 0.99, kills +29%, fawns a head 1.05 vs 1.27, pups a pack 2.0 vs
+1.7), B19 (a starving pack breaks up and settles toward prey), B20 (lone wolves pair; siblings
+don't), fauna stability 3/3 (CV 0.26-0.36 with villages, 200 years, no extinctions), S02 9/10
+full, S07 10/10 full. Tools: `tools/wild_dyn.lua` (CVs, cycles, synchrony by distance,
+`--groups N` yearly flows, `--monthly Y`), `tools/wild_report.lua`, `npm run shots:wild`.

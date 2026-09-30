@@ -35,7 +35,27 @@ def summary(rs):
     s["spoiled/harvest"] = sum(r["spoil_g"] for r in rs) / harv
     s["fields/100p"] = 100 * sum(r["fields"] for r in rs) / py
     s["dread"] = sum(r["dread"] * r["pop"] for r in rs) / py
+    s["granaries/100p"] = 100 * sum(r.get("granaries", 0) for r in rs) / py
+    s["dread granaries"] = sum(r.get("granary_dread", 0) for r in rs)
+    s["gifts out/need"] = sum(r.get("gift_out", 0) for r in rs) / need
+    s["feasts/need"] = sum(r.get("feast", 0) for r in rs) / need
+    s["relief in/need"] = sum(r.get("relief_in", 0) for r in rs) / need
     return s
+
+def recurrence(rs, lo=2, hi=30):
+    # after a famine in a village: another famine there within (lo, hi] years? (the memory window)
+    by = collections.defaultdict(dict)
+    for r in rs:
+        by[(r["seed"], r["village"])][int(r["year"])] = r
+    n = hit = 0
+    for key, ys in by.items():
+        last = max(ys)
+        for y, r in ys.items():
+            if r["famine"] > 0 and y + hi <= last:
+                n += 1
+                if any(ys.get(y + k, {}).get("famine", 0) > 0 for k in range(lo + 1, hi + 1)):
+                    hit += 1
+    return n, hit
 
 def resilience(rs):
     # after a crop failure: a famine in the same village within 3 years?
@@ -65,6 +85,8 @@ for k in keys:
 for arm in ("on", "off"):
     n, hit = resilience(arms[arm])
     print("%s: %d crop failures, %d followed by famine within 3 y (%.0f%%)" % (arm, n, hit, 100 * hit / max(n, 1)))
+    n, hit = recurrence(arms[arm])
+    print("%s: %d famines (with 30 years after them in the run), %d followed by another famine 3-30 y later (%.0f%%)" % (arm, n, hit, 100 * hit / max(n, 1)))
 print()
 print("per seed (famines/100vy, starved/1000py, store yrs, at capacity, spoiled/harvest, emigrants/1000py):")
 for sd in sorted(seeds):

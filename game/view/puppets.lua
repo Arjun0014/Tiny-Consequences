@@ -30,8 +30,6 @@ M.STOCK = 120          -- livestock puppets (the herds of the villages near the 
 M.BIRDS = 96
 M.BIRD_ZOOM = 0.5      -- birds show from this zoom in
 M.MIN_ZOOM = 0.5
-M.GRAZER_MIN, M.PRED_MIN = 0.12, 0.08
-M.PER_CELL = 6
 M.PER_VILLAGE = 110
 M.SCALE = 1.3
 M.PERSON_SCALE = 1.7   -- villagers a little oversized (toy-like) so they read among the houses
@@ -232,72 +230,112 @@ local function slerp(ax, ay, az, bx, by, bz, f)
 end
 
 ---------------------------------------------------------------------------------------------
--- Animals (fauna fields until W4's herds)
+-- Animals: the sim's herds and packs near the view (W4, D-070). A group is drawn as a few of its
+-- animals (more for a bigger herd) gathered about where it is: its centre cell, or — for a few
+-- days after it moved — on the way from its last cell; they graze and wander about that spot and
+-- follow it when the group moves on. Nothing is drawn where the sim has no group.
+
+M.PER_HERD, M.PER_PACK = 8, 5
+M.MOVE_H = 72          -- hours a group takes to shift to its new cell (drawn as a walk)
+local GRAZER_NAMES = { "deer", "reindeer", "antelope", "boar" }
+local PRED_NAMES = { "wolf", "cat" }
+local GROUPS = { deer = {}, wolf = {} }
+local SLOTS = { deer = {}, wolf = {} }
+
+-- Where group (cell, prev, moved) is at hour t: lat, lon.
+local function group_pos(g, cell, prev, moved, t)
+  local lat, lon = g.lat[cell], g.lon[cell]
+  if prev and prev ~= cell and t - moved < M.MOVE_H then
+    local f = (t - moved) / M.MOVE_H
+    if f < 0 then f = 0 end
+    local plat, plon = g.lat[prev], g.lon[prev]
+    local dl = lon - plon
+    if dl > math.pi then dl = dl - 2 * math.pi elseif dl < -math.pi then dl = dl + 2 * math.pi end
+    lat, lon = plat + (lat - plat) * f, plon + dl * f
+  end
+  return lat, lon
+end
 
 local function assign_animals(W, fx, fy, fz)
-  local F, g = W.F, W.grid
-  local gz, pr = F.grazers, F.predators
-  local wants = { deer = {}, wolf = {} }
-  -- wild beasts keep away from the villages (their cells' grazers are drawn in the cells about)
-  local settled = {}
-  local B = W.ent and W.ent.buildings or {}
-  for _, v in ents.each_village(W) do
-    settled[v.cell] = true
-    for _, id in ipairs(type(v.buildings) == "table" and v.buildings or {}) do
-      local b = B[id]
-      if b and b.cell then settled[b.cell] = true end
-    end
+  local A = W.S and W.S.wild
+  local g = W.grid
+  local t = state.hour_f or W.hour
+  for _, k in ipairs({ "deer", "wolf" }) do
+    local l = GROUPS[k]
+    for i = #l, 1, -1 do l[i] = nil end
   end
-  for c = 1, W.n do
-    local d = g.X[c] * fx + g.Y[c] * fy + g.Z[c] * fz
-    if d > 0.93 and W.geo.ocean[c] == 0 and not settled[c] then
-      if gz[c] > M.GRAZER_MIN then wants.deer[#wants.deer + 1] = { c, gz[c] } end
-      if pr[c] > M.PRED_MIN then wants.wolf[#wants.wolf + 1] = { c, pr[c] } end
-    end
-  end
-  table.sort(wants.deer, function(a, b) return a[2] > b[2] end)
-  table.sort(wants.wolf, function(a, b) return a[2] > b[2] end)
-  local used = { deer = 0, wolf = 0 }
-  local T = W.temp_static
-  local gt = W.G.g_temp or 0
-  for i, p in ipairs(M.pool) do
-    local list = wants[p.kind]
-    local slot = list[floor(used[p.kind] / M.PER_CELL) + 1]
-    if slot then
-      used[p.kind] = used[p.kind] + 1
-      if p.cell ~= slot[1] then
-        p.cell = slot[1]
-        -- the species this landscape's grazers or predators are
-        local c = p.cell
-        local tm = T and T.base and (T.base[c] + T.lapse[c] + gt) or 10
-        local bi, fo, sw = F.biome[c], F.forest[c], F.soil_water[c]
-        local h = ((c * 7919 + i * 131) % 1000) / 1000
-        local sp
-        if p.kind == "deer" then
-          if tm < 1 or bi == 10 then sp = "reindeer"
-          elseif tm > 18 and fo < 0.5 then sp = (h < 0.8) and "antelope" or "hare"
-          elseif fo > 0.45 and h < 0.3 then sp = "boar"
-          elseif fo < 0.35 and h < 0.35 then sp = "hare"
-          else sp = "deer" end
-        else
-          if tm > 18 then sp = (h < 0.7) and "cat" or "fox"
-          elseif tm < 4 and fo > 0.3 and h < 0.35 then sp = "bear"
-          elseif fo < 0.4 and h < 0.4 then sp = "fox"
-          else sp = "wolf" end
-        end
-        if p.species ~= sp then
-          p.species = sp
-          go.set(p.url, "vertices", M.SPECIES[sp].res)
-        end
-        local sp = g.spacing * 0.45
-        p.lat = g.lat[p.cell] + (rnd() - 0.5) * sp
-        p.lon = g.lon[p.cell] + (rnd() - 0.5) * sp
-        p.head = rnd() * 6.283
-        p.home_lat, p.home_lon = g.lat[p.cell], g.lon[p.cell]
+  if A then
+    -- groups near the focus, nearest first; wild beasts keep off village cells (the sim's herds
+    -- never centre there)
+    for i = 1, A.nh do
+      local c = A.h_cell[i]
+      local d = g.X[c] * fx + g.Y[c] * fy + g.Z[c] * fz
+      if d > 0.93 and A.h_n[i] >= 1 then
+        local l = GROUPS.deer
+        l[#l + 1] = { id = A.h_id[i], d = d, cell = c, prev = A.h_prev[i], moved = A.h_moved[i],
+          n = min(M.PER_HERD, max(1, floor(sqrt(A.h_n[i]) * 1.2 + 0.5))), sp = GRAZER_NAMES[A.h_sp[i]] or "deer",
+          heads = A.h_n[i] }
       end
+    end
+    for i = 1, A.np do
+      local c = A.p_cell[i]
+      local d = g.X[c] * fx + g.Y[c] * fy + g.Z[c] * fz
+      if d > 0.93 and A.p_n[i] >= 1 then
+        local l = GROUPS.wolf
+        l[#l + 1] = { id = A.p_id[i], d = d, cell = c, prev = A.p_prev[i], moved = A.p_moved[i],
+          n = min(M.PER_PACK, max(1, floor(A.p_n[i] + 0.5))), sp = PRED_NAMES[A.p_sp[i]] or "wolf",
+          heads = A.p_n[i] }
+      end
+    end
+  end
+  for _, k in ipairs({ "deer", "wolf" }) do
+    local l = GROUPS[k]
+    table.sort(l, function(a, b) if a.d ~= b.d then return a.d > b.d end return a.id < b.id end)
+    -- slots: (group, animal index) in order, as many as the pool holds
+    local sl = SLOTS[k]
+    local ns = 0
+    for gi = 1, #l do
+      for a = 1, l[gi].n do
+        ns = ns + 1
+        local e = sl[ns]
+        if not e then e = {}; sl[ns] = e end
+        e.grp, e.a = l[gi], a
+      end
+    end
+    for i = #sl, ns + 1, -1 do sl[i] = nil end
+  end
+  local used = { deer = 0, wolf = 0 }
+  local sp = g.spacing
+  for i, p in ipairs(M.pool) do
+    local k = p.kind
+    local sl = SLOTS[k]
+    local e = sl and sl[used[k] + 1]
+    if e then
+      used[k] = used[k] + 1
+      local grp = e.grp
+      if p.group ~= grp.id or p.ga ~= e.a then
+        p.group, p.ga = grp.id, e.a
+        p.cell = grp.cell
+        if p.species ~= grp.sp then
+          p.species = grp.sp
+          go.set(p.url, "vertices", M.SPECIES[grp.sp].res)
+        end
+        p.lat, p.lon = nil, nil
+        p.head = rnd() * 6.283
+      end
+      -- the animal's spot in its group (fixed per group and animal), about the group's position
+      local lat, lon = group_pos(g, grp.cell, grp.prev, grp.moved, t)
+      local h1 = ((grp.id * 7919 + e.a * 104729) % 1000) / 1000
+      local h2 = ((grp.id * 3571 + e.a * 7907) % 1000) / 1000
+      local spread = sp * (k == "wolf" and 0.28 or 0.22)
+      p.home_lat = lat + (h1 - 0.5) * spread
+      p.home_lon = lon + (h2 - 0.5) * spread / max(0.2, cos(lat))
+      if not p.lat then p.lat, p.lon = p.home_lat, p.home_lon end
+      p.cell = grp.cell
+      p.heads = grp.heads
       set_on(p, true)
     else
-      p.cell = 0
+      p.cell, p.group = 0, nil
       set_on(p, false)
     end
   end
@@ -860,7 +898,7 @@ function M.update(W, dt, zoom, frozen)
     if p.on then
       active = active + 1
       local spc = M.SPECIES[p.species or p.kind] or M.SPECIES.deer
-      walk(p, dt, frozen, 0.004 * spc.speed, sp * 0.5)
+      walk(p, dt, frozen, 0.004 * spc.speed, sp * (p.kind == "wolf" and 0.18 or 0.12))
       local x, y, z = unit(p.lat, p.lon)
       local r, v = M.surface(x, y, z, p.v)
       p.v = v
@@ -869,7 +907,8 @@ function M.update(W, dt, zoom, frozen)
       local k = #ap + 1
       local e = AP_POOL[k]
       if not e then e = {}; AP_POOL[k] = e end
-      e.kind, e.cell, e.x, e.y, e.z = p.kind, p.cell, x * r, y * r, z * r
+      e.kind, e.cell, e.x, e.y, e.z = p.species or p.kind, p.cell, x * r, y * r, z * r
+      e.group = p.group
       ap[k] = e
     end
   end
