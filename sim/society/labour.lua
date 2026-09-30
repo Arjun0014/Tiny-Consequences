@@ -188,7 +188,7 @@ local function by_prio(a, b)
 end
 
 local function site_prio(b)
-  if b.state == "site" then return construction.PRIO[b.kind] or 30 end
+  if b.state == "site" then return b.prio or construction.PRIO[b.kind] or 30 end   -- (b.prio: a site's own urgency)
   return construction.PRIO.repair
 end
 local function by_site(a, b)

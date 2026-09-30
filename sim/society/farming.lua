@@ -324,6 +324,7 @@ function M.end_season(W, v)
   S.harvest_week = M.local_week(W, v)
   v.replan = true
   v.last_harvest = v.harvest_acc
+  v.harvest_end = W.hour   -- (the months after it are when a surplus is given away or feasted, D-074)
   -- learn what a sown field gives here (a fire- or flood-ruined year teaches less)
   local sown_total = 0
   for i = 1, #v.farms do sown_total = sown_total + field(W, v.farms[i]).sown end

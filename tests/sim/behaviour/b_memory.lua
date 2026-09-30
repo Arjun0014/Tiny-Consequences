@@ -113,6 +113,17 @@ local function latest(W, kind, test)
   end
 end
 
+-- The harvest is in, and it left v more than its granaries hold and than it needs to its next
+-- harvest (a surplus is a harvest's, D-074): returns the level the surplus is above.
+local function harvest_surplus(W, v, extra_days)
+  v.grain_cap = construction.grain_capacity(W, v)
+  v.harvest_end, v.last_harvest = W.hour, v.need_day * 336
+  local keep = v.need_day * (farming.days_to_harvest(W, v) + cfgmod.SOCIETY.relief_margin_days) - v.stock.fresh
+  local level = math.max(v.grain_cap, keep)
+  v.stock.grain = level + v.need_day * extra_days
+  return level
+end
+
 -- need-days u took from v (the ledger, u's side)
 local function took(W, u, v)
   local r = relations.get(W, u.id, v.id)
@@ -181,8 +192,7 @@ function M.b21b_surplus_goes_to_the_creditor()
   -- b's next harvest overflows its granaries; a has room: the surplus goes to a first, as the
   -- repayment of the relief (its cause)
   b.rationing, b.famine, b.porters_out = false, false, nil
-  b.grain_cap = construction.grain_capacity(W, b)
-  b.stock.grain = b.grain_cap + b.need_day * 40
+  harvest_surplus(W, b, 40)
   a.stock.grain = 0
   a.grain_cap = construction.grain_capacity(W, a)
   for _, u in ipairs(W.ent.villages) do if u ~= b then u.porters_out = nil end end
@@ -248,8 +258,7 @@ function M.b21d_a_feast_of_what_would_rot()
   local W = worlds.fresh(22)
   W.record_events = true
   local v = pair(W)   -- (a village with a friendly neighbour on its landmass to invite)
-  v.grain_cap = construction.grain_capacity(W, v)
-  v.stock.grain = v.grain_cap + v.need_day * 30
+  local level = harvest_surplus(W, v, 30)
   v.rationing, v.famine = false, false
   v.porters_out = true   -- (no porters to carry a gift: all of it is feasted)
   local lh = v.leader_h and W.ent.households[v.leader_h]
@@ -257,7 +266,7 @@ function M.b21d_a_feast_of_what_would_rot()
   local owed0 = {}
   for _, u in ipairs(W.ent.villages) do if u ~= v then owed0[u.id] = took(W, u, v) end end
   relations.surplus(W, v)
-  T.near(v.stock.grain, v.grain_cap, 1e-6, "the granaries are full, nothing is left to rot")
+  T.near(v.stock.grain, level, 1e-6, "what the granaries hold and the year needs is kept, the rest feasted")
   local fe = latest(W, "feast", function(d) return d.village == v.id end)
   T.ok(fe ~= nil, "a feast is held")
   T.ok(fe and fe.data.guests >= 1, "with guests from friendly villages")
@@ -269,9 +278,9 @@ function M.b21d_a_feast_of_what_would_rot()
   local p1 = lh and lh.prestige or 0
   T.ok(p1 > p0, string.format("the host's leader is honoured: %.3f -> %.3f", p0, p1))
   -- and only once a year
-  v.stock.grain = v.grain_cap + v.need_day * 30
+  v.stock.grain = level + v.need_day * 30
   relations.surplus(W, v)
-  T.ok(v.stock.grain > v.grain_cap, "no second feast in the same year")
+  T.ok(v.stock.grain > level, "no second feast in the same year")
   return string.format("%s feasts %s FU with %d guests", v.name, tostring(fe and fe.data.food), fe and fe.data.guests or 0)
 end
 

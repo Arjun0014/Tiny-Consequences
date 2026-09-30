@@ -114,6 +114,18 @@ function M.monthly(W, v)
   end
   if not best then v.leader, v.leader_h, v.leader_lin = nil, nil, nil; return end
   local head = M.head(W, best)
+  -- a lineage that has decided to leave goes when the harvest is in (D-074, below)
+  local pend = v.split_pending
+  if pend then
+    local lead = H[pend.lead]
+    if not lead or lead.village ~= v.id or hour - pend.since > 1.5 * 8064 then
+      v.split_pending = nil
+    elseif v.season and v.season.phase == "winter" then
+      v.split_pending = nil
+      M.split(W, v, pend.lin, lead, pend.parent, pend.why, true)
+      return
+    end
+  end
   -- scalar stress (Johnson 1982): past a few hundred people, disputes outgrow what a leader and
   -- kin can settle; the largest lineage that is not the leader's may walk away
   if v.pop > cfg.stress_pop and hour - (v.split_last or -1e9) > cfg.split_gap_years * 8064 then
@@ -162,10 +174,22 @@ end
 
 -- The households of lineage `lin` leave village v to found their own (led by household `lead`);
 -- why = "contested" (a succession they would not accept) or "stress" (a crowded village's quarrels).
-function M.split(W, v, lin, lead, parent, why)
+-- They go when the harvest is in (the season after it, before the sowing): with the store at its
+-- fullest they take their share of it, and they sow their new fields in the first spring. Decided
+-- in any other season, the leaving waits for it (D-074: lineages that left at any month with a
+-- share of a half-empty store starved in their first year — most famines of a full world were
+-- these founding famines).
+function M.split(W, v, lin, lead, parent, why, now)
   local cfg = cfgmod.SOCIETY
   local E = W.ent
   local H, P = E.households, E.people
+  if not now and v.season and v.season.phase ~= "winter" then
+    if not v.split_pending then
+      v.split_pending = { lin = lin, lead = lead.id, parent = parent or 0, why = why or "stress", since = W.hour }
+      v.split_last = W.hour
+    end
+    return
+  end
   local site = M.best_site(W, v)
   if not site then return end
   local members = {}

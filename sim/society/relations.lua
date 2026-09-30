@@ -345,7 +345,14 @@ function M.surplus(W, v)
   local cfg = cfgmod.SOCIETY
   local cap = v.grain_cap
   if not cap or v.rationing or v.famine or v.pop <= 0 then return end
+  -- a surplus is a harvest's: in the months after the village's own harvest, what that harvest
+  -- left beyond the granaries (never the food a village just founded carried, its granary not yet
+  -- built), and never what it needs itself to its next harvest and a margin
+  if not v.harvest_end or W.hour - v.harvest_end > 3 * 672 then return end
+  local keep = v.need_day * (farming.days_to_harvest(W, v) + cfg.relief_margin_days) - v.stock.fresh
+  if keep > cap then cap = keep end
   local over = v.stock.grain - cap
+  if over > (v.last_harvest or 0) then over = v.last_harvest or 0 end
   if over <= 0 then return end
   local give_f = M.temper(W, v)   -- (a hoarder gives half as much, the devout more)
   if not v.porters_out then

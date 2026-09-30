@@ -110,6 +110,17 @@ function M.plan(W, v)
     sites_open = sites_open + 1
     return b
   end
+  -- 0. more than a month's food heaped in the open, rotting (a new village's provisions, a harvest
+  -- far beyond its sheds): a granary before anything else
+  local gcap, wcap = M.capacities(W, v)
+  local gsites = cnt("granary:site")
+  local need_year = (v.need_day or 0) * 336
+  local dread = v.dread or 0
+  local want_cap = need_year * (cfg.store_years + cfg.dread_store * dread)
+  if v.stock.grain - gcap > (v.need_day or 0) * 30 and gsites == 0 and gcap < want_cap then
+    local b = open("granary")
+    if b then b.prio = 75; gsites = 1 end
+  end
   -- 1. a pier for a fishing village
   if v.mooring and cnt("pier") == 0 then open("pier") end
   -- 2. homes: households without one, couples waiting, crowded households (vacant houses first)
@@ -146,11 +157,7 @@ function M.plan(W, v)
   -- need), more when its grown-ups remember hunger (dread, D-074: they build against it; such a
   -- granary carries the remembered famine as its cause). Beyond it, grain would rot: it is given
   -- away or feasted (relations.surplus).
-  local gcap, wcap = M.capacities(W, v)
-  local need_year = (v.need_day or 0) * 336
-  local dread = v.dread or 0
-  if v.stock.grain > gcap * 0.9 and cnt("granary:site") == 0
-    and gcap < need_year * (cfg.store_years + cfg.dread_store * dread) then
+  if v.stock.grain > gcap * 0.9 and gsites == 0 and gcap < want_cap then
     local b = open("granary")
     if b and dread > 0 and gcap >= need_year * cfg.store_years then b.dread_ev = v.dread_ev end
   end

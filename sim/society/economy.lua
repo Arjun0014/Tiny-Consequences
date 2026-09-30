@@ -258,7 +258,9 @@ function M.weekly(W, v)
   -- the village's cause: its binding shortage
   if v.food_days < 60 and v.foodtag[1] ~= 0 then v.cause = v.foodtag[1]
   elseif v.wood_days < 7 and v.foodtag[3] ~= 0 then v.cause = v.foodtag[3]
-  elseif v.food_days > 150 and not v.famine then v.cause = 0 end
+  elseif v.food_days > 150 and not v.famine and not v.rationing then v.cause = 0 end
+  -- (a village rationing to make half a year's food last to a harvest a year away keeps the cause
+  -- of its rationing: its famine, if it comes, descends from it)
   -- wood shortage event (cold season, once a year)
   local lwk, lyear = farming.local_week(W, v)
   local bites = (v.month_cold or 0) > 0 or (v.site_stalled and W.hour - v.site_stalled < 168)

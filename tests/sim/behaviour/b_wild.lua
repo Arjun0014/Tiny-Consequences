@@ -117,7 +117,9 @@ function M.b19_a_starving_pack_breaks_up_and_its_wolves_go_where_prey_is()
   local _, q = fauna.find(W, id)
   local n1 = q and A.p_n[q] or 0
   T.ok(n1 <= math.floor(cfg.keep[1] + cfg.keep[2] * 0.3) + 1 + d.stayed, string.format("the pack keeps what it can feed: %d of %d", n1, bn))
-  T.ok(d.left >= bn - n1 - 1, string.format("%d wolves left", d.left))
+  -- (the ones it loses leave — or starve that month: it is at the end of its reserves)
+  T.ok(d.left + d.pstarve >= bn - n1 - 1, string.format("%d wolves left, %d starved", d.left, d.pstarve))
+  T.ok(d.left >= 1, "wolves leave the starving pack")
   -- the new packs are off other packs' ground and have prey about them
   local H = W.scratch.wl_H
   local g = W.grid

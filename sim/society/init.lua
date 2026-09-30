@@ -380,6 +380,7 @@ function sys.shift_ticks(W, dt)
     if v.flooded then v.flooded = v.flooded + dh end
     if v.expanded then v.expanded = v.expanded + dh end
     if v.site_stalled then v.site_stalled = v.site_stalled + dh end
+    if v.harvest_end then v.harvest_end = v.harvest_end + dh end
     local pl = v.plan
     if pl.h0 then pl.h0 = pl.h0 + dh end
     if pl.assigned then pl.assigned = pl.assigned + dh end
