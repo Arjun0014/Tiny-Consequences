@@ -122,7 +122,7 @@ function M.field_want(W, v, workers)
   -- Chayanov: with more than a year and a half of grain in store, nobody breaks their back
   -- for more; fields go fallow until the stores run down
   local grain_years = v.stock.grain / max(1, need_year)
-  local enough = 1.5 + cfg.dread_store * dread
+  local enough = cfg.store_years + cfg.dread_store * dread
   if grain_years > enough then want = floor(want * math.max(0.4, 1 - (grain_years - enough) * 0.4)) end
   local by_labour = floor(workers * cfg.fields_per_worker + 0.5)
   if want > by_labour then want = by_labour end

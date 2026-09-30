@@ -775,6 +775,7 @@ function L.as_module(spec, args)
           seeds = {}
           for s = 1, args.seeds do seeds[s] = s end
         end
+        if args.seedlist then seeds = args.seedlist end   -- (--seedlist 2,5,9: diagnosis of chosen seeds)
         local pass_n, lines = 0, {}
         local turnover = 0
         for _, seed in ipairs(seeds) do

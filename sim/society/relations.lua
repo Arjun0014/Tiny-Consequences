@@ -20,8 +20,10 @@
 --   brides   a single woman with no match at home may be betrothed to a man of a friendly
 --            village; she walks there (kin ties follow the marriages).
 --
--- W.ent.rel["a_b"] (a < b village ids) = { kin, gab, gba (need-days a gave b, b gave a), trades,
--- last (hour of the last dealing) }. Lookups by key only (no pairs() in logic).
+-- W.ent.rel["a_b"] (a < b village ids) = { kin, gab, gba (food a gave b, b gave a, FU: each side
+-- reckons it in its own need-days, M.score), trades, last (hour of the last dealing), ev_ab, ev_ba
+-- (the last relief each way: the cause of a gift that repays it) }. Lookups by key only (no pairs()
+-- in logic).
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local events = require("sim.causality.events")
@@ -61,24 +63,29 @@ function M.get(W, a, b, create)
   return r
 end
 
--- Need-days a gave b (and b gave a) as seen from a.
+-- Food a gave b (and b gave a) as seen from a (FU).
 local function ledger(r, a, b)
   if a < b then return r.gab, r.gba end
   return r.gba, r.gab
 end
 
--- a came to b's help (allies in a fight, conflict.battle): a gift of `days` need-days of help
-function M.helped(W, a, b, days) return M.give_days(W, a, b, days) end
-
-local function give(W, a, b, days)
+local function give(W, a, b, fu)
   local r = M.get(W, a, b, true)
-  if a < b then r.gab = r.gab + days else r.gba = r.gba + days end
+  if a < b then r.gab = r.gab + fu else r.gba = r.gba + fu end
   r.last = W.hour
 end
-M.give_days = give
+M.give = give
+
+-- a came to b's help (allies in a fight, conflict.battle): help worth `days` of b's need-days
+function M.helped(W, a, b, days)
+  local vb = W.ent.villages[b]
+  return give(W, a, b, days * max(1, vb and vb.need_day or 1))
+end
 
 -- How well disposed village u is toward village v (>= 0 friendly): the parent/daughter tie, kin,
--- past trades, and the balance of gifts (a village that took much and gave little asks in vain).
+-- past trades, and the balance of gifts (a village that took much and gave little asks in vain; one
+-- that took is bound to the giver), each reckoned in u's own need-days: what a gift cost a big
+-- village is little, what it meant to a small one much.
 function M.score(W, u, v)
   local s = 0
   if u.from == v.id or v.from == u.id then
@@ -97,7 +104,15 @@ function M.score(W, u, v)
     local small = min(u.pop or 30, v.pop or 30)
     s = s + 0.25 * min(6, r.kin * 30 / max(30, small)) + 0.15 * min(5, r.trades)
     local gave, got = ledger(r, u.id, v.id)
-    s = s - 0.004 * max(0, gave - got)   -- ~250 need-days unreturned cancel a daughter tie
+    local nd = max(1, u.need_day or 1)
+    local net = (gave - got) / nd
+    if net > 0 then
+      s = s - 0.004 * net   -- ~250 need-days unreturned cancel a daughter tie
+    else
+      -- and what u took from v and has not returned binds u to v: gifts are remembered by those
+      -- who took them, which is what makes giving a store (social storage, D-074)
+      s = s + cfgmod.SOCIETY.owe_w * min(cfgmod.SOCIETY.owe_cap, -net)
+    end
     -- grievance (W8): what u holds against v
     local gr = (u.id < v.id) and (r.ga or 0) or (r.gb or 0)
     s = s - 0.3 * min(6, gr)
@@ -281,13 +296,22 @@ function M.monthly(W, v)
           -- what a few porters can carry in a month of back-and-forth trips
           local cap = cfg.porter_fu * cfg.porters * max(1, floor(28 / (2 * days + 1)))
           local gift = min(short, spare * share, cap)
+          -- a village that owes v gives back at least what it took, as far as its spare allows
+          local rr = M.get(W, u.id, v.id)
+          local owed = 0
+          if rr then
+            local gave_u, got_u = ledger(rr, u.id, v.id)
+            owed = got_u - gave_u
+            if owed > 0 then gift = min(short, cap, max(gift, min(owed, spare * 0.75))) end
+          end
           if gift >= v.need_day * 10 then
             local ps = porters(W, u, min(cfg.porters, max(2, ceil(gift / (cfg.porter_fu * 4)))))
             if #ps >= 2 then
               u.stock.grain = u.stock.grain - gift
               short = short - gift
               local parent = v.foodtag[1] ~= 0 and v.foodtag[1] or v.cause
-              local id = emit(W, "relief", v.cell, parent, floor(gift), { village = v.id, from = u.id, food = floor(gift) }, v)
+              local id = emit(W, "relief", v.cell, parent, floor(gift), { village = v.id, from = u.id, food = floor(gift),
+                repay = owed > 0 and floor(owed + 0.5) or nil }, v)
               M.depart(W, u, ps, v.id, nil, "porters", id, 0, 0, { grain = gift, back_to = u.id, gift = true })
               u.porters_out = true
             end
@@ -296,11 +320,93 @@ function M.monthly(W, v)
       end
     end
   end
+  -- 1b. what the granaries cannot hold is given away or feasted (D-074)
+  M.surplus(W, v)
   -- 2. trade: what is short for what is long
   M.market(W, v)
   M.trade(W, v)
   -- 3. brides from friendly villages: an unmatched woman may be betrothed to a man there
   M.brides(W, v)
+end
+
+-- Monthly: grain beyond what the village's granaries hold rots (economy.daily). Rather than let it,
+-- the village gives it to a friendly village within reach that has room to store it (the one
+-- with fewest days of food), carried by its porters; the gift is remembered (the ledger: a village
+-- that took is bound to help back, M.score, and gives back in need, the relief above). What is
+-- left after that is eaten at a feast once a year, with guests from the friendly villages of its
+-- landmass: the hospitality is remembered too, and the host (the leader's household) honoured.
+-- Surplus as social storage and standing (Halstead and O'Shea 1989; Hayden 1996). D-074.
+function M.surplus(W, v)
+  local cfg = cfgmod.SOCIETY
+  local cap = v.grain_cap
+  if not cap or v.rationing or v.famine or v.pop <= 0 then return end
+  local over = v.stock.grain - cap
+  if over <= 0 then return end
+  local give_f = M.temper(W, v)   -- (a hoarder gives half as much, the devout more)
+  if not v.porters_out then
+    local list = partners(W, v, cfg.relief_reach, false, cfg.porters)
+    -- a village it owes first (what it took in its own hunger and has not returned, the most owed
+    -- first: balanced reciprocity), else the partner with the fewest days of food
+    local best, bneed, broom, bd, bowe = nil, 0, 0, 0, 0
+    for i = 1, #list do
+      local e = list[i]
+      local u = e.u
+      if e.s >= 0 and not u.porters_out and not u.famine then
+        local room = (u.grain_cap or 0) - u.stock.grain - (u.expect and u.expect.food or 0)
+        if room > u.need_day * cfg.gift_min_days then
+          local r = M.get(W, v.id, u.id)
+          local owe = 0
+          if r then local gave, got = ledger(r, v.id, u.id); owe = (got - gave) / max(1, v.need_day) end
+          if owe < 1 then owe = 0 end   -- (need-days)
+          if not best or owe > bowe or (owe == bowe and u.food_days < bneed) then
+            best, bneed, broom, bd, bowe = u, u.food_days, room, e.d, owe
+          end
+        end
+      end
+    end
+    if best then
+      local days = max(1, bd * cfg.walk_h * 1.5 / cfg.walk_hours_day)
+      local pcap = cfg.porter_fu * cfg.porters * max(1, floor(28 / (2 * days + 1)))
+      local gift = min(over * min(1, give_f), broom, pcap)
+      if gift >= best.need_day * cfg.gift_min_days then
+        local ps = porters(W, v, min(cfg.porters, max(2, ceil(gift / (cfg.porter_fu * 4)))))
+        if #ps >= 2 then
+          v.stock.grain = v.stock.grain - gift
+          over = over - gift
+          -- (a gift that repays carries the relief it answers as its cause)
+          local parent = 0
+          if bowe > 0 then
+            local r = M.get(W, v.id, best.id)
+            if best.id < v.id then parent = r.ev_ab or 0 else parent = r.ev_ba or 0 end
+          end
+          local id = emit(W, "gift", v.cell, parent, floor(gift), { village = v.id, to = best.id, food = floor(gift),
+            repay = bowe > 0 and floor(bowe + 0.5) or nil }, v)
+          M.depart(W, v, ps, best.id, nil, "porters", id, 0, 0, { grain = gift, back_to = v.id, gift = true, surplus = true })
+          v.porters_out = true
+        end
+      end
+    end
+  end
+  -- the harvest feast: once a year, what is still more than the granaries hold
+  local _, lyear = farming.local_week(W, v)
+  if over > v.need_day * cfg.feast_min_days and v.feast_year ~= lyear then
+    v.feast_year = lyear
+    v.stock.grain = v.stock.grain - over
+    local guests, gn = {}, 0
+    local list = partners(W, v, cfg.relief_reach)
+    for i = 1, #list do
+      local e = list[i]
+      if gn < 3 and e.s >= 0 and e.u.continent == v.continent then gn = gn + 1; guests[gn] = e.u end
+    end
+    for i = 1, gn do
+      local u = guests[i]
+      give(W, v.id, u.id, over * cfg.guest_share / gn)
+    end
+    local nd = over / max(1, v.need_day)
+    M.honour_leader(W, v, nd * cfgmod.STATUS.feast_prestige)
+    v.acc.feast = (v.acc.feast or 0) + over
+    emit(W, "feast", v.cell, 0, floor(nd + 0.5), { village = v.id, guests = gn, food = floor(over) }, v)
+  end
 end
 
 -- Wood a village can spare beyond its reserve of fuel days (WU).
@@ -503,14 +609,22 @@ function M.porters_arrive(W, party, dest, living)
     elseif c.gift then
       dest.stock.grain = dest.stock.grain + c.grain
       local days = c.grain / max(1, dest.need_day)
-      give(W, home.id, dest.id, days)
-      dest.relief_got = W.hour
+      give(W, home.id, dest.id, c.grain)
+      if not c.surplus then
+        dest.relief_got = W.hour
+        -- (the debt remembers the relief it came from: a gift that repays it descends from it)
+        if (party.reason or 0) ~= 0 then
+          local r = M.get(W, home.id, dest.id, true)
+          if home.id < dest.id then r.ev_ab = party.reason else r.ev_ba = party.reason end
+        end
+      end
       -- generosity is honoured; a gift washes away some of an old grievance
       M.honour_leader(W, home, days * cfgmod.STATUS.gift_prestige)
       M.wrong(W, dest.id, home.id, -days * cfgmod.CONFLICT.gift_forgives, 0)
       local a = dest.acc
-      a.relief_in = (a.relief_in or 0) + c.grain
-      home.acc.relief_out = (home.acc.relief_out or 0) + c.grain
+      local kind = c.surplus and "gift" or "relief"
+      a[kind .. "_in"] = (a[kind .. "_in"] or 0) + c.grain
+      home.acc[kind .. "_out"] = (home.acc[kind .. "_out"] or 0) + c.grain
     elseif c.get then
       -- the partner gives what it can still spare of the good wanted, for the goods brought
       local can = spare_of(W, dest, c.get)
