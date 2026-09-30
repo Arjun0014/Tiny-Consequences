@@ -51,10 +51,27 @@ function M.burn(W, u, share)
   end
 end
 
-local function emit(W, kind, cell, parent, mag, data, v)
+local function emit(W, kind, cell, parent, mag, data, v, quiet)
   if not W.record_events then return 0 end
   local co = v and cotag.co_of(W, v)
-  return events.emit(W, kind, cell, parent, mag, data, co and { co = co } or nil)
+  local opts = nil
+  if co or quiet then
+    opts = { co = co }
+    if quiet then opts.headline = false end
+  end
+  return events.emit(W, kind, cell, parent, mag, data, opts)
+end
+
+-- News (the player's headlines): the first blow between two villages is news; the raids that
+-- follow it within news_years are the feud's, told in the villages' chronicles (still recorded,
+-- still in every chain). A truce, a submission, a secession stay headlines. The social
+-- counterpart of nature's regional news fatigue (D-040).
+local function old_news(W, a, b)
+  local r = M.rel.get(W, a, b, true)
+  local last = r.news
+  if last and W.hour - last < cfgmod.CONFLICT.news_years * 8064 then return true end
+  r.news = W.hour
+  return false
 end
 
 -- A village's reach as a set of cells (derived, cached on its geometry).
@@ -534,7 +551,8 @@ function M.battle(W, party, living)
   local parent = party.reason or 0
   local id = emit(W, win and "raid" or "raid_repelled", u.cell, parent, max(1, floor(loot)),
     { village = u.id, from = home and home.id or 0, raiders = #living, dead_raiders = la, dead_defenders = ld,
-      loot = floor(loot), allies = #allies, allied_men = allied, dead_allies = ld_allies }, u)
+      loot = floor(loot), allies = #allies, allied_men = allied, dead_allies = ld_allies }, u,
+    home and old_news(W, home.id, u.id))
   -- the allies: their dead, their grudge against the raiders, the help remembered
   for i = 1, #allies do
     local a, m = allies[i][1], allies[i][2]
@@ -640,7 +658,7 @@ function M.cattle_raid(W, party, living, home, u, A)
   end
   local id = emit(W, win and "cattle_raid" or "cattle_raid_repelled", u.herd_cell or u.cell, party.reason or 0,
     max(1, floor(took)), { village = u.id, from = home and home.id or 0, raiders = #living, dead_raiders = la,
-    dead_defenders = ld, beasts = floor(took) }, u)
+    dead_defenders = ld, beasts = floor(took) }, u, home and old_news(W, home.id, u.id))
   local dead_home = 0
   for i = #living, #living - la + 1, -1 do
     if living[i] then ents.kill(W, living[i], "raid", id); dead_home = dead_home + 1 end

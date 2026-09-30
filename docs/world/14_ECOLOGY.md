@@ -96,21 +96,29 @@ den. The planet fields `F.grazers`/`F.predators` are derived views (animals per 
 so vegetation pressure, detectors, release blame, powers and hunting keep their interfaces.
 Monthly update (every 4 ticks):
 
-- **Forage per head** on a cell = min(1.5, food / (0.6 H + 0.02)) − 0.6 × snow, food = (grass +
-  0.5 crop) × (1 − 0.8 snow). **Condition** += 0.2 × (forage − 1) a month: herds fatten in summer
-  and live on their reserves through a snowy winter or a dry season.
+- **Forage per head** on a cell = min(1.5, food / (0.6 H + 0.02)) + browse − 0.8 × snow, food =
+  (grass + 0.5 crop) × (1 − 0.8 snow). **Browse** (D-076): what the grass lacks of their need
+  (1 − food per head, up to half of it: a ruminant cannot live on woody browse alone) the herds
+  make up from the trees as far as the woods reach (× forest / (forest + 0.08)); it nourishes them,
+  and the forest loses it at twice the weight (browse is worth half as much as grass). The snow's
+  energy cost is not made up. **Condition** += 0.2 × (forage − 1) a month: herds fatten in summer
+  and live on their reserves and their trees through a snowy winter or a dry season.
 - **Fawns** once a year in the local late spring (week 16): 1.0 a head × ramp(the winter's lowest
-  condition 0.2..0.7) × 1 / (1 + crowding²), crowding = the range's animals against what its grass
-  carries (D-073: density acts through juvenile survival near carrying capacity; without it herds
-  overshot their grass and starved almost to the last, taking the packs with them). A hard winter
-  is paid for in the next spring's fawns. **Starvation** below condition 0.25; old
+  condition 0.2..1.0; Verme 1977) × 1 / (1 + crowding²), crowding = the range's animals against
+  what its grass carries (D-073: density acts through juvenile survival near carrying capacity;
+  without it herds overshot their grass and starved almost to the last, taking the packs with
+  them). A hard winter is paid for in the next spring's fawns. **Starvation** below condition 0.25; old
   age 1% a month. No logistic term: density dependence is food per head through condition.
 - **Predation** (Holling II + refuge on the cell densities) with the attack rate × (1 + 1.5 snow)
   × (0.7 + 0.75 weakness): wolves kill 2-3× as often in deep snow and take the weak (Nelson & Mech
   1986; Post et al. 1999).
 - **Hunger browsing**: what the grass lacks of a herd's need (crowding, snow, drought) it takes
-  from the trees at 0.5 of grass's worth; well-fed herds only nibble. How too many deer, or a hard
-  winter, stop a forest regrowing.
+  from the trees at 0.5 of grass's worth, and lives on (above); well-fed herds only nibble. How too
+  many deer, or a hard winter, stop a forest regrowing — and how a herd on a predator-free island
+  holds on after its grass is gone, strips the woods and then dies out (St Matthew Island).
+- **Densities** are the sum of the groups' ranges, computed monthly; a cell no range reaches holds
+  no animals (D-076: before, cells the herds had left kept their old density, and dispersing
+  wolves settled on the ghost of prey long gone; a reloaded world diverged from the live one).
 - **Packs**: condition by kills per wolf against need (m/e of the old calibration) plus a
   territory's **small game** (enough for 1.2 wolves / pack size); **one litter** a year (week 12,
   the breeding pair's): 5 × ramp(condition 0.25..0.75); starvation below 0.3; old age and strife

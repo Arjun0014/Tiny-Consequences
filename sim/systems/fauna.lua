@@ -66,7 +66,7 @@ local function scratch(W)
   local n = W.n
   local f = fields.filled
   for _, k in ipairs({ "H", "P", "dd", "pp", "fm", "pr", "gt", "pt", "ft", "gn", "rp", "best", "bw",
-    "seen", "den", "owner", "wk", "nt", "st", "claim", "pe", "ah", "ap" }) do sc["wl_" .. k] = f(n, 0) end
+    "seen", "den", "owner", "wk", "nt", "st", "claim", "pe", "ah", "ap", "brw" }) do sc["wl_" .. k] = f(n, 0) end
   sc.wl_stamp, sc.wl_dstamp = 0, 0
   sc.wl_rt, sc.wl_qt = {}, {}                       -- each group's range (cached tables, by slot)
   sc.wl_sh_n, sc.wl_sh_cell, sc.wl_sh_cond, sc.wl_sp_n, sc.wl_sp_cell = {}, {}, {}, {}, {}
@@ -329,6 +329,15 @@ local function densities(W, A, sc, cfg)
   local stamp = sc.wl_stamp + 1
   sc.wl_stamp = stamp
   local list = sc.wl_list
+  -- (the cells the last computation touched are emptied first: a cell no group's range reaches
+  -- holds no animals. Without this a cell the herds had left kept its old density, and dispersing
+  -- wolves settled on the ghost of prey long gone — and a reloaded world, whose densities start
+  -- empty, diverged from the live one.)
+  local H0, P0, W0, E0 = H, P, Wk, Pe
+  for k = 1, sc.wl_nl or 0 do
+    local x = list[k]
+    H0[x], P0[x], W0[x], E0[x] = 0, 0, 0, 0
+  end
   local nl = 0
   local g = W.grid
   local nbr, cnt = g.nbr, g.nbr_count
@@ -473,12 +482,13 @@ local function ecology(W, sc, fcfg, dt, list, nl)
   local dd_, pp_, fm_, pr_, nt_, st_ = sc.wl_dd, sc.wl_pp, sc.wl_fm, sc.wl_pr, sc.wl_nt, sc.wl_st
   local gt, pt, ft, gn, rp = sc.wl_gt, sc.wl_pt, sc.wl_ft, sc.wl_gn, sc.wl_rp
   local cah, cap = sc.wl_ah, sc.wl_ap
+  local brw_ = sc.wl_brw
   local hnorm, pnorm = S.hnorm, S.pnorm
   local Kg, hfood, cfood, sblock = fcfg.K_grazer, fcfg.h_food, fcfg.crop_food, fcfg.snow_block
   local ap, th, refuge = fcfg.a_pred, fcfg.t_handle, fcfg.refuge
   local kgr, hgr, kbr, hbr, kra, hra = fcfg.graze, fcfg.h_graze, fcfg.browse, fcfg.h_browse, fcfg.raid, fcfg.h_raid
   local kov, hstart, bbase, fmort = fcfg.overgraze, fcfg.overgraze_from, fcfg.browse_base, fcfg.fire_mort
-  local bmax, bworth = wcfg.browse_crowd, wcfg.browse_worth
+  local bmax, bworth, bcap = wcfg.browse_crowd, wcfg.browse_worth, wcfg.browse_cap
   local phi, psi, imax, scost = wcfg.phi, wcfg.psi, wcfg.i_max, wcfg.snow_cost
   local skill, wkill = wcfg.snow_kill, wcfg.weak_kill
   local relf, above = fcfg.release_frac, fcfg.pressure_above
@@ -500,9 +510,20 @@ local function ecology(W, sc, fcfg, dt, list, nl)
     local keff = Kg * food / (food + hfood)
     dd_[c] = keff > 1e-6 and Hc / keff or 1e9      -- crowding: animals against what the grass carries
     -- forage per head (1 = enough to hold condition), less the cost of wading through snow
-    local it = food / (phi * Hc + psi)
+    local it0 = food / (phi * Hc + psi)
+    local it = it0
     if it > imax then it = imax end
-    nt_[c] = it - scost * sn
+    -- what the grass (under snow, eaten down, burnt by drought) lacks of their need the herds make
+    -- up from the trees — twigs, saplings, bark — as far as the woods reach, and only in part:
+    -- a ruminant cannot live on woody browse alone (browse_cap of its need). What they browse
+    -- nourishes them (it is also what the forest loses, below): a herd in the woods holds on
+    -- through an overgrazed year or a snowy winter on its trees, and the trees pay. (The cost of
+    -- wading through the snow is theirs to pay: browse replaces grass, not strength.)
+    local lack = 1 - it0
+    if lack < 0 then lack = 0 elseif lack > bcap then lack = bcap end
+    local bro = lack * fo / (fo + hbr)
+    brw_[c] = bro
+    nt_[c] = it - scost * sn + bro
     -- the cause of a lean month here: the snow's (a chill, a meteor winter) or the grass's
     local ts = 0
     if sn > 0.3 then ts = cice[c] end
@@ -554,11 +575,10 @@ local function ecology(W, sc, fcfg, dt, list, nl)
       if gg > gr then gg = gr end
       grass[c] = gr - gg
       -- (animals the grass cannot feed — crowded, or the grass under snow or burnt by drought —
-      -- turn to the trees for what they lack: saplings, twigs, bark. How too many deer, or a
-      -- hard winter, stop a forest regrowing. Well-fed herds only nibble: browse_base.)
-      local lack = 1 - food / (phi * Hc + psi) + scost * sn
-      if lack < 0 then lack = 0 elseif lack > 1 then lack = 1 end
-      local bb = dt * Hc * (kbr * bbase + kgr * lack / bworth) * fo / (fo + hbr)
+      -- turn to the trees for what they lack: saplings, twigs, bark; worth browse_worth of grass,
+      -- so it takes that much more of it. How too many deer, or a hard winter, stop a forest
+      -- regrowing. Well-fed herds only nibble: browse_base.)
+      local bb = dt * Hc * (kbr * bbase * fo / (fo + hbr) + kgr * brw_[c] / bworth)
       if bb > fo then bb = fo end
       forest[c] = fo - bb
       eaten = eaten + grass_c * gg + bb
@@ -1268,6 +1288,22 @@ function sys.update(W)
   demography(W, A, sc, cfg, fcfg, every)
   behave(W, A, sc, cfg, fcfg)
   derive(W, A, sc, cfg, fcfg, every)
+end
+
+-- Shift the groups' stored hours by dt weeks (after the worldgen spin-up, whose clock ends at
+-- Year 0): the hour each group last moved (a pack moves its den at most monthly; lone wolves wait
+-- a year before a kin mate; the view walks a group from its last cell) and the year each pack
+-- last dispersed. Without it every group of the spin-up had moved "in the future" for 22 years:
+-- packs never moved their dens and the view drew herds on the cell they had left.
+function sys.shift_ticks(W, dt)
+  local A = W.S.wild
+  if not A then return end
+  local dh = dt * 168
+  for i = 1, A.nh do A.h_moved[i] = A.h_moved[i] + dh end
+  for i = 1, A.np do
+    A.p_moved[i] = A.p_moved[i] + dh
+    A.p_disp[i] = A.p_disp[i] + floor(dh / 8064)
+  end
 end
 
 -- Rebuild the derived fields now (a load, a power acting on the groups).

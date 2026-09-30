@@ -239,7 +239,7 @@ C.WILD = {
   phi = 0.6, psi = 0.02, i_max = 1.5,     --   (1 where the herds reach what the grass carries, K_eff)
   snow_cost = 0.8,                        --   wading through deep snow costs this much forage
   h_gain = 0.2,                           -- condition per month per unit of forage above / below 1
-  fawns = 1.0, fawn_cond = { 0.2, 0.7 },  -- fawns per head a year, by the herd's condition in the late spring (ramp)
+  fawns = 1.0, fawn_cond = { 0.2, 1.0 },  -- fawns per head a year, by the lowest condition of the winter (ramp: Verme 1977)
                                           --   (was 1.4: lambda ~2.2 without predators; deer reach ~1.6-1.8, D-073)
   fawn_crowd = 1.0,                       -- ... that live: / (1 + (crowding / this)^2), crowding = animals / what the range's grass carries
   fawn_week = 16,                         -- local week of the fawning (one monthly update)
@@ -282,6 +282,7 @@ C.WILD = {
   disperse_sat = 1.1,                     -- a herd whose range holds this x what its grass carries sends a part away
   browse_crowd = 2.0,                     -- (grazing: herds crowded past their grass graze it up to this x as hard)
   browse_worth = 0.5,                     -- what herds lack of grass they take from the trees (twigs, bark), worth this much grass
+  browse_cap = 0.5,                       -- ... up to this share of their need (ruminants starve on woody browse alone); it nourishes them
   gone = 0.5,                             -- a group below this many animals is gone
   seed_herd = 36, seed_pack = 7,          -- group sizes gathered from the fields at worldgen
   hunt_rate = 0.04, hunt_max = 0.05,      -- hunters: animals per effective hour (x density/(density + 0.15)); at most
@@ -679,6 +680,7 @@ C.CONFLICT = {
   cattle_lack = 1.0, cattle_bachelors = 0.3,  -- motives: beasts lacking, young men without wives
   cattle_risk = 0.2,                      -- the cost of a failed raid (value units: they run when outmatched)
   cattle_grievance = 1.5,                 -- the grudge a cattle raid leaves (+ per herder killed)
+  news_years = 10,                        -- raids between two villages within this of the last headline one are the feud's, not news
   cattle_threshold = 0.4,                 -- a cattle raid must promise this much (value units)
   -- feuds: revenge taken settles the raider's own grudge; after truce_after raids between two
   -- villages their leaders may make a truce (monthly chance x raids beyond it, less for warlike leaders)

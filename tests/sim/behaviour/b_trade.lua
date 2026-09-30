@@ -116,7 +116,7 @@ local function run(strike, days, cloth, net, counted)
     A.stock.grain = need * dth * 1.04 - income * dth + buffer - q * cfg.expect_trust - A.stock.fresh
     T.ok(A.stock.grain > 0, "a store to start with")
   end
-  local ret, struck, got, food_home
+  local ret, struck, got, food_home, lost_boat, next_boat
   local deficit = 0   -- sum over days of (1 - ration): how much less people ate
   local buys, seen = 0, {}   -- purchases of grain set off over the run (the village trades monthly:
                              -- a lost cargo is bought again at its next reckoning). Counted by the
@@ -142,6 +142,7 @@ local function run(strike, days, cloth, net, counted)
         world.command(W, "power", { power = "lightning", cell = sea.cell_of(W, b), ship = b.id, list = "boats" })
         world.step(W)
         struck = W.hour
+        lost_boat, next_boat = b.id, W.ent.next_boat
       end
     end
     deficit = deficit + (1 - A.ration) / 24
@@ -152,7 +153,8 @@ local function run(strike, days, cloth, net, counted)
   local out = { W = W, A = A, got = got or 0, struck = struck, food_home = food_home, deficit = deficit,
     boats = #A.boats, catch = acc.catch or 0, wild = (acc.meat or 0) + (acc.forage or 0),
     cloth = A.stock.cloth or 0, partner = party.to, grain = {}, buys = buys,
-    sold = W.ent.villages[party.to].acc.food_sold or 0 }
+    sold = W.ent.villages[party.to].acc.food_sold or 0, lost_boat = lost_boat, rebuilt = 0 }
+  for _, bid in ipairs(A.boats) do if next_boat and bid >= next_boat then out.rebuilt = out.rebuilt + 1 end end
   for _, id in ipairs(W.E.order) do
     local r = W.E.rec[id]
     if r and r.data and r.data.village == A.id then
@@ -175,7 +177,8 @@ function M.b15a_a_lost_cargo_is_bought_again_at_the_partners_cost()
     "shipment_lost from the Lightning and the boat")
   T.ok(s.food_home < c.food_home - 0.8 * c.got, string.format("store when the porters are home %.0f vs control %.0f (cargo %.0f)",
     s.food_home, c.food_home, c.got))
-  T.eq(s.boats, c.boats - 1, "a boat fewer")
+  T.ok(s.lost_boat and not s.W.ent.boats[s.lost_boat], "the struck boat is gone")
+  T.eq(s.boats + (s.rebuilt > 0 and 0 or 1), c.boats, string.format("a boat fewer, or one built since to replace it (%d built)", s.rebuilt))
   T.ok(s.catch < c.catch, string.format("catch %.0f vs control %.0f", s.catch, c.catch))
   -- it buys again at once (it would otherwise have waited a month), paying with more of its
   -- cloth; the partner sells more of its grain
