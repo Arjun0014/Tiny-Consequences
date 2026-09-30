@@ -84,7 +84,9 @@ derived fields and their causes), and ranges overlap. Measured (D-073): ≈ 125 
 tick as first written, cut to ≈ 87 k with identical state hashes (ranges by reference, densities
 reused when no group changed, a village-ground version key, a land-only scan, memoised neighbour
 views); the field model cost ≈ 41 k. Per month: the ecology of ~500 touched cells and the
-demography of ~200 groups (each over its 7-19 range cells) are most of it.
+demography of ~200 groups (each over its 7-19 range cells) are most of it. On main (D-076, P07
+re-baselined): ≈ 77 k a tick, 8% of the planet week, with a flat line profile (no line above
+1.5 k): the cost of the groups themselves, ~1.9× the field model.
 
 ## 5. Implementation (D-070 groups, D-071 ecology v2)
 
@@ -145,9 +147,11 @@ continental predator CV 0.28-0.42 year to year (~8-year cycles: lag-4 autocorrel
 −0.6), prey CV 0.31-0.52, patch synchrony decaying with distance 0.50 → 0.39 → 0.33 (the shape of
 real populations; Liebhold et al. 2004).
 
-Tests: fauna unit tests (conservation with rates off, no spawning, release blame), B18 (a hard
-winter: herd condition 0.74 vs 0.99, kills +29%, fawns a head 1.05 vs 1.27, pups a pack 2.0 vs
-1.7), B19 (a starving pack breaks up and settles toward prey), B20 (lone wolves pair; siblings
-don't), fauna stability 3/3 (CV 0.26-0.36 with villages, 200 years, no extinctions), S02 9/10
-full, S07 10/10 full. Tools: `tools/wild_dyn.lua` (CVs, cycles, synchrony by distance,
+Tests (on main since D-076): fauna unit tests (conservation with rates off, no spawning, release
+blame), B18 (a hard winter on the northern land: herd condition 0.86 vs 1.00, kills +37%, packs
+0.59 vs 0.53, fawns a head in the herds that wintered there 0.74 vs 0.91, pups a pack 2.0 vs
+1.4), B19 (a starving pack breaks up and settles toward prey), B20 (lone wolves pair; siblings
+don't); full profile: fauna stability 10/10 (predator CV 0.22-0.37, no extinction in 200 years
+at 2,400 people), S02 10/10, S07 10/10 (the island plays St Matthew), S01 7-8/10 (5/10 in the
+last run: second-century wildfire gaps that come from the society's forest clearing, D-076). Tools: `tools/wild_dyn.lua` (CVs, cycles, synchrony by distance,
 `--groups N` yearly flows, `--monthly Y`), `tools/wild_report.lua`, `npm run shots:wild`.

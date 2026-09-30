@@ -51,9 +51,12 @@ Research (`00`), audit (`01`), design (`10`–`16`), this roadmap, D-050.
   colony sites; Lightning on a loaded boat → `shipment_lost` + the receiver's `import_tag`; B02,
   B03 pass. Tankers stay as the oil lanes (tutorial). Still to do: B15, storms at sea.
 
-### W4 — Ecology agents
+### W4 — Ecology agents — done (D-070, D-071, D-073, D-076)
 - Herds and packs (`14_ECOLOGY.md`), fields derived from them, hunting from herds, spawning season.
 - **Done when**: S02 and S07 pass on herds; baseline bands for animals hold; herds visible.
+- Done: herds and packs as agents with body condition, birth pulses, winters, territories,
+  dispersal, browse that nourishes; S02 10/10, S07 10/10, fauna stability 10/10 on the full
+  profile; herds and packs drawn where the sim puts them (`npm run shots:wild`).
 
 ### W5 — The visible world
 - Clouds rebuilt (`16` §5); day/night polish, lit windows, smoke ∝ fuel; construction stages; field
