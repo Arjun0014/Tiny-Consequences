@@ -1,7 +1,8 @@
 -- Wild herds and packs (D-070, D-071): the mechanisms behind the predator-prey cycles, checked by
 -- intervention against an untouched twin.
 --   B18  a hard winter (deep snow held on one land for a winter) weakens its herds, feeds its
---        packs, and is paid for in the next spring: fewer fawns a head, more pups a pack.
+--        packs, and is paid for in the next spring: fewer fawns a head (in the herds that wintered
+--        there), more pups a pack.
 --   B19  a starving pack breaks up: those it cannot feed leave, and settle only where prey is,
 --        off other packs' ground.
 --   B20  lone wolves roam for a mate: two that are no kin pair up (and breed); siblings do not.
@@ -76,12 +77,20 @@ function M.b18_a_hard_winter_weakens_herds_feeds_packs_and_shapes_the_spring()
   T.ok(a.hcond < b.hcond - 0.05, string.format("the herds are thinner after the hard winter: %.2f vs %.2f", a.hcond, b.hcond))
   T.ok(da.pred > db.pred * 1.2, string.format("the packs killed more (deep snow, weak prey): %.0f vs %.0f", da.pred, db.pred))
   T.ok(a.pcond > b.pcond + 0.03, string.format("the packs are better fed: %.2f vs %.2f", a.pcond, b.pcond))
-  -- the spring: the whelping (week 12) and the fawning (week 16)
-  local ga, gb = a.grazers, b.grazers
-  dbg_on(Wa, set); dbg_on(Wb, set)
+  -- the spring: the whelping (week 12) and the fawning (week 16) — the fawns of the herds that
+  -- wintered on that land (followed by id: migrating herds that wintered elsewhere fawn there too)
+  local function wintered(W)
+    local A, ids = W.S.wild, {}
+    for i = 1, A.nh do if set[A.h_cell[i]] then ids[A.h_id[i]] = true end end
+    return ids
+  end
+  local ida, idb = wintered(Wa), wintered(Wb)
+  dbg_on(Wa, set).ids = ida; dbg_on(Wb, set).ids = idb
   run_to_week(Wa, 20); run_to_week(Wb, 20)
-  local fa = Wa.scratch.wl_dbg.born / math.max(ga, 1)
-  local fb = Wb.scratch.wl_dbg.born / math.max(gb, 1)
+  local da2, db2 = Wa.scratch.wl_dbg, Wb.scratch.wl_dbg
+  local fa = (da2.idborn or 0) / math.max(da2.idn or 0, 1)
+  local fb = (db2.idborn or 0) / math.max(db2.idn or 0, 1)
+  T.ok((da2.idn or 0) > 0 and (db2.idn or 0) > 0, "the herds that wintered there fawned")
   T.ok(fa < fb, string.format("fewer fawns a head in the spring after: %.2f vs %.2f", fa, fb))
   local pa = Wa.scratch.wl_dbg.pups / math.max(a.packs, 1)
   local pb = Wb.scratch.wl_dbg.pups / math.max(b.packs, 1)

@@ -4,8 +4,11 @@
 -- a control run in which the grain arrives (no famine logic anywhere; every step is the ordinary
 -- economy):
 --   B15a  a village with cloth left to sell: its store is short by about the cargo, it has a
---         boat fewer (a smaller catch), and it buys again at once (not a month later) — paying with
---         more of its cloth; its partner sells more of its grain (the loss passes along the route).
+--         boat fewer (or built one again), and it buys again at its next reckoning where the
+--         control, its cargo home, does not — paying with more of its cloth; its partner sells more
+--         of its grain (the loss passes along the route). The village's friends over the water hold
+--         nothing against it (the premise; D-074: a village that took much and gave little is
+--         helped by no one).
 --   B15b  a village that counts on the grain: it can pay for one real cargo and then has nothing
 --         more to sell (only what it makes later), and its store lasts to the harvest only with the grain on its way (as the
 --         village itself reckons it: economy.daily). The premise is set up, not searched for — the
@@ -77,6 +80,13 @@ end
 local function run(strike, days, cloth, net, counted)
   local W, A = island_world()
   T.ok(A, "a village alone on its island with partners over the water")
+  -- (the premise: a village with friends over the water — what it took from them in the past and
+  -- any grudge between them are forgotten, D-074: a village that took much and gave little is
+  -- helped by no one, and B21 tests that)
+  for _, u in ipairs(W.ent.villages) do
+    local r = u ~= A and relations.get(W, A.id, u.id)
+    if r then r.gab, r.gba, r.ga, r.gb = 0, 0, 0, 0 end
+  end
   if counted then
     -- (three months or so before its harvest: a cargo the porters can carry is a real share of what
     -- the village eats until then)
@@ -151,7 +161,7 @@ local function run(strike, days, cloth, net, counted)
   end
   local acc = A.acc or {}
   local out = { W = W, A = A, got = got or 0, struck = struck, food_home = food_home, deficit = deficit,
-    boats = #A.boats, catch = acc.catch or 0, wild = (acc.meat or 0) + (acc.forage or 0),
+    boats = #A.boats, catch = acc.catch or 0, trips = acc.trips or 0, wild = (acc.meat or 0) + (acc.forage or 0),
     cloth = A.stock.cloth or 0, partner = party.to, grain = {}, buys = buys,
     sold = W.ent.villages[party.to].acc.food_sold or 0, lost_boat = lost_boat, rebuilt = 0 }
   for _, bid in ipairs(A.boats) do if next_boat and bid >= next_boat then out.rebuilt = out.rebuilt + 1 end end
@@ -169,8 +179,10 @@ local function run(strike, days, cloth, net, counted)
 end
 
 function M.b15a_a_lost_cargo_is_bought_again_at_the_partners_cost()
-  local c = run(false, 60, 150)
-  local s = run(true, 60, 150)
+  -- (70 days of food: short enough to buy, and enough with the cargo home that the control needs
+  -- no more at its next reckoning — the premise: the cargo was what it lacked)
+  local c = run(false, 70, 150)
+  local s = run(true, 70, 150)
   T.ok(s.struck, "the boat bringing the grain was struck at sea")
   T.ok(c.got > 500, "control: the partner sold a real cargo")
   T.ok(chain_has(s.W, s.lost, "power_lightning") and chain_has(s.W, s.lost, "boat_lost"),
@@ -179,9 +191,8 @@ function M.b15a_a_lost_cargo_is_bought_again_at_the_partners_cost()
     s.food_home, c.food_home, c.got))
   T.ok(s.lost_boat and not s.W.ent.boats[s.lost_boat], "the struck boat is gone")
   T.eq(s.boats + (s.rebuilt > 0 and 0 or 1), c.boats, string.format("a boat fewer, or one built since to replace it (%d built)", s.rebuilt))
-  T.ok(s.catch < c.catch, string.format("catch %.0f vs control %.0f", s.catch, c.catch))
-  -- it buys again at once (it would otherwise have waited a month), paying with more of its
-  -- cloth; the partner sells more of its grain
+  -- it buys again at its next reckoning (the control, its cargo home, needs no more), paying with
+  -- more of its cloth; the partner sells more of its grain
   T.ok(s.buys > c.buys, string.format("purchases of grain %d vs control %d", s.buys, c.buys))
   T.ok(s.cloth < c.cloth, string.format("cloth left %.0f vs control %.0f", s.cloth, c.cloth))
   local p = s.partner

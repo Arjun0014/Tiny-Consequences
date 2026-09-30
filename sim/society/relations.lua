@@ -103,16 +103,7 @@ function M.score(W, u, v)
     -- smaller village)
     local small = min(u.pop or 30, v.pop or 30)
     s = s + 0.25 * min(6, r.kin * 30 / max(30, small)) + 0.15 * min(5, r.trades)
-    local gave, got = ledger(r, u.id, v.id)
-    local nd = max(1, u.need_day or 1)
-    local net = (gave - got) / nd
-    if net > 0 then
-      s = s - 0.004 * net   -- ~250 need-days unreturned cancel a daughter tie
-    else
-      -- and what u took from v and has not returned binds u to v: gifts are remembered by those
-      -- who took them, which is what makes giving a store (social storage, D-074)
-      s = s + cfgmod.SOCIETY.owe_w * min(cfgmod.SOCIETY.owe_cap, -net)
-    end
+    s = s + M.gift_term(W, u, v, r)
     -- grievance (W8): what u holds against v
     local gr = (u.id < v.id) and (r.ga or 0) or (r.gb or 0)
     s = s - 0.3 * min(6, gr)
@@ -120,6 +111,20 @@ function M.score(W, u, v)
   -- lord and tributary (W9): bound to each other
   if u.lord == v.id or v.lord == u.id then s = s + 1 end
   return s
+end
+
+-- The gifts' part of u's disposition toward v: what u gave v and was not returned (resentment, ~250
+-- need-days cancel a daughter tie) or what u took from v and has not returned (obligation: gifts
+-- are remembered by those who took them, which is what makes giving a store — social storage,
+-- D-074), in u's own need-days. It governs gifts, not trade: a village that took much and gave
+-- little asks for help in vain, but may still buy (M.trade).
+function M.gift_term(W, u, v, r)
+  r = r or M.get(W, u.id, v.id)
+  if not r then return 0 end
+  local gave, got = ledger(r, u.id, v.id)
+  local net = (gave - got) / max(1, u.need_day or 1)
+  if net > 0 then return -0.004 * net end
+  return cfgmod.SOCIETY.owe_w * min(cfgmod.SOCIETY.owe_cap, -net)
 end
 
 -- Set by init (callbacks: sim/society/status.lua, conflict.lua).
@@ -501,7 +506,9 @@ function M.trade(W, v)
   for i = 1, #list do
     local e = list[i]
     local u = e.u
-    if e.s >= -0.2 and not u.porters_out then
+    -- (a partner owed unreturned gifts still sells at a fair rate: the gifts' part of its
+    -- disposition is left out; grudges are not)
+    if e.s - M.gift_term(W, u, v) >= -0.2 and not u.porters_out then
       local theirs = spare_of(W, u, gw)
       local days = max(1, e.d * cfg.walk_h * 1.5 / cfg.walk_hours_day)
       local trips = max(1, floor(28 / (2 * days + 1)))

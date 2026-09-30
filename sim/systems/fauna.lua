@@ -685,6 +685,8 @@ local function demography(W, A, sc, cfg, fcfg, dt)
     local d = born - lost_s - lost_p - lost_f
     local dbg = sc.wl_dbg
     if dbg and (not dbg.only or dbg.only[A.h_cell[i]]) then dbg.born = dbg.born + born; dbg.hstarve = dbg.hstarve + lost_s; dbg.pred = dbg.pred + lost_p end
+    -- (followed herds, by id: the fawns of the herds that lived through a given winter, B18)
+    if dbg and dbg.ids and dbg.ids[A.h_id[i]] and births > 0 then dbg.idborn = (dbg.idborn or 0) + born; dbg.idn = (dbg.idn or 0) + n end
     local n1 = n + d
     if n1 < 0 then n1 = 0; d = -n end
     A.h_n[i] = n1
