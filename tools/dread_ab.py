@@ -40,6 +40,12 @@ def summary(rs):
     s["gifts out/need"] = sum(r.get("gift_out", 0) for r in rs) / need
     s["feasts/need"] = sum(r.get("feast", 0) for r in rs) / need
     s["relief in/need"] = sum(r.get("relief_in", 0) for r in rs) / need
+    s["repaid/need"] = sum(r.get("repaid", 0) for r in rs) / need
+    s["feasts/100vy"] = 100 * sum(r.get("feasts", 0) for r in rs) / max(vy, 1)
+    # severity: the food short of need in famine years, and the starved per famine
+    fy = [r for r in rs if r["famine"] > 0]
+    s["famine-yr deficit"] = (1 - sum(r.get("eaten", 0) for r in fy) / max(1, sum(r["need"] for r in fy))) if fy else 0
+    s["starved/famine"] = sum(r["starved"] for r in fy) / max(1, sum(r["famine"] for r in fy))
     return s
 
 def recurrence(rs, lo=2, hi=30):
