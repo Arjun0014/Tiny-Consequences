@@ -427,7 +427,9 @@ function M.sunk(W, b, parent)
   lost = lost + (party.food or 0) * share
   party.food = (party.food or 0) * (1 - share)
   if lost > 0 and W.record_events then
-    local dest = W.ent.villages[party.to]
+    -- (the village waiting for what the boat carried: on a buying errand's way out, the porters'
+    -- home — the goods they went to buy will not come either; the destination otherwise)
+    local dest = W.ent.villages[party.kind == "porters" and c and c.get and c.back_to or party.to]
     local id = events.emit(W, "shipment_lost", b.at or party.path[party.si] or 0, parent or 0, floor(lost + 0.5),
       { from = party.from, to = party.to, kind = party.kind, drowned = drowned })
     if id ~= 0 then

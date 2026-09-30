@@ -232,8 +232,13 @@ local function arrive_here(W, party)
     local dest = party.to ~= 0 and E.villages[party.to] or nil
     if #living > 0 then relations.porters_arrive(W, party, dest, living)
     else
-      local home = party.cargo and E.villages[party.cargo.back_to]
-      if home then home.porters_out = nil end
+      -- none lived to trade: what was paid for will not come
+      local c = party.cargo
+      local home = c and E.villages[c.back_to]
+      if home then
+        home.porters_out = nil
+        if c.get and c.want and home.alive then relations.settle_expected(W, home, c.get, c.want, 0) end
+      end
     end
     return
   elseif party.kind == "returning" then

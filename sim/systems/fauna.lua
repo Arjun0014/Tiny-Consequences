@@ -598,6 +598,7 @@ local function demography(W, A, sc, cfg, fcfg, dt)
   local pst, pstm, pmort = cfg.p_starve, cfg.p_starve_max * months, cfg.p_mort * months
   local alt = cfg.small_game
   local bw0, pw0 = cfg.fawn_week, cfg.pup_week
+  local fsat = cfg.fawn_crowd
   local rb = rng.base(W.seed, rng.S.FAUNA, W.tick)
   for i = 1, A.nh do
     local t = rt[i]
@@ -637,7 +638,16 @@ local function demography(W, A, sc, cfg, fcfg, dt)
     local births = 0
     local lw = local_week(W, A.h_cell[i])
     if lw >= bw0 and lw < bw0 + dt then
-      births = fawns * ramp(low, fc0, fc1)
+      -- (and the fawns that live through their first summer: fewer where the range is crowded —
+      -- animals against what its grass carries — as the does compete for forage; density acts on
+      -- ungulates mostly through juvenile survival near carrying capacity: Fowler 1987,
+      -- Gaillard et al. 1998. Without it herds overshoot their grass and starve almost to the
+      -- last, taking the packs with them.)
+      local sat = 0
+      local dd_ = sc.wl_dd
+      for k = 1, t.L do sat = sat + tw[k] * dd_[t[k]] end
+      local x = sat / fsat
+      births = fawns * ramp(low, fc0, fc1) / (1 + x * x)
       local dbg = sc.wl_dbg
       if dbg then
         dbg.lows = (dbg.lows or 0) + low * A.h_n[i]; dbg.lown = (dbg.lown or 0) + A.h_n[i]
@@ -788,6 +798,8 @@ local function behave(W, A, sc, cfg, fcfg)
     local best = c
     local b = c * 6 - 6
     local look = target or fire[c] > 0 or sat > 1 or (A.h_id[i] + upd) % cfg.look_every == 0
+    local dbg = sc.wl_dbg
+    if dbg then dbg.herds = (dbg.herds or 0) + 1; if sat > 1 then dbg.crowded = (dbg.crowded or 0) + 1 end; dbg.satsum = (dbg.satsum or 0) + sat end
     if not look then
       -- (settled this time: its range is still good enough)
     elseif target then
@@ -813,6 +825,7 @@ local function behave(W, A, sc, cfg, fcfg)
       end
     end
     if best ~= c then
+      if dbg then dbg.moves = (dbg.moves or 0) + 1 end
       A.h_prev[i], A.h_cell[i], A.h_moved[i] = c, best, hour
       if not migrates then A.h_home[i] = best end
       -- (a migrating herd covers a second step when the way is long)
@@ -849,6 +862,7 @@ local function behave(W, A, sc, cfg, fcfg)
       end
       if cb then
         local part = n * cfg.split_share
+        if dbg then dbg.splits = (dbg.splits or 0) + 1 end
         A.h_n[i] = n - part
         local ni = add_herd(W, sp, cb, part, A.h_tag[i], A.h_cond[i])
         A.h_low[ni] = A.h_low[i]
@@ -879,6 +893,7 @@ local function behave(W, A, sc, cfg, fcfg)
       end
     end
     if A.h_n[i] < cfg.gone then
+      if dbg then dbg.drops = (dbg.drops or 0) + 1 end
       -- (the last herd takes the slot, and its range with it; a herd split off this month has none)
       local last = A.nh
       rt[i] = last <= nh0 and rt[last] or false

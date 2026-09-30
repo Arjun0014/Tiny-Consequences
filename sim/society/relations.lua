@@ -25,6 +25,7 @@
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local events = require("sim.causality.events")
+local blame = require("sim.causality.blame")
 local ents = require("sim.society.entities")
 local sites = require("sim.society.sites")
 local farming = require("sim.society.farming")
@@ -547,6 +548,27 @@ function M.porters_arrive(W, party, dest, living)
   end
 end
 
+-- Goods counted on that will not come (B15): the expectation is settled and a food shortfall is
+-- booked in the village's food account at once — the village knows the hour its porters are home
+-- (or known dead), so rationing that begins within the week descends from the loss (its cause:
+-- import_tag). Without a known cause the shortfall waits for the weekly account (economy.weekly).
+function M.settle_expected(W, home, get, want, got)
+  local e = home.expect
+  if e and e[get] then
+    local x = e[get] - want
+    e[get] = x > 1e-6 and x or nil
+  end
+  local short = want - (got or 0)
+  if short > 0 and get == "food" then
+    local t = home.import_tag or 0
+    if t ~= 0 then
+      blame.step(home.foodtag, home.foodidle, 1, -short, home.need_day * 0.5 + 1, 26, -short, t, 0, 0, 0, 0, 0, 0)
+    else
+      home.wk_import_short = (home.wk_import_short or 0) + short
+    end
+  end
+end
+
 -- Porters are home: unload what they carry.
 function M.returning_arrive(W, party, home)
   local c = party.cargo or {}
@@ -565,15 +587,7 @@ function M.returning_arrive(W, party, home)
     end
     -- what was counted on and did not come (lost at sea, a partner who could not give): an
     -- import shortfall, blamed on its cause (import_tag) in the food account (economy.weekly)
-    if c.get and c.want then
-      local e = home.expect
-      if e and e[c.get] then
-        local x = e[c.get] - c.want
-        e[c.get] = x > 1e-6 and x or nil
-      end
-      local short = c.want - (c.got or 0)
-      if short > 0 and c.get == "food" then home.wk_import_short = (home.wk_import_short or 0) + short end
-    end
+    if c.get and c.want then M.settle_expected(W, home, c.get, c.want, c.got) end
     home.porters_out = nil
   end
 end

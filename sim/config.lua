@@ -239,7 +239,9 @@ C.WILD = {
   phi = 0.6, psi = 0.02, i_max = 1.5,     --   (1 where the herds reach what the grass carries, K_eff)
   snow_cost = 0.8,                        --   wading through deep snow costs this much forage
   h_gain = 0.2,                           -- condition per month per unit of forage above / below 1
-  fawns = 1.4, fawn_cond = { 0.2, 0.7 },  -- fawns per head a year, by the herd's condition in the late spring (ramp)
+  fawns = 1.0, fawn_cond = { 0.2, 0.7 },  -- fawns per head a year, by the herd's condition in the late spring (ramp)
+                                          --   (was 1.4: lambda ~2.2 without predators; deer reach ~1.6-1.8, D-073)
+  fawn_crowd = 1.0,                       -- ... that live: / (1 + (crowding / this)^2), crowding = animals / what the range's grass carries
   fawn_week = 16,                         -- local week of the fawning (one monthly update)
   h_starve = 0.25, h_starve_max = 0.25,   -- below this condition the weak starve (a month's share at condition 0)
   h_mort = 0.01,                          -- old age and accidents, a month

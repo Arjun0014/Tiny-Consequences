@@ -77,9 +77,14 @@ meat = kills × 40 FU into `fresh`. Removes animals from that herd, blamed with 
 
 ## 4. Numbers and cost
 
-~500 land cells; GRAZER_PER_CELL = 20 animals per unit density; ≈ 60–150 herds and 10–25 packs.
-Weekly updates of ~150 entities cost less than the current per-cell fauna pass over all land
-cells (≈ 20k instructions), because empty cells cost nothing.
+~550 land cells at f12; ≈ 150–200 herds and 25–30 packs (the P07 world). The first estimate
+(cheaper than the field model, ≈ 20 k) was wrong: the groups update monthly but each touches its
+whole range several times (densities, forage and predation per cell, demography, behaviour, the
+derived fields and their causes), and ranges overlap. Measured (D-073): ≈ 125 k VM instructions a
+tick as first written, cut to ≈ 87 k with identical state hashes (ranges by reference, densities
+reused when no group changed, a village-ground version key, a land-only scan, memoised neighbour
+views); the field model cost ≈ 41 k. Per month: the ecology of ~500 touched cells and the
+demography of ~200 groups (each over its 7-19 range cells) are most of it.
 
 ## 5. Implementation (D-070 groups, D-071 ecology v2)
 
@@ -94,8 +99,11 @@ Monthly update (every 4 ticks):
 - **Forage per head** on a cell = min(1.5, food / (0.6 H + 0.02)) − 0.6 × snow, food = (grass +
   0.5 crop) × (1 − 0.8 snow). **Condition** += 0.2 × (forage − 1) a month: herds fatten in summer
   and live on their reserves through a snowy winter or a dry season.
-- **Fawns** once a year in the local late spring (week 16): 1.4 a head × ramp(condition 0.2..0.7).
-  A hard winter is paid for in the next spring's fawns. **Starvation** below condition 0.25; old
+- **Fawns** once a year in the local late spring (week 16): 1.0 a head × ramp(the winter's lowest
+  condition 0.2..0.7) × 1 / (1 + crowding²), crowding = the range's animals against what its grass
+  carries (D-073: density acts through juvenile survival near carrying capacity; without it herds
+  overshot their grass and starved almost to the last, taking the packs with them). A hard winter
+  is paid for in the next spring's fawns. **Starvation** below condition 0.25; old
   age 1% a month. No logistic term: density dependence is food per head through condition.
 - **Predation** (Holling II + refuge on the cell densities) with the attack rate × (1 + 1.5 snow)
   × (0.7 + 0.75 weakness): wolves kill 2-3× as often in deep snow and take the weak (Nelson & Mech

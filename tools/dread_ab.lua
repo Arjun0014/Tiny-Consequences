@@ -33,12 +33,12 @@ local world = require("sim.world")
 local construction = require("sim.society.construction")
 local W = require("sim.worldgen.init").generate(seed)
 local out = assert(io.open(outp or string.format("out/dread_%d_%s.csv", seed, nodread and "off" or "on"), "w"))
-out:write("seed,arm,year,village,pop,dread,store_y,store_harv_y,cap_y,at_cap,fields,sown,harvest,need,spoil_g,starved,deaths,mig_out,famine,rationing,seed_eaten,crop_failure\n")
+out:write("seed,arm,year,village,pop,dread,store_y,store_harv_y,cap_y,at_cap,fields,sown,harvest,need,spoil_g,starved,deaths,mig_out,famine,rationing,seed_eaten,crop_failure,gift_out,gift_in,feast,relief_out,relief_in,granaries,granary_dread\n")
 local arm = nodread and "off" or "on"
 local mon = {}   -- village id -> { n, store_y, cap_y, at_cap }
 local ev = {}    -- village id -> kind -> count (this year)
 local last_ev = W.E.next_id
-local KINDS = { famine = true, rationing = true, seed_eaten = true, crop_failure = true }
+local KINDS = { famine = true, rationing = true, seed_eaten = true, crop_failure = true, granary_built = true }
 for y = 1, years do
   for t = 1, 48 do
     world.tick(W)
@@ -74,10 +74,12 @@ for y = 1, years do
       for k, x in pairs(a) do if k:sub(1, 2) == "d_" and (k:find("starv") or k:find("hunger") or k:find("malnut")) then starved = starved + x end end
       local e = ev[v.id] or {}
       local need_y = math.max(1, (v.need_day or 0) * 336)
-      out:write(string.format("%d,%s,%d,%d,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%.0f,%.0f,%.0f,%.0f,%.1f,%.1f,%d,%d,%d,%d,%d\n",
+      local gr = construction.count_kind(W, v, "granary", "standing")
+      out:write(string.format("%d,%s,%d,%d,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%.0f,%.0f,%.0f,%.0f,%.1f,%.1f,%d,%d,%d,%d,%d,%.0f,%.0f,%.0f,%.0f,%.0f,%d,%d\n",
         seed, arm, y, v.id, v.pop, v.dread or 0, m.s / m.n, (v.store_at_harvest or v.stock.grain) / need_y, m.c / m.n, m.at / m.n,
         #v.farms, a.sown or 0, a.harvest or 0, a.need or 0, a.spoil_g or 0, starved, a.deaths or 0, a.mig_out or 0,
-        e.famine or 0, e.rationing or 0, e.seed_eaten or 0, e.crop_failure or 0))
+        e.famine or 0, e.rationing or 0, e.seed_eaten or 0, e.crop_failure or 0,
+        a.gift_out or 0, a.gift_in or 0, a.feast or 0, a.relief_out or 0, a.relief_in or 0, gr, e.granary_built or 0))
     end
   end
   mon, ev = {}, {}

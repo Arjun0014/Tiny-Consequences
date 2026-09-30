@@ -3,7 +3,7 @@
 -- actions: { year, hook = <test hook name> | helper = "cull_all", target = <selector>, ...params }
 -- expect:
 --   { metric = "<field>@target", compare = "ratio_to_baseline", op = ">=" | "<=", value, within_years }
---   { chain_from_action = i, min_links = n, must_include = { kinds in chain order } }
+--   { chain_from_action = i | { i, j, ... }, min_links = n, must_include = { kinds in chain order } }
 --   { descendant_kind = "<kind>", from_action = i }       -- some derived event of that kind exists
 -- Each seed runs twice from the same cached post-spin-up world: once with the actions, once
 -- without (baseline), in lockstep, sampling metrics monthly. ratio_to_baseline passes if the
@@ -155,15 +155,20 @@ function L.select(W, spec)
     end
     return { cell = c, cells = { c }, village = best.id, label = "near " .. best.name }
   elseif kind == "forest" and rest == "dry" then
-    -- a dry spot in thick forest: forest around it (fuel for the fire to spread) and dry soil
+    -- dry forest: of the forests with fuel around them for a fire to spread (forest >= 0.5 on the
+    -- cell and on average about it), the driest soil (a wet forest does not burn after a single
+    -- season of drought: soil 0.70 -> 0.45 and the fire dies; 0.45 -> 0.30 and it spreads).
+    -- (Was forest thickness - 3 x soil: a thick wet forest outscored a drier one.)
     local g = W.grid
     local best, bs = nil, -1e9
     for c = 1, W.n do
-      if geo.ocean[c] == 0 and W.F.forest[c] >= 0.35 and W.F.ice[c] < 0.2 and W.F.land_use[c] == 0 then
+      if geo.ocean[c] == 0 and W.F.forest[c] >= 0.5 and W.F.ice[c] < 0.2 and W.F.land_use[c] == 0 then
         local fsum, b = W.F.forest[c], c * 6 - 6
         for k = 1, g.nbr_count[c] do fsum = fsum + W.F.forest[g.nbr[b + k]] end
-        local score = fsum - 3 * W.F.soil_water[c]
-        if score > bs then best, bs = c, score end
+        if fsum >= 0.5 * (g.nbr_count[c] + 1) then
+          local score = -W.F.soil_water[c] + 0.01 * fsum
+          if score > bs then best, bs = c, score end
+        end
       end
     end
     if not best then return nil end
@@ -225,19 +230,26 @@ function L.select(W, spec)
     if not best then return nil end
     return { cell = best, cells = ocean_ring(W, best, 1), label = "cold coast at " .. best }
   elseif kind == "ocean_near" and rest == "village:fishing" and (W.ent.villages and #W.ent.villages > 0) then
-    local vt = L.select(W, "village:fishing")
-    if vt then
-      local v = W.ent.villages[vt.village]
-      local g = W.grid
-      local best, bs = nil, -1
-      for _, c in ipairs(v.fishing) do
-        local b = c * 6 - 6
-        local no = 0
-        for k = 1, g.nbr_count[c] do if geo.ocean[g.nbr[b + k]] == 1 then no = no + 1 end end
-        if no > bs then best, bs = c, no end
+    -- a spill on a fishing village's grounds: centred on the ground its boats work first
+    -- (fishing.rank), the nearby sea within 2 steps; the village that lives most on its catch
+    -- among those whose fishing waters the spill would cover — a spill on a corner of wide
+    -- waters costs a village nothing (its boats re-rank to clean grounds: 13 of 52 cells oiled)
+    local best, bs, bv, bcells = nil, -1, nil, nil
+    for _, v in ipairs(W.ent.villages) do
+      local gr = v.grounds
+      if v.alive and #v.boats > 0 and v.pop >= 20 and gr and gr[1] then
+        local a = v.acc_last or {}
+        local share = (a.catch or 0) / math.max(1, (a.catch or 0) + (a.harvest or 0) + (a.meat or 0))
+        local cells = ocean_ring(W, gr[1], 2)
+        local inside = {}
+        for _, c in ipairs(cells) do inside[c] = true end
+        local k = 0
+        for i = 1, #v.fishing do if inside[v.fishing[i]] then k = k + 1 end end
+        local sc = share * k / #v.fishing
+        if sc > bs then best, bs, bv, bcells = gr[1], sc, v, cells end
       end
-      return { cell = best, cells = ocean_ring(W, best, 2), village = v.id, label = "sea of " .. v.name }
     end
+    if best then return { cell = best, cells = bcells, village = bv.id, label = "sea of " .. bv.name } end
     return L.select(W, "ocean_near:coast:largest")
   elseif kind == "ocean_near" then
     -- "coast:largest" (and, until villages exist, "village:fishing"): a fishing-ground-like
@@ -537,8 +549,11 @@ function L.run_seed(spec, seed, opts)
       if ok then txt = txt .. string.format(" (best x%.2f)", best) end
       if not ok then txt = string.format("%s best x%.2f@%.1fy (need %s %.2f)", e.metric, best or 0, bt / 48, e.op, e.value) end
     elseif e.chain_from_action then
-      -- the best chain from any of the action's roots (helpers cast several powers)
-      local list = roots_all[e.chain_from_action] or {}
+      -- the best chain from any of the action's roots (helpers cast several powers), or from
+      -- any root of several actions (a campaign: each cast is its own root)
+      local acts = type(e.chain_from_action) == "table" and e.chain_from_action or { e.chain_from_action }
+      local list = {}
+      for _, ai in ipairs(acts) do for _, r in ipairs(roots_all[ai] or {}) do list[#list + 1] = r end end
       if #list > 0 then
         local best_txt, best_len = nil, -1
         for _, root in ipairs(list) do
@@ -553,13 +568,20 @@ function L.run_seed(spec, seed, opts)
         txt = "no root event"
       end
     elseif e.descendant_kind then
-      for _, root in ipairs(roots_all[e.from_action or 1] or {}) do
-        for _, d in ipairs(events.descendants(Wa, root)) do
-          if d.kind == e.descendant_kind then ok = true; break end
+      -- (a kind or any of several; from one action or any of several)
+      local kinds = type(e.descendant_kind) == "table" and e.descendant_kind or { e.descendant_kind }
+      local acts = type(e.from_action) == "table" and e.from_action or { e.from_action or 1 }
+      for _, ai in ipairs(acts) do
+        for _, root in ipairs(roots_all[ai] or {}) do
+          for _, d in ipairs(events.descendants(Wa, root)) do
+            for _, k in ipairs(kinds) do if d.kind == k then ok = true end end
+            if ok then break end
+          end
+          if ok then break end
         end
         if ok then break end
       end
-      txt = e.descendant_kind .. (ok and " yes" or " MISSING")
+      txt = table.concat(kinds, "|") .. (ok and " yes" or " MISSING")
     end
     res[i] = { ok = ok, text = txt }
     parts[#parts + 1] = (ok and "" or "!") .. txt
