@@ -329,6 +329,15 @@ local function densities(W, A, sc, cfg)
   local stamp = sc.wl_stamp + 1
   sc.wl_stamp = stamp
   local list = sc.wl_list
+  -- (the cells the last computation touched are emptied first: a cell no group's range reaches
+  -- holds no animals. Without this a cell the herds had left kept its old density, and dispersing
+  -- wolves settled on the ghost of prey long gone — and a reloaded world, whose densities start
+  -- empty, diverged from the live one.)
+  local H0, P0, W0, E0 = H, P, Wk, Pe
+  for k = 1, sc.wl_nl or 0 do
+    local x = list[k]
+    H0[x], P0[x], W0[x], E0[x] = 0, 0, 0, 0
+  end
   local nl = 0
   local g = W.grid
   local nbr, cnt = g.nbr, g.nbr_count

@@ -671,6 +671,7 @@ C.CONFLICT = {
   cattle_lack = 1.0, cattle_bachelors = 0.3,  -- motives: beasts lacking, young men without wives
   cattle_risk = 0.2,                      -- the cost of a failed raid (value units: they run when outmatched)
   cattle_grievance = 1.5,                 -- the grudge a cattle raid leaves (+ per herder killed)
+  news_years = 10,                        -- raids between two villages within this of the last headline one are the feud's, not news
   cattle_threshold = 0.4,                 -- a cattle raid must promise this much (value units)
   -- feuds: revenge taken settles the raider's own grudge; after truce_after raids between two
   -- villages their leaders may make a truce (monthly chance x raids beyond it, less for warlike leaders)
