@@ -15,7 +15,7 @@ import { startServer } from './serve.mjs';
 const args = process.argv.slice(2);
 const variant = hasFlag(args, '--release') ? 'release' : 'debug';
 const port = Number(getFlag(args, '--port', 8186));
-const zoom = Number(getFlag(args, '--zoom', 1.0));
+const zoom = Number(getFlag(args, '--zoom', hasFlag(args, '--wild') ? 1.3 : 1.0));   // (wild: down among the animals)
 const hour = Number(getFlag(args, '--hour', 13));
 const seedFlag = getFlag(args, '--seed', null);
 const only = getFlag(args, '--only', null);
@@ -60,7 +60,15 @@ try {
     await page.waitForTimeout(800);
     const file = path.join(outDir, `${name}.png`);
     await page.screenshot({ path: file });
-    console.log(`${wild ? 'wild' : 'biomes'}: ${rel(file)}  cell ${s.cell} lat ${s.lat.toFixed(1)} lon ${s.lon.toFixed(1)}${s.n ? ' n ' + s.n.toFixed(0) : ''}`);
+    const vs = wild ? await cmd(page, { cmd: 'view_stats' }) : null;
+    if (wild && hasFlag(args, '--debug')) {
+      // where the puppets of this group are drawn against the focus (and above the ground)
+      const d = await cmd(page, { cmd: 'wild_debug' });
+      const mine = d.animals.filter((a) => a.group === s.id);
+      console.log(`  focus ${d.focus[0].toFixed(2)},${d.focus[1].toFixed(2)}; ${d.animals.length} animals drawn, ${mine.length} of group ${s.id}`);
+      for (const a of mine) console.log(`    ${a.sp} at ${a.lat.toFixed(2)},${a.lon.toFixed(2)} r ${a.r.toFixed(4)} ground ${a.ground.toFixed(4)} scale ${a.scale}`);
+    }
+    console.log(`${wild ? 'wild' : 'biomes'}: ${rel(file)}  cell ${s.cell} lat ${s.lat.toFixed(1)} lon ${s.lon.toFixed(1)}${s.n ? ' n ' + s.n.toFixed(0) : ''}${vs ? ' puppets ' + vs.puppets : ''}`);
   }
 } finally {
   await browser.close();

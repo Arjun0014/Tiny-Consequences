@@ -1290,6 +1290,22 @@ function sys.update(W)
   derive(W, A, sc, cfg, fcfg, every)
 end
 
+-- Shift the groups' stored hours by dt weeks (after the worldgen spin-up, whose clock ends at
+-- Year 0): the hour each group last moved (a pack moves its den at most monthly; lone wolves wait
+-- a year before a kin mate; the view walks a group from its last cell) and the year each pack
+-- last dispersed. Without it every group of the spin-up had moved "in the future" for 22 years:
+-- packs never moved their dens and the view drew herds on the cell they had left.
+function sys.shift_ticks(W, dt)
+  local A = W.S.wild
+  if not A then return end
+  local dh = dt * 168
+  for i = 1, A.nh do A.h_moved[i] = A.h_moved[i] + dh end
+  for i = 1, A.np do
+    A.p_moved[i] = A.p_moved[i] + dh
+    A.p_disp[i] = A.p_disp[i] + floor(dh / 8064)
+  end
+end
+
 -- Rebuild the derived fields now (a load, a power acting on the groups).
 function sys.refresh(W)
   derive(W, W.S.wild, scratch(W), cfgmod.WILD, cfgmod.FAUNA, 0)

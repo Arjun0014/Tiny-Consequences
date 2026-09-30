@@ -610,6 +610,24 @@ function M.register(G)
     return { kb = collectgarbage("count") }
   end)
 
+  -- wild_debug: the animal puppets drawn (species, group, where, height over the ground) and the
+  -- camera focus — shots:wild checks the herds it frames are drawn where it looks (W4)
+  bridge.register("wild_debug", function()
+    local puppets = require("game.view.puppets")
+    local out = { focus = { math.deg(math.asin(state.focus_y or 0)), math.deg(math.atan2(state.focus_z or 0, state.focus_x or 1)) }, animals = {} }
+    for _, p in ipairs(puppets.pool) do
+      if p.on and p.lat then
+        local pos = go.get_position(p.id)
+        local r = math.sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z)
+        local x, y, z = pos.x / r, pos.y / r, pos.z / r
+        local rs = puppets.surface and select(1, puppets.surface(x, y, z)) or 0
+        out.animals[#out.animals + 1] = { sp = p.species or p.kind, group = p.group, lat = math.deg(p.lat), lon = math.deg(p.lon),
+          r = r, ground = rs, scale = go.get_scale_uniform and go.get_scale_uniform(p.id) or 0 }
+      end
+    end
+    return out
+  end)
+
   bridge.register("picking_info", function()
     return { last_cell = picking.last_cell }
   end)
