@@ -48,6 +48,29 @@ def summary(rs):
     s["starved/famine"] = sum(r["starved"] for r in fy) / max(1, sum(r["famine"] for r in fy))
     return s
 
+def by_age(rs):
+    # founding-year famines (a village's first two years in the run) vs established villages'
+    first = {}
+    for r in rs:
+        k = (r["seed"], r["village"])
+        y = int(r["year"])
+        if k not in first or y < first[k]:
+            first[k] = y
+    out = {"found_f": 0, "found_vy": 0, "est_f": 0, "est_vy": 0, "est_rat": 0, "est_cf": 0, "est_starved": 0, "est_py": 0}
+    for r in rs:
+        k = (r["seed"], r["village"])
+        young = int(r["year"]) - first[k] < 2 and first[k] > 1
+        if young:
+            out["found_f"] += r["famine"]; out["found_vy"] += 1
+        else:
+            out["est_f"] += r["famine"]; out["est_vy"] += 1; out["est_rat"] += r["rationing"]; out["est_cf"] += r["crop_failure"]
+            out["est_starved"] += r["starved"]; out["est_py"] += r["pop"]
+    return out
+
+def median(xs):
+    xs = sorted(xs)
+    return xs[len(xs) // 2] if xs else 0
+
 def recurrence(rs, lo=2, hi=30):
     # after a famine in a village: another famine there within (lo, hi] years? (the memory window)
     by = collections.defaultdict(dict)
@@ -93,6 +116,12 @@ for arm in ("on", "off"):
     print("%s: %d crop failures, %d followed by famine within 3 y (%.0f%%)" % (arm, n, hit, 100 * hit / max(n, 1)))
     n, hit = recurrence(arms[arm])
     print("%s: %d famines (with 30 years after them in the run), %d followed by another famine 3-30 y later (%.0f%%)" % (arm, n, hit, 100 * hit / max(n, 1)))
+for arm in ("on", "off"):
+    a = by_age(arms[arm])
+    st = [r["store_harv_y"] for r in arms[arm] if r["pop"] >= 20]
+    print("%s: founding-year famines %d in %d village-years (%.1f/100); established villages: famines %d in %d vy (%.2f/100), rationing %.2f/100vy, crop failures %.2f/100vy, starved %.2f/1000py; median store at harvest %.2f y (villages of 20+)" % (
+        arm, a["found_f"], a["found_vy"], 100 * a["found_f"] / max(1, a["found_vy"]), a["est_f"], a["est_vy"], 100 * a["est_f"] / max(1, a["est_vy"]),
+        100 * a["est_rat"] / max(1, a["est_vy"]), 100 * a["est_cf"] / max(1, a["est_vy"]), 1000 * a["est_starved"] / max(1, a["est_py"]), median(st)))
 print()
 print("per seed (famines/100vy, starved/1000py, store yrs, at capacity, spoiled/harvest, emigrants/1000py):")
 for sd in sorted(seeds):

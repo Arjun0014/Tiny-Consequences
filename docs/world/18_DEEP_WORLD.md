@@ -87,6 +87,17 @@ relation question) and the chronicle ("Why do they hate each other? Year 41: the
   plans fewer fields (the field plan already subtracts the reliable catch; imports join it).
   If the partner stops (war, sinking, famine), the dependency bites — chains through trade.
 
+- **Social storage and the memory of hunger (D-074)**: a village keeps a year and a half of its
+  need at harvest (more when its grown-ups remember a famine: such granaries descend from the
+  famine and outlive the generation that starved). What a harvest leaves beyond the granaries is
+  carried to a friendly village with room — first to one it owes (the gift descends from the relief
+  it repays) — or eaten at a harvest feast with guests from friendly villages. What a village took
+  binds it: it is better disposed to the giver and gives back at least what it took when the giver
+  is in need; what it took and never returned makes the giver deaf to it (not to its trade).
+  Lineages that split leave after the harvest. Measured (seeds 3/9/22/5, 150 years, 2,400 people):
+  famine 0.16 per 100 village-years, mostly in villages' first year; after a crop failure famine
+  follows within three years in 5% of cases where hunger is remembered, 17% where it is not.
+
 ### 2.4 Conflict (W8)
 - **Raids**: a hungry or land-short village with enough young adults, led by a leader whose
   prestige rewards war, may raid a *neutral or hostile* village within reach whose store is worth
