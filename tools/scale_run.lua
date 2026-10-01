@@ -1,5 +1,6 @@
 -- Grow a world under a raised population cap and watch what the size costs (W6 scale runs).
---   luajit tools/scale_run.lua <seed> [years=120] [--cap N] [--villages N] [--out world.tcsave]
+--   luajit tools/scale_run.lua <seed | world.tcsave> [years=120] [--cap N] [--villages N] [--out world.tcsave]
+-- (a saved world continues where it was: grow it further under the same cap)
 -- Prints a line a year: people, villages, households, the Lua heap (MB, after a full GC every
 -- ten years), wall-clock ms per planet week (the JIT on: a rough guide; use tools/line_profile.lua
 -- and tools/society_profile.lua on the saved world for the load-independent counts). Saves the
@@ -17,13 +18,21 @@ while arg[i] do
   else pos[#pos + 1] = a end
   i = i + 1
 end
+local from = pos[1] and pos[1]:match("%.tcsave$") and pos[1]
 local seed, years = tonumber(pos[1]) or 22, tonumber(pos[2]) or 120
 local config = require("sim.config")
 if cap then config.SOCIETY.soft_cap = cap end
 if maxv then config.SOCIETY.max_villages = maxv end
 local world = require("sim.world")
 local t0 = os.clock()
-local W = require("sim.worldgen.init").generate(seed)
+local W
+if from then
+  local f = assert(io.open(from, "rb")); local str = f:read("*a"); f:close()
+  W = require("sim.worlds").from_save_string(str)
+  seed = W.seed
+else
+  W = require("sim.worldgen.init").generate(seed)
+end
 print(string.format("seed %d, soft cap %d, max villages %d (worldgen %.1fs)", seed, config.SOCIETY.soft_cap,
   config.SOCIETY.max_villages, os.clock() - t0))
 for y = 1, years do
