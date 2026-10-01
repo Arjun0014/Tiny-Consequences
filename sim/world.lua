@@ -27,7 +27,7 @@ local calendar = require("sim.calendar")
 
 local world = {}
 
-world.SAVE_KEYS = { "seed", "level", "hour", "tick", "G", "F", "C", "I", "P", "static", "ent", "E",
+world.SAVE_KEYS = { "seed", "level", "hour", "tick", "hpt", "v3", "G", "F", "C", "I", "P", "static", "ent", "E",
   "D", "S", "names", "cmdlog", "pending" }
 
 -- Systems in tick order (02_WORLD_MODEL.md §4). Each module may define:
@@ -40,6 +40,7 @@ world.SAVE_KEYS = { "seed", "level", "hour", "tick", "G", "F", "C", "I", "P", "s
 world.systems = {}
 world.weekly = {}
 world.hourly = {}
+world.continuous = {}   -- systems with advance(W, t): continuous-time agents (v3, D-078)
 
 world.HOURS_PER_DAY = 24
 world.HOURS_PER_WEEK = 168
@@ -47,12 +48,13 @@ world.HOURS_PER_YEAR = 8064
 
 function world.set_systems(list)
   world.systems = list
-  local wk, hr = {}, {}
+  local wk, hr, ct = {}, {}, {}
   for i = 1, #list do
     if list[i].update then wk[#wk + 1] = list[i] end
     if list[i].hour then hr[#hr + 1] = list[i] end
+    if list[i].advance then ct[#ct + 1] = list[i] end
   end
-  world.weekly, world.hourly = wk, hr
+  world.weekly, world.hourly, world.continuous = wk, hr, ct
 end
 
 local grid_cache = {}
@@ -191,7 +193,58 @@ local function planet_week(W)
   W.tick = W.tick + 1
 end
 
+-- Hours per planet step: 168 (a week) in v2 worlds; 24 (a day) in v3 worlds (W.hpt, D-078: a
+-- 48-day year, so seasons pass at watchable speeds while every planet step is still 1/48 year).
+local function hpt_of(W) return W.hpt or 168 end
+world.hpt_of = hpt_of
+
+-- v3 worlds split an hour in two so the host can advance to a fractional time (D-078):
+-- begin_hour runs everything that happens *at* hour h (year boundary, commands, the planet step,
+-- the hourly systems); continuous systems (the agents, `advance(W, t)`) then live through
+-- [h, h + 1) in event order, however the host slices it; end_hour closes the hour.
+function world.begin_hour(W)
+  local h = W.hour
+  local week_start = h % hpt_of(W) == 0
+  if week_start and W.tick % 48 == 0 then year_boundary(W) end
+  apply_commands(W)
+  if week_start then planet_week(W) end
+  local hs = world.hourly
+  for i = 1, #hs do hs[i].hour(W) end
+  W.hour_open = true
+end
+
+function world.end_hour(W)
+  local h = W.hour
+  local cs = world.continuous
+  for i = 1, #cs do cs[i].advance(W, h + 1) end
+  W.hour = h + 1
+  W.hour_open = false
+end
+
+-- Advance a v3 world to absolute (fractional) hour t, at most `max_hours` whole hours (nil: no
+-- limit). Returns the number of hours closed.
+function world.advance(W, t, max_hours)
+  local n = 0
+  while W.hour + 1 <= t do
+    if max_hours and n >= max_hours then return n end
+    if not W.hour_open then world.begin_hour(W) end
+    world.end_hour(W)
+    n = n + 1
+  end
+  if t > W.hour then
+    if not W.hour_open then world.begin_hour(W) end
+    local cs = world.continuous
+    for i = 1, #cs do cs[i].advance(W, t) end
+  end
+  return n
+end
+
 function world.step(W)
+  if W.v3 then
+    if not W.hour_open then world.begin_hour(W) end
+    world.end_hour(W)
+    return
+  end
   local h = W.hour
   local week_start = h % 168 == 0
   if week_start and W.tick % 48 == 0 then year_boundary(W) end
@@ -216,7 +269,8 @@ end
 
 -- One planet week: step hours until the next UTC week starts (168 steps from a week start).
 function world.tick(W)
-  repeat world.step(W) until W.hour % 168 == 0
+  local hpt = hpt_of(W)
+  repeat world.step(W) until W.hour % hpt == 0
 end
 
 -- Shift every stored absolute tick by dt weeks (used once after worldgen spin-up so the player's
@@ -224,7 +278,7 @@ end
 -- weeks; hours shift by dt × 168).
 function world.shift_ticks(W, dt)
   W.tick = W.tick + dt
-  W.hour = W.hour + dt * 168
+  W.hour = W.hour + dt * hpt_of(W)
   for i = 1, #world.systems do
     local s = world.systems[i]
     if s.shift_ticks then s.shift_ticks(W, dt) end
@@ -239,7 +293,7 @@ function world.run_years(W, y)
   world.run_ticks(W, calendar.ticks(y))
 end
 
-function world.year(W) return math.floor(W.hour / 8064) end
+function world.year(W) return math.floor(W.hour / (hpt_of(W) * 48)) end
 function world.day(W) return math.floor(W.hour / 24) end
 
 -- Hashing -----------------------------------------------------------------------------------

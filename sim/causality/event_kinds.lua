@@ -101,4 +101,11 @@ def("submission",       { actor = "derived", icon = "people", headline = true, t
 def("secession",        { actor = "derived", icon = "people", headline = true, text = "Stops paying tribute" })
 def("tribute",          { actor = "derived", icon = "wheat", text = "Tribute carried to the lord" })
 
+-- v3 agent world (docs/v3/, D-078)
+def("house_planned",    { actor = "derived", icon = "house", text = "A house site staked out" })
+def("crop_ripe",        { actor = "derived", icon = "crop", text = "A field is ripe" })
+def("birth",            { actor = "derived", icon = "people", text = "A child is born" })
+def("death",            { actor = "derived", icon = "death", text = "A death" })
+def("marriage",         { actor = "derived", icon = "heart", text = "A wedding" })
+
 return K

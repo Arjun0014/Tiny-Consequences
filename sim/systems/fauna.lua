@@ -231,7 +231,7 @@ local function add_pack(W, sp, cell, n, tag, cond)
   A.np = i
   A.p_id[i], A.p_sp[i], A.p_cell[i], A.p_n[i] = A.next_id, sp, cell, floor(n + 0.5)   -- (whole wolves)
   A.p_tag[i], A.p_idle[i], A.p_prev[i], A.p_moved[i] = tag or 0, 0, cell, W.hour or 0
-  A.p_disp[i] = floor((W.hour or 0) / 8064)
+  A.p_disp[i] = floor((W.hour or 0) / ((W.hpt or 168) * 48))
   A.p_cond[i] = cond or cfgmod.WILD.cond0
   A.p_kin[i] = 0
   A.next_id = A.next_id + 1
@@ -463,7 +463,7 @@ end
 
 -- The local week of year at cell c (the southern calendar runs half a year behind).
 local function local_week(W, c)
-  local wk = floor(W.hour / 168)
+  local wk = floor(W.hour / (W.hpt or 168))
   if W.grid.lat[c] < 0 then wk = wk + 24 end
   return wk % 48
 end
@@ -967,7 +967,7 @@ local function behave(W, A, sc, cfg, fcfg)
     local n = A.p_n[i]
     local spc = cfg.predators[sp]
     -- prey about the den; a hungry pack (or one burned out) moves toward more, monthly at most
-    if hour - A.p_moved[i] >= 672 then
+    if hour - A.p_moved[i] >= 4 * (W.hpt or 168) then
       local b = c * 6 - 6
       local here = 2 * H[c]
       for k = 1, cnt[c] do here = here + H[nbr[b + k]] end
@@ -992,7 +992,7 @@ local function behave(W, A, sc, cfg, fcfg)
     end
     -- in the autumn a pack keeps as many as it can feed; the rest (and the pack's surplus young)
     -- leave to find a place of their own
-    local year = floor(hour / 8064)
+    local year = floor(hour / ((W.hpt or 168) * 48))
     local lw = local_week(W, A.p_cell[i])
     local autumn = A.p_disp[i] ~= year and lw >= cfg.disperse_week and lw < cfg.disperse_week + cfg.every
     -- (a starving pack breaks up whatever the season: those it cannot feed go)
@@ -1029,7 +1029,7 @@ function sys.pair_lone(W, A, cfg)
   local r2 = r * r
   -- (kin avoid each other, but after a year alone with no other mate in reach they pair anyway —
   -- as on an island with one pack's descendants)
-  local hour, wait = W.hour, cfg.kin_wait_years * 8064
+  local hour, wait = W.hour, cfg.kin_wait_years * (W.hpt or 168) * 48
   local gone = {}
   for a = 1, #lone do
     local pa = lone[a]
@@ -1080,7 +1080,7 @@ function sys.disperse(W, A, i, k, ds, den, owner, claim)
   local walk, ocean = W.fauna_static.walk, W.geo.ocean
   local from, sp, tag, kin = A.p_cell[i], A.p_sp[i], A.p_tag[i], A.p_id[i]
   local spc = cfg.predators[sp]
-  local kin_wait = cfg.kin_wait_years * 8064
+  local kin_wait = cfg.kin_wait_years * (W.hpt or 168) * 48
   local rb = rng.base(W.seed, rng.S.FAUNA, W.tick + 1)
   local live = floor(k * cfg.disperse_survival + rng.fbase(rb, kin * 4 + 3))
   local dbg = sc.wl_dbg
@@ -1141,7 +1141,7 @@ function sys.disperse(W, A, i, k, ds, den, owner, claim)
       if dbg then dbg.founded = dbg.founded + 1; dbg.newpacks = dbg.newpacks + 1 end
       local ni = add_pack(W, sp, best, 1, tag, cfg.cond0)
       A.p_prev[ni] = from
-      A.p_disp[ni] = floor(W.hour / 8064)
+      A.p_disp[ni] = floor(W.hour / ((W.hpt or 168) * 48))
       A.p_kin[ni] = kin
       local me = A.p_id[ni]
       slot[me] = ni
@@ -1300,11 +1300,11 @@ end
 function sys.shift_ticks(W, dt)
   local A = W.S.wild
   if not A then return end
-  local dh = dt * 168
+  local dh = dt * (W.hpt or 168)
   for i = 1, A.nh do A.h_moved[i] = A.h_moved[i] + dh end
   for i = 1, A.np do
     A.p_moved[i] = A.p_moved[i] + dh
-    A.p_disp[i] = A.p_disp[i] + floor(dh / 8064)
+    A.p_disp[i] = A.p_disp[i] + floor(dh / ((W.hpt or 168) * 48))
   end
 end
 
