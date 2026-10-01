@@ -51,7 +51,7 @@ local function plural(n, one, many) return n == 1 and one or many end
 -- outlive a person who moved to a new house, died or changed their mind).
 local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "fetch_wood", fetch_water = "fetch_water", foraging = "forage",
   smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed",
-  milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt" }
+  milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle" }
 local function claim_free(W, hh, field, p)
   local id = hh[field] or 0
   if id == 0 or (p and id == p.id) then return true end
@@ -753,8 +753,36 @@ local function chores(W, s, p, ctx, now)
   if (home.stock.water or 0) < 1 and claim_free(W, hh, "fetch_water", p) and s.well then
     local f = fit(p, ctx, "fetch_water")
     if f > 0 then
-      add(0.45 * f * fat - travel(ctx, s.well.dx, s.well.dy, px, py), "fetch_water", 0, 0,
-        "The water jar at home is empty")
+      -- (the well's clean water, unless the river is far nearer: D-095)
+      local wd = dist(home.dx, home.dy, s.well.dx, s.well.dy)
+      local bi, bd = 0, 1e9
+      if s.has_river then bi, bd = require("sim.agents.map").nearest_bank(s, home.dx, home.dy) end
+      if bi > 0 and bd * C().river_water_k < wd then
+        local bx, by = require("sim.agents.map").tile_xy(s, bi)
+        addw(0.45 * f * fat - travel(ctx, bx, by, px, py), "fetch_water", bi, 1,
+          "The water jar at home is empty (the river is nearer than the well: %.0f against %.0f paces)", bd * 400, wd * 400)
+      else
+        add(0.45 * f * fat - travel(ctx, s.well.dx, s.well.dy, px, py), "fetch_water", 0, 0,
+          "The water jar at home is empty")
+      end
+    end
+  end
+  -- angling from the river bank (D-095): a fair day, little fresh fish or meat at home, the river's
+  -- fish there to be caught (anyone from ten; children and elders most)
+  local c = C()
+  if s.has_river and (s.river_fish or 0) > c.angle_min and ctx.rain == 0 and not ctx.night and ctx.lh < ctx.sunset - 1.5
+    and ctx.stage ~= "infant" and not (ctx.stage == "child" and ctx.age < c.help_age + 1) and claim_free(W, hh, "angling", p) then
+    local fresh = (home.stock.fish or 0) + (home.stock.meat or 0)
+    local nm = #hh.members
+    if fresh < nm * 0.6 then
+      local bi, bd = require("sim.agents.map").nearest_bank(s, px, py)
+      if bi > 0 and bd < c.angle_reach then
+        local share = min(1, (s.river_fish or 0) / max(1, s.river_fish_cap or 1))
+        local fa = (ctx.stage == "child" or ctx.stage == "elder") and 1.0 or (ctx.stage == "apprentice" and 0.9 or 0.6)
+        local bx, by = require("sim.agents.map").tile_xy(s, bi)
+        addw((0.26 + 0.2 * share) * fa * fat - travel(ctx, bx, by, px, py), "angle", bi, 0,
+          "Little fresh food at home: fishing in the river (it is %s today)", share > 0.6 and "full of fish" or "fished low")
+      end
     end
   end
 end
@@ -1563,12 +1591,45 @@ PLAN.fetch_water = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
   local w, home = s.well, ctx.home
   ctx.hh.fetch_water = p.id
+  if cd and cd.b == 1 and cd.a > 0 then
+    -- (from the river bank, D-095)
+    local mapm = require("sim.agents.map")
+    local bx, by = mapm.tile_xy(s, cd.a)
+    go(pl, bx, by, "the river")
+    work(pl, "fill", 0.1 + 0.06 * u01(W, p, now, 18), { fx = bx, fy = by, river = true })
+    go(pl, home.dx, home.dy, "home", home.id)
+    pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, release = "fetch_water" }
+    return "Fetch water from the river", "the river"
+  end
   local x, y = near_spot(W, p, now, w.dx, w.dy, 0.03, 17)
   go(pl, x, y, "the well")
   work(pl, "fill", 0.12 + 0.08 * u01(W, p, now, 18), { fx = w.dx, fy = w.dy })
   go(pl, home.dx, home.dy, "home", home.id)
   pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, release = "fetch_water" }
   return "Fetch water", "the well"
+end
+
+-- Angling from the bank (D-095).
+PLAN.angle = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local mapm = require("sim.agents.map")
+  ctx.hh.angling = p.id
+  local bx, by = mapm.tile_xy(s, cd.a)
+  -- (facing the water: the wet neighbour)
+  local N = s.N
+  local fx, fy = bx, by
+  for _, o in ipairs({ 1, -1, N, -N }) do
+    local j = cd.a + o
+    if s.riv[j] and s.riv[j] > 0 then fx, fy = mapm.tile_xy(s, j); break end
+  end
+  go(pl, bx, by, "the river bank")
+  work(pl, "angle", (1.2 + 1.2 * u01(W, p, now, 74)) * p.dil, { fx = fx, fy = fy, release = "angling" })
+  local home = ctx.home
+  if home then
+    go(pl, home.dx, home.dy, "home", home.id)
+    pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, release = "angling" }
+  end
+  return "Fish in the river", "the river bank"
 end
 
 -- Rows are worked in stints (D-080): from where the row's work stands (plot.row_p) for as long as
@@ -1774,6 +1835,14 @@ PLAN.build = function(W, s, p, ctx, now, cd)
   local along = (u01(W, p, now, 29) - 0.5) * 0.8
   local hw, hh2 = b.w * T * 0.5 + T * 0.7, b.h * T * 0.5 + T * 0.7
   local x, y
+  if b.kind == "bridge" then
+    -- (a bridge is built out from its banks: the near one, or the far one when it is reachable)
+    local far = side >= 2 and b.ex
+    x, y = (far and b.ex or b.dx) + along * T, (far and b.ey or b.dy) + along * T * 0.5
+    go(pl, x, y, b.label)
+    work(pl, "build", (0.8 + 0.9 * u01(W, p, now, 25)) * p.dil, { ref = b.id, fx = b.cx, fy = b.cy })
+    return "Build the bridge", "the river"
+  end
   if side == 0 then x, y = b.cx + along * b.w * T, b.cy - hh2
   elseif side == 1 then x, y = b.cx + along * b.w * T, b.cy + hh2
   elseif side == 2 then x, y = b.cx - hw, b.cy + along * b.h * T
@@ -2209,6 +2278,14 @@ PLAN.repair = function(W, s, p, ctx, now, cd)
   local along = (u01(W, p, now, 40) - 0.5) * 0.8
   local hw, hh2 = b.w * T * 0.5 + T * 0.7, b.h * T * 0.5 + T * 0.7
   local x, y
+  if b.kind == "bridge" then
+    -- (a bridge is built out from its banks: the near one, or the far one when it is reachable)
+    local far = side >= 2 and b.ex
+    x, y = (far and b.ex or b.dx) + along * T, (far and b.ey or b.dy) + along * T * 0.5
+    go(pl, x, y, b.label)
+    work(pl, "build", (0.8 + 0.9 * u01(W, p, now, 25)) * p.dil, { ref = b.id, fx = b.cx, fy = b.cy })
+    return "Build the bridge", "the river"
+  end
   if side == 0 then x, y = b.cx + along * b.w * T, b.cy - hh2
   elseif side == 1 then x, y = b.cx + along * b.w * T, b.cy + hh2
   elseif side == 2 then x, y = b.cx - hw, b.cy + along * b.h * T

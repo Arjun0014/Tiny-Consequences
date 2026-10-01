@@ -21,6 +21,7 @@ M.KINDS = {
   dock = { w = 1, h = 1, label = "dock", logs = 6, work = 30 },
   boat = { w = 2, h = 1, label = "boat", logs = 5, work = 30 },   -- a boat on the stocks at the shore (D-087)
   fold = { w = 6, h = 6, label = "fold", logs = 10, work = 30 },  -- a fenced sheepfold (open ground, D-089)
+  bridge = { w = 1, h = 1, label = "bridge", logs = 0, work = 0 },   -- timber across a river (D-095; logs, work by its length)
   byre = { w = 7, h = 6, label = "byre yard", logs = 14, work = 40 },   -- a fenced cattle yard with a lean-to (D-092)
   sty = { w = 5, h = 4, label = "sty", logs = 8, work = 24 },     -- a pig sty: a fenced run and a low hut (D-092)
 }
@@ -128,11 +129,126 @@ function M.complete_building(W, s, b)
     s.acc.boats_built = (s.acc.boats_built or 0) + 1
     return
   end
+  if b.kind == "bridge" then
+    -- (D-095) its tiles carry the way whatever the river does
+    s.bridge = s.bridge or {}
+    for _, i in ipairs(b.tiles) do s.bridge[i] = b.id end
+    mapm.rebuild_costs(s)
+    s.acc.bridges = (s.acc.bridges or 0) + 1
+    for _, id in ipairs(s.members) do
+      local q = V.people[id]
+      if q and q.alive and (q.objk == "build" or q.objk == "deliver") then people.remember(q, W.hour, "Finished the bridge over the river") end
+    end
+  end
   if W.record_events then
     events.emit(W, "house_built", s.cell, b.cause or 0, 1, { settlement = s.id, building = b.id, kind = b.kind })
   end
   s.acc.built = (s.acc.built or 0) + 1
 end
+
+-- Bridges (D-095): where crossings are wanted. Every trip whose straight way crosses the river
+-- leaves its mark where it would cross (act.lua: one, plus three for each share of the way it had
+-- to go round to a ford); the marks fade a sixth a day. When the crossings wanted near one place
+-- pass `bridge_need`, the village lays out a bridge there across the river's narrowest line (a
+-- site of logs and work like a house): built, it carries the way over flood and deep water.
+local function plan_bridges(W, s)
+  local c = C()
+  local cr = s.cross
+  if not cr then return end
+  local N = s.N
+  local best, bv = 0, 0
+  local keys = {}
+  for i in pairs(cr) do keys[#keys + 1] = i end
+  table.sort(keys)
+  for _, i in ipairs(keys) do
+    local v = cr[i] * c.cross_keep
+    if v < 0.2 then cr[i] = nil else cr[i] = v end
+  end
+  for _, b in ipairs(s.sites) do
+    local bb = s.buildings[b]
+    if bb and bb.kind == "bridge" then return end
+  end
+  if (s.acc.bridges or 0) >= c.bridges_max then return end
+  -- (the crossings wanted within three tiles of a place, summed)
+  for _, i in ipairs(keys) do
+    if cr[i] then
+      local ix, iy = (i - 1) % N, floor((i - 1) / N)
+      local v = 0
+      for _, j in ipairs(keys) do
+        local q = cr[j]
+        if q then
+          local jx, jy = (j - 1) % N, floor((j - 1) / N)
+          if abs(jx - ix) <= 3 and abs(jy - iy) <= 3 then v = v + q end
+        end
+      end
+      -- (not within five tiles of a bridge, built or being built)
+      local near = false
+      for _, id in ipairs(s.blist) do
+        local b = s.buildings[id]
+        if b.kind == "bridge" then
+          for _, t in ipairs(b.tiles) do
+            local tx, ty = (t - 1) % N, floor((t - 1) / N)
+            if abs(tx - ix) <= 5 and abs(ty - iy) <= 5 then near = true end
+          end
+        end
+      end
+      if v > bv and s.riv[i] > 0 and not near then best, bv = i, v end
+    end
+  end
+  if best == 0 or bv < c.bridge_need then return end
+  -- the narrowest straight line across through it, bank to bank (east-west or north-south: a
+  -- diagonal span could not be stepped onto between deep water on either hand)
+  local bt, bn, bdir, bends = nil, 99, 0, nil
+  for d, o in ipairs({ { 1, 0 }, { 0, 1 } }) do
+    local tiles = { best }
+    local ok = true
+    local ends = {}
+    for _, sg in ipairs({ 1, -1 }) do
+      local x, y = (best - 1) % N + 1, floor((best - 1) / N) + 1
+      local found = false
+      for _ = 1, c.bridge_max do
+        x, y = x + o[1] * sg, y + o[2] * sg
+        if x < 2 or y < 2 or x > N - 1 or y > N - 1 then break end
+        local j = (y - 1) * N + x
+        if s.riv[j] > 0 then
+          tiles[#tiles + 1] = j
+        else
+          if s.land[j] == 1 and s.occ[j] == 0 then ends[#ends + 1] = j; found = true end
+          break
+        end
+      end
+      if not found then ok = false end
+    end
+    if ok and #tiles < bn then bt, bn, bdir, bends = tiles, #tiles, d, ends end
+  end
+  if not bt then s.cross[best] = nil; return end
+  -- the site: logs and work by its length, the near bank its door
+  local V = W.S.v3
+  local id = V.next_building
+  V.next_building = id + 1
+  local e1, e2 = bends[1], bends[2]
+  local x1, y1 = mapm.tile_xy(s, e1)
+  local x2, y2 = mapm.tile_xy(s, e2)
+  local near1 = x1 * x1 + y1 * y1 <= x2 * x2 + y2 * y2
+  local cx, cy = mapm.tile_xy(s, best)
+  local b = { id = id, kind = "bridge", label = "bridge", state = "site", ix0 = (best - 1) % N + 1, iy0 = floor((best - 1) / N) + 1,
+    w = 1, h = 1, side = "s", cx = cx, cy = cy, dx = near1 and x1 or x2, dy = near1 and y1 or y2,
+    ex = near1 and x2 or x1, ey = near1 and y2 or y1, tiles = bt, dir = bdir,
+    logs_need = c.bridge_logs * #bt + 2, logs_have = 0, work_need = c.bridge_work * #bt, work_done = 0,
+    builders = 0, stock = {}, prio = 2, for_name = "the village", hh = 0, founded = W.hour }
+  s.buildings[id] = b
+  s.blist[#s.blist + 1] = id
+  s.sites[#s.sites + 1] = id
+  s.acc.bridge_planned = (s.acc.bridge_planned or 0) + 1
+  s.cross = {}
+  for _, pid in ipairs(s.members) do
+    local q = V.people[pid]
+    if q and q.alive and people.stage(q, W.hour) == "adult" then
+      people.remember(q, W.hour, "The village will bridge the river where we keep wading it")
+    end
+  end
+end
+M.plan_bridges = plan_bridges
 
 -- A building taken down (a boat launched from its stocks): its ground is free again; the record
 -- stays (plans in progress may still name it) but nothing lists it.
@@ -973,6 +1089,19 @@ function M.daily(W, s, day)
   mapm.rivers(W, s, false, M.today_widths(W))
   mapm.rebuild_costs(s)
   s.dirty_costs = false
+  -- (D-095) the river today: its fish (a stock by how much water there is, regrowing), and the
+  -- crossings the village wants bridged
+  local wet = 0
+  for i = 1, s.N * s.N do if s.riv[i] > 0 then wet = wet + 1 end end
+  s.has_river = wet > 0
+  local c = C()
+  s.river_fish_cap = wet * c.rfish_tile
+  local rf = s.river_fish or s.river_fish_cap * 0.8
+  if s.river_fish_cap > 0 then
+    rf = rf + c.rfish_regrow * rf * (1 - rf / s.river_fish_cap) + 0.01 * s.river_fish_cap
+  end
+  s.river_fish = min(rf, s.river_fish_cap)
+  plan_bridges(W, s)
 end
 
 -- The planet's river widths today (one computation a planet day for every settlement; runtime).

@@ -125,6 +125,7 @@ function M.flush()
   camera.update(0)
   terrain.recolour_all(M.W)
   props.flush(M.W, camera.zoom)
+  agents_view.flush()
   clouds.flush(M.W)
   trails.rebuild(M.W)
 end

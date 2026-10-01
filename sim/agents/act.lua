@@ -107,6 +107,31 @@ START.go = function(W, s, p, st, now)
   local r = nav.path(s, p.x, p.y, tx, ty, p.temper, path)
   if not r then return false end
   p.mv = r
+  if s.has_river then
+    -- (D-095) a trip whose straight way crosses the river: it wades a ford or goes round to one;
+    -- the village remembers where the crossings are wanted and what they cost
+    local a, b = mapm.tile_of(s, p.x, p.y), mapm.tile_of(s, tx, ty)
+    local w = (a > 0 and b > 0) and mapm.first_wet(s, a, b) or 0
+    if w > 0 then
+      -- (what the crossing costs this trip: the share of the way it goes round, and wading if
+      -- the way walked crosses unbridged water; a trip over a bridge costs nothing)
+      local straight = nav.dist(p.x, p.y, tx, ty)
+      local extra = straight > 1e-6 and max(0, r.len / straight - 1) or 0
+      local wades = false
+      for k = 2, r.n do
+        local ta, tb = mapm.tile_of(s, r.x[k - 1], r.y[k - 1]), mapm.tile_of(s, r.x[k], r.y[k])
+        if ta > 0 and tb > 0 and mapm.first_wet(s, ta, tb) > 0 then wades = true; break end
+      end
+      local cost = 3 * extra + (wades and 1 or 0)
+      if cost > 0.05 then
+        local cr = s.cross
+        if not cr then cr = {}; s.cross = cr end
+        cr[w] = (cr[w] or 0) + cost
+      end
+      s.acc.crossings = (s.acc.crossings or 0) + 1
+      if wades then s.acc.wades = (s.acc.wades or 0) + 1 end
+    end
+  end
   p.spd = people.speed(W, p, now)
   if s.rain_now == 2 then p.spd = p.spd * C().speed_rain end   -- hurrying through a downpour
   p.dest = st.place or ""
@@ -715,6 +740,21 @@ WORK.gut = function(W, s, p, st, f)
     if q.by == p.id and math.abs(q.x - cc.x) < 1e-6 and math.abs(q.y - cc.y) < 1e-6 then table.remove(Wd.carcasses, i) end
   end
   p.hunting = nil
+end
+
+-- Angling from the bank (D-095): fish from the river's own stock, by skill and the hours.
+WORK.angle = function(W, s, p, st, f)
+  local c = C()
+  local stock_ = s.river_fish or 0
+  local cap = max(1, s.river_fish_cap or 1)
+  local got = min(stock_, c.angle_rate * st.dur * f * (0.4 + 0.8 * (p.sk_fish or 0.2)) * (stock_ / cap))
+  p.sk_fish = p.sk_fish or 0.2
+  people.practice(p, "sk_fish", st.dur * f * 0.5)
+  if got <= 0 then return end
+  s.river_fish = stock_ - got
+  p.carry, p.camt = "fish", (p.carry == "fish" and p.camt or 0) + got
+  s.acc.fished = (s.acc.fished or 0) + got
+  s.acc.angled = (s.acc.angled or 0) + got
 end
 
 WORK.thresh = function(W, s, p, st, f)

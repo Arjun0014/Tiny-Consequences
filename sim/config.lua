@@ -942,6 +942,13 @@ C.V3 = {
   guard_days = 6,
   -- hunting (D-094): meat a household member wants laid by (FU); how far a hunter goes; stalking
   -- distance, a spear's throw; creeping pace (units an hour); hit odds (+ skill); tries; hours
+  -- rivers in use (D-095): the river's water when the bank is this much nearer than the well
+  -- (the well's water is cleaner); river fish a wet tile holds (FU), their regrowth a day; angling
+  -- (FU an hour on a full river, reach, the stock below which nobody bothers); crossings wanted (a
+  -- trip: 1 + 3 x its detour share; kept x cross_keep a day) past which a bridge is laid out; its
+  -- logs and work-hours a tile; the longest; how many a village builds
+  river_water_k = 1.8, rfish_tile = 0.6, rfish_regrow = 0.12, angle_rate = 0.5, angle_reach = 1.0, angle_min = 3,
+  cross_keep = 0.85, bridge_need = 40, bridge_logs = 2, bridge_work = 10, bridge_max = 9, bridges_max = 2,
   meat_want = 1.2, hunt_reach = 1.6, hunt_stalk = 0.3, hunt_throw = 0.07, stalk_speed = 0.4,
   hunt_hit = 0.25, hunt_skill = 0.35, hunt_tries = 3, hunt_hours = 5,                         -- after wolves took a beast, the village keeps a night watch this long
   wolf_visit = 0.5,                       -- a pack's chance to hunt on the map tonight: its time here x this

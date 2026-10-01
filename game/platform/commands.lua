@@ -272,6 +272,15 @@ function M.register(G)
     if args.what == "dock" then
       assert(s.dock, "no dock")
       x, y = s.dock.mx, s.dock.my
+    elseif args.what == "bridge" then
+      local found
+      for _, id in ipairs(s.blist) do
+        local b = s.buildings[id]
+        if b.kind == "bridge" then found = b end
+      end
+      assert(found, "no bridge")
+      x, y = found.cx, found.cy
+      info = { state = found.state, tiles = #found.tiles }
     elseif args.what == "wild" or args.what == "wolves" then
       -- the middle of the biggest wild band on the map now (or of the wolves hunting it)
       local wild = require("sim.agents.wild")

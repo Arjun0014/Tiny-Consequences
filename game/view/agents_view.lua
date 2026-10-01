@@ -357,6 +357,28 @@ local function fill_buildings(V)
               pack(0.30, 0.22, 0.14), pack(0.26, 0.19, 0.12), 0)
           end
         end
+      elseif b.kind == "bridge" then
+        -- (D-095) planks from bank to bank on posts; a site shows its posts as the work goes
+        local L = sqrt((b.ex - b.dx) ^ 2 + (b.ey - b.dy) ^ 2)
+        if L > 1e-6 then
+          local ux_, uy_ = (b.ex - b.dx) / L, (b.ey - b.dy) / L
+          local by = yaw_z(V, b.dx, b.dy, ux_, uy_)
+          if b.state == "standing" then
+            local step = 0.07
+            local n2 = max(1, floor(L / step + 0.999))
+            for q = 0, n2 - 1 do
+              local d0 = q * L / n2
+              add(V, K.pier, b.dx + ux_ * d0, b.dy + uy_ * d0, 0.011, by, 0.6, 1, pack(0.55, 0.40, 0.26), pack(0.45, 0.31, 0.2), 0)
+            end
+          else
+            local done = b.work_need > 0 and b.work_done / b.work_need or 0
+            local n2 = #b.tiles
+            for q = 1, max(1, floor(n2 * done + 0.5)) do
+              local x, y = mapm.tile_xy(s, b.tiles[q])
+              add(V, K.stakes, x, y, 0, q, 0.3, 1, 0, 0, 0)
+            end
+          end
+        end
       elseif b.kind == "dock" then
         -- a timber pier from the shore out over the water (D-084)
         add(V, K.pier, (b.cx + b.mx) * 0.5, (b.cy + b.my) * 0.5, 0, yaw_z(V, b.cx, b.cy, b.mx - b.cx, b.my - b.cy), 0.8, 1,
@@ -950,6 +972,24 @@ function M.init(W, PL, urls, celltex)
     V.bld.sig = bld_sig(V); bake(V, V.bld, fill_buildings)
     V.rows.sig = rows_sig(V); bake(V, V.rows, fill_rows)
     V.ground.sig = ground_sig(V); bake(V, V.ground, fill_ground)
+  end
+end
+
+-- Rebake every changed part of every settlement now (tools: flush_view before a shot).
+function M.flush()
+  for _, V in ipairs(M.SETS or {}) do
+    for _, ch in ipairs(V.trees or {}) do
+      local sg = tree_sig(V, ch.bx, ch.by)
+      if sg ~= ch.sig then ch.sig = sg; bake(V, ch, fill_trees(ch.bx, ch.by)) end
+    end
+    if V.bld then
+      local sg = bld_sig(V)
+      if sg ~= V.bld.sig then V.bld.sig = sg; bake(V, V.bld, fill_buildings) end
+      sg = rows_sig(V)
+      if sg ~= V.rows.sig then V.rows.sig = sg; bake(V, V.rows, fill_rows) end
+      sg = ground_sig(V)
+      if sg ~= V.ground.sig then V.ground.sig = sg; bake(V, V.ground, fill_ground) end
+    end
   end
 end
 

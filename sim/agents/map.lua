@@ -181,6 +181,7 @@ end
 -- found: the first laying also marks the floodplain (the widest a flood makes the river).
 function M.rivers(W, s, found, wd)
   local surface = require("sim.surface")
+  s.riv_day = (s.riv_day or 0) + 1
   wd = wd or surface.river_widths(W)
   local cs = courses(W, s)
   local riv, land = s.riv, s.land
@@ -242,6 +243,80 @@ function M.rivers(W, s, found, wd)
   end
 end
 
+-- The first river tile (wet today, not bridged) the straight line from tile a to tile b passes
+-- through, or 0 (the same exact grid traversal as nav.los). A line over a bridge, or within two
+-- tiles of one, is served by it: 0.
+function M.first_wet(s, a, b)
+  local N = s.N
+  local riv = s.riv
+  local br = s.bridge
+  local ax, ay = (a - 1) % N, floor((a - 1) / N)
+  local bx, by = (b - 1) % N, floor((b - 1) / N)
+  local dx, dy = bx - ax, by - ay
+  local sx, sy = 1, N
+  if dx < 0 then dx, sx = -dx, -1 elseif dx == 0 then sx = 0 end
+  if dy < 0 then dy, sy = -dy, -N elseif dy == 0 then sy = 0 end
+  if dx == 0 and dy == 0 then return riv[a] > 0 and a or 0 end
+  local nx = dx > 0 and dy or 1e30
+  local ny = dy > 0 and dx or 1e30
+  if dy == 0 then nx = 1 end
+  if dx == 0 then ny = 1 end
+  local ddx, ddy = 2 * dy, 2 * dx
+  if dy == 0 then ddx = 2 end
+  if dx == 0 then ddy = 2 end
+  local i = a
+  for _ = 1, dx + dy do
+    if nx < ny then i = i + sx; nx = nx + ddx
+    elseif ny < nx then i = i + sy; ny = ny + ddy
+    else i = i + sx + sy; nx = nx + ddx; ny = ny + ddy end
+    if riv[i] > 0 then
+      if br then
+        for oy = -2, 2 do
+          for ox = -2, 2 do
+            if br[i + oy * N + ox] then return 0 end
+          end
+        end
+      end
+      return i
+    end
+    if i == b then return 0 end
+  end
+  return 0
+end
+
+-- The river's banks today: dry land tiles beside wet ones (where water is drawn, anglers sit),
+-- a runtime list rebuilt when the rivers are laid (s.riv_day).
+local BANKS = setmetatable({}, { __mode = "k" })
+function M.banks(s)
+  local e = BANKS[s]
+  if e and e.day == s.riv_day then return e.list end
+  local N = s.N
+  local riv, land, cost = s.riv, s.land, s.cost
+  local list = {}
+  for iy = 2, N - 1 do
+    for ix = 2, N - 1 do
+      local i = (iy - 1) * N + ix
+      if land[i] == 1 and riv[i] <= 0 and cost[i] > 0 and (riv[i - 1] > 0 or riv[i + 1] > 0 or riv[i - N] > 0 or riv[i + N] > 0) then
+        list[#list + 1] = i
+      end
+    end
+  end
+  BANKS[s] = { day = s.riv_day, list = list }
+  return list
+end
+
+-- The bank tile nearest (x, y) (0 if the map has no river today).
+function M.nearest_bank(s, x, y)
+  local list = M.banks(s)
+  local best, bd = 0, 1e18
+  for k = 1, #list do
+    local tx, ty = M.tile_xy(s, list[k])
+    local d = (tx - x) ^ 2 + (ty - y) ^ 2
+    if d < bd then best, bd = list[k], d end
+  end
+  return best, sqrt(bd)
+end
+
 -- Is tile i wet river now, and can it be waded?
 function M.wet(s, i) return s.riv[i] > 0 end
 function M.wadeable(s, i) local r = s.riv[i]; return r > 0 and r <= 101 end
@@ -251,14 +326,17 @@ function M.wadeable(s, i) local r = s.riv[i]; return r > 0 and r <= 101 end
 function M.rebuild_costs(s)
   local C = cfg()
   local land, occ, plot, tree, lane, cost, riv = s.land, s.occ, s.plot, s.tree, s.lane, s.cost, s.riv
+  local bridge = s.bridge
   local st = s.trees.st
   local co, ct, cp, ctr, cl, cf = C.cost_open, C.cost_tree, C.cost_plot, C.cost_trail, C.cost_lane, C.cost_ford
   for i = 1, s.N * s.N do
     local c
     if land[i] == 0 or occ[i] > 0 then c = -1
     elseif riv[i] > 0 then
-      -- a river: waded at a ford or across a stream (slowly), else no way across (D-085)
-      c = riv[i] <= 101 and cf or -1
+      -- a river: a bridge over it (D-095), waded at a ford or across a stream (slowly), else no
+      -- way across (D-085)
+      if bridge and bridge[i] then c = cl
+      else c = riv[i] <= 101 and cf or -1 end
     else
       local l = lane[i]
       if l == 2 then c = cl
