@@ -1025,10 +1025,14 @@ PICK.grain = function(W, s, p, st)
     return
   end
   local want = st.n or c.carry_grain
-  local got = min(want, b.stock.grain or 0)
-  if got > 0 then
-    b.stock.grain = b.stock.grain - got
-    p.carry, p.camt = st.as or "grain", got
+  -- (smoked fish bought into the granary goes out with the grain, in proportion: D-097)
+  local gr, sm = b.stock.grain or 0, b.stock.smoked or 0
+  local fish = (st.as == "food" and sm > 0) and min(sm, want * sm / (gr + sm)) or 0
+  local got = min(want - fish, gr)
+  if got + fish > 0 then
+    b.stock.grain = gr - got
+    b.stock.smoked = sm - fish
+    p.carry, p.camt = st.as or "grain", got + fish
   end
 end
 
