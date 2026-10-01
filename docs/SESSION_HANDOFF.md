@@ -19,9 +19,9 @@ simulation at a time (shared laptop).
 - World asset: `assets/worlds/v3.tcsave` (seed 22, one settlement of 32; regenerate with
   `luajit tools/make_world.lua --v3 --seed 22 --out assets/worlds/v3.tcsave` after any change to
   founding or world generation; behaviour changes do not need it — the save is the founding state).
-- Verified at the end of the session: v3 tests 5/5 (`tests/sim/unit/test_v3_agents.lua`, part of
-  the quick suite), lint clean, `npm run build` OK, `npm run shots:v3` OK (out/shots/v3/), v2 quick
-  suite 109/109 (before the last v3-only changes), web suite: see PROGRESS (was running at handoff).
+- Verified at the last commit: quick sim suite 114/114 (v2 109 + v3 5), web suite 8/8, lint clean,
+  `npm run build` OK, `npm run shots:v3` OK (out/shots/v3/). The settlement is now Tekheim (seed 22,
+  cell 903, lat 13.7: the north, so day 0 is its spring).
 
 ## How to look at it
 - Game: `npm run build`, `npm run serve`, open `http://localhost:8080/?world=v3` (keys 1-3 watch
