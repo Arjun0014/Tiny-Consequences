@@ -38,6 +38,17 @@ end
 -- of the local map land, no river through it.
 function M.pick_site(W, opts)
   opts = opts or {}
+  -- the first settlement: the north first (day 0 is its spring), relaxing coast and climate
+  if opts.dawn ~= false and not opts.pass then
+    for _, ps in ipairs({ { north = true, cd = 3, t0 = 6, t1 = 19 }, { north = true, cd = 2, t0 = 3, t1 = 22 } }) do
+      local o = {}
+      for k, v in pairs(opts) do o[k] = v end
+      o.pass = ps
+      local c = M.pick_site(W, o)
+      if c then return c end
+    end
+  end
+  local pass = opts.pass or { cd = 3, t0 = 6, t1 = 19 }
   local F, g = W.F, W.grid
   local nb = W.grid.neighbours or W.grid.nb
   local rivers = M.river_cells(W)
@@ -53,9 +64,9 @@ function M.pick_site(W, opts)
   local best, bs = nil, -1e9
   for i = 1, #land do
     local c = land[i]
-    local ok = W.geo.coast_dist[c] >= 3 and not rivers[c] and not near[c]
+    local ok = W.geo.coast_dist[c] >= pass.cd and not rivers[c] and not near[c] and (not pass.north or g.lat[c] > 0.05)
     local T = F.temp[c]
-    if ok and T > 6 and T < 19 and abs(g.lat[c]) < 1.0 then
+    if ok and T > pass.t0 and T < pass.t1 and abs(g.lat[c]) < 1.0 then
       -- neighbours: land, no rivers, some forest
       local fsum, n = 0, 0
       local ring = require("sim.society.sites").rings(W, c, 1)
@@ -76,6 +87,8 @@ function M.pick_site(W, opts)
           local d = abs(lh - 4.6)
           if d > 12 then d = 24 - d end
           sc = sc - d * 0.25
+          -- and where day 0 is the start of spring (the north): founders sow before their first winter
+          if g.lat[c] < 0 then sc = sc - 100 end
         end
         if sc > bs then best, bs = c, sc end
       end
@@ -315,7 +328,7 @@ function M.found(W, cell, opts)
   end
   -- 6. stores: last year's harvest in the granary, cut wood in the woodstore
   local pop = #mem
-  s.granary.stock.grain = pop * (opts.food_days or 30) + #s.plots * 8 * c.seed_row
+  s.granary.stock.grain = pop * (opts.food_days or 40) + #s.plots * 8 * c.seed_row
   s.wood_store.stock.logs = 14
   -- 7. the lanes years of walking have worn: each house to the well, granary, woodstore and fields
   for pass = 1, 2 do

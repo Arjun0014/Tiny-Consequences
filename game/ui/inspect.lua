@@ -868,8 +868,9 @@ local function v3_person_items(W, p, items)
   end
   add(items, { t = "row", icon = "hourglass", label = "Age", value = string.format("%d (%s)", floor(age), st) })
   if p.role ~= "" then
-    add(items, { t = "row", icon = "pickaxe", label = "Role", value = string.format("%s (farm %d%%, wood %d%%, build %d%%)",
-      cap(p.role), floor(p.sk_farm * 100), floor(p.sk_wood * 100), floor(p.sk_build * 100)) })
+    add(items, { t = "row", icon = "pickaxe", label = "Role", value = cap(p.role) })
+    add(items, { t = "row", icon = "pickaxe", label = "Skill", value = string.format("farm %d · wood %d · build %d",
+      floor(p.sk_farm * 100), floor(p.sk_wood * 100), floor(p.sk_build * 100)) })
   end
   local hh = V.households[p.hh]
   local s = V.settlements[p.sett]
@@ -900,8 +901,8 @@ local function v3_person_items(W, p, items)
   add(items, { t = "row", icon = "pickaxe", label = "Action", value = cap(doing) .. (p.inside ~= 0 and " (indoors)" or "") })
   if p.dest ~= "" then add(items, { t = "row", icon = "pin", label = "Going to", value = p.dest }) end
   if p.why ~= "" then add(items, { t = "text", icon = "bubble", text = "Why: " .. p.why }) end
-  add(items, { t = "row", icon = "hourglass", label = "Body", value = string.format("hunger %d%%, energy %d%%, health %d%%",
-    floor(p.hunger * 100), floor(p.energy * 100), floor(p.health * 100)), hl = p.hunger > 0.8 or p.health < 0.5 })
+  add(items, { t = "row", icon = "hourglass", label = "Body", value = string.format("fed %d · rest %d · health %d",
+    floor((1 - p.hunger) * 100), floor(p.energy * 100), floor(p.health * 100)), hl = p.hunger > 0.8 or p.health < 0.5 })
   local n = 0
   for k = 0, 2 do
     local m = p.mem[((p.mem_n - 1 - k) % 8) + 1]

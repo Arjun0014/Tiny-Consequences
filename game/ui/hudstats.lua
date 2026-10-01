@@ -35,6 +35,9 @@ function M.update(W, hour_f, focus_lon)
   old = old or h[1]
   local v3 = W.v3
   local toy = v3 and (math.floor(hour_f / 24) % 48) or (math.floor(hour_f / 168) % 48)
+  if v3 and W.S.v3 and W.S.v3.settlements[1] and W.grid.lat[W.S.v3.settlements[1].cell] < 0 then
+    toy = (toy + 24) % 48   -- the settlement's own season (the south is half a year on)
+  end
   local lh = daylight.local_hour(hour_f, focus_lon or 0)
   local hh = math.floor(lh)
   local mm = math.floor((lh - hh) * 60 / (v3 and 1 or 5)) * (v3 and 1 or 5)

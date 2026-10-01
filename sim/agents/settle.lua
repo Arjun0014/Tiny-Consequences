@@ -235,7 +235,8 @@ function M.hourly(W, s, now)
   need.food = food
   need.food_days = pop > 0 and food / pop or 99
   -- sowing window
-  local doy = clock.doy(now)
+  local doy = clock.local_doy(now, W.grid.lat[s.cell])
+  s.doy = doy
   local w0, w1 = c.sow_season[1], c.sow_season[2]
   need.sowing = doy >= w0 and doy <= w1 and (s.granary and (s.granary.stock.grain or 0) > c.seed_row)
   need.sow_late = need.sowing and (doy - w0) / max(1, w1 - w0) or 0
@@ -314,7 +315,7 @@ end
 local function grow_plots(W, s, day)
   local c = C()
   local F = W.F
-  local doy = day % 48
+  local doy = clock.local_doy(day * 24, W.grid.lat[s.cell])
   for k = 1, #s.plots do
     local pl = s.plots[k]
     local cell = s.cell_of[(pl.iy0 + 3 - 1) * s.N + pl.ix0 + 3]

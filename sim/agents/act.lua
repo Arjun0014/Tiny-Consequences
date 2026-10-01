@@ -275,12 +275,14 @@ end
 WORK.forage = function(W, s, p, st, f)
   if f < 0.5 then return end
   local c = C()
-  local season = require("sim.agents.clock").doy(W.hour)
+  local season = require("sim.agents.clock").local_doy(W.hour, W.grid.lat[s.cell])
   -- little in spring, most in late summer and autumn
   local k = season < 12 and 0.35 or (season < 24 and 0.8 or (season < 36 and 1 or 0.15))
   local got = (c.forage_fu[1] + (c.forage_fu[2] - c.forage_fu[1]) * (st.luck or 0.5)) * k * f
   p.carry, p.camt = "food", got
   s.acc.foraged = (s.acc.foraged or 0) + got
+  local hh = W.S.v3.households[p.hh]
+  if hh and hh.foraging == p.id then hh.foraging = 0 end
 end
 
 WORK.fill = function(W, s, p, st, f)

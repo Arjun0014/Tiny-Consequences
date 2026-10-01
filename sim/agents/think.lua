@@ -304,10 +304,10 @@ local function work_candidates(W, s, p, ctx, now)
     end
   end
   -- gathering at the woods' edge (berries, nuts, greens): food for the household
-  if ctx.home and ctx.stage ~= "child" then
+  if ctx.home and ctx.stage ~= "child" and ctx.hh and ((ctx.hh.foraging or 0) == 0 or ctx.hh.foraging == p.id) then
     local f = fit(p, ctx, "forage")
     if f > 0 then
-      local doy = clock.doy(now)
+      local doy = s.doy or clock.doy(now)
       local sk = doy < 12 and 0.35 or (doy < 24 and 0.8 or (doy < 36 and 1 or 0.15))
       local short = need.food_days < 20 and 0.15 or 0
       add((0.22 + 0.18 * sk + short) * f * fat, "forage", 0, 0,
@@ -414,7 +414,9 @@ local function leisure(W, s, p, ctx, now)
   else
     -- sit at the well where others are (sociable people more)
     local midday = ctx.lh >= 11 and ctx.lh < 14
-    local u = (0.12 + 0.22 * p.soc) * (evening and 1.6 or (midday and 0.55 or 0.25)) * wx
+    -- (the sociable go most evenings, the rest some evenings: crowds only when there is news)
+    local eve = evening and (0.7 + 1.1 * p.soc) or (midday and 0.55 or 0.25)
+    local u = (0.1 + 0.2 * p.soc) * eve * wx
     local there = s.at_well or 0
     add(u + min(0.12, there * 0.03) - travel(ctx, s.sqx, s.sqy, px, py) * 0.5, "talk", 0, 0,
       there > 0 and string.format("%d %s talking by the well", there, plural(there, "neighbour is", "neighbours are"))
@@ -691,6 +693,7 @@ PLAN.forage = function(W, s, p, ctx, now, cd)
     end
   end
   if best == 0 then return PLAN.rest(W, s, p, ctx, now, cd) end
+  ctx.hh.foraging = p.id
   local x, y = tr.x[best] + 0.025, tr.y[best] + 0.01
   go(pl, x, y, "the woods' edge")
   local x2, y2 = near_spot(W, p, now, x, y, 0.06, 33)
@@ -841,6 +844,9 @@ function M.release(W, s, p)
         elseif st.kind == "build" then
           local b = s.buildings[st.ref]
           if b then b.builders = max(0, (b.builders or 1) - 1) end
+        elseif st.kind == "forage" then
+          local hh = W.S.v3.households[p.hh]
+          if hh and hh.foraging == p.id then hh.foraging = 0 end
         elseif st.kind == "thresh" then
           local g = s.granary
           if g then g.threshers = max(0, (g.threshers or 1) - 1) end

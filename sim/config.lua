@@ -819,7 +819,7 @@ C.V3 = {
   store_years = 0.5,                      -- food beyond the next harvest the village wants (years)
   max_plots = 20,
   grub_h = 0.45,                          -- hours to dig out a stump on new field ground
-  forage_h = 1.2, forage_fu = { 1.5, 4.0 },   -- an outing to the woods' edge: FU gathered (season)
+  forage_h = 1.2, forage_fu = { 0.3, 1.1 },   -- an outing to the woods' edge: FU gathered (season): a supplement
   -- people
   adult_age = 16, elder_age = 55, child_age = 2, apprentice_age = 12, help_age = 8,
   marry_f = 17, marry_m = 19, fecund = { 16, 44 },

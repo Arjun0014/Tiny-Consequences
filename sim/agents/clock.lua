@@ -17,6 +17,10 @@ function M.year(t) return floor(t / 1152) end
 -- Fractional day of year on the 336-day daylight cycle.
 function M.doy336(t) return ((t / 24) % 48) * 7 end
 function M.season(t) return M.SEASONS[floor(M.doy(t) / 12) + 1] end
+-- The local day of year: seasons are opposite across the equator (day 0 is the northern spring
+-- equinox, the southern autumn one), so the south lives half a year (24 days) on.
+function M.local_doy(t, lat) return (floor(t / 24) + (lat < 0 and 24 or 0)) % 48 end
+function M.local_season(t, lat) return M.SEASONS[floor(M.local_doy(t, lat) / 12) + 1] end
 function M.age_years(t, born) return (t - born) / 1152 end
 
 -- Local solar hour at longitude lon (radians).
