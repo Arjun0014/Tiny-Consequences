@@ -428,11 +428,14 @@ WORK.smoke = function(W, s, p, st, f)
   local b = s.buildings[st.ref or 0]
   if not b then return end
   local c = C()
-  local amt = min(b.stock.fish or 0, c.smoke_fu_h * st.dur * f)
+  local fresh = (b.stock.fish or 0) + (b.stock.meat or 0)
+  local amt = min(fresh, c.smoke_fu_h * st.dur * f)
   local logs = b.stock.logs or 0
   if logs < amt * c.smoke_logs then amt = logs / c.smoke_logs end
   if amt <= 0 then return end
-  b.stock.fish = b.stock.fish - amt
+  local mt = min(b.stock.meat or 0, amt)
+  b.stock.meat = (b.stock.meat or 0) - mt
+  b.stock.fish = (b.stock.fish or 0) - (amt - mt)
   b.stock.smoked = (b.stock.smoked or 0) + amt
   b.stock.logs = logs - amt * c.smoke_logs
   s.acc.smoked = (s.acc.smoked or 0) + amt
@@ -447,9 +450,14 @@ WORK.dress = function(W, s, p, st, f)
   if hh and hh.dressing == p.id then hh.dressing = 0 end
   local b = s.buildings[st.ref or 0]
   if not b then return end
-  local amt = min(b.stock.flax or 0, st.dur * f * craft_rate(p, C().dress_h))
-  if amt <= 0 then return end
-  b.stock.flax = b.stock.flax - amt
+  -- (raw wool is washed and carded first, else flax broken and hackled, D-089)
+  local rate = st.dur * f * craft_rate(p, C().dress_h)
+  local wl = min(b.stock.wool or 0, rate)
+  local amt = min(b.stock.flax or 0, rate - wl)
+  if amt + wl <= 0 then return end
+  b.stock.wool = (b.stock.wool or 0) - wl
+  b.stock.flax = (b.stock.flax or 0) - amt
+  amt = amt + wl
   b.stock.fibre = (b.stock.fibre or 0) + amt
   people.practice(p, "sk_craft", st.dur * f)
 end
@@ -518,6 +526,82 @@ WORK.mend_clothes = function(W, s, p, st, f)
   if y <= 0 then return end
   b.stock.yarn = b.stock.yarn - y
   p.clothes = min(1, (p.clothes or 1) + 0.3 * f * y / c.mend_clothes_yarn)
+end
+
+-- The flock (D-089): the fold opened and the flock driven out to the day's pasture, watched,
+-- brought home; a sheep shorn; hay mown; hay put in the fold's rack.
+WORK.open_fold = function(W, s, p, st, f)
+  local F = s.flock
+  if not F then return end
+  F.out, F.herder = true, p.id
+  F.spot_x, F.spot_y = st.sx, st.sy
+end
+
+WORK.herd = function(W, s, p, st, f)
+  local F = s.flock
+  if F and F.herder == p.id then F.spot_x, F.spot_y = p.x, p.y end
+end
+
+WORK.close_fold = function(W, s, p, st, f)
+  local F = s.flock
+  if not F then return end
+  F.out, F.herder = false, 0
+end
+
+WORK.shear = function(W, s, p, st, f)
+  local F = s.flock
+  local a = F and F.sheep[st.ref or 0]
+  if not a then return end
+  if a.shearer == p.id then a.shearer = 0 end
+  if f < 0.8 or not a.alive then return end
+  local w = a.wool or 0
+  if w <= 0 then return end
+  a.wool = 0
+  p.carry, p.camt = "wool", (p.carry == "wool" and p.camt or 0) + w
+  s.acc.wool = (s.acc.wool or 0) + w
+  people.practice(p, "sk_craft", st.dur * f)
+end
+
+WORK.mow = function(W, s, p, st, f)
+  local F = s.flock
+  if not F then return end
+  local c = C()
+  local b = st.block or 0
+  local g = F.grass[b] or 0
+  local cut = min(g / c.grass_per_feed * 0.5, c.mow_rate * st.dur * f * g)
+  if cut <= 0 then return end
+  F.grass[b] = max(0, g - cut * c.grass_per_feed * 0.5)
+  p.carry, p.camt = "hay", (p.carry == "hay" and p.camt or 0) + cut
+  s.acc.hay = (s.acc.hay or 0) + cut
+end
+
+-- Killing a beast in autumn (D-089): the meat goes home fresh (cooked first, smoked if it will
+-- not be eaten in time), the fleece to the household's wool.
+WORK.slaughter = function(W, s, p, st, f)
+  local F = s.flock
+  local a = F and F.sheep[st.ref or 0]
+  if not a then return end
+  if a.butcher == p.id then a.butcher = 0 end
+  if f < 0.8 or not a.alive then return end
+  a.alive, a.died, a.cull = false, W.S.v3.now or W.hour, nil
+  local c = C()
+  local meat = c.sheep_meat * min(1, 0.4 + (W.S.v3.now - a.born) / 1152) * (0.5 + 0.5 * a.health)
+  p.carry, p.camt = "meat", meat
+  s.acc.meat = (s.acc.meat or 0) + meat
+  s.acc.slaughtered = (s.acc.slaughtered or 0) + 1
+  local home = W.S.v3.households[a.owner]
+  if home and (a.wool or 0) > 0.2 then
+    local hb = s.buildings[home.home]
+    if hb then hb.stock.wool = (hb.stock.wool or 0) + a.wool * 0.8 end
+  end
+end
+
+WORK.feed = function(W, s, p, st, f)
+  local F = s.flock
+  if not F or f < 0.5 then return end
+  local amt = min(F.hay or 0, st.amt or 0)
+  F.hay = F.hay - amt
+  F.rack = (F.rack or 0) + amt
 end
 
 WORK.thresh = function(W, s, p, st, f)
@@ -589,6 +673,9 @@ WORK.cook = function(W, s, p, st, f)
   local n = hh and #hh.members or 1
   -- (fresh fish goes into the pot first: it will not keep, D-087)
   local want = n * c.cook_batch * f
+  local meat = min(b.stock.meat or 0, want)
+  b.stock.meat = (b.stock.meat or 0) - meat
+  want = want - meat
   local fish = min(b.stock.fish or 0, want)
   local amt = min(b.stock.food or 0, want - fish)
   local sm = min(b.stock.smoked or 0, want - fish - amt)
@@ -596,7 +683,7 @@ WORK.cook = function(W, s, p, st, f)
   b.stock.fish = (b.stock.fish or 0) - fish
   b.stock.food = (b.stock.food or 0) - amt
   b.stock.smoked = (b.stock.smoked or 0) - sm
-  amt = amt + fish + sm
+  amt = amt + fish + sm + meat
   b.stock.meals = (b.stock.meals or 0) + amt
   b.cooked_t = W.S.v3.now or W.hour
 end
@@ -731,6 +818,13 @@ DROP.any = function(W, s, p, st)
     b.stock.sheaves = (b.stock.sheaves or 0) + n
   elseif what == "flax" then
     b.stock.flax = (b.stock.flax or 0) + n
+  elseif what == "wool" then
+    b.stock.wool = (b.stock.wool or 0) + n
+  elseif what == "meat" then
+    b.stock.meat = (b.stock.meat or 0) + n
+  elseif what == "hay" then
+    local F = s.flock
+    if F then F.hay = (F.hay or 0) + n end
   elseif what == "seed" then
     if b.kind == "granary" then b.stock.grain = (b.stock.grain or 0) + n else b.stock.seed = (b.stock.seed or 0) + n end
   elseif what == "grain" then

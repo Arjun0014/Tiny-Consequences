@@ -493,6 +493,8 @@ function M.found(W, cell, opts)
       end
     end
   end
+  -- sheep: a few for each household, in a fold at the village's edge (D-089)
+  require("sim.agents.flock").found(W, s, hlist, u, doy0)
   -- a coastal village's boats belong to fisher households: in each, a man of working age takes up
   -- the nets (his skill from the years he has fished; D-087)
   if s.boats then

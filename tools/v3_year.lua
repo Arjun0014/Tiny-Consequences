@@ -96,13 +96,13 @@ local function food_total(s)
   if g then tot = tot + (g.stock.grain or 0) + (g.stock.sheaves or 0) end
   for k = 1, #s.blist do
     local b = s.buildings[s.blist[k]]
-    if b.kind == "house" then tot = tot + (b.stock.food or 0) + (b.stock.fish or 0) + (b.stock.smoked or 0) + (b.stock.seed or 0) + (b.stock.meals or 0) end
+    if b.kind == "house" then tot = tot + (b.stock.food or 0) + (b.stock.fish or 0) + (b.stock.smoked or 0) + (b.stock.meat or 0) + (b.stock.seed or 0) + (b.stock.meals or 0) end
   end
   for k = 1, #s.plots do tot = tot + s.plots[k].sheaves end
   for k = 1, #s.members do
     local p = V.people[s.members[k]]
     if p and p.alive then
-      if p.carry == "seed" or p.carry == "grain" or p.carry == "food" or p.carry == "sheaves" or p.carry == "fish" then tot = tot + p.camt end
+      if p.carry == "seed" or p.carry == "grain" or p.carry == "food" or p.carry == "sheaves" or p.carry == "fish" or p.carry == "meat" then tot = tot + p.camt end
       if p.lunch then tot = tot + C.meal_fu end
     end
   end
@@ -182,14 +182,14 @@ for d = 1, args.days do
   local f = food_total(s)
   local sown = sown_rows(s)
   local dh = (s.acc.harvest or 0) - acc_prev.h
-  local df = (s.acc.foraged or 0) + (s.acc.fished or 0) - acc_prev.f
+  local df = (s.acc.foraged or 0) + (s.acc.fished or 0) + (s.acc.meat or 0) - acc_prev.f
   local de = (s.acc.eaten or 0) - acc_prev.e
   local dseed = (s.acc.seed or 0) - acc_prev.seed
   local dl = (s.acc.lunch or 0) - acc_prev.lunch
   local dsp = (s.acc.spoiled or 0) - acc_prev.spoil
   local expect = food_prev + dh + df - de - dseed - dl - dsp
   local resid = f - expect
-  acc_prev.h, acc_prev.f, acc_prev.e = s.acc.harvest or 0, (s.acc.foraged or 0) + (s.acc.fished or 0), s.acc.eaten or 0
+  acc_prev.h, acc_prev.f, acc_prev.e = s.acc.harvest or 0, (s.acc.foraged or 0) + (s.acc.fished or 0) + (s.acc.meat or 0), s.acc.eaten or 0
   acc_prev.seed, acc_prev.lunch, acc_prev.spoil = s.acc.seed or 0, s.acc.lunch or 0, s.acc.spoiled or 0
   sown_prev, food_prev = sown, f
   local ripe, growing, sheaves = 0, 0, 0
@@ -238,6 +238,13 @@ for _, s in ipairs(V.settlements) do
     for _, pl in ipairs(s.plots) do if pl.crop == "flax" then fl = fl + 1 end end
     say("      linen: flax fields %d, pulled %.0f, granary flax %.1f, fibre %.1f, yarn %.1f, cloth %.1f | spun %.1f woven %.1f garments %d | clothes mean %.2f min %.2f, in rags %d",
       fl, a.flax or 0, flax, fib, yarn, cloth, a.spun or 0, a.woven or 0, a.garments or 0, cn > 0 and cs / cn or 0, cmin, rags)
+  end
+  if s.flock then
+    local F = s.flock
+    local n, hung = 0, 0
+    for _, a in ipairs(F.sheep) do if a.alive then n = n + 1; hung = hung + a.hunger end end
+    say("      flock: %d sheep (lambs %d, died %d, killed %d = %.0f FU), hunger %.2f, hay %.0f rack %.0f, wool shorn %.1f, hay mown %.0f",
+      n, a.lambs or 0, a.sheep_died or 0, a.slaughtered or 0, a.meat or 0, n > 0 and hung / n or 0, F.hay or 0, F.rack or 0, a.wool or 0, a.hay or 0)
   end
   if s.boats then
     local bl = {}

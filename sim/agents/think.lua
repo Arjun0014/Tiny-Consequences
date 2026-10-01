@@ -50,7 +50,7 @@ local function plural(n, one, many) return n == 1 and one or many end
 -- its holder is alive, still of the household and still at that objective (a claim must never
 -- outlive a person who moved to a new house, died or changed their mind).
 local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "fetch_wood", fetch_water = "fetch_water", foraging = "forage",
-  smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew" }
+  smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed" }
 local function claim_free(W, hh, field, p)
   local id = hh[field] or 0
   if id == 0 or (p and id == p.id) then return true end
@@ -81,6 +81,7 @@ local function work(pl, kind, dur, extra)
 end
 
 local function door(b) return b.dx, b.dy end
+local function mapm_xy(s, ix, iy) return require("sim.agents.map").ixy_xy(s, ix, iy) end
 
 -- A spot near (x, y) for person p (so people waiting or talking do not stand on each other).
 local function near_spot(W, p, now, x, y, r, k)
@@ -187,6 +188,7 @@ local ROLE_JOBS = {
   woodcutter = { fell = true, haul_logs = true, grub = true },
   builder = { build = true, deliver = true, haul_logs = true, repair = true },
   fisher = { fish = true, mend_boat = true, smoke = true },
+  shepherd = { herd = true, shear = true, feed = true },
 }
 
 -- Does the apprentice's mentor work on this target now (D-081)? (ref: the plot, building or tree)
@@ -701,7 +703,7 @@ local function chores(W, s, p, ctx, now)
     end
   end
   -- fresh fish beyond what the pot will take today is smoked at the hearth before it spoils (D-087)
-  local surplus = (home.stock.fish or 0) - n * 0.8
+  local surplus = (home.stock.fish or 0) + (home.stock.meat or 0) - n * 0.8
   if surplus >= 1 and claim_free(W, hh, "smoking", p) and (home.stock.logs or 0) >= 0.3 then
     local f = fit(p, ctx, "smoke")
     if f > 0 then
@@ -792,6 +794,96 @@ local function textile_candidates(W, s, p, ctx, now)
     if f > 0 then
       add((0.16 + 0.5 * (0.55 - mine) + slack) * f * fat - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.5, "mend_clothes", home.id, 0,
         string.format("Patching my clothes (%d%% whole)", floor(mine * 100)))
+    end
+  end
+end
+
+-- The flock (D-089). Herding is children's work as much as anyone's: a child of an owning
+-- household (from nine) takes the sheep out of the fold to the day's pasture, watches them, and
+-- brings them home before dusk. Shearing in late spring, hay mown in summer for the winter, hay
+-- put in the fold's rack when the sheep are kept in.
+local function owns_sheep(F, hh)
+  for _, a in ipairs(F.sheep) do if a.alive and a.owner == hh then return true end end
+  return false
+end
+
+local function herd_candidates(W, s, p, ctx, now)
+  local F = s.flock
+  if not F or ctx.night or not ctx.hh then return end
+  local c = C()
+  local flock = require("sim.agents.flock")
+  local fold = s.buildings[F.fold]
+  local st = ctx.stage
+  local f = (st == "child" and ctx.age >= c.help_age + 1) and 1.3 or (st == "apprentice" and 1.1) or (st == "elder" and 0.9)
+    or (st == "adult" and 0.6) or 0
+  if p.role == "shepherd" then f = 1.45 end
+  if ctx.babe then f = f * 0.6 end
+  local h = flock.herder(W, s)
+  local late = ctx.lh > ctx.sunset - 1.2
+  if f > 0 and h == p then
+    if late then
+      add(1.0, "herd_home", 0, 0, "Dusk is coming: bringing the sheep home to the fold")
+    else
+      -- (once out, the flock is theirs to mind until it is home: not left for play)
+      add((0.64 + 0.1 * f) * fatigue(p) * WEATHER_OK(ctx, p), "herd", 1, 0, "Keeping the sheep on fresh grass")
+    end
+    return
+  end
+  local mine = owns_sheep(F, p.hh)
+  -- (the children of the household have the first chance in the morning: the grown-ups wait)
+  local wait = st == "child" and 0.4 or 1.6
+  if f > 0 and mine and not h and not F.out and not late and ctx.lh > ctx.wake + wait and ctx.rain < 2 then
+    local hung, n = 0, 0
+    for _, a in ipairs(F.sheep) do if a.alive then hung, n = hung + a.hunger, n + 1 end end
+    if n > 0 then
+      hung = hung / n
+      -- (a duty the household gives its children more than a choice)
+      add((0.45 + 0.45 * hung) * f * fatigue(p) * WEATHER_OK(ctx, p) - travel(ctx, fold.dx, fold.dy, p.x, p.y), "herd", 0, 0,
+        string.format("The sheep are hungry in the fold (%d%%): taking them out to graze", floor(hung * 100)))
+    end
+  end
+  if not mine or st == "child" and ctx.age < c.help_age + 1 then return end
+  local doy = s.doy or 0
+  -- shearing: a sheep of the household with its fleece grown, in the fold
+  if doy >= c.shearing[1] and doy <= c.shearing[2] and not F.out and st ~= "child" then
+    for k, a in ipairs(F.sheep) do
+      if a.alive and a.owner == p.hh and (a.wool or 0) >= 1 and (a.shearer or 0) == 0 and (now - a.born) / 1152 > c.lamb_years then
+        add(0.48 * fatigue(p) * WEATHER_OK(ctx, p) - travel(ctx, fold.dx, fold.dy, p.x, p.y), "shear", k, 0,
+          string.format("Shearing time: a fleece of %.1f garments' wool on one of our sheep", a.wool))
+        break
+      end
+    end
+  end
+  -- autumn: a beast of the household marked for killing (flock.plan_cull)
+  if (st == "adult") and not F.out then
+    for k, a in ipairs(F.sheep) do
+      if a.alive and a.cull and a.owner == p.hh and (a.butcher or 0) == 0 then
+        add(0.5 * fatigue(p) - travel(ctx, fold.dx, fold.dy, p.x, p.y), "slaughter", k, 0,
+          "The hay will not winter the whole flock: killing one of our beasts for the larder")
+        break
+      end
+    end
+  end
+  -- hay for the winter: mown in summer on the best meadow (not where the flock grazes today)
+  local nsheep = 0
+  for _, a in ipairs(F.sheep) do if a.alive then nsheep = nsheep + 1 end end
+  local want = nsheep * c.hay_days * c.sheep_hunger * 24 * 0.6
+  if doy >= 12 and doy < 26 and (F.hay or 0) < want and (st == "adult" or st == "apprentice") and claim_free(W, ctx.hh, "mowing", p) then
+    local ff = fit(p, ctx, "harvest")
+    if ff > 0 then
+      add((0.3 + 0.35 * (1 - (F.hay or 0) / want)) * ff * fatigue(p) * WEATHER_OK(ctx, p), "mow", 0, 0,
+        string.format("Making hay for the winter: the stack holds %d of the %d days the flock will want", floor((F.hay or 0) / max(1, nsheep * 0.5)), c.hay_days))
+    end
+  end
+  -- hay into the rack when the flock is kept in and hungry
+  if not F.out and (F.hay or 0) > 1 and (F.rack or 0) < nsheep * 0.2 and claim_free(W, ctx.hh, "feeding", p) then
+    local hung, n = 0, 0
+    for _, a in ipairs(F.sheep) do if a.alive then hung, n = hung + a.hunger, n + 1 end end
+    hung = n > 0 and hung / n or 0
+    local winter = doy >= 36 or (s.flock_grass_low or false)
+    if hung > 0.45 and (winter or late or ctx.rain > 0) then
+      add((0.35 + 0.5 * hung) * fatigue(p) - travel(ctx, fold.dx, fold.dy, p.x, p.y), "feed", 0, 0,
+        string.format("The sheep are hungry in the fold (%d%%): hay into the rack", floor(hung * 100)))
     end
   end
 end
@@ -1615,6 +1707,112 @@ PLAN.haul_flax = function(W, s, p, ctx, now, cd)
   return "Carry the flax to the granary", plot.name
 end
 
+-- The flock (D-089).
+PLAN.herd = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local F = s.flock
+  local fold = s.buildings[F.fold]
+  local flock = require("sim.agents.flock")
+  local x, y = flock.pick_spot(W, s, now)
+  if not x then x, y = fold.dx, fold.dy end
+  if cd.a == 0 then
+    -- open the fold and drive them out
+    go(pl, fold.dx, fold.dy, "the fold")
+    work(pl, "open_fold", 0.06, { sx = x, sy = y, fx = fold.cx, fy = fold.cy })
+  end
+  local wx, wy = near_spot(W, p, now, x, y, 0.04, 61)
+  go(pl, wx, wy, "the pasture")
+  work(pl, "herd", (1.0 + 1.5 * u01(W, p, now, 62)) * p.dil, { fx = x, fy = y })
+  return cd.a == 0 and "Take the sheep out to graze" or "Mind the sheep", "the pasture"
+end
+
+PLAN.herd_home = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local fold = s.buildings[s.flock.fold]
+  go(pl, fold.dx, fold.dy, "the fold")
+  -- (the flock follows them in; they wait a little at the gate, then close it)
+  work(pl, "herd", 0.3, { fx = fold.cx, fy = fold.cy })
+  work(pl, "close_fold", 0.06, { fx = fold.cx, fy = fold.cy })
+  return "Bring the sheep home", "the fold"
+end
+
+PLAN.shear = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local F = s.flock
+  local fold = s.buildings[F.fold]
+  local a = F.sheep[cd.a]
+  a.shearer = p.id
+  local flock = require("sim.agents.flock")
+  local ax, ay = flock.pos(a, now)
+  go(pl, ax + 0.012, ay, "the fold")
+  work(pl, "shear", 0.3 + 0.2 * u01(W, p, now, 63), { ref = cd.a, fx = ax, fy = ay })
+  local home = ctx.home
+  go(pl, home.dx, home.dy, "home")
+  pl[#pl + 1] = { op = "drop", to = "home", ref = home.id }
+  return "Shear a sheep", "the fold"
+end
+
+PLAN.mow = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local F = s.flock
+  local fold = s.buildings[F.fold]
+  ctx.hh.mowing = p.id
+  local flock = require("sim.agents.flock")
+  -- the best meadow block that is not today's pasture
+  local N, BS = s.N, 8
+  local bn = N / BS
+  local best, bs = 0, -1e9
+  local sb = flock.block_of(s, F.spot_x or fold.cx, F.spot_y or fold.cy)
+  for b = 1, bn * bn do
+    local g = F.grass[b] or 0
+    if b ~= sb and g > 0.4 then
+      local by = floor((b - 1) / bn)
+      local bx = (b - 1) - by * bn
+      local x, y = mapm_xy(s, bx * BS + BS / 2, by * BS + BS / 2)
+      local sc = g - dist(x, y, fold.cx, fold.cy) * 0.5 - dist(x, y, p.x, p.y) * 0.3
+      if sc > bs then best, bs = b, sc end
+    end
+  end
+  if best == 0 then return PLAN.rest(W, s, p, ctx, now, cd) end
+  local by = floor((best - 1) / bn)
+  local bx = (best - 1) - by * bn
+  local x0, y0 = mapm_xy(s, bx * BS + 1.5, by * BS + 1.5 + floor(u01(W, p, now, 64) * 5))
+  local x1, y1 = mapm_xy(s, bx * BS + BS - 1.5, by * BS + 1.5 + floor(u01(W, p, now, 64) * 5))
+  go(pl, x0, y0, "the meadow")
+  work(pl, "mow", (1.2 + 1.0 * u01(W, p, now, 65)) * p.dil, { block = best, x1 = x1, y1 = y1 })
+  go(pl, fold.dx, fold.dy, "the haystack")
+  pl[#pl + 1] = { op = "drop", to = "fold", ref = fold.id, release = "mowing" }
+  return "Mow hay for the winter", "the meadow"
+end
+
+PLAN.slaughter = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local F = s.flock
+  local a = F.sheep[cd.a]
+  a.butcher = p.id
+  local flock = require("sim.agents.flock")
+  local ax, ay = flock.pos(a, now)
+  go(pl, ax + 0.012, ay, "the fold")
+  work(pl, "slaughter", 0.6 + 0.3 * u01(W, p, now, 67), { ref = cd.a, fx = ax, fy = ay })
+  local home = ctx.home
+  go(pl, home.dx, home.dy, "home", home.id)
+  pl[#pl + 1] = { op = "drop", to = "home", ref = home.id }
+  return "Kill a beast for the larder", "the fold"
+end
+
+PLAN.feed = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local F = s.flock
+  local fold = s.buildings[F.fold]
+  ctx.hh.feeding = p.id
+  local n = 0
+  for _, a in ipairs(F.sheep) do if a.alive then n = n + 1 end end
+  go(pl, fold.dx, fold.dy, "the fold")
+  work(pl, "feed", 0.2 + 0.1 * u01(W, p, now, 66), { amt = n * 0.5, fx = fold.cx, fy = fold.cy })
+  pl[#pl + 1] = { op = "drop", to = "fold", ref = fold.id, release = "feeding" }
+  return "Hay for the sheep", "the fold"
+end
+
 -- Afloat: whatever stopped them, they row back to the dock first (D-084).
 PLAN.return_boat = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
@@ -1708,6 +1906,12 @@ function M.release(W, s, p)
         elseif st.kind == "smoke" then
           local hh = W.S.v3.households[p.hh]
           if hh and hh.smoking == p.id then hh.smoking = 0 end
+        elseif st.kind == "shear" then
+          local a = s.flock and s.flock.sheep[st.ref or 0]
+          if a and a.shearer == p.id then a.shearer = 0 end
+        elseif st.kind == "slaughter" then
+          local a = s.flock and s.flock.sheep[st.ref or 0]
+          if a and a.butcher == p.id then a.butcher = 0 end
         elseif st.kind == "dress" or st.kind == "weave" or st.kind == "sew" then
           local hh = W.S.v3.households[p.hh]
           local field = st.kind == "dress" and "dressing" or (st.kind == "weave" and "weaving" or "sewing")
@@ -1809,6 +2013,7 @@ function M.decide(W, s, p, now, reason)
       chores(W, s, p, ctx, now)
       craft_candidate(W, s, p, ctx, now)
       textile_candidates(W, s, p, ctx, now)
+      herd_candidates(W, s, p, ctx, now)
     elseif not ctx.night then
       chores(W, s, p, ctx, now)
       textile_candidates(W, s, p, ctx, now)
@@ -1846,6 +2051,8 @@ function M.decide(W, s, p, now, reason)
     if cr == "fish" then to = home or s.granary
     elseif cr == "sheaves" then to = s.granary
     elseif cr == "logs" then to = s.wood_store
+    elseif cr == "hay" then to = s.flock and s.buildings[s.flock.fold]
+    elseif cr == "wool" or cr == "meat" then to = home
     elseif cr == "water" then to = home
     else
       to = s.granary

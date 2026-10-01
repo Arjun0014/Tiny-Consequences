@@ -18,6 +18,7 @@ local life = require("sim.agents.life")
 local kin = require("sim.agents.kin")
 local rng = require("sim.rng")
 local clock = require("sim.agents.clock")
+local flock = require("sim.agents.flock")
 
 local sys = { name = "agents" }
 -- (act.lua cannot require this module: bob rejects circular requires; it calls through this hook)
@@ -30,13 +31,20 @@ local function rt(W)
   if not R then
     R = { t = {}, id = {}, ver = {}, n = 0 }
     W.v3rt = R
-    -- rebuild from the people (id order)
+    -- rebuild from the people (id order) and the animals (D-089)
     local V = W.S.v3
     for i = 1, #V.order do
       local p = V.people[V.order[i]]
       if p and p.alive then
         local at = p.int_at and p.int_at < p.t1 and p.int_at or p.t1
         sys.push(W, at, p.id, p.ver)
+      end
+    end
+    for _, s in ipairs(V.settlements) do
+      if s.flock then
+        for _, a in ipairs(s.flock.sheep) do
+          if a.alive then sys.push(W, a.t1, flock.event_id(s, a), a.ver) end
+        end
       end
     end
   end
@@ -162,9 +170,21 @@ function sys.advance(W, t)
   local S = V.settlements
   while R.n > 0 and R.t[1] < t do
     local et, id, ver = pop(R)
-    local p = P[id]
-    if p and p.alive and p.ver == ver then
-      step_person(W, S[p.sett], p, et)
+    if id >= flock.ID0 then
+      -- an animal's step (one queue with the people: strict time order whatever the slicing)
+      local sid, k = flock.decode(id)
+      local s = S[sid]
+      local a = s and s.flock and s.flock.sheep[k]
+      if a and a.alive and a.ver == ver then
+        V.now = et
+        flock.step(W, s, a, et)
+        sys.push(W, a.t1, id, a.ver)
+      end
+    else
+      local p = P[id]
+      if p and p.alive and p.ver == ver then
+        step_person(W, S[p.sett], p, et)
+      end
     end
   end
   V.now = t
@@ -213,6 +233,7 @@ function sys.hour(W)
           s.day_done = ld
           life.daily(W, s, ld)
           settle.daily(W, s, ld)
+          flock.daily(W, s, ld, sys.push)
         end
       end
       local changed, r = settle.hourly(W, s, now)

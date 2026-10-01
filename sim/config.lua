@@ -884,6 +884,20 @@ C.V3 = {
   cloth_keep = 1.2,                       -- GE of fibre, yarn and cloth a member a household keeps in hand
   clothes_wear = { child = 0.012, apprentice = 0.008, adult = 0.007, elder = 0.004 },   -- a day
   carry_flax = 3,                         -- GE of flax bundles a load
+  -- sheep (D-089): individual animals of a household, the village's flock in a fold
+  sheep_speed = 1.6, sheep_hop = 0.08,    -- walking speed (units an hour); a hop toward the flock
+  flock_radius = 0.07,                    -- how far the flock spreads around its herder or pasture
+  sheep_hunger = 0.035, sheep_graze = 0.25,   -- hunger an hour; eaten an hour on full grass
+  grass_per_feed = 0.01, grass_regrow = 0.08, -- a block's grass a unit of hunger takes; regrowth a day
+  pasture_reach = 1.0,                    -- the herder's pasture: within this of the fold
+  lamb_years = 0.35, lambing = { 1, 10 }, lamb_chance = 0.12,   -- a lamb keeps to its mother; lambing days, daily chance
+  wool_day = 0.03, wool_max = 2.0,        -- GE of wool a sheep grows a day; at most
+  shearing = { 4, 16 },                   -- local days of shearing (late spring)
+  hay_found = { 10, 40, 140, 70 },        -- hay at founding by local season (hunger units)
+  hay_days = 10,                          -- days of winter feed the village wants stacked a sheep
+  mow_rate = 6,                           -- hay cut an hour on full grass (hunger units)
+  slaughter = { 28, 40 },                 -- local days the surplus beasts are killed (autumn)
+  sheep_meat = 6, spoil_meat = 0.2,       -- FU of meat a sheep; share of fresh meat spoiled a day
   -- reactions (hours)
   react_near = { 0.03, 0.12 }, react_far = { 0.1, 0.45 },
   rain_hardy = 0.7,                       -- diligence above which light rain does not stop work

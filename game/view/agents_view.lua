@@ -317,6 +317,29 @@ local function fill_buildings(V)
         end
       elseif b.kind == "well" then
         add(V, K.well, b.cx, b.cy, 0, yaw, 1.0, 1, pack(0.62, 0.36, 0.24), 0, 0)
+      elseif b.kind == "fold" then
+        -- a sheepfold (D-089): stakes round it, the haystack by its gate
+        local T = s.T
+        for q = 0, b.w * 2 - 1 do
+          local f = q / (b.w * 2)
+          local x0, y0 = b.cx - b.w * T * 0.5, b.cy - b.h * T * 0.5
+          local L = b.w * T
+          for side = 0, 3 do
+            local x, y
+            if side == 0 then x, y = x0 + f * L, y0
+            elseif side == 1 then x, y = x0 + L, y0 + f * L
+            elseif side == 2 then x, y = x0 + L - f * L, y0 + L
+            else x, y = x0, y0 + L - f * L end
+            if not (side == 0 and f > 0.4 and f < 0.6) then
+              add(V, K.stakes, x, y, 0, q + side, 0.22, 1, 0, 0, 0)
+            end
+          end
+        end
+        local hay = s.flock and s.flock.hay or 0
+        if hay > 5 then
+          add(V, K.stook, b.dx + 0.05, b.dy - 0.01, 0, 0.7, 0.9 * min(2.2, 0.6 + hay / 120), 1,
+            pack(0.80, 0.72, 0.42), pack(0.74, 0.66, 0.36), 0)
+        end
       elseif b.kind == "dock" then
         -- a timber pier from the shore out over the water (D-084)
         add(V, K.pier, (b.cx + b.mx) * 0.5, (b.cy + b.my) * 0.5, 0, yaw_z(V, b.cx, b.cy, b.mx - b.cx, b.my - b.cy), 0.8, 1,
@@ -335,6 +358,7 @@ local function bld_sig(V)
     h = (h * 31 + b.id * 3 + pg + floor((b.stock.logs or 0) / 2) * 7 + floor((b.stock.sheaves or 0) / 20) * 13
       + (b.state == "standing" and 1000 or 0)) % 1000000007
   end
+  if s.flock then h = (h * 17 + floor((s.flock.hay or 0) / 30)) % 1000000007 end
   return h
 end
 
@@ -858,7 +882,7 @@ function M.init(W, PL, urls, celltex)
   build_templates()
   for _, s in ipairs(W.S.v3.settlements) do
     local V = { W = W, s = s, factory = urls.chunk_factory, person_factory = urls.person_factory, celltex = celltex,
-      boat_factory = urls.boat_factory, R = PL.R,
+      boat_factory = urls.boat_factory, R = PL.R, deer_factory = urls.deer_factory,
       villager_factory = urls.villager_factory }
     build_heights(V, PL)
     -- an AABB around the whole square (planet space)
@@ -1013,6 +1037,7 @@ function M.update(W, dt, zoom, t)
     if V.vpool then update_villagers(V, t, zoom) else update_people(V, t, zoom) end
     end
     M.update_boats(V, t)
+    M.update_sheep(V, t)
   end
   if M.skipping then
     -- hide everyone at once (the pool is not walked while skipping)
@@ -1026,6 +1051,56 @@ function M.update(W, dt, zoom, t)
     end
   else
     for _, V in ipairs(M.SETS) do V.hidden_all = nil end
+  end
+end
+
+-- Sheep (D-089): each animal of the flock where the sim has it (a pool of the procedural sheep
+-- movers; lambs smaller), facing the way it walks.
+M.SHEEP = 60
+M.SHEEP_SCALE = 0.55
+local SPOS, SROT = vmath.vector3(), vmath.quat()
+function M.update_sheep(V, t)
+  local s = V.s
+  local F = s.flock
+  if not F or not V.deer_factory then return end
+  local res = M.sheep_res      -- (set by view.lua from the puppets' sheep: no require cycle)
+  if not res then return end
+  if not V.sheep_go then
+    V.sheep_go, V.sheep_yaw = {}, {}
+    for k = 1, M.SHEEP do
+      local id = factory.create(V.deer_factory, vmath.vector3(0, 0, 0))
+      local url = msg.url(nil, id, "mesh")
+      go.set(url, "vertices", res)
+      msg.post(url, MSG_DISABLE)
+      V.sheep_go[k] = { id = id, url = url, on = false }
+    end
+  end
+  local flock = require("sim.agents.flock")
+  local show = not M.skipping and V.in_view
+  local n = 0
+  for k = 1, #F.sheep do
+    local a = F.sheep[k]
+    if a.alive and show and n < M.SHEEP then
+      n = n + 1
+      local e = V.sheep_go[n]
+      if not e.on then msg.post(e.url, MSG_ENABLE); e.on = true end
+      local x, y = flock.pos(a, t)
+      local px, py, pz, ux, uy, uz = world_pos(V, x, y, 0)
+      SPOS.x, SPOS.y, SPOS.z = px, py, pz
+      go.set_position(SPOS, e.id)
+      if a.act == "walk" then
+        local dx, dy = a.tx - a.x, a.ty - a.y
+        if dx * dx + dy * dy > 1e-10 then V.sheep_yaw[k] = yaw_x(V, x, y, dx, dy) end
+      end
+      local yaw = V.sheep_yaw[k] or (k * 1.7)
+      go.set_rotation(vmx.set_up_yaw(SROT, ux, uy, uz, yaw), e.id)
+      local lamb = (t - a.born) / 1152 < 0.35
+      go.set_scale(M.SHEEP_SCALE * (lamb and 0.6 or 1) * (a.act == "rest" and 0.85 or 1), e.id)
+    end
+  end
+  for k = n + 1, M.SHEEP do
+    local e = V.sheep_go[k]
+    if e.on then msg.post(e.url, MSG_DISABLE); e.on = false end
   end
 end
 

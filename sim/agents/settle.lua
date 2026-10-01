@@ -20,6 +20,7 @@ M.KINDS = {
   well = { w = 1, h = 1, label = "well", logs = 0, work = 30 },
   dock = { w = 1, h = 1, label = "dock", logs = 6, work = 30 },
   boat = { w = 2, h = 1, label = "boat", logs = 5, work = 30 },   -- a boat on the stocks at the shore (D-087)
+  fold = { w = 6, h = 6, label = "fold", logs = 10, work = 30 },  -- a fenced sheepfold (open ground, D-089)
 }
 
 function M.new(W, cell, opts)
@@ -54,7 +55,8 @@ function M.add_building(W, s, kind, ix0, iy0, side, state, opts)
   if opts then for k, v in pairs(opts) do b[k] = v end end
   for iy = iy0, iy0 + h - 1 do
     for ix = ix0, ix0 + w - 1 do
-      s.occ[(iy - 1) * N + ix] = id
+      -- (a fold is fenced ground, walked in and out of: marked as an enclosure, not a footprint)
+      if kind == "fold" then s.plot[(iy - 1) * N + ix] = -2 else s.occ[(iy - 1) * N + ix] = id end
     end
   end
   mapm.clear_rect(s, ix0 - 1, iy0 - 1, ix0 + w, iy0 + h)
@@ -542,11 +544,11 @@ local function hearths(W, s, day)
           b.stock.food = (b.stock.food or 0) + b.stock.seed
           b.stock.seed = 0
         end
-        local fd, ml, fi, sm = b.stock.food or 0, b.stock.meals or 0, b.stock.fish or 0, b.stock.smoked or 0
-        if fd > 0 or ml > 0 or fi > 0 or sm > 0 then
-          local lf, lm, li, ls = fd * c.spoil_food, ml * c.spoil_meals, fi * c.spoil_fish, sm * c.spoil_smoked
-          b.stock.food, b.stock.meals, b.stock.fish, b.stock.smoked = fd - lf, ml - lm, fi - li, sm - ls
-          s.acc.spoiled = (s.acc.spoiled or 0) + lf + lm + li + ls
+        local fd, ml, fi, sm, mt = b.stock.food or 0, b.stock.meals or 0, b.stock.fish or 0, b.stock.smoked or 0, b.stock.meat or 0
+        if fd > 0 or ml > 0 or fi > 0 or sm > 0 or mt > 0 then
+          local lf, lm, li, ls, lt = fd * c.spoil_food, ml * c.spoil_meals, fi * c.spoil_fish, sm * c.spoil_smoked, mt * c.spoil_meat
+          b.stock.food, b.stock.meals, b.stock.fish, b.stock.smoked, b.stock.meat = fd - lf, ml - lm, fi - li, sm - ls, mt - lt
+          s.acc.spoiled = (s.acc.spoiled or 0) + lf + lm + li + ls + lt
           s.acc.fish_spoiled = (s.acc.fish_spoiled or 0) + li
         end
       else

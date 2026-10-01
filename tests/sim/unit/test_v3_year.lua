@@ -16,13 +16,13 @@ local function food_total(V, s)
   for _, bid in ipairs(s.blist) do
     local b = s.buildings[bid]
     -- (raw food at home: grain and gathered food, fresh and smoked fish, D-087)
-    if b.kind == "house" then tot = tot + (b.stock.food or 0) + (b.stock.fish or 0) + (b.stock.smoked or 0) + (b.stock.seed or 0) + (b.stock.meals or 0) end
+    if b.kind == "house" then tot = tot + (b.stock.food or 0) + (b.stock.fish or 0) + (b.stock.smoked or 0) + (b.stock.meat or 0) + (b.stock.seed or 0) + (b.stock.meals or 0) end
   end
   for _, pl in ipairs(s.plots) do tot = tot + pl.sheaves end
   for _, id in ipairs(s.members) do
     local p = V.people[id]
     if p.alive then
-      if p.carry == "seed" or p.carry == "grain" or p.carry == "food" or p.carry == "sheaves" or p.carry == "fish" then tot = tot + p.camt end
+      if p.carry == "seed" or p.carry == "grain" or p.carry == "food" or p.carry == "sheaves" or p.carry == "fish" or p.carry == "meat" then tot = tot + p.camt end
       if p.lunch then tot = tot + c.meal_fu end
     end
   end
@@ -37,7 +37,7 @@ local function run()
   local s = V.settlements[1]
   local R = { W = W, worst_resid = 0, child_field = {}, infant_free = 0, infant_hungry_h = {}, beside = 0,
     follow = 0, chores = 0, plough = 0, winter_sown = 0, nursed = 0, boat_wrong = {}, boarded = 0,
-    last = {}, winter = { all = 0, leisure = 0 } }
+    last = {}, winter = { all = 0, leisure = 0 }, herd = 0, sheep_bad = 0 }
   local clock = require("sim.agents.clock")
   local LEISURE = { rest = true, visit = true, talk = true, sit_out = true }
   local orig = act.start
@@ -51,6 +51,7 @@ local function run()
     if st == "child" and (p.objk == "fetch_water" or p.objk == "fetch_wood") then R.chores = R.chores + 1 end
     if p.mentored then R.beside = R.beside + 1 end
     if p.act == "nurse" or p.act == "feed_babe" then R.nursed = R.nursed + 1 end
+    if p.objk == "herd" and p.act == "herd" then R.herd = R.herd + 1 end
     -- (D-087) a household rows out only in its own boat
     if p.act == "board" then
       R.boarded = R.boarded + 1
@@ -72,7 +73,7 @@ local function run()
   end
   local prev = food_total(V, s)
   local acc0 = {}
-  local function accs() return (s.acc.harvest or 0) + (s.acc.foraged or 0) + (s.acc.fished or 0) - (s.acc.eaten or 0) - (s.acc.seed or 0)
+  local function accs() return (s.acc.harvest or 0) + (s.acc.foraged or 0) + (s.acc.fished or 0) + (s.acc.meat or 0) - (s.acc.eaten or 0) - (s.acc.seed or 0)
     - (s.acc.lunch or 0) - (s.acc.spoiled or 0) end
   local a0 = accs()
   for d = 1, 50 do
@@ -91,6 +92,16 @@ local function run()
     local resid = f - (prev + (a - a0))
     if math.abs(resid) > math.abs(R.worst_resid) then R.worst_resid = resid end
     prev, a0 = f, a
+    -- (D-089) every sheep on dry, open ground (never in water, a river or a building)
+    if s.flock then
+      local mapm = require("sim.agents.map")
+      for _, a in ipairs(s.flock.sheep) do
+        if a.alive then
+          local i = mapm.tile_of(s, a.tx, a.ty)
+          if i == 0 or s.land[i] ~= 1 or s.occ[i] ~= 0 or s.riv[i] > 0 then R.sheep_bad = R.sheep_bad + 1 end
+        end
+      end
+    end
     for _, pl in ipairs(s.plots) do
       if pl.stage == "rest" and (pl.ploughed or 0) > 0 then R.plough = math.max(R.plough, pl.ploughed) end
       if pl.crop == "winter" and pl.stage == "growing" and pl.sown_day and pl.sown_day >= 20 then R.winter_sown = R.winter_sown + 1 end
@@ -169,6 +180,22 @@ function M.fishers_fish_from_their_own_boats()
   local a = s.acc
   T.ok((a.fished or 0) > 50 and (a.fished or 0) < (a.harvest or 0), string.format("fish %.0f against harvest %.0f", a.fished or 0, a.harvest or 0))
   T.ok((a.smoked or 0) > 5, "fish smoked " .. tostring(a.smoked))
+end
+
+-- The flock (D-089): taken out and brought home, fed, lambing, shorn; sheep stay on dry land.
+function M.the_flock_is_tended()
+  local R = run()
+  local s = R.W.S.v3.settlements[1]
+  local F = s.flock
+  T.ok(F ~= nil, "no flock")
+  T.ok(R.herd > 10, "herding stints " .. R.herd)
+  T.ok((s.acc.lambs or 0) > 3, "lambs " .. tostring(s.acc.lambs))
+  T.ok((s.acc.wool or 0) > 5, "wool shorn " .. tostring(s.acc.wool))
+  T.ok((s.acc.hay or 0) > 20, "hay mown " .. tostring(s.acc.hay))
+  local n, h = 0, 0
+  for _, a in ipairs(F.sheep) do if a.alive then n, h = n + 1, h + a.hunger end end
+  T.ok(n > 10 and h / n < 0.5, string.format("%d sheep, mean hunger %.2f", n, n > 0 and h / n or 0))
+  T.eq(R.sheep_bad, 0, "sheep-days on water or in a building")
 end
 
 -- Winter has work (D-088): adults' waking winter hours are not mostly rest and visits.
