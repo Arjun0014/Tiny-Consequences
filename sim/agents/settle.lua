@@ -253,16 +253,27 @@ function M.hourly(W, s, now)
   -- wood: what is wanted (sites + fuel reserve) against what is stored or lying cut
   local tr = s.trees
   local felled = s.felled
-  for i = #felled, 1, -1 do felled[i] = nil end
-  local lying, chopping = 0, 0
-  for k = 1, tr.n do
-    local st = tr.st[k]
-    if st == 2 and tr.logs[k] > 0 then
-      felled[#felled + 1] = k
-      lying = lying + tr.logs[k]
-    elseif st == 1 and tr.claim[k] > 0 then
-      chopping = chopping + 1
+  -- (the woods are scanned again only when a tree, its logs or a claim on it changed: s.tv, D-086)
+  local lying, chopping = s.lying or 0, s.chopping or 0
+  if s.tv_seen ~= s.tv or not s.lying then
+    s.tv_seen = s.tv
+    for i = #felled, 1, -1 do felled[i] = nil end
+    lying, chopping = 0, 0
+    local ct, cs = 0, 0
+    local plot = s.plot
+    for k = 1, tr.n do
+      local st = tr.st[k]
+      if st == 2 and tr.logs[k] > 0 then
+        felled[#felled + 1] = k
+        lying = lying + tr.logs[k]
+      elseif st == 1 and tr.claim[k] > 0 then
+        chopping = chopping + 1
+      end
+      if st ~= 0 and plot[tr.tile[k]] == -1 then
+        if st == 1 then ct = ct + 1 elseif st == 3 then cs = cs + 1 end
+      end
     end
+    s.lying, s.chopping, s.clear_t, s.clear_s = lying, chopping, ct, cs
   end
   need.lying_trees = #felled
   local site_logs, short_id, short_n = 0, nil, 0
@@ -305,15 +316,7 @@ function M.hourly(W, s, now)
   -- new field ground: trees to fell and stumps to dig out
   local cl = s.clearing
   need.clear_trees, need.clear_stumps = 0, 0
-  if cl then
-    for k = 1, tr.n do
-      local i = tr.tile[k]
-      if s.plot[i] == -1 then
-        if tr.st[k] == 1 then need.clear_trees = need.clear_trees + 1
-        elseif tr.st[k] == 3 then need.clear_stumps = need.clear_stumps + 1 end
-      end
-    end
-  end
+  if cl then need.clear_trees, need.clear_stumps = s.clear_t, s.clear_s end
   if site_logs > 0 then
     need.fell_why = string.format("Logs are wanted for the %s (%d more) and the woodstore holds %d",
       s.buildings[short_id].label, site_logs, s.wood_store and s.wood_store.stock.logs or 0)
@@ -446,6 +449,7 @@ local function grow_trees(W, s, day)
         if u < 0.06 then
           tr.st[k] = 1
           tr.size[k] = 0.05
+          s.tv = (s.tv or 0) + 1
           s.dirty_costs = true
         end
       end
@@ -596,6 +600,7 @@ local function plan_fields(W, s, day)
   for jy = biy, biy + P - 1 do
     for jx = bix, bix + P - 1 do s.plot[(jy - 1) * N + jx] = -1 end
   end
+  s.tv = (s.tv or 0) + 1
   local x, y = mapm.ixy_xy(s, bix + P / 2, biy + P / 2)
   s.clearing.x, s.clearing.y = x, y
   if W.record_events then events.emit(W, "village_expanded", s.cell, 0, 0, { settlement = s.id, kind = "field" }) end
@@ -617,6 +622,7 @@ local function finish_clearing(W, s)
   for jy = cl.iy0, cl.iy0 + P - 1 do
     for jx = cl.ix0, cl.ix0 + P - 1 do s.plot[(jy - 1) * N + jx] = 0 end
   end
+  s.tv = (s.tv or 0) + 1
   local V = W.S.v3
   -- the household with the fewest fields per mouth takes it
   local bh, br = nil, 1e9

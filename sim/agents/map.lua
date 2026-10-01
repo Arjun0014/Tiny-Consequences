@@ -126,6 +126,9 @@ function M.build(W, s)
     occ[i], plot[i], tree[i], wear[i], lane[i], cost[i], riv[i] = 0, 0, 0, 0, 0, C.cost_open, 0
   end
   s.land, s.cell_of, s.occ, s.plot, s.tree, s.wear, s.lane, s.cost = land, cell, occ, plot, tree, wear, lane, cost
+  for k = 1, N do
+    wcost[k], wcost[(N - 1) * N + k], wcost[(k - 1) * N + 1], wcost[k * N] = -1, -1, -1, -1
+  end
   s.wcost, s.riv = wcost, riv
   s.trees = { x = {}, y = {}, size = {}, st = {}, logs = {}, claim = {}, t_cut = {}, tile = {}, n = 0 }
   s.ver = 1
@@ -266,6 +269,11 @@ function M.rebuild_costs(s)
     end
     cost[i] = c
   end
+  -- the map's border is closed (A* then needs no bounds checks, D-086)
+  local N = s.N
+  for k = 1, N do
+    cost[k], cost[(N - 1) * N + k], cost[(k - 1) * N + 1], cost[k * N] = -1, -1, -1, -1
+  end
   s.ver = s.ver + 1
 end
 
@@ -318,6 +326,7 @@ function M.add_tree(s, x, y, size)
   t.n = k
   t.x[k], t.y[k], t.size[k], t.st[k], t.logs[k], t.claim[k], t.t_cut[k], t.tile[k] = x, y, size, 1, 0, 0, -1, i
   s.tree[i] = k
+  s.tv = (s.tv or 0) + 1
   return k
 end
 
@@ -338,6 +347,7 @@ function M.clear_rect(s, ix0, iy0, ix1, iy1)
       local k = s.tree[i]
       if k > 0 then
         t.st[k] = 0          -- gone (not a stump: cleared ground)
+        s.tv = (s.tv or 0) + 1
         t.size[k] = 0
         s.tree[i] = 0
       end

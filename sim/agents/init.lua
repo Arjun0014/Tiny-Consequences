@@ -232,6 +232,11 @@ function sys.init(W)
     for _, k in ipairs({ "granary", "wood_store", "well", "dock" }) do
       if s[k] then s[k] = s.buildings[s[k].id] end
     end
+    do
+      -- the closed border of the water's cost field (A* has no bounds checks, D-086)
+      local N, wc = s.N, s.wcost
+      for k = 1, N do wc[k], wc[(N - 1) * N + k], wc[(k - 1) * N + 1], wc[k * N] = -1, -1, -1, -1 end
+    end
     if not s.riv then
       -- (a save from before rivers on the local map, D-085)
       s.riv = {}

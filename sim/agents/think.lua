@@ -155,7 +155,20 @@ local function add(u, kind, a, b, why)
   ncand = ncand + 1
   local c = CAND[ncand]
   if not c then c = {}; CAND[ncand] = c end
-  c.u, c.kind, c.a, c.b, c.why = u, kind, a, b, why
+  c.u, c.kind, c.a, c.b, c.why, c.lazy = u, kind, a, b, why, nil
+end
+
+-- A candidate whose target is costly to find (a scan of every tree) enters with an upper bound on
+-- its utility and is worked out only if that bound would win (best_cand): exactly the choice the
+-- full evaluation makes, at a fraction of the cost (D-086). fn(c, arg) sets c.u, c.a, c.b, c.why
+-- (c.u = -1e9 when there is no target). The decision's context is in LZ.
+local LZ = {}
+local function add_lazy(bound, kind, fn, arg)
+  ncand = ncand + 1
+  local c = CAND[ncand]
+  if not c then c = {}; CAND[ncand] = c end
+  c.u, c.kind, c.a, c.b, c.why, c.lazy, c.larg = bound, kind, 0, 0, "", fn, arg
+  if M.EAGER then c.lazy = nil; fn(c, arg) end   -- (tests: the full evaluation, for comparison)
 end
 
 local WEATHER_OK = function(ctx, p)
@@ -383,34 +396,15 @@ local function work_candidates(W, s, p, ctx, now)
   if need.fell > 0 or need.clear_trees > 0 then
     local f = fit(p, ctx, "fell")
     if f > 0 and ctx.stage == "adult" then
-      local k, clearing = settle.next_tree(W, s, p)
-      if k > 0 then
-        local d = dist(px, py, tr.x[k], tr.y[k])
-        if clearing then
-          add(0.62 * f * fat - d / ctx.spd * 0.45, "fell", k, 0,
-            string.format(s.expand_why == "spare" and "Clearing ground for a new field (%d %s still standing): hands to spare, and a bigger store against a bad year"
-              or "Clearing ground for a new field (%d %s still standing): the harvest will not feed us a year",
-              need.clear_trees, plural(need.clear_trees, "tree", "trees")))
-        else
-          add((0.35 + 0.5 * need.wood_short) * f * fat - d / ctx.spd * 0.45, "fell", k, 0, need.fell_why)
-        end
-      end
+      -- (the walk to the tree only lowers it)
+      local k0 = (s.clearing and need.clear_trees > 0) and max(0.62, 0.35 + 0.5 * need.wood_short) or (0.35 + 0.5 * need.wood_short)
+      add_lazy(k0 * f * fat, "fell", M.lazy_fell, f * fat)
     end
   end
   if need.clear_stumps > 0 then
     local f = fit(p, ctx, "grub")
     if f > 0 and (ctx.stage == "adult" or ctx.stage == "apprentice") then
-      local best, bd = 0, 1e9
-      for k = 1, tr.n do
-        if tr.st[k] == 3 and tr.claim[k] == 0 and s.plot[tr.tile[k]] == -1 then
-          local d = dist(px, py, tr.x[k], tr.y[k])
-          if d < bd then best, bd = k, d end
-        end
-      end
-      if best > 0 then
-        add(0.55 * f * fat - bd / ctx.spd * 0.45, "grub", best, 0,
-          string.format("Digging out stumps on the new field ground (%d left)", need.clear_stumps))
-      end
+      add_lazy(0.55 * f * fat, "grub", M.lazy_grub, f * fat)
     end
   end
   -- gathering at the woods' edge (berries, nuts, greens): food for the household
@@ -475,6 +469,43 @@ local function work_candidates(W, s, p, ctx, now)
       end
     end
   end
+end
+
+-- The tree to fell (settle.next_tree: a scan of the woods) and its utility (lazy, see add_lazy).
+function M.lazy_fell(c, ff)
+  local W, s, p, ctx = LZ.W, LZ.s, LZ.p, LZ.ctx
+  local need, tr = s.need, s.trees
+  local k, clearing = settle.next_tree(W, s, p)
+  if k == 0 then c.u = -1e9; return end
+  local d = dist(p.x, p.y, tr.x[k], tr.y[k])
+  c.a, c.b = k, 0
+  if clearing then
+    c.u = 0.62 * ff - d / ctx.spd * 0.45
+    c.why = string.format(s.expand_why == "spare" and "Clearing ground for a new field (%d %s still standing): hands to spare, and a bigger store against a bad year"
+      or "Clearing ground for a new field (%d %s still standing): the harvest will not feed us a year",
+      need.clear_trees, plural(need.clear_trees, "tree", "trees"))
+  else
+    c.u = (0.35 + 0.5 * need.wood_short) * ff - d / ctx.spd * 0.45
+    c.why = need.fell_why
+  end
+end
+
+-- The nearest stump on the new field ground (lazy).
+function M.lazy_grub(c, ff)
+  local s, p, ctx = LZ.s, LZ.p, LZ.ctx
+  local tr = s.trees
+  local best, bd = 0, 1e9
+  local px, py = p.x, p.y
+  for k = 1, tr.n do
+    if tr.st[k] == 3 and tr.claim[k] == 0 and s.plot[tr.tile[k]] == -1 then
+      local d = dist(px, py, tr.x[k], tr.y[k])
+      if d < bd then best, bd = k, d end
+    end
+  end
+  if best == 0 then c.u = -1e9; return end
+  c.a, c.b = best, 0
+  c.u = 0.55 * ff - bd / ctx.spd * 0.45
+  c.why = string.format("Digging out stumps on the new field ground (%d left)", s.need.clear_stumps)
 end
 
 -- Fishing (D-084): a free boat at the dock and fish offshore. The ground is chosen on the water
@@ -776,14 +807,21 @@ end
 -- Choose ------------------------------------------------------------------------------------
 
 local function best_cand(p, now)
-  local bi, bu = 0, -1e9
   local failed = p.failed and now - (p.failed_t or 0) < 1 and p.failed
-  for i = 1, ncand do
-    local u = CAND[i].u
-    if failed and CAND[i].kind == failed then u = u - 1 end
-    if u > bu then bi, bu = i, u end
+  while true do
+    local bi, bu = 0, -1e9
+    for i = 1, ncand do
+      local u = CAND[i].u
+      if failed and CAND[i].kind == failed then u = u - 1 end
+      if u > bu then bi, bu = i, u end
+    end
+    local c = CAND[bi]
+    -- a lazy candidate on top is worked out, and the choice made again (add_lazy)
+    if not c or not c.lazy then return c end
+    local fn = c.lazy
+    c.lazy = nil
+    fn(c, c.larg)
   end
-  return CAND[bi]
 end
 
 -- Fill p.plan for objective `kind`; returns objective label and destination.
@@ -1127,6 +1165,7 @@ PLAN.grub = function(W, s, p, ctx, now, cd)
   local tr = s.trees
   local k = cd.a
   tr.claim[k] = p.id
+  s.tv = (s.tv or 0) + 1
   go(pl, tr.x[k] + 0.02, tr.y[k], "the new field ground")
   work(pl, "grub", c.grub_h * (0.8 + 0.5 * u01(W, p, now, 30)) * (p.strong and 0.85 or 1), { ref = k, fx = tr.x[k], fy = tr.y[k] })
   return "Dig out a stump", "the new field ground"
@@ -1203,6 +1242,7 @@ PLAN.fell = function(W, s, p, ctx, now, cd)
   local tr = s.trees
   local k = cd.a
   tr.claim[k] = p.id
+  s.tv = (s.tv or 0) + 1
   -- stand beside the trunk on the side they come from
   local dx, dy = p.x - tr.x[k], p.y - tr.y[k]
   local l = sqrt(dx * dx + dy * dy)
@@ -1220,6 +1260,7 @@ PLAN.haul_logs = function(W, s, p, ctx, now, cd)
   local tr = s.trees
   local k = cd.a
   tr.claim[k] = -p.id
+  s.tv = (s.tv or 0) + 1
   go(pl, tr.x[k] + 0.015, tr.y[k], "the felled tree")
   pl[#pl + 1] = { op = "pick", what = "logs", from = "tree", ref = k }
   -- straight to a site that is short of logs, else the woodstore
@@ -1357,7 +1398,7 @@ function M.release(W, s, p)
           local plot = s.plots[st.ref]
           if plot then plot.tend_claim = max(0, (plot.tend_claim or 1) - 1) end
         elseif st.kind == "chop" or st.kind == "grub" then
-          if s.trees.claim[st.ref] == p.id then s.trees.claim[st.ref] = 0 end
+          if s.trees.claim[st.ref] == p.id then s.trees.claim[st.ref] = 0; s.tv = (s.tv or 0) + 1 end
         elseif st.kind == "build" then
           local b = s.buildings[st.ref]
           if b then b.builders = max(0, (b.builders or 1) - 1) end
@@ -1382,7 +1423,7 @@ function M.release(W, s, p)
           local plot = s.plots[st.ref]
           if plot then plot.haul_claim = max(0, (plot.haul_claim or 1) - 1) end
         elseif st.from == "tree" then
-          if s.trees.claim[st.ref] == -p.id then s.trees.claim[st.ref] = 0 end
+          if s.trees.claim[st.ref] == -p.id then s.trees.claim[st.ref] = 0; s.tv = (s.tv or 0) + 1 end
         end
       elseif st.op == "drop" then
         if st.to == "site" then
@@ -1407,6 +1448,7 @@ function M.decide(W, s, p, now, reason)
   local ctx = context(W, s, p, now)
   if ctx.stage == "infant" then return think_infant(W, s, p, now) end
   ncand = 0
+  LZ.W, LZ.s, LZ.p, LZ.ctx = W, s, p, ctx
   if p.boat and s.dock then
     -- afloat: back to the dock first, whatever else is wanted
     local obj, dest = PLAN.return_boat(W, s, p, ctx, now, nil)
@@ -1446,7 +1488,14 @@ function M.decide(W, s, p, now, reason)
           ctx.babe = nil
           work_candidates(W, s, p, ctx, now)
           local bu, bk = -1e9, nil
-          for i = n0 + 1, ncand do if CAND[i].u > bu then bu, bk = CAND[i].u, CAND[i] end end
+          while true do
+            bu, bk = -1e9, nil
+            for i = n0 + 1, ncand do if CAND[i].u > bu then bu, bk = CAND[i].u, CAND[i] end end
+            if not bk or not bk.lazy then break end
+            local fn = bk.lazy
+            bk.lazy = nil
+            fn(bk, bk.larg)
+          end
           ncand = n0
           ctx.babe = ib
           if bk then
@@ -1473,7 +1522,7 @@ function M.decide(W, s, p, now, reason)
     if M.trace and M.trace[p.id] then
       -- (tools: every candidate this decision weighed)
       local t = {}
-      for i = 1, ncand do t[i] = string.format("%s %.2f", CAND[i].kind, CAND[i].u) end
+      for i = 1, ncand do t[i] = string.format("%s %.2f%s", CAND[i].kind, CAND[i].u, CAND[i].lazy and "~" or "") end
       M.trace_out = M.trace_out or {}
       M.trace_out[#M.trace_out + 1] = string.format("#%d %s e%.2f h%.2f: %s", p.id, clock_str(ctx.lh), p.energy, p.hunger, table.concat(t, ", "))
     end

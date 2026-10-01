@@ -246,7 +246,7 @@ WORK.chop = function(W, s, p, st, f)
     -- partial: the cut so far stays in the tree
     tr.prog = tr.prog or {}
     tr.prog[k] = (tr.prog[k] or 0) + f
-    if tr.prog[k] < 1 then tr.claim[k] = 0; people.practice(p, "sk_wood", st.dur * f); return end
+    if tr.prog[k] < 1 then tr.claim[k] = 0; s.tv = (s.tv or 0) + 1; people.practice(p, "sk_wood", st.dur * f); return end
   end
   if tr.st[k] == 1 then
     tr.st[k] = 2
@@ -268,6 +268,7 @@ WORK.chop = function(W, s, p, st, f)
     end
   end
   tr.claim[k] = 0
+  s.tv = (s.tv or 0) + 1
   people.practice(p, "sk_wood", st.dur * f)
 end
 
@@ -399,6 +400,7 @@ WORK.grub = function(W, s, p, st, f)
   local tr = s.trees
   local k = st.ref
   if tr.claim[k] == p.id then tr.claim[k] = 0 end
+  s.tv = (s.tv or 0) + 1
   if f >= 0.6 and tr.st[k] == 3 then
     tr.st[k] = 0
     tr.size[k] = 0
@@ -530,6 +532,7 @@ PICK.logs = function(W, s, p, st)
     local tr = s.trees
     local k = st.ref
     if tr.claim[k] == -p.id then tr.claim[k] = 0 end
+    s.tv = (s.tv or 0) + 1
     local got = min(want, tr.logs[k])
     if got > 0 then
       tr.logs[k] = tr.logs[k] - got
