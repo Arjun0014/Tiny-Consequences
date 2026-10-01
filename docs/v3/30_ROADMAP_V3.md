@@ -67,6 +67,10 @@ bridges built where crossings are wanted, river water and angling; fishing crews
 racks, squalls. Open: dogs, horses and oxen, foxes and bears, small game, animated deer and
 wolves, hides used.)
 
+(Session 13, D-104, D-105, D-108: hides to leather to shoes; animated wolves and dogs (dogs with the
+herds and at the pens, wolves at a pen met by barking dogs and woken people); oxen at the plough.
+Open: small game, bears and foxes, dogs breeding, a plough model.)
+
 ## R4 — Exchange and travel
 - Paths between settlements, porters and traders walking with loads; trade boats; relations from
   v2 (D-055, D-062, D-066) re-expressed between settlements of agents; gifts, relief, feasts.
@@ -74,6 +78,12 @@ wolves, hides used.)
 reachable village with grain to spare and little fish, sells into its granary, walks home with
 grain; gates, a timed road leg drawn on the planet, provisions, guest meals, both ledgers. Open:
 more goods (wool, cloth, logs, livestock), sea trade by boat, prices remembered, relations.)
+
+(Session 13, D-100-D-103, D-106, D-107: sowing to need; the balanced pot; worth, news that fades,
+exchanges both sides gain from with the return good by the trader's own want, gifts in the village,
+relations and debts; sea trade by boat, one complete loop; relief asked of a trusted neighbour;
+floods sweeping bridges; river water and the flux. Open: livestock traded alive, help by sea,
+relations shaping marriage and migration, larger trading boats.)
 
 ## R5 — Migration and founding
 - Households leave by land or boat when push factors (hunger, no home, crowding) beat staying;

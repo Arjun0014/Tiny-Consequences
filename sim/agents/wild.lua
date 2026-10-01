@@ -364,6 +364,10 @@ function M.hourly(W, s, now)
   local A = W.S.wild
   local Wd = s.wildlife
   if not A or not Wd then return end
+  -- (wolves on the map this hour, for the dogs: D-105)
+  local nw = 0
+  for _, w in ipairs(Wd.animals) do if w.alive and w.pred then nw = nw + 1 end end
+  s.wolves_n = nw
   local c = C()
   local lh = clock.local_hour(now, W.grid.lon[s.cell])
   local ss = s.sunset or 18
@@ -605,6 +609,12 @@ function M.step(W, s, w, now)
     return
   end
   if w.pred then
+    -- (a dog within hearing of a wolf wakes and barks: D-105)
+    for _, dg in ipairs(s.dogs or {}) do
+      if dg.alive and dg.act ~= "run" and dg.act ~= "bark" and (dg.tx - w.tx) ^ 2 + (dg.ty - w.ty) ^ 2 < c.dog_alert ^ 2 then
+        M.dogs.interrupt(W, s, dg, now)
+      end
+    end
     -- wolves: hunt the night, eat, leave before dawn
     local lead = w.lead ~= 0 and byk(s, w.lead) or nil
     if lead and not lead.alive then lead = nil end
@@ -657,12 +667,6 @@ function M.step(W, s, w, now)
           if g and g.alive and g.objk == "guard" and g.act == "sleep" and (g.x - w.tx) ^ 2 + (g.y - w.ty) ^ 2 < c.guard_alert ^ 2 then
             s.alarm = { t = now, x = g.x, y = g.y, hh = g.hh }
             if M.interrupt_hook then M.interrupt_hook(W, g, now + 0.02, "Wolves at the pen") end
-          end
-        end
-        -- (the dogs of the pen hear the pack coming)
-        for _, dg in ipairs(s.dogs or {}) do
-          if dg.alive and dg.act ~= "run" and dg.act ~= "bark" and (dg.tx - w.tx) ^ 2 + (dg.ty - w.ty) ^ 2 < c.dog_alert ^ 2 then
-            M.dogs.interrupt(W, s, dg, now)
           end
         end
       end

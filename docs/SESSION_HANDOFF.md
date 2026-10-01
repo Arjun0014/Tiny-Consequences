@@ -1,113 +1,114 @@
-# Session handoff — session 12 end (2 Oct 2026): animals alive, rivers in use, the first trade
+# Session handoff — session 13 end (2 Oct 2026): a real economy, sea trade, dogs, oxen, floods
 
-`docs/PROGRESS.md` (session 12 entry) and **D-091 … D-099** in `docs/DECISIONS.md` are the source
+`docs/PROGRESS.md` (session 13 entry) and **D-100 … D-109** in `docs/DECISIONS.md` are the source
 of truth. Arjun's rules: no subagents; the living world first; one heavy process at a time (shared
-laptop, ~2.3 GB free); visible action = simulation; fix mechanisms, not appearances; hand off near
+laptop); visible action = simulation; fix mechanisms, not appearances; no forced trade; hand off near
 ~900K context.
 
 ## State
-- **main** holds everything. A normal launch opens the v3 world (`assets/worlds/v3.tcsave`: seed
-  22, 6 settlements, 145 people, ~330 livestock, ~140 wild animals on the maps; Tekheim in the
-  north alone on its landmass; Zurug, Moomoo, Hottoodingle Hop on one southern landmass, Hunuvale
-  and Upper Linamist on another). `?world=v2` legacy; `?seed=N` generates a v3 world.
-- Regenerate after any change to founding/worldgen:
-  `luajit tools/make_world.lua --v3 --seed 22 --settlements 6 --out assets/worlds/v3.tcsave`
-  (state hash 3676537373 at the last commit).
+- **main** holds everything. A normal launch opens the v3 world (`assets/worlds/v3.tcsave`, **regenerated
+  this session** for founding oxen: `luajit tools/make_world.lua --v3 --seed 22 --settlements 6 --out
+  assets/worlds/v3.tcsave`, state hash 1202821907): seed 22, 6 settlements, 145 people. Tekheim alone in
+  the north (its water does not reach the southern sea); Zurug, Moomoo, Hottoodingle Hop (no dock) on
+  one southern landmass; Hunuvale and Upper Linamist on another. `?world=v2` legacy.
 
-## What became agentic this session
-- **Herds** (D-092, `sim/agents/stock.lua`): sheep and goats in the fold, cattle in the byre yard,
-  pigs in the sty; every animal its own micro-agent (graze/root/browse, rest, walk, the young at
-  their mothers, its place in a daily-reshuffled sunflower spread round the herder, the pen at
-  night). Children (then apprentices, elders, adults) drive each herd out and home; dams are milked
-  where they stand (held while milked), milk goes home, cheese from the surplus; shearing; hay mown
-  and racked; dung carried from the pens to fields waiting for the plough (fertility); scraps and
-  whey to the pigs; hungry pigs nobody takes out root about the village's edge themselves; sickness
-  spreads in pens; culls by the hay in autumn, pigs at the start of winter.
-- **Animated farm animals**: `tools/blender/build_animals.py` (+ `preview_animals.py`,
-  `tools/gen_animals.py`): Quaternius rigs with `graze` and `lie` clips derived here, colours in UV,
-  instanced, 3 LODs, 10 variants (shorn sheep, goats made from the sheep).
-- **Wild animals** (D-093, `sim/agents/wild.lua`): the W4 herds' and packs' members on each map
-  as individuals (count = the group's time on the map's cells), walking in and out at the border;
-  bands flee people and wolves; wolves hunt by night (one ground a pack a night), kill a real animal
-  (wild kills banked into the macro predation; beasts only when the pack is hungry and wild prey is
-  scarce), eat, leave before dawn; after a loss the village keeps a night watch at the pens.
-- **Hunting** (D-094): a household short of meat sends a hunter after one animal: tracked, stalked,
-  a spear thrown (by skill); the quarry may bolt; carried home whole (meat and a hide).
-- **Rivers** (D-095): crossings measured as walked; bridges laid out and built where the need is
-  (spaced, straight across); water from the river when far nearer than the well; angling.
-- **Fishing** (D-096): the net wants two (a mate rides in the skipper's boat), squalls, drying
-  racks by the shore, boats drawn keel to hull.
-- **Trade** (D-097, `sim/agents/trade.lua`): a fishing household's porter carries smoked fish and
-  provisions to a reachable village with grain to spare and little fish: the map's gate, a road
-  leg drawn on the planet, the buyer's granary, a guest meal, grain home. `p.at` = the map a person
-  is on (steps run there; drawn there; `s.visitors`). D-098 made it a table of goods (smoked fish;
-  raw wool, idle in the shipped world because all wool is spun at home); fish bought into a granary
-  goes out to its households with their grain.
-- **Animated deer** (D-099): deer, stags, reindeer and antelope built from the Horse rig (slim,
-  scut, antlers); wild bands enter at the border nearest their ground and keep out of villages.
+## What became real this session
+- **Sowing to need** (D-100, `settle.plan_sowing`): the grain the households fetch to eat is measured
+  and decides the rows sown (a year and a half of bread less store and standing crop; best soil first;
+  the rest of the fields lie idle and their owners know why). Grain stores no longer rise year on year.
+- **The balanced pot and diet** (D-101): perishables, then a relish share (`diet_p` 0.35) of smoked
+  fish/cheese, bread for the rest; a household's diet; bread-only or relish-only for weeks weakens.
+  Households fetch bread even with fish at home.
+- **Worth, news and exchange** (D-101, `sim/agents/econ.lua`): worth = base x clamp(1.6 - have/want);
+  food and logs are the village's, wool, cloth, hides, leather a household's; villages know each
+  other only from people who travelled (`s.know`, fading over 48 days); each morning the best exchange
+  (`econ.best_trade`: the good to bring back is the one the trader's side wants most against what the
+  other lets go for; geometric-middle price; worth the trip's days); on arrival the deals are worked
+  out from what is there (`econ.deals`), goods carried in a pack door to door (`WORK.deal`,
+  `PICK.owed`). Relations `s.rel[o]` (trust, deals, gifts, debts). Gifts within a village
+  (`econ.plan_gift`, `share`). Fishing answers what fish is worth (`s.fish_worth`).
+- **Sea trade** (D-102): sea ways over ocean cells (`trade.sea_route`), sea gates at the map's edge,
+  a fisher skipper and a mate, cargo carried to the boat a load at a time, a `voyage` step drawn on
+  the planet, landing at the other dock (`boat.away`), deals while the mate minds the boat, home,
+  the hold carried home; storms keep boats in; a wreck drowns both and loses the cargo.
+- **Relief** (D-103): a hungry village with nothing to sell asks the neighbour it trusts most; help
+  given by trust and debt, carried home to the granary, remembered both ways.
+- **Leather** (D-104): hides from every slaughter and hunt, tanning pits by water (10 days), leather,
+  shoes that wear (barefoot is slower and cold), hides and leather traded and shared.
+- **Wolves and dogs** (D-105): dogs and wolves built from the Pug rig (`build_animals.py --only dog`:
+  scale applied with the clips; snout, tail); a dog per herding household (with the herd by day, at
+  the pen by night, `sim/agents/dogs.lua`); a wolf near a pen sets the dog barking, the household
+  wakes and drives the pack off; the night watch is a sleeper the wolves can wake, not a bar.
+- **Floods** (D-106): the river against its running-mean width; floods wear and sweep bridges away;
+  the ways change at once; rebuilt after the water falls.
+- **River water** (D-107): dirt from houses and pens by the banks; the flux from foul water; a
+  household that fell sick keeps to the well (dormant in the shipped world: wells are near).
+- **Oxen** (D-108): gelded bullocks (founders bring one with its harness), yoked and walking ahead
+  of the ploughman, rows 2.5x faster, leather harness.
+- **Children** (D-109): by age band 2-5 play 70%; 6-8 play 55%, light work 11%; 9-12 play 28%, work 48%.
+
+## Observed (shipped world, before the regeneration, two game years; see PROGRESS)
+- 31-53 exchanges, all walked or sailed: Moomoo <-> Upper Linamist by sea (fish, grain, logs, cloth,
+  both ways as their stocks swing), Hottoodingle Hop <-> Zurug by road (wool, cloth, leather, hides
+  for fish and cheese); 12-63 gifts a village; no deaths from hunger; diets 0.37-0.48 relish.
+- Wolves: 1-54 barks a village a year, 1-4 packs driven off, 0-3 dogs killed, 0-5 beasts lost.
+- Oxen (regenerated world, one year): 134 ox-hours at Tekheim, 40-43 at Zurug and Hottoodingle Hop.
 
 ## Performance (release HTML5)
-- **A 12-day season ≈ 9.2-9.7 s** (envelope 31.9, best single run 33.8 ms of sim per game hour) for 150 people, ~430 livestock, ~140
-  wild animals: `node scripts/prof_web.mjs --release --hours 288 --runs 2` (the lower envelope of
-  runs; this laptop's load swings single runs 2-3x — never trust one run). Before the animals:
-  6.0 s (20.9 ms/h).
-- By function (`--time sim.agents.think:decide,sim.agents.nav:path,sim.agents.stock:step,...`):
-  decide ~8 ms/h, A* paths ~6, act.start ~6, stock.step ~4, wild.step ~4, wild.daily ~1.
-- HTML5 Lua prices (`node scripts/microbench_web.mjs --release`): VM step 13 ns, table read ~21,
-  C call ~40, Lua call ~70, string.format ~925, rng.fbase ~855, rng.hash ~4,900.
-- Identity of refactors: `luajit tools/v3_hash.lua --days 8` before and after.
+- After D-101/D-102: **a 12-day season 8.9 s** (envelope 31.1 ms/h) with
+  `node scripts/prof_web.mjs --release --hours 288 --runs 2`.
+- **At the end: 10.4-13.1 s** (envelope 36.0-45.6 ms/h; this laptop was loaded, single runs 39-56
+  ms/h). The 6-hour windows after the first day are as before (25-41 ms/h, i.e. ~9-10 s a season);
+  the first game day costs 90-200 ms/h: the start-up of gifts, trades and knowledge with their new
+  paths (every household plans a gift on the first morning; first trips; dogs created). Timers (96 h,
+  timers on): think.decide ~21-35 ms/h (172-279 us a call, up from 55: the new candidates), nav.path
+  18-30 (210-315 us a call), act.start 19, wild.step 9, stock.step 8, settle.daily 3 (12 ms a call),
+  dogs.step 7.5 -> 1.2 after the cut (wolves counted hourly, dogs woken by the wolves, longer steps).
+- **Session 14, first**: bring the season back under 10 s - profile decide's candidates (leather,
+  share, trade, children's gathering, eat-before-sleep) and the first-day start-up (spread the first
+  morning's gifts and trades; cache `econ.village_stock` within a decision; cheaper `M.market`).
 
-## How to look at it
-- Year watch: `luajit tools/v3_year.lua --load assets/worlds/v3.tcsave --days 36 --sett K
-  [--ids 12,21 --follow-days 3,15] --out out/year` → summary.txt (food ledger every day; herds line;
-  budgets by stage and season), follow.txt.
-- Shots: `node scripts/shots_look.mjs --sett K --days D --hour H --zoom Z --what centre|dock|ford|
-  flock|herd|wild|wolves|bridge [--herd cattle|swine] [--pid N]` (it now rebakes the settlement's
-  parts before the shot — earlier shots could show stale fields and buildings).
-- Profiling and benches: above. Maps: `luajit tools/v3_map.lua`.
-
-## Verified at the last commit
-- Quick sim suite **126/126** (v2 109 + v3 17), web **10/10**, lint clean, debug build 7.4 MB.
-- Two game years headless (96 days): people 145-153, livestock 330-480, wild 141-144, food
-  stores rising, 7 trade round trips, 2 bridges; the food ledger closes to 0.0 FU every day in the
-  watched villages (including both ends of a trade).
+## Tools added
+- `luajit tools/v3_econ.lua [--load F] [--days 96] [--every 12] [--out out/econ] [--sett K]`: every
+  settlement's stocks (grain, food, relish, cheese, wool, fibre, yarn, cloth, clothes, hides,
+  leather, logs, herds, granary extras), grain use/target/rows wanted, diet; the trades as they end;
+  deaths with causes; the whole run's accounts (deals, gifts, sea hours, wrecks, barks, ox hours ...).
+- `luajit tools/v3_kids.lua`: children's days by age band.
+- Scenario scripts (not in the repo) were used to force a failed harvest, a starving village, a
+  flood and a far well; the tests `trade_answers_real_want` and `hungry_village_asks_for_help` keep
+  the first two.
 
 ## Next (in order)
-1. **R4 generalised**: more goods (wool, cloth, logs, livestock) by the same rule (surplus at A,
-   shortage and value at B, a road); the return good chosen by the seller's own shortage; **sea
-   trade** by boat between coastal villages (the two landmasses: boats carrying cargo, crews);
-   prices remembered; standing relations (v2 D-055/D-062 re-expressed).
-2. **Animals**: animated wolves (the Pug rig via build_animals.py: its armature is scaled 0.395 —
-   apply it first; lengthen the muzzle), dogs (herding, guarding), oxen at the plough, hides used
-   (leather), wolves driven off by people at the fold, small game.
-3. **Rivers and water**: bridges swept away by big floods, river water making people ill, boats on
-   rivers.
-4. Watch more: children under nine still play most of the day (historically plausible but worth a
-   look), grain stores rising year on year (the planner may sow more than it needs).
+0. **Performance**: the season is 10.4-13.1 s (target <= 10 s); see Performance above.
+1. **Watch the new world** in the browser: sea voyages (Moomoo-Upper Linamist), visiting boats at a
+   dock, oxen ploughing, dogs with flocks, wolves met at a pen (shots_look `--what dock|flock|wolves`).
+2. **R4 left**: livestock traded alive (a drover leading beasts; culls offered to neighbours short of
+   animals); help sought by sea; relations shaping marriages and migration; larger trading boats.
+3. **R5 begin**: household migration/founding from real push and pull (land, hunger, crowding,
+   relatives or trade partners elsewhere), travelling physically, founding through agents.
+4. Rivers: repairs of damaged bridges, river boats if a reason appears.
+5. Keep the season <= 10 s; candidates if it grows: dogs' and wild steps off-screen, cached deal
+   computations.
 
-## Findings and pitfalls (session 12)
-- **Measure the browser as a lower envelope of several runs**; a hook sampler with short stretches
-  misattributes (use wrapped timers, `--time`).
-- `#s.buildings` is not the next id: building ids are world-wide (`V.next_building`).
-- `cond and f() or g()` keeps one return value — never for positions.
-- A long action's hunger is charged at once at its end: long actions need their own body rule
-  (road legs: provisions, resting rate).
-- After a step that changes the map a person is on, re-resolve the settlement (`p.at`).
-- Interrupting a person re-plans them; to end one step and go on with the plan use
-  `init.skip_step` (injected into act.lua; bob forbids circular requires, even inside functions:
-  inject functions like `stock.person_pos`, `wild.push`, `act.people`).
-- `s.wild` is the woods' forage (a number); the wild animals are `s.wildlife`.
-- Runtime caches that change behaviour must be rebuilt from saved state identically after a load
-  (the wild animals' index by number, the flight check reads people's stored positions, not an
-  hourly cache).
-- Heredocs with apostrophes break in Bash here: write patch scripts with the Write tool; never
-  `cat > file` without input (it blocks).
+## Findings and pitfalls (session 13)
+- **Trade without want is fake**: test trade by creating the want (a failed harvest, a starving
+  village), never by expecting trips in the shipped world.
+- **Long steps starve people** unless hunger is integrated hour by hour (road legs, voyages, minding a
+  boat) — and a trip whose last drop has empty hands must still end (`act.end_trip`).
+- A daytime "exhausted" sleep used to last until the next morning: now `nap_h`.
+- `pairs()` over goods: sum with `econ.ORDER` (float order differs between LuaJIT and the HTML5 Lua).
+- bob rejects require cycles (econ -> trade -> wild -> stock -> settle): inject (`settle.econ`,
+  `dogs.wild`, `wild.dogs`, `act.drown_hook`, `act.stock_push`, `dogs.interrupt_hook`).
+- `addw` takes at most seven format arguments.
+- Blender 5 actions are layered (layers/strips/channel bags); `transform_apply` fails headless: use
+  `Armature.transform` and scale the location keys.
+- A decision that runs once a day must also run when the window opens (sowing: at each local midnight
+  and after the day's field changes), and undecided fields must default to "wait".
+- Heredocs with apostrophes break here: write patch scripts and doc fragments with the Write tool.
 
 ## Known oddities
-- Children under nine play ~55-70% of their waking day; nine-year-olds herd only when an older
-  herder has not already taken the herd out.
-- Wild animals cap at 24 a map; wolves and big cats are still the rigid procedural movers; deer
-  bands often graze at wooded edges where the canopy hides them from the camera.
-- Trade is only smoked fish for grain, and only seven round trips in two years in the shipped world.
-- Two adjacent bridge sites can still appear if two crossings far apart both pass the need on one
-  day (spacing is checked against existing bridges only).
+- Tekheim's sea does not reach the others: it trades with nobody (alone on its landmass).
+- Wells are near every house in the shipped world, so nobody drinks river water (the flux is dormant).
+- Moomoo's bridges stand on a stream that does not flood; floods elsewhere meet no bridges.
+- Dogs and wolves come from the pug: short legs (the legs were not lengthened).
+- The ploughman holds a hoe (no plough model).

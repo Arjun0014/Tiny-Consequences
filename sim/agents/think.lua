@@ -705,6 +705,7 @@ local function trade_candidate(W, s, p, ctx, now, fat)
   end
 end
 M.trade_candidate = trade_candidate
+M.share_candidate = function(...) return share_candidate(...) end
 
 -- Sharing (D-101): plenty taken to a household of the village that has little (econ.plan_gift).
 local function share_candidate(W, s, p, ctx, now, fat)

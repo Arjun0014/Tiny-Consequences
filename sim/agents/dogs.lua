@@ -84,7 +84,13 @@ function M.daily(W, s, day, push)
   if not s.herds then return end
   s.dogs = s.dogs or {}
   local have = {}
-  for _, d in ipairs(s.dogs) do if d.alive then have[d.hh] = true end end
+  for _, d in ipairs(s.dogs) do
+    if d.alive then
+      have[d.hh] = true
+      local H = herd_of(W, s, d.hh)
+      d.hk = H and H.kind or nil
+    end
+  end
   for _, hid in ipairs(s.households) do
     local hh = V.households[hid]
     if hh and #hh.members > 0 and hh.home ~= 0 and not have[hid] and herd_of(W, s, hid)
@@ -93,8 +99,9 @@ function M.daily(W, s, day, push)
       if home then
         local k = #s.dogs + 1
         local now = day * 24
+        local Hh = herd_of(W, s, hid)
         local d = { k = k, hh = hid, born = now, x = home.dx, y = home.dy, tx = home.dx, ty = home.dy, t0 = now, t1 = now + 0.1,
-          act = "sit", alive = true, ver = 0 }
+          act = "sit", alive = true, ver = 0, hk = Hh and Hh.kind or nil }
         s.dogs[k] = d
         if push then push(W, d.t1, M.event_id(s, d), d.ver) end
       end
@@ -144,10 +151,11 @@ function M.step(W, s, d, now)
   local home = s.buildings[hh.home or 0]
   local lh = require("sim.agents.clock").local_hour(now, W.grid.lon[s.cell])
   local night = lh < (s.sunrise or 6) - 0.5 or lh > (s.sunset or 18) + 0.5
-  local H = herd_of(W, s, d.hh)
+  local H = d.hk and s.herds[d.hk] or nil
   -- wolves: noticed by ear and nose and barked at; the dog holds its post (the pen by night, the
   -- herd by day) and runs only at a wolf that comes close to it; it fights at most once a night
-  local w = wolf_near(s, d.tx, d.ty, c.dog_alert, now)
+  local w = ((s.wolves_n or 0) > 0 or d.woken) and wolf_near(s, d.tx, d.ty, c.dog_alert, now) or nil
+  d.woken = nil
   if w then
     local wx, wy = M.wild.pos(w, now)
     local dd = sqrt((wx - d.tx) ^ 2 + (wy - d.ty) ^ 2)
@@ -180,18 +188,16 @@ function M.step(W, s, d, now)
   -- with the herd and its herder by day: round the edge of the flock
   local herder = H and stock.herder(W, s, H)
   if H and H.out and herder and not night then
-    local hx, hy = stock.person_pos(herder, now)
-    local n = 0
-    local mx, my = 0, 0
-    for _, a in ipairs(H.animals) do
-      if a.alive then mx, my, n = mx + a.tx, my + a.ty, n + 1 end
-    end
-    if n > 0 then mx, my = mx / n, my / n else mx, my = hx, hy end
-    local r = 0.05 + 0.012 * sqrt(n)
+    -- (round the flock, which spreads round its herder)
+    local mx, my = stock.person_pos(herder, now)
+    local r = 0.06 + 0.012 * sqrt(#H.animals)
     local ang = now * 1.7 + d.k * 2.1 + u(W, s, d, now, 2) * 0.6
     local gx, gy = mx + r * cos(ang), my + r * sin(ang)
-    if go_to(s, d, now, gx, gy, c.dog_trot, "walk") then return end
-    stand(d, now, "sit", 0.2)
+    if go_to(s, d, now, gx, gy, c.dog_trot, "walk") then
+      if d.t1 - now < 0.25 then d.t1 = now + 0.25 end
+      return
+    end
+    stand(d, now, "sit", 0.4)
     return
   end
   -- by night at the pen of the household's beasts; else by the house
@@ -207,11 +213,13 @@ function M.step(W, s, d, now)
       if go_to(s, d, now, bx, by, c.dog_trot, "walk") then return end
     end
   end
-  stand(d, now, night and "lie" or (u(W, s, d, now, 3) < 0.5 and "lie" or "sit"), night and 0.5 or 0.6 + 0.6 * u(W, s, d, now, 4))
+  -- (by night a dog at the pen wakes at once to wolves: wild.lua interrupts it)
+  stand(d, now, night and "lie" or (u(W, s, d, now, 3) < 0.5 and "lie" or "sit"), night and 1.5 or 0.8 + 0.8 * u(W, s, d, now, 4))
 end
 
 -- Interrupting a dog (a wolf came near): its next step now.
 function M.interrupt(W, s, d, now)
+  d.woken = true
   d.x, d.y = M.pos(d, now)
   d.tx, d.ty = d.x, d.y
   d.t0, d.t1 = now, now + 0.01

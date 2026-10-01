@@ -25,7 +25,9 @@ function for the view and the sim; fishing, textiles and sheep are live systems.
 (D-091-D-097): `sim/agents/stock.lua` (herds of sheep, goats, cattle, pigs), `wild.lua` (the W4
 herds and packs as individuals on the maps; wolves, hunting), `trade.lua` (trade walked between
 settlements; `p.at` is the map a person is on); measure the browser with `scripts/prof_web.mjs`
-(the lower envelope of several release runs).
+(the lower envelope of several release runs). Session 13 (D-100-D-109): `sim/agents/econ.lua` (worth,
+news, exchanges, gifts, relief), `dogs.lua`, sea trade in `trade.lua`/`think.lua` (`sea_legs`);
+watch the economy with `tools/v3_econ.lua`; trade is tested by creating real want, never expected.
 
 ## Read order
 
