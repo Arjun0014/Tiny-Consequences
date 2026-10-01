@@ -17,6 +17,7 @@ local settle = require("sim.agents.settle")
 local life = require("sim.agents.life")
 local kin = require("sim.agents.kin")
 local rng = require("sim.rng")
+local clock = require("sim.agents.clock")
 
 local sys = { name = "agents" }
 -- (act.lua cannot require this module: bob rejects circular requires; it calls through this hook)
@@ -203,9 +204,16 @@ function sys.hour(W)
   for i = 1, #V.settlements do
     local s = V.settlements[i]
     if s.alive then
-      if now % 24 == 0 then
-        life.daily(W, s, day)
-        settle.daily(W, s, day)
+      -- the daily round at the settlement's own local midnight (settlements round the planet do
+      -- theirs at different hours; the planet's step is at UTC midnight)
+      local lh0 = clock.local_hour(now, W.grid.lon[s.cell])
+      if lh0 < 1 then
+        local ld = floor((now - lh0 + 12) / 24)
+        if s.day_done ~= ld then
+          s.day_done = ld
+          life.daily(W, s, ld)
+          settle.daily(W, s, ld)
+        end
       end
       local changed, r = settle.hourly(W, s, now)
       if changed then rain_change(W, s, now, r) end
@@ -221,7 +229,7 @@ function sys.init(W)
   if not V then return end
   for i = 1, #V.settlements do
     local s = V.settlements[i]
-    for _, k in ipairs({ "granary", "wood_store", "well" }) do
+    for _, k in ipairs({ "granary", "wood_store", "well", "dock" }) do
       if s[k] then s[k] = s.buildings[s[k].id] end
     end
   end

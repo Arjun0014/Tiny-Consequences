@@ -100,6 +100,10 @@ function M.build(W, s)
     occ[i], plot[i], tree[i], wear[i], lane[i], cost[i] = 0, 0, 0, 0, 0, C.cost_open
   end
   s.land, s.cell_of, s.occ, s.plot, s.tree, s.wear, s.lane, s.cost = land, cell, occ, plot, tree, wear, lane, cost
+  -- the water's own cost field (boats, D-084): water 1, land closed
+  local wcost = {}
+  for i = 1, NN do wcost[i] = land[i] == 0 and 1 or -1 end
+  s.wcost = wcost
   s.trees = { x = {}, y = {}, size = {}, st = {}, logs = {}, claim = {}, t_cut = {}, tile = {}, n = 0 }
   s.ver = 1
 end

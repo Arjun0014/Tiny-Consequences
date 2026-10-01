@@ -101,7 +101,7 @@ local function food_total(s)
   for k = 1, #s.members do
     local p = V.people[s.members[k]]
     if p and p.alive then
-      if p.carry == "seed" or p.carry == "grain" or p.carry == "food" or p.carry == "sheaves" then tot = tot + p.camt end
+      if p.carry == "seed" or p.carry == "grain" or p.carry == "food" or p.carry == "sheaves" or p.carry == "fish" then tot = tot + p.camt end
       if p.lunch then tot = tot + C.meal_fu end
     end
   end
@@ -180,14 +180,14 @@ for d = 1, args.days do
   local f = food_total(s)
   local sown = sown_rows(s)
   local dh = (s.acc.harvest or 0) - acc_prev.h
-  local df = (s.acc.foraged or 0) - acc_prev.f
+  local df = (s.acc.foraged or 0) + (s.acc.fished or 0) - acc_prev.f
   local de = (s.acc.eaten or 0) - acc_prev.e
   local dseed = (s.acc.seed or 0) - acc_prev.seed
   local dl = (s.acc.lunch or 0) - acc_prev.lunch
   local dsp = (s.acc.spoiled or 0) - acc_prev.spoil
   local expect = food_prev + dh + df - de - dseed - dl - dsp
   local resid = f - expect
-  acc_prev.h, acc_prev.f, acc_prev.e = s.acc.harvest or 0, s.acc.foraged or 0, s.acc.eaten or 0
+  acc_prev.h, acc_prev.f, acc_prev.e = s.acc.harvest or 0, (s.acc.foraged or 0) + (s.acc.fished or 0), s.acc.eaten or 0
   acc_prev.seed, acc_prev.lunch, acc_prev.spoil = s.acc.seed or 0, s.acc.lunch or 0, s.acc.spoiled or 0
   sown_prev, food_prev = sown, f
   local ripe, growing, sheaves = 0, 0, 0

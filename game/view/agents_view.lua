@@ -123,7 +123,9 @@ M.height = height
 -- Planet point of local (x, y) at height offset dh.
 local function world_pos(V, x, y, dh)
   local ux, uy, uz = mapm.unit(V.s, x, y)
-  local r = height(V, x, y) + (dh or 0)
+  local r = height(V, x, y)
+  if V.R and r < V.R then r = V.R end    -- on the water: the sea's surface (boats, D-084)
+  r = r + (dh or 0)
   return ux * r, uy * r, uz * r, ux, uy, uz
 end
 M.world_pos = world_pos
@@ -315,6 +317,10 @@ local function fill_buildings(V)
         end
       elseif b.kind == "well" then
         add(V, K.well, b.cx, b.cy, 0, yaw, 1.0, 1, pack(0.62, 0.36, 0.24), 0, 0)
+      elseif b.kind == "dock" then
+        -- a timber pier from the shore out over the water (D-084)
+        add(V, K.pier, (b.cx + b.mx) * 0.5, (b.cy + b.my) * 0.5, 0, yaw_z(V, b.cx, b.cy, b.mx - b.cx, b.my - b.cy), 0.8, 1,
+          pack(0.55, 0.40, 0.26), pack(0.45, 0.31, 0.2), 0)
       end
     end
   end
@@ -548,7 +554,7 @@ local function update_people(V, t, zoom)
         POS.x, POS.y, POS.z = px, py, pz
         go.set_position(POS, pp.id)
         local fx, fy = dx, dy
-        if not moving then fx, fy = p.fx, p.fy end
+        if not moving and p.act ~= "row" then fx, fy = p.fx, p.fy end
         local l = sqrt(fx * fx + fy * fy)
         if l > 1e-6 then pp.yaw = yaw_x(V, x, y, fx / l, fy / l) end
         go.set_rotation(vmx.set_up_yaw(ROT, ux, uy, uz, pp.yaw or 0), pp.id)
@@ -586,8 +592,8 @@ M.PART = PART
 
 -- what they hold for each action (the sim's action, not invented)
 local TOOL = { till = "hoe", grub = "hoe", chop = "axe", harvest = "sickle", build = "hammer", thresh = "flail",
-  forage = "basket", fill = "bucket", tend = nil, sow = "basket", repair = "hammer" }
-local CARRY_PART = { logs = "log", grain = "sack", sheaves = "sack", food = "sack", seed = "basket", water = "bucket" }
+  forage = "basket", fill = "bucket", tend = nil, sow = "basket", repair = "hammer", fish = "rod" }
+local CARRY_PART = { logs = "log", grain = "sack", sheaves = "sack", food = "sack", seed = "basket", water = "bucket", fish = "basket" }
 -- animation for each action: { clip, rate (at a game minute per second), moving clip }
 local ANIM = {
   walk = { "walk" }, till = { "swing", 0.7 }, grub = { "kneel_work", 0.9 }, chop = { "swing", 0.9 },
@@ -597,6 +603,7 @@ local ANIM = {
   play = { "jump", 1 }, lunch = { "sit", 1 }, wait = { "idle", 1 }, idle = { "idle", 1 }, shelter = { "idle", 1 },
   sit = { "sit", 1 }, nurse = { "sit", 0.8 }, craft = { "kneel_work", 0.6 }, repair = { "kneel_work", 1.0 },
   hand = { "pickup", 1.2 },
+  row = { "sit", 1 }, fish = { "sit", 0.7 }, board = { "pickup", 1.2 }, land = { "pickup", 1.2 },
 }
 
 local function packc(c) return pack(c[1], c[2], c[3]) end
@@ -829,6 +836,7 @@ function M.init(W, PL, urls, celltex)
   build_templates()
   for _, s in ipairs(W.S.v3.settlements) do
     local V = { W = W, s = s, factory = urls.chunk_factory, person_factory = urls.person_factory, celltex = celltex,
+      boat_factory = urls.boat_factory, R = PL.R,
       villager_factory = urls.villager_factory }
     build_heights(V, PL)
     -- an AABB around the whole square (planet space)
@@ -933,7 +941,7 @@ function M.update(W, dt, zoom, t)
   if M.follow and M.SETS[1] then
     local p = W.S.v3.people[M.follow]
     if p and p.alive then
-      local V = M.SETS[1]
+      local V = M.SETS[p.sett] or M.SETS[1]
       local x, y = act.pos(p, t)
       local carrier = p.act == "carried" and W.S.v3.people[p.carrier or 0]
       if carrier then x, y = act.pos(carrier, t) end
@@ -982,6 +990,7 @@ function M.update(W, dt, zoom, t)
     end
     if V.vpool then update_villagers(V, t, zoom) else update_people(V, t, zoom) end
     end
+    M.update_boats(V, t)
   end
   if M.skipping then
     -- hide everyone at once (the pool is not walked while skipping)
@@ -995,6 +1004,39 @@ function M.update(W, dt, zoom, t)
     end
   else
     for _, V in ipairs(M.SETS) do V.hidden_all = nil end
+  end
+end
+
+-- Boats (D-084): moored at the dock, or wherever their rower is on the water.
+local BROT, BPOS = vmath.quat(), vmath.vector3()
+function M.update_boats(V, t)
+  local s = V.s
+  if not s.boats or not V.boat_factory then return end
+  if not V.boat_go then
+    V.boat_go = {}
+    for k = 1, #s.boats do
+      local id = factory.create(V.boat_factory, vmath.vector3(0, 0, 0))
+      V.boat_go[k] = { id = id, url = msg.url(nil, id, "mesh"), yaw = 0 }
+    end
+  end
+  local Vp = V.W.S.v3.people
+  local show = not M.skipping and V.in_view
+  for k, boat in ipairs(s.boats) do
+    local e = V.boat_go[k]
+    if e then
+      if show ~= e.on then msg.post(e.url, show and MSG_ENABLE or MSG_DISABLE); e.on = show end
+      if show then
+        local x, y, dx, dy = boat.x, boat.y, nil, nil
+        local p = boat.crew ~= 0 and Vp[boat.crew]
+        if p and p.alive and p.boat == boat.id then x, y, dx, dy = act.pos(p, t) end
+        local px, py, pz, ux, uy, uz = world_pos(V, x, y, -0.003)
+        BPOS.x, BPOS.y, BPOS.z = px, py, pz
+        go.set_position(BPOS, e.id)
+        if dx and (dx * dx + dy * dy) > 1e-8 then e.yaw = yaw_x(V, x, y, dx, dy) end
+        go.set_rotation(vmx.set_up_yaw(BROT, ux, uy, uz, e.yaw or 0), e.id)
+        go.set_scale(0.55, e.id)
+      end
+    end
   end
 end
 

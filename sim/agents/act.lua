@@ -80,6 +80,16 @@ START.go = function(W, s, p, st, now)
   if p.inside ~= 0 then p.inside = 0 end
   local path = p.path_buf
   if not path then path = { x = {}, y = {}, cum = {} }; p.path_buf = path end
+  if st.water then
+    -- rowing over the water (D-084)
+    local r = nav.path(s, p.x, p.y, st.x, st.y, 0, path, true)
+    if not r then return false end
+    p.mv = r
+    p.spd = C().row_speed
+    p.dest = st.place or ""
+    begin(p, now, "row", r.len / p.spd)
+    return true
+  end
   local si = mapm.tile_of(s, p.x, p.y)
   if si > 0 and s.cost[si] < 0 and not st.enter then
     -- standing on a footprint (a site rose around them): step to the nearest open ground
@@ -339,6 +349,40 @@ WORK.hand = function(W, s, p, st, f)
   end
 end
 
+-- Boats (D-084): boarding at the dock, the catch from the planet's fish, landing.
+WORK.board = function(W, s, p, st, f)
+  local boat = s.boats and s.boats[st.boat]
+  local b = s.dock
+  if not boat or not b then return end
+  boat.crew = p.id
+  p.boat = boat.id
+  p.x, p.y = b.mx, b.my
+end
+
+WORK.fish = function(W, s, p, st, f)
+  local c = C()
+  local i = mapm.tile_of(s, p.x, p.y)
+  if i == 0 or s.land[i] ~= 0 then return end
+  local cell = s.cell_of[i]
+  local F = W.F
+  local fd = F.fish[cell] or 0
+  local catch = c.fish_q * fd * st.dur * f * (0.75 + 0.5 * (p.dil - 0.6) / 0.8)
+  local stock = fd * c.fish_fu
+  if catch > stock * 0.05 then catch = stock * 0.05 end
+  if catch <= 0 then return end
+  F.fish[cell] = fd - catch / c.fish_fu
+  p.carry, p.camt = "fish", (p.carry == "fish" and p.camt or 0) + catch
+  s.acc.fished = (s.acc.fished or 0) + catch
+end
+
+WORK.land = function(W, s, p, st, f)
+  local boat = s.boats and s.boats[p.boat or st.boat or 0]
+  local b = s.dock
+  if boat then boat.crew = 0; boat.x, boat.y = b.mx + (boat.id - 1) * 0.012, b.my end
+  p.boat = nil
+  if b then p.x, p.y = b.dx, b.dy end
+end
+
 WORK.thresh = function(W, s, p, st, f)
   local g = s.granary
   if not g then return end
@@ -526,6 +570,8 @@ DROP.any = function(W, s, p, st)
     else
       b.stock.food = (b.stock.food or 0) + n
     end
+  elseif what == "fish" then
+    if b.kind == "granary" then b.stock.grain = (b.stock.grain or 0) + n else b.stock.food = (b.stock.food or 0) + n end
   elseif what == "food" then
     if b.kind == "granary" then b.stock.grain = (b.stock.grain or 0) + n else b.stock.food = (b.stock.food or 0) + n end
   elseif what == "logs" then

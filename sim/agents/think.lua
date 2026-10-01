@@ -172,6 +172,7 @@ local ROLE_JOBS = {
   farmer = { grub = true, till = true, sow = true, tend = true, harvest = true, haul_grain = true, thresh = true },
   woodcutter = { fell = true, haul_logs = true, grub = true },
   builder = { build = true, deliver = true, haul_logs = true, repair = true },
+  fisher = { fish = true },
 }
 
 -- Does the apprentice's mentor work on this target now (D-081)? (ref: the plot, building or tree)
@@ -476,6 +477,42 @@ local function work_candidates(W, s, p, ctx, now)
   end
 end
 
+-- Fishing (D-084): a free boat at the dock and fish offshore. The ground is chosen on the water
+-- within reach of the dock (a different spot on different days); its fish density is the planet's
+-- fish in that sea cell.
+local function fish_ground(W, s, p, now)
+  local b = s.dock
+  local day = floor(now / 24)
+  for k = 1, 16 do
+    local a = rng.float(W.seed, rng.S.V3_THINK, p.key, day, 200 + k) * 8
+    local r = 0.22 + 0.5 * rng.float(W.seed, rng.S.V3_THINK, p.key, day, 300 + k)
+    local P8 = { { 1, 0 }, { 0.7, 0.7 }, { 0, 1 }, { -0.7, 0.7 }, { -1, 0 }, { -0.7, -0.7 }, { 0, -1 }, { 0.7, -0.7 } }
+    local o = P8[floor(a) + 1]
+    local x, y = b.mx + o[1] * r, b.my + o[2] * r
+    local i = require("sim.agents.map").tile_of(s, x, y)
+    if i > 0 and s.land[i] == 0 then return x, y, s.cell_of[i] end
+  end
+  return nil
+end
+
+local function fish_candidate(W, s, p, ctx, now, fat)
+  local c = C()
+  if not s.dock or not s.boats or ctx.rain == 2 then return end
+  if ctx.stage ~= "adult" and not (ctx.stage == "apprentice" and ctx.mentor and ctx.mentor.objk == "fish") then return end
+  local boat = nil
+  for i = 1, #s.boats do if s.boats[i].crew == 0 then boat = s.boats[i]; break end end
+  if not boat then return end
+  local gx, gy, cell = fish_ground(W, s, p, now)
+  if not gx then return end
+  local fd = W.F.fish[cell] or 0
+  if fd < 0.03 then return end
+  local f = fit(p, ctx, "fish")
+  if f <= 0 then return end
+  local short = s.need.food_days < 30 and 0.15 or 0
+  add((0.36 + 0.3 * min(1, fd) + short) * f * fat - travel(ctx, s.dock.dx, s.dock.dy, p.x, p.y), "fish", boat.id, 0,
+    string.format("A boat is free at the dock and the fish are running offshore (%.0f%% of a full sea)", min(100, fd * 100)))
+end
+
 -- Repairs (D-080): a weathered house (condition below repair_at) wants a log and some hours.
 local function repair_candidates(W, s, p, ctx, now, fat)
   local c = C()
@@ -777,7 +814,7 @@ PLAN.shelter = function(W, s, p, ctx, now, cd)
   if bd > 0.4 then
     for i = 1, #s.blist do
       local o = s.buildings[s.blist[i]]
-      if o and o.state == "standing" and o.kind ~= "well" then
+      if o and o.state == "standing" and o.kind ~= "well" and o.kind ~= "dock" then
         local d = dist(p.x, p.y, o.dx, o.dy)
         if d < bd - 0.15 then b, bd = o, d end
       end
@@ -1230,6 +1267,37 @@ PLAN.build = function(W, s, p, ctx, now, cd)
   return "Build the " .. b.label, b.label
 end
 
+PLAN.fish = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local b = s.dock
+  local boat = s.boats[cd.a]
+  boat.crew = p.id    -- (claimed now; released if the plan is cut before they board)
+  local gx, gy = fish_ground(W, s, p, now)
+  go(pl, b.dx, b.dy, "the dock")
+  work(pl, "board", 0.08, { boat = boat.id, fx = b.mx, fy = b.my })
+  pl[#pl + 1] = { op = "go", x = gx, y = gy, place = "the fishing ground", water = true }
+  work(pl, "fish", (c.fish_h[1] + (c.fish_h[2] - c.fish_h[1]) * u01(W, p, now, 53)) * p.dil, { boat = boat.id })
+  pl[#pl + 1] = { op = "go", x = boat.mx or b.mx, y = boat.my or b.my, place = "the dock", water = true }
+  pl[#pl + 1] = { op = "go", x = b.mx, y = b.my, place = "the dock", water = true }
+  work(pl, "land", 0.08, { boat = boat.id })
+  local home = ctx.home
+  if home then
+    go(pl, home.dx, home.dy, "home", home.id)
+    pl[#pl + 1] = { op = "drop", to = "home", ref = home.id }
+  end
+  return "Go fishing", "the fishing ground"
+end
+
+-- Afloat: whatever stopped them, they row back to the dock first (D-084).
+PLAN.return_boat = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local b = s.dock
+  pl[#pl + 1] = { op = "go", x = b.mx, y = b.my, place = "the dock", water = true }
+  work(pl, "land", 0.08, { boat = p.boat })
+  return "Row back to the dock", "the dock"
+end
+
 PLAN.repair = function(W, s, p, ctx, now, cd)
   local c = C()
   local pl = plan_reset(p)
@@ -1305,6 +1373,9 @@ function M.release(W, s, p)
         elseif st.kind == "cook" then
           local hh = W.S.v3.households[p.hh]
           if hh and hh.cooking == p.id then hh.cooking = 0 end
+        elseif st.kind == "board" then
+          local boat = s.boats and s.boats[st.boat]
+          if boat and boat.crew == p.id and not p.boat then boat.crew = 0 end
         end
       elseif st.op == "pick" then
         if st.what == "sheaves" then
@@ -1336,6 +1407,14 @@ function M.decide(W, s, p, now, reason)
   local ctx = context(W, s, p, now)
   if ctx.stage == "infant" then return think_infant(W, s, p, now) end
   ncand = 0
+  if p.boat and s.dock then
+    -- afloat: back to the dock first, whatever else is wanted
+    local obj, dest = PLAN.return_boat(W, s, p, ctx, now, nil)
+    p.obj, p.dest, p.objk = obj, dest, "return_boat"
+    p.why = (reason and (reason .. ". ") or "") .. "Rowing back to the dock"
+    p.tgt_kind, p.tgt_ref = "return_boat", 0
+    return true
+  end
   local kind, why
   -- a hungry baby at night: its mother nurses it (in bed, or wherever it is)
   local night_feed = nil
@@ -1378,6 +1457,7 @@ function M.decide(W, s, p, now, reason)
       end
       work_candidates(W, s, p, ctx, now)
       repair_candidates(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
+      fish_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       chores(W, s, p, ctx, now)
       craft_candidate(W, s, p, ctx, now)
     elseif not ctx.night then
@@ -1413,7 +1493,8 @@ function M.decide(W, s, p, now, reason)
     -- granary, water home, sheaves to the granary, logs to the woodstore
     local home, to, toname = ctx.home, nil, nil
     local cr = p.carry
-    if cr == "sheaves" then to = s.granary
+    if cr == "fish" then to = home or s.granary
+    elseif cr == "sheaves" then to = s.granary
     elseif cr == "logs" then to = s.wood_store
     elseif cr == "water" then to = home
     else

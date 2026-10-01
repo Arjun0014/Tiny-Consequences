@@ -21,7 +21,7 @@ local function food_total(V, s)
   for _, id in ipairs(s.members) do
     local p = V.people[id]
     if p.alive then
-      if p.carry == "seed" or p.carry == "grain" or p.carry == "food" or p.carry == "sheaves" then tot = tot + p.camt end
+      if p.carry == "seed" or p.carry == "grain" or p.carry == "food" or p.carry == "sheaves" or p.carry == "fish" then tot = tot + p.camt end
       if p.lunch then tot = tot + c.meal_fu end
     end
   end
@@ -51,7 +51,7 @@ local function run()
   end
   local prev = food_total(V, s)
   local acc0 = {}
-  local function accs() return (s.acc.harvest or 0) + (s.acc.foraged or 0) - (s.acc.eaten or 0) - (s.acc.seed or 0)
+  local function accs() return (s.acc.harvest or 0) + (s.acc.foraged or 0) + (s.acc.fished or 0) - (s.acc.eaten or 0) - (s.acc.seed or 0)
     - (s.acc.lunch or 0) - (s.acc.spoiled or 0) end
   local a0 = accs()
   for d = 1, 50 do

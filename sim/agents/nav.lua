@@ -225,7 +225,15 @@ local function cache_put(s, key, v)
 end
 
 -- Fill `out` with a path from (x0, y0) to (x1, y1).
-function M.path(s, x0, y0, x1, y1, temper, out)
+function M.path(s, x0, y0, x1, y1, temper, out, water)
+  if water then
+    -- a boat's way over the water: the same search on the water's cost field
+    local land = s.cost
+    s.cost = s.wcost
+    local r = M.path(s, x0, y0, x1, y1, 3, out, false)
+    s.cost = land
+    return r
+  end
   out = out or { x = {}, y = {}, cum = {} }
   local a = mapm.tile_of(s, x0, y0)
   local b = mapm.tile_of(s, x1, y1)

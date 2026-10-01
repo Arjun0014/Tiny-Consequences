@@ -857,6 +857,9 @@ C.V3 = {
   nurse_h = 0.35, porridge = 0.15,
   child_chores = 3,                       -- a child's chores a day before play wins every time
   elder_tire = 1.4,                       -- elders tire this much faster at work
+  -- fishing (D-084): boats rowed from the dock to grounds offshore; the catch comes out of the
+  -- planet's fish (the v2 scale: FU per crew-hour at density 1; FU of fish in a cell at density 1)
+  fish_q = 2.2, fish_fu = 18000, fish_h = { 1.6, 3.2 }, row_speed = 1.6, boats = 2,
   -- reactions (hours)
   react_near = { 0.03, 0.12 }, react_far = { 0.1, 0.45 },
   rain_hardy = 0.7,                       -- diligence above which light rain does not stop work

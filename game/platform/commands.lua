@@ -63,6 +63,14 @@ end
 -- settlement; look at (and optionally follow) a person; a person's state for tests and shots.
 local function v3_person(W, id)
   local V = W.S.v3
+  if id == "fisher" then
+    -- (shots) someone afloat: rowing or fishing
+    for _, pid in ipairs(V.order) do
+      local p = V.people[pid]
+      if p.alive and (p.act == "fish" or p.act == "row") then return p end
+    end
+    return nil
+  end
   if id == nil or id == "worker" then
     -- the first adult outdoors at work
     local s = V.settlements[1]
@@ -143,7 +151,7 @@ function M.register(G)
     local t = speed.v3_t or W.hour
     if args.look then
       local av = require("game.view.agents_view")
-      local V = av.SETS[1]
+      local V = av.SETS[p.sett] or av.SETS[1]
       local x, y = require("sim.agents.act").pos(p, t)
       local ux, uy, uz = require("sim.agents.map").unit(V.s, x, y)
       local lat = math.asin(uy)

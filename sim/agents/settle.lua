@@ -18,6 +18,7 @@ M.KINDS = {
   granary = { w = 4, h = 4, label = "granary", logs = 22, work = 140 },
   woodstore = { w = 4, h = 3, label = "woodstore", logs = 8, work = 40 },
   well = { w = 1, h = 1, label = "well", logs = 0, work = 30 },
+  dock = { w = 1, h = 1, label = "dock", logs = 6, work = 30 },
 }
 
 function M.new(W, cell, opts)
@@ -70,6 +71,11 @@ function M.add_building(W, s, kind, ix0, iy0, side, state, opts)
   s.blist[#s.blist + 1] = id
   if state == "site" then s.sites[#s.sites + 1] = id end
   if kind == "granary" then s.granary = b; s.granary_x, s.granary_y = b.dx, b.dy end
+  if kind == "dock" then
+    -- boats moor on the water beside the dock, opposite its door (on the land side)
+    s.dock = b
+    b.mx, b.my = 2 * b.cx - b.dx, 2 * b.cy - b.dy
+  end
   if kind == "woodstore" then s.wood_store = b; s.wood_x, s.wood_y = b.dx, b.dy end
   if kind == "well" then s.well = b end
   mapm.rebuild_costs(s)

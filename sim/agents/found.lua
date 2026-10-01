@@ -187,6 +187,36 @@ function M.found(W, cell, opts)
   local sy = (fq >= 3) and 1 or -1
   settle.add_building(W, s, "granary", c0 - sx * 7 - 2, c0 - sy * 4 - 2, sy > 0 and "n" or "s", "standing")
   settle.add_building(W, s, "woodstore", c0 + sx * 10 - 2, c0 + sy * 8 - 1, sy > 0 and "s" or "n", "standing")
+  -- 1b. a coastal village: a dock on the shore nearest the square, and its boats (D-084)
+  do
+    local best, bd, bside = 0, 1.45, nil
+    local D4 = { { 0, -1, "n" }, { 0, 1, "s" }, { -1, 0, "e" }, { 1, 0, "w" } }
+    for iy = 3, N - 2 do
+      for ix = 3, N - 2 do
+        local i = (iy - 1) * N + ix
+        if s.land[i] == 1 and s.occ[i] == 0 then
+          for _, d in ipairs(D4) do
+            local wi = (iy + d[2] - 1) * N + ix + d[1]
+            local li = (iy - d[2] - 1) * N + ix - d[1]
+            -- water on one side (and beyond it), land behind for the door
+            if s.land[wi] == 0 and s.land[(iy + 2 * d[2] - 1) * N + ix + 2 * d[1]] == 0 and s.land[li] == 1 then
+              local x, y = mapm.ixy_xy(s, ix, iy)
+              local r = sqrt(x * x + y * y)
+              if r < bd then best, bd, bside = i, r, d[3] end
+            end
+          end
+        end
+      end
+    end
+    if best > 0 then
+      local ix, iy = mapm.tile_ixy(s, best)
+      local b = settle.add_building(W, s, "dock", ix, iy, bside, "standing")
+      s.boats = {}
+      for k = 1, c.boats do
+        s.boats[k] = { id = k, x = b.mx + (k - 1) * 0.012, y = b.my, crew = 0 }
+      end
+    end
+  end
   -- 2. houses round the square, one per household
   local TEMPLATE = M.households_for(u, opts.size)
   local npeople = 0
@@ -401,6 +431,7 @@ function M.found(W, cell, opts)
       lane_walk(s, hb.dx, hb.dy, s.granary.dx, s.granary.dy, 24)
     end
     lane_walk(s, s.granary.dx, s.granary.dy, s.wood_store.dx, s.wood_store.dy, 30)
+    if s.dock then lane_walk(s, s.granary.dx, s.granary.dy, s.dock.dx, s.dock.dy, 20) end
     for k = 1, #s.plots do
       local pl = s.plots[k]
       lane_walk(s, s.granary.dx, s.granary.dy, pl.stx, pl.sty, 26)
