@@ -921,6 +921,32 @@ C.V3 = {
   scrap_share = 0.7,                      -- of what spoils at home, the share that is pig food
   slop_min = 0.4, slop_feed = 3.0,        -- scraps worth a trip to the sty; a pig's hunger units an FU of scraps feeds
   sick_base = 0.004, sick_spread = 0.25, sick_recover = 0.18, sick_days = 6, sick_harm = 0.004,   -- livestock sickness (a day; health an hour)
+  -- wild animals on the map (D-093): per species walking and running speed (units an hour),
+  -- spacing in a band, FU of meat, hides
+  wild = {
+    deer = { speed = 1.8, run = 5.0, sep = 0.05, meat = 14, hide = 1 },
+    reindeer = { speed = 1.8, run = 4.6, sep = 0.05, meat = 18, hide = 1 },
+    antelope = { speed = 2.0, run = 5.6, sep = 0.05, meat = 12, hide = 1 },
+    boar = { speed = 1.5, run = 4.2, sep = 0.04, meat = 16, hide = 1 },
+    wolf = { speed = 2.4, run = 6.0, sep = 0.035, meat = 0, hide = 1 },
+    cat = { speed = 2.2, run = 6.5, sep = 0.04, meat = 0, hide = 1 },
+  },
+  wild_seen = 1.0,                        -- share of a herd's animals on the map's cells drawn here
+  wild_max = 24,                          -- at most this many wild grazers on one map
+  wild_keep = 0.9,                        -- bands keep this far from the village square
+  wild_alert = 0.16, wild_alert_wolf = 0.3,   -- grazers take flight from people / hunting wolves this close
+  wild_flee = 0.35,                       -- how far a frightened grazer runs
+  wolf_hungry = 0.55,                     -- a pack below this condition comes for a village's beasts when
+  wolf_wild_scarce = 8,                   --   fewer wild grazers than this are on the map; at once below
+  wolf_starving = 0.25,                   --   this condition
+  guard_days = 6,                         -- after wolves took a beast, the village keeps a night watch this long
+  wolf_visit = 0.5,                       -- a pack's chance to hunt on the map tonight: its time here x this
+  pack_max = 7,                           -- wolves of a pack that come (the rest stay at the den)
+  wolf_reach = 0.03, wolf_chase = 0.22,   -- caught up within; the chase begins within
+  wolf_kill_wild = 0.3, wolf_kill_pen = 0.35,   -- a kill when caught up (the young +0.25, the sick +0.2; a pen's fence)
+  wolf_eat_h = 1.0,                       -- hours the pack eats at a kill
+  wolf_feed = 0.012,                      -- a pack's condition gained per FU of a village's beast per wolf
+  carcass_hours = 30, carcass_left = 0.4, -- a carcass lies this long; share of its meat left by wolves
   sheep_speed = 1.6, sheep_hop = 0.08,    -- (D-089, kept for old saves)
   flock_radius = 0.07,
   sheep_hunger = 0.035, sheep_graze = 0.25,   -- hunger an hour; eaten an hour on full grass

@@ -272,6 +272,25 @@ function M.register(G)
     if args.what == "dock" then
       assert(s.dock, "no dock")
       x, y = s.dock.mx, s.dock.my
+    elseif args.what == "wild" or args.what == "wolves" then
+      -- the middle of the biggest wild band on the map now (or of the wolves hunting it)
+      local wild = require("sim.agents.wild")
+      local t = require("game.platform.speed").v3_t or W.hour
+      local by, cnt = {}, {}
+      wild.each(s, function(w)
+        if (args.what == "wolves") == w.pred then
+          local wx, wy = wild.pos(w, t)
+          local b = by[w.gid] or { 0, 0 }
+          by[w.gid] = b
+          b[1], b[2] = b[1] + wx, b[2] + wy
+          cnt[w.gid] = (cnt[w.gid] or 0) + 1
+        end
+      end)
+      local best, bn = nil, 0
+      for g, n2 in pairs(cnt) do if n2 > bn or (n2 == bn and g < best) then best, bn = g, n2 end end
+      assert(best, "no wild animals of that kind on the map")
+      x, y = by[best][1] / bn, by[best][2] / bn
+      info = { n = bn, gid = best }
     elseif args.what == "flock" or args.what == "herd" then
       -- the middle of a herd's living animals now (sheep, or `species` of s.herds)
       local H = s.herds and s.herds[args.what == "flock" and "flock" or (args.herd or "cattle")]

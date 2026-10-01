@@ -1875,6 +1875,38 @@ PLAN.haul_flax = function(W, s, p, ctx, now, cd)
   return "Carry the flax to the granary", plot.name
 end
 
+-- The night watch (D-093): the pen p's household keeps beasts in, if wolves took one lately and
+-- nobody else watches it; nil otherwise.
+function M.guard_herd(W, s, p, ctx, now)
+  local c = C()
+  if not s.herds or not s.wolf_alarm or now - s.wolf_alarm > c.guard_days * 24 then return nil end
+  if ctx.stage ~= "adult" or not ctx.hh or p.energy < 0.2 or ctx.babe then return nil end
+  s.guards = s.guards or {}
+  for hi = 1, #stock.HERDS do
+    local H = s.herds[stock.HERDS[hi]]
+    if H and herd_sum(H, now).owners[p.hh] then
+      local g = W.S.v3.people[s.guards[hi] or 0]
+      local free = not (g and g.alive and g.objk == "guard" and g ~= p)
+      -- (the men first: a woman watches where the household has no man of age)
+      if free and (p.sex == "m" or not kin.has_man(W, ctx.hh, now)) then return hi end
+    end
+  end
+  return nil
+end
+
+PLAN.guard = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local H = s.herds[stock.HERDS[cd.b]]
+  local pen = s.buildings[H.pen]
+  s.guards = s.guards or {}
+  s.guards[cd.b] = p.id
+  local until_t = next_local(now, ctx.lh, ctx.wake)
+  local x, y = near_spot(W, p, now, pen.dx, pen.dy, 0.02, 72)
+  go(pl, x, y, "the " .. pen.label)
+  work(pl, "sleep", until_t - now - 0.2, { guard = cd.b })
+  return "Keep watch at the " .. pen.label, "the " .. pen.label
+end
+
 -- Livestock (D-089, D-092).
 local function herd_of(s, cd)
   local kind = stock.HERDS[cd and cd.b or 1] or "flock"
@@ -2207,6 +2239,16 @@ function M.decide(W, s, p, now, reason)
     kind, why = "nurse", string.format("%s woke hungry in the night", night_feed.name)
     add(1, "nurse", night_feed.id, 0, why)
     M.cd = CAND[ncand]
+  elseif ctx.night and M.guard_herd(W, s, p, ctx, now) then
+    -- wolves took a beast lately: a grown man (else woman) of an owning household keeps the
+    -- night's watch at the pen (one at each pen), sleeping by it
+    local hi = M.guard_herd(W, s, p, ctx, now)
+    kind = "guard"
+    add(1, "guard", 0, hi, "")
+    M.cd = CAND[ncand]
+    local pen = s.buildings[s.herds[stock.HERDS[hi]].pen]
+    why = string.format("Wolves took one of the beasts %s: keeping watch at the %s tonight",
+      now - s.wolf_alarm < 24 and "last night" or "lately", pen.label)
   elseif ctx.night or p.energy < 0.12 then
     kind, why = "sleep", ctx.night and string.format("Night (bedtime %s)", clock_str(ctx.bed)) or "Exhausted"
   elseif ctx.rain == 2 and p.inside == 0 and ctx.stage ~= "infant" then

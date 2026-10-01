@@ -319,6 +319,77 @@ local function range_key(W)
   return key
 end
 
+
+-- A herd's range by its centre cell c (cached until villages or the ice change what herds can
+-- use): the centre (herd_w0 of its time) and the walkable neighbours not taken by a village
+-- (the rest, shared). Cells t[1..L], weights t.w.
+function sys.herd_range(W, c)
+  range_key(W)
+  local hrange = W.fauna_static.hrange
+  local t = hrange[c]
+  if t then return t end
+  local g = W.grid
+  local nbr, cnt = g.nbr, g.nbr_count
+  local walk, lu = W.fauna_static.walk, W.F.land_use
+  t = {}
+  local b = c * 6 - 6
+  local L = 0
+  for k = 1, cnt[c] do
+    local j = nbr[b + k]
+    if walk[j] == 1 and lu[j] >= 0 then L = L + 1; t[L] = j end
+  end
+  local w0 = L > 0 and cfgmod.WILD.herd_w0 or 1
+  local wr = L > 0 and (1 - w0) / L or 0
+  local tw = {}
+  for k = 1, L do tw[k] = wr end
+  t.L = L + 1
+  t[L + 1], tw[L + 1] = c, w0
+  t.w = tw
+  hrange[c] = t
+  return t
+end
+
+-- A pack's territory by its den c (static geography, cached): the den and two rings of walkable
+-- cells (no territory across open water), weighted by pack_w.
+function sys.territory(W, c)
+  local terr = W.fauna_static.terr
+  local t = terr[c]
+  if t then return t end
+  local pw = cfgmod.WILD.pack_w
+  local g = W.grid
+  local nbr, cnt = g.nbr, g.nbr_count
+  local walk = W.fauna_static.walk
+  t = {}
+  local n1 = 0
+  local b = c * 6 - 6
+  for k = 1, cnt[c] do
+    local j = nbr[b + k]
+    if walk[j] == 1 then n1 = n1 + 1; t[n1] = j end
+  end
+  -- (the second ring through walkable cells only: no territory across open water)
+  local n2 = 0
+  local mark = { [c] = true }
+  for k = 1, n1 do mark[t[k]] = true end
+  for k = 1, n1 do
+    local x = t[k]
+    local bx = x * 6 - 6
+    for q = 1, cnt[x] do
+      local j = nbr[bx + q]
+      if not mark[j] and walk[j] == 1 then mark[j] = true; n2 = n2 + 1; t[n1 + n2] = j end
+    end
+  end
+  local tot = pw[1] + (n1 > 0 and pw[2] or 0) + (n2 > 0 and pw[3] or 0)
+  local w1 = n1 > 0 and pw[2] / n1 / tot or 0
+  local w2 = n2 > 0 and pw[3] / n2 / tot or 0
+  local tw = {}
+  for k = 1, n1 do tw[k] = w1 end
+  for k = n1 + 1, n1 + n2 do tw[k] = w2 end
+  t[n1 + n2 + 1], tw[n1 + n2 + 1] = c, pw[1] / tot
+  t.L, t.w = n1 + n2 + 1, tw
+  terr[c] = t
+  return t
+end
+
 -- Every group's range (the cached table of its cells and time shares: sc.wl_rt / wl_qt by slot)
 -- and the densities they make; returns the touched cells. The groups' state it was made from is
 -- kept (snapshot) so the next month can reuse it when nothing has changed since (the usual case).
@@ -352,24 +423,7 @@ local function densities(W, A, sc, cfg)
   local sn, sce, sco = sc.wl_sh_n, sc.wl_sh_cell, sc.wl_sh_cond
   for i = 1, A.nh do
     local c = A.h_cell[i]
-    local t = hrange[c]
-    if not t then
-      t = {}
-      local b = c * 6 - 6
-      local L = 0
-      for k = 1, cnt[c] do
-        local j = nbr[b + k]
-        if walk[j] == 1 and lu[j] >= 0 then L = L + 1; t[L] = j end
-      end
-      local w0 = L > 0 and w0h or 1
-      local wr = L > 0 and (1 - w0) / L or 0
-      local tw = {}
-      for k = 1, L do tw[k] = wr end
-      t.L = L + 1
-      t[L + 1], tw[L + 1] = c, w0
-      t.w = tw
-      hrange[c] = t
-    end
+    local t = hrange[c] or sys.herd_range(W, c)
     rt[i] = t
     local tw = t.w
     local hn, hc = A.h_n[i], A.h_cond[i]
@@ -388,37 +442,7 @@ local function densities(W, A, sc, cfg)
   local pn_, pce = sc.wl_sp_n, sc.wl_sp_cell
   for i = 1, A.np do
     local c = A.p_cell[i]
-    local t = terr[c]
-    if not t then
-      t = {}
-      local n1 = 0
-      local b = c * 6 - 6
-      for k = 1, cnt[c] do
-        local j = nbr[b + k]
-        if walk[j] == 1 then n1 = n1 + 1; t[n1] = j end
-      end
-      -- (the second ring through walkable cells only: no territory across open water)
-      local n2 = 0
-      local mark = { [c] = true }
-      for k = 1, n1 do mark[t[k]] = true end
-      for k = 1, n1 do
-        local x = t[k]
-        local bx = x * 6 - 6
-        for q = 1, cnt[x] do
-          local j = nbr[bx + q]
-          if not mark[j] and walk[j] == 1 then mark[j] = true; n2 = n2 + 1; t[n1 + n2] = j end
-        end
-      end
-      local tot = pw[1] + (n1 > 0 and pw[2] or 0) + (n2 > 0 and pw[3] or 0)
-      local w1 = n1 > 0 and pw[2] / n1 / tot or 0
-      local w2 = n2 > 0 and pw[3] / n2 / tot or 0
-      local tw = {}
-      for k = 1, n1 do tw[k] = w1 end
-      for k = n1 + 1, n1 + n2 do tw[k] = w2 end
-      t[n1 + n2 + 1], tw[n1 + n2 + 1] = c, pw[1] / tot
-      t.L, t.w = n1 + n2 + 1, tw
-      terr[c] = t
-    end
+    local t = terr[c] or sys.territory(W, c)
     qt[i] = t
     local tw = t.w
     local pn = A.p_n[i]
@@ -682,6 +706,13 @@ local function demography(W, A, sc, cfg, fcfg, dt)
     local born = n * births
     local lost_s = n * (starve + hmort)
     local lost_p, lost_f = n * dt * pp, n * dt * fm
+    -- (the kills wolves made in sight of a settlement this month were of these: already taken,
+    -- D-093)
+    local bk = A.h_bank and A.h_bank[A.h_id[i]] or 0
+    if bk > 0 then
+      lost_p = lost_p - min(bk, lost_p)
+      A.h_bank[A.h_id[i]] = nil
+    end
     local d = born - lost_s - lost_p - lost_f
     local dbg = sc.wl_dbg
     if dbg and (not dbg.only or dbg.only[A.h_cell[i]]) then dbg.born = dbg.born + born; dbg.hstarve = dbg.hstarve + lost_s; dbg.pred = dbg.pred + lost_p end
@@ -1446,6 +1477,35 @@ function sys.hunt(W, ring, eff, tag)
     blame.step(A.h_tag, A.h_idle, best, -kills, FGZ.eps * cfg.gpc, FGZ.hold, -kills, tag, 0, 0, 0, 0, 0, 0)
   end
   return kills * cfg.meat, c
+end
+
+-- The local wild (sim/agents/wild.lua, D-093) --------------------------------------------------
+-- (slots move when groups are dropped: always look a group up by its id)
+function sys.find_herd(W, id)
+  local A = W.S.wild
+  for i = 1, A.nh do if A.h_id[i] == id then return i end end
+  return nil
+end
+function sys.find_pack(W, id)
+  local A = W.S.wild
+  for i = 1, A.np do if A.p_id[i] == id then return i end end
+  return nil
+end
+-- n animals of herd i killed in sight of a settlement: by wolves (banked: counted as part of the
+-- herd's predation for the month), or by hunters.
+function sys.take_from_herd(W, i, n, banked)
+  local A = W.S.wild
+  A.h_n[i] = math.max(0, A.h_n[i] - n)
+  if banked then
+    A.h_bank = A.h_bank or {}
+    A.h_bank[A.h_id[i]] = (A.h_bank[A.h_id[i]] or 0) + n
+  end
+end
+-- A pack fed on a village's beast (outside the herds' predation): its reserves rise.
+function sys.feed_pack(W, i, meat)
+  local A = W.S.wild
+  local n = math.max(1, A.p_n[i])
+  A.p_cond[i] = math.min(1, A.p_cond[i] + cfgmod.V3.wolf_feed * meat / n)
 end
 
 -- The group whose record has id `id` (view, inspector): "herd"/"pack", slot index.

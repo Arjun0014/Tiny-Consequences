@@ -124,6 +124,9 @@ function M.init(W, urls, surface)
     for name, sp in pairs(SP) do
       sp.res = resource.create_buffer("/tc/animal_" .. name .. ".bufferc",
         { buffer = make_buffer(sp.model, sp.c1, sp.c2, 1, sp.c3, M.SCALE) })
+      -- (standing, grazing or lying: no walk cycle; v3 wild animals, D-093)
+      sp.res_still = resource.create_buffer("/tc/animal_" .. name .. "_still.bufferc",
+        { buffer = make_buffer(sp.model, sp.c1, sp.c2, 1, sp.c3, M.SCALE, true) })
     end
     make_pool(M.dolphins, urls.deer_factory, M.DOLPHINS, "dolphin", nil)
     -- livestock (W10)
@@ -333,7 +336,9 @@ local function assign_animals(W, fx, fy, fz)
       if not p.lat then p.lat, p.lon = p.home_lat, p.home_lon end
       p.cell = grp.cell
       p.heads = grp.heads
-      set_on(p, true)
+      -- (on a v3 settlement's map the settlement's own wild animals are drawn: D-093)
+      local cl = cos(p.home_lat)
+      set_on(p, not propgen.in_v3_square(cl * cos(p.home_lon), math.sin(p.home_lat), cl * sin(p.home_lon), 0.1))
     else
       p.cell, p.group = 0, nil
       set_on(p, false)

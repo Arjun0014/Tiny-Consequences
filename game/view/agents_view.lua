@@ -1200,9 +1200,103 @@ local function draw_herd(V, t, H, lod, sid, hi)
   end
 end
 
+-- Wild animals on the map (D-093): grazers and wolves from the sim's local wild, each where it
+-- is (walking legs when it moves); wild boar as the dark pig; carcasses lying where they fell.
+M.WILD = 48
+M.WILD_SCALE = { deer = 0.42, reindeer = 0.45, antelope = 0.4, wolf = 0.4, cat = 0.42 }
+local WPOS, WROT, ROLL = vmath.vector3(), vmath.quat(), vmath.quat_rotation_z(math.pi * 0.5)
+local function draw_wild(V, t, lod)
+  local s = V.s
+  local Wd = s.wildlife
+  local SPC = M.wild_species
+  if not Wd or not SPC or not V.deer_factory then return end
+  local wild = require("sim.agents.wild")
+  if not V.wild_go then
+    V.wild_go = {}
+    for k = 1, M.WILD do
+      local id = factory.create(V.deer_factory, vmath.vector3(0, 0, 0))
+      local url = msg.url(nil, id, "mesh")
+      msg.post(url, MSG_DISABLE)
+      V.wild_go[k] = { id = id, url = url, on = false, res = nil }
+    end
+  end
+  V.wyaw = V.wyaw or {}
+  local n = 0
+  local kspeed = M.game_min_per_s or 1
+  local function mover(sp, x, y, yaw, moving, lying, scale)
+    if n >= M.WILD then return end
+    local spc = SPC[sp]
+    if not spc then return end
+    n = n + 1
+    local e = V.wild_go[n]
+    local res = (moving and not lying) and spc.res or spc.res_still
+    if e.res ~= res then go.set(e.url, "vertices", res); e.res = res end
+    if not e.on then msg.post(e.url, MSG_ENABLE); e.on = true end
+    local px, py, pz, ux, uy, uz = world_pos(V, x, y, 0)
+    WPOS.x, WPOS.y, WPOS.z = px, py, pz
+    go.set_position(WPOS, e.id)
+    local q = vmx.set_up_yaw(WROT, ux, uy, uz, yaw)
+    if lying then q = q * ROLL end
+    go.set_rotation(q, e.id)
+    go.set_scale(scale, e.id)
+  end
+  for _, w in ipairs(Wd.animals) do
+    if w.alive then
+      local x, y = wild.pos(w, t)
+      local moving = (w.act == "walk" or w.act == "flee" or w.act == "chase" or w.act == "leave") and w.t1 > w.t0
+      if moving then
+        local dx, dy = w.tx - w.x, w.ty - w.y
+        if dx * dx + dy * dy > 1e-12 then V.wyaw[w.k] = yaw_x(V, x, y, dx, dy) end
+      end
+      local yaw = V.wyaw[w.k] or (w.k * 1.3)
+      local young = (t - w.born) / 1152 < 0.5 and 0.65 or 1
+      if w.sp == "boar" then
+        -- (the animated dark pig, a little bigger and leaner)
+        local e = animal_obj("pig_dark")
+        if e then
+          local px, py, pz, ux, uy, uz = world_pos(V, x, y, 0)
+          SPOS.x, SPOS.y, SPOS.z = px, py, pz
+          go.set_position(SPOS, e.id)
+          go.set_rotation(vmx.set_up_yaw(SROT, ux, uy, uz, yaw + pi * 0.5), e.id)
+          go.set_scale(M.ANIMAL_SCALE.pig * 1.05 * young, e.id)
+          if e.lod ~= lod or not e.on then
+            for j = 1, 3 do msg.post(e.urls[j], j == lod and MSG_ENABLE or MSG_DISABLE) end
+            if e.lod ~= lod then e.anim = nil end
+            e.lod, e.on = lod, true
+          end
+          local who = 900000 + s.id * 10000 + w.k
+          local clip = moving and ((w.act == "flee" or w.act == "chase") and "run" or "walk") or (w.act == "graze" and "graze" or "lie")
+          local rate = moving and min(3, kspeed * 0.8) or 1
+          if e.anim ~= clip or e.who ~= who then
+            model.play_anim(e.urls[lod], clip, go.PLAYBACK_LOOP_FORWARD, { blend_duration = 0.3, playback_rate = rate, offset = frac(who * 0.37) })
+            e.anim, e.rate, e.who = clip, rate, who
+          end
+        end
+      else
+        mover(w.sp, x, y, yaw, moving, false, (M.WILD_SCALE[w.sp] or 0.4) * young)
+      end
+    end
+  end
+  for _, cc in ipairs(Wd.carcasses) do
+    if t - cc.t < 30 and cc.t <= t then
+      mover(cc.sp == "boar" and "boar" or (SPC[cc.sp] and cc.sp or "deer"), cc.x, cc.y, cc.t * 1.7, false, true,
+        (M.WILD_SCALE[cc.sp] or 0.4) * 0.9)
+    end
+  end
+  for k = n + 1, M.WILD do
+    local e = V.wild_go[k]
+    if e.on then msg.post(e.url, MSG_DISABLE); e.on = false end
+  end
+end
+
 function M.update_herds(V, t, zoom)
   local s = V.s
-  if not (not M.skipping and V.in_view and zoom >= 0.75) or not s.herds then return end
+  local show = not M.skipping and V.in_view and zoom >= 0.75
+  if not show and V.wild_go then
+    for _, e in ipairs(V.wild_go) do if e.on then msg.post(e.url, MSG_DISABLE); e.on = false end end
+  end
+  if show then draw_wild(V, t, zoom >= M.ANIMAL_LOD[1] and 1 or (zoom >= M.ANIMAL_LOD[2] and 2 or 3)) end
+  if not show or not s.herds then return end
   V.ayaw = V.ayaw or {}
   local lod = zoom >= M.ANIMAL_LOD[1] and 1 or (zoom >= M.ANIMAL_LOD[2] and 2 or 3)
   for hi, kind in ipairs({ "flock", "cattle", "swine" }) do

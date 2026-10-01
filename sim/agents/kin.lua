@@ -161,4 +161,15 @@ M.DOMAIN = { till = "plot", sow = "plot", harvest = "plot", tend = "plot", haul_
   build = "bld", deliver = "bld", repair = "bld", fell = "tree", haul_logs = "tree", grub = "tree", thresh = "granary",
   mend_boat = "boat" }
 
+-- A grown man in household hh (a husband, a grown son) now.
+function M.has_man(W, hh, now)
+  local V = W.S.v3
+  local people = require("sim.agents.people")
+  for _, id in ipairs(hh.members) do
+    local q = V.people[id]
+    if q and q.alive and q.sex == "m" and people.stage(q, now) == "adult" then return true end
+  end
+  return false
+end
+
 return M

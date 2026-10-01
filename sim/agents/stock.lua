@@ -50,7 +50,7 @@ function M.decode(id)
   local sid = floor(r / 100000)
   r = r - sid * 100000
   local hi = floor(r / 20000)
-  return sid, M.HERDS[hi + 1], r - hi * 20000
+  return sid, M.HERDS[hi + 1] or "wild", r - hi * 20000
 end
 
 -- Position of animal a at time t (a straight walk between t0 and t1, else where it stands).

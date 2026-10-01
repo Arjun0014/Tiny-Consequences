@@ -91,6 +91,7 @@ function M.build(W, urls, step)
   puppets.height = function(v) return M.PL.h[v] end
   step("Waking the village", 0)
   agents_view.sheep_res = puppets.stock_res and puppets.stock_res.sheep
+  agents_view.wild_species = puppets.SPECIES
   agents_view.init(W, PL, urls, terrain.tex)
   selring.init(urls.ring_factory, M.surface)
   aim.init(urls.ring_factory, M.surface)

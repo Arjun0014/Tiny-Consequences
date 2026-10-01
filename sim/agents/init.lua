@@ -20,6 +20,7 @@ local rng = require("sim.rng")
 local clock = require("sim.agents.clock")
 local stock = require("sim.agents.stock")
 stock.person_pos = require("sim.agents.act").pos
+local wild = require("sim.agents.wild")
 
 local sys = { name = "agents" }
 -- (act.lua cannot require this module: bob rejects circular requires; it calls through this hook)
@@ -43,6 +44,7 @@ local function rt(W)
     end
     for _, s in ipairs(V.settlements) do
       stock.each(s, function(H, a) sys.push(W, a.t1, stock.event_id(s, H, a), a.ver) end)
+      wild.each(s, function(w) sys.push(W, w.t1, wild.event_id(s, w), w.ver) end)
     end
   end
   return R
@@ -67,6 +69,7 @@ function sys.push(W, t, id, ver)
   end
   T[i], I[i], Vv[i] = t, id, ver
 end
+wild.push = function(W, t, id, ver) return sys.push(W, t, id, ver) end
 
 local function pop(R)
   local T, I, Vv = R.t, R.id, R.ver
@@ -171,12 +174,21 @@ function sys.advance(W, t)
       -- an animal's step (one queue with the people: strict time order whatever the slicing)
       local sid, kind, k = stock.decode(id)
       local s = S[sid]
-      local H = s and s.herds and s.herds[kind]
-      local a = H and H.animals[k]
-      if a and a.alive and a.ver == ver then
-        V.now = et
-        stock.step(W, s, H, a, et)
-        sys.push(W, a.t1, id, a.ver)
+      if kind == "wild" then
+        local w = s and s.wildlife and wild.byk(s, k)
+        if w and w.alive and w.ver == ver then
+          V.now = et
+          wild.step(W, s, w, et)
+          if w.alive then sys.push(W, w.t1, id, w.ver) end
+        end
+      else
+        local H = s and s.herds and s.herds[kind]
+        local a = H and H.animals[k]
+        if a and a.alive and a.ver == ver then
+          V.now = et
+          stock.step(W, s, H, a, et)
+          sys.push(W, a.t1, id, a.ver)
+        end
       end
     else
       local p = P[id]
@@ -232,8 +244,10 @@ function sys.hour(W)
           life.daily(W, s, ld)
           settle.daily(W, s, ld)
           stock.daily(W, s, ld, sys.push)
+          wild.daily(W, s, ld, sys.push)
         end
       end
+      wild.hourly(W, s, now)
       local changed, r = settle.hourly(W, s, now)
       if changed then rain_change(W, s, now, r) end
     end

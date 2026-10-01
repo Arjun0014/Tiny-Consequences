@@ -156,4 +156,53 @@ function M.no_teleports()
   T.ok(worst < 0.3, string.format("a person jumped %.3f units in 3 game minutes", worst))
 end
 
+
+-- Wild animals on the maps (D-093): the shipped world's six settlements over six days. They are
+-- the members of real herds and packs (never more on a map than their herd holds), stand on dry
+-- land, come in from the edges; wolves come at night and what they kill is a real animal (a wild
+-- one taken off its herd's count).
+function M.wild_animals_belong_to_their_herds()
+  local f = assert(io.open("assets/worlds/v3.tcsave", "rb"))
+  local data = f:read("*a")
+  f:close()
+  local W = assert(worlds.from_save_string(data))
+  world.set_systems(require("sim.agents.worldgen").systems())
+  local wild = require("sim.agents.wild")
+  local fauna = require("sim.systems.fauna")
+  local mapm = require("sim.agents.map")
+  local A = W.S.wild
+  local t0 = W.hour
+  local seen, bad, over, visits, kills = 0, 0, 0, 0, 0
+  local n0 = {}
+  for i = 1, A.nh do n0[A.h_id[i]] = A.h_n[i] end
+  for h = 6, 6 * 24, 6 do
+    world.advance(W, t0 + h)
+    for _, s in ipairs(W.S.v3.settlements) do
+      local per = {}
+      wild.each(s, function(w)
+        seen = seen + 1
+        local i = mapm.tile_of(s, w.tx, w.ty)
+        if i == 0 or s.land[i] ~= 1 or s.occ[i] ~= 0 then
+          bad = bad + 1
+          if bad <= 5 then print(string.format("    bad: %s %s act %s at %.3f,%.3f tile %d land %s occ %s", s.name, w.sp, w.act, w.tx, w.ty, i, tostring(s.land[i]), tostring(s.occ[i]))) end
+        end
+        if not w.pred then per[w.gid] = (per[w.gid] or 0) + 1 end
+      end)
+      for gid, n in pairs(per) do
+        local i = fauna.find_herd(W, gid)
+        if i and n > A.h_n[i] + 1 then over = over + 1 end
+      end
+    end
+  end
+  for _, s in ipairs(W.S.v3.settlements) do
+    visits = visits + (s.acc.wolf_nights or 0)
+    kills = kills + (s.acc.wild_killed_wolves or 0) + (s.acc.stock_wolves or 0)
+  end
+  T.ok(seen > 500, "wild animal-samples on the maps " .. seen)
+  T.eq(bad, 0, "wild animals on water or in a building")
+  T.eq(over, 0, "more animals of a herd on a map than the herd holds")
+  T.ok(visits >= 3, "wolf nights " .. visits)
+  T.ok(kills >= 1, "kills by wolves " .. kills)
+end
+
 return M

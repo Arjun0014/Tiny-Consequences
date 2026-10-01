@@ -1054,6 +1054,25 @@ end
 -- placements inside these local squares are left to the v3 settlement renderer
 M.v3_exclude = nil   -- list of { nx, ny, nz, ex, ey, ez, qx, qy, qz, half, R, cosr }
 
+-- Is the unit point (ux, uy, uz) on a v3 settlement's square (drawn by agents_view)?
+function M.in_v3_square(ux, uy, uz, margin)
+  local ex = M.v3_exclude
+  if not ex then return false end
+  margin = margin or 0
+  for q = 1, #ex do
+    local e = ex[q]
+    local d = ux * e[1] + uy * e[2] + uz * e[3]
+    if d > e[12] then
+      local k = e[11] / d
+      local lx = (ux * e[4] + uy * e[5] + uz * e[6]) * k
+      local ly = (ux * e[7] + uy * e[8] + uz * e[9]) * k
+      local h = e[10] + margin
+      if lx > -h and lx < h and ly > -h and ly < h then return true end
+    end
+  end
+  return false
+end
+
 --- The stream declaration of prop chunk buffers.
 function M.chunk_decl()
   return {
