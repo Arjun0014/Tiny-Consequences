@@ -406,6 +406,10 @@ M.pens = {}             -- village id -> { x, y, z } unit direction of its pen (
 
 -- World position of local point (lx, ly, lz) of an instance (same frame as M.write).
 local function to_world(x, y, z, ux, uy, uz, yaw, s, lx, ly, lz)
+  return M.to_world(x, y, z, ux, uy, uz, yaw, s, lx, ly, lz)
+end
+M.CHIMNEY = CHIMNEY
+function M.to_world(x, y, z, ux, uy, uz, yaw, s, lx, ly, lz)
   local tx, tz = uz, -ux
   local tl = sqrt(tx * tx + tz * tz)
   if tl < 1e-4 then tx, tz, tl = 1, 0, 1 end

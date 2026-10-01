@@ -87,6 +87,9 @@ void main()
     float sway = tattr.z;
     float shade = tattr.y;
     float rnd = inst3.w;
+    // (rnd > 1.5 flags a glowing instance: a window lit by the hearth inside, D-082)
+    float glow = 0.0;
+    if (rnd > 1.5) { rnd -= 2.0; glow = 1.0; }
 
     vec4 wp = mtx_world * vec4(pos, 1.0);
     vec3 up = U;
@@ -149,7 +152,7 @@ void main()
         }
     }
     var_mat = vec3(snow, fire, cls);
-    var_bare = bare;
+    var_bare = glow > 0.5 ? -1.0 : bare;
     var_wpos = wp.xyz;
     var_normal = normalize(mat3(mtx_world) * nrm);
     var_color = col * shade;

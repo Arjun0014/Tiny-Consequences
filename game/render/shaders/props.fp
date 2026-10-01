@@ -24,6 +24,13 @@ void main()
 {
     vec3 up = normalize(var_wpos);
     vec3 V = normalize(u_cam.xyz - var_wpos);
+    if (var_bare < -0.5) {
+        // a window lit by the hearth inside: unlit, warm, the fire's slow flicker
+        float fl = 0.92 + 0.08 * sin(u_cam.w * 5.0 + dot(var_wpos, vec3(41.0, 23.0, 37.0)));
+        vec3 wc = tc_limb(var_color * 1.35 * fl, up, V, 0.4 * tc_haze_scale(u_cam.xyz));
+        out_color = vec4(wc, tc_coc(var_wpos, u_cam.xyz, u_focus));
+        return;
+    }
     vec3 L = normalize(u_sun.xyz);
     // bare deciduous crowns in winter: a stable world-space stipple leaves only twigs
     if (var_bare > 0.01) {

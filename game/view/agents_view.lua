@@ -79,6 +79,12 @@ local function build_templates()
   t = kit.new()
   kit.place(t, kit.box(nil, T * 0.6, 0.0014, T * 1.5, 1, 0.85, 1.0, false), 0, 0.0007, T * 0.707, 1)
   propgen.register_kind("v3seg2", t, t, 0)
+  -- the cottage's two windows, lit (D-082): drawn over its dark panes when the hearth inside burns
+  -- and someone in the house is awake after dark
+  t = kit.new()
+  kit.place(t, kit.quad(nil, 0.0105, 0.0105, 1, 1.0), 0.017, 0.026, 0.0258, 1)
+  kit.place(t, kit.quad(nil, 0.0105, 0.0105, 1, 1.0), -0.0358, 0.026, 0.0, 1, 1, 1, -pi / 2)
+  propgen.register_kind("v3window", t, t, 0)
 end
 
 -- Height grid --------------------------------------------------------------------------------
@@ -285,6 +291,9 @@ local function fill_buildings(V)
     elseif b.state == "standing" then
       if b.kind == "house" then
         add(V, K.cottage, b.cx, b.cy, 0, yaw, S, 1, c1, c2, 0)
+        if V.lit and V.lit[b.id] then
+          add(V, K.v3window, b.cx, b.cy, 0, yaw, S, 1, pack(1.0, 0.74, 0.38), 0, 0, 2.5)
+        end
         local logs = b.stock.logs or 0
         if logs > 0.5 then
           -- the woodpile beside the house grows and shrinks with its logs
@@ -313,7 +322,7 @@ end
 
 local function bld_sig(V)
   local s = V.s
-  local h = 11
+  local h = 11 + (V.lit_sig or 0)
   for i = 1, #s.blist do
     local b = s.buildings[s.blist[i]]
     local pg = b.state == "site" and floor(((b.work_done / b.work_need) * 0.75 + min(1, b.logs_have / max(1, b.logs_need)) * 0.25) * 20) or 99
@@ -344,7 +353,7 @@ local function fill_rows(V)
       local e2 = pack(EARTH_DARK[1], EARTH_DARK[2], EARTH_DARK[3])
       if rs == 0 or (rs == 3 and pl.stage == "rest") then
         -- bare ground, or a resting field grassing over (its weeds) after the stubble
-        local w = rs == 0 and 1 or min(1, (pl.weeds or 0) * 1.4)
+        local w = rs == 0 and 1 or min(1, 0.35 + (pl.weeds or 0) * 1.2)
         local f1 = { CROP_GOLD[1] + (FALLOW[1] - CROP_GOLD[1]) * w, CROP_GOLD[2] + (FALLOW[2] - CROP_GOLD[2]) * w,
           CROP_GOLD[3] + (FALLOW[3] - CROP_GOLD[3]) * w }
         add(V, K.v3row_bare, cx, cy, 0, yaw, 1, 1, pack(f1[1] * 0.8, f1[2] * 0.75, f1[3] * 0.7), 0, 0)
@@ -577,7 +586,7 @@ M.PART = PART
 
 -- what they hold for each action (the sim's action, not invented)
 local TOOL = { till = "hoe", grub = "hoe", chop = "axe", harvest = "sickle", build = "hammer", thresh = "flail",
-  forage = "basket", fill = "bucket", tend = nil, sow = "basket" }
+  forage = "basket", fill = "bucket", tend = nil, sow = "basket", repair = "hammer" }
 local CARRY_PART = { logs = "log", grain = "sack", sheaves = "sack", food = "sack", seed = "basket", water = "bucket" }
 -- animation for each action: { clip, rate (at a game minute per second), moving clip }
 local ANIM = {
@@ -586,6 +595,8 @@ local ANIM = {
   build = { "kneel_work", 1.0 }, thresh = { "swing", 0.8 }, forage = { "crouch_walk", 0.5 },
   fill = { "interact", 1 }, pick = { "pickup", 1.4 }, drop = { "pickup", 1.4 }, talk = { "talk", 1 },
   play = { "jump", 1 }, lunch = { "sit", 1 }, wait = { "idle", 1 }, idle = { "idle", 1 }, shelter = { "idle", 1 },
+  sit = { "sit", 1 }, nurse = { "sit", 0.8 }, craft = { "kneel_work", 0.6 }, repair = { "kneel_work", 1.0 },
+  hand = { "pickup", 1.2 },
 }
 
 local function packc(c) return pack(c[1], c[2], c[3]) end
@@ -736,16 +747,23 @@ local function update_villagers(V, t, zoom)
         end
         -- animation from the action
         local clip, rate
+        -- (each person keeps their own tempo: nobody swings or steps in time with the rest)
+        local tempo = 0.88 + 0.24 * frac(p.id * 0.6180339887)
         if moving then
           clip = carry and "carry_walk" or (stage == "elder" and "walk_slow" or "walk")
-          if p.act == "walk" and stage == "child" and p.objk == "play" then clip = "run" end
+          if p.act == "walk" and stage == "child" and (p.objk == "play" or p.objk == "follow") then clip = "run" end
           rate = min(3, 1.07 * kspeed * (p.spd / 3.2))
         else
           local a = ANIM[p.act] or ANIM.idle
           clip = a[1]
           if carry and clip == "idle" then clip = "carry_idle" end
           if p.act == "play" then clip = (p.id % 3 == 0) and "dance" or "jump" end
-          rate = min(2.5, (a[2] or 1) * (0.6 + 0.4 * kspeed))
+          if p.act == "talk" then
+            -- talkers listen as much as they talk: turns of a few game minutes
+            local turn = floor((t * 60 + p.id * 7.3) / (4 + p.id % 5))
+            if turn % 3 == 0 then clip = "idle" end
+          end
+          rate = min(2.5, (a[2] or 1) * (0.6 + 0.4 * kspeed) * tempo)
         end
         if M.NOANIM then
           e.anim = clip
@@ -850,9 +868,66 @@ function M.init(W, PL, urls, celltex)
   end
 end
 
+-- Hearths and windows (D-082), from the sim: a house's hearth is in use while someone in it is
+-- awake (cooking makes the most smoke); it burns only with wood on it (logs at home, or the day's
+-- fire). Its windows glow after dusk while the hearth burns and someone inside is awake.
+-- Returns lit (house id -> true), a signature of it, and the chimney tops smoking now.
+local CHIM = {}
+local function hearths(V, t)
+  local W, s = V.W, V.s
+  local Vp = W.S.v3.people
+  local lit = V.lit or {}
+  for k in pairs(lit) do lit[k] = nil end
+  local sig = 0
+  local n = #CHIM
+  local lon = W.grid.lon[s.cell]
+  local lh = require("sim.agents.clock").local_hour(t, lon)
+  local dark = lh < (s.sunrise or 6) + 0.35 or lh > (s.sunset or 18) - 0.35
+  local awake, cooking = V.awake or {}, V.cooking or {}
+  V.awake, V.cooking = awake, cooking
+  for k in pairs(awake) do awake[k] = nil end
+  for k in pairs(cooking) do cooking[k] = nil end
+  for i = 1, #s.members do
+    local p = Vp[s.members[i]]
+    if p and p.alive and p.inside ~= 0 and p.act ~= "sleep" and p.act ~= "carried" then
+      awake[p.inside] = true
+      if p.act == "cook" then cooking[p.inside] = true end
+    end
+  end
+  local S = M.BUILD_SCALE
+  local ch = propgen.CHIMNEY.cottage
+  for i = 1, #s.blist do
+    local b = s.buildings[s.blist[i]]
+    if b.kind == "house" and b.state == "standing" and b.hh ~= 0 and awake[b.id] then
+      local fire = (b.stock.logs or 0) > 0 or b.fire
+      if fire then
+        if dark then lit[b.id] = true; sig = (sig * 31 + b.id) % 1000003 end
+        -- smoke from the chimney (cooking: two puffs' worth)
+        local px, py, pz, ux, uy, uz = world_pos(V, b.cx, b.cy, 0)
+        local yaw = yaw_z(V, b.cx, b.cy, b.dx - b.cx, b.dy - b.cy)
+        local x, y, z = propgen.to_world(px, py, pz, ux, uy, uz, yaw, S, ch[1], ch[2], ch[3])
+        for rep = 1, cooking[b.id] and 2 or 1 do
+          n = n + 1
+          local c = CHIM[n]
+          if not c then c = {}; CHIM[n] = c end
+          c[1], c[2], c[3] = x, y, z
+        end
+      end
+    end
+  end
+  V.lit, V.lit_sig = lit, sig
+end
+M.chimneys = CHIM
+
 -- Per frame: t = view time (the sim has been advanced to it).
 function M.update(W, dt, zoom, t)
   M.t = t
+  M.light_timer = (M.light_timer or 0) - dt
+  if M.light_timer <= 0 then
+    M.light_timer = 0.25
+    for k = #CHIM, 1, -1 do CHIM[k] = nil end
+    for _, V in ipairs(M.SETS) do hearths(V, t) end
+  end
   if M.follow and M.SETS[1] then
     local p = W.S.v3.people[M.follow]
     if p and p.alive then

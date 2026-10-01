@@ -227,6 +227,11 @@ local function scan_chimneys(W)
   local list = {}
   local zoom = require("game.view.camera").zoom
   if zoom < 0.45 then M.chim_list = list; return end
+  if W.v3 then
+    -- v3 (D-082): the chimneys of the hearths in use now (game/view/agents_view.lua)
+    M.chim_list = require("game.view.agents_view").chimneys
+    return
+  end
   local chims = require("game.view.propgen").chimneys
   local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
   local g = W.grid
