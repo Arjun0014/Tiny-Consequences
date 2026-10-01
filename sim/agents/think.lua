@@ -51,7 +51,7 @@ local function plural(n, one, many) return n == 1 and one or many end
 -- outlive a person who moved to a new house, died or changed their mind).
 local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "fetch_wood", fetch_water = "fetch_water", foraging = "forage",
   smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed",
-  milking = "milk", slopping = "slop", cheesing = "cheese" }
+  milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt" }
 local function claim_free(W, hh, field, p)
   local id = hh[field] or 0
   if id == 0 or (p and id == p.id) then return true end
@@ -840,6 +840,57 @@ local function textile_candidates(W, s, p, ctx, now)
     end
   end
 end
+
+-- Hunting (D-094): a household short of meat sends a grown man (or woman) after one animal of a
+-- wild band on the map: tracked to stalking distance, crept up on, a spear thrown; the quarry may
+-- see them first and bolt. Three misses or the day's end and they give up; a kill is carried home
+-- whole (meat and hide). A hunt under way is pursued to its end.
+local wild = require("sim.agents.wild")
+
+local function hunt_candidates(W, s, p, ctx, now)
+  local c = C()
+  local H = p.hunting
+  if H then
+    -- (the hunt goes on: the quarry, or the kill to carry home)
+    local w = wild.byk(s, H.k)
+    if H.carcass then
+      add(1.0, "fetch_game", 0, 0, string.format("The %s is down: carrying it home", H.sp))
+      return
+    end
+    if w and w.alive and H.tries < c.hunt_tries and now - H.t0 < c.hunt_hours and ctx.lh < ctx.sunset - 0.5 and ctx.rain < 2 then
+      add(0.95 * fatigue(p), "hunt", w.k, 1, string.format("After the %s (%s)", w.sp, H.tries > 0 and "it got away once" or "tracking it"))
+      return
+    end
+    p.hunting = nil
+    require("sim.agents.people").remember(p, now, H.tries > 0 and "A day's hunting: the quarry got away" or "Lost the quarry's track")
+  end
+  if ctx.stage ~= "adult" or not ctx.home or ctx.night or ctx.rain >= 1 or ctx.lh > ctx.sunset - 2.5 or ctx.babe then return end
+  if not s.wildlife then return end
+  local home = ctx.home
+  local hh = ctx.hh
+  local n = #hh.members
+  -- (meat in the house against what the household would want laid by)
+  local meat = (home.stock.meat or 0) + (home.stock.smoked or 0) + (home.stock.fish or 0)
+  local need = max(0, 1 - meat / (n * c.meat_want))
+  local short = s.need.food_days < 20 and 0.2 or 0
+  if need + short < 0.5 or not claim_free(W, hh, "hunting", p) then return end
+  -- the quarry: a grown animal of a band, the nearest
+  local best, bs = nil, -1e9
+  for _, w in ipairs(s.wildlife.animals) do
+    if w.alive and not w.pred and w.act ~= "flee" and w.act ~= "leave" and (now - w.born) / 1152 > 0.5 then
+      local d = dist(p.x, p.y, w.tx, w.ty)
+      if d < c.hunt_reach then
+        local sc = wild.WP(w.sp).meat * 0.05 - d
+        if sc > bs then best, bs = w, sc end
+      end
+    end
+  end
+  if not best then return end
+  local f = (p.sex == "m" and 1.1 or 0.4) * (0.5 + 0.9 * (p.sk_hunt or 0.2))
+  addw((0.3 + 0.4 * min(1, need + short)) * f * fatigue(p) - travel(ctx, best.tx, best.ty, p.x, p.y) * 0.6, "hunt", best.k, 0,
+    "Little meat at home (%.0f for %d): hunting a %s at the woods' edge", meat, n, best.sp)
+end
+M.hunt_candidates = hunt_candidates
 
 -- Livestock (D-089, D-092). Herding is children's work as much as anyone's: a child of an owning
 -- household takes the herd out of its pen to the day's ground, watches it, and brings it home
@@ -1875,6 +1926,50 @@ PLAN.haul_flax = function(W, s, p, ctx, now, cd)
   return "Carry the flax to the granary", plot.name
 end
 
+-- The hunt (D-094): to stalking distance of the quarry, then creeping to a spear's throw.
+PLAN.hunt = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local w = wild.byk(s, cd.a)
+  if not w or not w.alive then return PLAN.rest(W, s, p, ctx, now, cd) end
+  if not p.hunting then
+    p.hunting = { k = w.k, sp = w.sp, t0 = now, tries = 0 }
+    ctx.hh.hunting = p.id
+  end
+  p.hunting.k = w.k
+  local qx, qy = wild.pos(w, now)
+  local d = dist(p.x, p.y, qx, qy)
+  if d > c.hunt_stalk then
+    -- (track it: to stalking distance, from the side away from the village)
+    local ax, ay = qx - p.x, qy - p.y
+    local l = max(1e-6, sqrt(ax * ax + ay * ay))
+    local sx, sy = qx - ax / l * c.hunt_stalk * 0.8, qy - ay / l * c.hunt_stalk * 0.8
+    go(pl, sx, sy, "the woods' edge")
+  end
+  -- creep to a throw
+  local sx, sy = d > c.hunt_stalk and (qx - (qx - p.x) / max(d, 1e-6) * c.hunt_stalk * 0.8) or p.x,
+    d > c.hunt_stalk and (qy - (qy - p.y) / max(d, 1e-6) * c.hunt_stalk * 0.8) or p.y
+  local ex, ey = qx - sx, qy - sy
+  local l = max(1e-6, sqrt(ex * ex + ey * ey))
+  local tx, ty = qx - ex / l * c.hunt_throw * 0.8, qy - ey / l * c.hunt_throw * 0.8
+  work(pl, "stalk", max(0.05, (l - c.hunt_throw * 0.8) / c.stalk_speed), { ref = w.k, x1 = tx, y1 = ty, fx = qx, fy = qy })
+  return "Hunt a " .. w.sp, "the woods' edge"
+end
+
+-- The kill carried home whole (meat and hide).
+PLAN.fetch_game = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local H = p.hunting
+  local home = ctx.home
+  local cc = H and H.carcass
+  if not cc or not home then p.hunting = nil; return PLAN.rest(W, s, p, ctx, now, cd) end
+  go(pl, cc.x + 0.01, cc.y, "the kill")
+  work(pl, "gut", 0.3 + 0.2 * u01(W, p, now, 73), { fx = cc.x, fy = cc.y })
+  go(pl, home.dx, home.dy, "home", home.id)
+  pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, release = "hunting" }
+  return "Carry the " .. H.sp .. " home", "home"
+end
+
 -- The night watch (D-093): the pen p's household keeps beasts in, if wolves took one lately and
 -- nobody else watches it; nil otherwise.
 function M.guard_herd(W, s, p, ctx, now)
@@ -2290,6 +2385,7 @@ function M.decide(W, s, p, now, reason)
       craft_candidate(W, s, p, ctx, now)
       textile_candidates(W, s, p, ctx, now)
       herd_candidates(W, s, p, ctx, now)
+      hunt_candidates(W, s, p, ctx, now)
     elseif not ctx.night then
       chores(W, s, p, ctx, now)
       textile_candidates(W, s, p, ctx, now)
@@ -2328,7 +2424,7 @@ function M.decide(W, s, p, now, reason)
     elseif cr == "sheaves" then to = s.granary
     elseif cr == "logs" then to = s.wood_store
     elseif cr == "hay" then to = s.herds and s.buildings[(s.herds.flock or s.herds.cattle or {}).pen or 0]
-    elseif cr == "wool" or cr == "meat" or cr == "milk" or cr == "scraps" then to = home
+    elseif cr == "wool" or cr == "meat" or cr == "milk" or cr == "scraps" or cr == "carcass" then to = home
     elseif cr == "manure" then
       local H = s.herds and (s.herds.cattle or s.herds.flock or s.herds.swine)
       to = H and s.buildings[H.pen]

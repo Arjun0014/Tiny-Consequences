@@ -15,6 +15,7 @@ const hour = Number(getFlag(args, '--hour', 10));
 const zoom = Number(getFlag(args, '--zoom', 1.4));
 const what = getFlag(args, '--what', 'centre');
 const herd = getFlag(args, '--herd', 'cattle');
+const pid = Number(getFlag(args, '--pid', 0));
 const name = getFlag(args, '--name', `s${sett}_d${days}_h${hour}`);
 await build({ variant: 'debug', ifStale: true, quiet: true });
 const outDir = path.join(ROOT, 'out', 'shots', 'look');
@@ -38,7 +39,8 @@ try {
   await page.waitForFunction(() => window.__TC && window.__TC.ready === true, null, { timeout: 240_000 });
   await cmd({ cmd: 'ui', debug: false });
   await cmd({ cmd: 'v3_goto', lh: hour, days });
-  const at = await cmd({ cmd: 'v3_look', sett, what, zoom, herd });
+  const at = pid ? await cmd({ cmd: 'v3_person', pid, look: true, zoom }) : await cmd({ cmd: 'v3_look', sett, what, zoom, herd });
+  if (pid) at.name = `#${pid} ${at.name || ''} ${at.obj || ''} | ${at.why || ''}`;
   await page.waitForTimeout(400);
   await cmd({ cmd: 'flush_view' });
   await page.waitForTimeout(2500);

@@ -160,7 +160,7 @@ end
 -- Wild animals on the maps (D-093): the shipped world's six settlements over six days. They are
 -- the members of real herds and packs (never more on a map than their herd holds), stand on dry
 -- land, come in from the edges; wolves come at night and what they kill is a real animal (a wild
--- one taken off its herd's count).
+-- one taken off its herd's count); hunters kill real animals and carry them home (D-094).
 function M.wild_animals_belong_to_their_herds()
   local f = assert(io.open("assets/worlds/v3.tcsave", "rb"))
   local data = f:read("*a")
@@ -194,10 +194,16 @@ function M.wild_animals_belong_to_their_herds()
       end
     end
   end
+  local hunted, meat = 0, 0
   for _, s in ipairs(W.S.v3.settlements) do
     visits = visits + (s.acc.wolf_nights or 0)
     kills = kills + (s.acc.wild_killed_wolves or 0) + (s.acc.stock_wolves or 0)
+    hunted = hunted + (s.acc.wild_hunted or 0)
+    meat = meat + (s.acc.hunt_meat or 0)
   end
+  -- (D-094) hunters kill real animals and carry them home
+  T.ok(hunted >= 2, "animals hunted " .. hunted)
+  T.ok(meat > 10, "hunted meat brought home " .. meat)
   T.ok(seen > 500, "wild animal-samples on the maps " .. seen)
   T.eq(bad, 0, "wild animals on water or in a building")
   T.eq(over, 0, "more animals of a herd on a map than the herd holds")

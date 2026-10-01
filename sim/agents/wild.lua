@@ -388,7 +388,9 @@ local function threat(W, s, w, now)
     if p and p.alive and p.inside == 0 and p.act ~= "carried" then
       local px, py = stock.person_pos(p, now)
       local d2 = (px - w.tx) ^ 2 + (py - w.ty) ^ 2
-      if d2 < r2 * (p.objk == "hunt" and 0.45 or 1) then return px, py end
+      -- (a hunter creeping up is seen later, the more skilled the later)
+      local k = p.objk == "hunt" and (1 - 0.5 * (p.sk_hunt or 0.2)) or 1
+      if d2 < r2 * k * k then return px, py end
     end
   end
   return nil
@@ -620,6 +622,10 @@ function M.step(W, s, w, now)
     local o = byk(s, w.flee_from)
     if o and o.alive then fx, fy = o.tx, o.ty end
     w.flee_from = nil
+  end
+  if w.flee_x then
+    fx, fy = w.flee_x, w.flee_y
+    w.flee_x, w.flee_y = nil, nil
   end
   if not fx and w.act ~= "flee" then fx, fy = threat(W, s, w, now) end
   if fx then

@@ -656,9 +656,9 @@ M.PART = PART
 -- what they hold for each action (the sim's action, not invented)
 local TOOL = { till = "hoe", grub = "hoe", chop = "axe", harvest = "sickle", build = "hammer", thresh = "flail",
   forage = "basket", fill = "bucket", tend = nil, sow = "basket", repair = "hammer", fish = "rod", mend_boat = "hammer",
-  dress = "flail" }
+  dress = "flail", stalk = "spear", gut = "spear", milk = "bucket", muck = nil, slop = "bucket" }
 local CARRY_PART = { logs = "log", grain = "sack", sheaves = "sack", food = "sack", seed = "basket", water = "bucket", fish = "basket",
-  flax = "sack" }
+  flax = "sack", carcass = "sack", milk = "bucket", manure = "basket", scraps = "bucket", wool = "sack", hay = "basket", meat = "sack" }
 -- animation for each action: { clip, rate (at a game minute per second), moving clip }
 local ANIM = {
   walk = { "walk" }, till = { "swing", 0.7 }, grub = { "kneel_work", 0.9 }, chop = { "swing", 0.9 },
@@ -672,6 +672,11 @@ local ANIM = {
   mend_boat = { "kneel_work", 1.0 }, smoke = { "kneel_work", 0.6 },
   spin = { "sit", 0.9 }, weave = { "sit", 0.8 }, sew = { "sit", 0.7 }, mend_clothes = { "sit", 0.7 },
   dress = { "swing", 0.7 }, haul_flax = { "walk" },
+  -- livestock and the hunt (D-092-D-094)
+  milk = { "kneel_work", 0.8 }, shear = { "kneel_work", 1.0 }, slaughter = { "kneel_work", 0.9 }, feed = { "pickup", 1 },
+  spread = { "walk_slow", 0.8 }, slop = { "pickup", 1 }, cheese = { "kneel_work", 0.6 }, open_pen = { "push", 1 },
+  close_pen = { "push", 1 }, herd = { "idle", 1 }, mow = { "swing", 0.8 }, stalk = { "crouch_walk", 0.55 },
+  gut = { "kneel_work", 1.0 }, sleep = { "sit", 0.4 },
 }
 
 local function packc(c) return pack(c[1], c[2], c[3]) end

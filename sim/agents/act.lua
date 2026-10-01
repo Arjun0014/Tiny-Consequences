@@ -666,6 +666,57 @@ WORK.cheese = function(W, s, p, st, f)
   s.acc.cheese = (s.acc.cheese or 0) + m * c.cheese_keep
 end
 
+-- The hunt (D-094): at the end of the creep, a spear thrown if the quarry is still in range (the
+-- odds by skill and by whether it is running); a hit kills it where it stands (its herd loses
+-- it); a miss, or a quarry already off, sets it running.
+WORK.stalk = function(W, s, p, st, f)
+  local H = p.hunting
+  if not H or f < 0.9 then return end
+  local wild = require("sim.agents.wild")
+  local w = wild.byk(s, st.ref or 0)
+  if not w or not w.alive then return end
+  local c = C()
+  local now = W.S.v3.now or W.hour
+  local qx, qy = wild.pos(w, now)
+  local d = sqrt((qx - p.x) ^ 2 + (qy - p.y) ^ 2)
+  p.sk_hunt = p.sk_hunt or 0.2
+  people.practice(p, "sk_hunt", st.dur * 0.5)
+  if d <= c.hunt_throw * 1.4 then
+    local hit = c.hunt_hit + c.hunt_skill * (p.sk_hunt or 0.2) - (w.act == "flee" and 0.25 or 0)
+    local rng = require("sim.rng")
+    local v = rng.float(W.seed, rng.S.V3_THINK, p.key, floor(now * 60) % 4294967296, 81)
+    s.acc.spears = (s.acc.spears or 0) + 1
+    if v < hit then
+      local cc = wild.shot(W, s, w, now, p.id)
+      H.carcass = { x = cc.x, y = cc.y, meat = cc.meat, hide = cc.hide }
+      people.practice(p, "sk_hunt", 1)
+      people.remember(p, now, "Speared a " .. w.sp .. " at the woods' edge")
+      return
+    end
+  end
+  H.tries = H.tries + 1
+  w.flee_x, w.flee_y = p.x, p.y
+  wild.interrupt(W, s, w, now)
+end
+
+-- At the kill: gutted, slung over the shoulders (the meat counts from here).
+WORK.gut = function(W, s, p, st, f)
+  local H = p.hunting
+  if not H or not H.carcass or f < 0.5 then return end
+  local cc = H.carcass
+  p.carry, p.camt = "carcass", cc.meat
+  p.hide = cc.hide
+  s.acc.meat = (s.acc.meat or 0) + cc.meat
+  s.acc.hunt_meat = (s.acc.hunt_meat or 0) + cc.meat
+  -- (the carcass on the ground is gone with them)
+  local Wd = s.wildlife
+  for i = #Wd.carcasses, 1, -1 do
+    local q = Wd.carcasses[i]
+    if q.by == p.id and math.abs(q.x - cc.x) < 1e-6 and math.abs(q.y - cc.y) < 1e-6 then table.remove(Wd.carcasses, i) end
+  end
+  p.hunting = nil
+end
+
 WORK.thresh = function(W, s, p, st, f)
   local g = s.granary
   if not g then return end
@@ -914,6 +965,11 @@ DROP.any = function(W, s, p, st)
     s.hay = (s.hay or 0) + n
   elseif what == "milk" then
     b.stock.milk = (b.stock.milk or 0) + n
+  elseif what == "carcass" then
+    -- (butchered at home: the meat to the larder, the hide kept)
+    b.stock.meat = (b.stock.meat or 0) + n
+    b.stock.hides = (b.stock.hides or 0) + (p.hide or 1)
+    p.hide = nil
   elseif what == "scraps" then
     b.stock.scraps = (b.stock.scraps or 0) + n
   elseif what == "manure" then

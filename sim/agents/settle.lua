@@ -153,7 +153,7 @@ end
 -- The food ledger (tools and tests): everything edible anywhere in the settlement (FU), and the
 -- running sum of what came in less what went out. food_total(after) - food_total(before) equals
 -- the change in food_flows over the same time (every new food stock or flow goes here).
-local CARRY_FOOD = { seed = true, grain = true, food = true, sheaves = true, fish = true, meat = true, milk = true }
+local CARRY_FOOD = { seed = true, grain = true, food = true, sheaves = true, fish = true, meat = true, milk = true, carcass = true }
 function M.food_total(W, s)
   local V = W.S.v3
   local c = C()

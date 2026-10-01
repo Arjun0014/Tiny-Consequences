@@ -934,12 +934,16 @@ C.V3 = {
   wild_seen = 1.0,                        -- share of a herd's animals on the map's cells drawn here
   wild_max = 24,                          -- at most this many wild grazers on one map
   wild_keep = 0.9,                        -- bands keep this far from the village square
-  wild_alert = 0.16, wild_alert_wolf = 0.3,   -- grazers take flight from people / hunting wolves this close
+  wild_alert = 0.2, wild_alert_wolf = 0.3,   -- grazers take flight from people / hunting wolves this close
   wild_flee = 0.35,                       -- how far a frightened grazer runs
   wolf_hungry = 0.55,                     -- a pack below this condition comes for a village's beasts when
   wolf_wild_scarce = 8,                   --   fewer wild grazers than this are on the map; at once below
   wolf_starving = 0.25,                   --   this condition
-  guard_days = 6,                         -- after wolves took a beast, the village keeps a night watch this long
+  guard_days = 6,
+  -- hunting (D-094): meat a household member wants laid by (FU); how far a hunter goes; stalking
+  -- distance, a spear's throw; creeping pace (units an hour); hit odds (+ skill); tries; hours
+  meat_want = 1.2, hunt_reach = 1.6, hunt_stalk = 0.3, hunt_throw = 0.07, stalk_speed = 0.4,
+  hunt_hit = 0.25, hunt_skill = 0.35, hunt_tries = 3, hunt_hours = 5,                         -- after wolves took a beast, the village keeps a night watch this long
   wolf_visit = 0.5,                       -- a pack's chance to hunt on the map tonight: its time here x this
   pack_max = 7,                           -- wolves of a pack that come (the rest stay at the den)
   wolf_reach = 0.03, wolf_chase = 0.22,   -- caught up within; the chase begins within
