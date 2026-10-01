@@ -299,6 +299,9 @@ function M.register(G)
       for g, n2 in pairs(cnt) do if n2 > bn or (n2 == bn and g < best) then best, bn = g, n2 end end
       assert(best, "no wild animals of that kind on the map")
       x, y = by[best][1] / bn, by[best][2] / bn
+      -- (a grazing band: its day's ground, where most of it is)
+      local gr = s.wildlife.ground and s.wildlife.ground[best]
+      if gr and args.what == "wild" then x, y = gr[1], gr[2] end
       info = { n = bn, gid = best }
     elseif args.what == "flock" or args.what == "herd" then
       -- the middle of a herd's living animals now (sheep, or `species` of s.herds)
