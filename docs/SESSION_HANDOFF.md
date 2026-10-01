@@ -1,72 +1,74 @@
-# Session handoff — session 9 end (1 Oct 2026): the v3 direction reset
+# Session handoff — session 10 end (1 Oct 2026): v3 is the default game
 
-`docs/PROGRESS.md` (session 9 entry) and **D-078** in `docs/DECISIONS.md` are the source of truth.
-Arjun's rules for this work: no subagents; the living world first, jams secondary; one long
-simulation at a time (shared laptop).
+`docs/PROGRESS.md` (session 10 entry) and **D-079 … D-084** in `docs/DECISIONS.md` are the source
+of truth. Arjun's rules: no subagents; the living world first; one heavy process at a time
+(shared laptop, ~4 GB free); hand off before the context runs out.
 
 ## State
-- **Branch `wip/agentic-world-v3`** (from main `0d76765`; not merged). main is unchanged.
-- v3 design: `docs/v3/00_DIRECTION_AUDIT.md`, `10_AGENTS.md`, `20_CHARACTER_PIPELINE.md`,
-  `30_ROADMAP_V3.md` (R0 done this session; **R1 next**).
-- v3 sim: `sim/agents/` (init = the system and event heap; act = steps and effects; think =
-  choices and plans; settle = buildings, plots, the hourly board, the daily round, growth;
-  life = stages, births, deaths, marriage; found = site and founding; map, nav (A*), weather
-  (hourly rain), clock (48-day year, local seasons), people, worldgen). v2 code untouched except
-  hpt-awareness in `sim/world.lua` and `fauna.lua` (v2 hashes identical: quick suite 109/109).
-- v3 view: `game/view/agents_view.lua` (+ hooks in propgen, view, planet, camera, picking,
-  inspect, hudstats, speed, main.script, render script); villager models `assets/characters/`,
-  materials `game/render/villager.material`, `shadow_villager.material`.
-- World asset: `assets/worlds/v3.tcsave` (seed 22, one settlement of 32; regenerate with
-  `luajit tools/make_world.lua --v3 --seed 22 --out assets/worlds/v3.tcsave` after any change to
-  founding or world generation; behaviour changes do not need it — the save is the founding state).
-- Verified at the last commit: quick sim suite 114/114 (v2 109 + v3 5), web suite 8/8, lint clean,
-  `npm run build` OK, `npm run shots:v3` OK (out/shots/v3/). The settlement is now Tekheim (seed 22,
-  cell 903, lat 13.7: the north, so day 0 is its spring).
+- **main** holds everything (the v3 branch was merged at `d8cb549`; work continues on main).
+  A normal launch opens the v3 agent world (`assets/worlds/v3.tcsave`: seed 22, **4 settlements,
+  103 people**, Tekheim and Deztok coastal with docks) at its first dawn, at ▶▶. `?world=v2` opens
+  the legacy v2 world; `?seed=N` generates a v3 world (`&world=v2` a v2 one).
+- Time: ⏸ / ▶ 1 / ▶▶ 4 / ▶▶▶ 12 game-min per second; nothing faster is a watch speed. Skips (HUD
+  ⏭ menu or keys 4-7): until dawn, until evening, one day, next season — people hidden, the view's
+  rebuilds paused, progress and Stop; the world lands exactly where the sim put it.
+- Sim (`sim/agents/`): + `kin.lua` (infants, carers, minders, mentors). The economy (D-080),
+  life stages (D-081), several settlements (D-083) and fishing (D-084) are described in DECISIONS.
+- Regenerate the world after any change to founding or world generation:
+  `luajit tools/make_world.lua --v3 --seed 22 --settlements 6 --out assets/worlds/v3.tcsave`.
 
 ## How to look at it
-- Game: `npm run build`, `npm run serve`, open `http://localhost:8080/?world=v3` (keys 1-3 watch
-  speeds, 4-6 catch-up; click a villager for the inspector, "Follow" in it). The default (no
-  `?world=`) is still the v2 world.
-- Headless shots: `npm run shots:v3 [-- --hours 6.2,8.5,12.5,18.2 --person 12]`.
-- Headless follow: `luajit tools/v3_run.lua --seed 22 --days 3 --follow 3,12 [--hist] [--all]`.
-- Cost: `luajit tools/v3_scale.lua --settlements 6 --days 3` (and `luajit -joff ...`).
-- Character pipeline: `blender -b --factory-startup -P tools/blender/build_villager.py -- --out
-  assets/characters`; preview `... -P tools/blender/preview_villagers.py -- out/s9/villagers.png 0 6.5`.
+- Game: `npm run build && npm run serve`, open `http://localhost:8080/` (v3). Click a villager for
+  the inspector; "Follow" keeps the camera on them.
+- A whole year headless: `luajit tools/v3_year.lua --days 54 --out out/year` (summary.txt: daily
+  food/wood/fields with a conservation residual, budgets by stage and season, trips, crowding,
+  stuck, synchrony; follow.txt: followed people's days; `--load assets/worlds/v3.tcsave` for the
+  multi-settlement world; `--ids 12,21 --follow-days 14`).
+- Decision traces: `think.trace = { [id] = true }` then `think.trace_out` (every candidate and its
+  score; see `out/s10/trace2.lua` pattern).
+- Shots: `npm run shots:v3 [-- --hours 6.2,20.6 --person 12 --zoom 1.45]`.
+- Catch-up cost in the browser: `node scripts/skip_probe.mjs [--release] --hours 24 --skips day,season`.
+- Blender: not on PATH — `"/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b
+  --factory-startup -P tools/blender/build_villager.py -- --out assets/characters`.
 
-## Next (R1, in order)
-1. Watch a whole year (48 days) headless and in the game; follow 5 people of different stages
-   for 3 days each; fix what reads wrong (see "Known oddities").
-2. Infants drawn in arms (a "babe" part on the carer); children following a parent; apprentices
-   beside their mentor.
-3. Lit windows at night (people indoors and awake) and chimney smoke from burning logs.
-4. Far LOD to ~150-250 triangles (drop minor parts, merge limbs); facing work targets.
-5. Catch-up UI (⏭ to dawn / a season), HUD speed buttons for the v3 ladder.
-6. Performance for catch-up: lazy why-strings, fewer hashes, a coarse grid for long A* trips,
-   the planet's daily step (≈30% of cost) amortised. Target in roadmap v3 R1.
-7. Then R2: several settlements across the world (worldgen `settlements` exists), coasts/rivers on
-   the local map, fishing boats.
+## Verified at the last commit
+- Quick sim suite **119/119** (`out/s10/quick_final.txt`; v2 109 + v3 10: slicing, save round trip, four
+  days, families, no teleports, and `test_v3_year`: economy closes, nobody starves, infants held
+  and fed, children never field hands, apprentices beside mentors, the rotation turns).
+- Web **10/10** (`out/s10/web_final.txt`): W01-W09 (legacy v2, `world=v2`) and W10 (v3 default:
+  ▶▶, watch ladder, skip to dawn; `?world=v2` still loads). Lint clean. `npm run build` OK (6.08 MB).
 
-## Findings and pitfalls (session 9)
-- The engine passes a fixed `dt` per frame: v3 time uses real elapsed time (`speed.step_v3`).
-- A hidden browser pane throttles rendering (the in-app Browser pane loads in ~60 s and runs at a
-  few frames): use `npm run shots:v3` (headless Chromium) for checks.
-- Defold models create a game object per bone unless `create_go_bones: false`.
-- Per-instance vertex attributes on GPU-skinned instanced models abort Defold 1.13.1
-  (`size <= Capacity()`): use per-component constants.
-- The bridge's command objects use `id` for the command id: name parameters otherwise (`pid`).
-- Saves copy tables: aliases (`s.granary` = a building) must be re-linked on load (`sys.init`).
-- Seasons are local: day 0 is the northern spring; the south is 24 days on (`clock.local_doy`).
-  The first settlement is placed in the north so its founders begin at their spring.
-- Git Bash heredocs with apostrophes break: write patch scripts to the scratchpad and run them.
+## Next (in order)
+1. **Coast function** shared by the sim's local map and the view (the local map's water is the
+   nearest sim cell's ocean flag; the rendered coast is the planet mesh's interpolated shoreline —
+   boats can row over drawn forest). Then rivers and fords on the local map.
+2. **Catch-up speed with several settlements**: 154 ms of sim per game hour for 103 people (debug
+   HTML5); a season's skip ≈ 44 s. Profile in `luajit -joff` (interpreter ≈ the browser): A* and
+   its heap, RNG hashing, the planet's daily step (amortise it across the day), settle.hourly's
+   per-tree scans, `next_tree` O(trees) per felling decision. Measure the release build.
+3. **Southern founders**: founding states for a settlement whose day 0 is its autumn (the rotation
+   under way, a fresh harvest in store); then settlements on every landmass.
+4. **Winter work**: textiles (flax or wool → yarn → cloth → clothes that wear) and livestock (R3)
+   — winter is still ~70% social.
+5. Fishers as a role (pick_role when a dock exists), boat building and repair, fish drying.
+6. R3 animals as individuals; R4 trade between settlements (paths, porters, boats).
 
-## Known oddities (not yet fixed)
-- People carry spare seed back to the granary between sowing and other work.
-- Two gatherers can choose the same tree; the woodcutters' felling target is the nearest tree to
-  the woodstore (clearings grow from there).
-- Evening gatherings and afternoon rests are still a little uniform on quiet days.
-- The far LOD still carries every part (808 triangles); the near mesh with all parts 1,468.
+## Findings and pitfalls (session 10)
+- **bob rejects circular requires, even lazy ones** (`require` inside a function): pass functions
+  in (`act.interrupt_hook`, `kin.infant_tick(..., pos)`).
+- **No `goto` anywhere** (the HTML5 runtime is Lua 5.1; `npm run lint:lua` only checks sim/ and
+  content/).
+- Local functions must be defined before the function that calls them (an `update_boats` defined
+  after `M.update` was a nil global at runtime).
+- Household claims (who cooks, fetches...) must be validated (`think.claim_free`): a claim held by
+  someone who moved to a new house starved two people.
+- Headless SwiftShader frames cost ~200 ms on their own: judge skip/catch-up speed by the sim's own
+  cost (`v3_bench`, skip internals), not wall time.
+- Heredocs with apostrophes break in Git Bash: write patch scripts to the scratchpad.
+- The machine's timings swing ~2x with other load; compare counts, not milliseconds.
 
-## Questions for Arjun (non-blocking)
-- Is the watch ladder right (▶ 1 game-min/s, ▶▶ 4, ▶▶▶ 12 = a day in 2 minutes)? Should the
-  default start speed be ▶▶?
-- Make v3 the default world on this branch now, or keep `?world=v3` until R1 is done?
+## Known oddities
+- Winter is mostly talk, visits and rest (no textiles, livestock or winter crafts yet).
+- Fallow ploughing, sowing and harvest still come in bursts per household when the window opens.
+- The well gathers up to ~10 on fine evenings.
+- Boats are drawn over coastal forest where the sim's water and the rendered coast disagree.

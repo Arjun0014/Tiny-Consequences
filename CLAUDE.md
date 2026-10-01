@@ -16,10 +16,11 @@ Arjun reset priorities: **build the genuinely living tiny world first**; the jam
 
 Arjun reset again: v2 people moved as scheduled groups. The target is an automated miniature
 civilisation of persistent agents (small settlements that farm, cut wood, build, raise children,
-trade, migrate and fight on their own); the visible action must be the simulation. Work happens on
-branch `wip/agentic-world-v3`: spec `docs/v3/` (00 audit, 10 agents, 20 character pipeline,
-30 roadmap v3), code `sim/agents/` and `game/view/agents_view.lua`, v3 worlds open with
-`?world=v3`. v2 stays playable until v3 reaches parity. Commit prefix `[v3]`.
+trade, migrate and fight on their own); the visible action must be the simulation. Since session 10 (D-079)
+**v3 is the default game and work happens on main** (the v3 branch is merged): spec `docs/v3/`
+(00 audit, 10 agents, 20 character pipeline, 30 roadmap v3), code `sim/agents/` and
+`game/view/agents_view.lua`. The legacy v2 world opens with `?world=v2` and stays until v3 reaches
+parity. Commit prefix `[v3]`.
 
 ## Read order
 

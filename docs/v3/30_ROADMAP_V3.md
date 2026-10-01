@@ -28,12 +28,21 @@ calendar and speed ladder; skinned villagers from the Blender pipeline; inspecto
   coarse grid for long trips; the planet's daily step amortised. Target: 200 agents at ▶▶▶ < 2 ms
   per frame in the HTML5 release, a season of catch-up in ≤ 10 s.
 
+R1 status (session 10, D-079-D-082): done — a whole year watched and fixed by mechanism (rotation,
+labour, cooking, hearths, tools, wild food, repairs, care across the generations, own fields,
+spare hands clear land), lit windows and smoke, far LOD, skips. Open: winter work (textiles,
+livestock), catch-up speed with several settlements (154 ms of sim per game hour for 103 people
+in the debug build), the daily planet step amortised.
+
 ## R2 — Settlements across the world
 - 4-8 settlements of 20-30 founders on different landmasses (worldgen `settlements`), each with
   its own culture's houses; sites near water preferred (coasts, rivers with fords).
 - Coasts and rivers on the local map from the planet's render coast (a shared pure coast function)
   and the river network; bridges and fords as lane tiles people build.
 - Fishing: piers, real boats (entities) rowed out to the grounds, catch landed and carried.
+  (Session 10: 4 settlements of 18-36 founders, north only (D-083); docks, boats and the fishing
+  loop in the sim (D-084). Open: the shared coast function so the local map's water matches the
+  rendered coast; southern founding states; rivers and fords.)
 - Storage and spoilage, the store a village wants (D-074's memory of hunger re-expressed).
 
 ## R3 — Animals as individuals

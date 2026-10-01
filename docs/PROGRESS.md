@@ -4,6 +4,8 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Current state
 
+- **SESSION 10 (1 Oct 2026): v3 IS THE DEFAULT GAME, on main (D-079).** The branch `wip/agentic-world-v3` was verified and merged into main (`d8cb549`); work continues on **main**. A normal launch opens the v3 agent world at its first dawn at ▶▶; `?world=v2` opens the legacy v2 world (its code, saves and the W01-W09 web specs are kept). Watch speeds stop at ▶▶▶; faster is an explicit skip (HUD ⏭: until dawn / until evening / one day / next season; keys 4-7). This session: the year made real (D-080: three-field rotation, labour at pre-industrial scale, cooking, hearths, tools, wild food, repairs, spoilage), life stages with real care (D-081: infants held and fed, minders, children tagging along, apprentices beside mentors, own fields, spare hands clear land), visual life from the sim (D-082: lit windows, hearth smoke, far LOD ~150 triangles, per-person tempo), R2 begun (D-083: 4 settlements, 103 people), the fishing loop (D-084; the rendered coast does not match the local map yet). **Read `docs/SESSION_HANDOFF.md` first.**
+
 - **DIRECTION RESET v3 (D-078, session 9, 1 Oct 2026) — branch `wip/agentic-world-v3`.** Arjun: v2 people move as scheduled groups (positions were a function of task and hour). New target: an automated miniature civilisation of persistent agents whose visible action is the simulation. Docs: `docs/v3/00_DIRECTION_AUDIT.md` (audit: what survives / is rewritten / removed; medieval cleanup; time; population target), `10_AGENTS.md` (agents, objectives, navigation, life stages, growth), `20_CHARACTER_PIPELINE.md`, `30_ROADMAP_V3.md` (R0 done; R1 next). Code: `sim/agents/` (v3 worlds only; v2 untouched: quick suite 109/109 on the branch), `game/view/agents_view.lua`, villagers `assets/characters/` from `tools/blender/build_villager.py`. Play it: `npm run build && npm run serve`, then `http://localhost:8080/?world=v3` (or `npm run shots:v3`; headless follow: `luajit tools/v3_run.lua --days 3 --follow 3,12 --hist`). **Read `docs/SESSION_HANDOFF.md` first.**
 
 - **Direction reset (D-050, 27 Sep 22:30 IST).** Arjun: the simulation is theatre; build the genuinely living tiny world first, jams secondary. Roadmap v2: `docs/world/17_ROADMAP.md`. Spec for the new world: `docs/world/00_RESEARCH.md` (sources), `01_AUDIT.md`, `10_WORLD_SYSTEMS.md` … `16_CAUSALITY_VISUALS.md`. Stage 2.3 of the old roadmap is **not** being continued.
@@ -82,6 +84,15 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 - Bundle size: 3.12 MB release
 
 ## Stage entries
+
+### [v3] v3 the default game; the year made real; life stages; night from the sim; R2 and fishing begun (D-079-D-084) (2026-10-01, session 10)
+- D-079: v3 default (normal launch, `?seed=N` generates v3, `?world=v2` legacy); ▶▶ start; watch ladder 0-3; explicit skips with progress and Stop (`speed.v3_skip`, HUD ⏭ menu, keys 4-7, bridge `v3_skip`); W10 web spec. Merged into main after a verified baseline (quick 114/114, web 9/9 incl. W10).
+- Year watch tool `tools/v3_year.lua` (food conservation every day, action budgets by stage and season, walking share, trips, crowding, stuck, interrupts, synchrony, wake/bed spread, followed people). Findings fixed by mechanism (D-080, D-081): see DECISIONS.
+- Numbers (seed 22, one settlement, 54 days, LuaJIT ~22 ms/day): food conserved to 0.01 FU every day; harvest ~1,500 FU, forage ~310, eaten ~1,170; ~170 trees felled; fields 12 → 16-17 (spare hands); no starvation; children summer play 57% / tagging along 26%; adults spring/summer ~60% busy; winter still social (no textiles or livestock yet).
+- R2 (D-083): `make_world --v3 --settlements 6` → 4 settlements, 103 people on 2 landmasses (north only). Fishing (D-084): docks and boats, rowing on a water cost field, catches from the planet's fish.
+- View: lit windows and hearth smoke from the sim, smoke dimmed at night, far LOD 464 triangles with every part (~150 typical), new action clips, per-person tempo, talkers take turns; settlements out of view not rebuilt or peopled; skips pause the view's rebuilds.
+- Tests at the session's end: quick sim suite **119/119** (v2 109 + v3 10 incl. `test_v3_year`), web **10/10** (W01-W09 on `world=v2`, W10 the v3 default), lint clean, build OK.
+- Performance (debug HTML5, `scripts/skip_probe.mjs`): 32 people 18-30 ms of sim per game hour; 103 people 154 ms per game hour (a season's skip ≈ 44 s of sim) — the next target. Headless SwiftShader frames cost ~200 ms by themselves (not representative).
 
 ### [v3] Direction reset: the agentic world slice (D-078) (2026-10-01, session 9)
 - Audit and design: `docs/v3/00`-`30`; decision D-078. Branch `wip/agentic-world-v3` from main `0d76765`.
