@@ -151,6 +151,16 @@ local function finish_loading(self)
 	self.world_heavy_fn = function() return self.W.hour % 168 == 0 end
 	if self.W.v3 then
 		speed.v3_init(self.W)
+		-- a fresh v3 world opens at its first dawn: the sim lives through the night first (people
+		-- sleep, babies wake); ?hour=N (absolute) opens elsewhere
+		local qh = query.number("hour", nil)
+		if qh or self.W.hour == 0 then
+			local to = qh or speed.v3_skip_target(self.W, "dawn")
+			if to > self.W.hour then
+				require("sim.world").advance(self.W, to)
+				speed.v3_t = to
+			end
+		end
 		-- v3 opens at ▶▶ (4 game minutes a second) unless ?speed= says otherwise
 		if not query.number("speed", nil) then speed.set(speed.V3_START) end
 	else

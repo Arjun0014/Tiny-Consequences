@@ -71,7 +71,7 @@ local function birth(W, s, mother, now)
     hh = 0, sett = s.id, surname = father and father.surname or mother.surname, culture = s.culture, x = x, y = y })
   if hh then people.join(W, baby, hh) end
   s.members[#s.members + 1] = baby.id
-  baby.carer = mother.id
+  require("sim.agents.kin").give(W, baby, mother)
   baby.hunger, baby.energy = 0.1, 1
   baby.inside = mother.inside
   mother.kids[#mother.kids + 1] = baby.id
@@ -143,13 +143,28 @@ function M.daily(W, s, day)
       if st ~= p.stage_was then
         if p.stage_was then people.remember(p, now, "Became " .. (st == "apprentice" and "an apprentice" or (st == "adult" and "an adult" or (st == "elder" and "an elder" or "a child")))) end
         if st == "apprentice" then
-          local par = V.people[p.sex == "m" and p.father or p.mother]
-          if not (par and par.alive) then par = V.people[p.father] or V.people[p.mother] end
-          if par and par.alive then p.mentor = par.id end
+          local m = require("sim.agents.kin").pick_mentor(W, s, p, now)
+          if m then
+            p.mentor = m.id
+            people.remember(p, now, "Began learning " .. m.role .. "'s work from " .. m.name)
+          end
+        elseif st == "child" and p.act == "carried" then
+          -- walking now: set down for good
+          require("sim.agents.kin").give(W, p, nil)
+          p.act = "idle"
         elseif st == "adult" and p.role == "" then
           p.role = pick_role(W, s, p)
         end
         p.stage_was = st
+      end
+      -- an apprentice without a mentor (founders, or a mentor who died) finds one
+      if st == "apprentice" then
+        local m = V.people[p.mentor]
+        if not (m and m.alive) then
+          m = require("sim.agents.kin").pick_mentor(W, s, p, now)
+          p.mentor = m and m.id or 0
+          if m then people.remember(p, now, "Learning " .. m.role .. "'s work from " .. m.name) end
+        end
       end
       -- death
       local hz = hazard(a) / c.days_per_year

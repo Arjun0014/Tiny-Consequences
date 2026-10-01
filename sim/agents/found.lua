@@ -288,9 +288,11 @@ function M.found(W, cell, opts)
     for k = 1, #fam do
       local q = fam[k].p
       if people.stage(q, now) == "infant" then
-        q.carer = q.mother ~= 0 and q.mother or (fam[2] and fam[2].p.id or 0)
-        local m = V.people[q.carer]
-        if m then m.nursing = now + 600 end
+        local m = V.people[q.mother ~= 0 and q.mother or (fam[2] and fam[2].p.id or 0)]
+        if m then
+          require("sim.agents.kin").give(W, q, m)
+          m.nursing = now + 600
+        end
       end
       q.stage_was = people.stage(q, now)
     end

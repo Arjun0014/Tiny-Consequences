@@ -14,6 +14,7 @@ local nav = require("sim.agents.nav")
 local mapm = require("sim.agents.map")
 local people = require("sim.agents.people")
 local ledger = require("sim.ledger")
+local kin = require("sim.agents.kin")
 
 local M = {}
 local floor, max, min, sqrt = math.floor, math.max, math.min, math.sqrt
@@ -21,6 +22,8 @@ local function C() return cfgmod.V3 end
 
 local IDLE_KINDS = { sit = true, talk = true, rest = true, eat = true, lunch = true, play = true, wait = true,
   nurse = true, idle = true, shelter = true }
+local SKILL_OF = { till = "sk_farm", sow = "sk_farm", harvest = "sk_farm", tend = "sk_farm", thresh = "sk_farm",
+  chop = "sk_wood", grub = "sk_wood", build = "sk_build", repair = "sk_build" }
 local TOOL_WORK = { till = true, harvest = true, chop = true, grub = true, build = true, repair = true, thresh = true, tend = true }
 M.OUTDOOR_WORK = { grub = true, forage = true, till = true, thresh = true, sow = true, tend = true, harvest = true, chop = true, build = true, fill = true, play = true, repair = true }
 
@@ -35,7 +38,7 @@ end
 
 -- Body: hunger, energy and health over dt hours of an action of kind `kind`.
 local function body(p, dt, kind)
-  if dt <= 0 then return end
+  if dt <= 0 or kind == "carried" then return end   -- (an infant's hunger: sim/agents/kin.lua)
   local c = C()
   local h, e = p.hunger, p.energy
   if kind == "sleep" then
@@ -49,7 +52,7 @@ local function body(p, dt, kind)
     if kind == "rest" or kind == "sit" or kind == "shelter" then e = e + 0.05 * dt end
     h = h + c.hunger_idle * dt
   else
-    e = e - c.energy_work * dt
+    e = e - c.energy_work * dt * (p.elder and c.elder_tire or 1)
     h = h + c.hunger_work * dt
   end
   if e > 1 then e = 1 elseif e < 0 then e = 0 end
@@ -126,9 +129,11 @@ START.work = function(W, s, p, st, now)
     end
   end
   if st.kind == "sleep" or st.kind == "rest" or st.kind == "shelter" or st.kind == "eat" or st.kind == "nurse"
-    or st.kind == "visit" or st.kind == "cook" then
+    or st.kind == "visit" or st.kind == "cook" or st.kind == "feed_babe" or st.kind == "craft" or st.kind == "hand" then
     if st.inside and st.inside ~= 0 then p.inside = st.inside end
   end
+  -- a mother home again takes her baby back from its minder (D-081)
+  if p.inside ~= 0 and p.babe == 0 and kin.HOME_KINDS[st.kind] then kin.reclaim(W, s, p) end
   begin(p, now, st.kind, dur)
   return true
 end
@@ -297,6 +302,41 @@ WORK.craft = function(W, s, p, st, f)
   if logs <= 0 then return end
   b.stock.logs = b.stock.logs - logs
   hh.tools = min(1, (hh.tools or 1) + h * c.tool_mend * (logs / (h * c.tool_logs)))
+end
+
+-- Feeding an infant (D-081): at the breast, or a bowl of porridge from the home's meals.
+WORK.nurse = function(W, s, p, st, f)
+  local ib = W.S.v3.people[st.ref or 0]
+  if not ib or not ib.alive or f < 0.3 then return end
+  ib.hunger = max(0.03, ib.hunger - 0.95 * f)
+  ib.called = nil
+  p.hunger = min(1, p.hunger + 0.04 * f)   -- nursing makes the mother hungry
+end
+
+WORK.feed_babe = function(W, s, p, st, f)
+  local ib = W.S.v3.people[st.ref or 0]
+  local b = s.buildings[p.inside or 0]
+  if not ib or not ib.alive or not b or f < 0.3 then return end
+  local c = C()
+  local m = min(b.stock.meals or 0, c.porridge)
+  if m <= 0 then return end
+  b.stock.meals = b.stock.meals - m
+  s.acc.eaten = (s.acc.eaten or 0) + m
+  ib.hunger = max(0.03, ib.hunger - 0.85 * m / c.porridge)
+  ib.called = nil
+end
+
+-- Handing a baby to its minder (D-081).
+WORK.hand = function(W, s, p, st, f)
+  local V = W.S.v3
+  local ib, q = V.people[st.babe or 0], V.people[st.ref or 0]
+  if not ib or not ib.alive or not q or not q.alive or p.babe ~= ib.id then return end
+  if q.babe ~= 0 or q.act == "sleep" then return end
+  if not (q.inside == p.inside or (q.inside == 0 and (q.x - p.x) ^ 2 + (q.y - p.y) ^ 2 < 0.004)) then return end
+  if kin.give(W, ib, q) then
+    people.remember(q, W.S.v3.now or W.hour, "Minding " .. ib.name .. " for " .. p.name)
+    require("sim.agents.init").interrupt(W, q, (W.S.v3.now or W.hour) + 0.02, "Minding " .. ib.name)
+  end
 end
 
 WORK.thresh = function(W, s, p, st, f)
@@ -497,10 +537,16 @@ DROP.any = function(W, s, p, st)
 end
 
 -- Apply the effects of p's current step, done to fraction f (1 = complete), at time now.
+local LEISURE = { rest = true, talk = true, visit = true, sit_out = true }
 local function finish(W, s, p, now, f)
   local st = p.plan[p.pi]
   local dt = now - p.t0
   body(p, dt, p.act)
+  if dt > 0 and p.act ~= "sleep" and p.act ~= "carried" and p.adult then
+    -- (the village's measure of idle hands: adults' leisure hours of their waking hours)
+    s.acc.aw_h = (s.acc.aw_h or 0) + dt
+    if LEISURE[p.objk or ""] then s.acc.lz_h = (s.acc.lz_h or 0) + dt end
+  end
   if p.mv then
     local x, y, dx, dy = M.pos(p, now)
     -- wear along what was walked
@@ -530,6 +576,7 @@ local function finish(W, s, p, now, f)
   elseif st.op == "work" then
     local h = WORK[st.kind]
     if h then h(W, s, p, st, f) end
+    if p.mentored and SKILL_OF[st.kind] and f > 0 then people.practice(p, SKILL_OF[st.kind], st.dur * f * 0.6) end
     if TOOL_WORK[st.kind] then
       -- the household's tools wear with the work
       local hh = W.S.v3.households[p.hh]

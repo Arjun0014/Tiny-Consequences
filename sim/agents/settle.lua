@@ -552,7 +552,11 @@ local function plan_fields(W, s, day)
   for k = 1, #s.plots do rows = rows + s.plots[k].rows end
   local want = (s.eat_avg or pop * 0.75) * c.days_per_year * (1 + c.store_years) + rows * c.seed_row
   s.food_expect, s.food_want = expect, want
-  if expect >= want then return end
+  -- hands to spare (adults idle much of the day, measured: s.idle_avg) and open land: they clear
+  -- more than they need (a bigger store against a bad year), up to half again (D-081)
+  local spare = (s.idle_avg or 0) > c.idle_expand and expect < want * 1.6
+  s.expand_why = (expect < want) and "short" or (spare and "spare" or nil)
+  if expect >= want and not spare then return end
   -- the free lattice spot nearest the fields and the village
   local N, P = s.N, c.plot_tiles
   local best, bix, biy = 1e9, 0, 0
@@ -655,6 +659,13 @@ local function plan_houses(W, s)
 end
 
 function M.daily(W, s, day)
+  -- adults' idle share of the waking day, as measured (act.lua counts leisure hours)
+  local lz, aw = s.acc.lz_h or 0, s.acc.aw_h or 0
+  if s.aw_prev and aw - s.aw_prev > 1 then
+    local share = (lz - s.lz_prev) / (aw - s.aw_prev)
+    s.idle_avg = s.idle_avg and (s.idle_avg + (share - s.idle_avg) * 0.15) or share
+  end
+  s.lz_prev, s.aw_prev = lz, aw
   -- the village's daily eating, as measured (meals at home and bread in the fields)
   local ate = (s.acc.eaten or 0) + (s.acc.lunch or 0)
   if s.ate_prev and day > 0 then

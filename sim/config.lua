@@ -824,6 +824,7 @@ C.V3 = {
   store_logs = 20,                        -- logs the woodstore keeps in reserve
   store_years = 0.5,                      -- food beyond the next harvest the village wants (years)
   max_plots = 20,
+  idle_expand = 0.4,                      -- adults idle more than this share of the day: more fields are cleared
   grub_h = 0.45,                          -- hours to dig out a stump on new field ground
   -- wild food at the woods' edge (D-080): berries, nuts, greens and roots regrow on the standing
   -- trees of the edge band (FU per tree per day by local season) and are picked out by foragers
@@ -843,13 +844,19 @@ C.V3 = {
   -- tools (D-080): hoes, sickles, axes and baskets wear with the work and slow it when worn; a
   -- household mends and makes them (by the door in fair weather), using a little wood
   tool_wear = 0.0035, tool_mend = 0.045, tool_logs = 0.05,   -- per work hour; per craft hour; logs a craft hour
-  winter_wood_days = 24,                  -- in autumn and winter the woodstore lays in this many days of burning
+  winter_wood_days = 40,                  -- in autumn and winter the woodstore lays in this many days of burning
   -- people
   adult_age = 16, elder_age = 55, child_age = 2, apprentice_age = 12, help_age = 8,
   marry_f = 17, marry_m = 19, fecund = { 16, 44 },
   conceive_year = 0.42,                   -- annual chance for a fed married woman in her own home
   pregnancy_days = 36,
   mortality = { infant = 0.08, child = 0.01, adult = 0.006, old_a = 0.006, old_b = 0.0012, old_k = 8 },
+  -- infants and carers (D-081): an infant's hunger an hour awake / asleep; it calls for food above
+  -- infant_feed; a nursing lasts nurse_h; weaned, a bowl of porridge from the home's meals
+  infant_hunger = 0.17, infant_hunger_night = 0.05, infant_feed = 0.5, infant_starve = 0.03,
+  nurse_h = 0.35, porridge = 0.15,
+  child_chores = 3,                       -- a child's chores a day before play wins every time
+  elder_tire = 1.4,                       -- elders tire this much faster at work
   -- reactions (hours)
   react_near = { 0.03, 0.12 }, react_far = { 0.1, 0.45 },
   rain_hardy = 0.7,                       -- diligence above which light rain does not stop work

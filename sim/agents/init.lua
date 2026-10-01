@@ -129,13 +129,8 @@ local function step_person(W, s, p, now)
   else
     p.int_at = nil
     if p.act == "carried" then
-      local c = V.people[p.carrier or 0]
-      if c and c.alive then
-        p.x, p.y = act.pos(c, now)
-        p.inside = c.inside
-        -- fed by the carer (nursed, or fed at home) as long as the carer is not starving
-        if c.hunger < 0.9 then p.hunger = 0.12 end
-      end
+      -- held by their carer; hungry, they call for food (sim/agents/kin.lua)
+      require("sim.agents.kin").infant_tick(W, s, p, now, now - p.t0, sys.interrupt)
     end
     act.finish(W, s, p, now, 1)
     p.pi = p.pi + 1

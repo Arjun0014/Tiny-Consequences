@@ -66,7 +66,7 @@ function M.new(W, opts)
     mentor = 0,
     -- body
     hunger = 0.2 + 0.2 * u(), energy = 0.8, health = 1, fear = 0,
-    preg_due = 0, nursing = 0,
+    preg_due = 0, nursing = 0, babe = 0,   -- babe: the infant they hold (sim/agents/kin.lua)
     -- relationships (id, affinity) and memories (ring)
     rel_id = {}, rel_v = {}, mem = {}, mem_n = 0,
     -- now

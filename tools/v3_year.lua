@@ -72,7 +72,7 @@ act.start = function(W_, s_, p, now)
   L[#L + 1] = { t = now, act = p.act, objk = p.objk, obj = p.obj, dest = p.dest, why = p.why, x = p.x, y = p.y,
     carry = p.carry, camt = p.camt, inside = p.inside, lunch = p.lunch, sett = p.sett }
   local m = math.floor(now * 60)
-  starts_min[m] = (starts_min[m] or 0) + 1
+  if now > 0.01 then starts_min[m] = (starts_min[m] or 0) + 1 end   -- (t = 0: the founding moment)
   if p.act == "walk" and p.mv then
     walk_len[#walk_len + 1] = { len = p.mv.len, objk = p.objk, why = p.why, id = p.id, t = now, dest = p.dest }
   end
@@ -255,7 +255,7 @@ for _, st in ipairs(order) do
       for k, v in pairs(B) do if k:sub(1, 1) ~= "_" then keys[#keys + 1] = k end end
       table.sort(keys, function(a, b) return B[a] > B[b] end)
       local parts = {}
-      for j = 1, math.min(9, #keys) do parts[#parts + 1] = string.format("%s %.0f%%", keys[j], 100 * B[keys[j]] / B._tot) end
+      for j = 1, math.min(14, #keys) do parts[#parts + 1] = string.format("%s %.0f%%", keys[j], 100 * B[keys[j]] / B._tot) end
       say("  %-10s %-6s walk %2.0f%% | %s", st, se, 100 * B._walk / B._tot, table.concat(parts, ", "))
     end
   end

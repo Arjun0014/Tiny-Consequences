@@ -19,4 +19,5 @@ return {
   "tests.sim.unit.test_save_world",
   "tests.sim.unit.test_worlds",
   "tests.sim.unit.test_v3_agents",
+  "tests.sim.unit.test_v3_year",
 }
