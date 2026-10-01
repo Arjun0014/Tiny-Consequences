@@ -1,6 +1,6 @@
 # Session handoff — session 12 end (2 Oct 2026): animals alive, rivers in use, the first trade
 
-`docs/PROGRESS.md` (session 12 entry) and **D-091 … D-097** in `docs/DECISIONS.md` are the source
+`docs/PROGRESS.md` (session 12 entry) and **D-091 … D-099** in `docs/DECISIONS.md` are the source
 of truth. Arjun's rules: no subagents; the living world first; one heavy process at a time (shared
 laptop, ~2.3 GB free); visible action = simulation; fix mechanisms, not appearances; hand off near
 ~900K context.
@@ -40,10 +40,14 @@ laptop, ~2.3 GB free); visible action = simulation; fix mechanisms, not appearan
 - **Trade** (D-097, `sim/agents/trade.lua`): a fishing household's porter carries smoked fish and
   provisions to a reachable village with grain to spare and little fish: the map's gate, a road
   leg drawn on the planet, the buyer's granary, a guest meal, grain home. `p.at` = the map a person
-  is on (steps run there; drawn there; `s.visitors`).
+  is on (steps run there; drawn there; `s.visitors`). D-098 made it a table of goods (smoked fish;
+  raw wool, idle in the shipped world because all wool is spun at home); fish bought into a granary
+  goes out to its households with their grain.
+- **Animated deer** (D-099): deer, stags, reindeer and antelope built from the Horse rig (slim,
+  scut, antlers); wild bands enter at the border nearest their ground and keep out of villages.
 
 ## Performance (release HTML5)
-- **A 12-day season ≈ 9.4 s** (32.7 ms of sim per game hour) for 150 people, ~430 livestock, ~140
+- **A 12-day season ≈ 9.2-9.7 s** (envelope 31.9, best single run 33.8 ms of sim per game hour) for 150 people, ~430 livestock, ~140
   wild animals: `node scripts/prof_web.mjs --release --hours 288 --runs 2` (the lower envelope of
   runs; this laptop's load swings single runs 2-3x — never trust one run). Before the animals:
   6.0 s (20.9 ms/h).
@@ -63,7 +67,7 @@ laptop, ~2.3 GB free); visible action = simulation; fix mechanisms, not appearan
 - Profiling and benches: above. Maps: `luajit tools/v3_map.lua`.
 
 ## Verified at the last commit
-- Quick sim suite **126/126** (v2 109 + v3 17), web **10/10**, lint clean, debug build 7.1 MB.
+- Quick sim suite **126/126** (v2 109 + v3 17), web **10/10**, lint clean, debug build 7.4 MB.
 - Two game years headless (96 days): people 145-153, livestock 330-480, wild 141-144, food
   stores rising, 7 trade round trips, 2 bridges; the food ledger closes to 0.0 FU every day in the
   watched villages (including both ends of a trade).
@@ -73,8 +77,8 @@ laptop, ~2.3 GB free); visible action = simulation; fix mechanisms, not appearan
    shortage and value at B, a road); the return good chosen by the seller's own shortage; **sea
    trade** by boat between coastal villages (the two landmasses: boats carrying cargo, crews);
    prices remembered; standing relations (v2 D-055/D-062 re-expressed).
-2. **Animals**: animated deer and wolves (Horse/Pug rigs via build_animals.py: the Pug's armature
-   is scaled 0.395 — apply it first), dogs (herding, guarding), oxen at the plough, hides used
+2. **Animals**: animated wolves (the Pug rig via build_animals.py: its armature is scaled 0.395 —
+   apply it first; lengthen the muzzle), dogs (herding, guarding), oxen at the plough, hides used
    (leather), wolves driven off by people at the fold, small game.
 3. **Rivers and water**: bridges swept away by big floods, river water making people ill, boats on
    rivers.
@@ -102,7 +106,8 @@ laptop, ~2.3 GB free); visible action = simulation; fix mechanisms, not appearan
 ## Known oddities
 - Children under nine play ~55-70% of their waking day; nine-year-olds herd only when an older
   herder has not already taken the herd out.
-- Wild animals cap at 24 a map; deer and wolves are still the rigid procedural movers.
+- Wild animals cap at 24 a map; wolves and big cats are still the rigid procedural movers; deer
+  bands often graze at wooded edges where the canopy hides them from the camera.
 - Trade is only smoked fish for grain, and only seven round trips in two years in the shipped world.
 - Two adjacent bridge sites can still appear if two crossings far apart both pass the need on one
   day (spacing is checked against existing bridges only).
