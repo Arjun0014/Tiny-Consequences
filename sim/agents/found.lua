@@ -64,7 +64,7 @@ function M.pick_site(W, opts)
   local best, bs = nil, -1e9
   for i = 1, #land do
     local c = land[i]
-    local ok = W.geo.coast_dist[c] >= pass.cd and not rivers[c] and not near[c] and (not pass.north or g.lat[c] > 0.05)
+    local ok = W.geo.coast_dist[c] >= pass.cd and not rivers[c] and not near[c] and ((not pass.north and not opts.north) or g.lat[c] > 0.05)
     local T = F.temp[c]
     if ok and T > pass.t0 and T < pass.t1 and abs(g.lat[c]) < 1.0 then
       -- neighbours: land, no rivers, some forest
@@ -72,9 +72,15 @@ function M.pick_site(W, opts)
       local ring = require("sim.society.sites").rings(W, c, 1)
       for k = 1, #ring do
         local d = ring[k]
-        if W.geo.ocean[d] == 1 or rivers[d] then ok = false end
+        if (W.geo.ocean[d] == 1 and not pass.coast) or (rivers[d] and not pass.river) then ok = false end
         fsum = fsum + F.forest[d]
         n = n + 1
+      end
+      -- (a coastal site keeps most of its neighbours land: room for fields and woods)
+      if ok and pass.coast then
+        local sea = 0
+        for k = 1, #ring do if W.geo.ocean[ring[k]] == 1 then sea = sea + 1 end end
+        if sea > 2 then ok = false end
       end
       if ok and n > 0 then
         local fo = fsum / n
@@ -90,6 +96,8 @@ function M.pick_site(W, opts)
           -- and where day 0 is the start of spring (the north): founders sow before their first winter
           if g.lat[c] < 0 then sc = sc - 100 end
         end
+        -- (more settlements: a landmass nobody has settled yet first)
+        if opts.landmasses and W.geo.continent and not opts.landmasses[W.geo.continent[c]] then sc = sc + 1.5 end
         if sc > bs then best, bs = c, sc end
       end
     end
@@ -108,6 +116,36 @@ M.TEMPLATE = {
   { { "m", 50, "woodcutter" }, { "m", 22, "farmer", "c" }, { "f", 20, "farmer", "c" }, { "f", 16, "farmer" } },
   { { "m", 34, "farmer" }, { "f", 33, "farmer" }, { "m", 9 }, { "f", 5 }, { "m", 1.2 } },
 }
+
+-- More households a settlement may be founded with (R2: settlements of 15-30 founders draw from
+-- all of them).
+M.MORE = {
+  { { "m", 27, "farmer" }, { "f", 25, "farmer" }, { "m", 4 }, { "f", 0.7 } },
+  { { "f", 63, "farmer" }, { "m", 30, "farmer" }, { "f", 27, "farmer" }, { "f", 5 } },
+  { { "m", 41, "woodcutter" }, { "f", 39, "farmer" }, { "m", 15 }, { "f", 13 } },
+  { { "m", 52, "builder" }, { "f", 49, "farmer" }, { "m", 20, "builder" } },
+  { { "m", 29, "farmer" }, { "f", 26, "farmer", "p" }, { "f", 2.5 } },
+}
+
+-- The households a settlement of about `size` founders starts with (deterministic by u).
+function M.households_for(u, size)
+  if not size then return M.TEMPLATE end
+  local pool = {}
+  for _, h in ipairs(M.TEMPLATE) do pool[#pool + 1] = h end
+  for _, h in ipairs(M.MORE) do pool[#pool + 1] = h end
+  for i = #pool, 2, -1 do
+    local j = 1 + floor(u() * i)
+    pool[i], pool[j] = pool[j], pool[i]
+  end
+  local out, n = {}, 0
+  -- (at least one family with children and one with an infant or a pregnancy)
+  for _, h in ipairs(pool) do
+    if n >= size - 1 then break end
+    out[#out + 1] = h
+    n = n + #h
+  end
+  return out
+end
 
 local function lane_walk(s, x0, y0, x1, y1, amount)
   local path = nav.path(s, x0, y0, x1, y1, 0)
@@ -150,13 +188,17 @@ function M.found(W, cell, opts)
   settle.add_building(W, s, "granary", c0 - sx * 7 - 2, c0 - sy * 4 - 2, sy > 0 and "n" or "s", "standing")
   settle.add_building(W, s, "woodstore", c0 + sx * 10 - 2, c0 + sy * 8 - 1, sy > 0 and "s" or "n", "standing")
   -- 2. houses round the square, one per household
+  local TEMPLATE = M.households_for(u, opts.size)
+  local npeople = 0
+  for h = 1, #TEMPLATE do npeople = npeople + #TEMPLATE[h] end
   local homes = {}
-  for h = 1, #M.TEMPLATE do
+  for h = 1, #TEMPLATE do
     local ix, iy, side = settle.find_lot(W, s)
     homes[h] = settle.add_building(W, s, "house", ix, iy, side, "standing")
   end
   -- 3. fields beyond the houses, on the side away from the woods first
-  local plots_wanted = opts.plots or 12
+  -- (three fields to every eight people or so: a third in each part of the rotation)
+  local plots_wanted = opts.plots or max(3, floor(npeople * 0.375 / 3 + 0.5) * 3)
   local cands = {}
   local P = c.plot_tiles
   for iy = 4, N - P - 3, P + 1 do
@@ -224,7 +266,7 @@ function M.found(W, cell, opts)
   -- 5. the people
   local now = W.hour
   local hlist = {}
-  for h = 1, #M.TEMPLATE do
+  for h = 1, #TEMPLATE do
     local hb = homes[h]
     local hh = people.new_household(W, s.id, hb.id)
     hb.hh = hh.id
@@ -232,8 +274,8 @@ function M.found(W, cell, opts)
     hlist[h] = hh
     local fam = {}
     local surname = names.surname(u, culture)
-    for k = 1, #M.TEMPLATE[h] do
-      local t = M.TEMPLATE[h][k]
+    for k = 1, #TEMPLATE[h] do
+      local t = TEMPLATE[h][k]
       local age = t[2] + u() * 0.4
       local p = people.new(W, { sex = t[1], born = now - age * 1152, hh = 0, sett = s.id, surname = surname,
         culture = culture, x = hb.dx, y = hb.dy, role = t[3] or "" })

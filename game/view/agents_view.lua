@@ -857,7 +857,9 @@ function M.init(W, PL, urls, celltex)
     M.NOENABLE = require("game.platform.query").flag("vnoenable")
     local qn = require("game.platform.query").number("villagers", nil)
     if qn then M.PEOPLE = qn end
-    if V.villager_factory and not require("game.platform.query").flag("oldpeople") then make_villagers(V, M.PEOPLE)
+    -- (several settlements: smaller pools; only the settlements in view are drawn)
+    local per = #W.S.v3.settlements > 1 and math.min(M.PEOPLE, 40) or M.PEOPLE
+    if V.villager_factory and not require("game.platform.query").flag("oldpeople") then make_villagers(V, per)
     else make_pool(V, M.PEOPLE) end
     M.SETS[#M.SETS + 1] = V
     -- bake everything once
@@ -945,10 +947,22 @@ function M.update(W, dt, zoom, t)
       M.follow = nil
     end
   end
+  local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
   for _, V in ipairs(M.SETS) do
+    -- (a settlement far from the view focus is neither rebuilt nor peopled until it comes into view)
+    local f = V.s.frame
+    V.in_view = f[1] * fx + f[2] * fy + f[3] * fz > 0.975
+    if not V.in_view and V.vpool and not V.hidden_far then
+      for _, e in ipairs(V.vpool) do
+        if e.on then for k = 1, 3 do msg.post(e.urls[k], MSG_DISABLE) end; e.on, e.pid, e.anim = false, 0, nil end
+      end
+      V.hidden_far = true
+    elseif V.in_view then
+      V.hidden_far = nil
+    end
     -- (while skipping, nothing is drawn of the settlement's changes: they are rebuilt, a part a
     -- frame, once the skip lands)
-    if not M.skipping then
+    if not M.skipping and V.in_view then
     -- rebuild at most one changed part per frame (signatures are cheap)
     V.ri = (V.ri or 0) % (#V.trees + 3) + 1
     local ri = V.ri
@@ -982,6 +996,20 @@ function M.update(W, dt, zoom, t)
   else
     for _, V in ipairs(M.SETS) do V.hidden_all = nil end
   end
+end
+
+-- The settlement nearest the view focus (clock, skips), or the first.
+function M.nearest(W)
+  local V3 = W.S.v3
+  if not V3 then return nil end
+  local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
+  local best, bd = V3.settlements[1], -2
+  for _, s in ipairs(V3.settlements) do
+    local f = s.frame
+    local d = f[1] * fx + f[2] * fy + f[3] * fz
+    if s.alive and d > bd then best, bd = s, d end
+  end
+  return best
 end
 
 -- The settlement (first) for camera presets: its centre as a unit vector.

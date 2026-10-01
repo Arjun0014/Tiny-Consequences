@@ -161,7 +161,7 @@ M.SKIP_LABELS = { dawn = "Until dawn", evening = "Until evening", day = "One day
 -- fields; day: 24 hours on; season: the dawn of the first day of the next local season.
 function M.v3_skip_target(W, kind, s)
   local clock = require("sim.agents.clock")
-  s = s or W.S.v3.settlements[1]
+  s = s or require("game.view.agents_view").nearest(W) or W.S.v3.settlements[1]
   local now = M.v3_t or W.hour
   local lon, lat = W.grid.lon[s.cell], W.grid.lat[s.cell]
   local function next_lh(from, h)

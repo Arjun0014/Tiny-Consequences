@@ -50,14 +50,25 @@ function M.generate(seed, opts)
   M.empty_state(W)
   local cell = opts.site or found.pick_site(W)
   if not cell then error("v3: no site for a settlement on seed " .. tostring(seed)) end
-  found.found(W, cell, opts)
-  -- more settlements (opts.settlements): the best sites at least 4 cells from any other
+  -- settlement sizes (R2): opts.sizes, or opts.size for all; the first keeps the full founding
+  local function sz(k) return (opts.sizes and opts.sizes[k]) or opts.size end
+  found.found(W, cell, { size = sz(1), plots = opts.plots })
+  -- more settlements (opts.settlements): the best sites at least 4 cells from any other, on
+  -- landmasses nobody has settled first (the north for now: day 0 is its spring)
   local used = { cell }
+  local lms = {}
+  if W.geo.continent then lms[W.geo.continent[cell]] = true end
   for k = 2, opts.settlements or 1 do
-    local c2 = found.pick_site(W, { dawn = false, avoid = used, min_steps = 4 })
+    local c2
+    for _, ps in ipairs({ { cd = 3, t0 = 6, t1 = 19 }, { cd = 2, t0 = 4, t1 = 21 },
+      { cd = 1, t0 = 3, t1 = 23, coast = true, river = true } }) do
+      c2 = found.pick_site(W, { dawn = false, avoid = used, min_steps = 4, north = true, landmasses = lms, pass = ps })
+      if c2 then break end
+    end
     if not c2 then break end
     used[#used + 1] = c2
-    found.found(W, c2, opts)
+    if W.geo.continent then lms[W.geo.continent[c2]] = true end
+    found.found(W, c2, { size = sz(k) or 20 })
   end
   world.init_systems(W)
   return W

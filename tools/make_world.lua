@@ -11,7 +11,8 @@ while arg[i] do
   if arg[i] == "--seed" then i = i + 1; args.seed = tonumber(arg[i])
   elseif arg[i] == "--out" then i = i + 1; args.out = arg[i]
   elseif arg[i] == "--years" then i = i + 1; args.years = tonumber(arg[i])
-  elseif arg[i] == "--v3" then args.v3 = true end
+  elseif arg[i] == "--v3" then args.v3 = true
+  elseif arg[i] == "--settlements" then i = i + 1; args.settlements = tonumber(arg[i]) end
   i = i + 1
 end
 local worlds = require("sim.worlds")
@@ -19,7 +20,9 @@ local world = require("sim.world")
 local version = require("sim.version")
 local t0 = os.clock()
 -- --v3: an agentic world (D-078): the planet with one settlement of agents
-local W = args.v3 and require("sim.agents.worldgen").generate(args.seed, {}) or worlds.generate(args.seed)
+-- (R2: several small settlements, 15-30 founders each; the first keeps the full founding)
+local W = args.v3 and require("sim.agents.worldgen").generate(args.seed, { settlements = args.settlements or 1,
+  sizes = { 32, 24, 20, 18, 26, 22, 16, 28 } }) or worlds.generate(args.seed)
 -- (dev: --years N saves the world N years on, for reviewing later worlds with ?world=NAME)
 if args.years and args.years > 0 then world.run_years(W, args.years) end
 local str = worlds.year0_save_string(W, { seed = args.seed, sim_version = version.SIM_VERSION,

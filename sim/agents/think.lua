@@ -25,8 +25,17 @@ local function clock_str(h)
 end
 M.clock_str = clock_str
 
+-- A person's random draws at a minute: one hash per (person, minute), then a mixing round per
+-- draw (a pure function of key and minute: the cache is never state)
+local UB, UBM = {}, {}
 local function u01(W, p, now, k)
-  return rng.float(W.seed, rng.S.V3_THINK, p.key, floor(now * 60) % 4294967296, k)
+  local m = floor(now * 60) % 4294967296
+  local id = p.id
+  if UBM[id] ~= m or UB[-id] ~= W.seed then
+    UB[id] = rng.hash(W.seed, rng.S.V3_THINK, p.key, m, 0)
+    UBM[id], UB[-id] = m, W.seed
+  end
+  return rng.fbase(UB[id], k)
 end
 M.u01 = u01
 
