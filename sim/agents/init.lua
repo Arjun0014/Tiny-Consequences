@@ -23,6 +23,9 @@ local clock = require("sim.agents.clock")
 local stock = require("sim.agents.stock")
 stock.person_pos = require("sim.agents.act").pos
 local wild = require("sim.agents.wild")
+local dogs = require("sim.agents.dogs")
+dogs.wild = wild
+wild.dogs = dogs
 
 local sys = { name = "agents" }
 -- (act.lua cannot require this module: bob rejects circular requires; it calls through this hook)
@@ -183,6 +186,9 @@ function sys.advance(W, t)
   if not V then return end
   act.people = V.people
   act.skip_step = sys.skip_step
+  dogs.interrupt_hook = function(W_, p, at, reason) return sys.interrupt(W_, p, at, reason) end
+  wild.interrupt_hook = dogs.interrupt_hook
+  dogs.push = sys.push
   act.drown_hook = function(W_, p, from, to) return life.drown(W_, p, from, to) end
   local R = rt(W)
   local P = V.people
@@ -199,6 +205,13 @@ function sys.advance(W, t)
           V.now = et
           wild.step(W, s, w, et)
           if w.alive then sys.push(W, w.t1, id, w.ver) end
+        end
+      elseif kind == "dog" then
+        local d = s and dogs.byk(s, k)
+        if d and d.alive and d.ver == ver then
+          V.now = et
+          dogs.step(W, s, d, et)
+          if d.alive then sys.push(W, d.t1, id, d.ver) end
         end
       else
         local H = s and s.herds and s.herds[kind]
@@ -264,6 +277,7 @@ function sys.hour(W)
           settle.daily(W, s, ld)
           stock.daily(W, s, ld, sys.push)
           wild.daily(W, s, ld, sys.push)
+          dogs.daily(W, s, ld, sys.push)
         end
       end
       wild.hourly(W, s, now)

@@ -1,0 +1,2 @@
+prototype: "/game/view/animals/dog_dark.go"
+load_dynamically: false

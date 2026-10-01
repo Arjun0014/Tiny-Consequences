@@ -984,6 +984,12 @@ C.V3 = {
   sea_wet_h = 8,
   nap_h = 4,
   relief_days = 8,
+  -- (D-105) dogs: hearing wolves within dog_alert; trotting and running speeds; a dog alone at a
+  -- wolf is killed with wolf_kill_dog a meeting; a pup comes dog_pup_days after a dog is lost;
+  -- people awake within wolf_fear of a wolf at a pen drive the pack off; a barking dog turns it with
+  -- dog_deter a step (not a starving pack); a watch asleep within guard_alert wakes
+  dog_alert = 0.45, dog_trot = 1.9, dog_run = 4.0, wolf_kill_dog = 0.15, dog_pup_days = 12,
+  wolf_fear = 0.16, dog_deter = 0.3, guard_alert = 0.4, dog_charge = 0.18,
   -- (D-104) leather: hides soak in a tanning pit tan_days (put in and lifted out in tan_h); a pair of
   -- shoes takes shoe_leather and cobble_h; shoes wear a day by life stage; barefoot (under 0.1) one
   -- walks at barefoot_speed and the cold costs health; a household wants leather_want a member

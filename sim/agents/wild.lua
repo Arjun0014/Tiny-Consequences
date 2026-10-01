@@ -478,12 +478,21 @@ local function pick_prey(W, s, lead, now)
       local H = s.herds[kind]
       if H and not H.out and not M.watched(W, s, H) then
         local pen = s.buildings[H.pen]
+        -- (a dog lying at the pen, a watch asleep by it: the pack is warier there, D-105)
+        local wary = 0
+        for _, d in ipairs(s.dogs or {}) do
+          if d.alive and (d.tx - pen.dx) ^ 2 + (d.ty - pen.dy) ^ 2 < 0.04 then wary = wary + 0.8 end
+        end
+        for gi = 1, #(s.guards or {}) do
+          local g = W.S.v3.people[s.guards[gi] or 0]
+          if g and g.alive and g.objk == "guard" and (g.x - pen.cx) ^ 2 + (g.y - pen.cy) ^ 2 < 0.06 then wary = wary + 0.8 end
+        end
         for _, a in ipairs(H.animals) do
           if a.alive then
             local S = stock.SP(a.sp)
             local small = (a.sp == "cattle" and (now - a.born) / 1152 > S.young_years * 2) and -3 or 0
             local d = sqrt((pen.cx - lead.tx) ^ 2 + (pen.cy - lead.ty) ^ 2)
-            local sc = 1.2 + small + ((now - a.born) / 1152 < S.young_years and 0.5 or 0) - d * 0.5 + (1 - A.p_cond[i]) * 1.5
+            local sc = 1.2 + small + ((now - a.born) / 1152 < S.young_years and 0.5 or 0) - d * 0.5 + (1 - A.p_cond[i]) * 1.5 - wary
             if sc > bs then best, bs, bx, by = { kind = kind, k = a.k }, sc, a.tx, a.ty end
           end
         end
@@ -493,17 +502,48 @@ local function pick_prey(W, s, lead, now)
   return best, bx, by
 end
 
--- Is a pen watched (someone outdoors and awake close by, or keeping the night watch there)?
+-- Is a pen watched (someone outdoors and awake close by)? A watch asleep by it is not: the wolves
+-- may come, and wake them (D-105).
 function M.watched(W, s, H)
   local pen = s.buildings[H.pen]
   local V = W.S.v3
   for i = 1, #s.members do
     local p = V.people[s.members[i]]
-    if p and p.alive and p.inside == 0 and (p.act ~= "sleep" or p.objk == "guard") then
+    if p and p.alive and p.inside == 0 and p.act ~= "sleep" and not p.at then
       if (p.x - pen.cx) ^ 2 + (p.y - pen.cy) ^ 2 < 0.06 then return true end
     end
   end
   return false
+end
+
+-- The pack turns away (D-105): every wolf of it gives up the night's hunting here and leaves.
+local function pack_flee(W, s, w, now, by)
+  for _, q in ipairs(s.wildlife.animals) do
+    if q.alive and q.pred and q.gid == w.gid then
+      q.prey, q.done = nil, true
+      M.interrupt(W, s, q, now)
+    end
+  end
+  s.acc.wolves_driven = (s.acc.wolves_driven or 0) + 1
+  if by and (by.drove_t or -99) < now - 6 then
+    by.drove_t = now
+    require("sim.agents.people").remember(by, now, "Drove the wolves away from the pen in the night")
+  end
+end
+M.pack_flee = pack_flee
+
+-- Who stands up to wolves at a pen now: a person awake and outdoors close to the wolf.
+local function defender(W, s, w, now)
+  local c = C()
+  local V = W.S.v3
+  for i = 1, #s.members do
+    local p = V.people[s.members[i]]
+    if p and p.alive and not p.at and p.inside == 0 and p.act ~= "sleep" and p.act ~= "carried" then
+      local px, py = stock.person_pos(p, now)
+      if (px - w.tx) ^ 2 + (py - w.ty) ^ 2 < c.wolf_fear ^ 2 then return p end
+    end
+  end
+  return nil
 end
 
 local function prey_obj(s, pr)
@@ -600,6 +640,32 @@ function M.step(W, s, w, now)
       local ox, oy
       if pr.kind == "wild" then ox, oy = M.pos(o, now) else ox, oy = stock.pos(o, now) end
       local d = sqrt((ox - w.tx) ^ 2 + (oy - w.ty) ^ 2)
+      if pr.kind ~= "wild" then
+        -- (at a village's pen: people awake drive the pack off; a barking dog may turn it; a
+        -- watch asleep close by wakes, D-105)
+        local p = defender(W, s, w, now)
+        if p then pack_flee(W, s, w, now, p); stand(w, now, "rest", 0.05); return end
+        local i = require("sim.systems.fauna").find_pack(W, w.gid)
+        local starving = i and A.p_cond[i] < c.wolf_starving
+        for _, dg in ipairs(s.dogs or {}) do
+          if dg.alive and (dg.act == "bark" or dg.act == "run") and (dg.tx - w.tx) ^ 2 + (dg.ty - w.ty) ^ 2 < 0.03 then
+            if not starving and u(W, s, w, now, 7) < c.dog_deter then pack_flee(W, s, w, now, nil); stand(w, now, "rest", 0.05); return end
+          end
+        end
+        for gi = 1, #(s.guards or {}) do
+          local g = W.S.v3.people[s.guards[gi] or 0]
+          if g and g.alive and g.objk == "guard" and g.act == "sleep" and (g.x - w.tx) ^ 2 + (g.y - w.ty) ^ 2 < c.guard_alert ^ 2 then
+            s.alarm = { t = now, x = g.x, y = g.y, hh = g.hh }
+            if M.interrupt_hook then M.interrupt_hook(W, g, now + 0.02, "Wolves at the pen") end
+          end
+        end
+        -- (the dogs of the pen hear the pack coming)
+        for _, dg in ipairs(s.dogs or {}) do
+          if dg.alive and dg.act ~= "run" and dg.act ~= "bark" and (dg.tx - w.tx) ^ 2 + (dg.ty - w.ty) ^ 2 < c.dog_alert ^ 2 then
+            M.dogs.interrupt(W, s, dg, now)
+          end
+        end
+      end
       if d < c.wolf_reach then
         -- caught up: the kill, or it got away (the odds by the prey's state)
         local young = (now - o.born) / 1152 < (pr.kind == "wild" and 0.5 or stock.SP(o.sp).young_years)

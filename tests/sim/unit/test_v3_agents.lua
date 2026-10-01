@@ -214,12 +214,24 @@ function M.wild_animals_belong_to_their_herds()
   T.eq(over, 0, "more animals of a herd on a map than the herd holds")
   T.ok(visits >= 3, "wolf nights " .. visits)
   T.ok(kills >= 1, "kills by wolves " .. kills)
+  -- (D-105) every household with beasts keeps a dog, on dry open ground; dogs hear the wolves
+  local dogs, wet, barks = 0, 0, 0
+  for _, s in ipairs(W.S.v3.settlements) do
+    barks = barks + (s.acc.barks or 0)
+    for _, d in ipairs(s.dogs or {}) do
+      if d.alive then
+        dogs = dogs + 1
+        local i = require("sim.agents.map").tile_of(s, d.tx, d.ty)
+        if i == 0 or s.land[i] ~= 1 or s.riv[i] > 0 then wet = wet + 1 end
+      end
+    end
+  end
+  T.ok(dogs >= 12, "dogs " .. dogs)
+  T.eq(wet, 0, "dogs on water")
+  T.ok(barks >= 1, "dogs barking at wolves " .. barks)
 end
 
 
--- Trade by land (D-097): the shipped world over 24 days. A fishing household's porter walks a
--- load of smoked fish to a village with grain to spare, sells it into the granary, walks home
--- with grain: a round trip completes; what one village exports another imports, FU for FU.
 -- Trade answers real want (D-097, D-101, D-102): a failed harvest and a bumper catch at Upper
 -- Linamist (grain short, smoked fish to spare) bring its neighbours' grain by sea for its fish -
 -- carried to the boats a load at a time, sailed, carried to the buyers - with both villages' books

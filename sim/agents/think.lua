@@ -2406,6 +2406,15 @@ PLAN.cobble = function(W, s, p, ctx, now, cd)
   return "Make shoes", "home"
 end
 
+PLAN.drive_off = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local a = s.alarm
+  p.drove_t = now
+  go(pl, a.x, a.y, "the pen")
+  work(pl, "drive_off", 0.4, { fx = a.x, fy = a.y })
+  return "Drive the wolves off", "the pen"
+end
+
 PLAN.trip = function(W, s, p, ctx, now, cd)
   plan_reset(p)
   if p.trip.sea then sea_legs(W, s, p, ctx, now) else trip_legs(W, s, p, ctx, now) end
@@ -3079,6 +3088,12 @@ function M.decide(W, s, p, now, reason)
     local pen = s.buildings[s.herds[stock.HERDS[hi]].pen]
     why = string.format("Wolves took one of the beasts %s: keeping watch at the %s tonight",
       now - s.wolf_alarm < 24 and "last night" or "lately", pen.label)
+  elseif s.alarm and now - s.alarm.t < 0.8 and ctx.stage == "adult" and not p.at and (p.hh == s.alarm.hh or p.objk == "guard")
+    and (p.drove_t or -99) < now - 0.8 and not ctx.babe then
+    -- (the dog is barking at the pen, or the watch woke to wolves: out to drive them off, D-105)
+    kind, why = "drive_off", "The dog is barking at the pen: wolves"
+    add(1, "drive_off", 0, 0, "")
+    M.cd = CAND[ncand]
   elseif (ctx.night or p.energy < 0.12) and p.hunger > 0.5 and ctx.home and (ctx.home.stock.meals or 0) >= C().meal_fu * 0.5 then
     -- (nobody goes to bed starving with a meal at home: D-102, found after long voyages)
     kind, why = "eat", "Hungry before sleep"

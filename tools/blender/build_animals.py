@@ -56,6 +56,15 @@ SPECIES = [
         dict(id="reindeer", slim=0.8, antlers=True, colours={"Material.003": (0.58, 0.53, 0.46), "Material.006": (0.80, 0.78, 0.72)}),
         dict(id="antelope", slim=0.7, colours={"Material.003": (0.80, 0.60, 0.36), "Material.006": (0.62, 0.45, 0.27)}),
     ]),
+    # dogs and wolves from the pug (session 13): its armature is scaled 0.395 (applied first, the
+    # clips' translations with it); a longer muzzle, a tail (the pug has no tail bone: a cone on the
+    # hips), wolves slimmer and grey
+    dict(name="dog", blend="Pug.blend", unscale=True, variants=[
+        dict(id="dog", muzzle=1.5, colours={"Beige": (0.58, 0.40, 0.24), "Brown": (0.10, 0.07, 0.05)}),
+        dict(id="dog_dark", muzzle=1.5, colours={"Beige": (0.17, 0.15, 0.14), "Brown": (0.06, 0.05, 0.05)}),
+        dict(id="wolf", muzzle=1.9, slim=0.82, tail="down", flat_tail=True, colours={"Beige": (0.50, 0.48, 0.44), "Brown": (0.19, 0.17, 0.15)}),
+        dict(id="wolf_dark", muzzle=1.9, slim=0.82, tail="down", flat_tail=True, colours={"Beige": (0.30, 0.29, 0.27), "Brown": (0.12, 0.11, 0.10)}),
+    ]),
     dict(name="pig", blend="Pig.blend", variants=[
         dict(id="pig", colours={"Material.003": (0.86, 0.60, 0.56), "Material": (0.42, 0.25, 0.21)}),
         dict(id="pig_dark", colours={"Material.003": (0.36, 0.27, 0.23), "Material": (0.20, 0.14, 0.12)}),
@@ -142,9 +151,84 @@ def cone(bm, base, tip, r, sides, group_idx, deform, mat_index):
     f = bm.faces.new(list(reversed(ring)))
     f.material_index = mat_index
 
+def action_fcurves(a):
+    """An action's F-curves (layered actions in Blender 5: layers, strips, channel bags)."""
+    out = []
+    try:
+        for layer in a.layers:
+            for strip in layer.strips:
+                for cb in strip.channelbags:
+                    out.extend(cb.fcurves)
+    except AttributeError:
+        out = list(a.fcurves)
+    return out
+
+def unscale(arm):
+    """Apply an armature's object scale to its bones and mesh, and scale every clip's bone
+    translations with it (they are in bone space at the old scale)."""
+    k = arm.scale.x
+    S = Matrix.Scale(k, 4)
+    arm.data.transform(S)
+    for o in bpy.data.objects:
+        if o.type == "MESH" and o.parent == arm:
+            o.data.transform(S)
+    arm.scale = (1, 1, 1)
+    bpy.context.view_layer.update()
+    for a in bpy.data.actions:
+        for fc in action_fcurves(a):
+            if fc.data_path.endswith(".location"):
+                for kp in fc.keyframe_points:
+                    kp.co.y *= k
+                    kp.handle_left.y *= k
+                    kp.handle_right.y *= k
+
 def shape_variant(ob, var):
     """Shorn wool, horns and beard on a copy of the species mesh (armature space, rest pose)."""
     me = ob.data
+    if var.get("muzzle"):
+        # (a snout: the lower front of the head drawn forward and narrowed toward the nose; the eyes
+        # and the brow stay where they are)
+        x0, x1, y0, y1, z0, z1 = head_box(ob)
+        D, H = y1 - y0, z1 - z0
+        xc = (x0 + x1) * 0.5
+        for v in me.vertices:
+            if dominant_group(ob, v) == "Head":
+                ty = max(0.0, min(1.0, (y0 + D * 0.6 - v.co.y) / (D * 0.6)))
+                tz = max(0.0, min(1.0, (z0 + H * 0.62 - v.co.z) / (H * 0.62)))
+                t = ty * (0.35 + 0.65 * tz)
+                v.co.y = v.co.y - D * (var["muzzle"] - 1) * t
+                v.co.x = xc + (v.co.x - xc) * (1 - 0.35 * t)
+                v.co.z = v.co.z - H * 0.08 * t
+    if var.get("flat_tail"):
+        # (the pug's curled tail drawn into the rump: a wolf gets a hanging tail instead)
+        bk = [v for v in me.vertices if dominant_group(ob, v) == "Back"]
+        top = sorted(v.co.z for v in bk)[int(len(bk) * 0.6)]
+        rear = sorted(v.co.y for v in bk)[int(len(bk) * 0.7)]
+        for v in bk:
+            if v.co.z > top + 0.04:
+                v.co.z = top + 0.02
+            if v.co.y > rear + 0.04:
+                v.co.y = rear + 0.02
+    if var.get("tail"):
+        arm_ = ob.parent
+        bk = arm_.data.bones["Back"]
+        base = bk.head_local.copy()
+        L = (arm_.data.bones["Head"].tail_local - bk.head_local).length
+        if var["tail"] == "up":
+            tip = base + Vector((0, L * 0.18, L * 0.16))
+        else:
+            # (from the top of the rump, hanging back and down: a wolf's brush)
+            base = base + Vector((0, L * 0.05, L * 0.12))
+            tip = base + Vector((0, L * 0.2, -L * 0.24))
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        deform = bm.verts.layers.deform.verify()
+        gi = ob.vertex_groups["Back"].index
+        mi = [m.name for m in me.materials].index("Beige")
+        cone(bm, base, tip, L * (0.035 if var["tail"] == "up" else 0.075), 6, gi, deform, mi)
+        bm.to_mesh(me)
+        bm.free()
+        me.update()
     if var.get("shorn"):
         s = var["shorn"]
         body = {"Body", "Hips", "Torso", "Back", "Shoulders", "root"}
@@ -260,6 +344,8 @@ for sp in SPECIES:
     bpy.ops.wm.open_mainfile(filepath=os.path.join(SRC, sp["blend"]))
     arm = next(o for o in bpy.data.objects if o.type == "ARMATURE")
     base = next(o for o in bpy.data.objects if o.type == "MESH" and o.parent == arm)
+    if sp.get("unscale"):
+        unscale(arm)
     assert arm.matrix_world == Matrix.Identity(4), "armature must sit at the origin unscaled"
     # the mesh in armature space at rest (its object transform baked into the vertices)
     base.data.transform(base.matrix_world)

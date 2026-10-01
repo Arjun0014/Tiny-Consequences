@@ -1426,7 +1426,7 @@ end
 -- is (walking legs when it moves); wild boar as the dark pig; carcasses lying where they fell.
 M.WILD = 48
 M.WILD_SCALE = { deer = 0.42, reindeer = 0.45, antelope = 0.4, wolf = 0.4, cat = 0.42 }
-M.WILD_ANIM_SCALE = { boar = 0.0044, deer = 0.0052, reindeer = 0.0056, antelope = 0.0048 }
+M.WILD_ANIM_SCALE = { boar = 0.0044, deer = 0.0052, reindeer = 0.0056, antelope = 0.0048, wolf = 0.0047 }
 local WPOS, WROT, ROLL = vmath.vector3(), vmath.quat(), vmath.quat_rotation_z(math.pi * 0.5)
 local function draw_wild(V, t, lod)
   local s = V.s
@@ -1475,7 +1475,8 @@ local function draw_wild(V, t, lod)
       local young = (t - w.born) / 1152 < 0.5 and 0.65 or 1
       local anim_variant = w.sp == "boar" and "pig_dark"
         or (w.sp == "deer" and ((w.sex == "m" and young == 1) and "deer_stag" or "deer"))
-        or (w.sp == "reindeer" and "reindeer") or (w.sp == "antelope" and "antelope") or nil
+        or (w.sp == "reindeer" and "reindeer") or (w.sp == "antelope" and "antelope")
+        or (w.sp == "wolf" and (w.k % 3 == 0 and "wolf_dark" or "wolf")) or nil
       if anim_variant then
         -- (the animated models: wild boar the dark pig; deer, reindeer, antelope from the horse:
         -- D-099)
@@ -1492,7 +1493,7 @@ local function draw_wild(V, t, lod)
             e.lod, e.on = lod, true
           end
           local who = 900000 + s.id * 10000 + w.k
-          local clip = moving and ((w.act == "flee" or w.act == "chase") and "run" or "walk") or (w.act == "graze" and "graze" or "lie")
+          local clip = moving and ((w.act == "flee" or w.act == "chase") and "run" or "walk") or ((w.act == "graze" or w.act == "eat") and "graze" or "lie")
           local rate = moving and min(3, kspeed * 0.8) or 1
           if e.anim ~= clip or e.who ~= who then
             model.play_anim(e.urls[lod], clip, go.PLAYBACK_LOOP_FORWARD, { blend_duration = 0.3, playback_rate = rate, offset = frac(who * 0.37) })
@@ -1516,6 +1517,47 @@ local function draw_wild(V, t, lod)
   end
 end
 
+-- Dogs (D-105): each where the sim has it, walking or running, sitting, lying, barking.
+M.DOG_SCALE = 0.0048
+local function draw_dogs(V, t, lod)
+  local s = V.s
+  if not s.dogs then return end
+  local dogs = require("sim.agents.dogs")
+  local kspeed = M.game_min_per_s or 1
+  V.dyaw = V.dyaw or {}
+  for _, d in ipairs(s.dogs) do
+    if d.alive then
+      local e = animal_obj(d.k % 2 == 0 and "dog_dark" or "dog")
+      if e then
+        local x, y = dogs.pos(d, t)
+        local moving = (d.act == "walk" or d.act == "run") and d.t1 > d.t0
+        if moving then
+          local dx, dy = d.tx - d.x, d.ty - d.y
+          if dx * dx + dy * dy > 1e-12 then V.dyaw[d.k] = yaw_x(V, x, y, dx, dy) end
+        end
+        local yaw = V.dyaw[d.k] or d.k * 1.7
+        local px, py, pz, ux, uy, uz = world_pos(V, x, y, 0)
+        SPOS.x, SPOS.y, SPOS.z = px, py, pz
+        go.set_position(SPOS, e.id)
+        go.set_rotation(vmx.set_up_yaw(SROT, ux, uy, uz, yaw + pi * 0.5), e.id)
+        go.set_scale(M.DOG_SCALE, e.id)
+        if e.lod ~= lod or not e.on then
+          for j = 1, 3 do msg.post(e.urls[j], j == lod and MSG_ENABLE or MSG_DISABLE) end
+          if e.lod ~= lod then e.anim = nil end
+          e.lod, e.on = lod, true
+        end
+        local who = 950000 + s.id * 1000 + d.k
+        local clip = moving and (d.act == "run" and "run" or "walk") or (d.act == "lie" and "lie" or (d.act == "bark" and "graze" or "idle"))
+        local rate = moving and min(3, kspeed * 0.8) or 1
+        if e.anim ~= clip or e.who ~= who then
+          model.play_anim(e.urls[lod], clip, go.PLAYBACK_LOOP_FORWARD, { blend_duration = 0.3, playback_rate = rate, offset = frac(who * 0.37) })
+          e.anim, e.rate, e.who = clip, rate, who
+        end
+      end
+    end
+  end
+end
+
 function M.update_herds(V, t, zoom)
   local s = V.s
   local show = not M.skipping and V.in_view and zoom >= 0.75
@@ -1530,6 +1572,7 @@ function M.update_herds(V, t, zoom)
     local H = s.herds[kind]
     if H then draw_herd(V, t, H, lod, s.id, hi) end
   end
+  draw_dogs(V, t, lod)
 end
 
 -- Boats (D-084): moored at the dock, or wherever their rower is on the water.

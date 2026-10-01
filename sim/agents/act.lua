@@ -1440,6 +1440,19 @@ WORK.ask = function(W, s, p, st, f)
   people.remember(p, now, string.format("%s gave us %s in our need", s.name, econ.amount(q, "grain")))
 end
 
+-- Driving wolves off a pen (D-105): shouting, a torch, a stick; any wolf of a pack still near the
+-- pen turns away.
+WORK.drive_off = function(W, s, p, st, f)
+  if not s.wildlife then return end
+  local wild = require("sim.agents.wild")
+  for _, w in ipairs(s.wildlife.animals) do
+    if w.alive and w.pred and not w.done then
+      local wx, wy = wild.pos(w, W.S.v3.now or W.hour)
+      if (wx - p.x) ^ 2 + (wy - p.y) ^ 2 < 0.12 then wild.pack_flee(W, s, w, W.S.v3.now or W.hour, p) end
+    end
+  end
+end
+
 -- Food for the road (D-097): meals and grain from home.
 PICK.provisions = function(W, s, p, st)
   local b = s.buildings[st.ref]
