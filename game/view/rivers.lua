@@ -3,17 +3,18 @@
 -- its centre to its downhill neighbour (W.geo.downhill), width from sqrt(flow): tributaries
 -- join into rivers that widen toward the sea. The ribbons follow the rendered terrain height,
 -- widen while a river floods (flow above its bankfull) and dry to thin streams in droughts.
--- Rebuilt at most every REBUILD_S seconds when the quantised widths change.
+-- Widths, courses and fords are sim/surface.lua's (D-085): the settlements' local maps lay their
+-- channels and fords from the same functions. Rebuilt at most every REBUILD_S seconds when the
+-- widths change.
 local planet = require("game.view.planet")
+local surface = require("sim.surface")
 local cfgmod = require("sim.config")
 local speed = require("game.platform.speed")
 
 local M = {}
 
 M.REBUILD_S = 1.5
-M.SHARE = 0.22           -- share of land cells (by mean flow) that carry a visible river
-M.MIN_FLOW = 0.004       -- ... but never below this mean flow
-M.SUB = 7                -- sub-segments per cell-to-cell link
+M.SUB = surface.RIVER_SUB  -- sub-segments per cell-to-cell link
 M.LIFT = 0.012           -- height above the terrain surface (world units)
 M.BYPASS = 3.6           -- lot rings out a river passes a village (outside its houses)
 
@@ -31,11 +32,11 @@ end
 -- Surface radius at unit direction: the highest of the nearest render vertex and its
 -- neighbours (the ribbon rides just above the local terrain; cheap: one short greedy walk).
 local walk = 1
-local function surface(PL, x, y, z)
+local function surface_r(PL, x, y, z)
   local v = planet.nearest(PL, x, y, z, walk)
   walk = v
   local h, rn, rcnt = PL.h, PL.rn, PL.rcnt
-  if h[v] <= 0 then return PL.R, true end
+  if h[v] <= 0 then return PL.R end
   local hv = h[v]
   local base = v * 6 - 6
   local hm = hv
@@ -44,7 +45,7 @@ local function surface(PL, x, y, z)
     if hj > hm then hm = hj end
   end
   -- between the vertex and its highest neighbour: a little above the flat terrain
-  return PL.R + (hv * 0.6 + hm * 0.4) * PL.EXAG, false
+  return PL.R + (hv * 0.6 + hm * 0.4) * PL.EXAG
 end
 
 function M.init(W, PL, url)
@@ -57,39 +58,16 @@ local function signature(W, widths)
   local s = 0
   for c = 1, W.n do
     local w = widths[c]
-    -- (quantised: a river is redrawn when it visibly swells or shrinks, not every week)
-    if w > 0 then s = (s * 31 + c * 7 + floor(w * 50)) % 2147483647 end
+    -- (redrawn when a width changes: the local maps' channels follow the same widths daily)
+    if w > 0 then s = (s * 31 + c * 7 + floor(w * 2000)) % 2147483647 end
   end
   return s
 end
 
--- Visible width per cell (0 = no river).
+-- Visible width per cell (0 = no river): the shared function.
 local function widths(W)
-  local geo, F = W.geo, W.F
-  local fm = W.S.hydro and W.S.hydro.flow_mean
-  local bank = W.S.hydro and W.S.hydro.bankfull
-  local out = M.wbuf or {}
+  local out = surface.river_widths(W, M.wbuf)
   M.wbuf = out
-  local vals = {}
-  for c = 1, W.n do
-    out[c] = 0
-    if geo.ocean[c] == 0 and fm then vals[#vals + 1] = fm[c] end
-  end
-  if #vals == 0 then return out end
-  table.sort(vals)
-  local thr = max(M.MIN_FLOW, vals[max(1, floor(#vals * (1 - M.SHARE)))])
-  local top = vals[#vals]
-  for c = 1, W.n do
-    if geo.ocean[c] == 0 and fm[c] >= thr then
-      local f = fm[c]
-      -- floods swell the river, droughts thin it
-      local now = F.flow[c]
-      local k = 1
-      if bank and bank[c] > 0 then k = min(2.2, max(0.45, (0.5 * now + 0.5 * f) / max(f, 1e-6))) end
-      local rel = sqrt(f / top)
-      out[c] = (0.018 + 0.07 * rel) * k
-    end
-  end
   return out
 end
 
@@ -159,39 +137,28 @@ function M.rebuild(W)
   local pos, nrm, col = buffer.get_stream(buf, H_POS), buffer.get_stream(buf, H_NRM), buffer.get_stream(buf, H_COL)
   local v = 0
   local X, Y, Z = g.X, g.Y, g.Z
-  local P = {}
+  local P, Q = {}, {}
+  local G = surface.get(W)
   for li = 1, #links do
     local c = links[li]
     local d = down[c]
-    local w0 = wd[c]
-    local w1 = wd[d] > 0 and wd[d] or w0 * 1.1
+    local w0, w1 = surface.link_widths(wd, c, d)
     local ax, ay, az = junction(W, c, built)
     local bx, by, bz = junction(W, d, built)
-    -- meander: a smooth sideways offset, zero at both ends so links join up
-    local hs = ((c * 7919) % 1000) / 1000
-    local amp = 0.06 + 0.06 * hs
-    local sgn = hs < 0.5 and -1 or 1
-    local tx, ty, tz = bx - ax, by - ay, bz - az
+    -- the course (meanders, the shore where it meets the sea) and each sub-point's half-width
+    surface.river_path(G, c, ax, ay, az, bx, by, bz, Q)
     for k = 0, SUB do
-      local t = k / SUB
-      local x, y, z = norm(ax + tx * t, ay + ty * t, az + tz * t)
-      -- side direction: up x along
-      local sx, sy, sz = y * tz - z * ty, z * tx - x * tz, x * ty - y * tx
-      local sl = sqrt(sx * sx + sy * sy + sz * sz) + 1e-9
-      sx, sy, sz = sx / sl, sy / sl, sz / sl
-      local off = (sgn * sin(pi * t) + 0.45 * sin(2 * pi * t + hs * 6)) * amp / PL.R * sin(pi * t)
-      x, y, z = norm(x + sx * off, y + sy * off, z + sz * off)
-      local r, wet = surface(PL, x, y, z)
-      local w = (w0 + (w1 - w0) * t) * 0.5
-      if k > 0 and (wet or P[k - 1].sea) then
-        -- the river has reached the sea: the rest of the link collapses onto the shore point
+      local q = Q[k]
+      if k > 0 and q.sea then
         P[k] = P[k - 1]
-        P[k].sea = true
       else
-        r = r + M.LIFT
-        P[k] = { x * r, y * r, z * r, sx, sy, sz, w, x, y, z }
+        local x, y, z = q.x, q.y, q.z
+        local r = surface_r(PL, x, y, z) + M.LIFT
+        local w = surface.river_at(c, k, w0, w1)
+        P[k] = { x * r, y * r, z * r, q.sx, q.sy, q.sz, w, x, y, z }
       end
     end
+    local tx, ty, tz = bx - ax, by - ay, bz - az
     local ulen = sqrt(tx * tx + ty * ty + tz * tz) * PL.R
     for k = 0, SUB - 1 do
       local A, B = P[k], P[k + 1]

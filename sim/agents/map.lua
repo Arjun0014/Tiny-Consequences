@@ -4,7 +4,9 @@
 -- projection normalize(R n + x e + y q) (R = 10, the view's planet radius).
 --
 -- Per tile (flat arrays, index i = (iy - 1) N + ix):
---   land[i]  1 land, 0 water           cell[i]  the sim cell the tile lies in
+--   land[i]  1 land, 0 sea (the drawn coast, sim/surface.lua)   cell[i]  the sim cell it stands for
+--   riv[i]   0 dry, -1 floodplain, > 0 river now (1 + wading depth x 100; <= 101 wadeable)
+--   wcost[i] the boats' cost field (open water 1, else -1)
 --   occ[i]   building id (footprint) or 0      plot[i]  plot index or 0
 --   tree[i]  tree index standing on the tile or 0
 --   wear[i]  traffic (decays daily)     lane[i]  0 open, 1 trail, 2 lane (from wear, updated daily)
@@ -79,45 +81,181 @@ function M.ixy_xy(s, ix, iy)
   return (ix - 0.5 - N / 2) * T, (iy - 0.5 - N / 2) * T
 end
 
--- Build the tile layer for settlement s at cell s.cell.
+-- Build the tile layer for settlement s at cell s.cell. Land and sea are the drawn surface's
+-- (sim/surface.lua, D-085): a tile is land when the coast field at its centre is, exactly as the
+-- view draws it; the sim cell a tile stands for is the nearest one of its own kind (forest, fish
+-- and soil come from it). Boats keep to tiles clear of the shore (boat_margin).
 function M.build(W, s)
   local C = cfg()
   local N, T = C.map_n, C.tile
   s.N, s.T = N, T
   s.frame = M.frame(W, s.cell)
   local grid = require("sim.grid")
+  local surface = require("sim.surface")
+  local G = surface.get(W)
+  local sg = W.grid
   local ocean = W.geo.ocean
   local NN = N * N
   local land, cell, occ, plot, tree, wear, lane, cost = {}, {}, {}, {}, {}, {}, {}, {}
-  local prev = s.cell
+  local wcost, riv = {}, {}
+  local prev, hint = s.cell, nil
+  local margin = C.boat_margin
   for i = 1, NN do
     local x, y = M.tile_xy(s, i)
     local ux, uy, uz = M.unit(s, x, y)
-    local c = grid.nearest(W.grid, ux, uy, uz, prev)
+    local c = grid.nearest(sg, ux, uy, uz, prev)
     prev = c
+    local sv, v = surface.sample(G, ux, uy, uz, hint)
+    hint = v
+    local l = sv > 0 and 1 or 0
+    if (ocean[c] == 0) ~= (l == 1) then
+      -- drawn land whose nearest cell is sea (or the reverse): the sim triangle's heaviest cell of
+      -- the tile's own kind
+      local c0, a, b, w0, w1, w2 = surface.locate(sg, c, ux, uy, uz)
+      local want = l == 1 and 0 or 1
+      local bc, bw = 0, -1
+      if ocean[c0] == want and w0 > bw then bc, bw = c0, w0 end
+      if ocean[a] == want and w1 > bw then bc, bw = a, w1 end
+      if ocean[b] == want and w2 > bw then bc, bw = b, w2 end
+      if bc > 0 then c = bc end
+    end
     cell[i] = c
-    land[i] = ocean[c] == 1 and 0 or 1
-    occ[i], plot[i], tree[i], wear[i], lane[i], cost[i] = 0, 0, 0, 0, 0, C.cost_open
+    land[i] = l
+    -- the water's own cost field (boats, D-084): open water 1, the shore and land closed
+    wcost[i] = sv < -margin and 1 or -1
+    occ[i], plot[i], tree[i], wear[i], lane[i], cost[i], riv[i] = 0, 0, 0, 0, 0, C.cost_open, 0
   end
   s.land, s.cell_of, s.occ, s.plot, s.tree, s.wear, s.lane, s.cost = land, cell, occ, plot, tree, wear, lane, cost
-  -- the water's own cost field (boats, D-084): water 1, land closed
-  local wcost = {}
-  for i = 1, NN do wcost[i] = land[i] == 0 and 1 or -1 end
-  s.wcost = wcost
+  s.wcost, s.riv = wcost, riv
   s.trees = { x = {}, y = {}, size = {}, st = {}, logs = {}, claim = {}, t_cut = {}, tile = {}, n = 0 }
   s.ver = 1
+  M.rivers(W, s, true)
 end
+
+-- Rivers on the local map (D-085) ------------------------------------------------------------
+-- The planet's rivers cross the map as the view draws them (sim/surface.lua: the same courses,
+-- widths and fords). s.riv per tile: 0 dry land, -1 floodplain (dry now: nothing is built or
+-- sown there), else 1 + wading depth x 100 (wet now; 101 or less is wadeable: a ford, a stream).
+-- Re-laid every day from the day's flow: a flood widens and deepens the river and closes its
+-- fords; a drought opens more of them.
+
+-- (runtime only, never saved: each settlement's river courses in local coordinates, derived from
+-- the grid, the drainage and the surface)
+local COURSES = setmetatable({}, { __mode = "k" })
+
+local function courses(W, s)
+  local cs = COURSES[s]
+  if cs then return cs end
+  cs = {}
+  local surface = require("sim.surface")
+  local G = surface.get(W)
+  local g, geo = W.grid, W.geo
+  local down = geo.downhill
+  local f = s.frame
+  local cr = 0.936             -- (cos 0.36 rad: the map's half-diagonal and a link's length)
+  local Q = {}
+  local lim = s.N * s.T * 0.5 + 0.2
+  for c = 1, W.n do
+    local d = down[c]
+    if geo.ocean[c] == 0 and d and d ~= 0 and g.X[c] * f[1] + g.Y[c] * f[2] + g.Z[c] * f[3] > cr then
+      surface.river_path(G, c, g.X[c], g.Y[c], g.Z[c], g.X[d], g.Y[d], g.Z[d], Q)
+      local co = { c = c, d = d, x = {}, y = {}, sea = {} }
+      local inside = false
+      for k = 0, surface.RIVER_SUB do
+        local q = Q[k]
+        local x, y = M.local_of(s, q.x, q.y, q.z)
+        co.x[k], co.y[k], co.sea[k] = x or 1e9, y or 1e9, q.sea
+        if x and abs(x) < lim and abs(y) < lim then inside = true end
+      end
+      if inside then cs[#cs + 1] = co end
+    end
+  end
+  COURSES[s] = cs
+  return cs
+end
+
+-- Lay the rivers for today's flow (wd: surface.river_widths, shared by all settlements on a day).
+-- found: the first laying also marks the floodplain (the widest a flood makes the river).
+function M.rivers(W, s, found, wd)
+  local surface = require("sim.surface")
+  wd = wd or surface.river_widths(W)
+  local cs = courses(W, s)
+  local riv, land = s.riv, s.land
+  local N, T = s.N, s.T
+  for i = 1, N * N do
+    if riv[i] > 0 then riv[i] = -1 end      -- (wet yesterday: floodplain unless wet again)
+  end
+  local SUB = surface.RIVER_SUB
+  local half = N / 2
+  for pass = found and 1 or 2, 2 do
+    local flood = pass == 1
+    for ci = 1, #cs do
+      local co = cs[ci]
+      local c, d = co.c, co.d
+      if wd[c] > 0 then
+        local w0, w1 = surface.link_widths(wd, c, d)
+        if flood then w0, w1 = w0 * 2.2, w1 * 2.2 end
+        local xs, ys, sea = co.x, co.y, co.sea
+        for k = 0, SUB - 1 do
+          if not sea[k + 1] then
+            local ax, ay, bx, by = xs[k], ys[k], xs[k + 1], ys[k + 1]
+            local hw0, d0 = surface.river_at(c, k, w0, w1)
+            local hw1, d1 = surface.river_at(c, k + 1, w0, w1)
+            local hm = hw0 > hw1 and hw0 or hw1
+            local ix0 = floor((min(ax, bx) - hm) / T + half) + 1
+            local ix1 = floor((max(ax, bx) + hm) / T + half) + 1
+            local iy0 = floor((min(ay, by) - hm) / T + half) + 1
+            local iy1 = floor((max(ay, by) + hm) / T + half) + 1
+            if ix1 >= 1 and iy1 >= 1 and ix0 <= N and iy0 <= N then
+              local dx, dy = bx - ax, by - ay
+              local L2 = dx * dx + dy * dy
+              for iy = max(1, iy0), min(N, iy1) do
+                for ix = max(1, ix0), min(N, ix1) do
+                  local i = (iy - 1) * N + ix
+                  if land[i] == 1 then
+                    local px, py = (ix - 0.5 - half) * T, (iy - 0.5 - half) * T
+                    local u = L2 > 0 and ((px - ax) * dx + (py - ay) * dy) / L2 or 0
+                    if u < 0 then u = 0 elseif u > 1 then u = 1 end
+                    local ex, ey = px - ax - dx * u, py - ay - dy * u
+                    local hw = hw0 + (hw1 - hw0) * u
+                    if ex * ex + ey * ey <= hw * hw then
+                      if flood then
+                        if riv[i] == 0 then riv[i] = -1 end
+                      else
+                        local depth = d0 + (d1 - d0) * u
+                        local code = 1 + floor(depth * 100 + 0.5)
+                        if code > 999 then code = 999 end
+                        if riv[i] <= 0 or code < riv[i] then riv[i] = code end
+                      end
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+end
+
+-- Is tile i wet river now, and can it be waded?
+function M.wet(s, i) return s.riv[i] > 0 end
+function M.wadeable(s, i) local r = s.riv[i]; return r > 0 and r <= 101 end
 
 -- Rebuild every tile's A* cost from its occupancy, trees, plots and lanes. Bumps the map version
 -- (the path cache is only valid for one version).
 function M.rebuild_costs(s)
   local C = cfg()
-  local land, occ, plot, tree, lane, cost = s.land, s.occ, s.plot, s.tree, s.lane, s.cost
+  local land, occ, plot, tree, lane, cost, riv = s.land, s.occ, s.plot, s.tree, s.lane, s.cost, s.riv
   local st = s.trees.st
-  local co, ct, cp, ctr, cl = C.cost_open, C.cost_tree, C.cost_plot, C.cost_trail, C.cost_lane
+  local co, ct, cp, ctr, cl, cf = C.cost_open, C.cost_tree, C.cost_plot, C.cost_trail, C.cost_lane, C.cost_ford
   for i = 1, s.N * s.N do
     local c
     if land[i] == 0 or occ[i] > 0 then c = -1
+    elseif riv[i] > 0 then
+      -- a river: waded at a ford or across a stream (slowly), else no way across (D-085)
+      c = riv[i] <= 101 and cf or -1
     else
       local l = lane[i]
       if l == 2 then c = cl
@@ -214,7 +352,7 @@ function M.rect_free(s, ix0, iy0, ix1, iy1, allow_trees)
   for iy = iy0, iy1 do
     for ix = ix0, ix1 do
       local i = (iy - 1) * N + ix
-      if s.land[i] == 0 or s.occ[i] ~= 0 or s.plot[i] ~= 0 then return false end
+      if s.land[i] == 0 or s.occ[i] ~= 0 or s.plot[i] ~= 0 or s.riv[i] ~= 0 then return false end
       if not allow_trees and s.tree[i] ~= 0 then return false end
     end
   end

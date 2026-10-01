@@ -780,6 +780,8 @@ C.V3 = {
   speed_child = 0.8, speed_elder = 0.72, speed_load = 0.85, speed_rain = 1.12, speed_dark = 0.85,
   -- tile costs (A*): open land, under trees, across a plot, a trail, a lane
   cost_open = 1.0, cost_tree = 1.5, cost_plot = 1.6, cost_trail = 0.75, cost_lane = 0.55,
+  cost_ford = 3.0,                        -- wading a ford or a stream (D-085): slow, wet and cold
+  boat_margin = 0.015,                    -- boats keep to water this far into the coast field (D-085)
   temper_extra = 0.12,                    -- extra cost per temperament step off lanes (route variety)
   wear_walk = 1.0,                        -- wear added per tile crossed
   wear_decay = 0.04,                      -- share of wear lost per day

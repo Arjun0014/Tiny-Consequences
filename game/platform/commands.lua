@@ -163,6 +163,35 @@ function M.register(G)
     end
     return M.v3_state(W, p, t)
   end)
+  -- v3_look{sett, what = "centre" | "dock" | "ford" | "river", x, y, zoom}: the camera on a place of
+  -- settlement `sett` (shots of the geography, D-085). Returns the local point looked at.
+  bridge.register("v3_look", function(args)
+    local W = assert(G.W, "world not ready")
+    assert(W.v3, "not a v3 world")
+    local mapm = require("sim.agents.map")
+    local s = assert(W.S.v3.settlements[args.sett or 1], "no such settlement")
+    local x, y = args.x or 0, args.y or 0
+    if args.what == "dock" then
+      assert(s.dock, "no dock")
+      x, y = s.dock.mx, s.dock.my
+    elseif args.what == "ford" or args.what == "river" then
+      -- the wet tile nearest the square (a wadeable one for "ford")
+      local best, bd = 0, 1e9
+      for i = 1, s.N * s.N do
+        local r = s.riv[i]
+        if r > 0 and (args.what == "river" or r <= 101) then
+          local tx, ty = mapm.tile_xy(s, i)
+          local d = tx * tx + ty * ty
+          if d < bd then best, bd = i, d end
+        end
+      end
+      assert(best > 0, "no " .. args.what)
+      x, y = mapm.tile_xy(s, best)
+    end
+    local ux, uy, uz = mapm.unit(s, x, y)
+    camera.set(math.asin(uy), math.atan2(uz, ux), args.zoom or 1.5, true)
+    return { x = x, y = y, name = s.name }
+  end)
   -- camera{preset | lat, lon, zoom | drag={dx,dy} | follow=true}; lat/lon in degrees.
   bridge.register("camera", function(args)
     local W = assert(G.W, "world not ready")

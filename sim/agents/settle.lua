@@ -687,8 +687,20 @@ function M.daily(W, s, day)
   plan_fields(W, s, day)
   finish_clearing(W, s)
   mapm.daily_wear(s)
+  -- the rivers as today's flow has them (a flood closes the fords, a drought opens more)
+  mapm.rivers(W, s, false, M.today_widths(W))
   mapm.rebuild_costs(s)
   s.dirty_costs = false
+end
+
+-- The planet's river widths today (one computation a planet day for every settlement; runtime).
+local WD = setmetatable({}, { __mode = "k" })
+function M.today_widths(W)
+  local e = WD[W]
+  if e and e.tick == W.tick then return e.wd end
+  local wd = require("sim.surface").river_widths(W, e and e.wd)
+  WD[W] = { tick = W.tick, wd = wd }
+  return wd
 end
 
 return M

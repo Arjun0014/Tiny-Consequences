@@ -14,19 +14,16 @@ local M = {}
 local floor, max, min, sqrt, abs = math.floor, math.max, math.min, math.sqrt, math.abs
 local function C() return cfgmod.V3 end
 
--- River cells as the view draws them (game/view/rivers.lua: the top 22% of land cells by mean
--- flow, at least 0.004) — the slice's settlements avoid them until fords and bridges exist.
+-- River cells as the view draws them (sim/surface.lua: the land cells whose mean flow is in the
+-- top of the planet's range). A settlement's own cell is never one (its square would be in the
+-- water); river-side sites cross their river at its fords (D-085).
 function M.river_cells(W)
   local H = W.S.hydro
   local fm = H and H.flow_mean
   local out = {}
   if not fm then return out end
+  local _, thr = require("sim.surface").river_widths(W)
   local land = W.geo.land_cells
-  local vals = {}
-  for i = 1, #land do vals[i] = fm[land[i]] end
-  table.sort(vals)
-  local thr = vals[floor(#vals * 0.78) + 1] or 1e9
-  if thr < 0.004 then thr = 0.004 end
   for i = 1, #land do
     local c = land[i]
     if fm[c] >= thr then out[c] = true end
@@ -147,6 +144,21 @@ function M.households_for(u, size)
   return out
 end
 
+-- The free lot nearest (ix, iy) for a w x h footprint with a tile of yard round it (dry land:
+-- not the sea, a river or its floodplain; D-085).
+local function free_lot(s, ix, iy, w, h)
+  for r = 0, 14 do
+    for jy = iy - r, iy + r do
+      for jx = ix - r, ix + r do
+        if (abs(jx - ix) == r or abs(jy - iy) == r) and mapm.rect_free(s, jx - 1, jy - 1, jx + w, jy + h, true) then
+          return jx, jy
+        end
+      end
+    end
+  end
+  return ix, iy
+end
+
 local function lane_walk(s, x0, y0, x1, y1, amount)
   local path = nav.path(s, x0, y0, x1, y1, 0)
   if not path then return end
@@ -172,8 +184,11 @@ function M.found(W, cell, opts)
   W.F.land_use[cell] = -1
   W.lu_ver = (W.lu_ver or 0) + 1
   -- 1. the square, the well, the granary, the woodstore (toward the woods)
-  settle.add_building(W, s, "well", c0, c0, "s", "standing")
-  s.sqx, s.sqy = mapm.ixy_xy(s, c0, c0 - 2)
+  do
+    local wx, wy = free_lot(s, c0, c0, 1, 1)
+    settle.add_building(W, s, "well", wx, wy, "s", "standing")
+    s.sqx, s.sqy = mapm.ixy_xy(s, wx, wy - 2)
+  end
   -- forest direction: which quarter of the map is most wooded?
   local quarters = { 0, 0, 0, 0 }
   for i = 1, N * N, 7 do
@@ -185,8 +200,12 @@ function M.found(W, cell, opts)
   for q = 1, 4 do if quarters[q] > fv then fq, fv = q, quarters[q] end end
   local sx = (fq == 2 or fq == 4) and 1 or -1
   local sy = (fq >= 3) and 1 or -1
-  settle.add_building(W, s, "granary", c0 - sx * 7 - 2, c0 - sy * 4 - 2, sy > 0 and "n" or "s", "standing")
-  settle.add_building(W, s, "woodstore", c0 + sx * 10 - 2, c0 + sy * 8 - 1, sy > 0 and "s" or "n", "standing")
+  do
+    local gx, gy = free_lot(s, c0 - sx * 7 - 2, c0 - sy * 4 - 2, 4, 4)
+    settle.add_building(W, s, "granary", gx, gy, sy > 0 and "n" or "s", "standing")
+    local wx, wy = free_lot(s, c0 + sx * 10 - 2, c0 + sy * 8 - 1, 4, 3)
+    settle.add_building(W, s, "woodstore", wx, wy, sy > 0 and "s" or "n", "standing")
+  end
   -- 1b. a coastal village: a dock on the shore nearest the square, and its boats (D-084)
   do
     local best, bd, bside = 0, 1.45, nil
@@ -194,12 +213,12 @@ function M.found(W, cell, opts)
     for iy = 3, N - 2 do
       for ix = 3, N - 2 do
         local i = (iy - 1) * N + ix
-        if s.land[i] == 1 and s.occ[i] == 0 then
+        if s.land[i] == 1 and s.occ[i] == 0 and s.riv[i] == 0 then
           for _, d in ipairs(D4) do
             local wi = (iy + d[2] - 1) * N + ix + d[1]
             local li = (iy - d[2] - 1) * N + ix - d[1]
-            -- water on one side (and beyond it), land behind for the door
-            if s.land[wi] == 0 and s.land[(iy + 2 * d[2] - 1) * N + ix + 2 * d[1]] == 0 and s.land[li] == 1 then
+            -- the sea on one side (open water beyond it for the boats), land behind for the door
+            if s.land[wi] == 0 and s.wcost[(iy + 2 * d[2] - 1) * N + ix + 2 * d[1]] > 0 and s.land[li] == 1 and s.riv[li] == 0 then
               local x, y = mapm.ixy_xy(s, ix, iy)
               local r = sqrt(x * x + y * y)
               if r < bd then best, bd, bside = i, r, d[3] end
@@ -256,13 +275,24 @@ function M.found(W, cell, opts)
   end
   -- 4. the woods: individual trees from the planet's forest, off the village ground
   local cleared = 0.42
+  -- (the river and its floodplain are open meadow, and a bank of grass and reeds three tiles
+  -- wide either side: floods keep the trees off, D-085)
+  local bank = {}
+  for i = 1, N * N do
+    if s.riv[i] ~= 0 then
+      local ix, iy = mapm.tile_ixy(s, i)
+      for jy = max(1, iy - 3), min(N, iy + 3) do
+        for jx = max(1, ix - 3), min(N, ix + 3) do bank[(jy - 1) * N + jx] = true end
+      end
+    end
+  end
   for iy = 2, N - 1, 2 do
     for ix = 2, N - 1, 2 do
       local jx = (u() - 0.5) * 1.6
       local jy = (u() - 0.5) * 1.6
       local x, y = mapm.ixy_xy(s, ix + jx, iy + jy)
       local i = mapm.tile_of(s, x, y)
-      if i > 0 and s.land[i] == 1 and s.occ[i] == 0 and s.plot[i] == 0 then
+      if i > 0 and s.land[i] == 1 and s.occ[i] == 0 and s.plot[i] == 0 and not bank[i] then
         local r = sqrt(x * x + y * y)
         local fo = W.F.forest[s.cell_of[i]]
         -- the forest edge near the village is thinner (wood gathered for generations)

@@ -490,7 +490,7 @@ local function fish_ground(W, s, p, now)
     local o = P8[floor(a) + 1]
     local x, y = b.mx + o[1] * r, b.my + o[2] * r
     local i = require("sim.agents.map").tile_of(s, x, y)
-    if i > 0 and s.land[i] == 0 then return x, y, s.cell_of[i] end
+    if i > 0 and s.wcost[i] > 0 then return x, y, s.cell_of[i] end
   end
   return nil
 end

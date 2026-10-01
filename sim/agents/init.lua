@@ -232,6 +232,12 @@ function sys.init(W)
     for _, k in ipairs({ "granary", "wood_store", "well", "dock" }) do
       if s[k] then s[k] = s.buildings[s[k].id] end
     end
+    if not s.riv then
+      -- (a save from before rivers on the local map, D-085)
+      s.riv = {}
+      for i = 1, s.N * s.N do s.riv[i] = 0 end
+      require("sim.agents.map").rivers(W, s, true)
+    end
   end
   for i = 1, #V.order do
     local p = V.people[V.order[i]]
