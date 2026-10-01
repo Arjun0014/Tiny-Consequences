@@ -51,7 +51,7 @@ local function plural(n, one, many) return n == 1 and one or many end
 -- A household's chore claim (who is cooking, fetching food/wood/water, foraging) holds only while
 -- its holder is alive, still of the household and still at that objective (a claim must never
 -- outlive a person who moved to a new house, died or changed their mind).
-local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "fetch_wood", fetch_water = "fetch_water", foraging = "forage",
+local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "fetch_wood", fetch_water = "fetch_water", foraging = "forage", child_gathering = "forage",
   smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed",
   milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle", trading = "trade", sharing = "share", tanning = "tan", lifting = "lift", cobbling = "cobble" }
 local function claim_free(W, hh, field, p)
@@ -237,11 +237,15 @@ local function fit(p, ctx, kind, ref)
   if st == "infant" then return 0 end
   local bf = ctx.babe and (kin.BABE_FIT[kind] or 1) or 1
   if st == "child" then
-    -- (light chores from eight or nine; a child is never a field hand)
+    -- (light chores: gathering at the woods' edge from six, water from seven, firewood from eight,
+    -- spinning from nine; a child is never a field hand. D-109: children of seven to twelve had
+    -- spent some two-thirds of their waking day at play)
     local n = (p.chore_day == floor(NOW / 24)) and (p.chores or 0) or 0
-    local tired = max(0.2, 1 - 0.3 * n)
-    if kind == "fetch_water" and ctx.age >= C().help_age then return 1.2 * tired * bf end
-    if kind == "fetch_wood" and ctx.age >= C().help_age + 1 then return 0.9 * tired * bf end
+    -- (the day's first errand is one the parents send them on; after it, less eagerly)
+    local tired = n == 0 and 1.8 or max(0.2, 1 - 0.3 * n)
+    if kind == "forage" and ctx.age >= C().gather_age then return (ctx.age >= C().help_age and 0.9 or 0.7) * tired * bf end
+    if kind == "fetch_water" and ctx.age >= C().help_age - 1 then return 1.2 * tired * bf end
+    if kind == "fetch_wood" and ctx.age >= C().help_age then return 0.9 * tired * bf end
     if kind == "spin" and ctx.age >= C().help_age + 1 then return 0.85 * tired * bf end   -- (D-088)
     return 0
   end
@@ -466,7 +470,10 @@ local function work_candidates(W, s, p, ctx, now)
     end
   end
   -- gathering at the woods' edge (berries, nuts, greens): food for the household
-  if ctx.home and ctx.stage ~= "child" and ctx.hh and claim_free(W, ctx.hh, "foraging", p) then
+  -- (children gather too, from six, on their own claim: a household's child and its grown forager
+  -- may both be at the edge, D-109)
+  local fclaim = ctx.stage == "child" and "child_gathering" or "foraging"
+  if ctx.home and ctx.hh and claim_free(W, ctx.hh, fclaim, p) then
     local f = fit(p, ctx, "forage")
     if f > 0 then
       -- worth going when the edge has something to pick (everyone sees what foragers bring back)
@@ -1359,7 +1366,9 @@ local function leisure(W, s, p, ctx, now)
     -- (a whole day of play palls: chores and tagging along win now and then)
     local d = floor(now / 24)
     local played = p.play_day == d and (p.play_h or 0) or 0
-    local u = (0.42 + 0.1 * p.soc) * wx * max(0.45, 1 - played * 0.06)
+    -- (older children are expected to lend a hand: their play counts for less as they grow, D-109)
+    local grown = ctx.age < C().gather_age and 1 or (ctx.age < C().help_age + 1 and 0.8 or 0.62)
+    local u = (0.42 + 0.1 * p.soc) * wx * max(0.45, 1 - played * 0.06) * grown
     if best then
       addw(u + 0.1, "play", best.id, 0, "Playing with %s", best.name)
     else
@@ -1958,7 +1967,7 @@ PLAN.forage = function(W, s, p, ctx, now, cd)
     end
   end
   if best == 0 then return PLAN.rest(W, s, p, ctx, now, cd) end
-  ctx.hh.foraging = p.id
+  if ctx.stage == "child" then ctx.hh.child_gathering = p.id else ctx.hh.foraging = p.id end
   local x, y = tr.x[best] + 0.025, tr.y[best] + 0.01
   go(pl, x, y, "the woods' edge")
   local x2, y2 = near_spot(W, p, now, x, y, 0.06, 33)
@@ -3263,7 +3272,7 @@ function M.decide(W, s, p, now, reason)
     if p.play_day ~= d then p.play_day, p.play_h = d, 0 end
     p.play_h = p.play_h + 0.8
   end
-  if ctx.stage == "child" and (kind == "fetch_water" or kind == "fetch_wood") then
+  if ctx.stage == "child" and (kind == "fetch_water" or kind == "fetch_wood" or kind == "forage") then
     local d = floor(now / 24)
     if p.chore_day ~= d then p.chore_day, p.chores = d, 0 end
     p.chores = p.chores + 1

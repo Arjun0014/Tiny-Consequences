@@ -855,6 +855,7 @@ C.V3 = {
   winter_wood_days = 40,                  -- in autumn and winter the woodstore lays in this many days of burning
   -- people
   adult_age = 16, elder_age = 55, child_age = 2, apprentice_age = 12, help_age = 8,
+  gather_age = 6, child_gather = 0.6,     -- (D-109) children gather at the woods' edge from six, filling a basket more slowly
   marry_f = 17, marry_m = 19, fecund = { 16, 44 },
   conceive_year = 0.42,                   -- annual chance for a fed married woman in her own home
   pregnancy_days = 36,

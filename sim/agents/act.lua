@@ -1089,6 +1089,8 @@ WORK.forage = function(W, s, p, st, f)
   local c = C()
   local wild = s.wild or 0
   local got = min(c.forage_basket * f * (0.75 + 0.5 * (st.luck or 0.5)), wild * 0.25)
+  -- (a child's basket fills slower: D-109)
+  if p.stage_was == "child" then got = got * C().child_gather end
   if got < 0.01 then return end
   s.wild = wild - got
   p.carry, p.camt = "food", got
