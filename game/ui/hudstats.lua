@@ -35,8 +35,17 @@ function M.update(W, hour_f, focus_lon)
   old = old or h[1]
   local v3 = W.v3
   local toy = v3 and (math.floor(hour_f / 24) % 48) or (math.floor(hour_f / 168) % 48)
-  if v3 and W.S.v3 and W.S.v3.settlements[1] and W.grid.lat[W.S.v3.settlements[1].cell] < 0 then
-    toy = (toy + 24) % 48   -- the settlement's own season (the south is half a year on)
+  if v3 and W.S.v3 and W.S.v3.settlements[1] then
+    -- the season of the settlement nearest the camera (the south is half a year on, D-087)
+    local st = require("game.view.state")
+    local fx, fy, fz = st.focus_x or 0, st.focus_y or 0, st.focus_z or 1
+    local best, bd = W.S.v3.settlements[1], -2
+    for _, s in ipairs(W.S.v3.settlements) do
+      local f = s.frame
+      local d = f[1] * fx + f[2] * fy + f[3] * fz
+      if s.alive and d > bd then best, bd = s, d end
+    end
+    if W.grid.lat[best.cell] < 0 then toy = (toy + 24) % 48 end
   end
   local lh = daylight.local_hour(hour_f, focus_lon or 0)
   local hh = math.floor(lh)

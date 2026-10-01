@@ -23,9 +23,11 @@ local function C() return cfgmod.V3 end
 local IDLE_KINDS = { sit = true, talk = true, rest = true, eat = true, lunch = true, play = true, wait = true,
   nurse = true, idle = true, shelter = true }
 local SKILL_OF = { till = "sk_farm", sow = "sk_farm", harvest = "sk_farm", tend = "sk_farm", thresh = "sk_farm",
-  chop = "sk_wood", grub = "sk_wood", build = "sk_build", repair = "sk_build" }
-local TOOL_WORK = { till = true, harvest = true, chop = true, grub = true, build = true, repair = true, thresh = true, tend = true }
-M.OUTDOOR_WORK = { grub = true, forage = true, till = true, thresh = true, sow = true, tend = true, harvest = true, chop = true, build = true, fill = true, play = true, repair = true }
+  chop = "sk_wood", grub = "sk_wood", build = "sk_build", repair = "sk_build", fish = "sk_fish", mend_boat = "sk_fish" }
+local TOOL_WORK = { till = true, harvest = true, chop = true, grub = true, build = true, repair = true, thresh = true, tend = true,
+  mend_boat = true }
+M.OUTDOOR_WORK = { grub = true, forage = true, till = true, thresh = true, sow = true, tend = true, harvest = true, chop = true, build = true, fill = true, play = true, repair = true,
+  mend_boat = true }
 
 -- Position of p at time t (analytic; exact at t0 and t1).
 function M.pos(p, t)
@@ -139,7 +141,8 @@ START.work = function(W, s, p, st, now)
     end
   end
   if st.kind == "sleep" or st.kind == "rest" or st.kind == "shelter" or st.kind == "eat" or st.kind == "nurse"
-    or st.kind == "visit" or st.kind == "cook" or st.kind == "feed_babe" or st.kind == "craft" or st.kind == "hand" then
+    or st.kind == "visit" or st.kind == "cook" or st.kind == "feed_babe" or st.kind == "craft" or st.kind == "hand"
+    or st.kind == "smoke" then
     if st.inside and st.inside ~= 0 then p.inside = st.inside end
   end
   -- a mother home again takes her baby back from its minder (D-081)
@@ -356,6 +359,7 @@ WORK.board = function(W, s, p, st, f)
   local b = s.dock
   if not boat or not b then return end
   boat.crew = p.id
+  boat.t_out = W.S.v3.now or W.hour
   p.boat = boat.id
   p.x, p.y = b.mx, b.my
 end
@@ -367,7 +371,8 @@ WORK.fish = function(W, s, p, st, f)
   local cell = s.cell_of[i]
   local F = W.F
   local fd = F.fish[cell] or 0
-  local catch = c.fish_q * fd * st.dur * f * (0.75 + 0.5 * (p.dil - 0.6) / 0.8)
+  -- (a skilled fisher knows the grounds and the lines: D-087)
+  local catch = c.fish_q * fd * st.dur * f * (0.55 + 0.6 * (p.sk_fish or 0.2)) * (0.85 + 0.3 * (p.dil - 0.6) / 0.8)
   local stock = fd * c.fish_fu
   if catch > stock * 0.05 then catch = stock * 0.05 end
   if catch <= 0 then return end
@@ -379,9 +384,50 @@ end
 WORK.land = function(W, s, p, st, f)
   local boat = s.boats and s.boats[p.boat or st.boat or 0]
   local b = s.dock
-  if boat then boat.crew = 0; boat.x, boat.y = b.mx + (boat.id - 1) * 0.012, b.my end
+  if boat then
+    boat.crew = 0
+    boat.x, boat.y = b.mx + (boat.id - 1) * 0.012, b.my
+    -- hours afloat wear the hull and the oars
+    local out = (W.S.v3.now or W.hour) - (boat.t_out or (W.S.v3.now or W.hour))
+    boat.cond = max(0, (boat.cond or 1) - C().boat_wear * out)
+    boat.trips = (boat.trips or 0) + 1
+  end
   p.boat = nil
   if b then p.x, p.y = b.dx, b.dy end
+end
+
+-- Mending a boat at the dock (D-087): with the log brought, hours of caulking and new boards.
+WORK.mend_boat = function(W, s, p, st, f)
+  local boat = s.boats and s.boats[st.ref or 0]
+  if not boat then return end
+  if boat.mender == p.id then boat.mender = 0 end
+  if (boat.repair_logs or 0) < 1 - 1e-6 then return end
+  local c = C()
+  boat.mend_p = (boat.mend_p or 0) + st.dur * f / c.mend_boat_h
+  if boat.mend_p >= 0.999 then
+    boat.mend_p = 0
+    boat.cond = 1
+    boat.repair_logs = boat.repair_logs - 1
+    s.acc.boats_mended = (s.acc.boats_mended or 0) + 1
+  end
+end
+
+-- Smoking fish over the hearth (D-087): fresh fish that would spoil becomes smoked fish that
+-- keeps through the winter; the fire takes wood.
+WORK.smoke = function(W, s, p, st, f)
+  local hh = W.S.v3.households[p.hh]
+  if hh and hh.smoking == p.id then hh.smoking = 0 end
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
+  local c = C()
+  local amt = min(b.stock.fish or 0, c.smoke_fu_h * st.dur * f)
+  local logs = b.stock.logs or 0
+  if logs < amt * c.smoke_logs then amt = logs / c.smoke_logs end
+  if amt <= 0 then return end
+  b.stock.fish = b.stock.fish - amt
+  b.stock.smoked = (b.stock.smoked or 0) + amt
+  b.stock.logs = logs - amt * c.smoke_logs
+  s.acc.smoked = (s.acc.smoked or 0) + amt
 end
 
 WORK.thresh = function(W, s, p, st, f)
@@ -451,9 +497,16 @@ WORK.cook = function(W, s, p, st, f)
   if (b.stock.logs or 0) <= 0 and not b.fire then return end
   local c = C()
   local n = hh and #hh.members or 1
-  local amt = min(b.stock.food or 0, n * c.cook_batch * f)
-  if amt <= 0 then return end
-  b.stock.food = b.stock.food - amt
+  -- (fresh fish goes into the pot first: it will not keep, D-087)
+  local want = n * c.cook_batch * f
+  local fish = min(b.stock.fish or 0, want)
+  local amt = min(b.stock.food or 0, want - fish)
+  local sm = min(b.stock.smoked or 0, want - fish - amt)
+  if amt + fish + sm <= 0 then return end
+  b.stock.fish = (b.stock.fish or 0) - fish
+  b.stock.food = (b.stock.food or 0) - amt
+  b.stock.smoked = (b.stock.smoked or 0) - sm
+  amt = amt + fish + sm
   b.stock.meals = (b.stock.meals or 0) + amt
   b.cooked_t = W.S.v3.now or W.hour
 end
@@ -553,6 +606,11 @@ end
 DROP.any = function(W, s, p, st)
   if p.carry == "" then return end
   local what, n = p.carry, p.camt
+  if st.to == "boat" and what == "logs" then
+    local boat = s.boats and s.boats[st.boat or 0]
+    if boat then boat.repair_logs = (boat.repair_logs or 0) + n; p.carry, p.camt = "", 0 end
+    return
+  end
   local b = s.buildings[st.ref]
   if not b then return end
   if st.to == "repair" and what == "logs" then
@@ -574,7 +632,8 @@ DROP.any = function(W, s, p, st)
       b.stock.food = (b.stock.food or 0) + n
     end
   elseif what == "fish" then
-    if b.kind == "granary" then b.stock.grain = (b.stock.grain or 0) + n else b.stock.food = (b.stock.food or 0) + n end
+    -- fresh fish: a house's own stock, cooked first, spoiling within days (D-087)
+    b.stock.fish = (b.stock.fish or 0) + n
   elseif what == "food" then
     if b.kind == "granary" then b.stock.grain = (b.stock.grain or 0) + n else b.stock.food = (b.stock.food or 0) + n end
   elseif what == "logs" then

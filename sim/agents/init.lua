@@ -237,6 +237,10 @@ function sys.init(W)
       local N, wc = s.N, s.wcost
       for k = 1, N do wc[k], wc[(N - 1) * N + k], wc[(k - 1) * N + 1], wc[k * N] = -1, -1, -1, -1 end
     end
+    for _, boat in ipairs(s.boats or {}) do
+      -- (boats from before fisher households: anyone's, sound)
+      if boat.owner == nil then boat.owner, boat.cond, boat.trips = 0, 1, 0 end
+    end
     if not s.riv then
       -- (a save from before rivers on the local map, D-085)
       s.riv = {}

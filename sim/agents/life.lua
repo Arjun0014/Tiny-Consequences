@@ -28,14 +28,16 @@ local ROLES = { "farmer", "farmer", "woodcutter", "farmer", "builder", "woodcutt
 -- The role the settlement is shortest of (by the work it has: farms, wood, sites).
 local function pick_role(W, s, p)
   local V = W.S.v3
-  local n = { farmer = 0, woodcutter = 0, builder = 0 }
+  local n = { farmer = 0, woodcutter = 0, builder = 0, fisher = 0 }
   for i = 1, #s.members do
     local q = V.people[s.members[i]]
     if q and q.alive and n[q.role] then n[q.role] = n[q.role] + 1 end
   end
-  local want = { farmer = #s.plots * 0.9, woodcutter = 2 + #s.sites * 0.5, builder = 1 + #s.sites * 0.7 }
+  -- (a village with a dock wants a fisher for every boat, D-087)
+  local want = { farmer = #s.plots * 0.9, woodcutter = 2 + #s.sites * 0.5, builder = 1 + #s.sites * 0.7,
+    fisher = s.dock and #(s.boats or {}) or 0 }
   local best, bd = "farmer", -1e9
-  for _, r in ipairs({ "farmer", "woodcutter", "builder" }) do
+  for _, r in ipairs({ "farmer", "woodcutter", "builder", "fisher" }) do
     local d = want[r] - n[r]
     if d > bd then best, bd = r, d end
   end

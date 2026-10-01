@@ -15,7 +15,8 @@ local function food_total(V, s)
   local tot = (s.granary.stock.grain or 0) + (s.granary.stock.sheaves or 0)
   for _, bid in ipairs(s.blist) do
     local b = s.buildings[bid]
-    if b.kind == "house" then tot = tot + (b.stock.food or 0) + (b.stock.seed or 0) + (b.stock.meals or 0) end
+    -- (raw food at home: grain and gathered food, fresh and smoked fish, D-087)
+    if b.kind == "house" then tot = tot + (b.stock.food or 0) + (b.stock.fish or 0) + (b.stock.smoked or 0) + (b.stock.seed or 0) + (b.stock.meals or 0) end
   end
   for _, pl in ipairs(s.plots) do tot = tot + pl.sheaves end
   for _, id in ipairs(s.members) do

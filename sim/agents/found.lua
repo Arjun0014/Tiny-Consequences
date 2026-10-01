@@ -37,7 +37,7 @@ function M.pick_site(W, opts)
   opts = opts or {}
   -- the first settlement: the north first (day 0 is its spring), relaxing coast and climate
   if opts.dawn ~= false and not opts.pass then
-    for _, ps in ipairs({ { north = true, cd = 3, t0 = 6, t1 = 19 }, { north = true, cd = 2, t0 = 3, t1 = 22 } }) do
+    for _, ps in ipairs({ { north = true, cd = 3, t0 = 10, t1 = 19 }, { north = true, cd = 2, t0 = 8, t1 = 22 } }) do
       local o = {}
       for k, v in pairs(opts) do o[k] = v end
       o.pass = ps
@@ -45,7 +45,7 @@ function M.pick_site(W, opts)
       if c then return c end
     end
   end
-  local pass = opts.pass or { cd = 3, t0 = 6, t1 = 19 }
+  local pass = opts.pass or { cd = 3, t0 = 10, t1 = 19 }
   local F, g = W.F, W.grid
   local nb = W.grid.neighbours or W.grid.nb
   local rivers = M.river_cells(W)
@@ -59,10 +59,14 @@ function M.pick_site(W, opts)
     end
   end
   local best, bs = nil, -1e9
+  -- (a site is judged by its climate, the annual mean temperature, not by the day of founding:
+  -- in the south that day is in autumn, D-087)
+  local TS = W.temp_static
+  local gt = W.G.g_temp or 0
   for i = 1, #land do
     local c = land[i]
     local ok = W.geo.coast_dist[c] >= pass.cd and not rivers[c] and not near[c] and ((not pass.north and not opts.north) or g.lat[c] > 0.05)
-    local T = F.temp[c]
+    local T = (TS and TS.base and TS.base[c]) and (TS.base[c] + TS.lapse[c] + gt) or F.temp[c]
     if ok and T > pass.t0 and T < pass.t1 and abs(g.lat[c]) < 1.0 then
       -- neighbours: land, no rivers, some forest
       local fsum, n = 0, 0
@@ -74,14 +78,15 @@ function M.pick_site(W, opts)
         n = n + 1
       end
       -- (a coastal site keeps most of its neighbours land: room for fields and woods)
-      if ok and pass.coast then
-        local sea = 0
-        for k = 1, #ring do if W.geo.ocean[ring[k]] == 1 then sea = sea + 1 end end
-        if sea > 2 then ok = false end
+      local sea, riv = 0, 0
+      for k = 1, #ring do
+        if W.geo.ocean[ring[k]] == 1 then sea = sea + 1 end
+        if rivers[ring[k]] then riv = riv + 1 end
       end
+      if ok and pass.coast and sea > 2 then ok = false end
       if ok and n > 0 then
         local fo = fsum / n
-        local sc = -abs(T - 12) * 0.08 + min(fo, 0.6) * 2 - abs(F.forest[c] - 0.3) + (F.soil_water[c] or 0) * 0.8
+        local sc = -abs(T - 13) * 0.08 + min(fo, 0.6) * 2 - abs(F.forest[c] - 0.3) + (F.soil_water[c] or 0) * 0.8
           + (F.fertility and F.fertility[c] or 0.5) * 0.5
         -- the world's clock starts at UTC midnight: prefer a place where that is just before dawn,
         -- so the first thing seen is the village waking (opts.dawn = false to ignore)
@@ -93,6 +98,11 @@ function M.pick_site(W, opts)
           -- and where day 0 is the start of spring (the north): founders sow before their first winter
           if g.lat[c] < 0 then sc = sc - 100 end
         end
+        -- water draws people: a shore to fish from, a river to drink from and cross (D-087)
+        if opts.water then
+          if sea > 0 then sc = sc + 0.6 end
+          if riv > 0 then sc = sc + 0.5 end
+        end
         -- (more settlements: a landmass nobody has settled yet first)
         if opts.landmasses and W.geo.continent and not opts.landmasses[W.geo.continent[c]] then sc = sc + 1.5 end
         if sc > bs then best, bs = c, sc end
@@ -100,6 +110,53 @@ function M.pick_site(W, opts)
     end
   end
   return best
+end
+
+-- Where a field stands in the three-field rotation (D-080, D-087) at founding: tau is its place in
+-- the three-year cycle, in days from its winter-crop sowing (local day 30): the winter crop grows
+-- (tau 0-34) and is reaped in early summer, the stubble waits for spring (38-66), the spring crop
+-- is sown (66-72) and grows (72-89) and is reaped as autumn begins, then the field rests a year,
+-- ploughed in summer (tau 126-139), until the winter crop is sown again (144 = 0). day0: the day
+-- of founding (absolute days), so sowing and resting dates are the field's own.
+M.FOOD_DAYS = { 40, 52, 58, 48 }    -- days of food in the granary at founding, by local season
+M.STORE_LOGS = { 14, 18, 26, 22 }   -- logs in the woodstore
+function M.rotation_state(pl, tau, day0, u)
+  local rows = pl.rows
+  local function rs(v) for q = 1, rows do pl.row_st[q] = v end end
+  if tau < 34 then
+    pl.crop, pl.stage = "winter", "growing"
+    rs(2)
+    pl.sown, pl.growth, pl.weeds, pl.sown_day = rows, 0.04 + 0.9 * tau / 34 + 0.05 * u(), 0.1, day0 - tau
+    pl.q_sum, pl.q_n = 7.5, 10
+  elseif tau < 38 then
+    pl.crop, pl.stage = "winter", "ripe"
+    rs(2)
+    pl.sown, pl.growth, pl.weeds, pl.sown_day = rows, 1, 0.15, day0 - tau
+    pl.ripe_day, pl.ripe_for, pl.quality, pl.spoil = day0, 0, 0.75 * (pl.fert or 1), 1
+    pl.q_sum, pl.q_n = 7.5, 10
+  elseif tau < 72 then
+    -- the winter crop's stubble waits for the spring sowing
+    pl.crop, pl.stage, pl.weeds = "spring", "fallow", 0.2
+    rs(3)
+  elseif tau < 89 then
+    pl.crop, pl.stage = "spring", "growing"
+    rs(2)
+    pl.sown, pl.growth, pl.weeds, pl.sown_day = rows, (tau - 70) / 20 + 0.04 * u(), 0.12, day0 - (tau - 70)
+    pl.q_sum, pl.q_n = 7.5, 10
+  elseif tau < 94 then
+    pl.crop, pl.stage = "spring", "ripe"
+    rs(2)
+    pl.sown, pl.growth, pl.weeds, pl.sown_day = rows, 1, 0.15, day0 - 20
+    pl.ripe_day, pl.ripe_for, pl.quality, pl.spoil = day0, 0, 0.75 * (pl.fert or 1), 1
+    pl.q_sum, pl.q_n = 7.5, 10
+  else
+    -- resting since its spring crop was reaped; ploughed in summer
+    pl.crop, pl.stage, pl.fert, pl.weeds, pl.rest_from = "winter", "rest", 0.88, 0.3, day0 - (tau - 94)
+    local done = tau >= 139 and rows or (tau >= 126 and floor((tau - 126) / 13 * rows) or 0)
+    pl.ploughed = done
+    for q = 1, rows do pl.row_st[q] = q <= done and 1 or 3 end
+    if done >= rows then pl.fert, pl.weeds = 0.93, 0.08 end
+  end
 end
 
 -- Households at founding: { {sex, age, role}, ... } per household; "p" marks a pregnancy,
@@ -178,6 +235,9 @@ function M.found(W, cell, opts)
     return rng.float(W.seed, rng.S.V3_FOUND, key, u_n, 0)
   end
   local culture = opts.culture or (1 + floor(u() * 4))
+  -- the local day of the year (south of the equator day 0 is the autumn) and the absolute day
+  local day0 = floor(W.hour / 24)
+  local doy0 = require("sim.agents.clock").local_doy(W.hour, W.grid.lat[cell])
   local s = settle.new(W, cell, { name = names.village(u, culture), culture = culture })
   local N = s.N
   local c0 = floor(N / 2) + 1
@@ -232,7 +292,7 @@ function M.found(W, cell, opts)
       local b = settle.add_building(W, s, "dock", ix, iy, bside, "standing")
       s.boats = {}
       for k = 1, c.boats do
-        s.boats[k] = { id = k, x = b.mx + (k - 1) * 0.012, y = b.my, crew = 0 }
+        s.boats[k] = { id = k, x = b.mx + (k - 1) * 0.012, y = b.my, crew = 0, owner = 0, cond = 0.7 + 0.3 * u(), trips = 0 }
       end
     end
   end
@@ -349,6 +409,7 @@ function M.found(W, cell, opts)
       p.sk_farm = sk(p.role == "farmer" and 1.6 or 0.8)
       p.sk_wood = sk(p.role == "woodcutter" and 1.8 or 0.4)
       p.sk_build = sk(p.role == "builder" and 1.8 or 0.4)
+      p.sk_fish = sk(s.dock and 0.5 or 0.1)
       if age >= c.adult_age and p.sex == "m" and u() < 0.5 then p.strong = true end
       if t[4] == "p" then p.preg_due = now + (2.4 + u()) * 24 end
     end
@@ -409,7 +470,7 @@ function M.found(W, cell, opts)
     hb.stock.meals = (#fam) * (0.4 + 0.6 * u())
     hb.cond = 0.78 + 0.22 * u()   -- built over the years: some roofs are older than others
     hh.tools = 0.7 + 0.25 * u()
-    hb.stock.logs = 2
+    hb.stock.logs = doy0 >= 24 and 3 or 2
     hb.stock.water = u() < 0.6 and 1 or 0
   end
   -- neighbours and friends across households (a little affinity, children more)
@@ -426,6 +487,33 @@ function M.found(W, cell, opts)
       end
     end
   end
+  -- a coastal village's boats belong to fisher households: in each, a man of working age takes up
+  -- the nets (his skill from the years he has fished; D-087)
+  if s.boats then
+    local taken = {}
+    for k = 1, #s.boats do
+      local best, bs = nil, -1
+      for h = 1, #hlist do
+        local hh = hlist[h]
+        if not taken[hh.id] then
+          for _, id in ipairs(hh.members) do
+            local q = V.people[id]
+            local st, a = people.stage(q, now)
+            if st == "adult" and a < 52 then
+              local sc = (q.sex == "m" and 2 or 1) + (q.role == "woodcutter" and 0.5 or 0) + (q.role == "builder" and -1 or 0) - abs(a - 32) * 0.04
+              if sc > bs then best, bs = q, sc end
+            end
+          end
+        end
+      end
+      if best then
+        taken[best.hh] = true
+        best.role = "fisher"
+        best.sk_fish = min(0.95, 0.35 + (people.age(best, now) - 14) * 0.025 + u() * 0.1)
+        s.boats[k].owner = best.hh
+      end
+    end
+  end
   -- fields belong to households (round robin, the larger families first)
   for k = 1, #s.plots do
     local hh = hlist[(k - 1) % #hlist + 1]
@@ -433,26 +521,15 @@ function M.found(W, cell, opts)
     pl.hh = hh.id
     local m = V.people[hh.members[1]]
     pl.name = (m and m.surname or "Common") .. " field" .. (k > #hlist and " II" or "")
-    -- the three-field rotation already under way (D-080): a winter crop sown last autumn, last
-    -- year's winter-crop stubble waiting for the spring crop, a field resting after its spring crop
-    local r = k % 3
-    if r == 1 then
-      pl.crop, pl.stage = "winter", "growing"
-      for q = 1, pl.rows do pl.row_st[q] = 2 end
-      pl.sown, pl.growth, pl.weeds, pl.sown_day = pl.rows, 0.4 + 0.1 * u(), 0.1, -18
-      pl.q_sum, pl.q_n = 7.5, 10
-    elseif r == 2 then
-      pl.crop, pl.stage = "spring", "fallow"
-      for q = 1, pl.rows do pl.row_st[q] = 3 end
-    else
-      pl.crop, pl.stage, pl.ploughed, pl.fert, pl.weeds, pl.rest_from = "winter", "rest", 0, 0.88, 0.3, -20
-      for q = 1, pl.rows do pl.row_st[q] = 3 end
-    end
+    -- the three-field rotation already under way (D-080), where the local season has it (D-087)
+    M.rotation_state(pl, (doy0 - 30 + 48 * (k % 3)) % 144, day0, u)
   end
-  -- 6. stores: last year's harvest in the granary, cut wood in the woodstore
+  -- 6. stores: what is left of the harvests in the granary, cut wood in the woodstore (fuller in
+  -- autumn, after the year's harvests and before the winter's burning)
   local pop = #mem
-  s.granary.stock.grain = pop * (opts.food_days or 40) + #s.plots * 8 * c.seed_row
-  s.wood_store.stock.logs = 14
+  local se = floor(doy0 / 12) + 1
+  s.granary.stock.grain = pop * (opts.food_days or M.FOOD_DAYS[se]) + #s.plots * 8 * c.seed_row
+  s.wood_store.stock.logs = M.STORE_LOGS[se]
   -- 7. the lanes years of walking have worn: each house to the well, granary, woodstore and fields
   for pass = 1, 2 do
     for h = 1, #homes do

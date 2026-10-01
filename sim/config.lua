@@ -801,7 +801,7 @@ C.V3 = {
   thresh_h = 1.0, thresh_fu = 6,          -- an hour of threshing at the granary turns 6 FU of sheaves to grain
   seed_row = 0.5,                         -- FU of seed grain per row
   grow_days = 20,                         -- days from sowing to ripe at good temperatures
-  grow_tmin = 5,                          -- degC below which crops do not grow
+  grow_tmin = 3, grow_topt = 13,          -- degC: crops do not grow below tmin, grow fully from topt (D-087)
   row_yield = 13.5,                       -- FU per row at full quality
   weeds_day = 0.15, tend_clear = 0.09, weeds_tend = 0.15,   -- weeds a day; cleared per hour; weeding starts above
   ripe_spoil_days = 8,                    -- ripe grain left standing is lost after this
@@ -840,6 +840,7 @@ C.V3 = {
   spoil_meals = 0.05,                     -- share of cooked food gone stale a day
   -- stores (D-080): grain keeps, not forever; threshing as the threshed grain runs down
   spoil_grain = 0.0012, spoil_sheaves = 0.0005, spoil_food = 0.004,
+  spoil_fish = 0.3,                       -- share of fresh fish at home spoiled a day (D-087)
   thresh_days = 30,                       -- days of threshed grain the village likes to have ready
   -- upkeep (D-080): roofs and walls weather; a worn house is repaired with a log and some hours
   wear_house = 0.005, repair_at = 0.75, repair_h = 2.5, repair_logs = 1,
@@ -862,6 +863,16 @@ C.V3 = {
   -- fishing (D-084): boats rowed from the dock to grounds offshore; the catch comes out of the
   -- planet's fish (the v2 scale: FU per crew-hour at density 1; FU of fish in a cell at density 1)
   fish_q = 2.2, fish_fu = 18000, fish_h = { 1.6, 3.2 }, row_speed = 1.6, boats = 2,
+  -- fishing as an occupation (D-087): boats belong to fisher households, wear afloat (and rot a
+  -- little ashore), are mended with a log at the dock and built new at the shore; fresh fish
+  -- spoils in days, so the surplus is smoked at the hearth for the winter
+  boat_wear = 0.012, boat_rot = 0.002,    -- condition lost an hour afloat; a day ashore
+  boat_mend = 0.55, boat_unsafe = 0.2,    -- owners mend a boat below this; nobody rows out below this
+  mend_boat_h = 2.0,                      -- hours of mending a boat (and a log)
+  boat_logs = 5, boat_work = 30,          -- logs and work-hours for a new boat
+  smoke_fu_h = 3.0, smoke_logs = 0.08,    -- FU of fresh fish smoked an hour at the hearth; logs a FU
+  spoil_smoked = 0.004,                   -- share of smoked fish spoiled a day
+  smoke_days = 8,                         -- days of smoked fish a fishing household lays in for the winter
   -- reactions (hours)
   react_near = { 0.03, 0.12 }, react_far = { 0.1, 0.45 },
   rain_hardy = 0.7,                       -- diligence above which light rain does not stop work

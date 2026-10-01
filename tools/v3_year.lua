@@ -28,6 +28,7 @@ while arg[i] do
   elseif a == "--follow-days" then i = i + 1; args.fdays = {}; for x in arg[i]:gmatch("%d+") do args.fdays[#args.fdays + 1] = tonumber(x) end
   elseif a == "--ids" then i = i + 1; args.ids = {}; for x in arg[i]:gmatch("%d+") do args.ids[#args.ids + 1] = tonumber(x) end
   elseif a == "--settlements" then i = i + 1; args.settlements = tonumber(arg[i])
+  elseif a == "--sett" then i = i + 1; args.sett = tonumber(arg[i])
   end
   i = i + 1
 end
@@ -95,7 +96,7 @@ local function food_total(s)
   if g then tot = tot + (g.stock.grain or 0) + (g.stock.sheaves or 0) end
   for k = 1, #s.blist do
     local b = s.buildings[s.blist[k]]
-    if b.kind == "house" then tot = tot + (b.stock.food or 0) + (b.stock.seed or 0) + (b.stock.meals or 0) end
+    if b.kind == "house" then tot = tot + (b.stock.food or 0) + (b.stock.fish or 0) + (b.stock.smoked or 0) + (b.stock.seed or 0) + (b.stock.meals or 0) end
   end
   for k = 1, #s.plots do tot = tot + s.plots[k].sheaves end
   for k = 1, #s.members do
@@ -109,7 +110,8 @@ local function food_total(s)
 end
 
 -- Run --------------------------------------------------------------------------------------------
-local s1 = V.settlements[1]
+local s1 = V.settlements[args.sett or 1]
+say("watching %s (settlement %d of %d; --sett K for another)", s1.name, s1.id, #V.settlements)
 local lon, lat = W.grid.lon[s1.cell], W.grid.lat[s1.cell]
 local day0 = clock.day(W.hour)
 local snaps = {}   -- every 10 game minutes: positions of everyone outdoors
@@ -209,6 +211,20 @@ for d = 1, args.days do
     tilled, sown, growing, ripe, #s.plots, #s.sites > 0 and ("sites " .. #s.sites) or "", ms)
 end
 say("lunches eaten (not in acc.eaten): %d (= %.1f FU)", lunches, lunches * C.meal_fu)
+for _, s in ipairs(V.settlements) do
+  local alive = 0
+  for k = 1, #s.members do local p = V.people[s.members[k]]; if p.alive then alive = alive + 1 end end
+  local a = s.acc
+  say("  %-12s lat %5.1f  pop %3d  food %5.0f  harvest %5.0f  forage %4.0f  fish %4.0f  eaten %5.0f  felled %4d  built %d  plots %2d  households %d",
+    s.name, math.deg(W.grid.lat[s.cell]), alive, food_total(s), a.harvest or 0, a.foraged or 0, a.fished or 0, a.eaten or 0,
+    a.felled or 0, a.built or 0, #s.plots, #s.households)
+  if s.boats then
+    local bl = {}
+    for _, b in ipairs(s.boats) do bl[#bl + 1] = string.format("#%d owner %d cond %.2f trips %d%s", b.id, b.owner or 0, b.cond or 1, b.trips or 0, b.lost and " LOST" or "") end
+    say("      fish: smoked %.0f, fresh spoiled %.0f, boats mended %d, built %d | %s", a.smoked or 0, a.fish_spoiled or 0,
+      a.boats_mended or 0, a.boats_built or 0, table.concat(bl, "; "))
+  end
+end
 say("sim %.1f s for %d days (%.0f ms/day)", os.clock() - tsim, args.days, (os.clock() - tsim) * 1000 / args.days)
 
 -- Analysis -------------------------------------------------------------------------------------
@@ -220,7 +236,7 @@ local person_days = {}
 for _, id in ipairs(V.order) do
   local L = log[id]
   local p = V.people[id]
-  if L and p.sett == 1 then
+  if L and p.sett == s1.id then
     for k = 1, #L do
       local e = L[k]
       local t1 = (L[k + 1] and L[k + 1].t) or (W.hour)
@@ -331,7 +347,7 @@ local wakes, beds = {}, {}
 for _, id in ipairs(V.order) do
   local L = log[id]
   local p = V.people[id]
-  if L and p.sett == 1 then
+  if L and p.sett == s1.id then
     for k = 2, #L do
       local a, b = L[k - 1], L[k]
       if a.act == "sleep" and b.act ~= "sleep" then

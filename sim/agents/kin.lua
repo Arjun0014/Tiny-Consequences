@@ -18,11 +18,11 @@ local function C() return cfgmod.V3 end
 -- What a person holding a baby can still do (fit multiplier by objective kind).
 M.BABE_FIT = { fell = 0.08, build = 0.08, haul_logs = 0.1, deliver = 0.1, grub = 0.1, repair = 0.15, thresh = 0.2,
   till = 0.3, harvest = 0.45, haul_grain = 0.3, sow = 0.7, tend = 0.75, forage = 0.85, fetch_wood = 0.5,
-  fetch_food = 0.8, fetch_water = 0.7, cook = 1.1, craft = 1.0, play = 0, fish = 0 }
+  fetch_food = 0.8, fetch_water = 0.7, cook = 1.1, craft = 1.0, play = 0, fish = 0, mend_boat = 0.15, smoke = 1.0 }
 
 -- Objectives during which a mother at home takes her baby back from its minder.
 M.HOME_KINDS = { sleep = true, rest = true, eat = true, cook = true, craft = true, sit_out = true, nurse = true,
-  feed_babe = true, shelter = true, visit = true }
+  feed_babe = true, shelter = true, visit = true, smoke = true }
 
 -- Infant ib is now held by q (or nobody).
 function M.give(W, ib, q)
@@ -123,7 +123,7 @@ function M.infant_tick(W, s, ib, now, dt, interrupt, pos)
     if not m and q and who then
       -- weaned: only worth calling if there is something at home to feed them (or to cook)
       local home = people.home(W, s, q)
-      if not (home and ((home.stock.meals or 0) >= c.porridge or (home.stock.food or 0) >= 0.3)) then who = nil end
+      if not (home and ((home.stock.meals or 0) >= c.porridge or require("sim.agents.people").pantry(home) >= 0.3)) then who = nil end
     end
     if who and who.objk ~= "nurse" and who.objk ~= "feed_babe" and who.objk ~= "cook" then
       interrupt(W, who, now + 0.02 + 0.08 * ((ib.key % 97) / 97), ib.name .. " is hungry")
@@ -156,6 +156,7 @@ end
 
 -- The target classes of jobs (an apprentice works beside their mentor on the same target).
 M.DOMAIN = { till = "plot", sow = "plot", harvest = "plot", tend = "plot", haul_grain = "plot",
-  build = "bld", deliver = "bld", repair = "bld", fell = "tree", haul_logs = "tree", grub = "tree", thresh = "granary" }
+  build = "bld", deliver = "bld", repair = "bld", fell = "tree", haul_logs = "tree", grub = "tree", thresh = "granary",
+  mend_boat = "boat" }
 
 return M

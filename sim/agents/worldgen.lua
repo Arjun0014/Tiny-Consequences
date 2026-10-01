@@ -54,15 +54,16 @@ function M.generate(seed, opts)
   local function sz(k) return (opts.sizes and opts.sizes[k]) or opts.size end
   found.found(W, cell, { size = sz(1), plots = opts.plots })
   -- more settlements (opts.settlements): the best sites at least 4 cells from any other, on
-  -- landmasses nobody has settled first (the north for now: day 0 is its spring)
+  -- landmasses nobody has settled first, either side of the equator (a southern settlement is
+  -- founded in its autumn, its rotation and stores where the local season has them: D-087)
   local used = { cell }
   local lms = {}
   if W.geo.continent then lms[W.geo.continent[cell]] = true end
   for k = 2, opts.settlements or 1 do
     local c2
-    for _, ps in ipairs({ { cd = 3, t0 = 6, t1 = 19 }, { cd = 2, t0 = 4, t1 = 21 },
-      { cd = 1, t0 = 3, t1 = 23, coast = true, river = true } }) do
-      c2 = found.pick_site(W, { dawn = false, avoid = used, min_steps = 4, north = true, landmasses = lms, pass = ps })
+    for _, ps in ipairs({ { cd = 1, t0 = 10, t1 = 19, coast = true, river = true },
+      { cd = 1, t0 = 8.5, t1 = 23, coast = true, river = true } }) do
+      c2 = found.pick_site(W, { dawn = false, avoid = used, min_steps = 4, landmasses = lms, pass = ps, water = true })
       if c2 then break end
     end
     if not c2 then break end

@@ -462,7 +462,7 @@ end
 
 -- People ------------------------------------------------------------------------------------
 local ROLE_TUNIC = {
-  farmer = { 0.80, 0.68, 0.36 }, woodcutter = { 0.30, 0.50, 0.30 }, builder = { 0.72, 0.40, 0.32 },
+  farmer = { 0.80, 0.68, 0.36 }, woodcutter = { 0.30, 0.50, 0.30 }, builder = { 0.72, 0.40, 0.32 }, fisher = { 0.34, 0.44, 0.58 },
   [""] = { 0.62, 0.58, 0.70 },
 }
 local SKIN = { { 0.98, 0.84, 0.70 }, { 0.87, 0.67, 0.50 }, { 0.64, 0.46, 0.33 } }
@@ -592,7 +592,7 @@ M.PART = PART
 
 -- what they hold for each action (the sim's action, not invented)
 local TOOL = { till = "hoe", grub = "hoe", chop = "axe", harvest = "sickle", build = "hammer", thresh = "flail",
-  forage = "basket", fill = "bucket", tend = nil, sow = "basket", repair = "hammer", fish = "rod" }
+  forage = "basket", fill = "bucket", tend = nil, sow = "basket", repair = "hammer", fish = "rod", mend_boat = "hammer" }
 local CARRY_PART = { logs = "log", grain = "sack", sheaves = "sack", food = "sack", seed = "basket", water = "bucket", fish = "basket" }
 -- animation for each action: { clip, rate (at a game minute per second), moving clip }
 local ANIM = {
@@ -604,6 +604,7 @@ local ANIM = {
   sit = { "sit", 1 }, nurse = { "sit", 0.8 }, craft = { "kneel_work", 0.6 }, repair = { "kneel_work", 1.0 },
   hand = { "pickup", 1.2 },
   row = { "sit", 1 }, fish = { "sit", 0.7 }, board = { "pickup", 1.2 }, land = { "pickup", 1.2 },
+  mend_boat = { "kneel_work", 1.0 }, smoke = { "kneel_work", 0.6 },
 }
 
 local function packc(c) return pack(c[1], c[2], c[3]) end
@@ -613,6 +614,7 @@ local TUNIC = {
   farmer = { { 0.78, 0.66, 0.40 }, { 0.62, 0.55, 0.36 }, { 0.70, 0.50, 0.32 } },
   woodcutter = { { 0.30, 0.48, 0.30 }, { 0.36, 0.42, 0.28 }, { 0.26, 0.40, 0.36 } },
   builder = { { 0.70, 0.40, 0.30 }, { 0.62, 0.36, 0.28 }, { 0.55, 0.42, 0.36 } },
+  fisher = { { 0.34, 0.44, 0.58 }, { 0.28, 0.38, 0.48 }, { 0.42, 0.50, 0.56 } },
   [""] = { { 0.60, 0.56, 0.70 }, { 0.52, 0.60, 0.66 }, { 0.70, 0.52, 0.56 } },
 }
 local LOWER = { { 0.40, 0.34, 0.26 }, { 0.32, 0.32, 0.38 }, { 0.46, 0.40, 0.30 } }
@@ -1019,11 +1021,17 @@ function M.update_boats(V, t)
       V.boat_go[k] = { id = id, url = msg.url(nil, id, "mesh"), yaw = 0 }
     end
   end
+  -- (boats launched later get their game objects as they appear, D-087)
+  for k = #V.boat_go + 1, #s.boats do
+    local id = factory.create(V.boat_factory, vmath.vector3(0, 0, 0))
+    V.boat_go[k] = { id = id, url = msg.url(nil, id, "mesh"), yaw = 0 }
+  end
   local Vp = V.W.S.v3.people
-  local show = not M.skipping and V.in_view
+  local show0 = not M.skipping and V.in_view
   for k, boat in ipairs(s.boats) do
     local e = V.boat_go[k]
     if e then
+      local show = show0 and not boat.lost   -- (a boat rotted through is broken up)
       if show ~= e.on then msg.post(e.url, show and MSG_ENABLE or MSG_DISABLE); e.on = show end
       if show then
         local x, y, dx, dy = boat.x, boat.y, nil, nil

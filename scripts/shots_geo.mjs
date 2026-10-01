@@ -59,7 +59,7 @@ try {
     if (f) await shoot(page, `s${s}_ford`, `${c.name} ford at ${f.x.toFixed(2)},${f.y.toFixed(2)}`);
   }
   // a fisher afloat: step on by quarter hours until someone rows or fishes
-  for (let k = 0; k < 48; k++) {
+  for (let k = 0; k < 144; k++) {
     const p = await tryCmd(page, { cmd: 'v3_person', pid: 'fisher', look: true, zoom: 1.8 });
     if (p) { await shoot(page, `fisher_${k}`, `#${p.id} ${p.name}: ${p.objective} / ${p.action} | ${p.why}`); if (k > 0) break; }
     const now = await page.evaluate(() => window.__TC.hour);

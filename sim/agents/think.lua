@@ -49,7 +49,8 @@ local function plural(n, one, many) return n == 1 and one or many end
 -- A household's chore claim (who is cooking, fetching food/wood/water, foraging) holds only while
 -- its holder is alive, still of the household and still at that objective (a claim must never
 -- outlive a person who moved to a new house, died or changed their mind).
-local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "fetch_wood", fetch_water = "fetch_water", foraging = "forage" }
+local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "fetch_wood", fetch_water = "fetch_water", foraging = "forage",
+  smoking = "smoke" }
 local function claim_free(W, hh, field, p)
   local id = hh[field] or 0
   if id == 0 or (p and id == p.id) then return true end
@@ -185,7 +186,7 @@ local ROLE_JOBS = {
   farmer = { grub = true, till = true, sow = true, tend = true, harvest = true, haul_grain = true, thresh = true },
   woodcutter = { fell = true, haul_logs = true, grub = true },
   builder = { build = true, deliver = true, haul_logs = true, repair = true },
-  fisher = { fish = true },
+  fisher = { fish = true, mend_boat = true, smoke = true },
 }
 
 -- Does the apprentice's mentor work on this target now (D-081)? (ref: the plot, building or tree)
@@ -229,6 +230,11 @@ local function fit(p, ctx, kind, ref)
     if st == "apprentice" then return 0.85 * bf end
     if st == "elder" then return 1.15 * bf end
     return (p.nursing > 0 and 1.2 or 1) * bf
+  end
+  if kind == "smoke" then
+    if st == "apprentice" then return 0.8 * bf end
+    if st == "elder" then return 1.2 * bf end
+    return (p.role == "fisher" and 1.1 or 1) * bf
   end
   if kind == "cook" then
     -- (no role bonus: whoever is at home and free; elders and nursing mothers at home most)
@@ -460,6 +466,7 @@ local function work_candidates(W, s, p, ctx, now)
         local f = fit(p, ctx, "build", b.id)
         local wm = ctx.with_mentor
         ctx.with_mentor = false
+        if b.kind == "boat" and b.for_hh == p.hh and f > 0 then f = max(f, 1.3) end
         if f > 0 and (ctx.stage == "adult" or ctx.stage == "elder" or wm) then
           add((0.6 + 0.1 * b.prio + (wm and 0.15 or 0)) * f * fat - tc, "build", b.id, 0,
             wm and string.format("Helping %s raise the %s for %s", ctx.mentor.name, b.label, b.for_name or "the village")
@@ -526,22 +533,63 @@ local function fish_ground(W, s, p, now)
   return nil
 end
 
+-- (D-087) A household fishes in its own boat, for what it needs: fresh fish for the pot (it keeps a
+-- day or two), smoked fish laid in for the winter, the village's bread when stores run low. A
+-- boat too worn is not taken out.
+local function own_boat(s, p, c)
+  if not s.boats then return nil end
+  for i = 1, #s.boats do
+    local b = s.boats[i]
+    if b.crew == 0 and not b.lost and (b.owner == p.hh or b.owner == 0) and (b.cond or 1) > c.boat_unsafe then return b end
+  end
+  return nil
+end
+M.own_boat = own_boat
+
 local function fish_candidate(W, s, p, ctx, now, fat)
   local c = C()
-  if not s.dock or not s.boats or ctx.rain == 2 then return end
-  if ctx.stage ~= "adult" and not (ctx.stage == "apprentice" and ctx.mentor and ctx.mentor.objk == "fish") then return end
-  local boat = nil
-  for i = 1, #s.boats do if s.boats[i].crew == 0 then boat = s.boats[i]; break end end
+  if not s.dock or not s.boats or ctx.rain == 2 or ctx.stage ~= "adult" then return end
+  local boat = own_boat(s, p, c)
   if not boat then return end
+  local f = fit(p, ctx, "fish")
+  if f <= 0 then return end
   local gx, gy, cell = fish_ground(W, s, p, now)
   if not gx then return end
   local fd = W.F.fish[cell] or 0
   if fd < 0.03 then return end
-  local f = fit(p, ctx, "fish")
+  local home = ctx.home
+  local hn = ctx.hh and #ctx.hh.members or 1
+  local eat = max(1, hn * 0.75)
+  local fresh = home and (home.stock.fish or 0) / eat or 0
+  local pantry = home and (people.pantry(home) + (home.stock.meals or 0)) / eat or 0
+  local need = pantry < 3 and 0.15 * (1 - pantry / 3) or 0
+  -- the winter's store (late summer and autumn): smoked fish to the household's want
+  local doy = s.doy or 0
+  local smoked = home and (home.stock.smoked or 0) / eat or 0
+  local store = (doy >= 16 and doy < 40 and smoked < c.smoke_days) and 0.12 * (1 - smoked / c.smoke_days) or 0
+  local short = s.need.food_days < 30 and 0.12 or 0
+  local u = (0.22 + 0.18 * min(1, fd) + need + store + short) * f * fat - 0.3 * min(2, fresh)
+  add(u - travel(ctx, s.dock.dx, s.dock.dy, p.x, p.y), "fish", boat.id, 0,
+    store > 0.03 and string.format("Fishing for the winter: %.0f days of smoked fish in the house", smoked)
+      or (need > 0.05 and string.format("Little food at home (%.1f days): out with the boat", pantry)
+      or string.format("The fish are running offshore (%.0f%% of a full sea); the boat is ready", min(100, fd * 100))))
+end
+
+-- Mending a household's boat at the dock (D-087): worn planks and caulking, a log and a few hours.
+local function mend_boat_candidate(W, s, p, ctx, now, fat)
+  local c = C()
+  if not s.dock or not s.boats or ctx.stage ~= "adult" then return end
+  local f = fit(p, ctx, "mend_boat")
   if f <= 0 then return end
-  local short = s.need.food_days < 30 and 0.15 or 0
-  add((0.36 + 0.3 * min(1, fd) + short) * f * fat - travel(ctx, s.dock.dx, s.dock.dy, p.x, p.y), "fish", boat.id, 0,
-    string.format("A boat is free at the dock and the fish are running offshore (%.0f%% of a full sea)", min(100, fd * 100)))
+  for i = 1, #s.boats do
+    local b = s.boats[i]
+    if b.crew == 0 and not b.lost and b.owner == p.hh and (b.cond or 1) < c.boat_mend and (b.mender or 0) == 0
+      and ((b.repair_logs or 0) >= 1 or (s.wood_store and (s.wood_store.stock.logs or 0) >= 1)) then
+      add((0.3 + 0.9 * (c.boat_mend - b.cond)) * f * fat - travel(ctx, s.dock.dx, s.dock.dy, p.x, p.y), "mend_boat", b.id, 0,
+        string.format("Our boat is leaking (%d%% sound): it wants new planks and caulking", floor((b.cond or 0) * 100)))
+      return
+    end
+  end
 end
 
 -- Repairs (D-080): a weathered house (condition below repair_at) wants a log and some hours.
@@ -597,7 +645,7 @@ local function chores(W, s, p, ctx, now)
   local px, py = p.x, p.y
   local n = #hh.members
   local need_day = n * 1.0
-  local food = home.stock.food or 0
+  local food = people.pantry(home)
   -- cooking: the household's meals at the hearth (one cook at a time; needs wood on the hearth)
   local meals = home.stock.meals or 0
   local want = n * c.meals_days * 0.75
@@ -630,6 +678,15 @@ local function chores(W, s, p, ctx, now)
       add(urg * f * fat - travel(ctx, s.wood_x, s.wood_y, px, py), "fetch_wood", 0, 0,
         wdays < 1 and string.format("The woodpile at home is almost gone (%.1f logs; the hearth burns %.1f a day)", logs, burn)
           or string.format("Stacking firewood at home: %.1f days of burning left", wdays))
+    end
+  end
+  -- fresh fish beyond what the pot will take today is smoked at the hearth before it spoils (D-087)
+  local surplus = (home.stock.fish or 0) - n * 0.8
+  if surplus >= 1 and claim_free(W, hh, "smoking", p) and (home.stock.logs or 0) >= 0.3 then
+    local f = fit(p, ctx, "smoke")
+    if f > 0 then
+      add((0.28 + 0.1 * min(4, surplus)) * f * fatigue(p) - travel(ctx, ctx.hx, ctx.hy, px, py), "smoke", home.id, 0,
+        string.format("%.0f FU of fresh fish will not keep: smoking it over the hearth", surplus))
     end
   end
   if (home.stock.water or 0) < 1 and claim_free(W, hh, "fetch_water", p) and s.well then
@@ -732,7 +789,7 @@ local function care_candidates(W, s, p, ctx, now)
     if (ctx.home.stock.meals or 0) >= c.porridge then
       add(0.9 + ib.hunger - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.3, "feed_babe", ib.id, 0,
         string.format("%s is hungry: porridge at home", ib.name))
-    elseif (ctx.home.stock.food or 0) >= 0.3 and ctx.hh and claim_free(W, ctx.hh, "cooking", p) then
+    elseif people.pantry(ctx.home) >= 0.3 and ctx.hh and claim_free(W, ctx.hh, "cooking", p) then
       add(0.85 + ib.hunger - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.3, "cook", ctx.home.id, 0,
         string.format("%s is hungry and nothing is cooked: making porridge", ib.name))
     end
@@ -798,7 +855,7 @@ local function eat_candidate(W, s, p, ctx, now)
   if home and (home.stock.meals or 0) >= c.meal_fu * 0.5 then
     add(0.5 + h - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.3, "eat", home.id, 0,
       mealtime and (ctx.lh < 12 and "Breakfast at home" or "Supper at home") or "Hungry: going home to eat")
-  elseif home and (home.stock.food or 0) >= 0.3 and ctx.stage ~= "child" and (ctx.hh and claim_free(W, ctx.hh, "cooking", p)) then
+  elseif home and people.pantry(home) >= 0.3 and ctx.stage ~= "child" and (ctx.hh and claim_free(W, ctx.hh, "cooking", p)) then
     -- nothing cooked: hungry, they cook (and then eat)
     add(0.45 + h - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.3, "cook", home.id, 1, "Hungry and nothing cooked at home")
   end
@@ -1330,6 +1387,39 @@ PLAN.fish = function(W, s, p, ctx, now, cd)
   return "Go fishing", "the fishing ground"
 end
 
+-- Mending the household's boat (D-087): a log from the woodstore unless one waits at the dock.
+PLAN.mend_boat = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local b = s.dock
+  local boat = s.boats[cd.a]
+  boat.mender = p.id
+  if (boat.repair_logs or 0) < 1 then
+    local w = s.wood_store
+    go(pl, w.dx, w.dy, "the woodstore")
+    pl[#pl + 1] = { op = "pick", what = "logs", from = "store", ref = w.id, n = 1 }
+    go(pl, b.dx, b.dy, "the dock")
+    pl[#pl + 1] = { op = "drop", to = "boat", boat = boat.id, ref = b.id }
+  else
+    go(pl, b.dx, b.dy, "the dock")
+  end
+  local left = (1 - (boat.mend_p or 0)) * c.mend_boat_h
+  work(pl, "mend_boat", min(left, max(0.4, (0.8 + 1.0 * u01(W, p, now, 54)) * p.dil)), { ref = boat.id, fx = boat.x, fy = boat.y })
+  return "Mend the boat", "the dock"
+end
+
+-- Smoking fish at the hearth (D-087).
+PLAN.smoke = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local home = s.buildings[cd.a]
+  ctx.hh.smoking = p.id
+  if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+  local amt = max(1, (home.stock.fish or 0) - #ctx.hh.members * 0.8)
+  work(pl, "smoke", min(2.0, max(0.5, amt / c.smoke_fu_h)), { inside = home.id, ref = home.id })
+  return "Smoke the fish", "home"
+end
+
 -- Afloat: whatever stopped them, they row back to the dock first (D-084).
 PLAN.return_boat = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
@@ -1417,6 +1507,12 @@ function M.release(W, s, p)
         elseif st.kind == "board" then
           local boat = s.boats and s.boats[st.boat]
           if boat and boat.crew == p.id and not p.boat then boat.crew = 0 end
+        elseif st.kind == "mend_boat" then
+          local boat = s.boats and s.boats[st.ref]
+          if boat and boat.mender == p.id then boat.mender = 0 end
+        elseif st.kind == "smoke" then
+          local hh = W.S.v3.households[p.hh]
+          if hh and hh.smoking == p.id then hh.smoking = 0 end
         end
       elseif st.op == "pick" then
         if st.what == "sheaves" then
@@ -1507,6 +1603,7 @@ function M.decide(W, s, p, now, reason)
       work_candidates(W, s, p, ctx, now)
       repair_candidates(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       fish_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
+      mend_boat_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       chores(W, s, p, ctx, now)
       craft_candidate(W, s, p, ctx, now)
     elseif not ctx.night then

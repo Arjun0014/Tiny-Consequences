@@ -61,7 +61,7 @@ function M.new(W, opts)
     temper = floor(u() * 3),
     strong = u() < 0.4,
     -- skills (0..1, grow with practice)
-    sk_farm = 0.2, sk_wood = 0.2, sk_build = 0.2,
+    sk_farm = 0.2, sk_wood = 0.2, sk_build = 0.2, sk_fish = 0.2,
     role = opts.role or "",
     mentor = 0,
     -- body
@@ -110,6 +110,12 @@ function M.home(W, s, p)
   local b = s.buildings[hh.home]
   if not b or b.state ~= "standing" then return nil end
   return b
+end
+
+-- Raw food in a house's pantry (FU): grain and gathered food, and fresh fish (D-087).
+function M.pantry(b)
+  local st = b.stock
+  return (st.food or 0) + (st.fish or 0) + (st.smoked or 0)
 end
 
 -- Walking speed (world units per hour) at time t.

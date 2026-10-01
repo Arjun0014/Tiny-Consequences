@@ -19,6 +19,7 @@ M.KINDS = {
   woodstore = { w = 4, h = 3, label = "woodstore", logs = 8, work = 40 },
   well = { w = 1, h = 1, label = "well", logs = 0, work = 30 },
   dock = { w = 1, h = 1, label = "dock", logs = 6, work = 30 },
+  boat = { w = 2, h = 1, label = "boat", logs = 5, work = 30 },   -- a boat on the stocks at the shore (D-087)
 }
 
 function M.new(W, cell, opts)
@@ -105,10 +106,44 @@ function M.complete_building(W, s, b)
       if s.couples[i] == b.for_a then table.remove(s.couples, i) end
     end
   end
+  if b.kind == "boat" then
+    -- launched: a new boat at the dock for the household that built it; the stocks are cleared
+    s.boats = s.boats or {}
+    local k = #s.boats + 1
+    local d = s.dock
+    s.boats[k] = { id = k, x = d and d.mx + (k - 1) * 0.012 or b.cx, y = d and d.my or b.cy, crew = 0, owner = b.for_hh or 0,
+      cond = 1, trips = 0, built = W.hour }
+    local hh = V.households[b.for_hh or 0]
+    if hh then
+      for _, id in ipairs(hh.members) do
+        local q = V.people[id]
+        if q and q.alive then people.remember(q, W.hour, "Launched our new boat") end
+      end
+    end
+    M.remove_building(W, s, b)
+    s.acc.boats_built = (s.acc.boats_built or 0) + 1
+    return
+  end
   if W.record_events then
     events.emit(W, "house_built", s.cell, b.cause or 0, 1, { settlement = s.id, building = b.id, kind = b.kind })
   end
   s.acc.built = (s.acc.built or 0) + 1
+end
+
+-- A building taken down (a boat launched from its stocks): its ground is free again; the record
+-- stays (plans in progress may still name it) but nothing lists it.
+function M.remove_building(W, s, b)
+  local N = s.N
+  for iy = b.iy0, b.iy0 + b.h - 1 do
+    for ix = b.ix0, b.ix0 + b.w - 1 do
+      local i = (iy - 1) * N + ix
+      if s.occ[i] == b.id then s.occ[i] = 0 end
+    end
+  end
+  people.remove_id(s.blist, b.id)
+  people.remove_id(s.sites, b.id)
+  b.state = "gone"
+  mapm.rebuild_costs(s)
 end
 
 -- Plots ------------------------------------------------------------------------------------
@@ -237,7 +272,7 @@ function M.hourly(W, s, now)
   food = s.granary and ((s.granary.stock.grain or 0) + (s.granary.stock.sheaves or 0)) or 0
   for i = 1, #s.blist do
     local b = s.buildings[s.blist[i]]
-    if b.kind == "house" and b.state == "standing" then food = food + (b.stock.food or 0) + (b.stock.meals or 0) end
+    if b.kind == "house" and b.state == "standing" then food = food + people.pantry(b) + (b.stock.meals or 0) end
   end
   need.food = food
   need.food_days = pop > 0 and food / pop or 99
@@ -376,22 +411,26 @@ local function grow_plots(W, s, day)
     local T = F.temp[cell] or 10
     local sw = F.soil_water[cell] or 0.5
     if pl.stage == "growing" then
-      local gt = T > c.grow_tmin and min(1, (T - c.grow_tmin) / 10) or 0
+      -- the crop develops with warmth (landraces suited to the climate: full rate from grow_topt;
+      -- weeds hold it back a little); its yield is made by water and clean rows over the days it
+      -- grows (a dry year ripens on time with a thin harvest, D-087)
+      local gt = T > c.grow_tmin and min(1, (T - c.grow_tmin) / (c.grow_topt - c.grow_tmin)) or 0
       local wet = min(1, 0.35 + sw * 1.3)
-      local g = gt * wet * (1 - 0.5 * pl.weeds)
+      local d = gt * (1 - 0.25 * pl.weeds)
       local days = c.grow_days
       if pl.crop == "winter" then
         days = c.grow_days_winter
-        if winter then g = g * c.winter_dormant end
+        if winter then d = d * c.winter_dormant end
       end
-      pl.growth = pl.growth + g / days
-      pl.q_sum, pl.q_n = pl.q_sum + g, pl.q_n + 1
+      pl.growth = pl.growth + d / days
+      pl.q_sum, pl.q_n = pl.q_sum + d * wet * (1 - 0.5 * pl.weeds), pl.q_n + d
       pl.weeds = min(1, pl.weeds + c.weeds_day * (0.5 + wet) * (winter and 0.3 or 1))
       if pl.growth >= 1 then
         pl.stage = "ripe"
         pl.ripe_day = day
         pl.ripe_for = 0
-        pl.quality = max(0.25, pl.q_sum / max(1, pl.q_n)) * (pl.fert or 1)
+        pl.quality = max(0.25, pl.q_n > 0 and pl.q_sum / pl.q_n or 0.75) * (pl.fert or 1)
+        s.q_avg = s.q_avg and (s.q_avg * 0.7 + pl.quality * 0.3) or pl.quality
         pl.spoil = 1
         if W.record_events then events.emit(W, "crop_ripe", s.cell, 0, 0, { settlement = s.id, plot = k }) end
       end
@@ -492,11 +531,12 @@ local function hearths(W, s, day)
           b.stock.food = (b.stock.food or 0) + b.stock.seed
           b.stock.seed = 0
         end
-        local fd, ml = b.stock.food or 0, b.stock.meals or 0
-        if fd > 0 or ml > 0 then
-          local lf, lm = fd * c.spoil_food, ml * c.spoil_meals
-          b.stock.food, b.stock.meals = fd - lf, ml - lm
-          s.acc.spoiled = (s.acc.spoiled or 0) + lf + lm
+        local fd, ml, fi, sm = b.stock.food or 0, b.stock.meals or 0, b.stock.fish or 0, b.stock.smoked or 0
+        if fd > 0 or ml > 0 or fi > 0 or sm > 0 then
+          local lf, lm, li, ls = fd * c.spoil_food, ml * c.spoil_meals, fi * c.spoil_fish, sm * c.spoil_smoked
+          b.stock.food, b.stock.meals, b.stock.fish, b.stock.smoked = fd - lf, ml - lm, fi - li, sm - ls
+          s.acc.spoiled = (s.acc.spoiled or 0) + lf + lm + li + ls
+          s.acc.fish_spoiled = (s.acc.fish_spoiled or 0) + li
         end
       else
         b.fire = false
@@ -546,11 +586,15 @@ local function plan_fields(W, s, day)
   local pop = s.pop or 0
   if pop == 0 then return end
   local expect = (s.granary and ((s.granary.stock.grain or 0) + (s.granary.stock.sheaves or 0)) or 0)
+  -- (the yield to expect: the standing crop's own so far, else the village's lately: a dry site
+  -- clears more land for the same bread, D-087)
+  local qv = s.q_avg or 0.85
   for k = 1, #s.plots do
     local pl = s.plots[k]
     local standing = 0
     for r = 1, pl.rows do if pl.row_st[r] == 2 then standing = standing + 1 end end
-    local fy = c.row_yield * (pl.fert or 1)
+    local q = (pl.stage == "growing" and pl.q_n > 0.5) and pl.q_sum / pl.q_n or qv
+    local fy = c.row_yield * (pl.fert or 1) * q
     expect = expect + standing * fy * 0.85 + pl.sheaves
     if pl.stage == "fallow" then expect = expect + (pl.rows - pl.sown) * fy * 0.6 end
     -- a resting field will bear the winter crop: part of the year ahead
@@ -644,6 +688,65 @@ local function finish_clearing(W, s)
 end
 M.finish_clearing = finish_clearing
 
+-- Boats (D-087): they rot a little ashore; a household with a fisher and no sound boat of its own
+-- lays down a new one on the stocks by the dock (logs and work, like a house).
+local function plan_boats(W, s)
+  if not s.dock then return end
+  local c = C()
+  local V = W.S.v3
+  s.boats = s.boats or {}
+  for _, boat in ipairs(s.boats) do
+    if boat.crew == 0 and not boat.lost then
+      boat.cond = max(0, (boat.cond or 1) - c.boat_rot)
+      if boat.cond <= 0 then
+        boat.lost = true    -- rotten through: broken up for firewood
+        boat.owner = -1
+      end
+    end
+  end
+  for i = 1, #s.sites do
+    local b = s.buildings[s.sites[i]]
+    if b and b.kind == "boat" then return end
+  end
+  for i = 1, #s.households do
+    local hh = V.households[s.households[i]]
+    if hh and #hh.members > 0 then
+      local fisher = nil
+      for _, id in ipairs(hh.members) do
+        local q = V.people[id]
+        if q and q.alive and q.role == "fisher" then fisher = q end
+      end
+      if fisher then
+        local has = false
+        for _, boat in ipairs(s.boats) do
+          if boat.owner == hh.id and not boat.lost and (boat.cond or 1) > c.boat_unsafe then has = true end
+        end
+        if not has then
+          -- the stocks: free shore land near the dock
+          local d = s.dock
+          local N = s.N
+          local dix, diy = mapm.tile_ixy(s, mapm.tile_of(s, d.dx, d.dy))
+          for r = 1, 10 do
+            local done = false
+            for jy = diy - r, diy + r do
+              for jx = dix - r, dix + r do
+                if not done and (abs(jx - dix) == r or abs(jy - diy) == r) and mapm.rect_free(s, jx - 1, jy - 1, jx + 2, jy + 1, true) then
+                  local b = M.add_building(W, s, "boat", jx, jy, "s", "site",
+                    { for_hh = hh.id, for_name = "the " .. fisher.surname .. "s' boat", prio = 0.4 })
+                  people.remember(fisher, W.hour, "Laid down a new boat by the dock")
+                  done = b ~= nil
+                end
+              end
+            end
+            if done then return end
+          end
+          return
+        end
+      end
+    end
+  end
+end
+
 -- Growth: couples without a home get a house site.
 local function plan_houses(W, s)
   local V = W.S.v3
@@ -690,6 +793,7 @@ function M.daily(W, s, day)
   hearths(W, s, day)
   wild_food(W, s, day)
   plan_houses(W, s)
+  plan_boats(W, s)
   plan_fields(W, s, day)
   finish_clearing(W, s)
   mapm.daily_wear(s)
