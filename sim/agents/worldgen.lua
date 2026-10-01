@@ -51,6 +51,14 @@ function M.generate(seed, opts)
   local cell = opts.site or found.pick_site(W)
   if not cell then error("v3: no site for a settlement on seed " .. tostring(seed)) end
   found.found(W, cell, opts)
+  -- more settlements (opts.settlements): the best sites at least 4 cells from any other
+  local used = { cell }
+  for k = 2, opts.settlements or 1 do
+    local c2 = found.pick_site(W, { dawn = false, avoid = used, min_steps = 4 })
+    if not c2 then break end
+    used[#used + 1] = c2
+    found.found(W, c2, opts)
+  end
   world.init_systems(W)
   return W
 end

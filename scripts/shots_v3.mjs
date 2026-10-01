@@ -64,6 +64,7 @@ try {
   // one person, close up, through part of a day
   await cmd(page, { cmd: 'v3_goto', lh: 8.0, days: 1 });
   const first = await cmd(page, { cmd: 'v3_person', pid: person });
+  await cmd(page, { cmd: 'select', person: first.id });
   for (let k = 0; k < 4; k++) {
     await cmd(page, { cmd: 'v3_person', pid: first.id, look: true, zoom: 1.65 });
     await shoot(page, `follow_${k}`, first.id);

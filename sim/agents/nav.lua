@@ -82,7 +82,7 @@ local function astar(s, a, b, temper, tiles)
   local so, sc = stamp, stamp + 1
   local tk = 1 + temper * C.temper_extra
   local bx, by = mapm.tile_ixy(s, b)
-  local hw = 0.75
+  local hw = 0.95
   local n = 0
   G[a] = 0
   PAR[a] = 0
@@ -157,6 +157,19 @@ local function astar(s, a, b, temper, tiles)
 end
 
 local TILES = {}
+local nav_short
+
+-- Short trips with a clear straight line over ground no costlier than open land.
+nav_short = function(s, a, b)
+  local ax, ay = mapm.tile_ixy(s, a)
+  local bx, by = mapm.tile_ixy(s, b)
+  local dx, dy = bx - ax, by - ay
+  if dx * dx + dy * dy > 24 * 24 then return false end
+  local cmax = cfgmod.V3.cost_open
+  local ca = s.cost[a]
+  if ca > cmax then cmax = ca end
+  return los(s, a, b, cmax + 1e-9)
+end
 
 -- Waypoint tiles for a tile path: string pulling with a cost ceiling (the costliest tile of the
 -- pulled stretch), so a path that keeps to a lane does not cut across the field beside it.
@@ -225,6 +238,11 @@ function M.path(s, x0, y0, x1, y1, temper, out)
     wps = cache_get(s, key)
     if wps ~= nil then
       M.stats.cache_hits = M.stats.cache_hits + 1
+    elseif nav_short(s, a, b) then
+      -- a short walk across open ground (or along one lane) needs no search: straight there
+      wps = { a, b, n = 2 }
+      M.stats.direct = (M.stats.direct or 0) + 1
+      cache_put(s, key, wps)
     else
       local k = astar(s, a, b, temper or 0, TILES)
       if k == 0 then

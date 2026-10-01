@@ -387,6 +387,10 @@ function M.register(G)
         or ents.village(W, args.village)
       assert(v, "no such village (villages: " .. #ents.villages(W) .. ")")
       sel = { kind = "village", id = v.id, cell = v.cell }
+    elseif args.person and W.v3 then
+      local pid = tonumber(args.person)
+      assert(pid and W.S.v3.people[pid], "no such person")
+      sel = { kind = "person", id = pid, v3 = true }
     elseif args.person then
       local pid = (args.person == "first" and first_person(W)) or (args.person == "worker" and a_worker(W)) or args.person
       assert(pid and ents.person(W, pid), "no such person")

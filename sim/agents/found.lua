@@ -42,10 +42,18 @@ function M.pick_site(W, opts)
   local nb = W.grid.neighbours or W.grid.nb
   local rivers = M.river_cells(W)
   local land = W.geo.land_cells
+  -- cells too near an existing settlement (opts.avoid, opts.min_steps)
+  local near = {}
+  if opts.avoid then
+    local sites = require("sim.society.sites")
+    for _, a in ipairs(opts.avoid) do
+      for _, c in ipairs(sites.rings(W, a, opts.min_steps or 4)) do near[c] = true end
+    end
+  end
   local best, bs = nil, -1e9
   for i = 1, #land do
     local c = land[i]
-    local ok = W.geo.coast_dist[c] >= 3 and not rivers[c]
+    local ok = W.geo.coast_dist[c] >= 3 and not rivers[c] and not near[c]
     local T = F.temp[c]
     if ok and T > 6 and T < 19 and abs(g.lat[c]) < 1.0 then
       -- neighbours: land, no rivers, some forest
