@@ -65,17 +65,40 @@ function M.stores(W, s)
   return grain / n, fish / n, n
 end
 
--- A buyer for a load of smoked fish: the nearest partner with grain to spare and little fish.
--- Returns the partner and the grain a FU of fish fetches there (dearer where fish is scarcer).
-function M.buyer(W, s)
+-- The goods a household carries to sell (D-097; wool D-098): what it is (the house's stock and the
+-- buyer granary's), what the household keeps a member, a load, and the buyer's want: a share 0..1
+-- of how short it is (nil: not a buyer), its price in grain a unit at full want.
+M.GOODS = {
+  smoked = { food = true, keep = "trade_keep", load = "trade_load", rate = "trade_rate",
+    want = function(W, o)
+      local _, fish = M.stores(W, o)
+      local c = C()
+      if fish >= c.trade_fish_short then return nil end
+      return 1 - fish / c.trade_fish_short
+    end },
+  wool = { food = false, keep = "trade_wool_keep", load = "trade_wool_load", rate = "trade_wool_rate",
+    want = function(W, o)
+      local c = C()
+      local _, _, n = M.stores(W, o)
+      local pipe = require("sim.agents.settle").textile_pipeline(W, o) / n
+      if pipe >= c.textile_want * c.trade_wool_short then return nil end
+      return 1 - pipe / (c.textile_want * c.trade_wool_short)
+    end },
+}
+M.ORDER = { "smoked", "wool" }
+
+-- A buyer for a load of `good`: the nearest partner with grain to spare that wants it. Returns the
+-- partner and the grain a unit fetches there (dearer the shorter it is).
+function M.buyer(W, s, good)
   local c = C()
+  local G = M.GOODS[good or "smoked"]
   for _, o in ipairs(M.partners(W, s)) do
     if o.granary then
-      local food, fish = M.stores(W, o)
+      local food = M.stores(W, o)
       local spare = (o.granary.stock.grain or 0)
-      if food > c.trade_food_spare and fish < c.trade_fish_short and spare > c.trade_load * 2 then
-        local rate = c.trade_rate * (1 + 0.5 * (1 - fish / c.trade_fish_short))
-        return o, rate
+      if food > c.trade_food_spare and spare > c.trade_load * 2 then
+        local w = G.want(W, o)
+        if w then return o, c[G.rate] * (1 + 0.5 * w) end
       end
     end
   end

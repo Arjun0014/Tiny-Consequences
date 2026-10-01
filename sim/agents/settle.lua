@@ -1058,10 +1058,10 @@ end
 -- Textiles (D-088): the village's linen, from flax field to cloth, in garments' worth.
 function M.textile_pipeline(W, s)
   local c = C()
-  local t = s.granary and (s.granary.stock.flax or 0) or 0
+  local t = s.granary and ((s.granary.stock.flax or 0) + (s.granary.stock.wool or 0)) or 0
   for i = 1, #s.blist do
     local b = s.buildings[s.blist[i]]
-    if b.kind == "house" then t = t + (b.stock.flax or 0) + (b.stock.fibre or 0) + (b.stock.yarn or 0) + (b.stock.cloth or 0) end
+    if b.kind == "house" then t = t + (b.stock.flax or 0) + (b.stock.wool or 0) + (b.stock.fibre or 0) + (b.stock.yarn or 0) + (b.stock.cloth or 0) end
   end
   for k = 1, #s.plots do
     local pl = s.plots[k]

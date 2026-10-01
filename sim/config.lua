@@ -962,6 +962,9 @@ C.V3 = {
   -- the household wants grain back
   road_speed = 0.45, trade_reach = 11, trade_load = 8, trade_keep = 3, trade_rate = 1.4,
   trade_food_spare = 25, trade_fish_short = 2, trade_home_food = 4, trade_prov = 2.0,
+  -- (D-098) wool: GE a household keeps a member, a load, grain a GE fetches at full want; a buyer
+  -- wants wool while its cloth pipeline is under this share of textile_want a person
+  trade_wool_keep = 1.0, trade_wool_load = 3, trade_wool_rate = 3.0, trade_wool_short = 0.8,
   meat_want = 1.2, hunt_reach = 1.6, hunt_stalk = 0.3, hunt_throw = 0.07, stalk_speed = 0.4,
   hunt_hit = 0.25, hunt_skill = 0.35, hunt_tries = 3, hunt_hours = 5,                         -- after wolves took a beast, the village keeps a night watch this long
   wolf_visit = 0.5,                       -- a pack's chance to hunt on the map tonight: its time here x this

@@ -640,16 +640,24 @@ local function trade_candidate(W, s, p, ctx, now, fat)
   if p.trip or not claim_free(W, ctx.hh, "trading", p) then return end
   local home = ctx.home
   local n = #ctx.hh.members
-  local spare = (home.stock.smoked or 0) - n * c.trade_keep
-  if spare < c.trade_load then return end
-  local o, rate = trade.buyer(W, s)
-  if not o then return end
-  local d, hrs = trade.road(W, s, o)
-  -- (worth the days on the road when the household's own grain is short, or the fish is plenty)
-  local food = ((home.stock.food or 0) + (home.stock.meals or 0)) / max(1, n)
-  local want = food < c.trade_home_food and 0.2 or 0
-  addw((0.36 + want + 0.04 * min(4, spare / c.trade_load)) * (p.sex == "m" and 1 or 0.8) * fat, "trade", o.id, 0,
-    "%.0f FU of smoked fish to spare: carrying a load to %s (%.0f hours' walk) for their grain", spare, o.name, hrs)
+  for gi, good in ipairs(trade.ORDER) do
+    local G = trade.GOODS[good]
+    local spare = (home.stock[good] or 0) - n * c[G.keep]
+    if spare >= c[G.load] then
+      local o = trade.buyer(W, s, good)
+      if o then
+        local d, hrs = trade.road(W, s, o)
+        -- (worth the days on the road when the household's own grain is short, or it has plenty)
+        local food = ((home.stock.food or 0) + (home.stock.meals or 0)) / max(1, n)
+        local want = food < c.trade_home_food and 0.2 or 0
+        addw((0.36 + want + 0.04 * min(4, spare / c[G.load])) * (p.sex == "m" and 1 or 0.8) * fat, "trade", o.id, gi,
+          good == "smoked" and "%.0f FU of smoked fish to spare: carrying a load to %s (%.0f hours' walk) for their grain"
+            or "%.0f garments' worth of wool to spare: carrying a load to %s (%.0f hours' walk), short of cloth, for their grain",
+          spare, o.name, hrs)
+        return
+      end
+    end
+  end
 end
 M.trade_candidate = trade_candidate
 
@@ -922,8 +930,8 @@ local function textile_candidates(W, s, p, ctx, now)
     end
   end
   -- dressing flax: the raw bundles from the granary broken, scutched and hackled into fibre
-  local gflax = s.granary and (s.granary.stock.flax or 0) or 0
-  if fib < want * 0.3 and fib + yarn + cloth < want * 1.5 and ((st.flax or 0) >= 0.3 or gflax >= 1) and claim_free(W, hh, "dressing", p) then
+  local gflax = s.granary and ((s.granary.stock.flax or 0) + (s.granary.stock.wool or 0)) or 0
+  if fib < want * 0.3 and fib + yarn + cloth < want * 1.5 and ((st.flax or 0) + (st.wool or 0) >= 0.3 or gflax >= 1) and claim_free(W, hh, "dressing", p) then
     local f = fit(p, ctx, "dress")
     if f > 0 then
       local walk = (st.flax or 0) >= 0.3 and 0 or travel(ctx, s.granary_x, s.granary_y, p.x, p.y) * 0.5
@@ -1968,7 +1976,7 @@ local function trip_legs(W, s, p, ctx, now)
     if p.carry ~= tr.give then
       local home = ctx.home
       if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
-      pl[#pl + 1] = { op = "pick", what = "smoked", ref = home.id, n = tr.n }
+      pl[#pl + 1] = { op = "pick", what = tr.give, ref = home.id, n = tr.n, from = "home" }
       pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id }
     end
     local gx, gy = trade.gate(W, home_s, o)
@@ -2010,11 +2018,13 @@ PLAN.trade = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
   local o = W.S.v3.settlements[cd.a]
   local n = #ctx.hh.members
-  local load = min(c.trade_load, (ctx.home.stock.smoked or 0) - n * c.trade_keep)
-  p.trip = { to = o.id, from = s.id, give = "smoked", take = "grain", n = load, t0 = now }
+  local good = trade.ORDER[cd.b] or "smoked"
+  local G = trade.GOODS[good]
+  local load = min(c[G.load], (ctx.home.stock[good] or 0) - n * c[G.keep])
+  p.trip = { to = o.id, from = s.id, give = good, take = "grain", n = load, t0 = now }
   ctx.hh.trading = p.id
   trip_legs(W, s, p, ctx, now)
-  return "Take smoked fish to " .. o.name, o.name
+  return "Take " .. (good == "smoked" and "smoked fish" or good) .. " to " .. o.name, o.name
 end
 
 PLAN.trip = function(W, s, p, ctx, now, cd)
@@ -2168,10 +2178,10 @@ PLAN.dress = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
   local home = s.buildings[cd.a]
   ctx.hh.dressing = p.id
-  if (home.stock.flax or 0) < 0.3 then
+  if (home.stock.flax or 0) + (home.stock.wool or 0) < 0.3 then
     local g = s.granary
     go(pl, g.dx, g.dy, "the granary")
-    pl[#pl + 1] = { op = "pick", what = "flax", from = "store", ref = g.id, n = 2 }
+    pl[#pl + 1] = { op = "pick", what = "flax", from = "store", ref = g.id, n = 2, wool = true }
     go(pl, home.dx, home.dy, "home")
     pl[#pl + 1] = { op = "drop", to = "home", ref = home.id }
   end
@@ -2601,7 +2611,7 @@ function M.decide(W, s, p, now, reason)
     if not done and (here ~= tr.from or p.carry == tr.give) then
       local obj, dest = PLAN.trip(W, s, p, ctx, now, nil)
       p.obj, p.dest, p.objk = obj, dest, "trade"
-      p.why = (reason and (reason .. ". ") or "") .. (here == tr.to and "Trading smoked fish for grain" or "On the road")
+      p.why = (reason and (reason .. ". ") or "") .. (here == tr.to and ("Trading " .. (tr.give == "smoked" and "smoked fish" or tr.give) .. " for grain") or "On the road")
       p.tgt_kind, p.tgt_ref = "trade", tr.to
       return true
     end

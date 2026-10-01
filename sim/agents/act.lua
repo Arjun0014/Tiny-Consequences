@@ -1070,7 +1070,13 @@ PICK.flax = function(W, s, p, st)
     local b = s.buildings[st.ref]
     if not b then return end
     local got = min(st.n or 2, b.stock.flax or 0)
-    if got > 0 then b.stock.flax = b.stock.flax - got; p.carry, p.camt = "flax", got end
+    if got > 0 then b.stock.flax = b.stock.flax - got; p.carry, p.camt = "flax", got
+    elseif st.wool and (b.stock.wool or 0) > 0 then
+      -- (wool bought into the granary: the households fetch it to dress as they fetch flax, D-098)
+      got = min(st.n or 2, b.stock.wool)
+      b.stock.wool = b.stock.wool - got
+      p.carry, p.camt = "wool", got
+    end
   end
 end
 
@@ -1108,6 +1114,16 @@ PICK.provisions = function(W, s, p, st)
   local fd = min(want - ml, b.stock.food or 0)
   b.stock.food = (b.stock.food or 0) - fd
   p.prov = (p.prov or 0) + ml + fd
+end
+
+PICK.wool = function(W, s, p, st)
+  local b = s.buildings[st.ref]
+  if not b then return end
+  local got = min(st.n or 2, b.stock.wool or 0)
+  if got > 0 then
+    b.stock.wool = b.stock.wool - got
+    p.carry, p.camt = "wool", got
+  end
 end
 
 PICK.smoked = function(W, s, p, st)
@@ -1184,6 +1200,13 @@ DROP.any = function(W, s, p, st)
     b.stock.flax = (b.stock.flax or 0) + n
   elseif what == "wool" then
     b.stock.wool = (b.stock.wool or 0) + n
+    if st.sold and p.trip then
+      local home = W.S.v3.settlements[p.sett]
+      home.acc.wool_out = (home.acc.wool_out or 0) + n
+      s.acc.wool_in = (s.acc.wool_in or 0) + n
+      local _, rate = require("sim.agents.trade").buyer(W, home, "wool")
+      p.trip.sold, p.trip.rate = n, rate or C().trade_wool_rate
+    end
   elseif what == "meat" then
     b.stock.meat = (b.stock.meat or 0) + n
   elseif what == "hay" then
@@ -1200,7 +1223,7 @@ DROP.any = function(W, s, p, st)
       home.acc.export = (home.acc.export or 0) + n
       s.acc.import = (s.acc.import or 0) + n
       s.acc.traded_fish = (s.acc.traded_fish or 0) + n
-      local _, rate = require("sim.agents.trade").buyer(W, home)
+      local _, rate = require("sim.agents.trade").buyer(W, home, "smoked")
       p.trip.sold, p.trip.rate = n, rate or C().trade_rate
     end
   elseif what == "carcass" then
@@ -1243,8 +1266,8 @@ DROP.any = function(W, s, p, st)
     local hh = W.S.v3.households[p.hh]
     if hh and hh.trading == p.id then hh.trading = 0 end
     local o = W.S.v3.settlements[p.trip.to]
-    people.remember(p, W.S.v3.now or W.hour, string.format("Traded %.0f FU of smoked fish for %.0f of grain at %s",
-      p.trip.sold or 0, (p.trip.sold or 0) * (p.trip.rate or 0), o and o.name or "?"))
+    people.remember(p, W.S.v3.now or W.hour, string.format("Traded %.0f %s for %.0f of grain at %s",
+      p.trip.sold or 0, p.trip.give == "smoked" and "FU of smoked fish" or "of wool", (p.trip.sold or 0) * (p.trip.rate or 0), o and o.name or "?"))
     p.trip = nil
     s.acc.trips = (s.acc.trips or 0) + 1
   end
