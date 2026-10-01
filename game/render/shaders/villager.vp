@@ -1,0 +1,85 @@
+#version 140
+// v3 villagers (docs/v3/20_CHARACTER_PIPELINE.md, D-078): one GPU-skinned, instanced mesh for
+// every person (assets/characters/villager_lod*.glb, built by tools/blender/build_villager.py on
+// the CC0 UAL skeleton). Each vertex's uv encodes its palette slot (u * 16) and its part (v * 64);
+// each villager carries its palette and which parts it wears or holds (material constants set per
+// component: per-instance vertex attributes on skinned instanced models crash Defold 1.13.1):
+//   u_pal   = packed rgb (7 bits a channel) of slots 0..3: skin, hair, upper (tunic), lower
+//   u_parts = packed rgb of slot 4 (accent: hat, hood, cloak), part mask bits 0..19, bits 20..39, unused
+// Vertices of parts not worn collapse to a degenerate point (no fragments). Lighting and
+// shadows come from props.fp (the same sun, shade and fog as the planet's props).
+in highp vec4 position;
+in mediump vec2 texcoord0;
+in mediump vec3 normal;
+in mediump vec4 bone_weights;
+in mediump vec4 bone_indices;
+in highp mat4 mtx_world;
+in mediump mat4 mtx_normal;
+in highp vec4 animation_data;
+
+uniform vs_uniforms
+{
+    highp mat4 mtx_view;
+    highp mat4 mtx_proj;
+    highp vec4 u_sh0;
+    highp vec4 u_sh1;
+    highp vec4 u_sh2;
+    highp vec4 u_shn;
+    highp vec4 u_pal;
+    highp vec4 u_parts;
+};
+
+out highp vec3 var_wpos;
+out mediump vec3 var_normal;
+out mediump vec3 var_color;
+out highp vec3 var_sc;
+out mediump vec3 var_mat;
+out mediump float var_bare;
+
+#include "/builtins/materials/skinning.glsl"
+
+vec3 unpack_rgb(float p)
+{
+    float v = floor(p + 0.5);
+    float b = mod(v, 128.0);
+    v = floor(v / 128.0);
+    float g = mod(v, 128.0);
+    float r = floor(v / 128.0);
+    return vec3(r, g, b) / 127.0;
+}
+
+void main()
+{
+    vec4 pal = u_pal;
+    vec4 parts = u_parts;
+    float slot = floor(texcoord0.x * 16.0);
+    float part = floor(texcoord0.y * 64.0);
+    // the part mask: bit `part` of parts.y (0..19) or parts.z (20..39)
+    float m = part < 19.5 ? parts.y : parts.z;
+    float bitn = part < 19.5 ? part : part - 20.0;
+    float on = mod(floor(m / exp2(bitn) + 0.0001), 2.0);
+    vec3 col;
+    if (slot < 0.5) col = unpack_rgb(pal.x);
+    else if (slot < 1.5) col = unpack_rgb(pal.y);
+    else if (slot < 2.5) col = unpack_rgb(pal.z);
+    else if (slot < 3.5) col = unpack_rgb(pal.w);
+    else if (slot < 4.5) col = unpack_rgb(parts.x);
+    else if (slot < 5.5) col = vec3(0.30, 0.21, 0.14);   // leather
+    else if (slot < 6.5) col = vec3(0.55, 0.39, 0.24);   // wood
+    else if (slot < 7.5) col = vec3(0.70, 0.72, 0.76);   // iron
+    else if (slot < 8.5) col = vec3(0.88, 0.76, 0.44);   // straw
+    else if (slot < 9.5) col = vec3(0.07, 0.06, 0.06);   // eyes
+    else col = vec3(0.93, 0.91, 0.86);                   // linen
+    vec4 sp = get_skinned_position(position);
+    vec3 sn = get_skinned_normal(normal);
+    highp vec4 wp = mtx_world * vec4(sp.xyz, 1.0);
+    vec3 N = normalize((mtx_normal * vec4(sn, 0.0)).xyz);
+    var_mat = vec3(0.0);
+    var_bare = 0.0;
+    var_wpos = wp.xyz;
+    var_normal = N;
+    var_color = col;
+    highp vec3 shp = wp.xyz + N * u_shn.x;
+    var_sc = vec3(dot(u_sh0, vec4(shp, 1.0)), dot(u_sh1, vec4(shp, 1.0)), dot(u_sh2, vec4(shp, 1.0)));
+    gl_Position = on > 0.5 ? mtx_proj * mtx_view * wp : vec4(0.0, 0.0, -2.0, 1.0);
+}

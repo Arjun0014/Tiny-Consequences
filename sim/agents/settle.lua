@@ -1,0 +1,542 @@
+-- The settlement (docs/v3/10_AGENTS.md §2, §9): buildings, plots, stores, the hourly planner
+-- (weather, the open work people can see: the board's summary), the daily round (crops, trees,
+-- lanes, fuel, water) and growth (a couple without a home makes a house site).
+local cfgmod = require("sim.config")
+local rng = require("sim.rng")
+local mapm = require("sim.agents.map")
+local clock = require("sim.agents.clock")
+local weather = require("sim.agents.weather")
+local people = require("sim.agents.people")
+local events = require("sim.causality.events")
+
+local M = {}
+local floor, max, min, sqrt, abs, ceil = math.floor, math.max, math.min, math.sqrt, math.abs, math.ceil
+local function C() return cfgmod.V3 end
+
+M.KINDS = {
+  house = { w = 4, h = 4, label = "house", logs = 12, work = 26 },
+  granary = { w = 4, h = 4, label = "granary", logs = 14, work = 30 },
+  woodstore = { w = 4, h = 3, label = "woodstore", logs = 6, work = 12 },
+  well = { w = 1, h = 1, label = "well", logs = 0, work = 8 },
+}
+
+function M.new(W, cell, opts)
+  local V = W.S.v3
+  local id = #V.settlements + 1
+  local s = {
+    id = id, cell = cell, name = opts.name or "?", culture = opts.culture or 1, founded = W.hour,
+    key = rng.hash(W.seed, rng.S.V3_FOUND, cell, 0, 0) % 1000003,
+    buildings = {}, blist = {}, plots = {}, members = {}, households = {}, sites = {}, felled = {},
+    need = { food_days = 0, fell = 0, wood_short = 0, lying_trees = 0, site_logs = 0, sowing = false, sow_late = 0 },
+    acc = {}, alive = true, sqx = 0, sqy = 0, rain_now = 0, couples = {},
+  }
+  V.settlements[id] = s
+  mapm.build(W, s)
+  return s
+end
+
+-- Buildings -----------------------------------------------------------------------------------
+-- door: the tile in front of the middle of the footprint's side `side` ("s", "n", "e", "w").
+function M.add_building(W, s, kind, ix0, iy0, side, state, opts)
+  local V = W.S.v3
+  local K = M.KINDS[kind]
+  local w, h = K.w, K.h
+  if side == "e" or side == "w" then w, h = h, w end
+  local id = V.next_building
+  V.next_building = id + 1
+  local N = s.N
+  local b = { id = id, kind = kind, label = K.label, ix0 = ix0, iy0 = iy0, w = w, h = h, side = side,
+    state = state or "standing", logs_need = K.logs, logs_have = state == "site" and 0 or K.logs,
+    work_need = K.work, work_done = state == "site" and 0 or K.work, hh = 0, stock = {}, prio = 0,
+    started = W.hour, built = state == "site" and -1 or W.hour }
+  if opts then for k, v in pairs(opts) do b[k] = v end end
+  for iy = iy0, iy0 + h - 1 do
+    for ix = ix0, ix0 + w - 1 do
+      s.occ[(iy - 1) * N + ix] = id
+    end
+  end
+  mapm.clear_rect(s, ix0 - 1, iy0 - 1, ix0 + w, iy0 + h)
+  -- centre and door point
+  local x0, y0 = mapm.ixy_xy(s, ix0, iy0)
+  local x1, y1 = mapm.ixy_xy(s, ix0 + w - 1, iy0 + h - 1)
+  b.cx, b.cy = (x0 + x1) * 0.5, (y0 + y1) * 0.5
+  local T = s.T
+  if side == "s" then b.dx, b.dy = b.cx, y0 - T
+  elseif side == "n" then b.dx, b.dy = b.cx, y1 + T
+  elseif side == "e" then b.dx, b.dy = x1 + T, b.cy
+  else b.dx, b.dy = x0 - T, b.cy end
+  if kind == "well" then b.dx, b.dy = b.cx, y0 - T end
+  s.buildings[id] = b
+  s.blist[#s.blist + 1] = id
+  if state == "site" then s.sites[#s.sites + 1] = id end
+  if kind == "granary" then s.granary = b; s.granary_x, s.granary_y = b.dx, b.dy end
+  if kind == "woodstore" then s.wood_store = b; s.wood_x, s.wood_y = b.dx, b.dy end
+  if kind == "well" then s.well = b end
+  mapm.rebuild_costs(s)
+  return b
+end
+
+-- A site's work and logs are complete: it stands. A house for a waiting couple becomes their
+-- home and their household.
+function M.complete_building(W, s, b)
+  if b.state ~= "site" then return end
+  b.state = "standing"
+  b.built = W.hour
+  people.remove_id(s.sites, b.id)
+  local V = W.S.v3
+  if b.kind == "house" and b.for_a then
+    local a, c = V.people[b.for_a], V.people[b.for_b or 0]
+    local hh = people.new_household(W, s.id, b.id)
+    s.households[#s.households + 1] = hh.id
+    b.hh = hh.id
+    if a and a.alive then people.join(W, a, hh); people.remember(a, W.hour, "Moved into our new house") end
+    if c and c.alive then people.join(W, c, hh); people.remember(c, W.hour, "Moved into our new house") end
+    b.stock.food = 0
+    b.stock.water = 0
+    b.stock.logs = 0
+    for i = #s.couples, 1, -1 do
+      if s.couples[i] == b.for_a then table.remove(s.couples, i) end
+    end
+  end
+  if W.record_events then
+    events.emit(W, "house_built", s.cell, b.cause or 0, 1, { settlement = s.id, building = b.id, kind = b.kind })
+  end
+  s.acc.built = (s.acc.built or 0) + 1
+end
+
+-- Plots ------------------------------------------------------------------------------------
+
+function M.add_plot(W, s, ix0, iy0, hh, name)
+  local c = C()
+  local P = c.plot_tiles
+  local N = s.N
+  local k = #s.plots + 1
+  local x0, y0 = mapm.ixy_xy(s, ix0, iy0)
+  local T = s.T
+  local pl = { id = k, ix0 = ix0, iy0 = iy0, w = P, h = P, rows = P, hh = hh or 0, name = name or ("plot " .. k),
+    x0 = x0 - T * 0.5, y0 = y0 - T * 0.5, x1 = x0 - T * 0.5 + P * T, y1 = y0 - T * 0.5 + P * T,
+    stage = "fallow", row_st = {}, row_claim = {}, sown = 0, harvested = 0, growth = 0, weeds = 0, quality = 1,
+    sheaves = 0, alive = true, sown_day = -1, ripe_day = -1, q_sum = 0, q_n = 0 }
+  for r = 1, P do pl.row_st[r], pl.row_claim[r] = 0, 0 end
+  -- the stook: where sheaves are stacked, at the corner nearest the village centre
+  local cxs = (pl.x0 + pl.x1) * 0.5
+  local cys = (pl.y0 + pl.y1) * 0.5
+  pl.stx = cxs + (cxs > 0 and -1 or 1) * (P * T * 0.5 - T * 0.8)
+  pl.sty = cys + (cys > 0 and -1 or 1) * (P * T * 0.5 - T * 0.8)
+  mapm.clear_rect(s, ix0, iy0, ix0 + P - 1, iy0 + P - 1)
+  for iy = iy0, iy0 + P - 1 do
+    for ix = ix0, ix0 + P - 1 do s.plot[(iy - 1) * N + ix] = k end
+  end
+  s.plots[k] = pl
+  return pl
+end
+
+-- Which tree should a woodcutter fell next? A tree on new field ground first (any size), else
+-- the nearest grown tree to the woodstore (and to them), off the village ground.
+function M.next_tree(W, s, p)
+  local tr = s.trees
+  local wx, wy = s.wood_x or 0, s.wood_y or 0
+  local best, bs = 0, 1e9
+  if s.clearing then
+    for k = 1, tr.n do
+      if tr.st[k] == 1 and tr.claim[k] == 0 and s.plot[tr.tile[k]] == -1 then
+        local dx, dy = tr.x[k] - p.x, tr.y[k] - p.y
+        local d = sqrt(dx * dx + dy * dy)
+        if d < bs then best, bs = k, d end
+      end
+    end
+    if best > 0 then return best, true end
+  end
+  for k = 1, tr.n do
+    if tr.st[k] == 1 and tr.claim[k] == 0 and tr.size[k] >= 0.45 and s.plot[tr.tile[k]] == 0 then
+      local x, y = tr.x[k], tr.y[k]
+      local r2 = x * x + y * y
+      if r2 > 0.09 then
+        local dx, dy = x - wx, y - wy
+        local d1 = sqrt(dx * dx + dy * dy)
+        local ex, ey = x - p.x, y - p.y
+        local d2 = sqrt(ex * ex + ey * ey)
+        local sc = d1 + 0.5 * d2 - 0.15 * tr.size[k]
+        if sc < bs then best, bs = k, sc end
+      end
+    end
+  end
+  return best
+end
+
+-- House sites: the free 4x4 lot (with a two-tile yard all round) nearest the square, not on a
+-- plot, preferring lots beside a lane.
+function M.find_lot(W, s)
+  local N = s.N
+  local c0 = floor(N / 2)
+  local best, bx, by, bside = 1e9, 0, 0, "s"
+  for r = 3, 26 do
+    for iy = c0 - r, c0 + r do
+      for ix = c0 - r, c0 + r do
+        if (abs(ix - c0) == r or abs(iy - c0) == r) and (ix + iy) % 2 == 0 then
+          if mapm.rect_free(s, ix - 2, iy - 2, ix + 5, iy + 5, true) then
+            local x, y = mapm.ixy_xy(s, ix + 1.5, iy + 1.5)
+            local d = sqrt(x * x + y * y)
+            -- beside a lane?
+            local lane = 0
+            for dy = -3, 6 do
+              for dx = -3, 6 do
+                local i = (iy + dy - 1) * N + ix + dx
+                if i >= 1 and i <= N * N and s.lane[i] > 0 then lane = 1 end
+              end
+            end
+            local sc = d - 0.08 * lane
+            if sc < best then
+              best, bx, by = sc, ix, iy
+              -- the door faces the square
+              if abs(x) > abs(y) then bside = x > 0 and "w" or "e" else bside = y > 0 and "s" or "n" end
+            end
+          end
+        end
+      end
+    end
+    if best < 1e8 and r > 6 and best < (r - 4) * s.T then break end
+  end
+  if best >= 1e8 then return nil end
+  return bx, by, bside
+end
+
+-- Hourly ------------------------------------------------------------------------------------
+
+-- Summary of the open work and the conditions everyone reads (the board). Returns true when the
+-- rain state changed this hour (people outdoors react).
+function M.hourly(W, s, now)
+  local c = C()
+  local V = W.S.v3
+  local need = s.need
+  -- weather
+  local r0 = s.rain_now or 0
+  local r1 = weather.rain(W, s, now)
+  s.rain_now = r1
+  local nc = weather.next_change(W, s, now)
+  s.rain_soon = r1 == 0 and nc ~= nil and nc - now < 3
+  local lh = clock.local_hour(now, W.grid.lon[s.cell])
+  s.temp_now = weather.temp_at(W, s, now, lh)
+  local wx = weather.today(W, s, now)
+  s.cold = wx.temp < c.fuel_cold
+  s.cold_k = s.cold and min(1, (c.fuel_cold - wx.temp) / 12) or 0
+  -- food
+  local pop, food = 0, 0
+  for i = 1, #s.members do
+    local p = V.people[s.members[i]]
+    if p and p.alive then pop = pop + 1 end
+  end
+  s.pop = pop
+  food = s.granary and ((s.granary.stock.grain or 0) + (s.granary.stock.sheaves or 0)) or 0
+  for i = 1, #s.blist do
+    local b = s.buildings[s.blist[i]]
+    if b.kind == "house" and b.state == "standing" then food = food + (b.stock.food or 0) end
+  end
+  need.food = food
+  need.food_days = pop > 0 and food / pop or 99
+  -- sowing window
+  local doy = clock.local_doy(now, W.grid.lat[s.cell])
+  s.doy = doy
+  local w0, w1 = c.sow_season[1], c.sow_season[2]
+  need.sowing = doy >= w0 and doy <= w1 and (s.granary and (s.granary.stock.grain or 0) > c.seed_row)
+  need.sow_late = need.sowing and (doy - w0) / max(1, w1 - w0) or 0
+  -- wood: what is wanted (sites + fuel reserve) against what is stored or lying cut
+  local tr = s.trees
+  local felled = s.felled
+  for i = #felled, 1, -1 do felled[i] = nil end
+  local lying, chopping = 0, 0
+  for k = 1, tr.n do
+    local st = tr.st[k]
+    if st == 2 and tr.logs[k] > 0 then
+      felled[#felled + 1] = k
+      lying = lying + tr.logs[k]
+    elseif st == 1 and tr.claim[k] > 0 then
+      chopping = chopping + 1
+    end
+  end
+  need.lying_trees = #felled
+  local site_logs, short_id, short_n = 0, nil, 0
+  for i = 1, #s.sites do
+    local b = s.buildings[s.sites[i]]
+    if b then
+      local m = b.logs_need - b.logs_have
+      if m > 0 then
+        site_logs = site_logs + m
+        if m > short_n then short_id, short_n = b.id, m end
+      end
+    end
+  end
+  need.site_logs = site_logs
+  s.site_short = short_id
+  local nh = 0
+  for i = 1, #s.households do
+    local hh = V.households[s.households[i]]
+    if hh and #hh.members > 0 then nh = nh + 1 end
+  end
+  local reserve = c.store_logs + nh * (s.cold and 3 or 1)
+  local have = (s.wood_store and s.wood_store.stock.logs or 0) + lying
+  local want = site_logs + reserve
+  need.wood_short = want > 0 and max(0, min(1, (want - have) / want)) or 0
+  need.fell = max(0, ceil((want - have) / 3.5) - chopping)
+  -- new field ground: trees to fell and stumps to dig out
+  local cl = s.clearing
+  need.clear_trees, need.clear_stumps = 0, 0
+  if cl then
+    for k = 1, tr.n do
+      local i = tr.tile[k]
+      if s.plot[i] == -1 then
+        if tr.st[k] == 1 then need.clear_trees = need.clear_trees + 1
+        elseif tr.st[k] == 3 then need.clear_stumps = need.clear_stumps + 1 end
+      end
+    end
+  end
+  if site_logs > 0 then
+    need.fell_why = string.format("Logs are wanted for the %s (%d more) and the woodstore holds %d",
+      s.buildings[short_id].label, site_logs, s.wood_store and s.wood_store.stock.logs or 0)
+  else
+    need.fell_why = string.format("The woodstore holds %d logs; the village wants %d%s",
+      s.wood_store and s.wood_store.stock.logs or 0, reserve, s.cold and " for the cold" or "")
+  end
+  -- who is gathered at the well
+  local n = 0
+  for i = 1, #s.members do
+    local p = V.people[s.members[i]]
+    if p and p.alive and p.act == "talk" then n = n + 1 end
+  end
+  s.at_well = n
+  -- sun
+  local lat = W.grid.lat[s.cell]
+  s.sunrise, s.sunset = clock.sun_times(lat, now)
+  return r1 ~= r0, r1
+end
+
+-- Daily (at the planet step) ----------------------------------------------------------------
+
+local function grow_plots(W, s, day)
+  local c = C()
+  local F = W.F
+  local doy = clock.local_doy(day * 24, W.grid.lat[s.cell])
+  for k = 1, #s.plots do
+    local pl = s.plots[k]
+    local cell = s.cell_of[(pl.iy0 + 3 - 1) * s.N + pl.ix0 + 3]
+    local T = F.temp[cell] or 10
+    local sw = F.soil_water[cell] or 0.5
+    if pl.stage == "growing" then
+      local gt = T > c.grow_tmin and min(1, (T - c.grow_tmin) / 10) or 0
+      local wet = min(1, 0.35 + sw * 1.3)
+      local g = gt * wet * (1 - 0.5 * pl.weeds)
+      pl.growth = pl.growth + g / c.grow_days
+      pl.q_sum, pl.q_n = pl.q_sum + g, pl.q_n + 1
+      pl.weeds = min(1, pl.weeds + c.weeds_day * (0.5 + wet))
+      if pl.growth >= 1 then
+        pl.stage = "ripe"
+        pl.ripe_day = day
+        pl.ripe_for = 0
+        pl.quality = max(0.25, pl.q_sum / max(1, pl.q_n))
+        pl.spoil = 1
+        if W.record_events then events.emit(W, "crop_ripe", s.cell, 0, 0, { settlement = s.id, plot = k }) end
+      end
+    elseif pl.stage == "ripe" then
+      pl.ripe_for = (pl.ripe_for or 0) + 1
+      if pl.ripe_for > c.ripe_spoil_days then pl.spoil = max(0, (pl.spoil or 1) - 0.2) end
+      if pl.harvested >= pl.sown then
+        pl.stage = "stubble"
+      end
+    elseif pl.stage == "stubble" then
+      -- the new year's sowing begins on a fresh plot
+      if doy >= c.sow_season[1] and doy <= c.sow_season[2] and pl.sheaves < 0.5 then
+        pl.stage = "fallow"
+        pl.sown, pl.harvested, pl.growth, pl.weeds = 0, 0, 0, 0
+        for r = 1, pl.rows do pl.row_st[r], pl.row_claim[r] = 0, 0 end
+      end
+    end
+    -- unsown at the end of the window: what was sown grows, the rest stays bare
+    if pl.stage == "fallow" and pl.sown > 0 and doy > c.sow_season[2] then pl.stage = "growing" end
+  end
+end
+
+local function grow_trees(W, s, day)
+  local c = C()
+  local tr = s.trees
+  local hour = W.hour
+  for k = 1, tr.n do
+    local st = tr.st[k]
+    if st == 1 then
+      if tr.size[k] < 1 then tr.size[k] = min(1, tr.size[k] + c.tree_grow) end
+    elseif st == 3 then
+      -- a stump may sprout again after some days (on land not taken by the village)
+      if (hour - tr.t_cut[k]) / 24 >= c.sapling_days and s.plot[tr.tile[k]] == 0 and s.occ[tr.tile[k]] == 0 then
+        local u = rng.float(W.seed, rng.S.V3_MAP, s.key, k, day)
+        if u < 0.06 then
+          tr.st[k] = 1
+          tr.size[k] = 0.05
+          s.dirty_costs = true
+        end
+      end
+    end
+  end
+end
+
+local function hearths(W, s, day)
+  local c = C()
+  local wx = weather.today(W, s, day * 24)
+  local V = W.S.v3
+  for i = 1, #s.blist do
+    local b = s.buildings[s.blist[i]]
+    if b.kind == "house" and b.state == "standing" and b.hh ~= 0 then
+      local hh = V.households[b.hh]
+      local n = hh and #hh.members or 0
+      if n > 0 then
+        -- water: a jar a day
+        b.stock.water = max(0, (b.stock.water or 0) - 1)
+        -- fuel on cold days
+        if wx.temp < c.fuel_cold then
+          local burn = c.fuel_logs_day * min(1.5, (c.fuel_cold - wx.temp) / 10 + 0.3)
+          local logs = b.stock.logs or 0
+          if logs >= burn then
+            b.stock.logs = logs - burn
+            b.cold = false
+          else
+            b.stock.logs = 0
+            b.cold = true
+          end
+        else
+          b.cold = false
+        end
+      end
+    end
+  end
+end
+
+-- Food: will the fields feed everyone to the next harvest and leave a store? If not, new field
+-- ground is staked out next to the fields (trees felled, stumps dug out, then it is a plot).
+local function plan_fields(W, s, day)
+  local c = C()
+  if s.clearing or #s.plots >= c.max_plots then return end
+  local pop = s.pop or 0
+  if pop == 0 then return end
+  local expect = (s.granary and ((s.granary.stock.grain or 0) + (s.granary.stock.sheaves or 0)) or 0)
+  for k = 1, #s.plots do
+    local pl = s.plots[k]
+    local standing = 0
+    for r = 1, pl.rows do if pl.row_st[r] == 2 then standing = standing + 1 end end
+    expect = expect + standing * c.row_yield * 0.85 + pl.sheaves
+    if pl.stage == "fallow" then expect = expect + (pl.rows - pl.sown) * c.row_yield * 0.6 end
+  end
+  local want = pop * c.days_per_year * (1 + c.store_years)
+  s.food_expect, s.food_want = expect, want
+  if expect >= want then return end
+  -- the free lattice spot nearest the fields and the village
+  local N, P = s.N, c.plot_tiles
+  local best, bix, biy = 1e9, 0, 0
+  for iy = 4, N - P - 3, P + 1 do
+    for ix = 4, N - P - 3, P + 1 do
+      if mapm.rect_free(s, ix, iy, ix + P - 1, iy + P - 1, true) then
+        local x, y = mapm.ixy_xy(s, ix + P / 2, iy + P / 2)
+        local d = sqrt(x * x + y * y)
+        if d > 0.42 and d < 1.4 then
+          local dp = 9
+          for k = 1, #s.plots do
+            local pl = s.plots[k]
+            local ex, ey = (pl.x0 + pl.x1) * 0.5 - x, (pl.y0 + pl.y1) * 0.5 - y
+            local e = sqrt(ex * ex + ey * ey)
+            if e < dp then dp = e end
+          end
+          local trees = 0
+          for jy = iy, iy + P - 1 do
+            for jx = ix, ix + P - 1 do
+              if s.tree[(jy - 1) * N + jx] > 0 then trees = trees + 1 end
+            end
+          end
+          local sc = d * 0.6 + dp + trees * 0.012
+          if sc < best then best, bix, biy = sc, ix, iy end
+        end
+      end
+    end
+  end
+  if best >= 1e9 then return end
+  s.clearing = { ix0 = bix, iy0 = biy, started = W.hour }
+  for jy = biy, biy + P - 1 do
+    for jx = bix, bix + P - 1 do s.plot[(jy - 1) * N + jx] = -1 end
+  end
+  local x, y = mapm.ixy_xy(s, bix + P / 2, biy + P / 2)
+  s.clearing.x, s.clearing.y = x, y
+  if W.record_events then events.emit(W, "village_expanded", s.cell, 0, 0, { settlement = s.id, kind = "field" }) end
+end
+
+-- New field ground with no tree, stump or log left on it becomes a plot.
+local function finish_clearing(W, s)
+  local cl = s.clearing
+  if not cl then return end
+  local c = C()
+  local N, P = s.N, c.plot_tiles
+  local tr = s.trees
+  for jy = cl.iy0, cl.iy0 + P - 1 do
+    for jx = cl.ix0, cl.ix0 + P - 1 do
+      local k = s.tree[(jy - 1) * N + jx]
+      if k > 0 and tr.st[k] ~= 0 then return end
+    end
+  end
+  for jy = cl.iy0, cl.iy0 + P - 1 do
+    for jx = cl.ix0, cl.ix0 + P - 1 do s.plot[(jy - 1) * N + jx] = 0 end
+  end
+  local V = W.S.v3
+  -- the household with the fewest fields per mouth takes it
+  local bh, br = nil, 1e9
+  for i = 1, #s.households do
+    local hh = V.households[s.households[i]]
+    if hh and #hh.members > 0 then
+      local n = 0
+      for k = 1, #s.plots do if s.plots[k].hh == hh.id then n = n + 1 end end
+      local r = n / #hh.members
+      if r < br then bh, br = hh, r end
+    end
+  end
+  local pl = M.add_plot(W, s, cl.ix0, cl.iy0, bh and bh.id or 0, "")
+  local m = bh and V.people[bh.members[1]]
+  pl.name = (m and m.surname or "New") .. " new field"
+  pl.cleared = W.hour
+  s.clearing = nil
+  mapm.rebuild_costs(s)
+end
+M.finish_clearing = finish_clearing
+
+-- Growth: couples without a home get a house site.
+local function plan_houses(W, s)
+  local V = W.S.v3
+  local open = 0
+  for i = 1, #s.sites do
+    local b = s.buildings[s.sites[i]]
+    if b and b.kind == "house" then open = open + 1 end
+  end
+  for i = 1, #s.couples do
+    if open >= 2 then break end
+    local a = V.people[s.couples[i]]
+    if a and a.alive and not a.house_site then
+      local ix, iy, side = M.find_lot(W, s)
+      if ix then
+        local b = M.add_building(W, s, "house", ix, iy, side, "site",
+          { for_a = a.id, for_b = a.partner, for_name = "the " .. a.surname .. "s", prio = 1 })
+        a.house_site = b.id
+        open = open + 1
+        if W.record_events then
+          events.emit(W, "house_planned", s.cell, 0, 0, { settlement = s.id, building = b.id })
+        end
+      end
+    end
+  end
+end
+
+function M.daily(W, s, day)
+  grow_plots(W, s, day)
+  grow_trees(W, s, day)
+  hearths(W, s, day)
+  plan_houses(W, s)
+  plan_fields(W, s, day)
+  finish_clearing(W, s)
+  mapm.daily_wear(s)
+  mapm.rebuild_costs(s)
+  s.dirty_costs = false
+end
+
+return M

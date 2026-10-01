@@ -1,0 +1,33 @@
+#version 140
+// Shadow pass for v3 villagers: the same skinning and part mask as villager.vp, into the sun's
+// depth map (the render script binds the light's view and projection).
+in highp vec4 position;
+in mediump vec2 texcoord0;
+in mediump vec3 normal;
+in mediump vec4 bone_weights;
+in mediump vec4 bone_indices;
+in highp mat4 mtx_world;
+in mediump mat4 mtx_normal;
+in highp vec4 animation_data;
+
+uniform vs_uniforms
+{
+    highp mat4 mtx_view;
+    highp mat4 mtx_proj;
+    highp vec4 u_pal;
+    highp vec4 u_parts;
+};
+
+#include "/builtins/materials/skinning.glsl"
+
+void main()
+{
+    vec4 parts = u_parts;
+    float part = floor(texcoord0.y * 64.0);
+    float m = part < 19.5 ? parts.y : parts.z;
+    float bitn = part < 19.5 ? part : part - 20.0;
+    float on = mod(floor(m / exp2(bitn) + 0.0001), 2.0);
+    vec4 sp = get_skinned_position(position);
+    highp vec4 wp = mtx_world * vec4(sp.xyz, 1.0);
+    gl_Position = on > 0.5 ? mtx_proj * mtx_view * wp : vec4(0.0, 0.0, -2.0, 1.0);
+}

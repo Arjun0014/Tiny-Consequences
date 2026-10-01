@@ -769,4 +769,66 @@ C.POWERS = {
   meteor_aerosol = 1.2,                   -- impact winter (aerosol units; k_aer cools the whole planet)
 }
 
+-- v3: the agentic world (docs/v3/, D-078). One planet step = one game day (W.hpt = 24); a year is
+-- 48 days. Distances in world units on the local map (planet radius 10, a sim cell ~1.0 across);
+-- times in hours.
+C.V3 = {
+  hpt = 24, days_per_year = 48,
+  map_n = 128, tile = 0.025,              -- local map: 128 x 128 tiles of 0.025 units (3.2 units square)
+  -- movement (world units per hour; a cell spacing in ~19 min)
+  walk = 3.2, pace = { 0.85, 1.15 },
+  speed_child = 0.8, speed_elder = 0.72, speed_load = 0.85, speed_rain = 1.12, speed_dark = 0.85,
+  -- tile costs (A*): open land, under trees, across a plot, a trail, a lane
+  cost_open = 1.0, cost_tree = 1.5, cost_plot = 1.6, cost_trail = 0.75, cost_lane = 0.55,
+  temper_extra = 0.12,                    -- extra cost per temperament step off lanes (route variety)
+  wear_walk = 1.0,                        -- wear added per tile crossed
+  wear_decay = 0.04,                      -- share of wear lost per day
+  wear_trail = 6, wear_lane = 30,         -- wear thresholds of a trail and a lane
+  -- body (per hour)
+  hunger_work = 0.065, hunger_idle = 0.045, hunger_sleep = 0.018, meal = 0.55, meal_fu = 0.34,
+  energy_work = 0.05, energy_walk = 0.04, energy_idle = 0.02, energy_sleep = 0.12,
+  hunger_eat = 0.5,                       -- eat when hungrier than this (sooner at home)
+  starving = 0.92, health_starve = 0.04,  -- health lost per hour above `starving`
+  -- day rhythm (local solar hours)
+  wake_after_sunrise = -0.4, chrono = { -1.3, 1.3 }, bed_after_sunset = 3.0, bed_min = 19.5, bed_max = 23.6,
+  wake_min = 4.3, wake_max = 8.6,
+  -- farming: plots of 8 x 8 tiles worked row by row
+  plot_tiles = 12, till_row_h = 1.0, sow_row_h = 0.4, tend_h = 1.0, harvest_row_h = 0.8,
+  thresh_h = 1.0, thresh_fu = 10,         -- an hour of threshing at the granary turns 10 FU of sheaves to grain
+  seed_row = 0.5,                         -- FU of seed grain per row
+  grow_days = 20,                         -- days from sowing to ripe at good temperatures
+  grow_tmin = 5,                          -- degC below which crops do not grow
+  row_yield = 13.5,                       -- FU per row at full quality
+  weeds_day = 0.09, tend_clear = 0.22,    -- weeds a day on a growing plot; cleared per hour of weeding
+  ripe_spoil_days = 8,                    -- ripe grain left standing is lost after this
+  sow_season = { 0, 13 },                 -- day-of-year window for sowing (spring)
+  -- wood: a log is the unit
+  fell_h = 1.3,                           -- hours to fell a full-grown tree (/ skill)
+  logs_per_tree = { 2, 5 },
+  tree_grow = 0.012,                      -- size gained per day (0..1)
+  sapling_days = 6,                       -- a stump sprouts after this many days (sometimes)
+  house_logs = 12, house_work = 26,       -- logs and work-hours for a house
+  fuel_cold = 8,                          -- degC below which homes burn wood
+  fuel_logs_day = 1.2,                    -- logs a cold day per household (x coldness)
+  carry_grain = 10, carry_logs = 1,       -- load per trip (FU, logs; strong adults carry 2 logs)
+  pantry_low = 2.0,                       -- days of food at home before someone fetches
+  pantry_fetch = 8,                       -- FU fetched from the granary
+  woodpile_low = 2, woodpile_fetch = 2,
+  woodpile_winter = 6,                    -- logs a household keeps at home ahead of the cold
+  store_logs = 20,                        -- logs the woodstore keeps in reserve
+  store_years = 0.5,                      -- food beyond the next harvest the village wants (years)
+  max_plots = 20,
+  grub_h = 0.45,                          -- hours to dig out a stump on new field ground
+  forage_h = 1.2, forage_fu = { 0.3, 1.1 },   -- an outing to the woods' edge: FU gathered (season): a supplement
+  -- people
+  adult_age = 16, elder_age = 55, child_age = 2, apprentice_age = 12, help_age = 8,
+  marry_f = 17, marry_m = 19, fecund = { 16, 44 },
+  conceive_year = 0.42,                   -- annual chance for a fed married woman in her own home
+  pregnancy_days = 36,
+  mortality = { infant = 0.08, child = 0.01, adult = 0.006, old_a = 0.006, old_b = 0.0012, old_k = 8 },
+  -- reactions (hours)
+  react_near = { 0.03, 0.12 }, react_far = { 0.1, 0.45 },
+  rain_hardy = 0.7,                       -- diligence above which light rain does not stop work
+}
+
 return C

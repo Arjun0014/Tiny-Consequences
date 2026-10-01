@@ -12,6 +12,15 @@ A cute tiny planet that lives on its own: weather, oceans, forests, animals, far
 
 Arjun reset priorities: **build the genuinely living tiny world first**; the jams (Defold Game Jam 2026 and Game Gauntlet Sim Jam, themes Chain Reaction + Simulation) are secondary and a missed deadline is acceptable. The world-simulation spec is `docs/world/` (00 research, 01 audit, 10–16 design, 17 roadmap v2). It supersedes 02 §1/§5.10/§5.11 and 08 from Stage 2.3 on. Commit prefix for this work: `[wN]` (phase). No subagents unless Arjun allows them again.
 
+## Direction reset v3 (D-078, 1 Oct 2026)
+
+Arjun reset again: v2 people moved as scheduled groups. The target is an automated miniature
+civilisation of persistent agents (small settlements that farm, cut wood, build, raise children,
+trade, migrate and fight on their own); the visible action must be the simulation. Work happens on
+branch `wip/agentic-world-v3`: spec `docs/v3/` (00 audit, 10 agents, 20 character pipeline,
+30 roadmap v3), code `sim/agents/` and `game/view/agents_view.lua`, v3 worlds open with
+`?world=v3`. v2 stays playable until v3 reaches parity. Commit prefix `[v3]`.
+
 ## Read order
 
 1. This file.

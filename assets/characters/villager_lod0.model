@@ -1,0 +1,10 @@
+mesh: "/assets/characters/villager_lod0.glb"
+materials {
+  name: "villager"
+  material: "/game/render/villager.material"
+}
+skeleton: "/assets/characters/villager_lod0.glb"
+animations: "/assets/characters/villager_lod0.glb"
+default_animation: "idle"
+name: "villager_lod0"
+create_go_bones: false

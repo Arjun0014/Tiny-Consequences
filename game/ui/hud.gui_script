@@ -33,6 +33,21 @@ local SPEEDS = {
 	{ level = 6, icon = "max", tip = "Max: as fast as it goes  (6)" },
 }
 
+-- v3 worlds (D-079): three watch speeds and explicit skips (never a faster watch speed)
+local V3_SPEEDS = {
+	{ level = 0, icon = "pause", tip = "Pause  (Space)" },
+	{ level = 1, icon = "play", tip = "Watch: a game minute a second  (1)" },
+	{ level = 2, icon = "fast", tip = "Brisk: 4 game minutes a second  (2)" },
+	{ level = 3, icon = "faster", tip = "Fast: a day in 2 minutes  (3)" },
+	{ skipmenu = true, icon = "max", tip = "Skip ahead (the people are hidden while time passes)  (4-7)" },
+}
+local SKIPS = {
+	{ kind = "dawn", icon = "sun", label = "Until dawn", key = "4" },
+	{ kind = "evening", icon = "house", label = "Until evening", key = "5" },
+	{ kind = "day", icon = "hourglass", label = "One day", key = "6" },
+	{ kind = "season", icon = "leaf", label = "Next season", key = "7" },
+}
+
 -- Loading ------------------------------------------------------------------------------------
 
 local function build_loading(self)
@@ -62,6 +77,31 @@ local function build_top(self)
 		local ic = ui.icon(b, 0, 0, sp.icon, 18, C.text)
 		self.speed_btns[i] = { node = b, icon = ic, level = sp.level, tip = sp.tip }
 	end
+	-- v3: the skip menu (under the clock) and the skip progress strip
+	local mx, mw = 12 + cw - 150, 196
+	local menu = ui.box(nil, mx, REF_H - 12 - ch - 8 - 4 * 34 / 2 - 8, mw, 4 * 34 + 16, "panel", C.panel)
+	ui.anchor(menu, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
+	self.skip_menu = menu
+	self.skip_opts = {}
+	for i, k in ipairs(SKIPS) do
+		local y = (4 * 34 + 16) / 2 - 8 - 17 - (i - 1) * 34
+		local row = ui.box(menu, 0, y, mw - 12, 30, "panel", C.clear)
+		ui.icon(row, -mw / 2 + 24, 0, k.icon, 18, C.text)
+		ui.text(row, -mw / 2 + 42, 0, k.label, "nunito_semi", 15, C.text)
+		ui.text(row, mw / 2 - 18, 0, k.key, "fredoka", 14, C.muted, gui.PIVOT_E)
+		self.skip_opts[i] = { node = row, skip = k.kind }
+	end
+	gui.set_enabled(menu, false)
+	local pw = 300
+	local prog = ui.box(nil, 12 + pw / 2, REF_H - 12 - ch - 8 - 22, pw, 44, "panel", C.panel)
+	ui.anchor(prog, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
+	self.skip_prog = prog
+	ui.icon(prog, -pw / 2 + 22, 0, "hourglass", 20, C.gold)
+	self.skip_label = ui.text(prog, -pw / 2 + 40, 8, "", "nunito_semi", 14, C.text)
+	ui.box(prog, -pw / 2 + 40, -9, 170, 8, "pill_s", C.soft, gui.PIVOT_W)
+	self.skip_bar = ui.box(prog, -pw / 2 + 40, -9, 8, 8, "pill_s", C.gold, gui.PIVOT_W)
+	self.skip_stop = ui.text(prog, pw / 2 - 14, 0, "Stop", "fredoka", 16, C.coral, gui.PIVOT_E)
+	gui.set_enabled(prog, false)
 
 	-- stats (top, right of the clock)
 	local items = {
@@ -382,9 +422,37 @@ local function update_top(self)
 	local season_icon = ({ Spring = "leaf", Summer = "sun", Autumn = "leaf", Winter = "snow" })[s.season] or "sun"
 	ui.set_icon(self.clock_icon, season_icon)
 	gui.set_color(self.clock_icon, s.season == "Winter" and C.teal or (s.season == "Autumn" and C.coral or C.gold))
+	local W = view.W
+	if W and W.v3 and not self.v3_ui then
+		-- the v3 ladder: four speed buttons and the skip menu; the rest are hidden
+		self.v3_ui = true
+		for i, b in ipairs(self.speed_btns) do
+			local sp = V3_SPEEDS[i]
+			if sp then
+				b.level, b.tip, b.skipmenu = sp.level, sp.tip, sp.skipmenu
+				ui.set_icon(b.icon, sp.icon)
+			else
+				b.hidden = true
+				gui.set_enabled(b.node, false)
+			end
+		end
+	end
+	local skipping = speed.v3_skipping()
+	if self.v3_ui then
+		if skipping and self.skip_menu_open then self.skip_menu_open = false end
+		if gui.is_enabled(self.skip_menu) ~= (self.skip_menu_open or false) then gui.set_enabled(self.skip_menu, self.skip_menu_open or false) end
+		for _, o in ipairs(self.skip_opts) do gui.set_color(o.node, self.hover == o and C.hover or C.clear) end
+		if gui.is_enabled(self.skip_prog) ~= skipping then gui.set_enabled(self.skip_prog, skipping) end
+		if skipping then
+			local f = speed.v3_skip_progress() or 0
+			gui.set_text(self.skip_label, string.format("%s  9483  %d%%", speed.skip.label, math.floor(f * 100)))
+			gui.set_size(self.skip_bar, V3(math.max(8, 170 * f), 8, 0))
+			gui.set_color(self.skip_stop, self.hover == "skipstop" and C.text or C.coral)
+		end
+	end
 	local cur = speed.get()
 	for _, b in ipairs(self.speed_btns) do
-		local active = b.level == cur
+		local active = (b.level == cur and not skipping) or (b.skipmenu and (skipping or self.skip_menu_open))
 		local hover = self.hover == b
 		gui.set_color(b.node, active and C.gold or (hover and C.hover or C.soft))
 		gui.set_scale(b.node, hover and V3(1.08, 1.08, 1) or V3(1, 1, 1))
@@ -523,8 +591,15 @@ local function hit(self, x, y)
 	if state.loading.active then return nil end
 	if gui.is_enabled(self.clock) then
 		for _, b in ipairs(self.speed_btns) do
-			if gui.pick_node(b.node, x, y) then return b end
+			if not b.hidden and gui.pick_node(b.node, x, y) then return b end
 		end
+		if self.skip_menu_open then
+			for _, o in ipairs(self.skip_opts) do
+				if gui.pick_node(o.node, x, y) then return o end
+			end
+			if gui.pick_node(self.skip_menu, x, y) then return "panel" end
+		end
+		if gui.is_enabled(self.skip_prog) and gui.pick_node(self.skip_prog, x, y) then return "skipstop" end
 		for _, it in ipairs(self.stat_items) do
 			if gui.pick_node(it.hover, x, y) then return it end
 		end
@@ -577,11 +652,23 @@ local function activate(self, h)
 		if d then powers.cycle_option(d, h.opt) end
 	elseif type(h) == "table" and h.power then
 		powers.arm(h.power)
+	elseif h == "skipstop" then
+		speed.v3_skip_cancel()
+	elseif type(h) == "table" and h.skipmenu then
+		if speed.v3_skipping() then speed.v3_skip_cancel() else self.skip_menu_open = not self.skip_menu_open end
+	elseif type(h) == "table" and h.skip then
+		self.skip_menu_open = false
+		if view.W then speed.v3_skip(view.W, h.skip) end
 	elseif type(h) == "table" and h.level then
+		self.skip_menu_open = false
+		if speed.v3_skipping() then speed.v3_skip_cancel() end
 		speed.set(h.level)
 	elseif type(h) == "table" and h.key then
 		selection.set({ kind = "planet" })
 		uistate.inspector_collapsed = false
+	elseif type(h) == "table" and h.link and h.link.kind == "follow" then
+		-- v3: the camera follows this person (main.script)
+		uistate.request({ cmd = "follow", id = h.link.id })
 	elseif type(h) == "table" and h.link then
 		selection.set(h.link)
 		if h.link.kind == "village" or h.link.kind == "person" then uistate.request({ cmd = "fly_to_sel" }) end
@@ -598,7 +685,7 @@ function on_input(self, action_id, action)
 			local bx = gui.get_position(self.pbar).x + gui.get_position(h.node).x
 			show_tip(self, h.tip, bx, h.opt and 176 or 120)
 		elseif type(h) == "table" and h.tip then
-			show_tip(self, h.tip, h.level and (gui.get_position(h.node).x + gui.get_position(self.clock).x) or (gui.get_position(self.stats).x + h.x), REF_H - 92)
+			show_tip(self, h.tip, (h.level or h.skipmenu) and (gui.get_position(h.node).x + gui.get_position(self.clock).x) or (gui.get_position(self.stats).x + h.x), REF_H - 92)
 		else
 			show_tip(self, nil)
 		end

@@ -18,6 +18,8 @@ local grid = require("sim.grid")
 local clock = require("game.platform.clock")
 local speed = require("game.platform.speed")
 local daylight = require("sim.society.daylight")
+local agents_view = require("game.view.agents_view")
+local v3clock = require("sim.agents.clock")
 
 local M = {}
 
@@ -79,6 +81,7 @@ function M.build(W, urls, step)
   if not M.atmo_built then build_atmo(); M.atmo_built = true end
   step("Planting forests", 0)
   props.init(PL, W, urls.chunk_factory, terrain.tex)
+  agents_view.prepare(W)
   M.village_sig = nil
   M.sync_villages(W)
   props.build_all(function(f) step("Planting forests", f) end)
@@ -86,6 +89,8 @@ function M.build(W, urls, step)
   clouds.init(W, urls.cloud_factory, urls.rain_factory)
   puppets.init(W, urls, M.surface)
   puppets.height = function(v) return M.PL.h[v] end
+  step("Waking the village", 0)
+  agents_view.init(W, PL, urls, terrain.tex)
   selring.init(urls.ring_factory, M.surface)
   aim.init(urls.ring_factory, M.surface)
   fx.init(W, urls.flame_factory, urls.smoke_factory, M.surface)
@@ -172,7 +177,7 @@ function M.update(dt)
   state.u_cam.w = state.time
   state.u_anim.x = state.time
   if M.W then
-    state.u_anim.z = (M.W.hour / 168) % 48
+    state.u_anim.z = M.W.v3 and ((M.W.hour / 24) % 48) or ((M.W.hour / 168) % 48)
     state.u_anim.w = 1
   end
   state.u_sky.x = state.time
@@ -180,11 +185,19 @@ function M.update(dt)
   if M.ready then
     local W = M.W
     -- view clock and the sun (D-050)
-    local hf = W.hour + speed.alpha()
+    local hf = W.v3 and speed.v3_t or (W.hour + speed.alpha())
     state.hour_f = hf
     local _, flon = camera.latlon()
     state.focus_lon = flon
-    local sx, sy, sz = daylight.sun_dir(hf)
+    local sx, sy, sz
+    if W.v3 then
+      -- the v3 calendar: a 48-day year (D-078)
+      local la, lo = v3clock.subsolar(hf)
+      local cl = math.cos(la)
+      sx, sy, sz = cl * math.cos(lo), math.sin(la), cl * math.sin(lo)
+    else
+      sx, sy, sz = daylight.sun_dir(hf)
+    end
     state.sun_real.x, state.sun_real.y, state.sun_real.z = sx, sy, sz
     local hps = speed.hours_per_second()
     if hps > 0 then
@@ -226,6 +239,11 @@ function M.update(dt)
     clouds.update(W, dt, state.frozen)
     local d = clock.now_ms()
     puppets.update(W, dt, camera.zoom, state.frozen)
+    if W.v3 then
+      agents_view.skipping = speed.v3_skipping()
+      agents_view.game_min_per_s = speed.hours_per_second() * 60
+      agents_view.update(W, dt, camera.zoom, speed.v3_t or W.hour)
+    end
     fx.update(W, dt, state.frozen)
     selring.update(W, dt)
     local armed = powers_ui.armed and powers_ui.DEFS[powers_ui.armed]

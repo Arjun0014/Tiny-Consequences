@@ -10,14 +10,16 @@ local i = 1
 while arg[i] do
   if arg[i] == "--seed" then i = i + 1; args.seed = tonumber(arg[i])
   elseif arg[i] == "--out" then i = i + 1; args.out = arg[i]
-  elseif arg[i] == "--years" then i = i + 1; args.years = tonumber(arg[i]) end
+  elseif arg[i] == "--years" then i = i + 1; args.years = tonumber(arg[i])
+  elseif arg[i] == "--v3" then args.v3 = true end
   i = i + 1
 end
 local worlds = require("sim.worlds")
 local world = require("sim.world")
 local version = require("sim.version")
 local t0 = os.clock()
-local W = worlds.generate(args.seed)
+-- --v3: an agentic world (D-078): the planet with one settlement of agents
+local W = args.v3 and require("sim.agents.worldgen").generate(args.seed, {}) or worlds.generate(args.seed)
 -- (dev: --years N saves the world N years on, for reviewing later worlds with ?world=NAME)
 if args.years and args.years > 0 then world.run_years(W, args.years) end
 local str = worlds.year0_save_string(W, { seed = args.seed, sim_version = version.SIM_VERSION,
@@ -32,5 +34,6 @@ f:write(str)
 f:close()
 local pop, nv = 0, 0
 for _, v in ipairs(W.ent.villages) do if v.alive then pop = pop + v.pop; nv = nv + 1 end end
+if W.v3 then for _, s in ipairs(W.S.v3.settlements) do nv = nv + 1; pop = pop + #s.members end end
 print(string.format("seed %d -> %s: %d bytes, %d villages, %d people, %d tankers (%.1fs); state hash %s",
   args.seed, args.out, #str, nv, pop, #W.ent.ships, os.clock() - t0, tostring(world.state_hash(W))))

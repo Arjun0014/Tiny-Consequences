@@ -336,6 +336,53 @@ function P.surface_radius(PL, x, y, z, start)
   return PL.R + (h > 0 and h * PL.EXAG or 0), v
 end
 
+--- Exact surface radius along unit direction (x, y, z): the ray from the planet centre hits one of
+-- the render faces around the nearest vertex (v3 settlement placement; smooth for walkers).
+function P.surface_exact(PL, x, y, z, start)
+  local v = P.nearest(PL, x, y, z, start)
+  local vf = PL.vfaces
+  if not vf then
+    vf = {}
+    local faces = PL.faces
+    for f = 1, PL.nf do
+      local i = f * 3 - 2
+      for q = 0, 2 do
+        local a = faces[i + q]
+        local l = vf[a]
+        if not l then l = {}; vf[a] = l end
+        l[#l + 1] = f
+      end
+    end
+    PL.vfaces = vf
+  end
+  local faces, px, py, pz = PL.faces, PL.px, PL.py, PL.pz
+  local list = vf[v]
+  for k = 1, #list do
+    local i = list[k] * 3 - 2
+    local a, b, c = faces[i], faces[i + 1], faces[i + 2]
+    local ax, ay, az = px[a], py[a], pz[a]
+    local e1x, e1y, e1z = px[b] - ax, py[b] - ay, pz[b] - az
+    local e2x, e2y, e2z = px[c] - ax, py[c] - ay, pz[c] - az
+    -- Moller-Trumbore with the ray origin at the centre, direction (x, y, z)
+    local hx, hy, hz = y * e2z - z * e2y, z * e2x - x * e2z, x * e2y - y * e2x
+    local det = e1x * hx + e1y * hy + e1z * hz
+    if det > 1e-12 or det < -1e-12 then
+      local inv = 1 / det
+      local sx, sy, sz = -ax, -ay, -az
+      local u = (sx * hx + sy * hy + sz * hz) * inv
+      if u >= -1e-6 and u <= 1 + 1e-6 then
+        local qx, qy, qz = sy * e1z - sz * e1y, sz * e1x - sx * e1z, sx * e1y - sy * e1x
+        local w = (x * qx + y * qy + z * qz) * inv
+        if w >= -1e-6 and u + w <= 1 + 1e-6 then
+          local t = (e2x * qx + e2y * qy + e2z * qz) * inv
+          if t > 0 then return t, v end
+        end
+      end
+    end
+  end
+  return P.surface_radius(PL, x, y, z, v)
+end
+
 --- Surface radius at a unit direction's nearest render vertex (approximate; for placement).
 function P.radius_at(PL, v)
   local h = PL.h[v]

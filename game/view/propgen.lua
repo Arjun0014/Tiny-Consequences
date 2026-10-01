@@ -276,6 +276,19 @@ M.list = L
 local function add(kind, x, y, z, ux, uy, uz, yaw, sc, sh, c1, c2, c3, cell, rnd)
   local t = TPL[L.lod][kind]
   if not t then return end
+  local ex = M.v3_exclude
+  if ex and not L.v3 then
+    for q = 1, #ex do
+      local e = ex[q]
+      local d = ux * e[1] + uy * e[2] + uz * e[3]
+      if d > e[12] then
+        local k = e[11] / d
+        local lx = (ux * e[4] + uy * e[5] + uz * e[6]) * k
+        local ly = (ux * e[7] + uy * e[8] + uz * e[9]) * k
+        if lx > -e[10] and lx < e[10] and ly > -e[10] and ly < e[10] then return end
+      end
+    end
+  end
   local i = L.n + 1
   L.n = i
   L.kind[i], L.x[i], L.y[i], L.z[i] = kind, x, y, z
@@ -313,9 +326,15 @@ for k, list in pairs(ACCENT) do
   for i, c in ipairs(list) do list[i] = pack_rgb(c[1], c[2], c[3]) end
 end
 
+M.BARK = BARK
+M.ACCENT = ACCENT
+
 -- The tree species of a place: climate, soil and the coast choose the pool; `stand` (low-frequency
 -- noise) makes patches of one species within a forest (birch groves in oak woods, pine stands).
 local function pick_tree(tmean, ic, bi, soil, coast, u, stand)
+  return M.pick_tree_impl(tmean, ic, bi, soil, coast, u, stand)
+end
+function M.pick_tree_impl(tmean, ic, bi, soil, coast, u, stand)
   if tmean < -3 or ic > 0.3 then return u < 0.6 and K.snowpine1 or K.snowpine2 end
   if tmean < 3 then
     if stand < 0.28 then return u < 0.6 and K.birch2 or K.birch1 end
@@ -377,6 +396,8 @@ local function frame(x, y, z)
   local nx, ny, nz = -ez * y, ez * x - ex * z, ex * y
   return ex, 0, ez, nx, ny, nz
 end
+
+M.frame = frame
 
 -- chimney tops in the house templates' local frame (modelkit)
 local CHIMNEY = { cottage = { 0.022, 0.092, -0.008 }, townhouse = { -0.02, 0.122, 0.006 } }
@@ -992,6 +1013,42 @@ local H_POS, H_NRM, H_TATTR = hash("position"), hash("normal"), hash("tattr")
 local H_INST, H_INST2, H_INST3 = hash("inst"), hash("inst2"), hash("inst3")
 M.H_INST, M.H_INST2, M.H_INST3 = H_INST, H_INST2, H_INST3
 local TBUF = { {}, {} }
+
+-- v3 (D-078): kinds added at runtime (crop rows, lane tiles), and a private instance list for
+-- the v3 settlement renderer (game/view/agents_view.lua) — it builds synchronously, so it swaps
+-- its own list in and the props job's list back before returning.
+function M.register_kind(name, tnear, tfar, c1, c2, c3)
+  local i = K[name]
+  if not i then
+    i = #NAMES + 1
+    NAMES[i] = name
+    K[name] = i
+  end
+  CLASS[i] = { c1 or 0, c2 or 0, c3 or 0 }
+  local ts = { tnear, tfar or tnear }
+  for lod = 1, 2 do
+    local t = ts[lod]
+    if not t.ss then prep(t) end
+    TPL[lod][i] = t
+    TBUF[lod][i] = nil
+  end
+  return i
+end
+
+function M.new_list()
+  return { n = 0, verts = 0, lod = 1, kind = {}, x = {}, y = {}, z = {}, ux = {}, uy = {}, uz = {}, yaw = {},
+    sc = {}, sh = {}, c1 = {}, c2 = {}, c3 = {}, cell = {}, rnd = {} }
+end
+
+function M.swap_list(nl)
+  local old = L
+  L = nl
+  M.list = nl
+  return old
+end
+
+-- placements inside these local squares are left to the v3 settlement renderer
+M.v3_exclude = nil   -- list of { nx, ny, nz, ex, ey, ez, qx, qy, qz, half, R, cosr }
 
 --- The stream declaration of prop chunk buffers.
 function M.chunk_decl()

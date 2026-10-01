@@ -32,6 +32,10 @@ function M.set(n)
 	if n == nil or n ~= math.floor(n) or n < 0 or n > M.MAX_LEVEL then
 		error("speed.set: invalid speed level " .. tostring(n), 2)
 	end
+	if M.v3_t and n > M.V3_WATCH_MAX then
+		-- v3 (D-079): no watch speed beyond ▶▶▶; faster is an explicit skip (M.v3_skip)
+		error("speed.set: invalid speed level " .. tostring(n) .. " (v3 watches at 0-3; skip ahead instead)", 2)
+	end
 	if n ~= level then
 		level = n
 		ticks_due = 0
@@ -59,7 +63,8 @@ end
 
 --- Length of a real second in sim hours at the current level (0 when paused; max: last rate).
 function M.hours_per_second()
-	local hps = M.HOURS_PER_SECOND[level]
+	if M.skip then return M.skip.rate or 24 end
+	local hps = (M.v3_t and M.V3_HPS or M.HOURS_PER_SECOND)[level]
 	if hps < 0 then return M.max_rate or 3000 end
 	return hps
 end
@@ -126,6 +131,130 @@ function M.step(dt, step_fn, heavy_fn)
 		stat_frames, stat_sum, stat_max = 0, 0, 0
 	end
 	return ran
+end
+
+-- v3 worlds (D-078, D-079): time runs continuously (world.advance to fractional hours). Watch speeds
+-- are game minutes per real second: ▶ 1, ▶▶ 4 (the start), ▶▶▶ 12 (a day in 2 minutes). There is
+-- no faster *watch* speed: catch-up is an explicit skip to a moment (dawn, evening, a day on, the
+-- next season) during which the view hides the people and the sim runs unrendered as fast as the
+-- frame budget allows; afterwards everyone is exactly where the sim put them.
+M.V3_HPS = { [0] = 0, 1 / 60, 4 / 60, 12 / 60 }
+M.V3_WATCH_MAX = 3
+M.V3_START = 2
+M.SKIP_BUDGET_MS = 30
+M.v3_t = nil
+M.skip = nil   -- { from, to, kind, label, rate, t_real0 }
+
+function M.v3_init(W)
+  M.v3_t = W.hour
+  M.skip = nil
+end
+
+function M.v3_skipping()
+  return M.skip ~= nil
+end
+
+M.SKIP_LABELS = { dawn = "Until dawn", evening = "Until evening", day = "One day", season = "Next season" }
+
+--- The absolute hour a skip of `kind` ends at, at settlement s's local time (default: the first).
+-- dawn: a little before sunrise (the early risers are up); evening: the walk home from the
+-- fields; day: 24 hours on; season: the dawn of the first day of the next local season.
+function M.v3_skip_target(W, kind, s)
+  local clock = require("sim.agents.clock")
+  s = s or W.S.v3.settlements[1]
+  local now = M.v3_t or W.hour
+  local lon, lat = W.grid.lon[s.cell], W.grid.lat[s.cell]
+  local function next_lh(from, h)
+    local d = (h - clock.local_hour(from, lon)) % 24
+    if d < 0.1 then d = d + 24 end
+    return from + d
+  end
+  if kind == "day" then return now + 24 end
+  if kind == "evening" then
+    local _, ss = clock.sun_times(lat, now + 6)
+    return next_lh(now, ss - 1.5)
+  end
+  local from = now
+  if kind == "season" then
+    local ldoy = clock.local_doy(now, lat)
+    from = (math.floor(now / 24) + (12 - ldoy % 12)) * 24 - 2
+  elseif kind ~= "dawn" then
+    error("speed.v3_skip_target: unknown skip " .. tostring(kind), 2)
+  end
+  local sr = clock.sun_times(lat, from + 12)
+  return next_lh(from, sr - 0.8)
+end
+
+--- Start skipping to absolute hour `to` (kind: a label key). Returns the target.
+function M.v3_skip(W, kind, to)
+  to = to or M.v3_skip_target(W, kind)
+  local now = M.v3_t or W.hour
+  if to <= now then return now end
+  M.skip = { from = now, to = to, kind = kind, label = M.SKIP_LABELS[kind] or "Skipping", rate = 24,
+    t_real0 = clock.now_ms() }
+  return to
+end
+
+--- Stop a skip where it is (the world simply continues from there).
+function M.v3_skip_cancel()
+  M.skip = nil
+end
+
+--- Progress of the running skip (0..1), or nil.
+function M.v3_skip_progress()
+  local k = M.skip
+  if not k then return nil end
+  return math.min(1, ((M.v3_t or k.from) - k.from) / math.max(1e-6, k.to - k.from))
+end
+
+--- v3: advance world W by dt real seconds at the current level (or the running skip), within the
+-- frame budget.
+function M.step_v3(dt, W, world)
+	if not M.v3_t then M.v3_t = W.hour end
+	-- real elapsed time, not the engine's frame dt (fixed per frame: a slow frame rate would slow
+	-- the world down with it); at most a quarter second per frame
+	local now_ms = clock.now_ms()
+	if M.v3_last then dt = math.min(0.25, math.max(0, (now_ms - M.v3_last) / 1000)) end
+	M.v3_last = now_ms
+	local sk = M.skip
+	local hps = M.V3_HPS[level] or 0
+	if hps == 0 and not sk then
+		last_frame_ms, last_frame_ticks = 0, 0
+		return 0
+	end
+	local budget = sk and M.SKIP_BUDGET_MS or M.SIM_BUDGET_MS[level]
+	local t0 = clock.now_ms()
+	local target = sk and sk.to or (M.v3_t + dt * hps)
+	local cur = M.v3_t
+	local closed = 0
+	while cur < target do
+		local nxt = math.floor(cur) + 1
+		if nxt > target then nxt = target end
+		closed = closed + world.advance(W, nxt)
+		cur = nxt
+		if clock.now_ms() - t0 > budget then break end
+	end
+	-- a watch frame that could not keep up drops the rest (never spiral); a skip continues
+	if sk then
+		if dt > 0 then sk.rate = sk.rate + ((cur - M.v3_t) / math.max(dt, 1 / 120) - sk.rate) * 0.2 end
+		if cur >= sk.to then
+			M.skip = nil
+			M.skip_done = { kind = sk.kind, ms = clock.now_ms() - sk.t_real0, hours = sk.to - sk.from }
+		end
+	end
+	M.v3_t = cur
+	local ms = clock.now_ms() - t0
+	last_frame_ms, last_frame_ticks = ms, closed
+	ticks_total = ticks_total + closed
+	stat_frames = stat_frames + 1
+	stat_sum = stat_sum + ms
+	if ms > stat_max then stat_max = ms end
+	if stat_frames >= M.STATS_WINDOW then
+		last_avg = stat_sum / stat_frames
+		last_max = stat_max
+		stat_frames, stat_sum, stat_max = 0, 0, 0
+	end
+	return closed
 end
 
 --- Running estimate of a planet-week step in ms (budget prediction).

@@ -61,13 +61,13 @@ function worldgen.generate(seed, opts)
   world.init_systems(W)
   climate_init.apply(W)
   if worldgen.post_climate then worldgen.post_climate(W, opts) end
-  if not opts.no_spinup then worldgen.spinup(W, opts.spinup_years or config.SPINUP_YEARS, opts.progress) end
+  if not opts.no_spinup then worldgen.spinup(W, opts.spinup_years or config.SPINUP_YEARS, opts.progress, opts) end
   return W
 end
 
 -- Spin-up: simulate pre-history without recording events while the global climate measures
 -- its references, then reset the clock to Year 0.
-function worldgen.spinup(W, years, progress)
+function worldgen.spinup(W, years, progress, opts)
   W.record_events = false
   W.G.calibrating = true
   local ticks = years * 48
@@ -80,7 +80,7 @@ function worldgen.spinup(W, years, progress)
       climate_init.fauna(W)
       require("sim.systems.biome").reset(W)
     end
-    if t == settle_at then settle.run(W) end
+    if t == settle_at and not (opts and opts.no_settle) then settle.run(W) end
     if progress and t % 48 == 0 then progress(t / ticks) end
   end
   W.G.calibrating = false

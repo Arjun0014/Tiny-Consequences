@@ -17,6 +17,8 @@ M.D_FAR = 58        -- eye distance from the look target at zoom 0 (planet ~65% 
 M.D_NEAR = 4.6      -- eye distance from the surface target at zoom 1
 M.ZOOM_EXP = 1.35   -- distance curve: log-lerp on zoom^ZOOM_EXP
 M.ZOOM_MAX = 1.35   -- beyond 1: down among the villagers (W2c: watch one person's day)
+M.V3_ZOOM_MAX = 1.75  -- v3 worlds: closer still (one person's face and tool, D-078)
+M.V3_D_CLOSE = 0.55
 M.D_CLOSE = 1.5     -- eye distance at ZOOM_MAX
 M.ZOOM_DEFAULT = 0.16   -- title/default framing: planet ~85% of the frame height
 M.TILT = math.rad(62)
@@ -408,6 +410,13 @@ end
 function M.preset(name, W)
   local comps = W.geo.components or {}
   local g = W.grid
+  -- v3 worlds open on the settlement, close enough to see who is walking where (D-078)
+  local v3s = W.v3 and W.S.v3 and W.S.v3.settlements[1]
+  if v3s and (name == "default" or name == "title" or name == "village" or name == "v3") then
+    -- (and down among the people: v3 lets the camera come closer)
+    M.ZOOM_MAX, M.D_CLOSE = M.V3_ZOOM_MAX, M.V3_D_CLOSE
+    return g.lat[v3s.cell], g.lon[v3s.cell], M.V3_ZOOM or 1.25
+  end
   if name == "default" or name == "title" then
     -- open on life: the biggest village, pulled a little toward the equator so the globe
     -- (not a pole) fills the frame; landmass 1 when there are no villages

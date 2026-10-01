@@ -33,15 +33,27 @@ function M.update(W, hour_f, focus_lon)
     if tick - h[i].tick >= 40 then old = h[i]; break end
   end
   old = old or h[1]
-  local toy = math.floor(hour_f / 168) % 48
+  local v3 = W.v3
+  local toy = v3 and (math.floor(hour_f / 24) % 48) or (math.floor(hour_f / 168) % 48)
+  if v3 and W.S.v3 and W.S.v3.settlements[1] and W.grid.lat[W.S.v3.settlements[1].cell] < 0 then
+    toy = (toy + 24) % 48   -- the settlement's own season (the south is half a year on)
+  end
   local lh = daylight.local_hour(hour_f, focus_lon or 0)
   local hh = math.floor(lh)
-  local mm = math.floor((lh - hh) * 60 / 5) * 5
+  local mm = math.floor((lh - hh) * 60 / (v3 and 1 or 5)) * (v3 and 1 or 5)
+  if v3 and W.S.v3 then
+    -- v3 (D-078): people are agents; a year is 48 days, a season 12
+    local n = 0
+    for _, s in ipairs(W.S.v3.settlements) do
+      for _, id in ipairs(s.members) do if W.S.v3.people[id].alive then n = n + 1 end end
+    end
+    T.population, T.villages = n, #W.S.v3.settlements
+  end
   M.cur = {
-    year = math.floor(hour_f / 8064),
+    year = math.floor(hour_f / (v3 and 1152 or 8064)),
     clock = string.format("%02d:%02d", hh, mm), local_hour = lh,
     season = calendar.SEASONS[math.floor(toy / 12) + 1],
-    part = ({ "Early", "Mid", "Late" })[math.floor((toy % 12) / 4) + 1],
+    part = v3 and ("Day " .. (toy % 12 + 1)) or ({ "Early", "Mid", "Late" })[math.floor((toy % 12) / 4) + 1],
     population = T.population, villages = T.villages,
     grazers = T.grazers, predators = T.predators, fish = T.fish,
     t_grazers = trend(T.grazers, old and old.grazers),

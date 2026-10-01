@@ -20,7 +20,7 @@ let code = 0;
 try {
   const page = await browser.newPage({ viewport: VIEWPORT });
   page.on('console', (m) => { if (m.type() === 'error') console.log(`[console] ${m.text()}`); });
-  await page.goto(gameUrl(`http://127.0.0.1:${port}`, {}));
+  await page.goto(gameUrl(`http://127.0.0.1:${port}`, { world: 'v2' }));   // the legacy world (D-079)
   await page.waitForFunction(() => window.__TC && window.__TC.ready === true, null, { timeout: 30_000 });
   for (const level of levels) {
     const id = `bench${level}`;

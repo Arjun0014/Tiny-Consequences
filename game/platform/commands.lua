@@ -59,7 +59,82 @@ local function summary(W, sel)
   return { kind = data.kind, title = data.title, subtitle = data.subtitle, rows = rows }
 end
 
+-- v3 (D-078): advance an agent world to an absolute hour, or to the next local hour `lh` at the
+-- settlement; look at (and optionally follow) a person; a person's state for tests and shots.
+local function v3_person(W, id)
+  local V = W.S.v3
+  if id == nil or id == "worker" then
+    -- the first adult outdoors at work
+    local s = V.settlements[1]
+    for _, pid in ipairs(s.members) do
+      local p = V.people[pid]
+      if p.alive and p.inside == 0 and p.act ~= "carried" and p.act ~= "sleep" then return p end
+    end
+    return V.people[s.members[1]]
+  end
+  return V.people[tonumber(id)]
+end
+
+function M.v3_state(W, p, t)
+  local act = require("sim.agents.act")
+  local people = require("sim.agents.people")
+  local hh = W.S.v3.households[p.hh]
+  local x, y = act.pos(p, t)
+  local st, age = people.stage(p, t)
+  return { id = p.id, name = p.name .. " " .. p.surname, sex = p.sex, age = math.floor(age), stage = st, role = p.role,
+    household = p.hh, home = hh and hh.home or 0, partner = p.partner, mother = p.mother, father = p.father,
+    kids = #p.kids, objective = p.obj, action = p.act, dest = p.dest, why = p.why, x = x, y = y, inside = p.inside,
+    carry = p.carry, hunger = p.hunger, energy = p.energy, health = p.health, t0 = p.t0, t1 = p.t1 }
+end
+
 function M.register(G)
+  bridge.register("v3_goto", function(args)
+    local W = assert(G.W, "world not ready")
+    assert(W.v3, "not a v3 world")
+    local world = require("sim.world")
+    local speed = require("game.platform.speed")
+    local t = args.hour
+    if args.lh then
+      local clock = require("sim.agents.clock")
+      local s = W.S.v3.settlements[1]
+      local now = speed.v3_t or W.hour
+      local lh = clock.local_hour(now, W.grid.lon[s.cell])
+      local d = (args.lh - lh) % 24
+      t = now + d + 24 * (args.days or 0)
+    end
+    world.advance(W, t)
+    speed.v3_t = t
+    return { hour = t }
+  end)
+  -- v3_skip{kind = "dawn" | "evening" | "day" | "season"} starts a skip (D-079); {cancel = true}
+  -- stops one. Returns the target hour.
+  bridge.register("v3_skip", function(args)
+    local W = assert(G.W, "world not ready")
+    assert(W.v3, "not a v3 world")
+    local speed = require("game.platform.speed")
+    if args.cancel then speed.v3_skip_cancel(); return { hour = speed.v3_t } end
+    local to = speed.v3_skip(W, args.kind or "dawn", args.to)
+    return { from = speed.v3_t, to = to }
+  end)
+  bridge.register("v3_person", function(args)
+    local W = assert(G.W, "world not ready")
+    local speed = require("game.platform.speed")
+    local p = assert(v3_person(W, args.pid), "no such person")
+    local t = speed.v3_t or W.hour
+    if args.look then
+      local av = require("game.view.agents_view")
+      local V = av.SETS[1]
+      local x, y = require("sim.agents.act").pos(p, t)
+      local ux, uy, uz = require("sim.agents.map").unit(V.s, x, y)
+      local lat = math.asin(uy)
+      local lon = math.atan2(uz, ux)
+      camera.set(math.deg(lat) * math.pi / 180, lon, args.zoom or 1.6, true)
+    end
+    if args.follow ~= nil then
+      require("game.view.agents_view").follow = args.follow and p.id or nil
+    end
+    return M.v3_state(W, p, t)
+  end)
   -- camera{preset | lat, lon, zoom | drag={dx,dy} | follow=true}; lat/lon in degrees.
   bridge.register("camera", function(args)
     local W = assert(G.W, "world not ready")
@@ -322,6 +397,10 @@ function M.register(G)
         or ents.village(W, args.village)
       assert(v, "no such village (villages: " .. #ents.villages(W) .. ")")
       sel = { kind = "village", id = v.id, cell = v.cell }
+    elseif args.person and W.v3 then
+      local pid = tonumber(args.person)
+      assert(pid and W.S.v3.people[pid], "no such person")
+      sel = { kind = "person", id = pid, v3 = true }
     elseif args.person then
       local pid = (args.person == "first" and first_person(W)) or (args.person == "worker" and a_worker(W)) or args.person
       assert(pid and ents.person(W, pid), "no such person")

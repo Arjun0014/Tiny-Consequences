@@ -12,6 +12,10 @@ materials {
   material: "/game/render/shadow_ws.material"
 }
 materials {
+  name: "shadow_villager"
+  material: "/game/render/shadow_villager.material"
+}
+materials {
   name: "shadow_cloud"
   material: "/game/render/shadow_cloud.material"
 }

@@ -25,8 +25,9 @@ local POWER_KEYS = {
 }
 local SPEED_KEYS = {
 	[hash("key_1")] = 1, [hash("key_2")] = 2, [hash("key_3")] = 3, [hash("key_4")] = 4,
-	[hash("key_5")] = 5, [hash("key_6")] = 6,
+	[hash("key_5")] = 5, [hash("key_6")] = 6, [hash("key_7")] = 7,
 }
+local V3_SKIP_KEYS = { [4] = "dawn", [5] = "evening", [6] = "day", [7] = "season" }
 
 local FF_BUDGET_MS = 200       -- run_ticks: sim time per frame while fast-forwarding (tests)
 local LOAD_SLICE_MS = 40       -- loading: work per frame before yielding to render a frame
@@ -41,6 +42,7 @@ local URLS = {
 	rain_factory = "/main#rain_factory",
 	smoke_factory = "/main#smoke_factory",
 	person_factory = "/main#person_factory",
+	villager_factory = "/main#villager_factory",
 	tanker_factory = "/main#tanker_factory",
 	boat_factory = "/main#boat_factory",
 	bird_factory = "/main#bird_factory",
@@ -48,6 +50,13 @@ local URLS = {
 	atmo = "/atmo#mesh",
 	terrain = "/terrain#mesh",
 }
+
+-- People alive in a v3 world.
+local function v3_population(W)
+	local n = 0
+	for _, p in pairs(W.S.v3.people) do if p.alive then n = n + 1 end end
+	return n
+end
 
 -- Loading -----------------------------------------------------------------------------------
 
@@ -77,12 +86,14 @@ local function start_loading(self, seed)
 			-- pre-spun Year-0 world (assets/worlds/default.tcsave, custom resource): no spin-up
 			self.use_prespun = false
 			local ok_mod, worlds = pcall(require, "sim.worlds")
-			-- ?world=NAME loads assets/worlds/NAME.tcsave (dev: worlds saved at a later year by
-			-- tools/make_world.lua --years N; not shipped when absent)
+			-- the v3 agent world is the game (D-078, D-079): assets/worlds/v3.tcsave. ?world=v2 loads
+			-- the legacy v2 world (assets/worlds/default.tcsave); ?world=NAME any other
+			-- assets/worlds/NAME.tcsave (dev: worlds saved later by tools/make_world.lua)
 			local wname = query.get().world
-			local path = "/assets/worlds/" .. (wname and wname:match("^[%w_]+$") and wname or "default") .. ".tcsave"
+			if wname == "v2" then wname = "default" end
+			local path = "/assets/worlds/" .. (wname and wname:match("^[%w_]+$") and wname or "v3") .. ".tcsave"
 			local okr, data = pcall(sys.load_resource, path)
-			if not okr or not data then data = ok_mod and sys.load_resource("/assets/worlds/default.tcsave") or nil end
+			if not okr or not data then data = ok_mod and sys.load_resource("/assets/worlds/v3.tcsave") or nil end
 			data = ok_mod and data or nil
 			if data and worlds.from_save_string then
 				state.loading.text = "Unpacking a tiny world..."
@@ -97,7 +108,8 @@ local function start_loading(self, seed)
 			end
 		end
 		if not W then
-			local worldgen = require("sim.worldgen.init")
+			-- ?seed=N generates: a v3 agent world, or a v2 world with ?world=v2
+			local worldgen = query.get().world == "v2" and require("sim.worldgen.init") or require("sim.agents.worldgen")
 			W = worldgen.generate(seed, {
 				progress = function(f)
 					state.loading.frac = 0.05 + 0.7 * f
@@ -137,6 +149,13 @@ local function finish_loading(self)
 		end
 	end
 	self.world_heavy_fn = function() return self.W.hour % 168 == 0 end
+	if self.W.v3 then
+		speed.v3_init(self.W)
+		-- v3 opens at ▶▶ (4 game minutes a second) unless ?speed= says otherwise
+		if not query.number("speed", nil) then speed.set(speed.V3_START) end
+	else
+		speed.v3_t = nil
+	end
 	self.perf_reset(self)
 	local cam = query.get().cam
 	local lat, lon, zoom = camera.preset(cam or "default", self.W)
@@ -173,6 +192,7 @@ function init(self)
 		if not ok then print("[tc] ignoring ?speed=: " .. tostring(err)) end
 	end
 	if query.flag("freeze") then view.set_frozen(true) end
+	if query.flag("vnoshadow") then state.no_villager_shadow = true end
 	-- gfx=low: no shadow map and no post pipeline (functional browser tests: headless Chromium
 	-- rasterises on the CPU, where the full pipeline costs seconds per frame)
 	if query.get().gfx == "low" then
@@ -209,10 +229,13 @@ function init(self)
 			loading_frac = state.loading.frac,
 			seed = self.seed,
 			tick = W and W.tick or 0,
-			hour = W and W.hour or 0,
-			hour_f = W and (W.hour + speed.alpha()) or 0,
+			hour = W and (W.v3 and speed.v3_t or W.hour) or 0,
+			hour_f = W and (W.v3 and speed.v3_t or (W.hour + speed.alpha())) or 0,
 			year = W and math.floor(W.hour / 8064) or 0,
 			speed = speed.get(),
+			v3 = W and W.v3 or false,
+			skipping = speed.v3_skipping(),
+			skip_progress = speed.v3_skip_progress() or false,
 			ticks_per_s = self.tps or 0,
 			sim_ms_avg = avg,
 			sim_ms_max = max,
@@ -238,8 +261,8 @@ function init(self)
 			cam = vs.cam,
 			frozen = state.frozen,
 			selection = sel and { kind = sel.kind, cell = sel.cell, id = sel.id } or false,
-			population = W and require("game.view.ents").population(W) or 0,
-			villages = W and #require("game.view.ents").villages(W) or 0,
+			population = W and (W.v3 and v3_population(W) or require("game.view.ents").population(W)) or 0,
+			villages = W and (W.v3 and #W.S.v3.settlements or #require("game.view.ents").villages(W)) or 0,
 			events = W and W.E and W.E.total or 0,
 			last_power = (function()
 				if not (W and W.E) then return "" end
@@ -321,6 +344,8 @@ function update(self, dt)
 				self.ff = nil
 				bridge.publish()
 			end
+		elseif W.v3 then
+			speed.step_v3(dt, W, require("sim.world"))
 		else
 			speed.step(dt, self.world_tick_fn, self.world_heavy_fn)
 			local _, _, frame_ms, frame_ticks = speed.stats()
@@ -339,6 +364,7 @@ function update(self, dt)
 		local r = uistate.pop_request()
 		while r do
 			if r.cmd == "fly_to_sel" then controls.fly_to_selection(W) end
+			if r.cmd == "follow" then require("game.view.agents_view").follow = r.id end
 			r = uistate.pop_request()
 		end
 	end
@@ -375,7 +401,9 @@ function on_input(self, action_id, action)
 		return false
 	end
 	if action_id == H_SPACE then
-		if speed.get() == speed.PAUSE then
+		if speed.v3_skipping() then
+			speed.v3_skip_cancel()
+		elseif speed.get() == speed.PAUSE then
 			speed.set(self.paused_speed)
 		else
 			self.paused_speed = speed.get()
@@ -395,7 +423,13 @@ function on_input(self, action_id, action)
 	end
 	local lvl = SPEED_KEYS[action_id]
 	if lvl and not self.shift then
-		speed.set(lvl)
+		if self.W and self.W.v3 and lvl > speed.V3_WATCH_MAX then
+			-- v3: 4 dawn, 5 evening, 6 a day, 7 the next season (explicit skips, D-079)
+			if speed.v3_skipping() then speed.v3_skip_cancel() else speed.v3_skip(self.W, V3_SKIP_KEYS[lvl]) end
+		else
+			if speed.v3_skipping() then speed.v3_skip_cancel() end
+			if lvl <= speed.MAX_LEVEL then speed.set(lvl) end
+		end
 		return true
 	end
 	return false

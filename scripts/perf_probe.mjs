@@ -28,7 +28,7 @@ const fmt = (r) => `tick med ${r.tick_median.toFixed(2)} p95 ${r.tick_p95.toFixe
 try {
   const vw = getFlag(args, '--viewport', null);
   const page = await browser.newPage({ viewport: vw ? { width: Number(vw.split('x')[0]), height: Number(vw.split('x')[1]) } : VIEWPORT });
-  const q = { speed: '0' };
+  const q = { speed: '0', world: 'v2' };   // the legacy v2 world unless --world (D-079)
   const wname = getFlag(args, '--world', null);
   if (wname) q.world = wname;
   const gfx = getFlag(args, '--gfx', null);

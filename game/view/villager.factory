@@ -1,0 +1,2 @@
+prototype: "/game/view/villager.go"
+load_dynamically: false

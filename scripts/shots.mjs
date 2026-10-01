@@ -99,7 +99,7 @@ try {
   page.on('console', (m) => report.console.push(`[${m.type()}] ${m.text()}`));
   page.on('pageerror', (e) => report.console.push(`[pageerror] ${e.message}`));
   const t0 = Date.now();
-  const q = { freeze: '1', speed: '0' };
+  const q = { freeze: '1', speed: '0', world: 'v2' };   // the legacy v2 world (D-079); --world overrides
   if (seedFlag !== null) q.seed = String(seedFlag);
   const worldFlag = getFlag(args, '--world', null);
   if (worldFlag !== null) q.world = String(worldFlag);
