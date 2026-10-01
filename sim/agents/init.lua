@@ -15,9 +15,12 @@ local act = require("sim.agents.act")
 local think = require("sim.agents.think")
 local settle = require("sim.agents.settle")
 local life = require("sim.agents.life")
+local kin = require("sim.agents.kin")
 local rng = require("sim.rng")
 
 local sys = { name = "agents" }
+-- (act.lua cannot require this module: bob rejects circular requires; it calls through this hook)
+act.interrupt_hook = function(W, p, at, reason) return sys.interrupt(W, p, at, reason) end
 local floor, min, max = math.floor, math.min, math.max
 
 -- Event heap (runtime) ------------------------------------------------------------------------
@@ -130,7 +133,7 @@ local function step_person(W, s, p, now)
     p.int_at = nil
     if p.act == "carried" then
       -- held by their carer; hungry, they call for food (sim/agents/kin.lua)
-      require("sim.agents.kin").infant_tick(W, s, p, now, now - p.t0, sys.interrupt)
+      kin.infant_tick(W, s, p, now, now - p.t0, sys.interrupt, act.pos)
     end
     act.finish(W, s, p, now, 1)
     p.pi = p.pi + 1

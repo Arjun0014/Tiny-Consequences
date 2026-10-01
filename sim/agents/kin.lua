@@ -89,7 +89,7 @@ function M.reclaim(W, s, p)
 end
 
 -- An infant's half-hour (sim/agents/init.lua): hunger, and calling for food.
-function M.infant_tick(W, s, ib, now, dt, interrupt)
+function M.infant_tick(W, s, ib, now, dt, interrupt, pos)
   local c = C()
   local V = W.S.v3
   local q = V.people[ib.carer or 0]
@@ -109,7 +109,7 @@ function M.infant_tick(W, s, ib, now, dt, interrupt)
     if q then M.give(W, ib, q) end
   end
   if q then
-    ib.x, ib.y = require("sim.agents.act").pos(q, now)
+    ib.x, ib.y = pos(q, now)
     ib.inside = q.inside
   end
   local asleep = q and q.act == "sleep"

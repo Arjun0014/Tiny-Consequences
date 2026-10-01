@@ -335,7 +335,7 @@ WORK.hand = function(W, s, p, st, f)
   if not (q.inside == p.inside or (q.inside == 0 and (q.x - p.x) ^ 2 + (q.y - p.y) ^ 2 < 0.004)) then return end
   if kin.give(W, ib, q) then
     people.remember(q, W.S.v3.now or W.hour, "Minding " .. ib.name .. " for " .. p.name)
-    require("sim.agents.init").interrupt(W, q, (W.S.v3.now or W.hour) + 0.02, "Minding " .. ib.name)
+    if M.interrupt_hook then M.interrupt_hook(W, q, (W.S.v3.now or W.hour) + 0.02, "Minding " .. ib.name) end
   end
 end
 
