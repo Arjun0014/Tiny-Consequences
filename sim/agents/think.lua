@@ -553,7 +553,9 @@ function M.lazy_grub(c, ff)
   local tr = s.trees
   local best, bd = 0, 1e9
   local px, py = p.x, p.y
-  for k = 1, tr.n do
+  local L = settle.clearing_trees(s) or {}
+  for j = 1, #L do
+    local k = L[j]
     if tr.st[k] == 3 and tr.claim[k] == 0 and s.plot[tr.tile[k]] == -1 then
       local d = dist(px, py, tr.x[k], tr.y[k])
       if d < bd then best, bd = k, d end

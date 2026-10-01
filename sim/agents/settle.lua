@@ -175,34 +175,95 @@ function M.add_plot(W, s, ix0, iy0, hh, name)
   return pl
 end
 
--- Which tree should a woodcutter fell next? A tree on new field ground first (any size), else
--- the nearest grown tree to the woodstore (and to them), off the village ground.
-function M.next_tree(W, s, p)
+-- Runtime indexes for the woods (never saved: rebuilt from the state, so a loaded world finds the
+-- same trees). Trees never move and are only added at the founding.
+local WOOD_IDX = setmetatable({}, { __mode = "k" })
+local CLEAR_IDX = setmetatable({}, { __mode = "k" })
+
+-- The trees off the village ground ordered by their distance from the woodstore (ties by index),
+-- with those distances.
+local function wood_index(s)
   local tr = s.trees
   local wx, wy = s.wood_x or 0, s.wood_y or 0
+  local ix = WOOD_IDX[s]
+  if ix and ix.n == tr.n and ix.wx == wx and ix.wy == wy then return ix end
+  local O, D = {}, {}
+  local m = 0
+  for k = 1, tr.n do
+    local x, y = tr.x[k], tr.y[k]
+    local r2 = x * x + y * y
+    if r2 > 0.09 then
+      local dx, dy = x - wx, y - wy
+      m = m + 1
+      O[m] = k
+      D[k] = sqrt(dx * dx + dy * dy)
+    end
+  end
+  table.sort(O, function(a, b)
+    local da, db = D[a], D[b]
+    if da ~= db then return da < db end
+    return a < b
+  end)
+  local D1 = {}
+  for j = 1, m do D1[j] = D[O[j]] end
+  ix = { n = tr.n, wx = wx, wy = wy, O = O, D1 = D1, m = m }
+  WOOD_IDX[s] = ix
+  return ix
+end
+
+-- The trees (and stumps) on the field ground being cleared, by index.
+function M.clearing_trees(s)
+  local cl = s.clearing
+  if not cl then return nil end
+  local L = CLEAR_IDX[cl]
+  if L then return L end
+  L = {}
+  local N, P = s.N, C().plot_tiles
+  for jy = cl.iy0, cl.iy0 + P - 1 do
+    for jx = cl.ix0, cl.ix0 + P - 1 do
+      local k = s.tree[(jy - 1) * N + jx]
+      if k > 0 then L[#L + 1] = k end
+    end
+  end
+  table.sort(L)
+  CLEAR_IDX[cl] = L
+  return L
+end
+
+-- Which tree should a woodcutter fell next? A tree on new field ground first (any size), else
+-- the nearest grown tree to the woodstore (and to them), off the village ground. The woods are
+-- walked outward from the woodstore and the walk stops once no farther tree could score better
+-- (a tree's score is at least its distance from the woodstore less 0.15): the same tree as a
+-- scan of every tree, at a fraction of the cost.
+function M.next_tree(W, s, p)
+  local tr = s.trees
+  local st, claim, size, tile, plot = tr.st, tr.claim, tr.size, tr.tile, s.plot
+  local X, Y = tr.x, tr.y
+  local px, py = p.x, p.y
   local best, bs = 0, 1e9
   if s.clearing then
-    for k = 1, tr.n do
-      if tr.st[k] == 1 and tr.claim[k] == 0 and s.plot[tr.tile[k]] == -1 then
-        local dx, dy = tr.x[k] - p.x, tr.y[k] - p.y
+    local L = M.clearing_trees(s)
+    for j = 1, #L do
+      local k = L[j]
+      if st[k] == 1 and claim[k] == 0 and plot[tile[k]] == -1 then
+        local dx, dy = X[k] - px, Y[k] - py
         local d = sqrt(dx * dx + dy * dy)
         if d < bs then best, bs = k, d end
       end
     end
     if best > 0 then return best, true end
   end
-  for k = 1, tr.n do
-    if tr.st[k] == 1 and tr.claim[k] == 0 and tr.size[k] >= 0.45 and s.plot[tr.tile[k]] == 0 then
-      local x, y = tr.x[k], tr.y[k]
-      local r2 = x * x + y * y
-      if r2 > 0.09 then
-        local dx, dy = x - wx, y - wy
-        local d1 = sqrt(dx * dx + dy * dy)
-        local ex, ey = x - p.x, y - p.y
-        local d2 = sqrt(ex * ex + ey * ey)
-        local sc = d1 + 0.5 * d2 - 0.15 * tr.size[k]
-        if sc < bs then best, bs = k, sc end
-      end
+  local ix = wood_index(s)
+  local O, D1 = ix.O, ix.D1
+  for j = 1, ix.m do
+    local d1 = D1[j]
+    if d1 - 0.15 > bs then break end
+    local k = O[j]
+    if st[k] == 1 and claim[k] == 0 and size[k] >= 0.45 and plot[tile[k]] == 0 then
+      local ex, ey = X[k] - px, Y[k] - py
+      local d2 = sqrt(ex * ex + ey * ey)
+      local sc = d1 + 0.5 * d2 - 0.15 * size[k]
+      if sc < bs or (sc == bs and k < best) then best, bs = k, sc end
     end
   end
   return best

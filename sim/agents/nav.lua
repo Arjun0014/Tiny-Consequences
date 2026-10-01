@@ -84,12 +84,6 @@ local function los(s, a, b, cmax)
 end
 M.los = los
 
--- 8 neighbours: index offsets, x and y steps, step length
-local NB_DX = { -1, 0, 1, -1, 1, -1, 0, 1 }
-local NB_DY = { -1, -1, -1, 0, 0, 1, 1, 1 }
-local NB_L = { SQ2, 1, SQ2, 1, 1, SQ2, 1, SQ2 }
-local NBOS = {}                   -- index offsets per map size
-
 -- A* from tile a to tile b; fills `tiles` with the tile path (a .. b); returns its length or 0.
 -- The open list is a bucket queue (D-086): f quantised to 1/BQ of an open-ground step, last in
 -- first out within a bucket — O(1) pushes and pops (a binary heap's sifting was half the cost in
@@ -110,12 +104,7 @@ local function astar(s, a, b, temper, tiles)
   local bx, by = IX[b], IY[b]
   local hw = M.HW * BQ
   local hd = hw * (SQ2 - 2)
-  local NBO = NBOS[N]
-  if not NBO then
-    NBO = {}
-    for d = 1, 8 do NBO[d] = NB_DY[d] * N + NB_DX[d] end
-    NBOS[N] = NBO
-  end
+  local oNW, oN, oNE, oW, oE, oSW, oS, oSE = -N - 1, -N, -N + 1, -1, 1, N - 1, N, N + 1
   local Gs, PARs, SO, SC = G, PAR, ST_OPEN, ST_CLOSED
   local bh, bs, en, ex = BH, BS, EN, EX
   -- the goal may be a closed tile (a door, a footprint): open it for this search
@@ -147,31 +136,199 @@ local function astar(s, a, b, temper, tiles)
       if expanded > maxe then break end
       local gc = Gs[cur]
       -- (the map's border tiles are closed, so every neighbour of an expanded tile is on the map)
-      for d = 1, 8 do
-        local j = cur + NBO[d]
+      -- The eight neighbours in a fixed order (NW N NE W E SW S SE), written out: the same pushes
+      -- in the same order as a loop over direction tables, without the table reads (D-091).
+      local cN, cW, cE, cS = cost[cur - N], cost[cur - 1], cost[cur + 1], cost[cur + N]
+      local cx, cy = IX[cur] - bx, IY[cur] - by
+      do
+        local j = cur + oNW
         local c = cost[j]
+        if c > 0 and SC[j] ~= sc and cW >= 0 and cN >= 0 then
+          if lane[j] == 0 then c = c * tk end
+          local g2 = gc + c * SQ2
+          if SO[j] ~= so or g2 < Gs[j] then
+            Gs[j] = g2
+            PARs[j] = cur
+            SO[j] = so
+            local hx, hy = cx - 1, cy - 1
+            if hx < 0 then hx = -hx end
+            if hy < 0 then hy = -hy end
+            local q = g2 * BQ + hw * (hx + hy) + hd * (hx < hy and hx or hy)
+            q = q - q % 1
+            ne = ne + 1
+            en[ne] = j
+            if bs[q] ~= sc then bs[q] = sc; ex[ne] = 0 else ex[ne] = bh[q] end
+            bh[q] = ne
+            if q < qmin then qmin = q end
+            if q > qmax then qmax = q end
+          end
+        end
+      end
+      do
+        local j = cur + oN
+        local c = cN
         if c > 0 and SC[j] ~= sc then
-          local dx, dy = NB_DX[d], NB_DY[d]
-          -- no corner cutting past closed tiles
-          if dx == 0 or dy == 0 or (cost[cur + dx] >= 0 and cost[cur + dy * N] >= 0) then
-            if lane[j] == 0 then c = c * tk end
-            local g2 = gc + c * NB_L[d]
-            if SO[j] ~= so or g2 < Gs[j] then
-              Gs[j] = g2
-              PARs[j] = cur
-              SO[j] = so
-              local hx, hy = IX[j] - bx, IY[j] - by
-              if hx < 0 then hx = -hx end
-              if hy < 0 then hy = -hy end
-              -- push
-              local q = floor(g2 * BQ + hw * (hx + hy) + hd * (hx < hy and hx or hy))
-              ne = ne + 1
-              en[ne] = j
-              if bs[q] ~= sc then bs[q] = sc; ex[ne] = 0 else ex[ne] = bh[q] end
-              bh[q] = ne
-              if q < qmin then qmin = q end
-              if q > qmax then qmax = q end
-            end
+          if lane[j] == 0 then c = c * tk end
+          local g2 = gc + c
+          if SO[j] ~= so or g2 < Gs[j] then
+            Gs[j] = g2
+            PARs[j] = cur
+            SO[j] = so
+            local hx, hy = cx, cy - 1
+            if hx < 0 then hx = -hx end
+            if hy < 0 then hy = -hy end
+            local q = g2 * BQ + hw * (hx + hy) + hd * (hx < hy and hx or hy)
+            q = q - q % 1
+            ne = ne + 1
+            en[ne] = j
+            if bs[q] ~= sc then bs[q] = sc; ex[ne] = 0 else ex[ne] = bh[q] end
+            bh[q] = ne
+            if q < qmin then qmin = q end
+            if q > qmax then qmax = q end
+          end
+        end
+      end
+      do
+        local j = cur + oNE
+        local c = cost[j]
+        if c > 0 and SC[j] ~= sc and cE >= 0 and cN >= 0 then
+          if lane[j] == 0 then c = c * tk end
+          local g2 = gc + c * SQ2
+          if SO[j] ~= so or g2 < Gs[j] then
+            Gs[j] = g2
+            PARs[j] = cur
+            SO[j] = so
+            local hx, hy = cx + 1, cy - 1
+            if hx < 0 then hx = -hx end
+            if hy < 0 then hy = -hy end
+            local q = g2 * BQ + hw * (hx + hy) + hd * (hx < hy and hx or hy)
+            q = q - q % 1
+            ne = ne + 1
+            en[ne] = j
+            if bs[q] ~= sc then bs[q] = sc; ex[ne] = 0 else ex[ne] = bh[q] end
+            bh[q] = ne
+            if q < qmin then qmin = q end
+            if q > qmax then qmax = q end
+          end
+        end
+      end
+      do
+        local j = cur + oW
+        local c = cW
+        if c > 0 and SC[j] ~= sc then
+          if lane[j] == 0 then c = c * tk end
+          local g2 = gc + c
+          if SO[j] ~= so or g2 < Gs[j] then
+            Gs[j] = g2
+            PARs[j] = cur
+            SO[j] = so
+            local hx, hy = cx - 1, cy
+            if hx < 0 then hx = -hx end
+            if hy < 0 then hy = -hy end
+            local q = g2 * BQ + hw * (hx + hy) + hd * (hx < hy and hx or hy)
+            q = q - q % 1
+            ne = ne + 1
+            en[ne] = j
+            if bs[q] ~= sc then bs[q] = sc; ex[ne] = 0 else ex[ne] = bh[q] end
+            bh[q] = ne
+            if q < qmin then qmin = q end
+            if q > qmax then qmax = q end
+          end
+        end
+      end
+      do
+        local j = cur + oE
+        local c = cE
+        if c > 0 and SC[j] ~= sc then
+          if lane[j] == 0 then c = c * tk end
+          local g2 = gc + c
+          if SO[j] ~= so or g2 < Gs[j] then
+            Gs[j] = g2
+            PARs[j] = cur
+            SO[j] = so
+            local hx, hy = cx + 1, cy
+            if hx < 0 then hx = -hx end
+            if hy < 0 then hy = -hy end
+            local q = g2 * BQ + hw * (hx + hy) + hd * (hx < hy and hx or hy)
+            q = q - q % 1
+            ne = ne + 1
+            en[ne] = j
+            if bs[q] ~= sc then bs[q] = sc; ex[ne] = 0 else ex[ne] = bh[q] end
+            bh[q] = ne
+            if q < qmin then qmin = q end
+            if q > qmax then qmax = q end
+          end
+        end
+      end
+      do
+        local j = cur + oSW
+        local c = cost[j]
+        if c > 0 and SC[j] ~= sc and cW >= 0 and cS >= 0 then
+          if lane[j] == 0 then c = c * tk end
+          local g2 = gc + c * SQ2
+          if SO[j] ~= so or g2 < Gs[j] then
+            Gs[j] = g2
+            PARs[j] = cur
+            SO[j] = so
+            local hx, hy = cx - 1, cy + 1
+            if hx < 0 then hx = -hx end
+            if hy < 0 then hy = -hy end
+            local q = g2 * BQ + hw * (hx + hy) + hd * (hx < hy and hx or hy)
+            q = q - q % 1
+            ne = ne + 1
+            en[ne] = j
+            if bs[q] ~= sc then bs[q] = sc; ex[ne] = 0 else ex[ne] = bh[q] end
+            bh[q] = ne
+            if q < qmin then qmin = q end
+            if q > qmax then qmax = q end
+          end
+        end
+      end
+      do
+        local j = cur + oS
+        local c = cS
+        if c > 0 and SC[j] ~= sc then
+          if lane[j] == 0 then c = c * tk end
+          local g2 = gc + c
+          if SO[j] ~= so or g2 < Gs[j] then
+            Gs[j] = g2
+            PARs[j] = cur
+            SO[j] = so
+            local hx, hy = cx, cy + 1
+            if hx < 0 then hx = -hx end
+            if hy < 0 then hy = -hy end
+            local q = g2 * BQ + hw * (hx + hy) + hd * (hx < hy and hx or hy)
+            q = q - q % 1
+            ne = ne + 1
+            en[ne] = j
+            if bs[q] ~= sc then bs[q] = sc; ex[ne] = 0 else ex[ne] = bh[q] end
+            bh[q] = ne
+            if q < qmin then qmin = q end
+            if q > qmax then qmax = q end
+          end
+        end
+      end
+      do
+        local j = cur + oSE
+        local c = cost[j]
+        if c > 0 and SC[j] ~= sc and cE >= 0 and cS >= 0 then
+          if lane[j] == 0 then c = c * tk end
+          local g2 = gc + c * SQ2
+          if SO[j] ~= so or g2 < Gs[j] then
+            Gs[j] = g2
+            PARs[j] = cur
+            SO[j] = so
+            local hx, hy = cx + 1, cy + 1
+            if hx < 0 then hx = -hx end
+            if hy < 0 then hy = -hy end
+            local q = g2 * BQ + hw * (hx + hy) + hd * (hx < hy and hx or hy)
+            q = q - q % 1
+            ne = ne + 1
+            en[ne] = j
+            if bs[q] ~= sc then bs[q] = sc; ex[ne] = 0 else ex[ne] = bh[q] end
+            bh[q] = ne
+            if q < qmin then qmin = q end
+            if q > qmax then qmax = q end
           end
         end
       end

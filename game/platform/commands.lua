@@ -136,13 +136,110 @@ function M.register(G)
     local a = clock.now_ms()
     local step = args.step or 1
     local t = t0
+    local per = {}
     while t < t0 + hours do
       t = math.min(t0 + hours, t + step)
+      local b0 = clock.now_ms()
       require("sim.world").advance(W, t)
+      per[#per + 1] = clock.now_ms() - b0
     end
     local ms = clock.now_ms() - a
     speed.v3_t = t
-    return { hours = hours, ms = ms, ms_per_hour = ms / hours, people = W.S.v3.next_person - 1 }
+    return { hours = hours, ms = ms, ms_per_hour = ms / hours, people = W.S.v3.next_person - 1, per = per }
+  end)
+  -- v3_prof{hours, every, depth, top} (probes): v3_bench under the wall-time sampler
+  -- (game/platform/luaprof.lua): where the sim's time goes in this runtime, by function and line.
+  bridge.register("v3_prof", function(args)
+    local W = assert(G.W, "world not ready")
+    assert(W.v3, "not a v3 world")
+    local speed = require("game.platform.speed")
+    local hours = args.hours or 24
+    local t0 = speed.v3_t or W.hour
+    local r = require("game.platform.luaprof").run(function()
+      local t = t0
+      while t < t0 + hours do
+        t = math.min(t0 + hours, t + 1)
+        require("sim.world").advance(W, t)
+      end
+    end, args)
+    speed.v3_t = t0 + hours
+    r.hours = hours
+    r.ms_per_hour = r.sampled_ms / hours
+    return r
+  end)
+  -- v3_time{hours, fns = {"sim.agents.settle:next_tree", ...}} (probes): v3_bench with the named
+  -- module functions wrapped in wall timers (calls and inclusive ms each); exact where the sampler
+  -- smears. Only calls made through the module table are seen.
+  bridge.register("v3_time", function(args)
+    local W = assert(G.W, "world not ready")
+    assert(W.v3, "not a v3 world")
+    local speed = require("game.platform.speed")
+    local hours = args.hours or 24
+    local now = clock.now_ms
+    local stats, undo = {}, {}
+    for _, spec in ipairs(args.fns or {}) do
+      local mod, fname = spec:match("^([^:]+):(.+)$")
+      local m = require(mod)
+      local orig = assert(m[fname], "no function " .. spec)
+      local st = { fn = spec, calls = 0, ms = 0 }
+      stats[#stats + 1] = st
+      undo[#undo + 1] = { m, fname, orig }
+      m[fname] = function(...)
+        local a = now()
+        local r1, r2, r3, r4 = orig(...)
+        st.ms = st.ms + (now() - a)
+        st.calls = st.calls + 1
+        return r1, r2, r3, r4
+      end
+    end
+    local t0 = speed.v3_t or W.hour
+    local a = now()
+    local t = t0
+    local ok, err = pcall(function()
+      while t < t0 + hours do
+        t = math.min(t0 + hours, t + 1)
+        require("sim.world").advance(W, t)
+      end
+    end)
+    local ms = now() - a
+    for _, u in ipairs(undo) do u[1][u[2]] = u[3] end
+    assert(ok, err)
+    speed.v3_t = t
+    for _, st in ipairs(stats) do st.ms_per_hour = st.ms / hours; st.us_per_call = 1000 * st.ms / math.max(1, st.calls) end
+    return { hours = hours, ms = ms, ms_per_hour = ms / hours, fns = stats }
+  end)
+  -- microbench{n}: what common operations cost in this runtime (ns each): a VM loop, table reads,
+  -- C calls (bit, math.floor, math.sqrt), string.format, a full rng.hash and rng.fbase.
+  bridge.register("microbench", function(args)
+    local n = args.n or 200000
+    local bitm = bit or require("bit")
+    local bxor, rshift, floor, sqrt = bitm.bxor, bitm.rshift, math.floor, math.sqrt
+    local rng = require("sim.rng")
+    local now = clock.now_ms
+    local t = { 1, 2, 3, 4 }
+    local out = {}
+    local function run(name, fn)
+      local a = now()
+      local r = fn()
+      out[name] = (now() - a) * 1e6 / n
+      return r
+    end
+    local base = run("loop", function() local x = 0; for i = 1, n do x = x + i end; return x end)
+    run("table_read", function() local x = 0; for i = 1, n do x = x + t[(i % 4) + 1] end; return x end)
+    run("bxor", function() local x = 0; for i = 1, n do x = bxor(x, i) end; return x end)
+    run("rshift", function() local x = 0; for i = 1, n do x = x + rshift(i, 3) end; return x end)
+    run("floor", function() local x = 0; for i = 1, n do x = x + floor(i * 0.37) end; return x end)
+    run("mod_floor", function() local x = 0; for i = 1, n do local v = i * 0.37; x = x + (v - v % 1) end; return x end)
+    run("sqrt", function() local x = 0; for i = 1, n do x = x + sqrt(i) end; return x end)
+    run("lua_call", function() local f = function(a) return a + 1 end; local x = 0; for i = 1, n do x = f(x) end; return x end)
+    run("format", function() local x; for i = 1, n / 10 do x = string.format("%d of %s", i, "x") end; return x end)
+    out.format = out.format * 10
+    run("hash", function() local x = 0; for i = 1, n / 10 do x = x + rng.hash(1, 2, i, 3, 4) end; return x end)
+    out.hash = out.hash * 10
+    run("fbase", function() local x = 0; for i = 1, n / 10 do x = x + rng.fbase(12345, i) end; return x end)
+    out.fbase = out.fbase * 10
+    out._ = base
+    return out
   end)
   bridge.register("v3_person", function(args)
     local W = assert(G.W, "world not ready")
