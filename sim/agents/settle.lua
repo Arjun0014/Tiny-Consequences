@@ -1385,6 +1385,20 @@ function M.daily(W, s, day)
     rf = rf + c.rfish_regrow * rf * (1 - rf / s.river_fish_cap) + 0.01 * s.river_fish_cap
   end
   s.river_fish = min(rf, s.river_fish_cap)
+  -- (D-107) what drains into the river: the houses and pens near its banks (people's and beasts'
+  -- dirt), the nearer the more
+  local dirt = 0
+  if s.has_river then
+    for k = 1, #s.blist do
+      local b = s.buildings[s.blist[k]]
+      local wgt = (b.kind == "house" and b.hh ~= 0 and 1) or ((b.kind == "fold" or b.kind == "byre" or b.kind == "sty") and 2) or 0
+      if wgt > 0 then
+        local bi, bd = mapm.house_bank(s, b)
+        if bi > 0 and bd < c.foul_reach then dirt = dirt + wgt * (1 - bd / c.foul_reach) end
+      end
+    end
+  end
+  s.river_dirt = dirt
   plan_bridges(W, s)
   -- (the day's best exchange with the neighbours, by what the village knows of them: D-101)
   M.econ.daily(W, s, day * 24)

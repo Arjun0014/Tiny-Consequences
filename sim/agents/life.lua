@@ -174,6 +174,21 @@ function M.daily(W, s, day)
           if m then people.remember(p, now, "Learning " .. m.role .. "'s work from " .. m.name) end
         end
       end
+      -- the flux from foul water (D-107): a chance each day while the house drinks it; days of
+      -- sickness (weak, losing health; the very young and the old may die of it); the household
+      -- keeps to the well after it
+      local fhome = people.home(W, s, p)
+      if (p.flux or -1) >= day then
+        p.health = max(0, p.health - c.flux_health)
+        p.energy = min(p.energy, 0.5)
+      elseif fhome and (fhome.foul or 0) > 0 and (fhome.stock.water or 0) > 0 and st ~= "infant"
+        and u(W, p, 7, day) < fhome.foul * c.flux_k then
+        p.flux = day + c.flux_days
+        s.acc.flux = (s.acc.flux or 0) + 1
+        local hh = V.households[p.hh]
+        if hh then hh.river_bad = day end
+        people.remember(p, now, "Sick with the flux: the river water")
+      end
       -- shoes wear (D-104); barefoot in the cold costs health
       local sw = c.shoes_wear[st]
       if sw then
@@ -213,6 +228,7 @@ function M.daily(W, s, day)
       local hz = hazard(a) / c.days_per_year
       if p.health < 0.4 then hz = hz + (0.4 - p.health) * 0.05 end
       if poor then hz = hz + c.diet_hz end
+      if (p.flux or -1) >= day and (st == "child" or st == "elder") and a < 5 + (st == "elder" and 100 or 0) then hz = hz + c.flux_hz end
       if home and home.cold and (st == "infant" or st == "elder") then hz = hz + 0.002 end
       if u(W, p, 1, day) < hz then
         local cause = p.health < 0.25 and (p.hunger > 0.8 and "hunger" or "illness") or (a > 50 and "old age" or "illness")

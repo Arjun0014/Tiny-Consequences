@@ -899,10 +899,15 @@ local function chores(W, s, p, ctx, now)
       local wd = dist(home.dx, home.dy, s.well.dx, s.well.dy)
       local bi, bd = 0, 1e9
       if s.has_river then bi, bd = require("sim.agents.map").house_bank(s, home) end
-      if bi > 0 and bd * C().river_water_k < wd then
+      -- (a household that fell sick from the river's water keeps to the well for a while: D-107)
+      local shun = hh.river_bad and floor(now / 24) - hh.river_bad < C().river_shun_days
+      if bi > 0 and bd * C().river_water_k < wd and not shun then
         local bx, by = require("sim.agents.map").tile_xy(s, bi)
         addw(0.45 * f * fat - travel(ctx, bx, by, px, py), "fetch_water", bi, 1,
           "The water jar at home is empty (the river is nearer than the well: %.0f against %.0f paces)", bd * 400, wd * 400)
+      elseif shun and bi > 0 and bd * C().river_water_k < wd then
+        add(0.45 * f * fat - travel(ctx, s.well.dx, s.well.dy, px, py), "fetch_water", 0, 0,
+          "The water jar at home is empty: to the well, not the river, since the flux")
       else
         add(0.45 * f * fat - travel(ctx, s.well.dx, s.well.dy, px, py), "fetch_water", 0, 0,
           "The water jar at home is empty")

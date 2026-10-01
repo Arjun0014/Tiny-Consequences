@@ -1060,7 +1060,19 @@ WORK.forage = function(W, s, p, st, f)
 end
 
 WORK.fill = function(W, s, p, st, f)
-  if f >= 0.6 then p.carry, p.camt = "water", 1 end
+  if f >= 0.6 then
+    p.carry, p.camt = "water", 1
+    p.cfoul = st.river and M.river_foul(W, s, p.x, p.y) or 0
+  end
+end
+
+-- How foul the river is where water is drawn (D-107): the dirt that drains into it from the houses
+-- and pens along it (settle.daily: `s.river_dirt`, nearer the bank more), less in a high river (more
+-- water to carry it), more in a low one, and more in warm weather (summer fluxes).
+function M.river_foul(W, s, x, y)
+  local flow = max(0.5, min(2, s.flood or 1))
+  local warm = max(0.2, min(2, ((s.temp_now or 12) - 4) / 14))
+  return (s.river_dirt or 0) * warm / flow
 end
 
 WORK.eat = function(W, s, p, st, f)
@@ -1668,6 +1680,8 @@ DROP.any = function(W, s, p, st)
     b.stock.logs = (b.stock.logs or 0) + n
   elseif what == "water" then
     b.stock.water = (b.stock.water or 0) + n
+    b.foul = p.cfoul or 0     -- (the jar holds what was drawn last: D-107)
+    p.cfoul = nil
   end
   p.carry, p.camt = "", 0
 end
