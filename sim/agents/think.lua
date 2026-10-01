@@ -630,6 +630,54 @@ local function fish_candidate(W, s, p, ctx, now, fat)
   end
 end
 
+-- Crewing (D-096): a skipper waiting at the dock for a mate - one of the household first (a son,
+-- a husband, a daughter), else a neighbour for a share of the catch.
+local function crew_candidate(W, s, p, ctx, now, fat)
+  local c = C()
+  if not s.dock or not s.boats or ctx.rain == 2 then return end
+  local st = ctx.stage
+  if not (st == "adult" or st == "apprentice" or (st == "child" and ctx.age >= c.help_age + 4)) then return end
+  for _, boat in ipairs(s.boats) do
+    local q = (boat.mate_want or 0) ~= 0 and (boat.mate or 0) == 0 and W.S.v3.people[boat.mate_want]
+    if q and q.alive and q ~= p and q.act == "wait_mate" and q.boat == nil then
+      local own = q.hh == p.hh
+      local f = (own and 1.2 or 0.75) * (p.sex == "m" and 1 or 0.7) * (st == "apprentice" and 1.1 or 1)
+      addw((0.5 + (own and 0.15 or 0)) * f * fat - travel(ctx, s.dock.dx, s.dock.dy, p.x, p.y), "crew", boat.id, q.id,
+        own and "%s is waiting at the dock: out with the boat as the second hand" or "%s needs a second hand for the net (a share of the catch)", q.name)
+      return
+    end
+  end
+end
+
+-- Drying racks (D-096): a fishing household with a rack by the shore hangs its surplus fish to dry
+-- there in fair weather (no wood), and fetches it home when it is dry.
+local function rack_of(s, hh)
+  for _, id in ipairs(s.blist) do
+    local b = s.buildings[id]
+    if b.kind == "rack" and b.state == "standing" and b.hh == hh.id then return b end
+  end
+  return nil
+end
+M.rack_of = rack_of
+
+local function rack_candidates(W, s, p, ctx, now, fat)
+  local c = C()
+  local hh, home = ctx.hh, ctx.home
+  if not hh or not home or ctx.stage == "infant" or (ctx.stage == "child" and ctx.age < c.help_age + 1) then return end
+  local rk = rack_of(s, hh)
+  if not rk then return end
+  local n = #hh.members
+  local surplus = (home.stock.fish or 0) - n * 0.8
+  if surplus >= c.dry_min and ctx.rain == 0 and claim_free(W, hh, "smoking", p) then
+    addw((0.32 + 0.1 * min(4, surplus)) * fat - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) - travel(ctx, rk.dx, rk.dy, ctx.hx, ctx.hy) * 0.5,
+      "dry", rk.id, 0, "%.0f FU of fresh fish will not keep: hanging it on our rack by the shore", surplus)
+  end
+  if (rk.stock.dried or 0) >= c.dry_fetch and claim_free(W, hh, "fetch_food", p) then
+    addw((0.3 + 0.05 * min(6, rk.stock.dried)) * fat - travel(ctx, rk.dx, rk.dy, p.x, p.y), "fetch_dried", rk.id, 0,
+      "%.0f FU of fish has dried on the rack: carrying it home", rk.stock.dried)
+  end
+end
+
 -- Mending a household's boat at the dock (D-087): worn planks and caulking, a log and a few hours.
 local function mend_boat_candidate(W, s, p, ctx, now, fat)
   local c = C()
@@ -743,7 +791,9 @@ local function chores(W, s, p, ctx, now)
   end
   -- fresh fish beyond what the pot will take today is smoked at the hearth before it spoils (D-087)
   local surplus = (home.stock.fish or 0) + (home.stock.meat or 0) - n * 0.8
-  if surplus >= 1 and claim_free(W, hh, "smoking", p) and (home.stock.logs or 0) >= 0.3 then
+  -- (with a rack by the shore and fair weather, fish is hung to dry instead: D-096)
+  local racked = ctx.rain == 0 and (home.stock.fish or 0) > (home.stock.meat or 0) and M.rack_of(s, hh)
+  if surplus >= 1 and not racked and claim_free(W, hh, "smoking", p) and (home.stock.logs or 0) >= 0.3 then
     local f = fit(p, ctx, "smoke")
     if f > 0 then
       addw((0.28 + 0.1 * min(4, surplus)) * f * fatigue(p) - travel(ctx, ctx.hx, ctx.hy, px, py), "smoke", home.id, 0,
@@ -1860,6 +1910,9 @@ PLAN.fish = function(W, s, p, ctx, now, cd)
   boat.crew = p.id    -- (claimed now; released if the plan is cut before they board)
   local gx, gy = fish_ground(W, s, p, now)
   go(pl, b.dx, b.dy, "the dock")
+  -- (a net wants two in the boat: the skipper waits a little at the dock for a mate, D-096)
+  boat.mate_want, boat.mate = p.id, 0
+  work(pl, "wait_mate", c.mate_wait, { boat = boat.id, fx = b.mx, fy = b.my })
   work(pl, "board", 0.08, { boat = boat.id, fx = b.mx, fy = b.my })
   pl[#pl + 1] = { op = "go", x = gx, y = gy, place = "the fishing ground", water = true }
   work(pl, "fish", (c.fish_h[1] + (c.fish_h[2] - c.fish_h[1]) * u01(W, p, now, 53)) * p.dil, { boat = boat.id })
@@ -1872,6 +1925,51 @@ PLAN.fish = function(W, s, p, ctx, now, cd)
     pl[#pl + 1] = { op = "drop", to = "home", ref = home.id }
   end
   return "Go fishing", "the fishing ground"
+end
+
+-- The mate's day (D-096): to the dock, into the skipper's boat, riding out and back with them
+-- (the skipper's landing ends it).
+PLAN.crew = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local b = s.dock
+  local boat = s.boats[cd.a]
+  boat.mate = p.id
+  go(pl, b.dx, b.dy, "the dock")
+  work(pl, "board_mate", 0.06, { boat = boat.id, skipper = cd.b, fx = b.mx, fy = b.my })
+  work(pl, "ride", 8, { boat = boat.id })
+  return "Crew the boat", "the fishing ground"
+end
+
+PLAN.ride = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  work(pl, "ride", 8, { boat = p.ride_boat })
+  return "Out in the boat", "the fishing ground"
+end
+
+-- Fish to the rack, and the dried fish home (D-096).
+PLAN.dry = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local rk = s.buildings[cd.a]
+  local home = ctx.home
+  ctx.hh.smoking = p.id
+  local amt = max(1, (home.stock.fish or 0) - #ctx.hh.members * 0.8)
+  if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+  pl[#pl + 1] = { op = "pick", what = "fish", ref = home.id, n = amt }
+  go(pl, rk.dx, rk.dy, "the drying rack")
+  work(pl, "hang", 0.25 + 0.05 * amt, { ref = rk.id, fx = rk.cx, fy = rk.cy, release = "smoking" })
+  return "Hang the fish to dry", "the drying rack"
+end
+
+PLAN.fetch_dried = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local rk = s.buildings[cd.a]
+  local home = ctx.home
+  ctx.hh.fetch_food = p.id
+  go(pl, rk.dx, rk.dy, "the drying rack")
+  pl[#pl + 1] = { op = "pick", what = "dried", ref = rk.id }
+  go(pl, home.dx, home.dy, "home", home.id)
+  pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, release = "fetch_food" }
+  return "Fetch the dried fish", "the drying rack"
 end
 
 -- Mending the household's boat (D-087): a log from the woodstore unless one waits at the dock.
@@ -2398,6 +2496,14 @@ function M.decide(W, s, p, now, reason)
   if ctx.stage == "infant" then return think_infant(W, s, p, now) end
   ncand = 0
   LZ.W, LZ.s, LZ.p, LZ.ctx = W, s, p, ctx
+  if p.riding and p.riding ~= 0 then
+    -- (a mate in a boat: out until the skipper lands, D-096)
+    local obj, dest = PLAN.ride(W, s, p, ctx, now, nil)
+    p.obj, p.dest, p.objk = obj, dest, "ride"
+    p.why = "In the boat with " .. ((W.S.v3.people[p.riding] or {}).name or "the skipper")
+    p.tgt_kind, p.tgt_ref = "ride", 0
+    return true
+  end
   if p.boat and s.dock then
     -- afloat: back to the dock first, whatever else is wanted
     local obj, dest = PLAN.return_boat(W, s, p, ctx, now, nil)
@@ -2466,6 +2572,8 @@ function M.decide(W, s, p, now, reason)
       work_candidates(W, s, p, ctx, now)
       repair_candidates(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       fish_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
+      crew_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
+      rack_candidates(W, s, p, ctx, now, fatigue(p))
       mend_boat_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       chores(W, s, p, ctx, now)
       craft_candidate(W, s, p, ctx, now)
@@ -2510,7 +2618,7 @@ function M.decide(W, s, p, now, reason)
     elseif cr == "sheaves" then to = s.granary
     elseif cr == "logs" then to = s.wood_store
     elseif cr == "hay" then to = s.herds and s.buildings[(s.herds.flock or s.herds.cattle or {}).pen or 0]
-    elseif cr == "wool" or cr == "meat" or cr == "milk" or cr == "scraps" or cr == "carcass" then to = home
+    elseif cr == "wool" or cr == "meat" or cr == "milk" or cr == "scraps" or cr == "carcass" or cr == "dried" then to = home
     elseif cr == "manure" then
       local H = s.herds and (s.herds.cattle or s.herds.flock or s.herds.swine)
       to = H and s.buildings[H.pen]

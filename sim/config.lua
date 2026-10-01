@@ -873,6 +873,12 @@ C.V3 = {
   smoke_fu_h = 3.0, smoke_logs = 0.08,    -- FU of fresh fish smoked an hour at the hearth; logs a FU
   spoil_smoked = 0.004,                   -- share of smoked fish spoiled a day
   smoke_days = 8,                         -- days of smoked fish a fishing household lays in for the winter
+  -- (D-096) the net with two in the boat, the lines alone (catch factors); how long a skipper waits
+  -- at the dock for a mate; a squall at sea: wear, the chance it swamps the boat; drying racks:
+  -- fish to spare (FU, a household's running sum) before one is built, fish worth a trip to the
+  -- rack, dried fish worth fetching, the share drying a fair day, spoiled a wet day
+  net_k = 1.5, line_k = 0.7, mate_wait = 0.5, squall_wear = 0.15, squall_swamp = 0.08,
+  rack_after = 6, dry_min = 1.5, dry_fetch = 2, dry_rate = 0.35, dry_rain_spoil = 0.15,
   -- textiles (D-088): flax sown in spring, pulled, retted on the field, dressed, spun, woven and
   -- sewn into clothes that wear out. Units: garments' worth (GE). Hours a GE at full skill.
   grow_days_flax = 14,                    -- flax grows fast

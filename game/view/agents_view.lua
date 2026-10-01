@@ -282,7 +282,24 @@ local function fill_buildings(V)
     local roof = STYLE_ROOF[key % #STYLE_ROOF + 1]
     local wall = STYLE_WALL[floor(key / 5) % #STYLE_WALL + 1]
     local c1, c2 = pack(roof[1], roof[2], roof[3]), pack(wall[1], wall[2], wall[3])
-    if b.state == "site" then
+    if b.state == "site" and b.kind == "boat" then
+      -- (D-096) a boat on the stocks: the keel, then the ribs, then the planked hull
+      local pg = b.work_need > 0 and b.work_done / b.work_need or 0
+      local by_ = yaw_z(V, b.cx, b.cy, dy, -dx)
+      add(V, K.logs, b.cx, b.cy, 0, by_, 0.9, 1, pack(0.55, 0.40, 0.26), pack(0.45, 0.31, 0.2), 0)
+      if pg >= 0.3 then
+        for q = -2, 2 do
+          add(V, K.stakes, b.cx + dy * 0.18 * q, b.cy - dx * 0.18 * q, 0, q, 0.22, 1, 0, 0, 0)
+        end
+      end
+      if pg >= 0.7 then add(V, K.pier, b.cx - dy * 0.35, b.cy + dx * 0.35, 0.002, by_, 0.45, 1, pack(0.50, 0.36, 0.24), pack(0.42, 0.30, 0.2), 0) end
+    elseif b.state == "site" and b.kind == "bridge" then
+      local done = b.work_need > 0 and b.work_done / b.work_need or 0
+      for q = 1, max(1, floor(#b.tiles * done + 0.5)) do
+        local x, y = mapm.tile_xy(s, b.tiles[q])
+        add(V, K.stakes, x, y, 0, q, 0.3, 1, 0, 0, 0)
+      end
+    elseif b.state == "site" then
       local pg = (b.work_done / b.work_need) * 0.75 + min(1, b.logs_have / max(1, b.logs_need)) * 0.25
       local kind = pg < 0.3 and K.stakes or (pg < 0.65 and K.frame or K.walls)
       add(V, kind, b.cx, b.cy, 0, yaw, S, 1, c1, c2, 0)
@@ -357,6 +374,20 @@ local function fill_buildings(V)
               pack(0.30, 0.22, 0.14), pack(0.26, 0.19, 0.12), 0)
           end
         end
+      elseif b.kind == "rack" then
+        -- (D-096) a drying rack: two poles and a bar, fish hanging by what dries on it
+        local T = s.T
+        local ax, ay = -dy, dx
+        add(V, K.stakes, b.cx + ax * 0.6, b.cy + ay * 0.6, 0, 1, 0.35, 1, 0, 0, 0)
+        add(V, K.stakes, b.cx - ax * 0.6, b.cy - ay * 0.6, 0, 2, 0.35, 1, 0, 0, 0)
+        add(V, K.logs, b.cx, b.cy, 0.012, yaw_z(V, b.cx, b.cy, ax, ay) + math.pi * 0.5, 0.5, 1, pack(0.55, 0.40, 0.26), pack(0.45, 0.31, 0.2), 0)
+        local fishes = min(8, floor(((b.stock.drying or 0) + (b.stock.dried or 0)) / 0.8 + 0.5))
+        for q = 1, fishes do
+          local f = (q - 0.5) / 8 - 0.5
+          add(V, K.stook, b.cx + ax * f * 1.1, b.cy + ay * f * 1.1, 0.004, q, 0.25, 0.4,
+            pack(0.62, 0.62, 0.58), pack(0.5, 0.5, 0.48), 0)
+        end
+        local _ = T
       elseif b.kind == "bridge" then
         -- (D-095) planks from bank to bank on posts; a site shows its posts as the work goes
         local L = sqrt((b.ex - b.dx) ^ 2 + (b.ey - b.dy) ^ 2)
@@ -678,9 +709,10 @@ M.PART = PART
 -- what they hold for each action (the sim's action, not invented)
 local TOOL = { till = "hoe", grub = "hoe", chop = "axe", harvest = "sickle", build = "hammer", thresh = "flail",
   forage = "basket", fill = "bucket", tend = nil, sow = "basket", repair = "hammer", fish = "rod", mend_boat = "hammer",
-  dress = "flail", stalk = "spear", gut = "spear", milk = "bucket", muck = nil, slop = "bucket" }
+  dress = "flail", stalk = "spear", gut = "spear", milk = "bucket", muck = nil, slop = "bucket", angle = "rod" }
 local CARRY_PART = { logs = "log", grain = "sack", sheaves = "sack", food = "sack", seed = "basket", water = "bucket", fish = "basket",
-  flax = "sack", carcass = "sack", milk = "bucket", manure = "basket", scraps = "bucket", wool = "sack", hay = "basket", meat = "sack" }
+  flax = "sack", carcass = "sack", milk = "bucket", manure = "basket", scraps = "bucket", wool = "sack", hay = "basket", meat = "sack",
+  dried = "basket" }
 -- animation for each action: { clip, rate (at a game minute per second), moving clip }
 local ANIM = {
   walk = { "walk" }, till = { "swing", 0.7 }, grub = { "kneel_work", 0.9 }, chop = { "swing", 0.9 },
@@ -699,6 +731,9 @@ local ANIM = {
   spread = { "walk_slow", 0.8 }, slop = { "pickup", 1 }, cheese = { "kneel_work", 0.6 }, open_pen = { "push", 1 },
   close_pen = { "push", 1 }, herd = { "idle", 1 }, mow = { "swing", 0.8 }, stalk = { "crouch_walk", 0.55 },
   gut = { "kneel_work", 1.0 }, sleep = { "sit", 0.4 },
+  -- fishing (D-096)
+  ride = { "sit", 0.6 }, wait_mate = { "idle", 1 }, board_mate = { "pickup", 1.2 }, hang = { "pickup", 0.9 },
+  angle = { "sit", 0.5 },
 }
 
 local function packc(c) return pack(c[1], c[2], c[3]) end

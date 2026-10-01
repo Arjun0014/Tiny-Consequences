@@ -21,7 +21,8 @@ M.KINDS = {
   dock = { w = 1, h = 1, label = "dock", logs = 6, work = 30 },
   boat = { w = 2, h = 1, label = "boat", logs = 5, work = 30 },   -- a boat on the stocks at the shore (D-087)
   fold = { w = 6, h = 6, label = "fold", logs = 10, work = 30 },  -- a fenced sheepfold (open ground, D-089)
-  bridge = { w = 1, h = 1, label = "bridge", logs = 0, work = 0 },   -- timber across a river (D-095; logs, work by its length)
+  bridge = { w = 1, h = 1, label = "bridge", logs = 0, work = 0 },
+  rack = { w = 2, h = 1, label = "drying rack", logs = 2, work = 8 },   -- poles for drying fish by the shore (D-096)   -- timber across a river (D-095; logs, work by its length)
   byre = { w = 7, h = 6, label = "byre yard", logs = 14, work = 40 },   -- a fenced cattle yard with a lean-to (D-092)
   sty = { w = 5, h = 4, label = "sty", logs = 8, work = 24 },     -- a pig sty: a fenced run and a low hut (D-092)
 }
@@ -269,7 +270,8 @@ end
 -- The food ledger (tools and tests): everything edible anywhere in the settlement (FU), and the
 -- running sum of what came in less what went out. food_total(after) - food_total(before) equals
 -- the change in food_flows over the same time (every new food stock or flow goes here).
-local CARRY_FOOD = { seed = true, grain = true, food = true, sheaves = true, fish = true, meat = true, milk = true, carcass = true }
+local CARRY_FOOD = { seed = true, grain = true, food = true, sheaves = true, fish = true, meat = true, milk = true, carcass = true,
+  dried = true }
 function M.food_total(W, s)
   local V = W.S.v3
   local c = C()
@@ -282,6 +284,8 @@ function M.food_total(W, s)
       local st = b.stock
       tot = tot + (st.food or 0) + (st.fish or 0) + (st.smoked or 0) + (st.meat or 0) + (st.seed or 0) + (st.meals or 0)
         + (st.milk or 0) + (st.cheese or 0)
+    elseif b.kind == "rack" then
+      tot = tot + (b.stock.drying or 0) + (b.stock.dried or 0)
     end
   end
   for k = 1, #s.plots do tot = tot + s.plots[k].sheaves end
@@ -471,6 +475,7 @@ function M.hourly(W, s, now)
   local r0 = s.rain_now or 0
   local r1 = weather.rain(W, s, now)
   s.rain_now = r1
+  if r1 > 0 then s.rain_day = (s.rain_day or 0) + 1 end
   local nc = weather.next_change(W, s, now)
   s.rain_soon = r1 == 0 and nc ~= nil and nc - now < 3
   local lh = clock.local_hour(now, W.grid.lon[s.cell])
@@ -980,6 +985,75 @@ local function plan_boats(W, s)
   end
 end
 
+-- Drying racks (D-096): a fishing household that has had fish to spare lays out a rack of poles
+-- by the shore near the dock (logs and work like any site); on a rack, hung fish dries over a few
+-- fair days (rain spoils some of what hangs).
+local function plan_racks(W, s, day)
+  if not s.dock then return end
+  local c = C()
+  local V = W.S.v3
+  for i = 1, #s.sites do
+    local b = s.buildings[s.sites[i]]
+    if b and b.kind == "rack" then return end
+  end
+  for i = 1, #s.households do
+    local hh = V.households[s.households[i]]
+    local fisher = false
+    if hh then
+      for _, id in ipairs(hh.members) do
+        local q = V.people[id]
+        if q and q.alive and q.role == "fisher" then fisher = true end
+      end
+    end
+    if fisher and (hh.fish_spare or 0) >= c.rack_after then
+      local has = false
+      for _, id in ipairs(s.blist) do
+        local b = s.buildings[id]
+        if b.kind == "rack" and b.hh == hh.id then has = true end
+      end
+      if not has then
+        local d = s.dock
+        local dix, diy = mapm.tile_ixy(s, mapm.tile_of(s, d.dx, d.dy))
+        for r = 2, 10 do
+          for jy = diy - r, diy + r do
+            for jx = dix - r, dix + r do
+              if (abs(jx - dix) == r or abs(jy - diy) == r) and mapm.rect_free(s, jx - 1, jy - 1, jx + 2, jy + 1, true) then
+                local b = M.add_building(W, s, "rack", jx, jy, "s", "site", { for_hh = hh.id, for_name = "the household", prio = 0.3 })
+                if b then b.hh = hh.id; return end
+              end
+            end
+          end
+        end
+        return
+      end
+    end
+  end
+end
+
+local function dry_racks(W, s, day)
+  local c = C()
+  local wet = (s.rain_day or 0) > 0
+  for _, id in ipairs(s.blist) do
+    local b = s.buildings[id]
+    if b.kind == "rack" and b.state == "standing" then
+      local h = b.stock.drying or 0
+      if h > 0 then
+        if wet then
+          local lost = h * c.dry_rain_spoil
+          b.stock.drying = h - lost
+          s.acc.spoiled = (s.acc.spoiled or 0) + lost
+        else
+          local d = h * c.dry_rate
+          b.stock.drying = h - d
+          b.stock.dried = (b.stock.dried or 0) + d
+          s.acc.dried = (s.acc.dried or 0) + d
+        end
+      end
+      b.stock.dried = (b.stock.dried or 0) * (1 - c.spoil_smoked)
+    end
+  end
+end
+
 -- Textiles (D-088): the village's linen, from flax field to cloth, in garments' worth.
 function M.textile_pipeline(W, s)
   local c = C()
@@ -1081,6 +1155,9 @@ function M.daily(W, s, day)
   wild_food(W, s, day)
   plan_houses(W, s)
   plan_boats(W, s)
+  plan_racks(W, s, day)
+  dry_racks(W, s, day)
+  s.rain_day = 0
   plan_flax(W, s, day)
   plan_fields(W, s, day)
   finish_clearing(W, s)

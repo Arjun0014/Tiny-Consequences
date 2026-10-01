@@ -110,6 +110,17 @@ function sys.interrupt(W, p, at, reason)
   sys.push(W, at, p.id, p.ver)
 end
 
+-- End p's current step now and go on with their plan (a skipper's wait when the mate is aboard,
+-- a mate's ride when the boat lands: D-096).
+function sys.skip_step(W, p)
+  local now = W.S.v3.now or W.hour
+  if p.t1 <= now then return end
+  p.ver = p.ver + 1
+  p.t1 = now
+  p.int_at = nil
+  sys.push(W, now, p.id, p.ver)
+end
+
 -- Start p's plan (set by think.decide); on failure (no way there) wait a little and re-think.
 local function start_plan(W, s, p, now)
   if not act.start(W, s, p, now) then
@@ -165,6 +176,8 @@ end
 function sys.advance(W, t)
   local V = W.S.v3
   if not V then return end
+  act.people = V.people
+  act.skip_step = sys.skip_step
   local R = rt(W)
   local P = V.people
   local S = V.settlements

@@ -30,7 +30,26 @@ M.OUTDOOR_WORK = { grub = true, forage = true, till = true, thresh = true, sow =
   mend_boat = true }
 
 -- Position of p at time t (analytic; exact at t0 and t1).
+local function rng_float(W, p, k)
+  local rng = require("sim.rng")
+  local now = W.S.v3.now or W.hour
+  return rng.float(W.seed, rng.S.V3_THINK, p.key, floor(now * 60) % 4294967296, k)
+end
+
+-- (people by id, for a mate riding in a skipper's boat; ending a step now: set by
+-- sim/agents/init.lua)
+M.people = nil
+M.skip_step = function() end
+
 function M.pos(p, t)
+  local r = p.riding
+  if r and r ~= 0 and M.people then
+    local q = M.people[r]
+    if q and q.alive and q ~= p and not q.riding then
+      local x, y, dx, dy = M.pos(q, t)
+      return x - (dx or 0) * 0.0, y + 0.006, dx, dy
+    end
+  end
   local mv = p.mv
   if not mv then return p.x, p.y, p.fx, p.fy end
   local d = (t - p.t0) * p.spd
@@ -397,6 +416,27 @@ WORK.board = function(W, s, p, st, f)
   p.x, p.y = b.mx, b.my
 end
 
+WORK.wait_mate = function(W, s, p, st, f)
+  -- (nobody came: out alone with the lines; a mate who comes later finds the boat gone)
+  local boat = s.boats and s.boats[st.boat or 0]
+  if boat and boat.mate == 0 then boat.mate_want = 0 end
+end
+
+WORK.board_mate = function(W, s, p, st, f)
+  local boat = s.boats and s.boats[st.boat or 0]
+  local q = W.S.v3.people[st.skipper or 0]
+  if not boat or not q or not q.alive or boat.mate ~= p.id or q.objk ~= "fish" then
+    if boat and boat.mate == p.id then boat.mate = 0 end
+    return
+  end
+  p.riding, p.ride_boat = q.id, boat.id
+  boat.mate_want = 0
+  -- the skipper stops waiting and rows out
+  if q.act == "wait_mate" then M.skip_step(W, q) end
+end
+
+WORK.ride = function(W, s, p, st, f) end
+
 WORK.fish = function(W, s, p, st, f)
   local c = C()
   local i = mapm.tile_of(s, p.x, p.y)
@@ -404,8 +444,25 @@ WORK.fish = function(W, s, p, st, f)
   local cell = s.cell_of[i]
   local F = W.F
   local fd = F.fish[cell] or 0
-  -- (a skilled fisher knows the grounds and the lines: D-087)
-  local catch = c.fish_q * fd * st.dur * f * (0.55 + 0.6 * (p.sk_fish or 0.2)) * (0.85 + 0.3 * (p.dil - 0.6) / 0.8)
+  -- (a skilled fisher knows the grounds and the lines: D-087; two in the boat work the net, one
+  -- alone only the lines: D-096)
+  local boat = s.boats and s.boats[st.boat or 0]
+  local mate = boat and boat.mate ~= 0 and W.S.v3.people[boat.mate]
+  local two = mate and mate.alive and mate.riding == p.id
+  local gear = two and c.net_k or c.line_k
+  local catch = c.fish_q * fd * st.dur * f * gear * (0.55 + 0.6 * (p.sk_fish or 0.2)) * (0.85 + 0.3 * (p.dil - 0.6) / 0.8)
+  -- weather at sea: a squall while they were out tears the gear and the planks; now and then it
+  -- swamps the boat and the catch goes over the side
+  if (s.rain_now or 0) >= 2 and boat then
+    boat.cond = max(0, (boat.cond or 1) - c.squall_wear)
+    local v = rng_float(W, p, 82)
+    if v < c.squall_swamp then
+      catch = 0
+      s.acc.swamped = (s.acc.swamped or 0) + 1
+      people.remember(p, W.S.v3.now or W.hour, "A squall swamped the boat: the catch went over the side")
+    end
+  end
+  if two then people.practice(mate, "sk_fish", st.dur * f * 0.5) end
   local stock = fd * c.fish_fu
   if catch > stock * 0.05 then catch = stock * 0.05 end
   if catch <= 0 then return end
@@ -417,6 +474,21 @@ end
 WORK.land = function(W, s, p, st, f)
   local boat = s.boats and s.boats[p.boat or st.boat or 0]
   local b = s.dock
+  if boat and (boat.mate or 0) ~= 0 then
+    -- the mate steps ashore with their share (half to another household's hand, D-096)
+    local q = W.S.v3.people[boat.mate]
+    if q and q.alive and q.riding == p.id then
+      q.riding, q.ride_boat = nil, nil
+      q.x, q.y = b.dx + 0.01, b.dy
+      if q.hh ~= p.hh and p.carry == "fish" and p.camt > 0 then
+        local share = p.camt * 0.5
+        p.camt = p.camt - share
+        q.carry, q.camt = "fish", share
+      end
+      M.skip_step(W, q)
+    end
+    boat.mate = 0
+  end
   if boat then
     boat.crew = 0
     boat.x, boat.y = b.mx + (boat.id - 1) * 0.012, b.my
@@ -464,6 +536,7 @@ WORK.smoke = function(W, s, p, st, f)
   b.stock.smoked = (b.stock.smoked or 0) + amt
   b.stock.logs = logs - amt * c.smoke_logs
   s.acc.smoked = (s.acc.smoked or 0) + amt
+  if hh and amt > mt then hh.fish_spare = (hh.fish_spare or 0) + amt - mt end
 end
 
 -- Textiles (D-088): flax dressed into fibre, spun into yarn, woven into cloth, sewn into clothes.
@@ -724,6 +797,18 @@ WORK.stalk = function(W, s, p, st, f)
   wild.interrupt(W, s, w, now)
 end
 
+-- Fish hung on the rack (D-096).
+WORK.hang = function(W, s, p, st, f)
+  local hh = W.S.v3.households[p.hh]
+  if hh and hh.smoking == p.id then hh.smoking = 0 end
+  local rk = s.buildings[st.ref or 0]
+  if not rk or p.carry ~= "fish" then return end
+  rk.stock.drying = (rk.stock.drying or 0) + p.camt
+  s.acc.hung = (s.acc.hung or 0) + p.camt
+  if hh then hh.fish_spare = (hh.fish_spare or 0) + p.camt end
+  p.carry, p.camt = "", 0
+end
+
 -- At the kill: gutted, slung over the shoulders (the meat counts from here).
 WORK.gut = function(W, s, p, st, f)
   local H = p.hunting
@@ -955,6 +1040,26 @@ PICK.logs = function(W, s, p, st)
   end
 end
 
+PICK.fish = function(W, s, p, st)
+  local b = s.buildings[st.ref]
+  if not b then return end
+  local got = min(st.n or 2, b.stock.fish or 0)
+  if got > 0 then
+    b.stock.fish = b.stock.fish - got
+    p.carry, p.camt = "fish", got
+  end
+end
+
+PICK.dried = function(W, s, p, st)
+  local b = s.buildings[st.ref]
+  if not b then return end
+  local got = b.stock.dried or 0
+  if got > 0 then
+    b.stock.dried = 0
+    p.carry, p.camt = "dried", got
+  end
+end
+
 PICK.manure = function(W, s, p, st)
   local H = s.herds and s.herds[stock.HERDS[st.herd or 1]]
   if not H then return end
@@ -1005,6 +1110,8 @@ DROP.any = function(W, s, p, st)
     s.hay = (s.hay or 0) + n
   elseif what == "milk" then
     b.stock.milk = (b.stock.milk or 0) + n
+  elseif what == "dried" then
+    b.stock.smoked = (b.stock.smoked or 0) + n
   elseif what == "carcass" then
     -- (butchered at home: the meat to the larder, the hide kept)
     b.stock.meat = (b.stock.meat or 0) + n
