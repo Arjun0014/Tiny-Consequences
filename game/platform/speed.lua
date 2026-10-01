@@ -237,9 +237,12 @@ function M.step_v3(dt, W, world)
 	-- a watch frame that could not keep up drops the rest (never spiral); a skip continues
 	if sk then
 		if dt > 0 then sk.rate = sk.rate + ((cur - M.v3_t) / math.max(dt, 1 / 120) - sk.rate) * 0.2 end
+		sk.frames = (sk.frames or 0) + 1
+		sk.sim_ms = (sk.sim_ms or 0) + (clock.now_ms() - t0)
 		if cur >= sk.to then
 			M.skip = nil
-			M.skip_done = { kind = sk.kind, ms = clock.now_ms() - sk.t_real0, hours = sk.to - sk.from }
+			M.skip_done = { kind = sk.kind, ms = clock.now_ms() - sk.t_real0, hours = sk.to - sk.from,
+				frames = sk.frames, sim_ms = sk.sim_ms }
 		end
 	end
 	M.v3_t = cur

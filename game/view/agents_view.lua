@@ -923,7 +923,7 @@ M.chimneys = CHIM
 function M.update(W, dt, zoom, t)
   M.t = t
   M.light_timer = (M.light_timer or 0) - dt
-  if M.light_timer <= 0 then
+  if M.light_timer <= 0 and not M.skipping then
     M.light_timer = 0.25
     for k = #CHIM, 1, -1 do CHIM[k] = nil end
     for _, V in ipairs(M.SETS) do hearths(V, t) end
@@ -946,6 +946,9 @@ function M.update(W, dt, zoom, t)
     end
   end
   for _, V in ipairs(M.SETS) do
+    -- (while skipping, nothing is drawn of the settlement's changes: they are rebuilt, a part a
+    -- frame, once the skip lands)
+    if not M.skipping then
     -- rebuild at most one changed part per frame (signatures are cheap)
     V.ri = (V.ri or 0) % (#V.trees + 3) + 1
     local ri = V.ri
@@ -964,6 +967,20 @@ function M.update(W, dt, zoom, t)
       if sg ~= V.ground.sig then V.ground.sig = sg; bake(V, V.ground, fill_ground) end
     end
     if V.vpool then update_villagers(V, t, zoom) else update_people(V, t, zoom) end
+    end
+  end
+  if M.skipping then
+    -- hide everyone at once (the pool is not walked while skipping)
+    for _, V in ipairs(M.SETS) do
+      if V.vpool and not V.hidden_all then
+        for _, e in ipairs(V.vpool) do
+          if e.on then for k = 1, 3 do msg.post(e.urls[k], MSG_DISABLE) end; e.on, e.pid, e.anim = false, 0, nil end
+        end
+        V.hidden_all = true
+      end
+    end
+  else
+    for _, V in ipairs(M.SETS) do V.hidden_all = nil end
   end
 end
 

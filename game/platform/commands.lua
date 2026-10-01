@@ -116,6 +116,26 @@ function M.register(G)
     local to = speed.v3_skip(W, args.kind or "dawn", args.to)
     return { from = speed.v3_t, to = to }
   end)
+  -- v3_bench{hours} (probes): advance the world `hours` synchronously; the sim's own cost in this
+  -- runtime (ms per game hour), without the view. Moves the world on (a probe, not a game action).
+  bridge.register("v3_bench", function(args)
+    local W = assert(G.W, "world not ready")
+    assert(W.v3, "not a v3 world")
+    local speed = require("game.platform.speed")
+    local clock = require("game.platform.clock")
+    local hours = args.hours or 24
+    local t0 = speed.v3_t or W.hour
+    local a = clock.now_ms()
+    local step = args.step or 1
+    local t = t0
+    while t < t0 + hours do
+      t = math.min(t0 + hours, t + step)
+      require("sim.world").advance(W, t)
+    end
+    local ms = clock.now_ms() - a
+    speed.v3_t = t
+    return { hours = hours, ms = ms, ms_per_hour = ms / hours, people = W.S.v3.next_person - 1 }
+  end)
   bridge.register("v3_person", function(args)
     local W = assert(G.W, "world not ready")
     local speed = require("game.platform.speed")

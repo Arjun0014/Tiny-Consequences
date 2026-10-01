@@ -246,6 +246,8 @@ function init(self)
 			v3 = W and W.v3 or false,
 			skipping = speed.v3_skipping(),
 			skip_progress = speed.v3_skip_progress() or false,
+			skip_done = speed.skip_done or false,
+			frame_gap_ms = self.f_gap or 0, frame_update_ms = self.f_upd or 0, frame_bridge_ms = self.f_bridge or 0,
 			ticks_per_s = self.tps or 0,
 			sim_ms_avg = avg,
 			sim_ms_max = max,
@@ -332,6 +334,13 @@ local function update_debug(self, dt)
 end
 
 function update(self, dt)
+	-- frame timing (probes): the gap between frames and the time this script's update takes
+	local fa = clock.now_ms()
+	if self.f_last then
+		local gap = fa - self.f_last
+		self.f_gap = (self.f_gap or gap) + (gap - (self.f_gap or gap)) * 0.1
+	end
+	self.f_last = fa
 	if self.loader then
 		local ok, err = coroutine.resume(self.loader)
 		if not ok then
@@ -390,7 +399,10 @@ function update(self, dt)
 	update_debug(self, dt)
 
 	self.frames = self.frames + 1
+	local fu = clock.now_ms() - fa
+	self.f_upd = (self.f_upd or fu) + (fu - (self.f_upd or fu)) * 0.1
 	bridge.update(dt)
+	self.f_bridge = clock.now_ms() - fa - fu
 end
 
 function on_input(self, action_id, action)

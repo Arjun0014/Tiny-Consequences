@@ -227,14 +227,18 @@ function M.update(dt)
     rivers.REBUILD_S = fast and 4 or 1.5
     terrain.MAX_RATE = fast and 3 or 4
     local a = clock.now_ms()
-    terrain.update(W, dt)
+    -- (a v3 skip runs the sim unrendered: the planet's slow layers wait for it to land)
+    local skipping = W.v3 and speed.v3_skipping()
+    if not skipping then terrain.update(W, dt) end
     local b = clock.now_ms()
-    rivers.update(W, dt)
-    trails.update(W, dt)
+    if not skipping then
+      rivers.update(W, dt)
+      trails.update(W, dt)
+    end
     feed.poll(W)
     local b2 = clock.now_ms()
     local b3 = clock.now_ms()
-    props.update(W, dt, camera.zoom)
+    if not skipping then props.update(W, dt, camera.zoom) end
     local c = clock.now_ms()
     clouds.update(W, dt, state.frozen)
     local d = clock.now_ms()
