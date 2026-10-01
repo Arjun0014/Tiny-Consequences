@@ -14,6 +14,7 @@ PARTS = [
     "hat_straw", "hat_hood", "hat_cap", "headscarf",
     "tunic", "skirt", "dress", "apron", "cloak", "belt",
     "axe", "hoe", "sickle", "hammer", "basket", "sack", "bucket", "log", "rod", "spear", "shield", "flail",
+    "babe",
 ]
 # (parts shown, palette {slot: rgb}, animation, frame, scale)
 LOOKS = [

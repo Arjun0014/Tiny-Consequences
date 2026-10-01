@@ -567,7 +567,7 @@ for i, n in ipairs({ "body", "head", "eyes", "legs_trousers", "legs_bare", "feet
   "hair_short", "hair_long", "hair_bun", "beard",
   "hat_straw", "hat_hood", "hat_cap", "headscarf",
   "tunic", "skirt", "dress", "apron", "cloak", "belt",
-  "axe", "hoe", "sickle", "hammer", "basket", "sack", "bucket", "log", "rod", "spear", "shield", "flail" }) do
+  "axe", "hoe", "sickle", "hammer", "basket", "sack", "bucket", "log", "rod", "spear", "shield", "flail", "babe" }) do
   PART[n] = i - 1
 end
 M.PART = PART
@@ -686,6 +686,14 @@ local function update_villagers(V, t, zoom)
   if M.LOD0 then lod = 1 end
   local show = zoom >= 0.75 and not M.skipping
   local kspeed = M.game_min_per_s or 1
+  -- who has a babe in arms (an infant carried by them)
+  local arms = V.arms or {}
+  V.arms = arms
+  for k in pairs(arms) do arms[k] = nil end
+  for i = 1, #s.members do
+    local q = Vp[s.members[i]]
+    if q and q.alive and q.act == "carried" and (q.carrier or 0) ~= 0 then arms[q.carrier] = true end
+  end
   for i = 1, #s.members do
     local p = Vp[s.members[i]]
     if p and p.alive then
@@ -701,6 +709,7 @@ local function update_villagers(V, t, zoom)
         -- look + what they hold now
         local carry = p.carry ~= "" and CARRY_PART[p.carry] or nil
         local tool = TOOL[p.act]
+        if not carry and arms[p.id] then carry = "babe"; tool = nil end
         local key = p.id * 1000 + (PART[carry or ""] or 99) * 31 + (PART[tool or ""] or 98) + (stage == "child" and 7 or 0)
           + (stage == "elder" and 13 or 0)
         if e.key ~= key or e.pid ~= p.id then

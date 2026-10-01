@@ -35,6 +35,7 @@ PARTS = [
     "hat_straw", "hat_hood", "hat_cap", "headscarf",
     "tunic", "skirt", "dress", "apron", "cloak", "belt",
     "axe", "hoe", "sickle", "hammer", "basket", "sack", "bucket", "log", "rod", "spear", "shield", "flail",
+    "babe",
 ]
 PID = {n: i for i, n in enumerate(PARTS)}
 SLOT = {"skin": 0, "hair": 1, "upper": 2, "lower": 3, "accent": 4, "leather": 5, "wood": 6, "metal": 7,
@@ -268,6 +269,9 @@ def build(lod):
         p0 = s3c + Vector((-0.32, 0.05 * k, 0.07 + lift))
         p1 = s3c + Vector((0.32, 0.05 * k, 0.07 + lift))
         B.add(*prism(p0, p1, 0.045, 0.045, side), "spine_03", "wood", "log")
+    # a babe in arms: a swaddled bundle and a little head against the chest
+    B.add(*rbox(s3 + Vector((0, -0.2, -0.1)), (0.3, 0.16, 0.17), 0), "spine_03", "white", "babe")
+    B.add(*rbox(s3 + Vector((0.16, -0.2, -0.07)), (0.12, 0.12, 0.12), 0), "spine_03", "skin", "babe")
     return B
 
 def make_object(B, name):
