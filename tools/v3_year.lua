@@ -218,6 +218,27 @@ for _, s in ipairs(V.settlements) do
   say("  %-12s lat %5.1f  pop %3d  food %5.0f  harvest %5.0f  forage %4.0f  fish %4.0f  eaten %5.0f  felled %4d  built %d  plots %2d  households %d",
     s.name, math.deg(W.grid.lat[s.cell]), alive, food_total(s), a.harvest or 0, a.foraged or 0, a.fished or 0, a.eaten or 0,
     a.felled or 0, a.built or 0, #s.plots, #s.households)
+  do
+    -- textiles (D-088): the linen pipeline, garments made, clothes worn
+    local fib, yarn, cloth, flax = 0, 0, 0, s.granary and (s.granary.stock.flax or 0) or 0
+    for k = 1, #s.blist do
+      local b = s.buildings[s.blist[k]]
+      if b.kind == "house" then fib, yarn, cloth = fib + (b.stock.fibre or 0), yarn + (b.stock.yarn or 0), cloth + (b.stock.cloth or 0) end
+    end
+    local cs, cn, cmin, rags = 0, 0, 1, 0
+    for k = 1, #s.members do
+      local p = V.people[s.members[k]]
+      if p.alive and p.act ~= "carried" then
+        cs, cn = cs + (p.clothes or 1), cn + 1
+        if (p.clothes or 1) < cmin then cmin = p.clothes or 1 end
+        if (p.clothes or 1) < 0.2 then rags = rags + 1 end
+      end
+    end
+    local fl = 0
+    for _, pl in ipairs(s.plots) do if pl.crop == "flax" then fl = fl + 1 end end
+    say("      linen: flax fields %d, pulled %.0f, granary flax %.1f, fibre %.1f, yarn %.1f, cloth %.1f | spun %.1f woven %.1f garments %d | clothes mean %.2f min %.2f, in rags %d",
+      fl, a.flax or 0, flax, fib, yarn, cloth, a.spun or 0, a.woven or 0, a.garments or 0, cn > 0 and cs / cn or 0, cmin, rags)
+  end
   if s.boats then
     local bl = {}
     for _, b in ipairs(s.boats) do bl[#bl + 1] = string.format("#%d owner %d cond %.2f trips %d%s", b.id, b.owner or 0, b.cond or 1, b.trips or 0, b.lost and " LOST" or "") end

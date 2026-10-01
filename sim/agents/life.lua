@@ -168,6 +168,15 @@ function M.daily(W, s, day)
           if m then people.remember(p, now, "Learning " .. m.role .. "'s work from " .. m.name) end
         end
       end
+      -- clothes wear (children outgrow theirs); rags in the cold cost health (D-088)
+      local cw = c.clothes_wear[st]
+      if cw then
+        p.clothes = max(0, (p.clothes or 1) - cw)
+        if s.cold and p.clothes < 0.2 then
+          p.health = max(0, p.health - 0.015 * (1 - p.clothes / 0.2))
+          if (p.cold_day or -9) < day - 6 then p.cold_day = day; people.remember(p, now, "Shivering: my clothes are in rags") end
+        end
+      end
       -- death
       local hz = hazard(a) / c.days_per_year
       if p.health < 0.4 then hz = hz + (0.4 - p.health) * 0.05 end

@@ -36,7 +36,10 @@ local function run()
   local V = W.S.v3
   local s = V.settlements[1]
   local R = { W = W, worst_resid = 0, child_field = {}, infant_free = 0, infant_hungry_h = {}, beside = 0,
-    follow = 0, chores = 0, plough = 0, winter_sown = 0, nursed = 0 }
+    follow = 0, chores = 0, plough = 0, winter_sown = 0, nursed = 0, boat_wrong = {}, boarded = 0,
+    last = {}, winter = { all = 0, leisure = 0 } }
+  local clock = require("sim.agents.clock")
+  local LEISURE = { rest = true, visit = true, talk = true, sit_out = true }
   local orig = act.start
   act.start = function(W_, s_, p, now)
     local ok = orig(W_, s_, p, now)
@@ -48,6 +51,23 @@ local function run()
     if st == "child" and (p.objk == "fetch_water" or p.objk == "fetch_wood") then R.chores = R.chores + 1 end
     if p.mentored then R.beside = R.beside + 1 end
     if p.act == "nurse" or p.act == "feed_babe" then R.nursed = R.nursed + 1 end
+    -- (D-087) a household rows out only in its own boat
+    if p.act == "board" then
+      R.boarded = R.boarded + 1
+      local st = p.plan[p.pi]
+      local boat = s_.boats and st and s_.boats[st.boat or 0]
+      if boat and boat.owner ~= 0 and boat.owner ~= p.hh then R.boat_wrong[#R.boat_wrong + 1] = p.name end
+    end
+    -- (D-088) adults' waking winter hours: how much is leisure
+    if st == "adult" then
+      local L = R.last[p.id]
+      if L and L.k ~= "sleep" and clock.local_doy(L.t, W_.grid.lat[s_.cell]) >= 36 then
+        local d = now - L.t
+        R.winter.all = R.winter.all + d
+        if LEISURE[L.k] then R.winter.leisure = R.winter.leisure + d end
+      end
+      R.last[p.id] = { t = now, k = p.objk or "" }
+    end
     return ok
   end
   local prev = food_total(V, s)
@@ -120,6 +140,43 @@ function M.apprentices_learn_beside_a_mentor()
   end
   T.ok(n >= 1, "no apprentices")
   T.ok(R.beside > 10, "steps beside a mentor " .. R.beside)
+end
+
+-- Textiles (D-088): flax grown, pulled, spun and woven; clothes sewn; nobody left in rags.
+function M.linen_is_made()
+  local R = run()
+  local s = R.W.S.v3.settlements[1]
+  local a = s.acc
+  T.ok((a.flax or 0) > 5, "flax pulled " .. tostring(a.flax))
+  T.ok((a.spun or 0) > 5, "yarn spun " .. tostring(a.spun))
+  T.ok((a.woven or 0) > 3, "cloth woven " .. tostring(a.woven))
+  T.ok((a.garments or 0) >= 3, "garments sewn " .. tostring(a.garments))
+  local rags = 0
+  for _, id in ipairs(s.members) do
+    local p = R.W.S.v3.people[id]
+    if p.alive and p.act ~= "carried" and (p.clothes or 1) < 0.15 then rags = rags + 1 end
+  end
+  T.ok(rags <= 2, "people in rags " .. rags)
+end
+
+-- Fishing (D-087): own boats only; the catch real but not more than the fields'; surplus smoked.
+function M.fishers_fish_from_their_own_boats()
+  local R = run()
+  local s = R.W.S.v3.settlements[1]
+  if not s.dock then return end
+  T.eq(#R.boat_wrong, 0, "rowed out in another household's boat: " .. table.concat(R.boat_wrong, ", "))
+  T.ok(R.boarded > 10, "boardings " .. R.boarded)
+  local a = s.acc
+  T.ok((a.fished or 0) > 50 and (a.fished or 0) < (a.harvest or 0), string.format("fish %.0f against harvest %.0f", a.fished or 0, a.harvest or 0))
+  T.ok((a.smoked or 0) > 5, "fish smoked " .. tostring(a.smoked))
+end
+
+-- Winter has work (D-088): adults' waking winter hours are not mostly rest and visits.
+function M.winter_is_not_idle()
+  local R = run()
+  T.ok(R.winter.all > 100, "winter hours measured " .. R.winter.all)
+  local share = R.winter.leisure / R.winter.all
+  T.ok(share < 0.55, string.format("adults' winter leisure %.0f%%", share * 100))
 end
 
 function M.the_rotation_turns()

@@ -365,6 +365,16 @@ local function fill_rows(V)
         add(V, K.v3row_bare, cx, cy, 0, yaw, 1, 1, pack(f1[1] * 0.8, f1[2] * 0.75, f1[3] * 0.7), 0, 0)
       elseif rs == 1 then
         add(V, K.v3row_furrow, cx, cy, 0, yaw, 1, 1, e1, e2, 0)
+      elseif rs == 2 and pl.crop == "flax" then
+        -- flax (D-088): green, a blue sea of flowers, then brown seed bolls
+        local g = pl.stage == "ripe" and 1 or min(1, pl.growth or 0)
+        local c
+        if pl.stage == "ripe" then c = { 0.62, 0.52, 0.30 }
+        elseif g > 0.45 and g < 0.8 then c = { 0.40, 0.52, 0.86 }
+        else c = { 0.36, 0.60, 0.30 } end
+        add(V, K.v3row_crop, cx, cy, 0, yaw, 1, 0.12 + 0.75 * g, pack(c[1], c[2], c[3]), e2, 0)
+      elseif rs == 3 and pl.stage == "retting" then
+        add(V, K.v3row_stubble, cx, cy, 0, yaw, 1, 1, pack(0.58, 0.56, 0.50), e2, 0)
       elseif rs == 2 then
         local g = pl.stage == "ripe" and 1 or min(1, pl.growth or 0)
         local ripe = pl.stage == "ripe"
@@ -376,6 +386,11 @@ local function fill_rows(V)
         add(V, K.v3row_crop, cx, cy, 0, yaw, 1, 0.12 + 0.88 * g, pack(c[1] * (1 - wd * 0.2), c[2], c[3] * (1 - wd * 0.3)), e2, 0)
       else
         add(V, K.v3row_stubble, cx, cy, 0, yaw, 1, 1, pack(0.80, 0.70, 0.42), e2, 0)
+      end
+    end
+    if (pl.flax or 0) > 0.3 then
+      for q = 1, min(4, floor(pl.flax / 3 + 0.999)) do
+        add(V, K.stook, pl.stx + (q - 2.5) * 0.02, pl.sty, 0, q * 1.3, 0.6, 1, pack(0.66, 0.62, 0.52), pack(0.6, 0.56, 0.46), 0)
       end
     end
     if pl.sheaves > 0.5 then
@@ -404,7 +419,8 @@ local function rows_sig(V)
     local pl = s.plots[k]
     for r = 1, pl.rows do h = (h * 7 + pl.row_st[r] + 1) % 1000000007 end
     h = (h * 31 + floor((pl.growth or 0) * 24) + (pl.stage == "ripe" and 50 or 0) + (pl.stage == "rest" and 70 or 0)
-      + floor(pl.sheaves / 12) * 3 + floor((pl.weeds or 0) * 4)) % 1000000007
+      + floor(pl.sheaves / 12) * 3 + floor((pl.weeds or 0) * 4) + (pl.crop == "flax" and 90 or 0)
+      + (pl.stage == "retting" and 110 or 0) + floor((pl.flax or 0) / 3) * 5) % 1000000007
   end
   if s.clearing then h = h + 777 end
   return h
@@ -592,8 +608,10 @@ M.PART = PART
 
 -- what they hold for each action (the sim's action, not invented)
 local TOOL = { till = "hoe", grub = "hoe", chop = "axe", harvest = "sickle", build = "hammer", thresh = "flail",
-  forage = "basket", fill = "bucket", tend = nil, sow = "basket", repair = "hammer", fish = "rod", mend_boat = "hammer" }
-local CARRY_PART = { logs = "log", grain = "sack", sheaves = "sack", food = "sack", seed = "basket", water = "bucket", fish = "basket" }
+  forage = "basket", fill = "bucket", tend = nil, sow = "basket", repair = "hammer", fish = "rod", mend_boat = "hammer",
+  dress = "flail" }
+local CARRY_PART = { logs = "log", grain = "sack", sheaves = "sack", food = "sack", seed = "basket", water = "bucket", fish = "basket",
+  flax = "sack" }
 -- animation for each action: { clip, rate (at a game minute per second), moving clip }
 local ANIM = {
   walk = { "walk" }, till = { "swing", 0.7 }, grub = { "kneel_work", 0.9 }, chop = { "swing", 0.9 },
@@ -605,6 +623,8 @@ local ANIM = {
   hand = { "pickup", 1.2 },
   row = { "sit", 1 }, fish = { "sit", 0.7 }, board = { "pickup", 1.2 }, land = { "pickup", 1.2 },
   mend_boat = { "kneel_work", 1.0 }, smoke = { "kneel_work", 0.6 },
+  spin = { "sit", 0.9 }, weave = { "sit", 0.8 }, sew = { "sit", 0.7 }, mend_clothes = { "sit", 0.7 },
+  dress = { "swing", 0.7 }, haul_flax = { "walk" },
 }
 
 local function packc(c) return pack(c[1], c[2], c[3]) end

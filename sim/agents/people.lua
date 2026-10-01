@@ -61,7 +61,8 @@ function M.new(W, opts)
     temper = floor(u() * 3),
     strong = u() < 0.4,
     -- skills (0..1, grow with practice)
-    sk_farm = 0.2, sk_wood = 0.2, sk_build = 0.2, sk_fish = 0.2,
+    sk_farm = 0.2, sk_wood = 0.2, sk_build = 0.2, sk_fish = 0.2, sk_craft = 0.2,
+    clothes = 1,                           -- the condition of what they wear (D-088)
     role = opts.role or "",
     mentor = 0,
     -- body

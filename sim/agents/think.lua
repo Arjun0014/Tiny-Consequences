@@ -50,7 +50,7 @@ local function plural(n, one, many) return n == 1 and one or many end
 -- its holder is alive, still of the household and still at that objective (a claim must never
 -- outlive a person who moved to a new house, died or changed their mind).
 local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "fetch_wood", fetch_water = "fetch_water", foraging = "forage",
-  smoking = "smoke" }
+  smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew" }
 local function claim_free(W, hh, field, p)
   local id = hh[field] or 0
   if id == 0 or (p and id == p.id) then return true end
@@ -216,6 +216,7 @@ local function fit(p, ctx, kind, ref)
     local tired = max(0.2, 1 - 0.3 * n)
     if kind == "fetch_water" and ctx.age >= C().help_age then return 1.2 * tired * bf end
     if kind == "fetch_wood" and ctx.age >= C().help_age + 1 then return 0.9 * tired * bf end
+    if kind == "spin" and ctx.age >= C().help_age + 1 then return 0.85 * tired * bf end   -- (D-088)
     return 0
   end
   if st == "apprentice" then
@@ -230,6 +231,12 @@ local function fit(p, ctx, kind, ref)
     if st == "apprentice" then return 0.85 * bf end
     if st == "elder" then return 1.15 * bf end
     return (p.nursing > 0 and 1.2 or 1) * bf
+  end
+  if kind == "spin" or kind == "sew" or kind == "weave" or kind == "dress" or kind == "mend_clothes" then
+    -- the slack season's work: anyone, elders most at the spindle and needle (D-088)
+    if st == "elder" then return (kind == "dress" and 0.7 or 1.25) * bf end
+    if st == "apprentice" then return 0.9 * bf end
+    return bf
   end
   if kind == "smoke" then
     if st == "apprentice" then return 0.8 * bf end
@@ -373,6 +380,19 @@ local function work_candidates(W, s, p, ctx, now)
           add(urg * f * fat - tc - travel(ctx, s.granary_x, s.granary_y, cx, cy) * 0.5, "haul_grain", k, 0,
             string.format("%d sheaves lie in %s; they belong in the granary", floor(pl.sheaves), pl.name))
         end
+      end
+    end
+  end
+  -- retted flax waiting on its field: carried to the granary (D-088)
+  for k = 1, #plots do
+    local pl = plots[k]
+    if pl.stage == "stubble" and (pl.flax or 0) >= 0.05 and (pl.flax_claim or 0) < pl.flax / c.carry_flax then
+      local f = fit(p, ctx, "haul_grain", k)
+      ctx.with_mentor = false
+      if f > 0 then
+        local cx, cy = (pl.x0 + pl.x1) * 0.5, (pl.y0 + pl.y1) * 0.5
+        add((0.55 + (s.rain_soon and 0.15 or 0)) * f * fat - travel(ctx, cx, cy, px, py) - travel(ctx, s.granary_x, s.granary_y, cx, cy) * 0.5,
+          "haul_flax", k, 0, string.format("The flax on %s is retted (%.0f garments' worth): it belongs in the granary", pl.name, pl.flax))
       end
     end
   end
@@ -694,6 +714,84 @@ local function chores(W, s, p, ctx, now)
     if f > 0 then
       add(0.45 * f * fat - travel(ctx, s.well.dx, s.well.dy, px, py), "fetch_water", 0, 0,
         "The water jar at home is empty")
+    end
+  end
+end
+
+-- Textiles (D-088): the household's linen from flax to clothes. Clothes wear; the household wants
+-- a pipeline of fibre, yarn and cloth (textile_want a person in garments' worth) and dresses,
+-- spins, weaves and sews toward it — the slack season's work, and the evening's by the hearth or
+-- among the neighbours at the well.
+local function textile_candidates(W, s, p, ctx, now)
+  local c = C()
+  local hh, home = ctx.hh, ctx.home
+  if not hh or not home or ctx.stage == "infant" then return end
+  if ctx.stage == "child" and ctx.age < c.help_age then return end
+  local V = W.S.v3
+  local n = #hh.members
+  -- clothes the household needs: the worn ones, in garments
+  local def, worst, wq = 0, 1, nil
+  for i = 1, n do
+    local q = V.people[hh.members[i]]
+    if q and q.alive and q.act ~= "carried" then
+      local cl = q.clothes or 1
+      if cl < 0.7 then def = def + (0.7 - cl) / 0.7 end
+      if cl < worst then worst, wq = cl, q end
+    end
+  end
+  local st = home.stock
+  local fib, yarn, cloth = st.fibre or 0, st.yarn or 0, st.cloth or 0
+  -- (cloth is a household's store of wealth: linen, the children's next clothes, a daughter's
+  -- chest; a year's clothes a member in hand before the spindles rest)
+  local want = max(1.5, n * c.cloth_keep)
+  local urg = min(1, def / max(1, n * 0.3))
+  local slack = ((s.doy or 0) >= 36 or ctx.rain > 0 or not ctx.workday) and 0.07 or 0
+  local fat = fatigue(p)
+  -- sewing: a garment for whoever's clothes are worst, when the cloth is there
+  if cloth >= 1 and worst < 0.5 and claim_free(W, hh, "sewing", p) then
+    local f = fit(p, ctx, "sew")
+    if f > 0 then
+      add((0.32 + 0.5 * (0.5 - worst) + slack) * f * fat - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.5, "sew", home.id, wq.id,
+        wq == p and string.format("My clothes are worn through (%d%%): sewing new ones from our cloth", floor(worst * 100))
+          or string.format("%s's clothes are worn through (%d%%): sewing new ones from our cloth", wq.name, floor(worst * 100)))
+    end
+  end
+  -- weaving at the loom (one weaver a house)
+  if yarn >= 0.3 and cloth < want and claim_free(W, hh, "weaving", p) then
+    local f = fit(p, ctx, "weave")
+    if f > 0 then
+      add((0.2 + 0.18 * min(1, yarn) + 0.12 * urg + slack) * f * fat - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.5, "weave", home.id, 0,
+        string.format("%.1f garments' worth of yarn waits at the loom", yarn))
+    end
+  end
+  -- spinning (as many spindles as hands)
+  if fib >= 0.02 and yarn + cloth < want * 1.3 then
+    local f = fit(p, ctx, "spin")
+    if f > 0 then
+      local short = min(1, (want * 1.3 - yarn - cloth) / want)
+      local eve = (ctx.lh > ctx.sunset - 2.5) and 0.05 or 0
+      add((0.16 + 0.16 * short + 0.1 * urg + slack + eve) * f * fat, "spin", home.id, 0,
+        urg > 0.2 and string.format("The household's clothes are wearing thin: spinning flax (%.1f garments' worth of fibre)", fib)
+          or string.format("Spinning flax into yarn (%.1f garments' worth of fibre at home)", fib))
+    end
+  end
+  -- dressing flax: the raw bundles from the granary broken, scutched and hackled into fibre
+  local gflax = s.granary and (s.granary.stock.flax or 0) or 0
+  if fib < want * 0.3 and fib + yarn + cloth < want * 1.5 and ((st.flax or 0) >= 0.3 or gflax >= 1) and claim_free(W, hh, "dressing", p) then
+    local f = fit(p, ctx, "dress")
+    if f > 0 then
+      local walk = (st.flax or 0) >= 0.3 and 0 or travel(ctx, s.granary_x, s.granary_y, p.x, p.y) * 0.5
+      add((0.2 + 0.12 * urg + slack) * f * fat * WEATHER_OK(ctx, p) - walk, "dress", home.id, 0,
+        string.format("Breaking and hackling flax: the house has %.1f garments' worth of fibre, yarn and cloth", fib + yarn + cloth))
+    end
+  end
+  -- mending one's own clothes (a little yarn)
+  local mine = p.clothes or 1
+  if mine < 0.55 and yarn >= c.mend_clothes_yarn then
+    local f = fit(p, ctx, "mend_clothes")
+    if f > 0 then
+      add((0.16 + 0.5 * (0.55 - mine) + slack) * f * fat - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.5, "mend_clothes", home.id, 0,
+        string.format("Patching my clothes (%d%% whole)", floor(mine * 100)))
     end
   end
 end
@@ -1420,6 +1518,103 @@ PLAN.smoke = function(W, s, p, ctx, now, cd)
   return "Smoke the fish", "home"
 end
 
+-- Textiles (D-088): where the work is done. Spinning goes where the people are (the well, among
+-- the talkers, on a fair evening or when a few are there; a bench by the door in fair weather;
+-- inside by the hearth); the loom and the needle are indoors; flax is broken by the door.
+local function by_door(home, p, k)
+  local ox, oy = home.dx - home.cx, home.dy - home.cy
+  local l = sqrt(ox * ox + oy * oy)
+  if l < 1e-6 then ox, oy, l = 1, 0, 1 end
+  local side = (p.id % 2 == 0) and 1 or -1
+  return home.dx + (-oy / l) * 0.022 * side + ox / l * k, home.dy + (ox / l) * 0.022 * side + oy / l * k, ox / l, oy / l
+end
+
+PLAN.spin = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local home = s.buildings[cd.a]
+  local dur = (0.8 + 1.0 * u01(W, p, now, 55)) * p.dil
+  local fair = ctx.rain == 0 and (s.temp_now or 15) >= 9 and not ctx.night
+  local company = fair and ((s.at_well or 0) >= 2 or (ctx.lh > ctx.sunset - 2 and p.soc > 0.45))
+  if company then
+    local x, y = near_spot(W, p, now, s.sqx, s.sqy, 0.09, 56)
+    go(pl, x, y, "the well")
+    work(pl, "spin", dur, { ref = home.id, fx = s.sqx, fy = s.sqy })
+    return "Spin with the neighbours", "the well"
+  end
+  if fair then
+    local x, y, ox, oy = by_door(home, p, 0.01)
+    if dist(p.x, p.y, x, y) > 0.01 then go(pl, x, y, "home") end
+    work(pl, "spin", dur, { ref = home.id, fx = x + ox, fy = y + oy })
+    return "Spin by the door", "home"
+  end
+  if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+  work(pl, "spin", dur, { ref = home.id, inside = home.id })
+  return "Spin by the hearth", "home"
+end
+
+PLAN.weave = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local home = s.buildings[cd.a]
+  ctx.hh.weaving = p.id
+  if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+  work(pl, "weave", (1.0 + 1.2 * u01(W, p, now, 57)) * p.dil, { ref = home.id, inside = home.id })
+  return "Weave at the loom", "home"
+end
+
+PLAN.sew = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local home = s.buildings[cd.a]
+  ctx.hh.sewing = p.id
+  if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+  work(pl, "sew", (0.9 + 1.0 * u01(W, p, now, 58)) * p.dil, { ref = home.id, inside = home.id, who = cd.b })
+  local q = W.S.v3.people[cd.b]
+  return q == p and "Sew new clothes" or ("Sew clothes for " .. (q and q.name or "the household")), "home"
+end
+
+PLAN.mend_clothes = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local home = s.buildings[cd.a]
+  if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+  work(pl, "mend_clothes", c.mend_clothes_h * (0.8 + 0.4 * u01(W, p, now, 59)), { ref = home.id, inside = home.id })
+  return "Patch clothes", "home"
+end
+
+PLAN.dress = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local home = s.buildings[cd.a]
+  ctx.hh.dressing = p.id
+  if (home.stock.flax or 0) < 0.3 then
+    local g = s.granary
+    go(pl, g.dx, g.dy, "the granary")
+    pl[#pl + 1] = { op = "pick", what = "flax", from = "store", ref = g.id, n = 2 }
+    go(pl, home.dx, home.dy, "home")
+    pl[#pl + 1] = { op = "drop", to = "home", ref = home.id }
+  end
+  local dur = (0.9 + 1.0 * u01(W, p, now, 60)) * p.dil
+  if ctx.rain == 0 then
+    local x, y, ox, oy = by_door(home, p, 0.02)
+    go(pl, x, y, "home")
+    work(pl, "dress", dur, { ref = home.id, fx = x + ox, fy = y + oy })
+    return "Break and hackle flax by the door", "home"
+  end
+  go(pl, home.dx, home.dy, "home", home.id)
+  work(pl, "dress", dur, { ref = home.id, inside = home.id })
+  return "Hackle flax indoors", "home"
+end
+
+PLAN.haul_flax = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local plot = s.plots[cd.a]
+  plot.flax_claim = (plot.flax_claim or 0) + 1
+  local g = s.granary
+  go(pl, plot.stx, plot.sty, plot.name)
+  pl[#pl + 1] = { op = "pick", what = "flax", from = "plot", ref = cd.a }
+  go(pl, g.dx, g.dy, "the granary")
+  pl[#pl + 1] = { op = "drop", to = "granary", ref = g.id }
+  return "Carry the flax to the granary", plot.name
+end
+
 -- Afloat: whatever stopped them, they row back to the dock first (D-084).
 PLAN.return_boat = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
@@ -1513,11 +1708,18 @@ function M.release(W, s, p)
         elseif st.kind == "smoke" then
           local hh = W.S.v3.households[p.hh]
           if hh and hh.smoking == p.id then hh.smoking = 0 end
+        elseif st.kind == "dress" or st.kind == "weave" or st.kind == "sew" then
+          local hh = W.S.v3.households[p.hh]
+          local field = st.kind == "dress" and "dressing" or (st.kind == "weave" and "weaving" or "sewing")
+          if hh and hh[field] == p.id then hh[field] = 0 end
         end
       elseif st.op == "pick" then
         if st.what == "sheaves" then
           local plot = s.plots[st.ref]
           if plot then plot.haul_claim = max(0, (plot.haul_claim or 1) - 1) end
+        elseif st.what == "flax" and st.from == "plot" then
+          local plot = s.plots[st.ref]
+          if plot then plot.flax_claim = max(0, (plot.flax_claim or 1) - 1) end
         elseif st.from == "tree" then
           if s.trees.claim[st.ref] == -p.id then s.trees.claim[st.ref] = 0; s.tv = (s.tv or 0) + 1 end
         end
@@ -1606,8 +1808,10 @@ function M.decide(W, s, p, now, reason)
       mend_boat_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       chores(W, s, p, ctx, now)
       craft_candidate(W, s, p, ctx, now)
+      textile_candidates(W, s, p, ctx, now)
     elseif not ctx.night then
       chores(W, s, p, ctx, now)
+      textile_candidates(W, s, p, ctx, now)
     end
     leisure(W, s, p, ctx, now)
     follow_candidate(W, s, p, ctx, now)

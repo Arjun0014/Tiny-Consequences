@@ -873,6 +873,17 @@ C.V3 = {
   smoke_fu_h = 3.0, smoke_logs = 0.08,    -- FU of fresh fish smoked an hour at the hearth; logs a FU
   spoil_smoked = 0.004,                   -- share of smoked fish spoiled a day
   smoke_days = 8,                         -- days of smoked fish a fishing household lays in for the winter
+  -- textiles (D-088): flax sown in spring, pulled, retted on the field, dressed, spun, woven and
+  -- sewn into clothes that wear out. Units: garments' worth (GE). Hours a GE at full skill.
+  grow_days_flax = 14,                    -- flax grows fast
+  flax_row = 1.1,                         -- GE of flax a row pulls
+  ret_days = 8,                           -- days the pulled flax lies retting on the field
+  dress_h = 3.0, spin_h = 60.0, weave_h = 14.0, sew_h = 3.0,  -- break/scutch/hackle, spin (a drop spindle), weave, sew
+  mend_clothes_h = 1.0, mend_clothes_yarn = 0.05,
+  textile_want = 1.5,                     -- GE a person the village wants in the pipeline (flax to cloth)
+  cloth_keep = 1.2,                       -- GE of fibre, yarn and cloth a member a household keeps in hand
+  clothes_wear = { child = 0.012, apprentice = 0.008, adult = 0.007, elder = 0.004 },   -- a day
+  carry_flax = 3,                         -- GE of flax bundles a load
   -- reactions (hours)
   react_near = { 0.03, 0.12 }, react_far = { 0.1, 0.45 },
   rain_hardy = 0.7,                       -- diligence above which light rain does not stop work

@@ -410,6 +410,8 @@ function M.found(W, cell, opts)
       p.sk_wood = sk(p.role == "woodcutter" and 1.8 or 0.4)
       p.sk_build = sk(p.role == "builder" and 1.8 or 0.4)
       p.sk_fish = sk(s.dock and 0.5 or 0.1)
+      p.sk_craft = sk(1.0)
+      p.clothes = 0.4 + 0.55 * u()
       if age >= c.adult_age and p.sex == "m" and u() < 0.5 then p.strong = true end
       if t[4] == "p" then p.preg_due = now + (2.4 + u()) * 24 end
     end
@@ -471,6 +473,10 @@ function M.found(W, cell, opts)
     hb.cond = 0.78 + 0.22 * u()   -- built over the years: some roofs are older than others
     hh.tools = 0.7 + 0.25 * u()
     hb.stock.logs = doy0 >= 24 and 3 or 2
+    -- linen under way (D-088): dressed fibre, a little yarn and cloth
+    hb.stock.fibre = #fam * (0.1 + 0.25 * u())
+    hb.stock.yarn = #fam * (0.05 + 0.1 * u())
+    hb.stock.cloth = u() * 0.8
     hb.stock.water = u() < 0.6 and 1 or 0
   end
   -- neighbours and friends across households (a little affinity, children more)
@@ -530,6 +536,7 @@ function M.found(W, cell, opts)
   local se = floor(doy0 / 12) + 1
   s.granary.stock.grain = pop * (opts.food_days or M.FOOD_DAYS[se]) + #s.plots * 8 * c.seed_row
   s.wood_store.stock.logs = M.STORE_LOGS[se]
+  s.granary.stock.flax = pop * 0.35
   -- 7. the lanes years of walking have worn: each house to the well, granary, woodstore and fields
   for pass = 1, 2 do
     for h = 1, #homes do

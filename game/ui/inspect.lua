@@ -903,6 +903,24 @@ local function v3_person_items(W, p, items)
   if p.why ~= "" then add(items, { t = "text", icon = "bubble", text = "Why: " .. p.why }) end
   add(items, { t = "row", icon = "hourglass", label = "Body", value = string.format("fed %d · rest %d · health %d",
     floor((1 - p.hunger) * 100), floor(p.energy * 100), floor(p.health * 100)), hl = p.hunger > 0.8 or p.health < 0.5 })
+  if p.act ~= "carried" then
+    -- what they wear (D-088), and what the house holds of linen and fish
+    local cl = p.clothes or 1
+    add(items, { t = "row", icon = "person", label = "Clothes", value = string.format("%d%%%s", floor(cl * 100),
+      cl < 0.2 and " (rags)" or (cl < 0.5 and " (worn)" or "")), hl = cl < 0.2 })
+    local s3 = W.S.v3.settlements[p.sett]
+    local hh3 = W.S.v3.households[p.hh]
+    local hb = s3 and hh3 and s3.buildings[hh3.home]
+    if hb and hb.stock then
+      local st = hb.stock
+      local parts = {}
+      if (st.fibre or 0) + (st.yarn or 0) + (st.cloth or 0) > 0.05 then
+        parts[#parts + 1] = string.format("fibre %.1f · yarn %.1f · cloth %.1f", st.fibre or 0, st.yarn or 0, st.cloth or 0)
+      end
+      if (st.fish or 0) + (st.smoked or 0) > 0.05 then parts[#parts + 1] = string.format("fish %.0f · smoked %.0f", st.fish or 0, st.smoked or 0) end
+      if #parts > 0 then add(items, { t = "row", icon = "house", label = "House", value = table.concat(parts, " · ") }) end
+    end
+  end
   local n = 0
   for k = 0, 2 do
     local m = p.mem[((p.mem_n - 1 - k) % 8) + 1]

@@ -142,7 +142,8 @@ START.work = function(W, s, p, st, now)
   end
   if st.kind == "sleep" or st.kind == "rest" or st.kind == "shelter" or st.kind == "eat" or st.kind == "nurse"
     or st.kind == "visit" or st.kind == "cook" or st.kind == "feed_babe" or st.kind == "craft" or st.kind == "hand"
-    or st.kind == "smoke" then
+    or st.kind == "smoke" or st.kind == "weave" or st.kind == "sew" or st.kind == "spin" or st.kind == "dress"
+    or st.kind == "mend_clothes" then
     if st.inside and st.inside ~= 0 then p.inside = st.inside end
   end
   -- a mother home again takes her baby back from its minder (D-081)
@@ -235,9 +236,16 @@ WORK.harvest = function(W, s, p, st, f)
   if pl.stage == "ripe" and row_progress(pl, st, f, 2) then
     pl.row_st[st.row] = 3
     pl.harvested = pl.harvested + 1
-    local y = C().row_yield * pl.quality * (pl.spoil or 1)
-    pl.sheaves = pl.sheaves + y
-    s.acc.harvest = (s.acc.harvest or 0) + y
+    if pl.crop == "flax" then
+      -- flax is pulled by the roots and laid out on the field to ret (D-088)
+      local y = C().flax_row * pl.quality * (pl.spoil or 1)
+      pl.flax_ret = (pl.flax_ret or 0) + y
+      s.acc.flax = (s.acc.flax or 0) + y
+    else
+      local y = C().row_yield * pl.quality * (pl.spoil or 1)
+      pl.sheaves = pl.sheaves + y
+      s.acc.harvest = (s.acc.harvest or 0) + y
+    end
   end
   people.practice(p, "sk_farm", st.dur * f)
 end
@@ -430,6 +438,88 @@ WORK.smoke = function(W, s, p, st, f)
   s.acc.smoked = (s.acc.smoked or 0) + amt
 end
 
+-- Textiles (D-088): flax dressed into fibre, spun into yarn, woven into cloth, sewn into clothes.
+-- Rates in garments' worth (GE) an hour, with skill.
+local function craft_rate(p, h) return (0.6 + 0.6 * (p.sk_craft or 0.2)) / h end
+
+WORK.dress = function(W, s, p, st, f)
+  local hh = W.S.v3.households[p.hh]
+  if hh and hh.dressing == p.id then hh.dressing = 0 end
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
+  local amt = min(b.stock.flax or 0, st.dur * f * craft_rate(p, C().dress_h))
+  if amt <= 0 then return end
+  b.stock.flax = b.stock.flax - amt
+  b.stock.fibre = (b.stock.fibre or 0) + amt
+  people.practice(p, "sk_craft", st.dur * f)
+end
+
+WORK.spin = function(W, s, p, st, f)
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
+  local amt = min(b.stock.fibre or 0, st.dur * f * craft_rate(p, C().spin_h))
+  if amt > 0 then
+    b.stock.fibre = b.stock.fibre - amt
+    b.stock.yarn = (b.stock.yarn or 0) + amt
+    s.acc.spun = (s.acc.spun or 0) + amt
+  end
+  people.practice(p, "sk_craft", st.dur * f)
+  if p.inside == 0 then
+    -- spinning in company: the neighbours spinning and talking beside them
+    local V = W.S.v3
+    for i = 1, #s.members do
+      local q = V.people[s.members[i]]
+      if q and q ~= p and q.alive and q.inside == 0 and (q.act == "spin" or q.act == "talk") then
+        local dx, dy = q.x - p.x, q.y - p.y
+        if dx * dx + dy * dy < 0.05 then people.bond(p, q, 0.015 * f) end
+      end
+    end
+  end
+end
+
+WORK.weave = function(W, s, p, st, f)
+  local hh = W.S.v3.households[p.hh]
+  if hh and hh.weaving == p.id then hh.weaving = 0 end
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
+  local amt = min(b.stock.yarn or 0, st.dur * f * craft_rate(p, C().weave_h))
+  if amt <= 0 then return end
+  b.stock.yarn = b.stock.yarn - amt
+  b.stock.cloth = (b.stock.cloth or 0) + amt
+  s.acc.woven = (s.acc.woven or 0) + amt
+  people.practice(p, "sk_craft", st.dur * f)
+end
+
+-- A garment sewn for one of the household (st.who): done when the work adds up to sew_h.
+WORK.sew = function(W, s, p, st, f)
+  local hh = W.S.v3.households[p.hh]
+  if hh and hh.sewing == p.id then hh.sewing = 0 end
+  local b = s.buildings[st.ref or 0]
+  if not b or not hh then return end
+  hh.sew_p = (hh.sew_p or 0) + st.dur * f * craft_rate(p, C().sew_h)
+  people.practice(p, "sk_craft", st.dur * f)
+  if hh.sew_p >= 0.999 and (b.stock.cloth or 0) >= 1 - 1e-6 then
+    hh.sew_p = 0
+    b.stock.cloth = b.stock.cloth - 1
+    local V = W.S.v3
+    local q = V.people[st.who or 0]
+    if not (q and q.alive and q.hh == hh.id) then q = p end
+    q.clothes = 1
+    s.acc.garments = (s.acc.garments or 0) + 1
+    people.remember(q, W.S.v3.now or W.hour, q == p and "Sewed new clothes" or ("New clothes, sewn by " .. p.name))
+  end
+end
+
+WORK.mend_clothes = function(W, s, p, st, f)
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
+  local c = C()
+  local y = min(b.stock.yarn or 0, c.mend_clothes_yarn * f)
+  if y <= 0 then return end
+  b.stock.yarn = b.stock.yarn - y
+  p.clothes = min(1, (p.clothes or 1) + 0.3 * f * y / c.mend_clothes_yarn)
+end
+
 WORK.thresh = function(W, s, p, st, f)
   local g = s.granary
   if not g then return end
@@ -579,6 +669,22 @@ PICK.sheaves = function(W, s, p, st)
   end
 end
 
+PICK.flax = function(W, s, p, st)
+  local c = C()
+  if st.from == "plot" then
+    local pl = s.plots[st.ref]
+    if not pl then return end
+    pl.flax_claim = max(0, (pl.flax_claim or 1) - 1)
+    local got = min(c.carry_flax, pl.flax or 0)
+    if got > 0 then pl.flax = pl.flax - got; p.carry, p.camt = "flax", got end
+  else
+    local b = s.buildings[st.ref]
+    if not b then return end
+    local got = min(st.n or 2, b.stock.flax or 0)
+    if got > 0 then b.stock.flax = b.stock.flax - got; p.carry, p.camt = "flax", got end
+  end
+end
+
 PICK.logs = function(W, s, p, st)
   local want = st.n or (p.strong and 2 or 1)
   if st.from == "tree" then
@@ -623,6 +729,8 @@ DROP.any = function(W, s, p, st)
     end
   elseif what == "sheaves" then
     b.stock.sheaves = (b.stock.sheaves or 0) + n
+  elseif what == "flax" then
+    b.stock.flax = (b.stock.flax or 0) + n
   elseif what == "seed" then
     if b.kind == "granary" then b.stock.grain = (b.stock.grain or 0) + n else b.stock.seed = (b.stock.seed or 0) + n end
   elseif what == "grain" then

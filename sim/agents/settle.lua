@@ -417,7 +417,7 @@ local function grow_plots(W, s, day)
       local gt = T > c.grow_tmin and min(1, (T - c.grow_tmin) / (c.grow_topt - c.grow_tmin)) or 0
       local wet = min(1, 0.35 + sw * 1.3)
       local d = gt * (1 - 0.25 * pl.weeds)
-      local days = c.grow_days
+      local days = pl.crop == "flax" and c.grow_days_flax or c.grow_days
       if pl.crop == "winter" then
         days = c.grow_days_winter
         if winter then d = d * c.winter_dormant end
@@ -438,11 +438,22 @@ local function grow_plots(W, s, day)
       pl.ripe_for = (pl.ripe_for or 0) + 1
       if pl.ripe_for > c.ripe_spoil_days then pl.spoil = max(0, (pl.spoil or 1) - 0.2) end
       if pl.harvested >= pl.sown then
-        pl.stage = "stubble"
         pl.fert = max(0.3, (pl.fert or 1) - c.fert_crop)
+        if pl.crop == "flax" then
+          -- the pulled flax lies retting on the field before it is carried in (D-088)
+          pl.stage, pl.ret_until = "retting", day + c.ret_days
+        else
+          pl.stage = "stubble"
+        end
+      end
+    elseif pl.stage == "retting" then
+      if day >= (pl.ret_until or day) then
+        pl.stage = "stubble"
+        pl.flax = (pl.flax or 0) + (pl.flax_ret or 0)
+        pl.flax_ret = 0
       end
     elseif pl.stage == "stubble" then
-      if pl.sheaves < 0.5 then
+      if pl.sheaves < 0.5 and (pl.flax or 0) < 0.05 then
         pl.sown, pl.harvested, pl.growth = 0, 0, 0
         pl.weeds = min(1, pl.weeds * 0.5 + 0.1)
         for r = 1, pl.rows do pl.row_claim[r] = 0 end
@@ -594,7 +605,7 @@ local function plan_fields(W, s, day)
     local standing = 0
     for r = 1, pl.rows do if pl.row_st[r] == 2 then standing = standing + 1 end end
     local q = (pl.stage == "growing" and pl.q_n > 0.5) and pl.q_sum / pl.q_n or qv
-    local fy = c.row_yield * (pl.fert or 1) * q
+    local fy = pl.crop == "flax" and 0 or c.row_yield * (pl.fert or 1) * q
     expect = expect + standing * fy * 0.85 + pl.sheaves
     if pl.stage == "fallow" then expect = expect + (pl.rows - pl.sown) * fy * 0.6 end
     -- a resting field will bear the winter crop: part of the year ahead
@@ -747,6 +758,60 @@ local function plan_boats(W, s)
   end
 end
 
+-- Textiles (D-088): the village's linen, from flax field to cloth, in garments' worth.
+function M.textile_pipeline(W, s)
+  local c = C()
+  local t = s.granary and (s.granary.stock.flax or 0) or 0
+  for i = 1, #s.blist do
+    local b = s.buildings[s.blist[i]]
+    if b.kind == "house" then t = t + (b.stock.flax or 0) + (b.stock.fibre or 0) + (b.stock.yarn or 0) + (b.stock.cloth or 0) end
+  end
+  for k = 1, #s.plots do
+    local pl = s.plots[k]
+    if pl.crop == "flax" then
+      t = t + (pl.flax or 0) + (pl.flax_ret or 0)
+      if pl.stage == "growing" or pl.stage == "ripe" then t = t + (pl.sown - pl.harvested) * c.flax_row * 0.8 end
+    end
+  end
+  return t
+end
+
+-- In the spring sowing window, a village short of linen sows one field with flax: one of the
+-- fields waiting for the spring crop, its household's (the village's want: textile_want a person).
+local function plan_flax(W, s, day)
+  local c = C()
+  local doy = clock.local_doy(day * 24, W.grid.lat[s.cell])
+  if doy < c.sow_season[1] or doy > c.sow_season[2] - 4 then return end
+  local year = floor((day + (W.grid.lat[s.cell] < 0 and 24 or 0)) / 48)
+  if s.flax_year == year then return end
+  local want = (s.pop or #s.members) * c.textile_want
+  local have = M.textile_pipeline(W, s)
+  s.flax_year = year
+  -- (as many fields as the want takes, the most fertile waiting for the spring crop first)
+  while have < want do
+    local best = nil
+    for k = 1, #s.plots do
+      local pl = s.plots[k]
+      if pl.stage == "fallow" and pl.crop == "spring" and pl.sown == 0 then
+        if not best or (pl.fert or 1) > (best.fert or 1) then best = pl end
+      end
+    end
+    if not best then return end
+    best.crop = "flax"
+    best.name = best.name:gsub(" field", " flax field", 1)
+    local hh = W.S.v3.households[best.hh]
+    if hh then
+      for _, id in ipairs(hh.members) do
+        local q = W.S.v3.people[id]
+        if q and q.alive and people.stage(q, W.hour) == "adult" then
+          people.remember(q, W.hour, string.format("Our field goes to flax this year (the village has %.0f of the %.0f garments' linen it wants)", have, want))
+        end
+      end
+    end
+    have = have + best.rows * c.flax_row * 0.8
+  end
+end
+
 -- Growth: couples without a home get a house site.
 local function plan_houses(W, s)
   local V = W.S.v3
@@ -794,6 +859,7 @@ function M.daily(W, s, day)
   wild_food(W, s, day)
   plan_houses(W, s)
   plan_boats(W, s)
+  plan_flax(W, s, day)
   plan_fields(W, s, day)
   finish_clearing(W, s)
   mapm.daily_wear(s)
