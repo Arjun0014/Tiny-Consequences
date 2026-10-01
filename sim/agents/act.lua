@@ -1364,6 +1364,44 @@ WORK.deal = function(W, s, p, st, f)
   end
 end
 
+-- Asking for help (D-103): the other village gives grain from its granary; both remember it.
+WORK.ask = function(W, s, p, st, f)
+  if f < 0.99 then return end
+  local V = W.S.v3
+  local tr = p.trip
+  local g = s.buildings[st.ref or 0]
+  if not tr or not g then return end
+  local home = V.settlements[p.sett]
+  local now = V.now or W.hour
+  local q = min(tr.gift or 0, g.stock.grain or 0)
+  if q < 0.5 then
+    people.remember(p, now, string.format("Asked %s for food: they had none to give us", s.name))
+    return
+  end
+  g.stock.grain = g.stock.grain - q
+  p.pack = p.pack or {}
+  p.pack.grain = (p.pack.grain or 0) + q
+  p.carry, p.camt = "pack", pack_load(p)
+  s.acc.export = (s.acc.export or 0) + q
+  home.acc.import = (home.acc.import or 0) + q
+  s.acc.relief_out = (s.acc.relief_out or 0) + q
+  home.acc.relief_in = (home.acc.relief_in or 0) + q
+  -- (help is remembered: the asker trusts the giver more and owes it; a debt the giver had to the
+  -- asker is paid down by the help)
+  local r = econ.rel(home, s)
+  local r2 = econ.rel(s, home)
+  r.gifts = r.gifts + 1
+  r.trust = r.trust + (1 - r.trust) * 0.2
+  r2.trust = r2.trust + (1 - r2.trust) * 0.05
+  r2.given = (r2.given or 0) + 1
+  local repay = min(q, r2.owe_them or 0)
+  r2.owe_them = (r2.owe_them or 0) - repay
+  r.owed_us = (r.owed_us or 0) - repay
+  r.owe_them = (r.owe_them or 0) + q - repay
+  r2.owed_us = (r2.owed_us or 0) + q - repay
+  people.remember(p, now, string.format("%s gave us %s in our need", s.name, econ.amount(q, "grain")))
+end
+
 -- Food for the road (D-097): meals and grain from home.
 PICK.provisions = function(W, s, p, st)
   local b = s.buildings[st.ref]
@@ -1464,7 +1502,7 @@ DROP.any = function(W, s, p, st)
       for _, g in ipairs(econ.ORDER) do
         local q = p.pack and p.pack[g] or 0
         if q > 0 then
-          local key = (g == "grain") and "food" or g
+          local key = stock_key(b, g)
           b.stock[key] = (b.stock[key] or 0) + q
           gave, gv = g, q
         end

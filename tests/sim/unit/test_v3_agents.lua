@@ -271,4 +271,37 @@ function M.trade_answers_real_want()
   end
 end
 
+-- Relief (D-103): a village with no food and nothing to sell sends someone to ask a neighbour with
+-- grain to spare; the neighbour gives, the grain is carried home to the granary, both remember it.
+function M.hungry_village_asks_for_help()
+  local f = assert(io.open("assets/worlds/v3.tcsave", "rb"))
+  local data = f:read("*a")
+  f:close()
+  local W = assert(worlds.from_save_string(data))
+  world.set_systems(require("sim.agents.worldgen").systems())
+  local V = W.S.v3
+  local H, Z = V.settlements[6], V.settlements[2]
+  H.granary.stock.grain, H.granary.stock.sheaves, H.granary.stock.smoked = 10, 0, 0
+  for _, pl in ipairs(H.plots) do
+    pl.sheaves = 0
+    if pl.stage == "growing" or pl.stage == "ripe" then
+      for r = 1, pl.rows do pl.row_st[r] = 0 end
+      pl.sown, pl.stage = 0, "fallow"
+    end
+  end
+  for _, id in ipairs(H.blist) do
+    local b = H.buildings[id]
+    if b.kind == "house" and b.hh ~= 0 then
+      b.stock.smoked, b.stock.food, b.stock.cheese, b.stock.meat, b.stock.fish, b.stock.meals = 0, 1, 0, 0, 0, 1
+    end
+  end
+  Z.granary.stock.grain = Z.granary.stock.grain + 1500
+  local t0 = W.hour
+  for h = 1, 24 * 4 do world.advance(W, t0 + h) end
+  T.ok((H.acc.relief_in or 0) >= 10, "relief carried to Hottoodingle Hop " .. tostring(H.acc.relief_in))
+  T.ok((Z.acc.relief_out or 0) >= 10, "relief given by Zurug " .. tostring(Z.acc.relief_out))
+  local r = require("sim.agents.econ").rel(H, Z)
+  T.ok(r.gifts >= 1 and (r.owe_them or 0) > 0, "help remembered: gifts " .. r.gifts .. ", owed " .. tostring(r.owe_them))
+end
+
 return M

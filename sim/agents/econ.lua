@@ -23,7 +23,7 @@ M.GOODS = {
   grain = { base = 1.0, wt = 1 / 10, pool = "village", food = true, name = "grain", unit = "FU" },
   smoked = { base = 1.2, wt = 1 / 8, pool = "village", food = true, name = "smoked fish", unit = "FU" },
   cheese = { base = 1.4, wt = 1 / 8, pool = "village", food = true, name = "cheese", unit = "FU" },
-  logs = { base = 1.5, wt = 1 / 2, pool = "village", name = "logs", unit = "" },
+  logs = { base = 1.5, wt = 1 / 2, pool = "village", name = "logs", unit = "", plural = true },
   wool = { base = 3.0, wt = 1 / 3, pool = "house", name = "wool", unit = "GE" },
   cloth = { base = 6.0, wt = 1 / 3, pool = "house", name = "cloth", unit = "GE" },
 }
@@ -391,6 +391,8 @@ function M.daily(W, s, now)
     for _, o in ipairs(trade.sea_partners(W, s)) do if not s.know[o.id] then M.learn(W, s, o, now) end end
   end
   s.tplan = #partners > 0 and M.best_trade(W, s, nil, nil, "village", partners, M.land_route, now) or nil
+  -- (hungry and nothing to sell: ask the trusted neighbour for help, D-103)
+  if not s.tplan and #partners > 0 then s.tplan = M.plan_ask(W, s, partners, now) end
   local sea = trade.sea_partners(W, s)
   for _, hid in ipairs(s.households) do
     local hh = V.households[hid]
@@ -407,6 +409,41 @@ function M.daily(W, s, now)
       end
     end
   end
+end
+
+-- Asking for help (D-103): a village whose food (grain and relish) would last under `relief_days`
+-- days and which has nothing a neighbour wants sends someone to the partner it trusts most among
+-- those it knows to have grain to spare: { o, take = "grain", n, ask = true } or nil.
+function M.plan_ask(W, s, partners, now)
+  local c = C()
+  local pop = max(1, s.pop or #s.members)
+  local g = M.village_stock(W, s, "grain")
+  local r = M.village_stock(W, s, "smoked")
+  local days = (g + r) / (pop * 0.7)
+  if days >= c.relief_days then return nil end
+  local best, bs = nil, 0
+  for _, o in ipairs(partners) do
+    local _, _, sp = M.expect(W, s, o, "grain", now)
+    local rel = M.rel(s, o)
+    local sc = min(sp, 10) * (0.3 + rel.trust) * (1 + 0.2 * min(5, rel.gifts))
+    if sp > 2 and sc > bs then best, bs = o, sc end
+  end
+  if not best then return nil end
+  local _, hrs = require("sim.agents.trade").road(W, s, best)
+  return { o = best.id, give = "grain", take = "grain", n = 0, ask = true, net = 1, cost = 0, hours = hrs, aX = 1, aH = 1, days = days }
+end
+
+-- What village o gives a neighbour who came asking for food: a share of its grain to spare by how
+-- much it trusts them and what it owes them (help given before), at most what can be carried.
+function M.relief_gift(W, o, s, cap)
+  local c = C()
+  local have, want = M.village_stock(W, o, "grain")
+  local spare = max(0, have - want * c.spare_k)
+  local r = M.rel(o, s)
+  -- (what o owes s: help s gave o before)
+  local owe = min(1, (r.owe_them or 0) / 20)
+  local will = min(1, 0.2 + r.trust + owe)
+  return min(spare * will * 0.25, (cap or 1) * 10)
 end
 
 -- Routes for best_trade: hours one way, loads, people.

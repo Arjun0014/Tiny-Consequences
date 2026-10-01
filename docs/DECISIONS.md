@@ -733,3 +733,8 @@ Decision:
 5. **View**: boats on a voyage drawn on the planet along the sea way; boats moored at another village drawn there; people at sea not drawn at the map's edge.
 Numbers (shipped world, two years): 184-227 voyage hours a year between Moomoo and Upper Linamist; no wrecks in that run (one in an earlier, riskier calibration).
 Not done: larger trading boats, voyages along chains of villages, river boats.
+
+## D-103 · 2026-10-02 · Relief: asking a trusted neighbour, help remembered (session 13)
+Decision: a village whose grain and relish would last under `relief_days` (8) days a person and which has nothing a neighbour would take (no exchange planned) sends one of its people to ask the partner it trusts most among those it knows to have grain to spare (`econ.plan_ask`: known spare x (0.3 + trust) x (1 + 0.2 x past gifts)). At that village's granary the asker is given a share of its spare grain by its willingness (0.2 + trust + what it owes the asker for help given before, D-101 relations): at most a load (`econ.relief_gift`, `WORK.ask`); the grain is carried home to the granary. Both remember it: the asker's village trusts the giver more (+20% of the way) and owes it (`rel.owe_them`); the giver's (+5%) is owed (`rel.owed_us`); a village that is helped by one it once helped has its debt paid down first. Memories: "Zurug gave us 10.0 FU of grain in our need" / "Asked X for food: they had none to give us".
+Test `hungry_village_asks_for_help` (Hottoodingle Hop's stores and fields emptied, Zurug's granary full: within four days grain is given and carried home, the help remembered).
+Not done: help sought by sea; help offered unasked to a village known to be starving; obligations shaping marriages and migration (R5).

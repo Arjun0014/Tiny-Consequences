@@ -982,7 +982,8 @@ C.V3 = {
   sea_reach = 40, sail_speed = 1.1, boat_hold = 3,
   sea_squall = 0.00025, sea_wet_k = 3,    -- chance a voyage hour of foundering (fair day; x on a wet day; worn boats and unskilled skippers more)
   sea_wet_h = 8,
-  nap_h = 4,                              -- (D-102) hours an exhausted person sleeps in the day                          -- a skipper does not set out on a crossing longer than this on a wet day    -- a household shares beyond 2x its want with one under half of its own
+  nap_h = 4,
+  relief_days = 8,                        -- (D-103) food for fewer days than this and nothing to sell: ask a neighbour                              -- (D-102) hours an exhausted person sleeps in the day                          -- a skipper does not set out on a crossing longer than this on a wet day    -- a household shares beyond 2x its want with one under half of its own
   meat_want = 1.2, hunt_reach = 1.6, hunt_stalk = 0.3, hunt_throw = 0.07, stalk_speed = 0.4,
   hunt_hit = 0.25, hunt_skill = 0.35, hunt_tries = 3, hunt_hours = 5,                         -- after wolves took a beast, the village keeps a night watch this long
   wolf_visit = 0.5,                       -- a pack's chance to hunt on the map tonight: its time here x this
