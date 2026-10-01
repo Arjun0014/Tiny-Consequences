@@ -106,6 +106,16 @@ function M.register(G)
     speed.v3_t = t
     return { hour = t }
   end)
+  -- v3_skip{kind = "dawn" | "evening" | "day" | "season"} starts a skip (D-079); {cancel = true}
+  -- stops one. Returns the target hour.
+  bridge.register("v3_skip", function(args)
+    local W = assert(G.W, "world not ready")
+    assert(W.v3, "not a v3 world")
+    local speed = require("game.platform.speed")
+    if args.cancel then speed.v3_skip_cancel(); return { hour = speed.v3_t } end
+    local to = speed.v3_skip(W, args.kind or "dawn", args.to)
+    return { from = speed.v3_t, to = to }
+  end)
   bridge.register("v3_person", function(args)
     local W = assert(G.W, "world not ready")
     local speed = require("game.platform.speed")

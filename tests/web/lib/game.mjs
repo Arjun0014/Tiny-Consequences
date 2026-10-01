@@ -10,6 +10,10 @@ const CONSOLE_ERROR_ALLOWLIST = [];
  * Returns { consoleErrors, consoleLog } arrays that keep filling while the page lives.
  */
 export async function openGame(page, params = {}, { readyTimeout = 20_000 } = {}) {
+  // The v3 agent world is the default game (D-079); the W01-W09 specs exercise the legacy v2
+  // world, so they open it explicitly. `world: null` opens the default (v3) world.
+  if (!('world' in params)) params = { world: 'v2', ...params };
+  else if (params.world === null) { params = { ...params }; delete params.world; }
   const consoleErrors = [];
   const consoleLog = [];
   page.on('console', (msg) => {

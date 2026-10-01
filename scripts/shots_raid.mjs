@@ -49,7 +49,7 @@ async function shot(page, name, where) {
 try {
   const page = await browser.newPage({ viewport: VIEWPORT });
   page.on('console', (m) => { if (m.type() === 'error') report.console.push(m.text()); });
-  const q = { speed: '0', freeze: '1' };
+  const q = { speed: '0', freeze: '1', world: 'v2' };   // the legacy v2 world (D-079)
   if (worldName) q.world = worldName;
   await page.goto(gameUrl(`http://127.0.0.1:${port}`, q));
   await page.waitForFunction(() => window.__TC && window.__TC.ready === true, null, { timeout: 120_000 });

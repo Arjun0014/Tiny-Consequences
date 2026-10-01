@@ -38,7 +38,7 @@ async function cmd(page, c, timeout = 120_000) {
 }
 try {
   const page = await browser.newPage({ viewport: VIEWPORT });
-  const q = { freeze: '1', speed: '0' };
+  const q = { freeze: '1', speed: '0', world: 'v2' };   // the legacy v2 world (D-079); --world overrides
   if (seedFlag !== null) q.seed = String(seedFlag);
   const worldFlag = getFlag(args, '--world', null);
   if (worldFlag !== null) q.world = String(worldFlag);

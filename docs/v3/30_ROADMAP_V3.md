@@ -1,7 +1,8 @@
 # V3-30 — Roadmap v3: an automated miniature civilisation (D-078)
 
-Supersedes `docs/world/17_ROADMAP.md` for v3 worlds. The v2 game stays playable (default world)
-until v3 reaches parity; then v3 becomes the default and v2 code is retired.
+Supersedes `docs/world/17_ROADMAP.md` for v3 worlds. **v3 is the default game since session 10
+(D-079)**, before parity, because it is the chosen direction; the v2 world stays playable as a
+legacy/debug fallback (`?world=v2`) and its code is retired only when v3 reaches parity.
 
 Method per phase: one complete vertical loop → run headless (`tools/v3_run.lua`, follow
 people) → watch it (`npm run shots:v3`, the game with `?world=v3`) → profile (`tools/v3_scale.lua`)
@@ -13,7 +14,7 @@ farming row by row, woodcutting tree by tree, carrying, building a house for a w
 clearing new fields, foraging, chores, rain reactions, life stages, births, marriage; the v3
 calendar and speed ladder; skinned villagers from the Blender pipeline; inspector and follow.
 
-## R1 — The slice made solid (next)
+## R1 — The slice made solid (session 10)
 - Watch a full year headless and in the game: harvest, threshing, autumn wood, winter fuel and
   hunger, the second spring; fix what reads wrong when following people (logs per trip, seed
   round-trips, crowding at the same tree, evening gatherings).
@@ -21,7 +22,8 @@ calendar and speed ladder; skinned villagers from the Blender pipeline; inspecto
 - Night: lit windows from people indoors and awake; chimney smoke from hearths that burn logs.
 - The far LOD at ~150-250 triangles; animation blending per action; facing toward work targets.
 - Catch-up mode in the UI (⏭: "to dawn", "a season") with the people hidden; HUD speed buttons
-  relabelled for the v3 ladder; the inspector's memories and relationships.
+  relabelled for the v3 ladder; the inspector's memories and relationships. (D-079: the watch
+  ladder stops at ▶▶▶; skips until dawn / evening / a day / the next season, keys 4-7.)
 - Performance: why-strings built lazily (on inspection), fewer RNG hashes per decision; A* on a
   coarse grid for long trips; the planet's daily step amortised. Target: 200 agents at ▶▶▶ < 2 ms
   per frame in the HTML5 release, a season of catch-up in ≤ 10 s.

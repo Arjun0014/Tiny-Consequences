@@ -88,7 +88,7 @@ grows.
   | ▶ | 1 game-min/s | 24 min | walking reads at a natural miniature pace |
   | ▶▶ | 4 game-min/s | 6 min | default watch |
   | ▶▶▶ | 12 game-min/s | 2 min | fastest **watch**: walking is brisk but every trip is visible |
-  | ⏭ Skip | catch-up | — | separate mode: "until dawn" / "a season"; the view fades people out and runs the sim unrendered as fast as the budget allows |
+  | ⏭ Skip | catch-up | — | separate mode (D-079): until dawn / until evening / one day / the next season; the view hides the people and runs the sim unrendered as fast as the budget allows |
 
 - Agents move along continuous analytic paths (start time, waypoints, speed), so any speed shows
   the same continuous motion; nothing jumps when a frame covers more time.
