@@ -289,6 +289,27 @@ function M.step(W, s, H, a, now)
   if a.hunger >= 1 then a.health = max(0, a.health - 0.02 * dt)
   elseif (a.sick or 0) > 0 then a.health = max(0, a.health - c.sick_harm * dt)
   elseif a.health < 1 then a.health = min(1, a.health + 0.01 * dt) end
+  -- yoked to the plough (D-108): ahead of the ploughman along the row, hungrier for the work
+  if (a.yoke or 0) ~= 0 then
+    local q = W.S.v3.people[a.yoke]
+    if q and q.alive and q.ox == a.k and (q.objk == "till" or q.objk == "yoke") then
+      a.hunger = min(1, a.hunger + C().ox_work_hunger * dt)
+      local qx, qy, dx, dy = M.person_pos(q, now)
+      local fx, fy = 0, 0
+      if dx and (dx * dx + dy * dy) > 1e-10 then
+        local l = sqrt(dx * dx + dy * dy)
+        fx, fy = dx / l, dy / l
+      end
+      local gx, gy = qx + fx * 0.035, qy + fy * 0.035
+      if (gx - a.tx) ^ 2 + (gy - a.ty) ^ 2 > 0.0001 and walk_to(W, s, a, now, gx, gy, S.speed * 1.5) then
+        a.t1 = min(a.t1, now + 0.1)
+        return
+      end
+      stand(a, now, "held", 0.1)
+      return
+    end
+    a.yoke = 0
+  end
   -- held by someone (milked, shorn, slaughtered): it stands while they work
   if (a.held or 0) ~= 0 then
     local q = W.S.v3.people[a.held]
@@ -404,6 +425,7 @@ end
 
 -- Daily round: pasture, places in the spread, births, milk drying off, wool, sickness, deaths ----
 function M.daily(W, s, day, push)
+  M.choose_oxen(W, s, day * 24)
   if not s.herds then return end
   local c = C()
   M.daily_pasture(W, s, day)
@@ -513,11 +535,46 @@ function M.breeding(S, doy)
 end
 
 -- A grown male of her kind in the herd (a ram, a billy, a bull, a boar).
+-- Oxen (D-108): a household that farms and keeps cattle chooses a young bullock to train for the
+-- plough; it is gelded (never a sire) and kept from the culls.
+function M.choose_oxen(W, s, now)
+  local H = s.herds and s.herds.cattle
+  if not H then return end
+  local V = W.S.v3
+  local has = {}
+  for _, a in ipairs(H.animals) do
+    if a.alive and a.ox then has[a.owner] = true; a.worked = 0 end
+  end
+  local S = M.SP("cattle")
+  for _, a in ipairs(H.animals) do
+    local age = (now - a.born) / 1152
+    if a.alive and not a.ox and a.sex == "m" and age >= S.young_years and age < S.old_years - 2 and not has[a.owner] then
+      -- (not the herd's sire: the oldest grown bull stays a bull)
+      local sire = false
+      for _, b in ipairs(H.animals) do
+        if b.alive and b ~= a and b.sex == "m" and not b.ox and (now - b.born) / 1152 >= S.adult_years then sire = true end
+      end
+      local farms = false
+      for _, pl in ipairs(s.plots) do if pl.hh == a.owner then farms = true end end
+      if sire and farms and V.households[a.owner] then
+        a.ox, a.cull = true, nil
+        has[a.owner] = true
+        for _, id in ipairs(V.households[a.owner].members) do
+          local q = V.people[id]
+          if q and q.alive and require("sim.agents.people").stage(q, now) == "adult" then
+            require("sim.agents.people").remember(q, now, "Gelded the young bullock to train him for the plough")
+          end
+        end
+      end
+    end
+  end
+end
+
 function M.has_sire(H, a, now)
   local L = H.animals
   for i = 1, #L do
     local b = L[i]
-    if b.alive and b.sex == "m" and b.sp == a.sp and (now - b.born) / 1152 >= SP(b.sp).adult_years then return true end
+    if b.alive and b.sex == "m" and not b.ox and b.sp == a.sp and (now - b.born) / 1152 >= SP(b.sp).adult_years then return true end
   end
   return false
 end
@@ -582,7 +639,9 @@ function M.plan_cull(W, s)
     if over <= 0 then break end
     local S = SP(a.sp)
     local age = (now - a.born) / 1152
-    if a.sex == "m" and not sires[a.sp] and age > S.adult_years and age < S.old_years - 1 then
+    if a.ox then
+      -- (an ox is kept for the plough: D-108)
+    elseif a.sex == "m" and not sires[a.sp] and age > S.adult_years and age < S.old_years - 1 then
       sires[a.sp] = true      -- (one good sire of each kind is kept)
     else
       a.cull = true
@@ -745,6 +804,17 @@ function M.found(W, s, households, u, doy0)
     end
   end
   if cows > 0 then one(s.herds.cattle, "cattle", households[1 + floor(u() * nh)], false, 3 + u() * 3) end
+  -- (D-108) a household with a cow and fields of its own brings a trained ox and its harness
+  if cows > 0 then
+    for _, hh in ipairs(households) do
+      local cow = false
+      for _, a in ipairs(s.herds.cattle.animals) do if a.owner == hh.id and a.sex == "f" then cow = true end end
+      if cow then
+        one(s.herds.cattle, "cattle", hh, false, 4 + u() * 4, { ox = true })
+        hh.harness = true
+      end
+    end
+  end
   -- pigs where there are woods: a sow (and a growing pig or two) for most households, a boar
   local sows = 0
   for _, hh in ipairs(households) do

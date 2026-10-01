@@ -1044,6 +1044,16 @@ local function leather_candidates(W, s, p, ctx, now)
         "tan", pit.id, 0, "%.0f hides at home: putting them to soak in the tanning pit", home.stock.hides)
     end
   end
+  -- a harness for the household's ox (D-108)
+  if not hh.harness and (home.stock.leather or 0) >= c.harness_leather and ctx.stage == "adult" and claim_free(W, hh, "cobbling", p) then
+    local H = s.herds and s.herds.cattle
+    local has_ox = false
+    for _, a in ipairs(H and H.animals or {}) do if a.alive and a.ox and a.owner == hh.id then has_ox = true end end
+    if has_ox then
+      add(0.35 * fatigue(p) - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.5, "harness", home.id, 0,
+        "Our ox is ready for the plough: cutting and stitching a harness from our leather")
+    end
+  end
   -- shoes for whoever's are worst, when there is leather
   if (home.stock.leather or 0) >= c.shoe_leather and claim_free(W, hh, "cobbling", p) then
     local worst, wq = 0.35, nil
@@ -1868,13 +1878,40 @@ PLAN.sow = function(W, s, p, ctx, now, cd)
   return "Sow " .. plot.name, plot.name
 end
 
+-- The household's ox, free and fit for the plough, with its harness made (D-108), or nil.
+local function free_ox(W, s, hh)
+  local H = s.herds and s.herds.cattle
+  if not H or not hh or not hh.harness then return nil end
+  for _, a in ipairs(H.animals) do
+    if a.alive and a.ox and a.owner == hh.id and (a.yoke or 0) == 0 and (a.held or 0) == 0 and a.health > 0.5 and a.hunger < 0.75
+      and (a.sick or 0) <= 0 and (a.worked or 0) < C().ox_day_h then return a end
+  end
+  return nil
+end
+M.free_ox = free_ox
+
 PLAN.till = function(W, s, p, ctx, now, cd)
   local c = C()
-  plan_reset(p)
+  local pl = plan_reset(p)
   local plot = s.plots[cd.a]
   plot.row_claim[cd.b] = p.id
   local full = c.till_row_h * (1.25 - 0.45 * p.sk_farm) * (0.9 + 0.2 * u01(W, p, now, 26)) * (p.strong and 0.9 or 1) / tool_factor(W, p)
+  -- (with the household's ox at the plough: fetched from the herd and yoked, the row turned in a
+  -- fraction of the hoeing's hours; D-108)
+  local ox = ctx.stage == "adult" and free_ox(W, s, ctx.hh)
+  if ox then
+    local ax, ay = stock.pos(ox, now)
+    go(pl, ax, ay, "the ox")
+    work(pl, "yoke", 0.15, { ox = ox.k, fx = ax, fy = ay })
+    full = full / c.ox_till
+  end
   local a0 = row_stint(W, s, p, now, plot, cd.b, "till", full, 37)
+  if ox then
+    pl[#pl].ox = ox.k
+    work(pl, "unyoke", 0.1, { ox = ox.k })
+    local verb = "Plough with the ox"
+    return a0 > 0 and string.format("%s: %s (row %d, %d%% done)", verb, plot.name, cd.b, floor(a0 * 100)) or (verb .. ": " .. plot.name), plot.name
+  end
   local verb = plot.stage == "rest" and "Plough the fallow of" or "Hoe"
   return a0 > 0 and string.format("%s %s (row %d, %d%% done)", verb, plot.name, cd.b, floor(a0 * 100)) or (verb .. " " .. plot.name), plot.name
 end
@@ -2399,6 +2436,16 @@ PLAN.lift = function(W, s, p, ctx, now, cd)
   go(pl, home.dx, home.dy, "home", home.id)
   pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, release = "lifting" }
   return "Lift the leather out", "the tanning pit"
+end
+
+PLAN.harness = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local home = ctx.home
+  ctx.hh.cobbling = p.id
+  if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+  work(pl, "harness", c.harness_h, { ref = home.id, inside = home.id })
+  return "Make a harness for the ox", "home"
 end
 
 PLAN.cobble = function(W, s, p, ctx, now, cd)

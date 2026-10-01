@@ -189,6 +189,15 @@ function sys.advance(W, t)
   dogs.interrupt_hook = function(W_, p, at, reason) return sys.interrupt(W_, p, at, reason) end
   wild.interrupt_hook = dogs.interrupt_hook
   dogs.push = sys.push
+  act.stock_push = function(W_, s_, a)
+    local H = s_.herds and s_.herds.cattle
+    if not H then return end
+    local now = W_.S.v3.now or W_.hour
+    a.x, a.y = stock.pos(a, now)
+    a.tx, a.ty = a.x, a.y
+    a.t0, a.t1 = now, now + 0.01
+    sys.push(W_, a.t1, stock.event_id(s_, H, a), a.ver)
+  end
   act.drown_hook = function(W_, p, from, to) return life.drown(W_, p, from, to) end
   local R = rt(W)
   local P = V.people

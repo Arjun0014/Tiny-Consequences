@@ -994,6 +994,9 @@ C.V3 = {
   -- (D-107) river water: dirt from houses and pens within foul_reach of where it is drawn; a day's
   -- chance of the flux flux_k x foulness; flux_days of sickness losing flux_health a day; the very
   -- young and old risk flux_hz a day; a household that fell sick keeps to the well river_shun_days
+  -- (D-108) oxen: ploughing with one is ox_till x faster; ox_day_h hours of it a day; hungrier at
+  -- the work; a harness takes harness_leather and harness_h
+  ox_till = 2.5, ox_day_h = 6, ox_work_hunger = 0.03, harness_leather = 1.0, harness_h = 3.0,
   foul_reach = 0.8, flux_k = 0.004, flux_days = 4, flux_health = 0.05, flux_hz = 0.01, river_shun_days = 40,
   dog_alert = 0.45, dog_trot = 1.9, dog_run = 4.0, wolf_kill_dog = 0.15, dog_pup_days = 12,
   wolf_fear = 0.16, dog_deter = 0.3, guard_alert = 0.4, dog_charge = 0.18,

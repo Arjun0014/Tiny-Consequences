@@ -54,6 +54,15 @@ local function run()
     end
     return ok
   end
+  -- (the crop standing at the founding, at its expected yield: what the village should bring in)
+  local cfg = cfgmod.V3
+  R.standing = 0
+  for _, pl in ipairs(s.plots) do
+    if pl.crop ~= "flax" and (pl.stage == "growing" or pl.stage == "ripe") then
+      local q = pl.q_n > 0.5 and pl.q_sum / pl.q_n or 0.85
+      for r = 1, pl.rows do if pl.row_st[r] == 2 then R.standing = R.standing + cfg.row_yield * (pl.fert or 1) * q end end
+    end
+  end
   local prev = food_total(W, s)
   local acc0 = {}
   local function accs() return require("sim.agents.settle").food_flows(s) end
@@ -118,7 +127,10 @@ function M.economy_closes_and_nobody_starves()
     local p = R.W.S.v3.people[id]
     T.ok(p.alive or p.died_of ~= "hunger", p.name .. " starved")
   end
-  T.ok((s.acc.harvest or 0) > 600, "harvest " .. tostring(s.acc.harvest))
+  -- (D-108: was "> 600"; the founding's draws changed with the oxen and the harvest depends on the
+  -- standing crop: the village must bring in what stood in its fields, at least 70% of it)
+  T.ok(R.standing > 300, "crop standing at the founding " .. R.standing)
+  T.ok((s.acc.harvest or 0) >= 0.7 * R.standing, string.format("harvest %.0f of a standing crop of %.0f", s.acc.harvest or 0, R.standing))
   T.ok((s.acc.felled or 0) > 30, "trees felled " .. tostring(s.acc.felled))
 end
 

@@ -251,6 +251,12 @@ WORK.till = function(W, s, p, st, f)
       if pl.ploughed >= pl.rows then pl.fert = min(C().fert_max, (pl.fert or 1) + C().fert_plough) end
     end
   end
+  if st.ox then
+    -- (the ox's hours at the plough today: D-108)
+    local H = s.herds and s.herds.cattle
+    local a = H and H.animals[st.ox]
+    if a then a.worked = (a.worked or 0) + st.dur * f; s.acc.ox_h = (s.acc.ox_h or 0) + st.dur * f end
+  end
   people.practice(p, "sk_farm", st.dur * f)
 end
 
@@ -837,6 +843,36 @@ WORK.lift = function(W, s, p, st, f)
   p.carry, p.camt = "leather", pit.stock.soaking
   s.acc.leather = (s.acc.leather or 0) + pit.stock.soaking
   pit.stock.soaking, pit.ready = 0, nil
+end
+
+-- The ox (D-108): yoked where it stands, led to the field, unyoked after the stint (it goes back to
+-- the herd by itself); a day's ploughing hours counted (it rests when it has done its day).
+local function ox_of(s, k)
+  local H = s.herds and s.herds.cattle
+  return H and H.animals[k or 0]
+end
+WORK.yoke = function(W, s, p, st, f)
+  local a = ox_of(s, st.ox)
+  if not a or not a.alive or f < 0.9 then return end
+  a.yoke = p.id
+  p.ox = a.k
+  a.ver = (a.ver or 0) + 1
+  if M.stock_push then M.stock_push(W, s, a) end
+end
+WORK.unyoke = function(W, s, p, st, f)
+  local a = ox_of(s, st.ox)
+  if a and a.yoke == p.id then a.yoke = 0 end
+  p.ox = nil
+end
+WORK.harness = function(W, s, p, st, f)
+  local home = s.buildings[st.ref or 0]
+  local hh = W.S.v3.households[p.hh]
+  if not home or not hh or f < 0.99 then return end
+  local c = C()
+  if (home.stock.leather or 0) < c.harness_leather - 1e-6 then return end
+  home.stock.leather = home.stock.leather - c.harness_leather
+  hh.harness = true
+  people.remember(p, W.S.v3.now or W.hour, "Made the harness for our ox")
 end
 
 -- Shoes (D-104): a pair cut and stitched at home from the household's leather.
