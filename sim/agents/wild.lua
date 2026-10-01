@@ -87,6 +87,30 @@ local function cover(W, s)
 end
 M.cover = cover
 
+-- The map's cells and their neighbours (a group whose centre or den is elsewhere cannot range
+-- here: herds range one ring, packs two, so dens are tested against the second ring too).
+local NEAR = setmetatable({}, { __mode = "k" })
+local function near(W, s)
+  local nr = NEAR[s]
+  if nr then return nr end
+  local cv = cover(W, s)
+  local g = W.grid
+  local r1, r2 = {}, {}
+  for c in pairs(cv) do r1[c] = true end
+  for c in pairs(cv) do
+    local b = c * 6 - 6
+    for k = 1, g.nbr_count[c] do r1[g.nbr[b + k]] = true end
+  end
+  for c in pairs(r1) do
+    r2[c] = true
+    local b = c * 6 - 6
+    for k = 1, g.nbr_count[c] do r2[g.nbr[b + k]] = true end
+  end
+  nr = { r1, r2 }
+  NEAR[s] = nr
+  return nr
+end
+
 -- A group's share of its time on the map: sum over its range of weight x cover.
 local function presence(W, s, t)
   local cv = cover(W, s)
@@ -172,10 +196,18 @@ local function go_to(s, w, now, x, y, speed, act)
   end
   local i0, i1 = mapm.tile_of(s, w.tx, w.ty), mapm.tile_of(s, x, y)
   if i0 > 0 and i1 > 0 and i0 ~= i1 and not nav.los(s, i0, i1, 3.1) then
-    w.mv = w.mv or { x = {}, y = {}, cum = {} }
-    local path = nav.path(s, w.tx, w.ty, x, y, 0, w.mv)
-    if not path or path.n < 2 then return false end
-    x, y = path.x[2], path.y[2]
+    -- (a river or a building in the way: only an animal leaving the map finds its way round;
+    -- the others go half as far, or stay this side)
+    if act == "leave" then
+      w.mv = w.mv or { x = {}, y = {}, cum = {} }
+      local path = nav.path(s, w.tx, w.ty, x, y, 0, w.mv)
+      if not path or path.n < 2 then return false end
+      x, y = path.x[2], path.y[2]
+    else
+      x, y = (w.tx + x) * 0.5, (w.ty + y) * 0.5
+      i1 = mapm.tile_of(s, x, y)
+      if i1 == 0 or s.cost[i1] < 0 or (i1 ~= i0 and not nav.los(s, i0, i1, 3.1)) then return false end
+    end
   end
   local dx, dy = x - w.tx, y - w.ty
   local d = sqrt(dx * dx + dy * dy)
@@ -259,9 +291,10 @@ function M.daily(W, s, day, push)
   end
   local want = {}
   local total = 0
+  local nr1 = near(W, s)[1]
   for i = 1, A.nh do
-    local t = fauna.herd_range(W, A.h_cell[i])
-    local sh = presence(W, s, t)
+    local sh = 0
+    if nr1[A.h_cell[i]] then sh = presence(W, s, fauna.herd_range(W, A.h_cell[i])) end
     if sh > 0 then
       local e = A.h_n[i] * sh * c.wild_seen
       local n = floor(e + rng.float(W.seed, rng.S.V3_MAP, A.h_id[i], day, 610))
@@ -330,7 +363,7 @@ function M.hourly(W, s, now)
   if not PN then PN = {}; W.S.v3.pack_night = PN end
   for i = 1, A.np do
     local id = A.p_id[i]
-    if PN[id] ~= day and Wd.pack_night[id] ~= day and A.p_n[i] > 0 then
+    if PN[id] ~= day and Wd.pack_night[id] ~= day and A.p_n[i] > 0 and near(W, s)[2][A.p_cell[i]] then
       local t = fauna.territory(W, A.p_cell[i])
       local sh = presence(W, s, t)
       if sh > 0 then
@@ -380,17 +413,26 @@ local function threat(W, s, w, now)
       if d2 < c.wild_alert_wolf ^ 2 then return o.tx, o.ty end
     end
   end
-  -- people about in the woods and fields (checked against where each is headed or standing)
+  -- people about in the woods and fields: where each began what they are doing (state: the
+  -- same after a load), hunters where they are now
   local V = W.S.v3
   local r2 = c.wild_alert ^ 2
-  for i = 1, #s.members do
-    local p = V.people[s.members[i]]
-    if p and p.alive and p.inside == 0 and p.act ~= "carried" then
-      local px, py = stock.person_pos(p, now)
-      local d2 = (px - w.tx) ^ 2 + (py - w.ty) ^ 2
-      -- (a hunter creeping up is seen later, the more skilled the later)
-      local k = p.objk == "hunt" and (1 - 0.5 * (p.sk_hunt or 0.2)) or 1
-      if d2 < r2 * k * k then return px, py end
+  local wx, wy = w.tx, w.ty
+  local mem = s.members
+  for i = 1, #mem do
+    local p = V.people[mem[i]]
+    if p.alive and p.inside == 0 then
+      local px, py = p.x, p.y
+      local dx, dy = px - wx, py - wy
+      local d2 = dx * dx + dy * dy
+      if p.objk == "hunt" then
+        px, py = stock.person_pos(p, now)
+        -- (a hunter creeping up is seen later, the more skilled the later)
+        local k = 1 - 0.5 * (p.sk_hunt or 0.2)
+        if (px - wx) ^ 2 + (py - wy) ^ 2 < r2 * k * k then return px, py end
+      elseif d2 < r2 and p.act ~= "carried" and p.act ~= "sleep" then
+        return px, py
+      end
     end
   end
   return nil

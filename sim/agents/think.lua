@@ -903,20 +903,36 @@ M.hunt_candidates = hunt_candidates
 local stock = require("sim.agents.stock")
 
 -- A herd at a glance (owners, head count, mean hunger), worked out once a game hour (D-090).
+-- (and, per owning household, its dam with the fullest udder, a sheep ready to shear and a beast
+-- marked for killing: the candidates read these instead of every animal at every decision)
 local function herd_sum(H, now)
   local h = floor(now)
   local S = H.sum
   if S and S.h == h then return S end
-  S = S or { owners = {} }
+  S = S or { owners = {}, milk = {}, milkv = {}, shear = {}, cull = {} }
   H.sum = S
   S.h = h
   for k in pairs(S.owners) do S.owners[k] = nil end
+  local milk, milkv, shear, cull = S.milk, S.milkv, S.shear, S.cull
+  for k in pairs(milk) do milk[k] = nil end
+  for k in pairs(milkv) do milkv[k] = nil end
+  for k in pairs(shear) do shear[k] = nil end
+  for k in pairs(cull) do cull[k] = nil end
+  local c = C()
   local n, hung, se = 0, 0, 0
-  for _, a in ipairs(H.animals) do
+  for k, a in ipairs(H.animals) do
     if a.alive then
       n, hung = n + 1, hung + a.hunger
-      se = se + stock.SP(a.sp).se
-      S.owners[a.owner] = true
+      local SP = stock.SP(a.sp)
+      se = se + SP.se
+      local o = a.owner
+      S.owners[o] = true
+      if (a.milk or 0) > 0 and SP.milk then
+        local v = a.milk / (SP.milk * 0.75)
+        if a.milk >= SP.milk * c.milk_min * 0.8 and v > (milkv[o] or 0) then milk[o], milkv[o] = k, v end
+      end
+      if a.sp == "sheep" and (a.wool or 0) >= 1 and not shear[o] and (now - a.born) / 1152 > SP.young_years then shear[o] = k end
+      if a.cull and not cull[o] then cull[o] = k end
     end
   end
   S.n, S.hunger, S.se = n, n > 0 and hung / n or 0, se
@@ -1006,16 +1022,12 @@ local function herd_candidates(W, s, p, ctx, now)
       end
       if mine then
         -- milking: the household's dam with the fullest udder (wherever she is)
-        if df > 0 and kind ~= "swine" and claim_free(W, hh, "milking", p) then
-          local best, bv = nil, 0
-          for _, a in ipairs(H.animals) do
-            if a.alive and a.owner == p.hh and (a.milk or 0) > 0 and (a.held or 0) == 0 then
-              local S = stock.SP(a.sp)
-              local v = a.milk / (S.milk * 0.75)
-              if v > bv and a.milk >= S.milk * c.milk_min then best, bv = a, v end
-            end
-          end
-          if best then
+        local mk = HS.milk[p.hh]
+        if df > 0 and kind ~= "swine" and mk and claim_free(W, hh, "milking", p) then
+          local best = H.animals[mk]
+          local S = stock.SP(best.sp)
+          local bv = (best.milk or 0) / (S.milk * 0.75)
+          if best.alive and (best.held or 0) == 0 and best.milk >= S.milk * c.milk_min then
             local ax, ay = best.tx, best.ty
             addw((0.42 + 0.45 * bv) * df * fatigue(p) * WEATHER_OK(ctx, p) - travel(ctx, ax, ay, p.x, p.y), "milk", best.k, hi,
               "The %s's udder is full (%.1f of milk): milking her", best.sp == "cattle" and "cow" or "goat", best.milk)
@@ -1023,25 +1035,22 @@ local function herd_candidates(W, s, p, ctx, now)
         end
         if not (st == "child" and ctx.age < c.help_age + 1) then
           -- shearing: a sheep of the household with its fleece grown, kept in the fold
-          if kind == "flock" and doy >= c.shearing[1] and doy <= c.shearing[2] and not H.out and st ~= "child" then
-            for k, a in ipairs(H.animals) do
-              if a.alive and a.sp == "sheep" and a.owner == p.hh and (a.wool or 0) >= 1 and (a.held or 0) == 0
-                and (now - a.born) / 1152 > stock.SP("sheep").young_years then
-                addw(0.48 * fatigue(p) * WEATHER_OK(ctx, p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "shear", k, hi,
-                  "Shearing time: a fleece of %.1f garments' wool on one of our sheep", a.wool)
-                break
-              end
+          local sk = HS.shear[p.hh]
+          if kind == "flock" and sk and doy >= c.shearing[1] and doy <= c.shearing[2] and not H.out and st ~= "child" then
+            local a = H.animals[sk]
+            if a.alive and (a.wool or 0) >= 1 and (a.held or 0) == 0 then
+              addw(0.48 * fatigue(p) * WEATHER_OK(ctx, p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "shear", sk, hi,
+                "Shearing time: a fleece of %.1f garments' wool on one of our sheep", a.wool)
             end
           end
           -- autumn (pigs at the start of winter): a beast of the household marked for killing
-          if adult and not H.out then
-            for k, a in ipairs(H.animals) do
-              if a.alive and a.cull and a.owner == p.hh and (a.held or 0) == 0 then
-                addw(0.5 * fatigue(p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "slaughter", k, hi,
-                  kind == "swine" and "Winter is coming: killing a fattened %s for the larder" or "The hay will not winter all our beasts: killing a %s for the larder",
-                  a.sp == "cattle" and "beast" or a.sp)
-                break
-              end
+          local ck = HS.cull[p.hh]
+          if adult and ck and not H.out then
+            local a = H.animals[ck]
+            if a.alive and a.cull and (a.held or 0) == 0 then
+              addw(0.5 * fatigue(p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "slaughter", ck, hi,
+                kind == "swine" and "Winter is coming: killing a fattened %s for the larder" or "The hay will not winter all our beasts: killing a %s for the larder",
+                a.sp == "cattle" and "beast" or a.sp)
             end
           end
           -- hay into the rack when the herd is kept in and hungry (not the pigs: scraps)

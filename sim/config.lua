@@ -895,18 +895,18 @@ C.V3 = {
   stock = {
     sheep = { speed = 1.6, hop = 0.08, sep = 0.034, hunger = 0.035, graze = 0.25, se = 1, meat = 6, wool = 0.03,
       young_years = 0.35, adult_years = 1, old_years = 7, birth = { 1, 10 }, birth_chance = 0.12, twins = 0.25, litter = 1,
-      stepping = 0.3, resting = 0.1, graze_h = 0.6, rest_h = 0.9, butcher_h = 0.75 },
+      stepping = 0.22, resting = 0.1, graze_h = 0.9, rest_h = 1.1, butcher_h = 0.75 },
     goat = { speed = 1.8, hop = 0.09, sep = 0.034, hunger = 0.035, graze = 0.25, browse = 0.45, se = 0.8, meat = 5,
       milk = 0.22, lact_days = 22, milk_h = 0.15,
       young_years = 0.3, adult_years = 1, old_years = 8, birth = { 0, 10 }, birth_chance = 0.12, twins = 0.4, litter = 1,
-      stepping = 0.4, resting = 0.08, graze_h = 0.5, rest_h = 0.8, butcher_h = 0.7 },
+      stepping = 0.3, resting = 0.08, graze_h = 0.75, rest_h = 1.0, butcher_h = 0.7 },
     cattle = { speed = 1.3, hop = 0.1, sep = 0.062, hunger = 0.03, graze = 0.22, se = 4.5, meat = 45,
       milk = 0.75, lact_days = 26, milk_h = 0.3,
       young_years = 0.5, adult_years = 2, old_years = 12, birth = { 2, 14 }, birth_chance = 0.08, twins = 0.02, litter = 1,
-      stepping = 0.22, resting = 0.2, graze_h = 0.7, rest_h = 1.3, butcher_h = 1.6 },
+      stepping = 0.18, resting = 0.2, graze_h = 1.0, rest_h = 1.5, butcher_h = 1.6 },
     pig = { speed = 1.4, hop = 0.08, sep = 0.032, hunger = 0.04, root = 0.12, mast = 0.28, se = 0, meat = 20,
       young_years = 0.25, adult_years = 1, old_years = 6, birth = { 4, 14 }, birth2 = { 22, 30 }, birth_chance = 0.15,
-      twins = 0, litter = 6, stepping = 0.35, resting = 0.15, graze_h = 0.65, rest_h = 1.2, butcher_h = 1.0 },
+      twins = 0, litter = 6, stepping = 0.25, resting = 0.15, graze_h = 0.95, rest_h = 1.4, butcher_h = 1.0 },
   },
   pen_size = { flock = { 6, 6 }, cattle = { 7, 6 }, swine = { 5, 4 } },   -- tiles of the fold, byre yard, sty
   rack_found = { flock = 4, cattle = 10, swine = 3 },                      -- feed in the racks at founding
