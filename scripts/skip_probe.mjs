@@ -30,6 +30,7 @@ try {
   const page = await browser.newPage({ viewport: VIEWPORT });
   const q = { speed: '0', gfx: 'low' };
   if (hasFlag(args, '--freeze')) q.freeze = '1';
+  if (getFlag(args, '--world', null)) q.world = getFlag(args, '--world', null);   // assets/worlds/NAME.tcsave
   await page.goto(gameUrl(`http://127.0.0.1:${port}`, q));
   await page.waitForFunction(() => window.__TC && window.__TC.ready === true, null, { timeout: 120_000 });
   const b = await cmd(page, { cmd: 'v3_bench', hours });

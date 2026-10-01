@@ -37,9 +37,19 @@ function M.pos(a, t)
   return a.x + (a.tx - a.x) * f, a.y + (a.ty - a.y) * f
 end
 
+-- A sheep's draws at a minute: one hash per (sheep, minute), then a cheap mixing round per draw
+-- (the browser's Lua pays dearly for every hash and every table, D-089)
+local UB_K, UB_M, UB_V = 0, -1, 0
 local function u(W, s, a, now, k)
-  return rng.float(W.seed, rng.S.V3_MAP, s.key * 7 + a.k, floor(now * 60) % 4294967296, 500 + k)
+  local m = floor(now * 60) % 4294967296
+  local key = s.key * 7 + a.k
+  if UB_K ~= key or UB_M ~= m then
+    UB_K, UB_M = key, m
+    UB_V = rng.hash(W.seed, rng.S.V3_MAP, key, m, 500)
+  end
+  return rng.fbase(UB_V, k)
 end
+local P8 = { { 1, 0 }, { 0.7, 0.7 }, { 0, 1 }, { -0.7, 0.7 }, { -1, 0 }, { -0.7, -0.7 }, { 0, -1 }, { 0.7, -0.7 } }
 
 -- Pasture blocks -----------------------------------------------------------------------------
 local BS = 8                         -- tiles a block side
@@ -212,7 +222,6 @@ function M.step(W, s, a, now)
     -- drift toward the flock's ground: each to its own spot in it
     local ang = u(W, s, a, now, 3)
     local rr = r * (0.3 + 0.7 * u(W, s, a, now, 4))
-    local P8 = { { 1, 0 }, { 0.7, 0.7 }, { 0, 1 }, { -0.7, 0.7 }, { -1, 0 }, { -0.7, -0.7 }, { 0, -1 }, { 0.7, -0.7 } }
     local o = P8[floor(ang * 8) + 1]
     local tx, ty = cx + o[1] * rr, cy + o[2] * rr
     -- (a long way is walked in hops: they look up and follow the others)
@@ -236,7 +245,6 @@ function M.step(W, s, a, now)
   local v = u(W, s, a, now, 7)
   if v < 0.35 then
     local ang = u(W, s, a, now, 8) * 8
-    local P8 = { { 1, 0 }, { 0.7, 0.7 }, { 0, 1 }, { -0.7, 0.7 }, { -1, 0 }, { -0.7, -0.7 }, { 0, -1 }, { 0.7, -0.7 } }
     local o = P8[floor(ang) + 1]
     local st = 0.01 + 0.02 * u(W, s, a, now, 9)
     if walk_to(W, s, a, now, a.tx + o[1] * st, a.ty + o[2] * st, c.sheep_speed * 0.5) then return end
