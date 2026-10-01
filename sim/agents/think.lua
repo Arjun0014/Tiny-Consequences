@@ -16,6 +16,8 @@ local kin = require("sim.agents.kin")
 local M = {}
 local floor, max, min, sqrt, abs = math.floor, math.max, math.min, math.sqrt, math.abs
 local function C() return cfgmod.V3 end
+local trade = require("sim.agents.trade")
+local econ = require("sim.agents.econ")
 local NOW = 0
 
 local function clock_str(h)
@@ -51,7 +53,7 @@ local function plural(n, one, many) return n == 1 and one or many end
 -- outlive a person who moved to a new house, died or changed their mind).
 local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "fetch_wood", fetch_water = "fetch_water", foraging = "forage",
   smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed",
-  milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle", trading = "trade" }
+  milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle", trading = "trade", sharing = "share" }
 local function claim_free(W, hh, field, p)
   local id = hh[field] or 0
   if id == 0 or (p and id == p.id) then return true end
@@ -595,7 +597,7 @@ local function own_boat(s, p, c)
   if not s.boats then return nil end
   for i = 1, #s.boats do
     local b = s.boats[i]
-    if b.crew == 0 and not b.lost and (b.owner == p.hh or b.owner == 0) and (b.cond or 1) > c.boat_unsafe then return b end
+    if b.crew == 0 and not b.lost and not b.trip and not b.away and (b.owner == p.hh or b.owner == 0) and (b.cond or 1) > c.boat_unsafe then return b end
   end
   return nil
 end
@@ -623,7 +625,10 @@ local function fish_candidate(W, s, p, ctx, now, fat)
   local smoked = home and (home.stock.smoked or 0) / eat or 0
   local store = (doy >= 16 and doy < 40 and smoked < c.smoke_days) and 0.12 * (1 - smoked / c.smoke_days) or 0
   local short = s.need.food_days < 30 and 0.12 or 0
-  local u = (0.22 + 0.18 * min(1, fd) + need + store + short) * f * fat - 0.3 * min(2, fresh)
+  -- (what more fish is worth: the village's store of it, or what a neighbour would give, as last
+  -- heard: a village swimming in smoked fish rows out less, D-101)
+  local worth = s.fish_worth or 1
+  local u = ((0.22 + 0.18 * min(1, fd)) * worth + need + store + short) * f * fat - 0.3 * min(2, fresh)
   if store > 0.03 then
     addw(u - travel(ctx, s.dock.dx, s.dock.dy, p.x, p.y), "fish", boat.id, 0, "Fishing for the winter: %.0f days of smoked fish in the house", smoked)
   elseif need > 0.05 then
@@ -633,38 +638,75 @@ local function fish_candidate(W, s, p, ctx, now, fat)
   end
 end
 
--- Trade (D-097): a household with smoked fish to spare (beyond what it keeps for the winter) sends
--- a grown member with a load of it to a village within walking reach that has grain to spare and
--- little fish; they come back with grain.
-local trade = require("sim.agents.trade")
+-- Trade (D-097, D-101): the exchange worked out each morning (econ.daily: the best one by what
+-- the village knows of its neighbours): a household's own goods (wool, cloth), or the village's
+-- (food, logs) carried by one of its people. Both sides must gain; the trip must be worth the days.
+local sea_legs, sea_wet, sea_risk
+-- What a trader's boat still holds (a voyage is over only when the hold is carried home).
+local function boat_cargo(W, p)
+  local tr = p.trip
+  local boat = tr and tr.sea and W.S.v3.settlements[p.sett].boats[tr.boat]
+  local n = 0
+  if boat and boat.cargo then for _, g in ipairs(econ.ORDER) do n = n + (boat.cargo[g] or 0) end end
+  return n
+end
+-- A storm or gale at sea today at planet cell c (the planet's daily weather, D-059): no sailing.
+local WXS = {}
+local function sea_storm(W, c, now)
+  return require("sim.society.weather_day").get(W, c, now, WXS).storm
+end
+M.sea_storm = sea_storm
+
 local function trade_candidate(W, s, p, ctx, now, fat)
-  local c = C()
   if ctx.stage ~= "adult" or not ctx.home or ctx.babe or ctx.rain >= 1 or ctx.lh > ctx.sunset - 4 then return end
   -- (a mother with a baby at the breast does not leave it for days on the road)
   if (p.nursing or 0) > now then return end
-  if p.trip or not claim_free(W, ctx.hh, "trading", p) then return end
-  local home = ctx.home
-  local n = #ctx.hh.members
-  for gi, good in ipairs(trade.ORDER) do
-    local G = trade.GOODS[good]
-    local spare = (home.stock[good] or 0) - n * c[G.keep]
-    if spare >= c[G.load] then
-      local o = trade.buyer(W, s, good)
-      if o then
-        local d, hrs = trade.road(W, s, o)
-        -- (worth the days on the road when the household's own grain is short, or it has plenty)
-        local food = ((home.stock.food or 0) + (home.stock.meals or 0)) / max(1, n)
-        local want = food < c.trade_home_food and 0.2 or 0
-        addw((0.36 + want + 0.04 * min(4, spare / c[G.load])) * (p.sex == "m" and 1 or 0.8) * fat, "trade", o.id, gi,
-          good == "smoked" and "%.0f FU of smoked fish to spare: carrying a load to %s (%.0f hours' walk) for their grain"
-            or "%.0f garments' worth of wool to spare: carrying a load to %s (%.0f hours' walk), short of cloth, for their grain",
-          spare, o.name, hrs)
-        return
-      end
-    end
+  local hh = ctx.hh
+  if p.trip or not claim_free(W, hh, "trading", p) then return end
+  local plan, which = hh.tplan, 1
+  local q = W.S.v3.people[s.trading or 0]
+  local vfree = not (q and q.alive and q.trip)    -- (one trader at a time for the village's goods)
+  if s.tplan and vfree and (not plan or s.tplan.net > plan.net) then plan, which = s.tplan, 2 end
+  -- (by sea: the household's fisher sails its own boat with a mate, D-102)
+  local sp = hh.splan
+  if sp and (p.role == "fisher" or (p.sk_fish or 0) > 0.4) and (sp.pool == "house" or vfree) and (not plan or sp.net > plan.net) then
+    local o = W.S.v3.settlements[sp.o]
+    local r = o and trade.sea_route(W, s, o)
+    if r and not sea_storm(W, r.cells[1], now) and econ.own_boat(s, hh)
+      and (sp.hours <= C().sea_wet_h or not sea_wet(W, r, now)) then plan, which = sp, 3 end
+  end
+  if not plan then return end
+  local o = W.S.v3.settlements[plan.o]
+  if not o or not o.alive then return end
+  local GX, GH = econ.GOODS[plan.give], econ.GOODS[plan.take]
+  local u = (0.3 + 0.3 * min(1, plan.net / max(0.5, plan.cost))) * (p.sex == "m" and 1 or 0.8) * fat
+  if which == 3 then
+    addw(u, "trade", plan.o, which,
+      "%s %s is worth little here (%s to spare) and %s wanted it when last heard of: sailing it over (%.0f hours at sea) for %s",
+      plan.pool == "house" and "Our" or "The village's", GX.name, econ.amount(plan.n, plan.give), o.name, plan.hours, GH.name)
+  else
+    addw(u, "trade", plan.o, which,
+      "%s %s is worth little here (%s to spare) and %s wanted it when last heard of (%.0f hours' walk): bringing back %s",
+      which == 1 and "Our" or "The village's", GX.name, econ.amount(plan.n, plan.give), o.name, plan.hours, GH.name)
   end
 end
 M.trade_candidate = trade_candidate
+
+-- Sharing (D-101): plenty taken to a household of the village that has little (econ.plan_gift).
+local function share_candidate(W, s, p, ctx, now, fat)
+  local hh = ctx.hh
+  local g = hh and hh.gift
+  if not g or not ctx.home or ctx.night or ctx.rain >= 2 then return end
+  if ctx.stage ~= "adult" and ctx.stage ~= "apprentice" then return end
+  if not claim_free(W, hh, "sharing", p) then return end
+  local o = W.S.v3.households[g.to]
+  local oh = o and o.home ~= 0 and s.buildings[o.home]
+  if not oh then return end
+  local q1 = W.S.v3.people[o.members[1] or 0]
+  addw((0.22 + 0.25 * g.need) * fat - travel(ctx, oh.dx, oh.dy, p.x, p.y) - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.5,
+    "share", g.to, 0, "The %s household has little %s and we have plenty: taking them %s", q1 and q1.surname or "neighbour",
+    econ.GOODS[g.g].name, econ.amount(g.q, g.g))
+end
 
 -- Crewing (D-096): a skipper waiting at the dock for a mate - one of the household first (a son,
 -- a husband, a daughter), else a neighbour for a share of the catch.
@@ -802,12 +844,19 @@ local function chores(W, s, p, ctx, now)
     end
   end
   local gran = s.granary
-  if gran and (gran.stock.grain or 0) > 1 and food < need_day * c.pantry_low and claim_free(W, hh, "fetch_food", p) then
+  -- (bread too: a house full of fish and meat still wants bread for the pot, D-101)
+  local bread = (home.stock.food or 0) / max(0.1, need_day * (1 - c.diet_p))
+  if gran and (gran.stock.grain or 0) > 1 and (food < need_day * c.pantry_low or bread < c.pantry_low * 0.5) and claim_free(W, hh, "fetch_food", p) then
     local f = fit(p, ctx, "fetch_food")
     if f > 0 then
       local days = food / max(1, need_day)
-      addw((0.55 + 0.4 * (1 - min(1, days / c.pantry_low))) * f * fat - travel(ctx, s.granary_x, s.granary_y, px, py),
-        "fetch_food", 0, 0, "Only %.1f days of food left at home", days)
+      if days >= c.pantry_low then
+        addw((0.5 + 0.3 * (1 - min(1, bread / c.pantry_low))) * f * fat - travel(ctx, s.granary_x, s.granary_y, px, py),
+          "fetch_food", 0, 0, "Bread for %.1f days left at home (and fish and meat for longer)", bread)
+      else
+        addw((0.55 + 0.4 * (1 - min(1, days / c.pantry_low))) * f * fat - travel(ctx, s.granary_x, s.granary_y, px, py),
+          "fetch_food", 0, 0, "Only %.1f days of food left at home", days)
+      end
     end
   end
   -- firewood: the hearth burns every day (cooking; more when it is chilly)
@@ -1426,6 +1475,8 @@ PLAN.sleep = function(W, s, p, ctx, now, cd)
   local until_t = next_local(now, ctx.lh, ctx.wake)
   -- a little later on rest days or when exhausted
   if p.energy < 0.3 then until_t = until_t + 0.5 end
+  -- (worn out in the day: a sleep of some hours, not until the next morning: D-102)
+  if not ctx.night then until_t = min(until_t, now + C().nap_h) end
   if home then
     if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
     work(pl, "sleep", until_t - now - (p.inside ~= home.id and 0.2 or 0), { inside = home.id })
@@ -1966,8 +2017,9 @@ PLAN.fish = function(W, s, p, ctx, now, cd)
   return "Go fishing", "the fishing ground"
 end
 
--- The trip (D-097), from wherever it stands: out with the fish (at home), the trade (at the
--- buyer's village), the way home (with the grain). A night away is slept at the buyer's square.
+-- The trip (D-097, D-101), from wherever it stands: out with the goods (at home), the exchanges
+-- (at the other village: what they find there decides with whom and how much), the way home. A
+-- night away is slept at the other village's square.
 local function trip_legs(W, s, p, ctx, now)
   local c = C()
   local pl = p.plan
@@ -1976,19 +2028,27 @@ local function trip_legs(W, s, p, ctx, now)
   local home_s = V.settlements[tr.from]
   local o = V.settlements[tr.to]
   local here = p.at or p.sett
-  if here == tr.from then
-    -- out: the load from home, to the gate toward the buyer, the road
-    if p.carry ~= tr.give then
+  if here == tr.from and not tr.back then
+    -- out: provisions and the goods from home (the village's from its stores too), to the gate
+    if p.carry ~= "pack" then
       local home = ctx.home
       if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
-      pl[#pl + 1] = { op = "pick", what = tr.give, ref = home.id, n = tr.n, from = "home" }
       pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id }
+      local inhouse = home.stock[tr.give == "grain" and "food" or tr.give] or 0
+      pl[#pl + 1] = { op = "pick", what = "pack", good = tr.give, ref = home.id, n = tr.n }
+      if econ.GOODS[tr.give].pool == "village" and inhouse < tr.n - 0.05 then
+        local store = tr.give == "logs" and home_s.wood_store or home_s.granary
+        if store then
+          go(pl, store.dx, store.dy, store.label or "the stores")
+          pl[#pl + 1] = { op = "pick", what = "pack", good = tr.give, ref = store.id, n = tr.n - inhouse }
+        end
+      end
     end
     local gx, gy = trade.gate(W, home_s, o)
     go(pl, gx, gy, "the road to " .. o.name)
     local _, hrs = trade.road(W, home_s, o)
     work(pl, "travel", hrs, { to = o.id, from = home_s.id })
-    here = o.id
+    return
   end
   if here == tr.to then
     if ctx.night and not tr.slept then
@@ -1997,20 +2057,48 @@ local function trip_legs(W, s, p, ctx, now)
       go(pl, o.sqx or 0, o.sqy or 0, o.name .. "'s square")
       work(pl, "sleep", until_t - now, { trip_sleep = true })
     end
-    if not tr.sold and (p.carry == tr.give or (p.at or p.sett) == tr.from) then
-      go(pl, o.granary.dx, o.granary.dy, o.name .. "'s granary")
+    if not tr.dealt and (p.at or p.sett) == tr.to then
+      -- (on arriving they hear how things stand here, and tell how things stand at home)
+      econ.learn(W, home_s, o, now)
+      econ.learn(W, o, home_s, now)
+      tr.have = p.pack and p.pack[tr.give] or 0
+      tr.deals = econ.deals(W, o, tr)
+      tr.dealt = true
+      if #tr.deals == 0 then
+        people.remember(p, now, string.format("Nobody at %s wanted our %s at a price worth it now", o.name, econ.GOODS[tr.give].name))
+      end
+    end
+    for di, d in ipairs(tr.deals or {}) do
+      if not d.done or d.owed then
+        local hb
+        if d.b == 0 then hb = (tr.give == "logs") and o.wood_store or o.granary
+        else
+          local hh = V.households[d.b]
+          hb = hh and o.buildings[hh.home or 0]
+        end
+        if hb and not d.done then
+          go(pl, hb.dx, hb.dy, hb.label or "a house")
+          work(pl, "deal", c.deal_h, { di = di, ref = hb.id })
+        end
+        -- (what is paid from elsewhere is loaded there)
+        local src = o.buildings[d.src or 0]
+        if src and src ~= hb then
+          go(pl, src.dx, src.dy, src.label or "the stores")
+          pl[#pl + 1] = { op = "pick", what = "owed", ref = src.id, di = di }
+        end
+      end
+    end
+    if o.granary and p.hunger > 0.3 then
       -- (a meal for the traveller from the village's store: guests are fed)
-      if p.hunger > 0.3 then work(pl, "guest_meal", 0.4, { ref = o.granary.id }) end
-      pl[#pl + 1] = { op = "drop", to = "granary", ref = o.granary.id, sold = true }
-      pl[#pl + 1] = { op = "pick", what = "grain", ref = o.granary.id, n = 0, bought = true }
-      work(pl, "guest_meal", 0.3, { ref = o.granary.id })
+      go(pl, o.granary.dx, o.granary.dy, o.name .. "'s granary")
+      work(pl, "guest_meal", 0.4, { ref = o.granary.id })
     end
     local gx, gy = trade.gate(W, o, home_s)
     go(pl, gx, gy, "the road home")
     local _, hrs = trade.road(W, o, home_s)
     work(pl, "travel", hrs, { to = home_s.id, from = o.id })
   end
-  -- home: the grain into the house
+  -- home: the goods into the house
   local home = ctx.home or people.home(W, home_s, p)
   if home then
     go(pl, home.dx, home.dy, "home", home.id)
@@ -2018,23 +2106,211 @@ local function trip_legs(W, s, p, ctx, now)
   end
 end
 
-PLAN.trade = function(W, s, p, ctx, now, cd)
+-- A trading voyage (D-102), from wherever it stands. Out: provisions, the cargo carried to the
+-- boat a load at a time, the mate, the sea way (a voyage step). At the other village: to its dock,
+-- the exchanges (the cargo carried from the boat to the buyers and what they pay back to the boat,
+-- a load at a time; the mate minds the boat), the mate called aboard, the sea way home. Home: the
+-- dock, the cargo carried home a load at a time.
+function sea_legs(W, s, p, ctx, now)
   local c = C()
+  local pl = p.plan
+  local V = W.S.v3
+  local tr = p.trip
+  local home_s = V.settlements[tr.from]
+  local o = V.settlements[tr.to]
+  local boat = home_s.boats[tr.boat]
+  local route = trade.sea_route(W, home_s, o)
+  local here = p.at or p.sett
+  local GX = econ.GOODS[tr.give]
+  local hd = home_s.dock
+  if here == tr.from and not tr.back and not tr.sailed then
+    local home = ctx.home
+    if p.carry == "pack" then
+      go(pl, hd.dx, hd.dy, "the dock")
+      pl[#pl + 1] = { op = "drop", to = "cargo", ref = hd.id, boat = boat.id }
+    end
+    if (p.prov or 0) < c.trade_prov then
+      if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+      pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id, n = c.trade_prov * 2 }
+    end
+    -- the cargo to the boat, a load at a time (the house first, then the village's stores)
+    local left = tr.n - (boat.cargo and boat.cargo[tr.give] or 0) - (p.pack and p.pack[tr.give] or 0)
+    local inhouse = home.stock[tr.give == "grain" and "food" or tr.give] or 0
+    local store = tr.give == "logs" and home_s.wood_store or home_s.granary
+    local loads = 0
+    while left > 0.05 and loads < c.boat_hold + 1 do
+      local q = min(left, 1 / GX.wt)
+      local src = home
+      if inhouse < q * 0.5 and GX.pool == "village" and store then src = store end
+      go(pl, src.dx, src.dy, src.label or "home", src == home and home.id or nil)
+      pl[#pl + 1] = { op = "pick", what = "pack", good = tr.give, ref = src.id, n = q }
+      go(pl, hd.dx, hd.dy, "the dock")
+      pl[#pl + 1] = { op = "drop", to = "cargo", ref = hd.id, boat = boat.id }
+      left, inhouse, loads = left - q, inhouse - q, loads + 1
+    end
+    go(pl, hd.dx, hd.dy, "the dock")
+    boat.mate_want, boat.mate = p.id, 0
+    work(pl, "wait_mate", c.mate_wait * 2, { boat = boat.id, fx = hd.mx, fy = hd.my })
+    work(pl, "board", 0.08, { boat = boat.id, fx = hd.mx, fy = hd.my })
+  end
+  if here == tr.from and not tr.back then
+    local gx, gy = trade.sea_gate(W, home_s, route.cells[1])
+    pl[#pl + 1] = { op = "go", x = gx, y = gy, place = "the open sea toward " .. o.name, water = true }
+    work(pl, "voyage", route.len / c.sail_speed * (1 + 0.25 * (sea_wet(W, route, now) and 1 or 0)), { to = o.id, from = home_s.id,
+      boat = boat.id, gate_c = route.cells[#route.cells], risk = sea_risk(W, route, boat, p, now) })
+    return
+  end
+  if here == tr.to then
+    local od = o.dock
+    if not tr.landed then
+      pl[#pl + 1] = { op = "go", x = od.mx, y = od.my, place = o.name .. "'s dock", water = true }
+      work(pl, "land", 0.08, { boat = boat.id })
+      return
+    end
+    if not tr.dealt and tr.landed then
+      econ.learn(W, home_s, o, now)
+      econ.learn(W, o, home_s, now)
+      tr.have = boat.cargo and boat.cargo[tr.give] or 0
+      tr.deals = econ.deals(W, o, tr, c.boat_hold)
+      tr.dealt = true
+      if #tr.deals == 0 then
+        people.remember(p, now, string.format("Nobody at %s wanted our %s at a price worth it now", o.name, GX.name))
+      end
+    end
+    if not tr.homeward then
+      for di, d in ipairs(tr.deals or {}) do
+        local hb
+        if d.b == 0 then hb = (tr.give == "logs") and o.wood_store or o.granary
+        else
+          local hh = V.households[d.b]
+          hb = hh and o.buildings[hh.home or 0]
+        end
+        local src = o.buildings[d.src or 0]
+        local paid_store = src ~= nil and src ~= hb
+        local left = d.done and 0 or (d.left or d.q)
+        local loads = 0
+        while hb and left > 1e-3 and loads < c.boat_hold + 1 do
+          local q = min(left, 1 / GX.wt)
+          go(pl, od.dx, od.dy, o.name .. "'s dock")
+          pl[#pl + 1] = { op = "pick", what = "cargo", good = tr.give, boat = boat.id, n = q }
+          go(pl, hb.dx, hb.dy, hb.label or "a house")
+          work(pl, "deal", c.deal_h, { di = di, ref = hb.id, part = true })
+          if paid_store then
+            go(pl, src.dx, src.dy, src.label or "the stores")
+            pl[#pl + 1] = { op = "pick", what = "owed", ref = src.id, di = di }
+          end
+          go(pl, od.dx, od.dy, o.name .. "'s dock")
+          pl[#pl + 1] = { op = "drop", to = "cargo", ref = od.id, boat = boat.id }
+          left, loads = left - q, loads + 1
+        end
+        if d.owed and paid_store and left <= 1e-3 then
+          go(pl, src.dx, src.dy, src.label or "the stores")
+          pl[#pl + 1] = { op = "pick", what = "owed", ref = src.id, di = di }
+          go(pl, od.dx, od.dy, o.name .. "'s dock")
+          pl[#pl + 1] = { op = "drop", to = "cargo", ref = od.id, boat = boat.id }
+        end
+      end
+      if o.granary and p.hunger > 0.3 then
+        go(pl, o.granary.dx, o.granary.dy, o.name .. "'s granary")
+        work(pl, "guest_meal", 0.4, { ref = o.granary.id })
+      end
+      -- (fair weather to sail home: a storm day is waited out at the dock)
+      go(pl, od.dx, od.dy, o.name .. "'s dock")
+      if sea_storm(W, route.cells[#route.cells], now) then
+        work(pl, "wait", 6, {})
+        return
+      end
+      work(pl, "call_mate", 0.05, { boat = boat.id })
+      work(pl, "board", 0.08, { boat = boat.id, fx = od.mx, fy = od.my })
+    end
+    local gx, gy = trade.sea_gate(W, o, route.cells[#route.cells])
+    pl[#pl + 1] = { op = "go", x = gx, y = gy, place = "the open sea toward home", water = true }
+    work(pl, "voyage", route.len / c.sail_speed * (1 + 0.25 * (sea_wet(W, route, now) and 1 or 0)), { to = home_s.id, from = o.id,
+      boat = boat.id, gate_c = route.cells[1], risk = sea_risk(W, route, boat, p, now) })
+    return
+  end
+  if here == tr.from and tr.back and not tr.ashore then
+    pl[#pl + 1] = { op = "go", x = hd.mx, y = hd.my, place = "the dock", water = true }
+    work(pl, "land", 0.08, { boat = boat.id })
+    return
+  end
+  -- home: what the boat carries, a load at a time, into the house
+  local home = ctx.home or people.home(W, home_s, p)
+  if home then
+    for _, g in ipairs(econ.ORDER) do
+      local q = boat.cargo and boat.cargo[g] or 0
+      local loads = 0
+      while q > 1e-3 and loads < c.boat_hold * 2 do
+        go(pl, hd.dx, hd.dy, "the dock")
+        pl[#pl + 1] = { op = "pick", what = "cargo", good = g, boat = boat.id }
+        go(pl, home.dx, home.dy, "home", home.id)
+        pl[#pl + 1] = { op = "drop", to = "home", ref = home.id }
+        q, loads = q - 1 / econ.GOODS[g].wt, loads + 1
+      end
+    end
+    go(pl, home.dx, home.dy, "home", home.id)
+    pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, trip_end = true }
+  end
+end
+
+-- The weather on the sea way today (the first, middle and last of its cells): wet days slow the
+-- boat; the risk of foundering in a squall grows with wet weather, a worn boat and an unskilled
+-- skipper (D-102).
+local WXR = {}
+function sea_wet(W, route, now)
+  local wd = require("sim.society.weather_day")
+  local cs = route.cells
+  return wd.get(W, cs[1], now, WXR).wet or wd.get(W, cs[floor((#cs + 1) / 2)], now, WXR).wet or wd.get(W, cs[#cs], now, WXR).wet
+end
+function sea_risk(W, route, boat, p, now)
+  local c = C()
+  local hrs = route.len / c.sail_speed
+  local k = sea_wet(W, route, now) and c.sea_wet_k or 1
+  return hrs * c.sea_squall * k * (2 - (boat.cond or 1)) * (1.3 - 0.6 * (p.sk_fish or 0.3))
+end
+
+PLAN.trade = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
+  local hh = ctx.hh
+  local plan = (cd.b == 1 and hh.tplan) or (cd.b == 2 and s.tplan) or hh.splan
   local o = W.S.v3.settlements[cd.a]
-  local n = #ctx.hh.members
-  local good = trade.ORDER[cd.b] or "smoked"
-  local G = trade.GOODS[good]
-  local load = min(c[G.load], (ctx.home.stock[good] or 0) - n * c[G.keep])
-  p.trip = { to = o.id, from = s.id, give = good, take = "grain", n = load, t0 = now }
-  ctx.hh.trading = p.id
+  p.trip = { to = o.id, from = s.id, give = plan.give, take = plan.take, n = plan.n, aX = plan.aX, aH = plan.aH,
+    pool = cd.b == 1 and "house" or (cd.b == 2 and "village" or plan.pool), t0 = now }
+  hh.trading = p.id
+  if cd.b == 3 then
+    local boat = econ.own_boat(s, hh)
+    p.trip.sea, p.trip.boat = true, boat.id
+    boat.trip = p.id
+    hh.splan = nil
+    if plan.pool == "village" then s.trading = p.id end
+    sea_legs(W, s, p, ctx, now)
+    return "Sail " .. econ.GOODS[plan.give].name .. " to " .. o.name, o.name
+  end
+  if cd.b == 2 then s.trading = p.id; s.tplan = nil else hh.tplan = nil end
   trip_legs(W, s, p, ctx, now)
-  return "Take " .. (good == "smoked" and "smoked fish" or good) .. " to " .. o.name, o.name
+  return "Take " .. econ.GOODS[plan.give].name .. " to " .. o.name, o.name
+end
+
+PLAN.share = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local hh = ctx.hh
+  local g = hh.gift
+  local o = W.S.v3.households[cd.a]
+  local oh = s.buildings[o.home]
+  hh.sharing = p.id
+  hh.gift = nil
+  local home = ctx.home
+  if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+  pl[#pl + 1] = { op = "pick", what = "pack", good = g.g, ref = home.id, n = g.q }
+  local q1 = W.S.v3.people[o.members[1] or 0]
+  go(pl, oh.dx, oh.dy, "the " .. (q1 and q1.surname or "neighbour") .. " house")
+  pl[#pl + 1] = { op = "drop", to = "home", ref = oh.id, gift = hh.id, release = "sharing" }
+  return "Take " .. econ.GOODS[g.g].name .. " to a neighbour", oh.label or "a house"
 end
 
 PLAN.trip = function(W, s, p, ctx, now, cd)
   plan_reset(p)
-  trip_legs(W, s, p, ctx, now)
+  if p.trip.sea then sea_legs(W, s, p, ctx, now) else trip_legs(W, s, p, ctx, now) end
   local o = W.S.v3.settlements[p.trip.to]
   return (p.at or p.sett) == p.trip.to and ("Trading at " .. o.name) or ("On the way " .. ((p.at or p.sett) == p.sett and "to " .. o.name or "home")), o.name
 end
@@ -2609,19 +2885,6 @@ function M.decide(W, s, p, now, reason)
   if ctx.stage == "infant" then return think_infant(W, s, p, now) end
   ncand = 0
   LZ.W, LZ.s, LZ.p, LZ.ctx = W, s, p, ctx
-  if p.trip then
-    local tr = p.trip
-    local here = p.at or p.sett
-    local done = here == tr.from and (p.carry == tr.take or (p.carry ~= tr.give and tr.sold))
-    if not done and (here ~= tr.from or p.carry == tr.give) then
-      local obj, dest = PLAN.trip(W, s, p, ctx, now, nil)
-      p.obj, p.dest, p.objk = obj, dest, "trade"
-      p.why = (reason and (reason .. ". ") or "") .. (here == tr.to and ("Trading " .. (tr.give == "smoked" and "smoked fish" or tr.give) .. " for grain") or "On the road")
-      p.tgt_kind, p.tgt_ref = "trade", tr.to
-      return true
-    end
-    if here == tr.from and p.carry ~= tr.give then p.trip = nil end
-  end
   if p.riding and p.riding ~= 0 then
     -- (a mate in a boat: out until the skipper lands, D-096)
     local obj, dest = PLAN.ride(W, s, p, ctx, now, nil)
@@ -2629,6 +2892,61 @@ function M.decide(W, s, p, now, reason)
     p.why = "In the boat with " .. ((W.S.v3.people[p.riding] or {}).name or "the skipper")
     p.tgt_kind, p.tgt_ref = "ride", 0
     return true
+  end
+  if p.trip and p.trip.mate then
+    -- (a mate on a trading voyage, at the other village: minding the boat at the dock, D-102)
+    local tr = p.trip
+    if (p.at or p.sett) == tr.from then
+      p.trip = nil
+    else
+      local o = W.S.v3.settlements[p.at]
+      local pl = plan_reset(p)
+      if o.granary and p.hunger > 0.5 and (p.prov or 0) <= 0 then
+        go(pl, o.granary.dx, o.granary.dy, o.name .. "'s granary")
+        work(pl, "guest_meal", 0.4, { ref = o.granary.id })
+      end
+      go(pl, o.dock.dx + 0.02, o.dock.dy, o.name .. "'s dock")
+      work(pl, "mind_boat", 3, {})
+      p.obj, p.dest, p.objk = "Mind the boat", o.name .. "'s dock", "mind_boat"
+      p.why = (reason and (reason .. ". ") or "") .. "Minding our boat at " .. o.name .. " while " .. ((W.S.v3.people[tr.skipper] or {}).name or "the skipper") .. " trades"
+      p.tgt_kind, p.tgt_ref = "trade", tr.to
+      return true
+    end
+  end
+  if p.trip then
+    local tr = p.trip
+    local here = p.at or p.sett
+    -- (a trip that keeps being planned anew at home without ending is given up: a safety net)
+    if here == p.sett then tr.replans = (tr.replans or 0) + 1 else tr.replans = 0 end
+    local stuck = here == p.sett and tr.replans > 40
+    if stuck then people.remember(p, now, "Gave up the trading trip: it would not come right") end
+    local hungry_home = here == tr.from and p.hunger > 0.65 and p.carry ~= "pack"
+    if not stuck and not hungry_home and (here ~= tr.from or p.carry == "pack" or (tr.sea and (tr.sailed or tr.back)) or (tr.sea and boat_cargo(W, p) > 0)) then
+      local obj, dest = PLAN.trip(W, s, p, ctx, now, nil)
+      p.obj, p.dest, p.objk = obj, dest, "trade"
+      p.why = (reason and (reason .. ". ") or "") .. (here == tr.to and ("Trading " .. econ.GOODS[tr.give].name .. " for " .. econ.GOODS[tr.take].name) or "On the road")
+      p.tgt_kind, p.tgt_ref = "trade", tr.to
+      return true
+    end
+    if not hungry_home then
+      -- (at home with nothing packed: the trip is over, or never began)
+      local hh = W.S.v3.households[p.hh]
+      if hh and hh.trading == p.id then hh.trading = 0 end
+      if s.trading == p.id then s.trading = 0 end
+      if tr.sea then
+        local boat = s.boats and s.boats[tr.boat]
+        if boat and boat.trip == p.id then boat.trip = nil end
+      end
+      if stuck and p.pack then
+        local home = people.home(W, s, p)
+        if home then for _, g in ipairs(econ.ORDER) do
+          local q = p.pack[g] or 0
+          if q > 0 then local key = (g == "grain") and "food" or g; home.stock[key] = (home.stock[key] or 0) + q end
+        end end
+        p.pack, p.carry, p.camt = nil, "", 0
+      end
+      p.trip = nil
+    end
   end
   if p.boat and s.dock then
     -- afloat: back to the dock first, whatever else is wanted
@@ -2662,6 +2980,11 @@ function M.decide(W, s, p, now, reason)
     local pen = s.buildings[s.herds[stock.HERDS[hi]].pen]
     why = string.format("Wolves took one of the beasts %s: keeping watch at the %s tonight",
       now - s.wolf_alarm < 24 and "last night" or "lately", pen.label)
+  elseif (ctx.night or p.energy < 0.12) and p.hunger > 0.5 and ctx.home and (ctx.home.stock.meals or 0) >= C().meal_fu * 0.5 then
+    -- (nobody goes to bed starving with a meal at home: D-102, found after long voyages)
+    kind, why = "eat", "Hungry before sleep"
+    add(1, "eat", ctx.home.id, 0, "")
+    M.cd = CAND[ncand]
   elseif ctx.night or p.energy < 0.12 then
     kind, why = "sleep", ctx.night and string.format("Night (bedtime %s)", clock_str(ctx.bed)) or "Exhausted"
   elseif ctx.rain == 2 and p.inside == 0 and ctx.stage ~= "infant" then
@@ -2700,6 +3023,7 @@ function M.decide(W, s, p, now, reason)
       fish_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       crew_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       trade_candidate(W, s, p, ctx, now, fatigue(p))
+      share_candidate(W, s, p, ctx, now, fatigue(p))
       rack_candidates(W, s, p, ctx, now, fatigue(p))
       mend_boat_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       chores(W, s, p, ctx, now)

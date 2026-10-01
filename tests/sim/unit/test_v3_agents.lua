@@ -220,34 +220,55 @@ end
 -- Trade by land (D-097): the shipped world over 24 days. A fishing household's porter walks a
 -- load of smoked fish to a village with grain to spare, sells it into the granary, walks home
 -- with grain: a round trip completes; what one village exports another imports, FU for FU.
-function M.trade_walks_its_goods()
+-- Trade answers real want (D-097, D-101, D-102): a failed harvest and a bumper catch at Upper
+-- Linamist (grain short, smoked fish to spare) bring its neighbours' grain by sea for its fish -
+-- carried to the boats a load at a time, sailed, carried to the buyers - with both villages' books
+-- equal, news of each other and trust grown; nobody starves on the way.
+function M.trade_answers_real_want()
   local f = assert(io.open("assets/worlds/v3.tcsave", "rb"))
   local data = f:read("*a")
   f:close()
   local W = assert(worlds.from_save_string(data))
   world.set_systems(require("sim.agents.worldgen").systems())
+  local V = W.S.v3
+  local UL = V.settlements[4]
+  UL.granary.stock.grain = 120
+  for _, id in ipairs(UL.blist) do
+    local b = UL.buildings[id]
+    if b.kind == "house" and b.hh ~= 0 then b.stock.smoked = (b.stock.smoked or 0) + 60; b.stock.food = 2 end
+  end
   local t0 = W.hour
-  local road = 0
-  for h = 12, 24 * 24, 12 do
+  local sea, carried = 0, 0
+  for h = 1, 24 * 8 do
     world.advance(W, t0 + h)
-    for _, s in ipairs(W.S.v3.settlements) do
+    for _, s in ipairs(V.settlements) do
       for _, id in ipairs(s.members) do
-        local p = W.S.v3.people[id]
-        if p.alive and p.act == "travel" then road = road + 1 end
+        local p = V.people[id]
+        if p.alive and p.act == "voyage" then sea = sea + 1 end
+        if p.alive and p.carry == "pack" and p.trip and p.trip.sea then carried = carried + 1 end
       end
     end
   end
-  local trips, exp, imp, fish = 0, 0, 0, 0
-  for _, s in ipairs(W.S.v3.settlements) do
-    trips = trips + (s.acc.trips or 0)
+  local deals, exp, imp = 0, 0, 0
+  for _, s in ipairs(V.settlements) do
+    deals = deals + (s.acc.deals or 0)
     exp = exp + (s.acc.export or 0)
     imp = imp + (s.acc.import or 0)
-    fish = fish + (s.acc.traded_fish or 0)
   end
-  T.ok(trips >= 1, "trade round trips completed " .. trips)
-  T.ok(road >= 2, "samples of porters on the road " .. road)
-  T.ok(fish > 5, "smoked fish sold " .. fish)
+  T.ok(sea >= 4, "hours of boats on a voyage " .. sea)
+  T.ok(carried >= 4, "hours of cargo carried to and from boats " .. carried)
+  T.ok((UL.acc.got_grain or 0) + (UL.acc.out_grain or 0) + (UL.acc.in_grain or 0) > 10,
+    string.format("grain reached Upper Linamist: bought %.1f, sold there %.1f", UL.acc.got_grain or 0, UL.acc.in_grain or 0))
+  T.ok(deals >= 2, "deals " .. deals)
   T.ok(math.abs(exp - imp) < 1e-6, string.format("exports %.3f against imports %.3f", exp, imp))
+  -- news and trust: Upper Linamist heard how its partners stand, and trusts one it dealt with more
+  local best = 0
+  for id, r in pairs(UL.rel or {}) do if r.deals > 0 and r.trust > best then best = r.trust end end
+  T.ok(best > 0.2, "trust after deals " .. best)
+  for _, id in ipairs(V.order) do
+    local p = V.people[id]
+    T.ok(p.alive or p.died_of ~= "hunger", p.name .. " starved")
+  end
 end
 
 return M

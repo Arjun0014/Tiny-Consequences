@@ -712,7 +712,7 @@ local TOOL = { till = "hoe", grub = "hoe", chop = "axe", harvest = "sickle", bui
   dress = "flail", stalk = "spear", gut = "spear", milk = "bucket", muck = nil, slop = "bucket", angle = "rod" }
 local CARRY_PART = { logs = "log", grain = "sack", sheaves = "sack", food = "sack", seed = "basket", water = "bucket", fish = "basket",
   flax = "sack", carcass = "sack", milk = "bucket", manure = "basket", scraps = "bucket", wool = "sack", hay = "basket", meat = "sack",
-  dried = "basket" }
+  dried = "basket", smoked = "basket", cheese = "basket", pack = "sack" }
 -- animation for each action: { clip, rate (at a game minute per second), moving clip }
 local ANIM = {
   walk = { "walk" }, till = { "swing", 0.7 }, grub = { "kneel_work", 0.9 }, chop = { "swing", 0.9 },
@@ -852,11 +852,11 @@ local function update_villagers(V, t, zoom)
   local nh = 0
   for i = 1, #s.members do
     local q = Vp[s.members[i]]
-    if q and q.alive and not q.at and q.act ~= "travel" then nh = nh + 1; here[nh] = q end
+    if q and q.alive and not q.at and q.act ~= "travel" and q.act ~= "voyage" and not (q.riding and Vp[q.riding] and Vp[q.riding].act == "voyage") then nh = nh + 1; here[nh] = q end
   end
   for i = 1, #(s.visitors or {}) do
     local q = Vp[s.visitors[i]]
-    if q and q.alive and q.at == s.id and q.act ~= "travel" then nh = nh + 1; here[nh] = q end
+    if q and q.alive and q.at == s.id and q.act ~= "travel" and q.act ~= "voyage" and not (q.riding and Vp[q.riding] and Vp[q.riding].act == "voyage") then nh = nh + 1; here[nh] = q end
   end
   for i = nh + 1, #here do here[i] = nil end
   for i = 1, nh do
@@ -1012,6 +1012,70 @@ function M.update_travellers(W, t, zoom)
   for k = n + 1, #M.tpool do
     local e = M.tpool[k]
     if e.on then for j = 1, 3 do msg.post(e.urls[j], MSG_DISABLE) end; e.on = false end
+  end
+  -- (D-102) boats on a trading voyage: along the sea way's cells, by how far the voyage has gone
+  local nb = 0
+  local bf = M.animal_urls and M.animal_urls.boat_factory
+  M.bpool = M.bpool or {}
+  if bf then
+    for _, s in ipairs(V3.settlements) do
+      for _, id in ipairs(s.members) do
+        local p = V3.people[id]
+        if show and p.alive and p.act == "voyage" and nb < M.TRAVEL then
+          local st = p.plan[p.pi]
+          local from, to = V3.settlements[st and st.from or 0], V3.settlements[st and st.to or 0]
+          local r = from and to and trade.sea_route(W, from, to) or nil
+          local cells = r and r.cells
+          if cells and #cells > 0 then
+            nb = nb + 1
+            local e = M.bpool[nb]
+            if not e then
+              local gid = factory.create(bf, vmath.vector3(0, 0, 0))
+              e = { id = gid, url = msg.url(nil, gid, "mesh"), on = false }
+              M.bpool[nb] = e
+            end
+            -- (the route as a chain of cell centres; outbound from `from`'s side whichever way it was found)
+            local f = p.t1 > p.t0 and min(1, max(0, (t - p.t0) / (p.t1 - p.t0))) or 0
+            local g = W.grid
+            local m = #cells
+            local fi = f * (m - 1) + 1
+            local i0 = floor(fi)
+            if i0 >= m then i0 = m - 1 end
+            if i0 < 1 then i0 = 1 end
+            local u = fi - i0
+            local a, b = cells[i0], cells[math.min(m, i0 + 1)]
+            local x = g.X[a] + (g.X[b] - g.X[a]) * u
+            local y = g.Y[a] + (g.Y[b] - g.Y[a]) * u
+            local z = g.Z[a] + (g.Z[b] - g.Z[a]) * u
+            local l = sqrt(x * x + y * y + z * z)
+            x, y, z = x / l, y / l, z / l
+            local rr = M.surface and M.surface(x, y, z) or 1
+            TPOS.x, TPOS.y, TPOS.z = x * rr, y * rr, z * rr
+            go.set_position(TPOS, e.id)
+            -- (heading along the way: the tangent toward the next cell)
+            local hx, hy, hz = g.X[b] - g.X[a], g.Y[b] - g.Y[a], g.Z[b] - g.Z[a]
+            local yaw = 0
+            local ex, ey, ez = 0, 1, 0
+            if math.abs(y) > 0.9 then ex, ey, ez = 1, 0, 0 end
+            local d = ex * x + ey * y + ez * z
+            ex, ey, ez = ex - d * x, ey - d * y, ez - d * z
+            local el = sqrt(ex * ex + ey * ey + ez * ez)
+            if el > 1e-9 then
+              ex, ey, ez = ex / el, ey / el, ez / el
+              local fx, fy, fz = y * ez - z * ey, z * ex - x * ez, x * ey - y * ex
+              yaw = math.atan2(hx * fx + hy * fy + hz * fz, hx * ex + hy * ey + hz * ez)
+            end
+            go.set_rotation(vmx.set_up_yaw(TROT, x, y, z, yaw), e.id)
+            go.set_scale(1.2, e.id)
+            if not e.on then msg.post(e.url, MSG_ENABLE); e.on = true end
+          end
+        end
+      end
+    end
+  end
+  for k = nb + 1, #M.bpool do
+    local e = M.bpool[k]
+    if e.on then msg.post(e.url, MSG_DISABLE); e.on = false end
   end
 end
 
@@ -1463,24 +1527,39 @@ end
 
 -- Boats (D-084): moored at the dock, or wherever their rower is on the water.
 local BROT, BPOS = vmath.quat(), vmath.vector3()
+local BLIST = {}
 function M.update_boats(V, t)
   local s = V.s
-  if not s.boats or not V.boat_factory then return end
-  if not V.boat_go then
-    V.boat_go = {}
-    for k = 1, #s.boats do
-      local id = factory.create(V.boat_factory, vmath.vector3(0, 0, 0))
-      V.boat_go[k] = { id = id, url = msg.url(nil, id, "mesh"), yaw = 0 }
+  if not V.boat_factory then return end
+  local Vp = V.W.S.v3.people
+  -- (the boats on this map: its own not away nor out at sea on a voyage, and other villages' boats
+  -- moored at its dock or rowing on its water)
+  local list = BLIST
+  for i = #list, 1, -1 do list[i] = nil end
+  for _, boat in ipairs(s.boats or {}) do
+    local p = boat.crew ~= 0 and Vp[boat.crew]
+    if not boat.away and not (p and p.alive and p.act == "voyage") then list[#list + 1] = boat end
+  end
+  for _, o in ipairs(V.W.S.v3.settlements) do
+    if o ~= s then
+      for _, boat in ipairs(o.boats or {}) do
+        local p = boat.crew ~= 0 and Vp[boat.crew]
+        if boat.away == s.id and not boat.lost and not (p and p.alive and p.act == "voyage") then list[#list + 1] = boat end
+      end
     end
   end
+  V.boat_go = V.boat_go or {}
   -- (boats launched later get their game objects as they appear, D-087)
-  for k = #V.boat_go + 1, #s.boats do
+  for k = #V.boat_go + 1, #list do
     local id = factory.create(V.boat_factory, vmath.vector3(0, 0, 0))
     V.boat_go[k] = { id = id, url = msg.url(nil, id, "mesh"), yaw = 0 }
   end
-  local Vp = V.W.S.v3.people
   local show0 = not M.skipping and V.in_view
-  for k, boat in ipairs(s.boats) do
+  for k = #list + 1, #V.boat_go do
+    local e = V.boat_go[k]
+    if e.on then msg.post(e.url, MSG_DISABLE); e.on = false end
+  end
+  for k, boat in ipairs(list) do
     local e = V.boat_go[k]
     if e then
       local show = show0 and not boat.lost   -- (a boat rotted through is broken up)

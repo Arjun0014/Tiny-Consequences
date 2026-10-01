@@ -64,6 +64,15 @@ local function census(s)
     end
   end
   t.ws = s.wood_store and (s.wood_store.stock.logs or 0) or 0
+  local dn, ds, dlo, dhi = 0, 0, 0, 0
+  for _, id in ipairs(s.blist) do
+    local b = s.buildings[id]
+    if b.kind == "house" and b.diet and b.hh ~= 0 then
+      dn, ds = dn + 1, ds + b.diet
+      if b.diet < require("sim.config").V3.diet_lo then dlo = dlo + 1 elseif b.diet > require("sim.config").V3.diet_hi then dhi = dhi + 1 end
+    end
+  end
+  t.diet = dn > 0 and string.format("diet %.2f lo%d hi%d", ds / dn, dlo, dhi) or "diet -"
   local n, clothes = 0, 0
   for _, id in ipairs(s.members) do
     local p = V.people[id]
@@ -105,8 +114,8 @@ local function report(d)
       local hs = {}
       for k, v in pairs(t.herd) do hs[#hs + 1] = k .. " " .. v end
       table.sort(hs)
-      say("  %-18s %4d %6.0f %6.0f %5.0f %5.0f %5.0f %5.1f %5.1f %5.1f %5.1f %5.2f %5.0f %5.0f %5.0f %5d | %.1f %.0f %d %s; %s", s.name, t.n, t.grain, t.food + t.meals, t.smoked + t.fish,
-        t.meat, t.cheese, t.wool, t.fibre, t.yarn, t.cloth, t.clothes, t.hides, t.leather, t.ws + t.logs, s.acc.trips or 0, s.grain_use or 0, s.grain_target or 0, s.sow_want or 0,
+      say("  %-18s %4d %6.0f %6.0f %5.0f %5.0f %5.0f %5.1f %5.1f %5.1f %5.1f %5.2f %5.0f %5.0f %5.0f %5d | %.1f %.0f %d %s %s; %s", s.name, t.n, t.grain, t.food + t.meals, t.smoked + t.fish,
+        t.meat, t.cheese, t.wool, t.fibre, t.yarn, t.cloth, t.clothes, t.hides, t.leather, t.ws + t.logs, s.acc.trips or 0, s.grain_use or 0, s.grain_target or 0, s.sow_want or 0, t.diet,
         table.concat(hs, " "), table.concat(t.g_other, " "))
     end
   end

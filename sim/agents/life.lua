@@ -45,6 +45,12 @@ local function pick_role(W, s, p)
 end
 
 local function kill(W, s, p, cause, why)
+  if p.at then
+    -- (dying away from home: off the other village's list of visitors)
+    local o = W.S.v3.settlements[p.at]
+    if o and o.visitors then people.remove_id(o.visitors, p.id) end
+    p.at = nil
+  end
   p.alive = false
   p.died = W.hour
   p.died_of = cause
@@ -177,10 +183,27 @@ function M.daily(W, s, day)
           if (p.cold_day or -9) < day - 6 then p.cold_day = day; people.remember(p, now, "Shivering: my clothes are in rags") end
         end
       end
+      -- the household's diet (D-101): bread with no relish, or relish with no bread, for weeks on
+      -- end weakens people and lets illness in
+      local home = people.home(W, s, p)
+      local poor = false
+      if home and home.diet and st ~= "infant" then
+        poor = home.diet < c.diet_lo or home.diet > c.diet_hi
+        if poor then
+          p.diet_cap = c.diet_weak
+          if p.health > c.diet_weak then p.health = max(c.diet_weak, p.health - 0.03) end
+          if (p.diet_day or -99) < day - 12 then
+            p.diet_day = day
+            people.remember(p, now, home.diet < c.diet_lo and "Bread and porridge and nothing with it, week after week" or "Fish and meat and hardly any bread, week after week")
+          end
+        else
+          p.diet_cap = nil
+        end
+      end
       -- death
       local hz = hazard(a) / c.days_per_year
       if p.health < 0.4 then hz = hz + (0.4 - p.health) * 0.05 end
-      local home = people.home(W, s, p)
+      if poor then hz = hz + c.diet_hz end
       if home and home.cold and (st == "infant" or st == "elder") then hz = hz + 0.002 end
       if u(W, p, 1, day) < hz then
         local cause = p.health < 0.25 and (p.hunger > 0.8 and "hunger" or "illness") or (a > 50 and "old age" or "illness")
@@ -208,6 +231,21 @@ function M.daily(W, s, day)
     end
   end
   if day % 4 == s.id % 4 then courtship(W, s, day) end
+end
+
+-- Lost at sea (D-102): a boat foundered on a trading voyage.
+function M.drown(W, p, from, to)
+  local s = W.S.v3.settlements[p.sett]
+  local now = W.S.v3.now or W.hour
+  if p.carry ~= "" then p.carry, p.camt = "", 0 end
+  p.pack, p.riding, p.ride_boat, p.boat, p.trip = nil, nil, nil, nil, nil
+  for _, id in ipairs(W.S.v3.households[p.hh] and W.S.v3.households[p.hh].members or {}) do
+    local q = W.S.v3.people[id]
+    if q and q.alive and q ~= p and people.stage(q, now) ~= "infant" then
+      people.remember(q, now, string.format("%s was lost at sea between %s and %s", p.name, from, to))
+    end
+  end
+  kill(W, s, p, "drowned", "lost at sea")
 end
 
 return M

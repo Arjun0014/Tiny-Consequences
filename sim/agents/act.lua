@@ -13,6 +13,7 @@ local cfgmod = require("sim.config")
 local nav = require("sim.agents.nav")
 local mapm = require("sim.agents.map")
 local people = require("sim.agents.people")
+local econ = require("sim.agents.econ")
 local ledger = require("sim.ledger")
 local kin = require("sim.agents.kin")
 
@@ -65,8 +66,9 @@ local function body(p, dt, kind)
   if kind == "sleep" then
     e = e + c.energy_sleep * dt
     h = h + c.hunger_sleep * dt
-  elseif kind == "travel" then
-    -- (on the road: walking with rests, sleeping at the wayside; D-097)
+  elseif kind == "travel" or kind == "voyage" or kind == "mind_boat" then
+    -- (on the road: walking with rests, sleeping at the wayside; D-097; at sea the crew rows and
+    -- rests by turns; minding a boat is waiting: D-102)
     h = h + c.hunger_idle * dt
   elseif kind == "walk" then
     e = e - c.energy_walk * dt * (p.carry ~= "" and 1.4 or 1)
@@ -84,8 +86,8 @@ local function body(p, dt, kind)
   p.hunger, p.energy = h, e
   if h > c.starving then
     p.health = p.health - c.health_starve * dt
-  elseif h < 0.6 and p.health < 1 then
-    p.health = min(1, p.health + 0.004 * dt)
+  elseif h < 0.6 and p.health < (p.diet_cap or 1) then
+    p.health = min(p.diet_cap or 1, p.health + 0.004 * dt)
   end
 end
 M.body = body
@@ -408,34 +410,123 @@ WORK.hand = function(W, s, p, st, f)
   end
 end
 
--- Boats (D-084): boarding at the dock, the catch from the planet's fish, landing.
+-- Boats (D-084): boarding at the dock, the catch from the planet's fish, landing. A boat belongs to
+-- its village (p.sett's boats) wherever it is moored (D-102: at another village's dock on a trade).
+local function boats_of(W, p) return W.S.v3.settlements[p.sett].boats end
+M.boats_of = boats_of
 WORK.board = function(W, s, p, st, f)
-  local boat = s.boats and s.boats[st.boat]
+  local B = boats_of(W, p)
+  local boat = B and B[st.boat]
   local b = s.dock
   if not boat or not b then return end
   boat.crew = p.id
   boat.t_out = W.S.v3.now or W.hour
   p.boat = boat.id
   p.x, p.y = b.mx, b.my
+  local tr = p.trip
+  if tr and tr.sea then
+    if (p.at or p.sett) == tr.from then tr.sailed = true else tr.homeward = true end
+  end
 end
 
 WORK.wait_mate = function(W, s, p, st, f)
   -- (nobody came: out alone with the lines; a mate who comes later finds the boat gone)
-  local boat = s.boats and s.boats[st.boat or 0]
+  local B = boats_of(W, p)
+  local boat = B and B[st.boat or 0]
   if boat and boat.mate == 0 then boat.mate_want = 0 end
 end
 
 WORK.board_mate = function(W, s, p, st, f)
-  local boat = s.boats and s.boats[st.boat or 0]
+  local B = boats_of(W, p)
+  local boat = B and B[st.boat or 0]
   local q = W.S.v3.people[st.skipper or 0]
-  if not boat or not q or not q.alive or boat.mate ~= p.id or q.objk ~= "fish" then
+  if not boat or not q or not q.alive or boat.mate ~= p.id or (q.objk ~= "fish" and q.objk ~= "trade") then
     if boat and boat.mate == p.id then boat.mate = 0 end
     return
   end
   p.riding, p.ride_boat = q.id, boat.id
   boat.mate_want = 0
+  local tr = q.trip
+  if tr and tr.sea then
+    -- (a trading voyage: the mate goes the whole way, fed from the skipper's provisions, D-102)
+    p.trip = { mate = true, skipper = q.id, to = tr.to, from = tr.from, boat = boat.id }
+    local half = (q.prov or 0) * 0.5
+    q.prov, p.prov = (q.prov or 0) - half, (p.prov or 0) + half
+  end
   -- the skipper stops waiting and rows out
   if q.act == "wait_mate" then M.skip_step(W, q) end
+end
+
+-- The skipper calls the mate minding the boat at the other village's dock aboard (D-102).
+WORK.call_mate = function(W, s, p, st, f)
+  local B = boats_of(W, p)
+  local boat = B and B[st.boat or 0]
+  local q = boat and W.S.v3.people[boat.mate or 0]
+  if not q or not q.alive or not q.trip or q.trip.skipper ~= p.id then
+    if boat then boat.mate = 0 end
+    return
+  end
+  q.riding, q.ride_boat = p.id, boat.id
+  q.x, q.y = p.x, p.y
+  M.skip_step(W, q)
+end
+
+WORK.mind_boat = function(W, s, p, st, f) end
+
+-- A voyage (D-102): the boat under sail and oars along the sea way between two villages; at its
+-- end skipper and mate are on the other map, at the water's edge toward where they came from. A
+-- squall may founder the boat on the way (the risk set when it sailed): the boat, its cargo and
+-- both aboard are lost.
+WORK.voyage = function(W, s, p, st, f)
+  if f < 0.99 then return end
+  local V = W.S.v3
+  local o = V.settlements[st.to or 0]
+  local from = V.settlements[st.from or 0]
+  local B = boats_of(W, p)
+  local boat = B and B[st.boat or 0]
+  if not o or not from or not boat then return end
+  local home = V.settlements[p.sett]
+  local q = boat.mate ~= 0 and V.people[boat.mate] or nil
+  if q and not (q.alive and q.riding == p.id) then q = nil end
+  local now = V.now or W.hour
+  home.acc.sea_h = (home.acc.sea_h or 0) + st.dur
+  if rng_float(W, p, 91) < (st.risk or 0) then
+    -- foundered: the boat, the cargo and the crew
+    boat.lost, boat.owner, boat.crew, boat.mate, boat.away = true, -1, 0, 0, nil
+    local food = 0
+    for _, g in ipairs(econ.ORDER) do if econ.GOODS[g].food then food = food + (boat.cargo and boat.cargo[g] or 0) end end
+    boat.cargo = nil
+    home.acc.lost_sea = (home.acc.lost_sea or 0) + food + (p.prov or 0) + (q and q.prov or 0)
+    home.acc.wrecks = (home.acc.wrecks or 0) + 1
+    p.prov = 0
+    if q then q.prov = 0 end
+    local r = econ.rel(home, o)
+    r.lost = r.lost + 1
+    if M.drown_hook then
+      if q then M.drown_hook(W, q, from.name, o.name) end
+      M.drown_hook(W, p, from.name, o.name)
+    end
+    return
+  end
+  local gx, gy = require("sim.agents.trade").sea_gate(W, o, st.gate_c or o.cell)
+  for _, who in ipairs({ p, q }) do
+    if who then
+      local old = V.settlements[who.at or who.sett]
+      if old and old.visitors then people.remove_id(old.visitors, who.id) end
+      if o.id == who.sett then
+        who.at = nil
+      else
+        who.at = o.id
+        o.visitors = o.visitors or {}
+        o.visitors[#o.visitors + 1] = who.id
+      end
+      who.x, who.y = gx or 0, gy or 0
+      who.inside = 0
+    end
+  end
+  boat.away = (o.id ~= p.sett) and o.id or nil
+  boat.x, boat.y = gx or 0, gy or 0
+  if o.id == p.sett and p.trip then p.trip.back = true end
 end
 
 WORK.ride = function(W, s, p, st, f) end
@@ -449,7 +540,8 @@ WORK.fish = function(W, s, p, st, f)
   local fd = F.fish[cell] or 0
   -- (a skilled fisher knows the grounds and the lines: D-087; two in the boat work the net, one
   -- alone only the lines: D-096)
-  local boat = s.boats and s.boats[st.boat or 0]
+  local B = boats_of(W, p)
+  local boat = B and B[st.boat or 0]
   local mate = boat and boat.mate ~= 0 and W.S.v3.people[boat.mate]
   local two = mate and mate.alive and mate.riding == p.id
   local gear = two and c.net_k or c.line_k
@@ -475,7 +567,8 @@ WORK.fish = function(W, s, p, st, f)
 end
 
 WORK.land = function(W, s, p, st, f)
-  local boat = s.boats and s.boats[p.boat or st.boat or 0]
+  local B = boats_of(W, p)
+  local boat = B and B[p.boat or st.boat or 0]
   local b = s.dock
   if boat and (boat.mate or 0) ~= 0 then
     -- the mate steps ashore with their share (half to another household's hand, D-096)
@@ -483,6 +576,8 @@ WORK.land = function(W, s, p, st, f)
     if q and q.alive and q.riding == p.id then
       q.riding, q.ride_boat = nil, nil
       q.x, q.y = b.dx + 0.01, b.dy
+      -- (home from a trading voyage: the mate's part is done; at the other village they mind the boat)
+      if q.trip and q.trip.mate and s.id == q.sett then q.trip = nil end
       if q.hh ~= p.hh and p.carry == "fish" and p.camt > 0 then
         local share = p.camt * 0.5
         p.camt = p.camt - share
@@ -490,11 +585,15 @@ WORK.land = function(W, s, p, st, f)
       end
       M.skip_step(W, q)
     end
-    boat.mate = 0
+    if not (p.trip and p.trip.sea and s.id ~= p.sett) then boat.mate = 0 end
   end
   if boat then
     boat.crew = 0
     boat.x, boat.y = b.mx + (boat.id - 1) * 0.012, b.my
+    boat.away = (s.id ~= p.sett) and s.id or nil
+    if p.trip and p.trip.sea then
+      if s.id ~= p.sett then p.trip.landed = true elseif p.trip.back then p.trip.ashore = true end
+    end
     -- hours afloat wear the hull and the oars
     local out = (W.S.v3.now or W.hour) - (boat.t_out or (W.S.v3.now or W.hour))
     boat.cond = max(0, (boat.cond or 1) - C().boat_wear * out)
@@ -813,6 +912,7 @@ WORK.travel = function(W, s, p, st, f)
   if old and old.visitors then people.remove_id(old.visitors, p.id) end
   if o.id == p.sett then
     p.at = nil
+    if p.trip then p.trip.back = true end
   else
     p.at = o.id
     o.visitors = o.visitors or {}
@@ -958,16 +1058,31 @@ WORK.cook = function(W, s, p, st, f)
   b.stock.milk = (b.stock.milk or 0) - milk
   want = want - milk
   local fish = min(b.stock.fish or 0, want)
-  local amt = min(b.stock.food or 0, want - fish)
-  local sm = min(b.stock.smoked or 0, want - fish - amt)
-  local ch = min(b.stock.cheese or 0, want - fish - amt - sm)
+  want = want - fish
+  -- (a balanced pot, D-101: bread and porridge with a relish of fish, meat, milk or cheese. The
+  -- perishables went in first; the keeping relish tops it up to the cook's share, bread fills it)
+  local relish = meat + milk + fish
+  local batch = relish + want
+  local top = max(0, min(want, batch * c.diet_p - relish))
+  local sm = min(b.stock.smoked or 0, top)
+  local ch = min(b.stock.cheese or 0, top - sm)
+  want = want - sm - ch
+  local amt = min(b.stock.food or 0, want)
+  want = want - amt
+  -- (no bread left: more relish instead)
+  local sm2 = min((b.stock.smoked or 0) - sm, want)
+  local ch2 = min((b.stock.cheese or 0) - ch, want - sm2)
+  sm, ch = sm + sm2, ch + ch2
   if amt + fish + sm + ch + meat + milk <= 0 then return end
   b.stock.fish = (b.stock.fish or 0) - fish
   b.stock.food = (b.stock.food or 0) - amt
   b.stock.smoked = (b.stock.smoked or 0) - sm
   b.stock.cheese = (b.stock.cheese or 0) - ch
-  amt = amt + fish + sm + meat + milk + ch
-  b.stock.meals = (b.stock.meals or 0) + amt
+  local tot = amt + fish + sm + meat + milk + ch
+  b.stock.meals = (b.stock.meals or 0) + tot
+  -- (the household's diet: the relish share of what it cooks, as it goes)
+  local share = (tot - amt) / tot
+  b.diet = b.diet and (b.diet + (share - b.diet) * c.diet_k * min(1, tot / max(0.1, n * c.cook_batch))) or share
   b.cooked_t = W.S.v3.now or W.hour
 end
 
@@ -1009,21 +1124,6 @@ PICK.grain = function(W, s, p, st)
   local b = s.buildings[st.ref]
   if not b then return end
   local c = C()
-  if st.bought then
-    -- (D-097) the price of the fish just sold: grain from the buyer's granary
-    local tr = p.trip
-    local want = tr and (tr.sold or 0) * (tr.rate or c.trade_rate) or 0
-    local got = min(want, b.stock.grain or 0)
-    if got > 0 then
-      b.stock.grain = b.stock.grain - got
-      p.carry, p.camt = "grain", got
-      s.acc.export = (s.acc.export or 0) + got
-      local home = W.S.v3.settlements[p.sett]
-      home.acc.import = (home.acc.import or 0) + got
-      s.acc.traded_grain = (s.acc.traded_grain or 0) + got
-    end
-    return
-  end
   local want = st.n or c.carry_grain
   -- (smoked fish bought into the granary goes out with the grain, in proportion: D-097)
   local gr, sm = b.stock.grain or 0, b.stock.smoked or 0
@@ -1033,6 +1133,7 @@ PICK.grain = function(W, s, p, st)
     b.stock.grain = gr - got
     b.stock.smoked = sm - fish
     p.carry, p.camt = st.as or "grain", got + fish
+    p.cfish = fish    -- (the smoked fish in the basket stays fish at home: D-101)
     -- (the grain the households take home to eat: the village's measure of its bread, D-100)
     if st.as == "food" then s.acc.g_food = (s.acc.g_food or 0) + got end
   end
@@ -1102,6 +1203,163 @@ PICK.logs = function(W, s, p, st)
     if got > 0 then
       b.stock.logs = b.stock.logs - got
       p.carry, p.camt = "logs", got
+    end
+  end
+end
+
+-- Trade goods into a trader's pack (D-101): from the house, the granary or the woodstore.
+local function stock_key(b, g)
+  if g == "grain" then return b.kind == "granary" and "grain" or "food" end
+  return g
+end
+M.stock_key = stock_key
+
+local function pack_load(p)
+  local w = 0
+  if p.pack then
+    for _, g in ipairs(econ.ORDER) do w = w + (p.pack[g] or 0) * econ.GOODS[g].wt end
+  end
+  return w
+end
+M.pack_load = pack_load
+
+PICK.pack = function(W, s, p, st)
+  local b = s.buildings[st.ref]
+  if not b then return end
+  local g = st.good
+  local key = stock_key(b, g)
+  local room = ((p.strong and 1.3 or 1) - pack_load(p)) / econ.GOODS[g].wt
+  local got = min(st.n or 0, b.stock[key] or 0, room)
+  if p.carry ~= "" and p.carry ~= "pack" then return end
+  p.pack = p.pack or {}
+  if got > 0 then
+    b.stock[key] = b.stock[key] - got
+    p.pack[g] = (p.pack[g] or 0) + got
+  end
+  p.carry, p.camt = "pack", pack_load(p)
+end
+
+-- Cargo out of a boat into the pack (D-102): a load at a time.
+PICK.cargo = function(W, s, p, st)
+  local B = boats_of(W, p)
+  local boat = B and B[st.boat or 0]
+  if not boat or not boat.cargo then return end
+  if p.carry ~= "" and p.carry ~= "pack" then return end
+  local g = st.good
+  local room = ((p.strong and 1.3 or 1) - pack_load(p)) / econ.GOODS[g].wt
+  local got = min(st.n or room, boat.cargo[g] or 0, room)
+  if got <= 0 then return end
+  boat.cargo[g] = boat.cargo[g] - got
+  p.pack = p.pack or {}
+  p.pack[g] = (p.pack[g] or 0) + got
+  p.carry, p.camt = "pack", pack_load(p)
+end
+
+-- What the other village's stores pay for a deal struck at a house (D-101), loaded at the stores.
+PICK.owed = function(W, s, p, st)
+  local tr = p.trip
+  local d = tr and tr.deals and tr.deals[st.di or 0]
+  local b = s.buildings[st.ref]
+  if not d or not d.owed or not b then return end
+  local H = tr.take
+  local key = stock_key(b, H)
+  local q = min(d.owed, b.stock[key] or 0)
+  d.owed = nil
+  if q <= 0 then return end
+  b.stock[key] = b.stock[key] - q
+  p.pack = p.pack or {}
+  p.pack[H] = (p.pack[H] or 0) + q
+  p.carry, p.camt = "pack", pack_load(p)
+  if econ.GOODS[H].food then
+    local home = W.S.v3.settlements[p.sett]
+    s.acc.export = (s.acc.export or 0) + q
+    home.acc.import = (home.acc.import or 0) + q
+  end
+end
+
+-- An exchange at the other village (D-101): the trader's goods for what the household (or the
+-- village's stores) there pays, at the price both found worth it; both villages' books, the
+-- relation between them and the people's memories.
+WORK.deal = function(W, s, p, st, f)
+  if f < 0.99 then return end
+  local V = W.S.v3
+  local tr = p.trip
+  if not tr or not p.pack then return end
+  local d = tr.deals and tr.deals[st.di or 0]
+  if not d or d.done then return end
+  if not st.part then d.done = true end
+  local home = V.settlements[p.sett]
+  local X, H = tr.give, tr.take
+  local GX, GH = econ.GOODS[X], econ.GOODS[H]
+  -- (where the goods go: the buyer's house, or the village's stores; what pays: the buyer's own
+  -- goods, or the village's stores, loaded there afterwards if they are elsewhere)
+  local hb = s.buildings[st.ref or 0]
+  if not hb then return end
+  local src = s.buildings[d.src or 0]
+  if not src then return end
+  local hkey = stock_key(src, H)
+  local qx = min(d.left or d.q, p.pack[X] or 0)
+  if qx <= 1e-6 then return end
+  local qh = min(qx * d.k, src.stock[hkey] or 0)
+  if qh <= 1e-6 then return end
+  qx = qh / d.k
+  -- goods change hands
+  d.left = (d.left or d.q) - qx
+  if d.left <= 1e-3 then d.done = true end
+  p.pack[X] = p.pack[X] - qx
+  local xkey = stock_key(hb, X)
+  hb.stock[xkey] = (hb.stock[xkey] or 0) + qx
+  if src == hb then
+    src.stock[hkey] = src.stock[hkey] - qh
+    p.pack[H] = (p.pack[H] or 0) + qh
+    if GH.food then
+      s.acc.export = (s.acc.export or 0) + qh
+      home.acc.import = (home.acc.import or 0) + qh
+    end
+  else
+    d.owed = (d.owed or 0) + qh
+  end
+  p.carry, p.camt = "pack", pack_load(p)
+  -- the books
+  if GX.food then
+    home.acc.export = (home.acc.export or 0) + qx
+    s.acc.import = (s.acc.import or 0) + qx
+  end
+  home.acc["sold_" .. X] = (home.acc["sold_" .. X] or 0) + qx
+  home.acc["got_" .. H] = (home.acc["got_" .. H] or 0) + qh
+  s.acc["in_" .. X] = (s.acc["in_" .. X] or 0) + qx
+  s.acc["out_" .. H] = (s.acc["out_" .. H] or 0) + qh
+  s.acc.deals = (s.acc.deals or 0) + 1
+  home.acc.deals = (home.acc.deals or 0) + 1
+  tr.sold = (tr.sold or 0) + qx
+  tr.got = (tr.got or 0) + qh
+  -- trust grows with deals kept, both ways
+  local c = C()
+  local now = V.now or W.hour
+  for _, pr in ipairs({ { home, s }, { s, home } }) do
+    local r = econ.rel(pr[1], pr[2])
+    r.deals = r.deals + 1
+    r.trust = r.trust + (1 - r.trust) * c.trust_deal
+    r.t = now
+  end
+  local hh_b = d.b ~= 0 and V.households[d.b] or nil
+  local hh_a = V.households[p.hh]
+  if hh_b and hh_a then
+    hh_a.partners = hh_a.partners or {}
+    hh_a.partners[hh_b.id] = (hh_a.partners[hh_b.id] or 0) + 1
+    hh_b.partners = hh_b.partners or {}
+    hh_b.partners[hh_a.id] = (hh_b.partners[hh_a.id] or 0) + 1
+  end
+  -- memories
+  local q1 = V.people[hh_b and hh_b.members[1] or 0]
+  local who = hh_b and q1 and ("the " .. q1.surname .. " household") or (s.name .. "'s stores")
+  people.remember(p, now, string.format("Traded %s for %s with %s at %s", econ.amount(qx, X), econ.amount(qh, H), who, s.name))
+  if hh_b then
+    for _, id in ipairs(hh_b.members) do
+      local q = V.people[id]
+      if q and q.alive and people.stage(q, now) == "adult" then
+        people.remember(q, now, string.format("Got %s from %s of %s for %s", econ.amount(qx, X), p.name, home.name, econ.amount(qh, H)))
+      end
     end
   end
 end
@@ -1181,6 +1439,66 @@ end
 DROP.any = function(W, s, p, st)
   if p.carry == "" then return end
   local what, n = p.carry, p.camt
+  if what == "pack" and st.to == "cargo" then
+    -- (a load into the boat's hold, D-102)
+    local B = boats_of(W, p)
+    local boat = B and B[st.boat or 0]
+    if boat then
+      boat.cargo = boat.cargo or {}
+      for _, g in ipairs(econ.ORDER) do
+        local q = p.pack and p.pack[g] or 0
+        if q > 0 then boat.cargo[g] = (boat.cargo[g] or 0) + q end
+      end
+      p.pack = nil
+      p.carry, p.camt = "", 0
+    end
+    return
+  end
+  if what == "pack" then
+    -- (a trader home, D-101: what is left of the goods and what they brought back, each where the
+    -- household keeps it: food in the larder, logs on the woodpile, wool and cloth at home)
+    local b = s.buildings[st.ref]
+    local V = W.S.v3
+    local gave, gv = nil, 0
+    if b then
+      for _, g in ipairs(econ.ORDER) do
+        local q = p.pack and p.pack[g] or 0
+        if q > 0 then
+          local key = (g == "grain") and "food" or g
+          b.stock[key] = (b.stock[key] or 0) + q
+          gave, gv = g, q
+        end
+      end
+    end
+    p.pack = nil
+    p.carry, p.camt = "", 0
+    local hh_a = st.gift and V.households[st.gift]
+    local hh_b = hh_a and b and V.households[b.hh]
+    if hh_a and hh_b and gave then
+      -- (a gift: both households remember it; the people who met grow closer)
+      local now = V.now or W.hour
+      local G = econ.GOODS[gave]
+      local val = gv * G.base
+      hh_b.got = hh_b.got or {}
+      hh_b.got[hh_a.id] = (hh_b.got[hh_a.id] or 0) + val
+      hh_a.gave = hh_a.gave or {}
+      hh_a.gave[hh_b.id] = (hh_a.gave[hh_b.id] or 0) + val
+      s.acc.gifts = (s.acc.gifts or 0) + 1
+      local q1 = V.people[hh_b.members[1] or 0]
+      people.remember(p, now, string.format("Took %s to the %s household", econ.amount(gv, gave), q1 and q1.surname or "neighbour"))
+      for _, id in ipairs(hh_b.members) do
+        local q = V.people[id]
+        if q and q.alive and people.stage(q, now) ~= "infant" then
+          people.bond(q, p, 0.05)
+          people.bond(p, q, 0.03)
+          if people.stage(q, now) == "adult" then
+            people.remember(q, now, string.format("%s brought us %s", p.name, econ.amount(gv, gave)))
+          end
+        end
+      end
+    end
+    return
+  end
   if st.to == "boat" and what == "logs" then
     local boat = s.boats and s.boats[st.boat or 0]
     if boat then boat.repair_logs = (boat.repair_logs or 0) + n; p.carry, p.camt = "", 0 end
@@ -1202,13 +1520,6 @@ DROP.any = function(W, s, p, st)
     b.stock.flax = (b.stock.flax or 0) + n
   elseif what == "wool" then
     b.stock.wool = (b.stock.wool or 0) + n
-    if st.sold and p.trip then
-      local home = W.S.v3.settlements[p.sett]
-      home.acc.wool_out = (home.acc.wool_out or 0) + n
-      s.acc.wool_in = (s.acc.wool_in or 0) + n
-      local _, rate = require("sim.agents.trade").buyer(W, home, "wool")
-      p.trip.sold, p.trip.rate = n, rate or C().trade_wool_rate
-    end
   elseif what == "meat" then
     b.stock.meat = (b.stock.meat or 0) + n
   elseif what == "hay" then
@@ -1219,15 +1530,6 @@ DROP.any = function(W, s, p, st)
     b.stock.smoked = (b.stock.smoked or 0) + n
   elseif what == "smoked" then
     b.stock.smoked = (b.stock.smoked or 0) + n
-    if st.sold and p.trip then
-      -- (D-097) sold to the buyer's village: out of the seller's ledger, into the buyer's
-      local home = W.S.v3.settlements[p.sett]
-      home.acc.export = (home.acc.export or 0) + n
-      s.acc.import = (s.acc.import or 0) + n
-      s.acc.traded_fish = (s.acc.traded_fish or 0) + n
-      local _, rate = require("sim.agents.trade").buyer(W, home, "smoked")
-      p.trip.sold, p.trip.rate = n, rate or C().trade_rate
-    end
   elseif what == "carcass" then
     -- (butchered at home: the meat to the larder, the hide kept)
     b.stock.meat = (b.stock.meat or 0) + n
@@ -1252,13 +1554,28 @@ DROP.any = function(W, s, p, st)
     -- fresh fish: a house's own stock, cooked first, spoiling within days (D-087)
     b.stock.fish = (b.stock.fish or 0) + n
   elseif what == "food" then
-    if b.kind == "granary" then b.stock.grain = (b.stock.grain or 0) + n else b.stock.food = (b.stock.food or 0) + n end
+    local fish = min(n, p.cfish or 0)
+    p.cfish = nil
+    if b.kind == "granary" then
+      b.stock.grain = (b.stock.grain or 0) + n - fish
+      b.stock.smoked = (b.stock.smoked or 0) + fish
+    else
+      b.stock.food = (b.stock.food or 0) + n - fish
+      b.stock.smoked = (b.stock.smoked or 0) + fish
+    end
   elseif what == "logs" then
     b.stock.logs = (b.stock.logs or 0) + n
   elseif what == "water" then
     b.stock.water = (b.stock.water or 0) + n
   end
   p.carry, p.camt = "", 0
+end
+
+-- The end of a trip (D-097, D-101, D-102): what is left of the provisions back in the larder, the
+-- claims and the boat freed. Called after the trip's last drop, whatever the hands hold.
+local function end_trip(W, s, p, st)
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
   if st.trip_end and (p.prov or 0) > 0 then
     -- (what is left of the provisions goes back in the larder)
     b.stock.food = (b.stock.food or 0) + p.prov
@@ -1267,9 +1584,19 @@ DROP.any = function(W, s, p, st)
   if st.trip_end and p.trip then
     local hh = W.S.v3.households[p.hh]
     if hh and hh.trading == p.id then hh.trading = 0 end
-    local o = W.S.v3.settlements[p.trip.to]
-    people.remember(p, W.S.v3.now or W.hour, string.format("Traded %.0f %s for %.0f of grain at %s",
-      p.trip.sold or 0, p.trip.give == "smoked" and "FU of smoked fish" or "of wool", (p.trip.sold or 0) * (p.trip.rate or 0), o and o.name or "?"))
+    if s.trading == p.id then s.trading = 0 end
+    if p.trip.sea then
+      local boat = s.boats and s.boats[p.trip.boat]
+      if boat and boat.trip == p.id then boat.trip = nil end
+      if boat and boat.cargo then
+        -- (anything left in the hold goes home with the last load)
+        for _, g in ipairs(econ.ORDER) do
+          local v = boat.cargo[g] or 0
+          if v > 1e-6 then local key = (g == "grain") and "food" or g; b.stock[key] = (b.stock[key] or 0) + v end
+        end
+        boat.cargo = nil
+      end
+    end
     p.trip = nil
     s.acc.trips = (s.acc.trips or 0) + 1
   end
@@ -1280,7 +1607,7 @@ local LEISURE = { rest = true, talk = true, visit = true, sit_out = true }
 local function finish(W, s, p, now, f)
   local st = p.plan[p.pi]
   local dt = now - p.t0
-  if p.act == "travel" and dt > 0 then
+  if (p.act == "travel" or ((p.act == "voyage" or p.act == "ride" or p.act == "mind_boat") and (p.prov or 0) > 0)) and dt > 0 then
     -- the provisions from home, eaten along the road hour by hour when hungry (D-097; eaten
     -- before the leg's hunger was charged, a long leg starved its walker: D-100)
     local c = C()
@@ -1288,7 +1615,7 @@ local function finish(W, s, p, now, f)
     local left = dt
     while left > 0 do
       local h = min(1, left)
-      body(p, h, "travel")
+      body(p, h, p.act == "travel" and "travel" or p.act)
       left = left - h
       if p.hunger > 0.45 and (p.prov or 0) > 0 then
         local m = min(p.prov, c.meal_fu)
@@ -1345,6 +1672,7 @@ local function finish(W, s, p, now, f)
     if h and f >= 1 then h(W, s, p, st) end
   elseif st.op == "drop" then
     if f >= 1 then DROP.any(W, s, p, st) end
+    if f >= 1 and st.trip_end then end_trip(W, s, p, st) end
     if st.release then
       local hh = W.S.v3.households[p.hh]
       if hh and hh[st.release] == p.id then hh[st.release] = 0 end

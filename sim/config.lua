@@ -838,6 +838,10 @@ C.V3 = {
   fuel_cook = 0.55, fuel_warm = 16, fuel_heat = 1.2,  -- logs a day; + fuel_heat per 10 degC below fuel_warm
   -- cooking (D-080): grain from the pantry becomes the household's meals at the hearth
   cook_h = 2.4, cook_batch = 1.0, meals_days = 1.0,   -- hours a batch (grinding, baking); FU per member; days kept
+  -- (D-101) the pot: the relish share (fish, meat, milk, cheese) the cook aims for; the household's
+  -- diet as a running share (weight a full batch); a diet under lo or over hi weakens (health held
+  -- to diet_weak) and adds diet_hz a day to the risk of death
+  diet_p = 0.35, diet_k = 0.08, diet_lo = 0.12, diet_hi = 0.8, diet_weak = 0.55, diet_hz = 0.0004,
   spoil_meals = 0.05,                     -- share of cooked food gone stale a day
   -- stores (D-080): grain keeps, not forever; threshing as the threshed grain runs down
   spoil_grain = 0.0012, spoil_sheaves = 0.0005, spoil_food = 0.004,
@@ -966,6 +970,19 @@ C.V3 = {
   -- (D-098) wool: GE a household keeps a member, a load, grain a GE fetches at full want; a buyer
   -- wants wool while its cloth pipeline is under this share of textile_want a person
   trade_wool_keep = 1.0, trade_wool_load = 3, trade_wool_rate = 3.0, trade_wool_short = 0.8,
+  -- (D-101) the economy: a village wants fish_want FU of smoked fish and cheese_want of cheese a
+  -- person in store, a household textile_hh_want GE a member (wool to cloth); what is beyond spare_k x
+  -- the want can go; a trip wants at least trade_min_load of a load and the good worth trade_margin x
+  -- more there than here; an hour on the road costs trade_hour FU; news fades over know_fade days;
+  -- a deal kept adds trust_deal of the way to full trust; an exchange takes deal_h hours
+  fish_want = 3.0, cheese_want = 0.8, textile_hh_want = 1.5, spare_k = 1.2, trade_min_load = 0.25,
+  trade_margin = 1.25, trade_hour = 0.06, know_fade = 48, trust_deal = 0.06, deal_h = 0.3,
+  share_keep = 2.0, share_short = 0.5,
+  -- (D-102) sea trade: reach (local units of sea way), a boat under sail and oars, its hold in loads
+  sea_reach = 40, sail_speed = 1.1, boat_hold = 3,
+  sea_squall = 0.00025, sea_wet_k = 3,    -- chance a voyage hour of foundering (fair day; x on a wet day; worn boats and unskilled skippers more)
+  sea_wet_h = 8,
+  nap_h = 4,                              -- (D-102) hours an exhausted person sleeps in the day                          -- a skipper does not set out on a crossing longer than this on a wet day    -- a household shares beyond 2x its want with one under half of its own
   meat_want = 1.2, hunt_reach = 1.6, hunt_stalk = 0.3, hunt_throw = 0.07, stalk_speed = 0.4,
   hunt_hit = 0.25, hunt_skill = 0.35, hunt_tries = 3, hunt_hours = 5,                         -- after wolves took a beast, the village keeps a night watch this long
   wolf_visit = 0.5,                       -- a pack's chance to hunt on the map tonight: its time here x this

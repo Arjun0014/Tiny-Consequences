@@ -1,12 +1,7 @@
--- Trade between settlements (roadmap v3 R4, D-097): the first loop, by land. A fishing household
--- with smoked fish to spare sends one of its people with a load of it to a village it can walk to
--- (the same landmass, within `trade_reach`) whose granary has grain to spare and whose people have
--- little fish. The porter takes the fish from their own larder, walks off their map toward the
--- other village, travels the road (a timed leg, drawn on the planet), walks into the other
--- village, unloads the fish into its granary, loads grain at the going rate, and walks home with
--- it. Nothing moves without someone carrying it; both villages' food ledgers count the goods as
--- they change hands (acc.export / acc.import).
---   p.trip = { to = settlement id, from = settlement id, give = "smoked", take = "grain", n }
+-- Trade between settlements (roadmap v3 R4, D-097, D-101): the roads. What is worth carrying where
+-- is sim/agents/econ.lua; the trip itself is think.lua's trip_legs (out with the goods, the
+-- exchanges at the other village, home) and act.lua's deal steps.
+--   p.trip = { to, from, give, take, n, aX, aH, pool, deals, back }
 --   p.at   = the settlement whose map the person is on now (nil: their own)
 local cfgmod = require("sim.config")
 local clock = require("sim.agents.clock")
@@ -47,62 +42,109 @@ function M.partners(W, s)
   return P
 end
 
--- What a village has: days of grain and gathered food for its people, smoked fish a person.
-function M.stores(W, s)
-  local V = W.S.v3
-  local n = 0
-  for _, id in ipairs(s.members) do if V.people[id].alive then n = n + 1 end end
-  n = max(1, n)
-  local grain = s.granary and ((s.granary.stock.grain or 0) + (s.granary.stock.smoked or 0)) or 0
-  local fish = s.granary and (s.granary.stock.smoked or 0) or 0
-  for _, id in ipairs(s.blist) do
-    local b = s.buildings[id]
-    if b.kind == "house" then
-      grain = grain + (b.stock.food or 0)
-      fish = fish + (b.stock.smoked or 0) + (b.stock.fish or 0)
+-- The sea way between two settlements with docks (D-102): the shortest chain of ocean cells from
+-- one's shore to the other's (a breadth-first search over the planet's ocean cells from every ocean
+-- cell next to s's cell, to one next to o's). Returns { cells = {...}, len = local units } or false.
+-- Runtime cache (the geography does not change while a world runs).
+local ROUTES = setmetatable({}, { __mode = "k" })
+function M.sea_route(W, s, o)
+  local cache = ROUTES[W]
+  if not cache then cache = {}; ROUTES[W] = cache end
+  local key = s.id * 1000 + o.id
+  local r = cache[key]
+  if r ~= nil then return r end
+  local g = W.grid
+  local ocean = W.geo.ocean
+  local nbr, cnt = g.nbr, g.nbr_count
+  local prev, q, qi = {}, {}, 1
+  for k = 1, cnt[s.cell] do
+    local j = nbr[s.cell * 6 - 6 + k]
+    if j > 0 and ocean[j] == 1 and not prev[j] then prev[j] = -1; q[#q + 1] = j end
+  end
+  local goal = {}
+  for k = 1, cnt[o.cell] do
+    local j = nbr[o.cell * 6 - 6 + k]
+    if j > 0 and ocean[j] == 1 then goal[j] = true end
+  end
+  local hit = nil
+  while qi <= #q do
+    local c = q[qi]; qi = qi + 1
+    if goal[c] then hit = c; break end
+    for k = 1, cnt[c] do
+      local j = nbr[c * 6 - 6 + k]
+      if j > 0 and ocean[j] == 1 and not prev[j] then prev[j] = c; q[#q + 1] = j end
     end
   end
-  return grain / n, fish / n, n
+  if not hit then cache[key] = false; return false end
+  local cells = {}
+  local c = hit
+  while c and c > 0 do cells[#cells + 1] = c; c = prev[c] end
+  -- (s's end first)
+  for i = 1, floor(#cells / 2) do cells[i], cells[#cells + 1 - i] = cells[#cells + 1 - i], cells[i] end
+  local R = require("sim.agents.map").R
+  local function arc(a, b)
+    local dot = g.X[a] * g.X[b] + g.Y[a] * g.Y[b] + g.Z[a] * g.Z[b]
+    if dot > 1 then dot = 1 elseif dot < -1 then dot = -1 end
+    return acos(dot) * R
+  end
+  local len = arc(s.cell, cells[1]) + arc(cells[#cells], o.cell)
+  for i = 2, #cells do len = len + arc(cells[i - 1], cells[i]) end
+  r = { cells = cells, len = len }
+  cache[key] = r
+  return r
 end
 
--- The goods a household carries to sell (D-097; wool D-098): what it is (the house's stock and the
--- buyer granary's), what the household keeps a member, a load, and the buyer's want: a share 0..1
--- of how short it is (nil: not a buyer), its price in grain a unit at full want.
-M.GOODS = {
-  smoked = { food = true, keep = "trade_keep", load = "trade_load", rate = "trade_rate",
-    want = function(W, o)
-      local _, fish = M.stores(W, o)
-      local c = C()
-      if fish >= c.trade_fish_short then return nil end
-      return 1 - fish / c.trade_fish_short
-    end },
-  wool = { food = false, keep = "trade_wool_keep", load = "trade_wool_load", rate = "trade_wool_rate",
-    want = function(W, o)
-      local c = C()
-      local _, _, n = M.stores(W, o)
-      local pipe = require("sim.agents.settle").textile_pipeline(W, o) / n
-      if pipe >= c.textile_want * c.trade_wool_short then return nil end
-      return 1 - pipe / (c.textile_want * c.trade_wool_short)
-    end },
-}
-M.ORDER = { "smoked", "wool" }
-
--- A buyer for a load of `good`: the nearest partner with grain to spare that wants it. Returns the
--- partner and the grain a unit fetches there (dearer the shorter it is).
-function M.buyer(W, s, good)
-  local c = C()
-  local G = M.GOODS[good or "smoked"]
-  for _, o in ipairs(M.partners(W, s)) do
-    if o.granary then
-      local food = M.stores(W, o)
-      local spare = (o.granary.stock.grain or 0)
-      if food > c.trade_food_spare and spare > c.trade_load * 2 then
-        local w = G.want(W, o)
-        if w then return o, c[G.rate] * (1 + 0.5 * w) end
+-- Settlements reachable by sea from s (both with docks, within sea_reach), nearest first.
+local SEA = setmetatable({}, { __mode = "k" })
+function M.sea_partners(W, s)
+  local P = SEA[s]
+  if P then return P end
+  P = {}
+  if s.dock then
+    for _, o in ipairs(W.S.v3.settlements) do
+      if o ~= s and o.alive and o.dock then
+        local r = M.sea_route(W, s, o)
+        if r and r.len <= C().sea_reach and M.sea_gate(W, s, r.cells[1]) and M.sea_gate(W, o, r.cells[#r.cells]) then
+          P[#P + 1] = o
+        end
       end
     end
+    table.sort(P, function(x, y)
+      local a, b = M.sea_route(W, s, x).len, M.sea_route(W, s, y).len
+      if a ~= b then return a < b end
+      return x.id < y.id
+    end)
   end
-  return nil
+  SEA[s] = P
+  return P
+end
+
+-- Where a boat leaves map s by sea toward planet cell c (D-102): the sailable water of the map's
+-- border ring nearest that way (nil when the map's water does not reach its border).
+local SEDGE = setmetatable({}, { __mode = "k" })
+function M.sea_gate(W, s, c)
+  local mapm = require("sim.agents.map")
+  local ring = SEDGE[s]
+  if not ring then
+    local e = {}
+    local N = s.N
+    for ix = 3, N - 2 do e[#e + 1] = 2 * N + ix; e[#e + 1] = (N - 3) * N + ix end
+    for iy = 4, N - 3 do e[#e + 1] = (iy - 1) * N + 3; e[#e + 1] = (iy - 1) * N + N - 2 end
+    ring = {}
+    for _, i in ipairs(e) do if s.wcost[i] > 0 and s.land[i] == 0 then ring[#ring + 1] = i end end
+    SEDGE[s] = ring
+  end
+  local g = W.grid
+  local x, y = mapm.local_of(s, g.X[c], g.Y[c], g.Z[c])
+  x, y = x or 1, y or 0
+  local best, bd = 0, 1e18
+  for q = 1, #ring do
+    local tx, ty = mapm.tile_xy(s, ring[q])
+    local d = (tx - x) ^ 2 + (ty - y) ^ 2
+    if d < bd then best, bd = ring[q], d end
+  end
+  if best == 0 then return nil end
+  return mapm.tile_xy(s, best)
 end
 
 -- Where a person leaves map s for settlement o (and arrives on o's map from s).

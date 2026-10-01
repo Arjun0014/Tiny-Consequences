@@ -14,6 +14,8 @@ local people = require("sim.agents.people")
 local act = require("sim.agents.act")
 local think = require("sim.agents.think")
 local settle = require("sim.agents.settle")
+-- (settle.lua cannot require econ.lua: econ -> trade -> wild -> stock -> settle; injected here)
+settle.econ = require("sim.agents.econ")
 local life = require("sim.agents.life")
 local kin = require("sim.agents.kin")
 local rng = require("sim.rng")
@@ -181,6 +183,7 @@ function sys.advance(W, t)
   if not V then return end
   act.people = V.people
   act.skip_step = sys.skip_step
+  act.drown_hook = function(W_, p, from, to) return life.drown(W_, p, from, to) end
   local R = rt(W)
   local P = V.people
   local S = V.settlements
@@ -222,7 +225,7 @@ local function rain_change(W, s, now, r)
   local V = W.S.v3
   for i = 1, #s.members do
     local p = V.people[s.members[i]]
-    if p and p.alive and p.act ~= "carried" and not p.at and p.act ~= "travel" then
+    if p and p.alive and p.act ~= "carried" and not p.at and p.act ~= "travel" and p.act ~= "voyage" and not p.riding then
       local u = rng.float(W.seed, rng.S.V3_THINK, p.key, floor(now) % 4294967296, 99)
       if r > 0 and p.inside == 0 and p.act ~= "sleep" then
         local hb = people.home(W, s, p)

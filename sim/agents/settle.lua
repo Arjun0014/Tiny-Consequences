@@ -289,10 +289,18 @@ function M.food_total(W, s)
     end
   end
   for k = 1, #s.plots do tot = tot + s.plots[k].sheaves end
+  -- (cargo in the village's boats, wherever they are: D-102)
+  for _, boat in ipairs(s.boats or {}) do
+    local cg = boat.cargo
+    if cg then tot = tot + (cg.grain or 0) + (cg.smoked or 0) + (cg.cheese or 0) end
+  end
   for k = 1, #s.members do
     local p = V.people[s.members[k]]
     if p and p.alive then
-      if CARRY_FOOD[p.carry] or p.carry == "smoked" then tot = tot + p.camt end
+      if CARRY_FOOD[p.carry] or p.carry == "smoked" then tot = tot + p.camt
+      elseif p.carry == "pack" and p.pack then
+        tot = tot + (p.pack.grain or 0) + (p.pack.smoked or 0) + (p.pack.cheese or 0)
+      end
       tot = tot + (p.prov or 0)
       if p.lunch then tot = tot + c.meal_fu end
     end
@@ -304,6 +312,7 @@ function M.food_flows(s)
   local a = s.acc
   return (a.harvest or 0) + (a.foraged or 0) + (a.fished or 0) + (a.meat or 0) + (a.milk or 0) + (a.import or 0)
     - (a.eaten or 0) - (a.seed or 0) - (a.lunch or 0) - (a.spoiled or 0) - (a.whey or 0) - (a.export or 0)
+    - (a.lost_sea or 0)
 end
 
 -- Plots ------------------------------------------------------------------------------------
@@ -572,6 +581,7 @@ function M.hourly(W, s, now)
   local have = (s.wood_store and s.wood_store.stock.logs or 0) + lying
   local want = site_logs + reserve
   need.wood_short = want > 0 and max(0, min(1, (want - have) / want)) or 0
+  s.wood_want, s.wood_have = want, have
   need.fell = max(0, ceil((want - have) / 3.5) - chopping)
   -- new field ground: trees to fell and stumps to dig out
   local cl = s.clearing
@@ -594,6 +604,8 @@ function M.hourly(W, s, now)
   -- sun
   local lat = W.grid.lat[s.cell]
   s.sunrise, s.sunset = clock.sun_times(lat, now)
+  -- (what more fish is worth here this hour: D-101)
+  if s.dock then s.fish_worth = M.econ.fish_worth(W, s, now) end
   return r1 ~= r0, r1
 end
 
@@ -1272,6 +1284,8 @@ function M.daily(W, s, day)
   end
   s.river_fish = min(rf, s.river_fish_cap)
   plan_bridges(W, s)
+  -- (the day's best exchange with the neighbours, by what the village knows of them: D-101)
+  M.econ.daily(W, s, day * 24)
 end
 
 -- The planet's river widths today (one computation a planet day for every settlement; runtime).
