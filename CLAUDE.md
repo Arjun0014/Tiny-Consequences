@@ -21,7 +21,11 @@ trade, migrate and fight on their own); the visible action must be the simulatio
 (00 audit, 10 agents, 20 character pipeline, 30 roadmap v3), code `sim/agents/` and
 `game/view/agents_view.lua`. The legacy v2 world opens with `?world=v2` and stays until v3 reaches
 parity. Commit prefix `[v3]`. Session 11 (D-085-D-090): `sim/surface.lua` is the one coast/river
-function for the view and the sim; fishing, textiles and sheep are live systems.
+function for the view and the sim; fishing, textiles and sheep are live systems. Session 12
+(D-091-D-097): `sim/agents/stock.lua` (herds of sheep, goats, cattle, pigs), `wild.lua` (the W4
+herds and packs as individuals on the maps; wolves, hunting), `trade.lua` (trade walked between
+settlements; `p.at` is the map a person is on); measure the browser with `scripts/prof_web.mjs`
+(the lower envelope of several release runs).
 
 ## Read order
 

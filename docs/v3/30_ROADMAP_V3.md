@@ -59,9 +59,21 @@ event queue — herded by children, pasture, hay, lambing, shearing, slaughter �
 procedural movers. Open: animated Quaternius models, goats/cattle/pigs, milk, manure, predators,
 wild herds as individuals, hunting a specific animal.)
 
+(Session 12, D-092-D-096: herds of sheep, goats, cattle and pigs as individual animals with
+milk, cheese, wool, dung to the fields, sickness and culls, drawn with the animated Quaternius
+models; wild animals on the maps as members of the W4 herds and packs; wolves hunting at night and
+taking penned beasts when hungry; night watches; hunters stalking a specific animal; rivers with
+bridges built where crossings are wanted, river water and angling; fishing crews of two, drying
+racks, squalls. Open: dogs, horses and oxen, foxes and bears, small game, animated deer and
+wolves, hides used.)
+
 ## R4 — Exchange and travel
 - Paths between settlements, porters and traders walking with loads; trade boats; relations from
   v2 (D-055, D-062, D-066) re-expressed between settlements of agents; gifts, relief, feasts.
+(Session 12, D-097: one complete land loop - a fishing household's porter walks smoked fish to a
+reachable village with grain to spare and little fish, sells into its granary, walks home with
+grain; gates, a timed road leg drawn on the planet, provisions, guest meals, both ledgers. Open:
+more goods (wool, cloth, logs, livestock), sea trade by boat, prices remembered, relations.)
 
 ## R5 — Migration and founding
 - Households leave by land or boat when push factors (hunger, no home, crowding) beat staying;

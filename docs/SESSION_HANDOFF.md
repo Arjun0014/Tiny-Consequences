@@ -1,85 +1,108 @@
-# Session handoff — session 11 end (1 Oct 2026): one surface, both hemispheres, fishing, textiles, sheep
+# Session handoff — session 12 end (2 Oct 2026): animals alive, rivers in use, the first trade
 
-`docs/PROGRESS.md` (session 11 entry) and **D-085 … D-090** in `docs/DECISIONS.md` are the source
-of truth. Arjun's rules: no subagents; the living world first; one heavy process at a time
-(shared laptop, ~2.5 GB free); visible action = simulation; hand off near ~900K context.
+`docs/PROGRESS.md` (session 12 entry) and **D-091 … D-097** in `docs/DECISIONS.md` are the source
+of truth. Arjun's rules: no subagents; the living world first; one heavy process at a time (shared
+laptop, ~2.3 GB free); visible action = simulation; fix mechanisms, not appearances; hand off near
+~900K context.
 
 ## State
 - **main** holds everything. A normal launch opens the v3 world (`assets/worlds/v3.tcsave`: seed
-  22, **6 settlements, 145 people, ~170 sheep** on 3 landmasses: Tekheim in the north at its first
-  spring dawn; Zurug, Hunuvale, Upper Linamist, Moomoo, Hottoodingle Hop in the south, founded in
-  their autumn; 5 coastal with docks, 5 with rivers on their maps). `?world=v2` legacy;
-  `?seed=N` generates a v3 world; `?world=NAME` loads `assets/worlds/NAME.tcsave`.
+  22, 6 settlements, 145 people, ~330 livestock, ~140 wild animals on the maps; Tekheim in the
+  north alone on its landmass; Zurug, Moomoo, Hottoodingle Hop on one southern landmass, Hunuvale
+  and Upper Linamist on another). `?world=v2` legacy; `?seed=N` generates a v3 world.
 - Regenerate after any change to founding/worldgen:
   `luajit tools/make_world.lua --v3 --seed 22 --settlements 6 --out assets/worlds/v3.tcsave`
-  (state hash 1237856114 at the last commit).
+  (state hash 3676537373 at the last commit).
 
-## What became genuinely agentic this session
-- **Geography** (D-085): `sim/surface.lua` is the one coast/river function for the view and the sim:
-  boats row only on drawn water; rivers cross the local maps with fords (wadeable, slow) and deep
-  water (closed); floods widen rivers and close fords day by day; people path across at fords.
-- **Fishers** (D-087): a fisher household's day is traceable: wake → dock → board its own boat →
-  row to a ground → catch taken from the sea cell's fish → row back → land → carry home → smoke
-  the surplus at the hearth. Fishing follows need (fresh fish keeps a day or two; smoked fish for the
-  winter); boats wear, are mended with a log, rot, and new ones are built on the stocks.
-- **Both hemispheres** (D-087): founding states from the local season; crops develop with warmth
-  and yield by water.
-- **Textiles** (D-088): flax → pull → ret → dress → spin (at the well among neighbours on fair
-  evenings) → weave → sew; clothes wear (children outgrow theirs); rags in the cold hurt.
-- **Sheep** (D-089): individual animals in the shared event queue; children of owning households
-  take the flock out, mind it, bring it home; lambing, shearing, hay, slaughter.
+## What became agentic this session
+- **Herds** (D-092, `sim/agents/stock.lua`): sheep and goats in the fold, cattle in the byre yard,
+  pigs in the sty; every animal its own micro-agent (graze/root/browse, rest, walk, the young at
+  their mothers, its place in a daily-reshuffled sunflower spread round the herder, the pen at
+  night). Children (then apprentices, elders, adults) drive each herd out and home; dams are milked
+  where they stand (held while milked), milk goes home, cheese from the surplus; shearing; hay mown
+  and racked; dung carried from the pens to fields waiting for the plough (fertility); scraps and
+  whey to the pigs; hungry pigs nobody takes out root about the village's edge themselves; sickness
+  spreads in pens; culls by the hay in autumn, pigs at the start of winter.
+- **Animated farm animals**: `tools/blender/build_animals.py` (+ `preview_animals.py`,
+  `tools/gen_animals.py`): Quaternius rigs with `graze` and `lie` clips derived here, colours in UV,
+  instanced, 3 LODs, 10 variants (shorn sheep, goats made from the sheep).
+- **Wild animals** (D-093, `sim/agents/wild.lua`): the W4 herds' and packs' members on each map
+  as individuals (count = the group's time on the map's cells), walking in and out at the border;
+  bands flee people and wolves; wolves hunt by night (one ground a pack a night), kill a real animal
+  (wild kills banked into the macro predation; beasts only when the pack is hungry and wild prey is
+  scarce), eat, leave before dawn; after a loss the village keeps a night watch at the pens.
+- **Hunting** (D-094): a household short of meat sends a hunter after one animal: tracked, stalked,
+  a spear thrown (by skill); the quarry may bolt; carried home whole (meat and a hide).
+- **Rivers** (D-095): crossings measured as walked; bridges laid out and built where the need is
+  (spaced, straight across); water from the river when far nearer than the well; angling.
+- **Fishing** (D-096): the net wants two (a mate rides in the skipper's boat), squalls, drying
+  racks by the shore, boats drawn keel to hull.
+- **Trade** (D-097, `sim/agents/trade.lua`): a fishing household's porter carries smoked fish and
+  provisions to a reachable village with grain to spare and little fish: the map's gate, a road
+  leg drawn on the planet, the buyer's granary, a guest meal, grain home. `p.at` = the map a person
+  is on (steps run there; drawn there; `s.visitors`).
 
-## Performance (release HTML5, `node scripts/skip_probe.mjs --release --skips day`)
-- 146 people + ~170 sheep: **42.9 ms of sim per game hour → a 12-day season ≈ 12 s** (103 people
-  without the new systems: 9.9 s → 7.2 s after D-086). LuaJIT interpreter 7.7 ms/h.
-- The browser's Lua 5.1 is dear on `string.format`, `bit` calls (hashes) and C calls in general:
-  **measure in the browser** (`--world NAME` to compare worlds; bisect by disabling a candidate
-  function) — LuaJIT counts misled this session (D-090).
-- Headless SwiftShader frames cost ~200-600 ms each: browser shot scripts step slowly (minutes).
+## Performance (release HTML5)
+- **A 12-day season ≈ 9.4 s** (32.7 ms of sim per game hour) for 150 people, ~430 livestock, ~140
+  wild animals: `node scripts/prof_web.mjs --release --hours 288 --runs 2` (the lower envelope of
+  runs; this laptop's load swings single runs 2-3x — never trust one run). Before the animals:
+  6.0 s (20.9 ms/h).
+- By function (`--time sim.agents.think:decide,sim.agents.nav:path,sim.agents.stock:step,...`):
+  decide ~8 ms/h, A* paths ~6, act.start ~6, stock.step ~4, wild.step ~4, wild.daily ~1.
+- HTML5 Lua prices (`node scripts/microbench_web.mjs --release`): VM step 13 ns, table read ~21,
+  C call ~40, Lua call ~70, string.format ~925, rng.fbase ~855, rng.hash ~4,900.
+- Identity of refactors: `luajit tools/v3_hash.lua --days 8` before and after.
 
 ## How to look at it
-- Year watch: `luajit tools/v3_year.lua --load assets/worlds/v3.tcsave --days 54 --sett K
-  [--ids 12,21 --follow-days 3,15] --out out/year` → summary.txt (per-settlement food, linen,
-  fish, flock lines; budgets for settlement K), follow.txt.
-- Maps: `luajit tools/v3_map.lua --load assets/worlds/v3.tcsave --out out/map` (sea, rivers, fords,
-  floodplain, plots, buildings, trees, lanes, dock).
-- Profile: `luajit -joff tools/v3_profile.lua [--load W] [--days 6] [--time] [--nohook]`.
-- Shots: `node scripts/shots_look.mjs --sett K --days D --hour H --zoom Z [--what dock|ford]`,
-  `node scripts/shots_geo.mjs` (every settlement, dock, ford, a fisher — slow), `npm run shots:v3`.
-- Traces: `think.trace = { [id] = true }` → `think.trace_out` (candidates and utilities; `~` = an
-  unevaluated lazy bound). Hash comparisons: `out/s11`-style scratch scripts (`world.advance` 8 days,
-  hash positions) to prove refactors identical.
+- Year watch: `luajit tools/v3_year.lua --load assets/worlds/v3.tcsave --days 36 --sett K
+  [--ids 12,21 --follow-days 3,15] --out out/year` → summary.txt (food ledger every day; herds line;
+  budgets by stage and season), follow.txt.
+- Shots: `node scripts/shots_look.mjs --sett K --days D --hour H --zoom Z --what centre|dock|ford|
+  flock|herd|wild|wolves|bridge [--herd cattle|swine] [--pid N]` (it now rebakes the settlement's
+  parts before the shot — earlier shots could show stale fields and buildings).
+- Profiling and benches: above. Maps: `luajit tools/v3_map.lua`.
 
 ## Verified at the last commit
-- Quick sim suite **123/123** (v2 109 + v3 14), web **10/10**, lint clean, debug build 6.1 MB.
+- Quick sim suite **126/126** (v2 109 + v3 17), web **10/10**, lint clean, debug build 7.1 MB.
+- Two game years headless (96 days): people 145-153, livestock 330-480, wild 141-144, food
+  stores rising, 7 trade round trips, 2 bridges; the food ledger closes to 0.0 FU every day in the
+  watched villages (including both ends of a trade).
 
 ## Next (in order)
-1. **More browser cost**: eager formats left in PLAN objectives and the hourly board's
-   `need.fell_why`; `settle.next_tree` (~11% of instructions: a spatial index or an hourly shortlist);
-   A* (~26%). Target: ≤ 10 s a season at 150 people in the release build.
-2. **R3 animals continued**: the animated Quaternius farm models through the skinned pipeline
-   (`tools/blender/build_villager.py` pattern), goats/cattle/pigs, milk and cheese, manure to the
-   fields, dogs and wolves (W4 packs) threatening flocks; then wild herds as individuals (hunters
-   choosing a specific animal).
-3. **Rivers in use**: water fetched from the river, bridges where traffic crosses deep water, river
-   fishing; two-person boat crews; drying racks.
-4. **R4 trade** between settlements (cloth, smoked fish, wool, grain) by paths and boats.
+1. **R4 generalised**: more goods (wool, cloth, logs, livestock) by the same rule (surplus at A,
+   shortage and value at B, a road); the return good chosen by the seller's own shortage; **sea
+   trade** by boat between coastal villages (the two landmasses: boats carrying cargo, crews);
+   prices remembered; standing relations (v2 D-055/D-062 re-expressed).
+2. **Animals**: animated deer and wolves (Horse/Pug rigs via build_animals.py: the Pug's armature
+   is scaled 0.395 — apply it first), dogs (herding, guarding), oxen at the plough, hides used
+   (leather), wolves driven off by people at the fold, small game.
+3. **Rivers and water**: bridges swept away by big floods, river water making people ill, boats on
+   rivers.
+4. Watch more: children under nine still play most of the day (historically plausible but worth a
+   look), grain stores rising year on year (the planner may sow more than it needs).
 
-## Findings and pitfalls (session 11)
-- bob rejects circular requires even inside functions: pass resources/functions in
-  (`agents_view.sheep_res` set by view.lua).
-- The year tool and tests keep a food ledger: every new food stock or source (fish, smoked, meat)
-  must be added to both (`food_total`, `accs`).
-- `cat > file` with no input in a Bash call blocks forever; heredocs with apostrophes break: write
-  patch scripts to the scratchpad and run them with python.
-- Timing in LuaJIT with the JIT on is erratic (slower than -joff here); never time while a headless
-  browser runs.
-- Lazy candidates (`add_lazy`) and lazy whys (`addw`) must stay exactly equivalent: any code that
-  reads candidate utilities directly (the leave-the-baby branch) must resolve lazies the same way.
+## Findings and pitfalls (session 12)
+- **Measure the browser as a lower envelope of several runs**; a hook sampler with short stretches
+  misattributes (use wrapped timers, `--time`).
+- `#s.buildings` is not the next id: building ids are world-wide (`V.next_building`).
+- `cond and f() or g()` keeps one return value — never for positions.
+- A long action's hunger is charged at once at its end: long actions need their own body rule
+  (road legs: provisions, resting rate).
+- After a step that changes the map a person is on, re-resolve the settlement (`p.at`).
+- Interrupting a person re-plans them; to end one step and go on with the plan use
+  `init.skip_step` (injected into act.lua; bob forbids circular requires, even inside functions:
+  inject functions like `stock.person_pos`, `wild.push`, `act.people`).
+- `s.wild` is the woods' forage (a number); the wild animals are `s.wildlife`.
+- Runtime caches that change behaviour must be rebuilt from saved state identically after a load
+  (the wild animals' index by number, the flight check reads people's stored positions, not an
+  hourly cache).
+- Heredocs with apostrophes break in Bash here: write patch scripts with the Write tool; never
+  `cat > file` without input (it blocks).
 
 ## Known oddities
-- Children still play ~75% of winter days where they are under nine (herding and spinning start at
-  9-10). The well still gathers crowds on fine evenings.
-- Sheep are rigid procedural movers (no leg animation yet); the fold is drawn as stakes.
-- Some infants die "of illness" (the hazard); clothes can reach rags in a household with no fibre.
-- Flocks grow fast in the first year (culls start when the hay cannot winter them).
+- Children under nine play ~55-70% of their waking day; nine-year-olds herd only when an older
+  herder has not already taken the herd out.
+- Wild animals cap at 24 a map; deer and wolves are still the rigid procedural movers.
+- Trade is only smoked fish for grain, and only seven round trips in two years in the shipped world.
+- Two adjacent bridge sites can still appear if two crossings far apart both pass the need on one
+  day (spacing is checked against existing bridges only).

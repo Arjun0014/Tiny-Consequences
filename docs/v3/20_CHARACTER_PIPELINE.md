@@ -60,7 +60,20 @@ blender -b --factory-startup -P tools/blender/preview_villagers.py -- out/s9/vil
   Scale: adults 0.04 (~0.073 world units tall), apprentices × 0.86, children × 0.62.
 - LOD by camera zoom (≥ 1.42 near, ≥ 1.08 mid, else far; hidden below 0.75 and while skipping).
 
-## 4. Animals (R3)
+## 4. Animals (R3; built in session 12, D-092)
+
+`blender -b --factory-startup -P tools/blender/build_animals.py` then `python tools/gen_animals.py`:
+each rig with its clips (idle, walk, walk_slow, run, death) plus `graze` and `lie` derived from Idle
+(bone deltas in armature space; the IK legs fold), colours baked into UV (7 bits a channel; one
+material, `game/render/animal.material`, no per-instance constants: one instanced draw per variant
+and LOD), variants as separate meshes on one skeleton (sheep fleece/shorn x white/dark, goat
+brown/pied with horns and a beard on the shorn sheep's frame, cattle red/pied, pig pink/dark),
+LODs 100/50/22% by decimation (colours assigned after it). Preview:
+`blender -b --factory-startup -P tools/blender/preview_animals.py -- out.png sheep_lod0 sheep_lod0:graze:30 ...`.
+Wild deer, reindeer, antelope, wolves and big cats are still the procedural movers (D-093); wild
+boar uses the dark pig.
+
+### The plan as first written
 
 The farm animals are already within budget (≤ 800 triangles, 6 clips each). Plan: export each to
 GLB with sampled clips, a mid LOD by Blender's decimate (~300) and a far LOD (~120); one shared
