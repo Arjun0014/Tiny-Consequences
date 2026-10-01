@@ -317,28 +317,45 @@ local function fill_buildings(V)
         end
       elseif b.kind == "well" then
         add(V, K.well, b.cx, b.cy, 0, yaw, 1.0, 1, pack(0.62, 0.36, 0.24), 0, 0)
-      elseif b.kind == "fold" then
-        -- a sheepfold (D-089): stakes round it, the haystack by its gate
+      elseif b.kind == "fold" or b.kind == "byre" or b.kind == "sty" then
+        -- a pen (D-089, D-092): stakes round it (a gate on the door side), the haystack by the
+        -- fold, a lean-to in the byre yard, a low hut in the sty, the dung heap by its gate
         local T = s.T
-        for q = 0, b.w * 2 - 1 do
-          local f = q / (b.w * 2)
-          local x0, y0 = b.cx - b.w * T * 0.5, b.cy - b.h * T * 0.5
-          local L = b.w * T
-          for side = 0, 3 do
+        local x0, y0 = b.cx - b.w * T * 0.5, b.cy - b.h * T * 0.5
+        local Lx, Ly = b.w * T, b.h * T
+        local per = b.kind == "sty" and 3 or 2
+        for side = 0, 3 do
+          local L = (side % 2 == 0) and Lx or Ly
+          local n = (side % 2 == 0 and b.w or b.h) * per
+          for q = 0, n - 1 do
+            local f = q / n
             local x, y
-            if side == 0 then x, y = x0 + f * L, y0
-            elseif side == 1 then x, y = x0 + L, y0 + f * L
-            elseif side == 2 then x, y = x0 + L - f * L, y0 + L
-            else x, y = x0, y0 + L - f * L end
+            if side == 0 then x, y = x0 + f * Lx, y0
+            elseif side == 1 then x, y = x0 + Lx, y0 + f * Ly
+            elseif side == 2 then x, y = x0 + Lx - f * Lx, y0 + Ly
+            else x, y = x0, y0 + Ly - f * Ly end
             if not (side == 0 and f > 0.4 and f < 0.6) then
-              add(V, K.stakes, x, y, 0, q + side, 0.22, 1, 0, 0, 0)
+              add(V, K.stakes, x, y, 0, q + side, b.kind == "sty" and 0.18 or 0.22, 1, 0, 0, 0)
             end
           end
         end
-        local hay = s.flock and s.flock.hay or 0
-        if hay > 5 then
-          add(V, K.stook, b.dx + 0.05, b.dy - 0.01, 0, 0.7, 0.9 * min(2.2, 0.6 + hay / 120), 1,
+        if b.kind == "byre" then
+          add(V, K.woodshed, b.cx, b.cy + Ly * 0.3, 0, yaw, S * 0.75, 1, c1, c2, 0)
+        elseif b.kind == "sty" then
+          add(V, K.woodshed, b.cx + Lx * 0.25, b.cy + Ly * 0.22, 0, yaw, S * 0.45, 1, pack(0.50, 0.40, 0.30), pack(0.42, 0.33, 0.24), 0)
+        end
+        local hay = s.hay or 0
+        local first = s.herds and (s.herds.flock or s.herds.cattle)
+        if first and first.pen == b.id and hay > 5 then
+          add(V, K.stook, b.dx + 0.05, b.dy - 0.01, 0, 0.7, 0.9 * min(2.4, 0.6 + hay / 120), 1,
             pack(0.80, 0.72, 0.42), pack(0.74, 0.66, 0.36), 0)
+        end
+        for _, kind in ipairs({ "flock", "cattle", "swine" }) do
+          local H = s.herds and s.herds[kind]
+          if H and H.pen == b.id and (H.manure or 0) >= 0.5 then
+            add(V, K.stook, b.dx - 0.05, b.dy - 0.012, 0, 1.9, 0.55 * min(2.0, 0.5 + H.manure / 8), 0.55,
+              pack(0.30, 0.22, 0.14), pack(0.26, 0.19, 0.12), 0)
+          end
         end
       elseif b.kind == "dock" then
         -- a timber pier from the shore out over the water (D-084)
@@ -358,7 +375,13 @@ local function bld_sig(V)
     h = (h * 31 + b.id * 3 + pg + floor((b.stock.logs or 0) / 2) * 7 + floor((b.stock.sheaves or 0) / 20) * 13
       + (b.state == "standing" and 1000 or 0)) % 1000000007
   end
-  if s.flock then h = (h * 17 + floor((s.flock.hay or 0) / 30)) % 1000000007 end
+  h = (h * 17 + floor((s.hay or 0) / 30)) % 1000000007
+  if s.herds then
+    for _, kind in ipairs({ "flock", "cattle", "swine" }) do
+      local H = s.herds[kind]
+      if H then h = (h * 19 + floor((H.manure or 0) / 4)) % 1000000007 end
+    end
+  end
   return h
 end
 
@@ -878,6 +901,7 @@ end
 
 function M.init(W, PL, urls, celltex)
   M.W = W
+  M.animal_urls = urls
   if not W.v3 or not W.S.v3 then return end
   build_templates()
   for _, s in ipairs(W.S.v3.settlements) do
@@ -1002,6 +1026,7 @@ function M.update(W, dt, zoom, t)
     end
   end
   local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
+  M.animals_begin()
   for _, V in ipairs(M.SETS) do
     -- (a settlement far from the view focus is neither rebuilt nor peopled until it comes into view)
     local f = V.s.frame
@@ -1037,8 +1062,9 @@ function M.update(W, dt, zoom, t)
     if V.vpool then update_villagers(V, t, zoom) else update_people(V, t, zoom) end
     end
     M.update_boats(V, t)
-    M.update_sheep(V, t)
+    M.update_herds(V, t, zoom)
   end
+  M.animals_end()
   if M.skipping then
     -- hide everyone at once (the pool is not walked while skipping)
     for _, V in ipairs(M.SETS) do
@@ -1054,53 +1080,134 @@ function M.update(W, dt, zoom, t)
   end
 end
 
--- Sheep (D-089): each animal of the flock where the sim has it (a pool of the procedural sheep
--- movers; lambs smaller), facing the way it walks.
-M.SHEEP = 60
-M.SHEEP_SCALE = 0.55
+-- Livestock (D-089, D-092): every animal where the sim has it, drawn with the animated Quaternius
+-- farm models (assets/animals, tools/blender/build_animals.py): its species' model in the coat the
+-- sim gave it (a sheep in its fleece or shorn by the sim's wool), the clip its action shows
+-- (grazing, walking, lying down to rest or for the night), each at its own tempo and phase.
+-- Pools per variant (instanced: one draw call per variant and LOD), grown as needed.
+M.ANIMAL_SCALE = { sheep = 0.0062, goat = 0.0058, cattle = 0.0072, pig = 0.0042 }
+M.ANIMAL_LOD = { 1.42, 1.08 }     -- zoom: near at or above the first, mid above the second, else far
+local APOOL, ACUR = {}, {}
+local ALODS = { "lod0", "lod1", "lod2" }
 local SPOS, SROT = vmath.vector3(), vmath.quat()
-function M.update_sheep(V, t)
-  local s = V.s
-  local F = s.flock
-  if not F or not V.deer_factory then return end
-  local res = M.sheep_res      -- (set by view.lua from the puppets' sheep: no require cycle)
-  if not res then return end
-  if not V.sheep_go then
-    V.sheep_go, V.sheep_yaw = {}, {}
-    for k = 1, M.SHEEP do
-      local id = factory.create(V.deer_factory, vmath.vector3(0, 0, 0))
-      local url = msg.url(nil, id, "mesh")
-      go.set(url, "vertices", res)
-      msg.post(url, MSG_DISABLE)
-      V.sheep_go[k] = { id = id, url = url, on = false }
-    end
+
+local function animal_obj(variant)
+  local pool = APOOL[variant]
+  if not pool then pool = {}; APOOL[variant] = pool end
+  local k = (ACUR[variant] or 0) + 1
+  ACUR[variant] = k
+  local e = pool[k]
+  if e then return e end
+  local f = M.animal_urls and M.animal_urls["animal_" .. variant .. "_factory"]
+  if not f then return nil end
+  local id = factory.create(f, vmath.vector3(0, 0, 0))
+  e = { id = id, urls = {}, on = false, lod = 0, anim = nil, rate = 0, who = nil }
+  for j = 1, 3 do
+    e.urls[j] = msg.url(nil, id, ALODS[j])
+    msg.post(e.urls[j], MSG_DISABLE)
   end
-  local flock = require("sim.agents.flock")
-  local show = not M.skipping and V.in_view
-  local n = 0
-  for k = 1, #F.sheep do
-    local a = F.sheep[k]
-    if a.alive and show and n < M.SHEEP then
-      n = n + 1
-      local e = V.sheep_go[n]
-      if not e.on then msg.post(e.url, MSG_ENABLE); e.on = true end
-      local x, y = flock.pos(a, t)
-      local px, py, pz, ux, uy, uz = world_pos(V, x, y, 0)
-      SPOS.x, SPOS.y, SPOS.z = px, py, pz
-      go.set_position(SPOS, e.id)
-      if a.act == "walk" then
-        local dx, dy = a.tx - a.x, a.ty - a.y
-        if dx * dx + dy * dy > 1e-10 then V.sheep_yaw[k] = yaw_x(V, x, y, dx, dy) end
+  pool[k] = e
+  return e
+end
+
+function M.animals_begin()
+  for v in pairs(ACUR) do ACUR[v] = 0 end
+end
+
+function M.animals_end()
+  for v, pool in pairs(APOOL) do
+    for k = (ACUR[v] or 0) + 1, #pool do
+      local e = pool[k]
+      if e.on then
+        for j = 1, 3 do msg.post(e.urls[j], MSG_DISABLE) end
+        e.on, e.anim, e.who = false, nil, nil
       end
-      local yaw = V.sheep_yaw[k] or (k * 1.7)
-      go.set_rotation(vmx.set_up_yaw(SROT, ux, uy, uz, yaw), e.id)
-      local lamb = (t - a.born) / 1152 < 0.35
-      go.set_scale(M.SHEEP_SCALE * (lamb and 0.6 or 1) * (a.act == "rest" and 0.85 or 1), e.id)
     end
   end
-  for k = n + 1, M.SHEEP do
-    local e = V.sheep_go[k]
-    if e.on then msg.post(e.url, MSG_DISABLE); e.on = false end
+end
+
+-- The model variant for an animal: its species and coat, a sheep's fleece by its wool.
+local function variant_of(species, a)
+  if species == "sheep" then
+    local dark = a.coat == "dark"
+    local shorn = (a.wool or 0) < 0.6
+    if dark then return shorn and "sheep_dark_shorn" or "sheep_dark" end
+    return shorn and "sheep_shorn" or "sheep"
+  elseif species == "goat" then return a.coat == "pied" and "goat_pied" or "goat"
+  elseif species == "cattle" then return a.coat == "pied" and "cow_pied" or "cow"
+  elseif species == "pig" then return a.coat == "dark" and "pig_dark" or "pig" end
+  return nil
+end
+
+local function draw_herd(V, t, H, lod, sid, hi)
+  local stock = require("sim.agents.stock")
+  local kspeed = M.game_min_per_s or 1
+  local yaws = V.ayaw[hi]
+  if not yaws then yaws = {}; V.ayaw[hi] = yaws end
+  local list = H.animals
+  for k = 1, #list do
+    local a = list[k]
+    if a.alive then
+      local species = a.sp
+      local variant = variant_of(species, a)
+      local e = variant and animal_obj(variant)
+      if e then
+        local x, y = stock.pos(a, t)
+        local moving = a.act == "walk" and a.t1 > a.t0
+        if moving then
+          local dx, dy = a.tx - a.x, a.ty - a.y
+          if dx * dx + dy * dy > 1e-12 then yaws[k] = yaw_x(V, x, y, dx, dy) + pi * 0.5 end
+        end
+        local yaw = yaws[k] or (k * 1.7 + sid)
+        local px, py, pz, ux, uy, uz = world_pos(V, x, y, 0)
+        SPOS.x, SPOS.y, SPOS.z = px, py, pz
+        go.set_position(SPOS, e.id)
+        go.set_rotation(vmx.set_up_yaw(SROT, ux, uy, uz, yaw), e.id)
+        local young = (t - a.born) / 1152
+        local yy = stock.SP(species).young_years
+        local sc = (M.ANIMAL_SCALE[species] or 0.01) * (young < yy and (0.45 + 0.4 * young / yy) or (young < 2 * yy and 0.85 + 0.15 * (young - yy) / yy or 1))
+        go.set_scale(sc, e.id)
+        if e.lod ~= lod or not e.on then
+          for j = 1, 3 do msg.post(e.urls[j], j == lod and MSG_ENABLE or MSG_DISABLE) end
+          if e.lod ~= lod then e.anim = nil end
+          e.lod, e.on = lod, true
+        end
+        -- the clip from the action (each animal its own tempo and phase: no herd in step)
+        local who = sid * 100000 + hi * 20000 + k
+        local tempo = 0.85 + 0.3 * frac(who * 0.6180339887)
+        local clip, rate
+        if moving then
+          local spd = sqrt((a.tx - a.x) ^ 2 + (a.ty - a.y) ^ 2) / max(1e-6, a.t1 - a.t0)
+          clip = spd > 2.4 and "run" or (spd < 0.9 and "walk_slow" or "walk")
+          rate = min(3, kspeed * spd * 0.55 * tempo)
+        else
+          local ac = a.act
+          if ac == "graze" then clip = "graze"
+          elseif ac == "rest" or (ac == "pen" and a.t1 - a.t0 >= 0.95) or (a.sick or 0) > 0 then clip = "lie"
+          else clip = "idle" end
+          rate = min(2, (0.5 + 0.5 * min(4, kspeed)) * tempo)
+        end
+        if e.anim ~= clip or e.who ~= who then
+          model.play_anim(e.urls[lod], clip, go.PLAYBACK_LOOP_FORWARD, { blend_duration = 0.3, playback_rate = rate,
+            offset = frac(who * 0.37) })
+          e.anim, e.rate, e.who = clip, rate, who
+        elseif abs(e.rate - rate) > 0.05 then
+          go.set(e.urls[lod], "playback_rate", rate)
+          e.rate = rate
+        end
+      end
+    end
+  end
+end
+
+function M.update_herds(V, t, zoom)
+  local s = V.s
+  if not (not M.skipping and V.in_view and zoom >= 0.75) or not s.herds then return end
+  V.ayaw = V.ayaw or {}
+  local lod = zoom >= M.ANIMAL_LOD[1] and 1 or (zoom >= M.ANIMAL_LOD[2] and 2 or 3)
+  for hi, kind in ipairs({ "flock", "cattle", "swine" }) do
+    local H = s.herds[kind]
+    if H then draw_herd(V, t, H, lod, s.id, hi) end
   end
 end
 

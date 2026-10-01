@@ -1,0 +1,2 @@
+prototype: "/game/view/animals/goat.go"
+load_dynamically: false

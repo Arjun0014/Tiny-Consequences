@@ -27,8 +27,8 @@ for h = args.every, args.days * 24, args.every do
   local alive, sheep = 0, 0
   for _, p in pairs(V.people) do if p.alive then alive = alive + 1 end end
   for _, s in ipairs(V.settlements) do
-    if s.flock then for _, a in ipairs(s.flock.sheep) do if a.alive then sheep = sheep + 1 end end end
+    require("sim.agents.stock").each(s, function() sheep = sheep + 1 end)
   end
-  print(string.format("hour %5d  hash %10s  people %d  sheep %d", h, tostring(world.state_hash(W)), alive, sheep))
+  print(string.format("hour %5d  hash %10s  people %d  animals %d", h, tostring(world.state_hash(W)), alive, sheep))
 end
 print(string.format("(%.1f s)", os.clock() - c0))

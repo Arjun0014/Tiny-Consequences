@@ -18,7 +18,8 @@ local life = require("sim.agents.life")
 local kin = require("sim.agents.kin")
 local rng = require("sim.rng")
 local clock = require("sim.agents.clock")
-local flock = require("sim.agents.flock")
+local stock = require("sim.agents.stock")
+stock.person_pos = require("sim.agents.act").pos
 
 local sys = { name = "agents" }
 -- (act.lua cannot require this module: bob rejects circular requires; it calls through this hook)
@@ -41,11 +42,7 @@ local function rt(W)
       end
     end
     for _, s in ipairs(V.settlements) do
-      if s.flock then
-        for _, a in ipairs(s.flock.sheep) do
-          if a.alive then sys.push(W, a.t1, flock.event_id(s, a), a.ver) end
-        end
-      end
+      stock.each(s, function(H, a) sys.push(W, a.t1, stock.event_id(s, H, a), a.ver) end)
     end
   end
   return R
@@ -170,14 +167,15 @@ function sys.advance(W, t)
   local S = V.settlements
   while R.n > 0 and R.t[1] < t do
     local et, id, ver = pop(R)
-    if id >= flock.ID0 then
+    if id >= stock.ID0 then
       -- an animal's step (one queue with the people: strict time order whatever the slicing)
-      local sid, k = flock.decode(id)
+      local sid, kind, k = stock.decode(id)
       local s = S[sid]
-      local a = s and s.flock and s.flock.sheep[k]
+      local H = s and s.herds and s.herds[kind]
+      local a = H and H.animals[k]
       if a and a.alive and a.ver == ver then
         V.now = et
-        flock.step(W, s, a, et)
+        stock.step(W, s, H, a, et)
         sys.push(W, a.t1, id, a.ver)
       end
     else
@@ -233,7 +231,7 @@ function sys.hour(W)
           s.day_done = ld
           life.daily(W, s, ld)
           settle.daily(W, s, ld)
-          flock.daily(W, s, ld, sys.push)
+          stock.daily(W, s, ld, sys.push)
         end
       end
       local changed, r = settle.hourly(W, s, now)

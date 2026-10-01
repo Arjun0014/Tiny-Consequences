@@ -113,10 +113,11 @@ function M.home(W, s, p)
   return b
 end
 
--- Raw food in a house's pantry (FU): grain and gathered food, and fresh fish (D-087).
+-- Raw food in a house's pantry (FU): grain and gathered food, fresh fish (D-087), meat, milk and
+-- cheese (D-092).
 function M.pantry(b)
   local st = b.stock
-  return (st.food or 0) + (st.fish or 0) + (st.smoked or 0) + (st.meat or 0)
+  return (st.food or 0) + (st.fish or 0) + (st.smoked or 0) + (st.meat or 0) + (st.milk or 0) + (st.cheese or 0)
 end
 
 -- Walking speed (world units per hour) at time t.

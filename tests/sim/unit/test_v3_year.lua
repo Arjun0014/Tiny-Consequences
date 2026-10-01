@@ -10,24 +10,7 @@ local cfgmod = require("sim.config")
 local M = {}
 local RUN
 
-local function food_total(V, s)
-  local c = cfgmod.V3
-  local tot = (s.granary.stock.grain or 0) + (s.granary.stock.sheaves or 0)
-  for _, bid in ipairs(s.blist) do
-    local b = s.buildings[bid]
-    -- (raw food at home: grain and gathered food, fresh and smoked fish, D-087)
-    if b.kind == "house" then tot = tot + (b.stock.food or 0) + (b.stock.fish or 0) + (b.stock.smoked or 0) + (b.stock.meat or 0) + (b.stock.seed or 0) + (b.stock.meals or 0) end
-  end
-  for _, pl in ipairs(s.plots) do tot = tot + pl.sheaves end
-  for _, id in ipairs(s.members) do
-    local p = V.people[id]
-    if p.alive then
-      if p.carry == "seed" or p.carry == "grain" or p.carry == "food" or p.carry == "sheaves" or p.carry == "fish" or p.carry == "meat" then tot = tot + p.camt end
-      if p.lunch then tot = tot + c.meal_fu end
-    end
-  end
-  return tot
-end
+local function food_total(W, s) return require("sim.agents.settle").food_total(W, s) end
 
 local function run()
   if RUN then return RUN end
@@ -71,10 +54,9 @@ local function run()
     end
     return ok
   end
-  local prev = food_total(V, s)
+  local prev = food_total(W, s)
   local acc0 = {}
-  local function accs() return (s.acc.harvest or 0) + (s.acc.foraged or 0) + (s.acc.fished or 0) + (s.acc.meat or 0) - (s.acc.eaten or 0) - (s.acc.seed or 0)
-    - (s.acc.lunch or 0) - (s.acc.spoiled or 0) end
+  local function accs() return require("sim.agents.settle").food_flows(s) end
   local a0 = accs()
   for d = 1, 50 do
     for h = 1, 24 do
@@ -88,19 +70,29 @@ local function run()
         end
       end
     end
-    local f, a = food_total(V, s), accs()
+    local f, a = food_total(W, s), accs()
     local resid = f - (prev + (a - a0))
     if math.abs(resid) > math.abs(R.worst_resid) then R.worst_resid = resid end
     prev, a0 = f, a
     -- (D-089) every sheep on dry, open ground (never in water, a river or a building)
-    if s.flock then
+    do
       local mapm = require("sim.agents.map")
-      for _, a in ipairs(s.flock.sheep) do
-        if a.alive then
-          local i = mapm.tile_of(s, a.tx, a.ty)
-          if i == 0 or s.land[i] ~= 1 or s.occ[i] ~= 0 or s.riv[i] > 0 then R.sheep_bad = R.sheep_bad + 1 end
+      require("sim.agents.stock").each(s, function(H, a)
+        local i = mapm.tile_of(s, a.tx, a.ty)
+        if i == 0 or s.land[i] ~= 1 or s.occ[i] ~= 0 or s.riv[i] > 0 then R.sheep_bad = R.sheep_bad + 1 end
+        -- (D-092) spacing: out of the pen, nobody stands on another of its herd
+        if a.act ~= "pen" and a.mother == 0 then
+          R.spaced_n = (R.spaced_n or 0) + 1
+          local near = 1e9
+          for _, b in ipairs(H.animals) do
+            if b ~= a and b.alive and b.act ~= "pen" and b.mother ~= a.k then
+              local d = (b.tx - a.tx) ^ 2 + (b.ty - a.ty) ^ 2
+              if d < near then near = d end
+            end
+          end
+          if near < (require("sim.config").V3.stock[a.sp].sep * 0.3) ^ 2 then R.crowded = (R.crowded or 0) + 1 end
         end
-      end
+      end)
     end
     for _, pl in ipairs(s.plots) do
       if pl.stage == "rest" and (pl.ploughed or 0) > 0 then R.plough = math.max(R.plough, pl.ploughed) end
@@ -182,20 +174,32 @@ function M.fishers_fish_from_their_own_boats()
   T.ok((a.smoked or 0) > 5, "fish smoked " .. tostring(a.smoked))
 end
 
--- The flock (D-089): taken out and brought home, fed, lambing, shorn; sheep stay on dry land.
+-- The herds (D-089, D-092): taken out and brought home, fed, born, shorn, milked, the dung on the
+-- fields; animals stay on dry land and keep their distance from each other.
 function M.the_flock_is_tended()
   local R = run()
   local s = R.W.S.v3.settlements[1]
-  local F = s.flock
+  local F = s.herds and s.herds.flock
   T.ok(F ~= nil, "no flock")
   T.ok(R.herd > 10, "herding stints " .. R.herd)
-  T.ok((s.acc.lambs or 0) > 3, "lambs " .. tostring(s.acc.lambs))
+  T.ok((s.acc.born_sheep or 0) > 3, "lambs " .. tostring(s.acc.born_sheep))
   T.ok((s.acc.wool or 0) > 5, "wool shorn " .. tostring(s.acc.wool))
   T.ok((s.acc.hay or 0) > 20, "hay mown " .. tostring(s.acc.hay))
   local n, h = 0, 0
-  for _, a in ipairs(F.sheep) do if a.alive then n, h = n + 1, h + a.hunger end end
-  T.ok(n > 10 and h / n < 0.5, string.format("%d sheep, mean hunger %.2f", n, n > 0 and h / n or 0))
-  T.eq(R.sheep_bad, 0, "sheep-days on water or in a building")
+  for _, a in ipairs(F.animals) do if a.alive then n, h = n + 1, h + a.hunger end end
+  T.ok(n > 10 and h / n < 0.5, string.format("%d in the flock, mean hunger %.2f", n, n > 0 and h / n or 0))
+  T.eq(R.sheep_bad, 0, "animal-days on water or in a building")
+  T.ok((R.crowded or 0) <= (R.spaced_n or 1) * 0.03, string.format("animals on top of each other: %d of %d", R.crowded or 0, R.spaced_n or 0))
+end
+
+-- Milk and dung (D-092): dams milked by their households, cheese made, the pens' dung on the fields.
+function M.milk_cheese_and_dung()
+  local R = run()
+  local s = R.W.S.v3.settlements[1]
+  T.ok(s.herds.cattle ~= nil or s.herds.flock ~= nil, "no herds")
+  T.ok((s.acc.milk or 0) > 5, "milk " .. tostring(s.acc.milk))
+  T.ok((s.acc.cheese or 0) > 1, "cheese " .. tostring(s.acc.cheese))
+  T.ok((s.acc.mucked or 0) > 3, "dung carried to the fields " .. tostring(s.acc.mucked))
 end
 
 -- Winter has work (D-088): adults' waking winter hours are not mostly rest and visits.

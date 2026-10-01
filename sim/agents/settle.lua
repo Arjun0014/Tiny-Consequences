@@ -21,6 +21,8 @@ M.KINDS = {
   dock = { w = 1, h = 1, label = "dock", logs = 6, work = 30 },
   boat = { w = 2, h = 1, label = "boat", logs = 5, work = 30 },   -- a boat on the stocks at the shore (D-087)
   fold = { w = 6, h = 6, label = "fold", logs = 10, work = 30 },  -- a fenced sheepfold (open ground, D-089)
+  byre = { w = 7, h = 6, label = "byre yard", logs = 14, work = 40 },   -- a fenced cattle yard with a lean-to (D-092)
+  sty = { w = 5, h = 4, label = "sty", logs = 8, work = 24 },     -- a pig sty: a fenced run and a low hut (D-092)
 }
 
 function M.new(W, cell, opts)
@@ -56,7 +58,7 @@ function M.add_building(W, s, kind, ix0, iy0, side, state, opts)
   for iy = iy0, iy0 + h - 1 do
     for ix = ix0, ix0 + w - 1 do
       -- (a fold is fenced ground, walked in and out of: marked as an enclosure, not a footprint)
-      if kind == "fold" then s.plot[(iy - 1) * N + ix] = -2 else s.occ[(iy - 1) * N + ix] = id end
+      if kind == "fold" or kind == "byre" or kind == "sty" then s.plot[(iy - 1) * N + ix] = -2 else s.occ[(iy - 1) * N + ix] = id end
     end
   end
   mapm.clear_rect(s, ix0 - 1, iy0 - 1, ix0 + w, iy0 + h)
@@ -146,6 +148,41 @@ function M.remove_building(W, s, b)
   people.remove_id(s.sites, b.id)
   b.state = "gone"
   mapm.rebuild_costs(s)
+end
+
+-- The food ledger (tools and tests): everything edible anywhere in the settlement (FU), and the
+-- running sum of what came in less what went out. food_total(after) - food_total(before) equals
+-- the change in food_flows over the same time (every new food stock or flow goes here).
+local CARRY_FOOD = { seed = true, grain = true, food = true, sheaves = true, fish = true, meat = true, milk = true }
+function M.food_total(W, s)
+  local V = W.S.v3
+  local c = C()
+  local tot = 0
+  local g = s.granary
+  if g then tot = tot + (g.stock.grain or 0) + (g.stock.sheaves or 0) end
+  for k = 1, #s.blist do
+    local b = s.buildings[s.blist[k]]
+    if b.kind == "house" then
+      local st = b.stock
+      tot = tot + (st.food or 0) + (st.fish or 0) + (st.smoked or 0) + (st.meat or 0) + (st.seed or 0) + (st.meals or 0)
+        + (st.milk or 0) + (st.cheese or 0)
+    end
+  end
+  for k = 1, #s.plots do tot = tot + s.plots[k].sheaves end
+  for k = 1, #s.members do
+    local p = V.people[s.members[k]]
+    if p and p.alive then
+      if CARRY_FOOD[p.carry] then tot = tot + p.camt end
+      if p.lunch then tot = tot + c.meal_fu end
+    end
+  end
+  return tot
+end
+
+function M.food_flows(s)
+  local a = s.acc
+  return (a.harvest or 0) + (a.foraged or 0) + (a.fished or 0) + (a.meat or 0) + (a.milk or 0)
+    - (a.eaten or 0) - (a.seed or 0) - (a.lunch or 0) - (a.spoiled or 0) - (a.whey or 0)
 end
 
 -- Plots ------------------------------------------------------------------------------------
@@ -606,11 +643,17 @@ local function hearths(W, s, day)
           b.stock.seed = 0
         end
         local fd, ml, fi, sm, mt = b.stock.food or 0, b.stock.meals or 0, b.stock.fish or 0, b.stock.smoked or 0, b.stock.meat or 0
-        if fd > 0 or ml > 0 or fi > 0 or sm > 0 or mt > 0 then
+        local mk, ch = b.stock.milk or 0, b.stock.cheese or 0
+        if fd > 0 or ml > 0 or fi > 0 or sm > 0 or mt > 0 or mk > 0 or ch > 0 then
           local lf, lm, li, ls, lt = fd * c.spoil_food, ml * c.spoil_meals, fi * c.spoil_fish, sm * c.spoil_smoked, mt * c.spoil_meat
+          local lk, lc = mk * c.spoil_milk, ch * c.spoil_cheese
           b.stock.food, b.stock.meals, b.stock.fish, b.stock.smoked, b.stock.meat = fd - lf, ml - lm, fi - li, sm - ls, mt - lt
-          s.acc.spoiled = (s.acc.spoiled or 0) + lf + lm + li + ls + lt
+          b.stock.milk, b.stock.cheese = mk - lk, ch - lc
+          local lost = lf + lm + li + ls + lt + lk + lc
+          s.acc.spoiled = (s.acc.spoiled or 0) + lost
           s.acc.fish_spoiled = (s.acc.fish_spoiled or 0) + li
+          -- (what turns goes to the pigs, if the village keeps any: D-092)
+          if s.herds and s.herds.swine then b.stock.scraps = (b.stock.scraps or 0) + lost * c.scrap_share end
         end
       else
         b.fire = false

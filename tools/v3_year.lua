@@ -89,25 +89,9 @@ agents.interrupt = function(W_, p, at, reason)
   return orig_int(W_, p, at, reason)
 end
 
--- Food: everything edible anywhere in the settlement (FU)
-local function food_total(s)
-  local tot = 0
-  local g = s.granary
-  if g then tot = tot + (g.stock.grain or 0) + (g.stock.sheaves or 0) end
-  for k = 1, #s.blist do
-    local b = s.buildings[s.blist[k]]
-    if b.kind == "house" then tot = tot + (b.stock.food or 0) + (b.stock.fish or 0) + (b.stock.smoked or 0) + (b.stock.meat or 0) + (b.stock.seed or 0) + (b.stock.meals or 0) end
-  end
-  for k = 1, #s.plots do tot = tot + s.plots[k].sheaves end
-  for k = 1, #s.members do
-    local p = V.people[s.members[k]]
-    if p and p.alive then
-      if p.carry == "seed" or p.carry == "grain" or p.carry == "food" or p.carry == "sheaves" or p.carry == "fish" or p.carry == "meat" then tot = tot + p.camt end
-      if p.lunch then tot = tot + C.meal_fu end
-    end
-  end
-  return tot
-end
+-- Food: everything edible anywhere in the settlement (FU): the sim's own ledger (settle.food_total)
+local settle_m = require("sim.agents.settle")
+local function food_total(s) return settle_m.food_total(W, s) end
 
 -- Run --------------------------------------------------------------------------------------------
 local s1 = V.settlements[args.sett or 1]
@@ -119,7 +103,7 @@ local crowd = {}   -- worst crowding instances
 local still = {}   -- per person: { since, x, y }
 local stuck = {}
 local food_prev = food_total(s1)
-local acc_prev = { h = 0, f = 0, e = 0, seed = 0, lunch = 0, spoil = 0 }
+local acc_prev = { flows = settle_m.food_flows(s1) }
 local function sown_rows(s)
   local n = 0
   for k = 1, #s.plots do n = n + s.plots[k].sown end
@@ -181,16 +165,16 @@ for d = 1, args.days do
   for k = 1, #s.members do if V.people[s.members[k]].alive then alive = alive + 1 end end
   local f = food_total(s)
   local sown = sown_rows(s)
-  local dh = (s.acc.harvest or 0) - acc_prev.h
-  local df = (s.acc.foraged or 0) + (s.acc.fished or 0) + (s.acc.meat or 0) - acc_prev.f
-  local de = (s.acc.eaten or 0) - acc_prev.e
-  local dseed = (s.acc.seed or 0) - acc_prev.seed
-  local dl = (s.acc.lunch or 0) - acc_prev.lunch
-  local dsp = (s.acc.spoiled or 0) - acc_prev.spoil
-  local expect = food_prev + dh + df - de - dseed - dl - dsp
+  local dh = (s.acc.harvest or 0) - (acc_prev.h or 0)
+  local df = (s.acc.foraged or 0) + (s.acc.fished or 0) + (s.acc.meat or 0) + (s.acc.milk or 0) - (acc_prev.f or 0)
+  local de = (s.acc.eaten or 0) - (acc_prev.e or 0)
+  local dsp = (s.acc.spoiled or 0) - (acc_prev.spoil or 0)
+  acc_prev.spoil = s.acc.spoiled or 0
+  local flows = settle_m.food_flows(s)
+  local expect = food_prev + flows - acc_prev.flows
   local resid = f - expect
-  acc_prev.h, acc_prev.f, acc_prev.e = s.acc.harvest or 0, (s.acc.foraged or 0) + (s.acc.fished or 0) + (s.acc.meat or 0), s.acc.eaten or 0
-  acc_prev.seed, acc_prev.lunch, acc_prev.spoil = s.acc.seed or 0, s.acc.lunch or 0, s.acc.spoiled or 0
+  acc_prev.flows = flows
+  acc_prev.h, acc_prev.f, acc_prev.e = s.acc.harvest or 0, (s.acc.foraged or 0) + (s.acc.fished or 0) + (s.acc.meat or 0) + (s.acc.milk or 0), s.acc.eaten or 0
   sown_prev, food_prev = sown, f
   local ripe, growing, sheaves = 0, 0, 0
   for _, pl in ipairs(s.plots) do
@@ -239,12 +223,23 @@ for _, s in ipairs(V.settlements) do
     say("      linen: flax fields %d, pulled %.0f, granary flax %.1f, fibre %.1f, yarn %.1f, cloth %.1f | spun %.1f woven %.1f garments %d | clothes mean %.2f min %.2f, in rags %d",
       fl, a.flax or 0, flax, fib, yarn, cloth, a.spun or 0, a.woven or 0, a.garments or 0, cn > 0 and cs / cn or 0, cmin, rags)
   end
-  if s.flock then
-    local F = s.flock
-    local n, hung = 0, 0
-    for _, a in ipairs(F.sheep) do if a.alive then n = n + 1; hung = hung + a.hunger end end
-    say("      flock: %d sheep (lambs %d, died %d, killed %d = %.0f FU), hunger %.2f, hay %.0f rack %.0f, wool shorn %.1f, hay mown %.0f",
-      n, a.lambs or 0, a.sheep_died or 0, a.slaughtered or 0, a.meat or 0, n > 0 and hung / n or 0, F.hay or 0, F.rack or 0, a.wool or 0, a.hay or 0)
+  if s.herds then
+    local stock = require("sim.agents.stock")
+    local per, hung, sick = {}, {}, 0
+    stock.each(s, function(H, an)
+      per[an.sp] = (per[an.sp] or 0) + 1
+      hung[an.sp] = (hung[an.sp] or 0) + an.hunger
+      if (an.sick or 0) > 0 then sick = sick + 1 end
+    end)
+    local parts = {}
+    for _, sp in ipairs({ "sheep", "goat", "cattle", "pig" }) do
+      if per[sp] then parts[#parts + 1] = string.format("%s %d (born %d, died %d, killed %d, hunger %.2f)", sp, per[sp], a["born_" .. sp] or 0,
+        a["died_" .. sp] or 0, a["killed_" .. sp] or 0, hung[sp] / per[sp]) end
+    end
+    local manure = 0
+    for _, kind in ipairs(stock.HERDS) do if s.herds[kind] then manure = manure + (s.herds[kind].manure or 0) end end
+    say("      herds: %s | sick %d; meat %.0f FU, milk %.0f, cheese %.0f, wool %.1f, hay %.0f (mown %.0f), dung in pens %.0f, mucked %.0f, slops %.1f",
+      table.concat(parts, ", "), sick, a.meat or 0, a.milk or 0, a.cheese or 0, a.wool or 0, s.hay or 0, a.hay or 0, manure, a.mucked or 0, a.slops or 0)
   end
   if s.boats then
     local bl = {}

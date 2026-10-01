@@ -1,0 +1,10 @@
+mesh: "/assets/animals/sheep_lod1.glb"
+materials {
+  name: "animal"
+  material: "/game/render/animal.material"
+}
+skeleton: "/assets/animals/sheep_lod0.glb"
+animations: "/assets/animals/sheep_lod0.glb"
+default_animation: "idle"
+name: "sheep_lod1"
+create_go_bones: false

@@ -1,0 +1,2 @@
+prototype: "/game/view/animals/sheep_shorn.go"
+load_dynamically: false

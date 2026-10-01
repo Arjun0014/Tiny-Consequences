@@ -528,32 +528,51 @@ WORK.mend_clothes = function(W, s, p, st, f)
   p.clothes = min(1, (p.clothes or 1) + 0.3 * f * y / c.mend_clothes_yarn)
 end
 
--- The flock (D-089): the fold opened and the flock driven out to the day's pasture, watched,
--- brought home; a sheep shorn; hay mown; hay put in the fold's rack.
-WORK.open_fold = function(W, s, p, st, f)
-  local F = s.flock
-  if not F then return end
-  F.out, F.herder = true, p.id
-  F.spot_x, F.spot_y = st.sx, st.sy
+-- Livestock (D-089, D-092): a pen opened and its herd driven out to the day's ground, watched,
+-- brought home; dams milked, sheep shorn, beasts killed; hay mown and racked; dung spread on a
+-- field; slops in the pigs' trough; cheese made at home.
+local stock = require("sim.agents.stock")
+local function herd_of(s, st) return s.herds and s.herds[stock.HERDS[st.herd or 1]] end
+
+WORK.open_pen = function(W, s, p, st, f)
+  local H = herd_of(s, st)
+  if not H then return end
+  H.out, H.herder = true, p.id
+  H.spot_x, H.spot_y = st.sx, st.sy
 end
 
 WORK.herd = function(W, s, p, st, f)
-  local F = s.flock
-  if F and F.herder == p.id then F.spot_x, F.spot_y = p.x, p.y end
+  local H = herd_of(s, st)
+  if H and H.herder == p.id then H.spot_x, H.spot_y = p.x, p.y end
 end
 
-WORK.close_fold = function(W, s, p, st, f)
-  local F = s.flock
-  if not F then return end
-  F.out, F.herder = false, 0
+WORK.close_pen = function(W, s, p, st, f)
+  local H = herd_of(s, st)
+  if not H then return end
+  H.out, H.herder = false, 0
+end
+
+-- (the animal worked on is let go)
+local function release_animal(s, p, st)
+  local H = herd_of(s, st)
+  local a = H and H.animals[st.ref or 0]
+  if a and a.held == p.id then a.held = 0 end
+  return H, a
+end
+
+WORK.milk = function(W, s, p, st, f)
+  local H, a = release_animal(s, p, st)
+  if not a or not a.alive or f < 0.5 then return end
+  local m = (a.milk or 0) * min(1, f)
+  if m <= 0 then return end
+  a.milk = a.milk - m
+  p.carry, p.camt = "milk", (p.carry == "milk" and p.camt or 0) + m
+  s.acc.milk = (s.acc.milk or 0) + m
 end
 
 WORK.shear = function(W, s, p, st, f)
-  local F = s.flock
-  local a = F and F.sheep[st.ref or 0]
-  if not a then return end
-  if a.shearer == p.id then a.shearer = 0 end
-  if f < 0.8 or not a.alive then return end
+  local H, a = release_animal(s, p, st)
+  if not a or f < 0.8 or not a.alive then return end
   local w = a.wool or 0
   if w <= 0 then return end
   a.wool = 0
@@ -563,32 +582,31 @@ WORK.shear = function(W, s, p, st, f)
 end
 
 WORK.mow = function(W, s, p, st, f)
-  local F = s.flock
-  if not F then return end
+  local P = s.pasture
+  if not P then return end
   local c = C()
   local b = st.block or 0
-  local g = F.grass[b] or 0
+  local g = P.grass[b] or 0
   local cut = min(g / c.grass_per_feed * 0.5, c.mow_rate * st.dur * f * g)
   if cut <= 0 then return end
-  F.grass[b] = max(0, g - cut * c.grass_per_feed * 0.5)
+  P.grass[b] = max(0, g - cut * c.grass_per_feed * 0.5)
   p.carry, p.camt = "hay", (p.carry == "hay" and p.camt or 0) + cut
   s.acc.hay = (s.acc.hay or 0) + cut
 end
 
--- Killing a beast in autumn (D-089): the meat goes home fresh (cooked first, smoked if it will
--- not be eaten in time), the fleece to the household's wool.
+-- Killing a beast (D-089, D-092): the meat goes home fresh (cooked first, smoked if it will not
+-- be eaten in time), a sheep's fleece to the household's wool.
 WORK.slaughter = function(W, s, p, st, f)
-  local F = s.flock
-  local a = F and F.sheep[st.ref or 0]
-  if not a then return end
-  if a.butcher == p.id then a.butcher = 0 end
-  if f < 0.8 or not a.alive then return end
-  a.alive, a.died, a.cull = false, W.S.v3.now or W.hour, nil
-  local c = C()
-  local meat = c.sheep_meat * min(1, 0.4 + (W.S.v3.now - a.born) / 1152) * (0.5 + 0.5 * a.health)
+  local H, a = release_animal(s, p, st)
+  if not a or f < 0.8 or not a.alive then return end
+  local now = W.S.v3.now or W.hour
+  a.alive, a.died, a.cull, a.cause = false, now, nil, "killed"
+  local S = stock.SP(a.sp)
+  local meat = S.meat * min(1, 0.4 + (now - a.born) / 1152 / S.adult_years) * (0.5 + 0.5 * a.health)
   p.carry, p.camt = "meat", meat
   s.acc.meat = (s.acc.meat or 0) + meat
   s.acc.slaughtered = (s.acc.slaughtered or 0) + 1
+  s.acc["killed_" .. a.sp] = (s.acc["killed_" .. a.sp] or 0) + 1
   local home = W.S.v3.households[a.owner]
   if home and (a.wool or 0) > 0.2 then
     local hb = s.buildings[home.home]
@@ -597,11 +615,55 @@ WORK.slaughter = function(W, s, p, st, f)
 end
 
 WORK.feed = function(W, s, p, st, f)
-  local F = s.flock
-  if not F or f < 0.5 then return end
-  local amt = min(F.hay or 0, st.amt or 0)
-  F.hay = F.hay - amt
-  F.rack = (F.rack or 0) + amt
+  local H = herd_of(s, st)
+  if not H or f < 0.5 then return end
+  local amt = min(s.hay or 0, st.amt or 0)
+  s.hay = (s.hay or 0) - amt
+  H.rack = (H.rack or 0) + amt
+end
+
+-- Dung spread along a row: the field's soil the richer for it.
+WORK.spread = function(W, s, p, st, f)
+  local H = herd_of(s, st)
+  if H and H.muck_claim == p.id then H.muck_claim = 0 end
+  if p.carry ~= "manure" then return end
+  local pl = s.plots[st.ref or 0]
+  local c = C()
+  local n = p.camt * min(1, f)
+  if pl and n > 0 then
+    pl.fert = min(c.fert_max, (pl.fert or 1) + n * c.manure_fert)
+    pl.mucked = (pl.mucked or 0) + n
+    s.acc.mucked = (s.acc.mucked or 0) + n
+  end
+  p.camt = p.camt - n
+  if p.camt <= 1e-6 then p.carry, p.camt = "", 0 end
+end
+
+-- Slops in the pigs' trough.
+WORK.slop = function(W, s, p, st, f)
+  local hh = W.S.v3.households[p.hh]
+  if hh and hh.slopping == p.id then hh.slopping = 0 end
+  local H = s.herds and s.herds.swine
+  if not H or p.carry ~= "scraps" then return end
+  H.rack = (H.rack or 0) + p.camt * C().slop_feed
+  s.acc.slops = (s.acc.slops or 0) + p.camt
+  p.carry, p.camt = "", 0
+end
+
+-- Cheese: the milk curdled, the curd pressed; the whey goes to the pigs with the scraps.
+WORK.cheese = function(W, s, p, st, f)
+  local hh = W.S.v3.households[p.hh]
+  if hh and hh.cheesing == p.id then hh.cheesing = 0 end
+  local b = s.buildings[st.ref or 0]
+  if not b or f < 0.5 then return end
+  local c = C()
+  local m = (b.stock.milk or 0) * min(1, f)
+  if m <= 0 then return end
+  b.stock.milk = b.stock.milk - m
+  b.stock.cheese = (b.stock.cheese or 0) + m * c.cheese_keep
+  b.stock.scraps = (b.stock.scraps or 0) + m * (1 - c.cheese_keep)
+  s.acc.whey = (s.acc.whey or 0) + m * (1 - c.cheese_keep)
+  s.acc.cheese = (s.acc.cheese or 0) + m * c.cheese_keep
 end
 
 WORK.thresh = function(W, s, p, st, f)
@@ -671,19 +733,25 @@ WORK.cook = function(W, s, p, st, f)
   if (b.stock.logs or 0) <= 0 and not b.fire then return end
   local c = C()
   local n = hh and #hh.members or 1
-  -- (fresh fish goes into the pot first: it will not keep, D-087)
+  -- (what will not keep goes into the pot first: meat, milk, fresh fish (D-087, D-092); cheese
+  -- and smoked fish last)
   local want = n * c.cook_batch * f
   local meat = min(b.stock.meat or 0, want)
   b.stock.meat = (b.stock.meat or 0) - meat
   want = want - meat
+  local milk = min(b.stock.milk or 0, want)
+  b.stock.milk = (b.stock.milk or 0) - milk
+  want = want - milk
   local fish = min(b.stock.fish or 0, want)
   local amt = min(b.stock.food or 0, want - fish)
   local sm = min(b.stock.smoked or 0, want - fish - amt)
-  if amt + fish + sm <= 0 then return end
+  local ch = min(b.stock.cheese or 0, want - fish - amt - sm)
+  if amt + fish + sm + ch + meat + milk <= 0 then return end
   b.stock.fish = (b.stock.fish or 0) - fish
   b.stock.food = (b.stock.food or 0) - amt
   b.stock.smoked = (b.stock.smoked or 0) - sm
-  amt = amt + fish + sm + meat
+  b.stock.cheese = (b.stock.cheese or 0) - ch
+  amt = amt + fish + sm + meat + milk + ch
   b.stock.meals = (b.stock.meals or 0) + amt
   b.cooked_t = W.S.v3.now or W.hour
 end
@@ -796,6 +864,26 @@ PICK.logs = function(W, s, p, st)
   end
 end
 
+PICK.manure = function(W, s, p, st)
+  local H = s.herds and s.herds[stock.HERDS[st.herd or 1]]
+  if not H then return end
+  local got = min(st.n or 1, H.manure or 0)
+  if got > 0 then
+    H.manure = H.manure - got
+    p.carry, p.camt = "manure", got
+  end
+end
+
+PICK.scraps = function(W, s, p, st)
+  local b = s.buildings[st.ref]
+  if not b then return end
+  local got = b.stock.scraps or 0
+  if got > 0 then
+    b.stock.scraps = 0
+    p.carry, p.camt = "scraps", got
+  end
+end
+
 DROP.any = function(W, s, p, st)
   if p.carry == "" then return end
   local what, n = p.carry, p.camt
@@ -823,8 +911,16 @@ DROP.any = function(W, s, p, st)
   elseif what == "meat" then
     b.stock.meat = (b.stock.meat or 0) + n
   elseif what == "hay" then
-    local F = s.flock
-    if F then F.hay = (F.hay or 0) + n end
+    s.hay = (s.hay or 0) + n
+  elseif what == "milk" then
+    b.stock.milk = (b.stock.milk or 0) + n
+  elseif what == "scraps" then
+    b.stock.scraps = (b.stock.scraps or 0) + n
+  elseif what == "manure" then
+    for _, kind in ipairs(stock.HERDS) do
+      local H = s.herds and s.herds[kind]
+      if H and H.pen == b.id then H.manure = (H.manure or 0) + n end
+    end
   elseif what == "seed" then
     if b.kind == "granary" then b.stock.grain = (b.stock.grain or 0) + n else b.stock.seed = (b.stock.seed or 0) + n end
   elseif what == "grain" then

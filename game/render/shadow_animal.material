@@ -1,0 +1,14 @@
+name: "shadow_animal"
+tags: "shadow"
+vertex_program: "/game/render/shaders/shadow_animal.vp"
+fragment_program: "/game/render/shaders/shadow.fp"
+vertex_space: VERTEX_SPACE_LOCAL
+vertex_constants {
+  name: "mtx_view"
+  type: CONSTANT_TYPE_VIEW
+}
+vertex_constants {
+  name: "mtx_proj"
+  type: CONSTANT_TYPE_PROJECTION
+}
+max_page_count: 0

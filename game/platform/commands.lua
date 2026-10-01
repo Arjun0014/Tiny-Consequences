@@ -268,9 +268,35 @@ function M.register(G)
     local mapm = require("sim.agents.map")
     local s = assert(W.S.v3.settlements[args.sett or 1], "no such settlement")
     local x, y = args.x or 0, args.y or 0
+    local info
     if args.what == "dock" then
       assert(s.dock, "no dock")
       x, y = s.dock.mx, s.dock.my
+    elseif args.what == "flock" or args.what == "herd" then
+      -- the middle of a herd's living animals now (sheep, or `species` of s.herds)
+      local H = s.herds and s.herds[args.what == "flock" and "flock" or (args.herd or "cattle")]
+      assert(H, "no such herd")
+      local flock = require("sim.agents.stock")
+      local t = require("game.platform.speed").v3_t or W.hour
+      local n = 0
+      x, y = 0, 0
+      for _, a in ipairs(H.animals) do
+        if a.alive then
+          local ax, ay = flock.pos(a, t)
+          x, y, n = x + ax, y + ay, n + 1
+        end
+      end
+      assert(n > 0, "no animals")
+      x, y = x / n, y / n
+      local acts, spread = {}, 0
+      for _, a in ipairs(H.animals) do
+        if a.alive then
+          acts[a.act] = (acts[a.act] or 0) + 1
+          local ax, ay = flock.pos(a, t)
+          spread = math.max(spread, math.sqrt((ax - x) ^ 2 + (ay - y) ^ 2))
+        end
+      end
+      info = { acts = acts, spread = spread, n = n }
     elseif args.what == "ford" or args.what == "river" then
       -- the wet tile nearest the square (a wadeable one for "ford")
       local best, bd = 0, 1e9
@@ -287,7 +313,7 @@ function M.register(G)
     end
     local ux, uy, uz = mapm.unit(s, x, y)
     camera.set(math.asin(uy), math.atan2(uz, ux), args.zoom or 1.5, true)
-    return { x = x, y = y, name = s.name }
+    return { x = x, y = y, name = s.name, info = info }
   end)
   -- camera{preset | lat, lon, zoom | drag={dx,dy} | follow=true}; lat/lon in degrees.
   bridge.register("camera", function(args)

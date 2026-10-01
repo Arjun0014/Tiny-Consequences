@@ -14,6 +14,7 @@ const days = Number(getFlag(args, '--days', 0));
 const hour = Number(getFlag(args, '--hour', 10));
 const zoom = Number(getFlag(args, '--zoom', 1.4));
 const what = getFlag(args, '--what', 'centre');
+const herd = getFlag(args, '--herd', 'cattle');
 const name = getFlag(args, '--name', `s${sett}_d${days}_h${hour}`);
 await build({ variant: 'debug', ifStale: true, quiet: true });
 const outDir = path.join(ROOT, 'out', 'shots', 'look');
@@ -22,6 +23,7 @@ const port = 8192;
 const server = await startServer({ port, quiet: true });
 const browser = await chromium.launch({ headless: true, args: CHROMIUM_ARGS });
 const page = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 1 });
+page.on('console', (m) => { const t = m.text(); if (m.type() === 'error' || /ERROR|error:|attempt to|stack traceback/.test(t)) console.log('[page] ' + t.slice(0, 400)); });
 let n = 1;
 async function cmd(c, timeout = 240_000) {
   const id = `l${n++}`;
@@ -36,13 +38,13 @@ try {
   await page.waitForFunction(() => window.__TC && window.__TC.ready === true, null, { timeout: 240_000 });
   await cmd({ cmd: 'ui', debug: false });
   await cmd({ cmd: 'v3_goto', lh: hour, days });
-  const at = await cmd({ cmd: 'v3_look', sett, what, zoom });
+  const at = await cmd({ cmd: 'v3_look', sett, what, zoom, herd });
   await page.waitForTimeout(400);
   await cmd({ cmd: 'flush_view' });
   await page.waitForTimeout(2500);
   const file = path.join(outDir, `${name}.png`);
   await page.screenshot({ path: file });
-  console.log(`look: ${rel(file)} (${at.name})`);
+  console.log(`look: ${rel(file)} (${at.name})` + (at.info ? ' ' + JSON.stringify(at.info) : ''));
 } catch (e) { console.log('FAILED ' + e.message); }
 await browser.close();
 server.close();

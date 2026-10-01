@@ -884,9 +884,45 @@ C.V3 = {
   cloth_keep = 1.2,                       -- GE of fibre, yarn and cloth a member a household keeps in hand
   clothes_wear = { child = 0.012, apprentice = 0.008, adult = 0.007, elder = 0.004 },   -- a day
   carry_flax = 3,                         -- GE of flax bundles a load
-  -- sheep (D-089): individual animals of a household, the village's flock in a fold
-  sheep_speed = 1.6, sheep_hop = 0.08,    -- walking speed (units an hour); a hop toward the flock
-  flock_radius = 0.07,                    -- how far the flock spreads around its herder or pasture
+  -- livestock (D-089 sheep, D-092 herds): individual animals of households in the village's herds.
+  -- Per species: walking speed (units an hour), a hop toward its place, spacing in the herd's spread;
+  -- hunger an hour, eaten an hour on full grass (rooting for pigs, browse for goats where there are
+  -- trees, mast in autumn), sheep-equivalents of grass and hay; FU of meat; milk (FU a day in
+  -- milk, days in milk after a birth, hours to milk); wool (GE a day); ages (young, grown, old,
+  -- years); births (local days, a second season, daily chance in season, twins, litter);
+  -- behaviour (share of decisions a few steps on, lying down; hours a bout of grazing, of rest);
+  -- hours to butcher.
+  stock = {
+    sheep = { speed = 1.6, hop = 0.08, sep = 0.034, hunger = 0.035, graze = 0.25, se = 1, meat = 6, wool = 0.03,
+      young_years = 0.35, adult_years = 1, old_years = 7, birth = { 1, 10 }, birth_chance = 0.12, twins = 0.25, litter = 1,
+      stepping = 0.3, resting = 0.1, graze_h = 0.6, rest_h = 0.9, butcher_h = 0.75 },
+    goat = { speed = 1.8, hop = 0.09, sep = 0.034, hunger = 0.035, graze = 0.25, browse = 0.45, se = 0.8, meat = 5,
+      milk = 0.22, lact_days = 22, milk_h = 0.15,
+      young_years = 0.3, adult_years = 1, old_years = 8, birth = { 0, 10 }, birth_chance = 0.12, twins = 0.4, litter = 1,
+      stepping = 0.4, resting = 0.08, graze_h = 0.5, rest_h = 0.8, butcher_h = 0.7 },
+    cattle = { speed = 1.3, hop = 0.1, sep = 0.062, hunger = 0.03, graze = 0.22, se = 4.5, meat = 45,
+      milk = 0.75, lact_days = 26, milk_h = 0.3,
+      young_years = 0.5, adult_years = 2, old_years = 12, birth = { 2, 14 }, birth_chance = 0.08, twins = 0.02, litter = 1,
+      stepping = 0.22, resting = 0.2, graze_h = 0.7, rest_h = 1.3, butcher_h = 1.6 },
+    pig = { speed = 1.4, hop = 0.08, sep = 0.032, hunger = 0.04, root = 0.12, mast = 0.28, se = 0, meat = 20,
+      young_years = 0.25, adult_years = 1, old_years = 6, birth = { 4, 14 }, birth2 = { 22, 30 }, birth_chance = 0.15,
+      twins = 0, litter = 6, stepping = 0.35, resting = 0.15, graze_h = 0.65, rest_h = 1.2, butcher_h = 1.0 },
+  },
+  pen_size = { flock = { 6, 6 }, cattle = { 7, 6 }, swine = { 5, 4 } },   -- tiles of the fold, byre yard, sty
+  rack_found = { flock = 4, cattle = 10, swine = 3 },                      -- feed in the racks at founding
+  cattle_share = 0.45, pig_share = 0.7,   -- founding: share of households with a cow, with a sow (by grass, woods)
+  pig_reach = 1.0, pig_roam = 0.4, mast_days = { 24, 36 },   -- (pig_roam: how far from the sty pigs root unherded)   -- the pigs' woods: within this of the sty; acorns and beech mast (local days)
+  pig_slaughter = { 36, 40 },             -- local days the fattened pigs are killed (the start of winter)
+  manure_hour = 0.012,                    -- loads of dung a sheep-equivalent leaves in its pen an hour
+  manure_load = 1.0, manure_fert = 0.03,  -- a load carried; the fertility a load gives a field
+  milk_min = 0.35,                        -- milking when the udder holds this share of a day's milk
+  cheese_min = 0.6, cheese_h = 1.5, cheese_keep = 0.85,   -- milk at home worth a cheese; hours; share kept (the whey to the pigs)
+  spoil_milk = 0.5, spoil_cheese = 0.003, -- share spoiled a day
+  scrap_share = 0.7,                      -- of what spoils at home, the share that is pig food
+  slop_min = 0.4, slop_feed = 3.0,        -- scraps worth a trip to the sty; a pig's hunger units an FU of scraps feeds
+  sick_base = 0.004, sick_spread = 0.25, sick_recover = 0.18, sick_days = 6, sick_harm = 0.004,   -- livestock sickness (a day; health an hour)
+  sheep_speed = 1.6, sheep_hop = 0.08,    -- (D-089, kept for old saves)
+  flock_radius = 0.07,
   sheep_hunger = 0.035, sheep_graze = 0.25,   -- hunger an hour; eaten an hour on full grass
   grass_per_feed = 0.01, grass_regrow = 0.08, -- a block's grass a unit of hunger takes; regrowth a day
   pasture_reach = 1.0,                    -- the herder's pasture: within this of the fold
