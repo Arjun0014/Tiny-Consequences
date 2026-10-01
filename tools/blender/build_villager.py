@@ -68,7 +68,7 @@ def bt(name):
 # Mesh building: parts are lists of (verts, faces, bone, slot, part)
 class Builder:
     def __init__(self):
-        self.verts, self.faces, self.uvs, self.vbone = [], [], [], []
+        self.verts, self.faces, self.uvs, self.vbone, self.fpart = [], [], [], [], []
     def add(self, verts, faces, bone, slot, part):
         base = len(self.verts)
         u = (SLOT[slot] + 0.5) / 16.0
@@ -79,6 +79,7 @@ class Builder:
         for f in faces:
             self.faces.append([base + i for i in f])
             self.uvs.append([(u, v)] * len(f))
+            self.fpart.append(part)
 
 def box(c, size, rot=None):
     """Axis-aligned box centred at c with size (sx, sy, sz); rot: optional Matrix3."""
@@ -167,16 +168,25 @@ def cone(base_c, r, h, sides, r_top=0.0):
 def build(lod):
     B = Builder()
     S = {0: 1.0, 1: 0.6, 2: 0.35}[lod]
-    side = {0: 8, 1: 6, 2: 4}[lod]
+    side = {0: 8, 1: 6, 2: 3}[lod]
     head_seg = {0: 2, 1: 1, 2: 0}[lod]
+    # the far LOD (D-082): ~150-250 triangles drawn for a typical villager: triangular limbs, no
+    # hands, feet, neck, belt or second hair lumps; one box for hats, aprons, logs and the babe;
+    # tools keep their silhouette (a three-sided handle and a head)
+    far = lod == 2
     pel = bh("pelvis"); s1 = bh("spine_01"); s3 = bh("spine_03"); nk = bh("neck_01"); hd = bh("Head")
     # --- body ---------------------------------------------------------------------------
     # hips and belly (the tunic colour covers the torso: slot upper), chest
-    B.add(*taper_box(pel + Vector((0, 0.01, -0.06)), s1 + Vector((0, 0.01, 0.03)), 0.33, 0.21, 0.31, 0.2), "pelvis", "upper", "body")
-    B.add(*taper_box(s1 + Vector((0, 0.01, 0.03)), bh("spine_02") + Vector((0, 0.0, 0.05)), 0.31, 0.2, 0.33, 0.21), "spine_01", "upper", "body")
-    B.add(*taper_box(bh("spine_02") + Vector((0, 0.0, 0.05)), s3 + Vector((0, 0.01, 0.06)), 0.33, 0.21, 0.38, 0.22), "spine_03", "upper", "body")
-    # neck and head
-    B.add(*prism(nk + Vector((0, 0, -0.02)), hd + Vector((0, 0, 0.02)), 0.055, 0.05, side), "neck_01", "skin", "head")
+    if far:
+        B.add(*taper_box(pel + Vector((0, 0.01, -0.06)), s1 + Vector((0, 0.01, 0.03)), 0.33, 0.21, 0.31, 0.2), "pelvis", "upper", "body")
+        B.add(*taper_box(s1 + Vector((0, 0.01, 0.03)), s3 + Vector((0, 0.01, 0.06)), 0.31, 0.2, 0.38, 0.22), "spine_03", "upper", "body")
+    else:
+        B.add(*taper_box(pel + Vector((0, 0.01, -0.06)), s1 + Vector((0, 0.01, 0.03)), 0.33, 0.21, 0.31, 0.2), "pelvis", "upper", "body")
+        B.add(*taper_box(s1 + Vector((0, 0.01, 0.03)), bh("spine_02") + Vector((0, 0.0, 0.05)), 0.31, 0.2, 0.33, 0.21), "spine_01", "upper", "body")
+        B.add(*taper_box(bh("spine_02") + Vector((0, 0.0, 0.05)), s3 + Vector((0, 0.01, 0.06)), 0.33, 0.21, 0.38, 0.22), "spine_03", "upper", "body")
+        # neck
+        B.add(*prism(nk + Vector((0, 0, -0.02)), hd + Vector((0, 0, 0.02)), 0.055, 0.05, side), "neck_01", "skin", "head")
+    # head
     hc = hd + Vector((0, -0.01, 0.13))
     B.add(*rbox(hc, (0.27, 0.27, 0.29), head_seg), "Head", "skin", "head")
     if lod < 2:
@@ -190,33 +200,42 @@ def build(lod):
         la0, la1 = bh("lowerarm_" + sd), bt("lowerarm_" + sd)
         B.add(*prism(ua0, ua1, 0.058, 0.05, side), "upperarm_" + sd, "upper", "body")
         B.add(*prism(la0, la1, 0.046, 0.04, side), "lowerarm_" + sd, "skin", "body")
-        hn = bh("hand_" + sd)
-        sgn = 1 if sd == "l" else -1
-        B.add(*box(hn + Vector((sgn * 0.06, 0, -0.01)), (0.12, 0.06, 0.09)), "hand_" + sd, "skin", "body")
+        if not far:
+            hn = bh("hand_" + sd)
+            sgn = 1 if sd == "l" else -1
+            B.add(*box(hn + Vector((sgn * 0.06, 0, -0.01)), (0.12, 0.06, 0.09)), "hand_" + sd, "skin", "body")
     # legs: trousers (lower colour) or bare (skin, under a dress) + shoes
     for sd in ("l", "r"):
         th0, th1 = bh("thigh_" + sd), bt("thigh_" + sd)
         ca0, ca1 = bh("calf_" + sd), bt("calf_" + sd)
         for part, slot in (("legs_trousers", "lower"), ("legs_bare", "skin")):
             B.add(*prism(th0, th1, 0.085, 0.07, side), "thigh_" + sd, slot, part)
-            B.add(*prism(ca0, ca1 + Vector((0, 0, 0.03)), 0.065, 0.055, side), "calf_" + sd, slot, part)
-        ft = bh("foot_" + sd)
-        B.add(*box(ft + Vector((0, -0.06, -0.06)), (0.11, 0.24, 0.09)), "foot_" + sd, "leather", "feet")
+            # (far: the calf reaches the ground, no shoe)
+            B.add(*prism(ca0, ca1 + Vector((0, 0, 0.03 if not far else -0.08)), 0.065, 0.055, side), "calf_" + sd, slot, part)
+        if not far:
+            ft = bh("foot_" + sd)
+            B.add(*box(ft + Vector((0, -0.06, -0.06)), (0.11, 0.24, 0.09)), "foot_" + sd, "leather", "feet")
     # --- hair and hats ---------------------------------------------------------------------
     B.add(*rbox(hc + Vector((0, 0.012, 0.045)), (0.29, 0.29, 0.22), max(0, head_seg - 1)), "Head", "hair", "hair_short")
     B.add(*rbox(hc + Vector((0, 0.015, 0.035)), (0.295, 0.295, 0.24), max(0, head_seg - 1)), "Head", "hair", "hair_long")
-    B.add(*box(hc + Vector((0, 0.11, -0.12)), (0.25, 0.07, 0.24)), "Head", "hair", "hair_long")
+    if not far:
+        B.add(*box(hc + Vector((0, 0.11, -0.12)), (0.25, 0.07, 0.24)), "Head", "hair", "hair_long")
     B.add(*rbox(hc + Vector((0, 0.012, 0.04)), (0.29, 0.29, 0.22), max(0, head_seg - 1)), "Head", "hair", "hair_bun")
-    B.add(*rbox(hc + Vector((0, 0.13, 0.08)), (0.11, 0.09, 0.11), 0), "Head", "hair", "hair_bun")
+    if not far:
+        B.add(*rbox(hc + Vector((0, 0.13, 0.08)), (0.11, 0.09, 0.11), 0), "Head", "hair", "hair_bun")
     if lod < 2:
         B.add(*box(hc + Vector((0, -0.11, -0.11)), (0.2, 0.08, 0.12)), "Head", "hair", "beard")
     # straw hat: a wide brim and a low crown
-    B.add(*cone(hc + Vector((0, 0, 0.1)), 0.27, 0.025, side + 4, 0.2), "Head", "straw", "hat_straw")
-    B.add(*cone(hc + Vector((0, 0, 0.12)), 0.15, 0.1, side, 0.11), "Head", "straw", "hat_straw")
+    if far:
+        B.add(*cone(hc + Vector((0, 0, 0.1)), 0.27, 0.11, 4, 0.11), "Head", "straw", "hat_straw")
+    else:
+        B.add(*cone(hc + Vector((0, 0, 0.1)), 0.27, 0.025, side + 4, 0.2), "Head", "straw", "hat_straw")
+        B.add(*cone(hc + Vector((0, 0, 0.12)), 0.15, 0.1, side, 0.11), "Head", "straw", "hat_straw")
     # hood (the accent colour), cap, headscarf
     B.add(*rbox(hc + Vector((0, 0.025, 0.02)), (0.33, 0.33, 0.33), max(0, head_seg - 1)), "Head", "accent", "hat_hood")
     B.add(*box(hc + Vector((0, 0.0, 0.135)), (0.3, 0.3, 0.07)), "Head", "accent", "hat_cap")
-    B.add(*box(hc + Vector((0, -0.08, 0.11)), (0.26, 0.16, 0.03)), "Head", "accent", "hat_cap")
+    if not far:
+        B.add(*box(hc + Vector((0, -0.08, 0.11)), (0.26, 0.16, 0.03)), "Head", "accent", "hat_cap")
     B.add(*rbox(hc + Vector((0, 0.02, 0.05)), (0.3, 0.3, 0.25), max(0, head_seg - 1)), "Head", "accent", "headscarf")
     # --- clothes -----------------------------------------------------------------------------
     # tunic hem (a short flared skirt over the hips), a skirt to the knee, a dress to the ankle
@@ -224,9 +243,11 @@ def build(lod):
     B.add(*taper_box(pel + Vector((0, 0.01, 0.02)), pel + Vector((0, 0.01, -0.42)), 0.35, 0.23, 0.5, 0.36), "pelvis", "lower", "skirt")
     B.add(*taper_box(pel + Vector((0, 0.01, 0.02)), pel + Vector((0, 0.01, -0.8)), 0.35, 0.23, 0.6, 0.46), "pelvis", "lower", "dress")
     B.add(*box(pel + Vector((0, -0.165, -0.15)), (0.3, 0.03, 0.42)), "pelvis", "white", "apron")
-    B.add(*box(s3 + Vector((0, -0.115, -0.05)), (0.26, 0.02, 0.22)), "spine_03", "white", "apron")
+    if not far:
+        B.add(*box(s3 + Vector((0, -0.115, -0.05)), (0.26, 0.02, 0.22)), "spine_03", "white", "apron")
     B.add(*taper_box(s3 + Vector((0, 0.13, 0.08)), pel + Vector((0, 0.2, -0.45)), 0.42, 0.04, 0.55, 0.06), "spine_03", "accent", "cloak")
-    B.add(*box(pel + Vector((0, 0.0, 0.03)), (0.36, 0.24, 0.05)), "pelvis", "leather", "belt")
+    if not far:
+        B.add(*box(pel + Vector((0, 0.0, 0.03)), (0.36, 0.24, 0.05)), "pelvis", "leather", "belt")
     # --- tools and loads -------------------------------------------------------------------
     # A fist holds a handle across the palm: in the rest (T) pose the hands point along x with
     # the palms down, so handles run front-back (y). With the arm hanging the tool points forward;
@@ -236,20 +257,21 @@ def build(lod):
     grip = hr + Vector((-0.07, 0.0, -0.005))
     F = Vector((0, -1, 0))        # forward (front of the character)
     def handle(g, back, fwd, r, part, slot="wood"):
-        B.add(*prism(g - F * back, g + F * fwd, r, r, 5), "hand_r", slot, part)
+        B.add(*prism(g - F * back, g + F * fwd, r, r, 3 if far else 5), "hand_r", slot, part)
     handle(grip, 0.12, 0.55, 0.018, "axe")
     B.add(*box(grip + F * 0.52 + Vector((0, 0, -0.05)), (0.03, 0.1, 0.13)), "hand_r", "metal", "axe")
     handle(grip, 0.3, 0.8, 0.016, "hoe")
     B.add(*box(grip + F * 0.8 + Vector((0, 0, -0.07)), (0.13, 0.02, 0.15)), "hand_r", "metal", "hoe")
     handle(grip, 0.05, 0.14, 0.018, "sickle")
-    for k in range(4):
+    for k in range(1 if far else 4):
         a = k * 0.55
         B.add(*box(grip + F * (0.16 + 0.07 * math.sin(a + 0.3) * 1.2) + Vector((0, 0, -0.03 - 0.07 * (1 - math.cos(a)))),
               (0.02, 0.06, 0.025)), "hand_r", "metal", "sickle")
     handle(grip, 0.06, 0.3, 0.017, "hammer")
     B.add(*box(grip + F * 0.31, (0.07, 0.07, 0.15)), "hand_r", "metal", "hammer")
     handle(grip, 0.1, 0.55, 0.016, "flail")
-    B.add(*prism(grip + F * 0.57, grip + F * 0.62 + Vector((0, 0, -0.25)), 0.02, 0.02, 5), "hand_r", "wood", "flail")
+    if not far:
+        B.add(*prism(grip + F * 0.57, grip + F * 0.62 + Vector((0, 0, -0.25)), 0.02, 0.02, 5), "hand_r", "wood", "flail")
     handle(grip, 0.9, 0.6, 0.015, "spear")
     B.add(*prism(grip + F * 0.6, grip + F * 0.75, 0.03, 0.002, 4), "hand_r", "metal", "spear")
     la = bh("lowerarm_l")
@@ -260,18 +282,23 @@ def build(lod):
     hl = bh("hand_l")
     gl = hl + Vector((0.07, 0.0, -0.005))
     B.add(*prism(gl + Vector((0.12, 0, 0)), gl + Vector((0.28, 0, 0)), 0.13, 0.11, side), "hand_l", "straw", "basket")
-    B.add(*prism(gl + Vector((0.0, 0, 0)), gl + Vector((0.12, 0, 0)), 0.012, 0.012, 4), "hand_l", "straw", "basket")
+    if not far:
+        B.add(*prism(gl + Vector((0.0, 0, 0)), gl + Vector((0.12, 0, 0)), 0.012, 0.012, 4), "hand_l", "straw", "basket")
     # loads held in front of the chest (the carry clips hold the arms round them)
     s3c = s3 + Vector((0, -0.24, -0.08))
     B.add(*rbox(s3c, (0.34, 0.2, 0.3), 0), "spine_03", "straw", "sack")
-    for k in (-1, 0, 1):
-        lift = 0.075 if k == 0 else 0.0
-        p0 = s3c + Vector((-0.32, 0.05 * k, 0.07 + lift))
-        p1 = s3c + Vector((0.32, 0.05 * k, 0.07 + lift))
-        B.add(*prism(p0, p1, 0.045, 0.045, side), "spine_03", "wood", "log")
+    if far:
+        B.add(*box(s3c + Vector((0, 0, 0.1)), (0.64, 0.18, 0.15)), "spine_03", "wood", "log")
+    else:
+        for k in (-1, 0, 1):
+            lift = 0.075 if k == 0 else 0.0
+            p0 = s3c + Vector((-0.32, 0.05 * k, 0.07 + lift))
+            p1 = s3c + Vector((0.32, 0.05 * k, 0.07 + lift))
+            B.add(*prism(p0, p1, 0.045, 0.045, side), "spine_03", "wood", "log")
     # a babe in arms: a swaddled bundle and a little head against the chest
     B.add(*rbox(s3 + Vector((0, -0.2, -0.1)), (0.3, 0.16, 0.17), 0), "spine_03", "white", "babe")
-    B.add(*rbox(s3 + Vector((0.16, -0.2, -0.07)), (0.12, 0.12, 0.12), 0), "spine_03", "skin", "babe")
+    if not far:
+        B.add(*rbox(s3 + Vector((0.16, -0.2, -0.07)), (0.12, 0.12, 0.12), 0), "spine_03", "skin", "babe")
     return B
 
 def make_object(B, name):
@@ -380,6 +407,12 @@ def export(lod, path):
         export_yup=True, export_apply=False, export_texcoords=True, export_normals=True, export_materials="EXPORT",
         export_morph=False, export_reset_pose_bones=True, export_anim_single_armature=True)
     print("EXPORT", path, "tris", tris, "verts", len(B.verts))
+    per = {}
+    for fi, f in enumerate(B.faces):
+        part = B.fpart[fi] if hasattr(B, "fpart") else "?"
+        per[part] = per.get(part, 0) + (len(f) - 2)
+    typical = ["body", "head", "eyes", "legs_trousers", "feet", "hair_short", "tunic", "belt", "hat_cap", "axe"]
+    print("PARTS", lod, sorted(per.items()), "typical (man, cap, axe):", sum(per.get(k, 0) for k in typical))
     return ob, tris
 
 stats = []
