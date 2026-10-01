@@ -41,6 +41,7 @@ local URLS = {
 	rain_factory = "/main#rain_factory",
 	smoke_factory = "/main#smoke_factory",
 	person_factory = "/main#person_factory",
+	villager_factory = "/main#villager_factory",
 	tanker_factory = "/main#tanker_factory",
 	boat_factory = "/main#boat_factory",
 	bird_factory = "/main#bird_factory",
@@ -137,6 +138,7 @@ local function finish_loading(self)
 		end
 	end
 	self.world_heavy_fn = function() return self.W.hour % 168 == 0 end
+	if self.W.v3 then speed.v3_init(self.W) else speed.v3_t = nil end
 	self.perf_reset(self)
 	local cam = query.get().cam
 	local lat, lon, zoom = camera.preset(cam or "default", self.W)
@@ -173,6 +175,7 @@ function init(self)
 		if not ok then print("[tc] ignoring ?speed=: " .. tostring(err)) end
 	end
 	if query.flag("freeze") then view.set_frozen(true) end
+	if query.flag("vnoshadow") then state.no_villager_shadow = true end
 	-- gfx=low: no shadow map and no post pipeline (functional browser tests: headless Chromium
 	-- rasterises on the CPU, where the full pipeline costs seconds per frame)
 	if query.get().gfx == "low" then
@@ -209,8 +212,8 @@ function init(self)
 			loading_frac = state.loading.frac,
 			seed = self.seed,
 			tick = W and W.tick or 0,
-			hour = W and W.hour or 0,
-			hour_f = W and (W.hour + speed.alpha()) or 0,
+			hour = W and (W.v3 and speed.v3_t or W.hour) or 0,
+			hour_f = W and (W.v3 and speed.v3_t or (W.hour + speed.alpha())) or 0,
 			year = W and math.floor(W.hour / 8064) or 0,
 			speed = speed.get(),
 			ticks_per_s = self.tps or 0,
@@ -321,6 +324,8 @@ function update(self, dt)
 				self.ff = nil
 				bridge.publish()
 			end
+		elseif W.v3 then
+			speed.step_v3(dt, W, require("sim.world"))
 		else
 			speed.step(dt, self.world_tick_fn, self.world_heavy_fn)
 			local _, _, frame_ms, frame_ticks = speed.stats()
@@ -339,6 +344,7 @@ function update(self, dt)
 		local r = uistate.pop_request()
 		while r do
 			if r.cmd == "fly_to_sel" then controls.fly_to_selection(W) end
+			if r.cmd == "follow" then require("game.view.agents_view").follow = r.id end
 			r = uistate.pop_request()
 		end
 	end

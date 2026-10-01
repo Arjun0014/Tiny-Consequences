@@ -582,6 +582,9 @@ local function activate(self, h)
 	elseif type(h) == "table" and h.key then
 		selection.set({ kind = "planet" })
 		uistate.inspector_collapsed = false
+	elseif type(h) == "table" and h.link and h.link.kind == "follow" then
+		-- v3: the camera follows this person (main.script)
+		uistate.request({ cmd = "follow", id = h.link.id })
 	elseif type(h) == "table" and h.link then
 		selection.set(h.link)
 		if h.link.kind == "village" or h.link.kind == "person" then uistate.request({ cmd = "fly_to_sel" }) end

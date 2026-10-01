@@ -14,9 +14,9 @@ local floor, max, min, sqrt, abs, ceil = math.floor, math.max, math.min, math.sq
 local function C() return cfgmod.V3 end
 
 M.KINDS = {
-  house = { w = 3, h = 3, label = "house", logs = 12, work = 26 },
-  granary = { w = 3, h = 3, label = "granary", logs = 14, work = 30 },
-  woodstore = { w = 3, h = 2, label = "woodstore", logs = 6, work = 12 },
+  house = { w = 4, h = 4, label = "house", logs = 12, work = 26 },
+  granary = { w = 4, h = 4, label = "granary", logs = 14, work = 30 },
+  woodstore = { w = 4, h = 3, label = "woodstore", logs = 6, work = 12 },
   well = { w = 1, h = 1, label = "well", logs = 0, work = 8 },
 }
 
@@ -164,8 +164,8 @@ function M.next_tree(W, s, p)
   return best
 end
 
--- House sites: the free 3x3 lot (with a one-tile margin) nearest the square, not on a plot,
--- preferring lots beside a lane.
+-- House sites: the free 4x4 lot (with a two-tile yard all round) nearest the square, not on a
+-- plot, preferring lots beside a lane.
 function M.find_lot(W, s)
   local N = s.N
   local c0 = floor(N / 2)
@@ -174,13 +174,13 @@ function M.find_lot(W, s)
     for iy = c0 - r, c0 + r do
       for ix = c0 - r, c0 + r do
         if (abs(ix - c0) == r or abs(iy - c0) == r) and (ix + iy) % 2 == 0 then
-          if mapm.rect_free(s, ix - 1, iy - 1, ix + 3, iy + 3, true) then
-            local x, y = mapm.ixy_xy(s, ix + 1, iy + 1)
+          if mapm.rect_free(s, ix - 2, iy - 2, ix + 5, iy + 5, true) then
+            local x, y = mapm.ixy_xy(s, ix + 1.5, iy + 1.5)
             local d = sqrt(x * x + y * y)
             -- beside a lane?
             local lane = 0
-            for dy = -2, 4 do
-              for dx = -2, 4 do
+            for dy = -3, 6 do
+              for dx = -3, 6 do
                 local i = (iy + dy - 1) * N + ix + dx
                 if i >= 1 and i <= N * N and s.lane[i] > 0 then lane = 1 end
               end
@@ -433,7 +433,7 @@ local function plan_fields(W, s, day)
       if mapm.rect_free(s, ix, iy, ix + P - 1, iy + P - 1, true) then
         local x, y = mapm.ixy_xy(s, ix + P / 2, iy + P / 2)
         local d = sqrt(x * x + y * y)
-        if d > 0.33 and d < 1.35 then
+        if d > 0.42 and d < 1.4 then
           local dp = 9
           for k = 1, #s.plots do
             local pl = s.plots[k]

@@ -189,18 +189,21 @@ local function pull(s, tiles, k, out)
   return m
 end
 
+-- (runtime only, never saved: keyed by the settlement table)
+local CACHES = setmetatable({}, { __mode = "k" })
+
 local function cache_get(s, key)
-  local pc = s.pcache
+  local pc = CACHES[s]
   if not pc or pc.ver ~= s.ver then
     pc = { ver = s.ver, map = {}, n = 0 }
-    s.pcache = pc
+    CACHES[s] = pc
     return nil
   end
   return pc.map[key]
 end
 
 local function cache_put(s, key, v)
-  local pc = s.pcache
+  local pc = CACHES[s]
   if pc.n >= 1500 then
     pc.map, pc.n = {}, 0
   end

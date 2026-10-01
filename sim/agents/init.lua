@@ -217,6 +217,20 @@ end
 
 function sys.init(W)
   W.v3rt = nil
+  -- a restored save holds copies, not aliases: point the settlement's shortcuts back at its
+  -- buildings, and each person's motion back at their path buffer
+  local V = W.S.v3
+  if not V then return end
+  for i = 1, #V.settlements do
+    local s = V.settlements[i]
+    for _, k in ipairs({ "granary", "wood_store", "well" }) do
+      if s[k] then s[k] = s.buildings[s[k].id] end
+    end
+  end
+  for i = 1, #V.order do
+    local p = V.people[V.order[i]]
+    if p and p.mv and p.path_buf and p.mv ~= p.path_buf then p.path_buf = p.mv end
+  end
 end
 
 -- Persons alive in settlement s, in id order.

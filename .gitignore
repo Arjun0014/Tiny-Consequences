@@ -13,3 +13,11 @@ playwright-report/
 last_session.md
 *.stackdump
 assets/worlds/dev_*.tcsave
+# downloaded asset archives and engine-format duplicates (the GLB/.blend sources and licences are kept)
+assets/3d-models/*.zip
+assets/3d-models/ual/**/Unity/
+assets/3d-models/ual/**/*_RM.glb
+assets/3d-models/ual/**/*.png
+assets/3d-models/animals_quaternius/FBX/
+assets/3d-models/animals_quaternius/OBJ/
+assets/3d-models/animals_quaternius/Preview.gif

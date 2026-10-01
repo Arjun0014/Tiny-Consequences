@@ -854,8 +854,82 @@ local function planet_items(W, items)
 end
 
 --- Builds the inspector description for selection `sel` (nil -> nil).
+-- v3 people (D-078): who they are, their home and family, what they are doing, where they are
+-- going and why — straight from the agent (sim/agents), nothing reconstructed.
+local function v3_person_items(W, p, items)
+  local people = require("sim.agents.people")
+  local clock = require("sim.agents.clock")
+  local V = W.S.v3
+  local t = require("game.platform.speed").v3_t or W.hour
+  local st, age = people.stage(p, t)
+  local function pname(id)
+    local q = V.people[id or 0]
+    return q and (q.name .. " " .. q.surname .. (q.alive and "" or " (dead)")) or nil
+  end
+  add(items, { t = "row", icon = "hourglass", label = "Age", value = string.format("%d (%s)", floor(age), st) })
+  if p.role ~= "" then
+    add(items, { t = "row", icon = "pickaxe", label = "Role", value = string.format("%s (farm %d%%, wood %d%%, build %d%%)",
+      cap(p.role), floor(p.sk_farm * 100), floor(p.sk_wood * 100), floor(p.sk_build * 100)) })
+  end
+  local hh = V.households[p.hh]
+  local s = V.settlements[p.sett]
+  local home = hh and s and s.buildings[hh.home]
+  add(items, { t = "row", icon = "house", label = "Home", value = home and string.format("the %s house, %d living there",
+    p.surname, #hh.members) or "no home of their own", hl = not home })
+  if p.partner ~= 0 then add(items, { t = "row", icon = "heart", label = "Partner", value = pname(p.partner),
+    link = { kind = "person", id = p.partner, v3 = true } }) end
+  if p.mother ~= 0 then add(items, { t = "row", icon = "person", label = "Mother", value = pname(p.mother),
+    link = { kind = "person", id = p.mother, v3 = true } }) end
+  if p.father ~= 0 then add(items, { t = "row", icon = "person", label = "Father", value = pname(p.father),
+    link = { kind = "person", id = p.father, v3 = true } }) end
+  for i = 1, #p.kids do
+    add(items, { t = "row", icon = "people", label = "Child", value = pname(p.kids[i]), link = { kind = "person", id = p.kids[i], v3 = true } })
+  end
+  if not p.alive then
+    add(items, { t = "text", icon = "skull", text = "Died of " .. (p.died_of or "?") .. ", " .. clock.label(p.died), hl = true })
+    return
+  end
+  local ACT = { walk = "walking", till = "hoeing", sow = "sowing", tend = "weeding", harvest = "reaping", chop = "felling a tree",
+    build = "building", thresh = "threshing", grub = "digging out a stump", forage = "gathering", fill = "drawing water",
+    pick = "picking up", drop = "putting down", talk = "talking", play = "playing", lunch = "eating their bread",
+    eat = "eating", sleep = "asleep", rest = "resting", visit = "visiting", shelter = "sheltering", carried = "carried",
+    wait = "waiting" }
+  add(items, { t = "row", icon = "pin", label = "Objective", value = p.obj ~= "" and p.obj or "-" })
+  local doing = ACT[p.act] or p.act
+  if p.carry ~= "" then doing = doing .. string.format(", carrying %s", p.carry == "logs" and (floor(p.camt + 0.5) .. " log" .. (p.camt >= 1.5 and "s" or "")) or p.carry) end
+  add(items, { t = "row", icon = "pickaxe", label = "Action", value = cap(doing) .. (p.inside ~= 0 and " (indoors)" or "") })
+  if p.dest ~= "" then add(items, { t = "row", icon = "pin", label = "Going to", value = p.dest }) end
+  if p.why ~= "" then add(items, { t = "text", icon = "bubble", text = "Why: " .. p.why }) end
+  add(items, { t = "row", icon = "hourglass", label = "Body", value = string.format("hunger %d%%, energy %d%%, health %d%%",
+    floor(p.hunger * 100), floor(p.energy * 100), floor(p.health * 100)), hl = p.hunger > 0.8 or p.health < 0.5 })
+  local n = 0
+  for k = 0, 2 do
+    local m = p.mem[((p.mem_n - 1 - k) % 8) + 1]
+    if m and p.mem_n - k > 0 then
+      add(items, { t = "text", icon = "bubble", text = clock.label(m[1]) .. ": " .. m[2] })
+      n = n + 1
+    end
+  end
+  add(items, { t = "row", icon = "pin", label = "Camera", value = "Follow", link = { kind = "follow", id = p.id } })
+end
+
 function M.build(W, sel)
   if not sel or not W then return nil end
+  if W.v3 and sel.kind == "person" and W.S.v3 then
+    local p = W.S.v3.people[sel.id]
+    if not p then return nil end
+    local out = { kind = sel.kind, items = {} }
+    local people = require("sim.agents.people")
+    local st = people.stage(p, require("game.platform.speed").v3_t or W.hour)
+    out.title = p.name .. " " .. p.surname
+    out.icon = "person"
+    out.tint = { 0.8, 0.7, 0.5 }
+    local who = ({ infant = "Baby", child = p.sex == "f" and "Girl" or "Boy", apprentice = p.sex == "f" and "Young woman" or "Young man",
+      adult = p.sex == "f" and "Woman" or "Man", elder = p.sex == "f" and "Old woman" or "Old man" })[st]
+    out.subtitle = who .. " of " .. (W.S.v3.settlements[p.sett] and W.S.v3.settlements[p.sett].name or "?")
+    v3_person_items(W, p, out.items)
+    return out
+  end
   local out = { kind = sel.kind, items = {} }
   local items = out.items
   local g = W.grid

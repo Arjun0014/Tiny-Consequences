@@ -32,7 +32,8 @@
     "shots:biomes": "node scripts/shots_biomes.mjs",
     "shots:wild": "node scripts/shots_biomes.mjs --wild",
     "shots:voyage": "node scripts/shots_voyage.mjs",
-    "shots:raid": "node scripts/shots_raid.mjs"
+    "shots:raid": "node scripts/shots_raid.mjs",
+    "shots:v3": "node scripts/shots_v3.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"

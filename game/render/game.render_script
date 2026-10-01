@@ -50,6 +50,7 @@ function init(self)
 	self.pred_props = render.predicate({ "props" })
 	self.pred_ground = render.predicate({ "ground" })
 	self.pred_movers = render.predicate({ "movers" })
+	self.pred_villagers = render.predicate({ "villagers" })
 	self.pred_atmo = render.predicate({ "atmo" })
 	self.pred_cloud = render.predicate({ "cloud" })
 	self.pred_fx = render.predicate({ "fx" })
@@ -133,6 +134,12 @@ local function shadow_pass(self)
 	if state.shadow_movers then
 		render.enable_material("shadow_ws")
 		render.draw(self.pred_movers, self.shadow_opts)
+		render.disable_material()
+	end
+	-- v3 villagers (GPU-skinned, instanced): their own skinned shadow material
+	if not state.no_villager_shadow then
+		render.enable_material("shadow_villager")
+		render.draw(self.pred_villagers, self.shadow_opts)
 		render.disable_material()
 	end
 	-- clouds: cover into alpha only (max of overlapping puffs), no depth writes
@@ -233,6 +240,7 @@ function update(self)
 		render.draw(self.pred_props, self.world_opts)
 		self.mover_opts.frustum = self.world_opts.frustum
 		render.draw(self.pred_movers, self.mover_opts)
+		render.draw(self.pred_villagers, self.world_opts)
 		render.disable_texture("shadowtex")
 		-- clouds, solid cores: ray-traced puffs write their own depth and the CoC (cloud.fp)
 		render.draw(self.pred_cloud, self.world_opts)

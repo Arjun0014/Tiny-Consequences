@@ -61,6 +61,14 @@ function M.pick_site(W, opts)
         local fo = fsum / n
         local sc = -abs(T - 12) * 0.08 + min(fo, 0.6) * 2 - abs(F.forest[c] - 0.3) + (F.soil_water[c] or 0) * 0.8
           + (F.fertility and F.fertility[c] or 0.5) * 0.5
+        -- the world's clock starts at UTC midnight: prefer a place where that is just before dawn,
+        -- so the first thing seen is the village waking (opts.dawn = false to ignore)
+        if opts.dawn ~= false then
+          local lh = (math.deg(g.lon[c]) / 15) % 24
+          local d = abs(lh - 4.6)
+          if d > 12 then d = 24 - d end
+          sc = sc - d * 0.25
+        end
         if sc > bs then best, bs = c, sc end
       end
     end
@@ -118,8 +126,8 @@ function M.found(W, cell, opts)
   for q = 1, 4 do if quarters[q] > fv then fq, fv = q, quarters[q] end end
   local sx = (fq == 2 or fq == 4) and 1 or -1
   local sy = (fq >= 3) and 1 or -1
-  settle.add_building(W, s, "granary", c0 - sx * 5 - 1, c0 - sy * 3 - 1, sy > 0 and "n" or "s", "standing")
-  settle.add_building(W, s, "woodstore", c0 + sx * 7 - 1, c0 + sy * 6 - 1, sy > 0 and "s" or "n", "standing")
+  settle.add_building(W, s, "granary", c0 - sx * 7 - 2, c0 - sy * 4 - 2, sy > 0 and "n" or "s", "standing")
+  settle.add_building(W, s, "woodstore", c0 + sx * 10 - 2, c0 + sy * 8 - 1, sy > 0 and "s" or "n", "standing")
   -- 2. houses round the square, one per household
   local homes = {}
   for h = 1, #M.TEMPLATE do
@@ -134,7 +142,7 @@ function M.found(W, cell, opts)
     for ix = 4, N - P - 3, P + 1 do
       local x, y = mapm.ixy_xy(s, ix + P / 2, iy + P / 2)
       local d = sqrt(x * x + y * y)
-      if d > 0.33 and d < 0.95 then
+      if d > 0.42 and d < 1.1 then
         local i = (iy + P / 2 - 1) * N + ix + P / 2
         local fo = W.F.forest[s.cell_of[i]]
         -- toward the woods costs clearing: fields lie mostly on the open side
@@ -154,7 +162,7 @@ function M.found(W, cell, opts)
     end
   end
   -- 4. the woods: individual trees from the planet's forest, off the village ground
-  local cleared = 0.3
+  local cleared = 0.42
   for iy = 2, N - 1, 2 do
     for ix = 2, N - 1, 2 do
       local jx = (u() - 0.5) * 1.6

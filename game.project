@@ -34,7 +34,7 @@ max_characters = 16384
 max_debug_vertices = 20000
 
 [collection]
-max_instances = 4096
+max_instances = 16384
 max_input_stack_entries = 32
 
 [model]

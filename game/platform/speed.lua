@@ -59,7 +59,7 @@ end
 
 --- Length of a real second in sim hours at the current level (0 when paused; max: last rate).
 function M.hours_per_second()
-	local hps = M.HOURS_PER_SECOND[level]
+	local hps = (M.v3_t and M.V3_HPS or M.HOURS_PER_SECOND)[level]
 	if hps < 0 then return M.max_rate or 3000 end
 	return hps
 end
@@ -126,6 +126,63 @@ function M.step(dt, step_fn, heavy_fn)
 		stat_frames, stat_sum, stat_max = 0, 0, 0
 	end
 	return ran
+end
+
+-- v3 worlds (D-078): time runs continuously (world.advance to fractional hours). Watch speeds are
+-- game minutes per real second; levels 4-6 are catch-up (skipping) speeds where the view does
+-- not draw the people (game/view/agents_view.lua): 1 min/s, 4 min/s, 12 min/s, 2 h/s, a day/s, max.
+M.V3_HPS = { [0] = 0, 1 / 60, 4 / 60, 12 / 60, 2, 24, -1 }
+M.V3_WATCH_MAX = 3
+M.v3_t = nil
+
+function M.v3_init(W)
+  M.v3_t = W.hour
+end
+
+function M.v3_skipping()
+  return level > M.V3_WATCH_MAX
+end
+
+--- v3: advance world W by dt real seconds at the current level, within the frame budget.
+function M.step_v3(dt, W, world)
+	local hps = M.V3_HPS[level]
+	if not M.v3_t then M.v3_t = W.hour end
+	-- real elapsed time, not the engine's frame dt (fixed per frame: a slow frame rate would slow
+	-- the world down with it); at most a quarter second per frame
+	local now_ms = clock.now_ms()
+	if M.v3_last then dt = math.min(0.25, math.max(0, (now_ms - M.v3_last) / 1000)) end
+	M.v3_last = now_ms
+	if hps == 0 then
+		last_frame_ms, last_frame_ticks = 0, 0
+		return 0
+	end
+	local budget = M.SIM_BUDGET_MS[level]
+	local t0 = clock.now_ms()
+	local target = hps < 0 and (M.v3_t + 1e6) or (M.v3_t + dt * hps)
+	local cur = M.v3_t
+	local closed = 0
+	while cur < target do
+		local nxt = math.floor(cur) + 1
+		if nxt > target then nxt = target end
+		closed = closed + world.advance(W, nxt)
+		cur = nxt
+		if clock.now_ms() - t0 > budget then break end
+	end
+	-- a frame that could not keep up drops the rest (never spiral)
+	M.v3_t = cur
+	if hps < 0 and dt > 0 then M.max_rate = (cur - (target - 1e6)) / math.max(dt, 1 / 120) end
+	local ms = clock.now_ms() - t0
+	last_frame_ms, last_frame_ticks = ms, closed
+	ticks_total = ticks_total + closed
+	stat_frames = stat_frames + 1
+	stat_sum = stat_sum + ms
+	if ms > stat_max then stat_max = ms end
+	if stat_frames >= M.STATS_WINDOW then
+		last_avg = stat_sum / stat_frames
+		last_max = stat_max
+		stat_frames, stat_sum, stat_max = 0, 0, 0
+	end
+	return closed
 end
 
 --- Running estimate of a planet-week step in ms (budget prediction).

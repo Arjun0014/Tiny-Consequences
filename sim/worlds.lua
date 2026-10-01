@@ -20,7 +20,8 @@ end
 function worlds.from_save_string(str)
   local doc, err = save.decode(str)
   if not doc then return nil, err end
-  world.set_systems(require("sim.systems.init"))
+  -- v3 worlds (D-078) run the agent layer instead of the v2 society and tankers
+  world.set_systems(doc.v3 and require("sim.agents.worldgen").systems() or require("sim.systems.init"))
   return save.restore(doc)
 end
 

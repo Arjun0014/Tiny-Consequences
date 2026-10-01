@@ -44,6 +44,9 @@ end
 function M.pick(W, sx, sy)
   local radius = M.RADIUS_PX * (state.window_h or 720) / 720
   local best = nil
+  for _, p in ipairs(require("game.view.agents_view").people_pos) do
+    best = consider(best, "person", { kind = "person", id = p.id, v3 = true }, p.x, p.y, p.z, sx, sy, radius)
+  end
   for _, p in ipairs(puppets.people_pos) do
     best = consider(best, "person", { kind = "person", id = p.id }, p.x, p.y, p.z, sx, sy, radius)
   end
