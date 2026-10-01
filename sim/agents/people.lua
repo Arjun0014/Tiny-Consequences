@@ -129,6 +129,7 @@ function M.speed(W, p, t)
   elseif st == "elder" then v = v * c.speed_elder end
   if p.carry ~= "" and p.carry ~= "seed" then v = v * c.speed_load end
   if p.health < 0.5 then v = v * (0.6 + 0.8 * p.health) end
+  if (p.shoes or 1) < 0.1 and st ~= "infant" then v = v * c.barefoot_speed end   -- (barefoot: D-104)
   return v
 end
 

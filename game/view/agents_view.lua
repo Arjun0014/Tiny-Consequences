@@ -374,6 +374,13 @@ local function fill_buildings(V)
               pack(0.30, 0.22, 0.14), pack(0.26, 0.19, 0.12), 0)
           end
         end
+      elseif b.kind == "tanpit" then
+        -- (D-104) a tanning pit: a dark lined hollow, a frame over it, hides in it while they soak
+        add(V, K.stook, b.cx, b.cy, -0.004, 0, 0.9, 0.18, pack(0.20, 0.14, 0.09), pack(0.16, 0.11, 0.07), 0)
+        add(V, K.stakes, b.cx + 0.012, b.cy, 0, 1, 0.3, 1, 0, 0, 0)
+        if (b.stock.soaking or 0) > 0 then
+          add(V, K.stook, b.cx - 0.006, b.cy + 0.004, 0.002, 2, 0.45, 0.25, pack(0.48, 0.34, 0.22), pack(0.40, 0.28, 0.18), 0)
+        end
       elseif b.kind == "rack" then
         -- (D-096) a drying rack: two poles and a bar, fish hanging by what dries on it
         local T = s.T
@@ -712,7 +719,7 @@ local TOOL = { till = "hoe", grub = "hoe", chop = "axe", harvest = "sickle", bui
   dress = "flail", stalk = "spear", gut = "spear", milk = "bucket", muck = nil, slop = "bucket", angle = "rod" }
 local CARRY_PART = { logs = "log", grain = "sack", sheaves = "sack", food = "sack", seed = "basket", water = "bucket", fish = "basket",
   flax = "sack", carcass = "sack", milk = "bucket", manure = "basket", scraps = "bucket", wool = "sack", hay = "basket", meat = "sack",
-  dried = "basket", smoked = "basket", cheese = "basket", pack = "sack" }
+  dried = "basket", smoked = "basket", cheese = "basket", pack = "sack", hides = "sack", leather = "sack" }
 -- animation for each action: { clip, rate (at a game minute per second), moving clip }
 local ANIM = {
   walk = { "walk" }, till = { "swing", 0.7 }, grub = { "kneel_work", 0.9 }, chop = { "swing", 0.9 },

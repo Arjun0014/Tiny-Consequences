@@ -25,6 +25,7 @@ M.KINDS = {
   rack = { w = 2, h = 1, label = "drying rack", logs = 2, work = 8 },   -- poles for drying fish by the shore (D-096)   -- timber across a river (D-095; logs, work by its length)
   byre = { w = 7, h = 6, label = "byre yard", logs = 14, work = 40 },   -- a fenced cattle yard with a lean-to (D-092)
   sty = { w = 5, h = 4, label = "sty", logs = 8, work = 24 },     -- a pig sty: a fenced run and a low hut (D-092)
+  tanpit = { w = 2, h = 2, label = "tanning pit", logs = 1, work = 10 },   -- a lined pit by the water where hides soak (D-104)
 }
 
 function M.new(W, cell, opts)
@@ -1133,6 +1134,52 @@ local function plan_racks(W, s, day)
   end
 end
 
+-- Tanning pits (D-104): a household with hides waiting lays out a pit by the water (the river's
+-- bank, else the shore, else the village's edge): logs and work like any site.
+local function plan_tanpits(W, s, day)
+  local V = W.S.v3
+  for i = 1, #s.sites do
+    local b = s.buildings[s.sites[i]]
+    if b and b.kind == "tanpit" then return end
+  end
+  for i = 1, #s.households do
+    local hh = V.households[s.households[i]]
+    local home = hh and hh.home ~= 0 and s.buildings[hh.home]
+    if home and (home.stock.hides or 0) >= 2 then
+      local has = false
+      for _, id in ipairs(s.blist) do
+        local b = s.buildings[id]
+        if b.kind == "tanpit" and b.hh == hh.id then has = true end
+      end
+      if not has then
+        -- (by water: the nearest wet tile to the house, else the house itself)
+        local N = s.N
+        local hix, hiy = mapm.tile_ixy(s, mapm.tile_of(s, home.dx, home.dy))
+        for r = 3, 14 do
+          for jy = hiy - r, hiy + r do
+            for jx = hix - r, hix + r do
+              if (abs(jx - hix) == r or abs(jy - hiy) == r) and jx > 3 and jy > 3 and jx < N - 4 and jy < N - 4 then
+                local near_water = false
+                for dy = -2, 3 do
+                  for dx = -2, 3 do
+                    local k = (jy + dy - 1) * N + jx + dx
+                    if s.riv[k] > 0 or s.land[k] == 0 then near_water = true end
+                  end
+                end
+                if (near_water or r >= 12) and mapm.rect_free(s, jx, jy, jx + 1, jy + 1, true) then
+                  local b = M.add_building(W, s, "tanpit", jx, jy, "s", "site", { for_hh = hh.id, for_name = "the household", prio = 0.25 })
+                  if b then b.hh = hh.id; return end
+                end
+              end
+            end
+          end
+        end
+        return
+      end
+    end
+  end
+end
+
 local function dry_racks(W, s, day)
   local c = C()
   local wet = (s.rain_day or 0) > 0
@@ -1259,6 +1306,7 @@ function M.daily(W, s, day)
   plan_houses(W, s)
   plan_boats(W, s)
   plan_racks(W, s, day)
+  plan_tanpits(W, s, day)
   dry_racks(W, s, day)
   s.rain_day = 0
   plan_flax(W, s, day)

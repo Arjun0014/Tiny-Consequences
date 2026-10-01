@@ -904,18 +904,18 @@ C.V3 = {
   -- behaviour (share of decisions a few steps on, lying down; hours a bout of grazing, of rest);
   -- hours to butcher.
   stock = {
-    sheep = { speed = 1.6, hop = 0.08, sep = 0.034, hunger = 0.035, graze = 0.25, se = 1, meat = 6, wool = 0.03,
+    sheep = { speed = 1.6, hop = 0.08, sep = 0.034, hunger = 0.035, graze = 0.25, se = 1, meat = 6, hide = 1, wool = 0.03,
       young_years = 0.35, adult_years = 1, old_years = 7, birth = { 1, 10 }, birth_chance = 0.12, twins = 0.25, litter = 1,
       stepping = 0.22, resting = 0.1, graze_h = 0.9, rest_h = 1.1, butcher_h = 0.75 },
-    goat = { speed = 1.8, hop = 0.09, sep = 0.034, hunger = 0.035, graze = 0.25, browse = 0.45, se = 0.8, meat = 5,
+    goat = { speed = 1.8, hop = 0.09, sep = 0.034, hunger = 0.035, graze = 0.25, browse = 0.45, se = 0.8, meat = 5, hide = 1,
       milk = 0.22, lact_days = 22, milk_h = 0.15,
       young_years = 0.3, adult_years = 1, old_years = 8, birth = { 0, 10 }, birth_chance = 0.12, twins = 0.4, litter = 1,
       stepping = 0.3, resting = 0.08, graze_h = 0.75, rest_h = 1.0, butcher_h = 0.7 },
-    cattle = { speed = 1.3, hop = 0.1, sep = 0.062, hunger = 0.03, graze = 0.22, se = 4.5, meat = 45,
+    cattle = { speed = 1.3, hop = 0.1, sep = 0.062, hunger = 0.03, graze = 0.22, se = 4.5, meat = 45, hide = 2,
       milk = 0.75, lact_days = 26, milk_h = 0.3,
       young_years = 0.5, adult_years = 2, old_years = 12, birth = { 2, 14 }, birth_chance = 0.08, twins = 0.02, litter = 1,
       stepping = 0.18, resting = 0.2, graze_h = 1.0, rest_h = 1.5, butcher_h = 1.6 },
-    pig = { speed = 1.4, hop = 0.08, sep = 0.032, hunger = 0.04, root = 0.12, mast = 0.28, se = 0, meat = 20,
+    pig = { speed = 1.4, hop = 0.08, sep = 0.032, hunger = 0.04, root = 0.12, mast = 0.28, se = 0, meat = 20, hide = 0.5,
       young_years = 0.25, adult_years = 1, old_years = 6, birth = { 4, 14 }, birth2 = { 22, 30 }, birth_chance = 0.15,
       twins = 0, litter = 6, stepping = 0.25, resting = 0.15, graze_h = 0.95, rest_h = 1.4, butcher_h = 1.0 },
   },
@@ -983,7 +983,12 @@ C.V3 = {
   sea_squall = 0.00025, sea_wet_k = 3,    -- chance a voyage hour of foundering (fair day; x on a wet day; worn boats and unskilled skippers more)
   sea_wet_h = 8,
   nap_h = 4,
-  relief_days = 8,                        -- (D-103) food for fewer days than this and nothing to sell: ask a neighbour                              -- (D-102) hours an exhausted person sleeps in the day                          -- a skipper does not set out on a crossing longer than this on a wet day    -- a household shares beyond 2x its want with one under half of its own
+  relief_days = 8,
+  -- (D-104) leather: hides soak in a tanning pit tan_days (put in and lifted out in tan_h); a pair of
+  -- shoes takes shoe_leather and cobble_h; shoes wear a day by life stage; barefoot (under 0.1) one
+  -- walks at barefoot_speed and the cold costs health; a household wants leather_want a member
+  tan_days = 10, tan_h = 1.0, shoe_leather = 0.5, cobble_h = 2.0, barefoot_speed = 0.92, leather_want = 0.6,
+  shoes_wear = { child = 0.016, apprentice = 0.012, adult = 0.009, elder = 0.006 },                        -- (D-103) food for fewer days than this and nothing to sell: ask a neighbour                              -- (D-102) hours an exhausted person sleeps in the day                          -- a skipper does not set out on a crossing longer than this on a wet day    -- a household shares beyond 2x its want with one under half of its own
   meat_want = 1.2, hunt_reach = 1.6, hunt_stalk = 0.3, hunt_throw = 0.07, stalk_speed = 0.4,
   hunt_hit = 0.25, hunt_skill = 0.35, hunt_tries = 3, hunt_hours = 5,                         -- after wolves took a beast, the village keeps a night watch this long
   wolf_visit = 0.5,                       -- a pack's chance to hunt on the map tonight: its time here x this

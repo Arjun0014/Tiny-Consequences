@@ -812,6 +812,44 @@ WORK.slaughter = function(W, s, p, st, f)
     local hb = s.buildings[home.home]
     if hb then hb.stock.wool = (hb.stock.wool or 0) + a.wool * 0.8 end
   end
+  -- (the hide, for the tanning pit: D-104)
+  if home and (S.hide or 0) > 0 then
+    local hb = s.buildings[home.home]
+    if hb then hb.stock.hides = (hb.stock.hides or 0) + S.hide end
+  end
+end
+
+-- Tanning (D-104): hides put to soak in the household's pit; after tan_days they are lifted out as
+-- leather and carried home.
+WORK.tan = function(W, s, p, st, f)
+  local pit = s.buildings[st.ref or 0]
+  if not pit or f < 0.99 or p.carry ~= "hides" then return end
+  local day = math.floor((W.S.v3.now or W.hour) / 24)
+  pit.stock.soaking = (pit.stock.soaking or 0) + p.camt
+  pit.ready = day + C().tan_days
+  s.acc.tanned_in = (s.acc.tanned_in or 0) + p.camt
+  p.carry, p.camt = "", 0
+end
+
+WORK.lift = function(W, s, p, st, f)
+  local pit = s.buildings[st.ref or 0]
+  if not pit or f < 0.99 or (pit.stock.soaking or 0) <= 0 then return end
+  p.carry, p.camt = "leather", pit.stock.soaking
+  s.acc.leather = (s.acc.leather or 0) + pit.stock.soaking
+  pit.stock.soaking, pit.ready = 0, nil
+end
+
+-- Shoes (D-104): a pair cut and stitched at home from the household's leather.
+WORK.cobble = function(W, s, p, st, f)
+  local home = s.buildings[st.ref or 0]
+  local q = W.S.v3.people[st.who or 0]
+  if not home or not q or f < 0.99 then return end
+  local c = C()
+  if (home.stock.leather or 0) < c.shoe_leather - 1e-6 then return end
+  home.stock.leather = home.stock.leather - c.shoe_leather
+  q.shoes = 1
+  s.acc.shoes = (s.acc.shoes or 0) + 1
+  people.remember(q, W.S.v3.now or W.hour, q == p and "Made myself new shoes" or (p.name .. " made me new shoes"))
 end
 
 WORK.feed = function(W, s, p, st, f)
@@ -1414,6 +1452,16 @@ PICK.provisions = function(W, s, p, st)
   p.prov = (p.prov or 0) + ml + fd
 end
 
+PICK.hides = function(W, s, p, st)
+  local b = s.buildings[st.ref]
+  if not b then return end
+  local got = min(st.n or 4, b.stock.hides or 0)
+  if got > 0 then
+    b.stock.hides = b.stock.hides - got
+    p.carry, p.camt = "hides", got
+  end
+end
+
 PICK.wool = function(W, s, p, st)
   local b = s.buildings[st.ref]
   if not b then return end
@@ -1560,6 +1608,8 @@ DROP.any = function(W, s, p, st)
     b.stock.wool = (b.stock.wool or 0) + n
   elseif what == "meat" then
     b.stock.meat = (b.stock.meat or 0) + n
+  elseif what == "leather" or what == "hides" then
+    b.stock[what] = (b.stock[what] or 0) + n
   elseif what == "hay" then
     s.hay = (s.hay or 0) + n
   elseif what == "milk" then

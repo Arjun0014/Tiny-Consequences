@@ -174,6 +174,15 @@ function M.daily(W, s, day)
           if m then people.remember(p, now, "Learning " .. m.role .. "'s work from " .. m.name) end
         end
       end
+      -- shoes wear (D-104); barefoot in the cold costs health
+      local sw = c.shoes_wear[st]
+      if sw then
+        p.shoes = max(0, (p.shoes or 0.7) - sw)
+        if s.cold and p.shoes < 0.1 then
+          p.health = max(0, p.health - 0.008)
+          if (p.foot_day or -9) < day - 8 then p.foot_day = day; people.remember(p, now, "Barefoot in the cold: my shoes are worn through") end
+        end
+      end
       -- clothes wear (children outgrow theirs); rags in the cold cost health (D-088)
       local cw = c.clothes_wear[st]
       if cw then

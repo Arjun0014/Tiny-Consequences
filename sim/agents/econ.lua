@@ -26,8 +26,10 @@ M.GOODS = {
   logs = { base = 1.5, wt = 1 / 2, pool = "village", name = "logs", unit = "", plural = true },
   wool = { base = 3.0, wt = 1 / 3, pool = "house", name = "wool", unit = "GE" },
   cloth = { base = 6.0, wt = 1 / 3, pool = "house", name = "cloth", unit = "GE" },
+  hides = { base = 2.0, wt = 1 / 3, pool = "house", name = "hides", unit = "", plural = true },
+  leather = { base = 4.0, wt = 1 / 4, pool = "house", name = "leather", unit = "pieces" },
 }
-M.ORDER = { "grain", "smoked", "cheese", "logs", "wool", "cloth" }
+M.ORDER = { "grain", "smoked", "cheese", "logs", "wool", "cloth", "hides", "leather" }
 
 -- "8.0 FU of smoked fish", "2 logs": an amount of a good in words.
 function M.amount(q, g)
@@ -86,6 +88,11 @@ function M.house_stock(W, hh, home, g)
   if g == "wool" or g == "cloth" then
     local have = (st.wool or 0) + (st.flax or 0) + (st.fibre or 0) + (st.yarn or 0) + (st.cloth or 0)
     return have, n * c.textile_hh_want, (g == "wool" and (st.wool or 0) or (st.cloth or 0))
+  end
+  if g == "hides" or g == "leather" then
+    -- (hides and leather stand for the household's shoes to come: D-104)
+    local have = (st.hides or 0) + (st.leather or 0) * 1.2
+    return have, n * c.leather_want, st[g] or 0
   end
   return 0, 0, 0
 end
@@ -322,7 +329,7 @@ end
 -- Sharing within the village (D-101): a household with far more relish (smoked fish, cheese) or
 -- wool and cloth than it wants takes some to a household that has little, kin first and those
 -- who gave to it before. A gift, remembered by both (hh.got / hh.gave), not a sale.
-local SHARE = { "smoked", "cheese", "wool", "cloth" }
+local SHARE = { "smoked", "cheese", "wool", "cloth", "leather" }
 local function hh_have(W, hh, home, g)
   local c = C()
   local n = max(1, #hh.members)

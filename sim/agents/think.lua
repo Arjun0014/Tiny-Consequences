@@ -53,7 +53,7 @@ local function plural(n, one, many) return n == 1 and one or many end
 -- outlive a person who moved to a new house, died or changed their mind).
 local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "fetch_wood", fetch_water = "fetch_water", foraging = "forage",
   smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed",
-  milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle", trading = "trade", sharing = "share" }
+  milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle", trading = "trade", sharing = "share", tanning = "tan", lifting = "lift", cobbling = "cobble" }
 local function claim_free(W, hh, field, p)
   local id = hh[field] or 0
   if id == 0 or (p and id == p.id) then return true end
@@ -1007,6 +1007,49 @@ local function textile_candidates(W, s, p, ctx, now)
     if f > 0 then
       addw((0.16 + 0.5 * (0.55 - mine) + slack) * f * fat - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.5, "mend_clothes", home.id, 0,
         "Patching my clothes (%d%% whole)", floor(mine * 100))
+    end
+  end
+end
+
+-- Leather (D-104): hides to the household's tanning pit, the leather lifted out when it is done,
+-- shoes made at home for whoever's are worn out.
+local function tan_pit(s, hh)
+  for _, id in ipairs(s.blist) do
+    local b = s.buildings[id]
+    if b.kind == "tanpit" and b.hh == hh.id and b.state == "standing" then return b end
+  end
+  return nil
+end
+M.tan_pit = tan_pit
+
+local function leather_candidates(W, s, p, ctx, now)
+  local c = C()
+  local hh, home = ctx.hh, ctx.home
+  if not hh or not home or ctx.night then return end
+  if ctx.stage ~= "adult" and ctx.stage ~= "apprentice" then return end
+  local fat = fatigue(p) * WEATHER_OK(ctx, p)
+  local day = floor(now / 24)
+  local pit = tan_pit(s, hh)
+  if pit then
+    if (pit.stock.soaking or 0) > 0 and day >= (pit.ready or 0) and claim_free(W, hh, "lifting", p) then
+      addw((0.3 + 0.1 * min(2, pit.stock.soaking)) * fat - travel(ctx, pit.dx, pit.dy, p.x, p.y), "lift", pit.id, 0,
+        "%.0f hides have soaked long enough in the pit: lifting out the leather", pit.stock.soaking)
+    elseif (pit.stock.soaking or 0) <= 0 and (home.stock.hides or 0) >= 1 and claim_free(W, hh, "tanning", p) then
+      addw((0.22 + 0.05 * min(4, home.stock.hides)) * fat - travel(ctx, pit.dx, pit.dy, p.x, p.y) - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.5,
+        "tan", pit.id, 0, "%.0f hides at home: putting them to soak in the tanning pit", home.stock.hides)
+    end
+  end
+  -- shoes for whoever's are worst, when there is leather
+  if (home.stock.leather or 0) >= c.shoe_leather and claim_free(W, hh, "cobbling", p) then
+    local worst, wq = 0.35, nil
+    for _, id in ipairs(hh.members) do
+      local q = W.S.v3.people[id]
+      if q and q.alive and q.act ~= "carried" and (q.shoes or 0.7) < worst then worst, wq = q.shoes or 0.7, q end
+    end
+    if wq then
+      addw((0.25 + 0.6 * (0.35 - worst) + (s.cold and 0.1 or 0)) * fatigue(p) - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.5, "cobble", home.id, wq.id,
+        wq == p and "My shoes are worn through (%d%%): cutting new ones from our leather" or "%s's shoes are worn through: making new ones from our leather",
+        wq == p and floor(worst * 100) or wq.name)
     end
   end
 end
@@ -2327,6 +2370,42 @@ PLAN.share = function(W, s, p, ctx, now, cd)
   return "Take " .. econ.GOODS[g.g].name .. " to a neighbour", oh.label or "a house"
 end
 
+PLAN.tan = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local pit = s.buildings[cd.a]
+  local home = ctx.home
+  ctx.hh.tanning = p.id
+  if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+  pl[#pl + 1] = { op = "pick", what = "hides", ref = home.id, n = 6 }
+  go(pl, pit.dx, pit.dy, "the tanning pit")
+  work(pl, "tan", c.tan_h, { ref = pit.id, fx = pit.cx, fy = pit.cy })
+  return "Hides to the tanning pit", "the tanning pit"
+end
+
+PLAN.lift = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local pit = s.buildings[cd.a]
+  local home = ctx.home
+  ctx.hh.lifting = p.id
+  go(pl, pit.dx, pit.dy, "the tanning pit")
+  work(pl, "lift", c.tan_h, { ref = pit.id, fx = pit.cx, fy = pit.cy })
+  go(pl, home.dx, home.dy, "home", home.id)
+  pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, release = "lifting" }
+  return "Lift the leather out", "the tanning pit"
+end
+
+PLAN.cobble = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local home = ctx.home
+  ctx.hh.cobbling = p.id
+  if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+  work(pl, "cobble", c.cobble_h, { ref = home.id, who = cd.b, inside = home.id })
+  return "Make shoes", "home"
+end
+
 PLAN.trip = function(W, s, p, ctx, now, cd)
   plan_reset(p)
   if p.trip.sea then sea_legs(W, s, p, ctx, now) else trip_legs(W, s, p, ctx, now) end
@@ -3044,6 +3123,7 @@ function M.decide(W, s, p, now, reason)
       crew_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       trade_candidate(W, s, p, ctx, now, fatigue(p))
       share_candidate(W, s, p, ctx, now, fatigue(p))
+      leather_candidates(W, s, p, ctx, now)
       rack_candidates(W, s, p, ctx, now, fatigue(p))
       mend_boat_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       chores(W, s, p, ctx, now)
