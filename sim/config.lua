@@ -988,6 +988,9 @@ C.V3 = {
   -- wolf is killed with wolf_kill_dog a meeting; a pup comes dog_pup_days after a dog is lost;
   -- people awake within wolf_fear of a wolf at a pen drive the pack off; a barking dog turns it with
   -- dog_deter a step (not a starving pack); a watch asleep within guard_alert wakes
+  -- (D-106) floods: the river's usual width is a running mean (flood_mean_k a day); water over
+  -- flood_bridge x usual wears each bridge flood_wear x the excess a day; worn through, swept away
+  flood_mean_k = 0.03, flood_bridge = 1.35, flood_wear = 0.9,
   dog_alert = 0.45, dog_trot = 1.9, dog_run = 4.0, wolf_kill_dog = 0.15, dog_pup_days = 12,
   wolf_fear = 0.16, dog_deter = 0.3, guard_alert = 0.4, dog_charge = 0.18,
   -- (D-104) leather: hides soak in a tanning pit tan_days (put in and lifted out in tan_h); a pair of

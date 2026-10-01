@@ -12,6 +12,7 @@ local events = require("sim.causality.events")
 local M = {}
 local floor, max, min, sqrt, abs, ceil = math.floor, math.max, math.min, math.sqrt, math.abs, math.ceil
 local function C() return cfgmod.V3 end
+local floods
 
 M.KINDS = {
   house = { w = 4, h = 4, label = "house", logs = 18, work = 110 },
@@ -170,7 +171,9 @@ local function plan_bridges(W, s)
     local bb = s.buildings[b]
     if bb and bb.kind == "bridge" then return end
   end
-  if (s.acc.bridges or 0) >= c.bridges_max then return end
+  if (s.acc.bridges or 0) - (s.acc.bridges_lost or 0) >= c.bridges_max then return end   -- (standing: D-106)
+  -- (nobody lays out a bridge while the river is in flood: D-106)
+  if (s.flood or 0) > c.flood_bridge then return end
   -- (the crossings wanted within three tiles of a place, summed)
   for _, i in ipairs(keys) do
     if cr[i] then
@@ -1258,6 +1261,55 @@ local function plan_flax(W, s, day)
   end
 end
 
+-- Floods and bridges (D-106): today's river widths on the map's planet cells against what they
+-- usually are (a slow running mean); a high water wears every bridge, and one worn through is swept
+-- away: its tiles are river again, the ways round or through it change at once, and the crossings
+-- (D-095) build up the need for a new one.
+local MAPCELLS = setmetatable({}, { __mode = "k" })
+function floods(W, s, wd, day)
+  local c = C()
+  local cells = MAPCELLS[s]
+  if not cells then
+    cells = {}
+    local seen = {}
+    for i = 1, s.N * s.N do
+      local cl = s.cell_of[i]
+      if cl and cl > 0 and not seen[cl] then seen[cl] = true; cells[#cells + 1] = cl end
+    end
+    table.sort(cells)
+    MAPCELLS[s] = cells
+  end
+  s.rw = s.rw or {}
+  local k = 0
+  for _, cl in ipairs(cells) do
+    local w = wd[cl] or 0
+    if w > 0 then
+      local a = s.rw[cl] or w
+      if w / a > k then k = w / a end
+      s.rw[cl] = a + (w - a) * c.flood_mean_k
+    end
+  end
+  s.flood = k
+  if k <= c.flood_bridge or not s.bridge then return end
+  local V = W.S.v3
+  for i = #s.blist, 1, -1 do
+    local b = s.buildings[s.blist[i]]
+    if b and b.kind == "bridge" and b.state == "standing" then
+      b.cond = (b.cond or 1) - c.flood_wear * (k - c.flood_bridge)
+      if b.cond <= 0 then
+        for _, t in ipairs(b.tiles or {}) do if s.bridge[t] == b.id then s.bridge[t] = nil end end
+        M.remove_building(W, s, b)
+        s.acc.bridges_lost = (s.acc.bridges_lost or 0) + 1
+        for _, id in ipairs(s.members) do
+          local q = V.people[id]
+          if q and q.alive and people.stage(q, W.hour) == "adult" then people.remember(q, W.hour, "The flood swept the bridge away") end
+        end
+        if W.record_events then events.emit(W, "bridge_lost", s.cell, 0, 1, { settlement = s.id, building = b.id }) end
+      end
+    end
+  end
+end
+
 -- Growth: couples without a home get a house site.
 local function plan_houses(W, s)
   local V = W.S.v3
@@ -1316,7 +1368,9 @@ function M.daily(W, s, day)
   finish_clearing(W, s)
   mapm.daily_wear(s)
   -- the rivers as today's flow has them (a flood closes the fords, a drought opens more)
-  mapm.rivers(W, s, false, M.today_widths(W))
+  local wd = M.today_widths(W)
+  mapm.rivers(W, s, false, wd)
+  floods(W, s, wd, day)
   mapm.rebuild_costs(s)
   s.dirty_costs = false
   -- (D-095) the river today: its fish (a stock by how much water there is, regrowing), and the

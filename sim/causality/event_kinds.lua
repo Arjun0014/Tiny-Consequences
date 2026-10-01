@@ -77,6 +77,7 @@ def("labour_shortage",  { actor = "derived", icon = "people", text = "Too few ha
 def("boat_lost",        { actor = "derived", icon = "boat", text = "Boat lost" })
 def("shipment_lost",    { actor = "derived", icon = "tanker", headline = true, text = "Shipment lost" })
 def("house_built",      { actor = "derived", icon = "house", text = "House built" })
+def("bridge_lost",      { actor = "derived", icon = "house", text = "Bridge swept away by a flood" })
 def("village_expanded", { actor = "derived", icon = "house", text = "Village grows" })
 def("fields_abandoned", { actor = "derived", icon = "crop", text = "Fields abandoned" })
 -- villages that know each other (W7, docs/world/18 §2.3)
