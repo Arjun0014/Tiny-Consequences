@@ -20,7 +20,8 @@ trade, migrate and fight on their own); the visible action must be the simulatio
 **v3 is the default game and work happens on main** (the v3 branch is merged): spec `docs/v3/`
 (00 audit, 10 agents, 20 character pipeline, 30 roadmap v3), code `sim/agents/` and
 `game/view/agents_view.lua`. The legacy v2 world opens with `?world=v2` and stays until v3 reaches
-parity. Commit prefix `[v3]`.
+parity. Commit prefix `[v3]`. Session 11 (D-085-D-090): `sim/surface.lua` is the one coast/river
+function for the view and the sim; fishing, textiles and sheep are live systems.
 
 ## Read order
 

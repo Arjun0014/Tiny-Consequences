@@ -44,12 +44,20 @@ in the debug build), the daily planet step amortised.
   loop in the sim (D-084). Open: the shared coast function so the local map's water matches the
   rendered coast; southern founding states; rivers and fords.)
 - Storage and spoilage, the store a village wants (D-074's memory of hunger re-expressed).
+  (Session 11, D-085-D-087: one shared surface for coasts and rivers with fords and floods; both
+  hemispheres founded in their local season; sites by annual climate, drawn to shores and rivers;
+  fishing as an occupation with household boats, smoking and boat building. Open: bridges, water
+  from rivers, river fishing.)
 
 ## R3 — Animals as individuals
 - Herds/packs (W4 fauna) stay the macro ecology; each visible animal is a micro-agent (graze,
   wander, separation/cohesion, rest, follow its mother, flee, chase) steered by the group's
   objective. Kills remove a specific animal; hunters stalk a specific animal.
 - Livestock (sheep, goats, cattle, pigs, horses) from the Quaternius pack, herded by people.
+(Session 11, D-088-D-089: textiles as winter work; sheep as individual micro-agents in the shared
+event queue — herded by children, pasture, hay, lambing, shearing, slaughter — drawn as the
+procedural movers. Open: animated Quaternius models, goats/cattle/pigs, milk, manure, predators,
+wild herds as individuals, hunting a specific animal.)
 
 ## R4 — Exchange and travel
 - Paths between settlements, porters and traders walking with loads; trade boats; relations from

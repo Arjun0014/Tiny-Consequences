@@ -1,74 +1,85 @@
-# Session handoff — session 10 end (1 Oct 2026): v3 is the default game
+# Session handoff — session 11 end (1 Oct 2026): one surface, both hemispheres, fishing, textiles, sheep
 
-`docs/PROGRESS.md` (session 10 entry) and **D-079 … D-084** in `docs/DECISIONS.md` are the source
+`docs/PROGRESS.md` (session 11 entry) and **D-085 … D-090** in `docs/DECISIONS.md` are the source
 of truth. Arjun's rules: no subagents; the living world first; one heavy process at a time
-(shared laptop, ~4 GB free); hand off before the context runs out.
+(shared laptop, ~2.5 GB free); visible action = simulation; hand off near ~900K context.
 
 ## State
-- **main** holds everything (the v3 branch was merged at `d8cb549`; work continues on main).
-  A normal launch opens the v3 agent world (`assets/worlds/v3.tcsave`: seed 22, **4 settlements,
-  103 people**, Tekheim and Deztok coastal with docks) at its first dawn, at ▶▶. `?world=v2` opens
-  the legacy v2 world; `?seed=N` generates a v3 world (`&world=v2` a v2 one).
-- Time: ⏸ / ▶ 1 / ▶▶ 4 / ▶▶▶ 12 game-min per second; nothing faster is a watch speed. Skips (HUD
-  ⏭ menu or keys 4-7): until dawn, until evening, one day, next season — people hidden, the view's
-  rebuilds paused, progress and Stop; the world lands exactly where the sim put it.
-- Sim (`sim/agents/`): + `kin.lua` (infants, carers, minders, mentors). The economy (D-080),
-  life stages (D-081), several settlements (D-083) and fishing (D-084) are described in DECISIONS.
-- Regenerate the world after any change to founding or world generation:
-  `luajit tools/make_world.lua --v3 --seed 22 --settlements 6 --out assets/worlds/v3.tcsave`.
+- **main** holds everything. A normal launch opens the v3 world (`assets/worlds/v3.tcsave`: seed
+  22, **6 settlements, 145 people, ~170 sheep** on 3 landmasses: Tekheim in the north at its first
+  spring dawn; Zurug, Hunuvale, Upper Linamist, Moomoo, Hottoodingle Hop in the south, founded in
+  their autumn; 5 coastal with docks, 5 with rivers on their maps). `?world=v2` legacy;
+  `?seed=N` generates a v3 world; `?world=NAME` loads `assets/worlds/NAME.tcsave`.
+- Regenerate after any change to founding/worldgen:
+  `luajit tools/make_world.lua --v3 --seed 22 --settlements 6 --out assets/worlds/v3.tcsave`
+  (state hash 1237856114 at the last commit).
+
+## What became genuinely agentic this session
+- **Geography** (D-085): `sim/surface.lua` is the one coast/river function for the view and the sim:
+  boats row only on drawn water; rivers cross the local maps with fords (wadeable, slow) and deep
+  water (closed); floods widen rivers and close fords day by day; people path across at fords.
+- **Fishers** (D-087): a fisher household's day is traceable: wake → dock → board its own boat →
+  row to a ground → catch taken from the sea cell's fish → row back → land → carry home → smoke
+  the surplus at the hearth. Fishing follows need (fresh fish keeps a day or two; smoked fish for the
+  winter); boats wear, are mended with a log, rot, and new ones are built on the stocks.
+- **Both hemispheres** (D-087): founding states from the local season; crops develop with warmth
+  and yield by water.
+- **Textiles** (D-088): flax → pull → ret → dress → spin (at the well among neighbours on fair
+  evenings) → weave → sew; clothes wear (children outgrow theirs); rags in the cold hurt.
+- **Sheep** (D-089): individual animals in the shared event queue; children of owning households
+  take the flock out, mind it, bring it home; lambing, shearing, hay, slaughter.
+
+## Performance (release HTML5, `node scripts/skip_probe.mjs --release --skips day`)
+- 146 people + ~170 sheep: **42.9 ms of sim per game hour → a 12-day season ≈ 12 s** (103 people
+  without the new systems: 9.9 s → 7.2 s after D-086). LuaJIT interpreter 7.7 ms/h.
+- The browser's Lua 5.1 is dear on `string.format`, `bit` calls (hashes) and C calls in general:
+  **measure in the browser** (`--world NAME` to compare worlds; bisect by disabling a candidate
+  function) — LuaJIT counts misled this session (D-090).
+- Headless SwiftShader frames cost ~200-600 ms each: browser shot scripts step slowly (minutes).
 
 ## How to look at it
-- Game: `npm run build && npm run serve`, open `http://localhost:8080/` (v3). Click a villager for
-  the inspector; "Follow" keeps the camera on them.
-- A whole year headless: `luajit tools/v3_year.lua --days 54 --out out/year` (summary.txt: daily
-  food/wood/fields with a conservation residual, budgets by stage and season, trips, crowding,
-  stuck, synchrony; follow.txt: followed people's days; `--load assets/worlds/v3.tcsave` for the
-  multi-settlement world; `--ids 12,21 --follow-days 14`).
-- Decision traces: `think.trace = { [id] = true }` then `think.trace_out` (every candidate and its
-  score; see `out/s10/trace2.lua` pattern).
-- Shots: `npm run shots:v3 [-- --hours 6.2,20.6 --person 12 --zoom 1.45]`.
-- Catch-up cost in the browser: `node scripts/skip_probe.mjs [--release] --hours 24 --skips day,season`.
-- Blender: not on PATH — `"/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b
-  --factory-startup -P tools/blender/build_villager.py -- --out assets/characters`.
+- Year watch: `luajit tools/v3_year.lua --load assets/worlds/v3.tcsave --days 54 --sett K
+  [--ids 12,21 --follow-days 3,15] --out out/year` → summary.txt (per-settlement food, linen,
+  fish, flock lines; budgets for settlement K), follow.txt.
+- Maps: `luajit tools/v3_map.lua --load assets/worlds/v3.tcsave --out out/map` (sea, rivers, fords,
+  floodplain, plots, buildings, trees, lanes, dock).
+- Profile: `luajit -joff tools/v3_profile.lua [--load W] [--days 6] [--time] [--nohook]`.
+- Shots: `node scripts/shots_look.mjs --sett K --days D --hour H --zoom Z [--what dock|ford]`,
+  `node scripts/shots_geo.mjs` (every settlement, dock, ford, a fisher — slow), `npm run shots:v3`.
+- Traces: `think.trace = { [id] = true }` → `think.trace_out` (candidates and utilities; `~` = an
+  unevaluated lazy bound). Hash comparisons: `out/s11`-style scratch scripts (`world.advance` 8 days,
+  hash positions) to prove refactors identical.
 
 ## Verified at the last commit
-- Quick sim suite **119/119** (`out/s10/quick_final.txt`; v2 109 + v3 10: slicing, save round trip, four
-  days, families, no teleports, and `test_v3_year`: economy closes, nobody starves, infants held
-  and fed, children never field hands, apprentices beside mentors, the rotation turns).
-- Web **10/10** (`out/s10/web_final.txt`): W01-W09 (legacy v2, `world=v2`) and W10 (v3 default:
-  ▶▶, watch ladder, skip to dawn; `?world=v2` still loads). Lint clean. `npm run build` OK (6.08 MB).
+- Quick sim suite **123/123** (v2 109 + v3 14), web **10/10**, lint clean, debug build 6.1 MB.
 
 ## Next (in order)
-1. **Coast function** shared by the sim's local map and the view (the local map's water is the
-   nearest sim cell's ocean flag; the rendered coast is the planet mesh's interpolated shoreline —
-   boats can row over drawn forest). Then rivers and fords on the local map.
-2. **Catch-up speed with several settlements**: 154 ms of sim per game hour for 103 people (debug
-   HTML5); a season's skip ≈ 44 s. Profile in `luajit -joff` (interpreter ≈ the browser): A* and
-   its heap, RNG hashing, the planet's daily step (amortise it across the day), settle.hourly's
-   per-tree scans, `next_tree` O(trees) per felling decision. Measure the release build.
-3. **Southern founders**: founding states for a settlement whose day 0 is its autumn (the rotation
-   under way, a fresh harvest in store); then settlements on every landmass.
-4. **Winter work**: textiles (flax or wool → yarn → cloth → clothes that wear) and livestock (R3)
-   — winter is still ~70% social.
-5. Fishers as a role (pick_role when a dock exists), boat building and repair, fish drying.
-6. R3 animals as individuals; R4 trade between settlements (paths, porters, boats).
+1. **More browser cost**: eager formats left in PLAN objectives and the hourly board's
+   `need.fell_why`; `settle.next_tree` (~11% of instructions: a spatial index or an hourly shortlist);
+   A* (~26%). Target: ≤ 10 s a season at 150 people in the release build.
+2. **R3 animals continued**: the animated Quaternius farm models through the skinned pipeline
+   (`tools/blender/build_villager.py` pattern), goats/cattle/pigs, milk and cheese, manure to the
+   fields, dogs and wolves (W4 packs) threatening flocks; then wild herds as individuals (hunters
+   choosing a specific animal).
+3. **Rivers in use**: water fetched from the river, bridges where traffic crosses deep water, river
+   fishing; two-person boat crews; drying racks.
+4. **R4 trade** between settlements (cloth, smoked fish, wool, grain) by paths and boats.
 
-## Findings and pitfalls (session 10)
-- **bob rejects circular requires, even lazy ones** (`require` inside a function): pass functions
-  in (`act.interrupt_hook`, `kin.infant_tick(..., pos)`).
-- **No `goto` anywhere** (the HTML5 runtime is Lua 5.1; `npm run lint:lua` only checks sim/ and
-  content/).
-- Local functions must be defined before the function that calls them (an `update_boats` defined
-  after `M.update` was a nil global at runtime).
-- Household claims (who cooks, fetches...) must be validated (`think.claim_free`): a claim held by
-  someone who moved to a new house starved two people.
-- Headless SwiftShader frames cost ~200 ms on their own: judge skip/catch-up speed by the sim's own
-  cost (`v3_bench`, skip internals), not wall time.
-- Heredocs with apostrophes break in Git Bash: write patch scripts to the scratchpad.
-- The machine's timings swing ~2x with other load; compare counts, not milliseconds.
+## Findings and pitfalls (session 11)
+- bob rejects circular requires even inside functions: pass resources/functions in
+  (`agents_view.sheep_res` set by view.lua).
+- The year tool and tests keep a food ledger: every new food stock or source (fish, smoked, meat)
+  must be added to both (`food_total`, `accs`).
+- `cat > file` with no input in a Bash call blocks forever; heredocs with apostrophes break: write
+  patch scripts to the scratchpad and run them with python.
+- Timing in LuaJIT with the JIT on is erratic (slower than -joff here); never time while a headless
+  browser runs.
+- Lazy candidates (`add_lazy`) and lazy whys (`addw`) must stay exactly equivalent: any code that
+  reads candidate utilities directly (the leave-the-baby branch) must resolve lazies the same way.
 
 ## Known oddities
-- Winter is mostly talk, visits and rest (no textiles, livestock or winter crafts yet).
-- Fallow ploughing, sowing and harvest still come in bursts per household when the window opens.
-- The well gathers up to ~10 on fine evenings.
-- Boats are drawn over coastal forest where the sim's water and the rendered coast disagree.
+- Children still play ~75% of winter days where they are under nine (herding and spinning start at
+  9-10). The well still gathers crowds on fine evenings.
+- Sheep are rigid procedural movers (no leg animation yet); the fold is drawn as stakes.
+- Some infants die "of illness" (the hazard); clothes can reach rags in a household with no fibre.
+- Flocks grow fast in the first year (culls start when the hay cannot winter them).
