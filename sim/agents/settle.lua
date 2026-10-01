@@ -500,6 +500,7 @@ function M.hourly(W, s, now)
   need.food_days = pop > 0 and food / pop or 99
   -- sowing window
   local doy = clock.local_doy(now, W.grid.lat[s.cell])
+  local new_day = s.doy ~= doy
   s.doy = doy
   -- sowing: the spring window, or the winter crop's in autumn (per plot: M.sow_open)
   local seed = s.granary and (s.granary.stock.grain or 0) > c.seed_row
@@ -507,6 +508,8 @@ function M.hourly(W, s, now)
   if doy >= c.sow_winter[1] and doy <= c.sow_winter[2] then w0, w1 = c.sow_winter[1], c.sow_winter[2] end
   need.sowing = seed and doy >= w0 and doy <= w1
   need.sow_late = need.sowing and (doy - w0) / max(1, w1 - w0) or 0
+  -- (what to sow is decided at the start of each local day, before anyone hoes: D-100)
+  if new_day then M.plan_sowing(W, s, true) end
   -- wood: what is wanted (sites + fuel reserve) against what is stored or lying cut
   local tr = s.trees
   local felled = s.felled
@@ -847,7 +850,9 @@ local function plan_fields(W, s, day)
   s.food_expect, s.food_want = expect, want
   -- hands to spare (adults idle much of the day, measured: s.idle_avg) and open land: they clear
   -- more than they need (a bigger store against a bad year), up to half again (D-081)
-  local spare = (s.idle_avg or 0) > c.idle_expand and expect < want * 1.6
+  -- (with sowing to need (D-100), more ground only helps when the open fields were too few for
+  -- the rows the village wanted)
+  local spare = (s.idle_avg or 0) > c.idle_expand and s.land_short and expect < want * 1.6
   s.expand_why = (expect < want) and "short" or (spare and "spare" or nil)
   if expect >= want and not spare then return end
   -- the free lattice spot nearest the fields and the village
@@ -888,6 +893,91 @@ local function plan_fields(W, s, day)
   s.clearing.x, s.clearing.y = x, y
   if W.record_events then events.emit(W, "village_expanded", s.cell, 0, 0, { settlement = s.id, kind = "field" }) end
 end
+
+-- Sowing to need (D-100): the bread the village eats (the grain its households fetch from the
+-- granary to eat, as measured) decides how many rows it hoes and sows: enough that the store, the
+-- crop standing in the fields and what is sown now carry it a year with `store_years` to spare. The
+-- fields not wanted this time rest (their soil recovers; the herds graze them). The best soil is
+-- sown first; rows already hoed (the summer's ploughing of the fallow) are the first counted.
+local SOW_OPEN = {}
+local function plan_sowing(W, s, measure)
+  local c = C()
+  if measure or not s.grain_use then
+    local f = s.acc.g_food or 0
+    if s.gf_prev and s.grain_use then
+      s.grain_use = s.grain_use + (f - s.gf_prev - s.grain_use) * c.grain_use_k
+      s.gu_days = (s.gu_days or 0) + 1
+    else
+      s.grain_use = (s.eat_avg or (s.pop or 0) * 0.7) * 0.5
+    end
+    s.gf_prev = f
+  end
+  -- (a village new to its land sows for its whole appetite until a year of its own eating has
+  -- told it how much of that is bread and how much fish, meat, milk and the woods)
+  local use = max(s.grain_use, (s.eat_avg or (s.pop or 0) * 0.7) * max(0, 1 - (s.gu_days or 0) / c.days_per_year))
+  local doy = s.doy or 0
+  local g = s.granary
+  local G = g and ((g.stock.grain or 0) + (g.stock.sheaves or 0)) or 0
+  for k = 1, #s.blist do
+    local b = s.buildings[s.blist[k]]
+    if b.kind == "house" then G = G + (b.stock.food or 0) end
+  end
+  local q = s.q_avg or 0.85
+  local R, rows_all = 0, 0
+  local open = SOW_OPEN
+  for k = #open, 1, -1 do open[k] = nil end
+  for k = 1, #s.plots do
+    local pl = s.plots[k]
+    G = G + pl.sheaves
+    if pl.crop ~= "flax" then
+      rows_all = rows_all + pl.rows
+      local standing = 0
+      for r = 1, pl.rows do
+        local rs = pl.row_st[r]
+        if rs == 2 then standing = standing + 1 end
+      end
+      local qp = (pl.stage == "growing" and pl.q_n > 0.5) and pl.q_sum / pl.q_n or q
+      R = R + standing * c.row_yield * (pl.fert or 1) * qp * 0.85
+      if M.sow_open(pl, doy) then open[#open + 1] = pl end
+    end
+  end
+  local A = use * c.days_per_year
+  local T = A * (1 + c.store_years) + rows_all * c.seed_row
+  local want = ceil((T - G - R) / (c.row_yield * q * 0.85))
+  s.sow_want, s.grain_store, s.grain_target = want, G, T
+  local left = want
+  table.sort(open, function(a, b)
+    local fa, fb = a.fert or 1, b.fert or 1
+    if fa ~= fb then return fa > fb end
+    return a.id < b.id
+  end)
+  for k = 1, #open do
+    local pl = open[k]
+    local free = 0
+    for r = 1, pl.rows do
+      local rs = pl.row_st[r]
+      if rs ~= 2 then free = free + 1 end
+    end
+    local was = pl.sow_ok
+    pl.sow_ok = left > 0
+    if left > 0 then left = left - free end
+    if was ~= false and not pl.sow_ok and pl.hh ~= 0 then
+      -- (the owners know why their field lies idle)
+      local hh = W.S.v3.households[pl.hh]
+      local txt = nil
+      for _, id in ipairs(hh and hh.members or {}) do
+        local q = W.S.v3.people[id]
+        if q and q.alive and people.stage(q, W.hour) == "adult" then
+          txt = txt or string.format("The village has bread for %.0f days in store and in the fields: %s rests this time", (G + R) / max(0.1, use), pl.name)
+          people.remember(q, W.hour, txt)
+        end
+      end
+    end
+  end
+  -- (the village wanted more rows than its open fields have: land is short)
+  if #open > 0 then s.land_short = left > 0 end
+end
+M.plan_sowing = plan_sowing
 
 -- New field ground with no tree, stump or log left on it becomes a plot.
 local function finish_clearing(W, s)
@@ -1160,6 +1250,8 @@ function M.daily(W, s, day)
   dry_racks(W, s, day)
   s.rain_day = 0
   plan_flax(W, s, day)
+  -- (fields whose window opened today: decided before anyone sows them)
+  plan_sowing(W, s, false)
   plan_fields(W, s, day)
   finish_clearing(W, s)
   mapm.daily_wear(s)

@@ -330,6 +330,9 @@ local function work_candidates(W, s, p, ctx, now)
             if rs == 1 and pr > sp and not plough then srow, sp = r, pr elseif (rs == 0 or rs == 3) and pr > tp then trow, tp = r, pr end
           end
         end
+        -- (sowing to need, D-100: a field the village does not want sown this time rests; one not
+        -- yet decided waits for the decision)
+        if not plough and pl.crop ~= "flax" and pl.sow_ok ~= true then trow, srow = 0, 0 end
         local left = pl.rows - pl.sown
         if srow > 0 then
           local f = fit(p, ctx, "sow", k)
@@ -637,6 +640,8 @@ local trade = require("sim.agents.trade")
 local function trade_candidate(W, s, p, ctx, now, fat)
   local c = C()
   if ctx.stage ~= "adult" or not ctx.home or ctx.babe or ctx.rain >= 1 or ctx.lh > ctx.sunset - 4 then return end
+  -- (a mother with a baby at the breast does not leave it for days on the road)
+  if (p.nursing or 0) > now then return end
   if p.trip or not claim_free(W, ctx.hh, "trading", p) then return end
   local home = ctx.home
   local n = #ctx.hh.members

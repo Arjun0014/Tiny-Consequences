@@ -825,6 +825,7 @@ C.V3 = {
   woodpile_fetch = 2,                     -- logs fetched from the woodstore a trip (a child 1)
   store_logs = 20,                        -- logs the woodstore keeps in reserve
   store_years = 0.5,                      -- food beyond the next harvest the village wants (years)
+  grain_use_k = 0.04,                     -- (D-100) daily weight of the measured grain use (the households' fetching)
   max_plots = 20,
   idle_expand = 0.4,                      -- adults idle more than this share of the day: more fields are cleared
   grub_h = 0.45,                          -- hours to dig out a stump on new field ground

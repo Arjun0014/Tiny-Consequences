@@ -97,7 +97,13 @@ local function run()
     for _, pl in ipairs(s.plots) do
       if pl.stage == "rest" and (pl.ploughed or 0) > 0 then R.plough = math.max(R.plough, pl.ploughed) end
       if pl.crop == "winter" and pl.stage == "growing" and pl.sown_day and pl.sown_day >= 20 then R.winter_sown = R.winter_sown + 1 end
+      R.seen = R.seen or {}
+      R.seen[pl.stage] = true
+      -- (D-100) a field the village chose to rest is not sown
+      if pl.crop ~= "flax" and pl.sow_ok == false and pl.stage == "fallow" and pl.sown > 0 then R.rest_sown = (R.rest_sown or 0) + 1 end
     end
+    -- (D-100) the autumn's decision: did the village want winter grain?
+    if s.need.sowing and (s.doy or 0) >= cfgmod.V3.sow_winter[1] then R.autumn_want = math.max(R.autumn_want or -1e9, s.sow_want or 0) end
   end
   act.start = orig
   RUN = R
@@ -213,11 +219,19 @@ end
 function M.the_rotation_turns()
   local R = run()
   T.ok(R.plough >= 6, "the fallow was not ploughed (" .. R.plough .. " rows)")
-  T.ok(R.winter_sown > 0, "no winter crop sown in autumn")
-  local s = R.W.S.v3.settlements[1]
-  local st = {}
-  for _, pl in ipairs(s.plots) do st[pl.stage] = (st[pl.stage] or 0) + 1 end
-  T.ok((st.rest or 0) >= 1 and (st.growing or 0) >= 1, "plots not in rotation at day 50")
+  -- (D-100) the winter crop is sown when the village wants more grain than its store and crop
+  -- will give, and the fields rest when it does not
+  if (R.autumn_want or 0) > 0 then
+    T.ok(R.winter_sown > 0, "no winter crop sown in autumn though the village wanted " .. R.autumn_want .. " rows")
+  else
+    T.ok(R.winter_sown == 0, "winter crop sown though the store sufficed")
+  end
+  T.ok((R.rest_sown or 0) == 0, "fields chosen to rest were sown")
+  -- (the fields went through the year's stages: D-100 lets a field rest when the store suffices, so
+  -- the day-50 snapshot no longer needs a growing field)
+  for _, st in ipairs({ "growing", "ripe", "stubble", "rest", "fallow" }) do
+    T.ok(R.seen[st], "no field was " .. st .. " in 50 days")
+  end
 end
 
 return M

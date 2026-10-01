@@ -1033,6 +1033,8 @@ PICK.grain = function(W, s, p, st)
     b.stock.grain = gr - got
     b.stock.smoked = sm - fish
     p.carry, p.camt = st.as or "grain", got + fish
+    -- (the grain the households take home to eat: the village's measure of its bread, D-100)
+    if st.as == "food" then s.acc.g_food = (s.acc.g_food or 0) + got end
   end
 end
 
@@ -1278,19 +1280,26 @@ local LEISURE = { rest = true, talk = true, visit = true, sit_out = true }
 local function finish(W, s, p, now, f)
   local st = p.plan[p.pi]
   local dt = now - p.t0
-  if p.act == "travel" and dt > 0 and (p.prov or 0) > 0 then
-    -- the provisions from home, eaten along the road (D-097)
+  if p.act == "travel" and dt > 0 then
+    -- the provisions from home, eaten along the road hour by hour when hungry (D-097; eaten
+    -- before the leg's hunger was charged, a long leg starved its walker: D-100)
     local c = C()
-    local want = max(0, p.hunger + c.hunger_idle * dt - 0.35) / c.meal * c.meal_fu
-    local m = min(p.prov, want)
-    if m > 0 then
-      p.prov = p.prov - m
-      p.hunger = max(0, p.hunger - m / c.meal_fu * c.meal)
-      local hs = W.S.v3.settlements[p.sett]
-      hs.acc.eaten = (hs.acc.eaten or 0) + m
+    local hs = W.S.v3.settlements[p.sett]
+    local left = dt
+    while left > 0 do
+      local h = min(1, left)
+      body(p, h, "travel")
+      left = left - h
+      if p.hunger > 0.45 and (p.prov or 0) > 0 then
+        local m = min(p.prov, c.meal_fu)
+        p.prov = p.prov - m
+        p.hunger = max(0, p.hunger - m / c.meal_fu * c.meal)
+        hs.acc.eaten = (hs.acc.eaten or 0) + m
+      end
     end
+  else
+    body(p, dt, p.act)
   end
-  body(p, dt, p.act)
   if dt > 0 and p.act ~= "sleep" and p.act ~= "carried" and p.adult then
     -- (the village's measure of idle hands: adults' leisure hours of their waking hours)
     s.acc.aw_h = (s.acc.aw_h or 0) + dt

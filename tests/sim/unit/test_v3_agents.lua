@@ -78,9 +78,14 @@ function M.four_days()
   table.sort(woke)
   T.ok(#woke >= 40, "wakings " .. #woke)
   T.ok(woke[#woke] - woke[1] >= 1.5, string.format("wake times spread only %.2f h", woke[#woke] - woke[1]))
+  -- (D-100) rows sown as the village decided: its flax and the grain it wants (fields chosen to rest
+  -- stay bare)
   local sown = 0
-  for _, pl in ipairs(s.plots) do sown = sown + pl.sown end
-  T.ok(sown >= 80, "rows sown " .. sown)
+  for _, pl in ipairs(s.plots) do
+    sown = sown + pl.sown
+    T.ok(pl.crop == "flax" or pl.sow_ok ~= false or pl.stage ~= "fallow" or pl.sown == 0, pl.name .. " sown though chosen to rest")
+  end
+  T.ok(sown >= 70, "rows sown " .. sown)
   T.ok((s.acc.felled or 0) >= 4, "trees felled " .. tostring(s.acc.felled))
   -- the waiting couple's house rises (logs carried, hours worked) and stands within 12 days
   -- (a house is ~110 work-hours, D-080)
