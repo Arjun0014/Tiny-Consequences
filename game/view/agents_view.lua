@@ -342,9 +342,12 @@ local function fill_rows(V)
       local rs = pl.row_st[r]
       local e1 = pack(EARTH[1], EARTH[2], EARTH[3])
       local e2 = pack(EARTH_DARK[1], EARTH_DARK[2], EARTH_DARK[3])
-      if rs == 0 then
-        local f = pl.stage == "stubble" and CROP_GOLD or FALLOW
-        add(V, K.v3row_bare, cx, cy, 0, yaw, 1, 1, pack(f[1] * 0.8, f[2] * 0.75, f[3] * 0.7), 0, 0)
+      if rs == 0 or (rs == 3 and pl.stage == "rest") then
+        -- bare ground, or a resting field grassing over (its weeds) after the stubble
+        local w = rs == 0 and 1 or min(1, (pl.weeds or 0) * 1.4)
+        local f1 = { CROP_GOLD[1] + (FALLOW[1] - CROP_GOLD[1]) * w, CROP_GOLD[2] + (FALLOW[2] - CROP_GOLD[2]) * w,
+          CROP_GOLD[3] + (FALLOW[3] - CROP_GOLD[3]) * w }
+        add(V, K.v3row_bare, cx, cy, 0, yaw, 1, 1, pack(f1[1] * 0.8, f1[2] * 0.75, f1[3] * 0.7), 0, 0)
       elseif rs == 1 then
         add(V, K.v3row_furrow, cx, cy, 0, yaw, 1, 1, e1, e2, 0)
       elseif rs == 2 then
@@ -385,8 +388,8 @@ local function rows_sig(V)
   for k = 1, #s.plots do
     local pl = s.plots[k]
     for r = 1, pl.rows do h = (h * 7 + pl.row_st[r] + 1) % 1000000007 end
-    h = (h * 31 + floor((pl.growth or 0) * 24) + (pl.stage == "ripe" and 50 or 0) + floor(pl.sheaves / 12) * 3
-      + floor((pl.weeds or 0) * 4)) % 1000000007
+    h = (h * 31 + floor((pl.growth or 0) * 24) + (pl.stage == "ripe" and 50 or 0) + (pl.stage == "rest" and 70 or 0)
+      + floor(pl.sheaves / 12) * 3 + floor((pl.weeds or 0) * 4)) % 1000000007
   end
   if s.clearing then h = h + 777 end
   return h

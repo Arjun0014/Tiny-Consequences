@@ -95,7 +95,7 @@ local function food_total(s)
   if g then tot = tot + (g.stock.grain or 0) + (g.stock.sheaves or 0) end
   for k = 1, #s.blist do
     local b = s.buildings[s.blist[k]]
-    if b.kind == "house" then tot = tot + (b.stock.food or 0) end
+    if b.kind == "house" then tot = tot + (b.stock.food or 0) + (b.stock.seed or 0) + (b.stock.meals or 0) end
   end
   for k = 1, #s.plots do tot = tot + s.plots[k].sheaves end
   for k = 1, #s.members do
@@ -117,7 +117,7 @@ local crowd = {}   -- worst crowding instances
 local still = {}   -- per person: { since, x, y }
 local stuck = {}
 local food_prev = food_total(s1)
-local acc_prev = { h = 0, f = 0, e = 0, sown = 0 }
+local acc_prev = { h = 0, f = 0, e = 0, seed = 0, lunch = 0, spoil = 0 }
 local function sown_rows(s)
   local n = 0
   for k = 1, #s.plots do n = n + s.plots[k].sown end
@@ -182,10 +182,13 @@ for d = 1, args.days do
   local dh = (s.acc.harvest or 0) - acc_prev.h
   local df = (s.acc.foraged or 0) - acc_prev.f
   local de = (s.acc.eaten or 0) - acc_prev.e
-  local dsown = math.max(0, sown - sown_prev)
-  local expect = food_prev + dh + df - de - dsown * C.seed_row
+  local dseed = (s.acc.seed or 0) - acc_prev.seed
+  local dl = (s.acc.lunch or 0) - acc_prev.lunch
+  local dsp = (s.acc.spoiled or 0) - acc_prev.spoil
+  local expect = food_prev + dh + df - de - dseed - dl - dsp
   local resid = f - expect
   acc_prev.h, acc_prev.f, acc_prev.e = s.acc.harvest or 0, s.acc.foraged or 0, s.acc.eaten or 0
+  acc_prev.seed, acc_prev.lunch, acc_prev.spoil = s.acc.seed or 0, s.acc.lunch or 0, s.acc.spoiled or 0
   sown_prev, food_prev = sown, f
   local ripe, growing, sheaves = 0, 0, 0
   for _, pl in ipairs(s.plots) do
@@ -196,10 +199,14 @@ for d = 1, args.days do
   local wx = require("sim.agents.weather").today(W, s, base + 12)
   local season = clock.local_season(base + 12, lat)
   daily[d] = { food = f, resid = resid }
-  say("d%02d %-6s %5.1fC %s pop %d  food %5.0f (granary %4.0f+%3.0f sheaves, fields %3.0f)  harvest +%3.0f forage +%3.1f eaten -%4.1f  resid %+.1f  wood %d  sown %d grow %d ripe %d plots %d  %s  %.0f ms",
+  local tilled = 0
+  for _, pl in ipairs(s.plots) do for r = 1, pl.rows do if pl.row_st[r] >= 1 then tilled = tilled + 1 end end end
+  local hlogs = 0
+  for k = 1, #s.blist do local b = s.buildings[s.blist[k]]; if b.kind == "house" then hlogs = hlogs + (b.stock.logs or 0) end end
+  say("d%02d %-6s %4.1fC %s pop %d food %4.0f (gran %4.0f+%3.0f sh, fld %3.0f) harv +%3.0f forage +%4.1f (wild %3.0f) eat -%4.1f spoil -%3.1f resid %+.1f | wood %d +%.0f home, felled %d | hoed %d sown %d grow %d ripe %d plots %d %s %.0f ms",
     d - 1, season, wx.temp, wx.wet and (wx.heavy[1] and "R!" or "r ") or "  ", alive, f, s.granary.stock.grain or 0,
-    s.granary.stock.sheaves or 0, sheaves, dh, df, de, resid, s.wood_store.stock.logs or 0, sown, growing, ripe, #s.plots,
-    #s.sites > 0 and ("sites " .. #s.sites) or "", ms)
+    s.granary.stock.sheaves or 0, sheaves, dh, df, s.wild or 0, de, dsp, resid, s.wood_store.stock.logs or 0, hlogs, s.acc.felled or 0,
+    tilled, sown, growing, ripe, #s.plots, #s.sites > 0 and ("sites " .. #s.sites) or "", ms)
 end
 say("lunches eaten (not in acc.eaten): %d (= %.1f FU)", lunches, lunches * C.meal_fu)
 say("sim %.1f s for %d days (%.0f ms/day)", os.clock() - tsim, args.days, (os.clock() - tsim) * 1000 / args.days)

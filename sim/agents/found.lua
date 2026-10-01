@@ -156,7 +156,7 @@ function M.found(W, cell, opts)
     homes[h] = settle.add_building(W, s, "house", ix, iy, side, "standing")
   end
   -- 3. fields beyond the houses, on the side away from the woods first
-  local plots_wanted = opts.plots or 9
+  local plots_wanted = opts.plots or 12
   local cands = {}
   local P = c.plot_tiles
   for iy = 4, N - P - 3, P + 1 do
@@ -220,6 +220,7 @@ function M.found(W, cell, opts)
     if sum[cl] and sum[cl] > 0 and not s.tree_share[cl] then s.tree_share[cl] = W.F.forest[cl] / sum[cl] end
   end
   mapm.rebuild_costs(s)
+  settle.wild_food(W, s, floor(W.hour / 24), 0.6)
   -- 5. the people
   local now = W.hour
   local hlist = {}
@@ -301,6 +302,9 @@ function M.found(W, cell, opts)
     end
     -- stocks at home
     hb.stock.food = (#fam) * (1.5 + 1.5 * u())
+    hb.stock.meals = (#fam) * (0.4 + 0.6 * u())
+    hb.cond = 0.78 + 0.22 * u()   -- built over the years: some roofs are older than others
+    hh.tools = 0.7 + 0.25 * u()
     hb.stock.logs = 2
     hb.stock.water = u() < 0.6 and 1 or 0
   end
@@ -325,6 +329,21 @@ function M.found(W, cell, opts)
     pl.hh = hh.id
     local m = V.people[hh.members[1]]
     pl.name = (m and m.surname or "Common") .. " field" .. (k > #hlist and " II" or "")
+    -- the three-field rotation already under way (D-080): a winter crop sown last autumn, last
+    -- year's winter-crop stubble waiting for the spring crop, a field resting after its spring crop
+    local r = k % 3
+    if r == 1 then
+      pl.crop, pl.stage = "winter", "growing"
+      for q = 1, pl.rows do pl.row_st[q] = 2 end
+      pl.sown, pl.growth, pl.weeds, pl.sown_day = pl.rows, 0.4 + 0.1 * u(), 0.1, -18
+      pl.q_sum, pl.q_n = 7.5, 10
+    elseif r == 2 then
+      pl.crop, pl.stage = "spring", "fallow"
+      for q = 1, pl.rows do pl.row_st[q] = 3 end
+    else
+      pl.crop, pl.stage, pl.ploughed, pl.fert, pl.weeds, pl.rest_from = "winter", "rest", 0, 0.88, 0.3, -20
+      for q = 1, pl.rows do pl.row_st[q] = 3 end
+    end
   end
   -- 6. stores: last year's harvest in the granary, cut wood in the woodstore
   local pop = #mem

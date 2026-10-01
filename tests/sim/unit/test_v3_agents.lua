@@ -82,7 +82,18 @@ function M.four_days()
   for _, pl in ipairs(s.plots) do sown = sown + pl.sown end
   T.ok(sown >= 80, "rows sown " .. sown)
   T.ok((s.acc.felled or 0) >= 4, "trees felled " .. tostring(s.acc.felled))
-  T.ok((s.acc.built or 0) >= 1, "no house built for the waiting couple")
+  -- the waiting couple's house rises (logs carried, hours worked) and stands within 12 days
+  -- (a house is ~110 work-hours, D-080)
+  local site
+  for _, bid in ipairs(s.blist) do
+    local b = s.buildings[bid]
+    if b.kind == "house" and b.for_a then site = b end
+  end
+  T.ok(site ~= nil, "no house site for the waiting couple")
+  T.ok(site.state == "standing" or (site.logs_have >= 4 and site.work_done > 10),
+    string.format("the couple's house barely begun: logs %d, work %.0f h", site.logs_have, site.work_done))
+  world.advance(W, 12 * 24)
+  T.ok((s.acc.built or 0) >= 1, "no house built for the waiting couple in 12 days")
   T.eq(nav.stats.fallbacks, 0, "unreachable paths")
 end
 

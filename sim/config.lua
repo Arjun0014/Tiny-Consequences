@@ -793,33 +793,57 @@ C.V3 = {
   wake_after_sunrise = -0.4, chrono = { -1.3, 1.3 }, bed_after_sunset = 3.0, bed_min = 19.5, bed_max = 23.6,
   wake_min = 4.3, wake_max = 8.6,
   -- farming: plots of 8 x 8 tiles worked row by row
-  plot_tiles = 12, till_row_h = 1.0, sow_row_h = 0.4, tend_h = 1.0, harvest_row_h = 0.8,
-  thresh_h = 1.0, thresh_fu = 10,         -- an hour of threshing at the granary turns 10 FU of sheaves to grain
+  -- (D-080) rows are worked in stints with their progress kept: a row of hoeing is hours of work
+  plot_tiles = 12, till_row_h = 7.0, sow_row_h = 1.2, tend_h = 1.0, harvest_row_h = 5.0,
+  stint_h = { 1.0, 2.2 },                 -- a stint of field work before they look up (x diligence)
+  thresh_h = 1.0, thresh_fu = 6,          -- an hour of threshing at the granary turns 6 FU of sheaves to grain
   seed_row = 0.5,                         -- FU of seed grain per row
   grow_days = 20,                         -- days from sowing to ripe at good temperatures
   grow_tmin = 5,                          -- degC below which crops do not grow
   row_yield = 13.5,                       -- FU per row at full quality
-  weeds_day = 0.09, tend_clear = 0.22,    -- weeds a day on a growing plot; cleared per hour of weeding
+  weeds_day = 0.15, tend_clear = 0.09, weeds_tend = 0.15,   -- weeds a day; cleared per hour; weeding starts above
   ripe_spoil_days = 8,                    -- ripe grain left standing is lost after this
-  sow_season = { 0, 13 },                 -- day-of-year window for sowing (spring)
+  -- the three-field rotation (D-080): a winter crop (sown in autumn, it overwinters slowly), a
+  -- spring crop, a fallow year (ploughed in summer against the weeds; the soil recovers)
+  sow_season = { 0, 13 },                 -- local day-of-year window for sowing the spring crop
+  sow_winter = { 26, 35 },                -- ... and the winter crop
+  plough_fallow = { 12, 25 },             -- the fallow is ploughed in summer
+  grow_days_winter = 28, winter_dormant = 0.35,   -- growth days of the winter crop; its rate in winter
+  fert_crop = 0.12, fert_rest = 0.006, fert_plough = 0.05, fert_max = 1.2,   -- soil: a crop takes, rest and ploughing give
   -- wood: a log is the unit
   fell_h = 1.3,                           -- hours to fell a full-grown tree (/ skill)
   logs_per_tree = { 2, 5 },
   tree_grow = 0.012,                      -- size gained per day (0..1)
   sapling_days = 6,                       -- a stump sprouts after this many days (sometimes)
-  house_logs = 12, house_work = 26,       -- logs and work-hours for a house
-  fuel_cold = 8,                          -- degC below which homes burn wood
-  fuel_logs_day = 1.2,                    -- logs a cold day per household (x coldness)
+  house_logs = 18, house_work = 110,      -- logs and work-hours for a house (D-080)
   carry_grain = 10, carry_logs = 1,       -- load per trip (FU, logs; strong adults carry 2 logs)
   pantry_low = 2.0,                       -- days of food at home before someone fetches
   pantry_fetch = 8,                       -- FU fetched from the granary
-  woodpile_low = 2, woodpile_fetch = 2,
-  woodpile_winter = 6,                    -- logs a household keeps at home ahead of the cold
+  woodpile_days = 3,                      -- days of the hearth's burning a household keeps stacked at home
+  woodpile_fetch = 2,                     -- logs fetched from the woodstore a trip (a child 1)
   store_logs = 20,                        -- logs the woodstore keeps in reserve
   store_years = 0.5,                      -- food beyond the next harvest the village wants (years)
   max_plots = 20,
   grub_h = 0.45,                          -- hours to dig out a stump on new field ground
-  forage_h = 1.2, forage_fu = { 0.3, 1.1 },   -- an outing to the woods' edge: FU gathered (season): a supplement
+  -- wild food at the woods' edge (D-080): berries, nuts, greens and roots regrow on the standing
+  -- trees of the edge band (FU per tree per day by local season) and are picked out by foragers
+  wild_regrow = { 0.0045, 0.010, 0.014, 0.0012 },
+  wild_cap_days = 8,                      -- the edge holds at most this many days of regrowth
+  forage_h = 2.4, forage_basket = 3.0,    -- an outing: a basket of up to 3 FU when the edge is full
+  -- hearths (D-080): cooking burns wood every day; a chilly day burns more
+  fuel_cook = 0.55, fuel_warm = 16, fuel_heat = 1.2,  -- logs a day; + fuel_heat per 10 degC below fuel_warm
+  -- cooking (D-080): grain from the pantry becomes the household's meals at the hearth
+  cook_h = 2.4, cook_batch = 1.0, meals_days = 1.0,   -- hours a batch (grinding, baking); FU per member; days kept
+  spoil_meals = 0.05,                     -- share of cooked food gone stale a day
+  -- stores (D-080): grain keeps, not forever; threshing as the threshed grain runs down
+  spoil_grain = 0.0012, spoil_sheaves = 0.0005, spoil_food = 0.004,
+  thresh_days = 30,                       -- days of threshed grain the village likes to have ready
+  -- upkeep (D-080): roofs and walls weather; a worn house is repaired with a log and some hours
+  wear_house = 0.005, repair_at = 0.75, repair_h = 2.5, repair_logs = 1,
+  -- tools (D-080): hoes, sickles, axes and baskets wear with the work and slow it when worn; a
+  -- household mends and makes them (by the door in fair weather), using a little wood
+  tool_wear = 0.0035, tool_mend = 0.045, tool_logs = 0.05,   -- per work hour; per craft hour; logs a craft hour
+  winter_wood_days = 24,                  -- in autumn and winter the woodstore lays in this many days of burning
   -- people
   adult_age = 16, elder_age = 55, child_age = 2, apprentice_age = 12, help_age = 8,
   marry_f = 17, marry_m = 19, fecund = { 16, 44 },

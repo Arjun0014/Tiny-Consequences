@@ -14,10 +14,10 @@ local floor, max, min, sqrt, abs, ceil = math.floor, math.max, math.min, math.sq
 local function C() return cfgmod.V3 end
 
 M.KINDS = {
-  house = { w = 4, h = 4, label = "house", logs = 12, work = 26 },
-  granary = { w = 4, h = 4, label = "granary", logs = 14, work = 30 },
-  woodstore = { w = 4, h = 3, label = "woodstore", logs = 6, work = 12 },
-  well = { w = 1, h = 1, label = "well", logs = 0, work = 8 },
+  house = { w = 4, h = 4, label = "house", logs = 18, work = 110 },
+  granary = { w = 4, h = 4, label = "granary", logs = 22, work = 140 },
+  woodstore = { w = 4, h = 3, label = "woodstore", logs = 8, work = 40 },
+  well = { w = 1, h = 1, label = "well", logs = 0, work = 30 },
 }
 
 function M.new(W, cell, opts)
@@ -92,6 +92,7 @@ function M.complete_building(W, s, b)
     if a and a.alive then people.join(W, a, hh); people.remember(a, W.hour, "Moved into our new house") end
     if c and c.alive then people.join(W, c, hh); people.remember(c, W.hour, "Moved into our new house") end
     b.stock.food = 0
+    b.stock.meals = 0
     b.stock.water = 0
     b.stock.logs = 0
     for i = #s.couples, 1, -1 do
@@ -115,7 +116,7 @@ function M.add_plot(W, s, ix0, iy0, hh, name)
   local T = s.T
   local pl = { id = k, ix0 = ix0, iy0 = iy0, w = P, h = P, rows = P, hh = hh or 0, name = name or ("plot " .. k),
     x0 = x0 - T * 0.5, y0 = y0 - T * 0.5, x1 = x0 - T * 0.5 + P * T, y1 = y0 - T * 0.5 + P * T,
-    stage = "fallow", row_st = {}, row_claim = {}, sown = 0, harvested = 0, growth = 0, weeds = 0, quality = 1,
+    stage = "fallow", crop = "spring", fert = 1, row_st = {}, row_claim = {}, sown = 0, harvested = 0, growth = 0, weeds = 0, quality = 1,
     sheaves = 0, alive = true, sown_day = -1, ripe_day = -1, q_sum = 0, q_n = 0 }
   for r = 1, P do pl.row_st[r], pl.row_claim[r] = 0, 0 end
   -- the stook: where sheaves are stacked, at the corner nearest the village centre
@@ -218,8 +219,8 @@ function M.hourly(W, s, now)
   local lh = clock.local_hour(now, W.grid.lon[s.cell])
   s.temp_now = weather.temp_at(W, s, now, lh)
   local wx = weather.today(W, s, now)
-  s.cold = wx.temp < c.fuel_cold
-  s.cold_k = s.cold and min(1, (c.fuel_cold - wx.temp) / 12) or 0
+  s.cold = wx.temp < c.fuel_warm
+  s.cold_k = s.cold and min(1, (c.fuel_warm - wx.temp) / 12) or 0
   -- food
   local pop, food = 0, 0
   for i = 1, #s.members do
@@ -230,15 +231,18 @@ function M.hourly(W, s, now)
   food = s.granary and ((s.granary.stock.grain or 0) + (s.granary.stock.sheaves or 0)) or 0
   for i = 1, #s.blist do
     local b = s.buildings[s.blist[i]]
-    if b.kind == "house" and b.state == "standing" then food = food + (b.stock.food or 0) end
+    if b.kind == "house" and b.state == "standing" then food = food + (b.stock.food or 0) + (b.stock.meals or 0) end
   end
   need.food = food
   need.food_days = pop > 0 and food / pop or 99
   -- sowing window
   local doy = clock.local_doy(now, W.grid.lat[s.cell])
   s.doy = doy
+  -- sowing: the spring window, or the winter crop's in autumn (per plot: M.sow_open)
+  local seed = s.granary and (s.granary.stock.grain or 0) > c.seed_row
   local w0, w1 = c.sow_season[1], c.sow_season[2]
-  need.sowing = doy >= w0 and doy <= w1 and (s.granary and (s.granary.stock.grain or 0) > c.seed_row)
+  if doy >= c.sow_winter[1] and doy <= c.sow_winter[2] then w0, w1 = c.sow_winter[1], c.sow_winter[2] end
+  need.sowing = seed and doy >= w0 and doy <= w1
   need.sow_late = need.sowing and (doy - w0) / max(1, w1 - w0) or 0
   -- wood: what is wanted (sites + fuel reserve) against what is stored or lying cut
   local tr = s.trees
@@ -273,7 +277,21 @@ function M.hourly(W, s, now)
     local hh = V.households[s.households[i]]
     if hh and #hh.members > 0 then nh = nh + 1 end
   end
-  local reserve = c.store_logs + nh * (s.cold and 3 or 1)
+  -- the reserve: a season of the hearths' burning (at least store_logs), and logs for repairs
+  local burn = 0
+  local repairs = 0
+  for i = 1, #s.blist do
+    local b = s.buildings[s.blist[i]]
+    if b.kind == "house" and b.state == "standing" then
+      if b.hh ~= 0 then burn = burn + (b.burn or c.fuel_cook) end
+      if (b.cond or 1) < c.repair_at then repairs = repairs + 1 end
+    end
+  end
+  s.burn_day = burn
+  need.repairs = repairs
+  -- (autumn and winter: the wood for the cold months is laid in)
+  local wdays = (s.doy or 0) >= 24 and c.winter_wood_days or 12
+  local reserve = max(c.store_logs, floor(burn * wdays + 0.5)) + repairs * c.repair_logs
   local have = (s.wood_store and s.wood_store.stock.logs or 0) + lying
   local want = site_logs + reserve
   need.wood_short = want > 0 and max(0, min(1, (want - have) / want)) or 0
@@ -294,8 +312,8 @@ function M.hourly(W, s, now)
     need.fell_why = string.format("Logs are wanted for the %s (%d more) and the woodstore holds %d",
       s.buildings[short_id].label, site_logs, s.wood_store and s.wood_store.stock.logs or 0)
   else
-    need.fell_why = string.format("The woodstore holds %d logs; the village wants %d%s",
-      s.wood_store and s.wood_store.stock.logs or 0, reserve, s.cold and " for the cold" or "")
+    need.fell_why = string.format("The woodstore holds %d logs; the hearths burn %.0f a day and the village wants %d in store",
+      s.wood_store and s.wood_store.stock.logs or 0, burn, reserve)
   end
   -- who is gathered at the well
   local n = 0
@@ -312,10 +330,37 @@ end
 
 -- Daily (at the planet step) ----------------------------------------------------------------
 
+-- The sowing window of a plot's crop (local days of year).
+local function window(c, crop)
+  if crop == "winter" then return c.sow_winter[1], c.sow_winter[2] end
+  return c.sow_season[1], c.sow_season[2]
+end
+M.window = window
+
+-- May plot pl be sown (or hoed for sowing) on local day doy?
+function M.sow_open(pl, doy)
+  if pl.stage ~= "fallow" and pl.stage ~= "growing" then return false end
+  if pl.sown >= pl.rows then return false end
+  local a, b = window(C(), pl.crop)
+  return doy >= a and doy <= b
+end
+
+-- Is it time to plough plot pl's fallow?
+function M.plough_open(pl, doy)
+  local c = C()
+  return pl.stage == "rest" and doy >= c.plough_fallow[1] and doy <= c.plough_fallow[2]
+end
+
+-- Plots through the year (D-080): growing (weeds, the crop's growth from the cell's temperature
+-- and soil water; a winter crop all but rests in winter), ripe (left standing it spoils), stubble
+-- (once the sheaves are carried off: after a winter crop the plot waits for the spring sowing;
+-- after a spring crop it rests a year), rest (the soil recovers; ploughed in summer; sown with the
+-- winter crop in the autumn window).
 local function grow_plots(W, s, day)
   local c = C()
   local F = W.F
   local doy = clock.local_doy(day * 24, W.grid.lat[s.cell])
+  local winter = doy >= 36
   for k = 1, #s.plots do
     local pl = s.plots[k]
     local cell = s.cell_of[(pl.iy0 + 3 - 1) * s.N + pl.ix0 + 3]
@@ -325,14 +370,19 @@ local function grow_plots(W, s, day)
       local gt = T > c.grow_tmin and min(1, (T - c.grow_tmin) / 10) or 0
       local wet = min(1, 0.35 + sw * 1.3)
       local g = gt * wet * (1 - 0.5 * pl.weeds)
-      pl.growth = pl.growth + g / c.grow_days
+      local days = c.grow_days
+      if pl.crop == "winter" then
+        days = c.grow_days_winter
+        if winter then g = g * c.winter_dormant end
+      end
+      pl.growth = pl.growth + g / days
       pl.q_sum, pl.q_n = pl.q_sum + g, pl.q_n + 1
-      pl.weeds = min(1, pl.weeds + c.weeds_day * (0.5 + wet))
+      pl.weeds = min(1, pl.weeds + c.weeds_day * (0.5 + wet) * (winter and 0.3 or 1))
       if pl.growth >= 1 then
         pl.stage = "ripe"
         pl.ripe_day = day
         pl.ripe_for = 0
-        pl.quality = max(0.25, pl.q_sum / max(1, pl.q_n))
+        pl.quality = max(0.25, pl.q_sum / max(1, pl.q_n)) * (pl.fert or 1)
         pl.spoil = 1
         if W.record_events then events.emit(W, "crop_ripe", s.cell, 0, 0, { settlement = s.id, plot = k }) end
       end
@@ -341,17 +391,37 @@ local function grow_plots(W, s, day)
       if pl.ripe_for > c.ripe_spoil_days then pl.spoil = max(0, (pl.spoil or 1) - 0.2) end
       if pl.harvested >= pl.sown then
         pl.stage = "stubble"
+        pl.fert = max(0.3, (pl.fert or 1) - c.fert_crop)
       end
     elseif pl.stage == "stubble" then
-      -- the new year's sowing begins on a fresh plot
-      if doy >= c.sow_season[1] and doy <= c.sow_season[2] and pl.sheaves < 0.5 then
-        pl.stage = "fallow"
-        pl.sown, pl.harvested, pl.growth, pl.weeds = 0, 0, 0, 0
-        for r = 1, pl.rows do pl.row_st[r], pl.row_claim[r] = 0, 0 end
+      if pl.sheaves < 0.5 then
+        pl.sown, pl.harvested, pl.growth = 0, 0, 0
+        pl.weeds = min(1, pl.weeds * 0.5 + 0.1)
+        for r = 1, pl.rows do pl.row_claim[r] = 0 end
+        pl.row_p, pl.win = nil, nil
+        if pl.crop == "winter" then
+          pl.stage, pl.crop = "fallow", "spring"    -- the spring crop follows next spring
+        else
+          pl.stage, pl.crop, pl.ploughed, pl.rest_from = "rest", "winter", 0, day   -- a year's rest
+        end
+      end
+    elseif pl.stage == "rest" then
+      pl.fert = min(c.fert_max, (pl.fert or 1) + c.fert_rest)
+      pl.weeds = min(1, pl.weeds + c.weeds_day * 0.3)
+      if doy >= c.sow_winter[1] and doy <= c.sow_winter[2] and day - (pl.rest_from or -99) >= 30 then pl.stage = "fallow" end
+    end
+    -- the end of the sowing window: what was sown grows; a plot nobody sowed waits for the next
+    -- sowing (an unsown winter field is sown in spring, an unsown spring field rests)
+    if pl.stage == "fallow" then
+      local a, b = window(c, pl.crop)
+      if doy >= a and doy <= b then pl.win = true
+      elseif pl.win then
+        pl.win = nil
+        if pl.sown > 0 then pl.stage = "growing"
+        elseif pl.crop == "winter" then pl.crop = "spring"
+        else pl.stage, pl.crop, pl.ploughed, pl.rest_from = "rest", "winter", 0, day end
       end
     end
-    -- unsown at the end of the window: what was sown grows, the rest stays bare
-    if pl.stage == "fallow" and pl.sown > 0 and doy > c.sow_season[2] then pl.stage = "growing" end
   end
 end
 
@@ -377,36 +447,86 @@ local function grow_trees(W, s, day)
   end
 end
 
+-- Hearths (D-080): every lived-in house cooks on its hearth each day (logs from its woodpile) and
+-- burns more on a chilly day; a house with no wood is cold (and eats its meals cold). Water: a jar
+-- a day. Houses weather and are repaired when worn. Food at home spoils slowly.
 local function hearths(W, s, day)
   local c = C()
   local wx = weather.today(W, s, day * 24)
   local V = W.S.v3
   for i = 1, #s.blist do
     local b = s.buildings[s.blist[i]]
+    if b.kind == "house" and b.state == "standing" then
+      b.cond = max(0, (b.cond or 1) - c.wear_house)
+    end
     if b.kind == "house" and b.state == "standing" and b.hh ~= 0 then
       local hh = V.households[b.hh]
       local n = hh and #hh.members or 0
       if n > 0 then
-        -- water: a jar a day
         b.stock.water = max(0, (b.stock.water or 0) - 1)
-        -- fuel on cold days
-        if wx.temp < c.fuel_cold then
-          local burn = c.fuel_logs_day * min(1.5, (c.fuel_cold - wx.temp) / 10 + 0.3)
-          local logs = b.stock.logs or 0
-          if logs >= burn then
-            b.stock.logs = logs - burn
-            b.cold = false
-          else
-            b.stock.logs = 0
-            b.cold = true
-          end
-        else
+        local burn = c.fuel_cook * (0.7 + 0.06 * n)
+        if wx.temp < c.fuel_warm then burn = burn + c.fuel_heat * min(1.6, (c.fuel_warm - wx.temp) / 10) end
+        b.burn = burn
+        local logs = b.stock.logs or 0
+        if logs >= burn then
+          b.stock.logs = logs - burn
           b.cold = false
+          b.fire = true
+        else
+          b.stock.logs = 0
+          b.cold = wx.temp < c.fuel_warm
+          b.fire = logs > 0
         end
+        -- seed kept at home after the sowing is grain for the pot
+        if (b.stock.seed or 0) > 0 and not s.need.sowing then
+          b.stock.food = (b.stock.food or 0) + b.stock.seed
+          b.stock.seed = 0
+        end
+        local fd, ml = b.stock.food or 0, b.stock.meals or 0
+        if fd > 0 or ml > 0 then
+          local lf, lm = fd * c.spoil_food, ml * c.spoil_meals
+          b.stock.food, b.stock.meals = fd - lf, ml - lm
+          s.acc.spoiled = (s.acc.spoiled or 0) + lf + lm
+        end
+      else
+        b.fire = false
       end
     end
   end
+  -- the granary: grain and sheaves keep, but mice and damp take a little every day
+  local g = s.granary
+  if g then
+    local gr, sh = g.stock.grain or 0, g.stock.sheaves or 0
+    local lost = gr * c.spoil_grain + sh * c.spoil_sheaves
+    g.stock.grain = gr - gr * c.spoil_grain
+    g.stock.sheaves = sh - sh * c.spoil_sheaves
+    s.acc.spoiled = (s.acc.spoiled or 0) + lost
+  end
 end
+
+-- Wild food at the woods' edge (D-080): it regrows on the standing trees of the edge band (more in
+-- summer and autumn, little in winter) up to what the edge can hold; fruit not picked rots. Clearing
+-- the woods shrinks it.
+local function wild_food(W, s, day, fill)
+  local c = C()
+  local tr = s.trees
+  local n = 0
+  for k = 1, tr.n do
+    if tr.st[k] == 1 then
+      local x, y = tr.x[k], tr.y[k]
+      local r2 = x * x + y * y
+      if r2 > 0.25 and r2 < 1.69 then n = n + tr.size[k] end
+    end
+  end
+  s.edge_trees = n
+  local se = floor(clock.local_doy(day * 24, W.grid.lat[s.cell]) / 12) + 1
+  local g = n * c.wild_regrow[se]
+  local cap = n * c.wild_regrow[se] * c.wild_cap_days
+  local w = fill and cap * fill or (s.wild or 0) + g
+  if w > cap then w = cap + (w - cap) * 0.6 end
+  s.wild = w
+end
+M.wild_food = wild_food
 
 -- Food: will the fields feed everyone to the next harvest and leave a store? If not, new field
 -- ground is staked out next to the fields (trees felled, stumps dug out, then it is a plot).
@@ -420,10 +540,17 @@ local function plan_fields(W, s, day)
     local pl = s.plots[k]
     local standing = 0
     for r = 1, pl.rows do if pl.row_st[r] == 2 then standing = standing + 1 end end
-    expect = expect + standing * c.row_yield * 0.85 + pl.sheaves
-    if pl.stage == "fallow" then expect = expect + (pl.rows - pl.sown) * c.row_yield * 0.6 end
+    local fy = c.row_yield * (pl.fert or 1)
+    expect = expect + standing * fy * 0.85 + pl.sheaves
+    if pl.stage == "fallow" then expect = expect + (pl.rows - pl.sown) * fy * 0.6 end
+    -- a resting field will bear the winter crop: part of the year ahead
+    if pl.stage == "rest" then expect = expect + pl.rows * fy * 0.3 end
   end
-  local want = pop * c.days_per_year * (1 + c.store_years)
+  -- what the village eats (as they have eaten lately: meals and bread in the fields) for a year
+  -- and a half, and the seed for every field (D-080)
+  local rows = 0
+  for k = 1, #s.plots do rows = rows + s.plots[k].rows end
+  local want = (s.eat_avg or pop * 0.75) * c.days_per_year * (1 + c.store_years) + rows * c.seed_row
   s.food_expect, s.food_want = expect, want
   if expect >= want then return end
   -- the free lattice spot nearest the fields and the village
@@ -528,9 +655,17 @@ local function plan_houses(W, s)
 end
 
 function M.daily(W, s, day)
+  -- the village's daily eating, as measured (meals at home and bread in the fields)
+  local ate = (s.acc.eaten or 0) + (s.acc.lunch or 0)
+  if s.ate_prev and day > 0 then
+    local d = ate - s.ate_prev
+    s.eat_avg = s.eat_avg and (s.eat_avg + (d - s.eat_avg) * 0.1) or d
+  end
+  s.ate_prev = ate
   grow_plots(W, s, day)
   grow_trees(W, s, day)
   hearths(W, s, day)
+  wild_food(W, s, day)
   plan_houses(W, s)
   plan_fields(W, s, day)
   finish_clearing(W, s)

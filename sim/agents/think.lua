@@ -138,7 +138,7 @@ end
 local ROLE_JOBS = {
   farmer = { grub = true, till = true, sow = true, tend = true, harvest = true, haul_grain = true, thresh = true },
   woodcutter = { fell = true, haul_logs = true, grub = true },
-  builder = { build = true, deliver = true, haul_logs = true },
+  builder = { build = true, deliver = true, haul_logs = true, repair = true },
 }
 
 local function fit(p, ctx, kind)
@@ -147,6 +147,12 @@ local function fit(p, ctx, kind)
   if st == "child" then
     if kind == "fetch_water" and ctx.age >= C().help_age then return 1.2 end
     return 0
+  end
+  if kind == "cook" then
+    -- (no role bonus: whoever is at home and free; elders and nursing mothers at home most)
+    if st == "apprentice" then return 0.85 end
+    if st == "elder" then return 1.15 end
+    return p.nursing > 0 and 1.2 or 1
   end
   if st == "apprentice" then
     if kind == "haul_grain" or kind == "haul_logs" or kind == "fetch_water" or kind == "fetch_food"
@@ -191,35 +197,51 @@ local function work_candidates(W, s, p, ctx, now)
     if pl.alive then
       local cx, cy = (pl.x0 + pl.x1) * 0.5, (pl.y0 + pl.y1) * 0.5
       local tc = travel(ctx, cx, cy, px, py)
-      if pl.stage ~= "ripe" and pl.stage ~= "stubble" and need.sowing and pl.sown < pl.rows then
+      local doy = s.doy or 0
+      local plough = settle.plough_open(pl, doy)
+      if (need.sowing and settle.sow_open(pl, doy)) or plough then
         -- an unclaimed row to sow (hoed) or to hoe (bare)?
-        local srow, trow = 0, 0
+        -- (a row someone began is finished first: its progress is kept, D-080)
+        local srow, trow, sp, tp = 0, 0, -1, -1
+        local rp = pl.row_p
         for r = 1, pl.rows do
           if pl.row_claim[r] == 0 then
             local rs = pl.row_st[r]
-            if rs == 1 and srow == 0 then srow = r elseif rs == 0 and trow == 0 then trow = r end
+            local pr = rp and rp[r] or 0
+            if rs == 1 and pr > sp and not plough then srow, sp = r, pr elseif (rs == 0 or rs == 3) and pr > tp then trow, tp = r, pr end
           end
         end
         local left = pl.rows - pl.sown
         if srow > 0 then
           local f = fit(p, ctx, "sow")
           if f > 0 then
-            local urg = 0.66 + 0.25 * need.sow_late + (pl.hh == p.hh and 0.08 or 0)
-            add(urg * f * fat - tc, "sow", k, srow,
+            -- seed in hand saves the walk to the granary
+            local seeded = p.carry == "seed" and p.camt >= c.seed_row
+            local urg = 0.66 + 0.25 * need.sow_late + (pl.hh == p.hh and 0.08 or 0) + (seeded and 0.06 or 0)
+            local extra = seeded and 0 or travel(ctx, s.granary_x, s.granary_y, px, py) * 0.5
+            add(urg * f * fat - tc - extra, "sow", k, srow,
               string.format("It is sowing time: %d %s of %s still to sow; row %d is hoed", left, plural(left, "row", "rows"), pl.name, srow))
           end
         end
         if trow > 0 then
           local f = fit(p, ctx, "till")
           if f > 0 and ctx.stage ~= "apprentice" then
-            local urg = 0.62 + 0.25 * need.sow_late + (pl.hh == p.hh and 0.08 or 0)
-            local tl = pl.rows - (pl.tilled or 0)
-            add(urg * f * fat - tc, "till", k, trow,
-              string.format("It is sowing time and %s is not yet hoed (%d %s to go)", pl.name, tl, plural(tl, "row", "rows")))
+            local tl = 0
+            for r = 1, pl.rows do if pl.row_st[r] == 0 or pl.row_st[r] == 3 then tl = tl + 1 end end
+            if plough then
+              -- the fallow is ploughed in summer: the weeds turned under, the soil readied for the winter crop
+              add((0.42 + (pl.hh == p.hh and 0.06 or 0)) * f * fat - tc, "till", k, trow,
+                string.format("Ploughing the fallow of %s against the weeds (%d %s to go)", pl.name, tl, plural(tl, "row", "rows")))
+            else
+              local urg = 0.62 + 0.25 * need.sow_late + (pl.hh == p.hh and 0.08 or 0) + (tp > 0 and 0.03 or 0)
+              add(urg * f * fat - tc, "till", k, trow,
+                tp > 0 and string.format("Hoeing %s for the %s crop: row %d is %d%% done (%d %s to go)", pl.name, pl.crop, trow, floor(tp * 100), tl, plural(tl, "row", "rows"))
+                  or string.format("It is time to sow the %s crop and %s is not yet hoed (%d %s to go)", pl.crop, pl.name, tl, plural(tl, "row", "rows")))
+            end
           end
         end
       end
-      if pl.stage == "growing" and pl.weeds > 0.25 and (pl.tend_claim or 0) < 2 then
+      if pl.stage == "growing" and pl.weeds > c.weeds_tend and (pl.tend_claim or 0) < 3 then
         local f = fit(p, ctx, "tend")
         if f > 0 then
           add((0.25 + 0.6 * pl.weeds) * f * fat - tc, "tend", k, 0,
@@ -227,9 +249,13 @@ local function work_candidates(W, s, p, ctx, now)
         end
       end
       if pl.stage == "ripe" then
-        local row = 0
+        local row, hp = 0, -1
+        local rp = pl.row_p
         for r = 1, pl.rows do
-          if pl.row_st[r] == 2 and pl.row_claim[r] == 0 then row = r; break end
+          if pl.row_st[r] == 2 and pl.row_claim[r] == 0 then
+            local pr = rp and rp[r] or 0
+            if pr > hp then row, hp = r, pr end
+          end
         end
         if row > 0 then
           local f = fit(p, ctx, "harvest")
@@ -241,7 +267,7 @@ local function work_candidates(W, s, p, ctx, now)
           end
         end
       end
-      if pl.sheaves >= 2 and (pl.haul_claim or 0) < pl.sheaves / c.carry_grain then
+      if (pl.sheaves >= 2 or (pl.sheaves >= 0.05 and pl.stage == "stubble")) and (pl.haul_claim or 0) < pl.sheaves / c.carry_grain then
         local f = fit(p, ctx, "haul_grain")
         if f > 0 then
           local urg = 0.7 + (s.rain_soon and 0.15 or 0)
@@ -307,20 +333,32 @@ local function work_candidates(W, s, p, ctx, now)
   if ctx.home and ctx.stage ~= "child" and ctx.hh and ((ctx.hh.foraging or 0) == 0 or ctx.hh.foraging == p.id) then
     local f = fit(p, ctx, "forage")
     if f > 0 then
-      local doy = s.doy or clock.doy(now)
-      local sk = doy < 12 and 0.35 or (doy < 24 and 0.8 or (doy < 36 and 1 or 0.15))
+      -- worth going when the edge has something to pick (everyone sees what foragers bring back)
+      local a = min(1, (s.wild or 0) / (c.forage_basket * 4))
       local short = need.food_days < 20 and 0.15 or 0
-      add((0.22 + 0.18 * sk + short) * f * fat, "forage", 0, 0,
-        sk >= 0.8 and "Berries and nuts are ripe at the woods' edge" or "Gathering greens and roots at the woods' edge")
+      local doy = s.doy or clock.doy(now)
+      local fruit = doy >= 12 and doy < 36
+      if a > 0.05 then
+        add((0.12 + 0.32 * a + short) * f * fat, "forage", 0, 0,
+          fruit and (a > 0.6 and "Berries and nuts are ripe at the woods' edge" or "Some berries are left at the woods' edge")
+            or "Gathering greens and roots at the woods' edge")
+      end
     end
   end
-  -- threshing the sheaves in the granary
+  -- threshing the sheaves in the granary (under its roof: rain does not stop it): as the threshed
+  -- grain runs down, and on wet and winter days when the fields have no work (D-080)
   local g = s.granary
-  if g and (g.stock.sheaves or 0) >= 3 and (g.threshers or 0) < 3 then
+  if g and (g.stock.sheaves or 0) >= 3 and (g.threshers or 0) < 4 then
     local f = fit(p, ctx, "thresh")
     if f > 0 and (ctx.stage == "adult" or ctx.stage == "elder") then
-      add((0.45 + min(0.25, g.stock.sheaves / 400)) * f * fat * (ctx.rain > 0 and 2 or 1) - travel(ctx, s.granary_x, s.granary_y, px, py), "thresh", 0, 0,
-        string.format("%d FU of sheaves wait to be threshed at the granary", floor(g.stock.sheaves)))
+      local gdays = (g.stock.grain or 0) / max(1, (s.pop or 1) * 0.75)
+      local low = max(0, 1 - gdays / c.thresh_days)
+      local winter = (s.doy or 0) >= 36
+      local urg = 0.12 + 0.55 * low + (ctx.rain > 0 and 0.2 or 0) + (winter and 0.22 or 0)
+      add(urg * f * fatigue(p) - travel(ctx, s.granary_x, s.granary_y, px, py), "thresh", 0, 0,
+        low > 0.3 and string.format("Only %d days of threshed grain are left; %d FU of sheaves wait at the granary", floor(gdays), floor(g.stock.sheaves))
+          or (ctx.rain > 0 and string.format("A wet day: threshing under the granary roof (%d FU of sheaves)", floor(g.stock.sheaves))
+          or string.format("%d FU of sheaves wait to be threshed at the granary", floor(g.stock.sheaves))))
     end
   end
   -- building sites
@@ -349,6 +387,49 @@ local function work_candidates(W, s, p, ctx, now)
   end
 end
 
+-- Repairs (D-080): a weathered house (condition below repair_at) wants a log and some hours.
+local function repair_candidates(W, s, p, ctx, now, fat)
+  local c = C()
+  if (s.need.repairs or 0) == 0 or ctx.stage ~= "adult" then return end
+  local f = fit(p, ctx, "repair")
+  if f <= 0 then return end
+  local best, bd = nil, 1e9
+  for i = 1, #s.blist do
+    local b = s.buildings[s.blist[i]]
+    if b.kind == "house" and b.state == "standing" and (b.cond or 1) < c.repair_at and (b.repairer or 0) == 0 then
+      local d = dist(p.x, p.y, b.dx, b.dy)
+      if d < bd then best, bd = b, d end
+    end
+  end
+  if not best then return end
+  if (best.repair_logs or 0) < c.repair_logs and not (s.wood_store and (s.wood_store.stock.logs or 0) >= c.repair_logs) then return end
+  local hh = W.S.v3.households[best.hh]
+  local q = hh and W.S.v3.people[hh.members[1] or 0]
+  add((0.36 + 0.8 * (c.repair_at - best.cond)) * f * fat - bd / ctx.spd * 0.45, "repair", best.id, 0,
+    string.format("The roof of the %s house lets the weather in (%d%% sound)", q and q.surname or "empty", floor(best.cond * 100)))
+end
+
+-- Tools (D-080): the household's tools wear with work; worn tools slow it. Mending and making them
+-- (handles, baskets, a new edge) is done at home, by the door when the weather is fair.
+local function tool_factor(W, p)
+  local hh = W.S.v3.households[p.hh]
+  return 0.55 + 0.45 * (hh and hh.tools or 1)
+end
+M.tool_factor = tool_factor
+
+local function craft_candidate(W, s, p, ctx, now)
+  local c = C()
+  local hh, home = ctx.hh, ctx.home
+  if not hh or not home or ctx.stage == "child" then return end
+  local tools = hh.tools or 1
+  if tools > 0.92 or (home.stock.logs or 0) < 0.2 then return end
+  local f = ctx.stage == "elder" and 1.25 or (ctx.stage == "apprentice" and 0.8 or 1)
+  local u = (0.1 + 0.75 * (1 - tools)) * f * fatigue(p) * (ctx.rain == 2 and 0.6 or 1)
+  add(u - travel(ctx, ctx.hx, ctx.hy, p.x, p.y), "craft", home.id, 0,
+    tools < 0.6 and string.format("The household's tools are worn (%d%%): a hoe handle is split, the sickle blunt", floor(tools * 100))
+      or string.format("Mending tools and weaving baskets (the household's tools at %d%%)", floor(tools * 100)))
+end
+
 -- Household chores and care.
 local function chores(W, s, p, ctx, now)
   local c = C()
@@ -360,6 +441,18 @@ local function chores(W, s, p, ctx, now)
   local n = #hh.members
   local need_day = n * 1.0
   local food = home.stock.food or 0
+  -- cooking: the household's meals at the hearth (one cook at a time; needs wood on the hearth)
+  local meals = home.stock.meals or 0
+  local want = n * c.meals_days * 0.75
+  if food >= 0.3 and meals < want and (hh.cooking or 0) == 0 and ((home.stock.logs or 0) > 0 or home.fire) then
+    local f = fit(p, ctx, "cook")
+    if f > 0 then
+      local soon = (ctx.lh > ctx.sunset - 2.5 or ctx.lh < ctx.wake + 1.2) and 0.15 or 0
+      add((0.3 + 0.45 * (1 - meals / want) + soon) * f * fatigue(p) - travel(ctx, ctx.hx, ctx.hy, px, py), "cook", home.id, 0,
+        meals < c.meal_fu and "Nothing cooked at home: baking bread and boiling porridge"
+          or string.format("Cooking for the household (%.1f meals left for %d)", meals / c.meal_fu, n))
+    end
+  end
   local gran = s.granary
   if gran and (gran.stock.grain or 0) > 1 and food < need_day * c.pantry_low and (hh.fetch_food or 0) == 0 then
     local f = fit(p, ctx, "fetch_food")
@@ -369,18 +462,17 @@ local function chores(W, s, p, ctx, now)
         "fetch_food", 0, 0, string.format("Only %.1f days of food left at home", days))
     end
   end
+  -- firewood: the hearth burns every day (cooking; more when it is chilly)
   local logs = home.stock.logs or 0
-  local wp = s.cold and c.woodpile_low or c.woodpile_winter
-  if logs < wp and (hh.fetch_wood or 0) == 0 and s.wood_store and (s.wood_store.stock.logs or 0) > (s.cold and 0 or 4) then
+  local burn = home.burn or c.fuel_cook
+  local wdays = logs / max(0.1, burn)
+  if wdays < c.woodpile_days and (hh.fetch_wood or 0) == 0 and s.wood_store and (s.wood_store.stock.logs or 0) >= 1 then
     local f = fit(p, ctx, "fetch_wood")
     if f > 0 then
-      if s.cold then
-        add((0.5 + 0.4 * s.cold_k) * f * fat - travel(ctx, s.wood_x, s.wood_y, px, py), "fetch_wood", 0, 0,
-          string.format("It is cold (%d°C) and the woodpile at home is almost gone", floor(s.temp_now + 0.5)))
-      else
-        add(0.34 * f * fat - travel(ctx, s.wood_x, s.wood_y, px, py), "fetch_wood", 0, 0,
-          string.format("Stacking firewood at home before the cold (%d of %d logs)", floor(logs), c.woodpile_winter))
-      end
+      local urg = 0.32 + 0.4 * (1 - wdays / c.woodpile_days) + (s.cold and 0.15 * s.cold_k or 0)
+      add(urg * f * fat - travel(ctx, s.wood_x, s.wood_y, px, py), "fetch_wood", 0, 0,
+        wdays < 1 and string.format("The woodpile at home is almost gone (%.1f logs; the hearth burns %.1f a day)", logs, burn)
+          or string.format("Stacking firewood at home: %.1f days of burning left", wdays))
     end
   end
   if (home.stock.water or 0) < 1 and (hh.fetch_water or 0) == 0 and s.well then
@@ -416,11 +508,20 @@ local function leisure(W, s, p, ctx, now)
     local midday = ctx.lh >= 11 and ctx.lh < 14
     -- (the sociable go most evenings, the rest some evenings: crowds only when there is news)
     local eve = evening and (0.7 + 1.1 * p.soc) or (midday and 0.55 or 0.25)
-    local u = (0.1 + 0.2 * p.soc) * eve * wx
+    -- (cold evenings are spent by the hearth, visiting, not at the well)
+    local chill = (s.temp_now or 15) < 12 and max(0.35, 1 - (12 - (s.temp_now or 15)) * 0.15) or 1
+    local u = (0.1 + 0.2 * p.soc) * eve * wx * chill
     local there = s.at_well or 0
-    add(u + min(0.12, there * 0.03) - travel(ctx, s.sqx, s.sqy, px, py) * 0.5, "talk", 0, 0,
+    -- a few talkers draw others; a crowd puts the quieter ones off (they sit by their own door)
+    local draw = 0.03 * min(there, 4) - 0.025 * max(0, there - 6) * (1.2 - p.soc)
+    add(u + draw - travel(ctx, s.sqx, s.sqy, px, py) * 0.5, "talk", 0, 0,
       there > 0 and string.format("%d %s talking by the well", there, plural(there, "neighbour is", "neighbours are"))
         or "Going to the well to talk")
+    -- the evening on the bench by their own door
+    if evening and ctx.home and ctx.rain == 0 then
+      add((0.16 + 0.12 * (1 - p.soc)) * (0.8 + 0.4 * u01(W, p, now, 42)) - travel(ctx, ctx.hx, ctx.hy, px, py) * 0.5,
+        "sit_out", 0, 0, "A quiet evening by the door")
+    end
     -- visit the closest friend or kin elsewhere
     local best, ba = 0, 0.15
     for i = 1, #p.rel_id do
@@ -441,7 +542,7 @@ local function leisure(W, s, p, ctx, now)
     end
   end
   -- rest at home
-  add(0.1 + (1 - p.energy) * 0.45 + (evening and 0.08 or 0), "rest", 0, 0,
+  add(0.05 + (1 - p.energy) * 0.55 + (evening and 0.08 or 0), "rest", 0, 0,
     p.energy < 0.4 and "Tired out: resting at home" or "Resting at home")
 end
 
@@ -458,9 +559,12 @@ local function eat_candidate(W, s, p, ctx, now)
     add(0.6 + h, "lunch", 0, 0, "Hungry far from home: eating the bread brought along")
     return
   end
-  if home and (home.stock.food or 0) >= c.meal_fu * 0.5 then
+  if home and (home.stock.meals or 0) >= c.meal_fu * 0.5 then
     add(0.5 + h - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.3, "eat", home.id, 0,
       mealtime and (ctx.lh < 12 and "Breakfast at home" or "Supper at home") or "Hungry: going home to eat")
+  elseif home and (home.stock.food or 0) >= 0.3 and ctx.stage ~= "child" and (ctx.hh and (ctx.hh.cooking or 0) == 0) then
+    -- nothing cooked: hungry, they cook (and then eat)
+    add(0.45 + h - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.3, "cook", home.id, 1, "Hungry and nothing cooked at home")
   end
 end
 
@@ -531,6 +635,38 @@ PLAN.eat = function(W, s, p, ctx, now, cd)
   return "Eat", "home"
 end
 
+PLAN.cook = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local home = s.buildings[cd.a]
+  ctx.hh.cooking = p.id
+  if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+  work(pl, "cook", c.cook_h * (0.75 + 0.5 * u01(W, p, now, 44)), { inside = home.id, ref = home.id })
+  if cd.b == 1 then work(pl, "eat", 0.3 + 0.2 * u01(W, p, now, 9), { inside = home.id, ref = home.id }) end
+  return "Cook for the household", "home"
+end
+
+PLAN.craft = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local home = s.buildings[cd.a]
+  local dur = (1.0 + 1.0 * u01(W, p, now, 45)) * p.dil
+  if ctx.rain > 0 then
+    if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+    work(pl, "craft", dur, { inside = home.id, ref = home.id })
+    return "Mend tools at home", "home"
+  end
+  -- on the bench by the door, facing out
+  local ox, oy = home.dx - home.cx, home.dy - home.cy
+  local l = sqrt(ox * ox + oy * oy)
+  if l < 1e-6 then ox, oy, l = 1, 0, 1 end
+  local side = (p.id % 2 == 0) and 1 or -1
+  local x = home.dx + (-oy / l) * 0.022 * side + ox / l * 0.01
+  local y = home.dy + (ox / l) * 0.022 * side + oy / l * 0.01
+  if dist(p.x, p.y, x, y) > 0.01 then go(pl, x, y, "home") end
+  work(pl, "craft", dur, { ref = home.id, fx = x + ox / l, fy = y + oy / l })
+  return "Mend tools by the door", "home"
+end
+
 PLAN.lunch = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
   work(pl, "lunch", 0.25 + 0.15 * u01(W, p, now, 9))
@@ -552,8 +688,11 @@ end
 
 PLAN.talk = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
-  local x, y = near_spot(W, p, now, s.sqx, s.sqy, 0.09, 11)
-  go(pl, x, y, "the well")
+  -- already among the talkers: stay where they stand
+  if not (p.objk == "talk" and p.inside == 0 and dist(p.x, p.y, s.sqx, s.sqy) < 0.14) then
+    local x, y = near_spot(W, p, now, s.sqx, s.sqy, 0.09, 11)
+    go(pl, x, y, "the well")
+  end
   work(pl, "talk", 0.5 + 1.0 * u01(W, p, now, 12), { fx = s.sqx, fy = s.sqy })
   return "Talk with neighbours", "the well"
 end
@@ -561,10 +700,25 @@ end
 PLAN.visit = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
   local b = s.buildings[cd.b]
-  go(pl, b.dx, b.dy, "a neighbour's house", b.id)
+  if p.inside ~= b.id then go(pl, b.dx, b.dy, "a neighbour's house", b.id) end
   work(pl, "visit", 0.6 + 0.9 * u01(W, p, now, 12), { inside = b.id, with = cd.a })
   local q = W.S.v3.people[cd.a]
   return "Visit " .. q.name, q.surname .. " house"
+end
+
+PLAN.sit_out = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local home = ctx.home
+  -- a bench beside the door, facing out
+  local ox, oy = home.dx - home.cx, home.dy - home.cy
+  local l = sqrt(ox * ox + oy * oy)
+  if l < 1e-6 then ox, oy, l = 1, 0, 1 end
+  local side = (p.id % 2 == 0) and 1 or -1
+  local x = home.dx + (-oy / l) * 0.02 * side + ox / l * 0.008
+  local y = home.dy + (ox / l) * 0.02 * side + oy / l * 0.008
+  if dist(p.x, p.y, x, y) > 0.01 then go(pl, x, y, "home") end
+  work(pl, "sit", 0.5 + 0.9 * u01(W, p, now, 43), { fx = x + ox / l, fy = y + oy / l })
+  return "Sit by the door", "home"
 end
 
 PLAN.play = function(W, s, p, ctx, now, cd)
@@ -621,35 +775,55 @@ PLAN.fetch_water = function(W, s, p, ctx, now, cd)
   return "Fetch water", "the well"
 end
 
+-- Rows are worked in stints (D-080): from where the row's work stands (plot.row_p) for as long as
+-- the stint lasts or the row is done; the row keeps its progress for whoever comes next.
+local function row_stint(W, s, p, now, plot, row, kind, full_h, k)
+  local c = C()
+  local pl = p.plan
+  local rp = plot.row_p
+  if not rp then rp = {}; plot.row_p = rp end
+  local a0 = rp[row] or 0
+  local rate = 1 / full_h                         -- share of the row per hour
+  local stint = (c.stint_h[1] + (c.stint_h[2] - c.stint_h[1]) * u01(W, p, now, k)) * p.dil
+  local dur = min((1 - a0) / rate, max(0.3, stint))
+  local a1 = min(1, a0 + dur * rate)
+  local x0, y0, x1, y1 = act.plot_row_line(s, plot, row)
+  if row % 2 == 0 then x0, x1 = x1, x0 end      -- back and forth across the plot
+  local sx, ex = x0 + (x1 - x0) * a0, x0 + (x1 - x0) * a1
+  go(pl, sx, y0, plot.name)
+  work(pl, kind, dur, { ref = plot.id, row = row, x1 = ex, y1 = y1, rate = rate })
+  return a0
+end
+
 PLAN.sow = function(W, s, p, ctx, now, cd)
   local c = C()
   local pl = plan_reset(p)
   local plot = s.plots[cd.a]
   plot.row_claim[cd.b] = p.id
   if p.carry ~= "seed" or p.camt < c.seed_row then
-    local g = s.granary
-    go(pl, g.dx, g.dy, "the granary")
-    pl[#pl + 1] = { op = "pick", what = "grain", as = "seed", ref = g.id, n = c.seed_row * 4 }
+    -- seed from home when some is kept there, else from the granary
+    local home = ctx.home
+    if home and (home.stock.seed or 0) >= c.seed_row and dist(p.x, p.y, home.dx, home.dy) <= dist(p.x, p.y, s.granary_x, s.granary_y) + 0.1 then
+      go(pl, home.dx, home.dy, "home", home.id)
+      pl[#pl + 1] = { op = "pick", what = "seed", ref = home.id, n = c.seed_row * 4 }
+    else
+      local g = s.granary
+      go(pl, g.dx, g.dy, "the granary")
+      pl[#pl + 1] = { op = "pick", what = "grain", as = "seed", ref = g.id, n = c.seed_row * 4 }
+    end
   end
-  local x0, y0, x1, y1 = act.plot_row_line(s, plot, cd.b)
-  if cd.b % 2 == 0 then x0, x1 = x1, x0 end   -- back and forth across the plot
-  go(pl, x0, y0, plot.name)
-  work(pl, "sow", c.sow_row_h * (1.25 - 0.45 * p.sk_farm) * (0.9 + 0.2 * u01(W, p, now, 19)),
-    { ref = cd.a, row = cd.b, x1 = x1, y1 = y1 })
+  row_stint(W, s, p, now, plot, cd.b, "sow", c.sow_row_h * (1.25 - 0.45 * p.sk_farm) * (0.9 + 0.2 * u01(W, p, now, 19)), 36)
   return "Sow " .. plot.name, plot.name
 end
 
 PLAN.till = function(W, s, p, ctx, now, cd)
   local c = C()
-  local pl = plan_reset(p)
+  plan_reset(p)
   local plot = s.plots[cd.a]
   plot.row_claim[cd.b] = p.id
-  local x0, y0, x1, y1 = act.plot_row_line(s, plot, cd.b)
-  if cd.b % 2 == 1 then x0, x1 = x1, x0 end
-  go(pl, x0, y0, plot.name)
-  work(pl, "till", c.till_row_h * (1.25 - 0.45 * p.sk_farm) * (0.9 + 0.2 * u01(W, p, now, 26)) * (p.strong and 0.9 or 1),
-    { ref = cd.a, row = cd.b, x1 = x1, y1 = y1 })
-  return "Hoe " .. plot.name, plot.name
+  local full = c.till_row_h * (1.25 - 0.45 * p.sk_farm) * (0.9 + 0.2 * u01(W, p, now, 26)) * (p.strong and 0.9 or 1) / tool_factor(W, p)
+  local a0 = row_stint(W, s, p, now, plot, cd.b, "till", full, 37)
+  return a0 > 0 and string.format("Hoe %s (row %d, %d%% done)", plot.name, cd.b, floor(a0 * 100)) or ("Hoe " .. plot.name), plot.name
 end
 
 PLAN.thresh = function(W, s, p, ctx, now, cd)
@@ -719,15 +893,12 @@ end
 
 PLAN.harvest = function(W, s, p, ctx, now, cd)
   local c = C()
-  local pl = plan_reset(p)
+  plan_reset(p)
   local plot = s.plots[cd.a]
   plot.row_claim[cd.b] = p.id
-  local x0, y0, x1, y1 = act.plot_row_line(s, plot, cd.b)
-  if cd.b % 2 == 1 then x0, x1 = x1, x0 end
-  go(pl, x0, y0, plot.name)
-  work(pl, "harvest", c.harvest_row_h * (1.25 - 0.45 * p.sk_farm) * (0.9 + 0.2 * u01(W, p, now, 23)),
-    { ref = cd.a, row = cd.b, x1 = x1, y1 = y1 })
-  return "Harvest " .. plot.name, plot.name
+  local full = c.harvest_row_h * (1.25 - 0.45 * p.sk_farm) * (0.9 + 0.2 * u01(W, p, now, 23)) / tool_factor(W, p)
+  local a0 = row_stint(W, s, p, now, plot, cd.b, "harvest", full, 38)
+  return a0 > 0 and string.format("Reap %s (row %d, %d%% cut)", plot.name, cd.b, floor(a0 * 100)) or ("Reap " .. plot.name), plot.name
 end
 
 PLAN.haul_grain = function(W, s, p, ctx, now, cd)
@@ -755,7 +926,7 @@ PLAN.fell = function(W, s, p, ctx, now, cd)
   local sx, sy = tr.x[k] + dx / l * 0.022, tr.y[k] + dy / l * 0.022
   go(pl, sx, sy, "the woods")
   local done = tr.prog and tr.prog[k] or 0
-  local dur = c.fell_h * (0.4 + 0.6 * tr.size[k]) * (1.3 - 0.6 * p.sk_wood) * (1 - done)
+  local dur = c.fell_h * (0.4 + 0.6 * tr.size[k]) * (1.3 - 0.6 * p.sk_wood) * (1 - done) / tool_factor(W, p)
   work(pl, "chop", max(0.15, dur), { ref = k, fx = tr.x[k], fy = tr.y[k] })
   return "Fell a tree", "the woods"
 end
@@ -812,6 +983,37 @@ PLAN.build = function(W, s, p, ctx, now, cd)
   return "Build the " .. b.label, b.label
 end
 
+PLAN.repair = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local b = s.buildings[cd.a]
+  b.repairer = p.id
+  if (b.repair_logs or 0) < c.repair_logs then
+    local w = s.wood_store
+    go(pl, w.dx, w.dy, "the woodstore")
+    pl[#pl + 1] = { op = "pick", what = "logs", from = "store", ref = w.id, n = c.repair_logs }
+    go(pl, b.dx, b.dy, "the house")
+    pl[#pl + 1] = { op = "drop", to = "repair", ref = b.id }
+  end
+  -- beside a wall, working on the roof and walls
+  local T = s.T
+  local side = floor(u01(W, p, now, 39) * 4)
+  local along = (u01(W, p, now, 40) - 0.5) * 0.8
+  local hw, hh2 = b.w * T * 0.5 + T * 0.7, b.h * T * 0.5 + T * 0.7
+  local x, y
+  if side == 0 then x, y = b.cx + along * b.w * T, b.cy - hh2
+  elseif side == 1 then x, y = b.cx + along * b.w * T, b.cy + hh2
+  elseif side == 2 then x, y = b.cx - hw, b.cy + along * b.h * T
+  else x, y = b.cx + hw, b.cy + along * b.h * T end
+  go(pl, x, y, "the house")
+  local full = c.repair_h * (1.25 - 0.45 * p.sk_build)
+  local left = (1 - (b.rep_p or 0)) * full
+  work(pl, "repair", min(left, max(0.4, (1.0 + 1.2 * u01(W, p, now, 41)) * p.dil)), { ref = b.id, fx = b.cx, fy = b.cy, rate = 1 / full })
+  local hh = W.S.v3.households[b.hh]
+  local q = hh and W.S.v3.people[hh.members[1] or 0]
+  return "Mend the " .. (q and q.surname or "empty") .. " house", "the house"
+end
+
 -- Infants are carried by (or kept indoors with) their carer.
 local function think_infant(W, s, p, now)
   local V = W.S.v3
@@ -850,6 +1052,12 @@ function M.release(W, s, p)
         elseif st.kind == "thresh" then
           local g = s.granary
           if g then g.threshers = max(0, (g.threshers or 1) - 1) end
+        elseif st.kind == "repair" then
+          local b = s.buildings[st.ref]
+          if b and b.repairer == p.id then b.repairer = 0 end
+        elseif st.kind == "cook" then
+          local hh = W.S.v3.households[p.hh]
+          if hh and hh.cooking == p.id then hh.cooking = 0 end
         end
       elseif st.op == "pick" then
         if st.what == "sheaves" then
@@ -872,6 +1080,8 @@ function M.release(W, s, p)
   end
 end
 
+local FIELD = { sow = true, till = true, tend = true, harvest = true }
+
 -- Decide and start p's next plan at time now. `reason` (optional): why they stopped.
 function M.decide(W, s, p, now, reason)
   NOW = now
@@ -888,7 +1098,9 @@ function M.decide(W, s, p, now, reason)
     eat_candidate(W, s, p, ctx, now)
     if ctx.workday then
       work_candidates(W, s, p, ctx, now)
+      repair_candidates(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       chores(W, s, p, ctx, now)
+      craft_candidate(W, s, p, ctx, now)
     elseif not ctx.night then
       chores(W, s, p, ctx, now)
     end
@@ -897,6 +1109,13 @@ function M.decide(W, s, p, now, reason)
       add(0.3 + (1 - p.dil) * 0.3, "shelter", 0, 0, "Rain: going indoors")
     end
     local cd = best_cand(p, now)
+    if M.trace and M.trace[p.id] then
+      -- (tools: every candidate this decision weighed)
+      local t = {}
+      for i = 1, ncand do t[i] = string.format("%s %.2f", CAND[i].kind, CAND[i].u) end
+      M.trace_out = M.trace_out or {}
+      M.trace_out[#M.trace_out + 1] = string.format("#%d %s e%.2f h%.2f: %s", p.id, clock_str(ctx.lh), p.energy, p.hunger, table.concat(t, ", "))
+    end
     if cd then
       kind, why = cd.kind, cd.why
       M.cd = cd
@@ -907,19 +1126,33 @@ function M.decide(W, s, p, now, reason)
   local cd = M.cd
   if kind == "sleep" or kind == "shelter" then cd = nil end
   local obj, dest = PLAN[kind](W, s, p, ctx, now, cd)
-  if p.carry == "seed" and kind ~= "sow" and s.granary then
-    -- the seed left over goes back to the granary first
-    local pl = p.plan
-    table.insert(pl, 1, { op = "drop", to = "granary", ref = s.granary.id })
-    table.insert(pl, 1, { op = "go", x = s.granary.dx, y = s.granary.dy, place = "the granary" })
+  if p.carry ~= "" and not (p.carry == "seed" and FIELD[kind]) then
+    -- whatever is in their hands is put away before anything else (a plan cut short by rain or
+    -- night leaves a load in hand): seed and food at home (seed kept for the next sowing) or the
+    -- granary, water home, sheaves to the granary, logs to the woodstore
+    local home, to, toname = ctx.home, nil, nil
+    local cr = p.carry
+    if cr == "sheaves" then to = s.granary
+    elseif cr == "logs" then to = s.wood_store
+    elseif cr == "water" then to = home
+    else
+      to = s.granary
+      if home and (not to or dist(p.x, p.y, home.dx, home.dy) <= dist(p.x, p.y, to.dx, to.dy) + 0.1) then to = home end
+    end
+    if to then
+      local pl = p.plan
+      local ishome = to == home
+      table.insert(pl, 1, { op = "drop", to = ishome and "home" or to.kind, ref = to.id })
+      table.insert(pl, 1, { op = "go", x = to.dx, y = to.dy, place = ishome and "home" or ("the " .. to.label), enter = ishome and home.id or nil })
+    end
   end
   p.obj, p.why, p.dest = obj, why, dest or ""
   p.objk = kind
   if reason then p.why = reason .. ". " .. why end
   -- bread for the day, taken from home when setting out to work
   if (kind == "sow" or kind == "till" or kind == "harvest" or kind == "fell" or kind == "tend" or kind == "build")
-    and not p.lunch and ctx.home and p.inside == ctx.home.id and (ctx.home.stock.food or 0) > 2 then
-    ctx.home.stock.food = ctx.home.stock.food - C().meal_fu
+    and not p.lunch and ctx.home and p.inside == ctx.home.id and (ctx.home.stock.meals or 0) > 1 then
+    ctx.home.stock.meals = ctx.home.stock.meals - C().meal_fu
     p.lunch = true
   end
   M.cd = nil

@@ -21,7 +21,8 @@ local function C() return cfgmod.V3 end
 
 local IDLE_KINDS = { sit = true, talk = true, rest = true, eat = true, lunch = true, play = true, wait = true,
   nurse = true, idle = true, shelter = true }
-M.OUTDOOR_WORK = { grub = true, forage = true, till = true, thresh = true, sow = true, tend = true, harvest = true, chop = true, build = true, fill = true, play = true }
+local TOOL_WORK = { till = true, harvest = true, chop = true, grub = true, build = true, repair = true, thresh = true, tend = true }
+M.OUTDOOR_WORK = { grub = true, forage = true, till = true, thresh = true, sow = true, tend = true, harvest = true, chop = true, build = true, fill = true, play = true, repair = true }
 
 -- Position of p at time t (analytic; exact at t0 and t1).
 function M.pos(p, t)
@@ -125,7 +126,7 @@ START.work = function(W, s, p, st, now)
     end
   end
   if st.kind == "sleep" or st.kind == "rest" or st.kind == "shelter" or st.kind == "eat" or st.kind == "nurse"
-    or st.kind == "visit" then
+    or st.kind == "visit" or st.kind == "cook" then
     if st.inside and st.inside ~= 0 then p.inside = st.inside end
   end
   begin(p, now, st.kind, dur)
@@ -155,13 +156,32 @@ local function plot_row_line(s, pl, row)
 end
 M.plot_row_line = plot_row_line
 
+-- Row work (D-080): the row's progress grows with the hours worked (st.rate: share per hour);
+-- the row changes state when its progress is complete.
+local function row_progress(pl, st, f, want)
+  if pl.row_st[st.row] ~= want then return false end
+  local rp = pl.row_p
+  if not rp then rp = {}; pl.row_p = rp end
+  local a = (rp[st.row] or 0) + st.dur * f * (st.rate or 1)
+  if a >= 0.999 then rp[st.row] = 0; return true end
+  rp[st.row] = a
+  return false
+end
+
 WORK.till = function(W, s, p, st, f)
   local pl = s.plots[st.ref]
   if not pl then return end
   if pl.row_claim[st.row] == p.id then pl.row_claim[st.row] = 0 end
-  if f >= 0.5 and pl.row_st[st.row] == 0 then
+  local rs = pl.row_st[st.row]
+  if (rs == 0 or rs == 3) and row_progress(pl, st, f, rs) then
     pl.row_st[st.row] = 1
     pl.tilled = (pl.tilled or 0) + 1
+    if pl.stage == "rest" then
+      -- ploughing the fallow: the weeds turned under; the whole field ploughed rests the soil better
+      pl.weeds = max(0, pl.weeds - 1.5 / pl.rows)
+      pl.ploughed = (pl.ploughed or 0) + 1
+      if pl.ploughed >= pl.rows then pl.fert = min(C().fert_max, (pl.fert or 1) + C().fert_plough) end
+    end
   end
   people.practice(p, "sk_farm", st.dur * f)
 end
@@ -170,11 +190,12 @@ WORK.sow = function(W, s, p, st, f)
   local pl = s.plots[st.ref]
   if not pl then return end
   if pl.row_claim[st.row] == p.id then pl.row_claim[st.row] = 0 end
-  if f >= 0.5 and pl.row_st[st.row] == 1 then
+  local c = C()
+  if pl.row_st[st.row] == 1 and p.carry == "seed" and p.camt >= c.seed_row - 1e-6 and row_progress(pl, st, f, 1) then
     pl.row_st[st.row] = 2
     pl.sown = pl.sown + 1
-    local c = C()
     p.camt = p.camt - c.seed_row
+    s.acc.seed = (s.acc.seed or 0) + c.seed_row
     if p.camt <= 0.001 then p.carry, p.camt = "", 0 end
     if pl.stage == "fallow" then pl.stage = "growing"; pl.sown_day = floor(W.hour / 24); pl.growth = 0; pl.weeds = 0; pl.q_sum, pl.q_n = 0, 0 end
   end
@@ -193,7 +214,7 @@ WORK.harvest = function(W, s, p, st, f)
   local pl = s.plots[st.ref]
   if not pl then return end
   if pl.row_claim[st.row] == p.id then pl.row_claim[st.row] = 0 end
-  if f >= 0.5 and pl.row_st[st.row] == 2 then
+  if pl.stage == "ripe" and row_progress(pl, st, f, 2) then
     pl.row_st[st.row] = 3
     pl.harvested = pl.harvested + 1
     local y = C().row_yield * pl.quality * (pl.spoil or 1)
@@ -240,11 +261,42 @@ WORK.build = function(W, s, p, st, f)
   if not b then return end
   b.builders = max(0, (b.builders or 1) - 1)
   if b.state ~= "site" then return end
-  b.work_done = b.work_done + st.dur * f * (0.6 + 0.6 * p.sk_build)
+  local hh = W.S.v3.households[p.hh]
+  b.work_done = b.work_done + st.dur * f * (0.6 + 0.6 * p.sk_build) * (0.55 + 0.45 * (hh and hh.tools or 1))
   people.practice(p, "sk_build", st.dur * f)
   if b.work_done >= b.work_need and b.logs_have >= b.logs_need then
     require("sim.agents.settle").complete_building(W, s, b)
   end
+end
+
+-- Mending a house (D-080): the repair's progress; done, the house is sound again and the log used.
+WORK.repair = function(W, s, p, st, f)
+  local b = s.buildings[st.ref]
+  if not b then return end
+  if b.repairer == p.id then b.repairer = 0 end
+  local c = C()
+  if (b.repair_logs or 0) < c.repair_logs - 1e-6 then return end
+  b.rep_p = (b.rep_p or 0) + st.dur * f * (st.rate or 0.4)
+  people.practice(p, "sk_build", st.dur * f)
+  if b.rep_p >= 0.999 then
+    b.rep_p = 0
+    b.cond = 1
+    b.repair_logs = b.repair_logs - c.repair_logs
+    s.acc.repaired = (s.acc.repaired or 0) + 1
+  end
+end
+
+-- Craft (D-080): tools mended and made; a little wood used.
+WORK.craft = function(W, s, p, st, f)
+  local hh = W.S.v3.households[p.hh]
+  local b = s.buildings[st.ref or 0]
+  if not hh or not b then return end
+  local c = C()
+  local h = st.dur * f
+  local logs = min(b.stock.logs or 0, h * c.tool_logs)
+  if logs <= 0 then return end
+  b.stock.logs = b.stock.logs - logs
+  hh.tools = min(1, (hh.tools or 1) + h * c.tool_mend * (logs / (h * c.tool_logs)))
 end
 
 WORK.thresh = function(W, s, p, st, f)
@@ -272,17 +324,18 @@ WORK.grub = function(W, s, p, st, f)
   end
 end
 
+-- Gathering at the woods' edge takes what is there: the edge's wild food (s.wild, regrown daily
+-- on its standing trees, settle.lua) is picked out by everyone who forages (D-080).
 WORK.forage = function(W, s, p, st, f)
-  if f < 0.5 then return end
-  local c = C()
-  local season = require("sim.agents.clock").local_doy(W.hour, W.grid.lat[s.cell])
-  -- little in spring, most in late summer and autumn
-  local k = season < 12 and 0.35 or (season < 24 and 0.8 or (season < 36 and 1 or 0.15))
-  local got = (c.forage_fu[1] + (c.forage_fu[2] - c.forage_fu[1]) * (st.luck or 0.5)) * k * f
-  p.carry, p.camt = "food", got
-  s.acc.foraged = (s.acc.foraged or 0) + got
   local hh = W.S.v3.households[p.hh]
   if hh and hh.foraging == p.id then hh.foraging = 0 end
+  local c = C()
+  local wild = s.wild or 0
+  local got = min(c.forage_basket * f * (0.75 + 0.5 * (st.luck or 0.5)), wild * 0.25)
+  if got < 0.01 then return end
+  s.wild = wild - got
+  p.carry, p.camt = "food", got
+  s.acc.foraged = (s.acc.foraged or 0) + got
 end
 
 WORK.fill = function(W, s, p, st, f)
@@ -293,17 +346,36 @@ WORK.eat = function(W, s, p, st, f)
   if f < 0.4 then return end
   local c = C()
   local b = s.buildings[st.ref or 0]
-  local food = b and b.stock.food or 0
-  if food >= c.meal_fu * 0.5 then
-    b.stock.food = max(0, food - c.meal_fu)
-    p.hunger = max(0, p.hunger - c.meal)
-    s.acc.eaten = (s.acc.eaten or 0) + c.meal_fu
+  local meals = b and b.stock.meals or 0
+  if meals >= c.meal_fu * 0.5 then
+    local m = min(meals, c.meal_fu)
+    b.stock.meals = meals - m
+    p.hunger = max(0, p.hunger - c.meal * m / c.meal_fu)
+    s.acc.eaten = (s.acc.eaten or 0) + m
   end
+end
+
+-- Cooking (D-080): at the hearth, grain from the pantry becomes the household's meals (bread,
+-- porridge, pottage) — when the hearth has wood.
+WORK.cook = function(W, s, p, st, f)
+  local hh = W.S.v3.households[p.hh]
+  if hh and hh.cooking == p.id then hh.cooking = 0 end
+  local b = s.buildings[st.ref or 0]
+  if not b or f < 0.3 then return end
+  if (b.stock.logs or 0) <= 0 and not b.fire then return end
+  local c = C()
+  local n = hh and #hh.members or 1
+  local amt = min(b.stock.food or 0, n * c.cook_batch * f)
+  if amt <= 0 then return end
+  b.stock.food = b.stock.food - amt
+  b.stock.meals = (b.stock.meals or 0) + amt
+  b.cooked_t = W.S.v3.now or W.hour
 end
 
 WORK.lunch = function(W, s, p, st, f)
   if f < 0.4 then return end
   p.lunch = false
+  s.acc.lunch = (s.acc.lunch or 0) + C().meal_fu
   p.hunger = max(0, p.hunger - C().meal)
 end
 
@@ -322,7 +394,7 @@ WORK.talk = function(W, s, p, st, f)
   local now = W.S.v3.now or W.hour
   for i = 1, #mem do
     local q = V.people[mem[i]]
-    if q and q ~= p and q.alive and q.act == "talk" and q.inside == 0 then
+    if q and q ~= p and q.alive and q.act == p.act and q.inside == 0 then
       local dx, dy = q.x - p.x, q.y - p.y
       if dx * dx + dy * dy < 0.05 then people.bond(p, q, 0.02 * f) end
     end
@@ -330,6 +402,7 @@ WORK.talk = function(W, s, p, st, f)
 end
 
 WORK.play = WORK.talk
+WORK.sit = WORK.talk
 
 local PICK, DROP = {}, {}
 
@@ -342,6 +415,16 @@ PICK.grain = function(W, s, p, st)
   if got > 0 then
     b.stock.grain = b.stock.grain - got
     p.carry, p.camt = st.as or "grain", got
+  end
+end
+
+PICK.seed = function(W, s, p, st)
+  local b = s.buildings[st.ref]
+  if not b then return end
+  local got = min(st.n or 2, b.stock.seed or 0)
+  if got > 0 then
+    b.stock.seed = b.stock.seed - got
+    p.carry, p.camt = "seed", got
   end
 end
 
@@ -385,7 +468,9 @@ DROP.any = function(W, s, p, st)
   local what, n = p.carry, p.camt
   local b = s.buildings[st.ref]
   if not b then return end
-  if st.to == "site" and what == "logs" then
+  if st.to == "repair" and what == "logs" then
+    b.repair_logs = (b.repair_logs or 0) + n
+  elseif st.to == "site" and what == "logs" then
     b.logs_have = b.logs_have + n
     b.deliver_claim = max(0, (b.deliver_claim or 1) - 1)
     if b.work_done >= b.work_need and b.logs_have >= b.logs_need then
@@ -394,7 +479,7 @@ DROP.any = function(W, s, p, st)
   elseif what == "sheaves" then
     b.stock.sheaves = (b.stock.sheaves or 0) + n
   elseif what == "seed" then
-    b.stock.grain = (b.stock.grain or 0) + n
+    if b.kind == "granary" then b.stock.grain = (b.stock.grain or 0) + n else b.stock.seed = (b.stock.seed or 0) + n end
   elseif what == "grain" then
     if b.kind == "granary" then
       b.stock.grain = (b.stock.grain or 0) + n
@@ -402,7 +487,7 @@ DROP.any = function(W, s, p, st)
       b.stock.food = (b.stock.food or 0) + n
     end
   elseif what == "food" then
-    b.stock.food = (b.stock.food or 0) + n
+    if b.kind == "granary" then b.stock.grain = (b.stock.grain or 0) + n else b.stock.food = (b.stock.food or 0) + n end
   elseif what == "logs" then
     b.stock.logs = (b.stock.logs or 0) + n
   elseif what == "water" then
@@ -445,6 +530,11 @@ local function finish(W, s, p, now, f)
   elseif st.op == "work" then
     local h = WORK[st.kind]
     if h then h(W, s, p, st, f) end
+    if TOOL_WORK[st.kind] then
+      -- the household's tools wear with the work
+      local hh = W.S.v3.households[p.hh]
+      if hh then hh.tools = max(0.15, (hh.tools or 1) - C().tool_wear * st.dur * f) end
+    end
   elseif st.op == "pick" then
     local h = PICK[st.what]
     if h and f >= 1 then h(W, s, p, st) end
