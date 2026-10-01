@@ -211,4 +211,38 @@ function M.wild_animals_belong_to_their_herds()
   T.ok(kills >= 1, "kills by wolves " .. kills)
 end
 
+
+-- Trade by land (D-097): the shipped world over 24 days. A fishing household's porter walks a
+-- load of smoked fish to a village with grain to spare, sells it into the granary, walks home
+-- with grain: a round trip completes; what one village exports another imports, FU for FU.
+function M.trade_walks_its_goods()
+  local f = assert(io.open("assets/worlds/v3.tcsave", "rb"))
+  local data = f:read("*a")
+  f:close()
+  local W = assert(worlds.from_save_string(data))
+  world.set_systems(require("sim.agents.worldgen").systems())
+  local t0 = W.hour
+  local road = 0
+  for h = 12, 24 * 24, 12 do
+    world.advance(W, t0 + h)
+    for _, s in ipairs(W.S.v3.settlements) do
+      for _, id in ipairs(s.members) do
+        local p = W.S.v3.people[id]
+        if p.alive and p.act == "travel" then road = road + 1 end
+      end
+    end
+  end
+  local trips, exp, imp, fish = 0, 0, 0, 0
+  for _, s in ipairs(W.S.v3.settlements) do
+    trips = trips + (s.acc.trips or 0)
+    exp = exp + (s.acc.export or 0)
+    imp = imp + (s.acc.import or 0)
+    fish = fish + (s.acc.traded_fish or 0)
+  end
+  T.ok(trips >= 1, "trade round trips completed " .. trips)
+  T.ok(road >= 2, "samples of porters on the road " .. road)
+  T.ok(fish > 5, "smoked fish sold " .. fish)
+  T.ok(math.abs(exp - imp) < 1e-6, string.format("exports %.3f against imports %.3f", exp, imp))
+end
+
 return M

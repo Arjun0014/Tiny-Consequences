@@ -955,6 +955,13 @@ C.V3 = {
   -- logs and work-hours a tile; the longest; how many a village builds
   river_water_k = 1.8, rfish_tile = 0.6, rfish_regrow = 0.12, angle_rate = 0.5, angle_reach = 1.0, angle_min = 3,
   cross_keep = 0.85, bridge_need = 40, bridge_logs = 2, bridge_work = 10, bridge_max = 9, bridges_max = 2,
+  -- trade (D-097): the road's pace (local units of the planet's surface an hour), how far a porter
+  -- walks to trade; a load (FU); smoked fish a household keeps a member before it sells; grain a FU
+  -- of fish fetches (more where fish is scarce); a buyer: days of grain a person above which it
+  -- spares grain, smoked fish a person below which it wants fish; days of food at home below which
+  -- the household wants grain back
+  road_speed = 0.45, trade_reach = 11, trade_load = 8, trade_keep = 3, trade_rate = 1.4,
+  trade_food_spare = 25, trade_fish_short = 2, trade_home_food = 4, trade_prov = 2.0,
   meat_want = 1.2, hunt_reach = 1.6, hunt_stalk = 0.3, hunt_throw = 0.07, stalk_speed = 0.4,
   hunt_hit = 0.25, hunt_skill = 0.35, hunt_tries = 3, hunt_hours = 5,                         -- after wolves took a beast, the village keeps a night watch this long
   wolf_visit = 0.5,                       -- a pack's chance to hunt on the map tonight: its time here x this

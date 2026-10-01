@@ -846,8 +846,21 @@ local function update_villagers(V, t, zoom)
     local q = Vp[s.members[i]]
     if q and q.alive and q.act == "carried" and (q.carrier or 0) ~= 0 then arms[q.carrier] = true end
   end
+  -- (those on this map: the members at home and the visitors from elsewhere; D-097)
+  local here = V.here or {}
+  V.here = here
+  local nh = 0
   for i = 1, #s.members do
-    local p = Vp[s.members[i]]
+    local q = Vp[s.members[i]]
+    if q and q.alive and not q.at and q.act ~= "travel" then nh = nh + 1; here[nh] = q end
+  end
+  for i = 1, #(s.visitors or {}) do
+    local q = Vp[s.visitors[i]]
+    if q and q.alive and q.at == s.id and q.act ~= "travel" then nh = nh + 1; here[nh] = q end
+  end
+  for i = nh + 1, #here do here[i] = nil end
+  for i = 1, nh do
+    local p = here[i]
     if p and p.alive then
       local stage = people.stage(p, t)
       local hidden = (p.inside ~= 0 and p.act ~= "walk") or p.act == "carried"
@@ -946,6 +959,62 @@ local function update_villagers(V, t, zoom)
   M.stats.people, M.stats.inside = n, inside
 end
 
+-- Travellers on the road between settlements (D-097): where the leg has them, on the planet's
+-- great circle from the gate they left to the gate they make for, walking.
+M.TRAVEL = 8
+local TPOS, TROT = vmath.vector3(), vmath.quat()
+function M.update_travellers(W, t, zoom)
+  local V3 = W.S.v3
+  if not V3 or not M.villager_factory_url then return end
+  M.tpool = M.tpool or {}
+  local n = 0
+  local show = not M.skipping and zoom >= 0.75
+  local trade = require("sim.agents.trade")
+  for _, s in ipairs(V3.settlements) do
+    for _, id in ipairs(s.members) do
+      local p = V3.people[id]
+      if show and p.alive and p.act == "travel" and n < M.TRAVEL then
+        local st = p.plan[p.pi]
+        local from, to = V3.settlements[st and st.from or 0], V3.settlements[st and st.to or 0]
+        if from and to then
+          n = n + 1
+          local e = M.tpool[n]
+          if not e then
+            local gid = factory.create(M.villager_factory_url, vmath.vector3(0, 0, 0))
+            e = { id = gid, urls = {}, on = false, anim = nil }
+            for k = 1, 3 do e.urls[k] = msg.url(nil, gid, LODS[k]:sub(2)); msg.post(e.urls[k], MSG_DISABLE) end
+            M.tpool[n] = e
+          end
+          local ax, ay = trade.gate(W, from, to)
+          local bx, by = trade.gate(W, to, from)
+          local u0x, u0y, u0z = mapm.unit(from, ax, ay)
+          local u1x, u1y, u1z = mapm.unit(to, bx, by)
+          local f = p.t1 > p.t0 and min(1, max(0, (t - p.t0) / (p.t1 - p.t0))) or 0
+          local x, y, z = u0x + (u1x - u0x) * f, u0y + (u1y - u0y) * f, u0z + (u1z - u0z) * f
+          local l = sqrt(x * x + y * y + z * z)
+          x, y, z = x / l, y / l, z / l
+          local r = M.surface and M.surface(x, y, z) or (V3 and 1) or 1
+          TPOS.x, TPOS.y, TPOS.z = x * r, y * r, z * r
+          go.set_position(TPOS, e.id)
+          -- facing the way: the tangent toward the destination
+          local yaw = 0
+          go.set_rotation(vmx.set_up_yaw(TROT, x, y, z, yaw), e.id)
+          go.set_scale(M.VILLAGER_SCALE * 1.4, e.id)
+          if not e.on then
+            msg.post(e.urls[3], MSG_ENABLE)
+            e.on = true
+            model.play_anim(e.urls[3], "carry_walk", go.PLAYBACK_LOOP_FORWARD, { playback_rate = 1 })
+          end
+        end
+      end
+    end
+  end
+  for k = n + 1, #M.tpool do
+    local e = M.tpool[k]
+    if e.on then for j = 1, 3 do msg.post(e.urls[j], MSG_DISABLE) end; e.on = false end
+  end
+end
+
 -- Public ------------------------------------------------------------------------------------
 
 -- Before props are baked: the flora leaves the settlements' squares to this renderer.
@@ -964,6 +1033,7 @@ end
 function M.init(W, PL, urls, celltex)
   M.W = W
   M.animal_urls = urls
+  M.villager_factory_url = urls.villager_factory
   if not W.v3 or not W.S.v3 then return end
   build_templates()
   for _, s in ipairs(W.S.v3.settlements) do
@@ -1145,6 +1215,7 @@ function M.update(W, dt, zoom, t)
     M.update_herds(V, t, zoom)
   end
   M.animals_end()
+  M.update_travellers(W, t, zoom)
   if M.skipping then
     -- hide everyone at once (the pool is not walked while skipping)
     for _, V in ipairs(M.SETS) do

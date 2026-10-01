@@ -65,6 +65,9 @@ local function body(p, dt, kind)
   if kind == "sleep" then
     e = e + c.energy_sleep * dt
     h = h + c.hunger_sleep * dt
+  elseif kind == "travel" then
+    -- (on the road: walking with rests, sleeping at the wayside; D-097)
+    h = h + c.hunger_idle * dt
   elseif kind == "walk" then
     e = e - c.energy_walk * dt * (p.carry ~= "" and 1.4 or 1)
     h = h + c.hunger_idle * dt
@@ -797,6 +800,42 @@ WORK.stalk = function(W, s, p, st, f)
   wild.interrupt(W, s, w, now)
 end
 
+-- On the road between settlements (D-097): at the leg's end the person is on the other map, at
+-- its gate toward where they came from.
+WORK.travel = function(W, s, p, st, f)
+  if f < 0.99 then return end
+  local V = W.S.v3
+  local o = V.settlements[st.to or 0]
+  local from = V.settlements[st.from or 0]
+  if not o or not from then return end
+  local gx, gy = require("sim.agents.trade").gate(W, o, from)
+  local old = V.settlements[p.at or p.sett]
+  if old and old.visitors then people.remove_id(old.visitors, p.id) end
+  if o.id == p.sett then
+    p.at = nil
+  else
+    p.at = o.id
+    o.visitors = o.visitors or {}
+    o.visitors[#o.visitors + 1] = p.id
+  end
+  p.x, p.y = gx, gy
+  p.inside = 0
+  s.acc.road_h = (s.acc.road_h or 0) + st.dur
+end
+
+-- A guest's meal (D-097): the host village feeds a traveller from its granary (its own ledger).
+WORK.guest_meal = function(W, s, p, st, f)
+  local g = s.buildings[st.ref or 0]
+  if not g or f < 0.5 then return end
+  local c = C()
+  local m = min(g.stock.grain or 0, c.meal_fu * 2)
+  if m <= 0 then return end
+  g.stock.grain = g.stock.grain - m
+  s.acc.eaten = (s.acc.eaten or 0) + m
+  s.acc.guests = (s.acc.guests or 0) + m
+  p.hunger = max(0, p.hunger - c.meal * 2)
+end
+
 -- Fish hung on the rack (D-096).
 WORK.hang = function(W, s, p, st, f)
   local hh = W.S.v3.households[p.hh]
@@ -970,6 +1009,21 @@ PICK.grain = function(W, s, p, st)
   local b = s.buildings[st.ref]
   if not b then return end
   local c = C()
+  if st.bought then
+    -- (D-097) the price of the fish just sold: grain from the buyer's granary
+    local tr = p.trip
+    local want = tr and (tr.sold or 0) * (tr.rate or c.trade_rate) or 0
+    local got = min(want, b.stock.grain or 0)
+    if got > 0 then
+      b.stock.grain = b.stock.grain - got
+      p.carry, p.camt = "grain", got
+      s.acc.export = (s.acc.export or 0) + got
+      local home = W.S.v3.settlements[p.sett]
+      home.acc.import = (home.acc.import or 0) + got
+      s.acc.traded_grain = (s.acc.traded_grain or 0) + got
+    end
+    return
+  end
   local want = st.n or c.carry_grain
   local got = min(want, b.stock.grain or 0)
   if got > 0 then
@@ -1037,6 +1091,28 @@ PICK.logs = function(W, s, p, st)
       b.stock.logs = b.stock.logs - got
       p.carry, p.camt = "logs", got
     end
+  end
+end
+
+-- Food for the road (D-097): meals and grain from home.
+PICK.provisions = function(W, s, p, st)
+  local b = s.buildings[st.ref]
+  if not b then return end
+  local want = st.n or C().trade_prov
+  local ml = min(want, b.stock.meals or 0)
+  b.stock.meals = (b.stock.meals or 0) - ml
+  local fd = min(want - ml, b.stock.food or 0)
+  b.stock.food = (b.stock.food or 0) - fd
+  p.prov = (p.prov or 0) + ml + fd
+end
+
+PICK.smoked = function(W, s, p, st)
+  local b = s.buildings[st.ref]
+  if not b then return end
+  local got = min(st.n or 2, b.stock.smoked or 0)
+  if got > 0 then
+    b.stock.smoked = b.stock.smoked - got
+    p.carry, p.camt = "smoked", got
   end
 end
 
@@ -1112,6 +1188,17 @@ DROP.any = function(W, s, p, st)
     b.stock.milk = (b.stock.milk or 0) + n
   elseif what == "dried" then
     b.stock.smoked = (b.stock.smoked or 0) + n
+  elseif what == "smoked" then
+    b.stock.smoked = (b.stock.smoked or 0) + n
+    if st.sold and p.trip then
+      -- (D-097) sold to the buyer's village: out of the seller's ledger, into the buyer's
+      local home = W.S.v3.settlements[p.sett]
+      home.acc.export = (home.acc.export or 0) + n
+      s.acc.import = (s.acc.import or 0) + n
+      s.acc.traded_fish = (s.acc.traded_fish or 0) + n
+      local _, rate = require("sim.agents.trade").buyer(W, home)
+      p.trip.sold, p.trip.rate = n, rate or C().trade_rate
+    end
   elseif what == "carcass" then
     -- (butchered at home: the meat to the larder, the hide kept)
     b.stock.meat = (b.stock.meat or 0) + n
@@ -1143,6 +1230,20 @@ DROP.any = function(W, s, p, st)
     b.stock.water = (b.stock.water or 0) + n
   end
   p.carry, p.camt = "", 0
+  if st.trip_end and (p.prov or 0) > 0 then
+    -- (what is left of the provisions goes back in the larder)
+    b.stock.food = (b.stock.food or 0) + p.prov
+    p.prov = 0
+  end
+  if st.trip_end and p.trip then
+    local hh = W.S.v3.households[p.hh]
+    if hh and hh.trading == p.id then hh.trading = 0 end
+    local o = W.S.v3.settlements[p.trip.to]
+    people.remember(p, W.S.v3.now or W.hour, string.format("Traded %.0f FU of smoked fish for %.0f of grain at %s",
+      p.trip.sold or 0, (p.trip.sold or 0) * (p.trip.rate or 0), o and o.name or "?"))
+    p.trip = nil
+    s.acc.trips = (s.acc.trips or 0) + 1
+  end
 end
 
 -- Apply the effects of p's current step, done to fraction f (1 = complete), at time now.
@@ -1150,6 +1251,18 @@ local LEISURE = { rest = true, talk = true, visit = true, sit_out = true }
 local function finish(W, s, p, now, f)
   local st = p.plan[p.pi]
   local dt = now - p.t0
+  if p.act == "travel" and dt > 0 and (p.prov or 0) > 0 then
+    -- the provisions from home, eaten along the road (D-097)
+    local c = C()
+    local want = max(0, p.hunger + c.hunger_idle * dt - 0.35) / c.meal * c.meal_fu
+    local m = min(p.prov, want)
+    if m > 0 then
+      p.prov = p.prov - m
+      p.hunger = max(0, p.hunger - m / c.meal_fu * c.meal)
+      local hs = W.S.v3.settlements[p.sett]
+      hs.acc.eaten = (hs.acc.eaten or 0) + m
+    end
+  end
   body(p, dt, p.act)
   if dt > 0 and p.act ~= "sleep" and p.act ~= "carried" and p.adult then
     -- (the village's measure of idle hands: adults' leisure hours of their waking hours)

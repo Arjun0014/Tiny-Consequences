@@ -144,6 +144,7 @@ local function step_person(W, s, p, now)
     local f = span > 0 and (now - p.t0) / span or 1
     act.finish(W, s, p, now, f)
     p.pi = p.pi + 1
+    s = W.S.v3.settlements[p.at or p.sett] or s
     think.release(W, s, p)
     local reason = p.int_reason
     p.int_at, p.int_reason = nil, nil
@@ -157,6 +158,8 @@ local function step_person(W, s, p, now)
     end
     act.finish(W, s, p, now, 1)
     p.pi = p.pi + 1
+    -- (a road leg ends on another settlement's map: the next step is there, D-097)
+    s = W.S.v3.settlements[p.at or p.sett] or s
     if p.plan[p.pi] then
       if not act.start(W, s, p, now) then
         think.release(W, s, p)
@@ -206,7 +209,7 @@ function sys.advance(W, t)
     else
       local p = P[id]
       if p and p.alive and p.ver == ver then
-        step_person(W, S[p.sett], p, et)
+        step_person(W, S[p.at or p.sett], p, et)
       end
     end
   end
@@ -219,7 +222,7 @@ local function rain_change(W, s, now, r)
   local V = W.S.v3
   for i = 1, #s.members do
     local p = V.people[s.members[i]]
-    if p and p.alive and p.act ~= "carried" then
+    if p and p.alive and p.act ~= "carried" and not p.at and p.act ~= "travel" then
       local u = rng.float(W.seed, rng.S.V3_THINK, p.key, floor(now) % 4294967296, 99)
       if r > 0 and p.inside == 0 and p.act ~= "sleep" then
         local hb = people.home(W, s, p)

@@ -277,7 +277,7 @@ function M.food_total(W, s)
   local c = C()
   local tot = 0
   local g = s.granary
-  if g then tot = tot + (g.stock.grain or 0) + (g.stock.sheaves or 0) end
+  if g then tot = tot + (g.stock.grain or 0) + (g.stock.sheaves or 0) + (g.stock.smoked or 0) end
   for k = 1, #s.blist do
     local b = s.buildings[s.blist[k]]
     if b.kind == "house" then
@@ -292,7 +292,8 @@ function M.food_total(W, s)
   for k = 1, #s.members do
     local p = V.people[s.members[k]]
     if p and p.alive then
-      if CARRY_FOOD[p.carry] then tot = tot + p.camt end
+      if CARRY_FOOD[p.carry] or p.carry == "smoked" then tot = tot + p.camt end
+      tot = tot + (p.prov or 0)
       if p.lunch then tot = tot + c.meal_fu end
     end
   end
@@ -301,8 +302,8 @@ end
 
 function M.food_flows(s)
   local a = s.acc
-  return (a.harvest or 0) + (a.foraged or 0) + (a.fished or 0) + (a.meat or 0) + (a.milk or 0)
-    - (a.eaten or 0) - (a.seed or 0) - (a.lunch or 0) - (a.spoiled or 0) - (a.whey or 0)
+  return (a.harvest or 0) + (a.foraged or 0) + (a.fished or 0) + (a.meat or 0) + (a.milk or 0) + (a.import or 0)
+    - (a.eaten or 0) - (a.seed or 0) - (a.lunch or 0) - (a.spoiled or 0) - (a.whey or 0) - (a.export or 0)
 end
 
 -- Plots ------------------------------------------------------------------------------------

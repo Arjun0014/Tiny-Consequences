@@ -51,7 +51,7 @@ local function plural(n, one, many) return n == 1 and one or many end
 -- outlive a person who moved to a new house, died or changed their mind).
 local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "fetch_wood", fetch_water = "fetch_water", foraging = "forage",
   smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed",
-  milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle" }
+  milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle", trading = "trade" }
 local function claim_free(W, hh, field, p)
   local id = hh[field] or 0
   if id == 0 or (p and id == p.id) then return true end
@@ -629,6 +629,29 @@ local function fish_candidate(W, s, p, ctx, now, fat)
     addw(u - travel(ctx, s.dock.dx, s.dock.dy, p.x, p.y), "fish", boat.id, 0, "The fish are running offshore (%.0f%% of a full sea); the boat is ready", min(100, fd * 100))
   end
 end
+
+-- Trade (D-097): a household with smoked fish to spare (beyond what it keeps for the winter) sends
+-- a grown member with a load of it to a village within walking reach that has grain to spare and
+-- little fish; they come back with grain.
+local trade = require("sim.agents.trade")
+local function trade_candidate(W, s, p, ctx, now, fat)
+  local c = C()
+  if ctx.stage ~= "adult" or not ctx.home or ctx.babe or ctx.rain >= 1 or ctx.lh > ctx.sunset - 4 then return end
+  if p.trip or not claim_free(W, ctx.hh, "trading", p) then return end
+  local home = ctx.home
+  local n = #ctx.hh.members
+  local spare = (home.stock.smoked or 0) - n * c.trade_keep
+  if spare < c.trade_load then return end
+  local o, rate = trade.buyer(W, s)
+  if not o then return end
+  local d, hrs = trade.road(W, s, o)
+  -- (worth the days on the road when the household's own grain is short, or the fish is plenty)
+  local food = ((home.stock.food or 0) + (home.stock.meals or 0)) / max(1, n)
+  local want = food < c.trade_home_food and 0.2 or 0
+  addw((0.36 + want + 0.04 * min(4, spare / c.trade_load)) * (p.sex == "m" and 1 or 0.8) * fat, "trade", o.id, 0,
+    "%.0f FU of smoked fish to spare: carrying a load to %s (%.0f hours' walk) for their grain", spare, o.name, hrs)
+end
+M.trade_candidate = trade_candidate
 
 -- Crewing (D-096): a skipper waiting at the dock for a mate - one of the household first (a son,
 -- a husband, a daughter), else a neighbour for a share of the catch.
@@ -1927,6 +1950,77 @@ PLAN.fish = function(W, s, p, ctx, now, cd)
   return "Go fishing", "the fishing ground"
 end
 
+-- The trip (D-097), from wherever it stands: out with the fish (at home), the trade (at the
+-- buyer's village), the way home (with the grain). A night away is slept at the buyer's square.
+local function trip_legs(W, s, p, ctx, now)
+  local c = C()
+  local pl = p.plan
+  local V = W.S.v3
+  local tr = p.trip
+  local home_s = V.settlements[tr.from]
+  local o = V.settlements[tr.to]
+  local here = p.at or p.sett
+  if here == tr.from then
+    -- out: the load from home, to the gate toward the buyer, the road
+    if p.carry ~= tr.give then
+      local home = ctx.home
+      if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+      pl[#pl + 1] = { op = "pick", what = "smoked", ref = home.id, n = tr.n }
+      pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id }
+    end
+    local gx, gy = trade.gate(W, home_s, o)
+    go(pl, gx, gy, "the road to " .. o.name)
+    local _, hrs = trade.road(W, home_s, o)
+    work(pl, "travel", hrs, { to = o.id, from = home_s.id })
+    here = o.id
+  end
+  if here == tr.to then
+    if ctx.night and not tr.slept then
+      -- (a night's lodging at the square)
+      local until_t = next_local(now, ctx.lh, ctx.wake)
+      go(pl, o.sqx or 0, o.sqy or 0, o.name .. "'s square")
+      work(pl, "sleep", until_t - now, { trip_sleep = true })
+    end
+    if not tr.sold and (p.carry == tr.give or (p.at or p.sett) == tr.from) then
+      go(pl, o.granary.dx, o.granary.dy, o.name .. "'s granary")
+      -- (a meal for the traveller from the village's store: guests are fed)
+      if p.hunger > 0.3 then work(pl, "guest_meal", 0.4, { ref = o.granary.id }) end
+      pl[#pl + 1] = { op = "drop", to = "granary", ref = o.granary.id, sold = true }
+      pl[#pl + 1] = { op = "pick", what = "grain", ref = o.granary.id, n = 0, bought = true }
+      work(pl, "guest_meal", 0.3, { ref = o.granary.id })
+    end
+    local gx, gy = trade.gate(W, o, home_s)
+    go(pl, gx, gy, "the road home")
+    local _, hrs = trade.road(W, o, home_s)
+    work(pl, "travel", hrs, { to = home_s.id, from = o.id })
+  end
+  -- home: the grain into the house
+  local home = ctx.home or people.home(W, home_s, p)
+  if home then
+    go(pl, home.dx, home.dy, "home", home.id)
+    pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, trip_end = true }
+  end
+end
+
+PLAN.trade = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local o = W.S.v3.settlements[cd.a]
+  local n = #ctx.hh.members
+  local load = min(c.trade_load, (ctx.home.stock.smoked or 0) - n * c.trade_keep)
+  p.trip = { to = o.id, from = s.id, give = "smoked", take = "grain", n = load, t0 = now }
+  ctx.hh.trading = p.id
+  trip_legs(W, s, p, ctx, now)
+  return "Take smoked fish to " .. o.name, o.name
+end
+
+PLAN.trip = function(W, s, p, ctx, now, cd)
+  plan_reset(p)
+  trip_legs(W, s, p, ctx, now)
+  local o = W.S.v3.settlements[p.trip.to]
+  return (p.at or p.sett) == p.trip.to and ("Trading at " .. o.name) or ("On the way " .. ((p.at or p.sett) == p.sett and "to " .. o.name or "home")), o.name
+end
+
 -- The mate's day (D-096): to the dock, into the skipper's boat, riding out and back with them
 -- (the skipper's landing ends it).
 PLAN.crew = function(W, s, p, ctx, now, cd)
@@ -2496,6 +2590,19 @@ function M.decide(W, s, p, now, reason)
   if ctx.stage == "infant" then return think_infant(W, s, p, now) end
   ncand = 0
   LZ.W, LZ.s, LZ.p, LZ.ctx = W, s, p, ctx
+  if p.trip then
+    local tr = p.trip
+    local here = p.at or p.sett
+    local done = here == tr.from and (p.carry == tr.take or (p.carry ~= tr.give and tr.sold))
+    if not done and (here ~= tr.from or p.carry == tr.give) then
+      local obj, dest = PLAN.trip(W, s, p, ctx, now, nil)
+      p.obj, p.dest, p.objk = obj, dest, "trade"
+      p.why = (reason and (reason .. ". ") or "") .. (here == tr.to and "Trading smoked fish for grain" or "On the road")
+      p.tgt_kind, p.tgt_ref = "trade", tr.to
+      return true
+    end
+    if here == tr.from and p.carry ~= tr.give then p.trip = nil end
+  end
   if p.riding and p.riding ~= 0 then
     -- (a mate in a boat: out until the skipper lands, D-096)
     local obj, dest = PLAN.ride(W, s, p, ctx, now, nil)
@@ -2573,6 +2680,7 @@ function M.decide(W, s, p, now, reason)
       repair_candidates(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       fish_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       crew_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
+      trade_candidate(W, s, p, ctx, now, fatigue(p))
       rack_candidates(W, s, p, ctx, now, fatigue(p))
       mend_boat_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       chores(W, s, p, ctx, now)
