@@ -977,8 +977,11 @@ local function hunt_candidates(W, s, p, ctx, now)
   if need + short < 0.5 or not claim_free(W, hh, "hunting", p) then return end
   -- the quarry: a grown animal of a band, the nearest
   local best, bs = nil, -1e9
+  local V = W.S.v3
   for _, w in ipairs(s.wildlife.animals) do
-    if w.alive and not w.pred and w.act ~= "flee" and w.act ~= "leave" and (now - w.born) / 1152 > 0.5 then
+    local hq = (w.hunter or 0) ~= 0 and V.people[w.hunter]
+    local taken = hq and hq ~= p and hq.alive and hq.hunting and hq.hunting.k == w.k
+    if w.alive and not w.pred and not taken and w.act ~= "flee" and w.act ~= "leave" and (now - w.born) / 1152 > 0.5 then
       local d = dist(p.x, p.y, w.tx, w.ty)
       if d < c.hunt_reach then
         local sc = wild.WP(w.sp).meat * 0.05 - d
@@ -2207,6 +2210,7 @@ PLAN.hunt = function(W, s, p, ctx, now, cd)
     ctx.hh.hunting = p.id
   end
   p.hunting.k = w.k
+  w.hunter = p.id
   local qx, qy = wild.pos(w, now)
   local d = dist(p.x, p.y, qx, qy)
   if d > c.hunt_stalk then
