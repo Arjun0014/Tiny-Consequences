@@ -317,6 +317,20 @@ function M.nearest_bank(s, x, y)
   return best, sqrt(bd)
 end
 
+-- The bank nearest a house (by its id), worked out once each time the rivers are laid.
+local NEARB = setmetatable({}, { __mode = "k" })
+function M.house_bank(s, b)
+  local e = NEARB[s]
+  if not e or e.day ~= s.riv_day then e = { day = s.riv_day, i = {}, d = {} }; NEARB[s] = e end
+  local i = e.i[b.id]
+  if i == nil then
+    local d
+    i, d = M.nearest_bank(s, b.dx, b.dy)
+    e.i[b.id], e.d[b.id] = i, d
+  end
+  return i, e.d[b.id]
+end
+
 -- Is tile i wet river now, and can it be waded?
 function M.wet(s, i) return s.riv[i] > 0 end
 function M.wadeable(s, i) local r = s.riv[i]; return r > 0 and r <= 101 end

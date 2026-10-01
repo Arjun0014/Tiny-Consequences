@@ -829,7 +829,7 @@ local function chores(W, s, p, ctx, now)
       -- (the well's clean water, unless the river is far nearer: D-095)
       local wd = dist(home.dx, home.dy, s.well.dx, s.well.dy)
       local bi, bd = 0, 1e9
-      if s.has_river then bi, bd = require("sim.agents.map").nearest_bank(s, home.dx, home.dy) end
+      if s.has_river then bi, bd = require("sim.agents.map").house_bank(s, home) end
       if bi > 0 and bd * C().river_water_k < wd then
         local bx, by = require("sim.agents.map").tile_xy(s, bi)
         addw(0.45 * f * fat - travel(ctx, bx, by, px, py), "fetch_water", bi, 1,
@@ -848,7 +848,7 @@ local function chores(W, s, p, ctx, now)
     local fresh = (home.stock.fish or 0) + (home.stock.meat or 0)
     local nm = #hh.members
     if fresh < nm * 0.6 then
-      local bi, bd = require("sim.agents.map").nearest_bank(s, px, py)
+      local bi, bd = require("sim.agents.map").house_bank(s, home)
       if bi > 0 and bd < c.angle_reach then
         local share = min(1, (s.river_fish or 0) / max(1, s.river_fish_cap or 1))
         local fa = (ctx.stage == "child" or ctx.stage == "elder") and 1.0 or (ctx.stage == "apprentice" and 0.9 or 0.6)
