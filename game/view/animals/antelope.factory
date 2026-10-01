@@ -1,0 +1,2 @@
+prototype: "/game/view/animals/antelope.go"
+load_dynamically: false

@@ -1355,6 +1355,7 @@ end
 -- is (walking legs when it moves); wild boar as the dark pig; carcasses lying where they fell.
 M.WILD = 48
 M.WILD_SCALE = { deer = 0.42, reindeer = 0.45, antelope = 0.4, wolf = 0.4, cat = 0.42 }
+M.WILD_ANIM_SCALE = { boar = 0.0044, deer = 0.0052, reindeer = 0.0056, antelope = 0.0048 }
 local WPOS, WROT, ROLL = vmath.vector3(), vmath.quat(), vmath.quat_rotation_z(math.pi * 0.5)
 local function draw_wild(V, t, lod)
   local s = V.s
@@ -1401,15 +1402,19 @@ local function draw_wild(V, t, lod)
       end
       local yaw = V.wyaw[w.k] or (w.k * 1.3)
       local young = (t - w.born) / 1152 < 0.5 and 0.65 or 1
-      if w.sp == "boar" then
-        -- (the animated dark pig, a little bigger and leaner)
-        local e = animal_obj("pig_dark")
+      local anim_variant = w.sp == "boar" and "pig_dark"
+        or (w.sp == "deer" and ((w.sex == "m" and young == 1) and "deer_stag" or "deer"))
+        or (w.sp == "reindeer" and "reindeer") or (w.sp == "antelope" and "antelope") or nil
+      if anim_variant then
+        -- (the animated models: wild boar the dark pig; deer, reindeer, antelope from the horse:
+        -- D-099)
+        local e = animal_obj(anim_variant)
         if e then
           local px, py, pz, ux, uy, uz = world_pos(V, x, y, 0)
           SPOS.x, SPOS.y, SPOS.z = px, py, pz
           go.set_position(SPOS, e.id)
           go.set_rotation(vmx.set_up_yaw(SROT, ux, uy, uz, yaw + pi * 0.5), e.id)
-          go.set_scale(M.ANIMAL_SCALE.pig * 1.05 * young, e.id)
+          go.set_scale((M.WILD_ANIM_SCALE[w.sp] or M.ANIMAL_SCALE.pig) * young, e.id)
           if e.lod ~= lod or not e.on then
             for j = 1, 3 do msg.post(e.urls[j], j == lod and MSG_ENABLE or MSG_DISABLE) end
             if e.lod ~= lod then e.anim = nil end

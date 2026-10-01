@@ -11,6 +11,7 @@ VARIANTS = {
     "goat": ["goat", "goat_pied"],
     "cow": ["cow", "cow_pied"],
     "pig": ["pig", "pig_dark"],
+    "deer": ["deer", "deer_stag", "reindeer", "antelope"],
 }
 
 def write(rel, text):

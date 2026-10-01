@@ -49,6 +49,13 @@ SPECIES = [
         dict(id="cow", colours={"White": (0.60, 0.34, 0.19), "Black": (0.32, 0.19, 0.12), "Pink": (0.80, 0.52, 0.48)}),
         dict(id="cow_pied", colours={"White": (0.88, 0.86, 0.80), "Black": (0.13, 0.12, 0.11), "Pink": (0.82, 0.54, 0.52)}),
     ]),
+    # wild deer from the horse (D-099): slimmer, recoloured, antlers on stags and reindeer
+    dict(name="deer", blend="Horse.blend", variants=[
+        dict(id="deer", slim=0.74, colours={"Material.003": (0.55, 0.38, 0.23), "Material.006": (0.40, 0.27, 0.17)}),
+        dict(id="deer_stag", slim=0.78, antlers=True, colours={"Material.003": (0.50, 0.34, 0.21), "Material.006": (0.36, 0.25, 0.15)}),
+        dict(id="reindeer", slim=0.8, antlers=True, colours={"Material.003": (0.58, 0.53, 0.46), "Material.006": (0.80, 0.78, 0.72)}),
+        dict(id="antelope", slim=0.7, colours={"Material.003": (0.80, 0.60, 0.36), "Material.006": (0.62, 0.45, 0.27)}),
+    ]),
     dict(name="pig", blend="Pig.blend", variants=[
         dict(id="pig", colours={"Material.003": (0.86, 0.60, 0.56), "Material": (0.42, 0.25, 0.21)}),
         dict(id="pig_dark", colours={"Material.003": (0.36, 0.27, 0.23), "Material": (0.20, 0.14, 0.12)}),
@@ -156,6 +163,40 @@ def shape_variant(ob, var):
                 v.co.x = cx + (v.co.x - cx) * s
                 v.co.z = cz + (v.co.z - cz) * (0.5 + 0.5 * s)
                 v.co.y = cy + (v.co.y - cy) * (0.82 + 0.18 * s)
+    if var.get("slim"):
+        # (a lighter build: narrower body and legs; a deer's short tail, the horse's drawn in to
+        # its root)
+        for v in me.vertices:
+            v.co.x = v.co.x * var["slim"]
+        arm_ = ob.parent
+        if arm_ and "Tail1" in arm_.data.bones:
+            root = arm_.data.bones["Tail1"].head_local
+            for v in me.vertices:
+                gname = dominant_group(ob, v)
+                if gname and gname.startswith("Tail"):
+                    v.co = root + (v.co - root) * 0.22
+    if var.get("antlers"):
+        if "Horn" not in [m.name for m in me.materials]:
+            me.materials.append(bpy.data.materials.get("Horn") or bpy.data.materials.new("Horn"))
+        hmi = [m.name for m in me.materials].index("Horn")
+        x0, x1, y0, y1, z0, z1 = head_box(ob)
+        w, L, H = x1 - x0, y1 - y0, z1 - z0
+        cx = (x0 + x1) / 2
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        deform = bm.verts.layers.deform.verify()
+        gi = ob.vertex_groups["Head"].index
+        for sx in (-1, 1):
+            base = Vector((cx + sx * w * 0.22, y0 + L * 0.7, z1 - H * 0.05))
+            mid = base + Vector((sx * w * 0.35, L * 0.25, H * 0.75))
+            tip = mid + Vector((sx * w * 0.15, L * 0.35, H * 0.45))
+            cone(bm, base, mid + (mid - base) * 0.15, w * 0.07, 4, gi, deform, hmi)
+            cone(bm, mid, tip, w * 0.05, 4, gi, deform, hmi)
+            tine = mid + Vector((sx * w * 0.05, -L * 0.25, H * 0.35))
+            cone(bm, mid, tine, w * 0.04, 3, gi, deform, hmi)
+        bm.to_mesh(me)
+        bm.free()
+        me.update()
     if var.get("horns") or var.get("beard"):
         if "Horn" not in [m.name for m in me.materials]:
             me.materials.append(bpy.data.materials.get("Horn") or bpy.data.materials.new("Horn"))

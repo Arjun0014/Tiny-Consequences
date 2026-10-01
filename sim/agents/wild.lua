@@ -171,6 +171,19 @@ local function edge_toward(W, s, c)
 end
 M.edge_toward = edge_toward
 
+-- The border land nearest local (x, y).
+function M.border_near(s, x, y)
+  local ring = edge_ring(s)
+  local best, bd = 0, 1e18
+  for q = 1, #ring do
+    local tx, ty = mapm.tile_xy(s, ring[q])
+    local d = (tx - x) ^ 2 + (ty - y) ^ 2
+    if d < bd then best, bd = ring[q], d end
+  end
+  if best > 0 then return mapm.tile_xy(s, best) end
+  return x, y
+end
+
 local function u(W, s, w, now, k)
   local day = floor(now / 24)
   if w.rd ~= day then
@@ -315,9 +328,12 @@ function M.daily(W, s, day, push)
     local i = tg.i
     local have = local_n[gid] or 0
     local sp = HERB[A.h_sp[i]] or "deer"
-    local ex, ey = edge_toward(W, s, A.h_cell[i])
     local gx, gy = band_ground(W, s, gid, A.h_cell[i], day)
     Wd.ground[gid] = gx and { gx, gy, A.h_cell[i] } or nil
+    -- (they come in at the border nearest their ground: on the side of their range, not through
+    -- the village)
+    local ex, ey
+    if gx then ex, ey = M.border_near(s, gx, gy) else ex, ey = edge_toward(W, s, A.h_cell[i]) end
     for q = have + 1, tg.n do
       local key = gid * 131 + q
       local young = rng.float(W.seed, rng.S.V3_MAP, key, day, 611) < 0.25
@@ -694,6 +710,16 @@ function M.step(W, s, w, now)
   local turn = (floor(now / 24) * GOLD * 1.3 + w.gid) % 6.2832
   local r = S.sep * sqrt(slot + 0.5)
   local tx, ty = cx + r * cos(slot * GOLD + turn), cy + r * sin(slot * GOLD + turn)
+  -- (never among the houses: a place inside the village's keep is pushed out to its edge, and an
+  -- animal that finds itself inside heads out)
+  local keep = c.wild_keep
+  local tr = sqrt(tx * tx + ty * ty)
+  if tr < keep and tr > 1e-6 then tx, ty = tx / tr * keep, ty / tr * keep end
+  local wr = sqrt(w.tx * w.tx + w.ty * w.ty)
+  if wr < keep * 0.85 and wr > 1e-6 then
+    local ox, oy = w.tx / wr * (keep + 0.1), w.ty / wr * (keep + 0.1)
+    if go_to(s, w, now, w.tx + (ox - w.tx) * min(1, 0.25 / max(1e-6, keep + 0.1 - wr)), w.ty + (oy - w.ty) * min(1, 0.25 / max(1e-6, keep + 0.1 - wr)), S.speed * 1.3, "walk") then return end
+  end
   local d = sqrt((tx - w.tx) ^ 2 + (ty - w.ty) ^ 2)
   if d > S.sep * 1.5 then
     local hop = min(d, 0.12 + 0.1 * u(W, s, w, now, 7))
