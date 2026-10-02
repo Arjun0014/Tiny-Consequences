@@ -48,6 +48,12 @@ settlements at runtime), roads over the land (`trade.land_route`), kin help, the
 `tools/v3_market.lua` and `tools/v3_econ.lua --days 48` (trade by real want, never forced); premises
 for tests and shots live in `sim/agents/premise.lua` (people created at runtime need `W.v3rt = nil`);
 `scripts/shots_found.mjs` watches a founding in the game.
+Session 18 (D-129-D-136): moving and founding by sea (`migrate.sea_plan`/`land`/`move_boat`,
+`founding.best_sea_site`/`sea_place`/`beach`/`land_sea`, `think.sea_move_legs`; riders are
+`boat.riders` + `p.riding`, passengers do `passage`); boats stay in for storms along the way
+(`trade.sea_rough`), not rain; salt (`econ.GOODS.salt`, `saltpan`, WORK.salt) is made only on the
+coast and traded inland; `s.beach` is a young place's landing (`s.landing` is a catch landed);
+friends (`p.rel_id`) may live on other maps - check the map before any spatial use.
 
 ## Read order
 

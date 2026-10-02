@@ -115,6 +115,13 @@ news visits - 21 exchanges in the untouched year, by road and sea, first on day 
 wool and leather. Open: goods only some places have (salt, tools' stone or metal), fairs, credit,
 larger cargo boats when sea volume asks.)
 
+(Session 18, D-130, D-132, D-133: boats stay in for storms along the way, not rain (long crossings had
+been possible ~4 days a year); small sea droves (a few sheep or goats lifted into the boat); salt, a
+good only the coast makes - salt pans built by work, salt boiled with wood and sun, it cures meat and
+fish without smoke and keeps cheese - traded inland by road: 34 exchanges in the untouched 48 days (19
+before), the first on day 24, Tekheim and Little Leelee trading at last. Open: stone and metal from
+geology, fairs, credit, larger cargo boats.)
+
 ## Geography (session 14, D-112)
 Drainage basins on the planet (outlets, a priority flood, beds falling to the sea), rivers widening
 with discharge from mountain sources, valleys and floodplains carved into the drawn planet, mountains
@@ -141,6 +148,17 @@ once sown, a woodstore, pens; every system tolerant; the view adds the place at 
 founders and beasts inspectable. Test `test_v3_found.a_crowded_village_founds_a_new_place`. Open:
 moving and founding by sea, sea droves, hunters refreshing knowledge, huts rebuilt as houses, planet
 markers for small places.)
+
+(Session 18, D-129, D-131, D-134, D-135: **moving and founding by sea done**. A household with its own
+boat, a skipper and room for everyone moves over the sea to a village it knows: the larder shared, goods
+and a few small beasts loaded, all gathered at the dock, storms or someone missing put the sailing off to
+the next morning, the voyage carries every rider, the landing makes them the village's and moors the
+boat there. A household founds on a shore its village saw from the sea: the place made as they sail into
+its waters, a beach the sea reaches, camp and work as by land, a dock built later; weighed against land
+on the hold's seed and bread vs the beasts left. Families share food on the road and in boats, gather
+along the way; starving people do not found; huts become houses; hunters refresh the country. Tests
+`test_v3_sea`. Open: a ferry for boatless households, planet markers for small places, founding
+couples given parents.)
 
 The plan as it was written (done, as above):
 1. **Who and why**: a household (or kin together) pushed hard with no village that would take them

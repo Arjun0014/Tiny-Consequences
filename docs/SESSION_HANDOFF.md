@@ -1,98 +1,83 @@
-# Session handoff — session 17 (2 Oct 2026): R5 founding, roads over the land, kin help, the economy woken
+# Session handoff — session 18 (2 Oct 2026): moving and founding by sea, sea droves, salt, travellers who share
 
-`docs/PROGRESS.md` (session 17 entry) and **D-123 … D-128** in `docs/DECISIONS.md` are the source of
+`docs/PROGRESS.md` (session 18 entry) and **D-129 … D-136** in `docs/DECISIONS.md` are the source of
 truth. Arjun's rules: no subagents; the living world first; one heavy process at a time (shared
-laptop); visible action = simulation; nothing appears that nobody built; fix mechanisms, not
-appearances; never trade agency for the season budget; no forced trade or migration (test by
-creating a real premise); measure the release browser by the lower envelope of several runs with
-rendering off; hand off near ~900K context.
+laptop); visible action = simulation; nothing appears that nobody built or carried; fix mechanisms,
+not appearances; never trade agency for the season budget; no forced trade, migration or founding
+(test by creating a real premise); measure the release browser by the lower envelope of several runs
+with rendering off; hand off near ~900K context.
 
 ## What happened
-- **R5 founding (D-123, `sim/agents/founding.lua`)**, built from scratch and followed end to end:
-  - *Knowledge of places* (`s.lore[cell] = { t, how }`): the country within 4 rings (hunting,
-    herding), the land along every road walked (`p.seen`, told at home or where they come to live),
-    the shore along every sea way sailed, what visitors and hosts tell each other (`econ.on_learn`),
-    a bride's village's knowledge. Never the planet itself.
-  - *Who and why* (`founding.daily` after `migrate.daily`): hardship that lasted with no known village
-    drawing them (`hh.no_refuge`), a couple waiting `found_lot_days` with no lot (`s.no_lot`), no room
-    for the fields wanted (`s.no_field_room`); against what holds them, the season's risk and the
-    food they can take (starving people do not found). Others in the same plight (kin first) join.
-  - *The road*: making ready the morning after; provisions shared; packs from the larder and the
-    granary share; beasts led; the dog goes with them; the land route (D-124) at the party's pace.
-  - *The place*: made when the first of them walks onto it (empty map: land, rivers, untouched woods);
-    laid out by them; camps (home and larder; herds kept by them; people round the fire); water from
-    the river or a well; huts on lots cleared by felling and grubbing (`settle.plan_lot`); the camp
-    carried in and struck; fields; granary once sown; woodstore; pens. Every system tolerates it.
-  - *View*: added at runtime (`agents_view.add_one`), camps/huts/fires drawn, travellers and their
-    beasts on the land route, settlement picking and inspector (founding story, why here, what stands
-    and is being made, what it lacks, food, beasts, knowledge, news).
-  - Watched: Zurug crowded (`premise.crowd`: its ground built over by families of the founding
-    templates), a couple that waited 13 days founds a place 31 h away known from Hottoodingle Hop's
-    people; camp within hours, huts in ~4 days, woodstore, fields, granary when sown; a second couple
-    follows. Earlier drafts starved founders (fixed: lodging couples had no larder; gather counted as
-    work; a layout on the wrong bank of a river; nothing to eat without a fire or a home).
-- **Roads follow the land (D-124)**: `trade.land_route` over the planet's cells; all roads use it.
-- **Kin help (D-125)**: asking kin elsewhere for food; kin offering a place to live.
-- **The quiet economy (D-126)**: diagnosed with `tools/v3_market.lua`; reachable stock targets, the
-  road's cost as the work given up, work for exchange, visit gifts both ways, news visits. 0 -> 21
-  exchanges in the untouched year (first on day 31, with the southern wool and leather).
-- **D-127**: a hunter cut off by water starved; now people wade back after an hour of failed plans.
-- **Performance (D-128)**: exact cuts only (path cache kept while costs are unchanged; ring-only
-  free_spot), proven by identical 4-day hashes.
+- **Moving by sea (D-129)**: a household with its own sound boat, a skipper and room for everyone
+  (`boat_places` 7: grown-up 1, child 0.5, babe 0) weighs the villages over the sea it *knows* (news,
+  kin, kin's offer) against the road; the larder is shared among the walkers (`think.move_share`, also
+  by land); the skipper loads goods (dearest per weight first); a few small beasts go (ewes and does
+  first; never cattle; the rest left with kin, `a.why_owner`); everyone gathers at the dock; a storm
+  along the way or someone missing puts the sailing off to the next morning (home again, beasts back
+  to the herd), given up after 4; WORK.board + WORK.embark (riders generalised: `boat.riders`,
+  `p.riding`, the `passage` step); the voyage moves everyone; landing at the dock: `migrate.land`
+  (arrive each, `move_boat`: the same boat moored at the new village, its old entry `moved`, the hold's
+  food moved between the books), beasts to the herd, the hold carried up. Followed: Dreik Knoll ->
+  Krikeivorn (Gakulf's household, 3 ewes, the dog), Tekheim -> Zurug 20 h (babe and two children).
+- **Boats stay in for storms, not rain (D-130)**: "wet" was 39-47 days of 48 at sea, so long
+  crossings (trade and moves) were possible ~4 days a year; now `trade.sea_rough` (a storm or gale at
+  any of three cells of the way) keeps boats in 6-11 days; rain slows and triples the risk.
+- **Founding by sea (D-131)**: `founding.best_sea_site` (coastal cells the village knows, reachable
+  by `trade.sea_route_to`), compared with the land site on what each way means (the hold's seed and
+  bread vs beasts left behind); `decide_sea` (one household; room kept for 3 loads of seed); the
+  place made as they sail into its waters (`sea_place`), `founding.beach` (a dry shore tile the sea
+  gate's water reaches), landing (`land_sea`), then camp/hut/fields/stores as by land; a dock site
+  once all have roofs (a dock is the village's only when it stands). In the untouched world land
+  usually wins (good land near): realistic. Followed: Tekheim -> "Rogthorp" 30.7 h (hut on day 13).
+- **Small sea droves (D-132)**: sheep and goats by sea, at most 4, haltered, led to the dock, lifted
+  in at boarding, led off at the other dock, bargained for at the pen; the unsold come home.
+- **Salt (D-133)**: salt pans built by work on the coast (`saltpan`), seawater boiled over a fire
+  (logs; the sun helps on warm dry days); salt cures meat and fish without smoke and keeps cheese
+  (unsalted cheese keeps 0.6, salted 0.85); a house good traded like cloth. Untouched 48 days:
+  **34 exchanges (19 before), first on day 24 (29-31 before)**; salt goes inland by road for cloth and
+  hides; Tekheim and Little Leelee trade for the first time; Tekheim cures 515 FU with 31 measures.
+- **Following travellers fixed (D-134)**: families share provisions on the way; hungry travellers with
+  nothing left gather along the road (`road_forage`); babes fed in boats; carers of babes do not crew
+  (a nursing mother had crewed a 30 h trading voyage and the baby starved - pre-existing); beasts never
+  left owned by people gone (`migrate.leave_beast`); children no longer play with friends on another
+  map, visits no longer use another village's building ids (pre-existing).
+- **Founding polish (D-135)**: starving people do not found (`found_short_max` gate); huts replaced by
+  proper houses after `found_hut_days` 24; hunters refresh the home country (`founding.roamed`);
+  logs from the household's woodpile to a young place's sites; haulers check a site's real shortfall.
+- **Wolves (D-136)**: each leaves for the den its own way; audit bound 0.75 -> 0.8 (a hunt in the window).
 
 ## State
 - **main** at the final commit (see PROGRESS). Shipped world unchanged (`assets/worlds/v3.tcsave`).
-- Quick sim **143/143** (v2 109 + v3 34), web **11/11** (W10), lint clean, `npm run build` OK;
+- Quick sim **145/145** (v2 109 + v3 36: new `test_v3_sea` x2); web **11/11** (W02, a v2 wall-clock
+  rate test, missed by 0.3% once under load and passed on rerun); lint clean; `npm run build` OK;
   `node scripts/v3_hash_web.mjs --release`: browser = LuaJIT at 0, 24, 48, 72 h.
-- LuaJIT `luajit -joff tools/v3_profile.lua --days 4`: **3.93 M instructions a game hour** (S16 4.06):
-  nav (A*) 28.6%, stock 12.3%, map 12.0%, think 11.8%, wild 11.3%, event queue 8.6%.
+- LuaJIT `luajit -joff tools/v3_profile.lua --days 4`: **3.93 M instructions a game hour** (148 people;
+  S17 3.93 M): nav 28.5%, stock 12.4%, map 12.1%, think 11.7%, wild 11.3%, event queue 8.7%.
 - Release browser (`node scripts/prof_web.mjs --release --hours 288 --runs 3`, rendering off): runs
-  40.7 / 38.6 / 38.3 ms/h, envelope **37.9 ms/h = a 12-day season 10.9 s** (target 10 s; kept).
-- Economy, untouched world, 48 days (`luajit tools/v3_econ.lua --days 48 --every 12`): 21 exchanges,
-  4 news visits, trips Dreik Knoll 17, Hottoodingle Hop 17, Krikeivorn 10, Zurug 6, Tekheim/Little
-  Leelee 0; no founding, no migration; deaths only old age and three small children's illnesses.
+  40.7 / 40.2 / 43.7 ms/h, envelope **39.2 ms/h = a 12-day season 11.3 s** (S17 37.9 ms/h, 10.9 s) with
+  the LuaJIT instruction count unchanged - most likely this laptop's load; no exact cut was made this
+  session (D-137). Target 10 s still open; never by cutting agency.
 
 ## Next (in order)
-1. **Moving by sea** (not done; design): in `migrate.daily`, a household owning a sound boat
-   (`econ.own_boat`) with at most ~6 members also weighs the sea partners (`trade.sea_partners`,
-   hours = route len / sail_speed); `hh.migrate.sea = boat id`. `migrate_legs`: pack, all to the dock,
-   gather; the skipper (its fisher, else the eldest grown-up) boards and sails (`voyage` with
-   `migrate = true`), the others ride (`p.riding = skipper`; generalise `WORK.voyage` to move every
-   rider of the boat, not only the mate, and `WORK.land` to set every rider ashore); at the other
-   dock `migrate.arrive` for each; the boat moves from `home.boats` to `o.boats` (renumbered; owner
-   kept). Small stock only (a few sheep/goats as cargo), the rest left with kin. Then founding by sea
-   (`founding.daily` sea sites: the shore known from voyages, `note_sea`), sea droves, and larger
-   cargo boats only when trade volume by sea (now real: Krikeivorn-Dreik Knoll) asks for them.
-2. **The economy, deeper**: goods only some places have (salt from coastal pans for curing fish, meat,
-   cheese and hides; stone or metal for tools), fairs after the harvest (a reason for neighbours to
-   meet, court and barter), credit for what cannot be carried. Keep measuring with `v3_market.lua`
-   and `v3_econ.lua`; never force.
-3. **Founding, polish**: hunters refreshing knowledge at the map's edge; a hut rebuilt as a house
-   later; planet markers for small places; a forest site's camp is hidden under the canopy until its
-   people have cut about it (honest, but the camera could help); the founding generator's waiting
-   couples have no parents (no kin to ask).
-4. **Performance** (exact only): wild.threat scans a village's members per wild decision (an index of
-   people outdoors by tile block, kept on step ends, with member order for ties); incremental cost
-   rebuilds for building changes; the herd scan's centre is only needed when nobody is in sight (the
-   nearest/count part could use a block index with index-order ties).
-5. Birds beyond gulls, lakes, local-map valleys, passes - below the above.
+1. **Watch a long run** (96+ days) of the untouched world and of premises: salt prices settling, sea
+   trade volume (now possible on long ways), whether a household ever moves or founds by sea without a
+   premise; inspect the founded places' docks and huts-to-houses in the game (`scripts/shots_found.mjs`).
+2. **The economy, deeper**: stone and metal tied to geology (ore -> charcoal -> smelting -> smith ->
+   tools; tools already wear: `hh.tools`), salt for livestock, fairs after the harvest (people
+   physically gathering: barter, courting, news), credit only if a trade cannot balance in one load.
+3. **A ferry**: a kin skipper sailing a couple without a boat to found or move, and sailing back
+   (the passage pattern exists: riders, embark, land).
+4. **Founding**: planet markers for small places; the founding generator's waiting couples have no
+   parents; a forest site's camp under its canopy.
+5. **Performance, exact only**: an index of people outdoors by tile block for `wild.threat` (it scans a
+   village's members per grazer decision; ties in member order), incremental cost rebuilds for
+   building changes, the herd scan's centre only when needed.
 
-## Findings and pitfalls (session 17)
-- **Runtime-created people must enter the event queue**: `people.new` after the queue exists does not
-  schedule them; `premise.crowd` sets `W.v3rt = nil` (rebuilt like after a load). Births do their own.
-- Heredocs with apostrophes still break in this harness's bash: write patch scripts to the
-  scratchpad with the Write tool and run them with python.
-- `render_off` had been erroring every frame (the clear used `render.BUFFER_COLOR_BIT`, gone in this
-  Defold); fixed with `graphics.BUFFER_TYPE_*`. Earlier render_off measurements drew nothing anyway.
-- The path cache cannot live across days (~560 tile costs change a day per settlement).
-- A village's knowledge of places is lazily made (`founding.lore`); a new place copies its founders'.
-- `trade.forget(W)` must be called when settlements appear (partner caches).
-- Lua's 60-upvalue limit hit `think.decide`: call new helpers through `M.` (e.g. `M.found_legs`).
-- The browser's world starts at the first dawn, not hour 0: probes that apply premises after load
-  must not assume hour 0 (and must rebuild the event queue).
-
-## Known oddities
-- Founding needs real pressure: the shipped world founds nothing in a year (healthy, uncrowded).
-- The first month of the shipped world is still quiet in trade (seasonal goods not in yet).
-- Tekheim and Little Leelee never trade (one 31 h road, little to exchange).
-- Night scenes are very dark.
+## Findings and pitfalls (session 18)
+- `s.landing` was already "a catch landed" (gulls read it): the founders' beach is `s.beach`.
+- A dock planned as a site must not become `s.dock` until it stands (`settle.add_building`).
+- `settle.lua` cannot require `trade.lua` (bob: circular via wild/stock): injected as `settle.trade`.
+- Friends (`p.rel_id`) span villages now (moves, brides, founders): any spatial use must check the map.
+- The sea-founding test gives the decision (the site from the household's own knowledge): in this world
+  land wins honestly; a premise that makes the sea win naturally is still to be found.
+- Heredocs with apostrophes break in this harness's bash: patch scripts go through files + python.
