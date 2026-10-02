@@ -28,9 +28,10 @@ local function C() return cfgmod.V3 end
 local IDLE_KINDS = { sit = true, talk = true, rest = true, eat = true, lunch = true, play = true, wait = true,
   nurse = true, idle = true, shelter = true, gather = true, wait_boat = true, passage = true }
 local SKILL_OF = { till = "sk_farm", sow = "sk_farm", harvest = "sk_farm", tend = "sk_farm", thresh = "sk_farm",
-  chop = "sk_wood", grub = "sk_wood", build = "sk_build", repair = "sk_build", fish = "sk_fish", mend_boat = "sk_fish" }
+  chop = "sk_wood", grub = "sk_wood", build = "sk_build", repair = "sk_build", fish = "sk_fish", mend_boat = "sk_fish",
+  quarry = "sk_build", quern = "sk_craft" }
 local TOOL_WORK = { till = true, harvest = true, chop = true, grub = true, build = true, repair = true, thresh = true, tend = true,
-  mend_boat = true }
+  mend_boat = true, quarry = true, quern = true }
 M.OUTDOOR_WORK = { grub = true, forage = true, till = true, turn = true, thresh = true, sow = true, tend = true, harvest = true, chop = true, build = true, fill = true, play = true, repair = true,
   mend_boat = true }
 
@@ -377,7 +378,7 @@ WORK.build = function(W, s, p, st, f)
   local hh = W.S.v3.households[p.hh]
   b.work_done = b.work_done + st.dur * f * (0.6 + 0.6 * p.sk_build) * (0.55 + 0.45 * (hh and hh.tools or 1))
   people.practice(p, "sk_build", st.dur * f)
-  if b.work_done >= b.work_need and b.logs_have >= b.logs_need then
+  if b.work_done >= b.work_need and b.logs_have >= b.logs_need and (b.stone_have or 0) >= (b.stone_need or 0) then
     require("sim.agents.settle").complete_building(W, s, b)
   end
 end
@@ -1393,6 +1394,45 @@ WORK.forage = function(W, s, p, st, f)
   s.acc.foraged = (s.acc.foraged or 0) + got
 end
 
+-- (S19) Quarrying: a stone split from the outcrop's face, left lying there for the carriers.
+WORK.quarry = function(W, s, p, st, f)
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
+  b.quarriers = max(0, (b.quarriers or 1) - 1)
+  if f < 0.6 or (b.left or 0) <= 0 then return end
+  b.left = b.left - 1
+  b.stock.stone = (b.stock.stone or 0) + 1
+  s.acc.quarried = (s.acc.quarried or 0) + 1
+  -- (the day's want is that much less: nobody splits more than the village wants)
+  if s.need then
+    s.need.stone = max(0, (s.need.stone or 0) - 1)
+    if b.rock == "hard" then s.need.hardstone = max(0, (s.need.hardstone or 0) - 1) end
+  end
+  people.practice(p, "sk_build", st.dur * f * 0.5)
+end
+
+-- (S19) A stint of shaping a quern at the yard: the household's two hard stones taken up when the
+-- work begins; the hours kept (hh.quern_work); finished, the quern is carried home.
+WORK.quern = function(W, s, p, st, f)
+  local hh = W.S.v3.households[p.hh]
+  local yard = s.buildings[st.ref or 0]
+  if not hh or not yard or f <= 0 then return end
+  local c = C()
+  if (hh.quern_work or 0) <= 0 then
+    if (yard.stock.hardstone or 0) < 2 then return end
+    yard.stock.hardstone = yard.stock.hardstone - 2
+    hh.quern_work = 1e-3
+  end
+  p.sk_craft = p.sk_craft or 0.2
+  hh.quern_work = hh.quern_work + st.dur * f * (0.6 + 0.6 * p.sk_craft) * (0.55 + 0.45 * (hh.tools or 1))
+  people.practice(p, "sk_craft", st.dur * f * 0.5)
+  if hh.quern_work >= c.quern_h then
+    hh.quern_work = 0
+    p.carry, p.camt = "quern", 1
+    s.acc.querns = (s.acc.querns or 0) + 1
+  end
+end
+
 -- (S19) Gathering on the shore: shellfish and seaweed into the basket (fresh: spoils like fish).
 WORK.shore = function(W, s, p, st, f)
   local hh = W.S.v3.households[p.hh]
@@ -1472,6 +1512,11 @@ WORK.cook = function(W, s, p, st, f)
   if not b or f < 0.3 then return end
   if (b.stock.logs or 0) <= 0 and not b.fire then return end
   local c = C()
+  -- (S19) the quern wears with the grinding
+  if hh and (hh.quern or 0) > 0 then
+    hh.quern = hh.quern - c.quern_wear * f
+    if hh.quern < c.quern_broken then hh.quern = 0 end
+  end
   local n = hh and #hh.members or 1
   -- (what will not keep goes into the pot first: meat, milk, fresh fish (D-087, D-092); cheese
   -- and smoked fish last)
@@ -1652,6 +1697,30 @@ local function pack_load(p)
   return w
 end
 M.pack_load = pack_load
+
+-- (S19) A stone from an outcrop's face (hard or soft, by the rock), or from the yard (soft first;
+-- the hard stones are kept for querns while there are soft ones).
+PICK.stone = function(W, s, p, st)
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
+  b.haul_claim = max(0, (b.haul_claim or 1) - 1)
+  if (b.stock.stone or 0) < 1 or (p.carry ~= "" and p.carry ~= nil) then return end
+  b.stock.stone = b.stock.stone - 1
+  p.carry, p.camt = b.rock == "hard" and "hardstone" or "stone", 1
+end
+PICK.yard_stone = function(W, s, p, st)
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
+  b.stone_claim = max(0, (b.stone_claim or 1) - 1)
+  if p.carry ~= "" and p.carry ~= nil then return end
+  if (b.stock.stone or 0) >= 1 then
+    b.stock.stone = b.stock.stone - 1
+    p.carry, p.camt = "stone", 1
+  elseif (b.stock.hardstone or 0) >= 1 then
+    b.stock.hardstone = b.stock.hardstone - 1
+    p.carry, p.camt = "hardstone", 1
+  end
+end
 
 PICK.pack = function(W, s, p, st)
   local b = s.buildings[st.ref]
@@ -2315,6 +2384,41 @@ PICK.scraps = function(W, s, p, st)
 end
 
 DROP.any = function(W, s, p, st)
+  if st.to == "stone_site" then
+    -- (S19) a stone for a site's footing (its claim released whether or not it came)
+    local b = s.buildings[st.ref or 0]
+    if b then b.stone_claim = max(0, (b.stone_claim or 1) - 1) end
+    if b and (p.carry == "stone" or p.carry == "hardstone") then
+      if b.state == "site" then
+        b.stone_have = (b.stone_have or 0) + 1
+        s.acc.stone_laid = (s.acc.stone_laid or 0) + 1
+        if b.work_done >= b.work_need and b.logs_have >= b.logs_need and b.stone_have >= (b.stone_need or 0) then
+          require("sim.agents.settle").complete_building(W, s, b)
+        end
+      elseif s.wood_store then
+        local k = p.carry
+        s.wood_store.stock[k] = (s.wood_store.stock[k] or 0) + 1
+      end
+      p.carry, p.camt = "", 0
+    end
+    return
+  end
+  if st.to == "stone_face" then
+    local b = s.buildings[st.ref or 0]
+    if b and (p.carry == "stone" or p.carry == "hardstone") then
+      b.stock.stone = (b.stock.stone or 0) + 1
+      p.carry, p.camt = "", 0
+    end
+    return
+  end
+  if st.to == "stone_yard" then
+    local b = s.buildings[st.ref or 0]
+    if b and (p.carry == "stone" or p.carry == "hardstone") then
+      b.stock[p.carry] = (b.stock[p.carry] or 0) + 1
+      p.carry, p.camt = "", 0
+    end
+    return
+  end
   if p.carry == "" then return end
   local what, n = p.carry, p.camt
   if what == "pack" and st.to == "cargo" then
@@ -2400,7 +2504,7 @@ DROP.any = function(W, s, p, st)
   elseif st.to == "site" and what == "logs" then
     b.logs_have = b.logs_have + n
     b.deliver_claim = max(0, (b.deliver_claim or 1) - 1)
-    if b.work_done >= b.work_need and b.logs_have >= b.logs_need then
+    if b.work_done >= b.work_need and b.logs_have >= b.logs_need and (b.stone_have or 0) >= (b.stone_need or 0) then
       require("sim.agents.settle").complete_building(W, s, b)
     end
   elseif what == "sheaves" then
@@ -2409,6 +2513,22 @@ DROP.any = function(W, s, p, st)
     b.stock.flax = (b.stock.flax or 0) + n
   elseif what == "wool" then
     b.stock.wool = (b.stock.wool or 0) + n
+  elseif what == "quern" then
+    -- (S19) a quern home: set up if the household grinds on a saddle stone, else kept to spare
+    local hh = W.S.v3.households[p.hh]
+    if hh and (hh.quern or 0) < C().quern_broken then
+      hh.quern = 1
+      local V = W.S.v3
+      local now = V.now or W.hour
+      for _, id in ipairs(hh.members) do
+        local q = V.people[id]
+        if q and q.alive and people.stage(q, now) ~= "infant" and people.stage(q, now) ~= "child" then
+          people.remember(q, now, q == p and "Made us a quern of hard stone: the grinding goes quicker now" or (p.name .. " made us a quern of hard stone"))
+        end
+      end
+    else
+      b.stock.quern = (b.stock.quern or 0) + n
+    end
   elseif what == "meat" then
     b.stock.meat = (b.stock.meat or 0) + n
     local to = st.gift_to and W.S.v3.households[st.gift_to]

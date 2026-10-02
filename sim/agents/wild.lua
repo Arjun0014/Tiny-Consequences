@@ -430,8 +430,14 @@ function M.hourly(W, s, now)
               x = ex - iy * along - ix * back, y = ey + ix * along - iy * back, lead = lead })
             if q == 1 then lead = w.k; w.lead = 0 end
             w.why = cond < c.wolf_hungry and "Hungry: come down to hunt" or "Come to hunt"
-            w.act = "rest"
-            w.t1 = now + 0.02 + 0.02 * (q - 1) * (0.6 + 0.8 * r1)
+            -- (S19) each comes out of the woods in its own time, at its own pace: from back in the trees
+            -- beyond the border to where it stands (they were all set down at once before)
+            local r2 = rng.float(W.seed, rng.S.V3_MAP, id * 7 + q, day, 623)
+            local out = 0.05 + 0.08 * r2
+            w.x, w.y = w.tx - ix * out, w.ty - iy * out
+            w.act = "walk"
+            w.t0 = now + (q == 1 and 0 or 0.04 * (q - 1) * (0.5 + r1))
+            w.t1 = w.t0 + out / (WP(sp).speed * (0.7 + 0.5 * r2))
             M.push(W, w.t1, M.event_id(s, w), w.ver)
           end
           s.acc.wolf_nights = (s.acc.wolf_nights or 0) + 1

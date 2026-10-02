@@ -109,7 +109,19 @@ function M.a_band_takes_fright_one_by_one()
   T.ok(band ~= nil, "a band of five or more found")
   if not band then return end
   local now = V.now
-  local first = band[1]
+  -- (S19: a deer with others of its band about it - not a straggler off on its own)
+  local c3 = require("sim.config").V3
+  local first, fn = band[1], -1
+  for _, w in ipairs(band) do
+    local wx, wy = wild.pos(w, now)
+    local n = 0
+    for _, o in ipairs(band) do
+      local ox, oy = wild.pos(o, now)
+      local reach = c3.wild_alarm_seps * wild.WP(w.sp).sep
+      if o ~= w and (ox - wx) ^ 2 + (oy - wy) ^ 2 < reach * reach then n = n + 1 end
+    end
+    if n > fn then first, fn = w, n end
+  end
   local x, y = wild.pos(first, now)
   first.flee_x, first.flee_y = x + 0.05, y
   wild.interrupt(W, s, first, now)

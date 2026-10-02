@@ -146,9 +146,10 @@ function M.daily(W, s, now)
     -- (S19: not a household already set on making a new place)
     if hh and #hh.members > 0 and (not hh.migrate or hh.migrate.given_up) and not (hh.found and not hh.found.given_up) then
       local push, pwhy = M.push(W, s, hh, now)
-      -- (S19: a better day - a sack of grain from a neighbour - eases the count by one; it does not
-      -- wipe out a week of hunger)
-      hh.pushd = push >= c.mig_min_push and (hh.pushd or 0) + 1 or max(0, (hh.pushd or 0) - 1)
+      -- (S19: hardship judged over the days, not by the morning: living hand to mouth on a sack of
+      -- grain from a neighbour now and then is still hardship; a better day eases the count by one)
+      hh.push_avg = hh.push_avg and (hh.push_avg * 0.6 + push * 0.4) or push
+      hh.pushd = hh.push_avg >= c.mig_min_push and (hh.pushd or 0) + 1 or max(0, (hh.pushd or 0) - 1)
       -- (how long a household bears hardship before it thinks of leaving is its own)
       local patience = c.mig_days + floor(4 * rng.float(W.seed, rng.S.V3_THINK, hid, 0, 131))
       if hh.pushd >= patience then

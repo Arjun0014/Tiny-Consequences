@@ -22,7 +22,7 @@ M.BABE_FIT = { fell = 0.08, build = 0.08, haul_logs = 0.1, deliver = 0.1, grub =
   till = 0.3, harvest = 0.45, haul_grain = 0.3, sow = 0.7, tend = 0.75, forage = 0.85, fetch_wood = 0.5,
   fetch_food = 0.8, fetch_water = 0.7, cook = 1.1, craft = 1.0, play = 0, fish = 0, mend_boat = 0.15, smoke = 1.0,
   spin = 1.0, sew = 0.9, weave = 0.7, dress = 0.5, mend_clothes = 1.0, haul_flax = 0.3, herd = 0.6, shear = 0.3, mow = 0.2,
-  feed = 0.7 }
+  feed = 0.7, quarry = 0.05, haul_stone = 0.08, deliver_stone = 0.08, quern = 0.6, shore = 0.7 }
 
 -- Objectives during which a mother at home takes her baby back from its minder.
 M.HOME_KINDS = { sleep = true, rest = true, eat = true, cook = true, craft = true, sit_out = true, nurse = true,

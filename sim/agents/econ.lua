@@ -33,6 +33,9 @@ M.GOODS = {
   leather = { base = 4.0, wt = 1 / 4, pool = "house", name = "leather", unit = "pieces" },
   -- (S18) made only on the coast (salt pans); cures meat and fish, keeps cheese
   salt = { base = 2.5, wt = 1 / 10, pool = "house", name = "salt", unit = "measures" },
+  -- (S19) a rotary quern of hard stone: made only where there is hard rock; a household's own,
+  -- whole (one to a load: a man carries one pair of stones)
+  quern = { base = 30, wt = 0.8, pool = "house", name = "querns", name1 = "quern", unit = "", whole = true },
   -- (S15, R4) beasts sold alive: a household's own, led by a drover (wt: the share of the beasts
   -- one drover can lead), never carried, never taken in payment
   sheep = { base = 12, wt = 1 / 6, pool = "house", name = "sheep", name1 = "sheep", unit = "", beast = "flock" },
@@ -40,12 +43,12 @@ M.GOODS = {
   cattle = { base = 70, wt = 1 / 2, pool = "house", name = "cattle", name1 = "cow", unit = "", beast = "cattle" },
   pig = { base = 28, wt = 1 / 4, pool = "house", name = "pigs", name1 = "pig", unit = "", beast = "swine" },
 }
-M.ORDER = { "grain", "smoked", "cheese", "logs", "wool", "cloth", "hides", "leather", "salt", "sheep", "goat", "cattle", "pig" }
+M.ORDER = { "grain", "smoked", "cheese", "logs", "wool", "cloth", "hides", "leather", "salt", "quern", "sheep", "goat", "cattle", "pig" }
 
 -- "8.0 FU of smoked fish", "2 logs": an amount of a good in words.
 function M.amount(q, g)
   local G = M.GOODS[g]
-  if G.beast and q < 1.5 then return "a " .. G.name1 end
+  if (G.beast or G.whole) and q < 1.5 then return "a " .. G.name1 end
   if G.unit == "" then
     -- (S19: "0.4 hides", not "0 hides")
     if q < 9.5 and math.abs(q - floor(q + 0.5)) >= 0.05 then return sfmt("%.1f %s", q, G.name) end
@@ -182,6 +185,10 @@ function M.house_stock(W, hh, home, g)
     -- (S18) for the curing and the cheese of a year
     return st.salt or 0, c.salt_hh_want + n * c.salt_member, st.salt or 0
   end
+  if g == "quern" then
+    -- (S19) one at work in the house; any more are to spare
+    return ((hh.quern or 0) >= c.quern_broken and 1 or 0) + (st.quern or 0), 1, st.quern or 0
+  end
   return 0, 0, 0
 end
 
@@ -268,7 +275,7 @@ end
 -- household's worth of the household goods, what it could spare, has and wants; the stores' (the
 -- village's goods) the same. Deals are worked out from it (M.deal_plan) - on arrival from what is
 -- there now, and when planning a trip from what was seen last time.
-local HOUSE_G = { "wool", "cloth", "hides", "leather", "salt" }
+local HOUSE_G = { "wool", "cloth", "hides", "leather", "salt", "quern" }
 local VILLAGE_G = { "grain", "smoked", "cheese", "logs" }
 function M.view(W, o)
   local c = C()
@@ -276,7 +283,20 @@ function M.view(W, o)
   local st = { v = {}, sp = {}, have = {}, want = {} }
   for _, g in ipairs(VILLAGE_G) do
     local have, want = M.village_stock(W, o, g)
-    st.v[g], st.sp[g], st.have[g], st.want[g] = worth(g, have, want), max(0, have - want * c.spare_k), have, want
+    -- (S19) what can be paid in it: the store that would pay holds that much of this very good
+    -- (grain from the granary, logs from the woodstore, the relish from the granary or the larder
+    -- holding most of it: smoked fish and cheese are counted together as relish, paid apart)
+    local pay
+    if g == "grain" then pay = o.granary and (o.granary.stock.grain or 0) or 0
+    elseif g == "logs" then pay = o.wood_store and (o.wood_store.stock.logs or 0) or 0
+    else
+      pay = o.granary and (o.granary.stock[g] or 0) or 0
+      for k = 1, #o.blist do
+        local hb = o.buildings[o.blist[k]]
+        if hb.kind == "house" and (hb.stock[g] or 0) > pay then pay = hb.stock[g] end
+      end
+    end
+    st.v[g], st.sp[g], st.have[g], st.want[g] = worth(g, have, want), max(0, min(have - want * c.spare_k, pay)), have, want
   end
   local hhs = {}
   for _, hid in ipairs(o.households) do
@@ -329,7 +349,22 @@ function M.deal_plan(view, X, H, aX, aH, left, cap, out)
     local q = left
     if wantX > 0 then q = min(q, max(0, (1.6 - k * vH / GX.base) * wantX - haveX)) end
     q = min(q, spH / k, room / k)
-    if q * GX.wt < c.trade_min_load * 0.5 then return end
+    if GX.whole then
+      -- (S19) a whole one, or none - or a whole one for all that can be paid and carried, when both
+      -- still gain by it
+      local qf = floor(q + 1e-6)
+      if qf < 1 and left >= 1 then
+        local keff = min(room, spH)
+        if keff * aH >= aX * c.trade_margin and vX >= keff * vH * c.trade_margin then qf, k = 1, keff end
+      end
+      q = qf
+      if q < 1 then return end
+    elseif GH.whole then
+      local qh = floor(q * k + 1e-6)
+      if qh < 1 then return end
+      q = qh / k
+    end
+    if q * GX.wt < c.trade_min_load * 0.5 and not GX.whole then return end
     out[#out + 1] = { b = b, q = q, qh = q * k, k = k }
     left, room = left - q, room - q * k
   end
@@ -408,8 +443,9 @@ local function exchange(c, aX, bX, nmax, aH, sH, spH, cap, GX, GH)
   if not GX.beast and nmax * GX.wt < c.trade_min_load * 0.5 then return nil end
   local k = sqrt(aX * bX / (aH * sH))
   local qH = min(nmax * k, cap / GH.wt, spH)
+  if GH.whole then qH = floor(qH + 1e-6); if qH < 1 then return nil end end
   local n = qH / k
-  if GX.beast then
+  if GX.beast or GX.whole then
     n = floor(n + 1e-6)
     if n < 1 and nmax >= 1 and qH * aH >= aX * c.trade_margin and bX >= qH * sH * c.trade_margin then
       -- (a whole beast for all that can be carried back, when both still gain by it)
@@ -449,8 +485,8 @@ function M.best_trade(W, s, hh, home, pool, partners, route, now)
         if GX.beast and land then hrs = hrs * c.drove_road end
         local nmax = min(spareX, cap / GX.wt)
         if GX.beast and not land then nmax = min(nmax, c.mig_sea_beasts) end
-        if GX.beast then nmax = floor(nmax + 1e-6) end
-        if nmax >= c.trade_min_load / GX.wt then
+        if GX.beast or GX.whole then nmax = floor(nmax + 1e-6) end
+        if nmax >= (GX.whole and 1 or c.trade_min_load / GX.wt) then
           local r = M.rel(s, o)
           -- (S19) what they expect is two things: what was last seen there (counted by how fresh the
           -- news is) and, for what may have changed since, a guess (a middling price, a little to
@@ -726,15 +762,17 @@ end
 -- and sea): cloth (its households' looms and spindles), when a neighbour heard of lately would give
 -- export_margin x trade_margin what a household here would. s.export = { cloth = name of the
 -- neighbour } or nil.
-local EXPORTS = { "cloth", "salt" }
+local EXPORTS = { "cloth", "salt", "quern" }
 function M.exports(W, s, partners, now)
   local c = C()
   local V = W.S.v3
   local ex = nil
   for _, g in ipairs(EXPORTS) do
-    -- (what a household of s gives it, the lowest: those who would make more of it)
+    -- (what a household of s gives it, the lowest: those who would make more of it; S19: querns
+    -- only where there is hard rock to make them from)
     local lo = nil
-    for _, hid in ipairs(s.households) do
+    if g == "quern" and not s.has_hard then lo = false end
+    for _, hid in ipairs(lo ~= false and s.households or {}) do
       local hh = V.households[hid]
       local home = hh and #hh.members > 0 and s.buildings[hh.home or 0]
       if home and home.state == "standing" then

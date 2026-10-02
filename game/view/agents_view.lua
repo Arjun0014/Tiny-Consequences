@@ -334,8 +334,29 @@ local function fill_buildings(V)
         add(V, K.logs, b.cx + dx * 1.6 + 0.02, b.cy + dy * 1.6, 0, yaw + 0.6, 0.8 * min(1.4, 0.5 + b.logs_have / 10), 1,
           pack(0.55, 0.40, 0.26), pack(0.45, 0.31, 0.2), 0)
       end
+    elseif b.state == "standing" and b.kind == "outcrop" then
+      -- (S19) a rock outcrop: boulders and slabs over its ground, hard rock dark grey, soft rock the
+      -- colour of sandstone; smaller as it is quarried away; split stones lying at its face
+      local T = s.T
+      local hard = b.rock == "hard"
+      local r1 = hard and pack(0.46, 0.46, 0.49) or pack(0.74, 0.64, 0.49)
+      local r2 = hard and pack(0.36, 0.36, 0.40) or pack(0.62, 0.52, 0.40)
+      local left = min(1, (b.left or 0) / 60)
+      local n = b.w * b.h
+      for q = 1, n do
+        local u1 = ((key * (q + 3)) % 97) / 97
+        local u2 = ((key * (q + 7)) % 89) / 89
+        local ox = (u1 - 0.5) * b.w * T * 0.8
+        local oy = (u2 - 0.5) * b.h * T * 0.8
+        add(V, q % 3 == 0 and K.slab or K.boulder, b.cx + ox, b.cy + oy, 0, u1 * 6.28, S * (0.35 + 0.45 * left) * (0.8 + 0.4 * u2), 1, r1, r2, 0)
+      end
+      for q = 1, min(4, floor(b.stock.stone or 0)) do
+        add(V, K.slab, b.dx + (q - 2.5) * 0.008, b.dy, 0, q * 1.3, S * 0.18, 0.5, r1, r2, 0)
+      end
     elseif b.state == "standing" then
       if b.kind == "house" then
+        -- (S19) a house on stone footings: the stones show under the walls
+        if b.footing then add(V, K.slab, b.cx, b.cy, -0.003, yaw, S * 1.05, 0.22, pack(0.60, 0.58, 0.55), pack(0.50, 0.48, 0.46), 0) end
         -- (S17: a founder's first shelter is a hut, low, turf-roofed)
         if b.hut then
           add(V, K.sodhouse, b.cx, b.cy, 0, yaw, S * 0.85, 1, pack(0.46, 0.52, 0.30), c2, 0)
@@ -359,6 +380,13 @@ local function fill_buildings(V)
         end
       elseif b.kind == "woodstore" then
         add(V, K.woodshed, b.cx, b.cy, 0, yaw, S, 1, c1, c2, 0)
+        -- (S19) the yard's stones beside it (dark: hard, kept for querns)
+        local ns, nh = floor(b.stock.stone or 0), floor(b.stock.hardstone or 0)
+        for q = 1, min(5, floor((ns + nh) / 3 + 0.999)) do
+          local hq = q <= floor(nh / 3 + 0.999)
+          add(V, K.slab, b.cx - dx * 1.5 + (q - 3) * 0.012, b.cy - dy * 1.5, 0, q * 0.9, S * 0.22, 0.6,
+            hq and pack(0.46, 0.46, 0.49) or pack(0.70, 0.62, 0.50), hq and pack(0.36, 0.36, 0.40) or pack(0.60, 0.52, 0.42), 0)
+        end
         local logs = b.stock.logs or 0
         local piles = min(6, floor(logs / 8 + 0.999))
         for q = 1, piles do
@@ -473,7 +501,8 @@ local function bld_sig(V)
     local b = s.buildings[s.blist[i]]
     local pg = b.state == "site" and floor(((b.work_done / b.work_need) * 0.75 + min(1, b.logs_have / max(1, b.logs_need)) * 0.25) * 20) or 99
     h = (h * 31 + b.id * 3 + pg + floor((b.stock.logs or 0) / 2) * 7 + floor((b.stock.sheaves or 0) / 20) * 13
-      + (b.state == "standing" and 1000 or 0) + (b.kind == "camp" and floor(((b.stock.food or 0) + (b.stock.seed or 0)) / 10) * 17 or 0)) % 1000000007
+      + (b.state == "standing" and 1000 or 0) + (b.kind == "camp" and floor(((b.stock.food or 0) + (b.stock.seed or 0)) / 10) * 17 or 0)
+      + floor(b.stock.stone or 0) * 23 + floor(b.stock.hardstone or 0) * 29 + floor((b.left or 0) / 8) * 37 + (b.footing and 41 or 0)) % 1000000007
   end
   h = (h * 17 + floor((s.hay or 0) / 30)) % 1000000007
   if s.herds then
@@ -678,7 +707,7 @@ end
 local ROT = vmath.quat()
 local POS = vmath.vector3()
 local WORK_ANIM = { till = true, sow = true, harvest = true, chop = true, build = true, tend = true, grub = true,
-  thresh = true, forage = true, fill = true }
+  thresh = true, forage = true, fill = true, shore = true, quarry = true, quern = true }
 
 local function update_people(V, t, zoom)
   local s = V.s
@@ -758,10 +787,12 @@ local PLOUGH_ANIM = { "carry_walk", 0.55 }
 -- what they hold for each action (the sim's action, not invented)
 local TOOL = { till = "hoe", grub = "hoe", chop = "axe", harvest = "sickle", build = "hammer", thresh = "flail",
   forage = "basket", fill = "bucket", tend = nil, sow = "basket", repair = "hammer", fish = "rod", mend_boat = "hammer",
-  dress = "flail", stalk = "spear", gut = "spear", milk = "bucket", muck = nil, slop = "bucket", angle = "rod" }
+  dress = "flail", stalk = "spear", gut = "spear", milk = "bucket", muck = nil, slop = "bucket", angle = "rod", shore = "basket",
+  quarry = "hammer", quern = "hammer" }
 local CARRY_PART = { logs = "log", grain = "sack", sheaves = "sack", food = "sack", seed = "basket", water = "bucket", fish = "basket",
   flax = "sack", carcass = "sack", milk = "bucket", manure = "basket", scraps = "bucket", wool = "sack", hay = "basket", meat = "sack",
-  dried = "basket", smoked = "basket", cheese = "basket", pack = "sack", hides = "sack", leather = "sack" }
+  dried = "basket", smoked = "basket", cheese = "basket", pack = "sack", hides = "sack", leather = "sack",
+  stone = "sack", hardstone = "sack", quern = "sack" }
 -- animation for each action: { clip, rate (at a game minute per second), moving clip }
 local ANIM = {
   walk = { "walk" }, till = { "swing", 0.7 }, grub = { "kneel_work", 0.9 }, chop = { "swing", 0.9 },
@@ -783,6 +814,8 @@ local ANIM = {
   -- fishing (D-096)
   ride = { "sit", 0.6 }, wait_mate = { "idle", 1 }, board_mate = { "pickup", 1.2 }, hang = { "pickup", 0.9 },
   angle = { "sit", 0.5 },
+  -- (S19) gathering on the shore at low water; splitting stone at a rock face; shaping a quern
+  shore = { "crouch_walk", 0.45 }, quarry = { "swing", 0.75 }, quern = { "kneel_work", 0.7 },
 }
 
 local function packc(c) return pack(c[1], c[2], c[3]) end

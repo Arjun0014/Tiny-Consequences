@@ -57,7 +57,7 @@ local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "f
   shore = "shore", smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed", moving_in = "strike_camp",
   asking = "visit_kin",
   milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle", trading = "trade", sharing = "share", tanning = "tan", lifting = "lift", cobbling = "cobble",
-  salting_pans = "salt" }
+  salting_pans = "salt", querning = "quern" }
 local function claim_free(W, hh, field, p)
   local id = hh[field] or 0
   if id == 0 or (p and id == p.id) then return true end
@@ -238,7 +238,7 @@ end
 local ROLE_JOBS = {
   farmer = { grub = true, till = true, sow = true, tend = true, harvest = true, haul_grain = true, thresh = true },
   woodcutter = { fell = true, haul_logs = true, grub = true },
-  builder = { build = true, deliver = true, haul_logs = true, repair = true },
+  builder = { build = true, deliver = true, haul_logs = true, repair = true, quarry = true, deliver_stone = true, quern = true },
   fisher = { fish = true, mend_boat = true, smoke = true },
   shepherd = { herd = true, shear = true, feed = true },
 }
@@ -317,12 +317,13 @@ local function fit(p, ctx, kind, ref)
   local rj = ROLE_JOBS[p.role]
   if rj and rj[kind] then f = 1.45 end
   if st == "elder" then
-    if kind == "fell" or kind == "build" or kind == "haul_logs" or kind == "deliver" then f = f * 0.25
+    if kind == "fell" or kind == "build" or kind == "haul_logs" or kind == "deliver" or kind == "quarry" or kind == "haul_stone"
+      or kind == "deliver_stone" then f = f * 0.25
     elseif kind == "tend" or kind == "fetch_water" or kind == "fetch_food" then f = f * 1.1
     else f = f * 0.6 end
   end
   if p.preg_due > 0 and p.preg_due - NOW < 120 then
-    if kind == "fell" or kind == "build" or kind == "haul_logs" then f = f * 0.1 end
+    if kind == "fell" or kind == "build" or kind == "haul_logs" or kind == "quarry" or kind == "haul_stone" or kind == "deliver_stone" then f = f * 0.1 end
   end
   return f * bf
 end
@@ -594,7 +595,101 @@ local function work_candidates(W, s, p, ctx, now)
       end
     end
   end
+  -- (S19) stone
+  M.stone_candidates(W, s, p, ctx, now, fat)
 end
+
+-- (S19) Stone (sim/agents/stone.lua): quarrying at an outcrop's face when the village wants stone,
+-- carrying the stones that lie there (one at a time: heavy) to a site that wants them or to the yard
+-- by the woodstore, bringing yard stones to a site, and a household shaping two hard stones into a
+-- quern (in stints, at the yard) when it has none.
+local function stone_candidates(W, s, p, ctx, now, fat)
+  local c = C()
+  local need = s.need
+  if not s.has_rock and not s.wood_store then return end
+  local px, py = p.x, p.y
+  local yard = s.wood_store and s.wood_store.state == "standing" and s.wood_store or nil
+  -- sites wanting stone
+  local site, sw = nil, 0
+  for i = 1, #s.sites do
+    local b = s.buildings[s.sites[i]]
+    if b and b.state == "site" then
+      local m = (b.stone_need or 0) - (b.stone_have or 0) - (b.stone_claim or 0)
+      if m > sw then site, sw = b, m end
+    end
+  end
+  -- stones lying at the faces (not yet claimed by a carrier) and where they would go
+  if s.has_rock then
+    local face, fd = nil, 1e9
+    for k = 1, #s.blist do
+      local b = s.buildings[s.blist[k]]
+      if b.kind == "outcrop" and (b.stock.stone or 0) - (b.haul_claim or 0) >= 1 then
+        local d = dist(px, py, b.dx, b.dy)
+        if d < fd then face, fd = b, d end
+      end
+    end
+    if face and (site or yard) then
+      local f = fit(p, ctx, "haul_stone")
+      if f > 0 then
+        local to = site or yard
+        addw((0.5 + (site and 0.12 or 0)) * f * fat - travel(ctx, face.dx, face.dy, px, py) - travel(ctx, to.dx, to.dy, face.dx, face.dy) * 0.4,
+          "haul_stone", face.id, to.id, "A quarried stone lies at the %s; the %s wants it", face.label, site and site.label or "yard by the woodstore")
+      end
+    end
+    -- quarrying: the stone the village wants and nobody has split yet
+    if (need.stone or 0) > 0 and ctx.stage == "adult" then
+      local f = fit(p, ctx, "quarry")
+      if f > 0 then
+        local hard = (need.hardstone or 0) > 0
+        local best, bd = nil, 1e9
+        for k = 1, #s.blist do
+          local b = s.buildings[s.blist[k]]
+          if b.kind == "outcrop" and (b.left or 0) > 0 and (b.quarriers or 0) < 2 and (not hard or b.rock == "hard") then
+            local d = dist(px, py, b.dx, b.dy)
+            if d < bd then best, bd = b, d end
+          end
+        end
+        if best then
+          addw((0.42 + 0.06 * min(4, need.stone) + (site and 0.1 or 0)) * f * fat - travel(ctx, best.dx, best.dy, px, py), "quarry", best.id, 0,
+            "%s: splitting stone at the %s", need.stone_why or "The village wants stone", best.label)
+        end
+      end
+    end
+  end
+  -- yard stones to a site
+  if site and yard then
+    local ys, yh = (yard.stock.stone or 0), (yard.stock.hardstone or 0)
+    if ys + yh - (yard.stone_claim or 0) >= 1 then
+      local f = fit(p, ctx, "deliver_stone")
+      if f > 0 then
+        addw((0.52 + 0.1 * site.prio) * f * fat - travel(ctx, yard.dx, yard.dy, px, py) - travel(ctx, site.dx, site.dy, yard.dx, yard.dy) * 0.4,
+          "deliver_stone", site.id, yard.id, "The %s for %s wants %d stones for its footing; there are stones in the yard", site.label,
+          site.for_name or "the village", (site.stone_need or 0) - (site.stone_have or 0))
+      end
+    end
+  end
+  -- a quern for the household: two hard stones from the yard shaped into one (or the work on it
+  -- carried on)
+  local hh, home = ctx.hh, ctx.home
+  if yard and hh and home and (ctx.stage == "adult" or ctx.stage == "elder") and claim_free(W, hh, "querning", p) then
+    local mine = (hh.quern_work or 0) > 0
+    local lack = (hh.quern or 0) < c.quern_broken and (home.stock.quern or 0) < 1
+    local trade = s.export and s.export.quern and (hh.quern or 0) >= c.quern_broken and (home.stock.quern or 0) < 1
+    if mine or ((lack or trade) and (yard.stock.hardstone or 0) >= 2) then
+      local f = fit(p, ctx, "quern")
+      if f > 0 then
+        local u = (lack and 0.45 or 0.3) * f * fat * (ctx.rain == 2 and 0.5 or 1) - travel(ctx, yard.dx, yard.dy, px, py)
+        if lack then
+          addw(u, "quern", yard.id, 0, "We grind our grain on a saddle stone: shaping a quern from two hard stones (%.0f of %.0f hours done)",
+            hh.quern_work or 0, c.quern_h)
+        else
+          addw(u, "quern", yard.id, 0, "%s wants querns: shaping one to trade (%.0f of %.0f hours done)", s.export.quern, hh.quern_work or 0, c.quern_h)
+        end
+      end
+    end
+  end
+end
+M.stone_candidates = stone_candidates
 
 -- The tree to fell (settle.next_tree: a scan of the woods) and its utility (lazy, see add_lazy).
 function M.lazy_fell(c, ff)
@@ -1958,7 +2053,9 @@ PLAN.cook = function(W, s, p, ctx, now, cd)
   local home = s.buildings[cd.a]
   ctx.hh.cooking = p.id
   if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
-  work(pl, "cook", c.cook_h * (0.75 + 0.5 * u01(W, p, now, 44)), { inside = home.id, ref = home.id })
+  -- (S19) with a quern the grinding goes faster than on a saddle stone
+  local qf = (ctx.hh.quern or 0) >= c.quern_broken and (1 - c.quern_save) or 1
+  work(pl, "cook", c.cook_h * qf * (0.75 + 0.5 * u01(W, p, now, 44)), { inside = home.id, ref = home.id })
   if cd.b == 1 then work(pl, "eat", 0.3 + 0.2 * u01(W, p, now, 9), { inside = home.id, ref = home.id }) end
   return "Cook for the household", "home"
 end
@@ -2391,6 +2488,64 @@ PLAN.forage = function(W, s, p, ctx, now, cd)
   go(pl, home.dx, home.dy, "home", home.id)
   pl[#pl + 1] = { op = "drop", to = "home", ref = home.id }
   return "Gather food in the woods", "the woods' edge"
+end
+
+-- (S19) Stone: quarrying at an outcrop's face (the stone left lying there).
+PLAN.quarry = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local b = s.buildings[cd.a]
+  b.quarriers = (b.quarriers or 0) + 1
+  local x, y = near_spot(W, p, now, b.dx, b.dy, 0.03, 81)
+  go(pl, x, y, "the " .. b.label)
+  work(pl, "quarry", c.quarry_h * (0.8 + 0.4 * u01(W, p, now, 82)) / M.tool_factor(W, p), { ref = b.id, fx = b.cx, fy = b.cy })
+  return "Quarry stone", "the " .. b.label
+end
+
+-- A quarried stone carried from the face to a site or the yard (one at a time: it is heavy).
+PLAN.haul_stone = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local b = s.buildings[cd.a]
+  local to = s.buildings[cd.b]
+  b.haul_claim = (b.haul_claim or 0) + 1
+  if to.state == "site" then to.stone_claim = (to.stone_claim or 0) + 1 end
+  go(pl, b.dx, b.dy, "the " .. b.label)
+  pl[#pl + 1] = { op = "pick", what = "stone", ref = b.id }
+  go(pl, to.dx, to.dy, to.state == "site" and to.label or "the yard")
+  pl[#pl + 1] = { op = "drop", to = to.state == "site" and "stone_site" or "stone_yard", ref = to.id }
+  return "Carry a stone to the " .. (to.state == "site" and to.label or "yard"), to.state == "site" and to.label or "the yard"
+end
+
+-- Yard stones to a site's footing.
+PLAN.deliver_stone = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local b = s.buildings[cd.a]
+  local yard = s.buildings[cd.b]
+  b.stone_claim = (b.stone_claim or 0) + 1
+  yard.stone_claim = (yard.stone_claim or 0) + 1
+  go(pl, yard.dx, yard.dy, "the yard")
+  pl[#pl + 1] = { op = "pick", what = "yard_stone", ref = yard.id }
+  go(pl, b.dx, b.dy, b.label)
+  pl[#pl + 1] = { op = "drop", to = "stone_site", ref = b.id }
+  return "Bring a stone to the " .. b.label, b.label
+end
+
+-- A stint of shaping a quern at the yard (two hard stones taken up when the work begins); finished,
+-- it is carried home.
+PLAN.quern = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local yard = s.buildings[cd.a]
+  local hh = ctx.hh
+  hh.querning = p.id
+  local x, y = near_spot(W, p, now, yard.dx, yard.dy, 0.04, 83)
+  go(pl, x, y, "the yard")
+  local left = c.quern_h - (hh.quern_work or 0)
+  work(pl, "quern", min(left, (1.8 + 1.0 * u01(W, p, now, 84)) * p.dil), { ref = yard.id, fx = yard.cx, fy = yard.cy })
+  local home = ctx.home
+  go(pl, home.dx, home.dy, "home", home.id)
+  pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, release = "querning" }
+  return "Shape a quern", "the yard"
 end
 
 -- (S19) Gathering on the shore: a stretch of the waterline (a different one each outing, the nearest
@@ -4230,6 +4385,9 @@ function M.release(W, s, p)
           local hh = W.S.v3.households[p.hh]
           local field = st.kind == "dress" and "dressing" or (st.kind == "weave" and "weaving" or "sewing")
           if hh and hh[field] == p.id then hh[field] = 0 end
+        elseif st.kind == "quarry" then
+          local b = s.buildings[st.ref]
+          if b then b.quarriers = max(0, (b.quarriers or 1) - 1) end
         end
       elseif st.op == "pick" then
         if st.what == "sheaves" then
@@ -4240,11 +4398,20 @@ function M.release(W, s, p)
           if plot then plot.flax_claim = max(0, (plot.flax_claim or 1) - 1) end
         elseif st.from == "tree" then
           if s.trees.claim[st.ref] == -p.id then s.trees.claim[st.ref] = 0; s.tv = (s.tv or 0) + 1 end
+        elseif st.what == "stone" then
+          local b = s.buildings[st.ref]
+          if b then b.haul_claim = max(0, (b.haul_claim or 1) - 1) end
+        elseif st.what == "yard_stone" then
+          local b = s.buildings[st.ref]
+          if b then b.stone_claim = max(0, (b.stone_claim or 1) - 1) end
         end
       elseif st.op == "drop" then
         if st.to == "site" then
           local b = s.buildings[st.ref]
           if b then b.deliver_claim = max(0, (b.deliver_claim or 1) - 1) end
+        elseif st.to == "stone_site" then
+          local b = s.buildings[st.ref]
+          if b then b.stone_claim = max(0, (b.stone_claim or 1) - 1) end
         end
         if st.release then
           local hh = W.S.v3.households[p.hh]
@@ -4573,11 +4740,25 @@ function M.decide(W, s, p, now, reason)
     elseif cr == "sheaves" then to = s.granary
     elseif cr == "logs" then to = s.wood_store
     elseif cr == "hay" then to = s.herds and s.buildings[(s.herds.flock or s.herds.cattle or {}).pen or 0]
-    elseif cr == "wool" or cr == "meat" or cr == "milk" or cr == "scraps" or cr == "carcass" or cr == "dried" then to = home
+    elseif cr == "wool" or cr == "meat" or cr == "milk" or cr == "scraps" or cr == "carcass" or cr == "dried" or cr == "quern" then to = home
     elseif cr == "manure" then
       local H = s.herds and (s.herds.cattle or s.herds.flock or s.herds.swine)
       to = H and s.buildings[H.pen]
     elseif cr == "water" then to = home
+    elseif cr == "stone" or cr == "hardstone" then
+      -- (S19) a stone in hand: to the yard, else back to a face of its own rock
+      local y = s.wood_store
+      if y and y.state == "standing" then to = y
+      else
+        local bd = 1e9
+        for k = 1, #s.blist do
+          local b = s.buildings[s.blist[k]]
+          if b.kind == "outcrop" and (b.rock == "hard") == (cr == "hardstone") then
+            local d = dist(p.x, p.y, b.dx, b.dy)
+            if d < bd then to, bd = b, d end
+          end
+        end
+      end
     else
       to = s.granary
       if home and (not to or dist(p.x, p.y, home.dx, home.dy) <= dist(p.x, p.y, to.dx, to.dy) + 0.1) then to = home end
@@ -4585,7 +4766,9 @@ function M.decide(W, s, p, now, reason)
     if to then
       local pl = p.plan
       local ishome = to == home
-      table.insert(pl, 1, { op = "drop", to = ishome and "home" or to.kind, ref = to.id })
+      local dto = ishome and "home" or to.kind
+      if cr == "stone" or cr == "hardstone" then dto = to.kind == "outcrop" and "stone_face" or "stone_yard" end
+      table.insert(pl, 1, { op = "drop", to = dto, ref = to.id })
       table.insert(pl, 1, { op = "go", x = to.dx, y = to.dy, place = ishome and "home" or ("the " .. to.label), enter = ishome and home.id or nil })
     end
   end

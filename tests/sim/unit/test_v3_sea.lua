@@ -54,9 +54,11 @@ function M.an_island_household_moves_by_sea()
   local decided, arrived_h, sailed, rode, walked_road = nil, nil, 0, 0, 0
   local ship0 = {}
   local hungriest = 0
-  for h = 0.5, 24 * 9, 0.5 do
+  -- (S19: relief now comes by sea from the first days, so they live on it a week before they go)
+  for h = 0.5, 24 * 16, 0.5 do
     world.advance(W, t0 + h)
     if h % 24 == 0 then starve() end
+    if arrived_h and h > arrived_h + 2 then break end
     if not decided then
       for _, hid in ipairs(H.households) do
         local hh = V.households[hid]
@@ -91,7 +93,8 @@ function M.an_island_household_moves_by_sea()
   T.eq(decided.sett, Z.id, "the household is " .. Z.name .. "'s now")
   for _, id in ipairs(decided.members) do
     local p = V.people[id]
-    T.ok(not p.alive or (p.sett == Z.id and not p.at and (p.riding or 0) == 0), p.name .. " came too, and is ashore")
+    T.ok(not p.alive or (p.sett == Z.id and not p.at and (p.riding or 0) == 0), p.name .. " came too, and is ashore"
+      .. string.format(" [sett %s at %s riding %s act %s age %.1f obj %s]", tostring(p.sett), tostring(p.at), tostring(p.riding), tostring(p.act), (W.hour - p.born) / 1152, tostring(p.obj)))
   end
   local listed = false
   for _, hid in ipairs(Z.households) do if hid == decided.id then listed = true end end

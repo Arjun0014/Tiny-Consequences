@@ -32,6 +32,8 @@ M.KINDS = {
   -- (S17, R5) a founding household's camp: the ground cleared, a fire ring, a brush lean-to; its home
   -- and larder until a house stands (open ground: walked through, built on by nothing else)
   camp = { w = 5, h = 5, label = "camp", logs = 0, work = 2 },
+  -- (S19) a rock outcrop: natural, built by nobody; stone is quarried at its face (sim/agents/stone.lua)
+  outcrop = { w = 2, h = 2, label = "rock outcrop", logs = 0, work = 0 },
 }
 -- (S17) the kinds a household lives in
 M.HOME = { house = true, camp = true }
@@ -60,7 +62,7 @@ end
 function M.add_building(W, s, kind, ix0, iy0, side, state, opts)
   local V = W.S.v3
   local K = M.KINDS[kind]
-  local w, h = K.w, K.h
+  local w, h = (opts and opts.w) or K.w, (opts and opts.h) or K.h
   if side == "e" or side == "w" then w, h = h, w end
   local id = V.next_building
   V.next_building = id + 1
@@ -70,6 +72,11 @@ function M.add_building(W, s, kind, ix0, iy0, side, state, opts)
     work_need = K.work, work_done = state == "site" and 0 or K.work, hh = 0, stock = {}, prio = 0,
     started = W.hour, built = state == "site" and -1 or W.hour }
   if opts then for k, v in pairs(opts) do b[k] = v end end
+  -- (S19) houses and granaries raised where stone is at hand stand on stone footings (not huts)
+  if state == "site" and M.stone and not (opts and opts.hut) then
+    local fs = M.stone.footing(W, s, kind)
+    if fs > 0 then b.stone_need, b.stone_have = fs, 0 end
+  end
   for iy = iy0, iy0 + h - 1 do
     for ix = ix0, ix0 + w - 1 do
       -- (a fold is fenced ground, walked in and out of: marked as an enclosure, not a footprint)
@@ -132,6 +139,8 @@ end
 -- home and their household.
 function M.complete_building(W, s, b)
   if b.state ~= "site" then return end
+  -- (S19) a footing of stones under it when they were laid
+  if (b.stone_need or 0) > 0 and (b.stone_have or 0) >= b.stone_need then b.footing = true end
   b.state = "standing"
   b.built = W.hour
   people.remove_id(s.sites, b.id)
@@ -1054,7 +1063,7 @@ local function hearths(W, s, day)
   for i = 1, #s.blist do
     local b = s.buildings[s.blist[i]]
     if b.kind == "house" and b.state == "standing" then
-      b.cond = max(0, (b.cond or 1) - c.wear_house)
+      b.cond = max(0, (b.cond or 1) - c.wear_house * (b.footing and c.footing_wear or 1))
     end
     if M.HOME[b.kind] and b.state == "standing" and b.hh ~= 0 then
       local hh = V.households[b.hh]
@@ -1809,6 +1818,8 @@ end
 
 function M.daily(W, s, day)
   estates(W, s, W.S.v3.now or W.hour)
+  -- (S19) stone: the outcrops (once), querns set up, the stone the village wants
+  if M.stone then M.stone.daily(W, s, W.S.v3.now or W.hour) end
   -- adults' idle share of the waking day, as measured (act.lua counts leisure hours)
   local lz, aw = s.acc.lz_h or 0, s.acc.aw_h or 0
   if s.aw_prev and aw - s.aw_prev > 1 then

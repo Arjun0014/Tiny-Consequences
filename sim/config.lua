@@ -1046,6 +1046,19 @@ C.V3 = {
   -- FU of cheese); unsalted, only cheese_keep_nosalt of the curd keeps
   salt_h = 0.8, salt_logs = 0.4, salt_sun = 0.75, salt_sun_temp = 15, salt_hh_want = 0.6, salt_member = 0.3,
   export_salt = 0.6, salt_cure = 0.06, salt_cure_h = 6.0, cheese_salt = 0.025, cheese_keep_nosalt = 0.6,
+  -- (S19) stone (sim/agents/stone.lua): an outcrop may stand on a map tile whose planet cell is rocky -
+  -- (slope - rock_slope) / rock_slope_span x 0.7 + (height - rock_elev) / rock_elev_span x 0.5, each
+  -- 0..1 - tried on a lattice every rock_step tiles with that x rock_density, not within rock_keep of
+  -- the map's middle; hard rock at rock_hard_elev km or rock_hard_slope and more; an outcrop holds
+  -- rock_stones stones. A stone is quarried in quarry_h hours; houses and granaries raised where stone
+  -- is at hand stand on footing_stones stones and weather footing_wear as fast. A quern: two hard
+  -- stones shaped in quern_h hours (in stints at the yard); it saves quern_save of a cooking batch's
+  -- time (the grinding), wears quern_wear a batch, broken below quern_broken. The village quarries
+  -- for quern_at_once querns at a time and keeps stone_reserve stones in the yard.
+  rock_slope = 0.6, rock_slope_span = 1.4, rock_elev = 1.6, rock_elev_span = 1.4, rock_hard_elev = 2.0, rock_hard_slope = 1.5,
+  rock_step = 7, rock_density = 0.04, rock_keep = 0.45, rock_stones = { 30, 70 },
+  quarry_h = 1.5, footing_stones = 4, footing_wear = 0.45, quern_h = 10, quern_save = 0.4, quern_wear = 0.0015,
+  quern_broken = 0.15, quern_at_once = 1, stone_reserve = 2, footing_wait = 3,
   -- (S16, R4) courting: a man with nobody to marry at home goes to a neighbour within court_road_h
   -- hours' walk with this chance a courtship round; he spends court_h meeting its people; a bride
   -- sets off with him court_wait_h after the match

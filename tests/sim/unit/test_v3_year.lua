@@ -189,7 +189,8 @@ function M.fishers_fish_from_their_own_boats()
   T.ok(R.boarded > 10, "boardings " .. R.boarded)
   local a = s.acc
   T.ok((a.fished or 0) > 50 and (a.fished or 0) < (a.harvest or 0), string.format("fish %.0f against harvest %.0f", a.fished or 0, a.harvest or 0))
-  T.ok((a.smoked or 0) > 5, "fish smoked " .. tostring(a.smoked))
+  -- (S19: since D-133 salt cures fish too: the surplus is smoked or salted)
+  T.ok((a.smoked or 0) + (a.salted or 0) > 5, string.format("fish cured: smoked %.1f, salted %.1f", a.smoked or 0, a.salted or 0))
 end
 
 -- The herds (D-089, D-092): taken out and brought home, fed, born, shorn, milked, the dung on the
