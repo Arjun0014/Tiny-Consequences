@@ -922,6 +922,8 @@ M.sea_storm = sea_storm
 -- 26 hours with an empty larder in a famine and died on the road).
 local function journey_ok(W, s, p, ctx, hrs)
   if p.hunger > 0.55 then return false end
+  -- (not with a babe in arms: a minder does not carry someone's baby off on a long road)
+  if ctx.babe then return false end
   if s.need and (s.need.food_days or 99) < 3 then return false end
   local home, hh = ctx.home, ctx.hh
   if not home or not hh then return false end
@@ -1081,7 +1083,7 @@ M.kin_away = kin_away
 -- at home, they may offer the household a place under their roof. Not the same kin again for
 -- kin_ask_again days.
 local function ask_kin_candidate(W, s, p, ctx, now, fat)
-  if ctx.moving then return end
+  if ctx.moving or ctx.babe then return end
   local c = C()
   local hh = ctx.hh
   if p.trip or p.court or ctx.stage ~= "adult" or not ctx.home or not hh or ctx.rain >= 2 or ctx.night then return end
@@ -3025,6 +3027,11 @@ local function trip_legs(W, s, p, ctx, now)
       tr.have = p.pack and p.pack[tr.give] or 0
       tr.deals = econ.deals(W, o, tr)
       tr.dealt = true
+      -- (S19) and what is owed to their village's households here is asked for
+      for _, i in ipairs(econ.owed_at(W, home_s, o)) do
+        local d = econ.debts(W)[i]
+        tr.deals[#tr.deals + 1] = { collect = i, b = d.db, q = 0, qh = 0, k = 0 }
+      end
       if #tr.deals == 0 then
         people.remember(p, now, sfmt("Nobody at %s wanted our %s at a price worth it now", o.name, econ.GOODS[tr.give].name))
       end
@@ -3038,7 +3045,12 @@ local function trip_legs(W, s, p, ctx, now)
           local hh = V.households[d.b]
           hb = hh and o.buildings[hh.home or 0]
         end
-        if hb and not d.done then
+        if hb and not d.done and d.collect then
+          -- (S19) a debt asked for at the debtor's house
+          go(pl, hb.dx, hb.dy, hb.label or "a house")
+          work(pl, "collect", c.deal_h, { di = di, ref = hb.id })
+          pending = true
+        elseif hb and not d.done then
           -- (beasts are bargained for at the pen they will go into, S15)
           local GX = econ.GOODS[tr.give]
           local pen = GX.beast and o.herds and o.herds[GX.beast] and o.buildings[o.herds[GX.beast].pen]
@@ -3757,7 +3769,7 @@ PLAN.trade = function(W, s, p, ctx, now, cd)
   local plan = (cd.b == 1 and hh.tplan) or (cd.b == 2 and s.tplan) or hh.splan
   local o = W.S.v3.settlements[cd.a]
   p.trip = { to = o.id, from = s.id, give = plan.give, take = plan.take, n = plan.n, aX = plan.aX, aH = plan.aH,
-    pool = cd.b == 1 and "house" or (cd.b == 2 and "village" or plan.pool), t0 = now, ask = plan.ask }
+    pool = cd.b == 1 and "house" or (cd.b == 2 and "village" or plan.pool), t0 = now, ask = plan.ask, aw = plan.aw }
   hh.trading = p.id
   if cd.b == 3 then
     local boat = econ.own_boat(s, hh)
@@ -3818,6 +3830,12 @@ local function court_legs(W, s, p, ctx, now)
         work(pl, tr.ask_kin and "ask_kin" or "visit_kin", tr.ask_kin and c.kin_ask_h or c.visit_h, { ref = kb and kb.id or 0, inside = kb and kb.id or nil })
         return (tr.ask_kin and "Ask " or "Visit ") .. (kin and kin.name or "kin") .. " at " .. o.name .. (tr.ask_kin and " for help" or ""), o.name
       end
+      -- (S19) a hungry visitor is given a meal from the village's store first, as traders are
+      if o.granary and o.granary.state == "standing" and p.hunger > 0.3 and not tr.fed then
+        tr.fed = true
+        go(pl, o.granary.dx, o.granary.dy, o.name .. "'s granary")
+        work(pl, "guest_meal", 0.4, { ref = o.granary.id })
+      end
       local x, y = near_spot(W, p, now, o.sqx or 0, o.sqy or 0, 0.08, 61)
       go(pl, x, y, o.name .. "'s square")
       if tr.news then
@@ -3842,15 +3860,22 @@ local function court_legs(W, s, p, ctx, now)
       return "Take what " .. (kin and kin.name or "kin") .. " gives", o.name
     end
     local _, hrs0 = trade.road(W, o, home_s)
-    if tr.news and not tr.slept and (ctx.night or ctx.lh + hrs0 > ctx.sunset + 0.5) then
-      -- (too late to walk home by day: the night at the square, off at first light)
+    -- (S19: a road longer than a day's walking is camped on anyway: they set off at once)
+    local overday = hrs0 > ctx.sunset - ctx.wake
+    if tr.news and not tr.slept and (ctx.night or (ctx.lh + hrs0 > ctx.sunset + 0.5 and not overday)) then
+      -- (too late to walk home by day: the night at the square, off at first light; S19: a meal
+      -- from the village's store before it)
       tr.slept = true
       local until_t = next_local(now, ctx.lh, ctx.wake)
+      if o.granary and o.granary.state == "standing" and p.hunger > 0.2 then
+        go(pl, o.granary.dx, o.granary.dy, o.name .. "'s granary")
+        work(pl, "guest_meal", 0.4, { ref = o.granary.id })
+      end
       go(pl, o.sqx or 0, o.sqy or 0, o.name .. "'s square")
       work(pl, "sleep", until_t - now, { trip_sleep = true })
       return "Sleep at " .. o.name, o.name
     end
-    if tr.visit and kb and not tr.slept and (ctx.night or ctx.lh + hrs0 > ctx.sunset + 0.5) then
+    if tr.visit and kb and not tr.slept and (ctx.night or (ctx.lh + hrs0 > ctx.sunset + 0.5 and not overday)) then
       -- (too late to walk home by day: the night under their roof)
       tr.slept = true
       local until_t = next_local(now, ctx.lh, ctx.wake)

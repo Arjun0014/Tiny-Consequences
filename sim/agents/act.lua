@@ -1952,6 +1952,60 @@ WORK.halter = function(W, s, p, st, f)
 end
 
 -- What the other village's stores pay for a deal struck at a house (D-101), loaded at the stores.
+-- (S19) Asking for a debt at the debtor's house: they pay from what they can spare (their household
+-- goods), the creditor's dearest first, up to what is owed and what can be carried; both remember.
+WORK.collect = function(W, s, p, st, f)
+  if f < 0.99 then return end
+  local V = W.S.v3
+  local tr = p.trip
+  local d = tr and tr.deals and tr.deals[st.di or 0]
+  if not d or d.done or not d.collect then return end
+  d.done = true
+  local debt = econ.debts(W)[d.collect]
+  local hb = s.buildings[st.ref or 0]
+  if not debt or not hb or debt.fu <= 0.05 then return end
+  local dh = V.households[debt.db]
+  local home = V.settlements[p.sett]
+  local now = V.now or W.hour
+  p.pack = p.pack or {}
+  local paid, got = {}, 0
+  for _, g in ipairs({ "cloth", "leather", "salt", "wool", "hides" }) do
+    if got < debt.fu - 0.05 and dh then
+      local sp = econ.spare(W, s, dh, hb, g)
+      local G = econ.GOODS[g]
+      local room = ((p.strong and 1.3 or 1) - pack_load(p)) / G.wt
+      local q = min(sp, (debt.fu - got) / G.base, room)
+      if q > 0.05 then
+        local key = stock_key(hb, g)
+        q = min(q, hb.stock[key] or 0)
+        hb.stock[key] = hb.stock[key] - q
+        p.pack[g] = (p.pack[g] or 0) + q
+        got = got + q * G.base
+        paid[#paid + 1] = econ.amount(q, g)
+      end
+    end
+  end
+  debt.fu = max(0, debt.fu - got)
+  p.carry, p.camt = "pack", pack_load(p)
+  local q1 = dh and V.people[dh.members[1] or 0]
+  if #paid > 0 then
+    s.acc.debts_paid = (s.acc.debts_paid or 0) + 1
+    people.remember(p, now, sfmt("The %s household at %s paid %s of what they owed us%s", q1 and q1.surname or "", s.name,
+      table.concat(paid, " and "), debt.fu > 0.05 and sfmt(" (%.0f FU still owed)", debt.fu) or ": the debt is paid"))
+    for _, id in ipairs(dh and dh.members or {}) do
+      local q = V.people[id]
+      if q and q.alive and people.stage(q, now) == "adult" then
+        people.remember(q, now, sfmt("Paid %s of %s %s of what we owed%s", p.name, home.name, table.concat(paid, " and "),
+          debt.fu > 0.05 and sfmt(" (%.0f FU still owed)", debt.fu) or ": we owe nothing now"))
+      end
+    end
+    local r = econ.rel(home, s)
+    r.trust = r.trust + (1 - r.trust) * C().trust_deal
+  else
+    people.remember(p, now, sfmt("Asked the %s household at %s for what they owe us: they had nothing to give yet", q1 and q1.surname or "", s.name))
+  end
+end
+
 PICK.owed = function(W, s, p, st)
   local tr = p.trip
   local d = tr and tr.deals and tr.deals[st.di or 0]
@@ -1993,6 +2047,68 @@ WORK.deal = function(W, s, p, st, f)
   if not hb then return end
   local src = s.buildings[d.src or 0]
   if not src then return end
+  if d.basket then
+    -- (S19) a whole good for a basket of the household's goods and, if it fell short, a debt
+    if (p.pack[X] or 0) < 1 then return end
+    local hh_b = V.households[d.b]
+    local now = V.now or W.hour
+    -- (still wanted? - another trader may have sold them one since - and no new debt on a debt)
+    if hh_b then
+      local have, want = econ.house_stock(W, hh_b, hb, X)
+      local indebted = false
+      for _, dbt in ipairs(econ.debts(W)) do if dbt.db == hh_b.id and dbt.fu > 0.05 then indebted = true end end
+      if have >= want or ((d.owe or 0) > 0.05 and indebted) then
+        d.done = true
+        return
+      end
+    end
+    local paid = {}
+    for _, it in ipairs(d.basket) do
+      local g, q = it[1], it[2]
+      local key = stock_key(hb, g)
+      q = min(q, hb.stock[key] or 0)
+      if q > 1e-3 then
+        hb.stock[key] = hb.stock[key] - q
+        p.pack[g] = (p.pack[g] or 0) + q
+        paid[#paid + 1] = econ.amount(q, g)
+        home.acc["got_" .. g] = (home.acc["got_" .. g] or 0) + q
+      end
+    end
+    p.pack[X] = p.pack[X] - 1
+    local xkey = stock_key(hb, X)
+    hb.stock[xkey] = (hb.stock[xkey] or 0) + 1
+    home.acc["sold_" .. X] = (home.acc["sold_" .. X] or 0) + 1
+    s.acc["in_" .. X] = (s.acc["in_" .. X] or 0) + 1
+    s.acc.deals = (s.acc.deals or 0) + 1
+    home.acc.deals = (home.acc.deals or 0) + 1
+    tr.sold = (tr.sold or 0) + 1
+    local owe = d.owe or 0
+    if owe > 0.05 and hh_b then
+      local D = econ.debts(W)
+      D[#D + 1] = { cr = p.hh, db = hh_b.id, crs = home.id, dbs = s.id, fu = owe, t = now, what = econ.GOODS[X].name1 or X }
+      s.acc.credit = (s.acc.credit or 0) + 1
+    end
+    p.carry, p.camt = "pack", pack_load(p)
+    local q1 = hh_b and V.people[hh_b.members[1] or 0]
+    local pay = #paid > 0 and table.concat(paid, " and ") or "nothing now"
+    people.remember(p, now, sfmt("Traded %s with the %s household at %s for %s%s", econ.amount(1, X), q1 and q1.surname or "", s.name, pay,
+      owe > 0.05 and sfmt("; they owe us %.0f FU more", owe) or ""))
+    for _, id in ipairs(hh_b and hh_b.members or {}) do
+      local q = V.people[id]
+      if q and q.alive and people.stage(q, now) == "adult" then
+        people.remember(q, now, sfmt("Got %s from %s of %s for %s%s", econ.amount(1, X), p.name, home.name, pay,
+          owe > 0.05 and sfmt("; we owe them %.0f FU more", owe) or ""))
+      end
+    end
+    for _, pr in ipairs({ { home, s }, { s, home } }) do
+      local r = econ.rel(pr[1], pr[2])
+      r.deals = r.deals + 1
+      r.trust = r.trust + (1 - r.trust) * C().trust_deal
+      r.t = now
+    end
+    d.done = true
+    return
+  end
   local hkey = stock_key(src, H)
   local qx = min(d.left or d.q, p.pack[X] or 0)
   if qx <= 1e-6 then return end

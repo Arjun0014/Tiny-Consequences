@@ -70,6 +70,9 @@ local function worth(g, have, want)
     floor_v = S.meat + (S.hide or 0) * M.GOODS.hides.base * 0.6
   end
   if want <= 0 then return floor_v end
+  -- (S19) a durable whole good one has enough of - a second quern, a second set of iron edges - is
+  -- worth little to a household
+  if G.whole and have >= want then return floor_v end
   local v = 1.6 - have / want
   if v > 1.6 then v = 1.6 end
   return max(floor_v, G.base * v)
@@ -351,12 +354,73 @@ local function neediest(view, X, vill)
   oc[X] = L
   return L
 end
-function M.deal_plan(view, X, H, aX, aH, left, cap, out)
+-- (S19) A whole good paid for with a basket of what household entry e of the view can spare (its
+-- household goods, the trader's favourites first - the trader's worth of each over the buyer's), at
+-- the middle of the two worths of the good; what it still falls short may be owed (credit) when the
+-- villages trust each other enough. Returns the basket { {g, q} }, the debt (FU), the basket's
+-- weight and its worth to the trader (the debt counted at credit_k), or nil.
+local BASKET = {}
+local function basket(c, e, X, aX, vX, aw, wcap, opt)
+  if not aw then return nil end
+  local n = 0
+  for gi = 1, #HOUSE_G do
+    local g = HOUSE_G[gi]
+    local sp = e.sp[g] or 0
+    if g ~= X and sp > 0.05 and (aw[g] or 0) > 0 and (e.v[g] or 0) > 0 then
+      n = n + 1
+      local it = BASKET[n]
+      if not it then it = {}; BASKET[n] = it end
+      it.g, it.sp, it.vs, it.vb, it.i = g, sp, aw[g], e.v[g], gi
+    end
+  end
+  for i = n + 1, #BASKET do BASKET[i] = nil end
+  table.sort(BASKET, function(a, b) local ra, rb = a.vs / a.vb, b.vs / b.vb; if ra ~= rb then return ra > rb end return a.i < b.i end)
+  local need_s = max(aX * c.trade_margin, sqrt(aX * vX))
+  local lim_b = vX / c.trade_margin
+  local got, cost, w = 0, 0, 0
+  local out = {}
+  for i = 1, n do
+    local it = BASKET[i]
+    if got < need_s - 1e-6 then
+      local q = min(it.sp, (need_s - got) / it.vs, (lim_b - cost) / it.vb, (wcap - w) / M.GOODS[it.g].wt)
+      if q > 0.05 then
+        out[#out + 1] = { it.g, q }
+        got, cost, w = got + q * it.vs, cost + q * it.vb, w + q * M.GOODS[it.g].wt
+      end
+    end
+  end
+  local owe = 0
+  if got < need_s - 1e-6 then
+    -- (short: the rest owed, if trusted, not already in debt, and both still gain by it)
+    if not opt or (opt.trust or 0) < c.credit_trust or (opt.indebted and opt.indebted[e.id]) then return nil end
+    -- (something paid down in kind: nothing changes hands on credit alone)
+    if got < need_s * c.credit_down then return nil end
+    owe = min(c.credit_max, need_s - got, lim_b - cost)
+    if owe <= 0 or got + owe * c.credit_k < aX * c.trade_margin then return nil end
+  end
+  if #out == 0 and owe <= 0 then return nil end
+  return out, owe, w, got + owe * c.credit_k
+end
+
+function M.deal_plan(view, X, H, aX, aH, left, cap, out, opt)
   local c = C()
   local GX, GH = M.GOODS[X], M.GOODS[H]
   local room = (cap or 1) / GH.wt
   for i = #out, 1, -1 do out[i] = nil end
-  local function try(b, vX, vH, spH, haveX, wantX)
+  local function try(b, vX, vH, spH, haveX, wantX, e)
+    if GX.whole and e and left >= 1 and opt and opt.aw then
+      -- (S19) a whole good: a basket of what they can spare, and the rest owed, when no one good pays
+      local qk = (spH > 1e-6 and vX / vH > aX / aH * c.trade_margin) and min(spH, room) or 0
+      if not (qk * aH >= aX * c.trade_margin and vX >= qk * vH * c.trade_margin) and vX > aX * c.trade_margin then
+        local bk, owe, w, val = basket(c, e, X, aX, vX, opt.aw, cap or 1, opt)
+        if bk then
+          out[#out + 1] = { b = b, q = 1, qh = 0, k = 0, basket = bk, owe = owe, val = val }
+          left = left - 1
+          return
+        end
+      end
+    end
+    if left <= 1e-6 or room <= 1e-6 or spH <= 1e-6 then return end
     if left <= 1e-6 or room <= 1e-6 or spH <= 1e-6 then return end
     if vX / vH <= aX / aH * c.trade_margin then return end
     local k = sqrt(aX * vX / (aH * vH))
@@ -380,7 +444,7 @@ function M.deal_plan(view, X, H, aX, aH, left, cap, out)
       q = qh / k
     end
     if q * GX.wt < c.trade_min_load * 0.5 and not GX.whole then return end
-    out[#out + 1] = { b = b, q = q, qh = q * k, k = k }
+    out[#out + 1] = { b = b, q = q, qh = q * k, k = k, val = q * k * aH }
     left, room = left - q, room - q * k
   end
   local st = view.store
@@ -394,10 +458,64 @@ function M.deal_plan(view, X, H, aX, aH, left, cap, out)
       local vX = vX_ and st.v[X] or e.v[X]
       local vH = vH_ and st.v[H] or e.v[H]
       local spH = vH_ and st.sp[H] or e.sp[H]
-      if vX_ then try(e.id, vX, vH, spH, st.have[X], st.want[X]) else try(e.id, vX, vH, spH, e.have[X], e.want[X]) end
+      if vX_ then try(e.id, vX, vH, spH, st.have[X], st.want[X], e) else try(e.id, vX, vH, spH, e.have[X], e.want[X], e) end
     end
   end
   return out
+end
+
+-- (S19) Debts between households (credit for what a basket could not pay): W.S.v3.debts, a list of
+-- { cr = creditor household, db = debtor household, crs, dbs = their villages, fu, t, what }.
+function M.debts(W)
+  local D = W.S.v3.debts
+  if not D then D = {}; W.S.v3.debts = D end
+  return D
+end
+-- The households of village o in debt (a set), counted once a game hour (runtime).
+local INDEBT = setmetatable({}, { __mode = "k" })
+function M.indebted(W, o)
+  local h = floor(W.S.v3.now or W.hour)
+  local e = INDEBT[o]
+  if e and e.h == h then return e.set end
+  local set = {}
+  for _, d in ipairs(M.debts(W)) do if d.dbs == o.id and d.fu > 0.05 then set[d.db] = true end end
+  INDEBT[o] = { h = h, set = set }
+  return set
+end
+-- What village s's people are owed at village o: the debts, oldest first.
+function M.owed_at(W, s, o)
+  local L = {}
+  for i, d in ipairs(M.debts(W)) do if d.crs == s.id and d.dbs == o.id and d.fu > 0.05 then L[#L + 1] = i end end
+  return L
+end
+-- Each morning at the debtor's village: old debts written off; trust falls both ways and the creditors
+-- remember it.
+function M.debts_daily(W, s, now)
+  local c = C()
+  local V = W.S.v3
+  local D = M.debts(W)
+  for i = #D, 1, -1 do
+    local d = D[i]
+    if d.fu <= 0.05 then table.remove(D, i)
+    elseif d.dbs == s.id and now - d.t > c.credit_days * 24 then
+      local cs = V.settlements[d.crs]
+      if cs then
+        local r1, r2 = M.rel(cs, s), M.rel(s, cs)
+        r1.trust, r2.trust = max(0, r1.trust - c.credit_loss), max(0, r2.trust - c.credit_loss * 0.5)
+        local ch = V.households[d.cr]
+        local dh = V.households[d.db]
+        local dq = dh and V.people[dh.members[1] or 0]
+        for _, id in ipairs(ch and ch.members or {}) do
+          local q = V.people[id]
+          if q and q.alive then
+            require("sim.agents.people").remember(q, now, sfmt("The %s household of %s never paid the %.0f FU they owed us for the %s", dq and dq.surname or "", s.name, d.fu, d.what))
+          end
+        end
+      end
+      s.acc.debts_lost = (s.acc.debts_lost or 0) + 1
+      table.remove(D, i)
+    end
+  end
 end
 
 -- Village s learns how things stand at o (someone of s is there, or someone of o came to s).
@@ -453,6 +571,7 @@ end
 -- to spare; nmax of X can be carried. Returns n of X, qH of H, the rate k and the gain at home -
 -- or nil when it would not be a deal there (too little for anyone to bother: trade_min_load).
 local DEALS_TMP = {}
+local AW_C = setmetatable({}, { __mode = "k" })
 local function exchange(c, aX, bX, nmax, aH, sH, spH, cap, GX, GH)
   if spH <= 0 or bX <= aX * c.trade_margin or bX * aH / (aX * sH) <= c.trade_margin then return nil end
   if not GX.beast and nmax * GX.wt < c.trade_min_load * 0.5 then return nil end
@@ -493,6 +612,17 @@ function M.best_trade(W, s, hh, home, pool, partners, route, now)
       -- (S19) the village's goods a trader can really carry off: their own house's and the store's
       if GX.pool == "village" then spareX = min(spareX, M.packable(W, s, home, X)) end
       local aX = M.value(W, s, hh, home, X)
+      -- (S19) the trader's own worth of every good: what a basket paid in is worth to them, and what
+      -- else they would take if what they meant to bring home is not to be had
+      local aw = AW_C[s]
+      if not aw or aw.hh ~= (hh and hh.id or 0) or aw.t ~= now then
+        aw = { hh = hh and hh.id or 0, t = now }
+        for gi = 1, #M.ORDER do
+          local g = M.ORDER[gi]
+          if not M.GOODS[g].beast then aw[g] = M.value(W, s, hh, home, g) end
+        end
+        AW_C[s] = aw
+      end
       for pi = 1, #partners do
         local o = partners[pi]
         local hrs, cap, crew = route(W, s, o)
@@ -530,10 +660,11 @@ function M.best_trade(W, s, hh, home, pool, partners, route, now)
               local go, n, qH, k = 0, 0, 0, 0
               if kn and w > 0 and kn.view and not GX.beast then
                 -- (the deals they would have made with what was seen there, household by household)
-                local out = M.deal_plan(kn.view, X, H, aX, aH, nmax, cap, DEALS_TMP)
-                local q1, h1 = 0, 0
-                for di = 1, #out do q1, h1 = q1 + out[di].q, h1 + out[di].qh end
-                if q1 > 0 then go, n, qH, k = (h1 * aH - q1 * aX) * w, q1, h1, h1 / q1 end
+                local out = M.deal_plan(kn.view, X, H, aX, aH, nmax, cap, DEALS_TMP,
+                  GX.whole and { aw = aw, trust = r.trust, indebted = M.indebted(W, o) } or nil)
+                local q1, h1, v1 = 0, 0, 0
+                for di = 1, #out do q1, h1, v1 = q1 + out[di].q, h1 + out[di].qh, v1 + out[di].val end
+                if q1 > 0 then go, n, qH, k = (v1 - q1 * aX) * w, q1, h1, q1 > 0 and h1 / q1 or 0 end
               elseif kn and w > 0 then
                 -- (beasts: by the prices seen)
                 local n1, q1, k1, g1 = exchange(c, aX, bXo, nmax, aH, kn.sell[H] or GH.base * 0.9, kn.spare[H] or 0, cap, GX, GH)
@@ -552,8 +683,11 @@ function M.best_trade(W, s, hh, home, pool, partners, route, now)
               if n > 0 then
                 local net = go * (1 + 0.5 * r.trust) - cost
                 if net > 0 and (not best or net > best.net) then
+                  -- (the worths travel with the trader: a copy, the cache is reused)
+                  local awc = {}
+                  for g2, v2 in pairs(aw) do if type(v2) == "number" and g2 ~= "t" and g2 ~= "hh" then awc[g2] = v2 end end
                   best = { o = o.id, give = X, n = n, take = H, k = k, gain = qH * aH - n * aX, cost = cost, net = net, hours = hrs,
-                    aX = aX, aH = aH, w = w }
+                    aX = aX, aH = aH, w = w, aw = awc, trust = r.trust }
                 end
               end
             end
@@ -615,7 +749,31 @@ function M.deals(W, o, tr, cap)
   end
   if not GX.beast then
     -- (S19) the same deals a planner works out from what it saw, on what is here now
-    M.deal_plan(M.view(W, o), X, H, tr.aX, tr.aH, left, cap, out)
+    local view = M.view(W, o)
+    local opt = tr.aw and { aw = tr.aw, trust = M.rel(V.settlements[tr.from], o).trust, indebted = M.indebted(W, o) } or nil
+    M.deal_plan(view, X, H, tr.aX, tr.aH, left, cap, out, GX.whole and opt or nil)
+    if #out == 0 and tr.aw and not GX.whole then
+      -- (what they meant to bring home is not to be had: anything else worth their while that the
+      -- people here can pay with)
+      local bestH, bg = nil, 0
+      local tmp = {}
+      for hi = 1, #M.ORDER do
+        local H2 = M.ORDER[hi]
+        local aH2 = tr.aw[H2]
+        if H2 ~= X and H2 ~= H and aH2 and aH2 > 0 and not M.GOODS[H2].beast
+          and (GX.pool ~= "village" or M.GOODS[H2].pool == "village" or tr.pool ~= "village") then
+          M.deal_plan(view, X, H2, tr.aX, aH2, left, cap, tmp)
+          local g = 0
+          for i = 1, #tmp do g = g + tmp[i].val - tmp[i].q * tr.aX end
+          if g > bg then bestH, bg = H2, g end
+        end
+      end
+      if bestH then
+        tr.take, tr.aH = bestH, tr.aw[bestH]
+        H, GH = bestH, M.GOODS[bestH]
+        M.deal_plan(view, X, H, tr.aX, tr.aH, left, cap, out)
+      end
+    end
     for i = 1, #out do out[i].src = source(out[i].b) end
     return out
   end
@@ -702,6 +860,7 @@ end
 function M.daily(W, s, now)
   local trade = require("sim.agents.trade")
   local V = W.S.v3
+  M.debts_daily(W, s, now)
   for _, hid in ipairs(s.households) do
     local hh = V.households[hid]
     if hh and #hh.members > 0 and hh.home ~= 0 and s.buildings[hh.home] then

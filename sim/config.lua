@@ -1074,6 +1074,12 @@ C.V3 = {
   charcoal_log = 1.0, carry_charcoal = 3, smelt_ore = 3, smelt_charcoal = 4, smelt_h = 5, forge_charcoal = 1, forge_h = 4,
   iron_speed = 0.25, iron_save = 0.5, iron_wear = 0.0004, iron_broken = 0.1, iron_redo = 0.3, iron_at_once = 1,
   export_stock = 2,                       -- (S19) querns or iron sets made to trade while fewer than this lie to spare in the village
+  -- (S19) a whole good (a quern, a set of iron edges) may be paid for with a basket of what the buyer's
+  -- household can spare; what it still falls short is owed (credit) when the villages trust each other
+  -- credit_trust and more: at most credit_max FU, counted by the seller at credit_k (the chance of
+  -- being paid), with at least credit_down of the price paid down in kind; unpaid after credit_days it
+  -- is written off and trust falls by credit_loss
+  credit_trust = 0.25, credit_max = 25, credit_k = 0.7, credit_days = 48, credit_loss = 0.15, credit_down = 0.25,
   -- (S16, R4) courting: a man with nobody to marry at home goes to a neighbour within court_road_h
   -- hours' walk with this chance a courtship round; he spends court_h meeting its people; a bride
   -- sets off with him court_wait_h after the match

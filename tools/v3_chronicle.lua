@@ -258,7 +258,7 @@ say("parent-child ties across villages: %s", #ak > 0 and table.concat(ak, "; ") 
 say("accounts (whole run):")
 for _, s in ipairs(V.settlements) do
   local ks = {}
-  for _, k in ipairs({ "trips", "export", "import", "salt_made", "salted", "salt_used", "news_visits", "visit_gifts", "relief_out", "relief_in", "founders", "taken_in", "guests", "wades", "culled_hunger", "meat_given", "shore", "quarried", "querns", "ore_dug", "blooms", "iron_made", "estates", "leaving", "arrived" }) do
+  for _, k in ipairs({ "trips", "export", "import", "salt_made", "salted", "salt_used", "news_visits", "visit_gifts", "relief_out", "relief_in", "founders", "taken_in", "guests", "wades", "culled_hunger", "meat_given", "shore", "quarried", "querns", "ore_dug", "blooms", "iron_made", "credit", "debts_paid", "debts_lost", "estates", "leaving", "arrived" }) do
     if s.acc[k] and s.acc[k] ~= 0 then ks[#ks + 1] = string.format("%s %.0f", k, s.acc[k]) end
   end
   say("  %-16s %s", s.name, table.concat(ks, ", "))
