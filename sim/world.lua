@@ -359,6 +359,26 @@ function world.state_hash(W, keys)
   return h
 end
 
+-- (tools, S14) The hash of each child of the table at `path` (a list of keys from W): where two
+-- runtimes' states first differ (scripts/v3_hash_web.mjs --drill).
+function world.hash_parts(W, path)
+  local t = W
+  for i = 1, #(path or {}) do
+    local k = path[i]
+    t = t[k] ~= nil and t[k] or t[tonumber(k) or k]
+    if type(t) ~= "table" then return {} end
+  end
+  local out = {}
+  local nk, sk = sorted_keys(t)
+  for i = 1, #nk do out[#out + 1] = { k = tostring(nk[i]), h = tostring(hval(2166136261, t[nk[i]], #(path or {}))), t = type(t[nk[i]]) } end
+  for i = 1, #sk do
+    local v = t[sk[i]]
+    if v == nil then v = t[sk[i] == "true" or (sk[i] ~= "false" and nil)] end
+    out[#out + 1] = { k = sk[i], h = tostring(hval(2166136261, v, #(path or {}))), t = type(v) }
+  end
+  return out
+end
+
 -- Test hooks (07_TESTING.md §3) ----------------------------------------------------------------
 -- world.test_action(W, name, params): queue a logged command; handlers in sim/testhooks.lua
 function world.test_action(W, name, params)

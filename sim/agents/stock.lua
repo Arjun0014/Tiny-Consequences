@@ -22,6 +22,8 @@
 --   "walk" | "rest" | "pen" | "held"), ver, hunger, health, sick (days left), wool, milk, lact (hour
 --   lactation ends), slot, alive, bred (year), cull, held (person id) }
 -- Events: id = ID0 + settlement id x 100000 + herd index x 20000 + k (people have smaller ids).
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
+local dsq = dmath.sq
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local mapm = require("sim.agents.map")
@@ -35,7 +37,7 @@ M.HIDX = { flock = 0, cattle = 1, swine = 2 }
 M.HERD_OF = { sheep = "flock", goat = "flock", cattle = "cattle", pig = "swine" }
 M.PEN = { flock = "fold", cattle = "byre", swine = "sty" }
 M.NAMES = { flock = "the sheep and goats", cattle = "the cattle", swine = "the pigs" }
-local floor, max, min, sqrt, abs, cos, sin = math.floor, math.max, math.min, math.sqrt, math.abs, math.cos, math.sin
+local floor, max, min, sqrt, abs, cos, sin = math.floor, math.max, math.min, math.sqrt, math.abs, dmath.cos, dmath.sin
 local function C() return cfgmod.V3 end
 local function SP(sp) return cfgmod.V3.stock[sp] end
 M.SP = SP
@@ -91,11 +93,23 @@ local function block_of(s, x, y)
 end
 M.block_of = block_of
 
+-- (block centres by map size and tile, worked out once: the scans of every block - the day's
+-- pasture, a wild band's ground - were paying two divisions and a C call each, S14)
+local BXY = {}
 function M.block_xy(s, b)
-  local bn = s.N / BS
-  local by = floor((b - 1) / bn)
-  local bx = (b - 1) - by * bn
-  return mapm.ixy_xy(s, bx * BS + BS / 2, by * BS + BS / 2)
+  local key = s.N * 1e6 + s.T
+  local t = BXY[key]
+  if not t then
+    t = { x = {}, y = {} }
+    local bn = s.N / BS
+    for q = 1, bn * bn do
+      local by = floor((q - 1) / bn)
+      local bx = (q - 1) - by * bn
+      t.x[q], t.y[q] = mapm.ixy_xy(s, bx * BS + BS / 2, by * BS + BS / 2)
+    end
+    BXY[key] = t
+  end
+  return t.x[b], t.y[b]
 end
 
 -- Open grazing ground in a block (land, no building, field or water; few trees), 0..1.
@@ -171,7 +185,7 @@ function M.pick_spot(W, s, H, now, reach)
     local v = swine and (P.wood and P.wood[b] or 0) or (P.grass[b] or 0)
     if v > 0.15 and (not swine or (P.open[b] or 0) > 0.2) then
       local x, y = M.block_xy(s, b)
-      local d = sqrt((x - pen.cx) ^ 2 + (y - pen.cy) ^ 2)
+      local d = sqrt(dsq(x - pen.cx) + dsq(y - pen.cy))
       if d < reach then
         local sc = v - d * 0.6
         if sc > bs then best, bs = b, sc end
@@ -301,7 +315,7 @@ function M.step(W, s, H, a, now)
         fx, fy = dx / l, dy / l
       end
       local gx, gy = qx + fx * 0.035, qy + fy * 0.035
-      if (gx - a.tx) ^ 2 + (gy - a.ty) ^ 2 > 0.0001 and walk_to(W, s, a, now, gx, gy, S.speed * 1.5) then
+      if dsq(gx - a.tx) + dsq(gy - a.ty) > 0.0001 and walk_to(W, s, a, now, gx, gy, S.speed * 1.5) then
         a.t1 = min(a.t1, now + 0.1)
         return
       end
@@ -327,7 +341,7 @@ function M.step(W, s, H, a, now)
   local mom = a.mother ~= 0 and H.animals[a.mother]
   if age < S.young_years and mom and mom.alive then
     local mx, my = M.pos(mom, now)
-    local d = sqrt((mx - a.tx) ^ 2 + (my - a.ty) ^ 2)
+    local d = sqrt(dsq(mx - a.tx) + dsq(my - a.ty))
     local near = S.sep * 0.6
     if d > near then
       local ang = u(W, s, H, a, now, 1) * 6.2832

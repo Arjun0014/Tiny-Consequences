@@ -8,6 +8,7 @@
 --   * volcano sites: 5–10 on convergent boundaries + 1–3 hotspots (≥ 1 in the ocean)
 -- All choices are keyed by the seed (rng streams SETTLE / NAMES); the result is reported in
 -- W.worldgen_report.settle and checked by P10.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local names = require("content.names")
@@ -241,7 +242,7 @@ local function volcanoes(W, u)
   local g = W.grid
   local st = W.static
   local n = W.n
-  local sp = math.cos(cfg.volcano_spacing * 0.07553)
+  local sp = dmath.cos(cfg.volcano_spacing * 0.07553)
   local chosen = {}
   local function far(c)
     for i = 1, #chosen do

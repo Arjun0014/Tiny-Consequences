@@ -18,12 +18,13 @@
 --
 -- Blame: fish killed by oil carry the oil's tag; plankton/fish die-off from heat carries sst's
 -- tag; fish decline from missing food carries plankton's tag; fish inflow carries the source tag.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 local fields = require("sim.fields")
 local blame = require("sim.causality.blame")
 
 local sys = { name = "ocean" }
-local sin, abs, sqrt, min = math.sin, math.abs, math.sqrt, math.min
+local sin, abs, sqrt, min = dmath.sin, math.abs, math.sqrt, math.min
 
 local FP, FF, FO, FG = fields.BY_NAME.plankton, fields.BY_NAME.fish, fields.BY_NAME.oil, fields.BY_NAME.grass
 local FFE = fields.BY_NAME.fertility
@@ -273,8 +274,8 @@ local function oil_step(W, S, cfg)
     end
   end
   -- 3. decay, write back, shore damage, rebuild the active list (touched order)
-  local dec_o = 0.5 ^ (1 / cfg.oil_half_life)
-  local dec_s = 0.5 ^ (1 / cfg.shore_half_life)
+  local dec_o = dmath.pow(0.5, 1 / cfg.oil_half_life)
+  local dec_s = dmath.pow(0.5, 1 / cfg.shore_half_life)
   local omin = cfg.oil_min
   local grass, fert = F.grass, F.fertility
   local cg, ig, cfe, ife = C.grass, I.grass, C.fertility, I.fertility

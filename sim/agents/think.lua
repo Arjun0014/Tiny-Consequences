@@ -4,6 +4,7 @@
 -- their household's chores (food, firewood, water), care, leisure with a reason — scored by
 -- urgency x fit x fatigue - travel. The chosen candidate becomes a plan of steps and a "why"
 -- that names the state behind it.
+local sfmt = require("sim.fmt").format   -- (the same text in every runtime, S14)
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local people = require("sim.agents.people")
@@ -23,7 +24,7 @@ local NOW = 0
 local function clock_str(h)
   local hh = floor(h)
   local mm = floor((h - hh) * 60)
-  return string.format("%02d:%02d", hh % 24, mm)
+  return sfmt("%02d:%02d", hh % 24, mm)
 end
 M.clock_str = clock_str
 
@@ -179,7 +180,7 @@ end
 
 -- The why of candidate c (its text, or its format worked out now).
 local function why_of(c)
-  if c.fmt then return string.format(c.fmt, c.w1, c.w2, c.w3, c.w4, c.w5, c.w6, c.w7) end
+  if c.fmt then return sfmt(c.fmt, c.w1, c.w2, c.w3, c.w4, c.w5, c.w6, c.w7) end
   return c.why
 end
 M.why_of = why_of
@@ -313,9 +314,12 @@ local function work_candidates(W, s, p, ctx, now)
   local px, py = p.x, p.y
   local need = s.need
   local plots = s.plots
+  -- (a child's fit is 0 for the fields, the wood and the building sites, D-109: only gathering is
+  -- weighed for them here; S14)
+  local grown = ctx.stage ~= "child"
   -- farming: a household works its own fields; another's only to help when they fall behind (late
   -- in the window) or at harvest (D-081)
-  for k = 1, #plots do
+  for k = 1, grown and #plots or 0 do
     local pl = plots[k]
     if pl.alive then
       local own = pl.hh == p.hh or pl.hh == 0
@@ -401,7 +405,7 @@ local function work_candidates(W, s, p, ctx, now)
             -- (the harvest is everyone's: neighbours reap together)
             local urg = (0.85 + min(0.15, (pl.ripe_for or 0) * 0.03) + (wm and 0.15 or 0)) * (own and 1 or 0.85)
             addw(urg * f * fat - tc, "harvest", k, row,
-              "%s is ripe%s; the granary holds %d days of food", pl.name, (pl.ripe_for or 0) >= 2 and string.format(" (%d days standing)", pl.ripe_for) or "", floor(need.food_days))
+              "%s is ripe%s; the granary holds %d days of food", pl.name, (pl.ripe_for or 0) >= 2 and sfmt(" (%d days standing)", pl.ripe_for) or "", floor(need.food_days))
           end
         end
       end
@@ -418,7 +422,7 @@ local function work_candidates(W, s, p, ctx, now)
     end
   end
   -- retted flax waiting on its field: carried to the granary (D-088)
-  for k = 1, #plots do
+  for k = 1, grown and #plots or 0 do
     local pl = plots[k]
     if pl.stage == "stubble" and (pl.flax or 0) >= 0.05 and (pl.flax_claim or 0) < pl.flax / c.carry_flax then
       local f = fit(p, ctx, "haul_grain", k)
@@ -432,7 +436,7 @@ local function work_candidates(W, s, p, ctx, now)
   end
   -- wood: carry felled logs, fell trees
   local tr = s.trees
-  if need.lying_trees > 0 then
+  if grown and need.lying_trees > 0 then
     local f0 = fit(p, ctx, "haul_logs")
     local best, bd, bwm = 0, 1e9, false
     for i = 1, #s.felled do
@@ -490,6 +494,7 @@ local function work_candidates(W, s, p, ctx, now)
   end
   -- threshing the sheaves in the granary (under its roof: rain does not stop it): as the threshed
   -- grain runs down, and on wet and winter days when the fields have no work (D-080)
+  if not grown then return end
   local g = s.granary
   if g and (g.stock.sheaves or 0) >= 3 and (g.threshers or 0) < 4 then
     local f = fit(p, ctx, "thresh", 1)
@@ -551,7 +556,7 @@ function M.lazy_fell(c, ff)
   c.a, c.b = k, 0
   if clearing then
     c.u = 0.62 * ff - d / ctx.spd * 0.45
-    c.why = string.format(s.expand_why == "spare" and "Clearing ground for a new field (%d %s still standing): hands to spare, and a bigger store against a bad year"
+    c.why = sfmt(s.expand_why == "spare" and "Clearing ground for a new field (%d %s still standing): hands to spare, and a bigger store against a bad year"
       or "Clearing ground for a new field (%d %s still standing): the harvest will not feed us a year",
       need.clear_trees, plural(need.clear_trees, "tree", "trees"))
   else
@@ -577,7 +582,7 @@ function M.lazy_grub(c, ff)
   if best == 0 then c.u = -1e9; return end
   c.a, c.b = best, 0
   c.u = 0.55 * ff - bd / ctx.spd * 0.45
-  c.why = string.format("Digging out stumps on the new field ground (%d left)", s.need.clear_stumps)
+  c.why = sfmt("Digging out stumps on the new field ground (%d left)", s.need.clear_stumps)
 end
 
 -- Fishing (D-084): a free boat at the dock and fish offshore. The ground is chosen on the water
@@ -1090,11 +1095,11 @@ local function hunt_candidates(W, s, p, ctx, now)
     -- (the hunt goes on: the quarry, or the kill to carry home)
     local w = wild.byk(s, H.k)
     if H.carcass then
-      add(1.0, "fetch_game", 0, 0, string.format("The %s is down: carrying it home", H.sp))
+      add(1.0, "fetch_game", 0, 0, sfmt("The %s is down: carrying it home", H.sp))
       return
     end
     if w and w.alive and H.tries < c.hunt_tries and now - H.t0 < c.hunt_hours and ctx.lh < ctx.sunset - 0.5 and ctx.rain < 2 then
-      add(0.95 * fatigue(p), "hunt", w.k, 1, string.format("After the %s (%s)", w.sp, H.tries > 0 and "it got away once" or "tracking it"))
+      add(0.95 * fatigue(p), "hunt", w.k, 1, sfmt("After the %s (%s)", w.sp, H.tries > 0 and "it got away once" or "tracking it"))
       return
     end
     p.hunting = nil
@@ -1338,9 +1343,9 @@ local function herd_candidates(W, s, p, ctx, now)
     end
   end
   -- hay for the winter: mown in summer on the best meadow (not where a herd grazes today)
-  if herds.flock or herds.cattle then
+  if (herds.flock or herds.cattle) and doy >= 12 and doy < 26 and (st == "adult" or st == "apprentice") then
     local want = stock.hay_want(s, now)
-    if doy >= 12 and doy < 26 and (s.hay or 0) < want and (st == "adult" or st == "apprentice") and claim_free(W, hh, "mowing", p) then
+    if (s.hay or 0) < want and claim_free(W, hh, "mowing", p) then
       local ff = fit(p, ctx, "harvest")
       local owns = (herds.flock and herd_sum(herds.flock, now).owners[p.hh]) or (herds.cattle and herd_sum(herds.cattle, now).owners[p.hh])
       if ff > 0 and owns then
@@ -1920,10 +1925,10 @@ PLAN.till = function(W, s, p, ctx, now, cd)
     pl[#pl].ox = ox.k
     work(pl, "unyoke", 0.1, { ox = ox.k })
     local verb = "Plough with the ox"
-    return a0 > 0 and string.format("%s: %s (row %d, %d%% done)", verb, plot.name, cd.b, floor(a0 * 100)) or (verb .. ": " .. plot.name), plot.name
+    return a0 > 0 and sfmt("%s: %s (row %d, %d%% done)", verb, plot.name, cd.b, floor(a0 * 100)) or (verb .. ": " .. plot.name), plot.name
   end
   local verb = plot.stage == "rest" and "Plough the fallow of" or "Hoe"
-  return a0 > 0 and string.format("%s %s (row %d, %d%% done)", verb, plot.name, cd.b, floor(a0 * 100)) or (verb .. " " .. plot.name), plot.name
+  return a0 > 0 and sfmt("%s %s (row %d, %d%% done)", verb, plot.name, cd.b, floor(a0 * 100)) or (verb .. " " .. plot.name), plot.name
 end
 
 PLAN.thresh = function(W, s, p, ctx, now, cd)
@@ -1999,7 +2004,7 @@ PLAN.harvest = function(W, s, p, ctx, now, cd)
   plot.row_claim[cd.b] = p.id
   local full = c.harvest_row_h * (1.25 - 0.45 * p.sk_farm) * (0.9 + 0.2 * u01(W, p, now, 23)) / tool_factor(W, p)
   local a0 = row_stint(W, s, p, now, plot, cd.b, "harvest", full, 38)
-  return a0 > 0 and string.format("Reap %s (row %d, %d%% cut)", plot.name, cd.b, floor(a0 * 100)) or ("Reap " .. plot.name), plot.name
+  return a0 > 0 and sfmt("Reap %s (row %d, %d%% cut)", plot.name, cd.b, floor(a0 * 100)) or ("Reap " .. plot.name), plot.name
 end
 
 PLAN.haul_grain = function(W, s, p, ctx, now, cd)
@@ -2178,7 +2183,7 @@ local function trip_legs(W, s, p, ctx, now)
       tr.deals = econ.deals(W, o, tr)
       tr.dealt = true
       if #tr.deals == 0 then
-        people.remember(p, now, string.format("Nobody at %s wanted our %s at a price worth it now", o.name, econ.GOODS[tr.give].name))
+        people.remember(p, now, sfmt("Nobody at %s wanted our %s at a price worth it now", o.name, econ.GOODS[tr.give].name))
       end
     end
     for di, d in ipairs(tr.deals or {}) do
@@ -2288,7 +2293,7 @@ function sea_legs(W, s, p, ctx, now)
       tr.deals = econ.deals(W, o, tr, c.boat_hold)
       tr.dealt = true
       if #tr.deals == 0 then
-        people.remember(p, now, string.format("Nobody at %s wanted our %s at a price worth it now", o.name, GX.name))
+        people.remember(p, now, sfmt("Nobody at %s wanted our %s at a price worth it now", o.name, GX.name))
       end
     end
     if not tr.homeward then
@@ -3137,7 +3142,7 @@ function M.decide(W, s, p, now, reason)
   end
   -- night: home to sleep (the very tired go earlier)
   if night_feed then
-    kind, why = "nurse", string.format("%s woke hungry in the night", night_feed.name)
+    kind, why = "nurse", sfmt("%s woke hungry in the night", night_feed.name)
     add(1, "nurse", night_feed.id, 0, why)
     M.cd = CAND[ncand]
   elseif ctx.night and M.guard_herd(W, s, p, ctx, now) then
@@ -3148,7 +3153,7 @@ function M.decide(W, s, p, now, reason)
     add(1, "guard", 0, hi, "")
     M.cd = CAND[ncand]
     local pen = s.buildings[s.herds[stock.HERDS[hi]].pen]
-    why = string.format("Wolves took one of the beasts %s: keeping watch at the %s tonight",
+    why = sfmt("Wolves took one of the beasts %s: keeping watch at the %s tonight",
       now - s.wolf_alarm < 24 and "last night" or "lately", pen.label)
   elseif s.alarm and now - s.alarm.t < 0.8 and ctx.stage == "adult" and not p.at and (p.hh == s.alarm.hh or p.objk == "guard")
     and (p.drove_t or -99) < now - 0.8 and not ctx.babe then
@@ -3162,7 +3167,7 @@ function M.decide(W, s, p, now, reason)
     add(1, "eat", ctx.home.id, 0, "")
     M.cd = CAND[ncand]
   elseif ctx.night or p.energy < 0.12 then
-    kind, why = "sleep", ctx.night and string.format("Night (bedtime %s)", clock_str(ctx.bed)) or "Exhausted"
+    kind, why = "sleep", ctx.night and sfmt("Night (bedtime %s)", clock_str(ctx.bed)) or "Exhausted"
   elseif ctx.rain == 2 and p.inside == 0 and ctx.stage ~= "infant" then
     kind, why = "shelter", "A downpour"
   else
@@ -3222,9 +3227,9 @@ function M.decide(W, s, p, now, reason)
     if M.trace and M.trace[p.id] then
       -- (tools: every candidate this decision weighed)
       local t = {}
-      for i = 1, ncand do t[i] = string.format("%s %.2f%s", CAND[i].kind, CAND[i].u, CAND[i].lazy and "~" or "") end
+      for i = 1, ncand do t[i] = sfmt("%s %.2f%s", CAND[i].kind, CAND[i].u, CAND[i].lazy and "~" or "") end
       M.trace_out = M.trace_out or {}
-      M.trace_out[#M.trace_out + 1] = string.format("#%d %s e%.2f h%.2f: %s", p.id, clock_str(ctx.lh), p.energy, p.hunger, table.concat(t, ", "))
+      M.trace_out[#M.trace_out + 1] = sfmt("#%d %s e%.2f h%.2f: %s", p.id, clock_str(ctx.lh), p.energy, p.hunger, table.concat(t, ", "))
     end
     if cd then
       kind, why = cd.kind, why_of(cd)
@@ -3267,7 +3272,7 @@ function M.decide(W, s, p, now, reason)
   -- what they work on (an apprentice's mentor is found by it), and whether beside their mentor
   p.tgt_kind, p.tgt_ref = kind, cd and cd.a or 0
   p.mentored = ctx.stage == "apprentice" and ctx.mentor ~= nil and beside_mentor(W, ctx, kind, cd and cd.a or 0)
-  if p.mentored and ctx.mentor then p.why = string.format("Working beside %s. %s", ctx.mentor.name, p.why) end
+  if p.mentored and ctx.mentor then p.why = sfmt("Working beside %s. %s", ctx.mentor.name, p.why) end
   if kind == "play" or kind == "follow" then
     local d = floor(now / 24)
     if p.play_day ~= d then p.play_day, p.play_h = d, 0 end

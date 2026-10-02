@@ -9,6 +9,8 @@
 --                  a walking person's position is a function of time (act.pos).
 -- State: W.S.v3 = { settlements, people, households, order, next_* }. The event heap is derived
 -- (rebuilt from each person's t1 / pending interrupt), so a reloaded world continues exactly.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
+local dsq = dmath.sq
 local cfgmod = require("sim.config")
 local people = require("sim.agents.people")
 local act = require("sim.agents.act")
@@ -67,15 +69,20 @@ function sys.push(W, t, id, ver)
   local T, I, Vv = R.t, R.id, R.ver
   local i = n
   while i > 1 do
-    local p = floor(i / 2)
-    if T[p] < t or (T[p] == t and I[p] < id) then break end
-    T[i], I[i], Vv[i] = T[p], I[p], Vv[p]
+    local p = (i - i % 2) * 0.5
+    local tp = T[p]
+    if tp < t or (tp == t and I[p] < id) then break end
+    T[i], I[i], Vv[i] = tp, I[p], Vv[p]
     i = p
   end
   T[i], I[i], Vv[i] = t, id, ver
 end
 wild.push = function(W, t, id, ver) return sys.push(W, t, id, ver) end
 
+-- (S14) Bottom-up: the hole left by the root goes down to a leaf along the smaller children (one
+-- comparison a level), then the last entry is sifted up from there (it is large: few levels).
+-- Pops come out in the same (time, id) order as any heap's (entries with equal keys differ only by
+-- a stale version, which is skipped).
 local function pop(R)
   local T, I, Vv = R.t, R.id, R.ver
   local t, id, ver = T[1], I[1], Vv[1]
@@ -85,16 +92,25 @@ local function pop(R)
   n = n - 1
   R.n = n
   if n > 0 then
-    local i = 1
-    while true do
-      local l = i * 2
-      if l > n then break end
+    local i, l = 1, 2
+    while l < n do
       local r = l + 1
-      local c = l
-      if r <= n and (T[r] < T[l] or (T[r] == T[l] and I[r] < I[l])) then c = r end
-      if T[c] > lt or (T[c] == lt and I[c] > li) then break end
-      T[i], I[i], Vv[i] = T[c], I[c], Vv[c]
-      i = c
+      local tl, tr = T[l], T[r]
+      if tr < tl or (tr == tl and I[r] < I[l]) then l = r; tl = tr end
+      T[i], I[i], Vv[i] = tl, I[l], Vv[l]
+      i = l
+      l = i + i
+    end
+    if l == n then
+      T[i], I[i], Vv[i] = T[l], I[l], Vv[l]
+      i = l
+    end
+    while i > 1 do
+      local p = (i - i % 2) * 0.5
+      local tp = T[p]
+      if tp < lt or (tp == lt and I[p] < li) then break end
+      T[i], I[i], Vv[i] = tp, I[p], Vv[p]
+      i = p
     end
     T[i], I[i], Vv[i] = lt, li, lv
   end
@@ -251,7 +267,7 @@ local function rain_change(W, s, now, r)
       local u = rng.float(W.seed, rng.S.V3_THINK, p.key, floor(now) % 4294967296, 99)
       if r > 0 and p.inside == 0 and p.act ~= "sleep" then
         local hb = people.home(W, s, p)
-        local d = hb and math.sqrt((p.x - hb.dx) ^ 2 + (p.y - hb.dy) ^ 2) or 1
+        local d = hb and math.sqrt(dsq(p.x - hb.dx) + dsq(p.y - hb.dy)) or 1
         local hardy = r == 1 and p.dil >= c.rain_hardy and act.OUTDOOR_WORK[p.act]
         if not hardy then
           local lo, hi = c.react_far[1], c.react_far[2]

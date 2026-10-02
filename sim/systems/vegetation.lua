@@ -6,12 +6,13 @@
 -- Blame: growth/dieback is baseline unless a stress is tagged — dieback is attributed to the
 -- soil-water tag (drought), else temperature's tag (heat/cold); recolonisation carries the
 -- dominant tagged neighbour's tag.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 local fields = require("sim.fields")
 local blame = require("sim.causality.blame")
 
 local sys = { name = "vegetation" }
-local sin, abs = math.sin, math.abs
+local sin, abs = dmath.sin, math.abs
 
 -- Multi-rate (D-019): each land cell updates every VEG.stride ticks with dt = stride (half the
 -- cells per tick at stride 2). A cell reads its OWN values from the live field (fire, grazing

@@ -11,10 +11,12 @@
 --   s.know[o.id] = { t = hour seen, buy = { good -> worth there }, sell = { good -> worth there },
 --                    spare = { good -> amount to spare there } }
 --   s.rel[o.id]  = { trust = 0..1, deals, gifts, lost, t }  (D-101 relations)
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
+local sfmt = require("sim.fmt").format   -- (the same text in every runtime, S14)
 local cfgmod = require("sim.config")
 
 local M = {}
-local max, min, sqrt, exp, floor = math.max, math.min, math.sqrt, math.exp, math.floor
+local max, min, sqrt, exp, floor = math.max, math.min, math.sqrt, dmath.exp, math.floor
 local function C() return cfgmod.V3 end
 
 -- base: worth in FU of grain a unit at full want; wt: share of a porter's load a unit; pool:
@@ -34,8 +36,8 @@ M.ORDER = { "grain", "smoked", "cheese", "logs", "wool", "cloth", "hides", "leat
 -- "8.0 FU of smoked fish", "2 logs": an amount of a good in words.
 function M.amount(q, g)
   local G = M.GOODS[g]
-  if G.unit == "" then return string.format("%.0f %s", q, G.name) end
-  return string.format("%.1f %s of %s", q, G.unit, G.name)
+  if G.unit == "" then return sfmt("%.0f %s", q, G.name) end
+  return sfmt("%.1f %s of %s", q, G.unit, G.name)
 end
 
 -- Worth a unit at stock `have` against want `want`: dear when short, cheap when there is plenty.

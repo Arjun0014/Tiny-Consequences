@@ -7,6 +7,8 @@
 -- dog may be killed.
 --   s.dogs = { { k, hh, born, x, y, tx, ty, t0, t1, act, alive, ver } }
 -- Events: id = stock.ID0 + settlement id x 100000 + 4 x 20000 + k.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
+local dsq = dmath.sq
 local cfgmod = require("sim.config")
 local mapm = require("sim.agents.map")
 local stock = require("sim.agents.stock")
@@ -14,7 +16,7 @@ local people = require("sim.agents.people")
 local rng = require("sim.rng")
 
 local M = {}
-local floor, max, min, sqrt, cos, sin = math.floor, math.max, math.min, math.sqrt, math.cos, math.sin
+local floor, max, min, sqrt, cos, sin = math.floor, math.max, math.min, math.sqrt, dmath.cos, dmath.sin
 local function C() return cfgmod.V3 end
 M.HI = 4
 
@@ -118,7 +120,7 @@ local function wolf_near(s, x, y, r, now)
   for _, w in ipairs(Wd.animals) do
     if w.alive and w.pred and w.act ~= "leave" then
       local wx, wy = wild.pos(w, now)
-      local dd = (wx - x) ^ 2 + (wy - y) ^ 2
+      local dd = dsq(wx - x) + dsq(wy - y)
       if dd < bd then best, bd = w, dd end
     end
   end
@@ -158,14 +160,14 @@ function M.step(W, s, d, now)
   d.woken = nil
   if w then
     local wx, wy = M.wild.pos(w, now)
-    local dd = sqrt((wx - d.tx) ^ 2 + (wy - d.ty) ^ 2)
+    local dd = sqrt(dsq(wx - d.tx) + dsq(wy - d.ty))
     if now - (d.barked or -99) > 0.5 then d.barked = now; alarm(W, s, d, w, now) end
     if dd < c.wolf_reach * 1.5 and now - (d.fought or -99) > 12 then
       d.fought = now
       local alone = true
       for _, id in ipairs(s.members) do
         local q = V.people[id]
-        if q and q.alive and q.inside == 0 and q.act ~= "sleep" and (q.x - d.tx) ^ 2 + (q.y - d.ty) ^ 2 < 0.04 then alone = false end
+        if q and q.alive and q.inside == 0 and q.act ~= "sleep" and dsq(q.x - d.tx) + dsq(q.y - d.ty) < 0.04 then alone = false end
       end
       if alone and u(W, s, d, now, 1) < c.wolf_kill_dog then
         d.alive, d.died = false, now
@@ -208,7 +210,7 @@ function M.step(W, s, d, now)
   end
   if not bx and home then bx, by = home.dx + 0.02 * cos(d.k * 1.3), home.dy + 0.015 end
   if bx then
-    local dd = (bx - d.tx) ^ 2 + (by - d.ty) ^ 2
+    local dd = dsq(bx - d.tx) + dsq(by - d.ty)
     if dd > 0.0004 then
       if go_to(s, d, now, bx, by, c.dog_trot, "walk") then return end
     end

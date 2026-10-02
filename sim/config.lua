@@ -2,6 +2,7 @@
 -- Grouped by system; units and intended effect in comments. Tuning is expected. Changing a
 -- tuning *band* or test *threshold* needs a DECISIONS.md entry; changing these doesn't.
 
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local C = {}
 
 -- Grid --------------------------------------------------------------------------------------
@@ -92,7 +93,7 @@ C.HYDRO = {
 
 -- Global climate (§5.13) -----------------------------------------------------------------------------------
 C.CLIMATE = {
-  aerosol_decay = math.exp(-1 / 72),      -- per tick (e-folding 1.5 years)
+  aerosol_decay = dmath.exp(-1 / 72),      -- per tick (e-folding 1.5 years)
   calib_skip_years = 10,                  -- spin-up years ignored before measuring references
   co2_base = 280, outgassing = 0.5,       -- ppm/yr volcanic outgassing (balanced by weathering)
   k_eq_sst = 8, k_ocean = 0.02,           -- ocean equilibrium shift per °C; uptake per yr

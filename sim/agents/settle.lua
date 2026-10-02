@@ -1,6 +1,7 @@
 -- The settlement (docs/v3/10_AGENTS.md §2, §9): buildings, plots, stores, the hourly planner
 -- (weather, the open work people can see: the board's summary), the daily round (crops, trees,
 -- lanes, fuel, water) and growth (a couple without a home makes a house site).
+local sfmt = require("sim.fmt").format   -- (the same text in every runtime, S14)
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local mapm = require("sim.agents.map")
@@ -65,6 +66,7 @@ function M.add_building(W, s, kind, ix0, iy0, side, state, opts)
       if kind == "fold" or kind == "byre" or kind == "sty" then s.plot[(iy - 1) * N + ix] = -2 else s.occ[(iy - 1) * N + ix] = id end
     end
   end
+  mapm.occ_ver[s] = (mapm.occ_ver[s] or 0) + 1
   mapm.clear_rect(s, ix0 - 1, iy0 - 1, ix0 + w, iy0 + h)
   -- centre and door point
   local x0, y0 = mapm.ixy_xy(s, ix0, iy0)
@@ -265,6 +267,7 @@ function M.remove_building(W, s, b)
       if s.occ[i] == b.id then s.occ[i] = 0 end
     end
   end
+  mapm.occ_ver[s] = (mapm.occ_ver[s] or 0) + 1
   people.remove_id(s.blist, b.id)
   people.remove_id(s.sites, b.id)
   b.state = "gone"
@@ -592,10 +595,10 @@ function M.hourly(W, s, now)
   need.clear_trees, need.clear_stumps = 0, 0
   if cl then need.clear_trees, need.clear_stumps = s.clear_t, s.clear_s end
   if site_logs > 0 then
-    need.fell_why = string.format("Logs are wanted for the %s (%d more) and the woodstore holds %d",
+    need.fell_why = sfmt("Logs are wanted for the %s (%d more) and the woodstore holds %d",
       s.buildings[short_id].label, site_logs, s.wood_store and s.wood_store.stock.logs or 0)
   else
-    need.fell_why = string.format("The woodstore holds %d logs; the hearths burn %.0f a day and the village wants %d in store",
+    need.fell_why = sfmt("The woodstore holds %d logs; the hearths burn %.0f a day and the village wants %d in store",
       s.wood_store and s.wood_store.stock.logs or 0, burn, reserve)
   end
   -- who is gathered at the well
@@ -984,7 +987,7 @@ local function plan_sowing(W, s, measure)
       for _, id in ipairs(hh and hh.members or {}) do
         local q = W.S.v3.people[id]
         if q and q.alive and people.stage(q, W.hour) == "adult" then
-          txt = txt or string.format("The village has bread for %.0f days in store and in the fields: %s rests this time", (G + R) / max(0.1, use), pl.name)
+          txt = txt or sfmt("The village has bread for %.0f days in store and in the fields: %s rests this time", (G + R) / max(0.1, use), pl.name)
           people.remember(q, W.hour, txt)
         end
       end
@@ -1253,7 +1256,7 @@ local function plan_flax(W, s, day)
       for _, id in ipairs(hh.members) do
         local q = W.S.v3.people[id]
         if q and q.alive and people.stage(q, W.hour) == "adult" then
-          people.remember(q, W.hour, string.format("Our field goes to flax this year (the village has %.0f of the %.0f garments' linen it wants)", have, want))
+          people.remember(q, W.hour, sfmt("Our field goes to flax this year (the village has %.0f of the %.0f garments' linen it wants)", have, want))
         end
       end
     end
@@ -1375,8 +1378,11 @@ function M.daily(W, s, day)
   s.dirty_costs = false
   -- (D-095) the river today: its fish (a stock by how much water there is, regrowing), and the
   -- crossings the village wants bridged
-  local wet = 0
-  for i = 1, s.N * s.N do if s.riv[i] > 0 then wet = wet + 1 end end
+  local wet = mapm.wet_n(s)
+  if not wet then
+    wet = 0
+    for i = 1, s.N * s.N do if s.riv[i] > 0 then wet = wet + 1 end end
+  end
   s.has_river = wet > 0
   local c = C()
   s.river_fish_cap = wet * c.rfish_tile

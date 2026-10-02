@@ -10,12 +10,13 @@
 -- day of the week. A village runs its day step once per UTC day (in the hour its local midnight
 -- falls), so it draws each of the week's 7 days exactly once; `for_local_day` finds the day a
 -- place is currently living through (for the view).
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local daylight = require("sim.society.daylight")
 
 local M = {}
-local floor, log, sin, abs, pi = math.floor, math.log, math.sin, math.abs, math.pi
+local floor, log, sin, abs, pi = math.floor, dmath.log, dmath.sin, math.abs, math.pi
 local S_WD = rng.S.WEATHER_DAY
 local DEG = pi / 180
 

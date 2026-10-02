@@ -6,6 +6,7 @@
 -- (heat_anom / g_temp / aerosol) when that component exceeds anom_min °C; else baseline.
 -- sst lags the ocean air temperature; heat_anom's cause travels into sst.
 
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 local noise = require("sim.worldgen.noise")
 local rng = require("sim.rng")
@@ -13,7 +14,7 @@ local blame = require("sim.causality.blame")
 local ledger = require("sim.ledger")
 
 local sys = { name = "temperature" }
-local sin, abs, pi, floor, exp = math.sin, math.abs, math.pi, math.floor, math.exp
+local sin, abs, pi, floor, exp = dmath.sin, math.abs, math.pi, math.floor, dmath.exp
 
 -- Static per-cell tables (derived): base temperature, seasonal amplitude, hemisphere sign,
 -- elevation lapse, wobble basis patterns.

@@ -31,12 +31,16 @@ local function mul32(a, b)
 end
 rng.mul32 = mul32
 
+-- Multiplying by a constant c = chi * 65536 + clo mod 2^32 (S14): x * c = x * chi * 65536 + x * clo,
+-- and (x * chi * 65536) mod 2^32 = ((x * chi) mod 65536) * 65536; every product stays below 2^49,
+-- so the result is exactly mul32's, in fewer operations and without a call (the browser's Lua
+-- pays ~70 ns a call). Written out below for each constant.
 -- lowbias32 finaliser (good avalanche). x must be an integer in [0, 2^32).
 local function mix(x)
   x = bxor(x, rshift(x, 16)) % M32
-  x = mul32(x, 0x7feb352d)
+  x = ((x * 0x7feb) % 65536 * 65536 + x * 0x352d) % M32          -- mul32(x, 0x7feb352d)
   x = bxor(x, rshift(x, 15)) % M32
-  x = mul32(x, 0x846ca68b)
+  x = ((x * 0x846c) % 65536 * 65536 + x * 0xa68b) % M32          -- mul32(x, 0x846ca68b)
   x = bxor(x, rshift(x, 16)) % M32
   return x
 end
@@ -45,19 +49,25 @@ rng.mix = mix
 -- Fold an arbitrary non-negative integer (< 2^52) into the running hash.
 local function fold(h, v)
   v = v % M32
-  return mix(bxor(h, mul32(v, 0x9E3779B1)) % M32)
+  local x = bxor(h, ((v * 0x9E37) % 65536 * 65536 + v * 0x79B1) % M32) % M32   -- mul32(v, 0x9E3779B1)
+  x = bxor(x, rshift(x, 16)) % M32
+  x = ((x * 0x7feb) % 65536 * 65536 + x * 0x352d) % M32
+  x = bxor(x, rshift(x, 15)) % M32
+  x = ((x * 0x846c) % 65536 * 65536 + x * 0xa68b) % M32
+  return bxor(x, rshift(x, 16)) % M32
 end
 
-function rng.hash(seed, stream, a, b, c)
+local function hash(seed, stream, a, b, c)
   local h = mix((seed % M32 + stream * 0x632BE5AB) % M32)
   h = fold(h, a or 0)
   h = fold(h, b or 0)
   h = fold(h, c or 0)
   return h
 end
+rng.hash = hash
 
 function rng.float(seed, stream, a, b, c)
-  return rng.hash(seed, stream, a, b, c) * INV32
+  return hash(seed, stream, a, b, c) * INV32
 end
 
 -- Per-tick base for hot loops.
@@ -67,11 +77,19 @@ end
 
 -- One mixing round: uint32 from base + small integer key (cell, entity index...).
 function rng.ibase(base, k)
-  return mix(bxor(base, mul32(k % M32, 0x85EBCA6B)) % M32)
+  k = k % M32
+  return mix(bxor(base, ((k * 0x85EB) % 65536 * 65536 + k * 0xCA6B) % M32) % M32)
 end
 
+-- (mix written out: the hottest call in the agents, ~2,000 an hour)
 function rng.fbase(base, k)
-  return mix(bxor(base, mul32(k % M32, 0x85EBCA6B)) % M32) * INV32
+  k = k % M32
+  local x = bxor(base, ((k * 0x85EB) % 65536 * 65536 + k * 0xCA6B) % M32) % M32   -- mul32(k, 0x85EBCA6B)
+  x = bxor(x, rshift(x, 16)) % M32
+  x = ((x * 0x7feb) % 65536 * 65536 + x * 0x352d) % M32
+  x = bxor(x, rshift(x, 15)) % M32
+  x = ((x * 0x846c) % 65536 * 65536 + x * 0xa68b) % M32
+  return (bxor(x, rshift(x, 16)) % M32) * INV32
 end
 
 -- Integer in [lo, hi] from a float u in [0,1).

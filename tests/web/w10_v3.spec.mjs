@@ -44,3 +44,23 @@ test('W10 legacy: ?world=v2 still opens the v2 world @ch1', async ({ page }) => 
   expect(tc.population).toBeGreaterThan(100);
   expectNoErrors(tc, game.consoleErrors);
 });
+
+// (S14) The browser's Lua 5.1 lives the same v3 world as LuaJIT (the headless tools and tests):
+// before sim/dmath.lua and sim/fmt.lua the two had diverged within a game day (last-bit
+// differences in sin/cos/exp/pow, a %.0f tie formatted two ways, a pairs() order).
+test('W10 determinism: the v3 world in the browser equals LuaJIT @ch1', async ({ page }) => {
+  test.setTimeout(240_000);
+  const { execFileSync } = await import('node:child_process');
+  const { resolveLuajit } = await import('../../scripts/lib/util.mjs');
+  const game = await openGame(page, { world: null, speed: '0', gfx: 'low' }, { readyTimeout: 60_000 });
+  const r = await sendCmd(page, { cmd: 'v3_hash', hours: 36, every: 12 }, { timeout: 180_000 });
+  expect(r.ok, JSON.stringify(r)).toBe(true);
+  const lj = execFileSync(resolveLuajit(), ['tools/v3_hash.lua', '--hours', '36', '--every', '12', '--from', String(r.result.start)], { encoding: 'utf8' });
+  const ref = [...lj.matchAll(/hour\s+(\d+)\s+hash\s+(\d+)/g)].map((m) => [Number(m[1]), m[2]]);
+  expect(ref.length).toBe(4);
+  for (const x of r.result.hashes) {
+    const y = ref.find((q) => q[0] === x.hour);
+    expect(x.hash, `state hash at +${x.hour} h`).toBe(y && y[1]);
+  }
+  expectNoErrors(await readTC(page), game.consoleErrors);
+});

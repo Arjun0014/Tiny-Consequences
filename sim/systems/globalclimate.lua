@@ -6,12 +6,13 @@
 -- Self-calibration: during worldgen spin-up (G.calibrating) co2 and g_temp are pinned and the
 -- world's own reference weathering index, ice fraction, ice volume and sst are measured, so
 -- every seed's untouched no-human world balances at co2 ≈ 280.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 local ledger = require("sim.ledger")
 local events = require("sim.causality.events")
 
 local sys = { name = "globalclimate" }
-local exp, log, max, min = math.exp, math.log, math.max, math.min
+local exp, log, max, min = dmath.exp, dmath.log, math.max, math.min
 local LN2 = log(2)
 
 function sys.init(W)

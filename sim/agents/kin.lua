@@ -8,6 +8,8 @@
 -- home's meals. A carer holding a baby cannot fell, build or haul; to work she leaves the baby with
 -- a minder at home (a grandparent, an older child, the father at home) and takes it back when she
 -- is home again. A baby nobody feeds loses health.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
+local dsq = dmath.sq
 local cfgmod = require("sim.config")
 local people = require("sim.agents.people")
 
@@ -60,7 +62,7 @@ function M.minder(W, s, mother, home, now)
   for i = 1, #hh.members do
     local q = V.people[hh.members[i]]
     if q and q.alive and q ~= mother and q.babe == 0 and q.act ~= "sleep" and q.act ~= "carried" then
-      local near = q.inside == home.id or (q.inside == 0 and sqrt((q.x - home.dx) ^ 2 + (q.y - home.dy) ^ 2) < 0.06)
+      local near = q.inside == home.id or (q.inside == 0 and sqrt(dsq(q.x - home.dx) + dsq(q.y - home.dy)) < 0.06)
       if near then
         local st, a = people.stage(q, now)
         local sc = -1

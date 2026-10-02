@@ -23,6 +23,8 @@
 -- w = { k, sp, pred, gid, sex, born, mother, x, y, tx, ty, t0, t1, act, ver, alive, gone, lead,
 --   prey ({ kind = "wild" | herd, k }), flee_from }
 -- Events: id = stock.ID0 + settlement id x 100000 + 3 x 20000 + k.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
+local dsq = dmath.sq
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local mapm = require("sim.agents.map")
@@ -32,7 +34,7 @@ local stock = require("sim.agents.stock")
 
 local M = {}
 M.HI = 3
-local floor, max, min, sqrt, abs, cos, sin = math.floor, math.max, math.min, math.sqrt, math.abs, math.cos, math.sin
+local floor, max, min, sqrt, abs, cos, sin = math.floor, math.max, math.min, math.sqrt, math.abs, dmath.cos, dmath.sin
 local function C() return cfgmod.V3 end
 local function WP(sp) return cfgmod.V3.wild[sp] end
 M.WP = WP
@@ -151,7 +153,7 @@ local function edge_toward(W, s, c)
   local best, bd = 0, 1e18
   for q = 1, #ring do
     local tx, ty = mapm.tile_xy(s, ring[q])
-    local d = (tx - x) ^ 2 + (ty - y) ^ 2
+    local d = dsq(tx - x) + dsq(ty - y)
     if d < bd then best, bd = ring[q], d end
   end
   if best > 0 then return mapm.tile_xy(s, best) end
@@ -177,7 +179,7 @@ function M.border_near(s, x, y)
   local best, bd = 0, 1e18
   for q = 1, #ring do
     local tx, ty = mapm.tile_xy(s, ring[q])
-    local d = (tx - x) ^ 2 + (ty - y) ^ 2
+    local d = dsq(tx - x) + dsq(ty - y)
     if d < bd then best, bd = ring[q], d end
   end
   if best > 0 then return mapm.tile_xy(s, best) end
@@ -270,7 +272,7 @@ local function band_ground(W, s, gid, cell, day)
     local wood = P and P.wood and P.wood[b] or 0.3
     if r > C().wild_keep and open > 0.1 then
       local grass = P and P.grass[b] or open
-      local d = sqrt((x - cx) ^ 2 + (y - cy) ^ 2)
+      local d = sqrt(dsq(x - cx) + dsq(y - cy))
       local sc = grass + 0.6 * min(wood, 1 - wood) - 0.25 * d + 0.3 * rng.fbase(jit, b)
       if sc > bs then best, bs = b, sc end
     end
@@ -323,9 +325,13 @@ function M.daily(W, s, day, push)
     room = room - n
     target[A.h_id[q.i]] = { i = q.i, n = n }
   end
-  -- arrivals walk in from the side of the herd's range; the surplus walks out that way
-  for gid, tg in pairs(target) do
-    local i = tg.i
+  -- arrivals walk in from the side of the herd's range; the surplus walks out that way (in the
+  -- order above: the arrivals' keys must not depend on a hash table's order, which differs between
+  -- LuaJIT and the browser's Lua, S14)
+  for wi = 1, #want do
+    local i = want[wi].i
+    local gid = A.h_id[i]
+    local tg = target[gid]
     local have = local_n[gid] or 0
     local sp = HERB[A.h_sp[i]] or "deer"
     local gx, gy = band_ground(W, s, gid, A.h_cell[i], day)
@@ -427,16 +433,19 @@ local function threat(W, s, w, now)
   local c = C()
   local Wd = s.wildlife
   -- wolves on the hunt
-  for _, o in ipairs(Wd.animals) do
-    if o.alive and o.pred and (o.act == "chase" or o.act == "walk") then
-      local d2 = (o.tx - w.tx) ^ 2 + (o.ty - w.ty) ^ 2
-      if d2 < c.wild_alert_wolf ^ 2 then return o.tx, o.ty end
+  local an = Wd.animals
+  local ra = (c.wild_alert_wolf * c.wild_alert_wolf)
+  for k = 1, #an do
+    local o = an[k]
+    if o.pred and o.alive and (o.act == "chase" or o.act == "walk") then
+      local d2 = dsq(o.tx - w.tx) + dsq(o.ty - w.ty)
+      if d2 < ra then return o.tx, o.ty end
     end
   end
   -- people about in the woods and fields: where each began what they are doing (state: the
   -- same after a load), hunters where they are now
   local V = W.S.v3
-  local r2 = c.wild_alert ^ 2
+  local r2 = (c.wild_alert * c.wild_alert)
   local wx, wy = w.tx, w.ty
   local mem = s.members
   for i = 1, #mem do
@@ -449,7 +458,7 @@ local function threat(W, s, w, now)
         px, py = stock.person_pos(p, now)
         -- (a hunter creeping up is seen later, the more skilled the later)
         local k = 1 - 0.5 * (p.sk_hunt or 0.2)
-        if (px - wx) ^ 2 + (py - wy) ^ 2 < r2 * k * k then return px, py end
+        if dsq(px - wx) + dsq(py - wy) < r2 * k * k then return px, py end
       elseif d2 < r2 and p.act ~= "carried" and p.act ~= "sleep" then
         return px, py
       end
@@ -467,7 +476,7 @@ local function pick_prey(W, s, lead, now)
   local best, bs, bx, by = nil, -1e9, 0, 0
   for _, w in ipairs(Wd.animals) do
     if w.alive and not w.pred and w.act ~= "leave" then
-      local d = sqrt((w.tx - lead.tx) ^ 2 + (w.ty - lead.ty) ^ 2)
+      local d = sqrt(dsq(w.tx - lead.tx) + dsq(w.ty - lead.ty))
       local weak = (now - w.born) / 1152 < 0.5 and 1 or 0
       local sc = 1 + weak - d * 0.8
       if sc > bs then best, bs, bx, by = { kind = "wild", k = w.k }, sc, w.tx, w.ty end
@@ -485,17 +494,17 @@ local function pick_prey(W, s, lead, now)
         -- (a dog lying at the pen, a watch asleep by it: the pack is warier there, D-105)
         local wary = 0
         for _, d in ipairs(s.dogs or {}) do
-          if d.alive and (d.tx - pen.dx) ^ 2 + (d.ty - pen.dy) ^ 2 < 0.04 then wary = wary + 0.8 end
+          if d.alive and dsq(d.tx - pen.dx) + dsq(d.ty - pen.dy) < 0.04 then wary = wary + 0.8 end
         end
         for gi = 1, #(s.guards or {}) do
           local g = W.S.v3.people[s.guards[gi] or 0]
-          if g and g.alive and g.objk == "guard" and (g.x - pen.cx) ^ 2 + (g.y - pen.cy) ^ 2 < 0.06 then wary = wary + 0.8 end
+          if g and g.alive and g.objk == "guard" and dsq(g.x - pen.cx) + dsq(g.y - pen.cy) < 0.06 then wary = wary + 0.8 end
         end
         for _, a in ipairs(H.animals) do
           if a.alive then
             local S = stock.SP(a.sp)
             local small = (a.sp == "cattle" and (now - a.born) / 1152 > S.young_years * 2) and -3 or 0
-            local d = sqrt((pen.cx - lead.tx) ^ 2 + (pen.cy - lead.ty) ^ 2)
+            local d = sqrt(dsq(pen.cx - lead.tx) + dsq(pen.cy - lead.ty))
             local sc = 1.2 + small + ((now - a.born) / 1152 < S.young_years and 0.5 or 0) - d * 0.5 + (1 - A.p_cond[i]) * 1.5 - wary
             if sc > bs then best, bs, bx, by = { kind = kind, k = a.k }, sc, a.tx, a.ty end
           end
@@ -514,7 +523,7 @@ function M.watched(W, s, H)
   for i = 1, #s.members do
     local p = V.people[s.members[i]]
     if p and p.alive and p.inside == 0 and p.act ~= "sleep" and not p.at then
-      if (p.x - pen.cx) ^ 2 + (p.y - pen.cy) ^ 2 < 0.06 then return true end
+      if dsq(p.x - pen.cx) + dsq(p.y - pen.cy) < 0.06 then return true end
     end
   end
   return false
@@ -544,7 +553,7 @@ local function defender(W, s, w, now)
     local p = V.people[s.members[i]]
     if p and p.alive and not p.at and p.inside == 0 and p.act ~= "sleep" and p.act ~= "carried" then
       local px, py = stock.person_pos(p, now)
-      if (px - w.tx) ^ 2 + (py - w.ty) ^ 2 < c.wolf_fear ^ 2 then return p end
+      if dsq(px - w.tx) + dsq(py - w.ty) < (c.wolf_fear * c.wolf_fear) then return p end
     end
   end
   return nil
@@ -611,7 +620,7 @@ function M.step(W, s, w, now)
   if w.pred then
     -- (a dog within hearing of a wolf wakes and barks: D-105)
     for _, dg in ipairs(s.dogs or {}) do
-      if dg.alive and dg.act ~= "run" and dg.act ~= "bark" and (dg.tx - w.tx) ^ 2 + (dg.ty - w.ty) ^ 2 < c.dog_alert ^ 2 then
+      if dg.alive and dg.act ~= "run" and dg.act ~= "bark" and dsq(dg.tx - w.tx) + dsq(dg.ty - w.ty) < (c.dog_alert * c.dog_alert) then
         M.dogs.interrupt(W, s, dg, now)
       end
     end
@@ -649,7 +658,7 @@ function M.step(W, s, w, now)
       end
       local ox, oy
       if pr.kind == "wild" then ox, oy = M.pos(o, now) else ox, oy = stock.pos(o, now) end
-      local d = sqrt((ox - w.tx) ^ 2 + (oy - w.ty) ^ 2)
+      local d = sqrt(dsq(ox - w.tx) + dsq(oy - w.ty))
       if pr.kind ~= "wild" then
         -- (at a village's pen: people awake drive the pack off; a barking dog may turn it; a
         -- watch asleep close by wakes, D-105)
@@ -658,13 +667,13 @@ function M.step(W, s, w, now)
         local i = require("sim.systems.fauna").find_pack(W, w.gid)
         local starving = i and A.p_cond[i] < c.wolf_starving
         for _, dg in ipairs(s.dogs or {}) do
-          if dg.alive and (dg.act == "bark" or dg.act == "run") and (dg.tx - w.tx) ^ 2 + (dg.ty - w.ty) ^ 2 < 0.03 then
+          if dg.alive and (dg.act == "bark" or dg.act == "run") and dsq(dg.tx - w.tx) + dsq(dg.ty - w.ty) < 0.03 then
             if not starving and u(W, s, w, now, 7) < c.dog_deter then pack_flee(W, s, w, now, nil); stand(w, now, "rest", 0.05); return end
           end
         end
         for gi = 1, #(s.guards or {}) do
           local g = W.S.v3.people[s.guards[gi] or 0]
-          if g and g.alive and g.objk == "guard" and g.act == "sleep" and (g.x - w.tx) ^ 2 + (g.y - w.ty) ^ 2 < c.guard_alert ^ 2 then
+          if g and g.alive and g.objk == "guard" and g.act == "sleep" and dsq(g.x - w.tx) + dsq(g.y - w.ty) < (c.guard_alert * c.guard_alert) then
             s.alarm = { t = now, x = g.x, y = g.y, hh = g.hh }
             if M.interrupt_hook then M.interrupt_hook(W, g, now + 0.02, "Wolves at the pen") end
           end
@@ -715,7 +724,7 @@ function M.step(W, s, w, now)
     -- the others: with the leader (at the kill: eat round it)
     local fx, fy = lead.feed_x, lead.feed_y
     if lead.act == "eat" and fx then
-      local d = sqrt((fx - w.tx) ^ 2 + (fy - w.ty) ^ 2)
+      local d = sqrt(dsq(fx - w.tx) + dsq(fy - w.ty))
       if d > 0.04 then
         local ang = u(W, s, w, now, 3) * 6.2832
         if go_to(s, w, now, fx + 0.025 * cos(ang), fy + 0.025 * sin(ang), S.run, "walk") then return end
@@ -727,7 +736,7 @@ function M.step(W, s, w, now)
     local ang = i * GOLD + (now * 0.7) % 6.2832
     local r = 0.035 * sqrt(i)
     local gx, gy = lead.tx + r * cos(ang), lead.ty + r * sin(ang)
-    local d = sqrt((gx - w.tx) ^ 2 + (gy - w.ty) ^ 2)
+    local d = sqrt(dsq(gx - w.tx) + dsq(gy - w.ty))
     local sp = lead.act == "chase" and S.run or S.speed
     if d > 0.015 then
       local step = min(d, 0.2)
@@ -766,7 +775,7 @@ function M.step(W, s, w, now)
   local mom = w.mother ~= 0 and byk(s, w.mother)
   if mom and mom.alive and (now - w.born) / 1152 < 0.5 then
     local mx, my = M.pos(mom, now)
-    local d = sqrt((mx - w.tx) ^ 2 + (my - w.ty) ^ 2)
+    local d = sqrt(dsq(mx - w.tx) + dsq(my - w.ty))
     if d > S.sep * 0.6 then
       if go_to(s, w, now, mx + 0.01, my, S.speed * 1.3, "walk") then return end
     end
@@ -790,7 +799,7 @@ function M.step(W, s, w, now)
     local ox, oy = w.tx / wr * (keep + 0.1), w.ty / wr * (keep + 0.1)
     if go_to(s, w, now, w.tx + (ox - w.tx) * min(1, 0.25 / max(1e-6, keep + 0.1 - wr)), w.ty + (oy - w.ty) * min(1, 0.25 / max(1e-6, keep + 0.1 - wr)), S.speed * 1.3, "walk") then return end
   end
-  local d = sqrt((tx - w.tx) ^ 2 + (ty - w.ty) ^ 2)
+  local d = sqrt(dsq(tx - w.tx) + dsq(ty - w.ty))
   if d > S.sep * 1.5 then
     local hop = min(d, 0.12 + 0.1 * u(W, s, w, now, 7))
     if go_to(s, w, now, w.tx + (tx - w.tx) / d * hop, w.ty + (ty - w.ty) / d * hop, S.speed, "walk") then return end

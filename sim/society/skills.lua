@@ -5,10 +5,11 @@
 -- with the skill: 0.7 for a novice, ~1.0 for a practised hand, 1.1 for a master (labour.assign
 -- counts each worker's capacity by it; a boat's crew fishes by theirs). So a village that loses
 -- its old fishers to a storm catches less than its numbers say, and migrants bring what they know.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 
 local M = {}
-local exp, min, floor = math.exp, math.min, math.floor
+local exp, min, floor = dmath.exp, math.min, math.floor
 
 M.CAT = { sow = "farm", tend = "farm", harvest = "farm", care = "farm", clear = "farm", fish = "fish",
   fuel = "wood", timber = "wood", brush = "wood", build = "build", craft_tools = "craft", craft_pots = "craft",
@@ -52,7 +53,7 @@ function M.weekly(W, v)
   local P = W.ent.people
   local learn = cfg.skill_learn
   local fade = floor(W.hour / 168) % 4 == 0
-  local keep4 = cfg.skill_keep ^ 4
+  local keep4 = dmath.pow(cfg.skill_keep, 4)
   local CAT = M.CAT
   for i = 1, #v.members do
     local p = P[v.members[i]]

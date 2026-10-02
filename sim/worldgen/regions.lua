@@ -9,6 +9,7 @@
 -- Output (persistent): W.static.region[c] = region id (land ids first, then seas);
 -- W.names.regions[id] = { name, kind, continent, cells, centre, part };
 -- W.names.continents[comp] = landmass name.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local rng = require("sim.rng")
 local cfgmod = require("sim.config")
 local names = require("content.names")
@@ -118,7 +119,7 @@ function regions.generate(W)
       local dlat = g.lat[a] - g.lat[b]
       local dlon = g.lon[a] - g.lon[b]
       if dlon > math.pi then dlon = dlon - 2 * math.pi elseif dlon < -math.pi then dlon = dlon + 2 * math.pi end
-      local coslat = math.cos((g.lat[a] + g.lat[b]) * 0.5)
+      local coslat = dmath.cos((g.lat[a] + g.lat[b]) * 0.5)
       local da, db
       if math.abs(dlat) >= math.abs(dlon * coslat) then
         if dlat > 0 then da, db = "North", "South" else da, db = "South", "North" end

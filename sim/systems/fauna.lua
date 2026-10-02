@@ -45,6 +45,7 @@
 -- the food's cause; its losses the packs', the fire's, the hunters'. Each derived cell takes the
 -- tag of the group that puts most animals on it; detectors re-tag cells with their events (a
 -- boom), which the groups there adopt when the event descends from their cause.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 local fields = require("sim.fields")
 local blame = require("sim.causality.blame")
@@ -450,7 +451,7 @@ local function densities(W, A, sc, cfg)
     local n = pn * ippc
     -- the pack hunts as one: its kills grow with its size ^ pack_exp (a pack of pack_ref kills as
     -- that many lone hunters would; a big pack shares each kill among more mouths)
-    local e = pn > 0 and (pn / pref) ^ pexp * pref * ippc or 0
+    local e = pn > 0 and dmath.pow(pn / pref, pexp) * pref * ippc or 0
     for k = 1, t.L do
       local x, w = t[k], tw[k]
       if seen[x] ~= stamp then seen[x] = stamp; H[x], P[x], Wk[x], Pe[x] = 0, 0, 0, 0; nl = nl + 1; list[nl] = x end

@@ -6,6 +6,7 @@
 -- upwind elevation (orographic lift) and a capacity multiplier (Hadley subsidence / ITCZ).
 -- Moisture reads last tick's values (prev buffer). Flows carry the source cell's tag.
 
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 local fields = require("sim.fields")
 local blame = require("sim.causality.blame")
@@ -13,7 +14,7 @@ local noise = require("sim.worldgen.noise")
 local rng = require("sim.rng")
 
 local sys = { name = "moisture" }
-local sin, cos, abs, sqrt, exp, max, min = math.sin, math.cos, math.abs, math.sqrt, math.exp, math.max, math.min
+local sin, cos, abs, sqrt, exp, max, min = dmath.sin, dmath.cos, math.abs, math.sqrt, dmath.exp, math.max, math.min
 local rad = math.pi / 180
 
 -- piecewise-linear profile over |lat| in degrees

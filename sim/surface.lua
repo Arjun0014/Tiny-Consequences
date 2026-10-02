@@ -15,6 +15,7 @@
 --
 -- M.get(W) builds once per world (a runtime cache, never saved: it is derived from the grid, the
 -- geography's ocean flags and the seed).
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local grid = require("sim.grid")
 local noise = require("sim.noise")
 
@@ -25,7 +26,7 @@ M.COAST_NOISE = 0.5  -- coast-field noise amplitude (coast field is +-0.6 at coa
 M.COAST_FREQ = 7     -- noise lattice cells per unit length on the unit sphere
 M.R = 10             -- planet radius in world units (the view's and the local maps')
 
-local sqrt, floor, max, min, abs, sin, pi = math.sqrt, math.floor, math.max, math.min, math.abs, math.sin, math.pi
+local sqrt, floor, max, min, abs, sin, pi = math.sqrt, math.floor, math.max, math.min, math.abs, dmath.sin, math.pi
 
 -- Sim triangle containing unit vector (x,y,z) around nearest cell c0. Returns a, b, c, wa, wb, wc.
 local function locate(sg, c0, x, y, z)
@@ -294,7 +295,7 @@ function M.river_at(c, k, w0, w1)
   local wb = w0 + (w1 - w0) * t
   local ford = (k == M.ford_k(c)) and 1 or 0
   local hw = wb * 0.5 * (1 + M.FORD_SPREAD * ford)
-  local depth = (wb / M.WADE_W) ^ 0.8 * (1 - M.FORD_SHALLOW * ford)
+  local depth = dmath.pow(wb / M.WADE_W, 0.8) * (1 - M.FORD_SHALLOW * ford)
   return hw, depth
 end
 

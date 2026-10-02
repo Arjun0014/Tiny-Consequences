@@ -3,11 +3,13 @@
 -- exchanges at the other village, home) and act.lua's deal steps.
 --   p.trip = { to, from, give, take, n, aX, aH, pool, deals, back }
 --   p.at   = the settlement whose map the person is on now (nil: their own)
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
+local dsq = dmath.sq
 local cfgmod = require("sim.config")
 local clock = require("sim.agents.clock")
 
 local M = {}
-local floor, max, min, sqrt, acos = math.floor, math.max, math.min, math.sqrt, math.acos
+local floor, max, min, sqrt, acos = math.floor, math.max, math.min, math.sqrt, dmath.acos
 local function C() return cfgmod.V3 end
 
 -- Great-circle distance between two settlements (local units) and the hours on the road.
@@ -140,7 +142,7 @@ function M.sea_gate(W, s, c)
   local best, bd = 0, 1e18
   for q = 1, #ring do
     local tx, ty = mapm.tile_xy(s, ring[q])
-    local d = (tx - x) ^ 2 + (ty - y) ^ 2
+    local d = dsq(tx - x) + dsq(ty - y)
     if d < bd then best, bd = ring[q], d end
   end
   if best == 0 then return nil end

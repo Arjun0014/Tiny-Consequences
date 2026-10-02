@@ -1,5 +1,6 @@
 -- Initial field values before spin-up: a rough latitude/elevation climatology so the 30-year
 -- spin-up converges quickly. Spin-up (not this) produces the lived-in equilibrium.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 
 local ci = {}
@@ -10,7 +11,7 @@ function ci.apply(W)
   local g, geo = W.grid, W.geo
   local elev, sea = W.static.elev, W.G.sea_level
   for c = 1, n do
-    local s = math.sin(g.lat[c])
+    local s = dmath.sin(g.lat[c])
     local t = cfg.t_equator - cfg.t_pole_drop * s * s
     local h = elev[c] - sea
     if h > 0 then t = t + cfg.lapse * h end

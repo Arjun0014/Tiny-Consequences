@@ -23,6 +23,7 @@
 --
 -- Sustained effects (weather, temperature, blight) live in W.S.powers (saved) and are applied
 -- by the `powers` system at the start of every tick (first in sim/systems/init.lua).
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 local events = require("sim.causality.events")
 local blame = require("sim.causality.blame")
@@ -419,7 +420,7 @@ function powers.update(W)
           local o = vs[vi]
           if o.alive and v and o.id ~= v.id and #o.farms > 0 then
             local d = g.X[o.cell] * g.X[c] + g.Y[o.cell] * g.Y[c] + g.Z[o.cell] * g.Z[c]
-            local steps = math.acos(max(-1, min(1, d))) / (0.07553)
+            local steps = dmath.acos(max(-1, min(1, d))) / (0.07553)
             if steps <= C.blight_trade_steps and steps < bd then
               -- only villages the blight hasn't reached yet
               local has = false

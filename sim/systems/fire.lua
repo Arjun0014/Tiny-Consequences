@@ -5,6 +5,7 @@
 -- Effects written here: grass/forest/crop loss, co2 (ledger), heat_anom, burn_scar, ash
 -- fertility. Animals and villagers react by reading `fire` in their own systems.
 -- Events: lightning_strike (nature root) -> fire_started -> wildfire (cluster ≥ 10 cells).
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local blame = require("sim.causality.blame")
@@ -80,7 +81,7 @@ function sys.update(W)
   -- 1. natural lightning on a rotating quarter of land cells
   local land = W.geo.land_cells
   local toy = tick % 48
-  local season = math.sin(2 * math.pi * toy / 48 + cfgmod.TEMP.season_phase)
+  local season = dmath.sin(2 * math.pi * toy / 48 + cfgmod.TEMP.season_phase)
   local lat = g.lat
   local base_ign = rng.base(seed, rng.S.FIRE_IGNITE, tick)
   local ss = W.sscale

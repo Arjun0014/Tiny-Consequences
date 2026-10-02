@@ -13,6 +13,8 @@
 --   cost[i]  A* cost of entering the tile (rebuilt when the map changes: daily and on building)
 -- Trees: s.trees = { x, y, size, st (1 standing, 2 felled: logs lie there, 3 stump), logs, claim,
 -- t_cut (hour), tile, n }.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
+local dsq = dmath.sq
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 
@@ -54,11 +56,15 @@ function M.local_of(s, ux, uy, uz)
   return (ux * f[4] + uy * f[5] + uz * f[6]) * k, (ux * f[7] + uy * f[8] + uz * f[9]) * k
 end
 
+-- (S14: floor as v - v % 1, exact for v >= 0; a negative v is off the map either way. The browser's
+-- Lua pays a C call for math.floor.)
 function M.tile_of(s, x, y)
   local N, T = s.N, s.T
-  local ix = floor(x / T + N / 2) + 1
-  local iy = floor(y / T + N / 2) + 1
-  if ix < 1 or iy < 1 or ix > N or iy > N then return 0 end
+  local vx, vy = x / T + N / 2, y / T + N / 2
+  if vx < 0 or vy < 0 then return 0 end
+  local ix = vx - vx % 1 + 1
+  local iy = vy - vy % 1 + 1
+  if ix > N or iy > N then return 0 end
   return (iy - 1) * N + ix
 end
 
@@ -179,6 +185,12 @@ end
 
 -- Lay the rivers for today's flow (wd: surface.river_widths, shared by all settlements on a day).
 -- found: the first laying also marks the floodplain (the widest a flood makes the river).
+-- (runtime, S14: the wet tiles as last laid and a version that changes only when that set does:
+-- the river's banks are worked out again only then; `M.wet_n(s)` is today's count of wet tiles)
+local WETS = setmetatable({}, { __mode = "k" })
+function M.wet_version(s) local e = WETS[s]; return e and e.ver or -1 end
+function M.wet_n(s) local e = WETS[s]; return e and e.n end
+
 function M.rivers(W, s, found, wd)
   local surface = require("sim.surface")
   s.riv_day = (s.riv_day or 0) + 1
@@ -186,9 +198,18 @@ function M.rivers(W, s, found, wd)
   local cs = courses(W, s)
   local riv, land = s.riv, s.land
   local N, T = s.N, s.T
+  local we = WETS[s]
+  if not we then we = { ver = 0, prev = {}, np = 0, n = 0, fresh = true }; WETS[s] = we end
+  local prev = we.prev
+  local np = 0
   for i = 1, N * N do
-    if riv[i] > 0 then riv[i] = -1 end      -- (wet yesterday: floodplain unless wet again)
+    if riv[i] > 0 then
+      riv[i] = -1      -- (wet yesterday: floodplain unless wet again)
+      np = np + 1
+      prev[np] = i
+    end
   end
+  local nwet = 0
   local SUB = surface.RIVER_SUB
   local half = N / 2
   for pass = found and 1 or 2, 2 do
@@ -229,7 +250,9 @@ function M.rivers(W, s, found, wd)
                         local depth = d0 + (d1 - d0) * u
                         local code = 1 + floor(depth * 100 + 0.5)
                         if code > 999 then code = 999 end
-                        if riv[i] <= 0 or code < riv[i] then riv[i] = code end
+                        local r0 = riv[i]
+                        if r0 <= 0 then riv[i] = code; nwet = nwet + 1
+                        elseif code < r0 then riv[i] = code end
                       end
                     end
                   end
@@ -241,6 +264,13 @@ function M.rivers(W, s, found, wd)
       end
     end
   end
+  -- (the wet set unchanged: the same tiles wet yesterday and today)
+  local same = not we.fresh and nwet == we.n and np == we.n
+  if same then
+    for q = 1, np do if riv[prev[q]] <= 0 then same = false; break end end
+  end
+  if not same then we.ver = we.ver + 1 end
+  we.fresh, we.n = false, nwet
 end
 
 -- The first river tile (wet today, not bridged) the straight line from tile a to tile b passes
@@ -286,10 +316,19 @@ end
 
 -- The river's banks today: dry land tiles beside wet ones (where water is drawn, anglers sit),
 -- a runtime list rebuilt when the rivers are laid (s.riv_day).
+-- (S14) The list as last made is kept when neither the wet tiles nor the buildings' footprints
+-- changed since (cost > 0 here is "no footprint": costs are rebuilt with every building): the same
+-- list the scan would make again.
 local BANKS = setmetatable({}, { __mode = "k" })
+M.occ_ver = setmetatable({}, { __mode = "k" })    -- runtime: bumped by settle when footprints change
 function M.banks(s)
   local e = BANKS[s]
   if e and e.day == s.riv_day then return e.list end
+  local wv, ov = M.wet_version(s), M.occ_ver[s] or 0
+  if e and wv >= 0 and e.wv == wv and e.ov == ov then
+    e.day = s.riv_day
+    return e.list
+  end
   local N = s.N
   local riv, land, cost = s.riv, s.land, s.cost
   local list = {}
@@ -301,7 +340,7 @@ function M.banks(s)
       end
     end
   end
-  BANKS[s] = { day = s.riv_day, list = list }
+  BANKS[s] = { day = s.riv_day, list = list, wv = wv, ov = ov }
   return list
 end
 
@@ -311,7 +350,7 @@ function M.nearest_bank(s, x, y)
   local best, bd = 0, 1e18
   for k = 1, #list do
     local tx, ty = M.tile_xy(s, list[k])
-    local d = (tx - x) ^ 2 + (ty - y) ^ 2
+    local d = dsq(tx - x) + dsq(ty - y)
     if d < bd then best, bd = list[k], d end
   end
   return best, sqrt(bd)
@@ -321,7 +360,9 @@ end
 local NEARB = setmetatable({}, { __mode = "k" })
 function M.house_bank(s, b)
   local e = NEARB[s]
-  if not e or e.day ~= s.riv_day then e = { day = s.riv_day, i = {}, d = {} }; NEARB[s] = e end
+  -- (kept while the banks are the same list: S14)
+  local list = M.banks(s)
+  if not e or e.list ~= list then e = { list = list, i = {}, d = {} }; NEARB[s] = e end
   local i = e.i[b.id]
   if i == nil then
     local d
@@ -398,12 +439,21 @@ function M.wear_segment(s, x0, y0, x1, y1, amount)
   local steps = floor(len / (T * 0.7)) + 1
   local wear = s.wear
   local last = 0
+  local N = s.N
+  local h = N / 2
   for k = 0, steps do
     local f = k / steps
-    local i = M.tile_of(s, x0 + dx * f, y0 + dy * f)
-    if i > 0 and i ~= last then
-      wear[i] = wear[i] + amount
-      last = i
+    -- (tile_of written out)
+    local vx, vy = (x0 + dx * f) / T + h, (y0 + dy * f) / T + h
+    if vx >= 0 and vy >= 0 then
+      local ix, iy = vx - vx % 1 + 1, vy - vy % 1 + 1
+      if ix <= N and iy <= N then
+        local i = (iy - 1) * N + ix
+        if i ~= last then
+          wear[i] = wear[i] + amount
+          last = i
+        end
+      end
     end
   end
 end

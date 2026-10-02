@@ -2,11 +2,12 @@
 -- A pure function shared by the sim and the view, so the houses you see stand exactly where the
 -- sim put them. Lot 0 of a village cell is the square (well); lots 1..36 sit on three rings
 -- around the cell centre in its tangent plane, rotated and jittered per village.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 
 local M = {}
-local sin, cos, sqrt, pi, floor, acos = math.sin, math.cos, math.sqrt, math.pi, math.floor, math.acos
+local sin, cos, sqrt, pi, floor, acos = dmath.sin, dmath.cos, math.sqrt, math.pi, math.floor, dmath.acos
 
 M.RING_LOTS = { 6, 12, 18 }
 M.LOTS = 36                       -- buildable lots per village cell (lot 0 is the square)

@@ -10,6 +10,7 @@
 --   nbr_count[], faces[] (flat triangles, 3 per face), nfaces, spacing (mean angular
 --   distance between neighbours, radians).
 
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local grid = {}
 
 local function normalize(x, y, z)
@@ -142,7 +143,7 @@ function grid.build(level, opts)
   else n, X, Y, Z, F = build_icosphere(level) end
   local g = { level = level, n = n, X = X, Y = Y, Z = Z, faces = F, nfaces = #F / 3 }
   local lat, lon = {}, {}
-  local asin, atan2 = math.asin, math.atan2
+  local asin, atan2 = dmath.asin, dmath.atan2
   for i = 1, n do
     local y = Y[i]
     if y > 1 then y = 1 elseif y < -1 then y = -1 end
@@ -200,7 +201,7 @@ function grid.build(level, opts)
         ang[j] = atan2(dx * e2x + dy * e2y + dz * e2z, dx * e1x + dy * e1y + dz * e1z)
         local dot = X[j] * nx + Y[j] * ny + Z[j] * nz
         if dot > 1 then dot = 1 end
-        spacing_sum = spacing_sum + math.acos(dot)
+        spacing_sum = spacing_sum + dmath.acos(dot)
         spacing_n = spacing_n + 1
       end
       table.sort(l, function(p, q) return ang[p] < ang[q] end)
@@ -235,7 +236,7 @@ end
 function grid.angle(g, a, b)
   local d = g.X[a] * g.X[b] + g.Y[a] * g.Y[b] + g.Z[a] * g.Z[b]
   if d > 1 then d = 1 elseif d < -1 then d = -1 end
-  return math.acos(d)
+  return dmath.acos(d)
 end
 
 -- Breadth-first ring distances from a source cell up to maxd steps (optionally filtered).

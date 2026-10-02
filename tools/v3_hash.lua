@@ -11,6 +11,8 @@ while arg[i] do
   if a == "--load" then i = i + 1; args.load = arg[i]
   elseif a == "--days" then i = i + 1; args.days = tonumber(arg[i])
   elseif a == "--every" then i = i + 1; args.every = tonumber(arg[i])
+  elseif a == "--hours" then i = i + 1; args.days = tonumber(arg[i]) / 24
+  elseif a == "--from" then i = i + 1; args.from = tonumber(arg[i])
   end
   i = i + 1
 end
@@ -19,8 +21,10 @@ local f = assert(io.open(args.load, "rb"))
 local data = f:read("*a")
 f:close()
 local W = assert(require("sim.worlds").from_save_string(data))
-local t0 = W.hour
+if args.from and args.from > W.hour then world.advance(W, args.from) end
+local t0 = args.from or W.hour
 local c0 = os.clock()
+print(string.format("hour %5d  hash %10s", 0, tostring(world.state_hash(W))))
 for h = args.every, args.days * 24, args.every do
   world.advance(W, t0 + h)
   local V = W.S.v3

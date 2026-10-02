@@ -1,10 +1,11 @@
 -- Where people can live and work: grid neighbourhoods, site scoring and village geometry
 -- (docs/world/12_PEOPLE_VILLAGES.md §3.4, §4). Pure helpers over the world state; moved here
 -- from the old villages system (D-036 growing-season scoring, D-038 capacity-gated sites).
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 
 local M = {}
-local floor, min, max, sqrt, acos = math.floor, math.min, math.max, math.sqrt, math.acos
+local floor, min, max, sqrt, acos = math.floor, math.min, math.max, math.sqrt, dmath.acos
 
 -- level-4 steps -> steps on this grid (>= 1)
 function M.radius(W, steps)
@@ -92,7 +93,7 @@ end
 function M.free_site(W, c)
   local g = W.grid
   local vs = W.ent.villages
-  local lim = math.cos(cfgmod.SOCIETY.min_spacing * 0.07553)
+  local lim = dmath.cos(cfgmod.SOCIETY.min_spacing * 0.07553)
   for i = 1, #vs do
     local v = vs[i]
     if v.alive then
@@ -174,7 +175,7 @@ end
 function M.near_site(W, cell, radius)
   local g = W.grid
   local cont = W.geo.continent[cell]
-  local lim = math.cos(radius * g.spacing)
+  local lim = dmath.cos(radius * g.spacing)
   local X, Y, Z = g.X, g.Y, g.Z
   local cx, cy, cz = X[cell], Y[cell], Z[cell]
   local cfg = cfgmod.SOCIETY

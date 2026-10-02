@@ -124,6 +124,43 @@ function M.register(G)
     local to = speed.v3_skip(W, args.kind or "dawn", args.to)
     return { from = speed.v3_t, to = to }
   end)
+  -- v3_hash{hours, every} (probes, S14): advance the world from where it stands and return the full
+  -- state hash every `every` hours (world.state_hash) - the same lines tools/v3_hash.lua prints
+  -- under LuaJIT: the browser's Lua 5.1 must live the same world.
+  bridge.register("v3_hash", function(args)
+    local W = assert(G.W, "world not ready")
+    assert(W.v3, "not a v3 world")
+    local speed = require("game.platform.speed")
+    local world = require("sim.world")
+    local hours, every = args.hours or 48, args.every or 24
+    local t0 = speed.v3_t or W.hour
+    local out = { { hour = 0, hash = tostring(world.state_hash(W)) } }
+    for h = every, hours, every do
+      world.advance(W, t0 + h)
+      out[#out + 1] = { hour = h, hash = tostring(world.state_hash(W)) }
+    end
+    speed.v3_t = t0 + hours
+    return { start = t0, hashes = out }
+  end)
+  -- mathcheck{n}: sim/mathcheck.lua (which C math functions differ from LuaJIT's)
+  bridge.register("mathcheck", function(args)
+    return require("sim.mathcheck").run(args.n or 20000)
+  end)
+  -- get_path{path}: a plain value of the world's state (probes: what differs)
+  bridge.register("get_path", function(args)
+    local t = assert(G.W, "world not ready")
+    for _, k in ipairs(args.path or {}) do
+      t = t[k] ~= nil and t[k] or t[tonumber(k) or k]
+      if type(t) ~= "table" then break end
+    end
+    if type(t) == "table" then return { table = true } end
+    return { v = t, s = string.format("%.17g", tonumber(t) or 0), str = tostring(t) }
+  end)
+  -- hash_parts{path}: world.hash_parts (where two runtimes' states differ)
+  bridge.register("hash_parts", function(args)
+    local W = assert(G.W, "world not ready")
+    return require("sim.world").hash_parts(W, args.path or {})
+  end)
   -- v3_bench{hours} (probes): advance the world `hours` synchronously; the sim's own cost in this
   -- runtime (ms per game hour), without the view. Moves the world on (a probe, not a game action).
   bridge.register("v3_bench", function(args)

@@ -24,6 +24,7 @@
 -- reckons it in its own need-days, M.score), trades, last (hour of the last dealing), ev_ab, ev_ba
 -- (the last relief each way: the cause of a gift that repays it) }. Lookups by key only (no pairs()
 -- in logic).
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local events = require("sim.causality.events")
@@ -36,7 +37,7 @@ local cotag = require("sim.society.cotag")
 local crafts = require("sim.society.crafts")
 
 local M = {}
-local floor, min, max, ceil, log = math.floor, math.min, math.max, math.ceil, math.log
+local floor, min, max, ceil, log = math.floor, math.min, math.max, math.ceil, dmath.log
 
 -- Set by sim/society/init.lua: mobility.depart (callbacks avoid require cycles).
 M.depart = function() end

@@ -1,5 +1,6 @@
 -- Worldgen terrain: plates, boundaries, continent/island masks, elevation, upwelling.
 -- (02_WORLD_MODEL.md §2 "World generation requirements"). Deterministic per (seed, attempt).
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local rng = require("sim.rng")
 local noise = require("sim.worldgen.noise")
 local cfgmod = require("sim.config")
@@ -48,7 +49,7 @@ local function rand_unit(seed, stream, a, b)
   local z = rng.float(seed, stream, a, b, 1) * 2 - 1
   local t = rng.float(seed, stream, a, b, 2) * 2 * math.pi
   local r = sqrt(1 - z * z)
-  return r * math.cos(t), z, r * math.sin(t)   -- y is the pole axis
+  return r * dmath.cos(t), z, r * dmath.sin(t)   -- y is the pole axis
 end
 
 -- Grow a landmass from `center` to `target` cells into free cells (mask[c]==0), never touching
@@ -63,7 +64,7 @@ local function grow(g, mask, id, center, target, seed, attempt, rough, forbid_po
   local function cost(c)
     local d = X[c] * cx + Y[c] * cy + Z[c] * cz
     if d > 1 then d = 1 end
-    local ang = math.acos(d)
+    local ang = dmath.acos(d)
     local nz = noise.fbm(seed, 300 + id * 7 + attempt * 31, X[c], Y[c], Z[c], 2.6, 4, 0.6)
     local pol = 0
     if forbid_polar and abs(Y[c]) > 0.9 then pol = 1 end
@@ -176,7 +177,7 @@ function terrain.generate(W, attempt)
       local ok = true
       for i = 1, #centres do
         local d = X[c] * X[centres[i]] + Y[c] * Y[centres[i]] + Z[c] * Z[centres[i]]
-        if math.acos(max(-1, min(1, d))) < cfg.continent_min_sep[K] then ok = false end
+        if dmath.acos(max(-1, min(1, d))) < cfg.continent_min_sep[K] then ok = false end
       end
       if ok then centres[#centres + 1] = c end
     end

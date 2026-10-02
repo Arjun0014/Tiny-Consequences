@@ -4,10 +4,11 @@
 -- et al. (1995) CBM form: cos w0 = -(sin p + sin(lat) sin(decl)) / (cos(lat) cos(decl)).
 -- Longitudes increase eastward (the planet turns toward +lon), so local solar time is
 -- UTC + lon/15 degrees and the subsolar point moves toward -lon as the UTC hour advances.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 
 local M = {}
-local sin, cos, acos, asin, pi, floor = math.sin, math.cos, math.acos, math.asin, math.pi, math.floor
+local sin, cos, acos, asin, pi, floor = dmath.sin, dmath.cos, dmath.acos, dmath.asin, math.pi, math.floor
 local DEG = pi / 180
 
 M.DAYS_PER_YEAR = 336

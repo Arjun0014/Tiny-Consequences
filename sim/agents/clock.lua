@@ -1,6 +1,7 @@
 -- The v3 calendar (D-078): one planet step = one game day; a year is 48 days in 4 seasons of 12.
 -- Sun position uses the v2 daylight model with the day of year mapped onto its 336-day cycle, so
 -- day length and seasons follow latitude exactly as before.
+local sfmt = require("sim.fmt").format   -- (the same text in every runtime, S14)
 local daylight = require("sim.society.daylight")
 
 local M = {}
@@ -45,7 +46,7 @@ end
 -- "Day 7 of spring, year 2" style label.
 function M.label(t)
   local d = M.doy(t)
-  return string.format("Day %d of %s, year %d", d % 12 + 1, M.season(t), M.year(t))
+  return sfmt("Day %d of %s, year %d", d % 12 + 1, M.season(t), M.year(t))
 end
 
 return M

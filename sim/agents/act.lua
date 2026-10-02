@@ -9,6 +9,9 @@
 --   { op = "pick", what, from, ref, n }       { op = "drop", what, to, ref }
 -- Person action fields: act ("walk" | work kind | "pick" | "drop"), t0, t1, x, y (at t0), mv (path),
 -- spd, fx, fy (facing), inside (building id while indoors), carry, camt.
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
+local dsq = dmath.sq
+local sfmt = require("sim.fmt").format   -- (the same text in every runtime, S14)
 local cfgmod = require("sim.config")
 local nav = require("sim.agents.nav")
 local mapm = require("sim.agents.map")
@@ -409,7 +412,7 @@ WORK.hand = function(W, s, p, st, f)
   local ib, q = V.people[st.babe or 0], V.people[st.ref or 0]
   if not ib or not ib.alive or not q or not q.alive or p.babe ~= ib.id then return end
   if q.babe ~= 0 or q.act == "sleep" then return end
-  if not (q.inside == p.inside or (q.inside == 0 and (q.x - p.x) ^ 2 + (q.y - p.y) ^ 2 < 0.004)) then return end
+  if not (q.inside == p.inside or (q.inside == 0 and dsq(q.x - p.x) + dsq(q.y - p.y) < 0.004)) then return end
   if kin.give(W, ib, q) then
     people.remember(q, W.S.v3.now or W.hour, "Minding " .. ib.name .. " for " .. p.name)
     if M.interrupt_hook then M.interrupt_hook(W, q, (W.S.v3.now or W.hour) + 0.02, "Minding " .. ib.name) end
@@ -952,7 +955,7 @@ WORK.stalk = function(W, s, p, st, f)
   local c = C()
   local now = W.S.v3.now or W.hour
   local qx, qy = wild.pos(w, now)
-  local d = sqrt((qx - p.x) ^ 2 + (qy - p.y) ^ 2)
+  local d = sqrt(dsq(qx - p.x) + dsq(qy - p.y))
   p.sk_hunt = p.sk_hunt or 0.2
   people.practice(p, "sk_hunt", st.dur * 0.5)
   if d <= c.hunt_throw * 1.4 then
@@ -1441,12 +1444,12 @@ WORK.deal = function(W, s, p, st, f)
   -- memories
   local q1 = V.people[hh_b and hh_b.members[1] or 0]
   local who = hh_b and q1 and ("the " .. q1.surname .. " household") or (s.name .. "'s stores")
-  people.remember(p, now, string.format("Traded %s for %s with %s at %s", econ.amount(qx, X), econ.amount(qh, H), who, s.name))
+  people.remember(p, now, sfmt("Traded %s for %s with %s at %s", econ.amount(qx, X), econ.amount(qh, H), who, s.name))
   if hh_b then
     for _, id in ipairs(hh_b.members) do
       local q = V.people[id]
       if q and q.alive and people.stage(q, now) == "adult" then
-        people.remember(q, now, string.format("Got %s from %s of %s for %s", econ.amount(qx, X), p.name, home.name, econ.amount(qh, H)))
+        people.remember(q, now, sfmt("Got %s from %s of %s for %s", econ.amount(qx, X), p.name, home.name, econ.amount(qh, H)))
       end
     end
   end
@@ -1463,7 +1466,7 @@ WORK.ask = function(W, s, p, st, f)
   local now = V.now or W.hour
   local q = min(tr.gift or 0, g.stock.grain or 0)
   if q < 0.5 then
-    people.remember(p, now, string.format("Asked %s for food: they had none to give us", s.name))
+    people.remember(p, now, sfmt("Asked %s for food: they had none to give us", s.name))
     return
   end
   g.stock.grain = g.stock.grain - q
@@ -1487,7 +1490,7 @@ WORK.ask = function(W, s, p, st, f)
   r.owed_us = (r.owed_us or 0) - repay
   r.owe_them = (r.owe_them or 0) + q - repay
   r2.owed_us = (r2.owed_us or 0) + q - repay
-  people.remember(p, now, string.format("%s gave us %s in our need", s.name, econ.amount(q, "grain")))
+  people.remember(p, now, sfmt("%s gave us %s in our need", s.name, econ.amount(q, "grain")))
 end
 
 -- Driving wolves off a pen (D-105): shouting, a torch, a stick; any wolf of a pack still near the
@@ -1498,7 +1501,7 @@ WORK.drive_off = function(W, s, p, st, f)
   for _, w in ipairs(s.wildlife.animals) do
     if w.alive and w.pred and not w.done then
       local wx, wy = wild.pos(w, W.S.v3.now or W.hour)
-      if (wx - p.x) ^ 2 + (wy - p.y) ^ 2 < 0.12 then wild.pack_flee(W, s, w, W.S.v3.now or W.hour, p) end
+      if dsq(wx - p.x) + dsq(wy - p.y) < 0.12 then wild.pack_flee(W, s, w, W.S.v3.now or W.hour, p) end
     end
   end
 end
@@ -1634,14 +1637,14 @@ DROP.any = function(W, s, p, st)
       hh_a.gave[hh_b.id] = (hh_a.gave[hh_b.id] or 0) + val
       s.acc.gifts = (s.acc.gifts or 0) + 1
       local q1 = V.people[hh_b.members[1] or 0]
-      people.remember(p, now, string.format("Took %s to the %s household", econ.amount(gv, gave), q1 and q1.surname or "neighbour"))
+      people.remember(p, now, sfmt("Took %s to the %s household", econ.amount(gv, gave), q1 and q1.surname or "neighbour"))
       for _, id in ipairs(hh_b.members) do
         local q = V.people[id]
         if q and q.alive and people.stage(q, now) ~= "infant" then
           people.bond(q, p, 0.05)
           people.bond(p, q, 0.03)
           if people.stage(q, now) == "adult" then
-            people.remember(q, now, string.format("%s brought us %s", p.name, econ.amount(gv, gave)))
+            people.remember(q, now, sfmt("%s brought us %s", p.name, econ.amount(gv, gave)))
           end
         end
       end

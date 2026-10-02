@@ -3,6 +3,7 @@
 -- neolocal pattern: no home, no marriage, no births), households, occupations and memories.
 -- Rolls are keyed by the person (a fixed random fraction u added to one hash per village-week:
 -- a Weyl offset, cheap and local, D-021).
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local events = require("sim.causality.events")
@@ -13,7 +14,7 @@ local crafts = require("sim.society.crafts")
 local M = {}
 local herds = require("sim.society.herds")
 local friends = require("sim.society.friends")
-local floor, min, max, exp = math.floor, math.min, math.max, math.exp
+local floor, min, max, exp = math.floor, math.min, math.max, dmath.exp
 local PHI, PHI2, PHI3 = 1.6180339887498949, 2.6180339887498949, 4.2360679774997898
 
 local function age_of(p, hour) return (hour - p.born) / 8064 end
@@ -168,7 +169,7 @@ function M.weekly(W, v)
           local nf = (n - 0.55) / 0.3
           if nf > 1 then nf = 1 elseif nf < 0 then nf = 0 end
           local pday = cfg.conceive_day * af * nf * gcap
-          local pweek = 1 - (1 - pday) ^ 7
+          local pweek = 1 - dmath.pow(1 - pday, 7)
           csum, cn, cnf = csum + pweek, cn + 1, cnf + nf
           if (ub + p.u * PHI) % 1 < pweek then
             if (ub + p.u * PHI3) % 1 < cfg.fetal_loss then

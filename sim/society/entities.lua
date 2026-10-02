@@ -11,6 +11,7 @@
 -- (05 §5): a person = (village founding cell, birth hour, index), a household = (village key,
 -- formation hour, index), a building = (village key, lot, start hour), a boat = (village key,
 -- build hour, index).
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local names = require("content.names")
@@ -235,7 +236,7 @@ function M.fade_memories(p, f)
     -- (the worst things are remembered longest: a famine for decades, a smoky week for a year)
     local s0 = mem[i + 1]
     local w = s0 * 1.3
-    local s = s0 * f ^ (1 - 0.95 * (w < 1 and w or 1))
+    local s = s0 * dmath.pow(f, 1 - 0.95 * (w < 1 and w or 1))
     if s >= 0.05 then
       k = k + 2
       mem[k - 1] = mem[i]

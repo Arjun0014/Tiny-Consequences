@@ -1,13 +1,15 @@
 -- Life courses (docs/v3/10_AGENTS.md §7), run once a game day at the planet step: growing up
 -- (apprentices find a mentor, adults a role), conception and births (a real infant entity),
 -- deaths (age hazard, starvation, cold), courtship and marriage (a couple needs a home).
+local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
+local sfmt = require("sim.fmt").format   -- (the same text in every runtime, S14)
 local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local people = require("sim.agents.people")
 local events = require("sim.causality.events")
 
 local M = {}
-local floor, max, min, exp = math.floor, math.max, math.min, math.exp
+local floor, max, min, exp = math.floor, math.max, math.min, dmath.exp
 local function C() return cfgmod.V3 end
 
 local function u(W, p, purpose, day)
@@ -267,7 +269,7 @@ function M.drown(W, p, from, to)
   for _, id in ipairs(W.S.v3.households[p.hh] and W.S.v3.households[p.hh].members or {}) do
     local q = W.S.v3.people[id]
     if q and q.alive and q ~= p and people.stage(q, now) ~= "infant" then
-      people.remember(q, now, string.format("%s was lost at sea between %s and %s", p.name, from, to))
+      people.remember(q, now, sfmt("%s was lost at sea between %s and %s", p.name, from, to))
     end
   end
   kill(W, s, p, "drowned", "lost at sea")
