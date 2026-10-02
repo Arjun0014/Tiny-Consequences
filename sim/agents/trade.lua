@@ -158,6 +158,34 @@ function M.sea_gate(W, s, c)
   return mapm.tile_xy(s, best)
 end
 
+-- The weather on the sea way today (the first, middle and last of its cells): wet days slow the
+-- boat; the risk of foundering in a squall grows with wet weather, a worn boat and an unskilled
+-- skipper (D-102; here since S18 so that moving households weigh it too).
+local WXR = {}
+function M.sea_wet(W, route, now)
+  local wd = require("sim.society.weather_day")
+  local cs = route.cells
+  return wd.get(W, cs[1], now, WXR).wet or wd.get(W, cs[floor((#cs + 1) / 2)], now, WXR).wet or wd.get(W, cs[#cs], now, WXR).wet
+end
+function M.sea_risk(W, route, boat, p, now)
+  local c = C()
+  local hrs = route.len / c.sail_speed
+  local k = M.sea_wet(W, route, now) and c.sea_wet_k or 1
+  return hrs * c.sea_squall * k * (2 - (boat.cond or 1)) * (1.3 - 0.6 * (p.sk_fish or 0.3))
+end
+-- A storm or gale at sea today at planet cell c (the planet's daily weather, D-059): no sailing.
+local WXS = {}
+function M.sea_storm(W, c, now)
+  return require("sim.society.weather_day").get(W, c, now, WXS).storm
+end
+-- (S18) A storm or gale anywhere along the sea way today (its first, middle and last cells): boats
+-- stay in. Rain alone does not keep them in - at sea it rains somewhere along a way on most days -
+-- it slows them and makes a squall likelier (sea_wet, sea_risk).
+function M.sea_rough(W, route, now)
+  local cs = route.cells
+  return M.sea_storm(W, cs[1], now) or M.sea_storm(W, cs[floor((#cs + 1) / 2)], now) or M.sea_storm(W, cs[#cs], now)
+end
+
 -- (S17) A settlement appeared (or went): the partners by road and by sea are worked out again.
 function M.forget(W)
   for k in pairs(PARTNERS) do PARTNERS[k] = nil end

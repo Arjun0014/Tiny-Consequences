@@ -664,7 +664,7 @@ end
 function M.own_boat(s, hh)
   local c = C()
   for _, boat in ipairs(s.boats or {}) do
-    if boat.owner == hh.id and not boat.lost and (boat.cond or 1) > c.boat_unsafe + 0.15 and boat.crew == 0 and not boat.away then
+    if boat.owner == hh.id and not boat.lost and not boat.move and (boat.cond or 1) > c.boat_unsafe + 0.15 and boat.crew == 0 and not boat.away then
       return boat
     end
   end

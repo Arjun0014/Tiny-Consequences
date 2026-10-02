@@ -1008,7 +1008,6 @@ C.V3 = {
   -- (D-102) sea trade: reach (local units of sea way), a boat under sail and oars, its hold in loads
   sea_reach = 40, sail_speed = 1.1, boat_hold = 3,
   sea_squall = 0.00025, sea_wet_k = 3,    -- chance a voyage hour of foundering (fair day; x on a wet day; worn boats and unskilled skippers more)
-  sea_wet_h = 8,
   nap_h = 4,
   relief_days = 8,
   -- (S16, R5) households moving away: hardship (village food under mig_hunger_days days, hungry
@@ -1018,6 +1017,16 @@ C.V3 = {
   -- they pack for mig_pack_h hours; each grown-up carries up to mig_carry FU of the household's food
   mig_hunger_days = 6, mig_homeless = 0.5, mig_food_days = 30, mig_min_push = 0.35, mig_days = 3,
   mig_hold = 0.45, mig_road_hour = 0.012, mig_threshold = 0.35, mig_pack_h = 10, mig_carry = 10,
+  -- (S18, R5) moving by sea in the household's own boat (migrate.sea_plan): boat_places places in a
+  -- boat (a grown-up 1, a child 0.5, a babe in arms 0, a small beast 1, a load of goods 0.5), at most
+  -- mig_sea_beasts beasts; a skipper is a fisher or a grown-up with sk_fish >= skipper_skill; an
+  -- hour at sea weighs mig_sea_hour; the sea is dreaded (mig_sea_dread), more in winter
+  -- (mig_sea_winter) and by the chance of foundering x mig_sea_risk_k; they sail from mig_sea_dawn
+  -- local; the skipper waits at most sea_board_wait hours at the dock for everyone and puts the
+  -- sailing off to the next morning (a storm or gale along the way, someone missing)
+  -- at most mig_sea_tries times
+  boat_places = 7, mig_sea_beasts = 4, skipper_skill = 0.4, mig_sea_hour = 0.012, mig_sea_dread = 0.05,
+  mig_sea_winter = 0.25, mig_sea_risk_k = 20, mig_sea_dawn = 7, sea_board_wait = 3, mig_sea_tries = 4,
   -- (S16, R4) courting: a man with nobody to marry at home goes to a neighbour within court_road_h
   -- hours' walk with this chance a courtship round; he spends court_h meeting its people; a bride
   -- sets off with him court_wait_h after the match

@@ -11,13 +11,22 @@
 -- become its people; they lodge with kin there (or a household with room) until the house the
 -- village plans for them is built (settle.lua plan_houses). Their old house stands empty for a
 -- couple waiting for one. No village is made out of nothing: a household goes to where people live.
---   hh.migrate = { to, from, depart, why, decided, lead = { [kind] = person id }, arrived }
+-- (S18) By sea: a household with its own sound boat and someone to sail it may go over the water
+-- to a village it knows of (news heard, kin there): the boat has room for so many (a grown-up a
+-- place, a child half, a babe in arms none), a few small beasts (sheep, goats, a young pig: a place
+-- each; never cattle or grown pigs) and a load or two of the household's goods; they provision the
+-- passage from the larder; carry the goods and lead the beasts to the dock, wait for everyone and
+-- for weather fit to sail, board, sail, land at the other village's dock and carry the goods up;
+-- the boat is the new village's from then on (theirs still). If it founders, all aboard are lost.
+--   hh.migrate = { to, from, depart, why, decided, lead = { [kind] = person id }, arrived,
+--                  sea = { boat, skipper, hrs, ship = { [kind] = { animal keys } }, loads, boat2 } }
 --   hh.pushd (mornings of hardship running), hh.lodge (host household id while lodging)
 --   p.trip = { to, from, migrate = hh id, lead_kind, packed }
 local cfgmod = require("sim.config")
 local econ = require("sim.agents.econ")
 local people = require("sim.agents.people")
 local rng = require("sim.rng")
+local clock = require("sim.agents.clock")
 local sfmt = require("sim.fmt").format
 
 local M = {}
@@ -114,7 +123,7 @@ function M.daily(W, s, now)
   local partners
   for _, hid in ipairs(s.households) do
     local hh = V.households[hid]
-    if hh and #hh.members > 0 and not hh.migrate then
+    if hh and #hh.members > 0 and (not hh.migrate or hh.migrate.given_up) then
       local push, pwhy = M.push(W, s, hh, now)
       hh.pushd = push >= c.mig_min_push and (hh.pushd or 0) + 1 or 0
       -- (how long a household bears hardship before it thinks of leaving is its own)
@@ -136,13 +145,26 @@ function M.daily(W, s, now)
         local years = (now - (hh.formed or 0)) / 1152
         local hold = c.mig_hold + ((hh.home or 0) ~= 0 and 0.15 or 0) + 0.05 * min(4, max(0, years))
         if hh.found and hh.found.arrived and now - hh.found.arrived < c.found_stay_days * 24 then hold = hold + c.found_stay_hold end
-        local best, bu, bwhy = nil, 0, nil
+        local best, bu, bwhy, bsea = nil, 0, nil, nil
         for _, o in ipairs(partners) do
           if o.alive ~= false and o.id ~= s.id then
             local pull, why = M.pull(W, s, hh, o, now)
             local _, hrs = trade.road(W, s, o)
             local u = push + pull - hold - hrs * c.mig_road_hour
-            if u > bu then best, bu, bwhy = o, u, why end
+            if u > bu then best, bu, bwhy, bsea = o, u, why, nil end
+          end
+        end
+        -- (S18) over the sea in their own boat, to villages they know of
+        if econ.own_boat(s, hh) then
+          for _, o in ipairs(trade.sea_partners(W, s)) do
+            if o.alive ~= false and o.id ~= s.id then
+              local sp = M.sea_plan(W, s, hh, o, now)
+              if sp then
+                local pull, why = M.pull(W, s, hh, o, now)
+                local u = push + pull - hold - sp.hrs * c.mig_sea_hour - c.mig_sea_dread - sp.winter - sp.risk * c.mig_sea_risk_k
+                if u > bu then best, bu, bwhy, bsea = o, u, why, sp end
+              end
+            end
           end
         end
         -- (a little of each household's own mind in it)
@@ -155,13 +177,23 @@ function M.daily(W, s, now)
         end
         if go then
           local depart = now + c.mig_pack_h
+          if bsea then
+            -- (by sea they set off in the morning, to make the most of the daylight on the water)
+            local lh = clock.local_hour(depart, W.grid.lon[s.cell])
+            depart = depart + (c.mig_sea_dawn - lh) % 24
+          end
           hh.migrate = { to = best.id, from = s.id, depart = depart, decided = now,
-            why = "Leaving " .. s.name .. " for " .. best.name .. ": " .. (pwhy or "life is hard here") .. "; " .. (bwhy or ("we will try " .. best.name)) }
-          hh.migrate.lead = M.share_beasts(W, s, hh, best, now)
+            why = "Leaving " .. s.name .. " for " .. best.name .. (bsea and " by sea" or "") .. ": " .. (pwhy or "life is hard here") .. "; " .. (bwhy or ("we will try " .. best.name)) }
+          if bsea then
+            local boat = s.boats[bsea.boat]
+            boat.move = hh.id
+            hh.migrate.sea = { boat = bsea.boat, skipper = bsea.skipper, hrs = bsea.hrs, loads = bsea.loads, room = bsea.room }
+          end
+          hh.migrate.lead = M.share_beasts(W, s, hh, best, now, hh.migrate.sea)
           for _, id in ipairs(hh.members) do
             local p = V.people[id]
             if p and p.alive then
-              people.remember(p, now, sfmt("We decided to leave %s for %s: %s", s.name, best.name, pwhy or "life is hard here"))
+              people.remember(p, now, sfmt("We decided to leave %s for %s%s: %s", s.name, best.name, bsea and " by sea" or "", pwhy or "life is hard here"))
             end
           end
           s.acc.leaving = (s.acc.leaving or 0) + 1
@@ -171,10 +203,76 @@ function M.daily(W, s, now)
   end
 end
 
+-- (S18) How many of household hh's people live at village o (parents, children, partners).
+local function kin_at(W, hh, o)
+  local V = W.S.v3
+  local kin = 0
+  for _, id in ipairs(hh.members) do
+    local p = V.people[id]
+    if p and p.alive then
+      for _, k in ipairs({ p.mother, p.father, p.partner }) do
+        local q = V.people[k or 0]
+        if q and q.alive and q.sett == o.id then kin = kin + 1 end
+      end
+      for _, k in ipairs(p.kids or {}) do
+        local q = V.people[k]
+        if q and q.alive and q.sett == o.id then kin = kin + 1 end
+      end
+    end
+  end
+  return kin
+end
+M.kin_at = kin_at
+
+-- (S18) What household hh of village s would need to move to o over the sea, or nil: its own sound
+-- boat at the dock, someone of it to sail it (a fisher, or a grown-up handy with boats), room in
+-- the boat for all of it (boat_places: a grown-up a place, a child half, a babe in arms none), food
+-- in its larder for the passage, and o a village it knows of (news heard, kin there, kin's offer).
+-- Returns { boat, skipper, hrs, risk, winter, room (places left for beasts and goods), loads }.
+function M.sea_plan(W, s, hh, o, now)
+  local c = C()
+  local V = W.S.v3
+  local trade = require("sim.agents.trade")
+  local boat = econ.own_boat(s, hh)
+  if not boat then return nil end
+  local off = hh.kin_offer
+  if not (s.know and s.know[o.id]) and kin_at(W, hh, o) == 0 and not (off and off.sett == o.id) then return nil end
+  local route = trade.sea_route(W, s, o)
+  if not route then return nil end
+  local skipper, places, mouths = nil, 0, 0
+  for _, id in ipairs(hh.members) do
+    local p = V.people[id]
+    if p and p.alive then
+      local st = people.stage(p, now)
+      if st == "adult" or st == "elder" or st == "apprentice" then places = places + 1
+      elseif st == "child" then places = places + 0.5 end
+      if st ~= "infant" then mouths = mouths + 1 end
+      if (st == "adult" or st == "elder") and (p.role == "fisher" or (p.sk_fish or 0) >= c.skipper_skill)
+        and (not skipper or (p.sk_fish or 0) > (skipper.sk_fish or 0)) then skipper = p end
+    end
+  end
+  if not skipper or places > c.boat_places then return nil end
+  local hrs = route.len / c.sail_speed
+  -- (food for the passage: each walker's bread for its hours and a day more, from the larder)
+  local home = s.buildings[hh.home or 0]
+  local larder = home and ((home.stock.food or 0) + (home.stock.meals or 0) + (home.stock.smoked or 0) + (home.stock.cheese or 0)) or 0
+  if larder < mouths * (hrs / 24 + 1) * 0.7 then return nil end
+  local doy = require("sim.agents.clock").local_doy(now, W.grid.lat[s.cell])
+  local room = c.boat_places - places
+  -- (the risk they weigh: the passage in the wet weather the sea mostly has)
+  local c2 = c.sea_squall * c.sea_wet_k * (2 - (boat.cond or 1)) * (1.3 - 0.6 * (skipper.sk_fish or 0.3))
+  return { boat = boat.id, skipper = skipper.id, hrs = hrs, risk = hrs * c2,
+    winter = doy >= 36 and c.mig_sea_winter or 0, room = room, loads = 0 }
+end
+
 -- The beasts a migrating household takes (the kinds the other village keeps, each led by one of
--- its grown-ups) and gives to kin or neighbours (the rest): { [kind] = person id }.
-function M.share_beasts(W, s, hh, o, now)
+-- its grown-ups) and gives to kin or neighbours (the rest): { [kind] = person id }. (S18) By sea
+-- (`sea`): only a few small beasts, as many as the boat has places left (the breeding ewes and does
+-- first, then the young; a young pig; never cattle or grown pigs): sea.ship[kind] = their keys;
+-- the places they leave are for the household's goods (sea.loads, two loads a place).
+function M.share_beasts(W, s, hh, o, now, sea)
   local stock = require("sim.agents.stock")
+  local c = C()
   local V = W.S.v3
   local lead = {}
   local adults = {}
@@ -184,6 +282,8 @@ function M.share_beasts(W, s, hh, o, now)
     if st == "adult" or st == "elder" or st == "apprentice" then adults[#adults + 1] = p end
   end
   local ai = 1
+  local room = sea and min(c.mig_sea_beasts, floor(sea.room + 1e-6)) or 0
+  if sea then sea.ship = {} end
   for _, kind in ipairs(stock.HERDS) do
     local H = s.herds and s.herds[kind]
     if H then
@@ -191,8 +291,44 @@ function M.share_beasts(W, s, hh, o, now)
       for _, a in ipairs(H.animals) do
         if a.alive and a.owner == hh.id then mine[#mine + 1] = a end
       end
+      local keeps = o.herds and o.herds[kind]
+      if sea and #mine > 0 and keeps and kind ~= "cattle" and room > 0 then
+        -- (what will go in the boat: small beasts, sound ones; the breeding females in their prime
+        -- first, then the young; pigs only young)
+        local cand = {}
+        for _, a in ipairs(mine) do
+          local S = stock.SP(a.sp)
+          local age = stock.age(a, now)
+          local ok = (a.yoke or 0) == 0 and (a.held or 0) == 0 and (a.led or 0) == 0 and a.health > 0.5 and not a.ox
+          if kind == "swine" then ok = ok and age < S.young_years * 2 end
+          if ok then
+            local pri = (a.sex == "f" and age >= S.adult_years and age < S.old_years - 1) and 0 or (age < S.adult_years and 1 or 2)
+            cand[#cand + 1] = { a = a, pri = pri, age = age }
+          end
+        end
+        table.sort(cand, function(x, y)
+          if x.pri ~= y.pri then return x.pri < y.pri end
+          if x.age ~= y.age then return x.age < y.age end
+          return x.a.k < y.a.k
+        end)
+        local ship = {}
+        for i = 1, min(room, #cand) do ship[#ship + 1] = cand[i].a.k end
+        if #ship > 0 and adults[ai] then
+          sea.ship[kind] = ship
+          room = room - #ship
+          lead[kind] = adults[ai].id
+          ai = ai + 1
+          local set = {}
+          for _, k in ipairs(ship) do set[k] = true end
+          local rest = {}
+          for _, a in ipairs(mine) do if not set[a.k] then rest[#rest + 1] = a end end
+          mine = rest
+        end
+        keeps = false
+      elseif sea then
+        keeps = false
+      end
       if #mine > 0 then
-        local keeps = o.herds and o.herds[kind]
         local p = adults[ai]
         if keeps and p then
           lead[kind] = p.id
@@ -213,7 +349,10 @@ function M.share_beasts(W, s, hh, o, now)
             end
           end
           if to ~= 0 then
-            for _, a in ipairs(mine) do a.owner = to end
+            for _, a in ipairs(mine) do
+              a.owner = to
+              a.why_owner = sfmt("Left with the %ss when its people went away", (V.people[V.households[to].members[1] or 0] or {}).surname or "neighbour")
+            end
             local q = V.people[V.households[to].members[1] or 0]
             for _, id in ipairs(hh.members) do
               local p = V.people[id]
@@ -223,6 +362,10 @@ function M.share_beasts(W, s, hh, o, now)
         end
       end
     end
+  end
+  if sea then
+    -- (the places the beasts leave: the household's goods, two loads a place)
+    sea.loads = min(c.boat_hold, floor(max(0, room) * 2 + 1e-6))
   end
   return lead
 end
@@ -322,6 +465,90 @@ function M.arrive(W, o, p, gx, gy, now)
   require("sim.agents.founding").tell(W, p, o)
 end
 
+-- (S18) A beast of household hh that will not come with it (strayed from the drove, too far from
+-- the boat): left with kin who stay, else the household staying with most beasts of its kind.
+function M.leave_beast(W, s, hh, a, kind, now)
+  local V = W.S.v3
+  local H = s.herds and s.herds[kind]
+  local to, best = 0, -1
+  for _, hid in ipairs(s.households) do
+    local h2 = V.households[hid]
+    if hid ~= hh.id and h2 and #h2.members > 0 and not (h2.migrate and not h2.migrate.arrived and not h2.migrate.given_up) and not h2.found then
+      local n = 0
+      for _, b in ipairs(H and H.animals or {}) do if b.alive and b.owner == hid then n = n + 1 end end
+      for _, id in ipairs(hh.members) do
+        local q = V.people[id]
+        if q then for _, qid in ipairs(h2.members) do if people.is_kin(W, q, qid) then n = n + 100 end end end
+      end
+      if n > best then to, best = hid, n end
+    end
+  end
+  if to == 0 then return end
+  local q = V.people[V.households[to].members[1] or 0]
+  a.owner = to
+  a.why_owner = sfmt("Left with the %ss when its people went away without it", q and q.surname or "neighbour")
+end
+
+-- (S18) A boat changes its home: the same boat (its wear, its trips, who owns it, what is in its
+-- hold) is moored at o's dock from now and counted among o's boats; its entry at the old village
+-- is marked moved (never used again, so nothing that pointed at it finds another boat). The food in
+-- its hold leaves the old village's books and enters o's.
+function M.move_boat(W, from, o, boat, hh, now)
+  o.boats = o.boats or {}
+  local k = #o.boats + 1
+  local d = o.dock
+  local nb = { id = k, x = d and d.mx + (k - 1) * 0.012 or boat.x, y = d and d.my or boat.y, crew = 0, owner = hh and hh.id or 0,
+    cond = boat.cond, trips = boat.trips, built = boat.built, cargo = boat.cargo,
+    came = { from = from.id, t = now, old = boat.id, why = "Sailed here by its people, come to live at " .. o.name } }
+  o.boats[k] = nb
+  local food = 0
+  for _, g in ipairs(econ.ORDER) do
+    if econ.GOODS[g].food then food = food + (boat.cargo and boat.cargo[g] or 0) end
+  end
+  if food > 0 then
+    from.acc.moved_out = (from.acc.moved_out or 0) + food
+    o.acc.moved_in = (o.acc.moved_in or 0) + food
+  end
+  boat.lost, boat.owner, boat.crew, boat.mate, boat.away, boat.cargo, boat.riders, boat.move = true, -1, 0, 0, nil, nil, nil, nil
+  boat.moved = { to = o.id, k = k, t = now }
+  return nb
+end
+
+-- (S18) The skipper of household come by sea lands at village o's dock: the household's boat is
+-- o's from now (move_boat); the skipper and everyone of the household ashore become o's people
+-- (arrive); the beasts they brought are lifted out and go to o's herd.
+function M.land(W, o, p, boat, now)
+  local V = W.S.v3
+  local stock = require("sim.agents.stock")
+  local hh = V.households[p.hh]
+  local from = V.settlements[p.sett]
+  local mg = hh and hh.migrate
+  local d = o.dock
+  local gx, gy = d and d.dx or p.x, d and d.dy or p.y
+  local nb = M.move_boat(W, from, o, boat, hh, now)
+  if mg and mg.sea then mg.sea.boat2 = nb.id end
+  local list = { p }
+  for _, id in ipairs(hh and hh.members or {}) do
+    local q = V.people[id]
+    if q and q.alive and q ~= p and q.at == o.id and people.stage(q, now) ~= "infant" then list[#list + 1] = q end
+  end
+  for _, q in ipairs(list) do
+    M.arrive(W, o, q, gx, gy, now)
+    local tr = q.trip
+    local kind = tr and tr.lead_kind
+    if kind and tr.party and #tr.party > 0 then
+      stock.join_map(W, o, q, kind, gx, gy, now)
+      local L, H = stock.led_by(o, q, kind)
+      for _, a in ipairs(L) do
+        stock.release(W, o, H, a, now, "Come over the sea to " .. o.name .. " with its people: to the herd")
+        a.why_owner = sfmt("Brought over the sea from %s by its people", from and from.name or "afar")
+      end
+      tr.led = {}
+    end
+  end
+  for _, q in ipairs(list) do people.remember(q, now, sfmt("Landed at %s after %s", o.name, from and ("the crossing from " .. from.name) or "the crossing")) end
+end
+
 -- Setting off (p takes the road): every babe of the household is in the arms of one of those
 -- going - its mother if she can, else p, else another grown-up of the household.
 function M.take_babes(W, s, p, now)
@@ -394,6 +621,21 @@ function M.why(W, p, hh)
     if now < mg.depart then return mg.why .. ": packing, then to the gate where " .. gname .. " waits" end
     return mg.why .. ": on the road with " .. gname
   end
+  if mg and not mg.arrived and mg.sea then
+    -- (S18) by sea
+    local now = V.now or W.hour
+    local sk = V.people[mg.sea.skipper or 0]
+    local skn = sk and sk.name or "our skipper"
+    if p.act == "passage" or (p.riding or 0) ~= 0 then return mg.why .. ": at sea in " .. skn .. "'s boat" end
+    if p.act == "voyage" then return mg.why .. ": sailing the household over to " .. oname end
+    if p.boat then return mg.why .. ": rowing the household out" end
+    if tr and tr.lead_kind and now < mg.depart then return mg.why .. ": bringing our beasts to the boat" end
+    if now < mg.depart then
+      if sk == p then return mg.why .. ": loading our goods into the boat" end
+      return mg.why .. ": packing and going down to the dock"
+    end
+    return mg.why .. ": waiting at the dock to sail with " .. skn
+  end
   if mg and not mg.arrived then
     local now = V.now or W.hour
     if tr and tr.lead_kind and now < mg.depart then return mg.why .. ": bringing our beasts to the gate" end
@@ -406,6 +648,7 @@ function M.why(W, p, hh)
   end
   local host = hh and hh.lodge and V.households[hh.lodge]
   local hq = host and V.people[host.members[1] or 0]
+  if mg and mg.sea and p.carry == "pack" then return "Come to live at " .. oname .. " by sea: carrying our things up from the boat" end
   if hq then return "Come to live at " .. oname .. ": settling in with the " .. (hq.surname or "") .. "s until our own house stands" end
   return "Come to live at " .. oname .. ": settling in"
 end

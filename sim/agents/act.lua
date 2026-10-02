@@ -26,7 +26,7 @@ local floor, max, min, sqrt = math.floor, math.max, math.min, math.sqrt
 local function C() return cfgmod.V3 end
 
 local IDLE_KINDS = { sit = true, talk = true, rest = true, eat = true, lunch = true, play = true, wait = true,
-  nurse = true, idle = true, shelter = true, gather = true }
+  nurse = true, idle = true, shelter = true, gather = true, wait_boat = true, passage = true }
 local SKILL_OF = { till = "sk_farm", sow = "sk_farm", harvest = "sk_farm", tend = "sk_farm", thresh = "sk_farm",
   chop = "sk_wood", grub = "sk_wood", build = "sk_build", repair = "sk_build", fish = "sk_fish", mend_boat = "sk_fish" }
 local TOOL_WORK = { till = true, harvest = true, chop = true, grub = true, build = true, repair = true, thresh = true, tend = true,
@@ -79,7 +79,7 @@ local function body(p, dt, kind)
     h = h + c.hunger_idle * dt
   elseif IDLE_KINDS[kind] then
     e = e - c.energy_idle * dt
-    if kind == "rest" or kind == "sit" or kind == "shelter" then e = e + 0.05 * dt end
+    if kind == "rest" or kind == "sit" or kind == "shelter" or kind == "passage" then e = e + 0.05 * dt end
     h = h + c.hunger_idle * dt
   else
     e = e - c.energy_work * dt * (p.elder and c.elder_tire or 1)
@@ -510,6 +510,76 @@ end
 
 WORK.mind_boat = function(W, s, p, st, f) end
 
+-- (S18) Everyone riding in skipper p's boat: the mate (fishing, a trading voyage) and the
+-- passengers (a household moving by sea), in the order they came aboard.
+local RIDERS = {}
+local function riders(W, boat, p)
+  local V = W.S.v3
+  local out = RIDERS
+  for i = #out, 1, -1 do out[i] = nil end
+  local q = (boat.mate or 0) ~= 0 and V.people[boat.mate] or nil
+  if q and q.alive and q.riding == p.id then out[#out + 1] = q end
+  for _, id in ipairs(boat.riders or {}) do
+    local r = V.people[id]
+    if r and r.alive and r.riding == p.id and r ~= q then out[#out + 1] = r end
+  end
+  return out
+end
+M.riders = riders
+
+-- (S18) The skipper of a moving household takes its people aboard at the dock (those gathered
+-- there: the babes come in their carers' arms) and the beasts going with them are lifted in (off
+-- the map with whoever leads them, in the boat until it lands).
+WORK.embark = function(W, s, p, st, f)
+  local V = W.S.v3
+  local B = boats_of(W, p)
+  local boat = B and B[st.boat or 0]
+  local hh = V.households[p.hh]
+  if not boat or not hh or boat.crew ~= p.id then return end
+  local now = V.now or W.hour
+  -- (every babe of the household in the arms of one of those going)
+  require("sim.agents.migrate").take_babes(W, s, p, now)
+  boat.riders = {}
+  local tr = p.trip
+  if tr then tr.embarked = true end
+  for _, id in ipairs(hh.members) do
+    local q = V.people[id]
+    if q and q.alive and q ~= p and q.sett == s.id and not q.at and (q.riding or 0) == 0 and q.act ~= "carried" then
+      q.riding, q.ride_boat = p.id, boat.id
+      q.x, q.y = p.x, p.y
+      q.inside = 0
+      boat.riders[#boat.riders + 1] = q.id
+      if q.trip then q.trip.embarked = true end
+      people.remember(q, now, "Went aboard " .. p.name .. "'s boat with the household")
+      -- (the beasts they lead go in the boat with them)
+      M.load_beasts(W, s, q, hh, now)
+      M.skip_step(W, q)
+    end
+  end
+  M.load_beasts(W, s, p, hh, now)
+end
+
+-- (S18) The beasts q leads are lifted into the boat - those at the dock; one that would not come
+-- down is left with the people who stay.
+function M.load_beasts(W, s, q, hh, now)
+  local kind = q.trip and q.trip.lead_kind
+  if not kind then return end
+  local L, H = stock.led_by(s, q, kind)
+  for _, a in ipairs(L) do
+    local ax, ay = stock.pos(a, now)
+    if nav.dist(ax, ay, q.x, q.y) > C().drove_gather * 2 then
+      people.remove_id(q.trip.led, a.k)
+      stock.release(W, s, H, a, now, "Would not come down to the boat: back to the herd")
+      require("sim.agents.migrate").leave_beast(W, s, hh, a, kind, now)
+    end
+  end
+  stock.leave_map(W, s, q, kind)
+  for _, a in ipairs(q.trip.party or {}) do a.why = "In the boat with " .. q.name end
+end
+
+WORK.wait_boat = function(W, s, p, st, f) end
+WORK.passage = function(W, s, p, st, f) end
+
 -- A voyage (D-102): the boat under sail and oars along the sea way between two villages; at its
 -- end skipper and mate are on the other map, at the water's edge toward where they came from. A
 -- squall may founder the boat on the way (the risk set when it sailed): the boat, its cargo and
@@ -523,25 +593,41 @@ WORK.voyage = function(W, s, p, st, f)
   local boat = B and B[st.boat or 0]
   if not o or not from or not boat then return end
   local home = V.settlements[p.sett]
-  local q = boat.mate ~= 0 and V.people[boat.mate] or nil
-  if q and not (q.alive and q.riding == p.id) then q = nil end
+  -- (S18: everyone aboard - the mate, or a household's people with the babes in their arms)
+  local R = {}
+  for i, q in ipairs(riders(W, boat, p)) do R[i] = q end
   local now = V.now or W.hour
   home.acc.sea_h = (home.acc.sea_h or 0) + st.dur
   if rng_float(W, p, 91) < (st.risk or 0) then
-    -- foundered: the boat, the cargo and the crew
-    boat.lost, boat.owner, boat.crew, boat.mate, boat.away = true, -1, 0, 0, nil
+    -- foundered: the boat, the cargo, everyone aboard and the beasts with them
+    boat.lost, boat.owner, boat.crew, boat.mate, boat.away, boat.move = true, -1, 0, 0, nil, nil
     local food = 0
     for _, g in ipairs(econ.ORDER) do if econ.GOODS[g].food then food = food + (boat.cargo and boat.cargo[g] or 0) end end
     boat.cargo = nil
-    home.acc.lost_sea = (home.acc.lost_sea or 0) + food + (p.prov or 0) + (q and q.prov or 0)
+    local settle = require("sim.agents.settle")
+    local aboard = { p }
+    for _, q in ipairs(R) do aboard[#aboard + 1] = q end
+    for _, q in ipairs(aboard) do
+      local ib = V.people[q.babe or 0]
+      if ib and ib.alive then aboard[#aboard + 1] = ib end
+    end
+    for _, q in ipairs(aboard) do
+      food = food + settle.person_food(q)
+      q.prov = 0
+      if q.trip and q.trip.party then
+        for _, a in ipairs(q.trip.party) do a.act, a.why = "drowned", "Lost at sea with its people" end
+        q.trip.party = {}
+      end
+    end
+    home.acc.lost_sea = (home.acc.lost_sea or 0) + food
     home.acc.wrecks = (home.acc.wrecks or 0) + 1
-    p.prov = 0
-    if q then q.prov = 0 end
     local r = econ.rel(home, o)
     r.lost = r.lost + 1
     if M.drown_hook then
-      if q then M.drown_hook(W, q, from.name, o.name) end
-      M.drown_hook(W, p, from.name, o.name)
+      for i = #aboard, 1, -1 do
+        local q = aboard[i]
+        if q.alive then M.drown_hook(W, q, from.name, o.name) end
+      end
     end
     return
   end
@@ -551,9 +637,11 @@ WORK.voyage = function(W, s, p, st, f)
     local founding = require("sim.agents.founding")
     local route = require("sim.agents.trade").sea_route(W, from, o)
     local how = sfmt("seen from the sea on the way from %s to %s", from.name, o.name)
-    for _, who in ipairs({ p, q }) do if who then founding.note_sea(W, who, route, how, now) end end
+    founding.note_sea(W, p, route, how, now)
+    for _, who in ipairs(R) do founding.note_sea(W, who, route, how, now) end
   end
-  for _, who in ipairs({ p, q }) do
+  table.insert(R, 1, p)
+  for _, who in ipairs(R) do
     if who then
       local old = V.settlements[who.at or who.sett]
       if old and old.visitors then people.remove_id(old.visitors, who.id) end
@@ -614,6 +702,19 @@ WORK.land = function(W, s, p, st, f)
   local B = boats_of(W, p)
   local boat = B and B[p.boat or st.boat or 0]
   local b = s.dock
+  if boat and boat.riders and #boat.riders > 0 then
+    -- (S18) the passengers step ashore (the household's people, the babes in their arms)
+    local V = W.S.v3
+    for _, id in ipairs(boat.riders) do
+      local q = V.people[id]
+      if q and q.alive and q.riding == p.id then
+        q.riding, q.ride_boat = nil, nil
+        q.x, q.y = b.dx + 0.012 * ((id % 5) - 2), b.dy + 0.01
+        q.inside = 0
+        M.skip_step(W, q)
+      end
+    end
+  end
   if boat and (boat.mate or 0) ~= 0 then
     -- the mate steps ashore with their share (half to another household's hand, D-096)
     local q = W.S.v3.people[boat.mate]
@@ -649,6 +750,11 @@ WORK.land = function(W, s, p, st, f)
   end
   p.boat = nil
   if b then p.x, p.y = b.dx, b.dy end
+  if boat and st.migrate and p.trip and p.trip.migrate and s.id ~= p.sett then
+    -- (S18) a household come by sea: ashore at its new village's dock they are its people, and
+    -- their boat is moored here for good
+    require("sim.agents.migrate").land(W, s, p, boat, W.S.v3.now or W.hour)
+  end
 end
 
 -- Mending a boat at the dock (D-087): with the log brought, hours of caulking and new boards.
@@ -2235,6 +2341,17 @@ local function end_trip(W, s, p, st)
     local hh = W.S.v3.households[p.hh]
     if hh and hh.trading == p.id then hh.trading = 0 end
     if s.trading == p.id then s.trading = 0 end
+    local hh2 = W.S.v3.households[p.hh]
+    local sm = hh2 and hh2.migrate and hh2.migrate.sea
+    local mb = sm and sm.boat2 and s.boats and s.boats[sm.boat2]
+    if p.trip.migrate and mb and mb.cargo then
+      -- (S18) anything left in the hold of the boat they came in goes into the house with the last load
+      for _, g in ipairs(econ.ORDER) do
+        local v = mb.cargo[g] or 0
+        if v > 1e-6 then local key = (g == "grain") and "food" or g; b.stock[key] = (b.stock[key] or 0) + v end
+      end
+      mb.cargo = nil
+    end
     if p.trip.sea then
       local boat = s.boats and s.boats[p.trip.boat]
       if boat and boat.trip == p.id then boat.trip = nil end
@@ -2259,13 +2376,44 @@ local function road_bread(W, p)
   local V = W.S.v3
   local hh = V.households[p.hh]
   local st = p.plan[p.pi]
+  -- (S18: at sea, the packs of the household in the same boat)
+  local afloat = p.act == "passage" or p.act == "voyage"
+  local mine = afloat and ((p.riding or 0) ~= 0 and p.riding or p.id) or nil
   for _, id in ipairs(hh and hh.members or {}) do
     local q = V.people[id]
     local sq = q and q.plan[q.pi]
-    if q and q ~= p and q.alive and q.act == "travel" and q.pack and (q.pack.grain or 0) > 0.05 and sq and st
+    if afloat then
+      if q and q ~= p and q.alive and q.pack and (q.pack.grain or 0) > 0.05
+        and (((q.riding or 0) ~= 0 and q.riding == mine) or (q.act == "voyage" and q.id == mine)) then return q end
+    elseif q and q ~= p and q.alive and q.act == "travel" and q.pack and (q.pack.grain or 0) > 0.05 and sq and st
       and sq.to == st.to and sq.site == st.site then return q end
   end
   return nil
+end
+
+-- (S18) One of p's household travelling with them (the same road, the same boat) with provisions
+-- to spare a meal from (the most first), or nil.
+function M.road_prov(W, p)
+  local V = W.S.v3
+  local hh = V.households[p.hh]
+  local st = p.plan[p.pi]
+  local afloat = p.act == "passage" or p.act == "voyage"
+  local mine = afloat and ((p.riding or 0) ~= 0 and p.riding or p.id) or nil
+  local best, bp = nil, C().meal_fu * 1.5
+  for _, id in ipairs(hh and hh.members or {}) do
+    local q = V.people[id]
+    if q and q ~= p and q.alive and (q.prov or 0) > bp then
+      local with
+      if afloat then
+        with = ((q.riding or 0) ~= 0 and q.riding == mine) or (q.act == "voyage" and q.id == mine)
+      else
+        local sq = q.plan[q.pi]
+        with = q.act == "travel" and sq and st and sq.to == st.to and sq.site == st.site
+      end
+      if with then best, bp = q, q.prov end
+    end
+  end
+  return best
 end
 
 -- (S17) The nearest walkable tile on the village's own ground (s.bank) to stranded person p, found
@@ -2298,7 +2446,8 @@ local LEISURE = { rest = true, talk = true, visit = true, sit_out = true }
 local function finish(W, s, p, now, f)
   local st = p.plan[p.pi]
   local dt = now - p.t0
-  if (p.act == "travel" or ((p.act == "voyage" or p.act == "ride" or p.act == "mind_boat") and (p.prov or 0) > 0)) and dt > 0 then
+  if (p.act == "travel" or p.act == "passage" or ((p.act == "voyage" or p.act == "ride" or p.act == "mind_boat" or p.act == "wait_boat") and (p.prov or 0) > 0)
+    or (p.act == "voyage" and p.trip and p.trip.migrate)) and dt > 0 then
     -- the provisions from home, eaten along the road hour by hour when hungry (D-097; eaten
     -- before the leg's hunger was charged, a long leg starved its walker: D-100)
     local c = C()
@@ -2313,7 +2462,7 @@ local function finish(W, s, p, now, f)
         p.prov = p.prov - m
         p.hunger = max(0, p.hunger - m / c.meal_fu * c.meal)
         hs.acc.eaten = (hs.acc.eaten or 0) + m
-      elseif p.hunger > 0.45 and p.act == "travel" then
+      elseif p.hunger > 0.45 and (p.act == "travel" or p.act == "passage" or (p.act == "voyage" and p.trip and p.trip.migrate)) then
         -- (S17) no provisions left: bread from the pack - their own, or that of one of their
         -- household walking the same road
         local q = road_bread(W, p)
@@ -2323,6 +2472,16 @@ local function finish(W, s, p, now, f)
           q.camt = pack_load(q)
           p.hunger = max(0, p.hunger - m / c.meal_fu * c.meal)
           hs.acc.eaten = (hs.acc.eaten or 0) + m
+        elseif p.act ~= "travel" or (p.trip and (p.trip.migrate or p.trip.found)) then
+          -- (S18) no bread in any pack: a share of the provisions of one of their household with them
+          -- (a family on the road or in the boat shares what it has)
+          q = M.road_prov(W, p)
+          if q then
+            local m = min(q.prov - c.meal_fu * 0.5, c.meal_fu)
+            q.prov = q.prov - m
+            p.hunger = max(0, p.hunger - m / c.meal_fu * c.meal)
+            hs.acc.eaten = (hs.acc.eaten or 0) + m
+          end
         end
       end
     end
@@ -2418,11 +2577,14 @@ function M.start(W, s, p, now)
           h = START.work
           p.why = st.why
         elseif far > C().drove_gather then
+          local hh = (tr.migrate or tr.found) and W.S.v3.households[p.hh]
           for _, a in ipairs((stock.led_by(s, p, G.beast))) do
             local ax, ay = stock.pos(a, now)
             if nav.dist(ax, ay, p.x, p.y) > C().drove_gather then
               people.remove_id(tr.led, a.k)
               stock.release(W, s, s.herds[G.beast], a, now, "Strayed from the drove: back to the herd")
+              -- (S18) its people are going for good: it is left with those who stay
+              if hh then require("sim.agents.migrate").leave_beast(W, s, hh, a, G.beast, now) end
             end
           end
         end

@@ -19,6 +19,7 @@ local floor, max, min, sqrt, abs = math.floor, math.max, math.min, math.sqrt, ma
 local function C() return cfgmod.V3 end
 local trade = require("sim.agents.trade")
 local econ = require("sim.agents.econ")
+local dsq = require("sim.dmath").sq
 local NOW = 0
 
 local function clock_str(h)
@@ -642,7 +643,7 @@ local function own_boat(s, p, c)
   if not s.boats then return nil end
   for i = 1, #s.boats do
     local b = s.boats[i]
-    if b.crew == 0 and not b.lost and not b.trip and not b.away and (b.owner == p.hh or b.owner == 0) and (b.cond or 1) > c.boat_unsafe then return b end
+    if b.crew == 0 and not b.lost and not b.trip and not b.away and not b.move and (b.owner == p.hh or b.owner == 0) and (b.cond or 1) > c.boat_unsafe then return b end
   end
   return nil
 end
@@ -696,10 +697,7 @@ local function boat_cargo(W, p)
   return n
 end
 -- A storm or gale at sea today at planet cell c (the planet's daily weather, D-059): no sailing.
-local WXS = {}
-local function sea_storm(W, c, now)
-  return require("sim.society.weather_day").get(W, c, now, WXS).storm
-end
+local sea_storm = trade.sea_storm
 M.sea_storm = sea_storm
 
 local function trade_candidate(W, s, p, ctx, now, fat)
@@ -717,8 +715,7 @@ local function trade_candidate(W, s, p, ctx, now, fat)
   if sp and (p.role == "fisher" or (p.sk_fish or 0) > 0.4) and (sp.pool == "house" or vfree) and (not plan or sp.net > plan.net) then
     local o = W.S.v3.settlements[sp.o]
     local r = o and trade.sea_route(W, s, o)
-    if r and not sea_storm(W, r.cells[1], now) and econ.own_boat(s, hh)
-      and (sp.hours <= C().sea_wet_h or not sea_wet(W, r, now)) then plan, which = sp, 3 end
+    if r and not trade.sea_rough(W, r, now) and econ.own_boat(s, hh) then plan, which = sp, 3 end
   end
   if not plan then return end
   local o = W.S.v3.settlements[plan.o]
@@ -935,6 +932,8 @@ local function crew_candidate(W, s, p, ctx, now, fat)
   if not s.dock or not s.boats or ctx.rain == 2 then return end
   local st = ctx.stage
   if not (st == "adult" or st == "apprentice" or (st == "child" and ctx.age >= c.help_age + 4)) then return end
+  -- (S18: not with a babe in arms - it would go hungry at sea)
+  if ctx.babe then return end
   for _, boat in ipairs(s.boats) do
     local q = (boat.mate_want or 0) ~= 0 and (boat.mate or 0) == 0 and W.S.v3.people[boat.mate_want]
     if q and q.alive and q ~= p and q.act == "wait_mate" and q.boat == nil then
@@ -2611,6 +2610,27 @@ local function trip_legs(W, s, p, ctx, now)
   end
 end
 
+-- (S18) The larder shared out among a moving household's walkers: each takes their part for the
+-- way before anyone packs the rest (from a house they lodge in, only their part of it, by mouths).
+-- Returns the provisions and the bread to pack for this walker.
+local function move_share(W, hh, home, mg, now, prov_want, carry)
+  local V = W.S.v3
+  mg.packed = (mg.packed or 0) + 1
+  local walkers = 0
+  for _, id in ipairs(hh.members) do
+    local q = V.people[id]
+    if q and q.alive and people.stage(q, now) ~= "infant" then walkers = walkers + 1 end
+  end
+  local others = max(0, walkers - mg.packed)
+  local part = 1
+  local owner = V.households[home.hh or 0]
+  if owner and owner ~= hh then part = #hh.members / max(1, #hh.members + #owner.members) end
+  local food = ((home.stock.meals or 0) + (home.stock.food or 0)) * part
+  local prov = min(prov_want, food / (others + 1))
+  local pack = max(0, min(carry, (home.stock.food or 0) * part - prov - prov_want * others))
+  return prov, pack
+end
+
 -- (S16, R5) A household moving to another village (sim/agents/migrate.lua). From home: each
 -- grown-up packs what they can carry of the household's food and provisions for the road, the one
 -- who leads a kind of the household's beasts takes each of them by the halter, and all gather at
@@ -2628,13 +2648,29 @@ local function migrate_legs(W, s, p, ctx, now)
   local o = V.settlements[tr.to]
   local here = p.at or p.sett
   local grown = ctx.stage == "adult" or ctx.stage == "elder" or ctx.stage == "apprentice"
+  if mg and mg.given_up and tr.migrate then
+    -- (S18) the move was given up: home with what was packed
+    local home = ctx.home
+    if home and here == p.sett then
+      go(pl, home.dx, home.dy, "home", home.id)
+      pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, trip_end = true }
+      return "Unpack: we are staying", "home"
+    end
+    p.trip = nil
+    return "Stay at " .. home_s.name, home_s.name
+  end
+  if mg and mg.sea and not mg.arrived and not tr.move then
+    -- (S18) by sea, in the household's own boat
+    return M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
+  end
   if here == tr.from and not tr.back and mg and not mg.arrived then
     local home = ctx.home
     if home and p.carry ~= "pack" and not tr.packed then
       tr.packed = true
+      local prov, pack = move_share(W, hh, home, mg, now, c.trade_prov * 2, grown and c.mig_carry or 0)
       if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
-      pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id, n = c.trade_prov * 2 }
-      if grown then pl[#pl + 1] = { op = "pick", what = "pack", good = "grain", ref = home.id, n = c.mig_carry } end
+      pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id, n = prov }
+      if grown and pack > 0.05 then pl[#pl + 1] = { op = "pick", what = "pack", good = "grain", ref = home.id, n = pack } end
     end
     -- the household's beasts of the kind this one leads, each taken by the halter where it is
     local kind
@@ -2664,6 +2700,35 @@ local function migrate_legs(W, s, p, ctx, now)
   -- arrived: to the house they lodge in, the food into its larder
   local b = hh and o.buildings[hh.home or 0]
   if b then
+    -- (S18) come by sea: what the boat brought carried up from the dock a load at a time (the
+    -- household's grown-ups, each their share of the loads)
+    local sea = mg and mg.sea
+    local boat = sea and sea.boat2 and o.boats and o.boats[sea.boat2]
+    local od = o.dock
+    if boat and boat.cargo and od and grown and p.carry ~= "pack" then
+      local loads, mine = 0, 0
+      for _, g in ipairs(econ.ORDER) do
+        local q = boat.cargo[g] or 0
+        if q > 1e-3 then loads = loads + q * econ.GOODS[g].wt end
+      end
+      local hands = 0
+      for _, id in ipairs(hh.members) do
+        local q = V.people[id]
+        local st = q and q.alive and people.stage(q, now)
+        if st == "adult" or st == "elder" or st == "apprentice" then hands = hands + 1 end
+      end
+      local share = math.ceil(loads / max(1, hands) - 1e-6)
+      for _, g in ipairs(econ.ORDER) do
+        local q = boat.cargo[g] or 0
+        while q > 1e-3 and mine < share do
+          go(pl, od.dx, od.dy, "the dock")
+          pl[#pl + 1] = { op = "pick", what = "cargo", good = g, boat = boat.id }
+          go(pl, b.dx, b.dy, b.label or "the house we lodge in", b.id)
+          pl[#pl + 1] = { op = "drop", to = "home", ref = b.id }
+          q, mine = q - 1 / econ.GOODS[g].wt, mine + 1
+        end
+      end
+    end
     go(pl, b.dx, b.dy, b.label or "the house we lodge in", b.id)
     pl[#pl + 1] = { op = "drop", to = "home", ref = b.id, trip_end = true }
     return "Settle in at " .. o.name, o.name
@@ -2675,6 +2740,189 @@ local function migrate_legs(W, s, p, ctx, now)
   p.trip = nil
   return "Camp at " .. o.name, o.name
 end
+
+-- (S18, R5) A household moving by sea in its own boat (migrate.sea_plan), from wherever it stands.
+-- At home: each packs provisions for the passage and the grown-ups bread (the skipper carries the
+-- household's goods to the boat a load at a time instead: sea.loads); whoever leads a kind of the
+-- household's beasts takes the ones that will go in the boat (sea.ship) by the halter; all to the
+-- dock, waiting there for the hour agreed. At the dock: the skipper waits for everyone (the babes in
+-- their carers' arms) and for weather fit to sail; then boards and takes them aboard with the
+-- beasts (WORK.embark), rows out to the open sea and sails (a voyage that moves everyone aboard).
+-- At the other village's dock: landing (WORK.land: everyone ashore, the household and its boat that
+-- village's now, the beasts let go to its herd); then migrate_legs' arrival (the goods carried up).
+function M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
+  local c = C()
+  local V = W.S.v3
+  local sea = mg.sea
+  local here = p.at or p.sett
+  local boat = home_s.boats and home_s.boats[sea.boat]
+  local hd = home_s.dock
+  local route = trade.sea_route(W, home_s, o)
+  local skipper = sea.skipper == p.id
+  if not boat or not hd or not route or (boat.lost and not tr.embarked) then
+    -- (the boat is gone before they could sail - rotted, wrecked: they stay, and may think again)
+    mg.given_up = now
+    if boat then boat.move = nil end
+    people.remember(p, now, "We could not go: the boat was gone")
+    p.trip = nil
+    return "Stay: the boat is gone", home_s.name
+  end
+  if here == o.id and p.boat then
+    -- (over the sea: rowing in to the dock and landing)
+    local od = o.dock
+    pl[#pl + 1] = { op = "go", x = od.mx, y = od.my, place = o.name .. "'s dock", water = true, why = mg.why .. ": rowing in to " .. o.name .. "'s dock" }
+    work(pl, "land", 0.08, { boat = boat.id, migrate = true, why = mg.why .. ": landing at " .. o.name })
+    return "Land at " .. o.name, o.name .. "'s dock"
+  end
+  if here ~= home_s.id then
+    -- (anyone else off the boat on the other map before the landing: wait at the dock)
+    local od = o.dock or { dx = o.sqx or 0, dy = o.sqy or 0 }
+    go(pl, od.dx, od.dy, o.name .. "'s dock")
+    work(pl, "wait", 0.3, {})
+    return "Wait for the others at " .. o.name, o.name
+  end
+  if p.boat and tr.embarked then
+    -- (aboard and away: out to the open sea and over it)
+    M.sea_out(W, pl, home_s, o, route, boat, p, now, mg)
+    return "Sail to " .. o.name .. " with the household", "the sea"
+  end
+  local home = ctx.home
+  if not tr.embarked and (mg.given_up or now < mg.depart - c.ready_h - 0.01) then
+    -- (the sailing put off: home with what was packed, the beasts back to the herd; life goes on
+    -- until the morning they try again)
+    if home then
+      go(pl, home.dx, home.dy, "home", home.id)
+      pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, trip_end = true, why = mg.why .. ": home again until the morning we try to sail" }
+      return "Home until we can sail", "home"
+    end
+    p.trip = nil
+    return "Wait for the morning we sail", home_s.name
+  end
+  if home and p.carry ~= "pack" and not tr.packed then
+    tr.packed = true
+    local prov, pack = move_share(W, hh, home, mg, now, c.trade_prov * 2, (grown and not skipper) and c.mig_carry or 0)
+    if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+    pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id, n = prov }
+    if skipper then
+      -- (the household's goods to the boat, a load at a time: the dearest for their weight first)
+      local left = sea.loads or 0
+      for _, g in ipairs(M.SEA_GOODS) do
+        local key = g == "grain" and "food" or g
+        local have = home.stock[key] or 0
+        local G = econ.GOODS[g]
+        while left > 0 and have * G.wt > 0.2 do
+          local q = min(have, 1 / G.wt)
+          if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+          pl[#pl + 1] = { op = "pick", what = "pack", good = g, ref = home.id, n = q }
+          go(pl, hd.dx, hd.dy, "the dock")
+          pl[#pl + 1] = { op = "drop", to = "cargo", ref = hd.id, boat = boat.id }
+          have, left = have - q, left - 1
+        end
+      end
+    elseif grown and pack > 0.05 then
+      pl[#pl + 1] = { op = "pick", what = "pack", good = "grain", ref = home.id, n = pack }
+    end
+  end
+  -- the beasts going in the boat, each taken by the halter where it is
+  local kind
+  for _, k in ipairs(stock.HERDS) do if mg.lead and mg.lead[k] == p.id then kind = k end end
+  if kind and not tr.haltered then
+    tr.haltered = true
+    tr.lead_kind = kind
+    local H = home_s.herds and home_s.herds[kind]
+    local want = {}
+    for _, k in ipairs(sea.ship and sea.ship[kind] or {}) do want[k] = true end
+    for _, a in ipairs(H and H.animals or {}) do
+      if want[a.k] and a.alive and a.owner == hh.id and (a.led or 0) == 0 and (a.yoke or 0) == 0 and (a.held or 0) == 0 then
+        local ax, ay = stock.pos(a, now)
+        go(pl, ax, ay, "a " .. (stock.SP(a.sp) and a.sp or "beast") .. " of ours")
+        work(pl, "halter", 0.05, { herd = stock.HIDX[kind] + 1, ref = a.k, fx = ax, fy = ay, mig = true })
+      end
+    end
+  end
+  local near = dsq(p.x - hd.dx) + dsq(p.y - hd.dy) < 0.0225
+  if #pl > 0 or not near or now < mg.depart - 0.01 then
+    go(pl, hd.dx, hd.dy, "the dock")
+    if kind then pl[#pl].lead = kind end
+    work(pl, "gather", 0, { until_t = mg.depart, fx = hd.mx, fy = hd.my })
+    return "Go to " .. o.name .. " by sea", "the dock"
+  end
+  if not skipper then
+    -- (waiting on the dock to be taken aboard)
+    work(pl, "wait_boat", 0.5, { fx = hd.mx, fy = hd.my })
+    return "Wait to board", "the dock"
+  end
+  -- the skipper: the weather, and everyone here (a day too rough, or someone who does not come:
+  -- the sailing is put off to the next morning; after mig_sea_tries mornings they give it up)
+  local foul = trade.sea_rough(W, route, now)
+  if foul or (tr.boardw or 0) >= c.sea_board_wait then
+    mg.tries = (mg.tries or 0) + 1
+    local why = foul and "a gale at sea" or "not everyone came down to the dock"
+    if mg.tries >= c.mig_sea_tries then
+      mg.given_up = now
+      boat.move = nil
+      for _, id in ipairs(hh.members) do
+        local q = V.people[id]
+        if q and q.alive and people.stage(q, now) ~= "infant" then people.remember(q, now, sfmt("We gave up crossing to %s: %s, morning after morning", o.name, why)) end
+      end
+      return M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
+    end
+    local lh = clock.local_hour(now, W.grid.lon[home_s.cell])
+    local wait = (c.mig_sea_dawn - lh) % 24
+    if wait < 6 then wait = wait + 24 end
+    mg.depart = now + wait
+    tr.boardw = 0
+    for _, id in ipairs(hh.members) do
+      local q = V.people[id]
+      if q and q.alive and people.stage(q, now) ~= "infant" then people.remember(q, now, sfmt("We could not sail to %s today (%s): we try again tomorrow", o.name, why)) end
+    end
+    return M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
+  end
+  local missing = nil
+  for _, id in ipairs(hh.members) do
+    local q = V.people[id]
+    if q and q.alive and q ~= p and people.stage(q, now) ~= "infant" then
+      local qx, qy = act.pos(q, now)
+      local there = not q.at and q.sett == home_s.id and dsq(qx - hd.dx) + dsq(qy - hd.dy) < 0.0225
+        and (q.act == "gather" or q.act == "wait_boat")
+      if not there then missing = q; break end
+    end
+  end
+  if missing then
+    tr.boardw = (tr.boardw or 0) + 0.25
+    work(pl, "wait_boat", 0.25, { fx = hd.mx, fy = hd.my, why = sfmt("Waiting at the dock for %s before we sail", missing.name) })
+    return "Wait for the household", "the dock"
+  end
+  -- (the beasts brought down to the dock: a little while for any lagging behind)
+  if (tr.beastw or 0) < 1 then
+    for _, id in ipairs(hh.members) do
+      local q = V.people[id]
+      local k = q and q.alive and q.trip and q.trip.lead_kind
+      if k and stock.drove_spread(home_s, q, k, now) > c.drove_gather then
+        tr.beastw = (tr.beastw or 0) + 0.25
+        work(pl, "wait_boat", 0.25, { fx = hd.mx, fy = hd.my, why = "Waiting for the beasts to come down to the boat" })
+        return "Wait for the beasts", "the dock"
+      end
+    end
+  end
+  work(pl, "board", 0.08, { boat = boat.id, fx = hd.mx, fy = hd.my, why = mg.why .. ": everyone is here; into the boat" })
+  work(pl, "embark", 0.15, { boat = boat.id, fx = hd.mx, fy = hd.my, why = mg.why .. ": taking the household aboard" })
+  M.sea_out(W, pl, home_s, o, route, boat, p, now, mg)
+  return "Sail to " .. o.name .. " with the household", "the sea"
+end
+-- (the skipper rows out to the open sea and sails the way over)
+function M.sea_out(W, pl, home_s, o, route, boat, p, now, mg)
+  local c = C()
+  local gx, gy = trade.sea_gate(W, home_s, route.cells[1])
+  local wet = sea_wet(W, route, now)
+  local hrs = route.len / c.sail_speed * (1 + 0.25 * (wet and 1 or 0))
+  pl[#pl + 1] = { op = "go", x = gx, y = gy, place = "the open sea toward " .. o.name, water = true, why = mg.why .. ": rowing the household out to the open sea" }
+  work(pl, "voyage", hrs, { to = o.id, from = home_s.id, boat = boat.id, gate_c = route.cells[#route.cells],
+    risk = sea_risk(W, route, boat, p, now), migrate = true,
+    why = sfmt("%s: sailing the household over to %s (%.0f hours%s)", mg.why, o.name, hrs, wet and ", in wet weather" or "") })
+end
+-- (what a moving household loads into its boat first: the dearest for its weight)
+M.SEA_GOODS = { "cloth", "leather", "cheese", "grain", "smoked", "wool", "hides" }
 
 -- (S17, R5) A household going to make a new place (sim/agents/founding.lua). From home: provisions
 -- for the longer road, each grown-up's pack from the larder, their part of the granary (seed and
@@ -2897,7 +3145,7 @@ function sea_legs(W, s, p, ctx, now)
       end
       -- (fair weather to sail home: a storm day is waited out at the dock)
       go(pl, od.dx, od.dy, o.name .. "'s dock")
-      if sea_storm(W, route.cells[#route.cells], now) then
+      if trade.sea_rough(W, route, now) then
         work(pl, "wait", 6, {})
         return
       end
@@ -2936,21 +3184,9 @@ function sea_legs(W, s, p, ctx, now)
   end
 end
 
--- The weather on the sea way today (the first, middle and last of its cells): wet days slow the
--- boat; the risk of foundering in a squall grows with wet weather, a worn boat and an unskilled
--- skipper (D-102).
-local WXR = {}
-function sea_wet(W, route, now)
-  local wd = require("sim.society.weather_day")
-  local cs = route.cells
-  return wd.get(W, cs[1], now, WXR).wet or wd.get(W, cs[floor((#cs + 1) / 2)], now, WXR).wet or wd.get(W, cs[#cs], now, WXR).wet
-end
-function sea_risk(W, route, boat, p, now)
-  local c = C()
-  local hrs = route.len / c.sail_speed
-  local k = sea_wet(W, route, now) and c.sea_wet_k or 1
-  return hrs * c.sea_squall * k * (2 - (boat.cond or 1)) * (1.3 - 0.6 * (p.sk_fish or 0.3))
-end
+-- The weather on the sea way today and the risk of foundering (D-102): sim/agents/trade.lua (S18).
+sea_wet = trade.sea_wet
+sea_risk = trade.sea_risk
 
 PLAN.trade = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
@@ -3205,6 +3441,11 @@ end
 
 PLAN.ride = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
+  if p.trip and p.trip.migrate then
+    -- (S18) a passenger: the household moving over the sea, sitting it out until the landing
+    work(pl, "passage", 8, { boat = p.ride_boat })
+    return "Cross the sea with the household", "the sea"
+  end
   work(pl, "ride", 8, { boat = p.ride_boat })
   return "Out in the boat", "the fishing ground"
 end
@@ -3780,6 +4021,11 @@ function M.decide(W, s, p, now, reason)
     local obj, dest = PLAN.ride(W, s, p, ctx, now, nil)
     p.obj, p.dest, p.objk = obj, dest, "ride"
     p.why = "In the boat with " .. ((W.S.v3.people[p.riding] or {}).name or "the skipper")
+    if p.trip and p.trip.migrate then
+      -- (S18) the household moving over the sea
+      p.objk = "migrate"
+      p.why = require("sim.agents.migrate").why(W, p, W.S.v3.households[p.hh])
+    end
     p.tgt_kind, p.tgt_ref = "ride", 0
     return true
   end
@@ -3830,7 +4076,7 @@ function M.decide(W, s, p, now, reason)
       -- (S16, R4) a bride going to live at her husband's village
       p.trip = { to = mv.to, from = mv.from, move = true, give = "grain", take = "grain", n = 0, t0 = now }
     end
-    if (mg and not mg.arrived and ((not p.trip and now >= mg.depart - C().ready_h) or (p.trip and p.trip.migrate))) or (p.trip and (p.trip.migrate or p.trip.move)) then
+    if (mg and not mg.arrived and not mg.given_up and ((not p.trip and now >= mg.depart - C().ready_h) or (p.trip and p.trip.migrate))) or (p.trip and (p.trip.migrate or p.trip.move)) then
       if not p.trip then
         p.trip = { to = mg.to, from = mg.from, migrate = hh.id, give = "grain", take = "grain", n = 0, t0 = now }
       end

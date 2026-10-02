@@ -183,7 +183,9 @@ function M.step(W, s, d, now)
     local gone = true
     for _, id in ipairs(hh.members) do
       local q = V.people[id]
-      if q and q.alive and q.sett == s.id and not q.at and q.act ~= "travel" and q.act ~= "carried" then gone = false end
+      -- (S18: aboard their boat is gone too: the dog jumps in after them)
+      if q and q.alive and q.sett == s.id and not q.at and q.act ~= "travel" and q.act ~= "carried" and not q.boat
+        and (q.riding or 0) == 0 then gone = false end
     end
     if gone and now >= (mg.depart or now) then
       d.alive, d.left = false, now

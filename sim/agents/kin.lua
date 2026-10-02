@@ -129,9 +129,9 @@ function M.infant_tick(W, s, ib, now, dt, interrupt, pos)
       local home = people.home(W, s, q)
       if not (home and ((home.stock.meals or 0) >= c.porridge or require("sim.agents.people").pantry(home) >= 0.3)) then who = nil end
     end
-    if who and who.act == "travel" then
+    if who and (who.act == "travel" or who.act == "passage" or who.act == "ride" or who.act == "voyage") then
       -- (S16: on the road the baby is fed as they walk - at the breast, or a toddler from the
-      -- provisions - and the walk goes on)
+      -- provisions - and the walk goes on; S18: in a boat at sea the same)
       if m then
         ib.hunger = max(0, ib.hunger - 0.6)
       elseif (who.prov or 0) >= 0.1 then
