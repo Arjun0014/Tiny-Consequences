@@ -378,12 +378,16 @@ function M.wadeable(s, i) local r = s.riv[i]; return r > 0 and r <= 101 end
 
 -- Rebuild every tile's A* cost from its occupancy, trees, plots and lanes. Bumps the map version
 -- (the path cache is only valid for one version).
+-- (S17) A runtime version of the cost field's content (never saved): bumped only when a tile's cost
+-- actually changed, so paths cached for it stay exactly what A* would find (nav.lua).
+M.cost_ver = setmetatable({}, { __mode = "k" })
 function M.rebuild_costs(s)
   local C = cfg()
   local land, occ, plot, tree, lane, cost, riv = s.land, s.occ, s.plot, s.tree, s.lane, s.cost, s.riv
   local bridge = s.bridge
   local st = s.trees.st
   local co, ct, cp, ctr, cl, cf = C.cost_open, C.cost_tree, C.cost_plot, C.cost_trail, C.cost_lane, C.cost_ford
+  local changed = M.cost_ver[s] == nil
   for i = 1, s.N * s.N do
     local c
     if land[i] == 0 or occ[i] > 0 then c = -1
@@ -400,7 +404,7 @@ function M.rebuild_costs(s)
       elseif tree[i] > 0 and st[tree[i]] == 1 then c = ct
       else c = co end
     end
-    cost[i] = c
+    if cost[i] ~= c then changed = true; cost[i] = c end
   end
   -- the map's border is closed (A* then needs no bounds checks, D-086)
   local N = s.N
@@ -408,6 +412,7 @@ function M.rebuild_costs(s)
     cost[k], cost[(N - 1) * N + k], cost[(k - 1) * N + 1], cost[k * N] = -1, -1, -1, -1
   end
   s.ver = s.ver + 1
+  if changed then M.cost_ver[s] = (M.cost_ver[s] or 0) + 1 end
 end
 
 -- Daily: wear decays and becomes trails/lanes.
@@ -548,15 +553,22 @@ function M.free_spot(s, x, y, r)
   local N = s.N
   local ix = floor(x / s.T + N / 2) + 1
   local iy = floor(y / s.T + N / 2) + 1
+  local cost = s.cost
   for d = 1, r or 6 do
     local best, bd = 0, 1e9
+    -- (S17: the ring's tiles only - the top and bottom rows whole, the sides between - in the
+    -- same row-major order as a scan of the whole square, so the first best is the same tile)
     for jy = iy - d, iy + d do
-      for jx = ix - d, ix + d do
-        if (abs(jx - ix) == d or abs(jy - iy) == d) and jx >= 1 and jy >= 1 and jx <= N and jy <= N then
-          local j = (jy - 1) * N + jx
-          if s.cost[j] > 0 then
-            local dd = (jx - ix) * (jx - ix) + (jy - iy) * (jy - iy)
-            if dd < bd then best, bd = j, dd end
+      if jy >= 1 and jy <= N then
+        local edge = jy == iy - d or jy == iy + d
+        local step = edge and 1 or 2 * d
+        for jx = ix - d, ix + d, step do
+          if jx >= 1 and jx <= N then
+            local j = (jy - 1) * N + jx
+            if cost[j] > 0 then
+              local dd = (jx - ix) * (jx - ix) + (jy - iy) * (jy - iy)
+              if dd < bd then best, bd = j, dd end
+            end
           end
         end
       end

@@ -304,9 +304,12 @@ function M.register(G)
     local t = speed.v3_t or W.hour
     if args.look then
       local av = require("game.view.agents_view")
-      local V = av.SETS[p.sett] or av.SETS[1]
+      local V = av.SETS[p.at or p.sett] or av.SETS[1]
       local x, y = require("sim.agents.act").pos(p, t)
       local ux, uy, uz = require("sim.agents.map").unit(V.s, x, y)
+      -- (S17: on the road, where the road has them on the planet)
+      local rx, ry, rz = av.traveller_unit(W, p, t)
+      if rx then ux, uy, uz = rx, ry, rz end
       local lat = math.asin(uy)
       local lon = math.atan2(uz, ux)
       camera.set(math.deg(lat) * math.pi / 180, lon, args.zoom or 1.6, true)
@@ -325,7 +328,10 @@ function M.register(G)
     local s = assert(W.S.v3.settlements[args.sett or 1], "no such settlement")
     local x, y = args.x or 0, args.y or 0
     local info
-    if args.what == "dock" then
+    if args.what == "square" then
+      -- (S17) the village's square (a new place's: where its founders chose to settle)
+      x, y = s.sqx or 0, s.sqy or 0
+    elseif args.what == "dock" then
       assert(s.dock, "no dock")
       x, y = s.dock.mx, s.dock.my
     elseif args.what == "bridge" then
@@ -524,6 +530,53 @@ function M.register(G)
     return { cell = cell, power = args.power, tick = W.tick, sx = sx, sy = sy }
   end)
   -- a shipment overseas (sim/testhooks.lua voyage), for screenshots and tests: returns the party
+  -- (S17) v3_found_info{}: the places founded while the world ran and the parties setting out or
+  -- on their way (shots, probes)
+  bridge.register("v3_found_info", function(args)
+    local W = assert(G.W, "world not ready")
+    local V = assert(W.S.v3, "not a v3 world")
+    local out = { places = {}, parties = {}, hour = require("game.platform.speed").v3_t or W.hour }
+    for _, o in ipairs(V.settlements) do
+      if o.founding then
+        local bl = {}
+        local first
+        for _, id in ipairs(o.blist) do
+          local b = o.buildings[id]
+          bl[#bl + 1] = b.label .. ":" .. b.state
+          if not first then first = { x = b.cx, y = b.cy, label = b.label } end
+        end
+        local av = package.loaded["game.view.agents_view"]
+        local VS = av and av.SETS and av.SETS[o.id]
+        out.places[#out.places + 1] = { id = o.id, name = o.name, members = #o.members, buildings = bl, settled = o.founding.settled,
+          first = first, sq = { o.sqx, o.sqy }, view = VS and { in_view = VS.in_view, trees = o.trees.n } or false, n_view = av and #av.SETS or 0 }
+      end
+    end
+    for hid, hh in pairs(V.households) do
+      if hh.found and #hh.members > 0 then
+        local m = {}
+        for _, id in ipairs(hh.members) do m[#m + 1] = id end
+        out.parties[#out.parties + 1] = { hh = hid, members = m, site = hh.found.site, depart = hh.found.depart, arrived = hh.found.arrived, why = hh.found.why }
+      end
+    end
+    table.sort(out.parties, function(a, b) return a.hh < b.hh end)
+    return out
+  end)
+  -- (S17) v3_premise{kind = "crowd" | "fail_harvest" | "empty_stores", sett = id | name, waited = days}:
+  -- a premise created on purpose (sim/agents/premise.lua) so what follows can be watched
+  bridge.register("v3_premise", function(args)
+    local W = assert(G.W, "world not ready")
+    local V = assert(W.S.v3, "not a v3 world")
+    local s
+    for _, o in ipairs(V.settlements) do if o.id == tonumber(args.sett) or o.name == args.sett then s = o end end
+    assert(s, "no such settlement")
+    local pr = require("sim.agents.premise")
+    local n = 0
+    if args.kind == "crowd" then n = pr.crowd(W, s, tonumber(args.waited) or require("sim.config").V3.found_lot_days)
+    elseif args.kind == "fail_harvest" then pr.fail_harvest(W, s)
+    elseif args.kind == "empty_stores" then pr.empty_stores(W, s)
+    else error("v3_premise: kind crowd | fail_harvest | empty_stores") end
+    return { sett = s.id, name = s.name, added = n, people = #s.members }
+  end)
   bridge.register("voyage", function(args)
     local W = G.W
     local world = require("sim.world")
@@ -692,6 +745,11 @@ function M.register(G)
     elseif args.beast and W.v3 then
       -- (S16) beast = { sett, "flock" | "cattle" | "swine" | "wild" | "dog", k }
       sel = { kind = "beast", sid = tonumber(args.beast[1]) or 1, grp = args.beast[2] or "flock", k = tonumber(args.beast[3]) or 1 }
+    elseif args.sett and W.v3 then
+      -- (S17) sett = settlement id (or "last": the newest)
+      local id = args.sett == "last" and #W.S.v3.settlements or tonumber(args.sett)
+      assert(id and W.S.v3.settlements[id], "no such settlement")
+      sel = { kind = "settlement", sid = id }
     elseif args.planet then
       sel = { kind = "planet" }
     elseif args.ship then

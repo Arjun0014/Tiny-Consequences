@@ -26,7 +26,7 @@ local floor, max, min, sqrt = math.floor, math.max, math.min, math.sqrt
 local function C() return cfgmod.V3 end
 
 local IDLE_KINDS = { sit = true, talk = true, rest = true, eat = true, lunch = true, play = true, wait = true,
-  nurse = true, idle = true, shelter = true }
+  nurse = true, idle = true, shelter = true, gather = true }
 local SKILL_OF = { till = "sk_farm", sow = "sk_farm", harvest = "sk_farm", tend = "sk_farm", thresh = "sk_farm",
   chop = "sk_wood", grub = "sk_wood", build = "sk_build", repair = "sk_build", fish = "sk_fish", mend_boat = "sk_fish" }
 local TOOL_WORK = { till = true, harvest = true, chop = true, grub = true, build = true, repair = true, thresh = true, tend = true,
@@ -546,6 +546,13 @@ WORK.voyage = function(W, s, p, st, f)
     return
   end
   local gx, gy = require("sim.agents.trade").sea_gate(W, o, st.gate_c or o.cell)
+  -- (S17) the shore along the way sailed: seen from the boat
+  do
+    local founding = require("sim.agents.founding")
+    local route = require("sim.agents.trade").sea_route(W, from, o)
+    local how = sfmt("seen from the sea on the way from %s to %s", from.name, o.name)
+    for _, who in ipairs({ p, q }) do if who then founding.note_sea(W, who, route, how, now) end end
+  end
   for _, who in ipairs({ p, q }) do
     if who then
       local old = V.settlements[who.at or who.sett]
@@ -1029,11 +1036,22 @@ WORK.travel = function(W, s, p, st, f)
   local V = W.S.v3
   local o = V.settlements[st.to or 0]
   local from = V.settlements[st.from or 0]
-  if not o or not from then return end
-  local gx, gy = require("sim.agents.trade").gate(W, o, from)
   local tr = p.trip
   local now = V.now or W.hour
-  if tr and tr.migrate and o.id ~= p.sett then
+  local founding = require("sim.agents.founding")
+  if st.site and from then
+    -- (S17, R5) the place to be founded: made (or found made by the first of the party) as they walk
+    -- onto it; they are its people from here
+    o = founding.arrive(W, st.site, p, now)
+  end
+  if not o or not from then return end
+  -- (S17) what they saw on the way: the land along it and either side (told at home, or where they
+  -- come to live)
+  founding.note_leg(W, p, from.cell, o.cell, sfmt("%s saw it on the way from %s to %s", p.name, from.name, o.name), now)
+  local gx, gy = require("sim.agents.trade").gate(W, o, from)
+  if st.site then
+    founding.tell(W, p, o)
+  elseif tr and tr.migrate and o.id ~= p.sett then
     -- (S16, R5) a household moving here: from the gate on they are this village's people
     require("sim.agents.migrate").arrive(W, o, p, gx, gy, now)
   elseif tr and tr.move and o.id ~= p.sett then
@@ -1058,7 +1076,7 @@ WORK.travel = function(W, s, p, st, f)
   end
   local old = V.settlements[p.at or p.sett]
   if old and old.visitors then people.remove_id(old.visitors, p.id) end
-  if tr and (tr.migrate or tr.move) and o.id == p.sett then
+  if tr and (tr.migrate or tr.move or tr.found) and o.id == p.sett then
     p.at = nil
   elseif o.id == p.sett then
     p.at = nil
@@ -1192,7 +1210,34 @@ end
 WORK.eat = function(W, s, p, st, f)
   if f < 0.4 then return end
   local c = C()
+  if st.from == "pack" then
+    -- (S17) bread from one's pack
+    local m = min(p.pack and p.pack.grain or 0, c.meal_fu)
+    if m > 0 then
+      p.pack.grain = p.pack.grain - m
+      p.camt = M.pack_load(p)
+      p.hunger = max(0, p.hunger - c.meal * m / c.meal_fu)
+      s.acc.eaten = (s.acc.eaten or 0) + m
+    end
+    return
+  end
   local b = s.buildings[st.ref or 0]
+  if st.from == "cold" and b then
+    -- (S17) uncooked: bread, smoked fish, cheese, milk from the larder
+    local m = c.meal_fu
+    for _, k in ipairs({ "food", "smoked", "cheese", "milk", "fish", "meat" }) do
+      local q = min(b.stock[k] or 0, m)
+      if q > 0 then
+        b.stock[k] = b.stock[k] - q
+        m = m - q
+        if m <= 1e-9 then break end
+      end
+    end
+    local ate = c.meal_fu - m
+    p.hunger = max(0, p.hunger - c.meal * ate / c.meal_fu)
+    s.acc.eaten = (s.acc.eaten or 0) + ate
+    return
+  end
   local meals = b and b.stock.meals or 0
   if meals >= c.meal_fu * 0.5 then
     local m = min(meals, c.meal_fu)
@@ -1306,9 +1351,11 @@ end
 PICK.seed = function(W, s, p, st)
   local b = s.buildings[st.ref]
   if not b then return end
-  local got = min(st.n or 2, b.stock.seed or 0)
+  -- (S17: a young place's seed is the grain in a camp's or a house's larder)
+  local key = st.food and ((b.stock.seed or 0) >= (st.n or 2) and "seed" or "food") or "seed"
+  local got = min(st.n or 2, b.stock[key] or 0)
   if got > 0 then
-    b.stock.seed = b.stock.seed - got
+    b.stock[key] = b.stock[key] - got
     p.carry, p.camt = "seed", got
   end
 end
@@ -1406,6 +1453,80 @@ PICK.pack = function(W, s, p, st)
   p.carry, p.camt = "pack", pack_load(p)
 end
 
+-- (S17) What kin give from their larder, into the pack (bread, smoked fish, cheese; tr.gift_house).
+PICK.kin_gift = function(W, s, p, st)
+  local b = s.buildings[st.ref]
+  local tr = p.trip
+  if not b or not tr or (p.carry ~= "" and p.carry ~= "pack") then return end
+  local want = tr.gift_house or 0
+  p.pack = p.pack or {}
+  for _, k in ipairs({ "food", "smoked", "cheese" }) do
+    local q = min(want, b.stock[k] or 0)
+    if q > 0 then
+      b.stock[k] = b.stock[k] - q
+      local g = k == "food" and "grain" or k
+      p.pack[g] = (p.pack[g] or 0) + q
+      want = want - q
+      -- (the food leaves their village's books and enters the asker's)
+      s.acc.export = (s.acc.export or 0) + q
+      local hs = W.S.v3.settlements[p.sett]
+      if hs then hs.acc.import = (hs.acc.import or 0) + q end
+    end
+  end
+  tr.gift_house = 0
+  p.carry, p.camt = "pack", pack_load(p)
+end
+
+-- (S17, R5) Carrying a camp's things into the household's new house: a load of what is there (bread,
+-- seed, cooked and fresh food as grain; the rest as it is).
+local CAMP_GOODS = { "food", "seed", "meals", "meat", "fish", "milk", "smoked", "cheese", "logs", "hides", "leather", "wool", "cloth" }
+local CAMP_WT = { food = 0.1, seed = 0.1, meals = 0.1, meat = 0.1, fish = 0.1, milk = 0.1, smoked = 0.125, cheese = 0.125, logs = 0.5,
+  hides = 1 / 3, leather = 0.25, wool = 1 / 3, cloth = 1 / 3 }
+local CAMP_AS = { food = "grain", seed = "grain", meals = "grain", meat = "grain", fish = "grain", milk = "grain" }
+PICK.camp = function(W, s, p, st)
+  local b = s.buildings[st.ref]
+  if not b or (p.carry ~= "" and p.carry ~= "pack") then return end
+  local room = (p.strong and 1.3 or 1) - pack_load(p)
+  p.pack = p.pack or {}
+  for _, k in ipairs(CAMP_GOODS) do
+    local q = b.stock[k] or 0
+    if q > 1e-6 and room > 0.01 then
+      local take = min(q, room / CAMP_WT[k])
+      b.stock[k] = q - take
+      local g = CAMP_AS[k] or k
+      p.pack[g] = (p.pack[g] or 0) + take
+      room = room - take * CAMP_WT[k]
+    end
+  end
+  -- (the small things: flax, fibre, yarn, scraps, carried along)
+  for _, k in ipairs({ "flax", "fibre", "yarn", "scraps" }) do
+    local q = b.stock[k] or 0
+    if q > 0 then
+      p.pack.extra = p.pack.extra or {}
+      p.pack.extra[k] = (p.pack.extra[k] or 0) + q
+      b.stock[k] = 0
+    end
+  end
+  p.carry, p.camt = "pack", pack_load(p)
+end
+
+-- (S17, R5) A founding household's part of the village's granary (decided when they chose to go:
+-- seed and bread for the first months), into the pack.
+PICK.share = function(W, s, p, st)
+  local b = s.buildings[st.ref]
+  local hh = W.S.v3.households[p.hh]
+  local fd = hh and hh.found
+  if not b or not fd or (p.carry ~= "" and p.carry ~= "pack") then return end
+  local room = ((p.strong and 1.3 or 1) - pack_load(p)) / econ.GOODS.grain.wt
+  local got = min(st.n or 0, fd.share or 0, b.stock.grain or 0, room)
+  if got <= 0 then return end
+  b.stock.grain = b.stock.grain - got
+  fd.share = fd.share - got
+  p.pack = p.pack or {}
+  p.pack.grain = (p.pack.grain or 0) + got
+  p.carry, p.camt = "pack", pack_load(p)
+end
+
 -- (S16, R4) Help given by another village, from its granary into the pack (what is left of what
 -- was agreed at the granary), to be carried to the boat.
 PICK.relief = function(W, s, p, st)
@@ -1420,6 +1541,12 @@ PICK.relief = function(W, s, p, st)
   p.pack = p.pack or {}
   p.pack.grain = (p.pack.grain or 0) + got
   p.carry, p.camt = "pack", pack_load(p)
+  if tr.ask_kin then
+    -- (S17: kin's help from their village's granary, on the books as it is carried off)
+    s.acc.export = (s.acc.export or 0) + got
+    local hs = W.S.v3.settlements[p.sett]
+    if hs then hs.acc.import = (hs.acc.import or 0) + got end
+  end
 end
 
 -- Cargo out of a boat into the pack (D-102): a load at a time.
@@ -1712,11 +1839,144 @@ WORK.visit_kin = function(W, s, p, st, f)
   local r1, r2 = econ.rel(home, s), econ.rel(s, home)
   r1.trust = r1.trust + (1 - r1.trust) * 0.03
   r2.trust = r2.trust + (1 - r2.trust) * 0.03
+  -- (S17) a gift brought, and one given back: each a little of what one household has beyond its
+  -- want that the other's village is heard to want more (an exchange both sides gain by)
+  local kh = kin and V.households[kin.hh]
+  if b and kh and p.pack and tr.gift_good and not tr.ask_kin then
+    local g = tr.gift_good
+    local q = p.pack[g] or 0
+    if q > 0 then
+      local key = stock_key(b, g)
+      b.stock[key] = (b.stock[key] or 0) + q
+      p.pack[g] = 0
+      local G = econ.GOODS[g]
+      if G.food then
+        home.acc.export = (home.acc.export or 0) + q
+        s.acc.import = (s.acc.import or 0) + q
+      end
+      local hh = V.households[p.hh]
+      local val = q * G.base
+      if hh then
+        hh.gave = hh.gave or {}
+        hh.gave[kh.id] = (hh.gave[kh.id] or 0) + val
+        kh.got = kh.got or {}
+        kh.got[hh.id] = (kh.got[hh.id] or 0) + val
+      end
+      s.acc.visit_gifts = (s.acc.visit_gifts or 0) + 1
+      people.remember(p, now, sfmt("Took %s to %s at %s", econ.amount(q, g), kin.name, s.name))
+      people.remember(kin, now, sfmt("%s brought us %s from %s", p.name, econ.amount(q, g), home.name))
+      -- the kin give back what they have beyond their want that the visitor's village wants
+      local g2, n2 = econ.visit_gift(W, s, kh, b, home, now)
+      if g2 then
+        local key2 = stock_key(b, g2)
+        local room = ((p.strong and 1.3 or 1) - pack_load(p)) / econ.GOODS[g2].wt
+        local q2 = min(n2, b.stock[key2] or 0, room)
+        if q2 > 0 then
+          b.stock[key2] = b.stock[key2] - q2
+          p.pack[g2] = (p.pack[g2] or 0) + q2
+          p.carry, p.camt = "pack", pack_load(p)
+          if econ.GOODS[g2].food then
+            s.acc.export = (s.acc.export or 0) + q2
+            home.acc.import = (home.acc.import or 0) + q2
+          end
+          kh.gave = kh.gave or {}
+          kh.gave[p.hh] = (kh.gave[p.hh] or 0) + q2 * econ.GOODS[g2].base
+          s.acc.visit_gifts_back = (s.acc.visit_gifts_back or 0) + 1
+          people.remember(p, now, sfmt("%s gave us %s to take home", kin.name, econ.amount(q2, g2)))
+        end
+      end
+      if pack_load(p) <= 1e-9 then p.pack, p.carry, p.camt = nil, "", 0 else p.camt = pack_load(p) end
+    end
+  end
   if kin then
     people.remember(kin, now, sfmt("%s came from %s to see us", p.name, home.name))
     people.remember(p, now, sfmt("Visited %s at %s", kin.name, s.name))
   end
   s.acc.kin_visits = (s.acc.kin_visits or 0) + 1
+end
+
+-- (S17) Talking with the people of another village at its square: how each village fares and what
+-- it wants (econ.learn both ways, and what each knows of places), a little more trust.
+WORK.news = function(W, s, p, st, f)
+  if f < 0.99 then return end
+  local V = W.S.v3
+  local tr = p.trip
+  if not tr or tr.met then return end
+  tr.met = true
+  local now = V.now or W.hour
+  local home = V.settlements[p.sett]
+  econ.learn(W, home, s, now)
+  econ.learn(W, s, home, now)
+  local r1, r2 = econ.rel(home, s), econ.rel(s, home)
+  r1.trust = r1.trust + (1 - r1.trust) * 0.02
+  r2.trust = r2.trust + (1 - r2.trust) * 0.02
+  people.remember(p, now, sfmt("Talked with the people of %s: heard how they fare and what they want", s.name))
+  s.acc.news_visits = (s.acc.news_visits or 0) + 1
+  -- (those at the square heard the visitor's news too)
+  for _, id in ipairs(s.members) do
+    local q = V.people[id]
+    if q and q.alive and q.act == "talk" then people.remember(q, now, sfmt("%s of %s came with the news from there", p.name, home.name)) end
+  end
+end
+
+-- (S17) Asking kin for help: the news told both ways and a meal as at a visit; the kin household
+-- gives what it can spare from its larder beyond its own few days, and - when its village has grain
+-- to spare - from the village's granary, by how close they are, up to what the asker can carry and
+-- what the asker's household needs for some days; when things are very bad at the asker's village
+-- and there is room, they offer the household a place under their roof (hh.kin_offer).
+WORK.ask_kin = function(W, s, p, st, f)
+  if f < 0.99 then return end
+  local V = W.S.v3
+  local tr = p.trip
+  if not tr or tr.met then return end
+  WORK.visit_kin(W, s, p, st, f)
+  local now = V.now or W.hour
+  local c = C()
+  local home_s = V.settlements[p.sett]
+  local hh = V.households[p.hh]
+  local kin = V.people[tr.visit or 0]
+  local kh = kin and V.households[kin.hh]
+  local kb = kh and s.buildings[kh.home or 0]
+  if not (home_s and hh and kh and kb) then return end
+  local close = (kin.id == p.mother or kin.id == p.father or kin.mother == p.id or kin.father == p.id) and 1 or 0.8
+  close = close * min(1, 0.6 + people.affinity(kin, p.id))
+  local need = #hh.members * c.kin_gift_days * 0.75
+  local room = ((p.strong and 1.3 or 1) - pack_load(p)) / econ.GOODS.grain.wt
+  local own = (kb.stock.food or 0) + (kb.stock.smoked or 0) + (kb.stock.cheese or 0)
+  local keep = #kh.members * c.kin_keep_days * 0.75
+  local house = max(0, min((own - keep) * close, need, room))
+  local left = min(need, room) - house
+  local gran = 0
+  if left > 0.05 and s.granary then
+    local spare = econ.spare(W, s, kh, kb, "grain")
+    gran = max(0, min(left, spare * 0.5 * close, s.granary.stock.grain or 0))
+  end
+  tr.gift_house, tr.gift_left = house, gran
+  local tot = house + gran
+  local kname = kin.name
+  if tot > 0.05 then
+    people.remember(p, now, sfmt("%s of %s gave us %.0f FU of food to carry home", kname, s.name, tot))
+    people.remember(kin, now, sfmt("%s came from %s hungry: we gave %.0f FU of food", p.name, home_s.name, tot))
+    kh.gave = kh.gave or {}
+    kh.gave[hh.id] = (kh.gave[hh.id] or 0) + tot
+    hh.got = hh.got or {}
+    hh.got[kh.id] = (hh.got[kh.id] or 0) + tot
+    s.acc.kin_help = (s.acc.kin_help or 0) + 1
+    s.acc.kin_help_fu = (s.acc.kin_help_fu or 0) + tot
+    local r = econ.rel(home_s, s)
+    r.trust = r.trust + (1 - r.trust) * 0.05
+  else
+    people.remember(p, now, sfmt("%s of %s had nothing to spare", kname, s.name))
+    people.remember(kin, now, sfmt("%s came from %s hungry and we had nothing to give", p.name, home_s.name))
+  end
+  -- a place under their roof, when things are very bad at home and there is room
+  local vdays = home_s.need and home_s.need.food_days or 99
+  local odays = s.need and s.need.food_days or 0
+  if vdays < c.kin_offer_days and odays > c.kin_offer_days * 2 and #kh.members + #hh.members <= c.kin_room then
+    hh.kin_offer = { sett = s.id, host = kh.id, t = now, by = kin.id }
+    people.remember(p, now, sfmt("%s said we could come and live with them at %s", kname, s.name))
+    people.remember(kin, now, sfmt("We told %s they could come to us if things get no better", p.name))
+  end
 end
 
 -- Driving wolves off a pen (D-105): shouting, a torch, a stick; any wolf of a pack still near the
@@ -1847,6 +2107,12 @@ DROP.any = function(W, s, p, st)
           gave, gv = g, q
         end
       end
+      local ex = p.pack and p.pack.extra
+      if ex then
+        for _, k in ipairs({ "flax", "fibre", "yarn", "scraps" }) do
+          if ex[k] then b.stock[k] = (b.stock[k] or 0) + ex[k] end
+        end
+      end
     end
     p.pack = nil
     p.carry, p.camt = "", 0
@@ -1956,6 +2222,8 @@ end
 -- The end of a trip (D-097, D-101, D-102): what is left of the provisions back in the larder, the
 -- claims and the boat freed. Called after the trip's last drop, whatever the hands hold.
 local function end_trip(W, s, p, st)
+  -- (S17) home again (or come to live here): what they saw on the way is told
+  if st.trip_end and p.seen and (p.at or p.sett) == s.id then require("sim.agents.founding").tell(W, p, s) end
   local b = s.buildings[st.ref or 0]
   if not b then return end
   if st.trip_end and (p.prov or 0) > 0 then
@@ -1984,6 +2252,47 @@ local function end_trip(W, s, p, st)
   end
 end
 
+-- (S17) Whose pack a hungry traveller with no provisions eats from: their own, else one of their
+-- household on the same road (the household's bread is the household's).
+local function road_bread(W, p)
+  if p.pack and (p.pack.grain or 0) > 0.05 then return p end
+  local V = W.S.v3
+  local hh = V.households[p.hh]
+  local st = p.plan[p.pi]
+  for _, id in ipairs(hh and hh.members or {}) do
+    local q = V.people[id]
+    local sq = q and q.plan[q.pi]
+    if q and q ~= p and q.alive and q.act == "travel" and q.pack and (q.pack.grain or 0) > 0.05 and sq and st
+      and sq.to == st.to and sq.site == st.site then return q end
+  end
+  return nil
+end
+
+-- (S17) The nearest walkable tile on the village's own ground (s.bank) to stranded person p, found
+-- through land and water alike (not through buildings), within 40 tiles; or nil.
+function M.way_back(W, s, p)
+  local N = s.N
+  local i0 = mapm.tile_of(s, p.x, p.y)
+  local bank = s.bank
+  if i0 == 0 or not bank then return nil end
+  local seen = { [i0] = true }
+  local q, head = { i0 }, 1
+  local cost, land, riv, occ = s.cost, s.land, s.riv, s.occ
+  while head <= #q and head < 6000 do
+    local i = q[head]; head = head + 1
+    if i ~= i0 and bank[i] == 1 and cost[i] > 0 then return mapm.tile_xy(s, i) end
+    local ix, iy = (i - 1) % N + 1, floor((i - 1) / N) + 1
+    for d = 1, 4 do
+      local jx, jy = ix + (d == 1 and 1 or (d == 2 and -1 or 0)), iy + (d == 3 and 1 or (d == 4 and -1 or 0))
+      if jx >= 2 and jy >= 2 and jx <= N - 1 and jy <= N - 1 then
+        local j = (jy - 1) * N + jx
+        if not seen[j] and occ[j] == 0 and (land[j] == 1 or riv[j] > 0) then seen[j] = true; q[#q + 1] = j end
+      end
+    end
+  end
+  return nil
+end
+
 -- Apply the effects of p's current step, done to fraction f (1 = complete), at time now.
 local LEISURE = { rest = true, talk = true, visit = true, sit_out = true }
 local function finish(W, s, p, now, f)
@@ -2004,6 +2313,17 @@ local function finish(W, s, p, now, f)
         p.prov = p.prov - m
         p.hunger = max(0, p.hunger - m / c.meal_fu * c.meal)
         hs.acc.eaten = (hs.acc.eaten or 0) + m
+      elseif p.hunger > 0.45 and p.act == "travel" then
+        -- (S17) no provisions left: bread from the pack - their own, or that of one of their
+        -- household walking the same road
+        local q = road_bread(W, p)
+        if q then
+          local m = min(q.pack.grain, c.meal_fu)
+          q.pack.grain = q.pack.grain - m
+          q.camt = pack_load(q)
+          p.hunger = max(0, p.hunger - m / c.meal_fu * c.meal)
+          hs.acc.eaten = (hs.acc.eaten or 0) + m
+        end
       end
     end
   else
@@ -2111,6 +2431,8 @@ function M.start(W, s, p, now)
       stock.rouse_drove(W, s, p, G.beast, now)
     end
   end
+  -- (S17) a step that carries its own reason (the road after the gathering): it is theirs from now
+  if st.why then p.why = st.why end
   return h(W, s, p, st, now)
 end
 

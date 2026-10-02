@@ -574,6 +574,56 @@ function M.a_man_goes_courting()
   T.ok((H.acc.kin_visits or 0) + (O.acc.kin_visits or 0) > k0, "a visit was paid: " .. tostring(walker and walker.name))
   T.ok((O.know and O.know[H.id] and O.know[H.id].t or 0) > t1 or (H.know and H.know[O.id] and H.know[O.id].t or 0) > t1,
     "the news went with them")
+  -- (S17) kin are asked for help: a premise at H - its fields failed and its stores ran out - and
+  -- the bride (or anyone of H with kin at O) walks to them for food; they give what they can spare
+  -- from their larder (and their village's granary when it has grain to spare), carried home
+  for _, pl in ipairs(H.plots) do
+    pl.sheaves = 0
+    if pl.stage == "growing" or pl.stage == "ripe" then
+      for r = 1, pl.rows do pl.row_st[r] = 0 end
+      pl.sown, pl.stage = 0, "fallow"
+    end
+  end
+  local function starve()
+    H.granary.stock.grain, H.granary.stock.sheaves, H.granary.stock.smoked = 0, 0, 0
+    for _, id in ipairs(H.blist) do
+      local b = H.buildings[id]
+      if b.kind == "house" and b.hh ~= 0 then b.stock.smoked, b.stock.food, b.stock.cheese, b.stock.meat, b.stock.fish, b.stock.meals = 0, 0, 0, 0, 0, 0 end
+    end
+  end
+  starve()
+  local imp0 = H.acc.import or 0
+  local asked, asker = false, nil
+  local t2 = W.hour
+  for h = 1, 24 * 6 do
+    world.advance(W, t2 + h)
+    for _, id in ipairs(H.members) do
+      local q = V.people[id]
+      if q.alive and q.trip and q.trip.ask_kin then asked, asker = true, q end
+    end
+    if (O.acc.kin_help or 0) > 0 and asker and not asker.trip then break end
+  end
+  -- (asked for food and given it - or, things being bad enough, gone to live with them)
+  local moved = bride.sett == O.id and V.households[bride.hh] and V.households[bride.hh].migrate ~= nil
+  T.ok(asked or moved, "someone of " .. H.name .. " went to kin at " .. O.name .. " for help: " .. tostring(asker and asker.name)
+    .. string.format(" [village food %.1f days]", H.need.food_days or -1))
+  if moved and not asked then
+    local mg = V.households[bride.hh].migrate
+    T.ok(mg.why:find(O.name) ~= nil, "they went to live with kin at " .. O.name .. ": " .. mg.why)
+    return string.format("%s's household went to live at %s: %s", bride.name, O.name, mg.why)
+  end
+  T.ok((O.acc.kin_help or 0) >= 1, "kin at " .. O.name .. " gave: " .. string.format("%.1f FU", O.acc.kin_help_fu or 0))
+  T.ok((H.acc.import or 0) > imp0, "the food came to " .. H.name .. "'s books: " .. string.format("%.1f FU", (H.acc.import or 0) - imp0))
+  local told = false
+  for _, id in ipairs(O.members) do
+    local q = V.people[id]
+    for i = 1, 8 do
+      local m = q.mem[i]
+      if m and m[2]:find("came from " .. H.name .. " hungry") then told = true end
+    end
+  end
+  T.ok(told, "the kin remember being asked")
+  return string.format("%s asked kin at %s: %.1f FU given", asker and asker.name or "?", O.name, O.acc.kin_help_fu or 0)
 end
 
 return M

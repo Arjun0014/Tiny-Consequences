@@ -151,10 +151,19 @@ local function edge_toward(W, s, c)
   x, y = x or 1, y or 0
   local ring = edge_ring(s)
   local best, bd = 0, 1e18
-  for q = 1, #ring do
-    local tx, ty = mapm.tile_xy(s, ring[q])
-    local d = dsq(tx - x) + dsq(ty - y)
-    if d < bd then best, bd = ring[q], d end
+  -- (S17: on the village's own side of any river too deep to wade, when there is such ground at the
+  -- border: people come and go where they can walk to the village)
+  local bank = s.bank
+  for pass = 1, 2 do
+    for q = 1, #ring do
+      local i = ring[q]
+      if pass == 2 or not bank or bank[i] == 1 then
+        local tx, ty = mapm.tile_xy(s, i)
+        local d = dsq(tx - x) + dsq(ty - y)
+        if d < bd then best, bd = i, d end
+      end
+    end
+    if best > 0 then break end
   end
   if best > 0 then return mapm.tile_xy(s, best) end
   -- (no land at the border: out of the woods farthest from the square)

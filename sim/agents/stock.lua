@@ -557,10 +557,16 @@ function M.step(W, s, H, a, now)
     end
     local d = sqrt(dsq(tx - x) + dsq(ty - y))
     if d > s.T * 0.6 and (night or not inside or u(W, s, H, a, now, 12) < 0.35) then
-      a.why = night and "To its place in the pen for the night" or (inside and "About the pen" or "Into the pen")
+      if pen.kind == "camp" then
+        -- (S17: no fold yet at a new place: kept close by its people's camp)
+        a.why = night and "To its place by the camp for the night: there is no fold yet" or "Kept close by the camp: there is no fold yet"
+      else
+        a.why = night and "To its place in the pen for the night" or (inside and "About the pen" or "Into the pen")
+      end
       if walk_to(W, s, a, now, tx, ty, S.speed * pace * (inside and 0.5 or 1.2)) then return end
     end
-    a.why = night and "Lying in the pen for the night" or "Waiting in the pen"
+    a.why = pen.kind == "camp" and (night and "Lying by the camp for the night" or "Kept by the camp: there is no fold yet")
+      or (night and "Lying in the pen for the night" or "Waiting in the pen")
     stand(a, now, "pen", (night and 1.8 or 0.4) + (night and 2.4 or 0.6) * u(W, s, H, a, now, 6))
     return
   end
@@ -1184,10 +1190,9 @@ end
 -- Founding: the village's herds, each household's beasts by what its land favours (sheep
 -- everywhere; goats where it is dry or rough; cattle on good grass; pigs where there are woods),
 -- the pens, the hay left from last year (the season's), grass on the commons.
-function M.found(W, s, households, u, doy0)
-  local c = C()
+-- The map's grazing ground (16 x 16 blocks): how open each block is, its grass, its woods.
+function M.pasture_init(W, s, u)
   local N = s.N
-  s.herds = {}
   local P = { grass = {}, open = {}, wood = {} }
   s.pasture = P
   local nb = (N / BS) * (N / BS)
@@ -1196,6 +1201,14 @@ function M.found(W, s, households, u, doy0)
     P.grass[b] = P.open[b] * (0.5 + 0.3 * u())
     P.wood[b] = woods(s, b)
   end
+  return P
+end
+
+function M.found(W, s, households, u, doy0)
+  local c = C()
+  local N = s.N
+  s.herds = {}
+  M.pasture_init(W, s, u)
   s.hay = c.hay_found[floor(doy0 / 12) + 1]
   local F = W.F
   local wet = F.soil_water and F.soil_water[s.cell] or 0.5

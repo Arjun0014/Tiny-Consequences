@@ -19,6 +19,8 @@ local settle = require("sim.agents.settle")
 -- (settle.lua cannot require econ.lua: econ -> trade -> wild -> stock -> settle; injected here)
 settle.econ = require("sim.agents.econ")
 settle.migrate = require("sim.agents.migrate")   -- (S16: bob forbids the circular require)
+settle.founding = require("sim.agents.founding")   -- (S17, R5)
+settle.econ.on_learn = settle.founding.share
 local life = require("sim.agents.life")
 local kin = require("sim.agents.kin")
 local rng = require("sim.rng")
@@ -152,11 +154,24 @@ local function start_plan(W, s, p, now)
     think.release(W, s, p)
     local pl = p.plan
     for i = #pl, 1, -1 do pl[i] = nil end
-    pl[1] = { op = "work", kind = "wait", dur = 0.2 }
+    p.stuck = (p.stuck or 0) + 1
+    -- (S17) cut off from the village (a river risen behind a hunter, a ford gone): after trying
+    -- every way for an hour they wade or swim across to the nearest ground the village stands on
+    local wx, wy = nil, nil
+    if p.stuck >= 6 and not p.at then wx, wy = act.way_back(W, s, p) end
+    if wx then
+      local d = math.sqrt(dsq(wx - p.x) + dsq(wy - p.y))
+      pl[1] = { op = "work", kind = "wade", dur = 0.05 + d / 1.2, x1 = wx, y1 = wy, why = "Cut off from the village: wading across the water to get back" }
+      p.stuck = 0
+    else
+      pl[1] = { op = "work", kind = "wait", dur = 0.2 }
+      p.why = "Cannot find a way there"
+    end
     p.pi = 1
-    p.why = "Cannot find a way there"
     p.failed, p.failed_t = p.objk, now
     act.start(W, s, p, now)
+  else
+    p.stuck = nil
   end
 end
 

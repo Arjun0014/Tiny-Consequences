@@ -427,10 +427,13 @@ end
 -- (runtime only, never saved: keyed by the settlement table)
 local CACHES = setmetatable({}, { __mode = "k" })
 
+-- (S17: valid while the cost field's content is the same - map.cost_ver - not merely its version:
+-- the daily rebuild that changes nothing keeps the paths)
 local function cache_get(s, key)
   local pc = CACHES[s]
-  if not pc or pc.ver ~= s.ver then
-    pc = { ver = s.ver, map = {}, n = 0 }
+  local v = mapm.cost_ver[s] or -1
+  if not pc or pc.ver ~= v then
+    pc = { ver = v, map = {}, n = 0 }
     CACHES[s] = pc
     return nil
   end

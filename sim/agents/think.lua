@@ -53,7 +53,8 @@ local function plural(n, one, many) return n == 1 and one or many end
 -- its holder is alive, still of the household and still at that objective (a claim must never
 -- outlive a person who moved to a new house, died or changed their mind).
 local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "fetch_wood", fetch_water = "fetch_water", foraging = "forage", child_gathering = "forage",
-  smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed",
+  smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed", moving_in = "strike_camp",
+  asking = "visit_kin",
   milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle", trading = "trade", sharing = "share", tanning = "tan", lifting = "lift", cobbling = "cobble" }
 local function claim_free(W, hh, field, p)
   local id = hh[field] or 0
@@ -74,7 +75,29 @@ local function plan_reset(p)
   return pl
 end
 
+-- (constant directions, built once: a table literal in a hot function is garbage every call)
+local CIRCLE9 = { { 1, 0 }, { 0.707, 0.707 }, { 0, 1 }, { -0.707, 0.707 }, { -1, 0 }, { -0.707, -0.707 }, { 0, -1 }, { 0.707, -0.707 }, { 1, 0 } }
+
+-- (S17) At a camp each has their own place round the fire (a turn of the circle by who they are):
+-- going "home" to a camp is going there. GO_S, GO_P: the settlement and person being planned for.
+local GO_S, GO_P = nil, nil
+local function camp_spot(s, b, p)
+  local t = ((p.id * 0.6180339887) % 1) * 8
+  local i = floor(t)
+  local f = t - i
+  local P = CIRCLE9
+  local ca = P[i + 1][1] + (P[i + 2][1] - P[i + 1][1]) * f
+  local sa = P[i + 1][2] + (P[i + 2][2] - P[i + 1][2]) * f
+  local r = s.T * (1.1 + 0.7 * ((p.id * 0.37) % 1))
+  return b.cx + ca * r, b.cy + sa * r
+end
+M.camp_spot = camp_spot
+
 local function go(pl, x, y, place, enter)
+  if enter and GO_S and GO_P then
+    local b = GO_S.buildings[enter]
+    if b and b.kind == "camp" then x, y = camp_spot(GO_S, b, GO_P) end
+  end
   pl[#pl + 1] = { op = "go", x = x, y = y, place = place, enter = enter }
 end
 
@@ -87,8 +110,6 @@ end
 local function door(b) return b.dx, b.dy end
 local function mapm_xy(s, ix, iy) return require("sim.agents.map").ixy_xy(s, ix, iy) end
 
--- (constant directions, built once: a table literal in a hot function is garbage every call)
-local CIRCLE9 = { { 1, 0 }, { 0.707, 0.707 }, { 0, 1 }, { -0.707, 0.707 }, { -1, 0 }, { -0.707, -0.707 }, { 0, -1 }, { 0.707, -0.707 }, { 1, 0 } }
 local P8 = { { 1, 0 }, { 0.7, 0.7 }, { 0, 1 }, { -0.7, 0.7 }, { -1, 0 }, { -0.7, -0.7 }, { 0, -1 }, { 0.7, -0.7 } }
 
 -- A spot near (x, y) for person p (so people waiting or talking do not stand on each other).
@@ -409,7 +430,7 @@ local function work_candidates(W, s, p, ctx, now)
           end
         end
       end
-      if (pl.sheaves >= 2 or (pl.sheaves >= 0.05 and pl.stage == "stubble")) and (pl.haul_claim or 0) < pl.sheaves / c.carry_grain then
+      if s.granary and (pl.sheaves >= 2 or (pl.sheaves >= 0.05 and pl.stage == "stubble")) and (pl.haul_claim or 0) < pl.sheaves / c.carry_grain then
         local f = fit(p, ctx, "haul_grain", k)
         local wm = ctx.with_mentor
         ctx.with_mentor = false
@@ -424,7 +445,7 @@ local function work_candidates(W, s, p, ctx, now)
   -- retted flax waiting on its field: carried to the granary (D-088)
   for k = 1, grown and #plots or 0 do
     local pl = plots[k]
-    if pl.stage == "stubble" and (pl.flax or 0) >= 0.05 and (pl.flax_claim or 0) < pl.flax / c.carry_flax then
+    if s.granary and pl.stage == "stubble" and (pl.flax or 0) >= 0.05 and (pl.flax_claim or 0) < pl.flax / c.carry_flax then
       local f = fit(p, ctx, "haul_grain", k)
       ctx.with_mentor = false
       if f > 0 then
@@ -451,7 +472,7 @@ local function work_candidates(W, s, p, ctx, now)
     local f = bwm and 1.05 * (ctx.babe and kin.BABE_FIT.haul_logs or 1) or f0
     if best > 0 and f > 0 then
       bd = dist(px, py, tr.x[best], tr.y[best])
-      local dest = need.site_logs > 0 and "a building site" or "the woodstore"
+      local dest = need.site_logs > 0 and "a building site" or (s.wood_store and "the woodstore" or "our woodpile")
       if bwm then
         addw((0.52 + 0.2 * need.wood_short + (bwm and 0.15 or 0)) * f * fat - bd / ctx.spd * 0.45, "haul_logs", best, 0, "Carrying the logs %s cut to %s", ctx.mentor.name, dest)
       else
@@ -463,7 +484,7 @@ local function work_candidates(W, s, p, ctx, now)
     local f = fit(p, ctx, "fell")
     if f > 0 and ctx.stage == "adult" then
       -- (the walk to the tree only lowers it)
-      local k0 = (s.clearing and need.clear_trees > 0) and max(0.62, 0.35 + 0.5 * need.wood_short) or (0.35 + 0.5 * need.wood_short)
+      local k0 = ((s.clearing or s.lot) and need.clear_trees > 0) and max(0.62, 0.35 + 0.5 * need.wood_short) or (0.35 + 0.5 * need.wood_short)
       add_lazy(k0 * f * fat, "fell", M.lazy_fell, f * fat)
     end
   end
@@ -554,7 +575,13 @@ function M.lazy_fell(c, ff)
   if k == 0 then c.u = -1e9; return end
   local d = dist(p.x, p.y, tr.x[k], tr.y[k])
   c.a, c.b = k, 0
-  if clearing then
+  local lot = clearing and settle.on_lot(s, tr.tile[k])
+  if lot then
+    c.u = 0.66 * ff - d / ctx.spd * 0.45
+    local left = 0
+    for _, j in ipairs(settle.clearing_trees(s) or {}) do if tr.st[j] == 1 and settle.on_lot(s, tr.tile[j]) then left = left + 1 end end
+    c.why = sfmt("Clearing the ground for the %s (%d %s still standing)", lot.opts.label or settle.KINDS[lot.kind].label, left, plural(left, "tree", "trees"))
+  elseif clearing then
     c.u = 0.62 * ff - d / ctx.spd * 0.45
     c.why = sfmt(s.expand_why == "spare" and "Clearing ground for a new field (%d %s still standing): hands to spare, and a bigger store against a bad year"
       or "Clearing ground for a new field (%d %s still standing): the harvest will not feed us a year",
@@ -582,7 +609,13 @@ function M.lazy_grub(c, ff)
   if best == 0 then c.u = -1e9; return end
   c.a, c.b = best, 0
   c.u = 0.55 * ff - bd / ctx.spd * 0.45
-  c.why = sfmt("Digging out stumps on the new field ground (%d left)", s.need.clear_stumps)
+  local lot = settle.on_lot(s, tr.tile[best])
+  if lot then
+    c.u = 0.6 * ff - bd / ctx.spd * 0.45
+    c.why = sfmt("Digging out stumps where the %s will stand (%d left)", settle.KINDS[lot.kind].label, s.need.clear_stumps)
+  else
+    c.why = sfmt("Digging out stumps on the new field ground (%d left)", s.need.clear_stumps)
+  end
 end
 
 -- Fishing (D-084): a free boat at the dock and fish offshore. The ground is chosen on the water
@@ -775,6 +808,110 @@ end
 M.visit_candidate = visit_candidate
 M.share_candidate = function(...) return share_candidate(...) end
 
+-- (S17) Kin living at other villages: parents, children, brothers and sisters (each once).
+local KIN_TMP = {}
+local function kin_away(W, p)
+  local V = W.S.v3
+  local out = KIN_TMP
+  for i = #out, 1, -1 do out[i] = nil end
+  local function add_k(id, rel)
+    local q = V.people[id or 0]
+    if q and q.alive and q ~= p and q.sett ~= p.sett and not q.at then
+      for i = 1, #out do if out[i].q == q then return end end
+      out[#out + 1] = { q = q, rel = rel }
+    end
+  end
+  add_k(p.mother, "mother")
+  add_k(p.father, "father")
+  for _, k in ipairs(p.kids or {}) do
+    local q = V.people[k]
+    add_k(k, q and (q.sex == "f" and "daughter" or "son") or "child")
+  end
+  for _, pid in ipairs({ p.mother, p.father }) do
+    local par = V.people[pid or 0]
+    for _, k in ipairs(par and par.kids or {}) do
+      local q = V.people[k]
+      add_k(k, q and (q.sex == "f" and "sister" or "brother") or "sibling")
+    end
+  end
+  return out
+end
+M.kin_away = kin_away
+
+-- (S17) Asking kin at another village for help: a grown-up of a household whose larder is nearly
+-- empty while its own village has little to give either walks to a parent, child, brother or sister
+-- living elsewhere (the nearest, the closest of them) to ask for food - and, when things are very bad
+-- at home, they may offer the household a place under their roof. Not the same kin again for
+-- kin_ask_again days.
+local function ask_kin_candidate(W, s, p, ctx, now, fat)
+  local c = C()
+  local hh = ctx.hh
+  if p.trip or p.court or ctx.stage ~= "adult" or not ctx.home or not hh or ctx.rain >= 2 or ctx.night then return end
+  if not claim_free(W, hh, "asking", p) or (hh.trading or 0) ~= 0 then return end
+  local home = ctx.home
+  local n = max(1, #hh.members)
+  local days = (people.pantry(home) + (home.stock.meals or 0)) / (n * 0.75)
+  local vdays = s.need and s.need.food_days or 99
+  if days >= c.kin_ask_days or vdays >= c.kin_ask_village then return end
+  local V = W.S.v3
+  local day = floor(now / 24)
+  local best, bs, bo, bh, brel
+  for _, e in ipairs(kin_away(W, p)) do
+    local q = e.q
+    local o = V.settlements[q.sett]
+    local kh = V.households[q.hh]
+    local asked = hh.kin_asked and hh.kin_asked[q.hh]
+    if o and kh and o.buildings[kh.home or 0] and not (asked and day - asked < c.kin_ask_again) then
+      local _, hrs = trade.road(W, s, o)
+      if hrs and hrs <= c.kin_reach_h then
+        local close = (e.rel == "mother" or e.rel == "father" or e.rel == "son" or e.rel == "daughter") and 1 or 0.8
+        local sc = close * (0.6 + people.affinity(p, q.id)) - hrs * 0.01
+        if not best or sc > bs then best, bs, bo, bh, brel = q, sc, o, hrs, e.rel end
+      end
+    end
+  end
+  if not best then return end
+  if bh <= ctx.sunset - ctx.wake then
+    if ctx.lh + bh > ctx.sunset + 0.5 then return end
+  elseif ctx.lh > ctx.wake + 2.5 then return end
+  addw((0.6 + 0.5 * (1 - days / c.kin_ask_days)) * fat, "ask_kin", bo.id, best.id,
+    "Food for %.1f days at home and the village has little: walking to %s to ask my %s %s for help (%.0f hours)",
+    days, bo.name, brel, best.name, bh)
+end
+M.ask_kin_candidate = ask_kin_candidate
+
+-- (S17) Going to see the neighbours: when the village has heard nothing of a neighbour for long
+-- (its news faded under `news_stale`), nobody from here has gone lately (`news_again` days) and hands
+-- are idle, a sociable grown-up may walk there to see how they fare and what they want, and tell how
+-- things stand at home - the news both ways and what each knows of places. One at a time a
+-- neighbour.
+local function news_candidate(W, s, p, ctx, now, fat)
+  local c = C()
+  if p.trip or p.court or ctx.stage ~= "adult" or not ctx.home or ctx.rain >= 1 or ctx.night then return end
+  if (p.nursing or 0) > now or (s.idle_avg or 0) < c.news_idle then return end
+  local day = floor(now / 24)
+  local best, bf, bh
+  for _, o in ipairs(trade.partners(W, s)) do
+    local fr = econ.fresh(W, s, o, now)
+    local went = s.news_went and s.news_went[o.id]
+    local k = s.know and s.know[o.id]
+    local old = not k or (now - k.t) / 24 >= c.news_days
+    if old and not (went and day - went < c.news_again) then
+      local _, hrs = trade.road(W, s, o)
+      if hrs <= c.court_road_h and (not best or fr < bf) then best, bf, bh = o, fr, hrs end
+    end
+  end
+  if not best then return end
+  if bh <= ctx.sunset - ctx.wake then
+    if ctx.lh + bh > ctx.sunset + 0.5 then return end
+  elseif ctx.lh > ctx.wake + 2.5 then return end
+  local k = s.know and s.know[best.id]
+  local days = k and (now - k.t) / 24 or 99
+  addw((0.08 + 0.18 * p.soc + 0.12 * (1 - bf)) * fat, "news", best.id, 0,
+    "Nothing heard from %s for %.0f days: walking there to see how they fare and what they want (%.0f hours)", best.name, days, bh)
+end
+M.news_candidate = news_candidate
+
 -- Sharing (D-101): plenty taken to a household of the village that has little (econ.plan_gift).
 local function share_candidate(W, s, p, ctx, now, fat)
   local hh = ctx.hh
@@ -901,6 +1038,8 @@ local function craft_candidate(W, s, p, ctx, now)
   end
 end
 
+local CAMP_STOCK = { "food", "seed", "meals", "meat", "fish", "milk", "smoked", "cheese", "logs", "hides", "leather", "wool", "cloth" }
+
 -- Household chores and care.
 local function chores(W, s, p, ctx, now)
   local c = C()
@@ -957,6 +1096,19 @@ local function chores(W, s, p, ctx, now)
       end
     end
   end
+  -- (S17) the camp lived at until the house stood: its things carried in, a load at a time
+  local oc = hh.old_camp and s.buildings[hh.old_camp]
+  if oc and oc.state == "standing" and home.kind == "house" and claim_free(W, hh, "moving_in", p) and ctx.stage ~= "child" then
+    local left = 0
+    for _, k in ipairs(CAMP_STOCK) do left = left + (oc.stock[k] or 0) end
+    if left > 0.05 then
+      local f = fit(p, ctx, "fetch_food")
+      if f > 0 then
+        addw((0.5 + (ctx.rain > 0 and 0.15 or 0)) * f * fat - travel(ctx, oc.cx, oc.cy, px, py), "strike_camp", oc.id, 0,
+          "Our hut stands: carrying our things in from the camp (%.0f FU of food and stores left there)", left)
+      end
+    end
+  end
   -- fresh fish beyond what the pot will take today is smoked at the hearth before it spoils (D-087)
   local surplus = (home.stock.fish or 0) + (home.stock.meat or 0) - n * 0.8
   -- (with a rack by the shore and fair weather, fish is hung to dry instead: D-096)
@@ -966,6 +1118,18 @@ local function chores(W, s, p, ctx, now)
     if f > 0 then
       addw((0.28 + 0.1 * min(4, surplus)) * f * fatigue(p) - travel(ctx, ctx.hx, ctx.hy, px, py), "smoke", home.id, 0,
         "%.0f FU of fresh fish will not keep: smoking it over the hearth", surplus)
+    end
+  end
+  if (home.stock.water or 0) < 1 and claim_free(W, hh, "fetch_water", p) and not s.well and s.has_river then
+    -- (S17) no well (a young place): water from the river bank nearest home
+    local f = fit(p, ctx, "fetch_water")
+    if f > 0 then
+      local bi, bd = require("sim.agents.map").house_bank(s, home)
+      if bi > 0 then
+        local bx, by = require("sim.agents.map").tile_xy(s, bi)
+        addw(0.5 * f * fat - travel(ctx, bx, by, px, py), "fetch_water", bi, 1,
+          "The water jar is empty: to the river (%.0f paces; no well dug yet)", bd * 400)
+      end
     end
   end
   if (home.stock.water or 0) < 1 and claim_free(W, hh, "fetch_water", p) and s.well then
@@ -1036,6 +1200,9 @@ local function textile_candidates(W, s, p, ctx, now)
   -- (cloth is a household's store of wealth: linen, the children's next clothes, a daughter's
   -- chest; a year's clothes a member in hand before the spindles rest)
   local want = max(1.5, n * c.cloth_keep)
+  -- (S17) working for exchange: a neighbour heard to want cloth more than it is worth here
+  local trade_for = s.export and s.export.cloth
+  if trade_for then want = want + n * c.export_cloth end
   local urg = min(1, def / max(1, n * 0.3))
   local slack = ((s.doy or 0) >= 36 or ctx.rain > 0 or not ctx.workday) and 0.07 or 0
   local fat = fatigue(p)
@@ -1054,8 +1221,13 @@ local function textile_candidates(W, s, p, ctx, now)
   if yarn >= 0.3 and cloth < want and claim_free(W, hh, "weaving", p) then
     local f = fit(p, ctx, "weave")
     if f > 0 then
-      addw((0.2 + 0.18 * min(1, yarn) + 0.12 * urg + slack) * f * fat - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.5, "weave", home.id, 0,
-        "%.1f garments' worth of yarn waits at the loom", yarn)
+      if trade_for and cloth >= max(1.5, n * c.cloth_keep) then
+        addw((0.2 + 0.18 * min(1, yarn) + slack) * f * fat - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.5, "weave", home.id, 0,
+          "Weaving cloth to trade: %s wants cloth (%.1f garments' worth of yarn at the loom)", trade_for, yarn)
+      else
+        addw((0.2 + 0.18 * min(1, yarn) + 0.12 * urg + slack) * f * fat - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.5, "weave", home.id, 0,
+          "%.1f garments' worth of yarn waits at the loom", yarn)
+      end
     end
   end
   -- spinning (as many spindles as hands)
@@ -1455,10 +1627,11 @@ local function leisure(W, s, p, ctx, now)
     local there = s.at_well or 0
     -- a few talkers draw others; a crowd puts the quieter ones off (they sit by their own door)
     local draw = 0.03 * min(there, 4) - 0.025 * max(0, there - 6) * (1.2 - p.soc)
+    local where = s.well and "the well" or "the fire"
     if there > 0 then
-      addw(u + draw - travel(ctx, s.sqx, s.sqy, px, py) * 0.5, "talk", 0, 0, "%d %s talking by the well", there, plural(there, "neighbour is", "neighbours are"))
+      addw(u + draw - travel(ctx, s.sqx, s.sqy, px, py) * 0.5, "talk", 0, 0, "%d %s talking by %s", there, plural(there, "neighbour is", "neighbours are"), where)
     else
-      add(u + draw - travel(ctx, s.sqx, s.sqy, px, py) * 0.5, "talk", 0, 0, "Going to the well to talk")
+      add(u + draw - travel(ctx, s.sqx, s.sqy, px, py) * 0.5, "talk", 0, 0, s.well and "Going to the well to talk" or "Going to sit by the fire and talk")
     end
     -- the evening on the bench by their own door
     if evening and ctx.home and ctx.rain == 0 then
@@ -1584,9 +1757,16 @@ local function eat_candidate(W, s, p, ctx, now)
   if home and (home.stock.meals or 0) >= c.meal_fu * 0.5 then
     add(0.5 + h - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.3, "eat", home.id, 0,
       mealtime and (ctx.lh < 12 and "Breakfast at home" or "Supper at home") or "Hungry: going home to eat")
-  elseif home and people.pantry(home) >= 0.3 and ctx.stage ~= "child" and (ctx.hh and claim_free(W, ctx.hh, "cooking", p)) then
+  elseif home and people.pantry(home) >= 0.3 and ctx.stage ~= "child" and ((home.stock.logs or 0) > 0 or home.fire)
+    and (ctx.hh and claim_free(W, ctx.hh, "cooking", p)) then
     -- nothing cooked: hungry, they cook (and then eat)
     add(0.45 + h - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.3, "cook", home.id, 1, "Hungry and nothing cooked at home")
+  elseif home and people.pantry(home) >= 0.3 and (h > 0.6 or ctx.stage == "child") then
+    -- (S17) no fire to cook on (a camp before any wood is cut): eaten cold
+    add(0.4 + h - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.3, "eat", home.id, 2, "Hungry, and no fire to cook on: eating cold food")
+  elseif not home and p.pack and (p.pack.grain or 0) >= 0.3 then
+    -- (S17) no home yet: bread from the pack they carried here
+    add(0.5 + h, "eat", 0, 3, "Hungry, with no hearth yet: eating bread from my pack")
   end
 end
 
@@ -1659,7 +1839,16 @@ end
 
 PLAN.eat = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
+  if cd.b == 3 then
+    work(pl, "eat", 0.3, { from = "pack" })
+    return "Eat", "where they are"
+  end
   local home = s.buildings[cd.a]
+  if cd.b == 2 then
+    if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+    work(pl, "eat", 0.3, { inside = home.id, ref = home.id, from = "cold" })
+    return "Eat", "home"
+  end
   if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
   work(pl, "eat", 0.3 + 0.2 * u01(W, p, now, 9), { inside = home.id, ref = home.id })
   -- take bread along when the day's work is still ahead
@@ -1859,6 +2048,18 @@ PLAN.fetch_food = function(W, s, p, ctx, now, cd)
   return "Fetch food from the granary", "the granary"
 end
 
+PLAN.strike_camp = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local b, home = s.buildings[cd.a], ctx.home
+  ctx.hh.moving_in = p.id
+  go(pl, b.cx + 0.01, b.cy, "the old camp")
+  work(pl, "strike", 0.15, { ref = b.id, fx = b.cx, fy = b.cy })
+  pl[#pl + 1] = { op = "pick", what = "camp", ref = b.id }
+  go(pl, home.dx, home.dy, "home", home.id)
+  pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, release = "moving_in" }
+  return "Carry our things in from the camp", "the old camp"
+end
+
 PLAN.fetch_wood = function(W, s, p, ctx, now, cd)
   local c = C()
   local pl = plan_reset(p)
@@ -1942,11 +2143,19 @@ PLAN.sow = function(W, s, p, ctx, now, cd)
   local plot = s.plots[cd.a]
   plot.row_claim[cd.b] = p.id
   if p.carry ~= "seed" or p.camt < c.seed_row then
-    -- seed from home when some is kept there, else from the granary
+    -- seed from home when some is kept there, else from the granary (S17: a young place with no
+    -- granary yet sows from the grain its people carried there)
     local home = ctx.home
-    if home and (home.stock.seed or 0) >= c.seed_row and dist(p.x, p.y, home.dx, home.dy) <= dist(p.x, p.y, s.granary_x, s.granary_y) + 0.1 then
+    if home and (home.stock.seed or 0) >= c.seed_row and (not s.granary or dist(p.x, p.y, home.dx, home.dy) <= dist(p.x, p.y, s.granary_x, s.granary_y) + 0.1) then
       go(pl, home.dx, home.dy, "home", home.id)
       pl[#pl + 1] = { op = "pick", what = "seed", ref = home.id, n = c.seed_row * 4 }
+    elseif not s.granary then
+      local src = home
+      if not (src and (src.stock.food or 0) >= c.seed_row) then src = settle.seed_store(W, s) end
+      if src then
+        go(pl, src.dx, src.dy, src == home and "home" or src.label, src == home and home.id or nil)
+        pl[#pl + 1] = { op = "pick", what = "seed", ref = src.id, n = c.seed_row * 4, food = true }
+      end
     else
       local g = s.granary
       go(pl, g.dx, g.dy, "the granary")
@@ -2158,6 +2367,18 @@ PLAN.haul_logs = function(W, s, p, ctx, now, cd)
     return "Carry logs to the " .. site.label, site.label
   end
   local w = s.wood_store
+  if not w then
+    -- (S17: no woodstore yet: to the household's own woodpile)
+    local home = ctx.home
+    if home then
+      go(pl, home.dx, home.dy, "home", home.id)
+      pl[#pl + 1] = { op = "drop", to = "home", ref = home.id }
+      return "Carry logs to our woodpile", "home"
+    end
+    pl[#pl] = nil
+    tr.claim[k] = 0
+    return PLAN.rest(W, s, p, ctx, now, cd)
+  end
   go(pl, w.dx, w.dy, "the woodstore")
   pl[#pl + 1] = { op = "drop", to = "woodstore", ref = w.id }
   return "Carry logs to the woodstore", "the woodstore"
@@ -2436,7 +2657,8 @@ local function migrate_legs(W, s, p, ctx, now)
     local _, hrs = trade.road(W, home_s, o)
     local lh0 = (ctx.lh + max(0, mg.depart - now)) % 24
     work(pl, "travel", road_dur(lh0 + 0.4, hrs * (kind and c.drove_road or 1), ctx.wake, ctx.bed),
-      { to = o.id, from = home_s.id, lead = kind, migrate = true })
+      { to = o.id, from = home_s.id, lead = kind, migrate = true,
+        why = (mg.why or ("Moving to " .. o.name)) .. ": on the road to " .. o.name .. (kind and " with our beasts" or " with the household") })
     return "Move to " .. o.name, o.name
   end
   -- arrived: to the house they lodge in, the food into its larder
@@ -2453,6 +2675,95 @@ local function migrate_legs(W, s, p, ctx, now)
   p.trip = nil
   return "Camp at " .. o.name, o.name
 end
+
+-- (S17, R5) A household going to make a new place (sim/agents/founding.lua). From home: provisions
+-- for the longer road, each grown-up's pack from the larder, their part of the granary (seed and
+-- bread for the first months), the household's beasts by the halter, all to the gate toward the
+-- place and the road together at the hour agreed, at the party's pace. At the place (its people from
+-- the moment they walk onto it): to the household's camp ground, the packs set down there.
+local function found_legs(W, s, p, ctx, now)
+  local c = C()
+  local pl = plan_reset(p)
+  local V = W.S.v3
+  local tr = p.trip
+  local hh = V.households[p.hh]
+  local fd = hh and hh.found
+  local home_s = V.settlements[tr.from]
+  local here = p.at or p.sett
+  local grown = ctx.stage == "adult" or ctx.stage == "elder" or ctx.stage == "apprentice"
+  if here == tr.from and fd and home_s then
+    -- (a couple setting out from the house they lived in: their part of its larder)
+    local home = ctx.home or (hh.pack_from and home_s.buildings[hh.pack_from])
+    if home and home.state ~= "standing" then home = nil end
+    if home and p.carry ~= "pack" and not tr.packed then
+      tr.packed = true
+      -- (the larder shared: each takes their part for the road before anyone packs the rest)
+      fd.packed = (fd.packed or 0) + 1
+      local walkers = 0
+      for _, id in ipairs(hh.members) do
+        local q = V.people[id]
+        if q and q.alive and people.stage(q, now) ~= "infant" then walkers = walkers + 1 end
+      end
+      local others = max(0, walkers - fd.packed)
+      -- (from another's house: only their part of its larder, by mouths)
+      local part = 1
+      local owner = V.households[home.hh or 0]
+      if owner and owner ~= hh then
+        part = #hh.members / max(1, #hh.members + #owner.members)
+      end
+      local prov = min(c.trade_prov * 3, ((home.stock.meals or 0) + (home.stock.food or 0)) * part / (others + 1))
+      if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+      pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id, n = prov }
+      if grown then
+        -- (what is left once the others' provisions are set aside)
+        pl[#pl + 1] = { op = "pick", what = "pack", good = "grain", ref = home.id,
+          n = max(0, min(c.found_carry, (home.stock.food or 0) * part - prov - c.trade_prov * 3 * others)) }
+        local g = home_s.granary
+        if g and (fd.share or 0) > 0.5 then
+          go(pl, g.dx, g.dy, "the granary")
+          pl[#pl + 1] = { op = "pick", what = "share", ref = g.id, n = c.found_carry }
+        end
+      end
+    end
+    local kind
+    for _, k in ipairs(stock.HERDS) do if fd.lead and fd.lead[k] == p.id then kind = k end end
+    if kind then
+      tr.lead_kind = kind
+      local H = home_s.herds and home_s.herds[kind]
+      for _, a in ipairs(H and H.animals or {}) do
+        if a.alive and a.owner == hh.id and (a.led or 0) == 0 and (a.yoke or 0) == 0 and (a.held or 0) == 0 then
+          local ax, ay = stock.pos(a, now)
+          go(pl, ax, ay, "a " .. (stock.SP(a.sp) and a.sp or "beast") .. " of ours")
+          work(pl, "halter", 0.05, { herd = stock.HIDX[kind] + 1, ref = a.k, fx = ax, fy = ay, mig = true })
+        end
+      end
+    end
+    local gx, gy = require("sim.agents.wild").edge_toward(W, home_s, tr.site)
+    go(pl, gx, gy, "the way to the new place")
+    if kind then pl[#pl].lead = kind end
+    work(pl, "gather", 0, { until_t = fd.depart })
+    local lh0 = (ctx.lh + max(0, fd.depart - now)) % 24
+    local dur = road_dur(lh0 + 0.4, fd.hrs * (fd.slow and c.drove_road or 1), ctx.wake, ctx.bed)
+    work(pl, "travel", dur, { site = tr.site, from = home_s.id, lead = kind, migrate = true, found = true,
+      why = sfmt("%s: on the way to the place we chose, %.0f hours' walk with %s (%s)", fd.why, fd.hrs * (fd.slow and c.drove_road or 1),
+        kind and "our beasts" or "the others", fd.swhy or "") })
+    return "Go to make a new home", "the new place"
+  end
+  -- at the place: the packs set down at the household's camp ground
+  local o = V.settlements[p.sett]
+  local cb = o and hh and o.buildings[hh.camp or hh.camp_site or 0]
+  if cb then
+    local x, y = camp_spot(o, cb, p)
+    go(pl, x, y, "our camp")
+    pl[#pl + 1] = { op = "drop", to = "home", ref = cb.id, trip_end = true }
+    return "Set down our packs at the camp", "our camp"
+  end
+  go(pl, o and o.sqx or 0, o and o.sqy or 0, "the place we chose")
+  work(pl, "wait", 0.2, {})
+  p.trip = nil
+  return "Look about the new place", "the new place"
+end
+M.found_legs = found_legs
 
 -- A trading voyage (D-102), from wherever it stands. Out: provisions, the cargo carried to the
 -- boat a load at a time, the mate, the sea way (a voyage step). At the other village: to its dock,
@@ -2680,6 +2991,17 @@ local function court_legs(W, s, p, ctx, now)
       if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
       pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id }
     end
+    if home and tr.visit and not tr.ask_kin and not tr.gift_packed and p.carry ~= "pack" and ctx.hh then
+      -- (S17) a little of what the household has beyond its want, that the kin's village is heard to
+      -- want: a gift for them
+      tr.gift_packed = true
+      local g, n = econ.visit_gift(W, home_s, ctx.hh, home, o, now)
+      if g then
+        tr.gift_good = g
+        if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+        pl[#pl + 1] = { op = "pick", what = "pack", good = g, ref = home.id, n = n }
+      end
+    end
     local gx, gy = trade.gate(W, home_s, o)
     go(pl, gx, gy, "the road to " .. o.name)
     local _, hrs = trade.road(W, home_s, o)
@@ -2692,17 +3014,43 @@ local function court_legs(W, s, p, ctx, now)
     local kb = kh and o.buildings[kh.home or 0]
     if not tr.met then
       if tr.visit then
-        -- (S16) to the kin's house: a meal and the news together
+        -- (S16) to the kin's house: a meal and the news together (S17: or to ask for help)
         if kb then go(pl, kb.dx, kb.dy, kb.label or "their house", kb.id) end
-        work(pl, "visit_kin", c.visit_h, { ref = kb and kb.id or 0, inside = kb and kb.id or nil })
-        return "Visit " .. (kin and kin.name or "kin") .. " at " .. o.name, o.name
+        work(pl, tr.ask_kin and "ask_kin" or "visit_kin", tr.ask_kin and c.kin_ask_h or c.visit_h, { ref = kb and kb.id or 0, inside = kb and kb.id or nil })
+        return (tr.ask_kin and "Ask " or "Visit ") .. (kin and kin.name or "kin") .. " at " .. o.name .. (tr.ask_kin and " for help" or ""), o.name
       end
       local x, y = near_spot(W, p, now, o.sqx or 0, o.sqy or 0, 0.08, 61)
       go(pl, x, y, o.name .. "'s square")
+      if tr.news then
+        -- (S17) among its people at the square: how they fare, what they want, the news both ways
+        work(pl, "news", c.news_h, { ref = o.id })
+        return "Talk with the people of " .. o.name, o.name
+      end
       work(pl, "court", c.court_h, { ref = o.id })
       return "Court at " .. o.name, o.name
     end
+    if tr.ask_kin and not tr.packed and ((tr.gift_house or 0) > 0.05 or (tr.gift_left or 0) > 0.05) then
+      -- (S17) what they give, into the pack: from their house, and from their village's granary
+      tr.packed = true
+      if kb and (tr.gift_house or 0) > 0.05 then
+        if p.inside ~= kb.id then go(pl, kb.dx, kb.dy, kb.label or "their house", kb.id) end
+        pl[#pl + 1] = { op = "pick", what = "kin_gift", ref = kb.id }
+      end
+      if o.granary and (tr.gift_left or 0) > 0.05 then
+        go(pl, o.granary.dx, o.granary.dy, o.name .. "'s granary")
+        pl[#pl + 1] = { op = "pick", what = "relief", ref = o.granary.id, n = tr.gift_left }
+      end
+      return "Take what " .. (kin and kin.name or "kin") .. " gives", o.name
+    end
     local _, hrs0 = trade.road(W, o, home_s)
+    if tr.news and not tr.slept and (ctx.night or ctx.lh + hrs0 > ctx.sunset + 0.5) then
+      -- (too late to walk home by day: the night at the square, off at first light)
+      tr.slept = true
+      local until_t = next_local(now, ctx.lh, ctx.wake)
+      go(pl, o.sqx or 0, o.sqy or 0, o.name .. "'s square")
+      work(pl, "sleep", until_t - now, { trip_sleep = true })
+      return "Sleep at " .. o.name, o.name
+    end
     if tr.visit and kb and not tr.slept and (ctx.night or ctx.lh + hrs0 > ctx.sunset + 0.5) then
       -- (too late to walk home by day: the night under their roof)
       tr.slept = true
@@ -2727,6 +3075,26 @@ local function court_legs(W, s, p, ctx, now)
   return "Home", home_s.name
 end
 M.court_legs = court_legs
+
+PLAN.news = function(W, s, p, ctx, now, cd)
+  local o = W.S.v3.settlements[cd.a]
+  s.news_went = s.news_went or {}
+  s.news_went[o.id] = floor(now / 24)
+  p.trip = { to = o.id, from = s.id, court = true, news = true, give = "grain", take = "grain", n = 0, t0 = now }
+  return court_legs(W, s, p, ctx, now)
+end
+
+PLAN.ask_kin = function(W, s, p, ctx, now, cd)
+  local o = W.S.v3.settlements[cd.a]
+  local hh = ctx.hh
+  local q = W.S.v3.people[cd.b]
+  hh.asking = p.id
+  hh.kin_asked = hh.kin_asked or {}
+  if q then hh.kin_asked[q.hh] = floor(now / 24) end
+  p.trip = { to = o.id, from = s.id, court = true, visit = cd.b, ask_kin = true, give = "grain", take = "grain", n = 0, t0 = now }
+  p.visit_t = now
+  return court_legs(W, s, p, ctx, now)
+end
 
 PLAN.visit_kin = function(W, s, p, ctx, now, cd)
   local o = W.S.v3.settlements[cd.a]
@@ -3402,6 +3770,7 @@ local FIELD = { sow = true, till = true, tend = true, harvest = true }
 function M.decide(W, s, p, now, reason)
   NOW = now
   W_FIT = W
+  GO_S, GO_P = s, p
   local ctx = context(W, s, p, now)
   if ctx.stage == "infant" then return think_infant(W, s, p, now) end
   ncand = 0
@@ -3435,6 +3804,23 @@ function M.decide(W, s, p, now, reason)
     end
   end
   do
+    -- (S17, R5) the household is going to make a new place: everyone but the babes in arms packs,
+    -- gathers at the gate and takes the road with the party
+    local hh = W.S.v3.households[p.hh]
+    local fd = hh and hh.found
+    -- (life goes on until the morning they set off: then they pack, gather and go)
+    if (fd and not p.trip and (p.at or p.sett) == fd.from and p.sett == fd.from and now >= fd.depart - C().ready_h) or (p.trip and p.trip.found) then
+      if not p.trip then
+        p.trip = { site = fd.site, from = fd.from, found = hh.id, give = "grain", take = "grain", n = 0, t0 = now }
+      end
+      local obj, dest = M.found_legs(W, s, p, ctx, now)
+      p.obj, p.dest, p.objk = obj, dest, "found"
+      p.why = (reason and (reason .. ". ") or "") .. require("sim.agents.founding").why(W, p, hh)
+      p.tgt_kind, p.tgt_ref = "found", fd and fd.site or 0
+      return true
+    end
+  end
+  do
     -- (S16, R5) the household is moving away: everyone but the babes in arms (who are carried)
     -- packs, gathers at the gate and takes the road with the others
     local hh = W.S.v3.households[p.hh]
@@ -3444,7 +3830,7 @@ function M.decide(W, s, p, now, reason)
       -- (S16, R4) a bride going to live at her husband's village
       p.trip = { to = mv.to, from = mv.from, move = true, give = "grain", take = "grain", n = 0, t0 = now }
     end
-    if (mg and not mg.arrived and (not p.trip or p.trip.migrate)) or (p.trip and (p.trip.migrate or p.trip.move)) then
+    if (mg and not mg.arrived and ((not p.trip and now >= mg.depart - C().ready_h) or (p.trip and p.trip.migrate))) or (p.trip and (p.trip.migrate or p.trip.move)) then
       if not p.trip then
         p.trip = { to = mg.to, from = mg.from, migrate = hh.id, give = "grain", take = "grain", n = 0, t0 = now }
       end
@@ -3471,9 +3857,22 @@ function M.decide(W, s, p, now, reason)
       if tr.court and tr.visit then
         local kin = W.S.v3.people[tr.visit]
         local kn = kin and kin.name or "kin"
-        p.why = (reason and (reason .. ". ") or "") .. (here == tr.to and (tr.met and ("Visited " .. kn .. " at " .. giver .. ": going home")
-          or ("Visiting " .. kn .. " at " .. giver)) or (here == tr.from and tr.back and ("Home from visiting " .. kn) or ("On the road to " .. giver .. " to visit " .. kn)))
+        if tr.ask_kin then
+          p.why = (reason and (reason .. ". ") or "") .. (here == tr.to and (tr.met and ((tr.packed and "Carrying home what " .. kn .. " gave") or ("Asked " .. kn .. " at " .. giver .. " for help: going home"))
+            or ("Asking " .. kn .. " at " .. giver .. " for help: little food at home")) or (here == tr.from and tr.back and ("Home from " .. giver .. " with what " .. kn .. " gave")
+            or ("On the road to " .. giver .. " to ask " .. kn .. " for help: little food at home")))
+        else
+          p.why = (reason and (reason .. ". ") or "") .. (here == tr.to and (tr.met and ("Visited " .. kn .. " at " .. giver .. ": going home")
+            or ("Visiting " .. kn .. " at " .. giver)) or (here == tr.from and tr.back and ("Home from visiting " .. kn) or ("On the road to " .. giver .. " to visit " .. kn)))
+        end
         p.objk = "visit_kin"
+        p.tgt_kind, p.tgt_ref = "trade", tr.to
+        return true
+      end
+      if tr.court and tr.news then
+        p.why = (reason and (reason .. ". ") or "") .. (here == tr.to and (tr.met and ("Heard how they fare at " .. giver .. ": going home") or ("Talking with the people of " .. giver .. ": how they fare, what they want"))
+          or (here == tr.from and tr.back and ("Home from " .. giver .. " with the news") or ("On the road to " .. giver .. ": nothing heard from them for long")))
+        p.objk = "news"
         p.tgt_kind, p.tgt_ref = "trade", tr.to
         return true
       end
@@ -3606,6 +4005,8 @@ function M.decide(W, s, p, now, reason)
       trade_candidate(W, s, p, ctx, now, fatigue(p))
       court_candidate(W, s, p, ctx, now, fatigue(p))
       visit_candidate(W, s, p, ctx, now, fatigue(p))
+      ask_kin_candidate(W, s, p, ctx, now, fatigue(p))
+      news_candidate(W, s, p, ctx, now, fatigue(p))
       share_candidate(W, s, p, ctx, now, fatigue(p))
       leather_candidates(W, s, p, ctx, now)
       rack_candidates(W, s, p, ctx, now, fatigue(p))

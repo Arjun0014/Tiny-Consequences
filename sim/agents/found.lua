@@ -224,6 +224,160 @@ local function lane_walk(s, x0, y0, x1, y1, amount)
   end
 end
 
+-- The woods of a map (founding, and S17 a new place's empty map): individual trees from the planet's
+-- forest, thinner within `cleared` of the centre (wood gathered there for generations; 0 for land
+-- nobody has lived on), none on the river, its floodplain and a bank three tiles wide, nor on
+-- ground already taken; then the planet forest each tree stands for (felling writes it back).
+function M.woods(W, s, u, cleared)
+  local N = s.N
+  -- (the river and its floodplain are open meadow, and a bank of grass and reeds three tiles
+  -- wide either side: floods keep the trees off, D-085)
+  local bank = {}
+  for i = 1, N * N do
+    if s.riv[i] ~= 0 then
+      local ix, iy = mapm.tile_ixy(s, i)
+      for jy = max(1, iy - 3), min(N, iy + 3) do
+        for jx = max(1, ix - 3), min(N, ix + 3) do bank[(jy - 1) * N + jx] = true end
+      end
+    end
+  end
+  for iy = 2, N - 1, 2 do
+    for ix = 2, N - 1, 2 do
+      local jx = (u() - 0.5) * 1.6
+      local jy = (u() - 0.5) * 1.6
+      local x, y = mapm.ixy_xy(s, ix + jx, iy + jy)
+      local i = mapm.tile_of(s, x, y)
+      if i > 0 and s.land[i] == 1 and s.occ[i] == 0 and s.plot[i] == 0 and not bank[i] then
+        local r = sqrt(x * x + y * y)
+        local fo = W.F.forest[s.cell_of[i]]
+        -- the forest edge near the village is thinner (wood gathered for generations; untouched
+        -- land none)
+        local edge = cleared <= 0 and 1 or (r < cleared and 0 or min(1, (r - cleared) / 0.35))
+        local pt = fo * 0.95 * edge
+        local ut = u()
+        if ut < pt then
+          mapm.add_tree(s, x, y, 0.35 + 0.65 * u())
+        elseif ut < pt + 0.02 * edge then
+          mapm.add_tree(s, x, y, 0.15 + 0.3 * u())   -- a young tree in the open
+        end
+      end
+    end
+  end
+  -- the planet forest each tree stands for (felling writes the field back)
+  local sum = {}
+  local tr = s.trees
+  for k = 1, tr.n do
+    if tr.st[k] == 1 then
+      local cl = s.cell_of[tr.tile[k]]
+      sum[cl] = (sum[cl] or 0) + tr.size[k]
+    end
+  end
+  s.tree_share = {}
+  for k = 1, tr.n do
+    local cl = s.cell_of[tr.tile[k]]
+    if sum[cl] and sum[cl] > 0 and not s.tree_share[cl] then s.tree_share[cl] = W.F.forest[cl] / sum[cl] end
+  end
+end
+
+-- A household of the village: a family by its template ({ {sex, age, role, mark} }) living in house
+-- hb - their bodies, minds, skills, ties, the house's stores (founding; S17 also a village's later
+-- growth in tests). Returns the household.
+function M.add_family(W, s, hb, tpl, u, culture, doy0)
+  local c = C()
+  local V = W.S.v3
+  local now = W.hour
+  local hh = people.new_household(W, s.id, hb.id)
+  hb.hh = hh.id
+  s.households[#s.households + 1] = hh.id
+  local fam = {}
+  local surname = names.surname(u, culture)
+  for k = 1, #tpl do
+    local t = tpl[k]
+    local age = t[2] + u() * 0.4
+    local p = people.new(W, { sex = t[1], born = now - age * 1152, hh = 0, sett = s.id, surname = surname,
+      culture = culture, x = hb.dx, y = hb.dy, role = t[3] or "" })
+    people.join(W, p, hh)
+    s.members[#s.members + 1] = p.id
+    p.inside = hb.id
+    fam[k] = { p = p, t = t }
+    -- skills from years of practice in a role
+    local yrs = max(0, age - 14)
+    local function sk(base) return min(0.95, 0.2 + yrs * 0.02 * base + u() * 0.1) end
+    p.sk_farm = sk(p.role == "farmer" and 1.6 or 0.8)
+    p.sk_wood = sk(p.role == "woodcutter" and 1.8 or 0.4)
+    p.sk_build = sk(p.role == "builder" and 1.8 or 0.4)
+    p.sk_fish = sk(s.dock and 0.5 or 0.1)
+    p.sk_craft = sk(1.0)
+    p.clothes = 0.4 + 0.55 * u()
+    if age >= c.adult_age and p.sex == "m" and u() < 0.5 then p.strong = true end
+    if t[4] == "p" then p.preg_due = now + (2.4 + u()) * 24 end
+  end
+  -- family ties: the first two of a household (when man and woman of an age) are a couple;
+  -- the young are their children; a much older member is a grandparent
+  local a, b = fam[1], fam[2]
+  local couple = b and a.t[1] ~= b.t[1] and abs(a.t[2] - b.t[2]) < 8
+  if couple then
+    a.p.partner, b.p.partner = b.p.id, a.p.id
+    a.p.married, b.p.married = now - 5 * 1152, now - 5 * 1152
+  end
+  for k = 2, #fam do
+    local q = fam[k]
+    if q.t[4] == "c" then
+      -- (handled below: the waiting couple)
+    elseif (couple and k >= 3 or (not couple and k >= 2)) and q.t[2] < a.t[2] - 14 and q.t[2] < 40 then
+      local father = a.t[1] == "m" and a.p or (b and b.t[1] == "m" and b.p)
+      local mother = a.t[1] == "f" and a.p or (b and b.t[1] == "f" and b.p)
+      if not couple then mother = nil end
+      if father then q.p.father = father.id; father.kids[#father.kids + 1] = q.p.id end
+      if mother and mother ~= q.p then q.p.mother = mother.id; mother.kids[#mother.kids + 1] = q.p.id end
+    end
+  end
+  -- the waiting couple (married, no home of their own yet)
+  local wa, wb
+  for k = 1, #fam do
+    if fam[k].t[4] == "c" then if not wa then wa = fam[k].p else wb = fam[k].p end end
+  end
+  if wa and wb then
+    wa.partner, wb.partner = wb.id, wa.id
+    wa.married, wb.married = now - 30 * 24, now - 30 * 24
+    wb.surname = wa.surname
+    local wife = wa.sex == "f" and wa or wb
+    s.couples[#s.couples + 1] = wife.id
+    people.remember(wa, now, "Married; waiting for a house of our own")
+    people.remember(wb, now, "Married; waiting for a house of our own")
+  end
+  -- infants are looked after by their mother
+  for k = 1, #fam do
+    local q = fam[k].p
+    if people.stage(q, now) == "infant" then
+      local m = V.people[q.mother ~= 0 and q.mother or (fam[2] and fam[2].p.id or 0)]
+      if m then
+        require("sim.agents.kin").give(W, q, m)
+        m.nursing = now + 600
+      end
+    end
+    q.stage_was = people.stage(q, now)
+  end
+  -- bonds within the family
+  for k = 1, #fam do
+    for j = 1, #fam do
+      if j ~= k then people.bond(fam[k].p, fam[j].p, 0.45 + 0.2 * u()) end
+    end
+  end
+  -- stocks at home
+  hb.stock.food = (#fam) * (1.5 + 1.5 * u())
+  hb.stock.meals = (#fam) * (0.4 + 0.6 * u())
+  hb.cond = 0.78 + 0.22 * u()   -- built over the years: some roofs are older than others
+  hh.tools = 0.7 + 0.25 * u()
+  hb.stock.logs = doy0 >= 24 and 3 or 2
+  -- linen under way (D-088): dressed fibre, a little yarn and cloth
+  hb.stock.fibre = #fam * (0.1 + 0.25 * u())
+  hb.stock.yarn = #fam * (0.05 + 0.1 * u())
+  hb.stock.cloth = u() * 0.8
+  hb.stock.water = u() < 0.6 and 1 or 0
+  return hh
+end
+
 function M.found(W, cell, opts)
   opts = opts or {}
   local c = C()
@@ -336,150 +490,14 @@ function M.found(W, cell, opts)
     end
   end
   -- 4. the woods: individual trees from the planet's forest, off the village ground
-  local cleared = 0.42
-  -- (the river and its floodplain are open meadow, and a bank of grass and reeds three tiles
-  -- wide either side: floods keep the trees off, D-085)
-  local bank = {}
-  for i = 1, N * N do
-    if s.riv[i] ~= 0 then
-      local ix, iy = mapm.tile_ixy(s, i)
-      for jy = max(1, iy - 3), min(N, iy + 3) do
-        for jx = max(1, ix - 3), min(N, ix + 3) do bank[(jy - 1) * N + jx] = true end
-      end
-    end
-  end
-  for iy = 2, N - 1, 2 do
-    for ix = 2, N - 1, 2 do
-      local jx = (u() - 0.5) * 1.6
-      local jy = (u() - 0.5) * 1.6
-      local x, y = mapm.ixy_xy(s, ix + jx, iy + jy)
-      local i = mapm.tile_of(s, x, y)
-      if i > 0 and s.land[i] == 1 and s.occ[i] == 0 and s.plot[i] == 0 and not bank[i] then
-        local r = sqrt(x * x + y * y)
-        local fo = W.F.forest[s.cell_of[i]]
-        -- the forest edge near the village is thinner (wood gathered for generations)
-        local edge = r < cleared and 0 or min(1, (r - cleared) / 0.35)
-        local pt = fo * 0.95 * edge
-        local ut = u()
-        if ut < pt then
-          mapm.add_tree(s, x, y, 0.35 + 0.65 * u())
-        elseif ut < pt + 0.02 * edge then
-          mapm.add_tree(s, x, y, 0.15 + 0.3 * u())   -- a young tree in the open
-        end
-      end
-    end
-  end
-  -- the planet forest each tree stands for (felling writes the field back)
-  local sum = {}
-  local tr = s.trees
-  for k = 1, tr.n do
-    if tr.st[k] == 1 then
-      local cl = s.cell_of[tr.tile[k]]
-      sum[cl] = (sum[cl] or 0) + tr.size[k]
-    end
-  end
-  s.tree_share = {}
-  for k = 1, tr.n do
-    local cl = s.cell_of[tr.tile[k]]
-    if sum[cl] and sum[cl] > 0 and not s.tree_share[cl] then s.tree_share[cl] = W.F.forest[cl] / sum[cl] end
-  end
+  M.woods(W, s, u, 0.42)
   mapm.rebuild_costs(s)
   settle.wild_food(W, s, floor(W.hour / 24), 0.6)
   -- 5. the people
   local now = W.hour
   local hlist = {}
   for h = 1, #TEMPLATE do
-    local hb = homes[h]
-    local hh = people.new_household(W, s.id, hb.id)
-    hb.hh = hh.id
-    s.households[#s.households + 1] = hh.id
-    hlist[h] = hh
-    local fam = {}
-    local surname = names.surname(u, culture)
-    for k = 1, #TEMPLATE[h] do
-      local t = TEMPLATE[h][k]
-      local age = t[2] + u() * 0.4
-      local p = people.new(W, { sex = t[1], born = now - age * 1152, hh = 0, sett = s.id, surname = surname,
-        culture = culture, x = hb.dx, y = hb.dy, role = t[3] or "" })
-      people.join(W, p, hh)
-      s.members[#s.members + 1] = p.id
-      p.inside = hb.id
-      fam[k] = { p = p, t = t }
-      -- skills from years of practice in a role
-      local yrs = max(0, age - 14)
-      local function sk(base) return min(0.95, 0.2 + yrs * 0.02 * base + u() * 0.1) end
-      p.sk_farm = sk(p.role == "farmer" and 1.6 or 0.8)
-      p.sk_wood = sk(p.role == "woodcutter" and 1.8 or 0.4)
-      p.sk_build = sk(p.role == "builder" and 1.8 or 0.4)
-      p.sk_fish = sk(s.dock and 0.5 or 0.1)
-      p.sk_craft = sk(1.0)
-      p.clothes = 0.4 + 0.55 * u()
-      if age >= c.adult_age and p.sex == "m" and u() < 0.5 then p.strong = true end
-      if t[4] == "p" then p.preg_due = now + (2.4 + u()) * 24 end
-    end
-    -- family ties: the first two of a household (when man and woman of an age) are a couple;
-    -- the young are their children; a much older member is a grandparent
-    local a, b = fam[1], fam[2]
-    local couple = b and a.t[1] ~= b.t[1] and abs(a.t[2] - b.t[2]) < 8
-    if couple then
-      a.p.partner, b.p.partner = b.p.id, a.p.id
-      a.p.married, b.p.married = now - 5 * 1152, now - 5 * 1152
-    end
-    for k = 2, #fam do
-      local q = fam[k]
-      if q.t[4] == "c" then
-        -- (handled below: the waiting couple)
-      elseif (couple and k >= 3 or (not couple and k >= 2)) and q.t[2] < a.t[2] - 14 and q.t[2] < 40 then
-        local father = a.t[1] == "m" and a.p or (b and b.t[1] == "m" and b.p)
-        local mother = a.t[1] == "f" and a.p or (b and b.t[1] == "f" and b.p)
-        if not couple then mother = nil end
-        if father then q.p.father = father.id; father.kids[#father.kids + 1] = q.p.id end
-        if mother and mother ~= q.p then q.p.mother = mother.id; mother.kids[#mother.kids + 1] = q.p.id end
-      end
-    end
-    -- the waiting couple (married, no home of their own yet)
-    local wa, wb
-    for k = 1, #fam do
-      if fam[k].t[4] == "c" then if not wa then wa = fam[k].p else wb = fam[k].p end end
-    end
-    if wa and wb then
-      wa.partner, wb.partner = wb.id, wa.id
-      wa.married, wb.married = now - 30 * 24, now - 30 * 24
-      wb.surname = wa.surname
-      local wife = wa.sex == "f" and wa or wb
-      s.couples[#s.couples + 1] = wife.id
-      people.remember(wa, now, "Married; waiting for a house of our own")
-      people.remember(wb, now, "Married; waiting for a house of our own")
-    end
-    -- infants are looked after by their mother
-    for k = 1, #fam do
-      local q = fam[k].p
-      if people.stage(q, now) == "infant" then
-        local m = V.people[q.mother ~= 0 and q.mother or (fam[2] and fam[2].p.id or 0)]
-        if m then
-          require("sim.agents.kin").give(W, q, m)
-          m.nursing = now + 600
-        end
-      end
-      q.stage_was = people.stage(q, now)
-    end
-    -- bonds within the family
-    for k = 1, #fam do
-      for j = 1, #fam do
-        if j ~= k then people.bond(fam[k].p, fam[j].p, 0.45 + 0.2 * u()) end
-      end
-    end
-    -- stocks at home
-    hb.stock.food = (#fam) * (1.5 + 1.5 * u())
-    hb.stock.meals = (#fam) * (0.4 + 0.6 * u())
-    hb.cond = 0.78 + 0.22 * u()   -- built over the years: some roofs are older than others
-    hh.tools = 0.7 + 0.25 * u()
-    hb.stock.logs = doy0 >= 24 and 3 or 2
-    -- linen under way (D-088): dressed fibre, a little yarn and cloth
-    hb.stock.fibre = #fam * (0.1 + 0.25 * u())
-    hb.stock.yarn = #fam * (0.05 + 0.1 * u())
-    hb.stock.cloth = u() * 0.8
-    hb.stock.water = u() < 0.6 and 1 or 0
+    hlist[h] = M.add_family(W, s, homes[h], TEMPLATE[h], u, culture, doy0)
   end
   -- neighbours and friends across households (a little affinity, children more)
   local mem = s.members

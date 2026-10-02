@@ -93,9 +93,13 @@ function M.daily(W, s, day, push)
       d.hk = H and H.kind or nil
     end
   end
+  -- (S17: a pup comes from a litter in the village: there must be another dog to have had one; a
+  -- village founded with the world came with its dogs)
+  local any = #s.dogs == 0 and not s.founding
+  for _, d in ipairs(s.dogs) do if d.alive then any = true end end
   for _, hid in ipairs(s.households) do
     local hh = V.households[hid]
-    if hh and #hh.members > 0 and hh.home ~= 0 and not have[hid] and herd_of(W, s, hid)
+    if hh and #hh.members > 0 and hh.home ~= 0 and not have[hid] and herd_of(W, s, hid) and any and not hh.dog_with
       and day - (hh.dog_lost or -999) >= c.dog_pup_days then
       local home = s.buildings[hh.home]
       if home then
@@ -142,6 +146,19 @@ local function alarm(W, s, d, w, now)
   s.acc.barks = (s.acc.barks or 0) + 1
 end
 
+-- (S17) A household gone to live elsewhere with its dog: the dog comes onto the new map with them.
+function M.come(W, o, hh, x, y, now)
+  local dw = hh.dog_with
+  if not dw then return end
+  hh.dog_with = nil
+  o.dogs = o.dogs or {}
+  local k = #o.dogs + 1
+  local d = { k = k, hh = hh.id, born = dw.born, x = x, y = y, tx = x, ty = y, t0 = now, t1 = now + 0.05,
+    act = "sit", alive = true, ver = 0, why = "Come with its people" }
+  o.dogs[k] = d
+  if M.push then M.push(W, d.t1, M.event_id(o, d), d.ver) end
+end
+
 function M.step(W, s, d, now)
   local c = C()
   local V = W.S.v3
@@ -149,6 +166,38 @@ function M.step(W, s, d, now)
   if not hh or #hh.members == 0 then
     d.alive = false
     return
+  end
+  -- (S17) its household leaving for good (moving away or founding a place): it keeps at their heels
+  -- to the gate and goes with them when the last of them takes the road
+  local mg = hh.found or hh.migrate
+  if mg and not (hh.found and hh.found.arrived) and not (hh.migrate and hh.migrate.arrived) then
+    local lead, ld = nil, 1e9
+    for _, id in ipairs(hh.members) do
+      local q = V.people[id]
+      if q and q.alive and q.sett == s.id and not q.at and q.act ~= "travel" and q.act ~= "carried" then
+        local qx, qy = stock.person_pos(q, now)
+        local dd = dsq(qx - d.tx) + dsq(qy - d.ty)
+        if (q.objk == "found" or q.objk == "migrate") and dd < ld then lead, ld = q, dd end
+      end
+    end
+    local gone = true
+    for _, id in ipairs(hh.members) do
+      local q = V.people[id]
+      if q and q.alive and q.sett == s.id and not q.at and q.act ~= "travel" and q.act ~= "carried" then gone = false end
+    end
+    if gone and now >= (mg.depart or now) then
+      d.alive, d.left = false, now
+      hh.dog_with = { born = d.born }
+      return
+    end
+    if lead then
+      local qx, qy = stock.person_pos(lead, now)
+      local dd = sqrt(ld)
+      d.why = "At " .. lead.name .. "'s heels: the household is leaving"
+      if dd > 0.04 and go_to(s, d, now, qx + 0.02, qy - 0.015, c.dog_trot, "walk") then return end
+      stand(d, now, "sit", 0.2)
+      return
+    end
   end
   local home = s.buildings[hh.home or 0]
   local lh = require("sim.agents.clock").local_hour(now, W.grid.lon[s.cell])

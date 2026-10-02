@@ -28,7 +28,13 @@ M.KINDS = {
   byre = { w = 7, h = 6, label = "byre yard", logs = 14, work = 40 },   -- a fenced cattle yard with a lean-to (D-092)
   sty = { w = 5, h = 4, label = "sty", logs = 8, work = 24 },     -- a pig sty: a fenced run and a low hut (D-092)
   tanpit = { w = 2, h = 2, label = "tanning pit", logs = 1, work = 10 },   -- a lined pit by the water where hides soak (D-104)
+  -- (S17, R5) a founding household's camp: the ground cleared, a fire ring, a brush lean-to; its home
+  -- and larder until a house stands (open ground: walked through, built on by nothing else)
+  camp = { w = 5, h = 5, label = "camp", logs = 0, work = 2 },
 }
+-- (S17) the kinds a household lives in
+M.HOME = { house = true, camp = true }
+local ENCLOSURE = { fold = true, byre = true, sty = true, camp = true }
 
 function M.new(W, cell, opts)
   local V = W.S.v3
@@ -37,8 +43,11 @@ function M.new(W, cell, opts)
     id = id, cell = cell, name = opts.name or "?", culture = opts.culture or 1, founded = W.hour,
     key = rng.hash(W.seed, rng.S.V3_FOUND, cell, 0, 0) % 1000003,
     buildings = {}, blist = {}, plots = {}, members = {}, households = {}, sites = {}, felled = {},
-    need = { food_days = 0, fell = 0, wood_short = 0, lying_trees = 0, site_logs = 0, sowing = false, sow_late = 0 },
+    need = { food_days = 0, fell = 0, wood_short = 0, lying_trees = 0, site_logs = 0, sowing = false, sow_late = 0,
+      clear_trees = 0, clear_stumps = 0, repairs = 0, food = 0 },
     acc = {}, alive = true, sqx = 0, sqy = 0, rain_now = 0, couples = {},
+    -- (S17: where the stores will be; the founding's buildings set them)
+    granary_x = 0, granary_y = 0, wood_x = 0, wood_y = 0,
   }
   V.settlements[id] = s
   mapm.build(W, s)
@@ -63,11 +72,13 @@ function M.add_building(W, s, kind, ix0, iy0, side, state, opts)
   for iy = iy0, iy0 + h - 1 do
     for ix = ix0, ix0 + w - 1 do
       -- (a fold is fenced ground, walked in and out of: marked as an enclosure, not a footprint)
-      if kind == "fold" or kind == "byre" or kind == "sty" then s.plot[(iy - 1) * N + ix] = -2 else s.occ[(iy - 1) * N + ix] = id end
+      if ENCLOSURE[kind] then s.plot[(iy - 1) * N + ix] = -2 else s.occ[(iy - 1) * N + ix] = id end
     end
   end
   mapm.occ_ver[s] = (mapm.occ_ver[s] or 0) + 1
-  mapm.clear_rect(s, ix0 - 1, iy0 - 1, ix0 + w, iy0 + h)
+  -- (S17: a camp needs no clearing; a lot with trees on it is cleared by felling first: M.plan_lot)
+  if not (opts and opts.keep_trees) then mapm.clear_rect(s, ix0 - 1, iy0 - 1, ix0 + w, iy0 + h) end
+  b.keep_trees = nil
   -- centre and door point
   local x0, y0 = mapm.ixy_xy(s, ix0, iy0)
   local x1, y1 = mapm.ixy_xy(s, ix0 + w - 1, iy0 + h - 1)
@@ -123,19 +134,51 @@ function M.complete_building(W, s, b)
   b.built = W.hour
   people.remove_id(s.sites, b.id)
   local V = W.S.v3
-  if b.kind == "house" and b.for_hh then
-    -- (S16, R5) the house of a household come from elsewhere: theirs now
-    local hh = V.households[b.for_hh]
+  if b.kind == "camp" then
+    -- (S17, R5) a founding household's camp stands: its home and larder for now (what they carried
+    -- was set down on its ground)
+    local hh = V.households[b.for_hh or 0]
     if hh and #hh.members > 0 then
-      hh.home, hh.lodge, hh.house_site = b.id, nil, nil
+      hh.home, hh.camp, hh.camp_site = b.id, b.id, nil
       b.hh = hh.id
       for _, id in ipairs(hh.members) do
         local q = V.people[id]
-        if q and q.alive then people.remember(q, W.hour, "Moved into our own house at " .. s.name) end
+        if q and q.alive then people.remember(q, W.hour, "Made our camp at " .. s.name .. ": a fire, a lean-to, our packs set down") end
+      end
+    end
+    if s.founding and not s.founding.settled then
+      -- (the first fire: people live here now)
+      s.founding.settled = W.hour
+      W.F.land_use[s.cell] = -1
+      W.lu_ver = (W.lu_ver or 0) + 1
+      if W.record_events then events.emit(W, "settlement_founded", s.cell, 0, 0, { settlement = s.id }) end
+    end
+  end
+  if b.kind == "house" and b.for_hh then
+    -- (S16, R5) the house of a household come from elsewhere: theirs now (S17: or of founders living
+    -- at their camp; what is at the camp is carried in)
+    local hh = V.households[b.for_hh]
+    if hh and #hh.members > 0 then
+      hh.home, hh.lodge, hh.house_site = b.id, nil, nil
+      -- (the camp they lived at is struck by their own hands: its things carried in)
+      if hh.camp then hh.old_camp, hh.camp = hh.camp, nil end
+      b.hh = hh.id
+      for _, id in ipairs(hh.members) do
+        local q = V.people[id]
+        if q and q.alive then people.remember(q, W.hour, (b.hut and "Moved into our hut at " or "Moved into our own house at ") .. s.name) end
       end
     end
     b.stock.food, b.stock.meals, b.stock.water, b.stock.logs = 0, 0, 0, 0
   end
+  if (b.kind == "fold" or b.kind == "byre" or b.kind == "sty") and b.herd and s.herds and s.herds[b.herd] then
+    -- (S17) a pen for a herd kept at a camp until now
+    local H = s.herds[b.herd]
+    local was = s.buildings[H.pen or 0]
+    if not was or was.kind == "camp" then H.pen = b.id end
+    H.pen_planned = nil
+  end
+  if b.kind == "granary" and s.founding then s.granary_planned = nil end
+  if b.kind == "woodstore" and s.founding then s.wood_planned = nil end
   if b.kind == "house" and b.for_a then
     local a, c = V.people[b.for_a], V.people[b.for_b or 0]
     local hh = people.new_household(W, s.id, b.id)
@@ -306,6 +349,7 @@ function M.remove_building(W, s, b)
     for ix = b.ix0, b.ix0 + b.w - 1 do
       local i = (iy - 1) * N + ix
       if s.occ[i] == b.id then s.occ[i] = 0 end
+      if ENCLOSURE[b.kind] and s.plot[i] == -2 then s.plot[i] = 0 end
     end
   end
   mapm.occ_ver[s] = (mapm.occ_ver[s] or 0) + 1
@@ -328,7 +372,7 @@ function M.food_total(W, s)
   if g then tot = tot + (g.stock.grain or 0) + (g.stock.sheaves or 0) + (g.stock.smoked or 0) end
   for k = 1, #s.blist do
     local b = s.buildings[s.blist[k]]
-    if b.kind == "house" then
+    if M.HOME[b.kind] then
       local st = b.stock
       tot = tot + (st.food or 0) + (st.fish or 0) + (st.smoked or 0) + (st.meat or 0) + (st.seed or 0) + (st.meals or 0)
         + (st.milk or 0) + (st.cheese or 0)
@@ -344,23 +388,37 @@ function M.food_total(W, s)
   end
   for k = 1, #s.members do
     local p = V.people[s.members[k]]
-    if p and p.alive then
-      if CARRY_FOOD[p.carry] or p.carry == "smoked" then tot = tot + p.camt
-      elseif p.carry == "pack" and p.pack then
-        tot = tot + (p.pack.grain or 0) + (p.pack.smoked or 0) + (p.pack.cheese or 0)
-      end
-      tot = tot + (p.prov or 0)
-      if p.lunch then tot = tot + c.meal_fu end
-    end
+    if p and p.alive then tot = tot + M.person_food(p) end
   end
   return tot
+end
+
+-- The food a person has on them (FU): in their hands or pack, their provisions, their lunch.
+function M.person_food(p)
+  local tot = 0
+  if CARRY_FOOD[p.carry] or p.carry == "smoked" then tot = tot + p.camt
+  elseif p.carry == "pack" and p.pack then
+    tot = tot + (p.pack.grain or 0) + (p.pack.smoked or 0) + (p.pack.cheese or 0)
+  end
+  tot = tot + (p.prov or 0)
+  if p.lunch then tot = tot + C().meal_fu end
+  return tot
+end
+
+-- (S17) Person p (with what they carry) goes to live at o from s: the food on them leaves s's
+-- ledger and enters o's.
+function M.carry_over(s, o, p)
+  local f = M.person_food(p)
+  if f <= 0 then return end
+  if s then s.acc.moved_out = (s.acc.moved_out or 0) + f end
+  if o then o.acc.moved_in = (o.acc.moved_in or 0) + f end
 end
 
 function M.food_flows(s)
   local a = s.acc
   return (a.harvest or 0) + (a.foraged or 0) + (a.fished or 0) + (a.meat or 0) + (a.milk or 0) + (a.import or 0)
     - (a.eaten or 0) - (a.seed or 0) - (a.lunch or 0) - (a.spoiled or 0) - (a.whey or 0) - (a.export or 0)
-    - (a.lost_sea or 0)
+    - (a.lost_sea or 0) + (a.moved_in or 0) - (a.moved_out or 0)
 end
 
 -- Plots ------------------------------------------------------------------------------------
@@ -404,10 +462,13 @@ local function wood_index(s)
   if ix and ix.n == tr.n and ix.wx == wx and ix.wy == wy then return ix end
   local O, D = {}, {}
   local m = 0
+  -- (the village ground's trees are left standing; S17: a new place has no village ground yet - its
+  -- first wood is cut about its camps, opening the ground)
+  local keep = s.founding and -1 or 0.09
   for k = 1, tr.n do
     local x, y = tr.x[k], tr.y[k]
     local r2 = x * x + y * y
-    if r2 > 0.09 then
+    if r2 > keep then
       local dx, dy = x - wx, y - wy
       m = m + 1
       O[m] = k
@@ -426,22 +487,28 @@ local function wood_index(s)
   return ix
 end
 
--- The trees (and stumps) on the field ground being cleared, by index.
+-- The trees (and stumps) on the ground being cleared - the new field's, and (S17) a building lot's
+-- - by index.
 function M.clearing_trees(s)
-  local cl = s.clearing
-  if not cl then return nil end
-  local L = CLEAR_IDX[cl]
-  if L then return L end
-  L = {}
+  local cl, lot = s.clearing, s.lot
+  if not cl and not lot then return nil end
+  local e = CLEAR_IDX[s]
+  if e and e.cl == cl and e.lot == lot then return e.L end
+  local L = {}
   local N, P = s.N, C().plot_tiles
-  for jy = cl.iy0, cl.iy0 + P - 1 do
-    for jx = cl.ix0, cl.ix0 + P - 1 do
-      local k = s.tree[(jy - 1) * N + jx]
-      if k > 0 then L[#L + 1] = k end
+  local function rect(x0, y0, x1, y1)
+    for jy = max(1, y0), min(N, y1) do
+      for jx = max(1, x0), min(N, x1) do
+        local i = (jy - 1) * N + jx
+        local k = s.tree[i]
+        if k > 0 and s.plot[i] == -1 then L[#L + 1] = k end
+      end
     end
   end
+  if cl then rect(cl.ix0, cl.iy0, cl.ix0 + P - 1, cl.iy0 + P - 1) end
+  if lot then rect(lot.ix0 - 1, lot.iy0 - 1, lot.ix0 + lot.w, lot.iy0 + lot.h) end
   table.sort(L)
-  CLEAR_IDX[cl] = L
+  CLEAR_IDX[s] = { cl = cl, lot = lot, L = L }
   return L
 end
 
@@ -456,7 +523,7 @@ function M.next_tree(W, s, p)
   local X, Y = tr.x, tr.y
   local px, py = p.x, p.y
   local best, bs = 0, 1e9
-  if s.clearing then
+  if s.clearing or s.lot then
     local L = M.clearing_trees(s)
     for j = 1, #L do
       local k = L[j]
@@ -521,6 +588,166 @@ function M.find_lot(W, s)
   return bx, by, bside
 end
 
+-- (S17) A lot for a building of `kind` near (nx, ny), at least min_r tiles from it: free ground
+-- with a yard round it on the village's own bank, the fewest trees on it, the door toward the
+-- square. A lot with trees on it is cleared first (s.lot: its tiles are new ground, plot -1, whose
+-- trees the woodcutters fell and whose stumps are dug out; then the site is laid there:
+-- finish_lot). One lot is cleared at a time. Returns the site (or true while its lot is cleared),
+-- nil when there is no room.
+function M.plan_lot(W, s, kind, opts, nx, ny, min_r)
+  if s.lot then return nil end
+  local K = M.KINDS[kind]
+  local w, h = K.w, K.h
+  local N = s.N
+  local i0 = mapm.tile_of(s, nx or s.sqx or 0, ny or s.sqy or 0)
+  if i0 == 0 then i0 = floor(N / 2) * N + floor(N / 2) + 1 end
+  local ix0, iy0 = mapm.tile_ixy(s, i0)
+  local yard = (kind == "well") and 1 or 2
+  local best, bx, by, bs = false, 0, 0, 1e9
+  for r = min_r or 3, 34 do
+    for iy = iy0 - r, iy0 + r do
+      for ix = ix0 - r, ix0 + r do
+        if (abs(ix - ix0) == r or abs(iy - iy0) == r) and mapm.rect_free(s, ix - yard, iy - yard, ix + w - 1 + yard, iy + h - 1 + yard, true) then
+          local trees = 0
+          for jy = iy - 1, iy + h do
+            for jx = ix - 1, ix + w do
+              local k = s.tree[(jy - 1) * N + jx]
+              if k > 0 and s.trees.st[k] ~= 0 then trees = trees + 1 end
+            end
+          end
+          local sc = r + trees * 1.5
+          if sc < bs then best, bx, by, bs = true, ix, iy, sc end
+        end
+      end
+    end
+    if best and bs <= r + 1 then break end
+  end
+  if not best then return nil end
+  -- the door toward the square
+  local x, y = mapm.ixy_xy(s, bx + (w - 1) / 2, by + (h - 1) / 2)
+  local dx, dy = (s.sqx or 0) - x, (s.sqy or 0) - y
+  local side = abs(dx) > abs(dy) and (dx > 0 and "e" or "w") or (dy > 0 and "n" or "s")
+  if kind == "well" then side = "s" end
+  local trees = 0
+  for jy = by - 1, by + h do
+    for jx = bx - 1, bx + w do
+      local k = s.tree[(jy - 1) * N + jx]
+      if k > 0 and s.trees.st[k] ~= 0 then trees = trees + 1 end
+    end
+  end
+  if trees == 0 then
+    local b = M.add_building(W, s, kind, bx, by, side, "site", opts)
+    M.lot_placed(W, s, b)
+    return b
+  end
+  local hw, hh = w, h
+  if side == "e" or side == "w" then hw, hh = h, w end
+  s.lot = { kind = kind, ix0 = bx, iy0 = by, w = hw, h = hh, side = side, opts = opts or {}, started = W.hour }
+  for jy = by - 1, by + hh do
+    for jx = bx - 1, bx + hw do
+      local i = (jy - 1) * N + jx
+      if s.plot[i] == 0 then s.plot[i] = -1 end
+    end
+  end
+  s.tv = (s.tv or 0) + 1
+  local o = opts or {}
+  local V = W.S.v3
+  if o.for_hh and V.households[o.for_hh] then V.households[o.for_hh].house_site = -1 end
+  if o.for_a and V.people[o.for_a] then V.people[o.for_a].house_site = -1 end
+  return true
+end
+
+-- (S17) The fields of a household that left village s go to the households staying, the one with the
+-- fewest fields for its mouths first (as new ground is given).
+function M.reassign_plots(W, s, hid)
+  local V = W.S.v3
+  M.leave_boats(W, s, hid)
+  for k = 1, #s.plots do
+    local pl = s.plots[k]
+    if pl.hh == hid then
+      local bh, br = nil, 1e9
+      for i = 1, #s.households do
+        local hh = V.households[s.households[i]]
+        if hh and hh.id ~= hid and #hh.members > 0 and not hh.found and not hh.migrate then
+          local n = 0
+          for j = 1, #s.plots do if s.plots[j].hh == hh.id then n = n + 1 end end
+          local r = n / #hh.members
+          if r < br then bh, br = hh, r end
+        end
+      end
+      pl.hh = bh and bh.id or 0
+      local q = bh and V.people[bh.members[1]]
+      if q then
+        for _, id in ipairs(bh.members) do
+          local m = V.people[id]
+          if m and m.alive and people.stage(m, W.hour) == "adult" then people.remember(m, W.hour, "The field of those who left is ours to work now: " .. pl.name) end
+        end
+      end
+    end
+  end
+end
+
+-- (S17) A boat left behind by a household that went away: the village's (anyone's) now.
+function M.leave_boats(W, s, hid)
+  for _, boat in ipairs(s.boats or {}) do
+    if boat.owner == hid then boat.owner = 0 end
+  end
+end
+
+-- (S17) A camp or house with grain enough to sow a row (a young place with no granary), or nil.
+function M.seed_store(W, s)
+  local c = C()
+  for i = 1, #s.blist do
+    local b = s.buildings[s.blist[i]]
+    if M.HOME[b.kind] and b.state == "standing" and ((b.stock.food or 0) >= c.seed_row * 2 or (b.stock.seed or 0) >= c.seed_row) then return b end
+  end
+  return nil
+end
+
+-- (S17) The lot being cleared that tile i is on (or nil).
+function M.on_lot(s, i)
+  local lot = s.lot
+  if not lot or i == 0 then return nil end
+  local ix, iy = mapm.tile_ixy(s, i)
+  if ix >= lot.ix0 - 1 and ix <= lot.ix0 + lot.w and iy >= lot.iy0 - 1 and iy <= lot.iy0 + lot.h then return lot end
+  return nil
+end
+
+-- (S17) A site laid on its lot: whose it is.
+function M.lot_placed(W, s, b)
+  local V = W.S.v3
+  if b.kind == "house" and b.for_hh and V.households[b.for_hh] then V.households[b.for_hh].house_site = b.id end
+  if b.kind == "house" and b.for_a and V.people[b.for_a] then V.people[b.for_a].house_site = b.id end
+  if W.record_events and b.kind == "house" then
+    events.emit(W, "house_planned", s.cell, 0, 0, { settlement = s.id, building = b.id })
+  end
+end
+
+-- (S17) A lot with no tree, stump or log left on it: the site is laid there.
+function M.finish_lot(W, s)
+  local lot = s.lot
+  if not lot then return end
+  local N = s.N
+  local tr = s.trees
+  for jy = lot.iy0 - 1, lot.iy0 + lot.h do
+    for jx = lot.ix0 - 1, lot.ix0 + lot.w do
+      local i = (jy - 1) * N + jx
+      local k = s.tree[i]
+      if k > 0 and tr.st[k] ~= 0 and s.plot[i] == -1 then return end
+    end
+  end
+  for jy = lot.iy0 - 1, lot.iy0 + lot.h do
+    for jx = lot.ix0 - 1, lot.ix0 + lot.w do
+      local i = (jy - 1) * N + jx
+      if s.plot[i] == -1 then s.plot[i] = 0 end
+    end
+  end
+  s.tv = (s.tv or 0) + 1
+  s.lot = nil
+  local b = M.add_building(W, s, lot.kind, lot.ix0, lot.iy0, lot.side, "site", lot.opts)
+  M.lot_placed(W, s, b)
+end
+
 -- Hourly ------------------------------------------------------------------------------------
 
 -- Summary of the open work and the conditions everyone reads (the board). Returns true when the
@@ -551,7 +778,7 @@ function M.hourly(W, s, now)
   food = s.granary and ((s.granary.stock.grain or 0) + (s.granary.stock.sheaves or 0)) or 0
   for i = 1, #s.blist do
     local b = s.buildings[s.blist[i]]
-    if b.kind == "house" and b.state == "standing" then food = food + people.pantry(b) + (b.stock.meals or 0) end
+    if M.HOME[b.kind] and b.state == "standing" then food = food + people.pantry(b) + (b.stock.meals or 0) end
   end
   need.food = food
   need.food_days = pop > 0 and food / pop or 99
@@ -560,7 +787,9 @@ function M.hourly(W, s, now)
   local new_day = s.doy ~= doy
   s.doy = doy
   -- sowing: the spring window, or the winter crop's in autumn (per plot: M.sow_open)
+  -- (S17: a young place with no granary sows from the grain at its camps and houses)
   local seed = s.granary and (s.granary.stock.grain or 0) > c.seed_row
+  if not s.granary then seed = M.seed_store(W, s) ~= nil end
   local w0, w1 = c.sow_season[1], c.sow_season[2]
   if doy >= c.sow_winter[1] and doy <= c.sow_winter[2] then w0, w1 = c.sow_winter[1], c.sow_winter[2] end
   need.sowing = seed and doy >= w0 and doy <= w1
@@ -616,9 +845,9 @@ function M.hourly(W, s, now)
   local repairs = 0
   for i = 1, #s.blist do
     local b = s.buildings[s.blist[i]]
-    if b.kind == "house" and b.state == "standing" then
+    if M.HOME[b.kind] and b.state == "standing" then
       if b.hh ~= 0 then burn = burn + (b.burn or c.fuel_cook) end
-      if (b.cond or 1) < c.repair_at then repairs = repairs + 1 end
+      if b.kind == "house" and (b.cond or 1) < c.repair_at then repairs = repairs + 1 end
     end
   end
   s.burn_day = burn
@@ -627,6 +856,13 @@ function M.hourly(W, s, now)
   local wdays = (s.doy or 0) >= 24 and c.winter_wood_days or 12
   local reserve = max(c.store_logs, floor(burn * wdays + 0.5)) + repairs * c.repair_logs
   local have = (s.wood_store and s.wood_store.stock.logs or 0) + lying
+  if not s.wood_store then
+    -- (S17: a young place with no woodstore keeps its wood in the households' woodpiles)
+    for i = 1, #s.blist do
+      local b = s.buildings[s.blist[i]]
+      if M.HOME[b.kind] and b.state == "standing" then have = have + (b.stock.logs or 0) end
+    end
+  end
   local want = site_logs + reserve
   need.wood_short = want > 0 and max(0, min(1, (want - have) / want)) or 0
   s.wood_want, s.wood_have = want, have
@@ -804,7 +1040,7 @@ local function hearths(W, s, day)
     if b.kind == "house" and b.state == "standing" then
       b.cond = max(0, (b.cond or 1) - c.wear_house)
     end
-    if b.kind == "house" and b.state == "standing" and b.hh ~= 0 then
+    if M.HOME[b.kind] and b.state == "standing" and b.hh ~= 0 then
       local hh = V.households[b.hh]
       local n = hh and #hh.members or 0
       if n > 0 then
@@ -943,7 +1179,12 @@ local function plan_fields(W, s, day)
       end
     end
   end
-  if best >= 1e9 then return end
+  if best >= 1e9 then
+    -- (S17) no ground left to clear for the fields the village wants
+    if expect < want then s.no_field_room = (s.no_field_room or 0) + 1 end
+    return
+  end
+  s.no_field_room = 0
   s.clearing = { ix0 = bix, iy0 = biy, started = W.hour }
   for jy = biy, biy + P - 1 do
     for jx = bix, bix + P - 1 do s.plot[(jy - 1) * N + jx] = -1 end
@@ -980,7 +1221,7 @@ local function plan_sowing(W, s, measure)
   local G = g and ((g.stock.grain or 0) + (g.stock.sheaves or 0)) or 0
   for k = 1, #s.blist do
     local b = s.buildings[s.blist[k]]
-    if b.kind == "house" then G = G + (b.stock.food or 0) end
+    if M.HOME[b.kind] then G = G + (b.stock.food or 0) end
   end
   local q = s.q_avg or 0.85
   local R, rows_all = 0, 0
@@ -1041,6 +1282,7 @@ M.plan_sowing = plan_sowing
 
 -- New field ground with no tree, stump or log left on it becomes a plot.
 local function finish_clearing(W, s)
+  M.finish_lot(W, s)
   local cl = s.clearing
   if not cl then return end
   local c = C()
@@ -1279,6 +1521,8 @@ local function plan_flax(W, s, day)
   if s.flax_year == year then return end
   local want = (s.pop or #s.members) * c.textile_want
   local have = M.textile_pipeline(W, s)
+  -- (S17: bread before linen - a young place with few fields sows them all for grain)
+  if #s.plots < 3 then return end
   s.flax_year = year
   -- (as many fields as the want takes, the most fertile waiting for the spring crop first)
   while have < want do
@@ -1410,11 +1654,13 @@ local function plan_houses(W, s)
     local b = s.buildings[s.sites[i]]
     if b and b.kind == "house" then open = open + 1 end
   end
+  local nolot = false
   for i = 1, #s.couples do
     if open >= 2 then break end
     local a = V.people[s.couples[i]]
     if a and a.alive and not a.house_site then
       local ix, iy, side = M.find_lot(W, s)
+      if not ix then nolot = true end
       if ix then
         local b = M.add_building(W, s, "house", ix, iy, side, "site",
           { for_a = a.id, for_b = a.partner, for_name = "the " .. a.surname .. "s", prio = 1 })
@@ -1426,25 +1672,37 @@ local function plan_houses(W, s)
       end
     end
   end
-  -- (S16, R5) a household come from elsewhere, lodging with another: a house of its own
+  -- (S17) days running a waiting couple found no ground left to build on
+  s.no_lot = nolot and (s.no_lot or 0) + 1 or 0
+  -- (S16, R5) a household come from elsewhere, lodging with another: a house of its own (S17: and
+  -- founders living at their camp - a hut first, on a lot their own hands clear)
   for _, hid in ipairs(s.waiting or {}) do
     if open >= 2 then break end
     local hh = V.households[hid]
-    if hh and #hh.members > 0 and hh.lodge and not hh.house_site then
-      local ix, iy, side = M.find_lot(W, s)
-      if ix then
-        local q = V.people[hh.members[1]]
-        local b = M.add_building(W, s, "house", ix, iy, side, "site",
-          { for_hh = hh.id, for_name = "the " .. (q and q.surname or "newcomer") .. "s", prio = 1 })
-        hh.house_site = b.id
-        open = open + 1
+    local camp = hh and (hh.camp or hh.camp_site)
+    if hh and #hh.members > 0 and (hh.lodge or camp) and not hh.house_site then
+      local q = V.people[hh.members[1]]
+      local opts = { for_hh = hh.id, for_name = "the " .. (q and q.surname or "newcomer") .. "s", prio = 1 }
+      if s.founding then
+        local c = C()
+        opts.hut, opts.logs_need, opts.work_need, opts.label, opts.prio = true, c.hut_logs, c.hut_work, "hut", 2
+        local cb = s.buildings[hh.camp or hh.camp_site or 0]
+        local r = M.plan_lot(W, s, "house", opts, cb and cb.cx or s.sqx, cb and cb.cy or s.sqy, 4)
+        if r then open = open + 1 else break end
+      else
+        local ix, iy, side = M.find_lot(W, s)
+        if ix then
+          local b = M.add_building(W, s, "house", ix, iy, side, "site", opts)
+          hh.house_site = b.id
+          open = open + 1
+        end
       end
     end
   end
   if s.waiting then
     for i = #s.waiting, 1, -1 do
       local hh = V.households[s.waiting[i]]
-      if not hh or #hh.members == 0 or not hh.lodge then table.remove(s.waiting, i) end
+      if not hh or #hh.members == 0 or not (hh.lodge or hh.camp or hh.camp_site) then table.remove(s.waiting, i) end
     end
   end
 end
@@ -1520,6 +1778,11 @@ function M.daily(W, s, day)
   M.econ.daily(W, s, day * 24)
   -- (S16, R5) households that would leave, and where to
   M.migrate.daily(W, s, day * 24)
+  -- (S17, R5) households that would make a new place; a young place's own planning
+  if M.founding then
+    M.founding.daily(W, s, day * 24)
+    M.founding.place_daily(W, s, W.S.v3.now or W.hour)
+  end
 end
 
 -- The planet's river widths today (one computation a planet day for every settlement; runtime).

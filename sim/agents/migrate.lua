@@ -89,8 +89,16 @@ function M.pull(W, s, hh, o, now)
     end
   end
   if kin > 0 then
-    pull = pull + min(0.6, 0.3 * kin)
+    -- (S17: kin draw, but less to a place heard to be going hungry itself)
+    pull = pull + min(0.6, 0.3 * kin) * (0.3 + 0.7 * min(1, food))
     why = why or ("our kin live at " .. o.name)
+  end
+  -- (S17) kin there offered the household a place under their roof
+  local off = hh.kin_offer
+  if off and off.sett == o.id and now - off.t < c.kin_offer_keep * 24 then
+    local q = V.people[off.by or 0]
+    pull = pull + c.kin_offer_pull
+    why = (q and (q.name .. " offered us a place under their roof at " .. o.name)) or why
   end
   -- trust between the villages
   pull = pull + 0.3 * econ.rel(s, o).trust
@@ -123,9 +131,11 @@ function M.daily(W, s, now)
             if st == "adult" or st == "elder" then grown = true end
           end
         end
-        -- what holds them: their house and the years they have lived here
+        -- what holds them: their house and the years they have lived here (S17: and, for those who
+        -- came to make this place, what they set out to do: they give it a season first)
         local years = (now - (hh.formed or 0)) / 1152
         local hold = c.mig_hold + ((hh.home or 0) ~= 0 and 0.15 or 0) + 0.05 * min(4, max(0, years))
+        if hh.found and hh.found.arrived and now - hh.found.arrived < c.found_stay_days * 24 then hold = hold + c.found_stay_hold end
         local best, bu, bwhy = nil, 0, nil
         for _, o in ipairs(partners) do
           if o.alive ~= false and o.id ~= s.id then
@@ -137,7 +147,13 @@ function M.daily(W, s, now)
         end
         -- (a little of each household's own mind in it)
         local noise = rng.float(W.seed, rng.S.V3_THINK, hid, floor(now / 24) % 4294967296, 130)
-        if best and home_all and grown and bu > c.mig_threshold * (0.8 + 0.4 * noise) then
+        local go = best and home_all and grown and bu > c.mig_threshold * (0.8 + 0.4 * noise)
+        if not (best and bu > c.mig_threshold) then
+          -- (S17) hardship that has lasted, and no village known draws them enough: founding.daily
+          -- weighs making a new place
+          hh.no_refuge, hh.mig_push, hh.mig_why = floor(now / 24), push, pwhy
+        end
+        if go then
           local depart = now + c.mig_pack_h
           hh.migrate = { to = best.id, from = s.id, depart = depart, decided = now,
             why = "Leaving " .. s.name .. " for " .. best.name .. ": " .. (pwhy or "life is hard here") .. "; " .. (bwhy or ("we will try " .. best.name)) }
@@ -215,6 +231,10 @@ end
 -- with the fewest mouths in a standing house.
 local function host_of(W, o, hh)
   local V = W.S.v3
+  -- (S17: the kin who offered them a place)
+  local off = hh.kin_offer
+  local kh = off and off.sett == o.id and V.households[off.host or 0]
+  if kh and #kh.members > 0 and o.buildings[kh.home or 0] and not kh.lodge then return kh end
   local best, bs = nil, -1e9
   for _, hid in ipairs(o.households) do
     local h2 = V.households[hid]
@@ -242,6 +262,7 @@ function M.arrive(W, o, p, gx, gy, now)
   local hh = V.households[p.hh]
   local from = V.settlements[p.sett]
   if from and from ~= o then
+    require("sim.agents.settle").carry_over(from, o, p)
     people.remove_id(from.members, p.id)
     if from.visitors then people.remove_id(from.visitors, p.id) end
   end
@@ -264,6 +285,7 @@ function M.arrive(W, o, p, gx, gy, now)
       local b = old.buildings[hh.home or 0]
       if b and b.hh == hh.id then b.hh = 0; b.for_name = "the " .. (p.surname or "people") .. "s, who left for " .. o.name end
       old.acc.left = (old.acc.left or 0) + 1
+      require("sim.agents.settle").reassign_plots(W, old, hh.id)
     end
     hh.sett, hh.home = o.id, 0
     o.households[#o.households + 1] = hh.id
@@ -290,11 +312,14 @@ function M.arrive(W, o, p, gx, gy, now)
     o.waiting = o.waiting or {}
     o.waiting[#o.waiting + 1] = hh.id
     hh.lodge = hh.lodge or 0
+    -- (S17) their dog came with them
+    require("sim.agents.dogs").come(W, o, hh, gx, gy, now)
     o.acc.arrived = (o.acc.arrived or 0) + 1
     hh.migrate.arrived = now
     hh.pushd = 0
   end
   people.remember(p, now, sfmt("Came to %s to live", o.name))
+  require("sim.agents.founding").tell(W, p, o)
 end
 
 -- Setting off (p takes the road): every babe of the household is in the arms of one of those
@@ -334,6 +359,7 @@ function M.arrive_person(W, o, p, gx, gy, now)
   local V = W.S.v3
   local from = V.settlements[p.sett]
   if from and from ~= o then
+    require("sim.agents.settle").carry_over(from, o, p)
     people.remove_id(from.members, p.id)
     if from.visitors then people.remove_id(from.visitors, p.id) end
   end
@@ -348,6 +374,10 @@ function M.arrive_person(W, o, p, gx, gy, now)
   if p.move then p.move.arrived = now end
   o.acc.brides_in = (o.acc.brides_in or 0) + 1
   people.remember(p, now, sfmt("Came to %s to live with %s", o.name, g and g.name or "my husband"))
+  -- (S17) what she knows of places comes with her: what she saw, and her old village's knowledge
+  local founding = require("sim.agents.founding")
+  founding.tell(W, p, o)
+  if from then founding.share(W, o, from, now) end
 end
 
 -- Why p (of household hh) is doing what the move asks of them now.

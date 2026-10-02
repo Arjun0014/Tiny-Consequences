@@ -81,7 +81,7 @@ function M.village_stock(W, s, g)
   end
   for k = 1, #s.blist do
     local b = s.buildings[s.blist[k]]
-    if b.kind == "house" then
+    if b.kind == "house" or b.kind == "camp" then
       local st = b.stock
       if g == "grain" then have = have + (st.food or 0)
       else have = have + (st.smoked or 0) + (st.fish or 0) + (st.cheese or 0) end
@@ -219,7 +219,7 @@ function M.spare(W, s, hh, home, g)
   local have, want, own = M.house_stock(W, hh, home, g)
   -- (beasts: those the hay will not winter, whole)
   if M.GOODS[g].beast then return own end
-  return max(0, min(own, have - want * c.spare_k))
+  return max(0, min(own, have - want * c.house_spare_k))
 end
 
 -- What a visitor sees of village o: for each good what the neediest there would give for it
@@ -260,6 +260,8 @@ function M.learn(W, s, o, now)
   s.know = s.know or {}
   local buy, sell, spare = M.market(W, o)
   s.know[o.id] = { t = now, buy = buy, sell = sell, spare = spare }
+  -- (S17) and what o's people know of places (founding.share; set by sim/agents/init.lua)
+  if M.on_learn then M.on_learn(W, s, o, now) end
 end
 
 -- What s expects good g to fetch at o (buy) and to cost there (sell), and how much o has to spare:
@@ -343,7 +345,9 @@ function M.best_trade(W, s, hh, home, pool, partners, route, now)
                 end
                 qH = n * k
               end
-              local cost = 2 * hrs * crew * c.trade_hour
+              -- (S17: the road's cost is the work given up for it: less where hands are idle - the
+              -- bread is eaten at home or on the road alike)
+              local cost = 2 * hrs * crew * c.trade_hour * max(c.trade_idle_min, 1 - c.trade_idle_k * (s.idle_avg or 0))
               local gain = qH * aH - n * aX
               local r = M.rel(s, o)
               -- (S14) what is only guessed - old news faded toward "a middling price there" -
@@ -509,6 +513,8 @@ function M.daily(W, s, now)
     for _, o in ipairs(partners) do M.learn(W, s, o, now) end
     for _, o in ipairs(trade.sea_partners(W, s)) do if not s.know[o.id] then M.learn(W, s, o, now) end end
   end
+  -- (S17) work for exchange: goods its news says a neighbour wants more than they are worth here
+  M.exports(W, s, partners, now)
   s.tplan = #partners > 0 and M.best_trade(W, s, nil, nil, "village", partners, M.land_route, now) or nil
   -- (hungry and nothing to sell: ask the trusted neighbour for help, D-103)
   if not s.tplan and #partners > 0 then s.tplan = M.plan_ask(W, s, partners, now) end
@@ -534,6 +540,74 @@ function M.daily(W, s, now)
       end
     end
   end
+end
+
+-- (S17) A small gift for kin at village o (a visit): of what household hh has beyond its own want, the
+-- good o is heard to want most over what it is worth at home (at visit_gift_k x at least), as much
+-- as is spare up to a little (VISIT_CAP). Returns good, amount (or nil).
+local VISIT_GOODS = { "cloth", "wool", "leather", "hides", "smoked", "cheese" }
+local VISIT_CAP = { cloth = 0.5, wool = 0.6, leather = 0.5, hides = 1, smoked = 4, cheese = 3 }
+function M.visit_gift(W, s, hh, home, o, now)
+  local c = C()
+  if not home or not o then return nil end
+  local best, bs, bn = nil, 0, 0
+  for _, g in ipairs(VISIT_GOODS) do
+    local sp
+    if g == "smoked" or g == "cheese" then
+      local have, want, own = hh_have(W, hh, home, g)
+      sp = max(0, min(own, have - want * c.house_spare_k))
+    else
+      sp = M.spare(W, s, hh, home, g)
+    end
+    local n = min(sp, VISIT_CAP[g])
+    if n >= VISIT_CAP[g] * 0.25 then
+      local here = M.value(W, s, hh, home, g)
+      local there = M.expect(W, s, o, g, now)
+      if there > here * c.visit_gift_k then
+        local sc = (there - here) * n
+        if sc > bs then best, bs, bn = g, sc, n end
+      end
+    end
+  end
+  return best, bn
+end
+
+-- (S17) What village s would work to make more of for exchange, by its news of its neighbours (road
+-- and sea): cloth (its households' looms and spindles), when a neighbour heard of lately would give
+-- export_margin x trade_margin what a household here would. s.export = { cloth = name of the
+-- neighbour } or nil.
+local EXPORTS = { "cloth" }
+function M.exports(W, s, partners, now)
+  local c = C()
+  local V = W.S.v3
+  local ex = nil
+  for _, g in ipairs(EXPORTS) do
+    -- (what a household of s gives it, the lowest: those who would make more of it)
+    local lo = nil
+    for _, hid in ipairs(s.households) do
+      local hh = V.households[hid]
+      local home = hh and #hh.members > 0 and s.buildings[hh.home or 0]
+      if home and home.state == "standing" then
+        local v = M.value(W, s, hh, home, g)
+        if not lo or v < lo then lo = v end
+      end
+    end
+    if lo then
+      local best, bv = nil, lo * c.trade_margin * c.export_margin
+      local function look(list)
+        for _, o in ipairs(list) do
+          if M.fresh(W, s, o, now) >= c.export_fresh then
+            local b = M.expect(W, s, o, g, now)
+            if b > bv then best, bv = o, b end
+          end
+        end
+      end
+      look(partners)
+      look(require("sim.agents.trade").sea_partners(W, s))
+      if best then ex = ex or {}; ex[g] = best.name end
+    end
+  end
+  s.export = ex
 end
 
 -- Asking for help (D-103): a village whose food (grain and relish) would last under `relief_days`

@@ -1037,8 +1037,103 @@ local function v3_beast(W, sel)
   return out
 end
 
+-- (S17) A v3 settlement: how it came to be (founded at the world's start, or made by a party who
+-- came from elsewhere: who, from where, when, why), its people, what stands and what is being
+-- made (and why), its fields, stores and herds, what it knows of places and of other villages.
+local function v3_settlement(W, sel)
+  local V = W.S.v3
+  local s = V.settlements[sel.sid or 0]
+  if not s then return nil end
+  local clock = require("sim.agents.clock")
+  local settle = require("sim.agents.settle")
+  local t = require("game.platform.speed").v3_t or W.hour
+  local out = { kind = "settlement", items = {} }
+  local items = out.items
+  out.title = s.name
+  out.icon = "house"
+  out.tint = { 0.8, 0.7, 0.5 }
+  local fd = s.founding
+  local n = 0
+  for _, id in ipairs(s.members) do local p = V.people[id]; if p and p.alive then n = n + 1 end end
+  local nh = 0
+  for _, hid in ipairs(s.households) do local hh = V.households[hid]; if hh and #hh.members > 0 then nh = nh + 1 end end
+  if fd then
+    local from = V.settlements[fd.from or 0]
+    local lh = V.households[fd.leader or 0]
+    local lq = lh and V.people[lh.members[1] or 0]
+    out.subtitle = "A new place" .. (from and (", made by people of " .. from.name) or "")
+    add(items, { t = "text", icon = "people", text = string.format("Founded %s by %s%s: %s", clock.label(fd.started),
+      lq and ("the " .. lq.surname .. "s") or "a household", from and (" of " .. from.name) or "", (lh and lh.found and lh.found.why) or "they chose to make a new home") })
+    if lh and lh.found and lh.found.swhy then add(items, { t = "text", icon = "pin", text = "Why here: " .. lh.found.swhy }) end
+    if fd.settled then add(items, { t = "row", icon = "house", label = "First fire", value = clock.label(fd.settled) })
+    else add(items, { t = "row", icon = "house", label = "First fire", value = "not yet: the camp is being made", hl = true }) end
+  else
+    out.subtitle = "Village" .. (s.founded and s.founded > 0 and (" since " .. clock.label(s.founded)) or "")
+  end
+  add(items, { t = "row", icon = "people", label = "People", value = string.format("%d in %d households", n, nh) })
+  -- what stands, what is being made
+  local stand, making = {}, {}
+  local count = {}
+  for _, id in ipairs(s.blist) do
+    local b = s.buildings[id]
+    local lab = b.label or b.kind
+    if b.state == "standing" then count[lab] = (count[lab] or 0) + 1
+    elseif b.state == "site" then
+      making[#making + 1] = string.format("%s for %s (%d%%, logs %d/%d)", lab, b.for_name or "the village",
+        floor(100 * b.work_done / math.max(1, b.work_need)), floor(b.logs_have), b.logs_need)
+    end
+  end
+  local labs = {}
+  for k in pairs(count) do labs[#labs + 1] = k end
+  table.sort(labs)
+  for _, k in ipairs(labs) do stand[#stand + 1] = (count[k] > 1 and (count[k] .. " ") or "") .. k .. (count[k] > 1 and "s" or "") end
+  add(items, { t = "row", icon = "house", label = "Standing", value = #stand > 0 and table.concat(stand, ", ") or "nothing yet" })
+  for _, m in ipairs(making) do add(items, { t = "text", icon = "pickaxe", text = "Building: " .. m }) end
+  if s.lot then
+    add(items, { t = "text", icon = "pickaxe", text = "Clearing trees from the ground for the " .. (s.lot.opts.label or s.lot.kind) })
+  end
+  if s.clearing then add(items, { t = "text", icon = "pickaxe", text = "Clearing ground for a new field" }) end
+  local missing = {}
+  if not s.well then missing[#missing + 1] = s.has_river and "no well (water from the river)" or "no well" end
+  if not s.granary then missing[#missing + 1] = "no granary" end
+  if not s.wood_store then missing[#missing + 1] = "no woodstore" end
+  if #missing > 0 then add(items, { t = "row", icon = "bubble", label = "Not yet", value = table.concat(missing, ", ") }) end
+  -- fields and food
+  local st = { growing = 0, ripe = 0, fallow = 0, rest = 0, stubble = 0 }
+  for _, pl in ipairs(s.plots) do st[pl.stage] = (st[pl.stage] or 0) + 1 end
+  add(items, { t = "row", icon = "wheat", label = "Fields", value = #s.plots == 0 and "none yet" or
+    string.format("%d (%d growing, %d ripe, %d fallow, %d resting)", #s.plots, st.growing, st.ripe, st.fallow, st.rest + st.stubble) })
+  local food = settle.food_total(W, s)
+  add(items, { t = "row", icon = "wheat", label = "Food", value = string.format("%.0f FU (%.0f days)", food, food / math.max(1, n * 0.75)),
+    hl = n > 0 and food / (n * 0.75) < 6 })
+  local herds = {}
+  for _, kind in ipairs({ "flock", "cattle", "swine" }) do
+    local H = s.herds and s.herds[kind]
+    if H then
+      local k = 0
+      for _, a in ipairs(H.animals) do if a.alive then k = k + 1 end end
+      local pen = s.buildings[H.pen or 0]
+      if k > 0 then herds[#herds + 1] = string.format("%d %s%s", k, kind == "flock" and "sheep and goats" or (kind == "swine" and "pigs" or "cattle"),
+        pen and pen.kind == "camp" and " (kept by the camp)" or "") end
+    end
+  end
+  if #herds > 0 then add(items, { t = "row", icon = "paw", label = "Beasts", value = table.concat(herds, ", ") }) end
+  -- what it knows
+  local places = 0
+  for _ in pairs(s.lore or {}) do places = places + 1 end
+  local news = {}
+  for _, o in ipairs(V.settlements) do
+    local k = s.know and s.know[o.id]
+    if k and o ~= s then news[#news + 1] = string.format("%s (%s)", o.name, days_text(floor((t - k.t) / 24))) end
+  end
+  add(items, { t = "row", icon = "globe", label = "Knows", value = string.format("%d places seen", places) })
+  if #news > 0 then add(items, { t = "text", icon = "bubble", text = "News of: " .. table.concat(news, ", ") }) end
+  return out
+end
+
 function M.build(W, sel)
   if not sel or not W then return nil end
+  if W.v3 and sel.kind == "settlement" and W.S.v3 then return v3_settlement(W, sel) end
   if W.v3 and sel.kind == "flock" and W.S.v3 then return v3_flock(W, sel) end
   if W.v3 and sel.kind == "beast" and W.S.v3 then return v3_beast(W, sel) end
   if W.v3 and sel.kind == "person" and W.S.v3 then

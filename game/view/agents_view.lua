@@ -309,6 +309,23 @@ local function fill_buildings(V)
         local x, y = mapm.tile_xy(s, b.tiles[q])
         add(V, K.stakes, x, y, 0, q, 0.3, 1, 0, 0, 0)
       end
+    elseif b.kind == "camp" then
+      -- (S17, R5) a founding household's camp: the packs set down on its ground, then (made) the fire
+      -- ring with its embers, a brush lean-to on the far side from the square, firewood by it
+      local st = b.stock
+      local packs = (st.food or 0) + (st.seed or 0) + (st.meals or 0) + (st.smoked or 0)
+      if packs > 0.5 then
+        add(V, K.sacks, b.cx + dy * 0.9 + 0.006, b.cy - dx * 0.9, 0, yaw + 0.8, 0.55 * min(1.4, 0.5 + packs / 40), 1,
+          pack(0.62, 0.52, 0.36), pack(0.55, 0.45, 0.30), 0)
+      end
+      if b.state == "standing" then
+        add(V, K.stook, b.cx, b.cy, -0.002, 0, 0.32, 0.25, pack(0.20, 0.14, 0.10), pack(0.55, 0.20, 0.06), 0)
+        add(V, K.frame, b.cx - dx * 1.1, b.cy - dy * 1.1, 0, yaw, S * 0.5, 0.55, pack(0.42, 0.50, 0.30), pack(0.50, 0.38, 0.24), 0)
+        local logs = st.logs or 0
+        if logs > 0.3 then
+          add(V, K.woodpile, b.cx - dy * 0.9, b.cy + dx * 0.9, 0, yaw, 0.4 * min(1.3, 0.45 + logs / 8), 1, pack(0.55, 0.40, 0.26), pack(0.45, 0.31, 0.2), 0)
+        end
+      end
     elseif b.state == "site" then
       local pg = (b.work_done / b.work_need) * 0.75 + min(1, b.logs_have / max(1, b.logs_need)) * 0.25
       local kind = pg < 0.3 and K.stakes or (pg < 0.65 and K.frame or K.walls)
@@ -319,7 +336,12 @@ local function fill_buildings(V)
       end
     elseif b.state == "standing" then
       if b.kind == "house" then
-        add(V, K.cottage, b.cx, b.cy, 0, yaw, S, 1, c1, c2, 0)
+        -- (S17: a founder's first shelter is a hut, low, turf-roofed)
+        if b.hut then
+          add(V, K.sodhouse, b.cx, b.cy, 0, yaw, S * 0.85, 1, pack(0.46, 0.52, 0.30), c2, 0)
+        else
+          add(V, K.cottage, b.cx, b.cy, 0, yaw, S, 1, c1, c2, 0)
+        end
         if V.lit and V.lit[b.id] then
           add(V, K.v3window, b.cx, b.cy, 0, yaw, S, 1, pack(1.0, 0.74, 0.38), 0, 0, 2.5)
         end
@@ -443,7 +465,7 @@ local function bld_sig(V)
     local b = s.buildings[s.blist[i]]
     local pg = b.state == "site" and floor(((b.work_done / b.work_need) * 0.75 + min(1, b.logs_have / max(1, b.logs_need)) * 0.25) * 20) or 99
     h = (h * 31 + b.id * 3 + pg + floor((b.stock.logs or 0) / 2) * 7 + floor((b.stock.sheaves or 0) / 20) * 13
-      + (b.state == "standing" and 1000 or 0)) % 1000000007
+      + (b.state == "standing" and 1000 or 0) + (b.kind == "camp" and floor(((b.stock.food or 0) + (b.stock.seed or 0)) / 10) * 17 or 0)) % 1000000007
   end
   h = (h * 17 + floor((s.hay or 0) / 30)) % 1000000007
   if s.herds then
@@ -744,7 +766,7 @@ local ANIM = {
   row = { "sit", 1 }, fish = { "sit", 0.7 }, board = { "pickup", 1.2 }, land = { "pickup", 1.2 },
   mend_boat = { "kneel_work", 1.0 }, smoke = { "kneel_work", 0.6 },
   spin = { "sit", 0.9 }, weave = { "sit", 0.8 }, sew = { "sit", 0.7 }, mend_clothes = { "sit", 0.7 },
-  dress = { "swing", 0.7 }, haul_flax = { "walk" },
+  dress = { "swing", 0.7 }, haul_flax = { "walk" }, strike = { "kneel_work", 0.9 }, wade = { "walk_slow", 0.7 },
   -- livestock and the hunt (D-092-D-094)
   milk = { "kneel_work", 0.8 }, shear = { "kneel_work", 1.0 }, slaughter = { "kneel_work", 0.9 }, feed = { "pickup", 1 },
   spread = { "walk_slow", 0.8 }, slop = { "pickup", 1 }, cheese = { "kneel_work", 0.6 }, open_pen = { "push", 1 },
@@ -883,6 +905,11 @@ local function update_villagers(V, t, zoom)
     if p and p.alive then
       local stage = people.stage(p, t)
       local hidden = (p.inside ~= 0 and p.act ~= "walk") or p.act == "carried"
+      -- (S17: at a camp there are no walls: those "at home" there are seen round the fire)
+      if hidden and p.act ~= "carried" then
+        local ib = s.buildings[p.inside]
+        if ib and ib.kind == "camp" then hidden = false end
+      end
       if hidden then
         inside = inside + 1
       elseif show and n < #pool then
@@ -982,24 +1009,109 @@ local function update_villagers(V, t, zoom)
   M.stats.people, M.stats.inside = n, inside
 end
 
--- Travellers on the road between settlements (D-097): where the leg has them, on the planet's
--- great circle from the gate they left to the gate they make for, walking.
-M.TRAVEL = 8
+-- Travellers on the road between settlements (D-097): where the leg has them, walking (S17) the
+-- land route the sim walks them along - from the gate they left by, over the planet's cells (those
+-- off both maps), to the gate they make for (a place not yet made: its cell) - and the beasts they
+-- lead behind them, each its own way back along the road.
+M.TRAVEL = 16
 local TPOS, TROT = vmath.vector3(), vmath.quat()
+local RTE = {}       -- runtime: polyline per (from, to) as unit vectors with cumulative lengths
+local function road_line(W, from, to, site)
+  local key = from.id * 100000 + (to and to.id or 0) * 7 + (site or 0) * 100003
+  local L = RTE[key]
+  if L and L.n_sets == #W.S.v3.settlements then return L end
+  local trade = require("sim.agents.trade")
+  local g = W.grid
+  local tocell = site or to.cell
+  local pts = {}
+  local function add_pt(x, y, z)
+    local l = sqrt(x * x + y * y + z * z)
+    pts[#pts + 1] = { x / l, y / l, z / l }
+  end
+  local ax, ay
+  if to then ax, ay = trade.gate(W, from, to) else ax, ay = require("sim.agents.wild").edge_toward(W, from, tocell) end
+  add_pt(mapm.unit(from, ax, ay))
+  local r = trade.land_route(W, from.cell, tocell)
+  local function off_map(s0, c)
+    if not s0 then return true end
+    local x, y = mapm.local_of(s0, g.X[c], g.Y[c], g.Z[c])
+    local half = s0.N * s0.T * 0.5
+    return not x or abs(x) > half or abs(y) > half
+  end
+  if r then
+    for i = 2, #r.cells - 1 do
+      local c = r.cells[i]
+      if off_map(from, c) and off_map(to, c) then add_pt(g.X[c], g.Y[c], g.Z[c]) end
+    end
+  end
+  if to then
+    local bx, by = trade.gate(W, to, from)
+    add_pt(mapm.unit(to, bx, by))
+  else
+    add_pt(g.X[tocell], g.Y[tocell], g.Z[tocell])
+  end
+  local cum = { 0 }
+  for i = 2, #pts do
+    local a, b = pts[i - 1], pts[i]
+    local dx, dy, dz = a[1] - b[1], a[2] - b[2], a[3] - b[3]
+    cum[i] = cum[i - 1] + sqrt(dx * dx + dy * dy + dz * dz)
+  end
+  L = { pts = pts, cum = cum, len = cum[#cum], n_sets = #W.S.v3.settlements }
+  RTE[key] = L
+  return L
+end
+-- the unit point at distance d along the line, and the way it heads
+local function line_at(L, d)
+  local pts, cum = L.pts, L.cum
+  if d <= 0 then d = 0 elseif d >= L.len then d = L.len end
+  local i = 2
+  while i < #pts and cum[i] < d do i = i + 1 end
+  local a, b = pts[i - 1], pts[i] or pts[i - 1]
+  local seg = (cum[i] or d) - cum[i - 1]
+  local u = seg > 1e-9 and (d - cum[i - 1]) / seg or 0
+  local x, y, z = a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u, a[3] + (b[3] - a[3]) * u
+  local l = sqrt(x * x + y * y + z * z)
+  return x / l, y / l, z / l, b[1] - a[1], b[2] - a[2], b[3] - a[3]
+end
+local function yaw_on(x, y, z, hx, hy, hz)
+  local ex, ey, ez = 0, 1, 0
+  if abs(y) > 0.9 then ex, ey, ez = 1, 0, 0 end
+  local d = ex * x + ey * y + ez * z
+  ex, ey, ez = ex - d * x, ey - d * y, ez - d * z
+  local el = sqrt(ex * ex + ey * ey + ez * ez)
+  if el < 1e-9 then return 0 end
+  ex, ey, ez = ex / el, ey / el, ez / el
+  local fx, fy, fz = y * ez - z * ey, z * ex - x * ez, x * ey - y * ex
+  return atan2(hx * fx + hy * fy + hz * fz, hx * ex + hy * ey + hz * ez)
+end
+local function frac_t(v) return v - floor(v) end
+-- (S17) Where traveller p is on the planet at view time t (unit vector), or nil when not on a road.
+function M.traveller_unit(W, p, t)
+  local V3 = W.S.v3
+  if p.act ~= "travel" then return nil end
+  local st = p.plan[p.pi]
+  local from, to = V3.settlements[st and st.from or 0], V3.settlements[st and st.to or 0]
+  local site = st and st.site
+  if not from or not (to or site) then return nil end
+  local L = road_line(W, from, to, site)
+  local f = p.t1 > p.t0 and min(1, max(0, (t - p.t0) / (p.t1 - p.t0))) or 0
+  local x, y, z = line_at(L, f * L.len)
+  return x, y, z
+end
 function M.update_travellers(W, t, zoom)
   local V3 = W.S.v3
   if not V3 or not M.villager_factory_url then return end
   M.tpool = M.tpool or {}
   local n = 0
   local show = not M.skipping and zoom >= 0.75
-  local trade = require("sim.agents.trade")
   for _, s in ipairs(V3.settlements) do
     for _, id in ipairs(s.members) do
       local p = V3.people[id]
       if show and p.alive and p.act == "travel" and n < M.TRAVEL then
         local st = p.plan[p.pi]
         local from, to = V3.settlements[st and st.from or 0], V3.settlements[st and st.to or 0]
-        if from and to then
+        local site = st and st.site
+        if from and (to or site) then
           n = n + 1
           local e = M.tpool[n]
           if not e then
@@ -1008,25 +1120,50 @@ function M.update_travellers(W, t, zoom)
             for k = 1, 3 do e.urls[k] = msg.url(nil, gid, LODS[k]:sub(2)); msg.post(e.urls[k], MSG_DISABLE) end
             M.tpool[n] = e
           end
-          local ax, ay = trade.gate(W, from, to)
-          local bx, by = trade.gate(W, to, from)
-          local u0x, u0y, u0z = mapm.unit(from, ax, ay)
-          local u1x, u1y, u1z = mapm.unit(to, bx, by)
+          local L = road_line(W, from, to, site)
           local f = p.t1 > p.t0 and min(1, max(0, (t - p.t0) / (p.t1 - p.t0))) or 0
-          local x, y, z = u0x + (u1x - u0x) * f, u0y + (u1y - u0y) * f, u0z + (u1z - u0z) * f
-          local l = sqrt(x * x + y * y + z * z)
-          x, y, z = x / l, y / l, z / l
-          local r = M.surface and M.surface(x, y, z) or (V3 and 1) or 1
+          local d = f * L.len
+          local x, y, z, hx, hy, hz = line_at(L, d)
+          local r = M.surface and M.surface(x, y, z) or 1
           TPOS.x, TPOS.y, TPOS.z = x * r, y * r, z * r
           go.set_position(TPOS, e.id)
-          -- facing the way: the tangent toward the destination
-          local yaw = 0
-          go.set_rotation(vmx.set_up_yaw(TROT, x, y, z, yaw), e.id)
+          go.set_rotation(vmx.set_up_yaw(TROT, x, y, z, yaw_on(x, y, z, hx, hy, hz)), e.id)
           go.set_scale(M.VILLAGER_SCALE * 1.4, e.id)
           if not e.on then
             msg.post(e.urls[3], MSG_ENABLE)
             e.on = true
             model.play_anim(e.urls[3], "carry_walk", go.PLAYBACK_LOOP_FORWARD, { playback_rate = 1 })
+          end
+          -- the beasts they lead, strung out behind them on the road
+          local party = p.trip and p.trip.party
+          for k = 1, party and min(#party, 12) or 0 do
+            local a = party[k]
+            local variant = M.variant_of(a.sp, a)
+            local ea = variant and M.animal_obj(variant)
+            if ea then
+              local back = 0.012 * (1 + k * 0.55 + frac_t(a.born * 3.7) * 0.8)
+              local ux, uy, uz, gx, gy, gz = line_at(L, d - back)
+              local side = (frac_t(a.born * 7.13) - 0.5) * 0.008
+              -- (a little to its own side of the way)
+              local sx, sy, sz = uy * gz - uz * gy, uz * gx - ux * gz, ux * gy - uy * gx
+              local sl = sqrt(sx * sx + sy * sy + sz * sz)
+              if sl > 1e-9 then ux, uy, uz = ux + sx / sl * side, uy + sy / sl * side, uz + sz / sl * side end
+              local ul = sqrt(ux * ux + uy * uy + uz * uz)
+              ux, uy, uz = ux / ul, uy / ul, uz / ul
+              local rr = M.surface and M.surface(ux, uy, uz) or 1
+              TPOS.x, TPOS.y, TPOS.z = ux * rr, uy * rr, uz * rr
+              go.set_position(TPOS, ea.id)
+              go.set_rotation(vmx.set_up_yaw(TROT, ux, uy, uz, yaw_on(ux, uy, uz, gx, gy, gz)), ea.id)
+              go.set_scale((M.ANIMAL_SCALE[a.sp] or 0.006) * 1.4, ea.id)
+              if ea.lod ~= 3 or not ea.on then
+                for j = 1, 3 do msg.post(ea.urls[j], j == 3 and MSG_ENABLE or MSG_DISABLE) end
+                ea.lod, ea.on, ea.anim = 3, true, nil
+              end
+              if ea.anim ~= "walk" then
+                model.play_anim(ea.urls[3], "walk", go.PLAYBACK_LOOP_FORWARD, { playback_rate = 1, offset = frac_t(a.born * 0.37) })
+                ea.anim, ea.rate, ea.who = "walk", 1, -1
+              end
+            end
           end
         end
       end
@@ -1105,20 +1242,35 @@ end
 -- Public ------------------------------------------------------------------------------------
 
 -- Before props are baked: the flora leaves the settlements' squares to this renderer.
+local function exclude_of(s)
+  local f = s.frame
+  local half = s.N * s.T * 0.5
+  return { f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], half, mapm.R, math.cos(half * 1.5 / mapm.R) }
+end
+
 function M.prepare(W)
   M.SETS = {}
   if not W.v3 or not W.S.v3 then propgen.v3_exclude = nil; return end
   local ex = {}
-  for _, s in ipairs(W.S.v3.settlements) do
-    local f = s.frame
-    local half = s.N * s.T * 0.5
-    ex[#ex + 1] = { f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], half, mapm.R, math.cos(half * 1.5 / mapm.R) }
-  end
+  for _, s in ipairs(W.S.v3.settlements) do ex[#ex + 1] = exclude_of(s) end
   propgen.v3_exclude = ex
+end
+
+-- (S17, R5) A settlement made while the world runs (a party arrived at its place): the flora
+-- renderer leaves its square to us from now (the prop chunks over it are rebuilt), and it gets its
+-- own chunks and people like the others. Nothing of it is drawn but what the sim holds: at first
+-- its woods and the party.
+local function add_settlement(W, s, PL, urls, celltex)
+  local V = { W = W, s = s, factory = urls.chunk_factory, person_factory = urls.person_factory, celltex = celltex,
+    boat_factory = urls.boat_factory, R = PL.R, deer_factory = urls.deer_factory,
+    villager_factory = urls.villager_factory }
+  M.add_one(V, PL, W)
+  return V
 end
 
 function M.init(W, PL, urls, celltex)
   M.W = W
+  M.PL, M.urls, M.celltex = PL, urls, celltex
   M.animal_urls = urls
   M.villager_factory_url = urls.villager_factory
   if not W.v3 or not W.S.v3 then return end
@@ -1127,6 +1279,14 @@ function M.init(W, PL, urls, celltex)
     local V = { W = W, s = s, factory = urls.chunk_factory, person_factory = urls.person_factory, celltex = celltex,
       boat_factory = urls.boat_factory, R = PL.R, deer_factory = urls.deer_factory,
       villager_factory = urls.villager_factory }
+    M.add_one(V, PL, W)
+  end
+end
+
+-- One settlement's view state: heights, bounds, chunks, the people's pool, baked once.
+function M.add_one(V, PL, W)
+  local s = V.s
+  do
     build_heights(V, PL)
     -- an AABB around the whole square (planet space)
     local x0, y0, z0, x1, y1, z1 = 1e9, 1e9, 1e9, -1e9, -1e9, -1e9
@@ -1164,6 +1324,27 @@ function M.init(W, PL, urls, celltex)
     V.bld.sig = bld_sig(V); bake(V, V.bld, fill_buildings)
     V.rows.sig = rows_sig(V); bake(V, V.rows, fill_rows)
     V.ground.sig = ground_sig(V); bake(V, V.ground, fill_ground)
+  end
+end
+
+-- (S17) Settlements the sim made since the view was built.
+local function new_settlements(W)
+  local S3 = W.S.v3 and W.S.v3.settlements
+  if not S3 or #M.SETS >= #S3 or not M.PL or not M.urls then return end
+  local props = require("game.view.props")
+  local sites = require("sim.society.sites")
+  for i = #M.SETS + 1, #S3 do
+    local s = S3[i]
+    propgen.v3_exclude = propgen.v3_exclude or {}
+    propgen.v3_exclude[#propgen.v3_exclude + 1] = exclude_of(s)
+    -- (the planet's flora over its square is rebuilt without it)
+    local cc = props.cell_chunks
+    if cc then
+      for _, c in ipairs(sites.rings(W, s.cell, 3)) do
+        for _, k in ipairs(cc[c] or {}) do if props.chunks[k] then props.chunks[k].dirty = true end end
+      end
+    end
+    M.SETS[i] = add_settlement(W, s, M.PL, M.urls, M.celltex)
   end
 end
 
@@ -1215,6 +1396,14 @@ local function hearths(V, t)
   local ch = propgen.CHIMNEY.cottage
   for i = 1, #s.blist do
     local b = s.buildings[s.blist[i]]
+    if b.kind == "camp" and b.state == "standing" and b.hh ~= 0 and ((b.stock.logs or 0) > 0 or b.fire) then
+      -- (S17) a camp's fire smokes in the open while it burns
+      local px, py, pz = world_pos(V, b.cx, b.cy, 0.004)
+      n = n + 1
+      local c = CHIM[n]
+      if not c then c = {}; CHIM[n] = c end
+      c[1], c[2], c[3] = px, py, pz
+    end
     if b.kind == "house" and b.state == "standing" and b.hh ~= 0 and awake[b.id] then
       local fire = (b.stock.logs or 0) > 0 or b.fire
       if fire then
@@ -1239,6 +1428,7 @@ M.chimneys = CHIM
 -- Per frame: t = view time (the sim has been advanced to it).
 function M.update(W, dt, zoom, t)
   M.t = t
+  new_settlements(W)
   M.light_timer = (M.light_timer or 0) - dt
   if M.light_timer <= 0 and not M.skipping then
     M.light_timer = 0.25
@@ -1304,8 +1494,8 @@ function M.update(W, dt, zoom, t)
     M.update_boats(V, t)
     M.update_herds(V, t, zoom)
   end
-  M.animals_end()
   M.update_travellers(W, t, zoom)
+  M.animals_end()
   if M.skipping then
     -- hide everyone at once (the pool is not walked while skipping)
     for _, V in ipairs(M.SETS) do
@@ -1351,6 +1541,8 @@ local function animal_obj(variant)
   return e
 end
 
+M.animal_obj = animal_obj
+
 function M.animals_begin()
   for v in pairs(ACUR) do ACUR[v] = 0 end
 end
@@ -1368,7 +1560,9 @@ function M.animals_end()
 end
 
 -- The model variant for an animal: its species and coat, a sheep's fleece by its wool.
-local function variant_of(species, a)
+local variant_of
+function M.variant_of(species, a) return variant_of(species, a) end
+function variant_of(species, a)
   if species == "sheep" then
     local dark = a.coat == "dark"
     local shorn = (a.wool or 0) < 0.6

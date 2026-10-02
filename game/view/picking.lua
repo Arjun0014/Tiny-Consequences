@@ -10,7 +10,7 @@ local puppets = require("game.view.puppets")
 local M = {}
 
 M.RADIUS_PX = 22      -- entity pick radius in window pixels (scaled by window height / 720)
-local PRIORITY = { person = 1, flock = 1.5, beast = 1.6, village = 2, ship = 3, animal = 4, volcano = 5 }
+local PRIORITY = { person = 1, flock = 1.5, beast = 1.6, village = 2, settlement = 2, ship = 3, animal = 4, volcano = 5 }
 
 local sqrt = math.sqrt
 
@@ -57,6 +57,17 @@ function M.pick(W, sx, sy)
   for i = 1, av.beast_n or 0 do
     local b = bp[i]
     best = consider(best, "beast", { kind = "beast", sid = b.sid, grp = b.grp, k = b.k }, b.x, b.y, b.z, sx, sy, radius)
+  end
+  -- (S17) the v3 settlements themselves: their square (a place being made: once laid out)
+  if W.v3 and W.S.v3 then
+    local mapm = require("sim.agents.map")
+    for _, s in ipairs(W.S.v3.settlements) do
+      if s.alive ~= false and not s.empty then
+        local ux, uy, uz = mapm.unit(s, s.sqx or 0, s.sqy or 0)
+        local r = camera.height_fn and camera.height_fn(ux, uy, uz) or state.R
+        best = consider(best, "settlement", { kind = "settlement", sid = s.id }, ux * r, uy * r, uz * r, sx, sy, radius * 1.6)
+      end
+    end
   end
   for _, p in ipairs(puppets.people_pos) do
     best = consider(best, "person", { kind = "person", id = p.id }, p.x, p.y, p.z, sx, sy, radius)

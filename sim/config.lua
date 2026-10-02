@@ -987,7 +987,21 @@ C.V3 = {
   -- the want can go; a trip wants at least trade_min_load of a load and the good worth trade_margin x
   -- more there than here; an hour on the road costs trade_hour FU; news fades over know_fade days;
   -- a deal kept adds trust_deal of the way to full trust; an exchange takes deal_h hours
-  fish_want = 3.0, cheese_want = 0.8, textile_hh_want = 1.5, spare_k = 1.2, trade_min_load = 0.25,
+  fish_want = 3.0, cheese_want = 0.8, textile_hh_want = 1.0, spare_k = 1.2, trade_min_load = 0.25,
+  -- (S17) a household's goods (textiles, leather) are a stock it keeps to a target, and what is beyond
+  -- house_spare_k x the target can go; a village working for exchange (its news says a neighbour
+  -- wants cloth at trade_margin x export_margin what it is worth at home, news fresher than
+  -- export_fresh) keeps export_cloth GE a member more in its pipeline
+  house_spare_k = 1.0, export_margin = 1.1, export_fresh = 0.25, export_cloth = 0.6,
+  -- (S17) a kin visitor brings a little of what the household has beyond its want that the kin's
+  -- village is heard to want visit_gift_k x more than it is worth at home; the kin give back the same way
+  visit_gift_k = 1.3,
+  -- (S17) an hour on the road costs trade_hour x (1 - trade_idle_k x the village's idle share of the
+  -- day), at least trade_idle_min of it
+  trade_idle_k = 1.0, trade_idle_min = 0.4,
+  -- (S17) going to see a neighbour when nothing has been heard from it for news_days and nobody went
+  -- for news_again days, the village's hands idle at least news_idle of the day; news_h at its square
+  news_days = 8, news_again = 10, news_idle = 0.25, news_h = 2.0,
   trade_margin = 1.25, trade_hour = 0.06, know_fade = 48, trust_deal = 0.06, deal_h = 0.3,
   trade_guess = 0.4,                      -- (S14) a gain known only by guesswork (faded news) counts this much
   share_keep = 2.0, share_short = 0.5,
@@ -1010,6 +1024,42 @@ C.V3 = {
   court_far = 0.25, court_road_h = 30, court_h = 1.5, court_wait_h = 3, court_retry_days = 60,
   -- (S16, R4) visiting kin at another village after visit_days apart; visit_h hours with them
   visit_days = 10, visit_h = 3,
+  -- (S17) asking kin elsewhere for help: a household with food for under kin_ask_days at home while
+  -- its village has under kin_ask_village days asks kin within kin_reach_h hours (not the same kin
+  -- again for kin_ask_again days; kin_ask_h with them); kin keep kin_keep_days for themselves and
+  -- give up to kin_gift_days of the asker's mouths; when the asker's village has under
+  -- kin_offer_days and theirs over twice that, with room for both households (kin_room people), they
+  -- offer a place: kin_offer_pull to moving there for kin_offer_keep days
+  kin_ask_days = 2, kin_ask_village = 5, kin_reach_h = 40, kin_ask_again = 8, kin_ask_h = 1.5,
+  kin_keep_days = 4, kin_gift_days = 6, kin_offer_days = 3, kin_room = 11, kin_offer_pull = 0.5, kin_offer_keep = 20,
+  -- (S17, R5) the way overland (trade.land_route, every road walked): an hour's walk made dearer by
+  -- rough ground (geo.slope), forest, mountains above route_high (km) and ice; entering a river
+  -- costs route_river_h x its width (a ford found, a raft made)
+  route_slope_k = 0.3, route_forest_k = 0.25, route_high_k = 0.8, route_high = 2.8, route_ice_k = 1.5,
+  route_river_h = 1.0,
+  -- (S17, R5) knowledge of places (founding.lua): a village knows the country within lore_home
+  -- rings (a day or two out: years of hunting, herding and gathering); a road walked shows lore_side
+  -- rings either side of it;
+  -- what was seen is trusted less as it grows old (lore_fade days)
+  lore_home = 4, lore_side = 1, lore_fade = 240,
+  -- (S17, R5) founding a new place: no closer than found_min_steps cells to a village known; within
+  -- found_reach_h hours' walk; push (hardship, no lot, no land) + the site's worth x found_site_k
+  -- against what holds them, the road (found_road_hour an hour) and the season's risk, by
+  -- found_threshold; a couple waiting found_lot_days with no lot to build on is pushed found_lot_push
+  -- (+ found_lot_day a day more); they pack for found_pack_h; each grown-up carries up to found_carry
+  -- FU, their share of the granary (found_share of their mouths' part) among it
+  found_min_steps = 4, found_reach_h = 70, found_site_k = 0.6, found_road_hour = 0.008, found_threshold = 0.55,
+  found_lot_days = 12, found_lot_push = 0.25, found_lot_day = 0.02, found_land_push = 0.2,
+  found_pack_h = 20, found_carry = 12, found_share = 0.8, found_party = 3,
+  found_dawn_h = 8, ready_h = 3,          -- they set off at this local hour, making ready ready_h before
+  -- they want found_food_days of bread for their mouths to take (less weighs against going, x
+  -- found_hungry_k); those who came to make a place hold to it found_stay_hold more for found_stay_days
+  found_food_days = 10, found_hungry_k = 0.9, found_stay_days = 24, found_stay_hold = 0.6,
+  found_risk_late = 0.35, found_risk_winter = 0.6,
+  -- the young place: a camp (camp_work person-hours: the ground cleared, a fire ring, a brush lean-to),
+  -- a first house a hut (hut_logs, hut_work), water from a river bank within found_water_reach of the
+  -- camp or a well dug
+  camp_work = 2.0, hut_logs = 10, hut_work = 55, found_water_reach = 0.7,
   -- (D-105) dogs: hearing wolves within dog_alert; trotting and running speeds; a dog alone at a
   -- wolf is killed with wolf_kill_dog a meeting; a pup comes dog_pup_days after a dog is lost;
   -- people awake within wolf_fear of a wolf at a pen drive the pack off; a barking dog turns it with
@@ -1035,7 +1085,7 @@ C.V3 = {
   -- (D-104) leather: hides soak in a tanning pit tan_days (put in and lifted out in tan_h); a pair of
   -- shoes takes shoe_leather and cobble_h; shoes wear a day by life stage; barefoot (under 0.1) one
   -- walks at barefoot_speed and the cold costs health; a household wants leather_want a member
-  tan_days = 10, tan_h = 1.0, shoe_leather = 0.5, cobble_h = 2.0, barefoot_speed = 0.92, leather_want = 0.6,
+  tan_days = 10, tan_h = 1.0, shoe_leather = 0.5, cobble_h = 2.0, barefoot_speed = 0.92, leather_want = 0.4,
   shoes_wear = { child = 0.016, apprentice = 0.012, adult = 0.009, elder = 0.006 },                        -- (D-103) food for fewer days than this and nothing to sell: ask a neighbour                              -- (D-102) hours an exhausted person sleeps in the day                          -- a skipper does not set out on a crossing longer than this on a wet day    -- a household shares beyond 2x its want with one under half of its own
   meat_want = 1.2, hunt_reach = 1.6, hunt_stalk = 0.3, hunt_throw = 0.07, stalk_speed = 0.4,
   hunt_hit = 0.25, hunt_skill = 0.35, hunt_tries = 3, hunt_hours = 5,                         -- after wolves took a beast, the village keeps a night watch this long

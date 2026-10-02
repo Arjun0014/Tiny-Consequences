@@ -108,5 +108,8 @@ def("crop_ripe",        { actor = "derived", icon = "crop", text = "A field is r
 def("birth",            { actor = "derived", icon = "people", text = "A child is born" })
 def("death",            { actor = "derived", icon = "death", text = "A death" })
 def("marriage",         { actor = "derived", icon = "heart", text = "A wedding" })
+-- (S17, R5) founding a new place
+def("founding_planned", { actor = "derived", icon = "people", text = "A household decides to make a new home elsewhere" })
+def("settlement_founded", { actor = "derived", icon = "house", headline = true, text = "A new place is settled" })
 
 return K
