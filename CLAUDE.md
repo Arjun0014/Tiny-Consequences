@@ -28,6 +28,10 @@ settlements; `p.at` is the map a person is on); measure the browser with `script
 (the lower envelope of several release runs). Session 13 (D-100-D-109): `sim/agents/econ.lua` (worth,
 news, exchanges, gifts, relief), `dogs.lua`, sea trade in `trade.lua`/`think.lua` (`sea_legs`);
 watch the economy with `tools/v3_econ.lua`; trade is tested by creating real want, never expected.
+Session 14 (D-110-D-113): the browser must live the same world as LuaJIT - `sim/dmath.lua` for every
+transcendental in `sim/` (no `^`), `sim/fmt.lua` (`sfmt`) for text kept in state, check with
+`scripts/v3_hash_web.mjs` (web test W10); drainage basins in `sim/geo.lua` (v3 worlds); birds are
+agents in `sim/agents/birds.lua`; watch with `tools/v3_watch.lua`, `v3_follow.lua`, `v3_birds.lua`.
 
 ## Read order
 

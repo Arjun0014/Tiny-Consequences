@@ -71,6 +71,11 @@ wolves, hides used.)
 herds and at the pens, wolves at a pen met by barking dogs and woken people); oxen at the plough.
 Open: small game, bears and foxes, dogs breeding, a plough model.)
 
+(Session 14, D-111, D-113: the ox team placed and turning as one, a plough drawn, ploughing men's
+work; birds as agents: gull flocks with a roost, hunger, objective, target and why - boats hauling
+nets, landings, racks, ploughs, carcasses, the shore, weather and the day; inspectable. Open: other
+birds (rooks, crows, herons, raptors, songbirds), people chasing gulls.)
+
 ## R4 — Exchange and travel
 - Paths between settlements, porters and traders walking with loads; trade boats; relations from
   v2 (D-055, D-062, D-066) re-expressed between settlements of agents; gifts, relief, feasts.
@@ -84,6 +89,17 @@ exchanges both sides gain from with the return good by the trader's own want, gi
 relations and debts; sea trade by boat, one complete loop; relief asked of a trusted neighbour;
 floods sweeping bridges; river water and the flux. Open: livestock traded alive, help by sea,
 relations shaping marriage and migration, larger trading boats.)
+
+(Session 14, D-110-D-112: trade on faded news discounted (`trade_guess`), roads walked by day with
+night camps and lodging; the browser and LuaJIT live the same world; drainage basins, rivers from
+discharge, villages on one bank, sea routes from a map's sea. Open: livestock traded alive (drovers),
+relief by sea, relations shaping marriage and migration, larger cargo boats.)
+
+## Geography (session 14, D-112)
+Drainage basins on the planet (outlets, a priority flood, beds falling to the sea), rivers widening
+with discharge from mountain sources, valleys and floodplains carved into the drawn planet, mountains
+with silhouettes, crags, snow and a tree line by real height; the same rivers on the settlements'
+maps. Open: lakes, deltas, local-map valleys, a finer mesh near peaks.
 
 ## R5 — Migration and founding
 - Households leave by land or boat when push factors (hunger, no home, crowding) beat staying;
