@@ -58,6 +58,11 @@ with rendering off; hand off near ~900K context.
   the LuaJIT instruction count unchanged - most likely this laptop's load; no exact cut was made this
   session (D-137). Target 10 s still open; never by cutting agency.
 
+- Watched, untouched world, 96 days (`luajit tools/v3_econ.lua --days 96 --every 48`): **134 exchanges**
+  (34 in the first 48 days); salt inland (Hottoodingle Hop got 37 measures, Little Leelee 20; Zurug sold
+  34); brides moved between villages; boats rebuilt where they rotted; deaths only 3 of old age and 3
+  infants' illness in the first month, none from hunger; no move or founding (no push: healthy).
+
 ## Next (in order)
 1. **Watch a long run** (96+ days) of the untouched world and of premises: salt prices settling, sea
    trade volume (now possible on long ways), whether a household ever moves or founds by sea without a
