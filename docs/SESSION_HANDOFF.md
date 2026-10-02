@@ -1,3 +1,27 @@
+# Session handoff — session 19 (3 Oct 2026, extended autonomous run; IN PROGRESS)
+
+Interim checkpoint (updated as the session goes; the session-18 handoff follows below). Source of truth:
+`docs/PROGRESS.md` (Current state, session 19 bullet) and D-138 onward in `docs/DECISIONS.md`.
+
+Done so far (main, last commit 43374d0; v3 tests 43/43, quick 149/149 at b277382, browser = LuaJIT at b277382):
+- **Long-run audit** with `tools/v3_chronicle.lua` (every memory to `<out>/mem.txt`, village states,
+  deaths; `--premise crowd:2 | fail_harvest:N | empty_stores:N`; `tools/v3_follow.lua --premise ... --from-day D`).
+- **D-138** trade planned on a snapshot of each household's worths and spares (`econ.view`,
+  `econ.deal_plan` shared by planning and arrival); seen and guessed gains kept apart (`trade_fade` 16 d);
+  unsold trips 542 -> ~100-170 in 192 days.
+- **D-139** a widow remarrying away takes her children; estates of households with nobody left pass to
+  kin; nobody leaves on a journey while the household is about to move; one left behind follows it;
+  hunters remember their luck.
+- **D-140** hunger answered: households kill their own beasts, neighbours kill one for those with none,
+  the herd counts before leaving, shore gathering, journeys put off while hungry, night feeds,
+  relief asked on old news; `premise.murrain` for hunger tests.
+- **D-141** stone (`sim/agents/stone.lua`): outcrops from planet slope/height, quarrying, querns
+  (cooking 40% quicker, traded), stone footings.
+- **D-142** iron (`sim/agents/iron.lua`): veins and bog iron, mine -> clamp -> forge -> iron edges; the
+  sea's danger weighed in trade (`sea_life_fu`), `sea_squall` lowered.
+- Next: D-143 mixed payment + credit (failed quern/iron sales as evidence), then fairs, ferry, founding
+  polish, performance, final handoff.
+
 # Session handoff — session 18 (2 Oct 2026): moving and founding by sea, sea droves, salt, travellers who share
 
 `docs/PROGRESS.md` (session 18 entry) and **D-129 … D-136** in `docs/DECISIONS.md` are the source of
