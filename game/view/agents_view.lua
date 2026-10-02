@@ -32,6 +32,16 @@ M.PERSON_SCALE = 1.25
 M.TREE_SPLIT = 4          -- trees in 4 x 4 sub-chunks
 M.BUILD_SCALE = 1.5
 M.people_pos = {}         -- picking: { id, x, y, z }
+-- (S16) every v3 animal drawn this frame, for picking (game/view/picking.lua): pooled entries
+-- { sid, grp ("flock" | "cattle" | "swine" | "wild" | "dog"), k, x, y, z }, M.beast_n of them
+M.beast_pos, M.beast_n = {}, 0
+local function beast_note(sid, grp, k, px, py, pz)
+  local n = M.beast_n + 1
+  M.beast_n = n
+  local e = M.beast_pos[n]
+  if not e then e = {}; M.beast_pos[n] = e end
+  e.sid, e.grp, e.k, e.x, e.y, e.z = sid, grp, k, px, py, pz
+end
 M.stats = { people = 0, rebuilt = 0, inside = 0 }
 M.t = 0                   -- view time (absolute hours, fractional)
 
@@ -1256,6 +1266,7 @@ function M.update(W, dt, zoom, t)
   M.animals_begin()
   local bp = M.bird_pos
   for i = #bp, 1, -1 do bp[i] = nil end
+  M.beast_n = 0
   for _, V in ipairs(M.SETS) do
     -- (a settlement far from the view focus is neither rebuilt nor peopled until it comes into view)
     local f = V.s.frame
@@ -1403,6 +1414,7 @@ local function draw_herd(V, t, H, lod, sid, hi)
         end
         local yaw = yaws[k] or (k * 1.7 + sid)
         local px, py, pz, ux, uy, uz = world_pos(V, x, y, 0)
+        beast_note(sid, H.kind, a.k, px, py, pz)
         SPOS.x, SPOS.y, SPOS.z = px, py, pz
         go.set_position(SPOS, e.id)
         go.set_rotation(vmx.set_up_yaw(SROT, ux, uy, uz, yaw), e.id)
@@ -1506,6 +1518,7 @@ local function draw_wild(V, t, lod)
         local e = animal_obj(anim_variant)
         if e then
           local px, py, pz, ux, uy, uz = world_pos(V, x, y, 0)
+          beast_note(s.id, "wild", w.k, px, py, pz)
           SPOS.x, SPOS.y, SPOS.z = px, py, pz
           go.set_position(SPOS, e.id)
           go.set_rotation(vmx.set_up_yaw(SROT, ux, uy, uz, yaw + pi * 0.5), e.id)
@@ -1525,6 +1538,8 @@ local function draw_wild(V, t, lod)
         end
       else
         mover(w.sp, x, y, yaw, moving, false, (M.WILD_SCALE[w.sp] or 0.4) * young)
+        local px, py, pz = world_pos(V, x, y, 0)
+        beast_note(s.id, "wild", w.k, px, py, pz)
       end
     end
   end
@@ -1560,6 +1575,7 @@ local function draw_dogs(V, t, lod)
         end
         local yaw = V.dyaw[d.k] or d.k * 1.7
         local px, py, pz, ux, uy, uz = world_pos(V, x, y, 0)
+        beast_note(s.id, "dog", d.k, px, py, pz)
         SPOS.x, SPOS.y, SPOS.z = px, py, pz
         go.set_position(SPOS, e.id)
         go.set_rotation(vmx.set_up_yaw(SROT, ux, uy, uz, yaw + pi * 0.5), e.id)

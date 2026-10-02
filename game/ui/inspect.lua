@@ -965,9 +965,82 @@ local function v3_flock(W, sel)
   return out
 end
 
+-- (S16) A v3 animal - a household's beast, a wild animal on a village's map, a dog: what it is
+-- doing and why, straight from the agent (sim/agents/stock.lua, wild.lua, dogs.lua).
+local function v3_beast(W, sel)
+  local V = W.S.v3
+  local s = V.settlements[sel.sid or 0]
+  if not s then return nil end
+  local t = require("game.platform.speed").v3_t or W.hour
+  local out = { kind = "beast", items = {} }
+  local items = out.items
+  out.icon = "paw"
+  out.tint = { 0.75, 0.65, 0.45 }
+  local a, age, why, act
+  local function surname(hid)
+    local hh = V.households[hid or 0]
+    local q = hh and V.people[hh.members[1] or 0]
+    return q and q.surname or nil
+  end
+  if sel.grp == "wild" then
+    local wild = require("sim.agents.wild")
+    a = wild.byk(s, sel.k or 0)
+    if not a then return nil end
+    age = (t - a.born) / 1152
+    local n = #wild.group_of(s, a.gid)
+    out.title = (a.pred and "A wolf" or ("A " .. a.sp)) .. (age < 0.5 and " (young)" or "")
+    if a.pred then
+      out.subtitle = string.format("Of a pack of %d on %s's map", n, s.name)
+      add(items, { t = "row", icon = "star", label = "In the pack", value = a.lead == 0 and "The leader" or "Follows the leader" })
+    else
+      out.subtitle = string.format("Of a band of %d on %s's map", n, s.name)
+    end
+  elseif sel.grp == "dog" then
+    a = require("sim.agents.dogs").byk(s, sel.k or 0)
+    if not a then return nil end
+    age = (t - a.born) / 1152
+    out.title = "A dog"
+    out.subtitle = "The " .. (surname(a.hh) or "") .. "s' dog, " .. s.name
+  else
+    local stock = require("sim.agents.stock")
+    local H = s.herds and s.herds[sel.grp]
+    a = H and H.animals[sel.k or 0]
+    if not a or not a.alive then return nil end
+    age = (t - a.born) / 1152
+    local S = stock.SP(a.sp)
+    local young = age < S.young_years
+    local NM = { sheep = young and "A lamb" or (a.sex == "m" and "A ram" or "A ewe"), goat = young and "A kid" or (a.sex == "m" and "A billy goat" or "A nanny goat"),
+      cattle = young and "A calf" or (a.ox and "An ox" or (a.sex == "m" and "A bull" or "A cow")), pig = young and "A piglet" or (a.sex == "m" and "A boar" or "A sow") }
+    out.title = NM[a.sp] or ("A " .. a.sp)
+    local own = surname(a.owner)
+    out.subtitle = (own and ("The " .. own .. "s' ") or "") .. (a.sp == "cattle" and "beast" or a.sp) .. ", " .. s.name
+    add(items, { t = "bar", icon = "bubble", label = "Hunger", frac = a.hunger or 0, value = pct(a.hunger), hl = (a.hunger or 0) > 0.75 })
+    add(items, { t = "bar", icon = "heart", label = "Health", frac = a.health or 1, value = pct(a.health or 1), hl = (a.health or 1) < 0.5 })
+    if (a.led or 0) ~= 0 and V.people[a.led] then
+      add(items, { t = "row", icon = "person", label = "Led by", value = V.people[a.led].name, link = { kind = "person", id = a.led, v3 = true } })
+    end
+    if a.from and V.settlements[a.from] then add(items, { t = "row", icon = "house", label = "Bought from", value = V.settlements[a.from].name }) end
+    local mom = (a.mother or 0) ~= 0 and H.animals[a.mother]
+    if young and mom and mom.alive then
+      local mx, my = stock.pos(mom, t)
+      local x, y = stock.pos(a, t)
+      add(items, { t = "row", icon = "heart", label = "Mother", value = string.format("%.0f paces away", math.sqrt((mx - x) ^ 2 + (my - y) ^ 2) / 0.012) })
+    end
+    if a.cull then add(items, { t = "text", icon = "bubble", text = "Marked: the hay will not winter it" }) end
+  end
+  local ACT = { graze = "Grazing", walk = "Walking", rest = "Lying down", pen = "In the pen", held = "Held", yoked = "In the yoke",
+    flee = "Running", chase = "Chasing", leave = "Leaving the map", eat = "Eating", run = "Running", sit = "Sitting", lie = "Lying down",
+    bark = "Barking" }
+  table.insert(items, 1, { t = "text", icon = "bubble", text = "Why: " .. (a.why or "") })
+  table.insert(items, 1, { t = "row", icon = "pin", label = "Doing", value = ACT[a.act] or a.act or "" })
+  add(items, { t = "row", icon = "hourglass", label = "Age", value = age < 1 and string.format("%d months", floor(age * 12)) or string.format("%d years", floor(age)) })
+  return out
+end
+
 function M.build(W, sel)
   if not sel or not W then return nil end
   if W.v3 and sel.kind == "flock" and W.S.v3 then return v3_flock(W, sel) end
+  if W.v3 and sel.kind == "beast" and W.S.v3 then return v3_beast(W, sel) end
   if W.v3 and sel.kind == "person" and W.S.v3 then
     local p = W.S.v3.people[sel.id]
     if not p then return nil end

@@ -921,6 +921,10 @@ C.V3 = {
       young_years = 0.25, adult_years = 1, old_years = 6, birth = { 4, 14 }, birth2 = { 22, 30 }, birth_chance = 0.15,
       twins = 0, litter = 6, stepping = 0.25, resting = 0.15, graze_h = 0.95, rest_h = 1.4, butcher_h = 1.0 },
   },
+  -- (S16) livestock spacing: a herd of n spreads stock_range[1] x sqrt(n) + stock_range[2] spacings
+  -- about where it is kept; a beast closer than stock_room spacings to another makes room, within
+  -- stock_bend its grazing way bends off (sheep grazing calmly keep 2-4 body lengths apart)
+  stock_range = { 1.3, 1.5 }, stock_room = 0.7, stock_bend = 1.6,
   drove_pace = 1.25,                      -- (S15) a herder driving a herd walks at its slowest beast's speed x this
   drove_road = 1.6,                       -- (S15, R4) a road leg with beasts led takes this x a walker's hours
   drove_gather = 0.15,                    -- (S16) a drover waits at the gate until the drove is within this of them
@@ -1003,7 +1007,9 @@ C.V3 = {
   -- (S16, R4) courting: a man with nobody to marry at home goes to a neighbour within court_road_h
   -- hours' walk with this chance a courtship round; he spends court_h meeting its people; a bride
   -- sets off with him court_wait_h after the match
-  court_far = 0.25, court_road_h = 30, court_h = 1.5, court_wait_h = 3,
+  court_far = 0.25, court_road_h = 30, court_h = 1.5, court_wait_h = 3, court_retry_days = 60,
+  -- (S16, R4) visiting kin at another village after visit_days apart; visit_h hours with them
+  visit_days = 10, visit_h = 3,
   -- (D-105) dogs: hearing wolves within dog_alert; trotting and running speeds; a dog alone at a
   -- wolf is killed with wolf_kill_dog a meeting; a pup comes dog_pup_days after a dog is lost;
   -- people awake within wolf_fear of a wolf at a pen drive the pack off; a barking dog turns it with

@@ -212,7 +212,7 @@ function M.step(W, s, d, now)
     if n > 0 then
       cx, cy = cx / n, cy / n
       local S = stock.SP(far.sp)
-      local R = S.sep * (0.9 * sqrt(n) + 1)
+      local R = stock.range(S, n)
       fd = sqrt(fd)
       -- the straggler it is fetching (kept until it is back with the others), or a new one
       local st = d.fetch and H.animals[d.fetch]

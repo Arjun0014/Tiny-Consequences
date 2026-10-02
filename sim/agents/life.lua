@@ -218,7 +218,12 @@ function M.court_village(W, s, m, day)
   local best, bs = nil, -1e9
   for _, o in ipairs(trade.partners(W, s)) do
     local _, hrs = trade.road(W, s, o)
-    if hrs <= C().court_road_h and #o.members > 0 then
+    -- (not where he found nobody to marry lately)
+    local tried = false
+    for _, e in ipairs(m.court_tried or {}) do
+      if e[1] == o.id and day * 24 - e[2] < 24 * C().court_retry_days then tried = true end
+    end
+    if hrs <= C().court_road_h and #o.members > 0 and not tried then
       local sc = econ.rel(s, o).trust * 2 - hrs * 0.03 + u(W, m, 35 + o.id, day) * 0.5
       if sc > bs then best, bs = o, sc end
     end

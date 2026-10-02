@@ -742,6 +742,37 @@ local function court_candidate(W, s, p, ctx, now, fat)
   addw((0.6 + 0.12 * min(6, (now - cr.t) / 24)) * fat, "court", o.id, 0, "Nobody to marry at home: going to %s to court (%.0f hours' walk)", o.name, hrs)
 end
 M.court_candidate = court_candidate
+
+-- (S16, R4) Visiting kin who live at another village (a daughter married away, parents left
+-- behind): after `visit_days` apart the wish to see them grows each day; set out when the road can
+-- be walked by day. Not a mother with a baby at the breast.
+local function visit_candidate(W, s, p, ctx, now, fat)
+  local c = C()
+  if p.trip or p.court or ctx.stage ~= "adult" and ctx.stage ~= "elder" or not ctx.home or ctx.rain >= 1 or ctx.night then return end
+  if (p.nursing or 0) > now then return end
+  local V = W.S.v3
+  local best, bd, bo, bh
+  local function try(qid)
+    local q = V.people[qid or 0]
+    local o = q and q.alive and q.sett ~= p.sett and not q.at and V.settlements[q.sett]
+    if not o then return end
+    local _, hrs = trade.road(W, s, o)
+    if not hrs or hrs > c.court_road_h then return end
+    local apart = (now - max(p.visit_t or 0, q.married or 0, p.married or 0)) / 24
+    if apart >= c.visit_days and (not best or apart > bd) then best, bd, bo, bh = q, apart, o, hrs end
+  end
+  try(p.mother)
+  try(p.father)
+  for _, k in ipairs(p.kids or {}) do try(k) end
+  if not best then return end
+  if bh <= ctx.sunset - ctx.wake then
+    if ctx.lh + bh > ctx.sunset + 0.5 then return end
+  elseif ctx.lh > ctx.wake + 2.5 then return end
+  local rel = best.id == p.mother and "my mother" or (best.id == p.father and "my father" or (best.sex == "f" and "my daughter" or "my son"))
+  addw((0.25 + 0.04 * min(10, bd - c.visit_days)) * fat, "visit_kin", bo.id, best.id,
+    "%.0f days since I saw %s: walking to %s to visit %s (%.0f hours)", bd, best.name, bo.name, rel, bh)
+end
+M.visit_candidate = visit_candidate
 M.share_candidate = function(...) return share_candidate(...) end
 
 -- Sharing (D-101): plenty taken to a household of the village that has little (econ.plan_gift).
@@ -2656,11 +2687,29 @@ local function court_legs(W, s, p, ctx, now)
     return "Go courting at " .. o.name, o.name
   end
   if here == tr.to then
+    local kin = tr.visit and V.people[tr.visit]
+    local kh = kin and V.households[kin.hh]
+    local kb = kh and o.buildings[kh.home or 0]
     if not tr.met then
+      if tr.visit then
+        -- (S16) to the kin's house: a meal and the news together
+        if kb then go(pl, kb.dx, kb.dy, kb.label or "their house", kb.id) end
+        work(pl, "visit_kin", c.visit_h, { ref = kb and kb.id or 0, inside = kb and kb.id or nil })
+        return "Visit " .. (kin and kin.name or "kin") .. " at " .. o.name, o.name
+      end
       local x, y = near_spot(W, p, now, o.sqx or 0, o.sqy or 0, 0.08, 61)
       go(pl, x, y, o.name .. "'s square")
       work(pl, "court", c.court_h, { ref = o.id })
       return "Court at " .. o.name, o.name
+    end
+    local _, hrs0 = trade.road(W, o, home_s)
+    if tr.visit and kb and not tr.slept and (ctx.night or ctx.lh + hrs0 > ctx.sunset + 0.5) then
+      -- (too late to walk home by day: the night under their roof)
+      tr.slept = true
+      local until_t = next_local(now, ctx.lh, ctx.wake)
+      if p.inside ~= kb.id then go(pl, kb.dx, kb.dy, kb.label or "their house", kb.id) end
+      work(pl, "sleep", until_t - now, { inside = kb.id, trip_sleep = true })
+      return "Stay the night at " .. (kin and kin.name or "kin") .. "'s", o.name
     end
     local gx, gy = trade.gate(W, o, home_s)
     go(pl, gx, gy, "the road home")
@@ -2678,6 +2727,13 @@ local function court_legs(W, s, p, ctx, now)
   return "Home", home_s.name
 end
 M.court_legs = court_legs
+
+PLAN.visit_kin = function(W, s, p, ctx, now, cd)
+  local o = W.S.v3.settlements[cd.a]
+  p.trip = { to = o.id, from = s.id, court = true, visit = cd.b, give = "grain", take = "grain", n = 0, t0 = now }
+  p.visit_t = now
+  return court_legs(W, s, p, ctx, now)
+end
 
 PLAN.court = function(W, s, p, ctx, now, cd)
   local o = W.S.v3.settlements[cd.a]
@@ -3412,6 +3468,15 @@ function M.decide(W, s, p, now, reason)
       p.obj, p.dest, p.objk = obj, dest, "trade"
       local nodeal = tr.dealt and not tr.ask and #(tr.deals or {}) == 0
       local giver = W.S.v3.settlements[tr.to].name
+      if tr.court and tr.visit then
+        local kin = W.S.v3.people[tr.visit]
+        local kn = kin and kin.name or "kin"
+        p.why = (reason and (reason .. ". ") or "") .. (here == tr.to and (tr.met and ("Visited " .. kn .. " at " .. giver .. ": going home")
+          or ("Visiting " .. kn .. " at " .. giver)) or (here == tr.from and tr.back and ("Home from visiting " .. kn) or ("On the road to " .. giver .. " to visit " .. kn)))
+        p.objk = "visit_kin"
+        p.tgt_kind, p.tgt_ref = "trade", tr.to
+        return true
+      end
       if tr.court then
         local bride = W.S.v3.people[tr.bride or 0]
         p.why = (reason and (reason .. ". ") or "") .. (here == tr.to and (tr.met and (bride and ("Married " .. bride.name .. " of " .. giver .. ": taking her home") or ("Nobody at " .. giver .. " to marry: going home"))
@@ -3540,6 +3605,7 @@ function M.decide(W, s, p, now, reason)
       crew_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       trade_candidate(W, s, p, ctx, now, fatigue(p))
       court_candidate(W, s, p, ctx, now, fatigue(p))
+      visit_candidate(W, s, p, ctx, now, fatigue(p))
       share_candidate(W, s, p, ctx, now, fatigue(p))
       leather_candidates(W, s, p, ctx, now)
       rack_candidates(W, s, p, ctx, now, fatigue(p))

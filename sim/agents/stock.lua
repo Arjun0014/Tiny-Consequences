@@ -340,6 +340,13 @@ local function inside_pen(s, pen, x, y)
   return fx > -0.6 and fy > -0.6 and fx < pen.w - 0.4 and fy < pen.h - 0.4
 end
 
+-- (S16) How far a herd of n spreads about where it is kept (its beasts grazing calmly keep
+-- `stock_room` spacings at least between them and bend away within `stock_bend`).
+function M.range(S, n)
+  local r = C().stock_range
+  return S.sep * (r[1] * sqrt(n) + r[2])
+end
+
 -- (S15) What makes each beast itself, from who it is (no state): how far from the herd's middle it
 -- likes to keep (bold), its own pace, how soon it notices (alert), the side of the herd it keeps.
 local function trait(a, m) return ((a.k + 0.5) * m) % 1 end
@@ -578,7 +585,7 @@ function M.step(W, s, H, a, now)
       return
     end
   end
-  local R = S.sep * (0.9 * sqrt(n) + 1)
+  local R = M.range(S, n)
   local Ri = R * (0.45 + 0.9 * trait(a, T_BOLD))
   local dax, day = cx - x, cy - y
   local da = sqrt(dax * dax + day * day)
@@ -601,8 +608,9 @@ function M.step(W, s, H, a, now)
     a.why = "Moving off from the dog"
     if walk_to(W, s, a, now, x + ex * st, y + ey * st, S.speed * pace * 1.6, true) then return end
   end
-  if da > Ri * 1.5 or (led and da > Ri * 0.8) then
-    -- left behind, or the herder is moving on: after them, to its own side of the herd
+  if da > Ri * 1.5 or (led and da > Ri * 0.45) then
+    -- left behind, or the herder is moving on (a moving flock draws closer together than a grazing
+    -- one): after them, to its own side of the herd
     local ux, uy = dax / da, day / da
     local side = trait(a, T_SIDE) - 0.5
     local stop = Ri * 0.6
@@ -621,9 +629,9 @@ function M.step(W, s, H, a, now)
     end
     if walk_to(W, s, a, now, tx, ty, S.speed * pace * (da > Ri * 3 and 1.5 or 1.15)) then return end
   end
-  scan(s, H, a, now, x, y, S.sep * 3)
+  scan(s, H, a, now, x, y, S.sep * 4)
   local nn = SC.nn
-  if nn and SC.nd < S.sep * 0.35 and not sick then
+  if nn and SC.nd < S.sep * c.stock_room and not sick then
     -- too close: room to graze (away from the nearest, a little along its own way)
     local ex, ey = x - SC.nx, y - SC.ny
     local el = sqrt(ex * ex + ey * ey)
@@ -658,7 +666,7 @@ function M.step(W, s, H, a, now)
   -- edge of its range, away from bare ground
   local k = (u(W, s, H, a, now, 8) - 0.5) * 1.4
   if da > Ri and da > 1e-6 then hx, hy = hx + dax / da * 0.9, hy + day / da * 0.9 end
-  if nn and SC.nd < S.sep * 0.9 and SC.nd > 1e-6 then
+  if nn and SC.nd < S.sep * c.stock_bend and SC.nd > 1e-6 then
     -- (another close by: its way bends off from it)
     hx, hy = hx + (x - SC.nx) / SC.nd * 0.8, hy + (y - SC.ny) / SC.nd * 0.8
   end
@@ -688,9 +696,17 @@ function M.step(W, s, H, a, now)
   end
   -- grazing (rooting), head down, drifting slowly along its way as it crops (S15)
   local dur = S.graze_h * ((led or drover) and 0.25 or 1) * (0.5 + 0.8 * u(W, s, H, a, now, 11))
-  a.why = a.sp == "pig" and "Rooting" or (S.browse and "Browsing" or "Grazing")
+  -- (S16: the reason as it stands for this beast - hungry, out at the edge on its own, or grazing
+  -- among the others)
+  if a.hunger > 0.6 then
+    a.why = a.sp == "pig" and "Hungry: rooting hard" or (S.browse and "Hungry: browsing whatever it can reach" or "Hungry: grazing hard, head down")
+  elseif da > Ri then
+    a.why = a.sp == "pig" and "Rooting its own way at the edge of the others" or "Grazing its own way at the edge of the herd, turning back"
+  else
+    a.why = a.sp == "pig" and "Rooting among the others" or (S.browse and "Browsing among the others" or "Grazing among the others")
+  end
   if drover then a.why = a.why .. (led and " a mouthful on the way" or " while the drover is busy") end
-  graze_drift(s, a, now, hx, hy, sick and 0 or S.sep * (a.sp == "pig" and 0.35 or 0.6) * pace * dur, dur,
+  graze_drift(s, a, now, hx, hy, sick and 0 or S.sep * (a.sp == "pig" and 0.5 or 0.9) * pace * dur, dur,
     not S.browse and a.sp ~= "pig")
 end
 

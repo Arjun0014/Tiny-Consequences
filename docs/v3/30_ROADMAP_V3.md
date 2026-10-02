@@ -95,6 +95,17 @@ night camps and lodging; the browser and LuaJIT live the same world; drainage ba
 discharge, villages on one bank, sea routes from a map's sea. Open: livestock traded alive (drovers),
 relief by sea, relations shaping marriage and migration, larger cargo boats.)
 
+(Sessions 15-16, D-114-D-121: the browser-only first-hours cost was the CPU rasteriser (probes now
+draw nothing while measuring); animals as individuals - no places in a herd, livestock and wild
+bands within their own range of the herder or ground, wolves on the leader's trail with drifting
+places, flanking from where they are, waiting their turn at a kill, dogs with posts and balance
+points, the drove as individuals, natural spacing - with synchronisation measured (velocity
+correlation, mass starts/stops/rests, offsets, young-mother distance) and regression-tested; every
+animal clickable with its why; beasts sold alive and driven to the buyer; relief by sea; courting at
+a neighbouring village (the first kin across villages). Open: sea droves, beasts as payment, larger
+cargo boats (no trade volume yet to justify one), kin visits across villages, a groom moving to the
+bride's village.)
+
 ## Geography (session 14, D-112)
 Drainage basins on the planet (outlets, a priority flood, beds falling to the sea), rivers widening
 with discharge from mountain sources, valleys and floodplains carved into the drawn planet, mountains
@@ -104,6 +115,34 @@ maps. Open: lakes, deltas, local-map valleys, a finer mesh near peaks.
 ## R5 — Migration and founding
 - Households leave by land or boat when push factors (hunger, no home, crowding) beat staying;
   colonists found new settlements (the founding generator as a process: stakes, huts first).
+
+(Session 16, D-119: households move to another village from real push (hunger lasting days with
+each household's own patience, no house, wolves at the pens) against pull (grain heard spare, kin
+living there, trust) less what holds them and the road; physically: packing, the household's beasts
+led, gathering at the gate at an agreed hour, the road together, babes carried and fed on the way;
+lodging with kin or the household with room, a house planned and built for them, houses left empty
+given to waiting couples and households. A bride's move (D-120) uses the same road.)
+
+Next - founding a new place (no spawned villages):
+1. **Who and why**: a household (or kin together) pushed hard with no village that would take them
+   or pull them enough, or a young couple with no lot at home (`find_lot` fails, `s.couples` waiting
+   long), weighs empty sites it knows of (cells along the roads and coasts travellers have seen -
+   site knowledge from trips, never omniscient) by water, soil, wood, safety and distance.
+2. **The map first, empty**: `settle.new(W, cell, ...)` makes the terrain, rivers, coast and trees
+   only (found.lua's buildings, fields and founders are what the party must make). The settlement
+   exists with no buildings and no members until the party walks in at its edge.
+3. **The party** walks (or sails) through the real geography (routes avoid mountains and wide
+   rivers; passes and fords matter), camps at night, carries food, seed grain, tools, leads beasts.
+4. **On arrival**: a camp (`hh.camp`, sleeping out by a fire), wood gathered, a first shelter (a low-
+   work house site), water from the river or a well dug (a site), food from what they carried,
+   foraging, hunting, fishing; a field cleared and sown in season; a granary and a woodstore when
+   there is something to store; a pen when beasts came.
+5. **Systems that assume a founded village** must tolerate one with no well, granary, woodstore,
+   dock or pens (fetching water, the village's stock, trade partners, the view's settlement drawing,
+   planet markers and local maps appearing at runtime).
+6. Tests: a pushed household with no village to go to founds a place; nothing appears that nobody
+   built; the first winter is survivable only if they worked for it.
+- Also open: moving by sea (a household with a boat), pull from marriage ties (now possible).
 
 ## R6 — Conflict
 - Raids (walking or boat-borne raiders), defenders, palisades built by people, captives and

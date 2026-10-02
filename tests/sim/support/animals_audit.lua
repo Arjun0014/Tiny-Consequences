@@ -9,6 +9,7 @@
 --   speedcv   coefficient of variation of the speeds of the members moving at the same moment
 --             (0 = all at one speed)
 --   offset    how far each member's offset from the group's centre moved over `lag` hours, over the
+--             (S16: members lying down at both ends are left out - resting together is not a formation)
 --             group's radius (0 = a rigid formation; ~1 = they mix)
 --   nnkeep    share of members whose nearest neighbour is the same one `lag` hours later
 --   moving    share of member-samples moving; nowhy: member-samples without a reason
@@ -251,6 +252,8 @@ function M.run(W, opts)
           local rr = max(1e-4, (r + r2) * 0.5)
           for mk, b in pairs(fr) do
             local b2 = type(b) == "table" and fr2[mk]
+            -- (S16: one lying at both ends of the window keeps its place for a reason: not counted)
+            if b2 and b[6] and b2[6] then b2 = nil end
             if b2 then
               local ex, ey = (b[1] - cx) - (b2[1] - cx2), (b[2] - cy) - (b2[2] - cy2)
               offs, offn = offs + sqrt(ex * ex + ey * ey) / rr, offn + 1

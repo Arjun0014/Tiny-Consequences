@@ -550,6 +550,30 @@ function M.a_man_goes_courting()
   T.ok(waiting or man.house_site or bride.house_site or V.households[man.hh].home ~= 0, "the couple waits for a house of their own")
   T.ok(econ.rel(H, O).trust > tr0, string.format("the villages trust each other more: %.2f -> %.2f", tr0, econ.rel(H, O).trust))
   T.ok(people.is_kin(W, bride, bride.mother) or bride.mother == 0, "her kin are at " .. O.name)
+  -- (S16) kin across villages visit each other after days apart: a walk, a meal, the news carried
+  local kin_at_O = 0
+  for _, id in ipairs({ bride.mother, bride.father }) do
+    local q = V.people[id or 0]
+    if q and q.alive and q.sett == O.id then kin_at_O = kin_at_O + 1 end
+  end
+  if kin_at_O == 0 then return end
+  local k0 = (H.acc.kin_visits or 0) + (O.acc.kin_visits or 0)
+  local seen, walker = false, nil
+  local t1 = W.hour
+  for h = 1, 24 * 16 do
+    world.advance(W, t1 + h)
+    for _, s2 in ipairs({ H, O }) do
+      for _, id in ipairs(s2.members) do
+        local q = V.people[id]
+        if q.alive and q.trip and q.trip.visit and q.act == "travel" then seen, walker = true, q end
+      end
+    end
+    if (H.acc.kin_visits or 0) + (O.acc.kin_visits or 0) > k0 then break end
+  end
+  T.ok(seen, "kin walked the road to visit")
+  T.ok((H.acc.kin_visits or 0) + (O.acc.kin_visits or 0) > k0, "a visit was paid: " .. tostring(walker and walker.name))
+  T.ok((O.know and O.know[H.id] and O.know[H.id].t or 0) > t1 or (H.know and H.know[O.id] and H.know[O.id].t or 0) > t1,
+    "the news went with them")
 end
 
 return M

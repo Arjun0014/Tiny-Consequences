@@ -1,4 +1,5 @@
 // node scripts/shots_look.mjs --sett K (--days D --hour H | --at ABS_HOUR) [--zoom Z] [--what centre|dock|ford|flock|wolves|bridge] [--pid P] [--name N]
+//        [--inspect-flock] [--inspect-beast SETT:GRP:K]
 // One screenshot of settlement K, D days on, at hour H of settlement 1's local clock (D-088
 // visual checks). Writes out/shots/look/<name>.png and prints who is doing what nearby.
 import fs from 'node:fs';
@@ -46,6 +47,14 @@ try {
   // (S14) --inspect-flock: the settlement's first bird flock selected, the inspector open
   if (args.includes('--inspect-flock')) {
     const sel = await cmd({ cmd: 'select', flock: [sett, 1] });
+    at.info = { ...(at.info || {}), inspector: sel.rows };
+  }
+  // (S16) --inspect-beast sett:grp:k (grp flock | cattle | swine | wild | dog): that animal
+  // selected, the inspector open
+  const ib = getFlag(args, '--inspect-beast', null);
+  if (ib) {
+    const [bs, bg, bk] = ib.split(':');
+    const sel = await cmd({ cmd: 'select', beast: [Number(bs), bg, Number(bk)] });
     at.info = { ...(at.info || {}), inspector: sel.rows };
   }
   await page.waitForTimeout(400);

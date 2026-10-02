@@ -1663,6 +1663,9 @@ WORK.court = function(W, s, p, st, f)
   end
   if not best then
     people.remember(p, now, sfmt("Went courting at %s: nobody there to marry", s.name))
+    -- (he will look elsewhere next time)
+    p.court_tried = p.court_tried or {}
+    p.court_tried[#p.court_tried + 1] = { s.id, now }
     return
   end
   best.partner, p.partner = p.id, best.id
@@ -1679,6 +1682,41 @@ WORK.court = function(W, s, p, st, f)
   -- (she hears at once, wherever she is in the village)
   if M.interrupt_hook then M.interrupt_hook(W, best, now + 0.05, "Married " .. p.name) end
   if W.record_events then require("sim.causality.events").emit(W, "marriage", s.cell, 0, 1, { settlement = s.id, a = best.id, b = p.id }) end
+end
+
+-- (S16, R4) A visit to kin at another village: they eat together (a meal from the kin's larder
+-- or the granary) and talk - the news of each village carried to the other; the kin and the
+-- villages think the more of each other for it.
+WORK.visit_kin = function(W, s, p, st, f)
+  if f < 0.99 then return end
+  local V = W.S.v3
+  local tr = p.trip
+  if not tr or tr.met then return end
+  tr.met = true
+  local now = V.now or W.hour
+  local home = V.settlements[p.sett]
+  econ.learn(W, home, s, now)
+  econ.learn(W, s, home, now)
+  local c = C()
+  local b = s.buildings[st.ref or 0]
+  local src = (b and (b.stock.meals or 0) >= c.meal_fu) and b or s.granary
+  local key = src == b and "meals" or "grain"
+  local m = src and min(src.stock[key] or 0, c.meal_fu) or 0
+  if m > 0 then
+    src.stock[key] = src.stock[key] - m
+    p.hunger = max(0, p.hunger - c.meal)
+    s.acc.eaten = (s.acc.eaten or 0) + m
+    s.acc.guests = (s.acc.guests or 0) + m
+  end
+  local kin = V.people[tr.visit or 0]
+  local r1, r2 = econ.rel(home, s), econ.rel(s, home)
+  r1.trust = r1.trust + (1 - r1.trust) * 0.03
+  r2.trust = r2.trust + (1 - r2.trust) * 0.03
+  if kin then
+    people.remember(kin, now, sfmt("%s came from %s to see us", p.name, home.name))
+    people.remember(p, now, sfmt("Visited %s at %s", kin.name, s.name))
+  end
+  s.acc.kin_visits = (s.acc.kin_visits or 0) + 1
 end
 
 -- Driving wolves off a pen (D-105): shouting, a torch, a stick; any wolf of a pack still near the

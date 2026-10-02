@@ -689,6 +689,9 @@ function M.register(G)
     elseif args.flock and W.v3 then
       -- (S14) flock = { sett, k }
       sel = { kind = "flock", sid = tonumber(args.flock[1]) or 1, k = tonumber(args.flock[2]) or 1 }
+    elseif args.beast and W.v3 then
+      -- (S16) beast = { sett, "flock" | "cattle" | "swine" | "wild" | "dog", k }
+      sel = { kind = "beast", sid = tonumber(args.beast[1]) or 1, grp = args.beast[2] or "flock", k = tonumber(args.beast[3]) or 1 }
     elseif args.planet then
       sel = { kind = "planet" }
     elseif args.ship then

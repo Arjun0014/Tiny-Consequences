@@ -1,95 +1,105 @@
-# Session handoff — session 14 end (2 Oct 2026): speed and determinism, the world watched, geography, birds
+# Session handoff — sessions 15-16 (2 Oct 2026): the browser cost found, animals as individuals, R4 nearly done, R5 begun
 
-`docs/PROGRESS.md` (session 14 entry) and **D-110 … D-113** in `docs/DECISIONS.md` are the source of
-truth. Arjun's rules: no subagents; the living world first; one heavy process at a time (shared
-laptop); visible action = simulation; fix mechanisms, not appearances; no forced trade; measure the
-release browser by the lower envelope of several runs; hand off near ~900K context.
+`docs/PROGRESS.md` (sessions 15-16 entry) and **D-114 … D-122** in `docs/DECISIONS.md` are the source
+of truth. Arjun's rules: no subagents; the living world first; one heavy process at a time (shared
+laptop); visible action = simulation; fix mechanisms, not appearances; never trade agency for the
+season budget (100 believable animals beat 500 synchronised puppets); no forced trade; measure the
+release browser by the lower envelope of several runs with rendering off; hand off near ~900K context.
+
+## What happened (two sessions)
+- **Session 15 died** (a dropped connection) before its handoff. Its transcript is `last_session.md`
+  (untracked, Arjun's file). It had committed `617587b` (the browser-only first-hours cost was
+  headless Chromium's CPU rasteriser - SwiftShader - competing with the sim; probes now draw nothing
+  while measuring: bridge `render_off`, `prof_web.mjs`'s default, `--render` to keep drawing) and
+  `4766bdc` (animals as individuals, first pass: livestock and wild bands within their own range,
+  own pace/alertness/side, grazing headings, rouse delays, alarm waves; tools `v3_animals`,
+  `v3_tracks`, `shots_herd`) - but that commit broke `test_v3_year` (a child starved) - and left R4
+  droving (D-115) and an R5 draft (`sim/agents/migrate.lua`) uncommitted.
+- **Session 16** recovered all of it (nothing reset), wrote D-114/D-115 into history, and:
+  - **Animals (D-116, D-121)**: a richer audit (velocity correlation between members, mass
+    starts/stops/rests, offset change, centre spread, young-mother distance; `tools/v3_pack.lua`
+    frame by frame); measured pre-S15 / S15 / now on the same world; replaced what was still a
+    formation: wolves follow the leader's **trail** at drifting places (sniff stops fall back,
+    catch-ups pass, scent detours), flank from where they are, lie down while the leader waits, wait
+    their turn at a kill, arrive one after another; dogs hold their own **posts** at the herd's edge,
+    work the **balance point** when the herd is moved, go round the herd (never through), see off
+    wild animals (which flee running dogs), keep after a straggler until it is back; the **drove as
+    individuals** (no rope line), the drover waiting at the gate for it; **natural spacing**
+    (`stock_range`, `stock_room`, `stock_bend`; a moving flock tightens); grazing whys that say
+    something; **every animal clickable** in the game with its why.
+  - **D-117**: a remarrying widow had moved into her new house alone, her children (10 and 2)
+    starved beside the grain - parents now bring their children; children with no grown-up are
+    taken in by kin or a neighbour. (This was S15's year-test failure.)
+  - **R4**: relief by sea (D-118); kin visits across villages carrying the news (D-122); courting at a neighbouring village (D-120) - a man with nobody to
+    marry at home walks to a trusted neighbour, marries there, the bride walks back with him (the
+    first kin across villages; a chain follows: the village he took her from now has an unwed man
+    who goes courting in turn).
+  - **R5 begun (D-119)**: households move to another village physically (push lasting days, pull,
+    packing, beasts led, gathering at the gate, the road together, babes carried, lodging, a house
+    built for them, empty houses reused).
 
 ## State
-- **main** holds everything. A normal launch opens the v3 world (`assets/worlds/v3.tcsave`,
-  **regenerated this session** with drainage basins: `luajit tools/make_world.lua --v3 --seed 22
-  --settlements 6 --out assets/worlds/v3.tcsave`, state hash 1614203617): seed 22, 6 settlements,
-  143 people - **Tekheim** (north), **Zurug, Hottoodingle Hop, Krikeivorn** (one southern landmass,
-  roads 11-19 h), **Dreik Knoll**, **Little Leelee** (a big river past its fields). Sea routes:
-  Dreik Knoll-Krikeivorn 7.3, Zurug-Dreik Knoll 15.3, Tekheim now reaches the south (22+).
-  `?world=v2` legacy.
+- **main** at the final commit (see PROGRESS). Shipped world unchanged (`assets/worlds/v3.tcsave`,
+  seed 22, 6 settlements, 143 people at founding). `?world=v2` legacy.
+- The before/after animal measurements ran in temporary worktrees (removed): to repeat them,
+  `git worktree add --detach ../tc-before 617587b` (pre-S15) or `... ../tc-s15 4766bdc`, copy
+  `tests/sim/support/animals_audit.lua` and `tools/v3_animals.lua` in, run
+  `luajit tools/v3_animals.lua --hours 48` there and here.
 
-## What changed this session
-- **D-110 speed + determinism**: exact cuts (RNG multiplies inlined, bottom-up event heap, floor-free
-  `tile_of`/wear, bank cache, children's generators skipped, hay counted in season): a season
-  10.5 -> 8.5 s. **The browser had been living a different world from LuaJIT** (diverged within a
-  game day): `sim/dmath.lua` (fdlibm sin/cos/exp/log/atan/acos/pow in + - * / only; every `^ 2` a
-  multiplication), `sim/fmt.lua` (%.Nf rounded half up first: "%.0f" of 46.5 was 46 vs 47), wild
-  arrivals in sorted order (a `pairs()` order). Web test **W10 determinism** checks it.
-- **D-111 watched and fixed**: trade on faded news counts its hoped gain at `trade_guess` 0.4 (a
-  22-hour walk for 1.3 leather was worth it before); honest trip whys; roads walked by day (night
-  camps, lodging after late deals); **the ox team** (a yoked ox placed ahead of its ploughman,
-  turning on arcs at the headlands, fetched only when worth the walk, kept in the yoke row after row;
-  ploughing is men's work); a **plough** drawn.
-- **D-112 geography**: **drainage basins** (`sim/geo.lua`: outlets, priority flood, carved beds
-  falling to the sea) - rivers rise in the mountains, merge and widen (`w = 0.02 + 0.36 (Q/0.4)^0.6`,
-  trunks ~0.4-0.5 world units); villages found on one bank (`map.home_bank`); valleys and floodplains
-  carved into the rendered planet; mountains lifted with sharp crests, grey crags, snow and tree line
-  by real height. Tests `test_v3_rivers` (6).
-- **D-113 birds**: gull flocks are agents (`sim/agents/birds.lua`: roost, hunger, objective, target,
-  why) following boats hauling nets, landings, racks, ploughs, carcasses, the shore; rafting when fed;
-  dawn/dusk/downpour; curved flights; members drawn individually; flocks clickable in the inspector.
-  The planet's circling puppet birds are off in v3. Test `test_v3_birds`.
-
-## Performance (release HTML5, `node scripts/prof_web.mjs --release --hours 288 --runs 3`)
-- Start of session 36.5 ms/h (a 12-day season 10.5 s). After D-110: **29.7 ms/h, 8.5 s**. With the
-  regenerated world (D-112): 3-run envelope **34.5 ms/h, 9.9 s** on a loaded laptop (LuaJIT
-  instructions for the same hours: 3.35 M/h against 3.48 M/h for the old world: the new world is not
-  dearer). **Final, after the birds: 3-run envelope 37.2 ms/h, a season 10.7 s - over target.** The
-  steady state is ~25-40 ms/h; game hours 12-30 after load cost 89-149 ms/h in every run. It is
-  browser-only: LuaJIT executes fewer instructions in that window than on the old world, and the
-  heap is flat (66-68 MB) with or without the GC (`v3_bench{nogc}`). Suspects: C-side work the
-  instruction count does not see (table rehashes of the nav path cache refilled after each daily
-  cost rebuild, string interning of whys, `table.sort`), the first daily rounds' runtime caches.
-- Where the time goes (timers, whole season): think.decide ~10 ms/h, act.start+nav.path ~7, stock.step
-  ~5.7, wild.step ~4.8 (22 us a step: its threat scan), settle.daily ~1.9 (7.5 ms a call).
-
-## Tools added
-- `scripts/v3_hash_web.mjs` (browser vs LuaJIT state hashes), `scripts/hash_drill.mjs` + bridge
-  `hash_parts`/`get_path` (where two states differ), `scripts/mathcheck.mjs` + `tools/mathcheck.lua`,
-  `scripts/probe_cmd.mjs` (run bridge commands), `scripts/shots_planet.mjs` (planet at zooms, noon),
-  `scripts/shots_look.mjs --at H --world NAME --what birds --inspect-flock`.
-- `tools/v3_watch.lua` (moments worth watching with absolute hours), `tools/v3_follow.lua` (a person
-  step by step), `tools/v3_rivers.lua` (network report), `tools/v3_birds.lua` (flocks step by step).
-- Bridge `v3_bench` returns the Lua heap per hour and takes `nogc`.
+## Tests and measurements (final)
+- Quick sim **142/142** (v2 109 + v3 33), web **11/11** (W10 determinism), lint clean, `npm run build`
+  OK; `node scripts/v3_hash_web.mjs --release`: browser = LuaJIT at 0, 24, 48, 72 h.
+- Release browser (`node scripts/prof_web.mjs --release --hours 288 --runs 3`, rendering off):
+  runs 37.9-39.2 ms/h, envelope **37.6 ms/h = a 12-day season 10.8 s** (target 10 s; kept over for
+  the agents). Before the animal work 30.2-30.9 ms/h (8.3 s); S15 end 36.9 (10.6 s).
+- LuaJIT (`luajit -joff tools/v3_profile.lua --days 4`): **4.06 M instructions a game hour**
+  (pre-S15 2.88 M, S15 3.76 M): nav (A*) 29%, map 13%, stock 12%, wild 12%, think 11%, event
+  queue 9%.
+- Animal synchronisation (shipped world, first dawn + 48 h, pre-S15 / S15 / final): wolves blob
+  92% / 63% / 28-46%, vcorr 0.81 / 0.68 / 0.58-0.63, mass stops 7% / 29% / 0-4%; dogs moving 91% /
+  33% / 19%; herded flocks align 0.69 / 0.35 / 0.19; young within 0.5 spacings of their mothers
+  (was 0.9); left-out herds no longer frozen; Tekheim's flock spread 0.17 -> 0.29 units (screens
+  `out/shots/look/s16_flock_later.png` vs `s16_flock_spaced.png`, tracks `out/tracks/`).
+- R4: livestock sold alive and droved as individuals, relief by sea, courting and brides, kin
+  visits carrying news - done (tested by created want). Open: sea droves, beasts as payment, larger
+  cargo boats. R5: households moving to existing villages - done; founding - next.
 
 ## Next (in order)
-0. **Performance**: find the browser-only cost of game hours 12-30 after load (see above; time
-   `nav.path`'s cache, `settle.daily`, `map.rivers`/`courses`, `wild.daily` in that window with
-   `--warm 12 --hours 18 --time ...`) and bring the season back under 10 s.
-1. **R4 left**: livestock traded alive (surplus young stock or spare males -> a neighbour short of
-   beasts; a drover leads the specific animals - a "led" act like the yoke, removed from the herd at
-   the gate, carried as the drover's party on the road, added to the buyer's herd at its gate, the
-   ownership changing at the deal); relief asked by sea; relations steering the choice of partner
-   (already weighted in best_trade) and beginning to shape marriage and migration; larger cargo boats
-   only when the volume carried justifies them.
-2. **R5**: migration and founding by real push and pull, physically (pack, walk or sail with family
-   and beasts, camp, wood, shelter, food, first field) - no spawned villages.
-3. Birds: rooks and crows at fields and carcasses, herons at the rivers, raptors over meadows,
-   songbirds in the woods (each with its own reasons); people chasing gulls off the racks.
-4. Geography: lakes (beds are carved, never filled), deltas, valleys on the settlements' local maps
-   (flat today), a finer planet mesh near mountains if the peaks need it.
-5. Keep the season <= 10 s: wild.step's threat scan, stock.step's draws, decide's generators.
+1. **R5 founding** - the plan is in `docs/v3/30_ROADMAP_V3.md` R5 ("Next - founding a new place"):
+   site knowledge from travel, `settle.new` for the empty map, the party's journey, camp -> shelter
+   -> well/water -> field -> granary, every system tolerant of a village without its buildings.
+2. **Kin across villages** now exist (brides): visits (news carried both ways - the shipped world
+   has no travel at all in 12 days, so villages never hear of each other's wants), pull of kin in
+   migration (already counted), help asked of kin.
+3. Moving by sea (a household with a boat), sea droves, larger cargo boats only when volume
+   justifies them (no trade volume yet).
+4. Performance: the season is over 10 s in the release browser (see above); the sim is ~4.0 M
+   LuaJIT instructions a game hour (pre-S15 2.88 M): people's A* is 22% (91 searches an hour, cached
+   per map version), the animals' decisions most of the rise. Cut exactly (no agency lost): fewer
+   herd scans per dog decision, a spatial index for herd scans, path reuse for repeated walks.
+5. Birds beyond gulls (rooks/crows at fields and carcasses, herons, raptors, songbirds), lakes,
+   local-map valleys, passes - below R5.
 
-## Findings and pitfalls (session 14)
-- **Check the browser lives the same world**: `node scripts/v3_hash_web.mjs --release` after any sim
-  change that might touch math or formatting. Use `dmath.*` for every transcendental in `sim/`, never
-  `^` with a non-integer exponent or `x ^ 2` (write `x * x` or `dmath.sq`), and `sfmt` (sim/fmt.lua)
-  for text kept in state.
-- The browser starts the v3 world at its first dawn (hour 23.55 for the shipped world): compare with
-  LuaJIT from that hour (`tools/v3_hash.lua --from H`).
-- Single browser runs are useless on this laptop; even 3-run envelopes swing with load. Compare
-  instruction counts (`luajit -joff` with a count hook) to tell code from noise.
-- A view function must never write sim state (stock.pos had written `a.yfx` during development).
-- Settlement ids in tests: pick by geography, not by number (worlds get regenerated).
+## Findings and pitfalls (sessions 15-16)
+- **Bob forbids circular requires even inside functions**: LuaJIT tests pass, `npm run build`
+  fails ("Circular dependency detected"). Inject modules through `sim/agents/init.lua` (as
+  `settle.econ`, `settle.migrate`) and build after adding a `require` between agent modules.
+- Measure the browser with rendering off (`prof_web.mjs` default); compare code changes by LuaJIT
+  instruction counts (`luajit -joff tools/v3_profile.lua --days 4`), not wall time.
+- `migrate.daily` / `settle.daily` get `day * 24` (UTC midnight), not the hour it is: use
+  `W.S.v3.now or W.hour` for anything scheduled from it.
+- Memories are a ring of 8 (`people.remember`): a busy hunter's courting memory is gone in a day;
+  trace with scripts, not memories.
+- An interrupt during a road leg restarts the leg (`WORK.travel` needs f >= 0.99): do not interrupt
+  travellers (a hungry baby is now fed on the road).
+- The audit's numbers move run to run when the world changes (wolf visits vary); the regression
+  test thresholds have margin.
 
 ## Known oddities
-- The dock at a village whose own cell is inland but whose map reaches the sea now gives it sea
-  routes (D-112); Tekheim trades south if it finds a reason.
+- The shipped world is economically quiet: no trade, no relief, no migration in 12 days (every
+  village has grain to spare, nobody travels, news never refreshes). Courting is the first thing
+  that sends people between villages on their own (Tib of Hottoodingle Hop goes when the harvest
+  work lets him).
+- A village everyone leaves (the migration test empties Zurug by wiping its food daily) stays as
+  standing buildings with no people.
 - Night scenes are very dark (wolves at the pens are hard to see).
-- Gulls do not yet avoid people at the racks; carcasses attract gulls only (no crows yet).

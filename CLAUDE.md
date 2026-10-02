@@ -32,6 +32,16 @@ Session 14 (D-110-D-113): the browser must live the same world as LuaJIT - `sim/
 transcendental in `sim/` (no `^`), `sim/fmt.lua` (`sfmt`) for text kept in state, check with
 `scripts/v3_hash_web.mjs` (web test W10); drainage basins in `sim/geo.lua` (v3 worlds); birds are
 agents in `sim/agents/birds.lua`; watch with `tools/v3_watch.lua`, `v3_follow.lua`, `v3_birds.lua`.
+Sessions 15-16 (D-114-D-121; session 15 died before its handoff, `last_session.md`): measure the
+browser's sim cost with probes that draw nothing (`render_off`, prof_web's default: headless
+Chromium's CPU rasteriser competes with the sim) and compare LuaJIT instruction counts
+(`luajit -joff tools/v3_profile.lua --days 4`); animals are individuals with no places in a group -
+audit synchronisation with `tools/v3_animals.lua` (vcorr, mass starts/stops/rests, offsets),
+`v3_pack.lua` (frame by frame), `v3_tracks.lua` (tracks from above), test `animals_are_individuals`;
+every animal is clickable with its why; households migrate physically (`sim/agents/migrate.lua`),
+brides walk to their husband's village, relief sails. **Bob forbids circular requires even inside
+functions** (LuaJIT tests pass, the build fails): inject modules through `sim/agents/init.lua` and run
+`npm run build` after adding a `require` between agent modules.
 
 ## Read order
 
