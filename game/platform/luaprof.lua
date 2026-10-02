@@ -15,6 +15,10 @@ function M.run(fn, opts)
   local now = clock.now_ms
   local getinfo = debug.getinfo
   local self_t, incl_t, line_t, names = {}, {}, {}, {}
+  -- slow windows: a window of `every` instructions far dearer than a VM loop is C-side work
+  -- (a table rehash, table.sort, string building, the collector) charged to the line running then
+  local slow_t, slow_n, line_n = {}, {}, {}
+  local slow_us = opts.slow_us or 40
   local seen = {}
   local last = now()
   local hooks, total = 0, 0
@@ -29,6 +33,11 @@ function M.run(fn, opts)
       self_t[k] = (self_t[k] or 0) + dt
       local lk = info.short_src .. ":" .. (info.currentline or 0)
       line_t[lk] = (line_t[lk] or 0) + dt
+      line_n[lk] = (line_n[lk] or 0) + 1
+      if dt * 1000 > slow_us then
+        slow_t[lk] = (slow_t[lk] or 0) + dt
+        slow_n[lk] = (slow_n[lk] or 0) + 1
+      end
       for lv = 2, depth + 1 do
         local fi = getinfo(lv, "Sn")
         if not fi then break end
@@ -62,6 +71,11 @@ function M.run(fn, opts)
   return {
     wall_ms = wall, sampled_ms = total, hooks = hooks,
     self = top(self_t, opts.top or 40), incl = top(incl_t, opts.top or 40), lines = top(line_t, opts.top or 40),
+    slow = (function()
+      local r = top(slow_t, opts.top or 40)
+      for _, x in ipairs(r) do x.name = string.format("%d slow of %d samples", slow_n[x.k], line_n[x.k]) end
+      return r
+    end)(),
   }
 end
 

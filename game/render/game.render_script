@@ -178,6 +178,12 @@ function update(self)
 	if self.ww <= 0 or self.wh <= 0 then
 		return
 	end
+	if state.render_off then
+		-- (probes: render_off) nothing drawn, the CPU rasteriser left idle while the sim is measured
+		render.set_viewport(0, 0, self.ww, self.wh)
+		render.clear({ [render.BUFFER_COLOR_BIT] = vmath.vector4(0, 0, 0, 1), [render.BUFFER_DEPTH_BIT] = 1 })
+		return
+	end
 	local w, h = self.ww, self.wh
 	local aspect = w / h
 	local post = state.post_on and state.planet_on

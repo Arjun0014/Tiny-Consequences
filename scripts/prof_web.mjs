@@ -1,5 +1,5 @@
 // node scripts/prof_web.mjs [--release] [--no-build] [--world NAME] [--warm 0] [--hours 48]
-//        [--runs 3] [--time mod:fn,mod:fn] [--prof [--every 500] [--top 40]]
+//        [--runs 3] [--idle 0] [--settle 3] [--render] [--fresh [--from H]] [--collect] [--nogc] [--time mod:fn,mod:fn] [--prof [--every 500] [--top 40]]
 // Where the v3 sim's time goes IN THE BROWSER (D-090: the HTML5 Lua 5.1 prices string.format, bit
 // and C calls very differently from LuaJIT). This laptop is shared (other heavy workloads), so a
 // single wall-clock run can be off 2-3x: by default the world is loaded `runs` times and each game
@@ -21,6 +21,7 @@ const port = Number(getFlag(args, '--port', 8191));
 const warm = Number(getFlag(args, '--warm', 0));
 const hours = Number(getFlag(args, '--hours', 48));
 const runs = Number(getFlag(args, '--runs', 3));
+const idle = Number(getFlag(args, '--idle', 0)); // seconds the page idles after loading, before the probe
 const fns = getFlag(args, '--time', null);
 if (!hasFlag(args, '--no-build')) await build({ variant, ifStale: true, quiet: true });
 const server = await startServer({ port, quiet: true });
@@ -41,6 +42,15 @@ async function load() {
   if (getFlag(args, '--world', null)) q.world = getFlag(args, '--world', null);
   await page.goto(gameUrl(`http://127.0.0.1:${port}`, q));
   await page.waitForFunction(() => window.__TC && window.__TC.ready === true, null, { timeout: 120_000 });
+  if (!hasFlag(args, '--render')) {
+    // headless Chromium rasterises on the CPU (SwiftShader): frames drawn and queued just before a
+    // probe compete with the sim for the processor (and its turbo budget) for a second or more
+    // (S15: a bench right after load or after idling cost 1.5-3x the same hours on a fresh copy).
+    // Draw nothing and let the rasteriser drain first; --render keeps drawing.
+    await cmd(page, { cmd: 'render_off', on: true });
+    await page.waitForTimeout(Number(getFlag(args, '--settle', 3)) * 1000);
+  }
+  if (idle > 0) await page.waitForTimeout(idle * 1000);
   if (warm > 0) await cmd(page, { cmd: 'v3_bench', hours: warm });
   return page;
 }
@@ -48,7 +58,8 @@ const out = { variant, warm, hours, runs: [] };
 try {
   if (hasFlag(args, '--prof')) {
     const page = await load();
-    const r = await cmd(page, { cmd: 'v3_prof', hours, every: Number(getFlag(args, '--every', 500)), top: Number(getFlag(args, '--top', 40)), depth: 16 });
+    const from = getFlag(args, '--from', null) ? Number(getFlag(args, '--from', null)) : undefined;
+    const r = await cmd(page, { cmd: 'v3_prof', hours, fresh: hasFlag(args, '--fresh'), from, every: Number(getFlag(args, '--every', 500)), top: Number(getFlag(args, '--top', 40)), depth: 16, slow_us: Number(getFlag(args, '--slow-us', 40)) });
     console.log(`[${variant}] profiled ${hours} h: wall ${r.wall_ms.toFixed(0)} ms, sampled ${r.sampled_ms.toFixed(0)} ms (${r.ms_per_hour.toFixed(1)} ms/h without the hook), ${r.hooks} samples`);
     const show = (title, rows) => {
       console.log(title);
@@ -57,6 +68,7 @@ try {
     show('self (functions):', r.self);
     show('inclusive:', r.incl);
     show('lines:', r.lines);
+    show('slow windows (C-side work, by line):', r.slow);
     out.prof = r;
     await page.close();
   } else {
@@ -72,8 +84,19 @@ try {
           t.ms.push(f.ms_per_hour);
         }
       } else {
-        const b = await cmd(page, { cmd: 'v3_bench', hours });
-        console.log(`[${variant}] run ${k + 1}: ${b.ms_per_hour.toFixed(1)} ms of sim per game hour, ${b.people} people`);
+        if (hasFlag(args, '--fresh')) {
+          // the same first hours twice in one page: right after load, then on a fresh copy of the world
+          const from = getFlag(args, '--from', null) ? Number(getFlag(args, '--from', null)) : undefined;
+          const b1 = await cmd(page, { cmd: 'v3_bench', hours, fresh: true, from, hash: true });
+          const b2 = await cmd(page, { cmd: 'v3_bench', hours, fresh: true, from, hash: true});
+          console.log(`  hashes fresh ${b1.hash} ${b2.hash}`);
+          console.log(`  t0 fresh ${b1.t0}`);
+          console.log(`  fresh copy 1: ${b1.per.map((x) => x.toFixed(0)).join(' ')}`);
+          console.log(`  fresh copy 2: ${b2.per.map((x) => x.toFixed(0)).join(' ')}`);
+        }
+        const b = await cmd(page, { cmd: 'v3_bench', hours, collect: hasFlag(args, '--collect'), nogc: hasFlag(args, '--nogc'), hash: hasFlag(args, '--fresh') });
+        if (b.hash) console.log(`  hash game world ${b.hash}`);
+        console.log(`[${variant}] run ${k + 1}: ${b.ms_per_hour.toFixed(1)} ms of sim per game hour, ${b.people} people (from hour ${b.t0})`);
         env = env ? env.map((v, i) => Math.min(v, b.per[i])) : b.per.slice();
         out.runs.push(b.per);
       }

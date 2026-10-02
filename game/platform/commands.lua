@@ -163,6 +163,9 @@ function M.register(G)
   end)
   -- v3_bench{hours} (probes): advance the world `hours` synchronously; the sim's own cost in this
   -- runtime (ms per game hour), without the view. Moves the world on (a probe, not a game action).
+  -- {fresh = true}: a second copy of the shipped world, unpacked and brought to its first dawn in
+  -- this page, is benched instead (the game's world is untouched): the same game hours long after
+  -- page load (does a cost belong to the sim's first hours or to the browser's first seconds?)
   bridge.register("v3_bench", function(args)
     local W = assert(G.W, "world not ready")
     assert(W.v3, "not a v3 world")
@@ -170,10 +173,16 @@ function M.register(G)
     local clock = require("game.platform.clock")
     local hours = args.hours or 24
     local t0 = speed.v3_t or W.hour
+    if args.fresh then
+      W = assert(require("sim.worlds").from_save_string(sys.load_resource("/assets/worlds/v3.tcsave")))
+      t0 = args.from or speed.v3_skip_target(W, "dawn")
+      require("sim.world").advance(W, t0)
+    end
     local a = clock.now_ms()
     local step = args.step or 1
     local t = t0
     local per, mem = {}, {}
+    if args.collect then collectgarbage("collect") end
     if args.nogc then collectgarbage("stop") end
     while t < t0 + hours do
       t = math.min(t0 + hours, t + step)
@@ -184,8 +193,9 @@ function M.register(G)
     end
     if args.nogc then collectgarbage("restart") end
     local ms = clock.now_ms() - a
-    speed.v3_t = t
-    return { hours = hours, ms = ms, ms_per_hour = ms / hours, people = W.S.v3.next_person - 1, per = per, mem = mem }
+    if not args.fresh then speed.v3_t = t end
+    return { hours = hours, ms = ms, ms_per_hour = ms / hours, people = W.S.v3.next_person - 1, per = per, mem = mem, t0 = t0,
+      hash = args.hash and require("sim.world").state_hash(W) or nil }
   end)
   -- v3_prof{hours, every, depth, top} (probes): v3_bench under the wall-time sampler
   -- (game/platform/luaprof.lua): where the sim's time goes in this runtime, by function and line.
@@ -195,6 +205,12 @@ function M.register(G)
     local speed = require("game.platform.speed")
     local hours = args.hours or 24
     local t0 = speed.v3_t or W.hour
+    if args.fresh then
+      -- (as v3_bench{fresh}: a copy of the shipped world, the game's world untouched)
+      W = assert(require("sim.worlds").from_save_string(sys.load_resource("/assets/worlds/v3.tcsave")))
+      t0 = args.from or speed.v3_skip_target(W, "dawn")
+      require("sim.world").advance(W, t0)
+    end
     local r = require("game.platform.luaprof").run(function()
       local t = t0
       while t < t0 + hours do
@@ -202,7 +218,7 @@ function M.register(G)
         require("sim.world").advance(W, t)
       end
     end, args)
-    speed.v3_t = t0 + hours
+    if not args.fresh then speed.v3_t = t0 + hours end
     r.hours = hours
     r.ms_per_hour = r.sampled_ms / hours
     return r
@@ -630,6 +646,12 @@ function M.register(G)
       end
     end
     return { shadow = state.shadow_on, post = state.post_on }
+  end)
+  -- render_off{on} (probes): draw nothing (a cleared frame), so headless Chromium's CPU rasteriser
+  -- (SwiftShader) stops competing with the sim for the processor while it is measured
+  bridge.register("render_off", function(args)
+    require("game.view.state").render_off = args.on ~= false
+    return { render_off = require("game.view.state").render_off }
   end)
   bridge.register("freeze_visuals", function(args)
     view.set_frozen(args.on ~= false)
