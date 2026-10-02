@@ -23,6 +23,11 @@
 --   home and larder until a house stands; the beasts kept by it at night); water is fetched from the
 --   river or a well dug; huts are built, a field cleared and sown, a granary raised before the
 --   harvest, a woodstore and pens; trees on a lot are felled first (settle.lot).
+-- (S18) By sea. A household with its own boat and someone to sail it may go to a place on a shore
+--   its people saw from the sea (or heard of), over the water: the boat holds the household, a few
+--   small beasts, its share of the granary and some goods; the place exists from the moment they
+--   sail into its waters; they land on a beach reachable from the open sea (o.beach) and make the
+--   place as by land; the boat is drawn up there, and a dock is built when the place has roofs.
 --   s.lore[cell] = { t = hour seen, how = text }      p.seen = { { cell, t, how } }
 --   hh.found = { site, from, depart, decided, why, swhy, hrs, slow, lead = { kind = person id },
 --                party = { hh ids }, leader, share, arrived }
@@ -106,6 +111,17 @@ function M.note_sea(W, p, route, how, now)
       local j = g.nbr[c0 * 6 - 6 + k]
       if j > 0 and ocean[j] == 0 then note(W, p, j, now, how) end
     end
+  end
+end
+
+-- (S18) A hunter or herder of village s has been out in the country about it: what is there is
+-- known afresh (the home country's sightings renewed, never the planet beyond it).
+function M.roamed(W, s, p, now)
+  local L = M.lore(W, s)
+  local how = "the country about " .. s.name .. " (" .. (p.name or "a hunter") .. " was out in it lately)"
+  for _, c in ipairs(sites.rings(W, s.cell, C().lore_home)) do
+    local e = L[c]
+    if e and e.t < now - 24 then e.t, e.how = now, how end
   end
 end
 
@@ -245,6 +261,55 @@ function M.best_site(W, s, hh, now)
   return best, bu, bh, bwhy, bv
 end
 
+-- (S18) The best place on a shore household hh of s knows of that its own boat could take it to:
+-- { cell, u (worth less the passage and the sea's dread), hrs, why, v, bp } or nil.
+function M.best_sea_site(W, s, hh, now)
+  local c = C()
+  if not s.dock then return nil end
+  local migrate = settle.migrate
+  local bp = migrate and migrate.boat_party(W, s, hh, now)
+  if not bp then return nil end
+  local L = M.lore(W, s)
+  local near = near_known(W, s)
+  local keys = {}
+  for cell in pairs(L) do keys[#keys + 1] = cell end
+  table.sort(keys)
+  local best = nil
+  for i = 1, #keys do
+    local cell = keys[i]
+    local v, why, parts = M.site_value(W, s, cell, hh, now, near)
+    if v and parts.sea > 0 then
+      local r = trade.sea_route_to(W, s, cell)
+      if r and r.len <= c.sea_reach then
+        local hrs = r.len / c.sail_speed
+        local u = v * c.found_site_k - hrs * c.found_road_hour - c.mig_sea_dread - migrate.sea_dread(W, bp, hrs) * c.mig_sea_risk_k
+        if not best or u > best.u then best = { cell = cell, u = u, hrs = hrs, why = why, v = v, bp = bp } end
+      end
+    end
+  end
+  if best then
+    -- (what the boat can take besides them: a few small beasts, the rest of the room for loads)
+    local room = c.boat_places - bp.places
+    local small, left = 0, 0
+    for _, kind in ipairs(stock.HERDS) do
+      local H = s.herds and s.herds[kind]
+      for _, a in ipairs(H and H.animals or {}) do
+        if a.alive and a.owner == hh.id then
+          local G = econ.GOODS[a.sp]
+          if kind ~= "cattle" and (kind ~= "swine" or stock.age(a, now) < stock.SP(a.sp).young_years * 2) and small < min(room, c.mig_sea_beasts) then
+            small = small + 1
+          else
+            left = left + (G and G.base or 10)
+          end
+        end
+      end
+    end
+    best.hold_fu = min(c.boat_hold, max(0, room - small) * 2) * 10
+    best.left_k = c.found_beast_k * left / 100
+  end
+  return best
+end
+
 -- How daunting setting out is now: a place reached with no sowing before winter means living a
 -- season on what was carried, gathered and hunted.
 function M.season_risk(W, s, now)
@@ -319,14 +384,15 @@ end
 -- What household hh could take with it (its larder and its part of the granary, as much as its
 -- grown-ups can carry) against the bread its mouths want until a new place feeds them: the shortfall
 -- weighs against going (0 none .. 1 nothing to take).
-local function want_food(W, s, hh, now, grown)
+local function want_food(W, s, hh, now, grown, hold_fu)
   local c = C()
   local V = W.S.v3
   local home = s.buildings[hh.home or 0]
   local larder = home and ((home.stock.food or 0) + (home.stock.meals or 0) + (home.stock.smoked or 0)) or 0
   local gr = s.granary and (s.granary.stock.grain or 0) or 0
   local share = gr * c.found_share * #hh.members / max(1, s.pop or #s.members)
-  local carry = min(larder + share, max(1, grown) * c.found_carry + #hh.members * c.trade_prov * 3)
+  -- (S18: by sea the boat's hold carries more than backs can)
+  local carry = min(larder + share, max(1, grown) * c.found_carry + #hh.members * c.trade_prov * 3 + (hold_fu or 0))
   local need = #hh.members * c.found_food_days * 0.75
   return max(0, 1 - carry / max(1, need)), carry
 end
@@ -342,22 +408,44 @@ function M.daily(W, s, now)
   for _, hid in ipairs(s.households) do list[#list + 1] = hid end
   for _, hid in ipairs(list) do
     local hh = V.households[hid]
-    if hh and #hh.members > 0 and not hh.migrate and not hh.found and hh.sett == s.id then
+    if hh and #hh.members > 0 and not hh.migrate and (not hh.found or hh.found.given_up) and hh.sett == s.id then
       local push, pwhy = M.push(W, s, hh, now)
       if push > 0 then
         local cell, su, hrs, swhy = M.best_site(W, s, hh, now)
         local home_all, grown = ready(W, hh, now)
+        -- (S18) over the sea in their own boat (not a couple setting up on their own: the boat is
+        -- their parents')
+        local sea = nil
+        local couple0 = waiting_couple(W, s, hh)
+        local short = nil
+        if not (couple0 and (pwhy or ""):find("waited")) then
+          sea = M.best_sea_site(W, s, hh, now)
+          if sea then
+            -- (what each way means: by sea the hold takes more bread and seed, but only a few small
+            -- beasts can come - the rest are left behind)
+            local short_l = want_food(W, s, hh, now, grown)
+            local short_s = want_food(W, s, hh, now, grown, sea.hold_fu)
+            local ul = cell and (su - c.found_hungry_k * short_l) or -1e9
+            local us = sea.u - c.found_hungry_k * short_s - sea.left_k
+            if us > ul then
+              cell, su, hrs, swhy = sea.cell, sea.u - sea.left_k, sea.hrs, sea.why .. ", over the sea"
+              short = short_s
+            else
+              sea = nil
+            end
+          end
+        end
         if cell and home_all then
           local couple_a = waiting_couple(W, s, hh)
           -- (a couple with no lot founds as a household of its own: their grown-ups are theirs)
           if (pwhy or ""):find("waited") and couple_a then grown = 2 end
-          local short = want_food(W, s, hh, now, grown)
+          short = short or want_food(W, s, hh, now, grown)
           local u = push + su - hold(W, s, hh, now) * (couple_a and pwhy and pwhy:find("waited") and 0.4 or 1) - M.season_risk(W, s, now)
             - c.found_hungry_k * short
           local noise = rng.float(W.seed, rng.S.V3_THINK, hid, floor(now / 24) % 4294967296, 140)
           hh.found_u = u
-          if grown >= 1 and u > c.found_threshold * (0.8 + 0.4 * noise) then
-            M.decide(W, s, hh, cell, hrs, pwhy or "life is hard here", swhy, now, couple_a ~= nil and (pwhy or ""):find("waited") ~= nil)
+          if grown >= 1 and short <= c.found_short_max and u > c.found_threshold * (0.8 + 0.4 * noise) then
+            M.decide(W, s, hh, cell, hrs, pwhy or "life is hard here", swhy, now, couple_a ~= nil and (pwhy or ""):find("waited") ~= nil, sea)
           end
         end
       end
@@ -405,9 +493,10 @@ end
 
 -- Household hh of s decides to found a place at `cell` (with `couple`: the waiting couple of it go
 -- as a household of their own). Others in the same plight, kin first, may decide to go with them.
-function M.decide(W, s, hh, cell, hrs, pwhy, swhy, now, couple)
+function M.decide(W, s, hh, cell, hrs, pwhy, swhy, now, couple, sea)
   local c = C()
   local V = W.S.v3
+  if sea then return M.decide_sea(W, s, hh, cell, hrs, pwhy, swhy, now, sea) end
   if couple then
     -- (the couple leave the household they live in and go as their own)
     local a, b = waiting_couple(W, s, hh)
@@ -479,6 +568,137 @@ function M.decide(W, s, hh, cell, hrs, pwhy, swhy, now, couple)
   if W.record_events then
     require("sim.causality.events").emit(W, "founding_planned", s.cell, 0, 0, { settlement = s.id, site = cell })
   end
+end
+
+-- (S18) Household hh of s decides to make a new home at the shore at `cell`, over the sea in its
+-- own boat (sea: best_sea_site's). The boat holds this household only; it takes a few small beasts
+-- (the rest left with kin), its part of the granary and some goods in the hold.
+function M.decide_sea(W, s, hh, cell, hrs, pwhy, swhy, now, sea)
+  local c = C()
+  local V = W.S.v3
+  local bp = sea.bp
+  local mouths = #hh.members
+  local pop = max(1, s.pop or #s.members)
+  local gr = s.granary and (s.granary.stock.grain or 0) or 0
+  local lh = clock.local_hour(now + c.found_pack_h, W.grid.lon[s.cell])
+  local depart = now + c.found_pack_h + (c.mig_sea_dawn - lh) % 24
+  local fd = { site = cell, from = s.id, depart = depart, decided = now, hrs = hrs, leader = hh.id, party = { hh.id },
+    why = sfmt("Leaving %s to make a new home over the sea: %s", s.name, pwhy), swhy = swhy,
+    share = gr * c.found_share * mouths / pop,
+    sea = { boat = bp.boat.id, skipper = bp.skipper.id, hrs = hrs, room = c.boat_places - bp.places, loads = 0, found = true } }
+  hh.found = fd
+  bp.boat.move = hh.id
+  -- (the beasts: those the boat can take; the new place keeps any kind they bring)
+  fd.lead = settle.migrate.share_beasts(W, s, hh, { herds = { flock = true, cattle = true, swine = true } }, now, fd.sea)
+  for _, id in ipairs(hh.members) do
+    local p = V.people[id]
+    if p and p.alive then
+      people.remember(p, now, sfmt("We decided to leave %s and sail to a place we know of to make a new home: %s", s.name, swhy))
+    end
+  end
+  s.acc.founders = (s.acc.founders or 0) + 1
+  if W.record_events then
+    require("sim.causality.events").emit(W, "founding_planned", s.cell, 0, 0, { settlement = s.id, site = cell, by_sea = true })
+  end
+end
+
+-- (S18) Founders sailing in to the shore at `cell` from village `from`: the place is made when they
+-- come into its waters (as by land when the first of them walks onto it), with a landing on its
+-- shore that the boat can reach from the open sea (gate_c: the sea cell they came by). Returns it.
+function M.sea_place(W, cell, p, from, gate_c, now)
+  local V = W.S.v3
+  local hh = V.households[p.hh]
+  local fd = hh and hh.found
+  local o = M.place_at(W, cell)
+  if not o then
+    o = M.new_place(W, cell, { culture = from and from.culture or 1, from = from and from.id or 0, leader = fd and fd.leader or 0 })
+    o.founding.name_why = sfmt("Named by the %ss, come over the sea from %s", p.surname or "founder", from and from.name or "afar")
+    o.founding.by_sea = true
+  end
+  if not o.beach then o.beach = M.beach(W, o, gate_c) end
+  return o
+end
+
+-- (S18) Where a boat can be drawn up on place o's shore: a dry land tile with open water before it
+-- that the open sea reaches (the water from the sea gate toward gate_c), land behind it; the one
+-- nearest the map's middle. { dx, dy (the shore), mx, my (the water before it), ix, iy, side }.
+function M.beach(W, o, gate_c)
+  local N = o.N
+  local gx, gy = trade.sea_gate(W, o, gate_c or o.cell)
+  if not gx then return nil end
+  local g0 = mapm.tile_of(o, gx, gy)
+  local wet = { [g0] = true }
+  local q, head = { g0 }, 1
+  while head <= #q do
+    local i = q[head]; head = head + 1
+    local ix, iy = (i - 1) % N + 1, floor((i - 1) / N) + 1
+    for d = 1, 4 do
+      local jx, jy = ix + (d == 1 and 1 or (d == 2 and -1 or 0)), iy + (d == 3 and 1 or (d == 4 and -1 or 0))
+      if jx >= 2 and jy >= 2 and jx <= N - 1 and jy <= N - 1 then
+        local j = (jy - 1) * N + jx
+        if not wet[j] and o.wcost[j] > 0 and o.land[j] == 0 then wet[j] = true; q[#q + 1] = j end
+      end
+    end
+  end
+  local D4 = { { 0, -1, "n" }, { 0, 1, "s" }, { -1, 0, "e" }, { 1, 0, "w" } }
+  local best, bd, bw, bside = 0, 1e18, 0, nil
+  for iy = 4, N - 3 do
+    for ix = 4, N - 3 do
+      local i = (iy - 1) * N + ix
+      if o.land[i] == 1 and o.occ[i] == 0 and o.riv[i] == 0 and o.cost[i] > 0 then
+        for _, d in ipairs(D4) do
+          local wi = (iy + d[2] - 1) * N + ix + d[1]
+          local w2 = (iy + 2 * d[2] - 1) * N + ix + 2 * d[1]
+          local li = (iy - d[2] - 1) * N + ix - d[1]
+          if wet[wi] and wet[w2] and o.land[li] == 1 and o.riv[li] == 0 then
+            local x, y = mapm.ixy_xy(o, ix, iy)
+            local r = x * x + y * y
+            if r < bd then best, bd, bw, bside = i, r, wi, d[3] end
+          end
+        end
+      end
+    end
+  end
+  if best == 0 then return nil end
+  local x, y = mapm.tile_xy(o, best)
+  local mx, my = mapm.tile_xy(o, bw)
+  local ix, iy = mapm.tile_ixy(o, best)
+  return { dx = x, dy = y, mx = mx, my = my, ix = ix, iy = iy, side = bside }
+end
+
+-- (S18) The skipper of founders come by sea has landed at the shore of place o: their boat is the
+-- place's now (drawn up at the landing), and everyone of the household ashore is its people (arrive);
+-- the beasts they brought are lifted out and kept by their camp.
+function M.land_sea(W, o, p, boat, now)
+  local V = W.S.v3
+  local hh = V.households[p.hh]
+  local from = V.settlements[p.sett]
+  local fd = hh and hh.found
+  local ld = o.beach
+  local gx, gy = ld and ld.dx or p.x, ld and ld.dy or p.y
+  local nb = settle.migrate.move_boat(W, from, o, boat, hh, now)
+  if fd and fd.sea then fd.sea.boat2 = nb.id end
+  local list = { p }
+  for _, id in ipairs(hh and hh.members or {}) do
+    local q = V.people[id]
+    if q and q.alive and q ~= p and q.at == o.id and people.stage(q, now) ~= "infant" then list[#list + 1] = q end
+  end
+  for _, q in ipairs(list) do
+    if o.visitors then people.remove_id(o.visitors, q.id) end
+    M.arrive(W, o.cell, q, now, gx, gy)
+    local tr = q.trip
+    local kind = tr and tr.lead_kind
+    if kind and tr.party and #tr.party > 0 then
+      stock.join_map(W, o, q, kind, gx, gy, now)
+      local L, H = stock.led_by(o, q, kind)
+      for _, a in ipairs(L) do
+        stock.release(W, o, H, a, now, "Come over the sea with its people: kept by their camp")
+        a.why_owner = sfmt("Brought over the sea from %s by its people", from and from.name or "afar")
+      end
+      tr.led = {}
+    end
+  end
+  for _, q in ipairs(list) do people.remember(q, now, sfmt("Landed on the shore of %s after the crossing from %s", o.name, from and from.name or "home")) end
 end
 
 -- The party arrives ------------------------------------------------------------------------------
@@ -643,7 +863,7 @@ end
 -- Person p of a founding household walks onto the place's map at `cell`: the place is made when
 -- the first of them comes (an empty map), laid out, and each household's camp planned; from here
 -- on they are its people. Returns the place.
-function M.arrive(W, cell, p, now)
+function M.arrive(W, cell, p, now, lx, ly)
   local V = W.S.v3
   local hh = V.households[p.hh]
   local fd = hh and hh.found
@@ -655,7 +875,8 @@ function M.arrive(W, cell, p, now)
     o.founding.name_why = sfmt("Named by the %ss, come from %s", p.surname or "founder", from and from.name or "afar")
   end
   if not o.laid_out then
-    local gx, gy = require("sim.agents.wild").edge_toward(W, o, from and from.cell or o.cell)
+    local gx, gy = lx, ly
+    if not gx then gx, gy = require("sim.agents.wild").edge_toward(W, o, from and from.cell or o.cell) end
     M.lay_out(W, o, now, gx, gy)
     -- (the place's board: what there is to do here, as its first people see it)
     settle.hourly(W, o, now)
@@ -699,7 +920,8 @@ function M.arrive(W, cell, p, now)
     if fd then fd.arrived = now end
     M.plan_camp(W, o, hh, now)
     -- (their dog came with them)
-    local gx, gy = require("sim.agents.wild").edge_toward(W, o, from and from.cell or o.cell)
+    local gx, gy = lx, ly
+    if not gx then gx, gy = require("sim.agents.wild").edge_toward(W, o, from and from.cell or o.cell) end
     require("sim.agents.dogs").come(W, o, hh, gx, gy, now)
     o.waiting = o.waiting or {}
     o.waiting[#o.waiting + 1] = hh.id
@@ -805,6 +1027,38 @@ function M.place_daily(W, o, now)
     end
   end
   if open >= 2 then return end
+  -- (S18) a hut lived in long enough, the place's stores standing: a proper house in its place's
+  -- village, built by the household; the hut is left for whoever needs a roof next
+  if o.granary and o.wood_store and not o.lot then
+    for _, hid in ipairs(o.households) do
+      local hh = V.households[hid]
+      local hut = hh and o.buildings[hh.home or 0]
+      if hut and hut.hut and hut.state == "standing" and not hh.house_site and not hh.lodge and now - (hut.built or now) >= c.found_hut_days * 24 then
+        local q = V.people[hh.members[1] or 0]
+        local r = settle.plan_lot(W, o, "house", { for_hh = hh.id, for_name = "the " .. (q and q.surname or "settler") .. "s", prio = 1, replaces = hut.id },
+          hut.cx, hut.cy, 4)
+        if r then
+          for _, id in ipairs(hh.members) do
+            local p = V.people[id]
+            if p and p.alive and people.stage(p, now) ~= "infant" then people.remember(p, now, "We will build a proper house in place of our hut") end
+          end
+          return
+        end
+      end
+    end
+  end
+  -- (S18) a dock for the boat they came in, once the households have roofs: on the landing
+  if not o.dock and not o.dock_planned and o.beach and homeless == 0 then
+    local boat = false
+    for _, b in ipairs(o.boats or {}) do if not b.lost then boat = true end end
+    local ld = o.beach
+    if boat and mapm.rect_free(o, ld.ix, ld.iy, ld.ix, ld.iy, true) then
+      settle.add_building(W, o, "dock", ld.ix, ld.iy, ld.side, "site", { prio = 1, for_name = "the boats" })
+      o.dock_planned = now
+      open = open + 1
+    end
+  end
+  if open >= 2 then return end
   -- pens: for each herd still kept at a camp, once the households have roofs (or wolves came)
   for _, kind in ipairs(stock.HERDS) do
     local H = o.herds and o.herds[kind]
@@ -825,6 +1079,23 @@ function M.why(W, p, hh)
   if not fd then return "Making a new home" end
   local now = V.now or W.hour
   local from = V.settlements[fd.from]
+  if not fd.arrived and fd.sea then
+    -- (S18) by sea
+    local sk = V.people[fd.sea.skipper or 0]
+    local skn = sk and sk.name or "our skipper"
+    if p.act == "passage" or (p.riding or 0) ~= 0 then return fd.why .. ": at sea in " .. skn .. "'s boat" end
+    if p.act == "voyage" then return fd.why .. ": sailing the household over to the place we chose" end
+    if p.boat then return fd.why .. ": rowing the household out" end
+    if (p.at or p.sett) == fd.from then
+      local tr = p.trip
+      if tr and tr.lead_kind and now < fd.depart then return fd.why .. ": bringing our beasts down to the boat" end
+      if now < fd.depart then
+        if sk == p then return fd.why .. ": loading seed and goods into the boat" end
+        return fd.why .. ": packing and going down to the dock"
+      end
+      return fd.why .. ": waiting at the dock to sail with " .. skn
+    end
+  end
   if not fd.arrived and (p.at or p.sett) == fd.from then
     local tr = p.trip
     if now < fd.depart then

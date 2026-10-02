@@ -72,7 +72,9 @@ function M.animals_are_individuals()
   if pk then
     print(string.format("      wolves: blob %.0f%%, vcorr %.2f, mass stops %.0f%%, mass starts %.0f%%", 100 * pk.blob, pk.vcorr, 100 * pk.mstop, 100 * pk.mass))
     T.ok(pk.blob <= 0.6, string.format("wolves are not a moving formation: %.0f%% of moments all one heading", 100 * pk.blob))
-    T.ok(pk.vcorr <= 0.75, string.format("wolves move each its own way: velocity correlation %.2f", pk.vcorr))
+    -- (S18, D-136: 0.75 -> 0.8: the window now holds a hunt - a pack closing on its prey single file
+    -- along the leader's trail moves with correlated velocity; blob and mass stops still bound it)
+    T.ok(pk.vcorr <= 0.8, string.format("wolves move each its own way: velocity correlation %.2f", pk.vcorr))
     T.ok(pk.mstop <= 0.2, string.format("wolves do not stop all at once: %.0f%%", 100 * pk.mstop))
   end
   local bd = cls("band", "vcorr")

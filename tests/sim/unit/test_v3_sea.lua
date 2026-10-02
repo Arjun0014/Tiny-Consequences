@@ -131,4 +131,100 @@ function M.an_island_household_moves_by_sea()
   T.ok(math.abs((H.acc.moved_out or 0) - (Z.acc.moved_in or 0)) < 1e-6, "the food they carried moved between the books")
 end
 
+-- Founding by sea (R5, S18). The premise: a northern village's people have sailed to the villages
+-- over the sea and seen the shores on the way (their knowledge of places, as a month of voyages
+-- leaves it), and a household with its own boat, a babe in arms and young children has decided to
+-- make a new home at the best shore it knows (best_sea_site: its own knowledge, never the planet).
+-- What follows is theirs: packing, the beasts that fit, seed and goods in the hold, the crossing,
+-- the place made as they come into its waters, a landing on its beach, a camp, then a hut.
+function M.a_household_founds_a_place_over_the_sea()
+  local W = shipped()
+  local V = W.S.v3
+  local trade = require("sim.agents.trade")
+  local founding = require("sim.agents.founding")
+  local migrate = require("sim.agents.migrate")
+  local people = require("sim.agents.people")
+  local stock = require("sim.agents.stock")
+  local now = W.hour
+  local S
+  for _, s in ipairs(V.settlements) do
+    if s.dock and W.grid.lat[s.cell] > 0 then S = s end
+  end
+  T.ok(S ~= nil, "a northern village with a dock (spring now)")
+  if not S then return end
+  do
+    local p = V.people[S.members[1]]
+    for _, o in ipairs(trade.sea_partners(W, S)) do
+      founding.note_sea(W, p, trade.sea_route(W, S, o), "seen from the sea on the way to " .. o.name, now)
+    end
+    founding.tell(W, p, S)
+  end
+  local hh, sea
+  for _, hid in ipairs(S.households) do
+    local h = V.households[hid]
+    local babe = false
+    for _, id in ipairs(h.members) do if people.stage(V.people[id], now) == "infant" then babe = true end end
+    local sp = founding.best_sea_site(W, S, h, now)
+    if sp and (babe or not hh) then hh, sea = h, sp end
+  end
+  T.ok(hh ~= nil, "a household with its own boat knows a shore it could sail to")
+  if not hh then return end
+  T.ok(founding.lore(W, S)[sea.cell] ~= nil, "the shore is one its village knows: " .. sea.why)
+  T.ok(founding.place_at(W, sea.cell) == nil, "nothing is there yet")
+  founding.decide(W, S, hh, sea.cell, sea.hrs, "there is no ground left for the fields we need", sea.why, now, false, sea)
+  local fd = hh.found
+  T.ok(fd.sea ~= nil and fd.sea.loads >= 1, "room kept in the boat for seed and goods (" .. tostring(fd.sea.loads) .. " loads)")
+  local members = {}
+  for _, id in ipairs(hh.members) do members[#members + 1] = V.people[id] end
+  local boat0 = S.boats[fd.sea.boat]
+  local place, first, sailed, rode, walked, camp_h = nil, nil, 0, 0, 0, nil
+  for h = 0.5, 24 * 13, 0.5 do
+    world.advance(W, now + h)
+    for _, p in ipairs(members) do
+      if p.alive then
+        if p.act == "voyage" then sailed = sailed + 1 end
+        if p.act == "passage" then rode = rode + 1 end
+        if p.act == "travel" then walked = walked + 1 end
+      end
+    end
+    local o = founding.place_at(W, sea.cell)
+    if o and not place then
+      place = o
+      first = {}
+      for _, id in ipairs(o.blist) do local b = o.buildings[id]; first[#first + 1] = b.kind .. ":" .. b.state end
+    end
+    if place and not camp_h then
+      for _, id in ipairs(place.blist) do
+        local b = place.buildings[id]
+        if b.kind == "camp" and b.state == "standing" then camp_h = h end
+      end
+    end
+  end
+  T.ok(place ~= nil, "the place was made")
+  if not place then return end
+  T.ok(place.founding.by_sea and place.founded >= now, "made when they sailed in: " .. tostring(place.founding.name_why))
+  local standing = 0
+  for _, k in ipairs(first) do if k:find("standing") then standing = standing + 1 end end
+  T.eq(standing, 0, "nothing stood there when they came (" .. table.concat(first, " ") .. ")")
+  T.ok(sailed > 0 and rode > 0, "the skipper sailed and the others crossed in the boat")
+  T.eq(walked, 0, "nobody walked a road over the sea")
+  for _, p in ipairs(members) do
+    T.ok(p.alive and p.sett == place.id and not p.at, p.name .. " (" .. people.stage(p, W.hour) .. ") lives at " .. place.name)
+  end
+  T.ok(camp_h ~= nil, "a camp stands, raised by them")
+  local mine = 0
+  for _, b in ipairs(place.boats or {}) do
+    if not b.lost and b.owner == hh.id then mine = mine + 1; T.ok(b.came and b.came.from == S.id, "their boat came with them") end
+  end
+  T.eq(mine, 1, "their one boat is drawn up at the place")
+  T.ok(boat0.lost and boat0.moved and boat0.moved.to == place.id, "the boat is gone from " .. S.name)
+  for _, kind in ipairs(stock.HERDS) do
+    local H = S.herds and S.herds[kind]
+    for _, a in ipairs(H and H.animals or {}) do
+      T.ok(not (a.alive and a.owner == hh.id), "no beast of theirs left owned at " .. S.name)
+    end
+  end
+  T.ok(math.abs((S.acc.moved_out or 0) - (place.acc.moved_in or 0)) < 1e-6, "the food they took moved between the books")
+end
+
 return M

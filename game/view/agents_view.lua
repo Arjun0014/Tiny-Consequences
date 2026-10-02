@@ -413,6 +413,14 @@ local function fill_buildings(V)
         if (b.stock.soaking or 0) > 0 then
           add(V, K.stook, b.cx - 0.006, b.cy + 0.004, 0.002, 2, 0.45, 0.25, pack(0.48, 0.34, 0.22), pack(0.40, 0.28, 0.18), 0)
         end
+      elseif b.kind == "saltpan" then
+        -- (S18) salt pans on the shore: shallow pale pans, a fire pit with its wood, raked salt
+        add(V, K.stook, b.cx - 0.008, b.cy - 0.006, -0.004, 0, 0.8, 0.12, pack(0.72, 0.74, 0.76), pack(0.62, 0.64, 0.66), 0)
+        add(V, K.stook, b.cx + 0.008, b.cy - 0.006, -0.004, 1, 0.8, 0.12, pack(0.70, 0.72, 0.75), pack(0.60, 0.62, 0.65), 0)
+        add(V, K.stook, b.cx, b.cy + 0.009, -0.002, 2, 0.5, 0.25, pack(0.20, 0.15, 0.12), pack(0.16, 0.12, 0.1), 0)
+        if (b.stock.logs or 0) >= 1 then
+          add(V, K.logs, b.cx + 0.012, b.cy + 0.01, 0.002, 0.4, 0.35, 1, pack(0.55, 0.40, 0.26), pack(0.45, 0.31, 0.2), 0)
+        end
       elseif b.kind == "rack" then
         -- (D-096) a drying rack: two poles and a bar, fish hanging by what dries on it
         local T = s.T
@@ -1184,7 +1192,8 @@ function M.update_travellers(W, t, zoom)
         if show and p.alive and p.act == "voyage" and nb < M.TRAVEL then
           local st = p.plan[p.pi]
           local from, to = V3.settlements[st and st.from or 0], V3.settlements[st and st.to or 0]
-          local r = from and to and trade.sea_route(W, from, to) or nil
+          -- (S18: founders sailing to the shore of a place not made yet)
+          local r = from and ((st.site and trade.sea_route_to(W, from, st.site)) or (to and trade.sea_route(W, from, to))) or nil
           local cells = r and r.cells
           if cells and #cells > 0 then
             nb = nb + 1

@@ -1025,8 +1025,18 @@ C.V3 = {
   -- local; the skipper waits at most sea_board_wait hours at the dock for everyone and puts the
   -- sailing off to the next morning (a storm or gale along the way, someone missing)
   -- at most mig_sea_tries times
+  road_forage = 0.025,                    -- (S18) FU an hour a hungry traveller with nothing left picks along the road (summer)
   boat_places = 7, mig_sea_beasts = 4, skipper_skill = 0.4, mig_sea_hour = 0.012, mig_sea_dread = 0.05,
   mig_sea_winter = 0.25, mig_sea_risk_k = 20, mig_sea_dawn = 7, sea_board_wait = 3, mig_sea_tries = 4,
+  -- (S18) salt (econ.GOODS.salt, a measure about a kilogram): made only at salt pans on a village's
+  -- shore (saltpan, built by work) by boiling seawater over a fire, salt_logs logs a measure - in warm
+  -- dry weather the sun does salt_sun of the fire's part (at salt_sun_temp °C and more); salt_h
+  -- measures an hour of work. A household wants salt_hh_want measures and salt_member more a member
+  -- (export_salt more a member when a neighbour is heard to want it). Salt cures meat and fish without
+  -- smoke (salt_cure measures a FU, salt_cure_h FU an hour) and is worked into cheese (cheese_salt a
+  -- FU of cheese); unsalted, only cheese_keep_nosalt of the curd keeps
+  salt_h = 0.8, salt_logs = 0.4, salt_sun = 0.75, salt_sun_temp = 15, salt_hh_want = 0.6, salt_member = 0.3,
+  export_salt = 0.6, salt_cure = 0.06, salt_cure_h = 6.0, cheese_salt = 0.025, cheese_keep_nosalt = 0.6,
   -- (S16, R4) courting: a man with nobody to marry at home goes to a neighbour within court_road_h
   -- hours' walk with this chance a courtship round; he spends court_h meeting its people; a bride
   -- sets off with him court_wait_h after the match
@@ -1065,6 +1075,13 @@ C.V3 = {
   -- found_hungry_k); those who came to make a place hold to it found_stay_hold more for found_stay_days
   found_food_days = 10, found_hungry_k = 0.9, found_stay_days = 24, found_stay_hold = 0.6,
   found_risk_late = 0.35, found_risk_winter = 0.6,
+  -- (S18) founding by sea: beasts that cannot come in the boat weigh against it, found_beast_k a
+  -- hundred FU of their worth (a cow 0.1, a sheep 0.02)
+  found_beast_k = 0.15, found_sea_loads = 3,
+  -- (S18) a household founds only if it can take found_short_max of the bread it wants at least
+  -- (starving people do not found); a hut lived in found_hut_days is replaced by a proper house once
+  -- the place has its granary and woodstore
+  found_short_max = 0.6, found_hut_days = 24,   -- (founders by sea keep room in the boat for this many loads of seed and bread)
   -- the young place: a camp (camp_work person-hours: the ground cleared, a fire ring, a brush lean-to),
   -- a first house a hut (hut_logs, hut_work), water from a river bank within found_water_reach of the
   -- camp or a well dug

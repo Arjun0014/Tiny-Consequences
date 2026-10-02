@@ -1061,7 +1061,7 @@ local function v3_settlement(W, sel)
     local from = V.settlements[fd.from or 0]
     local lh = V.households[fd.leader or 0]
     local lq = lh and V.people[lh.members[1] or 0]
-    out.subtitle = "A new place" .. (from and (", made by people of " .. from.name) or "")
+    out.subtitle = "A new place" .. (from and (", made by people of " .. from.name) or "") .. (fd.by_sea and ", come over the sea" or "")
     add(items, { t = "text", icon = "people", text = string.format("Founded %s by %s%s: %s", clock.label(fd.started),
       lq and ("the " .. lq.surname .. "s") or "a household", from and (" of " .. from.name) or "", (lh and lh.found and lh.found.why) or "they chose to make a new home") })
     if lh and lh.found and lh.found.swhy then add(items, { t = "text", icon = "pin", text = "Why here: " .. lh.found.swhy }) end
@@ -1097,6 +1097,8 @@ local function v3_settlement(W, sel)
   if not s.well then missing[#missing + 1] = s.has_river and "no well (water from the river)" or "no well" end
   if not s.granary then missing[#missing + 1] = "no granary" end
   if not s.wood_store then missing[#missing + 1] = "no woodstore" end
+  -- (S18: a place come to by sea draws its boats up on the beach until a dock stands)
+  if s.beach and not s.dock then missing[#missing + 1] = "no dock (the boats drawn up on the beach)" end
   if #missing > 0 then add(items, { t = "row", icon = "bubble", label = "Not yet", value = table.concat(missing, ", ") }) end
   -- fields and food
   local st = { growing = 0, ripe = 0, fallow = 0, rest = 0, stubble = 0 }

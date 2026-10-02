@@ -229,16 +229,14 @@ M.kin_at = kin_at
 -- the boat for all of it (boat_places: a grown-up a place, a child half, a babe in arms none), food
 -- in its larder for the passage, and o a village it knows of (news heard, kin there, kin's offer).
 -- Returns { boat, skipper, hrs, risk, winter, room (places left for beasts and goods), loads }.
-function M.sea_plan(W, s, hh, o, now)
+-- (S18) Household hh of s and its own boat: the boat, who would sail it (a fisher, or a grown-up
+-- handy with boats), the places its people take (a grown-up 1, a child half, a babe none) and its
+-- mouths; nil when it has no sound boat, nobody to sail it or more people than the boat holds.
+function M.boat_party(W, s, hh, now)
   local c = C()
   local V = W.S.v3
-  local trade = require("sim.agents.trade")
   local boat = econ.own_boat(s, hh)
   if not boat then return nil end
-  local off = hh.kin_offer
-  if not (s.know and s.know[o.id]) and kin_at(W, hh, o) == 0 and not (off and off.sett == o.id) then return nil end
-  local route = trade.sea_route(W, s, o)
-  if not route then return nil end
   local skipper, places, mouths = nil, 0, 0
   for _, id in ipairs(hh.members) do
     local p = V.people[id]
@@ -252,6 +250,26 @@ function M.sea_plan(W, s, hh, o, now)
     end
   end
   if not skipper or places > c.boat_places then return nil end
+  return { boat = boat, skipper = skipper, places = places, mouths = mouths }
+end
+
+-- (S18) The chance household hh's boat founders on a passage of `hrs` hours, as they weigh it (in
+-- the wet weather the sea mostly has).
+function M.sea_dread(W, bp, hrs)
+  local c = C()
+  return hrs * c.sea_squall * c.sea_wet_k * (2 - (bp.boat.cond or 1)) * (1.3 - 0.6 * (bp.skipper.sk_fish or 0.3))
+end
+
+function M.sea_plan(W, s, hh, o, now)
+  local c = C()
+  local trade = require("sim.agents.trade")
+  local bp = M.boat_party(W, s, hh, now)
+  if not bp then return nil end
+  local off = hh.kin_offer
+  if not (s.know and s.know[o.id]) and kin_at(W, hh, o) == 0 and not (off and off.sett == o.id) then return nil end
+  local route = trade.sea_route(W, s, o)
+  if not route then return nil end
+  local boat, skipper, places, mouths = bp.boat, bp.skipper, bp.places, bp.mouths
   local hrs = route.len / c.sail_speed
   -- (food for the passage: each walker's bread for its hours and a day more, from the larder)
   local home = s.buildings[hh.home or 0]
@@ -260,8 +278,7 @@ function M.sea_plan(W, s, hh, o, now)
   local doy = require("sim.agents.clock").local_doy(now, W.grid.lat[s.cell])
   local room = c.boat_places - places
   -- (the risk they weigh: the passage in the wet weather the sea mostly has)
-  local c2 = c.sea_squall * c.sea_wet_k * (2 - (boat.cond or 1)) * (1.3 - 0.6 * (skipper.sk_fish or 0.3))
-  return { boat = boat.id, skipper = skipper.id, hrs = hrs, risk = hrs * c2,
+  return { boat = boat.id, skipper = skipper.id, hrs = hrs, risk = M.sea_dread(W, bp, hrs),
     winter = doy >= 36 and c.mig_sea_winter or 0, room = room, loads = 0 }
 end
 
@@ -282,7 +299,8 @@ function M.share_beasts(W, s, hh, o, now, sea)
     if st == "adult" or st == "elder" or st == "apprentice" then adults[#adults + 1] = p end
   end
   local ai = 1
-  local room = sea and min(c.mig_sea_beasts, floor(sea.room + 1e-6)) or 0
+  -- (founders keep room first for the seed and bread of the first months: found_sea_loads loads)
+  local room = sea and min(c.mig_sea_beasts, floor(sea.room - (sea.found and c.found_sea_loads * 0.5 or 0) + 1e-6)) or 0
   if sea then sea.ship = {} end
   for _, kind in ipairs(stock.HERDS) do
     local H = s.herds and s.herds[kind]
@@ -365,7 +383,7 @@ function M.share_beasts(W, s, hh, o, now, sea)
   end
   if sea then
     -- (the places the beasts leave: the household's goods, two loads a place)
-    sea.loads = min(c.boat_hold, floor(max(0, room) * 2 + 1e-6))
+    sea.loads = min(c.boat_hold, floor(max(0, room + (sea.found and c.found_sea_loads * 0.5 or 0)) * 2 + 1e-6))
   end
   return lead
 end
@@ -496,10 +514,11 @@ end
 function M.move_boat(W, from, o, boat, hh, now)
   o.boats = o.boats or {}
   local k = #o.boats + 1
-  local d = o.dock
+  local d = o.dock or o.beach
   local nb = { id = k, x = d and d.mx + (k - 1) * 0.012 or boat.x, y = d and d.my or boat.y, crew = 0, owner = hh and hh.id or 0,
     cond = boat.cond, trips = boat.trips, built = boat.built, cargo = boat.cargo,
-    came = { from = from.id, t = now, old = boat.id, why = "Sailed here by its people, come to live at " .. o.name } }
+    came = { from = from.id, t = now, old = boat.id,
+      why = (o.founding and o.founding.by_sea and "Sailed here by its people, come to make " or "Sailed here by its people, come to live at ") .. o.name } }
   o.boats[k] = nb
   local food = 0
   for _, g in ipairs(econ.ORDER) do

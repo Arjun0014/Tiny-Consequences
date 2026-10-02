@@ -31,6 +31,8 @@ M.GOODS = {
   cloth = { base = 6.0, wt = 1 / 3, pool = "house", name = "cloth", unit = "GE" },
   hides = { base = 2.0, wt = 1 / 3, pool = "house", name = "hides", unit = "", plural = true },
   leather = { base = 4.0, wt = 1 / 4, pool = "house", name = "leather", unit = "pieces" },
+  -- (S18) made only on the coast (salt pans); cures meat and fish, keeps cheese
+  salt = { base = 2.5, wt = 1 / 10, pool = "house", name = "salt", unit = "measures" },
   -- (S15, R4) beasts sold alive: a household's own, led by a drover (wt: the share of the beasts
   -- one drover can lead), never carried, never taken in payment
   sheep = { base = 12, wt = 1 / 6, pool = "house", name = "sheep", name1 = "sheep", unit = "", beast = "flock" },
@@ -38,7 +40,7 @@ M.GOODS = {
   cattle = { base = 70, wt = 1 / 2, pool = "house", name = "cattle", name1 = "cow", unit = "", beast = "cattle" },
   pig = { base = 28, wt = 1 / 4, pool = "house", name = "pigs", name1 = "pig", unit = "", beast = "swine" },
 }
-M.ORDER = { "grain", "smoked", "cheese", "logs", "wool", "cloth", "hides", "leather", "sheep", "goat", "cattle", "pig" }
+M.ORDER = { "grain", "smoked", "cheese", "logs", "wool", "cloth", "hides", "leather", "salt", "sheep", "goat", "cattle", "pig" }
 
 -- "8.0 FU of smoked fish", "2 logs": an amount of a good in words.
 function M.amount(q, g)
@@ -171,6 +173,10 @@ function M.house_stock(W, hh, home, g)
     -- (hides and leather stand for the household's shoes to come: D-104)
     local have = (st.hides or 0) + (st.leather or 0) * 1.2
     return have, n * c.leather_want, st[g] or 0
+  end
+  if g == "salt" then
+    -- (S18) for the curing and the cheese of a year
+    return st.salt or 0, c.salt_hh_want + n * c.salt_member, st.salt or 0
   end
   return 0, 0, 0
 end
@@ -308,15 +314,18 @@ function M.best_trade(W, s, hh, home, pool, partners, route, now)
   for gi = 1, #M.ORDER do
     local X = M.ORDER[gi]
     local GX = M.GOODS[X]
-    if GX.pool == pool and (land or not GX.beast) then
+    -- (S18: by sea only small beasts, a few in a boat: sheep and goats - never cattle, and the pigs
+    -- sold are grown)
+    if GX.pool == pool and (land or not GX.beast or GX.beast == "flock") then
       local spareX = M.spare(W, s, hh, home, X)
       local aX = M.value(W, s, hh, home, X)
       for pi = 1, #partners do
         local o = partners[pi]
         local hrs, cap, crew = route(W, s, o)
-        -- (beasts are driven slower than a walker, D-115)
-        if GX.beast then hrs = hrs * c.drove_road end
+        -- (beasts are driven slower than a walker, D-115; S18: a boat holds only a few)
+        if GX.beast and land then hrs = hrs * c.drove_road end
         local nmax = min(spareX, cap / GX.wt)
+        if GX.beast and not land then nmax = min(nmax, c.mig_sea_beasts) end
         if GX.beast then nmax = floor(nmax + 1e-6) end
         if nmax >= c.trade_min_load / GX.wt then
           local bX = M.expect(W, s, o, X, now)
@@ -576,7 +585,7 @@ end
 -- and sea): cloth (its households' looms and spindles), when a neighbour heard of lately would give
 -- export_margin x trade_margin what a household here would. s.export = { cloth = name of the
 -- neighbour } or nil.
-local EXPORTS = { "cloth" }
+local EXPORTS = { "cloth", "salt" }
 function M.exports(W, s, partners, now)
   local c = C()
   local V = W.S.v3

@@ -20,6 +20,7 @@ local settle = require("sim.agents.settle")
 settle.econ = require("sim.agents.econ")
 settle.migrate = require("sim.agents.migrate")   -- (S16: bob forbids the circular require)
 settle.founding = require("sim.agents.founding")   -- (S17, R5)
+settle.trade = require("sim.agents.trade")   -- (S18: a young place's dock makes new sea ways)
 settle.econ.on_learn = settle.founding.share
 local life = require("sim.agents.life")
 local kin = require("sim.agents.kin")
@@ -353,7 +354,7 @@ function sys.init(W)
   if not V then return end
   for i = 1, #V.settlements do
     local s = V.settlements[i]
-    for _, k in ipairs({ "granary", "wood_store", "well", "dock" }) do
+    for _, k in ipairs({ "granary", "wood_store", "well", "dock", "saltpan" }) do
       if s[k] then s[k] = s.buildings[s[k].id] end
     end
     do

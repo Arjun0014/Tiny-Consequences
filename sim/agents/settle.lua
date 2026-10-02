@@ -28,6 +28,7 @@ M.KINDS = {
   byre = { w = 7, h = 6, label = "byre yard", logs = 14, work = 40 },   -- a fenced cattle yard with a lean-to (D-092)
   sty = { w = 5, h = 4, label = "sty", logs = 8, work = 24 },     -- a pig sty: a fenced run and a low hut (D-092)
   tanpit = { w = 2, h = 2, label = "tanning pit", logs = 1, work = 10 },   -- a lined pit by the water where hides soak (D-104)
+  saltpan = { w = 2, h = 2, label = "salt pans", logs = 3, work = 24 },   -- (S18) shallow pans and a fire pit on the shore
   -- (S17, R5) a founding household's camp: the ground cleared, a fire ring, a brush lean-to; its home
   -- and larder until a house stands (open ground: walked through, built on by nothing else)
   camp = { w = 5, h = 5, label = "camp", logs = 0, work = 2 },
@@ -94,8 +95,9 @@ function M.add_building(W, s, kind, ix0, iy0, side, state, opts)
   if state == "site" then s.sites[#s.sites + 1] = id end
   if kind == "granary" then s.granary = b; s.granary_x, s.granary_y = b.dx, b.dy end
   if kind == "dock" then
-    -- boats moor on the water beside the dock, opposite its door (on the land side)
-    s.dock = b
+    -- boats moor on the water beside the dock, opposite its door (on the land side); (S18) a dock
+    -- being built at a young place is not the dock until it stands
+    if state == "standing" then s.dock = b end
     b.mx, b.my = 2 * b.cx - b.dx, 2 * b.cy - b.dy
   end
   if kind == "woodstore" then s.wood_store = b; s.wood_x, s.wood_y = b.dx, b.dy end
@@ -160,8 +162,15 @@ function M.complete_building(W, s, b)
     local hh = V.households[b.for_hh]
     if hh and #hh.members > 0 then
       hh.home, hh.lodge, hh.house_site = b.id, nil, nil
-      -- (the camp they lived at is struck by their own hands: its things carried in)
+      -- (the camp they lived at is struck by their own hands: its things carried in; S18: the hut
+      -- a house replaces too - and it stands empty for whoever needs a roof)
       if hh.camp then hh.old_camp, hh.camp = hh.camp, nil end
+      local old = b.replaces and s.buildings[b.replaces]
+      if old and old.hh == hh.id then
+        hh.old_camp = old.id
+        old.hh = 0
+        old.for_name = "the old hut of the " .. ((V.people[hh.members[1] or 0] or {}).surname or "settler") .. "s"
+      end
       b.hh = hh.id
       for _, id in ipairs(hh.members) do
         local q = V.people[id]
@@ -178,6 +187,13 @@ function M.complete_building(W, s, b)
     H.pen_planned = nil
   end
   if b.kind == "granary" and s.founding then s.granary_planned = nil end
+  if b.kind == "saltpan" then s.saltpan = b end
+  if b.kind == "dock" then
+    -- (S18) the young place's dock stands: its boats moor there, and its sea ways are known
+    s.dock = b
+    for k, boat in ipairs(s.boats or {}) do boat.x, boat.y = b.mx + (k - 1) * 0.012, b.my end
+    if M.trade then M.trade.forget(W) end
+  end
   if b.kind == "woodstore" and s.founding then s.wood_planned = nil end
   if b.kind == "house" and b.for_a then
     local a, c = V.people[b.for_a], V.people[b.for_b or 0]
@@ -1319,6 +1335,29 @@ local function finish_clearing(W, s)
 end
 M.finish_clearing = finish_clearing
 
+-- (S18) Salt pans: a village on the sea whose households are short of salt lays them out on the
+-- shore by its dock (a lot cleared, logs and work like any building).
+local function plan_saltpan(W, s)
+  if not s.dock or s.saltpan or s.lot then return end
+  for i = 1, #s.sites do
+    local b = s.buildings[s.sites[i]]
+    if b and b.kind == "saltpan" then return end
+  end
+  local econ = M.econ
+  local V = W.S.v3
+  local short = 0
+  for i = 1, #s.households do
+    local hh = V.households[s.households[i]]
+    local home = hh and #hh.members > 0 and s.buildings[hh.home or 0]
+    if home and home.kind == "house" then
+      local have, want = econ.house_stock(W, hh, home, "salt")
+      if have < want * 0.5 then short = short + 1 end
+    end
+  end
+  if short == 0 then return end
+  M.plan_lot(W, s, "saltpan", { prio = 0.5, for_name = "the village" }, s.dock.dx, s.dock.dy, 2)
+end
+
 -- Boats (D-087): they rot a little ashore; a household with a fisher and no sound boat of its own
 -- lays down a new one on the stocks by the dock (logs and work, like a house).
 local function plan_boats(W, s)
@@ -1728,6 +1767,7 @@ function M.daily(W, s, day)
   wild_food(W, s, day)
   plan_houses(W, s)
   plan_boats(W, s)
+  plan_saltpan(W, s)
   plan_racks(W, s, day)
   plan_tanpits(W, s, day)
   dry_racks(W, s, day)

@@ -819,10 +819,12 @@ function M.step(W, s, w, now)
       if not lead or lead.gone or w.done then
         local i = require("sim.systems.fauna").find_pack(W, w.gid)
         local ex, ey = edge_toward(W, s, i and A.p_cell[i] or s.cell)
-        if lead == nil and w.lead ~= 0 then
+        if w.lead ~= 0 then
+          -- (S18: every wolf but the leader its own way out - fed ones leaving while the leader
+          -- still eats too, not all to the same point)
           local dx, dy = ex - w.tx, ey - w.ty
           local d = max(1e-6, sqrt(dx * dx + dy * dy))
-          local side = (stock.trait(w, stock.T_SIDE) - 0.5) * 0.25
+          local side = (stock.trait(w, stock.T_SIDE) - 0.5) * 0.5
           ex, ey = ex - dy / d * side, ey + dx / d * side
         end
         w.why = dawn and "Away to the den before dawn" or "Nothing more here tonight: away to the den"

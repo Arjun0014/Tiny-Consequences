@@ -56,7 +56,8 @@ local function plural(n, one, many) return n == 1 and one or many end
 local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "fetch_wood", fetch_water = "fetch_water", foraging = "forage", child_gathering = "forage",
   smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed", moving_in = "strike_camp",
   asking = "visit_kin",
-  milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle", trading = "trade", sharing = "share", tanning = "tan", lifting = "lift", cobbling = "cobble" }
+  milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle", trading = "trade", sharing = "share", tanning = "tan", lifting = "lift", cobbling = "cobble",
+  salting_pans = "salt" }
 local function claim_free(W, hh, field, p)
   local id = hh[field] or 0
   if id == 0 or (p and id == p.id) then return true end
@@ -549,6 +550,14 @@ local function work_candidates(W, s, p, ctx, now)
         if f > 0 then
           addw((0.55 + 0.1 * b.prio) * f * fat - tc - travel(ctx, s.wood_x, s.wood_y, px, py) * 0.5, "deliver", b.id, 0,
             "The %s for %s still needs %d logs", b.label, b.for_name or "the village", b.logs_need - b.logs_have)
+        end
+      elseif missing > 0 and not s.wood_store and ctx.home and (ctx.home.stock.logs or 0) >= 2 then
+        -- (S18: a young place with no woodstore: the logs on the household's own woodpile)
+        local f = fit(p, ctx, "deliver", b.id)
+        ctx.with_mentor = false
+        if f > 0 then
+          addw((0.55 + 0.1 * b.prio) * f * fat - tc - travel(ctx, ctx.home.dx, ctx.home.dy, px, py) * 0.5, "deliver", b.id, ctx.home.id,
+            "The %s for %s still needs %d logs: there are logs on our woodpile", b.label, b.for_name or "the village", b.logs_need - b.logs_have)
         end
       end
       if b.logs_have >= min(b.logs_need, 4) and b.work_done < b.work_need and (b.builders or 0) < 3 then
@@ -1104,7 +1113,8 @@ local function chores(W, s, p, ctx, now)
       local f = fit(p, ctx, "fetch_food")
       if f > 0 then
         addw((0.5 + (ctx.rain > 0 and 0.15 or 0)) * f * fat - travel(ctx, oc.cx, oc.cy, px, py), "strike_camp", oc.id, 0,
-          "Our hut stands: carrying our things in from the camp (%.0f FU of food and stores left there)", left)
+          oc.kind == "camp" and "Our hut stands: carrying our things in from the camp (%.0f FU of food and stores left there)"
+            or "Our new house stands: carrying our things over from the hut (%.0f FU of food and stores left there)", left)
       end
     end
   end
@@ -1112,11 +1122,14 @@ local function chores(W, s, p, ctx, now)
   local surplus = (home.stock.fish or 0) + (home.stock.meat or 0) - n * 0.8
   -- (with a rack by the shore and fair weather, fish is hung to dry instead: D-096)
   local racked = ctx.rain == 0 and (home.stock.fish or 0) > (home.stock.meat or 0) and M.rack_of(s, hh)
-  if surplus >= 1 and not racked and claim_free(W, hh, "smoking", p) and (home.stock.logs or 0) >= 0.3 then
+  local salt = home.stock.salt or 0
+  if surplus >= 1 and not racked and claim_free(W, hh, "smoking", p) and ((home.stock.logs or 0) >= 0.3 or salt >= C().salt_cure) then
     local f = fit(p, ctx, "smoke")
     if f > 0 then
+      -- (S18: salt cures it faster and without the fire)
+      local what = (home.stock.meat or 0) > (home.stock.fish or 0) and "meat" or "fish"
       addw((0.28 + 0.1 * min(4, surplus)) * f * fatigue(p) - travel(ctx, ctx.hx, ctx.hy, px, py), "smoke", home.id, 0,
-        "%.0f FU of fresh fish will not keep: smoking it over the hearth", surplus)
+        salt >= C().salt_cure and "%.0f FU of fresh %s will not keep: salting it" or "%.0f FU of fresh %s will not keep: smoking it over the hearth", surplus, what)
     end
   end
   if (home.stock.water or 0) < 1 and claim_free(W, hh, "fetch_water", p) and not s.well and s.has_river then
@@ -1312,6 +1325,21 @@ local function leather_candidates(W, s, p, ctx, now)
       addw((0.25 + 0.6 * (0.35 - worst) + (s.cold and 0.1 or 0)) * fatigue(p) - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.5, "cobble", home.id, wq.id,
         wq == p and "My shoes are worn through (%d%%): cutting new ones from our leather" or "%s's shoes are worn through: making new ones from our leather",
         wq == p and floor(worst * 100) or wq.name)
+    end
+  end
+  -- (S18) salt boiled at the village's salt pans: for the household's curing and cheese, and more
+  -- when a neighbour is heard to want it
+  local sp = s.saltpan
+  if sp and sp.state == "standing" and ctx.rain < 2 and claim_free(W, hh, "salting_pans", p) then
+    local have, want = econ.house_stock(W, hh, home, "salt")
+    local for_o = s.export and s.export.salt
+    if for_o then want = want + #hh.members * c.export_salt end
+    local logs = (sp.stock.logs or 0) + (s.wood_store and s.wood_store.stock.logs or 0) + (home.stock.logs or 0)
+    if have < want and logs >= 1 then
+      local short = 1 - have / want
+      addw((0.18 + 0.4 * short) * fat - travel(ctx, sp.dx, sp.dy, p.x, p.y), "salt", sp.id, 0,
+        for_o and "Boiling salt at the pans: %.1f measures at home, and %s wants salt" or "Boiling salt at the pans: %.1f measures at home of %.1f wanted",
+        have, for_o or want)
     end
   end
 end
@@ -1602,7 +1630,8 @@ local function leisure(W, s, p, ctx, now)
     local best, ba = nil, -1
     for i = 1, #p.rel_id do
       local q = W.S.v3.people[p.rel_id[i]]
-      if q and q.alive and q.act == "play" and p.rel_v[i] + (q.hh == p.hh and 0.2 or 0) > ba then best, ba = q, p.rel_v[i] + (q.hh == p.hh and 0.2 or 0) end
+      -- (S18: a friend on this map - not one left behind in another village)
+      if q and q.alive and q.act == "play" and (q.at or q.sett) == s.id and p.rel_v[i] + (q.hh == p.hh and 0.2 or 0) > ba then best, ba = q, p.rel_v[i] + (q.hh == p.hh and 0.2 or 0) end
     end
     -- (a whole day of play palls: chores and tagging along win now and then)
     local d = floor(now / 24)
@@ -1642,7 +1671,7 @@ local function leisure(W, s, p, ctx, now)
     for i = 1, #p.rel_id do
       local qid = p.rel_id[i]
       local q = W.S.v3.people[qid]
-      if q and q.alive and q.hh ~= p.hh and q.inside ~= 0 then
+      if q and q.alive and q.hh ~= p.hh and q.inside ~= 0 and (q.at or q.sett) == s.id then
         local a = p.rel_v[i] + (people.is_kin(W, p, qid) and 0.2 or 0)
         if a > ba then best, ba = qid, a end
       end
@@ -2359,7 +2388,8 @@ PLAN.haul_logs = function(W, s, p, ctx, now, cd)
   pl[#pl + 1] = { op = "pick", what = "logs", from = "tree", ref = k }
   -- straight to a site that is short of logs, else the woodstore
   local site = s.site_short and s.buildings[s.site_short] or nil
-  if site and site.state == "site" then
+  -- (S18: still short now - the morning's reckoning may be stale)
+  if site and site.state == "site" and site.logs_need - site.logs_have - (site.deliver_claim or 0) * 1.5 > 0 then
     site.deliver_claim = (site.deliver_claim or 0) + 1
     go(pl, site.dx, site.dy, site.label)
     pl[#pl + 1] = { op = "drop", to = "site", ref = site.id }
@@ -2387,8 +2417,9 @@ PLAN.deliver = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
   local b = s.buildings[cd.a]
   b.deliver_claim = (b.deliver_claim or 0) + 1
-  local w = s.wood_store
-  go(pl, w.dx, w.dy, "the woodstore")
+  -- (S18: from the household's woodpile at a young place with no woodstore)
+  local w = (cd.b ~= 0 and s.buildings[cd.b]) or s.wood_store
+  go(pl, w.dx, w.dy, w == s.wood_store and "the woodstore" or "our woodpile")
   pl[#pl + 1] = { op = "pick", what = "logs", from = "store", ref = w.id, n = p.strong and 2 or 1 }
   go(pl, b.dx, b.dy, b.label)
   pl[#pl + 1] = { op = "drop", to = "site", ref = b.id }
@@ -2755,9 +2786,15 @@ function M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
   local V = W.S.v3
   local sea = mg.sea
   local here = p.at or p.sett
+  -- (S18) founding by sea: the place is made when they sail into its waters (WORK.voyage); until
+  -- then it has no name but "the place we chose"
+  local found = hh.found == mg
+  local site = found and mg.site or nil
+  if found then o = require("sim.agents.founding").place_at(W, site) end
+  local oname = o and o.name or "the place we chose"
   local boat = home_s.boats and home_s.boats[sea.boat]
   local hd = home_s.dock
-  local route = trade.sea_route(W, home_s, o)
+  local route = found and trade.sea_route_to(W, home_s, site) or (o and trade.sea_route(W, home_s, o))
   local skipper = sea.skipper == p.id
   if not boat or not hd or not route or (boat.lost and not tr.embarked) then
     -- (the boat is gone before they could sail - rotted, wrecked: they stay, and may think again)
@@ -2767,26 +2804,27 @@ function M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
     p.trip = nil
     return "Stay: the boat is gone", home_s.name
   end
-  if here == o.id and p.boat then
-    -- (over the sea: rowing in to the dock and landing)
-    local od = o.dock
-    pl[#pl + 1] = { op = "go", x = od.mx, y = od.my, place = o.name .. "'s dock", water = true, why = mg.why .. ": rowing in to " .. o.name .. "'s dock" }
-    work(pl, "land", 0.08, { boat = boat.id, migrate = true, why = mg.why .. ": landing at " .. o.name })
-    return "Land at " .. o.name, o.name .. "'s dock"
+  if o and here == o.id and p.boat then
+    -- (over the sea: rowing in to the dock - or the beach of the new place - and landing)
+    local od = o.dock or o.beach
+    local at = o.dock and (o.name .. "'s dock") or ("the shore of " .. oname)
+    pl[#pl + 1] = { op = "go", x = od.mx, y = od.my, place = at, water = true, why = mg.why .. ": rowing in to " .. at }
+    work(pl, "land", 0.08, { boat = boat.id, migrate = not found or nil, found = found or nil, why = mg.why .. ": landing at " .. at })
+    return "Land at " .. oname, at
   end
   if here ~= home_s.id then
-    -- (anyone else off the boat on the other map before the landing: wait at the dock)
-    local od = o.dock or { dx = o.sqx or 0, dy = o.sqy or 0 }
-    go(pl, od.dx, od.dy, o.name .. "'s dock")
+    -- (anyone else off the boat on the other map before the landing: wait by the water)
+    local od = (o and (o.dock or o.beach)) or { dx = o and o.sqx or 0, dy = o and o.sqy or 0 }
+    go(pl, od.dx, od.dy, oname)
     work(pl, "wait", 0.3, {})
-    return "Wait for the others at " .. o.name, o.name
+    return "Wait for the others at " .. oname, oname
   end
   if p.boat and tr.embarked then
     -- (aboard and away: out to the open sea and over it)
-    M.sea_out(W, pl, home_s, o, route, boat, p, now, mg)
-    return "Sail to " .. o.name .. " with the household", "the sea"
+    M.sea_out(W, pl, home_s, o, site, oname, route, boat, p, now, mg)
+    return "Sail to " .. oname .. " with the household", "the sea"
   end
-  local home = ctx.home
+  local home = ctx.home or (found and hh.pack_from and home_s.buildings[hh.pack_from])
   if not tr.embarked and (mg.given_up or now < mg.depart - c.ready_h - 0.01) then
     -- (the sailing put off: home with what was packed, the beasts back to the herd; life goes on
     -- until the morning they try again)
@@ -2800,20 +2838,31 @@ function M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
   end
   if home and p.carry ~= "pack" and not tr.packed then
     tr.packed = true
-    local prov, pack = move_share(W, hh, home, mg, now, c.trade_prov * 2, (grown and not skipper) and c.mig_carry or 0)
+    local prov, pack = move_share(W, hh, home, mg, now, c.trade_prov * 2, (grown and not skipper) and (found and c.found_carry or c.mig_carry) or 0)
     if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
     pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id, n = prov }
     if skipper then
-      -- (the household's goods to the boat, a load at a time: the dearest for their weight first)
       local left = sea.loads or 0
-      for _, g in ipairs(M.SEA_GOODS) do
-        local key = g == "grain" and "food" or g
+      -- (founders: their part of the granary first - seed and bread for the first months)
+      local g = home_s.granary
+      local share = found and (mg.share or 0) or 0
+      while found and g and left > 0 and share > 1 do
+        local q = min(share, 1 / econ.GOODS.grain.wt)
+        go(pl, g.dx, g.dy, "the granary")
+        pl[#pl + 1] = { op = "pick", what = "share", ref = g.id, n = q }
+        go(pl, hd.dx, hd.dy, "the dock")
+        pl[#pl + 1] = { op = "drop", to = "cargo", ref = hd.id, boat = boat.id }
+        share, left = share - q, left - 1
+      end
+      -- (the household's goods to the boat, a load at a time: the dearest for their weight first)
+      for _, gd in ipairs(M.SEA_GOODS) do
+        local key = gd == "grain" and "food" or gd
         local have = home.stock[key] or 0
-        local G = econ.GOODS[g]
+        local G = econ.GOODS[gd]
         while left > 0 and have * G.wt > 0.2 do
           local q = min(have, 1 / G.wt)
           if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
-          pl[#pl + 1] = { op = "pick", what = "pack", good = g, ref = home.id, n = q }
+          pl[#pl + 1] = { op = "pick", what = "pack", good = gd, ref = home.id, n = q }
           go(pl, hd.dx, hd.dy, "the dock")
           pl[#pl + 1] = { op = "drop", to = "cargo", ref = hd.id, boat = boat.id }
           have, left = have - q, left - 1
@@ -2845,7 +2894,7 @@ function M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
     go(pl, hd.dx, hd.dy, "the dock")
     if kind then pl[#pl].lead = kind end
     work(pl, "gather", 0, { until_t = mg.depart, fx = hd.mx, fy = hd.my })
-    return "Go to " .. o.name .. " by sea", "the dock"
+    return "Go to " .. oname .. " by sea", "the dock"
   end
   if not skipper then
     -- (waiting on the dock to be taken aboard)
@@ -2863,7 +2912,7 @@ function M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
       boat.move = nil
       for _, id in ipairs(hh.members) do
         local q = V.people[id]
-        if q and q.alive and people.stage(q, now) ~= "infant" then people.remember(q, now, sfmt("We gave up crossing to %s: %s, morning after morning", o.name, why)) end
+        if q and q.alive and people.stage(q, now) ~= "infant" then people.remember(q, now, sfmt("We gave up crossing to %s: %s, morning after morning", oname, why)) end
       end
       return M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
     end
@@ -2874,7 +2923,7 @@ function M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
     tr.boardw = 0
     for _, id in ipairs(hh.members) do
       local q = V.people[id]
-      if q and q.alive and people.stage(q, now) ~= "infant" then people.remember(q, now, sfmt("We could not sail to %s today (%s): we try again tomorrow", o.name, why)) end
+      if q and q.alive and people.stage(q, now) ~= "infant" then people.remember(q, now, sfmt("We could not sail to %s today (%s): we try again tomorrow", oname, why)) end
     end
     return M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
   end
@@ -2907,19 +2956,20 @@ function M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
   end
   work(pl, "board", 0.08, { boat = boat.id, fx = hd.mx, fy = hd.my, why = mg.why .. ": everyone is here; into the boat" })
   work(pl, "embark", 0.15, { boat = boat.id, fx = hd.mx, fy = hd.my, why = mg.why .. ": taking the household aboard" })
-  M.sea_out(W, pl, home_s, o, route, boat, p, now, mg)
-  return "Sail to " .. o.name .. " with the household", "the sea"
+  M.sea_out(W, pl, home_s, o, site, oname, route, boat, p, now, mg)
+  return "Sail to " .. oname .. " with the household", "the sea"
 end
--- (the skipper rows out to the open sea and sails the way over)
-function M.sea_out(W, pl, home_s, o, route, boat, p, now, mg)
+-- (the skipper rows out to the open sea and sails the way over: to village o, or to the shore of
+-- a place to be founded at planet cell `site`)
+function M.sea_out(W, pl, home_s, o, site, oname, route, boat, p, now, mg)
   local c = C()
   local gx, gy = trade.sea_gate(W, home_s, route.cells[1])
   local wet = sea_wet(W, route, now)
   local hrs = route.len / c.sail_speed * (1 + 0.25 * (wet and 1 or 0))
-  pl[#pl + 1] = { op = "go", x = gx, y = gy, place = "the open sea toward " .. o.name, water = true, why = mg.why .. ": rowing the household out to the open sea" }
-  work(pl, "voyage", hrs, { to = o.id, from = home_s.id, boat = boat.id, gate_c = route.cells[#route.cells],
-    risk = sea_risk(W, route, boat, p, now), migrate = true,
-    why = sfmt("%s: sailing the household over to %s (%.0f hours%s)", mg.why, o.name, hrs, wet and ", in wet weather" or "") })
+  pl[#pl + 1] = { op = "go", x = gx, y = gy, place = "the open sea toward " .. oname, water = true, why = mg.why .. ": rowing the household out to the open sea" }
+  work(pl, "voyage", hrs, { to = (not site) and o.id or nil, site = site, from = home_s.id, boat = boat.id, gate_c = route.cells[#route.cells],
+    risk = sea_risk(W, route, boat, p, now), migrate = (not site) or nil, found = site and true or nil,
+    why = sfmt("%s: sailing the household over to %s (%.0f hours%s)", mg.why, oname, hrs, wet and ", in wet weather" or "") })
 end
 -- (what a moving household loads into its boat first: the dearest for its weight)
 M.SEA_GOODS = { "cloth", "leather", "cheese", "grain", "smoked", "wool", "hides" }
@@ -2939,6 +2989,10 @@ local function found_legs(W, s, p, ctx, now)
   local home_s = V.settlements[tr.from]
   local here = p.at or p.sett
   local grown = ctx.stage == "adult" or ctx.stage == "elder" or ctx.stage == "apprentice"
+  if fd and fd.sea and not fd.arrived and home_s then
+    -- (S18) over the sea in the household's own boat
+    return M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, fd, home_s, nil, grown)
+  end
   if here == tr.from and fd and home_s then
     -- (a couple setting out from the house they lived in: their part of its larder)
     local home = ctx.home or (hh.pack_from and home_s.buildings[hh.pack_from])
@@ -3002,6 +3056,30 @@ local function found_legs(W, s, p, ctx, now)
   local cb = o and hh and o.buildings[hh.camp or hh.camp_site or 0]
   if cb then
     local x, y = camp_spot(o, cb, p)
+    -- (S18) come by sea: what the boat brought carried up from the beach a load at a time
+    local sea = fd and fd.sea
+    local boat = sea and sea.boat2 and o.boats and o.boats[sea.boat2]
+    local ld = o.dock or o.beach
+    if boat and boat.cargo and ld and grown and p.carry ~= "pack" then
+      local loads, mine, hands = 0, 0, 0
+      for _, g in ipairs(econ.ORDER) do loads = loads + (boat.cargo[g] or 0) * econ.GOODS[g].wt end
+      for _, id in ipairs(hh.members) do
+        local q = V.people[id]
+        local st = q and q.alive and people.stage(q, now)
+        if st == "adult" or st == "elder" or st == "apprentice" then hands = hands + 1 end
+      end
+      local share = math.ceil(loads / max(1, hands) - 1e-6)
+      for _, g in ipairs(econ.ORDER) do
+        local q = boat.cargo[g] or 0
+        while q > 1e-3 and mine < share do
+          go(pl, ld.dx, ld.dy, "the boat")
+          pl[#pl + 1] = { op = "pick", what = "cargo", good = g, boat = boat.id }
+          go(pl, x, y, "our camp")
+          pl[#pl + 1] = { op = "drop", to = "home", ref = cb.id }
+          q, mine = q - 1 / econ.GOODS[g].wt, mine + 1
+        end
+      end
+    end
     go(pl, x, y, "our camp")
     pl[#pl + 1] = { op = "drop", to = "home", ref = cb.id, trip_end = true }
     return "Set down our packs at the camp", "our camp"
@@ -3045,6 +3123,21 @@ function sea_legs(W, s, p, ctx, now)
     local inhouse = home.stock[tr.give == "grain" and "food" or tr.give] or 0
     local store = tr.give == "logs" and home_s.wood_store or home_s.granary
     local loads = 0
+    if GX.beast then
+      -- (S18) a sea drove: each beast to be sold taken by the halter where it is and led down to the
+      -- dock; they go in the boat when it is boarded
+      left = 0
+      tr.lead_kind = GX.beast
+      local H = home_s.herds and home_s.herds[GX.beast]
+      local want = floor(tr.n + 1e-6) - #(stock.led_by(home_s, p, GX.beast))
+      if H and want > 0 then
+        for _, a in ipairs(stock.for_sale(H, p.hh, tr.give, now, want)) do
+          local ax, ay = stock.pos(a, now)
+          go(pl, ax, ay, "a " .. GX.name1 .. " to sell")
+          work(pl, "halter", 0.06, { herd = stock.HIDX[GX.beast] + 1, ref = a.k, fx = ax, fy = ay })
+        end
+      end
+    end
     while left > 0.05 and loads < c.boat_hold + 1 do
       local q = min(left, 1 / GX.wt)
       local src = home
@@ -3056,6 +3149,7 @@ function sea_legs(W, s, p, ctx, now)
       left, inhouse, loads = left - q, inhouse - q, loads + 1
     end
     go(pl, hd.dx, hd.dy, "the dock")
+    if GX.beast then pl[#pl].lead = GX.beast end
     boat.mate_want, boat.mate = p.id, 0
     work(pl, "wait_mate", c.mate_wait * 2, { boat = boat.id, fx = hd.mx, fy = hd.my })
     work(pl, "board", 0.08, { boat = boat.id, fx = hd.mx, fy = hd.my })
@@ -3100,6 +3194,8 @@ function sea_legs(W, s, p, ctx, now)
       econ.learn(W, home_s, o, now)
       econ.learn(W, o, home_s, now)
       tr.have = boat.cargo and boat.cargo[tr.give] or 0
+      -- (S18: a sea drove's beasts, led off the boat)
+      if GX.beast then tr.have = #(stock.led_by(o, p, GX.beast)) end
       tr.deals = econ.deals(W, o, tr, c.boat_hold)
       tr.dealt = true
       if #tr.deals == 0 then
@@ -3118,6 +3214,22 @@ function sea_legs(W, s, p, ctx, now)
         local paid_store = src ~= nil and src ~= hb
         local left = d.done and 0 or (d.left or d.q)
         local loads = 0
+        if GX.beast and hb and not d.done then
+          -- (S18) the beasts bargained for at the pen they go into; what is paid carried to the boat
+          local pen = o.herds and o.herds[GX.beast] and o.buildings[o.herds[GX.beast].pen]
+          local at = pen or hb
+          go(pl, at.dx, at.dy, at.label or "the pen")
+          pl[#pl].lead = GX.beast
+          work(pl, "deal", c.deal_h, { di = di, ref = hb.id })
+          if paid_store then
+            go(pl, src.dx, src.dy, src.label or "the stores")
+            pl[#pl + 1] = { op = "pick", what = "owed", ref = src.id, di = di }
+          end
+          go(pl, od.dx, od.dy, o.name .. "'s dock")
+          pl[#pl].lead = GX.beast
+          pl[#pl + 1] = { op = "drop", to = "cargo", ref = od.id, boat = boat.id }
+          left = 0
+        end
         while hb and left > 1e-3 and loads < c.boat_hold + 1 do
           local q = min(left, 1 / GX.wt)
           go(pl, od.dx, od.dy, o.name .. "'s dock")
@@ -3376,6 +3488,28 @@ PLAN.tan = function(W, s, p, ctx, now, cd)
   return "Hides to the tanning pit", "the tanning pit"
 end
 
+-- (S18) Salt at the pans: logs for the fire (from the woodstore, else the household's woodpile) when
+-- the pans' pile is low, hours of boiling and raking, the salt carried home.
+PLAN.salt = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local sp = s.buildings[cd.a]
+  local home = ctx.home
+  ctx.hh.salting_pans = p.id
+  if (sp.stock.logs or 0) < 1.5 then
+    local w = (s.wood_store and (s.wood_store.stock.logs or 0) >= 2) and s.wood_store or home
+    go(pl, w.dx, w.dy, w == home and "our woodpile" or "the woodstore")
+    pl[#pl + 1] = { op = "pick", what = "logs", from = "store", ref = w.id, n = 2 }
+    go(pl, sp.dx, sp.dy, "the salt pans")
+    pl[#pl + 1] = { op = "drop", to = "saltpan", ref = sp.id }
+  end
+  go(pl, sp.dx, sp.dy, "the salt pans")
+  work(pl, "salt", (1.8 + 0.8 * u01(W, p, now, 61)) * p.dil, { ref = sp.id, fx = sp.cx, fy = sp.cy })
+  go(pl, home.dx, home.dy, "home", home.id)
+  pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, release = "salting_pans" }
+  return "Boil salt at the pans", "the salt pans"
+end
+
 PLAN.lift = function(W, s, p, ctx, now, cd)
   local c = C()
   local pl = plan_reset(p)
@@ -3441,7 +3575,7 @@ end
 
 PLAN.ride = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
-  if p.trip and p.trip.migrate then
+  if p.trip and (p.trip.migrate or p.trip.found) then
     -- (S18) a passenger: the household moving over the sea, sitting it out until the landing
     work(pl, "passage", 8, { boat = p.ride_boat })
     return "Cross the sea with the household", "the sea"
@@ -3504,9 +3638,12 @@ PLAN.smoke = function(W, s, p, ctx, now, cd)
   local home = s.buildings[cd.a]
   ctx.hh.smoking = p.id
   if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
-  local amt = max(1, (home.stock.fish or 0) - #ctx.hh.members * 0.8)
-  work(pl, "smoke", min(2.0, max(0.5, amt / c.smoke_fu_h)), { inside = home.id, ref = home.id })
-  return "Smoke the fish", "home"
+  local amt = max(1, (home.stock.fish or 0) + (home.stock.meat or 0) - #ctx.hh.members * 0.8)
+  -- (S18: salted faster than smoked)
+  local salted = min(amt, (home.stock.salt or 0) / c.salt_cure)
+  local hrs = salted / c.salt_cure_h + (amt - salted) / c.smoke_fu_h
+  work(pl, "smoke", min(2.0, max(0.5, hrs)), { inside = home.id, ref = home.id })
+  return salted > 0.5 and "Salt the meat and fish" or "Smoke the fish", "home"
 end
 
 -- Textiles (D-088): where the work is done. Spinning goes where the people are (the well, among
@@ -4025,6 +4162,9 @@ function M.decide(W, s, p, now, reason)
       -- (S18) the household moving over the sea
       p.objk = "migrate"
       p.why = require("sim.agents.migrate").why(W, p, W.S.v3.households[p.hh])
+    elseif p.trip and p.trip.found then
+      p.objk = "found"
+      p.why = require("sim.agents.founding").why(W, p, W.S.v3.households[p.hh])
     end
     p.tgt_kind, p.tgt_ref = "ride", 0
     return true
@@ -4055,7 +4195,7 @@ function M.decide(W, s, p, now, reason)
     local hh = W.S.v3.households[p.hh]
     local fd = hh and hh.found
     -- (life goes on until the morning they set off: then they pack, gather and go)
-    if (fd and not p.trip and (p.at or p.sett) == fd.from and p.sett == fd.from and now >= fd.depart - C().ready_h) or (p.trip and p.trip.found) then
+    if (fd and not fd.given_up and not p.trip and (p.at or p.sett) == fd.from and p.sett == fd.from and now >= fd.depart - C().ready_h) or (p.trip and p.trip.found) then
       if not p.trip then
         p.trip = { site = fd.site, from = fd.from, found = hh.id, give = "grain", take = "grain", n = 0, t0 = now }
       end

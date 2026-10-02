@@ -463,6 +463,24 @@ WORK.board = function(W, s, p, st, f)
   local tr = p.trip
   if tr and tr.sea then
     if (p.at or p.sett) == tr.from then tr.sailed = true else tr.homeward = true end
+    -- (S18) a sea drove: the beasts led down to the dock are lifted into the boat (one that would
+    -- not come down goes back to the herd: here, it is still theirs)
+    local kind = tr.lead_kind
+    if kind then
+      local L, H = stock.led_by(s, p, kind)
+      local now = W.S.v3.now or W.hour
+      for _, a in ipairs(L) do
+        local ax, ay = stock.pos(a, now)
+        if nav.dist(ax, ay, p.x, p.y) > C().drove_gather * 2 then
+          people.remove_id(tr.led, a.k)
+          stock.release(W, s, H, a, now, "Would not come down to the boat: back to the herd")
+        end
+      end
+      stock.leave_map(W, s, p, kind)
+      for _, a in ipairs(tr.party or {}) do a.why = "In the boat with " .. p.name end
+      p.pack = p.pack or {}
+      p.pack[tr.give] = #(tr.party or {})
+    end
   end
 end
 
@@ -557,6 +575,14 @@ WORK.embark = function(W, s, p, st, f)
     end
   end
   M.load_beasts(W, s, p, hh, now)
+  -- (whatever of theirs stays behind - a lamb born since they chose, a beast nobody could take -
+  -- is left with the people who stay)
+  for _, kind in ipairs(stock.HERDS) do
+    local H = s.herds and s.herds[kind]
+    for _, a in ipairs(H and H.animals or {}) do
+      if a.alive and a.owner == hh.id then require("sim.agents.migrate").leave_beast(W, s, hh, a, kind, now) end
+    end
+  end
 end
 
 -- (S18) The beasts q leads are lifted into the boat - those at the dock; one that would not come
@@ -591,8 +617,9 @@ WORK.voyage = function(W, s, p, st, f)
   local from = V.settlements[st.from or 0]
   local B = boats_of(W, p)
   local boat = B and B[st.boat or 0]
-  if not o or not from or not boat then return end
+  if not (o or st.site) or not from or not boat then return end
   local home = V.settlements[p.sett]
+  local oname = o and o.name or "the shore they sought"
   -- (S18: everyone aboard - the mate, or a household's people with the babes in their arms)
   local R = {}
   for i, q in ipairs(riders(W, boat, p)) do R[i] = q end
@@ -621,21 +648,28 @@ WORK.voyage = function(W, s, p, st, f)
     end
     home.acc.lost_sea = (home.acc.lost_sea or 0) + food
     home.acc.wrecks = (home.acc.wrecks or 0) + 1
-    local r = econ.rel(home, o)
-    r.lost = r.lost + 1
+    if o then
+      local r = econ.rel(home, o)
+      r.lost = r.lost + 1
+    end
     if M.drown_hook then
       for i = #aboard, 1, -1 do
         local q = aboard[i]
-        if q.alive then M.drown_hook(W, q, from.name, o.name) end
+        if q.alive then M.drown_hook(W, q, from.name, oname) end
       end
     end
     return
+  end
+  if st.site then
+    -- (S18, R5) founders sailing in to the shore they chose: the place is made as they come into
+    -- its waters
+    o = require("sim.agents.founding").sea_place(W, st.site, p, from, st.gate_c, now)
   end
   local gx, gy = require("sim.agents.trade").sea_gate(W, o, st.gate_c or o.cell)
   -- (S17) the shore along the way sailed: seen from the boat
   do
     local founding = require("sim.agents.founding")
-    local route = require("sim.agents.trade").sea_route(W, from, o)
+    local route = st.site and require("sim.agents.trade").sea_route_to(W, from, st.site) or require("sim.agents.trade").sea_route(W, from, o)
     local how = sfmt("seen from the sea on the way from %s to %s", from.name, o.name)
     founding.note_sea(W, p, route, how, now)
     for _, who in ipairs(R) do founding.note_sea(W, who, route, how, now) end
@@ -701,7 +735,7 @@ end
 WORK.land = function(W, s, p, st, f)
   local B = boats_of(W, p)
   local boat = B and B[p.boat or st.boat or 0]
-  local b = s.dock
+  local b = s.dock or s.beach   -- (S18: a young place's beach until its dock stands)
   if boat and boat.riders and #boat.riders > 0 then
     -- (S18) the passengers step ashore (the household's people, the babes in their arms)
     local V = W.S.v3
@@ -738,6 +772,20 @@ WORK.land = function(W, s, p, st, f)
     boat.away = (s.id ~= p.sett) and s.id or nil
     if p.trip and p.trip.sea then
       if s.id ~= p.sett then p.trip.landed = true elseif p.trip.back then p.trip.ashore = true end
+      -- (S18) a sea drove's beasts lifted out onto the dock, led by the trader; home again they go
+      -- back to the herd
+      local tr = p.trip
+      local kind = tr.lead_kind
+      if kind and tr.party and #tr.party > 0 then
+        local now = W.S.v3.now or W.hour
+        stock.join_map(W, s, p, kind, b.dx, b.dy, now)
+        if s.id == p.sett then
+          local L, H = stock.led_by(s, p, kind)
+          for _, a in ipairs(L) do stock.release(W, s, H, a, now, "Home from over the sea, unsold: back to the herd") end
+          tr.led = {}
+          if p.pack then p.pack[tr.give] = 0 end
+        end
+      end
     end
     -- hours afloat wear the hull and the oars
     local out = (W.S.v3.now or W.hour) - (boat.t_out or (W.S.v3.now or W.hour))
@@ -754,6 +802,9 @@ WORK.land = function(W, s, p, st, f)
     -- (S18) a household come by sea: ashore at its new village's dock they are its people, and
     -- their boat is moored here for good
     require("sim.agents.migrate").land(W, s, p, boat, W.S.v3.now or W.hour)
+  elseif boat and st.found and p.trip and p.trip.found and s.id ~= p.sett then
+    -- (S18, R5) founders come by sea: ashore on the place's beach
+    require("sim.agents.founding").land_sea(W, s, p, boat, W.S.v3.now or W.hour)
   end
 end
 
@@ -782,6 +833,22 @@ WORK.smoke = function(W, s, p, st, f)
   if not b then return end
   local c = C()
   local fresh = (b.stock.fish or 0) + (b.stock.meat or 0)
+  -- (S18) salt at home: the meat and fish are salted first - faster, and no fire wanted
+  local salt = b.stock.salt or 0
+  if salt >= c.salt_cure * 0.5 and fresh > 0 then
+    local sa = min(fresh, salt / c.salt_cure, c.salt_cure_h * st.dur * f)
+    local mt = min(b.stock.meat or 0, sa)
+    b.stock.meat = (b.stock.meat or 0) - mt
+    b.stock.fish = (b.stock.fish or 0) - (sa - mt)
+    b.stock.smoked = (b.stock.smoked or 0) + sa
+    b.stock.salt = salt - sa * c.salt_cure
+    s.acc.salted = (s.acc.salted or 0) + sa
+    s.acc.salt_used = (s.acc.salt_used or 0) + sa * c.salt_cure
+    if hh and sa > mt then hh.fish_spare = (hh.fish_spare or 0) + sa - mt end
+    -- (what time is left goes to the smoke)
+    f = f * max(0, 1 - sa / max(1e-6, c.salt_cure_h * st.dur * f))
+    fresh = fresh - sa
+  end
   local amt = min(fresh, c.smoke_fu_h * st.dur * f)
   local logs = b.stock.logs or 0
   if logs < amt * c.smoke_logs then amt = logs / c.smoke_logs end
@@ -986,6 +1053,24 @@ WORK.tan = function(W, s, p, st, f)
   p.carry, p.camt = "", 0
 end
 
+-- (S18) Boiling salt at the pans: seawater let into the shallow pans and boiled down over the fire;
+-- the sun does part of it on a warm dry day; the salt raked out and carried home.
+WORK.salt = function(W, s, p, st, f)
+  local sp = s.buildings[st.ref or 0]
+  if not sp or f < 0.3 then return end
+  local c = C()
+  local t = s.temp_now or 10
+  local sun = (s.rain_now or 0) == 0 and c.salt_sun * max(0, min(1, (t - 8) / (c.salt_sun_temp - 8))) or 0
+  local q = c.salt_h * st.dur * f * (0.85 + 0.3 * (p.dil - 0.6) / 0.8)
+  local per = c.salt_logs * (1 - sun)
+  local logs = sp.stock.logs or 0
+  if per > 0 and q * per > logs then q = logs / per end
+  if q <= 0 then return end
+  sp.stock.logs = logs - q * per
+  p.carry, p.camt = "salt", q
+  s.acc.salt_made = (s.acc.salt_made or 0) + q
+end
+
 WORK.lift = function(W, s, p, st, f)
   local pit = s.buildings[st.ref or 0]
   if not pit or f < 0.99 or (pit.stock.soaking or 0) <= 0 then return end
@@ -1096,10 +1181,18 @@ WORK.cheese = function(W, s, p, st, f)
   local m = (b.stock.milk or 0) * min(1, f)
   if m <= 0 then return end
   b.stock.milk = b.stock.milk - m
-  b.stock.cheese = (b.stock.cheese or 0) + m * c.cheese_keep
-  b.stock.scraps = (b.stock.scraps or 0) + m * (1 - c.cheese_keep)
-  s.acc.whey = (s.acc.whey or 0) + m * (1 - c.cheese_keep)
-  s.acc.cheese = (s.acc.cheese or 0) + m * c.cheese_keep
+  -- (S18) salt worked into the curd keeps it: unsalted, less of it keeps
+  local need = m * c.cheese_keep * c.cheese_salt
+  local salted = need > 0 and min(1, (b.stock.salt or 0) / need) or 0
+  if salted > 0 then
+    b.stock.salt = (b.stock.salt or 0) - need * salted
+    s.acc.salt_used = (s.acc.salt_used or 0) + need * salted
+  end
+  local keep = c.cheese_keep_nosalt + (c.cheese_keep - c.cheese_keep_nosalt) * salted
+  b.stock.cheese = (b.stock.cheese or 0) + m * keep
+  b.stock.scraps = (b.stock.scraps or 0) + m * (1 - keep)
+  s.acc.whey = (s.acc.whey or 0) + m * (1 - keep)
+  s.acc.cheese = (s.acc.cheese or 0) + m * keep
 end
 
 -- The hunt (D-094): at the end of the creep, a spear thrown if the quarry is still in range (the
@@ -1127,6 +1220,8 @@ WORK.stalk = function(W, s, p, st, f)
       H.carcass = { x = cc.x, y = cc.y, meat = cc.meat, hide = cc.hide }
       people.practice(p, "sk_hunt", 1)
       people.remember(p, now, "Speared a " .. w.sp .. " at the woods' edge")
+      -- (S18) out in the country: what is there is known afresh at home
+      if s.id == p.sett then require("sim.agents.founding").roamed(W, s, p, now) end
       return
     end
   end
@@ -2256,7 +2351,12 @@ DROP.any = function(W, s, p, st)
   end
   local b = s.buildings[st.ref]
   if not b then return end
-  if st.to == "repair" and what == "logs" then
+  if st.to == "saltpan" and what == "logs" then
+    -- (S18) the fire's wood at the salt pans
+    b.stock.logs = (b.stock.logs or 0) + n
+  elseif what == "salt" then
+    b.stock.salt = (b.stock.salt or 0) + n
+  elseif st.to == "repair" and what == "logs" then
     b.repair_logs = (b.repair_logs or 0) + n
   elseif st.to == "site" and what == "logs" then
     b.logs_have = b.logs_have + n
@@ -2342,9 +2442,9 @@ local function end_trip(W, s, p, st)
     if hh and hh.trading == p.id then hh.trading = 0 end
     if s.trading == p.id then s.trading = 0 end
     local hh2 = W.S.v3.households[p.hh]
-    local sm = hh2 and hh2.migrate and hh2.migrate.sea
+    local sm = hh2 and ((p.trip.migrate and hh2.migrate and hh2.migrate.sea) or (p.trip.found and hh2.found and hh2.found.sea))
     local mb = sm and sm.boat2 and s.boats and s.boats[sm.boat2]
-    if p.trip.migrate and mb and mb.cargo then
+    if mb and mb.cargo then
       -- (S18) anything left in the hold of the boat they came in goes into the house with the last load
       for _, g in ipairs(econ.ORDER) do
         local v = mb.cargo[g] or 0
@@ -2482,6 +2582,15 @@ local function finish(W, s, p, now, f)
             p.hunger = max(0, p.hunger - m / c.meal_fu * c.meal)
             hs.acc.eaten = (hs.acc.eaten or 0) + m
           end
+        end
+        if not q and p.act == "travel" and p.hunger > 0.6 then
+          -- (S18) nothing left to eat on the road: what can be picked along the way - berries,
+          -- nuts, roots, by the season
+          local doy = require("sim.agents.clock").local_doy(now, W.grid.lat[hs.cell])
+          local m = c.road_forage * h * ((doy >= 12 and doy < 36) and 1 or (doy < 12 and 0.5 or 0.25))
+          p.hunger = max(0, p.hunger - m / c.meal_fu * c.meal)
+          hs.acc.foraged = (hs.acc.foraged or 0) + m
+          hs.acc.eaten = (hs.acc.eaten or 0) + m
         end
       end
     end

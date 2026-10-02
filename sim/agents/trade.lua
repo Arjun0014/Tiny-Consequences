@@ -105,6 +105,73 @@ function M.sea_route(W, s, o)
   return r
 end
 
+-- (S18, R5) The sea about village s as its boats know it: every ocean cell reachable from the sea
+-- its map reaches, by fewest steps (a breadth-first search from the same start as sea_route):
+-- { prev = {}, depth = {} } (runtime, per village).
+local REACH = setmetatable({}, { __mode = "k" })
+local function sea_tree(W, s)
+  local t = REACH[s]
+  if t then return t end
+  local g = W.grid
+  local ocean = W.geo.ocean
+  local nbr, cnt = g.nbr, g.nbr_count
+  local prev, depth, q, qi = {}, {}, {}, 1
+  local sites = require("sim.society.sites")
+  local start = {}
+  for _, j in ipairs(sites.rings(W, s.cell, 2)) do if ocean[j] == 1 then start[#start + 1] = j end end
+  table.sort(start)
+  for _, j in ipairs(start) do
+    if not prev[j] then prev[j] = -1; depth[j] = 0; q[#q + 1] = j end
+  end
+  while qi <= #q do
+    local c = q[qi]; qi = qi + 1
+    for k = 1, cnt[c] do
+      local j = nbr[c * 6 - 6 + k]
+      if j > 0 and ocean[j] == 1 and not prev[j] then prev[j] = c; depth[j] = depth[c] + 1; q[#q + 1] = j end
+    end
+  end
+  t = { prev = prev, depth = depth }
+  REACH[s] = t
+  return t
+end
+
+-- (S18, R5) The sea way from village s to the shore at planet cell `cell` (a place to found): to the
+-- ocean cell within two rings of it its boats reach in fewest steps (ties by cell). Returns
+-- { cells, len } like sea_route, or false. Runtime cache.
+local TOSITE = setmetatable({}, { __mode = "k" })
+function M.sea_route_to(W, s, cell)
+  local cache = TOSITE[s]
+  if not cache then cache = {}; TOSITE[s] = cache end
+  local r = cache[cell]
+  if r ~= nil then return r end
+  if not s.dock then cache[cell] = false; return false end
+  local t = sea_tree(W, s)
+  local ocean = W.geo.ocean
+  local sites = require("sim.society.sites")
+  local best, bd = nil, 1e9
+  for _, j in ipairs(sites.rings(W, cell, 2)) do
+    local d = ocean[j] == 1 and t.depth[j]
+    if d and (d < bd or (d == bd and j < best)) then best, bd = j, d end
+  end
+  if not best then cache[cell] = false; return false end
+  local cells = {}
+  local c = best
+  while c and c > 0 do cells[#cells + 1] = c; c = t.prev[c] end
+  for i = 1, floor(#cells / 2) do cells[i], cells[#cells + 1 - i] = cells[#cells + 1 - i], cells[i] end
+  local g = W.grid
+  local R = require("sim.agents.map").R
+  local function arc(a, b)
+    local dot = g.X[a] * g.X[b] + g.Y[a] * g.Y[b] + g.Z[a] * g.Z[b]
+    if dot > 1 then dot = 1 elseif dot < -1 then dot = -1 end
+    return acos(dot) * R
+  end
+  local len = arc(s.cell, cells[1]) + arc(cells[#cells], cell)
+  for i = 2, #cells do len = len + arc(cells[i - 1], cells[i]) end
+  r = { cells = cells, len = len }
+  cache[cell] = r
+  return r
+end
+
 -- Settlements reachable by sea from s (both with docks, within sea_reach), nearest first.
 local SEA = setmetatable({}, { __mode = "k" })
 function M.sea_partners(W, s)
