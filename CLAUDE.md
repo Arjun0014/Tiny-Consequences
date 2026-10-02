@@ -42,6 +42,12 @@ every animal is clickable with its why; households migrate physically (`sim/agen
 brides walk to their husband's village, relief sails. **Bob forbids circular requires even inside
 functions** (LuaJIT tests pass, the build fails): inject modules through `sim/agents/init.lua` and run
 `npm run build` after adding a `require` between agent modules.
+Session 17 (D-123-D-128): founding a new place (`sim/agents/founding.lua`: knowledge of places
+`s.lore` from real contact only; camps, huts on cleared lots `settle.plan_lot`; the view adds
+settlements at runtime), roads over the land (`trade.land_route`), kin help, the economy measured with
+`tools/v3_market.lua` and `tools/v3_econ.lua --days 48` (trade by real want, never forced); premises
+for tests and shots live in `sim/agents/premise.lua` (people created at runtime need `W.v3rt = nil`);
+`scripts/shots_found.mjs` watches a founding in the game.
 
 ## Read order
 

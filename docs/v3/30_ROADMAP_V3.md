@@ -106,6 +106,15 @@ a neighbouring village (the first kin across villages). Open: sea droves, beasts
 cargo boats (no trade volume yet to justify one), kin visits across villages, a groom moving to the
 bride's village.)
 
+(Session 17, D-124-D-126: roads follow the land (A* over the planet's cells: slopes, forest, high
+ground, rivers forded); kin ask kin at other villages for food and offer a place to live; the quiet
+economy diagnosed (`tools/v3_market.lua`: everyone short of the same textiles and leather, grain
+worthless everywhere, trips gaining less than the road) and woken without forcing: reachable stock
+targets, the road's cost as the work given up, work for exchange, gifts both ways on kin visits,
+news visits - 21 exchanges in the untouched year, by road and sea, first on day 31 with the southern
+wool and leather. Open: goods only some places have (salt, tools' stone or metal), fairs, credit,
+larger cargo boats when sea volume asks.)
+
 ## Geography (session 14, D-112)
 Drainage basins on the planet (outlets, a priority flood, beds falling to the sea), rivers widening
 with discharge from mountain sources, valleys and floodplains carved into the drawn planet, mountains
@@ -123,7 +132,17 @@ led, gathering at the gate at an agreed hour, the road together, babes carried a
 lodging with kin or the household with room, a house planned and built for them, houses left empty
 given to waiting couples and households. A bride's move (D-120) uses the same road.)
 
-Next - founding a new place (no spawned villages):
+(Session 17, D-123: **founding done**. Knowledge of places from real contact only (`s.lore`); who
+founds and why (hardship with nowhere to go, couples with no lot, no room for fields; not without food
+to take); the party packs its part of the larder and granary, leads its beasts and dog, walks the
+land route; the place exists from the moment they walk onto it, with nothing built; camps, water from
+the river or a well, huts on lots cleared by felling and grubbing, the camp struck, fields, a granary
+once sown, a woodstore, pens; every system tolerant; the view adds the place at runtime; places,
+founders and beasts inspectable. Test `test_v3_found.a_crowded_village_founds_a_new_place`. Open:
+moving and founding by sea, sea droves, hunters refreshing knowledge, huts rebuilt as houses, planet
+markers for small places.)
+
+The plan as it was written (done, as above):
 1. **Who and why**: a household (or kin together) pushed hard with no village that would take them
    or pull them enough, or a young couple with no lot at home (`find_lot` fails, `s.couples` waiting
    long), weighs empty sites it knows of (cells along the roads and coasts travellers have seen -

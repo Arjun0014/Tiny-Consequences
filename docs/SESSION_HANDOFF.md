@@ -1,105 +1,98 @@
-# Session handoff — sessions 15-16 (2 Oct 2026): the browser cost found, animals as individuals, R4 nearly done, R5 begun
+# Session handoff — session 17 (2 Oct 2026): R5 founding, roads over the land, kin help, the economy woken
 
-`docs/PROGRESS.md` (sessions 15-16 entry) and **D-114 … D-122** in `docs/DECISIONS.md` are the source
-of truth. Arjun's rules: no subagents; the living world first; one heavy process at a time (shared
-laptop); visible action = simulation; fix mechanisms, not appearances; never trade agency for the
-season budget (100 believable animals beat 500 synchronised puppets); no forced trade; measure the
-release browser by the lower envelope of several runs with rendering off; hand off near ~900K context.
+`docs/PROGRESS.md` (session 17 entry) and **D-123 … D-128** in `docs/DECISIONS.md` are the source of
+truth. Arjun's rules: no subagents; the living world first; one heavy process at a time (shared
+laptop); visible action = simulation; nothing appears that nobody built; fix mechanisms, not
+appearances; never trade agency for the season budget; no forced trade or migration (test by
+creating a real premise); measure the release browser by the lower envelope of several runs with
+rendering off; hand off near ~900K context.
 
-## What happened (two sessions)
-- **Session 15 died** (a dropped connection) before its handoff. Its transcript is `last_session.md`
-  (untracked, Arjun's file). It had committed `617587b` (the browser-only first-hours cost was
-  headless Chromium's CPU rasteriser - SwiftShader - competing with the sim; probes now draw nothing
-  while measuring: bridge `render_off`, `prof_web.mjs`'s default, `--render` to keep drawing) and
-  `4766bdc` (animals as individuals, first pass: livestock and wild bands within their own range,
-  own pace/alertness/side, grazing headings, rouse delays, alarm waves; tools `v3_animals`,
-  `v3_tracks`, `shots_herd`) - but that commit broke `test_v3_year` (a child starved) - and left R4
-  droving (D-115) and an R5 draft (`sim/agents/migrate.lua`) uncommitted.
-- **Session 16** recovered all of it (nothing reset), wrote D-114/D-115 into history, and:
-  - **Animals (D-116, D-121)**: a richer audit (velocity correlation between members, mass
-    starts/stops/rests, offset change, centre spread, young-mother distance; `tools/v3_pack.lua`
-    frame by frame); measured pre-S15 / S15 / now on the same world; replaced what was still a
-    formation: wolves follow the leader's **trail** at drifting places (sniff stops fall back,
-    catch-ups pass, scent detours), flank from where they are, lie down while the leader waits, wait
-    their turn at a kill, arrive one after another; dogs hold their own **posts** at the herd's edge,
-    work the **balance point** when the herd is moved, go round the herd (never through), see off
-    wild animals (which flee running dogs), keep after a straggler until it is back; the **drove as
-    individuals** (no rope line), the drover waiting at the gate for it; **natural spacing**
-    (`stock_range`, `stock_room`, `stock_bend`; a moving flock tightens); grazing whys that say
-    something; **every animal clickable** in the game with its why.
-  - **D-117**: a remarrying widow had moved into her new house alone, her children (10 and 2)
-    starved beside the grain - parents now bring their children; children with no grown-up are
-    taken in by kin or a neighbour. (This was S15's year-test failure.)
-  - **R4**: relief by sea (D-118); kin visits across villages carrying the news (D-122); courting at a neighbouring village (D-120) - a man with nobody to
-    marry at home walks to a trusted neighbour, marries there, the bride walks back with him (the
-    first kin across villages; a chain follows: the village he took her from now has an unwed man
-    who goes courting in turn).
-  - **R5 begun (D-119)**: households move to another village physically (push lasting days, pull,
-    packing, beasts led, gathering at the gate, the road together, babes carried, lodging, a house
-    built for them, empty houses reused).
+## What happened
+- **R5 founding (D-123, `sim/agents/founding.lua`)**, built from scratch and followed end to end:
+  - *Knowledge of places* (`s.lore[cell] = { t, how }`): the country within 4 rings (hunting,
+    herding), the land along every road walked (`p.seen`, told at home or where they come to live),
+    the shore along every sea way sailed, what visitors and hosts tell each other (`econ.on_learn`),
+    a bride's village's knowledge. Never the planet itself.
+  - *Who and why* (`founding.daily` after `migrate.daily`): hardship that lasted with no known village
+    drawing them (`hh.no_refuge`), a couple waiting `found_lot_days` with no lot (`s.no_lot`), no room
+    for the fields wanted (`s.no_field_room`); against what holds them, the season's risk and the
+    food they can take (starving people do not found). Others in the same plight (kin first) join.
+  - *The road*: making ready the morning after; provisions shared; packs from the larder and the
+    granary share; beasts led; the dog goes with them; the land route (D-124) at the party's pace.
+  - *The place*: made when the first of them walks onto it (empty map: land, rivers, untouched woods);
+    laid out by them; camps (home and larder; herds kept by them; people round the fire); water from
+    the river or a well; huts on lots cleared by felling and grubbing (`settle.plan_lot`); the camp
+    carried in and struck; fields; granary once sown; woodstore; pens. Every system tolerates it.
+  - *View*: added at runtime (`agents_view.add_one`), camps/huts/fires drawn, travellers and their
+    beasts on the land route, settlement picking and inspector (founding story, why here, what stands
+    and is being made, what it lacks, food, beasts, knowledge, news).
+  - Watched: Zurug crowded (`premise.crowd`: its ground built over by families of the founding
+    templates), a couple that waited 13 days founds a place 31 h away known from Hottoodingle Hop's
+    people; camp within hours, huts in ~4 days, woodstore, fields, granary when sown; a second couple
+    follows. Earlier drafts starved founders (fixed: lodging couples had no larder; gather counted as
+    work; a layout on the wrong bank of a river; nothing to eat without a fire or a home).
+- **Roads follow the land (D-124)**: `trade.land_route` over the planet's cells; all roads use it.
+- **Kin help (D-125)**: asking kin elsewhere for food; kin offering a place to live.
+- **The quiet economy (D-126)**: diagnosed with `tools/v3_market.lua`; reachable stock targets, the
+  road's cost as the work given up, work for exchange, visit gifts both ways, news visits. 0 -> 21
+  exchanges in the untouched year (first on day 31, with the southern wool and leather).
+- **D-127**: a hunter cut off by water starved; now people wade back after an hour of failed plans.
+- **Performance (D-128)**: exact cuts only (path cache kept while costs are unchanged; ring-only
+  free_spot), proven by identical 4-day hashes.
 
 ## State
-- **main** at the final commit (see PROGRESS). Shipped world unchanged (`assets/worlds/v3.tcsave`,
-  seed 22, 6 settlements, 143 people at founding). `?world=v2` legacy.
-- The before/after animal measurements ran in temporary worktrees (removed): to repeat them,
-  `git worktree add --detach ../tc-before 617587b` (pre-S15) or `... ../tc-s15 4766bdc`, copy
-  `tests/sim/support/animals_audit.lua` and `tools/v3_animals.lua` in, run
-  `luajit tools/v3_animals.lua --hours 48` there and here.
-
-## Tests and measurements (final)
-- Quick sim **142/142** (v2 109 + v3 33), web **11/11** (W10 determinism), lint clean, `npm run build`
-  OK; `node scripts/v3_hash_web.mjs --release`: browser = LuaJIT at 0, 24, 48, 72 h.
-- Release browser (`node scripts/prof_web.mjs --release --hours 288 --runs 3`, rendering off):
-  runs 37.9-39.2 ms/h, envelope **37.6 ms/h = a 12-day season 10.8 s** (target 10 s; kept over for
-  the agents). Before the animal work 30.2-30.9 ms/h (8.3 s); S15 end 36.9 (10.6 s).
-- LuaJIT (`luajit -joff tools/v3_profile.lua --days 4`): **4.06 M instructions a game hour**
-  (pre-S15 2.88 M, S15 3.76 M): nav (A*) 29%, map 13%, stock 12%, wild 12%, think 11%, event
-  queue 9%.
-- Animal synchronisation (shipped world, first dawn + 48 h, pre-S15 / S15 / final): wolves blob
-  92% / 63% / 28-46%, vcorr 0.81 / 0.68 / 0.58-0.63, mass stops 7% / 29% / 0-4%; dogs moving 91% /
-  33% / 19%; herded flocks align 0.69 / 0.35 / 0.19; young within 0.5 spacings of their mothers
-  (was 0.9); left-out herds no longer frozen; Tekheim's flock spread 0.17 -> 0.29 units (screens
-  `out/shots/look/s16_flock_later.png` vs `s16_flock_spaced.png`, tracks `out/tracks/`).
-- R4: livestock sold alive and droved as individuals, relief by sea, courting and brides, kin
-  visits carrying news - done (tested by created want). Open: sea droves, beasts as payment, larger
-  cargo boats. R5: households moving to existing villages - done; founding - next.
+- **main** at the final commit (see PROGRESS). Shipped world unchanged (`assets/worlds/v3.tcsave`).
+- Quick sim **143/143** (v2 109 + v3 34), web **11/11** (W10), lint clean, `npm run build` OK;
+  `node scripts/v3_hash_web.mjs --release`: browser = LuaJIT at 0, 24, 48, 72 h.
+- LuaJIT `luajit -joff tools/v3_profile.lua --days 4`: **3.93 M instructions a game hour** (S16 4.06):
+  nav (A*) 28.6%, stock 12.3%, map 12.0%, think 11.8%, wild 11.3%, event queue 8.6%.
+- Release browser (`node scripts/prof_web.mjs --release --hours 288 --runs 3`, rendering off): runs
+  40.7 / 38.6 / 38.3 ms/h, envelope **37.9 ms/h = a 12-day season 10.9 s** (target 10 s; kept).
+- Economy, untouched world, 48 days (`luajit tools/v3_econ.lua --days 48 --every 12`): 21 exchanges,
+  4 news visits, trips Dreik Knoll 17, Hottoodingle Hop 17, Krikeivorn 10, Zurug 6, Tekheim/Little
+  Leelee 0; no founding, no migration; deaths only old age and three small children's illnesses.
 
 ## Next (in order)
-1. **R5 founding** - the plan is in `docs/v3/30_ROADMAP_V3.md` R5 ("Next - founding a new place"):
-   site knowledge from travel, `settle.new` for the empty map, the party's journey, camp -> shelter
-   -> well/water -> field -> granary, every system tolerant of a village without its buildings.
-2. **Kin across villages** now exist (brides): visits (news carried both ways - the shipped world
-   has no travel at all in 12 days, so villages never hear of each other's wants), pull of kin in
-   migration (already counted), help asked of kin.
-3. Moving by sea (a household with a boat), sea droves, larger cargo boats only when volume
-   justifies them (no trade volume yet).
-4. Performance: the season is over 10 s in the release browser (see above); the sim is ~4.0 M
-   LuaJIT instructions a game hour (pre-S15 2.88 M): people's A* is 22% (91 searches an hour, cached
-   per map version), the animals' decisions most of the rise. Cut exactly (no agency lost): fewer
-   herd scans per dog decision, a spatial index for herd scans, path reuse for repeated walks.
-5. Birds beyond gulls (rooks/crows at fields and carcasses, herons, raptors, songbirds), lakes,
-   local-map valleys, passes - below R5.
+1. **Moving by sea** (not done; design): in `migrate.daily`, a household owning a sound boat
+   (`econ.own_boat`) with at most ~6 members also weighs the sea partners (`trade.sea_partners`,
+   hours = route len / sail_speed); `hh.migrate.sea = boat id`. `migrate_legs`: pack, all to the dock,
+   gather; the skipper (its fisher, else the eldest grown-up) boards and sails (`voyage` with
+   `migrate = true`), the others ride (`p.riding = skipper`; generalise `WORK.voyage` to move every
+   rider of the boat, not only the mate, and `WORK.land` to set every rider ashore); at the other
+   dock `migrate.arrive` for each; the boat moves from `home.boats` to `o.boats` (renumbered; owner
+   kept). Small stock only (a few sheep/goats as cargo), the rest left with kin. Then founding by sea
+   (`founding.daily` sea sites: the shore known from voyages, `note_sea`), sea droves, and larger
+   cargo boats only when trade volume by sea (now real: Krikeivorn-Dreik Knoll) asks for them.
+2. **The economy, deeper**: goods only some places have (salt from coastal pans for curing fish, meat,
+   cheese and hides; stone or metal for tools), fairs after the harvest (a reason for neighbours to
+   meet, court and barter), credit for what cannot be carried. Keep measuring with `v3_market.lua`
+   and `v3_econ.lua`; never force.
+3. **Founding, polish**: hunters refreshing knowledge at the map's edge; a hut rebuilt as a house
+   later; planet markers for small places; a forest site's camp is hidden under the canopy until its
+   people have cut about it (honest, but the camera could help); the founding generator's waiting
+   couples have no parents (no kin to ask).
+4. **Performance** (exact only): wild.threat scans a village's members per wild decision (an index of
+   people outdoors by tile block, kept on step ends, with member order for ties); incremental cost
+   rebuilds for building changes; the herd scan's centre is only needed when nobody is in sight (the
+   nearest/count part could use a block index with index-order ties).
+5. Birds beyond gulls, lakes, local-map valleys, passes - below the above.
 
-## Findings and pitfalls (sessions 15-16)
-- **Bob forbids circular requires even inside functions**: LuaJIT tests pass, `npm run build`
-  fails ("Circular dependency detected"). Inject modules through `sim/agents/init.lua` (as
-  `settle.econ`, `settle.migrate`) and build after adding a `require` between agent modules.
-- Measure the browser with rendering off (`prof_web.mjs` default); compare code changes by LuaJIT
-  instruction counts (`luajit -joff tools/v3_profile.lua --days 4`), not wall time.
-- `migrate.daily` / `settle.daily` get `day * 24` (UTC midnight), not the hour it is: use
-  `W.S.v3.now or W.hour` for anything scheduled from it.
-- Memories are a ring of 8 (`people.remember`): a busy hunter's courting memory is gone in a day;
-  trace with scripts, not memories.
-- An interrupt during a road leg restarts the leg (`WORK.travel` needs f >= 0.99): do not interrupt
-  travellers (a hungry baby is now fed on the road).
-- The audit's numbers move run to run when the world changes (wolf visits vary); the regression
-  test thresholds have margin.
+## Findings and pitfalls (session 17)
+- **Runtime-created people must enter the event queue**: `people.new` after the queue exists does not
+  schedule them; `premise.crowd` sets `W.v3rt = nil` (rebuilt like after a load). Births do their own.
+- Heredocs with apostrophes still break in this harness's bash: write patch scripts to the
+  scratchpad with the Write tool and run them with python.
+- `render_off` had been erroring every frame (the clear used `render.BUFFER_COLOR_BIT`, gone in this
+  Defold); fixed with `graphics.BUFFER_TYPE_*`. Earlier render_off measurements drew nothing anyway.
+- The path cache cannot live across days (~560 tile costs change a day per settlement).
+- A village's knowledge of places is lazily made (`founding.lore`); a new place copies its founders'.
+- `trade.forget(W)` must be called when settlements appear (partner caches).
+- Lua's 60-upvalue limit hit `think.decide`: call new helpers through `M.` (e.g. `M.found_legs`).
+- The browser's world starts at the first dawn, not hour 0: probes that apply premises after load
+  must not assume hour 0 (and must rebuild the event queue).
 
 ## Known oddities
-- The shipped world is economically quiet: no trade, no relief, no migration in 12 days (every
-  village has grain to spare, nobody travels, news never refreshes). Courting is the first thing
-  that sends people between villages on their own (Tib of Hottoodingle Hop goes when the harvest
-  work lets him).
-- A village everyone leaves (the migration test empties Zurug by wiping its food daily) stays as
-  standing buildings with no people.
-- Night scenes are very dark (wolves at the pens are hard to see).
+- Founding needs real pressure: the shipped world founds nothing in a year (healthy, uncrowded).
+- The first month of the shipped world is still quiet in trade (seasonal goods not in yet).
+- Tekheim and Little Leelee never trade (one 31 h road, little to exchange).
+- Night scenes are very dark.
