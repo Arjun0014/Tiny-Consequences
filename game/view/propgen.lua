@@ -1159,6 +1159,24 @@ function M.mover_template(kind)
   end
   if kind == "dolphin" then return kit.dolphin() end
   if kind == "sheep" or kind == "goat" or kind == "cow" then return kit.quadruped(kind) end
+  if kind == "plough" then
+    -- (S14) the plough behind a yoked ox, in local units: the ploughman's hands at the origin, +x
+    -- toward the ox (stock.YOKE_AHEAD ahead). Two handles slope down to the body and its iron share;
+    -- the beam rises to the swingletree just behind the ox; traces run along its flanks to the yoke.
+    local t = kit.new()
+    -- (handles from the hands, ~0.038 up at the villagers' scale, down to the body at 0.034 ahead)
+    for _, z in ipairs({ -0.0040, 0.0040 }) do
+      kit.place(t, kit.box(nil, 0.0450, 0.0018, 0.0018, 1, 0.75, 1.0, true), 0.0215, 0.0200, z, 1, 1, 1, 0, 0, -0.97)
+    end
+    kit.place(t, kit.box(nil, 0.0016, 0.0016, 0.0100, 1, 0.75, 1.0, true), 0.0090, 0.0380, 0, 1)          -- the cross-grip
+    kit.place(t, kit.box(nil, 0.0150, 0.0040, 0.0034, 2, 0.6, 0.9, true), 0.036, 0.0022, 0, 1)           -- body and share
+    kit.place(t, kit.box(nil, 0.0256, 0.0022, 0.0022, 1, 0.75, 1.0, true), 0.044, 0.0095, 0, 1, 1, 1, 0, 0, 0.36)   -- beam
+    kit.place(t, kit.box(nil, 0.0018, 0.0018, 0.0220, 1, 0.75, 1.0, true), 0.0565, 0.0140, 0, 1)         -- swingletree
+    for _, z in ipairs({ -0.0105, 0.0105 }) do
+      kit.place(t, kit.box(nil, 0.0450, 0.0009, 0.0009, 3, 0.7, 0.9, true), 0.0785, 0.0190, z, 1, 1, 1, 0, 0, 0.22)  -- traces
+    end
+    return t
+  end
   if kind == "person" then return kit.person(nil) end
   if kind == "person_straw" then return kit.person("straw") end
   if kind == "person_cap" then return kit.person("cap") end

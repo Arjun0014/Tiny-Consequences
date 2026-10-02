@@ -1,4 +1,4 @@
-// node scripts/shots_look.mjs --sett K --days D --hour H [--zoom Z] [--what centre|dock|ford] [--name N]
+// node scripts/shots_look.mjs --sett K (--days D --hour H | --at ABS_HOUR) [--zoom Z] [--what centre|dock|ford|flock|wolves|bridge] [--pid P] [--name N]
 // One screenshot of settlement K, D days on, at hour H of settlement 1's local clock (D-088
 // visual checks). Writes out/shots/look/<name>.png and prints who is doing what nearby.
 import fs from 'node:fs';
@@ -16,6 +16,7 @@ const zoom = Number(getFlag(args, '--zoom', 1.4));
 const what = getFlag(args, '--what', 'centre');
 const herd = getFlag(args, '--herd', 'cattle');
 const pid = Number(getFlag(args, '--pid', 0));
+const atHour = getFlag(args, '--at', null);   // (S14) an absolute game hour (tools/v3_watch.lua prints them)
 const name = getFlag(args, '--name', `s${sett}_d${days}_h${hour}`);
 await build({ variant: 'debug', ifStale: true, quiet: true });
 const outDir = path.join(ROOT, 'out', 'shots', 'look');
@@ -38,7 +39,8 @@ try {
   await page.goto(gameUrl(`http://127.0.0.1:${port}`, { world: 'v3', speed: '0' }));
   await page.waitForFunction(() => window.__TC && window.__TC.ready === true, null, { timeout: 240_000 });
   await cmd({ cmd: 'ui', debug: false });
-  await cmd({ cmd: 'v3_goto', lh: hour, days });
+  if (atHour !== null) await cmd({ cmd: 'v3_goto', hour: Number(atHour) });
+  else await cmd({ cmd: 'v3_goto', lh: hour, days });
   const at = pid ? await cmd({ cmd: 'v3_person', pid, look: true, zoom }) : await cmd({ cmd: 'v3_look', sett, what, zoom, herd });
   if (pid) at.name = `#${pid} ${at.name || ''} ${at.obj || ''} | ${at.why || ''}`;
   await page.waitForTimeout(400);

@@ -713,6 +713,8 @@ for i, n in ipairs({ "body", "head", "eyes", "legs_trousers", "legs_bare", "feet
 end
 M.PART = PART
 
+-- (S14) walking behind the plough, hands on its handles
+local PLOUGH_ANIM = { "carry_walk", 0.55 }
 -- what they hold for each action (the sim's action, not invented)
 local TOOL = { till = "hoe", grub = "hoe", chop = "axe", harvest = "sickle", build = "hammer", thresh = "flail",
   forage = "basket", fill = "bucket", tend = nil, sow = "basket", repair = "hammer", fish = "rod", mend_boat = "hammer",
@@ -881,6 +883,8 @@ local function update_villagers(V, t, zoom)
         -- look + what they hold now
         local carry = p.carry ~= "" and CARRY_PART[p.carry] or nil
         local tool = TOOL[p.act]
+        local ploughing = (p.act == "till" or p.act == "turn") and p.ox ~= nil     -- (S14: hands on the plough)
+        if ploughing then tool = nil end
         if not carry and arms[p.id] then carry = "babe"; tool = nil end
         local key = p.id * 1000 + (PART[carry or ""] or 99) * 31 + (PART[tool or ""] or 98) + (stage == "child" and 7 or 0)
           + (stage == "elder" and 13 or 0)
@@ -916,6 +920,7 @@ local function update_villagers(V, t, zoom)
           clip = a[1]
           if carry and clip == "idle" then clip = "carry_idle" end
           if p.act == "play" then clip = (p.id % 3 == 0) and "dance" or "jump" end
+          if ploughing then clip = "carry_walk"; a = PLOUGH_ANIM end
           if p.act == "talk" then
             -- talkers listen as much as they talk: turns of a few game minutes
             local turn = floor((t * 60 + p.id * 7.3) / (4 + p.id % 5))
@@ -938,7 +943,8 @@ local function update_villagers(V, t, zoom)
         VPOS.x, VPOS.y, VPOS.z = px, py, pz
         go.set_position(VPOS, e.id)
         local fx, fy = dx, dy
-        if not moving then fx, fy = p.fx, p.fy end
+        -- (working along a line - a row - they face along it; else the way their work faces, S14)
+        if not moving and not (p.mv and (p.spd or 0) > 0 and p.act ~= "walk") then fx, fy = p.fx, p.fy end
         local l = sqrt(fx * fx + fy * fy)
         if l > 1e-6 then e.yaw = yaw_x(V, x, y, fx / l, fy / l) + pi * 0.5 end
         go.set_rotation(vmx.set_up_yaw(VROT, ux, uy, uz, e.yaw or 0), e.id)
@@ -1376,7 +1382,17 @@ local function draw_herd(V, t, H, lod, sid, hi)
       if e then
         local x, y = stock.pos(a, t)
         local moving = a.act == "walk" and a.t1 > a.t0
-        if moving then
+        local yspd = nil
+        if a.act == "yoked" then
+          -- (in the yoke: facing away from its ploughman, walking when he walks, S14)
+          local q = V.W.S.v3.people[a.yoke or 0]
+          if q and q.alive then
+            local mx, my = act.pos(q, t)
+            local dx, dy = mx - x, my - y
+            if dx * dx + dy * dy > 1e-12 then yaws[k] = yaw_x(V, x, y, dx, dy) + pi * 0.5 end
+            if q.mv and (q.spd or 0) > 0 then moving, yspd = true, q.spd end
+          end
+        elseif moving then
           local dx, dy = a.tx - a.x, a.ty - a.y
           if dx * dx + dy * dy > 1e-12 then yaws[k] = yaw_x(V, x, y, dx, dy) + pi * 0.5 end
         end
@@ -1399,7 +1415,7 @@ local function draw_herd(V, t, H, lod, sid, hi)
         local tempo = 0.85 + 0.3 * frac(who * 0.6180339887)
         local clip, rate
         if moving then
-          local spd = sqrt((a.tx - a.x) ^ 2 + (a.ty - a.y) ^ 2) / max(1e-6, a.t1 - a.t0)
+          local spd = yspd or sqrt((a.tx - a.x) ^ 2 + (a.ty - a.y) ^ 2) / max(1e-6, a.t1 - a.t0)
           clip = spd > 2.4 and "run" or (spd < 0.9 and "walk_slow" or "walk")
           rate = min(3, kspeed * spd * 0.55 * tempo)
         else
@@ -1573,6 +1589,52 @@ function M.update_herds(V, t, zoom)
     if H then draw_herd(V, t, H, lod, s.id, hi) end
   end
   draw_dogs(V, t, lod)
+  M.draw_ploughs(V, t)
+end
+
+-- Ploughs (S14): between each yoked ox and its ploughman, from the ploughman's hands toward the ox
+-- (the sim's yoke: stock.pos puts the ox stock.YOKE_AHEAD ahead along his heading).
+local PLOUGH_RES
+local PLPOS, PLROT = vmath.vector3(), vmath.quat()
+function M.draw_ploughs(V, t)
+  local s = V.s
+  local H = s.herds and s.herds.cattle
+  if not V.deer_factory then return end
+  V.plough_go = V.plough_go or {}
+  local n = 0
+  if H and not M.skipping and V.in_view then
+    local stock = require("sim.agents.stock")
+    local Vp = V.W.S.v3.people
+    for _, a in ipairs(H.animals) do
+      local q = a.alive and a.act == "yoked" and Vp[a.yoke or 0]
+      if q and q.alive and q.inside == 0 then
+        if not PLOUGH_RES then
+          PLOUGH_RES = resource.create_buffer("/tc/v3_plough.bufferc",
+            { buffer = make_buffer("plough", { 0.52, 0.36, 0.20 }, { 0.42, 0.42, 0.44 }, { 0.30, 0.22, 0.14 }, 1, true) })
+        end
+        n = n + 1
+        local e = V.plough_go[n]
+        if not e then
+          local id = factory.create(V.deer_factory, vmath.vector3(0, 0, 0))
+          e = { id = id, url = msg.url(nil, id, "mesh"), on = false }
+          go.set(e.url, "vertices", PLOUGH_RES)
+          V.plough_go[n] = e
+        end
+        local mx, my = act.pos(q, t)
+        local ox, oy = stock.pos(a, t)
+        local px, py, pz, ux, uy, uz = world_pos(V, mx, my, 0)
+        PLPOS.x, PLPOS.y, PLPOS.z = px, py, pz
+        go.set_position(PLPOS, e.id)
+        go.set_rotation(vmx.set_up_yaw(PLROT, ux, uy, uz, yaw_x(V, mx, my, ox - mx, oy - my) + pi), e.id)
+        go.set_scale(1, e.id)
+        if not e.on then msg.post(e.url, MSG_ENABLE); e.on = true end
+      end
+    end
+  end
+  for k = n + 1, #V.plough_go do
+    local e = V.plough_go[k]
+    if e.on then msg.post(e.url, MSG_DISABLE); e.on = false end
+  end
 end
 
 -- Boats (D-084): moored at the dock, or wherever their rower is on the water.

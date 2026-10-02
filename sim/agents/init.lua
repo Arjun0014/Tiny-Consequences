@@ -201,6 +201,7 @@ function sys.advance(W, t)
   local V = W.S.v3
   if not V then return end
   act.people = V.people
+  stock.people = V.people
   act.skip_step = sys.skip_step
   dogs.interrupt_hook = function(W_, p, at, reason) return sys.interrupt(W_, p, at, reason) end
   wild.interrupt_hook = dogs.interrupt_hook

@@ -30,7 +30,7 @@ local SKILL_OF = { till = "sk_farm", sow = "sk_farm", harvest = "sk_farm", tend 
   chop = "sk_wood", grub = "sk_wood", build = "sk_build", repair = "sk_build", fish = "sk_fish", mend_boat = "sk_fish" }
 local TOOL_WORK = { till = true, harvest = true, chop = true, grub = true, build = true, repair = true, thresh = true, tend = true,
   mend_boat = true }
-M.OUTDOOR_WORK = { grub = true, forage = true, till = true, thresh = true, sow = true, tend = true, harvest = true, chop = true, build = true, fill = true, play = true, repair = true,
+M.OUTDOOR_WORK = { grub = true, forage = true, till = true, turn = true, thresh = true, sow = true, tend = true, harvest = true, chop = true, build = true, fill = true, play = true, repair = true,
   mend_boat = true }
 
 -- Position of p at time t (analytic; exact at t0 and t1).
@@ -857,14 +857,27 @@ end
 WORK.yoke = function(W, s, p, st, f)
   local a = ox_of(s, st.ox)
   if not a or not a.alive or f < 0.9 then return end
+  local now = W.S.v3.now or W.hour
   a.yoke = p.id
   p.ox = a.k
+  -- (from where it stands beside the ploughman it steps round in front of him, S14)
+  stock.yoke_turn(a, p, now, true)
   a.ver = (a.ver or 0) + 1
   if M.stock_push then M.stock_push(W, s, a) end
 end
 WORK.unyoke = function(W, s, p, st, f)
   local a = ox_of(s, st.ox)
-  if a and a.yoke == p.id then a.yoke = 0 end
+  if a and a.yoke == p.id then
+    -- (out of the yoke where it stands now: it goes back to the herd at its next step, S14)
+    if a.act == "yoked" then
+      a.tx, a.ty = stock.pos(a, W.S.v3.now or W.hour)
+      a.x, a.y = a.tx, a.ty
+    end
+    a.yoke = 0
+    if a.act == "yoked" then a.act = "rest" end
+    a.ver = (a.ver or 0) + 1
+    if M.stock_push then M.stock_push(W, s, a) end
+  end
   p.ox = nil
 end
 WORK.harness = function(W, s, p, st, f)
@@ -1841,6 +1854,12 @@ M.finish = finish
 function M.start(W, s, p, now)
   local st = p.plan[p.pi]
   local h = START[st.op]
+  if p.ox then
+    -- (S14) a ploughman's new step turns the team: the ox swings round from where it is now
+    local H = s.herds and s.herds.cattle
+    local a = H and H.animals[p.ox]
+    if a and a.act == "yoked" and a.yoke == p.id then stock.yoke_turn(a, p, now) end
+  end
   return h(W, s, p, st, now)
 end
 

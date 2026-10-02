@@ -691,22 +691,33 @@ local function trade_candidate(W, s, p, ctx, now, fat)
   local o = W.S.v3.settlements[plan.o]
   if not o or not o.alive then return end
   local GX, GH = econ.GOODS[plan.give], econ.GOODS[plan.take]
+  if which ~= 3 then
+    -- (S14) a road is walked by day: set out when it can be walked before dusk, or early in the
+    -- morning when it is more than a day's walk (a night camped on the road)
+    if plan.hours <= ctx.sunset - ctx.wake then
+      if ctx.lh + plan.hours > ctx.sunset + 0.5 then return end
+    elseif ctx.lh > ctx.wake + 2.5 then return end
+  end
   if plan.ask then
     addw(0.55 * fat, "trade", plan.o, which, "Food for %.0f days left in the village and nothing to sell: going to ask %s for help (%.0f hours' walk)",
       plan.days, o.name, plan.hours)
     return
   end
   local u = (0.3 + 0.3 * min(1, plan.net / max(0.5, plan.cost))) * (p.sex == "m" and 1 or 0.8) * fat
+  -- (fresh news, or a look on the chance: S14)
+  local heard = (plan.w or 1) >= 0.5
+  local what = heard and sfmt("%s wanted %s when last heard of", o.name, GX.plural and "them" or "it")
+    or sfmt("nobody has been to %s lately: going to see whether anyone there wants %s", o.name, GX.plural and "them" or "it")
   if which == 3 then
     addw(u, "trade", plan.o, which,
-      "%s %s worth little here (%s to spare) and %s wanted %s when last heard of: sailing over (%.0f hours at sea) for %s",
-      (plan.pool == "house" and "Our " or "The village's ") .. GX.name, GX.plural and "are" or "is", econ.amount(plan.n, plan.give), o.name,
-      GX.plural and "them" or "it", plan.hours, GH.name)
+      "%s %s worth little here (%s to spare) and %s; sailing over (%.0f hours at sea) for %s",
+      (plan.pool == "house" and "Our " or "The village's ") .. GX.name, GX.plural and "are" or "is", econ.amount(plan.n, plan.give), what,
+      plan.hours, GH.name)
   else
     addw(u, "trade", plan.o, which,
-      "%s %s worth little here (%s to spare) and %s wanted %s when last heard of (%.0f hours' walk): bringing back %s",
-      (which == 1 and "Our " or "The village's ") .. GX.name, GX.plural and "are" or "is", econ.amount(plan.n, plan.give), o.name,
-      GX.plural and "them" or "it", plan.hours, GH.name)
+      "%s %s worth little here (%s to spare) and %s (%.0f hours' walk); bringing back %s",
+      (which == 1 and "Our " or "The village's ") .. GX.name, GX.plural and "are" or "is", econ.amount(plan.n, plan.give), what,
+      plan.hours, GH.name)
   end
 end
 M.trade_candidate = trade_candidate
@@ -1913,20 +1924,59 @@ PLAN.till = function(W, s, p, ctx, now, cd)
   local full = c.till_row_h * (1.25 - 0.45 * p.sk_farm) * (0.9 + 0.2 * u01(W, p, now, 26)) * (p.strong and 0.9 or 1) / tool_factor(W, p)
   -- (with the household's ox at the plough: fetched from the herd and yoked, the row turned in a
   -- fraction of the hoeing's hours; D-108)
-  local ox = ctx.stage == "adult" and free_ox(W, s, ctx.hh)
+  -- (the heavy plough behind an ox was men's work: a woman yokes it only in a household with no grown
+  -- man; she hoes otherwise, S14)
+  local ox = ctx.stage == "adult" and (p.sex == "m" or not kin.has_man(W, ctx.hh, now)) and free_ox(W, s, ctx.hh)
+  local ox_h = 0
+  if ox then
+    -- (S14) the ox is fetched when the hoeing it saves in this stint is worth the walk to it and
+    -- back; in the yoke it ploughs on, row after row of the field, for a longer stint
+    local rp = plot.row_p or {}
+    ox_h = min(c.ox_day_h - (ox.worked or 0), c.ox_stint_h * p.dil)
+    local ax, ay = stock.pos(ox, now)
+    local fetch = 2 * dist(p.x, p.y, ax, ay) / ctx.spd + 0.25
+    local work_ox = min(ox_h, (1 - (rp[cd.b] or 0)) * full / c.ox_till)
+    for r = 1, plot.rows do
+      local rs = plot.row_st[r]
+      if r ~= cd.b and plot.row_claim[r] == 0 and (rs == 0 or rs == 3) then work_ox = work_ox + (1 - (rp[r] or 0)) * full / c.ox_till end
+      if work_ox >= ox_h then break end
+    end
+    work_ox = min(work_ox, ox_h)
+    if work_ox * (c.ox_till - 1) < fetch * 1.5 then ox = nil end
+  end
   if ox then
     local ax, ay = stock.pos(ox, now)
     go(pl, ax, ay, "the ox")
     work(pl, "yoke", 0.15, { ox = ox.k, fx = ax, fy = ay })
     full = full / c.ox_till
-  end
-  local a0 = row_stint(W, s, p, now, plot, cd.b, "till", full, 37)
-  if ox then
-    pl[#pl].ox = ox.k
+    local rp = plot.row_p or {}
+    local a0 = rp[cd.b] or 0
+    -- this row to its end, then the next waiting rows while the stint lasts
+    local used, row = 0, cd.b
+    while row and used < ox_h - 0.05 do
+      local ar = rp[row] or 0
+      local dur = min((1 - ar) * full, ox_h - used)
+      local a1 = min(1, ar + dur / full)
+      local rx0, ry0, rx1, ry1 = act.plot_row_line(s, plot, row)
+      if row % 2 == 0 then rx0, rx1 = rx1, rx0 end
+      go(pl, rx0 + (rx1 - rx0) * ar, ry0, plot.name)
+      -- (the team turned at the headland to face along the row: the ox swings round, S14)
+      work(pl, "turn", 0.12, { fx = rx1, fy = ry1 })
+      work(pl, "till", dur, { ref = plot.id, row = row, x1 = rx0 + (rx1 - rx0) * a1, y1 = ry1, rate = 1 / full, ox = ox.k })
+      plot.row_claim[row] = p.id
+      used = used + dur
+      local nxt = nil
+      for r = 1, plot.rows do
+        local rs = plot.row_st[r]
+        if plot.row_claim[r] == 0 and (rs == 0 or rs == 3) then nxt = r; break end
+      end
+      row = nxt
+    end
     work(pl, "unyoke", 0.1, { ox = ox.k })
     local verb = "Plough with the ox"
     return a0 > 0 and sfmt("%s: %s (row %d, %d%% done)", verb, plot.name, cd.b, floor(a0 * 100)) or (verb .. ": " .. plot.name), plot.name
   end
+  local a0 = row_stint(W, s, p, now, plot, cd.b, "till", full, 37)
   local verb = plot.stage == "rest" and "Plough the fallow of" or "Hoe"
   return a0 > 0 and sfmt("%s %s (row %d, %d%% done)", verb, plot.name, cd.b, floor(a0 * 100)) or (verb .. " " .. plot.name), plot.name
 end
@@ -2127,6 +2177,24 @@ end
 -- The trip (D-097, D-101), from wherever it stands: out with the goods (at home), the exchanges
 -- (at the other village: what they find there decides with whom and how much), the way home. A
 -- night away is slept at the other village's square.
+-- (S14) A road leg as it is walked: by day only; where it runs past bedtime the night is camped on
+-- the road and the walk goes on at first light. Returns the leg's whole duration from local hour lh.
+local function road_dur(lh, hrs, wake, bed)
+  local t, left = lh, hrs
+  for _ = 1, 8 do
+    local tod = t % 24
+    if tod >= bed or tod < wake then
+      t = t + (wake - tod) % 24
+    else
+      local can = bed - tod
+      if can >= left then return t + left - lh end
+      t, left = t + can, left - can
+    end
+  end
+  return t + left - lh
+end
+M.road_dur = road_dur
+
 local function trip_legs(W, s, p, ctx, now)
   local c = C()
   local pl = p.plan
@@ -2154,7 +2222,7 @@ local function trip_legs(W, s, p, ctx, now)
     local gx, gy = trade.gate(W, home_s, o)
     go(pl, gx, gy, "the road to " .. o.name)
     local _, hrs = trade.road(W, home_s, o)
-    work(pl, "travel", hrs, { to = o.id, from = home_s.id })
+    work(pl, "travel", road_dur(ctx.lh + 0.4, hrs, ctx.wake, ctx.bed), { to = o.id, from = home_s.id })
     return
   end
   if here == tr.to then
@@ -2186,6 +2254,7 @@ local function trip_legs(W, s, p, ctx, now)
         people.remember(p, now, sfmt("Nobody at %s wanted our %s at a price worth it now", o.name, econ.GOODS[tr.give].name))
       end
     end
+    local pending = false
     for di, d in ipairs(tr.deals or {}) do
       if not d.done or d.owed then
         local hb
@@ -2197,6 +2266,7 @@ local function trip_legs(W, s, p, ctx, now)
         if hb and not d.done then
           go(pl, hb.dx, hb.dy, hb.label or "a house")
           work(pl, "deal", c.deal_h, { di = di, ref = hb.id })
+          pending = true
         end
         -- (what is paid from elsewhere is loaded there)
         local src = o.buildings[d.src or 0]
@@ -2211,10 +2281,19 @@ local function trip_legs(W, s, p, ctx, now)
       go(pl, o.granary.dx, o.granary.dy, o.name .. "'s granary")
       work(pl, "guest_meal", 0.4, { ref = o.granary.id })
     end
+    -- (S14) the way home is planned when the deals are done, at the hour they end
+    if pending then return end
+    local _, hrs = trade.road(W, o, home_s)
+    if not ctx.night and ctx.lh + hrs > ctx.sunset + 0.5 and hrs < ctx.sunset - ctx.wake then
+      -- too late to be home by dusk: a night's lodging at the square, off at first light
+      local until_t = next_local(now, ctx.lh, ctx.wake)
+      go(pl, o.sqx or 0, o.sqy or 0, o.name .. "'s square")
+      work(pl, "sleep", until_t - now, { trip_sleep = true })
+    end
     local gx, gy = trade.gate(W, o, home_s)
     go(pl, gx, gy, "the road home")
-    local _, hrs = trade.road(W, o, home_s)
-    work(pl, "travel", hrs, { to = home_s.id, from = o.id })
+    local lh0 = (ctx.night or ctx.lh + hrs > ctx.sunset + 0.5) and ctx.wake or ctx.lh
+    work(pl, "travel", road_dur(lh0 + 0.4, hrs, ctx.wake, ctx.bed), { to = home_s.id, from = o.id })
   end
   -- home: the goods into the house (help asked for goes to the village's granary)
   local home = ctx.home or people.home(W, home_s, p)
@@ -2984,6 +3063,18 @@ function M.release(W, s, p)
         if st.kind == "sow" or st.kind == "harvest" or st.kind == "till" then
           local plot = s.plots[st.ref]
           if plot and plot.row_claim[st.row] == p.id then plot.row_claim[st.row] = 0 end
+        elseif st.kind == "unyoke" then
+          -- (a stint at the plough cut short: the ox is out of the yoke where it stands, S14)
+          local H = s.herds and s.herds.cattle
+          local a = H and H.animals[st.ox or 0]
+          if a and a.yoke == p.id then
+            local now = W.S.v3.now or W.hour
+            if a.act == "yoked" then a.tx, a.ty = stock.pos(a, now); a.x, a.y = a.tx, a.ty; a.act = "rest" end
+            a.yoke = 0
+            a.ver = (a.ver or 0) + 1
+            if act.stock_push then act.stock_push(W, s, a) end
+          end
+          p.ox = nil
         elseif st.kind == "tend" then
           local plot = s.plots[st.ref]
           if plot then plot.tend_claim = max(0, (plot.tend_claim or 1) - 1) end
@@ -3098,7 +3189,9 @@ function M.decide(W, s, p, now, reason)
     if not stuck and not hungry_home and (here ~= tr.from or p.carry == "pack" or (tr.sea and (tr.sailed or tr.back)) or (tr.sea and boat_cargo(W, p) > 0)) then
       local obj, dest = PLAN.trip(W, s, p, ctx, now, nil)
       p.obj, p.dest, p.objk = obj, dest, "trade"
+      local nodeal = tr.dealt and not tr.ask and #(tr.deals or {}) == 0
       p.why = (reason and (reason .. ". ") or "") .. (tr.ask and (here == tr.to and "Asking for food" or "On the road, asking for food")
+        or (nodeal and ("Nobody at " .. W.S.v3.settlements[tr.to].name .. " wanted our " .. econ.GOODS[tr.give].name .. ": taking it home"))
         or (here == tr.to and ("Trading " .. econ.GOODS[tr.give].name .. " for " .. econ.GOODS[tr.take].name) or (tr.sea and "At sea" or "On the road")))
       p.tgt_kind, p.tgt_ref = "trade", tr.to
       return true

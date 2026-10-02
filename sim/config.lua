@@ -979,6 +979,7 @@ C.V3 = {
   -- a deal kept adds trust_deal of the way to full trust; an exchange takes deal_h hours
   fish_want = 3.0, cheese_want = 0.8, textile_hh_want = 1.5, spare_k = 1.2, trade_min_load = 0.25,
   trade_margin = 1.25, trade_hour = 0.06, know_fade = 48, trust_deal = 0.06, deal_h = 0.3,
+  trade_guess = 0.4,                      -- (S14) a gain known only by guesswork (faded news) counts this much
   share_keep = 2.0, share_short = 0.5,
   -- (D-102) sea trade: reach (local units of sea way), a boat under sail and oars, its hold in loads
   sea_reach = 40, sail_speed = 1.1, boat_hold = 3,
@@ -999,6 +1000,7 @@ C.V3 = {
   -- (D-108) oxen: ploughing with one is ox_till x faster; ox_day_h hours of it a day; hungrier at
   -- the work; a harness takes harness_leather and harness_h
   ox_till = 2.5, ox_day_h = 6, ox_work_hunger = 0.03, harness_leather = 1.0, harness_h = 3.0,
+  ox_stint_h = 2.5,                       -- (S14) hours in the yoke at a stretch (x diligence), row after row
   foul_reach = 0.8, flux_k = 0.004, flux_days = 4, flux_health = 0.05, flux_hz = 0.01, river_shun_days = 40,
   dog_alert = 0.45, dog_trot = 1.9, dog_run = 4.0, wolf_kill_dog = 0.15, dog_pup_days = 12,
   wolf_fear = 0.16, dog_deter = 0.3, guard_alert = 0.4, dog_charge = 0.18,

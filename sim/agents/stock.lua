@@ -55,8 +55,56 @@ function M.decode(id)
   return sid, M.HERDS[hi + 1] or (hi == 4 and "dog" or "wild"), r - hi * 20000
 end
 
--- Position of animal a at time t (a straight walk between t0 and t1, else where it stands).
+-- (set by sim/agents/init.lua each advance: the people, for a yoked ox's place)
+M.people = nil
+-- (the ox's middle ahead of the ploughman's hands: the plough's handles and body, the traces to the
+-- swingletree and half the beast: ~3.3 m at the villagers' scale, S14)
+M.YOKE_AHEAD = 0.085
+
+-- A yoked ox's ploughman begins a new step (sim/agents/act.lua): the team turns from where the ox
+-- is now (its angle and distance from him), or, just yoked (`first`), from where it stands.
+function M.yoke_turn(a, q, now, first)
+  local qx, qy = M.person_pos(q, now)
+  local ox, oy
+  if first then ox, oy = a.tx, a.ty else ox, oy = M.pos(a, now) end
+  local dx, dy = ox - qx, oy - qy
+  a.yh0 = dmath.atan2(dy, dx)
+  a.yd0 = sqrt(dx * dx + dy * dy)
+  a.yt0 = now
+  a.yth = a.yh0
+end
+
+-- Position of animal a at time t (a straight walk between t0 and t1, else where it stands). A yoked
+-- ox (S14) walks just ahead of its ploughman along his heading wherever he goes: its place is his,
+-- as a mate's in a boat is the skipper's.
+-- (a turn of the team: the ox swings round the ploughman on an arc, and steps out to its place in
+-- front when first yoked, over YOKE_TURN hours from the moment recorded by yoke_turn)
+M.YOKE_TURN = 0.12
+local PI2 = 6.283185307179586
+local function yoke_heading(a, q, t)
+  local _, _, dx, dy = M.person_pos(q, t)
+  local l = dx and sqrt(dx * dx + dy * dy) or 0
+  if l > 1e-9 then return dmath.atan2(dy, dx) end
+  return a.yth or 0
+end
 function M.pos(a, t)
+  if a.act == "yoked" then
+    local q = M.people and M.people[a.yoke or 0]
+    if q and q.alive then
+      local qx, qy = M.person_pos(q, t)
+      -- (pos never writes: the view calls it too; the turn's start is kept by the sim's step)
+      local th, d = yoke_heading(a, q, t), M.YOKE_AHEAD
+      local f = a.yt0 and (t - a.yt0) / M.YOKE_TURN or 1
+      if f < 1 then
+        if f < 0 then f = 0 end
+        local dth = (th - (a.yh0 or th) + PI2 * 1.5) % PI2 - PI2 * 0.5
+        th = (a.yh0 or th) + dth * f
+        d = (a.yd0 or d) + (d - (a.yd0 or d)) * f
+      end
+      return qx + dmath.cos(th) * d, qy + dmath.sin(th) * d
+    end
+    return a.tx, a.ty
+  end
   if a.act ~= "walk" or a.t1 <= a.t0 then return a.tx, a.ty end
   local f = (t - a.t0) / (a.t1 - a.t0)
   if f <= 0 then return a.x, a.y elseif f >= 1 then return a.tx, a.ty end
@@ -308,21 +356,18 @@ function M.step(W, s, H, a, now)
     local q = W.S.v3.people[a.yoke]
     if q and q.alive and q.ox == a.k and (q.objk == "till" or q.objk == "yoke") then
       a.hunger = min(1, a.hunger + C().ox_work_hunger * dt)
-      local qx, qy, dx, dy = M.person_pos(q, now)
-      local fx, fy = 0, 0
-      if dx and (dx * dx + dy * dy) > 1e-10 then
-        local l = sqrt(dx * dx + dy * dy)
-        fx, fy = dx / l, dy / l
-      end
-      local gx, gy = qx + fx * 0.035, qy + fy * 0.035
-      if dsq(gx - a.tx) + dsq(gy - a.ty) > 0.0001 and walk_to(W, s, a, now, gx, gy, S.speed * 1.5) then
-        a.t1 = min(a.t1, now + 0.1)
-        return
-      end
-      stand(a, now, "held", 0.1)
+      -- (in the yoke: its place follows the ploughman's, M.pos; looked at again a little later)
+      a.act = "yoked"
+      a.yth = yoke_heading(a, q, now)
+      a.tx, a.ty = M.pos(a, now)
+      a.x, a.y = a.tx, a.ty
+      a.t0, a.t1 = now, now + 0.25
       return
     end
+    -- (the ploughman went off to something else: the ox stands where the yoke left it)
+    if a.act == "yoked" then a.tx, a.ty = M.pos(a, now); a.x, a.y = a.tx, a.ty end
     a.yoke = 0
+    if a.act == "yoked" then a.act = "rest" end
   end
   -- held by someone (milked, shorn, slaughtered): it stands while they work
   if (a.held or 0) ~= 0 then

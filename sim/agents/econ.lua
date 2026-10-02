@@ -201,6 +201,13 @@ function M.expect(W, s, o, g, now)
   return b * w + neutral * (1 - w), sl * w + neutral * 1.5 * (1 - w), (k.spare[g] or 0) * w + guess * (1 - w)
 end
 
+-- How fresh s's news of o is: 1 just heard, fading to 0 (never heard) over know_fade days (S14).
+function M.fresh(W, s, o, now)
+  local k = s.know and s.know[o.id]
+  if not k then return 0 end
+  return exp(-(now - k.t) / (C().know_fade * 24))
+end
+
 -- The relation between two villages (D-101): trust from deals kept, gifts and help.
 function M.rel(s, o)
   s.rel = s.rel or {}
@@ -249,10 +256,13 @@ function M.best_trade(W, s, hh, home, pool, partners, route, now)
               local cost = 2 * hrs * crew * c.trade_hour
               local gain = qH * aH - n * aX
               local r = M.rel(s, o)
-              local net = gain * (1 + 0.5 * r.trust) - cost
+              -- (S14) what is only guessed - old news faded toward "a middling price there" -
+              -- is hoped for, not counted on: a trip on guesswork counts its gain at trade_guess
+              local w = M.fresh(W, s, o, now)
+              local net = gain * (c.trade_guess + (1 - c.trade_guess) * w) * (1 + 0.5 * r.trust) - cost
               if net > 0 and (not best or net > best.net) then
                 best = { o = o.id, give = X, n = n, take = bestH, k = k, gain = gain, cost = cost, net = net, hours = hrs,
-                  aX = aX, aH = aH }
+                  aX = aX, aH = aH, w = w }
               end
             end
           end
