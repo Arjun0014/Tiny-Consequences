@@ -1828,6 +1828,8 @@ function M.daily(W, s, day)
   if M.stone then M.stone.daily(W, s, W.S.v3.now or W.hour) end
   -- (S19) iron: deposits (once), what is known and wanted, the forge and clamp planned
   if M.iron then M.iron.daily(W, s, W.S.v3.now or W.hour) end
+  -- (S19) fairs: called, heard of, households deciding to go
+  if M.fair then M.fair.daily(W, s, W.S.v3.now or W.hour) end
   -- adults' idle share of the waking day, as measured (act.lua counts leisure hours)
   local lz, aw = s.acc.lz_h or 0, s.acc.aw_h or 0
   if s.aw_prev and aw - s.aw_prev > 1 then

@@ -784,6 +784,40 @@ local function iron_candidates(W, s, p, ctx, now, fat)
 end
 M.iron_candidates = iron_candidates
 
+-- (S19) Fairs (sim/agents/fair.lua): setting out for a fair the household decided to go to (in
+-- time to be there when it opens), and the host village's criers telling the neighbours.
+local function fair_candidate(W, s, p, ctx, now, fat)
+  local c = C()
+  local hh = ctx.hh
+  local fd = hh and hh.fair
+  if p.trip or ctx.moving or not ctx.home then return end
+  if fd and now < fd.t1 then
+    local mine = false
+    for _, id in ipairs(fd.who) do if id == p.id then mine = true end end
+    local o = W.S.v3.settlements[fd.host]
+    if mine and o then
+      local hrs = 0
+      if o ~= s then local _; _, hrs = trade.road(W, s, o) end
+      local depart = fd.t0 - (o == s and 0.5 or hrs + (hrs > 8 and 14 or 0) + 2)
+      if now >= depart and (o == s or not ctx.night) then
+        add(0.95, "fair", o.id, 0, fd.why or ("To the fair at " .. o.name))
+      end
+    end
+  end
+  -- the host's criers: to each road neighbour, a grown-up walks to tell of the fair
+  local f = s.fair
+  if f and s.fair_cry and #s.fair_cry > 0 and now < f.t0 - 30 and ctx.stage == "adult" and not ctx.night and ctx.rain < 1 then
+    local o = W.S.v3.settlements[s.fair_cry[1]]
+    if o then
+      local _, hrs = trade.road(W, s, o)
+      if M.journey_ok(W, s, p, ctx, hrs) and (hrs <= ctx.sunset - ctx.wake and ctx.lh + hrs <= ctx.sunset + 0.5 or ctx.lh <= ctx.wake + 2.5) then
+        addw((0.35 + 0.2 * p.soc) * fat, "cry", o.id, 0, "Our fair is in %.0f days: walking to %s to tell them (%.0f hours)", (f.t0 - now) / 24, o.name, hrs)
+      end
+    end
+  end
+end
+M.fair_candidate = fair_candidate
+
 -- The tree to fell (settle.next_tree: a scan of the woods) and its utility (lazy, see add_lazy).
 function M.lazy_fell(c, ff)
   local W, s, p, ctx = LZ.W, LZ.s, LZ.p, LZ.ctx
@@ -3900,6 +3934,111 @@ local function court_legs(W, s, p, ctx, now)
 end
 M.court_legs = court_legs
 
+-- (S19) A fair (sim/agents/fair.lua): provisions and the household's goods packed, the road there,
+-- the fair's hours at the host's square (a meal from its store when hungry, the night at the fair
+-- ground), the road home, the pack into the house. Host households only walk to their square.
+local function fair_legs(W, s, p, ctx, now)
+  local c = C()
+  local pl = p.plan
+  local V = W.S.v3
+  local tr = p.trip
+  local home_s = V.settlements[tr.from]
+  local o = V.settlements[tr.to]
+  local f = o and o.fair
+  local here = p.at or p.sett
+  local hh = V.households[p.hh]
+  local local_fair = o == home_s
+  if here == tr.from and not tr.back and not tr.packed then
+    tr.packed = true
+    local home = ctx.home
+    if home then
+      if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+      pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id }
+      local fd = hh and hh.fair
+      if fd and fd.take and not fd.packed then
+        -- (the household's goods for the fair: the first of it to go takes them)
+        fd.packed = true
+        for _, it in ipairs(fd.take) do pl[#pl + 1] = { op = "pick", what = "pack", good = it[1], ref = home.id, n = it[2] } end
+      end
+      pl[#pl + 1] = { op = "pick", what = "pack", good = "grain", ref = home.id, n = 0 }
+    end
+  end
+  if here == tr.from and not tr.back and not local_fair then
+    local gx, gy = trade.gate(W, home_s, o)
+    go(pl, gx, gy, "the road to " .. o.name)
+    local _, hrs = trade.road(W, home_s, o)
+    work(pl, "travel", road_dur(ctx.lh + 0.4, hrs, ctx.wake, ctx.bed), { to = o.id, from = home_s.id })
+    return "Go to the fair at " .. o.name, o.name
+  end
+  if here == tr.to and not tr.back and f and now < f.t1 then
+    -- (hungry with nothing left in the bag: a meal at home, or from the host's store)
+    if p.hunger > 0.5 and (p.prov or 0) < C().meal_fu then
+      local home = ctx.home
+      if local_fair and home then
+        if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+        work(pl, "eat", 0.3, { inside = home.id, ref = home.id, from = (home.stock.meals or 0) > 0 and nil or "cold" })
+      elseif o.granary and o.granary.state == "standing" then
+        go(pl, o.granary.dx, o.granary.dy, o.name .. "'s granary")
+        work(pl, "guest_meal", 0.4, { ref = o.granary.id })
+      end
+    end
+    if ctx.night then
+      local until_t = next_local(now, ctx.lh, ctx.wake)
+      local home = ctx.home
+      if local_fair and home then
+        go(pl, home.dx, home.dy, "home", home.id)
+        work(pl, "sleep", until_t - now, { inside = home.id, trip_sleep = true })
+      else
+        local x, y = near_spot(W, p, now, (o.sqx or 0) + 0.1, (o.sqy or 0) + 0.06, 0.1, 63)
+        go(pl, x, y, "the fair ground at " .. o.name)
+        work(pl, "sleep", until_t - now, { trip_sleep = true })
+      end
+      return "Sleep at the fair", o.name
+    end
+    local present = false
+    for _, id in ipairs(f.present) do if id == p.id then present = true end end
+    if not present then f.present[#f.present + 1] = p.id end
+    local x, y = near_spot(W, p, now, o.sqx or 0, o.sqy or 0, 0.13, 62 + p.id % 7)
+    go(pl, x, y, "the fair at " .. o.name)
+    work(pl, "fair", max(0.25, min(1.0, f.t1 - now)), { ref = o.id })
+    return "At the fair at " .. o.name, o.name
+  end
+  if here == tr.to and not local_fair and here ~= p.sett then
+    local _, hrs0 = trade.road(W, o, home_s)
+    local gx, gy = trade.gate(W, o, home_s)
+    go(pl, gx, gy, "the road home")
+    work(pl, "travel", road_dur(ctx.lh + 0.4, hrs0, ctx.wake, ctx.bed), { to = home_s.id, from = o.id })
+    return "Home from the fair at " .. o.name, home_s.name
+  end
+  local home = ctx.home or people.home(W, home_s, p)
+  if home then
+    go(pl, home.dx, home.dy, "home", home.id)
+    pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, trip_end = true }
+  else
+    p.trip = nil
+    work(pl, "wait", 0.1, {})
+  end
+  return "Home from the fair", home_s.name
+end
+M.fair_legs = fair_legs
+
+PLAN.fair = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local o = W.S.v3.settlements[cd.a]
+  local fd = ctx.hh.fair
+  p.trip = { to = o.id, from = s.id, fair = o.id, give = "grain", take = "grain", n = 0, t0 = now }
+  local _ = pl
+  return fair_legs(W, s, p, ctx, now)
+end
+
+PLAN.cry = function(W, s, p, ctx, now, cd)
+  local o = W.S.v3.settlements[cd.a]
+  -- (one crier a neighbour)
+  for i = #(s.fair_cry or {}), 1, -1 do if s.fair_cry[i] == o.id then table.remove(s.fair_cry, i) end end
+  p.trip = { to = o.id, from = s.id, court = true, news = true, cry = s.id, give = "grain", take = "grain", n = 0, t0 = now }
+  return court_legs(W, s, p, ctx, now)
+end
+
 PLAN.news = function(W, s, p, ctx, now, cd)
   local o = W.S.v3.settlements[cd.a]
   s.news_went = s.news_went or {}
@@ -4030,6 +4169,7 @@ end
 
 PLAN.trip = function(W, s, p, ctx, now, cd)
   plan_reset(p)
+  if p.trip.fair then return M.fair_legs(W, s, p, ctx, now) end
   if p.trip.court then return court_legs(W, s, p, ctx, now) end
   if p.trip.sea then sea_legs(W, s, p, ctx, now) else trip_legs(W, s, p, ctx, now) end
   local o = W.S.v3.settlements[p.trip.to]
@@ -4741,8 +4881,9 @@ function M.decide(W, s, p, now, reason)
     local hh = W.S.v3.households[p.hh]
     local mg = hh and hh.migrate
     local mv = p.move
-    if mv and not mv.arrived and not p.trip then
-      -- (S16, R4) a bride going to live at her husband's village
+    if mv and not mv.arrived and not p.trip and now >= (mv.depart or 0) - C().ready_h then
+      -- (S16, R4) a bride going to live at her husband's village (S19: making ready only shortly
+      -- before the hour agreed - a match at a fair sets it days ahead)
       p.trip = { to = mv.to, from = mv.from, move = true, give = "grain", take = "grain", n = 0, t0 = now }
     end
     if (mg and not mg.arrived and not mg.given_up and ((not p.trip and now >= mg.depart - C().ready_h) or (p.trip and p.trip.migrate))) or (p.trip and (p.trip.migrate or p.trip.move)) then
@@ -4769,6 +4910,19 @@ function M.decide(W, s, p, now, reason)
       p.obj, p.dest, p.objk = obj, dest, "trade"
       local nodeal = tr.dealt and not tr.ask and #(tr.deals or {}) == 0
       local giver = W.S.v3.settlements[tr.to].name
+      if tr.fair then
+        -- (S19) a fair
+        local hh = W.S.v3.households[p.hh]
+        local f = W.S.v3.settlements[tr.to].fair
+        p.why = (reason and (reason .. ". ") or "") .. ((hh and hh.fair and hh.fair.why) or ("The fair at " .. giver))
+          .. ((f and now < f.t0 and ": waiting for it to open") or (f and now < f.t1 and (here == tr.to) and ": bartering, hearing the news") or "")
+        p.objk = "fair"
+        p.tgt_kind, p.tgt_ref = "trade", tr.to
+        return true
+      end
+      if tr.cry and here == tr.to and not tr.met then
+        p.why = (reason and (reason .. ". ") or "") .. "Telling the people of " .. giver .. " of the fair at home"
+      end
       if tr.court and tr.visit then
         local kin = W.S.v3.people[tr.visit]
         local kn = kin and kin.name or "kin"
@@ -4932,6 +5086,7 @@ function M.decide(W, s, p, now, reason)
       visit_candidate(W, s, p, ctx, now, fatigue(p))
       ask_kin_candidate(W, s, p, ctx, now, fatigue(p))
       news_candidate(W, s, p, ctx, now, fatigue(p))
+      M.fair_candidate(W, s, p, ctx, now, fatigue(p))
       share_candidate(W, s, p, ctx, now, fatigue(p))
       leather_candidates(W, s, p, ctx, now)
       rack_candidates(W, s, p, ctx, now, fatigue(p))

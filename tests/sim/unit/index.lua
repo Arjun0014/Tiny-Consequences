@@ -29,4 +29,5 @@ return {
   "tests.sim.unit.test_v3_stone",
   "tests.sim.unit.test_v3_iron",
   "tests.sim.unit.test_v3_credit",
+  "tests.sim.unit.test_v3_fair",
 }

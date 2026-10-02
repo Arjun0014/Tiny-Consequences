@@ -1080,6 +1080,14 @@ C.V3 = {
   -- being paid), with at least credit_down of the price paid down in kind; unpaid after credit_days it
   -- is written off and trust falls by credit_loss
   credit_trust = 0.25, credit_max = 25, credit_k = 0.7, credit_days = 48, credit_loss = 0.15, credit_down = 0.25,
+  -- (S19) fairs (sim/agents/fair.lua): called after the harvest (local days fair_doy) by a village of
+  -- 8 and more with fair_food_days of food, at the middle of the villages it knows within fair_reach
+  -- hours' road, fair_notice days ahead, opening at fair_open local, lasting fair_h hours; a household
+  -- goes when what it could sell (at fair_price_k of base) and want, kin there (fair_kin FU each), a
+  -- match to be made (fair_court) and the company (fair_company) outweigh the road; fair_party at most
+  -- go from a household; a match is made when two take to each other more than fair_match
+  fair_doy = { 30, 37 }, fair_food_days = 30, fair_reach = 34, fair_notice = 7, fair_open = 8, fair_h = 34,
+  fair_price_k = 0.7, fair_kin = 2, fair_court = 5, fair_company = 1, fair_party = 3, fair_match = 0.2,
   -- (S16, R4) courting: a man with nobody to marry at home goes to a neighbour within court_road_h
   -- hours' walk with this chance a courtship round; he spends court_h meeting its people; a bride
   -- sets off with him court_wait_h after the match

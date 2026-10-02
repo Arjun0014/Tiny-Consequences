@@ -526,6 +526,18 @@ local function fill_buildings(V)
       end
     end
   end
+  -- (S19) a fair called here: stalls about the square - a frame and an awning, goods set out
+  if s.fair then
+    local AW = { { 0.78, 0.30, 0.24 }, { 0.30, 0.46, 0.66 }, { 0.84, 0.70, 0.30 }, { 0.40, 0.60, 0.34 } }
+    for q = 1, 5 do
+      local ang = q * 1.257 + 0.4
+      local x, y = (s.sqx or 0) + math.cos(ang) * 0.17, (s.sqy or 0) + math.sin(ang) * 0.17
+      local aw = AW[(q - 1) % #AW + 1]
+      local yaw = yaw_z(V, x, y, math.cos(ang), math.sin(ang))
+      add(V, K.frame, x, y, 0, yaw, S * 0.45, 0.7, pack(aw[1], aw[2], aw[3]), pack(0.50, 0.38, 0.24), 0)
+      add(V, K.sacks, x + math.cos(ang) * 0.02, y + math.sin(ang) * 0.02, 0, yaw, 0.35, 1, pack(0.62, 0.52, 0.36), pack(0.55, 0.45, 0.30), 0)
+    end
+  end
 end
 
 local function bld_sig(V)
@@ -540,6 +552,7 @@ local function bld_sig(V)
       + floor(b.stock.ore or 0) * 43 + floor(b.stock.charcoal or 0) * 47 + floor(b.charge or 0) * 53 + (b.lit_until and 59 or 0)) % 1000000007
   end
   h = (h * 17 + floor((s.hay or 0) / 30)) % 1000000007
+  h = (h * 23 + (s.fair and 7 or 0)) % 1000000007
   if s.herds then
     for _, kind in ipairs({ "flock", "cattle", "swine" }) do
       local H = s.herds[kind]
@@ -854,6 +867,8 @@ local ANIM = {
   shore = { "crouch_walk", 0.45 }, quarry = { "swing", 0.75 }, quern = { "kneel_work", 0.7 },
   mine = { "swing", 0.7 }, smith = { "swing", 0.9 }, smelt = { "kneel_work", 0.6 }, fire_clamp = { "kneel_work", 0.8 },
   open_clamp = { "swing", 0.6 },
+  -- (S19) at a fair: talking, bartering
+  fair = { "talk", 1 },
 }
 
 local function packc(c) return pack(c[1], c[2], c[3]) end

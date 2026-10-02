@@ -25,7 +25,13 @@ settle.stone = require("sim.agents.stone")   -- (S19: stone.lua lays outcrops wi
 settle.stone.settle = settle
 settle.iron = require("sim.agents.iron")   -- (S19: iron.lua lays bogs and plans the forge with settle)
 settle.iron.settle = settle
-settle.econ.on_learn = settle.founding.share
+settle.fair = require("sim.agents.fair")   -- (S19: fairs)
+do
+  -- (what one village learns of another: what its people know of places, and of fairs)
+  local share, heard = settle.founding.share, settle.fair.heard
+  settle.econ.on_learn = function(W, s, o, now) share(W, s, o, now); heard(W, s, o, now) end
+end
+act.fair = settle.fair
 local life = require("sim.agents.life")
 local kin = require("sim.agents.kin")
 local rng = require("sim.rng")

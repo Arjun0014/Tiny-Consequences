@@ -1491,6 +1491,18 @@ WORK.smith = function(W, s, p, st, f)
   people.practice(p, "sk_craft", st.dur * 0.5)
 end
 
+-- (S19) An hour at the fair: a barter with someone there, the news and the company, perhaps a match.
+WORK.fair = function(W, s, p, st, f)
+  if f < 0.5 then return end
+  local fair = M.fair
+  local fr = s.fair
+  if not fair or not fr then return end
+  local now = W.S.v3.now or W.hour
+  if now >= fr.t0 then fair.barter(W, s, p, now) end
+  fair.mingle(W, s, p, now)
+  if now >= fr.t0 then fair.court(W, s, p, now) end
+end
+
 -- (S19) Gathering on the shore: shellfish and seaweed into the basket (fresh: spoils like fish).
 WORK.shore = function(W, s, p, st, f)
   local hh = W.S.v3.households[p.hh]
@@ -2967,7 +2979,7 @@ local LEISURE = { rest = true, talk = true, visit = true, sit_out = true }
 local function finish(W, s, p, now, f)
   local st = p.plan[p.pi]
   local dt = now - p.t0
-  if (p.act == "travel" or p.act == "passage" or ((p.act == "voyage" or p.act == "ride" or p.act == "mind_boat" or p.act == "wait_boat") and (p.prov or 0) > 0)
+  if (p.act == "travel" or p.act == "passage" or ((p.act == "voyage" or p.act == "ride" or p.act == "mind_boat" or p.act == "wait_boat" or p.act == "fair") and (p.prov or 0) > 0)
     or (p.act == "voyage" and p.trip and p.trip.migrate)) and dt > 0 then
     -- the provisions from home, eaten along the road hour by hour when hungry (D-097; eaten
     -- before the leg's hunger was charged, a long leg starved its walker: D-100)
