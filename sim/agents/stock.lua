@@ -58,8 +58,9 @@ function M.decode(id)
   return sid, M.HERDS[hi + 1] or (hi == 4 and "dog" or "wild"), k
 end
 
--- (set by sim/agents/init.lua each advance: the people, for a yoked ox's place)
+-- (set by sim/agents/init.lua each advance: the people, for a yoked ox's place; the event queue)
 M.people = nil
+M.push = function() end
 -- (the ox's middle ahead of the ploughman's hands: the plough's handles and body, the traces to the
 -- swingletree and half the beast: ~3.3 m at the villagers' scale, S14)
 M.YOKE_AHEAD = 0.085
@@ -108,7 +109,9 @@ function M.pos(a, t)
     end
     return a.tx, a.ty
   end
-  if a.act ~= "walk" or a.t1 <= a.t0 then return a.tx, a.ty end
+  local ac = a.act
+  if (ac ~= "walk" and ac ~= "graze") or a.t1 <= a.t0 then return a.tx, a.ty end
+  -- (walking, or grazing its way slowly along: S15)
   local f = (t - a.t0) / (a.t1 - a.t0)
   if f <= 0 then return a.x, a.y elseif f >= 1 then return a.tx, a.ty end
   return a.x + (a.tx - a.x) * f, a.y + (a.ty - a.y) * f
@@ -259,9 +262,11 @@ function M.herder(W, s, H)
 end
 
 -- Walk from where it stands to (x, y) if the straight way is open, else as near as it can.
-local function walk_to(W, s, a, now, x, y, speed)
+local function walk_to(W, s, a, now, x, y, speed, here)
   local i0, i1 = mapm.tile_of(s, a.tx, a.ty), mapm.tile_of(s, x, y)
   if i1 == 0 or s.cost[i1] < 0 then
+    -- (a step about where it stands that runs into a wall or water is not taken: S15)
+    if here then return false end
     local fx, fy = mapm.free_spot(s, x, y, 3)
     if not fx then return false end
     x, y = fx, fy
@@ -288,13 +293,25 @@ local function stand(a, now, act, dur)
   a.act, a.t0, a.t1 = act, now, now + max(0.05, dur)
 end
 
--- Its own place in the herd's spread around (cx, cy): the sunflower spiral (spacing sep), turned
--- by the day.
-local function place(H, a, cx, cy, sep, turn)
-  local i = (a.slot or a.k) + 0.5
-  local r = sep * sqrt(i)
-  local ang = i * GOLD + turn
-  return cx + r * cos(ang), cy + r * sin(ang), r
+-- Grazing its way: a slow drift of L along (hx, hy) over the bout, head down (S15); where the
+-- ground ahead is blocked it grazes where it stands.
+local function graze_drift(s, a, now, hx, hy, L, dur, open_only)
+  local x, y = a.tx, a.ty
+  a.x, a.y = x, y
+  if L > 1e-5 then
+    local tx, ty = x + hx * L, y + hy * L
+    local i = mapm.tile_of(s, tx, ty)
+    if i > 0 and s.cost[i] >= 0 then
+      local k = s.tree[i]
+      if open_only and k > 0 and s.trees.st[k] == 1 then
+        -- (grass grows in the open: a grazer turns away from the trees instead)
+        a.hx, a.hy = -hy, hx
+      else
+        a.tx, a.ty = tx, ty
+      end
+    end
+  end
+  a.act, a.t0, a.t1 = "graze", now, now + max(0.05, dur)
 end
 
 -- The pen's ground: a place in it for each animal (a jittered grid filling the enclosure).
@@ -309,6 +326,90 @@ local function pen_place(s, pen, a)
   local jy = ((a.k * 0.381966) % 1 - 0.5) * 0.6
   local x0, y0 = mapm.ixy_xy(s, pen.ix0, pen.iy0)
   return x0 + (cx + 0.5 + jx) * T, y0 + (cy + 0.5 + jy) * T
+end
+
+-- A point inside the pen's enclosure (fractions fx, fy of its inner width and height).
+local function pen_spot(s, pen, fx, fy)
+  local T = s.T
+  local x0, y0 = mapm.ixy_xy(s, pen.ix0, pen.iy0)
+  return x0 + (0.3 + fx * (pen.w - 1.6)) * T, y0 + (0.3 + fy * (pen.h - 1.6)) * T
+end
+
+local function inside_pen(s, pen, x, y)
+  local T = s.T
+  local x0, y0 = mapm.ixy_xy(s, pen.ix0, pen.iy0)
+  local fx, fy = (x - x0) / T, (y - y0) / T
+  return fx > -0.6 and fy > -0.6 and fx < pen.w - 0.4 and fy < pen.h - 0.4
+end
+
+-- (S15) What makes each beast itself, from who it is (no state): how far from the herd's middle it
+-- likes to keep (bold), its own pace, how soon it notices (alert), the side of the herd it keeps.
+local function trait(a, m) return ((a.k + 0.5) * m) % 1 end
+local T_BOLD, T_PACE, T_ALERT, T_SIDE = 0.6180339887, 0.4142135624, 0.7320508076, 0.2360679775
+M.trait = trait
+M.T_BOLD, M.T_PACE, M.T_ALERT, M.T_SIDE = T_BOLD, T_PACE, T_ALERT, T_SIDE
+
+-- The others of the herd round a beast at (x, y) now (S15): its nearest (and where), the number,
+-- middle and lying-down count of those within `sight`, the middle and count of all. Penned, held
+-- and yoked beasts are not with the herd.
+local SC = { nn = nil, nd = 0, nx = 0, ny = 0, ln = 0, lrest = 0, cx = 0, cy = 0, cn = 0 }
+M.SC = SC
+local function scan(s, H, a, now, x, y, sight)
+  local s2 = sight * sight
+  local nn, nd2, nx, ny = nil, 1e18, 0, 0
+  local ln, lr, cx, cy, cn = 0, 0, 0, 0, 0
+  local an = H.animals
+  local inpen = a.act == "pen"
+  for i = 1, #an do
+    local b = an[i]
+    if b ~= a and b.alive then
+      local ba = b.act
+      if ba ~= "held" and ba ~= "yoked" and (ba == "pen") == inpen then
+        local bx, by = b.tx, b.ty
+        -- (one grazing drifts a few hand-breadths a bout: where it is going is near enough)
+        if ba == "walk" and b.t1 > b.t0 then
+          local f = (now - b.t0) / (b.t1 - b.t0)
+          if f < 1 then
+            if f < 0 then f = 0 end
+            bx, by = b.x + (bx - b.x) * f, b.y + (by - b.y) * f
+          end
+        end
+        cx, cy, cn = cx + bx, cy + by, cn + 1
+        local dx, dy = bx - x, by - y
+        local d2 = dx * dx + dy * dy
+        if d2 < nd2 then nn, nd2, nx, ny = b, d2, bx, by end
+        if d2 < s2 then
+          ln = ln + 1
+          if ba == "rest" then lr = lr + 1 end
+        end
+      end
+    end
+  end
+  SC.nn, SC.nd, SC.nx, SC.ny = nn, sqrt(nd2), nx, ny
+  SC.ln, SC.lrest, SC.cx, SC.cy, SC.cn = ln, lr, cx, cy, cn
+end
+M.scan = scan
+
+-- A dog of the village within r of (x, y) now: where it is.
+local function dog_near(s, x, y, now, r)
+  local L = s.dogs
+  if not L then return nil end
+  local r2 = r * r
+  for i = 1, #L do
+    local d = L[i]
+    if d.alive then
+      local dx, dy = d.tx, d.ty
+      if (d.act == "walk" or d.act == "run") and d.t1 > d.t0 then
+        local f = (now - d.t0) / (d.t1 - d.t0)
+        if f < 1 then
+          if f < 0 then f = 0 end
+          dx, dy = d.x + (dx - d.x) * f, d.y + (dy - d.y) * f
+        end
+      end
+      if dsq(dx - x) + dsq(dy - y) < r2 then return dx, dy end
+    end
+  end
+  return nil
 end
 
 -- The end of animal a's action at time now: its effects, then the next action.
@@ -394,15 +495,18 @@ function M.step(W, s, H, a, now)
     if d > near then
       local ang = u(W, s, H, a, now, 1) * 6.2832
       local ox, oy = near * 0.5 * cos(ang), near * 0.5 * sin(ang)
+      a.why = "After its mother"
       if walk_to(W, s, a, now, mx + ox, my + oy, S.speed * 1.3) then return end
     end
+    a.why = "At its mother's side"
     local ma = mom.act
     stand(a, now, (ma == "rest" or ma == "pen") and "rest" or (ma == "walk" and "graze" or ma == "held" and "graze" or ma),
       0.15 + 0.3 * u(W, s, H, a, now, 2))
     if a.act == "pen" then a.act = "rest" end
     return
   end
-  -- where the herd is kept now
+  -- where the herd is kept now: its herder (where they are now), the ground it was left on, the
+  -- pigs' own rooting ground, else the pen
   local p = M.herder(W, s, H)
   local cx, cy, inpen
   if p then
@@ -418,61 +522,160 @@ function M.step(W, s, H, a, now)
     inpen = true
     if H.out and night then H.out = false end    -- (no herder: they come home to the pen by themselves)
   end
-  local turn = (floor(now / 24) * GOLD * 3.7) % 6.2832
-  local tx, ty, r
+  local x, y = a.tx, a.ty
+  local pace = 0.85 + 0.3 * trait(a, T_PACE)
   if inpen then
-    tx, ty = pen_place(s, pen, a)
-    r = s.T * 0.6
-  else
-    tx, ty, r = place(H, a, cx, cy, S.sep, turn)
-    if not S.browse and a.sp ~= "pig" then
-      -- (grass grows in the open: a grazer's place is not under a tree; the next places round)
-      for q = 1, 2 do
-        local i = mapm.tile_of(s, tx, ty)
-        local k = i > 0 and s.tree[i] or 0
-        if i > 0 and s.cost[i] >= 0 and not (k > 0 and s.trees.st[k] == 1) then break end
-        tx, ty = place(H, a, cx, cy, S.sep, turn + q * 2.1)
-      end
+    local tx, ty
+    local inside = inside_pen(s, pen, x, y)
+    if night then
+      -- the night: lying at its own place in the pen (the places shuffled every day)
+      tx, ty = pen_place(s, pen, a)
+    else
+      -- by day in the pen: about the enclosure, never on top of another
+      tx, ty = pen_spot(s, pen, u(W, s, H, a, now, 14), u(W, s, H, a, now, 15))
+      scan(s, H, a, now, tx, ty, S.sep)
+      if SC.nn and SC.nd < S.sep * 0.45 then tx, ty = pen_spot(s, pen, u(W, s, H, a, now, 16), u(W, s, H, a, now, 17)) end
     end
-    r = max(S.sep * 0.7, r * 0.25)
-  end
-  local dx, dy = tx - a.tx, ty - a.ty
-  local d = sqrt(dx * dx + dy * dy)
-  if d > r then
-    -- to its place: a long way is walked in hops (they look up and follow the others)
-    local hop = S.hop * (0.7 + 0.6 * u(W, s, H, a, now, 5))
-    local gx, gy = tx + (u(W, s, H, a, now, 3) - 0.5) * r, ty + (u(W, s, H, a, now, 4) - 0.5) * r
-    if d > hop then
-      local f = hop / d
-      gx, gy = a.tx + (gx - a.tx) * f, a.ty + (gy - a.ty) * f
+    local d = sqrt(dsq(tx - x) + dsq(ty - y))
+    if d > s.T * 0.6 and (night or not inside or u(W, s, H, a, now, 12) < 0.35) then
+      a.why = night and "To its place in the pen for the night" or (inside and "About the pen" or "Into the pen")
+      if walk_to(W, s, a, now, tx, ty, S.speed * pace * (inside and 0.5 or 1.2)) then return end
     end
-    if walk_to(W, s, a, now, gx, gy, S.speed * (d > 0.4 and 1.4 or 1)) then return end
-  end
-  if inpen then
-    -- the night in the pen (lying down), or waiting in it by day
-    stand(a, now, "pen", (night and 1.8 or 0.5) + (night and 2.4 or 0.7) * u(W, s, H, a, now, 6))
-    if not night and u(W, s, H, a, now, 12) < 0.3 and (a.sick or 0) == 0 then
-      -- (restless by day: a few steps about the pen)
-      local ax, ay = pen_place(s, pen, a)
-      local ang = u(W, s, H, a, now, 13) * 8
-      local o = P8[floor(ang) + 1]
-      walk_to(W, s, a, now, ax + o[1] * s.T * 0.4, ay + o[2] * s.T * 0.4, S.speed * 0.4)
-    end
+    a.why = night and "Lying in the pen for the night" or "Waiting in the pen"
+    stand(a, now, "pen", (night and 1.8 or 0.4) + (night and 2.4 or 0.6) * u(W, s, H, a, now, 6))
     return
   end
-  -- out: graze (root), a few steps to fresher ground, now and then lie down (cattle chew the cud)
-  local v = u(W, s, H, a, now, 7)
+  -- out with the herd. Each beast keeps within its own range of where the herd is kept (the bold
+  -- at the edge, the timid near the middle), follows when it is left behind or the herder sets
+  -- off, makes room when another is too close, rejoins the others when it finds itself alone,
+  -- moves away from a dog, and otherwise grazes its own way (a heading it keeps, turning back at
+  -- the edge of its range and away from bare ground) and lies down when fed (sooner when those
+  -- about it are lying down).
+  local n = H.n_alive or 1
+  local R = S.sep * (0.9 * sqrt(n) + 1)
+  local Ri = R * (0.45 + 0.9 * trait(a, T_BOLD))
+  local dax, day = cx - x, cy - y
+  local da = sqrt(dax * dax + day * day)
+  local led = p and p.act == "walk"
+  local hx, hy = a.hx or 1, a.hy or 0
   local sick = (a.sick or 0) > 0
-  if v < S.stepping and not sick then
-    local ang = u(W, s, H, a, now, 8) * 8
-    local o = P8[floor(ang) + 1]
-    local st = S.sep * (0.3 + 0.5 * u(W, s, H, a, now, 9))
-    if walk_to(W, s, a, now, a.tx + o[1] * st, a.ty + o[2] * st, S.speed * 0.5) then return end
+  -- a dog close by: away from it, toward the herd (how a dog brings a straggler back)
+  local gx, gy = dog_near(s, x, y, now, S.sep * 1.8)
+  if gx then
+    local ex, ey = x - gx, y - gy
+    local el = sqrt(ex * ex + ey * ey)
+    if el < 1e-6 then ex, ey, el = -dax, -day, max(1e-6, da) end
+    ex, ey = ex / el, ey / el
+    if da > 1e-6 then ex, ey = ex + dax / da * 0.6, ey + day / da * 0.6 end
+    local l = max(1e-6, sqrt(ex * ex + ey * ey))
+    ex, ey = ex / l, ey / l
+    local st = S.sep * (0.9 + 0.6 * u(W, s, H, a, now, 18))
+    a.hx, a.hy = ex, ey
+    a.why = "Moving off from the dog"
+    if walk_to(W, s, a, now, x + ex * st, y + ey * st, S.speed * pace * 1.6, true) then return end
   end
-  if sick or (v > 1 - S.resting and a.hunger < 0.35) then
+  if da > Ri * 1.5 or (led and da > Ri * 0.8) then
+    -- left behind, or the herder is moving on: after them, to its own side of the herd
+    local ux, uy = dax / da, day / da
+    local side = trait(a, T_SIDE) - 0.5
+    local stop = Ri * 0.6
+    local tx = cx - ux * stop - uy * side * Ri * 0.8
+    local ty = cy - uy * stop + ux * side * Ri * 0.8
+    local dx, dy = tx - x, ty - y
+    local d = sqrt(dx * dx + dy * dy)
+    local hop = S.hop * pace * (0.8 + 0.5 * u(W, s, H, a, now, 5)) * (da > R * 2 and 1.6 or 1)
+    if d > hop then tx, ty = x + dx / d * hop, y + dy / d * hop end
+    if d > 1e-6 then a.hx, a.hy = dx / d, dy / d end
+    a.why = led and "Following the herder" or (p and "Catching up with the herder" or "Back to the others")
+    if walk_to(W, s, a, now, tx, ty, S.speed * pace * (da > Ri * 3 and 1.5 or 1.15)) then return end
+  end
+  scan(s, H, a, now, x, y, S.sep * 3)
+  local nn = SC.nn
+  if nn and SC.nd < S.sep * 0.35 and not sick then
+    -- too close: room to graze (away from the nearest, a little along its own way)
+    local ex, ey = x - SC.nx, y - SC.ny
+    local el = sqrt(ex * ex + ey * ey)
+    if el < 1e-6 then ex, ey, el = -hy, hx, 1 end
+    ex, ey = ex / el + hx * 0.3, ey / el + hy * 0.3
+    local l = max(1e-6, sqrt(ex * ex + ey * ey))
+    local st = S.sep * (0.4 + 0.3 * u(W, s, H, a, now, 19))
+    a.why = "Making room to graze"
+    if walk_to(W, s, a, now, x + ex / l * st, y + ey / l * st, S.speed * pace * 0.6, true) then return end
+  end
+  if SC.ln == 0 and SC.cn > 0 then
+    -- nobody in sight: toward the others
+    local mx, my = SC.cx / SC.cn, SC.cy / SC.cn
+    local dx, dy = mx - x, my - y
+    local d = sqrt(dx * dx + dy * dy)
+    if d > R * 0.5 then
+      local st = min(d - R * 0.4, S.hop * pace)
+      a.hx, a.hy = dx / d, dy / d
+      a.why = "Rejoining the others"
+      if walk_to(W, s, a, now, x + dx / d * st, y + dy / d * st, S.speed * pace * 1.1) then return end
+    end
+  end
+  -- grazing (rooting) its own way
+  local v = u(W, s, H, a, now, 7)
+  local lying = SC.ln > 0 and SC.lrest / SC.ln or 0
+  if sick or (not led and a.hunger < 0.35 and v > 1 - S.resting * (1 + 2.5 * lying)) then
+    a.why = sick and "Sick: lying down" or (a.sp == "pig" and "Fed: lying down" or "Fed: lying down to chew the cud")
     stand(a, now, "rest", S.rest_h * (0.6 + 0.8 * u(W, s, H, a, now, 10)))
-  else
-    stand(a, now, "graze", S.graze_h * (0.6 + 0.8 * u(W, s, H, a, now, 11)))
+    return
+  end
+  -- its own way: the heading it keeps, turning a little as it goes, back toward the herd at the
+  -- edge of its range, away from bare ground
+  local k = (u(W, s, H, a, now, 8) - 0.5) * 1.4
+  if da > Ri and da > 1e-6 then hx, hy = hx + dax / da * 0.9, hy + day / da * 0.9 end
+  if nn and SC.nd < S.sep * 0.9 and SC.nd > 1e-6 then
+    -- (another close by: its way bends off from it)
+    hx, hy = hx + (x - SC.nx) / SC.nd * 0.8, hy + (y - SC.ny) / SC.nd * 0.8
+  end
+  if P then
+    local here = block_of(s, x, y)
+    local ahead = block_of(s, x + hx * S.sep * 3, y + hy * S.sep * 3)
+    if ahead ~= here and ahead > 0 and here > 0 then
+      local gh = a.sp == "pig" and (P.wood and P.wood[here] or 0) or (P.grass[here] or 0)
+      local ga = a.sp == "pig" and (P.wood and P.wood[ahead] or 0) or (P.grass[ahead] or 0)
+      if ga < gh * 0.6 then k = k + (k >= 0 and 1.5 or -1.5) end
+    end
+  end
+  hx, hy = hx - hy * k, hy + hx * k
+  local l = sqrt(hx * hx + hy * hy)
+  if l > 1e-6 then hx, hy = hx / l, hy / l else hx, hy = 1, 0 end
+  a.hx, a.hy = hx, hy
+  if v < S.stepping * (led and 2.5 or 1) then
+    -- a few steps on to fresh ground (a grazer not in under the trees)
+    local st = S.sep * (0.3 + 0.6 * u(W, s, H, a, now, 9))
+    if not S.browse and a.sp ~= "pig" then
+      local i = mapm.tile_of(s, x + hx * st, y + hy * st)
+      local k = i > 0 and s.tree[i] or 0
+      if k > 0 and s.trees.st[k] == 1 then hx, hy = -hy, hx; a.hx, a.hy = hx, hy end
+    end
+    a.why = a.sp == "pig" and "Rooting its way along" or "Grazing its way along"
+    if walk_to(W, s, a, now, x + hx * st, y + hy * st, S.speed * pace * 0.45, true) then return end
+  end
+  -- grazing (rooting), head down, drifting slowly along its way as it crops (S15)
+  local dur = S.graze_h * (led and 0.25 or 1) * (0.5 + 0.8 * u(W, s, H, a, now, 11))
+  a.why = a.sp == "pig" and "Rooting" or (S.browse and "Browsing" or "Grazing")
+  graze_drift(s, a, now, hx, hy, sick and 0 or S.sep * (a.sp == "pig" and 0.35 or 0.6) * pace * dur, dur,
+    not S.browse and a.sp ~= "pig")
+end
+
+-- The herder sets off (out of the gate, onward, or home) or the gate is opened: each beast out
+-- with them notices in its own time - the alert sooner - and decides again then (S15).
+function M.rouse(W, s, H, now)
+  if not H then return end
+  local push = M.push
+  for _, a in ipairs(H.animals) do
+    if a.alive and (a.held or 0) == 0 and (a.yoke or 0) == 0
+      and (a.act == "graze" or a.act == "rest" or a.act == "pen") then
+      local at = now + 0.015 + 0.09 * (1 - trait(a, T_ALERT)) + 0.04 * u(W, s, H, a, now, 20)
+      if a.t1 > at then
+        a.ver = a.ver + 1
+        a.t1 = at
+        push(W, at, M.event_id(s, H, a), a.ver)
+      end
+    end
   end
 end
 
@@ -520,6 +723,7 @@ function M.herd_daily(W, s, H, day, doy, year, now, push)
     ord[i], ord[j] = ord[j], ord[i]
   end
   for i = 1, m do L[ord[i]].slot = i - 1 end
+  H.n_alive = m
   if H.kind == "swine" then
     -- where the pigs root by themselves today: the best ground near the sty
     local x, y = M.pick_spot(W, s, H, now, c.pig_roam)

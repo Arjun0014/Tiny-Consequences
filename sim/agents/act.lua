@@ -19,6 +19,7 @@ local people = require("sim.agents.people")
 local econ = require("sim.agents.econ")
 local ledger = require("sim.ledger")
 local kin = require("sim.agents.kin")
+local stock = require("sim.agents.stock")
 
 local M = {}
 local floor, max, min, sqrt = math.floor, math.max, math.min, math.sqrt
@@ -161,6 +162,18 @@ START.go = function(W, s, p, st, now)
   end
   p.spd = people.speed(W, p, now)
   if s.rain_now == 2 then p.spd = p.spd * C().speed_rain end   -- hurrying through a downpour
+  if st.drove then
+    -- (S15) driving a herd out or home: at the beasts' pace, and they notice them setting off
+    local H = s.herds and s.herds[stock.HERDS[st.drove]]
+    if H then
+      local sp = 9
+      for _, a in ipairs(H.animals) do
+        if a.alive then sp = min(sp, stock.SP(a.sp).speed) end
+      end
+      if sp < 9 then p.spd = min(p.spd, sp * C().drove_pace) end
+      stock.rouse(W, s, H, now)
+    end
+  end
   p.dest = st.place or ""
   begin(p, now, "walk", r.len / p.spd)
   return true
@@ -744,7 +757,6 @@ end
 -- Livestock (D-089, D-092): a pen opened and its herd driven out to the day's ground, watched,
 -- brought home; dams milked, sheep shorn, beasts killed; hay mown and racked; dung spread on a
 -- field; slops in the pigs' trough; cheese made at home.
-local stock = require("sim.agents.stock")
 local function herd_of(s, st) return s.herds and s.herds[stock.HERDS[st.herd or 1]] end
 
 WORK.open_pen = function(W, s, p, st, f)
@@ -752,6 +764,8 @@ WORK.open_pen = function(W, s, p, st, f)
   if not H then return end
   H.out, H.herder = true, p.id
   H.spot_x, H.spot_y = st.sx, st.sy
+  -- (the gate opens: the beasts come out, each when it notices, S15)
+  stock.rouse(W, s, H, W.S.v3.now or W.hour)
 end
 
 WORK.herd = function(W, s, p, st, f)

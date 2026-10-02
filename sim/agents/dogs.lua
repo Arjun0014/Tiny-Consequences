@@ -182,25 +182,62 @@ function M.step(W, s, d, now)
     end
     if dd < c.dog_charge and dd > c.wolf_reach then
       local step = min(dd - c.wolf_reach, 0.1)
+      d.why = "Running at a wolf"
       if go_to(s, d, now, d.tx + (wx - d.tx) / dd * step, d.ty + (wy - d.ty) / dd * step, c.dog_run, "run") then return end
     end
+    d.why = "Barking at a wolf"
     stand(d, now, "bark", 0.15)
     return
   end
-  -- with the herd and its herder by day: round the edge of the flock
+  -- with the herd and its herder by day (S15): it fetches a beast that strays (running out
+  -- beyond it, so that it turns back from the dog toward the herd), works behind the herd when
+  -- the herder drives it, and otherwise lies at the herd's edge on its own side, watching
   local herder = H and stock.herder(W, s, H)
   if H and H.out and herder and not night then
-    -- (round the flock, which spreads round its herder)
     local mx, my = stock.person_pos(herder, now)
-    local r = 0.06 + 0.012 * sqrt(#H.animals)
-    local ang = now * 1.7 + d.k * 2.1 + u(W, s, d, now, 2) * 0.6
-    local gx, gy = mx + r * cos(ang), my + r * sin(ang)
-    if go_to(s, d, now, gx, gy, c.dog_trot, "walk") then
-      if d.t1 - now < 0.25 then d.t1 = now + 0.25 end
+    local far, fd, fx, fy = nil, 0, 0, 0
+    local cx, cy, n = 0, 0, 0
+    for _, a in ipairs(H.animals) do
+      if a.alive and a.act ~= "pen" and a.act ~= "held" and a.act ~= "yoked" then
+        local ax, ay = stock.pos(a, now)
+        cx, cy, n = cx + ax, cy + ay, n + 1
+        local dd = dsq(ax - mx) + dsq(ay - my)
+        if dd > fd then far, fd, fx, fy = a, dd, ax, ay end
+      end
+    end
+    if n > 0 then
+      cx, cy = cx / n, cy / n
+      local S = stock.SP(far.sp)
+      local R = S.sep * (0.9 * sqrt(n) + 1)
+      fd = sqrt(fd)
+      if fd > R * 1.6 then
+        -- a straggler: round beyond it
+        local ux, uy = (fx - mx) / fd, (fy - my) / fd
+        d.why = "Fetching a straggler back to the herd"
+        if go_to(s, d, now, fx + ux * S.sep * 1.4, fy + uy * S.sep * 1.4, c.dog_run, "run") then return end
+      end
+      local ox, oy = cx - mx, cy - my
+      local ol = sqrt(ox * ox + oy * oy)
+      local gx, gy
+      if herder.act == "walk" and ol > 1e-6 then
+        -- the herder driving them on: behind the herd, to its own side
+        local side = ((d.k * 0.618034) % 1 - 0.5) * 1.2
+        ox, oy = ox / ol, oy / ol
+        gx, gy = cx + (ox - oy * side) * (R * 0.6 + 0.04), cy + (oy + ox * side) * (R * 0.6 + 0.04)
+        d.why = "Working behind the herd"
+      else
+        -- watching from the edge on its own side (the side shifts over the day)
+        local ang = d.k * 2.1 + floor(now / 2) * 0.9 + u(W, s, d, now, 2) * 0.5
+        gx, gy = mx + (R + 0.05) * cos(ang), my + (R + 0.05) * sin(ang)
+        d.why = "Watching the herd"
+      end
+      local dd = sqrt(dsq(gx - d.tx) + dsq(gy - d.ty))
+      if dd > 0.03 then
+        if go_to(s, d, now, gx, gy, herder.act == "walk" and c.dog_trot * 1.2 or c.dog_trot, "walk") then return end
+      end
+      stand(d, now, u(W, s, d, now, 3) < 0.6 and "lie" or "sit", herder.act == "walk" and 0.05 or (0.15 + 0.3 * u(W, s, d, now, 4)))
       return
     end
-    stand(d, now, "sit", 0.4)
-    return
   end
   -- by night at the pen of the household's beasts; else by the house
   local bx, by
@@ -209,9 +246,11 @@ function M.step(W, s, d, now)
     if pen then bx, by = pen.dx + 0.02 * cos(d.k), pen.dy + 0.02 * sin(d.k) end
   end
   if not bx and home then bx, by = home.dx + 0.02 * cos(d.k * 1.3), home.dy + 0.015 end
+  d.why = (night and H) and "Lying at the pen for the night" or "About the house"
   if bx then
     local dd = dsq(bx - d.tx) + dsq(by - d.ty)
     if dd > 0.0004 then
+      d.why = (night and H) and "To the pen for the night" or "Home to the house"
       if go_to(s, d, now, bx, by, c.dog_trot, "walk") then return end
     end
   end

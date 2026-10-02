@@ -22,4 +22,5 @@ return {
   "tests.sim.unit.test_v3_year",
   "tests.sim.unit.test_v3_rivers",
   "tests.sim.unit.test_v3_birds",
+  "tests.sim.unit.test_v3_animals",
 }

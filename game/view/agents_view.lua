@@ -1397,6 +1397,9 @@ local function draw_herd(V, t, H, lod, sid, hi)
         elseif moving then
           local dx, dy = a.tx - a.x, a.ty - a.y
           if dx * dx + dy * dy > 1e-12 then yaws[k] = yaw_x(V, x, y, dx, dy) + pi * 0.5 end
+        elseif a.hx and a.act == "graze" then
+          -- (grazing its way along: facing the way the sim says it is going, S15)
+          yaws[k] = yaw_x(V, x, y, a.hx, a.hy) + pi * 0.5
         end
         local yaw = yaws[k] or (k * 1.7 + sid)
         local px, py, pz, ux, uy, uz = world_pos(V, x, y, 0)
@@ -1488,6 +1491,8 @@ local function draw_wild(V, t, lod)
       if moving then
         local dx, dy = w.tx - w.x, w.ty - w.y
         if dx * dx + dy * dy > 1e-12 then V.wyaw[w.k] = yaw_x(V, x, y, dx, dy) end
+      elseif w.hx and w.act == "graze" then
+        V.wyaw[w.k] = yaw_x(V, x, y, w.hx, w.hy)
       end
       local yaw = V.wyaw[w.k] or (w.k * 1.3)
       local young = (t - w.born) / 1152 < 0.5 and 0.65 or 1

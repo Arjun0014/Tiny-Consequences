@@ -210,6 +210,7 @@ function sys.advance(W, t)
   dogs.interrupt_hook = function(W_, p, at, reason) return sys.interrupt(W_, p, at, reason) end
   wild.interrupt_hook = dogs.interrupt_hook
   dogs.push = sys.push
+  stock.push = sys.push
   act.stock_push = function(W_, s_, a)
     local H = s_.herds and s_.herds.cattle
     if not H then return end

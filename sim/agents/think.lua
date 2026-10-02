@@ -2840,6 +2840,7 @@ PLAN.herd = function(W, s, p, ctx, now, cd)
   end
   local wx, wy = near_spot(W, p, now, x, y, 0.04, 61)
   go(pl, wx, wy, kind == "swine" and "the woods' edge" or "the pasture")
+  pl[#pl].drove = cd.b
   work(pl, "herd", (1.0 + 1.5 * u01(W, p, now, 62)) * p.dil, { fx = x, fy = y, herd = cd.b })
   return cd.a == 0 and ("Take " .. stock.NAMES[kind] .. " out") or ("Mind " .. stock.NAMES[kind]), kind == "swine" and "the woods' edge" or "the pasture"
 end
@@ -2850,6 +2851,7 @@ PLAN.herd_home = function(W, s, p, ctx, now, cd)
   p.herd_of = cd.b
   local pen = s.buildings[H.pen]
   go(pl, pen.dx, pen.dy, "the " .. pen.label)
+  pl[#pl].drove = cd.b
   -- (the herd follows them in; they wait a little at the gate, then close it)
   work(pl, "herd", 0.3, { fx = pen.cx, fy = pen.cy, herd = cd.b })
   work(pl, "close_pen", 0.06, { fx = pen.cx, fy = pen.cy, herd = cd.b })

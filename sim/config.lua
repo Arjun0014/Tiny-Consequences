@@ -921,6 +921,7 @@ C.V3 = {
       young_years = 0.25, adult_years = 1, old_years = 6, birth = { 4, 14 }, birth2 = { 22, 30 }, birth_chance = 0.15,
       twins = 0, litter = 6, stepping = 0.25, resting = 0.15, graze_h = 0.95, rest_h = 1.4, butcher_h = 1.0 },
   },
+  drove_pace = 1.25,                      -- (S15) a herder driving a herd walks at its slowest beast's speed x this
   pen_size = { flock = { 6, 6 }, cattle = { 7, 6 }, swine = { 5, 4 } },   -- tiles of the fold, byre yard, sty
   rack_found = { flock = 4, cattle = 10, swine = 3 },                      -- feed in the racks at founding
   cattle_share = 0.45, pig_share = 0.7,   -- founding: share of households with a cow, with a sow (by grass, woods)
@@ -949,6 +950,8 @@ C.V3 = {
   wild_keep = 0.9,                        -- bands keep this far from the village square
   wild_alert = 0.2, wild_alert_wolf = 0.3,   -- grazers take flight from people / hunting wolves this close
   wild_flee = 0.35,                       -- how far a frightened grazer runs
+  wild_alarm_seps = 6,                    -- (S15) a grazer taking flight frightens its band within this many spacings
+  wild_shy = 0.3,                         -- (S15) a frightened band's grazing ground moves this far from the danger for the day
   wolf_hungry = 0.55,                     -- a pack below this condition comes for a village's beasts when
   wolf_wild_scarce = 8,                   --   fewer wild grazers than this are on the map; at once below
   wolf_starving = 0.25,                   --   this condition
