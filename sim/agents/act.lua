@@ -608,6 +608,10 @@ WORK.land = function(W, s, p, st, f)
     boat.cond = max(0, (boat.cond or 1) - C().boat_wear * out)
     boat.trips = (boat.trips or 0) + 1
   end
+  -- (a catch landed: the gulls know it, sim/agents/birds.lua)
+  if p.carry == "fish" and (p.camt or 0) > 0.5 and s.id == p.sett then
+    s.landing = { t = W.S.v3.now or W.hour, amt = p.camt, who = p.name }
+  end
   p.boat = nil
   if b then p.x, p.y = b.dx, b.dy end
 end

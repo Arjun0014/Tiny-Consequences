@@ -52,7 +52,10 @@ function M.decode(id)
   local sid = floor(r / 100000)
   r = r - sid * 100000
   local hi = floor(r / 20000)
-  return sid, M.HERDS[hi + 1] or (hi == 4 and "dog" or "wild"), r - hi * 20000
+  local k = r - hi * 20000
+  -- (dogs below 10000, bird flocks from 10000: sim/agents/birds.lua)
+  if hi == 4 and k >= 10000 then return sid, "bird", k - 10000 end
+  return sid, M.HERDS[hi + 1] or (hi == 4 and "dog" or "wild"), k
 end
 
 -- (set by sim/agents/init.lua each advance: the people, for a yoked ox's place)

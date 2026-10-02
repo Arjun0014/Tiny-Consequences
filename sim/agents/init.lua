@@ -28,6 +28,8 @@ local wild = require("sim.agents.wild")
 local dogs = require("sim.agents.dogs")
 dogs.wild = wild
 wild.dogs = dogs
+local birds = require("sim.agents.birds")
+birds.person_pos = require("sim.agents.act").pos
 
 local sys = { name = "agents" }
 -- (act.lua cannot require this module: bob rejects circular requires; it calls through this hook)
@@ -52,6 +54,7 @@ local function rt(W)
     for _, s in ipairs(V.settlements) do
       stock.each(s, function(H, a) sys.push(W, a.t1, stock.event_id(s, H, a), a.ver) end)
       wild.each(s, function(w) sys.push(W, w.t1, wild.event_id(s, w), w.ver) end)
+      birds.each(s, function(f) sys.push(W, f.t1, birds.event_id(s, f), f.ver) end)
     end
   end
   return R
@@ -202,6 +205,7 @@ function sys.advance(W, t)
   if not V then return end
   act.people = V.people
   stock.people = V.people
+  birds.people = V.people
   act.skip_step = sys.skip_step
   dogs.interrupt_hook = function(W_, p, at, reason) return sys.interrupt(W_, p, at, reason) end
   wild.interrupt_hook = dogs.interrupt_hook
@@ -238,6 +242,13 @@ function sys.advance(W, t)
           V.now = et
           dogs.step(W, s, d, et)
           if d.alive then sys.push(W, d.t1, id, d.ver) end
+        end
+      elseif kind == "bird" then
+        local f = s and birds.byk(s, k)
+        if f and f.alive and f.ver == ver then
+          V.now = et
+          birds.step(W, s, f, et)
+          if f.alive then sys.push(W, f.t1, id, f.ver) end
         end
       else
         local H = s and s.herds and s.herds[kind]
@@ -304,11 +315,15 @@ function sys.hour(W)
           stock.daily(W, s, ld, sys.push)
           wild.daily(W, s, ld, sys.push)
           dogs.daily(W, s, ld, sys.push)
+          birds.daily(W, s, ld, sys.push)
         end
       end
       wild.hourly(W, s, now)
       local changed, r = settle.hourly(W, s, now)
-      if changed then rain_change(W, s, now, r) end
+      if changed then
+        rain_change(W, s, now, r)
+        if r == 2 then birds.weather(W, s, now, sys.push) end
+      end
     end
   end
 end

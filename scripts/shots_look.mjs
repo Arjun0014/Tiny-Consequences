@@ -43,6 +43,11 @@ try {
   else await cmd({ cmd: 'v3_goto', lh: hour, days });
   const at = pid ? await cmd({ cmd: 'v3_person', pid, look: true, zoom }) : await cmd({ cmd: 'v3_look', sett, what, zoom, herd });
   if (pid) at.name = `#${pid} ${at.name || ''} ${at.obj || ''} | ${at.why || ''}`;
+  // (S14) --inspect-flock: the settlement's first bird flock selected, the inspector open
+  if (args.includes('--inspect-flock')) {
+    const sel = await cmd({ cmd: 'select', flock: [sett, 1] });
+    at.info = { ...(at.info || {}), inspector: sel.rows };
+  }
   await page.waitForTimeout(400);
   await cmd({ cmd: 'flush_view' });
   await page.waitForTimeout(2500);

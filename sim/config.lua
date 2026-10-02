@@ -1001,6 +1001,10 @@ C.V3 = {
   -- the work; a harness takes harness_leather and harness_h
   ox_till = 2.5, ox_day_h = 6, ox_work_hunger = 0.03, harness_leather = 1.0, harness_h = 3.0,
   ox_stint_h = 2.5,                       -- (S14) hours in the yoke at a stretch (x diligence), row after row
+  -- (S14) gulls (sim/agents/birds.lua): flight speed (local units an hour), hunger an hour, what an
+  -- hour of each food takes off it, how long a landed catch draws them, flock size by the sea's fish
+  gull_speed = 14, gull_hunger = 0.12, gull_eat_boat = 0.6, gull_eat_scraps = 0.7, gull_eat_plough = 0.5,
+  gull_eat_shore = 0.3, gull_landing_h = 0.6, gull_max = 13, gull_per_fish = 7,
   foul_reach = 0.8, flux_k = 0.004, flux_days = 4, flux_health = 0.05, flux_hz = 0.01, river_shun_days = 40,
   dog_alert = 0.45, dog_trot = 1.9, dog_run = 4.0, wolf_kill_dog = 0.15, dog_pup_days = 12,
   wolf_fear = 0.16, dog_deter = 0.3, guard_alert = 0.4, dog_charge = 0.18,

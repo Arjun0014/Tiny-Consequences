@@ -10,7 +10,7 @@ local puppets = require("game.view.puppets")
 local M = {}
 
 M.RADIUS_PX = 22      -- entity pick radius in window pixels (scaled by window height / 720)
-local PRIORITY = { person = 1, village = 2, ship = 3, animal = 4, volcano = 5 }
+local PRIORITY = { person = 1, flock = 1.5, village = 2, ship = 3, animal = 4, volcano = 5 }
 
 local sqrt = math.sqrt
 
@@ -46,6 +46,10 @@ function M.pick(W, sx, sy)
   local best = nil
   for _, p in ipairs(require("game.view.agents_view").people_pos) do
     best = consider(best, "person", { kind = "person", id = p.id, v3 = true }, p.x, p.y, p.z, sx, sy, radius)
+  end
+  -- (S14) bird flocks of the v3 settlements
+  for _, b in ipairs(require("game.view.agents_view").bird_pos) do
+    best = consider(best, "flock", { kind = "flock", sid = b.sid, k = b.k }, b.x, b.y, b.z, sx, sy, radius * 1.5)
   end
   for _, p in ipairs(puppets.people_pos) do
     best = consider(best, "person", { kind = "person", id = p.id }, p.x, p.y, p.z, sx, sy, radius)

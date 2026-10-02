@@ -1222,13 +1222,29 @@ function M.mover_template(kind)
     end
     return t
   elseif kind == "bird" then
-    -- a bird gliding: body along +x, wings a V (tips up). The view beats the wings by scaling
-    -- local y (the V flattens and lifts), so they flap without a buffer swap.
+    -- a gull gliding: body along +x, the wings bent at the wrist (an "M" seen from the front:
+    -- the arm rising, the hand sweeping back and down to a dark tip). The view beats them by
+    -- scaling local y (the wrists rise and fall), and folds them by scaling z.
     kit.place(t, kit.lump(nil, 0.012, 0.004, 0.0045, 5, 2, 1, 0.8, 1.0, 0, 0), 0, 0, 0, 1)
-    kit.tri(t, { 0.004, 0, 0.002 }, { -0.004, 0, 0.002 }, { -0.002, 0.014, 0.03 }, nil, nil, nil, 2, 0.85, 0.85, 1.0, 0, 0, 0, 0, 1, 0)
-    kit.tri(t, { -0.004, 0, 0.002 }, { 0.004, 0, 0.002 }, { -0.002, 0.014, 0.03 }, nil, nil, nil, 2, 0.8, 0.8, 0.95, 0, 0, 0, 0, -1, 0)
-    kit.tri(t, { -0.004, 0, -0.002 }, { 0.004, 0, -0.002 }, { -0.002, 0.014, -0.03 }, nil, nil, nil, 2, 0.85, 0.85, 1.0, 0, 0, 0, 0, 1, 0)
-    kit.tri(t, { 0.004, 0, -0.002 }, { -0.004, 0, -0.002 }, { -0.002, 0.014, -0.03 }, nil, nil, nil, 2, 0.8, 0.8, 0.95, 0, 0, 0, 0, -1, 0)
+    kit.place(t, kit.lump(nil, 0.004, 0.0035, 0.0035, 4, 2, 1, 0.85, 1.0, 0, 0), 0.011, 0.002, 0, 1)   -- head
+    local function wing(sz)
+      local rf, rb = { 0.004, 0, 0.002 * sz }, { -0.006, 0, 0.002 * sz }
+      local wf, wb = { 0.003, 0.006, 0.015 * sz }, { -0.005, 0.006, 0.015 * sz }
+      local tp, tq = { -0.012, 0.002, 0.03 * sz }, { -0.006, 0.0035, 0.024 * sz }
+      local up = sz > 0 and 1 or -1
+      -- the arm (two faces each way)
+      kit.tri(t, rf, rb, wb, nil, nil, nil, 2, 0.88, 0.88, 1.0, 0, 0, 0, 0, up, 0)
+      kit.tri(t, rf, wb, wf, nil, nil, nil, 2, 0.88, 1.0, 1.0, 0, 0, 0, 0, up, 0)
+      kit.tri(t, rb, rf, wb, nil, nil, nil, 2, 0.8, 0.8, 0.9, 0, 0, 0, 0, -up, 0)
+      kit.tri(t, wb, rf, wf, nil, nil, nil, 2, 0.8, 0.9, 0.9, 0, 0, 0, 0, -up, 0)
+      -- the hand, grey, and its dark tip
+      kit.tri(t, wf, wb, tq, nil, nil, nil, 2, 0.95, 0.9, 0.95, 0, 0, 0, 0, up, 0)
+      kit.tri(t, wb, wf, tq, nil, nil, nil, 2, 0.85, 0.8, 0.85, 0, 0, 0, 0, -up, 0)
+      kit.tri(t, wf, tq, tp, nil, nil, nil, 3, 0.9, 0.9, 0.9, 0, 0, 0, 0, up, 0)
+      kit.tri(t, tq, wf, tp, nil, nil, nil, 3, 0.8, 0.8, 0.8, 0, 0, 0, 0, -up, 0)
+    end
+    wing(1)
+    wing(-1)
     kit.tri(t, { -0.01, 0, 0 }, { -0.018, 0.001, 0.005 }, { -0.018, 0.001, -0.005 }, nil, nil, nil, 1, 0.8, 0.9, 0.9, 0, 0, 0, 0, 1, 0)
     return t
   elseif kind == "tanker" then

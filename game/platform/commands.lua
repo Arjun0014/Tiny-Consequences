@@ -368,6 +368,14 @@ function M.register(G)
         end
       end
       info = { acts = acts, spread = spread, n = n }
+    elseif args.what == "birds" then
+      -- (S14) the settlement's first bird flock where it is now
+      local birds = require("sim.agents.birds")
+      local t = require("game.platform.speed").v3_t or W.hour
+      local f = s.birds and s.birds.flocks and s.birds.flocks[1]
+      assert(f, "no flock")
+      x, y = birds.pos(f, t)
+      info = { act = f.act, obj = f.obj, why = f.why, n = f.n, hunger = f.hunger }
     elseif args.what == "ford" or args.what == "river" then
       -- the wet tile nearest the square (a wadeable one for "ford")
       local best, bd = 0, 1e9
@@ -634,7 +642,7 @@ function M.register(G)
     return { seed = G.seed }
   end)
 
-  -- select{cell=c | village=id|"first" | person=id|"first" | planet=true | ship=i | none=true}
+  -- select{cell=c | village=id|"first" | person=id|"first" | flock={sett, k} | planet=true | ship=i | none=true}
   bridge.register("select", function(args)
     local W = assert(G.W, "world not ready")
     local sel
@@ -656,6 +664,9 @@ function M.register(G)
       local pid = (args.person == "first" and first_person(W)) or (args.person == "worker" and a_worker(W)) or args.person
       assert(pid and ents.person(W, pid), "no such person")
       sel = { kind = "person", id = pid }
+    elseif args.flock and W.v3 then
+      -- (S14) flock = { sett, k }
+      sel = { kind = "flock", sid = tonumber(args.flock[1]) or 1, k = tonumber(args.flock[2]) or 1 }
     elseif args.planet then
       sel = { kind = "planet" }
     elseif args.ship then

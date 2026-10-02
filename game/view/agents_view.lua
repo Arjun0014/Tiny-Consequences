@@ -1254,6 +1254,8 @@ function M.update(W, dt, zoom, t)
   end
   local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
   M.animals_begin()
+  local bp = M.bird_pos
+  for i = #bp, 1, -1 do bp[i] = nil end
   for _, V in ipairs(M.SETS) do
     -- (a settlement far from the view focus is neither rebuilt nor peopled until it comes into view)
     local f = V.s.frame
@@ -1590,7 +1592,118 @@ function M.update_herds(V, t, zoom)
   end
   draw_dogs(V, t, lod)
   M.draw_ploughs(V, t)
+  M.draw_birds(V, t, zoom)
 end
+
+-- Bird flocks (S14, sim/agents/birds.lua): each member drawn round its flock with its own place,
+-- phase and wing beat - in flight a loose straggle behind the leader, over a boat each its own wide
+-- circle (wheeling over the net, the only circling there is), on the shore and the water each at
+-- its own spot, hopping now and then; wings folded on the ground and the water.
+local GULL_RES
+local GPOS, GROT, GSCL = vmath.vector3(), vmath.quat(), vmath.vector3()
+local sin, cos = math.sin, math.cos
+local function frac2(v) return v - floor(v) end
+function M.draw_birds(V, t, zoom)
+  local s = V.s
+  local bf = M.animal_urls and M.animal_urls.bird_factory
+  if not bf then return end
+  V.bird_go = V.bird_go or {}
+  local n = 0
+  local L = s.birds and s.birds.flocks
+  if L and not M.skipping and V.in_view and zoom >= 0.75 then
+    local birds = require("sim.agents.birds")
+    if not GULL_RES then
+      GULL_RES = resource.create_buffer("/tc/v3_gull.bufferc",
+        { buffer = make_buffer("bird", { 0.96, 0.96, 0.94 }, { 0.84, 0.86, 0.90 }, { 0.30, 0.30, 0.32 }, 1, true) })
+    end
+    for _, f in ipairs(L) do
+      if f.alive then
+        local x, y, z, hx, hy = birds.pos(f, t)
+        local a = f.act
+        local flying = a == "fly" or a == "follow"
+        local hl = sqrt(hx * hx + hy * hy)
+        if hl > 1e-9 then hx, hy = hx / hl, hy / hl else hx, hy = 1, 0 end
+        for k = 1, f.n do
+          n = n + 1
+          local e = V.bird_go[n]
+          if not e then
+            local id = factory.create(bf, vmath.vector3(0, 0, 0))
+            e = { id = id, url = msg.url(nil, id, "mesh"), on = false }
+            go.set(e.url, "vertices", GULL_RES)
+            V.bird_go[n] = e
+          end
+          local ph = frac2(k * 0.6180339887 + f.k * 0.37)
+          local mx, my, mz, dx, dy
+          local flap = 1
+          if a == "fly" then
+            -- a straggle: behind and beside the leader, each bobbing to its own beat
+            local back = 0.014 * sqrt(k - 1) * (0.7 + 0.6 * ph)
+            local side = 0.013 * sqrt(k - 1) * ((k % 2) * 2 - 1) + 0.004 * sin(t * 37 + k * 1.9)
+            mx = x - hx * back - hy * side
+            my = y - hy * back + hx * side
+            mz = z + 0.012 * sin(t * 23 + k * 2.3)
+            dx, dy = hx, hy
+            flap = 0.35 + 0.65 * (0.5 + 0.5 * cos(t * 160 + ph * 6.283))
+            if frac2(t * 9 + ph) < 0.55 then flap = 0.85 end          -- gulls glide between beats
+          elseif a == "follow" then
+            -- each its own circle over the boat: wide and low, slower and faster ones
+            local q = V.W.S.v3.people[f.tgt or 0]
+            local bx, by = x, y
+            if q and q.alive then bx, by = act.pos(q, t) end
+            local r = 0.04 + 0.02 * (k % 4) + 0.012 * ph
+            local w = 34 + 10 * ph
+            local ang = t * w + ph * 6.283 + k
+            mx, my = bx + r * cos(ang), by + r * sin(ang)
+            mz = 0.06 + 0.06 * frac2(k * 0.71) + 0.015 * sin(t * 19 + k)
+            dx, dy = -sin(ang), cos(ang)
+            flap = (frac2(t * 6 + ph) < 0.6) and 0.85 or (0.35 + 0.65 * (0.5 + 0.5 * cos(t * 160 + ph * 6.283)))
+          else
+            -- on the ground or the water: a loose spread, each now and then hopping or shifting
+            local spread = (a == "roost" or a == "shelter") and 0.009 or ((a == "raft") and 0.013 or 0.016)
+            local shift = floor(t * 1.5 + ph * 5)
+            local ang = k * 2.39996 + shift * 0.9 * ph
+            local r = spread * sqrt(k - 0.5)
+            mx, my = x + r * cos(ang), y + r * sin(ang)
+            local hop = 0
+            if a ~= "roost" and a ~= "shelter" then
+              local hv = sin(t * 7 + k * 2.1)
+              if hv > 0.93 then hop = 0.02 * (hv - 0.93) / 0.07 end
+            end
+            mz = hop
+            local fa = k * 1.3 + shift
+            dx, dy = cos(fa), sin(fa)
+            flap = hop > 0 and 0.6 or 0.22                               -- wings folded
+          end
+          local px, py, pz, ux, uy, uz = world_pos(V, mx, my, mz + 0.004)
+          GPOS.x, GPOS.y, GPOS.z = px, py, pz
+          go.set_position(GPOS, e.id)
+          go.set_rotation(vmx.set_up_yaw(GROT, ux, uy, uz, yaw_x(V, mx, my, dx, dy) + pi), e.id)
+          local sc = 0.72 * (0.9 + 0.2 * ph)
+          GSCL.x, GSCL.y, GSCL.z = sc, sc * flap, sc * (flying and 1 or 0.45)
+          go.set_scale(GSCL, e.id)
+          if not e.on then msg.post(e.url, MSG_ENABLE); e.on = true end
+        end
+      end
+    end
+  end
+  for k = n + 1, #V.bird_go do
+    local e = V.bird_go[k]
+    if e.on then msg.post(e.url, MSG_DISABLE); e.on = false end
+  end
+  -- (for picking: each flock's middle, game/view/picking.lua)
+  local bp = M.bird_pos
+  if L and n > 0 then
+    local birds = require("sim.agents.birds")
+    for _, f in ipairs(L) do
+      if f.alive then
+        local x, y, z = birds.pos(f, t)
+        local px, py, pz = world_pos(V, x, y, z + 0.01)
+        bp[#bp + 1] = { sid = s.id, k = f.k, x = px, y = py, z = pz }
+      end
+    end
+  end
+end
+M.bird_pos = {}
 
 -- Ploughs (S14): between each yoked ox and its ploughman, from the ploughman's hands toward the ox
 -- (the sim's yoke: stock.pos puts the ox stock.YOKE_AHEAD ahead along his heading).

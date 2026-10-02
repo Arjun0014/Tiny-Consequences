@@ -932,8 +932,42 @@ local function v3_person_items(W, p, items)
   add(items, { t = "row", icon = "pin", label = "Camera", value = "Follow", link = { kind = "follow", id = p.id } })
 end
 
+-- (S14) A bird flock: what it is doing and why, straight from the agent (sim/agents/birds.lua).
+local function v3_flock(W, sel)
+  local s = W.S.v3.settlements[sel.sid or 0]
+  local birds = require("sim.agents.birds")
+  local f = s and birds.byk(s, sel.k or 0)
+  if not f then return nil end
+  local out = { kind = "flock", items = {} }
+  local items = out.items
+  out.title = string.format("%d %s", f.n, f.kind == "gull" and "gulls" or "birds")
+  out.icon = "paw"
+  out.tint = { 0.7, 0.8, 0.9 }
+  out.subtitle = "A flock of " .. s.name .. "'s shore"
+  local ACT = { roost = "Roosting", shelter = "Sheltering", fly = "Flying", follow = "Wheeling over a boat", forage = "Foraging",
+    scavenge = "Scavenging", plough = "Following a plough", raft = "Resting on the water" }
+  add(items, { t = "row", icon = "pin", label = "Doing", value = ACT[f.act] or f.act })
+  add(items, { t = "row", icon = "star", label = "Objective", value = f.obj or "" })
+  local TG = { boat = "a fishing boat", dock = "the dock", rack = "a drying rack", plough = "a plough", carcass = "a carcass",
+    shore = "the shore", roost = "the roost" }
+  local tv = TG[f.tgt_kind or ""] or ""
+  if (f.tgt_kind == "boat" or f.tgt_kind == "plough") and W.S.v3.people[f.tgt or 0] then
+    tv = tv .. " (" .. W.S.v3.people[f.tgt].name .. ")"
+  end
+  add(items, { t = "row", icon = "pin", label = "Target", value = tv })
+  add(items, { t = "text", icon = "bubble", text = "Why: " .. (f.why or "") })
+  if f.act == "fly" and f.next then add(items, { t = "row", icon = "hourglass", label = "Next", value = ACT[f.next] or f.next }) end
+  local ang = math.atan2(f.ry, f.rx) * 180 / math.pi
+  local dirs = { "east", "north-east", "north", "north-west", "west", "south-west", "south", "south-east" }
+  local dn = dirs[floor(((ang + 22.5) % 360) / 45) + 1]
+  add(items, { t = "row", icon = "house", label = "Home", value = "rocks " .. dn .. " of " .. s.name })
+  add(items, { t = "row", icon = "bubble", label = "Hunger", value = string.format("%d%%", floor(f.hunger * 100)), hl = f.hunger > 0.75 })
+  return out
+end
+
 function M.build(W, sel)
   if not sel or not W then return nil end
+  if W.v3 and sel.kind == "flock" and W.S.v3 then return v3_flock(W, sel) end
   if W.v3 and sel.kind == "person" and W.S.v3 then
     local p = W.S.v3.people[sel.id]
     if not p then return nil end

@@ -893,7 +893,8 @@ function M.update(W, dt, zoom, frozen)
     local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
     assign_animals(W, fx, fy, fz)
     if not fast then assign_people(W, fx, fy, fz, t, zoom) end
-    assign_birds(W, fx, fy, fz, t)
+    -- (v3 worlds: birds are the settlements' flocks, agents with reasons - S14; no circling here)
+    if W.v3 then M.flocks = {} else assign_birds(W, fx, fy, fz, t) end
   end
   update_birds(W, dt, zoom, frozen)
   M.update_dolphins(W, dt, frozen)
