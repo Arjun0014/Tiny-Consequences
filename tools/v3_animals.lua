@@ -39,3 +39,5 @@ end
 local rows = audit.run(W, { from = args.from or 23.55, hours = args.hours, dt = args.dt, lag = args.lag, sett = args.sett,
   on_sample = fol and on_sample or nil })
 audit.print(rows)
+print("")
+audit.print_summary(audit.summary(rows))

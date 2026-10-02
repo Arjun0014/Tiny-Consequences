@@ -162,6 +162,13 @@ START.go = function(W, s, p, st, now)
   end
   p.spd = people.speed(W, p, now)
   if s.rain_now == 2 then p.spd = p.spd * C().speed_rain end   -- hurrying through a downpour
+  if st.lead then
+    -- (S15, R4) leading a drove: at the slowest beast's pace
+    local L = stock.led_by(s, p, st.lead)
+    local sp = 9
+    for _, a in ipairs(L) do sp = min(sp, stock.SP(a.sp).speed) end
+    if sp < 9 then p.spd = min(p.spd, sp * C().drove_pace) end
+  end
   if st.drove then
     -- (S15) driving a herd out or home: at the beasts' pace, and they notice them setting off
     local H = s.herds and s.herds[stock.HERDS[st.drove]]
@@ -213,6 +220,14 @@ START.work = function(W, s, p, st, now)
   end
   -- a mother home again takes her baby back from its minder (D-081)
   if p.inside ~= 0 and p.babe == 0 and kin.HOME_KINDS[st.kind] then kin.reclaim(W, s, p) end
+  if st.kind == "travel" and st.lead and p.trip then
+    -- (S15, R4) taking the road with a drove: the beasts led leave this map with the drover
+    stock.leave_map(W, s, p, st.lead)
+    if econ.GOODS[p.trip.give] and econ.GOODS[p.trip.give].beast then
+      p.pack = p.pack or {}
+      p.pack[p.trip.give] = #(p.trip.party or {})
+    end
+  end
   begin(p, now, st.kind, dur)
   return true
 end
@@ -1016,9 +1031,36 @@ WORK.travel = function(W, s, p, st, f)
   local from = V.settlements[st.from or 0]
   if not o or not from then return end
   local gx, gy = require("sim.agents.trade").gate(W, o, from)
+  local tr = p.trip
+  local now = V.now or W.hour
+  if tr and tr.migrate and o.id ~= p.sett then
+    -- (S16, R5) a household moving here: from the gate on they are this village's people
+    require("sim.agents.migrate").arrive(W, o, p, gx, gy, now)
+  elseif tr and tr.move and o.id ~= p.sett then
+    -- (S16, R4) a bride come to live at her husband's village
+    require("sim.agents.migrate").arrive_person(W, o, p, gx, gy, now)
+  end
+  if tr and tr.party and #tr.party > 0 then
+    -- (S15, R4) the beasts of the drove come onto this map with the drover, still led; home again
+    -- (or come to live here) they are let go to find the herd
+    local kind = tr.lead_kind or (econ.GOODS[tr.give] and econ.GOODS[tr.give].beast)
+    if kind then
+      stock.join_map(W, o, p, kind, gx, gy, now)
+      if o.id == p.sett then
+        local L, H = stock.led_by(o, p, kind)
+        for _, a in ipairs(L) do
+          stock.release(W, o, H, a, now, tr.migrate and ("Come to " .. o.name .. " with its people: to the herd") or "Home from the drove: back to the herd")
+        end
+        tr.led = {}
+        if p.pack and econ.GOODS[tr.give].beast then p.pack[tr.give] = 0 end
+      end
+    end
+  end
   local old = V.settlements[p.at or p.sett]
   if old and old.visitors then people.remove_id(old.visitors, p.id) end
-  if o.id == p.sett then
+  if tr and (tr.migrate or tr.move) and o.id == p.sett then
+    p.at = nil
+  elseif o.id == p.sett then
     p.at = nil
     if p.trip then p.trip.back = true end
   else
@@ -1339,7 +1381,10 @@ M.stock_key = stock_key
 local function pack_load(p)
   local w = 0
   if p.pack then
-    for _, g in ipairs(econ.ORDER) do w = w + (p.pack[g] or 0) * econ.GOODS[g].wt end
+    for _, g in ipairs(econ.ORDER) do
+      local G = econ.GOODS[g]
+      if not G.beast then w = w + (p.pack[g] or 0) * G.wt end   -- (beasts are led, not carried: S15)
+    end
   end
   return w
 end
@@ -1361,6 +1406,22 @@ PICK.pack = function(W, s, p, st)
   p.carry, p.camt = "pack", pack_load(p)
 end
 
+-- (S16, R4) Help given by another village, from its granary into the pack (what is left of what
+-- was agreed at the granary), to be carried to the boat.
+PICK.relief = function(W, s, p, st)
+  local b = s.buildings[st.ref]
+  local tr = p.trip
+  if not b or not tr or p.carry ~= "" and p.carry ~= "pack" then return end
+  local room = ((p.strong and 1.3 or 1) - pack_load(p)) / econ.GOODS.grain.wt
+  local got = min(st.n or 0, tr.gift_left or 0, b.stock.grain or 0, room)
+  if got <= 0 then return end
+  b.stock.grain = b.stock.grain - got
+  tr.gift_left = tr.gift_left - got
+  p.pack = p.pack or {}
+  p.pack.grain = (p.pack.grain or 0) + got
+  p.carry, p.camt = "pack", pack_load(p)
+end
+
 -- Cargo out of a boat into the pack (D-102): a load at a time.
 PICK.cargo = function(W, s, p, st)
   local B = boats_of(W, p)
@@ -1374,6 +1435,27 @@ PICK.cargo = function(W, s, p, st)
   boat.cargo[g] = boat.cargo[g] - got
   p.pack = p.pack or {}
   p.pack[g] = (p.pack[g] or 0) + got
+  p.carry, p.camt = "pack", pack_load(p)
+end
+
+-- (S15, R4) A beast taken by the halter for the drove: it joins the line behind the drover.
+WORK.halter = function(W, s, p, st, f)
+  if f < 0.9 or not p.trip then return end
+  local H = s.herds and s.herds[stock.HERDS[st.herd or 1]]
+  local a = H and H.animals[st.ref or 0]
+  local now = W.S.v3.now or W.hour
+  if st.mig then
+    -- (S16, R5) the household's own beast, taken along to the new village
+    if a and a.alive and a.owner == p.hh and (a.led or 0) == 0 and (a.yoke or 0) == 0 and (a.held or 0) == 0 then
+      stock.halter(W, s, H, a, p, now)
+      a.why = "Taken along by " .. (p.name or "its people") .. ": the household is leaving"
+    end
+    return
+  end
+  if not a or a.sp ~= p.trip.give or not stock.sellable(a, p.hh, now) then return end
+  stock.halter(W, s, H, a, p, now)
+  p.pack = p.pack or {}
+  p.pack[a.sp] = (p.pack[a.sp] or 0) + 1
   p.carry, p.camt = "pack", pack_load(p)
 end
 
@@ -1425,12 +1507,34 @@ WORK.deal = function(W, s, p, st, f)
   local qh = min(qx * d.k, src.stock[hkey] or 0)
   if qh <= 1e-6 then return end
   qx = qh / d.k
+  local led, Hb
+  if GX.beast then
+    -- (S15, R4) beasts change hands whole: those led here, as many as are paid for
+    led, Hb = stock.led_by(s, p, GX.beast)
+    qx = min(floor(qx + 1e-6), #led)
+    if qx < 1 then return end
+    qh = qx * d.k
+  end
   -- goods change hands
   d.left = (d.left or d.q) - qx
   if d.left <= 1e-3 then d.done = true end
   p.pack[X] = p.pack[X] - qx
-  local xkey = stock_key(hb, X)
-  hb.stock[xkey] = (hb.stock[xkey] or 0) + qx
+  if led then
+    -- the beasts themselves: now the buyer's, let go into the herd here (the same beasts that left
+    -- home, each with its age, coat, fleece and health)
+    local now = V.now or W.hour
+    local why = "New in " .. s.name .. "'s herd: bought from " .. home.name
+    for i = 1, qx do
+      local a = led[i]
+      a.owner, a.cull = d.b, nil
+      a.from, a.bought = home.id, now
+      people.remove_id(tr.led, a.k)
+      stock.release(W, s, Hb, a, now, why)
+    end
+  else
+    local xkey = stock_key(hb, X)
+    hb.stock[xkey] = (hb.stock[xkey] or 0) + qx
+  end
   if src == hb then
     src.stock[hkey] = src.stock[hkey] - qh
     p.pack[H] = (p.pack[H] or 0) + qh
@@ -1497,13 +1601,19 @@ WORK.ask = function(W, s, p, st, f)
   local now = V.now or W.hour
   local q = min(tr.gift or 0, g.stock.grain or 0)
   if q < 0.5 then
+    tr.gift_left = 0
     people.remember(p, now, sfmt("Asked %s for food: they had none to give us", s.name))
     return
   end
-  g.stock.grain = g.stock.grain - q
-  p.pack = p.pack or {}
-  p.pack.grain = (p.pack.grain or 0) + q
-  p.carry, p.camt = "pack", pack_load(p)
+  if st.sea then
+    -- (S16, by sea: what they give is carried from the granary to the boat a load at a time)
+    tr.gift_left = q
+  else
+    g.stock.grain = g.stock.grain - q
+    p.pack = p.pack or {}
+    p.pack.grain = (p.pack.grain or 0) + q
+    p.carry, p.camt = "pack", pack_load(p)
+  end
   s.acc.export = (s.acc.export or 0) + q
   home.acc.import = (home.acc.import or 0) + q
   s.acc.relief_out = (s.acc.relief_out or 0) + q
@@ -1522,6 +1632,53 @@ WORK.ask = function(W, s, p, st, f)
   r.owe_them = (r.owe_them or 0) + q - repay
   r2.owed_us = (r2.owed_us or 0) + q - repay
   people.remember(p, now, sfmt("%s gave us %s in our need", s.name, econ.amount(q, "grain")))
+end
+
+-- (S16, R4) Courting at another village (life.lua court_village): he meets its people; among its
+-- unwed women of an age to marry (not his kin) the one he and she take to - by age and their own
+-- draws - marries him and will walk home with him; the villages trust each other more for it, and
+-- each hears how the other stands. If there is nobody, he goes home alone.
+WORK.court = function(W, s, p, st, f)
+  if f < 0.99 then return end
+  local V = W.S.v3
+  local tr = p.trip
+  if not tr or tr.met then return end
+  tr.met = true
+  local now = V.now or W.hour
+  local home = V.settlements[p.sett]
+  econ.learn(W, home, s, now)
+  econ.learn(W, s, home, now)
+  local c = C()
+  local best, bs = nil, -1e9
+  for _, id in ipairs(s.members) do
+    local q = V.people[id]
+    if q and q.alive and q.sex == "f" and q.partner == 0 and not q.move and not q.at and not people.is_kin(W, p, q.id) then
+      local st2, a = people.stage(q, now)
+      if st2 == "adult" and a >= c.marry_f and a < 40 then
+        local sc = -math.abs(a + 2.5 - people.age(p, now)) * 0.08
+          + require("sim.rng").float(W.seed, require("sim.rng").S.V3_THINK, p.id * 131 + q.id, floor(now / 24) % 4294967296, 140) * 0.6
+        if sc > bs then best, bs = q, sc end
+      end
+    end
+  end
+  if not best then
+    people.remember(p, now, sfmt("Went courting at %s: nobody there to marry", s.name))
+    return
+  end
+  best.partner, p.partner = p.id, best.id
+  best.married, p.married = now, now
+  people.remember(best, now, sfmt("Married %s of %s, who came courting", p.name, home.name))
+  people.remember(p, now, sfmt("Married %s of %s", best.name, s.name))
+  local r1, r2 = econ.rel(home, s), econ.rel(s, home)
+  r1.trust = r1.trust + (1 - r1.trust) * 0.15
+  r2.trust = r2.trust + (1 - r2.trust) * 0.15
+  tr.bride, tr.depart = best.id, now + c.court_wait_h
+  best.move = { to = home.id, from = s.id, depart = tr.depart, groom = p.id,
+    why = sfmt("Married %s: going to live at %s", p.name, home.name) }
+  s.acc.brides_out = (s.acc.brides_out or 0) + 1
+  -- (she hears at once, wherever she is in the village)
+  if M.interrupt_hook then M.interrupt_hook(W, best, now + 0.05, "Married " .. p.name) end
+  if W.record_events then require("sim.causality.events").emit(W, "marriage", s.cell, 0, 1, { settlement = s.id, a = best.id, b = p.id }) end
 end
 
 -- Driving wolves off a pen (D-105): shouting, a torch, a stick; any wolf of a pack still near the
@@ -1646,7 +1803,7 @@ DROP.any = function(W, s, p, st)
     if b then
       for _, g in ipairs(econ.ORDER) do
         local q = p.pack and p.pack[g] or 0
-        if q > 0 then
+        if q > 0 and not econ.GOODS[g].beast then
           local key = stock_key(b, g)
           b.stock[key] = (b.stock[key] or 0) + q
           gave, gv = g, q
@@ -1877,6 +2034,44 @@ function M.start(W, s, p, now)
     local H = s.herds and s.herds.cattle
     local a = H and H.animals[p.ox]
     if a and a.act == "yoked" and a.yoke == p.id then stock.yoke_turn(a, p, now) end
+  end
+  if st.op == "work" and st.kind == "gather" then
+    -- (S16, R5) waiting at the gate for the hour the household agreed to set off
+    st.dur = max(0.02, (st.until_t or now) - now)
+  end
+  if st.op == "work" and st.kind == "travel" and st.migrate then
+    -- (S16, R5) the household's babes are in the arms of those setting off
+    require("sim.agents.migrate").take_babes(W, s, p, now)
+  end
+  local tr = p.trip
+  if tr and tr.led and #tr.led > 0 then
+    local G = econ.GOODS[tr.give]
+    local bk = tr.lead_kind or (G and G.beast)
+    if bk then
+      G = { beast = bk }
+      if st.op == "work" and st.kind == "travel" and st.lead then
+        -- (S16) at the gate the drover waits for the drove to come up before taking the road (an
+        -- hour at most: a beast that will not come is left to find its way back to the herd)
+        local far = stock.drove_spread(s, p, G.beast, now)
+        if far > C().drove_gather and (st.waited or 0) < 1 then
+          st.waited = (st.waited or 0) + 0.06
+          table.insert(p.plan, p.pi, { op = "work", kind = "wait", dur = 0.06, why = "Waiting for the drove to come up" })
+          st = p.plan[p.pi]
+          h = START.work
+          p.why = st.why
+        elseif far > C().drove_gather then
+          for _, a in ipairs((stock.led_by(s, p, G.beast))) do
+            local ax, ay = stock.pos(a, now)
+            if nav.dist(ax, ay, p.x, p.y) > C().drove_gather then
+              people.remove_id(tr.led, a.k)
+              stock.release(W, s, s.herds[G.beast], a, now, "Strayed from the drove: back to the herd")
+            end
+          end
+        end
+      end
+      -- (S16) a drover's new step: the beasts of the drove notice them move on, each in its time
+      stock.rouse_drove(W, s, p, G.beast, now)
+    end
   end
   return h(W, s, p, st, now)
 end

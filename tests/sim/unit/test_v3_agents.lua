@@ -228,7 +228,8 @@ function M.wild_animals_belong_to_their_herds()
   end
   T.ok(dogs >= 12, "dogs " .. dogs)
   T.eq(wet, 0, "dogs on water")
-  T.ok(barks >= 1, "dogs barking at wolves " .. barks)
+  -- (S15: dogs barking at wolves at the pens is tested where it is caused, test_v3_animals
+  -- dogs_bark_at_hungry_wolves: with wild prey plentiful, wolves need not come near a pen in six days)
 end
 
 
@@ -333,6 +334,222 @@ function M.hungry_village_asks_for_help()
   T.ok((Z.acc.relief_out or 0) >= 10, "relief given by " .. Z.name .. " " .. tostring(Z.acc.relief_out))
   local r = require("sim.agents.econ").rel(H, Z)
   T.ok(r.gifts >= 1 and (r.owe_them or 0) > 0, "help remembered: gifts " .. r.gifts .. ", owed " .. tostring(r.owe_them))
+end
+
+-- Relief by sea (S16, R4): a coastal village with no road to anyone runs out of food; one of its
+-- boats sails to the trusted village over the water that has grain to spare, the grain is carried
+-- from that granary to the boat a load at a time, sailed home and carried into the village's own
+-- granary - the same grain, every FU accounted for.
+function M.relief_comes_by_sea()
+  local f = assert(io.open("assets/worlds/v3.tcsave", "rb"))
+  local data = f:read("*a")
+  f:close()
+  local W = assert(worlds.from_save_string(data))
+  world.set_systems(require("sim.agents.worldgen").systems())
+  local V = W.S.v3
+  local trade = require("sim.agents.trade")
+  local econ = require("sim.agents.econ")
+  -- (a village with boats and no road neighbour, and its nearest neighbour by sea)
+  local H, Z, bh = nil, nil, 1e9
+  for _, s in ipairs(V.settlements) do
+    if s.dock and #trade.partners(W, s) == 0 then
+      for _, o in ipairs(trade.sea_partners(W, s)) do
+        local hrs = econ.sea_route(W, s, o)
+        if o.granary and o.dock and hrs < bh then H, Z, bh = s, o, hrs end
+      end
+    end
+  end
+  T.ok(H ~= nil, "a village reached only by sea")
+  if not H then return end
+  H.granary.stock.grain, H.granary.stock.sheaves, H.granary.stock.smoked = 10, 0, 0
+  for _, pl in ipairs(H.plots) do
+    pl.sheaves = 0
+    if pl.stage == "growing" or pl.stage == "ripe" then
+      for r = 1, pl.rows do pl.row_st[r] = 0 end
+      pl.sown, pl.stage = 0, "fallow"
+    end
+  end
+  for _, id in ipairs(H.blist) do
+    local b = H.buildings[id]
+    if b.kind == "house" and b.hh ~= 0 then
+      b.stock.smoked, b.stock.food, b.stock.cheese, b.stock.meat, b.stock.fish, b.stock.meals = 0, 1, 0, 0, 0, 1
+    end
+  end
+  Z.granary.stock.grain = Z.granary.stock.grain + 1500
+  econ.learn(W, H, Z, W.hour)
+  local t0 = W.hour
+  local sailed, loaded = false, 0
+  for h = 0.25, 24 * 5, 0.25 do
+    world.advance(W, t0 + h)
+    for _, id in ipairs(H.members) do
+      local p = V.people[id]
+      if p.alive and p.trip and p.trip.ask and p.trip.sea then
+        sailed = true
+        local boat = H.boats[p.trip.boat]
+        if boat and boat.cargo then loaded = math.max(loaded, boat.cargo.grain or 0) end
+      end
+    end
+  end
+  T.ok(sailed, "a boat of " .. H.name .. " sailed to ask " .. Z.name .. " for help")
+  T.ok(loaded >= 10, string.format("the gift carried aboard: %.1f FU of grain in the hold", loaded))
+  T.ok((H.acc.relief_in or 0) >= 10, "relief carried to " .. H.name .. " " .. tostring(H.acc.relief_in))
+  T.ok((Z.acc.relief_out or 0) >= 10, "relief given by " .. Z.name .. " " .. tostring(Z.acc.relief_out))
+  T.ok((H.granary.stock.grain or 0) > 10 or (H.acc.relief_in or 0) >= 10, "the granary got the grain")
+  local r = econ.rel(H, Z)
+  T.ok(r.gifts >= 1, "help remembered: gifts " .. r.gifts)
+end
+
+-- Migration (S16, R5): a village whose food has run out for days (its fields failed, nothing in
+-- the stores) and a road neighbour heard to have grain to spare. Households weigh leaving, and
+-- some go: the whole household packs, gathers at the gate, walks the road together with its beasts
+-- led, and becomes the other village's - lodging with a household there, a house planned for it.
+function M.a_hungry_household_moves_away()
+  local f = assert(io.open("assets/worlds/v3.tcsave", "rb"))
+  local data = f:read("*a")
+  f:close()
+  local W = assert(worlds.from_save_string(data))
+  world.set_systems(require("sim.agents.worldgen").systems())
+  local V = W.S.v3
+  local trade = require("sim.agents.trade")
+  local econ = require("sim.agents.econ")
+  local H, Z, bh = nil, nil, 1e9
+  for _, s in ipairs(V.settlements) do
+    for _, o in ipairs(trade.partners(W, s)) do
+      local _, hrs = trade.road(W, s, o)
+      if hrs < bh then H, Z, bh = s, o, hrs end
+    end
+  end
+  T.ok(H ~= nil, "two villages joined by a road")
+  if not H then return end
+  local function starve()
+    H.granary.stock.grain, H.granary.stock.sheaves, H.granary.stock.smoked = 0, 0, 0
+    for _, id in ipairs(H.blist) do
+      local b = H.buildings[id]
+      if b.kind == "house" and b.hh ~= 0 then
+        b.stock.smoked, b.stock.food, b.stock.cheese, b.stock.meat, b.stock.fish = 0, math.min(b.stock.food or 0, 1), 0, 0, 0
+      end
+    end
+  end
+  for _, pl in ipairs(H.plots) do
+    pl.sheaves = 0
+    if pl.stage == "growing" or pl.stage == "ripe" then
+      for r = 1, pl.rows do pl.row_st[r] = 0 end
+      pl.sown, pl.stage = 0, "fallow"
+    end
+  end
+  starve()
+  Z.granary.stock.grain = Z.granary.stock.grain + 3000
+  econ.learn(W, H, Z, W.hour)
+  local t0 = W.hour
+  local decided, moved, walked = nil, nil, 0
+  for h = 0.5, 24 * 9, 0.5 do
+    world.advance(W, t0 + h)
+    -- (the fields failed and the stores are empty: what little comes in is eaten at once)
+    if h % 24 == 0 then starve() end
+    for _, hid in ipairs(H.households) do
+      local hh = V.households[hid]
+      if hh and hh.migrate and not decided then decided = hh end
+    end
+    if decided then
+      for _, id in ipairs(decided.members) do
+        local p = V.people[id]
+        if p.alive and p.act == "travel" then walked = walked + 1 end
+      end
+      if decided.migrate.arrived and not moved then moved = h end
+    end
+  end
+  T.ok(decided ~= nil, "a household of " .. H.name .. " decided to leave")
+  if not decided then return end
+  T.ok(decided.migrate.why and decided.migrate.why:find(Z.name) ~= nil, "it knows why and where: " .. tostring(decided.migrate.why))
+  T.ok(walked > 0, "its people walked the road")
+  T.ok(moved ~= nil, "it reached " .. Z.name)
+  T.eq(decided.sett, Z.id, "the household is " .. Z.name .. "'s now")
+  local here = 0
+  for _, id in ipairs(decided.members) do
+    local p = V.people[id]
+    if p.alive and p.sett == Z.id then here = here + 1 end
+    T.ok(not p.alive or p.sett == Z.id, p.name .. " came too")
+  end
+  T.ok(here >= 1, "its people live at " .. Z.name .. ": " .. here)
+  T.ok(decided.lodge ~= nil or decided.home ~= 0 or decided.house_site ~= nil, "it lodges with a household there or has a house")
+  local listed = false
+  for _, hid in ipairs(Z.households) do if hid == decided.id then listed = true end end
+  T.ok(listed, Z.name .. " counts the household among its own")
+  -- (households that left: none stay counted at the old village)
+  for _, hid in ipairs(H.households) do T.ok(hid ~= decided.id, "the household is no longer " .. H.name .. "'s") end
+  -- its beasts went with it (those of kinds the other village keeps)
+  for _, kind in ipairs(require("sim.agents.stock").HERDS) do
+    local HH = H.herds and H.herds[kind]
+    for _, a in ipairs(HH and HH.animals or {}) do
+      T.ok(not (a.alive and a.owner == decided.id), "no beast of the household left behind at " .. H.name .. " (" .. kind .. ")")
+    end
+  end
+end
+
+-- Courting (S16, R4): a man with nobody to marry at home (in the shipped world, the only unwed
+-- grown man of his village with no unwed woman there) walks to a neighbouring village he chose,
+-- meets its people; a match is made with one of its unwed women, who packs and walks back with
+-- him and becomes his village's, in his household; the couple waits for a house; the villages
+-- trust each other more and each hears how the other stands.
+function M.a_man_goes_courting()
+  local f = assert(io.open("assets/worlds/v3.tcsave", "rb"))
+  local data = f:read("*a")
+  f:close()
+  local W = assert(worlds.from_save_string(data))
+  world.set_systems(require("sim.agents.worldgen").systems())
+  local V = W.S.v3
+  local people = require("sim.agents.people")
+  local trade = require("sim.agents.trade")
+  local econ = require("sim.agents.econ")
+  local now = W.hour
+  -- a single grown man whose village has no unwed woman, and a road neighbour that has one
+  local man, H, O
+  for _, s in ipairs(V.settlements) do
+    local wives, men = 0, {}
+    for _, id in ipairs(s.members) do
+      local p = V.people[id]
+      local st, a = people.stage(p, now)
+      if p.alive and p.partner == 0 and st == "adult" then
+        if p.sex == "f" and a >= 17 and a < 40 then wives = wives + 1 end
+        if p.sex == "m" and a >= 19 and a < 40 then men[#men + 1] = p end
+      end
+    end
+    if wives == 0 and #men > 0 then
+      for _, o in ipairs(trade.partners(W, s)) do
+        for _, id in ipairs(o.members) do
+          local q = V.people[id]
+          local st, a = people.stage(q, now)
+          if q.alive and q.sex == "f" and q.partner == 0 and st == "adult" and a >= 17 and a < 40 and not man then man, H, O = men[1], s, o end
+        end
+      end
+    end
+  end
+  T.ok(man ~= nil, "a man with nobody to marry at home, a neighbour with an unwed woman")
+  if not man then return end
+  -- (he has made up his mind where to go: life.court_village's choice, here the one with a woman)
+  man.court = { to = O.id, t = now }
+  local tr0 = econ.rel(H, O).trust
+  local bride, home_again, walked = nil, false, false
+  for h = 0.5, 24 * 10, 0.5 do
+    world.advance(W, now + h)
+    if man.trip and man.trip.court and man.act == "travel" then walked = true end
+    if man.partner ~= 0 then bride = V.people[man.partner] end
+    if bride and bride.sett == H.id and (man.at or man.sett) == H.id and not man.trip then home_again = true; break end
+  end
+  T.ok(walked, man.name .. " walked the road to " .. O.name)
+  T.ok(bride ~= nil, man.name .. " married at " .. O.name)
+  if not bride then return end
+  T.ok(home_again, bride.name .. " came to live at " .. H.name .. " with " .. man.name)
+  T.eq(bride.hh, man.hh, "she is of his household")
+  local listed = false
+  for _, id in ipairs(H.members) do if id == bride.id then listed = true end end
+  T.ok(listed, H.name .. " counts her among its people")
+  for _, id in ipairs(O.members) do T.ok(id ~= bride.id, O.name .. " no longer counts her") end
+  local waiting = false
+  for _, id in ipairs(H.couples) do if id == bride.id then waiting = true end end
+  T.ok(waiting or man.house_site or bride.house_site or V.households[man.hh].home ~= 0, "the couple waits for a house of their own")
+  T.ok(econ.rel(H, O).trust > tr0, string.format("the villages trust each other more: %.2f -> %.2f", tr0, econ.rel(H, O).trust))
+  T.ok(people.is_kin(W, bride, bride.mother) or bride.mother == 0, "her kin are at " .. O.name)
 end
 
 return M

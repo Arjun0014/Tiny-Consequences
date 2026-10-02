@@ -7,9 +7,10 @@
 -- leaves, never appearing or vanishing in view.
 --   herds   each herd's share on the map: its count x its time on the map's cells (its range's
 --           weights x how much of each cell the map covers). By day the band keeps to its own
---           ground (a grassy block at the woods' edge, away from the village), each animal at its
---           place in a loose spread (larger than livestock's), the young at their mothers'; they
---           take flight from people who come close, and from wolves.
+--           ground (a grassy block at the woods' edge, away from the village), each animal within
+--           its own range of it, grazing its own way (S15/S16, D-114, D-116), the young at their
+--           mothers'; they take flight from people who come close, from wolves and running dogs,
+--           and the alarm spreads through the band one by one. Wolves follow the leader's trail.
 --   packs   hunt by night. At dusk a pack whose territory reaches the map may come (its time on
 --           the map's cells, more when it is hungry and the village keeps beasts): its wolves
 --           walk in from the side of their den, together, to prey - the weakest of a wild band,
@@ -41,7 +42,6 @@ M.WP = WP
 local HERB = { "deer", "reindeer", "antelope", "boar" }
 local PRED = { "wolf", "cat" }
 M.HERB, M.PRED = HERB, PRED
-local GOLD = 2.39996323
 local P8 = { { 1, 0 }, { 0.7, 0.7 }, { 0, 1 }, { -0.7, 0.7 }, { -1, 0 }, { -0.7, -0.7 }, { 0, -1 }, { 0.7, -0.7 } }
 
 function M.event_id(s, w) return stock.ID0 + s.id * 100000 + M.HI * 20000 + w.k end
@@ -408,13 +408,21 @@ function M.hourly(W, s, now)
           local ex, ey = edge_toward(W, s, A.p_cell[i])
           local n = min(A.p_n[i], c.pack_max)
           local lead = 0
+          -- (S16) they come out of the woods at the border one after another, each a little along
+          -- it from where the leader came, and each moves off when it will
+          local il = sqrt(ex * ex + ey * ey)
+          local ix, iy = il > 1e-6 and -ex / il or 1, il > 1e-6 and -ey / il or 0
           for q = 1, n do
+            local r1 = rng.float(W.seed, rng.S.V3_MAP, id * 7 + q, day, 622)
+            local along = q == 1 and 0 or (r1 - 0.5) * 0.08
+            local back = q == 1 and 0 or 0.01 * r1
             local w = add(W, s, { sp = sp, pred = true, gid = id, sex = q <= 2 and (q == 1 and "m" or "f") or "m",
               born = now - (1 + 3 * rng.float(W.seed, rng.S.V3_MAP, id * 7 + q, day, 621)) * 1152,
-              x = ex + (q % 3 - 1) * 0.02, y = ey + (floor(q / 3) - 1) * 0.02, lead = lead })
+              x = ex - iy * along - ix * back, y = ey + ix * along - iy * back, lead = lead })
             if q == 1 then lead = w.k; w.lead = 0 end
             w.why = cond < c.wolf_hungry and "Hungry: come down to hunt" or "Come to hunt"
-            w.t1 = now + 0.02 * q
+            w.act = "rest"
+            w.t1 = now + 0.02 + 0.02 * (q - 1) * (0.6 + 0.8 * r1)
             M.push(W, w.t1, M.event_id(s, w), w.ver)
           end
           s.acc.wolf_nights = (s.acc.wolf_nights or 0) + 1
@@ -450,6 +458,18 @@ local function threat(W, s, w, now, k)
     for q = 1, #an do
       local o = an[q]
       if o.pred and o.alive and (o.act == "chase" or o.act == "walk") then
+        local f = (dsq(o.tx - wx) + dsq(o.ty - wy)) / ra
+        if f < best then bx, by, best = o.tx, o.ty, f end
+      end
+    end
+  end
+  -- a dog running (out at a straggler, or at the band itself: S16)
+  local D = s.dogs
+  if D then
+    local ra = c.wild_alert * c.wild_alert
+    for q = 1, #D do
+      local o = D[q]
+      if o.alive and o.act == "run" then
         local f = (dsq(o.tx - wx) + dsq(o.ty - wy)) / ra
         if f < best then bx, by, best = o.tx, o.ty, f end
       end
@@ -713,6 +733,41 @@ local function kill(W, s, wolf, pr, now)
   return true, x, y
 end
 
+-- (S16) A pack's leader leaves a trail (where it has been, newest last; at most 10 points): the
+-- others follow the trail, not a place beside the leader.
+local function trail_note(w)
+  local X, Y = w.trx, w.try
+  if not X then X, Y = {}, {}; w.trx, w.try = X, Y end
+  local n = #X
+  if n > 0 and dsq(X[n] - w.tx) + dsq(Y[n] - w.ty) < 0.0009 then return end
+  if n >= 10 then
+    for i = 1, n - 1 do X[i], Y[i] = X[i + 1], Y[i + 1] end
+    X[n], Y[n] = w.tx, w.ty
+  else
+    X[n + 1], Y[n + 1] = w.tx, w.ty
+  end
+end
+
+-- The point `back` behind the leader (now at lx, ly) along its trail, and the trail's heading there.
+local function on_trail(lead, lx, ly, back)
+  local X, Y = lead.trx, lead.try
+  local px, py = lx, ly
+  local hx, hy = lead.tx - lead.x, lead.ty - lead.y
+  local hl = sqrt(hx * hx + hy * hy)
+  if hl > 1e-6 then hx, hy = hx / hl, hy / hl else hx, hy = 1, 0 end
+  for i = X and #X or 0, 1, -1 do
+    local dx, dy = px - X[i], py - Y[i]
+    local l = sqrt(dx * dx + dy * dy)
+    if l > 1e-6 then
+      hx, hy = dx / l, dy / l
+      if l >= back then return px - hx * back, py - hy * back, hx, hy end
+      back = back - l
+    end
+    px, py = X[i], Y[i]
+  end
+  return px - hx * back, py - hy * back, hx, hy
+end
+
 -- The end of wild animal w's action at time now: the next.
 function M.step(W, s, w, now)
   local c = C()
@@ -762,6 +817,7 @@ function M.step(W, s, w, now)
           ex, ey = ex - dy / d * side, ey + dx / d * side
         end
         w.why = dawn and "Away to the den before dawn" or "Nothing more here tonight: away to the den"
+        if w.lead == 0 then trail_note(w) end
         if go_to(s, w, now, ex, ey, S.speed * (0.85 + 0.3 * stock.trait(w, stock.T_PACE)), "leave") then return end
         w.alive, w.gone, w.died = false, true, now
         return
@@ -776,6 +832,7 @@ function M.step(W, s, w, now)
     end
     if not lead then
       -- the leader: find prey, close in, chase
+      trail_note(w)
       local pr = w.prey
       local o = prey_obj(s, pr)
       if not o or not o.alive then
@@ -860,57 +917,111 @@ function M.step(W, s, w, now)
       stand(w, now, "rest", 0.1)
       return
     end
-    -- the others: with the leader (at the kill: eat round it)
+    -- the others: with the leader (at the kill: the leader eats first, the others wait their turn
+    -- a little off, each where it chose to lie, and come in one by one, S16)
     local fx, fy = lead.feed_x, lead.feed_y
     if lead.act == "eat" and fx then
       local d = sqrt(dsq(fx - w.tx) + dsq(fy - w.ty))
-      if d > 0.04 then
-        local ang = u(W, s, w, now, 3) * 6.2832
-        w.why = "To the kill"
-        if go_to(s, w, now, fx + 0.025 * cos(ang), fy + 0.025 * sin(ang), S.run, "walk") then return end
+      local turn = lead.t0 + 0.1 + 0.07 * max(0, w.k - lead.k - 1) * (0.7 + 0.6 * stock.trait(w, stock.T_ALERT))
+      if w.feed_of ~= lead.t0 then w.feed_of, w.fang = lead.t0, u(W, s, w, now, 3) * 6.2832 end
+      if now < turn then
+        local wr = 0.07 + 0.04 * stock.trait(w, stock.T_BOLD)
+        local wx, wy = fx + wr * cos(w.fang), fy + wr * sin(w.fang)
+        if dsq(wx - w.tx) + dsq(wy - w.ty) > 0.0004 then
+          w.why = "Coming to the kill"
+          if go_to(s, w, now, wx, wy, S.speed * 1.4, "walk") then return end
+        end
+        w.why = "Waiting its turn at the kill"
+        stand(w, now, "rest", min(turn - now, 0.05 + 0.1 * u(W, s, w, now, 11)))
+        return
+      end
+      if d > 0.035 then
+        w.why = "In to eat at the kill"
+        if go_to(s, w, now, fx + 0.025 * cos(w.fang), fy + 0.025 * sin(w.fang), S.speed * 1.2, "walk") then return end
       end
       w.why = "Eating at the kill"
       stand(w, now, "eat", c.wolf_eat_h * (0.6 + 0.5 * u(W, s, w, now, 4)))
       return
     end
-    -- the others (S15): each its own way after the leader. On the move, strung out behind it, each
-    -- at its own distance and to its own side, stopping to sniff now and then and trotting to catch
-    -- up; in a chase, running at the quarry from its own flank, so the pack spreads round it.
+    -- the others (S16): each a wolf of its own after the leader. Travelling, it follows the
+    -- leader's trail (where the leader went, not a place beside it) at a distance and to a side of
+    -- its own that drift as it goes: it stops to sniff and falls back, trots to catch up and passes
+    -- another, goes off after a scent and comes back. When the leader closes in on prey it circles
+    -- out to the side of the quarry it is on; in the chase it runs at the quarry from that flank;
+    -- when the leader stands it lies down where it is.
     local x, y = w.tx, w.ty
     local lx, ly = M.pos(lead, now)
     local pace = 0.85 + 0.3 * stock.trait(w, stock.T_PACE)
-    local side = stock.trait(w, stock.T_SIDE) - 0.5
-    local o = lead.act == "chase" and lead.prey and prey_obj(s, lead.prey)
+    local lag = w.lag or (0.04 + 0.08 * stock.trait(w, stock.T_BOLD))
+    local off = w.off or ((stock.trait(w, stock.T_SIDE) - 0.5) * 0.08)
+    lag = min(0.18, max(0.03, lag + (u(W, s, w, now, 9) - 0.5) * 0.03))
+    off = min(0.07, max(-0.07, off + (u(W, s, w, now, 10) - 0.5) * 0.03))
+    local pr = lead.prey
+    local o = pr and (lead.act == "chase" or lead.act == "walk") and prey_obj(s, pr)
     local gx, gy, sp, act
     if o and o.alive then
       local ox, oy
-      if lead.prey.kind == "wild" then ox, oy = M.pos(o, now) else ox, oy = stock.pos(o, now) end
+      if pr.kind == "wild" then ox, oy = M.pos(o, now) else ox, oy = stock.pos(o, now) end
       local ux, uy = ox - lx, oy - ly
       local ul = sqrt(ux * ux + uy * uy)
-      if ul < 1e-6 then ux, uy, ul = 1, 0, 1 end
-      ux, uy = ux / ul, uy / ul
-      local ang = side * 2.6
-      local ca, sa = cos(ang), sin(ang)
-      local fr = 0.04 + 0.04 * stock.trait(w, stock.T_BOLD)
-      gx, gy = ox - (ux * ca - uy * sa) * fr, oy - (uy * ca + ux * sa) * fr
-      sp, act = S.run * pace, "chase"
-      w.why = "Running at the quarry from the flank"
-    else
-      local hx, hy = lead.tx - lead.x, lead.ty - lead.y
-      local hl = sqrt(hx * hx + hy * hy)
-      if hl < 1e-6 then hx, hy, hl = w.hx or 1, w.hy or 0, 1 end
-      hx, hy = hx / hl, hy / hl
-      local lag = 0.03 + 0.07 * stock.trait(w, stock.T_BOLD)
-      gx, gy = lx - hx * lag - hy * side * 0.07, ly - hy * lag + hx * side * 0.07
+      if lead.act == "chase" or ul < c.wolf_chase * 1.8 then
+        if ul < 1e-6 then ux, uy, ul = 1, 0, 1 end
+        ux, uy = ux / ul, uy / ul
+        -- (its flank: the side of the leader's line to the quarry it is on when it sees it,
+        -- kept for this quarry)
+        if w.flank_of ~= pr.k then
+          w.flank_of = pr.k
+          w.flank = (ux * (y - ly) - uy * (x - lx)) >= 0 and 1 or -1
+        end
+        local ang = w.flank * (0.9 + 1.2 * abs(off) / 0.07)
+        local ca, sa = cos(ang), sin(ang)
+        local what = pr.kind == "wild" and o.sp or (o.sp == "cattle" and "beast" or o.sp)
+        local fr
+        if lead.act == "chase" then
+          fr = 0.04 + 0.04 * stock.trait(w, stock.T_BOLD)
+          sp, act = S.run * pace, "chase"
+          w.why = "Running at the " .. what .. " from the flank"
+        else
+          fr = 0.1 + 0.06 * stock.trait(w, stock.T_BOLD)
+          sp, act = S.speed * pace * 0.9, "walk"
+          w.why = "Circling out to the side of the " .. what
+        end
+        gx, gy = ox - (ux * ca - uy * sa) * fr, oy - (uy * ca + ux * sa) * fr
+      end
+    end
+    if not gx then
+      local moving = lead.act == "walk" or lead.act == "chase" or lead.act == "leave"
+      local tx, ty, hx, hy = on_trail(lead, lx, ly, lag)
+      gx, gy = tx - hy * off, ty + hx * off
       local d = sqrt(dsq(gx - x) + dsq(gy - y))
-      if d < 0.06 and u(W, s, w, now, 5) < 0.2 then
+      if not moving and sqrt(dsq(lx - x) + dsq(ly - y)) < 0.18 then
+        -- the leader stands (catching its breath, listening): it lies down where it is
+        w.lag, w.off = lag, off
+        w.why = "Lying down while the leader waits"
+        stand(w, now, "rest", 0.04 + 0.08 * u(W, s, w, now, 8))
+        return
+      end
+      local v = u(W, s, w, now, 5)
+      if d < 0.07 and v < 0.18 then
+        -- (a smell on the ground: it stops, and falls back in the file)
+        w.lag, w.off = min(0.18, lag + 0.03), off
         w.why = "Stopping to sniff the ground"
         stand(w, now, "rest", 0.02 + 0.05 * u(W, s, w, now, 6))
         return
       end
+      if moving and d < 0.1 and v > 0.94 then
+        -- (a scent off the trail: it goes to see, and comes back after)
+        local sd = off >= 0 and 1 or -1
+        gx, gy = x + (hx - hy * sd * 1.6) * 0.1, y + (hy + hx * sd * 1.6) * 0.1
+        w.lag, w.off = lag + 0.04, off
+        w.why = "Off the trail after a scent"
+        if go_to(s, w, now, gx, gy, S.speed * pace, "walk", true) then return end
+      end
+      if d > 0.12 then lag = max(0.03, lag * 0.85) end   -- (catching up, it takes a place nearer the front)
       sp, act = S.speed * pace * (d > 0.12 and 1.5 or 1), "walk"
-      w.why = d > 0.12 and "Trotting to catch up with the pack" or "Following the leader"
+      w.why = d > 0.12 and "Trotting to catch up with the pack" or "Following the leader's trail"
     end
+    w.lag, w.off = lag, off
     local d = sqrt(dsq(gx - x) + dsq(gy - y))
     if d > 0.012 then
       local step = min(d, act == "chase" and 0.15 or 0.2)

@@ -189,16 +189,20 @@ function M.step(W, s, d, now)
     stand(d, now, "bark", 0.15)
     return
   end
-  -- with the herd and its herder by day (S15): it fetches a beast that strays (running out
-  -- beyond it, so that it turns back from the dog toward the herd), works behind the herd when
-  -- the herder drives it, and otherwise lies at the herd's edge on its own side, watching
+  -- with the herd and its herder by day (S16): it fetches a beast that strays (running out beyond
+  -- it, so that it turns back from the dog toward the herd) and keeps after that one until it is
+  -- back; goes out to see off a wild animal that comes near the herd; when the herder moves the
+  -- herd on it works from the far side of the herd from them (the balance point), on the side of
+  -- it it is on; otherwise it keeps a post of its own at the herd's edge - where the herd spreads
+  -- most - lying there watching, and now and then gets up and goes round the herd to look from
+  -- another side. It goes round the herd, not through it.
   local herder = H and stock.herder(W, s, H)
   if H and H.out and herder and not night then
     local mx, my = stock.person_pos(herder, now)
     local far, fd, fx, fy = nil, 0, 0, 0
     local cx, cy, n = 0, 0, 0
     for _, a in ipairs(H.animals) do
-      if a.alive and a.act ~= "pen" and a.act ~= "held" and a.act ~= "yoked" then
+      if a.alive and (a.led or 0) == 0 and a.act ~= "pen" and a.act ~= "held" and a.act ~= "yoked" then
         local ax, ay = stock.pos(a, now)
         cx, cy, n = cx + ax, cy + ay, n + 1
         local dd = dsq(ax - mx) + dsq(ay - my)
@@ -210,36 +214,119 @@ function M.step(W, s, d, now)
       local S = stock.SP(far.sp)
       local R = S.sep * (0.9 * sqrt(n) + 1)
       fd = sqrt(fd)
-      if fd > R * 1.6 then
-        -- a straggler: round beyond it
-        local ux, uy = (fx - mx) / fd, (fy - my) / fd
+      -- the straggler it is fetching (kept until it is back with the others), or a new one
+      local st = d.fetch and H.animals[d.fetch]
+      if st and (not st.alive or st.act == "pen" or (st.led or 0) ~= 0) then st = nil end
+      if st then
+        fx, fy = stock.pos(st, now)
+        fd = sqrt(dsq(fx - mx) + dsq(fy - my))
+        if fd < R * 1.1 then st = nil end
+      end
+      if not st and fd > R * 1.6 then st = far end
+      d.fetch = st and st.k or nil
+      local dx0, dy0 = d.tx, d.ty
+      if st then
+        local ux, uy = (fx - mx) / max(1e-6, fd), (fy - my) / max(1e-6, fd)
         d.why = "Fetching a straggler back to the herd"
         if go_to(s, d, now, fx + ux * S.sep * 1.4, fy + uy * S.sep * 1.4, c.dog_run, "run") then return end
       end
+      -- a wild animal near the herd: out to see it off (it will run from a dog running at it)
+      local Wd = s.wildlife
+      if Wd and now - (d.chased or -99) > 1.5 then
+        local wild = M.wild
+        local wr2 = (R + c.dog_see_off) * (R + c.dog_see_off)
+        local tw, td = nil, wr2
+        for _, w in ipairs(Wd.animals) do
+          if w.alive and not w.pred and w.act ~= "leave" then
+            local wx, wy = wild.pos(w, now)
+            local dd = dsq(wx - cx) + dsq(wy - cy)
+            if dd < td then tw, td = w, dd end
+          end
+        end
+        if tw then
+          local wx, wy = wild.pos(tw, now)
+          local dd = sqrt(dsq(wx - dx0) + dsq(wy - dy0))
+          if dd > 0.04 then
+            local step = min(dd - 0.02, 0.2)
+            d.why = "Seeing off a " .. tw.sp .. " near the herd"
+            d.chasing = tw.k
+            if go_to(s, d, now, dx0 + (wx - dx0) / dd * step, dy0 + (wy - dy0) / dd * step, c.dog_run, "run") then return end
+          end
+          d.chased = now
+        end
+      end
+      d.chasing = nil
       local ox, oy = cx - mx, cy - my
       local ol = sqrt(ox * ox + oy * oy)
-      local gx, gy
+      local gx, gy, sp
+      -- (where it is round the herd now: the angle from the herd's middle)
+      local ra = dmath.atan2(dy0 - cy, dx0 - cx)
+      local rd = sqrt(dsq(dx0 - cx) + dsq(dy0 - cy))
       if herder.act == "walk" and ol > 1e-6 then
-        -- the herder driving them on: behind the herd, to its own side
-        local side = ((d.k * 0.618034) % 1 - 0.5) * 1.2
+        -- the herder moving them on: to the balance point, the far side of the herd from the
+        -- herder, a little to the side of it the dog is on
         ox, oy = ox / ol, oy / ol
-        gx, gy = cx + (ox - oy * side) * (R * 0.6 + 0.04), cy + (oy + ox * side) * (R * 0.6 + 0.04)
+        local side = (ox * (dy0 - cy) - oy * (dx0 - cx)) >= 0 and 1 or -1
+        local ba = dmath.atan2(oy, ox) + side * (0.25 + 0.35 * u(W, s, d, now, 5))
+        gx, gy = cx + cos(ba) * (R * 0.7 + 0.05), cy + sin(ba) * (R * 0.7 + 0.05)
+        sp = c.dog_trot * 1.2
         d.why = "Working behind the herd"
       else
-        -- watching from the edge on its own side (the side shifts over the day)
-        local ang = d.k * 2.1 + floor(now / 2) * 0.9 + u(W, s, d, now, 2) * 0.5
-        gx, gy = mx + (R + 0.05) * cos(ang), my + (R + 0.05) * sin(ang)
+        -- its post: where the herd spreads most when it chose it; it keeps it until the herd has
+        -- drifted off it, or until it gets up to look from another side
+        local px, py = d.px, d.py
+        local pd = px and sqrt(dsq(px - cx) + dsq(py - cy)) or 0
+        if not px or pd > R * 1.8 or pd < R * 0.6 or now > (d.pt or 0) then
+          local wa, wd = ra, -1
+          for _, a in ipairs(H.animals) do
+            if a.alive and (a.led or 0) == 0 and a.act ~= "pen" and a.act ~= "held" and a.act ~= "yoked" then
+              local ax, ay = a.tx, a.ty
+              local dd = dsq(ax - cx) + dsq(ay - cy)
+              if dd > wd then wa, wd = dmath.atan2(ay - cy, ax - cx), dd end
+            end
+          end
+          -- (not between the herd and its herder)
+          local ha = dmath.atan2(my - cy, mx - cx)
+          local dh = (wa - ha + 9.42477796) % 6.28318531 - 3.14159265
+          if dh > -0.6 and dh < 0.6 then wa = ha + (dh >= 0 and 0.6 or -0.6) end
+          wa = wa + (u(W, s, d, now, 6) - 0.5) * 0.8
+          -- (not where another dog of the herd already watches from: round to the other side of it)
+          for _, o in ipairs(s.dogs) do
+            if o ~= d and o.alive and o.hk == d.hk and o.px then
+              local oa = dmath.atan2(o.py - cy, o.px - cx)
+              local df = (wa - oa + 9.42477796) % 6.28318531 - 3.14159265
+              if df > -0.8 and df < 0.8 then wa = oa + (df >= 0 and 1.2 or -1.2) end
+            end
+          end
+          px, py = cx + cos(wa) * (R + 0.05), cy + sin(wa) * (R + 0.05)
+          d.px, d.py = px, py
+          d.pt = now + 0.8 + 2 * u(W, s, d, now, 7)
+        end
+        gx, gy = px, py
+        sp = c.dog_trot
         d.why = "Watching the herd"
       end
-      local dd = sqrt(dsq(gx - d.tx) + dsq(gy - d.ty))
+      local dd = sqrt(dsq(gx - dx0) + dsq(gy - dy0))
       if dd > 0.03 then
-        if go_to(s, d, now, gx, gy, herder.act == "walk" and c.dog_trot * 1.2 or c.dog_trot, "walk") then return end
+        -- round the herd, not through it: the way there by its edge, a stretch at a time
+        local ga = dmath.atan2(gy - cy, gx - cx)
+        local da = (ga - ra + 9.42477796) % 6.28318531 - 3.14159265
+        if rd < R * 1.2 or (da > 0.7 or da < -0.7) then
+          local na = ra + max(-0.7, min(0.7, da))
+          local nr = max(R + 0.03, min(rd, R * 1.6))
+          local ex, ey = cx + cos(na) * nr, cy + sin(na) * nr
+          if sqrt(dsq(ex - dx0) + dsq(ey - dy0)) > 0.01 then gx, gy = ex, ey end
+          if d.why == "Watching the herd" then d.why = "Going round the herd" end
+        end
+        if go_to(s, d, now, gx, gy, sp, "walk") then return end
       end
+      d.why = herder.act == "walk" and "Working behind the herd" or "Watching the herd"
       stand(d, now, u(W, s, d, now, 3) < 0.6 and "lie" or "sit", herder.act == "walk" and 0.05 or (0.15 + 0.3 * u(W, s, d, now, 4)))
       return
     end
   end
   -- by night at the pen of the household's beasts; else by the house
+  d.px, d.py, d.fetch = nil, nil, nil
   local bx, by
   if night and H then
     local pen = s.buildings[H.pen]

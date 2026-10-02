@@ -47,6 +47,37 @@ function M.animals_are_individuals()
   T.ok(bn >= 2 and bo / bn >= 0.25, string.format("wild bands reshuffle: mean offset change %.2f", bo / math.max(1, bn)))
   T.ok(dogs_n >= 3 and dogs_mv / dogs_n <= 0.45, string.format("dogs with the herds on the move %.0f%% of the time", 100 * dogs_mv / math.max(1, dogs_n)))
   T.ok(#nowhy == 0, "every group's animals have reasons: " .. table.concat(nowhy, ", "))
+  -- (S16) suspicious synchronisation, by class (sums weighted by the frames each group was seen):
+  -- livestock out moving as one body (velocity correlation), stopping or lying down all at once;
+  -- packs travelling as a rigid formation (all one heading and one velocity)
+  local sum = {}
+  for _, o in ipairs(audit.summary(rows)) do sum[o.cls] = o end
+  local function cls(prefix, f)
+    local v, n = 0, 0
+    for k, o in pairs(sum) do
+      if k:sub(1, #prefix) == prefix and o[f] >= 0 then v, n = v + o[f], n + 1 end
+    end
+    return n > 0 and v / n or -1, n
+  end
+  for _, pre in ipairs({ "herded", "left" }) do
+    local vc = cls(pre, "vcorr")
+    local ms = cls(pre, "mstop")
+    local mr = cls(pre, "mrest")
+    print(string.format("      %s: vcorr %.2f, mass stops %.0f%%, mass rests %.0f%%", pre, vc, 100 * ms, 100 * mr))
+    T.ok(vc <= 0.5, string.format("%s livestock do not move as one body: velocity correlation %.2f", pre, vc))
+    T.ok(ms <= 0.12, string.format("%s livestock do not stop all at once: %.0f%% of stops", pre, 100 * ms))
+    T.ok(mr <= 0.15, string.format("%s livestock do not lie down all at once: %.0f%% of lyings-down", pre, 100 * mr))
+  end
+  local pk = sum["pack wolf"]
+  if pk then
+    print(string.format("      wolves: blob %.0f%%, vcorr %.2f, mass stops %.0f%%, mass starts %.0f%%", 100 * pk.blob, pk.vcorr, 100 * pk.mstop, 100 * pk.mass))
+    T.ok(pk.blob <= 0.6, string.format("wolves are not a moving formation: %.0f%% of moments all one heading", 100 * pk.blob))
+    T.ok(pk.vcorr <= 0.75, string.format("wolves move each its own way: velocity correlation %.2f", pk.vcorr))
+    T.ok(pk.mstop <= 0.2, string.format("wolves do not stop all at once: %.0f%%", 100 * pk.mstop))
+  end
+  local bd = cls("band", "vcorr")
+  print(string.format("      wild bands: vcorr %.2f", bd))
+  T.ok(bd <= 0.5, string.format("wild bands do not move as one body: velocity correlation %.2f", bd))
 end
 
 -- One deer of a band is frightened: those near it take flight after it, each when it notices -
@@ -133,6 +164,131 @@ function M.the_flock_follows_its_herder()
   T.ok(m >= 0.6 * n, string.format("the flock set off after its herder: %d of %d", m, n))
   T.ok(tmax - tmin >= 0.04, string.format("each when it noticed: over %.2f h", tmax - tmin))
   T.ok(why["Following the herder"] or why["Catching up with the herder"], "following the herder is a reason they give")
+end
+
+-- Live beasts sold to a neighbour (S15, R4): a village whose hay will not winter all its sheep has
+-- some marked for killing; its road neighbour has hay to spare and leather the first wants. A
+-- household drives the very sheep it would have killed there: each is taken by the halter where it
+-- grazes and walks behind the drover (never jumping), leaves the map with them, is the same beast on
+-- the other map, and becomes a household's of the buyer's village at the deal; leather comes home.
+function M.beasts_are_driven_to_a_buyer()
+  local W = load()
+  local V = W.S.v3
+  local trade = require("sim.agents.trade")
+  local stock = require("sim.agents.stock")
+  local econ = require("sim.agents.econ")
+  world.advance(W, 30)
+  -- the nearest pair of villages by road that both keep sheep
+  local S, B, bh = nil, nil, 1e9
+  for _, s in ipairs(V.settlements) do
+    if s.herds and s.herds.flock then
+      for _, o in ipairs(trade.partners(W, s)) do
+        local _, hrs = trade.road(W, s, o)
+        if o.herds and o.herds.flock and hrs < bh then S, B, bh = s, o, hrs end
+      end
+    end
+  end
+  T.ok(S ~= nil, "two neighbours by road keeping sheep")
+  if not S then return end
+  -- real want: little hay at S (beasts marked for killing), much at B, and leather at B that S lacks
+  S.hay = 20
+  B.hay = 400
+  local culled = stock.plan_cull(W, S)
+  for _, id in ipairs(S.blist) do
+    local b = S.buildings[id]
+    if b.kind == "house" then b.stock.leather, b.stock.hides = 0, 0 end
+  end
+  for _, id in ipairs(B.blist) do
+    local b = B.buildings[id]
+    if b.kind == "house" and b.hh ~= 0 then b.stock.leather = (b.stock.leather or 0) + 6 end
+  end
+  -- (someone from B came by: S knows how things stand there)
+  econ.learn(W, S, B, V.now)
+  local who = {}
+  for _, a in ipairs(S.herds.flock.animals) do
+    if a.alive and a.cull then who[#who + 1] = { a = a, born = a.born, coat = a.coat, sex = a.sex } end
+  end
+  T.ok(culled > 0 and #who > 0, "sheep marked for killing at " .. S.name .. ": " .. culled)
+  local drover, haltered, jumps, on_road, arrived = nil, 0, 0, 0, false
+  local last = {}
+  local t0 = V.now
+  for t = t0 + 0.02, t0 + 24 * 5, 0.02 do
+    world.advance(W, t)
+    if not drover then
+      for _, id in ipairs(S.members) do
+        local p = V.people[id]
+        if p.alive and p.trip and p.trip.give == "sheep" then drover = p end
+      end
+    end
+    if drover then
+      local tr = drover.trip
+      if tr and tr.party and #tr.party > 0 then on_road = on_road + 1 end
+      if (drover.at or drover.sett) == B.id then arrived = true end
+      for _, s2 in ipairs({ S, B }) do
+        for _, a in ipairs(s2.herds.flock.animals) do
+          if a.alive and (a.led or 0) == drover.id then
+            local x, y = stock.pos(a, t)
+            local key = s2.id .. ":" .. a.k
+            local l = last[key]
+            if l and math.sqrt((x - l[1]) ^ 2 + (y - l[2]) ^ 2) > 0.02 * 6 then jumps = jumps + 1 end
+            last[key] = { x, y }
+            if not l and s2 == S then haltered = haltered + 1 end
+          end
+        end
+      end
+    end
+  end
+  T.ok(drover ~= nil, "a drove set out from " .. S.name)
+  if not drover then return end
+  T.ok(haltered >= 1, "sheep taken by the halter " .. haltered)
+  T.ok(jumps == 0, "led sheep never jumped: " .. jumps)
+  T.ok(on_road > 0, "the sheep went with the drover on the road (samples " .. on_road .. ")")
+  T.ok(arrived, "the drover reached " .. B.name)
+  -- the same beasts, now kept by households of B
+  local sold = 0
+  for _, a in ipairs(B.herds.flock.animals) do
+    if a.alive and a.from == S.id then
+      local same = false
+      for _, w in ipairs(who) do if w.born == a.born and w.coat == a.coat and w.sex == a.sex then same = true end end
+      local hh = V.households[a.owner]
+      if same and hh and hh.sett == B.id then sold = sold + 1 end
+    end
+  end
+  T.ok(sold >= 1, "sheep of " .. S.name .. " now kept by households of " .. B.name .. ": " .. sold)
+  T.ok((S.acc.got_leather or 0) > 0 or (S.acc.got_cloth or 0) > 0 or (S.acc.got_wool or 0) > 0 or (S.acc.got_cheese or 0) > 0,
+    "paid for them in goods carried home")
+end
+
+-- Dogs and hungry wolves (D-105, S15): packs gone hungry with the wild prey about the villages
+-- hunted out come for the beasts in the pens by night; the dogs at the pens hear them and bark,
+-- and the wolves are met there (barking dogs, people woken) or take a beast.
+function M.dogs_bark_at_hungry_wolves()
+  local W = load()
+  local V = W.S.v3
+  local A = W.S.wild
+  for i = 1, A.np do A.p_cond[i] = 0.3 end
+  local t0 = W.hour
+  local near_pen = 0
+  for h = 1, 24 * 4 do
+    world.advance(W, t0 + h)
+    for _, s in ipairs(V.settlements) do
+      for _, w in ipairs(s.wildlife and s.wildlife.animals or {}) do
+        -- (the grazers about the villages hunted out)
+        if w.alive and not w.pred then w.alive, w.gone, w.died = false, true, t0 + h end
+        if w.alive and w.pred and w.prey and w.prey.kind ~= "wild" then near_pen = near_pen + 1 end
+      end
+    end
+  end
+  local barks, visits, pen, driven = 0, 0, 0, 0
+  for _, s in ipairs(V.settlements) do
+    barks = barks + (s.acc.barks or 0)
+    visits = visits + (s.acc.wolf_nights or 0)
+    pen = pen + (s.acc.stock_wolves or 0)
+    driven = driven + (s.acc.packs_driven or 0)
+  end
+  T.ok(visits >= 2, "hungry wolf nights " .. visits)
+  T.ok(near_pen > 0, "hours wolves were after beasts in a pen " .. near_pen)
+  T.ok(barks >= 1, "dogs barking at wolves " .. barks)
 end
 
 return M

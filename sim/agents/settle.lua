@@ -93,6 +93,28 @@ function M.add_building(W, s, kind, ix0, iy0, side, state, opts)
   return b
 end
 
+-- (S16) A parent moving into a new house brings their children still at home with them (a widow
+-- remarrying takes her children), unless the children's other parent stays in the old house.
+local function bring_children(W, a, old, hh)
+  if not old or old == hh then return end
+  local V = W.S.v3
+  local list = {}
+  for i = 1, #old.members do list[i] = old.members[i] end
+  for _, id in ipairs(list) do
+    local q = V.people[id]
+    if q and q.alive and (q.mother == a.id or q.father == a.id) then
+      local st = people.stage(q, W.hour)
+      if st == "infant" or st == "child" or st == "apprentice" then
+        local o = V.people[q.mother == a.id and q.father or q.mother]
+        if not (o and o.alive and o.hh == old.id) then
+          people.join(W, q, hh)
+          people.remember(q, W.hour, "Moved with " .. a.name .. " into the new house")
+        end
+      end
+    end
+  end
+end
+
 -- A site's work and logs are complete: it stands. A house for a waiting couple becomes their
 -- home and their household.
 function M.complete_building(W, s, b)
@@ -101,13 +123,32 @@ function M.complete_building(W, s, b)
   b.built = W.hour
   people.remove_id(s.sites, b.id)
   local V = W.S.v3
+  if b.kind == "house" and b.for_hh then
+    -- (S16, R5) the house of a household come from elsewhere: theirs now
+    local hh = V.households[b.for_hh]
+    if hh and #hh.members > 0 then
+      hh.home, hh.lodge, hh.house_site = b.id, nil, nil
+      b.hh = hh.id
+      for _, id in ipairs(hh.members) do
+        local q = V.people[id]
+        if q and q.alive then people.remember(q, W.hour, "Moved into our own house at " .. s.name) end
+      end
+    end
+    b.stock.food, b.stock.meals, b.stock.water, b.stock.logs = 0, 0, 0, 0
+  end
   if b.kind == "house" and b.for_a then
     local a, c = V.people[b.for_a], V.people[b.for_b or 0]
     local hh = people.new_household(W, s.id, b.id)
     s.households[#s.households + 1] = hh.id
     b.hh = hh.id
-    if a and a.alive then people.join(W, a, hh); people.remember(a, W.hour, "Moved into our new house") end
-    if c and c.alive then people.join(W, c, hh); people.remember(c, W.hour, "Moved into our new house") end
+    for _, q in ipairs({ a, c }) do
+      if q and q.alive then
+        local old = V.households[q.hh]
+        people.join(W, q, hh)
+        people.remember(q, W.hour, "Moved into our new house")
+        bring_children(W, q, old, hh)
+      end
+    end
     b.stock.food = 0
     b.stock.meals = 0
     b.stock.water = 0
@@ -1313,9 +1354,57 @@ function floods(W, s, wd, day)
   end
 end
 
--- Growth: couples without a home get a house site.
+-- (S16) A house standing empty (its household gone away or died out), or nil.
+local function empty_house(W, s)
+  local V = W.S.v3
+  for _, id in ipairs(s.blist) do
+    local b = s.buildings[id]
+    if b.kind == "house" and b.state == "standing" then
+      local hh = V.households[b.hh or 0]
+      if not hh or #hh.members == 0 or hh.home ~= b.id then return b end
+    end
+  end
+  return nil
+end
+
+-- Growth: couples without a home get a house site (S16: or a house standing empty); households
+-- come from elsewhere and lodging with others get a site of their own.
 local function plan_houses(W, s)
   local V = W.S.v3
+  for i = #s.couples, 1, -1 do
+    local a = V.people[s.couples[i]]
+    if a and a.alive and not a.house_site then
+      local b = empty_house(W, s)
+      if not b then break end
+      local c2 = V.people[a.partner or 0]
+      local hh = people.new_household(W, s.id, b.id)
+      s.households[#s.households + 1] = hh.id
+      b.hh = hh.id
+      for _, q in ipairs({ a, c2 }) do
+        if q and q.alive then
+          local old = V.households[q.hh]
+          people.join(W, q, hh)
+          people.remember(q, W.hour, "Moved into the empty house of the " .. (b.for_name or "people who left"))
+          bring_children(W, q, old, hh)
+        end
+      end
+      table.remove(s.couples, i)
+    end
+  end
+  for _, hid in ipairs(s.waiting or {}) do
+    local hh = V.households[hid]
+    if hh and #hh.members > 0 and hh.lodge and not hh.house_site then
+      local b = empty_house(W, s)
+      if b then
+        b.hh = hh.id
+        hh.home, hh.lodge = b.id, nil
+        for _, id in ipairs(hh.members) do
+          local q = V.people[id]
+          if q and q.alive then people.remember(q, W.hour, "Moved into a house standing empty at " .. s.name) end
+        end
+      end
+    end
+  end
   local open = 0
   for i = 1, #s.sites do
     local b = s.buildings[s.sites[i]]
@@ -1335,6 +1424,27 @@ local function plan_houses(W, s)
           events.emit(W, "house_planned", s.cell, 0, 0, { settlement = s.id, building = b.id })
         end
       end
+    end
+  end
+  -- (S16, R5) a household come from elsewhere, lodging with another: a house of its own
+  for _, hid in ipairs(s.waiting or {}) do
+    if open >= 2 then break end
+    local hh = V.households[hid]
+    if hh and #hh.members > 0 and hh.lodge and not hh.house_site then
+      local ix, iy, side = M.find_lot(W, s)
+      if ix then
+        local q = V.people[hh.members[1]]
+        local b = M.add_building(W, s, "house", ix, iy, side, "site",
+          { for_hh = hh.id, for_name = "the " .. (q and q.surname or "newcomer") .. "s", prio = 1 })
+        hh.house_site = b.id
+        open = open + 1
+      end
+    end
+  end
+  if s.waiting then
+    for i = #s.waiting, 1, -1 do
+      local hh = V.households[s.waiting[i]]
+      if not hh or #hh.members == 0 or not hh.lodge then table.remove(s.waiting, i) end
     end
   end
 end
@@ -1408,6 +1518,8 @@ function M.daily(W, s, day)
   plan_bridges(W, s)
   -- (the day's best exchange with the neighbours, by what the village knows of them: D-101)
   M.econ.daily(W, s, day * 24)
+  -- (S16, R5) households that would leave, and where to
+  M.migrate.daily(W, s, day * 24)
 end
 
 -- The planet's river widths today (one computation a planet day for every settlement; runtime).

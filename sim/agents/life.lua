@@ -135,6 +135,95 @@ local function courtship(W, s, day)
       end
     end
   end
+  -- (S16, R4) a man with nobody here he could marry goes courting at a neighbouring village
+  for j = 1, #singles_m do
+    local m = singles_m[j]
+    if m.partner == 0 and not m.court and not m.trip and people.age(m, now) < 40 and u(W, m, 34, day) < c.court_far then
+      local here = false
+      for i = 1, #singles_f do
+        local f = singles_f[i]
+        if f.partner == 0 and not people.is_kin(W, f, m.id) and not f.move then here = true; break end
+      end
+      if not here then
+        local o = M.court_village(W, s, m, day)
+        if o then
+          m.court = { to = o.id, t = now }
+          people.remember(m, now, "Nobody to marry here: I will go courting at " .. o.name)
+        end
+      end
+    end
+  end
+end
+
+-- (S16) Children left in a household with no grown-up (orphaned, or left behind) are taken in:
+-- by the household of their nearest grown-up kin in the village (a grandparent, an aunt or uncle,
+-- a grown brother or sister), else by the household nearest their house with a woman at home.
+function M.take_in(W, s, day)
+  local V = W.S.v3
+  local now = W.hour
+  for _, hid in ipairs(s.households) do
+    local hh = V.households[hid]
+    if hh and #hh.members > 0 then
+      local grown = false
+      for _, id in ipairs(hh.members) do
+        local q = V.people[id]
+        local st = q and q.alive and people.stage(q, now)
+        if st == "adult" or st == "elder" then grown = true; break end
+      end
+      if not grown then
+        -- (kin first: anyone grown in the village kin to one of the children, by affinity)
+        local to, why, bs = nil, nil, -1e9
+        local home = s.buildings[hh.home or 0]
+        for _, mid in ipairs(s.members) do
+          local q = V.people[mid]
+          local st = q and q.alive and q.hh ~= hid and people.stage(q, now)
+          if (st == "adult" or st == "elder") and V.households[q.hh] and V.households[q.hh].home ~= 0 then
+            for _, id in ipairs(hh.members) do
+              local k = V.people[id]
+              local kin = k and (people.is_kin(W, k, q.id) or (V.people[k.mother or 0] and people.is_kin(W, V.people[k.mother], q.id))
+                or (V.people[k.father or 0] and people.is_kin(W, V.people[k.father], q.id)))
+              local sc = kin and (1 + people.affinity(k, q.id)) or -1
+              if not kin and q.sex == "f" and home then
+                local qh = s.buildings[V.households[q.hh].home]
+                sc = qh and -(qh.dx - home.dx) * (qh.dx - home.dx) - (qh.dy - home.dy) * (qh.dy - home.dy) or -1e9
+              end
+              if sc > bs then to, bs, why = q, sc, kin and "kin" or "neighbour" end
+            end
+          end
+        end
+        if to then
+          local dest = V.households[to.hh]
+          local list = {}
+          for i = 1, #hh.members do list[i] = hh.members[i] end
+          for _, id in ipairs(list) do
+            local k = V.people[id]
+            if k and k.alive then
+              people.join(W, k, dest)
+              people.remember(k, now, "Taken in by " .. to.name .. (why == "kin" and ", our kin" or ""))
+            end
+          end
+          people.remember(to, now, "Took in " .. #list .. (#list == 1 and " child" or " children") .. " left with no one to keep them")
+          s.acc.taken_in = (s.acc.taken_in or 0) + #list
+        end
+      end
+    end
+  end
+end
+
+-- (S16, R4) The village a man with nobody to marry at home goes courting at: a road neighbour he
+-- can reach in a day or so, the more trusted (help and trade between them) the likelier.
+function M.court_village(W, s, m, day)
+  local trade = require("sim.agents.trade")
+  local econ = require("sim.agents.econ")
+  local best, bs = nil, -1e9
+  for _, o in ipairs(trade.partners(W, s)) do
+    local _, hrs = trade.road(W, s, o)
+    if hrs <= C().court_road_h and #o.members > 0 then
+      local sc = econ.rel(s, o).trust * 2 - hrs * 0.03 + u(W, m, 35 + o.id, day) * 0.5
+      if sc > bs then best, bs = o, sc end
+    end
+  end
+  return best
 end
 
 function M.daily(W, s, day)
@@ -257,6 +346,7 @@ function M.daily(W, s, day)
       end
     end
   end
+  M.take_in(W, s, day)
   if day % 4 == s.id % 4 then courtship(W, s, day) end
 end
 

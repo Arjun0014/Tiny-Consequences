@@ -14,6 +14,7 @@
 local dmath = require("sim.dmath")   -- (the same bits in every runtime, S14)
 local sfmt = require("sim.fmt").format   -- (the same text in every runtime, S14)
 local cfgmod = require("sim.config")
+local clock = require("sim.agents.clock")
 
 local M = {}
 local max, min, sqrt, exp, floor = math.max, math.min, math.sqrt, dmath.exp, math.floor
@@ -30,12 +31,19 @@ M.GOODS = {
   cloth = { base = 6.0, wt = 1 / 3, pool = "house", name = "cloth", unit = "GE" },
   hides = { base = 2.0, wt = 1 / 3, pool = "house", name = "hides", unit = "", plural = true },
   leather = { base = 4.0, wt = 1 / 4, pool = "house", name = "leather", unit = "pieces" },
+  -- (S15, R4) beasts sold alive: a household's own, led by a drover (wt: the share of the beasts
+  -- one drover can lead), never carried, never taken in payment
+  sheep = { base = 12, wt = 1 / 6, pool = "house", name = "sheep", name1 = "sheep", unit = "", beast = "flock" },
+  goat = { base = 10, wt = 1 / 6, pool = "house", name = "goats", name1 = "goat", unit = "", beast = "flock" },
+  cattle = { base = 70, wt = 1 / 2, pool = "house", name = "cattle", name1 = "cow", unit = "", beast = "cattle" },
+  pig = { base = 28, wt = 1 / 4, pool = "house", name = "pigs", name1 = "pig", unit = "", beast = "swine" },
 }
-M.ORDER = { "grain", "smoked", "cheese", "logs", "wool", "cloth", "hides", "leather" }
+M.ORDER = { "grain", "smoked", "cheese", "logs", "wool", "cloth", "hides", "leather", "sheep", "goat", "cattle", "pig" }
 
 -- "8.0 FU of smoked fish", "2 logs": an amount of a good in words.
 function M.amount(q, g)
   local G = M.GOODS[g]
+  if G.beast and q < 1.5 then return "a " .. G.name1 end
   if G.unit == "" then return sfmt("%.0f %s", q, G.name) end
   return sfmt("%.1f %s of %s", q, G.unit, G.name)
 end
@@ -43,10 +51,16 @@ end
 -- Worth a unit at stock `have` against want `want`: dear when short, cheap when there is plenty.
 local function worth(g, have, want)
   local G = M.GOODS[g]
-  if want <= 0 then return G.base * 0.15 end
+  local floor_v = G.base * 0.15
+  if G.beast then
+    -- (S15) a beast is never worth less than what killing it gives: its meat and its hide
+    local S = cfgmod.V3.stock[g]
+    floor_v = S.meat + (S.hide or 0) * M.GOODS.hides.base * 0.6
+  end
+  if want <= 0 then return floor_v end
   local v = 1.6 - have / want
-  if v < 0.15 then v = 0.15 elseif v > 1.6 then v = 1.6 end
-  return G.base * v
+  if v > 1.6 then v = 1.6 end
+  return max(floor_v, G.base * v)
 end
 M.worth = worth
 
@@ -81,10 +95,72 @@ function M.village_stock(W, s, g)
   return have, want
 end
 
+-- (S15, R4) Beasts: a household's head of a kind, what it wants to keep and how many it would sell.
+-- Want comes from fodder: with the hay in (autumn and winter), a village whose stack would winter
+-- more beasts than it keeps has room - shared among its households by the beasts of the kind each
+-- keeps, one more each so that a household with none may want some - and a village whose stack
+-- falls short has beasts marked for killing (stock.plan_cull), which a household would sooner sell
+-- alive; a herd with no grown sire wants one. Counted once a game hour (runtime).
+local CENSUS = setmetatable({}, { __mode = "k" })
+local function census(W, s, now)
+  local h = floor(now)
+  local cen = CENSUS[s]
+  if cen and cen.h == h then return cen end
+  cen = { h = h, hh = {}, n = {}, owners = {}, sire = {}, room = 0 }
+  CENSUS[s] = cen
+  local stock = require("sim.agents.stock")
+  local se = 0
+  for _, kind in ipairs(stock.HERDS) do
+    local H = s.herds and s.herds[kind]
+    if H then
+      for _, a in ipairs(H.animals) do
+        if a.alive and (a.led or 0) == 0 then
+          local S = stock.SP(a.sp)
+          se = se + S.se
+          local e = cen.hh[a.owner]
+          if not e then e = {}; cen.hh[a.owner] = e end
+          local f = e[a.sp]
+          if not f then
+            f = { n = 0, spare = 0 }
+            e[a.sp] = f
+            cen.owners[a.sp] = (cen.owners[a.sp] or 0) + 1
+          end
+          f.n = f.n + 1
+          cen.n[a.sp] = (cen.n[a.sp] or 0) + 1
+          if stock.sellable(a, a.owner, now) then f.spare = f.spare + 1 end
+          if a.sex == "m" and not a.ox and (now - a.born) / 1152 >= S.adult_years then cen.sire[a.sp] = true end
+        end
+      end
+    end
+  end
+  local c = C()
+  if clock.local_doy(now, W.grid.lat[s.cell]) >= c.beast_room_doy then
+    cen.room = (s.hay or 0) / (c.hay_days * c.sheep_hunger * 24 * 0.6) - se
+  end
+  return cen
+end
+function M.beast_stock(W, s, hh, g, now)
+  local G = M.GOODS[g]
+  local H = s and s.herds and s.herds[G.beast]
+  if not H then return 0, 0, 0 end      -- (no pen for them: neither kept nor wanted)
+  local cen = census(W, s, now)
+  local e = cen.hh[hh.id] and cen.hh[hh.id][g]
+  local have, spare = e and e.n or 0, e and e.spare or 0
+  local want = have - spare
+  local se = require("sim.agents.stock").SP(g).se
+  if cen.room > 0 and se > 0 then
+    want = want + cen.room / se * (have + 1) / ((cen.n[g] or 0) + max(1, cen.owners[g] or 0))
+  end
+  if not cen.sire[g] and have > 0 then want = want + 1 end
+  -- (no room and none of its own: not wanted at all)
+  return have, max(0, want), spare
+end
+
 -- A household's own stock and want of a house good (textiles: wool and cloth stand for the whole
 -- pipeline from raw wool and flax to cloth).
 function M.house_stock(W, hh, home, g)
   local c = C()
+  if M.GOODS[g].beast then return M.beast_stock(W, W.S.v3.settlements[hh.sett], hh, g, W.S.v3.now or W.hour) end
   local st = home.stock
   local n = max(1, #hh.members)
   if g == "wool" or g == "cloth" then
@@ -141,6 +217,8 @@ function M.spare(W, s, hh, home, g)
   end
   if not home then return 0 end
   local have, want, own = M.house_stock(W, hh, home, g)
+  -- (beasts: those the hay will not winter, whole)
+  if M.GOODS[g].beast then return own end
   return max(0, min(own, have - want * c.spare_k))
 end
 
@@ -224,16 +302,20 @@ end
 function M.best_trade(W, s, hh, home, pool, partners, route, now)
   local c = C()
   local best = nil
+  local land = route == M.land_route
   for gi = 1, #M.ORDER do
     local X = M.ORDER[gi]
     local GX = M.GOODS[X]
-    if GX.pool == pool then
+    if GX.pool == pool and (land or not GX.beast) then
       local spareX = M.spare(W, s, hh, home, X)
       local aX = M.value(W, s, hh, home, X)
       for pi = 1, #partners do
         local o = partners[pi]
         local hrs, cap, crew = route(W, s, o)
+        -- (beasts are driven slower than a walker, D-115)
+        if GX.beast then hrs = hrs * c.drove_road end
         local nmax = min(spareX, cap / GX.wt)
+        if GX.beast then nmax = floor(nmax + 1e-6) end
         if nmax >= c.trade_min_load / GX.wt then
           local bX = M.expect(W, s, o, X, now)
           if bX > aX * c.trade_margin then
@@ -241,7 +323,7 @@ function M.best_trade(W, s, hh, home, pool, partners, route, now)
             local bestH, br, sH, aH, spH = nil, 0, 0, 0, 0
             for hi = 1, #M.ORDER do
               local H = M.ORDER[hi]
-              if H ~= X and (pool ~= "village" or M.GOODS[H].pool == "village") then
+              if H ~= X and not M.GOODS[H].beast and (pool ~= "village" or M.GOODS[H].pool == "village") then
                 local _, sl, sp = M.expect(W, s, o, H, now)
                 local ah = M.value(W, s, hh, home, H)
                 local ratio = bX * ah / (aX * sl)
@@ -253,6 +335,14 @@ function M.best_trade(W, s, hh, home, pool, partners, route, now)
               local GH = M.GOODS[bestH]
               local qH = min(nmax * k, cap / GH.wt, spH)
               local n = qH / k
+              if GX.beast then
+                n = floor(n + 1e-6)
+                if n < 1 and nmax >= 1 and qH * aH >= aX * c.trade_margin and bX >= qH * sH * c.trade_margin then
+                  -- (a whole beast for all that can be carried back, when both still gain by it)
+                  n, k = 1, qH
+                end
+                qH = n * k
+              end
               local cost = 2 * hrs * crew * c.trade_hour
               local gain = qH * aH - n * aX
               local r = M.rel(s, o)
@@ -260,7 +350,7 @@ function M.best_trade(W, s, hh, home, pool, partners, route, now)
               -- is hoped for, not counted on: a trip on guesswork counts its gain at trade_guess
               local w = M.fresh(W, s, o, now)
               local net = gain * (c.trade_guess + (1 - c.trade_guess) * w) * (1 + 0.5 * r.trust) - cost
-              if net > 0 and (not best or net > best.net) then
+              if net > 0 and n > 0 and (not best or net > best.net) then
                 best = { o = o.id, give = X, n = n, take = bestH, k = k, gain = gain, cost = cost, net = net, hours = hrs,
                   aX = aX, aH = aH, w = w }
               end
@@ -291,6 +381,16 @@ function M.deals(W, o, tr, cap)
     local q = left
     if wantX > 0 then q = min(q, max(0, (1.6 - k * vH / vbase) * wantX - haveX)) end
     q = min(q, spH / k, room / k)
+    if GX.beast then
+      local qf = floor(q + 1e-6)
+      if qf < 1 and left >= 1 then
+        -- (a whole beast for what can be paid and carried, when both still gain by it)
+        local keff = min(room, spH)
+        if keff * tr.aH >= tr.aX * c.trade_margin and vX >= keff * vH * c.trade_margin then qf, k = 1, keff end
+      end
+      q = qf
+      if q < 1 then return end
+    end
     if q * GX.wt < c.trade_min_load * 0.5 then return end
     out[#out + 1] = { b = b, q = q, qh = q * k, k = k }
     left, room = left - q, room - q * k
@@ -424,6 +524,12 @@ function M.daily(W, s, now)
         local a = M.best_trade(W, s, hh, home, "house", sea, M.sea_route, now)
         local b = M.best_trade(W, s, hh, home, "village", sea, M.sea_route, now)
         if b and (not a or b.net > a.net) then a = b; a.pool = "village" elseif a then a.pool = "house" end
+        -- (S16, R4) hungry and nothing to sell: a boat may sail to ask a trusted village over the
+        -- sea for help (not the one already being asked by road)
+        if not a then
+          a = M.plan_ask(W, s, sea, now, M.sea_route)
+          if a and s.tplan and s.tplan.ask and s.tplan.o == a.o then a = nil end
+        end
         hh.splan = a
       end
     end
@@ -433,7 +539,7 @@ end
 -- Asking for help (D-103): a village whose food (grain and relish) would last under `relief_days`
 -- days and which has nothing a neighbour wants sends someone to the partner it trusts most among
 -- those it knows to have grain to spare: { o, take = "grain", n, ask = true } or nil.
-function M.plan_ask(W, s, partners, now)
+function M.plan_ask(W, s, partners, now, route)
   local c = C()
   local pop = max(1, s.pop or #s.members)
   local g = M.village_stock(W, s, "grain")
@@ -442,14 +548,18 @@ function M.plan_ask(W, s, partners, now)
   if days >= c.relief_days then return nil end
   local best, bs = nil, 0
   for _, o in ipairs(partners) do
-    local _, _, sp = M.expect(W, s, o, "grain", now)
-    local rel = M.rel(s, o)
-    local sc = min(sp, 10) * (0.3 + rel.trust) * (1 + 0.2 * min(5, rel.gifts))
-    if sp > 2 and sc > bs then best, bs = o, sc end
+    if not route or (o.dock and o.granary) then
+      local _, _, sp = M.expect(W, s, o, "grain", now)
+      local rel = M.rel(s, o)
+      local sc = min(sp, route and 10 * c.boat_hold or 10) * (0.3 + rel.trust) * (1 + 0.2 * min(5, rel.gifts))
+      if sp > 2 and sc > bs then best, bs = o, sc end
+    end
   end
   if not best then return nil end
-  local _, hrs = require("sim.agents.trade").road(W, s, best)
-  return { o = best.id, give = "grain", take = "grain", n = 0, ask = true, net = 1, cost = 0, hours = hrs, aX = 1, aH = 1, days = days }
+  local hrs
+  if route then hrs = route(W, s, best) else local _; _, hrs = require("sim.agents.trade").road(W, s, best) end
+  return { o = best.id, give = "grain", take = "grain", n = 0, ask = true, net = 1, cost = 0, hours = hrs, aX = 1, aH = 1, days = days,
+    pool = route and "village" or nil }
 end
 
 -- What village o gives a neighbour who came asking for food: a share of its grain to spare by how

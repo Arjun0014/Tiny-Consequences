@@ -922,6 +922,9 @@ C.V3 = {
       twins = 0, litter = 6, stepping = 0.25, resting = 0.15, graze_h = 0.95, rest_h = 1.4, butcher_h = 1.0 },
   },
   drove_pace = 1.25,                      -- (S15) a herder driving a herd walks at its slowest beast's speed x this
+  drove_road = 1.6,                       -- (S15, R4) a road leg with beasts led takes this x a walker's hours
+  drove_gather = 0.15,                    -- (S16) a drover waits at the gate until the drove is within this of them
+  beast_room_doy = 24,                    -- (S15, R4) from this local day (the hay in) a village knows how many beasts its stack will winter
   pen_size = { flock = { 6, 6 }, cattle = { 7, 6 }, swine = { 5, 4 } },   -- tiles of the fold, byre yard, sty
   rack_found = { flock = 4, cattle = 10, swine = 3 },                      -- feed in the racks at founding
   cattle_share = 0.45, pig_share = 0.7,   -- founding: share of households with a cow, with a sow (by grass, woods)
@@ -990,6 +993,17 @@ C.V3 = {
   sea_wet_h = 8,
   nap_h = 4,
   relief_days = 8,
+  -- (S16, R5) households moving away: hardship (village food under mig_hunger_days days, hungry
+  -- members, no house of its own: mig_homeless) of at least mig_min_push for mig_days mornings running;
+  -- they go where the pull (grain heard spare for mig_food_days, kin, trust) beats what holds them
+  -- (mig_hold, their house, their years) and the road (mig_road_hour an hour) by mig_threshold;
+  -- they pack for mig_pack_h hours; each grown-up carries up to mig_carry FU of the household's food
+  mig_hunger_days = 6, mig_homeless = 0.5, mig_food_days = 30, mig_min_push = 0.35, mig_days = 3,
+  mig_hold = 0.45, mig_road_hour = 0.012, mig_threshold = 0.35, mig_pack_h = 10, mig_carry = 10,
+  -- (S16, R4) courting: a man with nobody to marry at home goes to a neighbour within court_road_h
+  -- hours' walk with this chance a courtship round; he spends court_h meeting its people; a bride
+  -- sets off with him court_wait_h after the match
+  court_far = 0.25, court_road_h = 30, court_h = 1.5, court_wait_h = 3,
   -- (D-105) dogs: hearing wolves within dog_alert; trotting and running speeds; a dog alone at a
   -- wolf is killed with wolf_kill_dog a meeting; a pup comes dog_pup_days after a dog is lost;
   -- people awake within wolf_fear of a wolf at a pen drive the pack off; a barking dog turns it with
@@ -1011,6 +1025,7 @@ C.V3 = {
   foul_reach = 0.8, flux_k = 0.004, flux_days = 4, flux_health = 0.05, flux_hz = 0.01, river_shun_days = 40,
   dog_alert = 0.45, dog_trot = 1.9, dog_run = 4.0, wolf_kill_dog = 0.15, dog_pup_days = 12,
   wolf_fear = 0.16, dog_deter = 0.3, guard_alert = 0.4, dog_charge = 0.18,
+  dog_see_off = 0.25,                     -- (S16) a dog out with a herd goes to see off a wild animal within this of the herd's edge
   -- (D-104) leather: hides soak in a tanning pit tan_days (put in and lifted out in tan_h); a pair of
   -- shoes takes shoe_leather and cobble_h; shoes wear a day by life stage; barefoot (under 0.1) one
   -- walks at barefoot_speed and the cold costs health; a household wants leather_want a member

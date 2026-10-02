@@ -6,11 +6,10 @@
 -- Each animal is a persistent micro-agent with its own position and action (graze or root, a few
 -- steps to fresh ground, lie down to rest or chew the cud, walk, stand in the pen), decided when its
 -- last action ends, in the agents' own event queue (strict time order with the people). A herd has
--- no single destination: by day each animal keeps to its own place around the herder who drove it
--- out (or the ground the herder left it on) - a place in a spread that grows with the herd (a
--- sunflower spiral of `sep` spacing, its order reshuffled every day: neighbours keep their distance
--- without anyone looking for them) - and wanders about it; the young keep to their mothers; at night
--- the pen. People do everything else: drive them out and home, milk the cows and goats, shear,
+-- no single destination and no places in it (S15/S16, D-114, D-116): by day each animal keeps within
+-- its own range of the herder who drove it out (or the ground the herder left it on) - its range,
+-- pace, alertness and side its own - grazing its own way, making room, rejoining, following when the
+-- herder moves on each in its own time; the young keep to their mothers; at night the pen. People do everything else: drive them out and home, milk the cows and goats, shear,
 -- mow and rack the hay, carry the pens' dung to the fields, bring the kitchen's scraps to the pigs,
 -- kill the beasts the hay cannot winter.
 --
@@ -132,7 +131,6 @@ local function u(W, s, H, a, now, k)
   return rng.fbase(a.rb, (floor(now * 60) % 1440) * 32 + k)
 end
 local P8 = { { 1, 0 }, { 0.7, 0.7 }, { 0, 1 }, { -0.7, 0.7 }, { -1, 0 }, { -0.7, -0.7 }, { 0, -1 }, { 0.7, -0.7 } }
-local GOLD = 2.39996323          -- the golden angle: the sunflower spiral of places in a herd
 
 -- Pasture blocks -----------------------------------------------------------------------------
 local BS = 8                         -- tiles a block side
@@ -360,9 +358,10 @@ local function scan(s, H, a, now, x, y, sight)
   local ln, lr, cx, cy, cn = 0, 0, 0, 0, 0
   local an = H.animals
   local inpen = a.act == "pen"
+  local grp = a.led or 0
   for i = 1, #an do
     local b = an[i]
-    if b ~= a and b.alive then
+    if b ~= a and b.alive and (b.led or 0) == grp then
       local ba = b.act
       if ba ~= "held" and ba ~= "yoked" and (ba == "pen") == inpen then
         local bx, by = b.tx, b.ty
@@ -473,6 +472,19 @@ function M.step(W, s, H, a, now)
     a.yoke = 0
     if a.act == "yoked" then a.act = "rest" end
   end
+  -- one of a drove (S15, R4; S16 as an individual): it goes with its drover wherever they go on
+  -- this map, by the same rules as a herd with its herder (its own distance, side and pace, after
+  -- them when they move on, grazing about them when they stop, making room in the drove)
+  local drover
+  if (a.led or 0) ~= 0 then
+    local q = W.S.v3.people[a.led]
+    if q and q.alive and q.trip and (q.at or q.sett) == s.id then
+      drover = q
+    else
+      -- (the drover is gone: it goes back to the herd by itself)
+      a.led = 0
+    end
+  end
   -- held by someone (milked, shorn, slaughtered): it stands while they work
   if (a.held or 0) ~= 0 then
     local q = W.S.v3.people[a.held]
@@ -487,7 +499,7 @@ function M.step(W, s, H, a, now)
   local pen = s.buildings[H.pen]
   local age = (now - a.born) / 1152
   -- the young keep to their mothers
-  local mom = a.mother ~= 0 and H.animals[a.mother]
+  local mom = not drover and a.mother ~= 0 and H.animals[a.mother]
   if age < S.young_years and mom and mom.alive then
     local mx, my = M.pos(mom, now)
     local d = sqrt(dsq(mx - a.tx) + dsq(my - a.ty))
@@ -507,7 +519,7 @@ function M.step(W, s, H, a, now)
   end
   -- where the herd is kept now: its herder (where they are now), the ground it was left on, the
   -- pigs' own rooting ground, else the pen
-  local p = M.herder(W, s, H)
+  local p = drover or M.herder(W, s, H)
   local cx, cy, inpen
   if p then
     cx, cy = M.person_pos(p, now)
@@ -552,6 +564,20 @@ function M.step(W, s, H, a, now)
   -- the edge of its range and away from bare ground) and lies down when fed (sooner when those
   -- about it are lying down).
   local n = H.n_alive or 1
+  if drover then
+    n = 0
+    local L = drover.trip.led
+    for i = 1, L and #L or 0 do
+      local b = H.animals[L[i]]
+      if b and b.alive and b.led == drover.id then n = n + 1 end
+    end
+    if night and drover.act ~= "walk" then
+      -- (the drover stopped for the night: it lies down near them)
+      a.why = "Lying down for the night by the drover"
+      stand(a, now, "rest", 1 + 1.5 * u(W, s, H, a, now, 10))
+      return
+    end
+  end
   local R = S.sep * (0.9 * sqrt(n) + 1)
   local Ri = R * (0.45 + 0.9 * trait(a, T_BOLD))
   local dax, day = cx - x, cy - y
@@ -560,7 +586,8 @@ function M.step(W, s, H, a, now)
   local hx, hy = a.hx or 1, a.hy or 0
   local sick = (a.sick or 0) > 0
   -- a dog close by: away from it, toward the herd (how a dog brings a straggler back)
-  local gx, gy = dog_near(s, x, y, now, S.sep * 1.8)
+  local gx, gy
+  if not drover then gx, gy = dog_near(s, x, y, now, S.sep * 1.8) end
   if gx then
     local ex, ey = x - gx, y - gy
     local el = sqrt(ex * ex + ey * ey)
@@ -586,7 +613,12 @@ function M.step(W, s, H, a, now)
     local hop = S.hop * pace * (0.8 + 0.5 * u(W, s, H, a, now, 5)) * (da > R * 2 and 1.6 or 1)
     if d > hop then tx, ty = x + dx / d * hop, y + dy / d * hop end
     if d > 1e-6 then a.hx, a.hy = dx / d, dy / d end
-    a.why = led and "Following the herder" or (p and "Catching up with the herder" or "Back to the others")
+    if drover then
+      a.why = led and ("Following the drover" .. (drover.trip.to ~= s.id and (" to " .. (W.S.v3.settlements[drover.trip.to] or s).name) or ""))
+        or "Catching up with the drover"
+    else
+      a.why = led and "Following the herder" or (p and "Catching up with the herder" or "Back to the others")
+    end
     if walk_to(W, s, a, now, tx, ty, S.speed * pace * (da > Ri * 3 and 1.5 or 1.15)) then return end
   end
   scan(s, H, a, now, x, y, S.sep * 3)
@@ -655,8 +687,9 @@ function M.step(W, s, H, a, now)
     if walk_to(W, s, a, now, x + hx * st, y + hy * st, S.speed * pace * 0.45, true) then return end
   end
   -- grazing (rooting), head down, drifting slowly along its way as it crops (S15)
-  local dur = S.graze_h * (led and 0.25 or 1) * (0.5 + 0.8 * u(W, s, H, a, now, 11))
+  local dur = S.graze_h * ((led or drover) and 0.25 or 1) * (0.5 + 0.8 * u(W, s, H, a, now, 11))
   a.why = a.sp == "pig" and "Rooting" or (S.browse and "Browsing" or "Grazing")
+  if drover then a.why = a.why .. (led and " a mouthful on the way" or " while the drover is busy") end
   graze_drift(s, a, now, hx, hy, sick and 0 or S.sep * (a.sp == "pig" and 0.35 or 0.6) * pace * dur, dur,
     not S.browse and a.sp ~= "pig")
 end
@@ -677,6 +710,145 @@ function M.rouse(W, s, H, now)
       end
     end
   end
+end
+
+-- Droving (S15, R4) ------------------------------------------------------------------------
+
+-- Is beast a one household hh could sell alive now: its own, grown, sound, not at work, and one the
+-- hay will not winter (marked for killing) and not too old to be worth more alive than dead.
+function M.sellable(a, hh_id, now)
+  if not a.alive or a.owner ~= hh_id or a.ox or (a.held or 0) ~= 0 or (a.yoke or 0) ~= 0 or (a.led or 0) ~= 0 then return false end
+  local S = SP(a.sp)
+  local age = (now - a.born) / 1152
+  if age < S.young_years * 1.5 or age > S.old_years - 1 or a.health < 0.6 or (a.sick or 0) > 0 then return false end
+  return a.cull == true
+end
+
+-- The beasts of species sp household hh would sell now, up to n, the youngest first.
+function M.for_sale(H, hh_id, sp, now, n)
+  local out = {}
+  for _, a in ipairs(H.animals) do
+    if a.sp == sp and M.sellable(a, hh_id, now) then out[#out + 1] = a end
+  end
+  table.sort(out, function(x, y) if x.born ~= y.born then return x.born > y.born end return x.k < y.k end)
+  for i = #out, n + 1, -1 do out[i] = nil end
+  return out
+end
+
+-- A drover takes beast a by the halter (S15) and lets it go again with a word and a stick: from now
+-- on it is one of the drove and goes with them by itself (S16), noticing them move off in its
+-- own time.
+function M.halter(W, s, H, a, p, now)
+  local tr = p.trip
+  tr.led = tr.led or {}
+  a.tx, a.ty = M.pos(a, now)
+  a.x, a.y = a.tx, a.ty
+  a.led, a.held = p.id, 0
+  a.act = "rest"
+  a.why = "Taken for the drove by " .. (p.name or "the drover")
+  tr.led[#tr.led + 1] = a.k
+  a.ver = a.ver + 1
+  a.t0, a.t1 = now, now + 0.03 + 0.06 * (1 - trait(a, T_ALERT))
+  M.push(W, a.t1, M.event_id(s, H, a), a.ver)
+end
+
+-- The drover sets off on a new step: each beast of the drove on map s notices in its own time.
+function M.rouse_drove(W, s, p, kind, now)
+  local L, H = M.led_by(s, p, kind)
+  for _, a in ipairs(L) do
+    if a.act == "graze" or a.act == "rest" then
+      local at = now + 0.01 + 0.06 * (1 - trait(a, T_ALERT)) + 0.03 * u(W, s, H, a, now, 21)
+      if a.t1 > at then
+        a.ver = a.ver + 1
+        a.t1 = at
+        M.push(W, at, M.event_id(s, H, a), a.ver)
+      end
+    end
+  end
+end
+
+-- How far the drove's last beast on map s is from its drover now.
+function M.drove_spread(s, p, kind, now)
+  local L = M.led_by(s, p, kind)
+  local px, py = M.person_pos(p, now)
+  local far = 0
+  for _, a in ipairs(L) do
+    local x, y = M.pos(a, now)
+    local d = sqrt(dsq(x - px) + dsq(y - py))
+    if d > far then far = d end
+  end
+  return far, #L
+end
+
+-- The beasts p leads on map s now (from the trip's list), and their herd.
+function M.led_by(s, p, kind)
+  local tr = p.trip
+  local H = s.herds and s.herds[kind]
+  local out = {}
+  if not tr or not tr.led or not H then return out, H end
+  for _, k in ipairs(tr.led) do
+    local a = H.animals[k]
+    if a and a.alive and a.led == p.id then out[#out + 1] = a end
+  end
+  return out, H
+end
+
+-- The drover takes the road: the beasts they lead leave map s with them (each the same beast, in
+-- the trip's party until the road's end; a marker stays in the herd's list in its place).
+function M.leave_map(W, s, p, kind)
+  local L, H = M.led_by(s, p, kind)
+  local tr = p.trip
+  tr.party = tr.party or {}
+  for _, a in ipairs(L) do
+    H.animals[a.k] = { k = a.k, sp = a.sp, sex = a.sex, born = a.born, owner = a.owner, alive = false, away = p.id, ver = a.ver + 1,
+      x = a.tx, y = a.ty, tx = a.tx, ty = a.ty, t0 = a.t0, t1 = a.t1, act = "away" }
+    a.act, a.ver = "away", a.ver + 1
+    tr.party[#tr.party + 1] = a
+    H.n_alive = max(0, (H.n_alive or 1) - 1)
+  end
+  tr.led = {}
+end
+
+-- At the road's end, on map s at (gx, gy): the party's beasts join herd `kind` of s, still led.
+function M.join_map(W, s, p, kind, gx, gy, now)
+  local tr = p.trip
+  local H = s.herds and s.herds[kind]
+  if not tr or not tr.party or #tr.party == 0 then return end
+  if not H then
+    -- (no pen here for them: they stay with the party)
+    return
+  end
+  tr.led = tr.led or {}
+  for i, a in ipairs(tr.party) do
+    local k = #H.animals + 1
+    a.k, a.mother, a.last_young, a.slot = k, 0, nil, k - 1
+    -- (off the road with the drover: about them at the map's edge, each where it came up)
+    local ang = trait(a, T_SIDE) * 6.2832
+    local r = SP(a.sp).sep * (0.6 + 1.2 * trait(a, T_BOLD))
+    a.x, a.y = gx + r * cos(ang), gy + r * sin(ang)
+    local ti = mapm.tile_of(s, a.x, a.y)
+    if ti == 0 or s.cost[ti] < 0 then a.x, a.y = gx, gy end
+    a.tx, a.ty = a.x, a.y
+    a.act, a.led, a.held, a.yoke = "rest", p.id, 0, 0
+    a.why = "Off the road with " .. (p.name or "the drover")
+    a.ver = a.ver + 1
+    a.t0, a.t1 = now, now + 0.02 + 0.05 * (1 - trait(a, T_ALERT))
+    H.animals[k] = a
+    H.n_alive = (H.n_alive or 0) + 1
+    tr.led[#tr.led + 1] = k
+    M.push(W, a.t1, M.event_id(s, H, a), a.ver)
+  end
+  tr.party = {}
+end
+
+-- Let a led beast go (sold, or home again): it stands where it is and goes to the herd by itself.
+function M.release(W, s, H, a, now, why)
+  a.tx, a.ty = M.pos(a, now)
+  a.x, a.y = a.tx, a.ty
+  a.led, a.act, a.why = 0, "rest", why
+  a.ver = a.ver + 1
+  a.t0, a.t1 = now, now + 0.03
+  M.push(W, a.t1, M.event_id(s, H, a), a.ver)
 end
 
 -- Her youngest still at foot.
