@@ -87,6 +87,9 @@ function geo.rebuild(W)
   for c = 1, n do if cdist[c] == 1e9 then cdist[c] = 99 end end
   G.coast, G.coast_dist = coast, cdist
 
+  if W.static.basins then
+    geo.basins(W, G, elev, sea, ocean, nbr, cnt)
+  else
   -- drainage: land cell drains to its lowest neighbour if lower (ocean neighbours count as
   -- sea level). 0 = basin (lake) or ocean.
   local downhill = G.downhill or {}
@@ -112,6 +115,7 @@ function geo.rebuild(W)
     return a < b
   end)
   G.drain_order = order
+  end
 
   -- slope (max elevation drop to a neighbour, km per step), used by erosion/fire/visuals
   local slope = G.slope or {}
@@ -131,6 +135,161 @@ function geo.rebuild(W)
   G.slope = slope
   G.sea_level_built = sea
   return G
+end
+
+-- Drainage basins (S14; v3 worlds, W.static.basins). Steepest descent on the coarse grid sent
+-- every coast cell's water straight to the sea: short parallel streams that never met. Here:
+-- 1. outlets: coastal land cells lowest within OUTLET_D cells of land (the mouths of basins);
+-- 2. a priority flood from the outlets inland, lowest ground first (the water's way up a basin
+--    over its divides at their lowest passes): each land cell drains to the cell the flood reached
+--    it from, so tributaries join and trunk rivers grow toward a few mouths;
+-- 3. the river bed (G.bed, km): the ground, carved down so it falls all the way to the mouth
+--    (a gorge where a river cuts through a ridge to the basin above it). Drain order is
+--    topological (upstream first: the flood's order reversed).
+geo.OUTLET_D = 3
+geo.BED_FALL = 0.004          -- the least fall of a bed from one cell to the next (km)
+
+local function hpush(H, pr, c)
+  local n = H.n + 1
+  H.n = n
+  local P, C = H.p, H.c
+  local i = n
+  while i > 1 do
+    local q = (i - i % 2) / 2
+    if P[q] < pr or (P[q] == pr and C[q] < c) then break end
+    P[i], C[i] = P[q], C[q]
+    i = q
+  end
+  P[i], C[i] = pr, c
+end
+local function hpop(H)
+  local P, C = H.p, H.c
+  local pr, c = P[1], C[1]
+  local n = H.n
+  local lp, lc = P[n], C[n]
+  P[n], C[n] = nil, nil
+  n = n - 1
+  H.n = n
+  if n > 0 then
+    local i = 1
+    while true do
+      local l = i + i
+      if l > n then break end
+      local r = l + 1
+      if r <= n and (P[r] < P[l] or (P[r] == P[l] and C[r] < C[l])) then l = r end
+      if P[l] > lp or (P[l] == lp and C[l] > lc) then break end
+      P[i], C[i] = P[l], C[l]
+      i = l
+    end
+    P[i], C[i] = lp, lc
+  end
+  return pr, c
+end
+
+function geo.basins(W, G, elev, sea, ocean, nbr, cnt)
+  local n = W.n
+  local coast, comp = G.coast, G.continent
+  local downhill = G.downhill or {}
+  for c = 1, n do downhill[c] = 0 end
+  -- 1. outlets
+  local outlet = {}
+  local seen, ring, nxt = {}, {}, {}
+  local stamp = 0
+  for c = 1, n do seen[c] = 0 end
+  for c = 1, n do
+    if ocean[c] == 0 and coast[c] == 1 then
+      local low = true
+      stamp = stamp + 1
+      seen[c] = stamp
+      local nr = 1
+      ring[1] = c
+      for _ = 1, geo.OUTLET_D do
+        local nn = 0
+        for i = 1, nr do
+          local a = ring[i]
+          local b = a * 6 - 6
+          for k = 1, cnt[a] do
+            local j = nbr[b + k]
+            if ocean[j] == 0 and seen[j] ~= stamp then
+              seen[j] = stamp
+              nn = nn + 1
+              nxt[nn] = j
+              if coast[j] == 1 and comp[j] == comp[c] and (elev[j] < elev[c] or (elev[j] == elev[c] and j < c)) then low = false end
+            end
+          end
+        end
+        for i = 1, nn do ring[i] = nxt[i] end
+        nr = nn
+        if not low then break end
+      end
+      if low then outlet[c] = true end
+    end
+  end
+  -- 2. the flood
+  local H = { n = 0, p = {}, c = {} }
+  local level, done, order = {}, {}, {}
+  for c = 1, n do
+    if outlet[c] then
+      -- (into its lowest sea neighbour)
+      local best, be = 0, 1e9
+      local b = c * 6 - 6
+      for k = 1, cnt[c] do
+        local j = nbr[b + k]
+        if ocean[j] == 1 and (elev[j] < be or (elev[j] == be and j < best)) then best, be = j, elev[j] end
+      end
+      downhill[c] = best
+      level[c] = elev[c]
+      done[c] = true
+      hpush(H, elev[c], c)
+    end
+  end
+  while H.n > 0 do
+    local lv, c = hpop(H)
+    order[#order + 1] = c
+    local b = c * 6 - 6
+    for k = 1, cnt[c] do
+      local j = nbr[b + k]
+      if ocean[j] == 0 and not done[j] then
+        done[j] = true
+        downhill[j] = c
+        local l = elev[j] > lv and elev[j] or lv
+        level[j] = l
+        hpush(H, l, j)
+      end
+    end
+  end
+  -- (a land cell no flood reached - impossible while every landmass has a lowest coast cell -
+  -- falls back to its lowest neighbour)
+  local land = G.land_cells
+  for i = 1, #land do
+    local c = land[i]
+    if not done[c] then
+      local best, be = 0, elev[c]
+      local b = c * 6 - 6
+      for k = 1, cnt[c] do
+        local j = nbr[b + k]
+        local e = ocean[j] == 1 and (sea - 1) or elev[j]
+        if e < be or (e == be and best ~= 0 and j < best) then best, be = j, e end
+      end
+      downhill[c] = best
+      order[#order + 1] = c
+    end
+  end
+  G.downhill = downhill
+  -- 3. upstream first; beds carved to fall all the way to the mouth
+  local dorder = {}
+  for i = #order, 1, -1 do dorder[#dorder + 1] = order[i] end
+  G.drain_order = dorder
+  local bed = G.bed or {}
+  for c = 1, n do bed[c] = ocean[c] == 1 and elev[c] or elev[c] - sea end
+  local fall = geo.BED_FALL
+  for i = 1, #dorder do
+    local c = dorder[i]
+    local d = downhill[c]
+    if d ~= 0 and ocean[d] == 0 and bed[d] > bed[c] - fall then bed[d] = bed[c] - fall end
+  end
+  G.bed = bed
+  G.outlets = outlet
 end
 
 return geo

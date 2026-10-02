@@ -248,6 +248,8 @@ function M.found(W, cell, opts)
     local wx, wy = free_lot(s, c0, c0, 1, 1)
     settle.add_building(W, s, "well", wx, wy, "s", "standing")
     s.sqx, s.sqy = mapm.ixy_xy(s, wx, wy - 2)
+    -- (S14) everything else on the well's side of any river too deep to wade
+    mapm.home_bank(s, (wy - 1) * N + wx)
   end
   -- forest direction: which quarter of the map is most wooded?
   local quarters = { 0, 0, 0, 0 }

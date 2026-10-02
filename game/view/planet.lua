@@ -27,7 +27,17 @@ P.EXAG = 0.13       -- world units per km above sea level (exaggerated but soft 
 P.LEVEL = 5         -- render icosphere level
 P.CHUNK_LEVEL = 1   -- prop chunks = ancestor faces at this level (level 1 -> 80 chunks)
 P.HILLS_KM = 0.45   -- rolling hills amplitude on land (km)
-P.RIDGE_KM = 1.0    -- extra ridged relief on mountains (km, scaled by elevation)
+P.RIDGE_KM = 1.6    -- extra ridged relief on mountains (km, scaled by elevation; S14 was 1.0)
+-- (S14) mountains with a silhouette: high ground is lifted (a miniature planet's exaggeration of
+-- its ranges) - nothing below MTN_E0 km, MTN_LIFT km more at MTN_E1 and above
+P.MTN_E0, P.MTN_E1, P.MTN_LIFT, P.MTN_PEAK = 0.8, 3.0, 1.2, 3.2
+-- (the drawn relief above a cell's mean ground is about 1 / REAL_K times the real one: snow and the
+-- tree line go by the real height, game/render/shaders/planet.vp and propgen)
+P.REAL_K = 0.35
+-- (S14) valleys: the land along every river course is carved down toward its bed (geo.bed: the
+-- drainage basins' beds fall all the way to the sea) - a flat floodplain FP_K x the river's half-
+-- width (+ FP_0) either side, then walls rising over VALLEY_W (+ VALLEY_DK per km of depth)
+P.FP_K, P.FP_0, P.VALLEY_W, P.VALLEY_DK = 2.0, 0.07, 0.30, 0.12
 
 local sqrt, floor, max, min, abs = math.sqrt, math.floor, math.max, math.min, math.abs
 
@@ -60,6 +70,7 @@ function P.build(W, opts)
 
   -- D. heights, restricted weights, positions
   local h, va, vb, vc, vwa, vwb, vwc = {}, {}, {}, {}, {}, {}, {}
+  local ecell = {}
   local px, py, pz = {}, {}, {}
   local hills_km, ridge_km = P.HILLS_KM, P.RIDGE_KM
   for v = 1, n do
@@ -82,6 +93,14 @@ function P.build(W, opts)
       local hills = fbm(N, x, y, z, 16, 3, 0.5) * hills_km
       local mount = 0
       if e > 0.6 then mount = ridged(N, x, y, z, 9, 3) * ridge_km * min(1, (e - 0.6) / 1.5) end
+      -- (S14) the range lifted, its ridges sharper toward the crest
+      local up = smoothstep(P.MTN_E0, P.MTN_E1, e)
+      if up > 0 then
+        -- a lifted range with sharp crests: ridged noise raised to a power peaks narrowly
+        local r9 = ridged(N, x, y, z, 9, 3)
+        mount = mount + P.MTN_LIFT * up * (0.6 + 0.4 * ridged(N, x, y, z, 4, 2)) + P.MTN_PEAK * up * r9 * r9 * r9
+      end
+      ecell[v] = e
       hv = (e + hills * (0.4 + 0.6 * ramp) + mount) * ramp
       if hv < 0.004 then hv = 0.004 end
     else
@@ -96,6 +115,14 @@ function P.build(W, opts)
     px[v], py[v], pz[v] = x * r, y * r, z * r
     if v % 2048 == 0 then step(0.5 + 0.2 * v / n) end
   end
+
+  -- D2. (S14) river valleys and floodplains, and each vertex's nearest river for the props
+  local rdist, rhw = P.carve_valleys(W, G, h, ecell)
+  for v = 1, n do
+    local r = R + (h[v] > 0 and h[v] * EXAG or 0)
+    px[v], py[v], pz[v] = X[v] * r, Y[v] * r, Z[v] * r
+  end
+  step(0.75)
 
   -- E. smooth normals (area-weighted face normals; water vertices radial)
   local nx, ny, nz = {}, {}, {}
@@ -211,8 +238,96 @@ function P.build(W, opts)
     h = h, s = s, n1 = n1, va = va, vb = vb, vc = vc, vwa = vwa, vwb = vwb, vwc = vwc,
     tland = tland, tchunk = tchunk, tc1 = tc1, tc2 = tc2, tc3 = tc3, tw1 = tw1, tw2 = tw2, tw3 = tw3,
     chunks = chunks, sea_level = sea, noise = N, seed = W.seed, rn = rn, rcnt = rcnt,
-    walk = 1,
+    walk = 1, ecell = ecell, rdist = rdist, rhw = rhw,
   }
+end
+
+-- (S14) Carve the land along every river course toward the river's bed (W.geo.bed, falling all
+-- the way to the sea in v3 worlds; elsewhere the cells' own elevations), flattening a floodplain
+-- either side and raising walls beyond: rivers run in the valleys they made. Returns, per render
+-- vertex, the distance to the nearest course (world units, 1e9 when none near) and that river's
+-- half-width (for the props: no trees in the channel and on the floodplain).
+function P.carve_valleys(W, G, h, ecell)
+  local n, R = G.n, P.R
+  local X, Y, Z, rn, rcnt = G.X, G.Y, G.Z, G.rn, G.rcnt
+  local rdist, rhw, rbed = {}, {}, {}
+  for v = 1, n do rdist[v] = 1e9; rhw[v] = 0; rbed[v] = 0 end
+  local geo = W.geo
+  local down, ocean = geo.downhill, geo.ocean
+  local elev, sea = W.static.elev, W.G.sea_level
+  local bed = geo.bed
+  local wd = surface.river_widths(W)
+  local g = W.grid
+  local SUB = surface.RIVER_SUB
+  local Q = {}
+  local seen, stamp = {}, 0
+  for v = 1, n do seen[v] = 0 end
+  local queue = {}
+  local function bed_of(c)
+    if ocean[c] == 1 then return 0 end
+    if bed then return bed[c] end
+    return elev[c] - sea
+  end
+  for c = 1, W.n do
+    local d = down[c]
+    if ocean[c] == 0 and wd[c] > 0 and d and d ~= 0 then
+      local w0, w1 = surface.link_widths(wd, c, d)
+      surface.river_path(G, c, g.X[c], g.Y[c], g.Z[c], g.X[d], g.Y[d], g.Z[d], Q)
+      local b0, b1 = bed_of(c), bed_of(d)
+      for k = 0, SUB - 1 do
+        local A, B = Q[k], Q[k + 1]
+        if not (A.sea and B.sea) then
+          local hw = surface.river_at(c, k, w0, w1)
+          local reach = (hw * P.FP_K + P.FP_0 + P.VALLEY_W + P.VALLEY_DK * 2) / R
+          local ax, ay, az = A.x, A.y, A.z
+          local ex, ey, ez = B.x - ax, B.y - ay, B.z - az
+          local L2 = ex * ex + ey * ey + ez * ez
+          -- the vertices near this stretch: a walk out from the one nearest its middle
+          stamp = stamp + 1
+          local v0 = surface.nearest(G, ax + ex * 0.5, ay + ey * 0.5, az + ez * 0.5)
+          local qn, head = 1, 1
+          queue[1] = v0
+          seen[v0] = stamp
+          while head <= qn do
+            local v = queue[head]; head = head + 1
+            local vx, vy, vz = X[v], Y[v], Z[v]
+            local t = L2 > 0 and ((vx - ax) * ex + (vy - ay) * ey + (vz - az) * ez) / L2 or 0
+            if t < 0 then t = 0 elseif t > 1 then t = 1 end
+            local dx, dy, dz = vx - ax - ex * t, vy - ay - ey * t, vz - az - ez * t
+            local dd = sqrt(dx * dx + dy * dy + dz * dz)
+            if dd <= reach or v == v0 then
+              local dw = dd * R
+              if dw < rdist[v] then
+                rdist[v], rhw[v] = dw, hw
+                rbed[v] = b0 + (b1 - b0) * (k + t) / SUB
+              end
+              local base = v * 6 - 6
+              for q = 1, rcnt[v] do
+                local j = rn[base + q]
+                if seen[j] ~= stamp then seen[j] = stamp; qn = qn + 1; queue[qn] = j end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+  -- the carving: only ever lower the land, never below the shore
+  for v = 1, n do
+    local d = rdist[v]
+    local hv = h[v]
+    if d < 1e8 and hv > 0 then
+      local fp = rhw[v] * P.FP_K + P.FP_0
+      local floor_h = rbed[v] + 0.02
+      if floor_h < 0.006 then floor_h = 0.006 end
+      if floor_h < hv then
+        local wall = P.VALLEY_W + P.VALLEY_DK * min(4, hv - floor_h)
+        local target = floor_h + (hv - floor_h) * smoothstep(fp, fp + wall, d)
+        if target < hv then h[v] = target end
+      end
+    end
+  end
+  return rdist, rhw
 end
 
 --- Nearest render vertex to unit direction (x,y,z) by greedy walk (from `start`, else the

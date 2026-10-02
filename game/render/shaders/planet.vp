@@ -7,7 +7,7 @@ in highp vec4 position;
 in mediump vec3 normal;
 in highp vec4 cella;   // uv of cell a, uv of cell b
 in highp vec4 cellc;   // uv of cell c, weight a, weight b
-in highp vec4 vinfo;   // height km (negative = depth), noise, 0, coast field (>0 land)
+in highp vec4 vinfo;   // height km (negative = depth), noise, cell elevation km, coast field (>0 land)
 
 uniform highp sampler2D celltex;
 
@@ -54,8 +54,13 @@ void main()
     // interpolate between a land and a water vertex (sea ice once bled into land as "fire").
     if (vinfo.w > 0.0) {
         var_land = A;
-        var_fx = vec4(B.r, 0.0, 0.0, A.a);
         vec4 Dd = cellmix(vec2(0.0, 3.0 * u_tex.x), wa, wb, wc);
+        // (S14) snow on the heights: the cell's temperature (texel D red, (t + 30) / 70) cooled
+        // 6.5 C a km above the cell's mean ground; it comes and goes with the seasons
+        // (the drawn relief is ~3x the real one: game/view/planet.lua REAL_K 0.35)
+        float tv = Dd.r * 70.0 - 30.0 - 6.5 * 0.35 * max(0.0, vinfo.x - vinfo.z);
+        var_land.a = max(A.a, smoothstep(-0.5, -4.0, tv) * step(0.6, vinfo.x));
+        var_fx = vec4(B.r, 0.0, 0.0, var_land.a);
         var_fx2 = vec4(B.g, B.b, B.a, Dd.b);
         var_farm = C;
     } else {

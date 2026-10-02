@@ -243,7 +243,15 @@ function M.trade_answers_real_want()
   local W = assert(worlds.from_save_string(data))
   world.set_systems(require("sim.agents.worldgen").systems())
   local V = W.S.v3
-  local UL = V.settlements[4]
+  -- (the village with the nearest sea partner: geography, not a settlement number - S14 regenerated
+  -- the shipped world with drainage basins)
+  local trade = require("sim.agents.trade")
+  local UL, bl = nil, 1e9
+  for _, s in ipairs(V.settlements) do
+    local o = trade.sea_partners(W, s)[1]
+    if o and trade.sea_route(W, s, o).len < bl then UL, bl = s, trade.sea_route(W, s, o).len end
+  end
+  T.ok(UL ~= nil, "a village with a sea partner")
   UL.granary.stock.grain = 120
   for _, id in ipairs(UL.blist) do
     local b = UL.buildings[id]
@@ -270,7 +278,7 @@ function M.trade_answers_real_want()
   T.ok(sea >= 4, "hours of boats on a voyage " .. sea)
   T.ok(carried >= 4, "hours of cargo carried to and from boats " .. carried)
   T.ok((UL.acc.got_grain or 0) + (UL.acc.out_grain or 0) + (UL.acc.in_grain or 0) > 10,
-    string.format("grain reached Upper Linamist: bought %.1f, sold there %.1f", UL.acc.got_grain or 0, UL.acc.in_grain or 0))
+    string.format("grain reached %s: bought %.1f, sold there %.1f", UL.name, UL.acc.got_grain or 0, UL.acc.in_grain or 0))
   T.ok(deals >= 2, "deals " .. deals)
   T.ok(math.abs(exp - imp) < 1e-6, string.format("exports %.3f against imports %.3f", exp, imp))
   -- news and trust: Upper Linamist heard how its partners stand, and trusts one it dealt with more
@@ -292,7 +300,18 @@ function M.hungry_village_asks_for_help()
   local W = assert(worlds.from_save_string(data))
   world.set_systems(require("sim.agents.worldgen").systems())
   local V = W.S.v3
-  local H, Z = V.settlements[6], V.settlements[2]
+  -- (a village without a dock and its nearest neighbour by road: S14)
+  local trade = require("sim.agents.trade")
+  local H, Z, bh = nil, nil, 1e9
+  for _, s in ipairs(V.settlements) do
+    if not s.dock then
+      for _, o in ipairs(trade.partners(W, s)) do
+        local _, hrs = trade.road(W, s, o)
+        if hrs < bh then H, Z, bh = s, o, hrs end
+      end
+    end
+  end
+  T.ok(H ~= nil, "a village with a road neighbour")
   H.granary.stock.grain, H.granary.stock.sheaves, H.granary.stock.smoked = 10, 0, 0
   for _, pl in ipairs(H.plots) do
     pl.sheaves = 0
@@ -310,8 +329,8 @@ function M.hungry_village_asks_for_help()
   Z.granary.stock.grain = Z.granary.stock.grain + 1500
   local t0 = W.hour
   for h = 1, 24 * 4 do world.advance(W, t0 + h) end
-  T.ok((H.acc.relief_in or 0) >= 10, "relief carried to Hottoodingle Hop " .. tostring(H.acc.relief_in))
-  T.ok((Z.acc.relief_out or 0) >= 10, "relief given by Zurug " .. tostring(Z.acc.relief_out))
+  T.ok((H.acc.relief_in or 0) >= 10, "relief carried to " .. H.name .. " " .. tostring(H.acc.relief_in))
+  T.ok((Z.acc.relief_out or 0) >= 10, "relief given by " .. Z.name .. " " .. tostring(Z.acc.relief_out))
   local r = require("sim.agents.econ").rel(H, Z)
   T.ok(r.gifts >= 1 and (r.owe_them or 0) > 0, "help remembered: gifts " .. r.gifts .. ", owed " .. tostring(r.owe_them))
 end

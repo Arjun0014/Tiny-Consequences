@@ -153,7 +153,11 @@ function M.rebuild(W)
         P[k] = P[k - 1]
       else
         local x, y, z = q.x, q.y, q.z
-        local r = surface_r(PL, x, y, z) + M.LIFT
+        -- (S14: on the valley floor the river carved - the exact surface there, not the highest
+        -- vertex near it)
+        local r
+        if PL.rdist then r, walk = planet.surface_exact(PL, x, y, z, walk) else r = surface_r(PL, x, y, z) end
+        r = r + M.LIFT
         local w = surface.river_at(c, k, w0, w1)
         P[k] = { x * r, y * r, z * r, q.sx, q.sy, q.sz, w, x, y, z }
       end

@@ -42,7 +42,7 @@ end
 function M.generate(seed, opts)
   opts = opts or {}
   local W = worldgen.generate(seed, { systems = M.systems(), no_settle = true, progress = opts.progress,
-    spinup_years = opts.spinup_years, level = opts.level })
+    spinup_years = opts.spinup_years, level = opts.level, basins = opts.basins ~= false })
   -- the v3 calendar: the clock restarts at day 0 (the first day of spring)
   W.v3 = true
   W.hpt = 24

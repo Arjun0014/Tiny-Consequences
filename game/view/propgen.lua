@@ -970,6 +970,31 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
             elseif fo > 0.5 and sw > 0.35 and u3 < 0.12 then kind = K.mossrock; scale = 0.5 + u5 * 0.7
             elseif u3 < 0.025 then kind = K.boulder; scale = 0.4 + u5 * 0.5 end
           end
+          if kind and PL.rdist then
+            -- (S14) the river's channel and floodplain stay open (grass, reeds); above the tree line
+            -- (the point's own mean temperature: its cell's, 6.5 C cooler a km above the cell's
+            -- ground) no trees: heather, grass and stones
+            local r1 = sqrt(u1)
+            local ka, kb, kc = 1 - r1, r1 * (1 - u2), r1 * u2
+            local RD, RW, EC = PL.rdist, PL.rhw, PL.ecell
+            local rd = min(RD[va], 2) * ka + min(RD[vb], 2) * kb + min(RD[vc], 2) * kc
+            local rw = max(RW[va], max(RW[vb], RW[vc]))
+            local wet = rd < rw * 2.0 + 0.07
+            local hp = ph[va] * ka + ph[vb] * kb + ph[vc] * kc
+            local ep = EC[va] * ka + EC[vb] * kb + EC[vc] * kc
+            local tp = tmean - 6.5 * 0.35 * max(0, hp - ep)
+            local woody = role == 1 or role == 2 or role == 5
+            if wet then
+              if role ~= 4 then kind = nil
+              elseif u4 < 0.5 then kind = K.reed end
+            elseif tp < 5 then
+              local alp = tp <= 1.5 and 1 or (5 - tp) / 3.5
+              if woody and u5 < alp then kind = nil
+              elseif role == 3 and u5 < alp * 0.7 then kind = K.juniper; scale = 0.5 + u3 * 0.3
+              elseif role == 4 and u5 < alp then kind = (u4 < 0.5) and K.heather or K.grass2 end
+            end
+            if not kind and tp < 1.5 and role == 6 and u3 < 0.3 then kind = (u4 < 0.5) and K.slab or K.boulder; scale = 0.5 + u5 * 0.9 end
+          end
           if kind and TPL[L.lod][kind] then
             -- uniform point in the triangle
             local r1 = sqrt(u1)

@@ -69,7 +69,8 @@ function M.build(PL, W, step)
       scc[q + 1], scc[q + 2], scc[q + 3], scc[q + 4] = cu[c], cv[c], vwa[v], vwb[v]
       local sv = s[v]
       if sv > 1 then sv = 1 elseif sv < -1 then sv = -1 end
-      svi[q + 1], svi[q + 2], svi[q + 3], svi[q + 4] = h[v], n1[v], 0, sv
+      -- (z: the smooth cell elevation under the vertex, km: its height above that is cooler, S14)
+      svi[q + 1], svi[q + 2], svi[q + 3], svi[q + 4] = h[v], n1[v], PL.ecell and PL.ecell[v] or 0, sv
       p, q = p + 3, q + 4
     end
     if f % 2048 == 0 then step(f / nf) end

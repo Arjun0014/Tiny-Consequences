@@ -35,8 +35,9 @@ const vec3 SHALLOW = vec3(0.160, 0.640, 0.820);
 const vec3 HALO = vec3(0.420, 0.880, 0.860);
 const vec3 SAND = vec3(0.945, 0.865, 0.640);
 const vec3 WET_SAND = vec3(0.800, 0.700, 0.500);
-const vec3 ROCK = vec3(0.60, 0.57, 0.53);
-const vec3 ROCK2 = vec3(0.72, 0.68, 0.62);
+const vec3 ROCK = vec3(0.47, 0.46, 0.45);
+const vec3 ROCK2 = vec3(0.60, 0.58, 0.55);
+const vec3 ROCK_DARK = vec3(0.32, 0.31, 0.32);
 const vec3 SNOW = vec3(0.96, 0.985, 1.0);
 const vec3 SEA_ICE = vec3(0.88, 0.95, 1.0);
 const vec3 OIL = vec3(0.106, 0.078, 0.141);
@@ -148,13 +149,19 @@ void main()
         float dry = var_fx2.y;
         // rock: steep slopes and high ground, with strata
         float slope = 1.0 - dot(N0, up);
-        float rockk = max(smoothstep(0.12, 0.26, slope + fn * 0.08), smoothstep(2.3, 3.2, h + nz * 0.8 + fn * 0.6));
+        float rockk = max(smoothstep(0.10, 0.22, slope + fn * 0.08), smoothstep(2.6, 3.6, h + nz * 0.8 + fn * 0.6));
         rockk *= 1.0 - smoothstep(0.3, 0.7, var_farm.x);
         if (rockk > 0.01) {
+            // (S14) grey crags: broken faces (cellular-ish noise), dark clefts on the steep parts,
+            // a hint of bedding only on gentle rock
+            float crag = tc_noise(var_wpos * 11.0 + vec3(fn2 * 2.0));
+            float crack = smoothstep(0.72, 0.9, tc_noise(var_wpos * 46.0));
             float strata = 0.5 + 0.5 * sin(h * 38.0 + fn * 7.0 + fn2 * 3.0);
-            vec3 rc = mix(ROCK, ROCK2, strata) * (0.9 + 0.2 * tc_noise(var_wpos * 30.0));
-            base = mix(base, rc, rockk * 0.85);
-            hgt += rockk * (tc_noise(var_wpos * 24.0) * 0.02 + strata * 0.006);
+            vec3 rc = mix(ROCK, ROCK2, crag) * (0.88 + 0.24 * tc_noise(var_wpos * 30.0));
+            rc = mix(rc, ROCK_DARK, smoothstep(0.25, 0.55, slope) * 0.55 + crack * 0.35);
+            rc = mix(rc, rc * (0.92 + 0.12 * strata), 1.0 - smoothstep(0.1, 0.3, slope));
+            base = mix(base, rc, rockk * 0.9);
+            hgt += rockk * (crag * 0.03 - crack * 0.012);
         }
         // beaches (wet sand at the waterline)
         float beach = smoothstep(0.085, 0.03, s + fn * 0.05) * smoothstep(0.45, 0.08, h);

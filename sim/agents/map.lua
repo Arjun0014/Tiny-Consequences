@@ -497,14 +497,43 @@ function M.clear_rect(s, ix0, iy0, ix1, iy1)
   end
 end
 
--- Is the tile rectangle free land (no water, building, plot)?
+-- The village's own bank (S14): the land reachable from tile i0 without crossing water too deep
+-- to wade (fords and dry floodplain are crossed). Founding builds and farms only there: a river
+-- no one can wade or bridge does not run through the middle of a village. s.bank[i] = 1 / 0.
+function M.home_bank(s, i0)
+  local N, land, riv = s.N, s.land, s.riv
+  local bank = {}
+  for i = 1, N * N do bank[i] = 0 end
+  local q, head = { i0 }, 1
+  bank[i0] = 1
+  while head <= #q do
+    local i = q[head]; head = head + 1
+    local ix, iy = (i - 1) % N + 1, floor((i - 1) / N) + 1
+    for d = 1, 4 do
+      local jx, jy = ix + (d == 1 and 1 or (d == 2 and -1 or 0)), iy + (d == 3 and 1 or (d == 4 and -1 or 0))
+      if jx >= 1 and jy >= 1 and jx <= N and jy <= N then
+        local j = (jy - 1) * N + jx
+        if bank[j] == 0 and land[j] == 1 and riv[j] <= 101 then
+          bank[j] = 1
+          q[#q + 1] = j
+        end
+      end
+    end
+  end
+  s.bank = bank
+  return bank
+end
+
+-- Is the tile rectangle free land (no water, building, plot)? (and on the village's own bank)
 function M.rect_free(s, ix0, iy0, ix1, iy1, allow_trees)
   local N = s.N
   if ix0 < 2 or iy0 < 2 or ix1 > N - 1 or iy1 > N - 1 then return false end
+  local bank = s.bank
   for iy = iy0, iy1 do
     for ix = ix0, ix1 do
       local i = (iy - 1) * N + ix
       if s.land[i] == 0 or s.occ[i] ~= 0 or s.plot[i] ~= 0 or s.riv[i] ~= 0 then return false end
+      if bank and bank[i] ~= 1 then return false end
       if not allow_trees and s.tree[i] ~= 0 then return false end
     end
   end

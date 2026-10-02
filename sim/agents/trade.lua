@@ -59,15 +59,20 @@ function M.sea_route(W, s, o)
   local ocean = W.geo.ocean
   local nbr, cnt = g.nbr, g.nbr_count
   local prev, q, qi = {}, {}, 1
-  for k = 1, cnt[s.cell] do
-    local j = nbr[s.cell * 6 - 6 + k]
-    if j > 0 and ocean[j] == 1 and not prev[j] then prev[j] = -1; q[#q + 1] = j end
+  -- (S14) the sea a village's map reaches: the ocean cells within two rings of its cell (a map
+  -- spans about two cells either way; its water must still reach the map's border, sea_gate)
+  local sites = require("sim.society.sites")
+  local function near_sea(c)
+    local out = {}
+    for _, j in ipairs(sites.rings(W, c, 2)) do if ocean[j] == 1 then out[#out + 1] = j end end
+    table.sort(out)
+    return out
+  end
+  for _, j in ipairs(near_sea(s.cell)) do
+    if not prev[j] then prev[j] = -1; q[#q + 1] = j end
   end
   local goal = {}
-  for k = 1, cnt[o.cell] do
-    local j = nbr[o.cell * 6 - 6 + k]
-    if j > 0 and ocean[j] == 1 then goal[j] = true end
-  end
+  for _, j in ipairs(near_sea(o.cell)) do goal[j] = true end
   local hit = nil
   while qi <= #q do
     local c = q[qi]; qi = qi + 1

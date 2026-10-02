@@ -173,16 +173,19 @@ function M.register(G)
     local a = clock.now_ms()
     local step = args.step or 1
     local t = t0
-    local per = {}
+    local per, mem = {}, {}
+    if args.nogc then collectgarbage("stop") end
     while t < t0 + hours do
       t = math.min(t0 + hours, t + step)
       local b0 = clock.now_ms()
       require("sim.world").advance(W, t)
       per[#per + 1] = clock.now_ms() - b0
+      mem[#mem + 1] = math.floor(collectgarbage("count"))
     end
+    if args.nogc then collectgarbage("restart") end
     local ms = clock.now_ms() - a
     speed.v3_t = t
-    return { hours = hours, ms = ms, ms_per_hour = ms / hours, people = W.S.v3.next_person - 1, per = per }
+    return { hours = hours, ms = ms, ms_per_hour = ms / hours, people = W.S.v3.next_person - 1, per = per, mem = mem }
   end)
   -- v3_prof{hours, every, depth, top} (probes): v3_bench under the wall-time sampler
   -- (game/platform/luaprof.lua): where the sim's time goes in this runtime, by function and line.

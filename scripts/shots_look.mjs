@@ -36,7 +36,7 @@ async function cmd(c, timeout = 240_000) {
   return r.result;
 }
 try {
-  await page.goto(gameUrl(`http://127.0.0.1:${port}`, { world: 'v3', speed: '0' }));
+  await page.goto(gameUrl(`http://127.0.0.1:${port}`, { world: getFlag(args, '--world', 'v3'), speed: '0' }));
   await page.waitForFunction(() => window.__TC && window.__TC.ready === true, null, { timeout: 240_000 });
   await cmd({ cmd: 'ui', debug: false });
   if (atHour !== null) await cmd({ cmd: 'v3_goto', hour: Number(atHour) });

@@ -40,7 +40,7 @@ void main()
     vec3 N = normalize(up + (vec3(r1, r2, tc_noise(q + 7.0)) - 0.5) * 0.12);
     vec3 c = tc_light_sh(col, N, up, V, L, 0.05, sh);
     vec3 H = normalize(L + V);
-    c += pow(max(dot(N, H), 0.0), 120.0) * 0.8 * sh * (1.0 - bank);
+    c += pow(max(dot(N, H), 0.0), 120.0) * 0.45 * sh * (1.0 - bank);
     c += (1.0 - smoothstep(0.0, 0.25, r2)) * 0.06 * (1.0 - bank);
     out_color = vec4(c, tc_coc(var_wpos, u_cam.xyz, u_focus));
 }

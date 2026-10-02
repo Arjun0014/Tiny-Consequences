@@ -43,6 +43,8 @@ function worldgen.generate(seed, opts)
   local W, rep
   for attempt = 1, cfg.max_attempts do
     W = world.new(seed, { level = opts.level })
+    -- (S14) drainage basins instead of steepest descent (v3 worlds: sim/geo.lua)
+    if opts.basins then W.static.basins = true end
     local info = terrain.generate(W, attempt)
     if info then
       geo.rebuild(W)

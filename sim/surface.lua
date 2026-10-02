@@ -238,8 +238,11 @@ end
 -- join into rivers that widen toward the sea; a flood widens it, a drought thins it. One sub-point
 -- of every link is a ford: the bed spreads out and shallows there.
 
-M.RIVER_SHARE = 0.22     -- share of land cells (by mean flow) that carry a visible river
+M.RIVER_SHARE = 0.36     -- share of land cells (by mean flow) that carry a river (S14: headwaters)
 M.RIVER_MIN_FLOW = 0.004 -- ... but never below this mean flow
+-- (S14) width from discharge (hydraulic geometry, w ~ Q^b): a headwater stream ~0.04 world units,
+-- a trunk river carrying Q_REF ~0.38 (substantial at every zoom); floods and droughts scale it
+M.W_MIN, M.W_K, M.W_B, M.Q_REF = 0.02, 0.36, 0.6, 0.4
 M.RIVER_SUB = 7          -- sub-segments per cell-to-cell link
 M.FORD_SPREAD = 0.5      -- a ford is this much wider ...
 M.FORD_SHALLOW = 0.6     -- ... and this much shallower
@@ -260,7 +263,6 @@ function M.river_widths(W, out)
   if #vals == 0 then return out, 1e9 end
   table.sort(vals)
   local thr = max(M.RIVER_MIN_FLOW, vals[max(1, floor(#vals * (1 - M.RIVER_SHARE)))])
-  local top = vals[#vals]
   for c = 1, W.n do
     if geo.ocean[c] == 0 and fm[c] >= thr then
       local f = fm[c]
@@ -268,8 +270,7 @@ function M.river_widths(W, out)
       local now = F.flow[c]
       local k = 1
       if bank and bank[c] > 0 then k = min(2.2, max(0.45, (0.5 * now + 0.5 * f) / max(f, 1e-6))) end
-      local rel = sqrt(f / top)
-      out[c] = (0.018 + 0.07 * rel) * k
+      out[c] = (M.W_MIN + M.W_K * dmath.pow(f / M.Q_REF, M.W_B)) * k
     end
   end
   return out, thr
