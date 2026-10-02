@@ -575,9 +575,12 @@ function M.take_babes(W, s, p, now)
   local hh = V.households[p.hh]
   if not hh then return end
   local kin = require("sim.agents.kin")
+  -- (S19) a bride (or a child going with its mother) leaving alone takes only her own babes, not the
+  -- household's
+  local alone = p.trip and p.trip.move
   for _, id in ipairs(hh.members) do
     local ib = V.people[id]
-    if ib and ib.alive and people.stage(ib, now) == "infant" then
+    if ib and ib.alive and people.stage(ib, now) == "infant" and (not alone or ib.mother == p.id) then
       local q = V.people[ib.carer or 0]
       if not (q and q.alive and q.hh == hh.id and q.babe == ib.id and ib.act == "carried") then
         local m = V.people[ib.mother or 0]
@@ -612,14 +615,41 @@ function M.arrive_person(W, o, p, gx, gy, now)
   if o.visitors then people.remove_id(o.visitors, p.id) end
   o.members[#o.members + 1] = p.id
   p.sett, p.at = o.id, nil
-  local g = V.people[p.partner or 0]
+  -- (S19) one come after their household: of it still, at its new village
+  if p.move and p.move.follow then
+    p.move.arrived = now
+    local hh0 = V.households[p.hh]
+    if hh0 and hh0.sett == o.id then
+      people.remember(p, now, sfmt("Came to %s, where my household had gone to live", o.name))
+      require("sim.agents.founding").tell(W, p, o)
+      return
+    end
+  end
+  -- (S19) a child come with its mother joins her new household (her husband's)
+  local child = p.move and p.move.mother and p.partner == 0
+  local g = V.people[(child and p.move.groom) or p.partner or 0]
   local hh = g and g.alive and V.households[g.hh]
   if hh then people.join(W, p, hh) end
-  o.couples = o.couples or {}
-  o.couples[#o.couples + 1] = p.id
+  -- (S19) a babe in her arms comes with her, into the same household
+  local ib = V.people[p.babe or 0]
+  if ib and ib.alive and ib.sett ~= o.id then
+    if from then people.remove_id(from.members, ib.id) end
+    o.members[#o.members + 1] = ib.id
+    ib.sett, ib.at, ib.x, ib.y = o.id, nil, gx, gy
+    if hh then people.join(W, ib, hh) end
+  end
+  if not child then
+    o.couples = o.couples or {}
+    o.couples[#o.couples + 1] = p.id
+    o.acc.brides_in = (o.acc.brides_in or 0) + 1
+  end
   if p.move then p.move.arrived = now end
-  o.acc.brides_in = (o.acc.brides_in or 0) + 1
-  people.remember(p, now, sfmt("Came to %s to live with %s", o.name, g and g.name or "my husband"))
+  if child then
+    local m = V.people[p.move.mother or 0]
+    people.remember(p, now, sfmt("Came to %s with %s, to live with %s", o.name, m and m.name or "my mother", g and g.name or "her husband"))
+  else
+    people.remember(p, now, sfmt("Came to %s to live with %s", o.name, g and g.name or "my husband"))
+  end
   -- (S17) what she knows of places comes with her: what she saw, and her old village's knowledge
   local founding = require("sim.agents.founding")
   founding.tell(W, p, o)
@@ -662,6 +692,10 @@ function M.why(W, p, hh)
     return mg.why .. ": on the road to " .. oname .. " with the household"
   end
   if p.move and tr and tr.move then
+    if p.move.mother then
+      local m = V.people[p.move.mother]
+      return "Come to " .. oname .. " with " .. (m and m.name or "my mother") .. " to live"
+    end
     local g = V.people[p.partner or 0]
     return "Come to " .. oname .. " to live with " .. (g and g.name or "my husband")
   end

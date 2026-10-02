@@ -1746,7 +1746,57 @@ local function plan_houses(W, s)
   end
 end
 
+-- (S19) A household of s with nobody left in it (all dead, or its last members gone to live
+-- elsewhere: a widow remarried away with her children): what it held goes on. Its fields to the
+-- household with the fewest fields a mouth (reassign_plots), its boats and beasts to its kin here -
+-- the households of its lineage (the same surname) or kin of its last member - else to those with
+-- most of the kind. Once (hh.estate).
+local function estates(W, s, now)
+  local V = W.S.v3
+  for _, hid in ipairs(s.households) do
+    local hh = V.households[hid]
+    if hh and #hh.members == 0 and not hh.estate and not hh.found then
+      hh.estate = now
+      local last = V.people[hh.last or 0]
+      -- the heir: a household of the same lineage, or with kin of the last member
+      local heir, hs = nil, 0
+      for _, h2id in ipairs(s.households) do
+        local h2 = V.households[h2id]
+        if h2 and h2id ~= hid and #h2.members > 0 and not h2.found and not (h2.migrate and not h2.migrate.arrived and not h2.migrate.given_up) then
+          local sc = 0
+          for _, qid in ipairs(h2.members) do
+            local q = V.people[qid]
+            if q and last then
+              if q.surname == last.surname then sc = sc + 2 end
+              if people.is_kin(W, last, qid) then sc = sc + 3 end
+            end
+          end
+          if sc > hs then heir, hs = h2, sc end
+        end
+      end
+      local hq = heir and V.people[heir.members[1] or 0]
+      local why = sfmt("Came to the %ss when the %s household was no more", hq and hq.surname or "neighbour", last and last.surname or "old")
+      for _, boat in ipairs(s.boats or {}) do
+        if boat.owner == hid and not boat.moved then boat.owner = heir and heir.id or 0 end
+      end
+      M.reassign_plots(W, s, hid)
+      local migrate = M.migrate
+      for _, kind in ipairs({ "flock", "cattle", "swine" }) do
+        local H = s.herds and s.herds[kind]
+        for _, a in ipairs(H and H.animals or {}) do
+          if a.alive and a.owner == hid then
+            if heir then a.owner, a.why_owner = heir.id, why
+            elseif migrate then migrate.leave_beast(W, s, hh, a, kind, now) end
+          end
+        end
+      end
+      s.acc.estates = (s.acc.estates or 0) + 1
+    end
+  end
+end
+
 function M.daily(W, s, day)
+  estates(W, s, W.S.v3.now or W.hour)
   -- adults' idle share of the waking day, as measured (act.lua counts leisure hours)
   local lz, aw = s.acc.lz_h or 0, s.acc.aw_h or 0
   if s.aw_prev and aw - s.aw_prev > 1 then

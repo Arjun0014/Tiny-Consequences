@@ -92,7 +92,12 @@ end
 
 function M.join(W, p, hh)
   local V = W.S.v3
-  if p.hh ~= 0 and V.households[p.hh] then M.remove_id(V.households[p.hh].members, p.id) end
+  local old = p.hh ~= 0 and V.households[p.hh]
+  if old then
+    M.remove_id(old.members, p.id)
+    -- (S19) the last to leave a household: its kin inherit what it held (settle.lua estates)
+    if #old.members == 0 and old ~= hh then old.last = p.id end
+  end
   p.hh = hh.id
   hh.members[#hh.members + 1] = p.id
 end
@@ -108,6 +113,8 @@ end
 function M.home(W, s, p)
   local hh = W.S.v3.households[p.hh]
   if not hh or hh.home == 0 then return nil end
+  -- (S19) a household that lives at another village has its home there, not here
+  if hh.sett and hh.sett ~= s.id then return nil end
   local b = s.buildings[hh.home]
   if not b or b.state ~= "standing" then return nil end
   return b

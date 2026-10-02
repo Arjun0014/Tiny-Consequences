@@ -1004,6 +1004,7 @@ C.V3 = {
   news_days = 8, news_again = 10, news_idle = 0.25, news_h = 2.0,
   trade_margin = 1.25, trade_hour = 0.06, know_fade = 48, trust_deal = 0.06, deal_h = 0.3,
   trade_guess = 0.4,                      -- (S14) a gain known only by guesswork (faded news) counts this much
+  trade_fade = 16,                        -- (S19) days a trader trusts what was seen at a village of its goods and wants
   share_keep = 2.0, share_short = 0.5,
   -- (D-102) sea trade: reach (local units of sea way), a boat under sail and oars, its hold in loads
   sea_reach = 40, sail_speed = 1.1, boat_hold = 3,

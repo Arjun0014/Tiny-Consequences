@@ -46,7 +46,11 @@ M.ORDER = { "grain", "smoked", "cheese", "logs", "wool", "cloth", "hides", "leat
 function M.amount(q, g)
   local G = M.GOODS[g]
   if G.beast and q < 1.5 then return "a " .. G.name1 end
-  if G.unit == "" then return sfmt("%.0f %s", q, G.name) end
+  if G.unit == "" then
+    -- (S19: "0.4 hides", not "0 hides")
+    if q < 9.5 and math.abs(q - floor(q + 0.5)) >= 0.05 then return sfmt("%.1f %s", q, G.name) end
+    return sfmt("%.0f %s", q, G.name)
+  end
   return sfmt("%.1f %s of %s", q, G.unit, G.name)
 end
 
@@ -238,7 +242,7 @@ function M.market(W, o)
     if G.pool == "village" then
       local have, want = M.village_stock(W, o, g)
       local v = worth(g, have, want)
-      buy[g], sell[g], spare[g] = v, v, max(0, have - want * C().spare_k)
+      buy[g], sell[g], spare[g] = v, v, max(0, min(have - want * C().spare_k, M.packable(W, o, nil, g)))
     else
       local hi, lo, sp = 0, 1e9, 0
       for _, hid in ipairs(o.households) do
@@ -260,31 +264,123 @@ function M.market(W, o)
   return buy, sell, spare
 end
 
+-- (S19) What a visitor sees of how village o's people and stores stand, good by good: each
+-- household's worth of the household goods, what it could spare, has and wants; the stores' (the
+-- village's goods) the same. Deals are worked out from it (M.deal_plan) - on arrival from what is
+-- there now, and when planning a trip from what was seen last time.
+local HOUSE_G = { "wool", "cloth", "hides", "leather", "salt" }
+local VILLAGE_G = { "grain", "smoked", "cheese", "logs" }
+function M.view(W, o)
+  local c = C()
+  local V = W.S.v3
+  local st = { v = {}, sp = {}, have = {}, want = {} }
+  for _, g in ipairs(VILLAGE_G) do
+    local have, want = M.village_stock(W, o, g)
+    st.v[g], st.sp[g], st.have[g], st.want[g] = worth(g, have, want), max(0, have - want * c.spare_k), have, want
+  end
+  local hhs = {}
+  for _, hid in ipairs(o.households) do
+    local hh = V.households[hid]
+    local home = hh and #hh.members > 0 and hh.home ~= 0 and o.buildings[hh.home]
+    if home then
+      local e = { id = hid, v = {}, sp = {}, have = {}, want = {} }
+      for _, g in ipairs(HOUSE_G) do
+        local have, want = M.house_stock(W, hh, home, g)
+        e.v[g], e.sp[g], e.have[g], e.want[g] = worth(g, have, want), M.spare(W, o, hh, home, g), have, want
+      end
+      hhs[#hhs + 1] = e
+    end
+  end
+  return { store = st, hh = hhs }
+end
+
+-- (S19) The deals a trader with `left` of good X (worth aX at home), wanting H (worth aH), would make
+-- with the people of view: the village's stores take pooled goods and pay in pooled goods; otherwise
+-- the three neediest households of X, each while it is still worth the price to them, paying in what
+-- they can spare (their own goods, or their share of the stores). Each { b = household id (0: the
+-- stores), q, qh, k } into `out`. Not for beasts (M.deals).
+local ORDER_C = setmetatable({}, { __mode = "k" })
+local function neediest(view, X, vill)
+  local oc = ORDER_C[view]
+  if not oc then oc = {}; ORDER_C[view] = oc end
+  local L = oc[X]
+  if L then return L end
+  L = {}
+  for i = 1, #view.hh do L[i] = view.hh[i] end
+  if vill then
+    table.sort(L, function(a, b) return a.id < b.id end)
+  else
+    table.sort(L, function(a, b) if a.v[X] ~= b.v[X] then return a.v[X] > b.v[X] end return a.id < b.id end)
+  end
+  for i = #L, 4, -1 do L[i] = nil end
+  oc[X] = L
+  return L
+end
+function M.deal_plan(view, X, H, aX, aH, left, cap, out)
+  local c = C()
+  local GX, GH = M.GOODS[X], M.GOODS[H]
+  local room = (cap or 1) / GH.wt
+  for i = #out, 1, -1 do out[i] = nil end
+  local function try(b, vX, vH, spH, haveX, wantX)
+    if left <= 1e-6 or room <= 1e-6 or spH <= 1e-6 then return end
+    if vX / vH <= aX / aH * c.trade_margin then return end
+    local k = sqrt(aX * vX / (aH * vH))
+    -- (they take it while it is still worth the price to them)
+    local q = left
+    if wantX > 0 then q = min(q, max(0, (1.6 - k * vH / GX.base) * wantX - haveX)) end
+    q = min(q, spH / k, room / k)
+    if q * GX.wt < c.trade_min_load * 0.5 then return end
+    out[#out + 1] = { b = b, q = q, qh = q * k, k = k }
+    left, room = left - q, room - q * k
+  end
+  local st = view.store
+  local vX_, vH_ = GX.pool == "village", GH.pool == "village"
+  if vX_ and vH_ then
+    try(0, st.v[X], st.v[H], st.sp[H], st.have[X], st.want[X])
+  else
+    local L = neediest(view, X, vX_)
+    for i = 1, #L do
+      local e = L[i]
+      local vX = vX_ and st.v[X] or e.v[X]
+      local vH = vH_ and st.v[H] or e.v[H]
+      local spH = vH_ and st.sp[H] or e.sp[H]
+      if vX_ then try(e.id, vX, vH, spH, st.have[X], st.want[X]) else try(e.id, vX, vH, spH, e.have[X], e.want[X]) end
+    end
+  end
+  return out
+end
+
 -- Village s learns how things stand at o (someone of s is there, or someone of o came to s).
 function M.learn(W, s, o, now)
   if s == o then return end
   s.know = s.know or {}
   local buy, sell, spare = M.market(W, o)
-  s.know[o.id] = { t = now, buy = buy, sell = sell, spare = spare }
+  s.know[o.id] = { t = now, buy = buy, sell = sell, spare = spare, view = M.view(W, o) }
   -- (S17) and what o's people know of places (founding.share; set by sim/agents/init.lua)
   if M.on_learn then M.on_learn(W, s, o, now) end
 end
 
 -- What s expects good g to fetch at o (buy) and to cost there (sell), and how much o has to spare:
--- what it last saw, fading toward not knowing (a neutral guess, nothing known to spare) as the news
--- grows old.
+-- what it last saw there (S19: kept as seen - a glut seen a week ago is not guessed away; how far a
+-- trader trusts old news is the trip's own weighing, best_trade). A village never heard of: a guess
+-- that someone there would give a middling price and has a little of anything to spare (half a load).
 function M.expect(W, s, o, g, now)
   local G = M.GOODS[g]
   local k = s.know and s.know[o.id]
   local neutral = G.base * 0.6
-  -- (not knowing: a guess that someone there would give a middling price, and has a little of
-  -- anything to spare: half a load)
-  local guess = 0.5 / G.wt
-  if not k then return neutral, neutral * 1.5, guess end
-  local w = exp(-(now - k.t) / (C().know_fade * 24))
-  local b = k.buy[g] or neutral
-  local sl = k.sell[g] or neutral
-  return b * w + neutral * (1 - w), sl * w + neutral * 1.5 * (1 - w), (k.spare[g] or 0) * w + guess * (1 - w)
+  if not k then return neutral, neutral * 1.5, 0.5 / G.wt end
+  return k.buy[g] or neutral, k.sell[g] or neutral * 1.5, k.spare[g] or 0
+end
+
+-- (S19) How much of village good g a trader of the village could carry off: from the household's
+-- own house (when known) and the village's store of it (grain and the relish from the granary, logs
+-- from the woodstore) - not the other houses' larders.
+function M.packable(W, s, home, g)
+  local key = g == "grain" and "food" or g
+  local store = g == "logs" and s.wood_store or s.granary
+  local q = store and store.state ~= "site" and (store.stock[g] or 0) or 0
+  if home then q = q + (home.stock[key] or 0) end
+  return q
 end
 
 -- How fresh s's news of o is: 1 just heard, fading to 0 (never heard) over know_fade days (S14).
@@ -300,6 +396,31 @@ function M.rel(s, o)
   local r = s.rel[o.id]
   if not r then r = { trust = 0.2, deals = 0, gifts = 0, lost = 0, t = 0 }; s.rel[o.id] = r end
   return r
+end
+
+-- (S19) One exchange as a trader of worths aX (the good given) and aH (the good brought home) would
+-- expect it at o: o's people give bX for X, let H go at sH and have spH
+-- to spare; nmax of X can be carried. Returns n of X, qH of H, the rate k and the gain at home -
+-- or nil when it would not be a deal there (too little for anyone to bother: trade_min_load).
+local DEALS_TMP = {}
+local function exchange(c, aX, bX, nmax, aH, sH, spH, cap, GX, GH)
+  if spH <= 0 or bX <= aX * c.trade_margin or bX * aH / (aX * sH) <= c.trade_margin then return nil end
+  if not GX.beast and nmax * GX.wt < c.trade_min_load * 0.5 then return nil end
+  local k = sqrt(aX * bX / (aH * sH))
+  local qH = min(nmax * k, cap / GH.wt, spH)
+  local n = qH / k
+  if GX.beast then
+    n = floor(n + 1e-6)
+    if n < 1 and nmax >= 1 and qH * aH >= aX * c.trade_margin and bX >= qH * sH * c.trade_margin then
+      -- (a whole beast for all that can be carried back, when both still gain by it)
+      n, k = 1, qH
+    end
+    if n < 1 then return nil end
+    qH = n * k
+  elseif n * GX.wt < c.trade_min_load * 0.5 then
+    return nil
+  end
+  return n, qH, k, qH * aH - n * aX
 end
 
 -- The best exchange a trader of household hh (in village s) could set out to make, by what s
@@ -318,6 +439,8 @@ function M.best_trade(W, s, hh, home, pool, partners, route, now)
     -- sold are grown)
     if GX.pool == pool and (land or not GX.beast or GX.beast == "flock") then
       local spareX = M.spare(W, s, hh, home, X)
+      -- (S19) the village's goods a trader can really carry off: their own house's and the store's
+      if GX.pool == "village" then spareX = min(spareX, M.packable(W, s, home, X)) end
       local aX = M.value(W, s, hh, home, X)
       for pi = 1, #partners do
         local o = partners[pi]
@@ -328,44 +451,56 @@ function M.best_trade(W, s, hh, home, pool, partners, route, now)
         if GX.beast and not land then nmax = min(nmax, c.mig_sea_beasts) end
         if GX.beast then nmax = floor(nmax + 1e-6) end
         if nmax >= c.trade_min_load / GX.wt then
-          local bX = M.expect(W, s, o, X, now)
-          if bX > aX * c.trade_margin then
-            -- the good to bring home: what this household (or village) wants and o can spare
-            local bestH, br, sH, aH, spH = nil, 0, 0, 0, 0
-            for hi = 1, #M.ORDER do
-              local H = M.ORDER[hi]
-              if H ~= X and not M.GOODS[H].beast and (pool ~= "village" or M.GOODS[H].pool == "village") then
-                local _, sl, sp = M.expect(W, s, o, H, now)
-                local ah = M.value(W, s, hh, home, H)
-                local ratio = bX * ah / (aX * sl)
-                if sp > 0 and ratio > br then bestH, br, sH, aH, spH = H, ratio, sl, ah, sp end
+          local r = M.rel(s, o)
+          -- (S19) what they expect is two things: what was last seen there (counted by how fresh the
+          -- news is) and, for what may have changed since, a guess (a middling price, a little to
+          -- spare and to take: S14's trade_guess) - the gains of both, not a blend of the prices
+          -- (a glut seen a week ago does not turn into a market as the news ages)
+          local kn = s.know and s.know[o.id]
+          -- (what others have and want changes with their seasons: a trader trusts what was seen there
+          -- for about trade_fade days - longer than that, it may well have changed)
+          local w = kn and exp(-(now - kn.t) / (c.trade_fade * 24)) or 0
+          -- (S17: the road's cost is the work given up for it: less where hands are idle - the
+          -- bread is eaten at home or on the road alike)
+          local cost = 2 * hrs * crew * c.trade_hour * max(c.trade_idle_min, 1 - c.trade_idle_k * (s.idle_avg or 0))
+          local neutralX, guessX = GX.base * 0.6, 0.5 / GX.wt
+          local bXo = kn and (kn.buy[X] or neutralX) or 0
+          -- the good to bring home: what this household (or village) wants and o can spare - S19:
+          -- each weighed by the whole exchange it would make (what o can pay with decides how
+          -- much can be sold), not by its price alone
+          for hi = 1, #M.ORDER do
+            local H = M.ORDER[hi]
+            local GH = M.GOODS[H]
+            if H ~= X and not GH.beast and (pool ~= "village" or GH.pool == "village") then
+              local aH = M.value(W, s, hh, home, H)
+              local go, n, qH, k = 0, 0, 0, 0
+              if kn and w > 0 and kn.view and not GX.beast then
+                -- (the deals they would have made with what was seen there, household by household)
+                local out = M.deal_plan(kn.view, X, H, aX, aH, nmax, cap, DEALS_TMP)
+                local q1, h1 = 0, 0
+                for di = 1, #out do q1, h1 = q1 + out[di].q, h1 + out[di].qh end
+                if q1 > 0 then go, n, qH, k = (h1 * aH - q1 * aX) * w, q1, h1, h1 / q1 end
+              elseif kn and w > 0 then
+                -- (beasts: by the prices seen)
+                local n1, q1, k1, g1 = exchange(c, aX, bXo, nmax, aH, kn.sell[H] or GH.base * 0.9, kn.spare[H] or 0, cap, GX, GH)
+                if n1 then go, n, qH, k = g1 * w, n1, q1, k1 end
               end
-            end
-            if bestH and br > c.trade_margin then
-              local k = sqrt(aX * bX / (aH * sH))
-              local GH = M.GOODS[bestH]
-              local qH = min(nmax * k, cap / GH.wt, spH)
-              local n = qH / k
-              if GX.beast then
-                n = floor(n + 1e-6)
-                if n < 1 and nmax >= 1 and qH * aH >= aX * c.trade_margin and bX >= qH * sH * c.trade_margin then
-                  -- (a whole beast for all that can be carried back, when both still gain by it)
-                  n, k = 1, qH
+              if w < 1 then
+                local n2, q2, k2, g2 = exchange(c, aX, neutralX, min(nmax, GX.beast and nmax or guessX), aH, GH.base * 0.9,
+                  0.5 / GH.wt, cap, GX, GH)
+                if n2 then
+                  go = go + g2 * (1 - w) * c.trade_guess
+                  -- (nothing to be had by what was seen: they go on the chance, as much as a guess)
+                  if n == 0 then n, qH, k = n2, q2, k2 end
                 end
-                qH = n * k
               end
-              -- (S17: the road's cost is the work given up for it: less where hands are idle - the
-              -- bread is eaten at home or on the road alike)
-              local cost = 2 * hrs * crew * c.trade_hour * max(c.trade_idle_min, 1 - c.trade_idle_k * (s.idle_avg or 0))
-              local gain = qH * aH - n * aX
-              local r = M.rel(s, o)
-              -- (S14) what is only guessed - old news faded toward "a middling price there" -
-              -- is hoped for, not counted on: a trip on guesswork counts its gain at trade_guess
-              local w = M.fresh(W, s, o, now)
-              local net = gain * (c.trade_guess + (1 - c.trade_guess) * w) * (1 + 0.5 * r.trust) - cost
-              if net > 0 and n > 0 and (not best or net > best.net) then
-                best = { o = o.id, give = X, n = n, take = bestH, k = k, gain = gain, cost = cost, net = net, hours = hrs,
-                  aX = aX, aH = aH, w = w }
+              if M.dbg then M.dbg(s, hh, X, o, H, w, go, cost, n, aX, aH, nmax, bXo, 0) end
+              if n > 0 then
+                local net = go * (1 + 0.5 * r.trust) - cost
+                if net > 0 and (not best or net > best.net) then
+                  best = { o = o.id, give = X, n = n, take = H, k = k, gain = qH * aH - n * aX, cost = cost, net = net, hours = hrs,
+                    aX = aX, aH = aH, w = w }
+                end
               end
             end
           end
@@ -424,7 +559,13 @@ function M.deals(W, o, tr, cap)
     local hh = V.households[b]
     return hh and hh.home
   end
-  -- the village's stores take pooled goods and pay in pooled goods
+  if not GX.beast then
+    -- (S19) the same deals a planner works out from what it saw, on what is here now
+    M.deal_plan(M.view(W, o), X, H, tr.aX, tr.aH, left, cap, out)
+    for i = 1, #out do out[i].src = source(out[i].b) end
+    return out
+  end
+  -- (beasts) the village's stores take pooled goods and pay in pooled goods
   if GX.pool == "village" and GH.pool == "village" then
     local hX, wX = M.village_stock(W, o, X)
     local hH, wH = M.village_stock(W, o, H)

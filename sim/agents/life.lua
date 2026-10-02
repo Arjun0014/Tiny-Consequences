@@ -64,7 +64,10 @@ local function kill(W, s, p, cause, why)
     if q then q.partner = 0; q.widowed = W.hour; people.remember(q, W.hour, "Lost " .. p.name .. " (" .. why .. ")") end
   end
   local hh = V.households[p.hh]
-  if hh then people.remove_id(hh.members, p.id) end
+  if hh then
+    people.remove_id(hh.members, p.id)
+    if #hh.members == 0 then hh.last = p.id end
+  end
   people.remove_id(s.members, p.id)
   require("sim.agents.think").release(W, s, p)
   if W.record_events then events.emit(W, "death", s.cell, 0, 1, { settlement = s.id, person = p.id, cause = cause }) end

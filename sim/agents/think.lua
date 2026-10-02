@@ -160,6 +160,10 @@ local function context(W, s, p, now)
   ctx.dhome = dist(p.x, p.y, hx, hy)
   ctx.spd = people.speed(W, p, now)
   ctx.hh = W.S.v3.households[p.hh]
+  -- (S19) the household is about to move or make a new place: nobody sets out on other journeys
+  local hh0 = ctx.hh
+  local mg0, fd0 = hh0 and hh0.migrate, hh0 and hh0.found
+  ctx.moving = (mg0 and not mg0.arrived and not mg0.given_up) or (fd0 and not fd0.arrived and not fd0.given_up) or false
   local V = W.S.v3
   local ib = p.babe ~= 0 and V.people[p.babe]
   if ib and not (ib.alive and ib.act == "carried" and ib.carer == p.id) then p.babe = 0; ib = nil end
@@ -710,6 +714,7 @@ local sea_storm = trade.sea_storm
 M.sea_storm = sea_storm
 
 local function trade_candidate(W, s, p, ctx, now, fat)
+  if ctx.moving then return end
   if ctx.stage ~= "adult" or not ctx.home or ctx.babe or ctx.rain >= 1 or ctx.lh > ctx.sunset - 4 then return end
   -- (a mother with a baby at the breast does not leave it for days on the road)
   if (p.nursing or 0) > now then return end
@@ -769,6 +774,7 @@ M.trade_candidate = trade_candidate
 -- (S16, R4) Courting (life.lua): a man with nobody to marry at home walks to the village he chose,
 -- setting out early enough to walk it by day.
 local function court_candidate(W, s, p, ctx, now, fat)
+  if ctx.moving then return end
   local cr = p.court
   if not cr or p.trip or ctx.stage ~= "adult" or not ctx.home or ctx.rain >= 1 or ctx.night then return end
   local o = W.S.v3.settlements[cr.to]
@@ -786,6 +792,7 @@ M.court_candidate = court_candidate
 -- behind): after `visit_days` apart the wish to see them grows each day; set out when the road can
 -- be walked by day. Not a mother with a baby at the breast.
 local function visit_candidate(W, s, p, ctx, now, fat)
+  if ctx.moving then return end
   local c = C()
   if p.trip or p.court or ctx.stage ~= "adult" and ctx.stage ~= "elder" or not ctx.home or ctx.rain >= 1 or ctx.night then return end
   if (p.nursing or 0) > now then return end
@@ -850,6 +857,7 @@ M.kin_away = kin_away
 -- at home, they may offer the household a place under their roof. Not the same kin again for
 -- kin_ask_again days.
 local function ask_kin_candidate(W, s, p, ctx, now, fat)
+  if ctx.moving then return end
   local c = C()
   local hh = ctx.hh
   if p.trip or p.court or ctx.stage ~= "adult" or not ctx.home or not hh or ctx.rain >= 2 or ctx.night then return end
@@ -892,6 +900,7 @@ M.ask_kin_candidate = ask_kin_candidate
 -- things stand at home - the news both ways and what each knows of places. One at a time a
 -- neighbour.
 local function news_candidate(W, s, p, ctx, now, fat)
+  if ctx.moving then return end
   local c = C()
   if p.trip or p.court or ctx.stage ~= "adult" or not ctx.home or ctx.rain >= 1 or ctx.night then return end
   if (p.nursing or 0) > now or (s.idle_avg or 0) < c.news_idle then return end
@@ -2638,6 +2647,11 @@ local function trip_legs(W, s, p, ctx, now)
   if home then
     go(pl, home.dx, home.dy, "home", home.id)
     pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, trip_end = true }
+  elseif here == p.sett and #pl == 0 then
+    -- (S19) no home here any more (the household went to live elsewhere meanwhile): the trip is
+    -- over; they will go after it (think.decide)
+    p.trip = nil
+    work(pl, "wait", 0.1, {})
   end
 end
 
@@ -4151,6 +4165,16 @@ function M.decide(W, s, p, now, reason)
   GO_S, GO_P = s, p
   local ctx = context(W, s, p, now)
   if ctx.stage == "infant" then return think_infant(W, s, p, now) end
+  do
+    -- (S19) their household lives at another village now (it moved while they were away): they go
+    -- after it, as a bride goes to her husband's
+    local hh = ctx.hh
+    if hh and hh.sett and hh.sett ~= p.sett and not p.trip and not p.move and (p.riding or 0) == 0 and W.S.v3.settlements[hh.sett] then
+      local o = W.S.v3.settlements[hh.sett]
+      p.move = { to = o.id, from = p.sett, depart = now + 0.5, follow = hh.id,
+        why = sfmt("My household has gone to live at %s: going after them", o.name) }
+    end
+  end
   ncand = 0
   LZ.W, LZ.s, LZ.p, LZ.ctx = W, s, p, ctx
   if p.riding and p.riding ~= 0 then

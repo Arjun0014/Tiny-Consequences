@@ -1996,6 +1996,17 @@ WORK.court = function(W, s, p, st, f)
     p.court_tried[#p.court_tried + 1] = { s.id, now }
     return
   end
+  M.match_away(W, s, home, p, best, now)
+end
+
+-- (S16, R4; S19 a function) Man p of village `home`, courting at village s, marries woman `best` of s:
+-- she will walk to his village with him (after court_wait_h), and (S19) her children still at home
+-- with her - the babes in her arms, the others walking beside her - unless their other parent is
+-- alive in the same household and keeps them (a widow remarrying away does not leave them).
+function M.match_away(W, s, home, p, best, now)
+  local V = W.S.v3
+  local c = C()
+  local tr = p.trip
   best.partner, p.partner = p.id, best.id
   best.married, p.married = now, now
   people.remember(best, now, sfmt("Married %s of %s, who came courting", p.name, home.name))
@@ -2006,6 +2017,19 @@ WORK.court = function(W, s, p, st, f)
   tr.bride, tr.depart = best.id, now + c.court_wait_h
   best.move = { to = home.id, from = s.id, depart = tr.depart, groom = p.id,
     why = sfmt("Married %s: going to live at %s", p.name, home.name) }
+  local bh = V.households[best.hh]
+  for _, kid in ipairs(bh and bh.members or {}) do
+    local q = V.people[kid]
+    if q and q.alive and q.mother == best.id then
+      local st2 = people.stage(q, now)
+      local fa = V.people[q.father or 0]
+      if (st2 == "child" or st2 == "apprentice") and not (fa and fa.alive and fa.hh == best.hh) and not q.move then
+        q.move = { to = home.id, from = s.id, depart = tr.depart, groom = p.id, mother = best.id,
+          why = sfmt("My mother married %s: going with her to live at %s", p.name, home.name) }
+        if M.interrupt_hook then M.interrupt_hook(W, q, now + 0.05, "Mother married " .. p.name) end
+      end
+    end
+  end
   s.acc.brides_out = (s.acc.brides_out or 0) + 1
   -- (she hears at once, wherever she is in the village)
   if M.interrupt_hook then M.interrupt_hook(W, best, now + 0.05, "Married " .. p.name) end
@@ -2654,6 +2678,7 @@ M.finish = finish
 -- Start step i of p's plan at time now; returns false when it cannot start.
 function M.start(W, s, p, now)
   local st = p.plan[p.pi]
+  if not st then return false end
   local h = START[st.op]
   if p.ox then
     -- (S14) a ploughman's new step turns the team: the ox swings round from where it is now
