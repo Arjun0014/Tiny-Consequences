@@ -237,8 +237,8 @@ end
 
 local ROLE_JOBS = {
   farmer = { grub = true, till = true, sow = true, tend = true, harvest = true, haul_grain = true, thresh = true },
-  woodcutter = { fell = true, haul_logs = true, grub = true },
-  builder = { build = true, deliver = true, haul_logs = true, repair = true, quarry = true, deliver_stone = true, quern = true },
+  woodcutter = { fell = true, haul_logs = true, grub = true, fire_clamp = true },
+  builder = { build = true, deliver = true, haul_logs = true, repair = true, quarry = true, deliver_stone = true, quern = true, smith = true, mine = true },
   fisher = { fish = true, mend_boat = true, smoke = true },
   shepherd = { herd = true, shear = true, feed = true },
 }
@@ -595,8 +595,9 @@ local function work_candidates(W, s, p, ctx, now)
       end
     end
   end
-  -- (S19) stone
+  -- (S19) stone and iron
   M.stone_candidates(W, s, p, ctx, now, fat)
+  M.iron_candidates(W, s, p, ctx, now, fat)
 end
 
 -- (S19) Stone (sim/agents/stone.lua): quarrying at an outcrop's face when the village wants stone,
@@ -674,7 +675,7 @@ local function stone_candidates(W, s, p, ctx, now, fat)
   if yard and hh and home and (ctx.stage == "adult" or ctx.stage == "elder") and claim_free(W, hh, "querning", p) then
     local mine = (hh.quern_work or 0) > 0
     local lack = (hh.quern or 0) < c.quern_broken and (home.stock.quern or 0) < 1
-    local trade = s.export and s.export.quern and (hh.quern or 0) >= c.quern_broken and (home.stock.quern or 0) < 1
+    local trade = s.export and s.export.quern and s.quern_export_ok and (hh.quern or 0) >= c.quern_broken and (home.stock.quern or 0) < 1
     if mine or ((lack or trade) and (yard.stock.hardstone or 0) >= 2) then
       local f = fit(p, ctx, "quern")
       if f > 0 then
@@ -690,6 +691,98 @@ local function stone_candidates(W, s, p, ctx, now, fat)
   end
 end
 M.stone_candidates = stone_candidates
+
+-- (S19) Iron (sim/agents/iron.lua): digging ore at a known deposit, carrying ore and charcoal to the
+-- forge, charging, firing and opening the charcoal clamp, smelting a bloom, forging iron edges for a
+-- household that lacks them.
+local function iron_candidates(W, s, p, ctx, now, fat)
+  local c = C()
+  local need = s.need
+  if not (s.ore_known or s.forge) then return end
+  if ctx.stage ~= "adult" and ctx.stage ~= "apprentice" then return end
+  local px, py = p.x, p.y
+  local f = s.forge
+  local fup = f and f.state == "standing"
+  local cl = s.clamp
+  local cup = cl and cl.state == "standing"
+  local adult = ctx.stage == "adult"
+  -- ore: dig it, carry it
+  if s.ore_known then
+    local dig, dd, lie, ld = nil, 1e9, nil, 1e9
+    for k = 1, #s.blist do
+      local b = s.buildings[s.blist[k]]
+      if (b.kind == "outcrop" or b.kind == "bog") and b.known then
+        local d = dist(px, py, b.dx, b.dy)
+        if (b.ore or 0) > 0 and (b.miners or 0) < 2 and d < dd then dig, dd = b, d end
+        if (b.stock.ore or 0) - (b.ore_claim or 0) * c.carry_ore >= 1 and d < ld then lie, ld = b, d end
+      end
+    end
+    if adult and dig and (need.ore or 0) > 0 then
+      local fi = fit(p, ctx, "mine")
+      if fi > 0 then
+        addw((0.42 + 0.05 * min(4, need.ore)) * fi * fat - travel(ctx, dig.dx, dig.dy, px, py), "mine", dig.id, 0,
+          "%s: digging iron ore at the %s", s.iron_why or "Iron is wanted", dig.label)
+      end
+    end
+    if lie and fup then
+      local fi = fit(p, ctx, "haul_iron")
+      if fi > 0 then
+        addw(0.48 * fi * fat - travel(ctx, lie.dx, lie.dy, px, py) - travel(ctx, f.dx, f.dy, lie.dx, lie.dy) * 0.4, "haul_iron", lie.id, 1,
+          "Ore lies dug at the %s: carrying it to the forge", lie.label)
+      end
+    end
+  end
+  -- the clamp: charge it with logs, fire it, open it; its charcoal to the forge
+  if cup then
+    local tgt = s.clamp_target or 0
+    if not cl.lit_until and (cl.charge or 0) + (cl.charge_claim or 0) < tgt and s.wood_store and (s.wood_store.stock.logs or 0) >= 1 then
+      local fi = fit(p, ctx, "deliver")
+      if fi > 0 then
+        addw(0.45 * fi * fat - travel(ctx, s.wood_x, s.wood_y, px, py) - travel(ctx, cl.dx, cl.dy, s.wood_x, s.wood_y) * 0.4, "charge_clamp", cl.id, 0,
+          "Charcoal is wanted at the forge: stacking logs in the clamp (%d of %d)", cl.charge or 0, tgt)
+      end
+    end
+    if adult and not cl.lit_until and (cl.charge or 0) > 0 and (cl.charge or 0) >= tgt and (cl.firer or 0) == 0 then
+      local fi = fit(p, ctx, "fire_clamp")
+      if fi > 0 then
+        addw(0.6 * fi * fat - travel(ctx, cl.dx, cl.dy, px, py), "fire_clamp", cl.id, 0,
+          "The clamp is stacked with %d logs: covering it with turf and firing it", cl.charge)
+      end
+    end
+    if adult and cl.lit_until and now >= cl.lit_until and (cl.firer or 0) == 0 then
+      local fi = fit(p, ctx, "fire_clamp")
+      if fi > 0 then
+        addw(0.62 * fi * fat - travel(ctx, cl.dx, cl.dy, px, py), "open_clamp", cl.id, 0,
+          "The clamp has burned through: opening it and raking out the charcoal")
+      end
+    end
+    if fup and (cl.stock.charcoal or 0) - (cl.char_claim or 0) * c.carry_charcoal >= 1 then
+      local fi = fit(p, ctx, "haul_iron")
+      if fi > 0 then
+        addw(0.46 * fi * fat - travel(ctx, cl.dx, cl.dy, px, py) - travel(ctx, f.dx, f.dy, cl.dx, cl.dy) * 0.4, "haul_iron", cl.id, 2,
+          "%.0f sacks of charcoal lie at the clamp: carrying them to the forge", cl.stock.charcoal)
+      end
+    end
+  end
+  -- the forge: smelting, smithing
+  if fup and adult and (f.smith or 0) == 0 then
+    local fs = f.stock
+    if (need.bloom or 0) > 0 and (fs.ore or 0) >= c.smelt_ore and (fs.charcoal or 0) >= c.smelt_charcoal then
+      local fi = fit(p, ctx, "smith")
+      if fi > 0 then
+        addw(0.55 * fi * fat - travel(ctx, f.dx, f.dy, px, py), "smelt", f.id, 0,
+          "Ore and charcoal at the forge: smelting a bloom of iron in the furnace")
+      end
+    elseif (need.iron or 0) > 0 and (fs.bloom or 0) >= 1 and (fs.charcoal or 0) >= c.forge_charcoal then
+      local fi = fit(p, ctx, "smith")
+      if fi > 0 then
+        addw(0.58 * fi * fat - travel(ctx, f.dx, f.dy, px, py), "smith", f.id, 0,
+          "A bloom at the forge: forging iron edges for tools (%s)", s.iron_why or "they are wanted")
+      end
+    end
+  end
+end
+M.iron_candidates = iron_candidates
 
 -- The tree to fell (settle.next_tree: a scan of the woods) and its utility (lazy, see add_lazy).
 function M.lazy_fell(c, ff)
@@ -880,7 +973,8 @@ local function trade_candidate(W, s, p, ctx, now, fat)
     end
     return
   end
-  local u = (0.3 + 0.3 * min(1, plan.net / max(0.5, plan.cost))) * (p.sex == "m" and 1 or 0.8) * fat
+  -- (S19: a big gain pulls harder: up to 0.15 more for a gain of ten FU and more)
+  local u = (0.3 + 0.3 * min(1, plan.net / max(0.5, plan.cost)) + 0.15 * min(1, plan.net / 10)) * (p.sex == "m" and 1 or 0.8) * fat
   -- (fresh news, or a look on the chance: S14)
   local heard = (plan.w or 1) >= 0.5
   local what = heard and sfmt("%s wanted %s when last heard of", o.name, GX.plural and "them" or "it")
@@ -1167,7 +1261,9 @@ end
 -- (handles, baskets, a new edge) is done at home, by the door when the weather is fair.
 local function tool_factor(W, p)
   local hh = W.S.v3.households[p.hh]
-  return 0.55 + 0.45 * (hh and hh.tools or 1)
+  -- (S19) iron edges make the work go faster
+  local ir = hh and (hh.iron or 0) >= C().iron_broken and hh.iron or 0
+  return (0.55 + 0.45 * (hh and hh.tools or 1)) * (1 + C().iron_speed * ir)
 end
 M.tool_factor = tool_factor
 
@@ -2546,6 +2642,106 @@ PLAN.quern = function(W, s, p, ctx, now, cd)
   go(pl, home.dx, home.dy, "home", home.id)
   pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, release = "querning" }
   return "Shape a quern", "the yard"
+end
+
+-- (S19) Iron: digging ore at a deposit (left lying there for the carriers).
+PLAN.mine = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local b = s.buildings[cd.a]
+  b.miners = (b.miners or 0) + 1
+  local x, y = near_spot(W, p, now, b.dx, b.dy, 0.03, 85)
+  go(pl, x, y, "the " .. b.label)
+  work(pl, "mine", c.mine_h * (0.8 + 0.4 * u01(W, p, now, 86)) / M.tool_factor(W, p), { ref = b.id, fx = b.cx, fy = b.cy })
+  return "Dig iron ore", "the " .. b.label
+end
+
+-- Ore (cd.b 1) or charcoal (cd.b 2) carried from where it lies to the forge.
+PLAN.haul_iron = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local b = s.buildings[cd.a]
+  local f = s.forge
+  local ore = cd.b == 1
+  if ore then b.ore_claim = (b.ore_claim or 0) + 1 else b.char_claim = (b.char_claim or 0) + 1 end
+  go(pl, b.dx, b.dy, "the " .. b.label)
+  pl[#pl + 1] = { op = "pick", what = ore and "ore" or "charcoal", ref = b.id, n = ore and c.carry_ore or c.carry_charcoal }
+  go(pl, f.dx, f.dy, "the forge")
+  pl[#pl + 1] = { op = "drop", to = "forge", ref = f.id }
+  return ore and "Carry ore to the forge" or "Carry charcoal to the forge", "the forge"
+end
+
+-- Logs from the woodstore into the clamp.
+PLAN.charge_clamp = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local cl = s.buildings[cd.a]
+  local n = p.strong and 2 or 1
+  cl.charge_claim = (cl.charge_claim or 0) + n
+  go(pl, s.wood_store.dx, s.wood_store.dy, "the woodstore")
+  pl[#pl + 1] = { op = "pick", what = "logs", from = "store", ref = s.wood_store.id, n = n }
+  go(pl, cl.dx, cl.dy, "the charcoal clamp")
+  pl[#pl + 1] = { op = "drop", to = "clamp", ref = cl.id, n = n }
+  return "Stack logs in the charcoal clamp", "the charcoal clamp"
+end
+
+-- Covering the stacked clamp with turf and firing it; or, burned through, opening it.
+PLAN.fire_clamp = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local cl = s.buildings[cd.a]
+  cl.firer = p.id
+  go(pl, cl.dx, cl.dy, "the charcoal clamp")
+  work(pl, "fire_clamp", c.fire_clamp_h * (0.8 + 0.4 * u01(W, p, now, 87)), { ref = cl.id, fx = cl.cx, fy = cl.cy })
+  return "Fire the charcoal clamp", "the charcoal clamp"
+end
+PLAN.open_clamp = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local cl = s.buildings[cd.a]
+  cl.firer = p.id
+  go(pl, cl.dx, cl.dy, "the charcoal clamp")
+  work(pl, "open_clamp", c.open_clamp_h * (0.8 + 0.4 * u01(W, p, now, 88)), { ref = cl.id, fx = cl.cx, fy = cl.cy })
+  return "Open the charcoal clamp", "the charcoal clamp"
+end
+
+-- Smelting a bloom at the forge's furnace.
+PLAN.smelt = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local f = s.buildings[cd.a]
+  f.smith = p.id
+  go(pl, f.dx, f.dy, "the forge")
+  work(pl, "smelt", c.smelt_h * (0.85 + 0.3 * u01(W, p, now, 89)), { ref = f.id, fx = f.cx, fy = f.cy })
+  return "Smelt iron", "the forge"
+end
+
+-- Forging iron edges at the forge, then taking them to the household that lacks them most (the
+-- smith's own first, then kin, then the others); one made for trade is kept at home.
+PLAN.smith = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local f = s.buildings[cd.a]
+  f.smith = p.id
+  go(pl, f.dx, f.dy, "the forge")
+  work(pl, "smith", c.forge_h * (0.85 + 0.3 * u01(W, p, now, 90)), { ref = f.id, fx = f.cx, fy = f.cy })
+  -- whose: the household with the most worn iron (none = 0), own first on ties, then nearest
+  local V = W.S.v3
+  local iron = require("sim.agents.iron")
+  local best, bs = nil, 1e9
+  for _, hid in ipairs(s.households) do
+    local hh = V.households[hid]
+    local home = hh and #hh.members > 0 and s.buildings[hh.home or 0]
+    if home and iron.iron(hh) < c.iron_redo then
+      local sc = iron.iron(hh) - (hid == p.hh and 0.05 or 0) + dist(f.dx, f.dy, home.dx, home.dy) * 0.01
+      if sc < bs then best, bs = home, sc end
+    end
+  end
+  local to = best or ctx.home
+  if to then
+    go(pl, to.dx, to.dy, to.label or "a house", to.id)
+    pl[#pl + 1] = { op = "drop", to = "iron_to", ref = to.id }
+  end
+  return "Forge iron edges for tools", "the forge"
 end
 
 -- (S19) Gathering on the shore: a stretch of the waterline (a different one each outing, the nearest
@@ -4388,6 +4584,15 @@ function M.release(W, s, p)
         elseif st.kind == "quarry" then
           local b = s.buildings[st.ref]
           if b then b.quarriers = max(0, (b.quarriers or 1) - 1) end
+        elseif st.kind == "mine" then
+          local b = s.buildings[st.ref]
+          if b then b.miners = max(0, (b.miners or 1) - 1) end
+        elseif st.kind == "fire_clamp" or st.kind == "open_clamp" then
+          local b = s.buildings[st.ref]
+          if b and b.firer == p.id then b.firer = 0 end
+        elseif st.kind == "smelt" or st.kind == "smith" then
+          local b = s.buildings[st.ref]
+          if b and b.smith == p.id then b.smith = 0 end
         end
       elseif st.op == "pick" then
         if st.what == "sheaves" then
@@ -4404,6 +4609,12 @@ function M.release(W, s, p)
         elseif st.what == "yard_stone" then
           local b = s.buildings[st.ref]
           if b then b.stone_claim = max(0, (b.stone_claim or 1) - 1) end
+        elseif st.what == "ore" then
+          local b = s.buildings[st.ref]
+          if b then b.ore_claim = max(0, (b.ore_claim or 1) - 1) end
+        elseif st.what == "charcoal" then
+          local b = s.buildings[st.ref]
+          if b then b.char_claim = max(0, (b.char_claim or 1) - 1) end
         end
       elseif st.op == "drop" then
         if st.to == "site" then
@@ -4412,6 +4623,9 @@ function M.release(W, s, p)
         elseif st.to == "stone_site" then
           local b = s.buildings[st.ref]
           if b then b.stone_claim = max(0, (b.stone_claim or 1) - 1) end
+        elseif st.to == "clamp" then
+          local b = s.buildings[st.ref]
+          if b then b.charge_claim = max(0, (b.charge_claim or st.n or 1) - (st.n or 1)) end
         end
         if st.release then
           local hh = W.S.v3.households[p.hh]
@@ -4745,6 +4959,8 @@ function M.decide(W, s, p, now, reason)
       local H = s.herds and (s.herds.cattle or s.herds.flock or s.herds.swine)
       to = H and s.buildings[H.pen]
     elseif cr == "water" then to = home
+    elseif (cr == "ore" or cr == "charcoal") and s.forge and s.forge.state == "standing" then to = s.forge
+    elseif cr == "iron" then to = home
     elseif cr == "stone" or cr == "hardstone" then
       -- (S19) a stone in hand: to the yard, else back to a face of its own rock
       local y = s.wood_store
@@ -4768,6 +4984,8 @@ function M.decide(W, s, p, now, reason)
       local ishome = to == home
       local dto = ishome and "home" or to.kind
       if cr == "stone" or cr == "hardstone" then dto = to.kind == "outcrop" and "stone_face" or "stone_yard" end
+      if (cr == "ore" or cr == "charcoal") and to.kind == "forge" then dto = "forge" end
+      if cr == "iron" then dto = "iron_to" end
       table.insert(pl, 1, { op = "drop", to = dto, ref = to.id })
       table.insert(pl, 1, { op = "go", x = to.dx, y = to.dy, place = ishome and "home" or ("the " .. to.label), enter = ishome and home.id or nil })
     end

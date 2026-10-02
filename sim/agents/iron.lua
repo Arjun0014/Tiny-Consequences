@@ -40,39 +40,46 @@ function M.deposits(W, s)
       end
     end
   end
-  -- bog iron: wet low ground beside the floodplain on maps whose ground is wet and low
+  -- bog iron: wet low ground beside the floodplain on maps whose ground is wet and low - some such
+  -- maps have it (bog_map_p), at the candidate the draw favours
   local settle = M.settle
   local land, riv, occ, plot = s.land, s.riv, s.occ, s.plot
-  local placed = 0
-  for iy0 = 6, N - 8, c.bog_step do
-    for ix0 = 6, N - 8, c.bog_step do
+  if rng.float(W.seed, rng.S.V3_MAP, s.key, 0, 94) >= c.bog_map_p then return end
+  local best, bu = nil, 2
+  for iy0 = 6, N - 8, 2 do
+    for ix0 = 6, N - 8, 2 do
       local i = (iy0 - 1) * N + ix0
       local cell = s.cell_of[i]
       local wet = W.F.soil_water[cell] or 0
       local elev = W.static.elev[cell] - (W.G.sea_level or 0)
-      if placed < c.bog_max and wet >= c.bog_wet and elev <= c.bog_elev then
+      if wet >= c.bog_wet and elev <= c.bog_elev then
         -- (beside the floodplain: a floodplain tile within three of the footprint, none under it)
         local near, ok = false, true
         for yy = iy0 - 3, iy0 + 4 do
           for xx = ix0 - 3, ix0 + 4 do
-            local j = (yy - 1) * N + xx
-            if riv[j] == -1 then near = true end
+            if riv[(yy - 1) * N + xx] == -1 then near = true end
           end
         end
-        for yy = iy0 - 1, iy0 + 2 do
-          for xx = ix0 - 1, ix0 + 2 do
-            local j = (yy - 1) * N + xx
-            if land[j] ~= 1 or riv[j] ~= 0 or occ[j] ~= 0 or plot[j] ~= 0 then ok = false end
+        if near then
+          for yy = iy0 - 1, iy0 + 2 do
+            for xx = ix0 - 1, ix0 + 2 do
+              local j = (yy - 1) * N + xx
+              if land[j] ~= 1 or riv[j] ~= 0 or occ[j] ~= 0 or plot[j] ~= 0 then ok = false end
+            end
           end
-        end
-        if near and ok and rng.float(W.seed, rng.S.V3_MAP, s.key, i, 97) < c.bog_p then
-          local b = settle.add_building(W, s, "bog", ix0, iy0, "s", "standing", { natural = true })
-          b.ore = floor(c.ore_bog[1] + (c.ore_bog[2] - c.ore_bog[1]) * rng.float(W.seed, rng.S.V3_MAP, s.key, i, 98))
-          b.label = "bog with iron in it"
-          placed = placed + 1
+          if ok then
+            local u = rng.float(W.seed, rng.S.V3_MAP, s.key, i, 97)
+            if u < bu then best, bu = i, u end
+          end
         end
       end
     end
+  end
+  if best then
+    local ix0, iy0 = (best - 1) % N + 1, floor((best - 1) / N) + 1
+    local b = settle.add_building(W, s, "bog", ix0, iy0, "s", "standing", { natural = true })
+    b.ore = floor(c.ore_bog[1] + (c.ore_bog[2] - c.ore_bog[1]) * rng.float(W.seed, rng.S.V3_MAP, s.key, best, 98))
+    b.label = "bog with iron in it"
   end
 end
 
@@ -86,13 +93,17 @@ function M.ore_sites(s)
   return L
 end
 
--- Has anyone walked by deposit b (worn ground within a few tiles)? Then the village knows its ore.
+-- Does the village know deposit b? The ground near its houses it knows (rusty water in the meadow by
+-- the river, red earth in the rock); farther out, once someone has walked by (worn ground within a
+-- few tiles).
 local function seen(s, b)
   local N = s.N
-  for iy = b.iy0 - 3, b.iy0 + b.h + 2 do
-    for ix = b.ix0 - 3, b.ix0 + b.w + 2 do
+  local dx, dy = b.cx - (s.sqx or 0), b.cy - (s.sqy or 0)
+  if dx * dx + dy * dy < C().ore_near * C().ore_near then return true end
+  for iy = b.iy0 - 5, b.iy0 + b.h + 4 do
+    for ix = b.ix0 - 5, b.ix0 + b.w + 4 do
       if ix >= 1 and iy >= 1 and ix <= N and iy <= N then
-        if s.wear[(iy - 1) * N + ix] > 0.5 then return true end
+        if s.wear[(iy - 1) * N + ix] > 0.3 then return true end
       end
     end
   end
@@ -114,6 +125,7 @@ function M.daily(W, s, now)
   M.deposits(W, s)
   local need = s.need
   need.ore, need.charcoal, need.bloom, need.iron, s.iron_why = 0, 0, 0, 0, nil
+  s.clamp_target = 0
   local known = false
   for _, b in ipairs(M.ore_sites(s)) do
     if not b.known and seen(s, b) then
@@ -140,7 +152,16 @@ function M.daily(W, s, now)
     local hh = V.households[hid]
     if hh and #hh.members > 0 and M.iron(hh) < c.iron_redo then lack = lack + 1 end
   end
-  if s.export and s.export.iron then lack = lack + 1 end
+  -- (to trade: while fewer than export_stock sets lie to spare in the village)
+  if s.export and s.export.iron then
+    local spare = 0
+    for _, hid in ipairs(s.households) do
+      local hh = V.households[hid]
+      local home = hh and s.buildings[hh.home or 0]
+      if home then spare = spare + (home.stock.iron or 0) end
+    end
+    if spare < c.export_stock then lack = lack + 1 end
+  end
   if lack == 0 then return end
   local f = s.forge
   local fs = f and f.stock or {}
@@ -152,17 +173,19 @@ function M.daily(W, s, now)
   for _, b in ipairs(M.ore_sites(s)) do lying = lying + (b.stock.ore or 0) end
   need.ore = known and max(0, blooms * c.smelt_ore - (fs.ore or 0) - lying) or 0
   local cl = s.clamp
-  local char_have = (fs.charcoal or 0) + (cl and (cl.stock.charcoal or 0) + (cl.charge or 0) * c.charcoal_log or 0)
+  -- (a clamp burning counts: its charge is charcoal to come)
+  local char_have = (fs.charcoal or 0) + (cl and (cl.stock.charcoal or 0) + (cl.lit_until and (cl.charge or 0) * c.charcoal_log or 0) or 0)
   need.charcoal = max(0, blooms * c.smelt_charcoal + want_iron * c.forge_charcoal - char_have)
+  -- (the clamp is charged with the logs that charcoal asks for, a full clamp at most, and fired
+  -- when it holds them)
+  if cl then s.clamp_target = min(c.clamp_logs, math.ceil(need.charcoal / c.charcoal_log - 1e-6)) end
   s.iron_why = sfmt("%d households of %s work with no iron to their tools", lack, s.name)
   -- the forge and the clamp, made when there is ore known and iron wanted (one at a time)
   if known and not s.forge and not s.lot and M.settle then
-    local b = M.settle.plan_lot(W, s, "forge", { prio = 1 }, s.wood_x, s.wood_y)
-    if type(b) == "table" then s.forge = b end
+    M.settle.plan_lot(W, s, "forge", { prio = 1 }, s.wood_x, s.wood_y)
   end
   if s.forge and not s.clamp and not s.lot and M.settle and need.charcoal > 0 then
-    local b = M.settle.plan_lot(W, s, "clamp", { prio = 1 }, s.forge.cx, s.forge.cy)
-    if type(b) == "table" then s.clamp = b end
+    M.settle.plan_lot(W, s, "clamp", { prio = 1 }, s.forge.cx, s.forge.cy)
   end
 end
 

@@ -353,6 +353,19 @@ local function fill_buildings(V)
       for q = 1, min(4, floor(b.stock.stone or 0)) do
         add(V, K.slab, b.dx + (q - 2.5) * 0.008, b.dy, 0, q * 1.3, S * 0.18, 0.5, r1, r2, 0)
       end
+      -- (S19) a vein of iron ore: rust-red rock at the face, dug ore heaped there
+      if (b.ore or 0) > 0 then
+        add(V, K.slab, b.cx + 0.006, b.cy - 0.004, 0.002, 0.7, S * 0.3, 0.7, pack(0.55, 0.28, 0.18), pack(0.45, 0.22, 0.14), 0)
+      end
+      if (b.stock.ore or 0) >= 1 then
+        add(V, K.stook, b.dx + 0.012, b.dy, 0, 1.1, 0.35, 0.35, pack(0.50, 0.26, 0.16), pack(0.42, 0.22, 0.14), 0)
+      end
+    elseif b.state == "standing" and b.kind == "bog" then
+      -- (S19) bog iron: rust-brown wet ground; dug ore heaped by it
+      add(V, K.stook, b.cx, b.cy, -0.004, 0, 1.1, 0.12, pack(0.46, 0.30, 0.18), pack(0.36, 0.26, 0.16), 0)
+      if (b.stock.ore or 0) >= 1 then
+        add(V, K.stook, b.dx + 0.01, b.dy, 0, 1.1, 0.35, 0.35, pack(0.50, 0.26, 0.16), pack(0.42, 0.22, 0.14), 0)
+      end
     elseif b.state == "standing" then
       if b.kind == "house" then
         -- (S19) a house on stone footings: the stones show under the walls
@@ -434,6 +447,27 @@ local function fill_buildings(V)
               pack(0.30, 0.22, 0.14), pack(0.26, 0.19, 0.12), 0)
           end
         end
+      elseif b.kind == "forge" then
+        -- (S19) the forge: a shed over the anvil, the bloomery's clay shaft beside it, charcoal and ore
+        add(V, K.woodshed, b.cx, b.cy, 0, yaw, S * 0.85, 1, pack(0.36, 0.30, 0.26), c2, 0)
+        add(V, K.stook, b.cx + dx * 0.9 - dy * 0.6, b.cy + dy * 0.9 + dx * 0.6, 0, 0, 0.55, 0.9, pack(0.62, 0.44, 0.30), pack(0.50, 0.34, 0.22), 0)
+        if (b.stock.charcoal or 0) >= 1 then
+          add(V, K.stook, b.cx - dy * 1.1, b.cy + dx * 1.1, 0, 0.5, 0.4, 0.4, pack(0.12, 0.11, 0.10), pack(0.10, 0.09, 0.08), 0)
+        end
+        if (b.stock.ore or 0) >= 1 then
+          add(V, K.stook, b.cx + dy * 1.1, b.cy - dx * 1.1, 0, 1.5, 0.35, 0.35, pack(0.50, 0.26, 0.16), pack(0.42, 0.22, 0.14), 0)
+        end
+      elseif b.kind == "clamp" then
+        -- (S19) a charcoal clamp: logs stacked in a mound, turfed over when fired, the charcoal raked out
+        local lit = b.lit_until ~= nil
+        if lit then
+          add(V, K.stook, b.cx, b.cy, 0, 0, 1.0, 0.6, pack(0.30, 0.26, 0.18), pack(0.24, 0.20, 0.14), 0)
+        elseif (b.charge or 0) > 0 then
+          add(V, K.logs, b.cx, b.cy, 0, yaw, 0.5 + 0.06 * b.charge, 1, pack(0.55, 0.40, 0.26), pack(0.45, 0.31, 0.2), 0)
+        end
+        if (b.stock.charcoal or 0) >= 1 then
+          add(V, K.stook, b.dx, b.dy, 0, 0.3, 0.4, 0.4, pack(0.12, 0.11, 0.10), pack(0.10, 0.09, 0.08), 0)
+        end
       elseif b.kind == "tanpit" then
         -- (D-104) a tanning pit: a dark lined hollow, a frame over it, hides in it while they soak
         add(V, K.stook, b.cx, b.cy, -0.004, 0, 0.9, 0.18, pack(0.20, 0.14, 0.09), pack(0.16, 0.11, 0.07), 0)
@@ -502,7 +536,8 @@ local function bld_sig(V)
     local pg = b.state == "site" and floor(((b.work_done / b.work_need) * 0.75 + min(1, b.logs_have / max(1, b.logs_need)) * 0.25) * 20) or 99
     h = (h * 31 + b.id * 3 + pg + floor((b.stock.logs or 0) / 2) * 7 + floor((b.stock.sheaves or 0) / 20) * 13
       + (b.state == "standing" and 1000 or 0) + (b.kind == "camp" and floor(((b.stock.food or 0) + (b.stock.seed or 0)) / 10) * 17 or 0)
-      + floor(b.stock.stone or 0) * 23 + floor(b.stock.hardstone or 0) * 29 + floor((b.left or 0) / 8) * 37 + (b.footing and 41 or 0)) % 1000000007
+      + floor(b.stock.stone or 0) * 23 + floor(b.stock.hardstone or 0) * 29 + floor((b.left or 0) / 8) * 37 + (b.footing and 41 or 0)
+      + floor(b.stock.ore or 0) * 43 + floor(b.stock.charcoal or 0) * 47 + floor(b.charge or 0) * 53 + (b.lit_until and 59 or 0)) % 1000000007
   end
   h = (h * 17 + floor((s.hay or 0) / 30)) % 1000000007
   if s.herds then
@@ -707,7 +742,8 @@ end
 local ROT = vmath.quat()
 local POS = vmath.vector3()
 local WORK_ANIM = { till = true, sow = true, harvest = true, chop = true, build = true, tend = true, grub = true,
-  thresh = true, forage = true, fill = true, shore = true, quarry = true, quern = true }
+  thresh = true, forage = true, fill = true, shore = true, quarry = true, quern = true, mine = true, smith = true, smelt = true,
+  fire_clamp = true, open_clamp = true }
 
 local function update_people(V, t, zoom)
   local s = V.s
@@ -788,11 +824,11 @@ local PLOUGH_ANIM = { "carry_walk", 0.55 }
 local TOOL = { till = "hoe", grub = "hoe", chop = "axe", harvest = "sickle", build = "hammer", thresh = "flail",
   forage = "basket", fill = "bucket", tend = nil, sow = "basket", repair = "hammer", fish = "rod", mend_boat = "hammer",
   dress = "flail", stalk = "spear", gut = "spear", milk = "bucket", muck = nil, slop = "bucket", angle = "rod", shore = "basket",
-  quarry = "hammer", quern = "hammer" }
+  quarry = "hammer", quern = "hammer", mine = "hoe", smith = "hammer", smelt = nil, fire_clamp = nil, open_clamp = "hoe" }
 local CARRY_PART = { logs = "log", grain = "sack", sheaves = "sack", food = "sack", seed = "basket", water = "bucket", fish = "basket",
   flax = "sack", carcass = "sack", milk = "bucket", manure = "basket", scraps = "bucket", wool = "sack", hay = "basket", meat = "sack",
   dried = "basket", smoked = "basket", cheese = "basket", pack = "sack", hides = "sack", leather = "sack",
-  stone = "sack", hardstone = "sack", quern = "sack" }
+  stone = "sack", hardstone = "sack", quern = "sack", ore = "basket", charcoal = "sack", iron = "sack" }
 -- animation for each action: { clip, rate (at a game minute per second), moving clip }
 local ANIM = {
   walk = { "walk" }, till = { "swing", 0.7 }, grub = { "kneel_work", 0.9 }, chop = { "swing", 0.9 },
@@ -816,6 +852,8 @@ local ANIM = {
   angle = { "sit", 0.5 },
   -- (S19) gathering on the shore at low water; splitting stone at a rock face; shaping a quern
   shore = { "crouch_walk", 0.45 }, quarry = { "swing", 0.75 }, quern = { "kneel_work", 0.7 },
+  mine = { "swing", 0.7 }, smith = { "swing", 0.9 }, smelt = { "kneel_work", 0.6 }, fire_clamp = { "kneel_work", 0.8 },
+  open_clamp = { "swing", 0.6 },
 }
 
 local function packc(c) return pack(c[1], c[2], c[3]) end

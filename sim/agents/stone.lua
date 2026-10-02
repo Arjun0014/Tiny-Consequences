@@ -157,7 +157,19 @@ function M.daily(W, s, now)
       local hh = V.households[hid]
       if hh and #hh.members > 0 and (hh.quern or 0) < c.quern_broken then querns = querns + 1 end
     end
-    if s.export and s.export.quern then querns = querns + 1 end
+    if s.export and s.export.quern then
+      -- (to trade: while fewer than export_stock querns lie to spare in the village)
+      local spare = 0
+      for _, hid in ipairs(s.households) do
+        local hh = V.households[hid]
+        local home = hh and s.buildings[hh.home or 0]
+        if home then spare = spare + (home.stock.quern or 0) end
+      end
+      if spare < c.export_stock then querns = querns + 1 end
+      s.quern_export_ok = spare < c.export_stock
+    else
+      s.quern_export_ok = false
+    end
   end
   local want_h = min(querns, c.quern_at_once) * 2
   local want = sites + want_h + c.stone_reserve

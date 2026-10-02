@@ -36,6 +36,9 @@ M.GOODS = {
   -- (S19) a rotary quern of hard stone: made only where there is hard rock; a household's own,
   -- whole (one to a load: a man carries one pair of stones)
   quern = { base = 30, wt = 0.8, pool = "house", name = "querns", name1 = "quern", unit = "", whole = true },
+  -- (S19) iron edges for a household's tools (axe bit, sickle, hoe and spade edges, knife): made only
+  -- at a forge, from ore that only some places have
+  iron = { base = 40, wt = 0.25, pool = "house", name = "sets of iron edges", name1 = "set of iron edges for tools", unit = "", whole = true },
   -- (S15, R4) beasts sold alive: a household's own, led by a drover (wt: the share of the beasts
   -- one drover can lead), never carried, never taken in payment
   sheep = { base = 12, wt = 1 / 6, pool = "house", name = "sheep", name1 = "sheep", unit = "", beast = "flock" },
@@ -43,7 +46,7 @@ M.GOODS = {
   cattle = { base = 70, wt = 1 / 2, pool = "house", name = "cattle", name1 = "cow", unit = "", beast = "cattle" },
   pig = { base = 28, wt = 1 / 4, pool = "house", name = "pigs", name1 = "pig", unit = "", beast = "swine" },
 }
-M.ORDER = { "grain", "smoked", "cheese", "logs", "wool", "cloth", "hides", "leather", "salt", "quern", "sheep", "goat", "cattle", "pig" }
+M.ORDER = { "grain", "smoked", "cheese", "logs", "wool", "cloth", "hides", "leather", "salt", "quern", "iron", "sheep", "goat", "cattle", "pig" }
 
 -- "8.0 FU of smoked fish", "2 logs": an amount of a good in words.
 function M.amount(q, g)
@@ -186,8 +189,20 @@ function M.house_stock(W, hh, home, g)
     return st.salt or 0, c.salt_hh_want + n * c.salt_member, st.salt or 0
   end
   if g == "quern" then
-    -- (S19) one at work in the house; any more are to spare
-    return ((hh.quern or 0) >= c.quern_broken and 1 or 0) + (st.quern or 0), 1, st.quern or 0
+    -- (S19) one at work in the house; any more are to spare. A household whose village has hard rock
+    -- makes its own (or is making it): it does not buy one
+    local own = (hh.quern or 0) >= c.quern_broken or (hh.quern_work or 0) > 0
+    local vs = W.S.v3.settlements[hh.sett]
+    if not own and vs and vs.has_hard then own = true end
+    return (own and 1 or 0) + (st.quern or 0), 1, st.quern or 0
+  end
+  if g == "iron" then
+    -- (S19) the iron edges on the household's tools (worn ones count for little); any more to spare.
+    -- A household whose village works iron (a forge, ore known) gets its edges from its own smith
+    local own = (hh.iron or 0) >= c.iron_redo
+    local vs = W.S.v3.settlements[hh.sett]
+    if not own and vs and vs.ore_known and vs.forge then own = true end
+    return (own and 1 or 0) + (st.iron or 0), 1, st.iron or 0
   end
   return 0, 0, 0
 end
@@ -275,7 +290,7 @@ end
 -- household's worth of the household goods, what it could spare, has and wants; the stores' (the
 -- village's goods) the same. Deals are worked out from it (M.deal_plan) - on arrival from what is
 -- there now, and when planning a trip from what was seen last time.
-local HOUSE_G = { "wool", "cloth", "hides", "leather", "salt", "quern" }
+local HOUSE_G = { "wool", "cloth", "hides", "leather", "salt", "quern", "iron" }
 local VILLAGE_G = { "grain", "smoked", "cheese", "logs" }
 function M.view(W, o)
   local c = C()
@@ -499,6 +514,9 @@ function M.best_trade(W, s, hh, home, pool, partners, route, now)
           -- (S17: the road's cost is the work given up for it: less where hands are idle - the
           -- bread is eaten at home or on the road alike)
           local cost = 2 * hrs * crew * c.trade_hour * max(c.trade_idle_min, 1 - c.trade_idle_k * (s.idle_avg or 0))
+          -- (S19) by sea the danger is weighed too: the chance of foundering on the way there and back
+          -- in the wet weather the sea mostly has, for each life aboard
+          if not land then cost = cost + 2 * hrs * c.sea_squall * c.sea_wet_k * 1.2 * crew * c.sea_life_fu end
           local neutralX, guessX = GX.base * 0.6, 0.5 / GX.wt
           local bXo = kn and (kn.buy[X] or neutralX) or 0
           -- the good to bring home: what this household (or village) wants and o can spare - S19:
@@ -762,7 +780,7 @@ end
 -- and sea): cloth (its households' looms and spindles), when a neighbour heard of lately would give
 -- export_margin x trade_margin what a household here would. s.export = { cloth = name of the
 -- neighbour } or nil.
-local EXPORTS = { "cloth", "salt", "quern" }
+local EXPORTS = { "cloth", "salt", "quern", "iron" }
 function M.exports(W, s, partners, now)
   local c = C()
   local V = W.S.v3
@@ -772,6 +790,7 @@ function M.exports(W, s, partners, now)
     -- only where there is hard rock to make them from)
     local lo = nil
     if g == "quern" and not s.has_hard then lo = false end
+    if g == "iron" and not (s.forge and s.forge.state == "standing" and s.ore_known) then lo = false end
     for _, hid in ipairs(lo ~= false and s.households or {}) do
       local hh = V.households[hid]
       local home = hh and #hh.members > 0 and s.buildings[hh.home or 0]

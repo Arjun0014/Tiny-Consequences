@@ -1015,7 +1015,8 @@ C.V3 = {
   share_keep = 2.0, share_short = 0.5,
   -- (D-102) sea trade: reach (local units of sea way), a boat under sail and oars, its hold in loads
   sea_reach = 40, sail_speed = 1.1, boat_hold = 3,
-  sea_squall = 0.00025, sea_wet_k = 3,    -- chance a voyage hour of foundering (fair day; x on a wet day; worn boats and unskilled skippers more)
+  sea_squall = 0.00008, sea_wet_k = 3,    -- chance a voyage hour of foundering (fair day; x on a wet day; worn boats and unskilled skippers more; S19: was 0.00025 - ~1% a wet 14-hour crossing)
+  sea_life_fu = 150,                      -- (S19) what a trader weighs a life lost at sea at, in FU, against a voyage's gain
   nap_h = 4,
   relief_days = 8,
   -- (S16, R5) households moving away: hardship (village food under mig_hunger_days days, hungry
@@ -1059,6 +1060,20 @@ C.V3 = {
   rock_step = 7, rock_density = 0.04, rock_keep = 0.45, rock_stones = { 30, 70 },
   quarry_h = 1.5, footing_stones = 4, footing_wear = 0.45, quern_h = 10, quern_save = 0.4, quern_wear = 0.0015,
   quern_broken = 0.15, quern_at_once = 1, stone_reserve = 2, footing_wait = 3,
+  -- (S19) iron (sim/agents/iron.lua): a hard outcrop carries a vein with chance ore_vein_p (ore_vein
+  -- measures); bog iron on maps of wet (soil water bog_wet) low (bog_elev km) ground beside the
+  -- floodplain: such a map has one with chance bog_map_p (ore_bog measures). Ore dug in
+  -- mine_h hours (carried carry_ore a load); a clamp holds clamp_logs logs, fired in fire_clamp_h and
+  -- left clamp_h hours, opened in open_clamp_h: charcoal_log sacks a log (carried carry_charcoal a
+  -- load); a bloom smelted from smelt_ore ore and smelt_charcoal charcoal in smelt_h; a household's
+  -- iron edges forged from a bloom and forge_charcoal in forge_h. Iron edges (hh.iron) make tool work
+  -- iron_speed faster and the other tools wear iron_save less; they wear iron_wear a work hour, worn
+  -- out below iron_broken, new ones wanted below iron_redo; iron_at_once set made at a time.
+  ore_vein_p = 0.3, ore_vein = { 40, 110 }, bog_map_p = 0.85, ore_near = 0.9, bog_wet = 0.38, bog_elev = 1.2,
+  ore_bog = { 30, 80 }, mine_h = 2.0, carry_ore = 2, clamp_logs = 8, fire_clamp_h = 2.0, clamp_h = 30, open_clamp_h = 1.5,
+  charcoal_log = 1.0, carry_charcoal = 3, smelt_ore = 3, smelt_charcoal = 4, smelt_h = 5, forge_charcoal = 1, forge_h = 4,
+  iron_speed = 0.25, iron_save = 0.5, iron_wear = 0.0004, iron_broken = 0.1, iron_redo = 0.3, iron_at_once = 1,
+  export_stock = 2,                       -- (S19) querns or iron sets made to trade while fewer than this lie to spare in the village
   -- (S16, R4) courting: a man with nobody to marry at home goes to a neighbour within court_road_h
   -- hours' walk with this chance a courtship round; he spends court_h meeting its people; a bride
   -- sets off with him court_wait_h after the match

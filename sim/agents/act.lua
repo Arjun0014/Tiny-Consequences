@@ -29,9 +29,9 @@ local IDLE_KINDS = { sit = true, talk = true, rest = true, eat = true, lunch = t
   nurse = true, idle = true, shelter = true, gather = true, wait_boat = true, passage = true }
 local SKILL_OF = { till = "sk_farm", sow = "sk_farm", harvest = "sk_farm", tend = "sk_farm", thresh = "sk_farm",
   chop = "sk_wood", grub = "sk_wood", build = "sk_build", repair = "sk_build", fish = "sk_fish", mend_boat = "sk_fish",
-  quarry = "sk_build", quern = "sk_craft" }
+  quarry = "sk_build", quern = "sk_craft", mine = "sk_build", smelt = "sk_craft", smith = "sk_craft" }
 local TOOL_WORK = { till = true, harvest = true, chop = true, grub = true, build = true, repair = true, thresh = true, tend = true,
-  mend_boat = true, quarry = true, quern = true }
+  mend_boat = true, quarry = true, quern = true, mine = true }
 M.OUTDOOR_WORK = { grub = true, forage = true, till = true, turn = true, thresh = true, sow = true, tend = true, harvest = true, chop = true, build = true, fill = true, play = true, repair = true,
   mend_boat = true }
 
@@ -376,7 +376,8 @@ WORK.build = function(W, s, p, st, f)
   b.builders = max(0, (b.builders or 1) - 1)
   if b.state ~= "site" then return end
   local hh = W.S.v3.households[p.hh]
-  b.work_done = b.work_done + st.dur * f * (0.6 + 0.6 * p.sk_build) * (0.55 + 0.45 * (hh and hh.tools or 1))
+  local ir = hh and (hh.iron or 0) >= C().iron_broken and hh.iron or 0
+  b.work_done = b.work_done + st.dur * f * (0.6 + 0.6 * p.sk_build) * (0.55 + 0.45 * (hh and hh.tools or 1)) * (1 + C().iron_speed * ir)
   people.practice(p, "sk_build", st.dur * f)
   if b.work_done >= b.work_need and b.logs_have >= b.logs_need and (b.stone_have or 0) >= (b.stone_need or 0) then
     require("sim.agents.settle").complete_building(W, s, b)
@@ -1433,6 +1434,63 @@ WORK.quern = function(W, s, p, st, f)
   end
 end
 
+-- (S19) Iron: ore dug at a deposit (left lying there); the clamp fired and opened; a bloom smelted;
+-- iron edges forged (carried to a household).
+WORK.mine = function(W, s, p, st, f)
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
+  b.miners = max(0, (b.miners or 1) - 1)
+  if f < 0.6 or (b.ore or 0) <= 0 then return end
+  b.ore = b.ore - 1
+  b.stock.ore = (b.stock.ore or 0) + 1
+  s.acc.ore_dug = (s.acc.ore_dug or 0) + 1
+  if s.need then s.need.ore = max(0, (s.need.ore or 0) - 1) end
+end
+WORK.fire_clamp = function(W, s, p, st, f)
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
+  if b.firer == p.id then b.firer = 0 end
+  if f < 0.8 or b.lit_until or (b.charge or 0) <= 0 then return end
+  b.lit_until = (W.S.v3.now or W.hour) + C().clamp_h
+  s.acc.clamps = (s.acc.clamps or 0) + 1
+end
+WORK.open_clamp = function(W, s, p, st, f)
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
+  if b.firer == p.id then b.firer = 0 end
+  if f < 0.8 or not b.lit_until then return end
+  local ch = (b.charge or 0) * C().charcoal_log
+  b.stock.charcoal = (b.stock.charcoal or 0) + ch
+  s.acc.charcoal = (s.acc.charcoal or 0) + ch
+  b.charge, b.lit_until = 0, nil
+end
+WORK.smelt = function(W, s, p, st, f)
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
+  if b.smith == p.id then b.smith = 0 end
+  local c = C()
+  local fs = b.stock
+  if f < 0.8 or (fs.ore or 0) < c.smelt_ore or (fs.charcoal or 0) < c.smelt_charcoal then return end
+  fs.ore, fs.charcoal = fs.ore - c.smelt_ore, fs.charcoal - c.smelt_charcoal
+  fs.bloom = (fs.bloom or 0) + 1
+  s.acc.blooms = (s.acc.blooms or 0) + 1
+  if s.need then s.need.bloom = max(0, (s.need.bloom or 0) - 1) end
+  people.practice(p, "sk_craft", st.dur * 0.3)
+end
+WORK.smith = function(W, s, p, st, f)
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
+  if b.smith == p.id then b.smith = 0 end
+  local c = C()
+  local fs = b.stock
+  if f < 0.8 or (fs.bloom or 0) < 1 or (fs.charcoal or 0) < c.forge_charcoal then return end
+  fs.bloom, fs.charcoal = fs.bloom - 1, fs.charcoal - c.forge_charcoal
+  p.carry, p.camt = "iron", 1
+  s.acc.iron_made = (s.acc.iron_made or 0) + 1
+  if s.need then s.need.iron = max(0, (s.need.iron or 0) - 1) end
+  people.practice(p, "sk_craft", st.dur * 0.5)
+end
+
 -- (S19) Gathering on the shore: shellfish and seaweed into the basket (fresh: spoils like fish).
 WORK.shore = function(W, s, p, st, f)
   local hh = W.S.v3.households[p.hh]
@@ -1720,6 +1778,28 @@ PICK.yard_stone = function(W, s, p, st)
     b.stock.hardstone = b.stock.hardstone - 1
     p.carry, p.camt = "hardstone", 1
   end
+end
+
+-- (S19) Ore from a deposit, charcoal from a clamp (as much as asked and lies there).
+PICK.ore = function(W, s, p, st)
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
+  b.ore_claim = max(0, (b.ore_claim or 1) - 1)
+  if p.carry ~= "" then return end
+  local q = min(st.n or 1, b.stock.ore or 0)
+  if q <= 0 then return end
+  b.stock.ore = b.stock.ore - q
+  p.carry, p.camt = "ore", q
+end
+PICK.charcoal = function(W, s, p, st)
+  local b = s.buildings[st.ref or 0]
+  if not b then return end
+  b.char_claim = max(0, (b.char_claim or 1) - 1)
+  if p.carry ~= "" then return end
+  local q = min(st.n or 1, b.stock.charcoal or 0)
+  if q <= 0 then return end
+  b.stock.charcoal = b.stock.charcoal - q
+  p.carry, p.camt = "charcoal", q
 end
 
 PICK.pack = function(W, s, p, st)
@@ -2403,6 +2483,49 @@ DROP.any = function(W, s, p, st)
     end
     return
   end
+  if st.to == "clamp" then
+    -- (S19) logs into the charcoal clamp
+    local b = s.buildings[st.ref or 0]
+    if b then b.charge_claim = max(0, (b.charge_claim or st.n or 1) - (st.n or 1)) end
+    if b and p.carry == "logs" then
+      b.charge = (b.charge or 0) + p.camt
+      p.carry, p.camt = "", 0
+    end
+    return
+  end
+  if st.to == "forge" then
+    local b = s.buildings[st.ref or 0]
+    if b and (p.carry == "ore" or p.carry == "charcoal") then
+      b.stock[p.carry] = (b.stock[p.carry] or 0) + p.camt
+      p.carry, p.camt = "", 0
+    end
+    return
+  end
+  if st.to == "iron_to" then
+    -- (S19) iron edges to the household that lacks them (fitted to its tools), else kept to spare
+    local b = s.buildings[st.ref or 0]
+    local V = W.S.v3
+    local hh = b and V.households[b.hh or 0]
+    if b and p.carry == "iron" then
+      local c = C()
+      local now = V.now or W.hour
+      if hh and (hh.iron or 0) < c.iron_redo then
+        hh.iron = 1
+        for _, id in ipairs(hh.members) do
+          local q = V.people[id]
+          if q and q.alive and people.stage(q, now) ~= "infant" and people.stage(q, now) ~= "child" then
+            people.remember(q, now, q == p and "Forged iron edges for our tools: the axe and the hoe bite now"
+              or sfmt("%s forged iron edges for our tools", p.name))
+          end
+        end
+        if hh.id ~= p.hh then people.remember(p, now, sfmt("Forged iron edges for the tools of the %s household", (V.people[hh.members[1] or 0] or {}).surname or "neighbour")) end
+      else
+        b.stock.iron = (b.stock.iron or 0) + 1
+      end
+      p.carry, p.camt = "", 0
+    end
+    return
+  end
   if st.to == "stone_face" then
     local b = s.buildings[st.ref or 0]
     if b and (p.carry == "stone" or p.carry == "hardstone") then
@@ -2817,7 +2940,16 @@ local function finish(W, s, p, now, f)
     if TOOL_WORK[st.kind] then
       -- the household's tools wear with the work
       local hh = W.S.v3.households[p.hh]
-      if hh then hh.tools = max(0.15, (hh.tools or 1) - C().tool_wear * st.dur * f) end
+      if hh then
+        -- (S19) iron edges wear down with the work, and spare the other tools
+        local c = C()
+        local ir = (hh.iron or 0) >= c.iron_broken and hh.iron or 0
+        hh.tools = max(0.15, (hh.tools or 1) - c.tool_wear * st.dur * f * (1 - c.iron_save * ir))
+        if ir > 0 then
+          hh.iron = hh.iron - c.iron_wear * st.dur * f
+          if hh.iron < c.iron_broken then hh.iron = 0 end
+        end
+      end
     end
   elseif st.op == "pick" then
     local h = PICK[st.what]

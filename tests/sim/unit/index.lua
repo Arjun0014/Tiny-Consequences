@@ -27,4 +27,5 @@ return {
   "tests.sim.unit.test_v3_sea",
   "tests.sim.unit.test_v3_families",
   "tests.sim.unit.test_v3_stone",
+  "tests.sim.unit.test_v3_iron",
 }
