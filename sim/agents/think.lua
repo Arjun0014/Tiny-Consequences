@@ -54,7 +54,7 @@ local function plural(n, one, many) return n == 1 and one or many end
 -- its holder is alive, still of the household and still at that objective (a claim must never
 -- outlive a person who moved to a new house, died or changed their mind).
 local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "fetch_wood", fetch_water = "fetch_water", foraging = "forage", child_gathering = "forage",
-  smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed", moving_in = "strike_camp",
+  shore = "shore", smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed", moving_in = "strike_camp",
   asking = "visit_kin",
   milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle", trading = "trade", sharing = "share", tanning = "tan", lifting = "lift", cobbling = "cobble",
   salting_pans = "salt" }
@@ -519,6 +519,21 @@ local function work_candidates(W, s, p, ctx, now)
       end
     end
   end
+  -- (S19) the shore at low water: shellfish off the rocks and seaweed - food for the hungry
+  if (s.shore_food or 0) > c.shore_basket and ctx.home and ctx.hh and ctx.stage ~= "child" and claim_free(W, ctx.hh, "shore", p) then
+    local n = max(1, #ctx.hh.members)
+    local larder = people.pantry(ctx.home) + (ctx.home.stock.meals or 0)
+    local short = need.food_days < c.shore_short and (1 - need.food_days / c.shore_short) or 0
+    if larder < n * 0.75 * 2 then short = short + 0.3 end
+    if short > 0 then
+      local f = fit(p, ctx, "forage")
+      if f > 0 then
+        local a = min(1, s.shore_food / (c.shore_basket * 4))
+        addw((0.15 + 0.5 * short) * a * f * fat, "shore", 0, 0,
+          "Food is short (%.0f days in the village): gathering shellfish and seaweed on the shore", need.food_days)
+      end
+    end
+  end
   -- threshing the sheaves in the granary (under its roof: rain does not stop it): as the threshed
   -- grain runs down, and on wet and winter days when the fields have no work (D-080)
   if not grown then return end
@@ -713,6 +728,23 @@ end
 local sea_storm = trade.sea_storm
 M.sea_storm = sea_storm
 
+-- (S19) Whether p can go on a journey that is not about food (news, a visit, courting, a trade that
+-- brings home no food) of `hrs` hours each way: not hungry, the household able to spare their bread
+-- for the road and still eat, and no hunger in the village (found following a father who walked
+-- 26 hours with an empty larder in a famine and died on the road).
+local function journey_ok(W, s, p, ctx, hrs)
+  if p.hunger > 0.55 then return false end
+  if s.need and (s.need.food_days or 99) < 3 then return false end
+  local home, hh = ctx.home, ctx.hh
+  if not home or not hh then return false end
+  -- (their larder and their part of the granary, which they can fetch from)
+  local gr = s.granary and s.granary.state ~= "site" and (s.granary.stock.grain or 0) or 0
+  local food = people.pantry(home) + (home.stock.meals or 0) + gr * #hh.members / max(1, #s.members)
+  local days = (2 * hrs / 24 + 1)
+  return food >= max(1, #hh.members) * 0.75 * days
+end
+M.journey_ok = journey_ok
+
 local function trade_candidate(W, s, p, ctx, now, fat)
   if ctx.moving then return end
   if ctx.stage ~= "adult" or not ctx.home or ctx.babe or ctx.rain >= 1 or ctx.lh > ctx.sunset - 4 then return end
@@ -735,6 +767,7 @@ local function trade_candidate(W, s, p, ctx, now, fat)
   local o = W.S.v3.settlements[plan.o]
   if not o or not o.alive then return end
   local GX, GH = econ.GOODS[plan.give], econ.GOODS[plan.take]
+  if not plan.ask and not GH.food and not journey_ok(W, s, p, ctx, plan.hours) then return end
   if which ~= 3 then
     -- (S14) a road is walked by day: set out when it can be walked before dusk, or early in the
     -- morning when it is more than a day's walk (a night camped on the road)
@@ -780,6 +813,7 @@ local function court_candidate(W, s, p, ctx, now, fat)
   local o = W.S.v3.settlements[cr.to]
   if not o or #o.members == 0 or now - cr.t > 24 * 12 then p.court = nil; return end
   local _, hrs = trade.road(W, s, o)
+  if not journey_ok(W, s, p, ctx, hrs) then return end
   if hrs <= ctx.sunset - ctx.wake then
     if ctx.lh + hrs > ctx.sunset + 0.5 then return end
   elseif ctx.lh > ctx.wake + 2.5 then return end
@@ -811,6 +845,7 @@ local function visit_candidate(W, s, p, ctx, now, fat)
   try(p.father)
   for _, k in ipairs(p.kids or {}) do try(k) end
   if not best then return end
+  if not journey_ok(W, s, p, ctx, bh) then return end
   if bh <= ctx.sunset - ctx.wake then
     if ctx.lh + bh > ctx.sunset + 0.5 then return end
   elseif ctx.lh > ctx.wake + 2.5 then return end
@@ -917,6 +952,7 @@ local function news_candidate(W, s, p, ctx, now, fat)
     end
   end
   if not best then return end
+  if not journey_ok(W, s, p, ctx, bh) then return end
   if bh <= ctx.sunset - ctx.wake then
     if ctx.lh + bh > ctx.sunset + 0.5 then return end
   elseif ctx.lh > ctx.wake + 2.5 then return end
@@ -1374,6 +1410,8 @@ local function hunt_candidates(W, s, p, ctx, now)
       return
     end
     p.hunting = nil
+    -- (S19) what they remember of their hunts: the recent ones count most
+    p.hunts, p.kills = (p.hunts or 0) * 0.92 + 1, (p.kills or 0) * 0.92
     require("sim.agents.people").remember(p, now, H.tries > 0 and "A day's hunting: the quarry got away" or "Lost the quarry's track")
   end
   if ctx.stage ~= "adult" or not ctx.home or ctx.night or ctx.rain >= 1 or ctx.lh > ctx.sunset - 2.5 or ctx.babe then return end
@@ -1402,6 +1440,15 @@ local function hunt_candidates(W, s, p, ctx, now)
   end
   if not best then return end
   local f = (p.sex == "m" and 1.1 or 0.4) * (0.5 + 0.9 * (p.sk_hunt or 0.2))
+  -- (S19) how their hunts have gone: one whose days at the woods' edge mostly come home empty goes
+  -- less, a hunter who often brings meat home more (a guess of a quarter before they know)
+  local luck = ((p.kills or 0) + 0.5) / ((p.hunts or 0) + 2)
+  f = f * min(1.2, 0.3 + 2.5 * luck)
+  if (p.hunts or 0) >= 4 and luck < 0.12 then
+    addw((0.3 + 0.4 * min(1, need + short)) * f * fatigue(p) - travel(ctx, best.tx, best.ty, p.x, p.y) * 0.6, "hunt", best.k, 0,
+      "Little meat at home (%.0f for %d): trying for a %s again, though my hunts mostly come home empty", meat, n, best.sp)
+    return
+  end
   addw((0.3 + 0.4 * min(1, need + short)) * f * fatigue(p) - travel(ctx, best.tx, best.ty, p.x, p.y) * 0.6, "hunt", best.k, 0,
     "Little meat at home (%.0f for %d): hunting a %s at the woods' edge", meat, n, best.sp)
 end
@@ -1564,9 +1611,22 @@ local function herd_candidates(W, s, p, ctx, now)
           if adult and ck and not H.out then
             local a = H.animals[ck]
             if a.alive and a.cull and (a.held or 0) == 0 then
-              addw(0.5 * fatigue(p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "slaughter", ck, hi,
-                kind == "swine" and "Winter is coming: killing a fattened %s for the larder" or "The hay will not winter all our beasts: killing a %s for the larder",
-                a.sp == "cattle" and "beast" or a.sp)
+              local fq = a.cull_for and W.S.v3.households[a.cull_for]
+              fq = fq and W.S.v3.people[fq.members[1] or 0]
+              if a.cull == "hunger" and fq then
+                addw(0.85 * fatigue(p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "slaughter", ck, hi,
+                  "The %s household has nothing left to eat and no beasts of its own: killing one of our %s for them",
+                  fq.surname, a.sp == "cattle" and "cattle" or (a.sp == "sheep" and "sheep" or a.sp .. "s"))
+              elseif a.cull == "hunger" then
+                -- (S19) the larder is all but empty and the village has little to give
+                addw(0.85 * fatigue(p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "slaughter", ck, hi,
+                  "Almost nothing left to eat at home and little in the village: killing one of our %s for the pot",
+                  a.sp == "cattle" and "cattle" or (a.sp == "sheep" and "sheep" or a.sp .. "s"))
+              else
+                addw(0.5 * fatigue(p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "slaughter", ck, hi,
+                  kind == "swine" and "Winter is coming: killing a fattened %s for the larder" or "The hay will not winter all our beasts: killing a %s for the larder",
+                  a.sp == "cattle" and "beast" or a.sp)
+              end
             end
           end
           -- hay into the rack when the herd is kept in and hungry (not the pigs: scraps)
@@ -2331,6 +2391,32 @@ PLAN.forage = function(W, s, p, ctx, now, cd)
   go(pl, home.dx, home.dy, "home", home.id)
   pl[#pl + 1] = { op = "drop", to = "home", ref = home.id }
   return "Gather food in the woods", "the woods' edge"
+end
+
+-- (S19) Gathering on the shore: a stretch of the waterline (a different one each outing, the nearest
+-- of a few), a basket filled at low water, home.
+PLAN.shore = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local mapm = require("sim.agents.map")
+  local L = require("sim.agents.birds").shore(s)
+  if #L == 0 or not ctx.home then return PLAN.rest(W, s, p, ctx, now, cd) end
+  local best, bs = 0, 1e9
+  local start = 1 + floor(u01(W, p, now, 36) * #L)
+  for j = 0, 15 do
+    local i = L[(start + j * 13) % #L + 1]
+    local x, y = mapm.tile_xy(s, i)
+    local d = dist(p.x, p.y, x, y) + u01(W, p, now, 37 + j) * 0.3
+    if d < bs then best, bs = i, d end
+  end
+  ctx.hh.shore = p.id
+  local x, y = mapm.tile_xy(s, best)
+  go(pl, x, y, "the shore")
+  work(pl, "shore", c.shore_h * (0.8 + 0.4 * u01(W, p, now, 38)), { x1 = x, y1 = y, luck = u01(W, p, now, 39) })
+  local home = ctx.home
+  go(pl, home.dx, home.dy, "home", home.id)
+  pl[#pl + 1] = { op = "drop", to = "home", ref = home.id }
+  return "Gather on the shore", "the shore"
 end
 
 PLAN.tend = function(W, s, p, ctx, now, cd)
@@ -3942,8 +4028,18 @@ PLAN.mow = function(W, s, p, ctx, now, cd)
 end
 
 PLAN.slaughter = function(W, s, p, ctx, now, cd)
-  local S = stock.SP(herd_of(s, cd).animals[cd.a].sp)
+  local a0 = herd_of(s, cd).animals[cd.a]
+  local S = stock.SP(a0.sp)
+  -- (S19) a beast killed for a starving neighbour: its meat carried to their door
+  local fh = a0.cull_for and W.S.v3.households[a0.cull_for]
+  local fb = fh and #fh.members > 0 and s.buildings[fh.home or 0]
   local pl = at_animal(W, s, p, now, cd, "slaughter", S.butcher_h * (0.8 + 0.4 * u01(W, p, now, 67)))
+  if fb then
+    local q = W.S.v3.people[fh.members[1]]
+    go(pl, fb.dx, fb.dy, "the " .. (q and q.surname or "neighbours") .. "' house", fb.id)
+    pl[#pl + 1] = { op = "drop", to = "home", ref = fb.id, gift_to = fh.id }
+    return "Kill a beast for the " .. (q and q.surname or "neighbour") .. "s, who have nothing", "the pen"
+  end
   local home = ctx.home
   go(pl, home.dx, home.dy, "home", home.id)
   pl[#pl + 1] = { op = "drop", to = "home", ref = home.id }
@@ -4102,6 +4198,9 @@ function M.release(W, s, p)
         elseif st.kind == "forage" then
           local hh = W.S.v3.households[p.hh]
           if hh and hh.foraging == p.id then hh.foraging = 0 end
+        elseif st.kind == "shore" then
+          local hh = W.S.v3.households[p.hh]
+          if hh and hh.shore == p.id then hh.shore = 0 end
         elseif st.kind == "thresh" then
           local g = s.granary
           if g then g.threshers = max(0, (g.threshers or 1) - 1) end
@@ -4349,10 +4448,20 @@ function M.decide(W, s, p, now, reason)
       if ib and ib.alive and ib.act == "carried" and ib.hunger > C().infant_feed then night_feed = ib; break end
     end
   end
+  -- (S19) a weaned toddler in their arms who went to bed hungry wakes crying: porridge at home
+  local night_babe = nil
+  if not night_feed and (ctx.night or p.act == "sleep") then
+    local ib = ctx.babe
+    if ib and ib.hunger >= 0.9 and ctx.home and (ctx.home.stock.meals or 0) >= C().porridge then night_babe = ib end
+  end
   -- night: home to sleep (the very tired go earlier)
   if night_feed then
     kind, why = "nurse", sfmt("%s woke hungry in the night", night_feed.name)
     add(1, "nurse", night_feed.id, 0, why)
+    M.cd = CAND[ncand]
+  elseif night_babe then
+    kind, why = "feed_babe", sfmt("%s woke crying with hunger in the night", night_babe.name)
+    add(1, "feed_babe", night_babe.id, 0, why)
     M.cd = CAND[ncand]
   elseif ctx.night and M.guard_herd(W, s, p, ctx, now) then
     -- wolves took a beast lately: a grown man (else woman) of an owning household keeps the

@@ -438,6 +438,8 @@ function M.a_hungry_household_moves_away()
     end
   end
   starve()
+  -- (S19: a hungry household eats its own beasts before it thinks of leaving: a murrain took them)
+  require("sim.agents.premise").murrain(W, H, 0)
   Z.granary.stock.grain = Z.granary.stock.grain + 3000
   econ.learn(W, H, Z, W.hour)
   local t0 = W.hour
@@ -592,6 +594,8 @@ function M.a_man_goes_courting()
     end
   end
   starve()
+  -- (S19: with beasts of their own to kill they would eat those first: a murrain took them)
+  require("sim.agents.premise").murrain(W, H, 0)
   local imp0 = H.acc.import or 0
   local asked, asker = false, nil
   local t2 = W.hour

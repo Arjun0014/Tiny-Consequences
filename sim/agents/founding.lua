@@ -360,11 +360,15 @@ end
 -- The household's grown-ups and whether everyone is at home.
 local function ready(W, hh, now)
   local V = W.S.v3
+  local c = C()
   local home_all, grown = true, 0
   for _, id in ipairs(hh.members) do
     local p = V.people[id]
     if p and p.alive then
       if p.at or p.trip or (p.boat or 0) ~= 0 or (p.riding or 0) ~= 0 then home_all = false end
+      -- (S19) not with a woman about to give birth, nor with a babe only days old
+      if (p.preg_due or 0) > 0 and p.preg_due - now < c.found_due_days * 24 then home_all = false end
+      if people.stage(p, now) == "infant" and now - p.born < c.found_due_days * 24 then home_all = false end
       local st = people.stage(p, now)
       if st == "adult" or st == "elder" then grown = grown + 1 end
     end

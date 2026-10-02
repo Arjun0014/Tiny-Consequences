@@ -1132,6 +1132,18 @@ local function wild_food(W, s, day, fill)
 end
 M.wild_food = wild_food
 
+-- (S19) The shore's food (shellfish on the rocks, seaweed): regrowing along a coast's waterline
+-- (shore_regrow FU a shore tile a day, at most shore_cap_days of it), gathered by the hungry at low
+-- water - poor folk's food, and the coast's famine food.
+local function shore_food(W, s)
+  local c = C()
+  local L = require("sim.agents.birds").shore(s)
+  if #L == 0 then s.shore_food = nil; return end
+  local g = #L * c.shore_regrow
+  local f = (s.shore_food or g * c.shore_cap_days * 0.5) + g
+  s.shore_food = min(f, g * c.shore_cap_days)
+end
+
 -- Food: will the fields feed everyone to the next harvest and leave a store? If not, new field
 -- ground is staked out next to the fields (trees felled, stumps dug out, then it is a plot).
 local function plan_fields(W, s, day)
@@ -1815,6 +1827,7 @@ function M.daily(W, s, day)
   grow_trees(W, s, day)
   hearths(W, s, day)
   wild_food(W, s, day)
+  shore_food(W, s)
   plan_houses(W, s)
   plan_boats(W, s)
   plan_saltpan(W, s)

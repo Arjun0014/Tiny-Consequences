@@ -203,6 +203,22 @@ local dk = {}
 for k, v in pairs(deaths) do dk[#dk + 1] = k .. " " .. v end
 table.sort(dk)
 say("births %d; deaths: %s", births, table.concat(dk, ", "))
+local dl = {}
+for _, id in ipairs(V.order) do
+  local p = V.people[id]
+  if p and not p.alive and p.died and p.died >= t0 then dl[#dl + 1] = p end
+end
+for id, p in pairs(V.people) do
+  local seen = false
+  for _, q in ipairs(dl) do if q == p then seen = true end end
+  if not seen and not p.alive and p.died and p.died >= t0 then dl[#dl + 1] = p end
+end
+table.sort(dl, function(a, b) if a.died ~= b.died then return a.died < b.died end return a.id < b.id end)
+for _, p in ipairs(dl) do
+  local s = V.settlements[p.sett]
+  say("  died d%-3d %-16s %-16s #%-4d age %4.1f %s", clock.day(p.died) - day0, s and s.name or "?", p.name .. " " .. (p.surname or ""), p.id,
+    (p.died - p.born) / (24 * 48), p.died_of or "?")
+end
 local ck = {}
 for k, v in pairs(counts) do ck[#ck + 1] = { k, v } end
 table.sort(ck, function(a, b) return a[1] < b[1] end)
@@ -242,7 +258,7 @@ say("parent-child ties across villages: %s", #ak > 0 and table.concat(ak, "; ") 
 say("accounts (whole run):")
 for _, s in ipairs(V.settlements) do
   local ks = {}
-  for _, k in ipairs({ "trips", "export", "import", "salt_made", "salted", "salt_used", "news_visits", "visit_gifts", "relief_out", "relief_in", "founders", "taken_in", "guests", "wades" }) do
+  for _, k in ipairs({ "trips", "export", "import", "salt_made", "salted", "salt_used", "news_visits", "visit_gifts", "relief_out", "relief_in", "founders", "taken_in", "guests", "wades", "culled_hunger", "meat_given", "shore", "estates", "leaving", "arrived" }) do
     if s.acc[k] and s.acc[k] ~= 0 then ks[#ks + 1] = string.format("%s %.0f", k, s.acc[k]) end
   end
   say("  %-16s %s", s.name, table.concat(ks, ", "))

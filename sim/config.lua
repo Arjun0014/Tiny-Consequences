@@ -835,6 +835,10 @@ C.V3 = {
   wild_regrow = { 0.0045, 0.010, 0.014, 0.0012 },
   wild_cap_days = 8,                      -- the edge holds at most this many days of regrowth
   forage_h = 2.4, forage_basket = 3.0,    -- an outing: a basket of up to 3 FU when the edge is full
+  -- (S19) the shore: shellfish and seaweed regrow shore_regrow FU a shore tile a day (at most
+  -- shore_cap_days of it); an outing at low water fills a basket of up to shore_basket FU; worth it
+  -- only when food is short (the village under shore_short days, or the household's larder low)
+  shore_regrow = 0.02, shore_cap_days = 10, shore_basket = 2.5, shore_h = 2.0, shore_short = 12,
   -- hearths (D-080): cooking burns wood every day; a chilly day burns more
   fuel_cook = 0.55, fuel_warm = 16, fuel_heat = 1.2,  -- logs a day; + fuel_heat per 10 degC below fuel_warm
   -- cooking (D-080): grain from the pantry becomes the household's meals at the hearth
@@ -934,6 +938,9 @@ C.V3 = {
   cattle_share = 0.45, pig_share = 0.7,   -- founding: share of households with a cow, with a sow (by grass, woods)
   pig_reach = 1.0, pig_roam = 0.4, mast_days = { 24, 36 },   -- (pig_roam: how far from the sty pigs root unherded)   -- the pigs' woods: within this of the sty; acorns and beech mast (local days)
   pig_slaughter = { 36, 40 },             -- local days the fattened pigs are killed (the start of winter)
+  -- (S19) hunger: a household with food for under hunger_cull_days while its village's stores hold
+  -- under hunger_cull_village days kills one of its beasts for the pot
+  hunger_cull_days = 1.5, hunger_cull_village = 4,
   manure_hour = 0.012,                    -- loads of dung a sheep-equivalent leaves in its pen an hour
   manure_load = 1.0, manure_fert = 0.03,  -- a load carried; the fertility a load gives a field
   milk_min = 0.35,                        -- milking when the udder holds this share of a day's milk
@@ -1018,6 +1025,7 @@ C.V3 = {
   -- they pack for mig_pack_h hours; each grown-up carries up to mig_carry FU of the household's food
   mig_hunger_days = 6, mig_homeless = 0.5, mig_food_days = 30, mig_min_push = 0.35, mig_days = 3,
   mig_hold = 0.45, mig_road_hour = 0.012, mig_threshold = 0.35, mig_pack_h = 10, mig_carry = 10,
+  mig_hoof_k = 0.5,                       -- (S19) share of the herds' meat counted as food before leaving
   -- (S18, R5) moving by sea in the household's own boat (migrate.sea_plan): boat_places places in a
   -- boat (a grown-up 1, a child 0.5, a babe in arms 0, a small beast 1, a load of goods 0.5), at most
   -- mig_sea_beasts beasts; a skipper is a fisher or a grown-up with sk_fish >= skipper_skill; an
@@ -1082,7 +1090,8 @@ C.V3 = {
   -- (S18) a household founds only if it can take found_short_max of the bread it wants at least
   -- (starving people do not found); a hut lived in found_hut_days is replaced by a proper house once
   -- the place has its granary and woodstore
-  found_short_max = 0.6, found_hut_days = 24,   -- (founders by sea keep room in the boat for this many loads of seed and bread)
+  found_short_max = 0.6, found_hut_days = 24,
+  found_due_days = 8,                     -- (S19) nobody sets off to found within this many days of a birth (before or after)   -- (founders by sea keep room in the boat for this many loads of seed and bread)
   -- the young place: a camp (camp_work person-hours: the ground cleared, a fire ring, a brush lean-to),
   -- a first house a hut (hut_logs, hut_work), water from a river bank within found_water_reach of the
   -- camp or a well dug

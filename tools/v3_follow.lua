@@ -1,8 +1,9 @@
 -- Follow people step by step over a stretch of time (S14 watching): every change of their action,
 -- objective, destination or map, with the time, local hour, where they are, what they carry and why.
 --   luajit tools/v3_follow.lua --pid 52[,53] [--from H] [--to H] [--load assets/worlds/v3.tcsave] [--dt 0.05]
+--          [--premise crowd:2] (S19: the same premises as tools/v3_chronicle.lua; --from-day D: D days after the start)
 package.path = "./?.lua;./?/init.lua;" .. package.path
-local args = { load = "assets/worlds/v3.tcsave", pids = {}, dt = 0.05 }
+local args = { load = "assets/worlds/v3.tcsave", pids = {}, dt = 0.05, premise = {} }
 local i = 1
 while arg[i] do
   local a = arg[i]
@@ -11,6 +12,9 @@ while arg[i] do
   elseif a == "--from" then i = i + 1; args.from = tonumber(arg[i])
   elseif a == "--to" then i = i + 1; args.to = tonumber(arg[i])
   elseif a == "--dt" then i = i + 1; args.dt = tonumber(arg[i])
+  elseif a == "--premise" then i = i + 1; args.premise[#args.premise + 1] = arg[i]
+  elseif a == "--from-day" then i = i + 1; args.from_day = tonumber(arg[i])
+  elseif a == "--days" then i = i + 1; args.days = tonumber(arg[i])
   end
   i = i + 1
 end
@@ -21,9 +25,15 @@ local f = assert(io.open(args.load, "rb"))
 local W = assert(require("sim.worlds").from_save_string(f:read("*a")))
 f:close()
 local V = W.S.v3
-local from = args.from or W.hour
+for _, pr in ipairs(args.premise) do
+  local name, sid = pr:match("^([%w_]+):?(%d*)$")
+  local s = V.settlements[tonumber(sid) or 1]
+  local premise = require("sim.agents.premise")
+  if name == "crowd" then premise.crowd(W, s, 12, 40) else premise[name](W, s) end
+end
+local from = args.from or (args.from_day and W.hour + args.from_day * 24) or W.hour
 if from > W.hour then world.advance(W, from) end
-local to = args.to or (from + 24)
+local to = args.to or (from + 24 * (args.days or 1))
 local last = {}
 local function pack_str(p)
   local t = {}

@@ -1219,6 +1219,7 @@ WORK.stalk = function(W, s, p, st, f)
       local cc = wild.shot(W, s, w, now, p.id)
       H.carcass = { x = cc.x, y = cc.y, meat = cc.meat, hide = cc.hide }
       people.practice(p, "sk_hunt", 1)
+      p.hunts, p.kills = (p.hunts or 0) * 0.92 + 1, (p.kills or 0) * 0.92 + 1
       people.remember(p, now, "Speared a " .. w.sp .. " at the woods' edge")
       -- (S18) out in the country: what is there is known afresh at home
       if s.id == p.sett then require("sim.agents.founding").roamed(W, s, p, now) end
@@ -1389,6 +1390,20 @@ WORK.forage = function(W, s, p, st, f)
   if got < 0.01 then return end
   s.wild = wild - got
   p.carry, p.camt = "food", got
+  s.acc.foraged = (s.acc.foraged or 0) + got
+end
+
+-- (S19) Gathering on the shore: shellfish and seaweed into the basket (fresh: spoils like fish).
+WORK.shore = function(W, s, p, st, f)
+  local hh = W.S.v3.households[p.hh]
+  if hh and hh.shore == p.id then hh.shore = 0 end
+  local c = C()
+  local sf = s.shore_food or 0
+  local got = min(c.shore_basket * f * (0.75 + 0.5 * (st.luck or 0.5)), sf * 0.2)
+  if got < 0.01 then return end
+  s.shore_food = sf - got
+  p.carry, p.camt = "fish", got
+  s.acc.shore = (s.acc.shore or 0) + got
   s.acc.foraged = (s.acc.foraged or 0) + got
 end
 
@@ -2396,6 +2411,29 @@ DROP.any = function(W, s, p, st)
     b.stock.wool = (b.stock.wool or 0) + n
   elseif what == "meat" then
     b.stock.meat = (b.stock.meat or 0) + n
+    local to = st.gift_to and W.S.v3.households[st.gift_to]
+    if to then
+      -- (S19) meat for a starving neighbour household: both remember it
+      local V = W.S.v3
+      local now = V.now or W.hour
+      local q1 = V.people[to.members[1] or 0]
+      local mine = V.households[p.hh]
+      if mine then
+        mine.gave = mine.gave or {}
+        mine.gave[to.id] = (mine.gave[to.id] or 0) + n
+        to.got = to.got or {}
+        to.got[mine.id] = (to.got[mine.id] or 0) + n
+      end
+      s.acc.meat_given = (s.acc.meat_given or 0) + n
+      people.remember(p, now, sfmt("Killed one of our beasts for the %s household, who had nothing: %.0f FU of meat", q1 and q1.surname or "neighbour", n))
+      for _, id in ipairs(to.members) do
+        local q = V.people[id]
+        if q and q.alive and people.stage(q, now) ~= "infant" then
+          people.bond(q, p, 0.08)
+          people.remember(q, now, sfmt("%s killed one of their beasts for us when we had nothing: %.0f FU of meat", p.name, n))
+        end
+      end
+    end
   elseif what == "leather" or what == "hides" then
     b.stock[what] = (b.stock[what] or 0) + n
   elseif what == "hay" then

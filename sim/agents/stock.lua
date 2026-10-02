@@ -892,6 +892,7 @@ function M.daily(W, s, day, push)
   local doy = clock.local_doy(now, W.grid.lat[s.cell])
   if doy == c.slaughter[1] then s.acc.culled_plan = (s.acc.culled_plan or 0) + M.plan_cull(W, s) end
   if doy == c.pig_slaughter[1] then s.acc.culled_plan = (s.acc.culled_plan or 0) + M.plan_pig_cull(W, s) end
+  s.acc.culled_hunger = (s.acc.culled_hunger or 0) + M.plan_hunger_cull(W, s, now)
   local year = floor((day + (W.grid.lat[s.cell] < 0 and 24 or 0)) / 48)
   for hi = 1, #M.HERDS do
     local H = s.herds[M.HERDS[hi]]
@@ -1107,6 +1108,93 @@ function M.plan_cull(W, s)
       a.cull = true
       over = over - S.se
       n = n + 1
+    end
+  end
+  return n
+end
+
+-- (S19) Hunger: a household whose larder would feed it under hunger_cull_days while its village's
+-- stores have little to give kills one of its own beasts for the pot - the most dispensable first
+-- (a pig, the old, males beyond a sire, the young; the plough ox last of all), one at a time.
+-- Marked a.cull = "hunger". Returns how many were marked.
+function M.plan_hunger_cull(W, s, now)
+  local c = C()
+  local V = W.S.v3
+  if (s.need and s.need.food_days or 99) >= c.hunger_cull_village then return 0 end
+  local n = 0
+  for _, hid in ipairs(s.households) do
+    local hh = V.households[hid]
+    local home = hh and #hh.members > 0 and s.buildings[hh.home or 0]
+    if home and not (hh.migrate and not hh.migrate.arrived and not hh.migrate.given_up) then
+      local st = home.stock
+      local food = (st.food or 0) + (st.meals or 0) + (st.smoked or 0) + (st.cheese or 0) + (st.meat or 0) + (st.fish or 0)
+      if food < #hh.members * 0.75 * c.hunger_cull_days then
+        local marked, best, bs = false, nil, -1e9
+        for _, kind in ipairs(M.HERDS) do
+          local H = s.herds and s.herds[kind]
+          for _, a in ipairs(H and H.animals or {}) do
+            if a.alive and a.owner == hid then
+              if a.cull then marked = true end
+              local S = SP(a.sp)
+              local age = (now - a.born) / 1152
+              local sc = (a.sp == "pig" and 3 or 0) + (age > S.old_years - 1 and 2 or 0) + (a.sex == "m" and 1.5 or 0)
+                + (age < S.young_years and 0.5 or 0) - (a.ox and 10 or 0) + S.meat * 0.01 - a.k * 1e-6
+              if (a.held or 0) == 0 and (a.led or 0) == 0 and (a.yoke or 0) == 0 and sc > bs then best, bs = a, sc end
+            end
+          end
+        end
+        if best and not marked then
+          best.cull = "hunger"
+          n = n + 1
+        elseif not best and not marked then
+          -- (S19) nothing of their own to kill: a neighbour with beasts - kin first, then whoever has
+          -- most - kills one for them and brings them the meat
+          local people = require("sim.agents.people")
+          local donor, ds = nil, 0
+          for _, h2 in ipairs(s.households) do
+            local d = V.households[h2]
+            local dh = d and h2 ~= hid and #d.members > 0 and s.buildings[d.home or 0]
+            if dh then
+              local own = 0
+              for _, kind in ipairs(M.HERDS) do
+                local H = s.herds and s.herds[kind]
+                for _, a in ipairs(H and H.animals or {}) do
+                  if a.alive and a.owner == h2 and not a.ox then own = own + 1 end
+                  if a.alive and a.owner == h2 and a.cull_for == hid then own = -1e9 end
+                end
+              end
+              if own > 0 then
+                local kin = 0
+                local q0 = V.people[hh.members[1]]
+                for _, qid in ipairs(d.members) do
+                  local q = V.people[qid]
+                  if q and q0 and (q.surname == q0.surname or people.is_kin(W, q0, qid)) then kin = 1 end
+                end
+                local sc = kin * 10 + own - h2 * 1e-6
+                if sc > ds then donor, ds = d, sc end
+              end
+            end
+          end
+          if donor then
+            local db, dbs = nil, -1e9
+            for _, kind in ipairs(M.HERDS) do
+              local H = s.herds and s.herds[kind]
+              for _, a in ipairs(H and H.animals or {}) do
+                if a.alive and a.owner == donor.id and not a.cull and not a.ox and (a.held or 0) == 0 and (a.led or 0) == 0 then
+                  local S = SP(a.sp)
+                  local age = (now - a.born) / 1152
+                  local sc = (a.sp == "pig" and 3 or 0) + (age > S.old_years - 1 and 2 or 0) + (a.sex == "m" and 1.5 or 0) + S.meat * 0.01 - a.k * 1e-6
+                  if sc > dbs then db, dbs = a, sc end
+                end
+              end
+            end
+            if db then
+              db.cull, db.cull_for = "hunger", hid
+              n = n + 1
+            end
+          end
+        end
+      end
     end
   end
   return n

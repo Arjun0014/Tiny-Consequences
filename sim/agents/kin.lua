@@ -123,7 +123,9 @@ function M.infant_tick(W, s, ib, now, dt, interrupt, pos)
     ib.called = now
     local m = M.nursing_mother(W, ib, now)
     local who = m or q
-    if not m and asleep then who = nil end   -- (a weaned toddler sleeps through; breakfast in the morning)
+    -- (a weaned toddler sleeps through; breakfast in the morning - S19: unless it went to bed so
+    -- hungry that it wakes crying)
+    if not m and asleep and ib.hunger < 0.9 then who = nil end
     if not m and q and who then
       -- weaned: only worth calling if there is something at home to feed them (or to cook)
       local home = people.home(W, s, q)

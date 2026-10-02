@@ -676,7 +676,7 @@ function M.daily(W, s, now)
       hh.tplan = (home and #partners > 0) and M.best_trade(W, s, hh, home, "house", partners, M.land_route, now) or nil
       -- (a household with a sound boat may carry its own goods or the village's by sea, D-102)
       hh.splan = nil
-      if home and #sea > 0 and M.own_boat(s, hh) then
+      if home and #sea > 0 and M.own_boat(s, hh, true) then
         local a = M.best_trade(W, s, hh, home, "house", sea, M.sea_route, now)
         local b = M.best_trade(W, s, hh, home, "village", sea, M.sea_route, now)
         if b and (not a or b.net > a.net) then a = b; a.pool = "village" elseif a then a.pool = "house" end
@@ -774,6 +774,11 @@ function M.plan_ask(W, s, partners, now, route)
   for _, o in ipairs(partners) do
     if not route or (o.dock and o.granary) then
       local _, _, sp = M.expect(W, s, o, "grain", now)
+      -- (S19) what was seen there may have changed: as the news ages, a village is hoped to have a
+      -- little grain to spare (two loads) - hungry people ask on old news
+      local kn = s.know and s.know[o.id]
+      local w = kn and exp(-(now - kn.t) / (C().trade_fade * 24)) or 0
+      sp = sp * w + 20 * (1 - w)
       local rel = M.rel(s, o)
       local sc = min(sp, route and 10 * c.boat_hold or 10) * (0.3 + rel.trust) * (1 + 0.2 * min(5, rel.gifts))
       if sp > 2 and sc > bs then best, bs = o, sc end
@@ -810,11 +815,13 @@ function M.sea_route(W, s, o)
   return r.len / c.sail_speed, c.boat_hold, 2
 end
 
--- A household's sound boat at its dock (not out, not away), or nil.
-function M.own_boat(s, hh)
+-- A household's sound boat at its dock (not out, not away), or nil. (S19) `plan`: for the morning's
+-- planning, a boat out fishing counts too (it will be back).
+function M.own_boat(s, hh, plan)
   local c = C()
   for _, boat in ipairs(s.boats or {}) do
-    if boat.owner == hh.id and not boat.lost and not boat.move and (boat.cond or 1) > c.boat_unsafe + 0.15 and boat.crew == 0 and not boat.away then
+    if boat.owner == hh.id and not boat.lost and not boat.moved and not boat.move and (boat.cond or 1) > c.boat_unsafe + 0.15
+      and (plan or boat.crew == 0) and not boat.away then
       return boat
     end
   end

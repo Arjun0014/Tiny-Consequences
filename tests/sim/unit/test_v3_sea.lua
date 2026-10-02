@@ -45,6 +45,8 @@ function M.an_island_household_moves_by_sea()
     end
   end
   require("sim.agents.premise").fail_harvest(W, H)
+  -- (S19: a hungry household eats its own beasts before it thinks of leaving: a murrain took most)
+  require("sim.agents.premise").murrain(W, H, 1)
   starve()
   Z.granary.stock.grain = Z.granary.stock.grain + 3000
   econ.learn(W, H, Z, W.hour)

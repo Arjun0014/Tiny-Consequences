@@ -45,6 +45,29 @@ function M.fail_harvest(W, s)
   end
 end
 
+-- (S19) A murrain at village s: its beasts died of a sickness, all but `keep` a household (the
+-- youngest; the plough oxen spared). Since S19 a hungry household kills its own beasts before it
+-- thinks of leaving, so a premise for hunger that should move people takes the herds too.
+function M.murrain(W, s, keep)
+  keep = keep or 0
+  local now = W.S.v3.now or W.hour
+  local kept = {}
+  for _, kind in ipairs({ "flock", "cattle", "swine" }) do
+    local H = s.herds and s.herds[kind]
+    local list = {}
+    for _, a in ipairs(H and H.animals or {}) do if a.alive and not a.ox then list[#list + 1] = a end end
+    table.sort(list, function(x, y) if x.born ~= y.born then return x.born > y.born end return x.k < y.k end)
+    for _, a in ipairs(list) do
+      if (kept[a.owner] or 0) < keep then
+        kept[a.owner] = (kept[a.owner] or 0) + 1
+      else
+        a.alive, a.died, a.cause = false, now, "sickness"
+        s.acc.stock_died = (s.acc.stock_died or 0) + 1
+      end
+    end
+  end
+end
+
 -- Village s's stores emptied (granary and larders), as after a store fire or a long hunger.
 function M.empty_stores(W, s)
   local settle = require("sim.agents.settle")

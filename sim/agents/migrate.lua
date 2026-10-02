@@ -42,7 +42,9 @@ function M.push(W, s, hh, now)
   local pop = max(1, #s.members)
   local g = econ.village_stock(W, s, "grain")
   local r = econ.village_stock(W, s, "smoked")
-  local days = (g + r) / (pop * 0.7)
+  -- (S19) and the beasts they could kill before giving up the place (a share of the meat on the hoof:
+  -- breeding stock is the last to go)
+  local days = (g + r + M.meat_on_hoof(W, s) * C().mig_hoof_k) / (pop * 0.7)
   if days < c.mig_hunger_days then
     push = push + (c.mig_hunger_days - days) / c.mig_hunger_days
     why = sfmt("the stores will feed us %.0f days more", days)
@@ -71,6 +73,24 @@ function M.push(W, s, hh, now)
     why = why or "the wolves come to our pens"
   end
   return push, why
+end
+
+-- (S19) The meat on the hoof of village s's herds (FU), counted once a game hour (runtime).
+local HOOF = setmetatable({}, { __mode = "k" })
+function M.meat_on_hoof(W, s)
+  local h = floor(W.hour)
+  local e = HOOF[s]
+  if e and e.h == h then return e.m end
+  local stock = require("sim.agents.stock")
+  local m = 0
+  for _, kind in ipairs(stock.HERDS) do
+    local H = s.herds and s.herds[kind]
+    for _, a in ipairs(H and H.animals or {}) do
+      if a.alive and not a.ox and (a.led or 0) == 0 then m = m + stock.SP(a.sp).meat end
+    end
+  end
+  HOOF[s] = { h = h, m = m }
+  return m
 end
 
 -- What draws household hh of village s to village o (by what s knows of o), and why.
@@ -123,9 +143,12 @@ function M.daily(W, s, now)
   local partners
   for _, hid in ipairs(s.households) do
     local hh = V.households[hid]
-    if hh and #hh.members > 0 and (not hh.migrate or hh.migrate.given_up) then
+    -- (S19: not a household already set on making a new place)
+    if hh and #hh.members > 0 and (not hh.migrate or hh.migrate.given_up) and not (hh.found and not hh.found.given_up) then
       local push, pwhy = M.push(W, s, hh, now)
-      hh.pushd = push >= c.mig_min_push and (hh.pushd or 0) + 1 or 0
+      -- (S19: a better day - a sack of grain from a neighbour - eases the count by one; it does not
+      -- wipe out a week of hunger)
+      hh.pushd = push >= c.mig_min_push and (hh.pushd or 0) + 1 or max(0, (hh.pushd or 0) - 1)
       -- (how long a household bears hardship before it thinks of leaving is its own)
       local patience = c.mig_days + floor(4 * rng.float(W.seed, rng.S.V3_THINK, hid, 0, 131))
       if hh.pushd >= patience then
@@ -154,8 +177,9 @@ function M.daily(W, s, now)
             if u > bu then best, bu, bwhy, bsea = o, u, why, nil end
           end
         end
-        -- (S18) over the sea in their own boat, to villages they know of
-        if econ.own_boat(s, hh) then
+        -- (S18) over the sea in their own boat, to villages they know of (S19: the boat may be out
+        -- fishing this morning)
+        if econ.own_boat(s, hh, true) then
           for _, o in ipairs(trade.sea_partners(W, s)) do
             if o.alive ~= false and o.id ~= s.id then
               local sp = M.sea_plan(W, s, hh, o, now)
@@ -235,7 +259,7 @@ M.kin_at = kin_at
 function M.boat_party(W, s, hh, now)
   local c = C()
   local V = W.S.v3
-  local boat = econ.own_boat(s, hh)
+  local boat = econ.own_boat(s, hh, true)
   if not boat then return nil end
   local skipper, places, mouths = nil, 0, 0
   for _, id in ipairs(hh.members) do
