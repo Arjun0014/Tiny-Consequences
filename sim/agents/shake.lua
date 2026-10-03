@@ -71,17 +71,46 @@ function M.felt(W, s, at, mag)
   return max(0, mag - C().quake_fall * d - C().quake_floor)
 end
 
--- A quake: an event, and every village that feels it shaken.
-function M.quake(W, at, mag, t, cause)
+-- A quake: an event, and every village that feels it shaken; a strong one is followed by aftershocks.
+function M.quake(W, at, mag, t, cause, after)
   local V = W.S.v3
+  local c = C()
   local ev = 0
   if W.record_events then ev = require("sim.causality.events").emit(W, "quake", at, cause or 0, mag, { mag = mag }) end
+  -- (S20) aftershocks: smaller quakes at the same place over the next days, most of them soon after
+  -- (Omori); the buildings the first one cracked fall the more easily
+  if not after and mag >= c.after_mag then
+    local Q = state(W)
+    Q.after = Q.after or {}
+    local n = floor((mag - c.after_mag) * c.after_n) + 1
+    for k = 1, n do
+      local u1, u2 = u(W, at, floor(t * 60) % 4294967296, 10 + k), u(W, at, floor(t * 60) % 4294967296, 40 + k)
+      Q.after[#Q.after + 1] = { cell = at, mag = mag - c.after_drop - 1.5 * u1, t = t + c.after_days * 24 * u2 * u2, cause = ev }
+    end
+  end
   -- (S20) under the sea, a strong one raises a wave (tsunami.lua, injected)
   if M.wave then M.wave(W, at, mag, t, ev) end
   for _, s in ipairs(V.settlements) do
     if s.alive then
       local I = M.felt(W, s, at, mag)
       if I > 0 then M.shake(W, s, I, t, ev, mag) end
+    end
+  end
+end
+
+-- (S20) Hourly: the aftershocks whose time has come.
+function M.aftershocks(W, now)
+  local Q = W.S.v3.quake
+  local A = Q and Q.after
+  if not A or #A == 0 then return end
+  local i = 1
+  while i <= #A do
+    local a = A[i]
+    if a.t <= now then
+      table.remove(A, i)
+      M.quake(W, a.cell, a.mag, a.t, a.cause, true)
+    else
+      i = i + 1
     end
   end
 end

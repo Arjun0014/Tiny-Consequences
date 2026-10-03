@@ -55,7 +55,9 @@ function M.a_night_quake_traps_and_neighbours_dig()
     if hh and hh.lodge then lodged = lodged + 1 end
   end
   T.ok(lodged >= 1, lodged .. " households taken in by others")
-  return string.format("%d fell, %d trapped, %d dug out, %d households lodging", fell, trapped, dug, lodged)
+  -- (S20) aftershocks followed it, felt again
+  T.ok((s.acc.quakes or 0) >= 2, (s.acc.quakes or 0) .. " quakes felt (the first and its aftershocks)")
+  return string.format("%d fell, %d trapped, %d dug out, %d households lodging; %d quakes felt with the aftershocks", fell, trapped, dug, lodged, s.acc.quakes or 0)
 end
 
 -- At midday most are out of doors: what falls traps few or none.

@@ -1183,3 +1183,6 @@ Decision:
 2. **No child handed to one setting out**: `kin.minder` and `WORK.hand` skip anyone with a trip or a raid in hand.
 3. A frost on a sowing is remembered once by its household (`pl.frost_told`), not every frosty night (225 memories in the run).
 Result: the same hard winter, no deaths from hunger (illness 3, old age 3). Tools: `v3_chronicle.lua` and `v3_follow.lua` accept named premises (`hard_winter`, `cold_snap`, `quake`, `eruption`, `tsunami`, ...).
+
+## D-165 · 2026-10-03 · Aftershocks (session 20)
+Decision (`shake.quake`/`shake.aftershocks`, hourly from `sim/agents/init.lua`; `after_mag` 5.8, `after_n` 2, `after_drop` 1.0, `after_days` 3): a quake of magnitude 5.8 or more is followed by 1 + (mag - 5.8) x 2 smaller quakes at the same cell (magnitude - 1.0 - 0..1.5) within 3 days, most of them soon after (time ~ u^2) - each felt and answered as any quake: people out from under roofs again, the buildings the first one cracked falling the more easily, a wave if one is strong enough under the sea. The night quake under Tekheim: 3 quakes felt. Not done: people afraid to sleep under a roof after a quake (a choice that would read the deeds of the quake).

@@ -1341,7 +1341,10 @@ C.V3 = {
   -- tsu_safe run inland; within the run-up buildings fall, people are swept (tsu_hurt x depth), moored
   -- boats and beasts lost, fields salted (tsu_salt)
   tsu_mag = 7.0, tsu_vei = 5, tsu_k = 0.5, tsu_min = 0.05, tsu_delay = 0.3, tsu_speed = 4, tsu_see = 0.4,
-  tsu_shout = 0.5, tsu_safe = 0.6, tsu_hurt = 1.3, tsu_salt = 0.25,   -- (S20) trust lost by a village whose man another's struck (x the blow)   -- (S20) a band at the gate waits up to this long for those of the party still coming
+  tsu_shout = 0.5, tsu_safe = 0.6, tsu_hurt = 1.3, tsu_salt = 0.25,
+  -- (S20) aftershocks: a quake of after_mag or more is followed by 1 + (mag - after_mag) x after_n
+  -- smaller ones (mag - after_drop - 0..1.5) within after_days, most of them soon after
+  after_mag = 5.8, after_n = 2, after_drop = 1.0, after_days = 3,   -- (S20) trust lost by a village whose man another's struck (x the blow)   -- (S20) a band at the gate waits up to this long for those of the party still coming
   -- (S20, R6) restocking: the beasts a household lost against its will (sickness, hunger, wolves,
   -- fire, thieves; meat FU, fading herd_lost_fade a day) against what it had: from restock_min_fu, a
   -- loss of take_restock of it is a motive to take beasts even when fed: gain + take_gain_k x the

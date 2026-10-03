@@ -368,6 +368,7 @@ function sys.hour(W)
   local day = floor(now / 24)
   -- (S20, R6.5f) the plates' boundaries gather stress at the planet's day
   if now % 24 == 0 then shake.daily(W, day); volcano.daily(W, day) end
+  shake.aftershocks(W, now)   -- (S20)
   for i = 1, #V.settlements do
     local s = V.settlements[i]
     if s.alive then
