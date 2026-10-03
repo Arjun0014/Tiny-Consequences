@@ -98,7 +98,10 @@ end
 function M.hover(W, sx, sy)
   if not powers.armed or not W then return end
   local view = require("game.view.view")
-  view.aim_cell = picking.cell_at(W, sx, sy)
+  local c, ux, uy, uz = picking.cell_at(W, sx, sy)
+  view.aim_cell = c
+  view.aim_point = view.aim_point or {}
+  view.aim_point[1], view.aim_point[2], view.aim_point[3] = ux, uy, uz
 end
 
 function M.click(W, sx, sy)

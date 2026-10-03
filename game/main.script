@@ -19,6 +19,7 @@ local selection = require("game.ui.selection")
 local H_SPACE = hash("key_space")
 local H_SHIFT = hash("key_shift")
 local H_F3 = hash("key_f3")
+local H_M = hash("key_m")   -- (S21: the world's sound on and off)
 local POWER_KEYS = {
 	[hash("key_1")] = 1, [hash("key_2")] = 2, [hash("key_3")] = 3, [hash("key_4")] = 4,
 	[hash("key_5")] = 5, [hash("key_6")] = 6, [hash("key_7")] = 7, [hash("key_8")] = 8,
@@ -452,6 +453,10 @@ function on_input(self, action_id, action)
 		return true
 	elseif action_id == H_F3 then
 		uistate.debug = not uistate.debug
+		return true
+	elseif action_id == H_M then
+		local audio = require("game.audio.audio")
+		audio.ON = not audio.ON
 		return true
 	end
 	if self.shift and self.ready and POWER_KEYS[action_id] then

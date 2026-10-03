@@ -40,7 +40,7 @@ end
 
 local pos, rot, scl = vmath.vector3(), vmath.quat(), vmath.vector3()
 
-function M.update(W, dt, cell, steps)
+function M.update(W, dt, cell, steps, point)
   if not M.id then return end
   local on = cell ~= nil and W ~= nil
   if on ~= M.on then M.on = on; msg.post(M.url, on and MSG_ENABLE or MSG_DISABLE) end
@@ -48,6 +48,18 @@ function M.update(W, dt, cell, steps)
   if not on then return end
   local g = W.grid
   local x, y, z = g.X[cell], g.Y[cell], g.Z[cell]
+  if (steps or 0) == 0 and point and point[1] then
+    -- (S21) close in, a point power (lightning) aims at the point itself, its ring as wide as a bolt reaches
+    x, y, z = point[1], point[2], point[3]
+    local r = M.surface(x, y, z) + 0.01
+    pos.x, pos.y, pos.z = x * r, y * r, z * r
+    go.set_position(pos, M.id)
+    go.set_rotation(vmx.set_up_yaw(rot, x, y, z, state.time * 0.6), M.id)
+    local s = (require("sim.config").V3.strike_pull or 0.08) * (1 + 0.08 * math.sin(state.time * 5))
+    scl.x, scl.y, scl.z = s, s, s
+    go.set_scale(scl, M.id)
+    return
+  end
   local r = M.surface(x, y, z) + 0.035
   pos.x, pos.y, pos.z = x * r, y * r, z * r
   go.set_position(pos, M.id)

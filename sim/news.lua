@@ -25,6 +25,9 @@ M.KINDS = {
   theft = { 2, "paw" }, leaving = { 2, "people" }, arriving = { 2, "people" }, founding = { 2, "house" },
   kinhelp = { 2, "heart" }, orphans = { 2, "heart" }, death = { 2, "skull" }, bride = { 2, "heart" },
   wolves = { 3, "wolf" }, hunger = { 3, "bread" }, winter = { 3, "snow" }, heat = { 3, "heat" }, ash = { 3, "volcano" },
+  -- (everyday life: STORY level, weighed below danger and pressure - a quiet world still shows its life)
+  birth = { 2, "heart", 14 }, passing = { 2, "person", 16 }, wedding = { 2, "heart", 12 }, house = { 2, "house", 10 },
+  trade = { 2, "people", 16 }, fair = { 2, "star", 32 }, relief = { 2, "bread", 34 },
 }
 
 local function rt(W)
@@ -56,7 +59,7 @@ local function story(W, R, key, kind, sid, now, fields)
   local st = R.by_key[key]
   if st and not st.closed then return st, false end
   local K = M.KINDS[kind]
-  st = { id = R.next_id, kind = kind, level = K[1], icon = K[2], key = key, sid = sid, t0 = now, t1 = now, active = true,
+  st = { id = R.next_id, kind = kind, level = K[1], icon = K[2], weight = K[3], key = key, sid = sid, t0 = now, t1 = now, active = true,
     closed = false, lines = {}, n = {} }
   R.next_id = R.next_id + 1
   if fields then for k, v in pairs(fields) do st[k] = v end end
@@ -229,8 +232,14 @@ local function on_deed(W, R, d, now)
       local nd = count(inc, "dead")
       line(inc, sfmt("%s died (%s)", to and to.name or "someone", cause), d.t)
       inc.deaths = nd
-    elseif cause ~= "old age" then
+    else
       local age = to and (d.t - to.born) / 1152 or 30
+      if cause == "old age" or (cause == "illness" and age >= 16) then
+        local st = story(W, R, "passing:" .. d.id, "passing", s.id, d.t, { deed = d.id, pid = d.to, x = s.sqx, y = s.sqy })
+        st.title = sfmt("A death at %s", s.name)
+        line(st, sfmt("%s %s died of %s, aged %d", to and to.name or "?", to and to.surname or "", cause, floor(age)), d.t)
+        st.active = false
+      end
       if age < 16 or cause == "hunger" or cause == "wounds" or cause == "drowned" then
         local st = story(W, R, "death:" .. s.id .. ":" .. floor(d.t / 24), "death", s.id, d.t, { deed = d.id, pid = d.to, x = s.sqx, y = s.sqy })
         local nd = count(st, "dead")
@@ -277,9 +286,39 @@ local function on_event(W, R, e, now)
       line(st, "Settlers have made camp there", now)
       st.active = false
     end
+  elseif e.kind == "birth" then
+    local s = sett(W, e.data and e.data.settlement)
+    local baby = person(W, e.data and e.data.person)
+    if s and baby then
+      local st = story(W, R, "birth:" .. s.id .. ":" .. floor(now / 24), "birth", s.id, now, { ev = e.id, pid = baby.mother, x = s.sqx, y = s.sqy })
+      local nb = count(st, "babies")
+      st.title = nb == 1 and sfmt("A baby at %s", s.name) or sfmt("%d babies at %s", nb, s.name)
+      local m = person(W, baby.mother)
+      line(st, sfmt("%s was born to %s", baby.name, m and (m.name .. " " .. m.surname) or "?"), now)
+      st.active = false
+    end
+  elseif e.kind == "house_built" then
+    local s = sett(W, e.data and e.data.settlement)
+    local b = s and s.buildings[e.data.building or 0]
+    if s and b and (b.kind == "house" or b.kind == "hut") then
+      local st = story(W, R, "house:" .. s.id .. ":" .. floor(now / 48), "house", s.id, now, { ev = e.id, x = b.cx, y = b.cy })
+      local nh = count(st, "houses")
+      st.title = nh == 1 and sfmt("A new house at %s", s.name) or sfmt("%d new houses at %s", nh, s.name)
+      line(st, sfmt("Raised for %s", household_name(W, b.hh)), now)
+      st.active = false
+    end
   elseif e.kind == "marriage" then
     local a, b = person(W, e.data and e.data.a), person(W, e.data and e.data.b)
     local who = (a and a.move and a) or (b and b.move and b)
+    if not who and a and b then
+      local s = sett(W, e.data and e.data.settlement)
+      if s then
+        local st = story(W, R, "wedding:" .. e.id, "wedding", s.id, now, { ev = e.id, pid = a.id, x = s.sqx, y = s.sqy })
+        st.title = sfmt("A wedding at %s", s.name)
+        line(st, sfmt("%s and %s married", a.name, b.name), now)
+        st.active = false
+      end
+    end
     if who and who.move and who.move.to ~= who.move.from then
       local to, from = sett(W, who.move.to), sett(W, who.move.from)
       local st = story(W, R, "bride:" .. who.id, "bride", from and from.id or 0, now, { pid = who.id, x = from and from.sqx, y = from and from.sqy })
@@ -375,7 +414,8 @@ local function poll(W, R, s, now)
   end
   -- a band raised to raid, gathering or on its way
   local Rd = s.raid
-  if Rd and not Rd.done_news then
+  R.raid_done = R.raid_done or {}
+  if Rd and not R.raid_done[s.id .. ":" .. Rd.id] then
     local o = sett(W, Rd.to)
     local key = "raid:" .. s.id .. ":" .. Rd.id
     local st = story(W, R, key, "raid", s.id, now, { pid = Rd.leader })
@@ -401,7 +441,7 @@ local function poll(W, R, s, now)
       end
     end
     st.active, st.t1 = true, now
-    if now > Rd.depart + 48 then Rd.done_news = true; st.active = false end
+    if now > Rd.depart + 48 then R.raid_done[s.id .. ":" .. Rd.id] = true; st.active = false end
   end
   -- households leaving, founding
   for _, hid in ipairs(s.households) do
@@ -442,6 +482,53 @@ local function poll(W, R, s, now)
         end
       end
     end
+  end
+  -- traders at work here (people of another village with goods, their deals made) and relief carried
+  for _, id in ipairs(s.visitors or {}) do
+    local p = V.people[id]
+    local tr = p and p.alive and p.at == s.id and p.trip
+    if tr and (tr.sold or 0) > 0 and not tr.news_said then
+      R.trade_said = R.trade_said or {}
+      local key = p.id .. ":" .. floor(tr.t0 or 0)
+      if not R.trade_said[key] then
+        R.trade_said[key] = true
+        local home = sett(W, p.sett)
+        local rel = home and require("sim.agents.econ").rel(home, s)
+        local first = rel and rel.deals <= 1
+        local st = story(W, R, "trade:" .. key, "trade", s.id, now, { pid = p.id, x = s.sqx, y = s.sqy })
+        st.title = first and sfmt("%s and %s trade", home and home.name or "?", s.name) or sfmt("A trader at %s", s.name)
+        if first then st.weight = 30 end
+        local GW = { smoked = "smoked fish", wool = "wool", cloth = "cloth", hides = "hides", leather = "leather", salt = "salt", grain = "grain",
+          cheese = "cheese", quern = "a quern", iron = "iron", sheep = "sheep", goat = "goats", cattle = "cattle", pig = "pigs" }
+        line(st, sfmt("%s of %s traded %s for %s%s", p.name, home and home.name or "?", GW[tr.give] or tr.give or "goods", GW[tr.take] or tr.take or "goods",
+          first and " - the first trade between them" or ""), now)
+        st.active = false
+      end
+    end
+  end
+  for _, id in ipairs(s.members) do
+    local p = V.people[id]
+    local tr = p and p.alive and p.trip
+    if tr and tr.ask and (tr.gift or 0) > 0.5 and p.at ~= s.id then
+      R.relief_said = R.relief_said or {}
+      local key = p.id .. ":" .. floor(tr.t0 or 0)
+      if not R.relief_said[key] then
+        R.relief_said[key] = true
+        local o = sett(W, tr.to)
+        local st = story(W, R, "relief:" .. key, "relief", s.id, now, { pid = p.id, x = s.sqx, y = s.sqy })
+        st.title = sfmt("Food for %s", s.name)
+        line(st, sfmt("%s is bringing %d measures from %s", p.name, floor(tr.gift + 0.5), o and o.name or "?"), now)
+        st.active = false
+      end
+    end
+  end
+  local fair = s.fair
+  if fair and fair.host == s.id and now >= fair.t0 - 6 and now <= fair.t1 then
+    local st = story(W, R, "fair:" .. s.id .. ":" .. floor(fair.t0), "fair", s.id, now, { x = s.sqx, y = s.sqy })
+    st.title = sfmt("A fair at %s", s.name)
+    local n = #(fair.present or {})
+    if n ~= st.n.present then st.n.present = n; line(st, n > 0 and sfmt("%s come to it", plural(n, "person", "people")) or "Called for after the harvest", now) end
+    st.active, st.t1 = true, now
   end
   -- hunger at the edge
   local edge, starving = 0, nil
@@ -525,7 +612,7 @@ function M.score(W, st, now)
   local n = st.n
   local mag = (n.houses or 0) * 6 + (n.fell or 0) * 6 + (n.dead or 0) * 12 + (st.deaths or 0) * 12 + (n.trapped or 0) * 8
     + (n.beasts or 0) * 2 + (n.fields or 0) * 3 + (n.wet or 0) * 3 + (n.edge or 0) * 4 + (n.party or 0) * 3
-  local s = M.LEVEL_W[st.level] + mag - (now - st.t1) * (st.active and 0.2 or 1.5)
+  local s = (st.weight or M.LEVEL_W[st.level]) + mag - (now - st.t1) * (st.active and 0.2 or 1.5)
   if root_of(W, st) == "you" then s = s + 25 end
   if st.active and st.level == 1 then s = s + 60 end
   if st.weak then s = s - 70 end
@@ -586,6 +673,10 @@ local EV_TEXT = {
   power_meteor = "YOUR meteor", power_oil = "YOUR oil", power_blight = "YOUR blight",
 }
 
+-- (stories of people's own doing: with no deed or event behind them their root is PEOPLE, not nature)
+local PEOPLE_KINDS = { trade = true, fair = true, relief = true, raid = true, leaving = true, founding = true, kinhelp = true,
+  wedding = true, house = true, theft = true, bride = true, killing = true }
+
 -- The causes of story st: deeds by their answers / cause / event, events by their parents, to the root.
 function M.chain(W, st)
   local V = W.S.v3
@@ -621,6 +712,7 @@ function M.chain(W, st)
       break
     end
   end
+  if #links == 0 and PEOPLE_KINDS[st.kind] then root = "people" end
   return { links = links, root = root }
 end
 

@@ -270,7 +270,7 @@ function M.update(dt)
     end
     selring.update(W, dt)
     local armed = powers_ui.armed and powers_ui.DEFS[powers_ui.armed]
-    aim.update(W, dt, armed and M.aim_cell or nil, armed and armed.radius or 0)
+    aim.update(W, dt, armed and M.aim_cell or nil, armed and armed.radius or 0, W.v3 and camera.zoom > 1.0 and M.aim_point or nil)
     local e = clock.now_ms()
     P.terrain = P.terrain + (b - a - P.terrain) * 0.05
     P.rivers = (P.rivers or 0) + (b2 - b - (P.rivers or 0)) * 0.05

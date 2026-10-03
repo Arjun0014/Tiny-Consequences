@@ -67,6 +67,10 @@ key_trigger {
   action: "key_f3"
 }
 key_trigger {
+  input: KEY_M
+  action: "key_m"
+}
+key_trigger {
   input: KEY_ESC
   action: "key_esc"
 }
