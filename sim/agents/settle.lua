@@ -210,7 +210,19 @@ function M.complete_building(W, s, b)
     if M.trade then M.trade.forget(W) end
   end
   if b.kind == "woodstore" and s.founding then s.wood_planned = nil end
-  if b.kind == "house" and b.for_a then
+  if b.kind == "house" and b.for_a and M.leaving(W, s, V.people[b.for_a]) then
+    -- (S19) the couple it was built for is leaving with its household (aboard a boat, on the road):
+    -- the house stands empty for others (found: a couple carried off the boat to a new house, left
+    -- behind on an island in a famine)
+    local a = V.people[b.for_a]
+    a.house_site = nil
+    b.for_name = "the " .. (a.surname or "people") .. "s, who left"
+    b.for_a, b.for_b = nil, nil
+    b.stock.food, b.stock.meals, b.stock.water, b.stock.logs = 0, 0, 0, 0
+    for i = #s.couples, 1, -1 do
+      if s.couples[i] == a.id then table.remove(s.couples, i) end
+    end
+  elseif b.kind == "house" and b.for_a then
     local a, c = V.people[b.for_a], V.people[b.for_b or 0]
     local hh = people.new_household(W, s.id, b.id)
     s.households[#s.households + 1] = hh.id
@@ -1677,13 +1689,23 @@ local function empty_house(W, s)
   return nil
 end
 
+-- (S19) Is person q (of village s) leaving it - away, aboard a boat, or of a household moving or
+-- making a new place?
+function M.leaving(W, s, q)
+  if not q or not q.alive then return true end
+  if q.sett ~= s.id or q.at or (q.riding or 0) ~= 0 then return true end
+  local hh = W.S.v3.households[q.hh]
+  local mg, fd = hh and hh.migrate, hh and hh.found
+  return (mg and not mg.arrived and not mg.given_up) or (fd and not fd.arrived and not fd.given_up) or false
+end
+
 -- Growth: couples without a home get a house site (S16: or a house standing empty); households
 -- come from elsewhere and lodging with others get a site of their own.
 local function plan_houses(W, s)
   local V = W.S.v3
   for i = #s.couples, 1, -1 do
     local a = V.people[s.couples[i]]
-    if a and a.alive and not a.house_site then
+    if a and a.alive and not a.house_site and not M.leaving(W, s, a) then
       local b = empty_house(W, s)
       if not b then break end
       local c2 = V.people[a.partner or 0]
@@ -1724,7 +1746,7 @@ local function plan_houses(W, s)
   for i = 1, #s.couples do
     if open >= 2 then break end
     local a = V.people[s.couples[i]]
-    if a and a.alive and not a.house_site then
+    if a and a.alive and not a.house_site and not M.leaving(W, s, a) then
       local ix, iy, side = M.find_lot(W, s)
       if not ix then nolot = true end
       if ix then

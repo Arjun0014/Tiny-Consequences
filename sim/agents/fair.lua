@@ -164,7 +164,13 @@ function M.daily(W, s, now)
   for _, host in ipairs(keys) do
     local f = s.fairs[host]
     local h = V.settlements[host]
-    if f and h and now < f.t0 then
+    -- (only a fair they can walk to: one of their road neighbours - an island's people heard of fairs
+    -- over the water and walked the sea to them)
+    local by_road = h == s
+    if h and not by_road then
+      for _, o in ipairs(trade.partners(W, s)) do if o == h then by_road = true end end
+    end
+    if f and h and by_road and now < f.t0 then
       local hrs = 0
       if h ~= s then local _; _, hrs = trade.road(W, s, h) end
       for _, hid in ipairs(s.households) do

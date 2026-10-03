@@ -1037,6 +1037,10 @@ C.V3 = {
   -- at most mig_sea_tries times
   road_forage = 0.025,                    -- (S18) FU an hour a hungry traveller with nothing left picks along the road (summer)
   boat_places = 7, mig_sea_beasts = 4, skipper_skill = 0.4, mig_sea_hour = 0.012, mig_sea_dread = 0.05,
+  -- (S19) a ferry: a household with no boat asks one of its village with a boat - kin, a friend (a
+  -- grown-up of each fond of the other: ferry_fond), or else for a fare (ferry_fare FU of bread,
+  -- weighed at ferry_fare_k a FU); a passage given is remembered as a gift of ferry_worth FU
+  ferry_fond = 0.3, ferry_fare = 6, ferry_fare_k = 0.02, ferry_worth = 8, ferry_any = 0.2,
   mig_sea_winter = 0.25, mig_sea_risk_k = 20, mig_sea_dawn = 7, sea_board_wait = 3, mig_sea_tries = 4,
   -- (S18) salt (econ.GOODS.salt, a measure about a kilogram): made only at salt pans on a village's
   -- shore (saltpan, built by work) by boiling seawater over a fire, salt_logs logs a measure - in warm

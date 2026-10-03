@@ -47,6 +47,9 @@ function M.an_island_household_moves_by_sea()
   require("sim.agents.premise").fail_harvest(W, H)
   -- (S19: a hungry household eats its own beasts before it thinks of leaving: a murrain took most)
   require("sim.agents.premise").murrain(W, H, 1)
+  -- (S19: hardship is judged by each household - the fish failed in the island's waters too, or the
+  -- fishers, their larders full of the catch, would stay and sail the others over: test_v3_ferry)
+  for i = 1, #H.land do if H.land[i] == 0 then W.F.fish[H.cell_of[i]] = 0 end end
   starve()
   Z.granary.stock.grain = Z.granary.stock.grain + 3000
   econ.learn(W, H, Z, W.hour)
@@ -62,7 +65,7 @@ function M.an_island_household_moves_by_sea()
     if not decided then
       for _, hid in ipairs(H.households) do
         local hh = V.households[hid]
-        if hh and hh.migrate and hh.migrate.sea then
+        if hh and hh.migrate and hh.migrate.sea and not hh.migrate.sea.ferry then
           decided = hh
           for kind, list in pairs(hh.migrate.sea.ship or {}) do ship0[kind] = #list end
         end

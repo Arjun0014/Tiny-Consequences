@@ -38,13 +38,25 @@ function M.push(W, s, hh, now)
   local c = C()
   local V = W.S.v3
   local push, why = 0, nil
-  -- hunger: the village's grain and relish against its mouths
+  -- hunger: what the household has to eat against its mouths - its part of the village's granary
+  -- and (S19) of the beasts they could kill before giving up the place (a share of the meat on the
+  -- hoof: breeding stock is the last to go), and its own larder (S19: judged by each household, not
+  -- by the village - a fisher's household with its larder full of the catch does not leave because
+  -- its neighbours' larders are empty; they do)
   local pop = max(1, #s.members)
-  local g = econ.village_stock(W, s, "grain")
-  local r = econ.village_stock(W, s, "smoked")
-  -- (S19) and the beasts they could kill before giving up the place (a share of the meat on the hoof:
-  -- breeding stock is the last to go)
-  local days = (g + r + M.meat_on_hoof(W, s) * C().mig_hoof_k) / (pop * 0.7)
+  local n = max(1, #hh.members)
+  local gr = s.granary and s.granary.stock
+  local shared = (gr and ((gr.grain or 0) + (gr.sheaves or 0) + (gr.smoked or 0) + (gr.cheese or 0)) or 0)
+    + M.meat_on_hoof(W, s) * c.mig_hoof_k
+  local own = 0
+  local home = s.buildings[hh.home or 0]
+  if home then
+    local st = home.stock
+    own = (st.food or 0) + (st.meals or 0) + (st.smoked or 0) + (st.fish or 0) + (st.cheese or 0) + (st.meat or 0)
+    local owner = V.households[home.hh or 0]
+    if owner and owner ~= hh then own = own * n / (n + #owner.members) end
+  end
+  local days = (shared * n / pop + own) / (n * 0.7)
   if days < c.mig_hunger_days then
     push = push + (c.mig_hunger_days - days) / c.mig_hunger_days
     why = sfmt("the stores will feed us %.0f days more", days)
@@ -159,7 +171,7 @@ function M.daily(W, s, now)
         for _, id in ipairs(hh.members) do
           local p = V.people[id]
           if p and p.alive then
-            if p.at or p.trip or (p.boat or 0) ~= 0 or (p.riding or 0) ~= 0 then home_all = false end
+            if p.at or p.trip or p.ferry or (p.boat or 0) ~= 0 or (p.riding or 0) ~= 0 then home_all = false end
             local st = people.stage(p, now)
             if st == "adult" or st == "elder" then grown = true end
           end
@@ -179,14 +191,18 @@ function M.daily(W, s, now)
           end
         end
         -- (S18) over the sea in their own boat, to villages they know of (S19: the boat may be out
-        -- fishing this morning)
-        if econ.own_boat(s, hh, true) then
+        -- fishing this morning; and S19: a household with no boat asks one that has - a ferry)
+        local own = econ.own_boat(s, hh, true)
+        local fb = (not own) and s.dock and M.ferry_for(W, s, hh, now) or nil
+        if own or fb then
           for _, o in ipairs(trade.sea_partners(W, s)) do
             if o.alive ~= false and o.id ~= s.id then
-              local sp = M.sea_plan(W, s, hh, o, now)
+              local sp
+              if own then sp = M.sea_plan(W, s, hh, o, now) else sp = M.ferry_plan(W, s, hh, o, now, fb) end
               if sp then
                 local pull, why = M.pull(W, s, hh, o, now)
                 local u = push + pull - hold - sp.hrs * c.mig_sea_hour - c.mig_sea_dread - sp.winter - sp.risk * c.mig_sea_risk_k
+                  - (sp.fare or 0) * c.ferry_fare_k
                 if u > bu then best, bu, bwhy, bsea = o, u, why, sp end
               end
             end
@@ -212,7 +228,17 @@ function M.daily(W, s, now)
           if bsea then
             local boat = s.boats[bsea.boat]
             boat.move = hh.id
-            hh.migrate.sea = { boat = bsea.boat, skipper = bsea.skipper, hrs = bsea.hrs, loads = bsea.loads, room = bsea.room }
+            hh.migrate.sea = { boat = bsea.boat, skipper = bsea.skipper, hrs = bsea.hrs, loads = bsea.loads, room = bsea.room,
+              ferry = bsea.ferry, fare = bsea.fare }
+            if bsea.ferry then
+              -- (S19) a skipper of another household agrees to sail them over, and to come back
+              local sk = V.people[bsea.skipper]
+              sk.ferry = hh.id
+              local q1 = V.people[hh.members[1] or 0]
+              people.remember(sk, now, sfmt("I will sail the %ss over to %s in our boat%s", q1 and q1.surname or "neighbour", best.name,
+                bsea.fare > 0 and " for some bread" or ""))
+              hh.migrate.why = hh.migrate.why .. sfmt("; %s (%s) will sail us over", sk.name, bsea.ferry_why)
+            end
           end
           hh.migrate.lead = M.share_beasts(W, s, hh, best, now, hh.migrate.sea)
           for _, id in ipairs(hh.members) do
@@ -305,6 +331,89 @@ function M.sea_plan(W, s, hh, o, now)
   -- (the risk they weigh: the passage in the wet weather the sea mostly has)
   return { boat = boat.id, skipper = skipper.id, hrs = hrs, risk = M.sea_dread(W, bp, hrs),
     winter = doy >= 36 and c.mig_sea_winter or 0, room = room, loads = 0 }
+end
+
+-- (S19) A ferry for household hh of village s, which has no boat of its own: a household of the
+-- village with a sound boat and someone to sail it who would take them - kin first (an obligation
+-- among kin), then friends (a grown-up of each fond of the other), then a household they have
+-- traded with, then any neighbour (those for a fare) - not one moving or making a new place
+-- itself; the skipper at home, free
+-- (no babe in arms, none at the breast, no other passage promised); room in the boat for them and
+-- the skipper. Returns { boat, skipper, ferry (household), places, mouths, why, fare } or nil.
+function M.ferry_for(W, s, hh, now)
+  local c = C()
+  local V = W.S.v3
+  local places, mouths = 0, 0
+  for _, id in ipairs(hh.members) do
+    local p = V.people[id]
+    if p and p.alive then
+      local st = people.stage(p, now)
+      if st == "adult" or st == "elder" or st == "apprentice" then places = places + 1 elseif st == "child" then places = places + 0.5 end
+      if st ~= "infant" then mouths = mouths + 1 end
+    end
+  end
+  if places + 1 > c.boat_places then return nil end
+  local best, bs = nil, 0
+  for _, h2id in ipairs(s.households) do
+    local h2 = V.households[h2id]
+    if h2 and h2 ~= hh and #h2.members > 0 and not (h2.migrate and not h2.migrate.arrived and not h2.migrate.given_up)
+      and not (h2.found and not h2.found.arrived and not h2.found.given_up) then
+      local boat = econ.own_boat(s, h2, true)
+      if boat then
+        local sk = nil
+        for _, id in ipairs(h2.members) do
+          local p = V.people[id]
+          local st = p and p.alive and people.stage(p, now)
+          if (st == "adult" or st == "elder") and not p.trip and not p.at and not p.ferry and (p.babe or 0) == 0 and (p.nursing or 0) <= now
+            and (p.role == "fisher" or (p.sk_fish or 0) >= c.skipper_skill)
+            and (not sk or (p.sk_fish or 0) > (sk.sk_fish or 0)) then sk = p end
+        end
+        if sk then
+          local kin, fond = false, 0
+          for _, id in ipairs(hh.members) do
+            local q = V.people[id]
+            if q and q.alive then
+              for _, id2 in ipairs(h2.members) do
+                if people.is_kin(W, q, id2) then kin = true end
+                local a = people.affinity(q, id2)
+                if a > fond then fond = a end
+              end
+            end
+          end
+          local traded = (hh.partners and hh.partners[h2id] or 0) + (h2.partners and h2.partners[hh.id] or 0)
+          local friends = fond >= c.ferry_fond
+          -- (any neighbour would, for a fare; kin and friends first)
+          local sc = c.ferry_any + (kin and 3 or 0) + (friends and 1 + fond or 0) + (traded > 0 and 0.5 or 0)
+          if sc > bs then
+            best, bs = { boat = boat, skipper = sk, ferry = h2, places = places + 1, mouths = mouths,
+              why = kin and "our kin" or (friends and "our friend" or "for a fare"),
+              fare = (not kin and not friends) and c.ferry_fare or 0 }, sc
+          end
+        end
+      end
+    end
+  end
+  return best
+end
+
+-- (S19) A move over the sea to village o in ferry fb (M.ferry_for): as sea_plan, the boat and the
+-- skipper another household's.
+function M.ferry_plan(W, s, hh, o, now, fb)
+  local c = C()
+  local trade = require("sim.agents.trade")
+  if not fb then return nil end
+  local off = hh.kin_offer
+  if not (s.know and s.know[o.id]) and kin_at(W, hh, o) == 0 and not (off and off.sett == o.id) then return nil end
+  local route = trade.sea_route(W, s, o)
+  if not route then return nil end
+  local hrs = route.len / c.sail_speed
+  local home = s.buildings[hh.home or 0]
+  local larder = home and ((home.stock.food or 0) + (home.stock.meals or 0) + (home.stock.smoked or 0) + (home.stock.cheese or 0)) or 0
+  if larder < fb.mouths * (hrs / 24 + 1) * 0.7 then return nil end
+  local doy = require("sim.agents.clock").local_doy(now, W.grid.lat[s.cell])
+  return { boat = fb.boat.id, skipper = fb.skipper.id, hrs = hrs, risk = M.sea_dread(W, fb, hrs),
+    winter = doy >= 36 and c.mig_sea_winter or 0, room = c.boat_places - fb.places, loads = 0,
+    ferry = fb.ferry.id, ferry_why = fb.why, fare = fb.fare }
 end
 
 -- The beasts a migrating household takes (the kinds the other village keeps, each led by one of
@@ -591,6 +700,69 @@ function M.land(W, o, p, boat, now)
     end
   end
   for _, q in ipairs(list) do people.remember(q, now, sfmt("Landed at %s after %s", o.name, from and ("the crossing from " .. from.name) or "the crossing")) end
+end
+
+-- (S19) Skipper p (of another household) lands the household it ferried at village o's dock: they
+-- step ashore and are o's people (arrive); the boat stays the skipper's household's (no change of
+-- home); the fare, when one was agreed, is paid from their packs; then the skipper sails home - the
+-- trip becomes a voyage done with nothing to deal (sea_legs takes it home).
+function M.land_ferry(W, o, p, boat, now)
+  local c = C()
+  local V = W.S.v3
+  local stock = require("sim.agents.stock")
+  local tr = p.trip
+  local hh = V.households[tr.migrate or 0]
+  local from = V.settlements[p.sett]
+  local mg = hh and hh.migrate
+  local d = o.dock or o.beach
+  local gx, gy = d and d.dx or p.x, d and d.dy or p.y
+  if boat then boat.move = nil end
+  local list = {}
+  for _, id in ipairs(hh and hh.members or {}) do
+    local q = V.people[id]
+    if q and q.alive and q.at == o.id and people.stage(q, now) ~= "infant" then list[#list + 1] = q end
+  end
+  local fare = mg and mg.sea and mg.sea.fare or 0
+  for _, q in ipairs(list) do
+    M.arrive(W, o, q, gx, gy, now)
+    local qt = q.trip
+    local kind = qt and qt.lead_kind
+    if kind and qt.party and #qt.party > 0 then
+      stock.join_map(W, o, q, kind, gx, gy, now)
+      local L, H = stock.led_by(o, q, kind)
+      for _, a in ipairs(L) do
+        stock.release(W, o, H, a, now, "Come over the sea to " .. o.name .. " with its people: to the herd")
+        a.why_owner = sfmt("Brought over the sea from %s by its people", from and from.name or "afar")
+      end
+      qt.led = {}
+    end
+    -- (the fare: bread from their packs into the skipper's)
+    if fare > 1e-3 and q.pack and (q.pack.grain or 0) > 0 then
+      local f = min(fare, q.pack.grain)
+      q.pack.grain = q.pack.grain - f
+      p.pack = p.pack or {}
+      p.pack.grain = (p.pack.grain or 0) + f
+      fare = fare - f
+      o.acc.export = (o.acc.export or 0) + f
+      if from then from.acc.import = (from.acc.import or 0) + f end
+    end
+    people.remember(q, now, sfmt("Landed at %s: %s sailed us over and goes home", o.name, p.name))
+  end
+  -- (a passage given: remembered between the households as a gift is)
+  local ferry = V.households[p.hh]
+  if hh and ferry and (mg and mg.sea and mg.sea.fare or 0) <= 0 then
+    hh.got = hh.got or {}
+    hh.got[ferry.id] = (hh.got[ferry.id] or 0) + c.ferry_worth
+    ferry.gave = ferry.gave or {}
+    ferry.gave[hh.id] = (ferry.gave[hh.id] or 0) + c.ferry_worth
+  end
+  local q1 = hh and V.people[hh.members[1] or 0]
+  people.remember(p, now, sfmt("Sailed the %ss over to %s: now home", q1 and q1.surname or "neighbour", o.name))
+  if from then from.acc.ferries = (from.acc.ferries or 0) + 1 end
+  p.ferry = nil
+  p.trip = { to = o.id, from = p.sett, sea = true, boat = boat and boat.id or 0, landed = true, dealt = true, deals = {},
+    give = "grain", take = "grain", n = 0, t0 = now, ferried = true }
+  if p.pack and (p.pack.grain or 0) > 0 then p.carry = "pack" end
 end
 
 -- Setting off (p takes the road): every babe of the household is in the arms of one of those

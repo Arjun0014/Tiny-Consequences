@@ -341,6 +341,20 @@ function M.add_family(W, s, hb, tpl, u, culture, doy0)
     wa.partner, wb.partner = wb.id, wa.id
     wa.married, wb.married = now - 30 * 24, now - 30 * 24
     wb.surname = wa.surname
+    -- (S19) the husband lives with his father (and mother, when the first two are a couple): they are
+    -- his parents, and his sisters and brothers of the household are theirs - kin to ask and to help
+    local son = wa.sex == "m" and wa or wb
+    local age = (now - son.born) / 1152
+    local father = a.t[1] == "m" and a.p ~= son and a.p or (b and b.t[1] == "m" and b.p ~= son and b.t[4] ~= "c" and b.p)
+    local mother = couple and (a.t[1] == "f" and a.p or (b and b.t[1] == "f" and b.p)) or nil
+    if father and (now - father.born) / 1152 >= age + 14 then
+      son.father = father.id
+      father.kids[#father.kids + 1] = son.id
+    end
+    if mother and mother ~= son and (now - mother.born) / 1152 >= age + 14 then
+      son.mother = mother.id
+      mother.kids[#mother.kids + 1] = son.id
+    end
     local wife = wa.sex == "f" and wa or wb
     s.couples[#s.couples + 1] = wife.id
     people.remember(wa, now, "Married; waiting for a house of our own")

@@ -163,7 +163,7 @@ local function context(W, s, p, now)
   -- (S19) the household is about to move or make a new place: nobody sets out on other journeys
   local hh0 = ctx.hh
   local mg0, fd0 = hh0 and hh0.migrate, hh0 and hh0.found
-  ctx.moving = (mg0 and not mg0.arrived and not mg0.given_up) or (fd0 and not fd0.arrived and not fd0.given_up) or false
+  ctx.moving = (mg0 and not mg0.arrived and not mg0.given_up) or (fd0 and not fd0.arrived and not fd0.given_up) or p.ferry ~= nil
   local V = W.S.v3
   local ib = p.babe ~= 0 and V.people[p.babe]
   if ib and not (ib.alive and ib.act == "carried" and ib.carer == p.id) then p.babe = 0; ib = nil end
@@ -799,7 +799,10 @@ local function fair_candidate(W, s, p, ctx, now, fat)
       local hrs = 0
       if o ~= s then local _; _, hrs = trade.road(W, s, o) end
       local depart = fd.t0 - (o == s and 0.5 or hrs + (hrs > 8 and 14 or 0) + 2)
-      if now >= depart and (o == s or not ctx.night) then
+      -- (not setting out so late that the fair would be over when they came: put off by hunger at
+      -- home, they stay)
+      local late = o ~= s and now + M.road_dur(ctx.lh + 0.4, hrs, ctx.wake, ctx.bed) > fd.t1 - 6
+      if now >= depart and not late and (o == s or (not ctx.night and M.journey_ok(W, s, p, ctx, hrs))) then
         add(0.95, "fair", o.id, 0, fd.why or ("To the fair at " .. o.name))
       end
     end
@@ -3171,6 +3174,8 @@ local function migrate_legs(W, s, p, ctx, now)
   local V = W.S.v3
   local tr = p.trip
   local hh = V.households[p.hh]
+  -- (S19) a ferry's skipper: the move is the household he sails over
+  if tr.ferry then hh = V.households[tr.migrate or 0] end
   local mg = tr.move and p.move or (hh and hh.migrate)
   local home_s = V.settlements[tr.from]
   local o = V.settlements[tr.to]
@@ -3293,7 +3298,9 @@ function M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
   local hd = home_s.dock
   local route = found and trade.sea_route_to(W, home_s, site) or (o and trade.sea_route(W, home_s, o))
   local skipper = sea.skipper == p.id
-  if not boat or not hd or not route or (boat.lost and not tr.embarked) then
+  local sk = V.people[sea.skipper or 0]
+  if not boat or not hd or not route or (boat.lost and not tr.embarked)
+    or (sea.ferry and not tr.embarked and not (sk and sk.alive and sk.ferry == hh.id)) then
     -- (the boat is gone before they could sail - rotted, wrecked: they stay, and may think again)
     mg.given_up = now
     if boat then boat.move = nil end
@@ -3333,7 +3340,14 @@ function M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
     p.trip = nil
     return "Wait for the morning we sail", home_s.name
   end
-  if home and p.carry ~= "pack" and not tr.packed then
+  if tr.ferry and not tr.packed then
+    -- (S19) a ferry's skipper: provisions from his own house for the passage there and back
+    tr.packed = true
+    if home then
+      if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+      pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id, n = c.trade_prov * 2 }
+    end
+  elseif home and p.carry ~= "pack" and not tr.packed then
     tr.packed = true
     local prov, pack = move_share(W, hh, home, mg, now, c.trade_prov * 2, (grown and not skipper) and (found and c.found_carry or c.mig_carry) or 0)
     if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
@@ -3953,7 +3967,12 @@ local function fair_legs(W, s, p, ctx, now)
     local home = ctx.home
     if home then
       if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
-      pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id }
+      -- (bread for the road there and back and the days of the fair: S19, a woman walking home from
+      -- a fair a day and a half away with nothing left in her bag starved on the road)
+      local hrs = 0
+      if not local_fair then local _; _, hrs = trade.road(W, home_s, o) end
+      local need = (2 * hrs + (f and max(0, f.t1 - now) or c.fair_h) * 0.5) * c.hunger_idle / c.meal * c.meal_fu
+      pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id, n = max(c.trade_prov, need) }
       local fd = hh and hh.fair
       if fd and fd.take and not fd.packed then
         -- (the household's goods for the fair: the first of it to go takes them)
@@ -4005,6 +4024,15 @@ local function fair_legs(W, s, p, ctx, now)
   end
   if here == tr.to and not local_fair and here ~= p.sett then
     local _, hrs0 = trade.road(W, o, home_s)
+    -- (the host sends its guests home fed, with bread for the way when theirs ran short)
+    local g = o.granary and o.granary.state == "standing" and o.granary
+    local need = hrs0 * c.hunger_idle / c.meal * c.meal_fu - (p.prov or 0)
+    if g and not tr.fed_home and (p.hunger > 0.3 or need > 0) then
+      tr.fed_home = true
+      go(pl, g.dx, g.dy, o.name .. "'s granary")
+      if p.hunger > 0.3 then work(pl, "guest_meal", 0.4, { ref = g.id }) end
+      if need > 0 then pl[#pl + 1] = { op = "pick", what = "guest_bread", ref = g.id, n = need } end
+    end
     local gx, gy = trade.gate(W, o, home_s)
     go(pl, gx, gy, "the road home")
     work(pl, "travel", road_dur(ctx.lh + 0.4, hrs0, ctx.wake, ctx.bed), { to = home_s.id, from = o.id })
@@ -4880,6 +4908,24 @@ function M.decide(W, s, p, now, reason)
     -- packs, gathers at the gate and takes the road with the others
     local hh = W.S.v3.households[p.hh]
     local mg = hh and hh.migrate
+    -- (S19) a ferry's skipper sails another household's move: theirs is the move he follows
+    if p.ferry then
+      local hf = W.S.v3.households[p.ferry]
+      local mf = hf and hf.migrate
+      if not mf or mf.given_up or mf.arrived or not mf.sea or mf.sea.skipper ~= p.id then
+        p.ferry = nil
+      elseif (not p.trip and now >= mf.depart - C().ready_h) or (p.trip and p.trip.ferry) then
+        if not p.trip then p.trip = { to = mf.to, from = mf.from, migrate = hf.id, ferry = true, give = "grain", take = "grain", n = 0, t0 = now } end
+        local obj, dest = migrate_legs(W, s, p, ctx, now)
+        p.obj, p.dest, p.objk = obj, dest, "ferry"
+        local q1 = W.S.v3.people[hf.members[1] or 0]
+        local o = W.S.v3.settlements[mf.to]
+        p.why = (reason and (reason .. ". ") or "") .. sfmt("Sailing the %ss over to %s in our boat (they have none), then home",
+          q1 and q1.surname or "neighbour", o and o.name or "the other village")
+        p.tgt_kind, p.tgt_ref = "trade", mf.to
+        return true
+      end
+    end
     local mv = p.move
     if mv and not mv.arrived and not p.trip and now >= (mv.depart or 0) - C().ready_h then
       -- (S16, R4) a bride going to live at her husband's village (S19: making ready only shortly

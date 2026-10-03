@@ -555,10 +555,21 @@ WORK.embark = function(W, s, p, st, f)
   local B = boats_of(W, p)
   local boat = B and B[st.boat or 0]
   local hh = V.households[p.hh]
+  -- (S19) a ferry: the household taken aboard is the one sailed over, not the skipper's
+  local ferry = p.trip and p.trip.ferry
+  if ferry then hh = V.households[p.trip.migrate or 0] end
   if not boat or not hh or boat.crew ~= p.id then return end
   local now = V.now or W.hour
   -- (every babe of the household in the arms of one of those going)
-  require("sim.agents.migrate").take_babes(W, s, p, now)
+  if ferry then
+    for _, id in ipairs(hh.members) do
+      local q = V.people[id]
+      local st = q and q.alive and q.sett == s.id and people.stage(q, now)
+      if st == "adult" or st == "elder" then require("sim.agents.migrate").take_babes(W, s, q, now); break end
+    end
+  else
+    require("sim.agents.migrate").take_babes(W, s, p, now)
+  end
   boat.riders = {}
   local tr = p.trip
   if tr then tr.embarked = true end
@@ -800,7 +811,10 @@ WORK.land = function(W, s, p, st, f)
   end
   p.boat = nil
   if b then p.x, p.y = b.dx, b.dy end
-  if boat and st.migrate and p.trip and p.trip.migrate and s.id ~= p.sett then
+  if boat and st.migrate and p.trip and p.trip.ferry and s.id ~= p.sett then
+    -- (S19) a ferry: the household it sailed over ashore; the boat stays the skipper's, who goes home
+    require("sim.agents.migrate").land_ferry(W, s, p, boat, W.S.v3.now or W.hour)
+  elseif boat and st.migrate and p.trip and p.trip.migrate and s.id ~= p.sett then
     -- (S18) a household come by sea: ashore at its new village's dock they are its people, and
     -- their boat is moored here for good
     require("sim.agents.migrate").land(W, s, p, boat, W.S.v3.now or W.hour)
@@ -2519,6 +2533,21 @@ PICK.provisions = function(W, s, p, st)
   local fd = min(want - ml, b.stock.food or 0)
   b.stock.food = (b.stock.food or 0) - fd
   p.prov = (p.prov or 0) + ml + fd
+end
+
+-- (S19) Bread for the road home, given a guest by the host village from its granary (its books:
+-- eaten by a guest; the food leaves for the guest's village).
+PICK.guest_bread = function(W, s, p, st)
+  local g = s.buildings[st.ref or 0]
+  if not g then return end
+  local m = min(st.n or 0, g.stock.grain or 0)
+  if m <= 0 then return end
+  g.stock.grain = g.stock.grain - m
+  p.prov = (p.prov or 0) + m
+  s.acc.guests = (s.acc.guests or 0) + m
+  s.acc.export = (s.acc.export or 0) + m
+  local hs = W.S.v3.settlements[p.sett]
+  if hs then hs.acc.import = (hs.acc.import or 0) + m end
 end
 
 PICK.hides = function(W, s, p, st)

@@ -3,7 +3,7 @@
 Interim checkpoint (updated as the session goes; the session-18 handoff follows below). Source of truth:
 `docs/PROGRESS.md` (Current state, session 19 bullet) and D-138 onward in `docs/DECISIONS.md`.
 
-Done so far (main, last commit 43374d0; v3 tests 43/43, quick 149/149 at b277382, browser = LuaJIT at b277382):
+Done so far (main; v3 tests 46/46, quick 154/154 at ddd6c36, browser = LuaJIT at b277382):
 - **Long-run audit** with `tools/v3_chronicle.lua` (every memory to `<out>/mem.txt`, village states,
   deaths; `--premise crowd:2 | fail_harvest:N | empty_stores:N`; `tools/v3_follow.lua --premise ... --from-day D`).
 - **D-138** trade planned on a snapshot of each household's worths and spares (`econ.view`,
@@ -19,8 +19,15 @@ Done so far (main, last commit 43374d0; v3 tests 43/43, quick 149/149 at b277382
   (cooking 40% quicker, traded), stone footings.
 - **D-142** iron (`sim/agents/iron.lua`): veins and bog iron, mine -> clamp -> forge -> iron edges; the
   sea's danger weighed in trade (`sea_life_fu`), `sea_squall` lowered.
-- Next: D-143 mixed payment + credit (failed quern/iron sales as evidence), then fairs, ferry, founding
-  polish, performance, final handoff.
+- **D-143** a whole good paid with a basket of spare goods; credit between households when trusted
+  (collected in kind by the next trader, written off after 48 days with lost trust).
+- **D-144** fairs (`sim/agents/fair.lua`): called after the harvest by the middle village of a road
+  cluster, heard of through people and criers, attended for reasons, barter, news, kin, matches.
+- **D-145** the ferry (`migrate.ferry_for`/`ferry_plan`/`land_ferry`, `p.ferry`): a boatless household
+  sailed over by a household of its village with a boat, the skipper sailing home; hardship judged by
+  each household (`migrate.push`); couples leaving take no house (`settle.leaving`); fairs only by road,
+  fit travellers, bread for the way home (`PICK.guest_bread`); the generator's waiting couple has parents.
+- Next: validation batch (quick, web, browser hash, perf), founding markers, performance, final handoff.
 
 # Session handoff — session 18 (2 Oct 2026): moving and founding by sea, sea droves, salt, travellers who share
 
