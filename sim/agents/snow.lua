@@ -103,7 +103,7 @@ function M.daily(W, s, day, now)
   if tmin < c.frost_t and (s.snow or 0) < c.snow_cover then M.frost(W, s, tmin, now) end
   if weather.reach(s, "sheep") < 0.5 then
     s.snow_days = (s.snow_days or 0) + 1
-    local n = stock.plan_failing(W, s, "snow")
+    local n = stock.plan_failing(W, s, "snow", true)   -- (the dams are spared: the herd to come)
     -- (the reckoning only while the cold holds: snow that is going is waited out)
     local holding = (s.snow or 0) >= (s.snow_prev or 0) - 0.01
     if s.snow_days >= c.snow_wait and holding then n = n + stock.plan_cull(W, s, c.snow_hay_days, 1, "snow", true) end

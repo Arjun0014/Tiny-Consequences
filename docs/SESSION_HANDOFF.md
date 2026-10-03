@@ -82,6 +82,11 @@ start hour; the old 14-digit start made a strike land ulps apart - a harness art
   buildings planned again** (D-162). Found in a 192-day run: with starvation slowed (D-158) herds grew
   without bound (pigs 13 -> 280) - the daily `plan_failing` is now what keeps herds to their feed;
   re-check herd sizes in every long run (`tools/v3_chronicle.lua` "villages at the end").
+- **Herds kept to their feed** (D-163): starvation 0.012/h, `stock.pig_core` (a sow per household and a
+  boar, replacements kept), `plan_pig_keep` (3 growers a household), marked beasts not bred, the herd
+  scan over the living only (exact). Day-192 world: 4.52 M instr/h (6.2 M before; 4.77 M at the
+  checkpoint's code). Measure long-run cost with `tools/v3_chronicle.lua --days 192 --save F` then
+  `luajit -joff tools/v3_profile.lua --load F --days 4` - a day-0 profile does not show herd growth.
 - **R6.5e flood water deferred**: a season of the deluge power over Krikeivorn raises its river's flow
   0.004 -> 0.006 (map flood factor 1.1): the planet's hydrology is not flashy enough at village rivers
   for water beyond the channel to arise; needs a hydrology look first (soil water rises ~0.01 a day

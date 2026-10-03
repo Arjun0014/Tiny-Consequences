@@ -937,7 +937,7 @@ C.V3 = {
   rack_found = { flock = 4, cattle = 10, swine = 3 },                      -- feed in the racks at founding
   cattle_share = 0.45, pig_share = 0.7,   -- founding: share of households with a cow, with a sow (by grass, woods)
   pig_reach = 1.0, pig_roam = 0.4, mast_days = { 24, 36 },   -- (pig_roam: how far from the sty pigs root unherded)   -- the pigs' woods: within this of the sty; acorns and beech mast (local days)
-  pig_slaughter = { 36, 40 },             -- local days the fattened pigs are killed (the start of winter)
+  pig_slaughter = { 36, 40 }, pig_keep = 3,   -- (S20: growers a household fattens at a time)             -- local days the fattened pigs are killed (the start of winter)
   -- (S19) hunger: a household with food for under hunger_cull_days while its village's stores hold
   -- under hunger_cull_village days kills one of its beasts for the pot
   hunger_cull_days = 1.5, hunger_cull_village = 4,
@@ -1316,7 +1316,7 @@ C.V3 = {
   -- bare feet in snow cost x (1 + snow_barefoot x depth / 0.2)
   snow_t = 0.5, snow_fall = 0.02, snow_melt = 0.0015, snow_cover = 0.02, snow_walk = 1.0, snow_walk_max = 0.55,
   snow_graze = 0.3, snow_paw = { sheep = 1.0, goat = 1.4, cattle = 0.8, pig = 0.6 }, snow_hay_days = 8, snow_wait = 3,
-  snow_fail_health = 0.5, stock_starve = 0.006,   -- (a starving beast's health lost an hour: 0.02 before S20)
+  snow_fail_health = 0.5, stock_starve = 0.012,   -- (a starving beast's health lost an hour: 0.02 before S20)
   snow_load_k = 0.6, ash_load_k = 1.0, roof_crack = 0.75, frost_t = -2, frost_t_winter = -12, frost_span = 6,
   frost_k = 0.5, snow_barefoot = 2,
   premise_cold = 22, premise_aerosol = 12,

@@ -405,6 +405,32 @@ M.T_BOLD, M.T_PACE, M.T_ALERT, M.T_SIDE = T_BOLD, T_PACE, T_ALERT, T_SIDE
 -- and yoked beasts are not with the herd.
 local SC = { nn = nil, nd = 0, nx = 0, ny = 0, ln = 0, lrest = 0, cx = 0, cy = 0, cn = 0 }
 M.SC = SC
+-- (S20, exact) The herd's living beasts in ascending order (runtime, never saved): a beast only ever
+-- comes alive at the end of the list and a slot never comes back to life, so walking this list visits
+-- exactly the living beasts in the order the whole list would - the same sums, the same nearest -
+-- without walking every beast the herd ever had (dead entries are dropped now and then).
+local LIVE = setmetatable({}, { __mode = "k" })
+local function live_list(H)
+  local an = H.animals
+  local L = LIVE[H]
+  if not L then L = { top = 0, dead = 0 }; LIVE[H] = L end
+  if L.dead > 8 and L.dead * 4 > #L then
+    local j = 0
+    for i = 1, #L do
+      local k = L[i]
+      if an[k].alive then j = j + 1; L[j] = k end
+    end
+    for i = #L, j + 1, -1 do L[i] = nil end
+    L.dead = 0
+  end
+  for k = L.top + 1, #an do
+    if an[k].alive then L[#L + 1] = k end
+  end
+  L.top = #an
+  return L
+end
+M.live_list = live_list
+
 local function scan(s, H, a, now, x, y, sight)
   local s2 = sight * sight
   local nn, nd2, nx, ny = nil, 1e18, 0, 0
@@ -412,8 +438,11 @@ local function scan(s, H, a, now, x, y, sight)
   local an = H.animals
   local inpen = a.act == "pen"
   local grp = a.led or 0
-  for i = 1, #an do
-    local b = an[i]
+  local L = live_list(H)
+  local dead = 0
+  for i = 1, #L do
+    local b = an[L[i]]
+    if not b.alive then dead = dead + 1 end
     if b ~= a and b.alive and (b.led or 0) == grp then
       local ba = b.act
       if ba ~= "held" and ba ~= "yoked" and (ba == "pen") == inpen then
@@ -437,6 +466,7 @@ local function scan(s, H, a, now, x, y, sight)
       end
     end
   end
+  if dead > L.dead then L.dead = dead end
   SC.nn, SC.nd, SC.nx, SC.ny = nn, sqrt(nd2), nx, ny
   SC.ln, SC.lrest, SC.cx, SC.cy, SC.cn = ln, lr, cx, cy, cn
 end
@@ -973,8 +1003,9 @@ function M.daily(W, s, day, push)
   local doy = clock.local_doy(now, W.grid.lat[s.cell])
   if doy == c.slaughter[1] then s.acc.culled_plan = (s.acc.culled_plan or 0) + M.plan_cull(W, s) end
   if doy == c.pig_slaughter[1] then s.acc.culled_plan = (s.acc.culled_plan or 0) + M.plan_pig_cull(W, s) end
+  s.acc.culled_plan = (s.acc.culled_plan or 0) + M.plan_pig_keep(W, s)
   s.acc.culled_hunger = (s.acc.culled_hunger or 0) + M.plan_hunger_cull(W, s, now)
-  s.acc.culled_failing = (s.acc.culled_failing or 0) + M.plan_failing(W, s, "failing")
+  s.acc.culled_failing = (s.acc.culled_failing or 0) + M.plan_failing(W, s, "failing", true)
   local year = floor((day + (W.grid.lat[s.cell] < 0 and 24 or 0)) / 48)
   for hi = 1, #M.HERDS do
     local H = s.herds[M.HERDS[hi]]
@@ -1046,7 +1077,7 @@ function M.herd_daily(W, s, H, day, doy, year, now, push)
         a.cause = (a.sick or 0) > 0 and "sickness" or (a.hunger >= 0.9 and "hunger" or "age")
         s.acc.stock_died = (s.acc.stock_died or 0) + 1
         s.acc["died_" .. a.sp] = (s.acc["died_" .. a.sp] or 0) + 1
-      elseif a.sex == "f" and age >= S.adult_years and a.bred ~= year and M.breeding(S, doy) and M.has_sire(H, a, now) then
+      elseif a.sex == "f" and not a.cull and age >= S.adult_years and a.bred ~= year and M.breeding(S, doy) and M.has_sire(H, a, now) then
         -- births in their season (a dam in good condition): a lamb, a kid, a calf, a litter
         local x = rng.float(W.seed, rng.S.V3_LIFE, key, day, 32)
         if x < S.birth_chance and a.health > 0.5 and a.hunger < 0.8 then
@@ -1259,17 +1290,31 @@ end
 -- killed for the larder while they still have flesh on them, marked a.cull = mark. Returns how many.
 -- (Run every day for every village: what keeps a herd to the feed there is; before S20 starving
 -- beasts simply died within two days.)
-function M.plan_failing(W, s, mark)
+-- `core`: the breeding stock is spared (a sow of each household and a boar; the grazers' dams) - the
+-- herd to come is fed what there is.
+function M.plan_failing(W, s, mark, core)
   local c = C()
+  local now = W.hour
   local n = 0
   for _, kind in ipairs({ "flock", "cattle", "swine" }) do
     local H = s.herds[kind]
     if H and (kind == "swine" or (s.hay or 0) < 1) then
+      if core and kind == "swine" then
+        for k in pairs(M.pig_core(H, now)) do H.animals[k]._core = true end
+      elseif core then
+        for _, a in ipairs(H.animals) do
+          if a.alive and not a.cull then
+            local S, age = SP(a.sp), (now - a.born) / 1152
+            if a.sex == "f" and age >= S.adult_years and age < S.old_years - 1 then a._core = true end
+          end
+        end
+      end
       for _, a in ipairs(H.animals) do
-        if a.alive and not a.cull and not a.ox and a.hunger >= 0.9 and a.health < c.snow_fail_health then
+        if a.alive and not a.cull and not a.ox and not a._core and a.hunger >= 0.9 and a.health < c.snow_fail_health then
           a.cull = mark
           n = n + 1
         end
+        a._core = nil
       end
     end
   end
@@ -1369,19 +1414,75 @@ function M.plan_pig_cull(W, s)
   local H = s.herds and s.herds.swine
   if not H then return 0 end
   local now = W.hour
-  local kept, boar = {}, false
   local n = 0
+  local core = M.pig_core(H, now)
   for _, a in ipairs(H.animals) do
-    if a.alive and not a.cull then
-      local age = (now - a.born) / 1152
-      if a.sex == "f" and age >= 0.8 and not kept[a.owner] and age < SP("pig").old_years - 1 then kept[a.owner] = true
-      elseif a.sex == "m" and age >= 0.8 and not boar then boar = true
-      elseif age >= 0.3 then
-        a.cull = true
-        n = n + 1
-      end
+    if a.alive and not a.cull and not core[a.k] and (now - a.born) / 1152 >= 0.3 then
+      a.cull = true
+      n = n + 1
     end
   end
+  return n
+end
+
+-- (S20) A household fattens pig_keep growers at a time besides its breeding sow (and the village a
+-- boar): a grown pig beyond them (0.3 years or more) is marked for killing - the late litter is not left
+-- to become next year's sows. Returns how many were marked.
+local KEEP = {}
+-- (S20) The pigs kept to breed (a set of k): each household's sow (else its oldest young sow-to-be),
+-- and one boar for the village (else the oldest young boar-to-be). Any of them marked for killing is
+-- spared.
+local CORE, CORE_BEST = {}, {}
+function M.pig_core(H, now)
+  for k in pairs(CORE) do CORE[k] = nil end
+  for k in pairs(CORE_BEST) do CORE_BEST[k] = nil end
+  local S = SP("pig")
+  local boar, bage = nil, -1
+  local yb, ybage = nil, -1
+  for _, a in ipairs(H.animals) do
+    if a.alive then
+      local age = (now - a.born) / 1152
+      local o = a.owner or 0
+      if a.sex == "f" and age >= 0.3 and age < S.old_years - 1 then
+        -- (a grown sow before any young one; among them the oldest)
+        local score = (age >= S.adult_years and 10 or 0) + age
+        local e = CORE_BEST[o]
+        if not e or score > e.score or (score == e.score and a.k < e.k) then CORE_BEST[o] = { k = a.k, score = score } end
+      elseif a.sex == "m" and age >= S.adult_years and age < S.old_years and age > bage then boar, bage = a.k, age
+      elseif a.sex == "m" and age >= 0.3 and age < S.adult_years and age > ybage then yb, ybage = a.k, age end
+    end
+  end
+  for _, a in ipairs(H.animals) do
+    local e = a.alive and CORE_BEST[a.owner or 0]
+    if e and e.k == a.k then CORE[a.k] = true end
+  end
+  local b = boar or yb
+  if b then CORE[b] = true end
+  for k in pairs(CORE) do
+    local a = H.animals[k]
+    if a.cull == true then a.cull = nil end
+  end
+  return CORE
+end
+
+function M.plan_pig_keep(W, s)
+  local H = s.herds and s.herds.swine
+  if not H then return 0 end
+  local c = C()
+  local now = W.hour
+  local S = SP("pig")
+  local n = 0
+  local core = M.pig_core(H, now)
+  -- (the growers, youngest first: the oldest beyond pig_keep are killed - they are fattest)
+  for i = #H.animals, 1, -1 do
+    local a = H.animals[i]
+    if a.alive and not a.cull and not core[a.k] and (now - a.born) / 1152 >= 0.3 then
+      local o = a.owner or 0
+      KEEP[o] = (KEEP[o] or 0) + 1
+      if KEEP[o] > c.pig_keep then a.cull = true; n = n + 1 end
+    end
+  end
+  for _, a in ipairs(H.animals) do KEEP[a.owner or 0] = nil end
   return n
 end
 
