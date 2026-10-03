@@ -86,3 +86,6 @@ Built (D-172, D-175): the story engine with disasters, conflict, pressure and ev
 clock; click -> go there; Why? -> the chain; cues by level; bridge `news{n, go}`; `tools/v3_news.lua`; tests
 `test_v3_news` x3. Not yet: a history list, relief asked and given / orphans taken in / harvests as stories,
 per-village aggregation of everyday stories when the world is busy, tuning from play.
+Session 22 (D-178): a story for every power cast (what it changed; rooted at YOU; repeated casts merged), a deed and
+story for culled animals, lightning stories that name what was struck (bolt icon until something catches), no "the
+fire is out" when nothing burned, lines as a woods fire grows, at most two everyday cards (`news.EVERYDAY_MAX`).

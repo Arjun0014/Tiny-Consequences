@@ -60,3 +60,11 @@ trimmed of silence, loops untouched), encodes Ogg Vorbis (beds 24 kHz at the low
 kHz), and writes the Defold side: a `.sound` per file (`game/audio/snd/`), `game/audio/sounds.go` and
 `game/audio/catalog.lua`. Idempotent: rerun after adding to the manifest; `--only id`, `--force`.
 First library: 16 beds, 23 actions in 2-3 takes, 5 cues - 71 files, 3.4 MB.
+
+## 8. Tuned from play (session 22, D-178)
+- The deeds that sound (thunder, a quake, a house falling) are read at every zoom - the cursor no longer waits while
+  the camera is far out (a burst of old thunder played on coming close); from afar a quake is heard faint by how near
+  its village is, thunder rolls in.
+- Fire is much louder the nearer it is; a big fire near adds the roaring bed.
+- A herd calls a few times a minute by its size (not every 1.6 s); while it cries at a fire (`H.fire_cry`) it calls
+  often and louder.

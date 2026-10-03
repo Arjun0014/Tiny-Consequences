@@ -100,3 +100,17 @@ Each cast: a root event (actor `player`, kind `power_*`) whose id is the **cause
   the eruption (`shake` `Q.cause`, `volcano` `v.cause`), the cull's tag on fauna. The news roots their
   consequences at YOU.
 - Not yet: v2 (sickness in a herd, blight on a field, sea warmth, oil, meteor), v3 (seed the woods).
+
+## 8. Status (session 22, D-177, D-178)
+- **Lightning** takes exposed beasts (by height; a fold is low, a byre's roof takes it), throws down beasts beside
+  the bolt, and the click lands on the terrain's ground or on the person or beast under the pointer; commands given
+  mid-hour apply at their own moment (the bolt fell up to an hour after the click before).
+- **Rain / dry spell** begin over the villages under them when cast (a downpour for 3 hours, rain to the day's end;
+  the dry spell stops the rain at once); the planet's days follow.
+- **Every cast tells what it changed** in the news (rooted at YOU; repeated casts merged); the cull leaves a deed for
+  the animals that died on a map.
+- Played: `tools/v3_power_matrix.lua` (each power in different states), `scripts/play_powers.mjs` (lightning
+  through the UI). The same power gave different stories: rain on a drought soaked in, on wet hills flooded
+  Krikeivorn, in a cold snap fell as snow and flooded Tekheim's river; warm air melted lying snow; a strained fault
+  near Tekheim gave a magnitude 5.6 quake, far from anyone nothing felt; a stirred mountain erupted.
+- v2 designed from the code in `docs/SESSION_HANDOFF.md` (session 22, Next 2) - not built.

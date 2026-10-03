@@ -231,10 +231,19 @@ function M.update(W, dt, zoom, now, focus, speed_level, skipping, project)
       for _, f in ipairs(s.burn or {}) do
         if not f.out and f.heat > 0 then
           local d = sqrt((f.x - x) * (f.x - x) + (f.y - y) * (f.y - y))
-          heat = heat + f.heat * max(0, 1 - d / 1.2)
+          -- (S22: the nearer the much louder - a fire close up should sound dangerous)
+          local k = max(0, 1 - d / 1.2)
+          heat = heat + f.heat * k * k * (1 + 1.5 * max(0, 1 - d / 0.25))
         end
       end
-      SAMPLE.heat = min(1.5, heat)
+      SAMPLE.heat = min(4, heat)
+      -- (S22) the herds near crying out at a fire lately (H.fire_cry: the sim's own cry)
+      local cry = 0
+      for _, kind in ipairs({ "flock", "cattle", "swine" }) do
+        local H = s.herds and s.herds[kind]
+        if H and H.fire_cry and now - H.fire_cry < 0.5 then cry = 1 end
+      end
+      SAMPLE.cry = cry
       local stock = require("sim.agents.stock")
       local beasts = 0
       for _, kind in ipairs({ "flock", "cattle", "swine" }) do
@@ -296,12 +305,42 @@ function M.update(W, dt, zoom, now, focus, speed_level, skipping, project)
   bed.amb_storm.t = storm * (0.3 * wP + 0.4 * wM + 0.6 * wC)
   bed.amb_village_day.t = (S.night and 0 or 1) * wC * min(1, S.people / 8) * 0.55
   bed.amb_village_night.t = (S.night and 1 or 0) * wC * (s and 0.35 or 0) * (1 - storm)
-  bed.amb_fire.t = wC * min(1, S.heat) * 0.9 + wM * min(1, S.heat) * 0.3
-  bed.amb_wildfire.t = min(1, S.fire * 3) * (0.35 * wP + 0.5 * wM + 0.3 * wC)
+  bed.amb_fire.t = wC * min(1, S.heat) * 0.95 + wM * min(1, S.heat) * 0.3
+  -- (the planet's fire under the focus from afar; close in, the roar of a big fire near - S22)
+  bed.amb_wildfire.t = max(min(1, S.fire * 3) * (0.35 * wP + 0.5 * wM + 0.3 * wC), wC * smoothstep(1.0, 3.0, S.heat) * 0.75)
   bed.amb_volcano.t = S.volcano * (0.4 * wP + 0.6 * wM + 0.4 * wC)
   bed.amb_herd.t = wC * min(1, S.beasts / 12) * 0.45 * (S.night and 0.4 or 1)
   bed.amb_sea_open.t = 0
   ease_beds(dt)
+  -- (S22) the deeds of the world just now, at every zoom (the cursor always moves on - before, it waited
+  -- while the camera was far out and a burst of old thunder played on coming close): thunder, a quake, a
+  -- house falling - at the focus village by where they are, elsewhere faint by how far
+  local D = V.deeds or {}
+  if not deed_cur then deed_cur = #D end
+  if not skipping and speed_level ~= 0 then
+    local g = W.grid
+    for i = deed_cur + 1, #D do
+      local d = D[i]
+      local o = d and V.settlements[d.at or 0]
+      if d and o and (d.kind == "strike" or d.kind == "quake" or d.kind == "fell") then
+        local id = d.kind == "strike" and "thunder" or (d.kind == "quake" and "quake" or "house_fall")
+        if s and d.at == s.id and wC >= 0.25 then
+          local gn, pan = 0, 0
+          local R = 1.25
+          local dd = sqrt(((d.x or S.x or 0) - (S.x or 0)) ^ 2 + ((d.y or S.y or 0) - (S.y or 0)) ^ 2)
+          gn = (d.kind == "quake" and 0.85) or max(d.kind == "strike" and 0.45 or 0.3, (d.kind == "strike" and 1.0 or 0.9) * wC * max(0, 1 - dd / R) ^ 1.6)
+          if project and d.kind ~= "quake" then pan = project(mapm.unit(s, d.x or 0, d.y or 0)) end
+          shot(id, gn, pan, 0.5, now_s)
+        elseif d.kind ~= "fell" then
+          -- (far off: by how near the village is to the focus - a quake is felt widely, thunder rolls in)
+          local near_f = g.X[o.cell] * fx + g.Y[o.cell] * fy + g.Z[o.cell] * fz
+          local k = smoothstep(0.75, 0.995, near_f)
+          shot(id, (d.kind == "quake" and 0.6 or 0.3) * k * (wP + wM + 0.4 * wC), 0, 2, now_s)
+        end
+      end
+    end
+  end
+  deed_cur = #D
   -- one-shots: only close in, never while skipping; fewer at the faster watch speed
   if skipping or speed_level == 0 or wC < 0.25 or not s then return end
   local dens = speed_level >= 3 and 0.5 or 1
@@ -354,8 +393,10 @@ function M.update(W, dt, zoom, now, focus, speed_level, skipping, project)
       end
     end
   end
-  -- the beasts near: one calls now and then
-  if S.beasts > 0 and rnd() < min(0.25, S.beasts * 0.006) * dt * 30 * dens then
+  -- the beasts near: one calls now and then - a few calls a minute from a big flock, not a bleat every
+  -- second and a half (S22); crying out often while they cry at a fire (the sim's own cry)
+  local rate = (S.cry or 0) > 0 and 1.2 or min(0.35, 0.04 + 0.006 * S.beasts)
+  if S.beasts > 0 and rnd() < rate * dt * dens then
     local stock = require("sim.agents.stock")
     local kinds = { "flock", "cattle", "swine" }
     local H = s.herds and s.herds[kinds[1 + floor(rnd() * 3)]]
@@ -366,7 +407,7 @@ function M.update(W, dt, zoom, now, focus, speed_level, skipping, project)
         local ax, ay = stock.pos(a, now)
         local gn, pan = gainpan(ax, ay, 0.6)
         local id = SPECIES_SND[a.sp]
-        if id and gn > 0.05 then shot(id, gn, pan, 1.6, now_s) end
+        if id and gn > 0.05 then shot(id, gn * ((S.cry or 0) > 0 and 1.3 or 1), pan, (S.cry or 0) > 0 and 0.9 or 2.6, now_s) end
       end
     end
   end
@@ -397,27 +438,6 @@ function M.update(W, dt, zoom, now, focus, speed_level, skipping, project)
       if gn > 0.08 and rnd() < 0.05 * dens then shot("oars", gn, pan, 2.5, now_s) end
     end
   end
-  -- deeds of this map just now: thunder, a quake, a house falling, a tree felled
-  local D = V.deeds or {}
-  if not deed_cur then deed_cur = #D end
-  for i = deed_cur + 1, #D do
-    local d = D[i]
-    if d and d.at == s.id then
-      if d.kind == "strike" then
-        local gn, pan = gainpan(d.x or x, d.y or y, 1.0)
-        shot("thunder", max(gn, 0.45), pan, 0.5, now_s)
-      elseif d.kind == "quake" then
-        shot("quake", 0.85, 0, 0.5, now_s)
-      elseif d.kind == "fell" then
-        local gn, pan = gainpan(d.x or x, d.y or y, 0.9)
-        shot("house_fall", max(gn, 0.3), pan, 0.5, now_s)
-      end
-    elseif d and d.kind == "strike" then
-      -- (thunder from another village rolls in faint at the planet's distance)
-      shot("thunder", 0.12 * (wP + wM), 0, 2, now_s)
-    end
-  end
-  deed_cur = #D
   -- a tree coming down near
   if S.felled then
     S.felled = false

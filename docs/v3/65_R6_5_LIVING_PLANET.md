@@ -158,6 +158,11 @@ an outcome script, the architecture is wrong.
   fixed (fed from the carer's pack; no child handed to one setting out); then no deaths from hunger.
 - **Aftershocks** (D-165) and **the badly hurt helped home** (D-166: lying where they fell, lifted and
   walked home at a hobble by kin or whoever sees them).
+- **Beasts and fire, again** (S22, D-177): fire is seen by its extent (`danger.fire_near`), noticed by each beast in its
+  own time, fled each its own way until its own safe distance, kept away from while it burns (from the herder, the
+  ground, the pen and the way there), and burns what stands in its flames - wild animals, wolves and dogs too; a flock
+  grazing over its fold's ground is not "shut in"; close in, the planet's fire is not painted over the whole map.
+  Lightning takes exposed beasts by height (D-177).
 - Not yet: landslides (map slope exists only per planet cell); g at
   longer range (ice age, hothouse, sea-level coastline, ENSO); ice crust, moving herds to open ground;
   people afraid to sleep under a roof after a quake. (Leaf fodder - boughs lopped when the hay is gone -

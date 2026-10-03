@@ -268,6 +268,12 @@ the consequences) with **the world news built** (stories from deeds, events and 
 Why? from real links to NATURE / PEOPLE / YOU) and **world audio built** (`80_WORLD_AUDIO.md`); **the v1 powers
 built on the v3 world** (D-174, `sim/powers3.lua`; consequences rooted at YOU); everyday life in the news (D-175).
 Next: validation and play-tuning, R7 v2 powers (sickness in a herd, blight on a field, sea warmth, oil, meteor).)
+(Session 22, D-176-D-178: validation; **children born in a running world were never scheduled** - fixed with the queue
+rebuild, dogs and yearly cache resets; **animals face fire by its extent** (each noticing in its own time, its own way
+out, keeping away while it burns, burnt in its flames); **lightning takes exposed beasts**; the powers played in many
+states - the god's rain begins at the cast, every cast tells what it changed, the feed and the sound tuned. A
+hydrology bug found (downpours dried the soil) - fix written in the handoff, to verify first. R7 v2 powers designed,
+not built.)
 
 ## Never cut
 Determinism, causality (every major change traceable), the planet layer, no scripted

@@ -343,6 +343,15 @@ function M.register(G)
     elseif args.what == "dock" then
       assert(s.dock, "no dock")
       x, y = s.dock.mx, s.dock.my
+    elseif args.what == "house" then
+      -- (S22) the first house standing with a household in it
+      local found
+      for _, id in ipairs(s.blist) do
+        local b = s.buildings[id]
+        if not found and b.kind == "house" and b.state == "standing" and b.hh ~= 0 then found = b end
+      end
+      assert(found, "no house")
+      x, y = found.cx, found.cy
     elseif args.what == "bridge" then
       local found
       for _, id in ipairs(s.blist) do
@@ -1168,6 +1177,62 @@ function M.register(G)
     return out
   end)
 
+  -- (S22) v3_beasts{sett}: every beast, wild animal and dog out of doors on the map now, with what out-tops it
+  -- for a bolt there (the strike's own rule: height less 4 a unit of distance within its pull) - reads only
+  bridge.register("v3_beasts", function(args)
+    local W = assert(G.W, "world not ready")
+    local s = assert(W.S.v3.settlements[tonumber(args.sett) or 1], "no such settlement")
+    local blaze = require("sim.agents.blaze")
+    local danger = require("sim.agents.danger")
+    local c = require("sim.config").V3
+    local now = require("game.platform.speed").v3_t or W.S.v3.now or W.hour
+    local out = {}
+    blaze.beasts_out(W, s, now, function(kind, o, H, x, y)
+      local top, what = -1e9, "nothing"
+      blaze.trees_near(s, x, y, c.strike_pull, function(k, d2)
+        local sc = (s.trees.size[k] or 1) * c.strike_tree - math.sqrt(d2) * 4
+        if sc > top then top, what = sc, "a tree" end
+      end)
+      for _, id in ipairs(s.blist) do
+        local b = s.buildings[id]
+        local d = math.sqrt(((b.cx or b.dx) - x) ^ 2 + ((b.cy or b.dy) - y) ^ 2)
+        if b.state == "standing" and not b.natural and d < c.strike_pull then
+          local sc = (c.strike_bld[b.kind] or c.strike_roof) - d * 4
+          if sc > top then top, what = sc, "the " .. b.kind end
+        end
+      end
+      danger.each_on_map(W, s, function(q)
+        if q.inside == 0 then
+          local qx, qy = danger.person_pos(q, now)
+          local d = math.sqrt((qx - x) ^ 2 + (qy - y) ^ 2)
+          if d < c.strike_pull and c.strike_person - d * 4 > top then top, what = c.strike_person - d * 4, q.name end
+        end
+      end)
+      local mine = c.strike_beast[o.sp or "dog"] or 0.25
+      out[#out + 1] = { grp = kind == "beast" and H.kind or kind, k = o.k, sp = o.sp or "dog", x = x, y = y, exposed = mine > top,
+        margin = mine - math.max(top, -9), taller = what, owner = o.owner or o.hh or 0 }
+    end)
+    return { sett = s.id, name = s.name, beasts = out, now = now }
+  end)
+  -- (S22) v3_screen{sett, grp = flock | cattle | swine | wild | dog, k} or {pid}: where that beast or person is
+  -- drawn now in window pixels (origin bottom left, as camera.project) and the window's size - for clicking on
+  -- it as a player would (scripts/play_powers.mjs). Reads the view only.
+  bridge.register("v3_screen", function(args)
+    local av = require("game.view.agents_view")
+    local e
+    if args.pid then
+      for _, p in ipairs(av.people_pos) do if p.id == tonumber(args.pid) then e = p end end
+    else
+      for i = 1, av.beast_n or 0 do
+        local b = av.beast_pos[i]
+        if b.sid == tonumber(args.sett) and b.grp == args.grp and b.k == tonumber(args.k) then e = b end
+      end
+    end
+    if not e then error("not drawn now", 0) end
+    local px, py = camera.project(e.x, e.y, e.z)
+    local w, h = window.get_size()
+    return { sx = px, sy = py, w = w, h = h }
+  end)
   bridge.register("picking_info", function()
     return { last_cell = picking.last_cell }
   end)

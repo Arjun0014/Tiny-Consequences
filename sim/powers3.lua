@@ -33,7 +33,20 @@ local function area(W, c, steps) return powers.area(W, c, steps) end
 local function forcing(W, kind, cells, amount, tag, days)
   W.S.powers = W.S.powers or { forcings = {}, blight = {} }
   local fs = W.S.powers.forcings
-  fs[#fs + 1] = { kind = kind, cells = cells, amount = amount, tag = tag, from = W.tick, to = W.tick + days }
+  local f = { kind = kind, cells = cells, amount = amount, tag = tag, from = W.tick, to = W.tick + days }
+  fs[#fs + 1] = f
+  return f
+end
+
+-- (S22) The villages whose cells lie in `cells` (ids, ascending), and the moment of the cast: rain or a dry
+-- spell begins over them when it is cast (sim/agents/weather.lua), not at the planet's next day.
+local function at_villages(W, f, cells)
+  local set = {}
+  for _, c in ipairs(cells) do set[c] = true end
+  local ids = {}
+  for _, s in ipairs(W.S.v3.settlements) do if s.alive and set[s.cell] then ids[#ids + 1] = s.id end end
+  f.at, f.sids = W.S.v3.now or W.hour, ids
+  for _, s in ipairs(W.S.v3.settlements) do s.wx = nil end
 end
 
 local P = {}
@@ -59,7 +72,7 @@ function P.rain(W, p)
   local c = C()
   local cells = area(W, p.cell, c.radius)
   local ev = root(W, "rain", p.cell, #cells)
-  forcing(W, "rain", cells, 1, ev, c.v3_rain_days)
+  at_villages(W, forcing(W, "rain", cells, 1, ev, c.v3_rain_days), cells)
   return ev
 end
 
@@ -67,7 +80,7 @@ function P.dry(W, p)
   local c = C()
   local cells = area(W, p.cell, c.radius)
   local ev = root(W, "dry", p.cell, #cells)
-  forcing(W, "drought", cells, 1, ev, c.v3_dry_days)
+  at_villages(W, forcing(W, "drought", cells, 1, ev, c.v3_dry_days), cells)
   return ev
 end
 
@@ -140,9 +153,11 @@ function P.cull(W, p)
   for _, cl in ipairs(cells) do set[cl] = true end
   local mapm = require("sim.agents.map")
   local rng = require("sim.rng")
+  local deeds = require("sim.agents.deeds")
   local now = W.S.v3.now or W.hour
   for _, s in ipairs(W.S.v3.settlements) do
     local Wd = s.wildlife
+    local n, what, sx, sy = 0, nil, 0, 0
     for _, w in ipairs(Wd and Wd.animals or {}) do
       if w.alive and not w.gone and (w.pred == (sp == "predators")) then
         local i = mapm.tile_of(s, w.tx or w.x, w.ty or w.y)
@@ -151,8 +166,14 @@ function P.cull(W, p)
           Wd.carcasses = Wd.carcasses or {}
           Wd.carcasses[#Wd.carcasses + 1] = { x = w.tx or w.x, y = w.ty or w.y, sp = w.sp, t = now, meat = 0, by = "cull", ev = ev }
           s.acc.culled_wild = (s.acc.culled_wild or 0) + 1
+          n, what, sx, sy = n + 1, w.sp, sx + (w.tx or w.x), sy + (w.ty or w.y)
         end
       end
+    end
+    -- (S22) the dead on this map: a deed of the cull (what the people there find, and the news)
+    if n > 0 then
+      deeds.add(W, { kind = "culled", t = now, at = s.id, x = sx / n, y = sy / n, by = 0, by_hh = 0, by_s = 0, to = 0, to_hh = 0,
+        to_s = s.id, what = what, n = n, fu = 0, harm = false, event = ev })
     end
   end
   return ev

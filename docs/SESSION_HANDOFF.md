@@ -1,3 +1,97 @@
+# Session handoff — session 22 (4 Oct 2026, ENDED on Arjun's word near the ~850K context checkpoint): the validation Session 21 left; the frozen children; animals and fire; lightning on beasts; the powers played; D-176-D-178
+
+## FINAL STATE (end of session 22)
+- main, all committed (47b2cac + the closing commit after it). Nothing half-done in the tree.
+- Tests: quick sim suite **194/194** at 47b2cac (190 + `test_v3_beasts_fire` x4); after it every v3 unit test green
+  again on the final code; web **11/11** (at the session start); lint clean; release build OK.
+- Browser = LuaJIT (release): untouched 72 h, `--premise flood5|conflict|fire|powers|pasture_fire` 96 h (powers
+  re-checked on the final code).
+- Cost: LuaJIT 3.91 M instructions a game hour at day 0, 4.41 M at day 192 (old code); the 8-year world with the
+  children now living 5.13 M (stock 39%: flocks grow over the years - watch it).
+- 8 untouched years on the final sim (`out/s22/chron384n`, before the D-178 news-only changes): births 46, deaths
+  illness 16, old age 4, natural lightning 1, **hunger 1** (a man of 69 in a fisher household that had lost its
+  boat, helped by neighbours - a lean time, not a mechanism failure); **0 people frozen** (was 37 of 168).
+
+## FIRST THING NEXT SESSION: apply and verify the hydrology fix (D-178 7)
+`sim/systems/hydrology.lua` around line 102, in the land loop (daily steps, v3): the rain the ground cannot take in
+(`quick`) runs off but is ALSO subtracted from the soil, so every downpour dries the ground by its excess. Fix:
+```lua
+      local ro = 0                      -- was: local ro = quick
+      if s > fc then ro = ro + (s - fc) * k_run end
+      local base = s * k_base
+      ro = ro + base
+      s = s - ro
+      if s > 1 then ro = ro + s - 1; s = 1 end
+      ro = ro + quick                   -- new: the excess runs off without leaving the soil twice
+```
+Measured: under the rain power soil 0.46 -> 0.33 with the bug, stays ~0.46 (runs off) with the fix; a cloudburst on a
+drought 0.10 -> 0.13 with the bug, 0.10 -> 0.22 with it. It changes the untouched world (wetter soils after storms):
+two statistical tests drifted with it (`wild_animals_belong_to_their_herds`: animals hunted 1 < 2 in the window;
+`animals_are_individuals`: wolves' simultaneous stops 25% > 20%) - follow those, then the full suite, the flood
+tests and premise `flood5`, an 8-year untouched run (`luajit tools/v3_chronicle.lua --days 384`: no hunger deaths
+expected), `node scripts/v3_hash_web.mjs --release` (+ premises), and a DECISIONS entry. Re-measure the untouched
+4-year flows/soil against D-169's numbers (they were taken with the bug).
+
+## What happened (in order)
+1. **Validation** (S21 left it undone): suite 190/190, web 11/11, browser = LuaJIT untouched + flood5/conflict/fire
+   + a new `powers` premise (all v1 powers cast at once), profiles day 0 / day 192, 8 untouched years without hunger.
+2. **A split 8-year run starved 14 people** (save at day 192, load, go on). `tools/v3_save_mid.lua` (save at a year
+   boundary, restore a copy, advance both side by side, diff the first state that differs) found: **every person
+   born in a running world was never scheduled** (`life.birth`; 37 of 168 alive after 8 years had never taken a
+   step - children of 4-8 never walked, ate or played), a queue rebuilt in the past (a loaded save replayed years of
+   a child's life in a minute), dogs never re-queued (every premise that rebuilt the queue froze the dogs), stale
+   trade/wild caches, households unable to kill a beast for the pot while the village's other larders held food, and
+   v3 commands applied up to an hour after the click. All fixed (D-176). Residual: a restored world still parts from
+   the live one after ~6 h (a claim count on a charcoal clamp: `tools/v3_save_mid.lua --fine 7`); players cannot save
+   v3 worlds yet.
+3. **Animals and fire** (Arjun's playtest): `tools/v3_fire_animals.lua` + `tests/sim/support/fire_audit.lua`; fire by
+   its extent (`danger.fire_near`), noticed by each in its own time, run from its own way, kept away from while it
+   burns, burns what is in its flames; a flock grazing over its fold's ground was "shut in"; planet fire no longer
+   painted over a village map close in (D-177). Watched in the game (`scripts/shots_beasts_fire.mjs`): the flock
+   spreads across the open pasture within 25 minutes and keeps there while the stand burns.
+4. **Lightning on beasts** (D-177): beasts by height (buildings by theirs), the ground's current, carcass, unwilling
+   loss, the owners remember, a story rooted at YOU; the click lands on the terrain's ground or on the entity under the
+   pointer; played through the UI (`scripts/play_powers.mjs`): a goat and a cow in the open killed, a sheep under a
+   tree spared (the tree took it and caught fire), a house struck.
+5. **The powers played** (D-178, `tools/v3_power_matrix.lua`): the god's rain begins at the cast (a downpour, rain to
+   the day's end); every cast has its own story of what it changed (rooted at YOU, merged when repeated); culled
+   animals leave a deed; lightning stories name what was struck; at most two everyday cards; audio deeds read at every
+   zoom, fires louder close up, herds call less often. The hydrology bug (above) found and left for next session.
+
+## Next (in order)
+1. The hydrology fix and its verification (above).
+2. R7 v2 powers (doc 70 §2), designed this session from the code (not built):
+   - **Sickness in a herd**: the herd already has a daily sickness (catching by the share sick, crowding, wet, hunger;
+     recovery; deaths) - add an incubation (`a.sick_inc`: infected, not yet showing, still sold or droven - so trade
+     and droving carry it), a cause (`a.sick_ev`, passed on to those it infects; the herd's source), and a deed per
+     herd-day of deaths with that event (the news: "Sickness among the sheep at X", rooted at YOU when the power
+     seeded it). The power infects a few beasts of the herd nearest the click.
+   - **Blight** on v3 plots: `pl.blight` severity with its event; grows with warm wet days, cuts the yield, spreads to
+     plots near by wind (by severity, nearness, wetness), and in seed grain (a taint on the granary's grain sown next,
+     carried with traded grain); owners notice it past a share.
+   - **Warm / cool sea**: a heat anomaly over ocean cells only, full strength, ~16 days (`powers.update` heat branch
+     restricted to the sea); SST follows (temperature.lua), plankton/fish answer by ocean.lua's window (10-26 C,
+     heat kill > 30): a temperate sea warmed may bring more fish, a warm one more die-off; fishers (act.lua 755) and
+     gulls read F.fish; a story from the fish at a fishing village's sea cells against their reference.
+   - **Oil**: v2's oil (`F.oil`, currents, beaching) on v3: the catch already reads F.fish (oil kills fish); add the
+     shore: oil on a village map's sea and shore tiles fouls shore gathering, gulls; stories.
+   - **Meteor**: a compound physical event at the impact: planet fire on the cells, a quake (`shake.quake`), aerosol
+     (`G.aerosol`), heat; on a village map fire and hurt within the blast; at sea `tsunami.raise`. Rooted at YOU.
+3. The news: a history list, relief / orphans / harvest / hunting stories; settings panel for volumes; per-power aim
+   previews; then palisade and captives.
+4. Watch the cost of herds in long runs (stock 39% at year 8).
+
+## Pitfalls found this session
+- **People created at runtime must be queued** (`life.push`); a queue rebuilt (`W.v3rt = nil`) must never schedule in
+  the past and must include dogs.
+- **Runtime caches that read mutable state** (routes priced by woods, partners, docks, the border land) must be reset
+  at year boundaries (`sys.year`) or a restored world diverges.
+- `world.advance(W, W.hour + 0.5)` never moves past the half hour (`W.hour` counts closed hours): carry your own clock.
+- In Lua `local a, b = x and f()` keeps only f's first value.
+- v3 commands given mid-hour now apply at their own moment (`cmd.at`); tests that queue a command then advance get it
+  at once.
+- Bash heredocs with apostrophes break in this harness - write patch scripts to files (again).
+
 # Session handoff — session 21 (3-4 Oct 2026, extended autonomous run, ENDED at ~900K context on Arjun's word): flood water, arms and kin help, climate extremes, R7 rethought and its v1 powers built, the world news, world audio; D-169-D-175
 
 ## FINAL STATE (end of session 21)

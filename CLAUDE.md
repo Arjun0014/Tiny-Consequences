@@ -105,6 +105,13 @@ click must be held a few frames to reach Defold (`scripts/shots_news.mjs`). **R7
 `sim/powers3.lua` wraps the `power` command (never require back into it); each power writes state with its root
 event as the cause (tests `test_v3_powers`; `scripts/shots_powers.mjs`). The news, the feed and the audio never
 write sim state (D-175). M mutes the world's sound.
+Session 22 (D-176-D-178): **people created at runtime must be queued** (`life.push`; before, every child born in a
+running world was frozen for years) and a rebuilt queue never schedules in the past (it includes dogs); runtime
+caches that read mutable state reset at year boundaries (`sys.year`); v3 commands given mid-hour apply at their own
+moment; animals face fire by its extent (`danger.fire_near`; tools `tools/v3_fire_animals.lua`, test
+`test_v3_beasts_fire`); lightning takes exposed beasts; powers played with `tools/v3_power_matrix.lua` and
+`scripts/play_powers.mjs`; a mid-life save round trip is checked with `tools/v3_save_mid.lua`. Open: the hydrology fix
+in the session 22 handoff (verify first).
 
 ## Read order
 

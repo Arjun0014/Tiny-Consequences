@@ -28,7 +28,12 @@ M.KINDS = {
   -- (everyday life: STORY level, weighed below danger and pressure - a quiet world still shows its life)
   birth = { 2, "heart", 14 }, passing = { 2, "person", 16 }, wedding = { 2, "heart", 12 }, house = { 2, "house", 10 },
   trade = { 2, "people", 16 }, fair = { 2, "star", 32 }, relief = { 2, "bread", 34 },
+  -- (S22) a power cast: what it changed in the world, at once (its consequences are their own stories)
+  power = { 2, "star", 30 }, culled = { 2, "paw", 26 },
 }
+-- (S22) everyday life: at most this many cards at once (four "a new house" cards hid the rest)
+M.EVERYDAY = { birth = true, passing = true, wedding = true, house = true, trade = true, fair = true }
+M.EVERYDAY_MAX = 2
 
 local function rt(W)
   local R = W.newsrt
@@ -123,16 +128,31 @@ local function on_deed(W, R, d, now)
     st.active = false
     return
   end
+  if k == "culled" then
+    -- (S22) the wild animals of a map that died where they stood when the god culled them
+    local st = story(W, R, "culled:" .. d.id, "culled", s.id, d.t, { x = d.x, y = d.y, deed = d.id, ev = d.event })
+    local n = d.n or 1
+    st.title = sfmt("%s %s dead about %s", n == 1 and "A" or tostring(n), n == 1 and (d.what or "beast") or (d.what == "deer" and "deer" or ((d.what or "beast") .. "s")), s.name)
+    line(st, "Dead where they stood: carcasses in the woods and on the pasture", d.t)
+    st.active = false
+    return
+  end
   if k == "strike" then
     -- lightning: news when it starts a fire or strikes someone (the fire's own story carries on)
-    local st = story(W, R, "fire:" .. s.id, "fire", s.id, d.t, { x = d.x, y = d.y, deed = d.id })
-    st.title = st.title or sfmt("Lightning struck at %s", s.name)
+    local st = story(W, R, "fire:" .. s.id, "strike", s.id, d.t, { x = d.x, y = d.y, deed = d.id })
+    -- (S22: what it struck, in the title)
+    st.title = st.title or sfmt("Lightning struck %s at %s", d.what == "tree" and "a tree" or (d.what == "ground" and "the ground"
+      or (d.what == "bld" and (BUILDING_WORD[d.bkind or ""] or "a building")) or "someone"), s.name)
     line(st, d.what == "person" and "Lightning struck someone in the open" or (d.what == "ground" and "Lightning struck the ground")
       or (d.what == "tree" and "Lightning struck a tree") or sfmt("Lightning struck %s", BUILDING_WORD[d.bkind or ""] or "a building"), d.t)
     st.weak = d.what == "ground" or d.what == "tree"
+    -- (S22) a bolt the player sent is news whatever it hit: they want to see where it went
+    local pe = d.event and W.E and W.E.rec[d.event]
+    if pe and pe.actor == "player" then st.weak = false; st.ev = st.ev or d.event end
     for _, f in ipairs(s.burn or {}) do
       if f.deed == d.id and not f.out then
         st.weak = false
+        st.kind, st.icon = "fire", M.KINDS.fire[2]
         st.title = sfmt("Fire in %s", s.name)
         line(st, f.kind == "bld" and sfmt("%s caught fire", BUILDING_WORD[(s.buildings[f.ref] or {}).kind] or "a building") or "A tree caught fire", d.t)
         break
@@ -281,8 +301,58 @@ local function on_deed(W, R, d, now)
 end
 
 -- Events -----------------------------------------------------------------------------------------
+-- (S22) The village nearest planet cell c, and whether it is near (within a few cells).
+local function nearest_village(W, c)
+  local best, bd = nil, -2
+  local g = W.grid
+  for _, s in ipairs(W.S.v3.settlements) do
+    local dd = g.X[s.cell] * g.X[c] + g.Y[s.cell] * g.Y[c] + g.Z[s.cell] * g.Z[c]
+    if s.alive and dd > bd then best, bd = s, dd end
+  end
+  return best, bd > 0.93
+end
+
+-- (S22) What a cast changed, as a title and a line (the cast's root event; nil: another story tells it).
+local POWER_STORY = {
+  power_rain = function(W, e, s) return sfmt("Rain over the hills about %s", s.name), sfmt("A cloudburst for %d days", require("sim.config").POWERS.v3_rain_days) end,
+  power_drought = function(W, e, s) return sfmt("A dry spell about %s", s.name), sfmt("No rain and a little heat for %d days", require("sim.config").POWERS.v3_dry_days) end,
+  power_heat = function(W, e, s) return sfmt("Warm air over %s", s.name), sfmt("%d degrees warmer for %d days", floor(require("sim.config").POWERS.v3_air_k + 0.5), require("sim.config").POWERS.v3_air_days) end,
+  power_chill = function(W, e, s) return sfmt("Cold air over %s", s.name), sfmt("%d degrees colder for %d days", floor(require("sim.config").POWERS.v3_air_k + 0.5), require("sim.config").POWERS.v3_air_days) end,
+  power_cull = function(W, e, s)
+    local wolves = e.data and e.data.species == "predators"
+    return sfmt("%s culled about %s", wolves and "Wolves" or "Deer", s.name), wolves and "The packs of the hills about thinned" or "The herds of the hills about thinned"
+  end,
+  power_introduce = function(W, e, s)
+    local sp = e.data and e.data.species
+    if sp == "predators" then return sfmt("Wolves brought to the hills about %s", s.name), "A pack now roams there"
+    elseif sp == "fish" then return sfmt("Fish brought to the sea off %s", s.name), "A shoal in the water"
+    elseif sp == "settlers" then return nil end
+    return sfmt("Deer brought to the hills about %s", s.name), "A herd now grazes there"
+  end,
+  power_volcano = function(W, e, s) return sfmt("%s stirred", e.data and e.data.name or "The mountain"), "Pressure is building under it" end,
+  power_quake = function(W, e, s, near)
+    return near and sfmt("The fault under %s strained", s.name) or sfmt("A fault strained far from any village (nearest: %s)", s.name), "It may give at any time"
+  end,
+}
+
 local function on_event(W, R, e, now)
   local V = W.S.v3
+  local ps = POWER_STORY[e.kind]
+  if ps and e.actor == "player" then
+    local s, near = sett(W, e.data and e.data.settlement), true
+    if not s then s, near = nearest_village(W, e.cell) end
+    local title, text
+    if s then title, text = ps(W, e, s, near) end
+    if title then
+      -- (the same power cast again over the same village within a few hours: one story, counted)
+      local st = story(W, R, "power:" .. e.kind .. ":" .. s.id .. ":" .. floor(now / 6), "power", s.id, now, { ev = e.id, cell = e.cell, x = s.sqx, y = s.sqy })
+      local n = count(st, "casts")
+      st.title = title
+      line(st, n == 1 and text or sfmt("%s (cast %d times)", text, n), now)
+      st.active = false
+    end
+    return
+  end
   if e.kind == "eruption" then
     -- the nearest village to the mountain is where the camera goes
     local best, bd = nil, -2
@@ -367,12 +437,21 @@ local function poll_fire(W, R, s, now)
     for _, g in ipairs(s.burn) do if not g.out and g.heat > 0 then n = n + 1 end end
     local b = f.kind == "bld" and s.buildings[f.ref]
     fs.title = sfmt("Fire in %s", s.name)
+    fs.kind, fs.icon, fs.level = "fire", M.KINDS.fire[2], 1   -- (S22: a strike's story becomes the fire's)
     fs.burning = n
     fs.x, fs.y, fs.active, fs.t1 = f.x, f.y, true, now
     fs.weak = false
     if b and not fs.said_b then
       fs.said_b = true
       line(fs, sfmt("%s is burning", BUILDING_WORD[b.kind] or b.kind), now)
+    end
+    -- (S22) the woods and fields: a line as the fire grows (by how much burns, not every tree)
+    local trees = 0
+    for _, g in ipairs(s.burn) do if not g.out and g.heat > 0 and g.kind ~= "bld" then trees = trees + 1 end end
+    local size = trees == 0 and 0 or (trees <= 1 and 1 or (trees <= 5 and 2 or (trees <= 15 and 3 or 4)))
+    if size > (fs.size or 0) then
+      fs.size = size
+      line(fs, size == 1 and "A tree is burning" or (size == 2 and "A few trees are burning" or (size == 3 and "The woods are burning" or "A wide fire in the woods")), now)
     end
     -- (who is at it: someone carrying water, else someone near)
     for _, id in ipairs(s.members) do
@@ -381,7 +460,8 @@ local function poll_fire(W, R, s, now)
     end
   elseif fs and not fs.closed and fs.active then
     fs.active = false
-    if not fs.weak then line(fs, sfmt("The fire is out after %d hours", max(1, floor(now - fs.t0 + 0.5))), now) end
+    -- (S22: only a story that saw something burn - a bolt on bare ground left no fire to go out)
+    if not fs.weak and fs.burning then line(fs, sfmt("The fire is out after %d hours", max(1, floor(now - fs.t0 + 0.5))), now) end
   end
 end
 
@@ -650,8 +730,19 @@ function M.cards(W, n, now)
     end
   end
   table.sort(out, function(a, b) if a.score ~= b.score then return a.score > b.score end return a.id > b.id end)
-  for i = #out, (n or 5) + 1, -1 do out[i] = nil end
-  return out
+  -- (S22) everyday life fills the cards only up to EVERYDAY_MAX of them
+  local keep, ev = {}, 0
+  for i = 1, #out do
+    local st = out[i]
+    if M.EVERYDAY[st.kind] then
+      ev = ev + 1
+      if ev <= M.EVERYDAY_MAX then keep[#keep + 1] = st end
+    else
+      keep[#keep + 1] = st
+    end
+    if #keep >= (n or 5) then break end
+  end
+  return keep
 end
 
 -- Why? -----------------------------------------------------------------------------------------
@@ -681,6 +772,7 @@ local DEED_TEXT = {
   help = function(W, d) return sfmt("%s came to help", (person(W, d.by) or {}).name or "Kin") end,
   lost = function(W, d) return sfmt("Wolves killed a %s at %s", d.what or "beast", (sett(W, d.at) or {}).name or "?") end,
   doused = function(W, d) return sfmt("%s caught fire at %s", BUILDING_WORD[d.what] or "A building", (sett(W, d.at) or {}).name or "?") end,
+  culled = function(W, d) return sfmt("%d %s died about %s", d.n or 1, d.what or "beasts", (sett(W, d.at) or {}).name or "?") end,
   ["return"] = function(W, d) return "The beasts were given back" end,
   pay = function(W, d) return "It was made good" end,
   refuse = function(W, d) return "They refused to make it good" end,

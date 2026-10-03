@@ -50,7 +50,30 @@ function M.today(W, s, t)
   return wx
 end
 
+-- (S22) A god's rain over this village begins when it is cast - a downpour for its first `burst_h` hours,
+-- rain for the rest of that day (the planet's wetter days follow by themselves); a dry spell stops the rain
+-- at once. Nil when no power holds the sky here now.
+local function forced(W, s, t)
+  local P = W.S.powers
+  local fs = P and P.forcings
+  if not fs then return nil end
+  for i = #fs, 1, -1 do
+    local f = fs[i]
+    if f.at and f.sids and t >= f.at and t < f.at + 24 then
+      for k = 1, #f.sids do
+        if f.sids[k] == s.id then
+          if f.kind == "rain" then return t < f.at + cfgmod.POWERS.v3_burst_h and 2 or 1 end
+          if f.kind == "drought" then return 0 end
+        end
+      end
+    end
+  end
+  return nil
+end
+
 function M.rain(W, s, t)
+  local fr = forced(W, s, t)
+  if fr then return fr end
   local wx = M.today(W, s, t)
   if not wx.wet then return 0 end
   for k = 1, wx.n do

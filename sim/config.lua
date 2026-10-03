@@ -756,6 +756,7 @@ C.POWERS = {
   radius = 2, introduce_radius = 1,       -- level-4 steps
   season_ticks = 12,                      -- Weather / Temperature last one season
   deluge_mult = 2.5, deluge_add = 0.04,   -- forced rain: precip x mult + add (moisture units per tick)
+  v3_burst_h = 3,                         -- (S22) a god's rain on a village begins when cast: a downpour this many hours
   drought_mult = 0.05, drought_heat = 3,  -- drought: rain blocked, +3 °C heat anomaly (drier soil)
   temp_anom = 6,                          -- Heat / Chill: ± °C heat anomaly held for the season
   sea_factor = 2,                         -- ... times this over open water (the sea holds it)

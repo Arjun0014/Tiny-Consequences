@@ -43,7 +43,7 @@ function M.lightning_at_a_point()
   local r = d and d.event and root_of_event(W, d.event)
   T.ok(r and r.actor == "player" and r.kind == "power_lightning", "its cause: the power")
   local you = false
-  for _, st in ipairs(news.rt(W).list) do if st.kind == "fire" and st.sid == s.id and news.chain(W, st).root == "you" then you = true end end
+  for _, st in ipairs(news.rt(W).list) do if (st.kind == "fire" or st.kind == "strike") and st.sid == s.id and news.chain(W, st).root == "you" then you = true end end
   T.ok(you, "the news story of it is rooted at YOU")
   return string.format("struck %s (%s)", d and d.what or "?", d and (d.bkind or "") or "")
 end
