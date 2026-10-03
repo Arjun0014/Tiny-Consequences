@@ -1936,6 +1936,11 @@ local function herd_candidates(W, s, p, ctx, now)
                 addw(0.85 * fatigue(p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "slaughter", ck, hi,
                   "The %s household has nothing left to eat and no beasts of its own: killing one of our %s for them",
                   fq.surname, a.sp == "cattle" and "cattle" or (a.sp == "sheep" and "sheep" or a.sp .. "s"))
+              elseif a.cull == "failing" then
+                -- (S20) starving: killed for the larder before it dies
+                addw(0.7 * fatigue(p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "slaughter", ck, hi,
+                  "One of our %s is starving: killing it for the larder before it dies",
+                  a.sp == "cattle" and "cattle" or (a.sp == "sheep" and "sheep" or a.sp .. "s"))
               elseif a.cull == "snow" then
                 -- (S20, R6.5d) the grass under the snow, the stack too small to feed them all
                 addw(0.6 * fatigue(p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "slaughter", ck, hi,
@@ -4711,6 +4716,44 @@ function M.quake_choice(W, s, p, ctx, now)
   return false
 end
 
+-- (S20, R6.5f) The sea drawing back (seen, or shouted): those near the shore run inland, babes in
+-- arms; those already far from the water go on as they were.
+function M.wave_choice(W, s, p, ctx, now)
+  if p.at or ctx.stage == "infant" or now - p.alarm.t > 1.2 then p.alarm = nil; return false end
+  local tsunami = require("sim.agents.tsunami")
+  local dd = tsunami.dist_at(s, p.x, p.y)
+  local safe = C().tsu_safe / s.T
+  if dd < 0 or dd >= safe then p.alarm = nil; return false end
+  local x, y = tsunami.inland(s, p.x, p.y, safe)
+  if not x then p.alarm = nil; return false end
+  local F = M.FIRE
+  F.a, F.b = 0, 0
+  F.kind, F.why = "run_inland", "The sea is drawing back from the shore: up from it, away from the water!"
+  F.fx, F.fy = x, y
+  return true
+end
+
+PLAN.run_inland = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local F = M.FIRE
+  go(pl, F.fx, F.fy, "high ground")
+  pl[#pl].run = true
+  work(pl, "watch", 0.8, {})
+  if p.inside ~= 0 and (ctx.stage == "adult" or ctx.stage == "elder") and (p.babe or 0) == 0 then
+    -- (a babe lying in the house is snatched up on the way out)
+    local V = W.S.v3
+    for _, id in ipairs(s.members) do
+      local ib = V.people[id]
+      if ib and ib.alive and ib.inside == p.inside and people.stage(ib, now) == "infant" and not (ib.act == "carried" and (ib.carer or 0) ~= 0) then
+        kin.give(W, ib, p)
+        ib.act = "carried"
+        break
+      end
+    end
+  end
+  return "Up from the shore, away from the sea", "high ground"
+end
+
 PLAN.run_out = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
   local b = s.buildings[p.inside]
@@ -5776,6 +5819,11 @@ function M.decide(W, s, p, now, reason)
     -- (S20, R6.5f) under the rubble: nothing but waiting to be dug out
     kind, why = "trapped", "Trapped under the fallen house, waiting to be dug out"
     add(1, "trapped", 0, 0, why)
+    M.cd = CAND[ncand]
+  elseif p.alarm and p.alarm.kind == "wave" and M.wave_choice(W, s, p, ctx, now) then
+    local fc = M.FIRE
+    kind, why = fc.kind, fc.why
+    add(1, fc.kind, fc.a, fc.b, fc.why)
     M.cd = CAND[ncand]
   elseif p.alarm and p.alarm.kind == "quake" and M.quake_choice(W, s, p, ctx, now) then
     local fc = M.FIRE

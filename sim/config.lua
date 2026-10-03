@@ -1332,7 +1332,16 @@ C.V3 = {
   wound_trust_loss = 0.2, blood_trust_loss = 0.5,
   -- (S20) fields burning: a field burns fire_plot_h x its fuel (ripe corn standing, stooks, corn
   -- drying off, stubble) hours, catches at fire_plot_catch of a tree's chance; its ash fire_plot_ash
-  fire_plot_h = 1.0, fire_plot_catch = 0.8, fire_plot_ash = 0.03,   -- (S20) trust lost by a village whose man another's struck (x the blow)   -- (S20) a band at the gate waits up to this long for those of the party still coming
+  fire_plot_h = 1.0, fire_plot_catch = 0.8, fire_plot_ash = 0.03,
+  -- (S20, R6.5f, D-162) tsunami: a quake under the sea of tsu_mag or more (an ocean volcano's VEI
+  -- tsu_vei or more) raises a wave of strength (mag - tsu_mag + 1); at a coastal village it runs up
+  -- tsu_k x strength / (1 + steps^2) world units from the sea (below tsu_min: nothing), arriving
+  -- tsu_delay + steps / tsu_speed hours later; the sea draws back in the hour before (seen within
+  -- tsu_see of the water, by night 0.3 of it; shouted within tsu_shout); those nearer the sea than
+  -- tsu_safe run inland; within the run-up buildings fall, people are swept (tsu_hurt x depth), moored
+  -- boats and beasts lost, fields salted (tsu_salt)
+  tsu_mag = 7.0, tsu_vei = 5, tsu_k = 0.5, tsu_min = 0.05, tsu_delay = 0.3, tsu_speed = 4, tsu_see = 0.4,
+  tsu_shout = 0.5, tsu_safe = 0.6, tsu_hurt = 1.3, tsu_salt = 0.25,   -- (S20) trust lost by a village whose man another's struck (x the blow)   -- (S20) a band at the gate waits up to this long for those of the party still coming
   -- (S20, R6) restocking: the beasts a household lost against its will (sickness, hunger, wolves,
   -- fire, thieves; meat FU, fading herd_lost_fade a day) against what it had: from restock_min_fu, a
   -- loss of take_restock of it is a motive to take beasts even when fed: gain + take_gain_k x the

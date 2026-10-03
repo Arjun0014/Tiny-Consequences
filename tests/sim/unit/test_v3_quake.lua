@@ -91,4 +91,40 @@ function M.an_eruption_cools_and_ash_buries_the_grass()
     s.acc.cracked or 0, s.acc.fell or 0, g0, g1, s.ash or 0)
 end
 
+-- Tsunami (D-162): a great quake under the sea off Tekheim (premise); the wave's run-up from the sea
+-- takes what stands near the shore (the dock, the salt pan, the boats moored), whoever is still there
+-- is swept, the village above it is spared; everyone knows the sea came.
+function M.a_wave_takes_the_shore()
+  local W = shipped()
+  local V = W.S.v3
+  local s = V.settlements[1]
+  local clock = require("sim.agents.clock")
+  world.advance(W, W.hour + 48)
+  local h = clock.local_hour(W.hour, W.grid.lon[s.cell])
+  world.advance(W, W.hour + ((11 - h) % 24))
+  local houses0 = 0
+  for _, id in ipairs(s.blist) do if s.buildings[id].kind == "house" then houses0 = houses0 + 1 end end
+  T.ok(require("sim.agents.premise").named(W, "tsunami"), "a quake under the sea")
+  T.ok(s.wave ~= nil, "a wave is coming to " .. s.name)
+  local runup = s.wave.runup
+  local t0 = W.hour
+  for k = 1, 16 do world.advance(W, t0 + k * 0.5) end
+  T.ok((s.acc.waves or 0) == 1, "the wave came")
+  T.ok((s.acc.fell_sea or 0) >= 1, (s.acc.fell_sea or 0) .. " buildings by the shore taken")
+  T.ok(s.dock == nil or s.dock.state ~= "standing", "the dock is gone")
+  local houses = 0
+  for _, id in ipairs(s.blist) do if s.buildings[id].kind == "house" then houses = houses + 1 end end
+  T.eq(houses, houses0, "the houses above the shore stand")
+  local knew = 0
+  for _, id in ipairs(s.members) do
+    for _, m in ipairs(V.people[id].mem or {}) do
+      local txt = type(m) == "table" and (m.text or m[2]) or m
+      if type(txt) == "string" and txt:find("The sea came over the land") then knew = knew + 1; break end
+    end
+  end
+  T.ok(knew >= 10, knew .. " remember the sea coming")
+  return string.format("run-up %.2f: %d taken by the shore, %d boats, %d swept, %d saw it go out; %d remember", runup, s.acc.fell_sea or 0,
+    s.acc.boats_sea or 0, s.acc.swept or 0, s.acc.waves_seen or 0, knew)
+end
+
 return M

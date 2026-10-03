@@ -76,6 +76,8 @@ function M.quake(W, at, mag, t, cause)
   local V = W.S.v3
   local ev = 0
   if W.record_events then ev = require("sim.causality.events").emit(W, "quake", at, cause or 0, mag, { mag = mag }) end
+  -- (S20) under the sea, a strong one raises a wave (tsunami.lua, injected)
+  if M.wave then M.wave(W, at, mag, t, ev) end
   for _, s in ipairs(V.settlements) do
     if s.alive then
       local I = M.felt(W, s, at, mag)
@@ -154,6 +156,7 @@ local FELL = {
   quake = { how = "the quake", ours = "Our house fell in the quake", lodge = "their house fell in the quake" },
   ash = { how = "the weight of the ash", ours = "Our house fell in under the ash", lodge = "their house fell in under the ash" },
   snow = { how = "the weight of the snow", ours = "Our house fell in under the snow", lodge = "their house fell in under the snow" },
+  sea = { how = "the sea", ours = "The sea took our house", lodge = "the sea took their house" },
 }
 
 local STORES = { "food", "grain", "sheaves", "smoked", "cheese", "meat", "fish", "meals", "logs", "wool", "cloth", "hides",

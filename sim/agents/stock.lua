@@ -974,6 +974,7 @@ function M.daily(W, s, day, push)
   if doy == c.slaughter[1] then s.acc.culled_plan = (s.acc.culled_plan or 0) + M.plan_cull(W, s) end
   if doy == c.pig_slaughter[1] then s.acc.culled_plan = (s.acc.culled_plan or 0) + M.plan_pig_cull(W, s) end
   s.acc.culled_hunger = (s.acc.culled_hunger or 0) + M.plan_hunger_cull(W, s, now)
+  s.acc.culled_failing = (s.acc.culled_failing or 0) + M.plan_failing(W, s, "failing")
   local year = floor((day + (W.grid.lat[s.cell] < 0 and 24 or 0)) / 48)
   for hi = 1, #M.HERDS do
     local H = s.herds[M.HERDS[hi]]
@@ -1205,7 +1206,7 @@ end
 -- sold; fading herd_lost_fade a day): a household that has lost much of its herd has lost its living -
 -- restocking is read from it (conflict.weigh_at).
 local OWN = {}
-local LOSS = { sickness = true, hunger = true, wolves = true, fire = true }
+local LOSS = { sickness = true, hunger = true, wolves = true, fire = true, sea = true }
 function M.lose(W, hid, a)
   local hh = W.S.v3.households[hid or 0]
   if hh then hh.herd_lost = (hh.herd_lost or 0) + SP(a.sp).meat end
@@ -1254,15 +1255,16 @@ function M.unmark(s, mark)
   end
 end
 
--- (S20, R6.5d) Beasts failing for want of feed (starving, nothing left in the stack): killed for the
--- larder while they still have flesh on them, marked a.cull = mark. Returns how many.
+-- (S20, R6.5d) Beasts failing for want of feed (starving; for the grazers nothing left in the stack):
+-- killed for the larder while they still have flesh on them, marked a.cull = mark. Returns how many.
+-- (Run every day for every village: what keeps a herd to the feed there is; before S20 starving
+-- beasts simply died within two days.)
 function M.plan_failing(W, s, mark)
-  if (s.hay or 0) >= 1 then return 0 end
   local c = C()
   local n = 0
-  for _, kind in ipairs({ "flock", "cattle" }) do
+  for _, kind in ipairs({ "flock", "cattle", "swine" }) do
     local H = s.herds[kind]
-    if H then
+    if H and (kind == "swine" or (s.hay or 0) < 1) then
       for _, a in ipairs(H.animals) do
         if a.alive and not a.cull and not a.ox and a.hunger >= 0.9 and a.health < c.snow_fail_health then
           a.cull = mark

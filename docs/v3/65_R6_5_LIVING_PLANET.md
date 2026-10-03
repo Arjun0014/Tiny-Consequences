@@ -149,8 +149,11 @@ an outcome script, the architecture is wrong.
   hear them or burn in it; a lost pen is planned again (D-159).
 - **R6.5e flood water**: deferred - the planet's rivers barely rise under a season's deluge at the
   villages (hydrology first).
-- Not yet: landslides, aftershocks, tsunami; e flood water, g climate extremes; ice crust, lopping
-  boughs for fodder, moving herds to open ground; fields and stacks burning, carrying the hurt out.
+- **Fields, stooks and the hay stack burn** (D-161); **tsunami** (D-162, §11: run-up from the sea,
+  the sea drawing back seen and shouted, running inland, the shore taken); lost village buildings
+  planned again (D-162).
+- Not yet: landslides, aftershocks; e flood water (hydrology first); g climate extremes (watched with
+  `hard_winter`); ice crust, lopping boughs for fodder, moving herds to open ground; carrying the hurt.
 
 ## 10. R6.5d snow and cold on the maps (design, session 20)
 The audit found no snow at any village (all lie between 37 S and 14 N: Krikeivorn's winter days
@@ -185,3 +188,23 @@ the sky after a great eruption, `G.aerosol`). Both are physical states the plane
 - **Tests**: snow falls and lies in a cold snap on a wet day; people walk slower in it; beasts are
   kept in and fed hay; a long hard winter: the hay runs short, beasts are killed for the larder,
   those left unfed starve; a frost night costs a young crop its yield, not under snow.
+
+## 11. Tsunami (R6.5f, last; design, session 20)
+- **Source**: a strong quake on a boundary cell under the sea (`shake.quake` at an ocean cell, magnitude
+  from `tsu_mag`) or a large eruption of an ocean volcano (VEI from `tsu_vei`); R7's meteor into the sea
+  later. Nothing else starts one.
+- **The wave at a village**: each coastal village (a map with sea tiles) within reach gets a run-up by
+  distance (`tsu_k` x (mag - tsu_mag + 1) / (1 + steps^2)), arriving after a delay by distance (the wave
+  crosses the sea: `tsu_speed` cell steps an hour). On the map the inundation is the land within
+  run-up of the sea (a distance-to-sea per tile, from `s.land`, worked out once per map) - the map has
+  no heights, so the low ground is the ground near the sea, as the floodplain is the ground near the river.
+- **Noticed**: the shaking (if felt) and, minutes before the wave, the sea drawing back from the shore
+  - a sight cue at the shore for those who can see the water; those who notice run inland (the urgent
+  choice: away from the sea, the babe snatched up, as from fire).
+- **What it does**: buildings in the run-up zone fall in (`shake.fall_in`, cause "the sea") - those inside
+  hurt or trapped; people still in the zone are swept (badly hurt, the worst drowned: `people.hurt`
+  "drowned"); boats at the dock and moored are lost (`boats` gone, the catch landed with them); the
+  fields in the zone are salted (fertility down by `tsu_salt`); the saltpan and the dock go. Deeds and
+  memories; the homeless lodge, the lost boats are built again - all existing.
+- **Premise**: `named("tsunami")` - a magnitude 8 quake on the ocean cell nearest a coastal village.
+- **Test**: by day most see the sea draw back and run; by night more are swept; the dock and boats lost.

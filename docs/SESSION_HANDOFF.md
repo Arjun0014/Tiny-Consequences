@@ -78,6 +78,10 @@ start hour; the old 14-digit start made a strike land ulps apart - a harness art
   the gate (`conflict.raid_call`/`coming`). Two conflict tests' premises were made exact (takers who
   lived at the hungry village; the raiders know only Zurug's fold) - the old wording assumed outcomes
   the world no longer gives (a household moved away restocks from elsewhere).
+- **Fields burning, blood costs trust** (D-161), **tsunami, the failing killed everywhere, lost
+  buildings planned again** (D-162). Found in a 192-day run: with starvation slowed (D-158) herds grew
+  without bound (pigs 13 -> 280) - the daily `plan_failing` is now what keeps herds to their feed;
+  re-check herd sizes in every long run (`tools/v3_chronicle.lua` "villages at the end").
 - **R6.5e flood water deferred**: a season of the deluge power over Krikeivorn raises its river's flow
   0.004 -> 0.006 (map flood factor 1.1): the planet's hydrology is not flashy enough at village rivers
   for water beyond the channel to arise; needs a hydrology look first (soil water rises ~0.01 a day

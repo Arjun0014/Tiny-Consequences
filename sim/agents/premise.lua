@@ -184,6 +184,19 @@ function M.named(W, name)
     -- (S20, R6.5d) sulphur in the sky over the whole planet (a great eruption's): years of cold
     W.G.aerosol = (W.G.aerosol or 0) + require("sim.config").V3.premise_aerosol
     return true
+  elseif name == "tsunami" then
+    -- (S20, R6.5f) a magnitude 8 quake under the sea at the ocean cell nearest Tekheim
+    local s = V.settlements[1]
+    local g = W.grid
+    local best, bd = nil, -2
+    for c = 1, W.n do
+      if W.geo.ocean[c] == 1 then
+        local d = g.X[c] * g.X[s.cell] + g.Y[c] * g.Y[s.cell] + g.Z[c] * g.Z[s.cell]
+        if d > bd then best, bd = c, d end
+      end
+    end
+    require("sim.agents.shake").quake(W, best, 8.0, V.now or W.hour, nil)
+    return true
   elseif name == "eruption" then
     -- (S20, R6.5f) the volcano nearest Tekheim erupts, a VEI 5
     local volcano = require("sim.agents.volcano")

@@ -1076,6 +1076,47 @@ function M.place_daily(W, o, now)
   end
 end
 
+-- (S20) A village whose granary, woodstore, well or dock is gone (burnt, fallen in, taken by the sea):
+-- another planned, as at a young place (the dock where the old one stood); what was left in the old
+-- granary or woodstore is carried into the new one (dug out of the ruin). The salt pan is planned again
+-- by the village's own reckoning (settle) once there is a dock.
+function M.replan_lost(W, o, now)
+  local L = o.lost_keys
+  if not L then return end
+  local function salvage(b, e)
+    if b and e.stock then
+      for _, key in ipairs({ "grain", "sheaves", "smoked", "food", "logs", "cheese", "salt", "hay" }) do
+        local q = e.stock[key]
+        if q and q > 0 then b.stock[key] = (b.stock[key] or 0) + q; e.stock[key] = 0 end
+      end
+    end
+  end
+  if L.granary and not o.granary then
+    if settle.plan_lot(W, o, "granary", { prio = 2, for_name = "the village", logs_need = 14, work_need = 80 }, o.sqx, o.sqy) then
+      salvage(o.granary, L.granary)
+      L.granary = nil
+    end
+  elseif L.granary then L.granary = nil end
+  if L.wood_store and not o.wood_store then
+    if settle.plan_lot(W, o, "woodstore", { prio = 1, for_name = "the village" }, o.sqx, o.sqy) then
+      salvage(o.wood_store, L.wood_store)
+      L.wood_store = nil
+    end
+  elseif L.wood_store then L.wood_store = nil end
+  if L.well and not o.well then
+    if settle.plan_lot(W, o, "well", { prio = 2, for_name = "the village" }, o.sqx, o.sqy) then L.well = nil end
+  elseif L.well then L.well = nil end
+  if L.dock and not o.dock and not o.dock_planned then
+    local e = L.dock
+    if mapm.rect_free(o, e.ix, e.iy, e.ix, e.iy, true) then
+      settle.add_building(W, o, "dock", e.ix, e.iy, e.side, "site", { prio = 1, for_name = "the boats" })
+      o.dock_planned = now
+      L.dock = nil
+    end
+  elseif L.dock then L.dock = nil end
+  L.saltpan, L.forge, L.clamp = nil, nil, nil
+end
+
 -- (S20) A village whose pen is gone (burnt, fallen in): a new one planned for the herd, as at a
 -- young place; the beasts are kept where it stood meanwhile.
 function M.replan_pens(W, o, now)

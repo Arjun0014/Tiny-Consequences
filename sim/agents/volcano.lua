@@ -121,6 +121,8 @@ function M.erupt(W, v, vei, t, cause)
   end
   -- (the ground shakes about it)
   require("sim.agents.shake").quake(W, v.cell, c.volc_quake + 0.6 * vei, t, ev)
+  -- (S20) an ocean volcano's great eruption raises a wave (tsunami.lua, injected)
+  if v.ocean and vei >= c.tsu_vei and M.wave then M.wave(W, v.cell, vei - c.tsu_vei + 1, t, ev) end
   -- (ash on the villages downwind, by distance)
   for _, s in ipairs(V.settlements) do
     if s.alive then

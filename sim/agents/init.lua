@@ -33,6 +33,7 @@ local blaze = require("sim.agents.blaze")   -- (S20, R6.5b)
 local shake = require("sim.agents.shake")   -- (S20, R6.5f)
 local volcano = require("sim.agents.volcano")
 local snow = require("sim.agents.snow")   -- (S20, R6.5d)
+local tsunami = require("sim.agents.tsunami")   -- (S20, R6.5f)
 do
   -- (what one village learns of another: what its people know of places, and of fairs; S20: and
   -- the deeds they know that touch either village)
@@ -65,6 +66,8 @@ blaze.rouse_pen = function(W, s, b, now)
   local H = stock.herd_of_pen(s, b)
   if H then stock.rouse(W, s, H, now) end
 end
+shake.wave = tsunami.from_quake
+volcano.wave = tsunami.raise
 shake.lodge = blaze.lodge
 shake.kill = blaze.kill
 local floor, min, max = math.floor, math.min, math.max
@@ -396,6 +399,7 @@ function sys.hour(W)
       blaze.natural(W, s, now)
       blaze.planet(W, s, now)
       blaze.hourly(W, s, now)
+      tsunami.hourly(W, s, now)
       if changed then
         rain_change(W, s, now, r)
         if r == 2 then birds.weather(W, s, now, sys.push) end

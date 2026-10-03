@@ -205,7 +205,7 @@ function M.complete_building(W, s, b)
   if b.kind == "saltpan" then s.saltpan = b end
   if b.kind == "dock" then
     -- (S18) the young place's dock stands: its boats moor there, and its sea ways are known
-    s.dock = b
+    s.dock, s.dock_planned = b, nil
     for k, boat in ipairs(s.boats or {}) do boat.x, boat.y = b.mx + (k - 1) * 0.012, b.my end
     if M.trade then M.trade.forget(W) end
   end
@@ -386,6 +386,7 @@ M.plan_bridges = plan_bridges
 
 -- A building taken down (a boat launched from its stocks): its ground is free again; the record
 -- stays (plans in progress may still name it) but nothing lists it.
+local KEYS = { "granary", "wood_store", "well", "dock", "saltpan", "forge", "clamp" }
 function M.remove_building(W, s, b)
   local N = s.N
   for iy = b.iy0, b.iy0 + b.h - 1 do
@@ -399,6 +400,15 @@ function M.remove_building(W, s, b)
   people.remove_id(s.blist, b.id)
   people.remove_id(s.sites, b.id)
   b.state = "gone"
+  -- (S20) one of the village's own buildings gone (burnt, fallen in, taken by the sea): it has none
+  -- until another is built; where it stood and what is left under it are remembered (founding.replan_lost)
+  for _, k in ipairs(KEYS) do
+    if s[k] == b then
+      s[k] = nil
+      s.lost_keys = s.lost_keys or {}
+      s.lost_keys[k] = { ix = b.ix0, iy = b.iy0, side = b.side, kind = b.kind, stock = b.stock }
+    end
+  end
   mapm.rebuild_costs(s)
 end
 
@@ -1929,6 +1939,7 @@ function M.daily(W, s, day)
     M.founding.daily(W, s, day * 24)
     M.founding.place_daily(W, s, W.S.v3.now or W.hour)
     M.founding.replan_pens(W, s, W.S.v3.now or W.hour)
+    M.founding.replan_lost(W, s, W.S.v3.now or W.hour)
   end
 end
 
