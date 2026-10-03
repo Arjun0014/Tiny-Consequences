@@ -165,6 +165,8 @@ local function context(W, s, p, now)
   ctx.spd = people.speed(W, p, now)
   if s.snow then ctx.spd = ctx.spd * weather.walk_k(s) end
   ctx.hh = W.S.v3.households[p.hh]
+  -- (S21) arms are put down again at the next quiet choice: home, no journey, no alarm, no watch
+  if p.arm and not p.trip and not p.at and not (p.alarm and now - p.alarm.t < 2) and p.objk ~= "guard" then p.arm = nil end
   -- (S19) the household is about to move or make a new place: nobody sets out on other journeys
   local hh0 = ctx.hh
   local mg0, fd0 = hh0 and hh0.migrate, hh0 and hh0.found
@@ -1169,6 +1171,73 @@ local function visit_candidate(W, s, p, ctx, now, fat)
 end
 M.visit_candidate = visit_candidate
 M.share_candidate = function(...) return share_candidate(...) end
+
+-- (S21, R6) Kin walk over to help kin: a household of another village that this village has heard lost
+-- its house (burnt, fallen in, taken by the water) within `help_days`, and has no roof of its own again
+-- yet, is helped by its close kin here - a parent, a child, a brother or sister - who go for a few
+-- days: food from their own larder to their kin's lodging, then work at their house site (building, or
+-- logs carried to it), nights under the roof the kin lodge under. Only news that reached this village
+-- (deeds known here); only a household that can spare the food and the hands; not one in hardship.
+local HELP_KINDS = { burnt = true, fell = true }
+function M.help_target(W, s, p, now)
+  local c = C()
+  local V = W.S.v3
+  local dk = s.dk
+  if not dk then return nil end
+  local best, bw
+  local function try(qid, close)
+    local q = V.people[qid or 0]
+    if not q or not q.alive or q.sett == p.sett or q.at then return end
+    local kh = V.households[q.hh or 0]
+    local o = kh and V.settlements[q.sett]
+    if not o or not o.alive or (p.helped and p.helped[kh.id] and now - p.helped[kh.id] < c.help_again_days * 24) then return end
+    -- (a roof of their own again: nothing to help with)
+    local own = o.buildings[kh.home or 0]
+    if own and own.state == "standing" and own.hh == kh.id and not kh.lodge then return end
+    for i = #dk, 1, -1 do
+      local e = dk[i]
+      if now - e.t > c.help_days * 24 then break end
+      local d = deeds.get(W, e.id)
+      if d and HELP_KINDS[d.kind] and d.to_s == o.id and (d.to_hh == kh.id) and (d.what == "house" or d.what == "hut") then
+        local _, hrs = trade.road(W, s, o)
+        if hrs and hrs <= c.court_road_h then
+          local w = close * (1 - hrs / (c.court_road_h * 1.6))
+          if not best or w > bw then best, bw = { q = q, kh = kh, o = o, d = d, hrs = hrs, close = close }, w end
+        end
+        return
+      end
+    end
+  end
+  for _, k in ipairs(M.kin_away(W, p)) do try(k.q.id, (k.rel == "brother" or k.rel == "sister" or k.rel == "sibling") and 0.8 or 1) end
+  return best, bw
+end
+
+function M.help_kin_candidate(W, s, p, ctx, now, fat)
+  if ctx.moving then return end
+  local c = C()
+  if p.trip or p.court or (ctx.stage ~= "adult" and ctx.stage ~= "apprentice") or not ctx.home or ctx.babe or ctx.rain >= 1 or ctx.night then return end
+  if (p.nursing or 0) > now or (p.hurt or 0) > 0.2 or p.health < 0.6 then return end
+  if ctx.lh > ctx.wake + 3 then return end
+  local migrate = require("sim.agents.migrate")
+  if ctx.hh and migrate.push(W, s, ctx.hh, now, true) > c.help_push then return end
+  local b, w = M.help_target(W, s, p, now)
+  if not b then return end
+  if not journey_ok(W, s, p, ctx, b.hrs) then return end
+  -- (one of the household goes, not all of it)
+  for _, id in ipairs(ctx.hh.members) do
+    local q = W.S.v3.people[id]
+    if q and q ~= p and q.trip and q.trip.help == b.kh.id then return end
+  end
+  local rel = deeds.relation(p, b.q) or "kin"
+  local what = b.d.kind == "burnt" and "burnt down" or "fell in"
+  -- (pressing: a close kin without a roof - more so each day since the news, up to a point)
+  local e = deeds.known(s, b.d.id)
+  local days = e and (now - e.t) / 24 or 0
+  addw((0.75 + 0.45 * w + min(0.2, 0.04 * days)) * fat, "help_kin", b.o.id, b.q.id,
+    "The house of my %s %s %s at %s: going to help them raise it again (%.0f hours' walk)", rel, b.q.name, what, b.o.name, b.hrs)
+end
+
+
 
 -- (S17) Kin living at other villages: parents, children, brothers and sisters (each once).
 local KIN_TMP = {}
@@ -4029,6 +4098,50 @@ local function court_legs(W, s, p, ctx, now)
       work(pl, "claim", c.claim_h, { ref = hb.id })
       return "Ask at " .. o.name .. " for redress", o.name
     end
+    if tr.help and not tr.met then
+      -- (S21, R6) come to help kin who lost their house: the food brought into the house they lodge in,
+      -- then work at their house site until the days given are over or the house stands
+      local hk = V.households[tr.help]
+      local lodge = hk and #hk.members > 0 and o.buildings[hk.home or 0]
+      if not tr.gave and lodge then
+        tr.gave = true
+        go(pl, lodge.dx, lodge.dy, lodge.label or "their house", lodge.id)
+        if (p.pack_fu or 0) > 0 or (tr.packed_fu or 0) > 0 then
+          pl[#pl + 1] = { op = "drop", to = "home", ref = lodge.id, gift_to = hk.id }
+        end
+        work(pl, "help_kin", 0.4, { ref = lodge.id, greet = true })
+        return "Bring food to " .. (kin and kin.name or "kin") .. " at " .. o.name, o.name
+      end
+      local site = hk and o.buildings[hk.house_site or 0]
+      if site and site.state ~= "site" then site = nil end
+      if hk and site and now < tr.until_t and not ctx.night and ctx.lh < ctx.sunset - 1 then
+        if p.hunger > 0.45 and o.granary and o.granary.state == "standing" then
+          go(pl, o.granary.dx, o.granary.dy, o.name .. "'s granary")
+          work(pl, "guest_meal", 0.4, { ref = o.granary.id })
+        end
+        if (site.logs_have or 0) < (site.logs_need or 0) and o.wood_store and o.wood_store.state == "standing"
+          and (o.wood_store.stock.logs or 0) >= 1 then
+          go(pl, o.wood_store.dx, o.wood_store.dy, "the woodstore")
+          pl[#pl + 1] = { op = "pick", what = "logs", from = "store", ref = o.wood_store.id, n = p.strong and 2 or 1 }
+          go(pl, site.dx, site.dy, site.label)
+          pl[#pl + 1] = { op = "drop", to = "site", ref = site.id }
+          return "Carry logs to " .. (kin and kin.name or "kin") .. "'s new house", o.name
+        end
+        local x, y = near_spot(W, p, now, site.cx or site.dx, site.cy or site.dy, 0.05, 99)
+        go(pl, x, y, site.label)
+        work(pl, "help_kin", min(2.5, tr.until_t - now) * p.dil, { ref = site.id, build = true, fx = site.cx, fy = site.cy })
+        return "Help raise " .. (kin and kin.name or "kin") .. "'s house at " .. o.name, o.name
+      end
+      if hk and site and now < tr.until_t and lodge then
+        -- (the night under the roof they lodge under)
+        local until_t = next_local(now, ctx.lh, ctx.wake)
+        if p.inside ~= lodge.id then go(pl, lodge.dx, lodge.dy, lodge.label or "their house", lodge.id) end
+        work(pl, "sleep", until_t - now, { inside = lodge.id, trip_sleep = true })
+        return "Stay the night with " .. (kin and kin.name or "kin"), o.name
+      end
+      tr.met = true
+      if hk and site == nil then people.remember(p, now, sfmt("Helped %s at %s: the house stands", kin and kin.name or "kin", o.name)) end
+    end
     if not tr.met then
       if tr.visit then
         -- (S16) to the kin's house: a meal and the news together (S17: or to ask for help)
@@ -4255,6 +4368,39 @@ PLAN.visit_kin = function(W, s, p, ctx, now, cd)
   return court_legs(W, s, p, ctx, now)
 end
 
+-- (S21, R6) Kin come to help (M.help_kin_candidate): food packed, the road, days at their site.
+PLAN.help_kin = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local o = W.S.v3.settlements[cd.a]
+  local q = W.S.v3.people[cd.b]
+  local kh = q and W.S.v3.households[q.hh]
+  local b = M.help_target(W, s, p, now)
+  p.trip = { to = o.id, from = s.id, court = true, visit = cd.b, help = kh and kh.id or 0, give = "grain", take = "grain", n = 0, t0 = now,
+    until_t = now + c.help_stay_h + (b and b.hrs or 0), deed = b and b.d.id or nil }
+  p.helped = p.helped or {}
+  if kh then p.helped[kh.id] = floor(now) end
+  -- (food for them, from what the household has beyond its own few days)
+  local home = ctx.home
+  local spare = 0
+  if home then
+    local food = people.pantry(home)
+    spare = max(0, min(c.help_gift, food - #ctx.hh.members * c.help_keep_days))
+  end
+  local r1, r2 = court_legs(W, s, p, ctx, now)
+  if spare > 0.5 and home then
+    p.trip.packed_fu = spare
+    local pl = p.plan
+    local at = (pl[1] and pl[1].op == "go" and pl[1].enter == home.id) and 2 or 1
+    if at == 1 and p.inside ~= home.id then
+      table.insert(pl, 1, { op = "go", x = home.dx, y = home.dy, place = "home", enter = home.id })
+      at = 2
+    end
+    table.insert(pl, at, { op = "pick", what = "pack", good = "grain", ref = home.id, n = spare })
+  end
+  people.remember(p, now, sfmt("Going to %s to help %s raise their house", o.name, q and q.name or "kin"))
+  return "Go to help " .. (q and q.name or "kin") .. " at " .. o.name, o.name
+end
+
 PLAN.court = function(W, s, p, ctx, now, cd)
   local o = W.S.v3.settlements[cd.a]
   p.trip = { to = o.id, from = s.id, court = true, give = "grain", take = "grain", n = 0, t0 = now }
@@ -4283,6 +4429,11 @@ local function steal_legs(W, s, p, ctx, now)
       pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id }
     end
     local gx, gy = trade.gate(W, home_s, o)
+    -- (S21) a band goes armed; a bold man alone takes his axe or spear too
+    if not p.arm and (tr.band or people.bold(W, p) >= C().take_fight) then
+      p.arm = people.arm_for(W, p)
+      if p.arm then people.remember(p, now, sfmt("Took the %s: going to %s%s", p.arm, o.name, tr.band and " with the others" or "")) end
+    end
     go(pl, gx, gy, "the road to " .. o.name)
     if tr.band then
       -- (S20, R6e) the party gathers at the gate at the hour agreed, and goes together
@@ -4515,7 +4666,9 @@ function M.steal_decide(W, s, p, ctx, now, reason)
     local near = conflict.watchers_near(W, o, p, now, C().take_sight * 1.5)
     -- (S20, R6e) in a party he holds while his own are as many as those who come out
     local mine = conflict.party_here(W, o, p)
-    if (mine == 0 and (near > 0 or people.bold(W, p) < C().take_hold)) or (mine > 0 and near > mine + 1) then
+    -- (S21: each side counted with what it holds in hand)
+    local might_near = conflict.watchers_near(W, o, p, now, C().take_sight * 1.5, true)
+    if (mine == 0 and (near > 0 or people.bold(W, p) < C().take_hold)) or (mine > 0 and might_near > conflict.party_might(W, o, p)) then
       conflict.let_go(W, o, p, now)
       tr.fled = true
       p.tried = p.tried or {}
@@ -5110,6 +5263,11 @@ PLAN.chase = function(W, s, p, ctx, now, cd)
   local q = W.S.v3.people[cd.a]
   local x, y = p.alarm.x, p.alarm.y
   if q and q.alive and q.at == s.id then x, y = act.pos(q, now) end
+  -- (S21) out of the house after him with whatever is at hand: the axe by the door
+  if not p.arm and ctx.home and p.inside == ctx.home.id then
+    p.arm = people.arm_for(W, p)
+    if p.arm then people.remember(p, now, sfmt("Took up the %s and went out after the stranger at the beasts", p.arm)) end
+  end
   go(pl, x, y, "the stranger")
   pl[#pl].run = true
   work(pl, "chase", 0.01, { ref = cd.a, fx = x, fy = y })
@@ -5380,6 +5538,8 @@ PLAN.guard = function(W, s, p, ctx, now, cd)
   local pen = s.buildings[H.pen]
   s.guards = s.guards or {}
   s.guards[cd.b] = p.id
+  -- (S21) the watch is kept with the spear or the axe at hand
+  if not p.arm then p.arm = people.arm_for(W, p) end
   local until_t = next_local(now, ctx.lh, ctx.wake)
   local x, y = near_spot(W, p, now, pen.dx, pen.dy, 0.02, 72)
   go(pl, x, y, "the " .. pen.label)
@@ -6153,6 +6313,7 @@ function M.decide(W, s, p, now, reason)
       M.claim_candidate(W, s, p, ctx, now, fatigue(p))
       court_candidate(W, s, p, ctx, now, fatigue(p))
       visit_candidate(W, s, p, ctx, now, fatigue(p))
+      M.help_kin_candidate(W, s, p, ctx, now, fatigue(p))   -- (S21)
       ask_kin_candidate(W, s, p, ctx, now, fatigue(p))
       news_candidate(W, s, p, ctx, now, fatigue(p))
       M.fair_candidate(W, s, p, ctx, now, fatigue(p))

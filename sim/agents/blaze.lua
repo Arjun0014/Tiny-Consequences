@@ -269,6 +269,8 @@ local function burn_out(W, s, f, now)
   end
 end
 
+M.burn_out = burn_out   -- (S21: premise.house_burnt)
+
 -- The wind of map s: the prevailing wind of its latitude band (easterly trades toward the equator,
 -- westerlies, polar easterlies). Map x is east, y north.
 local function wind(W, s)

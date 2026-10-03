@@ -123,6 +123,25 @@ function M.home(W, s, p)
   return b
 end
 
+-- (S21, R6) Arms (D-148 §7): what someone takes in hand when danger is known - a hunter's spear, else the
+-- household's felling axe (iron-edged if the household has iron) - or nil when the household's tools
+-- are worn to nothing. Never made from nothing: the axe and the spear are the tools the household works
+-- and hunts with.
+function M.arm_for(W, p)
+  local hh = W.S.v3.households[p.hh or 0]
+  if (p.sk_hunt or 0) >= C().arm_hunt then return "spear" end
+  if hh and (hh.tools or 1) > 0.15 then return "axe" end
+  return nil
+end
+
+-- How much a person counts for in a fight: armed or not, with an iron edge or not.
+function M.might(W, p)
+  if not p.arm then return 1 end
+  local hh = W.S.v3.households[p.hh or 0]
+  local iron = hh and (hh.iron or 0) > C().iron_broken
+  return 1 + C().arm_might + (iron and C().arm_iron_might or 0)
+end
+
 -- (S21) Is building b's door under water too deep to wade (the river in spate, or a flood)?
 local mapm_ = nil
 function M.cut_off(s, b)

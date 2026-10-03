@@ -903,6 +903,7 @@ local function v3_person_items(W, p, items)
   add(items, { t = "row", icon = "pin", label = "Objective", value = p.obj ~= "" and p.obj or "-" })
   local doing = ACT[p.act] or p.act
   if p.carry ~= "" then doing = doing .. string.format(", carrying %s", p.carry == "logs" and (floor(p.camt + 0.5) .. " log" .. (p.camt >= 1.5 and "s" or "")) or p.carry) end
+  if p.arm then doing = doing .. ", the " .. p.arm .. " in hand" end   -- (S21, R6: armed while danger is known)
   add(items, { t = "row", icon = "pickaxe", label = "Action", value = cap(doing) .. (p.inside ~= 0 and " (indoors)" or "") })
   if p.dest ~= "" then add(items, { t = "row", icon = "pin", label = "Going to", value = p.dest }) end
   if p.why ~= "" then add(items, { t = "text", icon = "bubble", text = "Why: " .. p.why }) end

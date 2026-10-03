@@ -1389,7 +1389,19 @@ C.V3 = {
   -- see the river over its banks; raised again after fl_alarm_h hours; shouted (fl_shout units);
   -- they go where the ground stands fl_safe m above the water (think.flood_choice); a household
   -- whose house has fl_home m of water in it sleeps elsewhere (people.home)
-  fl_near = 0.5, fl_alarm_h = 3, fl_shout = 0.45, fl_safe = 0.6, fl_home = 0.15, fl_see = 0.4,   -- (premises: a cold air mass, degC; sulphur after a great eruption)          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
+  fl_near = 0.5, fl_alarm_h = 3, fl_shout = 0.45, fl_safe = 0.6, fl_home = 0.15, fl_see = 0.4,
+  -- (S21, R6) arms: a hunter (hunting skill from arm_hunt) takes his spear, anyone else the household's
+  -- axe; a blow x arm_blow_spear / _axe / _none (bare hands), x arm_blow_iron with an iron edge; in a
+  -- fight an armed man counts 1 + arm_might (+ arm_iron_might with iron)
+  arm_hunt = 0.35, arm_blow_spear = 1.15, arm_blow_axe = 1.0, arm_blow_none = 0.6, arm_blow_iron = 1.35,
+  arm_might = 0.4, arm_iron_might = 0.15,
+  -- (S21, R6) kin who heard their kin lost a house within help_days (and have no roof of their own
+  -- yet) go to help: not a household whose push is over help_push; a gift of up to help_gift FU from
+  -- what its larder holds beyond help_keep_days a member; they stay help_stay_h (and the road) at most;
+  -- the help weighs help_fu in the deed, trust rises help_trust; again for the same kin after
+  -- help_again_days
+  help_days = 16, help_push = 0.35, help_gift = 12, help_keep_days = 4, help_stay_h = 52, help_fu = 15,
+  help_trust = 0.08, help_again_days = 24,   -- (premises: a cold air mass, degC; sulphur after a great eruption)          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
 }
 
 return C

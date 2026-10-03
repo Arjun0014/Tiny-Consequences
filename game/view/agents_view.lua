@@ -1039,6 +1039,8 @@ local function update_villagers(V, t, zoom)
         local ploughing = (p.act == "till" or p.act == "turn") and p.ox ~= nil     -- (S14: hands on the plough)
         if ploughing then tool = nil end
         if not carry and arms[p.id] then carry = "babe"; tool = nil end
+        -- (S21, R6) a spear or an axe in hand when danger is known (the sim's p.arm), between tasks
+        if not tool and not carry and p.arm then tool = p.arm end
         local key = p.id * 1000 + (PART[carry or ""] or 99) * 31 + (PART[tool or ""] or 98) + (stage == "child" and 7 or 0)
           + (stage == "elder" and 13 or 0)
         if e.key ~= key or e.pid ~= p.id then

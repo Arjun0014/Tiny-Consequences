@@ -154,6 +154,45 @@ end
 -- (S20) Named premises for tools that must apply the same world in two runtimes (the browser's hash
 -- check): "conflict" - Hottoodingle Hop's harvest failed, its beasts died, its stores are empty, and
 -- its people know Zurug and Krikeivorn.
+-- (S21) A daughter of village s married away to village o (as a bride walks to her husband's village,
+-- D-120): a grown unmarried woman whose mother lives in s, and an unmarried grown man of o; she is o's
+-- now, in his household, at o's gate. Returns her (and him), or nil.
+function M.married_away(W, s, o)
+  local V = W.S.v3
+  local people = require("sim.agents.people")
+  local now = V.now or W.hour
+  local bride, groom
+  for _, id in ipairs(s.members) do
+    local q = V.people[id]
+    local m = q and V.people[q.mother or 0]
+    if q and q.alive and q.sex == "f" and (q.partner or 0) == 0 and people.stage(q, now) == "adult" and m and m.alive
+      and m.sett == s.id and (q.babe or 0) == 0 and not q.trip then bride = q; break end
+  end
+  for _, id in ipairs(o.members) do
+    local q = V.people[id]
+    if q and q.alive and q.sex == "m" and (q.partner or 0) == 0 and people.stage(q, now) == "adult" and not q.trip then groom = q; break end
+  end
+  if not bride or not groom then return nil end
+  bride.partner, groom.partner = groom.id, bride.id
+  bride.married, groom.married = now, now
+  local gx, gy = require("sim.agents.trade").gate(W, o, s)
+  bride.inside, bride.mv, bride.trip, bride.carry = 0, nil, nil, ""
+  bride.plan, bride.pi = {}, 1
+  bride.act, bride.t0, bride.t1 = "rest", now, now + 0.05
+  bride.x, bride.y = gx, gy
+  require("sim.agents.migrate").arrive_person(W, o, bride, gx, gy, now)
+  bride.x, bride.y = gx, gy
+  W.v3rt = nil
+  return bride, groom
+end
+
+-- (S21) House b of village s burnt down last night (the ruin, the deed, the household lodging with
+-- others: blaze.lua's own burning-out).
+function M.house_burnt(W, s, b)
+  local now = W.S.v3.now or W.hour
+  require("sim.agents.blaze").burn_out(W, s, { kind = "bld", ref = b.id, x = b.cx, y = b.cy, heat = 0, fuel = 0 }, now)
+end
+
 function M.named(W, name)
   local V = W.S.v3
   if name == "conflict" then

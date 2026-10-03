@@ -2612,6 +2612,50 @@ WORK.loose = function(W, s, p, st, f)
   people.remember(p, now, st.flood and sfmt("Let the beasts out of the flooded %s", b.kind) or sfmt("Let the beasts out of the burning %s", b.kind))
 end
 
+-- (S21, R6) Kin come to help: greeting the household (a deed of help - the kin and both villages know
+-- it, trust between them rises, the helped remember who came), then stints of building at their site.
+WORK.help_kin = function(W, s, p, st, f)
+  if f <= 0 then return end
+  local V = W.S.v3
+  local tr = p.trip
+  local now = V.now or W.hour
+  local c = C()
+  if st.greet and tr and not tr.deeded then
+    tr.deeded = true
+    local hk = V.households[tr.help or 0]
+    local home = V.settlements[p.sett]
+    local d = deeds.add(W, { kind = "help", t = now, at = s.id, x = p.x, y = p.y, by = p.id, by_hh = p.hh, by_s = p.sett, to = tr.visit or 0,
+      to_hh = tr.help or 0, to_s = s.id, what = "rebuild", n = 1, fu = (tr.packed_fu or 0) + c.help_fu, harm = false, answers = tr.deed })
+    deeds.learn(W, s, d, sfmt("%s came to help", p.name), p.id, p.sett, now)
+    if home then deeds.learn(W, home, d, sfmt("%s went to help", p.name), p.id, p.sett, now) end
+    if home then
+      local r1, r2 = econ.rel(home, s), econ.rel(s, home)
+      r1.trust = r1.trust + (1 - r1.trust) * c.help_trust
+      r2.trust = r2.trust + (1 - r2.trust) * c.help_trust
+    end
+    for _, id in ipairs(hk and hk.members or {}) do
+      local q = V.people[id]
+      if q and q.alive and people.stage(q, now) ~= "infant" then
+        local rel = deeds.relation(q, p)
+        people.remember(q, now, sfmt("%s came from %s to help us raise our house again", rel and ("My " .. rel .. " " .. p.name) or p.name, home and home.name or "home"))
+      end
+    end
+    s.acc.kin_help = (s.acc.kin_help or 0) + 1
+    return
+  end
+  if st.build then
+    local b = s.buildings[st.ref or 0]
+    if not b or b.state ~= "site" then return end
+    local hh = V.households[p.hh]
+    b.work_done = b.work_done + st.dur * f * (0.6 + 0.6 * p.sk_build) * (0.55 + 0.45 * (hh and hh.tools or 1))
+    people.practice(p, "sk_build", st.dur * f)
+    s.acc.kin_help_h = (s.acc.kin_help_h or 0) + st.dur * f
+    if b.work_done >= b.work_need and b.logs_have >= b.logs_need and (b.stone_have or 0) >= (b.stone_need or 0) then
+      require("sim.agents.settle").complete_building(W, s, b)
+    end
+  end
+end
+
 -- (S20, R6.5f) A stint of digging someone out of the rubble (strong arms and tools dig faster).
 WORK.dig_out = function(W, s, p, st, f)
   if f <= 0 then return end

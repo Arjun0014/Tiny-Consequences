@@ -296,7 +296,10 @@ function M.strike(W, s, by, to, answers, now, k)
   local c = C()
   local V = W.S.v3
   local hh = V.households[by.hh]
-  local arm = 1 + ((hh and (hh.iron or 0) > c.iron_broken) and 0.5 or 0)
+  -- (S21) what is in hand: a spear or an axe (with an iron edge, worse), else bare hands
+  local iron = hh and (hh.iron or 0) > c.iron_broken
+  local arm = (by.arm == "spear" and c.arm_blow_spear) or (by.arm == "axe" and c.arm_blow_axe) or c.arm_blow_none
+  if by.arm and iron then arm = arm * c.arm_blow_iron end
   local sev = c.blow * arm * (0.4 + 0.6 * u(W, by, now, k or 60))
   local kill = sev >= 1
   local d = deeds.add(W, { kind = kill and "kill" or "wound", t = now, at = s.id, x = to.x, y = to.y,
@@ -661,6 +664,21 @@ function M.coming(W, s, p, now)
   return n
 end
 
+-- (S21) The might of p's party on map o now (each counting for more armed), p included.
+function M.party_might(W, o, p)
+  local tr = p.trip
+  local m = people.might(W, p)
+  if not tr or not tr.band then return m end
+  local V = W.S.v3
+  local s = V.settlements[tr.from]
+  local R = s and s.raid
+  for _, id in ipairs(R and R.id == tr.band and R.party or {}) do
+    local q = V.people[id]
+    if q and q ~= p and q.alive and q.at == o.id and q.trip and q.trip.band == tr.band and not q.trip.fled then m = m + people.might(W, q) end
+  end
+  return m
+end
+
 -- The others of p's party on map o now, not given away.
 function M.party_here(W, o, p)
   local tr = p.trip
@@ -710,7 +728,7 @@ function M.take_cues(W, s, p, a, d, now)
 end
 
 -- People of village o awake, out of doors and grown, within r of p now.
-function M.watchers_near(W, o, p, now, r)
+function M.watchers_near(W, o, p, now, r, might)
   local V = W.S.v3
   local px, py = danger.person_pos(p, now)
   local n = 0
@@ -718,7 +736,7 @@ function M.watchers_near(W, o, p, now, r)
     local q = V.people[id]
     if q and q.alive and not q.at and q.inside == 0 and q.act ~= "sleep" and q.act ~= "carried" then
       local qx, qy = danger.person_pos(q, now)
-      if dsq(qx - px) + dsq(qy - py) <= r * r then n = n + 1 end
+      if dsq(qx - px) + dsq(qy - py) <= r * r then n = n + (might and people.might(W, q) or 1) end
     end
   end
   return n
@@ -802,10 +820,10 @@ function M.chased(W, s, p, q, d, now)
   local qx, qy = danger.person_pos(q, now)
   if d <= sight then
     if dd then M.seen(W, s, dd, p, now) end
-    -- (S20, R6e) too many of them: back to the houses
+    -- (S20, R6e) too many of them: back to the houses (S21: each side counted with what it holds)
     local them = 1 + M.party_here(W, s, q)
-    local us = M.watchers_near(W, s, p, now, 0.2)
-    if them > us + 1 then
+    local us = M.watchers_near(W, s, p, now, 0.2, true)
+    if M.party_might(W, s, q) > us + 1 then
       people.remember(p, now, sfmt("%d men at the beasts in the night, too many for us", them))
       p.alarm = nil
       s.raiders_seen = now
