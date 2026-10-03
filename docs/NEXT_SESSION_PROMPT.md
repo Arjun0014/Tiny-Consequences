@@ -11,4 +11,4 @@ Next, in order:
 4. **Performance, exactly** (measured: each ~1-3%): an index of people outdoors by tile block for `wild.threat` with stable ties, the herd scan's centre only when used, incremental cost rebuilds.
 5. Small places on the planet: labels or a camp's smoke seen from afar; stone bridge piers.
 
-Baseline at the end of session 19: quick sim 155/155 (v3 46), web 11/11, lint and build green, browser and LuaJIT identical (release, 72 h), 3.67 M LuaJIT instructions a game hour (148 people); release season 10.6 s (3-run envelope 37.0 ms/h, rendering off); untouched 192 days: ~400-440 exchanges, deaths only old age and illness.
+Baseline at the end of session 19: quick sim 155/155 (v3 46), web 11/11, lint and build green, browser and LuaJIT identical (release, 72 h), 3.67 M LuaJIT instructions a game hour (148 people); release season 10.2 s (3-run envelope 35.3 ms/h, rendering off); untouched 192 days: ~400-440 exchanges, deaths only old age and illness.

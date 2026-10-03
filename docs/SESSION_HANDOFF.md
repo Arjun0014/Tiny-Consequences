@@ -50,7 +50,7 @@ measured in release with rendering off; browser and LuaJIT identical.
 - LuaJIT `luajit -joff tools/v3_profile.lua --days 4`: **3.67 M instructions a game hour** (148 people;
   session start 3.93 M) - nav (A*) 27%, think 13.5%, stock 12.6%, map 12.5%, wild 10%, event queue 8%.
 - Release browser (`node scripts/prof_web.mjs --release --hours 288 --runs 3`, rendering off): lower
-  envelope **37.0 ms a game hour, a 12-day season 10.6 s** (start 39.2 ms/h, 11.3 s).
+  envelope **35.3 ms a game hour, a 12-day season 10.2 s** at the final state (37.0 ms/h at b99864c; start 39.2 ms/h, 11.3 s).
 - Untouched 192 days: 399-439 exchanges (387 with fairs alone, 134 in 96 days at the start), unsold trips
   ~107-128, deaths only old age (3) and illness (6), no hunger, no drownings; Zurug, Dreik Knoll and
   Hottoodingle Hop quarry and forge; querns and iron travel to villages without rock or ore; Tekheim and
