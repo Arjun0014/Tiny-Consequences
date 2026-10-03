@@ -66,7 +66,23 @@ start hour; the old 14-digit start made a strike land ulps apart - a harness art
 - **R6.5f part 1 DONE** (a32dfdc, D-156): earthquakes - `sim/agents/shake.lua` (boundary stress, quakes,
   felt by distance, buildings by construction, trapped dug out, lodging), tests `test_v3_quake` x2,
   `--premise quake` browser = LuaJIT. Night quake under Tekheim: 3 houses fell, 7 trapped, all dug out.
-- **CURRENT TASK: R6.5f part 2 - volcanoes**: generate volcano sites in v3 worlds lazily from convergent
+- **After the checkpoint (resumed after a compaction)**: volcanoes done (9f60b6b, D-157; `--premise
+  eruption` browser = LuaJIT); no burst of quakes on a world's first day (913a2c3); **R6.5d snow and
+  frost on the maps** (411ea2b, D-158: `sim/agents/snow.lua`, `weather.walk_k/reach`, `shake.roof_load`
+  shared with ash, starving beasts fail in days, premises `cold_snap`/`hard_winter`, `test_v3_snow` x4,
+  `scripts/shots_snow.mjs`; `--premise cold_snap` browser = LuaJIT); **beasts and fire + late alarms**
+  (D-159: beasts cry out, run, are let out of a burning pen or burn; lost pens planned again; an
+  interrupt falling after a step's end now interrupts the next step - touches every reaction).
+- **R6 gaps** (D-160): fear of a place (`deeds.fear` -> `migrate.push`, need-only push for taking),
+  restocking (`stock.herd_worth`/`lose`: unwilling losses), the band told at its hour and waiting at
+  the gate (`conflict.raid_call`/`coming`). Two conflict tests' premises were made exact (takers who
+  lived at the hungry village; the raiders know only Zurug's fold) - the old wording assumed outcomes
+  the world no longer gives (a household moved away restocks from elsewhere).
+- **R6.5e flood water deferred**: a season of the deluge power over Krikeivorn raises its river's flow
+  0.004 -> 0.006 (map flood factor 1.1): the planet's hydrology is not flashy enough at village rivers
+  for water beyond the channel to arise; needs a hydrology look first (soil water rises ~0.01 a day
+  under a deluge). The map has no tile heights (flood reach would be distance from the channel).
+- **Older: R6.5f part 2 - volcanoes (done)**: generate volcano sites in v3 worlds lazily from convergent
   boundaries (+ a hotspot) like `worldgen/settle.lua volcanoes()` (W.ent.volcanoes is nil in v3); pressure
   per volcano gathering daily, eruption past a noisy threshold with a VEI; effects: `G.aerosol += f(VEI)`
   (already cools every cell -> v3 crops/pasture), local fire/heat near the vent (planet `fire.ignite` on

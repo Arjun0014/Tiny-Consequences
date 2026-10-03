@@ -134,6 +134,33 @@ function M.grievance(W, s, o, hh, now, filter)
   return sum, top
 end
 
+-- (S20, R6) What makes a household afraid of where it lives: the unsettled harms people did to its
+-- village's people that the village knows of (takings, wounds, killings - never nature's or the
+-- wolves'), the household's own in full and its neighbours' at deed_kin_k, faded; a blow that answered
+-- the struck man's own wrong is hardly feared. Returns the sum, the heaviest deed and what the village
+-- believes of it (its entry: the doer's village by_s, or 0).
+local FEAR = { take = true, wound = true, kill = true }
+function M.fear(W, s, hh, now)
+  local dk = s.dk
+  if not dk then return 0, nil, nil end
+  local L = list(W)
+  local c = C()
+  local sum, top, te, tw = 0, nil, nil, 0
+  for i = 1, #dk do
+    local e = dk[i]
+    local d = L[e.id]
+    if d and not e.own and FEAR[d.kind] and d.harm and not d.settled and d.to_s == s.id then
+      local w = (d.fu or 0) * M.fade(d, now - d.t)
+      if d.to_hh ~= hh then w = w * c.deed_kin_k end
+      local a = d.answers and L[d.answers]
+      if a and a.by == d.to and a.by ~= 0 then w = w * c.deserved_k end
+      sum = sum + w
+      if w > tw then top, te, tw = d, e, w end
+    end
+  end
+  return sum, top, te
+end
+
 -- Harms s knows were done to its people whose doer it does not know (the losses it cannot answer),
 -- faded: the night watch reads these as it reads wolves' kills.
 function M.losses(W, s, now, days)

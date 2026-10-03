@@ -198,7 +198,7 @@ function M.complete_building(W, s, b)
     -- (S17) a pen for a herd kept at a camp until now
     local H = s.herds[b.herd]
     local was = s.buildings[H.pen or 0]
-    if not was or was.kind == "camp" then H.pen = b.id end
+    if not was or was.kind == "camp" or was.state ~= "standing" then H.pen = b.id end
     H.pen_planned = nil
   end
   if b.kind == "granary" and s.founding then s.granary_planned = nil end
@@ -1928,6 +1928,7 @@ function M.daily(W, s, day)
   if M.founding then
     M.founding.daily(W, s, day * 24)
     M.founding.place_daily(W, s, W.S.v3.now or W.hour)
+    M.founding.replan_pens(W, s, W.S.v3.now or W.hour)
   end
 end
 

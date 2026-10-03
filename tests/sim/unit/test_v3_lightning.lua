@@ -146,4 +146,69 @@ function M.a_wildfire_comes_onto_the_map()
   return string.format("%d trees burnt on %s's map in 2 days; %d saw it", s.acc.trees_burnt or 0, s.name, saw)
 end
 
+-- (S20) A fold set alight in a dry evening with the sheep shut in it: they cry out, someone near
+-- wakes and runs to open it, the sheep run from the fire and keep away from it; a new fold is planned
+-- for the herd once the old one is gone.
+function M.beasts_shut_in_a_burning_fold_are_let_out()
+  local W = shipped()
+  local s = at(W, 21, 0.15)
+  local V = W.S.v3
+  local pen, H
+  for _, id in ipairs(s.blist) do
+    local b = s.buildings[id]
+    if b.kind == "fold" and b.state == "standing" then pen = b; break end
+  end
+  for _, k in ipairs({ "flock", "cattle", "swine" }) do if s.herds[k] and s.herds[k].pen == pen.id then H = s.herds[k] end end
+  local n0 = 0
+  for _, a in ipairs(H.animals) do if a.alive then n0 = n0 + 1 end end
+  require("sim.agents.blaze").ignite(W, s, "bld", pen.id, V.now or W.hour, nil)
+  local t0 = W.hour
+  for h = 1, 96 do world.advance(W, t0 + h) end
+  local n = 0
+  for _, a in ipairs(H.animals) do if a.alive and a.born < t0 then n = n + 1 end end
+  T.ok((s.acc.loosed or 0) >= 1, (s.acc.loosed or 0) .. " opened the fold")
+  T.ok(n >= n0 * 0.8, string.format("%d of %d sheep alive", n, n0))
+  local np = s.buildings[H.pen]
+  T.ok(np and np.id ~= pen.id and np.kind == "fold", "a new fold for the flock")
+  return string.format("%d of %d sheep alive; %d burnt; a new fold %s", n, n0, s.acc.stock_burnt or 0, np and np.state or "-")
+end
+
+-- (S20) A spark in a ripe field at midday: in a drought the field burns out (the standing corn and the
+-- stooks lost, the fire on into the trees) though the village carries water to it; on moist ground
+-- the same fire is put out and the reaping goes on.
+local function field_fire(sw)
+  local W = shipped()
+  local V = W.S.v3
+  local s, j
+  for _ = 1, 60 do
+    world.advance(W, W.hour + 24)
+    for _, o in ipairs(V.settlements) do
+      for k, pl in ipairs(o.plots) do
+        if not s and pl.stage == "ripe" and pl.harvested < pl.sown and pl.sown >= 3 then s, j = o, k end
+      end
+    end
+    if s then break end
+  end
+  local clock = require("sim.agents.clock")
+  local lh = clock.local_hour(W.hour, W.grid.lon[s.cell])
+  world.advance(W, W.hour + ((14 - lh) % 24))
+  W.F.soil_water[s.cell] = sw
+  require("sim.agents.blaze").ignite(W, s, "plot", j, V.now or W.hour, nil)
+  local t0 = W.hour
+  for h = 1, 12 do world.advance(W, t0 + h) end
+  return s, s.plots[j]
+end
+
+function M.a_field_fire_in_a_drought_takes_the_harvest()
+  local s, pl = field_fire(0.15)
+  T.ok((s.acc.fields_burnt or 0) >= 1, "the field burnt out")
+  T.ok(pl.harvested == pl.sown and (pl.sheaves or 0) == 0, string.format("nothing left to reap (%d of %d, %.1f sheaves)", pl.harvested, pl.sown, pl.sheaves or 0))
+  T.ok((s.acc.doused or 0) >= 5, (s.acc.doused or 0) .. " buckets thrown")
+  local s2, pl2 = field_fire(0.45)
+  T.ok((s2.acc.fields_burnt or 0) == 0, "on moist ground it was put out")
+  T.ok((pl2.sheaves or 0) > 0, string.format("the reaping went on: %.1f sheaves", pl2.sheaves or 0))
+  return string.format("%s's %s: drought - burnt, %d buckets, %d trees caught; moist - put out, %d of %d rows reaped",
+    s.name, pl.name, s.acc.doused or 0, s.acc.trees_burnt or 0, pl2.harvested, pl2.sown)
+end
+
 return M

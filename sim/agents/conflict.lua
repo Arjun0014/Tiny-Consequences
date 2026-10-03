@@ -86,7 +86,12 @@ local function weigh_at(W, s, p, hh, o, now, push, bold, only, party)
   local trust0 = econ.rel(s, o).trust
   local grudge, gd = deeds.grievance(W, s, o, hh.id, now, function(e)
     return e.answer == "denied" or e.answer == "refused" or trust0 < c.claim_trust_min end)
-  if hrs > c.take_road_h or (push < c.take_push and grudge < c.take_grudge) then return nil end
+  -- (S20) a household whose herd is far below what it had has lost its living: restocking
+  local gap = 0
+  local lost, had = hh.herd_lost or 0, (hh.herd_now or 0) + (hh.herd_lost or 0)
+  if had >= c.restock_min_fu then gap = lost / had end
+  if gap < c.take_restock then gap = 0 end
+  if hrs > c.take_road_h or (push < c.take_push and grudge < c.take_grudge and gap == 0) then return nil end
   -- restraint: who they are to us (kin there, trust, a friend there), less boldness and the
   -- wrongs they did us
   local kin = M.kin_at(W, hh, o)
@@ -118,6 +123,7 @@ local function weigh_at(W, s, p, hh, o, now, push, bold, only, party)
       local need = mouths * 0.7 * c.take_need_days
       local n = tk.kind == "cattle" and 1 or max(1, min(c.take_flock, nb, floor(need / meat + 0.5)))
       local gain = c.take_gain_k * min(n * meat, need) * min(1.5, push) + min(0.5, grudge * c.take_grudge_k)
+        + c.take_gain_k * n * meat * gap * c.restock_k
       local slow = tk.kind == "cattle" and 0.15 or 0
       -- (S20, R6f) a walled pen, as seen there
       local wall = (k.walled and k.walled[tk.kind]) and c.take_wall * (1.2 - bold) / (1 + 0.5 * (party or 0)) or 0
@@ -127,6 +133,9 @@ local function weigh_at(W, s, p, hh, o, now, push, bold, only, party)
         if push >= c.take_push then
           why = sfmt("Nothing left to eat at home; %s's %s held %d beasts when we were there%s",
             o.name, tk.kind == "flock" and "fold" or "byre", nb, kin and "" or ", and none of them is kin of ours")
+        elseif gap > 0 and gap * c.restock_k * n * meat >= min(0.5, grudge * c.take_grudge_k) / c.take_gain_k then
+          why = sfmt("We have lost our beasts (%.0f FU of them dead or taken, %.0f left); %s's %s held %d beasts when we were there",
+            hh.herd_lost or 0, hh.herd_now or 0, o.name, tk.kind == "flock" and "fold" or "byre", nb)
         else
           why = sfmt("%s took from us and never made it good: taking one of theirs", gd and deeds.told(W, s, gd) or ("Someone of " .. o.name))
         end
@@ -145,7 +154,7 @@ function M.take_weigh(W, s, p, hh, now)
   if e and e.day == day then return e.best end
   e = { day = day }
   CACHE[p] = e
-  local push = migrate.push(W, s, hh, now)
+  local push = migrate.push(W, s, hh, now, true)
   local bold = people.bold(W, p)
   local best = nil
   for _, o in ipairs(trade.partners(W, s)) do
@@ -165,6 +174,7 @@ function M.took(W, s, p, H, a, now, n)
     what = a.sp, n = n or 1, fu = stock.SP(a.sp).meat * 1.2 * (n or 1), harm = true,
     answers = p.trip and p.trip.gdeed or nil, raid = p.trip and p.trip.band or nil })
   a.taken = d.id
+  stock.lose(W, a.owner, a)   -- (S20: a beast its owners did not mean to part with)
   -- (the taker's own household knows; it is not told about)
   if home_s then deeds.learn(W, home_s, d, "ours", p.id, p.sett, now, true) end
   return d
@@ -288,6 +298,14 @@ function M.strike(W, s, by, to, answers, now, k)
   local d = deeds.add(W, { kind = kill and "kill" or "wound", t = now, at = s.id, x = to.x, y = to.y,
     by = by.id, by_hh = by.hh, by_s = by.sett, to = to.id, to_hh = to.hh, to_s = to.sett, what = "blow", n = 1,
     fu = kill and c.blood_fu or c.wound_fu * sev, harm = true, answers = answers })
+  -- (S20) blood between villages: the struck man's people trust the striker's less (little, when the
+  -- blow answered the struck man's own wrong); it shows in their dealings and their courting
+  if to.sett ~= by.sett and V.settlements[to.sett] and V.settlements[by.sett] then
+    local a = answers and deeds.get(W, answers)
+    local deserved = a and a.by == to.id
+    local r = econ.rel(V.settlements[to.sett], V.settlements[by.sett])
+    r.trust = max(0, r.trust - (kill and c.blood_trust_loss or c.wound_trust_loss * sev) * (deserved and c.deserved_k or 1))
+  end
   people.hurt(to, min(1, sev), "wound", d.id, now)
   -- (each knows it: their own villages at once - the struck man's when he comes home or is told)
   deeds.learn(W, V.settlements[by.sett], d, sfmt("%s did it", by.name), by.id, by.sett, now)
@@ -373,7 +391,7 @@ function M.claim_answer(W, o, p, d, now)
   end
   local hh = V.households[hhid]
   local doer = V.people[d.by]
-  local push = migrate.push(W, o, hh, now)
+  local push = migrate.push(W, o, hh, now, true)
   local r = econ.rel(o, s)
   local men = 0
   for _, mid in ipairs(s.members) do
@@ -424,7 +442,7 @@ function M.amends_weigh(W, o, hh, now)
   local dk = o.dk
   if not dk then return nil end
   local V = W.S.v3
-  if migrate.push(W, o, hh, now) >= c.take_push then return nil end
+  if migrate.push(W, o, hh, now, true) >= c.take_push then return nil end
   local best, bv = nil, 0
   for i = 1, #dk do
     local e = dk[i]
@@ -548,7 +566,7 @@ function M.join_weigh(W, s, p, R, now)
   local leader = V.people[R.leader]
   local hh = V.households[p.hh]
   if not o or not leader or not hh then return -1 end
-  local push = migrate.push(W, s, hh, now)
+  local push = migrate.push(W, s, hh, now, true)
   local bold = people.bold(W, p)
   local b = weigh_at(W, s, p, hh, o, now, push, bold, R.kind, #R.party)
   local kinl = people.is_kin(W, p, leader.id)
@@ -597,6 +615,46 @@ function M.raid_ready(W, s, p, now)
   local hh = W.S.v3.households[p.hh]
   if hh then hh.taking = p.id end
   return true
+end
+
+-- (S20) The party's hour is near: those who agreed and are busy at something are told it is time
+-- (once; their own reaction - raid_ready - follows).
+function M.raid_call(W, s, now)
+  local R = s.raid
+  if not R or R.called or now < R.depart - C().ready_h or now > R.depart then return end
+  R.called = true
+  local V = W.S.v3
+  local leader = V.people[R.leader]
+  for _, id in ipairs(R.party) do
+    local q = V.people[id]
+    if q and q.alive and q.raid == R.id and not q.at and danger.interrupt then
+      danger.interrupt(W, q, now + 0.02, sfmt("Time to make ready: we go with %s at nightfall", leader and leader.name or "the others"))
+    end
+  end
+end
+
+-- (S20) How many of p's party are still to come to the gate (agreed, not yet on the road or at the
+-- gate): the band waits for them.
+function M.coming(W, s, p, now)
+  local tr = p.trip
+  local R = tr and tr.band and s.raid
+  if not R or R.id ~= tr.band then return 0 end
+  local V = W.S.v3
+  local o = V.settlements[tr.to]
+  if not o then return 0 end
+  local gx, gy = trade.gate(W, s, o)
+  local n = 0
+  for _, id in ipairs(R.party) do
+    local q = V.people[id]
+    if q and q ~= p and q.alive and not q.at then
+      if q.raid == R.id then n = n + 1
+      elseif q.trip and q.trip.band == R.id and q.act ~= "travel" and not q.trip.back then
+        local qx, qy = danger.person_pos(q, now)
+        if (qx - gx) * (qx - gx) + (qy - gy) * (qy - gy) > 0.0025 then n = n + 1 end
+      end
+    end
+  end
+  return n
 end
 
 -- The others of p's party on map o now, not given away.

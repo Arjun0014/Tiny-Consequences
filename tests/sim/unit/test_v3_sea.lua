@@ -57,8 +57,9 @@ function M.an_island_household_moves_by_sea()
   local decided, arrived_h, sailed, rode, walked_road = nil, nil, 0, 0, 0
   local ship0 = {}
   local hungriest = 0
-  -- (S19: relief now comes by sea from the first days, so they live on it a week before they go)
-  for h = 0.5, 24 * 16, 0.5 do
+  -- (S19: relief now comes by sea from the first days, so they live on it a week before they go;
+  -- S20: with people answering alarms and calls without delay, three weeks - the window is 28 days)
+  for h = 0.5, 24 * 28, 0.5 do
     world.advance(W, t0 + h)
     if h % 24 == 0 then starve() end
     if arrived_h and h > arrived_h + 2 then break end

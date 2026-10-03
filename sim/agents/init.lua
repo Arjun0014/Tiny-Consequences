@@ -61,6 +61,10 @@ danger.person_pos = act.pos
 -- (S20, R6.5b) a household whose house burnt lodges with others (as newcomers do); a death by lightning
 blaze.lodge = function(W, s, hh, now, why) return settle.migrate.lodge(W, s, hh, now, why) end
 blaze.kill = function(W, s, p, cause, now) return life.kill_now(W, s, p, cause) end
+blaze.rouse_pen = function(W, s, b, now)
+  local H = stock.herd_of_pen(s, b)
+  if H then stock.rouse(W, s, H, now) end
+end
 shake.lodge = blaze.lodge
 shake.kill = blaze.kill
 local floor, min, max = math.floor, math.min, math.max
@@ -151,8 +155,13 @@ end
 
 -- Interrupt p at time `at` (their reaction), with a reason they will remember in their why.
 function sys.interrupt(W, p, at, reason)
-  if not p.alive or at >= p.t1 then
+  if not p.alive then return end
+  if at >= p.t1 then
+    -- (S20) the reaction falls after the step under way ends: it interrupts whatever step comes next
+    -- (before, the next step of a plan began and the alarm waited for the next decision - a man who
+    -- saw a fire as he reached his door went to bed)
     p.int_reason = reason
+    if not p.int_late or at < p.int_late then p.int_late = at end
     return
   end
   if p.int_at and p.int_at <= at then return end
@@ -213,7 +222,7 @@ local function step_person(W, s, p, now)
     s = W.S.v3.settlements[p.at or p.sett] or s
     think.release(W, s, p)
     local reason = p.int_reason
-    p.int_at, p.int_reason = nil, nil
+    p.int_at, p.int_reason, p.int_late = nil, nil, nil
     think.decide(W, s, p, now, reason)
     start_plan(W, s, p, now)
   else
@@ -234,12 +243,23 @@ local function step_person(W, s, p, now)
       end
     else
       local reason = p.int_reason
-      p.int_reason = nil
+      p.int_reason, p.int_late = nil, nil
       think.decide(W, s, p, now, reason)
       start_plan(W, s, p, now)
     end
   end
-  sys.push(W, p.t1, p.id, p.ver)
+  -- (S20) a reaction that fell after the step just ended interrupts the step begun now - unless that
+  -- step takes them off the map (on the road or at sea, what was seen or heard there is behind them)
+  local late = p.int_late
+  if late and p.alive then
+    if p.act == "travel" or p.act == "voyage" or (p.riding or 0) ~= 0 then
+      p.int_late = nil
+    else
+      if late < now then late = now end
+      if late < p.t1 then p.int_at, p.int_late = late, nil end
+    end
+  end
+  sys.push(W, (p.int_at and p.int_at < p.t1) and p.int_at or p.t1, p.id, p.ver)
 end
 
 function sys.advance(W, t)
@@ -369,6 +389,7 @@ function sys.hour(W)
         end
       end
       wild.hourly(W, s, now)
+      conflict.raid_call(W, s, now)   -- (S20: the party told when its hour is near)
       local changed, r = settle.hourly(W, s, now)
       snow.hourly(W, s, now)
       -- (S20, R6.5b) a thunderstorm's lightning; whatever burns

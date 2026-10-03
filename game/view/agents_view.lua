@@ -1544,6 +1544,15 @@ local function hearths(V, t)
   V.lit, V.lit_sig = lit, sig
   -- (S20, R6.5b) fires: flames at each burning tree or roof, and their smoke
   for _, f in ipairs(s.burn or {}) do
+    if f.heat > 0.02 and f.kind == "plot" and f.r then
+      -- (S20) a field alight: low flames along it (a few, by how hot it burns)
+      for k = 1, 3 + floor(f.heat * 4) do
+        local a = k * 2.399963
+        local rr = f.r * 0.8 * ((k * 0.618034) % 1)
+        local px, py, pz, ux, uy, uz = world_pos(V, f.x + rr * math.cos(a), f.y + rr * math.sin(a), 0.01)
+        FIRES[#FIRES + 1] = { px, py, pz, f.heat * 0.6, ux, uy, uz, false }
+      end
+    end
     if f.heat > 0.02 then
       local px, py, pz, ux, uy, uz = world_pos(V, f.x, f.y, f.kind == "bld" and 0.03 or 0.02)
       FIRES[#FIRES + 1] = { px, py, pz, f.heat, ux, uy, uz, f.kind == "bld" }

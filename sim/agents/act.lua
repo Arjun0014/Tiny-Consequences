@@ -2554,6 +2554,19 @@ WORK.mourn = function(W, s, p, st, f)
   if dp then people.remember(p, W.S.v3.now or W.hour, "Buried " .. dp.name .. " " .. dp.surname) end
 end
 
+-- (S20, R6.5b) The gate of a burning pen thrown open: the beasts are out (they run from the fire).
+WORK.loose = function(W, s, p, st, f)
+  if f < 1 then return end
+  local b = s.buildings[st.ref or 0]
+  local H = b and stock.herd_of_pen(s, b)
+  if not H or (H.loose or -99) >= (W.S.v3.now or W.hour) - C().loose_h then return end
+  local now = W.S.v3.now or W.hour
+  H.loose = now
+  stock.rouse(W, s, H, now)
+  s.acc.loosed = (s.acc.loosed or 0) + 1
+  people.remember(p, now, sfmt("Let the beasts out of the burning %s", b.kind))
+end
+
 -- (S20, R6.5f) A stint of digging someone out of the rubble (strong arms and tools dig faster).
 WORK.dig_out = function(W, s, p, st, f)
   if f <= 0 then return end
@@ -3439,6 +3452,14 @@ function M.start(W, s, p, now)
   if st.op == "work" and st.kind == "gather" then
     -- (S16, R5) waiting at the gate for the hour the household agreed to set off
     st.dur = max(0.02, (st.until_t or now) - now)
+  end
+  if st.op == "work" and st.kind == "travel" and p.trip and p.trip.band and not p.trip.back and not p.at
+    and (st.waited or 0) < C().raid_wait_h and conflict.coming(W, s, p, now) > 0 then
+    -- (S20, R6e) the band waits at the gate for those of the party still coming (a while)
+    st.waited = (st.waited or 0) + 0.1
+    table.insert(p.plan, p.pi, { op = "work", kind = "wait", dur = 0.1, why = "Waiting at the gate for the others of the party" })
+    st = p.plan[p.pi]
+    h = START.work
   end
   if st.op == "work" and st.kind == "travel" and st.migrate then
     -- (S16, R5) the household's babes are in the arms of those setting off

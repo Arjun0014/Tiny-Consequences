@@ -4647,11 +4647,26 @@ function M.fire_choice(W, s, p, ctx, now)
   local day = floor(now / 24)
   if p.fire_seen ~= day then
     p.fire_seen = day
-    people.remember(p, now, f.kind == "bld" and sfmt("Fire: %s was burning", (s.buildings[f.ref] or {}).label or "a house") or "Fire in the woods by the village")
+    people.remember(p, now, f.kind == "bld" and sfmt("Fire: %s was burning", (s.buildings[f.ref] or {}).label or "a house")
+      or (f.kind == "plot" and "Fire in the fields" or "Fire in the woods by the village"))
   end
   local F = M.FIRE
   F.a, F.b = 0, 0
   local inside = f.kind == "bld" and p.inside == f.ref
+  -- (S20, R6.5b) a burning pen with beasts shut in it: the grown-ups near run to open it - its owners
+  -- before all else, others when it is their nearest fire
+  local pb = f.kind == "bld" and s.buildings[f.ref]
+  if pb and (pb.kind == "byre" or pb.kind == "sty" or pb.kind == "fold") and not inside and d >= 0.02
+    and (ctx.stage == "adult" or (ctx.stage == "apprentice" and (p.hurt or 0) < 0.3)) and not ctx.babe and (p.hurt or 0) < 0.3 then
+    local stock = require("sim.agents.stock")
+    local H = stock.herd_of_pen(s, pb)
+    if H and (H.loose or -99) < now - c.loose_h and (H.n_alive or 1) > 0 then
+      F.kind, F.why = "loose_beasts", sfmt("The %s is burning with the beasts shut in it: open it!", pb.kind)
+      F.fx, F.fy = pb.dx or pb.cx, pb.dy or pb.cy
+      F.a = pb.id
+      return true
+    end
+  end
   if inside or d < 0.03 then
     F.kind, F.why = "flee_fire", inside and "The roof over us is burning: out!" or "Too close to the fire"
     return true
@@ -4676,7 +4691,8 @@ function M.fire_choice(W, s, p, ctx, now)
     if d < 0.2 then F.kind, F.why = "flee_fire", "Away from the fire"; return true end
     return false
   end
-  F.kind, F.why = "fight_fire", sfmt("%s is burning: water from %s to it", f.kind == "bld" and ((s.buildings[f.ref] or {}).label or "a house") or "a tree", how)
+  F.kind, F.why = "fight_fire", sfmt("%s is burning: water from %s to it", f.kind == "bld" and ((s.buildings[f.ref] or {}).label or "a house")
+    or (f.kind == "plot" and ((s.plots[f.ref] or {}).name or "a field") or "a tree"), how)
   F.x, F.y, F.wx, F.wy, F.fx, F.fy = 0, 0, wx, wy, f.x, f.y
   return true
 end
@@ -4776,6 +4792,16 @@ PLAN.flee_fire = function(W, s, p, ctx, now, cd)
     people.remember(p, now, "Ran out of the burning house")
   end
   return "Away from the fire", "away from the fire"
+end
+
+-- (S20, R6.5b) To the burning pen's gate at a run, and open it: the beasts are out.
+PLAN.loose_beasts = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local F = M.FIRE
+  go(pl, F.fx, F.fy, "the burning pen")
+  pl[#pl].run = true
+  work(pl, "loose", 0.05, { ref = F.a, fx = F.fx, fy = F.fy })
+  return "Let the beasts out of the burning pen", "the burning pen"
 end
 
 PLAN.fight_fire = function(W, s, p, ctx, now, cd)

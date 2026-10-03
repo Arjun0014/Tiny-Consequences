@@ -78,24 +78,48 @@ end
 
 -- Set something alight: the fire is seen (and smelt) from afar; those inside a burning house know it at
 -- once. `cause`: the deed that started it.
+local PENS = { fold = true, byre = true, sty = true }   -- (S20: the beasts' pens)
+
+-- (S20) What a field has to burn (0 none): ripe corn standing, sheaves in stooks, corn drying off
+-- toward the harvest, stubble (a little).
+function M.plot_fuel(pl)
+  if not pl.alive then return 0 end
+  local fu = 0
+  if pl.stage == "ripe" and pl.harvested < pl.sown then fu = fu + (pl.sown - pl.harvested) / max(1, pl.rows) end
+  if pl.stage == "growing" and (pl.growth or 0) >= 0.7 then fu = fu + 0.5 * (pl.growth - 0.5) end
+  if (pl.sheaves or 0) > 0 then fu = fu + 0.5 end
+  if pl.stage == "stubble" or pl.stage == "retting" then fu = fu + 0.25 end
+  return fu
+end
+
 function M.ignite(W, s, kind, ref, now, cause)
   local c = C()
   if find(s, kind, ref) then return nil end
   local x, y, fuel
+  local r = 0
   if kind == "tree" then
     local T = s.trees
     if (T.st[ref] or 0) ~= 1 then return nil end
     x, y, fuel = T.x[ref], T.y[ref], c.fire_tree_h * (0.5 + 0.5 * (T.size[ref] or 1))
+  elseif kind == "plot" then
+    -- (S20) a field: what stands on it or lies in stooks burns (green corn hardly)
+    local pl = s.plots[ref]
+    local fu = pl and M.plot_fuel(pl) or 0
+    if fu <= 0 then return nil end
+    x, y, fuel = (pl.x0 + pl.x1) * 0.5, (pl.y0 + pl.y1) * 0.5, c.fire_plot_h * fu
+    r = (pl.x1 - pl.x0) * 0.5
   else
     local b = s.buildings[ref]
     if not b or b.state ~= "standing" or b.natural then return nil end
     x, y, fuel = b.cx or b.dx, b.cy or b.dy, c.fire_bld_h * (b.kind == "house" and 1 or 0.7)
   end
   s.burn = s.burn or {}
-  local f = { kind = kind, ref = ref, x = x, y = y, heat = 0.25, fuel = fuel, t0 = now, t = now, deed = cause }
+  local f = { kind = kind, ref = ref, x = x, y = y, heat = 0.25, fuel = fuel, t0 = now, t = now, deed = cause, r = r > 0 and r or nil }
   s.burn[#s.burn + 1] = f
   s.acc.fires = (s.acc.fires or 0) + 1
-  M.cue(W, s, f, now, kind == "bld" and "Fire! The roof is burning" or "Fire in the trees")
+  M.cue(W, s, f, now, kind == "bld" and "Fire! The roof is burning" or (kind == "plot" and "Fire in the fields" or "Fire in the trees"))
+  -- (S20) a pen alight: the beasts in it are up at once
+  if kind == "bld" and PENS[s.buildings[ref].kind] and M.rouse_pen then M.rouse_pen(W, s, s.buildings[ref], now) end
   return f
 end
 
@@ -124,6 +148,84 @@ function M.douse(W, s, x, y, now)
   return true
 end
 
+-- (S20, R6.5b) Beasts still in a burning pen are burnt: health lost with the heat; dead at nothing
+-- (a carcass where it fell; its owners remember).
+function M.beasts_burn(W, s, b, f, t, dt)
+  local c = C()
+  local x0, y0 = mapm.ixy_xy(s, b.ix0, b.iy0)
+  local T = s.T
+  for _, kind in ipairs({ "flock", "cattle", "swine" }) do
+    local H = s.herds and s.herds[kind]
+    if H then
+      for _, a in ipairs(H.animals) do
+        if a.alive then
+          local fx, fy = (a.tx - x0) / T, (a.ty - y0) / T
+          if fx > -0.4 and fy > -0.4 and fx < b.w - 0.6 and fy < b.h - 0.6 then
+            a.health = (a.health or 1) - c.fire_beast * f.heat * dt
+            if a.health <= 0 then
+              a.health = 0
+              a.alive, a.died, a.cause = false, t, "fire"
+              s.acc.stock_burnt = (s.acc.stock_burnt or 0) + 1
+              s.acc.stock_died = (s.acc.stock_died or 0) + 1
+              local meat = c.stock[a.sp] and c.stock[a.sp].meat or 5
+              s.wildlife = s.wildlife or { carcasses = {} }
+              s.wildlife.carcasses = s.wildlife.carcasses or {}
+              s.wildlife.carcasses[#s.wildlife.carcasses + 1] = { x = a.tx, y = a.ty, sp = a.sp, t = t, meat = meat * 0.5, by = "fire" }
+              local hh = W.S.v3.households[a.owner or 0]
+              for _, id in ipairs(hh and hh.members or {}) do
+                local q = W.S.v3.people[id]
+                if q and q.alive and people.stage(q, t) ~= "infant" and (q.beast_burnt or -1) ~= floor(t) then
+                  q.beast_burnt = floor(t)
+                  people.remember(q, t, sfmt("One of our %s burnt in the %s", a.sp == "cattle" and "cattle" or (a.sp == "sheep" and "sheep" or a.sp .. "s"), b.kind))
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+end
+
+-- (S20) A field burnt out: the corn standing on it and the sheaves in its stooks are lost (nothing
+-- left to cut), the stubble burnt off (its ash a little richness for the soil); its owners remember.
+function M.field_burnt(W, s, f, now)
+  local c = C()
+  local V = W.S.v3
+  local pl = s.plots[f.ref]
+  if not pl then return end
+  local lost = 0
+  if pl.stage == "ripe" and pl.harvested < pl.sown then
+    lost = lost + (pl.sown - pl.harvested)
+    pl.harvested = pl.sown
+    -- (the rows still standing are ash: nothing left for the reapers to finish)
+    for r = 1, pl.rows do if pl.row_st[r] == 2 then pl.row_st[r] = 3 end end
+    pl.row_p = nil
+  end
+  if pl.stage == "retting" then pl.flax_ret = 0 end
+  if pl.stage == "growing" and (pl.growth or 0) >= 0.7 then
+    lost = lost + pl.sown
+    pl.frost = (pl.frost or 1) * 0.2   -- (what survives the fire green is little)
+  end
+  local sheaves = pl.sheaves or 0
+  pl.sheaves = 0
+  pl.fert = min(c.fert_max, (pl.fert or 1) + c.fire_plot_ash)
+  pl.burnt_t = now
+  s.acc.fields_burnt = (s.acc.fields_burnt or 0) + 1
+  local hh = V.households[pl.hh or 0]
+  local d = deeds.add(W, { kind = "burnt", t = now, at = s.id, x = f.x, y = f.y, by = 0, by_hh = 0, by_s = 0, to = 0,
+    to_hh = hh and hh.id or 0, to_s = s.id, what = "field", n = 1, fu = (lost + sheaves) * 2, harm = lost + sheaves > 0, answers = f.deed })
+  deeds.learn(W, s, d, "the fire", 0, 0, now)
+  if hh and lost + sheaves > 0 then
+    for _, id in ipairs(hh.members) do
+      local q = V.people[id]
+      if q and q.alive and people.stage(q, now) ~= "infant" then
+        people.remember(q, now, sheaves > 0 and lost == 0 and "The fire took the sheaves on our field" or "Our field burnt: the corn on it is lost")
+      end
+    end
+  end
+end
+
 -- What a burning building holds burns with it.
 local BURNS = { "food", "grain", "sheaves", "smoked", "cheese", "meat", "fish", "meals", "logs", "wool", "cloth", "hides",
   "leather", "flax", "hay" }
@@ -143,6 +245,7 @@ local function burn_out(W, s, f, now)
     s.acc.trees_burnt = (s.acc.trees_burnt or 0) + 1
     return
   end
+  if f.kind == "plot" then return M.field_burnt(W, s, f, now) end
   local b = s.buildings[f.ref]
   if not b then return end
   local hh = V.households[b.hh or 0]
@@ -194,14 +297,27 @@ local function live(W, s, f, to)
       f.fuel = f.fuel - dt * max(0.2, f.heat)
       if f.heat > 0 then
         local T = s.trees
-        trees_near(s, f.x, f.y, c.fire_reach, function(k)
+        trees_near(s, f.x, f.y, c.fire_reach + (f.r or 0), function(k)
           if not find(s, "tree", k) then
             local dx, dy = T.x[k] - f.x, T.y[k] - f.y
             local down = 1 + c.fire_wind * max(0, dx * wx + dy * wy) / max(1e-6, sqrt(dx * dx + dy * dy))
             if u(W, s, t, 11, k) < c.fire_spread * f.heat * dry * down * dt then M.ignite(W, s, "tree", k, t + dt, f.deed) end
           end
         end)
-        local rb = c.fire_reach * 1.3
+        -- (S20) the fields: a fire within reach of a field's edge, a field burning to its neighbours
+        local rp = c.fire_reach + (f.r or 0)
+        for j = 1, #s.plots do
+          local pl = s.plots[j]
+          if pl.alive and not (f.kind == "plot" and f.ref == j) then
+            local ex = max(pl.x0 - f.x, 0, f.x - pl.x1)
+            local ey = max(pl.y0 - f.y, 0, f.y - pl.y1)
+            if ex * ex + ey * ey < rp * rp and not find(s, "plot", j) and M.plot_fuel(pl) > 0
+              and u(W, s, t, 13, j) < c.fire_spread * c.fire_plot_catch * f.heat * dry * dt then
+              M.ignite(W, s, "plot", j, t + dt, f.deed)
+            end
+          end
+        end
+        local rb = c.fire_reach * 1.3 + (f.r or 0)
         for j = 1, #s.blist do
           local b = s.buildings[s.blist[j]]
           if b and b.state == "standing" and not b.natural and b.kind ~= "outcrop" and b.kind ~= "bog"
@@ -224,6 +340,9 @@ local function live(W, s, f, to)
                 people.hurt(q, c.fire_burn * f.heat * dt, "burn", f.deed, t)
               end
             end
+            if PENS[b.kind] then M.beasts_burn(W, s, b, f, t, dt) end
+            -- (S20) the hay stacked by the fold goes up with it
+            if b.kind == "fold" and (s.hay or 0) > 0 then s.hay = s.hay * (1 - min(1, c.fire_contents * f.heat * dt)) end
           end
         end
       end
@@ -248,6 +367,8 @@ local function sweep(W, s)
       elseif f.kind == "bld" then
         local b = s.buildings[f.ref]
         if b then b.cond = max(0.05, (b.cond or 1) - (1 - max(0, f.fuel) / c.fire_bld_h)) end
+        s.acc.fires_out = (s.acc.fires_out or 0) + 1
+      elseif f.kind == "plot" then
         s.acc.fires_out = (s.acc.fires_out or 0) + 1
       end
     end

@@ -1076,6 +1076,21 @@ function M.place_daily(W, o, now)
   end
 end
 
+-- (S20) A village whose pen is gone (burnt, fallen in): a new one planned for the herd, as at a
+-- young place; the beasts are kept where it stood meanwhile.
+function M.replan_pens(W, o, now)
+  for _, kind in ipairs(stock.HERDS) do
+    local H = o.herds and o.herds[kind]
+    local pen = H and o.buildings[H.pen or 0]
+    if H and pen and pen.state == "gone" and not H.pen_planned and (H.n_alive or 1) > 0 then
+      if settle.plan_lot(W, o, stock.PEN[kind], { prio = 1, for_name = "the " .. kind, herd = kind }, o.sqx, o.sqy, 10) then
+        H.pen_planned = now
+        return
+      end
+    end
+  end
+end
+
 -- Why p (of household hh) is doing what the founding asks of them now.
 function M.why(W, p, hh)
   local V = W.S.v3

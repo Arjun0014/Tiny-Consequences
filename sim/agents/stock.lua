@@ -29,6 +29,7 @@ local mapm = require("sim.agents.map")
 local nav = require("sim.agents.nav")
 local clock = require("sim.agents.clock")
 local weather = require("sim.agents.weather")
+local danger = require("sim.agents.danger")
 
 local M = {}
 M.ID0 = 100000000
@@ -342,6 +343,49 @@ local function inside_pen(s, pen, x, y)
   return fx > -0.6 and fy > -0.6 and fx < pen.w - 0.4 and fy < pen.h - 0.4
 end
 
+-- (S20, R6.5b) Fire near (x, y) within r (the map's burning things as last lived): its place and the
+-- record, or nil.
+local function fire_near(s, x, y, r)
+  local B = s.burn
+  local best, bf = r * r, nil
+  for i = 1, #B do
+    local f = B[i]
+    if not f.out and f.heat > 0 then
+      local d2 = dsq(f.x - x) + dsq(f.y - y)
+      if d2 < best then best, bf = d2, f end
+    end
+  end
+  return bf
+end
+
+-- The heat of pen b's own fire (0: not burning).
+local function pen_heat(s, b)
+  local B = s.burn
+  for i = 1, #(B or {}) do
+    local f = B[i]
+    if f.kind == "bld" and f.ref == b.id and not f.out then return f.heat end
+  end
+  return 0
+end
+M.pen_heat = pen_heat
+
+-- The herd kept in pen b, or nil.
+function M.herd_of_pen(s, b)
+  for _, kind in ipairs(M.HERDS) do
+    local H = s.herds and s.herds[kind]
+    if H and H.pen == b.id then return H end
+  end
+  return nil
+end
+
+-- Beasts crying out at a fire (once a half hour a herd): a sound that carries, waking those near.
+local function cry(W, s, H, x, y, now)
+  if (H.fire_cry or -9) > now - 0.5 then return end
+  H.fire_cry = now
+  danger.cue(W, s, x, y, now, { kind = "fire", src = 0, sight = 0, night = 0, sound = C().beast_cry, loud = true,
+    why = H.kind == "cattle" and "The cattle are bellowing: fire at the byre" or "The beasts are crying out: fire by the pens" })
+end
+
 -- (S16) How far a herd of n spreads about where it is kept (its beasts grazing calmly keep
 -- `stock_room` spacings at least between them and bend away within `stock_bend`).
 function M.range(S, n)
@@ -507,7 +551,38 @@ function M.step(W, s, H, a, now)
   local lh = clock.local_hour(now, W.grid.lon[s.cell])
   local night = lh >= (s.sunset or 18) + 0.4 or lh < (s.sunrise or 6) - 0.3
   local pen = s.buildings[H.pen]
+  local gone = pen and pen.state ~= "standing"   -- (S20: burnt or fallen in: kept where it stood)
   local age = (now - a.born) / 1152
+  -- (S20, R6.5b) fire: a beast out of doors runs from anything burning near it; one in its pen stays
+  -- (a fold's hurdles give way once the fold is well alight; a byre or a sty must be opened: H.loose),
+  -- crying out - a sound that wakes people
+  if s.burn and #s.burn > 0 and not drover then
+    local f = fire_near(s, a.tx, a.ty, c.beast_fire_r)
+    local ph = pen and pen.state == "standing" and pen_heat(s, pen) or 0
+    if f or ph > 0 then
+      local shut = pen and pen.state == "standing" and pen.kind ~= "camp" and inside_pen(s, pen, a.tx, a.ty)
+        and (H.loose or -99) < now - c.loose_h and not (pen.kind == "fold" and ph > 0.5)
+      if f then cry(W, s, H, a.tx, a.ty, now) end
+      if not shut then
+        if f then
+          local dx, dy = a.tx - f.x, a.ty - f.y
+          local l = sqrt(dx * dx + dy * dy)
+          if l < 1e-6 then dx, dy, l = 1, 0, 1 end
+          local st = S.sep * (3 + 2 * u(W, s, H, a, now, 40))
+          a.why = "Running from the fire"
+          if walk_to(W, s, a, now, a.tx + dx / l * st, a.ty + dy / l * st, S.speed * 2.2) then return end
+        end
+        -- (out of its burning pen: it keeps away from it until the fire is out)
+        a.why = "Keeping away from the burning " .. pen.kind
+        stand(a, now, "rest", 0.15 + 0.2 * u(W, s, H, a, now, 41))
+        return
+      elseif ph > 0 then
+        a.why = "Shut in the burning " .. pen.kind .. ", crying out"
+        stand(a, now, "pen", 0.1)
+        return
+      end
+    end
+  end
   -- the young keep to their mothers
   local mom = not drover and a.mother ~= 0 and H.animals[a.mother]
   if age < S.young_years and mom and mom.alive then
@@ -569,6 +644,7 @@ function M.step(W, s, H, a, now)
       if walk_to(W, s, a, now, tx, ty, S.speed * pace * (inside and 0.5 or 1.2)) then return end
     end
     a.why = pen.kind == "camp" and (night and "Lying by the camp for the night" or "Kept by the camp: there is no fold yet")
+      or (gone and "Kept where its pen stood: it is gone")
       or (night and "Lying in the pen for the night" or "Waiting in the pen")
     stand(a, now, "pen", (night and 1.8 or 0.4) + (night and 2.4 or 0.6) * u(W, s, H, a, now, 6))
     return
@@ -903,6 +979,7 @@ function M.daily(W, s, day, push)
     local H = s.herds[M.HERDS[hi]]
     if H then M.herd_daily(W, s, H, day, doy, year, now, push) end
   end
+  M.herd_worth(W, s)
 end
 
 function M.herd_daily(W, s, H, day, doy, year, now, push)
@@ -1121,6 +1198,48 @@ function M.plan_cull(W, s, days, full, mark, core)
     end
   end
   return n
+end
+
+-- (S20, R6) Each household's beasts (their meat on the hoof, FU, `hh.herd_now`) and those it lost
+-- against its will (`hh.herd_lost`: sickness, hunger, wolves, fire, thieves - never a beast killed or
+-- sold; fading herd_lost_fade a day): a household that has lost much of its herd has lost its living -
+-- restocking is read from it (conflict.weigh_at).
+local OWN = {}
+local LOSS = { sickness = true, hunger = true, wolves = true, fire = true }
+function M.lose(W, hid, a)
+  local hh = W.S.v3.households[hid or 0]
+  if hh then hh.herd_lost = (hh.herd_lost or 0) + SP(a.sp).meat end
+end
+function M.herd_worth(W, s)
+  local c = C()
+  local V = W.S.v3
+  local now = W.hour
+  for _, hid in ipairs(s.households) do OWN[hid] = 0 end
+  for hi = 1, #M.HERDS do
+    local H = s.herds[M.HERDS[hi]]
+    if H then
+      for _, a in ipairs(H.animals) do
+        if a.alive then
+          if OWN[a.owner or 0] then OWN[a.owner] = OWN[a.owner] + SP(a.sp).meat end
+        elseif not a.lost_n and a.died and now - a.died <= 30 and LOSS[a.cause or ""] then
+          a.lost_n = true
+          M.lose(W, a.owner, a)
+        end
+      end
+    end
+  end
+  for _, hid in ipairs(s.households) do
+    local hh = V.households[hid]
+    local v = OWN[hid]
+    OWN[hid] = nil
+    if hh then
+      hh.herd_now = v
+      if hh.herd_lost then
+        hh.herd_lost = hh.herd_lost * c.herd_lost_fade
+        if hh.herd_lost < 0.5 then hh.herd_lost = nil end
+      end
+    end
+  end
 end
 
 -- (S20, R6.5d) The beasts still marked for killing for reason `mark` are kept after all.

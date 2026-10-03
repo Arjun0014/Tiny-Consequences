@@ -6,7 +6,7 @@
 -- kin across villages, boats and who owns them). Optionally a premise first (sim/agents/premise.lua)
 -- and the world saved at the end (to follow people afterwards with tools/v3_follow.lua --load).
 --   luajit tools/v3_chronicle.lua [--load assets/worlds/v3.tcsave] [--days 96] [--every 8] [--out out/chron]
---          [--premise crowd:2|fail_harvest:3|empty_stores:3|...] [--save FILE] [--quiet]
+--          [--premise crowd:2|fail_harvest:3|empty_stores:3|hard_winter|...] [--save FILE] [--quiet]
 -- Files: <out>/mem.txt (every memory), <out>/days.txt (the states), <out>/summary.txt (printed too).
 package.path = "./?.lua;./?/init.lua;" .. package.path
 if rawget(_G, "jit") then jit.opt.start("maxtrace=8000", "maxmcode=8192", "maxrecord=8000") end -- lint:allow luajit-only
@@ -47,6 +47,7 @@ for _, pr in ipairs(args.premise) do
   elseif name == "fail_harvest" then premise.fail_harvest(W, s)
   elseif name == "empty_stores" then premise.empty_stores(W, s)
   elseif premise[name] then premise[name](W, s)
+  elseif premise.named(W, name) then s = { name = "the world (named premise)" }   -- (S20: cold_snap, hard_winter, quake, eruption, ...)
   else error("no premise " .. tostring(name)) end
   print(string.format("premise %s at %s", name, s.name))
 end

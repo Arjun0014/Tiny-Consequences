@@ -1319,7 +1319,25 @@ C.V3 = {
   snow_fail_health = 0.5, stock_starve = 0.006,   -- (a starving beast's health lost an hour: 0.02 before S20)
   snow_load_k = 0.6, ash_load_k = 1.0, roof_crack = 0.75, frost_t = -2, frost_t_winter = -12, frost_span = 6,
   frost_k = 0.5, snow_barefoot = 2,
-  premise_cold = 22, premise_aerosol = 12,   -- (premises: a cold air mass, degC; sulphur after a great eruption)          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
+  premise_cold = 22, premise_aerosol = 12,
+  -- (S20, R6.5b) beasts and fire: a beast runs from a fire within beast_fire_r (out of its pen only
+  -- when the gate is open - H.loose for loose_h hours - or a fold is well alight), crying out within
+  -- beast_cry; shut in a burning pen it loses fire_beast x heat health an hour
+  beast_fire_r = 0.2, beast_cry = 0.6, fire_beast = 1.5, loose_h = 3,
+  -- (S20, R6) fear of a place: the unanswered harms people did to a household (its neighbours' at
+  -- deed_kin_k), faded, push it to leave mig_fear_k x min(1, worth / fear_fu); a village whose people
+  -- did them draws it 2 x as much less
+  mig_fear_k = 0.5, fear_fu = 200,
+  raid_wait_h = 1.5,
+  wound_trust_loss = 0.2, blood_trust_loss = 0.5,
+  -- (S20) fields burning: a field burns fire_plot_h x its fuel (ripe corn standing, stooks, corn
+  -- drying off, stubble) hours, catches at fire_plot_catch of a tree's chance; its ash fire_plot_ash
+  fire_plot_h = 1.0, fire_plot_catch = 0.8, fire_plot_ash = 0.03,   -- (S20) trust lost by a village whose man another's struck (x the blow)   -- (S20) a band at the gate waits up to this long for those of the party still coming
+  -- (S20, R6) restocking: the beasts a household lost against its will (sickness, hunger, wolves,
+  -- fire, thieves; meat FU, fading herd_lost_fade a day) against what it had: from restock_min_fu, a
+  -- loss of take_restock of it is a motive to take beasts even when fed: gain + take_gain_k x the
+  -- beasts' meat x the share lost x restock_k
+  herd_lost_fade = 0.99, restock_min_fu = 30, take_restock = 0.5, restock_k = 1.0,   -- (premises: a cold air mass, degC; sulphur after a great eruption)          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
 }
 
 return C

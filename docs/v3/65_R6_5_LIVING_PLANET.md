@@ -145,9 +145,12 @@ an outcome script, the architecture is wrong.
   every cell, fire at the vent, shaking, ash downwind on the villages: roofs, grass, crops). Tests
   `test_v3_quake` x3; browser = LuaJIT on `--premise quake` and `--premise eruption`.
 - **R6.5d snow and frost on the maps**: built (D-158, `sim/agents/snow.lua`, §10; `test_v3_snow` x4).
+- **Beasts and fire** (R6.5b gap): beasts cry out and run, are let out of a burning pen by those who
+  hear them or burn in it; a lost pen is planned again (D-159).
+- **R6.5e flood water**: deferred - the planet's rivers barely rise under a season's deluge at the
+  villages (hydrology first).
 - Not yet: landslides, aftershocks, tsunami; e flood water, g climate extremes; ice crust, lopping
-  boughs for fodder, moving herds to open ground; beasts
-  led out of burning pens, fields and stacks burning, carrying the hurt out.
+  boughs for fodder, moving herds to open ground; fields and stacks burning, carrying the hurt out.
 
 ## 10. R6.5d snow and cold on the maps (design, session 20)
 The audit found no snow at any village (all lie between 37 S and 14 N: Krikeivorn's winter days

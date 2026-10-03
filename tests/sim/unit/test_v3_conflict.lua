@@ -36,6 +36,9 @@ function M.a_hungry_household_takes_a_beast()
   local A = V.settlements[4]   -- Hottoodingle Hop
   local B = V.settlements[2]   -- Zurug, 18 h by road
   hardship(W, A, B)
+  -- (who lived at A when the hardship began: a household of theirs may move away and take from there)
+  local of_A = {}
+  for _, id in ipairs(A.members) do of_A[id] = true end
   local t0 = W.hour
   local trips = {}
   for h = 1, 24 * 8 do
@@ -59,7 +62,7 @@ function M.a_hungry_household_takes_a_beast()
   for _, d in ipairs(D) do if d.kind == "take" then takes[#takes + 1] = d end end
   D = takes
   for _, d in ipairs(D) do
-    T.ok(d.by_s == A.id, "deed " .. d.id .. " is a taking by someone of " .. A.name)
+    T.ok(of_A[d.by], "deed " .. d.id .. " is a taking by someone who lived at " .. A.name)
     local victim = V.settlements[d.to_s]
     -- every beast of the deed is where the deed says
     for _, s in ipairs(V.settlements) do
@@ -225,6 +228,10 @@ function M.men_given_away_alone_go_together()
   world.advance(W, W.hour + 72)
   local A, B = V.settlements[4], V.settlements[2]
   hardship(W, A, B)
+  -- (they know of no other fold than Zurug's: what their people saw elsewhere is forgotten)
+  for _, o in ipairs(V.settlements) do
+    if o ~= B and A.know and A.know[o.id] then A.know[o.id].beasts = nil end
+  end
   local people = require("sim.agents.people")
   local orig = people.remember
   local stayed = {}
@@ -319,6 +326,47 @@ function M.a_fold_is_walled_after_losses()
   T.ok((pen.wall or 0) >= 1, string.format("the wall stands (%.2f built, %d logs brought)", pen.wall or 0, pen.wall_logs or 0))
   T.ok((pen.wall_logs or 0) >= require("sim.config").V3.wall_logs, "its stakes were carried there")
   return string.format("%s walled its fold: decided day %.1f, standing day %.1f, %d logs", s.name, (decided or 0) / 24, W.hour / 24, pen.wall_logs or 0)
+end
+
+-- (S20) Fear of a place: a household whose man was struck down by a man of another village weighs it
+-- as hardship (its neighbours a little), is drawn less toward the killers' village, and if it leaves
+-- it does not go there.
+function M.blood_makes_a_household_fear_its_place()
+  local W = shipped()
+  local V = W.S.v3
+  world.advance(W, W.hour + 24)
+  local s, o = V.settlements[2], V.settlements[4]
+  local migrate = require("sim.agents.migrate")
+  local now = V.now or W.hour
+  local hh, nb
+  for _, hid in ipairs(s.households) do
+    local h = V.households[hid]
+    local man = false
+    for _, id in ipairs(h.members) do
+      local q = V.people[id]
+      if q.alive and q.sex == "m" and require("sim.agents.people").stage(q, now) == "adult" then man = true end
+    end
+    if man and not hh then hh = h elseif not nb then nb = h end
+  end
+  local p0 = migrate.push(W, s, hh, now)
+  local n0 = migrate.push(W, s, nb, now)
+  local u0 = migrate.pull(W, s, hh, o, now)
+  local victim, by = require("sim.agents.premise").blood(W, s, hh, o, 1)
+  T.ok(victim ~= nil, "a man struck down")
+  now = V.now or W.hour
+  local p1, why = migrate.push(W, s, hh, now)
+  local n1 = migrate.push(W, s, nb, now)
+  local u1 = migrate.pull(W, s, hh, o, now)
+  T.ok(p1 >= p0 + 0.3, string.format("the household's hardship %.2f -> %.2f (%s)", p0, p1, tostring(why)))
+  T.ok(n1 > n0 and n1 - n0 < p1 - p0, string.format("a neighbour's %.2f -> %.2f", n0, n1))
+  T.ok(u1 < u0, string.format("%s draws them %.2f -> %.2f", o.name, u0, u1))
+  local t0 = W.hour
+  for d = 1, 12 do world.advance(W, t0 + d * 24) end
+  local mg = hh.migrate
+  T.ok(not mg or mg.to ~= o.id, "not to the killers' village")
+  return string.format("%s killed by %s of %s: push %.2f -> %.2f (%s); neighbour %.2f -> %.2f; %s draws %.2f -> %.2f; %s",
+    victim.name, by.name, o.name, p0, p1, tostring(why), n0, n1, o.name, u0, u1,
+    mg and ("left for " .. V.settlements[mg.to].name) or "stayed")
 end
 
 return M

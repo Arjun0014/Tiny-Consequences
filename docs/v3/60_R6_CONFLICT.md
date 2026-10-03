@@ -123,7 +123,11 @@ given away by dogs, then a party raised (Kotumbo and Plock), a man caught and st
 Zurug), tended at home; with Zurug's dogs dead, 3 sheep taken, tracks found, a claim met with "nobody
 would own to it"; a household whose man raided Zurug moving to Zurug meanwhile. Browser = LuaJIT on the
 conflict premise (`node scripts/v3_hash_web.mjs --release --premise conflict --hours 264`).
+Later in session 20 (D-160): **fear of a place** (`deeds.fear` read by `migrate.push`: the unanswered
+harms people did to a household and its neighbours push it to leave; the doers' village draws it far
+less), **restocking** (a household that lost half its beasts against its will weighs taking beasts
+even when fed), **a band that goes together** (told when its hour is near; waits at the gate for those
+still coming). D-159 fixed alarms lost at a step's end (every reaction).
 Next for R6 (not done): a palisade round the houses (a ring footprint, gates), arms carried at night
 (spears from wood and iron), captives (only as specific people), alliances (help sent to kin under
-attack), moving for insecurity (fear of a place read from deeds by `migrate.push`), grievance shaping
-marriage and trade choices, restocking raids after a murrain by herders who are not hungry.
+attack), grievance shaping marriage and trade choices.

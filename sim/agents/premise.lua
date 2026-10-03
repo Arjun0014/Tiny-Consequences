@@ -104,6 +104,37 @@ function M.wronged(W, s, o, n, days, answer)
   return d, by
 end
 
+-- (S20, R6) A man of household hh (of village s) struck `days` ago by a man of village o dies of it
+-- today: the wound and the death, as R6c/R6d write them (both villages know the blow). The
+-- household and its neighbours live with it as they will. Returns the dead and the killer.
+function M.blood(W, s, hh, o, days)
+  local deeds = require("sim.agents.deeds")
+  local people = require("sim.agents.people")
+  local V = W.S.v3
+  local now = V.now or W.hour
+  local t = now - days * 24
+  local victim, by
+  for _, id in ipairs(hh.members) do
+    local q = V.people[id]
+    if q and q.alive and q.sex == "m" and people.stage(q, now) == "adult" then victim = q; break end
+  end
+  for _, id in ipairs(o.members) do
+    local q = V.people[id]
+    if q and q.alive and q.sex == "m" and people.stage(q, now) == "adult" then by = q; break end
+  end
+  if not victim or not by then return nil end
+  local c = require("sim.config").V3
+  local sfmt = require("sim.fmt").format
+  local d = deeds.add(W, { kind = "wound", t = t, at = s.id, by = by.id, by_hh = by.hh, by_s = o.id, to = victim.id, to_hh = hh.id,
+    to_s = s.id, what = "blow", n = 1, fu = c.wound_fu, harm = true })
+  deeds.learn(W, s, d, sfmt("%s of %s struck %s", by.name, o.name, victim.name), by.id, o.id, t)
+  deeds.learn(W, o, d, sfmt("%s did it", by.name), by.id, o.id, t)
+  -- (he died of it today: the death is the killing - R6d)
+  victim.hurt_deed = d.id
+  require("sim.agents.life").kill_now(W, s, victim, "wounds")
+  return victim, by
+end
+
 -- (S20, R6f) Village s lost n sheep to wolves at its fold over the last `days` days (history: deeds of
 -- loss, as wolves' kills write them).
 function M.wolf_losses(W, s, n, days)

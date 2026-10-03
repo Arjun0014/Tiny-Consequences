@@ -28,13 +28,14 @@ local people = require("sim.agents.people")
 local rng = require("sim.rng")
 local clock = require("sim.agents.clock")
 local sfmt = require("sim.fmt").format
+local deeds = require("sim.agents.deeds")   -- (S20, R6: fear of a place, read from deeds)
 
 local M = {}
 local floor, max, min = math.floor, math.max, math.min
 local function C() return cfgmod.V3 end
 
 -- How hard household hh is pushed to leave village s now (0..), and why.
-function M.push(W, s, hh, now)
+function M.push(W, s, hh, now, need_only)
   local c = C()
   local V = W.S.v3
   local push, why = 0, nil
@@ -78,6 +79,21 @@ function M.push(W, s, hh, now)
   if (hh.home or 0) == 0 then
     push = push + c.mig_homeless
     why = why or "we have no house of our own"
+  end
+  -- (S20, R6) fear of the place: what people did to us and our neighbours here, unanswered
+  local fs, fd, fe = 0, nil, nil
+  if not need_only then fs, fd, fe = deeds.fear(W, s, hh.id, now) end
+  if fs > 0 then
+    local f = c.mig_fear_k * min(1, fs / c.fear_fu)
+    if f >= 0.02 then
+      push = push + f
+      local o = fe and V.settlements[fe.by_s or 0]
+      if fd.kind == "take" then
+        why = why or (o and sfmt("the people of %s take our beasts", o.name) or "thieves come in the night")
+      else
+        why = why or (o and sfmt("the people of %s have shed our blood", o.name) or "our people have been struck down")
+      end
+    end
   end
   -- beasts lost to wolves lately
   if hh.dog_lost and floor(now / 24) - hh.dog_lost < 6 then
@@ -140,6 +156,9 @@ function M.pull(W, s, hh, o, now)
     pull = pull + min(0.6, 0.3 * kin) * (0.3 + 0.7 * min(1, food))
     why = why or ("our kin live at " .. o.name)
   end
+  -- (S20, R6) never toward the people who harmed us (what we know of them, unanswered)
+  local gv = deeds.grievance(W, s, o, hh.id, now)
+  if gv > 0 then pull = pull - 2 * c.mig_fear_k * min(1, gv / c.fear_fu) end
   -- (S17) kin there offered the household a place under their roof
   local off = hh.kin_offer
   if off and off.sett == o.id and now - off.t < c.kin_offer_keep * 24 then
