@@ -137,7 +137,7 @@ START.go = function(W, s, p, st, now)
     local fx, fy = mapm.free_spot(s, tx, ty, 4)
     if fx then tx, ty = fx, fy end
   end
-  local r = nav.path(s, p.x, p.y, tx, ty, p.temper, path)
+  local r = nav.path(s, p.x, p.y, tx, ty, p.temper, path, nil, st.swim)
   if not r then return false end
   p.mv = r
   if s.has_river then
@@ -169,6 +169,7 @@ START.go = function(W, s, p, st, now)
   if s.rain_now == 2 then p.spd = p.spd * C().speed_rain end   -- hurrying through a downpour
   if s.snow then p.spd = p.spd * require("sim.agents.weather").walk_k(s) end   -- (S20, R6.5d) wading through snow
   if st.run then p.spd = p.spd * C().run_k end   -- (S20) running: after a stranger, or away from them
+  if st.swim then p.spd = p.spd * 0.5 end   -- (S20) wading and swimming across risen water
   if st.support then p.spd = min(p.spd, C().walk * C().support_pace) end   -- (S20) the hurt held up, at a hobble
   if st.lead then
     -- (S15, R4) leading a drove: at the slowest beast's pace
@@ -2650,7 +2651,8 @@ end
 WORK.lie_up = function(W, s, p, st, f) end
 
 -- (S20) Lifting someone hurt to their feet to help them home: they will go at a hobble beside us.
-WORK.lift = function(W, s, p, st, f)
+-- (not "lift": that is the tan pit's - one namespace of work kinds)
+WORK.lift_hurt = function(W, s, p, st, f)
   if f < 0.5 then return end
   local V = W.S.v3
   local q = V.people[st.ref or 0]

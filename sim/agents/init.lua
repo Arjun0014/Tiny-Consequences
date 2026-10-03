@@ -189,6 +189,7 @@ end
 -- Start p's plan (set by think.decide); on failure (no way there) wait a little and re-think.
 local function start_plan(W, s, p, now)
   if not act.start(W, s, p, now) then
+    local st0 = p.plan[p.pi]
     think.release(W, s, p)
     local pl = p.plan
     for i = #pl, 1, -1 do pl[i] = nil end
@@ -196,6 +197,20 @@ local function start_plan(W, s, p, now)
     -- (S17) cut off from the village (a river risen behind a hunter, a ford gone): after trying
     -- every way for an hour they wade or swim across to the nearest ground the village stands on
     local wx, wy = nil, nil
+    -- (S20) cut off by water on the way somewhere (the river risen between them and home): across it
+    -- toward where they were going, swimming where it is too deep to wade (a woman cut off from her
+    -- house waded back and forth on her side of the river until she starved)
+    if p.stuck >= 6 and not p.at and st0 and st0.op == "go" and not st0.water then
+      pl[1] = { op = "go", x = st0.x, y = st0.y, place = st0.place, swim = true,
+        why = "Cut off by the water: wading and swimming across to get there" }
+      p.pi = 1
+      if act.start(W, s, p, now) then
+        p.stuck = 0
+        s.acc.swims = (s.acc.swims or 0) + 1
+        return
+      end
+      pl[1] = nil
+    end
     if p.stuck >= 6 and not p.at then wx, wy = act.way_back(W, s, p) end
     if wx then
       local d = math.sqrt(dsq(wx - p.x) + dsq(wy - p.y))

@@ -87,7 +87,9 @@ falls after a step's end interrupts the next step (`p.int_late`, not a journey).
 woodstore/pen is forgotten and planned again (`founding.replan_lost`/`replan_pens`). Herds are kept to their
 feed by people (the failing killed, a pig breeding stock, growers) - **re-check herd sizes and the cost of a
 day-192 world** in long runs (`tools/v3_chronicle.lua --days 192 --save F`, then
-`luajit -joff tools/v3_profile.lua --load F --days 4`): a day-0 profile hides growth. Named premises
+`luajit -joff tools/v3_profile.lua --load F --days 4`): a day-0 profile hides growth. Run an 8-year untouched
+world (`--days 384`) before handing off: a reused work kind (`lift`) starved villages only after year 5;
+`test_v3_namespace` now fails on any WORK/PLAN name defined twice. Named premises
 (`cold_snap`, `hard_winter`, `quake`, `eruption`, `tsunami`, `wildfire`, `fire`, `conflict`) work in tests,
 the chronicle, `v3_follow`, the hash check and the `v3_premise` bridge.
 

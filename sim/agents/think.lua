@@ -4963,7 +4963,7 @@ PLAN.help_home = function(W, s, p, ctx, now, cd)
   local x, y = near_spot(W, p, now, q.x, q.y, 0.015, 103)
   go(pl, x, y, "where " .. q.name .. " lies")
   pl[#pl].run = true
-  work(pl, "lift", 0.08, { ref = q.id })
+  work(pl, "lift_hurt", 0.08, { ref = q.id })
   local home = people.home(W, s, q)
   if home then
     go(pl, home.dx, home.dy, q.name .. "'s home")

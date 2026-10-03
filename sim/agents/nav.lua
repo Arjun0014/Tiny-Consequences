@@ -450,12 +450,39 @@ local function cache_put(s, key, v)
 end
 
 -- Fill `out` with a path from (x0, y0) to (x1, y1).
-function M.path(s, x0, y0, x1, y1, temper, out, water)
+-- (S20) The land's cost field with the deep river passable at cost_swim (swimming, wading where
+-- it is too deep to ford): for someone cut off by risen water (runtime, rebuilt with the field).
+local SWIM = setmetatable({}, { __mode = "k" })
+local function swim_cost(s)
+  local ver = mapm.cost_ver[s] or -1
+  local e = SWIM[s]
+  if e and e.ver == ver then return e.cost end
+  e = e or { cost = {} }
+  local sc, cost, riv, land, occ = e.cost, s.cost, s.riv, s.land, s.occ
+  local k = cfgmod.V3.cost_swim
+  for i = 1, s.N * s.N do
+    local c = cost[i]
+    if c < 0 and riv[i] > 0 and land[i] == 1 and occ[i] == 0 then c = k end
+    sc[i] = c
+  end
+  e.ver = ver
+  SWIM[s] = e
+  return sc
+end
+
+function M.path(s, x0, y0, x1, y1, temper, out, water, swim)
   if water then
     -- a boat's way over the water: the same search on the water's cost field
     local land = s.cost
     s.cost = s.wcost
     local r = M.path(s, x0, y0, x1, y1, 3, out, false)
+    s.cost = land
+    return r
+  end
+  if swim then
+    local land = s.cost
+    s.cost = swim_cost(s)
+    local r = M.path(s, x0, y0, x1, y1, 8, out, false)
     s.cost = land
     return r
   end

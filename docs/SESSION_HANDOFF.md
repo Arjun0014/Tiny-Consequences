@@ -1,4 +1,17 @@
-# Session handoff — session 20 (3 Oct 2026, extended autonomous run): R6 and R6.5 designed; R6a-R6g first pass; R6.5b-d, f built, g watched; checkpoint at ~850K then continued
+# Session handoff — session 20 (3 Oct 2026, extended autonomous run, ENDED): R6 and R6.5 designed; R6a-R6g first pass and gaps; R6.5b-d, f built, g watched; D-148-D-168
+
+## FINAL STATE (end of session 20)
+- main, all committed; quick sim suite **180** (179 + `test_v3_namespace`), web **11/11** (at 0001555),
+  lint clean, release build OK; browser = LuaJIT untouched and with the conflict, fire, cold_snap, quake,
+  eruption, tsunami and hard_winter premises.
+- Cost: LuaJIT 3.78 M instr/h at day 0, ~4.5 M at day 192; release season 10.8 s (37.5 ms/h, 4 runs).
+- Untouched 8 years (384 days, after the `lift` fix): deaths illness 15, old age 4, **no hunger**;
+  839 exchanges; herds bounded (pigs cycle with the autumn kill).
+- **First thing next session**: read this section and the CHECKPOINT below; then R6.5e flood water
+  (hydrology first), R6 palisade/arms/kin who walk over to help, R6.5g longer range - see
+  NEXT_SESSION_PROMPT.md. After any new work or plan kind: `test_v3_namespace`; before handing off:
+  an 8-year untouched chronicle (`--days 384`) and the day-192 cost.
+
 
 **If you are resuming after a context compaction: re-read this section, `docs/v3/50_PRIMITIVES.md`,
 `60_R6_CONFLICT.md`, `65_R6_5_LIVING_PLANET.md`, D-148/D-149 and `git log --oneline -10` before any
@@ -96,6 +109,10 @@ start hour; the old 14-digit start made a strike land ulps apart - a harness art
   instr/h day 0, 4.52 M at day 192; release season 10.8 s (37.5 ms/h, 4 runs).
 - **Aftershocks** (D-165), **the badly hurt helped home** (D-166: `hurt_down` 0.75; two people walking
   the same way at the same pace instead of a boat's `riding`).
+- **8-year untouched run** (384 days): found 15 deaths from hunger after year 5 (none with the
+  checkpoint's code) - the helper's `WORK.lift` had replaced the tan pit's (fixed: `lift_hurt`;
+  `test_v3_namespace` guards it); then 0 hunger deaths, 839 exchanges, deaths illness 15 / old age 4.
+  Also: someone cut off by risen water swims toward where they were going (`cost_swim`).
 - **Alliances** (D-168): `deeds.kin_houses`; grievance counts wrongs to close kin elsewhere at
   `deed_ally_k` 0.5 (test `a_wrong_to_kin_elsewhere_is_felt`, ~1 min: runs until a bride moves).
 - **Leaf fodder** (D-167): boughs lopped from trees by the pen when the hay is gone and the beasts hungry.
