@@ -386,6 +386,79 @@ function M.claim_answer(W, o, p, d, now)
   return { kind = "paid", hh = hh, press = press, hold = hold }
 end
 
+-- (S20, R6g) What household hh (home `home` at village o) can give to make good `w` FU, in one load:
+-- its spare house goods and grain beyond `amends_keep_days` of its own bread. Returns the picks
+-- { { good, q } } and their worth.
+function M.amends_basket(W, o, hh, home, w)
+  local c = C()
+  local picks, got, load = {}, 0, 0
+  if not home then return picks, 0 end
+  for _, g in ipairs({ "cloth", "leather", "wool", "salt", "hides", "grain" }) do
+    if got < w - 0.05 and load < 0.95 then
+      local G = econ.GOODS[g]
+      local sp
+      if g == "grain" then
+        sp = max(0, (home.stock.food or 0) - #hh.members * 0.7 * c.amends_keep_days)
+      else
+        sp = econ.spare(W, o, hh, home, g)
+      end
+      local q = min(sp, (w - got) / G.base, (1 - load) / G.wt)
+      if q > 0.05 then
+        picks[#picks + 1] = { g, q }
+        got, load = got + q * G.base, load + q * G.wt
+      end
+    end
+  end
+  return picks, got
+end
+
+-- (S20, R6g) Amends: household hh of village o took from village s (its own deed, unsettled) and s
+-- knows who did it (by name or by village). Not desperate now, it weighs making it good unasked:
+-- the fear of an answer (s's grown men; whether s's people are known to answer wrongs) and what it
+-- would lose (the trade between them, kin there) against the worth of what it would give. Returns
+-- { d, s, w, why } or nil.
+function M.amends_weigh(W, o, hh, now)
+  local c = C()
+  local dk = o.dk
+  if not dk then return nil end
+  local V = W.S.v3
+  if migrate.push(W, o, hh, now) >= c.take_push then return nil end
+  local best, bv = nil, 0
+  for i = 1, #dk do
+    local e = dk[i]
+    local d = deeds.get(W, e.id)
+    if e.own and d and d.harm and not d.settled and not d.back and d.by_hh == hh.id and now - d.t >= 48 then
+      local s = V.settlements[d.to_s]
+      local ks = s and deeds.known(s, d.id)
+      if s and s.alive and ks and (ks.by ~= 0 or ks.by_s == o.id) then
+        local men, answers = 0, 0
+        for _, mid in ipairs(s.members) do
+          local q = V.people[mid]
+          if q and q.alive and q.sex == "m" and people.stage(q, now) == "adult" then men = men + 1 end
+        end
+        -- (are they known to answer wrongs? deeds by s's people that answered one, known here)
+        for j = 1, #dk do
+          local d2 = deeds.get(W, dk[j].id)
+          if d2 and d2.by_s == s.id and d2.answers then answers = answers + 1 end
+        end
+        local r = econ.rel(o, s)
+        local fear = c.amends_fear * (men / 10) * (1 + answers)
+        local ties = r.trust * c.amends_trust + min(1, (r.deals or 0) / 10) * c.amends_deals + (M.kin_at(W, hh, s) and c.amends_kin or 0)
+        local w = (d.fu or 0) * deeds.fade(d, now - d.t)
+        local v = (fear + ties) - c.amends_cost * w / 20
+        -- (only with something to give now: a quarter of it at least; the rest is owed)
+        local _, can = M.amends_basket(W, o, hh, o.buildings[hh.home or 0], w)
+        if can < w * c.amends_part then v = -1 end
+        if v > bv then
+          best, bv = { d = d, s = s, w = w, v = v, why = sfmt("We took %s from %s and they know it: making it good before they answer it",
+            (d.n or 1) > 1 and sfmt("%d %s", d.n, M.NOUN[d.what] or d.what) or (M.ONE[d.what] or d.what), s.name) }, v
+        end
+      end
+    end
+  end
+  return best
+end
+
 -- (S20, R6e) Raids -----------------------------------------------------------------------------
 -- A man who weighs taking beasts where the risk alone is high (dogs, a watch, its men, his own
 -- failures there) and who has kin or friends at home with reasons of their own may raise a party:

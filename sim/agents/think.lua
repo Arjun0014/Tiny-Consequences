@@ -60,7 +60,7 @@ local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "f
   shore = "shore", smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed", moving_in = "strike_camp",
   asking = "visit_kin",
   milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle", trading = "trade", sharing = "share", tanning = "tan", lifting = "lift", cobbling = "cobble",
-  salting_pans = "salt", querning = "quern", taking = "steal" }
+  salting_pans = "salt", querning = "quern", taking = "steal", amending = "amends" }
 local function claim_free(W, hh, field, p)
   local id = hh[field] or 0
   if id == 0 or (p and id == p.id) then return true end
@@ -1057,6 +1057,18 @@ local function steal_candidate(W, s, p, ctx, now, fat)
   add(min(0.95, 0.25 + 0.6 * b.net) * fat, "steal", b.o, b.hi, b.why)
 end
 M.steal_candidate = steal_candidate
+
+-- (S20, R6g) Making good unasked what the household took (conflict.amends_weigh): a grown-up fit for
+-- the road, in the morning, with something to give.
+function M.amends_candidate(W, s, p, ctx, now, fat)
+  if ctx.moving or p.trip or p.raid or p.at or ctx.stage ~= "adult" or ctx.babe or not ctx.home or not ctx.hh then return end
+  if (p.nursing or 0) > now or (p.preg_due or 0) > 0 or p.health < 0.6 or (p.hurt or 0) > 0.2 then return end
+  if ctx.lh > ctx.wake + 3 or ctx.rain >= 2 or not journey_ok(W, s, p, ctx, 12) then return end
+  if not claim_free(W, ctx.hh, "amending", p) then return end
+  local b = conflict.amends_weigh(W, s, ctx.hh, now)
+  if not b then return end
+  add(min(0.9, 0.35 + 0.4 * b.v) * fat, "amends", b.d.id, b.s.id, b.why)
+end
 
 -- (S20, R6e) A party forming at home: whether to go with it, by one's own reasons.
 function M.join_candidate(W, s, p, ctx, now, fat)
@@ -3929,6 +3941,16 @@ local function court_legs(W, s, p, ctx, now)
     local kin = tr.visit and V.people[tr.visit]
     local kh = kin and V.households[kin.hh]
     local kb = kh and o.buildings[kh.home or 0]
+    if not tr.met and tr.amends then
+      -- (S20, R6g) to the house of those wronged, to hand over what was brought
+      local d = deeds.get(W, tr.amends)
+      local vh = d and V.households[d.to_hh]
+      local hb = vh and vh.sett == o.id and o.buildings[vh.home or 0]
+      hb = hb or { dx = o.sqx or 0, dy = o.sqy or 0, id = 0, label = o.name .. "'s square" }
+      go(pl, hb.dx, hb.dy, hb.label or "their house")
+      work(pl, "amends", c.claim_h, { ref = hb.id })
+      return "Make good at " .. o.name .. " what we took", o.name
+    end
     if not tr.met and tr.claim then
       -- (S20, R6b) to the house of the man they know did it, else to the pen to look for their beasts
       local d = deeds.get(W, tr.claim)
@@ -4329,6 +4351,32 @@ PLAN.steal = function(W, s, p, ctx, now, cd)
   p.trip = { steal = true, to = o.id, from = s.id, kind = kind, lead_kind = kind, give = "grain", take = "grain", n = b and b.n or 1, t0 = now,
     why = b and b.why or nil, gdeed = b and b.gdeed or nil }
   return steal_legs(W, s, p, ctx, now)
+end
+
+-- (S20, R6g) Amends: what the household can spare packed at home (up to the wrong's worth, a load),
+-- the road, the house of those wronged, the goods handed over (WORK.amends), home.
+PLAN.amends = function(W, s, p, ctx, now, cd)
+  local d = deeds.get(W, cd.a)
+  local o = W.S.v3.settlements[cd.b]
+  ctx.hh.amending = p.id
+  local w = d and (d.fu or 0) * deeds.fade(d, now - d.t) or 0
+  p.trip = { court = true, amends = cd.a, to = o.id, from = s.id, give = "grain", take = "grain", n = 0, t0 = now, owe = w,
+    why = cd.why or nil }
+  local home = ctx.home
+  local basket, got = conflict.amends_basket(W, s, ctx.hh, home, w)
+  local picks = {}
+  for i, b in ipairs(basket) do picks[i] = { op = "pick", what = "pack", good = b[1], ref = home.id, n = b[2] } end
+  p.trip.packed_fu = got
+  court_legs(W, s, p, ctx, now)
+  -- (the goods are packed at home first: after the walk home, if there is one)
+  local pl = p.plan
+  local at = (pl[1] and pl[1].op == "go" and pl[1].enter == home.id) and 2 or 1
+  if at == 1 and p.inside ~= home.id and #picks > 0 then
+    table.insert(pl, 1, { op = "go", x = home.dx, y = home.dy, place = "home", enter = home.id })
+    at = 2
+  end
+  for i = #picks, 1, -1 do table.insert(pl, at, picks[i]) end
+  return "Make good at " .. o.name .. " what we took", o.name
 end
 
 PLAN.claim = function(W, s, p, ctx, now, cd)
@@ -5374,6 +5422,14 @@ function M.decide(W, s, p, now, reason)
       if tr.cry and here == tr.to and not tr.met then
         p.why = (reason and (reason .. ". ") or "") .. "Telling the people of " .. giver .. " of the fair at home"
       end
+      if tr.court and tr.amends then
+        local o2 = W.S.v3.settlements[tr.to]
+        p.why = (reason and (reason .. ". ") or "") .. ((here == tr.to and tr.met) and "Made it good: going home"
+          or (tr.why or ("Going to make good what we took from " .. (o2 and o2.name or "them"))))
+        p.objk = "amends"
+        p.tgt_kind, p.tgt_ref = "trade", tr.to
+        return true
+      end
       if tr.court and tr.claim then
         p.why = (reason and (reason .. ". ") or "") .. M.claim_why(W, p)
         p.objk = "claim"
@@ -5554,6 +5610,7 @@ function M.decide(W, s, p, now, reason)
       trade_candidate(W, s, p, ctx, now, fatigue(p))
       M.steal_candidate(W, s, p, ctx, now, fatigue(p))
       M.join_candidate(W, s, p, ctx, now, fatigue(p))
+      M.amends_candidate(W, s, p, ctx, now, fatigue(p))
       M.claim_candidate(W, s, p, ctx, now, fatigue(p))
       court_candidate(W, s, p, ctx, now, fatigue(p))
       visit_candidate(W, s, p, ctx, now, fatigue(p))

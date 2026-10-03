@@ -99,7 +99,9 @@ function M.wronged(W, s, o, n, days, answer)
     by_s = o.id, to = 0, to_hh = hh.id, to_s = s.id, what = "sheep", n = n, fu = (n or 1) * 6 * 1.2, harm = true, away = true })
   local e = deeds.learn(W, s, d, "the tracks of a man leading them went off by the road to " .. o.name, 0, o.id, now - days * 24 + 30)
   e.answer, e.claim_t = answer or "denied", now - (days - 2) * 24
-  return d
+  -- (the man's own household knows what he did)
+  if by then deeds.learn(W, o, d, "ours", by.id, o.id, now - days * 24, true) end
+  return d, by
 end
 
 -- (S20) A sickness took village s's dogs.

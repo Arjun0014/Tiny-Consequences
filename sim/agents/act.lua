@@ -2704,6 +2704,60 @@ WORK.claim = function(W, s, p, st, f)
   end
 end
 
+-- (S20, R6g) Amends handed over at the house of those wronged: the goods into their house; a deed
+-- that settles the wrong; trust between the villages restored a little; both remember.
+WORK.amends = function(W, s, p, st, f)
+  local tr = p.trip
+  if f < 0.99 or not tr or not tr.amends or tr.met then return end
+  tr.met = true
+  local V = W.S.v3
+  local now = V.now or W.hour
+  local c = C()
+  local d = deeds.get(W, tr.amends)
+  local home_s = V.settlements[p.sett]
+  if not d or not home_s then return end
+  local vh = V.households[d.to_hh]
+  local hb = vh and s.buildings[vh.home or 0]
+  local given, gv = {}, 0
+  if hb and p.pack then
+    for _, g in ipairs(econ.ORDER) do
+      local q = p.pack[g] or 0
+      if q > 0.05 and not econ.GOODS[g].beast and not econ.GOODS[g].whole then
+        local key = stock_key(hb, g)
+        hb.stock[key] = (hb.stock[key] or 0) + q
+        p.pack[g] = 0
+        given[#given + 1] = econ.amount(q, g)
+        gv = gv + q * econ.GOODS[g].base
+      end
+    end
+    p.carry, p.camt = "", 0
+  end
+  local what = (d.n or 1) > 1 and sfmt("%d %s", d.n, conflict.NOUN[d.what] or d.what) or (conflict.ONE[d.what] or d.what)
+  -- (what could not be brought is owed, collected as debts are: D-143)
+  local rest = (tr.owe or 0) - gv
+  if rest > 0.5 then
+    local D = econ.debts(W)
+    D[#D + 1] = { cr = d.to_hh, db = p.hh, crs = s.id, dbs = home_s.id, fu = rest, t = now, what = "the " .. what .. " taken" }
+    given[#given + 1] = sfmt("%.0f FU owed", rest)
+  end
+  local g = deeds.add(W, { kind = "pay", t = now, at = s.id, by = p.id, by_hh = p.hh, by_s = home_s.id, to = 0, to_hh = d.to_hh, to_s = s.id,
+    what = "goods", n = gv, fu = 0, harm = false, answers = d.id })
+  deeds.settle(W, d, g)
+  deeds.learn(W, s, g, sfmt("%s of %s brought it", p.name, home_s.name), p.id, home_s.id, now)
+  deeds.learn(W, home_s, g, sfmt("%s took it", p.name), p.id, home_s.id, now)
+  local r1, r2 = econ.rel(home_s, s), econ.rel(s, home_s)
+  r1.trust, r2.trust = min(1, r1.trust + c.settle_trust), min(1, r2.trust + c.settle_trust)
+  local gt = #given > 0 and table.concat(given, " and ") or "what we had"
+  people.remember(p, now, sfmt("Took %s to %s to make good the %s we took from them", gt, s.name, what))
+  for _, id in ipairs(vh and vh.members or {}) do
+    local q = V.people[id]
+    if q and q.alive and people.stage(q, now) ~= "infant" and not q.at and q.sett == s.id then
+      people.remember(q, now, sfmt("%s of %s came and made good the %s taken from us: %s", p.name, home_s.name, what, gt))
+    end
+  end
+  s.acc.amends = (s.acc.amends or 0) + 1
+end
+
 -- (S20, R6a) After the stranger at the beasts: caught, seen, or lost (conflict.chased).
 WORK.chase = function(W, s, p, st, f)
   local now = W.S.v3.now or W.hour

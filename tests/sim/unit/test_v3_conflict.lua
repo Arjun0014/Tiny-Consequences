@@ -267,4 +267,35 @@ function M.men_given_away_alone_go_together()
     #why > 0 and table.concat(why, "; ") or "none")
 end
 
+-- Ending (R6g): a household that took from a village it trades with, and knows that village knows who
+-- did it, makes it good unasked once it is not in want: goods carried over, the rest owed, the wrong
+-- settled (history premise: premise.wronged; the villages trade).
+function M.a_known_wrong_is_made_good_unasked()
+  local W = shipped()
+  local V = W.S.v3
+  world.advance(W, W.hour + 72)
+  local A, B = V.settlements[2], V.settlements[4]
+  local premise = require("sim.agents.premise")
+  local econ = require("sim.agents.econ")
+  premise.knows(W, A, B)
+  local d = premise.wronged(W, A, B, 3, 6, "denied")
+  local r1, r2 = econ.rel(A, B), econ.rel(B, A)
+  r1.trust, r2.trust, r1.deals, r2.deals = 0.6, 0.6, 10, 10
+  local vh = V.households[d.to_hh]
+  local hb = A.buildings[vh.home]
+  local food0 = hb.stock.food or 0
+  local t0 = W.hour
+  for h = 1, 24 * 8 do
+    world.advance(W, t0 + h)
+    if d.settled then break end
+  end
+  T.ok(d.settled ~= nil, "the wrong was made good")
+  if not d.settled then return end
+  local g = require("sim.agents.deeds").get(W, d.settled)
+  T.ok(g and g.kind == "pay" and g.by_s == B.id, "by someone of " .. B.name)
+  local owed = 0
+  for _, x in ipairs(econ.debts(W)) do if x.cr == vh.id and x.dbs == B.id then owed = owed + x.fu end end
+  return string.format("%s of %s made it good on day %.1f: %.1f FU carried, %.1f FU owed", (V.people[g.by] or {}).name or "?", B.name, g.t / 24, g.n or 0, owed)
+end
+
 return M
