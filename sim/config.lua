@@ -1329,6 +1329,7 @@ C.V3 = {
   -- did them draws it 2 x as much less
   mig_fear_k = 0.5, fear_fu = 200,
   raid_wait_h = 1.5,
+  deed_ally_k = 0.5,   -- (S20) a wrong to close kin in another village weighs this much of one's own
   wound_trust_loss = 0.2, blood_trust_loss = 0.5,
   -- (S20) fields burning: a field burns fire_plot_h x its fuel (ripe corn standing, stooks, corn
   -- drying off, stubble) hours, catches at fire_plot_catch of a tree's chance; its ash fire_plot_ash

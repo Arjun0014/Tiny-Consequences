@@ -109,6 +109,25 @@ end
 -- The grievance of village s (household hh if given: its own losses weigh fully, the village's
 -- others' at deed_kin_k) against village o: the worth of the unsettled harms s knows o's people did
 -- to s's people, faded. Returns the sum and the heaviest such deed (for the why).
+-- (S20) Are households a and b close kin (a parent, a child, a brother or sister, a spouse of one in
+-- the other)?
+function M.kin_houses(W, a, b)
+  local V = W.S.v3
+  local A, B = V.households[a or 0], V.households[b or 0]
+  if not A or not B or A == B then return false end
+  for _, i in ipairs(A.members) do
+    local p = V.people[i]
+    if p then
+      for _, j in ipairs(B.members) do
+        local q = V.people[j]
+        if q and (p.mother == q.id or p.father == q.id or q.mother == p.id or q.father == p.id or p.partner == q.id
+          or (p.mother ~= 0 and p.mother == q.mother) or (p.father ~= 0 and p.father == q.father)) then return true end
+      end
+    end
+  end
+  return false
+end
+
 function M.grievance(W, s, o, hh, now, filter)
   local dk = s.dk
   if not dk or not o then return 0, nil end
@@ -119,9 +138,12 @@ function M.grievance(W, s, o, hh, now, filter)
     local e = dk[i]
     if e.by_s == o.id and not e.own and (not filter or filter(e)) then
       local d = L[e.id]
-      if d and d.harm and not d.settled and d.to_s == s.id then
+      -- (S20, alliances) a wrong to close kin of household hh in another village weighs with it too
+      local kin = hh and d and d.harm and not d.settled and d.to_s ~= s.id and M.kin_houses(W, hh, d.to_hh)
+      if d and d.harm and not d.settled and (d.to_s == s.id or kin) then
         local w = (d.fu or 0) * M.fade(d, now - d.t)
-        if hh and d.to_hh ~= hh then w = w * c.deed_kin_k end
+        if kin then w = w * c.deed_ally_k
+        elseif hh and d.to_hh ~= hh then w = w * c.deed_kin_k end
         -- (S20, R6c) a blow that answered the struck man's own wrong (a taker caught at it) weighs
         -- little with his people
         local a = d.answers and L[d.answers]

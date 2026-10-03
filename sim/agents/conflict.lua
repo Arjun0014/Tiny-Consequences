@@ -136,6 +136,10 @@ local function weigh_at(W, s, p, hh, o, now, push, bold, only, party)
         elseif gap > 0 and gap * c.restock_k * n * meat >= min(0.5, grudge * c.take_grudge_k) / c.take_gain_k then
           why = sfmt("We have lost our beasts (%.0f FU of them dead or taken, %.0f left); %s's %s held %d beasts when we were there",
             hh.herd_lost or 0, hh.herd_now or 0, o.name, tk.kind == "flock" and "fold" or "byre", nb)
+        elseif gd and gd.to_s ~= s.id then
+          -- (S20, alliances) a wrong done to our kin in another village
+          local ks = W.S.v3.settlements[gd.to_s]
+          why = sfmt("The people of %s wronged our kin at %s and never made it good: taking one of theirs", o.name, ks and ks.name or "another village")
         else
           why = sfmt("%s took from us and never made it good: taking one of theirs", gd and deeds.told(W, s, gd) or ("Someone of " .. o.name))
         end

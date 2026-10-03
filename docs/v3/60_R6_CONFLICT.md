@@ -128,6 +128,8 @@ harms people did to a household and its neighbours push it to leave; the doers' 
 less), **restocking** (a household that lost half its beasts against its will weighs taking beasts
 even when fed), **a band that goes together** (told when its hour is near; waits at the gate for those
 still coming). D-159 fixed alarms lost at a step's end (every reaction).
+Then (D-161, D-168): blows between villages cost trust (trade, credit, relief and courting read it);
+**alliances** - a wrong to close kin in another village weighs in a household's grievance at half
+weight, so taking back, bands and restraint follow kin lines.
 Next for R6 (not done): a palisade round the houses (a ring footprint, gates), arms carried at night
-(spears from wood and iron), captives (only as specific people), alliances (help sent to kin under
-attack), grievance shaping marriage and trade choices.
+(spears from wood and iron), captives (only as specific people), kin walking over to stand with kin.

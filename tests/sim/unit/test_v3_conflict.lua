@@ -369,4 +369,47 @@ function M.blood_makes_a_household_fear_its_place()
     mg and ("left for " .. V.settlements[mg.to].name) or "stayed")
 end
 
+-- (S20) Alliances: a wrong done to close kin in another village weighs with a household as its own
+-- wrong does (at half weight), once the news has reached its village; its neighbours who are not kin
+-- of the wronged feel none of it. (The world is run until a bride has gone to live at another
+-- village; then a man of a third village takes her parents' sheep and will not own to it.)
+function M.a_wrong_to_kin_elsewhere_is_felt()
+  local W = shipped()
+  local V = W.S.v3
+  local deeds = require("sim.agents.deeds")
+  local A, hA, B, hB
+  local t0 = W.hour
+  for d = 1, 70 do
+    world.advance(W, t0 + d * 24)
+    for _, a in ipairs(V.settlements) do
+      for _, b in ipairs(V.settlements) do
+        if not A and a ~= b then
+          for _, x in ipairs(a.households) do
+            for _, y in ipairs(b.households) do
+              if not A and deeds.kin_houses(W, x, y) then A, hA, B, hB = a, x, b, y end
+            end
+          end
+        end
+      end
+    end
+    if A then break end
+  end
+  T.ok(A ~= nil, "kin living in two villages")
+  if not A then return end
+  local C
+  for _, o in ipairs(V.settlements) do if o ~= A and o ~= B then C = o; break end end
+  -- (the wronged household is A's first in the premise: put the kin household first)
+  for i, h in ipairs(A.households) do if h == hA then A.households[i], A.households[1] = A.households[1], hA end end
+  local d = require("sim.agents.premise").wronged(W, A, C, 3, 2, "denied")
+  local now = V.now or W.hour
+  deeds.learn(W, B, d, "told by the people of " .. A.name, 0, C.id, now)
+  local g = deeds.grievance(W, B, C, hB, now)
+  local other
+  for _, h in ipairs(B.households) do if h ~= hB and not deeds.kin_houses(W, hA, h) then other = h; break end end
+  local g2 = other and deeds.grievance(W, B, C, other, now) or 0
+  T.ok(g > 0, string.format("the kin household at %s holds it against %s (%.1f)", B.name, C.name, g))
+  T.ok(g2 == 0, string.format("a household of %s not kin to them does not (%.1f)", B.name, g2))
+  return string.format("%s's household %d, kin of %s's household %d: grievance against %s %.1f (a neighbour %.1f)", B.name, hB, A.name, hA, C.name, g, g2)
+end
+
 return M

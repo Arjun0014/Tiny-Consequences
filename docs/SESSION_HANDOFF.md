@@ -96,6 +96,8 @@ start hour; the old 14-digit start made a strike land ulps apart - a harness art
   instr/h day 0, 4.52 M at day 192; release season 10.8 s (37.5 ms/h, 4 runs).
 - **Aftershocks** (D-165), **the badly hurt helped home** (D-166: `hurt_down` 0.75; two people walking
   the same way at the same pace instead of a boat's `riding`).
+- **Alliances** (D-168): `deeds.kin_houses`; grievance counts wrongs to close kin elsewhere at
+  `deed_ally_k` 0.5 (test `a_wrong_to_kin_elsewhere_is_felt`, ~1 min: runs until a bride moves).
 - **Leaf fodder** (D-167): boughs lopped from trees by the pen when the hay is gone and the beasts hungry.
 - **R6.5e flood water deferred**: a season of the deluge power over Krikeivorn raises its river's flow
   0.004 -> 0.006 (map flood factor 1.1): the planet's hydrology is not flashy enough at village rivers
