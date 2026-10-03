@@ -53,10 +53,12 @@ start hour; the old 14-digit start made a strike land ulps apart - a harness art
 `scripts/hash_drill.mjs --premise NAME --after H` drills a premise run. Browser = LuaJIT on both.
 
 ## CHECKPOINT (~850K context, session 20) - state for a resumed session
-- main at the R6.5b commit + this checkpoint's docs commit; quick suite running at checkpoint
-  (163/163 before R6.5b; expected 166 with test_v3_lightning); v3 tests 54+3; lint clean; build OK.
-- LuaJIT 3.71 M instr/h at R6e (re-measure after R6.5b: fire costs only while something burns;
-  natural strikes are one hash per downpour hour).
+- main at 763b6b4 (+ this numbers commit); quick suite **166/166** (v3 57); lint clean; build OK;
+  browser = LuaJIT (untouched 72 h; `--premise conflict` 264 h; `--premise fire` 48 h).
+- LuaJIT **3.79 M instr/h** (3.67 M at the session's start; the new modules themselves are negligible -
+  the rise is spread over walking/thinking/herding as days change shape). Release browser
+  (`node scripts/prof_web.mjs --release --hours 288 --runs 3`, rendering off): runs 37.4/37.1/36.4,
+  envelope **36.1 ms/h = a 12-day season 10.4 s** (35.3 ms/h, 10.2 s at the start).
 - Untouched 192 d (R6e+lightning): no taking, no lightning casualties, 426 exchanges, deaths old
   age 3 + illness 6, burials.
 - **Next (in order)**: (1) R6.5c wildfire between planet and map (the planet's `F.fire` on a map's
