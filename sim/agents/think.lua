@@ -4633,6 +4633,12 @@ function M.fire_choice(W, s, p, ctx, now)
   if p.at or ctx.stage == "infant" then return false end
   local f, d = blaze.near(s, p.x, p.y, c.fire_help_r, W, now)
   if not f then p.alarm = nil; return false end
+  -- (S20) remembered once a day: what they saw burning
+  local day = floor(now / 24)
+  if p.fire_seen ~= day then
+    p.fire_seen = day
+    people.remember(p, now, f.kind == "bld" and sfmt("Fire: %s was burning", (s.buildings[f.ref] or {}).label or "a house") or "Fire in the woods by the village")
+  end
   local F = M.FIRE
   F.a, F.b = 0, 0
   local inside = f.kind == "bld" and p.inside == f.ref

@@ -362,6 +362,7 @@ function sys.hour(W)
       local changed, r = settle.hourly(W, s, now)
       -- (S20, R6.5b) a thunderstorm's lightning; whatever burns
       blaze.natural(W, s, now)
+      blaze.planet(W, s, now)
       blaze.hourly(W, s, now)
       if changed then
         rain_change(W, s, now, r)

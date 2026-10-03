@@ -130,6 +130,17 @@ function M.named(W, name)
     M.fail_harvest(W, A); M.murrain(W, A, 0); M.empty_stores(W, A)
     M.knows(W, A, V.settlements[2]); M.knows(W, A, V.settlements[6])
     return true
+  elseif name == "wildfire" then
+    -- (S20, R6.5c) a dry spell, and the planet's fire on a wooded cell beside Hottoodingle Hop
+    local s = V.settlements[4]
+    local best, bf = nil, -1
+    local g = W.grid
+    for k = 1, g.nbr_count[s.cell] do
+      local c = g.nbr[(s.cell - 1) * 6 + k]
+      if W.geo.ocean[c] ~= 1 and W.F.forest[c] > bf then best, bf = c, W.F.forest[c] end
+    end
+    for _, c in ipairs({ s.cell, best }) do W.F.soil_water[c] = 0.15 end
+    return require("sim.systems.fire").ignite(W, best, 0)
   elseif name == "fire" then
     -- (S20, R6.5b) a dry spell at Tekheim and lightning sets a house alight
     local s = V.settlements[1]

@@ -1280,7 +1280,10 @@ C.V3 = {
   -- person is hurt strike_hurt (at 1 they die), those within strike_side strike_side_hurt; thunder heard
   -- within thunder_sound; a downpour hour sends a strike to the map with chance strike_rate
   strike_pull = 0.08, strike_tree = 1.0, strike_roof = 0.9, strike_person = 0.5, strike_ignite = 0.5, strike_ignite_roof = 0.45,
-  strike_hurt = { 0.5, 1.15 }, strike_side = 0.025, strike_side_hurt = 0.15, thunder_sound = 4, strike_rate = 0.12,          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
+  strike_hurt = { 0.5, 1.15 }, strike_side = 0.025, strike_side_hurt = 0.15, thunder_sound = 4, strike_rate = 0.12,
+  -- (S20, R6.5c) the planet's fire on a cell above fire_planet_in comes onto the map; fire_planet_n
+  -- things burning on one cell of the map set the planet's fire going there
+  fire_planet_in = 0.05, fire_planet_n = 6,          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
 }
 
 return C

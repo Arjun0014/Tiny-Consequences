@@ -267,6 +267,66 @@ function M.hourly(W, s, now)
   M.catch_up(W, s, now)
 end
 
+-- (S20, R6.5c) The planet's cells that map s covers (runtime).
+local CELLS = setmetatable({}, { __mode = "k" })
+local function cells_of(s)
+  local L = CELLS[s]
+  if L then return L end
+  L = {}
+  local seen = {}
+  for i = 1, s.N * s.N do
+    local cl = s.cell_of[i]
+    if cl and cl > 0 and not seen[cl] then seen[cl] = true; L[#L + 1] = cl end
+  end
+  table.sort(L)
+  CELLS[s] = L
+  return L
+end
+
+-- (S20, R6.5c) The planet's fire on a cell the map covers comes onto the map: the standing tree of
+-- that cell nearest the map's edge (where it comes from) catches, once a day a cell; the local fire
+-- does the rest. And a fire on the map that has taken hold (fire_planet_n burning) sets the planet's
+-- fire going on its cell, whose own spreading carries it on beyond the map.
+function M.planet(W, s, now)
+  local c = C()
+  local F = W.F
+  local day = floor(now / 24)
+  local L = cells_of(s)
+  for _, cl in ipairs(L) do
+    if (F.fire[cl] or 0) > c.fire_planet_in and (not s.fire_in or s.fire_in[cl] ~= day) then
+      s.fire_in = s.fire_in or {}
+      s.fire_in[cl] = day
+      local N, T = s.N, s.trees
+      local best, bd = nil, -1
+      for i = 1, N * N do
+        local k = s.tree[i]
+        if k and k > 0 and T.st[k] == 1 and s.cell_of[i] == cl then
+          local ix, iy = (i - 1) % N + 1, floor((i - 1) / N) + 1
+          local edge = max(math.abs(ix - N / 2), math.abs(iy - N / 2))
+          if edge > bd then best, bd = k, edge end
+        end
+      end
+      if best then M.ignite(W, s, "tree", best, now, nil) end
+    end
+  end
+  local B = s.burn
+  if B and #B >= c.fire_planet_n then
+    -- (the cell under most of what burns)
+    local count, top, tn = {}, nil, 0
+    for _, f in ipairs(B) do
+      local i = mapm.tile_of(s, f.x, f.y)
+      local cl = i > 0 and s.cell_of[i] or nil
+      if cl then
+        count[cl] = (count[cl] or 0) + 1
+        if count[cl] > tn or (count[cl] == tn and cl < top) then top, tn = cl, count[cl] end
+      end
+    end
+    if top and tn >= c.fire_planet_n and (F.fire[top] or 0) <= 0 then
+      require("sim.systems.fire").ignite(W, top, 0)
+    end
+  end
+end
+
 -- Lightning at (x, y): the tallest thing within its pull takes it - a standing tree (its height), a
 -- roof, someone standing out in the open; thunder heard over the whole map, the flash seen. Returns
 -- what was hit ("tree", "bld", "person" or nil) and its ref. `cause`: the deed or event that sent it.

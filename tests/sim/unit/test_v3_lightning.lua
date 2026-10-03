@@ -123,4 +123,27 @@ function M.lightning_hurts_who_it_strikes()
   return string.format("%s struck at work: %s", who.name, who.alive and string.format("alive, hurt %.2f", who.hurt or 0) or ("dead: " .. who.died_of))
 end
 
+-- R6.5c: the planet's fire on a wooded cell beside a village (premise "wildfire": a dry spell) comes
+-- onto its map tree by tree; the people see it.
+function M.a_wildfire_comes_onto_the_map()
+  local W = shipped()
+  local V = W.S.v3
+  world.advance(W, W.hour + 48)
+  T.ok(require("sim.agents.premise").named(W, "wildfire"), "the planet's fire was set beside the village")
+  local s = V.settlements[4]
+  local people = require("sim.agents.people")
+  local orig = people.remember
+  local saw = 0
+  people.remember = function(p, t, text, ...)
+    if type(text) == "string" and text:find("^Fire") then saw = saw + 1 end
+    return orig(p, t, text, ...)
+  end
+  local t0 = W.hour
+  for h = 1, 48 do world.advance(W, t0 + h) end
+  people.remember = orig
+  T.ok((s.acc.trees_burnt or 0) >= 5, (s.acc.trees_burnt or 0) .. " trees of the map burnt")
+  T.ok(saw >= 1, saw .. " people saw it")
+  return string.format("%d trees burnt on %s's map in 2 days; %d saw it", s.acc.trees_burnt or 0, s.name, saw)
+end
+
 return M
