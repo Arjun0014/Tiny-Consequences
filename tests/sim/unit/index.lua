@@ -35,5 +35,6 @@ return {
   "tests.sim.unit.test_v3_lightning",
   "tests.sim.unit.test_v3_quake",
   "tests.sim.unit.test_v3_snow",
+  "tests.sim.unit.test_v3_flood",
   "tests.sim.unit.test_v3_namespace",
 }

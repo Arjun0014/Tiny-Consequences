@@ -4762,6 +4762,89 @@ function M.wave_choice(W, s, p, ctx, now)
   return true
 end
 
+-- (S21, R6.5e) Flood water (felt in the house, round one's feet, or the river seen over its banks):
+-- out of the water and up to ground standing well above it, a babe snatched up on the way; the able
+-- open a flooded pen with their household's beasts shut in it (any pen when it is the nearest); a
+-- child, an elder, one carrying a babe or hurt keeps away from the water; the rest go on, the ways
+-- round the water (map costs) taking them past it.
+function M.flood_choice(W, s, p, ctx, now)
+  local c = C()
+  if p.at or ctx.stage == "infant" or now - p.alarm.t > c.fl_alarm_h or not s.fl then p.alarm = nil; return false end
+  local flood = require("sim.agents.flood")
+  local F = M.FIRE
+  F.a, F.b = 0, 0
+  local px, py = p.x, p.y
+  local dep, margin = flood.at(W, s, px, py)
+  local inb = p.inside ~= 0 and s.buildings[p.inside]
+  if inb then dep = inb.wet or 0; margin = -dep end
+  local able = (ctx.stage == "adult" or ctx.stage == "apprentice") and not ctx.babe and (p.hurt or 0) < 0.3
+  -- (a pen of ours in the water with the beasts shut in: open it - before getting oneself clear,
+  -- unless the water is already deep where one stands)
+  if able and dep < c.fl_sweep * 0.7 then
+    local stock = require("sim.agents.stock")
+    local best, bd = nil, 1e9
+    for _, kind in ipairs({ "flock", "cattle", "swine" }) do
+      local H = s.herds and s.herds[kind]
+      local pen = H and s.buildings[H.pen or 0]
+      if pen and pen.state == "standing" and pen.kind ~= "camp" and (H.loose or -99) < now - c.loose_h and (H.n_alive or 1) > 0 then
+        local pd = flood.at(W, s, pen.cx, pen.cy)
+        local own = false
+        for _, a in ipairs(H.animals) do if a.alive and a.owner == p.hh then own = true; break end end
+        local d = dist(px, py, pen.dx or pen.cx, pen.dy or pen.cy)
+        if pd > 0.1 and (own or d < 0.3) and d < bd then best, bd = pen, d end
+      end
+    end
+    if best then
+      F.kind, F.why = "loose_flood", sfmt("The water is in the %s with the beasts shut in it: open it!", best.kind)
+      F.fx, F.fy = best.dx or best.cx, best.dy or best.cy
+      F.a = best.id
+      return true
+    end
+  end
+  if dep > 0.02 or margin < c.fl_safe * 0.5 then
+    local x, y = flood.high_ground(W, s, px, py, c.fl_safe)
+    if x then
+      F.kind = "flee_water"
+      F.why = inb and dep > 0.02 and "Water is coming into the house: out, and up from the river!"
+        or (dep > 0.02 and "The flood water is round my feet: up out of it!" or "The river is rising toward us: up from it!")
+      F.fx, F.fy = x, y
+      return true
+    end
+  end
+  p.alarm = nil
+  return false
+end
+
+PLAN.flee_water = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local F = M.FIRE
+  go(pl, F.fx, F.fy, "high ground")
+  pl[#pl].run = true
+  work(pl, "watch", 0.6, {})
+  if p.inside ~= 0 and (ctx.stage == "adult" or ctx.stage == "elder" or ctx.stage == "apprentice") and (p.babe or 0) == 0 then
+    -- (a babe lying in the house is snatched up on the way out)
+    local V = W.S.v3
+    for _, id in ipairs(s.members) do
+      local ib = V.people[id]
+      if ib and ib.alive and ib.inside == p.inside and people.stage(ib, now) == "infant" and not (ib.act == "carried" and (ib.carer or 0) ~= 0) then
+        kin.give(W, ib, p)
+        ib.act = "carried"
+        break
+      end
+    end
+  end
+  return "Up out of the flood water", "high ground"
+end
+
+PLAN.loose_flood = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local F = M.FIRE
+  go(pl, F.fx, F.fy, "the flooded pen")
+  pl[#pl].run = true
+  work(pl, "loose", 0.05, { ref = F.a, fx = F.fx, fy = F.fy, flood = true })
+  return "Let the beasts out of the flooded pen", "the flooded pen"
+end
+
 PLAN.run_inland = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
   local F = M.FIRE
@@ -5969,6 +6052,11 @@ function M.decide(W, s, p, now, reason)
     add(1, "trapped", 0, 0, why)
     M.cd = CAND[ncand]
   elseif p.alarm and p.alarm.kind == "wave" and M.wave_choice(W, s, p, ctx, now) then
+    local fc = M.FIRE
+    kind, why = fc.kind, fc.why
+    add(1, fc.kind, fc.a, fc.b, fc.why)
+    M.cd = CAND[ncand]
+  elseif p.alarm and p.alarm.kind == "flood" and M.flood_choice(W, s, p, ctx, now) then
     local fc = M.FIRE
     kind, why = fc.kind, fc.why
     add(1, fc.kind, fc.a, fc.b, fc.why)

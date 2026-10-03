@@ -20,6 +20,10 @@ instances {
   prototype: "/game/view/rivers.go"
 }
 instances {
+  id: "floodwater"
+  prototype: "/game/view/floodwater.go"
+}
+instances {
   id: "trails"
   prototype: "/game/view/trails.go"
 }

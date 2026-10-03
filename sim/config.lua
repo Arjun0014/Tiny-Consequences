@@ -89,6 +89,10 @@ C.HYDRO = {
   flood_mult = 2.0, flood_min = 0.05,     -- flood when flow > flood_mult x bankfull on a river of at least flood_min
   floodplain = 0.05,                      -- km: land neighbours up to this much higher are flooded too
   flood_silt = 0.01,                      -- fertility left per tick of overbank flow (x overflow share, <= 1)
+  -- (S21, R6.5e) infiltration excess where a step is a day (v3): the ground takes in at most
+  -- inf_cap x (1 - soil water) x (inf_bare + (1 - inf_bare) x cover) of a day's rain (cover: woods,
+  -- grass at 0.6); on frozen ground x inf_frozen; the rest runs off that day
+  inf_cap = 0.07, inf_bare = 0.35, inf_frozen = 0.2,
 }
 
 -- Global climate (§5.13) -----------------------------------------------------------------------------------
@@ -1360,7 +1364,32 @@ C.V3 = {
   -- fire, thieves; meat FU, fading herd_lost_fade a day) against what it had: from restock_min_fu, a
   -- loss of take_restock of it is a motive to take beasts even when fed: gain + take_gain_k x the
   -- beasts' meat x the share lost x restock_k
-  herd_lost_fade = 0.99, restock_min_fu = 30, take_restock = 0.5, restock_k = 1.0,   -- (premises: a cold air mass, degC; sulphur after a great eruption)          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
+  herd_lost_fade = 0.99, restock_min_fu = 30, take_restock = 0.5, restock_k = 1.0,
+  -- (S21, R6.5e, D-169) flood water on the maps (sim/agents/flood.lua). A river whose flow passes the
+  -- planet's flood line (HYDRO.flood_mult x bankfull) stands fl_k x min(excess, fl_cap)^0.6 m above its
+  -- bank; the stage rises fl_rise m an hour and falls fl_fall; each tile's height above its river is
+  -- its distance beyond the bank (tiles, within fl_reach) x fl_g x (0.25 + the cell's slope) plus an
+  -- unevenness of fl_rough m on a lattice of fl_cell tiles; the water is spread again when a stage
+  -- moved fl_step m. Shallow water (fl_wade m) is waded, deeper closes the way.
+  fl_k = 1.0, fl_cap = 2.5, fl_rise = 0.2, fl_fall = 0.05, fl_reach = 40, fl_g = 0.16, fl_rough = 0.25,
+  fl_cell = 7, fl_step = 0.03, fl_wade = 0.45,
+  -- what lies in it: houses take water above fl_floor (the stores on the floor spoil fl_spoil x
+  -- depth/0.8; a granary on its posts above fl_granary), walls soften fl_wear x depth an hour (huts
+  -- x2), a hut or a building below fl_weak condition falls in under fl_fall m; a field fl_field_share
+  -- under water drowns its growing crop after fl_crop_h hours (yield x 1 - fl_drown), its ripe corn
+  -- and sheaves rot after fl_ripe_h / fl_sheaf_h (x 1 - fl_rot); silt fl_silt x depth (fertility at
+  -- most fl_fert_max) when it goes down; a beast in water fl_beast_d m above its own depth loses
+  -- fl_beast_h health an hour; a person in water above fl_sweep m is swept (fl_hurt x ...)
+  fl_floor = 0.15, fl_spoil = 0.6, fl_granary = 0.5, fl_wear = 0.02, fl_weak = 0.45, fl_fall = 1.2,
+  fl_field_share = 0.35, fl_crop_h = 30, fl_drown = 0.85, fl_ripe_h = 10, fl_sheaf_h = 6, fl_rot = 0.7,
+  fl_silt = 0.08, fl_fert_max = 1.3, fl_beast_h = 0.35,
+  fl_beast_d = { sheep = 0.35, goat = 0.4, cattle = 0.7, pig = 0.3 },
+  fl_sweep = 0.75, fl_hurt = 0.9,
+  -- noticing it: those awake out of doors where the ground stands less than fl_near m above the water
+  -- see the river over its banks; raised again after fl_alarm_h hours; shouted (fl_shout units);
+  -- they go where the ground stands fl_safe m above the water (think.flood_choice); a household
+  -- whose house has fl_home m of water in it sleeps elsewhere (people.home)
+  fl_near = 0.5, fl_alarm_h = 3, fl_shout = 0.45, fl_safe = 0.6, fl_home = 0.15, fl_see = 0.4,   -- (premises: a cold air mass, degC; sulphur after a great eruption)          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
 }
 
 return C

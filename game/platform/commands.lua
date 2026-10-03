@@ -420,6 +420,28 @@ function M.register(G)
       end
       assert(best > 0, "no " .. args.what)
       x, y = mapm.tile_xy(s, best)
+    elseif args.what == "flood" then
+      -- (S21) the flood water nearest the village's square
+      local fd = assert(mapm.FLOOD[s], "no flood water")
+      local best, bd = 0, 1e18
+      for i = 1, s.N * s.N do
+        if fd[i] > 0 then
+          local tx, ty = mapm.tile_xy(s, i)
+          local d = (tx - (s.sqx or 0)) ^ 2 + (ty - (s.sqy or 0)) ^ 2
+          if d < bd then best, bd = i, d end
+        end
+      end
+      x, y = mapm.tile_xy(s, best)
+    elseif args.what and args.what ~= "centre" then
+      -- (S21) the first standing building of that kind ("byre", "granary", ...)
+      local found
+      for _, id in ipairs(s.blist) do
+        local b = s.buildings[id]
+        if b.kind == args.what and b.state == "standing" then found = b; break end
+      end
+      assert(found, "no " .. args.what)
+      x, y = found.cx, found.cy
+      info = { wet = found.wet }
     end
     local ux, uy, uz = mapm.unit(s, x, y)
     camera.set(math.asin(uy), math.atan2(uz, ux), args.zoom or 1.5, true)

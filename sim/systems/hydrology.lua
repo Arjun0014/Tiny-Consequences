@@ -66,6 +66,12 @@ function sys.update(W)
   local k_ero, ero_max = cfg.k_ero, cfg.erosion_max
   local fboost = W.G.calibrating and cfgmod.SPINUP_FERT_BOOST or 1   -- spin-up: fertility loss runs faster
   local lake_evap = cfg.lake_evap
+  -- (S21, R6.5e) infiltration excess: where a planet step is a day (v3 worlds, W.hpt 24) the step's
+  -- rain falls as that day's rain, and what the ground cannot take in that day runs straight off -
+  -- more of it the wetter the soil, less under woods and grass, nearly all of it on frozen ground. A
+  -- weekly step (v2) spreads its rain over seven days, below any soil's capacity: unchanged there.
+  local daily = (W.hpt or 168) <= 24
+  local inf_cap, inf_bare, inf_frozen = cfg.inf_cap, cfg.inf_bare, cfg.inf_frozen
 
   -- 1. soil water balance, local runoff, erosion (land); reset accumulators (land + mouths)
   local land = geo.land_cells
@@ -82,11 +88,19 @@ function sys.update(W)
       local old = soil[c]
       local rain = temp[c] >= 0 and precip[c] or 0
       local inp = (rain + melt[c]) * k_ps
+      local quick = 0
+      if daily and inp > 0 then
+        local cover = forest[c] + 0.6 * grass[c]
+        if cover > 1 then cover = 1 end
+        local cap = inf_cap * (1 - old) * (inf_bare + (1 - inf_bare) * cover)
+        if temp[c] < 0 then cap = cap * inf_frozen end
+        if inp > cap then quick = inp - cap; inp = cap end
+      end
       local out = evl[c] * k_es
       local s = old + inp - out
       if s < 0 then out = out + s; s = 0 end
-      local ro = 0
-      if s > fc then ro = (s - fc) * k_run end
+      local ro = quick
+      if s > fc then ro = ro + (s - fc) * k_run end
       local base = s * k_base
       ro = ro + base
       s = s - ro

@@ -2609,7 +2609,7 @@ WORK.loose = function(W, s, p, st, f)
   H.loose = now
   stock.rouse(W, s, H, now)
   s.acc.loosed = (s.acc.loosed or 0) + 1
-  people.remember(p, now, sfmt("Let the beasts out of the burning %s", b.kind))
+  people.remember(p, now, st.flood and sfmt("Let the beasts out of the flooded %s", b.kind) or sfmt("Let the beasts out of the burning %s", b.kind))
 end
 
 -- (S20, R6.5f) A stint of digging someone out of the rubble (strong arms and tools dig faster).

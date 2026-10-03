@@ -186,6 +186,7 @@ local FELL = {
   ash = { how = "the weight of the ash", ours = "Our house fell in under the ash", lodge = "their house fell in under the ash" },
   snow = { how = "the weight of the snow", ours = "Our house fell in under the snow", lodge = "their house fell in under the snow" },
   sea = { how = "the sea", ours = "The sea took our house", lodge = "the sea took their house" },
+  flood = { how = "the flood", ours = "The flood brought our house down", lodge = "the flood brought their house down" },
 }
 
 local STORES = { "food", "grain", "sheaves", "smoked", "cheese", "meat", "fish", "meals", "logs", "wool", "cloth", "hides",

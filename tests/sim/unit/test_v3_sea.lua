@@ -59,8 +59,10 @@ function M.an_island_household_moves_by_sea()
   local hungriest = 0
   -- (S19: relief now comes by sea from the first days, so they live on it a week before they go;
   -- S20: with people answering alarms and calls without delay and the starving beasts killed for the
-  -- pot, about a month - the window is 40 days)
-  for h = 0.5, 24 * 40, 0.5 do
+  -- pot, about a month - the window is 40 days; S21, D-169: the island's own rains now run off its
+  -- hills (infiltration excess) and the world's course differs from the first day - the household
+  -- decided on day 37.6 and landed on day 40.3 (22.6 / 24.3 with the old hydrology): 48 days)
+  for h = 0.5, 24 * 48, 0.5 do
     world.advance(W, t0 + h)
     if h % 24 == 0 then starve() end
     if arrived_h and h > arrived_h + 2 then break end

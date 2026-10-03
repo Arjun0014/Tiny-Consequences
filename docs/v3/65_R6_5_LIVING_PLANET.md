@@ -147,8 +147,9 @@ an outcome script, the architecture is wrong.
 - **R6.5d snow and frost on the maps**: built (D-158, `sim/agents/snow.lua`, §10; `test_v3_snow` x4).
 - **Beasts and fire** (R6.5b gap): beasts cry out and run, are let out of a burning pen by those who
   hear them or burn in it; a lost pen is planned again (D-159).
-- **R6.5e flood water**: deferred - the planet's rivers barely rise under a season's deluge at the
-  villages (hydrology first).
+- **R6.5e flood water**: built in session 21 (D-169, §12): infiltration excess on the planet (a
+  day's rain beyond what the ground takes in runs off that day), flood water on the maps by height
+  above the nearest river (HAND), the people's answer through the shared primitives.
 - **Fields, stooks and the hay stack burn** (D-161); **tsunami** (D-162, §11: run-up from the sea,
   the sea drawing back seen and shouted, running inland, the shore taken); lost village buildings
   planned again (D-162).
@@ -157,7 +158,7 @@ an outcome script, the architecture is wrong.
   fixed (fed from the carer's pack; no child handed to one setting out); then no deaths from hunger.
 - **Aftershocks** (D-165) and **the badly hurt helped home** (D-166: lying where they fell, lifted and
   walked home at a hobble by kin or whoever sees them).
-- Not yet: landslides (map slope exists only per planet cell); e flood water (hydrology first); g at
+- Not yet: landslides (map slope exists only per planet cell); g at
   longer range (ice age, hothouse, sea-level coastline, ENSO); ice crust, moving herds to open ground;
   people afraid to sleep under a roof after a quake. (Leaf fodder - boughs lopped when the hay is gone -
   built: D-167.)
@@ -215,3 +216,51 @@ the sky after a great eruption, `G.aerosol`). Both are physical states the plane
   memories; the homeless lodge, the lost boats are built again - all existing.
 - **Premise**: `named("tsunami")` - a magnitude 8 quake on the ocean cell nearest a coastal village.
 - **Test**: by day most see the sea draw back and run; by night more are swept; the dock and boats lost.
+
+## 12. R6.5e flood water (session 21, D-169)
+**Hydrology first.** The planet's soil filled to field capacity before any rain ran off, and a v3 planet
+step is one day: a season's deluge over Krikeivorn raised its river 1.2x. Now, where a step is a day
+(`W.hpt` 24), the ground takes in at most `inf_cap` x (1 - soil water) x (`inf_bare` + (1 - `inf_bare`)
+x cover) of a day's rain (cover = woods + 0.6 grass; frozen ground x `inf_frozen`): the rest runs off
+that day (infiltration excess, Horton). A wet spell's first day sends the river to 5x its mean; it
+recedes over days. Woods cut upstream make the river flashier; snowmelt on frozen ground floods. A
+weekly step (v2) spreads its rain over seven days, below any soil's capacity: v2 unchanged. Untouched
+four planet years: mean flows at the villages and soil water as before (within 1-4%).
+
+**Water on the map** (`sim/agents/flood.lua`). The map has no heights, so each tile's height above its
+nearest river (HAND - height above nearest drainage, the method of inundation mapping) is its distance
+beyond the channel's usual bank x the valley's cross gradient (`fl_g` x (0.25 + the planet cell's slope):
+a flat plain floods wide, a steep valley little) + a gentle unevenness (`fl_rough` on a lattice of
+`fl_cell` tiles: hollows and low rises). A river whose flow passes the planet's own flood line
+(`HYDRO.flood_mult` x bankfull, the mean annual flood) stands `fl_k` x min(excess, `fl_cap`)^0.6 m above
+its bank; the stage rises `fl_rise` m an hour after the day's water reaches it and falls `fl_fall`. The
+water spreads from the channel over tiles lower than the stage, only through tiles under water
+(a rise behind a hollow keeps it dry). Saved: the stages and the channels/gradients at the flood's
+start (`s.fl`); runtime: HAND and the depth per tile (`mapm.FLOOD[s]`).
+
+**What lies in it** (each a small rule on existing state): the ways (map costs: waded to `fl_wade`,
+closed deeper, swum when cut off); houses (water over the footprint: `b.wet`; the stores on the floor
+spoil, a granary on its posts only deeper; walls soften; a hut or a weak building falls in -
+`shake.fall_in` "flood"); fields (a share under water drowns a growing crop after `fl_crop_h` hours,
+rots ripe corn and sheaves; silt when it goes down); beasts (in water above their own depth they lose
+health by the hour; shut in a flooded pen they cry out, loose they wade out to ground above the
+water); people (in deep water swept: hurt "drowned").
+
+**The people's answer** (D-148 primitives, nothing per flood): the water is noticed - felt in the house
+even asleep, seen at one's feet or the river over its banks near those awake out of doors, shouted;
+the urgent choice (`think.flood_choice`): out of the water and up to ground `fl_safe` m above it with
+the babe in arms; the able open a flooded pen with their beasts shut in (`loose_flood`); a household
+whose house has water in it or whose door is under water too deep to wade sleeps under a kin's roof,
+else a neighbour's (`people.home` / `dry_roof`); the ways round the water take everyone else past it.
+After: repairs, lodging, the drowned field's hunger, relief - all existing.
+
+**Deeds and causes**: a `flood` deed (nature) with the event driving the river on the planet
+(`W.C.flow`, the hydrology's blame tag: a god's deluge carried down the rivers), its peak and hours; a
+`flooded_village` event; a house brought down answers the flood deed.
+
+**Numbers** (shipped world): untouched 96 days - floods at Dreik Knoll (1, 27 tiles), Little Leelee (2,
+up to 726 tiles) and Krikeivorn (2, up to 1,454 tiles), on the bottomland only. A five-day wet spell over
+Little Leelee's hills (`--premise flood5`): the river over its banks at hour 4-9, 4,075 tiles under
+water at the peak (2,660 too deep to walk), the byre in 0.95 m of water opened, a field drowned, 19
+people saw it, the houses (built above the floodplain) dry; the water gone within five days, 9 fields
+silted. `tools/v3_flood.lua` watches one hour by hour with a map.

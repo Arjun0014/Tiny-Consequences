@@ -21,3 +21,7 @@ assets/3d-models/ual/**/*.png
 assets/3d-models/animals_quaternius/FBX/
 assets/3d-models/animals_quaternius/OBJ/
 assets/3d-models/animals_quaternius/Preview.gif
+
+# secrets (ElevenLabs key etc.) - never committed
+.env
+.env.*

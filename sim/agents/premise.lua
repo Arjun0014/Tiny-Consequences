@@ -180,6 +180,20 @@ function M.named(W, name)
     end
     for _, q in ipairs(V.settlements) do q.wx = nil end
     return true
+  elseif name:sub(1, 5) == "flood" then
+    -- (S21, R6.5e) a wet spell over a village's hills: the ground already wet, then five days of
+    -- downpours over its cell and the cells about it (the state a god's deluge writes; here nature's,
+    -- with no cause tag). flood = Krikeivorn, floodN = settlement N.
+    local s = V.settlements[tonumber(name:sub(6)) or 6]
+    local powers = require("sim.powers")
+    local cells = powers.area(W, s.cell, require("sim.config").POWERS.radius)
+    for _, c in ipairs(cells) do
+      if W.geo.ocean[c] == 0 and W.F.soil_water[c] < 0.5 then W.F.soil_water[c] = 0.5 end
+    end
+    W.S.powers = W.S.powers or { forcings = {}, blight = {} }
+    local fs = W.S.powers.forcings
+    fs[#fs + 1] = { kind = "rain", cells = cells, amount = 1, tag = 0, from = W.tick, to = W.tick + 5 }
+    return true
   elseif name == "hard_winter" then
     -- (S20, R6.5d) sulphur in the sky over the whole planet (a great eruption's): years of cold
     W.G.aerosol = (W.G.aerosol or 0) + require("sim.config").V3.premise_aerosol

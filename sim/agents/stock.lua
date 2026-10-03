@@ -379,9 +379,15 @@ function M.herd_of_pen(s, b)
 end
 
 -- Beasts crying out at a fire (once a half hour a herd): a sound that carries, waking those near.
-local function cry(W, s, H, x, y, now)
+local function cry(W, s, H, x, y, now, water)
   if (H.fire_cry or -9) > now - 0.5 then return end
   H.fire_cry = now
+  if water then
+    -- (S21) shut in a flooded pen
+    danger.cue(W, s, x, y, now, { kind = "flood", src = 0, sight = 0, night = 0, sound = C().beast_cry, loud = true,
+      why = H.kind == "cattle" and "The cattle are bellowing: the water is in the byre" or "The beasts are crying out: the water is in the pens" })
+    return
+  end
   danger.cue(W, s, x, y, now, { kind = "fire", src = 0, sight = 0, night = 0, sound = C().beast_cry, loud = true,
     why = H.kind == "cattle" and "The cattle are bellowing: fire at the byre" or "The beasts are crying out: fire by the pens" })
 end
@@ -583,6 +589,37 @@ function M.step(W, s, H, a, now)
   local pen = s.buildings[H.pen]
   local gone = pen and pen.state ~= "standing"   -- (S20: burnt or fallen in: kept where it stood)
   local age = (now - a.born) / 1152
+  -- (S21, R6.5e) flood water: a beast standing in it wades out toward ground above the water; one shut
+  -- in its pen stays, bleating (it drowns there by the hour unless someone opens it: flood.lua)
+  if s.fl and M.flood and not drover then
+    local dep = M.flood.depth_i(s, mapm.tile_of(s, a.tx, a.ty))
+    if dep > 0.08 then
+      local shut = pen and pen.state == "standing" and pen.kind ~= "camp" and inside_pen(s, pen, a.tx, a.ty)
+        and (H.loose or -99) < now - c.loose_h
+      if shut then
+        if dep > (c.fl_beast_d[a.sp] or 0.5) * 0.5 then cry(W, s, H, a.tx, a.ty, now, true) end
+        a.why = "Shut in the flooded " .. pen.kind .. ", bleating"
+        stand(a, now, "pen", 0.15)
+        return
+      end
+      local x, y = M.flood.high_ground(W, s, a.tx, a.ty, 0.15)
+      if x then
+        a.why = "Wading out of the flood water"
+        if walk_to(W, s, a, now, x, y, S.speed * 1.4) then return end
+        -- (no way round the water: a beast wades and swims straight for the higher ground, a hop at a time)
+        local dx, dy = x - a.tx, y - a.ty
+        local d = sqrt(dx * dx + dy * dy)
+        if d > 1e-4 then
+          local hop = min(d, S.sep * 4)
+          a.x, a.y = a.tx, a.ty
+          a.tx, a.ty = a.tx + dx / d * hop, a.ty + dy / d * hop
+          a.act, a.t0, a.t1 = "walk", now, now + hop / (S.speed * 0.6)
+          a.why = "Swimming out of the flood water"
+          return
+        end
+      end
+    end
+  end
   -- (S20, R6.5b) fire: a beast out of doors runs from anything burning near it; one in its pen stays
   -- (a fold's hurdles give way once the fold is well alight; a byre or a sty must be opened: H.loose),
   -- crying out - a sound that wakes people

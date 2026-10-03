@@ -117,7 +117,52 @@ function M.home(W, s, p)
   if hh.sett and hh.sett ~= s.id then return nil end
   local b = s.buildings[hh.home]
   if not b or b.state ~= "standing" then return nil end
+  -- (S21, R6.5e) flood water standing in the house, or water too deep to wade at its door (the river
+  -- risen over the ground before it): a kin's dry roof for now, else none (the square)
+  if (b.wet and b.wet > C().fl_home) or M.cut_off(s, b) then return M.dry_roof(W, s, p, hh) or b end
   return b
+end
+
+-- (S21) Is building b's door under water too deep to wade (the river in spate, or a flood)?
+local mapm_ = nil
+function M.cut_off(s, b)
+  if not b.dx or not s.riv then return false end
+  local mapm = mapm_
+  if not mapm then mapm = require("sim.agents.map"); mapm_ = mapm end
+  local i = mapm.tile_of(s, b.dx, b.dy)
+  if i == 0 then return false end
+  local r = s.riv[i]
+  if r > 101 and not (s.bridge and s.bridge[i]) then return true end
+  local fd = mapm.FLOOD[s]
+  return fd ~= nil and fd[i] > C().fl_wade
+end
+
+-- (S21) The dry house of close kin of anyone in household hh in village s (the first in the village's
+-- member order), else a neighbour's dry house (the nearest to their own), or nil.
+function M.dry_roof(W, s, p, hh)
+  local V = W.S.v3
+  local lim = C().fl_home
+  local own = s.buildings[hh.home]
+  local near, nd = nil, 1e18
+  for _, id in ipairs(s.members) do
+    local q = V.people[id]
+    if q and q.alive and q.hh ~= hh.id then
+      local oh = V.households[q.hh]
+      local ob = oh and oh.home ~= 0 and s.buildings[oh.home]
+      if ob and ob.state == "standing" and not (ob.wet and ob.wet > lim) and (ob.kind == "house" or ob.kind == "hut")
+        and not M.cut_off(s, ob) then
+        for _, mid in ipairs(hh.members) do
+          local m = V.people[mid]
+          if m and m.alive and M.is_kin(W, m, q.id) then return ob end
+        end
+        if own then
+          local d = (ob.cx - own.cx) * (ob.cx - own.cx) + (ob.cy - own.cy) * (ob.cy - own.cy)
+          if d < nd then near, nd = ob, d end
+        end
+      end
+    end
+  end
+  return near
 end
 
 -- Raw food in a house's pantry (FU): grain and gathered food, fresh fish (D-087), meat, milk and

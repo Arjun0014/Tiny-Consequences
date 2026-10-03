@@ -460,10 +460,17 @@ local function swim_cost(s)
   e = e or { cost = {} }
   local sc, cost, riv, land, occ = e.cost, s.cost, s.riv, s.land, s.occ
   local k = cfgmod.V3.cost_swim
+  local fd = mapm.FLOOD[s]   -- (S21: flood water over the land swum as the river is)
   for i = 1, s.N * s.N do
     local c = cost[i]
-    if c < 0 and riv[i] > 0 and land[i] == 1 and occ[i] == 0 then c = k end
+    if c < 0 and (riv[i] > 0 or (fd and fd[i] > 0)) and land[i] == 1 and occ[i] == 0 then c = k end
     sc[i] = c
+  end
+  -- (the border stays closed: A* has no bounds checks, D-086 - water crossing the map's edge is not
+  -- a way off it)
+  local N = s.N
+  for q = 1, N do
+    sc[q], sc[(N - 1) * N + q], sc[(q - 1) * N + 1], sc[q * N] = -1, -1, -1, -1
   end
   e.ver = ver
   SWIM[s] = e

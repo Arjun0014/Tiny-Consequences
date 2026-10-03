@@ -34,6 +34,7 @@ local shake = require("sim.agents.shake")   -- (S20, R6.5f)
 local volcano = require("sim.agents.volcano")
 local snow = require("sim.agents.snow")   -- (S20, R6.5d)
 local tsunami = require("sim.agents.tsunami")   -- (S20, R6.5f)
+local flood = require("sim.agents.flood")   -- (S21, R6.5e)
 do
   -- (what one village learns of another: what its people know of places, and of fairs; S20: and
   -- the deeds they know that touch either village)
@@ -70,6 +71,11 @@ shake.wave = tsunami.from_quake
 volcano.wave = tsunami.raise
 shake.lodge = blaze.lodge
 shake.kill = blaze.kill
+-- (S21, R6.5e) flood water: today's river widths, a building falling in, a death by drowning
+flood.widths = settle.today_widths
+flood.fall_in = shake.fall_in
+flood.kill = blaze.kill
+stock.flood = flood
 local floor, min, max = math.floor, math.min, math.max
 
 -- Event heap (runtime) ------------------------------------------------------------------------
@@ -416,6 +422,7 @@ function sys.hour(W)
       blaze.planet(W, s, now)
       blaze.hourly(W, s, now)
       tsunami.hourly(W, s, now)
+      flood.hourly(W, s, now)   -- (S21, R6.5e)
       if changed then
         rain_change(W, s, now, r)
         if r == 2 then birds.weather(W, s, now, sys.push) end

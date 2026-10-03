@@ -182,6 +182,12 @@ local function courses(W, s)
   COURSES[s] = cs
   return cs
 end
+M.courses = courses   -- (S21: flood.lua measures each tile's height above its nearest river from them)
+
+-- (S21, R6.5e) Flood water standing on the map beyond the channel: depth (m) per tile, published by
+-- sim/agents/flood.lua (runtime: rebuilt from the saved stages; nil when the water is down). The ways
+-- read it: shallow water is waded slowly, deeper closes the tile.
+M.FLOOD = setmetatable({}, { __mode = "k" })
 
 -- Lay the rivers for today's flow (wd: surface.river_widths, shared by all settlements on a day).
 -- found: the first laying also marks the floodplain (the widest a flood makes the river).
@@ -388,6 +394,7 @@ function M.rebuild_costs(s)
   local st = s.trees.st
   local co, ct, cp, ctr, cl, cf = C.cost_open, C.cost_tree, C.cost_plot, C.cost_trail, C.cost_lane, C.cost_ford
   local changed = M.cost_ver[s] == nil
+  local fd, wade = M.FLOOD[s], C.fl_wade
   for i = 1, s.N * s.N do
     local c
     if land[i] == 0 or occ[i] > 0 then c = -1
@@ -396,6 +403,10 @@ function M.rebuild_costs(s)
       -- way across (D-085)
       if bridge and bridge[i] then c = cl
       else c = riv[i] <= 101 and cf or -1 end
+    elseif fd and fd[i] > 0 then
+      -- (S21) flood water over the land: waded where shallow (a bridge's deck stands above it), else closed
+      if bridge and bridge[i] then c = cl
+      else c = fd[i] <= wade and cf or -1 end
     else
       local l = lane[i]
       if l == 2 then c = cl
