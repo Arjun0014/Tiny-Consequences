@@ -2553,6 +2553,19 @@ WORK.mourn = function(W, s, p, st, f)
   if dp then people.remember(p, W.S.v3.now or W.hour, "Buried " .. dp.name .. " " .. dp.surname) end
 end
 
+-- (S20, R6.5b) Water thrown on the fire; the fire still seen (the alarm stays fresh while it burns).
+WORK.douse = function(W, s, p, st, f)
+  if f < 0.6 or p.carry ~= "water" then return end
+  local now = W.S.v3.now or W.hour
+  local blaze = require("sim.agents.blaze")
+  if blaze.douse(W, s, st.fx or p.x, st.fy or p.y, now) then
+    s.acc.doused = (s.acc.doused or 0) + 1
+    p.fought_fire = now
+  end
+  p.carry, p.camt = "", 0
+  if p.alarm then p.alarm.t = now end
+end
+
 -- (S20, R6c) Tending the hurt: they heal faster for it today (some care given counts: a mother called
 -- away by her babe has still dressed the wound).
 WORK.tend_hurt = function(W, s, p, st, f)

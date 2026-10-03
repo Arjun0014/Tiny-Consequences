@@ -263,7 +263,29 @@ function M.update(W, dt, frozen)
   local nf = #fires
   M.stats.fires = nf
   local t = state.time
-  for i, o in ipairs(M.flames) do
+  -- (S20, R6.5b) v3: what burns on the settlements' maps, close in, takes the flames first
+  local LF = W.v3 and require("game.view.agents_view").local_fires or nil
+  local nl = LF and #LF or 0
+  if nl > 0 then
+    for i, o in ipairs(M.flames) do
+      local f = LF[(i - 1) % nl + 1]
+      local on = i <= nl * 2
+      if on then
+        local fl = 0.8 + 0.25 * sin(t * 11 + o.phase * 5) + 0.1 * sin(t * 23 + o.phase)
+        -- (a roof's flames rise above it as the heat grows; a tree's are smaller)
+        local s = (f[8] and (0.045 + 0.075 * f[4]) or (0.03 + 0.05 * f[4])) * fl
+        local a = (i % 2 == 0) and 0.003 or -0.003
+        pos.x, pos.y, pos.z = f[1] + a * f[6], f[2] - a * f[5], f[3]
+        go.set_position(pos, o.id)
+        go.set_rotation(vmx.set_up_yaw(rot, f[5], f[6], f[7], o.phase), o.id)
+        scl.x, scl.y, scl.z = s, s * 1.4, s
+        go.set_scale(scl, o.id)
+      end
+      if on ~= o.on then o.on = on; msg.post(o.url, on and MSG_ENABLE or MSG_DISABLE) end
+    end
+    nf = 0
+  end
+  for i, o in ipairs(nl > 0 and {} or M.flames) do
     local fire = nf > 0 and fires[(i - 1) % nf + 1] or nil
     local on = fire ~= nil and i <= nf * 3
     if on then

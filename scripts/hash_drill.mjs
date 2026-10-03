@@ -12,6 +12,8 @@ import { startServer } from './serve.mjs';
 const args = process.argv.slice(2);
 const variant = hasFlag(args, '--release') ? 'release' : 'debug';
 const hours = Number(getFlag(args, '--hours', 0));
+const premise = getFlag(args, '--premise', null);   // (S20) a named premise applied first, then --after hours
+const after = Number(getFlag(args, '--after', 0));
 const depth = Number(getFlag(args, '--depth', 4));
 const start = (getFlag(args, '--path', '') || '').split(',').filter(Boolean);
 const port = Number(getFlag(args, '--port', 8194));
@@ -29,7 +31,8 @@ async function cmd(page, c) {
   return r.result;
 }
 function lj(path) {
-  const out = execFileSync(resolveLuajit(), ['tools/hash_parts.lua', String(absHour), ...path], { encoding: 'utf8', maxBuffer: 1 << 26 });
+  const extra = premise ? [`premise=${premise}`, `after=${after}`] : [];
+  const out = execFileSync(resolveLuajit(), ['tools/hash_parts.lua', String(absHour), ...extra, ...path], { encoding: 'utf8', maxBuffer: 1 << 26 });
   return JSON.parse(out);
 }
 try {
@@ -40,6 +43,7 @@ try {
   // (the game opens the v3 world at its first dawn, D-079: LuaJIT is advanced to the same hour)
   const st = await cmd(page, { cmd: 'v3_hash', hours: 0 });
   absHour = st.start;
+  if (premise) await cmd(page, { cmd: 'v3_hash', hours: after, every: after || 1, premise });
   console.log(`browser at hour ${absHour}`);
   const queue = [start];
   while (queue.length) {

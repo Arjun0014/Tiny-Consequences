@@ -8,7 +8,14 @@ f:close()
 local hour = tonumber(arg[1] or 0)
 if hour > W.hour then world.advance(W, hour) end
 local path = {}
-for i = 2, #arg do path[#path + 1] = arg[i] end
+for i = 2, #arg do
+  -- (S20) premise=NAME applies a named premise at HOUR; after=H advances H hours after it
+  local pn = arg[i]:match("^premise=(.+)$")
+  local af = arg[i]:match("^after=(.+)$")
+  if pn then assert(require("sim.agents.premise").named(W, pn), "no premise " .. pn)
+  elseif af then world.advance(W, hour + tonumber(af))
+  else path[#path + 1] = arg[i] end
+end
 local parts = world.hash_parts(W, path)
 local out = {}
 for _, x in ipairs(parts) do

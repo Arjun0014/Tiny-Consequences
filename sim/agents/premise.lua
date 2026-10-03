@@ -130,6 +130,19 @@ function M.named(W, name)
     M.fail_harvest(W, A); M.murrain(W, A, 0); M.empty_stores(W, A)
     M.knows(W, A, V.settlements[2]); M.knows(W, A, V.settlements[6])
     return true
+  elseif name == "fire" then
+    -- (S20, R6.5b) a dry spell at Tekheim and lightning sets a house alight
+    local s = V.settlements[1]
+    W.F.soil_water[s.cell] = 0.2
+    for _, id in ipairs(s.blist) do
+      local b = s.buildings[id]
+      if b.kind == "house" and b.state == "standing" and b.hh ~= 0 then
+        local blaze = require("sim.agents.blaze")
+        blaze.strike(W, s, b.cx, b.cy, V.now or W.hour, nil)
+        blaze.ignite(W, s, "bld", b.id, V.now or W.hour, nil)
+        return true
+      end
+    end
   end
   return false
 end

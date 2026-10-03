@@ -4623,6 +4623,95 @@ PLAN.mourn = function(W, s, p, ctx, now, cd)
   return "Bury " .. (dp and dp.name or "the dead"), "the house of the dead"
 end
 
+-- (S20, R6.5b) What to do about a fire one has noticed (D-148 §4, the urgent choice): out of a burning
+-- house at once (with the babe in one's arms); a child away to home or its mother; the able grown-ups
+-- near it carry water from the well or the river to it while it burns; the rest keep away from it.
+M.FIRE = {}
+function M.fire_choice(W, s, p, ctx, now)
+  local blaze = require("sim.agents.blaze")
+  local c = C()
+  if p.at or ctx.stage == "infant" then return false end
+  local f, d = blaze.near(s, p.x, p.y, c.fire_help_r, W, now)
+  if not f then p.alarm = nil; return false end
+  local F = M.FIRE
+  F.a, F.b = 0, 0
+  local inside = f.kind == "bld" and p.inside == f.ref
+  if inside or d < 0.03 then
+    F.kind, F.why = "flee_fire", inside and "The roof over us is burning: out!" or "Too close to the fire"
+    return true
+  end
+  -- (a child goes home or to its mother; one carrying a babe or hurt keeps away)
+  if ctx.stage == "child" or ctx.babe or (p.hurt or 0) > 0.3 or ctx.stage == "elder" then
+    if d < 0.2 then F.kind, F.why = "flee_fire", "Away from the fire"; return true end
+    return false
+  end
+  -- (the able: water to it - from the well when it is nearer than the river)
+  local wx, wy, how = nil, nil, nil
+  if s.well and s.well.state == "standing" then wx, wy, how = s.well.dx, s.well.dy, "the well" end
+  local mapm = require("sim.agents.map")
+  local banks = mapm.banks(s)
+  local bd = wx and dist(wx, wy, f.x, f.y) or 1e9
+  for i = 1, #banks do
+    local bx, by = mapm.tile_xy(s, banks[i])
+    local dd = dist(bx, by, f.x, f.y)
+    if dd < bd then wx, wy, bd, how = bx, by, dd, "the river" end
+  end
+  if not wx then
+    if d < 0.2 then F.kind, F.why = "flee_fire", "Away from the fire"; return true end
+    return false
+  end
+  F.kind, F.why = "fight_fire", sfmt("%s is burning: water from %s to it", f.kind == "bld" and ((s.buildings[f.ref] or {}).label or "a house") or "a tree", how)
+  F.x, F.y, F.wx, F.wy, F.fx, F.fy = 0, 0, wx, wy, f.x, f.y
+  return true
+end
+
+PLAN.flee_fire = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local blaze = require("sim.agents.blaze")
+  local f = blaze.near(s, p.x, p.y, C().fire_help_r, W, now)
+  local fx, fy = f and f.x or p.x, f and f.y or p.y
+  local dx, dy = p.x - fx, p.y - fy
+  local l = max(1e-6, sqrt(dx * dx + dy * dy))
+  local x, y = fx + dx / l * 0.18, fy + dy / l * 0.18
+  local fx2, fy2 = require("sim.agents.map").free_spot(s, x, y, 4)
+  go(pl, fx2 or x, fy2 or y, "away from the fire")
+  pl[#pl].run = true
+  work(pl, "watch", 0.2, { fx = fx, fy = fy })
+  if f and f.kind == "bld" and p.inside == f.ref then
+    -- (dependants first: a grown-up running out of a burning house snatches up a babe lying in it)
+    local V = W.S.v3
+    if (ctx.stage == "adult" or ctx.stage == "elder") and (p.babe or 0) == 0 then
+      for _, id in ipairs(s.members) do
+        local ib = V.people[id]
+        if ib and ib.alive and ib.inside == f.ref and people.stage(ib, now) == "infant" and not (ib.act == "carried" and (ib.carer or 0) ~= 0) then
+          kin.give(W, ib, p)
+          ib.act = "carried"
+          people.remember(p, now, "Snatched up " .. ib.name .. " from the burning house")
+          break
+        end
+      end
+    end
+    people.remember(p, now, "Ran out of the burning house")
+  end
+  return "Away from the fire", "away from the fire"
+end
+
+PLAN.fight_fire = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local F = M.FIRE
+  local fx, fy = F.fx, F.fy
+  if p.carry ~= "water" then
+    go(pl, F.wx, F.wy, "water")
+    pl[#pl].run = true
+    work(pl, "fill", 0.04, { fx = F.wx, fy = F.wy })
+  end
+  local x, y = near_spot(W, p, now, fx, fy, 0.05, 99)
+  go(pl, x, y, "the fire")
+  pl[#pl].run = true
+  work(pl, "douse", 0.03, { fx = fx, fy = fy })
+  return "Carry water to the fire", "the fire"
+end
+
 -- (S20, R6c) Hurt: lying at home, waiting to heal (and tended, if anyone does).
 function M.bedridden(p, ctx)
   return (p.hurt or 0) >= C().hurt_bed and ctx.home ~= nil and not p.at and not p.trip
@@ -5574,6 +5663,12 @@ function M.decide(W, s, p, now, reason)
   elseif night_babe then
     kind, why = "feed_babe", sfmt("%s woke crying with hunger in the night", night_babe.name)
     add(1, "feed_babe", night_babe.id, 0, why)
+    M.cd = CAND[ncand]
+  elseif p.alarm and p.alarm.kind == "fire" and M.fire_choice(W, s, p, ctx, now) then
+    -- (S20, R6.5b) a fire: out of a burning house, keep away, or carry water to it
+    local fc = M.FIRE
+    kind, why = fc.kind, fc.why
+    add(1, fc.kind, fc.a, fc.b, fc.why)
     M.cd = CAND[ncand]
   elseif p.alarm and p.alarm.kind == "thief" and M.chase_ok(W, s, p, ctx, now) then
     -- (S20, R6a) a stranger at the beasts: out after him

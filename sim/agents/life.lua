@@ -89,6 +89,11 @@ local function kill(W, s, p, cause, why)
     x = home and home.dx or (s.sqx or 0), y = home and home.dy or (s.sqy or 0) }
 end
 
+-- (S20, R6.5b) A death now by something that happened (lightning, fire): the same path as any death.
+function M.kill_now(W, s, p, cause)
+  if p.alive then kill(W, s, p, cause, cause) end
+end
+
 local function birth(W, s, mother, now)
   local V = W.S.v3
   local father = V.people[mother.partner]

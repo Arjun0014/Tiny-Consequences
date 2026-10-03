@@ -889,7 +889,7 @@ local ANIM = {
   -- (S20, R6a) lying up in the woods until a village sleeps; at the pen by night taking beasts by
   -- the halter; a chaser stopping to look about
   lie_up = { "sit", 0.3 }, steal = { "kneel_work", 1.1 }, chase = { "idle", 1.4 },
-  mend = { "sit", 0.3 }, tend_hurt = { "kneel_work", 0.5 }, mourn = { "idle", 0.5 }, wall_fold = { "swing", 0.8 },
+  mend = { "sit", 0.3 }, tend_hurt = { "kneel_work", 0.5 }, mourn = { "idle", 0.5 }, wall_fold = { "swing", 0.8 }, douse = { "pickup", 1.4 },
 }
 
 local function packc(c) return pack(c[1], c[2], c[3]) end
@@ -1487,6 +1487,9 @@ end
 -- fire). Its windows glow after dusk while the hearth burns and someone inside is awake.
 -- Returns lit (house id -> true), a signature of it, and the chimney tops smoking now.
 local CHIM = {}
+-- (S20, R6.5b) what burns on the maps now (world positions, heat): flames drawn by game/view/fx.lua
+local FIRES = {}
+M.local_fires = FIRES
 local function hearths(V, t)
   local W, s = V.W, V.s
   local Vp = W.S.v3.people
@@ -1538,6 +1541,19 @@ local function hearths(V, t)
     end
   end
   V.lit, V.lit_sig = lit, sig
+  -- (S20, R6.5b) fires: flames at each burning tree or roof, and their smoke
+  for _, f in ipairs(s.burn or {}) do
+    if f.heat > 0.02 then
+      local px, py, pz, ux, uy, uz = world_pos(V, f.x, f.y, f.kind == "bld" and 0.03 or 0.02)
+      FIRES[#FIRES + 1] = { px, py, pz, f.heat, ux, uy, uz, f.kind == "bld" }
+      for rep = 1, 1 + floor(f.heat * 2.5) do
+        n = n + 1
+        local c = CHIM[n]
+        if not c then c = {}; CHIM[n] = c end
+        c[1], c[2], c[3] = px + ux * 0.004 * rep, py + uy * 0.004 * rep, pz + uz * 0.004 * rep
+      end
+    end
+  end
 end
 M.chimneys = CHIM
 
@@ -1549,6 +1565,7 @@ function M.update(W, dt, zoom, t)
   if M.light_timer <= 0 and not M.skipping then
     M.light_timer = 0.25
     for k = #CHIM, 1, -1 do CHIM[k] = nil end
+    for k = #FIRES, 1, -1 do FIRES[k] = nil end
     for _, V in ipairs(M.SETS) do hearths(V, t) end
   end
   if M.follow and M.SETS[1] then

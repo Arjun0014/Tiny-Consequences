@@ -135,7 +135,14 @@ function M.register(G)
     local hours, every = args.hours or 48, args.every or 24
     local t0 = speed.v3_t or W.hour
     -- (S20) a named premise applied first, as tools/v3_hash.lua --premise does
-    if args.premise then assert(require("sim.agents.premise").named(W, args.premise), "no premise " .. args.premise) end
+    if args.premise then
+      -- (the premise at a start hour both runtimes write and read exactly: the start crosses to
+      -- LuaJIT as text, and a strike a few ulps apart is another world)
+      local t1 = math.ceil(t0 * 1000) / 1000
+      world.advance(W, t1)
+      t0 = t1
+      assert(require("sim.agents.premise").named(W, args.premise), "no premise " .. args.premise)
+    end
     local out = { { hour = 0, hash = tostring(world.state_hash(W)) } }
     for h = every, hours, every do
       world.advance(W, t0 + h)
@@ -576,7 +583,27 @@ function M.register(G)
     if args.kind == "crowd" then n = pr.crowd(W, s, tonumber(args.waited) or require("sim.config").V3.found_lot_days)
     elseif args.kind == "fail_harvest" then pr.fail_harvest(W, s)
     elseif args.kind == "empty_stores" then pr.empty_stores(W, s)
-    else error("v3_premise: kind crowd | fail_harvest | empty_stores") end
+    elseif args.kind == "burning" then
+      -- (S20) what burns there now (shots_fire.mjs)
+      local out = {}
+      for _, f in ipairs(s.burn or {}) do out[#out + 1] = string.format("%s%d heat %.2f fuel %.2f", f.kind, f.ref, f.heat, f.fuel) end
+      local nf = #(require("game.view.agents_view").local_fires or {})
+      return { sett = s.id, name = s.name, burning = table.concat(out, "; "), drawn = nf, acc = string.format("fires %d out %d burnt %d doused %d", s.acc.fires or 0, s.acc.fires_out or 0, s.acc.burnt or 0, s.acc.doused or 0) }
+    elseif args.kind == "fire" or args.kind == "strike" then
+      -- (S20, R6.5b) a roof set alight / lightning at a house (args.dry: the ground's water)
+      if args.dry then W.F.soil_water[s.cell] = tonumber(args.dry) end
+      local blaze = require("sim.agents.blaze")
+      local speed = require("game.platform.speed")
+      local now = speed.v3_t or W.hour
+      for _, id in ipairs(s.blist) do
+        local b = s.buildings[id]
+        if b.kind == "house" and b.state == "standing" and b.hh ~= 0 then
+          if args.kind == "fire" then blaze.ignite(W, s, "bld", b.id, now, nil) else blaze.strike(W, s, b.cx, b.cy, now, nil) end
+          n = b.id
+          break
+        end
+      end
+    else error("v3_premise: kind crowd | fail_harvest | empty_stores | fire | strike") end
     return { sett = s.id, name = s.name, added = n, people = #s.members }
   end)
   bridge.register("voyage", function(args)

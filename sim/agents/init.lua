@@ -29,6 +29,7 @@ settle.fair = require("sim.agents.fair")   -- (S19: fairs)
 local deeds = require("sim.agents.deeds")   -- (S20, D-148)
 local danger = require("sim.agents.danger")
 local conflict = require("sim.agents.conflict")
+local blaze = require("sim.agents.blaze")   -- (S20, R6.5b)
 do
   -- (what one village learns of another: what its people know of places, and of fairs; S20: and
   -- the deeds they know that touch either village)
@@ -54,6 +55,9 @@ local sys = { name = "agents" }
 act.interrupt_hook = function(W, p, at, reason) return sys.interrupt(W, p, at, reason) end
 danger.interrupt = act.interrupt_hook
 danger.person_pos = act.pos
+-- (S20, R6.5b) a household whose house burnt lodges with others (as newcomers do); a death by lightning
+blaze.lodge = function(W, s, hh, now) return settle.migrate.lodge(W, s, hh, now) end
+blaze.kill = function(W, s, p, cause, now) return life.kill_now(W, s, p, cause) end
 local floor, min, max = math.floor, math.min, math.max
 
 -- Event heap (runtime) ------------------------------------------------------------------------
@@ -356,6 +360,9 @@ function sys.hour(W)
       end
       wild.hourly(W, s, now)
       local changed, r = settle.hourly(W, s, now)
+      -- (S20, R6.5b) a thunderstorm's lightning; whatever burns
+      blaze.natural(W, s, now)
+      blaze.hourly(W, s, now)
       if changed then
         rain_change(W, s, now, r)
         if r == 2 then birds.weather(W, s, now, sys.push) end

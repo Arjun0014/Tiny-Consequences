@@ -1262,7 +1262,25 @@ C.V3 = {
   -- wall_logs logs and wall_h hours (at wall_hour_fu a work hour); a taker at a walled pen is noticed
   -- x wall_noise more easily (dogs, cries) and weighs take_wall more risk; wolves are wary (wall_wolves)
   wall_memory = 48, wall_save = 0.7, wall_logs = 10, wall_h = 24, wall_hour_fu = 0.6,
-  wall_noise = 1.35, take_wall = 0.3, wall_wolves = 1.5,          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
+  wall_noise = 1.35, take_wall = 0.3, wall_wolves = 1.5,
+  -- (S20, R6.5b, D-154) fire on the maps: dryness from the soil's water (fire_wet .. fire_dry), less
+  -- in rain; a tree burns fire_tree_h x (0.5 + 0.5 size) hours, a building fire_bld_h; heat grows
+  -- fire_grow an hour (x (0.4 + dryness)), rain takes fire_rain1/fire_rain2 an hour; it reaches
+  -- things within fire_reach (buildings x1.3) with chance fire_spread x heat x dryness x (1 +
+  -- fire_wind downwind) an hour; a building's contents burn fire_contents x heat an hour, anyone
+  -- inside fire_burn x heat; seen within fire_sight (more by night), shouted within fire_shout; water
+  -- thrown takes douse_k of heat within douse_r; a tree burnt thins the planet's woods by
+  -- fire_tree_forest; a house lost weighs house_fu
+  fire_wet = 0.5, fire_dry = 0.18, fire_tree_h = 1.5, fire_bld_h = 1.4, fire_grow = 1.2, fire_rain1 = 0.3, fire_rain2 = 1.4,
+  fire_reach = 0.06, fire_spread = 0.9, fire_wind = 1.0, fire_contents = 0.6, fire_burn = 0.6, fire_sight = 0.9,
+  fire_shout = 0.45, douse_r = 0.1, douse_k = 0.06, fire_tree_forest = 0.0004, house_fu = 60, fire_help_r = 0.9,
+  -- lightning: a strike takes the tallest thing within strike_pull (trees by size x strike_tree, a
+  -- roof strike_roof, a person out of doors strike_person, less 4 a unit of distance); a tree catches
+  -- with strike_ignite x (0.25 + 0.75 dryness), a roof strike_ignite_roof x (0.3 + 0.7 dryness); a
+  -- person is hurt strike_hurt (at 1 they die), those within strike_side strike_side_hurt; thunder heard
+  -- within thunder_sound; a downpour hour sends a strike to the map with chance strike_rate
+  strike_pull = 0.08, strike_tree = 1.0, strike_roof = 0.9, strike_person = 0.5, strike_ignite = 0.5, strike_ignite_roof = 0.45,
+  strike_hurt = { 0.5, 1.15 }, strike_side = 0.025, strike_side_hurt = 0.15, thunder_sound = 4, strike_rate = 0.12,          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
 }
 
 return C

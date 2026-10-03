@@ -490,6 +490,15 @@ local function threat(W, s, w, now, k)
       end
     end
   end
+  -- (S20, R6.5b) fire: anything burning near sets them running
+  if s.burn and #s.burn > 0 then
+    local ra = c.wild_alert * c.wild_alert * 4
+    for q = 1, #s.burn do
+      local o = s.burn[q]
+      local f = (dsq(o.x - wx) + dsq(o.y - wy)) / ra
+      if f < best then bx, by, best = o.x, o.y, f end
+    end
+  end
   -- people about in the woods and fields: where each began what they are doing (state: the
   -- same after a load), hunters where they are now
   local V = W.S.v3
