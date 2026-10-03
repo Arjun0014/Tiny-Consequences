@@ -61,7 +61,19 @@ start hour; the old 14-digit start made a strike land ulps apart - a harness art
   envelope **36.1 ms/h = a 12-day season 10.4 s** (35.3 ms/h, 10.2 s at the start).
 - Untouched 192 d (R6e+lightning): no taking, no lightning casualties, 426 exchanges, deaths old
   age 3 + illness 6, burials.
-- **Next (in order)**: (1) R6.5c wildfire between planet and map (the planet's `F.fire` on a map's
+- **R6.5c done** (eca2268, D-155): `blaze.planet` (planet fire -> map trees at the edge; a local fire that
+  takes hold -> planet fire on its cell); people remember fire seen; premise `named("wildfire")`.
+- **CURRENT TASK: R6.5f part 1 - earthquakes** (`sim/agents/shake.lua` planned): planet boundary stress
+  (`static.boundary`/`bstrength`: convergent and transform cells accumulate, release at a noisy threshold
+  -> a quake at a cell with a magnitude); each village map within reach feels an intensity by distance;
+  each building is damaged by intensity x its construction's vulnerability (log house 1, on stone
+  footings 0.7, hut 0.6, granary 1.2) x (1.3 - condition): cracked (cond down, repair) or collapsed (a
+  ruin: those inside hurt, the badly hurt `trapped` until dug out by neighbours - the urgent choice
+  "dig", hours of work; untended trapped may die); people outdoors thrown down (small hurt); everyone
+  alarmed (shaking): out of buildings, parents to children; afterwards the homeless lodge with kin
+  (`migrate.lodge`) and houses are planned (timber wanted). Premise + tests; then volcanoes (sites in v3
+  worlds from boundaries; eruption: vent, ash, `G.aerosol`).
+- **Older next list**: (1) R6.5c wildfire between planet and map (the planet's `F.fire` on a map's
   cell lights trees at the map's edge; a big local fire writes `F.fire`/`F.forest` back); livestock
   led out of burning pens; fields and stacks burning; carrying the hurt out (rescue). (2) R6.5a gaps:
   bereavement done; a palisade (R6f) and arms carried at night; restocking raids. (3) R6.5d snow on
