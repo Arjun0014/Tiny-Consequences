@@ -857,6 +857,15 @@ function M.register(G)
     return { cards = out, went = went }
   end)
 
+  -- (S21) audio{on = bool}: the world audio's state (beds playing and their gains, one-shots and cues so far).
+  bridge.register("audio", function(args)
+    local audio = require("game.audio.audio")
+    if args.on ~= nil then audio.ON = args.on and true or false end
+    local beds = {}
+    for k, v in pairs(audio.stats.beds) do beds[k] = v end
+    return { ready = audio.ready == true, on = audio.ON, beds = beds, shots = audio.stats.shots, cues = audio.stats.cues, last = audio.stats.last }
+  end)
+
   bridge.register("ui", function(args)
     local W = G.W
     local res = {}

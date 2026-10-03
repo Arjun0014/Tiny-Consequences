@@ -95,6 +95,18 @@ function M.update(self, W, now, dt)
   F.t = 0
   news.update(W, now)
   local cards = news.cards(W, M.N, now)
+  -- (S21) a story new among the cards is heard (game/audio): once, restrained; not on the first look
+  F.heard = F.heard or {}
+  for _, st in ipairs(cards) do
+    if not F.heard[st.id] then
+      F.heard[st.id] = true
+      if F.primed then
+        local ok, audio = pcall(require, "game.audio.audio")
+        if ok and audio.news_cue then audio.news_cue(st, st.root or news.chain(W, st).root) end
+      end
+    end
+  end
+  F.primed = true
   local sig = #cards
   for _, st in ipairs(cards) do sig = sig * 31 + st.id * 7 + #st.lines * 3 + (st.active and 1 or 0) + math.floor((now - st.t1) / 6) end
   F.list = cards
@@ -199,6 +211,7 @@ function M.go(W, st)
   local uistate = require("game.ui.uistate")
   local speed = require("game.platform.speed")
   if not W or not W.v3 or not st then return nil end
+  do local ok, audio = pcall(require, "game.audio.audio"); if ok and audio.ui then audio.ui("ui_click") end end
   local fo = news.focus(W, st)
   local s = W.S.v3.settlements[fo.sid or 0]
   local res = { sid = fo.sid, pid = nil }

@@ -11,6 +11,7 @@ local fx = require("game.view.fx")
 local selring = require("game.view.selring")
 local rivers = require("game.view.rivers")
 local floodwater = require("game.view.floodwater")   -- (S21, R6.5e)
+local audio = require("game.audio.audio")   -- (S21: world audio)
 local trails = require("game.view.trails")
 local feed = require("game.view.feed")
 local aim = require("game.view.aim")
@@ -257,6 +258,16 @@ function M.update(dt)
       agents_view.update(W, dt, camera.zoom, speed.v3_t or W.hour)
     end
     fx.update(W, dt, state.frozen)
+    if W.v3 then
+      if not audio.ready then audio.init() end
+      local ww = state.window_w or 1280
+      audio.update(W, dt, camera.zoom, speed.v3_t or W.hour, { state.focus_x or 0, state.focus_y or 0, state.focus_z or 1 },
+        speed.get(), speed.v3_skipping(), function(ux, uy, uz)
+          local R = state.R
+          local sx = camera.project(ux * R, uy * R, uz * R)
+          return sx and ((sx / ww) - 0.5) * 1.6 or 0
+        end)
+    end
     selring.update(W, dt)
     local armed = powers_ui.armed and powers_ui.DEFS[powers_ui.armed]
     aim.update(W, dt, armed and M.aim_cell or nil, armed and armed.radius or 0)

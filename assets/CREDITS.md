@@ -24,3 +24,9 @@ font declares a Reserved Font Name, so the family names are unchanged.
 |---|---|---|---|---|
 | Universal Animation Library [Standard] (UAL1_Standard.glb: 65-bone skeleton, 43 animations) | Quaternius | CC0 1.0 | `assets/3d-models/ual/` (licence and readme kept) | skeleton and animation source only; the 13.7k-triangle mannequin is not used. `tools/blender/build_villager.py` builds the bespoke villager meshes (`assets/characters/villager_lod*.glb`) on this skeleton and exports 17 of its clips plus two carry clips derived from Walk/Idle |
 | Farm Animals Pack (cow, horse, llama, pig, pug, sheep, zebra; 560-800 triangles, 6 animations each) | Quaternius | CC0 1.0 | `assets/3d-models/animals_quaternius/` (licence kept; .blend sources) | sheep, cow and pig rigs and clips in the game since D-092: `tools/blender/build_animals.py` bakes them (colours into UV, `graze` and `lie` clips derived from Idle, goats made from the sheep with horns and a beard, LODs) into `assets/animals/*.glb` |
+
+## World audio (S21, docs/v3/80_WORLD_AUDIO.md)
+
+| Asset | Made with | Licence / terms | Where |
+|---|---|---|---|
+| 16 ambient beds, 23 action sounds (2-3 takes), 5 interface cues - 71 Ogg Vorbis files | Generated for this game with the ElevenLabs sound effects model (`eleven_text_to_sound_v2`) from the prompts in `assets/audio/manifest.json` by `scripts/gen_audio.mjs` (levelled and encoded with ffmpeg) | Generated on the project owner's ElevenLabs account; use is subject to that account's ElevenLabs terms (commercial use needs a paid plan - check before publishing). No third-party recordings. | `assets/audio/ambient`, `sfx`, `ui` |

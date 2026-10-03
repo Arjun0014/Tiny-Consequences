@@ -66,7 +66,7 @@ max_emitter_count = 512
 max_particle_count = 4096
 
 [sound]
-max_component_count = 64
+max_component_count = 128
 max_sound_instances = 256
 max_sound_sources = 32
 
