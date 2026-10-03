@@ -620,6 +620,28 @@ function M.register(G)
       for _, f in ipairs(s.burn or {}) do out[#out + 1] = string.format("%s%d heat %.2f fuel %.2f", f.kind, f.ref, f.heat, f.fuel) end
       local nf = #(require("game.view.agents_view").local_fires or {})
       return { sett = s.id, name = s.name, burning = table.concat(out, "; "), drawn = nf, acc = string.format("fires %d out %d burnt %d doused %d", s.acc.fires or 0, s.acc.fires_out or 0, s.acc.burnt or 0, s.acc.doused or 0) }
+    elseif args.kind == "pasture_fire" then
+      -- (S22) a dry morning and a stand of trees alight beside a herd at pasture (args.herd: flock | cattle |
+      -- swine; args.off: from its middle; args.n: trees) - where it is, to look at (shots_beasts_fire.mjs)
+      if args.dry then W.F.soil_water[s.cell] = tonumber(args.dry) end
+      local blaze = require("sim.agents.blaze")
+      local stock = require("sim.agents.stock")
+      local now = require("game.platform.speed").v3_t or W.hour
+      local H = assert(s.herds and s.herds[args.herd or "flock"], "no such herd")
+      local cx, cy, k = 0, 0, 0
+      for _, a in ipairs(H.animals) do
+        if a.alive and a.act ~= "pen" then local x, y = stock.pos(a, now); cx, cy, k = cx + x, cy + y, k + 1 end
+      end
+      assert(k > 0, "the herd is in its pen")
+      cx, cy = cx / k, cy / k
+      local ang = (s.key % 97) / 97 * 6.2832
+      local off = tonumber(args.off) or 0.15
+      local px, py = cx + math.cos(ang) * off, cy + math.sin(ang) * off
+      local cand = {}
+      blaze.trees_near(s, px, py, 0.6, function(t, d2) cand[#cand + 1] = { t, d2 } end)
+      table.sort(cand, function(a, b) if a[2] ~= b[2] then return a[2] < b[2] end return a[1] < b[1] end)
+      for q = 1, math.min(tonumber(args.n) or 6, #cand) do if blaze.ignite(W, s, "tree", cand[q][1], now, nil) then n = n + 1 end end
+      return { sett = s.id, name = s.name, added = n, x = cx, y = cy, fx = px, fy = py, beasts = k }
     elseif args.kind == "fire" or args.kind == "strike" then
       -- (S20, R6.5b) a roof set alight / lightning at a house (args.dry: the ground's water)
       if args.dry then W.F.soil_water[s.cell] = tonumber(args.dry) end

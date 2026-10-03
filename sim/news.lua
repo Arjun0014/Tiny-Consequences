@@ -102,10 +102,27 @@ local HOUSE = { house = true, hut = true }
 local BUILDING_WORD = { house = "a house", hut = "a hut", granary = "the granary", woodstore = "the woodstore", fold = "the fold",
   byre = "the byre", sty = "the sty", dock = "the dock", forge = "the forge", well = "the well", saltpan = "the salt pan" }
 
+local ANIMAL = { sheep = "a sheep", goat = "a goat", pig = "a pig", cattle = "a cow", deer = "a deer", reindeer = "a reindeer",
+  antelope = "an antelope", boar = "a boar", wolf = "a wolf", cat = "a wild cat", dog = "a dog" }
+
 local function on_deed(W, R, d, now)
   local s = sett(W, d.at)
   if not s then return end
   local k = d.kind
+  if k == "strike" and ANIMAL[d.what] then
+    -- (S22) lightning on a beast: its own story - who lost it (a household's beast or dog), or a wild one
+    local st = story(W, R, "strike:" .. d.id, "strike", s.id, d.t, { x = d.x, y = d.y, deed = d.id, ev = d.event })
+    st.deed = st.deed or d.id
+    st.title = sfmt("Lightning %s %s at %s", d.dead and "killed" or "struck", ANIMAL[d.what], s.name)
+    if (d.to_hh or 0) ~= 0 then
+      line(st, sfmt("%s %s", d.dead and "Lost by" or "Belongs to", household_name(W, d.to_hh)), d.t)
+    else
+      line(st, d.dead and "A wild one, dead where it stood" or "A wild one: it bolted", d.t)
+    end
+    st.weak = not d.dead and (d.to_hh or 0) == 0
+    st.active = false
+    return
+  end
   if k == "strike" then
     -- lightning: news when it starts a fire or strikes someone (the fire's own story carries on)
     local st = story(W, R, "fire:" .. s.id, "fire", s.id, d.t, { x = d.x, y = d.y, deed = d.id })
@@ -640,7 +657,10 @@ end
 -- Why? -----------------------------------------------------------------------------------------
 local DEED_TEXT = {
   burnt = function(W, d) return sfmt("%s burnt (%s)", BUILDING_WORD[d.what] or ("the " .. d.what), (sett(W, d.at) or {}).name or "?") end,
-  strike = function(W, d) return sfmt("Lightning struck at %s", (sett(W, d.at) or {}).name or "?") end,
+  strike = function(W, d)
+    if ANIMAL[d.what] then return sfmt("Lightning %s %s at %s", d.dead and "killed" or "struck", ANIMAL[d.what], (sett(W, d.at) or {}).name or "?") end
+    return sfmt("Lightning struck at %s", (sett(W, d.at) or {}).name or "?")
+  end,
   flood = function(W, d) return sfmt("The river came over its banks at %s", (sett(W, d.at) or {}).name or "?") end,
   drowned = function(W, d)
     local what = d.what == "corn" and "The ripe corn of %s rotted in the flood" or "A field of %s drowned"

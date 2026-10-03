@@ -106,12 +106,28 @@ function M.lightning_hurts_who_it_strikes()
   local V = W.S.v3
   local s = at(W, 11, 0.3)
   local act = require("sim.agents.act")
+  local c = require("sim.config").V3
+  -- (S22) nothing taller near them to take the bolt instead: no tree or roof within its pull out-tops a
+  -- person at their place (the strike's own rule: height less 4 a unit of distance)
+  local function tallest_near(x, y)
+    local top = -1e9
+    require("sim.agents.blaze").trees_near(s, x, y, c.strike_pull, function(k, d2) top = math.max(top, (s.trees.size[k] or 1) * c.strike_tree - math.sqrt(d2) * 4) end)
+    for _, id in ipairs(s.blist) do
+      local b = s.buildings[id]
+      local d = math.sqrt(((b.cx or b.dx) - x) ^ 2 + ((b.cy or b.dy) - y) ^ 2)
+      if b.state == "standing" and not b.natural and d < c.strike_pull then top = math.max(top, (c.strike_bld[b.kind] or c.strike_roof) - d * 4) end
+    end
+    return top
+  end
   local who
   for _, id in ipairs(s.members) do
     local p = V.people[id]
-    if p.alive and p.inside == 0 and (p.act == "till" or p.act == "harvest" or p.act == "sow" or p.act == "tend") then who = p; break end
+    if p.alive and p.inside == 0 and (p.act == "till" or p.act == "harvest" or p.act == "sow" or p.act == "tend") then
+      local x, y = act.pos(p, W.hour)
+      if tallest_near(x, y) < c.strike_person - 0.05 then who = p; break end
+    end
   end
-  T.ok(who ~= nil, "someone at work in a field")
+  T.ok(who ~= nil, "someone at work in a field, in the open")
   if not who then return end
   local x, y = act.pos(who, W.hour)
   local blaze = require("sim.agents.blaze")

@@ -33,6 +33,7 @@ local nav = require("sim.agents.nav")
 local clock = require("sim.agents.clock")
 local weather = require("sim.agents.weather")
 local stock = require("sim.agents.stock")
+local danger = require("sim.agents.danger")
 
 local M = {}
 M.HI = 3
@@ -128,6 +129,9 @@ end
 
 -- The land tiles of the map's border ring (3 tiles in), walkable: where animals come and go.
 local EDGE = setmetatable({}, { __mode = "k" })
+-- (S22) the border land read from the map as it is (ways closed, rivers re-laid): thrown away at every
+-- year boundary, so a world restored from a save made there goes on exactly as the one it was made from
+function M.year_reset() EDGE = setmetatable({}, { __mode = "k" }) end
 local function edge_ring(s)
   local e = EDGE[s]
   if e then return e end
@@ -492,15 +496,6 @@ local function threat(W, s, w, now, k)
       end
     end
   end
-  -- (S20, R6.5b) fire: anything burning near sets them running
-  if s.burn and #s.burn > 0 then
-    local ra = c.wild_alert * c.wild_alert * 4
-    for q = 1, #s.burn do
-      local o = s.burn[q]
-      local f = (dsq(o.x - wx) + dsq(o.y - wy)) / ra
-      if f < best then bx, by, best = o.x, o.y, f end
-    end
-  end
   -- people about in the woods and fields: where each began what they are doing (state: the
   -- same after a load), hunters where they are now
   local V = W.S.v3
@@ -803,6 +798,125 @@ local function on_trail(lead, lx, ly, back)
 end
 
 -- The end of wild animal w's action at time now: the next.
+-- (S22) Wild animal w dies on the map (fire, lightning): dead where it is, a carcass; its herd or pack on
+-- the planet is one fewer.
+function M.dies(W, s, w, now, cause)
+  local fauna = require("sim.systems.fauna")
+  local A = W.S.wild
+  local x, y = M.pos(w, now)
+  w.alive, w.died, w.cause = false, now, cause
+  w.ver = w.ver + 1
+  w.x, w.y, w.tx, w.ty = x, y, x, y
+  if w.pred then
+    local i = fauna.find_pack(W, w.gid)
+    if i then A.p_n[i] = max(0, A.p_n[i] - 1) end
+  else
+    local i = fauna.find_herd(W, w.gid)
+    if i then fauna.take_from_herd(W, i, 1, false) end
+  end
+  s.wildlife.carcasses[#s.wildlife.carcasses + 1] = { x = x, y = y, sp = w.sp, t = now, meat = WP(w.sp).meat * 0.5,
+    hide = WP(w.sp).hide or 1, by = cause }
+  s.acc["wild_" .. cause] = (s.acc["wild_" .. cause] or 0) + 1
+end
+
+-- (S22) Fire f has caught (or roared up): the wild animals that see or smell it look up, each in its
+-- own time (the alert sooner, one lying up later, the near sooner).
+function M.fire_alarm(W, s, f, now)
+  local c = C()
+  local Wd = s.wildlife
+  if not Wd then return end
+  local r = c.beast_notice * 1.2 * (danger.night_at(W, s, now) and 1.3 or 1)
+  for _, w in ipairs(Wd.animals) do
+    if w.alive and w.act ~= "leave" then
+      local x, y = M.pos(w, now)
+      local d = danger.fire_edge(s, f, x, y)
+      if d < r then
+        local at = now + c.beast_notice_h * 0.7 * (0.3 + 0.9 * (1 - stock.trait(w, stock.T_ALERT))) * (w.act == "rest" and 1.5 or 1)
+          * (0.5 + d / r) + 0.008 * u(W, s, w, now, 33)
+        decide_at(W, s, w, now, at)
+      end
+    end
+  end
+end
+
+-- (S22) The flames of burning thing f lived from t for dt: a wild animal within them is burnt (dead
+-- when its strength is gone).
+function M.scorch(W, s, f, t, dt)
+  local c = C()
+  local Wd = s.wildlife
+  if not Wd then return end
+  local reach = c.fire_scorch + c.fire_scorch_heat * f.heat
+  local pad = reach + 0.6 + (f.r or 0)
+  for _, w in ipairs(Wd.animals) do
+    if w.alive and w.act ~= "leave" and dsq(w.tx - f.x) + dsq(w.ty - f.y) < pad * pad then
+      local x, y = M.pos(w, t)
+      if danger.fire_edge(s, f, x, y) < reach then
+        w.hp = (w.hp or 1) - c.fire_beast * f.heat * dt
+        if w.hp <= 0 then M.dies(W, s, w, t, "fire") end
+      end
+    end
+  end
+end
+
+-- (S22) A band's grazing ground caught by a fire is moved off it - beyond the band's safe distance,
+-- the way away from all that burns there.
+local function ground_off_fire(s, gr, c)
+  local f, fd, px, py = danger.fire_near(s, gr[1], gr[2], c.wild_fire_safe)
+  if not f then return end
+  local pl = sqrt(px * px + py * py)
+  if pl < 1e-9 then px, py = gr[1] - f.x, gr[2] - f.y; pl = sqrt(px * px + py * py) end
+  if pl < 1e-9 then return end
+  local mv = c.wild_fire_safe - fd + 0.1
+  local nx, ny = gr[1] + px / pl * mv, gr[2] + py / pl * mv
+  local i = mapm.tile_of(s, nx, ny)
+  if i > 0 and s.land[i] == 1 then gr[1], gr[2] = nx, ny end
+end
+
+-- (S22) Fire, seen and smelt by its own extent: a grazer or a wolf runs from it its own way (away from all
+-- that burns about it, bent to its own side, never toward another fire) until it is its own safe
+-- distance off; a grazer's band moves its ground off the fire and those of the band near see it run; a
+-- wolf gives up the hunt. True when it is running.
+local function fire_flight(W, s, w, now, S, c)
+  local see = c.beast_fire_see * 1.2
+  if not w.pred then
+    local gr = s.wildlife.ground and s.wildlife.ground[w.gid]
+    if gr then ground_off_fire(s, gr, c) end
+  end
+  local f, fd, px, py = danger.fire_near(s, w.tx, w.ty, see)
+  if not f then return false end
+  local safe = c.wild_fire_safe * (0.75 + 0.6 * (1 - stock.trait(w, stock.T_BOLD)))
+  if fd >= safe then return false end
+  local pl = sqrt(px * px + py * py)
+  local hx, hy
+  if pl > 1e-9 then
+    hx, hy = px / pl, py / pl
+  else
+    hx, hy = w.tx - f.x, w.ty - f.y
+    local l = sqrt(hx * hx + hy * hy)
+    if l < 1e-6 then hx, hy, l = 1, 0, 1 end
+    hx, hy = hx / l, hy / l
+  end
+  local bend = (stock.trait(w, stock.T_SIDE) - 0.5) * c.beast_fan + (u(W, s, w, now, 30) - 0.5) * 0.5
+  local run = min(safe - fd + S.sep * (1 + u(W, s, w, now, 31)), c.wild_flee)
+  local pace = 0.85 + 0.3 * stock.trait(w, stock.T_PACE)
+  for q = 0, 6 do
+    local ang = bend + (q == 0 and 0 or ((q % 2 == 1) and 1 or -1) * 0.5 * floor((q + 1) / 2))
+    local ca, sa = cos(ang), sin(ang)
+    local ex, ey = hx * ca - hy * sa, hy * ca + hx * sa
+    local tx, ty = w.tx + ex * run, w.ty + ey * run
+    local _, d2 = danger.fire_near(s, tx, ty, see)
+    if (not d2 or d2 > fd + run * 0.25) and go_to(s, w, now, tx, ty, S.run * pace, "flee") then
+      w.fled = now
+      w.hx, w.hy = ex, ey
+      w.flee_x, w.flee_y, w.flee_from = nil, nil, nil
+      w.why = "Running from the fire"
+      if w.pred then w.prey = nil else M.alarm(W, s, w, now, f.x, f.y) end
+      return true
+    end
+  end
+  return false
+end
+
 function M.step(W, s, w, now)
   local c = C()
   local S = WP(w.sp)
@@ -814,6 +928,8 @@ function M.step(W, s, w, now)
     w.alive, w.gone, w.died = false, true, now
     return
   end
+  -- (S22) fire: grazers and wolves alike run from it by its own extent, each its own way
+  if s.burn and #s.burn > 0 and fire_flight(W, s, w, now, S, c) then return end
   if w.pred then
     -- (a dog within hearing of a wolf wakes and barks: D-105)
     for _, dg in ipairs(s.dogs or {}) do

@@ -1283,7 +1283,7 @@ local function ask_kin_candidate(W, s, p, ctx, now, fat)
   local home = ctx.home
   local n = max(1, #hh.members)
   local days = (people.pantry(home) + (home.stock.meals or 0)) / (n * 0.75)
-  local vdays = s.need and s.need.food_days or 99
+  local vdays = s.need and s.need.store_days or 99   -- (S22: the granary they could draw on)
   if days >= c.kin_ask_days or vdays >= c.kin_ask_village then return end
   local V = W.S.v3
   local day = floor(now / 24)

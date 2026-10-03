@@ -26,8 +26,22 @@ function M.road(W, a, b)
   return d, d / C().road_speed
 end
 
+-- (S22) The runtime caches that read the world as it is (who is alive, where docks stand, the woods,
+-- snow and rivers a road crosses) are thrown away at every year boundary (M.year_reset): a world saved
+-- at a year boundary and restored then goes on exactly as the world it was saved from (before, a live
+-- world priced its roads by the woods of years ago and a restored one by today's, and their histories
+-- split), and a place founded since is found as a partner within the year.
+local PARTNERS, SEA, TOSITE, LROUTES, LRIV
+function M.year_reset(W)
+  PARTNERS = setmetatable({}, { __mode = "k" })
+  SEA = setmetatable({}, { __mode = "k" })
+  TOSITE = setmetatable({}, { __mode = "k" })
+  LROUTES = setmetatable({}, { __mode = "k" })
+  LRIV = setmetatable({}, { __mode = "k" })
+end
+M.year_reset()
+
 -- Settlements reachable on foot from s (the same landmass, within reach), nearest first.
-local PARTNERS = setmetatable({}, { __mode = "k" })
 function M.partners(W, s)
   local P = PARTNERS[s]
   if P then return P end
@@ -138,7 +152,6 @@ end
 -- (S18, R5) The sea way from village s to the shore at planet cell `cell` (a place to found): to the
 -- ocean cell within two rings of it its boats reach in fewest steps (ties by cell). Returns
 -- { cells, len } like sea_route, or false. Runtime cache.
-local TOSITE = setmetatable({}, { __mode = "k" })
 function M.sea_route_to(W, s, cell)
   local cache = TOSITE[s]
   if not cache then cache = {}; TOSITE[s] = cache end
@@ -173,7 +186,6 @@ function M.sea_route_to(W, s, cell)
 end
 
 -- Settlements reachable by sea from s (both with docks, within sea_reach), nearest first.
-local SEA = setmetatable({}, { __mode = "k" })
 function M.sea_partners(W, s)
   local P = SEA[s]
   if P then return P end
@@ -270,8 +282,6 @@ end
 -- dearer: a ford found, a raft made). Passes and fords matter because the way goes round what
 -- costs. Returns { cells = {c0 ... c1}, len = local units, hrs = hours walked } or false (no way by
 -- land). Runtime cache (the geography does not change while a world runs).
-local LROUTES = setmetatable({}, { __mode = "k" })
-local LRIV = setmetatable({}, { __mode = "k" })
 local function river_flow(W)
   local r = LRIV[W]
   if r then return r end

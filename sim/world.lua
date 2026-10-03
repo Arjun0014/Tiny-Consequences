@@ -129,11 +129,34 @@ end
 -- Handlers: world.COMMANDS[type] = function(W, params) ... end
 world.COMMANDS = {}
 
--- Queue a command; it's applied at the start of the next hour processed and logged then.
+-- Queue a command; it's applied at the start of the next hour processed and logged then. (S22) In a v3
+-- world a command given while an hour is open (the game between frames, the agents part-way through the
+-- hour) is applied at its own moment - the agents' clock when it was given - at the next advance, before
+-- any more time passes, and logged with that moment (`at`): a bolt aimed at a sheep falls where the
+-- sheep is, not an hour later where it has wandered from.
 function world.command(W, ctype, params)
   if not world.COMMANDS[ctype] then error("unknown command " .. tostring(ctype)) end
   local p = W.pending
-  p[#p + 1] = { hour = W.hour, type = ctype, params = params or {} }
+  local at = (W.v3 and W.hour_open and W.S.v3) and W.S.v3.now or nil
+  p[#p + 1] = { hour = W.hour, at = at, type = ctype, params = params or {} }
+end
+
+-- (S22) v3: the commands given part-way through the open hour, applied now (at their own moment).
+local function apply_now(W)
+  local p = W.pending
+  if #p == 0 then return end
+  local keep = {}
+  for i = 1, #p do
+    local cmd = p[i]
+    if cmd.at then
+      cmd.hour = W.hour
+      W.cmdlog[#W.cmdlog + 1] = cmd
+      world.COMMANDS[cmd.type](W, cmd.params)
+    else
+      keep[#keep + 1] = cmd
+    end
+  end
+  W.pending = keep
 end
 
 local function apply_commands(W)
@@ -225,6 +248,7 @@ end
 -- limit). Returns the number of hours closed.
 function world.advance(W, t, max_hours)
   local n = 0
+  if W.hour_open and #W.pending > 0 then apply_now(W) end
   while W.hour + 1 <= t do
     if max_hours and n >= max_hours then return n end
     if not W.hour_open then world.begin_hour(W) end

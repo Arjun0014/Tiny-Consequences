@@ -151,6 +151,7 @@ function M.update(W, dt)
       M.snow_since = (M.snow_since or 0) + dt
       if M.snow_since > 0.5 then
         M.snow_since = 0
+        cellcolor.close = require("game.view.camera").zoom > 1.0   -- (S22: the maps' own fire close in)
         local ch = cellcolor.map_snow(W)
         local any = false
         for i = 1, #ch do if update_cell(W, ch[i]) then any = true end end

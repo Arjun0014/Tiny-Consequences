@@ -96,8 +96,26 @@ function M.map_snow(W)
     local o = so[cl]
     if not o or o - v > 0.02 or v - o > 0.02 then so[cl] = v; changed[#changed + 1] = cl end
   end
+  -- (S22) close in, a village's map shows its own fire - flames where its trees, roofs and fields burn -
+  -- so the planet's fire on the cells it covers (a fire somewhere in a cell far larger than the map) is
+  -- not painted over the whole map's ground: beasts grazing well away from the flames stood on glowing
+  -- ground as if in the fire. From afar the cell glows as before.
+  local fh = M.fire_hide
+  local hide = M.fire_new or {}
+  for k in pairs(hide) do hide[k] = nil end
+  M.fire_new = hide
+  if V and M.close then
+    for _, s in ipairs(V.settlements) do
+      if s.alive and s.cell_of then
+        for _, cl in ipairs(cells_of(s)) do if (W.F.fire[cl] or 0) > 0 then hide[cl] = true end end
+      end
+    end
+  end
+  for cl in pairs(fh) do if not hide[cl] then fh[cl] = nil; changed[#changed + 1] = cl end end
+  for cl in pairs(hide) do if not fh[cl] then fh[cl] = true; changed[#changed + 1] = cl end end
   return changed
 end
+M.fire_hide = {}
 
 --- Computes the 16 bytes of cell c into out[base+1..base+16].
 function M.cell(W, c, out, base)
@@ -146,7 +164,8 @@ function M.cell(W, c, out, base)
   -- burn scars fade back to green over scar_expire ticks
   local ash = 0
   local scar = F.burn_scar[c]
-  if F.fire[c] > 0 then ash = 1
+  local fire = M.fire_hide[c] and 0 or F.fire[c]
+  if fire > 0 then ash = 1
   elseif scar > 0 then ash = clamp01(1 - scar / 240) * 0.85 end
   if biome == B_ASH then ash = max(ash, 0.8) end
   if ash > 0 then r, gg, b = mixc(r, gg, b, C.ash, ash) end
@@ -159,7 +178,7 @@ function M.cell(W, c, out, base)
   if dry > 0 then r, gg, b = mixc(r, gg, b, C.dry, dry * 0.55) end
   out[base + 1], out[base + 2], out[base + 3] = byte(r), byte(gg), byte(b)
   out[base + 4] = byte(max(F.ice[c], M.snow_over[c] or 0))
-  out[base + 5] = byte(F.fire[c])
+  out[base + 5] = byte(fire)
   out[base + 6] = byte(ash)
   out[base + 7] = byte(dry)
   out[base + 8] = byte(clamp01(grass))

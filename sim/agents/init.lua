@@ -68,6 +68,17 @@ blaze.rouse_pen = function(W, s, b, now)
   local H = stock.herd_of_pen(s, b)
   if H then stock.rouse(W, s, H, now) end
 end
+-- (S22) every animal on the map sees and smells fire by its own extent; those in its flames burn
+blaze.alarm_beasts = function(W, s, f, now)
+  stock.fire_alarm(W, s, f, now)
+  wild.fire_alarm(W, s, f, now)
+  dogs.fire_alarm(W, s, f, now)
+end
+blaze.scorch = function(W, s, f, t, dt)
+  stock.scorch(W, s, f, t, dt)
+  wild.scorch(W, s, f, t, dt)
+  dogs.scorch(W, s, f, t, dt)
+end
 shake.wave = tsunami.from_quake
 volcano.wave = tsunami.raise
 shake.lodge = blaze.lodge
@@ -85,19 +96,26 @@ local function rt(W)
   if not R then
     R = { t = {}, id = {}, ver = {}, n = 0 }
     W.v3rt = R
-    -- rebuild from the people (id order) and the animals (D-089)
+    -- rebuild from the people (id order) and the animals (D-089). (S22) Never in the past: an agent whose
+    -- next step lies before now had none waiting in the live world's queue - a step at its old time
+    -- set the world's clock back and lived through years in an instant (a child born years before and
+    -- never scheduled felled hundreds of trees on a restored world's first minute) - it goes on from now.
     local V = W.S.v3
+    local now = V.now or W.hour
+    local function at_now(t) if t < now then return now end return t end
     for i = 1, #V.order do
       local p = V.people[V.order[i]]
       if p and p.alive then
         local at = p.int_at and p.int_at < p.t1 and p.int_at or p.t1
-        sys.push(W, at, p.id, p.ver)
+        sys.push(W, at_now(at), p.id, p.ver)
       end
     end
     for _, s in ipairs(V.settlements) do
-      stock.each(s, function(H, a) sys.push(W, a.t1, stock.event_id(s, H, a), a.ver) end)
-      wild.each(s, function(w) sys.push(W, w.t1, wild.event_id(s, w), w.ver) end)
-      birds.each(s, function(f) sys.push(W, f.t1, birds.event_id(s, f), f.ver) end)
+      stock.each(s, function(H, a) sys.push(W, at_now(a.t1), stock.event_id(s, H, a), a.ver) end)
+      wild.each(s, function(w) sys.push(W, at_now(w.t1), wild.event_id(s, w), w.ver) end)
+      -- (S22: the dogs too - a world restored from a save had every dog standing still for good)
+      for _, d in ipairs(s.dogs or {}) do if d.alive then sys.push(W, at_now(d.t1), dogs.event_id(s, d), d.ver or 0) end end
+      birds.each(s, function(f) sys.push(W, at_now(f.t1), birds.event_id(s, f), f.ver) end)
     end
   end
   return R
@@ -124,6 +142,8 @@ function sys.push(W, t, id, ver)
   T[i], I[i], Vv[i] = t, id, ver
 end
 wild.push = function(W, t, id, ver) return sys.push(W, t, id, ver) end
+-- (S22) a newborn's first step (a queue built afresh holds every living person already)
+life.push = function(W, t, id, ver) if W.v3rt then sys.push(W, t, id, ver) else rt(W) end end
 
 -- (S14) Bottom-up: the hole left by the root goes down to a leaf along the smaller children (one
 -- comparison a level), then the last entry is sifted up from there (it is large: few levels).
@@ -430,6 +450,14 @@ function sys.hour(W)
       end
     end
   end
+end
+
+-- (S22) At each year boundary (where saves are made): the runtime caches that read the world as it is
+-- are thrown away, so a world restored from a save made here goes on exactly as the one it was made from.
+function sys.year(W)
+  if not W.S.v3 then return end
+  settle.trade.year_reset(W)
+  wild.year_reset(W)
 end
 
 function sys.init(W)

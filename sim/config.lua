@@ -1329,10 +1329,35 @@ C.V3 = {
   snow_load_k = 0.6, ash_load_k = 1.0, roof_crack = 0.75, frost_t = -2, frost_t_winter = -12, frost_span = 6,
   frost_k = 0.5, snow_barefoot = 2,
   premise_cold = 22, premise_aerosol = 12,
-  -- (S20, R6.5b) beasts and fire: a beast runs from a fire within beast_fire_r (out of its pen only
-  -- when the gate is open - H.loose for loose_h hours - or a fold is well alight), crying out within
-  -- beast_cry; shut in a burning pen it loses fire_beast x heat health an hour
-  beast_fire_r = 0.2, beast_cry = 0.6, fire_beast = 1.5, loose_h = 3,
+  -- (S20, R6.5b) beasts and fire: out of its pen only when the gate is open - H.loose for loose_h
+  -- hours - or a fold is well alight; its cry carries beast_cry; in the flames (fire_scorch +
+  -- fire_scorch_heat x heat of a burning thing's edge: shut in a burning pen, trapped) it loses
+  -- fire_beast x heat health an hour (wild animals and dogs alike).
+  -- (S22) The fire by its own extent (a tree's crown fire_crown, a building's walls, a field's edges:
+  -- danger.fire_near). A beast notices something catching or roaring up within beast_notice of it (x1.3
+  -- by night: the glow) after its own delay - beast_notice_h x (0.3 + 0.9 x how slow it is to notice),
+  -- x1.6 lying down, nearer sooner; it sees fire within beast_fire_see whenever it looks; it runs at
+  -- beast_run x its speed its own way out (the way away from all that burns about it, bent to its own
+  -- side by up to beast_fan, a stretch of at most beast_flee_hop at a time, never toward another fire)
+  -- until the fire is its own safe distance off (beast_safe x (0.75 + 0.6 x timid)); while anything burns
+  -- within beast_keep of where it is kept (the herder, the ground, the pen - or of the way there) it keeps
+  -- about where it got to; it cries out within beast_cry_r of the fire. Wild animals run to wild_fire_safe
+  -- and dogs to dog_fire_safe.
+  beast_cry = 0.6, fire_beast = 1.5, loose_h = 3,
+  fire_crown = 0.012, fire_scorch = 0.015, fire_scorch_heat = 0.025,
+  beast_notice = 0.6, beast_notice_h = 0.06, beast_fire_see = 0.6, beast_run = 2.4, beast_fan = 1.1, beast_flee_hop = 0.25,
+  beast_safe = 0.45, beast_keep = 0.4, beast_cry_r = 0.25, wild_fire_safe = 0.6, dog_fire_safe = 0.35,
+  -- (S22) lightning on beasts: a beast out of doors (a fold is open to the sky; a byre or a sty has a roof)
+  -- is a target by its height (a person is strike_person); struck it loses strike_hurt x strike_beast_k
+  -- health (a wild animal or a dog dies past strike_beast_die); those within strike_side x
+  -- strike_side_beast of it (four feet apart: the ground's current) lose strike_side_hurt x 2
+  strike_beast = { sheep = 0.27, goat = 0.27, pig = 0.24, cattle = 0.42, deer = 0.36, reindeer = 0.38, antelope = 0.34,
+    boar = 0.27, wolf = 0.26, cat = 0.24, dog = 0.24 },
+  strike_beast_k = 1.4, strike_beast_die = 1.0, strike_side_beast = 1.6,
+  -- (S22) a building's height to the bolt (strike_roof for any other): a fold of hurdles or a hay rack is
+  -- low, a house's roof high
+  strike_bld = { house = 0.9, granary = 0.9, byre = 0.8, forge = 0.7, woodstore = 0.6, sty = 0.5, camp = 0.4, clamp = 0.4,
+    well = 0.35, fold = 0.3, rack = 0.3, boat = 0.3, dock = 0.2, bridge = 0.2, saltpan = 0.15, tanpit = 0.1 },
   -- (S20, R6) fear of a place: the unanswered harms people did to a household (its neighbours' at
   -- deed_kin_k), faded, push it to leave mig_fear_k x min(1, worth / fear_fu); a village whose people
   -- did them draws it 2 x as much less

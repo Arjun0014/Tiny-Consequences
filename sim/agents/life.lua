@@ -115,6 +115,10 @@ local function birth(W, s, mother, now)
   if father then people.remember(father, now, "A child, " .. baby.name .. ", was born") end
   if W.record_events then events.emit(W, "birth", s.cell, 0, 1, { settlement = s.id, person = baby.id }) end
   s.acc.births = (s.acc.births or 0) + 1
+  -- (S22) the baby's own life begins now: its first step in the agents' queue (before, everyone born in a
+  -- running world was never scheduled - babies stayed where they were born, and grew into children who
+  -- never walked, ate or played until a save was loaded)
+  if M.push then M.push(W, now, baby.id, baby.ver) end
   return baby
 end
 

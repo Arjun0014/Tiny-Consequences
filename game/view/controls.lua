@@ -55,6 +55,32 @@ function M.fly_to_selection(W, zoom)
   if x then camera.fly_to_dir(x, y, z, zoom or math.max(camera.tzoom, 0.6)) end
 end
 
+-- (S22) Where the person or beast picked (sel) stands now on map s (only one of that map), or nil. Reads
+-- the world; never writes it.
+function M.entity_xy(W, s, sel)
+  if not sel or not W.S.v3 then return nil end
+  local now = W.S.v3.now or W.hour
+  if sel.kind == "person" and sel.v3 then
+    local p = W.S.v3.people[sel.id]
+    if p and p.alive and (p.at or p.sett) == s.id and p.inside == 0 then return require("sim.agents.act").pos(p, now) end
+  elseif sel.kind == "beast" and sel.sid == s.id then
+    if sel.grp == "wild" then
+      local wild = require("sim.agents.wild")
+      local w = s.wildlife and wild.byk(s, sel.k)
+      if w and w.alive then return wild.pos(w, now) end
+    elseif sel.grp == "dog" then
+      local dogs = require("sim.agents.dogs")
+      local dg = dogs.byk(s, sel.k)
+      if dg and dg.alive then return dogs.pos(dg, now) end
+    else
+      local H = s.herds and s.herds[sel.grp]
+      local a = H and H.animals[sel.k]
+      if a and a.alive then return require("sim.agents.stock").pos(a, now) end
+    end
+  end
+  return nil
+end
+
 -- Cast the armed power at the pointer (Lightning prefers a ship or villager under it).
 function M.cast(W, sx, sy)
   local d = powers.DEFS[powers.armed]
@@ -62,7 +88,11 @@ function M.cast(W, sx, sy)
   if not c then return false end
   local opts = {}
   if W.v3 and ux and W.S.v3 then
-    -- (S21, R7) close to a village, the point on its map (lightning lands there; the rest by their cells)
+    -- (S21, R7) close to a village, the point on its map (lightning lands there; the rest by their cells).
+    -- (S22) The ground under the pointer by the terrain's height; lightning aimed at a person or a beast
+    -- under the pointer comes down where that one stands (the tallest thing near it still takes it).
+    local gx, gy, gz = picking.ground_at(W, sx, sy)
+    if gx then ux, uy, uz = gx, gy, gz end
     local mapm = require("sim.agents.map")
     local best, bd = nil, 0.985
     for _, s in ipairs(W.S.v3.settlements) do
@@ -74,6 +104,10 @@ function M.cast(W, sx, sy)
     end
     if best then
       local x, y = mapm.local_of(best, ux, uy, uz)
+      if d.id == "lightning" then
+        local ex, ey = M.entity_xy(W, best, picking.pick(W, sx, sy))
+        if ex then x, y = ex, ey end
+      end
       local i = x and mapm.tile_of(best, x, y) or 0
       if i > 0 then opts.sid, opts.x, opts.y = best.id, x, y end
     end
@@ -100,6 +134,11 @@ function M.hover(W, sx, sy)
   local view = require("game.view.view")
   local c, ux, uy, uz = picking.cell_at(W, sx, sy)
   view.aim_cell = c
+  -- (S22) the ring sits on the ground under the pointer (the terrain's height), where the bolt would land
+  if W.v3 and c then
+    local gx, gy, gz = picking.ground_at(W, sx, sy)
+    if gx then ux, uy, uz = gx, gy, gz end
+  end
   view.aim_point = view.aim_point or {}
   view.aim_point[1], view.aim_point[2], view.aim_point[3] = ux, uy, uz
 end

@@ -14,6 +14,7 @@ local mapm = require("sim.agents.map")
 local stock = require("sim.agents.stock")
 local people = require("sim.agents.people")
 local rng = require("sim.rng")
+local danger = require("sim.agents.danger")
 
 local M = {}
 local floor, max, min, sqrt, cos, sin = math.floor, math.max, math.min, math.sqrt, dmath.cos, dmath.sin
@@ -38,7 +39,14 @@ function M.pos(d, t)
   return d.x + (d.tx - d.x) * f, d.y + (d.ty - d.y) * f
 end
 
+-- (S22) a dog does not go toward a fire: a way whose end lies within dog_fire_safe of anything burning
+-- is not taken (it keeps where it is instead - `stand` says so)
+local fire_refused = false
 local function go_to(s, d, now, x, y, speed, act)
+  if act ~= "flee" and s.burn and #s.burn > 0 and danger.fire_near(s, x, y, C().dog_fire_safe) then
+    fire_refused = true
+    return false
+  end
   local i = mapm.tile_of(s, x, y)
   if i == 0 or s.cost[i] < 0 then
     local fx, fy = mapm.free_spot(s, x, y, 3)
@@ -55,6 +63,10 @@ local function go_to(s, d, now, x, y, speed, act)
 end
 
 local function stand(d, now, act, dur)
+  if fire_refused then
+    d.why = "Keeping away from the fire"
+    fire_refused = false
+  end
   d.x, d.y = d.tx, d.ty
   d.act, d.t0, d.t1 = act, now, now + max(0.05, dur)
 end
@@ -217,6 +229,30 @@ function M.step(W, s, d, now)
       if dd > 0.04 and go_to(s, d, now, qx + 0.02, qy - 0.015, c.dog_trot, "walk") then return end
       stand(d, now, "sit", 0.2)
       return
+    end
+  end
+  -- (S22) fire, seen and smelt by its own extent: away from it, its own way, until it is far enough off
+  fire_refused = false
+  if s.burn and #s.burn > 0 then
+    local f, fd, px, py = danger.fire_near(s, d.tx, d.ty, c.beast_fire_see)
+    if f and fd < c.dog_fire_safe then
+      local pl = sqrt(px * px + py * py)
+      local hx, hy = px / max(pl, 1e-9), py / max(pl, 1e-9)
+      if pl < 1e-9 then hx, hy = 1, 0 end
+      local bend = ((d.k * 0.618034) % 1 - 0.5) * c.beast_fan + (u(W, s, d, now, 30) - 0.5) * 0.5
+      local run = min(c.dog_fire_safe - fd + 0.04, c.beast_flee_hop)
+      for q = 0, 6 do
+        local ang = bend + (q == 0 and 0 or ((q % 2 == 1) and 1 or -1) * 0.5 * floor((q + 1) / 2))
+        local ca, sa = cos(ang), sin(ang)
+        local ex, ey = hx * ca - hy * sa, hy * ca + hx * sa
+        local tx, ty = d.tx + ex * run, d.ty + ey * run
+        local _, d2 = danger.fire_near(s, tx, ty, c.beast_fire_see)
+        if (not d2 or d2 > fd + run * 0.25) and go_to(s, d, now, tx, ty, c.dog_run, "flee") then
+          d.act = "run"
+          d.why = "Running from the fire"
+          return
+        end
+      end
     end
   end
   local home = s.buildings[hh.home or 0]
@@ -412,6 +448,58 @@ function M.step(W, s, d, now)
   end
   -- (by night a dog at the pen wakes at once to wolves: wild.lua interrupts it)
   stand(d, now, night and "lie" or (u(W, s, d, now, 3) < 0.5 and "lie" or "sit"), night and 1.5 or 0.8 + 0.8 * u(W, s, d, now, 4))
+end
+
+-- (S22) Dog d dies on the map (fire, lightning): its household remembers.
+function M.dies(W, s, d, now, cause, what)
+  d.alive, d.died, d.cause = false, now, cause
+  d.ver = (d.ver or 0) + 1
+  d.x, d.y = M.pos(d, now)
+  d.tx, d.ty = d.x, d.y
+  s.acc["dogs_" .. cause] = (s.acc["dogs_" .. cause] or 0) + 1
+  local hh = W.S.v3.households[d.hh]
+  if hh then
+    hh.dog_lost = floor(now / 24)
+    for _, id in ipairs(hh.members) do
+      local q = W.S.v3.people[id]
+      if q and q.alive and not q.at and q.sett == s.id then people.remember(q, now, what) end
+    end
+  end
+end
+
+-- (S22) Fire f has caught (or roared up): the dogs that see or smell it look up at once (a dog's nose).
+function M.fire_alarm(W, s, f, now)
+  local c = C()
+  local r = c.beast_notice * 1.3
+  for _, d in ipairs(s.dogs or {}) do
+    if d.alive then
+      local x, y = M.pos(d, now)
+      local dd = danger.fire_edge(s, f, x, y)
+      if dd < r and d.t1 > now + 0.02 then
+        d.x, d.y = x, y
+        d.tx, d.ty = x, y
+        d.t0, d.t1 = now, now + 0.005 + 0.02 * dd / r
+        d.act = d.act == "walk" and "sit" or d.act
+        d.ver = (d.ver or 0) + 1
+        if M.push then M.push(W, d.t1, M.event_id(s, d), d.ver) end
+      end
+    end
+  end
+end
+
+-- (S22) The flames of burning thing f lived from t for dt: a dog within them is burnt.
+function M.scorch(W, s, f, t, dt)
+  local c = C()
+  local reach = c.fire_scorch + c.fire_scorch_heat * f.heat
+  for _, d in ipairs(s.dogs or {}) do
+    if d.alive then
+      local x, y = M.pos(d, t)
+      if danger.fire_edge(s, f, x, y) < reach then
+        d.hp = (d.hp or 1) - c.fire_beast * f.heat * dt
+        if d.hp <= 0 then M.dies(W, s, d, t, "fire", "Our dog was caught in the fire") end
+      end
+    end
+  end
 end
 
 -- Interrupting a dog (a wolf came near): its next step now.

@@ -39,5 +39,6 @@ return {
   "tests.sim.unit.test_v3_kin",
   "tests.sim.unit.test_v3_news",
   "tests.sim.unit.test_v3_powers",
+  "tests.sim.unit.test_v3_beasts_fire",
   "tests.sim.unit.test_v3_namespace",
 }

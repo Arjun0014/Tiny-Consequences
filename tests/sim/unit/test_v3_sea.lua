@@ -51,7 +51,9 @@ function M.an_island_household_moves_by_sea()
   -- fishers, their larders full of the catch, would stay and sail the others over: test_v3_ferry)
   for i = 1, #H.land do if H.land[i] == 0 then W.F.fish[H.cell_of[i]] = 0 end end
   starve()
-  Z.granary.stock.grain = Z.granary.stock.grain + 3000
+  -- (S22: what Z has, as heard - before, 3000 grain were added to Z's granary, and relief by sea from such
+  -- a surplus could feed the island for good once the babies born on the way lived their own lives and the
+  -- world's course changed; the household moving is the island's answer to hunger, not to plenty abroad)
   econ.learn(W, H, Z, W.hour)
   local t0 = W.hour
   local decided, arrived_h, sailed, rode, walked_road = nil, nil, 0, 0, 0

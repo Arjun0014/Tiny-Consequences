@@ -87,4 +87,58 @@ function M.fresh(p, now, h)
   return a ~= nil and now - a.t <= (h or C().alarm_h)
 end
 
+-- (S22) Fire as a danger at a place, for anything that sees and smells it (beasts, wild animals, dogs):
+-- the burning things of map s (blaze.lua's s.burn) by their own extent - a tree's crown, a building's
+-- walls, a field's edges - never by a point at their middle.
+local mapm = require("sim.agents.map")
+function M.fire_edge(s, f, x, y)
+  if f.kind == "bld" then
+    local b = s.buildings[f.ref]
+    if b and b.ix0 then
+      local T = s.T
+      local x0, y0 = mapm.ixy_xy(s, b.ix0, b.iy0)
+      local ex = max(x0 - 0.5 * T - x, 0, x - (x0 + (b.w - 0.5) * T))
+      local ey = max(y0 - 0.5 * T - y, 0, y - (y0 + (b.h - 0.5) * T))
+      return sqrt(ex * ex + ey * ey)
+    end
+  elseif f.kind == "plot" then
+    local pl = s.plots[f.ref]
+    if pl then
+      local ex = max(pl.x0 - x, 0, x - pl.x1)
+      local ey = max(pl.y0 - y, 0, y - pl.y1)
+      return sqrt(ex * ex + ey * ey)
+    end
+  end
+  local dx, dy = f.x - x, f.y - y
+  return max(0, sqrt(dx * dx + dy * dy) - C().fire_crown)
+end
+
+-- What burns within r of (x, y) by its edge: the nearest (and how far its edge is) and the way away
+-- from all of it about (x, y) - each burning thing pushing by its heat, the nearer the harder - so the
+-- way out of a fire front runs away from the front, and between two fires not into either. Nothing
+-- burning within r: nil.
+function M.fire_near(s, x, y, r)
+  local B = s.burn
+  if not B or #B == 0 then return nil end
+  local best, bd = nil, r
+  local px, py = 0, 0
+  for i = 1, #B do
+    local f = B[i]
+    if not f.out and f.heat > 0.02 then
+      local d = M.fire_edge(s, f, x, y)
+      if d < r then
+        if d < bd or not best then best, bd = f, d end
+        local dx, dy = x - f.x, y - f.y
+        local l = sqrt(dx * dx + dy * dy)
+        if l > 1e-6 then
+          local w = (0.3 + f.heat) * (1 - d / r) * (1 - d / r)
+          px, py = px + dx / l * w, py + dy / l * w
+        end
+      end
+    end
+  end
+  if not best then return nil end
+  return best, bd, px, py
+end
+
 return M

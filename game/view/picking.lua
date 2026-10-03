@@ -25,6 +25,26 @@ function M.cell_at(W, sx, sy)
   return c, hx / l, hy / l, hz / l
 end
 
+--- (S22) The ground under window pixel (sx, sy) as a unit direction: the ray met with the terrain's own
+--- height (a few steps: the sphere at the last height found), not a sphere above sea level - on a hill
+--- seen at a slant that is several tiles off. nil when the ray misses the planet.
+function M.ground_at(W, sx, sy)
+  local ox, oy, oz, dx, dy, dz = camera.ray(sx, sy)
+  local r = state.R + 0.05
+  local hx, hy, hz
+  for _ = 1, 6 do
+    hx, hy, hz = camera.hit_sphere(ox, oy, oz, dx, dy, dz, r)
+    if not hx then return nil end
+    if not camera.height_fn then break end
+    local l = sqrt(hx * hx + hy * hy + hz * hz)
+    local nr = camera.height_fn(hx / l, hy / l, hz / l)
+    if math.abs(nr - r) < 1e-5 then break end
+    r = nr
+  end
+  local l = sqrt(hx * hx + hy * hy + hz * hz)
+  return hx / l, hy / l, hz / l
+end
+
 local function consider(best, kind, sel, x, y, z, sx, sy, radius)
   local px, py, depth = camera.project(x, y, z)
   if not px then return best end

@@ -13,6 +13,9 @@ local people = require("sim.agents.people")
 local deeds = require("sim.agents.deeds")
 local danger = require("sim.agents.danger")
 local dsq = require("sim.dmath").sq
+local stock = require("sim.agents.stock")   -- (S22: beasts as lightning's targets; none of these requires this)
+local wild = require("sim.agents.wild")
+local dogs = require("sim.agents.dogs")
 
 local M = {}
 local floor, max, min, sqrt = math.floor, math.max, math.min, math.sqrt
@@ -120,6 +123,8 @@ function M.ignite(W, s, kind, ref, now, cause)
   M.cue(W, s, f, now, kind == "bld" and "Fire! The roof is burning" or (kind == "plot" and "Fire in the fields" or "Fire in the trees"))
   -- (S20) a pen alight: the beasts in it are up at once
   if kind == "bld" and PENS[s.buildings[ref].kind] and M.rouse_pen then M.rouse_pen(W, s, s.buildings[ref], now) end
+  -- (S22) the beasts, the wild animals and the dogs that see or smell it look up, each in its own time
+  if M.alarm_beasts then M.alarm_beasts(W, s, f, now) end
   return f
 end
 
@@ -146,45 +151,6 @@ function M.douse(W, s, x, y, now)
   -- (water tells early; a roof well alight hardly notices a bucket)
   f.heat = max(0, f.heat - C().douse_k * max(0.05, 1.1 - f.heat))
   return true
-end
-
--- (S20, R6.5b) Beasts still in a burning pen are burnt: health lost with the heat; dead at nothing
--- (a carcass where it fell; its owners remember).
-function M.beasts_burn(W, s, b, f, t, dt)
-  local c = C()
-  local x0, y0 = mapm.ixy_xy(s, b.ix0, b.iy0)
-  local T = s.T
-  for _, kind in ipairs({ "flock", "cattle", "swine" }) do
-    local H = s.herds and s.herds[kind]
-    if H then
-      for _, a in ipairs(H.animals) do
-        if a.alive then
-          local fx, fy = (a.tx - x0) / T, (a.ty - y0) / T
-          if fx > -0.4 and fy > -0.4 and fx < b.w - 0.6 and fy < b.h - 0.6 then
-            a.health = (a.health or 1) - c.fire_beast * f.heat * dt
-            if a.health <= 0 then
-              a.health = 0
-              a.alive, a.died, a.cause = false, t, "fire"
-              s.acc.stock_burnt = (s.acc.stock_burnt or 0) + 1
-              s.acc.stock_died = (s.acc.stock_died or 0) + 1
-              local meat = c.stock[a.sp] and c.stock[a.sp].meat or 5
-              s.wildlife = s.wildlife or { carcasses = {} }
-              s.wildlife.carcasses = s.wildlife.carcasses or {}
-              s.wildlife.carcasses[#s.wildlife.carcasses + 1] = { x = a.tx, y = a.ty, sp = a.sp, t = t, meat = meat * 0.5, by = "fire" }
-              local hh = W.S.v3.households[a.owner or 0]
-              for _, id in ipairs(hh and hh.members or {}) do
-                local q = W.S.v3.people[id]
-                if q and q.alive and people.stage(q, t) ~= "infant" and (q.beast_burnt or -1) ~= floor(t) then
-                  q.beast_burnt = floor(t)
-                  people.remember(q, t, sfmt("One of our %s burnt in the %s", a.sp == "cattle" and "cattle" or (a.sp == "sheep" and "sheep" or a.sp .. "s"), b.kind))
-                end
-              end
-            end
-          end
-        end
-      end
-    end
-  end
 end
 
 -- (S20) A field burnt out: the corn standing on it and the sheaves in its stooks are lost (nothing
@@ -297,6 +263,13 @@ local function live(W, s, f, to)
     if f.heat > 0 and f.fuel > 0 then
       f.heat = min(1, f.heat + c.fire_grow * dt * (0.4 + dry)) - (rain == 2 and c.fire_rain2 or (rain == 1 and c.fire_rain1 or 0)) * dt
       f.fuel = f.fuel - dt * max(0.2, f.heat)
+      -- (S22) roaring up: seen and heard farther - the animals about look up again
+      if f.heat >= 0.6 and not f.roar then
+        f.roar = true
+        if M.alarm_beasts then M.alarm_beasts(W, s, f, t + dt) end
+      end
+      -- (S22) any beast, wild animal or dog within its flames is burnt
+      if f.heat > 0 and M.scorch then M.scorch(W, s, f, t, dt) end
       if f.heat > 0 then
         local T = s.trees
         trees_near(s, f.x, f.y, c.fire_reach + (f.r or 0), function(k)
@@ -342,7 +315,6 @@ local function live(W, s, f, to)
                 people.hurt(q, c.fire_burn * f.heat * dt, "burn", f.deed, t)
               end
             end
-            if PENS[b.kind] then M.beasts_burn(W, s, b, f, t, dt) end
             -- (S20) the hay stacked by the fold goes up with it
             if b.kind == "fold" and (s.hay or 0) > 0 then s.hay = s.hay * (1 - min(1, c.fire_contents * f.heat * dt)) end
           end
@@ -457,13 +429,75 @@ function M.planet(W, s, now)
   end
 end
 
+-- (S22) Each beast of map s that stands out of doors - a fold is open to the sky, a byre or a sty has
+-- a roof (the roof is the target) - each wild animal and each dog: fn(kind, o, H, x, y), kind "beast"
+-- (o of herd H), "wild" or "dog".
+local function beasts_out(W, s, now, fn)
+  if s.herds then
+    for _, kind in ipairs(stock.HERDS) do
+      local H = s.herds[kind]
+      if H then
+        local pen = s.buildings[H.pen or 0]
+        local roofed = pen and pen.state == "standing" and (pen.kind == "byre" or pen.kind == "sty")
+        local L = stock.live_list(H)
+        for i = 1, #L do
+          local a = H.animals[L[i]]
+          if a.alive then
+            local ax, ay = stock.pos(a, now)
+            if not (roofed and stock.inside_pen(s, pen, ax, ay)) then fn("beast", a, H, ax, ay) end
+          end
+        end
+      end
+    end
+  end
+  for _, w in ipairs(s.wildlife and s.wildlife.animals or {}) do
+    if w.alive and w.act ~= "leave" then
+      local wx, wy = wild.pos(w, now)
+      fn("wild", w, nil, wx, wy)
+    end
+  end
+  for _, dg in ipairs(s.dogs or {}) do
+    if dg.alive then
+      local gx, gy = dogs.pos(dg, now)
+      fn("dog", dg, nil, gx, gy)
+    end
+  end
+end
+M.beasts_out = beasts_out
+
+-- (S22) A beast struck (by the bolt itself, or by the current through the ground beside it): `sev` of
+-- its strength - a beast of a herd dead at nothing (else stunned: it looks up at once), a wild animal
+-- or a dog dead past strike_beast_die (else it bolts).
+local function beast_struck(W, s, kind, o, H, sev, now, side)
+  local c = C()
+  if kind == "beast" then
+    o.health = (o.health or 1) - sev
+    if o.health <= 0 then
+      stock.dies(W, s, H, o, now, "lightning", side and "Lightning struck beside one of our %s and killed it" or "Lightning killed one of our %s")
+      return true
+    end
+    stock.decide_at(W, s, H, o, now, now + 0.01)
+  elseif kind == "wild" then
+    if sev >= c.strike_beast_die then wild.dies(W, s, o, now, "lightning"); return true end
+    wild.interrupt(W, s, o, now)
+    o.flee_x, o.flee_y = o.tx, o.ty
+  else
+    if sev >= c.strike_beast_die then dogs.dies(W, s, o, now, "lightning", "Lightning killed our dog"); return true end
+    dogs.interrupt(W, s, o, now)
+  end
+  return false
+end
+
 -- Lightning at (x, y): the tallest thing within its pull takes it - a standing tree (its height), a
--- roof, someone standing out in the open; thunder heard over the whole map, the flash seen. Returns
--- what was hit ("tree", "bld", "person" or nil) and its ref. `cause`: the deed or event that sent it.
+-- roof (by the building: a fold of hurdles is low), someone standing out in the open, a beast out of
+-- doors (S22: by its height - a cow before a sheep, a man before either); thunder heard over the whole
+-- map, the flash seen. Beasts standing close by (four feet apart: more of the ground current than a
+-- man takes) are thrown down. Returns what was hit ("tree", "bld", "person", "beast", "wild", "dog" or
+-- nil) and its ref. `cause`: the deed or event that sent it.
 function M.strike(W, s, x, y, now, cause, ev)
   local c = C()
   local V = W.S.v3
-  local best, bs, bk = nil, -1e9, nil
+  local best, bs, bk, bh = nil, -1e9, nil, nil
   local r2 = c.strike_pull * c.strike_pull
   local T = s.trees
   trees_near(s, x, y, c.strike_pull, function(k, d2)
@@ -475,7 +509,7 @@ function M.strike(W, s, x, y, now, cause, ev)
     if b and b.state == "standing" and not b.natural and b.kind ~= "outcrop" and b.kind ~= "bog" then
       local d2 = dsq((b.cx or b.dx) - x) + dsq((b.cy or b.dy) - y)
       if d2 < r2 then
-        local sc = c.strike_roof - sqrt(d2) * 4
+        local sc = (c.strike_bld[b.kind] or c.strike_roof) - sqrt(d2) * 4
         if sc > bs then best, bs, bk = b.id, sc, "bld" end
       end
     end
@@ -490,8 +524,17 @@ function M.strike(W, s, x, y, now, cause, ev)
       end
     end
   end)
+  beasts_out(W, s, now, function(kind, o, H, ox, oy)
+    local d2 = dsq(ox - x) + dsq(oy - y)
+    if d2 < r2 then
+      local sc = (c.strike_beast[o.sp or "dog"] or 0.25) - sqrt(d2) * 4
+      if sc > bs then best, bs, bk, bh = o, sc, kind, H end
+    end
+  end)
+  local what = bk or "ground"
+  if bk == "beast" or bk == "wild" then what = best.sp end
   local d = deeds.add(W, { kind = "strike", t = now, at = s.id, x = x, y = y, by = 0, by_hh = 0, by_s = 0, to = 0, to_hh = 0,
-    to_s = s.id, what = bk or "ground", n = 1, fu = 0, harm = false, answers = cause, event = ev,
+    to_s = s.id, what = what, n = 1, fu = 0, harm = false, answers = cause, event = ev,
     bkind = bk == "bld" and (s.buildings[best] or {}).kind or nil })
   -- (the bolt seen on the planet: the view's lightning at the village's cell; S21: a god's bolt is the
   -- parent of the event)
@@ -504,6 +547,38 @@ function M.strike(W, s, x, y, now, cause, ev)
   danger.cue(W, s, x, y, now, { kind = "thunder", src = 0, sight = 3, night = 3, sound = c.thunder_sound, loud = true,
     why = "Lightning struck close by" })
   local dry = M.dryness(W, s)
+  -- (S22) where the bolt went to ground: beasts standing close by are thrown down by its current - those
+  -- sheltering under a struck tree too
+  local hx, hy = x, y
+  if bk == "tree" then hx, hy = T.x[best], T.y[best]
+  elseif bk == "person" then hx, hy = danger.person_pos(V.people[best], now)
+  elseif bk == "beast" then hx, hy = stock.pos(best, now)
+  elseif bk == "wild" then hx, hy = wild.pos(best, now)
+  elseif bk == "dog" then hx, hy = dogs.pos(best, now) end
+  if bk ~= "bld" then
+    local rs = c.strike_side * c.strike_side_beast
+    local side = {}
+    beasts_out(W, s, now, function(kind, o, H, ox, oy)
+      if o ~= best and dsq(ox - hx) + dsq(oy - hy) < rs * rs then side[#side + 1] = { kind, o, H } end
+    end)
+    for i = 1, #side do
+      local e = side[i]
+      beast_struck(W, s, e[1], e[2], e[3], c.strike_side_hurt * 2 * (0.5 + u(W, s, now, 25, i)), now, true)
+    end
+  end
+  if bk == "beast" or bk == "wild" or bk == "dog" then
+    -- (S22) a beast struck: most die where they stand; its owners lose it (a deed of the strike)
+    local sev = (c.strike_hurt[1] + (c.strike_hurt[2] - c.strike_hurt[1]) * u(W, s, now, 23)) * c.strike_beast_k
+    local hh = (bk == "beast" and best.owner) or (bk == "dog" and best.hh) or 0
+    local dead = beast_struck(W, s, bk, best, bh, sev, now, false)
+    d.dead = dead or nil
+    if hh ~= 0 then
+      d.to_hh, d.harm = hh, true
+      d.fu = bk == "beast" and (c.stock[best.sp] and c.stock[best.sp].meat or 5) or 4
+      deeds.learn(W, s, d, "the lightning struck it", 0, 0, now)
+    end
+    return bk, best, d
+  end
   if bk == "tree" then
     if u(W, s, now, 21) < c.strike_ignite * (0.25 + 0.75 * dry) then M.ignite(W, s, "tree", best, now, d.id) end
     return "tree", best, d

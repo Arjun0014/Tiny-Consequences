@@ -30,6 +30,8 @@ local nav = require("sim.agents.nav")
 local clock = require("sim.agents.clock")
 local weather = require("sim.agents.weather")
 local danger = require("sim.agents.danger")
+local sfmt = require("sim.fmt").format   -- (the same text in every runtime, S14)
+local PENS = { fold = true, byre = true, sty = true }
 
 local M = {}
 M.ID0 = 100000000
@@ -344,21 +346,11 @@ local function inside_pen(s, pen, x, y)
   local fx, fy = (x - x0) / T, (y - y0) / T
   return fx > -0.6 and fy > -0.6 and fx < pen.w - 0.4 and fy < pen.h - 0.4
 end
+M.inside_pen = inside_pen
 
--- (S20, R6.5b) Fire near (x, y) within r (the map's burning things as last lived): its place and the
--- record, or nil.
-local function fire_near(s, x, y, r)
-  local B = s.burn
-  local best, bf = r * r, nil
-  for i = 1, #B do
-    local f = B[i]
-    if not f.out and f.heat > 0 then
-      local d2 = dsq(f.x - x) + dsq(f.y - y)
-      if d2 < best then best, bf = d2, f end
-    end
-  end
-  return bf
-end
+-- (S22) Fire by its own extent (danger.fire_near: a tree's crown, a building's walls, a field's edges):
+-- the nearest burning thing within r of (x, y), its edge's distance, and the way away from all of it.
+local fire_near = danger.fire_near
 
 -- The heat of pen b's own fire (0: not burning).
 local function pen_heat(s, b)
@@ -480,6 +472,100 @@ local function scan(s, H, a, now, x, y, sight)
 end
 M.scan = scan
 
+-- (S22) Beast a decides again at `at` instead of when its action would end: a walk or a grazing drift
+-- is cut where it will be then, along the same line at the same pace (its body still lives the whole
+-- time since its action began).
+function M.decide_at(W, s, H, a, now, at)
+  if a.t1 <= at or a.act == "held" or a.act == "yoked" then return end
+  if (a.act == "walk" or a.act == "graze") and a.t1 > a.t0 then a.tx, a.ty = M.pos(a, at) end
+  a.ver = a.ver + 1
+  a.t1 = at
+  M.push(W, at, M.event_id(s, H, a), a.ver)
+end
+
+-- (S22) Fire f has caught (or roared up): the beasts that see or smell it - within beast_notice of its
+-- edge (more by night: its glow) - look up, each in its own time: the alert sooner, one lying down later,
+-- the near sooner than the far. What each then does is its own (M.step).
+function M.fire_alarm(W, s, f, now)
+  local c = C()
+  if not s.herds then return end
+  local r = c.beast_notice * (danger.night_at(W, s, now) and 1.3 or 1)
+  for _, kind in ipairs(M.HERDS) do
+    local H = s.herds[kind]
+    if H then
+      local L = live_list(H)
+      for i = 1, #L do
+        local a = H.animals[L[i]]
+        if a.alive and (a.led or 0) == 0 and (a.held or 0) == 0 and (a.yoke or 0) == 0 then
+          local x, y = M.pos(a, now)
+          local d = danger.fire_edge(s, f, x, y)
+          if d < r then
+            local lying = a.act == "rest" or a.act == "pen"
+            local at = now + c.beast_notice_h * (0.3 + 0.9 * (1 - trait(a, T_ALERT))) * (lying and 1.6 or 1) * (0.5 + d / r)
+              + 0.01 * u(W, s, H, a, now, 43)
+            M.decide_at(W, s, H, a, now, at)
+          end
+        end
+      end
+    end
+  end
+end
+
+-- (S22) Beast a of herd H dies (fire, lightning): a carcass where it fell; its owners on the map
+-- remember it (`what` says how).
+function M.dies(W, s, H, a, t, cause, what)
+  local c = C()
+  a.alive, a.died, a.cause = false, t, cause
+  a.health = 0
+  a.ver = a.ver + 1
+  H.n_alive = max(0, (H.n_alive or 1) - 1)
+  local x, y = M.pos(a, t)
+  a.x, a.y, a.tx, a.ty = x, y, x, y
+  s.acc.stock_died = (s.acc.stock_died or 0) + 1
+  if cause == "fire" then s.acc.stock_burnt = (s.acc.stock_burnt or 0) + 1 else s.acc["stock_" .. cause] = (s.acc["stock_" .. cause] or 0) + 1 end
+  s.wildlife = s.wildlife or { carcasses = {} }
+  s.wildlife.carcasses = s.wildlife.carcasses or {}
+  s.wildlife.carcasses[#s.wildlife.carcasses + 1] = { x = x, y = y, sp = a.sp, t = t, meat = (c.stock[a.sp] and c.stock[a.sp].meat or 5) * 0.5, by = cause }
+  local hh = W.S.v3.households[a.owner or 0]
+  local noun = a.sp == "cattle" and "cattle" or (a.sp == "sheep" and "sheep" or a.sp .. "s")
+  for _, id in ipairs(hh and hh.members or {}) do
+    local q = W.S.v3.people[id]
+    if q and q.alive and not q.at and q.sett == s.id and (q.beast_lost or -1) ~= floor(t) then
+      q.beast_lost = floor(t)
+      require("sim.agents.people").remember(q, t, sfmt(what, noun))
+    end
+  end
+end
+
+-- (S22) The flames of burning thing f lived from t for dt: any beast within them (its edge's reach,
+-- more as it burns hotter) - shut in a burning pen, trapped against a burning field - is burnt: health
+-- lost by the heat, dead at nothing.
+function M.scorch(W, s, f, t, dt)
+  local c = C()
+  if not s.herds then return end
+  local reach = c.fire_scorch + c.fire_scorch_heat * f.heat
+  local pad = reach + 0.6 + (f.r or 0)   -- (a quick test by the middle first: a field's or a house's size)
+  for _, kind in ipairs(M.HERDS) do
+    local H = s.herds[kind]
+    if H then
+      local L = live_list(H)
+      for i = 1, #L do
+        local a = H.animals[L[i]]
+        if a.alive and a.act ~= "held" and dsq(a.tx - f.x) + dsq(a.ty - f.y) < pad * pad then
+          local x, y = M.pos(a, t)
+          if danger.fire_edge(s, f, x, y) < reach then
+            a.health = (a.health or 1) - c.fire_beast * f.heat * dt
+            if a.health <= 0 then
+              local b = f.kind == "bld" and s.buildings[f.ref]
+              M.dies(W, s, H, a, t, "fire", b and PENS[b.kind] and ("One of our %s burnt in the " .. b.kind) or "One of our %s was caught in the fire")
+            end
+          end
+        end
+      end
+    end
+  end
+end
+
 -- A dog of the village within r of (x, y) now: where it is.
 local function dog_near(s, x, y, now, r)
   local L = s.dogs
@@ -500,6 +586,72 @@ local function dog_near(s, x, y, now, r)
     end
   end
   return nil
+end
+
+-- (S22) Is beast a shut in its pen - inside it with the gate closed? Not while its herd is out for the
+-- day (the gate stands open: a beast grazing over the fold's ground is not penned) nor once someone has
+-- opened it (H.loose).
+local function shut_in(s, H, pen, a, now)
+  return pen and pen.state == "standing" and pen.kind ~= "camp" and not H.out and inside_pen(s, pen, a.tx, a.ty)
+    and (H.loose or -99) < now - C().loose_h
+end
+
+-- (S22) A beast's own safe distance from a fire (the timid farther).
+function M.fire_safe(a) return C().beast_safe * (0.75 + 0.6 * (1 - trait(a, T_BOLD))) end
+
+-- (S22) Running from the fire its own way: away from all that burns about it (danger.fire_near's way
+-- out), bent to its own side and a little each time it looks again, a stretch at a time, never toward
+-- another fire; at a run, at its own pace.
+local function flee_fire(W, s, H, a, now, S, f, fd, px, py)
+  local c = C()
+  local pl = sqrt(px * px + py * py)
+  local hx, hy
+  if pl > 1e-9 then
+    hx, hy = px / pl, py / pl
+  else
+    hx, hy = a.tx - f.x, a.ty - f.y
+    local l = sqrt(hx * hx + hy * hy)
+    if l < 1e-6 then hx, hy, l = 1, 0, 1 end
+    hx, hy = hx / l, hy / l
+  end
+  local bend = (trait(a, T_SIDE) - 0.5) * c.beast_fan + (u(W, s, H, a, now, 40) - 0.5) * 0.5
+  local run = min(M.fire_safe(a) - fd + S.sep * (1 + u(W, s, H, a, now, 41)), c.beast_flee_hop)
+  for q = 0, 6 do
+    local ang = bend + (q == 0 and 0 or ((q % 2 == 1) and 1 or -1) * 0.5 * floor((q + 1) / 2))
+    local ca, sa = cos(ang), sin(ang)
+    local ex, ey = hx * ca - hy * sa, hy * ca + hx * sa
+    local tx, ty = a.tx + ex * run, a.ty + ey * run
+    local _, d2 = fire_near(s, tx, ty, c.beast_fire_see)
+    if not d2 or d2 > fd + run * 0.25 then
+      a.hx, a.hy = ex, ey
+      a.why = "Running from the fire"
+      if walk_to(W, s, a, now, tx, ty, S.speed * c.beast_run * (0.85 + 0.3 * trait(a, T_PACE))) then return true end
+    end
+  end
+  return false
+end
+
+-- (S22) Does the straight way from (x0, y0) to (x1, y1) pass within r of anything burning?
+local function way_burns(s, x0, y0, x1, y1, r)
+  for q = 1, 3 do
+    local f = q * 0.25
+    if fire_near(s, x0 + (x1 - x0) * f, y0 + (y1 - y0) * f, r) then return true end
+  end
+  return false
+end
+M.way_burns = way_burns
+
+-- (S22) A place in pen `pen` on its side away from fire f (each beast its own, about it).
+local function pen_away(W, s, H, a, pen, f, now)
+  local T = s.T
+  local x0, y0 = mapm.ixy_xy(s, pen.ix0, pen.iy0)
+  local mx, my = x0 + (pen.w - 1) * 0.5 * T, y0 + (pen.h - 1) * 0.5 * T
+  local dx, dy = mx - f.x, my - f.y
+  local l = sqrt(dx * dx + dy * dy)
+  if l < 1e-6 then dx, dy, l = 1, 0, 1 end
+  local fx = 0.5 + 0.4 * dx / l + (u(W, s, H, a, now, 46) - 0.5) * 0.35
+  local fy = 0.5 + 0.4 * dy / l + (u(W, s, H, a, now, 47) - 0.5) * 0.35
+  return pen_spot(s, pen, max(0, min(1, fx)), max(0, min(1, fy)))
 end
 
 -- The end of animal a's action at time now: its effects, then the next action.
@@ -596,8 +748,7 @@ function M.step(W, s, H, a, now)
   if s.fl and M.flood and not drover then
     local dep = M.flood.depth_i(s, mapm.tile_of(s, a.tx, a.ty))
     if dep > 0.08 then
-      local shut = pen and pen.state == "standing" and pen.kind ~= "camp" and inside_pen(s, pen, a.tx, a.ty)
-        and (H.loose or -99) < now - c.loose_h
+      local shut = shut_in(s, H, pen, a, now)
       if shut then
         if dep > (c.fl_beast_d[a.sp] or 0.5) * 0.5 then cry(W, s, H, a.tx, a.ty, now, true) end
         a.why = "Shut in the flooded " .. pen.kind .. ", bleating"
@@ -622,32 +773,30 @@ function M.step(W, s, H, a, now)
       end
     end
   end
-  -- (S20, R6.5b) fire: a beast out of doors runs from anything burning near it; one in its pen stays
-  -- (a fold's hurdles give way once the fold is well alight; a byre or a sty must be opened: H.loose),
-  -- crying out - a sound that wakes people
-  if s.burn and #s.burn > 0 and not drover then
-    local f = fire_near(s, a.tx, a.ty, c.beast_fire_r)
+  -- (S20, R6.5b; S22) fire, seen and smelt by its own extent (a tree's crown, a building's walls, a
+  -- field's edges): a beast out of its pen runs from it its own way until the fire is its own safe
+  -- distance off; one shut in its pen stays (a fold's hurdles give way once the fold is well alight; a
+  -- byre or a sty must be opened: H.loose), pressed to the side away from the fire, crying out - a sound
+  -- that wakes people
+  local burning = s.burn and #s.burn > 0 and not drover
+  if burning then
+    local f, fd, px, py = fire_near(s, a.tx, a.ty, c.beast_fire_see)
     local ph = pen and pen.state == "standing" and pen_heat(s, pen) or 0
     if f or ph > 0 then
-      local shut = pen and pen.state == "standing" and pen.kind ~= "camp" and inside_pen(s, pen, a.tx, a.ty)
-        and (H.loose or -99) < now - c.loose_h and not (pen.kind == "fold" and ph > 0.5)
-      if f then cry(W, s, H, a.tx, a.ty, now) end
+      local shut = shut_in(s, H, pen, a, now) and not (pen.kind == "fold" and ph > 0.5)
+      if f and fd < c.beast_cry_r then cry(W, s, H, a.tx, a.ty, now) end
       if not shut then
-        if f then
-          local dx, dy = a.tx - f.x, a.ty - f.y
-          local l = sqrt(dx * dx + dy * dy)
-          if l < 1e-6 then dx, dy, l = 1, 0, 1 end
-          local st = S.sep * (3 + 2 * u(W, s, H, a, now, 40))
-          a.why = "Running from the fire"
-          if walk_to(W, s, a, now, a.tx + dx / l * st, a.ty + dy / l * st, S.speed * 2.2) then return end
-        end
-        -- (out of its burning pen: it keeps away from it until the fire is out)
-        a.why = "Keeping away from the burning " .. pen.kind
-        stand(a, now, "rest", 0.15 + 0.2 * u(W, s, H, a, now, 41))
-        return
+        if f and fd < M.fire_safe(a) and flee_fire(W, s, H, a, now, S, f, fd, px, py) then return end
+        -- (beyond its own safe distance: it keeps away from the fire - below - where it got to)
       elseif ph > 0 then
         a.why = "Shut in the burning " .. pen.kind .. ", crying out"
         stand(a, now, "pen", 0.1)
+        return
+      elseif f and fd < c.beast_cry_r then
+        local tx, ty = pen_away(W, s, H, a, pen, f, now)
+        a.why = "Shut in the " .. pen.kind .. " with the fire near, crying out"
+        if dsq(tx - a.tx) + dsq(ty - a.ty) > dsq(s.T * 0.4) and walk_to(W, s, a, now, tx, ty, S.speed * 0.8, true) then return end
+        stand(a, now, "pen", 0.08 + 0.08 * u(W, s, H, a, now, 44))
         return
       end
     end
@@ -688,6 +837,27 @@ function M.step(W, s, H, a, now)
     inpen = true
     if H.out and night then H.out = false end    -- (no herder: they come home to the pen by themselves)
   end
+  -- (S22) keeping away from a fire: while anything burns within beast_keep of where it is kept (the
+  -- herder, the ground it was left on, the pen) it does not go there - it stays about where it got to
+  -- (lying down there for the night), grazing among the others there; once that place is clear of the
+  -- fire it goes back to the herd
+  local keep = false
+  if burning and not shut_in(s, H, pen, a, now) then
+    local kx, ky = cx, cy
+    if inpen then kx, ky = pen.cx or pen.dx, pen.cy or pen.dy end
+    if kx and (fire_near(s, kx, ky, c.beast_keep) or way_burns(s, a.tx, a.ty, kx, ky, c.beast_keep * 0.75)) then
+      keep = true
+      if not a.kx then a.kx, a.ky = a.tx, a.ty end
+      inpen, p = false, nil
+      cx, cy = a.kx, a.ky
+      if night then
+        a.why = "Lying out away from the fire"
+        stand(a, now, "rest", 0.3 + 0.4 * u(W, s, H, a, now, 45))
+        return
+      end
+    end
+  end
+  if not keep and a.kx then a.kx, a.ky = nil, nil end
   local x, y = a.tx, a.ty
   local pace = 0.85 + 0.3 * trait(a, T_PACE)
   if inpen then
@@ -798,8 +968,8 @@ function M.step(W, s, H, a, now)
     a.why = "Making room to graze"
     if walk_to(W, s, a, now, x + ex / l * st, y + ey / l * st, S.speed * pace * 0.6, true) then return end
   end
-  if SC.ln == 0 and SC.cn > 0 then
-    -- nobody in sight: toward the others
+  if SC.ln == 0 and SC.cn > 0 and not (keep and fire_near(s, SC.cx / SC.cn, SC.cy / SC.cn, c.beast_keep)) then
+    -- nobody in sight: toward the others (S22: never toward a fire)
     local mx, my = SC.cx / SC.cn, SC.cy / SC.cn
     local dx, dy = mx - x, my - y
     local d = sqrt(dx * dx + dy * dy)
@@ -854,7 +1024,9 @@ function M.step(W, s, H, a, now)
   local dur = S.graze_h * ((led or drover) and 0.25 or 1) * (0.5 + 0.8 * u(W, s, H, a, now, 11))
   -- (S16: the reason as it stands for this beast - hungry, out at the edge on its own, or grazing
   -- among the others)
-  if a.hunger > 0.6 then
+  if keep then
+    a.why = a.sp == "pig" and "Rooting away from the fire" or "Grazing away from the fire"
+  elseif a.hunger > 0.6 then
     a.why = a.sp == "pig" and "Hungry: rooting hard" or (S.browse and "Hungry: browsing whatever it can reach" or "Hungry: grazing hard, head down")
   elseif da > Ri then
     a.why = a.sp == "pig" and "Rooting its own way at the edge of the others" or "Grazing its own way at the edge of the herd, turning back"
@@ -1276,7 +1448,7 @@ end
 -- sold; fading herd_lost_fade a day): a household that has lost much of its herd has lost its living -
 -- restocking is read from it (conflict.weigh_at).
 local OWN = {}
-local LOSS = { sickness = true, hunger = true, wolves = true, fire = true, sea = true }
+local LOSS = { sickness = true, hunger = true, wolves = true, fire = true, sea = true, lightning = true }
 function M.lose(W, hid, a)
   local hh = W.S.v3.households[hid or 0]
   if hh then hh.herd_lost = (hh.herd_lost or 0) + SP(a.sp).meat end
@@ -1367,7 +1539,9 @@ end
 function M.plan_hunger_cull(W, s, now)
   local c = C()
   local V = W.S.v3
-  if (s.need and s.need.food_days or 99) >= c.hunger_cull_village then return 0 end
+  -- (S22: the granary - what a household with an empty larder can draw on - not every household's
+  -- larders together: the neighbours' food is not theirs)
+  if (s.need and s.need.store_days or 99) >= c.hunger_cull_village then return 0 end
   local n = 0
   for _, hid in ipairs(s.households) do
     local hh = V.households[hid]

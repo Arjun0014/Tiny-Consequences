@@ -294,6 +294,37 @@ function M.named(W, name)
         return true
       end
     end
+  elseif name == "pasture_fire" then
+    -- (S22, D-177) a dry spell at Tekheim and the stand of trees nearest its fold alight (the beasts in it,
+    -- and out at pasture later, meet the fire)
+    local s = V.settlements[1]
+    W.F.soil_water[s.cell] = 0.15
+    local H = s.herds and s.herds.flock
+    local fold = H and s.buildings[H.pen or 0]
+    if not fold then return false end
+    local blaze = require("sim.agents.blaze")
+    local cand = {}
+    blaze.trees_near(s, fold.cx, fold.cy, 0.6, function(k, d2) cand[#cand + 1] = { k, d2 } end)
+    table.sort(cand, function(a, b) if a[2] ~= b[2] then return a[2] < b[2] end return a[1] < b[1] end)
+    for q = 1, math.min(6, #cand) do blaze.ignite(W, s, "tree", cand[q][1], V.now or W.hour, nil) end
+    return #cand > 0
+  elseif name == "powers" then
+    -- (S22) the v1 god powers cast at once over the world, through the `power` command as the game sends
+    -- it (the browser and LuaJIT must live the same consequences): a bolt on Tekheim's square, rain over
+    -- Krikeivorn, cold air over Zurug, warm air and a dry spell over Little Leelee, the fault under Tekheim
+    -- strained, the mountain nearest Dreik Knoll stirred, wolves culled about Hottoodingle Hop, deer brought
+    local cmd = require("sim.world").COMMANDS.power
+    local S = V.settlements
+    cmd(W, { power = "lightning", cell = S[1].cell, sid = 1, x = S[1].sqx or 0, y = S[1].sqy or 0 })
+    cmd(W, { power = "rain", cell = S[6].cell })
+    cmd(W, { power = "cold", cell = S[2].cell })
+    cmd(W, { power = "warm", cell = S[5].cell })
+    cmd(W, { power = "dry", cell = S[5].cell })
+    cmd(W, { power = "strain", cell = S[1].cell })
+    cmd(W, { power = "stir", cell = S[3].cell })
+    cmd(W, { power = "cull", cell = S[4].cell, species = "wolves" })
+    cmd(W, { power = "bring", cell = S[4].cell, species = "deer" })
+    return true
   end
   return false
 end

@@ -843,6 +843,9 @@ function M.hourly(W, s, now)
   end
   s.pop = pop
   food = s.granary and ((s.granary.stock.grain or 0) + (s.granary.stock.sheaves or 0)) or 0
+  -- (S22) what everyone can draw on: the granary (each household's own larder is its own - a hungry
+  -- household cannot eat its neighbours')
+  need.store_days = pop > 0 and food / pop or 99
   for i = 1, #s.blist do
     local b = s.buildings[s.blist[i]]
     if M.HOME[b.kind] and b.state == "standing" then food = food + people.pantry(b) + (b.stock.meals or 0) end

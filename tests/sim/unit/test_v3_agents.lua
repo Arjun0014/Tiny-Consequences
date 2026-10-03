@@ -599,7 +599,9 @@ function M.a_man_goes_courting()
   local imp0 = H.acc.import or 0
   local asked, asker = false, nil
   local t2 = W.hour
-  for h = 1, 24 * 6 do
+  -- (S22: 9 days - with the babies born meanwhile living their own lives the village's course differs;
+  -- relief from a neighbouring village may come first and the household ask its kin later)
+  for h = 1, 24 * 9 do
     world.advance(W, t2 + h)
     for _, id in ipairs(H.members) do
       local q = V.people[id]

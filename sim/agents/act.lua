@@ -2581,7 +2581,7 @@ WORK.ask_kin = function(W, s, p, st, f)
     people.remember(kin, now, sfmt("%s came from %s hungry and we had nothing to give", p.name, home_s.name))
   end
   -- a place under their roof, when things are very bad at home and there is room
-  local vdays = home_s.need and home_s.need.food_days or 99
+  local vdays = home_s.need and home_s.need.store_days or 99   -- (S22: the granary at home)
   local odays = s.need and s.need.food_days or 0
   if vdays < c.kin_offer_days and odays > c.kin_offer_days * 2 and #kh.members + #hh.members <= c.kin_room then
     hh.kin_offer = { sett = s.id, host = kh.id, t = now, by = kin.id }
