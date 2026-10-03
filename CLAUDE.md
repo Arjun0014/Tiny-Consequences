@@ -73,6 +73,12 @@ village, danger noticed by the senses, an urgent choice with dependants first, i
 boldness/arms, planet fields on maps); research `docs/v3/40_RESEARCH_CONFLICT_PLANET.md`, audit `41_PLANET_AUDIT.md`,
 plans `60_R6_CONFLICT.md` (R6a-R6g) and `65_R6_5_LIVING_PLANET.md` (R6.5a-g). Never: war flags, hostility/panic/
 grief numbers, per-hazard fears, aftermath controllers, scripted retaliation, palisades by count.
+Built in session 20: `sim/agents/deeds.lua` (deeds, `s.dk` village knowledge, `own` secrets), `danger.lua`,
+`conflict.lua` (taking, claims, blows, raids `trip.band`, walls, amends), `blaze.lua` (lightning, fire lived
+continuously - never ahead of time), `people.hurt`, death deeds and burials; `think.decide` is at Lua's
+60-upvalue limit (new branches as `M.*`); work/plan kinds and trip fields share one namespace (grep first:
+`tend` = weeding, `trip.party` = a drove); probes need the test runner's `jit.opt.start(...)`; browser check
+with premises: `node scripts/v3_hash_web.mjs --release --premise conflict|fire`.
 
 ## Read order
 

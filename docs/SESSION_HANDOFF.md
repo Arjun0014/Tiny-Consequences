@@ -1,4 +1,4 @@
-# Session handoff — session 20 (3 Oct 2026, extended autonomous run, IN PROGRESS): R6 and R6.5 designed; R6a-R6g first pass built; R6.5b next
+# Session handoff — session 20 (3 Oct 2026, extended autonomous run, IN PROGRESS): R6 and R6.5 designed; R6a-R6g first pass; R6.5b lightning built; checkpoint at ~850K
 
 **If you are resuming after a context compaction: re-read this section, `docs/v3/50_PRIMITIVES.md`,
 `60_R6_CONFLICT.md`, `65_R6_5_LIVING_PLANET.md`, D-148/D-149 and `git log --oneline -10` before any
@@ -38,15 +38,35 @@ is at the 60-upvalue limit: add new branches as `M.*` functions. Probes must set
 `tests/sim/run.lua` (`jit.opt.start("maxtrace=8000", ...)`) or they run 10-20x slower. The harness's bash
 heredocs break on apostrophes: write patch scripts with the Write tool.
 
-## Current task: R6.5b - lightning on a village (the first environmental vertical)
-Plan (`docs/v3/65_R6_5_LIVING_PLANET.md` §6): strikes on storm days at a point favouring tall/exposed
-things (tree, person in the open, roof); hit person -> `people.hurt` (burn) or death (a `death` deed by
-nature, the storm's event); tree/roof may catch by dryness -> local fire (burning objects spreading by
-dryness and wind, put out by rain or by people carrying water); cues: flash/thunder (everyone hears),
-fire (sight/smoke), shouting; urgent choice: parents to children, the able fetch water to the fire,
-rescue the hurt, lead beasts out; ruined house -> household lodges with kin/neighbours, house rebuilt
-(existing planning); stores burnt -> need -> relief/kin/trade/migration (existing). Test by a premise
-(a storm over a village at harvest) with different weather, stores and families.
+## Done: R6.5b lightning on a village (commit 7efe5ba, D-154)
+`sim/agents/blaze.lua` (strike at a point -> tallest thing: tree/roof/person; fire `s.burn` lived
+continuously by `blaze.live`/`catch_up` - never ahead of the time asked; spread through the tile
+grid by heat x dryness x wind; contents and anyone inside burn; burnt house -> ruin, `burnt` deed,
+`migrate.lodge` with kin, house planned; natural strikes in downpours `strike_rate`), think
+`M.fire_choice` (out with the babe / keep away / carry water at a run), PLAN `flee_fire`/`fight_fire`,
+WORK `douse`, wild flee fire, view flames (fx.lua local fires) + smoke, `scripts/shots_fire.mjs`,
+bridge `v3_premise` kinds fire/strike/burning, tests `test_v3_lightning` x3. Same code, different
+outcomes: drought day saved, drought night lost (lodging with kin), moderate saved; a struck
+ploughwoman burnt, bedridden, her husband takes the baby, she still nurses it.
+Determinism: `node scripts/v3_hash_web.mjs --release --premise fire|conflict` (premise at an exact
+start hour; the old 14-digit start made a strike land ulps apart - a harness artifact, not the sim);
+`scripts/hash_drill.mjs --premise NAME --after H` drills a premise run. Browser = LuaJIT on both.
+
+## CHECKPOINT (~850K context, session 20) - state for a resumed session
+- main at the R6.5b commit + this checkpoint's docs commit; quick suite running at checkpoint
+  (163/163 before R6.5b; expected 166 with test_v3_lightning); v3 tests 54+3; lint clean; build OK.
+- LuaJIT 3.71 M instr/h at R6e (re-measure after R6.5b: fire costs only while something burns;
+  natural strikes are one hash per downpour hour).
+- Untouched 192 d (R6e+lightning): no taking, no lightning casualties, 426 exchanges, deaths old
+  age 3 + illness 6, burials.
+- **Next (in order)**: (1) R6.5c wildfire between planet and map (the planet's `F.fire` on a map's
+  cell lights trees at the map's edge; a big local fire writes `F.fire`/`F.forest` back); livestock
+  led out of burning pens; fields and stacks burning; carrying the hurt out (rescue). (2) R6.5a gaps:
+  bereavement done; a palisade (R6f) and arms carried at night; restocking raids. (3) R6.5d snow on
+  maps (needs a cold premise), (4) R6.5f geology (volcano sites in v3 worlds, quakes on convergent
+  boundaries - Tekheim and Zurug sit on them). (5) Performance exact cuts if time.
+- Rejected this session: counting every known wrong as a motive to take back at once (claims first);
+  a fire computed an hour ahead at the hour's start (people saw it frozen).
 
 # Session handoff — session 19 (3 Oct 2026, extended autonomous run): the long-run audit, stone and iron, baskets and credit, fairs, the ferry, a famine people live through
 

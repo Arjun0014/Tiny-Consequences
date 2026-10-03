@@ -243,6 +243,10 @@ pressure in v3 worlds, eruptions: vent, ash, aerosol - whose cooling already rea
 boundary stress and earthquakes; landslides; tsunami last); **R6.5g** climate extremes in the v3
 calendar (coastline from sea level, an SST oscillation with fish, ice age and hothouse watched).
 Acceptance: a god power is a few lines writing state; no outcome scripts.
+(Session 20, D-154: **R6.5a foundations and R6.5b lightning on a village built** - strikes on the
+tallest thing, fire lived continuously and spread by dryness and wind, out of the house with the babe,
+water carried, houses lost and households lodged with kin; drought by day saved, drought at night
+lost. Next: R6.5c wildfire between planet and map.)
 
 ## R7 — Player and chains
 - God powers on the v3 world (lightning on a tree or a person, rain, drought, cull, oil spill on

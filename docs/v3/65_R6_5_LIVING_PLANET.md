@@ -129,3 +129,11 @@ night (everyone inside: more hurt) vs midday (in the fields), no kin to lodge wi
 When R7 adds a god power, the power's code is a few lines writing physical state; everything that
 follows is answered by systems that would answer the same state arising naturally. If a power needs
 an outcome script, the architecture is wrong.
+
+## 9. Status (session 20)
+- **R6.5a foundations**: built with R6 - deeds (`deeds.lua`), danger noticed (`danger.lua`), the
+  urgent choice (fire, thieves; wolves had their own), injury (`people.hurt`, care, healing, death),
+  sudden-death aftermath (death deeds, kin mourning on learning, burials), building condition (burnt
+  houses as ruins; put-out fires as damage), lodging (`migrate.lodge`).
+- **R6.5b lightning on a village**: built (D-154, `sim/agents/blaze.lua`, `test_v3_lightning`).
+- Next: R6.5c wildfire between planet and map; then d snow, e flood water, f geology, g climate.
