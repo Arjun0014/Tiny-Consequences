@@ -89,6 +89,8 @@ start hour; the old 14-digit start made a strike land ulps apart - a harness art
   `luajit -joff tools/v3_profile.lua --load F --days 4` - a day-0 profile does not show herd growth.
 - **Hard winter watched** (D-164): `tools/v3_chronicle.lua --premise hard_winter`; a toddler carried on a
   trade trip starved (fed only from provisions; handed over as the father set out) - fixed.
+- **STATE at 5e09af4**: all green as at 2c588da plus aftershocks, helped home, leaf fodder, ice crust
+  (quick 178, browser = LuaJIT untouched/cold_snap/fire/quake); D-148-D-167.
 - **STATE at 2c588da** (all green): quick 178/178, web 11/11, lint, release build; browser = LuaJIT
   (untouched and conflict/fire/cold_snap/quake/eruption/tsunami/hard_winter premises); LuaJIT 3.78 M
   instr/h day 0, 4.52 M at day 192; release season 10.8 s (37.5 ms/h, 4 runs).
