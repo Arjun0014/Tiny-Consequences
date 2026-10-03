@@ -54,6 +54,17 @@ Session 18 (D-129-D-136): moving and founding by sea (`migrate.sea_plan`/`land`/
 (`trade.sea_rough`), not rain; salt (`econ.GOODS.salt`, `saltpan`, WORK.salt) is made only on the
 coast and traded inland; `s.beach` is a young place's landing (`s.landing` is a catch landed);
 friends (`p.rel_id`) may live on other maps - check the map before any spatial use.
+Session 19 (D-138-D-146): watch long runs with `tools/v3_chronicle.lua` (every memory in
+`<out>/mem.txt`, states, deaths; `--premise crowd:2|fail_harvest:N|empty_stores:N`) and follow people
+with `tools/v3_follow.lua --pid P --from-day D [--premise ...]`; trade is planned on a snapshot of
+worths (`econ.view`, `econ.deal_plan`, shared with arrival); stone (`sim/agents/stone.lua`: outcrops
+from slope and height, quarrying, querns, footings) and iron (`sim/agents/iron.lua`: veins, bog iron,
+mine -> clamp -> forge -> `hh.iron`) are whole chains; baskets and credit between households
+(`econ.debts`); fairs (`sim/agents/fair.lua`, news of them spread by `econ.on_learn`); the ferry
+(`migrate.ferry_for`/`land_ferry`, the skipper's `p.ferry`); hardship is judged per household
+(`migrate.push`: own larder + part of the granary); `settle.leaving` (no houses for those leaving);
+work stints must be booked at the worker's pace (a quern was never finished); the canopy opens over the
+close camera's target (`props.fp` `u_canopy`).
 
 ## Read order
 

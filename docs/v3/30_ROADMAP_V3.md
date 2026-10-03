@@ -122,6 +122,18 @@ fish without smoke and keeps cheese - traded inland by road: 34 exchanges in the
 before), the first on day 24, Tekheim and Little Leelee trading at last. Open: stone and metal from
 geology, fairs, credit, larger cargo boats.)
 
+(Session 19, D-138-D-144: trade planned on a snapshot of each household's worths and spares, seen
+and guessed gains kept apart (unsold trips 64% -> ~25%); **stone** from outcrops placed by the
+planet's slope and height, quarried and carried a stone at a time, querns (cooking quicker, traded to
+villages without rock) and stone footings; **iron** whole - veins and bog iron known when seen, ore
+dug and carried, charcoal burned in a clamp, blooms smelted and edges forged and fitted to households'
+tools, traded where there is none; the sea's danger weighed; **baskets and credit** - a whole good paid
+with a basket of spare goods, the rest owed between trusting households and collected in kind;
+**fairs** after the harvest at the middle village of a road cluster, heard of through people and
+criers, gone to for reasons, barter person to person, news, kin and matches. Untouched 192 days: 439
+exchanges, deaths only old age and illness. Open: fairs by boat, querns and iron at fairs, larger cargo
+boats, stone bridge piers.)
+
 ## Geography (session 14, D-112)
 Drainage basins on the planet (outlets, a priority flood, beds falling to the sea), rivers widening
 with discharge from mountain sources, valleys and floodplains carved into the drawn planet, mountains
@@ -159,6 +171,16 @@ on the hold's seed and bread vs the beasts left. Families share food on the road
 along the way; starving people do not found; huts become houses; hunters refresh the country. Tests
 `test_v3_sea`. Open: a ferry for boatless households, planet markers for small places, founding
 couples given parents.)
+
+(Session 19, D-139, D-140, D-145, D-146: **the ferry done** - a household with no boat is sailed over
+by a household of its village with one (kin, friends, partners, any neighbour for a fare); the skipper
+keeps his word, packs his own provisions, takes them aboard, lands them and sails home in the same
+boat. Hardship is judged by each household (its larder and part of the granary), so fishers with full
+larders stay; leaving couples take no house; hunger answered by the people (beasts killed for the pot
+and for neighbours, the shore, journeys put off); the generator's waiting couple has parents; a young
+place is seen - the canopy opens close in, the selection ring marks it, the inspector says camp,
+hamlet or young village. Tests `test_v3_ferry`, `test_v3_families`. Open: sailing together (kin taken
+along in a leaving household's boat), a ferry for founders, labels for small places on the planet.)
 
 The plan as it was written (done, as above):
 1. **Who and why**: a household (or kin together) pushed hard with no village that would take them
