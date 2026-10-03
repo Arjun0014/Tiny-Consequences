@@ -1040,15 +1040,33 @@ M.trade_candidate = trade_candidate
 -- (S20, R6a, D-149) Taking a beast from another village (conflict.take_weigh weighs it): a grown-up
 -- fit for the road, of a household in hardship or holding a grievance, setting out in the morning.
 local function steal_candidate(W, s, p, ctx, now, fat)
-  if ctx.moving or p.trip or p.at or ctx.stage ~= "adult" or ctx.babe or not ctx.home or not ctx.hh then return end
+  if ctx.moving or p.trip or p.raid or p.at or ctx.stage ~= "adult" or ctx.babe or not ctx.home or not ctx.hh then return end
   if (p.nursing or 0) > now or (p.preg_due or 0) > 0 or p.health < 0.6 or p.hunger > 0.8 or (p.hurt or 0) > 0.2 then return end
   if ctx.lh > ctx.wake + 3 or ctx.rain >= 2 then return end
   if not claim_free(W, ctx.hh, "taking", p) then return end
   local b = conflict.take_weigh(W, s, p, ctx.hh, now)
   if not b then return end
+  -- (S20, R6e) too risky alone, and there are men at home: raise a party instead (none already forming)
+  if p.sex == "m" and b.risk >= C().raid_risk and not s.raid and conflict.companions(W, s, p, now) >= 1 then
+    add(min(0.95, 0.25 + 0.6 * b.net) * fat, "raise_raid", b.o, b.hi, b.why .. ": too many dogs and men there for one alone")
+    return
+  end
+  -- (a party is going there: one goes with it, not alone ahead of it - M.join_candidate)
+  local R = conflict.raid_open(W, s, now)
+  if R and R.to == b.o then return end
   add(min(0.95, 0.25 + 0.6 * b.net) * fat, "steal", b.o, b.hi, b.why)
 end
 M.steal_candidate = steal_candidate
+
+-- (S20, R6e) A party forming at home: whether to go with it, by one's own reasons.
+function M.join_candidate(W, s, p, ctx, now, fat)
+  local R = conflict.raid_open(W, s, now)
+  if not R or p.raid or p.trip or p.at or p.id == R.leader or ctx.stage ~= "adult" or p.sex ~= "m" or ctx.babe or ctx.moving then return end
+  if p.health < 0.6 or (p.hurt or 0) > 0.2 then return end
+  local net, why = conflict.join_weigh(W, s, p, R, now)
+  if net <= 0 then return end
+  add(min(0.95, 0.45 + 0.4 * net) * fat, "join_raid", R.id, 0, why)
+end
 
 -- (S20, R6b) Asking redress for a wrong (conflict.claim_weigh): a grown-up fit for the road of the
 -- household that bore it, in the morning; the more it weighs and the more the villages trust each
@@ -4182,6 +4200,12 @@ local function steal_legs(W, s, p, ctx, now)
     end
     local gx, gy = trade.gate(W, home_s, o)
     go(pl, gx, gy, "the road to " .. o.name)
+    if tr.band then
+      -- (S20, R6e) the party gathers at the gate at the hour agreed, and goes together
+      work(pl, "gather", 0, { until_t = tr.depart })
+      work(pl, "travel", tr.dur, { to = o.id, from = home_s.id })
+      return "Go with the others to " .. o.name, o.name
+    end
     local _, hrs = trade.road(W, home_s, o)
     work(pl, "travel", road_dur(ctx.lh + 0.4, hrs, ctx.wake, ctx.bed), { to = o.id, from = home_s.id })
     return "Go to " .. o.name .. " to take a beast", o.name
@@ -4197,11 +4221,18 @@ local function steal_legs(W, s, p, ctx, now)
       local dawn = (ctx.wake - 1 - ctx.lh) % 24
       if wait > 0.05 and wait < dawn then
         if not tr.hx then
-          -- off the road among the trees, a little in from the edge where the road comes in
+          -- off the road among the trees, a little in from the edge where the road comes in (a party
+          -- together, each a little apart)
+          local R = tr.band and home_s.raid
           local gx, gy = trade.gate(W, o, home_s)
           local l = sqrt(gx * gx + gy * gy)
           local k = l > 1e-6 and (l - c.take_hide) / l or 1
-          tr.hx, tr.hy = near_spot(W, p, now, gx * k, gy * k, 0.08, 83)
+          local cx, cy = gx * k, gy * k
+          if R and R.id == tr.band then
+            if not R.hx then R.hx, R.hy = cx, cy end
+            cx, cy = R.hx, R.hy
+          end
+          tr.hx, tr.hy = near_spot(W, p, now, cx, cy, tr.band and 0.04 or 0.08, 83)
         end
         go(pl, tr.hx, tr.hy, "the woods above " .. o.name)
         work(pl, "lie_up", wait, {})
@@ -4258,6 +4289,38 @@ local function steal_why(W, p)
   return tr.why or ""
 end
 
+-- (S20, R6e) Raising a party: the leader goes round the men at the square and the houses; the party
+-- sets off after the next dawn (each of the others decides whether to go).
+PLAN.raise_raid = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local c = C()
+  local o = W.S.v3.settlements[cd.a]
+  local b = conflict.take_weigh(W, s, p, ctx.hh, now)
+  local home_s = s
+  local dawn = next_local(now, ctx.lh, ctx.wake) + c.raid_lead
+  local _, hrs = trade.road(W, home_s, o)
+  s.raid_n = (s.raid_n or 0) + 1
+  s.raid = { id = s.raid_n, leader = p.id, to = o.id, kind = stock.HERDS[cd.b], n = b and b.n or 2, depart = dawn,
+    dur = road_dur((ctx.wake + c.raid_lead) % 24 + 0.4, hrs, ctx.wake, ctx.bed), party = { p.id }, risk = b and b.risk or 0.4,
+    why = sfmt("Going with %s and the others to take beasts from %s", p.name, o.name), t = now }
+  p.raid = s.raid.id
+  people.remember(p, now, sfmt("Going round the men: we will go to %s together to take beasts", o.name))
+  local x, y = near_spot(W, p, now, s.sqx or 0, s.sqy or 0, 0.06, 95)
+  go(pl, x, y, "the square")
+  work(pl, "talk", 0.6, {})
+  return "Raise men to go to " .. o.name, "the square"
+end
+
+function M.raid_hour(W, s, p, now) return conflict.raid_ready(W, s, p, now) end
+
+PLAN.join_raid = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local R = s.raid
+  if R and R.id == cd.a then conflict.join(W, s, p, R, now) end
+  work(pl, "wait", 0.1, {})
+  return "Agree to go with " .. ((W.S.v3.people[R and R.leader or 0] or {}).name or "them"), ""
+end
+
 PLAN.steal = function(W, s, p, ctx, now, cd)
   local o = W.S.v3.settlements[cd.a]
   local kind = stock.HERDS[cd.b]
@@ -4308,7 +4371,7 @@ function M.steal_decide(W, s, p, ctx, now, reason)
   local here = p.at or p.sett
   if here == tr.from and not tr.back then
     tr.replans = (tr.replans or 0) + 1
-    if tr.replans > 30 then
+    if tr.replans > 30 or ctx.moving then
       -- (it would not come right: given up)
       p.trip = nil
       if ctx.hh and ctx.hh.taking == p.id then ctx.hh.taking = 0 end
@@ -4319,7 +4382,9 @@ function M.steal_decide(W, s, p, ctx, now, reason)
     -- nobody is near yet
     local o = W.S.v3.settlements[tr.to]
     local near = conflict.watchers_near(W, o, p, now, C().take_sight * 1.5)
-    if near > 0 or people.bold(W, p) < C().take_hold then
+    -- (S20, R6e) in a party he holds while his own are as many as those who come out
+    local mine = conflict.party_here(W, o, p)
+    if (mine == 0 and (near > 0 or people.bold(W, p) < C().take_hold)) or (mine > 0 and near > mine + 1) then
       conflict.let_go(W, o, p, now)
       tr.fled = true
       p.tried = p.tried or {}
@@ -5281,6 +5346,7 @@ function M.decide(W, s, p, now, reason)
       return true
     end
   end
+  if p.raid and not p.trip then M.raid_hour(W, s, p, now) end
   if p.trip and p.trip.steal and M.steal_decide(W, s, p, ctx, now, reason) then return true end
   if p.trip then
     local tr = p.trip
@@ -5487,6 +5553,7 @@ function M.decide(W, s, p, now, reason)
       crew_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       trade_candidate(W, s, p, ctx, now, fatigue(p))
       M.steal_candidate(W, s, p, ctx, now, fatigue(p))
+      M.join_candidate(W, s, p, ctx, now, fatigue(p))
       M.claim_candidate(W, s, p, ctx, now, fatigue(p))
       court_candidate(W, s, p, ctx, now, fatigue(p))
       visit_candidate(W, s, p, ctx, now, fatigue(p))

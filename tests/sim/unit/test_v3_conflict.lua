@@ -216,4 +216,55 @@ function M.a_blow_is_a_deed()
   return string.format("%s struck %s: hurt %.2f; grievance %.1f (unprovoked %.1f)", owner.name, taker.name, sev, g1, g2)
 end
 
+-- Raids (R6e): men given away alone at a village with dogs raise a party at home; others join for
+-- their own reasons (nobody is assigned); those who go gather and walk the road together, and are at
+-- the other village together.
+function M.men_given_away_alone_go_together()
+  local W = shipped()
+  local V = W.S.v3
+  world.advance(W, W.hour + 72)
+  local A, B = V.settlements[4], V.settlements[2]
+  hardship(W, A, B)
+  local people = require("sim.agents.people")
+  local orig = people.remember
+  local stayed = {}
+  people.remember = function(p, t, text, ...)
+    if type(text) == "string" and text:find("^Did not go with the others") then stayed[p.id] = text end
+    return orig(p, t, text, ...)
+  end
+  local t0 = W.hour
+  local party, members, went, there = nil, {}, {}, {}
+  for h = 1, 24 * 12 do
+    world.advance(W, t0 + h)
+    local R = A.raid
+    if R and #R.party >= 2 and not party then party = R end
+    if party then
+      for _, id in ipairs(party.party) do members[id] = true end
+      for id in pairs(members) do
+        local p = V.people[id]
+        if p and p.trip and p.trip.band == party.id then
+          went[id] = true
+          if p.at == party.to and not there[id] then there[id] = W.hour end
+        end
+      end
+    end
+  end
+  people.remember = orig
+  T.ok(party ~= nil, "a party of two or more formed at " .. A.name)
+  if not party then return end
+  local nm, ng, n, first, last = 0, 0, 0, 1e18, -1e18
+  for id in pairs(members) do
+    nm = nm + 1
+    if went[id] then ng = ng + 1 else T.ok(stayed[id] ~= nil, V.people[id].name .. " agreed and did not go: with a reason") end
+  end
+  for _, t in pairs(there) do n = n + 1; first = math.min(first, t); last = math.max(last, t) end
+  T.ok(ng >= 1, "someone of the party went")
+  T.ok(n < 2 or last - first < 2, string.format("those who went came together (%.1f h apart)", n >= 2 and last - first or 0))
+  local leader = V.people[party.leader]
+  local why = {}
+  for id, t in pairs(stayed) do why[#why + 1] = V.people[id].name .. ": " .. t end
+  return string.format("%s raised %d men for %s; %d went, %d reached it; stayed: %s", leader.name, nm, V.settlements[party.to].name, ng, n,
+    #why > 0 and table.concat(why, "; ") or "none")
+end
+
 return M

@@ -73,74 +73,82 @@ M.ONE = { sheep = "a sheep", goat = "a goat", cattle = "a cow", pig = "a pig" }
 
 local CACHE = setmetatable({}, { __mode = "k" })
 -- The best taking for p now, or nil (cached for the local day: the weighing is the morning's).
-function M.take_weigh(W, s, p, hh, now)
+-- (S20, R6e) The weighing for one village o: the best kind to take there (or `only` that kind), its
+-- net and why; `party` others going too share the risk. nil when there is no motive or nothing to take.
+local function weigh_at(W, s, p, hh, o, now, push, bold, only, party)
   local c = C()
+  local V = W.S.v3
+  local k = s.know and s.know[o.id]
+  if not (k and k.beasts and o.alive and o ~= s) then return nil end
+  local _, hrs = trade.road(W, s, o)
+  -- (a wrong is answered by taking back only once redress was asked and not given - or where
+  -- there is no trust left to ask it: claims first, R6b)
+  local trust0 = econ.rel(s, o).trust
+  local grudge, gd = deeds.grievance(W, s, o, hh.id, now, function(e)
+    return e.answer == "denied" or e.answer == "refused" or trust0 < c.claim_trust_min end)
+  if hrs > c.take_road_h or (push < c.take_push and grudge < c.take_grudge) then return nil end
+  -- restraint: who they are to us (kin there, trust, a friend there), less boldness and the
+  -- wrongs they did us
+  local kin = M.kin_at(W, hh, o)
+  local friend = M.friend_at(W, p, o)
+  local restraint = c.take_restraint * (1 - c.take_bold * bold) + (kin and c.take_kin or 0)
+    + trust0 * c.take_trust + (friend and c.take_friend or 0) - grudge * c.take_grudge_k
+  -- the risk as known: their dogs, a watch kept, the grown men there; the bold care less
+  local men = 0
+  for _, mid in ipairs(o.members) do
+    local q = V.people[mid]
+    if q and q.alive and q.sex == "m" and people.stage(q, now) == "adult" then men = men + 1 end
+  end
+  -- (and what they themselves met there: given away before, they expect it again; it fades)
+  local tried = p.tried and p.tried[o.id]
+  local fails = tried and tried.n * deeds.fade({ kind = "take" }, now - tried.t) or 0
+  local risk = (c.take_dog * min(3, k.dogs or 0) + (k.watch and c.take_watch or 0) + c.take_people * men / 10
+    + c.take_failed * fails) * (1.2 - bold)
+  local shared = risk / (1 + 0.5 * (party or 0))
+  local mouths = max(1, #hh.members)
+  local best, bn = nil, -1e9
+  for _, tk in ipairs(TAKE_KINDS) do
+    local nb = k.beasts[tk.hi] or 0
+    -- (only a kind the household's village keeps: a beast needs a pen to go into at home)
+    if nb > 0 and (not only or only == tk.kind) and (tk.kind ~= "cattle" or bold > 0.6) and s.herds and s.herds[tk.kind] then
+      -- the gain: meat for a hungry household (as many as one person can lead off by night and the
+      -- household needs: a cow, or up to take_flock sheep and goats, no more than it can eat before
+      -- it spoils), or beasts in place of what they took from us
+      local meat = tk.kind == "cattle" and c.stock.cattle.meat or c.stock.sheep.meat
+      local need = mouths * 0.7 * c.take_need_days
+      local n = tk.kind == "cattle" and 1 or max(1, min(c.take_flock, nb, floor(need / meat + 0.5)))
+      local gain = c.take_gain_k * min(n * meat, need) * min(1.5, push) + min(0.5, grudge * c.take_grudge_k)
+      local slow = tk.kind == "cattle" and 0.15 or 0
+      local net = gain - shared - restraint - hrs / 24 * 0.1 - slow
+      if net > bn then
+        local why
+        if push >= c.take_push then
+          why = sfmt("Nothing left to eat at home; %s's %s held %d beasts when we were there%s",
+            o.name, tk.kind == "flock" and "fold" or "byre", nb, kin and "" or ", and none of them is kin of ours")
+        else
+          why = sfmt("%s took from us and never made it good: taking one of theirs", gd and deeds.told(W, s, gd) or ("Someone of " .. o.name))
+        end
+        best, bn = { o = o.id, hi = tk.hi, kind = tk.kind, n = n, net = net, hrs = hrs, why = why, grudge = grudge, gdeed = gd and gd.id or nil,
+          risk = risk, push = push }, net
+      end
+    end
+  end
+  return best
+end
+M.weigh_at = weigh_at
+
+function M.take_weigh(W, s, p, hh, now)
   local day = floor(now / 24)
   local e = CACHE[p]
   if e and e.day == day then return e.best end
   e = { day = day }
   CACHE[p] = e
   local push = migrate.push(W, s, hh, now)
-  local V = W.S.v3
   local bold = people.bold(W, p)
-  local mouths = max(1, #hh.members)
-  local best, bn = nil, 0
+  local best = nil
   for _, o in ipairs(trade.partners(W, s)) do
-    local k = s.know and s.know[o.id]
-    if k and k.beasts and o.alive and o ~= s then
-      local _, hrs = trade.road(W, s, o)
-      -- (a wrong is answered by taking back only once redress was asked and not given - or where
-      -- there is no trust left to ask it: claims first, R6b)
-      local trust0 = econ.rel(s, o).trust
-      local grudge, gd = deeds.grievance(W, s, o, hh.id, now, function(e)
-        return e.answer == "denied" or e.answer == "refused" or trust0 < c.claim_trust_min end)
-      if hrs <= c.take_road_h and (push >= c.take_push or grudge >= c.take_grudge) then
-        -- restraint: who they are to us (kin there, trust, a friend there), less boldness and the
-        -- wrongs they did us
-        local kin = M.kin_at(W, hh, o)
-        local friend = M.friend_at(W, p, o)
-        local r = econ.rel(s, o)
-        local restraint = c.take_restraint * (1 - c.take_bold * bold) + (kin and c.take_kin or 0)
-          + r.trust * c.take_trust + (friend and c.take_friend or 0) - grudge * c.take_grudge_k
-        -- the risk as known: their dogs, a watch kept, the grown men there; the bold care less
-        local men = 0
-        for _, mid in ipairs(o.members) do
-          local q = V.people[mid]
-          if q and q.alive and q.sex == "m" and people.stage(q, now) == "adult" then men = men + 1 end
-        end
-        -- (and what they themselves met there: given away before, they expect it again; it fades)
-        local tried = p.tried and p.tried[o.id]
-        local fails = tried and tried.n * deeds.fade({ kind = "take" }, now - tried.t) or 0
-        local risk = (c.take_dog * min(3, k.dogs or 0) + (k.watch and c.take_watch or 0) + c.take_people * men / 10
-          + c.take_failed * fails) * (1.2 - bold)
-        for _, tk in ipairs(TAKE_KINDS) do
-          local nb = k.beasts[tk.hi] or 0
-          -- (only a kind the household's village keeps: a beast needs a pen to go into at home)
-          if nb > 0 and (tk.kind ~= "cattle" or bold > 0.6) and s.herds and s.herds[tk.kind] then
-            -- the gain: meat for a hungry household (no more than it can eat before it spoils), or
-            -- a beast in place of what they took from us
-            -- (as many as one person can lead off by night and the household needs: a cow, or up to
-            -- take_flock sheep and goats)
-            local meat = tk.kind == "cattle" and c.stock.cattle.meat or c.stock.sheep.meat
-            local need = mouths * 0.7 * c.take_need_days
-            local n = tk.kind == "cattle" and 1 or max(1, min(c.take_flock, nb, floor(need / meat + 0.5)))
-            local gain = c.take_gain_k * min(n * meat, need) * min(1.5, push) + min(0.5, grudge * c.take_grudge_k)
-            local slow = tk.kind == "cattle" and 0.15 or 0
-            local net = gain - risk - restraint - hrs / 24 * 0.1 - slow
-            if net > bn then
-              local why
-              if push >= c.take_push then
-                why = sfmt("Nothing left to eat at home; %s's %s held %d beasts when we were there%s",
-                  o.name, tk.kind == "flock" and "fold" or "byre", nb, kin and "" or ", and none of them is kin of ours")
-              else
-                why = sfmt("%s took from us and never made it good: taking one of theirs", gd and deeds.told(W, s, gd) or ("Someone of " .. o.name))
-              end
-              best, bn = { o = o.id, hi = tk.hi, kind = tk.kind, n = n, net = net, hrs = hrs, why = why, grudge = grudge, gdeed = gd and gd.id or nil }, net
-            end
-          end
-        end
-      end
-    end
+    local b = weigh_at(W, s, p, hh, o, now, push, bold)
+    if b and b.net > 0 and (not best or b.net > best.net) then best = b end
   end
   e.best = best
   return best
@@ -153,7 +161,7 @@ function M.took(W, s, p, H, a, now, n)
   local d = deeds.add(W, { kind = "take", t = now, at = s.id, x = a.tx, y = a.ty,
     by = p.id, by_hh = p.hh, by_s = p.sett, to = 0, to_hh = a.owner or 0, to_s = s.id,
     what = a.sp, n = n or 1, fu = stock.SP(a.sp).meat * 1.2 * (n or 1), harm = true,
-    answers = p.trip and p.trip.gdeed or nil })
+    answers = p.trip and p.trip.gdeed or nil, raid = p.trip and p.trip.band or nil })
   a.taken = d.id
   -- (the taker's own household knows; it is not told about)
   if home_s then deeds.learn(W, home_s, d, "ours", p.id, p.sett, now, true) end
@@ -167,6 +175,8 @@ end
 function M.missing(W, s, now)
   local V = W.S.v3
   local c = C()
+  -- (S20, R6e) a party long gone is done with
+  if s.raid and now > s.raid.depart + 96 then s.raid = nil end
   -- (S20, R6d) burials past are done with
   local B = s.burials
   if B then
@@ -316,7 +326,7 @@ function M.claim_weigh(W, s, hh, now)
   for i = 1, #dk do
     local e = dk[i]
     local d = deeds.get(W, e.id)
-    if d and d.harm and not d.settled and not e.own and d.to_s == s.id and d.to_hh == hh.id and e.by_s ~= 0
+    if d and d.harm and not d.settled and not d.back and not e.own and d.to_s == s.id and d.to_hh == hh.id and e.by_s ~= 0
       and (not e.claim_t or now - e.claim_t > c.claim_again_days * 24) and e.answer ~= "refused" and e.answer ~= "denied" then
       local o = W.S.v3.settlements[e.by_s]
       if o and o.alive and o ~= s then
@@ -374,6 +384,113 @@ function M.claim_answer(W, o, p, d, now)
   if press < hold then return { kind = "refused", hh = hh, press = press, hold = hold } end
   if #beasts > 0 then return { kind = "returned", hh = hh, beasts = beasts, press = press, hold = hold } end
   return { kind = "paid", hh = hh, press = press, hold = hold }
+end
+
+-- (S20, R6e) Raids -----------------------------------------------------------------------------
+-- A man who weighs taking beasts where the risk alone is high (dogs, a watch, its men, his own
+-- failures there) and who has kin or friends at home with reasons of their own may raise a party:
+-- s.raid = { id, leader, to, kind, n, depart, dur, party = { pids }, why, hx, hy, t }. Each of the
+-- others decides to join for their own reasons (`join_weigh`); those who go gather at the gate at the
+-- hour (`p.raid`), walk the road together, lie up together and take beasts with numbers on their
+-- side (no one lets go while his own outnumber those who come out).
+
+-- Grown men of s besides p who could go: fit, no babe in arms, not on a journey or moving.
+function M.companions(W, s, p, now)
+  local V = W.S.v3
+  local n = 0
+  for _, id in ipairs(s.members) do
+    local q = V.people[id]
+    if q and q ~= p and q.alive and q.sex == "m" and not q.at and not q.trip and not q.raid and people.stage(q, now) == "adult"
+      and q.health >= 0.6 and (q.hurt or 0) < 0.2 and (q.babe or 0) == 0 then
+      local hh = V.households[q.hh]
+      local mg = hh and (hh.migrate or hh.found)
+      if not (mg and not mg.arrived and not mg.given_up) then n = n + 1 end
+    end
+  end
+  return n
+end
+
+-- The party forming at village s (not yet set off), or nil.
+function M.raid_open(W, s, now)
+  local R = s.raid
+  if R and now < R.depart and not R.gone then return R end
+  return nil
+end
+
+-- Would p join the party R (net > 0: their own reasons)? The same weighing as taking alone - their
+-- household's need or wrong, ties to the target, boldness - with the risk shared by the party, and
+-- the bond to the one raising it (kin, a friend). Returns net and why.
+function M.join_weigh(W, s, p, R, now)
+  local c = C()
+  local V = W.S.v3
+  local o = V.settlements[R.to]
+  local leader = V.people[R.leader]
+  local hh = V.households[p.hh]
+  if not o or not leader or not hh then return -1 end
+  local push = migrate.push(W, s, hh, now)
+  local bold = people.bold(W, p)
+  local b = weigh_at(W, s, p, hh, o, now, push, bold, R.kind, #R.party)
+  local kinl = people.is_kin(W, p, leader.id)
+  local aff = people.affinity(p, leader.id)
+  local bond = (kinl and c.join_kin or 0) + max(0, aff) * c.join_friend
+  if not b then return -1 end
+  -- (a wife with child or a babe at home holds a man back a little)
+  local wife = V.people[p.partner]
+  local family = (wife and wife.alive and ((wife.preg_due or 0) > 0 or (wife.nursing or 0) > now)) and c.join_family or 0
+  local net = b.net + bond - family
+  local why = sfmt("%s is raising men to take beasts from %s%s", leader.name, o.name,
+    (kinl and ": he is my kin") or (aff >= 0.3 and ": he is my friend") or (b.push >= c.take_push and ": we have nothing to eat")
+    or (b.grudge >= c.take_grudge and ": they wronged us") or "")
+  return net, why
+end
+
+-- p of village s joins party R (p.raid; the trip is made when the hour comes).
+function M.join(W, s, p, R, now)
+  R.party[#R.party + 1] = p.id
+  p.raid = R.id
+  people.remember(p, now, sfmt("Agreed to go with %s to %s to take beasts", (W.S.v3.people[R.leader] or {}).name or "them",
+    (W.S.v3.settlements[R.to] or {}).name or "another village"))
+end
+
+-- The raid's hour is near: p's own take trip, in the party (true when made).
+function M.raid_ready(W, s, p, now)
+  local R = s.raid
+  if not R or R.id ~= p.raid or now > R.depart + 6 then p.raid = nil; return false end
+  if now < R.depart - C().ready_h then return false end
+  local o = W.S.v3.settlements[R.to]
+  if not o then p.raid = nil; return false end
+  -- (when the hour comes: one whose household is about to move or found a place, or who is too weak
+  -- or hurt for the road now, stays - and says so)
+  local hh = W.S.v3.households[p.hh]
+  local mg = hh and (hh.migrate or hh.found)
+  local moving = mg and not mg.arrived and not mg.given_up
+  if moving or p.hunger > C().raid_hunger or p.health < 0.4 or (p.hurt or 0) > 0.2 then
+    p.raid = nil
+    people.remove_id(R.party, p.id)
+    people.remember(p, now, moving and "Did not go with the others: the household is leaving" or "Did not go with the others: too weak for the road")
+    return false
+  end
+  p.trip = { steal = true, to = R.to, from = s.id, kind = R.kind, lead_kind = R.kind, give = "grain", take = "grain", n = R.n,
+    t0 = now, band = R.id, depart = R.depart, dur = R.dur, why = R.why }
+  p.raid = nil
+  local hh = W.S.v3.households[p.hh]
+  if hh then hh.taking = p.id end
+  return true
+end
+
+-- The others of p's party on map o now, not given away.
+function M.party_here(W, o, p)
+  local tr = p.trip
+  local n = 0
+  if not tr or not tr.band then return 0 end
+  local V = W.S.v3
+  local s = V.settlements[tr.from]
+  local R = s and s.raid
+  for _, id in ipairs(R and R.id == tr.band and R.party or {}) do
+    local q = V.people[id]
+    if q and q ~= p and q.alive and q.at == o.id and q.trip and q.trip.band == tr.band and not q.trip.fled then n = n + 1 end
+  end
+  return n
 end
 
 -- What noticing a taker at the pen looks like (danger cues, D-148): dogs at their posts near
@@ -499,6 +616,15 @@ function M.chased(W, s, p, q, d, now)
   local qx, qy = danger.person_pos(q, now)
   if d <= sight then
     if dd then M.seen(W, s, dd, p, now) end
+    -- (S20, R6e) too many of them: back to the houses
+    local them = 1 + M.party_here(W, s, q)
+    local us = M.watchers_near(W, s, p, now, 0.2)
+    if them > us + 1 then
+      people.remember(p, now, sfmt("%d men at the beasts in the night, too many for us", them))
+      p.alarm = nil
+      s.raiders_seen = now
+      return "outnumbered"
+    end
     p.alarm.x, p.alarm.y, p.alarm.t, p.alarm.how = qx, qy, now, "saw"
     -- (he sees them coming)
     if not (q.alarm and now - q.alarm.t < 0.05) then

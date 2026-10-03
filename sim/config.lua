@@ -1245,7 +1245,14 @@ C.V3 = {
   hurt_bed = 0.6, hurt_heal = 0.035, hurt_fester = 0.15, hurt_death = 0.05,
   strike_k = 0.5, take_fight = 0.85, blow = 0.45, deserved_k = 0.2,
   wound_fu = 30, blood_fu = 200,
-  run_k = 1.7,                            -- running pace (chasing, fleeing) over walking          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
+  run_k = 1.7,                            -- running pace (chasing, fleeing) over walking
+  -- (S20, R6e) raids: a taking whose risk alone is raid_risk or more is raised as a party when there
+  -- are men at home; joining weighs need (join_need), the wrong (as taking), kin of the leader
+  -- (join_kin), his friendship (x join_friend), boldness (x join_bold) against join_base, ties to the
+  -- target (as taking), a wife with child or a babe (join_family) and the risk shared by the party;
+  -- the party sets off raid_lead hours after the next dawn
+  raid_risk = 0.3, join_need = 0.5, join_kin = 0.45, join_friend = 0.5, join_bold = 0.4, join_base = 0.55,
+  join_family = 0.25, raid_lead = 0.8, raid_hunger = 0.8,   -- (a man hungrier than this at the hour stays at home)          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
 }
 
 return C
