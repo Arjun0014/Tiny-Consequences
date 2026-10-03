@@ -63,7 +63,18 @@ start hour; the old 14-digit start made a strike land ulps apart - a harness art
   age 3 + illness 6, burials.
 - **R6.5c done** (eca2268, D-155): `blaze.planet` (planet fire -> map trees at the edge; a local fire that
   takes hold -> planet fire on its cell); people remember fire seen; premise `named("wildfire")`.
-- **CURRENT TASK: R6.5f part 1 - earthquakes** (`sim/agents/shake.lua` planned): planet boundary stress
+- **R6.5f part 1 DONE** (a32dfdc, D-156): earthquakes - `sim/agents/shake.lua` (boundary stress, quakes,
+  felt by distance, buildings by construction, trapped dug out, lodging), tests `test_v3_quake` x2,
+  `--premise quake` browser = LuaJIT. Night quake under Tekheim: 3 houses fell, 7 trapped, all dug out.
+- **CURRENT TASK: R6.5f part 2 - volcanoes**: generate volcano sites in v3 worlds lazily from convergent
+  boundaries (+ a hotspot) like `worldgen/settle.lua volcanoes()` (W.ent.volcanoes is nil in v3); pressure
+  per volcano gathering daily, eruption past a noisy threshold with a VEI; effects: `G.aerosol += f(VEI)`
+  (already cools every cell -> v3 crops/pasture), local fire/heat near the vent (planet `fire.ignite` on
+  the cell and neighbours), ash fall downwind on village maps (an ash depth per map: grass under ash ->
+  pasture lost for days, roofs loaded -> damage like a quake's, fertility later), shaking felt (shake).
+  Premise named("eruption") at the volcano nearest a village; tests. Then: the R6.5 doc status, a long
+  untouched run with natural quakes/strikes, the final checks.
+- **Earlier plan text (done)**: earthquakes (`sim/agents/shake.lua` planned): planet boundary stress
   (`static.boundary`/`bstrength`: convergent and transform cells accumulate, release at a noisy threshold
   -> a quake at a cell with a magnitude); each village map within reach feels an intensity by distance;
   each building is damaged by intensity x its construction's vulnerability (log house 1, on stone
