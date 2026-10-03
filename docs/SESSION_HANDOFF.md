@@ -1,6 +1,43 @@
-# Session handoff — session 21 (3-4 Oct 2026, extended autonomous run, IN PROGRESS): flood water, arms and kin help, climate extremes, R7 rethought, the world news, world audio; D-169-D-173
+# Session handoff — session 21 (3-4 Oct 2026, extended autonomous run, ENDED at ~900K context on Arjun's word): flood water, arms and kin help, climate extremes, R7 rethought and its v1 powers built, the world news, world audio; D-169-D-175
 
-## CHECKPOINT (~850K context, session 21) - state for a resumed session
+## FINAL STATE (end of session 21)
+- main, all committed (last: the handoff commit after 371605a); `.env` (the ElevenLabs key) gitignored and
+  checked absent from every commit.
+- Tests: quick sim suite 186/186 (run on the code up to the world-audio commit; the last two commits - the v3 powers and the news' everyday life - had their own tests green alone; rerun the full suite first); new this session and green when run alone:
+  `test_v3_flood` x2, `test_v3_kin`, `test_v3_news` x3, `test_v3_powers` x4 (and `test_v3_namespace`,
+  `test_v3_conflict` x10, `test_v3_year`); lint clean; debug build OK (11.3 MB with audio). Browser = LuaJIT
+  (release) checked untouched 72 h and through a flood (`--premise flood5`, 96 h) **before** the news/audio/
+  powers code landed - the view code was then audited for writes to sim state (one found and fixed: the news
+  marked `s.raid`); **re-run the hash check first next session**.
+- Not run at the end (do them first next session, in this order): `npm run test:sim` (full rerun on the final
+  code), `npm run test:web` (11/11 expected), `node scripts/v3_hash_web.mjs --release` (+ `--premise
+  flood5|conflict|fire`), `luajit -joff tools/v3_profile.lua --days 4` and the day-192 profile
+  (`tools/v3_chronicle.lua --days 192 --save F` then `--load F`), an 8-year untouched chronicle
+  (`--days 384`: no hunger deaths expected), `node scripts/prof_web.mjs --release --hours 288 --runs 3`.
+- Watched this session: untouched 192 days - no hunger deaths (illness 6, old age 3), 420 exchanges, natural
+  floods only on bottomland; ice age / hothouse 192 days - no hunger deaths.
+
+## What the game is now (the R7 loop, playable)
+WATCH (the planet; world audio from the state at the camera's focus) -> NOTICE (World News: five cards under the
+clock - disasters, conflict, pressure and everyday life, each one story per incident growing in place) -> GO THERE
+(click a card: the camera flies close in, the person at the heart of it selected, an active danger slows time to
+Watch) -> UNDERSTAND (the card's lines, the inspector's whys, the badge -> "Why?": real causal links to NATURE /
+PEOPLE / YOU) -> INTERVENE (the v3 power bar: lightning at a point, rain, dry spell, warm/cold air, stir the
+mountain, strain the fault, cull, bring) -> WATCH THE CONSEQUENCES (stories rooted at YOU, a shimmer cue).
+Keys: M mutes the world's sound.
+
+## Next (in order)
+1. The validation list above (and fix whatever it finds).
+2. Inspect the game as a player for 10-15 minutes (`npm run play`): the feed at watch speeds, clicks, powers,
+   sounds - tune weights, gains and cue frequency from what is seen and heard (`scripts/shots_news.mjs`,
+   `shots_powers.mjs`, `shots_flood.mjs`; bridge `news`, `audio`).
+3. R7 v2 powers (doc 70 §2): sickness in a herd, blight on a v3 field, sea warmth, oil, meteor on the v3 world.
+4. The news: a history list, more kinds (relief asked and given, orphans taken in, hunters' kills, harvests),
+   aggregation of everyday stories per village-day when busy.
+5. R6 depth still open: the palisade round the houses (ring footprint, gates), captives only as persons.
+6. Polish: flood water edges, the aim ring per power, a settings panel (volumes).
+
+## CHECKPOINT (~850K context, session 21) - kept for the record
 **If you are resuming after a compaction: re-read this section, CLAUDE.md, `docs/v3/70_R7_GOD_POWERS.md`,
 `75_PLAYER_EXPERIENCE.md`, `80_WORLD_AUDIO.md`, `65_R6_5_LIVING_PLANET.md` §12-13, D-169-D-173 and
 `git log --oneline -12` before any change.** Rules as before (no subagents; one heavy process at a time;

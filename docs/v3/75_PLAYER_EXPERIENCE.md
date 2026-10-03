@@ -80,3 +80,9 @@ card needs people on the road. Sounds follow the same rule (`80_WORLD_AUDIO.md`)
 - `game/ui/newsfeed.lua` + the HUD: cards built in code like the inspector; click -> `controls`/camera +
   `selection`; "Why?" expands the chain under the card.
 - Audio cues by level (`80_WORLD_AUDIO.md`).
+
+## 9. Status (session 21)
+Built (D-172, D-175): the story engine with disasters, conflict, pressure and everyday life; five cards under the
+clock; click -> go there; Why? -> the chain; cues by level; bridge `news{n, go}`; `tools/v3_news.lua`; tests
+`test_v3_news` x3. Not yet: a history list, relief asked and given / orphans taken in / harvests as stories,
+per-village aggregation of everyday stories when the world is busy, tuning from play.

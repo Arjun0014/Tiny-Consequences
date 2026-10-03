@@ -265,8 +265,9 @@ following sea level (planet-century time scales), the palisade, captives.)
 rain, dry spell, warm/cold air, stir the mountain, strain the fault, cull, bring; never outcome powers);
 **the player experience** (`75_PLAYER_EXPERIENCE.md`: watch, notice, go there, understand, intervene, watch
 the consequences) with **the world news built** (stories from deeds, events and live state; click to go there;
-Why? from real links to NATURE / PEOPLE / YOU) and **world audio built** (`80_WORLD_AUDIO.md`). Next: the v1
-powers on the v3 world.)
+Why? from real links to NATURE / PEOPLE / YOU) and **world audio built** (`80_WORLD_AUDIO.md`); **the v1 powers
+built on the v3 world** (D-174, `sim/powers3.lua`; consequences rooted at YOU); everyday life in the news (D-175).
+Next: validation and play-tuning, R7 v2 powers (sickness in a herd, blight on a field, sea warmth, oil, meteor).)
 
 ## Never cut
 Determinism, causality (every major change traceable), the planet layer, no scripted

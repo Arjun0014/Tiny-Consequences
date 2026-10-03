@@ -101,7 +101,10 @@ for daily steps only; `tools/v3_flood.lua`, premise `flood`/`floodN`); arms (`pe
 audio** (`docs/v3/80_WORLD_AUDIO.md`; `scripts/gen_audio.mjs` regenerates/extends the library from
 `assets/audio/manifest.json` with the ElevenLabs key in `.env` - gitignored, never print it; `game/audio/audio.lua`
 reads state only - never call functions that create state lazily from the view, e.g. `volcano.list`). A headless
-click must be held a few frames to reach Defold (`scripts/shots_news.mjs`).
+click must be held a few frames to reach Defold (`scripts/shots_news.mjs`). **R7 v1 powers** on the v3 world:
+`sim/powers3.lua` wraps the `power` command (never require back into it); each power writes state with its root
+event as the cause (tests `test_v3_powers`; `scripts/shots_powers.mjs`). The news, the feed and the audio never
+write sim state (D-175). M mutes the world's sound.
 
 ## Read order
 

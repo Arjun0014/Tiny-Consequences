@@ -90,3 +90,13 @@ Each cast: a root event (actor `player`, kind `power_*`) whose id is the **cause
 - Outcome powers (famine, war, migration, abandonment, a bumper crop).
 - Wind and gale until the wind is a field, not a band.
 - Seed the woods until map trees regrow from the planet's forest.
+
+## 7. Status (session 21)
+- **v1 built** (D-174): `sim/powers3.lua` (the `power` command wrapped for v3 worlds), the v3 power bar
+  (`game/ui/powers.lua` DEFS_V3, built once the world is known), lightning aimed at the clicked point of a
+  village's map (`game/view/controls.lua`; the ring as wide as a bolt reaches). Tests `test_v3_powers` x4.
+- Each cast's root event (actor `player`) is the cause of what it writes: forcings' tags (rain, dry, warm,
+  cold), the strike's `event`, the strained fault's and the stirred mountain's causes carried to the quake and
+  the eruption (`shake` `Q.cause`, `volcano` `v.cause`), the cull's tag on fauna. The news roots their
+  consequences at YOU.
+- Not yet: v2 (sickness in a herd, blight on a field, sea warmth, oil, meteor), v3 (seed the woods).
