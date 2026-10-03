@@ -1,0 +1,69 @@
+-- R6.5f earthquakes (S20, D-156): the physical event only - a strong quake under Tekheim (it stands on
+-- a convergent boundary) at an hour of the night or of the day; the rest is the village's: who is under
+-- a roof when it falls, who is trapped, who digs whom out, who is taken in.
+local T = require("tests.sim.lib")
+local world = require("sim.world")
+local worlds = require("sim.worlds")
+
+local M = {}
+
+local function shipped()
+  local f = assert(io.open("assets/worlds/v3.tcsave", "rb"))
+  local data = f:read("*a")
+  f:close()
+  local W = assert(worlds.from_save_string(data))
+  world.set_systems(require("sim.agents.worldgen").systems())
+  return W
+end
+
+local function quake_at(lh, hours)
+  local W = shipped()
+  local V = W.S.v3
+  local s = V.settlements[1]
+  local clock = require("sim.agents.clock")
+  world.advance(W, W.hour + 72)
+  local h = clock.local_hour(W.hour, W.grid.lon[s.cell])
+  world.advance(W, W.hour + ((lh - h) % 24))
+  local fell0, dug0 = s.acc.fell or 0, s.acc.dug_out or 0
+  require("sim.agents.premise").named(W, "quake")
+  local t0 = W.hour
+  local trapped = 0
+  for k = 1, hours * 4 do
+    world.advance(W, t0 + k * 0.25)
+    for _, id in ipairs(s.members) do
+      local p = V.people[id]
+      if p and p.trapped and not p.counted then p.counted = true; trapped = trapped + 1 end
+    end
+  end
+  return W, s, (s.acc.fell or 0) - fell0, (s.acc.dug_out or 0) - dug0, trapped
+end
+
+-- At night, everyone asleep under a roof: houses fall on them, the trapped are dug out by neighbours,
+-- the homeless are taken in.
+function M.a_night_quake_traps_and_neighbours_dig()
+  local W, s, fell, dug, trapped = quake_at(2, 30)
+  local V = W.S.v3
+  T.ok(fell >= 1, fell .. " buildings fell in")
+  T.ok(trapped >= 1, trapped .. " people trapped")
+  T.ok(dug >= 1, dug .. " dug out by others")
+  local still = 0
+  for _, id in ipairs(s.members) do if V.people[id].trapped then still = still + 1 end end
+  T.ok(still == 0, "nobody left under the rubble after a day")
+  local lodged = 0
+  for _, hid in ipairs(s.households) do
+    local hh = V.households[hid]
+    if hh and hh.lodge then lodged = lodged + 1 end
+  end
+  T.ok(lodged >= 1, lodged .. " households taken in by others")
+  return string.format("%d fell, %d trapped, %d dug out, %d households lodging", fell, trapped, dug, lodged)
+end
+
+-- At midday most are out of doors: what falls traps few or none.
+function M.a_midday_quake_finds_people_out_of_doors()
+  local W, s, fell, dug, trapped = quake_at(11, 12)
+  local W2, s2, fell2, dug2, trapped2 = quake_at(2, 12)
+  T.ok(trapped < trapped2, string.format("fewer trapped by day (%d) than by night (%d)", trapped, trapped2))
+  return string.format("by day %d fell, %d trapped; by night %d fell, %d trapped", fell, trapped, fell2, trapped2)
+end
+
+return M

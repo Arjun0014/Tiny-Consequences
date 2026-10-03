@@ -30,6 +30,7 @@ local deeds = require("sim.agents.deeds")   -- (S20, D-148)
 local danger = require("sim.agents.danger")
 local conflict = require("sim.agents.conflict")
 local blaze = require("sim.agents.blaze")   -- (S20, R6.5b)
+local shake = require("sim.agents.shake")   -- (S20, R6.5f)
 do
   -- (what one village learns of another: what its people know of places, and of fairs; S20: and
   -- the deeds they know that touch either village)
@@ -56,8 +57,10 @@ act.interrupt_hook = function(W, p, at, reason) return sys.interrupt(W, p, at, r
 danger.interrupt = act.interrupt_hook
 danger.person_pos = act.pos
 -- (S20, R6.5b) a household whose house burnt lodges with others (as newcomers do); a death by lightning
-blaze.lodge = function(W, s, hh, now) return settle.migrate.lodge(W, s, hh, now) end
+blaze.lodge = function(W, s, hh, now, why) return settle.migrate.lodge(W, s, hh, now, why) end
 blaze.kill = function(W, s, p, cause, now) return life.kill_now(W, s, p, cause) end
+shake.lodge = blaze.lodge
+shake.kill = blaze.kill
 local floor, min, max = math.floor, math.min, math.max
 
 -- Event heap (runtime) ------------------------------------------------------------------------
@@ -338,6 +341,8 @@ function sys.hour(W)
   rt(W)
   local now = W.hour
   local day = floor(now / 24)
+  -- (S20, R6.5f) the plates' boundaries gather stress at the planet's day
+  if now % 24 == 0 then shake.daily(W, day) end
   for i = 1, #V.settlements do
     local s = V.settlements[i]
     if s.alive then
@@ -352,6 +357,7 @@ function sys.hour(W)
           settle.daily(W, s, ld)
           conflict.missing(W, s, now)
           conflict.defence_daily(W, s, now)
+          shake.trapped_daily(W, s, now)
           stock.daily(W, s, ld, sys.push)
           wild.daily(W, s, ld, sys.push)
           dogs.daily(W, s, ld, sys.push)

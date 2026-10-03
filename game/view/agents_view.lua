@@ -889,7 +889,8 @@ local ANIM = {
   -- (S20, R6a) lying up in the woods until a village sleeps; at the pen by night taking beasts by
   -- the halter; a chaser stopping to look about
   lie_up = { "sit", 0.3 }, steal = { "kneel_work", 1.1 }, chase = { "idle", 1.4 },
-  mend = { "sit", 0.3 }, tend_hurt = { "kneel_work", 0.5 }, mourn = { "idle", 0.5 }, wall_fold = { "swing", 0.8 }, douse = { "pickup", 1.4 },
+  mend = { "sit", 0.3 }, tend_hurt = { "kneel_work", 0.5 }, mourn = { "idle", 0.5 }, wall_fold = { "swing", 0.8 }, douse = { "pickup", 1.4 }, dig_out = { "kneel_work", 1.2 }, trapped = { "sit", 0.05 },
+  run_out = { "walk" },
 }
 
 local function packc(c) return pack(c[1], c[2], c[3]) end

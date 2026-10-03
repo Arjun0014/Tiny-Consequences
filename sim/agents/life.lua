@@ -76,7 +76,7 @@ local function kill(W, s, p, cause, why)
   -- (S20, R6d) the death as a deed (by whoever struck the blow that killed, if a blow did): its village
   -- knows at once and its kin there remember; kin elsewhere when the news reaches them; the
   -- household and kin gather at the house the next morning
-  local now = W.hour
+  local now = W.S.v3.now or W.hour
   local hd = p.hurt_deed and deeds.get(W, p.hurt_deed)
   local by = (cause == "wounds" and hd and hd.by) or 0
   local d = deeds.add(W, { kind = by ~= 0 and "kill" or "death", t = now, at = s.id, by = by, by_hh = by ~= 0 and hd.by_hh or 0,

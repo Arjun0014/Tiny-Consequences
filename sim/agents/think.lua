@@ -4671,6 +4671,72 @@ function M.fire_choice(W, s, p, ctx, now)
   return true
 end
 
+-- (S20, R6.5f) The ground shaking: out from under a roof at once (with the babe in one's arms);
+-- out of doors, a parent goes to a child not at hand. Then ordinary life - and the digging.
+function M.quake_choice(W, s, p, ctx, now)
+  if p.at or ctx.stage == "infant" or now - p.alarm.t > 0.3 then p.alarm = nil; return false end
+  local F = M.FIRE
+  F.a, F.b = 0, 0
+  if p.inside ~= 0 then
+    F.kind, F.why = "run_out", "The ground is shaking: out from under the roof"
+    return true
+  end
+  p.alarm = nil
+  return false
+end
+
+PLAN.run_out = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local b = s.buildings[p.inside]
+  local bx, by = b and b.dx or p.x, b and b.dy or p.y
+  local cx, cy = b and (b.cx or b.dx) or p.x, b and (b.cy or b.dy) or p.y
+  local dx, dy = bx - cx, by - cy
+  local l = max(1e-6, sqrt(dx * dx + dy * dy))
+  local x, y = bx + dx / l * 0.06, by + dy / l * 0.06
+  local fx, fy = require("sim.agents.map").free_spot(s, x, y, 4)
+  go(pl, fx or x, fy or y, "out of doors")
+  pl[#pl].run = true
+  work(pl, "watch", 0.15, {})
+  return "Out from under the roof", "out of doors"
+end
+
+PLAN.trapped = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  work(pl, "trapped", 1, {})
+  return "Trapped under the rubble", "the rubble"
+end
+
+-- (S20, R6.5f) Someone trapped under a fallen house in the village: the grown-ups and older children
+-- near dig, kin first and hardest (neighbours do most of the rescuing, B1).
+function M.dig_candidate(W, s, p, ctx, now)
+  if p.at or ctx.stage == "infant" or ctx.stage == "child" or ctx.babe or (p.hurt or 0) > 0.3 or p.trapped then return end
+  local shake = require("sim.agents.shake")
+  local T = shake.trapped(W, s)
+  if not T then return end
+  local V = W.S.v3
+  local best, bu = nil, -1e9
+  for _, id in ipairs(T) do
+    local q = V.people[id]
+    if q and q.trapped then
+      local kin = people.is_kin(W, p, q.id) or q.hh == p.hh
+      local u = (kin and 1.1 or 0.85) - dist(p.x, p.y, q.trapped.x, q.trapped.y) * 0.3
+      if u > bu then best, bu = q, u end
+    end
+  end
+  if best then addw(bu, "dig_out", best.id, 0, "%s is trapped under the fallen house: digging", best.name) end
+end
+
+PLAN.dig_out = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local q = W.S.v3.people[cd.a]
+  local tx, ty = q.trapped and q.trapped.x or q.x, q.trapped and q.trapped.y or q.y
+  local x, y = near_spot(W, p, now, tx, ty, 0.03, 101)
+  go(pl, x, y, "the rubble")
+  pl[#pl].run = true
+  work(pl, "dig_out", 0.4 + 0.2 * u01(W, p, now, 102), { ref = cd.a, fx = tx, fy = ty })
+  return "Dig " .. q.name .. " out", "the rubble"
+end
+
 PLAN.flee_fire = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
   local blaze = require("sim.agents.blaze")
@@ -5670,6 +5736,16 @@ function M.decide(W, s, p, now, reason)
     kind, why = "feed_babe", sfmt("%s woke crying with hunger in the night", night_babe.name)
     add(1, "feed_babe", night_babe.id, 0, why)
     M.cd = CAND[ncand]
+  elseif p.trapped then
+    -- (S20, R6.5f) under the rubble: nothing but waiting to be dug out
+    kind, why = "trapped", "Trapped under the fallen house, waiting to be dug out"
+    add(1, "trapped", 0, 0, why)
+    M.cd = CAND[ncand]
+  elseif p.alarm and p.alarm.kind == "quake" and M.quake_choice(W, s, p, ctx, now) then
+    local fc = M.FIRE
+    kind, why = fc.kind, fc.why
+    add(1, fc.kind, fc.a, fc.b, fc.why)
+    M.cd = CAND[ncand]
   elseif p.alarm and p.alarm.kind == "fire" and M.fire_choice(W, s, p, ctx, now) then
     -- (S20, R6.5b) a fire: out of a burning house, keep away, or carry water to it
     local fc = M.FIRE
@@ -5714,6 +5790,7 @@ function M.decide(W, s, p, now, reason)
     care_candidates(W, s, p, ctx, now)
     M.tend_candidate(W, s, p, ctx, now)
     M.burial_candidate(W, s, p, ctx, now)
+    M.dig_candidate(W, s, p, ctx, now)
     if M.bedridden(p, ctx) then
       -- (S20, R6c) badly hurt: kept to bed at home
       add(0.85, "mend", 0, 0, "Badly hurt: lying at home")

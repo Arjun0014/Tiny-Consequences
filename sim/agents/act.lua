@@ -2553,6 +2553,16 @@ WORK.mourn = function(W, s, p, st, f)
   if dp then people.remember(p, W.S.v3.now or W.hour, "Buried " .. dp.name .. " " .. dp.surname) end
 end
 
+-- (S20, R6.5f) A stint of digging someone out of the rubble (strong arms and tools dig faster).
+WORK.dig_out = function(W, s, p, st, f)
+  if f <= 0 then return end
+  local q = W.S.v3.people[st.ref or 0]
+  if not q or not q.alive or not q.trapped then return end
+  local hh = W.S.v3.households[p.hh]
+  local rate = (p.strong and 1.2 or 0.9) * (0.6 + 0.4 * (hh and hh.tools or 1))
+  require("sim.agents.shake").dig(W, s, p, q, st.dur * f * rate, W.S.v3.now or W.hour)
+end
+
 -- (S20, R6.5b) Water thrown on the fire; the fire still seen (the alarm stays fresh while it burns).
 WORK.douse = function(W, s, p, st, f)
   if f < 0.6 or p.carry ~= "water" then return end

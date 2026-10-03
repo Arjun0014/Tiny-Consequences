@@ -161,7 +161,7 @@ local function burn_out(W, s, f, now)
       local q = V.people[id]
       if q and q.alive and people.stage(q, now) ~= "infant" then people.remember(q, now, "Our house burnt down") end
     end
-    if M.lodge then M.lodge(W, s, hh, now) end
+    if M.lodge then M.lodge(W, s, hh, now, "their house burnt") end
   end
 end
 

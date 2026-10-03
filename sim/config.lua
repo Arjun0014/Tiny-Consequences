@@ -1283,7 +1283,18 @@ C.V3 = {
   strike_hurt = { 0.5, 1.15 }, strike_side = 0.025, strike_side_hurt = 0.15, thunder_sound = 4, strike_rate = 0.12,
   -- (S20, R6.5c) the planet's fire on a cell above fire_planet_in comes onto the map; fire_planet_n
   -- things burning on one cell of the map set the planet's fire going there
-  fire_planet_in = 0.05, fire_planet_n = 6,          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
+  fire_planet_in = 0.05, fire_planet_n = 6,
+  -- (S20, R6.5f, D-156) quakes: a convergent or transform boundary cell gathers quake_rate x its
+  -- boundary strength a day (transform x0.7) and lets go past quake_thr x (0.6..1.4): magnitude in
+  -- quake_mag (u x u: mostly small); felt at a village as magnitude - quake_fall a cell step -
+  -- quake_floor; a building's damage = intensity/quake_unit x its vulnerability (x quake_footing on
+  -- stone footings) x (1.3 - condition) x (0.5..1.5): cracked from quake_crack, fallen in from
+  -- quake_fall_in; those inside hurt quake_hurt, trapped from quake_trap (dig_h x hurt hours of digging);
+  -- trapped longer than trapped_h they weaken by trapped_worse a day; out of doors thrown down with
+  -- chance quake_throw x intensity (quake_bruise)
+  quake_thr = 1, quake_rate = 0.0007, quake_mag = { 4.5, 7.6 }, quake_fall = 1.0, quake_floor = 3.6, quake_unit = 2.0,
+  quake_footing = 0.7, quake_crack = 0.35, quake_fall_in = 0.9, quake_hurt = { 0.2, 1.1 }, quake_trap = 0.5, dig_h = 2.0,
+  trapped_h = 24, trapped_worse = 0.15, quake_throw = 0.2, quake_bruise = 0.08,          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
 }
 
 return C

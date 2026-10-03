@@ -130,6 +130,11 @@ function M.named(W, name)
     M.fail_harvest(W, A); M.murrain(W, A, 0); M.empty_stores(W, A)
     M.knows(W, A, V.settlements[2]); M.knows(W, A, V.settlements[6])
     return true
+  elseif name == "quake" then
+    -- (S20, R6.5f) a strong quake under Tekheim (it stands on a convergent boundary)
+    local s = V.settlements[1]
+    require("sim.agents.shake").quake(W, s.cell, 6.9, V.now or W.hour, nil)
+    return true
   elseif name == "wildfire" then
     -- (S20, R6.5c) a dry spell, and the planet's fire on a wooded cell beside Hottoodingle Hop
     local s = V.settlements[4]

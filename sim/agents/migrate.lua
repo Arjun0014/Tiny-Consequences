@@ -560,7 +560,7 @@ end
 
 -- (S20, R6.5b) Household hh of village s lost its house (fire): it lodges with a household of s - kin
 -- first - until a house of its own stands (s.waiting: settle plans it), else camps by the square.
-function M.lodge(W, s, hh, now)
+function M.lodge(W, s, hh, now, why)
   local V = W.S.v3
   local host = host_of(W, s, hh)
   local q1 = V.people[hh.members[1] or 0]
@@ -568,7 +568,7 @@ function M.lodge(W, s, hh, now)
     hh.home, hh.lodge = host.home, host.id
     for _, id in ipairs(host.members) do
       local q = V.people[id]
-      if q and q.alive then people.remember(q, now, sfmt("Took in the %s household: their house burnt", q1 and q1.surname or "")) end
+      if q and q.alive then people.remember(q, now, sfmt("Took in the %s household: %s", q1 and q1.surname or "", why or "they have no roof")) end
     end
   else
     local fx, fy = require("sim.agents.map").free_spot(s, s.sqx or 0, s.sqy or 0, 6)
