@@ -66,4 +66,29 @@ function M.a_midday_quake_finds_people_out_of_doors()
   return string.format("by day %d fell, %d trapped; by night %d fell, %d trapped", fell, trapped, fell2, trapped2)
 end
 
+-- Volcanoes (D-157): an eruption puts sulphur in the sky (the planet cooler for a while); heavy ash on a
+-- village (premise: the ash of an eruption upwind) loads its roofs and buries its grass until washed off.
+function M.an_eruption_cools_and_ash_buries_the_grass()
+  local W = shipped()
+  local V = W.S.v3
+  world.advance(W, W.hour + 48)
+  local a0 = W.G.aerosol or 0
+  T.ok(require("sim.agents.premise").named(W, "eruption"), "an eruption")
+  T.ok((W.G.aerosol or 0) > a0 + 0.3, string.format("aerosol %.2f -> %.2f", a0, W.G.aerosol or 0))
+  local s = V.settlements[1]
+  local P = s.pasture
+  local g0 = 0
+  for b = 1, #P.grass do g0 = g0 + (P.grass[b] or 0) end
+  require("sim.agents.volcano").ashfall(W, s, 0.8, V.now or W.hour, 0, nil, 5)
+  local t0 = W.hour
+  for h = 1, 48 do world.advance(W, t0 + h) end
+  local g1 = 0
+  for b = 1, #P.grass do g1 = g1 + (P.grass[b] or 0) end
+  T.ok((s.acc.cracked or 0) + (s.acc.fell or 0) >= 1, "roofs cracked or fell under the ash")
+  T.ok(g1 < g0, string.format("grass under the ash: %.0f -> %.0f", g0, g1))
+  T.ok((s.ash or 0) < 0.8, "the ash is washing off")
+  return string.format("aerosol +%.2f; ash 0.8 on %s: %d cracked, %d fell; grass %.0f -> %.0f; ash now %.2f", (W.G.aerosol or 0) - a0, s.name,
+    s.acc.cracked or 0, s.acc.fell or 0, g0, g1, s.ash or 0)
+end
+
 return M

@@ -31,6 +31,7 @@ local danger = require("sim.agents.danger")
 local conflict = require("sim.agents.conflict")
 local blaze = require("sim.agents.blaze")   -- (S20, R6.5b)
 local shake = require("sim.agents.shake")   -- (S20, R6.5f)
+local volcano = require("sim.agents.volcano")
 do
   -- (what one village learns of another: what its people know of places, and of fairs; S20: and
   -- the deeds they know that touch either village)
@@ -342,7 +343,7 @@ function sys.hour(W)
   local now = W.hour
   local day = floor(now / 24)
   -- (S20, R6.5f) the plates' boundaries gather stress at the planet's day
-  if now % 24 == 0 then shake.daily(W, day) end
+  if now % 24 == 0 then shake.daily(W, day); volcano.daily(W, day) end
   for i = 1, #V.settlements do
     local s = V.settlements[i]
     if s.alive then
@@ -358,6 +359,7 @@ function sys.hour(W)
           conflict.missing(W, s, now)
           conflict.defence_daily(W, s, now)
           shake.trapped_daily(W, s, now)
+          volcano.ash_daily(W, s, ld)
           stock.daily(W, s, ld, sys.push)
           wild.daily(W, s, ld, sys.push)
           dogs.daily(W, s, ld, sys.push)

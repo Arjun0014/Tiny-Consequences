@@ -1294,7 +1294,17 @@ C.V3 = {
   -- chance quake_throw x intensity (quake_bruise)
   quake_thr = 1, quake_rate = 0.0007, quake_mag = { 4.5, 7.6 }, quake_fall = 1.0, quake_floor = 3.6, quake_unit = 2.0,
   quake_footing = 0.7, quake_crack = 0.35, quake_fall_in = 0.9, quake_hurt = { 0.2, 1.1 }, quake_trap = 0.5, dig_h = 2.0,
-  trapped_h = 24, trapped_worse = 0.15, quake_throw = 0.2, quake_bruise = 0.08,          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
+  trapped_h = 24, trapped_worse = 0.15, quake_throw = 0.2, quake_bruise = 0.08,
+  -- (S20, R6.5f, D-157) volcanoes: volc_arcs sites on the strongest convergent boundaries (volc_spacing
+  -- level-4 steps apart) and a hotspot; pressure volc_rate x (0.5..1.5) a day to volc_thr x (0.6..1.4);
+  -- VEI 1 + 5u^3; aerosol by VEI (volc_aerosol: k_aer cools every cell), carbon volc_co2 x VEI; the
+  -- ground shaken volc_quake + 0.6 VEI; ash on a village volc_ash x VEI^2 / (1 + steps^2) (x0.35 upwind);
+  -- ash on roofs above ash_roof loads them (x ash_roof_k as a quake's damage); washed ash_wash a day +
+  -- ash_rain x precipitation; while it lies grass regrows x (1 - ash_grass x ash), crops lose ash_crop x
+  -- ash of a day's growth
+  volc_spacing = 3, volc_arcs = 6, volc_thr = 1, volc_rate = 0.0004, volc_aerosol = { 0, 0, 0.05, 0.15, 0.6, 1.5 },
+  volc_co2 = 0.5, volc_quake = 3.0, volc_ash = 0.05, ash_roof = 0.5, ash_roof_k = 2.0, ash_wash = 0.03, ash_rain = 1.0,
+  ash_grass = 0.5, ash_crop = 0.5,          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
 }
 
 return C

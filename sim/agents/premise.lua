@@ -135,6 +135,18 @@ function M.named(W, name)
     local s = V.settlements[1]
     require("sim.agents.shake").quake(W, s.cell, 6.9, V.now or W.hour, nil)
     return true
+  elseif name == "eruption" then
+    -- (S20, R6.5f) the volcano nearest Tekheim erupts, a VEI 5
+    local volcano = require("sim.agents.volcano")
+    local s = V.settlements[1]
+    local g = W.grid
+    local best, bd = nil, -2
+    for _, v in ipairs(volcano.list(W)) do
+      local d = g.X[v.cell] * g.X[s.cell] + g.Y[v.cell] * g.Y[s.cell] + g.Z[v.cell] * g.Z[s.cell]
+      if d > bd then best, bd = v, d end
+    end
+    volcano.erupt(W, best, 5, V.now or W.hour, nil)
+    return true
   elseif name == "wildfire" then
     -- (S20, R6.5c) a dry spell, and the planet's fire on a wooded cell beside Hottoodingle Hop
     local s = V.settlements[4]
