@@ -1,3 +1,42 @@
+# Session handoff — session 21 (3-4 Oct 2026, extended autonomous run, IN PROGRESS): flood water, arms and kin help, climate extremes, R7 rethought, the world news, world audio; D-169-D-173
+
+## CHECKPOINT (~850K context, session 21) - state for a resumed session
+**If you are resuming after a compaction: re-read this section, CLAUDE.md, `docs/v3/70_R7_GOD_POWERS.md`,
+`75_PLAYER_EXPERIENCE.md`, `80_WORLD_AUDIO.md`, `65_R6_5_LIVING_PLANET.md` §12-13, D-169-D-173 and
+`git log --oneline -12` before any change.** Rules as before (no subagents; one heavy process at a time;
+visible action = simulation; premises not forced outcomes; browser = LuaJIT; bob forbids circular requires;
+the view never writes sim state - not even lazily: `volcano.list` makes the sites, the audio reads `V.volc`).
+
+Done (commits 7bf35ba .. 6e2586b on main):
+1. **R6.5e flood water** (D-169) - hydrology (infiltration excess, daily steps only), `sim/agents/flood.lua`,
+   the urgent choice, dry roofs, drawn water; `tools/v3_flood.lua --premise flood5 [--map]`.
+2. **Arms** (people.arm_for/might; conflict.strike/party_might) and **kin help** (think.help_kin_candidate,
+   PLAN/WORK help_kin, `help` deed).
+3. **R6.5g** (D-170) ice age / hothouse premises watched; heat stress (`heat_t` 24 C); `settle.dock_point`.
+4. **R7 designed** (D-171): `docs/v3/70_R7_GOD_POWERS.md` (v1 set; never outcome powers).
+5. **World news** (D-172): `sim/news.lua` + `game/ui/newsfeed.lua`; bridge `news{n, go}`; tools/tests above.
+6. **World audio** (D-173): `scripts/gen_audio.mjs`, `assets/audio/*`, `game/audio/audio.lua`, bridge `audio`.
+
+Next (in order):
+1. **R7 v1 powers on the v3 world** (doc 70 §3): replace the v2 power list in `game/ui/powers.lua` for v3
+   worlds; `sim/powers3.lua` (or v3 branches in `sim/powers.lua`) - each a few lines: lightning ->
+   `blaze.strike(W, s, x, y, now, nil, ev)` at the map point (else the planet cell); rain/dry -> forcings with
+   the power's tag for N days; warm/cold air -> `heat_anom` forcing; stir -> volcano pressure; strain ->
+   boundary stress; cull/bring -> W4 groups (+ map individuals die where they stand). Aiming close in on a
+   map point. News: stories rooted at YOU (the chain already follows events' parents and the planet's tags).
+2. Polish if time: the news history list, a mute key, flood water edges, the palisade (R6f), captives (only as
+   persons).
+3. Before the handoff: quick suite, namespace, web 11/11, lint/build, `node scripts/v3_hash_web.mjs --release`
+   (+ `--premise flood5|conflict|fire`), the day-192 profile, an 8-year untouched chronicle (`--days 384`),
+   inspect the game (shots), then PROGRESS/DECISIONS/SESSION_HANDOFF/NEXT_SESSION_PROMPT/roadmap/CLAUDE.md.
+
+Pitfalls found this session: a headless click inside one frame never reaches Defold (press with frames held);
+the swim field opened the map's border (A* crash) - closed now; a door in front of a footprint on the
+floodplain (households cut off by in-channel high water) - `people.cut_off`; a trader home to a lost dock
+crashed - `settle.dock_point`; the island move test's window is 48 days now (an island famine's timing is
+chaotic); a kin of Tekheim cannot have married into Zurug (44 h road: beyond courting reach) - premises must
+be states the world could reach.
+
 # Session handoff — session 20 (3 Oct 2026, extended autonomous run, ENDED): R6 and R6.5 designed; R6a-R6g first pass and gaps; R6.5b-d, f built, g watched; D-148-D-168
 
 ## FINAL STATE (end of session 20)

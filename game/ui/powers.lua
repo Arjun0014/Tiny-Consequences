@@ -30,8 +30,40 @@ M.DEFS = {
   { id = "meteor", icon = "meteor", name = "Meteor", cooldown = 60, radius = 2,
     tip = "Meteor: fire, ruin and an impact winter" },
 }
+-- (S21, R7 v1, D-174) the v3 world's powers (sim/powers3.lua): each tip says what it writes, never what
+-- will follow
+M.DEFS_V3 = {
+  { id = "lightning", icon = "bolt", name = "Lightning", cooldown = 1, radius = 0,
+    tip = "Lightning: a bolt at the point - close in, on a village; the tallest thing there takes it" },
+  { id = "rain", icon = "rain", name = "Rain", cooldown = 4, radius = 2, tip = "Rain: a cloudburst over these hills for three days" },
+  { id = "dry", icon = "drought", name = "Dry spell", cooldown = 4, radius = 2, tip = "Dry spell: no rain and a little heat here for six days" },
+  { id = "warm", icon = "heat", name = "Warm air", cooldown = 4, radius = 2, tip = "Warm air: 8 degrees warmer here for four days" },
+  { id = "cold", icon = "chill", name = "Cold air", cooldown = 4, radius = 2, tip = "Cold air: 8 degrees colder here for four days" },
+  { id = "stir", icon = "volcano", name = "Stir the mountain", cooldown = 10, radius = 0,
+    tip = "Stir the mountain: the nearest volcano's pressure rises (it erupts when it does)" },
+  { id = "strain", icon = "pickaxe", name = "Strain the fault", cooldown = 10, radius = 0,
+    tip = "Strain the fault: the nearest plate boundary's stress rises (it gives when it does)" },
+  { id = "cull", icon = "skull", name = "Cull", cooldown = 5, radius = 2,
+    species = { { id = "wolves", icon = "wolf", name = "wolves" }, { id = "deer", icon = "deer", name = "deer" } },
+    tip = "Cull: nine in ten of the wolves or the deer here die where they stand" },
+  { id = "bring", icon = "paw", name = "Bring", cooldown = 5, radius = 1,
+    species = { { id = "deer", icon = "deer", name = "deer" }, { id = "wolves", icon = "wolf", name = "wolves" }, { id = "fish", icon = "fish", name = "fish" } },
+    tip = "Bring: a herd of deer, a pack of wolves, or a shoal of fish here" },
+}
+M.DEFS_V2 = M.DEFS
 M.BY_ID = {}
 for i, d in ipairs(M.DEFS) do d.index = i; M.BY_ID[d.id] = d end
+
+-- (S21) The bar's set for world W (the v3 set in v3 worlds).
+function M.use_world(W)
+  local list = (W and W.v3) and M.DEFS_V3 or M.DEFS_V2
+  if M.DEFS == list and M.set_for == (W and W.v3) then return end
+  M.DEFS = list
+  M.set_for = W and W.v3
+  M.BY_ID = {}
+  for i, d in ipairs(list) do d.index = i; M.BY_ID[d.id] = d end
+  M.armed = nil
+end
 
 M.armed = nil           -- index of the armed power, or nil
 M.mode = {}             -- power id -> selected mode / species index
@@ -92,6 +124,21 @@ function M.cast(W, id, cell, opts)
   if d.species then p.species = opts.species or (o and o.id) end
   p.ship, p.list, p.person = opts.ship, opts.list, opts.person
   local ocean = W.geo.ocean[cell] == 1
+  if W.v3 then
+    p.sid, p.x, p.y = opts.sid, opts.x, opts.y
+    if id == "cull" or id == "bring" then
+      local sp = p.species
+      if sp == "fish" and not ocean then return refuse("Fish need the sea") end
+      if sp ~= "fish" and ocean then return refuse("Wild beasts need land") end
+    end
+    require("sim.world").command(W, "power", p)
+    if M.on_cast then M.on_cast(W, id, cell, p) end
+    do local ok, audio = pcall(require, "game.audio.audio"); if ok and audio.ui then audio.ui("ui_power") end end
+    M.cool[id] = d.cooldown
+    M.casts = M.casts + 1
+    M.last = { id = id, cell = cell, p = p }
+    return p
+  end
   if id == "blight" then
     local lu = W.F.land_use
     local ok = lu[cell] > 0

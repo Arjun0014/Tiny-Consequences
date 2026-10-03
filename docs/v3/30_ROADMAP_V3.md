@@ -250,11 +250,23 @@ lost. Later, D-155-D-164: **R6.5c wildfire**, **R6.5d snow and frost**, **R6.5f 
 tsunami**, beasts and fields in fires, a first **R6.5g** watch (a hard winter). Not yet: **R6.5e flood
 water** - the planet's rivers do not rise enough under heavy rain; hydrology first.)
 
+(Session 21, D-169, D-170: **R6.5e flood water built** - infiltration excess where a planet step is a day,
+water over the land by height above the river, houses, fields, beasts and people in it, the urgent choice, dry
+roofs; **R6.5g watched** - an ice age and a hothouse for 192 days each, heat stress on grain and grass. R6 gaps:
+arms carried when danger is known, kin who walk over to help kin who lost their house. Not yet: the coastline
+following sea level (planet-century time scales), the palisade, captives.)
+
 ## R7 — Player and chains
 - God powers on the v3 world (lightning on a tree or a person, rain, drought, cull, oil spill on
   the ocean (fishers respond), meteor) - each writing physical state that R6.5's systems answer;
   the chain of causes from any event back to Nature or You (deeds carry it); the chronicle from
   agents' memories and deeds.
+(Session 21, D-171-D-173: **R7 rethought** from the state a god can touch (`70_R7_GOD_POWERS.md`: v1 lightning,
+rain, dry spell, warm/cold air, stir the mountain, strain the fault, cull, bring; never outcome powers);
+**the player experience** (`75_PLAYER_EXPERIENCE.md`: watch, notice, go there, understand, intervene, watch
+the consequences) with **the world news built** (stories from deeds, events and live state; click to go there;
+Why? from real links to NATURE / PEOPLE / YOU) and **world audio built** (`80_WORLD_AUDIO.md`). Next: the v1
+powers on the v3 world.)
 
 ## Never cut
 Determinism, causality (every major change traceable), the planet layer, no scripted

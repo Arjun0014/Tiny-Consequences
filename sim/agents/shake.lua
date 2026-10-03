@@ -43,6 +43,15 @@ local function threshold(W, Q, i, day)
 end
 
 -- Daily, at the planet's step: stress gathers on the boundaries; a cell past its threshold quakes.
+M.state = state           -- (S21, R7: the strain power)
+M.threshold = threshold
+
+-- A cell's stress and threshold when first looked at (its stress somewhere below its own threshold).
+function M.init_cell(W, Q, i)
+  Q.thr[i] = Q.thr[i] or threshold(W, Q, i, 0)
+  Q.stress[i] = Q.stress[i] or (u(W, Q.cells[i], 0, 2) * 0.95 * Q.thr[i])
+end
+
 function M.daily(W, day)
   local c = C()
   local Q = state(W)
@@ -52,12 +61,15 @@ function M.daily(W, day)
     local rate = c.quake_rate * (st.bstrength and st.bstrength[cl] or 0.5) * ((st.boundary[cl] == 3) and 0.7 or 1)
     -- (a cell's stress when first looked at: somewhere below its own threshold - never a burst of
     -- quakes on a world's first day)
-    Q.thr[i] = Q.thr[i] or threshold(W, Q, i, 0)
-    Q.stress[i] = (Q.stress[i] or (u(W, cl, 0, 2) * 0.95 * Q.thr[i])) + rate
+    M.init_cell(W, Q, i)
+    Q.stress[i] = Q.stress[i] + rate
     if Q.stress[i] >= Q.thr[i] then
       local mag = c.quake_mag[1] + (c.quake_mag[2] - c.quake_mag[1]) * u(W, cl, day, 3) * u(W, cl, day, 4)
       Q.stress[i], Q.thr[i], Q.last[i] = 0, threshold(W, Q, i, day), day
-      M.quake(W, cl, mag, day * 24 + 24 * u(W, cl, day, 5), nil)
+      -- (S21) a fault a god strained gives with the god's event as its cause
+      local cause = Q.cause and Q.cause[i] or nil
+      if Q.cause then Q.cause[i] = nil end
+      M.quake(W, cl, mag, day * 24 + 24 * u(W, cl, day, 5), cause)
     end
   end
 end

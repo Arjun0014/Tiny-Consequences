@@ -78,7 +78,10 @@ function M.daily(W, day)
       local x = u(W, v.cell, day, 6)
       local vei = 1 + floor(5 * x * x * x + 0.0001)
       v.pressure, v.thr, v.last = 0, c.volc_thr * (0.6 + 0.8 * u(W, v.cell, day, 7)), day
-      M.erupt(W, v, vei, day * 24 + 24 * u(W, v.cell, day, 8), nil)
+      -- (S21) a mountain a god stirred erupts with the god's event as its cause
+      local cause = v.cause
+      v.cause = nil
+      M.erupt(W, v, vei, day * 24 + 24 * u(W, v.cell, day, 8), cause)
     end
   end
 end

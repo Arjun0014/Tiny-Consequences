@@ -58,9 +58,28 @@ end
 -- Cast the armed power at the pointer (Lightning prefers a ship or villager under it).
 function M.cast(W, sx, sy)
   local d = powers.DEFS[powers.armed]
-  local c = picking.cell_at(W, sx, sy)
+  local c, ux, uy, uz = picking.cell_at(W, sx, sy)
   if not c then return false end
   local opts = {}
+  if W.v3 and ux and W.S.v3 then
+    -- (S21, R7) close to a village, the point on its map (lightning lands there; the rest by their cells)
+    local mapm = require("sim.agents.map")
+    local best, bd = nil, 0.985
+    for _, s in ipairs(W.S.v3.settlements) do
+      local f = s.frame
+      if f and s.alive then
+        local dd = f[1] * ux + f[2] * uy + f[3] * uz
+        if dd > bd then best, bd = s, dd end
+      end
+    end
+    if best then
+      local x, y = mapm.local_of(best, ux, uy, uz)
+      local i = x and mapm.tile_of(best, x, y) or 0
+      if i > 0 then opts.sid, opts.x, opts.y = best.id, x, y end
+    end
+    powers.cast(W, d.id, c, opts)
+    return true
+  end
   if d.id == "lightning" or d.id == "oil" then
     local sel = picking.pick(W, sx, sy)
     if sel and sel.kind == "ship" then

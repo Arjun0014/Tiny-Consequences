@@ -35,6 +35,7 @@ local volcano = require("sim.agents.volcano")
 local snow = require("sim.agents.snow")   -- (S20, R6.5d)
 local tsunami = require("sim.agents.tsunami")   -- (S20, R6.5f)
 local flood = require("sim.agents.flood")   -- (S21, R6.5e)
+require("sim.powers3")   -- (S21, R7: the v3 god powers on the `power` command)
 do
   -- (what one village learns of another: what its people know of places, and of fairs; S20: and
   -- the deeds they know that touch either village)

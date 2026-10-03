@@ -93,6 +93,16 @@ world (`--days 384`) before handing off: a reused work kind (`lift`) starved vil
 (`cold_snap`, `hard_winter`, `quake`, `eruption`, `tsunami`, `wildfire`, `fire`, `conflict`) work in tests,
 the chronicle, `v3_follow`, the hash check and the `v3_premise` bridge.
 
+Session 21 (D-169-D-173): flood water (`sim/agents/flood.lua`; infiltration excess in `sim/systems/hydrology.lua`
+for daily steps only; `tools/v3_flood.lua`, premise `flood`/`floodN`); arms (`people.arm_for`) and kin help
+(`help_kin`); climate premises `ice_age`/`hothouse`, heat stress; **R7 rethought** (`docs/v3/70_R7_GOD_POWERS.md`);
+**the world news** (`sim/news.lua` - an observer, never writes W.S; `game/ui/newsfeed.lua`; bridge `news{go}`;
+`tools/v3_news.lua`; stories only from deeds, events and live state; causes only from real links) and **world
+audio** (`docs/v3/80_WORLD_AUDIO.md`; `scripts/gen_audio.mjs` regenerates/extends the library from
+`assets/audio/manifest.json` with the ElevenLabs key in `.env` - gitignored, never print it; `game/audio/audio.lua`
+reads state only - never call functions that create state lazily from the view, e.g. `volcano.list`). A headless
+click must be held a few frames to reach Defold (`scripts/shots_news.mjs`).
+
 ## Read order
 
 1. This file.

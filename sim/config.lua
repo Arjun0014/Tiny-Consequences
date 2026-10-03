@@ -772,6 +772,10 @@ C.POWERS = {
   meteor_radius = 2, meteor_heat = 12, meteor_kill = 0.8,
   meteor_deaths_centre = 0.6, meteor_deaths_ring = 0.15,
   meteor_aerosol = 1.2,                   -- impact winter (aerosol units; k_aer cools the whole planet)
+  -- (S21, R7 v1 on the v3 world, sim/powers3.lua) rain and the dry spell last v3_rain_days / v3_dry_days
+  -- planet days; warm or cold air +-v3_air_k C for v3_air_days; stirring a mountain adds v3_stir_k of its
+  -- threshold to its pressure, straining a fault v3_strain_k of its threshold to its stress
+  v3_rain_days = 3, v3_dry_days = 6, v3_air_k = 8, v3_air_days = 4, v3_stir_k = 0.5, v3_strain_k = 0.9,
 }
 
 -- v3: the agentic world (docs/v3/, D-078). One planet step = one game day (W.hpt = 24); a year is

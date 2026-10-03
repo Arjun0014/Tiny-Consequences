@@ -382,7 +382,6 @@ end
 function init(self)
 	build_top(self)
 	build_inspector(self)
-	build_powers(self)
 	build_misc(self)
 	newsfeed.build(self)
 	build_loading(self)
@@ -527,7 +526,7 @@ function update(self, dt)
 		gui.set_size(self.load_bar, V3(math.max(14, 380 * (L.frac or 0)), 14, 0))
 		if self.shown.top then
 			gui.set_enabled(self.clock, false); gui.set_enabled(self.stats, false)
-			gui.set_enabled(self.pbar, false); gui.set_enabled(self.pbar_sh, false)
+			if self.pbar then gui.set_enabled(self.pbar, false); gui.set_enabled(self.pbar_sh, false) end
 			gui.set_enabled(self.ins_root, false)
 			self.shown.top = false
 		end
@@ -537,6 +536,11 @@ function update(self, dt)
 	if gui.is_enabled(self.loading) then gui.set_enabled(self.loading, false) end
 	local W = view.W
 	if not W then return end
+	if not self.pbar then
+		-- (S21) the power bar for this world's powers (the v3 set in v3 worlds)
+		powers.use_world(W)
+		build_powers(self)
+	end
 	if not self.shown.top then
 		gui.set_enabled(self.clock, true); gui.set_enabled(self.stats, true)
 		gui.set_enabled(self.pbar, true); gui.set_enabled(self.pbar_sh, true)
@@ -622,7 +626,7 @@ local function hit(self, x, y)
 			if gui.pick_node(self.ins_panel, x, y) then return "panel" end
 		end
 	end
-	if gui.is_enabled(self.pbar) then
+	if self.pbar and gui.is_enabled(self.pbar) then
 		for _, o in ipairs(self.popts) do
 			if gui.is_enabled(o.node) and gui.pick_node(o.node, x, y) then return o end
 		end
