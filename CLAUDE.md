@@ -67,6 +67,12 @@ work stints must be booked at the worker's pace (a quern was never finished); th
 close camera's target (`props.fp` `u_canopy`); famine (D-147): relief from need (`econ.relief_gift`),
 `mig_desperate`, a day at the edge before death (`p.edge`, health never below 0); never compare building
 ids or coordinates of someone on another map (`p.at`) with this map's (a toddler starved that way).
+Session 20 (D-148, D-149): the roadmap is R4 -> R5 -> **R6 Conflict** -> **R6.5 Living Planet & Emergent
+Response** -> R7. Both are built on shared primitive properties (`docs/v3/50_PRIMITIVES.md`: deeds known per
+village, danger noticed by the senses, an urgent choice with dependants first, injury, condition of things,
+boldness/arms, planet fields on maps); research `docs/v3/40_RESEARCH_CONFLICT_PLANET.md`, audit `41_PLANET_AUDIT.md`,
+plans `60_R6_CONFLICT.md` (R6a-R6g) and `65_R6_5_LIVING_PLANET.md` (R6.5a-g). Never: war flags, hostility/panic/
+grief numbers, per-hazard fears, aftermath controllers, scripted retaliation, palisades by count.
 
 ## Read order
 

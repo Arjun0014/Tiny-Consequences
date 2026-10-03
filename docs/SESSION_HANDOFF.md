@@ -1,3 +1,37 @@
+# Session handoff — session 20 (3 Oct 2026, extended autonomous run, IN PROGRESS): R6 and R6.5 designed; R6a being built
+
+**If you are resuming after a context compaction: re-read this section, `docs/v3/50_PRIMITIVES.md`,
+`60_R6_CONFLICT.md`, `65_R6_5_LIVING_PLANET.md`, D-148/D-149 and `git log --oneline -10` before any
+change.** Rules as in session 19 (no subagents; one heavy process at a time; visible action =
+simulation; premises not forced outcomes; browser = LuaJIT; bob forbids circular requires).
+
+## Done this session (in order)
+1. Research (`docs/v3/40_RESEARCH_CONFLICT_PLANET.md`) and code audit (`41_PLANET_AUDIT.md`;
+   probe: shipped world 96 days - 2 lightning fires planet-wide, none near villages; no snow at any
+   village; flat climate; volcanoes not generated in v3; Tekheim and Zurug on convergent boundaries).
+2. Design: `50_PRIMITIVES.md`, `60_R6_CONFLICT.md`, `65_R6_5_LIVING_PLANET.md`; roadmap R6/R6.5;
+   D-148 (R6.5 phase + primitives), D-149 (R6 design).
+
+## Current task: R6a — a stolen beast (step list; tick as done, with the commit)
+- [ ] 1. `sim/agents/deeds.lua`: deeds list `V.deeds`, `deeds.add`, village knowledge `s.dk`
+      (what each village believes: doer by name / village / unknown, how known), `deeds.learn`,
+      news through `econ.on_learn`, grievance read from known unsettled harms (half-lives).
+- [ ] 2. Boldness `people.bold(W, p)` (from the key; no save change); `p.been[sid]` (last hour at a
+      village: a face known there).
+- [ ] 3. Snapshot of a village's beasts and dogs in `econ.learn` (`k.beasts`, `k.dogs`).
+- [ ] 4. `sim/agents/conflict.lua`: the take weighing (need via `migrate.push`, gain, risk, restraint,
+      grievance, boldness) and the target (village, herd kind).
+- [ ] 5. think: take candidate + take trip legs (provisions, road, lie up near the edge until the
+      village sleeps, the pen, halter, the gate, the road home leading the beast, into the herd).
+- [ ] 6. act: work steps (lie up, take: halter + deed + cues); ownership on joining the herd.
+- [ ] 7. Noticing: dogs bark at a stranger near the pen by night (as at wolves), wake the household;
+      woken owners go out (generalised drive_off); the thief notices and lets go / runs.
+- [ ] 8. Discovery at the owners' morning count; tracks on wet ground; trust falls; memories.
+- [ ] 9. Night watch after thefts (guard_herd reads thefts as losses).
+- [ ] 10. Premise + test `test_v3_conflict`; follow the thief, owner, witness; untouched 192 d.
+- [ ] 11. Determinism (`node scripts/v3_hash_web.mjs --release`), profile, build, web, commit.
+Then R6b (claims, settlement, taking back), R6c (confrontation, injury), R6d (death aftermath).
+
 # Session handoff — session 19 (3 Oct 2026, extended autonomous run): the long-run audit, stone and iron, baskets and credit, fairs, the ferry, a famine people live through
 
 `docs/PROGRESS.md` (session 19 bullet) and **D-138 … D-147** in `docs/DECISIONS.md` are the source of

@@ -205,14 +205,42 @@ The plan as it was written (done, as above):
    built; the first winter is survivable only if they worked for it.
 - Also open: moving by sea (a household with a boat), pull from marriage ties (now possible).
 
-## R6 — Conflict
-- Raids (walking or boat-borne raiders), defenders, palisades built by people, captives and
-  grievances, truces (v2 D-060, D-066 re-expressed with agents).
+## Phase order (session 20, D-148)
+R4 Exchange and travel -> R5 Migration and founding -> **R6 Conflict** -> **R6.5 Living Planet &
+Emergent Response** -> R7 Player and causal chains. R6 and R6.5 are built on one set of shared
+primitive properties (`docs/v3/50_PRIMITIVES.md`): deeds (what happened, by whom, known by whom),
+danger noticed by the senses, an urgent choice that puts dependants first, injury, the condition
+and contents of things, boldness and arms, planet fields read on the maps. Research
+`40_RESEARCH_CONFLICT_PLANET.md`; audit of what is live `41_PLANET_AUDIT.md`.
+
+## R6 — Conflict (designed: `docs/v3/60_R6_CONFLICT.md`, D-149)
+Not raids by decree: people weigh taking things (need, the thing's worth, being seen, ties to the
+owners, boldness), walk, take a specific beast, are seen or not, remember; owners discover, track,
+watch, claim, take back - each a choice from state. Stages, each a whole loop watched before the
+next: **R6a** a stolen beast (deeds, boldness, opportunity in what visitors saw, the take trip,
+dogs and witnesses, discovery and tracks, news of deeds, trust, the watch); **R6b** claims and
+settlement, taking back; **R6c** confrontation and injury, arms from the household's iron; **R6d**
+sudden-death aftermath for all kin; **R6e** raids (a party of kin and friends, each deciding);
+**R6f** defence that is built (a stout fold, a palisade, by remembered losses against labour and
+timber); **R6g** how conflict ends (compensation, marriages across the line, trade dependence).
+Captives only as specific people with a way home; alliances and flight from insecurity later.
+
+## R6.5 — Living Planet & Emergent Response (designed: `docs/v3/65_R6_5_LIVING_PLANET.md`, D-148)
+So that R7's god powers touch physical state and the world answers. **R6.5a** shared foundations
+(from R6); **R6.5b** lightning on a village (strike at a point, injury, local fire, gathering,
+firefighting, rescue, aftermath by existing systems) - the first environmental vertical; **R6.5c**
+wildfire between planet and map, animals fleeing; **R6.5d** snow and cold on maps (the dzud chain);
+**R6.5e** flood water beyond the channel; **R6.5f** geology on static plates (volcano sites and
+pressure in v3 worlds, eruptions: vent, ash, aerosol - whose cooling already reaches v3 crops;
+boundary stress and earthquakes; landslides; tsunami last); **R6.5g** climate extremes in the v3
+calendar (coastline from sea level, an SST oscillation with fish, ice age and hothouse watched).
+Acceptance: a god power is a few lines writing state; no outcome scripts.
 
 ## R7 — Player and chains
 - God powers on the v3 world (lightning on a tree or a person, rain, drought, cull, oil spill on
-  the ocean (fishers respond), meteor); the chain of causes from any event back to Nature or You;
-  the chronicle from agents' memories.
+  the ocean (fishers respond), meteor) - each writing physical state that R6.5's systems answer;
+  the chain of causes from any event back to Nature or You (deeds carry it); the chronicle from
+  agents' memories and deeds.
 
 ## Never cut
 Determinism, causality (every major change traceable), the planet layer, no scripted
