@@ -1198,6 +1198,44 @@ C.V3 = {
   -- reactions (hours)
   react_near = { 0.03, 0.12 }, react_far = { 0.1, 0.45 },
   rain_hardy = 0.7,                       -- diligence above which light rain does not stop work
+  -- (S20, D-148) deeds: harms to goods fade over deed_half_goods days, blood over deed_half_blood; a
+  -- harm to another household of the village weighs deed_kin_k of one's own; deeds younger than
+  -- deed_news_days are told when people of two villages meet
+  deed_half_goods = 96, deed_half_blood = 480, deed_kin_k = 0.35, deed_news_days = 96,
+  -- (S20, D-149, R6a) taking a beast: weighed by a grown-up of a household whose hardship
+  -- (migrate.push) is at least take_push, or that holds a grievance of take_grudge FU against the
+  -- village; within take_road_h of road; the gain as days of food the beast is for the household
+  -- (take_gain_k a FU), against the risk (take_dog for each dog seen there, take_watch for a watch,
+  -- take_people for each grown man there / 10) and restraint (take_restraint, less boldness x
+  -- take_bold; kin there take_kin; trust x take_trust; a friend there take_friend); grievance FU
+  -- lower restraint by take_grudge_k each. A taker lies up until take_dark hours after the
+  -- village's latest bedtime; a stranger by the pen at night is noticed by a dog within
+  -- take_dog_r, by people awake within take_sight (by day sight_day), a beast handled is heard
+  -- within take_bleat. Tracks are found when it rained in the last day or the soil is wetter than
+  -- tracks_wet.
+  take_push = 0.55, take_grudge = 6, take_road_h = 30, take_gain_k = 0.12,
+  take_dog = 0.18, take_watch = 0.35, take_people = 0.06,
+  take_restraint = 0.75, take_bold = 0.6, take_kin = 1.5, take_trust = 0.8, take_friend = 0.5, take_grudge_k = 0.04,
+  take_dark = 1.5, take_dog_r = 0.18, take_sight = 0.12, sight_day = 0.6, take_bleat = 0.1,
+  tracks_wet = 0.42, tracks_rain = 0.03, take_days = 4,
+  take_hide = 0.35, take_h = 0.08, take_hold = 0.8, take_trust_loss = 0.15,
+  take_flock = 3, take_need_days = 6,     -- sheep and goats one man leads off by night; days of food a taking is weighed against
+  -- (S20, D-148) noticing: night sight a share of day sight; a sound wakes a sleeper within wake_k of
+  -- its reach; reaction delays (hours) awake / asleep; an alarm is fresh this long; barking is
+  -- heard this far; a chaser gives up after chase_h; caught within chase_reach
+  night_sight_k = 0.2, wake_k = 0.6, notice_delay = 0.015, wake_delay = 0.04, alarm_h = 0.5,
+  bark_sound = 0.35, chase_h = 0.6, chase_reach = 0.04,
+  chase_lost = 3, chase_bold = 0.5,       -- a chase given up after this many looks without sight; the bold go out after what they saw
+  -- (S20, R6b) claims: a wrong worth claim_min FU and more, within claim_road_h, asked about again
+  -- after claim_again_days; taking back is weighed only for wrongs claimed and not made good, or
+  -- where trust is below claim_trust_min. The accused household gives way when claim_base + trust x
+  -- claim_trust + kin there claim_kin + deals/10 x claim_deals + the claimant village's grown men/10 x
+  -- claim_fear + evidence claim_named outweighs the doer's boldness x claim_bold + its need x
+  -- claim_need; settling raises trust by settle_trust; a refusal is a harm of refuse_fu
+  claim_min = 3, claim_road_h = 36, claim_again_days = 12, claim_trust_min = 0.12, claim_h = 1.0,
+  claim_base = 0.3, claim_trust = 0.8, claim_kin = 0.6, claim_deals = 0.3, claim_fear = 0.25, claim_named = 0.3,
+  claim_bold = 0.9, claim_need = 0.6, settle_trust = 0.1, refuse_fu = 4,
+  take_try_k = 0.25, take_dog_p = 0.6, take_failed = 0.5,   -- (each time given away there before, fading)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
 }
 
 return C

@@ -524,6 +524,21 @@ function M.learn(W, s, o, now)
   s.know = s.know or {}
   local buy, sell, spare = M.market(W, o)
   s.know[o.id] = { t = now, buy = buy, sell = sell, spare = spare, view = M.view(W, o) }
+  -- (S20, R6a) the beasts in its pens and the dogs that keep them, as a visitor sees them; whether
+  -- its people were keeping watch at night
+  local k = s.know[o.id]
+  local stock = require("sim.agents.stock")
+  k.beasts = {}
+  for hi, kind in ipairs(stock.HERDS) do
+    local H = o.herds and o.herds[kind]
+    local n = 0
+    if H then for _, a in ipairs(H.animals) do if a.alive and (a.led or 0) == 0 then n = n + 1 end end end
+    k.beasts[hi] = n
+  end
+  local nd = 0
+  for _, d in ipairs(o.dogs or {}) do if d.alive then nd = nd + 1 end end
+  k.dogs = nd
+  k.watch = (o.wolf_alarm and now - o.wolf_alarm < C().guard_days * 24) or (o.thief_alarm and now - o.thief_alarm < C().guard_days * 24) or nil
   -- (S17) and what o's people know of places (founding.share; set by sim/agents/init.lua)
   if M.on_learn then M.on_learn(W, s, o, now) end
 end

@@ -184,6 +184,23 @@ function M.remember(p, t, text)
   p.mem[n] = { t, text }
 end
 
+-- (S20, D-148) Boldness (0..1): how much risk they will take - to take what is not theirs, to face
+-- a danger, to go into a fire for someone. A trait from their key like the others (no saved field).
+function M.bold(W, p)
+  return rng.float(W.seed, rng.S.V3_PEOPLE, p.key, 91, 0)
+end
+
+-- (S20) p came onto village sid's map: its people have seen their face (p.been[sid] = the hour).
+function M.came(p, sid, now)
+  p.been = p.been or {}
+  p.been[sid] = floor(now)
+end
+
+-- Would people of village sid know p by face (has p been there; or does p live there)?
+function M.known_at(p, sid)
+  return p.sett == sid or (p.been ~= nil and p.been[sid] ~= nil)
+end
+
 function M.full_name(p) return p.name .. " " .. p.surname end
 
 -- Is person q (id) kin of p (parent, child, sibling, partner)?

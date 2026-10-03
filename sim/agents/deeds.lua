@@ -1,0 +1,165 @@
+-- Deeds (D-148, docs/v3/50_PRIMITIVES.md §2): what happened, by whom, to whom, and who knows it.
+-- A deed is a small record of a significant act or event (a beast taken, a return, a payment, a
+-- wound, a death, a rescue). Villages know deeds only as their people saw or found them, or as
+-- people who knew them told them (the contact hook, econ.on_learn). Grievance, reputation and the
+-- why of an answer are read from the deeds a village knows - never kept as a score.
+--   W.S.v3.deeds = { d1, d2, ... } (id = index)
+--   d = { id, kind, t, at (the map it happened on), x, y, by (person, 0 none/nature), by_hh, by_s,
+--         to (person), to_hh, to_s, what, n, fu (its worth to the one who bore it), harm (bool),
+--         answers (a deed id it answered), settled (the deed id that settled it), saw = { pids } }
+--   s.dk = { { id, t, by, by_s, how, own }, ... } what village s knows and believes: the doer by
+--          name (by), by village only (by_s) or not at all; how it came to know; own = the doer's
+--          own household's knowledge (not told about).
+local sfmt = require("sim.fmt").format   -- (the same text in every runtime, S14)
+local cfgmod = require("sim.config")
+local dmath = require("sim.dmath")
+
+local M = {}
+local exp, max, min, floor = dmath.exp, math.max, math.min, math.floor
+local function C() return cfgmod.V3 end
+
+local function list(W)
+  local V = W.S.v3
+  V.deeds = V.deeds or {}
+  return V.deeds
+end
+M.list = list
+
+-- A new deed (fields as above; t defaults to now). Returns it.
+function M.add(W, rec)
+  local L = list(W)
+  rec.id = #L + 1
+  rec.t = rec.t or W.S.v3.now or W.hour
+  rec.saw = rec.saw or {}
+  L[rec.id] = rec
+  return rec
+end
+
+function M.get(W, id) return list(W)[id or 0] end
+
+-- What village s knows of deed id (its entry), or nil.
+function M.known(s, id)
+  local dk = s.dk
+  if not dk then return nil end
+  for i = 1, #dk do if dk[i].id == id then return dk[i] end end
+  return nil
+end
+
+-- Village s comes to know deed d: how (a short text: "saw it", "found it missing", "tracks on
+-- the road to X", "told by the people of X"), believing the doer is person `by` (0: not known) of
+-- village `by_s` (0: not known). A second learning keeps the most certain belief (a name over a
+-- village over nothing). Returns the entry and whether it was news.
+function M.learn(W, s, d, how, by, by_s, now, own)
+  if not s or not d then return nil, false end
+  s.dk = s.dk or {}
+  local e = M.known(s, d.id)
+  if e then
+    local news = false
+    if (by or 0) ~= 0 and e.by == 0 then e.by, e.by_s, e.how, news = by, by_s or e.by_s, how, true
+    elseif (by_s or 0) ~= 0 and e.by_s == 0 then e.by_s, e.how, news = by_s, how, true end
+    -- (a household's own secret stays its own: what others say of it does not make it the
+    -- village's to tell)
+    return e, news
+  end
+  e = { id = d.id, t = now or W.S.v3.now or W.hour, by = by or 0, by_s = by_s or 0, how = how, own = own or nil }
+  s.dk[#s.dk + 1] = e
+  return e, true
+end
+
+-- How much a deed still weighs after `age` hours: harms to goods fade over deed_half_goods days,
+-- blood (wounds and killings) over deed_half_blood.
+local LN2 = 0.69314718055995
+function M.fade(d, age)
+  local c = C()
+  local half = (d.kind == "kill" or d.kind == "wound") and c.deed_half_blood or c.deed_half_goods
+  return exp(-LN2 * max(0, age) / (half * 24))
+end
+
+-- The grievance of village s (household hh if given: its own losses weigh fully, the village's
+-- others' at deed_kin_k) against village o: the worth of the unsettled harms s knows o's people did
+-- to s's people, faded. Returns the sum and the heaviest such deed (for the why).
+function M.grievance(W, s, o, hh, now, filter)
+  local dk = s.dk
+  if not dk or not o then return 0, nil end
+  local L = list(W)
+  local c = C()
+  local sum, top, tw = 0, nil, 0
+  for i = 1, #dk do
+    local e = dk[i]
+    if e.by_s == o.id and not e.own and (not filter or filter(e)) then
+      local d = L[e.id]
+      if d and d.harm and not d.settled and d.to_s == s.id then
+        local w = (d.fu or 0) * M.fade(d, now - d.t)
+        if hh and d.to_hh ~= hh then w = w * c.deed_kin_k end
+        sum = sum + w
+        if w > tw then top, tw = d, w end
+      end
+    end
+  end
+  return sum, top
+end
+
+-- Harms s knows were done to its people whose doer it does not know (the losses it cannot answer),
+-- faded: the night watch reads these as it reads wolves' kills.
+function M.losses(W, s, now, days)
+  local dk = s.dk
+  if not dk then return 0, nil end
+  local L = list(W)
+  local n, last = 0, nil
+  for i = #dk, 1, -1 do
+    local e = dk[i]
+    local d = L[e.id]
+    if d and d.harm and d.to_s == s.id and not e.own and now - d.t <= days * 24 then
+      n = n + 1
+      if not last or d.t > last.t then last = d end
+    end
+  end
+  return n, last
+end
+
+-- Settle deed d by deed s2 (a return, a payment).
+function M.settle(W, d, by)
+  if d and not d.settled then d.settled = by and by.id or -1 end
+end
+
+-- When people of s meet people of o (econ.on_learn), s hears the deeds o knows that touch either
+-- village's people and are not too old to be told (deed_news_days), and what o believes of each.
+-- A household's own secret (`own`) is not told.
+function M.share(W, s, o, now)
+  local dk = o.dk
+  if not dk or s == o then return end
+  local L = list(W)
+  local c = C()
+  for i = 1, #dk do
+    local e = dk[i]
+    local d = L[e.id]
+    if d and not e.own and now - d.t <= c.deed_news_days * 24
+      and (d.to_s == s.id or d.to_s == o.id or d.by_s == s.id or d.by_s == o.id) then
+      local mine = M.known(s, d.id)
+      if not mine or (mine.by == 0 and e.by ~= 0) or (mine.by_s == 0 and e.by_s ~= 0) then
+        M.learn(W, s, d, sfmt("told by the people of %s", o.name), e.by, e.by_s, now)
+      end
+    end
+  end
+end
+
+-- "Bralf of Zurug took one of our ewes" / "someone took a ewe of the Ulfs'" - a deed as village s
+-- believes it, for whys and memories.
+function M.told(W, s, d, e)
+  local V = W.S.v3
+  e = e or M.known(s, d.id)
+  local who
+  if e and e.by ~= 0 then
+    local q = V.people[e.by]
+    local o = V.settlements[e.by_s]
+    who = q and (q.name .. (o and o ~= s and (" of " .. o.name) or "")) or "someone"
+  elseif e and e.by_s ~= 0 then
+    local o = V.settlements[e.by_s]
+    who = o and ("someone of " .. o.name) or "someone"
+  else
+    who = "someone"
+  end
+  return who
+end
+
+return M

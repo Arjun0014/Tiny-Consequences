@@ -80,4 +80,44 @@ function M.empty_stores(W, s)
   end
 end
 
+-- (S20, R6b) A wrong in village s's past: `days` ago a man of village o took n of a household's
+-- sheep from s's fold, s knows it was someone of o (tracks), asked for redress and was told nobody
+-- there would own to it. History written as a deed and what s knows of it; what s's people do
+-- about it now is their own. Returns the deed.
+function M.wronged(W, s, o, n, days, answer)
+  local deeds = require("sim.agents.deeds")
+  local people = require("sim.agents.people")
+  local V = W.S.v3
+  local now = W.S.v3.now or W.hour
+  local by
+  for _, id in ipairs(o.members) do
+    local q = V.people[id]
+    if q and q.alive and q.sex == "m" and people.stage(q, now) == "adult" then by = q; break end
+  end
+  local hh = V.households[s.households[1]]
+  local d = deeds.add(W, { kind = "take", t = now - days * 24, at = s.id, by = by and by.id or 0, by_hh = by and by.hh or 0,
+    by_s = o.id, to = 0, to_hh = hh.id, to_s = s.id, what = "sheep", n = n, fu = (n or 1) * 6 * 1.2, harm = true, away = true })
+  local e = deeds.learn(W, s, d, "the tracks of a man leading them went off by the road to " .. o.name, 0, o.id, now - days * 24 + 30)
+  e.answer, e.claim_t = answer or "denied", now - (days - 2) * 24
+  return d
+end
+
+-- (S20) A sickness took village s's dogs.
+function M.no_dogs(W, s)
+  for _, d in ipairs(s.dogs or {}) do d.alive = false end
+end
+
+-- (S20, R6a) Village s's people have been to village o lately (a trader, a fair): they know how it
+-- stands - its stores, its people's wants, the beasts in its pens and its dogs (econ.learn), and o's
+-- people have seen their faces.
+function M.knows(W, s, o)
+  local econ = require("sim.agents.econ")
+  local people = require("sim.agents.people")
+  econ.learn(W, s, o, W.S.v3.now or W.hour)
+  for _, id in ipairs(s.members) do
+    local p = W.S.v3.people[id]
+    if p and p.alive and people.stage(p, W.hour) == "adult" and p.sex == "m" then people.came(p, o.id, W.hour) end
+  end
+end
+
 return M

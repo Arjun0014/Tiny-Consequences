@@ -146,6 +146,24 @@ local function alarm(W, s, d, w, now)
   s.acc.barks = (s.acc.barks or 0) + 1
 end
 
+-- (S20, R6a) The dog barks at something that is not a wolf (a stranger at the beasts by night):
+-- its household's grown-ups wake to it and know what the barking is about (danger.raise).
+function M.bark(W, s, d, now, kind, by)
+  local V = W.S.v3
+  d.barked = now
+  s.alarm = { t = now, x = d.tx, y = d.ty, hh = d.hh, dog = d.k, kind = kind, by = by }
+  local danger = require("sim.agents.danger")
+  local hh = V.households[d.hh]
+  for _, id in ipairs(hh and hh.members or {}) do
+    local q = V.people[id]
+    if q and q.alive and not q.at and people.stage(q, now) == "adult" then
+      danger.raise(W, q, { kind = kind, src = by or 0, why = "The dog is barking at the beasts" }, d.tx, d.ty, now, "heard")
+    end
+  end
+  s.acc.barks = (s.acc.barks or 0) + 1
+  d.why = "Barking at a stranger at the beasts"
+end
+
 -- (S17) A household gone to live elsewhere with its dog: the dog comes onto the new map with them.
 function M.come(W, o, hh, x, y, now)
   local dw = hh.dog_with

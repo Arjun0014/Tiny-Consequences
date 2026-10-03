@@ -19,6 +19,9 @@ local floor, max, min, sqrt, abs = math.floor, math.max, math.min, math.sqrt, ma
 local function C() return cfgmod.V3 end
 local trade = require("sim.agents.trade")
 local econ = require("sim.agents.econ")
+local conflict = require("sim.agents.conflict")   -- (S20, R6)
+local deeds = require("sim.agents.deeds")
+local danger = require("sim.agents.danger")
 local dsq = require("sim.dmath").sq
 local NOW = 0
 
@@ -57,7 +60,7 @@ local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "f
   shore = "shore", smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed", moving_in = "strike_camp",
   asking = "visit_kin",
   milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle", trading = "trade", sharing = "share", tanning = "tan", lifting = "lift", cobbling = "cobble",
-  salting_pans = "salt", querning = "quern" }
+  salting_pans = "salt", querning = "quern", taking = "steal" }
 local function claim_free(W, hh, field, p)
   local id = hh[field] or 0
   if id == 0 or (p and id == p.id) then return true end
@@ -1031,6 +1034,37 @@ local function trade_candidate(W, s, p, ctx, now, fat)
   end
 end
 M.trade_candidate = trade_candidate
+
+-- (S20, R6a, D-149) Taking a beast from another village (conflict.take_weigh weighs it): a grown-up
+-- fit for the road, of a household in hardship or holding a grievance, setting out in the morning.
+local function steal_candidate(W, s, p, ctx, now, fat)
+  if ctx.moving or p.trip or p.at or ctx.stage ~= "adult" or ctx.babe or not ctx.home or not ctx.hh then return end
+  if (p.nursing or 0) > now or (p.preg_due or 0) > 0 or p.health < 0.6 or p.hunger > 0.8 or (p.hurt or 0) > 0.2 then return end
+  if ctx.lh > ctx.wake + 3 or ctx.rain >= 2 then return end
+  if not claim_free(W, ctx.hh, "taking", p) then return end
+  local b = conflict.take_weigh(W, s, p, ctx.hh, now)
+  if not b then return end
+  add(min(0.95, 0.25 + 0.6 * b.net) * fat, "steal", b.o, b.hi, b.why)
+end
+M.steal_candidate = steal_candidate
+
+-- (S20, R6b) Asking redress for a wrong (conflict.claim_weigh): a grown-up fit for the road of the
+-- household that bore it, in the morning; the more it weighs and the more the villages trust each
+-- other, the likelier they go and ask rather than wait.
+function M.claim_candidate(W, s, p, ctx, now, fat)
+  if ctx.moving or p.trip or p.at or ctx.stage ~= "adult" or ctx.babe or not ctx.home or not ctx.hh then return end
+  if (p.nursing or 0) > now or (p.preg_due or 0) > 0 or p.health < 0.6 or (p.hurt or 0) > 0.2 then return end
+  if ctx.lh > ctx.wake + 3 or ctx.rain >= 2 or not journey_ok(W, s, p, ctx, 12) then return end
+  -- (the men first: a woman goes where her household has no man of age)
+  if p.sex ~= "m" and kin.has_man(W, ctx.hh, now) then return end
+  local b = conflict.claim_weigh(W, s, ctx.hh, now)
+  if not b then return end
+  local trust = econ.rel(s, b.o).trust
+  local who = deeds.told(W, s, b.d, b.e)
+  addw((0.3 + 0.35 * min(1, b.w / 20) + 0.25 * trust) * fat, "claim", b.d.id, b.o.id,
+    "%s took %s of ours: going to %s to ask for %s back (%.0f hours' walk)", who, b.d.n > 1 and sfmt("%d %s", b.d.n, conflict.NOUN[b.d.what] or b.d.what) or (conflict.ONE[b.d.what] or b.d.what),
+    b.o.name, b.d.n > 1 and "them" or "it", b.hrs)
+end
 
 -- (S16, R4) Courting (life.lua): a man with nobody to marry at home walks to the village he chose,
 -- setting out early enough to walk it by day.
@@ -3875,6 +3909,22 @@ local function court_legs(W, s, p, ctx, now)
     local kin = tr.visit and V.people[tr.visit]
     local kh = kin and V.households[kin.hh]
     local kb = kh and o.buildings[kh.home or 0]
+    if not tr.met and tr.claim then
+      -- (S20, R6b) to the house of the man they know did it, else to the pen to look for their beasts
+      local d = deeds.get(W, tr.claim)
+      local e = d and deeds.known(home_s, d.id)
+      local q = e and e.by ~= 0 and V.people[e.by]
+      local qh = q and V.households[q.hh]
+      local hb = qh and qh.sett == o.id and o.buildings[qh.home or 0]
+      if not hb and d then
+        local H = o.herds and o.herds[(d.what == "cattle" and "cattle") or (d.what == "pig" and "swine") or "flock"]
+        hb = H and o.buildings[H.pen]
+      end
+      hb = hb or { dx = o.sqx or 0, dy = o.sqy or 0, id = 0, label = o.name .. "'s square" }
+      go(pl, hb.dx, hb.dy, hb.label or "their house")
+      work(pl, "claim", c.claim_h, { ref = hb.id })
+      return "Ask at " .. o.name .. " for redress", o.name
+    end
     if not tr.met then
       if tr.visit then
         -- (S16) to the kin's house: a meal and the news together (S17: or to ask for help)
@@ -3914,7 +3964,7 @@ local function court_legs(W, s, p, ctx, now)
     local _, hrs0 = trade.road(W, o, home_s)
     -- (S19: a road longer than a day's walking is camped on anyway: they set off at once)
     local overday = hrs0 > ctx.sunset - ctx.wake
-    if tr.news and not tr.slept and (ctx.night or (ctx.lh + hrs0 > ctx.sunset + 0.5 and not overday)) then
+    if (tr.news or tr.claim) and not tr.slept and (ctx.night or (ctx.lh + hrs0 > ctx.sunset + 0.5 and not overday)) then
       -- (too late to walk home by day: the night at the square, off at first light; S19: a meal
       -- from the village's store before it)
       tr.slept = true
@@ -3937,10 +3987,13 @@ local function court_legs(W, s, p, ctx, now)
     end
     local gx, gy = trade.gate(W, o, home_s)
     go(pl, gx, gy, "the road home")
+    -- (S20, R6b) beasts given back are led home
+    local lead = tr.lead_kind and #(stock.led_by(o, p, tr.lead_kind)) > 0 and tr.lead_kind or nil
+    if lead then pl[#pl].lead = lead end
     if tr.depart then work(pl, "gather", 0, { until_t = tr.depart }) end
     local _, hrs = trade.road(W, o, home_s)
     local lh0 = (ctx.lh + max(0, (tr.depart or now) - now)) % 24
-    work(pl, "travel", road_dur(lh0 + 0.4, hrs, ctx.wake, ctx.bed), { to = home_s.id, from = o.id })
+    work(pl, "travel", road_dur(lh0 + 0.4, hrs * (lead and c.drove_road or 1), ctx.wake, ctx.bed), { to = home_s.id, from = o.id, lead = lead })
     return "Home from " .. o.name, home_s.name
   end
   local home = ctx.home or people.home(W, home_s, p)
@@ -4105,6 +4158,189 @@ PLAN.court = function(W, s, p, ctx, now, cd)
   return court_legs(W, s, p, ctx, now)
 end
 
+-- (S20, R6a, D-149) A take trip: provisions from home and the road (by day) to the village whose
+-- beasts are known; there, off the road near the edge of its map to lie up until its people sleep;
+-- by night to the pen, a beast taken by the halter (WORK.steal); to the gate leading it (or empty-
+-- handed if the dogs gave them away) and the road home by night; the beast into the household's
+-- herd at home (act.lua, WORK.travel).
+local function steal_legs(W, s, p, ctx, now)
+  local c = C()
+  local pl = plan_reset(p)
+  local V = W.S.v3
+  local tr = p.trip
+  local home_s = V.settlements[tr.from]
+  local o = V.settlements[tr.to]
+  local here = p.at or p.sett
+  if not o or not home_s then p.trip = nil; work(pl, "wait", 0.1, {}); return "Home", "" end
+  if here == tr.from and not tr.back then
+    local home = ctx.home
+    if home and (p.prov or 0) < c.trade_prov then
+      if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+      pl[#pl + 1] = { op = "pick", what = "provisions", ref = home.id }
+    end
+    local gx, gy = trade.gate(W, home_s, o)
+    go(pl, gx, gy, "the road to " .. o.name)
+    local _, hrs = trade.road(W, home_s, o)
+    work(pl, "travel", road_dur(ctx.lh + 0.4, hrs, ctx.wake, ctx.bed), { to = o.id, from = home_s.id })
+    return "Go to " .. o.name .. " to take a beast", o.name
+  end
+  if here == tr.to then
+    local H = o.herds and o.herds[tr.kind]
+    local pen = H and o.buildings[H.pen]
+    local led = H and #(stock.led_by(o, p, tr.kind)) > 0
+    if not led and not tr.took and not tr.fled and pen then
+      -- (the dark: past the latest bedtime of its people)
+      local dark = (min(c.bed_max, (o.sunset or 18) + c.bed_after_sunset + 0.75) + c.take_dark) % 24
+      local wait = (dark - ctx.lh) % 24
+      local dawn = (ctx.wake - 1 - ctx.lh) % 24
+      if wait > 0.05 and wait < dawn then
+        if not tr.hx then
+          -- off the road among the trees, a little in from the edge where the road comes in
+          local gx, gy = trade.gate(W, o, home_s)
+          local l = sqrt(gx * gx + gy * gy)
+          local k = l > 1e-6 and (l - c.take_hide) / l or 1
+          tr.hx, tr.hy = near_spot(W, p, now, gx * k, gy * k, 0.08, 83)
+        end
+        go(pl, tr.hx, tr.hy, "the woods above " .. o.name)
+        work(pl, "lie_up", wait, {})
+        return "Wait for dark near " .. o.name, o.name
+      end
+      if wait >= dawn then
+        -- (past first light: they missed the night; another night, or home)
+        tr.nights = (tr.nights or 0) + 1
+        if tr.nights > 2 then tr.fled = true end
+      end
+      if not tr.fled then
+        go(pl, pen.dx, pen.dy, "the " .. pen.label)
+        work(pl, "steal", c.take_h, { herd = stock.HIDX[tr.kind] + 1, ref = pen.id })
+        return "Take a beast from " .. o.name .. "'s " .. pen.label, o.name
+      end
+    end
+    -- away: to the gate leading it (or empty-handed), and the road home through the night
+    local gx, gy = trade.gate(W, o, home_s)
+    go(pl, gx, gy, "the road home")
+    if led then pl[#pl].lead = tr.kind end
+    local _, hrs = trade.road(W, o, home_s)
+    work(pl, "travel", hrs * (led and c.drove_road or 1), { to = home_s.id, from = o.id, lead = led and tr.kind or nil })
+    return led and ("Lead the beast home from " .. o.name) or ("Home from " .. o.name), home_s.name
+  end
+  local home = ctx.home or people.home(W, home_s, p)
+  if home then
+    go(pl, home.dx, home.dy, "home", home.id)
+    pl[#pl + 1] = { op = "drop", to = "home", ref = home.id, trip_end = true }
+  else
+    p.trip = nil
+    work(pl, "wait", 0.1, {})
+  end
+  return "Home", home_s.name
+end
+M.steal_legs = steal_legs
+
+local function steal_why(W, p)
+  local tr = p.trip
+  local V = W.S.v3
+  local o = V.settlements[tr.to]
+  local here = p.at or p.sett
+  local on = o and o.name or "the other village"
+  if here == tr.from then
+    if tr.back then return tr.took and not tr.fled and "Home with the beast" or "Home again" end
+    return tr.why or ("Going to take a beast from " .. on)
+  end
+  if here == tr.to then
+    if tr.fled then return sfmt("Away from %s: the dogs gave me away, I let the beast go", on) end
+    if tr.took then return sfmt("Leading home a beast taken from %s's %s in the night", on, tr.kind == "cattle" and "byre" or "fold") end
+    return sfmt("Waiting near %s for its people to sleep, to take one of their beasts", on)
+  end
+  return tr.why or ""
+end
+
+PLAN.steal = function(W, s, p, ctx, now, cd)
+  local o = W.S.v3.settlements[cd.a]
+  local kind = stock.HERDS[cd.b]
+  local b = conflict.take_weigh(W, s, p, ctx.hh, now)
+  ctx.hh.taking = p.id
+  p.trip = { steal = true, to = o.id, from = s.id, kind = kind, lead_kind = kind, give = "grain", take = "grain", n = b and b.n or 1, t0 = now,
+    why = b and b.why or nil, gdeed = b and b.gdeed or nil }
+  return steal_legs(W, s, p, ctx, now)
+end
+
+PLAN.claim = function(W, s, p, ctx, now, cd)
+  local d = deeds.get(W, cd.a)
+  local o = W.S.v3.settlements[cd.b]
+  local e = d and deeds.known(s, d.id)
+  if e then e.claim_t = now end
+  local why
+  if d and e then
+    why = sfmt("%s took %s of ours: going to %s to ask for %s back", deeds.told(W, s, d, e),
+      d.n > 1 and sfmt("%d %s", d.n, conflict.NOUN[d.what] or d.what) or (conflict.ONE[d.what] or d.what), o.name, d.n > 1 and "them" or "it")
+  end
+  p.trip = { court = true, claim = cd.a, to = o.id, from = s.id, give = "grain", take = "grain", n = 0, t0 = now, why = why }
+  return court_legs(W, s, p, ctx, now)
+end
+
+-- (S20, R6b) Why a claimant is on the road or at the other village.
+function M.claim_why(W, p)
+  local tr = p.trip
+  local V = W.S.v3
+  local o = V.settlements[tr.to]
+  local here = p.at or p.sett
+  local on = o and o.name or "the other village"
+  if here == tr.to then
+    if not tr.met then return sfmt("At %s to ask for redress: %s", on, tr.why or "") end
+    local a = tr.answer
+    if a == "returned" then return sfmt("%s gave back our beasts: leading them home", on) end
+    if a == "paid" then return sfmt("%s made it good: carrying home what they gave", on) end
+    if a == "refused" then return sfmt("%s refused us: going home", on) end
+    return sfmt("Nobody at %s would own to it: going home", on)
+  end
+  if here == tr.from and tr.back then return "Home from " .. on end
+  return tr.why or ("On the road to " .. on .. " to ask for redress")
+end
+
+-- (S20, R6a) A take trip's decision (outside decide: Lua's limit on upvalues): the alarm at the
+-- other village (let go and run, or hold on), then the legs. True when it planned the step.
+function M.steal_decide(W, s, p, ctx, now, reason)
+  local tr = p.trip
+  local here = p.at or p.sett
+  if here == tr.from and not tr.back then
+    tr.replans = (tr.replans or 0) + 1
+    if tr.replans > 30 then
+      -- (it would not come right: given up)
+      p.trip = nil
+      if ctx.hh and ctx.hh.taking == p.id then ctx.hh.taking = 0 end
+    end
+  end
+  if p.trip and here == tr.to and p.alarm and danger.fresh(p, now) and not tr.fled then
+    -- the dogs bark, someone shouts or comes: let the beast go and run - unless bold enough and
+    -- nobody is near yet
+    local o = W.S.v3.settlements[tr.to]
+    local near = conflict.watchers_near(W, o, p, now, C().take_sight * 1.5)
+    if near > 0 or people.bold(W, p) < C().take_hold then
+      conflict.let_go(W, o, p, now)
+      tr.fled = true
+      p.tried = p.tried or {}
+      local tt = p.tried[o.id] or { n = 0, t = now }
+      tt.n, tt.t = tt.n + 1, floor(now)
+      p.tried[o.id] = tt
+      -- (what he learned there goes home with him: their dogs, and that they are awake to it now)
+      local nd = 0
+      for _, dg in ipairs(o.dogs or {}) do if dg.alive then nd = nd + 1 end end
+      tr.saw_dogs = nd
+      people.remember(p, now, sfmt("Given away at %s (%s): I let the beast go and ran", o.name,
+          (p.alarm.kind == "caught" and "they caught me") or (p.alarm.how == "saw" and "they saw me coming") or "the dogs barked"))
+    end
+    p.alarm = nil
+  end
+  if p.trip then
+    local obj, dest = steal_legs(W, s, p, ctx, now)
+    p.obj, p.dest, p.objk = obj, dest, "steal"
+    if p.trip then p.why = (reason and (reason .. ". ") or "") .. steal_why(W, p) end
+    p.tgt_kind, p.tgt_ref = "trade", p.trip and p.trip.to or 0
+    return true
+  end
+  return false
+end
+
 PLAN.share = function(W, s, p, ctx, now, cd)
   local pl = plan_reset(p)
   local hh = ctx.hh
@@ -4197,6 +4433,26 @@ PLAN.drive_off = function(W, s, p, ctx, now, cd)
   go(pl, a.x, a.y, "the pen")
   work(pl, "drive_off", 0.4, { fx = a.x, fy = a.y })
   return "Drive the wolves off", "the pen"
+end
+
+-- (S20, R6a) A grown-up of the village, woken or seen to a stranger at the beasts, goes after him
+-- while the alarm is fresh and he is still about.
+function M.chase_ok(W, s, p, ctx, now)
+  if p.at or ctx.stage ~= "adult" or ctx.babe or not danger.fresh(p, now, C().chase_h) then return false end
+  if not conflict.goes_out(W, s, p, now) then p.alarm = nil; return false end
+  return conflict.chase_target(W, s, p, now) ~= nil
+end
+
+-- (S20, R6a) After the stranger at the beasts: to where he is now; the step's end (WORK.chase) sees
+-- whether he is caught, still in sight, or gone.
+PLAN.chase = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local q = W.S.v3.people[cd.a]
+  local x, y = p.alarm.x, p.alarm.y
+  if q and q.alive and q.at == s.id then x, y = act.pos(q, now) end
+  go(pl, x, y, "the stranger")
+  work(pl, "chase", 0.01, { ref = cd.a, fx = x, fy = y })
+  return "Go after the stranger at the beasts", "the stranger"
 end
 
 PLAN.trip = function(W, s, p, ctx, now, cd)
@@ -4440,7 +4696,9 @@ end
 -- nobody else watches it; nil otherwise.
 function M.guard_herd(W, s, p, ctx, now)
   local c = C()
-  if not s.herds or not s.wolf_alarm or now - s.wolf_alarm > c.guard_days * 24 then return nil end
+  -- (S20) wolves took a beast, or a beast was taken in the night (R6a)
+  local last = max(s.wolf_alarm or -1e9, s.thief_alarm or -1e9)
+  if not s.herds or now - last > c.guard_days * 24 then return nil end
   if ctx.stage ~= "adult" or not ctx.hh or p.energy < 0.2 or ctx.babe then return nil end
   s.guards = s.guards or {}
   for hi = 1, #stock.HERDS do
@@ -4947,6 +5205,7 @@ function M.decide(W, s, p, now, reason)
       return true
     end
   end
+  if p.trip and p.trip.steal and M.steal_decide(W, s, p, ctx, now, reason) then return true end
   if p.trip then
     local tr = p.trip
     local here = p.at or p.sett
@@ -4972,6 +5231,12 @@ function M.decide(W, s, p, now, reason)
       end
       if tr.cry and here == tr.to and not tr.met then
         p.why = (reason and (reason .. ". ") or "") .. "Telling the people of " .. giver .. " of the fair at home"
+      end
+      if tr.court and tr.claim then
+        p.why = (reason and (reason .. ". ") or "") .. M.claim_why(W, p)
+        p.objk = "claim"
+        p.tgt_kind, p.tgt_ref = "trade", tr.to
+        return true
       end
       if tr.court and tr.visit then
         local kin = W.S.v3.people[tr.visit]
@@ -5073,6 +5338,12 @@ function M.decide(W, s, p, now, reason)
     kind, why = "feed_babe", sfmt("%s woke crying with hunger in the night", night_babe.name)
     add(1, "feed_babe", night_babe.id, 0, why)
     M.cd = CAND[ncand]
+  elseif p.alarm and p.alarm.kind == "thief" and M.chase_ok(W, s, p, ctx, now) then
+    -- (S20, R6a) a stranger at the beasts: out after him
+    kind = "chase"
+    add(1, "chase", p.alarm.src, 0, "")
+    M.cd = CAND[ncand]
+    why = p.alarm.how == "saw" and "A stranger is leading off one of the beasts: after him" or "The dogs are barking at the fold: someone is at the beasts"
   elseif ctx.night and M.guard_herd(W, s, p, ctx, now) then
     -- wolves took a beast lately: a grown man (else woman) of an owning household keeps the
     -- night's watch at the pen (one at each pen), sleeping by it
@@ -5081,9 +5352,11 @@ function M.decide(W, s, p, now, reason)
     add(1, "guard", 0, hi, "")
     M.cd = CAND[ncand]
     local pen = s.buildings[s.herds[stock.HERDS[hi]].pen]
-    why = sfmt("Wolves took one of the beasts %s: keeping watch at the %s tonight",
-      now - s.wolf_alarm < 24 and "last night" or "lately", pen.label)
-  elseif s.alarm and now - s.alarm.t < 0.8 and ctx.stage == "adult" and not p.at and (p.hh == s.alarm.hh or p.objk == "guard")
+    local thief = (s.thief_alarm or -1e9) > (s.wolf_alarm or -1e9)
+    local last = thief and s.thief_alarm or s.wolf_alarm
+    why = sfmt("%s %s: keeping watch at the %s tonight", thief and "One of the beasts was taken" or "Wolves took one of the beasts",
+      now - last < 24 and "last night" or "lately", pen.label)
+  elseif s.alarm and (s.alarm.kind or "wolves") == "wolves" and now - s.alarm.t < 0.8 and ctx.stage == "adult" and not p.at and (p.hh == s.alarm.hh or p.objk == "guard")
     and (p.drove_t or -99) < now - 0.8 and not ctx.babe then
     -- (the dog is barking at the pen, or the watch woke to wolves: out to drive them off, D-105)
     kind, why = "drive_off", "The dog is barking at the pen: wolves"
@@ -5132,6 +5405,8 @@ function M.decide(W, s, p, now, reason)
       fish_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       crew_candidate(W, s, p, ctx, now, fatigue(p) * WEATHER_OK(ctx, p))
       trade_candidate(W, s, p, ctx, now, fatigue(p))
+      M.steal_candidate(W, s, p, ctx, now, fatigue(p))
+      M.claim_candidate(W, s, p, ctx, now, fatigue(p))
       court_candidate(W, s, p, ctx, now, fatigue(p))
       visit_candidate(W, s, p, ctx, now, fatigue(p))
       ask_kin_candidate(W, s, p, ctx, now, fatigue(p))

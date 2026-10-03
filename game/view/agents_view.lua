@@ -869,6 +869,9 @@ local ANIM = {
   open_clamp = { "swing", 0.6 },
   -- (S19) at a fair: talking, bartering
   fair = { "talk", 1 },
+  -- (S20, R6a) lying up in the woods until a village sleeps; at the pen by night taking beasts by
+  -- the halter; a chaser stopping to look about
+  lie_up = { "sit", 0.3 }, steal = { "kneel_work", 1.1 }, chase = { "idle", 1.4 },
 }
 
 local function packc(c) return pack(c[1], c[2], c[3]) end

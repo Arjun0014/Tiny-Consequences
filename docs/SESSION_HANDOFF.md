@@ -12,25 +12,27 @@ simulation; premises not forced outcomes; browser = LuaJIT; bob forbids circular
 2. Design: `50_PRIMITIVES.md`, `60_R6_CONFLICT.md`, `65_R6_5_LIVING_PLANET.md`; roadmap R6/R6.5;
    D-148 (R6.5 phase + primitives), D-149 (R6 design).
 
-## Current task: R6a — a stolen beast (step list; tick as done, with the commit)
-- [ ] 1. `sim/agents/deeds.lua`: deeds list `V.deeds`, `deeds.add`, village knowledge `s.dk`
-      (what each village believes: doer by name / village / unknown, how known), `deeds.learn`,
-      news through `econ.on_learn`, grievance read from known unsettled harms (half-lives).
-- [ ] 2. Boldness `people.bold(W, p)` (from the key; no save change); `p.been[sid]` (last hour at a
-      village: a face known there).
-- [ ] 3. Snapshot of a village's beasts and dogs in `econ.learn` (`k.beasts`, `k.dogs`).
-- [ ] 4. `sim/agents/conflict.lua`: the take weighing (need via `migrate.push`, gain, risk, restraint,
-      grievance, boldness) and the target (village, herd kind).
-- [ ] 5. think: take candidate + take trip legs (provisions, road, lie up near the edge until the
-      village sleeps, the pen, halter, the gate, the road home leading the beast, into the herd).
-- [ ] 6. act: work steps (lie up, take: halter + deed + cues); ownership on joining the herd.
-- [ ] 7. Noticing: dogs bark at a stranger near the pen by night (as at wolves), wake the household;
-      woken owners go out (generalised drive_off); the thief notices and lets go / runs.
-- [ ] 8. Discovery at the owners' morning count; tracks on wet ground; trust falls; memories.
-- [ ] 9. Night watch after thefts (guard_herd reads thefts as losses).
-- [ ] 10. Premise + test `test_v3_conflict`; follow the thief, owner, witness; untouched 192 d.
-- [ ] 11. Determinism (`node scripts/v3_hash_web.mjs --release`), profile, build, web, commit.
-Then R6b (claims, settlement, taking back), R6c (confrontation, injury), R6d (death aftermath).
+## Current task: R6a + R6b (built, verified by premises; being committed)
+Done (code): `sim/agents/deeds.lua` (deeds, village knowledge `s.dk` with `own` secrets, grievance with a
+filter, news via `econ.on_learn`), `sim/agents/danger.lua` (cues: sight/sound by distance, sleep,
+indoors, night; `p.alarm` + interrupt), `sim/agents/conflict.lua` (take_weigh: need/grievance, gain as
+days of food, risk from dogs/watch/men/own past failures `p.tried`, restraint from kin/trust/friends/
+boldness; took/take_cues/seen/missing/watchers/let_go/chase; claim_weigh/claim_answer/beasts_of),
+`people.bold` (from the key), `people.came/known_at` (`p.been`), the snapshot's `k.beasts/k.dogs/k.watch`,
+`dogs.bark`, think (`steal_candidate`, `steal_legs`, `M.steal_decide`, `M.chase_ok`, PLAN.chase,
+`M.claim_candidate`, PLAN.claim, claim legs in `court_legs`, `M.claim_why`), act (WORK.lie_up/steal/
+chase/claim; owners changed on a taker's arrival, restored on a claimant's), premises `knows`,
+`no_dogs`, `wronged`; config block "(S20, D-148)/(D-149)" in `C.V3`; RNG stream `V3_CONFLICT = 48`.
+Also fixed: a led beast lay down at night "by the drover" even far behind (night droves lost beasts).
+Verified: untouched 192 d - no thefts, 399 exchanges, deaths only old age/illness (`out/s20/chron192`);
+hungry Hottoodingle Hop premise: men set off on their own to the villages they know, lie up, take 3
+sheep or a cow by night; dogs give most away (they let go and run; the owners find beasts loose and
+learn of an attempt), dog-less Zurug loses sheep, finds tracks to Hottoodingle Hop, claims - "nobody
+there would own to it" (the beasts eaten or gone with a moving household); news of deeds travels.
+Next: R6c confrontation and injury (a caught thief may be beaten - a wound deed answering the theft,
+"deserved" weighs little; a bold thief may strike back), hurt (`p.hurt`), tending, healing, death of
+wounds; then R6d death aftermath for all kin, R6e raids.
+
 
 # Session handoff — session 19 (3 Oct 2026, extended autonomous run): the long-run audit, stone and iron, baskets and credit, fairs, the ferry, a famine people live through
 

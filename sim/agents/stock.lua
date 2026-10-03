@@ -584,8 +584,10 @@ function M.step(W, s, H, a, now)
       local b = H.animals[L[i]]
       if b and b.alive and b.led == drover.id then n = n + 1 end
     end
-    if night and drover.act ~= "walk" then
-      -- (the drover stopped for the night: it lies down near them)
+    local qx, qy = M.person_pos(drover, now)
+    if night and drover.act ~= "walk" and dsq(qx - a.tx) + dsq(qy - a.ty) < dsq(min(M.range(S, n) * 1.2, c.drove_gather * 0.6)) then
+      -- (the drover stopped for the night: it lies down near them; S20: only when it is near them -
+      -- one left behind in the dark comes up first)
       a.why = "Lying down for the night by the drover"
       stand(a, now, "rest", 1 + 1.5 * u(W, s, H, a, now, 10))
       return

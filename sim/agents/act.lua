@@ -18,6 +18,8 @@ local mapm = require("sim.agents.map")
 local people = require("sim.agents.people")
 local econ = require("sim.agents.econ")
 local ledger = require("sim.ledger")
+local conflict = require("sim.agents.conflict")   -- (S20, R6)
+local deeds = require("sim.agents.deeds")
 local kin = require("sim.agents.kin")
 local stock = require("sim.agents.stock")
 
@@ -225,6 +227,11 @@ START.work = function(W, s, p, st, now)
   if p.inside ~= 0 and p.babe == 0 and kin.HOME_KINDS[st.kind] then kin.reclaim(W, s, p) end
   if st.kind == "travel" and st.lead and p.trip then
     -- (S15, R4) taking the road with a drove: the beasts led leave this map with the drover
+    if p.trip.steal and #(stock.led_by(s, p, st.lead)) > 0 then
+      -- (S20, R6a) the beast taken is away with him
+      local d = deeds.get(W, p.trip.deed)
+      if d then d.away = true end
+    end
     stock.leave_map(W, s, p, st.lead)
     if econ.GOODS[p.trip.give] and econ.GOODS[p.trip.give].beast then
       p.pack = p.pack or {}
@@ -701,6 +708,7 @@ WORK.voyage = function(W, s, p, st, f)
         who.at = o.id
         o.visitors = o.visitors or {}
         o.visitors[#o.visitors + 1] = who.id
+        people.came(who, o.id, now)
       end
       who.x, who.y = gx or 0, gy or 0
       who.inside = 0
@@ -1279,6 +1287,11 @@ WORK.travel = function(W, s, p, st, f)
     -- (S16, R4) a bride come to live at her husband's village
     require("sim.agents.migrate").arrive_person(W, o, p, gx, gy, now)
   end
+  if tr and tr.steal and o.id == p.sett then
+    -- (S20, R6a) home from a taking: what he saw there is his village's to know (their dogs, a watch)
+    local k = o.know and o.know[tr.to]
+    if k and tr.saw_dogs then k.dogs = tr.saw_dogs; k.watch = true; k.t = now end
+  end
   if tr and tr.party and #tr.party > 0 then
     -- (S15, R4) the beasts of the drove come onto this map with the drover, still led; home again
     -- (or come to live here) they are let go to find the herd
@@ -1288,7 +1301,22 @@ WORK.travel = function(W, s, p, st, f)
       if o.id == p.sett then
         local L, H = stock.led_by(o, p, kind)
         for _, a in ipairs(L) do
-          stock.release(W, o, H, a, now, tr.migrate and ("Come to " .. o.name .. " with its people: to the herd") or "Home from the drove: back to the herd")
+          if tr.claim then
+            -- (S20, R6b) given back: its own people's again
+            a.owner = a.from_hh or a.owner
+            a.taken, a.from_hh = nil, nil
+            a.why_owner = sfmt("Brought back from %s by %s", (V.settlements[tr.to] or o).name, p.name)
+          end
+          if tr.steal then
+            -- (S20, R6a) the beast taken is the household's now, as far as anyone here knows
+            local from = V.settlements[tr.to]
+            a.owner = p.hh
+            a.why_owner = sfmt("Brought home by %s from %s", p.name, from and from.name or "another village")
+            a.taken = tr.deed
+            people.remember(p, now, sfmt("Brought home %s taken from %s's %s in the night", conflict.ONE[a.sp] or a.sp,
+              from and from.name or "another village", a.sp == "cattle" and "byre" or "fold"))
+          end
+          stock.release(W, o, H, a, now, tr.steal and "Brought home in the night: to the herd" or (tr.claim and "Home again: back to the herd") or (tr.migrate and ("Come to " .. o.name .. " with its people: to the herd") or "Home from the drove: back to the herd"))
         end
         tr.led = {}
         if p.pack and econ.GOODS[tr.give].beast then p.pack[tr.give] = 0 end
@@ -1306,6 +1334,7 @@ WORK.travel = function(W, s, p, st, f)
     p.at = o.id
     o.visitors = o.visitors or {}
     o.visitors[#o.visitors + 1] = p.id
+    people.came(p, o.id, now)
   end
   p.x, p.y = gx, gy
   p.inside = 0
@@ -2515,6 +2544,155 @@ end
 
 -- Driving wolves off a pen (D-105): shouting, a torch, a stick; any wolf of a pack still near the
 -- pen turns away.
+-- (S20, R6a) A take trip at the other village: lying up among the trees until its people sleep.
+WORK.lie_up = function(W, s, p, st, f) end
+
+-- (S20, R6a) At the pen by night: the grown beast nearest the taker, not led, held or yoked, taken
+-- by the halter (it follows him as a drover's beast does); the deed; what noticing it looks like.
+WORK.steal = function(W, s, p, st, f)
+  local tr = p.trip
+  if f < 0.9 or not tr or not tr.steal then return end
+  local now = W.S.v3.now or W.hour
+  local H = s.herds and s.herds[stock.HERDS[st.herd or 1]]
+  -- (the grown beasts nearest him, as many as he meant to lead off)
+  local list = {}
+  for _, a in ipairs(H and H.animals or {}) do
+    if a.alive and (a.led or 0) == 0 and (a.held or 0) == 0 and (a.yoke or 0) == 0 and not a.ox and not stock.young(a, now) then
+      local ax, ay = stock.pos(a, now)
+      list[#list + 1] = { a = a, d = dsq(ax - p.x) + dsq(ay - p.y) }
+    end
+  end
+  table.sort(list, function(x, y) if x.d ~= y.d then return x.d < y.d end return x.a.k < y.a.k end)
+  if #list == 0 then
+    -- (nothing there to take: home again)
+    tr.fled = true
+    people.remember(p, now, "Found nothing I could lead off at " .. s.name)
+    return
+  end
+  local n = min(#list, tr.n or 1)
+  for i = 1, n do
+    list[i].a.from_hh = list[i].a.owner
+    stock.halter(W, s, H, list[i].a, p, now)
+    list[i].a.why = "Led off in the night by a man of another village"
+  end
+  tr.took = true
+  local d = conflict.took(W, s, p, H, list[1].a, now, n)
+  for i = 2, n do list[i].a.taken = d.id end
+  tr.deed = d.id
+  conflict.take_cues(W, s, p, list[1].a, d, now)
+end
+
+-- (S20, R6b) A claimant at the other village asks redress for a wrong (conflict.claim_answer):
+-- beasts still alive are given back and led home; else what the household can spare of its goods is
+-- packed and the rest owed (a debt, D-143); or it is refused, or nobody owns to it. Both sides
+-- remember; settling is a deed that settles the wrong.
+WORK.claim = function(W, s, p, st, f)
+  local tr = p.trip
+  if f < 0.99 or not tr or not tr.claim or tr.met then return end
+  tr.met = true
+  local V = W.S.v3
+  local now = V.now or W.hour
+  local c = C()
+  local d = deeds.get(W, tr.claim)
+  local home_s = V.settlements[p.sett]
+  if not d or not home_s then return end
+  local ans = conflict.claim_answer(W, s, p, d, now)
+  tr.answer = ans.kind
+  local e = deeds.known(home_s, d.id)
+  if e then e.answer = ans.kind end
+  -- (the accused village hears of the wrong - not who did it, unless it knew; and each side sees how
+  -- the other stands, as any visit does)
+  if not deeds.known(s, d.id) then deeds.learn(W, s, d, sfmt("%s of %s came to ask for redress", p.name, home_s.name), 0, s.id, now) end
+  econ.learn(W, home_s, s, now)
+  econ.learn(W, s, home_s, now)
+  local hh = ans.hh
+  local q1 = hh and V.people[hh.members[1] or 0]
+  local them = q1 and ("the " .. q1.surname .. "s") or ("the people of " .. s.name)
+  local what = d.n > 1 and sfmt("%d %s", d.n, conflict.NOUN[d.what] or d.what) or (conflict.ONE[d.what] or d.what)
+  local r1, r2 = econ.rel(home_s, s), econ.rel(s, home_s)
+  local function tell(text_us, text_them)
+    people.remember(p, now, text_us)
+    for _, id in ipairs(hh and hh.members or {}) do
+      local q = V.people[id]
+      if q and q.alive and people.stage(q, now) ~= "infant" and not q.at and q.sett == s.id then people.remember(q, now, text_them) end
+    end
+  end
+  if ans.kind == "returned" then
+    tr.led = {}
+    for _, b in ipairs(ans.beasts) do
+      stock.halter(W, s, b.H, b.a, p, now)
+      tr.lead_kind = b.H.kind
+      b.a.why = "Given back to the people it was taken from"
+    end
+    local g = deeds.add(W, { kind = "return", t = now, at = s.id, by = q1 and q1.id or 0, by_hh = hh.id, by_s = s.id, to = p.id, to_hh = d.to_hh, to_s = home_s.id,
+      what = d.what, n = #ans.beasts, fu = 0, harm = false, answers = d.id })
+    deeds.settle(W, d, g)
+    deeds.learn(W, home_s, g, sfmt("%s brought them home", p.name), g.by, s.id, now)
+    r1.trust, r2.trust = min(1, r1.trust + c.settle_trust), min(1, r2.trust + c.settle_trust)
+    tell(sfmt("%s gave back %s taken from us", them, what), sfmt("%s of %s came for the beasts taken from them: we gave them back", p.name, home_s.name))
+    s.acc.claims_returned = (s.acc.claims_returned or 0) + 1
+  elseif ans.kind == "paid" then
+    local home = hh and s.buildings[hh.home or 0]
+    p.pack = p.pack or {}
+    local owe = (d.fu or 0) * deeds.fade(d, now - d.t)
+    local got, paid = 0, {}
+    for _, gd in ipairs({ "cloth", "leather", "wool", "salt", "hides", "smoked", "cheese" }) do
+      if home and got < owe - 0.05 then
+        local G = econ.GOODS[gd]
+        local sp = econ.spare(W, s, hh, home, gd)
+        local room = ((p.strong and 1.3 or 1) - pack_load(p)) / G.wt
+        local q = min(sp, (owe - got) / G.base, room)
+        if q > 0.05 then
+          local key = stock_key(home, gd)
+          q = min(q, home.stock[key] or 0)
+          if q > 0.05 then
+            home.stock[key] = home.stock[key] - q
+            p.pack[gd] = (p.pack[gd] or 0) + q
+            got = got + q * G.base
+            paid[#paid + 1] = econ.amount(q, gd)
+          end
+        end
+      end
+    end
+    if got > 0 then p.carry, p.camt = "pack", pack_load(p) end
+    local rest = owe - got
+    if rest > 0.5 then
+      local D = econ.debts(W)
+      D[#D + 1] = { cr = d.to_hh, db = hh.id, crs = home_s.id, dbs = s.id, fu = rest, t = now, what = "the beasts taken" }
+    end
+    local g = deeds.add(W, { kind = "pay", t = now, at = s.id, by = q1 and q1.id or 0, by_hh = hh.id, by_s = s.id, to = p.id, to_hh = d.to_hh, to_s = home_s.id,
+      what = "goods", n = got, fu = 0, harm = false, answers = d.id })
+    deeds.settle(W, d, g)
+    deeds.learn(W, home_s, g, sfmt("%s brought it home", p.name), g.by, s.id, now)
+    r1.trust, r2.trust = min(1, r1.trust + c.settle_trust * 0.5), min(1, r2.trust + c.settle_trust * 0.5)
+    local paidt = #paid > 0 and table.concat(paid, " and ") or "nothing yet"
+    tell(sfmt("%s made good the %s taken from us: %s%s", them, what, paidt, rest > 0.5 and sfmt(", %.0f FU owed", rest) or ""),
+      sfmt("%s of %s came about the %s taken from them: we gave %s%s", p.name, home_s.name, what, paidt, rest > 0.5 and sfmt(" and owe %.0f FU", rest) or ""))
+    s.acc.claims_paid = (s.acc.claims_paid or 0) + 1
+  elseif ans.kind == "refused" then
+    local g = deeds.add(W, { kind = "refuse", t = now, at = s.id, by = q1 and q1.id or 0, by_hh = hh.id, by_s = s.id, to = p.id, to_hh = d.to_hh, to_s = home_s.id,
+      what = "redress", n = 1, fu = c.refuse_fu, harm = true, answers = d.id })
+    deeds.learn(W, home_s, g, sfmt("%s was turned away", p.name), g.by, s.id, now)
+    r1.trust = max(0, r1.trust - c.take_trust_loss)
+    tell(sfmt("Went to %s about the %s taken from us: %s would not give back or pay", s.name, what, them),
+      sfmt("%s of %s came about the %s: we sent him away", p.name, home_s.name, what))
+    s.acc.claims_refused = (s.acc.claims_refused or 0) + 1
+  else
+    people.remember(p, now, sfmt("Went to %s about the %s taken from us: nobody there would own to it", s.name, what))
+    s.acc.claims_denied = (s.acc.claims_denied or 0) + 1
+  end
+end
+
+-- (S20, R6a) After the stranger at the beasts: caught, seen, or lost (conflict.chased).
+WORK.chase = function(W, s, p, st, f)
+  local now = W.S.v3.now or W.hour
+  local q = W.S.v3.people[st.ref or 0]
+  if not q or not q.alive or q.at ~= s.id then p.alarm = nil; return end
+  local qx, qy = M.pos(q, now)
+  local d = sqrt(dsq(qx - p.x) + dsq(qy - p.y))
+  conflict.chased(W, s, p, q, d, now)
+end
+
 WORK.drive_off = function(W, s, p, st, f)
   if not s.wildlife then return end
   local wild = require("sim.agents.wild")

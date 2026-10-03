@@ -26,10 +26,14 @@ settle.stone.settle = settle
 settle.iron = require("sim.agents.iron")   -- (S19: iron.lua lays bogs and plans the forge with settle)
 settle.iron.settle = settle
 settle.fair = require("sim.agents.fair")   -- (S19: fairs)
+local deeds = require("sim.agents.deeds")   -- (S20, D-148)
+local danger = require("sim.agents.danger")
+local conflict = require("sim.agents.conflict")
 do
-  -- (what one village learns of another: what its people know of places, and of fairs)
-  local share, heard = settle.founding.share, settle.fair.heard
-  settle.econ.on_learn = function(W, s, o, now) share(W, s, o, now); heard(W, s, o, now) end
+  -- (what one village learns of another: what its people know of places, and of fairs; S20: and
+  -- the deeds they know that touch either village)
+  local share, heard, dshare = settle.founding.share, settle.fair.heard, deeds.share
+  settle.econ.on_learn = function(W, s, o, now) share(W, s, o, now); heard(W, s, o, now); dshare(W, s, o, now) end
 end
 act.fair = settle.fair
 local life = require("sim.agents.life")
@@ -48,6 +52,8 @@ birds.person_pos = require("sim.agents.act").pos
 local sys = { name = "agents" }
 -- (act.lua cannot require this module: bob rejects circular requires; it calls through this hook)
 act.interrupt_hook = function(W, p, at, reason) return sys.interrupt(W, p, at, reason) end
+danger.interrupt = act.interrupt_hook
+danger.person_pos = act.pos
 local floor, min, max = math.floor, math.min, math.max
 
 -- Event heap (runtime) ------------------------------------------------------------------------
@@ -340,6 +346,7 @@ function sys.hour(W)
           s.day_done = ld
           life.daily(W, s, ld)
           settle.daily(W, s, ld)
+          conflict.missing(W, s, now)
           stock.daily(W, s, ld, sys.push)
           wild.daily(W, s, ld, sys.push)
           dogs.daily(W, s, ld, sys.push)
