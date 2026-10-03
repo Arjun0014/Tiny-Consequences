@@ -1,4 +1,4 @@
-# Session handoff — session 20 (3 Oct 2026, extended autonomous run, IN PROGRESS): R6 and R6.5 designed; R6a-R6g first pass; R6.5b lightning built; checkpoint at ~850K
+# Session handoff — session 20 (3 Oct 2026, extended autonomous run): R6 and R6.5 designed; R6a-R6g first pass; R6.5b-d, f built, g watched; checkpoint at ~850K then continued
 
 **If you are resuming after a context compaction: re-read this section, `docs/v3/50_PRIMITIVES.md`,
 `60_R6_CONFLICT.md`, `65_R6_5_LIVING_PLANET.md`, D-148/D-149 and `git log --oneline -10` before any
@@ -89,6 +89,9 @@ start hour; the old 14-digit start made a strike land ulps apart - a harness art
   `luajit -joff tools/v3_profile.lua --load F --days 4` - a day-0 profile does not show herd growth.
 - **Hard winter watched** (D-164): `tools/v3_chronicle.lua --premise hard_winter`; a toddler carried on a
   trade trip starved (fed only from provisions; handed over as the father set out) - fixed.
+- **STATE at 2c588da** (all green): quick 178/178, web 11/11, lint, release build; browser = LuaJIT
+  (untouched and conflict/fire/cold_snap/quake/eruption/tsunami/hard_winter premises); LuaJIT 3.78 M
+  instr/h day 0, 4.52 M at day 192; release season 10.8 s (37.5 ms/h, 4 runs).
 - **R6.5e flood water deferred**: a season of the deluge power over Krikeivorn raises its river's flow
   0.004 -> 0.006 (map flood factor 1.1): the planet's hydrology is not flashy enough at village rivers
   for water beyond the channel to arise; needs a hydrology look first (soil water rises ~0.01 a day
