@@ -118,9 +118,13 @@ function M.lightning_hurts_who_it_strikes()
   local hit, ref = blaze.strike(W, s, x, y, W.hour, nil)
   T.ok(hit == "person" and ref == who.id, "the strike took " .. who.name .. " (" .. tostring(hit) .. ")")
   T.ok((who.hurt or 0) > 0 or not who.alive, "burnt")
+  local down = (who.hurt or 0) >= require("sim.config").V3.hurt_down
   watch(W, s, 30)
   T.ok(not who.alive or (who.tended or -9) >= 0, "tended at home")
-  return string.format("%s struck at work: %s", who.name, who.alive and string.format("alive, hurt %.2f", who.hurt or 0) or ("dead: " .. who.died_of))
+  -- (S20) too badly hurt to walk: helped home by someone who saw, or kin
+  if down and who.alive then T.ok((s.acc.helped_home or 0) >= 1, "helped home") end
+  return string.format("%s struck at work: %s%s", who.name, who.alive and string.format("alive, hurt %.2f", who.hurt or 0) or ("dead: " .. who.died_of),
+    (s.acc.helped_home or 0) > 0 and "; helped home" or "")
 end
 
 -- R6.5c: the planet's fire on a wooded cell beside a village (premise "wildfire": a dry spell) comes

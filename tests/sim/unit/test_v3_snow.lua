@@ -80,8 +80,10 @@ function M.beasts_starving_in_the_snow_are_killed_for_the_larder()
   T.ok((s.acc.culled_snow or 0) >= 1, (s.acc.culled_snow or 0) .. " marked for killing in the snow")
   T.ok((s.acc.slaughtered or 0) >= 1, (s.acc.slaughtered or 0) .. " killed")
   T.ok(beasts >= beasts0 * 0.5, string.format("%d of %d grazing beasts still alive", beasts, beasts0))
-  return string.format("%d marked, %d killed, %d died; %d of %d grazing beasts alive", s.acc.culled_snow or 0, s.acc.slaughtered or 0,
-    s.acc.stock_died or 0, beasts, beasts0)
+  -- (S20) with the hay gone, boughs lopped from the trees by the pens for the hungry beasts
+  T.ok((s.acc.lopped or 0) >= 1, (s.acc.lopped or 0) .. " trees lopped for fodder")
+  return string.format("%d marked, %d killed, %d died; %d trees lopped; %d of %d grazing beasts alive", s.acc.culled_snow or 0, s.acc.slaughtered or 0,
+    s.acc.stock_died or 0, s.acc.lopped or 0, beasts, beasts0)
 end
 
 -- A night far below freezing on bare fields blackens part of the growing crops: their yield falls

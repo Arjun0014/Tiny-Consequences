@@ -169,6 +169,7 @@ START.go = function(W, s, p, st, now)
   if s.rain_now == 2 then p.spd = p.spd * C().speed_rain end   -- hurrying through a downpour
   if s.snow then p.spd = p.spd * require("sim.agents.weather").walk_k(s) end   -- (S20, R6.5d) wading through snow
   if st.run then p.spd = p.spd * C().run_k end   -- (S20) running: after a stranger, or away from them
+  if st.support then p.spd = min(p.spd, C().walk * C().support_pace) end   -- (S20) the hurt held up, at a hobble
   if st.lead then
     -- (S15, R4) leading a drove: at the slowest beast's pace
     local L = stock.led_by(s, p, st.lead)
@@ -1191,6 +1192,28 @@ WORK.feed = function(W, s, p, st, f)
   local amt = min(s.hay or 0, st.amt or 0)
   s.hay = (s.hay or 0) - amt
   H.rack = (H.rack or 0) + amt
+end
+
+-- (S20) Boughs lopped from a tree (it stands, lopped; it puts out new growth in lop_days): carried to
+-- the pen as leaf fodder.
+WORK.lop = function(W, s, p, st, f)
+  if f < 0.6 then return end
+  local T = s.trees
+  local k = st.ref or 0
+  if (T.st[k] or 0) ~= 1 then return end
+  T.lop = T.lop or {}
+  T.lop[k] = floor((W.S.v3.now or W.hour) / 24)
+  p.carry, p.camt = "boughs", C().lop_fodder * (0.6 + 0.4 * (T.size[k] or 1))
+  s.acc.lopped = (s.acc.lopped or 0) + 1
+end
+
+WORK.fodder = function(W, s, p, st, f)
+  local hh = W.S.v3.households[p.hh]
+  if hh and hh.lopping == p.id then hh.lopping = 0 end
+  local H = herd_of(s, st)
+  if not H or p.carry ~= "boughs" then return end
+  H.rack = (H.rack or 0) + p.camt
+  p.carry, p.camt = "", 0
 end
 
 -- Dung spread along a row: the field's soil the richer for it.
@@ -2625,6 +2648,28 @@ end
 
 -- (S20, R6a) A take trip at the other village: lying up among the trees until its people sleep.
 WORK.lie_up = function(W, s, p, st, f) end
+
+-- (S20) Lifting someone hurt to their feet to help them home: they will go at a hobble beside us.
+WORK.lift = function(W, s, p, st, f)
+  if f < 0.5 then return end
+  local V = W.S.v3
+  local q = V.people[st.ref or 0]
+  if not q or not q.alive or q.held_up or q.objk ~= "lie_hurt" then return end
+  local now = V.now or W.hour
+  q.held_up = p.id
+  people.remember(q, now, sfmt("%s came and helped me up", p.name))
+  if M.interrupt_hook then M.interrupt_hook(W, q, now + 0.01, sfmt("%s came to help me home", p.name)) end
+end
+
+-- (S20) The hurt one home: set down there (they keep to bed).
+WORK.set_down = function(W, s, p, st, f)
+  local V = W.S.v3
+  local q = V.people[st.ref or 0]
+  if not q or not q.alive or q.held_up ~= p.id then return end
+  local now = V.now or W.hour
+  people.remember(p, now, sfmt("Helped %s home, hurt", q.name))
+  s.acc.helped_home = (s.acc.helped_home or 0) + 1
+end
 
 -- (S20, R6a) At the pen by night: the grown beast nearest the taker, not led, held or yoked, taken
 -- by the halter (it follows him as a drover's beast does); the deed; what noticing it looks like.

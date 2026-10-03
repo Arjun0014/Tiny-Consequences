@@ -92,6 +92,9 @@ start hour; the old 14-digit start made a strike land ulps apart - a harness art
 - **STATE at 2c588da** (all green): quick 178/178, web 11/11, lint, release build; browser = LuaJIT
   (untouched and conflict/fire/cold_snap/quake/eruption/tsunami/hard_winter premises); LuaJIT 3.78 M
   instr/h day 0, 4.52 M at day 192; release season 10.8 s (37.5 ms/h, 4 runs).
+- **Aftershocks** (D-165), **the badly hurt helped home** (D-166: `hurt_down` 0.75; two people walking
+  the same way at the same pace instead of a boat's `riding`).
+- **Leaf fodder** (D-167): boughs lopped from trees by the pen when the hay is gone and the beasts hungry.
 - **R6.5e flood water deferred**: a season of the deluge power over Krikeivorn raises its river's flow
   0.004 -> 0.006 (map flood factor 1.1): the planet's hydrology is not flashy enough at village rivers
   for water beyond the channel to arise; needs a hydrology look first (soil water rises ~0.01 a day

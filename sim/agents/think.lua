@@ -58,7 +58,7 @@ local function plural(n, one, many) return n == 1 and one or many end
 -- its holder is alive, still of the household and still at that objective (a claim must never
 -- outlive a person who moved to a new house, died or changed their mind).
 local CLAIM_OBJ = { cooking = "cook", fetch_food = "fetch_food", fetch_wood = "fetch_wood", fetch_water = "fetch_water", foraging = "forage", child_gathering = "forage",
-  shore = "shore", smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed", moving_in = "strike_camp",
+  shore = "shore", smoking = "smoke", dressing = "dress", weaving = "weave", sewing = "sew", mowing = "mow", feeding = "feed", lopping = "lop", moving_in = "strike_camp",
   asking = "visit_kin",
   milking = "milk", slopping = "slop", cheesing = "cheese", hunting = "hunt", angling = "angle", trading = "trade", sharing = "share", tanning = "tan", lifting = "lift", cobbling = "cobble",
   salting_pans = "salt", querning = "quern", taking = "steal", amending = "amends" }
@@ -1964,6 +1964,15 @@ local function herd_candidates(W, s, p, ctx, now)
             if HS.hunger > 0.45 and (winter or late or ctx.rain > 0) then
               addw((0.35 + 0.5 * HS.hunger) * fatigue(p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "feed", 0, hi,
                 "%s are hungry in the pen (%d%%): hay into the rack", kind == "cattle" and "The cattle" or "The sheep and goats", floor(HS.hunger * 100))
+            end
+          end
+          -- (S20) the hay gone and the beasts hungry in the pen: boughs lopped from the trees near it
+          if kind ~= "swine" and not H.out and (s.hay or 0) <= 1 and HS.hunger > 0.55 and (H.rack or 0) < HS.se * 0.2
+            and (adult or st == "apprentice") and claim_free(W, hh, "lopping", p) then
+            local k = M.lop_tree(s, pen, now)
+            if k then
+              addw((0.32 + 0.5 * HS.hunger) * fatigue(p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "lop", k, hi,
+                "%s are hungry in the pen and the hay is gone: lopping boughs for them", kind == "cattle" and "The cattle" or "The sheep and goats")
             end
           end
         end
@@ -4883,6 +4892,87 @@ PLAN.fight_fire = function(W, s, p, ctx, now, cd)
   return "Carry water to the fire", "the fire"
 end
 
+-- (S20) Down: hurt too badly to walk (hurt_down), away from home on their own map. They lie where
+-- they fell until someone comes to help them home; held up, they go home at a hobble beside them.
+function M.is_down(p, ctx)
+  if p.at or p.trip or not ctx.home or (p.hurt or 0) < C().hurt_down then return false end
+  if p.inside == ctx.home.id then return false end
+  return dist(p.x, p.y, ctx.home.dx, ctx.home.dy) > 0.05
+end
+
+function M.down_choice(W, s, p, ctx, now)
+  if ctx.stage == "infant" or not M.is_down(p, ctx) then
+    if p.held_up and (p.inside == (ctx.home and ctx.home.id or -1)) then p.held_up = nil end
+    return false
+  end
+  local F = M.FIRE
+  F.a, F.b = 0, 0
+  local h = p.held_up and W.S.v3.people[p.held_up]
+  if h and h.alive and h.objk == "help_home" and dist(h.x, h.y, p.x, p.y) < 0.08 then
+    F.kind, F.why, F.a = "go_home_held", sfmt("Hurt: going home held up by %s", h.name), h.id
+    return true
+  end
+  p.held_up = nil
+  F.kind, F.why = "lie_hurt", "Hurt too badly to walk: lying where I fell, waiting for help"
+  return true
+end
+
+PLAN.lie_hurt = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  work(pl, "lie_up", 0.5, {})
+  return "Lie where I fell, hurt", "where I fell"
+end
+
+PLAN.go_home_held = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local home = ctx.home
+  go(pl, home.dx, home.dy, "home", home.id)
+  pl[#pl].support = true
+  work(pl, "mend", 1 + u01(W, p, now, 92), { inside = home.id })
+  return "Home, held up by " .. W.S.v3.people[cd.a].name, "home"
+end
+
+-- Someone of the village down and hurt where the able can see them (by day farther), or of their own
+-- household or kin wherever they lie on the map: they go to them and help them home - kin first.
+function M.help_candidate(W, s, p, ctx, now)
+  if p.at or p.trip or ctx.babe or (p.hurt or 0) > 0.3 or (ctx.stage ~= "adult" and ctx.stage ~= "apprentice") then return end
+  local c = C()
+  local V = W.S.v3
+  local sight = ctx.night and c.help_sight * 0.25 or c.help_sight
+  local best, bu = nil, -1e9
+  for _, id in ipairs(s.members) do
+    local q = V.people[id]
+    if q and q ~= p and q.alive and not q.at and not q.trip and (q.hurt or 0) >= c.hurt_down and q.objk == "lie_hurt" and not q.held_up then
+      local d = dist(p.x, p.y, q.x, q.y)
+      local kin = q.hh == p.hh or people.is_kin(W, p, q.id)
+      if kin or d <= sight then
+        local u = (kin and 1.0 or 0.8) - d * 0.4
+        if u > bu then best, bu = q, u end
+      end
+    end
+  end
+  if best then
+    addw(bu * fatigue(p), "help_home", best.id, 0, "%s is hurt and cannot walk: helping %s home", best.name, best.sex == "f" and "her" or "him")
+  end
+end
+
+PLAN.help_home = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local V = W.S.v3
+  local q = V.people[cd.a]
+  local x, y = near_spot(W, p, now, q.x, q.y, 0.015, 103)
+  go(pl, x, y, "where " .. q.name .. " lies")
+  pl[#pl].run = true
+  work(pl, "lift", 0.08, { ref = q.id })
+  local home = people.home(W, s, q)
+  if home then
+    go(pl, home.dx, home.dy, q.name .. "'s home")
+    pl[#pl].support = true
+    work(pl, "set_down", 0.1, { ref = q.id })
+  end
+  return "Help " .. q.name .. " home", home and (q.name .. "'s home") or "where they lie"
+end
+
 -- (S20, R6c) Hurt: lying at home, waiting to heal (and tended, if anyone does).
 function M.bedridden(p, ctx)
   return (p.hurt or 0) >= C().hurt_bed and ctx.home ~= nil and not p.at and not p.trip
@@ -5353,6 +5443,38 @@ PLAN.feed = function(W, s, p, ctx, now, cd)
   work(pl, "feed", 0.2 + 0.1 * u01(W, p, now, 66), { amt = HS.se * 0.5, fx = pen.cx, fy = pen.cy, herd = cd.b })
   pl[#pl + 1] = { op = "drop", to = "fold", ref = pen.id, release = "feeding" }
   return "Hay for " .. stock.NAMES[H.kind], "the " .. pen.label
+end
+
+-- (S20) A standing tree near pen `pen` not lopped of late (leaf fodder: boughs regrow in lop_days), the
+-- nearest, or nil.
+function M.lop_tree(s, pen, now)
+  local c = C()
+  local T = s.trees
+  local day = floor(now / 24)
+  local r2 = c.lop_r * c.lop_r
+  local best, bd = nil, r2
+  for k = 1, T.n do
+    if T.st[k] == 1 and (T.claim[k] or 0) == 0 and day - ((T.lop and T.lop[k]) or -999) >= c.lop_days then
+      local d = (T.x[k] - pen.cx) * (T.x[k] - pen.cx) + (T.y[k] - pen.cy) * (T.y[k] - pen.cy)
+      if d < bd then best, bd = k, d end
+    end
+  end
+  return best
+end
+
+PLAN.lop = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local H = herd_of(s, cd)
+  local pen = s.buildings[H.pen]
+  local T = s.trees
+  ctx.hh.lopping = p.id
+  local k = cd.a
+  local x, y = near_spot(W, p, now, T.x[k], T.y[k], 0.02, 104)
+  go(pl, x, y, "a tree by the " .. pen.label)
+  work(pl, "lop", 0.5 + 0.3 * u01(W, p, now, 67), { ref = k, herd = cd.b })
+  go(pl, pen.dx, pen.dy, "the " .. pen.label)
+  work(pl, "fodder", 0.1, { herd = cd.b, fx = pen.cx, fy = pen.cy })
+  return "Boughs for " .. stock.NAMES[H.kind], "the " .. pen.label
 end
 
 -- Dung from a pen to a field: a load picked up, carried, spread along a row.
@@ -5835,6 +5957,12 @@ function M.decide(W, s, p, now, reason)
     kind, why = "feed_babe", sfmt("%s woke crying with hunger in the night", night_babe.name)
     add(1, "feed_babe", night_babe.id, 0, why)
     M.cd = CAND[ncand]
+  elseif M.down_choice(W, s, p, ctx, now) then
+    -- (S20) hurt too badly to walk, away from home: lying where they fell, or going home held up
+    local fc = M.FIRE
+    kind, why = fc.kind, fc.why
+    add(1, fc.kind, fc.a, fc.b, fc.why)
+    M.cd = CAND[ncand]
   elseif p.trapped then
     -- (S20, R6.5f) under the rubble: nothing but waiting to be dug out
     kind, why = "trapped", "Trapped under the fallen house, waiting to be dug out"
@@ -5895,6 +6023,7 @@ function M.decide(W, s, p, now, reason)
     M.tend_candidate(W, s, p, ctx, now)
     M.burial_candidate(W, s, p, ctx, now)
     M.dig_candidate(W, s, p, ctx, now)
+    M.help_candidate(W, s, p, ctx, now)
     if M.bedridden(p, ctx) then
       -- (S20, R6c) badly hurt: kept to bed at home
       add(0.85, "mend", 0, 0, "Badly hurt: lying at home")

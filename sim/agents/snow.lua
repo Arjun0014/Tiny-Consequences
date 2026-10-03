@@ -52,7 +52,11 @@ function M.hourly(W, s, now)
     s.snowing = nil
     if d0 > 0 and T > 0 then
       local d = d0 - c.snow_melt * T * (r > 0 and 2 or 1)
-      if d > 0.001 then s.snow = d else s.snow, s.snow_deed = nil, nil end
+      if d > 0.001 then s.snow = d; s.thawed = floor(now / 24) else s.snow, s.snow_deed, s.crust = nil, nil, nil end
+    elseif d0 >= c.snow_cover and T < c.crust_t and s.thawed and floor(now / 24) - s.thawed <= 1 and not s.crust then
+      -- (S20) snow that thawed and froze again: a crust the beasts cannot paw through (the iron dzud)
+      s.crust = true
+      s.acc.crusts = (s.acc.crusts or 0) + 1
     end
   end
 end

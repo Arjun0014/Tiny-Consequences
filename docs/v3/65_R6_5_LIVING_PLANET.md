@@ -155,9 +155,12 @@ an outcome script, the architecture is wrong.
 - **R6.5g, first watch** (D-164): a 96-day hard winter (`--premise hard_winter`) - snow everywhere, frost
   on the flax, harvests thinned (stores halved), flocks thinned by the dzud; a toddler's death found and
   fixed (fed from the carer's pack; no child handed to one setting out); then no deaths from hunger.
-- Not yet: landslides, aftershocks; e flood water (hydrology first); g at longer range (ice age,
-  hothouse, sea-level coastline, ENSO); ice crust, lopping boughs for fodder, moving herds to open
-  ground; carrying the hurt (needs a way to bear a person other than a boat's `riding`).
+- **Aftershocks** (D-165) and **the badly hurt helped home** (D-166: lying where they fell, lifted and
+  walked home at a hobble by kin or whoever sees them).
+- Not yet: landslides (map slope exists only per planet cell); e flood water (hydrology first); g at
+  longer range (ice age, hothouse, sea-level coastline, ENSO); ice crust, moving herds to open ground;
+  people afraid to sleep under a roof after a quake. (Leaf fodder - boughs lopped when the hay is gone -
+  built: D-167.)
 
 ## 10. R6.5d snow and cold on the maps (design, session 20)
 The audit found no snow at any village (all lie between 37 S and 14 N: Krikeivorn's winter days

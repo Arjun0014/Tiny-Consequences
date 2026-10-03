@@ -89,6 +89,7 @@ function M.reach(s, sp)
   if not d then return 1 end
   local c = cfgmod.V3
   local r = 1 - d / (c.snow_graze * (c.snow_paw[sp] or 1))
+  if s.crust then r = r * c.crust_k end   -- (S20) an ice crust: the grass under it all but lost
   return r > 0 and r or 0
 end
 

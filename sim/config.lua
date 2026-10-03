@@ -1344,7 +1344,17 @@ C.V3 = {
   tsu_shout = 0.5, tsu_safe = 0.6, tsu_hurt = 1.3, tsu_salt = 0.25,
   -- (S20) aftershocks: a quake of after_mag or more is followed by 1 + (mag - after_mag) x after_n
   -- smaller ones (mag - after_drop - 0..1.5) within after_days, most of them soon after
-  after_mag = 5.8, after_n = 2, after_drop = 1.0, after_days = 3,   -- (S20) trust lost by a village whose man another's struck (x the blow)   -- (S20) a band at the gate waits up to this long for those of the party still coming
+  after_mag = 5.8, after_n = 2, after_drop = 1.0, after_days = 3,
+  -- (S20) the badly hurt: from hurt_down they cannot walk away from home; the able who see them
+  -- within help_sight (a quarter by night), or their kin, help them home at support_pace of a walk
+  hurt_down = 0.75, help_sight = 0.6, support_pace = 0.35,
+  -- (S20) leaf fodder: with the hay gone and the beasts hungry in the pen, boughs lopped from a tree
+  -- within lop_r of the pen (lop_fodder sheep-days x (0.6 + 0.4 size)); a tree is lopped again after
+  -- lop_days
+  lop_r = 0.5, lop_fodder = 3.0, lop_days = 30,
+  -- (S20) an ice crust: snow that thawed within the day and freezes below crust_t; grass in reach
+  -- x crust_k until the snow is gone
+  crust_t = -1.0, crust_k = 0.25,   -- (S20) trust lost by a village whose man another's struck (x the blow)   -- (S20) a band at the gate waits up to this long for those of the party still coming
   -- (S20, R6) restocking: the beasts a household lost against its will (sickness, hunger, wolves,
   -- fire, thieves; meat FU, fading herd_lost_fade a day) against what it had: from restock_min_fu, a
   -- loss of take_restock of it is a motive to take beasts even when fed: gain + take_gain_k x the
