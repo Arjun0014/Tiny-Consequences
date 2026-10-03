@@ -993,7 +993,7 @@ local function grow_plots(W, s, day)
         pl.stage = "ripe"
         pl.ripe_day = day
         pl.ripe_for = 0
-        pl.quality = max(0.25, pl.q_n > 0 and pl.q_sum / pl.q_n or 0.75) * (pl.fert or 1)
+        pl.quality = max(0.25, pl.q_n > 0 and pl.q_sum / pl.q_n or 0.75) * (pl.fert or 1) * (pl.frost or 1)
         s.q_avg = s.q_avg and (s.q_avg * 0.7 + pl.quality * 0.3) or pl.quality
         pl.spoil = 1
         if W.record_events then events.emit(W, "crop_ripe", s.cell, 0, 0, { settlement = s.id, plot = k }) end

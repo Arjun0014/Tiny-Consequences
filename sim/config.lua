@@ -1299,12 +1299,27 @@ C.V3 = {
   -- level-4 steps apart) and a hotspot; pressure volc_rate x (0.5..1.5) a day to volc_thr x (0.6..1.4);
   -- VEI 1 + 5u^3; aerosol by VEI (volc_aerosol: k_aer cools every cell), carbon volc_co2 x VEI; the
   -- ground shaken volc_quake + 0.6 VEI; ash on a village volc_ash x VEI^2 / (1 + steps^2) (x0.35 upwind);
-  -- ash on roofs above ash_roof loads them (x ash_roof_k as a quake's damage); washed ash_wash a day +
+  -- ash on the roofs weighs ash_load_k a unit of depth (shake.roof_load); washed ash_wash a day +
   -- ash_rain x precipitation; while it lies grass regrows x (1 - ash_grass x ash), crops lose ash_crop x
   -- ash of a day's growth
   volc_spacing = 3, volc_arcs = 6, volc_thr = 1, volc_rate = 0.0004, volc_aerosol = { 0, 0, 0.05, 0.15, 0.6, 1.5 },
-  volc_co2 = 0.5, volc_quake = 3.0, volc_ash = 0.05, ash_roof = 0.5, ash_roof_k = 2.0, ash_wash = 0.03, ash_rain = 1.0,
-  ash_grass = 0.5, ash_crop = 0.5,          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
+  volc_co2 = 0.5, volc_quake = 3.0, volc_ash = 0.05, ash_wash = 0.03, ash_rain = 1.0,
+  ash_grass = 0.5, ash_crop = 0.5,
+  -- (S20, R6.5d, D-158) snow on the maps: a spell falling below snow_t C lies, snow_fall m a
+  -- spell-hour (x2 in a downpour), melting snow_melt m per degree-hour above 0 (x2 in rain); lying
+  -- from snow_cover; walking x (1 - min(snow_walk_max, snow_walk x depth)); grass in reach x (1 -
+  -- depth / (snow_graze x snow_paw[sp])); while the grass is half buried the hay must feed every
+  -- grazing beast snow_hay_days once it has been buried snow_wait days (starving beasts, health under
+  -- snow_fail_health with no hay left, are killed at once); roofs weighed snow_load_k a metre (ash ash_load_k a unit) against
+  -- their strength, cracked from roof_crack of it; a night below frost_t (frost_t_winter for a winter
+  -- crop) on bare ground blackens min(1, degrees under / frost_span) x frost_k of a growing crop;
+  -- bare feet in snow cost x (1 + snow_barefoot x depth / 0.2)
+  snow_t = 0.5, snow_fall = 0.02, snow_melt = 0.0015, snow_cover = 0.02, snow_walk = 1.0, snow_walk_max = 0.55,
+  snow_graze = 0.3, snow_paw = { sheep = 1.0, goat = 1.4, cattle = 0.8, pig = 0.6 }, snow_hay_days = 8, snow_wait = 3,
+  snow_fail_health = 0.5, stock_starve = 0.006,   -- (a starving beast's health lost an hour: 0.02 before S20)
+  snow_load_k = 0.6, ash_load_k = 1.0, roof_crack = 0.75, frost_t = -2, frost_t_winter = -12, frost_span = 6,
+  frost_k = 0.5, snow_barefoot = 2,
+  premise_cold = 22, premise_aerosol = 12,   -- (premises: a cold air mass, degC; sulphur after a great eruption)          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
 }
 
 return C

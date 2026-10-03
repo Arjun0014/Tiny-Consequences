@@ -167,6 +167,7 @@ START.go = function(W, s, p, st, now)
   end
   p.spd = people.speed(W, p, now)
   if s.rain_now == 2 then p.spd = p.spd * C().speed_rain end   -- hurrying through a downpour
+  if s.snow then p.spd = p.spd * require("sim.agents.weather").walk_k(s) end   -- (S20, R6.5d) wading through snow
   if st.run then p.spd = p.spd * C().run_k end   -- (S20) running: after a stranger, or away from them
   if st.lead then
     -- (S15, R4) leading a drove: at the slowest beast's pace
@@ -313,7 +314,7 @@ WORK.sow = function(W, s, p, st, f)
     p.camt = p.camt - c.seed_row
     s.acc.seed = (s.acc.seed or 0) + c.seed_row
     if p.camt <= 0.001 then p.carry, p.camt = "", 0 end
-    if pl.stage == "fallow" then pl.stage = "growing"; pl.sown_day = floor(W.hour / 24); pl.growth = 0; pl.weeds = 0; pl.q_sum, pl.q_n = 0, 0 end
+    if pl.stage == "fallow" then pl.stage = "growing"; pl.sown_day = floor(W.hour / 24); pl.growth = 0; pl.weeds = 0; pl.q_sum, pl.q_n = 0, 0; pl.frost = nil end
   end
   people.practice(p, "sk_farm", st.dur * f)
 end

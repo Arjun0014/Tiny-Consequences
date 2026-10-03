@@ -72,6 +72,26 @@ function M.next_change(W, s, t)
   return best
 end
 
+-- (S20, R6.5d) Snow lying on village s's map (`s.snow`, metres, sim/agents/snow.lua): walking slows
+-- with its depth; the grass under it is out of a beast's reach (it paws so deep: goats deeper,
+-- cattle less, pigs rooting least).
+function M.walk_k(s)
+  local d = s.snow
+  if not d then return 1 end
+  local c = cfgmod.V3
+  local k = c.snow_walk * d
+  if k > c.snow_walk_max then k = c.snow_walk_max end
+  return 1 - k
+end
+
+function M.reach(s, sp)
+  local d = s.snow
+  if not d then return 1 end
+  local c = cfgmod.V3
+  local r = 1 - d / (c.snow_graze * (c.snow_paw[sp] or 1))
+  return r > 0 and r or 0
+end
+
 -- Air temperature at local solar hour lh (coldest at dawn, warmest mid-afternoon; piecewise).
 function M.temp_at(W, s, t, lh)
   local wx = M.today(W, s, t)

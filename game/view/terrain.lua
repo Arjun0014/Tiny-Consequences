@@ -146,7 +146,18 @@ function M.update(W, dt)
   if not M.tex then return end
   M.since = M.since + dt
   if M.pass_cell == 0 then
-    if W.tick == M.last_tick or M.since < 1 / M.MAX_RATE then return end
+    if W.tick == M.last_tick or M.since < 1 / M.MAX_RATE then
+      -- (S20, R6.5d) snow on the village maps changes by the hour: those cells alone between passes
+      M.snow_since = (M.snow_since or 0) + dt
+      if M.snow_since > 0.5 then
+        M.snow_since = 0
+        local ch = cellcolor.map_snow(W)
+        local any = false
+        for i = 1, #ch do if update_cell(W, ch[i]) then any = true end end
+        if any then resource.set_texture(M.tex, M.tex_params, M.texbuf) end
+      end
+      return
+    end
     M.since = 0
     M.last_tick = W.tick
     M.pass_cell = 1

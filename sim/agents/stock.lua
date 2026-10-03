@@ -28,6 +28,7 @@ local rng = require("sim.rng")
 local mapm = require("sim.agents.map")
 local nav = require("sim.agents.nav")
 local clock = require("sim.agents.clock")
+local weather = require("sim.agents.weather")
 
 local M = {}
 M.ID0 = 100000000
@@ -282,6 +283,7 @@ local function walk_to(W, s, a, now, x, y, speed, here)
   if d < 1e-4 then return false end
   a.x, a.y = a.tx, a.ty
   a.tx, a.ty = x, y
+  if s.snow then speed = speed * weather.walk_k(s) end   -- (S20, R6.5d) wading through snow
   a.act, a.t0, a.t1 = "walk", now, now + d / speed
   return true
 end
@@ -433,10 +435,11 @@ function M.step(W, s, H, a, now)
       local wood = P.wood and P.wood[b] or 0
       local doy = s.doy or 0
       local mast = (doy >= c.mast_days[1] and doy <= c.mast_days[2]) and S.mast * wood or 0
-      local eat = min(a.hunger, (S.root * (0.6 + 0.4 * wood) + mast) * dt)
+      local eat = min(a.hunger, (S.root * (0.6 + 0.4 * wood) + mast) * dt * (s.snow and weather.reach(s, "pig") or 1))
       a.hunger = a.hunger - eat
     else
       local g = P.grass[b] or 0
+      if s.snow then g = g * weather.reach(s, a.sp) end   -- (S20, R6.5d) the grass under the snow
       local feed = g
       if S.browse and P.wood then feed = max(g, S.browse * (P.wood[b] or 0)) end
       local eat = min(a.hunger, S.graze * dt * feed)
@@ -458,7 +461,7 @@ function M.step(W, s, H, a, now)
     local suck = M.young_of(H, a, now) and 0.5 or 1
     a.milk = min(S.milk * 0.75, (a.milk or 0) + S.milk / 24 * dt * suck * (a.hunger < 0.7 and 1 or 0.4))
   end
-  if a.hunger >= 1 then a.health = max(0, a.health - 0.02 * dt)
+  if a.hunger >= 1 then a.health = max(0, a.health - c.stock_starve * dt)   -- (S20: days, not hours, to fail)
   elseif (a.sick or 0) > 0 then a.health = max(0, a.health - c.sick_harm * dt)
   elseif a.health < 1 then a.health = min(1, a.health + 0.01 * dt) end
   -- yoked to the plough (D-108): ahead of the ploughman along the row, hungrier for the work
@@ -1070,7 +1073,10 @@ end
 -- The beasts the households will kill this autumn (D-089, D-092): the grazing herds wintered on
 -- the hay in the stack - the most dispensable first: the old, males beyond one sire of each kind,
 -- the young males, then this year's young - marked a.cull = true. Returns how many.
-function M.plan_cull(W, s)
+-- (S20, R6.5d) The same reckoning while snow lies on the grass: the stack must feed every grazing
+-- beast in full (`full` of a ration, not 0.6) for `days`; those marked `mark` ("snow").
+-- `core`: the breeding dams are kept back (killed only if they fail: plan_failing).
+function M.plan_cull(W, s, days, full, mark, core)
   local c = C()
   local now = W.hour
   local alive = {}
@@ -1083,7 +1089,7 @@ function M.plan_cull(W, s)
       end
     end
   end
-  local per = c.hay_days * c.sheep_hunger * 24 * 0.6
+  local per = (days or c.hay_days) * c.sheep_hunger * 24 * (full or 0.6)
   local keep = (s.hay or 0) / per
   local over = se - keep
   if over <= 0 then return 0 end
@@ -1104,12 +1110,46 @@ function M.plan_cull(W, s)
     local age = (now - a.born) / 1152
     if a.ox then
       -- (an ox is kept for the plough: D-108)
+    elseif core and a.sex == "f" and age >= S.adult_years and age < S.old_years - 1 then
+      -- (the dams are the herd to come)
     elseif a.sex == "m" and not sires[a.sp] and age > S.adult_years and age < S.old_years - 1 then
       sires[a.sp] = true      -- (one good sire of each kind is kept)
     else
-      a.cull = true
+      a.cull = mark or true
       over = over - S.se
       n = n + 1
+    end
+  end
+  return n
+end
+
+-- (S20, R6.5d) The beasts still marked for killing for reason `mark` are kept after all.
+function M.unmark(s, mark)
+  for _, kind in ipairs({ "flock", "cattle" }) do
+    local H = s.herds[kind]
+    if H then
+      for _, a in ipairs(H.animals) do
+        if a.alive and a.cull == mark then a.cull = nil end
+      end
+    end
+  end
+end
+
+-- (S20, R6.5d) Beasts failing for want of feed (starving, nothing left in the stack): killed for the
+-- larder while they still have flesh on them, marked a.cull = mark. Returns how many.
+function M.plan_failing(W, s, mark)
+  if (s.hay or 0) >= 1 then return 0 end
+  local c = C()
+  local n = 0
+  for _, kind in ipairs({ "flock", "cattle" }) do
+    local H = s.herds[kind]
+    if H then
+      for _, a in ipairs(H.animals) do
+        if a.alive and not a.cull and not a.ox and a.hunger >= 0.9 and a.health < c.snow_fail_health then
+          a.cull = mark
+          n = n + 1
+        end
+      end
     end
   end
   return n

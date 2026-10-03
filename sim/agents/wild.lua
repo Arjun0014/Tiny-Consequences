@@ -31,6 +31,7 @@ local rng = require("sim.rng")
 local mapm = require("sim.agents.map")
 local nav = require("sim.agents.nav")
 local clock = require("sim.agents.clock")
+local weather = require("sim.agents.weather")
 local stock = require("sim.agents.stock")
 
 local M = {}
@@ -242,6 +243,7 @@ local function go_to(s, w, now, x, y, speed, act, around, here)
   if d < 1e-4 then return false end
   w.x, w.y = w.tx, w.ty
   w.tx, w.ty = x, y
+  if s.snow then speed = speed * weather.walk_k(s) end   -- (S20, R6.5d) wading through snow
   w.act, w.t0, w.t1 = act or "walk", now, now + d / speed
   return true
 end

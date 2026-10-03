@@ -583,6 +583,15 @@ function M.register(G)
     if args.kind == "crowd" then n = pr.crowd(W, s, tonumber(args.waited) or require("sim.config").V3.found_lot_days)
     elseif args.kind == "fail_harvest" then pr.fail_harvest(W, s)
     elseif args.kind == "empty_stores" then pr.empty_stores(W, s)
+    elseif args.kind == "named" then
+      -- (S20) a named premise (premise.named: cold_snap, hard_winter, quake, eruption, wildfire, ...)
+      n = pr.named(W, args.name) and 1 or 0
+    elseif args.kind == "snow" then
+      -- (S20, R6.5d) the snow on the map now (shots_snow.mjs)
+      local herds_out = 0
+      for _, k in ipairs({ "flock", "cattle", "swine" }) do if s.herds and s.herds[k] and s.herds[k].out then herds_out = herds_out + 1 end end
+      return { sett = s.id, name = s.name, snow = s.snow or 0, snowing = s.snowing and true or false, temp = s.temp_now or 0,
+        herds_out = herds_out, hay = s.hay or 0, cover = require("game.view.cellcolor").snow_over[s.cell] or 0 }
     elseif args.kind == "burning" then
       -- (S20) what burns there now (shots_fire.mjs)
       local out = {}
@@ -603,7 +612,7 @@ function M.register(G)
           break
         end
       end
-    else error("v3_premise: kind crowd | fail_harvest | empty_stores | fire | strike") end
+    else error("v3_premise: kind crowd | fail_harvest | empty_stores | fire | strike | named | snow | burning") end
     return { sett = s.id, name = s.name, added = n, people = #s.members }
   end)
   bridge.register("voyage", function(args)

@@ -313,7 +313,7 @@ function M.daily(W, s, day)
       if sw then
         p.shoes = max(0, (p.shoes or 0.7) - sw)
         if s.cold and p.shoes < 0.1 then
-          p.health = max(0, p.health - 0.008)
+          p.health = max(0, p.health - 0.008 * (1 + c.snow_barefoot * min(1, (s.snow or 0) / 0.2)))
           if (p.foot_day or -9) < day - 8 then p.foot_day = day; people.remember(p, now, "Barefoot in the cold: my shoes are worn through") end
         end
       end

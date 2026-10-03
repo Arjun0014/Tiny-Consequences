@@ -135,6 +135,24 @@ function M.named(W, name)
     local s = V.settlements[1]
     require("sim.agents.shake").quake(W, s.cell, 6.9, V.now or W.hour, nil)
     return true
+  elseif name == "cold_snap" or name == "cold_snap4" then
+    -- (S20, R6.5d) a cold air mass over a village's cell and its neighbours (the planet's heat
+    -- anomaly, what R7's chill will write): the air colder now and for days after, as it fades
+    local s = V.settlements[name == "cold_snap4" and 4 or 1]
+    local g = W.grid
+    local k = require("sim.config").V3.premise_cold
+    local cells = { s.cell }
+    for j = 1, g.nbr_count[s.cell] do cells[#cells + 1] = g.nbr[(s.cell - 1) * 6 + j] end
+    for _, c in ipairs(cells) do
+      W.F.heat_anom[c] = (W.F.heat_anom[c] or 0) - k
+      W.F.temp[c] = W.F.temp[c] - k
+    end
+    for _, q in ipairs(V.settlements) do q.wx = nil end
+    return true
+  elseif name == "hard_winter" then
+    -- (S20, R6.5d) sulphur in the sky over the whole planet (a great eruption's): years of cold
+    W.G.aerosol = (W.G.aerosol or 0) + require("sim.config").V3.premise_aerosol
+    return true
   elseif name == "eruption" then
     -- (S20, R6.5f) the volcano nearest Tekheim erupts, a VEI 5
     local volcano = require("sim.agents.volcano")

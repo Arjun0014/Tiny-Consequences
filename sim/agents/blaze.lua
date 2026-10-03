@@ -29,6 +29,7 @@ function M.dryness(W, s)
   local d = max(0, min(1, (c.fire_wet - sw) / (c.fire_wet - c.fire_dry)))
   local r = s.rain_now or 0
   if r == 2 then d = d * 0.15 elseif r == 1 then d = d * 0.45 end
+  if s.snow then d = d * max(0, 1 - s.snow / 0.05) end   -- (S20, R6.5d) under snow
   return d
 end
 

@@ -34,4 +34,5 @@ return {
   "tests.sim.unit.test_v3_conflict",
   "tests.sim.unit.test_v3_lightning",
   "tests.sim.unit.test_v3_quake",
+  "tests.sim.unit.test_v3_snow",
 }

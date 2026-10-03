@@ -9,6 +9,7 @@ local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local people = require("sim.agents.people")
 local clock = require("sim.agents.clock")
+local weather = require("sim.agents.weather")   -- (S20, R6.5d: snow lying)
 local nav = require("sim.agents.nav")
 local act = require("sim.agents.act")
 local settle = require("sim.agents.settle")
@@ -162,6 +163,7 @@ local function context(W, s, p, now)
   ctx.hx, ctx.hy = hx, hy
   ctx.dhome = dist(p.x, p.y, hx, hy)
   ctx.spd = people.speed(W, p, now)
+  if s.snow then ctx.spd = ctx.spd * weather.walk_k(s) end
   ctx.hh = W.S.v3.households[p.hh]
   -- (S19) the household is about to move or make a new place: nobody sets out on other journeys
   local hh0 = ctx.hh
@@ -1849,6 +1851,7 @@ local function dairy_fit(p, ctx)
   return 0
 end
 
+local HERD_SP = { flock = "sheep", cattle = "cattle", swine = "pig" }
 local HERD_WHY = {
   flock = "The sheep and goats are hungry in the fold (%d%%): taking them out to graze",
   cattle = "The cattle are hungry in the byre yard (%d%%): driving them out to the pasture",
@@ -1892,9 +1895,11 @@ local function herd_candidates(W, s, p, ctx, now)
       local f = herd_fit(p, ctx, kind)
       -- (the children of the household have the first chance in the morning: the grown-ups wait)
       local wait = st == "child" and 0.4 or 1.6
-      if f > 0 and mine and not stock.herder(W, s, H) and not H.out and not late and ctx.lh > ctx.wake + wait and ctx.rain < 2 and HS.n > 0 then
+      -- (S20, R6.5d) nobody drives beasts out to grass buried under the snow
+      local reach = s.snow and weather.reach(s, HERD_SP[kind]) or 1
+      if f > 0 and mine and reach > 0.25 and not stock.herder(W, s, H) and not H.out and not late and ctx.lh > ctx.wake + wait and ctx.rain < 2 and HS.n > 0 then
         -- (a duty the household gives its children more than a choice)
-        addw((0.45 + 0.45 * HS.hunger) * f * fatigue(p) * WEATHER_OK(ctx, p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "herd", 0, hi,
+        addw((0.45 + 0.45 * HS.hunger) * f * reach * fatigue(p) * WEATHER_OK(ctx, p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "herd", 0, hi,
           HERD_WHY[kind], floor(HS.hunger * 100))
       end
       if mine then
@@ -1931,6 +1936,11 @@ local function herd_candidates(W, s, p, ctx, now)
                 addw(0.85 * fatigue(p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "slaughter", ck, hi,
                   "The %s household has nothing left to eat and no beasts of its own: killing one of our %s for them",
                   fq.surname, a.sp == "cattle" and "cattle" or (a.sp == "sheep" and "sheep" or a.sp .. "s"))
+              elseif a.cull == "snow" then
+                -- (S20, R6.5d) the grass under the snow, the stack too small to feed them all
+                addw(0.6 * fatigue(p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "slaughter", ck, hi,
+                  "Snow lies on the grass and the hay will not feed them all: killing a %s while it has flesh on it",
+                  a.sp == "cattle" and "beast" or a.sp)
               elseif a.cull == "hunger" then
                 -- (S19) the larder is all but empty and the village has little to give
                 addw(0.85 * fatigue(p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "slaughter", ck, hi,
@@ -1945,7 +1955,7 @@ local function herd_candidates(W, s, p, ctx, now)
           end
           -- hay into the rack when the herd is kept in and hungry (not the pigs: scraps)
           if kind ~= "swine" and not H.out and (s.hay or 0) > 1 and (H.rack or 0) < HS.se * 0.2 and claim_free(W, hh, "feeding", p) then
-            local winter = doy >= 36 or (s.grass_low or false)
+            local winter = doy >= 36 or (s.grass_low or false) or (s.snow and weather.reach(s, HERD_SP[kind]) < 0.6)
             if HS.hunger > 0.45 and (winter or late or ctx.rain > 0) then
               addw((0.35 + 0.5 * HS.hunger) * fatigue(p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "feed", 0, hi,
                 "%s are hungry in the pen (%d%%): hay into the rack", kind == "cattle" and "The cattle" or "The sheep and goats", floor(HS.hunger * 100))

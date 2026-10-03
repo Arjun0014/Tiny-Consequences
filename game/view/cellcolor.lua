@@ -53,6 +53,52 @@ local function mixc(r, g, b, c, k)
   return r + (c[1] - r) * k, g + (c[2] - g) * k, b + (c[3] - b) * k
 end
 
+-- (S20, R6.5d) Snow lying on the v3 village maps (sim `s.snow`, metres) over the planet's own cover,
+-- on the planet cells each map covers: `M.snow_over[cell]` (0..1, the snow channel's scale: the
+-- ground whitens from 0.5, roofs and conifers from 0.2). Recomputed by M.map_snow (hourly changes).
+M.snow_over = {}
+local CELLS = setmetatable({}, { __mode = "k" })
+local function cells_of(s)
+  local L = CELLS[s]
+  if L then return L end
+  L = {}
+  local seen = {}
+  for i = 1, s.N * s.N do
+    local cl = s.cell_of[i]
+    if cl and cl > 0 and not seen[cl] then seen[cl] = true; L[#L + 1] = cl end
+  end
+  CELLS[s] = L
+  return L
+end
+
+-- The cells whose map snow changed since the last call (their texels must be written again).
+function M.map_snow(W)
+  local so = M.snow_over
+  local changed = M.snow_changed or {}
+  for k = #changed, 1, -1 do changed[k] = nil end
+  M.snow_changed = changed
+  local V = W.S and W.S.v3
+  local new = M.snow_new or {}
+  for k in pairs(new) do new[k] = nil end
+  M.snow_new = new
+  if V then
+    for _, s in ipairs(V.settlements) do
+      local d = s.alive and s.snow
+      if d and d >= 0.005 and s.cell_of then
+        local v = min(1, 0.45 + d * 4)
+        for _, cl in ipairs(cells_of(s)) do if v > (new[cl] or 0) then new[cl] = v end end
+      end
+    end
+  end
+  for cl in pairs(so) do if not new[cl] then changed[#changed + 1] = cl end end
+  for _, cl in ipairs(changed) do so[cl] = nil end
+  for cl, v in pairs(new) do
+    local o = so[cl]
+    if not o or o - v > 0.02 or v - o > 0.02 then so[cl] = v; changed[#changed + 1] = cl end
+  end
+  return changed
+end
+
 --- Computes the 16 bytes of cell c into out[base+1..base+16].
 function M.cell(W, c, out, base)
   local F = W.F
@@ -112,7 +158,7 @@ function M.cell(W, c, out, base)
   end
   if dry > 0 then r, gg, b = mixc(r, gg, b, C.dry, dry * 0.55) end
   out[base + 1], out[base + 2], out[base + 3] = byte(r), byte(gg), byte(b)
-  out[base + 4] = byte(F.ice[c])
+  out[base + 4] = byte(max(F.ice[c], M.snow_over[c] or 0))
   out[base + 5] = byte(F.fire[c])
   out[base + 6] = byte(ash)
   out[base + 7] = byte(dry)
@@ -137,6 +183,7 @@ function M.prepare(W)
     for i = 1, #S.blight do b[S.blight[i].cell] = true end
   end
   M.blighted = b
+  M.map_snow(W)
 end
 
 return M

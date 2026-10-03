@@ -126,17 +126,49 @@ function M.shake(W, s, I, t, ev, mag)
   for _, b in ipairs(fell) do M.fall_in(W, s, b, t, d0) end
 end
 
+-- (S20, R6.5d) The weight on the roofs (ash, snow): each roof's strength by what it is, how sound it
+-- is and how it happens to be built (fixed for the building); a load past it brings the roof in on
+-- whoever is inside, a load near it cracks it (once for each heavier load).
+local ROOF = { house = 1.0, hut = 1.25, granary = 0.9, woodstore = 1.1, forge = 1.2, byre = 1.0 }
+
+function M.roof_load(W, s, load, t, d0, cause)
+  local c = C()
+  local fell = {}
+  for j = 1, #s.blist do
+    local b = s.buildings[s.blist[j]]
+    local k = b and b.state == "standing" and not b.natural and ROOF[b.kind]
+    if k then
+      local strength = k * (0.5 + 0.5 * (b.cond or 1)) * (0.7 + 0.6 * rng.float(W.seed, rng.S.V3_CONFLICT, b.id, 0, 7400))
+      if load >= strength then fell[#fell + 1] = b
+      elseif load >= c.roof_crack * strength and load > (b.strain or 0) + 0.1 then
+        b.strain = load
+        b.cond = max(0.05, (b.cond or 1) - 0.3 * load / strength)
+        s.acc.cracked = (s.acc.cracked or 0) + 1
+      end
+    end
+  end
+  for _, b in ipairs(fell) do M.fall_in(W, s, b, t, d0, cause) end
+end
+
+local FELL = {
+  quake = { how = "the quake", ours = "Our house fell in the quake", lodge = "their house fell in the quake" },
+  ash = { how = "the weight of the ash", ours = "Our house fell in under the ash", lodge = "their house fell in under the ash" },
+  snow = { how = "the weight of the snow", ours = "Our house fell in under the snow", lodge = "their house fell in under the snow" },
+}
+
 local STORES = { "food", "grain", "sheaves", "smoked", "cheese", "meat", "fish", "meals", "logs", "wool", "cloth", "hides",
   "leather", "flax", "hay", "salt", "water", "seed" }
 
 -- Building b falls in: whoever is inside is hurt, the badly hurt trapped under it until dug out; a
 -- ruin; its household lodges with others (as after a fire) and builds again.
-function M.fall_in(W, s, b, t, d0)
+function M.fall_in(W, s, b, t, d0, cause)
   local c = C()
   local V = W.S.v3
+  local FT = FELL[cause or "quake"]
   local d = deeds.add(W, { kind = "fell", t = t, at = s.id, x = b.cx, y = b.cy, by = 0, by_hh = 0, by_s = 0, to = 0,
-    to_hh = b.hh or 0, to_s = s.id, what = b.kind, n = 1, fu = b.kind == "house" and c.house_fu or 20, harm = true, answers = d0.id })
-  deeds.learn(W, s, d, "the quake", 0, 0, t)
+    to_hh = b.hh or 0, to_s = s.id, what = b.kind, n = 1, fu = b.kind == "house" and c.house_fu or 20, harm = true,
+    answers = d0 and d0.id or nil })
+  deeds.learn(W, s, d, FT.how, 0, 0, t)
   s.acc.fell = (s.acc.fell or 0) + 1
   for _, id in ipairs(s.members) do
     local p = V.people[id]
@@ -164,15 +196,15 @@ function M.fall_in(W, s, b, t, d0)
   end
   local hh = V.households[b.hh or 0]
   s.scars = s.scars or {}
-  s.scars[#s.scars + 1] = { x = b.cx or b.dx, y = b.cy or b.dy, t = t, kind = b.kind, quake = true }
+  s.scars[#s.scars + 1] = { x = b.cx or b.dx, y = b.cy or b.dy, t = t, kind = b.kind, cause = cause or "quake" }
   require("sim.agents.settle").remove_building(W, s, b)
   if hh and #hh.members > 0 and b.kind == "house" then
     hh.home = 0
     for _, id in ipairs(hh.members) do
       local q = V.people[id]
-      if q and q.alive and people.stage(q, t) ~= "infant" then people.remember(q, t, "Our house fell in the quake") end
+      if q and q.alive and people.stage(q, t) ~= "infant" then people.remember(q, t, FT.ours) end
     end
-    if M.lodge then M.lodge(W, s, hh, t, "their house fell in the quake") end
+    if M.lodge then M.lodge(W, s, hh, t, FT.lodge) end
   end
 end
 

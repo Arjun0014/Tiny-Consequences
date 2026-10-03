@@ -144,5 +144,41 @@ an outcome script, the architecture is wrong.
   `sim/agents/volcano.lua`: sites made lazily in v3 worlds, pressure, VEI eruptions - aerosol cooling
   every cell, fire at the vent, shaking, ash downwind on the villages: roofs, grass, crops). Tests
   `test_v3_quake` x3; browser = LuaJIT on `--premise quake` and `--premise eruption`.
-- Not yet: landslides, aftershocks, tsunami; d snow on maps, e flood water, g climate extremes; beasts
+- **R6.5d snow and frost on the maps**: built (D-158, `sim/agents/snow.lua`, §10; `test_v3_snow` x4).
+- Not yet: landslides, aftershocks, tsunami; e flood water, g climate extremes; ice crust, lopping
+  boughs for fodder, moving herds to open ground; beasts
   led out of burning pens, fields and stacks burning, carrying the hurt out.
+
+## 10. R6.5d snow and cold on the maps (design, session 20)
+The audit found no snow at any village (all lie between 37 S and 14 N: Krikeivorn's winter days
+~3 C, nights a few degrees lower). Snow therefore comes only from a real cold: a cold air mass
+(the planet's `heat_anom` on a cell - what R7's chill power will write) or a cold year (sulphur in
+the sky after a great eruption, `G.aerosol`). Both are physical states the planet already has.
+- **State**: `s.snow`, the depth of snow lying on the village's map (metres). Hourly, from the day's
+  weather the people already live (`weather.lua` spells, `temp_at`): while a spell falls and the
+  hour's air is below `snow_t` it falls as snow (`snow_fall` a spell-hour, twice in a downpour);
+  above 0 C it melts `snow_melt` per degree-hour (rain on snow twice as fast). `weather.snowing`.
+  Nothing else is stored; nothing reads a "winter" flag.
+- **Read by** (each its own small rule):
+  - walking - people's and beasts' pace x (1 - min(`snow_walk_max`, `snow_walk` x depth));
+  - grazing - the grass in reach x max(0, 1 - depth / `snow_graze`) (goats paw deeper); the beasts'
+    hunger rises out on the snow;
+  - the herders - beasts are not driven out to grass under snow; hay goes into the racks when the
+    penned beasts are hungry and the grass is buried;
+  - the hay reckoning - while snow lies, a household whose stack will not feed its beasts for
+    `snow_hay_days` kills the most dispensable for the larder while they still have flesh (the
+    autumn cull's rule, run on the day the shortage is seen); beasts that are not killed and not fed
+    starve (existing hunger and health) - the dzud;
+  - roofs - snow deeper than `snow_roof` loads them as ash does (one roof-load rule shared with
+    volcano ash: cracked, or fallen in on whoever is inside);
+  - frost - a night below `frost_t` with bare ground (snow insulates) blackens part of a growing
+    spring crop or flax (a winter crop only below `frost_t_winter`): its yield falls;
+  - cold - the existing `s.cold` (hearth wood, cold meals, rags and bare feet cost health); bare feet
+    in snow cost more.
+- **View**: the map's ground and trees whiten with depth (the cell texture's snow channel takes the
+  larger of the planet's cover and the map's snow), flakes instead of rain.
+- **Premises** (state, never outcomes): `named("cold_snap")` - a cold air mass on a village's cell
+  and its neighbours (`heat_anom`), `named("hard_winter")` - sulphur in the sky (`G.aerosol`).
+- **Tests**: snow falls and lies in a cold snap on a wet day; people walk slower in it; beasts are
+  kept in and fed hay; a long hard winter: the hay runs short, beasts are killed for the larder,
+  those left unfed starve; a frost night costs a young crop its yield, not under snow.

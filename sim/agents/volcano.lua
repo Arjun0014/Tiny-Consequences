@@ -132,8 +132,6 @@ function M.erupt(W, v, vei, t, cause)
   end
 end
 
-local ROOFS = { house = 1.0, hut = 0.8, granary = 1.1, woodstore = 0.9, forge = 0.8 }
-
 -- Ash falls on village s's map: on the grass, the fields and the roofs; everyone sees it fall.
 function M.ashfall(W, s, ash, t, ev, v, vei)
   local c = C()
@@ -148,22 +146,8 @@ function M.ashfall(W, s, ash, t, ev, v, vei)
       people.remember(p, t, sfmt("Ash fell from the sky%s", v and (": " .. v.name .. " is burning") or ""))
     end
   end)
-  -- (heavy ash loads the roofs: they crack, or fall in on whoever is inside, by how they are built)
-  if s.ash >= c.ash_roof then
-    local shake = require("sim.agents.shake")
-    local k = (s.ash - c.ash_roof) * c.ash_roof_k
-    local fell = {}
-    for j = 1, #s.blist do
-      local b = s.buildings[s.blist[j]]
-      local vu = b and b.state == "standing" and ROOFS[b.kind]
-      if vu then
-        local dmg = k * vu * (1.5 - 0.5 * (b.cond or 1)) * (0.5 + rng.float(W.seed, rng.S.V3_CONFLICT, b.id, floor(t * 60) % 4294967296, 8100))
-        if dmg >= c.quake_fall_in then fell[#fell + 1] = b
-        elseif dmg >= c.quake_crack then b.cond = max(0.05, (b.cond or 1) - dmg * 0.5) end
-      end
-    end
-    for _, b in ipairs(fell) do shake.fall_in(W, s, b, t, d) end
-  end
+  -- (heavy ash weighs on the roofs: the weakest crack, or fall in on whoever is inside)
+  require("sim.agents.shake").roof_load(W, s, s.ash * c.ash_load_k, t, d, "ash")
   s.acc.ashfalls = (s.acc.ashfalls or 0) + 1
 end
 

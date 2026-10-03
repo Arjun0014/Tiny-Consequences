@@ -32,6 +32,7 @@ local conflict = require("sim.agents.conflict")
 local blaze = require("sim.agents.blaze")   -- (S20, R6.5b)
 local shake = require("sim.agents.shake")   -- (S20, R6.5f)
 local volcano = require("sim.agents.volcano")
+local snow = require("sim.agents.snow")   -- (S20, R6.5d)
 do
   -- (what one village learns of another: what its people know of places, and of fairs; S20: and
   -- the deeds they know that touch either village)
@@ -360,6 +361,7 @@ function sys.hour(W)
           conflict.defence_daily(W, s, now)
           shake.trapped_daily(W, s, now)
           volcano.ash_daily(W, s, ld)
+          snow.daily(W, s, ld, now)
           stock.daily(W, s, ld, sys.push)
           wild.daily(W, s, ld, sys.push)
           dogs.daily(W, s, ld, sys.push)
@@ -368,6 +370,7 @@ function sys.hour(W)
       end
       wild.hourly(W, s, now)
       local changed, r = settle.hourly(W, s, now)
+      snow.hourly(W, s, now)
       -- (S20, R6.5b) a thunderstorm's lightning; whatever burns
       blaze.natural(W, s, now)
       blaze.planet(W, s, now)
