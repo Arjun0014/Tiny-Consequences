@@ -807,6 +807,7 @@ C.V3 = {
   seed_row = 0.5,                         -- FU of seed grain per row
   grow_days = 20,                         -- days from sowing to ripe at good temperatures
   grow_tmin = 3, grow_topt = 13,          -- degC: crops do not grow below tmin, grow fully from topt (D-087)
+  heat_t = 24, heat_span = 10,            -- (S21, R6.5g) a day's mean above heat_t spoils grain filling (none at +span) and browns grass
   row_yield = 13.5,                       -- FU per row at full quality
   weeds_day = 0.15, tend_clear = 0.09, weeds_tend = 0.15,   -- weeds a day; cleared per hour; weeding starts above
   ripe_spoil_days = 8,                    -- ripe grain left standing is lost after this

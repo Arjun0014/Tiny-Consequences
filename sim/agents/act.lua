@@ -491,7 +491,7 @@ M.boats_of = boats_of
 WORK.board = function(W, s, p, st, f)
   local B = boats_of(W, p)
   local boat = B and B[st.boat]
-  local b = s.dock
+  local b = s.dock or require("sim.agents.settle").dock_point(s)   -- (S21: from the shore where a lost dock stood)
   if not boat or not b then return end
   boat.crew = p.id
   boat.t_out = W.S.v3.now or W.hour
@@ -784,7 +784,7 @@ end
 WORK.land = function(W, s, p, st, f)
   local B = boats_of(W, p)
   local boat = B and B[p.boat or st.boat or 0]
-  local b = s.dock or s.beach   -- (S18: a young place's beach until its dock stands)
+  local b = s.dock or s.beach or require("sim.agents.settle").dock_point(s)   -- (S18: a young place's beach until its dock stands; S21: a dock lost while the boat was out: the shore where it stood)
   if boat and boat.riders and #boat.riders > 0 then
     -- (S18) the passengers step ashore (the household's people, the babes in their arms)
     local V = W.S.v3

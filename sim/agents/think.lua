@@ -3496,7 +3496,7 @@ function M.sea_move_legs(W, s, p, ctx, now, pl, tr, hh, mg, home_s, o, grown)
   if found then o = require("sim.agents.founding").place_at(W, site) end
   local oname = o and o.name or "the place we chose"
   local boat = home_s.boats and home_s.boats[sea.boat]
-  local hd = home_s.dock
+  local hd = home_s.dock or settle.dock_point(home_s)   -- (S21: a dock lost while at sea: the shore where it stood)
   local route = found and trade.sea_route_to(W, home_s, site) or (o and trade.sea_route(W, home_s, o))
   local skipper = sea.skipper == p.id
   local sk = V.people[sea.skipper or 0]
@@ -3819,7 +3819,7 @@ function sea_legs(W, s, p, ctx, now)
   local route = trade.sea_route(W, home_s, o)
   local here = p.at or p.sett
   local GX = econ.GOODS[tr.give]
-  local hd = home_s.dock
+  local hd = home_s.dock or settle.dock_point(home_s)   -- (S21: a dock lost while at sea: the shore where it stood)
   if here == tr.from and not tr.back and not tr.sailed then
     local home = ctx.home
     if p.carry == "pack" then
@@ -3874,7 +3874,7 @@ function sea_legs(W, s, p, ctx, now)
     return
   end
   if here == tr.to then
-    local od = o.dock
+    local od = o.dock or settle.dock_point(o)   -- (S21: their dock lost while we sailed: the shore where it stood)
     if not tr.landed then
       pl[#pl + 1] = { op = "go", x = od.mx, y = od.my, place = o.name .. "'s dock", water = true }
       work(pl, "land", 0.08, { boat = boat.id })
@@ -5993,7 +5993,8 @@ function M.decide(W, s, p, now, reason)
         go(pl, o.granary.dx, o.granary.dy, o.name .. "'s granary")
         work(pl, "guest_meal", 0.4, { ref = o.granary.id })
       end
-      go(pl, o.dock.dx + 0.02, o.dock.dy, o.name .. "'s dock")
+      local od = o.dock or settle.dock_point(o) or { dx = o.sqx or 0, dy = o.sqy or 0 }   -- (S21)
+      go(pl, od.dx + 0.02, od.dy, o.name .. "'s dock")
       work(pl, "mind_boat", 3, {})
       p.obj, p.dest, p.objk = "Mind the boat", o.name .. "'s dock", "mind_boat"
       p.why = (reason and (reason .. ". ") or "") .. "Minding our boat at " .. o.name .. " while " .. ((W.S.v3.people[tr.skipper] or {}).name or "the skipper") .. " trades"

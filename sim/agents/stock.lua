@@ -214,6 +214,8 @@ function M.daily_pasture(W, s, day)
   local T = W.F.temp[s.cell] or 10
   local sw = W.F.soil_water[s.cell] or 0.5
   local warm = T > c.grow_tmin and min(1, (T - c.grow_tmin) / (c.grow_topt - c.grow_tmin)) or 0
+  -- (S21, R6.5g) the grass browns in heat as the corn withers
+  if T > c.heat_t then warm = warm * max(0, 1 - (T - c.heat_t) / c.heat_span) end
   local g = c.grass_regrow * warm * min(1, 0.4 + sw * 1.2) * (doy >= 36 and 0.25 or 1)
   local nb = (s.N / BS) * (s.N / BS)
   P.wood = P.wood or {}

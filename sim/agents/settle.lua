@@ -406,10 +406,24 @@ function M.remove_building(W, s, b)
     if s[k] == b then
       s[k] = nil
       s.lost_keys = s.lost_keys or {}
-      s.lost_keys[k] = { ix = b.ix0, iy = b.iy0, side = b.side, kind = b.kind, stock = b.stock }
+      s.lost_keys[k] = { ix = b.ix0, iy = b.iy0, side = b.side, kind = b.kind, stock = b.stock, id = b.id }
     end
   end
   mapm.rebuild_costs(s)
+end
+
+-- (S21) Where boats of village s tie up: its dock, else where its lost dock stood (the shore there: a
+-- boat at sea when the dock was taken still comes home to it), else nil.
+function M.dock_point(s)
+  if s.dock then return s.dock end
+  local e = s.lost_keys and s.lost_keys.dock
+  local b = e and e.id and s.buildings[e.id]
+  if b then return b end
+  local last
+  for _, b2 in pairs(s.buildings) do
+    if b2.kind == "dock" and (not last or b2.id > last.id) then last = b2 end
+  end
+  return last
 end
 
 -- The food ledger (tools and tests): everything edible anywhere in the settlement (FU), and the
@@ -977,6 +991,7 @@ end
 local function grow_plots(W, s, day)
   local c = C()
   local F = W.F
+  local V = W.S.v3
   local doy = clock.local_doy(day * 24, W.grid.lat[s.cell])
   local winter = doy >= 36
   for k = 1, #s.plots do
@@ -997,7 +1012,17 @@ local function grow_plots(W, s, day)
         if winter then d = d * c.winter_dormant end
       end
       pl.growth = pl.growth + d / days
-      pl.q_sum, pl.q_n = pl.q_sum + d * wet * (1 - 0.5 * pl.weeds), pl.q_n + d
+      -- (S21, R6.5g) heat: a day hotter than heat_t (daily mean) spoils the filling grain in proportion
+      -- (no grain at heat_t + heat_span); the corn ripens as fast, with less in the ear
+      local hs = T > c.heat_t and min(1, (T - c.heat_t) / c.heat_span) or 0
+      pl.q_sum, pl.q_n = pl.q_sum + d * wet * (1 - 0.5 * pl.weeds) * (1 - hs), pl.q_n + d
+      if hs > 0.3 and (pl.hh or 0) ~= 0 and pl.heat_told ~= pl.sown_day then
+        pl.heat_told = pl.sown_day
+        for _, id in ipairs((V.households[pl.hh] or {}).members or {}) do
+          local q = V.people[id]
+          if q and q.alive and people.stage(q, W.hour) == "adult" then people.remember(q, W.hour, sfmt("The heat is withering %s", pl.name)) end
+        end
+      end
       pl.weeds = min(1, pl.weeds + c.weeds_day * (0.5 + wet) * (winter and 0.3 or 1))
       if pl.growth >= 1 then
         pl.stage = "ripe"

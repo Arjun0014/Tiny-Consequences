@@ -233,6 +233,14 @@ function M.named(W, name)
     local fs = W.S.powers.forcings
     fs[#fs + 1] = { kind = "rain", cells = cells, amount = 1, tag = 0, from = W.tick, to = W.tick + 5 }
     return true
+  elseif name == "ice_age" or name == "hothouse" then
+    -- (S21, R6.5g) the planet's climate in another era: the global temperature and the CO2 that
+    -- holds it there (an ice age: -6 C, 190 ppm; a hothouse: +6 C, 1100 ppm); the ice, the seas, the
+    -- rains and every village's seasons follow by the planet's own systems
+    local G = W.G
+    if name == "ice_age" then G.g_temp, G.co2 = -6, 190 else G.g_temp, G.co2 = 6, 1100 end
+    for _, q in ipairs(V.settlements) do q.wx = nil end
+    return true
   elseif name == "hard_winter" then
     -- (S20, R6.5d) sulphur in the sky over the whole planet (a great eruption's): years of cold
     W.G.aerosol = (W.G.aerosol or 0) + require("sim.config").V3.premise_aerosol

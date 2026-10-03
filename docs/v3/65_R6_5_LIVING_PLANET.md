@@ -264,3 +264,25 @@ Little Leelee's hills (`--premise flood5`): the river over its banks at hour 4-9
 water at the peak (2,660 too deep to walk), the byre in 0.95 m of water opened, a field drowned, 19
 people saw it, the houses (built above the floodplain) dry; the water gone within five days, 9 fields
 silted. `tools/v3_flood.lua` watches one hour by hour with a map.
+
+## 13. R6.5g climate at the extremes, watched (session 21, D-170)
+The global climate integrates once a planet year (48 v3 days) and relaxes over ~10 of them (tau_years):
+a natural ice age or hothouse takes thousands of v3 days to arrive. The premises therefore set the state
+of another era - `named("ice_age")` (global -6 C, CO2 190 ppm) and `named("hothouse")` (+6 C, 1,100 ppm) -
+and the planet's own systems (ice, seas, rains, each village's seasons) carry it.
+- **What the villages feel**: their daily means run 3-23 C now (they are temperate despite low
+  latitudes); 9-29 C in the hothouse, colder by 6 C in the ice age (snow every winter at Dreik Knoll and
+  Krikeivorn, some at Hottoodingle Hop; frost on the flax and spring grain).
+- **Heat stress, new** (`heat_t` 24 C daily mean, `heat_span` 10): a hotter day spoils the filling grain in
+  proportion (none at 34 C) and browns the grass; owners remember "The heat is withering X". Before it, a
+  hothouse only lengthened the growing season (every granary fuller than untouched).
+- **192 days each** (`tools/v3_chronicle.lua --premise ice_age|hothouse --days 192`): no deaths from hunger
+  in either (illness 6, old age 3-4, as untouched); granaries at day 192 - untouched 696/212/163/159/404/282,
+  hothouse 541/443/240/269/373/592 (the cool villages gain, Little Leelee's corn withers), ice age
+  677/135/181/180/353/83 (Krikeivorn and Zurug thin); trade 336-458 exchanges.
+- **Found by it**: a trader sailing home to a village whose dock was lost meanwhile crashed the planner
+  (the dock assumed): boats now land, board and tie up at the shore where the dock stood
+  (`settle.dock_point`).
+- **Not done**: the coastline following sea level (sea level follows temperature over planet-centuries:
+  never reached on v3 time scales without forcing; the coast rebuild is heavy - deferred), an SST
+  oscillation with fish, migration for climate (none arose: no village was pushed hard enough).
