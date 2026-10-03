@@ -1257,7 +1257,12 @@ C.V3 = {
   -- answer (amends_fear x their men/10 x (1 + wrongs they are known to have answered)) and ties
   -- (trust x amends_trust, deals/10 x amends_deals, kin there amends_kin) outweigh the worth given
   -- (amends_cost x FU/20)
-  amends_fear = 0.35, amends_trust = 0.6, amends_deals = 0.4, amends_kin = 0.6, amends_cost = 0.5, amends_keep_days = 6, amends_part = 0.25,          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
+  amends_fear = 0.35, amends_trust = 0.6, amends_deals = 0.4, amends_kin = 0.6, amends_cost = 0.5, amends_keep_days = 6, amends_part = 0.25,
+  -- (S20, R6f) a fold wall: wanted when the losses at the pen in wall_memory days x wall_save outweigh
+  -- wall_logs logs and wall_h hours (at wall_hour_fu a work hour); a taker at a walled pen is noticed
+  -- x wall_noise more easily (dogs, cries) and weighs take_wall more risk; wolves are wary (wall_wolves)
+  wall_memory = 48, wall_save = 0.7, wall_logs = 10, wall_h = 24, wall_hour_fu = 0.6,
+  wall_noise = 1.35, take_wall = 0.3, wall_wolves = 1.5,          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
 }
 
 return C

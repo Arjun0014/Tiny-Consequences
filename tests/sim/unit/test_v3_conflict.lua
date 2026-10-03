@@ -298,4 +298,27 @@ function M.a_known_wrong_is_made_good_unasked()
   return string.format("%s of %s made it good on day %.1f: %.1f FU carried, %.1f FU owed", (V.people[g.by] or {}).name or "?", B.name, g.t / 24, g.n or 0, owed)
 end
 
+-- Defence that is built (R6f): a village that lost many beasts at its fold lately (history: wolves'
+-- kills) decides to wall it and its people build the wall stint by stint with logs from the woodstore.
+function M.a_fold_is_walled_after_losses()
+  local W = shipped()
+  local V = W.S.v3
+  world.advance(W, W.hour + 72)
+  local s = V.settlements[1]
+  require("sim.agents.premise").wolf_losses(W, s, 9, 20)
+  local pen = s.buildings[s.herds.flock.pen]
+  local logs0 = s.wood_store.stock.logs or 0
+  local t0 = W.hour
+  local decided
+  for h = 1, 24 * 12 do
+    world.advance(W, t0 + h)
+    if pen.wall_want and not decided then decided = W.hour end
+    if (pen.wall or 0) >= 1 then break end
+  end
+  T.ok(decided ~= nil or (pen.wall or 0) >= 1, "the village decided to wall its fold")
+  T.ok((pen.wall or 0) >= 1, string.format("the wall stands (%.2f built, %d logs brought)", pen.wall or 0, pen.wall_logs or 0))
+  T.ok((pen.wall_logs or 0) >= require("sim.config").V3.wall_logs, "its stakes were carried there")
+  return string.format("%s walled its fold: decided day %.1f, standing day %.1f, %d logs", s.name, (decided or 0) / 24, W.hour / 24, pen.wall_logs or 0)
+end
+
 return M

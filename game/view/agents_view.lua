@@ -414,6 +414,11 @@ local function fill_buildings(V)
         local x0, y0 = b.cx - b.w * T * 0.5, b.cy - b.h * T * 0.5
         local Lx, Ly = b.w * T, b.h * T
         local per = b.kind == "sty" and 3 or 2
+        -- (S20, R6f) the wall as far as it is built: tall stakes close between the fence's, round from
+        -- the gate side
+        local wall = b.wall or 0
+        local total = 2 * (b.w + b.h) * per
+        local idx = 0
         for side = 0, 3 do
           local L = (side % 2 == 0) and Lx or Ly
           local n = (side % 2 == 0 and b.w or b.h) * per
@@ -424,8 +429,20 @@ local function fill_buildings(V)
             elseif side == 1 then x, y = x0 + Lx, y0 + f * Ly
             elseif side == 2 then x, y = x0 + Lx - f * Lx, y0 + Ly
             else x, y = x0, y0 + Ly - f * Ly end
-            if not (side == 0 and f > 0.4 and f < 0.6) then
+            local gate = side == 0 and f > 0.4 and f < 0.6
+            if not gate then
               add(V, K.stakes, x, y, 0, q + side, b.kind == "sty" and 0.18 or 0.22, 1, 0, 0, 0)
+            end
+            idx = idx + 1
+            if wall > 0 and not gate and idx / total <= wall then
+              local h = 0.5 / n
+              local x2, y2
+              if side == 0 then x2, y2 = x0 + (f + h) * Lx, y0
+              elseif side == 1 then x2, y2 = x0 + Lx, y0 + (f + h) * Ly
+              elseif side == 2 then x2, y2 = x0 + Lx - (f + h) * Lx, y0 + Ly
+              else x2, y2 = x0, y0 + Ly - (f + h) * Ly end
+              add(V, K.stakes, x2, y2, 0, q + side + 0.5, 0.36, 1, 0, 0, 0)
+              add(V, K.stakes, x, y, 0, q + side + 0.25, 0.34, 1, 0, 0, 0)
             end
           end
         end
@@ -872,7 +889,7 @@ local ANIM = {
   -- (S20, R6a) lying up in the woods until a village sleeps; at the pen by night taking beasts by
   -- the halter; a chaser stopping to look about
   lie_up = { "sit", 0.3 }, steal = { "kneel_work", 1.1 }, chase = { "idle", 1.4 },
-  mend = { "sit", 0.3 }, tend_hurt = { "kneel_work", 0.5 }, mourn = { "idle", 0.5 },
+  mend = { "sit", 0.3 }, tend_hurt = { "kneel_work", 0.5 }, mourn = { "idle", 0.5 }, wall_fold = { "swing", 0.8 },
 }
 
 local function packc(c) return pack(c[1], c[2], c[3]) end

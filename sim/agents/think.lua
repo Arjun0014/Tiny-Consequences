@@ -1058,6 +1058,24 @@ local function steal_candidate(W, s, p, ctx, now, fat)
 end
 M.steal_candidate = steal_candidate
 
+-- (S20, R6f) Walling a pen the village decided to wall (conflict.defence_daily): logs from the
+-- woodstore to the pen, then stints of building at the hand's pace.
+function M.wall_candidate(W, s, p, ctx, now, fat)
+  if ctx.stage ~= "adult" or ctx.babe or p.at or not s.herds or not s.wood_store or s.wood_store.state ~= "standing" then return end
+  local c = C()
+  for hi, kind in ipairs(require("sim.agents.stock").HERDS) do
+    local H = s.herds[kind]
+    local b = H and s.buildings[H.pen]
+    if b and b.wall_want and (b.wall or 0) < 1 and (b.walling or 0) < 2 then
+      local need_logs = (b.wall_logs or 0) < c.wall_logs * min(1, (b.wall or 0) + 0.25)
+      if need_logs and (s.wood_store.stock.logs or 0) < 1 then return end
+      local fit = (p.role == "builder" and 1.1 or 0.85) * (0.6 + 0.6 * (p.sk_build or 0.2))
+      addw((0.3 + 0.3 * fit) * fat - travel(ctx, b.dx, b.dy, p.x, p.y) * 0.4, "wall_fold", b.id, need_logs and 1 or 0, "%s", b.wall_why or "Walling the pen")
+      return
+    end
+  end
+end
+
 -- (S20, R6g) Making good unasked what the household took (conflict.amends_weigh): a grown-up fit for
 -- the road, in the morning, with something to give.
 function M.amends_candidate(W, s, p, ctx, now, fat)
@@ -4353,6 +4371,27 @@ PLAN.steal = function(W, s, p, ctx, now, cd)
   return steal_legs(W, s, p, ctx, now)
 end
 
+PLAN.wall_fold = function(W, s, p, ctx, now, cd)
+  local c = C()
+  local pl = plan_reset(p)
+  local b = s.buildings[cd.a]
+  b.walling = (b.walling or 0) + 1
+  if cd.b == 1 then
+    local w = s.wood_store
+    go(pl, w.dx, w.dy, "the woodstore")
+    pl[#pl + 1] = { op = "pick", what = "logs", from = "store", ref = w.id, n = p.strong and 2 or 1 }
+    go(pl, b.dx, b.dy, b.label)
+    pl[#pl + 1] = { op = "drop", to = "wall", ref = b.id, release_wall = true }
+    return "Bring logs to wall the " .. b.label, b.label
+  end
+  local rate = (0.6 + 0.6 * (p.sk_build or 0.2)) * (0.55 + 0.45 * (ctx.hh and ctx.hh.tools or 1))
+  local left = (1 - (b.wall or 0)) * c.wall_h / max(0.05, rate) + 0.02
+  local x, y = near_spot(W, p, now, b.cx or b.dx, b.cy or b.dy, 0.05, 97)
+  go(pl, x, y, b.label)
+  work(pl, "wall_fold", min(left, (1.5 + 1.0 * u01(W, p, now, 98)) * p.dil), { ref = b.id, fx = b.cx, fy = b.cy })
+  return "Wall the " .. b.label, b.label
+end
+
 -- (S20, R6g) Amends: what the household can spare packed at home (up to the wrong's worth, a load),
 -- the road, the house of those wronged, the goods handed over (WORK.amends), home.
 PLAN.amends = function(W, s, p, ctx, now, cd)
@@ -5611,6 +5650,7 @@ function M.decide(W, s, p, now, reason)
       M.steal_candidate(W, s, p, ctx, now, fatigue(p))
       M.join_candidate(W, s, p, ctx, now, fatigue(p))
       M.amends_candidate(W, s, p, ctx, now, fatigue(p))
+      M.wall_candidate(W, s, p, ctx, now, fatigue(p))
       M.claim_candidate(W, s, p, ctx, now, fatigue(p))
       court_candidate(W, s, p, ctx, now, fatigue(p))
       visit_candidate(W, s, p, ctx, now, fatigue(p))

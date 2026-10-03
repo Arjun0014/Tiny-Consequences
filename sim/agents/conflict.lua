@@ -119,7 +119,9 @@ local function weigh_at(W, s, p, hh, o, now, push, bold, only, party)
       local n = tk.kind == "cattle" and 1 or max(1, min(c.take_flock, nb, floor(need / meat + 0.5)))
       local gain = c.take_gain_k * min(n * meat, need) * min(1.5, push) + min(0.5, grudge * c.take_grudge_k)
       local slow = tk.kind == "cattle" and 0.15 or 0
-      local net = gain - shared - restraint - hrs / 24 * 0.1 - slow
+      -- (S20, R6f) a walled pen, as seen there
+      local wall = (k.walled and k.walled[tk.kind]) and c.take_wall * (1.2 - bold) / (1 + 0.5 * (party or 0)) or 0
+      local net = gain - shared - restraint - hrs / 24 * 0.1 - slow - wall
       if net > bn then
         local why
         if push >= c.take_push then
@@ -459,6 +461,52 @@ function M.amends_weigh(W, o, hh, now)
   return best
 end
 
+-- (S20, R6f) Defence that is built: a wall of stakes and hurdles round a pen (`b.wall` 0..1, logs
+-- delivered `b.wall_logs`). Each day the village weighs it: the losses at that pen it remembers
+-- (takings, attempts, wolves' kills: deeds within `wall_memory` days) as what a wall would save over
+-- as long again (x `wall_save`) against its cost (`wall_logs` logs and `wall_h` hours of work).
+local PEN_OF = { sheep = "flock", goat = "flock", cattle = "cattle", pig = "swine" }
+function M.defence_daily(W, s, now)
+  local c = C()
+  if not s.herds or not s.dk then return end
+  local L = deeds.list(W)
+  local loss = {}
+  for i = 1, #s.dk do
+    local d = L[s.dk[i].id]
+    if d and d.harm and d.to_s == s.id and (d.kind == "take" or d.kind == "lost") and now - d.t <= c.wall_memory * 24 then
+      local k = PEN_OF[d.what]
+      if k then loss[k] = (loss[k] or 0) + (d.fu or 0) end
+    end
+  end
+  local cost = c.wall_logs * econ.GOODS.logs.base + c.wall_h * c.wall_hour_fu
+  for _, kind in ipairs(stock.HERDS) do
+    local H = s.herds[kind]
+    local b = H and s.buildings[H.pen]
+    if b then b.walling = 0 end
+    if b and b.kind ~= "camp" and (b.wall or 0) < 1 then
+      local want = (loss[kind] or 0) * c.wall_save >= cost
+      if want and not b.wall_want then
+        b.wall_want = now
+        b.wall_why = sfmt("We lost %.0f FU of beasts at the %s in %d days: walling it", loss[kind], b.label or "pen", c.wall_memory)
+        for _, hid in ipairs(s.households) do
+          local hh = W.S.v3.households[hid]
+          for _, id in ipairs(hh and hh.members or {}) do
+            local q = W.S.v3.people[id]
+            if q and q.alive and people.stage(q, now) == "adult" then people.remember(q, now, b.wall_why) end
+          end
+        end
+      end
+    end
+  end
+end
+
+-- (S20, R6f) The pen of herd kind at village s is walled (built)?
+function M.walled(s, kind)
+  local H = s.herds and s.herds[kind]
+  local b = H and s.buildings[H.pen]
+  return b ~= nil and (b.wall or 0) >= 1
+end
+
 -- (S20, R6e) Raids -----------------------------------------------------------------------------
 -- A man who weighs taking beasts where the risk alone is high (dogs, a watch, its men, his own
 -- failures there) and who has kin or friends at home with reasons of their own may raise a party:
@@ -578,6 +626,9 @@ function M.take_cues(W, s, p, a, d, now)
   -- (a dog notices a stranger at the beasts more often than not: one asleep or down the wind may
   -- not; a man who knows how to creep up on game, less often)
   local quiet = 1 - 0.5 * (p.sk_hunt or 0.2)
+  -- (S20, R6f) over a wall with beasts takes longer and makes more noise
+  local walled = M.walled(s, p.trip and p.trip.kind or "flock")
+  if walled then quiet = quiet * c.wall_noise end
   for i, dg in ipairs(s.dogs or {}) do
     if dg.alive and dsq(dg.tx - x) + dsq(dg.ty - y) <= r2 and u(W, p, now, 40 + i) < c.take_dog_p * quiet then
       barked = true
@@ -585,7 +636,7 @@ function M.take_cues(W, s, p, a, d, now)
     end
   end
   local L = danger.cue(W, s, x, y, now, { kind = "thief", src = p.id, skip = p.id, sight = c.sight_day, night = c.take_sight,
-    sound = barked and c.bark_sound or c.take_bleat, loud = barked,
+    sound = barked and c.bark_sound or (c.take_bleat * (walled and c.wall_noise or 1)), loud = barked,
     why = barked and "The dogs are barking at the beasts" or "A beast cried out at the pen" })
   for _, e in ipairs(L) do
     if e.how == "saw" and e.p.sett == s.id and not e.p.at then M.seen(W, s, d, e.p, now) end

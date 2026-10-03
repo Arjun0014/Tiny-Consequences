@@ -643,6 +643,8 @@ local function pick_prey(W, s, lead, now)
           local g = W.S.v3.people[s.guards[gi] or 0]
           if g and g.alive and g.objk == "guard" and dsq(g.x - pen.cx) + dsq(g.y - pen.cy) < 0.06 then wary = wary + 0.8 end
         end
+        -- (S20, R6f) a walled fold is hard to get into
+        if (pen.wall or 0) >= 1 then wary = wary + c.wall_wolves end
         for _, a in ipairs(H.animals) do
           if a.alive then
             local S = stock.SP(a.sp)
@@ -743,6 +745,12 @@ local function kill(W, s, wolf, pr, now)
     end
     s.wolf_alarm = now
     s.wolf_alarm_hh = o.owner
+    -- (S20, R6f) a loss at the pens, remembered as a deed (by no one: wolves) - the losses a fold wall
+    -- would answer are read from these and from takings alike
+    local deeds = require("sim.agents.deeds")
+    local d = deeds.add(W, { kind = "lost", t = now, at = s.id, x = x, y = y, by = 0, by_hh = 0, by_s = 0, to = 0,
+      to_hh = o.owner or 0, to_s = s.id, what = o.sp, n = 1, fu = meat, harm = true, wolves = true })
+    deeds.learn(W, s, d, "wolves in the night", 0, 0, now)
   end
   s.wildlife.carcasses[#s.wildlife.carcasses + 1] = { x = x, y = y, sp = o.sp, t = now, meat = meat * c.carcass_left, by = "wolves" }
   return true, x, y

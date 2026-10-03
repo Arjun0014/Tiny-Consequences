@@ -104,6 +104,22 @@ function M.wronged(W, s, o, n, days, answer)
   return d, by
 end
 
+-- (S20, R6f) Village s lost n sheep to wolves at its fold over the last `days` days (history: deeds of
+-- loss, as wolves' kills write them).
+function M.wolf_losses(W, s, n, days)
+  local deeds = require("sim.agents.deeds")
+  local V = W.S.v3
+  local now = V.now or W.hour
+  local H = s.herds and s.herds.flock
+  for i = 1, n do
+    local a = H and H.animals[i]
+    local t = now - days * 24 * (n - i + 1) / (n + 1)
+    local d = deeds.add(W, { kind = "lost", t = t, at = s.id, by = 0, by_hh = 0, by_s = 0, to = 0, to_hh = a and a.owner or 0,
+      to_s = s.id, what = "sheep", n = 1, fu = 6, harm = true, wolves = true })
+    deeds.learn(W, s, d, "wolves in the night", 0, 0, t)
+  end
+end
+
 -- (S20) A sickness took village s's dogs.
 function M.no_dogs(W, s)
   for _, d in ipairs(s.dogs or {}) do d.alive = false end

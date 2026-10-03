@@ -2704,6 +2704,25 @@ WORK.claim = function(W, s, p, st, f)
   end
 end
 
+-- (S20, R6f) A stint of walling the fold: as far as the stakes brought allow.
+WORK.wall_fold = function(W, s, p, st, f)
+  local b = s.buildings[st.ref or 0]
+  if not b or f <= 0 then return end
+  local c = C()
+  b.walling = max(0, (b.walling or 1) - 1)
+  local hh = W.S.v3.households[p.hh]
+  local rate = (0.6 + 0.6 * (p.sk_build or 0.2)) * (0.55 + 0.45 * (hh and hh.tools or 1))
+  local cap = min(1, (b.wall_logs or 0) / c.wall_logs)
+  local before = b.wall or 0
+  b.wall = min(cap, before + st.dur * f * rate / c.wall_h)
+  people.practice(p, "sk_build", st.dur * f * 0.5)
+  if b.wall >= 1 and before < 1 then
+    b.wall_want = nil
+    s.acc.walls = (s.acc.walls or 0) + 1
+    people.remember(p, W.S.v3.now or W.hour, "Finished the wall round the " .. (b.label or "pen"))
+  end
+end
+
 -- (S20, R6g) Amends handed over at the house of those wronged: the goods into their house; a deed
 -- that settles the wrong; trust between the villages restored a little; both remember.
 WORK.amends = function(W, s, p, st, f)
@@ -3037,6 +3056,10 @@ DROP.any = function(W, s, p, st)
     b.stock.salt = (b.stock.salt or 0) + n
   elseif st.to == "repair" and what == "logs" then
     b.repair_logs = (b.repair_logs or 0) + n
+  elseif st.to == "wall" and what == "logs" then
+    -- (S20, R6f) stakes for the fold wall
+    b.wall_logs = (b.wall_logs or 0) + n
+    b.walling = max(0, (b.walling or 1) - 1)
   elseif st.to == "site" and what == "logs" then
     b.logs_have = b.logs_have + n
     b.deliver_claim = max(0, (b.deliver_claim or 1) - 1)
