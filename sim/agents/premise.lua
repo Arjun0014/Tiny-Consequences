@@ -120,6 +120,20 @@ function M.wolf_losses(W, s, n, days)
   end
 end
 
+-- (S20) Named premises for tools that must apply the same world in two runtimes (the browser's hash
+-- check): "conflict" - Hottoodingle Hop's harvest failed, its beasts died, its stores are empty, and
+-- its people know Zurug and Krikeivorn.
+function M.named(W, name)
+  local V = W.S.v3
+  if name == "conflict" then
+    local A = V.settlements[4]
+    M.fail_harvest(W, A); M.murrain(W, A, 0); M.empty_stores(W, A)
+    M.knows(W, A, V.settlements[2]); M.knows(W, A, V.settlements[6])
+    return true
+  end
+  return false
+end
+
 -- (S20) A sickness took village s's dogs.
 function M.no_dogs(W, s)
   for _, d in ipairs(s.dogs or {}) do d.alive = false end

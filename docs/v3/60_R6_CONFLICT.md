@@ -107,3 +107,23 @@ depending on who saw it, kin, scarcity, the road, trust and what happens next.
 No `relations.war`, no raid counter, no retaliation fired by a theft, no palisade by count, no
 loot teleported, no off-map fight, no raiding party with one position, no captive counter, no
 "criminal" trait, no hostility number standing in for deeds.
+
+## 7. Status (session 20, D-150 - D-153)
+First pass of every stage built and tested by premises (`tests/sim/unit/test_v3_conflict.lua`, 9 tests):
+- **R6a** taking beasts (`conflict.take_weigh`/`weigh_at`, the take trip, dogs and witnesses, the
+  morning count, tracks, news of deeds) - D-150.
+- **R6b** claims (`claim_weigh`/`claim_answer`, WORK.claim: return, pay and owe, refuse, deny) - D-150.
+- **R6c** injury and blows (`people.hurt`, healing, tending, `conflict.strike/blows`, "deserved") - D-151.
+- **R6d** every death a deed, kin mourning on learning, the burial gathering - D-151.
+- **R6e** raids raised from lone failures, joining by one's own weighing, the band (`trip.band`) - D-151.
+- **R6f** a fold wall from remembered losses (thieves and wolves alike) - D-153.
+- **R6g** amends unasked (`amends_weigh`, WORK.amends, the rest owed) - D-152.
+Observed: untouched 192 days - no taking (the world must be in want for it); hungry premise - lone men
+given away by dogs, then a party raised (Kotumbo and Plock), a man caught and struck hard (Gedag of
+Zurug), tended at home; with Zurug's dogs dead, 3 sheep taken, tracks found, a claim met with "nobody
+would own to it"; a household whose man raided Zurug moving to Zurug meanwhile. Browser = LuaJIT on the
+conflict premise (`node scripts/v3_hash_web.mjs --release --premise conflict --hours 264`).
+Next for R6 (not done): a palisade round the houses (a ring footprint, gates), arms carried at night
+(spears from wood and iron), captives (only as specific people), alliances (help sent to kin under
+attack), moving for insecurity (fear of a place read from deeds by `migrate.push`), grievance shaping
+marriage and trade choices, restocking raids after a murrain by herders who are not hungry.

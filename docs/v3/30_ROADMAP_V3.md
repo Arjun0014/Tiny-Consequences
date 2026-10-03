@@ -225,6 +225,14 @@ sudden-death aftermath for all kin; **R6e** raids (a party of kin and friends, e
 timber); **R6g** how conflict ends (compensation, marriages across the line, trade dependence).
 Captives only as specific people with a way home; alliances and flight from insecurity later.
 
+(Session 20, D-150-D-153: **first pass of R6a-R6g built**: taking beasts from a village one's people
+have seen, weighed by need or an unredressed wrong against risk and ties; lying up until the village
+sleeps; dogs bark at strangers, owners go out, chase, strike; tracks; claims answered by return,
+payment and debt, refusal or denial; injury healed with care or fatal; every death a deed with kin
+mourning and a burial; raids raised from lone failures, each man joining for his own reasons; amends
+offered unasked; a fold wall built from remembered losses against thieves and wolves. Open: palisades
+round the houses, arms carried, captives, alliances, moving for insecurity, restocking raids.)
+
 ## R6.5 — Living Planet & Emergent Response (designed: `docs/v3/65_R6_5_LIVING_PLANET.md`, D-148)
 So that R7's god powers touch physical state and the world answers. **R6.5a** shared foundations
 (from R6); **R6.5b** lightning on a village (strike at a point, injury, local fire, gathering,

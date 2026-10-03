@@ -1,4 +1,4 @@
-# Session handoff — session 20 (3 Oct 2026, extended autonomous run, IN PROGRESS): R6 and R6.5 designed; R6a being built
+# Session handoff — session 20 (3 Oct 2026, extended autonomous run, IN PROGRESS): R6 and R6.5 designed; R6a-R6g first pass built; R6.5b next
 
 **If you are resuming after a context compaction: re-read this section, `docs/v3/50_PRIMITIVES.md`,
 `60_R6_CONFLICT.md`, `65_R6_5_LIVING_PLANET.md`, D-148/D-149 and `git log --oneline -10` before any
@@ -12,40 +12,41 @@ simulation; premises not forced outcomes; browser = LuaJIT; bob forbids circular
 2. Design: `50_PRIMITIVES.md`, `60_R6_CONFLICT.md`, `65_R6_5_LIVING_PLANET.md`; roadmap R6/R6.5;
    D-148 (R6.5 phase + primitives), D-149 (R6 design).
 
-## Current task: R6a + R6b (built, verified by premises; being committed)
-Done (code): `sim/agents/deeds.lua` (deeds, village knowledge `s.dk` with `own` secrets, grievance with a
-filter, news via `econ.on_learn`), `sim/agents/danger.lua` (cues: sight/sound by distance, sleep,
-indoors, night; `p.alarm` + interrupt), `sim/agents/conflict.lua` (take_weigh: need/grievance, gain as
-days of food, risk from dogs/watch/men/own past failures `p.tried`, restraint from kin/trust/friends/
-boldness; took/take_cues/seen/missing/watchers/let_go/chase; claim_weigh/claim_answer/beasts_of),
-`people.bold` (from the key), `people.came/known_at` (`p.been`), the snapshot's `k.beasts/k.dogs/k.watch`,
-`dogs.bark`, think (`steal_candidate`, `steal_legs`, `M.steal_decide`, `M.chase_ok`, PLAN.chase,
-`M.claim_candidate`, PLAN.claim, claim legs in `court_legs`, `M.claim_why`), act (WORK.lie_up/steal/
-chase/claim; owners changed on a taker's arrival, restored on a claimant's), premises `knows`,
-`no_dogs`, `wronged`; config block "(S20, D-148)/(D-149)" in `C.V3`; RNG stream `V3_CONFLICT = 48`.
-Also fixed: a led beast lay down at night "by the drover" even far behind (night droves lost beasts).
-Verified: untouched 192 d - no thefts, 399 exchanges, deaths only old age/illness (`out/s20/chron192`);
-hungry Hottoodingle Hop premise: men set off on their own to the villages they know, lie up, take 3
-sheep or a cow by night; dogs give most away (they let go and run; the owners find beasts loose and
-learn of an attempt), dog-less Zurug loses sheep, finds tracks to Hottoodingle Hop, claims - "nobody
-there would own to it" (the beasts eaten or gone with a moving household); news of deeds travels.
-R6c done (uncommitted -> committed with R6d): `people.hurt` (p.hurt/kind/t/deed; speed x(1-0.6 hurt);
-`think.fatigue` x(1-0.8 hurt); bedridden >= `hurt_bed` 0.6 -> PLAN.mend at home), healing in `life.daily`
-(`hurt_heal` 0.035/day, x0.4 hungry, x1.5 tended; untended wounds fester; death hazard above 0.5 ->
-cause "wounds"), tending (`M.tend_candidate`, PLAN/WORK `tend_hurt`, close kin weigh more), blows
-(`conflict.strike/blows` when a chaser catches a taker; iron edges cut deeper; "deserved" `deserved_k`
-0.2 when the blow answered the struck man's own wrong), news carried home (`p.tell`,
-`conflict.tell_home` on arrival), running pace `run_k` for chasers and a fleeing taker.
-R6d done: every death is a deed (`kill` with the blow's doer when wounds killed); the village knows at
-once, close kin there remember ("My father Lala died (old age)"), kin elsewhere when the news reaches
-them (`deeds.mourn` on learning); the household, kin and friends gather at the house the next morning
-(`s.burials`, `M.burial_candidate`, PLAN/WORK `mourn`: "Buried Lala Pinwiggle").
-PITFALL found: work/plan kind names are one namespace - `tend` was already field weeding; my nursing
-`tend` silently replaced it (weeds never cleared; the year test and an island premise drifted). Grep
-`PLAN.<kind>`/`WORK.<kind>` before naming a new kind.
-Next: R6e raids (a party of kin and friends, each deciding, gathering at an agreed hour), R6f defence
-that is built, R6g endings; then the R6.5 lightning vertical.
+## Done: R6a-R6g first pass (commits a58a06c, 8684a92, R6e, 1a94a5c, 1fbf5f3; D-150-D-153)
+Code: `sim/agents/deeds.lua` (deeds `V.deeds`; village knowledge `s.dk` with how/who and `own` secrets;
+grievance with half-lives and a filter; news via `econ.on_learn`; `deeds.mourn` for deaths learned),
+`sim/agents/danger.lua` (cues by sight/sound, sleep, indoors, night; `p.alarm`; interrupt injected),
+`sim/agents/conflict.lua` (take: `weigh_at`/`take_weigh`, `took`, `take_cues`, `seen`, `missing`,
+`watchers_near`, `let_go`, `chase_target`, `goes_out`, `chased`; claims: `claim_weigh`, `claim_answer`,
+`beasts_of`; blows: `strike`, `blows`, `carry_news`/`tell_home`; raids: `companions`, `raid_open`,
+`join_weigh`, `join`, `raid_ready`, `party_here`; walls: `defence_daily`, `walled`; amends:
+`amends_basket`, `amends_weigh`), `people.bold/came/known_at/hurt`, life (healing, death deeds,
+`s.burials`), dogs.bark, wild (wolves' kills at pens are `lost` deeds; walled pens), think (candidates
+via `M.*` because decide is at Lua's 60-upvalue limit: steal, raise_raid, join_raid, claim, amends,
+wall_fold, tend_hurt, mend, mourn, chase), act (WORK lie_up/steal/chase/claim/amends/tend_hurt/mourn/
+wall_fold; drop "wall"; owners changed/restored on arrival; `run` pace), premises (`knows`, `no_dogs`,
+`wronged`, `wolf_losses`, `named("conflict")`), config block "(S20 ...)" at the end of `C.V3`, RNG
+stream `V3_CONFLICT = 48`, view poses and the fold wall drawn as built.
+Tests: `test_v3_conflict` 9 (takes a beast, kin not robbed, a wrong not made good is answered, hurt keeps
+to bed and heals, a blow is a deed, men given away alone go together, a known wrong made good unasked, a
+fold walled after losses); v3 54/54; browser = LuaJIT untouched 72 h and `--premise conflict` 264 h
+(new option of `scripts/v3_hash_web.mjs` / `tools/v3_hash.lua`). LuaJIT 3.71 M instr/h (+1%).
+Untouched 192 d (`out/s20/chron192b`): no taking, 426 exchanges, deaths old age 3 + illness 6, burials.
+PITFALLS (this session): work/plan kind names and trip fields are one namespace - `tend` was field
+weeding, `trip.party` is a drove's beasts (the raid's is `trip.band`); grep before naming. `think.decide`
+is at the 60-upvalue limit: add new branches as `M.*` functions. Probes must set the JIT options of
+`tests/sim/run.lua` (`jit.opt.start("maxtrace=8000", ...)`) or they run 10-20x slower. The harness's bash
+heredocs break on apostrophes: write patch scripts with the Write tool.
 
+## Current task: R6.5b - lightning on a village (the first environmental vertical)
+Plan (`docs/v3/65_R6_5_LIVING_PLANET.md` §6): strikes on storm days at a point favouring tall/exposed
+things (tree, person in the open, roof); hit person -> `people.hurt` (burn) or death (a `death` deed by
+nature, the storm's event); tree/roof may catch by dryness -> local fire (burning objects spreading by
+dryness and wind, put out by rain or by people carrying water); cues: flash/thunder (everyone hears),
+fire (sight/smoke), shouting; urgent choice: parents to children, the able fetch water to the fire,
+rescue the hurt, lead beasts out; ruined house -> household lodges with kin/neighbours, house rebuilt
+(existing planning); stores burnt -> need -> relief/kin/trade/migration (existing). Test by a premise
+(a storm over a village at harvest) with different weather, stores and families.
 
 # Session handoff — session 19 (3 Oct 2026, extended autonomous run): the long-run audit, stone and iron, baskets and credit, fairs, the ferry, a famine people live through
 

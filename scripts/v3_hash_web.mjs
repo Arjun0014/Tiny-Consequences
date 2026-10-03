@@ -1,4 +1,4 @@
-// node scripts/v3_hash_web.mjs [--release] [--no-build] [--hours 72] [--every 24] [--world NAME]
+// node scripts/v3_hash_web.mjs [--release] [--no-build] [--hours 72] [--every 24] [--world NAME] [--premise conflict]
 // The v3 world's full state hash in the browser's Lua 5.1 (bridge v3_hash) next to LuaJIT's
 // (tools/v3_hash.lua): the two runtimes must live the same world (S14; W06 checks the v2 world).
 import { chromium } from '@playwright/test';
@@ -14,9 +14,11 @@ const variant = hasFlag(args, '--release') ? 'release' : 'debug';
 const hours = Number(getFlag(args, '--hours', 72));
 const every = Number(getFlag(args, '--every', 24));
 const port = Number(getFlag(args, '--port', 8193));
+const premise = getFlag(args, '--premise', null);   // (S20) a named premise (sim/agents/premise.lua M.named) in both runtimes
 if (!hasFlag(args, '--no-build')) await build({ variant, ifStale: true, quiet: true });
 function luajitRef(from) {
-  const lj = execFileSync(resolveLuajit(), ['tools/v3_hash.lua', '--hours', String(hours), '--every', String(every), '--from', String(from)], { encoding: 'utf8' });
+  const extra = premise ? ['--premise', premise] : [];
+  const lj = execFileSync(resolveLuajit(), ['tools/v3_hash.lua', '--hours', String(hours), '--every', String(every), '--from', String(from), ...extra], { encoding: 'utf8' });
   return [...lj.matchAll(/hour\s+(\d+)\s+hash\s+(\d+)/g)].map((m) => ({ hour: Number(m[1]), hash: m[2] }));
 }
 const server = await startServer({ port, quiet: true });
@@ -28,7 +30,7 @@ try {
   if (getFlag(args, '--world', null)) q.world = getFlag(args, '--world', null);
   await page.goto(gameUrl(`http://127.0.0.1:${port}`, q));
   await page.waitForFunction(() => window.__TC && window.__TC.ready === true, null, { timeout: 120_000 });
-  await page.evaluate((x) => { (window.__TC_CMDS = window.__TC_CMDS || []).push(x); }, { cmd: 'v3_hash', hours, every, id: 'h1' });
+  await page.evaluate((x) => { (window.__TC_CMDS = window.__TC_CMDS || []).push(x); }, { cmd: 'v3_hash', hours, every, premise, id: 'h1' });
   const h = await page.waitForFunction(() => window.__TC.last_cmd && window.__TC.last_cmd.id === 'h1' && window.__TC.last_cmd, null, { timeout: 1_800_000, polling: 200 });
   const r = await h.jsonValue();
   if (!r.ok) throw new Error(r.error);

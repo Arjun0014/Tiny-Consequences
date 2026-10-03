@@ -13,6 +13,7 @@ while arg[i] do
   elseif a == "--every" then i = i + 1; args.every = tonumber(arg[i])
   elseif a == "--hours" then i = i + 1; args.days = tonumber(arg[i]) / 24
   elseif a == "--from" then i = i + 1; args.from = tonumber(arg[i])
+  elseif a == "--premise" then i = i + 1; args.premise = arg[i]
   end
   i = i + 1
 end
@@ -22,6 +23,7 @@ local data = f:read("*a")
 f:close()
 local W = assert(require("sim.worlds").from_save_string(data))
 if args.from and args.from > W.hour then world.advance(W, args.from) end
+if args.premise then assert(require("sim.agents.premise").named(W, args.premise), "no premise " .. args.premise) end
 local t0 = args.from or W.hour
 local c0 = os.clock()
 print(string.format("hour %5d  hash %10s", 0, tostring(world.state_hash(W))))

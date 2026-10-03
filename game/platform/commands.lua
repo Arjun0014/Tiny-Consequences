@@ -134,6 +134,8 @@ function M.register(G)
     local world = require("sim.world")
     local hours, every = args.hours or 48, args.every or 24
     local t0 = speed.v3_t or W.hour
+    -- (S20) a named premise applied first, as tools/v3_hash.lua --premise does
+    if args.premise then assert(require("sim.agents.premise").named(W, args.premise), "no premise " .. args.premise) end
     local out = { { hour = 0, hash = tostring(world.state_hash(W)) } }
     for h = every, hours, every do
       world.advance(W, t0 + h)
