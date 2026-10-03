@@ -62,7 +62,9 @@ function M.minder(W, s, mother, home, now)
   local best, bs = nil, -1
   for i = 1, #hh.members do
     local q = V.people[hh.members[i]]
-    if q and q.alive and q ~= mother and q.babe == 0 and q.act ~= "sleep" and q.act ~= "carried" then
+    -- (S19: on the same map - building ids and places are each map's own: a father away at another
+    -- village's fair was handed his baby by its id, and it starved)
+    if q and q.alive and q ~= mother and q.babe == 0 and q.act ~= "sleep" and q.act ~= "carried" and (q.at or q.sett) == (mother.at or mother.sett) then
       local near = q.inside == home.id or (q.inside == 0 and sqrt(dsq(q.x - home.dx) + dsq(q.y - home.dy)) < 0.06)
       if near then
         local st, a = people.stage(q, now)
@@ -85,7 +87,7 @@ function M.reclaim(W, s, p)
     local ib = V.people[p.kids[i]]
     if ib and ib.alive and ib.act == "carried" and ib.carer ~= p.id and p.babe == 0 then
       local c = V.people[ib.carer or 0]
-      if not c or not c.alive or c.inside == p.inside then
+      if not c or not c.alive or (c.inside == p.inside and (c.at or c.sett) == (p.at or p.sett)) then
         M.give(W, ib, p)
         return ib
       end

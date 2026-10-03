@@ -1017,7 +1017,16 @@ function M.relief_gift(W, o, s, cap)
   -- (what o owes s: help s gave o before)
   local owe = min(1, (r.owe_them or 0) / 20)
   local will = min(1, 0.2 + r.trust + owe)
-  return min(spare * will * 0.25, (cap or 1) * 10)
+  local gift = spare * will * 0.25
+  -- (S19) people with nothing left to eat are given something even from what o keeps for itself:
+  -- a share of what lies beyond relief_keep_days of its own bread (a village with weeks of bread
+  -- had told a starving neighbour it had none to give)
+  local sg = M.village_stock(W, s, "grain")
+  if sg / max(1, (s.pop or #s.members) * 0.7) < c.relief_starving_days then
+    local beyond = max(0, have - max(1, o.pop or #o.members) * 0.7 * c.relief_keep_days)
+    gift = max(gift, beyond * will * c.relief_share)
+  end
+  return min(gift, (cap or 1) * 10)
 end
 
 -- Routes for best_trade: hours one way, loads, people.

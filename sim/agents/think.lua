@@ -2034,7 +2034,7 @@ local function follow_candidate(W, s, p, ctx, now)
   local best, bu = nil, 0
   for _, rid in ipairs({ p.mother, p.father }) do
     local q = V.people[rid or 0]
-    if q and q.alive and q.inside == 0 and CHILD_FOLLOW[q.objk or ""] and q.act ~= "sleep" then
+    if q and q.alive and q.inside == 0 and CHILD_FOLLOW[q.objk or ""] and q.act ~= "sleep" and (q.at or q.sett) == (p.at or p.sett) then
       local qx, qy = act.pos(q, now)
       local d = dist(p.x, p.y, qx, qy)
       if d < 1.0 then

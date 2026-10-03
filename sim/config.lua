@@ -791,7 +791,7 @@ C.V3 = {
   hunger_work = 0.065, hunger_idle = 0.045, hunger_sleep = 0.018, meal = 0.55, meal_fu = 0.34,
   energy_work = 0.05, energy_walk = 0.04, energy_idle = 0.02, energy_sleep = 0.12,
   hunger_eat = 0.5,                       -- eat when hungrier than this (sooner at home)
-  starving = 0.92, health_starve = 0.04,  -- health lost per hour above `starving`
+  starving = 0.92, health_starve = 0.015, -- health lost per hour above `starving` (S19, D-147: was 0.04 - dead two days after the last meal)
   -- day rhythm (local solar hours)
   wake_after_sunrise = -0.4, chrono = { -1.3, 1.3 }, bed_after_sunset = 3.0, bed_min = 19.5, bed_max = 23.6,
   wake_min = 4.3, wake_max = 8.6,
@@ -1019,12 +1019,16 @@ C.V3 = {
   sea_life_fu = 150,                      -- (S19) what a trader weighs a life lost at sea at, in FU, against a voyage's gain
   nap_h = 4,
   relief_days = 8,
+  -- (S19) asked by people with under relief_starving_days of bread, a village gives relief_share of
+  -- what it has beyond relief_keep_days of its own bread (times its will), even with no surplus
+  relief_starving_days = 2, relief_keep_days = 20, relief_share = 0.2,
   -- (S16, R5) households moving away: hardship (village food under mig_hunger_days days, hungry
   -- members, no house of its own: mig_homeless) of at least mig_min_push for mig_days mornings running;
   -- they go where the pull (grain heard spare for mig_food_days, kin, trust) beats what holds them
   -- (mig_hold, their house, their years) and the road (mig_road_hour an hour) by mig_threshold;
   -- they pack for mig_pack_h hours; each grown-up carries up to mig_carry FU of the household's food
   mig_hunger_days = 6, mig_homeless = 0.5, mig_food_days = 30, mig_min_push = 0.35, mig_days = 3,
+  mig_desperate = 0.95,  -- (S19) push at which a household (its stores feed it no day more) leaves after a day
   mig_hold = 0.45, mig_road_hour = 0.012, mig_threshold = 0.35, mig_pack_h = 10, mig_carry = 10,
   mig_hoof_k = 0.5,                       -- (S19) share of the herds' meat counted as food before leaving
   -- (S18, R5) moving by sea in the household's own boat (migrate.sea_plan): boat_places places in a
@@ -1136,7 +1140,7 @@ C.V3 = {
   -- (S18) a household founds only if it can take found_short_max of the bread it wants at least
   -- (starving people do not found); a hut lived in found_hut_days is replaced by a proper house once
   -- the place has its granary and woodstore
-  found_short_max = 0.6, found_hut_days = 24,
+  found_short_max = 0.4, found_hut_days = 24,   -- (S19, D-147: was 0.6 - a starving household founded with 4 days' bread and died there)
   found_due_days = 8,                     -- (S19) nobody sets off to found within this many days of a birth (before or after)   -- (founders by sea keep room in the boat for this many loads of seed and bread)
   -- the young place: a camp (camp_work person-hours: the ground cleared, a fire ring, a brush lean-to),
   -- a first house a hut (hut_logs, hut_work), water from a river bank within found_water_reach of the

@@ -608,7 +608,10 @@ function M.a_man_goes_courting()
     if (O.acc.kin_help or 0) > 0 and asker and not asker.trip then break end
   end
   -- (asked for food and given it - or, things being bad enough, gone to live with them)
-  local moved = bride.sett == O.id and V.households[bride.hh] and V.households[bride.hh].migrate ~= nil
+  -- (S19: with nothing left a household no longer waits out its patience - deciding to go and live
+  -- with them, on the road there, counts)
+  local hb = V.households[bride.hh]
+  local moved = hb and hb.migrate and hb.migrate.to == O.id and not hb.migrate.given_up
   T.ok(asked or moved, "someone of " .. H.name .. " went to kin at " .. O.name .. " for help: " .. tostring(asker and asker.name)
     .. string.format(" [village food %.1f days]", H.need.food_days or -1))
   if moved and not asked then

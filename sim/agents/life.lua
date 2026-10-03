@@ -332,9 +332,12 @@ function M.daily(W, s, day)
       if u(W, p, 1, day) < hz then
         local cause = p.health < 0.25 and (p.hunger > 0.8 and "hunger" or "illness") or (a > 50 and "old age" or "illness")
         kill(W, s, p, cause, cause)
-      elseif p.health <= 0 then
+      elseif p.health <= 0 and (p.edge or -9) >= day - 1 then
+        -- (S19) a day at the very edge and still not fed: they die (one come in starving just before
+        -- the night's reckoning, or fed in time, lives)
         kill(W, s, p, "hunger", "hunger")
       else
+        if p.health <= 0 then p.edge = p.edge or day elseif p.edge then p.edge = nil end
         -- births and conception
         if p.preg_due > 0 and now >= p.preg_due then
           birth(W, s, p, now)

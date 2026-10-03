@@ -110,6 +110,12 @@ function M.pull(W, s, hh, o, now)
   local c = C()
   local V = W.S.v3
   local pull, why = 0, nil
+  -- (S19) a young place with no granary standing cannot feed newcomers: it draws only by a kin's
+  -- offer of a place (a starving household moved to a camp two days old and died there)
+  local off0 = hh.kin_offer
+  if o.founding and not (o.granary and o.granary.state == "standing") and not (off0 and off0.sett == o.id) then
+    return -1, nil
+  end
   -- food there: the grain they were heard to have to spare, against the household's mouths
   local _, _, sp = econ.expect(W, s, o, "grain", now)
   local mouths = max(1, #hh.members)
@@ -164,6 +170,9 @@ function M.daily(W, s, now)
       hh.pushd = hh.push_avg >= c.mig_min_push and (hh.pushd or 0) + 1 or max(0, (hh.pushd or 0) - 1)
       -- (how long a household bears hardship before it thinks of leaving is its own)
       local patience = c.mig_days + floor(4 * rng.float(W.seed, rng.S.V3_THINK, hid, 0, 131))
+      -- (S19) with nothing left to eat they do not wait out their patience: a day of it is enough
+      -- (a starving household had waited three to seven days and died before it set out)
+      if push >= c.mig_desperate then patience = 1 end
       if hh.pushd >= patience then
         partners = partners or trade.partners(W, s)
         -- everyone at home (none away on a trip, none on a boat) and a grown-up among them

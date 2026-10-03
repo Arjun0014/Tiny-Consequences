@@ -90,7 +90,9 @@ local function body(p, dt, kind)
   if h > 1 then h = 1 elseif h < 0 then h = 0 end
   p.hunger, p.energy = h, e
   if h > c.starving then
-    p.health = p.health - c.health_starve * dt
+    -- (S19: no lower than nothing - one at the edge who is fed in time lives; still starving at the
+    -- day's reckoning, they die: sim/agents/life.lua)
+    p.health = max(0, p.health - c.health_starve * dt)
   elseif h < 0.6 and p.health < (p.diet_cap or 1) then
     p.health = min(p.diet_cap or 1, p.health + 0.004 * dt)
   end
@@ -442,6 +444,7 @@ WORK.hand = function(W, s, p, st, f)
   local ib, q = V.people[st.babe or 0], V.people[st.ref or 0]
   if not ib or not ib.alive or not q or not q.alive or p.babe ~= ib.id then return end
   if q.babe ~= 0 or q.act == "sleep" then return end
+  if (q.at or q.sett) ~= (p.at or p.sett) then return end
   if not (q.inside == p.inside or (q.inside == 0 and dsq(q.x - p.x) + dsq(q.y - p.y) < 0.004)) then return end
   if kin.give(W, ib, q) then
     people.remember(q, W.S.v3.now or W.hour, "Minding " .. ib.name .. " for " .. p.name)
