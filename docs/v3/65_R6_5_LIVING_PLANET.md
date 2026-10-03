@@ -136,4 +136,13 @@ an outcome script, the architecture is wrong.
   sudden-death aftermath (death deeds, kin mourning on learning, burials), building condition (burnt
   houses as ruins; put-out fires as damage), lodging (`migrate.lodge`).
 - **R6.5b lightning on a village**: built (D-154, `sim/agents/blaze.lua`, `test_v3_lightning`).
-- Next: R6.5c wildfire between planet and map; then d snow, e flood water, f geology, g climate.
+- **R6.5c wildfire**: built (D-155, `blaze.planet`: a planet fire on a map's cell lights the trees at the
+  map's edge; a local fire that takes hold writes the planet's fire on its cell; animals flee fire).
+- **R6.5f geology**: earthquakes (D-156, `sim/agents/shake.lua`: stress on convergent and transform
+  boundary cells, quakes felt by distance, buildings damaged by construction and condition, those
+  inside hurt or trapped, dug out by neighbours, the homeless lodged) and volcanoes (D-157,
+  `sim/agents/volcano.lua`: sites made lazily in v3 worlds, pressure, VEI eruptions - aerosol cooling
+  every cell, fire at the vent, shaking, ash downwind on the villages: roofs, grass, crops). Tests
+  `test_v3_quake` x3; browser = LuaJIT on `--premise quake` and `--premise eruption`.
+- Not yet: landslides, aftershocks, tsunami; d snow on maps, e flood water, g climate extremes; beasts
+  led out of burning pens, fields and stacks burning, carrying the hurt out.

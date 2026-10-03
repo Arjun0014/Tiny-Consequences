@@ -61,8 +61,8 @@ function M.list(W)
   for i, v in ipairs(list) do
     v.id = i
     v.name = names.unique(un, names.volcano, used)
-    v.pressure = u(W, v.cell, 0, 3) * c.volc_thr
     v.thr = c.volc_thr * (0.6 + 0.8 * u(W, v.cell, 0, 4))
+    v.pressure = u(W, v.cell, 0, 3) * 0.95 * v.thr    -- (below its own threshold when first made)
     v.ocean = W.geo.ocean[v.cell] == 1
   end
   V.volc = { list = list }

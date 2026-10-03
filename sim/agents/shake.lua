@@ -50,8 +50,10 @@ function M.daily(W, day)
   for i = 1, #Q.cells do
     local cl = Q.cells[i]
     local rate = c.quake_rate * (st.bstrength and st.bstrength[cl] or 0.5) * ((st.boundary[cl] == 3) and 0.7 or 1)
-    Q.stress[i] = (Q.stress[i] or (u(W, cl, 0, 2) * c.quake_thr)) + rate
+    -- (a cell's stress when first looked at: somewhere below its own threshold - never a burst of
+    -- quakes on a world's first day)
     Q.thr[i] = Q.thr[i] or threshold(W, Q, i, 0)
+    Q.stress[i] = (Q.stress[i] or (u(W, cl, 0, 2) * 0.95 * Q.thr[i])) + rate
     if Q.stress[i] >= Q.thr[i] then
       local mag = c.quake_mag[1] + (c.quake_mag[2] - c.quake_mag[1]) * u(W, cl, day, 3) * u(W, cl, day, 4)
       Q.stress[i], Q.thr[i], Q.last[i] = 0, threshold(W, Q, i, day), day
