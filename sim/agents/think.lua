@@ -333,8 +333,10 @@ end
 
 local function fatigue(p)
   local e = p.energy
-  if e < 0.25 then return 0.35 end
-  return 0.55 + 0.45 * e
+  local f = e < 0.25 and 0.35 or (0.55 + 0.45 * e)
+  -- (S20, R6c) hurt: every task weighs less
+  if (p.hurt or 0) > 0 then f = f * (1 - 0.8 * p.hurt) end
+  return f
 end
 
 -- Settlement work (the board) for person p.
@@ -4220,6 +4222,8 @@ local function steal_legs(W, s, p, ctx, now)
     local gx, gy = trade.gate(W, o, home_s)
     go(pl, gx, gy, "the road home")
     if led then pl[#pl].lead = tr.kind end
+    -- (given away: he runs for it)
+    if tr.fled and not led then pl[#pl].run = true end
     local _, hrs = trade.road(W, o, home_s)
     work(pl, "travel", hrs * (led and c.drove_road or 1), { to = home_s.id, from = o.id, lead = led and tr.kind or nil })
     return led and ("Lead the beast home from " .. o.name) or ("Home from " .. o.name), home_s.name
@@ -4435,6 +4439,77 @@ PLAN.drive_off = function(W, s, p, ctx, now, cd)
   return "Drive the wolves off", "the pen"
 end
 
+-- (S20, R6d) The morning after a death the household and the dead one's kin and friends here gather
+-- at the house for an hour (the wake and the burial): work waits.
+function M.burial_candidate(W, s, p, ctx, now)
+  local B = s.burials
+  if not B or #B == 0 or p.at or ctx.stage == "infant" then return end
+  local day = floor(now / 24)
+  if ctx.lh < ctx.wake + 0.3 or ctx.lh > ctx.wake + 5 then return end
+  local V = W.S.v3
+  for i = 1, #B do
+    local b = B[i]
+    if b.day == day and p.mourned ~= b.pid then
+      local dp = V.people[b.pid]
+      local close = dp and (deeds.relation(p, dp) ~= nil or dp.partner == p.id or dp.hh == p.hh or people.affinity(p, dp.id) >= 0.3)
+      if close then
+        addw(0.95, "mourn", i, 0, "%s died: the burial this morning", dp.name)
+        return
+      end
+    end
+  end
+end
+
+PLAN.mourn = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local b = s.burials[cd.a]
+  p.mourned = b.pid
+  local x, y = near_spot(W, p, now, b.x, b.y, 0.05, 93)
+  go(pl, x, y, "the house of the dead")
+  work(pl, "mourn", 0.8 + 0.4 * u01(W, p, now, 94), { ref = b.pid })
+  local dp = W.S.v3.people[b.pid]
+  return "Bury " .. (dp and dp.name or "the dead"), "the house of the dead"
+end
+
+-- (S20, R6c) Hurt: lying at home, waiting to heal (and tended, if anyone does).
+function M.bedridden(p, ctx)
+  return (p.hurt or 0) >= C().hurt_bed and ctx.home ~= nil and not p.at and not p.trip
+end
+
+PLAN.mend = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local home = ctx.home
+  if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+  work(pl, "mend", 2 + u01(W, p, now, 91), { inside = home.id })
+  return "Lie at home: hurt", "home"
+end
+
+-- (S20, R6c) Someone of the household at home with a hurt one not tended today sits with them, dresses
+-- the wound, brings water.
+function M.tend_candidate(W, s, p, ctx, now)
+  if not ctx.home or not ctx.hh or ctx.stage == "child" or ctx.stage == "infant" or (p.hurt or 0) > 0.3 then return end
+  local day = floor(now / 24)
+  local V = W.S.v3
+  for _, id in ipairs(ctx.hh.members) do
+    local q = V.people[id]
+    if q and q ~= p and q.alive and (q.hurt or 0) > 0.15 and (q.tended or -9) < day and not q.at and q.inside == ctx.home.id then
+      -- (a spouse, a parent or a child first)
+      local close = q.partner == p.id or q.mother == p.id or q.father == p.id or p.mother == q.id or p.father == q.id
+      addw((close and 0.6 or 0.4) + 0.6 * q.hurt - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.3, "tend_hurt", q.id, 0, "%s is hurt: tending %s", q.name, q.sex == "f" and "her" or "him")
+      return
+    end
+  end
+end
+
+PLAN.tend_hurt = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local home = ctx.home
+  if p.inside ~= home.id then go(pl, home.dx, home.dy, "home", home.id) end
+  work(pl, "tend_hurt", 0.6 + 0.4 * u01(W, p, now, 92), { inside = home.id, ref = cd.a })
+  local q = W.S.v3.people[cd.a]
+  return "Tend " .. (q and q.name or "the hurt"), "home"
+end
+
 -- (S20, R6a) A grown-up of the village, woken or seen to a stranger at the beasts, goes after him
 -- while the alarm is fresh and he is still about.
 function M.chase_ok(W, s, p, ctx, now)
@@ -4451,6 +4526,7 @@ PLAN.chase = function(W, s, p, ctx, now, cd)
   local x, y = p.alarm.x, p.alarm.y
   if q and q.alive and q.at == s.id then x, y = act.pos(q, now) end
   go(pl, x, y, "the stranger")
+  pl[#pl].run = true
   work(pl, "chase", 0.01, { ref = cd.a, fx = x, fy = y })
   return "Go after the stranger at the beasts", "the stranger"
 end
@@ -5374,7 +5450,12 @@ function M.decide(W, s, p, now, reason)
   else
     eat_candidate(W, s, p, ctx, now)
     care_candidates(W, s, p, ctx, now)
-    if ctx.workday then
+    M.tend_candidate(W, s, p, ctx, now)
+    M.burial_candidate(W, s, p, ctx, now)
+    if M.bedridden(p, ctx) then
+      -- (S20, R6c) badly hurt: kept to bed at home
+      add(0.85, "mend", 0, 0, "Badly hurt: lying at home")
+    elseif ctx.workday then
       -- a mother holding her baby may leave it with a minder at home to go to work
       if ctx.babe and ctx.babe.mother == p.id and ctx.home then
         local m = kin.minder(W, s, p, ctx.home, now)

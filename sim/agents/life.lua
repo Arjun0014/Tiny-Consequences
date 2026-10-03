@@ -7,6 +7,7 @@ local cfgmod = require("sim.config")
 local rng = require("sim.rng")
 local people = require("sim.agents.people")
 local events = require("sim.causality.events")
+local deeds = require("sim.agents.deeds")   -- (S20, R6d)
 
 local M = {}
 local floor, max, min, exp = math.floor, math.max, math.min, dmath.exp
@@ -72,6 +73,20 @@ local function kill(W, s, p, cause, why)
   require("sim.agents.think").release(W, s, p)
   if W.record_events then events.emit(W, "death", s.cell, 0, 1, { settlement = s.id, person = p.id, cause = cause }) end
   s.acc.deaths = (s.acc.deaths or 0) + 1
+  -- (S20, R6d) the death as a deed (by whoever struck the blow that killed, if a blow did): its village
+  -- knows at once and its kin there remember; kin elsewhere when the news reaches them; the
+  -- household and kin gather at the house the next morning
+  local now = W.hour
+  local hd = p.hurt_deed and deeds.get(W, p.hurt_deed)
+  local by = (cause == "wounds" and hd and hd.by) or 0
+  local d = deeds.add(W, { kind = by ~= 0 and "kill" or "death", t = now, at = s.id, by = by, by_hh = by ~= 0 and hd.by_hh or 0,
+    by_s = by ~= 0 and hd.by_s or 0, to = p.id, to_hh = p.hh, to_s = s.id, what = cause, n = 1,
+    fu = by ~= 0 and C().blood_fu or 0, harm = by ~= 0, answers = hd and (hd.answers or hd.id) or nil })
+  deeds.learn(W, s, d, "died among us", by, d.by_s, now)
+  local home = hh and s.buildings[hh.home or 0]
+  s.burials = s.burials or {}
+  s.burials[#s.burials + 1] = { pid = p.id, day = floor(now / 24) + 1, ref = home and home.id or 0,
+    x = home and home.dx or (s.sqx or 0), y = home and home.dy or (s.sqy or 0) }
 end
 
 local function birth(W, s, mother, now)
@@ -323,14 +338,30 @@ function M.daily(W, s, day)
           p.diet_cap = nil
         end
       end
+      -- (S20, R6c) hurt heals day by day - faster fed and tended; a wound left untended may fester
+      if (p.hurt or 0) > 0 then
+        local tended = (p.tended or -9) >= day - 1
+        if p.hurt_kind == "wound" and not tended and u(W, p, 11, day) < c.hurt_fester * p.hurt then
+          p.hurt = min(1, p.hurt + 0.1)
+          people.remember(p, now, "The wound is festering")
+        else
+          p.hurt = p.hurt - c.hurt_heal * (p.hunger < 0.6 and 1 or 0.4) * (tended and 1.5 or 1)
+        end
+        if p.hurt <= 0 then
+          p.hurt, p.hurt_kind, p.hurt_deed = nil, nil, nil
+          people.remember(p, now, "Healed")
+        end
+      end
       -- death
       local hz = hazard(a) / c.days_per_year
+      if (p.hurt or 0) > 0.5 then hz = hz + c.hurt_death * p.hurt * p.hurt end
       if p.health < 0.4 then hz = hz + (0.4 - p.health) * 0.05 end
       if poor then hz = hz + c.diet_hz end
       if (p.flux or -1) >= day and (st == "child" or st == "elder") and a < 5 + (st == "elder" and 100 or 0) then hz = hz + c.flux_hz end
       if home and home.cold and (st == "infant" or st == "elder") then hz = hz + 0.002 end
       if u(W, p, 1, day) < hz then
         local cause = p.health < 0.25 and (p.hunger > 0.8 and "hunger" or "illness") or (a > 50 and "old age" or "illness")
+        if (p.hurt or 0) > 0.5 then cause = p.hurt_kind == "burn" and "burns" or "wounds" end
         kill(W, s, p, cause, cause)
       elseif p.health <= 0 and (p.edge or -9) >= day - 1 then
         -- (S19) a day at the very edge and still not fed: they die (one come in starving just before

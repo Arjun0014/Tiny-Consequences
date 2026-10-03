@@ -167,6 +167,7 @@ START.go = function(W, s, p, st, now)
   end
   p.spd = people.speed(W, p, now)
   if s.rain_now == 2 then p.spd = p.spd * C().speed_rain end   -- hurrying through a downpour
+  if st.run then p.spd = p.spd * C().run_k end   -- (S20) running: after a stranger, or away from them
   if st.lead then
     -- (S15, R4) leading a drove: at the slowest beast's pace
     local L = stock.led_by(s, p, st.lead)
@@ -220,7 +221,7 @@ START.work = function(W, s, p, st, now)
   if st.kind == "sleep" or st.kind == "rest" or st.kind == "shelter" or st.kind == "eat" or st.kind == "nurse"
     or st.kind == "visit" or st.kind == "cook" or st.kind == "feed_babe" or st.kind == "craft" or st.kind == "hand"
     or st.kind == "smoke" or st.kind == "weave" or st.kind == "sew" or st.kind == "spin" or st.kind == "dress"
-    or st.kind == "mend_clothes" then
+    or st.kind == "mend_clothes" or st.kind == "mend" or st.kind == "tend_hurt" then
     if st.inside and st.inside ~= 0 then p.inside = st.inside end
   end
   -- a mother home again takes her baby back from its minder (D-081)
@@ -1287,6 +1288,7 @@ WORK.travel = function(W, s, p, st, f)
     -- (S16, R4) a bride come to live at her husband's village
     require("sim.agents.migrate").arrive_person(W, o, p, gx, gy, now)
   end
+  if o.id == p.sett and p.tell then conflict.tell_home(W, o, p, now) end   -- (S20, R6c)
   if tr and tr.steal and o.id == p.sett then
     -- (S20, R6a) home from a taking: what he saw there is his village's to know (their dogs, a watch)
     local k = o.know and o.know[tr.to]
@@ -2544,6 +2546,25 @@ end
 
 -- Driving wolves off a pen (D-105): shouting, a torch, a stick; any wolf of a pack still near the
 -- pen turns away.
+-- (S20, R6d) At the burial: remembered.
+WORK.mourn = function(W, s, p, st, f)
+  if f < 0.6 then return end
+  local dp = W.S.v3.people[st.ref or 0]
+  if dp then people.remember(p, W.S.v3.now or W.hour, "Buried " .. dp.name .. " " .. dp.surname) end
+end
+
+-- (S20, R6c) Tending the hurt: they heal faster for it today (some care given counts: a mother called
+-- away by her babe has still dressed the wound).
+WORK.tend_hurt = function(W, s, p, st, f)
+  if f < 0.25 then return end
+  local q = W.S.v3.people[st.ref or 0]
+  local now = W.S.v3.now or W.hour
+  if q and q.alive and (q.hurt or 0) > 0 then
+    if (q.tended or -9) < floor(now / 24) - 3 then people.remember(q, now, sfmt("%s tends my %s", p.name, q.hurt_kind == "burn" and "burns" or "wound")) end
+    q.tended = floor(now / 24)
+  end
+end
+
 -- (S20, R6a) A take trip at the other village: lying up among the trees until its people sleep.
 WORK.lie_up = function(W, s, p, st, f) end
 

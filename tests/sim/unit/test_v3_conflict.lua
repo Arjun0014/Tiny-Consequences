@@ -44,7 +44,9 @@ function M.a_hungry_household_takes_a_beast()
       local p = V.people[id]
       if p and p.trip and p.trip.steal then trips[p.id .. ":" .. p.trip.t0] = p.trip end
     end
-    if #(V.deeds or {}) >= 2 and W.hour - V.deeds[#V.deeds].t > 30 then break end
+    local nt, last = 0, nil
+    for _, d in ipairs(V.deeds or {}) do if d.kind == "take" then nt, last = nt + 1, d end end
+    if nt >= 2 and W.hour - last.t > 30 then break end
   end
   local n = 0
   for _ in pairs(trips) do n = n + 1 end
@@ -53,8 +55,11 @@ function M.a_hungry_household_takes_a_beast()
   T.ok(#D >= 1, "a taking (or an attempt) happened: " .. #D .. " deeds")
   local stock = require("sim.agents.stock")
   local away, back, known = 0, 0, 0
+  local takes = {}
+  for _, d in ipairs(D) do if d.kind == "take" then takes[#takes + 1] = d end end
+  D = takes
   for _, d in ipairs(D) do
-    T.ok(d.kind == "take" and d.by_s == A.id, "deed " .. d.id .. " is a taking by someone of " .. A.name)
+    T.ok(d.by_s == A.id, "deed " .. d.id .. " is a taking by someone of " .. A.name)
     local victim = V.settlements[d.to_s]
     -- every beast of the deed is where the deed says
     for _, s in ipairs(V.settlements) do
@@ -139,6 +144,76 @@ function M.a_wrong_not_made_good_is_answered()
   local b2 = conflict.take_weigh(W, A, who, hh, W.hour + 24)
   T.ok(not b2 or b2.o ~= B.id, "once made good it is not answered")
   return string.format("%s weighed taking back from %s at %.2f: %s", who.name, B.name, best.net, best.why)
+end
+
+-- Injury (D-148 §5): one badly hurt keeps to bed at home, is tended by the household and heals; a
+-- lighter hurt heals while they go about lighter work. Hurt is given here as a premise (a fall).
+function M.hurt_keeps_to_bed_and_heals()
+  local W = shipped()
+  local V = W.S.v3
+  world.advance(W, W.hour + 72)
+  local s = V.settlements[1]
+  local people = require("sim.agents.people")
+  local bad, light
+  for _, id in ipairs(s.members) do
+    local p = V.people[id]
+    local hh = p and V.households[p.hh]
+    if p and p.alive and people.stage(p, W.hour) == "adult" and hh and #hh.members >= 3 and hh.home ~= 0 then
+      if not bad then bad = p elseif not light and p.hh ~= bad.hh then light = p end
+    end
+  end
+  T.ok(bad and light, "two grown-ups of households with others at home")
+  if not (bad and light) then return end
+  people.hurt(bad, 0.7, "broken", nil, W.hour)
+  people.hurt(light, 0.25, "bruise", nil, W.hour)
+  local t0 = W.hour
+  local mend, tended, worked_bad = 0, false, 0
+  for h = 1, 24 * 10 do
+    world.advance(W, t0 + h)
+    if bad.objk == "mend" then mend = mend + 1 end
+    if (bad.hurt or 0) >= 0.6 and (bad.objk == "fell" or bad.objk == "till" or bad.objk == "harvest" or bad.objk == "build") then worked_bad = worked_bad + 1 end
+    if (bad.tended or -9) >= 0 then tended = true end
+  end
+  T.ok(mend > 0, "the badly hurt one kept to bed at home (" .. mend .. " hours)")
+  T.ok(worked_bad == 0, "and did no heavy work while badly hurt")
+  T.ok(tended, "someone of the household tended them")
+  T.ok((bad.hurt or 0) < 0.7 and bad.alive, "healing (hurt now " .. string.format("%.2f", bad.hurt or 0) .. ")")
+  T.ok((light.hurt or 0) == 0, "the light hurt healed")
+  return string.format("%s: 0.70 -> %.2f in 10 days, %d hours in bed; %s healed", bad.name, bad.hurt or 0, mend, light.name)
+end
+
+-- A blow (R6c): a deed of wounding, the hurt given, both villages knowing; a blow that answered the
+-- struck man's own taking weighs little in his people's grievance.
+function M.a_blow_is_a_deed()
+  local W = shipped()
+  local V = W.S.v3
+  world.advance(W, W.hour + 72)
+  local A, B = V.settlements[4], V.settlements[2]
+  local people = require("sim.agents.people")
+  local conflict = require("sim.agents.conflict")
+  local deeds = require("sim.agents.deeds")
+  local function man(s)
+    for _, id in ipairs(s.members) do
+      local p = V.people[id]
+      if p and p.alive and p.sex == "m" and people.stage(p, W.hour) == "adult" then return p end
+    end
+  end
+  local taker, owner = man(A), man(B)
+  local d = deeds.add(W, { kind = "take", at = B.id, by = taker.id, by_hh = taker.hh, by_s = A.id, to = 0, to_hh = owner.hh, to_s = B.id,
+    what = "sheep", n = 1, fu = 7, harm = true, back = true })
+  local sev, w = conflict.strike(W, B, owner, taker, d.id, W.hour)
+  T.ok(w.kind == "wound" or w.kind == "kill", "a deed of wounding")
+  T.ok((taker.hurt or 0) > 0, string.format("the struck man is hurt (%.2f)", taker.hurt or 0))
+  T.ok(deeds.known(B, w.id) ~= nil, "the striker's village knows it")
+  T.ok(deeds.known(A, w.id) == nil and taker.tell and #taker.tell == 1, "the struck man carries it home")
+  conflict.tell_home(W, A, taker, W.hour + 20)
+  T.ok(deeds.known(A, w.id) ~= nil, "his village knows it once he has told it")
+  local g1 = deeds.grievance(W, A, B, taker.hh, W.hour + 20)
+  -- (the same blow, had it not answered his own taking)
+  w.answers = nil
+  local g2 = deeds.grievance(W, A, B, taker.hh, W.hour + 20)
+  T.ok(g1 < g2 * 0.5, string.format("deserved: it weighs %.1f, %.1f unprovoked", g1, g2))
+  return string.format("%s struck %s: hurt %.2f; grievance %.1f (unprovoked %.1f)", owner.name, taker.name, sev, g1, g2)
 end
 
 return M

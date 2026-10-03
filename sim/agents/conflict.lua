@@ -167,6 +167,11 @@ end
 function M.missing(W, s, now)
   local V = W.S.v3
   local c = C()
+  -- (S20, R6d) burials past are done with
+  local B = s.burials
+  if B then
+    for i = #B, 1, -1 do if B[i].day < floor(now / 24) - 1 then table.remove(B, i) end end
+  end
   local L = deeds.list(W)
   for i = #L, 1, -1 do
     local d = L[i]
@@ -235,6 +240,69 @@ function M.seen(W, s, d, witness, now)
     s.thief_alarm = now
   end
   return e
+end
+
+-- (S20, R6c) What happened to p away from home goes home with them (`p.tell`): their village learns it
+-- when they come back (act.lua's arrival), as far as they knew who did it.
+function M.carry_news(p, d)
+  p.tell = p.tell or {}
+  p.tell[#p.tell + 1] = d.id
+end
+
+function M.tell_home(W, s, p, now)
+  local L = p.tell
+  if not L then return end
+  local V = W.S.v3
+  for _, id in ipairs(L) do
+    local d = deeds.get(W, id)
+    if d then
+      local q = V.people[d.by]
+      local face = q and people.known_at(q, s.id)
+      deeds.learn(W, s, d, sfmt("%s told it when %s came home", p.name, p.sex == "f" and "she" or "he"), face and q.id or 0, d.by_s, now)
+    end
+  end
+  p.tell = nil
+end
+
+-- (S20, R6c) One person strikes another: hurt by the blow (an iron-edged tool in hand cuts deeper);
+-- a deed of wounding (or killing) that answers `answers`; both remember. Returns the hurt.
+function M.strike(W, s, by, to, answers, now, k)
+  local c = C()
+  local V = W.S.v3
+  local hh = V.households[by.hh]
+  local arm = 1 + ((hh and (hh.iron or 0) > c.iron_broken) and 0.5 or 0)
+  local sev = c.blow * arm * (0.4 + 0.6 * u(W, by, now, k or 60))
+  local kill = sev >= 1
+  local d = deeds.add(W, { kind = kill and "kill" or "wound", t = now, at = s.id, x = to.x, y = to.y,
+    by = by.id, by_hh = by.hh, by_s = by.sett, to = to.id, to_hh = to.hh, to_s = to.sett, what = "blow", n = 1,
+    fu = kill and c.blood_fu or c.wound_fu * sev, harm = true, answers = answers })
+  people.hurt(to, min(1, sev), "wound", d.id, now)
+  -- (each knows it: their own villages at once - the struck man's when he comes home or is told)
+  deeds.learn(W, V.settlements[by.sett], d, sfmt("%s did it", by.name), by.id, by.sett, now)
+  if to.sett == s.id then deeds.learn(W, s, d, sfmt("%s saw it", to.name), by.id, by.sett, now)
+  else M.carry_news(to, d) end
+  to.struck_by = d.id
+  return sev, d
+end
+
+-- (S20, R6c) Taker q caught by p at village s: p may strike him (his boldness, his beasts at stake);
+-- q, bold enough and not badly hurt, may strike back. Returns what happened in words (for p's memory).
+function M.blows(W, s, p, q, dd, now)
+  local c = C()
+  local said
+  local bp = people.bold(W, p)
+  if u(W, p, now, 61) < c.strike_k * (0.3 + bp) then
+    local sev = M.strike(W, s, p, q, dd and dd.id or nil, now, 62)
+    people.remember(q, now, sfmt("Caught at %s: %s struck me%s", s.name, people.known_at(p, q.sett) and p.name or "a man of theirs",
+      sev >= 0.6 and ", badly" or ""))
+    said = sev >= 0.6 and "I struck him hard and he got away" or "I struck him and he ran"
+  end
+  if q.alive and people.bold(W, q) >= c.take_fight and (q.hurt or 0) < 0.5 then
+    local sev = M.strike(W, s, q, p, dd and dd.id or nil, now, 63)
+    people.remember(p, now, sfmt("%s struck me when I caught him at the fold", people.known_at(q, s.id) and q.name or "The stranger"))
+    said = (said and (said .. "; ") or "") .. (sev >= 0.6 and "he struck me badly" or "he struck back")
+  end
+  return said
 end
 
 -- (S20, R6b) The wrong household hh of village s would go and ask redress for: a known harm done
@@ -419,7 +487,10 @@ function M.chased(W, s, p, q, d, now)
       q.tried[s.id] = tt
       people.remember(q, now, sfmt("Caught at %s by %s: I let the beast go and got away", s.name, p.name))
     end
-    people.remember(p, now, sfmt("Caught up with %s leading off one of our beasts: he let it go and ran", people.known_at(q, s.id) and q.name or "a stranger"))
+    -- (S20, R6c) blows: the one who caught him may strike; a bold taker may strike back
+    local struck = M.blows(W, s, p, q, dd, now)
+    people.remember(p, now, sfmt("Caught up with %s leading off our beasts: %s", people.known_at(q, s.id) and q.name or "a stranger",
+      struck or "he let them go and ran"))
     s.acc.thieves_caught = (s.acc.thieves_caught or 0) + 1
     p.alarm = nil
     danger.raise(W, q, { kind = "caught", src = p.id, why = "Caught" }, q.x, q.y, now, "saw")

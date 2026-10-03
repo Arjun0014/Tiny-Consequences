@@ -29,9 +29,22 @@ hungry Hottoodingle Hop premise: men set off on their own to the villages they k
 sheep or a cow by night; dogs give most away (they let go and run; the owners find beasts loose and
 learn of an attempt), dog-less Zurug loses sheep, finds tracks to Hottoodingle Hop, claims - "nobody
 there would own to it" (the beasts eaten or gone with a moving household); news of deeds travels.
-Next: R6c confrontation and injury (a caught thief may be beaten - a wound deed answering the theft,
-"deserved" weighs little; a bold thief may strike back), hurt (`p.hurt`), tending, healing, death of
-wounds; then R6d death aftermath for all kin, R6e raids.
+R6c done (uncommitted -> committed with R6d): `people.hurt` (p.hurt/kind/t/deed; speed x(1-0.6 hurt);
+`think.fatigue` x(1-0.8 hurt); bedridden >= `hurt_bed` 0.6 -> PLAN.mend at home), healing in `life.daily`
+(`hurt_heal` 0.035/day, x0.4 hungry, x1.5 tended; untended wounds fester; death hazard above 0.5 ->
+cause "wounds"), tending (`M.tend_candidate`, PLAN/WORK `tend_hurt`, close kin weigh more), blows
+(`conflict.strike/blows` when a chaser catches a taker; iron edges cut deeper; "deserved" `deserved_k`
+0.2 when the blow answered the struck man's own wrong), news carried home (`p.tell`,
+`conflict.tell_home` on arrival), running pace `run_k` for chasers and a fleeing taker.
+R6d done: every death is a deed (`kill` with the blow's doer when wounds killed); the village knows at
+once, close kin there remember ("My father Lala died (old age)"), kin elsewhere when the news reaches
+them (`deeds.mourn` on learning); the household, kin and friends gather at the house the next morning
+(`s.burials`, `M.burial_candidate`, PLAN/WORK `mourn`: "Buried Lala Pinwiggle").
+PITFALL found: work/plan kind names are one namespace - `tend` was already field weeding; my nursing
+`tend` silently replaced it (weeds never cleared; the year test and an island premise drifted). Grep
+`PLAN.<kind>`/`WORK.<kind>` before naming a new kind.
+Next: R6e raids (a party of kin and friends, each deciding, gathering at an agreed hour), R6f defence
+that is built, R6g endings; then the R6.5 lightning vertical.
 
 
 # Session handoff — session 19 (3 Oct 2026, extended autonomous run): the long-run audit, stone and iron, baskets and credit, fairs, the ferry, a famine people live through

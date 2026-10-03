@@ -137,6 +137,7 @@ function M.speed(W, p, t)
   if p.carry ~= "" and p.carry ~= "seed" then v = v * c.speed_load end
   if p.health < 0.5 then v = v * (0.6 + 0.8 * p.health) end
   if (p.shoes or 1) < 0.1 and st ~= "infant" then v = v * c.barefoot_speed end   -- (barefoot: D-104)
+  if (p.hurt or 0) > 0 then v = v * (1 - 0.6 * p.hurt) end   -- (S20, D-148: hurt)
   return v
 end
 
@@ -188,6 +189,15 @@ end
 -- a danger, to go into a fire for someone. A trait from their key like the others (no saved field).
 function M.bold(W, p)
   return rng.float(W.seed, rng.S.V3_PEOPLE, p.key, 91, 0)
+end
+
+-- (S20, D-148) Injury, one primitive for every harm to a body (a blow, a burn, a fall, a beast):
+-- p.hurt 0..1 (slower, working less, kept to bed above hurt_bed), its kind, when, and the deed that
+-- did it. Heals day by day (life.daily: faster fed and tended), may fester untended, may kill.
+function M.hurt(p, sev, kind, deed, now)
+  if not p.alive or sev <= 0 then return end
+  p.hurt = min(1, (p.hurt or 0) + sev)
+  p.hurt_kind, p.hurt_t, p.hurt_deed = kind, now, deed or p.hurt_deed
 end
 
 -- (S20) p came onto village sid's map: its people have seen their face (p.been[sid] = the hour).

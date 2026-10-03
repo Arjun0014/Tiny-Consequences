@@ -63,7 +63,38 @@ function M.learn(W, s, d, how, by, by_s, now, own)
   end
   e = { id = d.id, t = now or W.S.v3.now or W.hour, by = by or 0, by_s = by_s or 0, how = how, own = own or nil }
   s.dk[#s.dk + 1] = e
+  if d.kind == "death" or d.kind == "kill" then M.mourn(W, s, d, how, now or W.hour) end
   return e, true
+end
+
+-- (S20, R6d) A death learned at village s: the dead one's close kin living there remember it as they
+-- come to know it (a spouse is told at once by life.kill).
+local KIN = { mother = "My mother", father = "My father", son = "My son", daughter = "My daughter", brother = "My brother", sister = "My sister" }
+local function relation(q, p)
+  if p.id == q.mother then return "mother" end
+  if p.id == q.father then return "father" end
+  if p.mother == q.id or p.father == q.id then return p.sex == "f" and "daughter" or "son" end
+  if (q.mother ~= 0 and p.mother == q.mother) or (q.father ~= 0 and p.father == q.father) then return p.sex == "f" and "sister" or "brother" end
+  return nil
+end
+M.relation = relation
+function M.mourn(W, s, d, how, now)
+  local V = W.S.v3
+  local p = V.people[d.to]
+  if not p then return end
+  local people = require("sim.agents.people")
+  local here = d.to_s == s.id
+  for _, id in ipairs(s.members) do
+    local q = V.people[id]
+    if q and q.alive and q ~= p and people.stage(q, now) ~= "infant" then
+      local r = relation(q, p)
+      if r then
+        local cause = d.kind == "kill" and "killed" or d.what
+        people.remember(q, now, here and sfmt("%s %s died (%s)", KIN[r], p.name, cause)
+          or sfmt("Heard that %s %s died at %s (%s)", KIN[r]:lower(), p.name, (V.settlements[d.to_s] or s).name, cause))
+      end
+    end
+  end
 end
 
 -- How much a deed still weighs after `age` hours: harms to goods fade over deed_half_goods days,
@@ -91,6 +122,10 @@ function M.grievance(W, s, o, hh, now, filter)
       if d and d.harm and not d.settled and d.to_s == s.id then
         local w = (d.fu or 0) * M.fade(d, now - d.t)
         if hh and d.to_hh ~= hh then w = w * c.deed_kin_k end
+        -- (S20, R6c) a blow that answered the struck man's own wrong (a taker caught at it) weighs
+        -- little with his people
+        local a = d.answers and L[d.answers]
+        if a and a.by == d.to and a.by ~= 0 then w = w * c.deserved_k end
         sum = sum + w
         if w > tw then top, tw = d, w end
       end

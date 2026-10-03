@@ -1235,7 +1235,17 @@ C.V3 = {
   claim_min = 3, claim_road_h = 36, claim_again_days = 12, claim_trust_min = 0.12, claim_h = 1.0,
   claim_base = 0.3, claim_trust = 0.8, claim_kin = 0.6, claim_deals = 0.3, claim_fear = 0.25, claim_named = 0.3,
   claim_bold = 0.9, claim_need = 0.6, settle_trust = 0.1, refuse_fu = 4,
-  take_try_k = 0.25, take_dog_p = 0.6, take_failed = 0.5,   -- (each time given away there before, fading)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
+  take_try_k = 0.25, take_dog_p = 0.6, take_failed = 0.5,   -- (each time given away there before, fading)
+  -- (S20, R6c) injury: kept to bed at hurt_bed and above; heals hurt_heal a day (x0.4 hungry, x1.6
+  -- tended); an untended wound festers with chance hurt_fester x hurt a day (+0.1); above 0.5 a daily
+  -- death chance hurt_death x hurt^2. Blows: a man who catches a taker strikes with chance
+  -- strike_k x (0.3 + boldness), a bold taker (take_fight) strikes back; a blow's hurt is blow x
+  -- (1 + iron edge 0.5) x (0.4..1); at 1 it kills. A wound that answered the wounded man's own
+  -- wrong weighs deserved_k in his people's grievance.
+  hurt_bed = 0.6, hurt_heal = 0.035, hurt_fester = 0.15, hurt_death = 0.05,
+  strike_k = 0.5, take_fight = 0.85, blow = 0.45, deserved_k = 0.2,
+  wound_fu = 30, blood_fu = 200,
+  run_k = 1.7,                            -- running pace (chasing, fleeing) over walking          -- what a wound (x its hurt) and a life weigh in grievance (FU)    -- (a dog near the pen notices a stranger at the beasts with this chance, less for a stalker)                      -- an attempt that came to nothing weighs this share of a taking
 }
 
 return C
