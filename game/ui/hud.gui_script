@@ -12,6 +12,7 @@ local speed = require("game.platform.speed")
 local view = require("game.view.view")
 local camera = require("game.view.camera")
 local powers = require("game.ui.powers")
+local newsfeed = require("game.ui.newsfeed")   -- (S21, R7: the world news)
 
 local C = ui.C
 local V3 = vmath.vector3
@@ -383,6 +384,7 @@ function init(self)
 	build_inspector(self)
 	build_powers(self)
 	build_misc(self)
+	newsfeed.build(self)
 	build_loading(self)
 	self.sel_version = -1
 	self.refresh = 0
@@ -541,6 +543,7 @@ function update(self, dt)
 		self.shown.top = true
 	end
 	update_powers(self)
+	if W.v3 then newsfeed.update(self, W, speed.v3_t or W.hour, dt) end
 	self.refresh = self.refresh - dt
 	local sel = selection.sel
 	local rebuild = selection.version ~= self.sel_version
@@ -589,6 +592,10 @@ end
 -- panel background (swallow but no action), or nil.
 local function hit(self, x, y)
 	if state.loading.active then return nil end
+	do
+		local nh = newsfeed.hit(self, x, y)
+		if nh then return nh end
+	end
 	if gui.is_enabled(self.clock) then
 		for _, b in ipairs(self.speed_btns) do
 			if not b.hidden and gui.pick_node(b.node, x, y) then return b end
@@ -637,8 +644,17 @@ local function show_tip(self, text, x, y)
 	gui.set_position(self.tip, V3(math.max(w / 2 + 4, math.min(REF_W - w / 2 - 4, x)), y, 0))
 end
 
+-- (S21, R7) A story card clicked: the camera flies to where it is happening, close in; the person at the
+-- heart of it (else the village) selected; an active BREAKING story slows time to Watch, so one arrives
+-- while it happens.
+local function go_story(self, c)
+	newsfeed.go(view.W, c and c.st)
+end
+
 local function activate(self, h)
 	if type(h) ~= "table" and type(h) ~= "string" then return end
+	if type(h) == "table" and h.news_why then newsfeed.toggle_why(self, h.news_why); return end
+	if type(h) == "table" and h.news_card then go_story(self, h); return end
 	if h == "close" then selection.clear()
 	elseif h == "tab" then uistate.inspector_collapsed = not uistate.inspector_collapsed
 	elseif h == "edge" then

@@ -97,6 +97,24 @@ function M.mourn(W, s, d, how, now)
   end
 end
 
+-- (S21) The heaviest harm household hid suffered within `days` (faded by age), or nil: what a story
+-- names as the cause of the household's decisions (to leave, to make a new place, to take beasts).
+function M.top_harm(W, hid, now, days)
+  if not hid or hid == 0 then return nil end
+  local L = list(W)
+  local lim = now - (days or 60) * 24
+  local best, bw = nil, 0
+  for i = #L, 1, -1 do
+    local d = L[i]
+    if d.t < lim then break end
+    if d.harm and d.to_hh == hid and d.kind ~= "death" then
+      local w = (d.fu or 0) * M.fade(d, now - d.t)
+      if w > bw then best, bw = d, w end
+    end
+  end
+  return best
+end
+
 -- How much a deed still weighs after `age` hours: harms to goods fade over deed_half_goods days,
 -- blood (wounds and killings) over deed_half_blood.
 local LN2 = 0.69314718055995

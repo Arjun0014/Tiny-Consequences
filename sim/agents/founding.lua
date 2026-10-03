@@ -551,7 +551,8 @@ function M.decide(W, s, hh, cell, hrs, pwhy, swhy, now, couple, sea)
     local h2 = V.households[hid]
     local lead = lead_beasts(W, s, h2, now)
     if next(lead) then slow = true end
-    h2.found = { site = cell, from = s.id, depart = depart, decided = now, hrs = hrs, leader = hh.id,
+    local cause = require("sim.agents.deeds").top_harm(W, h2.id, now, 60)   -- (S21: the story's cause)
+    h2.found = { site = cell, from = s.id, depart = depart, decided = now, hrs = hrs, leader = hh.id, cause = cause and cause.id or nil,
       why = sfmt("Leaving %s to make a new home: %s", s.name, pwhy), swhy = swhy, lead = lead, party = {},
       share = gr * c.found_share * #h2.members / pop }
     for _, x in ipairs(party) do h2.found.party[#h2.found.party + 1] = x end

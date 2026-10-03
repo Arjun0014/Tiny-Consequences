@@ -1,0 +1,633 @@
+-- World news (S21, R7, D-172; docs/v3/75_PLAYER_EXPERIENCE.md): stories read from the world as it is -
+-- never invented. An observer only: it reads the deeds (`V.deeds`), the events (`W.E`) and live state
+-- (things burning, flood water, the trapped, bands, households on the move) and never writes W.S; its own
+-- runtime state is `W.newsrt` (not saved: a reloaded world's feed starts again from what is live and from
+-- the deeds of the last days).
+--   news.update(W, now)    incremental: new deeds and events by cursors, live state once a game hour
+--   news.cards(W, n, now)  the n most important stories now (active BREAKING ones first)
+--   news.chain(W, st)      the story's causes, newest first, to its root: { links, root = "you"|"nature"|"people" }
+-- A story: { id, kind, level (1 BREAKING, 2 STORY, 3 SLOW), key, sid, x, y, pid, t0, t1, active, closed,
+--   title, line, lines = {}, n = {}, deed (its first deed), ev (an event id), score }
+local sfmt = require("sim.fmt").format
+
+local M = {}
+local floor, max, min = math.floor, math.max, math.min
+
+M.LEVEL_W = { 100, 40, 20 }
+M.QUIET_H = 12        -- a story with nothing new for this long is over
+M.SHOW_H = 36         -- an ended story stays in the feed this long
+M.HISTORY = 200       -- stories kept
+
+-- kind -> level and icon (game/ui icons)
+M.KINDS = {
+  fire = { 1, "fire" }, flood = { 1, "wave" }, quake = { 1, "pickaxe" }, wave = { 1, "wave" }, eruption = { 1, "volcano" },
+  raid = { 1, "skull" }, killing = { 1, "skull" }, strike = { 1, "bolt" },
+  theft = { 2, "paw" }, leaving = { 2, "people" }, arriving = { 2, "people" }, founding = { 2, "house" },
+  kinhelp = { 2, "heart" }, orphans = { 2, "heart" }, death = { 2, "skull" }, bride = { 2, "heart" },
+  wolves = { 3, "wolf" }, hunger = { 3, "bread" }, winter = { 3, "snow" }, heat = { 3, "heat" }, ash = { 3, "volcano" },
+}
+
+local function rt(W)
+  local R = W.newsrt
+  if R then return R end
+  local V = W.S.v3
+  local now = (V and V.now) or W.hour
+  R = { deed_cur = 0, ev_cur = (W.E and W.E.next_id or 1) - 1, list = {}, by_key = {}, next_id = 1, poll = {}, seen_mig = {} }
+  -- (start from the deeds of the last days: a reloaded world's feed is not empty)
+  local D = V and V.deeds or {}
+  local i = #D
+  while i > 0 and D[i].t and now - D[i].t < 48 do i = i - 1 end
+  R.deed_cur = i
+  W.newsrt = R
+  return R
+end
+M.rt = rt
+
+local function sett(W, id) return W.S.v3.settlements[id or 0] end
+local function person(W, id) return W.S.v3.people[id or 0] end
+local function household_name(W, hid)
+  local hh = W.S.v3.households[hid or 0]
+  local q = hh and person(W, hh.members[1])
+  return q and ("the " .. q.surname .. "s") or "a household"
+end
+
+-- The story of `key`, made if new (or if the old one has closed).
+local function story(W, R, key, kind, sid, now, fields)
+  local st = R.by_key[key]
+  if st and not st.closed then return st, false end
+  local K = M.KINDS[kind]
+  st = { id = R.next_id, kind = kind, level = K[1], icon = K[2], key = key, sid = sid, t0 = now, t1 = now, active = true,
+    closed = false, lines = {}, n = {} }
+  R.next_id = R.next_id + 1
+  if fields then for k, v in pairs(fields) do st[k] = v end end
+  R.by_key[key] = st
+  local L = R.list
+  L[#L + 1] = st
+  if #L > M.HISTORY then
+    local old = table.remove(L, 1)
+    if R.by_key[old.key] == old then R.by_key[old.key] = nil end
+  end
+  return st, true
+end
+
+local function cap(t) return (t:gsub("^%l", string.upper)) end
+
+local function line(st, text, now)
+  text = cap(text)
+  local L = st.lines
+  if L[#L] ~= text then L[#L + 1] = text end
+  if #L > 6 then table.remove(L, 1) end
+  st.line = text
+  st.t1 = now
+end
+
+local function count(st, k, d) st.n[k] = (st.n[k] or 0) + (d or 1); return st.n[k] end
+
+local function plural(n, one, many) return n == 1 and ("a " .. one) or (n .. " " .. (many or (one .. "s"))) end
+
+-- The open story of `kind` at village sid (for deeds that belong to an incident there), or nil.
+local function open_at(R, kind, sid)
+  for i = #R.list, 1, -1 do
+    local st = R.list[i]
+    if st.kind == kind and st.sid == sid and not st.closed then return st end
+  end
+  return nil
+end
+
+-- Deeds ------------------------------------------------------------------------------------------
+local HOUSE = { house = true, hut = true }
+local BUILDING_WORD = { house = "a house", hut = "a hut", granary = "the granary", woodstore = "the woodstore", fold = "the fold",
+  byre = "the byre", sty = "the sty", dock = "the dock", forge = "the forge", well = "the well", saltpan = "the salt pan" }
+
+local function on_deed(W, R, d, now)
+  local s = sett(W, d.at)
+  if not s then return end
+  local k = d.kind
+  if k == "strike" then
+    -- lightning: news when it starts a fire or strikes someone (the fire's own story carries on)
+    local st = story(W, R, "fire:" .. s.id, "fire", s.id, d.t, { x = d.x, y = d.y, deed = d.id })
+    st.title = st.title or sfmt("Lightning struck at %s", s.name)
+    line(st, d.what == "person" and "Lightning struck someone in the open" or (d.what == "ground" and "Lightning struck the ground")
+      or (d.what == "tree" and "Lightning struck a tree") or sfmt("Lightning struck %s", BUILDING_WORD[d.bkind or ""] or "a building"), d.t)
+    st.weak = d.what == "ground" or d.what == "tree"
+    for _, f in ipairs(s.burn or {}) do
+      if f.deed == d.id and not f.out then
+        st.weak = false
+        st.title = sfmt("Fire in %s", s.name)
+        line(st, f.kind == "bld" and sfmt("%s caught fire", BUILDING_WORD[(s.buildings[f.ref] or {}).kind] or "a building") or "A tree caught fire", d.t)
+        break
+      end
+    end
+    if d.what == "person" and d.to ~= 0 then
+      local q = person(W, d.to)
+      st.weak = false
+      st.pid = d.to
+      st.title = sfmt("Lightning struck %s at %s", q and q.name or "someone", s.name)
+    end
+  elseif k == "doused" then
+    local st = story(W, R, "fire:" .. s.id, "fire", s.id, d.t, { x = d.x, y = d.y, deed = d.id })
+    st.deed = st.deed or d.id
+    st.title = sfmt("Fire in %s", s.name)
+    st.weak = false
+    line(st, sfmt("%s caught fire: the neighbours put it out%s", BUILDING_WORD[d.what] or "A building",
+      (d.hours or 0) >= 1 and sfmt(" after %d hours", floor(d.hours + 0.5)) or ""), d.t)
+    st.active = false
+  elseif k == "burnt" then
+    local st = story(W, R, "fire:" .. s.id, "fire", s.id, d.t, { x = d.x, y = d.y, deed = d.id })
+    st.deed = st.deed or d.id
+    if HOUSE[d.what] then
+      local nh = count(st, "houses")
+      line(st, sfmt("%s burnt down (%s)", nh == 1 and "A house" or (nh .. " houses"), household_name(W, d.to_hh)), d.t)
+      st.weak = false
+    elseif d.what == "field" then
+      count(st, "fields"); line(st, sfmt("%s burnt", plural(st.n.fields, "field")), d.t); st.weak = false
+    else
+      count(st, "other"); line(st, sfmt("%s burnt", BUILDING_WORD[d.what] or d.what), d.t); st.weak = false
+    end
+  elseif k == "quake" then
+    local st = story(W, R, "quake:" .. d.id, "quake", s.id, d.t, { deed = d.id, ev = d.event, x = s.sqx, y = s.sqy })
+    st.title = sfmt("Quake at %s", s.name)
+    line(st, sfmt("A quake of magnitude %s", d.what), d.t)
+    R.quake_at = R.quake_at or {}
+    R.quake_at[s.id] = st
+  elseif k == "fell" then
+    local kind = (R.quake_at and R.quake_at[s.id] and not R.quake_at[s.id].closed) and "quake" or nil
+    local st = kind and R.quake_at[s.id] or open_at(R, "wave", s.id) or open_at(R, "flood", s.id)
+      or story(W, R, "fell:" .. s.id, "quake", s.id, d.t, { deed = d.id, x = d.x, y = d.y })
+    st.title = st.title or sfmt("Houses fell at %s", s.name)
+    if HOUSE[d.what] then
+      local nh = count(st, "fell")
+      line(st, sfmt("%s fell in (%s)", nh == 1 and "A house" or (nh .. " houses"), household_name(W, d.to_hh)), d.t)
+    else
+      line(st, sfmt("%s fell in", BUILDING_WORD[d.what] or d.what), d.t)
+    end
+    st.x, st.y = d.x or st.x, d.y or st.y
+  elseif k == "wave" then
+    local st = story(W, R, "wave:" .. d.id, "wave", s.id, d.t, { deed = d.id, ev = d.event, x = s.dock and s.dock.dx or s.sqx, y = s.dock and s.dock.dy or s.sqy })
+    st.title = sfmt("The sea came in at %s", s.name)
+    line(st, "A wave ran up over the shore", d.t)
+  elseif k == "flood" then
+    local st = story(W, R, "flood:" .. d.id, "flood", s.id, d.t, { deed = d.id, ev = d.ev or d.event })
+    st.title = sfmt("Flood at %s", s.name)
+    line(st, "The river is over its banks: water on the low ground", d.t)
+    R.flood_at = R.flood_at or {}
+    R.flood_at[s.id] = st
+  elseif k == "drowned" then
+    local st = open_at(R, "flood", s.id)
+    if st then
+      count(st, "fields")
+      line(st, sfmt(d.what == "corn" and "%s of ripe corn rotted in the water (%s)" or "%s drowned (%s)", plural(st.n.fields, "field"),
+        (d.to_hh or 0) ~= 0 and household_name(W, d.to_hh) or "the village's"), d.t)
+    end
+  elseif k == "ash" then
+    local st = story(W, R, "ash:" .. s.id .. ":" .. floor(d.t / 72), "ash", s.id, d.t, { deed = d.id, ev = d.event, x = s.sqx, y = s.sqy })
+    st.title = sfmt("Ash on %s", s.name)
+    line(st, sfmt("Ash from %s lies on the roofs and the grass", d.what), d.t)
+  elseif k == "snow" then
+    local st = story(W, R, "winter:" .. s.id, "winter", s.id, d.t, { deed = d.id, x = s.sqx, y = s.sqy })
+    st.title = sfmt("Snow at %s", s.name)
+    line(st, "Snow is lying on the fields and the pasture", d.t)
+  elseif k == "take" then
+    local st
+    if d.raid then st = R.by_key["raid:" .. d.by_s .. ":" .. d.raid] end
+    if not st then
+      st = story(W, R, "theft:" .. s.id .. ":" .. floor(d.t / 24), "theft", s.id, d.t, { deed = d.id, x = d.x, y = d.y, pid = d.by })
+      st.title = sfmt("Beasts taken at %s", s.name)
+    end
+    local nb = count(st, "beasts", d.n or 1)
+    local q = person(W, d.by)
+    line(st, sfmt("%s led off from %s' fold%s", plural(nb, d.what == "cattle" and "cow" or (d.what or "beast"), d.what == "sheep" and "sheep" or nil),
+      household_name(W, d.to_hh), q and sfmt(" by %s of %s", q.name, (sett(W, d.by_s) or {}).name or "?") or ""), d.t)
+    st.deed = st.deed or d.id
+  elseif k == "return" or k == "pay" or k == "refuse" then
+    local a = d.answers and W.S.v3.deeds[d.answers]
+    if a and a.kind == "take" then
+      local st = R.by_key["theft:" .. a.at .. ":" .. floor(a.t / 24)] or (a.raid and R.by_key["raid:" .. a.by_s .. ":" .. a.raid])
+      if st then
+        local o = sett(W, d.by_s)
+        line(st, (k == "return" and sfmt("Given back by the people of %s", o and o.name or "?"))
+          or (k == "pay" and sfmt("Made good by %s", o and o.name or "?")) or sfmt("%s refused to make it good", o and o.name or "?"), d.t)
+        st.active = true
+      end
+    end
+  elseif k == "wound" or k == "kill" then
+    local by, to = person(W, d.by), person(W, d.to)
+    if k == "kill" then
+      local st = story(W, R, "killing:" .. d.id, "killing", s.id, d.t, { deed = d.id, x = d.x, y = d.y, pid = d.to })
+      st.title = sfmt("A killing at %s", s.name)
+      line(st, sfmt("%s of %s was killed by %s of %s", to and to.name or "?", (sett(W, d.to_s) or {}).name or "?", by and by.name or "?", (sett(W, d.by_s) or {}).name or "?"), d.t)
+    else
+      local st = open_at(R, "raid", d.by_s) or open_at(R, "theft", s.id) or open_at(R, "raid", d.to_s)
+      if st then line(st, sfmt("%s was struck by %s", to and to.name or "?", by and by.name or "?"), d.t) end
+    end
+  elseif k == "death" then
+    local to = person(W, d.to)
+    local cause = d.what or "?"
+    local inc = (cause == "burns" and open_at(R, "fire", s.id)) or (cause == "crushed" and (R.quake_at and R.quake_at[s.id]))
+      or (cause == "drowned" and (open_at(R, "flood", s.id) or open_at(R, "wave", s.id)))
+    if inc and not inc.closed then
+      local nd = count(inc, "dead")
+      line(inc, sfmt("%s died (%s)", to and to.name or "someone", cause), d.t)
+      inc.deaths = nd
+    elseif cause ~= "old age" then
+      local age = to and (d.t - to.born) / 1152 or 30
+      if age < 16 or cause == "hunger" or cause == "wounds" or cause == "drowned" then
+        local st = story(W, R, "death:" .. s.id .. ":" .. floor(d.t / 24), "death", s.id, d.t, { deed = d.id, pid = d.to, x = s.sqx, y = s.sqy })
+        local nd = count(st, "dead")
+        st.title = nd == 1 and sfmt("A death at %s", s.name) or sfmt("%d deaths at %s", nd, s.name)
+        line(st, sfmt("%s, %s, died of %s", to and to.name or "?", age < 1 and "a baby" or (age < 13 and "a child" or sfmt("%d", floor(age))), cause), d.t)
+        if cause == "hunger" then st.level = 1 end
+      end
+    end
+  elseif k == "help" then
+    local by = person(W, d.by)
+    local st = story(W, R, "kinhelp:" .. d.id, "kinhelp", s.id, d.t, { deed = d.id, pid = d.by, x = d.x, y = d.y })
+    st.title = sfmt("Kin help at %s", s.name)
+    line(st, sfmt("%s came from %s to help %s raise their house", by and by.name or "?", (sett(W, d.by_s) or {}).name or "?", household_name(W, d.to_hh)), d.t)
+    st.active = false
+  elseif k == "lost" and d.wolves then
+    local st = story(W, R, "wolves:" .. s.id, "wolves", s.id, d.t, { deed = d.id, x = d.x, y = d.y })
+    local nb = count(st, "beasts")
+    st.title = sfmt("Wolves at %s", s.name)
+    line(st, sfmt("%s killed in the night", plural(nb, d.what == "sheep" and "sheep" or (d.what or "beast"), d.what == "sheep" and "sheep" or nil)), d.t)
+    st.active = false
+  end
+end
+
+-- Events -----------------------------------------------------------------------------------------
+local function on_event(W, R, e, now)
+  local V = W.S.v3
+  if e.kind == "eruption" then
+    -- the nearest village to the mountain is where the camera goes
+    local best, bd = nil, -2
+    local g = W.grid
+    for _, s in ipairs(V.settlements) do
+      local dd = g.X[s.cell] * g.X[e.cell] + g.Y[s.cell] * g.Y[e.cell] + g.Z[s.cell] * g.Z[e.cell]
+      if s.alive and dd > bd then best, bd = s, dd end
+    end
+    local st = story(W, R, "eruption:" .. e.id, "eruption", best and best.id or 0, now, { ev = e.id, cell = e.cell })
+    st.title = sfmt("%s erupted", e.data and e.data.name or "A volcano")
+    line(st, sfmt("An eruption of size %d", e.data and e.data.vei or e.mag or 1), now)
+    st.active = true
+  elseif e.kind == "settlement_founded" then
+    local s = sett(W, e.data and e.data.settlement)
+    if s then
+      local st = story(W, R, "founding:" .. s.id, "founding", s.id, now, { ev = e.id, x = s.sqx, y = s.sqy })
+      st.title = sfmt("A new place: %s", s.name)
+      line(st, "Settlers have made camp there", now)
+      st.active = false
+    end
+  elseif e.kind == "marriage" then
+    local a, b = person(W, e.data and e.data.a), person(W, e.data and e.data.b)
+    local who = (a and a.move and a) or (b and b.move and b)
+    if who and who.move and who.move.to ~= who.move.from then
+      local to, from = sett(W, who.move.to), sett(W, who.move.from)
+      local st = story(W, R, "bride:" .. who.id, "bride", from and from.id or 0, now, { pid = who.id, x = from and from.sqx, y = from and from.sqy })
+      st.title = sfmt("A bride for %s", to and to.name or "?")
+      line(st, sfmt("%s will walk to %s to live with %s", who.name, to and to.name or "?", (person(W, who.move.groom) or {}).name or "her husband"), now)
+      st.active = false
+    end
+  end
+end
+
+-- Live state, once a game hour per village ---------------------------------------------------------
+local function hottest(s)
+  local best, bh = nil, 0
+  for _, f in ipairs(s.burn or {}) do
+    if not f.out and f.heat > bh then best, bh = f, f.heat end
+  end
+  return best
+end
+
+local function poll_fire(W, R, s, now)
+  local V = W.S.v3
+  local f = hottest(s)
+  local fs = R.by_key["fire:" .. s.id]
+  if f then
+    if not fs or fs.closed then
+      fs = story(W, R, "fire:" .. s.id, "fire", s.id, now, { x = f.x, y = f.y })
+    end
+    local n = 0
+    for _, g in ipairs(s.burn) do if not g.out and g.heat > 0 then n = n + 1 end end
+    local b = f.kind == "bld" and s.buildings[f.ref]
+    fs.title = sfmt("Fire in %s", s.name)
+    fs.burning = n
+    fs.x, fs.y, fs.active, fs.t1 = f.x, f.y, true, now
+    fs.weak = false
+    if b and not fs.said_b then
+      fs.said_b = true
+      line(fs, sfmt("%s is burning", BUILDING_WORD[b.kind] or b.kind), now)
+    end
+    -- (who is at it: someone carrying water, else someone near)
+    for _, id in ipairs(s.members) do
+      local p = V.people[id]
+      if p and p.alive and not p.at and (p.objk == "fight_fire" or p.objk == "loose_beasts") then fs.pid = p.id; break end
+    end
+  elseif fs and not fs.closed and fs.active then
+    fs.active = false
+    if not fs.weak then line(fs, sfmt("The fire is out after %d hours", max(1, floor(now - fs.t0 + 0.5))), now) end
+  end
+end
+
+local function poll(W, R, s, now)
+  local V = W.S.v3
+  -- flood
+  local fl = s.fl
+  local ff = R.flood_at and R.flood_at[s.id]
+  if fl and ff and not ff.closed then
+    ff.active, ff.t1 = true, now
+    local wet = 0
+    for _, id in ipairs(s.blist) do
+      local b = s.buildings[id]
+      if b and b.wet and b.wet > 0.15 then
+        wet = wet + 1
+        if not ff.x or HOUSE[b.kind] then ff.x, ff.y = b.cx, b.cy end
+      end
+    end
+    if wet > (ff.n.wet or 0) then ff.n.wet = wet; line(ff, sfmt("Water in %s", plural(wet, "building")), now) end
+    if not ff.x then ff.x, ff.y = s.sqx, s.sqy end
+    for _, id in ipairs(s.members) do
+      local p = V.people[id]
+      if p and p.alive and not p.at and (p.objk == "flee_water" or p.objk == "loose_flood") then ff.pid = p.id; break end
+    end
+    if (s.acc.loosed or 0) > (ff.n.loosed0 or s.acc.loosed or 0) then line(ff, "Beasts let out of a flooded pen", now) end
+    ff.n.loosed0 = s.acc.loosed or 0
+  elseif ff and not ff.closed and ff.active and not fl then
+    ff.active = false
+    line(ff, "The water has gone down", now)
+  end
+  -- the trapped (a quake, a wave)
+  local qs = R.quake_at and R.quake_at[s.id]
+  if qs and not qs.closed then
+    local T = s.trapped
+    local n = 0
+    for _, id in ipairs(T or {}) do local p = V.people[id]; if p and p.alive and p.trapped then n = n + 1; qs.pid = p.id; qs.x, qs.y = p.x, p.y end end
+    if n > 0 then
+      qs.active = true
+      if n ~= qs.n.trapped then qs.n.trapped = n; line(qs, sfmt("%s trapped under the rubble", plural(n, "person", "people")), now) end
+    elseif (qs.n.trapped or 0) > 0 then
+      qs.n.trapped = 0
+      qs.active = false
+      line(qs, "Everyone trapped has been dug out", now)
+    elseif now - qs.t0 > 3 then
+      qs.active = false
+    end
+  end
+  -- a band raised to raid, gathering or on its way
+  local Rd = s.raid
+  if Rd and not Rd.done_news then
+    local o = sett(W, Rd.to)
+    local key = "raid:" .. s.id .. ":" .. Rd.id
+    local st = story(W, R, key, "raid", s.id, now, { pid = Rd.leader })
+    local lead = person(W, Rd.leader)
+    st.title = sfmt("Raid from %s", s.name)
+    local gone, n = 0, 0
+    for _, id in ipairs(Rd.party or {}) do
+      local q = person(W, id)
+      if q and q.alive then
+        n = n + 1
+        if q.trip and q.trip.band == Rd.id and q.at == Rd.to then gone = gone + 1; st.x, st.y, st.sid, st.pid = q.x, q.y, Rd.to, q.id end
+      end
+    end
+    if gone > 0 then
+      st.title = sfmt("Raid on %s", o and o.name or "?")
+      if not st.said_at then st.said_at = true; line(st, sfmt("The band from %s has come to %s", s.name, o and o.name or "?"), now) end
+    elseif now < Rd.depart then
+      st.x, st.y = s.sqx, s.sqy
+      if (st.n.party or 0) ~= n then
+        st.n.party = n
+        line(st, n <= 1 and sfmt("%s is going round the men: beasts to take at %s", lead and lead.name or "Someone", o and o.name or "?")
+          or sfmt("%s and %s will go to take beasts at %s", lead and lead.name or "Someone", plural(n - 1, "other"), o and o.name or "?"), now)
+      end
+    end
+    st.active, st.t1 = true, now
+    if now > Rd.depart + 48 then Rd.done_news = true; st.active = false end
+  end
+  -- households leaving, founding
+  for _, hid in ipairs(s.households) do
+    local hh = V.households[hid]
+    local mg = hh and (hh.migrate or hh.found)
+    if mg and mg.decided and not R.seen_mig[hid .. ":" .. floor(mg.decided)] then
+      R.seen_mig[hid .. ":" .. floor(mg.decided)] = true
+      local found = hh.found == mg
+      local o = mg.to and sett(W, mg.to)
+      local st = story(W, R, (found and "founding:" or "leaving:") .. hid .. ":" .. floor(mg.decided), found and "founding" or "leaving", s.id, now,
+        { pid = hh.members[1], cause = mg.cause, x = s.sqx, y = s.sqy, hh = hid })
+      local q1 = person(W, hh.members[1])
+      local hn = household_name(W, hid)
+      st.title = found and sfmt("%s leave to found", hn:gsub("^%l", string.upper)) or sfmt("%s leave %s", hn:gsub("^%l", string.upper), s.name)
+      line(st, mg.why or "Life is hard here", now)
+      st.deed = mg.cause
+      st.active = true
+      if q1 then st.pid = q1.id end
+    end
+  end
+  -- (the leaving stories end when they arrive)
+  for i = #R.list, math.max(1, #R.list - 40), -1 do
+    local st = R.list[i]
+    if (st.kind == "leaving" or st.kind == "founding") and st.hh and not st.closed and st.active then
+      local hh = V.households[st.hh]
+      local mg = hh and (hh.migrate or hh.found)
+      if not mg or mg.arrived or mg.given_up then
+        st.active = false
+        local o = hh and sett(W, hh.sett)
+        line(st, (mg and mg.given_up) and "They gave it up and stayed" or sfmt("They have arrived at %s", o and o.name or "their new home"), now)
+      else
+        for _, id in ipairs(hh.members) do
+          local p = person(W, id)
+          if p and p.alive and (p.act == "travel" or p.act == "voyage" or p.act == "passage") then
+            if not st.said_road then st.said_road = true; line(st, "They are on their way", now) end
+            break
+          end
+        end
+      end
+    end
+  end
+  -- hunger at the edge
+  local edge, starving = 0, nil
+  for _, id in ipairs(s.members) do
+    local p = V.people[id]
+    if p and p.alive and not p.at and (p.edge or p.hunger >= 0.95) then edge = edge + 1; starving = p end
+  end
+  local hs = R.by_key["hunger:" .. s.id]
+  if edge >= 2 then
+    hs = story(W, R, "hunger:" .. s.id, "hunger", s.id, now, { x = s.sqx, y = s.sqy })
+    hs.title = sfmt("Hunger at %s", s.name)
+    if edge ~= hs.n.edge then hs.n.edge = edge; line(hs, sfmt("%s at the edge of starving", plural(edge, "person", "people")), now) end
+    hs.pid = starving and starving.id
+    hs.active, hs.t1 = true, now
+  elseif hs and not hs.closed and hs.active then
+    hs.active = false
+  end
+  -- snow lying (the winter story stays open while it lies)
+  local ws = R.by_key["winter:" .. s.id]
+  if ws and not ws.closed then
+    if (s.snow or 0) > 0.02 then
+      ws.active, ws.t1 = true, now
+      local culled = s.acc.culled_snow or 0
+      if culled > (ws.n.culled or 0) and culled - (ws.n.culled0 or culled) >= 1 then
+        line(ws, sfmt("%s killed for the larder: no grass under the snow", plural(culled - (ws.n.culled0 or culled), "beast")), now)
+      end
+      ws.n.culled0 = ws.n.culled0 or culled
+      ws.n.culled = culled
+    elseif ws.active then
+      ws.active = false
+      line(ws, "The snow has melted", now)
+    end
+  end
+end
+
+-- Update ---------------------------------------------------------------------------------------
+function M.update(W, now)
+  local V = W.S.v3
+  if not V then return end
+  local R = rt(W)
+  now = now or V.now or W.hour
+  local D = V.deeds or {}
+  for i = R.deed_cur + 1, #D do
+    local d = D[i]
+    if d then on_deed(W, R, d, now) end
+  end
+  R.deed_cur = #D
+  local E = W.E
+  if E then
+    local last = E.next_id - 1
+    if last < R.ev_cur then R.ev_cur = last end
+    for id = R.ev_cur + 1, last do
+      local e = E.rec[id]
+      if e then on_event(W, R, e, now) end
+    end
+    R.ev_cur = last
+  end
+  for _, s in ipairs(V.settlements) do
+    if s.alive and (s.burn and #s.burn > 0 or (R.by_key["fire:" .. s.id] and R.by_key["fire:" .. s.id].active)) then poll_fire(W, R, s, now) end
+  end
+  local h = floor(now)
+  if R.poll_h ~= h then
+    R.poll_h = h
+    for _, s in ipairs(V.settlements) do if s.alive then poll(W, R, s, now) end end
+    -- stories with nothing new for a while are over
+    for _, st in ipairs(R.list) do
+      if not st.closed and not st.active and now - st.t1 > M.QUIET_H then st.closed = true end
+    end
+  end
+end
+
+-- Importance -----------------------------------------------------------------------------------
+local function root_of(W, st)
+  if st.root_t == floor(st.t1) and st.root then return st.root end
+  local ch = M.chain(W, st)
+  st.root, st.root_t = ch.root, floor(st.t1)
+  return st.root
+end
+
+function M.score(W, st, now)
+  local n = st.n
+  local mag = (n.houses or 0) * 6 + (n.fell or 0) * 6 + (n.dead or 0) * 12 + (st.deaths or 0) * 12 + (n.trapped or 0) * 8
+    + (n.beasts or 0) * 2 + (n.fields or 0) * 3 + (n.wet or 0) * 3 + (n.edge or 0) * 4 + (n.party or 0) * 3
+  local s = M.LEVEL_W[st.level] + mag - (now - st.t1) * (st.active and 0.2 or 1.5)
+  if root_of(W, st) == "you" then s = s + 25 end
+  if st.active and st.level == 1 then s = s + 60 end
+  if st.weak then s = s - 70 end
+  return s
+end
+
+-- The n stories to show now: active and recent ones, by importance.
+function M.cards(W, n, now)
+  local R = rt(W)
+  now = now or (W.S.v3 and W.S.v3.now) or W.hour
+  local out = {}
+  for i = #R.list, 1, -1 do
+    local st = R.list[i]
+    local recent = st.active or now - st.t1 < M.SHOW_H
+    if recent and st.title and not (st.weak and not st.active and #st.lines <= 1) then
+      st.score = M.score(W, st, now)
+      out[#out + 1] = st
+    end
+  end
+  table.sort(out, function(a, b) if a.score ~= b.score then return a.score > b.score end return a.id > b.id end)
+  for i = #out, (n or 5) + 1, -1 do out[i] = nil end
+  return out
+end
+
+-- Why? -----------------------------------------------------------------------------------------
+local DEED_TEXT = {
+  burnt = function(W, d) return sfmt("%s burnt (%s)", BUILDING_WORD[d.what] or ("the " .. d.what), (sett(W, d.at) or {}).name or "?") end,
+  strike = function(W, d) return sfmt("Lightning struck at %s", (sett(W, d.at) or {}).name or "?") end,
+  flood = function(W, d) return sfmt("The river came over its banks at %s", (sett(W, d.at) or {}).name or "?") end,
+  drowned = function(W, d)
+    local what = d.what == "corn" and "The ripe corn of %s rotted in the flood" or "A field of %s drowned"
+    return sfmt(what, (d.to_hh or 0) ~= 0 and household_name(W, d.to_hh) or "the village")
+  end,
+  quake = function(W, d) return sfmt("The ground shook at %s (magnitude %s)", (sett(W, d.at) or {}).name or "?", d.what) end,
+  fell = function(W, d) return sfmt("%s fell in at %s", BUILDING_WORD[d.what] or d.what, (sett(W, d.at) or {}).name or "?") end,
+  wave = function(W, d) return sfmt("The sea came over the land at %s", (sett(W, d.at) or {}).name or "?") end,
+  ash = function(W, d) return sfmt("Ash from %s fell on %s", d.what, (sett(W, d.at) or {}).name or "?") end,
+  snow = function(W, d) return sfmt("Snow fell at %s", (sett(W, d.at) or {}).name or "?") end,
+  take = function(W, d)
+    local q = person(W, d.by)
+    return sfmt("%s of %s took %s from %s", q and q.name or "Someone", (sett(W, d.by_s) or {}).name or "?", plural(d.n or 1, d.what or "beast", d.what == "sheep" and "sheep" or nil), (sett(W, d.at) or {}).name or "?")
+  end,
+  wound = function(W, d) return sfmt("%s struck %s", (person(W, d.by) or {}).name or "Someone", (person(W, d.to) or {}).name or "someone") end,
+  kill = function(W, d) return sfmt("%s killed %s", (person(W, d.by) or {}).name or "Someone", (person(W, d.to) or {}).name or "someone") end,
+  death = function(W, d) return sfmt("%s died of %s", (person(W, d.to) or {}).name or "Someone", d.what or "?") end,
+  help = function(W, d) return sfmt("%s came to help", (person(W, d.by) or {}).name or "Kin") end,
+  lost = function(W, d) return sfmt("Wolves killed a %s at %s", d.what or "beast", (sett(W, d.at) or {}).name or "?") end,
+  doused = function(W, d) return sfmt("%s caught fire at %s", BUILDING_WORD[d.what] or "A building", (sett(W, d.at) or {}).name or "?") end,
+  ["return"] = function(W, d) return "The beasts were given back" end,
+  pay = function(W, d) return "It was made good" end,
+  refuse = function(W, d) return "They refused to make it good" end,
+}
+
+local EV_TEXT = {
+  power_lightning = "YOUR lightning", power_weather = "YOUR weather", power_rain = "YOUR rain", power_drought = "YOUR dry spell",
+  power_temperature = "YOUR heat or cold", power_heat = "YOUR warm air", power_chill = "YOUR cold air", power_cull = "YOUR cull",
+  power_introduce = "YOUR gift of beasts", power_volcano = "YOU stirred the mountain", power_quake = "YOU strained the fault",
+  power_meteor = "YOUR meteor", power_oil = "YOUR oil", power_blight = "YOUR blight",
+}
+
+-- The causes of story st: deeds by their answers / cause / event, events by their parents, to the root.
+function M.chain(W, st)
+  local V = W.S.v3
+  local links = {}
+  local seen = {}
+  local d = st.deed and V.deeds[st.deed]
+  local ev = st.ev
+  local root = "nature"
+  for _ = 1, 10 do
+    if d then
+      if seen["d" .. d.id] then break end
+      seen["d" .. d.id] = true
+      local f = DEED_TEXT[d.kind]
+      links[#links + 1] = { t = d.t, text = f and f(W, d) or d.kind, who = (d.by or 0) ~= 0 and "people" or "nature" }
+      if (d.by or 0) ~= 0 then root = "people" else root = "nature" end
+      local nd = (d.answers and V.deeds[d.answers]) or (d.cause and V.deeds[d.cause])
+      local e2 = (d.event and d.event ~= 0) and d.event or d.ev
+      if nd and nd ~= d then d = nd
+      elseif e2 and e2 ~= 0 then d = nil; ev = e2
+      else break end
+    elseif ev and ev ~= 0 and W.E then
+      local e = W.E.rec[ev]
+      if not e or seen["e" .. ev] then break end
+      seen["e" .. ev] = true
+      local K = W.E and require("sim.causality.events").KINDS[e.kind]
+      local txt = EV_TEXT[e.kind] or (K and K.text) or e.kind
+      links[#links + 1] = { t = e.hour or (e.tick and e.tick * (W.hpt or 24)) or 0, text = txt, who = e.actor == "player" and "you" or "nature" }
+      root = e.actor == "player" and "you" or "nature"
+      local par = e.parent or 0
+      if par == 0 then break end
+      ev = par
+    else
+      break
+    end
+  end
+  return { links = links, root = root }
+end
+
+-- Where the camera goes for story st: the village, the point, someone to look at.
+function M.focus(W, st)
+  local s = sett(W, st.sid)
+  return { sid = s and s.id or 0, x = st.x or (s and s.sqx) or 0, y = st.y or (s and s.sqy) or 0, pid = st.pid, cell = st.cell }
+end
+
+return M

@@ -462,6 +462,12 @@ function M.lies(W, s, now, rising)
         if pl.stage == "growing" and pl.wet_h >= c.fl_crop_h and pl.drowned ~= deed then
           pl.drowned = deed
           pl.frost = (pl.frost or 1) * (1 - c.fl_drown * share)
+          do
+            local dd = deeds.add(W, { kind = "drowned", t = now, at = s.id, x = (pl.x0 + pl.x1) * 0.5, y = (pl.y0 + pl.y1) * 0.5,
+              by = 0, by_hh = 0, by_s = 0, to = 0, to_hh = pl.hh or 0, to_s = s.id, what = "field", n = 1,
+              fu = (pl.sown or 0) * c.fl_drown * share * 2, harm = true, answers = deed })
+            deeds.learn(W, s, dd, "the flood", 0, 0, now)
+          end
           told = sfmt("Our %s field drowned in the flood", pl.crop == "flax" and "flax" or "corn")
           s.acc.flood_fields = (s.acc.flood_fields or 0) + 1
         elseif pl.stage == "ripe" and pl.wet_h >= c.fl_ripe_h and pl.drowned ~= deed then
@@ -469,6 +475,10 @@ function M.lies(W, s, now, rising)
           pl.spoil = (pl.spoil or 1) * (1 - c.fl_rot * share)
           told = "The ripe corn lay flat in the flood water and rotted"
           s.acc.flood_fields = (s.acc.flood_fields or 0) + 1
+          local dd = deeds.add(W, { kind = "drowned", t = now, at = s.id, x = (pl.x0 + pl.x1) * 0.5, y = (pl.y0 + pl.y1) * 0.5,
+            by = 0, by_hh = 0, by_s = 0, to = 0, to_hh = pl.hh or 0, to_s = s.id, what = "corn", n = 1,
+            fu = math.max(0, (pl.sown or 0) - (pl.harvested or 0)) * c.fl_rot * share * 2, harm = true, answers = deed })
+          deeds.learn(W, s, dd, "the flood", 0, 0, now)
         end
         if (pl.sheaves or 0) > 0 and pl.wet_h >= c.fl_sheaf_h then
           pl.sheaves = pl.sheaves * (1 - c.fl_rot * share)

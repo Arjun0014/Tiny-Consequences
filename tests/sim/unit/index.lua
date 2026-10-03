@@ -37,5 +37,6 @@ return {
   "tests.sim.unit.test_v3_snow",
   "tests.sim.unit.test_v3_flood",
   "tests.sim.unit.test_v3_kin",
+  "tests.sim.unit.test_v3_news",
   "tests.sim.unit.test_v3_namespace",
 }

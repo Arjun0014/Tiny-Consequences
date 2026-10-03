@@ -370,6 +370,12 @@ local function sweep(W, s)
         local b = s.buildings[f.ref]
         if b then b.cond = max(0.05, (b.cond or 1) - (1 - max(0, f.fuel) / c.fire_bld_h)) end
         s.acc.fires_out = (s.acc.fires_out or 0) + 1
+        -- (S21) put out: a deed of the village's (what burnt is mended; what lit it is its cause)
+        if b then
+          local d = deeds.add(W, { kind = "doused", t = f.t, at = s.id, x = f.x, y = f.y, by = 0, by_hh = 0, by_s = 0, to = 0,
+            to_hh = b.hh or 0, to_s = s.id, what = b.kind, n = 1, fu = 0, harm = false, answers = f.deed, hours = f.t - (f.t0 or f.t) })
+          deeds.learn(W, s, d, "we put the fire out", 0, 0, f.t)
+        end
       elseif f.kind == "plot" then
         s.acc.fires_out = (s.acc.fires_out or 0) + 1
       end
@@ -454,7 +460,7 @@ end
 -- Lightning at (x, y): the tallest thing within its pull takes it - a standing tree (its height), a
 -- roof, someone standing out in the open; thunder heard over the whole map, the flash seen. Returns
 -- what was hit ("tree", "bld", "person" or nil) and its ref. `cause`: the deed or event that sent it.
-function M.strike(W, s, x, y, now, cause)
+function M.strike(W, s, x, y, now, cause, ev)
   local c = C()
   local V = W.S.v3
   local best, bs, bk = nil, -1e9, nil
@@ -485,9 +491,14 @@ function M.strike(W, s, x, y, now, cause)
     end
   end)
   local d = deeds.add(W, { kind = "strike", t = now, at = s.id, x = x, y = y, by = 0, by_hh = 0, by_s = 0, to = 0, to_hh = 0,
-    to_s = s.id, what = bk or "ground", n = 1, fu = 0, harm = false, answers = cause })
-  -- (the bolt seen on the planet: the view's lightning at the village's cell)
-  if W.record_events then require("sim.causality.events").emit(W, "lightning_strike", s.cell, 0, 1, { settlement = s.id, x = x, y = y }) end
+    to_s = s.id, what = bk or "ground", n = 1, fu = 0, harm = false, answers = cause, event = ev,
+    bkind = bk == "bld" and (s.buildings[best] or {}).kind or nil })
+  -- (the bolt seen on the planet: the view's lightning at the village's cell; S21: a god's bolt is the
+  -- parent of the event)
+  if W.record_events then
+    local e = require("sim.causality.events").emit(W, "lightning_strike", s.cell, ev or 0, 1, { settlement = s.id, x = x, y = y })
+    if not ev then d.event = e end
+  end
   s.acc.strikes = (s.acc.strikes or 0) + 1
   -- (thunder everyone hears; the flash those out of doors see)
   danger.cue(W, s, x, y, now, { kind = "thunder", src = 0, sight = 3, night = 3, sound = c.thunder_sound, loud = true,

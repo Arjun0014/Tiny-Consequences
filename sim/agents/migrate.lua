@@ -251,7 +251,8 @@ function M.daily(W, s, now)
             local lh = clock.local_hour(depart, W.grid.lon[s.cell])
             depart = depart + (c.mig_sea_dawn - lh) % 24
           end
-          hh.migrate = { to = best.id, from = s.id, depart = depart, decided = now,
+          local cause = require("sim.agents.deeds").top_harm(W, hh.id, now, 60)   -- (S21: the story's cause)
+          hh.migrate = { to = best.id, from = s.id, depart = depart, decided = now, cause = cause and cause.id or nil,
             why = "Leaving " .. s.name .. " for " .. best.name .. (bsea and " by sea" or "") .. ": " .. (pwhy or "life is hard here") .. "; " .. (bwhy or ("we will try " .. best.name)) }
           if bsea then
             local boat = s.boats[bsea.boat]

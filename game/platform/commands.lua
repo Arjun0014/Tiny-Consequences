@@ -832,6 +832,31 @@ function M.register(G)
   end)
 
   -- ui{inspector | bounds | collapse=bool | debug=bool | edge={lat,lon} / edge=false}
+  -- (S21, R7) news{n, go = k}: the world news now (sim/news.lua: titles, lines, levels, roots and their
+  -- causes), and with go = k the k-th card visited as a click on it would (game/ui/newsfeed.lua M.go).
+  bridge.register("news", function(args)
+    local W = assert(G.W, "world not ready")
+    assert(W.v3, "not a v3 world")
+    local news = require("sim.news")
+    local t = require("game.platform.speed").v3_t or W.hour
+    news.update(W, t)
+    local cards = news.cards(W, tonumber(args.n) or 5, t)
+    local out = {}
+    for i, st in ipairs(cards) do
+      local ch = news.chain(W, st)
+      local links = {}
+      for k, l in ipairs(ch.links) do links[k] = l.text .. " (" .. l.who .. ")" end
+      out[i] = { title = st.title, line = st.line, lines = st.lines, level = st.level, kind = st.kind, active = st.active,
+        root = ch.root, why = links, sid = st.sid }
+    end
+    local went
+    if args.go then
+      local st = cards[tonumber(args.go) or 1]
+      went = st and require("game.ui.newsfeed").go(W, st) or false
+    end
+    return { cards = out, went = went }
+  end)
+
   bridge.register("ui", function(args)
     local W = G.W
     local res = {}
