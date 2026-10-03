@@ -543,7 +543,7 @@ function M.register(G)
         for _, id in ipairs(o.blist) do
           local b = o.buildings[id]
           bl[#bl + 1] = b.label .. ":" .. b.state
-          if not first then first = { x = b.cx, y = b.cy, label = b.label } end
+          if not first and b.kind ~= "outcrop" and b.kind ~= "bog" then first = { x = b.cx, y = b.cy, label = b.label } end
         end
         local av = package.loaded["game.view.agents_view"]
         local VS = av and av.SETS and av.SETS[o.id]

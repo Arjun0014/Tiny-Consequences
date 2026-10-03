@@ -76,6 +76,11 @@ end
 -- (M.WRAP characters of the panel's body font; continuation rows carry no icon).
 M.WRAP = 40
 local function add(items, t)
+  -- (S19) a row whose label and value would not fit side by side becomes a text, wrapped (a long
+  -- value had been drawn over its label)
+  if t.t == "row" and not t.link and t.label and t.value and #t.label + #t.value > (t.hl and 34 or 38) then
+    t = { t = "text", icon = t.icon, text = t.label .. ": " .. t.value, hl = t.hl }
+  end
   if t.t == "text" and t.text and #t.text > M.WRAP then
     local line, first = "", true
     for word in t.text:gmatch("%S+") do
@@ -1061,7 +1066,15 @@ local function v3_settlement(W, sel)
     local from = V.settlements[fd.from or 0]
     local lh = V.households[fd.leader or 0]
     local lq = lh and V.people[lh.members[1] or 0]
-    out.subtitle = "A new place" .. (from and (", made by people of " .. from.name) or "") .. (fd.by_sea and ", come over the sea" or "")
+    -- (S19) what it is by what stands: a camp until the first roof, a hamlet of huts and a few houses,
+    -- a village once it has its granary and four houses
+    local roofs, houses = 0, 0
+    for _, id in ipairs(s.blist) do
+      local b = s.buildings[id]
+      if b.kind == "house" and b.state == "standing" then roofs = roofs + 1; if not b.hut then houses = houses + 1 end end
+    end
+    local what = roofs == 0 and "A camp" or ((houses >= 4 and s.granary and s.granary.state == "standing") and "A young village" or "A hamlet")
+    out.subtitle = what .. (from and (", made by people of " .. from.name) or "") .. (fd.by_sea and ", come over the sea" or "")
     add(items, { t = "text", icon = "people", text = string.format("Founded %s by %s%s: %s", clock.label(fd.started),
       lq and ("the " .. lq.surname .. "s") or "a household", from and (" of " .. from.name) or "", (lh and lh.found and lh.found.why) or "they chose to make a new home") })
     if lh and lh.found and lh.found.swhy then add(items, { t = "text", icon = "pin", text = "Why here: " .. lh.found.swhy }) end
@@ -1074,10 +1087,14 @@ local function v3_settlement(W, sel)
   -- what stands, what is being made
   local stand, making = {}, {}
   local count = {}
+  local ground = {}
   for _, id in ipairs(s.blist) do
     local b = s.buildings[id]
     local lab = b.label or b.kind
-    if b.state == "standing" then count[lab] = (count[lab] or 0) + 1
+    if b.kind == "outcrop" or b.kind == "bog" then
+      -- (S19) rock and bog are the ground's, built by nobody
+      ground[lab] = (ground[lab] or 0) + 1
+    elseif b.state == "standing" then count[lab] = (count[lab] or 0) + 1
     elseif b.state == "site" then
       making[#making + 1] = string.format("%s for %s (%d%%, logs %d/%d)", lab, b.for_name or "the village",
         floor(100 * b.work_done / math.max(1, b.work_need)), floor(b.logs_have), b.logs_need)
@@ -1088,6 +1105,10 @@ local function v3_settlement(W, sel)
   table.sort(labs)
   for _, k in ipairs(labs) do stand[#stand + 1] = (count[k] > 1 and (count[k] .. " ") or "") .. k .. (count[k] > 1 and "s" or "") end
   add(items, { t = "row", icon = "house", label = "Standing", value = #stand > 0 and table.concat(stand, ", ") or "nothing yet" })
+  local gl = {}
+  for k, c in pairs(ground) do gl[#gl + 1] = k .. (c > 1 and (" (" .. c .. ")") or "") end
+  table.sort(gl)
+  if #gl > 0 then add(items, { t = "text", icon = "pin", text = "In its ground: " .. table.concat(gl, "; ") }) end
   for _, m in ipairs(making) do add(items, { t = "text", icon = "pickaxe", text = "Building: " .. m }) end
   if s.lot then
     add(items, { t = "text", icon = "pickaxe", text = "Clearing trees from the ground for the " .. (s.lot.opts.label or s.lot.kind) })

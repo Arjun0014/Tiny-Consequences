@@ -42,6 +42,7 @@ M.u_shadowp = vmath.vector4(1 / 2048, 0.0003, 0.9, 1)  -- 1/size, depth bias, st
 M.u_focus = vmath.vector4(40, 0.6, 0.08, 0.2) -- focus distance, strength, in-focus band, sky CoC
 M.u_post = vmath.vector4(0.35, 0.28, 1.1, 1.05) -- bloom, vignette, saturation, contrast
 M.u_cut = vmath.vector4(0, 0, 10, 0)           -- cloud cut-away: focus point (world), strength
+M.u_canopy = vmath.vector4(0, 0, 10, 0)        -- (S19) canopy cut-away close in: look target (world), radius (0 off)
 M.u_cloud = vmath.vector4(0, 3, 0, 0)          -- clouds: hour (view epoch), fade hours (clouds.lua)
 
 -- Filled by the render script each frame (used by picking/projection later)

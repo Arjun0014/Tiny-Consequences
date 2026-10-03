@@ -205,6 +205,7 @@ function update(self)
 	cb.u_shn = state.u_shn
 	cb.u_focus = state.u_focus
 	cb.u_cut = state.u_cut
+	cb.u_canopy = state.u_canopy
 	cb.u_cloud = state.u_cloud
 	cb.u_eye = state.u_cam
 	local sp = state.u_shadowp

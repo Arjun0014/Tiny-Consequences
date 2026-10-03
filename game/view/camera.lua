@@ -271,6 +271,10 @@ function M.update(dt)
   state.u_focus.y = 0.5 + 1.5 * near_k
   state.u_focus.z = 0.1 - 0.04 * near_k
   state.u_focus.w = 0.12 + 0.88 * smoothstep(0.35, 0.85, z)
+  -- (S19) v3 close in: the canopy opens over the look target (props.fp)
+  local cut = (M.ZOOM_MAX == M.V3_ZOOM_MAX) and smoothstep(1.25, 1.55, z) or 0
+  state.u_canopy.x, state.u_canopy.y, state.u_canopy.z = tx, ty, tz
+  state.u_canopy.w = 0.085 * cut
 end
 
 -- Sun shadow map frame (renderer v2, D-048): an orthographic sun view covering the whole planet

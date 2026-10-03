@@ -18,6 +18,7 @@ uniform fs_uniforms
     highp vec4 u_sun;
     highp vec4 u_shadowp;
     highp vec4 u_focus;
+    highp vec4 u_canopy;
 };
 
 void main()
@@ -32,6 +33,26 @@ void main()
         return;
     }
     vec3 L = normalize(u_sun.xyz);
+    // (S19) close in, the canopy opens over the one the camera looks at: foliage (classes 1, 2, 4)
+    // above head height near the line from the look target to the eye is thinned away by a
+    // world-space stipple, the trunks left standing (the forest stays as dense as it is)
+    if (u_canopy.w > 0.0 && (abs(var_mat.z - 1.0) < 0.5 || abs(var_mat.z - 2.0) < 0.5 || abs(var_mat.z - 4.0) < 0.5)) {
+        highp vec3 d = var_wpos - u_canopy.xyz;
+        highp float hgt = dot(d, normalize(u_canopy.xyz));
+        if (hgt > 0.012) {
+            highp vec3 a = normalize(u_cam.xyz - u_canopy.xyz);
+            highp float t = dot(d, a);
+            highp float rr = length(d - a * t);
+            // (a cone: wider toward the eye, where a crown hides most of the view)
+            highp float rw = u_canopy.w + max(t, 0.0) * 0.45;
+            float k = (1.0 - smoothstep(rw * 0.55, rw, rr)) * smoothstep(0.012, 0.02, hgt);
+            if (t > -u_canopy.w * 0.3 && k > 0.0) {
+                highp vec3 q = floor(var_wpos * 600.0);
+                float n = fract(sin(dot(q, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+                if (n < k * 0.97) discard;
+            }
+        }
+    }
     // bare deciduous crowns in winter: a stable world-space stipple leaves only twigs
     if (var_bare > 0.01) {
         highp vec3 q = floor(var_wpos * 160.0);

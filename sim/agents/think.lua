@@ -2675,7 +2675,11 @@ PLAN.quern = function(W, s, p, ctx, now, cd)
   hh.querning = p.id
   local x, y = near_spot(W, p, now, yard.dx, yard.dy, 0.04, 83)
   go(pl, x, y, "the yard")
-  local left = c.quern_h - (hh.quern_work or 0)
+  -- (the hours of work left at this hand's pace - skill and tools, as WORK.quern counts them: S19,
+  -- booking the bare hours left, each stint did only part of what remained and the quern was never
+  -- finished)
+  local rate = (0.6 + 0.6 * (p.sk_craft or 0.2)) * (0.55 + 0.45 * (hh.tools or 1))
+  local left = (c.quern_h - (hh.quern_work or 0)) / max(0.05, rate) + 0.02
   work(pl, "quern", min(left, (1.8 + 1.0 * u01(W, p, now, 84)) * p.dil), { ref = yard.id, fx = yard.cx, fy = yard.cy })
   local home = ctx.home
   go(pl, home.dx, home.dy, "home", home.id)

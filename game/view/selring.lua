@@ -13,7 +13,7 @@ local H_POS, H_NRM, H_COL = hash("position"), hash("normal"), hash("color")
 local MSG_ENABLE, MSG_DISABLE = hash("enable"), hash("disable")
 local sqrt, sin = math.sqrt, math.sin
 
-local SIZE = { cell = 0.62, village = 0.42, person = 0.085, ship = 0.26, animal = 0.1, volcano = 0.4 }
+local SIZE = { cell = 0.62, village = 0.42, person = 0.085, ship = 0.26, animal = 0.1, volcano = 0.4, settlement = 0.22 }
 
 function M.init(factory_url, surface)
   M.surface = surface
@@ -48,6 +48,10 @@ function M.sel_dir(W, sel)
     local x, y, z = puppets.ship_dir(sel.list or "ships", sel.index)
     if x then return x, y, z end
     return ents.ship_dir(W, ents.ship_list(W, sel.list)[sel.index])
+  elseif sel.kind == "settlement" and W.v3 and W.S.v3 then
+    -- (S19) a v3 place, small or new: the ring round its square marks it on the planet
+    local s = W.S.v3.settlements[sel.sid or 0]
+    if s then return require("sim.agents.map").unit(s, s.sqx or 0, s.sqy or 0) end
   elseif sel.kind == "village" then
     local v = ents.village(W, sel.id)
     local c = v and v.cell or sel.cell
@@ -69,11 +73,16 @@ function M.update(W, dt)
   local on = x ~= nil and camera.facing(x, y, z)
   if on ~= M.on then M.on = on; msg.post(M.url, on and MSG_ENABLE or MSG_DISABLE) end
   if not on then return end
-  local r = (sel.kind == "ship") and (state.R + 0.01) or (M.surface(x, y, z) + 0.03)
+  local r = (sel.kind == "ship") and (state.R + 0.01) or (M.surface(x, y, z) + (sel.kind == "settlement" and 0.06 or 0.03))
   pos.x, pos.y, pos.z = x * r, y * r, z * r
   go.set_position(pos, M.id)
   go.set_rotation(vmx.set_up_yaw(rot, x, y, z, state.time * 0.4), M.id)
   local s = (SIZE[sel.kind] or 0.3) * (1 + 0.08 * sin(state.time * 4))
+  if sel.kind == "settlement" then
+    -- (S19) a mark for finding the place from afar: it fades out close in, where the place shows
+    local zf = camera.zoom or 1
+    s = s * (1 - 0.75 * math.min(1, math.max(0, (zf - 1.05) / 0.35)))
+  end
   scl.x, scl.y, scl.z = s, s, s
   go.set_scale(scl, M.id)
 end
