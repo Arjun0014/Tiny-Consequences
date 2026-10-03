@@ -179,8 +179,10 @@ boat. Hardship is judged by each household (its larder and part of the granary),
 larders stay; leaving couples take no house; hunger answered by the people (beasts killed for the pot
 and for neighbours, the shore, journeys put off); the generator's waiting couple has parents; a young
 place is seen - the canopy opens close in, the selection ring marks it, the inspector says camp,
-hamlet or young village. Tests `test_v3_ferry`, `test_v3_families`. Open: sailing together (kin taken
-along in a leaving household's boat), a ferry for founders, labels for small places on the planet.)
+hamlet or young village; a famine is survivable (D-147: relief from need, no waiting with nothing
+left, no moving into a camp with nothing, a day at the edge before death - inland total famine: hunger
+deaths 24 -> 1). Tests `test_v3_ferry`, `test_v3_families`. Open: sailing together (built and removed: no
+real premise - boat households fetch relief by sea), a ferry for founders, labels for small places.)
 
 The plan as it was written (done, as above):
 1. **Who and why**: a household (or kin together) pushed hard with no village that would take them

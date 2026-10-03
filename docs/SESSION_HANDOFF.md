@@ -1,33 +1,80 @@
-# Session handoff — session 19 (3 Oct 2026, extended autonomous run; IN PROGRESS)
+# Session handoff — session 19 (3 Oct 2026, extended autonomous run): the long-run audit, stone and iron, baskets and credit, fairs, the ferry, a famine people live through
 
-Interim checkpoint (updated as the session goes; the session-18 handoff follows below). Source of truth:
-`docs/PROGRESS.md` (Current state, session 19 bullet) and D-138 onward in `docs/DECISIONS.md`.
+`docs/PROGRESS.md` (session 19 bullet) and **D-138 … D-147** in `docs/DECISIONS.md` are the source of
+truth. Arjun's rules held: no subagents; the living world first; one heavy process at a time; visible
+action = simulation; nothing appears that nobody built, carried or learned; fix mechanisms, not
+appearances; no forced trade, migration or founding (premises in `sim/agents/premise.lua`); browser
+measured in release with rendering off; browser and LuaJIT identical.
 
-Done so far (main; v3 tests 46/46, quick 154/154 at ddd6c36, browser = LuaJIT at b277382):
-- **Long-run audit** with `tools/v3_chronicle.lua` (every memory to `<out>/mem.txt`, village states,
-  deaths; `--premise crowd:2 | fail_harvest:N | empty_stores:N`; `tools/v3_follow.lua --premise ... --from-day D`).
-- **D-138** trade planned on a snapshot of each household's worths and spares (`econ.view`,
-  `econ.deal_plan` shared by planning and arrival); seen and guessed gains kept apart (`trade_fade` 16 d);
-  unsold trips 542 -> ~100-170 in 192 days.
-- **D-139** a widow remarrying away takes her children; estates of households with nobody left pass to
-  kin; nobody leaves on a journey while the household is about to move; one left behind follows it;
-  hunters remember their luck.
-- **D-140** hunger answered: households kill their own beasts, neighbours kill one for those with none,
-  the herd counts before leaving, shore gathering, journeys put off while hungry, night feeds,
-  relief asked on old news; `premise.murrain` for hunger tests.
-- **D-141** stone (`sim/agents/stone.lua`): outcrops from planet slope/height, quarrying, querns
-  (cooking 40% quicker, traded), stone footings.
-- **D-142** iron (`sim/agents/iron.lua`): veins and bog iron, mine -> clamp -> forge -> iron edges; the
-  sea's danger weighed in trade (`sea_life_fu`), `sea_squall` lowered.
-- **D-143** a whole good paid with a basket of spare goods; credit between households when trusted
-  (collected in kind by the next trader, written off after 48 days with lost trust).
-- **D-144** fairs (`sim/agents/fair.lua`): called after the harvest by the middle village of a road
-  cluster, heard of through people and criers, attended for reasons, barter, news, kin, matches.
-- **D-145** the ferry (`migrate.ferry_for`/`ferry_plan`/`land_ferry`, `p.ferry`): a boatless household
-  sailed over by a household of its village with a boat, the skipper sailing home; hardship judged by
-  each household (`migrate.push`); couples leaving take no house (`settle.leaving`); fairs only by road,
-  fit travellers, bread for the way home (`PICK.guest_bread`); the generator's waiting couple has parents.
-- Next: validation batch (quick, web, browser hash, perf), founding markers, performance, final handoff.
+## What happened (in order)
+- **Long-run audit tools**: `tools/v3_chronicle.lua` (every memory to `<out>/mem.txt`, village states to
+  `days.txt`, deaths and accounts to `summary.txt`; `--premise crowd:2 | fail_harvest:N | empty_stores:N |
+  murrain:N`, several allowed) and `tools/v3_follow.lua --pid P --from-day D [--premise ...]`.
+- **D-138 trade on a snapshot**: households' worths and spares (`econ.view`) planned with `econ.deal_plan`
+  (shared by planning and arrival); seen and guessed gains apart (`trade_fade`); unsold trips 64% -> ~25%.
+- **D-139 families**: a widow remarrying away takes her children; estates of empty households pass to kin;
+  nobody sets out while the household is about to move; one left behind follows; hunters remember luck.
+- **D-140 hunger answered**: households kill their own beasts, neighbours kill one for those with none, the
+  herd counts before leaving, shore gathering, journeys put off while hungry, night feeds, relief on old news.
+- **D-141 stone** (`sim/agents/stone.lua`): outcrops from planet slope/height (hard and soft rock),
+  quarrying, stones carried one at a time, querns (cooking quicker; traded to villages without rock),
+  stone footings (houses weather slower).
+- **D-142 iron** (`sim/agents/iron.lua`): veins in hard rock and bog iron in wet lowland, known when seen;
+  ore dug and carried, charcoal burned in a clamp, blooms smelted, iron edges forged and fitted
+  (`hh.iron`: tool work 25% faster); traded where there is none. The sea's danger weighed in trade.
+- **D-143 baskets and credit**: a whole good paid with a basket of spare goods; the rest owed between
+  trusting households, collected in kind by the next trader, written off with lost trust after 48 days.
+- **D-144 fairs** (`sim/agents/fair.lua`): called after the harvest by the middle village of a road cluster,
+  heard of through people and criers, attended for reasons, barter person to person, news, kin, matches.
+- **D-145 the ferry**: a household with no boat is sailed over by a household of its village with one
+  (kin, friends, partners, any neighbour for a fare); the skipper keeps his word (`p.ferry`), packs his own
+  provisions, takes them aboard, lands them (`migrate.land_ferry`) and sails home in the same boat.
+  Hardship judged per household (`migrate.push`: own larder + part of the granary); couples leaving take
+  no house (`settle.leaving`); fairs only by road, fit travellers, bread for the way home; the founding
+  generator's waiting couple has parents.
+- **D-146 seeing a young place**: close in, the canopy opens over the look target (`props.fp` `u_canopy`:
+  foliage stippled away in a cone to the eye, trunks and shadows kept); the selection ring marks a v3 place;
+  the inspector says camp / hamlet / young village, lists rock and bog as "In its ground", wraps long rows.
+  A quern was never finished (stints booked bare hours at a pace below 1): fixed.
+- **D-147 a famine people live through**: relief from need even without a surplus; with nothing left a
+  household decides after a day; a young place with no granary draws only by a kin's offer; founding asks
+  60% of its bread; health no lower than nothing and a day at the edge before death; starvation
+  0.04 -> 0.015/h; minders and children following parents only on the same map.
+
+## State at the end
+- **main** at the final commit (see `git log`); shipped world unchanged (`assets/worlds/v3.tcsave`).
+- Quick sim **155/155** (v3 46: new test_v3_families, test_v3_stone x3, test_v3_iron, test_v3_credit,
+  test_v3_fair, test_v3_ferry); lint clean; `npm run build` OK; web 11/11 at the final build (W02 timed out
+  on its last pause command twice under load, all its rate checks passing, and passed on rerun);
+  `node scripts/v3_hash_web.mjs --release`: browser = LuaJIT at 0, 24, 48, 72 h (final state).
+- LuaJIT `luajit -joff tools/v3_profile.lua --days 4`: **3.67 M instructions a game hour** (148 people;
+  session start 3.93 M) - nav (A*) 27%, think 13.5%, stock 12.6%, map 12.5%, wild 10%, event queue 8%.
+- Release browser (`node scripts/prof_web.mjs --release --hours 288 --runs 3`, rendering off): lower
+  envelope **37.0 ms a game hour, a 12-day season 10.6 s** (start 39.2 ms/h, 11.3 s).
+- Untouched 192 days: 399-439 exchanges (387 with fairs alone, 134 in 96 days at the start), unsold trips
+  ~107-128, deaths only old age (3) and illness (6), no hunger, no drownings; Zurug, Dreik Knoll and
+  Hottoodingle Hop quarry and forge; querns and iron travel to villages without rock or ore; Tekheim and
+  Zurug hold a fair every local year; Little Leelee and Tekheim trade after meeting at the fair.
+- Premises: crowded Zurug 96 d - Kodak founded day 3, huts day 12, no hunger deaths; island hardship -
+  the boatless households ferried, fishers stay; inland total famine 48 d - hunger deaths 24 -> 1.
+
+## Observations worth knowing
+- Households with boats fetch relief by sea, so on islands they rarely leave; that is why "sailing
+  together" was built and taken out (no real premise exercised it; D-147 Rejected).
+- Performance: A* is already tight (unrolled, bucket queue) and its path cache is flushed only ~2 times a
+  day per village with most queries unique; the event heap holds almost no stale entries. The remaining
+  exact cuts are ~1-2% each (wild.threat block index 2.2%, herd scan centre ~0.5%, incremental cost
+  rebuild 3%). Not done this session; measured and recorded.
+- A loop scan (plans chosen 14+ times a day for 24 days) found only expected repeats (infants, play,
+  one-log hauling, hourly fair steps). Useful again after any new work type: a stint must be booked at the
+  worker's pace or it never finishes (the quern).
+- Starvation is now ~3.5 days from the last meal (people eat three meals a day; two days had been too
+  short for any help or move to arrive). Hunger push and relief are per household.
+
+## Rejected / not done
+- Sailing together (built, removed: see above). Fairs by boat (Dreik Knoll never goes to a fair). Querns and
+  iron at fairs (whole goods sold by trips). Stone bridge piers. A ferry for founders. Labels for small
+  places on the planet; camp smoke seen from afar. Exact performance cuts (see above). R6 conflict (not begun).
 
 # Session handoff — session 18 (2 Oct 2026): moving and founding by sea, sea droves, salt, travellers who share
 

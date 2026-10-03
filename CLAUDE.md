@@ -64,7 +64,9 @@ mine -> clamp -> forge -> `hh.iron`) are whole chains; baskets and credit betwee
 (`migrate.ferry_for`/`land_ferry`, the skipper's `p.ferry`); hardship is judged per household
 (`migrate.push`: own larder + part of the granary); `settle.leaving` (no houses for those leaving);
 work stints must be booked at the worker's pace (a quern was never finished); the canopy opens over the
-close camera's target (`props.fp` `u_canopy`).
+close camera's target (`props.fp` `u_canopy`); famine (D-147): relief from need (`econ.relief_gift`),
+`mig_desperate`, a day at the edge before death (`p.edge`, health never below 0); never compare building
+ids or coordinates of someone on another map (`p.at`) with this map's (a toddler starved that way).
 
 ## Read order
 
