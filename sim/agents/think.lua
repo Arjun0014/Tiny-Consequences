@@ -2120,6 +2120,9 @@ local function care_candidates(W, s, p, ctx, now)
     elseif people.pantry(ctx.home) >= 0.3 and ctx.hh and claim_free(W, ctx.hh, "cooking", p) then
       addw(0.85 + ib.hunger - travel(ctx, ctx.hx, ctx.hy, p.x, p.y) * 0.3, "cook", ctx.home.id, 0,
         "%s is hungry and nothing is cooked: making porridge", ib.name)
+    elseif M.pack_food(p) >= c.porridge * 0.5 then
+      -- (S20) nothing at home, but food in the pack (for the fair, for a trade): the child first
+      addw(0.95 + ib.hunger, "feed_pack", ib.id, 0, "%s is hungry and there is nothing at home: food from what I carry", ib.name)
     end
   end
 end
@@ -2336,6 +2339,23 @@ PLAN.nurse = function(W, s, p, ctx, now, cd)
   end
   work(pl, "nurse", c.nurse_h * (0.8 + 0.4 * u01(W, p, now, 46)), { ref = ib.id, inside = inside, fx = p.x + p.fx, fy = p.y + p.fy })
   return "Feed " .. ib.name, inside and "home" or "where they are"
+end
+
+-- (S20) Ready food in p's pack (smoked fish, cheese, meat - not raw grain).
+local PACK_FOOD = { "smoked", "cheese", "meat", "fish" }
+M.PACK_FOOD = PACK_FOOD
+function M.pack_food(p)
+  local P = p.pack
+  if not P then return 0 end
+  local n = 0
+  for i = 1, #PACK_FOOD do n = n + (P[PACK_FOOD[i]] or 0) end
+  return n
+end
+
+PLAN.feed_pack = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  work(pl, "feed_pack", 0.2 + 0.1 * u01(W, p, now, 48), { ref = cd.a })
+  return "Feed " .. W.S.v3.people[cd.a].name .. " from what I carry", "where they are"
 end
 
 PLAN.feed_babe = function(W, s, p, ctx, now, cd)

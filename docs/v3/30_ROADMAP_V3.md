@@ -246,7 +246,9 @@ Acceptance: a god power is a few lines writing state; no outcome scripts.
 (Session 20, D-154: **R6.5a foundations and R6.5b lightning on a village built** - strikes on the
 tallest thing, fire lived continuously and spread by dryness and wind, out of the house with the babe,
 water carried, houses lost and households lodged with kin; drought by day saved, drought at night
-lost. Next: R6.5c wildfire between planet and map.)
+lost. Later, D-155-D-164: **R6.5c wildfire**, **R6.5d snow and frost**, **R6.5f quakes, volcanoes and
+tsunami**, beasts and fields in fires, a first **R6.5g** watch (a hard winter). Not yet: **R6.5e flood
+water** - the planet's rivers do not rise enough under heavy rain; hydrology first.)
 
 ## R7 — Player and chains
 - God powers on the v3 world (lightning on a tree or a person, rain, drought, cull, oil spill on

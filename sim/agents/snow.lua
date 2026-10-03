@@ -73,7 +73,11 @@ function M.frost(W, s, tmin, now)
         local kill = min(1, (ft - tmin) / c.frost_span) * c.frost_k
         pl.frost = (pl.frost or 1) * (1 - kill)
         s.acc.frosted = (s.acc.frosted or 0) + 1
-        if (pl.hh or 0) ~= 0 then hit[pl.hh] = pl.crop end
+        -- (the household sees it the first time the frost takes this sowing; later frosts it knows)
+        if (pl.hh or 0) ~= 0 and pl.frost_told ~= pl.sown_day then
+          pl.frost_told = pl.sown_day
+          hit[pl.hh] = pl.crop
+        end
       end
     end
   end

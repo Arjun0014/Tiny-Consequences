@@ -152,8 +152,12 @@ an outcome script, the architecture is wrong.
 - **Fields, stooks and the hay stack burn** (D-161); **tsunami** (D-162, §11: run-up from the sea,
   the sea drawing back seen and shouted, running inland, the shore taken); lost village buildings
   planned again (D-162).
-- Not yet: landslides, aftershocks; e flood water (hydrology first); g climate extremes (watched with
-  `hard_winter`); ice crust, lopping boughs for fodder, moving herds to open ground; carrying the hurt.
+- **R6.5g, first watch** (D-164): a 96-day hard winter (`--premise hard_winter`) - snow everywhere, frost
+  on the flax, harvests thinned (stores halved), flocks thinned by the dzud; a toddler's death found and
+  fixed (fed from the carer's pack; no child handed to one setting out); then no deaths from hunger.
+- Not yet: landslides, aftershocks; e flood water (hydrology first); g at longer range (ice age,
+  hothouse, sea-level coastline, ENSO); ice crust, lopping boughs for fodder, moving herds to open
+  ground; carrying the hurt (needs a way to bear a person other than a boat's `riding`).
 
 ## 10. R6.5d snow and cold on the maps (design, session 20)
 The audit found no snow at any village (all lie between 37 S and 14 N: Krikeivorn's winter days

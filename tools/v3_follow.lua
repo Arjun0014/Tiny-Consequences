@@ -29,7 +29,7 @@ for _, pr in ipairs(args.premise) do
   local name, sid = pr:match("^([%w_]+):?(%d*)$")
   local s = V.settlements[tonumber(sid) or 1]
   local premise = require("sim.agents.premise")
-  if name == "crowd" then premise.crowd(W, s, 12, 40) else premise[name](W, s) end
+  if name == "crowd" then premise.crowd(W, s, 12, 40) elseif premise[name] then premise[name](W, s) else assert(premise.named(W, name), "no premise " .. name) end
 end
 local from = args.from or (args.from_day and W.hour + args.from_day * 24) or W.hour
 if from > W.hour then world.advance(W, from) end

@@ -64,7 +64,10 @@ function M.minder(W, s, mother, home, now)
     local q = V.people[hh.members[i]]
     -- (S19: on the same map - building ids and places are each map's own: a father away at another
     -- village's fair was handed his baby by its id, and it starved)
-    if q and q.alive and q ~= mother and q.babe == 0 and q.act ~= "sleep" and q.act ~= "carried" and (q.at or q.sett) == (mother.at or mother.sett) then
+    -- (S20: not one setting out on a journey - a father leaving to trade was handed his toddler and it
+    -- starved on the road)
+    if q and q.alive and q ~= mother and q.babe == 0 and q.act ~= "sleep" and q.act ~= "carried" and (q.at or q.sett) == (mother.at or mother.sett)
+      and not q.trip and not q.raid then
       local near = q.inside == home.id or (q.inside == 0 and sqrt(dsq(q.x - home.dx) + dsq(q.y - home.dy)) < 0.06)
       if near then
         local st, a = people.stage(q, now)
@@ -142,6 +145,18 @@ function M.infant_tick(W, s, ib, now, dt, interrupt, pos)
       elseif (who.prov or 0) >= 0.1 then
         who.prov = who.prov - 0.1
         ib.hunger = max(0, ib.hunger - 0.5)
+      else
+        -- (S20) the provisions gone: from what the carer carries - ready food first, else bread from
+        -- the grain in the pack (a toddler on a trade trip starved with 8 FU of grain in the pack)
+        local P = who.pack
+        local fed = false
+        for _, g in ipairs({ "smoked", "cheese", "meat", "fish", "grain" }) do
+          if not fed and P and (P[g] or 0) >= 0.1 then
+            P[g] = P[g] - 0.1
+            fed = true
+          end
+        end
+        if fed then ib.hunger = max(0, ib.hunger - 0.5) end
       end
       who = nil
     end

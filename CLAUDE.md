@@ -79,6 +79,17 @@ continuously - never ahead of time), `people.hurt`, death deeds and burials; `th
 60-upvalue limit (new branches as `M.*`); work/plan kinds and trip fields share one namespace (grep first:
 `tend` = weeding, `trip.party` = a drove); probes need the test runner's `jit.opt.start(...)`; browser check
 with premises: `node scripts/v3_hash_web.mjs --release --premise conflict|fire`.
+Later in session 20 (D-155-D-164): the planet on the maps - wildfire (`blaze.planet`), quakes (`shake.lua`),
+volcanoes (`volcano.lua`), tsunami (`tsunami.lua`; the map has no heights: low ground = near the sea),
+snow and frost (`snow.lua`, `weather.walk_k/reach`), one roof-load rule (`shake.roof_load`); beasts and
+fields in fires; fear of a place (`deeds.fear`), restocking, bands that wait. An interrupt whose reaction
+falls after a step's end interrupts the next step (`p.int_late`, not a journey). A gone granary/dock/well/
+woodstore/pen is forgotten and planned again (`founding.replan_lost`/`replan_pens`). Herds are kept to their
+feed by people (the failing killed, a pig breeding stock, growers) - **re-check herd sizes and the cost of a
+day-192 world** in long runs (`tools/v3_chronicle.lua --days 192 --save F`, then
+`luajit -joff tools/v3_profile.lua --load F --days 4`): a day-0 profile hides growth. Named premises
+(`cold_snap`, `hard_winter`, `quake`, `eruption`, `tsunami`, `wildfire`, `fire`, `conflict`) work in tests,
+the chronicle, `v3_follow`, the hash check and the `v3_premise` bridge.
 
 ## Read order
 

@@ -447,12 +447,33 @@ WORK.feed_babe = function(W, s, p, st, f)
   ib.called = nil
 end
 
+-- (S20) A hungry child fed from the carer's pack (ready food: smoked fish, cheese, meat).
+WORK.feed_pack = function(W, s, p, st, f)
+  local ib = W.S.v3.people[st.ref or 0]
+  if not ib or not ib.alive or f < 0.3 or not p.pack then return end
+  local c = C()
+  local want = c.porridge
+  for _, g in ipairs({ "smoked", "cheese", "meat", "fish" }) do
+    local q = p.pack[g] or 0
+    if q > 0 and want > 0 then
+      local m = min(q, want)
+      p.pack[g] = q - m
+      want = want - m
+    end
+  end
+  local got = c.porridge - want
+  if got <= 0 then return end
+  s.acc.eaten = (s.acc.eaten or 0) + got
+  ib.hunger = max(0.03, ib.hunger - 0.85 * got / c.porridge)
+  ib.called = nil
+end
+
 -- Handing a baby to its minder (D-081).
 WORK.hand = function(W, s, p, st, f)
   local V = W.S.v3
   local ib, q = V.people[st.babe or 0], V.people[st.ref or 0]
   if not ib or not ib.alive or not q or not q.alive or p.babe ~= ib.id then return end
-  if q.babe ~= 0 or q.act == "sleep" then return end
+  if q.babe ~= 0 or q.act == "sleep" or q.trip then return end
   if (q.at or q.sett) ~= (p.at or p.sett) then return end
   if not (q.inside == p.inside or (q.inside == 0 and dsq(q.x - p.x) + dsq(q.y - p.y) < 0.004)) then return end
   if kin.give(W, ib, q) then
