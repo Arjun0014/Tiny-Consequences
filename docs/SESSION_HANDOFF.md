@@ -1,4 +1,63 @@
-# Session handoff — session 23 (4 Oct 2026, extended autonomous run): the hydrology fix verified; clouds v5; the village mix; CHAIN REACTION ("Your actions"); R7 v2 powers; D-179-D-183
+# Session handoff — session 23 (4 Oct 2026, extended autonomous run): the hydrology fix verified; clouds v5; the village mix; CHAIN REACTION ("Your actions"); R7 v2 powers; the second 8-year run's famine followed to four mechanisms; aim previews; D-179-D-186
+
+## FINAL STATE (end of session 23)
+- main, all committed (last: the final docs commit after 76dd7d4). Nothing half-done in the tree. Worktrees made this session for snapshots and long runs (`../tc-snap`,
+  `../tc-run`, `../tc-before`) are removed at the end.
+- Tests: quick sim suite **208/208 (at 870b987; then every test file the D-186 fix touches again: agents 14, animals, snow, year, lightning)** on the final code; web **11/11**; lint clean (309 files, new rule `pow`); debug and release
+  builds OK.
+- Browser = LuaJIT (release): untouched 72 h and `--premise flood5|conflict|fire|powers|pasture_fire` 96 h - all identical (final code: untouched, fire, powers2 rechecked on the last release build); new premise `powers2` (oil, warm sea, sickness, blight, meteor).
+- 8 untouched years (`luajit tools/v3_chronicle.lua --days 384`, run 5, on the D-184 code - D-185 leaves an untouched world exactly as
+  it was, its hash unchanged; D-186 changes only a household with no roof and no host): births 46; deaths illness 13, old age 4,
+  **hunger 0**; no door cut off (run 2 at the checkpoint: hunger 11).
+- Cost: LuaJIT 4.06 M instructions a game hour at day 0 (S22 3.91 M), 4.02 M at day 192 (S22 4.41 M), 4.79 M at year 8 (172 people; S22 5.13 M; livestock 35.7%, the herd scan the hot spot)
+- Audio playtest (`scripts/play_audio.mjs`): the herd bed 0.14 close in / 0.10 at the square / 0.03 mid zoom, under the village
+  bed (0.54 / 0.17); one-shots work and village; beast calls rare (none in these 45 s windows - by design a few a minute, near).
+- Release benchmark (`node scripts/prof_web.mjs --release --hours 288 --runs 3`): lower envelope 40.9 ms of sim a game hour, a 12-day season 11.8 s (S20: 10.8 s).
+
+## What session 23 built (D-179-D-186)
+1. **Hydrology** (D-179): the rain the ground cannot take in runs off without leaving the soil twice; the drifting tests followed
+   (wolves eating across a river; hunting counted by spears thrown).
+2. **Clouds v5** (D-180): one cloud layer from the villages' own weather that the camera flies through; shadows from the same field.
+3. **The village mix** (D-181): `audio.lua` `M.MIX`; the herds are texture.
+4. **CHAIN REACTION** (D-182, `docs/v3/77_CHAIN_REACTION.md`): `sim/chain.lua` (an observer), "Your actions", "chain N" on news cards.
+5. **R7 v2 powers** (D-183): sickness in a herd, blight, warm/cool sea, oil, meteor.
+6. **The second 8-year run's famine** (D-184): a pit that sealed a house (every site keeps a walkable yard; `map.cut_doors`; the
+   chronicle prints DOORS CUT OFF), play loops that carried children through it (`nav.los_last`), toddlers who never got their
+   strength back (they recover when fed), a crier who gave birth on the road (`journey_ok`: no journeys near term or nursing; babies
+   fed on trips).
+7. **Oil on a coast** (D-185): the shore fouled, the gulls oiled; **a household with no roof** (D-186): no plan needs the lost house.
+8. **Polish** (D-184): aim previews (`powers3.preview`), the flood's edge by marching squares, the news so far, harvest and taken-in
+   stories, the chain's taken-in and fed-by-neighbours nodes, the Sound pill, no `^` in `sim/`.
+
+## Next
+1. R6: a palisade round the houses - a ring with gates that never seals a door (check every placement with `map.cut_doors`; herds,
+   fields and the well outside need their way through a gate) - and captives only as persistent people (a household, a destination,
+   a way home).
+2. Traded grain carrying blight's taint; oil fouling shore food and the gulls on the maps; relief to a village joined to its harm in
+   the chain.
+3. The year-8 cost: the herd neighbour scan (`stock.lua` `scan`) is O(herd) per beast decision (the herd's middle needs every
+   member at the beast's own time) - only an exact change is acceptable (no loss of agency).
+4. Play: the aim previews and "Your actions" with Arjun's eyes; the flood edge and the clouds at different times of day.
+
+## Pitfalls found this session
+- Every planner must keep a walkable yard round what it lays: a ring of free tiles is what guarantees no way is lost. Check new
+  placements with `map.cut_doors` (tests: `test_v3_sites`).
+- A work step's straight loop (`x1, y1`) is not a path: it must stop at the first closed tile (`nav.los_last`).
+- Carried infants never run `act.body`: anything the body does for grown-ups (recovery) must be done in `kin.infant_tick` too.
+- `think` returns a trip's own plan before weighing care: whatever a trip does not plan for (nursing) must happen in the tick or be
+  ruled out before setting out (`journey_ok`).
+- `^` is pow() in the browser's Lua 5.1: products in `sim/` (the linter now says so).
+- A test that asserts where a fire went (or who happened to be near) drifts with any change; assert the mechanism (the senses,
+  within reach) and add a direct premise for it.
+- Headless rAF timing under SwiftShader is not a measure of anything; measure the GPU with ANGLE D3D11 (`out/s23/probe_gpu.mjs`)
+  and the sim with render_off / instruction counts.
+- A deed's `answers` is a causal claim: link a death to a hurt only when the hurt was grave or is the cause of death.
+- `flush()` of a view module must use the world's clock (`speed.v3_t`), not the last frame's (`state.hour_f`).
+- A cast aimed by the screen centre may land beside the village: shots aim at the village's own cell (`v3_look` returns `cell`).
+- `tools/v3_chronicle.lua --save` writes a year0 save (only at a year boundary, days a multiple of 48): following from it shows the
+  same mechanisms but is not an exact continuation of the long run.
+
+## (earlier in session 23)
 
 ## CHECKPOINT (~880K context, session 23) - read this first after a compaction
 **If you are resuming after a compaction: re-read this section, CLAUDE.md, `docs/v3/77_CHAIN_REACTION.md`, `70_R7_GOD_POWERS.md`
