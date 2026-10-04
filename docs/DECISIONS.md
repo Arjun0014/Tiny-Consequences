@@ -1546,3 +1546,131 @@ conflict premise one or two takings a village in 16 days raise none. In 8 untouc
 by hungry neighbours (54 FU of harm), raised a 12-section palisade from day 67, all of it standing at year 8, no door ever cut off. On
 the final rules 8 untouched years: Krikeivorn, raided, raised a 13-section palisade from day 157, all of it standing at year 8; no
 hunger deaths, no door cut off; browser = LuaJIT on the `palisade` and `conflict` premises.
+
+## D-188 · 2026-10-04 · A meteor is its physics: crater, blast, flash and shaking by distance (session 24)
+**Context (Arjun's playtest).** A meteor dropped straight onto a village: the panel listed eight consequences, the planet
+around it glowed orange - and close in the village was basically fine, its people calmly at work. Reproduced in the browser
+(`scripts/play_accept.mjs --case meteor_village`, before/after in `out/accept/`): a direct hit on Tekheim's square killed
+**nobody and no beast**. Found: the v3 meteor reused the v2 meteor's planet part (+12 C and fire on every land cell within 2
+steps: the orange disc, ~2 units across, far wider than the map's blast) and added a local "blast" of radius 0.32 whose
+worst hurt was 0.9 - below death at ground zero; nothing touched beasts, trees, fields or stores on the map; and no trace of
+the impact stayed.
+**Decision** (`sim/agents/impact.lua`, `sim/powers3.lua` P.meteor, config `imp_*`): one rock, one energy, laws of distance r
+from the point it struck - never a list of what must die.
+- **The crater** (`imp_crater` 0.075): everything within is gone - trees, buildings and all they held, whoever was in them;
+  its ground broken (`s.plot = -3`: rough to cross, never built on or sown) and kept (`s.craters`).
+- **The blast**: overpressure P(r) = (`imp_blast` / r)^2 in units of what brings a sound log house down. A building falls when
+  P x its weakness (`imp_bld`: a hut 1.6, a fold 1.8, a granary 0.8...) passes its own strength (0.7-1.3 x (0.6 + 0.4
+  condition)), is cracked from `imp_crack` of it; a tree is thrown flat (logs lying, pointing away: `T.fall`); someone out of
+  doors is hurt `imp_hurt_blast` x P (a quarter under a roof that stands).
+- **The flash**: heat Q(r) = (`imp_flash` / r)^2: in the open, dry things catch with chance 1 - exp(-Q (0.3 + dryness)
+  `imp_ign`) (trees, roofs, ripe or dry corn, stooks), people and beasts in the open are burnt `imp_burn` x Q; the grass is
+  burnt off and the ground scorched within `imp_scorch` (the pasture blocks there bare; `s.scorch`).
+- **Beasts, wild animals and dogs** as people out of doors (a byre's or sty's roof keeps the flash off); every survivor within
+  `imp_jolt` bolts (D-189). The quake of the impact (`shake.quake` 6.2), the wave at sea and the dust (`meteor_aerosol`) stay
+  as before, secondary.
+- **The planet**: no +12 C over 19 cells. Land cells about the point that no village's map owns (D-190) catch by the share of
+  them within the flash's reach and their dryness; their wild herds and packs are thinned by the share within the blast's
+  lethal reach; the cells a map owns burn by that map's own fire. Where it fell is kept (`W.S.powers.craters`).
+- **What it did is told**: the impact deed counts the dead, the houses and buildings thrown down, the beasts killed, the trees
+  thrown flat and set alight; beasts killed are `slain` deeds; deaths answer the impact (hurt deed). The chain reads "The rock
+  struck Tekheim - 8 people killed, 8 houses thrown down, 2 other buildings down" with each death, the fire (91 trees) and the
+  roofless households under it; the news card says the same (D-182 records, never made-up nodes).
+**Found by it, fixed**: (1) `danger.each_on_map` walked `s.members` live, and a death inside it (a flood, a wave, a meteor)
+took the dead off the list: the one after each death was skipped - it now walks a snapshot; `shake.fall_in` the same.
+(2) Every roof in the village lost: households lodged with hosts whose houses then fell, and with no host left they had no
+hearth and no larder - 26 people "at the edge of starving" in two days beside 600 grain (D-194).
+**Numbers** (browser, Tekheim's square at 11:00): 8 killed, all 8 houses and 2 other buildings thrown down, 91 trees alight,
+a crater, the ground scorched, 8 households camping by the square, a household leaving to found a new place; before: 0 dead.
+
+## D-189 · 2026-10-04 · The god's bolt comes down where it is aimed; the current through the ground; beasts bolt from a sudden blow (session 24)
+**Context.** "I aimed lightning at a herd and nothing meaningful happened." Reproduced: one sheep died, the herd of 40 went on
+grazing. Found: a bolt went to the tallest thing within 0.08 (a tree near a herd took it); the ground current reached 0.04 with
+0.15-0.45 harm (never lethal to a sound beast); nothing made a herd look up at a strike; the view drew the bolt at the middle
+of the planet's cell, not where it struck (often off screen close in).
+**Decision** (`sim/agents/blaze.lua` strike, `sim/agents/stock.lua`/`wild.lua`/`dogs.lua` jolt):
+- **The god's bolt** (a strike with the cast's event) is a superbolt (`strike_god_i` 4 x a storm bolt's current) and comes down
+  where it is aimed: its pull is a hand's breadth (`strike_pull_god` 0.025, the nearest by far: a beast clicked takes it; a
+  tree it stands under still does). A storm's bolt still finds the tallest within 0.08.
+- **The current through the ground**: lethal within `strike_gc` x current x the body's stride (`strike_stride`: cattle 1.3,
+  sheep 0.8, a person 0.35 - feet apart take the step), falling off with the square of distance; beasts killed or thrown,
+  people hurt; a roof that took it carries it down its walls (no side current).
+- **Fire**: a tree, roof or a field with something dry on it catches by dryness, the god's bolt `strike_god_ign` x as often.
+- **A sudden blow** (`stock.jolt`, `wild.jolt`, `dogs.jolt`; also the meteor): every beast within `strike_jolt_god` 0.8 (a
+  storm's 0.45) sees the flash and hears the crack; each looks up within seconds (`jolt_look` by its alertness and distance)
+  and bolts its own way from it at a gallop (`jolt_speed`), the nearer and the more timid the farther (`jolt_run`), then stands
+  head up (`jolt_stand`) and goes back to the others in its own time; wolves drop the hunt and run; dogs run home barking.
+- **Seen**: the bolt drawn where it went in (the strike event's map point), from the cloud base; a scorch mark (`s.scorch`); the
+  frame's bloom burst (the flash); dead livestock drawn as their own kind on their side (they were drawn as deer).
+**Numbers** (browser, the flock of Tekheim, a sheep in the open amid it): 4-5 dead (the one struck and those by it), the 35 left
+running each its own way (spread 0.27 -> 0.45 in 15 min), the news "Lightning killed 4 beasts at Tekheim - 3 more dead of the
+current in the ground, the herd scattered"; headless: 38 sheep, 1 struck + 3 killed beside, 33 thrown, 34 bolting within a minute,
+the flock back together within the hour.
+
+## D-190 · 2026-10-04 · One fire at two scales: a planet cell a village's map owns burns by the map's own fire (session 24)
+**Context.** From high up the whole area around Little Leelee looked engulfed; close in, a few trees burnt. The planet's fire on a
+cell (`F.fire`) painted the cell's ground and every tree prop in it orange and drew big flame cones about its middle - over the
+village's map too, whatever the map was burning.
+**Decision** (`sim/agents/map.lua` owners/owner, `sim/agents/blaze.lua` planet, `sim/systems/fire.lua`, `game/view/fx.lua`,
+`game/render/shaders/props.vp`, `game/view/agents_view.lua`):
+- A planet cell covered at least `OWN_SHARE` (45%) by a village's map is the map's (runtime, from the maps; rebuilt when the living
+  settlements change).
+- **Planet -> map**: a fire the planet carries into such a cell comes onto the map as a front - the trees of that cell nearest the
+  burning cells about it catch (`fire_front_n` 5) - and the map's own fire does the rest. The planet's natural lightning does not
+  strike an owned cell (the map has its own storms).
+- **Map -> planet**: each hour the planet's fire on an owned cell is written from what burns on the map in it - the heat of its
+  burning trees, roofs (x3) and fields (x4) against the trees the cell holds - so three trees are a glow and a burning wood a fire;
+  `fire.from_map` keeps it on the planet's list (it carries on to the cells about it) with no event of its own; the planet's step
+  does not burn an owned cell's fuel (the map's trees thin `F.forest` one by one) and drops it when the map's fire there is out.
+- **Seen**: the map's own props never take the cell's fire tint (each thing burns where it burns); the planet's flame cones only on
+  cells no map owns; the map's flames drawn larger from afar so a fire on a village reads at every zoom.
+**Numbers** (`--case fire_scales`, 30 trees alight on a dry day): 34 burning -> the owned cell at 0.17, 6 burning -> 0.26 (hot
+roofs), none -> 0; mid view: flames where they burn, no orange disc. `--case rain_fire`: the god's rain put a 14-tree fire out in
+2 hours (16 things burnt; 250 trees standing) where its untouched twin burnt 8 hours (32; 231 standing).
+
+## D-191 · 2026-10-04 · The world keeps its scars (session 24)
+**Context.** A burnt house vanished (its scar was recorded and never drawn); a burnt tree became a clean stump; a meteor left
+nothing; dead livestock were drawn as deer.
+**Decision** (`game/view/agents_view.lua`, `game/view/modelkit.lua` `mound`, sim `T.burnt`, `T.fall`, `s.scorch`, `s.craters`):
+ruins where a building burnt (charred black) or fell (grey timber) - broken walls and a fallen beam with timbers about - until its
+ground is built on or a year passes (`RUIN_H`); a tree the fire took stands as a charred snag (`T.burnt`), and sprouts again only
+after `burnt_sprout_days` (40) at `burnt_sprout` a day (a cut stump: 6 days, 6%); a tree a blast threw down lies pointing away from
+it, its logs there to be fetched; a crater's bowl, its rim of thrown earth (`mound`) and stones flung about it, smoking for a day;
+scorched ground (a meteor's fireball, a god's bolt) fading over `SCORCH_DAYS` 36; dead herd beasts drawn as their own kind on their
+side for 30 hours.
+
+## D-192 · 2026-10-04 · A herd moves as many: each follows the one ahead; each grazes its own patch (session 24)
+**Context.** "Herds still move like blobs." Watched live (`--case herd_watch`, `--case herd_move`, `game/platform/accept.lua`
+herd_shape: nearest neighbours, spread, clumps, how drawn out, walkers' alignment, the herder's distance): a flock leaving its fold
+moved as one mass after its herder (all bound for points about the herder's own position), and its grazers turned by chance with a
+pull home - Tekheim's flock grazed under the trees of the wood's edge, out of sight.
+**Decision** (`sim/agents/stock.lua`): (1) **on the move**, a beast left behind follows the one ahead of it - the nearest in sight
+nearer the herder by half a spacing - a spacing behind it and a little to its own side; the front ones go after the herder; the
+flock strings out behind its leaders, each starting when it notices. (2) **Grazing**, each beast weighs seven places about its way
+by what grows there (`forage_at`: its block's grass on open ground, none under the trees for a grazer, little on a trodden lane,
+stubble and fallow but never a standing crop), not onto the nearest other, within its own range of where the herd is kept, and a
+little by whim - each to its own patch. Unit tests: herded vcorr 0.25 -> 0.15, mass stops 3%.
+**Not done**: fences that only open at the gate (a fold is walked out of anywhere: a flock leaves it as a mass, never through its
+gate as a stream).
+
+## D-193 · 2026-10-04 · Clouds high above the village: the layer lifts as the camera comes down (session 24)
+**Context.** "When I zoom toward a village under clouds the screen goes white until I am almost on the ground." Measured (the same
+frame with and without the layer, `--case clouds`): under the god's rain over Tekheim the cloud hid >= 90% of the frame from zoom 0.80
+to 1.35 (the "go there" zoom is 1.42); the deck's base sat at 0.95-1.2 above the sea - the very height of the village view - and
+storms towered 1.4 above it.
+**Decision** (`game/view/clouds.lua`, `cloudvol.fp`, `cloudshell.fp`, `rain.vp`): far out the layer lies where the planet view
+wants it; as the eye comes down from `LIFT_FAR` 12 to `LIFT_NEAR` 5.5 above the sea it rises by `LIFT` 1.45 (base 2.4 over lowland,
+the shadow shell with it), so the village is watched from under it; the layer is thinner (decks 0.12-0.42, storms +0.6) and its mist
+close to the eye thinner (12% within 0.9) - the camera passes through it in a wheel step or two; the rain falls from the lifted base
+to the ground at the same speed, fading right in front of the lens. The weather it is made from is unchanged.
+**Numbers** (share of the frame's middle hidden): zoom 0.9 64% (the deck from above), 1.0 87% (inside: mist, the village showing
+through), 1.05 67%, 1.1 46%, 1.2-1.6 ~50% with mean change ~22 (the overcast's own shade and the rain - the village clear); before:
+>= 90% from 0.8 to 1.35, clear only from 1.45.
+
+## D-194 · 2026-10-04 · A household with no roof and no host makes a camp; lodgers lose the roof they lodge under (session 24)
+**Context.** Found by the meteor (D-188): when every house fell, households lodged in turn with hosts whose houses then fell (their
+lodgers kept pointing at a gone house) and the last had no host - no hearth, no larder: they could only eat from a pack.
+**Decision** (`sim/agents/migrate.lua` lodge/unroof, `shake.fall_in`, `blaze.burn_out`, chain): a household with nobody to take it
+in plans a camp by the square (`founding.plan_camp`, injected: a fire, a lean-to, its larder, made by its own hands in two hours) and
+waits there for a house; when a building goes, every household that lived in it - its own and those lodging - lodges anew or camps.
+The chain shows "The Tustrands, without a roof, camp by the square at Tekheim" under the harm that took the roof.

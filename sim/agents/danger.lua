@@ -27,18 +27,32 @@ local function night_at(W, s, now)
 end
 M.night_at = night_at
 
--- Everyone on map s now: its own people at home and the visitors there.
+-- Everyone on map s now: its own people at home and the visitors there. (S24) Over a snapshot of the lists: a death
+-- inside fn takes the dead off s.members, and walking the live list skipped the one after each death (a quake, a
+-- flood or a meteor that killed one spared the next).
 local OUT = {}
+local SNAP, depth = {}, 0
 local function each_on_map(W, s, fn)
   local V = W.S.v3
-  for i = 1, #s.members do
-    local p = V.people[s.members[i]]
-    if p and p.alive and not p.at then fn(p) end
+  depth = depth + 1
+  local b = SNAP[depth]
+  if not b then b = {}; SNAP[depth] = b end
+  local m, vis = s.members, s.visitors
+  local n1 = #m
+  for i = 1, n1 do b[i] = m[i] end
+  local n2 = vis and #vis or 0
+  for i = 1, n2 do b[n1 + i] = vis[i] end
+  for i = 1, n1 + n2 do
+    local p = V.people[b[i]]
+    if p and p.alive then
+      if i <= n1 then
+        if not p.at then fn(p) end
+      elseif p.at == s.id then
+        fn(p)
+      end
+    end
   end
-  for i = 1, #(s.visitors or {}) do
-    local p = V.people[s.visitors[i]]
-    if p and p.alive and p.at == s.id then fn(p) end
-  end
+  depth = depth - 1
 end
 M.each_on_map = each_on_map
 

@@ -1477,6 +1477,7 @@ WORK.grub = function(W, s, p, st, f)
   if f >= 0.6 and tr.st[k] == 3 then
     tr.st[k] = 0
     tr.size[k] = 0
+    if tr.burnt then tr.burnt[k] = nil end
     s.tree[tr.tile[k]] = 0
     s.dirty_costs = true
     require("sim.agents.settle").finish_clearing(W, s)
@@ -1839,7 +1840,7 @@ PICK.logs = function(W, s, p, st)
     local got = min(want, tr.logs[k])
     if got > 0 then
       tr.logs[k] = tr.logs[k] - got
-      if tr.logs[k] <= 0 then tr.st[k] = 3; tr.t_cut[k] = W.hour end
+      if tr.logs[k] <= 0 then tr.st[k] = 3; tr.t_cut[k] = W.hour; if tr.fall then tr.fall[k] = nil end end
       p.carry, p.camt = "logs", got
     end
   else

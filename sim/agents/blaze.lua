@@ -204,6 +204,9 @@ local function burn_out(W, s, f, now)
     T.st[f.ref] = 3
     T.logs[f.ref] = 0
     T.t_cut[f.ref] = now
+    -- (S24) a charred trunk stands where it burnt (the view draws it black) until the ground greens again
+    T.burnt = T.burnt or {}
+    T.burnt[f.ref] = now
     s.tv = (s.tv or 0) + 1
     -- (the planet's woods are thinner by it: as a felled tree, D-078)
     local cell = s.cell
@@ -233,6 +236,8 @@ local function burn_out(W, s, f, now)
     end
     if M.lodge then M.lodge(W, s, hh, now, "their house burnt") end
   end
+  -- (S24) those lodging under its roof have none now either (they lodge anew, or camp)
+  if M.unroof then M.unroof(W, s, b, now, "their house burnt", hh) end
 end
 
 M.burn_out = burn_out   -- (S21: premise.house_burnt)
@@ -385,48 +390,158 @@ local function cells_of(s)
   return L
 end
 
--- (S20, R6.5c) The planet's fire on a cell the map covers comes onto the map: the standing tree of
--- that cell nearest the map's edge (where it comes from) catches, once a day a cell; the local fire
--- does the rest. And a fire on the map that has taken hold (fire_planet_n burning) sets the planet's
--- fire going on its cell, whose own spreading carries it on beyond the map.
+-- (S20, R6.5c; S24, D-190) The planet's fire and the map's are one fire at two scales.
+-- On a planet cell the map owns (mapm.owner: most of the cell is on the map) the planet's fire IS the map's: each hour
+-- it is written from what burns on the map in that cell - its intensity the heat of the trees, roofs and fields alight
+-- there against the trees the cell holds, so three burning trees are a glow and a burning wood is a fire - and a fire
+-- the planet carries in from a cell about it comes onto the map as a front: the trees of that cell nearest the side it
+-- comes from catch (fire_front_n of them), and the map's own fire does the rest (a wet map puts it out, and the planet's
+-- with it). On a cell the map covers only in part the planet's fire is its own: where it burns, the map's tree of that
+-- cell nearest the map's edge catches, once a day; and a fire on the map that has taken hold there (fire_planet_n
+-- burning) sets the planet's fire going on the cell.
+local TREES_IN = setmetatable({}, { __mode = "k" })
+local function trees_in(s)
+  local e = TREES_IN[s]
+  if e and e.tv == s.tv then return e.n end
+  local n = {}
+  local T = s.trees
+  for k = 1, T.n do
+    if T.st[k] == 1 then
+      local cl = s.cell_of[T.tile[k]]
+      if cl then n[cl] = (n[cl] or 0) + 1 end
+    end
+  end
+  TREES_IN[s] = { tv = s.tv, n = n }
+  return n
+end
+
+-- the heat of what burns on map s, by planet cell (a roof counts as three trees, a field as four), and the event
+-- behind the first thing burning in each (the planet's blame for it)
+local function map_heat(W, s)
+  local out, tag = {}, {}
+  local B = s.burn
+  for i = 1, #(B or {}) do
+    local f = B[i]
+    if not f.out and f.heat > 0.02 then
+      local t = mapm.tile_of(s, f.x, f.y)
+      local cl = t > 0 and s.cell_of[t]
+      if cl then
+        out[cl] = (out[cl] or 0) + f.heat * (f.kind == "bld" and 3 or (f.kind == "plot" and 4 or 1))
+        if not tag[cl] then
+          local d = f.deed and deeds.get(W, f.deed)
+          tag[cl] = d and d.event or 0
+        end
+      end
+    end
+  end
+  return out, tag
+end
+
+-- the planet's fire coming into owned cell cl of map s: the trees of cl nearest the burning cells about it catch
+local function enter(W, s, cl, now, O)
+  local c = C()
+  local g = W.grid
+  local sx, sy, n = 0, 0, 0
+  local b6 = cl * 6 - 6
+  for k = 1, g.nbr_count[cl] do
+    local j = g.nbr[b6 + k]
+    if (W.F.fire[j] or 0) > 0 and O.by[j] ~= s.id then
+      local x, y = mapm.local_of(s, g.X[j], g.Y[j], g.Z[j])
+      if x then sx, sy, n = sx + x, sy + y, n + 1 end
+    end
+  end
+  local T = s.trees
+  local cand = {}
+  if n > 0 then
+    sx, sy = sx / n, sy / n
+    for k = 1, T.n do
+      if T.st[k] == 1 and s.cell_of[T.tile[k]] == cl then cand[#cand + 1] = { k, dsq(T.x[k] - sx) + dsq(T.y[k] - sy) } end
+    end
+  else
+    -- (no burning cell about it - the planet's own fire began here: the trees nearest the map's edge, as before)
+    for k = 1, T.n do
+      if T.st[k] == 1 and s.cell_of[T.tile[k]] == cl then
+        cand[#cand + 1] = { k, -max(math.abs(T.x[k]), math.abs(T.y[k])) }
+      end
+    end
+  end
+  table.sort(cand, function(a, b) if a[2] ~= b[2] then return a[2] < b[2] end return a[1] < b[1] end)
+  local lit = 0
+  for q = 1, min(#cand, c.fire_front_n) do if M.ignite(W, s, "tree", cand[q][1], now, nil) then lit = lit + 1 end end
+  return lit
+end
+
 function M.planet(W, s, now)
   local c = C()
   local F = W.F
   local day = floor(now / 24)
   local L = cells_of(s)
+  local O = mapm.owners(W)
+  local fsys = require("sim.systems.fire")
+  local heat, tag
+  if s.burn and #s.burn > 0 then heat, tag = map_heat(W, s) end
+  s.fire_own = s.fire_own or {}
+  local own = s.fire_own
   for _, cl in ipairs(L) do
-    if (F.fire[cl] or 0) > c.fire_planet_in and (not s.fire_in or s.fire_in[cl] ~= day) then
-      s.fire_in = s.fire_in or {}
-      s.fire_in[cl] = day
-      local N, T = s.N, s.trees
-      local best, bd = nil, -1
-      for i = 1, N * N do
-        local k = s.tree[i]
-        if k and k > 0 and T.st[k] == 1 and s.cell_of[i] == cl then
-          local ix, iy = (i - 1) % N + 1, floor((i - 1) / N) + 1
-          local edge = max(math.abs(ix - N / 2), math.abs(iy - N / 2))
-          if edge > bd then best, bd = k, edge end
-        end
+    local pf = F.fire[cl] or 0
+    if O and O.by[cl] == s.id then
+      local h = heat and heat[cl] or 0
+      local wrote = own[cl] or 0
+      if pf > 0 and h <= 0 and math.abs(pf - wrote) > 1e-9 and (not s.fire_in or s.fire_in[cl] ~= day) then
+        -- (carried in by the planet from a cell about it: a front at its side)
+        s.fire_in = s.fire_in or {}
+        s.fire_in[cl] = day
+        if enter(W, s, cl, now, O) > 0 then heat, tag = map_heat(W, s); h = heat[cl] or 0 end
       end
-      if best then M.ignite(W, s, "tree", best, now, nil) end
+      local v = 0
+      if h > 0 then
+        v = min(1, h / max(10, (trees_in(s)[cl] or 0) * 0.25))
+        if v < 0.004 then v = 0.004 end
+      end
+      if v ~= pf then fsys.from_map(W, cl, v, tag and tag[cl] or 0) end
+      own[cl] = v > 0 and v or nil
+    else
+      if pf > c.fire_planet_in and (not s.fire_in or s.fire_in[cl] ~= day) then
+        s.fire_in = s.fire_in or {}
+        s.fire_in[cl] = day
+        local N, T = s.N, s.trees
+        local best, bd = nil, -1
+        for i = 1, N * N do
+          local k = s.tree[i]
+          if k and k > 0 and T.st[k] == 1 and s.cell_of[i] == cl then
+            local ix, iy = (i - 1) % N + 1, floor((i - 1) / N) + 1
+            local edge = max(math.abs(ix - N / 2), math.abs(iy - N / 2))
+            if edge > bd then best, bd = k, edge end
+          end
+        end
+        if best then M.ignite(W, s, "tree", best, now, nil) end
+      end
     end
   end
   local B = s.burn
   if B and #B >= c.fire_planet_n then
-    -- (the cell under most of what burns)
+    -- (the cell under most of what burns, when the map does not own it)
     local count, top, tn = {}, nil, 0
     for _, f in ipairs(B) do
       local i = mapm.tile_of(s, f.x, f.y)
       local cl = i > 0 and s.cell_of[i] or nil
-      if cl then
+      if cl and not (O and O.by[cl] == s.id) then
         count[cl] = (count[cl] or 0) + 1
         if count[cl] > tn or (count[cl] == tn and cl < top) then top, tn = cl, count[cl] end
       end
     end
     if top and tn >= c.fire_planet_n and (F.fire[top] or 0) <= 0 then
-      require("sim.systems.fire").ignite(W, top, 0)
+      fsys.ignite(W, top, 0)
     end
   end
+end
+
+-- (S24, D-189) A sudden blow at (x, y) - a bolt, a blast: every beast, wild animal and dog within r sees and hears it
+-- at once and bolts (each its own way and time: stock.jolt, wild.jolt, dogs.jolt).
+function M.jolt(W, s, x, y, now, r)
+  stock.jolt(W, s, x, y, now, r)
+  wild.jolt(W, s, x, y, now, r)
+  dogs.jolt(W, s, x, y, now, r)
 end
 
 -- (S22) Each beast of map s that stands out of doors - a fold is open to the sky, a byre or a sty has
@@ -467,9 +582,8 @@ M.beasts_out = beasts_out
 
 -- (S22) A beast struck (by the bolt itself, or by the current through the ground beside it): `sev` of
 -- its strength - a beast of a herd dead at nothing (else stunned: it looks up at once), a wild animal
--- or a dog dead past strike_beast_die (else it bolts).
+-- or a dog dead past its strength.
 local function beast_struck(W, s, kind, o, H, sev, now, side)
-  local c = C()
   if kind == "beast" then
     o.health = (o.health or 1) - sev
     if o.health <= 0 then
@@ -478,11 +592,13 @@ local function beast_struck(W, s, kind, o, H, sev, now, side)
     end
     stock.decide_at(W, s, H, o, now, now + 0.01)
   elseif kind == "wild" then
-    if sev >= c.strike_beast_die then wild.dies(W, s, o, now, "lightning"); return true end
+    o.hp = (o.hp or 1) - sev
+    if o.hp <= 0 then wild.dies(W, s, o, now, "lightning"); return true end
     wild.interrupt(W, s, o, now)
     o.flee_x, o.flee_y = o.tx, o.ty
   else
-    if sev >= c.strike_beast_die then dogs.dies(W, s, o, now, "lightning", "Lightning killed our dog"); return true end
+    o.hp = (o.hp or 1) - sev
+    if o.hp <= 0 then dogs.dies(W, s, o, now, "lightning", "Lightning killed our dog"); return true end
     dogs.interrupt(W, s, o, now)
   end
   return false
@@ -491,27 +607,30 @@ end
 -- Lightning at (x, y): the tallest thing within its pull takes it - a standing tree (its height), a
 -- roof (by the building: a fold of hurdles is low), someone standing out in the open, a beast out of
 -- doors (S22: by its height - a cow before a sheep, a man before either); thunder heard over the whole
--- map, the flash seen. Beasts standing close by (four feet apart: more of the ground current than a
--- man takes) are thrown down. Returns what was hit ("tree", "bld", "person", "beast", "wild", "dog" or
--- nil) and its ref. `cause`: the deed or event that sent it.
--- (S23) What a bolt at (x, y) takes: the tallest thing within strike_pull (reads only; the strike and the aim
--- preview share it). Returns best (a tree index, building id, person id or beast), its kind ("tree", "bld",
--- "person", "beast", "wild", "dog" or nil for the bare ground) and a beast's herd.
-function M.strike_target(W, s, x, y, now)
+-- map, the flash seen. (S23) What a bolt at (x, y) takes: the tallest thing within strike_pull (reads only;
+-- the strike and the aim preview share it). Returns best (a tree index, building id, person id or beast), its
+-- kind ("tree", "bld", "person", "beast", "wild", "dog" or nil for the bare ground) and a beast's herd.
+-- (S24, D-189) `god`: a bolt the god aims comes down where it is aimed - the thing at the point takes it (its pull
+-- is a hand's breadth, strike_pull_god, the nearest by far the likeliest); a storm's bolt finds the tallest.
+function M.strike_target(W, s, x, y, now, god)
   local c = C()
   local best, bs, bk, bh = nil, -1e9, nil, nil
-  local r2 = c.strike_pull * c.strike_pull
+  local pull = god and c.strike_pull_god or c.strike_pull
+  local dk = god and 40 or 4
+  local r2 = pull * pull
   local T = s.trees
-  trees_near(s, x, y, c.strike_pull, function(k, d2)
-    local sc = (T.size[k] or 1) * c.strike_tree - sqrt(d2) * 4
+  trees_near(s, x, y, pull, function(k, d2)
+    local sc = (T.size[k] or 1) * c.strike_tree - sqrt(d2) * dk
     if sc > bs then best, bs, bk = k, sc, "tree" end
   end)
   for j = 1, #s.blist do
     local b = s.buildings[s.blist[j]]
     if b and b.state == "standing" and not b.natural and b.kind ~= "outcrop" and b.kind ~= "bog" then
       local d2 = dsq((b.cx or b.dx) - x) + dsq((b.cy or b.dy) - y)
+      -- (S24: a god's bolt on a building: the point within its walls is on its roof)
+      if god then d2 = dsq(max(0, math.abs((b.cx or b.dx) - x) - (b.w or 1) * s.T * 0.5)) + dsq(max(0, math.abs((b.cy or b.dy) - y) - (b.h or 1) * s.T * 0.5)) end
       if d2 < r2 then
-        local sc = (c.strike_bld[b.kind] or c.strike_roof) - sqrt(d2) * 4
+        local sc = (c.strike_bld[b.kind] or c.strike_roof) - sqrt(d2) * dk
         if sc > bs then best, bs, bk = b.id, sc, "bld" end
       end
     end
@@ -521,7 +640,7 @@ function M.strike_target(W, s, x, y, now)
       local qx, qy = danger.person_pos(q, now)
       local d2 = dsq(qx - x) + dsq(qy - y)
       if d2 < r2 then
-        local sc = c.strike_person - sqrt(d2) * 4
+        local sc = c.strike_person - sqrt(d2) * dk
         if sc > bs then best, bs, bk = q.id, sc, "person" end
       end
     end
@@ -529,17 +648,42 @@ function M.strike_target(W, s, x, y, now)
   beasts_out(W, s, now, function(kind, o, H, ox, oy)
     local d2 = dsq(ox - x) + dsq(oy - y)
     if d2 < r2 then
-      local sc = (c.strike_beast[o.sp or "dog"] or 0.25) - sqrt(d2) * 4
+      local sc = (c.strike_beast[o.sp or "dog"] or 0.25) - sqrt(d2) * dk
       if sc > bs then best, bs, bk, bh = o, sc, kind, H end
     end
   end)
   return best, bk, bh
 end
 
+-- (S24, D-189) The current a bolt drives into the ground spreads from where it went in: a body standing on that
+-- ground with its feet apart takes the step between them - the farther apart its feet (a cow's) the more - falling
+-- off with the square of the distance. The lethal reach of a bolt is strike_gc x its current (1 a storm's,
+-- strike_god_i the god's) x the body's stride (strike_stride). Returns the harm at distance r (a share of a body's
+-- strength: at 1 a beast is dead), with the body's own luck.
+local function ground_harm(W, s, now, r, stride, cur, key)
+  local c = C()
+  local R = c.strike_gc * cur * stride
+  local q = R / max(r, 0.005)
+  return min(3, q * q) * (0.6 + 0.8 * u(W, s, now, 26, key))
+end
+
+-- (S24) A scorch where a bolt went into the ground (the grass about it burnt off): kept a while, drawn black
+local function scorch_mark(s, x, y, r, now)
+  s.scorch = s.scorch or {}
+  local L = s.scorch
+  -- (only the marks still showing are kept)
+  for i = #L, 1, -1 do if now - L[i].t > 24 * 40 then table.remove(L, i) end end
+  L[#L + 1] = { x = x, y = y, r = r, t = now }
+end
+M.scorch_mark = scorch_mark
+
 function M.strike(W, s, x, y, now, cause, ev)
   local c = C()
   local V = W.S.v3
-  local best, bk, bh = M.strike_target(W, s, x, y, now)
+  -- (S24) the god's bolt: aimed, and a superbolt's current
+  local god = ev ~= nil and ev ~= 0
+  local cur = god and c.strike_god_i or 1
+  local best, bk, bh = M.strike_target(W, s, x, y, now, god)
   local T = s.trees
   local what = bk or "ground"
   if bk == "beast" or bk == "wild" then what = best.sp end
@@ -557,28 +701,44 @@ function M.strike(W, s, x, y, now, cause, ev)
   danger.cue(W, s, x, y, now, { kind = "thunder", src = 0, sight = 3, night = 3, sound = c.thunder_sound, loud = true,
     why = "Lightning struck close by" })
   local dry = M.dryness(W, s)
-  -- (S22) where the bolt went to ground: beasts standing close by are thrown down by its current - those
-  -- sheltering under a struck tree too
+  -- where the bolt went to ground
   local hx, hy = x, y
   if bk == "tree" then hx, hy = T.x[best], T.y[best]
   elseif bk == "person" then hx, hy = danger.person_pos(V.people[best], now)
   elseif bk == "beast" then hx, hy = stock.pos(best, now)
   elseif bk == "wild" then hx, hy = wild.pos(best, now)
-  elseif bk == "dog" then hx, hy = dogs.pos(best, now) end
+  elseif bk == "dog" then hx, hy = dogs.pos(best, now)
+  elseif bk == "bld" then local b = s.buildings[best]; hx, hy = b.cx or b.dx, b.cy or b.dy end
+  d.hx, d.hy = hx, hy
+  -- (S24) the current through the ground: beasts about the point thrown down or killed by their stride and distance
+  -- (those sheltering under a struck tree too); a roof that took it carries it down its walls (nothing beside)
+  local killed, thrown = 0, 0
   if bk ~= "bld" then
-    local rs = c.strike_side * c.strike_side_beast
+    local reach = c.strike_gc * cur * 1.6 * 2.5
     local side = {}
     beasts_out(W, s, now, function(kind, o, H, ox, oy)
-      if o ~= best and dsq(ox - hx) + dsq(oy - hy) < rs * rs then side[#side + 1] = { kind, o, H } end
+      if o ~= best then
+        local r = sqrt(dsq(ox - hx) + dsq(oy - hy))
+        if r < reach then side[#side + 1] = { kind, o, H, r } end
+      end
     end)
     for i = 1, #side do
       local e = side[i]
-      beast_struck(W, s, e[1], e[2], e[3], c.strike_side_hurt * 2 * (0.5 + u(W, s, now, 25, i)), now, true)
+      local stride = c.strike_stride[e[2].sp or "dog"] or 0.8
+      local h = ground_harm(W, s, now, e[4], stride, cur, 100 + i)
+      if h > 0.03 then
+        if beast_struck(W, s, e[1], e[2], e[3], h, now, true) then killed = killed + 1 else thrown = thrown + 1 end
+      end
     end
   end
+  -- (S24) the scorch where it went in; every beast near looks up at once and bolts
+  scorch_mark(s, hx, hy, god and c.strike_scorch_god or c.strike_scorch, now)
+  M.jolt(W, s, hx, hy, now, god and c.strike_jolt_god or c.strike_jolt)
+  d.killed, d.thrown = killed > 0 and killed or nil, thrown > 0 and thrown or nil
+  local ign = god and c.strike_god_ign or 1
   if bk == "beast" or bk == "wild" or bk == "dog" then
     -- (S22) a beast struck: most die where they stand; its owners lose it (a deed of the strike)
-    local sev = (c.strike_hurt[1] + (c.strike_hurt[2] - c.strike_hurt[1]) * u(W, s, now, 23)) * c.strike_beast_k
+    local sev = (c.strike_hurt[1] + (c.strike_hurt[2] - c.strike_hurt[1]) * u(W, s, now, 23)) * c.strike_beast_k * (god and 2 or 1)
     local hh = (bk == "beast" and best.owner) or (bk == "dog" and best.hh) or 0
     local dead = beast_struck(W, s, bk, best, bh, sev, now, false)
     d.dead = dead or nil
@@ -587,35 +747,51 @@ function M.strike(W, s, x, y, now, cause, ev)
       d.fu = bk == "beast" and (c.stock[best.sp] and c.stock[best.sp].meat or 5) or 4
       deeds.learn(W, s, d, "the lightning struck it", 0, 0, now)
     end
-    return bk, best, d
-  end
-  if bk == "tree" then
-    if u(W, s, now, 21) < c.strike_ignite * (0.25 + 0.75 * dry) then M.ignite(W, s, "tree", best, now, d.id) end
-    return "tree", best, d
+  elseif bk == "tree" then
+    if u(W, s, now, 21) < min(0.95, c.strike_ignite * (0.25 + 0.75 * dry) * ign) then M.ignite(W, s, "tree", best, now, d.id) end
   elseif bk == "bld" then
-    if u(W, s, now, 22) < c.strike_ignite_roof * (0.3 + 0.7 * dry) then M.ignite(W, s, "bld", best, now, d.id) end
-    return "bld", best, d
+    if u(W, s, now, 22) < min(0.95, c.strike_ignite_roof * (0.3 + 0.7 * dry) * ign) then M.ignite(W, s, "bld", best, now, d.id) end
   elseif bk == "person" then
     local q = V.people[best]
-    local sev = c.strike_hurt[1] + (c.strike_hurt[2] - c.strike_hurt[1]) * u(W, s, now, 23)
+    local sev = (c.strike_hurt[1] + (c.strike_hurt[2] - c.strike_hurt[1]) * u(W, s, now, 23)) * (god and c.strike_god_hurt or 1)
     people.hurt(q, min(1, sev), "burn", d.id, now)
     d.to, d.to_hh = q.id, q.hh
     people.remember(q, now, "Struck by lightning")
-    -- (those standing close by are thrown down and burnt a little)
+  end
+  -- the ground's current on people about the point (not the one struck: above; under a struck roof, none)
+  local hurt_list = {}
+  if bk ~= "bld" then
     danger.each_on_map(W, s, function(o)
-      if o ~= q and o.inside == 0 and o.act ~= "carried" then
+      if o.inside == 0 and o.act ~= "carried" and not (bk == "person" and o.id == best) then
         local ox, oy = danger.person_pos(o, now)
-        local qx, qy = danger.person_pos(q, now)
-        if dsq(ox - qx) + dsq(oy - qy) < c.strike_side * c.strike_side then
-          people.hurt(o, c.strike_side_hurt * (0.5 + u(W, s, now, 24, o.id)), "burn", d.id, now)
-          people.remember(o, now, sfmt("Lightning struck %s beside me", q.name))
-        end
+        local r = sqrt(dsq(ox - hx) + dsq(oy - hy))
+        local h = ground_harm(W, s, now, r, c.strike_stride.person, cur, 500 + o.id % 997)
+        if h > 0.04 then hurt_list[#hurt_list + 1] = { o, min(1, h) } end
       end
     end)
-    if (q.hurt or 0) >= 1 and M.kill then M.kill(W, s, q, "lightning", now) end
-    return "person", best, d
   end
-  return nil, nil, d
+  for _, e in ipairs(hurt_list) do
+    local o = e[1]
+    people.hurt(o, e[2], "burn", d.id, now)
+    people.remember(o, now, bk == "person" and sfmt("Lightning struck %s beside me", V.people[best].name) or "Lightning struck the ground beside me")
+  end
+  -- (a field it went into that has something dry on it catches)
+  if bk == nil or bk == "beast" or bk == "person" then
+    local i = mapm.tile_of(s, hx, hy)
+    local pk = i > 0 and s.plot[i] or 0
+    local pl = pk > 0 and s.plots[pk]
+    if pl and M.plot_fuel(pl) > 0 and u(W, s, now, 27) < min(0.95, c.strike_ignite * c.fire_plot_catch * (0.25 + 0.75 * dry) * ign) then
+      M.ignite(W, s, "plot", pk, now, d.id)
+    end
+  end
+  for _, e in ipairs(hurt_list) do
+    if (e[1].hurt or 0) >= 1 and M.kill then M.kill(W, s, e[1], "lightning", now) end
+  end
+  if bk == "person" then
+    local q = V.people[best]
+    if (q.hurt or 0) >= 1 and M.kill then M.kill(W, s, q, "lightning", now) end
+  end
+  return bk, best, d
 end
 
 -- A storm's lightning over map s this hour (a downpour: the planet's thunderstorm), at a point on its

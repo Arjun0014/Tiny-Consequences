@@ -591,12 +591,36 @@ function M.lodge(W, s, hh, now, why)
       if q and q.alive then people.remember(q, now, sfmt("Took in the %s household: %s", q1 and q1.surname or "", why or "they have no roof")) end
     end
   else
-    local fx, fy = require("sim.agents.map").free_spot(s, s.sqx or 0, s.sqy or 0, 6)
-    hh.camp = { x = fx or (s.sqx or 0), y = fy or (s.sqy or 0) }
+    -- (S24) nobody left with a roof to take them in (a meteor, a great fire): a camp by the square made by their own
+    -- hands in an hour or two - a fire, a lean-to, their larder (founding.plan_camp, as founders make theirs) - until a
+    -- house of their own stands. With no camp a household had no hearth and no larder: it starved beside the granary.
     hh.lodge = 0
+    local cb = M.plan_camp and not hh.camp_site and M.plan_camp(W, s, hh, now)
+    if not cb then
+      local fx, fy = require("sim.agents.map").free_spot(s, s.sqx or 0, s.sqy or 0, 6)
+      hh.camp = { x = fx or (s.sqx or 0), y = fy or (s.sqy or 0) }
+    end
   end
   s.waiting = s.waiting or {}
-  s.waiting[#s.waiting + 1] = hh.id
+  local listed = false
+  for _, id in ipairs(s.waiting) do if id == hh.id then listed = true end end
+  if not listed then s.waiting[#s.waiting + 1] = hh.id end
+end
+
+-- (S24) Building b of village s is gone (burnt, fallen in): every household that lived in it - its own and those
+-- lodging there - is without a roof and lodges anew (its own household first; `except` handled by the caller).
+function M.unroof(W, s, b, now, why, except)
+  local V = W.S.v3
+  local list = {}
+  for _, hid in ipairs(s.households) do
+    local hh = V.households[hid]
+    if hh and hh ~= except and #hh.members > 0 and hh.home == b.id then list[#list + 1] = hh end
+  end
+  for _, hh in ipairs(list) do
+    hh.home = 0
+    hh.lodge = nil
+    M.lodge(W, s, hh, now, why)
+  end
 end
 
 -- Person p of a migrating household reaches village o's gate: they are its people now; the

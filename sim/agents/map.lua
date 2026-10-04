@@ -56,6 +56,52 @@ function M.local_of(s, ux, uy, uz)
   return (ux * f[4] + uy * f[5] + uz * f[6]) * k, (ux * f[7] + uy * f[8] + uz * f[9]) * k
 end
 
+-- (S24, D-190) One physical state at two scales: the village map that covers most of planet cell c and the share of
+-- the cell it covers. A cell covered at least OWN_SHARE is the map's: what burns there is what burns on the map
+-- (sim/agents/blaze.lua M.planet writes the planet's fire on it from the map's own; sim/systems/fire.lua leaves it to
+-- the map). Runtime, rebuilt from the settlements' maps whenever the living settlements change (a place founded or
+-- gone): never saved, the same after a load.
+M.OWN_SHARE = 0.45
+local OWNERS = setmetatable({}, { __mode = "k" })
+function M.owners(W)
+  local V = W.S.v3
+  if not V then return nil end
+  local sig = 0
+  for _, s in ipairs(V.settlements) do if s.alive and s.cell_of then sig = (sig * 31 + s.id) % 1000000007 end end
+  local O = OWNERS[W]
+  if O and O.sig == sig then return O end
+  O = { sig = sig, by = {}, share = {} }
+  local per = 4 * dmath.pi * M.R * M.R / W.n
+  for _, s in ipairs(V.settlements) do
+    if s.alive and s.cell_of then
+      local cnt = {}
+      local cells = {}
+      for i = 1, s.N * s.N do
+        local cl = s.cell_of[i]
+        if cl and cl > 0 then
+          if not cnt[cl] then cnt[cl] = 0; cells[#cells + 1] = cl end
+          cnt[cl] = cnt[cl] + 1
+        end
+      end
+      table.sort(cells)
+      local a = s.T * s.T / per
+      for _, cl in ipairs(cells) do
+        local sh = cnt[cl] * a
+        if sh > (O.share[cl] or 0) then O.share[cl] = sh; if sh >= M.OWN_SHARE then O.by[cl] = s.id end end
+      end
+    end
+  end
+  OWNERS[W] = O
+  return O
+end
+
+-- (S24) The settlement whose map owns planet cell c (D-190), or nil.
+function M.owner(W, c)
+  local O = M.owners(W)
+  local id = O and O.by[c]
+  return id and W.S.v3.settlements[id] or nil
+end
+
 -- (S14: floor as v - v % 1, exact for v >= 0; a negative v is off the map either way. The browser's
 -- Lua pays a C call for math.floor.)
 function M.tile_of(s, x, y)

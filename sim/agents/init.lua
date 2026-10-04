@@ -20,6 +20,7 @@ local settle = require("sim.agents.settle")
 settle.econ = require("sim.agents.econ")
 settle.migrate = require("sim.agents.migrate")   -- (S16: bob forbids the circular require)
 settle.founding = require("sim.agents.founding")   -- (S17, R5)
+settle.migrate.plan_camp = settle.founding.plan_camp   -- (S24: a household with no roof and no host makes a camp)
 settle.trade = require("sim.agents.trade")   -- (S18: a young place's dock makes new sea ways)
 settle.stone = require("sim.agents.stone")   -- (S19: stone.lua lays outcrops with settle.add_building)
 settle.stone.settle = settle
@@ -65,6 +66,7 @@ danger.interrupt = act.interrupt_hook
 danger.person_pos = act.pos
 -- (S20, R6.5b) a household whose house burnt lodges with others (as newcomers do); a death by lightning
 blaze.lodge = function(W, s, hh, now, why) return settle.migrate.lodge(W, s, hh, now, why) end
+blaze.unroof = function(W, s, b, now, why, except) return settle.migrate.unroof(W, s, b, now, why, except) end
 blaze.kill = function(W, s, p, cause, now) return life.kill_now(W, s, p, cause) end
 blaze.rouse_pen = function(W, s, b, now)
   local H = stock.herd_of_pen(s, b)
@@ -81,9 +83,19 @@ blaze.scorch = function(W, s, f, t, dt)
   wild.scorch(W, s, f, t, dt)
   dogs.scorch(W, s, f, t, dt)
 end
+-- (S24, D-190) one fire at two scales: a planet cell a village's map owns burns by the map's own fire
+do
+  local mapm = require("sim.agents.map")
+  require("sim.systems.fire").owned = function(W, c)
+    if not W.S.v3 then return false end
+    local O = mapm.owners(W)
+    return O ~= nil and O.by[c] ~= nil
+  end
+end
 shake.wave = tsunami.from_quake
 volcano.wave = tsunami.raise
 shake.lodge = blaze.lodge
+shake.unroof = blaze.unroof
 shake.kill = blaze.kill
 -- (S21, R6.5e) flood water: today's river widths, a building falling in, a death by drowning
 flood.widths = settle.today_widths

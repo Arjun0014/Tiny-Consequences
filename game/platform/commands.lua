@@ -104,7 +104,7 @@ function M.register(G)
     local t = args.hour
     if args.lh then
       local clock = require("sim.agents.clock")
-      local s = W.S.v3.settlements[1]
+      local s = W.S.v3.settlements[tonumber(args.sett) or 1]
       local now = speed.v3_t or W.hour
       local lh = clock.local_hour(now, W.grid.lon[s.cell])
       local d = (args.lh - lh) % 24
@@ -1284,6 +1284,17 @@ function M.register(G)
   end)
   bridge.register("picking_info", function()
     return { last_cell = picking.last_cell }
+  end)
+  -- (S24) lua{code}: a chunk run with W (the world), now (the world's clock) and require - the acceptance plays
+  -- (scripts/play_accept.mjs) read the sim's state before and after a cast with it. Test mode only (the bridge).
+  bridge.register("lua", function(args)
+    local W = assert(G.W, "world not ready")
+    local f, err = loadstring(args.code or "return nil", "=lua")
+    if not f then error(err, 0) end
+    local env = setmetatable({ W = W, now = require("game.platform.speed").v3_t or W.hour, G = G,
+      accept = require("game.platform.accept") }, { __index = _G })
+    setfenv(f, env)
+    return { v = f() }
   end)
 end
 

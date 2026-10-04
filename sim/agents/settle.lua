@@ -1100,12 +1100,16 @@ local function grow_trees(W, s, day)
     if st == 1 then
       if tr.size[k] < 1 then tr.size[k] = min(1, tr.size[k] + c.tree_grow) end
     elseif st == 3 then
-      -- a stump may sprout again after some days (on land not taken by the village)
-      if (hour - tr.t_cut[k]) / 24 >= c.sapling_days and s.plot[tr.tile[k]] == 0 and s.occ[tr.tile[k]] == 0 then
+      -- a stump may sprout again after some days (on land not taken by the village); (S24) a tree the fire took
+      -- stands charred much longer before the ground about it greens with a sapling
+      local burnt = tr.burnt and tr.burnt[k]
+      local wait = burnt and c.burnt_sprout_days or c.sapling_days
+      if (hour - tr.t_cut[k]) / 24 >= wait and s.plot[tr.tile[k]] == 0 and s.occ[tr.tile[k]] == 0 then
         local u = rng.float(W.seed, rng.S.V3_MAP, s.key, k, day)
-        if u < 0.06 then
+        if u < (burnt and c.burnt_sprout or 0.06) then
           tr.st[k] = 1
           tr.size[k] = 0.05
+          if burnt then tr.burnt[k] = nil end
           s.tv = (s.tv or 0) + 1
           s.dirty_costs = true
         end

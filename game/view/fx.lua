@@ -81,8 +81,9 @@ local function ring_buffer(col)
   return buf
 end
 
---- An expanding ring where a power landed (kind = the power's root event kind).
-function M.pulse(W, c, kind, radius)
+--- An expanding ring where a power landed (kind = the power's root event kind). (S24) dir: the unit direction of
+-- the point it landed on, else the cell's middle.
+function M.pulse(W, c, kind, radius, dir)
   if #M.pulses == 0 then return end
   local col = M.PULSE_COLORS[kind] or { 1, 0.9, 0.6 }
   local res = M.pulse_res[kind]
@@ -93,25 +94,42 @@ function M.pulse(W, c, kind, radius)
   local p = M.pulses[M.pulse_next]
   M.pulse_next = M.pulse_next % #M.pulses + 1
   go.set(p.url, "vertices", res)
-  p.t, p.cell, p.r = 0, c, radius or 0.8
+  p.t, p.cell, p.r, p.dir = 0, c, radius or 0.8, dir
 end
 
---- A meteor falling on cell c (then the pulse; the sim's fires follow).
-function M.meteor(W, c)
-  M.meteor_fx = { t = 0, cell = c }
+-- (S24) The unit direction of a cast's point: the point on a village's map it was aimed at, else its cell.
+local function point_dir(W, c, p)
+  local V = W.S and W.S.v3
+  local s = p and p.sid and V and V.settlements[p.sid]
+  if s and p.x then return require("sim.agents.map").unit(s, p.x, p.y) end
+  local g = W.grid
+  return g.X[c], g.Y[c], g.Z[c]
+end
+M.point_dir = point_dir
+
+--- A meteor falling on cell c (then the pulse; the sim's fires follow). (S24) On the point aimed at (p: sid, x, y).
+function M.meteor(W, c, p)
+  local x, y, z = point_dir(W, c, p)
+  M.meteor_fx = { t = 0, cell = c, dir = { x, y, z } }
 end
 
---- Lightning bolt at sim cell c (natural strikes, the Lightning power).
-function M.bolt(W, c)
+--- Lightning bolt at sim cell c (natural strikes, the Lightning power). (S24) dir: the unit direction of the point it
+-- struck (a village map's point), else the cell's middle.
+function M.bolt(W, c, dir)
   if not M.W or #M.bolts == 0 then return end
   local g = W.grid
   local eye = state.eye
   local el = sqrt(eye.x * eye.x + eye.y * eye.y + eye.z * eye.z)
-  if (g.X[c] * eye.x + g.Y[c] * eye.y + g.Z[c] * eye.z) / el < 0.05 then return end
+  local dx, dy, dz = g.X[c], g.Y[c], g.Z[c]
+  if dir then dx, dy, dz = dir[1], dir[2], dir[3] end
+  if (dx * eye.x + dy * eye.y + dz * eye.z) / el < 0.05 then return end
   local b = M.bolts[M.bolt_next]
   M.bolt_next = M.bolt_next % #M.bolts + 1
   b.t = 0
   b.cell = c
+  b.dir = { dx, dy, dz }
+  b.v = nil
+  M.flash = 1
 end
 M.stats = { fires = 0 }
 
@@ -163,7 +181,18 @@ function M.init(W, flame_factory, smoke_factory, surface)
     M.fireball = { id = fid, url = msg.url(nil, fid, "mesh"), on = false }
     msg.post(M.fireball.url, MSG_DISABLE)
     local feed = require("game.view.feed")
-    feed.on("lightning_strike", function(Wf, r) M.bolt(Wf, r.cell) end)
+    feed.on("lightning_strike", function(Wf, r)
+      -- (S24) the bolt comes down where it struck on the village's map, not at the middle of the planet's cell
+      local d = r.data
+      local V = Wf.S and Wf.S.v3
+      local s = d and d.settlement and V and V.settlements[d.settlement]
+      if s and d.x then
+        local x, y, z = require("sim.agents.map").unit(s, d.x, d.y)
+        M.bolt(Wf, r.cell, { x, y, z })
+      else
+        M.bolt(Wf, r.cell)
+      end
+    end)
     -- powers: every cast shows where it lands at once (even while paused; the sim applies
     -- the command at the next tick)
     local aim = require("game.view.aim")
@@ -173,8 +202,9 @@ function M.init(W, flame_factory, smoke_factory, surface)
       power_introduce = 1, power_blight = 1, power_oil = 1, power_meteor = 2, power_lightning = 0.3 }
     require("game.ui.powers").on_cast = function(Wc, id, cell, p)
       local k = kinds[id] and kinds[id][p.mode] or ("power_" .. id)
-      if id == "lightning" then M.bolt(Wc, cell) end
-      if id == "meteor" then M.meteor(Wc, cell); return end
+      -- (S24: a bolt aimed at a village's map is drawn by its strike, where it comes down - the event feed)
+      if id == "lightning" and not (Wc.v3 and p.sid and p.x) then M.bolt(Wc, cell) end
+      if id == "meteor" then M.meteor(Wc, cell, p); return end
       M.pulse(Wc, cell, k, aim.world_radius(Wc, steps[k] or 1))
     end
   end
@@ -188,9 +218,11 @@ local function scan(W)
   local eye = state.eye
   local el = sqrt(eye.x * eye.x + eye.y * eye.y + eye.z * eye.z)
   local list = {}
+  -- (S24, D-190) a cell a village's map owns burns by the map's own fire: its flames are drawn where each thing burns
+  local O = W.v3 and W.S.v3 and require("sim.agents.map").owners(W) or nil
   for c = 1, W.n do
     local f = F.fire[c]
-    if f > M.FIRE_MIN then
+    if f > M.FIRE_MIN and not (O and O.by[c]) then
       local d = (g.X[c] * eye.x + g.Y[c] * eye.y + g.Z[c] * eye.z) / el
       if d > 0.1 then list[#list + 1] = { c, f } end
     end
@@ -252,7 +284,15 @@ local function scan_chimneys(W)
   M.chim_list = list
 end
 
+-- (S24) a bolt's or a meteor's flash: the frame's bloom burst for a moment (game/render post_comp.fp u_post.x)
+M.flash = 0
+M.BLOOM = 0.35
 function M.update(W, dt, frozen)
+  if M.flash > 0 then
+    state.u_post.x = M.BLOOM + 2.2 * M.flash * M.flash
+    M.flash = max(0, M.flash - dt * 4)
+    if M.flash == 0 then state.u_post.x = M.BLOOM end
+  end
   M.timer = M.timer - dt
   if M.timer <= 0 then
     M.timer = 0.5
@@ -266,28 +306,35 @@ function M.update(W, dt, frozen)
   -- (S20, R6.5b) v3: what burns on the settlements' maps, close in, takes the flames first
   local LF = W.v3 and require("game.view.agents_view").local_fires or nil
   local nl = LF and #LF or 0
+  -- (S24) the maps' own fires first - each burning tree, roof and field where it burns, larger seen from afar so a fire
+  -- on a village reads at every zoom - then the planet's fires on the land no map owns, with what the pool has left
+  local used = 0
   if nl > 0 then
-    for i, o in ipairs(M.flames) do
-      local f = LF[(i - 1) % nl + 1]
-      local on = i <= nl * 2
-      if on then
-        local fl = 0.8 + 0.25 * sin(t * 11 + o.phase * 5) + 0.1 * sin(t * 23 + o.phase)
-        -- (a roof's flames rise above it as the heat grows; a tree's are smaller)
-        local s = (f[8] and (0.045 + 0.075 * f[4]) or (0.03 + 0.05 * f[4])) * fl
-        local a = (i % 2 == 0) and 0.003 or -0.003
-        pos.x, pos.y, pos.z = f[1] + a * f[6], f[2] - a * f[5], f[3]
-        go.set_position(pos, o.id)
-        go.set_rotation(vmx.set_up_yaw(rot, f[5], f[6], f[7], o.phase), o.id)
-        scl.x, scl.y, scl.z = s, s * 1.4, s
-        go.set_scale(scl, o.id)
-      end
-      if on ~= o.on then o.on = on; msg.post(o.url, on and MSG_ENABLE or MSG_DISABLE) end
+    local ex, ey, ez = state.eye.x, state.eye.y, state.eye.z
+    local nlf = min(nl, #M.flames)
+    for i = 1, nlf do
+      local o = M.flames[i]
+      local f = LF[i]
+      local fl = 0.8 + 0.25 * sin(t * 11 + o.phase * 5) + 0.1 * sin(t * 23 + o.phase)
+      local ddx, ddy, ddz = f[1] - ex, f[2] - ey, f[3] - ez
+      local far = max(1, sqrt(ddx * ddx + ddy * ddy + ddz * ddz) / 2.2)
+      -- (a roof's flames rise above it as the heat grows; a tree's are smaller)
+      local s = (f[8] and (0.045 + 0.075 * f[4]) or (0.03 + 0.05 * f[4])) * fl * min(far, 4)
+      local a = (i % 2 == 0) and 0.003 or -0.003
+      pos.x, pos.y, pos.z = f[1] + a * f[6], f[2] - a * f[5], f[3]
+      go.set_position(pos, o.id)
+      go.set_rotation(vmx.set_up_yaw(rot, f[5], f[6], f[7], o.phase), o.id)
+      scl.x, scl.y, scl.z = s, s * 1.4, s
+      go.set_scale(scl, o.id)
+      if not o.on then o.on = true; msg.post(o.url, MSG_ENABLE) end
     end
-    nf = 0
+    used = nlf
   end
-  for i, o in ipairs(nl > 0 and {} or M.flames) do
-    local fire = nf > 0 and fires[(i - 1) % nf + 1] or nil
-    local on = fire ~= nil and i <= nf * 3
+  for i = used + 1, #M.flames do
+    local o = M.flames[i]
+    local j = i - used
+    local fire = nf > 0 and fires[(j - 1) % nf + 1] or nil
+    local on = fire ~= nil and j <= nf * 3
     if on then
       local a, b = sin(o.phase * 3.1) * 0.8, cos(o.phase * 2.3) * 0.8
       local fl = 0.8 + 0.25 * sin(t * 11 + o.phase * 5) + 0.1 * sin(t * 23 + o.phase)
@@ -316,12 +363,14 @@ function M.update(W, dt, frozen)
     if on and b.cell then
       local g = W.grid
       local x, y, z = g.X[b.cell], g.Y[b.cell], g.Z[b.cell]
+      if b.dir then x, y, z = b.dir[1], b.dir[2], b.dir[3] end
       local r, v = M.surface(x, y, z, b.v)
       b.v = v
       pos.x, pos.y, pos.z = x * r, y * r, z * r
       go.set_position(pos, b.id)
       go.set_rotation(vmx.set_up_yaw(rot, x, y, z, b.t * 40), b.id)
-      local top = state.R + 0.55 - r
+      -- (S24: from the cloud base, which lifts as the camera comes down - game/view/clouds.lua)
+      local top = state.R + max(0.55, 0.95 + (require("game.view.clouds").lift or 0)) - r
       -- thicker from far away so a strike still reads at planet zoom
       local dx, dy, dz = pos.x - state.eye.x, pos.y - state.eye.y, pos.z - state.eye.z
       local th = max(1, sqrt(dx * dx + dy * dy + dz * dz) / 6)
@@ -337,6 +386,7 @@ function M.update(W, dt, frozen)
     if on then
       local g = W.grid
       local x, y, z = g.X[p.cell], g.Y[p.cell], g.Z[p.cell]
+      if p.dir then x, y, z = p.dir[1], p.dir[2], p.dir[3] end
       local r = M.surface(x, y, z) + 0.04
       pos.x, pos.y, pos.z = x * r, y * r, z * r
       go.set_position(pos, p.id)
@@ -358,6 +408,7 @@ function M.update(W, dt, frozen)
     if on then
       local g = W.grid
       local x, y, z = g.X[m.cell], g.Y[m.cell], g.Z[m.cell]
+      if m.dir then x, y, z = m.dir[1], m.dir[2], m.dir[3] end
       local k = m.t / fall
       local r = state.R + 7 * (1 - k) * (1 - k)
       local ex, ez = z, -x
@@ -371,11 +422,13 @@ function M.update(W, dt, frozen)
       go.set_scale(scl, fb.id)
     elseif not m.boom then
       m.boom = true
-      local aim = require("game.view.aim")
-      M.pulse(W, m.cell, "power_meteor", aim.world_radius(W, 2.5))
-      M.pulse(W, m.cell, "power_heat", aim.world_radius(W, 1.2))
-      M.bolt(W, m.cell)
-      M.shake = 0.6
+      -- (S24) the blast's ring and the flash's, as far as the impact's own physics reach (sim/config.lua imp_*)
+      local cv = require("sim.config").V3
+      M.pulse(W, m.cell, "power_meteor", cv.imp_flash * 2.2, m.dir)
+      M.pulse(W, m.cell, "power_heat", cv.imp_blast * 1.6, m.dir)
+      M.bolt(W, m.cell, m.dir)
+      M.shake = 0.9
+      M.flash = 1.4
     end
     if on ~= fb.on then fb.on = on; msg.post(fb.url, on and MSG_ENABLE or MSG_DISABLE) end
     if m.t > fall + 2 then M.meteor_fx = nil end

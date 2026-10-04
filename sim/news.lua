@@ -122,12 +122,18 @@ local function on_deed(W, R, d, now)
     local st = story(W, R, "strike:" .. d.id, "strike", s.id, d.t, { x = d.x, y = d.y, deed = d.id, ev = d.event })
     st.deed = st.deed or d.id
     st.title = sfmt("Lightning %s %s at %s", d.dead and "killed" or "struck", ANIMAL[d.what], s.name)
+    -- (S24) the current through the ground killed others standing about it
+    local more = d.killed or 0
+    if more > 0 then
+      st.title = sfmt("Lightning killed %d beasts at %s", more + (d.dead and 1 or 0), s.name)
+    end
     if (d.to_hh or 0) ~= 0 then
-      line(st, sfmt("%s %s", d.dead and "Lost by" or "Belongs to", household_name(W, d.to_hh)), d.t)
+      line(st, sfmt("%s %s%s", d.dead and "Lost by" or "Belongs to", household_name(W, d.to_hh),
+        more > 0 and sfmt("; %d more dead of the current in the ground, the herd scattered", more) or ""), d.t)
     else
       line(st, d.dead and "A wild one, dead where it stood" or "A wild one: it bolted", d.t)
     end
-    st.weak = not d.dead and (d.to_hh or 0) == 0
+    st.weak = not d.dead and (d.to_hh or 0) == 0 and more == 0
     st.active = false
     return
   end
@@ -195,7 +201,8 @@ local function on_deed(W, R, d, now)
     R.quake_at[s.id] = st
   elseif k == "fell" then
     local kind = (R.quake_at and R.quake_at[s.id] and not R.quake_at[s.id].closed) and "quake" or nil
-    local st = kind and R.quake_at[s.id] or open_at(R, "wave", s.id) or open_at(R, "flood", s.id)
+    local a0 = d.answers and W.S.v3.deeds[d.answers]
+    local st = (a0 and a0.kind == "impact" and open_at(R, "impact", s.id)) or kind and R.quake_at[s.id] or open_at(R, "wave", s.id) or open_at(R, "flood", s.id)
       or story(W, R, "fell:" .. s.id, "quake", s.id, d.t, { deed = d.id, x = d.x, y = d.y })
     st.title = st.title or sfmt("Houses fell at %s", s.name)
     if HOUSE[d.what] then
@@ -254,9 +261,25 @@ local function on_deed(W, R, d, now)
       line(st, sfmt("%s oiled, the colony dwindling", plural(n, "gull")), d.t)
     end
   elseif k == "impact" then
+    -- (S24, D-188) what the rock did where it struck, as the sim counted it at that moment
     local st = story(W, R, "impact:" .. d.id, "impact", s.id, d.t, { deed = d.id, ev = d.event, x = d.x, y = d.y })
     st.title = sfmt("Fire from the sky at %s", s.name)
-    line(st, "A rock fell from the sky: the ground shook, the trees and roofs near it are alight", d.t)
+    local parts = {}
+    if (d.dead or 0) > 0 then parts[#parts + 1] = plural(d.dead, "person", "people") .. " killed" end
+    if (d.houses or 0) > 0 then parts[#parts + 1] = plural(d.houses, "house") .. " thrown down" end
+    if (d.fell or 0) > (d.houses or 0) then parts[#parts + 1] = plural(d.fell - (d.houses or 0), "other building") .. " down" end
+    if (d.beasts or 0) > 0 then parts[#parts + 1] = plural(d.beasts, "beast") .. " killed" end
+    if (d.flat or 0) > 0 then parts[#parts + 1] = plural(d.flat, "tree") .. " thrown flat" end
+    if (d.lit or 0) > 0 then parts[#parts + 1] = sfmt("%d alight", d.lit) end
+    line(st, #parts > 0 and ("A rock fell from the sky: " .. table.concat(parts, ", ")) or "A rock fell from the sky beside it: the ground shook", d.t)
+    st.weak = false
+  elseif k == "slain" then
+    -- (S24) beasts the blast and the flash killed
+    local st = open_at(R, "impact", s.id)
+    if st then
+      local nm = d.what == "cattle" and "cattle" or (d.what == "sheep" and "sheep" or ((d.what or "beast") .. "s"))
+      line(st, sfmt("%d %s of the village dead in the blast", d.n or 1, nm), d.t)
+    end
   elseif k == "snow" then
     local st = story(W, R, "winter:" .. s.id, "winter", s.id, d.t, { deed = d.id, x = s.sqx, y = s.sqy })
     st.title = sfmt("Snow at %s", s.name)
@@ -297,7 +320,7 @@ local function on_deed(W, R, d, now)
   elseif k == "death" then
     local to = person(W, d.to)
     local cause = d.what or "?"
-    local inc = (cause == "burns" and open_at(R, "fire", s.id)) or (cause == "crushed" and (R.quake_at and R.quake_at[s.id]))
+    local inc = (cause == "meteor" and open_at(R, "impact", s.id)) or (cause == "burns" and open_at(R, "fire", s.id)) or (cause == "crushed" and (R.quake_at and R.quake_at[s.id]))
       or (cause == "drowned" and (open_at(R, "flood", s.id) or open_at(R, "wave", s.id)))
     if inc and not inc.closed then
       local nd = count(inc, "dead")
@@ -828,6 +851,7 @@ end
 local DEED_TEXT = {
   burnt = function(W, d) return sfmt("%s burnt (%s)", BUILDING_WORD[d.what] or ("the " .. d.what), (sett(W, d.at) or {}).name or "?") end,
   strike = function(W, d)
+    if ANIMAL[d.what] and (d.killed or 0) > 0 then return sfmt("Lightning killed %d beasts at %s", d.killed + (d.dead and 1 or 0), (sett(W, d.at) or {}).name or "?") end
     if ANIMAL[d.what] then return sfmt("Lightning %s %s at %s", d.dead and "killed" or "struck", ANIMAL[d.what], (sett(W, d.at) or {}).name or "?") end
     return sfmt("Lightning struck at %s", (sett(W, d.at) or {}).name or "?")
   end,

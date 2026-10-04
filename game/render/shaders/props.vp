@@ -100,8 +100,12 @@ void main()
     float snow = 0.0;
     float fire = 0.0;
     float bare = 0.0;
-    if (inst2.z > 0.5 && u_anim.w > 0.5) {
-        float id = floor(inst2.z + 0.5) - 1.0;
+    // (S24, D-190) a village map's own props carry their cell negated: they burn one by one (their flames are drawn
+    // where each burns, game/view/fx.lua), never by the cell's fire - the cell's colour, season and snow still apply
+    float zc = abs(inst2.z);
+    bool vmap = inst2.z < -0.5;
+    if (zc > 0.5 && u_anim.w > 0.5) {
+        float id = floor(zc + 0.5) - 1.0;
         float tx = mod(id, u_tex.y);
         float ty = floor(id / u_tex.y) * 4.0;
         vec2 uv = vec2((tx + 0.5) / u_tex.y, (ty + 0.5) * u_tex.x);
@@ -110,7 +114,7 @@ void main()
         vec4 D = textureLod(celltex, uv + vec2(0.0, 3.0 * u_tex.x), 0.0);
         float temp = D.r * 70.0 - 30.0;
         snow = smoothstep(0.2, 0.65, A.a);
-        fire = B.r;
+        fire = vmap ? 0.0 : B.r;
         // each tree keeps its own calendar (a week or two early or late)
         float toy = mod(u_anim.z + (wp.y < 0.0 ? 24.0 : 0.0) + (rnd - 0.5) * 3.0, 48.0);
         // no seasons in the tropics: the colour year fades out toward the equator

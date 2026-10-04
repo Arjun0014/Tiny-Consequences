@@ -51,7 +51,7 @@ void main()
     float dark = mix(cv.b, cv.a, u_cv1.x);
     vec4 g = texture(geotex, uv);
     highp float hb = u_cv0.y + mix(u_cv2.x, u_cv2.y, g.r);
-    highp float thick = mix(0.14, 0.55, cover) + 0.85 * smoothstep(0.45, 0.85, dark);
+    highp float thick = mix(0.12, 0.42, cover) + 0.6 * smoothstep(0.45, 0.85, dark);
     highp vec3 p = up * (hb + 0.4 * thick);
     highp float hour = u_cv0.x;
     highp float P = u_cv2.w;

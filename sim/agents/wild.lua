@@ -822,6 +822,24 @@ function M.dies(W, s, w, now, cause)
   s.acc["wild_" .. cause] = (s.acc["wild_" .. cause] or 0) + 1
 end
 
+-- (S24, D-189) A sudden blow at a point (a god's bolt, a meteor's blast): every wild animal within r sees the flash
+-- and hears the crack and runs from it (a grazer with its band's flight; a wolf drops what it was about).
+function M.jolt(W, s, x, y, now, r)
+  local Wd = s.wildlife
+  if not Wd then return end
+  for _, w in ipairs(Wd.animals) do
+    if w.alive and not w.gone and w.act ~= "leave" then
+      local wx, wy = M.pos(w, now)
+      local d2 = dsq(wx - x) + dsq(wy - y)
+      if d2 < r * r then
+        w.flee_x, w.flee_y = x, y
+        if w.pred then w.prey = nil end
+        decide_at(W, s, w, now, now + 0.001 + 0.004 * (1 - stock.trait(w, stock.T_ALERT)) * (0.5 + sqrt(d2) / r))
+      end
+    end
+  end
+end
+
 -- (S22) Fire f has caught (or roared up): the wild animals that see or smell it look up, each in its
 -- own time (the alert sooner, one lying up later, the near sooner).
 function M.fire_alarm(W, s, f, now)
@@ -933,6 +951,28 @@ function M.step(W, s, w, now)
   end
   -- (S22) fire: grazers and wolves alike run from it by its own extent, each its own way
   if s.burn and #s.burn > 0 and fire_flight(W, s, w, now, S, c) then return end
+  -- (S24) a wolf startled by a sudden blow (a bolt, a blast): away from it at a run, the hunt dropped
+  if w.pred and w.flee_x then
+    local fx, fy = w.flee_x, w.flee_y
+    w.flee_x, w.flee_y = nil, nil
+    local dx, dy = w.tx - fx, w.ty - fy
+    local d = max(1e-6, sqrt(dx * dx + dy * dy))
+    local side = (stock.trait(w, stock.T_SIDE) - 0.5) * 1.2
+    dx, dy = dx / d - dy / d * side, dy / d + dx / d * side
+    local l = max(1e-6, sqrt(dx * dx + dy * dy))
+    dx, dy = dx / l, dy / l
+    local run = c.wild_flee * (0.7 + 0.6 * u(W, s, w, now, 33))
+    for q = 0, 4 do
+      local ang = q == 0 and 0 or ((q % 2 == 1) and 1 or -1) * (q <= 2 and 1.0 or 2.0)
+      local ca, sa = cos(ang), sin(ang)
+      local ex, ey = dx * ca - dy * sa, dy * ca + dx * sa
+      if go_to(s, w, now, w.tx + ex * run, w.ty + ey * run, S.run, "flee") then
+        w.fled, w.hx, w.hy = now, ex, ey
+        w.why = "Running from the blow"
+        return
+      end
+    end
+  end
   if w.pred then
     -- (a dog within hearing of a wolf wakes and barks: D-105)
     for _, dg in ipairs(s.dogs or {}) do

@@ -31,7 +31,7 @@ local NAMES = { "oak", "birch", "spruce", "snowpine", "pine", "palm", "jungle", 
   "bush", "tuft", "flower", "reed", "rock", "cactus", "cottage", "longhouse", "townhouse", "hut",
   "granary", "hall", "well", "fence", "haystack", "woodpile", "ruin", "pier",
   "stakes", "frame", "walls", "sodhouse", "woodshed", "sacks", "fishrack", "hull", "stook", "logs", "palisade",
-  "kiln", "pots", "pen", "banner" }
+  "kiln", "pots", "pen", "banner", "mound" }
 local flora = require("game.view.flora")
 for _, n in ipairs(flora.NAMES) do NAMES[#NAMES + 1] = n end
 local K = {}
@@ -49,7 +49,7 @@ for _, n in ipairs({ "cottage", "longhouse", "townhouse", "hut", "granary", "hal
 cls("fence"); cls("haystack", 7); cls("woodpile"); cls("ruin"); cls("pier")
 cls("stakes"); cls("frame"); cls("walls", 0, 0); cls("sodhouse", 7, 0); cls("woodshed", 5); cls("sacks")
 cls("fishrack"); cls("hull"); cls("stook", 7); cls("logs"); cls("palisade"); cls("kiln"); cls("pots"); cls("pen")
-cls("banner")
+cls("banner"); cls("mound")
 for _, n in ipairs({ "oak1", "oak2", "oak3", "beech1", "beech2", "birch1", "birch2", "poplar", "sapling_b" }) do cls(n, 1, 6) end
 for _, n in ipairs({ "spruce1", "spruce2", "spruce3", "fir1", "pine1", "pine2", "sapling_c" }) do cls(n, 2, 6) end
 cls("snowpine1", 2, 6, 4); cls("snowpine2", 2, 6, 4)

@@ -520,6 +520,10 @@ local function build_near()
   M.place(t, M.box(nil, 0.006, 0.012, 0.03, 5, 0.6, 0.85, false), 0.034, 0.004, 0.008, 1)
   M.place(t, M.box(nil, 0.06, 0.005, 0.006, 6, 0.6, 0.8, false), 0.005, 0.004, 0.01, 1, 1, 1, 0.5, 0, 0.12)
   N.ruin = t
+  -- (S24) a low mound of thrown-up earth and broken rock: a crater's rim, the ejecta about it
+  t = M.new()
+  M.place(t, M.lump(nil, 0.03, 0.011, 0.03, 7, 3, 1, 0.5, 0.95, 0, 0.3), 0, 0.001, 0, 1)
+  N.mound = t
   -- pier: planks on posts (from the shore out to sea along +z)
   t = M.new()
   M.place(t, M.box(nil, 0.03, 0.004, 0.14, 6, 0.75, 0.95, true), 0, 0.006, 0.07, 1)
@@ -720,6 +724,7 @@ local function build_far()
   M.place(t, M.box(nil, 0.026, 0.07, 0.026, 7, 0.75, 1.0, false), 0.07, 0.035, 0, 1)
   F.hall = t
   F.ruin = M.T[1].ruin
+  F.mound = M.T[1].mound
   F.well = M.T[1].well
   F.pier = M.T[1].pier
   F.haystack = M.T[1].haystack

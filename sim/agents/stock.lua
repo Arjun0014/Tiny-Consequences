@@ -319,6 +319,29 @@ local function graze_drift(s, a, now, hx, hy, L, dur, open_only)
   a.act, a.t0, a.t1 = "graze", now, now + max(0.05, dur)
 end
 
+-- (S24, D-192) What a grazer finds to eat at (x, y): its pasture block's grass where the ground is open (a grazer finds
+-- none under the trees - a browser takes their leaves, a pig roots the woods), less on a trodden lane, the stubble and
+-- the fallow of a field but never a crop standing on it; -1 where it cannot stand.
+local function forage_at(s, a, S, P, x, y)
+  local i = mapm.tile_of(s, x, y)
+  if i == 0 or s.cost[i] < 0 or s.land[i] ~= 1 then return -1 end
+  local b = block_of(s, x, y)
+  local g = a.sp == "pig" and (P.wood and P.wood[b] or 0) or (P.grass[b] or 0)
+  local k = s.tree[i]
+  if k > 0 and s.trees.st[k] == 1 and a.sp ~= "pig" then
+    if S.browse then g = max(g * 0.3, S.browse * (P.wood and P.wood[b] or 0)) else g = g * 0.08 end
+  end
+  local pk = s.plot[i]
+  if pk > 0 then
+    local pl = s.plots[pk]
+    if pl and (pl.stage == "growing" or pl.stage == "ripe") then return 0 end
+    g = g * 0.7
+  end
+  local l = s.lane[i]
+  if l == 2 then g = g * 0.3 elseif l == 1 then g = g * 0.65 end
+  return g
+end
+
 -- The pen's ground: a place in it for each animal (a jittered grid filling the enclosure).
 local function pen_place(s, pen, a)
   local T = s.T
@@ -431,10 +454,14 @@ local function live_list(H)
 end
 M.live_list = live_list
 
-local function scan(s, H, a, now, x, y, sight)
+local function scan(s, H, a, now, x, y, sight, hx, hy, hda)
   local s2 = sight * sight
   local nn, nd2, nx, ny = nil, 1e18, 0, 0
   local ln, lr, cx, cy, cn = 0, 0, 0, 0, 0
+  -- (S24, D-192) with (hx, hy, hda): the one ahead - the nearest in sight that is nearer (hx, hy) than hda by half a
+  -- spacing (a beast following the herd follows it)
+  local ld2, lead, lx, ly = 1e18, nil, 0, 0
+  local ahead = hx and (hda - SP(a.sp).sep * 0.5) or nil
   local an = H.animals
   local inpen = a.act == "pen"
   local grp = a.led or 0
@@ -462,6 +489,10 @@ local function scan(s, H, a, now, x, y, sight)
         if d2 < s2 then
           ln = ln + 1
           if ba == "rest" then lr = lr + 1 end
+          if ahead and d2 < ld2 then
+            local ex, ey = bx - hx, by - hy
+            if ex * ex + ey * ey < ahead * ahead then ld2, lead, lx, ly = d2, b, bx, by end
+          end
         end
       end
     end
@@ -469,6 +500,7 @@ local function scan(s, H, a, now, x, y, sight)
   if dead > L.dead then L.dead = dead end
   SC.nn, SC.nd, SC.nx, SC.ny = nn, sqrt(nd2), nx, ny
   SC.ln, SC.lrest, SC.cx, SC.cy, SC.cn = ln, lr, cx, cy, cn
+  SC.lead, SC.lx, SC.ly = lead, lx, ly
 end
 M.scan = scan
 
@@ -509,6 +541,47 @@ function M.fire_alarm(W, s, f, now)
       end
     end
   end
+end
+
+-- (S24, D-189) A sudden blow at a point - a god's bolt, a meteor's blast: the flash seen and the crack heard at once by
+-- every beast within r out of doors (or in an open fold). Each looks up within a breath or two (the alert first)
+-- and bolts its own way from it (M.step); then stands with its head up and comes back to the others in its own time.
+-- s.jolt = { { x, y, t, r } } (the last few; a beast answers each once: a.jt).
+function M.jolt(W, s, x, y, now, r)
+  local c = C()
+  if not s.herds then return end
+  s.jolt = s.jolt or {}
+  local J = s.jolt
+  J[#J + 1] = { x = x, y = y, t = now, r = r }
+  while #J > 4 do table.remove(J, 1) end
+  for _, kind in ipairs(M.HERDS) do
+    local H = s.herds[kind]
+    if H then
+      local L = live_list(H)
+      for i = 1, #L do
+        local a = H.animals[L[i]]
+        if a.alive and (a.held or 0) == 0 and (a.yoke or 0) == 0 then
+          local ax, ay = M.pos(a, now)
+          local d = sqrt(dsq(ax - x) + dsq(ay - y))
+          if d < r then
+            local at = now + c.jolt_look * (0.3 + 0.9 * (1 - trait(a, T_ALERT))) * (0.6 + 0.8 * d / r) + 0.0004 * u(W, s, H, a, now, 48)
+            M.decide_at(W, s, H, a, now, at)
+          end
+        end
+      end
+    end
+  end
+end
+
+-- (S24) The newest sudden blow beast a has not yet answered, within its reach and still fresh, or nil.
+local function jolt_of(s, a, now)
+  local J = s.jolt
+  if not J then return nil end
+  for q = #J, 1, -1 do
+    local j = J[q]
+    if now - j.t < C().jolt_h and (a.jt or -1) < j.t and dsq(a.tx - j.x) + dsq(a.ty - j.y) < j.r * j.r then return j end
+  end
+  return nil
 end
 
 -- (S22) Beast a of herd H dies (fire, lightning): a carcass where it fell; its owners on the map
@@ -773,6 +846,45 @@ function M.step(W, s, H, a, now)
       end
     end
   end
+  -- (S24) a sudden blow near (a bolt, a blast): away from it at a gallop, each its own way - the nearer and the more
+  -- timid, the farther - then standing with its head up before it goes back to the others (a beast shut in a byre or
+  -- a sty presses to the far side; one held, yoked or led stays where it is held)
+  local jt = not drover and jolt_of(s, a, now)
+  if jt then
+    a.jt = jt.t
+    local dx, dy = a.tx - jt.x, a.ty - jt.y
+    local d = sqrt(dx * dx + dy * dy)
+    if d < 1e-6 then dx, dy, d = (a.hx or 1), (a.hy or 0), 1 end
+    local hx, hy = dx / d, dy / d
+    local fright = (0.55 + 0.9 * (1 - trait(a, T_BOLD))) * (0.35 + 0.65 * (1 - d / jt.r))
+    local run = c.jolt_run * fright * (0.8 + 0.4 * u(W, s, H, a, now, 49))
+    local bend = (trait(a, T_SIDE) - 0.5) * c.beast_fan + (u(W, s, H, a, now, 50) - 0.5) * 0.7
+    local pen0 = s.buildings[H.pen or 0]
+    if not shut_in(s, H, pen0, a, now) then
+      for q = 0, 6 do
+        local ang = bend + (q == 0 and 0 or ((q % 2 == 1) and 1 or -1) * 0.5 * floor((q + 1) / 2))
+        local ca, sa = cos(ang), sin(ang)
+        local ex, ey = hx * ca - hy * sa, hy * ca + hx * sa
+        a.hx, a.hy = ex, ey
+        a.why = "Bolting from the blow"
+        a.startled = now
+        if walk_to(W, s, a, now, a.tx + ex * run, a.ty + ey * run, S.speed * c.jolt_speed * (0.85 + 0.3 * trait(a, T_PACE))) then
+          cry(W, s, H, a.tx, a.ty, now, true)
+          return
+        end
+      end
+    end
+    a.why = "Startled: head up, trembling"
+    a.startled = now
+    stand(a, now, a.act == "pen" and "pen" or "rest", 0.04 + 0.08 * u(W, s, H, a, now, 51))
+    return
+  end
+  if a.act == "walk" and a.why == "Bolting from the blow" then
+    -- (the run done: it stands a while, looking about, before anything else)
+    a.why = "Startled: standing, looking about"
+    stand(a, now, "rest", c.jolt_stand * (0.4 + 0.9 * (1 - trait(a, T_BOLD))) * (0.7 + 0.6 * u(W, s, H, a, now, 52)))
+    return
+  end
   -- (S20, R6.5b; S22) fire, seen and smelt by its own extent (a tree's crown, a building's walls, a
   -- field's edges): a beast out of its pen runs from it its own way until the fire is its own safe
   -- distance off; one shut in its pen stays (a fold's hurdles give way once the fold is well alight; a
@@ -936,12 +1048,29 @@ function M.step(W, s, H, a, now)
   end
   if da > Ri * 1.5 or (led and da > Ri * 0.45) then
     -- left behind, or the herder is moving on (a moving flock draws closer together than a grazing
-    -- one): after them, to its own side of the herd
+    -- one): after them, to its own side of the herd. (S24, D-192) On the move it follows the one ahead of it - the
+    -- nearest in sight nearer the herder - a spacing behind and a little to its own side: the flock strings out behind
+    -- its leaders, each after another, the front ones after the herder (it moved as a ball before).
     local ux, uy = dax / da, day / da
     local side = trait(a, T_SIDE) - 0.5
     local stop = Ri * 0.6
     local tx = cx - ux * stop - uy * side * Ri * 0.8
     local ty = cy - uy * stop + ux * side * Ri * 0.8
+    local trail = false
+    if led and not drover then
+      scan(s, H, a, now, x, y, S.sep * 5, cx, cy, da)
+      if SC.lead then
+        local ex, ey = x - SC.lx, y - SC.ly
+        local el = sqrt(ex * ex + ey * ey)
+        if el > 1e-6 then
+          ex, ey = ex / el, ey / el
+          local gap = S.sep * (0.9 + 0.7 * u(W, s, H, a, now, 60))
+          local sd = side * S.sep * 1.4
+          tx, ty = SC.lx + ex * gap - ey * sd, SC.ly + ey * gap + ex * sd
+          trail = true
+        end
+      end
+    end
     local dx, dy = tx - x, ty - y
     local d = sqrt(dx * dx + dy * dy)
     local hop = S.hop * pace * (0.8 + 0.5 * u(W, s, H, a, now, 5)) * (da > R * 2 and 1.6 or 1)
@@ -951,7 +1080,7 @@ function M.step(W, s, H, a, now)
       a.why = led and ("Following the drover" .. (drover.trip.to ~= s.id and (" to " .. (W.S.v3.settlements[drover.trip.to] or s).name) or ""))
         or "Catching up with the drover"
     else
-      a.why = led and "Following the herder" or (p and "Catching up with the herder" or "Back to the others")
+      a.why = led and (trail and "Following the one ahead" or "Following the herder") or (p and "Catching up with the herder" or "Back to the others")
     end
     if walk_to(W, s, a, now, tx, ty, S.speed * pace * (da > Ri * 3 and 1.5 or 1.15)) then return end
   end
@@ -988,26 +1117,40 @@ function M.step(W, s, H, a, now)
     stand(a, now, "rest", S.rest_h * (0.6 + 0.8 * u(W, s, H, a, now, 10)))
     return
   end
-  -- its own way: the heading it keeps, turning a little as it goes, back toward the herd at the
-  -- edge of its range, away from bare ground
-  local k = (u(W, s, H, a, now, 8) - 0.5) * 1.4
-  if da > Ri and da > 1e-6 then hx, hy = hx + dax / da * 0.9, hy + day / da * 0.9 end
-  if nn and SC.nd < S.sep * c.stock_bend and SC.nd > 1e-6 then
-    -- (another close by: its way bends off from it)
-    hx, hy = hx + (x - SC.nx) / SC.nd * 0.8, hy + (y - SC.ny) / SC.nd * 0.8
-  end
+  -- (S24, D-192) its own next mouthful: a few places about its way (ahead, to either side, a little behind) weighed by
+  -- what grows there (forage_at: open grass, not under the trees, never a standing crop), not onto the nearest other,
+  -- within its own range of where the herd is kept, and a little by its own whim - each beast to its own patch
+  if da > 1e-6 and da > Ri then hx, hy = hx + dax / da * 0.6, hy + day / da * 0.6 end
+  local l0 = sqrt(hx * hx + hy * hy)
+  if l0 > 1e-6 then hx, hy = hx / l0, hy / l0 else hx, hy = 1, 0 end
   if P then
-    local here = block_of(s, x, y)
-    local ahead = block_of(s, x + hx * S.sep * 3, y + hy * S.sep * 3)
-    if ahead ~= here and ahead > 0 and here > 0 then
-      local gh = a.sp == "pig" and (P.wood and P.wood[here] or 0) or (P.grass[here] or 0)
-      local ga = a.sp == "pig" and (P.wood and P.wood[ahead] or 0) or (P.grass[ahead] or 0)
-      if ga < gh * 0.6 then k = k + (k >= 0 and 1.5 or -1.5) end
+    local bsc, bx, by = -1e9, hx, hy
+    local dmax = S.sep * 0.8
+    for q = -3, 3 do
+      local ang = q * 0.6 + (u(W, s, H, a, now, 64 + q) - 0.5) * 0.35
+      local ca, sa = cos(ang), sin(ang)
+      local ex, ey = hx * ca - hy * sa, hy * ca + hx * sa
+      local st = S.sep * (0.5 + 0.7 * u(W, s, H, a, now, 72 + q))
+      local px, py = x + ex * st, y + ey * st
+      local g = forage_at(s, a, S, P, px, py)
+      if g >= 0 then
+        local sc = g + ca * 0.1 + u(W, s, H, a, now, 80 + q) * 0.12
+        if nn then
+          local dn = sqrt(dsq(px - SC.nx) + dsq(py - SC.ny))
+          if dn < dmax then sc = sc - (dmax - dn) / dmax * 0.6 end
+        end
+        local dc = sqrt(dsq(px - cx) + dsq(py - cy))
+        if dc > Ri then sc = sc - (dc - Ri) / max(1e-6, Ri) * 1.2 end
+        if sc > bsc then bsc, bx, by = sc, ex, ey end
+      end
     end
+    hx, hy = bx, by
+  else
+    local k = (u(W, s, H, a, now, 8) - 0.5) * 1.4
+    hx, hy = hx - hy * k, hy + hx * k
+    local l = sqrt(hx * hx + hy * hy)
+    if l > 1e-6 then hx, hy = hx / l, hy / l else hx, hy = 1, 0 end
   end
-  hx, hy = hx - hy * k, hy + hx * k
-  local l = sqrt(hx * hx + hy * hy)
-  if l > 1e-6 then hx, hy = hx / l, hy / l else hx, hy = 1, 0 end
   a.hx, a.hy = hx, hy
   if v < S.stepping * (led and 2.5 or 1) then
     -- a few steps on to fresh ground (a grazer not in under the trees)

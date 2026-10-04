@@ -199,6 +199,10 @@ local FELL = {
   snow = { how = "the weight of the snow", ours = "Our house fell in under the snow", lodge = "their house fell in under the snow" },
   sea = { how = "the sea", ours = "The sea took our house", lodge = "the sea took their house" },
   flood = { how = "the flood", ours = "The flood brought our house down", lodge = "the flood brought their house down" },
+  -- (S24, D-188) a meteor: the rock where the house stood, or the blast of it
+  impact = { how = "the fire from the sky", ours = "The fire from the sky took our house", lodge = "the fire from the sky took their house" },
+  blast = { how = "the blast of the fire from the sky", ours = "The blast of the fire from the sky threw our house down",
+    lodge = "the blast threw their house down" },
 }
 
 local STORES = { "food", "grain", "sheaves", "smoked", "cheese", "meat", "fish", "meals", "logs", "wool", "cloth", "hides",
@@ -215,9 +219,14 @@ function M.fall_in(W, s, b, t, d0, cause)
     answers = d0 and d0.id or nil })
   deeds.learn(W, s, d, FT.how, 0, 0, t)
   s.acc.fell = (s.acc.fell or 0) + 1
+  -- (S24: over a copy - a death takes the dead off s.members, and the live list skipped the one after)
+  local inside = {}
   for _, id in ipairs(s.members) do
     local p = V.people[id]
-    if p and p.alive and p.inside == b.id and not p.at then
+    if p and p.alive and p.inside == b.id and not p.at then inside[#inside + 1] = p end
+  end
+  for _, p in ipairs(inside) do
+    if p.alive then
       local sev = c.quake_hurt[1] + (c.quake_hurt[2] - c.quake_hurt[1]) * rng.float(W.seed, rng.S.V3_CONFLICT, p.key, floor(t * 60) % 4294967296, 7300)
       people.hurt(p, sev, "crushed", d.id, t)
       p.inside = 0
@@ -251,6 +260,8 @@ function M.fall_in(W, s, b, t, d0, cause)
     end
     if M.lodge then M.lodge(W, s, hh, t, FT.lodge) end
   end
+  -- (S24) those lodging under its roof have none now either (they lodge anew, or camp)
+  if M.unroof then M.unroof(W, s, b, t, FT.lodge, hh) end
 end
 
 -- The trapped of village s still under the rubble (and those freed or dead taken off the list).

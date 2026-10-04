@@ -99,7 +99,7 @@ void main()
         cmax = max(cmax, max(cv.r, cv.g));
         highp float hb = R + mix(u_cv2.x, u_cv2.y, g.r);
         lo = min(lo, hb);
-        hi = max(hi, hb + mix(0.14, 0.55, max(cv.r, cv.g)) + 0.85 * smoothstep(0.45, 0.85, dark) + 0.05);
+        hi = max(hi, hb + mix(0.12, 0.42, max(cv.r, cv.g)) + 0.6 * smoothstep(0.45, 0.85, dark) + 0.05);
     }
     // (clear sky wherever this ray goes: nothing to march)
     if (cmax < 0.015) discard;
@@ -158,8 +158,8 @@ void main()
         vec4 g = texture(geotex, uv);
         highp float hb = R + mix(u_cv2.x, u_cv2.y, g.r);
         float dark = mix(cv.b, cv.a, blend);
-        // decks are thick, storms tower; fair-weather heaps are thin
-        highp float thick = mix(0.14, 0.55, cover) + 0.85 * smoothstep(0.45, 0.85, dark);
+        // decks are thicker, storms tower; fair-weather heaps are thin (S24: all thinner - the camera passes through quickly)
+        highp float thick = mix(0.12, 0.42, cover) + 0.6 * smoothstep(0.45, 0.85, dark);
         highp float h = (r - hb) / thick;
         if (h <= 0.0 || h >= 1.0) continue;
         highp float w = (g.g - 0.5) * 2.0 * u_cv2.z;
@@ -174,8 +174,9 @@ void main()
         float body = clamp((nn - (1.0 - cover) * 0.86) * 4.0, 0.0, 1.0);
         float d = body * prof * (0.4 + 0.6 * smoothstep(0.3, 0.7, nn));
         if (d <= 0.001) continue;
-        // mist close to the eye is thinner than the cloud seen from outside (a soft way in and out)
-        highp float sig = u_cv1.z * d * (0.8 + 0.5 * dark) * mix(0.3, 1.0, smoothstep(0.0, 0.5, ta));
+        // mist close to the eye is thinner than the cloud seen from outside (a soft way in and out: S24, a camera
+        // passing through the deck sees wisps and the ground below through them, not a white wall)
+        highp float sig = u_cv1.z * d * (0.8 + 0.5 * dark) * mix(0.12, 1.0, smoothstep(0.0, 0.9, ta));
         float a = 1.0 - exp(-sig * dt);
         // light: the sun through the cloud above it toward the sun; sky light from above
         float sd = dot(up, L3);

@@ -14,6 +14,11 @@ local ledger = require("sim.ledger")
 
 local sys = { name = "fire" }
 local sqrt = math.sqrt
+-- (S24, D-190) owned(W, c): is planet cell c a village map's (mostly on its map, sim/agents/map.lua owner)? Set by
+-- sim/agents/init.lua for v3 worlds. On such a cell the fire is the map's own: the planet's lightning does not
+-- strike it (the map has its own storms), its fuel is the map's trees (burnt one by one there), and its intensity is
+-- written from the map each hour (blaze.planet) - this system only carries it on to the cells about it.
+sys.owned = nil
 
 function sys.init(W)
   local S = W.S.fire
@@ -47,6 +52,24 @@ function sys.ignite(W, c, tag, natural_kind)
   S.list[#S.list + 1] = c
   blame.set(W.C.fire, W.I.fire, c, ev ~= 0 and ev or parent)
   return true
+end
+
+-- (S24, D-190) A village map's fire on a cell it owns, at intensity v: on the planet's list (so it carries on to the
+-- cells about it), no event of its own (the map's fire has its story and its cause); v = 0 takes it off at the next
+-- step. `tag` the cause the planet's blame carries (the event behind what lit it, or 0).
+function sys.from_map(W, c, v, tag)
+  local F = W.F
+  local S = W.S.fire
+  if not S then return end
+  if v > 0 and F.fire[c] <= 0 then
+    local id = S.next_cluster
+    S.next_cluster = id + 1
+    S.clusters[#S.clusters + 1] = { id = id, first = 0, tag = tag or 0, size = 1, burning = 1, wild = 0, start = W.tick, map = true }
+    S.cluster[c] = id
+    S.list[#S.list + 1] = c
+    blame.set(W.C.fire, W.I.fire, c, tag or 0)
+  end
+  F.fire[c] = v
 end
 
 -- Wildfire threshold in cells: 10 level-4 cells of area, at any SIM_LEVEL (min 3).
@@ -89,7 +112,7 @@ function sys.update(W)
   local q = tick % 4
   for i = 1 + q, #land, 4 do
     local c = land[i]
-    if fire[c] == 0 and temp[c] > 5 then
+    if fire[c] == 0 and temp[c] > 5 and not (sys.owned and sys.owned(W, c)) then
       local summer = season * (lat[c] >= 0 and 1 or -1)
       if summer > 0 then
         local dry = 1 - soil[c] / fc
@@ -162,10 +185,25 @@ function sys.update(W)
   local co2_k, heat_k = cfg.k_co2, cfg.k_heat
   local grass_c = cfgmod.VEG.grass_c
   local G = W.G
+  local owned = sys.owned
   for i = 1, #list do
     local c = list[i]
     local inten = fire[c]
     local tag = cfire[c]
+    if owned and owned(W, c) then
+      -- (S24) a map's cell: what burns there is the map's (blaze.planet writes it, the trees thinning the planet's
+      -- woods one by one as they burn); here only the air it warms, and the cell leaves the list when the map's fire
+      -- there is out
+      if inten > 0 then
+        ha[c] = ha[c] + heat_k * inten
+        keep = keep + 1
+        list[keep] = c
+      else
+        local cl = find_cluster(S, S.cluster[c])
+        S.cluster[c] = nil
+        if cl then cl.burning = cl.burning - 1 end
+      end
+    else
     local og, of, oc = grass[c], forest[c], crop[c]
     local bg = cfg.burn_grass * inten
     if bg > og then bg = og end
@@ -203,6 +241,7 @@ function sys.update(W)
       fire[c] = ni
       keep = keep + 1
       list[keep] = c
+    end
     end
   end
   for i = #list, keep + 1, -1 do list[i] = nil end

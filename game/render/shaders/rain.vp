@@ -21,8 +21,10 @@ void main()
     vec3 up = normalize(wp);
     float snow = color.y;
     float speed = mix(1.7, 0.28, snow);
-    float drop = 1.0;    // from the cloud base (game/view/clouds.lua ALT_MIN) to near the ground
-    float f = fract(u_anim.x * speed + color.x);
+    // from the cloud base down to the sea's level (S24: the base lifts as the camera comes down to a place,
+    // game/view/clouds.lua M.lift - the streaks fall all the way; under the ground the depth test hides them)
+    float drop = max(0.4, length(position.xyz) - 10.0);   // 10: the planet's radius (game/view/state.lua R)
+    float f = fract(u_anim.x * speed / drop + color.x);   // (the same speed of fall over any drop)
     wp -= up * f * drop;
     if (snow > 0.5) {
         vec3 side = normalize(cross(up, vec3(0.3, 1.0, 0.2)));
@@ -33,6 +35,8 @@ void main()
     vec3 c = mix(vec3(0.72, 0.84, 0.98), vec3(1.0), snow);
     float day = smoothstep(-0.3, 0.15, dot(up, normalize(u_sun.xyz)));
     c *= mix(0.35, 1.0, day);
-    var_color = vec4(c, a * mix(0.38, 0.8, snow) * mix(0.35, 1.0, day));
     gl_Position = view_proj * vec4(wp, 1.0);
+    // (S24) streaks passing right in front of the lens fade (the camera now stands in the rain under the deck)
+    a *= smoothstep(0.2, 0.8, gl_Position.w);
+    var_color = vec4(c, a * mix(0.38, 0.8, snow) * mix(0.35, 1.0, day));
 }

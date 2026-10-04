@@ -231,6 +231,25 @@ function M.step(W, s, d, now)
       return
     end
   end
+  -- (S24) startled by a sudden blow: home at a run, away from it (a dog hides from thunder)
+  if d.jolt_x then
+    local jx, jy = d.jolt_x, d.jolt_y
+    d.jolt_x, d.jolt_y = nil, nil
+    local hb = s.buildings[hh.home or 0]
+    local tx, ty
+    if hb and hb.state == "standing" and dsq(hb.dx - jx) + dsq(hb.dy - jy) > 0.0225 then
+      tx, ty = hb.dx, hb.dy
+    else
+      local dx, dy = d.tx - jx, d.ty - jy
+      local l = max(1e-6, sqrt(dx * dx + dy * dy))
+      tx, ty = d.tx + dx / l * 0.3, d.ty + dy / l * 0.3
+    end
+    if go_to(s, d, now, tx, ty, c.dog_run, "flee") then
+      d.act = "run"
+      d.why = "Bolting home from the blow, barking"
+      return
+    end
+  end
   -- (S22) fire, seen and smelt by its own extent: away from it, its own way, until it is far enough off
   fire_refused = false
   if s.burn and #s.burn > 0 then
@@ -463,6 +482,21 @@ function M.dies(W, s, d, now, cause, what)
     for _, id in ipairs(hh.members) do
       local q = W.S.v3.people[id]
       if q and q.alive and not q.at and q.sett == s.id then people.remember(q, now, what) end
+    end
+  end
+end
+
+-- (S24, D-189) A sudden blow at a point (a god's bolt, a meteor's blast): every dog within r bolts from it, barking,
+-- and runs to its people's house (dogs hide from thunder).
+function M.jolt(W, s, x, y, now, r)
+  for _, d in ipairs(s.dogs or {}) do
+    if d.alive then
+      local gx, gy = M.pos(d, now)
+      if dsq(gx - x) + dsq(gy - y) < r * r then
+        d.jolt_x, d.jolt_y = x, y
+        d.barked = now
+        M.interrupt(W, s, d, now)
+      end
     end
   end
 end

@@ -174,7 +174,7 @@ local function on_deed(W, R, d)
   local nd
   -- deeds of one incident join its node: a fire's buildings and fields, a flood's fields, a quake's falls
   local mk = MERGE[k]
-  if mk and pnode and (pnode.kind == mk or (mk == "quake" and (pnode.kind == "wave" or pnode.kind == "flood"))) then
+  if mk and pnode and (pnode.kind == mk or (mk == "quake" and (pnode.kind == "wave" or pnode.kind == "flood" or pnode.kind == "impact"))) then
     nd = pnode
   elseif mk == "fire" then
     nd = node(R, I, pnode, sfmt("fire:%d:%s", sid, pnode and pnode.key or "root"), "fire", sid, d.t, { x = d.x, y = d.y, deed = d.id })
@@ -183,11 +183,13 @@ local function on_deed(W, R, d)
     nd = node(R, I, pnode, "strike:" .. d.id, "strike", sid, d.t, { x = d.x, y = d.y, deed = d.id })
     local what = d.what
     local tx
-    if ANIMAL[what] then tx = sfmt("%s %s %s at %s", "The bolt", d.dead and "killed" or "struck", ANIMAL[what], sname(W, sid))
+    if ANIMAL[what] and (d.killed or 0) > 0 then tx = sfmt("The bolt killed %d beasts at %s (%d by the current in the ground)", d.killed + (d.dead and 1 or 0), sname(W, sid), d.killed)
+    elseif ANIMAL[what] then tx = sfmt("%s %s %s at %s", "The bolt", d.dead and "killed" or "struck", ANIMAL[what], sname(W, sid))
     elseif what == "bld" or d.bkind then tx = sfmt("The bolt struck %s at %s", BUILDING[d.bkind or "house"] or "a building", sname(W, sid))
     elseif what == "person" then tx = sfmt("The bolt struck someone at %s", sname(W, sid))
     elseif what == "tree" then tx = sfmt("The bolt struck a tree at %s", sname(W, sid))
     else tx = sfmt("The bolt came down at %s", sname(W, sid)) end
+    if not ANIMAL[what] and (d.killed or 0) > 0 then tx = tx .. sfmt("; %d beasts by it killed by the current in the ground", d.killed) end
     nd.title = tx
   elseif k == "flood" then
     -- (under the river that rose: the flood is the river over its banks)
@@ -248,7 +250,18 @@ local function on_deed(W, R, d)
     nd.title = sfmt("Blight seen in %s at %s", plural(n, "field"), sname(W, sid))
   elseif k == "impact" then
     nd = node(R, I, pnode, "impact:" .. d.id, "impact", sid, d.t, { deed = d.id, x = d.x, y = d.y })
-    nd.title = sfmt("The rock struck by %s", sname(W, sid))
+    -- (S24, D-188) what the rock did there, as the sim counted it at the moment it struck
+    local parts = {}
+    if (d.dead or 0) > 0 then parts[#parts + 1] = plural(d.dead, "person", "people") .. " killed" end
+    if (d.houses or 0) > 0 then parts[#parts + 1] = plural(d.houses, "house") .. " thrown down" end
+    if (d.fell or 0) > (d.houses or 0) then parts[#parts + 1] = plural(d.fell - (d.houses or 0), "other building") .. " down" end
+    if (d.beasts or 0) > 0 then parts[#parts + 1] = plural(d.beasts, "beast") .. " killed" end
+    if (d.flat or 0) > 0 then parts[#parts + 1] = plural(d.flat, "tree") .. " thrown flat" end
+    nd.title = sfmt(#parts > 0 and "The rock struck %s" or "The rock struck by %s", sname(W, sid))
+    nd.line = #parts > 0 and table.concat(parts, ", ") or nil
+  elseif k == "slain" then
+    nd = node(R, I, pnode, "slain:" .. d.id, "slain", sid, d.t, { deed = d.id, x = d.x, y = d.y })
+    nd.title = sfmt("The blast killed %s at %s", plural(d.n or 1, d.what == "cattle" and "cow" or (d.what or "beast"), d.what == "sheep" and "sheep" or nil), sname(W, sid))
   elseif k == "palisade" then
     -- (S23, R6f) a village walling its houses after the harm it remembers (the deed answers the heaviest of it)
     nd = node(R, I, pnode, "palisade:" .. sid, "palisade", sid, d.t, { deed = d.id, x = d.x, y = d.y })
@@ -430,9 +443,11 @@ local function poll_households(W, R, now)
       -- a household under another's roof, or at the edge of hunger, after a harm in a chain (the harm the
       -- sim itself reads as the household's heaviest, deeds.top_harm)
       local lodged = hh.lodge and hh.lodge ~= 0
+      -- (S24) no roof and nobody to take them in: a camp by the square (migrate.lodge)
+      local camped = hh.lodge == 0
       local edge = 0
       for _, id in ipairs(hh.members) do local p = V.people[id]; if p and p.alive and p.edge then edge = edge + 1 end end
-      local harm = (lodged or edge > 0) and deeds.top_harm(W, hid, now, 30) or nil
+      local harm = (lodged or camped or edge > 0) and deeds.top_harm(W, hid, now, 30) or nil
       local nd0 = harm and R.node_of_deed[harm.id]
       if nd0 then
         local I = nd0.I
@@ -440,6 +455,13 @@ local function poll_households(W, R, now)
           local nd, new = node(R, I, nd0, "lodge:" .. hid, "lodging", hh.sett, now, { pid = hh.members[1] })
           if new then
             nd.title = sfmt("%s lodged with %s", cap(hhname(W, hid)), hhname(W, hh.lodge))
+            touch(I, nd, now)
+          end
+          nd.active = true
+        elseif camped then
+          local nd, new = node(R, I, nd0, "camp:" .. hid, "lodging", hh.sett, now, { pid = hh.members[1] })
+          if new then
+            nd.title = sfmt("%s, without a roof, camp by the square at %s", cap(hhname(W, hid)), sname(W, hh.sett))
             touch(I, nd, now)
           end
           nd.active = true
@@ -452,9 +474,11 @@ local function poll_households(W, R, now)
           touch(I, nd, now)
         end
       end
-      if not lodged or edge == 0 then
+      if not lodged or not camped or edge == 0 then
         for _, I in ipairs(R.list) do
           local nd = not lodged and I.by_key["lodge:" .. hid]
+          if nd then nd.active = false end
+          nd = not camped and I.by_key["camp:" .. hid]
           if nd then nd.active = false end
           nd = edge == 0 and I.by_key["hunger:" .. hid]
           if nd then nd.active = false end

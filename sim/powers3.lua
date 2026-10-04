@@ -269,53 +269,75 @@ function P.oil(W, p)
   return powers.apply(W, { power = "oil", cell = p.cell, ship = p.ship })
 end
 
--- Meteor: a compound physical shock and nothing more. On the planet (the v2 meteor's): heat and fire on the land
--- about the impact, the wild beasts in the blast killed, sulphur in the sky (the impact winter). On the ground: the
--- earth shaken (a quake of the impact, felt by distance like any quake), a wave if it falls in the sea. On a
--- village's map near it: the blast at the point - roofs and trees alight, those near it thrown down and burnt,
--- what stands nearest knocked down - all through the systems that answer lightning, fire and quakes.
+-- Meteor (S24, D-188): one rock with one energy - nothing but its physics. Its root event; dust in the sky (the impact
+-- winter); the ground shaken (the quake of the impact, felt by distance like any quake); the wave if it falls in the
+-- sea; on every village's map within reach of the point, the impact itself (sim/agents/impact.lua: the crater, the
+-- blast, the flash, by distance and by what each thing is); on the land about it that no village's map owns, the
+-- flash setting the dry cover alight and the blast killing the wild herds and packs by the share of their ground it
+-- reaches. A cell a village's map owns burns by that map's own fire (D-190): the planet shows what burns there.
+-- Where it fell is kept (W.S.powers.craters): the view draws the crater on the planet.
+local function unit_of(W, p)
+  local V = W.S.v3
+  local s = p.sid and V.settlements[p.sid]
+  if s and p.x then return require("sim.agents.map").unit(s, p.x, p.y) end
+  local g = W.grid
+  return g.X[p.cell], g.Y[p.cell], g.Z[p.cell]
+end
+
 function P.meteor(W, p)
   local c = C()
+  local cv = cfgmod.V3
   local V = W.S.v3
   local now = V.now or W.hour
-  -- the planet's part: the v2 meteor without its v2 villages (none in a v3 world)
-  local ev = powers.apply(W, { power = "meteor", cell = p.cell })
-  local shake = require("sim.agents.shake")
-  shake.quake(W, p.cell, c.v3_meteor_mag, now, ev)
-  -- (in the sea: the impact's own wave, stronger than the shaking's)
-  if W.geo.ocean[p.cell] == 1 then require("sim.agents.tsunami").raise(W, p.cell, c.v3_meteor_wave, now, ev) end
-  -- the blast on a map
-  local s = village_at(W, p)
-  if s and s.land then
-    local x, y = p.x, p.y
-    if not x then x, y = s.sqx or 0, s.sqy or 0 end
-    local blaze = require("sim.agents.blaze")
-    local deeds = require("sim.agents.deeds")
-    local people = require("sim.agents.people")
-    local d = deeds.add(W, { kind = "impact", t = now, at = s.id, x = x, y = y, by = 0, by_hh = 0, by_s = 0, to = 0, to_hh = 0,
-      to_s = s.id, what = "meteor", n = 1, fu = 0, harm = true, event = ev })
-    deeds.learn(W, s, d, "the fire from the sky", 0, 0, now)
-    local R = c.v3_meteor_fire
-    blaze.trees_near(s, x, y, R, function(k) blaze.ignite(W, s, "tree", k, now, d.id) end)
-    for _, id in ipairs(s.blist) do
-      local b = s.buildings[id]
-      local bx, by = b.cx or b.dx or 0, b.cy or b.dy or 0
-      local dd = math.sqrt((bx - x) * (bx - x) + (by - y) * (by - y))
-      if b.state == "standing" and not b.natural and dd < R then
-        if dd < c.v3_meteor_blast * 0.6 then shake.fall_in(W, s, b, now, d, "quake") else blaze.ignite(W, s, "bld", id, now, d.id) end
-      end
-    end
-    for _, id in ipairs(s.members) do
-      local q = V.people[id]
-      if q and q.alive and not q.at then
-        local dd = math.sqrt((q.x - x) * (q.x - x) + (q.y - y) * (q.y - y))
-        if dd < c.v3_meteor_blast then
-          people.hurt(q, c.v3_meteor_hurt * (1 - dd / c.v3_meteor_blast), "burn", d.id, now)
-          if (q.hurt or 0) >= 1 and blaze.kill then blaze.kill(W, s, q, "meteor", now) end
-        end
+  local mapm = require("sim.agents.map")
+  local ev = root(W, "meteor", p.cell, c.meteor_aerosol)
+  W.G.aerosol = (W.G.aerosol or 0) + c.meteor_aerosol
+  require("sim.ledger").add(W, "aerosol", c.meteor_aerosol, ev)
+  local ux, uy, uz = unit_of(W, p)
+  W.S.powers = W.S.powers or { forcings = {}, blight = {} }
+  local PS = W.S.powers
+  PS.craters = PS.craters or {}
+  PS.craters[#PS.craters + 1] = { cell = p.cell, x = ux, y = uy, z = uz, t = now, ev = ev, sea = W.geo.ocean[p.cell] == 1 }
+  -- the impact on the maps within reach of the point (each map's own coordinates of it)
+  local reach = cv.imp_flash * 2.2
+  if W.geo.ocean[p.cell] == 0 then
+    local impact = require("sim.agents.impact")
+    for _, s in ipairs(V.settlements) do
+      if s.alive and s.land then
+        local x, y = mapm.local_of(s, ux, uy, uz)
+        local half = s.N * s.T * 0.5
+        if x and math.abs(x) < half + reach and math.abs(y) < half + reach then impact.strike(W, s, x, y, now, ev) end
       end
     end
   end
+  -- the land about it the maps do not own: the flash on its cover, the blast on its wild herds and packs
+  local O = mapm.owners(W)
+  local g = W.grid
+  local fire = require("sim.systems.fire")
+  local fauna = require("sim.systems.fauna")
+  local R = mapm.R
+  for _, cl in ipairs(area(W, p.cell, 1)) do
+    if W.geo.ocean[cl] == 0 and not (O and O.by[cl]) then
+      local dot = g.X[cl] * ux + g.Y[cl] * uy + g.Z[cl] * uz
+      local d = math.sqrt(max(0, 2 - 2 * min(1, dot))) * R
+      -- (the share of the cell within the flash's reach and within the blast's lethal reach, by the distance of its
+      -- middle: a cell is ~0.93 across)
+      local lit = max(0, min(1, (reach + 0.47 - d) / 0.94))
+      local dry = max(0, 1 - (W.F.soil_water[cl] or 0.5) / cfgmod.HYDRO.field_capacity)
+      if lit > 0 and require("sim.rng").float(W.seed, require("sim.rng").S.METEOR, cl, floor(now), 3) < lit * (0.3 + dry) then
+        fire.ignite(W, cl, ev)
+      end
+      local slain = max(0, min(1, (cv.imp_blast * 1.4 + 0.47 - d) / 0.94)) * 0.9
+      if slain > 0 then
+        fauna.kill_in(W, { cl }, "grazers", slain, ev)
+        fauna.kill_in(W, { cl }, "predators", slain, ev)
+      end
+    end
+  end
+  -- the ground shaken; in the sea, the wave
+  local shake = require("sim.agents.shake")
+  shake.quake(W, p.cell, c.v3_meteor_mag, now, ev)
+  if W.geo.ocean[p.cell] == 1 then require("sim.agents.tsunami").raise(W, p.cell, c.v3_meteor_wave, now, ev) end
   return ev
 end
 
@@ -381,7 +403,7 @@ local PREVIEW = {}
 function PREVIEW.lightning(W, cell, o)
   local s = o.sid and W.S.v3.settlements[o.sid]
   if not (s and o.x) then return "A bolt on the land here - close in on a village to aim it at a point" end
-  local best, bk = require("sim.agents.blaze").strike_target(W, s, o.x, o.y, W.S.v3.now or W.hour)
+  local best, bk = require("sim.agents.blaze").strike_target(W, s, o.x, o.y, W.S.v3.now or W.hour, true)
   return "The bolt would take " .. strike_words(W, s, best, bk)
 end
 

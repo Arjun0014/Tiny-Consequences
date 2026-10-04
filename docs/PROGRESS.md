@@ -4,6 +4,16 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Current state
 
+- **SESSION 24 (4 Oct 2026, R7 ACCEPTANCE AUDIT - read `docs/SESSION_HANDOFF.md` session 24 first): Arjun's playtest found the
+  god powers weak or broken in real play; no new systems until the existing game works.** The playable game is the authority:
+  `scripts/play_accept.mjs` plays each case in the real game drawn on the GPU (ANGLE D3D11) and shoots before / at once / after
+  with the sim's readings (`game/platform/accept.lua`, bridge `lua`), the news and "Your actions". Fixed so far: clouds high above
+  the village (D-193); the meteor as physics - crater, blast, flash (D-188); the god's bolt aimed, its current through the ground,
+  beasts bolting from a sudden blow (D-189); one fire at two scales (D-190); scars that stay (D-191); herds that string out and
+  graze their own patches (D-192); roofless households camp (D-194); deaths no longer skip the next person (D-188). Plan for the
+  rest of the session, in order: the remaining powers in their contexts (the acceptance matrix), the herds again (fences and the
+  gate), fish, the final play matrix A-I, performance, the end checks.
+
 - **SESSION 23 (4 Oct 2026, extended autonomous run - read `docs/SESSION_HANDOFF.md` session 23 first): the hydrology fix verified (D-179), clouds v5 - one cloud layer the camera flies through (D-180), the village mix with the herds as texture (D-181), CHAIN REACTION - "Your actions": what each cast caused, forward along real links (D-182, `docs/v3/77_CHAIN_REACTION.md`), R7 v2 powers - sickness in a herd, blight, warm/cool sea, oil, meteor (D-183).** Following the drifting tests found wolves eating at a kill from across a river; the 8-year run found a nursing mother walking to her kin for food while her newborn starved at home (both fixed). **After the checkpoint (D-184):** the second 8-year run starved 11 beside a full granary - followed to four mechanisms (a pit that sealed a house, play loops that carried children through it, toddlers who never got their strength back, a crier who gave birth on the road), all fixed with tests; aim previews, the flood's smooth edge, the news so far, the Sound pill. Also oil on a coast (D-185), a household with no roof (D-186) and R6f the palisade (D-187). Final: suite 208/208, web 11/11, browser = LuaJIT identical, 8 years hunger 0. See the session 23 entry below.
 
 - **SESSION 22 (4 Oct 2026, ENDED - read `docs/SESSION_HANDOFF.md` session 22 FINAL STATE first; FIRST next session: apply and verify the hydrology fix written there): the validation Session 21 left, then Arjun's playtest issues; the powers played (D-178).** Validation: full suite 190/190, web 11/11, browser = LuaJIT untouched and with flood5/conflict/fire/powers, day-0 3.91 M and day-192 4.41 M instructions a game hour, an 8-year untouched run with no hunger deaths - but the same run split by a save at day 192 starved 14 people, and following it found that **every person born in a running world was never scheduled** (37 of 168 alive after 8 years had never taken a step) - fixed with the queue rebuild, dogs, yearly cache resets, hunger answers by the granary and v3 commands at their own moment (D-176). **Animals and fire** rebuilt from the simulation (fire seen by its extent, each beast noticing in its own time, running its own way out, keeping away while it burns, burnt in the flames; planet fire no longer painted over a village map close in) and **lightning takes exposed beasts** (by height; the aim lands on the ground under the pointer or on the person/beast clicked) (D-177). Tests 194/194; browser = LuaJIT incl. `--premise pasture_fire`.
@@ -108,6 +118,31 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 - Bundle size: 3.12 MB release
 
 ## Stage entries
+
+### [v3] Session 24: the R7 acceptance audit - the meteor, the god's bolt, one fire at two scales, scars, herds, clouds (D-188-D-194) (2026-10-04)
+- **Reproduced in the browser first** (`scripts/play_accept.mjs --case clouds|meteor_village|lightning_herd`, out/accept/before):
+  the cloud hid >= 90% of the frame from zoom 0.80 to 1.35; a meteor straight onto Tekheim's square killed nobody and no beast while
+  the planet glowed orange about it; the god's bolt into a herd killed one sheep and the rest grazed on.
+- **Clouds** (D-193): the layer lifts by 1.45 as the eye comes down (12 -> 5.5 above the sea), thinner, its mist near the eye
+  thinner, rain falling from the lifted base: zoom 1.1-1.6 shows the village under the deck (the rest of the change in the frame the
+  overcast's shade); passing through takes zoom ~0.98-1.07.
+- **Meteor** (D-188, `sim/agents/impact.lua`): crater, blast, flash by distance on everything; the planet's part by the same
+  physics; the toll in the impact deed, the chain and the news. Browser: 8 killed, 8 houses + 2 buildings thrown down, 91 trees
+  alight, a crater and scorched ground, 8 households camping; before 0.
+- **God's lightning** (D-189): aimed (pull 0.025), a superbolt (4x current), the ground current by stride and distance, fire by
+  dryness, a scorch mark, the bolt drawn where it went in; every beast near bolts (`jolt`). Browser: 4-5 beasts dead, the flock
+  scattered running, "Lightning killed 4 beasts at Tekheim".
+- **One fire at two scales** (D-190): owned cells (map >= 45% of the cell) take their fire from the map; the planet's fire comes
+  in as a front; no cell tint on the map's own props; flame cones only where no map owns the cell.
+- **Scars** (D-191): ruins, charred snags (slow to sprout), trunks thrown flat, crater and rim, scorch fading over 36 days, dead
+  herd beasts drawn as themselves.
+- **Herds** (D-192): on the move each follows the one ahead; grazing each picks its own patch (no grazing under trees or on crops).
+- **Found and fixed**: `danger.each_on_map` and `shake.fall_in` skipped the person after each death (live list); a village with no
+  roof left starved beside its granary (D-194: camps, lodgers re-lodged).
+- **Fire played** (`--case fire_herd`): the flock fled a fire beside it (mean distance 0.12 -> 0.52 in 18 minutes, none within 0.2
+  after) and kept away while it burnt; `--case rain_fire`: rain out in 2 h vs 8 h untouched.
+- Checks at this checkpoint: quick suite 211/211 (on the code before the strike/herd changes), the v3 unit tests again on the new
+  code, test_v3_animals 5/5 on the herd code, lint clean, debug builds OK.
 
 ### [v3] Session 23: hydrology verified; clouds v5; the village mix; chain reaction; R7 v2 powers (D-179-D-183) (2026-10-04)
 - **Hydrology** (D-179): the infiltration excess no longer leaves the soil twice. The god's rain on a drought 0.10 -> 0.20 with the

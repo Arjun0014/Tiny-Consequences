@@ -204,7 +204,8 @@ end
 local function add(V, kind, x, y, dh, yaw, sc, shs, c1, c2, c3, rnd)
   local px, py, pz, ux, uy, uz = world_pos(V, x, y, dh)
   local cell = V.s.cell_of[mapm.tile_of(V.s, x, y)] or V.s.cell
-  propgen.add(kind, px, py, pz, ux, uy, uz, yaw, sc, shs or 1, c1, c2, c3 or 0, cell, rnd)
+  -- (S24: the cell negated - the map's own things burn one by one, never by the planet cell's fire: props.vp)
+  propgen.add(kind, px, py, pz, ux, uy, uz, yaw, sc, shs or 1, c1, c2, c3 or 0, -cell, rnd)
 end
 
 -- Trees of sub-chunk (bx, by).
@@ -248,11 +249,17 @@ local function fill_trees(bx, by)
             local sc = (0.38 + 0.55 * size) * S
             add(V, kd, x, y, 0, yaw, sc, 1, c1, c2, 0, u)
           elseif st == 2 then
-            -- the felled trunk lies where it fell (until its logs are carried off)
+            -- the felled trunk lies where it fell (until its logs are carried off); (S24) one a blast threw down lies
+            -- pointing away from it
             local bark = propgen.BARK[kind] or { 0.45, 0.31, 0.2 }
-            add(V, K.deadfall, x, y, 0, yaw, (0.6 + 0.5 * tr.size[k]) * S, 1, pack(0.42, 0.36, 0.28),
+            local fa = tr.fall and tr.fall[k]
+            local fy = fa and yaw_z(V, x, y, math.cos(fa), math.sin(fa)) or yaw
+            add(V, K.deadfall, x, y, 0, fy, (0.6 + 0.5 * tr.size[k]) * S, 1, pack(0.42, 0.36, 0.28),
               pack(bark[1], bark[2], bark[3]), pack(0.42, 0.6, 0.3), u)
             add(V, K.stump, x, y, 0, yaw, 0.9 * S, 1, pack(bark[1], bark[2], bark[3]), pack(bark[1], bark[2], bark[3]), 0, u)
+          elseif tr.burnt and tr.burnt[k] then
+            -- (S24) a tree the fire took: its trunk stands charred black until the ground greens about it
+            add(V, K.burnt1, x, y, 0, yaw, (0.55 + 0.45 * tr.size[k]) * S * 1.1, 1, pack(0.13, 0.11, 0.10), pack(0.09, 0.08, 0.08), 0, u)
           else
             local bark = propgen.BARK[kind] or { 0.45, 0.31, 0.2 }
             add(V, K.stump, x, y, 0, yaw, 0.9 * S, 1, pack(bark[1], bark[2], bark[3]), pack(bark[1], bark[2], bark[3]), 0, u)
@@ -271,7 +278,8 @@ local function tree_sig(V, bx, by)
   for k = 1, tr.n do
     local ix, iy = mapm.tile_ixy(s, tr.tile[k])
     if floor((ix - 1) / span) == bx and floor((iy - 1) / span) == by then
-      h = (h * 31 + tr.st[k] * 5 + floor(tr.size[k] * 6) + (tr.st[k] == 2 and tr.logs[k] > 0 and 3 or 0)) % 1000000007
+      h = (h * 31 + tr.st[k] * 5 + floor(tr.size[k] * 6) + (tr.st[k] == 2 and tr.logs[k] > 0 and 3 or 0)
+        + (tr.burnt and tr.burnt[k] and 11 or 0)) % 1000000007
     end
   end
   return h
@@ -575,7 +583,57 @@ local function fill_buildings(V)
       add(V, K.sacks, x + math.cos(ang) * 0.02, y + math.sin(ang) * 0.02, 0, yaw, 0.35, 1, pack(0.62, 0.52, 0.36), pack(0.55, 0.45, 0.30), 0)
     end
   end
+  -- (S24, D-191) what is left where a building burnt or fell (s.scars, the sim's own record): a burnt house a
+  -- charred frame over black timbers, a fallen one a heap of its logs and its roof's ruin - until something is built
+  -- on its ground again or the ruin has stood its while
+  local now = M.t or 0
+  for _, sc in ipairs(s.scars or {}) do
+    local age = now - (sc.t or now)
+    local i = mapm.tile_of(s, sc.x, sc.y)
+    if age < M.RUIN_H and i > 0 and s.occ[i] == 0 and (sc.kind == "house" or sc.kind == "granary" or sc.kind == "woodstore"
+      or sc.kind == "byre" or sc.kind == "forge" or sc.kind == "sty" or sc.kind == "hut" or sc.kind == "camp") then
+      local burnt = sc.cause == nil
+      local k = floor(sc.x * 997 + sc.y * 613) % 7
+      local yaw = k * 0.9
+      -- (broken walls and a fallen beam: charred black where it burnt, grey-brown timber where it fell)
+      local sc1 = burnt and pack(0.17, 0.14, 0.13) or pack(0.50, 0.42, 0.33)
+      local sc2 = burnt and pack(0.10, 0.09, 0.09) or pack(0.40, 0.32, 0.24)
+      if sc.kind ~= "camp" then add(V, K.ruin, sc.x, sc.y, 0, yaw, S * 0.62, burnt and 0.8 or 0.6, sc1, sc2, 0) end
+      for q = 1, 3 do
+        local a = yaw + q * 2.1
+        add(V, K.logs, sc.x + math.cos(a) * 0.016, sc.y + math.sin(a) * 0.016, 0, a, 0.55, 1, sc2, sc1, 0)
+      end
+    end
+  end
+  -- (S24, D-188) a meteor's crater: the rim of earth and broken rock it threw up, stones flung out over the ground
+  for ci, cr in ipairs(s.craters or {}) do
+    local r = cr.r or 0.07
+    local n = 18
+    for q = 1, n do
+      local a = q / n * 6.2832 + ci
+      local u1 = ((q * 7919 + ci * 104729) % 97) / 97
+      local rr = r * (1.08 + 0.12 * u1)
+      local x, y = cr.x + math.cos(a) * rr, cr.y + math.sin(a) * rr
+      local g = 0.40 + 0.08 * u1
+      add(V, K.mound, x, y, 0, a, r / 0.03 * 0.42 * (0.85 + 0.3 * u1), 1.2 + 0.8 * u1, pack(g, g * 0.82, g * 0.64), 0, 0)
+    end
+    for q = 1, 12 do
+      local a = q / 12 * 6.2832 + ci + 0.26
+      local u1 = ((q * 7919 + ci * 104729) % 97) / 97
+      local x, y = cr.x + math.cos(a) * r * 1.3, cr.y + math.sin(a) * r * 1.3
+      add(V, (q % 3 == 0) and K.slab or K.boulder, x, y, 0, a + u1 * 3, S * (0.08 + 0.08 * u1), 0.55,
+        pack(0.44, 0.37, 0.30), pack(0.33, 0.28, 0.23), 0)
+    end
+    for q = 1, 26 do
+      local a = q * 2.399963 + ci
+      local u1 = ((q * 6007 + ci * 7) % 89) / 89
+      local rr = r * (1.4 + 3.5 * u1 * u1)
+      add(V, (q % 2 == 0) and K.slab or K.boulder, cr.x + math.cos(a) * rr, cr.y + math.sin(a) * rr, 0, a, S * (0.05 + 0.08 * (1 - u1)), 0.6,
+        pack(0.38, 0.35, 0.31), pack(0.29, 0.27, 0.25), 0)
+    end
+  end
 end
+M.RUIN_H = 24 * 48   -- (S24) a ruin stands a year unless its ground is built on
 
 local function bld_sig(V)
   local s = V.s
@@ -590,6 +648,8 @@ local function bld_sig(V)
   end
   h = (h * 17 + floor((s.hay or 0) / 30)) % 1000000007
   h = (h * 23 + (s.fair and 7 or 0)) % 1000000007
+  -- (S24) ruins and craters (a ruin goes when its ground is built on or its year is up: counted by the day)
+  h = (h * 29 + #(s.scars or {}) * 3 + #(s.craters or {}) * 5 + floor((M.t or 0) / 24)) % 1000000007
   if s.herds then
     for _, kind in ipairs({ "flock", "cattle", "swine" }) do
       local H = s.herds[kind]
@@ -688,10 +748,74 @@ local function rows_sig(V)
 end
 
 -- Lanes and trails.
+-- (S24, D-188) The ground a meteor struck: the crater's bowl (dark, its broken earth), the ejecta about its rim, and
+-- the ground the fireball scorched black - ragged at its edge, greening again over the weeks (the grass the sim
+-- burnt off grows back by the same days).
+M.SCORCH_DAYS = 36
+local function fill_scars_ground(V)
+  local s = V.s
+  local now = M.t or 0
+  local T = s.T
+  for _, sc in ipairs(s.scorch or {}) do
+    local age = (now - (sc.t or now)) / 24
+    local keep = 1 - age / M.SCORCH_DAYS
+    if keep > 0 then
+      local R = sc.r
+      local i0 = mapm.tile_of(s, sc.x, sc.y)
+      if i0 > 0 then
+        local ix0, iy0 = mapm.tile_ixy(s, i0)
+        local Rt = floor(R / T) + 1
+        for iy = max(1, iy0 - Rt), min(s.N, iy0 + Rt) do
+          for ix = max(1, ix0 - Rt), min(s.N, ix0 + Rt) do
+            local x, y = mapm.ixy_xy(s, ix, iy)
+            local d = sqrt((x - sc.x) ^ 2 + (y - sc.y) ^ 2) / R
+            local i = (iy - 1) * s.N + ix
+            local hsh = ((ix * 73856093 + iy * 19349663) % 1000) / 1000
+            -- (ragged: the edge tiles patchy; the patches shrink as the green comes back)
+            if d < 1 and s.land[i] == 1 and s.riv[i] == 0 and hsh < keep * (1.35 - d * d) then
+              local g = 0.12 + 0.09 * hsh + 0.10 * d
+              add(V, K.v3tile, x, y, 0.0003, hsh * 1.4, 2.0, 1, pack(g, g * 0.92, g * 0.85), 0, 0)
+            end
+          end
+        end
+      end
+    end
+  end
+  for _, cr in ipairs(s.craters or {}) do
+    local R = cr.r * 1.7
+    local i0 = mapm.tile_of(s, cr.x, cr.y)
+    if i0 > 0 then
+      local ix0, iy0 = mapm.tile_ixy(s, i0)
+      local Rt = floor(R / T) + 1
+      for iy = max(1, iy0 - Rt), min(s.N, iy0 + Rt) do
+        for ix = max(1, ix0 - Rt), min(s.N, ix0 + Rt) do
+          local x, y = mapm.ixy_xy(s, ix, iy)
+          local d = sqrt((x - cr.x) ^ 2 + (y - cr.y) ^ 2) / cr.r
+          if d < 1.7 then
+            local hsh = ((ix * 83492791 + iy * 2654435761) % 1000) / 1000
+            local c1
+            if d < 1 then
+              -- (the bowl: darkest at its floor, the broken earth showing up its sides)
+              local g = 0.07 + 0.16 * d * d + 0.03 * hsh
+              c1 = pack(g * 1.15, g, g * 0.85)
+            else
+              -- (the rim and the earth thrown out over the grass)
+              local g = 0.36 + 0.10 * hsh - 0.08 * (d - 1)
+              c1 = pack(g, g * 0.82, g * 0.62)
+            end
+            if d < 1.25 or hsh < (1.7 - d) * 1.6 then add(V, K.v3tile, x, y, 0.0006, hsh, 1.9, 1, c1, 0, 0) end
+          end
+        end
+      end
+    end
+  end
+end
+
 local function fill_ground(V)
   local s = V.s
   local N = s.N
   local lane = s.lane
+  fill_scars_ground(V)
   local c_lane = pack(0.58, 0.48, 0.34)
   local c_trail = pack(0.60, 0.58, 0.40)
   local DIRS = { { 1, 0, K.v3seg1 }, { 0, 1, K.v3seg1 }, { 1, 1, K.v3seg2 }, { -1, 1, K.v3seg2 } }
@@ -733,6 +857,10 @@ local function ground_sig(V)
   for i = 1, s.N * s.N do
     local l = lane[i]
     if l > 0 then h = (h * 3 + i * l) % 1000000007 end
+  end
+  -- (S24) the scorched ground fades as the grass comes back (by the day); craters stay
+  if s.scorch or s.craters then
+    h = (h * 7 + #(s.scorch or {}) * 13 + #(s.craters or {}) * 17 + floor((M.t or 0) / 24)) % 1000000007
   end
   return h
 end
@@ -1564,6 +1692,18 @@ local function hearths(V, t)
     end
   end
   V.lit, V.lit_sig = lit, sig
+  -- (S24) a meteor's crater smokes for a day after it struck
+  for _, cr in ipairs(s.craters or {}) do
+    if t - cr.t < 24 and t >= cr.t then
+      local px, py, pz = world_pos(V, cr.x, cr.y, 0.01)
+      for rep = 1, 4 do
+        n = n + 1
+        local c = CHIM[n]
+        if not c then c = {}; CHIM[n] = c end
+        c[1], c[2], c[3] = px, py, pz
+      end
+    end
+  end
   -- (S20, R6.5b) fires: flames at each burning tree or roof, and their smoke
   for _, f in ipairs(s.burn or {}) do
     if f.heat > 0.02 and f.kind == "plot" and f.r then
@@ -1818,6 +1958,8 @@ end
 -- is (walking legs when it moves); wild boar as the dark pig; carcasses lying where they fell.
 M.WILD = 48
 M.WILD_SCALE = { deer = 0.42, reindeer = 0.45, antelope = 0.4, wolf = 0.4, cat = 0.42 }
+-- (S24) the model a dead beast of the herds lies as
+local LIVESTOCK_DEAD = { sheep = "sheep", goat = "goat", cattle = "cow", pig = "pig" }
 M.WILD_ANIM_SCALE = { boar = 0.0044, deer = 0.0052, reindeer = 0.0056, antelope = 0.0048, wolf = 0.0047 }
 local WPOS, WROT, ROLL = vmath.vector3(), vmath.quat(), vmath.quat_rotation_z(math.pi * 0.5)
 local function draw_wild(V, t, lod)
@@ -1904,8 +2046,27 @@ local function draw_wild(V, t, lod)
   end
   for _, cc in ipairs(Wd.carcasses) do
     if t - cc.t < 30 and cc.t <= t then
-      mover(cc.sp == "boar" and "boar" or (SPC[cc.sp] and cc.sp or "deer"), cc.x, cc.y, cc.t * 1.7, false, true,
-        (M.WILD_SCALE[cc.sp] or 0.4) * 0.9)
+      local stockv = LIVESTOCK_DEAD[cc.sp]
+      local ea = stockv and animal_obj(stockv)
+      if ea then
+        -- (S24) a beast of the herds dead where it fell: its own kind on its side (it was drawn as a deer before)
+        local px, py, pz, ux, uy, uz = world_pos(V, cc.x, cc.y, 0.002)
+        WPOS.x, WPOS.y, WPOS.z = px, py, pz
+        go.set_position(WPOS, ea.id)
+        go.set_rotation(vmx.set_up_yaw(WROT, ux, uy, uz, cc.t * 1.7) * ROLL, ea.id)
+        go.set_scale(M.ANIMAL_SCALE[cc.sp] or 0.006, ea.id)
+        if ea.lod ~= lod or not ea.on then
+          for j = 1, 3 do msg.post(ea.urls[j], j == lod and MSG_ENABLE or MSG_DISABLE) end
+          ea.lod, ea.on, ea.anim = lod, true, nil
+        end
+        if ea.anim ~= "dead" then
+          model.play_anim(ea.urls[lod], "lie", go.PLAYBACK_ONCE_FORWARD, { playback_rate = 1 })
+          ea.anim, ea.rate, ea.who = "dead", 0, nil
+        end
+      elseif not stockv then
+        mover(cc.sp == "boar" and "boar" or (SPC[cc.sp] and cc.sp or "deer"), cc.x, cc.y, cc.t * 1.7, false, true,
+          (M.WILD_SCALE[cc.sp] or 0.4) * 0.9)
+      end
     end
   end
   for k = n + 1, M.WILD do

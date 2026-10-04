@@ -833,6 +833,7 @@ C.V3 = {
   logs_per_tree = { 2, 5 },
   tree_grow = 0.012,                      -- size gained per day (0..1)
   sapling_days = 6,                       -- a stump sprouts after this many days (sometimes)
+  burnt_sprout_days = 40, burnt_sprout = 0.02,   -- (S24) a tree the fire took: its charred trunk stands this long, then sprouts at this daily chance
   house_logs = 18, house_work = 110,      -- logs and work-hours for a house (D-080)
   carry_grain = 10, carry_logs = 1,       -- load per trip (FU, logs; strong adults carry 2 logs)
   pantry_low = 2.0,                       -- days of food at home before someone fetches
@@ -1319,7 +1320,7 @@ C.V3 = {
   strike_hurt = { 0.5, 1.15 }, strike_side = 0.025, strike_side_hurt = 0.15, thunder_sound = 4, strike_rate = 0.12,
   -- (S20, R6.5c) the planet's fire on a cell above fire_planet_in comes onto the map; fire_planet_n
   -- things burning on one cell of the map set the planet's fire going there
-  fire_planet_in = 0.05, fire_planet_n = 6,
+  fire_planet_in = 0.05, fire_planet_n = 6, fire_front_n = 5,   -- (S24, D-190) the trees a fire coming into a map's own cell catches
   -- (S20, R6.5f, D-156) quakes: a convergent or transform boundary cell gathers quake_rate x its
   -- boundary strength a day (transform x0.7) and lets go past quake_thr x (0.6..1.4): magnitude in
   -- quake_mag (u x u: mostly small); felt at a village as magnitude - quake_fall a cell step -
@@ -1381,10 +1382,40 @@ C.V3 = {
   strike_beast = { sheep = 0.27, goat = 0.27, pig = 0.24, cattle = 0.42, deer = 0.36, reindeer = 0.38, antelope = 0.34,
     boar = 0.27, wolf = 0.26, cat = 0.24, dog = 0.24 },
   strike_beast_k = 1.4, strike_beast_die = 1.0, strike_side_beast = 1.6,
+  -- (S24, D-189) the current a bolt drives into the ground: lethal within strike_gc x current x stride (a storm's
+  -- bolt current 1, the god's strike_god_i - a superbolt), falling off with the square of distance; a body's stride
+  -- (feet apart: the step it takes the current across) strike_stride; the god's bolt comes down within
+  -- strike_pull_god of where it is aimed, hurts a person struck strike_god_hurt x and sets dry things alight
+  -- strike_god_ign x as often; a bolt's scorch strike_scorch (the god's strike_scorch_god); the beasts within
+  -- strike_jolt (the god's strike_jolt_god) bolt from it
+  strike_gc = 0.014, strike_god_i = 4, strike_pull_god = 0.025, strike_god_hurt = 1.6, strike_god_ign = 1.8,
+  strike_stride = { cattle = 1.3, sheep = 0.8, goat = 0.8, pig = 0.7, deer = 1.0, reindeer = 1.0, antelope = 1.0, boar = 0.75,
+    wolf = 0.7, cat = 0.5, dog = 0.6, person = 0.35 },
+  strike_scorch = 0.015, strike_scorch_god = 0.04, strike_jolt = 0.45, strike_jolt_god = 0.8,
   -- (S22) a building's height to the bolt (strike_roof for any other): a fold of hurdles or a hay rack is
   -- low, a house's roof high
   strike_bld = { house = 0.9, granary = 0.9, byre = 0.8, forge = 0.7, woodstore = 0.6, sty = 0.5, camp = 0.4, clamp = 0.4,
     well = 0.35, fold = 0.3, rack = 0.3, boat = 0.3, dock = 0.2, bridge = 0.2, saltpan = 0.15, tanpit = 0.1 },
+  -- (S24, D-188) A meteor's impact on a map (sim/agents/impact.lua): one energy, laws of distance r from the point.
+  -- The crater: within imp_crater everything is gone (dug out and thrown up), the ground broken. The blast's
+  -- overpressure P(r) = (imp_blast / r)^2 in units of what brings a sound log house down: a building falls when
+  -- P x its weakness (imp_bld) passes its own strength (0.7..1.3 x (0.6 + 0.4 condition)), is damaged from
+  -- imp_crack of it; a tree is thrown flat when P passes (0.8..1.4) (the trunk lies pointing away, its logs there);
+  -- someone out of doors is hurt imp_hurt_blast x P (a quarter of it indoors under a roof that stands). The flash's
+  -- heat Q(r) = (imp_flash / r)^2: what is in the open and dry catches with chance 1 - exp(-Q x (0.3 + dryness) x
+  -- imp_ign) (trees, roofs, ripe or dry corn and stooks), anyone in the open is burnt imp_burn x Q; the grass is
+  -- burnt off and the ground scorched within imp_scorch. Beasts as people out of doors (a roofed byre or sty keeps
+  -- the flash off them), wild animals and dogs the same. Every beast that lives looks up at once within imp_jolt.
+  -- (S24, D-189) a sudden blow at a point (a god's bolt, a meteor's blast): beasts within its reach look up after
+  -- jolt_look hours x (0.3 + 0.9 x how slow they are to notice) x (0.6 + 0.8 x distance share), bolt jolt_run x their
+  -- fright (the timid and the near the farther) at a gallop, then stand jolt_stand (the bold less) before going back;
+  -- a blow is answered while it is younger than jolt_h
+  jolt_look = 0.002, jolt_run = 0.35, jolt_stand = 0.08, jolt_h = 0.25, jolt_speed = 6,   -- (a gallop: jolt_speed x its walking pace)
+  imp_crater = 0.075, imp_blast = 0.34, imp_flash = 0.46, imp_crack = 0.45, imp_hurt_blast = 0.36, imp_burn = 0.26,
+  imp_ign = 1.2, imp_scorch = 0.32, imp_jolt = 1.8, imp_plot_lodge = 0.55,
+  imp_bld = { house = 1.0, hut = 1.6, granary = 0.8, woodstore = 1.15, forge = 0.75, well = 0.25, dock = 1.0, fold = 1.8,
+    byre = 1.1, sty = 1.4, saltpan = 0.4, clamp = 0.9, bridge = 0.9, camp = 2.5, rack = 2.0, boat = 1.4, tanpit = 0.2,
+    palisade = 1.2, quern = 0.5 },
   -- (S20, R6) fear of a place: the unanswered harms people did to a household (its neighbours' at
   -- deed_kin_k), faded, push it to leave mig_fear_k x min(1, worth / fear_fu); a village whose people
   -- did them draws it 2 x as much less

@@ -1,3 +1,48 @@
+# Session handoff — session 24 (4 Oct 2026, R7 ACCEPTANCE AUDIT): the god powers made to work in real play - clouds, meteor, the god's bolt, one fire at two scales, scars, herds; D-188-D-194
+
+## CHECKPOINT (~900K tokens, session 24) - read this first after a compaction
+**Arjun's brief (session 24 prompt, kept in this section):** the playable game is the authority; no new systems (no captives,
+no more powers, no social systems, nothing decorative) until the R7 acceptance audit is convincing. Every god power must (1) hit
+where aimed, (2) change physical state clearly, (3) show an immediate visual response, (4) affect what is exposed, (5) make real
+downstream consequences, (6) show them in News / Why / Your actions. Priorities in order: clouds, meteor, lightning, planet/local
+consistency, fire, every power audited in 2-3 contexts with before/after browser shots, herd movement (watch the live herd -
+shared intent, no puppetry, no cosmetic jitter), fish (render the real fish field honestly as schools; fishers answer the same
+state), visible aftermath, then performance (exact optimisations only). Final report must begin: which powers were broken, why,
+what changed physically, what changed visually, exact browser evidence; plus a play matrix A-I (meteor on a village, bolt into a
+herd, fire beside a herd, rain on a fire, rain on saturated ground, oil by a fishing village, warm sea, blight, volcano/quake) each
+with screenshots before / at once / after, sim readings, News, Why, Your actions. End checks: full suite, web tests, lint/build,
+browser = LuaJIT for the premises, 8-year untouched run, day-0/day-192/year-8 profiles, release benchmark, the matrix, herd
+diagnostic, fish audit, docs (PROGRESS, DECISIONS, HANDOFF, NEXT_SESSION_PROMPT, roadmap, R7 docs), commit, clean tree. No
+subagents. On compaction: re-read CLAUDE.md, this section, newest PROGRESS/DECISIONS (D-188+), 65/70/75/77/80 docs, roadmap,
+`git log`, then continue.
+
+**The tool of this session**: `node scripts/play_accept.mjs --case NAME[,NAME] --tag T [--no-build] [--sett K] ...` - the real
+game in headless Chromium on the GPU (ANGLE D3D11, `scripts/lib/play.mjs`), bridge `lua{code}` reads the sim
+(`game/platform/accept.lua`: village / herd / herd_fire / fire_scales / herd_shape / env), shots and report in
+`out/accept/<tag>/`. Cases: clouds, meteor_village, lightning_herd, fire_herd, rain_fire (--no-rain twin), fire_scales,
+herd_watch, herd_move, and the power specs PSPECS (lightning_tree_dry, lightning_house, lightning_cattle, rain_drought,
+rain_soaked, dry_spell, cold_crops, warm_snow, stir_mountain, strain_coast, strain_inland, cull_wolves, cull_deer, bring_wolves,
+bring_fish, sickness_flock, blight_field, sea_warm, oil_shore, meteor_land, meteor_forest, meteor_ocean). Headless LuaJIT probes:
+`out/s24/probe_meteor.lua`, `probe_bolt.lua`, `probe_herdout.lua`.
+
+**Done (D-188-D-194; details in DECISIONS)**: clouds lift above the village view as the camera descends (D-193); the meteor is
+crater + blast + flash by distance (`sim/agents/impact.lua`) with its toll told (D-188); the god's bolt aimed, a superbolt's ground
+current by stride, fire by dryness, scorch, and every beast near bolting (`jolt`) (D-189); a planet cell a village's map owns burns
+by the map's fire, flames and tint only where things burn (D-190); ruins, charred snags, thrown trunks, crater, scorch, dead
+livestock drawn (D-191); herds follow the one ahead and graze their own patches (D-192); roofless households camp, lodgers
+re-lodged, the member-list skip on deaths fixed (D-194/D-188).
+**Seen in the browser so far**: rain on a drought soaked the ground (and flash-flooded a little), rain on a soaked floodplain
+flooded Little Leelee (3,040 tiles - but the flood was already there: its deed is nature's, the chain shows only the river), the
+dry spell dried the soil and warmed the air, lightning on a dry tree burnt it alone, on a house burnt it down (household lodged).
+**Next (in order)**: run the rest of PSPECS (`--tag p2`): cold_crops, warm_snow, stir_mountain, strain_coast, strain_inland,
+cull_wolves, cull_deer, bring_wolves, bring_fish, sickness_flock, blight_field, sea_warm, oil_shore, meteor_land, meteor_forest,
+meteor_ocean - look at every shot, fix what is weak (blight visible on the field? oil slick on the map's sea? fish? planet crater
+on empty land?); then fish (render schools from F.fish; fishers read the same); herds again (the fold's fence only open at its
+gate so a flock leaves as a stream); the A-I matrix; performance; the end checks.
+**Pitfalls**: `goto` is LuaJIT-only (Lua 5.1 in the browser); Python writes to repo files sometimes fail with Errno 22 while a
+test run reads them - retry; a heredoc with apostrophes breaks - write patch scripts to files; `v3_goto{lh}` is the local hour of
+`sett` (default 1); the harness's flush_view jumps real-time effects (shoot(..., false) for the fireball).
+
 # Session handoff — session 23 (4 Oct 2026, extended autonomous run): the hydrology fix verified; clouds v5; the village mix; CHAIN REACTION ("Your actions"); R7 v2 powers; the second 8-year run's famine followed to four mechanisms; aim previews; the palisade; D-179-D-187
 
 ## FINAL STATE (end of session 23)

@@ -33,7 +33,16 @@ M.BMIN = 0.95             -- cloud base above sea level (world units) at the lea
 M.BMAX = 2.2              -- ... at the most (over the highest ground)
 M.CLEAR = 0.72            -- clearance of the base above the highest ground about a place
 M.EXAG = 0.13             -- planet.lua P.EXAG (world units per km)
-M.TOP = 1.45              -- the tallest storm above its base (cloudvol.fp: 0.55 + 0.85, and some)
+M.TOP = 1.05              -- the tallest storm above its base (cloudvol.fp: 0.42 + 0.6, and some)
+-- (S24) The layer lifts as the camera comes down to a place: far out it lies where the planet view wants it (a
+-- shell hugging the planet); from LIFT_FAR down to LIFT_NEAR (the eye's height above the sea) it rises by LIFT, so
+-- that the deck stands above the height from which a village is watched - the camera passes through it in a
+-- wheel step or two and comes out under it with the village clear below and the cloud overhead (S23's layer sat
+-- at the village view's own height: under the god's rain 90% of the frame was cloud from zoom 0.8 to 1.35).
+M.LIFT = 1.45
+M.LIFT_FAR = 12.0
+M.LIFT_NEAR = 5.5
+M.lift = 0
 M.STEPS = 24              -- samples along a ray (at full quality)
 M.STEPS_FIXED = nil       -- ?cloudq=N: the samples fixed (shots); else they follow the frame time
 M.q_steps = 24            -- the samples now (adaptive: a slow GPU gets fewer)
@@ -280,9 +289,9 @@ function M.init(W, urls, rain_factory)
   end
   resource.set_texture(M.geo, M.geoparams, M.geobuf)
   local cv0, cv1, cv2 = state.u_cv0, state.u_cv1, state.u_cv2
-  cv0.y, cv0.z, cv0.w = state.R, state.R + M.BMIN, state.R + M.BMAX + M.TOP
   cv1.x, cv1.y, cv1.z, cv1.w = 0, M.STEPS, M.DENS, M.FREQ
-  cv2.x, cv2.y, cv2.z, cv2.w = M.BMIN, M.BMAX, M.DRIFT_MAX, M.PERIOD
+  cv2.z, cv2.w = M.DRIFT_MAX, M.PERIOD
+  M.set_lift(0)
   M.job, M.ta, M.tb = nil, nil, nil
   M.rain_t = 0
   M.update(W, 0, true, true)
@@ -408,6 +417,27 @@ end
 
 local pos, rot, scl = vmath.vector3(), vmath.quat(), vmath.vector3()
 
+-- (S24) The layer at a lift: the bounds the march uses, the base range, and the shadow shell at the layer's middle.
+local shell_scl = vmath.vector3(1)
+function M.set_lift(lift)
+  M.lift = lift
+  local cv0, cv2 = state.u_cv0, state.u_cv2
+  cv0.y, cv0.z, cv0.w = state.R, state.R + M.BMIN + lift, state.R + M.BMAX + M.TOP + lift
+  cv2.x, cv2.y = M.BMIN + lift, M.BMAX + lift
+  if M.urls and M.urls.shell then
+    local r0 = state.R + (M.BMIN + M.BMAX) * 0.5 + 0.25
+    local k = (r0 + lift) / r0
+    shell_scl.x, shell_scl.y, shell_scl.z = k, k, k
+    go.set_scale(shell_scl, (M.urls.shell:match("^[^#]+")))
+  end
+end
+
+local function smooth(a, b, x)
+  local t = (x - a) / (b - a)
+  if t < 0 then t = 0 elseif t > 1 then t = 1 end
+  return t * t * (3 - 2 * t)
+end
+
 local function norm(x, y, z)
   local l = sqrt(x * x + y * y + z * z)
   if l < 1e-9 then return 0, 0, 1 end
@@ -430,6 +460,10 @@ function M.update(W, dt, frozen, instant)
   cr.x, cr.y, cr.z = rx * th * asp, ry * th * asp, rz * th * asp
   cu.x, cu.y, cu.z = ux * th, uy * th, uz * th
   cf.x, cf.y, cf.z = fx, fy, fz
+  -- (S24) the lift by the eye's height above the sea
+  local er = sqrt(e.x * e.x + e.y * e.y + e.z * e.z) - state.R
+  local lift = M.LIFT * (1 - smooth(M.LIFT_NEAR, M.LIFT_FAR, er))
+  if math.abs(lift - M.lift) > 1e-4 then M.set_lift(lift) end
   if hidden then
     state.u_cv1.y = 0
     M.stats.active = 0
@@ -526,7 +560,7 @@ function M.update_rain(W, hf, fast)
       local snow = (W.F.temp[c] or 10) < 0
       if snow ~= rn.snow then rn.snow = snow; go.set(rn.url, "vertices", snow and M.snow_res or M.rain_res) end
       local sz = g.spacing * R * (cand_v[i] == 2 and 1.25 or 0.95)
-      local r2 = R + M.BMIN + BASEN[c] * (M.BMAX - M.BMIN) + 0.02
+      local r2 = R + M.BMIN + BASEN[c] * (M.BMAX - M.BMIN) + 0.02 + M.lift
       pos.x, pos.y, pos.z = x * r2, y * r2, z * r2
       vmx.set_up_yaw(rot, x, y, z, (c % 7) * 0.9)
       scl.x, scl.y, scl.z = sz, 1, sz
@@ -541,10 +575,10 @@ end
 
 --- (bridge `clouds`) What the cover map holds at each village's cell: cover, darkness, base, the god's sky.
 function M.probe(W)
-  local out = { ta = M.ta, tb = M.tb, blend = state.u_cv1.x, cover = M.stats.cover, maps = M.stats.maps, villages = {} }
+  local out = { ta = M.ta, tb = M.tb, blend = state.u_cv1.x, cover = M.stats.cover, maps = M.stats.maps, lift = M.lift, villages = {} }
   for _, s in ipairs(W.S.v3 and W.S.v3.settlements or {}) do
     local c = s.cell
-    out.villages[#out.villages + 1] = { name = s.name, cell = c, cover = COVC[c], dark = DRKC[c], base = M.BMIN + (BASEN[c] or 0) * (M.BMAX - M.BMIN),
+    out.villages[#out.villages + 1] = { name = s.name, cell = c, cover = COVC[c], dark = DRKC[c], base = M.BMIN + (BASEN[c] or 0) * (M.BMAX - M.BMIN) + M.lift,
       god = JSTAMP[c] == M.stamp and JFORCE[c] or nil, rain_now = s.rain_now }
   end
   return out
