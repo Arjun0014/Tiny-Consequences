@@ -1997,3 +1997,13 @@ tutorial finished elsewhere stays finished). The world itself is not saved anywh
 grows a fresh world) - a world in the cloud is post-jam. `npm run build:wavedash` -> `dist/wavedash/` (wavedash.toml's
 `upload_dir`, game_id to fill in) and `dist/tiny-consequences-wavedash.zip`. Untested against the live SDK (it exists only on
 Wavedash's pages); every call is guarded.
+
+## D-225 · 2026-10-05 · Start even where the page's storage is blocked (session 25, itch)
+**Context.** On itch.io Arjun saw only the loader's Defold splash (the page and its fullscreen button loaded, the engine never
+drew), while the same bundle ran on Wavedash and here - in a cross-site iframe too. The zip is sound (index.html at its root,
+forward-slash paths). itch runs the game in a cross-site frame (html-classic.itch.zone inside the itch.io page), where a browser
+that blocks third-party storage can make IndexedDB throw or never answer - and Defold's loader syncs the save folder from
+IndexedDB before it starts the engine.
+**Decision.** `engine_template.html` opens IndexedDB once before `EngineLoader.load`; if it fails, throws or takes more than 2.5 s,
+the loader starts with `persistentStorage` off (the game runs, saving only for the visit). Checked: the zip unzipped, served and
+loaded in a cross-origin iframe starts as before.

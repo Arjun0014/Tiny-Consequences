@@ -258,8 +258,28 @@
 			runningFromFileWarning.style.display = "block";
 		}
 		else {
-			EngineLoader.load("canvas", "{{exe-name}}");
 			runningFromFileWarning.parentNode.removeChild(runningFromFileWarning);
+			// (S25f) Hosts that put the game in a cross-site frame (itch.io: html-classic.itch.zone inside the game's page) may
+			// block its storage: then opening IndexedDB throws or never answers, the loader's save-folder sync never ends and
+			// the engine never starts (the splash stays). Probe it first; if it is not there in time, start without saving.
+			(function () {
+				var started = false;
+				function go(ok) {
+					if (started) return;
+					started = true;
+					if (!ok) { try { Module['persistentStorage'] = false; Module.persistentStorage = false; } catch (e) {} }
+					EngineLoader.load("canvas", "{{exe-name}}");
+				}
+				try {
+					var idb = window.indexedDB;
+					var req = idb && idb.open('tc_storage_probe');
+					if (!req) { go(false); return; }
+					req.onsuccess = function () { try { req.result.close(); } catch (e) {} go(true); };
+					req.onerror = function () { go(false); };
+					req.onblocked = function () { go(true); };
+					setTimeout(function () { go(false); }, 2500);
+				} catch (e) { go(false); }
+			})();
 		}
 	</script>
 </body>
