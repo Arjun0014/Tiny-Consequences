@@ -135,7 +135,10 @@ planet fire burns out in 2-3 days and is never drawn over a map's trees; Go ther
 it, `?menu=1` shows it), the tutorial `game/ui/tutorial.lua` + logged command `sim/tutorial3.lua` (`sim/tutorial.lua` is the LEGACY v2
 helper); `docs/v3/86_S25_PLAYTEST.md`. Part 2 (D-214-D-219): the game opens on the whole planet (camera preset `title`); skips are seen
 from above (`game/view/skipcam.lua`); the tutorial is a meteor at the woods' edge and its real chain; meteor/oil/crater visuals in
-`game/view/fx.lua` (trail, crater marks, oil blobs); blight tuned to take hold (`blight_cast` 0.35).
+`game/view/fx.lua` (trail, crater marks, oil blobs); blight tuned to take hold (`blight_cast` 0.35). Part 4 (D-221-D-226): rain puts fire out (`fire_rain_grow`, `rain_quench_v3`); the
+water/path meshes keep every vertex on the ground and never shrink; phones (touch, pinch, landscape only) and the Wavedash glue live in
+`game/html/engine_template.html` (`window.tcWD`, `npm run build:wavedash`, `wavedash.toml`); **zip with bsdtar, never Compress-Archive**
+(backslash paths broke itch; Python's zipfile hides them on Windows); store media in `dist/store/` (`out/s25/gifs3.mjs`).
 
 ## Read order
 

@@ -1,3 +1,52 @@
+# Session handoff - session 25, part 4 (5 Oct 2026, ~02:15-03:20 IST): Arjun's fourth playtest, the store media, the itch zip; D-221-D-226
+
+## FINAL STATE (part 4)
+- main, all committed (see `git log -1`). The deliverables (all in `dist/`, gitignored - rebuild with the commands below):
+  - itch: `dist/tiny-consequences-web.zip` (`npm run package:itch`; index.html at the root, paths with forward slashes - D-226).
+  - Wavedash: `dist/tiny-consequences-wavedash.zip` and the folder `dist/wavedash/` (`npm run build:wavedash`; `wavedash.toml` at the
+    repo root has `upload_dir = "./dist/wavedash"` and a placeholder `game_id` Arjun must fill in). Arjun reports it runs on Wavedash.
+  - Store media: `dist/store/` - `trailer_10s.mp4` (zoom into a village, the village on fire, the meteor, the title over the end),
+    `1_planet_zoom_to_village.gif`, `2_village_fire.gif`, `3_meteor_strike.gif` (360 px, 8 fps, 2.1-2.8 MB), `cover_1920x1080.png`,
+    `cover_630x500.png`. Made by `out/s25/gifs3.mjs` (zoom, fire) and `out/s25/gifs2.mjs` (meteor): one Playwright-recorded session,
+    the camera driven every frame inside the game (`camera.update` wrapped, `__drive(t)` by `clock.now_ms`), cut with ffmpeg.
+- What changed (DECISIONS):
+  - D-221 rain puts fire out: map fires stop growing in rain (`fire_rain_grow` 0.3, none in a downpour) and are damped harder
+    (`fire_rain1` 0.6, `fire_rain2` 2.0 an hour); a god's rain quenches the planet's burning cells (`rain_quench_v3` 0.9, v3 only).
+    Probe `out/s25/probe_rain.lua`: ten trees alight - all out within the hour under the god's rain, two still burning after 6 h dry.
+  - D-222 "two planes outward from the world" (Arjun's screenshots: opaque, dark-water colour, behind the planet, tip on a village map,
+    the Little Leelee flood receding): NOT reproduced here (18 zoomed-out views, the tutorial's path, skips, a resize). The rivers, the
+    flood water and the paths (the only meshes drawn there) now put any vertex off the planet at the centre (`onground`) and never
+    shrink (unused vertices empty triangles). Unverified against his world.
+  - D-223 phones: touch-action none, one finger = the engine's mouse, a pinch = wheel notches (its moves kept from the engine), a
+    "Turn your phone sideways" screen when upright on a touch screen, landscape locked in fullscreen where allowed.
+  - D-224 Wavedash: one bundle; `window.tcWD` in `game/html/engine_template.html` finds `window.Wavedash` at run time; the game calls
+    `tcWD.init()` once ready (main.script), shows "Playing as NAME" top right of the title (`menu.player`), keeps `menu.prefs` in Remote
+    Storage (`tiny-consequences/prefs.json`, on every save; read back at the start). No world save exists anywhere (post-jam).
+  - D-225 an IndexedDB probe before `EngineLoader.load` (storage blocked in a cross-site frame would stall Defold's save-folder sync);
+    harmless, not the itch cause.
+  - D-226 THE ITCH CAUSE: PowerShell's Compress-Archive (Windows PowerShell 5.1) stored `archive\game0.arcd` with backslashes; itch's
+    unpacker kept them as root file names, the engine's archive was 404 and only the Defold splash showed. `scripts/package.mjs` now
+    zips with Windows' bsdtar (`tar.exe -a -c -f`). Python's zipfile hides this on Windows (it turns backslashes into slashes when it
+    reads): check the raw bytes (`out/s25/zipnames.py`) or `tar -tf`.
+- Checks (part 4): sim sets `--only fire` 12/12, `--only power` 14/14, `--only world` 8/8; lint clean (316 files); release build OK;
+  browser = LuaJIT (release) `--premise fire` identical; an emulated phone (`out/s25/mobile_check.mjs`: rotate screen upright only, a
+  drag turned the world, a pinch zoomed 1.25 -> 1.75); the Wavedash glue against a stand-in SDK (`out/s25/wd_check.mjs`: init only
+  after ready, the name with a quote and a backslash, prefs down and up as valid JSON); the zip unzipped and loaded in a cross-origin
+  iframe (`out/s25/itch_iframe2.mjs`). NOT run since part 3: the full quick suite (211) and the web suite (11).
+
+## Next (part 4)
+1. Confirm the itch page runs the bsdtar zip (Arjun uploads it); then Arjun's feedback on the submitted builds.
+2. The planes: if Arjun sees them again, catch the world (a save at that moment) and find the mesh; the guard is a guess.
+3. Run the full quick suite and `npm run test:web` (not run after D-221-D-226).
+4. Wavedash: the real SDK's identity call (`getUser`/`getUsername` are guesses) and cloud calls are untested on Wavedash itself;
+   a world save in the cloud is post-jam.
+5. A real phone (only emulated); the skip GIF (captures need `?menu=1` - skipcam is off under `?test=1`).
+
+## Pitfalls (part 4)
+- Never zip with Compress-Archive; never trust Python's zipfile names on Windows for separators.
+- Under video capture the game's frame dt runs slower than real time: drive camera moves by `clock.now_ms`, not by summed dt.
+- `game/view/skipcam.lua` runs only without `?test=1` (or with `?menu=1`).
+
 # Session handoff — session 25, part 3 (5 Oct 2026, ~01:20-02:20 IST): Arjun's third playtest; D-220
 
 - The planet's herds (sim/systems/fauna.lua, drawn as puppets) now answer fire and the god's bolt at once: they run to the safest

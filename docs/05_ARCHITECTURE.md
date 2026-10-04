@@ -80,7 +80,7 @@ Module paths: Defold resolves `require("sim.world")` to `/sim/world.lua`. The he
 | `npm run test:sim` | Lint + unit + scenario + stability tests (quick profile: 3 seeds); `-- --full` = 10 seeds. Runs unit tests under `lua5.1` too when it's installed |
 | `npm run bench` | Headless tick timing per system |
 | `npm run build` / `build:release` | Defold HTML5 bundle (debug / release) into `dist/web/` |
-| `npm run build:wavedash` | Release bundle with the Wavedash SDK enabled, into `dist/wavedash/` |
+| `npm run build:wavedash` | The release bundle as `dist/wavedash/` (wavedash.toml's upload_dir) and `dist/tiny-consequences-wavedash.zip`; the Wavedash SDK is found on the page at run time (D-224) |
 | `npm run serve` | Static server for `dist/web` on http://localhost:8080 |
 | `npm run test:web` | Build (if stale) + Playwright suite. Playwright's `webServer` option starts and stops the static server, so no server is left running |
 | `npm run shots` | Capture the standard screenshot set to `out/shots/` |
@@ -208,7 +208,7 @@ Enabled only when the page URL has `?test=1`.
 - **Pinned engine**: `tools/defold-version.json` holds the stable version and sha1 (read from `http://d.defold.com/stable/info.json`). `npm run setup` downloads `http://d.defold.com/archive/stable/<sha1>/bob/bob.jar` into `tools/bob/`. The human's Defold editor should be the same version.
 - **Build**: `java -jar tools/bob/bob.jar --platform js-web --architectures wasm-web --archive --variant <debug|release> --bundle-output dist/web resolve build bundle` (run from the repo root; check where bob places `index.html` inside the output folder and make `serve` point there).
 - **Java**: JDK 21 or newer.
-- **Wavedash build**: add the Wavedash Defold SDK as a project dependency (URL from docs.wavedash.com/engines/defold) and call `wavedash.init()` once the game is ready; the game stays hidden behind Wavedash's loading screen until then. Keep the itch build working without Wavedash (feature-detect at runtime, or build variants with a settings override file; decide and log in DECISIONS.md).
+- **Wavedash build (as built, D-224)**: no Lua dependency - `window.tcWD` in `game/html/engine_template.html` uses the `window.Wavedash` SDK the platform puts on the page (init when the game is ready, the player's name, `menu.prefs` in Remote Storage); the same bundle runs on itch. Zips are made with bsdtar, never Compress-Archive (D-226). The original plan: add the Wavedash Defold SDK as a project dependency (URL from docs.wavedash.com/engines/defold) and call `wavedash.init()` once the game is ready; the game stays hidden behind Wavedash's loading screen until then. Keep the itch build working without Wavedash (feature-detect at runtime, or build variants with a settings override file; decide and log in DECISIONS.md).
 - **itch.io**: zip of the release bundle, "played in the browser", viewport 1280×720 with fullscreen button.
 - Bundle `.gitignore`: `dist/`, `out/`, `tools/bob/`, `build/`, `.internal/`, `node_modules/`.
 

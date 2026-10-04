@@ -98,3 +98,7 @@ and the paths kept on the ground (the planes were opaque, in the dark-water colo
 map - those meshes are the only ones drawn there; 18 zoomed-out views here showed none, so the guard is unverified against his
 exact world); phones; Wavedash (one bundle, the SDK found at run time); the store media.
 
+Later: the first GIFs had stops and a quick zoom - remade with the camera driven every frame (`dist/store/`: a 10 s trailer and three
+GIFs: the planet turning into a slow zoom to a village, the village on fire, the meteor). On itch the game showed only the Defold splash:
+the console's 404 on `archive/...` - the zip held backslash paths (PowerShell's Compress-Archive); re-zipped with bsdtar (D-226).
+

@@ -9,7 +9,11 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
   meshes can no longer throw a vertex off the planet (the "two planes" Arjun saw - not reproduced here, guarded, D-222); phones:
   touch (drag, tap, pinch to zoom) and landscape only with a turn-your-phone screen (D-223); Wavedash: init when ready, the
   player's name on the title, progress and settings in the cloud (`npm run build:wavedash`, `wavedash.toml` - game_id to fill in,
-  D-224); the cover, 7 GIFs and a 10 s video from the real game (`out/s25/gifs/`, `scripts`-free capture `out/s25/gifs.mjs`).
+  D-224); an IndexedDB probe before the engine loads (D-225); **the itch zip fixed** - Compress-Archive had stored `archive\...` with
+  backslashes, itch 404'd the engine's archive; `npm run package:itch` now zips with bsdtar (D-226). Store media in `dist/store/`: a 10 s
+  trailer, 3 GIFs (zoom into a village, the village on fire, the meteor), covers. Checks: sim sets fire 12/12, power 14/14, world 8/8;
+  browser = LuaJIT `--premise fire`; emulated phone; the Wavedash glue against a stand-in SDK; the zip in a cross-origin iframe. The full
+  quick suite and the web suite were not re-run after D-221-D-226.
 
 - **SESSION 25 part 3 (5 Oct 2026, ~01:20-02:20 IST): the planet's herds run from fire and the bolt and die in it (D-220); the
   tutorial opens on Play every time (Free play skips it), with "Why?" and "Your tools" added.** Checks: quick suite 211/211; web
