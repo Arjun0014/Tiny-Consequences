@@ -13,6 +13,7 @@ local view = require("game.view.view")
 local camera = require("game.view.camera")
 local powers = require("game.ui.powers")
 local newsfeed = require("game.ui.newsfeed")   -- (S21, R7: the world news)
+local actions = require("game.ui.actions")     -- (S23: what each of the god's casts caused)
 
 local C = ui.C
 local V3 = vmath.vector3
@@ -384,6 +385,7 @@ function init(self)
 	build_inspector(self)
 	build_misc(self)
 	newsfeed.build(self)
+	actions.build(self)
 	build_loading(self)
 	self.sel_version = -1
 	self.refresh = 0
@@ -547,7 +549,10 @@ function update(self, dt)
 		self.shown.top = true
 	end
 	update_powers(self)
-	if W.v3 then newsfeed.update(self, W, speed.v3_t or W.hour, dt) end
+	if W.v3 then
+		actions.update(self, W, speed.v3_t or W.hour, dt)
+		newsfeed.update(self, W, speed.v3_t or W.hour, dt)
+	end
 	self.refresh = self.refresh - dt
 	local sel = selection.sel
 	local rebuild = selection.version ~= self.sel_version
@@ -597,6 +602,8 @@ end
 local function hit(self, x, y)
 	if state.loading.active then return nil end
 	do
+		local ah = actions.hit(self, x, y)
+		if ah then return ah end
 		local nh = newsfeed.hit(self, x, y)
 		if nh then return nh end
 	end
@@ -658,6 +665,11 @@ end
 local function activate(self, h)
 	if type(h) ~= "table" and type(h) ~= "string" then return end
 	if type(h) == "table" and h.news_why then newsfeed.toggle_why(self, h.news_why); return end
+	if type(h) == "table" and h.news_chain then
+		if h.news_chain.chain_ev then actions.open_for(self, h.news_chain.chain_ev) end
+		return
+	end
+	if view.W and actions.activate(self, view.W, h) then return end
 	if type(h) == "table" and h.news_card then go_story(self, h); return end
 	if h == "close" then selection.clear()
 	elseif h == "tab" then uistate.inspector_collapsed = not uistate.inspector_collapsed
@@ -711,8 +723,12 @@ function on_input(self, action_id, action)
 		end
 		return false
 	end
-	-- the wheel over the inspector scrolls it (and doesn't zoom the camera)
+	-- the wheel over the inspector scrolls it (and doesn't zoom the camera); over "Your actions" that panel
 	local wx, wy = action.x or self.px, action.y or self.py
+	if (action_id == H_WHEEL_UP or action_id == H_WHEEL_DOWN) and wx
+		and actions.scroll(self, wx, wy, action_id == H_WHEEL_UP and -2 or 2) then
+		return true
+	end
 	if (action_id == H_WHEEL_UP or action_id == H_WHEEL_DOWN) and wx and gui.is_enabled(self.ins_root)
 		and not uistate.inspector_collapsed and gui.pick_node(self.ins_panel, wx, wy) then
 		local step = action_id == H_WHEEL_UP and -3 or 3

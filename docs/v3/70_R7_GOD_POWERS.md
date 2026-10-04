@@ -114,3 +114,11 @@ Each cast: a root event (actor `player`, kind `power_*`) whose id is the **cause
   Krikeivorn, in a cold snap fell as snow and flooded Tekheim's river; warm air melted lying snow; a strained fault
   near Tekheim gave a magnitude 5.6 quake, far from anyone nothing felt; a stirred mountain erupted.
 - v2 designed from the code in `docs/SESSION_HANDOFF.md` (session 22, Next 2) - not built.
+
+## 9. Status (session 23, D-183)
+- **v2 built**: sickness in a herd (the herd's sickness now incubates and carries its cause; the god seeds it in the beasts
+  aimed at), blight (`sim/agents/blight.lua`: weather, wind, seed grain, yield), warm/cool sea (heat or chill on the sea cells
+  only), oil (the planet's slick), meteor (the planet's heat, fire and dust, a quake of the impact, a wave at sea, the blast on a
+  village's map). The bar has fourteen powers; sickness aims at the beast under the pointer like lightning.
+- Every power's consequences reach the chain-reaction view (`77_CHAIN_REACTION.md`).
+- Not yet: traded grain carrying blight's taint, oil fouling shore food and gulls on the maps, seed the woods (v3).

@@ -1,0 +1,20 @@
+#version 140
+// Clouds v5 (S23): one full-screen pass (the quad is already in clip space). Each pixel's view ray is
+// marched through the planet's cloud layer in cloudvol.fp; here only the ray's direction is made from
+// the camera's basis (game/view/clouds.lua).
+in highp vec4 position;
+
+uniform vs_uniforms
+{
+    highp vec4 u_cr;   // camera right x tan(fov / 2) x aspect
+    highp vec4 u_cu;   // camera up x tan(fov / 2)
+    highp vec4 u_cf;   // camera forward
+};
+
+out highp vec3 var_dir;
+
+void main()
+{
+    var_dir = u_cf.xyz + position.x * u_cr.xyz + position.y * u_cu.xyz;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+}

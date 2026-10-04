@@ -13,7 +13,7 @@ local function def(name, t) t.name = name; K[name] = t end
 
 -- player roots
 for _, p in ipairs({ "lightning", "rain", "drought", "heat", "chill", "cull", "introduce",
-  "blight", "oil", "meteor", "volcano", "quake" }) do
+  "blight", "oil", "meteor", "volcano", "quake", "sickness", "sea" }) do
   def("power_" .. p, { actor = "player", icon = "power_" .. p, headline = false, text = "Power: " .. p })
 end
 -- test roots (actor player, used by scenario hooks before powers exist)

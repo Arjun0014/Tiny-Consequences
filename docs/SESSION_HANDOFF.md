@@ -1,3 +1,52 @@
+# Session handoff — session 23 (4 Oct 2026, extended autonomous run): the hydrology fix verified; clouds v5; the village mix; CHAIN REACTION ("Your actions"); R7 v2 powers; D-179-D-183
+
+## CHECKPOINT (~880K context, session 23) - read this first after a compaction
+**If you are resuming after a compaction: re-read this section, CLAUDE.md, `docs/v3/77_CHAIN_REACTION.md`, `70_R7_GOD_POWERS.md`
+§9, `75_PLAYER_EXPERIENCE.md` §10, `80_WORLD_AUDIO.md` §9, `docs/world/16_CAUSALITY_VISUALS.md` §5b, D-179-D-183 and
+`git log --oneline -12` before any change.** Rules as before (no subagents; one heavy process at a time for anything timed;
+browser = LuaJIT; bob forbids circular requires; the view, the news, the audio and the chain never write sim state; premises are
+states the world could reach; Bash heredocs with apostrophes break - write patch scripts to files).
+
+Done this session (all committed at this checkpoint):
+1. **Hydrology fix** (D-179) applied and followed: the drifting wolves test found wolves eating at a kill from across a river
+   (`wild.lua`: a way round, or "Cut off from the kill"); the hunting test now counts spears thrown (kills are a small number).
+   Untouched planet numbers in D-179.
+2. **Clouds v5** (D-180): `game/view/clouds.lua`, `game/render/shaders/cloudvol.fp/.vp`, `cloudshell.fp/.vp`, materials, render
+   script (cloud volume drawn last of the world; the shell in the shadow pass); the cover from `sim/agents/weather.lua`
+   `cell_day` (pure; village hashes identical); shots `scripts/shots_clouds.mjs` (`out/shots/clouds/before_after.png`);
+   GPU cost measured with `out/s23/probe_gpu.mjs` (ANGLE D3D11 headless: free). Bridge `clouds{}` (cover at each village).
+3. **Audio** (D-181): `audio.lua` `M.MIX`, herd bed 0.44 -> 0.14, calls rare and near; `scripts/play_audio.mjs`.
+4. **Chain reaction** (D-182): `sim/chain.lua`, `game/ui/actions.lua`, newsfeed "chain N", bridge `actions{open, ev}`,
+   `tools/v3_chain.lua --case ...`, `tools/v3_chain_dump.lua`, `scripts/shots_chain.mjs`, test `test_v3_chain` x3.
+5. **R7 v2 powers** (D-183): `sim/powers3.lua` (sickness, sea, oil, meteor, blight), `sim/agents/blight.lua`, stock incubation and
+   `sick_ev`, deeds `sickness`/`blight`/`impact`, news stories, chain polls; test `test_v3_powers2` x4; DEFS_V3 has 14 powers.
+6. **The 8-year run found** a nursing mother walking to her kin for food while her newborn starved: `ask_kin_candidate` and the fair
+   crier now check `p.nursing`.
+
+Checks done: full quick suite 197/197 (phase-1 code), `test_v3_powers2` 4/4, web 11/11 (W02-lite rerun with `gfx=low`), lint,
+debug build. **Pending (do these next, in order)**: the v3 unit tests again (the herd sickness change touches every herd),
+`npm run test:sim` full; `node scripts/v3_hash_web.mjs --release` and `--premise flood5|conflict|fire|powers|pasture_fire`;
+the 8-year untouched run again (`luajit tools/v3_chronicle.lua --days 384 --save out/s23/chron384b.tcsave`: no hunger deaths
+expected now; watch the herd sickness with incubation); profiles (`luajit -joff tools/v3_profile.lua --days 4` at day 0 and
+`--load` the day-384 save; S22: 3.91 M / 5.13 M instructions an hour, stock 39%); `node scripts/prof_web.mjs --release --hours 288
+--runs 3`; the chain UI shots again with a new power (`scripts/shots_chain.mjs`); then PROGRESS/handoff numbers.
+
+## Next (after the pending checks)
+1. The news: a history list; relief / orphans / harvest stories; everyday aggregation.
+2. A volume settings panel; per-power aim previews (what each writes, on the ring).
+3. Traded grain carrying blight's taint; oil fouling shore food and gulls on the maps; relief and kin food joined to the harm in
+   the chain.
+4. R6: the palisade; captives only as persistent people.
+5. Watch the year-8 livestock cost (stock was 39% of the sim at year 8) without reducing animal agency.
+
+## Pitfalls found this session
+- Headless rAF timing under SwiftShader is not a measure of anything; measure the GPU with ANGLE D3D11 (`out/s23/probe_gpu.mjs`)
+  and the sim with render_off / instruction counts.
+- A deed's `answers` is a causal claim: link a death to a hurt only when the hurt was grave or is the cause of death.
+- `ctx.babe` is only the baby in one's arms; a nursing mother is `p.nursing > now` - every journey must check it.
+- `flush()` of a view module must use the world's clock (`speed.v3_t`), not the last frame's (`state.hour_f`).
+- A cast aimed by the screen centre may land beside the village: shots aim at the village's own cell (`v3_look` returns `cell`).
+
 # Session handoff — session 22 (4 Oct 2026, ENDED on Arjun's word near the ~850K context checkpoint): the validation Session 21 left; the frozen children; animals and fire; lightning on beasts; the powers played; D-176-D-178
 
 ## FINAL STATE (end of session 22)

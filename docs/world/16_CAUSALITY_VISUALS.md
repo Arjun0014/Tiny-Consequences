@@ -93,3 +93,35 @@ closely), and they are small single puffs with little shading, so they read as d
   a richer mesh.
 - Shadows: keep the cloud-shadow channel of the shadow map, now from the real cloud positions.
 - Day/night: clouds are lit by the real sun, silver-lined at the terminator, dark at night.
+
+## 5b. Clouds v5: one cloud layer the camera flies through (S23, D-180)
+
+**Why v4 failed** (Arjun's playtest): every puff was an opaque ray-traced spheroid, so banks read as cotton
+balls laid on the world; close in, a hole was cut through them around the focus (the camera never entered a
+cloud); and the cover came from the v2 weather days, not from the rain the v3 villages live - a village in
+the god's downpour stood under a clear sky.
+
+**v5** (`game/view/clouds.lua`, `game/render/shaders/cloudvol.fp`, `cloudshell.fp`):
+- **Where and how much** - a cover map (equirect 128 x 64, two time slices blended on the GPU) written hour by
+  hour from each planet cell's weather: the same rain spells the villages live under
+  (`sim/agents/weather.lua` `cell_day`, one pure draw for a village and its cell), the god's rain and dry
+  spells from the moment of the cast (`W.S.powers.forcings`), the day's humidity between spells (fair-weather
+  heaps where the air is damp, clear sky where it is dry). Cover gathers over the three hours before a spell,
+  is full while it rains, thins after; a downpour is darker and taller. A clear cell never gets dramatic cloud.
+- **The layer** - one full-screen pass marches each pixel's view ray through the cloud layer (24 samples
+  between the lowest base and the highest top found at fixed distances along the ray): density = the cover
+  eroding wind-carried 3D noise (iq's packed-slice texture noise), flat bases above the highest ground about
+  each place, heaped tops that rise and fall with the noise (a full deck shows its lumps from above), thick and
+  thin places inside; light from the sun through the cloud above the sample, sky light from above, storms
+  blue-grey, night moonlit, a little warmth at the terminator, the limb haze. It writes the depth of the
+  cloud's front, so solid things before it hide it; smoke and rain under a deck are hidden by it.
+- **Flying through it** - from far above the clouds lie below; nearer, the deck fills the view; inside, the
+  march starts at the eye (finer samples near it, the mist thinned close by) - soft grey mist, the ground
+  fading in through the floor of the deck; under it, the village under its cloud (overcast light from the
+  cloud shadow, rain).
+- **Wind** - the noise is carried by the zonal wind of each latitude (two phases, each reset while its weight
+  is nil, so the shear never builds up); the cover moves only as the weather does.
+- **Shadows** - a sphere at the layer's middle drawn from the sun writes the same cloud into the shadow map's
+  cover channel (soft cloud shadows on everything that reads shadow.glsl).
+- **Cost** - headless SwiftShader frames with and without the layer are within noise of each other (0.5-1.8 s
+  either way; the CPU rasteriser is dominated by the scene); `gfx=low` draws none (functional browser tests).

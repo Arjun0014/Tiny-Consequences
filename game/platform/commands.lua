@@ -352,6 +352,21 @@ function M.register(G)
       end
       assert(found, "no house")
       x, y = found.cx, found.cy
+    elseif args.what == "tree_near_house" then
+      -- (S23) the standing tree nearest a standing house (not touching it): where a bolt may set a village alight
+      local T = s.trees
+      local bd = 1e9
+      for _, id in ipairs(s.blist) do
+        local b = s.buildings[id]
+        if b.kind == "house" and b.state == "standing" then
+          for k = 1, T.n do
+            if T.st[k] == 1 and (T.size[k] or 0) > 0.7 then
+              local d = (T.x[k] - b.cx) ^ 2 + (T.y[k] - b.cy) ^ 2
+              if d > 0.0016 and d < bd then bd, x, y = d, T.x[k], T.y[k] end
+            end
+          end
+        end
+      end
     elseif args.what == "bridge" then
       local found
       for _, id in ipairs(s.blist) do
@@ -454,7 +469,7 @@ function M.register(G)
     end
     local ux, uy, uz = mapm.unit(s, x, y)
     camera.set(math.asin(uy), math.atan2(uz, ux), args.zoom or 1.5, true)
-    return { x = x, y = y, name = s.name, info = info }
+    return { x = x, y = y, name = s.name, info = info, cell = s.cell }
   end)
   -- camera{preset | lat, lon, zoom | drag={dx,dy} | follow=true}; lat/lon in degrees.
   bridge.register("camera", function(args)
@@ -563,7 +578,7 @@ function M.register(G)
     local powers = require("game.ui.powers")
     local W = G.W
     local cell, ship = power_target(W, args)
-    local opts = { mode = args.mode, species = args.species, ship = ship, force = args.force ~= false }
+    local opts = { mode = args.mode, species = args.species, ship = ship, force = args.force ~= false, sid = args.sid, x = args.x, y = args.y }
     local p, why = powers.cast(W, args.power, cell, opts)
     if not p then error(why or "power refused", 0) end
     local sx, sy = screen_of(W, cell)
@@ -894,7 +909,41 @@ function M.register(G)
     if args.on ~= nil then audio.ON = args.on and true or false end
     local beds = {}
     for k, v in pairs(audio.stats.beds) do beds[k] = v end
-    return { ready = audio.ready == true, on = audio.ON, beds = beds, shots = audio.stats.shots, cues = audio.stats.cues, last = audio.stats.last }
+    -- (S23) one-shot energy by category (sum of gain^2 since the last reset: the mix's balance)
+    local energy = {}
+    for k, v in pairs(audio.stats.energy or {}) do energy[k] = math.floor(v * 1000 + 0.5) / 1000 end
+    if args.reset then audio.stats.energy = {}; audio.stats.shots = 0 end
+    return { ready = audio.ready == true, on = audio.ON, beds = beds, shots = audio.stats.shots, cues = audio.stats.cues, last = audio.stats.last,
+      energy = energy, duck = audio.duck }
+  end)
+
+  -- (S23) actions{open, ev}: "Your actions" (game/ui/actions.lua) opened (on intervention ev, or the newest);
+  -- returns the interventions and the open one's chain as the panel shows them (sim/chain.lua)
+  bridge.register("actions", function(args)
+    local W = assert(G.W, "world not ready")
+    local chain = require("sim.chain")
+    chain.update(W, require("game.platform.speed").v3_t or W.hour)
+    local list = chain.list(W)
+    local ev = args.ev == "latest" and list[1] and list[1].ev or tonumber(args.ev)
+    if args.open ~= nil then require("game.ui.actions").request = { open = args.open and true or false, ev = ev } end
+    local out = { list = {} }
+    for _, I in ipairs(list) do
+      out.list[#out.list + 1] = { ev = I.ev, title = I.title, power = I.power, n_total = I.n_total, n_direct = I.n_direct, active = I.active }
+    end
+    local I = ev and chain.get(W, ev)
+    if I then
+      out.rows = {}
+      for _, row in ipairs(chain.rows(W, I, 60)) do
+        out.rows[#out.rows + 1] = { depth = row.depth, kind = row.node.kind, title = row.node.title, line = row.node.line, active = row.node.active }
+      end
+    end
+    return out
+  end)
+
+  -- (S23) clouds{}: the cloud cover map at each village (clouds v5)
+  bridge.register("clouds", function(args)
+    local W = assert(G.W, "world not ready")
+    return require("game.view.clouds").probe(W)
   end)
 
   bridge.register("ui", function(args)
@@ -992,13 +1041,13 @@ function M.register(G)
     end
     out.plan_ms, out.write_ms, out.verts, out.instances = tp, tw, verts, inst
     out.us_per_vertex = tw * 1000 / math.max(1, verts)
+    -- (S23, clouds v5) a whole cover map made at once from the weather of now
     local r0 = clouds.stats.rebuilt
     local t0 = clock.now_ms()
-    for _, sec in ipairs(clouds.sectors) do sec.key = -99 end
-    clouds.update(W, 0, false, true)
-    out.cloud_sectors = clouds.stats.rebuilt - r0
-    out.cloud_ms_per_sector = (clock.now_ms() - t0) / math.max(1, out.cloud_sectors)
-    out.cloud_puffs = clouds.stats.puffs
+    clouds.flush(W)
+    out.cloud_maps = clouds.stats.rebuilt - r0
+    out.cloud_ms_per_map = clock.now_ms() - t0
+    out.cloud_cover = clouds.stats.cover
     props.flush(W, camera.zoom)
     return out
   end)

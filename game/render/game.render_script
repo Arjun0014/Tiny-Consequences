@@ -1,8 +1,10 @@
 -- Tiny Consequences render script (renderer v2, D-048).
 -- Passes:
 --   1. shadow: terrain, prop chunks and movers from the sun (orthographic) into an RGBA8 target
---      (depth packed in RGB); clouds add their cover to A (soft cloud shadows).
---   2. scene target (no MSAA in this engine version's render_target; FXAA in the composite): sky -> planet -> props -> movers -> atmosphere, clouds, fx.
+--      (depth packed in RGB); the cloud layer adds its cover to A (soft cloud shadows; S23 a shell at the
+--      layer's height, cloudshell.fp).
+--   2. scene target (no MSAA in this engine version's render_target; FXAA in the composite): sky -> planet -> props -> movers -> clouds (S23:
+--      one full-screen pass marching each view ray through the cloud layer, cloudvol.fp) -> atmosphere, fx.
 --      Opaque passes write the depth-of-field CoC into alpha; transparent passes leave alpha.
 --   3. post: scene -> half (box) -> quarter (box) -> gaussian H/V -> composite to the screen
 --      (tilt-shift DoF, bloom, grade, vignette).
@@ -53,7 +55,8 @@ function init(self)
 	self.pred_villagers = render.predicate({ "villagers" })
 	self.pred_animals = render.predicate({ "animals" })
 	self.pred_atmo = render.predicate({ "atmo" })
-	self.pred_cloud = render.predicate({ "cloud" })
+	self.pred_cloudvol = render.predicate({ "cloudvol" })
+	self.pred_cloudshell = render.predicate({ "cloudshell" })
 	self.pred_fx = render.predicate({ "fx" })
 	self.pred_overlay = render.predicate({ "overlay" })
 	self.pred_particle = render.predicate({ "particle" })
@@ -146,14 +149,18 @@ local function shadow_pass(self)
 		render.draw(self.pred_animals, self.shadow_opts)
 		render.disable_material()
 	end
-	-- clouds: cover into alpha only (max of overlapping puffs), no depth writes
-	render.set_depth_mask(false)
-	render.set_color_mask(false, false, false, true)
-	render.enable_state(graphics.STATE_BLEND)
-	render.set_blend_func(graphics.BLEND_FACTOR_ONE, graphics.BLEND_FACTOR_ONE)
-	render.enable_material("shadow_cloud")
-	render.draw(self.pred_cloud, self.shadow_opts)
-	render.disable_material()
+	-- clouds: the layer's cover into alpha only, from a shell at its height (its side toward the sun),
+	-- no depth writes
+	if state.u_cv1.y > 0 then
+		render.set_depth_mask(false)
+		render.set_color_mask(false, false, false, true)
+		render.enable_state(graphics.STATE_BLEND)
+		render.set_blend_func(graphics.BLEND_FACTOR_ONE, graphics.BLEND_FACTOR_ONE)
+		render.enable_state(graphics.STATE_CULL_FACE)
+		render.set_cull_face(graphics.FACE_TYPE_BACK)
+		render.draw(self.pred_cloudshell, self.shadow_opts)
+		render.disable_state(graphics.STATE_CULL_FACE)
+	end
 	render.set_color_mask(true, true, true, true)
 	render.disable_state(graphics.STATE_BLEND)
 	render.set_depth_mask(true)
@@ -204,9 +211,13 @@ function update(self)
 	cb.u_sh2 = state.u_sh2
 	cb.u_shn = state.u_shn
 	cb.u_focus = state.u_focus
-	cb.u_cut = state.u_cut
 	cb.u_canopy = state.u_canopy
-	cb.u_cloud = state.u_cloud
+	cb.u_cr = state.u_cr
+	cb.u_cu = state.u_cu
+	cb.u_cf = state.u_cf
+	cb.u_cv0 = state.u_cv0
+	cb.u_cv1 = state.u_cv1
+	cb.u_cv2 = state.u_cv2
 	cb.u_eye = state.u_cam
 	local sp = state.u_shadowp
 	sp.w = (state.shadow_on and state.planet_on) and 1 or 0
@@ -255,8 +266,6 @@ function update(self)
 		render.draw(self.pred_villagers, self.world_opts)
 		render.draw(self.pred_animals, self.world_opts)
 		render.disable_texture("shadowtex")
-		-- clouds, solid cores: ray-traced puffs write their own depth and the CoC (cloud.fp)
-		render.draw(self.pred_cloud, self.world_opts)
 
 		-- transparent: premultiplied alpha, depth-tested, no depth writes; alpha keeps the CoC
 		render.set_depth_mask(false)
@@ -267,12 +276,12 @@ function update(self)
 		render.set_cull_face(graphics.FACE_TYPE_BACK)
 		render.draw(self.pred_atmo, self.plain_opts)
 		render.disable_state(graphics.STATE_CULL_FACE)
-		-- clouds, soft rims and wisps over their cores
-		render.enable_material("cloud_edge")
-		render.draw(self.pred_cloud, self.world_opts)
-		render.disable_material()
 		render.draw(self.pred_fx, self.world_opts)
 		render.draw(self.pred_particle, self.world_opts)
+		-- (S23) the cloud layer, last of the world: one full-screen pass marching each view ray (cloudvol.fp
+		-- writes the depth of the cloud's front, so whatever solid stands before it hides it; the smoke and
+		-- rain under a deck are hidden by it, as they would be); premultiplied, the CoC kept
+		if state.u_cv1.y > 0 then render.draw(self.pred_cloudvol, self.plain_opts) end
 		-- selection ring: always visible on top (hidden by the view when behind the planet)
 		render.disable_state(graphics.STATE_DEPTH_TEST)
 		render.draw(self.pred_overlay, self.world_opts)

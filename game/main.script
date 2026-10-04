@@ -36,7 +36,6 @@ local DEBUG_INTERVAL = 0.25
 
 local URLS = {
 	chunk_factory = "/main#chunk_factory",
-	cloud_factory = "/main#cloud_factory",
 	deer_factory = "/main#deer_factory",
 	wolf_factory = "/main#wolf_factory",
 	flame_factory = "/main#flame_factory",
@@ -222,12 +221,14 @@ function init(self)
 	end
 	if query.flag("freeze") then view.set_frozen(true) end
 	if query.flag("vnoshadow") then state.no_villager_shadow = true end
+	-- (S23) ?cloudq=N: the cloud layer's samples fixed (shots compare like with like); else adaptive
+	if query.number("cloudq", nil) then require("game.view.clouds").STEPS_FIXED = query.number("cloudq", 24) end
 	-- gfx=low: no shadow map and no post pipeline (functional browser tests: headless Chromium
 	-- rasterises on the CPU, where the full pipeline costs seconds per frame)
 	if query.get().gfx == "low" then
 		state.shadow_on = false
 		state.post_on = false
-		-- (ray-traced cloud puffs are per-pixel work a CPU rasteriser can't afford: none)
+		-- (the cloud layer is marched per pixel: work a CPU rasteriser cannot afford - none)
 		require("game.view.clouds").DENSITY = 0.45
 		require("game.view.clouds").hidden = true
 		-- the CPU rasteriser: a thinner forest (the prop placement is the same, fewer slots).

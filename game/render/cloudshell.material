@@ -1,0 +1,64 @@
+name: "cloudshell"
+tags: "cloudshell"
+vertex_program: "/game/render/shaders/cloudshell.vp"
+fragment_program: "/game/render/shaders/cloudshell.fp"
+vertex_space: VERTEX_SPACE_WORLD
+vertex_constants {
+  name: "view_proj"
+  type: CONSTANT_TYPE_VIEWPROJ
+}
+fragment_constants {
+  name: "u_cv0"
+  type: CONSTANT_TYPE_USER
+  value {
+    x: 0
+    y: 10
+    z: 10.9
+    w: 12.9
+  }
+}
+fragment_constants {
+  name: "u_cv1"
+  type: CONSTANT_TYPE_USER
+  value {
+    x: 0
+    y: 24
+    z: 12
+    w: 1.3
+  }
+}
+fragment_constants {
+  name: "u_cv2"
+  type: CONSTANT_TYPE_USER
+  value {
+    x: 0.9
+    y: 1.7
+    z: 0.004
+    w: 36
+  }
+}
+samplers {
+  name: "covtex"
+  wrap_u: WRAP_MODE_REPEAT
+  wrap_v: WRAP_MODE_CLAMP_TO_EDGE
+  filter_min: FILTER_MODE_MIN_LINEAR
+  filter_mag: FILTER_MODE_MAG_LINEAR
+  max_anisotropy: 1.0
+}
+samplers {
+  name: "geotex"
+  wrap_u: WRAP_MODE_REPEAT
+  wrap_v: WRAP_MODE_CLAMP_TO_EDGE
+  filter_min: FILTER_MODE_MIN_LINEAR
+  filter_mag: FILTER_MODE_MAG_LINEAR
+  max_anisotropy: 1.0
+}
+samplers {
+  name: "noisetex"
+  wrap_u: WRAP_MODE_REPEAT
+  wrap_v: WRAP_MODE_REPEAT
+  filter_min: FILTER_MODE_MIN_LINEAR
+  filter_mag: FILTER_MODE_MAG_LINEAR
+  max_anisotropy: 1.0
+}
+max_page_count: 0

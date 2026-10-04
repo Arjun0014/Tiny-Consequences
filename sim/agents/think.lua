@@ -818,7 +818,8 @@ local function fair_candidate(W, s, p, ctx, now, fat)
   end
   -- the host's criers: to each road neighbour, a grown-up walks to tell of the fair
   local f = s.fair
-  if f and s.fair_cry and #s.fair_cry > 0 and now < f.t0 - 30 and ctx.stage == "adult" and not ctx.night and ctx.rain < 1 then
+  if f and s.fair_cry and #s.fair_cry > 0 and now < f.t0 - 30 and ctx.stage == "adult" and not ctx.night and ctx.rain < 1
+    and not ctx.babe and (p.nursing or 0) <= now then   -- (S23: not a mother with a baby at the breast)
     local o = W.S.v3.settlements[s.fair_cry[1]]
     if o then
       local _, hrs = trade.road(W, s, o)
@@ -1276,6 +1277,9 @@ M.kin_away = kin_away
 -- kin_ask_again days.
 local function ask_kin_candidate(W, s, p, ctx, now, fat)
   if ctx.moving or ctx.babe then return end
+  -- (S23) not a mother with a baby at the breast, though the baby lies at home and not in her arms: a
+  -- newborn left behind while she walked to her kin for food starved (an 8-year run); another goes
+  if (p.nursing or 0) > now then return end
   local c = C()
   local hh = ctx.hh
   if p.trip or p.court or ctx.stage ~= "adult" or not ctx.home or not hh or ctx.rain >= 2 or ctx.night then return end

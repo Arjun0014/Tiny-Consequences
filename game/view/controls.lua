@@ -104,7 +104,7 @@ function M.cast(W, sx, sy)
     end
     if best then
       local x, y = mapm.local_of(best, ux, uy, uz)
-      if d.id == "lightning" then
+      if d.id == "lightning" or d.id == "sickness" then
         local ex, ey = M.entity_xy(W, best, picking.pick(W, sx, sy))
         if ex then x, y = ex, ey end
       end

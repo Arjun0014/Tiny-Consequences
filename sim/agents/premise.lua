@@ -308,6 +308,18 @@ function M.named(W, name)
     table.sort(cand, function(a, b) if a[2] ~= b[2] then return a[2] < b[2] end return a[1] < b[1] end)
     for q = 1, math.min(6, #cand) do blaze.ignite(W, s, "tree", cand[q][1], V.now or W.hour, nil) end
     return #cand > 0
+  elseif name == "dry_day" then
+    -- (S23) a dry spell at Tekheim: its ground and the hills about it parched (a state a few rainless weeks
+    -- would make) - for lightning that may catch, and rain that falls on a drought
+    local s = V.settlements[1]
+    local g = W.grid
+    W.F.soil_water[s.cell] = 0.05
+    for k = 1, g.nbr_count[s.cell] do
+      local c = g.nbr[s.cell * 6 - 6 + k]
+      if W.geo.ocean[c] == 0 then W.F.soil_water[c] = 0.08 end
+    end
+    for _, q in ipairs(V.settlements) do q.wx = nil end
+    return true
   elseif name == "powers" then
     -- (S22) the v1 god powers cast at once over the world, through the `power` command as the game sends
     -- it (the browser and LuaJIT must live the same consequences): a bolt on Tekheim's square, rain over

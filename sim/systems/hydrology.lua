@@ -99,12 +99,15 @@ function sys.update(W)
       local out = evl[c] * k_es
       local s = old + inp - out
       if s < 0 then out = out + s; s = 0 end
-      local ro = quick
+      -- (S23, D-179) the soil loses only its own drainage; the rain it could not take in (`quick`)
+      -- never entered it and runs off on top (D-169 took it from the soil too: downpours dried it)
+      local ro = 0
       if s > fc then ro = ro + (s - fc) * k_run end
       local base = s * k_base
       ro = ro + base
       s = s - ro
       if s > 1 then ro = ro + s - 1; s = 1 end
+      ro = ro + quick
       soil[c] = s
       runoff[c] = ro
       flow[c] = ro

@@ -112,6 +112,12 @@ moment; animals face fire by its extent (`danger.fire_near`; tools `tools/v3_fir
 `test_v3_beasts_fire`); lightning takes exposed beasts; powers played with `tools/v3_power_matrix.lua` and
 `scripts/play_powers.mjs`; a mid-life save round trip is checked with `tools/v3_save_mid.lua`. Open: the hydrology fix
 in the session 22 handoff (verify first).
+Session 23 (D-179-D-183): the hydrology fix applied and verified; **clouds v5** (`game/view/clouds.lua`, `cloudvol.fp`: a cover
+map from the villages' own rain spells `weather.cell_day`, a full-screen march the camera flies through; `scripts/shots_clouds.mjs`;
+SwiftShader pays for it - functional web specs use `gfx=low`); the village mix (`audio.lua` `M.MIX`, `scripts/play_audio.mjs`);
+**chain reaction** - `sim/chain.lua` (an observer: what each cast caused, forward along real links; never writes W.S),
+`game/ui/actions.lua` ("Your actions"), "chain N" on news cards, `tools/v3_chain.lua`; **R7 v2 powers** (sickness in a herd with
+incubation and a carried cause, `sim/agents/blight.lua`, warm/cool sea, oil, meteor); every journey checks `p.nursing`.
 
 ## Read order
 

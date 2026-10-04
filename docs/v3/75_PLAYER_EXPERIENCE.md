@@ -89,3 +89,10 @@ per-village aggregation of everyday stories when the world is busy, tuning from 
 Session 22 (D-178): a story for every power cast (what it changed; rooted at YOU; repeated casts merged), a deed and
 story for culled animals, lightning stories that name what was struck (bolt icon until something catches), no "the
 fire is out" when nothing burned, lines as a woods fire grows, at most two everyday cards (`news.EVERYDAY_MAX`).
+
+## 10. The third question: what did I cause? (session 23, D-182)
+The news answers WHAT IS HAPPENING, "Why?" answers WHY; **Your actions** answers WHAT DID I CAUSE - each cast and
+the tree of its consequences, read forward along the same real links (`77_CHAIN_REACTION.md`, `sim/chain.lua`,
+`game/ui/actions.lua`). A pill at the bottom left ("Your actions 2") opens the list of casts (power, place, day,
+direct and downstream consequences, still unfolding); a cast opens its chain; every line goes there. A news card
+whose chain ends at YOU carries "chain N" - a click opens that cast's chain.

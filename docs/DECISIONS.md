@@ -1271,3 +1271,132 @@ Found and decided:
 6. **Aiming** works as played: clicking a goat in the open killed it; a sheep under a tree - the tree took the bolt and caught fire, the sheep lived; a cow - killed; a house - struck.
 7. **Found, not applied (first task next session)**: on daily planet steps (v3) the rain the ground cannot take in (`quick`, D-169) runs off but is also taken from the soil (`sim/systems/hydrology.lua`: `local ro = quick ... s = s - ro`), so every downpour dries the ground by its excess: under 3 x rain the soil fell 0.46 -> 0.33 while untouched it rose to 0.48; a cloudburst on a drought moved soil water only 0.10 -> 0.13 (0.10 -> 0.22 with the fix). The fix (soil loses only its own drainage; `ro = ro + quick` after `s = s - ro`) changes the untouched world (wetter soils after storms) and drifted two statistical tests (`wild_animals_belong_to_their_herds`: hunts in the window; `animals_are_individuals`: wolves' simultaneous stops 25% > 20%) - it needs the full suite, the flood tests, an 8-year run and the browser hashes, so it was left out of this session's commits.
 Checks: quick suite 194/194 at 47b2cac; after: all v3 unit tests green (with the hydrology fix reverted), browser = LuaJIT with `--premise powers` (96 h).
+
+## D-179 · 2026-10-04 · Hydrology: the rain the ground cannot take in runs off without leaving the soil twice; what the drifting tests showed; a newborn left at home (session 23)
+Context (D-178 7): since D-169, on daily planet steps the infiltration excess (`quick`) was counted as runoff and also
+subtracted from the soil (`local ro = quick ... s = s - ro`), so every downpour dried the ground by its excess.
+Decision (`sim/systems/hydrology.lua`): the soil loses only its own drainage; `quick` is added to the runoff after
+(`ro = ro + quick`). v2 (weekly steps) unchanged (`quick` is always 0 there).
+Measured: the god's rain on a parched village (soil 0.10 around Little Leelee, day 30): soil 0.10 -> 0.20 and the growing
+fields drinking it (D-178 measured 0.10 -> 0.13 with the bug); rain on wet hills over Krikeivorn: the river at 8x its
+usual, over its banks (the soil, already soaked, stays so). Untouched planet 192 days (planet systems only,
+`out/s23/probe_hydro.lua`): the land's mean soil water 0.352 without infiltration excess (before D-169), **0.287 with the
+bug (-18%)**, 0.312 with the fix (the rest is real overland runoff); at the six villages soil and flows are within 1-2%
+of each other in all three (D-169's "within 1-4%" was measured at the villages only, with the bug).
+**Following the two drifting tests** (not widening them blindly):
+1. `animals_are_individuals` (wolves' simultaneous stops 14% -> 25%): the wetter course put a pack's kill on the far side
+   of a river; the wolves following the leader could not reach the kill (`go_to` without a way round failed), "waited
+   their turn" where they stood and then **ate at the kill from 0.5 units away**, all stopping at the moment of the kill.
+   Fixed (`sim/agents/wild.lua`): the way to the kill is found round a river or a building; a wolf with no way to it is
+   "Cut off from the kill" and does not eat. Back to 14% mass stops, mass starts 15% -> 6%.
+2. `wild_animals_belong_to_their_herds` (animals hunted 3 -> 1 in six days): hunting works as designed - about ten
+   spears thrown at wild animals in the window and one kill in five throws (~0.4 kills a day over the six villages);
+   two or more kills in six days fails a third of the time under any change of the world's course (a small number).
+   Test change: spears thrown >= 6 (the hunters' stalking to a throw) and at least one kill with its meat carried home.
+**Found by the 8-year untouched run** (`tools/v3_chronicle.lua --days 384`): a mother two days after giving birth walked
+to her kin at Zurug to ask for food; her newborn, lying at home, starved. `ask_kin_candidate` checked only that she was
+not holding the baby; every other journey already checked `p.nursing`. Fixed there and for the fair's crier
+(`sim/agents/think.lua`); another grown-up of the household goes.
+Checks: full quick suite, flood tests (peak 4,075 tiles as before), `test_v3_powers`, web, the browser = LuaJIT on the
+release build (untouched and the premises flood5, conflict, fire, powers, pasture_fire), an 8-year untouched run, profiles
+- numbers in PROGRESS (session 23).
+
+## D-180 · 2026-10-04 · Clouds v5: one cloud layer the camera flies through, made from the weather the villages live (session 23)
+Context (Arjun): the clouds were obvious blocky puffs distributed over the world, and zooming into a village never
+entered a cloud. Audit: every puff was an opaque ray-traced spheroid (cotton balls laid on the world); close in, a hole
+was cut through them around the focus; the cover came from the v2 weather days, not from the rain the v3 villages live
+(three hours after the god's rain on Tekheim the village was in a downpour under a clear sky).
+Decision (`game/view/clouds.lua`, `game/render/shaders/cloudvol.fp/.vp`, `cloudshell.fp/.vp`, `cloudvol.material`,
+`cloudshell.material`, render script; doc `docs/world/16_CAUSALITY_VISUALS.md` §5b):
+1. **Weather -> cover**: an equirect cover map (128 x 64, two time slices blended on the GPU) from each planet cell's
+   weather: the villages' own rain spells (`sim/agents/weather.lua` `cell_day`: one pure draw, shared with the village
+   on that cell - the refactor leaves every village's weather identical, state hashes equal), the god's rain and dry
+   spells from the cast, the day's humidity between spells. Cover gathers over the three hours before a spell, is full
+   while it rains, thins after; a downpour darker and taller. A clear cell never gets cloud.
+2. **The layer**: a full-screen pass marching each view ray through the layer between the lowest base and the highest
+   top found at fixed distances along the ray (24 samples, adaptive: 14 or 8 when frames are slow; `?cloudq=N` fixes it;
+   rays over clear sky end at once); cover-eroded wind-carried noise (iq's packed 2D noise texture, two advection phases
+   so the latitude shear never builds up); flat bases above the highest ground about each place, heaped tops, thick and
+   thin places inside; sun through the cloud above, sky light, storms blue-grey, moonlit at night, the limb haze; it
+   writes the depth of its front; drawn after the transparent effects (smoke and rain under a deck are hidden by it).
+3. **Flying through**: the march starts at the eye inside the layer (finer samples near it, the mist thinned close by):
+   from above the deck fills the view, inside grey mist with rain, the village fading in through the deck's floor, under
+   it the village under its cloud (overcast light). No cut-away.
+4. **Shadows**: a sphere at the layer's middle drawn from the sun writes the same cloud into the shadow map's cover.
+5. **Cost**: on this laptop's GPU (AMD Radeon integrated, ANGLE D3D11, `out/s23/probe_gpu.mjs`) frame times with and
+   without the layer are the same (16.7 ms at the planet and mid zoom; close in 50-67 ms either way: the debug build's
+   scene). Under SwiftShader the march costs about half a second a frame on a planet covered with cloud: the functional
+   web spec W02-lite now runs with `gfx=low` like the others (it timed out waiting for a reply).
+Shots before/after (same state, `scripts/shots_clouds.mjs`, `out/shots/clouds/before_after.png`): planet, mid-altitude,
+over the layer, entering, inside, coming out under it, below the deck, the village.
+
+## D-181 · 2026-10-04 · The village's sound: the herds are texture, not a livestock recording (session 23)
+Context (Arjun): close in, animal calls were far too loud and took over. Measured (`scripts/play_audio.mjs`, the mixer's
+own output at the watch speed; the old build with the same accounting): at the flock close in the herd bed played at
+0.44, as loud as the village bed; among the flock 88% of one-shot energy was beasts.
+Decision (`game/audio/audio.lua` `M.MIX`, doc `80_WORLD_AUDIO.md` §9): a hierarchy - a danger near 1.0 > work 0.8, water
+and weather > the village's hum 0.65 > dogs 0.6 (a bark is always a real alarm) > wild 0.55 > the herds 0.3. The herds are
+mostly their bed (log of the beasts near, under the village bed, ducked by half while a danger is near); calls are rare
+and near (one beast at a time over all herds, 2.8 s apart at least, a few a minute from a big flock, heard within 0.75
+with a steep fall-off, drawn from the beasts actually near the listener); one beast right under the camera at the
+closest zoom may be heard for itself; a herd crying out at a fire (the sim's cry) is loud and often. After: the herd bed
+0.14 (village bed 0.41-0.54); work carries the square. The world is untouched by this.
+
+## D-182 · 2026-10-04 · Chain reaction: what did my action cause? (session 23)
+Decision (`docs/v3/77_CHAIN_REACTION.md`; `sim/chain.lua`, `game/ui/actions.lua`, `game/ui/newsfeed.lua`, bridge
+`actions`, `tools/v3_chain.lua`, `tools/v3_chain_dump.lua`, `scripts/shots_chain.mjs`, test `test_v3_chain` x3):
+1. **An observer, like the news**: interventions are the player's root events; every new event whose root is one, and
+   every new deed whose answers / cause / event lead to one, is a node under the node of what it links to; live state is
+   joined only by real links - the planet's blame tags on a village's soil, river and air, the growing fields on soil that
+   carries the cast's mark (`settle.grow_plots` makes the yield of that water), fires on the maps by the deed that lit each
+   burning thing (`f.deed`; trees leave no deed), the wild herds and packs carrying a cull's or a bring's mark (one way
+   only: deer released by a wolf cull that grew, wolves whose deer were culled that fell), households leaving or founding
+   for a cause that is a node, households lodged or at the edge of hunger whose heaviest harm (`deeds.top_harm`) is one.
+   Records of one incident are one node (a fire's trees, fields and houses; a flood's drowned fields under the river that
+   rose). It never writes W.S (tested: the state hash is unchanged by reading).
+2. **The player's view**: "Your actions" (a pill at the bottom left) lists the casts with their consequences (direct and
+   in all, still unfolding); a cast opens its tree, every line goes there (camera and selection); news cards rooted at YOU
+   carry "chain N".
+3. **Causal records the sim lacked** (written where the act happens, as deeds already carry their events): the cull keeps
+   how many it killed on its own event (`data.killed`); a beast lost to wolves carries the cause its pack bears (`event` =
+   the pack's blame tag: a pack the god brought); a death answers the harm that hurt the person only when the hurt was
+   grave (it raised the hazard) or is the cause of death (an old man scratched days ago dies of age, not of the scratch).
+Seen (shots): a bolt by Tekheim's houses on a dry day -> "The bolt struck a tree at Tekheim -> Fire at Tekheim: 2 trees,
+a field caught fire; a field burnt"; rain on the parched ground after it -> "The river at Tekheim ran high -> Flood at
+Tekheim" and "The soil at Tekheim watered (0.05 -> 0.11) -> The growing fields of Tekheim drank it". The same rain on a
+drought and on a wet floodplain gives different chains (test).
+Not yet: relief and kin help with food joined to the harm that made the need; trade carrying a god's sickness (R7 v2).
+
+## D-183 · 2026-10-04 · R7 v2 god powers on the v3 world: sickness in a herd, blight, warm or cool sea, oil, meteor (session 23)
+Each writes physical state with the cast as its cause and nothing else (doc 70 §9; `sim/powers3.lua`, `sim/agents/blight.lua`,
+`sim/agents/stock.lua`, `game/ui/powers.lua` DEFS_V3, `sim/chain.lua`, `sim/news.lua`; test `test_v3_powers2` x4):
+1. **Sickness in a herd**: the herd's own sickness gained an incubation (`a.sick_inc`: caught, carried unseen for `sick_inc`
+   2-4 days while the beast is sold, droven or penned with others, passing it on at half; then shown for `sick_days`) and
+   a cause carried from beast to beast (`a.sick_ev`: a new infection takes the cause of the infected beasts when their
+   share of the pressure beats the land's own). Beasts dead of a caused sickness are a deed of the herd's owners each day
+   (`sickness`, with its event). The power gives it to the beast aimed at and the two of its herd nearest it. Seen: 3
+   seeded at Tekheim's flock -> 15 had carried it after 8 days (7 showing), a death. (The incubation is the herd's
+   natural sickness too: the untouched world changes - checked by the long run.)
+2. **Blight** (`sim/agents/blight.lua`): severity on a growing field (`pl.blight`, cause `pl.blight_ev`), worse on mild wet
+   days (10-27 C, by the soil's wet and the rain), held back by dry heat or cold; the yield it takes as the corn fills
+   (`settle.grow_plots` x (1 - 0.85 x severity)); the wind takes it to fields within 0.35 by severity, nearness and wet;
+   the sheaves of a blighted field taint the village's grain (`s.seed_blight`: the share and the cause) and a row sown
+   from it may start it anew; the owners see it from 0.2 (memory, a `blight` deed). Seen: the same cast on Tekheim's
+   field in a wet week 0.12 -> 0.21, on parched ground 0.12 -> 0.07. Not done: grain carried in trade taking the taint
+   with it.
+3. **Warm or cool the sea**: a heat or chill forcing on the sea cells about the point only (`v3_sea_k` 4 C for 16 days;
+   the surface follows the forced air at once - sim/powers.lua), the fish answering by the ocean's own window of warmth.
+   Seen: the sea off Zurug 27.9 -> 31.7 C, carrying the cast (past the fish's heat limit: a die-off follows by the
+   ocean's rules, not by the power).
+4. **Oil**: the planet's own slick (v2's: spilled where aimed or a tanker sunk; currents carry it; it kills fish; it comes
+   ashore). Not done: shore gathering and gulls fouled on the village maps.
+5. **Meteor**: a compound physical shock - the v2 meteor's planet part (heat and fire on the land about it, the wild
+   beasts in the blast, sulphur in the sky), a quake of the impact (`shake.quake`, the cast as cause: felt by distance
+   like any quake), the impact's wave at sea (`tsunami.raise`), and on a village's map near it the blast at the point:
+   an `impact` deed, trees and roofs alight, what stands nearest knocked down (`shake.fall_in`), those near thrown down and
+   burnt. Seen: by Tekheim -> the blast, the quake, fire, the heat, dust in the sky, five households lodged after their
+   houses fell.
+Every new power's consequences reach the chain-reaction view (sickness carried and the beasts it killed, blighted fields
+and tainted grain, the sea's warmth and its fish, oil off a village, the meteor's records and dust) and the news
+(sickness among the beasts, blight in the corn, fire from the sky; what each cast changed at once).
+

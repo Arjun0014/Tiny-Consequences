@@ -754,8 +754,11 @@ local function kill(W, s, wolf, pr, now)
     -- (S20, R6f) a loss at the pens, remembered as a deed (by no one: wolves) - the losses a fold wall
     -- would answer are read from these and from takings alike
     local deeds = require("sim.agents.deeds")
+    -- (S23) the cause the pack carries (a pack the god brought, or one whose fortunes another event made:
+    -- fauna's own blame), so what the wolves did traces to it
+    local ptag = pi and W.S.wild.p_tag[pi] or 0
     local d = deeds.add(W, { kind = "lost", t = now, at = s.id, x = x, y = y, by = 0, by_hh = 0, by_s = 0, to = 0,
-      to_hh = o.owner or 0, to_s = s.id, what = o.sp, n = 1, fu = meat, harm = true, wolves = true })
+      to_hh = o.owner or 0, to_s = s.id, what = o.sp, n = 1, fu = meat, harm = true, wolves = true, event = ptag ~= 0 and ptag or nil })
     deeds.learn(W, s, d, "wolves in the night", 0, 0, now)
   end
   s.wildlife.carcasses[#s.wildlife.carcasses + 1] = { x = x, y = y, sp = o.sp, t = now, meat = meat * c.carcass_left, by = "wolves" }
@@ -1076,12 +1079,19 @@ function M.step(W, s, w, now)
       local d = sqrt(dsq(fx - w.tx) + dsq(fy - w.ty))
       local turn = lead.t0 + 0.1 + 0.07 * max(0, w.k - lead.k - 1) * (0.7 + 0.6 * stock.trait(w, stock.T_ALERT))
       if w.feed_of ~= lead.t0 then w.feed_of, w.fang = lead.t0, u(W, s, w, now, 3) * 6.2832 end
+      -- (S23) the way to the kill is found round a river or a building (it went on with the leader's
+      -- chase on the far side); a wolf with no way to it does not eat from where it stands
       if now < turn then
         local wr = 0.07 + 0.04 * stock.trait(w, stock.T_BOLD)
         local wx, wy = fx + wr * cos(w.fang), fy + wr * sin(w.fang)
         if dsq(wx - w.tx) + dsq(wy - w.ty) > 0.0004 then
           w.why = "Coming to the kill"
-          if go_to(s, w, now, wx, wy, S.speed * 1.4, "walk") then return end
+          if go_to(s, w, now, wx, wy, S.speed * 1.4, "walk", true) then return end
+          if d > 0.15 then
+            w.why = "Cut off from the kill"
+            stand(w, now, "rest", 0.2 + 0.1 * u(W, s, w, now, 11))
+            return
+          end
         end
         w.why = "Waiting its turn at the kill"
         stand(w, now, "rest", min(turn - now, 0.05 + 0.1 * u(W, s, w, now, 11)))
@@ -1089,7 +1099,12 @@ function M.step(W, s, w, now)
       end
       if d > 0.035 then
         w.why = "In to eat at the kill"
-        if go_to(s, w, now, fx + 0.025 * cos(w.fang), fy + 0.025 * sin(w.fang), S.speed * 1.2, "walk") then return end
+        if go_to(s, w, now, fx + 0.025 * cos(w.fang), fy + 0.025 * sin(w.fang), S.speed * 1.2, "walk", true) then return end
+        if d > 0.15 then
+          w.why = "Cut off from the kill"
+          stand(w, now, "rest", 0.2 + 0.1 * u(W, s, w, now, 11))
+          return
+        end
       end
       w.why = "Eating at the kill"
       stand(w, now, "eat", c.wolf_eat_h * (0.6 + 0.5 * u(W, s, w, now, 4)))

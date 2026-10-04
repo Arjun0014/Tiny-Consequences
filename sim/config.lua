@@ -756,6 +756,11 @@ C.POWERS = {
   radius = 2, introduce_radius = 1,       -- level-4 steps
   season_ticks = 12,                      -- Weather / Temperature last one season
   deluge_mult = 2.5, deluge_add = 0.04,   -- forced rain: precip x mult + add (moisture units per tick)
+  -- (S23, R7 v2) sickness in a herd: beasts of the herd nearest the aim that catch it (they carry it
+  -- unseen for a day or two, then show it); warm / cool sea: degrees on the water about the point, days;
+  -- meteor on the v3 world: the quake of the impact, the blast and the fire about the point on a map
+  v3_sick_n = 3, v3_sea_k = 4, v3_sea_days = 16, v3_meteor_mag = 6.2, v3_meteor_wave = 3,
+  v3_meteor_blast = 0.32, v3_meteor_fire = 0.5, v3_meteor_hurt = 0.9,
   v3_burst_h = 3,                         -- (S22) a god's rain on a village begins when cast: a downpour this many hours
   drought_mult = 0.05, drought_heat = 3,  -- drought: rain blocked, +3 °C heat anomaly (drier soil)
   temp_anom = 6,                          -- Heat / Chill: ± °C heat anomaly held for the season
@@ -958,7 +963,13 @@ C.V3 = {
   spoil_milk = 0.5, spoil_cheese = 0.003, -- share spoiled a day
   scrap_share = 0.7,                      -- of what spoils at home, the share that is pig food
   slop_min = 0.4, slop_feed = 3.0,        -- scraps worth a trip to the sty; a pig's hunger units an FU of scraps feeds
-  sick_base = 0.004, sick_spread = 0.25, sick_recover = 0.18, sick_days = 6, sick_harm = 0.004,   -- livestock sickness (a day; health an hour)
+  sick_base = 0.004, sick_spread = 0.25, sick_recover = 0.18, sick_days = 6, sick_harm = 0.004,
+  sick_inc = { 2, 4 },
+  -- (S23, R7 v2) blight in a field's corn: worse with mild wet days (between tmin and tmax), the yield it takes,
+  -- seen by the owners from `seen`, carried by the wind `reach` (map units) at `spread`, in seed grain at `seed`;
+  -- the god's blight starts at `cast`
+  blight_tmin = 10, blight_tmax = 27, blight_grow = 0.12, blight_harm = 0.85, blight_seen = 0.2, blight_reach = 0.35,
+  blight_spread = 0.25, blight_seed = 0.6, blight_cast = 0.12,    -- (S23) days a beast carries a sickness unseen (and passes it on at half) before it shows   -- livestock sickness (a day; health an hour)
   -- wild animals on the map (D-093): per species walking and running speed (units an hour),
   -- spacing in a band, FU of meat, hides
   wild = {

@@ -1249,10 +1249,23 @@ function M.herd_daily(W, s, H, day, doy, year, now, push)
     local x, y = M.pick_spot(W, s, H, now, c.pig_roam)
     H.roam_x, H.roam_y = x, y
   end
-  -- sickness spreads in a pen: the share already sick, crowding, wet days
-  local sick = 0
-  for i = 1, m do if (L[ord[i]].sick or 0) > 0 then sick = sick + 1 end end
+  -- sickness spreads in a pen: the share already sick (and, at half, those carrying it unseen - S23: a
+  -- beast catches it days before it shows, and is sold, droven or penned with others meanwhile), crowding,
+  -- wet days. A sickness carries its cause from beast to beast (`sick_ev`: the god's, when the god seeded it)
+  local sick, inc, tload, tev = 0, 0, 0, nil
+  for i = 1, m do
+    local a = L[ord[i]]
+    if (a.sick or 0) > 0 then
+      sick = sick + 1
+      if a.sick_ev then tload, tev = tload + 1, tev or a.sick_ev end
+    elseif (a.sick_inc or 0) > 0 then
+      inc = inc + 1
+      if a.sick_ev then tload, tev = tload + 0.5, tev or a.sick_ev end
+    end
+  end
   H.sick = sick
+  local load = sick + 0.5 * inc
+  local dead_ev
   local pen = s.buildings[H.pen]
   local crowd = pen and m / max(1, pen.w * pen.h * 0.8) or 0
   local wet = (s.rain_now or 0) > 0 and 1 or 0
@@ -1265,17 +1278,28 @@ function M.herd_daily(W, s, H, day, doy, year, now, push)
       if S.wool then a.wool = min(c.wool_max, (a.wool or 0) + S.wool * (age > S.young_years and 1 or 0.3)) end
       -- in milk until she dries off; nothing left in the udder of a dry beast
       if (a.lact or 0) > 0 and a.lact <= now then a.lact = 0; a.milk = 0 end
-      -- sickness: catching it (the sick in the pen, crowding, wet, hunger), recovering or not
+      -- sickness: catching it (the sick in the pen, crowding, wet, hunger), carrying it unseen for a few
+      -- days, showing it, recovering or not
       local v = rng.float(W.seed, rng.S.V3_LIFE, key, day, 30)
       if (a.sick or 0) > 0 then
         a.sick = a.sick - 1
         if v < c.sick_recover then a.sick = 0 end
-      else
-        local pz = c.sick_base * (1 + crowd) * (1 + wet) * (a.hunger > 0.7 and 2 or 1) + c.sick_spread * sick / max(1, m)
-        if v < pz then
+        if a.sick <= 0 then a.sick_ev = nil end
+      elseif (a.sick_inc or 0) > 0 then
+        a.sick_inc = a.sick_inc - 1
+        if a.sick_inc <= 0 then
+          a.sick_inc = nil
           a.sick = c.sick_days
           H.sick = H.sick + 1
           s.acc.stock_sick = (s.acc.stock_sick or 0) + 1
+        end
+      else
+        local base = c.sick_base * (1 + crowd) * (1 + wet) * (a.hunger > 0.7 and 2 or 1)
+        local pz = base + c.sick_spread * load / max(1, m)
+        if v < pz then
+          a.sick_inc = c.sick_inc[1] + floor((c.sick_inc[2] - c.sick_inc[1] + 1) * rng.float(W.seed, rng.S.V3_LIFE, key, day, 36))
+          -- (caught from beasts that bear a cause, when they made more of the pressure than the land's own)
+          if tev and c.sick_spread * tload / max(1, m) > base then a.sick_ev = tev end
         end
       end
       -- deaths: old age, hunger, sickness
@@ -1287,6 +1311,13 @@ function M.herd_daily(W, s, H, day, doy, year, now, push)
         a.died = now
         a.cause = (a.sick or 0) > 0 and "sickness" or (a.hunger >= 0.9 and "hunger" or "age")
         s.acc.stock_died = (s.acc.stock_died or 0) + 1
+        -- (S23) a death of a sickness that bears a cause: the herd's deed of the day (below)
+        if a.cause == "sickness" and a.sick_ev then
+          dead_ev = dead_ev or {}
+          local e = dead_ev[a.sick_ev]
+          if not e then e = { n = 0, owner = a.owner or 0, sp = a.sp, x = a.tx, y = a.ty }; dead_ev[a.sick_ev] = e; dead_ev[#dead_ev + 1] = a.sick_ev end
+          e.n = e.n + 1
+        end
         s.acc["died_" .. a.sp] = (s.acc["died_" .. a.sp] or 0) + 1
       elseif a.sex == "f" and not a.cull and age >= S.adult_years and a.bred ~= year and M.breeding(S, doy) and M.has_sire(H, a, now) then
         -- births in their season (a dam in good condition): a lamb, a kid, a calf, a litter
@@ -1311,6 +1342,18 @@ function M.herd_daily(W, s, H, day, doy, year, now, push)
           if S.milk then a.lact = now + S.lact_days * 24; a.milk = 0 end
         end
       end
+    end
+  end
+  -- (S23) the beasts a caused sickness killed today: one deed of the herd for each cause (the owners' loss,
+  -- the cause carried: the god's sickness, traced in the chain of what the god did)
+  if dead_ev then
+    local deeds = require("sim.agents.deeds")
+    for i = 1, #dead_ev do
+      local ev = dead_ev[i]
+      local e = dead_ev[ev]
+      local d = deeds.add(W, { kind = "sickness", t = now, at = s.id, x = e.x, y = e.y, by = 0, by_hh = 0, by_s = 0, to = 0,
+        to_hh = e.owner, to_s = s.id, what = e.sp, n = e.n, fu = e.n * (SP(e.sp).meat or 5), harm = true, event = ev })
+      deeds.learn(W, s, d, "the sickness in the herd", 0, 0, now)
     end
   end
 end

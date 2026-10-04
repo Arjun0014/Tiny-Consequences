@@ -20,14 +20,6 @@ materials {
   material: "/game/render/shadow_animal.material"
 }
 materials {
-  name: "shadow_cloud"
-  material: "/game/render/shadow_cloud.material"
-}
-materials {
-  name: "cloud_edge"
-  material: "/game/render/cloud_edge.material"
-}
-materials {
   name: "post_down"
   material: "/game/render/post_down.material"
 }

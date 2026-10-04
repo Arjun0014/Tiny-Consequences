@@ -68,3 +68,20 @@ First library: 16 beds, 23 actions in 2-3 takes, 5 cues - 71 files, 3.4 MB.
 - Fire is much louder the nearer it is; a big fire near adds the roaring bed.
 - A herd calls a few times a minute by its size (not every 1.6 s); while it cries at a fire (`H.fire_cry`) it calls
   often and louder.
+
+## 9. The village mix (session 23, D-181)
+Arjun: close in, the animals took over - like standing inside a livestock recording. The mix, not the world,
+was wrong: the herd bed played as loud as the village's own bed, and a call came every few seconds from any
+beast within a wide radius. Now (`game/audio/audio.lua` `M.MIX`):
+- **Hierarchy** close in: a danger near (fire, shouts, thunder, a quake, a house falling) 1.0 > work near (axe,
+  hammer, hoe, pick, oars) 0.8 and water and weather > the village's own hum 0.65 > dogs 0.6 (a dog barks only
+  at wolves or a stranger: always a real alarm) > wild 0.55 > **the herds 0.3**.
+- **The herds are mostly their bed**: soft, scaled by the log of the beasts near (texture, not a count), under
+  the village bed; ducked by half while a danger is near.
+- **Calls are rare and near**: one beast at a time over all the herds (`M.BEAST_GAP` 2.8 s), a few a minute
+  from a big flock, heard only within `M.BEAST_R` 0.75 with a steep fall-off; one right under the camera at the
+  closest zoom may be heard for itself. While the herd cries out at a fire (the sim's own cry) the calls are
+  loud and often - the world justifies it.
+- **Measured** (`scripts/play_audio.mjs`: what the mixer plays, headless, at watch speed): at the flock close
+  in the herd bed 0.44 -> 0.14 (under the village bed 0.41-0.54); among the flock the beasts' share of one-shot
+  energy 88% -> rare; at the square the work carries it.

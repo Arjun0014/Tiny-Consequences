@@ -55,6 +55,10 @@ function M.build(self)
     c.ago = ui.text(c.node, CW / 2 - 10, 13, "", "nunito_semi", 11, C.muted, gui.PIVOT_E)
     c.badge = ui.box(c.node, CW / 2 - 32, -11, 52, 17, "pill_s", C.teal)
     c.badge_t = ui.text(c.badge, 0, 0, "", "fredoka", 10.5, C.white, gui.PIVOT_CENTER)
+    -- (S23) for a story rooted at YOU: its cast's chain - all that cast has caused so far (game/ui/actions.lua)
+    c.chain = ui.box(c.node, CW / 2 - 92, -11, 62, 17, "pill_s", vmath.vector4(0.30, 0.25, 0.38, 1))
+    c.chain_t = ui.text(c.chain, 0, 0, "", "fredoka", 10.5, C.gold, gui.PIVOT_CENTER)
+    gui.set_enabled(c.chain, false)
     c.y = y
     F.cards[i] = c
     gui.set_enabled(c.node, false)
@@ -76,6 +80,13 @@ end
 function M.update(self, W, now, dt)
   local F = self.news
   if not F or not W or not W.v3 then return end
+  -- (S23) "Your actions" open in the same column: the cards step aside
+  if M.hidden then
+    for _, c in ipairs(F.cards) do gui.set_enabled(c.node, false); gui.set_enabled(c.sh, false) end
+    gui.set_enabled(F.why, false)
+    F.sig, F.t = nil, 1
+    return
+  end
   F.t = (F.t or 0) + dt
   F.pulse = (F.pulse or 0) + dt
   -- (the stories are read five times a second; the pulse and hover every frame)
@@ -108,7 +119,16 @@ function M.update(self, W, now, dt)
   end
   F.primed = true
   local sig = #cards
-  for _, st in ipairs(cards) do sig = sig * 31 + st.id * 7 + #st.lines * 3 + (st.active and 1 or 0) + math.floor((now - st.t1) / 6) end
+  local chain = require("sim.chain")
+  for _, st in ipairs(cards) do
+    sig = sig * 31 + st.id * 7 + #st.lines * 3 + (st.active and 1 or 0) + math.floor((now - st.t1) / 6)
+    -- (S23) a chain that grew
+    if st.root == "you" or not st.root then
+      local rev = news.chain(W, st).root_ev
+      local I = rev and chain.get(W, rev)
+      if I then sig = sig + I.n_total * 131 end
+    end
+  end
   F.list = cards
   for i, c in ipairs(F.cards) do
     local st = cards[i]
@@ -120,12 +140,19 @@ function M.update(self, W, now, dt)
       if sig ~= F.sig then
         ui.set_icon(c.icon, st.icon or "info")
         gui.set_text(c.title, trunc("fredoka", st.title or "", 15, M.CW - 84))
-        gui.set_text(c.line, trunc("nunito_semi", st.line or "", 12.5, M.CW - 120))
+        local ch = news.chain(W, st)
+        local I = ch.root_ev and require("sim.chain").get(W, ch.root_ev)
+        local has_chain = I ~= nil and I.n_total > 0
+        gui.set_text(c.line, trunc("nunito_semi", st.line or "", 12.5, M.CW - (has_chain and 186 or 120)))
         gui.set_text(c.ago, ago(now - st.t1))
         gui.set_color(c.stripe, LEVEL_C[st.level] or LEVEL_C[2])
-        local root = st.root or news.chain(W, st).root
+        local root = st.root or ch.root
         gui.set_color(c.badge, ROOT_C[root] or C.teal)
         gui.set_text(c.badge_t, ROOT_T[root] or "NATURE")
+        -- (S23) the chain of the cast at its root: how many consequences so far
+        c.chain_ev = has_chain and I.ev or nil
+        gui.set_enabled(c.chain, c.chain_ev ~= nil)
+        if I then gui.set_text(c.chain_t, string.format("chain %d", I.n_total)) end
       end
       gui.set_enabled(c.dot, st.active and st.level == 1)
       if st.active and st.level == 1 then
@@ -179,8 +206,13 @@ end
 function M.hit(self, x, y)
   local F = self.news
   if not F then return nil end
+  if M.hidden then return nil end
   for _, c in ipairs(F.cards) do
     if c.st and gui.is_enabled(c.node) then
+      if c.chain_ev and gui.is_enabled(c.chain) and gui.pick_node(c.chain, x, y) then
+        c.chain_hit = c.chain_hit or { news_chain = c }
+        return c.chain_hit
+      end
       if gui.pick_node(c.badge, x, y) then
         c.badge_hit = c.badge_hit or { news_why = c }
         return c.badge_hit

@@ -317,6 +317,7 @@ WORK.sow = function(W, s, p, st, f)
     s.acc.seed = (s.acc.seed or 0) + c.seed_row
     if p.camt <= 0.001 then p.carry, p.camt = "", 0 end
     if pl.stage == "fallow" then pl.stage = "growing"; pl.sown_day = floor(W.hour / 24); pl.growth = 0; pl.weeds = 0; pl.q_sum, pl.q_n = 0, 0; pl.frost = nil end
+    if s.seed_blight then require("sim.agents.blight").on_sow(W, s, st.ref, st.row, W.hour) end   -- (S23, R7 v2)
   end
   people.practice(p, "sk_farm", st.dur * f)
 end
@@ -345,6 +346,7 @@ WORK.harvest = function(W, s, p, st, f)
       local y = C().row_yield * pl.quality * (pl.spoil or 1)
       pl.sheaves = pl.sheaves + y
       s.acc.harvest = (s.acc.harvest or 0) + y
+      if pl.blight then require("sim.agents.blight").on_harvest(W, s, pl, y) end   -- (S23, R7 v2)
     end
   end
   people.practice(p, "sk_farm", st.dur * f)

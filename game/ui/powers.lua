@@ -49,6 +49,17 @@ M.DEFS_V3 = {
   { id = "bring", icon = "paw", name = "Bring", cooldown = 5, radius = 1,
     species = { { id = "deer", icon = "deer", name = "deer" }, { id = "wolves", icon = "wolf", name = "wolves" }, { id = "fish", icon = "fish", name = "fish" } },
     tip = "Bring: a herd of deer, a pack of wolves, or a shoal of fish here" },
+  -- (S23, R7 v2)
+  { id = "sickness", icon = "bubble", name = "Sickness in a herd", cooldown = 6, radius = 0,
+    tip = "Sickness in a herd: a few beasts of the herd you aim at catch a sickness - it shows in a day or two" },
+  { id = "blight", icon = "blight", name = "Blight", cooldown = 6, radius = 0,
+    tip = "Blight: a plant sickness in the growing field you aim at" },
+  { id = "sea", icon = "wave", name = "Warm or cool the sea", cooldown = 6, radius = 2,
+    modes = { { id = "warm", icon = "heat", name = "warm" }, { id = "cool", icon = "chill", name = "cool" } },
+    tip = "Warm or cool the sea: the water here 4 degrees warmer or cooler for sixteen days" },
+  { id = "oil", icon = "oil", name = "Oil", cooldown = 8, radius = 0, tip = "Oil: a slick on the sea here - the currents carry it" },
+  { id = "meteor", icon = "meteor", name = "Meteor", cooldown = 20, radius = 2,
+    tip = "Meteor: a rock from the sky here - heat, fire, the ground shaken, dust in the air; a wave if it falls in the sea" },
 }
 M.DEFS_V2 = M.DEFS
 M.BY_ID = {}
@@ -131,6 +142,15 @@ function M.cast(W, id, cell, opts)
       if sp == "fish" and not ocean then return refuse("Fish need the sea") end
       if sp ~= "fish" and ocean then return refuse("Wild beasts need land") end
     end
+    -- (S23, R7 v2) what each needs: a herd, a field, the sea
+    if id == "oil" and not ocean then return refuse("Oil goes on the sea") end
+    if id == "sea" then
+      local any = ocean
+      local g = W.grid
+      for k = 1, g.nbr_count[cell] do if W.geo.ocean[g.nbr[cell * 6 - 6 + k]] == 1 then any = true end end
+      if not any then return refuse("Aim at the sea") end
+    end
+    if (id == "sickness" or id == "blight") and not opts.sid then return refuse("Come close to a village and aim at its " .. (id == "blight" and "fields" or "herds")) end
     require("sim.world").command(W, "power", p)
     if M.on_cast then M.on_cast(W, id, cell, p) end
     do local ok, audio = pcall(require, "game.audio.audio"); if ok and audio.ui then audio.ui("ui_power") end end

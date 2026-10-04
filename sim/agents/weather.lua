@@ -9,35 +9,43 @@ local rng = require("sim.rng")
 local M = {}
 local floor = math.floor
 
-local function compute(W, s, day)
-  local c = s.cell
+-- (S23) The day's rain spells of planet cell c - a pure function of the world (nothing is written but `wx`):
+-- the draw a village on c lives by, and what the clouds over c show (game/view/clouds.lua).
+--   wx.day, wx.P, wx.T, wx.wet, wx.n, wx.a[k], wx.b[k], wx.heavy[k] (k <= n)
+function M.cell_day(W, c, day, wx)
   local P = W.F.precip[c] or 0
   local T = W.F.temp[c] or 10
   local wd = cfgmod.WEATHER_DAY
-  local wx = s.wx
-  if not wx then wx = { a = {}, b = {}, heavy = {} }; s.wx = wx end
   wx.day, wx.P, wx.T = day, P, T
   local base = rng.hash(W.seed, rng.S.V3_WEATHER, c, day, 0)
-  local function u(k) return rng.fbase(base, k) end
   local pw = P / wd.wet_week
   if pw > 1.6 then pw = 1.6 elseif pw < 0 then pw = 0 end
   local pwet = 0.12 + 0.62 * pw
   if pwet > 0.92 then pwet = 0.92 end
-  wx.wet = P > 0.002 and u(1) < pwet
+  wx.wet = P > 0.002 and rng.fbase(base, 1) < pwet
   wx.n = 0
   if wx.wet then
     local n = 1
-    if u(2) < 0.25 + 0.3 * pw then n = 2 end
-    local heavy_day = P >= wd.storm_day * 1.2 and u(3) < 0.55
+    if rng.fbase(base, 2) < 0.25 + 0.3 * pw then n = 2 end
+    local heavy_day = P >= wd.storm_day * 1.2 and rng.fbase(base, 3) < 0.55
     for k = 1, n do
-      local start = 24 * day + 24 * u(10 + k)
-      local len = 0.7 + (1.5 + 4.5 * pw) * u(20 + k)
+      local start = 24 * day + 24 * rng.fbase(base, 10 + k)
+      local len = 0.7 + (1.5 + 4.5 * pw) * rng.fbase(base, 20 + k)
       wx.n = k
       wx.a[k], wx.b[k] = start, start + len
-      wx.heavy[k] = heavy_day and (k == 1 or u(30 + k) < 0.5)
+      wx.heavy[k] = heavy_day and (k == 1 or rng.fbase(base, 30 + k) < 0.5)
     end
   end
-  wx.temp = T
+  return wx
+end
+
+local function compute(W, s, day)
+  local c = s.cell
+  local wd = cfgmod.WEATHER_DAY
+  local wx = s.wx
+  if not wx then wx = { a = {}, b = {}, heavy = {} }; s.wx = wx end
+  M.cell_day(W, c, day, wx)
+  wx.temp = wx.T
   local dry = 1 - (W.F.soil_water[c] or 0.5)
   wx.range = wd.diurnal[1] + (wd.diurnal[2] - wd.diurnal[1]) * (wx.wet and 0.3 or 1) * (0.4 + 0.6 * dry)
   return wx

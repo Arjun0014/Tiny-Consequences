@@ -41,9 +41,14 @@ M.u_shn = vmath.vector4(0.02, 0, 0, 0)       -- x = normal offset (world units)
 M.u_shadowp = vmath.vector4(1 / 2048, 0.0003, 0.9, 1)  -- 1/size, depth bias, strength, on
 M.u_focus = vmath.vector4(40, 0.6, 0.08, 0.2) -- focus distance, strength, in-focus band, sky CoC
 M.u_post = vmath.vector4(0.35, 0.28, 1.1, 1.05) -- bloom, vignette, saturation, contrast
-M.u_cut = vmath.vector4(0, 0, 10, 0)           -- cloud cut-away: focus point (world), strength
 M.u_canopy = vmath.vector4(0, 0, 10, 0)        -- (S19) canopy cut-away close in: look target (world), radius (0 off)
-M.u_cloud = vmath.vector4(0, 3, 0, 0)          -- clouds: hour (view epoch), fade hours (clouds.lua)
+-- (S23) clouds v5 (game/view/clouds.lua, cloudvol.fp): the camera's basis for the full-screen pass, the layer
+M.u_cr = vmath.vector4(1, 0, 0, 0)             -- camera right x tan(fov / 2) x aspect
+M.u_cu = vmath.vector4(0, 1, 0, 0)             -- camera up x tan(fov / 2)
+M.u_cf = vmath.vector4(0, 0, -1, 0)            -- camera forward
+M.u_cv0 = vmath.vector4(0, 10, 10.95, 14.4)    -- hour (noise clock), R, lowest base, highest top (radii)
+M.u_cv1 = vmath.vector4(0, 24, 12, 1.3)        -- blend of the cover maps, steps (0: off), density, noise frequency
+M.u_cv2 = vmath.vector4(0.95, 2.2, 0.006, 36)  -- base min, base max (above R), drift max (rad/h), advection period (h)
 
 -- Filled by the render script each frame (used by picking/projection later)
 M.proj = vmath.matrix4()

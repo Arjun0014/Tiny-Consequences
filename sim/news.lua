@@ -30,6 +30,8 @@ M.KINDS = {
   trade = { 2, "people", 16 }, fair = { 2, "star", 32 }, relief = { 2, "bread", 34 },
   -- (S22) a power cast: what it changed in the world, at once (its consequences are their own stories)
   power = { 2, "star", 30 }, culled = { 2, "paw", 26 },
+  -- (S23, R7 v2)
+  sickness = { 3, "bubble", 26 }, blight = { 3, "blight", 26 }, impact = { 1, "meteor" },
 }
 -- (S22) everyday life: at most this many cards at once (four "a new house" cards hid the rest)
 M.EVERYDAY = { birth = true, passing = true, wedding = true, house = true, trade = true, fair = true }
@@ -223,6 +225,22 @@ local function on_deed(W, R, d, now)
     local st = story(W, R, "ash:" .. s.id .. ":" .. floor(d.t / 72), "ash", s.id, d.t, { deed = d.id, ev = d.event, x = s.sqx, y = s.sqy })
     st.title = sfmt("Ash on %s", s.name)
     line(st, sfmt("Ash from %s lies on the roofs and the grass", d.what), d.t)
+  elseif k == "sickness" then
+    -- (S23, R7 v2) beasts dead of a sickness that bears a cause (a god's sickness): one story per herd
+    local st = story(W, R, "sickness:" .. s.id .. ":" .. tostring(d.what), "sickness", s.id, d.t, { deed = d.id, ev = d.event, x = d.x, y = d.y })
+    local nm = d.what == "cattle" and "cattle" or (d.what == "sheep" and "sheep" or ((d.what or "beast") .. "s"))
+    st.title = sfmt("Sickness among the %s at %s", nm, s.name)
+    local nd = count(st, "beasts", d.n or 1)
+    line(st, sfmt("%s dead of it", plural(nd, d.what == "cattle" and "cow" or (d.what or "beast"), d.what == "sheep" and "sheep" or nil)), d.t)
+  elseif k == "blight" then
+    local st = story(W, R, "blight:" .. s.id .. ":" .. floor(d.t / (24 * 48)), "blight", s.id, d.t, { deed = d.id, ev = d.event, x = d.x, y = d.y })
+    st.title = sfmt("Blight in the corn at %s", s.name)
+    local nf = count(st, "fields")
+    line(st, sfmt("%s spotted and withering (%s)", plural(nf, "field"), household_name(W, d.to_hh)), d.t)
+  elseif k == "impact" then
+    local st = story(W, R, "impact:" .. d.id, "impact", s.id, d.t, { deed = d.id, ev = d.event, x = d.x, y = d.y })
+    st.title = sfmt("Fire from the sky at %s", s.name)
+    line(st, "A rock fell from the sky: the ground shook, the trees and roofs near it are alight", d.t)
   elseif k == "snow" then
     local st = story(W, R, "winter:" .. s.id, "winter", s.id, d.t, { deed = d.id, x = s.sqx, y = s.sqy })
     st.title = sfmt("Snow at %s", s.name)
@@ -330,6 +348,14 @@ local POWER_STORY = {
     return sfmt("Deer brought to the hills about %s", s.name), "A herd now grazes there"
   end,
   power_volcano = function(W, e, s) return sfmt("%s stirred", e.data and e.data.name or "The mountain"), "Pressure is building under it" end,
+  power_sickness = function(W, e, s) return sfmt("Sickness in a herd at %s", s.name), "A few beasts carry it - it will show in a day or two" end,
+  power_blight = function(W, e, s) return sfmt("Blight in a field at %s", s.name), "A plant sickness in the growing corn" end,
+  power_sea = function(W, e, s)
+    local warm = not (e.data and e.data.mode == "cool")
+    return sfmt("The sea off %s %s", s.name, warm and "warmed" or "cooled"), sfmt("%d degrees %s for %d days", require("sim.config").POWERS.v3_sea_k, warm and "warmer" or "cooler", require("sim.config").POWERS.v3_sea_days)
+  end,
+  power_oil = function(W, e, s) return sfmt("Oil on the sea near %s", s.name), "A slick the currents will carry" end,
+  power_meteor = function(W, e, s, near) return near and sfmt("A meteor fell near %s", s.name) or sfmt("A meteor fell far from any village (nearest: %s)", s.name), "Heat, fire and shaking where it struck; dust in the sky" end,
   power_quake = function(W, e, s, near)
     return near and sfmt("The fault under %s strained", s.name) or sfmt("A fault strained far from any village (nearest: %s)", s.name), "It may give at any time"
   end,
@@ -773,6 +799,9 @@ local DEED_TEXT = {
   lost = function(W, d) return sfmt("Wolves killed a %s at %s", d.what or "beast", (sett(W, d.at) or {}).name or "?") end,
   doused = function(W, d) return sfmt("%s caught fire at %s", BUILDING_WORD[d.what] or "A building", (sett(W, d.at) or {}).name or "?") end,
   culled = function(W, d) return sfmt("%d %s died about %s", d.n or 1, d.what or "beasts", (sett(W, d.at) or {}).name or "?") end,
+  sickness = function(W, d) return sfmt("%d %s died of a sickness at %s", d.n or 1, d.what or "beasts", (sett(W, d.at) or {}).name or "?") end,
+  blight = function(W, d) return sfmt("Blight in a field of %s", household_name(W, d.to_hh)) end,
+  impact = function(W, d) return sfmt("A rock fell from the sky by %s", (sett(W, d.at) or {}).name or "?") end,
   ["return"] = function(W, d) return "The beasts were given back" end,
   pay = function(W, d) return "It was made good" end,
   refuse = function(W, d) return "They refused to make it good" end,
@@ -782,7 +811,8 @@ local EV_TEXT = {
   power_lightning = "YOUR lightning", power_weather = "YOUR weather", power_rain = "YOUR rain", power_drought = "YOUR dry spell",
   power_temperature = "YOUR heat or cold", power_heat = "YOUR warm air", power_chill = "YOUR cold air", power_cull = "YOUR cull",
   power_introduce = "YOUR gift of beasts", power_volcano = "YOU stirred the mountain", power_quake = "YOU strained the fault",
-  power_meteor = "YOUR meteor", power_oil = "YOUR oil", power_blight = "YOUR blight",
+  power_meteor = "YOUR meteor", power_oil = "YOUR oil", power_blight = "YOUR blight", power_sickness = "YOUR sickness",
+  power_sea = "YOU warmed or cooled the sea",
 }
 
 -- (stories of people's own doing: with no deed or event behind them their root is PEOPLE, not nature)
@@ -797,6 +827,7 @@ function M.chain(W, st)
   local d = st.deed and V.deeds[st.deed]
   local ev = st.ev
   local root = "nature"
+  local root_ev
   for _ = 1, 10 do
     if d then
       if seen["d" .. d.id] then break end
@@ -817,6 +848,7 @@ function M.chain(W, st)
       local txt = EV_TEXT[e.kind] or (K and K.text) or e.kind
       links[#links + 1] = { t = e.hour or (e.tick and e.tick * (W.hpt or 24)) or 0, text = txt, who = e.actor == "player" and "you" or "nature" }
       root = e.actor == "player" and "you" or "nature"
+      if e.actor == "player" then root_ev = ev end
       local par = e.parent or 0
       if par == 0 then break end
       ev = par
@@ -825,7 +857,8 @@ function M.chain(W, st)
     end
   end
   if #links == 0 and PEOPLE_KINDS[st.kind] then root = "people" end
-  return { links = links, root = root }
+  -- (S23) root_ev: the god's cast at the root (sim/chain.lua's intervention), for the card's "chain" pill
+  return { links = links, root = root, root_ev = root == "you" and root_ev or nil }
 end
 
 -- Where the camera goes for story st: the village, the point, someone to look at.

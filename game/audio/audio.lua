@@ -16,7 +16,19 @@ local floor, max, min, sqrt, abs = math.floor, math.max, math.min, math.sqrt, ma
 M.ON = true
 M.GROUPS = { master = 0.9, ambient = 0.7, sfx = 0.85, ui = 0.6 }
 M.OBJ = "/sounds"
-M.stats = { shots = 0, cues = 0, beds = {} }
+M.stats = { shots = 0, cues = 0, beds = {}, energy = {} }
+-- (S23) the village's sound by what matters (Arjun: the beasts took over close in): a danger near >
+-- work, water and weather near > the village's own hum > the herds, which are texture - unless the world
+-- has them crying out (a fire) or the dogs barking at wolves or a stranger. A category's weight scales its
+-- one-shots and beds; the herds are mostly their bed (grazing, a far call now and then), few calls.
+M.MIX = { hazard = 1.0, work = 0.8, nature = 0.8, village = 0.65, beasts = 0.3, dogs = 0.6, wild = 0.55 }
+M.BEAST_R = 0.75          -- a beast's call carries this far (world units) at full zoom-in
+M.BEAST_GAP = 2.8         -- real seconds between any two beasts' calls (all herds together)
+local CAT = { sheep = "beasts", goat = "beasts", cow = "beasts", pig = "beasts", dog_bark = "dogs", wolf_howl = "wild",
+  shout = "hazard", thunder = "hazard", quake = "hazard", house_fall = "hazard", tree_fall = "work", axe_chop = "work",
+  hammer = "work", pick_stone = "work", anvil = "work", hoe = "work", scythe = "work", douse = "hazard", splash = "work",
+  oars = "work", steps_grass = "village", steps_snow = "village" }
+M.CAT = CAT
 
 local seed = 12345
 local function rnd()
@@ -94,6 +106,9 @@ local function shot(id, gain, pan, gap, now_s)
   sound.play(url(name), { gain = min(1, gain), pan = max(-0.8, min(0.8, pan or 0)), speed = 0.94 + 0.12 * rnd() })
   M.stats.shots = M.stats.shots + 1
   M.stats.last = name
+  local cat = CAT[id] or "other"
+  local E = M.stats.energy
+  E[cat] = (E[cat] or 0) + min(1, gain) * min(1, gain)
   return true
 end
 M.shot = shot
@@ -246,15 +261,22 @@ function M.update(W, dt, zoom, now, focus, speed_level, skipping, project)
       SAMPLE.cry = cry
       local stock = require("sim.agents.stock")
       local beasts = 0
+      -- (S23) the beasts near, kept (up to 48): a call comes from one of them, not from a herd far off
+      local NB = SAMPLE.near_b or {}
+      SAMPLE.near_b = NB
       for _, kind in ipairs({ "flock", "cattle", "swine" }) do
         local H = s.herds and s.herds[kind]
         for _, a in ipairs(H and H.animals or {}) do
           if a.alive then
             local ax, ay = stock.pos(a, now)
-            if (ax - x) * (ax - x) + (ay - y) * (ay - y) < 0.36 then beasts = beasts + 1 end
+            if (ax - x) * (ax - x) + (ay - y) * (ay - y) < 0.36 then
+              beasts = beasts + 1
+              if beasts <= 48 then NB[beasts] = a end
+            end
           end
         end
       end
+      for k = math.min(beasts, 48) + 1, #NB do NB[k] = nil end
       SAMPLE.beasts = beasts
       -- standing trees near (a drop while someone near is felling: a tree came down)
       local T = s.trees
@@ -303,13 +325,18 @@ function M.update(W, dt, zoom, now, focus, speed_level, skipping, project)
   bed.amb_river_flood.t = (s and s.fl) and (0.7 * wC * max(near(S.df, 0.9), near(S.dr, 0.9)) + 0.15 * wM) or 0
   bed.amb_rain.t = rain * (0.25 * wM + 0.55 * wC)
   bed.amb_storm.t = storm * (0.3 * wP + 0.4 * wM + 0.6 * wC)
-  bed.amb_village_day.t = (S.night and 0 or 1) * wC * min(1, S.people / 8) * 0.55
+  bed.amb_village_day.t = (S.night and 0 or 1) * wC * min(1, S.people / 8) * 0.55 * (M.MIX.village / 0.65)
   bed.amb_village_night.t = (S.night and 1 or 0) * wC * (s and 0.35 or 0) * (1 - storm)
   bed.amb_fire.t = wC * min(1, S.heat) * 0.95 + wM * min(1, S.heat) * 0.3
   -- (the planet's fire under the focus from afar; close in, the roar of a big fire near - S22)
   bed.amb_wildfire.t = max(min(1, S.fire * 3) * (0.35 * wP + 0.5 * wM + 0.3 * wC), wC * smoothstep(1.0, 3.0, S.heat) * 0.75)
   bed.amb_volcano.t = S.volcano * (0.4 * wP + 0.6 * wM + 0.4 * wC)
-  bed.amb_herd.t = wC * min(1, S.beasts / 12) * 0.45 * (S.night and 0.4 or 1)
+  -- (S23) the herds as one soft bed: there, but under the village; ducked when danger is near (a fire, a
+  -- shout, thunder close by); louder only when the beasts cry out at a fire (the sim's own cry)
+  local duck = 1 - 0.55 * min(1, S.heat + ((now_s - (M.alarm_t or -99)) < 4 and 1 or 0))
+  M.duck = duck
+  local herd_k = S.beasts > 0 and (0.35 + 0.65 * min(1, math.log(1 + S.beasts) / math.log(40))) or 0
+  bed.amb_herd.t = wC * herd_k * 0.5 * M.MIX.beasts * (S.night and 0.4 or 1) * duck * ((S.cry or 0) > 0 and 2.2 or 1)
   bed.amb_sea_open.t = 0
   ease_beds(dt)
   -- (S22) the deeds of the world just now, at every zoom (the cursor always moves on - before, it waited
@@ -330,7 +357,7 @@ function M.update(W, dt, zoom, now, focus, speed_level, skipping, project)
           local dd = sqrt(((d.x or S.x or 0) - (S.x or 0)) ^ 2 + ((d.y or S.y or 0) - (S.y or 0)) ^ 2)
           gn = (d.kind == "quake" and 0.85) or max(d.kind == "strike" and 0.45 or 0.3, (d.kind == "strike" and 1.0 or 0.9) * wC * max(0, 1 - dd / R) ^ 1.6)
           if project and d.kind ~= "quake" then pan = project(mapm.unit(s, d.x or 0, d.y or 0)) end
-          shot(id, gn, pan, 0.5, now_s)
+          if shot(id, gn, pan, 0.5, now_s) then M.alarm_t = now_s end
         elseif d.kind ~= "fell" then
           -- (far off: by how near the village is to the focus - a quake is felt widely, thunder rolls in)
           local near_f = g.X[o.cell] * fx + g.Y[o.cell] * fy + g.Z[o.cell] * fz
@@ -369,7 +396,7 @@ function M.update(W, dt, zoom, now, focus, speed_level, skipping, project)
         if alarm then
           local gn, pan = gainpan(px, py, 0.7)
           if gn > 0 and now_s - (pgap[-p.id] or -99) > 6 and rnd() < 0.5 * dens then
-            if shot("shout", gn, pan, 1.2, now_s) then pgap[-p.id] = now_s end
+            if shot("shout", gn, pan, 1.2, now_s) then pgap[-p.id] = now_s; M.alarm_t = now_s end
           end
         end
         if snd then
@@ -393,21 +420,30 @@ function M.update(W, dt, zoom, now, focus, speed_level, skipping, project)
       end
     end
   end
-  -- the beasts near: one calls now and then - a few calls a minute from a big flock, not a bleat every
-  -- second and a half (S22); crying out often while they cry at a fire (the sim's own cry)
-  local rate = (S.cry or 0) > 0 and 1.2 or min(0.35, 0.04 + 0.006 * S.beasts)
-  if S.beasts > 0 and rnd() < rate * dt * dens then
+  -- the beasts near: now and then one calls - a few a minute from a big flock, one beast at a time over all
+  -- the herds (M.BEAST_GAP), soft and from near only (they carry M.BEAST_R): texture, not a recording of a
+  -- byre (S23). While they cry out at a fire (the sim's own cry) they are loud and often.
+  local crying = (S.cry or 0) > 0
+  local rate = crying and 0.9 or min(0.11, 0.015 + 0.0016 * S.beasts)
+  if S.beasts > 0 and rnd() < rate * dt * dens and now_s - (M.beast_t or -99) > (crying and 0.9 or M.BEAST_GAP) then
     local stock = require("sim.agents.stock")
-    local kinds = { "flock", "cattle", "swine" }
-    local H = s.herds and s.herds[kinds[1 + floor(rnd() * 3)]]
-    local L = H and H.animals or {}
+    local L = S.near_b or {}
     if #L > 0 then
       local a = L[1 + floor(rnd() * #L)]
       if a and a.alive then
         local ax, ay = stock.pos(a, now)
-        local gn, pan = gainpan(ax, ay, 0.6)
+        local d = sqrt((ax - x) * (ax - x) + (ay - y) * (ay - y))
+        local Rb = M.BEAST_R * (crying and 1.6 or 1)
         local id = SPECIES_SND[a.sp]
-        if id and gn > 0.05 then shot(id, gn * ((S.cry or 0) > 0 and 1.3 or 1), pan, (S.cry or 0) > 0 and 0.9 or 2.6, now_s) end
+        if id and d < Rb then
+          local gn = 0.6 * wC * (1 - d / Rb) ^ 2.2
+          -- (one beast right under the camera, zoomed all the way in, may be heard for itself)
+          local close = smoothstep(1.5, 1.75, zoom) * max(0, 1 - d / 0.18)
+          gn = gn * (crying and 0.8 or (M.MIX.beasts + 0.5 * close)) * (crying and 1 or (M.duck or 1))
+          local pan = 0
+          if project then pan = project(mapm.unit(s, ax, ay)) end
+          if gn > 0.03 and shot(id, gn, pan, crying and 0.9 or 5.0, now_s) then M.beast_t = now_s end
+        end
       end
     end
   end
@@ -416,8 +452,8 @@ function M.update(W, dt, zoom, now, focus, speed_level, skipping, project)
     if d.alive and d.barked and d.barked ~= seen_bark[d] then
       seen_bark[d] = d.barked
       if now - d.barked < 0.1 then
-        local gn, pan = gainpan(d.tx or x, d.ty or y, 0.75)
-        shot("dog_bark", max(gn, 0.12 * wC), pan, 0.6, now_s)
+        local gn, pan = gainpan(d.tx or x, d.ty or y, 0.75 * M.MIX.dogs / 0.6)
+        shot("dog_bark", max(gn, 0.1 * wC), pan, 0.6, now_s)
       end
     end
   end
@@ -425,8 +461,8 @@ function M.update(W, dt, zoom, now, focus, speed_level, skipping, project)
   if S.night and rnd() < 0.004 * dt * 60 * dens and s.wildlife then
     for _, w in ipairs(s.wildlife.animals or {}) do
       if w.alive and w.pred and not w.gone then
-        local gn, pan = gainpan(w.tx or x, w.ty or y, 0.6)
-        shot("wolf_howl", max(gn, 0.18 * wC), pan, 25, now_s)
+        local gn, pan = gainpan(w.tx or x, w.ty or y, 0.6 * M.MIX.wild / 0.55)
+        shot("wolf_howl", max(gn, 0.15 * wC), pan, 25, now_s)
         break
       end
     end

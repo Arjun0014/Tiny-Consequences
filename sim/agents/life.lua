@@ -77,7 +77,10 @@ local function kill(W, s, p, cause, why)
   -- knows at once and its kin there remember; kin elsewhere when the news reaches them; the
   -- household and kin gather at the house the next morning
   local now = W.S.v3.now or W.hour
-  local hd = p.hurt_deed and deeds.get(W, p.hurt_deed)
+  -- (S23) the death answers the harm that hurt them only when the hurt was grave (it raised the hazard: an
+  -- old man scratched days ago dies of his age, not of the scratch)
+  local grave = (p.hurt or 0) > 0.5 or cause == "wounds" or cause == "burns"
+  local hd = p.hurt_deed and grave and deeds.get(W, p.hurt_deed) or nil
   local by = (cause == "wounds" and hd and hd.by) or 0
   local d = deeds.add(W, { kind = by ~= 0 and "kill" or "death", t = now, at = s.id, by = by, by_hh = by ~= 0 and hd.by_hh or 0,
     by_s = by ~= 0 and hd.by_s or 0, to = p.id, to_hh = p.hh, to_s = s.id, what = cause, n = 1,

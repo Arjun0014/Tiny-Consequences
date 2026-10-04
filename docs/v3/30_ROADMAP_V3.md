@@ -275,6 +275,12 @@ states - the god's rain begins at the cast, every cast tells what it changed, th
 hydrology bug found (downpours dried the soil) - fix written in the handoff, to verify first. R7 v2 powers designed,
 not built.)
 
+(Session 23, D-179-D-183: the hydrology fix verified; **clouds v5** (one layer the camera flies through, from the villages'
+own weather); the village mix (the herds as texture); **CHAIN REACTION** - "Your actions": what each cast caused, forward along
+real links (`77_CHAIN_REACTION.md`); **R7 v2 powers built** (sickness in a herd, blight, warm/cool sea, oil, meteor). Next: the
+news history and more kinds, volume settings, per-power aim previews, palisade, captives; traded grain carrying blight, oil on the
+shore.)
+
 ## Never cut
 Determinism, causality (every major change traceable), the planet layer, no scripted
 consequences, persistent people with continuous positions.

@@ -1,89 +1,83 @@
--- Clouds from the sim's weather (renderer v4, docs/world/16 §5, D-056).
+-- Clouds from the weather the world lives (renderer v5, S23, D-180).
 --
--- Clouds are banks of many overlapping puffs, not objects: every puff is a flat-based spheroid
--- ray-traced on the GPU (game/render/shaders/cloud.vp/.fp), so neighbouring puffs merge into one
--- solid mass with a shared flat base, soft frayed rims and true depth.
---   * What: the day each place is living through (sim/society/weather_day.lua — the same days
---     the villagers work or shelter in): grey rain decks over wet days, heavy dark storm masses
---     (a broad heap over the deck, wider than tall) over storm days, white fair-weather banks
---     and lone heaps over dry days (more where the air is humid and where tomorrow's rain is
---     coming), a few high wisps over clear skies. The weekly precipitation drives them when the
---     sim runs so fast that days flash by. A continuous cover field (the cells' covers
---     interpolated, plus drifting low-frequency noise) decides where puffs stand, so banks span
---     several cells with organic outlines, holes and frayed edges; each sample of the field
---     grows a broad flat "pancake" with cauliflower lobes on top where the cover is thick.
---   * When: the planet is cut into longitude sectors. At normal speeds a sector is rebuilt once
---     per local day, at its local midnight (the swap happens in the dark), into one of its two
---     buffers: yesterday's puffs shrink away while today's grow in. At high speeds the sectors
---     are refreshed round-robin a few seconds apart from the week's precipitation. The GPU grows,
---     fades and drifts every puff with the zonal wind (a rotation about the polar axis at the
---     puff's own latitude rate), so the clouds cost no per-frame Lua work of their own.
---   * Altitude: the base floats above the highest ground and tallest trees around its cell (no
---     clipping); rain decks sit lowest, fair-weather banks higher, wisps high above.
---   * Rain and snow curtains hang under the decks and storms nearest the view.
--- Zoomed in, the shader opens a frayed hole in the deck between the camera and the view focus
--- (state.u_cut), so the sky around stays full.
+-- One soft cloud layer around the planet, marched along each pixel's view ray on the GPU
+-- (game/render/shaders/cloudvol.fp): banks with irregular, frayed outlines, thick and thin parts, flat
+-- grey bases and sunlit tops - and a camera that flies into it sees mist close by, then the ground
+-- through its thinning floor, then the deck's underside overhead. (v4 drew separate ray-traced puffs:
+-- they read as cotton balls laid on the world, and close in a hole was cut through them.)
+--   * Where and how much: a cover map (equirect, CW x CH) written hour by hour from each planet cell's
+--     weather - the same rain spells the villages live under (sim/agents/weather.lua `cell_day`, one
+--     draw for a village and for the cell it stands on), the god's rain and dry spells from the moment
+--     they are cast, the humidity of the day between spells (fair-weather heaps where the air is damp,
+--     clear sky where it is dry). Cover builds over the hours before a spell, is full while it rains and
+--     thins after it; a downpour is darker and towers. A clear cell is never given dramatic cloud.
+--   * Shape inside the cover: 3D noise, carried along by the zonal wind of each latitude (two phases,
+--     each reset while its weight is nil, so the shear never builds up).
+--   * Time: two maps, the one in force and the next; the shader blends from one to the other as the
+--     hours pass, so cover never jumps. At the skip speeds (days flashing by) the day's rain as a whole.
+--   * Altitude: the base floats above the highest ground about each place (geotex), decks are thicker,
+--     storms tower.
+--   * Shadows: a sphere at the layer's middle drawn from the sun writes the same cloud into the shadow
+--     map's cover (game/render/shaders/cloudshell.fp) - soft cloud shadows on the ground.
+--   * Rain and snow curtains hang under the places where it rains now, nearest the view.
 local state = require("game.view.state")
 local cfgmod = require("sim.config")
-local wday = require("sim.society.weather_day")
-local vnoise = require("game.view.vnoise")
+local weather = require("sim.agents.weather")
 local vmx = require("game.view.vmx")
 local clockm = require("game.platform.clock")
-local daylight = require("sim.society.daylight")
 
 local M = {}
 
-M.SECTORS = 16
-M.ALT_MIN = 0.95          -- cloud base above sea level (world units) at the least
-M.CLEAR = 0.72            -- clearance above the local ground (the tallest far-LOD trees are ~0.6)
-M.DRIFT = 0.0025          -- radians per sim hour per unit zonal wind (~ half a cell a day)
-M.FAST_HPS = 6            -- hours per second above which clouds follow weeks, not days
+M.CW, M.CH = 128, 64      -- the cover map (equirect: u longitude, v latitude)
+M.BMIN = 0.95             -- cloud base above sea level (world units) at the least
+M.BMAX = 2.2              -- ... at the most (over the highest ground)
+M.CLEAR = 0.72            -- clearance of the base above the highest ground about a place
 M.EXAG = 0.13             -- planet.lua P.EXAG (world units per km)
-M.DENSITY = 1             -- sample density multiplier (gfx=low: fewer)
-M.BUDGET_MS = 1.2         -- Lua time per frame for rebuilding sectors
+M.TOP = 1.45              -- the tallest storm above its base (cloudvol.fp: 0.55 + 0.85, and some)
+M.STEPS = 24              -- samples along a ray (at full quality)
+M.STEPS_FIXED = nil       -- ?cloudq=N: the samples fixed (shots); else they follow the frame time
+M.q_steps = 24            -- the samples now (adaptive: a slow GPU gets fewer)
+M.q_dt = 1 / 60
+M.DENS = 12               -- extinction of full cloud per world unit
+M.FREQ = 1.3              -- noise frequency (per world unit)
+M.DRIFT = 0.0025          -- radians per sim hour per unit zonal wind (~ half a cell a day)
+M.DRIFT_MAX = 0.006
+M.PERIOD = 36             -- hours a phase of the wind-carried noise lives
+M.FAST_HPS = 6            -- hours per second above which clouds follow days, not spells
+M.BUDGET_MS = 1.0         -- Lua time per frame for the next map
 M.RAIN = 110              -- rain/snow curtain pool
-M.FADE_SLOW = 3           -- sim hours over which puffs grow in / shrink out at normal speeds
-M.REFRESH_S = 8           -- real seconds for a full round of sector refreshes at high speeds
-M.T = 0.61                -- cover threshold of the field
+M.hidden = false          -- gfx=low: nothing drawn, nothing computed
+M.DENSITY = 1             -- (v4 compatibility: gfx=low)
 
-local H_POS, H_NRM, H_COL = hash("position"), hash("normal"), hash("color")
-local H_P1, H_P2, H_P3 = hash("puff"), hash("puff2"), hash("puff3")
-local H_AABB = hash("AABB")
-local MSG_ENABLE, MSG_DISABLE = hash("enable"), hash("disable")
-local sin, cos, sqrt, max, min, abs, floor, pi = math.sin, math.cos, math.sqrt, math.max, math.min,
-  math.abs, math.floor, math.pi
-
-M.sectors = {}
 M.rains = {}
-M.stats = { active = 0, cover = 0, puffs = 0, rebuilt = 0, job_ms = 0, ph = { 0, 0, 0 } }
+M.stats = { active = 0, cover = 0, puffs = 0, maps = 0, rebuilt = 0, job_ms = 0, raining = 0 }
 
--- triangle circumscribing the unit circle (the impostor's corners)
-local CX = { 0, -1.7320508, 1.7320508 }
-local CY = { 2, -1, -1 }
+local H_RGBA = hash("rgba")
+local H_POS, H_NRM, H_COL = hash("position"), hash("normal"), hash("color")
+local MSG_ENABLE, MSG_DISABLE = hash("enable"), hash("disable")
+local sin, cos, sqrt, max, min, abs, floor, pi, asin, atan2 = math.sin, math.cos, math.sqrt, math.max, math.min,
+  math.abs, math.floor, math.pi, math.asin, math.atan2
 
----------------------------------------------------------------------------------------------
--- Module-level scratch (no allocation while planning)
-
-local EX, EY, EZ, NX, NY, NZ = {}, {}, {}, {}, {}, {}   -- tangent frames per cell
-local DRIFTC, BASE = {}, {}                             -- drift rate (rad/h), cloud base (world, above R)
-local COV, KIND, DARK, SNOW, SM, STAMP, SMSTAMP = {}, {}, {}, {}, {}, {}, {}
-local P = {}          -- planned puffs, 13 numbers each
-local NPUFF = 0
-local serial = 0      -- job serial (stamps)
-local rs = 1          -- LCG state for the planning randomness
-local JF = { fast = false, ds = 0, born = 0, gone = 0, fade = 3, key = 0, nk = 0 }
-local wx, wx2 = {}, {}
-
-local function rnd()
-  rs = (rs * 48271) % 2147483647
-  return rs / 2147483647
-end
-
-local function seed_cell(c, key)
-  local x = (c * 73856093 + key * 19349663 + 83492791) % 2147483647
-  if x == 0 then x = 1 end
-  rs = x
-  rnd(); rnd()
+-- per cell: the cloud base (normalised), cover and darkness of the map being made
+local BASEN, COVC, DRKC = {}, {}, {}
+-- per texel: the cells it is made of (up to 7) and their weights
+local TC, TW, TN = {}, {}, {}
+-- per texel: the map in force (A), as bytes
+local PREVC, PREVD = {}, {}
+-- the god's sky at an hour: cell -> 2 downpour, 1 rain, 0 dry spell (one set for the map being made,
+-- one for the curtains of now)
+local JFORCE, JSTAMP, RFORCE, RSTAMP = {}, {}, {}, {}
+local serial = 0
+-- each cell's rain spells of its day (the villages' own draw), kept while the day and its rain hold
+local wx = { a = {}, b = {}, heavy = {} }
+local SD_DAY, SD_P, SD_WET, SD_N, SD_A1, SD_B1, SD_H1, SD_A2, SD_B2, SD_H2 = {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
+local function spells(W, c, day)
+  local P = W.F.precip[c] or 0
+  if SD_DAY[c] == day and SD_P[c] == P then return end
+  weather.cell_day(W, c, day, wx)
+  SD_DAY[c], SD_P[c], SD_WET[c], SD_N[c] = day, P, wx.wet and true or false, wx.n
+  SD_A1[c], SD_B1[c], SD_H1[c] = wx.a[1] or 0, wx.b[1] or 0, wx.heavy[1] or false
+  SD_A2[c], SD_B2[c], SD_H2[c] = wx.a[2] or 0, wx.b[2] or 0, wx.heavy[2] or false
 end
 
 local function prof(tbl, a)
@@ -97,11 +91,61 @@ local function prof(tbl, a)
   return tbl[#tbl][2]
 end
 
+---------------------------------------------------------------------------------------------
+-- Textures and the shadow shell
+
+local function rgba_texture(path, w, h, fill)
+  local buf = buffer.create(w * h, { { name = H_RGBA, type = buffer.VALUE_TYPE_UINT8, count = 4 } })
+  local st = buffer.get_stream(buf, H_RGBA)
+  if fill then fill(st) end
+  local params = { type = graphics.TEXTURE_TYPE_2D, width = w, height = h, format = graphics.TEXTURE_FORMAT_RGBA }
+  local res = resource.create_texture(path, params, buf)
+  return res, buf, st, params
+end
+
+-- value noise for the shader (iq's packing: g is r one slice up, offset by 37, 17)
+local function noise_fill(st)
+  local N = 256
+  local h = 987654321
+  local v = {}
+  for i = 1, N * N do
+    h = (h * 1103515245 + 12345) % 2147483648
+    v[i] = floor(h / 2147483648 * 256)
+  end
+  for y = 0, N - 1 do
+    for x = 0, N - 1 do
+      local i = y * N + x
+      local j = ((y + 17) % N) * N + (x + 37) % N
+      local o = i * 4
+      st[o + 1], st[o + 2], st[o + 3], st[o + 4] = v[i + 1], v[j + 1], 0, 255
+    end
+  end
+end
+
+local function shell_buffer(r)
+  local g = require("sim.grid").build(3, { neighbours = false })
+  local faces = g.faces
+  local nf = #faces / 3
+  local buf = buffer.create(nf * 3, {
+    { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+    { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+  })
+  local pos, nrm = buffer.get_stream(buf, H_POS), buffer.get_stream(buf, H_NRM)
+  for i = 1, #faces do
+    local v = faces[i]
+    local p = (i - 1) * 3
+    pos[p + 1], pos[p + 2], pos[p + 3] = g.X[v] * r, g.Y[v] * r, g.Z[v] * r
+    nrm[p + 1], nrm[p + 2], nrm[p + 3] = g.X[v], g.Y[v], g.Z[v]
+  end
+  local R = r * 1.02
+  buffer.set_metadata(buf, hash("AABB"), { -R, -R, -R, R, R, R }, buffer.VALUE_TYPE_FLOAT32)
+  return buf
+end
+
 -- Rain/snow curtain: crossed quads (rain streaks) or small flakes in a disc under the cloud.
 local function rain_buffer(snow)
   local n = 110
-  local nv = n * 12
-  local buf = buffer.create(nv, {
+  local buf = buffer.create(n * 12, {
     { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
     { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
     { name = H_COL, type = buffer.VALUE_TYPE_FLOAT32, count = 4 },
@@ -133,19 +177,15 @@ local function rain_buffer(snow)
   return buf
 end
 
-local function new_buffer(n)
-  return buffer.create(max(3, n * 3), {
-    { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
-    { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
-    { name = H_P1, type = buffer.VALUE_TYPE_FLOAT32, count = 4 },
-    { name = H_P2, type = buffer.VALUE_TYPE_FLOAT32, count = 4 },
-    { name = H_P3, type = buffer.VALUE_TYPE_FLOAT32, count = 4 },
-  })
-end
+---------------------------------------------------------------------------------------------
+-- Init
 
---- Creates the sector buffers and the rain pool; plans every sector for the current hour.
-function M.init(W, factory_url, rain_factory)
+-- urls: { vol = "/cloudvol#mesh", shell = "/cloudshell#mesh" }; rain_factory for the curtains.
+function M.init(W, urls, rain_factory)
   M.W = W
+  M.urls = urls
+  local g = W.grid
+  local CW, CH = M.CW, M.CH
   if #M.rains == 0 and rain_factory then
     M.rain_res = resource.create_buffer("/tc/rain.bufferc", { buffer = rain_buffer(false) })
     M.snow_res = resource.create_buffer("/tc/snow.bufferc", { buffer = rain_buffer(true) })
@@ -157,386 +197,207 @@ function M.init(W, factory_url, rain_factory)
       M.rains[i] = { id = id, url = url, on = false, snow = false }
     end
   end
-  local g = W.grid
-  local S = M.SECTORS
-  if #M.sectors == 0 then
-    for s = 1, S do
-      local sec = { objs = {} }
-      for k = 1, 2 do
-        local id = factory.create(factory_url, vmath.vector3(0, 0, 0))
-        local url = msg.url(nil, id, "mesh")
-        local res = resource.create_buffer("/tc/clouds_" .. s .. "_" .. k .. ".bufferc", { buffer = new_buffer(1) })
-        go.set(url, "vertices", res)
-        msg.post(url, MSG_DISABLE)
-        sec.objs[k] = { id = id, url = url, res = res, on = false, n = 0, gone = 0, area = 0 }
-      end
-      M.sectors[s] = sec
-    end
-  end
-  -- per-cell frames, drift and cloud base (above the highest ground and trees around the cell)
+  -- the cloud base per cell: above the highest ground and trees around it
   local elev, sea = W.static.elev, W.G.sea_level or 0
-  local zonal = cfgmod.MOIST.zonal
   for c = 1, W.n do
-    local x, y, z = g.X[c], g.Y[c], g.Z[c]
-    local ex, ez = z, -x
-    local el = sqrt(ex * ex + ez * ez)
-    if el < 1e-5 then ex, ez, el = 1, 0, 1 end
-    ex, ez = ex / el, ez / el
-    EX[c], EY[c], EZ[c] = ex, 0, ez
-    NX[c], NY[c], NZ[c] = -ez * y, ez * x - ex * z, ex * y
-    local lat = g.lat[c]
-    DRIFTC[c] = prof(zonal, abs(lat) * 57.2958) * M.DRIFT / max(0.25, cos(lat))
     local m = elev[c] - sea
     local b = c * 6 - 6
     for k = 1, g.nbr_count[c] do
       local e = elev[g.nbr[b + k]] - sea
       if e > m then m = e end
     end
-    BASE[c] = max(M.ALT_MIN, (m > 0 and m or 0) * M.EXAG + M.CLEAR)
-    STAMP[c], SMSTAMP[c] = -1, -1
+    local base = max(M.BMIN, (m > 0 and m or 0) * M.EXAG + M.CLEAR)
+    BASEN[c] = min(1, (base - M.BMIN) / (M.BMAX - M.BMIN))
+    COVC[c], DRKC[c] = 0, 0
   end
-  -- cells by sector (longitude); sample directions for the visibility test
-  for s = 1, S do
-    local sec = M.sectors[s]
-    sec.cells = {}
-    sec.lon0 = -pi + (s - 1) * 2 * pi / S
-    sec.lon1 = sec.lon0 + 2 * pi / S
-    sec.lonc = (sec.lon0 + sec.lon1) * 0.5
-    sec.key, sec.mode, sec.cur = nil, nil, 1
-    sec.wet_list = nil
-    sec.pts = {}
-    for li = -2, 2 do
-      local lat = li * 0.6
-      local cl = cos(lat)
-      for q = 0, 2 do
-        local lon = sec.lon0 + (sec.lon1 - sec.lon0) * q * 0.5
-        local pt = sec.pts
-        pt[#pt + 1] = cl * cos(lon); pt[#pt + 1] = sin(lat); pt[#pt + 1] = cl * sin(lon)
+  -- texels: the nearest cell and its neighbours, weighted by distance (a smooth field over the grid)
+  local sp2 = g.spacing * g.spacing
+  local X, Y, Z = g.X, g.Y, g.Z
+  local cell = 1
+  for j = 0, CH - 1 do
+    local lat = ((j + 0.5) / CH - 0.5) * pi
+    local cl, sl = cos(lat), sin(lat)
+    for i = 0, CW - 1 do
+      local lon = ((i + 0.5) / CW - 0.5) * 2 * pi
+      local px, py, pz = cl * cos(lon), sl, cl * sin(lon)
+      -- (a greedy walk to the nearest cell from the last one)
+      for _ = 1, 200 do
+        local best, bd = cell, px * X[cell] + py * Y[cell] + pz * Z[cell]
+        local b6 = cell * 6 - 6
+        for k = 1, g.nbr_count[cell] do
+          local q = g.nbr[b6 + k]
+          local d = px * X[q] + py * Y[q] + pz * Z[q]
+          if d > bd then best, bd = q, d end
+        end
+        if best == cell then break end
+        cell = best
       end
+      local t = j * CW + i + 1
+      local o = (t - 1) * 7
+      local n, ws = 0, 0
+      local b6 = cell * 6 - 6
+      for k = 0, g.nbr_count[cell] do
+        local q = k == 0 and cell or g.nbr[b6 + k]
+        local d = px * X[q] + py * Y[q] + pz * Z[q]
+        local a = (1 - d) / sp2
+        local w = 1 / (0.05 + a * a)
+        n = n + 1
+        TC[o + n], TW[o + n] = q, w
+        ws = ws + w
+      end
+      for k = 1, n do TW[o + k] = TW[o + k] / ws end
+      TN[t] = n
+      PREVC[t], PREVD[t] = 0, 0
     end
-    for k = 1, 2 do sec.objs[k].n = 0 end
   end
-  for c = 1, W.n do
-    local s = floor((g.lon[c] + pi) / (2 * pi) * S) % S + 1
-    local l = M.sectors[s].cells
-    l[#l + 1] = c
+  -- textures: the cover maps (dynamic), the base and the wind (static), the noise
+  if not M.cov then
+    M.cov, M.covbuf, M.covst, M.covparams = rgba_texture("/tc/cloudcov.texturec", CW, CH)
+    M.geo, M.geobuf, M.geost, M.geoparams = rgba_texture("/tc/cloudgeo.texturec", CW, CH)
+    M.noise = rgba_texture("/tc/cloudnoise.texturec", 256, 256, noise_fill)
+    for _, u in ipairs({ urls.vol, urls.shell }) do
+      go.set(u, "texture0", M.cov)
+      go.set(u, "texture1", M.geo)
+      go.set(u, "texture2", M.noise)
+    end
+    local rs = state.R + (M.BMIN + M.BMAX) * 0.5 + 0.25
+    resource.set_buffer(go.get(urls.shell, "vertices"), shell_buffer(rs))
   end
-  M.noise = vnoise.new((W.seed or 1) * 31 + 7)
-  M.epoch = floor((W.hour or 0) / 8064) * 8064
-  M.job = nil
-  M.rr = 0
+  local zonal = cfgmod.MOIST.zonal
+  local gst = M.geost
+  for j = 0, CH - 1 do
+    local lat = ((j + 0.5) / CH - 0.5) * pi
+    local w = prof(zonal, abs(lat) * 57.2958) * M.DRIFT / max(0.25, cos(lat))
+    local wn = floor(max(0, min(255, (w / M.DRIFT_MAX * 0.5 + 0.5) * 255)) + 0.5)
+    for i = 0, CW - 1 do
+      local t = j * CW + i + 1
+      local o = (t - 1) * 7
+      local b = 0
+      for k = 1, TN[t] do b = b + TW[o + k] * BASEN[TC[o + k]] end
+      local s = (t - 1) * 4
+      gst[s + 1], gst[s + 2], gst[s + 3], gst[s + 4] = floor(b * 255 + 0.5), wn, 0, 255
+    end
+  end
+  resource.set_texture(M.geo, M.geoparams, M.geobuf)
+  local cv0, cv1, cv2 = state.u_cv0, state.u_cv1, state.u_cv2
+  cv0.y, cv0.z, cv0.w = state.R, state.R + M.BMIN, state.R + M.BMAX + M.TOP
+  cv1.x, cv1.y, cv1.z, cv1.w = 0, M.STEPS, M.DENS, M.FREQ
+  cv2.x, cv2.y, cv2.z, cv2.w = M.BMIN, M.BMAX, M.DRIFT_MAX, M.PERIOD
+  M.job, M.ta, M.tb = nil, nil, nil
   M.rain_t = 0
   M.update(W, 0, true, true)
 end
 
 ---------------------------------------------------------------------------------------------
--- Weather -> cover per cell (stamped per job)
+-- Weather -> cover and darkness per cell at hour t
 
-local function cell_weather(W, c)
-  local cfgw = cfgmod.WEATHER_DAY
-  local pw = W.F.precip[c] / cfgw.wet_week
-  if pw > 1.5 then pw = 1.5 end
-  local cov, kind, dark = 0, 1, 0
-  local snow = W.F.temp[c] < 0
-  if JF.fast then
-    if pw > 1.05 then cov, kind, dark = min(0.9, 0.55 + (pw - 1.05) * 0.6), 2, min(0.45, (pw - 1.05) * 0.8)
-    else cov = max(0, min(0.5, (pw - 0.2) * 0.6)) end
-  else
-    local d0 = wday.local_day_start(JF.ds + 12, W.grid.lon[c])
-    local day = wday.get(W, c, d0, wx)
-    snow = day.snow
-    if day.wet then
-      local rain = day.rain or 0
-      if day.storm and rain >= cfgw.storm_day * 0.8 then
-        cov, kind, dark = 0.95, 3, 0.72
-      else
-        cov, kind = min(0.9, 0.52 + rain * 10), 2
-        dark = min(0.55, 0.15 + rain * 12)
-      end
-    else
-      local nxt = wday.get(W, c, d0 + 24, wx2)
-      cov = max(0, min(0.5, 0.02 + 0.32 * pw)) + (nxt.wet and 0.14 or 0)
-      if day.gale then cov, dark = max(cov, 0.4), 0.12 end
-    end
-    if snow then dark = dark * 0.6 end
-  end
-  COV[c], KIND[c], DARK[c], SNOW[c] = cov, kind, dark, snow
-  STAMP[c] = serial
-end
-
-local function weather_around(W, c)
-  if STAMP[c] ~= serial then cell_weather(W, c) end
-  local g = W.grid
-  local b = c * 6 - 6
-  local n = g.nbr_count[c]
-  local s = 0
-  for k = 1, n do
-    local q = g.nbr[b + k]
-    if STAMP[q] ~= serial then cell_weather(W, q) end
-    s = s + COV[q]
-  end
-  -- smoothed cover: banks span neighbouring cells, edges fade out over a cell
-  SM[c] = COV[c] * 0.55 + (s / n) * 0.45
-  SMSTAMP[c] = serial
-end
-
----------------------------------------------------------------------------------------------
--- Puff planning
-
-local function add_puff(x, y, z, r, sq, h, shade, drift, op, dark, base_r)
-  local n = NPUFF + 1
-  NPUFF = n
-  local o = n * 13 - 13
-  -- x, y, z: unit direction of the base point; h: centre height above the base (world units)
-  local F = JF.fade
-  P[o + 1], P[o + 2], P[o + 3] = x, y, z
-  P[o + 4], P[o + 5], P[o + 6] = r, sq, h
-  P[o + 7], P[o + 8], P[o + 9] = shade, drift, op
-  P[o + 10], P[o + 11], P[o + 12] = JF.born + rnd() * F * 0.8, JF.gone + rnd() * F * 0.8, dark
-  P[o + 13] = base_r
-end
-
--- point at (de, dn) radians east/north of unit dir (x, y, z), in the frame of cell c
-local ox_, oy_, oz_ = 0, 0, 0
-local function offset(c, x, y, z, de, dn)
-  local px, py, pz = x + EX[c] * de + NX[c] * dn, y + EY[c] * de + NY[c] * dn, z + EZ[c] * de + NZ[c] * dn
-  local l = sqrt(px * px + py * py + pz * pz)
-  ox_, oy_, oz_ = px / l, py / l, pz / l
-end
-
--- the continuous cover field at unit point (px, py, pz) near cell c; returns value, nearest cell
-local function field(W, c, px, py, pz)
-  local g = W.grid
-  local sp2 = g.spacing * g.spacing
-  local X, Y, Z = g.X, g.Y, g.Z
-  local wsum, csum = 0, 0
-  local best, bd = c, -2
-  local b6 = c * 6 - 6
-  for k = 0, g.nbr_count[c] do
-    local q = k == 0 and c or g.nbr[b6 + k]
-    local d = px * X[q] + py * Y[q] + pz * Z[q]
-    if d > bd then best, bd = q, d end
-    local a = (1 - d) / sp2              -- ~ half the squared distance in spacings
-    local w = 1 / (0.05 + a * a)
-    wsum = wsum + w
-    csum = csum + w * (SMSTAMP[q] == serial and SM[q] or COV[q])
-  end
-  local N, nk = M.noise, JF.nk
-  local n1 = vnoise.value(N, px * 3.4 + nk, py * 3.4 + nk * 0.7, pz * 3.4 - nk * 0.3)
-  local n2 = vnoise.value(N, px * 9 - nk, py * 9 + nk * 0.3, pz * 9 + nk * 0.9)
-  return csum / wsum + 0.72 * (n1 * 0.65 + n2 * 0.35 - 0.5), best
-end
-
-local function plan_cell(W, c, wet)
-  local g = W.grid
-  local dens = M.DENSITY
-  local x, y, z = g.X[c], g.Y[c], g.Z[c]
-  local sp = g.spacing                 -- radians
-  local R = state.R
-  local spw = sp * R                   -- world units across a cell
-  local drift = DRIFTC[c]
-  local T = M.T
-  seed_cell(c, JF.key)
-  local count0 = NPUFF
-  local kc = KIND[c]
-  -- stratified samples: the centre and two rings around it
-  local npts = floor(7 * (0.5 + 0.5 * dens) + 0.5)
-  for s = 1, npts do
-    local rr, aa
-    if s == 1 then rr, aa = 0.12 * rnd(), rnd() * 6.283
-    elseif s <= 6 then rr, aa = 0.28 + 0.12 * rnd(), (s - 2 + rnd() * 0.6) / 5 * 6.283
-    else rr, aa = 0.5 + 0.1 * rnd(), (s - 7 + rnd() * 0.7) / max(1, npts - 6) * 6.283 + 0.5 end
-    offset(c, x, y, z, cos(aa) * rr * sp, sin(aa) * rr * sp)
-    local px, py, pz = ox_, oy_, oz_
-    local d, q = field(W, c, px, py, pz)
-    if d > T then
-      local kind = KIND[q] or 1
-      local mg = min(1, (d - T) / 0.4)
-      local dark = (DARK[q] or 0) * (0.85 + 0.3 * rnd())
-      local base_r = R + BASE[q] + (kind == 1 and 0.1 or 0)
-      if kind >= 2 or rnd() > 0.2 then
-        -- a bank: a broad flat pancake per sample (neighbouring pancakes merge into one deck),
-        -- cauliflower lobes rising from its top where the cover is thick, small lobes fraying
-        -- its rim (rain decks and storms: grey, low, thick; fair-weather banks: white, higher)
-        local deck = kind >= 2
-        if not deck then dark = dark * 0.5 end
-        local r = spw * (deck and (0.26 + 0.26 * mg) or (0.18 + 0.22 * mg)) * (0.8 + 0.4 * rnd())
-        local sq = deck and (0.3 + 0.08 * rnd()) or (0.36 + 0.1 * rnd())
-        local hh = r * sq * (-0.35 + 0.3 * mg)
-        local top = hh + r * sq                            -- the pancake's top above the base
-        add_puff(px, py, pz, r, sq, hh, 0.75 + 0.2 * mg, drift, 1, dark, base_r)
-        local lobes = floor((deck and 0.5 or 1.3) + mg * 2.6 * (0.6 + 0.4 * rnd()))
-        for _ = 1, lobes do
-          local a2, d2 = rnd() * 6.283, sqrt(rnd()) * r * 0.62 / R
-          offset(c, px, py, pz, cos(a2) * d2, sin(a2) * d2)
-          local r2 = r * (0.28 + 0.26 * rnd()) * (0.7 + 0.5 * mg)
-          local s2 = deck and 0.62 or 0.78
-          add_puff(ox_, oy_, oz_, r2, s2, top - r2 * s2 * (0.55 - 0.35 * mg), 0.88 + 0.12 * rnd(), drift, 1, dark * 0.85, base_r)
-        end
-        if mg < 0.4 then
-          -- fraying at thin edges: a small lobe at the rim
-          for _ = 1, 1 do
-            local a2 = rnd() * 6.283
-            offset(c, px, py, pz, cos(a2) * r * 0.95 / R, sin(a2) * r * 0.95 / R)
-            local r3 = r * (0.22 + 0.14 * rnd())
-            add_puff(ox_, oy_, oz_, r3, 0.6, r3 * 0.1, 0.85, drift, 1, dark, base_r)
-          end
-        end
-        if kind == 3 and mg > 0.4 and rnd() < 0.75 then
-          -- storms heap up where they are thickest: a broad dark mass, wider than tall
-          for k = 1, 3 do
-            local a2, d2 = rnd() * 6.283, rnd() * r * 0.6 / R
-            offset(c, px, py, pz, cos(a2) * d2, sin(a2) * d2)
-            local r3 = r * (0.5 + 0.2 * rnd())
-            add_puff(ox_, oy_, oz_, r3, 0.7, top + r3 * (0.1 + 0.25 * k), 0.85 + 0.05 * k, drift, 1, 0.5 + 0.2 * rnd(), base_r)
-          end
-        end
-      else
-        -- a lone fair-weather heap strung out along the wind, its big puff in the middle
-        local S = spw * (0.06 + 0.09 * mg) * (0.85 + 0.3 * rnd())
-        local elong = 1.2 + 0.8 * rnd()
-        local ang = (rnd() - 0.5) * 0.8
-        local ax, an = cos(ang), sin(ang)
-        dark = dark * 0.6
-        add_puff(px, py, pz, S, 0.8, S * (0.16 + 0.14 * mg), 1.0, drift, 1, dark, base_r)
-        local n2 = 1 + floor(rnd() * 2 + mg * 2)
-        for k = 1, n2 do
-          local side = (k % 2 == 0) and 1 or -1
-          local along = side * S * elong * (0.55 + 0.35 * rnd())
-          local across = (rnd() - 0.5) * S * 0.7
-          offset(c, px, py, pz, (ax * along - an * across) / R, (an * along + ax * across) / R)
-          local r2 = S * (0.6 + 0.2 * rnd())
-          add_puff(ox_, oy_, oz_, r2, 0.78, r2 * (0.04 + 0.14 * rnd()), 0.9 + 0.08 * rnd(), drift, 1, dark, base_r)
-        end
-        local n3 = 1 + floor(rnd() * 3)
-        for _ = 1, n3 do
-          local a2 = rnd() * 6.283
-          local dd = S * (0.8 + 0.5 * rnd())
-          offset(c, px, py, pz, cos(a2) * dd * elong / R, sin(a2) * dd / R)
-          local r3 = S * (0.36 + 0.16 * rnd())
-          add_puff(ox_, oy_, oz_, r3, 0.74, r3 * 0.05, 0.82 + 0.1 * rnd(), drift, 1, dark, base_r)
-        end
-      end
-    end
-  end
-  if NPUFF == count0 and SM[c] < 0.12 and rnd() < 0.3 * dens then
-    -- a high wisp over clear sky: a thin, see-through streak along the wind
-    local base_r = R + BASE[c] + 0.6
-    offset(c, x, y, z, (rnd() - 0.5) * sp, (rnd() - 0.5) * sp)
-    local px, py, pz = ox_, oy_, oz_
-    local ang = (rnd() - 0.5) * 0.6
-    local ax, an = cos(ang), sin(ang)
-    local nw = 4 + floor(rnd() * 4)
-    local len = spw * (0.35 + 0.3 * rnd())
-    for k = 1, nw do
-      local f = (k - 0.5) / nw - 0.5
-      local along = f * len
-      local bend = (f * f - 0.08) * len * 0.5
-      offset(c, px, py, pz, (ax * along - an * bend) / R, (an * along + ax * bend) / R)
-      local r = spw * (0.05 + 0.035 * (1 - abs(f) * 1.6)) * (0.8 + 0.4 * rnd())
-      add_puff(ox_, oy_, oz_, r, 0.3, 0, 1.0, drift, 0.4 + 0.2 * rnd(), 0, base_r)
-    end
-  end
-  -- rain curtains under decks and storms
-  if kc >= 2 and SM[c] > 0.5 and NPUFF > count0 and not JF.fast then
-    wet[#wet + 1] = { c = c, alt = BASE[c], snow = SNOW[c], drift = drift, born = JF.born, gone = JF.gone + JF.fade, heavy = kc == 3 }
-  end
-end
-
----------------------------------------------------------------------------------------------
--- Sector jobs: weather, puffs, then the buffer written in batches and swapped in
-
-local function start_job(s, key, fast, ds, born, gone, fade)
-  local sec = M.sectors[s]
+local function god_sky(W, t, FORCE, FSTAMP)
   serial = serial + 1
-  NPUFF = 0
-  JF.fast, JF.ds, JF.key = fast, ds, key
-  JF.born, JF.gone, JF.fade = born, gone, fade
-  JF.nk = (key % 997) * 3.1
-  return { s = s, phase = 1, i = 1, target = sec.cur == 1 and 2 or 1, wet = {}, serial = serial }
+  local P = W.S and W.S.powers
+  local fs = P and P.forcings
+  if not fs then return serial end
+  local burst = cfgmod.POWERS.v3_burst_h or 3
+  for k = 1, #fs do
+    local f = fs[k]
+    if f.at and f.cells and t >= f.at and t < f.at + 24 and (f.kind == "rain" or f.kind == "drought") then
+      local v = f.kind == "drought" and 0 or (t < f.at + burst and 2 or 1)
+      for _, c in ipairs(f.cells) do FORCE[c], FSTAMP[c] = v, serial end
+    end
+  end
+  return serial
+end
+
+-- 0 dry, 1 rain, 2 downpour at cell c at hour t (the god's sky first, then the day's spells)
+local function rain_at(W, c, t, FORCE, FSTAMP, stamp)
+  if FSTAMP[c] == stamp then return FORCE[c] end
+  spells(W, c, floor(t / 24))
+  if not SD_WET[c] then return 0 end
+  if t >= SD_A1[c] and t < SD_B1[c] then return SD_H1[c] and 2 or 1 end
+  if SD_N[c] >= 2 and t >= SD_A2[c] and t < SD_B2[c] then return SD_H2[c] and 2 or 1 end
+  return 0
+end
+
+local function cell_cloud(W, c, t, fast, stamp)
+  local F = W.F
+  local P = F.precip[c] or 0
+  local pw = P / cfgmod.WEATHER_DAY.wet_week
+  if pw > 1.6 then pw = 1.6 elseif pw < 0 then pw = 0 end
+  if fast then
+    -- (days flash by: the day's rain as a whole)
+    if pw > 1.05 then return min(0.92, 0.62 + (pw - 1.05) * 0.6), min(0.6, (pw - 1.05) * 0.9) end
+    return max(0.0, min(0.55, (pw - 0.12) * 0.62)), 0
+  end
+  local f = JSTAMP[c] == stamp and JFORCE[c] or nil
+  if f == 0 then return 0.0, 0 end
+  -- between spells: fair-weather heaps where the air is damp, clear where it is dry
+  local hum = max(0, min(0.5, (pw - 0.08) * 0.55))
+  local k, heavy = 0, false
+  if f then
+    k, heavy = 1, f == 2
+  else
+    spells(W, c, floor(t / 24))
+    if SD_WET[c] then
+      -- a wet day is grey between its spells; cloud gathers over the three hours before a spell, is
+      -- full while it rains, thins over three hours after it
+      hum = max(hum, 0.32)
+      for i = 1, SD_N[c] do
+        local a, b, hv
+        if i == 1 then a, b, hv = SD_A1[c], SD_B1[c], SD_H1[c] else a, b, hv = SD_A2[c], SD_B2[c], SD_H2[c] end
+        local v
+        if t >= a and t < b then v = 1
+        elseif t < a then v = 1 - (a - t) / 3
+        else v = 1 - (t - b) / 3 end
+        if v > k then k, heavy = v, hv end
+      end
+    end
+  end
+  if k < 0 then k = 0 end
+  return hum + (0.95 - hum) * k, k * (heavy and 0.8 or 0.36)
+end
+
+---------------------------------------------------------------------------------------------
+-- The next map: cells, then texels, then the upload (budgeted)
+
+local function start_job(W, t, fast)
+  return { t = t, fast = fast, phase = 1, i = 1, stamp = god_sky(W, t, JFORCE, JSTAMP) }
 end
 
 local function run_job(W, J, deadline)
-  local sec = M.sectors[J.s]
-  local cells = sec.cells
-  if J.serial ~= serial then return true end    -- superseded
-  local ph = M.stats.ph
-  local ta = clockm.now_ms()
+  local n = W.n
   if J.phase == 1 then
-    while J.i <= #cells do
-      weather_around(W, cells[J.i])
+    while J.i <= n do
+      COVC[J.i], DRKC[J.i] = cell_cloud(W, J.i, J.t, J.fast, J.stamp)
       J.i = J.i + 1
-      if J.i % 8 == 0 and clockm.now_ms() > deadline then ph[1] = ph[1] + clockm.now_ms() - ta; return false end
+      if J.i % 32 == 0 and clockm.now_ms() > deadline then return false end
     end
     J.phase, J.i = 2, 1
-    local tb = clockm.now_ms()
-    ph[1], ta = ph[1] + tb - ta, tb
+    J.cover = 0
   end
   if J.phase == 2 then
-    while J.i <= #cells do
-      plan_cell(W, cells[J.i], J.wet)
-      J.i = J.i + 1
-      if J.i % 4 == 0 and clockm.now_ms() > deadline then ph[2] = ph[2] + clockm.now_ms() - ta; return false end
+    local st = M.covst
+    local NT = M.CW * M.CH
+    local cov_sum = J.cover
+    while J.i <= NT do
+      local t = J.i
+      local o = (t - 1) * 7
+      local cv, dk = 0, 0
+      for k = 1, TN[t] do
+        local q, w = TC[o + k], TW[o + k]
+        cv, dk = cv + w * COVC[q], dk + w * DRKC[q]
+      end
+      local cb, db = floor(cv * 255 + 0.5), floor(dk * 255 + 0.5)
+      local s = (t - 1) * 4
+      st[s + 1], st[s + 2], st[s + 3], st[s + 4] = PREVC[t], cb, PREVD[t], db
+      PREVC[t], PREVD[t] = cb, db
+      cov_sum = cov_sum + cv
+      J.i = t + 1
+      if t % 256 == 0 and clockm.now_ms() > deadline then J.cover = cov_sum; return false end
     end
-    J.n = NPUFF
-    J.buf = new_buffer(J.n)
-    J.pos = buffer.get_stream(J.buf, H_POS)
-    J.nrm = buffer.get_stream(J.buf, H_NRM)
-    J.p1 = buffer.get_stream(J.buf, H_P1)
-    J.p2 = buffer.get_stream(J.buf, H_P2)
-    J.p3 = buffer.get_stream(J.buf, H_P3)
-    J.phase, J.i, J.area = 3, 1, 0
-    local tb = clockm.now_ms()
-    ph[2], ta = ph[2] + tb - ta, tb
-    if tb > deadline then return false end
-  end
-  if J.phase == 3 then
-    local pos, nrm, p1, p2, p3 = J.pos, J.nrm, J.p1, J.p2, J.p3
-    local n = J.n
-    local cx1, cx2, cx3, cy1, cy2, cy3 = CX[1], CX[2], CX[3], CY[1], CY[2], CY[3]
-    local area = J.area
-    while J.i <= n do
-      local i = J.i
-      local o = i * 13 - 13
-      local x, y, z = P[o + 1], P[o + 2], P[o + 3]
-      local r, sq, hh = P[o + 4], P[o + 5], P[o + 6]
-      local shade, drift, op = P[o + 7], P[o + 8], P[o + 9]
-      local born, gone, dark = P[o + 10], P[o + 11], P[o + 12]
-      local cr = P[o + 13] + hh
-      local cx, cy, cz = x * cr, y * cr, z * cr
-      local seed = (i * 0.61803) % 1
-      local v3, v4 = (i - 1) * 9, (i - 1) * 12
-      pos[v3 + 1], pos[v3 + 2], pos[v3 + 3] = cx, cy, cz
-      pos[v3 + 4], pos[v3 + 5], pos[v3 + 6] = cx, cy, cz
-      pos[v3 + 7], pos[v3 + 8], pos[v3 + 9] = cx, cy, cz
-      nrm[v3 + 1], nrm[v3 + 2], nrm[v3 + 3] = x, y, z
-      nrm[v3 + 4], nrm[v3 + 5], nrm[v3 + 6] = x, y, z
-      nrm[v3 + 7], nrm[v3 + 8], nrm[v3 + 9] = x, y, z
-      p1[v4 + 1], p1[v4 + 2], p1[v4 + 3], p1[v4 + 4] = cx1, cy1, r, sq
-      p1[v4 + 5], p1[v4 + 6], p1[v4 + 7], p1[v4 + 8] = cx2, cy2, r, sq
-      p1[v4 + 9], p1[v4 + 10], p1[v4 + 11], p1[v4 + 12] = cx3, cy3, r, sq
-      p2[v4 + 1], p2[v4 + 2], p2[v4 + 3], p2[v4 + 4] = -hh, shade, drift, op
-      p2[v4 + 5], p2[v4 + 6], p2[v4 + 7], p2[v4 + 8] = -hh, shade, drift, op
-      p2[v4 + 9], p2[v4 + 10], p2[v4 + 11], p2[v4 + 12] = -hh, shade, drift, op
-      p3[v4 + 1], p3[v4 + 2], p3[v4 + 3], p3[v4 + 4] = born, gone, dark, seed
-      p3[v4 + 5], p3[v4 + 6], p3[v4 + 7], p3[v4 + 8] = born, gone, dark, seed
-      p3[v4 + 9], p3[v4 + 10], p3[v4 + 11], p3[v4 + 12] = born, gone, dark, seed
-      area = area + r * r
-      J.i = i + 1
-      if i % 48 == 0 and clockm.now_ms() > deadline then J.area = area; ph[3] = ph[3] + clockm.now_ms() - ta; return false end
-    end
-    ph[3] = ph[3] + clockm.now_ms() - ta
-    -- swap into the older buffer of the sector
-    local o = sec.objs[J.target]
-    local R = state.R + 3
-    buffer.set_metadata(J.buf, H_AABB, { -R, -R, -R, R, R, R }, buffer.VALUE_TYPE_FLOAT32)
-    resource.set_buffer(o.res, J.buf, { transfer_ownership = true })
-    o.n = n
-    o.gone = JF.gone + JF.fade
-    o.area = area
-    sec.cur = J.target
-    sec.wet_list = J.wet
+    J.cover = cov_sum
+    resource.set_texture(M.cov, M.covparams, M.covbuf)
+    M.stats.maps = M.stats.maps + 1
     M.stats.rebuilt = M.stats.rebuilt + 1
+    M.stats.cover = cov_sum / NT
     return true
   end
   return false
@@ -547,164 +408,125 @@ end
 
 local pos, rot, scl = vmath.vector3(), vmath.quat(), vmath.vector3()
 
-local function sector_visible(sec, ex, ey, ez)
-  local pt = sec.pts
-  for i = 1, #pt, 3 do
-    if pt[i] * ex + pt[i + 1] * ey + pt[i + 2] * ez > -0.25 then return true end
-  end
-  return false
+local function norm(x, y, z)
+  local l = sqrt(x * x + y * y + z * z)
+  if l < 1e-9 then return 0, 0, 1 end
+  return x / l, y / l, z / l
 end
 
---- Per-frame: sector rebuilds (budgeted), visibility, rain curtains, shader inputs.
--- instant: finish every stale sector now (loading, M.flush before screenshots).
+--- Per-frame: the next cover map (budgeted), the blend, the camera's basis, rain curtains.
+-- instant: finish the map now (loading, M.flush before screenshots).
 function M.update(W, dt, frozen, instant)
-  if not M.sectors[1] or not M.sectors[1].cells then return end
-  local speed = require("game.platform.speed")
-  local hf = state.hour_f or W.hour
-  if hf < M.epoch or hf - M.epoch > 60000 then
-    M.epoch = floor(hf / 8064) * 8064
-    for _, sec in ipairs(M.sectors) do sec.key = nil; for k = 1, 2 do sec.objs[k].n = 0 end end
-    M.job = nil
+  if not M.urls or not M.cov then return end
+  local hidden = M.hidden
+  -- the full-screen pass's rays: the camera's basis
+  local e, tg, u = state.eye, state.target, state.up
+  local fx, fy, fz = norm(tg.x - e.x, tg.y - e.y, tg.z - e.z)
+  local rx, ry, rz = norm(fy * u.z - fz * u.y, fz * u.x - fx * u.z, fx * u.y - fy * u.x)
+  local ux, uy, uz = ry * fz - rz * fy, rz * fx - rx * fz, rx * fy - ry * fx
+  local th = math.tan(state.fov * 0.5)
+  local asp = (state.window_w or 1280) / max(1, state.window_h or 720)
+  local cr, cu, cf = state.u_cr, state.u_cu, state.u_cf
+  cr.x, cr.y, cr.z = rx * th * asp, ry * th * asp, rz * th * asp
+  cu.x, cu.y, cu.z = ux * th, uy * th, uz * th
+  cf.x, cf.y, cf.z = fx, fy, fz
+  if hidden then
+    state.u_cv1.y = 0
+    M.stats.active = 0
+    for _, rn in ipairs(M.rains) do if rn.on then rn.on = false; msg.post(rn.url, MSG_DISABLE) end end
+    return
   end
+  -- (S23) adaptive quality: when frames are slow (a weak GPU, a software rasteriser) the march takes fewer
+  -- samples, with a margin so it does not flicker between levels
+  if dt > 0 then M.q_dt = M.q_dt + (math.min(dt, 1) - M.q_dt) * (dt > M.q_dt * 2 and 0.3 or 0.05) end
+  if M.STEPS_FIXED then
+    M.q_steps = M.STEPS_FIXED
+  elseif M.q_dt > 0.12 and M.q_steps > 8 then M.q_steps = 8
+  elseif M.q_dt > 0.045 and M.q_steps > 14 then M.q_steps = 14
+  elseif M.q_dt < 0.03 and M.q_steps < M.STEPS then M.q_steps = (M.q_dt < 0.022) and M.STEPS or 14
+  end
+  state.u_cv1.y = M.q_steps
+  local speed = require("game.platform.speed")
+  -- (the world's own clock, not the last frame's: a flush right after a jump in time makes the map for now)
+  local hf = (W.v3 and speed.v3_t) or state.hour_f or W.hour
   local hps = speed.hours_per_second() or 0
   local fast = hps > M.FAST_HPS
-  local fade = fast and max(M.FADE_SLOW, hps * 0.6) or M.FADE_SLOW
-  local hrel = hf - M.epoch
-  local uc = state.u_cloud
-  if uc then uc.x, uc.y = hrel, fade end
-  local ex, ey, ez = state.eye.x, state.eye.y, state.eye.z
-  local el = sqrt(ex * ex + ey * ey + ez * ez)
-  ex, ey, ez = ex / el, ey / el, ez / el
+  -- (the noise's clock: hours within a long cycle - a whole number of advection periods)
+  local cyc = M.PERIOD * 1024
+  state.u_cv0.x = hf % cyc
+  -- the next map, for a moment a little ahead: made while the map in force holds, then blended in from
+  -- the moment it is ready to its own hour (so cover never jumps)
   local t0 = clockm.now_ms()
   local t_end = t0 + (instant and 1e9 or M.BUDGET_MS)
-  M.rr = (M.rr or 0) + dt
-  local mode = fast and 1 or 0
-  -- hidden (gfx=low, the bridge): no rebuilds at all
-  for _ = 1, M.hidden and 0 or (instant and 64 or 3) do
-    if not M.job then
-      local pick, best = nil, -1e9
-      for s, sec in ipairs(M.sectors) do
-        local key, ds
-        if fast then
-          -- round-robin refreshes from the week's weather, one sector per slot
-          key = sec.key or 0
-          if sec.mode ~= 1 or (M.rr >= M.REFRESH_S / M.SECTORS and s == (M.rr_next or 1)) then
-            key = floor(hf) + s
-          end
-          ds = floor(hf)
-        else
-          local b = daylight.midnight_bucket(sec.lonc)
-          key = floor((hf - b) / 24)
-          ds = key * 24 + b
-        end
-        sec.want_key, sec.want_ds = key, ds
-        if sec.key ~= key or sec.mode ~= mode then
-          local pr = (sector_visible(sec, ex, ey, ez) and 10 or 0) - s * 0.01
-          if pr > best then pick, best = s, pr end
-        end
-      end
-      if not pick then break end
-      local sec = M.sectors[pick]
-      sec.key, sec.mode = sec.want_key, mode
-      local born, gone
-      if fast then
-        M.rr = 0
-        M.rr_next = pick % M.SECTORS + 1
-        born = hrel
-        gone = hrel + max(168, hps * M.REFRESH_S * 1.25)
-      else
-        born = sec.want_ds - M.epoch
-        gone = born + 24
-      end
-      M.job = start_job(pick, sec.want_key, fast, sec.want_ds, born, gone, fade)
-    end
-    if run_job(W, M.job, t_end) then
-      M.job = nil
-    elseif not instant then
-      break
-    end
-    if clockm.now_ms() > t_end then break end
+  if instant then M.job = nil end
+  if not M.job and (not M.tb or hf >= M.tb or hf < (M.ta or hf) - 1 or instant) then
+    local ahead = fast and max(6, hps * 0.5) or max(0.25, hps * 0.6)
+    M.job = start_job(W, instant and hf or (hf + ahead), fast)
   end
+  if M.job and run_job(W, M.job, t_end) then
+    M.stamp = M.job.stamp
+    M.ta = hf
+    M.tb = max(M.job.t, hf + 1e-3)
+    M.job = nil
+    if instant then
+      -- (the map in force is the new one at once)
+      local st = M.covst
+      for t = 1, M.CW * M.CH do
+        local s4 = (t - 1) * 4
+        st[s4 + 1], st[s4 + 3] = st[s4 + 2], st[s4 + 4]
+      end
+      resource.set_texture(M.cov, M.covparams, M.covbuf)
+      M.tb = hf
+    end
+  end
+  local blend = 1
+  if M.ta and M.tb and M.tb > M.ta then blend = max(0, min(1, (hf - M.ta) / (M.tb - M.ta))) end
+  state.u_cv1.x = blend
   M.stats.job_ms = clockm.now_ms() - t0
-  -- visibility of the sector buffers
-  local active, area = 0, 0
-  local hidden = M.hidden
-  for _, sec in ipairs(M.sectors) do
-    local vis = not hidden and sector_visible(sec, ex, ey, ez)
-    for k = 1, 2 do
-      local o = sec.objs[k]
-      local on = vis and o.n > 0 and o.gone > hrel
-      if on ~= o.on then
-        o.on = on
-        msg.post(o.url, on and MSG_ENABLE or MSG_DISABLE)
-      end
-      if on and k == sec.cur then active, area = active + o.n, area + o.area end
-    end
-  end
-  M.stats.active = active
-  M.stats.puffs = active
-  M.stats.cover = area * pi * 0.7 / (4 * pi * state.R * state.R)
+  M.stats.active = M.stats.cover > 0.002 and 1 or 0
+  M.stats.puffs = 0
   M.rain_t = (M.rain_t or 0) + dt
-  if M.rain_t >= 0.2 or instant then
+  if M.rain_t >= 0.25 or instant then
     M.rain_t = 0
-    M.update_rain(W, hrel)
-  end
-  -- the cut-away: clouds between the camera and the view focus open up (cloud.fp)
-  local zoom = require("game.view.camera").zoom
-  local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
-  local cut = state.u_cut
-  if cut then
-    local rs2 = state.R + 0.2
-    cut.x, cut.y, cut.z = fx * rs2, fy * rs2, fz * rs2
-    cut.w = min(1, max(0, (zoom - 0.25) * 2.5))
+    M.update_rain(W, hf, fast)
   end
 end
 
--- Rain/snow curtains: the wet cells of the current day nearest the view focus.
-local cand, cand_d = {}, {}
-function M.update_rain(W, hrel)
-  local n = 0
+-- Rain/snow curtains: the cells nearest the view focus where it rains now (the same weather).
+local cand, cand_d, cand_v = {}, {}, {}
+function M.update_rain(W, hf, fast)
   local g = W.grid
-  if not M.hidden then
-    local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
-    for _, sec in ipairs(M.sectors) do
-      local wl = sec.wet_list
-      if wl then
-        for i = 1, #wl do
-          local w = wl[i]
-          if hrel >= w.born and hrel < w.gone - 1 then
-            local c = w.c
-            local d = g.X[c] * fx + g.Y[c] * fy + g.Z[c] * fz
-            if d > 0.55 then
-              n = n + 1
-              cand[n], cand_d[n] = w, d
-            end
-          end
-        end
+  local n = 0
+  local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
+  if not fast then
+    local stamp = god_sky(W, hf, RFORCE, RSTAMP)
+    for c = 1, W.n do
+      local d = g.X[c] * fx + g.Y[c] * fy + g.Z[c] * fz
+      if d > 0.55 then
+        local v = rain_at(W, c, hf, RFORCE, RSTAMP, stamp)
+        if v > 0 then n = n + 1; cand[n], cand_d[n], cand_v[n] = c, d, v end
       end
     end
   end
-  -- the nearest first (partial selection: the pool is small)
+  M.stats.raining = n
   local m = min(n, #M.rains)
   for i = 1, m do
     local bi = i
     for j = i + 1, n do if cand_d[j] > cand_d[bi] then bi = j end end
     cand[i], cand[bi] = cand[bi], cand[i]
     cand_d[i], cand_d[bi] = cand_d[bi], cand_d[i]
+    cand_v[i], cand_v[bi] = cand_v[bi], cand_v[i]
   end
   local R = state.R
   for i, rn in ipairs(M.rains) do
-    local w = i <= m and cand[i] or nil
-    local on = w ~= nil
+    local on = i <= m
     if on then
-      local c = w.c
-      local a = w.drift * (hrel - w.born)
-      local x0, y0, z0 = g.X[c], g.Y[c], g.Z[c]
-      local ca, sa = cos(a), sin(a)
-      local x, y, z = x0 * ca - z0 * sa, y0, x0 * sa + z0 * ca
-      if w.snow ~= rn.snow then rn.snow = w.snow; go.set(rn.url, "vertices", w.snow and M.snow_res or M.rain_res) end
-      local sz = g.spacing * R * (w.heavy and 1.25 or 0.95)
-      local r2 = R + w.alt + 0.02
+      local c = cand[i]
+      local x, y, z = g.X[c], g.Y[c], g.Z[c]
+      local snow = (W.F.temp[c] or 10) < 0
+      if snow ~= rn.snow then rn.snow = snow; go.set(rn.url, "vertices", snow and M.snow_res or M.rain_res) end
+      local sz = g.spacing * R * (cand_v[i] == 2 and 1.25 or 0.95)
+      local r2 = R + M.BMIN + BASEN[c] * (M.BMAX - M.BMIN) + 0.02
       pos.x, pos.y, pos.z = x * r2, y * r2, z * r2
       vmx.set_up_yaw(rot, x, y, z, (c % 7) * 0.9)
       scl.x, scl.y, scl.z = sz, 1, sz
@@ -717,8 +539,20 @@ function M.update_rain(W, hrel)
   for i = 1, n do cand[i] = nil end
 end
 
---- Rebuild every stale sector now (screenshots, tests: view.flush).
+--- (bridge `clouds`) What the cover map holds at each village's cell: cover, darkness, base, the god's sky.
+function M.probe(W)
+  local out = { ta = M.ta, tb = M.tb, blend = state.u_cv1.x, cover = M.stats.cover, maps = M.stats.maps, villages = {} }
+  for _, s in ipairs(W.S.v3 and W.S.v3.settlements or {}) do
+    local c = s.cell
+    out.villages[#out.villages + 1] = { name = s.name, cell = c, cover = COVC[c], dark = DRKC[c], base = M.BMIN + (BASEN[c] or 0) * (M.BMAX - M.BMIN),
+      god = JSTAMP[c] == M.stamp and JFORCE[c] or nil, rain_now = s.rain_now }
+  end
+  return out
+end
+
+--- The map for now, at once (screenshots, tests: view.flush).
 function M.flush(W)
+  M.job = nil
   M.update(W, 0, true, true)
 end
 

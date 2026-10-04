@@ -41,4 +41,6 @@ return {
   "tests.sim.unit.test_v3_powers",
   "tests.sim.unit.test_v3_beasts_fire",
   "tests.sim.unit.test_v3_namespace",
+  "tests.sim.unit.test_v3_chain",
+  "tests.sim.unit.test_v3_powers2",
 }

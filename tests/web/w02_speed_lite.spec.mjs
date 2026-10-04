@@ -4,7 +4,9 @@ import { test, expect } from '@playwright/test';
 import { openGame, readTC, sendCmd, waitForTC, expectNoErrors } from './lib/game.mjs';
 
 test('W02-lite bridge: ping + set_speed round-trip @ch1', async ({ page }) => {
-  const game = await openGame(page);
+  // (S23) gfx=low like the other functional specs: the cloud layer is marched per pixel, which the CPU
+  // rasteriser (SwiftShader) pays seconds a frame for; on a real GPU it is free (D-180)
+  const game = await openGame(page, { gfx: 'low' });
 
   const ping = await sendCmd(page, { cmd: 'ping', echo: 'hello' });
   expect(ping.ok).toBe(true);

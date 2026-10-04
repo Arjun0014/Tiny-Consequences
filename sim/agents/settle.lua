@@ -1018,7 +1018,9 @@ local function grow_plots(W, s, day)
       -- (S21, R6.5g) heat: a day hotter than heat_t (daily mean) spoils the filling grain in proportion
       -- (no grain at heat_t + heat_span); the corn ripens as fast, with less in the ear
       local hs = T > c.heat_t and min(1, (T - c.heat_t) / c.heat_span) or 0
-      pl.q_sum, pl.q_n = pl.q_sum + d * wet * (1 - 0.5 * pl.weeds) * (1 - hs), pl.q_n + d
+      -- (S23, R7 v2) a blighted crop fills less: the share of it the blight holds
+      local bl = 1 - c.blight_harm * (pl.blight or 0)
+      pl.q_sum, pl.q_n = pl.q_sum + d * wet * (1 - 0.5 * pl.weeds) * (1 - hs) * bl, pl.q_n + d
       if hs > 0.3 and (pl.hh or 0) ~= 0 and pl.heat_told ~= pl.sown_day then
         pl.heat_told = pl.sown_day
         for _, id in ipairs((V.households[pl.hh] or {}).members or {}) do
@@ -1905,6 +1907,7 @@ function M.daily(W, s, day)
   end
   s.ate_prev = ate
   grow_plots(W, s, day)
+  require("sim.agents.blight").daily(W, s, day)   -- (S23, R7 v2)
   grow_trees(W, s, day)
   hearths(W, s, day)
   wild_food(W, s, day)

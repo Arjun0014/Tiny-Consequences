@@ -1,0 +1,8 @@
+material: "/game/render/cloudshell.material"
+vertices: "/game/view/cloudshell.buffer"
+textures: "/assets/textures/white4.png"
+textures: "/assets/textures/white4.png"
+textures: "/assets/textures/white4.png"
+primitive_type: PRIMITIVE_TRIANGLES
+position_stream: "position"
+normal_stream: "normal"

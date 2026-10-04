@@ -4,6 +4,8 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Current state
 
+- **SESSION 23 (4 Oct 2026, extended autonomous run - read `docs/SESSION_HANDOFF.md` session 23 first): the hydrology fix verified (D-179), clouds v5 - one cloud layer the camera flies through (D-180), the village mix with the herds as texture (D-181), CHAIN REACTION - "Your actions": what each cast caused, forward along real links (D-182, `docs/v3/77_CHAIN_REACTION.md`), R7 v2 powers - sickness in a herd, blight, warm/cool sea, oil, meteor (D-183).** Following the drifting tests found wolves eating at a kill from across a river; the 8-year run found a nursing mother walking to her kin for food while her newborn starved at home (both fixed). See the session 23 entry below for the checks run and pending.
+
 - **SESSION 22 (4 Oct 2026, ENDED - read `docs/SESSION_HANDOFF.md` session 22 FINAL STATE first; FIRST next session: apply and verify the hydrology fix written there): the validation Session 21 left, then Arjun's playtest issues; the powers played (D-178).** Validation: full suite 190/190, web 11/11, browser = LuaJIT untouched and with flood5/conflict/fire/powers, day-0 3.91 M and day-192 4.41 M instructions a game hour, an 8-year untouched run with no hunger deaths - but the same run split by a save at day 192 starved 14 people, and following it found that **every person born in a running world was never scheduled** (37 of 168 alive after 8 years had never taken a step) - fixed with the queue rebuild, dogs, yearly cache resets, hunger answers by the granary and v3 commands at their own moment (D-176). **Animals and fire** rebuilt from the simulation (fire seen by its extent, each beast noticing in its own time, running its own way out, keeping away while it burns, burnt in the flames; planet fire no longer painted over a village map close in) and **lightning takes exposed beasts** (by height; the aim lands on the ground under the pointer or on the person/beast clicked) (D-177). Tests 194/194; browser = LuaJIT incl. `--premise pasture_fire`.
 
 - **SESSION 21 (3-4 Oct 2026, extended autonomous run, ENDED - read `docs/SESSION_HANDOFF.md` session 21 FINAL STATE first): R6.5e flood water (infiltration excess on the planet, water over the land by height above the river, the people's answer), R6 arms carried and kin who walk over to help, R6.5g ice age / hothouse watched with heat stress added, R7 god powers rethought (`docs/v3/70_R7_GOD_POWERS.md`), the player experience and the WORLD NEWS built (`75_PLAYER_EXPERIENCE.md`; `sim/news.lua`, cards under the clock, click to go there, Why? from real causal links to NATURE/PEOPLE/YOU), WORLD AUDIO built (`80_WORLD_AUDIO.md`; ElevenLabs pipeline `scripts/gen_audio.mjs`, 71 sounds, the mixer `game/audio/audio.lua`), R7 v1 powers built on the v3 world (`sim/powers3.lua`: lightning at a map point, rain, dry spell, warm/cold air, stir the mountain, strain the fault, cull, bring - consequences rooted at YOU), everyday-life stories in the news - D-169-D-175, on main.** Next: the validation list in SESSION_HANDOFF (full suite, web, hash, profiles, 8-year run), then play-tuning, R7 v2 powers.
@@ -106,6 +108,31 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 - Bundle size: 3.12 MB release
 
 ## Stage entries
+
+### [v3] Session 23: hydrology verified; clouds v5; the village mix; chain reaction; R7 v2 powers (D-179-D-183) (2026-10-04)
+- **Hydrology** (D-179): the infiltration excess no longer leaves the soil twice. The god's rain on a drought 0.10 -> 0.20 with the
+  fields drinking it; on wet hills the river at 8x and over its banks. Untouched planet 192 days: land soil mean 0.352 (no
+  infiltration excess) / 0.287 (the bug) / 0.312 (fixed); villages within 1-2% in all three. Drifting tests followed: wolves ate at a
+  kill from across a river (fixed: a way round, or cut off); hunting kills are a small number (test counts spears thrown).
+- **Clouds v5** (D-180): `game/view/clouds.lua` + `cloudvol.fp`/`cloudshell.fp` - a cover map from the villages' own rain spells
+  (`weather.cell_day`, identical hashes), a full-screen march through the layer, the camera inside it sees mist, under it the deck;
+  shadows from the same field; adaptive samples (`?cloudq=N`). Free on this laptop's GPU (ANGLE D3D11); SwiftShader pays ~0.5 s a
+  frame (W02-lite now `gfx=low`). Shots `scripts/shots_clouds.mjs` -> `out/shots/clouds/before_after.png`.
+- **Audio** (D-181): `M.MIX` hierarchy; herd bed 0.44 -> 0.14 (under the village's), calls rare and near, drawn from the beasts near;
+  `scripts/play_audio.mjs` measures what the mixer plays (energy by category, beds).
+- **Chain reaction** (D-182): `sim/chain.lua` (observer), `game/ui/actions.lua` ("Your actions" pill and panel), "chain N" on news
+  cards, bridge `actions`, `tools/v3_chain.lua`, `tools/v3_chain_dump.lua`, `scripts/shots_chain.mjs`, test `test_v3_chain` x3; the
+  sim records it lacked: the cull's count, the wolves' pack cause on a loss, deaths linked only to grave hurts.
+- **R7 v2** (D-183): sickness in a herd (incubation, the cause carried beast to beast, deaths as deeds), blight (`sim/agents/blight.lua`:
+  weather, wind, seed grain, yield), warm/cool sea, oil (the planet's slick), meteor (planet heat/fire/aerosol + quake + wave +
+  the blast on a map); test `test_v3_powers2` x4; the bar has 14 powers.
+- **Found by the 8-year run**: a nursing mother asked her kin for food at Zurug, her newborn starved at home - `ask_kin_candidate`
+  and the fair's crier now check `p.nursing` like every other journey.
+- Checks so far: full quick suite **197/197** on the phase-1 code (hydrology, wolves, chain, clouds, audio, the death link and nursing
+  fixes), then `test_v3_powers2` 4/4 on the R7 v2 code; web 11/11 (W02-lite rerun with `gfx=low`); lint clean; debug build OK; first 8-year
+  run: births 43, deaths illness 12 / old age 4 / lightning 1 / hunger 1 (the infant above). Pending at this checkpoint (see the
+  handoff): the v3 unit tests after the R7 v2 sickness change, browser = LuaJIT (untouched + 5 premises), the 8-year run again,
+  day-0 / year-8 profiles, the release benchmark.
 
 ### [v3] Session 22: validation; the frozen children; animals and fire; lightning on beasts (D-176, D-177) (2026-10-04)
 - **Validation** (S21 left it undone): `npm run test:sim` 190/190, `npm run test:web` 11/11, lint clean, release build OK, `v3_hash_web --release` untouched and `--premise flood5|conflict|fire|powers` (new: every v1 power cast at once) - browser = LuaJIT; LuaJIT 3.91 M instr/h at day 0, 4.41 M at day 192; 8 untouched years: no hunger deaths (illness 15, old age 4, drowned 1), 45 births.

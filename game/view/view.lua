@@ -89,7 +89,7 @@ function M.build(W, urls, step)
   M.sync_villages(W)
   props.build_all(function(f) step("Planting forests", f) end)
   step("Gathering clouds", 0)
-  clouds.init(W, urls.cloud_factory, urls.rain_factory)
+  clouds.init(W, { vol = "/cloudvol#mesh", shell = "/cloudshell#mesh" }, urls.rain_factory)
   puppets.init(W, urls, M.surface)
   puppets.height = function(v) return M.PL.h[v] end
   step("Waking the village", 0)
