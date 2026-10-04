@@ -4929,7 +4929,8 @@ function M.impact_choice(W, s, p, ctx, now)
   -- (straight away from it; bent a little either way when that way is water or off the map)
   for q = 0, 6 do
     local ang = (q == 0 and 0) or (((q % 2 == 1) and 1 or -1) * 0.45 * floor((q + 1) / 2))
-    local ca, sa = math.cos(ang), math.sin(ang)
+    local dm = require("sim.dmath")
+    local ca, sa = dm.cos(ang), dm.sin(ang)   -- (the same bits in every runtime)
     local ux, uy = (dx * ca - dy * sa) / d, (dy * ca + dx * sa) / d
     local x, y = ax + ux * (safe + 0.12), ay + uy * (safe + 0.12)
     x, y = max(-half, min(half, x)), max(-half, min(half, y))

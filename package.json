@@ -22,7 +22,7 @@
     "test:web": "node scripts/test_web.mjs",
     "shots": "node scripts/shots.mjs",
     "play": "node scripts/play.mjs",
-    "package:itch": "node scripts/stub.mjs package:itch \"Stage 4.5\"",
+    "package:itch": "node scripts/package.mjs",
     "deploy:wavedash": "node scripts/stub.mjs deploy:wavedash \"Stage 4.5\"",
     "bench:web": "node scripts/bench_web.mjs",
     "perf:probe": "node scripts/perf_probe.mjs",

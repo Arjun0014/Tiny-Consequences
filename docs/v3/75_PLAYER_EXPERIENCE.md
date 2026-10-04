@@ -109,3 +109,12 @@ whose chain ends at YOU carries "chain N" - a click opens that cast's chain.
 - **Sound** (a pill at the bottom right): four levels - everything, the world (its beds: wind, rain, the village,
   the herds), effects (axes, thunder, shouts) and the interface (the feed's chimes) - each with - and +, and the
   world's sound on or off (the same as M). Kept between visits (`sys.save`, `game/ui/sound_panel.lua`).
+
+
+## Status after session 25 (D-208, D-210, D-211)
+- Title screen (Play / How the World Works / Settings / Credits), pause menu on Esc or "Menu", settings (volumes, sound, clouds, shadows,
+  fullscreen, the tutorial), credits; "How the World Works": eight illustrated pages (`game/ui/menu.lua`).
+- The opening tutorial (`game/ui/tutorial.lua`): look, inspect, one lightning bolt into a dry tree, the news that noticed it, go there,
+  watch, Your actions, skip a day and a season, back to the bolt's real chain. Skippable and replayable.
+- Go there goes to the event itself: the cast's point, the crater, the flood's water, the hottest fire, the place of a death; a person on
+  the move is followed. Dropdowns draw above the news; fullscreen works (with a pseudo-fullscreen fallback).

@@ -144,3 +144,11 @@ the News, the Why and "Your actions" - the full audit, what was broken and why, 
 - **Cull / bring** show on the maps (a fixed share of the herds drawn); **fish** drawn from `F.fish`.
 - **Stir**: steam at once, ash after; the pressure in "Your actions". **Blight** drawn on the rows.
 - Not yet: a cold or warm spell at mild temperatures changes nothing visible (physics: no frost at 7 C) - news and chain only.
+
+
+## Status after session 25 (D-205, D-206, D-209)
+- Every v3 power recharges in game time (`game/ui/powers.lua` `cool_h`): lightning 2 h; rain, dry spell, warm and cold air 12 h; cull,
+  bring, sickness, blight, oil 48 h; the sea 72 h; stir and strain 96 h; **meteor 168 h**. Skipping recharges them; the bar shows it.
+- The meteor's physical zones by distance: crater (0.2, everything gone), blast (houses to ~0.55-0.9, trees thrown flat), flash (fires by
+  dryness to ~1.3), the shaking; the strike itself is the danger people run from (`impact`); the planet's cover thrown flat under the blast.
+- Oil is drawn from `F.oil` as a black glossy slick (54 cells a cast).

@@ -1,3 +1,45 @@
+# Session handoff — session 25 (4-5 Oct 2026, THE SUBMISSION SESSION): Arjun's playtest made the game's own authority; the meteor, fire, oil, Go there, cooldowns, menus, the tutorial, the guide; D-205-D-213
+
+## FINAL STATE (end of session 25)
+- main, all committed (see `git log -1`). The submission build: `npm run build:release` -> `dist/web/app/` (zip it for the jam
+  page; `scripts/stub.mjs` still stands in for `package:itch`).
+- **What Arjun's playtest found** (reproduced in the real game first): the meteor read as fire + quake (a 3-tile crater, people
+  answering the quake and the fires, not the strike; animals near it; an island = some burning trees); animals stood in flames
+  (an hour to die); "a forest of trees with permanent flames" after a season (the planet's fire on a cell a village map covers in
+  part burnt a week and the view drew it over the map's standing trees); oil invisible (drawn as deep water's colour); Go there to
+  the village square; powers spammable; the skip dropdown under the news; fullscreen dead (`Module.toggleFullscreen`); no menu, no
+  tutorial, no guide.
+- **What changed** (DECISIONS D-205-D-213): game-time cooldowns (meteor 7 days) shown on the bar; the meteor at a god's size with
+  the strike itself the danger (people run from it, beasts bolt 3.5x as far, the planet's cover thrown flat and scarred), a big crater
+  with a double rim, a settling dust column; beasts die in minutes in flames; the planet's fire burns out in 2-3 days beside a map and
+  is never drawn over the map's trees; the fire story's length by when it went out; Go there at the event (cast point, crater, the
+  flood's water, the place of a death, the person on the move); a black glossy slick with a rainbow film (oil 54); title / pause /
+  settings / credits; "How the World Works" (8 illustrated pages); the opening tutorial (one bolt, its real chain); aiming at the drawn
+  tree and the drawn ground; fish moving together along the sea's current; a view crash fixed (`trade` global in `update_travellers`,
+  any boat on a sea journey to a site).
+- **Evidence in the real game** (`out/s25/`, not committed): `play_cat.mjs village` - Tekheim's square: at once 11 of 31 dead, 16 ->
+  3 buildings, 291 fires, 14 running from the blast; 6 h on 3 fires; a season on 0 fires, the crater, 8 camps, houses going up again,
+  41 consequences; `forest` (Hottoodingle Hop's woods): 209 trees thrown flat, wild animals within 0.5 of it 7 -> 2 -> 0, a season on no
+  fire, 240 snags, "the fire is out after 29 hours"; `island` (a one-cell island): forest 0.86 -> 0.09, grass 0.50 -> 0.15, ash; `oil`
+  (off Zurug): 11 units over 11 cells at once, fish 7.98 -> 6.52 (2 d) -> 0.87 (8 d), the shore fouled, 10 gulls oiled, Go there to the
+  fouled shore; `tut_full.mjs`: the tutorial from Play to "Your one lightning bolt now has N consequences" (the bolt struck the marked
+  tree after D-212); `ui_check2.mjs`: skip tutorial, the dropdown over the news, Esc, the pause menu, a second meteor refused "ready in 7
+  d"; `fs_check.mjs`: fullscreen entered and left, the pseudo-fullscreen when refused; `probe_goto.lua`: the flood's Go there on 0.55 m
+  of water; `probe_fire.lua`: map fires out by 16 h, the planet's by 48 h (was 192).
+
+## Next (after the jam)
+1. Arjun's next playtest of this build - the tutorial with a human hand (the strike step, the news step), the guide's wording.
+2. R6: captives as persistent people; the palisade's gates at night; traded grain carrying blight's taint (left out by the freeze).
+3. The herd neighbour scan's cost in grown worlds (exact changes only).
+4. The tutorial's dust/ring visuals and the dust puffs' shape (they read as soft hexagons close in).
+
+## Pitfalls (this session)
+- A bash heredoc whose text holds an apostrophe fails here: write files with the editor tool (or a Python patch file) instead.
+- The Lua lint does not catch an unfinished string in `game/`; bob does (`npm run build` after GUI edits).
+- `sim/tutorial.lua` is the LEGACY v2 tutorial helper (tests use it); the v3 tutorial's command is `sim/tutorial3.lua`.
+- A headless click or key must be held a few frames to reach Defold (press/hold/release with waits).
+- The title screen pauses the world; harnesses pass `?test=1` (no title) - `?menu=1` to see it with the bridge on.
+
 # Session handoff — session 24 (4 Oct 2026, R7 ACCEPTANCE AUDIT): every god power played in the real game and made to work; herds, fish, scars, what the world tells; D-188-D-204
 
 ## FINAL STATE (end of session 24)

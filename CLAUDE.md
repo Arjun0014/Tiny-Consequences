@@ -128,6 +128,13 @@ house its household has lost - a household with no host camps by the square (D-1
 (`conflict.palisade_*`, D-187: laid out from remembered harm, every section checked with `map.cut_doors(s, true)`). Follow a long run's deaths from a year-boundary snapshot (`v3_chronicle --days N --save`, N a multiple of 48;
 `tools/v3_household.lua` for a household's larder and people) - a year0 save is not an exact continuation.
 
+Session 25 (D-205-D-213, the jam submission): Arjun's playtest is the authority - powers recharge in game time (`powers.cool_h`, meteor
+7 days); the meteor's strike is its own danger (`impact` alarm, `think.impact_choice`, crater 0.2); beasts die in minutes in flames; v3
+planet fire burns out in 2-3 days and is never drawn over a map's trees; Go there anchors (`data.at_sid/at_x/at_y` on cast events,
+`news.focus` at_cell/follow); oil drawn from `F.oil` as a black slick; menus `game/ui/menu.lua` (title pauses the world; `?test=1` skips
+it, `?menu=1` shows it), the tutorial `game/ui/tutorial.lua` + logged command `sim/tutorial3.lua` (`sim/tutorial.lua` is the LEGACY v2
+helper); `docs/v3/86_S25_PLAYTEST.md`.
+
 ## Read order
 
 1. This file.

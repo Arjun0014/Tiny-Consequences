@@ -4,6 +4,14 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Current state
 
+- **SESSION 25 (4-5 Oct 2026, THE SUBMISSION SESSION - read `docs/SESSION_HANDOFF.md` session 25 FINAL STATE and
+  `docs/v3/86_S25_PLAYTEST.md` first): Arjun's human playtest as the authority.** Reproduced in the real game and fixed: the meteor
+  at a god's size with the strike itself the danger (D-206); fire that ends - beasts die in flames, the planet's fire burns out beside a
+  map and is never drawn over its trees (D-207); Go there at the event (D-208); oil drawn as a slick you cannot miss (D-209); powers
+  recharge in game time, meteor 7 days (D-205); title, pause, settings, credits, "How the World Works", dropdown layering, fullscreen
+  (D-210); the opening tutorial - one bolt and its real chain (D-211); aiming at the drawn tree (D-212); fish along the current; a view
+  crash on sea journeys fixed. Final checks: quick suite **211/211**; lint clean (315 files); debug and release builds OK; web tests **11/11** (W10: the v3 world in the browser equals LuaJIT); browser = LuaJIT (release) identical untouched 72 h and with `--premise powers2|fire|conflict` 96 h; 8 untouched years: births 43, deaths illness 15 / old age 4 / drowned 2 / **hunger 0**; the real game played: the meteor on a village, a forest and an island, oil off Zurug, 15 other power cases, the tutorial from Play to the bolt's chain, the menus, fullscreen (`out/s25/`); the submission zip `npm run package:itch` -> `dist/tiny-consequences-web.zip`, smoke-tested from a clean static server.
+
 - **SESSION 24 (4 Oct 2026, ENDED - R7 ACCEPTANCE AUDIT; read `docs/SESSION_HANDOFF.md` session 24 FINAL STATE and
   `docs/v3/85_R7_ACCEPTANCE.md` first): Arjun's playtest found the god powers weak or broken in real play; no new systems until
   the existing game works.** Every power was played in the real game (`scripts/play_accept.mjs`: headless Chromium on the GPU,

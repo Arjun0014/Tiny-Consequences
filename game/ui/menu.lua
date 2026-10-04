@@ -30,11 +30,11 @@ function M.save_prefs() pcall(sys.save, prefs_path(), M.prefs) end
 
 -- The guide: each page a title, a diagram (a row of { icon, label } joined by arrows; "|" starts a second row) and lines.
 M.PAGES = {
-  { title = "1  The living planet", sub = "Sun, air, water and ground, every hour, on every cell of the planet",
+  { title = "1  The living planet", sub = "Sun, air, water and ground, day by day, on every cell of the planet",
     diagram = { { "sun", "Sun & season" }, { "thermo", "Temperature" }, { "cloud", "Wind & rain" }, { "drop", "Soil water" },
       { "wave", "Rivers" }, "|", { "rain", "Floods" }, { "drought", "Drought" }, { "fire", "Wildfire" }, { "snow", "Snow & ice" } },
     lines = { "The sun's height makes the seasons; warm air rises, winds carry the rain, and the rain soaks the soil or runs off into rivers.",
-      "The oceans hold heat and move it in currents: the sea warms and cools slower than the land.",
+      "The sea warms and cools slower than the land, and its currents, driven by the winds, carry whatever floats on it.",
       "Too much rain floods the valleys; too little dries the ground until lightning can set it alight. Cold brings snow and frost.",
       "Every village's weather is its own planet cell's weather, drawn as clouds over it." } },
   { title = "2  Ecology", sub = "Plants, grazers, hunters and the sea - each living off the next",
@@ -57,19 +57,19 @@ M.PAGES = {
     lines = { "Households sow and harvest fields, cut wood, keep sheep, goats, cattle and pigs, fish, weave, quarry, mine and smelt.",
       "The granary and each household's larder hold what they have; what they lack they trade for, on foot or by boat, with what they can spare.",
       "Goods have worth by need; households give, lend, owe and repay. Fairs gather traders. Houses, pens, wells and docks are built log by log." } },
-  { title = "5  Society", sub = "Kin, help, quarrels and leaving",
+  { title = "5  Society", sub = "Kin, help, quarrels and leaving", set = true,
     diagram = { { "heart", "Kin & marriage" }, { "people", "Help" }, { "settlers", "Migration" }, { "pin", "Founding" }, "|",
       { "skull", "Theft & grievance" }, { "wolf", "Raids" }, { "house", "Defence" } },
     lines = { "Kin help kin; neighbours lodge those who lost their home; relief is carried to the hungry.",
       "Brides walk to their husband's village. Households that cannot live where they are leave - and some found new places by land or sea.",
       "Harm is remembered: a theft or a killing is known and answered, sometimes with a raid; villages that are harmed may build a palisade." } },
-  { title = "6  Disasters and the planet", sub = "The planet moves on its own - people live through it",
+  { title = "6  Disasters and the planet", sub = "The planet moves on its own - people live through it", set = true,
     diagram = { { "fire", "Fire" }, { "rain", "Flood" }, { "snow", "Snow" }, { "pickaxe", "Quake" }, { "volcano", "Volcano" },
       { "wave", "Tsunami" }, { "meteor", "Meteor" } },
     lines = { "Fire spreads by dryness and wind, burns its fuel and goes out: trees become charred snags, houses ruins, fields black stubble.",
       "Rivers rise over their banks; quakes bring roofs down on whoever is inside; the sea draws back before a wave.",
       "People notice danger by sight and sound, run, carry their babies, fight fires, dig out the trapped and tend the hurt - each by their own choice." } },
-  { title = "7  God powers", sub = "Powers do not command outcomes. They change the physical world.",
+  { title = "7  God powers", sub = "Powers do not command outcomes. They change the physical world.", set = true,
     diagram = { { "bolt", "Lightning" }, { "rain", "Rain" }, { "drought", "Dry spell" }, { "heat", "Warm / cold air" }, { "volcano", "Stir" }, "|",
       { "skull", "Cull" }, { "paw", "Bring" }, { "blight", "Blight" }, { "oil", "Oil" }, { "meteor", "Meteor" } },
     lines = { "Rain does not 'increase food': it adds water to the ground. What the water does next - crops, floods, fires put out - is the world's.",
@@ -261,7 +261,7 @@ local function show_page(R, i)
         gui.set_color(b.node, first and vmath.vector4(1.0, 0.93, 0.76, 1) or C.soft)
         gui.set_color(b.icon, (it[1] == "bolt" or it[1] == "star" or it[1] == "meteor") and C.gold or
           ((it[1] == "fire" or it[1] == "skull") and C.coral or C.text))
-        if k < n then
+        if k < n and not P.set then
           ai = ai + 1
           local a = g.arrows[ai]
           if a then gui.set_enabled(a, true); gui.set_position(a, V3(x + step / 2, y + 4, 0)) end
@@ -269,7 +269,7 @@ local function show_page(R, i)
       end
     end
     -- (a second row continues the first: an arrow down into it at its left)
-    if r > 1 then
+    if r > 1 and not P.set then
       ai = ai + 1
       local a = g.arrows[ai]
       if a then

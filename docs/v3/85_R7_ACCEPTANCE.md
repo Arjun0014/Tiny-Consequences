@@ -124,3 +124,9 @@ The god's bolt never killed half a village: its lethal reach is its current's (`
 - A steam plume seen from straight above reads as a grey cloud on the summit, not a column.
 - Cold or warm air at mild temperatures changes nothing you can see (no frost at 7 C) - told in the news and the chain only.
 - A flood's mud is kept for floods that begin after this session's code (a flood under way in an old save has no footprint).
+
+
+## Session 25: the human playtest (see `86_S25_PLAYTEST.md`)
+Arjun's own play found the meteor, fire's end, oil and Go there still unconvincing despite this audit's PASS rows; reproduced and fixed
+in the real game (D-205-D-213). The meteor row above is superseded: on Tekheim's square 11 of 31 died at once, every house fell, 14 ran
+from the blast; a season on there was no fire, only the crater, the scorch greening and the camps.

@@ -79,3 +79,8 @@ Cast one power, live days, read the chain:
    the culled; the deer that grew is a state effect when the planet's fauna carries the cull's tag).
 Every node's text names a real record; `test_v3_chain` checks the kinds differ between 2 and 3 and that every
 node resolves to a record or a tagged state.
+
+
+## Status after session 25 (D-211)
+The tutorial teaches the chain by one real cast: "You caused one thing. Everything after it belongs to the simulation" - then, after a
+season's skip, "Your one lightning bolt now has N consequences" with its first branches read from `chain.rows` (nothing canned).
