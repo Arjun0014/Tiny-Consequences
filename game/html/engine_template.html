@@ -79,6 +79,15 @@
 	   the game's container covers the whole viewport above everything else on the page */
 	body.tc-pseudo-fs .canvas-app-container { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 2147483000; background: #5FD0F0; }
 
+	/* (S25d) phones: the canvas takes every touch (no page scroll or zoom); held upright, a prompt to turn the phone */
+	#canvas { touch-action: none; }
+	#tc-rotate { display: none; position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 2147483600;
+		background: #2A2335; color: #FFF8EC; flex-direction: column; align-items: center; justify-content: center;
+		text-align: center; font: 600 21px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif; padding: 24px; box-sizing: border-box; }
+	#tc-rotate small { display: block; font-weight: 400; font-size: 15px; opacity: 0.75; margin-top: 6px; }
+	#tc-rotate svg { margin-bottom: 18px; }
+	@media (orientation: portrait) and (hover: none) and (pointer: coarse) { #tc-rotate { display: flex; } }
+
 	{{{DEFOLD_CUSTOM_CSS_INLINE}}}
 	</style>
 </head>
@@ -103,6 +112,10 @@
 		<div id="tc-fullscreen" title="Fullscreen (F)" onclick="window.tcFS.toggle();">
 			<svg class="enter" width="18" height="18" viewBox="0 0 16 16"><path fill="#2A2335" fill-opacity="0.55" d="M1 1h5v2H3v3H1V1zm9 0h5v5h-2V3h-3V1zM1 10h2v3h3v2H1v-5zm12 3v-3h2v5h-5v-2h3z"/></svg>
 			<svg class="exit" width="18" height="18" viewBox="0 0 16 16"><path fill="#2A2335" fill-opacity="0.8" d="M4 1h2v5H1V4h3V1zm6 0h2v3h3v2h-5V1zM1 10h5v5H4v-3H1v-2zm9 0h5v2h-3v3h-2v-5z"/></svg>
+		</div>
+		<div id="tc-rotate">
+			<svg width="74" height="74" viewBox="0 0 64 64"><rect x="20" y="8" width="24" height="42" rx="5" fill="none" stroke="#F2B233" stroke-width="4" transform="rotate(-90 32 32)"/><path d="M46 52a20 20 0 0 1-26 2" fill="none" stroke="#FFF8EC" stroke-width="3.5" stroke-linecap="round"/><path d="M16 50l4 5 5-4" fill="none" stroke="#FFF8EC" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+			<div>Turn your phone sideways<small>Tiny Consequences plays in landscape</small></div>
 		</div>
 	</div>
 	<!-- -->
@@ -151,8 +164,89 @@
 				if (c) try { c.focus(); } catch (e) {}
 			}
 		};
+		// (S25d) on a phone, fullscreen also turns the screen sideways where the browser allows it
+		document.addEventListener('fullscreenchange', function () {
+			if (document.fullscreenElement && screen.orientation && screen.orientation.lock) { try { screen.orientation.lock('landscape').catch(function () {}); } catch (e) {} }
+		});
 		document.addEventListener('fullscreenchange', function () { window.tcFS.sync(); window.dispatchEvent(new Event('resize')); });
 		document.addEventListener('webkitfullscreenchange', function () { window.tcFS.sync(); window.dispatchEvent(new Event('resize')); });
+	</script>
+	<script type='text/javascript'>
+		// (S25d) Touch: one finger is the mouse (the engine's own: drag turns the world, a tap picks); two fingers pinch,
+		// read as the mouse wheel the game already zooms by - and a pinch's moves are not a drag.
+		(function () {
+			var pinch = null;
+			function dist(t) { var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
+			function wheel(dy, x, y) {
+				var c = document.getElementById('canvas');
+				if (c) c.dispatchEvent(new WheelEvent('wheel', { deltaY: dy, deltaMode: 0, clientX: x, clientY: y, bubbles: true, cancelable: true }));
+			}
+			window.addEventListener('touchstart', function (e) { if (e.touches.length >= 2) pinch = { d: dist(e.touches) }; }, { capture: true, passive: true });
+			window.addEventListener('touchmove', function (e) {
+				if (e.touches.length < 2 || !pinch) return;
+				var d = dist(e.touches), dd = d - pinch.d;
+				var x = (e.touches[0].clientX + e.touches[1].clientX) / 2, y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+				while (Math.abs(dd) >= 22) { wheel(dd > 0 ? -100 : 100, x, y); pinch.d += dd > 0 ? 22 : -22; dd = d - pinch.d; }
+				e.stopImmediatePropagation();
+				if (e.cancelable) e.preventDefault();
+			}, { capture: true, passive: false });
+			window.addEventListener('touchend', function (e) { if (e.touches.length < 2) pinch = null; }, { capture: true, passive: true });
+			window.addEventListener('touchcancel', function () { pinch = null; }, { capture: true, passive: true });
+		})();
+
+		// (S25d) Wavedash: the platform puts its SDK (window.Wavedash) on the page when the game runs there; anywhere else
+		// none of this does anything. The game calls tcWD.init() once it is ready (the platform's loading screen stays
+		// until then), reads the player's name for the title, and keeps the player's progress and settings in the cloud
+		// (Remote Storage: a local file written, then uploaded; downloaded, then read).
+		window.tcWD = {
+			on: false, user: null, got: {}, err: null,
+			sdk: function () { return (typeof window.Wavedash !== 'undefined' && window.Wavedash) ? window.Wavedash : null; },
+			init: function () {
+				var W = this.sdk(), self = this;
+				if (!W || this.on) return this.on;
+				try { W.init({}); this.on = true; } catch (e) { this.err = String(e); return false; }
+				try {
+					var u = W.getUser ? W.getUser() : (W.user || null);
+					if (u && u.then) u.then(function (v) { self.user = v; }, function () {}); else self.user = u;
+				} catch (e) {}
+				this.fetch('prefs');
+				return true;
+			},
+			name: function () {
+				var u = this.user;
+				if (!u) { try { var W = this.sdk(); if (W && W.getUsername) { var n = W.getUsername(); if (typeof n === 'string') return n; } } catch (e) {} return ''; }
+				if (typeof u === 'string') return u;
+				return u.username || u.displayName || u.name || '';
+			},
+			path: function (key) { return 'tiny-consequences/' + key + '.json'; },
+			put: function (key, text) {
+				var W = this.sdk(), self = this;
+				if (!W || !this.on || !W.writeLocalFile || !W.uploadRemoteFile) return false;
+				var p = this.path(key);
+				try {
+					Promise.resolve(W.writeLocalFile(p, new TextEncoder().encode(text)))
+						.then(function () { return W.uploadRemoteFile(p); })
+						.catch(function (e) { self.err = String(e); });
+				} catch (e) { this.err = String(e); return false; }
+				return true;
+			},
+			fetch: function (key) {
+				var W = this.sdk(), self = this;
+				if (!W || !W.downloadRemoteFile || !W.readLocalFile) return;
+				var p = this.path(key);
+				try {
+					Promise.resolve(W.downloadRemoteFile(p)).then(function (dl) {
+						if (dl && dl.success === false) return null;
+						return W.readLocalFile(p);
+					}).then(function (bytes) {
+						if (!bytes) return;
+						var text = (typeof bytes === 'string') ? bytes : new TextDecoder().decode(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
+						self.got[key] = text;
+					}).catch(function (e) { self.err = String(e); });
+				} catch (e) { this.err = String(e); }
+			},
+			take: function (key) { var t = this.got[key]; if (t) { delete this.got[key]; return t; } return ''; }
+		};
 	</script>
 	<script id='engine-setup' type='text/javascript'>
 		// From here you can configure game startup parameters via the CUSTOM_PARAMETERS object,

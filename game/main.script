@@ -149,6 +149,8 @@ end
 local function finish_loading(self)
 	self.loader = nil
 	self.ready = true
+	-- (S25d) on Wavedash: the game is ready - the platform's loading screen lifts (elsewhere nothing happens)
+	if html5 then pcall(html5.run, "window.tcWD && window.tcWD.init() ? '1' : '0'") end
 	collectgarbage("collect")   -- drop worldgen/view-build garbage behind the loading screen
 	state.loading.active = false
 	local world = require("sim.world")

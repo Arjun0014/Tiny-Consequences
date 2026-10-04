@@ -26,7 +26,44 @@ function M.load_prefs()
     for k, v in pairs(t) do if M.prefs[k] ~= nil and type(v) == type(M.prefs[k]) then M.prefs[k] = v end end
   end
 end
-function M.save_prefs() pcall(sys.save, prefs_path(), M.prefs) end
+-- (S25d) on Wavedash the player's progress and settings also go to the cloud (game/html/engine_template.html, tcWD)
+local function cloud_put(key, t)
+  if not (html5 and json and json.encode) then return end
+  local ok, s = pcall(json.encode, t)
+  if not ok or type(s) ~= "string" then return end
+  s = s:gsub("\\", "\\\\"):gsub("'", "\\'")
+  pcall(html5.run, "window.tcWD && window.tcWD.put('" .. key .. "', '" .. s .. "') ? '1' : '0'")
+end
+M.cloud_put = cloud_put
+function M.save_prefs()
+  pcall(sys.save, prefs_path(), M.prefs)
+  cloud_put("prefs", M.prefs)
+end
+
+-- (S25d) The cloud's copy, when it comes (once, a moment after the start on Wavedash): what it holds is taken in - a
+-- player who finished the tutorial on another machine has it finished here - and the player's name for the title.
+M.cloud_t, M.player = 0, ""
+function M.cloud_poll(dt)
+  if not html5 then return end
+  M.cloud_t = M.cloud_t - (dt or 0)
+  if M.cloud_t > 0 then return end
+  M.cloud_t = 1
+  local ok, s = pcall(html5.run, "window.tcWD ? window.tcWD.take('prefs') : ''")
+  if ok and type(s) == "string" and s ~= "" and json and json.decode then
+    local okd, t = pcall(json.decode, s)
+    if okd and type(t) == "table" then
+      for k, v in pairs(t) do
+        if M.prefs[k] ~= nil and type(v) == type(M.prefs[k]) then
+          if k == "tutorial_done" then M.prefs[k] = M.prefs[k] or v else M.prefs[k] = v end
+        end
+      end
+      if M.apply_gfx then pcall(M.apply_gfx) end
+      pcall(sys.save, prefs_path(), M.prefs)
+    end
+  end
+  local okn, n = pcall(html5.run, "window.tcWD ? window.tcWD.name() : ''")
+  if okn and type(n) == "string" then M.player = n:sub(1, 40) end
+end
 
 -- The guide: each page a title, a diagram (rows of { icon, label }, joined by arrows when it is a chain - `set` pages are a
 -- set of things without arrows; "|" starts a second row, at most six to a row) and a few lines.
@@ -110,6 +147,7 @@ function M.build(self)
     local root, p = panel(R, 560, 470)
     R.screens.title = root
     ui.icon(p, -232, 196, "globe", 34, C.teal)
+    R.player_t = ui.text(p, 262, 206, "", "nunito_semi", 13, C.muted, gui.PIVOT_E)   -- (S25d) Wavedash: the player's name
     ui.text(p, 0, 168, "TINY CONSEQUENCES", "fredoka", 44, C.text, gui.PIVOT_CENTER)
     ui.text(p, 0, 124, "A tiny planet that lives without you.", "nunito_semi", 17, C.muted, gui.PIVOT_CENTER)
     ui.text(p, 0, 100, "Touch it once - then follow everything it causes.", "nunito_semi", 17, C.muted, gui.PIVOT_CENTER)
@@ -372,6 +410,7 @@ local function fs_on()
 end
 
 function M.update(self, loaded, frac)
+  M.cloud_poll(1 / 60)
   local R = self.menu
   if not R or not M.screen then return end
   -- the title's Play waits for the world
@@ -379,6 +418,7 @@ function M.update(self, loaded, frac)
     gui.set_color(R.play.node, loaded and (self.hover == R.play and vmath.vector4(0.98, 0.76, 0.30, 1) or C.gold) or C.soft)
     gui.set_color(R.play.text, loaded and C.white or C.muted)
     gui.set_text(R.load_t, loaded and "" or string.format("Growing a tiny world... %d%%", math.floor((frac or 0) * 100)))
+    gui.set_text(R.player_t, M.player ~= "" and ("Playing as " .. M.player) or "")
     gui.set_enabled(R.free.node, loaded)
   end
   for _, b in ipairs(R.btns) do

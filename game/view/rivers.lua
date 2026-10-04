@@ -107,6 +107,14 @@ local function junction(W, c, built)
   return norm(x + sx * k, y + sy * k, z + sz * k)
 end
 
+-- (S25d) A vertex for the ground's water and paths only where the ground is: anything else (not a number, or far off
+-- the planet - Arjun saw two dark planes reaching out from the world) is put at the centre, where the planet hides it.
+local function onground(R, x, y, z)
+  local l = x * x + y * y + z * z
+  if l == l and l < R * R * 1.44 and l > R * R * 0.49 then return x, y, z end
+  return 0, 0, 0
+end
+
 function M.rebuild(W)
   local PL = M.PL
   local g = W.grid
@@ -129,6 +137,11 @@ function M.rebuild(W)
   local nv = #links * SUB * 6
   M.stats.links, M.stats.verts = #links, nv
   if nv == 0 then nv = 3 end
+  -- (S25d, D-222) the mesh never shrinks: it keeps the most vertices it has had, the ones not used this time empty
+  -- triangles at the centre (a smaller buffer under a mesh drawn with its old count is one way to the planes Arjun saw)
+  local used = M.stats.verts or 0
+  nv = math.max(nv, M.cap or 0)
+  M.cap = nv
   local buf = buffer.create(nv, {
     { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
     { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
@@ -176,12 +189,18 @@ function M.rebuild(W)
       for q = 1, 6 do
         local p, U = quad[q], ups[q]
         local o, oc = v * 3, v * 4
-        pos[o + 1], pos[o + 2], pos[o + 3] = p[1], p[2], p[3]
+        pos[o + 1], pos[o + 2], pos[o + 3] = onground(PL.R, p[1], p[2], p[3])
         nrm[o + 1], nrm[o + 2], nrm[o + 3] = U[8], U[9], U[10]
         col[oc + 1], col[oc + 2], col[oc + 3], col[oc + 4] = p[5], p[4], U[7], wd[c]
         v = v + 1
       end
     end
+  end
+  for k = used, nv - 1 do
+    local i3, i4 = k * 3, k * 4
+    pos[i3 + 1], pos[i3 + 2], pos[i3 + 3] = 0, 0, 0
+    nrm[i3 + 1], nrm[i3 + 2], nrm[i3 + 3] = 0, 1, 0
+    col[i4 + 1], col[i4 + 2], col[i4 + 3], col[i4 + 4] = 0, 0, 0, 0
   end
   local R = PL.R * 1.08
   buffer.set_metadata(buf, hash("AABB"), { -R, -R, -R, R, R, R }, buffer.VALUE_TYPE_FLOAT32)

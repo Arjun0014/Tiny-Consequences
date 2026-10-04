@@ -1960,3 +1960,40 @@ saved). Probe: a bolt on a herd of 19.3 - 15.0 head on the next cell at once; fi
 Play on the title always opens the tutorial ("Skip tutorial" on its card); "Free play (no tutorial)" under it skips it. The
 tutorial gains "Why?" (the YOU badge on the meteor's story) and "Your tools" (every control: camera, inspect, Space/1-3 speeds,
 4-7 skips, Shift+number powers and their recharge, News, Why, Your actions, Esc/Menu, M, Sound, fullscreen).
+
+## D-221 · 2026-10-05 · Rain puts fire out (session 25, fourth playtest)
+**Context.** Arjun: "rain doesn't put out fire". On a village's map a fire's heat grew `fire_grow x (0.4 + dryness)` an hour
+and rain took only `fire_rain1` 0.3 (light) or `fire_rain2` 1.4 (a downpour) - light rain never won, so a fire under rain
+burnt on; on the planet a god's rain only raised the cells' precipitation (the burn kept ~60% of its flame).
+**Decision.** (1) Map fires (`blaze.live`): rain stops the growth (none in a downpour, `fire_rain_grow` 0.3 of it in rain) and
+damps harder (`fire_rain1` 0.6, `fire_rain2` 2.0 an hour). Probe (`out/s25/probe_rain.lua`): ten trees alight by a village - dry,
+two still burn after 6 h; under the god's rain all ten are out within the hour. (2) The planet (v3 only, the legacy spin-up
+unchanged): a cell under a god's rain (the forcing's rain record) loses `rain_quench_v3` 0.9 of its flame at its fire step.
+
+## D-222 · 2026-10-05 · The water and path meshes never leave the ground (session 25, fourth playtest)
+**Context.** Arjun saw "two planes outward from the world": huge opaque polygons in the dark-water colour behind the planet,
+their tip on a village's map (the Little Leelee flood receding in both shots). Not reproduced in 18 views here (the tutorial's
+meteor, skips, zoomed out, a resize), but the only meshes drawn in that pass are the rivers, the flood water and the paths
+(`ground`), all rebuilt at run time from the maps and the sim.
+**Decision.** Every vertex those builders write (`rivers.lua`, `floodwater.lua`, `trails.lua`) goes through `onground`: a point
+that is not a number or lies off the planet (outside 0.7-1.2 R) is put at the centre, where the planet hides it; and those
+meshes never shrink (each keeps the most vertices it has had, the unused ones empty triangles at the centre): the flood receding
+is a buffer growing smaller under a mesh, and a mesh drawn with a stale vertex count over a smaller buffer would draw exactly such
+planes. To verify in his build: the same flood zoomed out.
+
+## D-223 · 2026-10-05 · Phones: touch, landscape only (session 25)
+**Decision.** In `game/html/engine_template.html`: the canvas takes every touch (`touch-action: none`); one finger is the
+engine's mouse (drag turns the world, a tap picks); two fingers pinch, sent to the canvas as mouse-wheel notches (one per 22 px)
+and a pinch's moves are kept from the engine (no drag while pinching); held upright on a touch screen, a "Turn your phone
+sideways" screen covers the game; entering fullscreen locks landscape where the browser allows it.
+
+## D-224 · 2026-10-05 · Wavedash: init, the player's name, progress in the cloud (session 25)
+**Decision.** One bundle for both stores: the page's `window.tcWD` finds the Wavedash SDK (`window.Wavedash`, put on the page by
+the platform) at run time and does nothing elsewhere. The game calls `tcWD.init()` -> `Wavedash.init({})` once the world is ready
+(the platform's loading screen lifts); the title shows "Playing as NAME" (`getUser`/`getUsername`); the player's progress and
+settings (`menu.prefs`: tutorial done, clouds, shadows) go to Remote Storage on every save (`writeLocalFile` then
+`uploadRemoteFile`, `tiny-consequences/prefs.json`) and come back at the start (`downloadRemoteFile` then `readLocalFile`; a
+tutorial finished elsewhere stays finished). The world itself is not saved anywhere (the game has no save/continue: every visit
+grows a fresh world) - a world in the cloud is post-jam. `npm run build:wavedash` -> `dist/wavedash/` (wavedash.toml's
+`upload_dir`, game_id to fill in) and `dist/tiny-consequences-wavedash.zip`. Untested against the live SDK (it exists only on
+Wavedash's pages); every call is guarded.

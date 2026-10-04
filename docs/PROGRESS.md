@@ -4,6 +4,13 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Current state
 
+- **SESSION 25 part 4 (5 Oct 2026, ~02:15-03:20 IST): Arjun's fourth playtest and the store assets.** Rain puts fire out
+  (map fires stop growing in rain and are damped harder; a god's rain quenches the planet's burning cells, D-221); the water and path
+  meshes can no longer throw a vertex off the planet (the "two planes" Arjun saw - not reproduced here, guarded, D-222); phones:
+  touch (drag, tap, pinch to zoom) and landscape only with a turn-your-phone screen (D-223); Wavedash: init when ready, the
+  player's name on the title, progress and settings in the cloud (`npm run build:wavedash`, `wavedash.toml` - game_id to fill in,
+  D-224); the cover, 7 GIFs and a 10 s video from the real game (`out/s25/gifs/`, `scripts`-free capture `out/s25/gifs.mjs`).
+
 - **SESSION 25 part 3 (5 Oct 2026, ~01:20-02:20 IST): the planet's herds run from fire and the bolt and die in it (D-220); the
   tutorial opens on Play every time (Free play skips it), with "Why?" and "Your tools" added.** Checks: quick suite 211/211; web
   11/11; browser = LuaJIT (release) `--premise fire|powers2` identical; the zip rebuilt from e504c10 and smoke-tested.

@@ -17,7 +17,7 @@
     "bench": "node scripts/lua.mjs tools/bench.lua",
     "build": "node scripts/build.mjs --variant debug",
     "build:release": "node scripts/build.mjs --variant release",
-    "build:wavedash": "node scripts/stub.mjs build:wavedash \"Stage 4.5\"",
+    "build:wavedash": "node scripts/package.mjs --wavedash",
     "serve": "node scripts/serve.mjs",
     "test:web": "node scripts/test_web.mjs",
     "shots": "node scripts/shots.mjs",

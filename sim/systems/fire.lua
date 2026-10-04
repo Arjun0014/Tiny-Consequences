@@ -94,6 +94,8 @@ function sys.update(W)
   local F, C, I = W.F, W.C, W.I
   local fire, grass, forest, crop, soil = F.fire, F.grass, F.forest, F.crop, F.soil_water
   local precip, temp, ha, fert, scar = F.precip, F.temp, F.heat_anom, F.fertility, F.burn_scar
+  -- (S25d) the god's rain (sim/powers.lua's forcing: a rain's record adds water) over the v3 planet's cells
+  local wforce = W.v3 and W.scratch and W.scratch.weather_on and W.scratch.weather_force
   local cfire, ifire = C.fire, I.fire
   local cg, ig, cfo, ifo, ccrop, icrop = C.grass, I.grass, C.forest, I.forest, C.crop, I.crop
   local cha, iha, cfert, ifert = C.heat_anom, I.heat_anom, C.fertility, I.fertility
@@ -234,6 +236,8 @@ function sys.update(W)
     local ni = fuel * cfg.intensity_per_fuel
     if ni > 1 then ni = 1 end
     ni = ni * (1 - cfg.rain_extinguish * precip[c])
+    -- (S25d) a downpour sent on a burning wood drowns it (natural rain as before, by its precipitation)
+    if wforce and wforce[c] and wforce[c].add > 0 then ni = ni * (1 - cfg.rain_quench_v3) end
     if ni < (W.v3 and cfg.min_intensity_v3 or cfg.min_intensity) then
       fire[c] = 0
       fert[c] = fert[c] + cfg.ash_fertility * (1 - fert[c])

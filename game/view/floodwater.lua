@@ -46,6 +46,14 @@ end
 -- the corners of a dual cell (between four tile centres) counter-clockwise, and the edges between them
 local CX, CY = { 0, 1, 1, 0 }, { 0, 0, 1, 1 }
 
+-- (S25d) A vertex for the ground's water and paths only where the ground is: anything else (not a number, or far off
+-- the planet - Arjun saw two dark planes reaching out from the world) is put at the centre, where the planet hides it.
+local function onground(R, x, y, z)
+  local l = x * x + y * y + z * z
+  if l == l and l < R * R * 1.44 and l > R * R * 0.49 then return x, y, z end
+  return 0, 0, 0
+end
+
 function M.rebuild(W)
   local PL = M.PL
   local V = W.S.v3
@@ -93,6 +101,11 @@ function M.rebuild(W)
   local nv = nt * 3
   M.stats.spans, M.stats.verts = nt, nv
   if nv == 0 then nv = 3 end
+  -- (S25d, D-222) the mesh never shrinks: it keeps the most vertices it has had, the ones not used this time empty
+  -- triangles at the centre (a smaller buffer under a mesh drawn with its old count is one way to the planes Arjun saw)
+  local used = M.stats.verts or 0
+  nv = math.max(nv, M.cap or 0)
+  M.cap = nv
   local buf = buffer.create(nv, {
     { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
     { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
@@ -110,11 +123,17 @@ function M.rebuild(W)
       local ux, uy, uz = mapm.unit(s, x, y)
       local r = radius(PL, ux, uy, uz)
       local i3, i4 = v * 3, v * 4
-      pos[i3 + 1], pos[i3 + 2], pos[i3 + 3] = ux * r, uy * r, uz * r
+      pos[i3 + 1], pos[i3 + 2], pos[i3 + 3] = onground(PL.R, ux * r, uy * r, uz * r)
       nrm[i3 + 1], nrm[i3 + 2], nrm[i3 + 3] = ux, uy, uz
       col[i4 + 1], col[i4 + 2], col[i4 + 3], col[i4 + 4] = x * 9 + s.id * 3.7 + y * 9 * 0.37, p[3], T, p[4]
       v = v + 1
     end
+  end
+  for k = used, nv - 1 do
+    local i3, i4 = k * 3, k * 4
+    pos[i3 + 1], pos[i3 + 2], pos[i3 + 3] = 0, 0, 0
+    nrm[i3 + 1], nrm[i3 + 2], nrm[i3 + 3] = 0, 1, 0
+    col[i4 + 1], col[i4 + 2], col[i4 + 3], col[i4 + 4] = 0, 0, 0, 0
   end
   local R = PL.R * 1.08
   buffer.set_metadata(buf, hash("AABB"), { -R, -R, -R, R, R, R }, buffer.VALUE_TYPE_FLOAT32)

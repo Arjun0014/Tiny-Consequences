@@ -269,7 +269,10 @@ local function live(W, s, f, to)
     local dt = min(0.25, to - f.t)
     local t = f.t
     if f.heat > 0 and f.fuel > 0 then
-      f.heat = min(1, f.heat + c.fire_grow * dt * (0.4 + dry)) - (rain == 2 and c.fire_rain2 or (rain == 1 and c.fire_rain1 or 0)) * dt
+      -- (S25d) rain stops a fire growing (a downpour at once, rain mostly) as it damps it: light rain never put a fire out
+      -- before (the growth outweighed it), a god's rain over a burning wood left it burning
+      local grow = c.fire_grow * (0.4 + dry) * (rain == 2 and 0 or (rain == 1 and c.fire_rain_grow or 1))
+      f.heat = min(1, f.heat + grow * dt) - (rain == 2 and c.fire_rain2 or (rain == 1 and c.fire_rain1 or 0)) * dt
       f.fuel = f.fuel - dt * max(0.2, f.heat)
       -- (S22) roaring up: seen and heard farther - the animals about look up again
       if f.heat >= 0.6 and not f.roar then

@@ -141,6 +141,7 @@ C.FIRE = {
   -- (S25, D-207) v3 worlds: a wood burnt a week at full flame beside a village - now two or three days (the legacy world's
   -- spin-up keeps the old rates: its saved world stays the same)
   burn_forest_v3 = 0.5, min_intensity_v3 = 0.2,
+  rain_quench_v3 = 0.9,                   -- (S25d) v3: a god's rain over a burning cell takes this share of its flames
   rain_extinguish = 4,                    -- intensity loss per unit precip
   k_co2 = 0.4,                            -- ppm per unit biomass burned
   k_heat = 3,                             -- heat_anom °C per unit intensity per tick
@@ -1315,7 +1316,8 @@ C.V3 = {
   -- inside fire_burn x heat; seen within fire_sight (more by night), shouted within fire_shout; water
   -- thrown takes douse_k of heat within douse_r; a tree burnt thins the planet's woods by
   -- fire_tree_forest; a house lost weighs house_fu
-  fire_wet = 0.5, fire_dry = 0.18, fire_tree_h = 1.5, fire_bld_h = 1.4, fire_grow = 1.2, fire_rain1 = 0.3, fire_rain2 = 1.4,
+  fire_wet = 0.5, fire_dry = 0.18, fire_tree_h = 1.5, fire_bld_h = 1.4, fire_grow = 1.2, fire_rain1 = 0.6, fire_rain2 = 2.0,
+  fire_rain_grow = 0.3,   -- (S25d) the share of its growth a fire keeps in light rain (none in a downpour)
   fire_reach = 0.06, fire_spread = 0.9, fire_wind = 1.0, fire_contents = 0.6, fire_burn = 0.6, fire_sight = 0.9,
   fire_shout = 0.45, douse_r = 0.1, douse_k = 0.06, fire_tree_forest = 0.0004, house_fu = 60, fire_help_r = 0.9,
   -- lightning: a strike takes the tallest thing within strike_pull (trees by size x strike_tree, a

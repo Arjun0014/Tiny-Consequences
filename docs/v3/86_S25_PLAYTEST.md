@@ -88,3 +88,13 @@ planet seen from every height (D-216); oil as black glossy blobs drifting on the
 taking a third of a field at once and rotting it in days (D-218); "Your actions" with the chain's size, icons by kind and new links
 glowing (D-219); credits written for players.
 
+## 7. The fourth round (D-221-D-224)
+
+Arjun: two dark planes reaching out from the world (two screenshots, zoomed out, the Little Leelee flood receding); rain does not
+put out fire; GIFs, a cover and a 10 s video for the stores; a Wavedash build with cloud saves and player identity; basic phone
+play (touch, landscape only). Done: rain puts fire out on the maps (probe: ten trees alight - all out within the hour under the
+god's rain, two still burning after 6 h dry) and quenches the planet's cells under it; every vertex of the rivers, the flood water
+and the paths kept on the ground (the planes were opaque, in the dark-water colour, behind the planet with their tip on a village
+map - those meshes are the only ones drawn there; 18 zoomed-out views here showed none, so the guard is unverified against his
+exact world); phones; Wavedash (one bundle, the SDK found at run time); the store media.
+

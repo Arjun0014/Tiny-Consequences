@@ -1,0 +1,4 @@
+# Wavedash CLI config (docs.wavedash.com/engines/defold). npm run build:wavedash writes the release bundle to dist/wavedash/
+# (index.html at its root, so no entrypoint). Put the game's id from the Wavedash developer dashboard here.
+game_id = "YOUR_GAME_ID_HERE"
+upload_dir = "./dist/wavedash"
