@@ -31,6 +31,8 @@ farming", the system is wrong.
   **food neighbours brought** to a household whose heaviest harm is in a chain (the households' own gift accounts, `hh.got`).
 - (S23, D-185) **Oil on a coast**: the shore fouled and the gulls oiled where the planet's slick reaches a village's sea - deeds
   whose `event` is the oil's blame tag (`W.C.oil`), so they join the spill's chain.
+- (S23, D-187) **A palisade** laid out by a village after the harm it remembers: its deed answers the heaviest of that harm, so a
+  raid in a chain (a raid from the hunger a cast caused) carries the palisade it led to.
 
 ## 3. The index: `sim/chain.lua` (an observer)
 Pure Lua, deterministic, **never writes W.S** (its runtime is `W.chainrt`, rebuilt from the records after a

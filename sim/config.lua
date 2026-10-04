@@ -1284,6 +1284,16 @@ C.V3 = {
   -- x wall_noise more easily (dogs, cries) and weighs take_wall more risk; wolves are wary (wall_wolves)
   wall_memory = 48, wall_save = 0.7, wall_logs = 10, wall_h = 24, wall_hour_fu = 0.6,
   wall_noise = 1.35, take_wall = 0.3, wall_wolves = 1.5,
+  -- (S23, R6f) a palisade round the houses: wanted when the harm people of other villages did here in pal_memory days
+  -- (beasts taken at their worth; a blow or a death pal_blood FU) x pal_save outweighs its cost (pal_logs logs and
+  -- pal_h work hours a tile, at wall_hour_fu); a ring pal_margin tiles outside the houses' yards, gates where the lanes
+  -- cross it and at the middle of each side, laid in sections of up to pal_section tiles (each a site, prio pal_prio);
+  -- a section that would shut a door or a field off from the square is left out. A taker who knows of it weighs
+  -- take_pal more risk.
+  -- (a ring whose sections would close less than pal_cover of it - the rest fields, pens, water - is not raised at all)
+  pal_memory = 96, pal_save = 2.5, pal_blood = 30, pal_logs = 1, pal_h = 3, pal_margin = 3, pal_section = 5, pal_prio = 0.4, pal_cover = 0.25,
+  pal_gate_lane = 2,   -- (a gate where a lane - lane level 2 - crosses the ring; trails, level 1, are walled over)
+  take_pal = 0.35,
   -- (S20, R6.5b, D-154) fire on the maps: dryness from the soil's water (fire_wet .. fire_dry), less
   -- in rain; a tree burns fire_tree_h x (0.5 + 0.5 size) hours, a building fire_bld_h; heat grows
   -- fire_grow an hour (x (0.4 + dryness)), rain takes fire_rain1/fire_rain2 an hour; it reaches

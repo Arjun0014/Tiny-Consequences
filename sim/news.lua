@@ -32,6 +32,7 @@ M.KINDS = {
   power = { 2, "star", 30 }, culled = { 2, "paw", 26 },
   -- (S23, R7 v2)
   sickness = { 3, "thermo", 26 }, blight = { 3, "blight", 26 }, impact = { 1, "meteor" }, oil = { 3, "oil", 30 },
+  palisade = { 2, "house", 40 },
 }
 -- (S22) everyday life: at most this many cards at once (four "a new house" cards hid the rest)
 M.EVERYDAY = { birth = true, passing = true, wedding = true, house = true, trade = true, fair = true, harvest = true }
@@ -237,6 +238,11 @@ local function on_deed(W, R, d, now)
     st.title = sfmt("Blight in the corn at %s", s.name)
     local nf = count(st, "fields")
     line(st, sfmt("%s spotted and withering (%s)", plural(nf, "field"), household_name(W, d.to_hh)), d.t)
+  elseif k == "palisade" then
+    -- (S23, R6f) a village raising a palisade round its houses after the raids it remembers
+    local st = story(W, R, "palisade:" .. s.id, "palisade", s.id, d.t, { deed = d.id, ev = d.event, x = d.x, y = d.y })
+    st.title = sfmt("A palisade at %s", s.name)
+    line(st, sfmt("After the raids they remember, they are raising a palisade round the houses (%s)", plural(d.n or 1, "section")), d.t)
   elseif k == "fouled" or k == "oiled" then
     -- (S23, D-185) the oil on a village's coast: the shore fouled, the gulls oiled - one story per village and slick
     local st = story(W, R, "oil:" .. s.id, "oil", s.id, d.t, { deed = d.id, ev = d.event, x = d.x, y = d.y })
@@ -850,6 +856,7 @@ local DEED_TEXT = {
   blight = function(W, d) return sfmt("Blight in a field of %s", household_name(W, d.to_hh)) end,
   impact = function(W, d) return sfmt("A rock fell from the sky by %s", (sett(W, d.at) or {}).name or "?") end,
   fouled = function(W, d) return sfmt("Oil fouled the shore at %s", (sett(W, d.at) or {}).name or "?") end,
+  palisade = function(W, d) return sfmt("%s began a palisade round its houses", (sett(W, d.at) or {}).name or "?") end,
   oiled = function(W, d) return sfmt("%d gulls oiled at %s", d.n or 1, (sett(W, d.at) or {}).name or "?") end,
   ["return"] = function(W, d) return "The beasts were given back" end,
   pay = function(W, d) return "It was made good" end,

@@ -124,7 +124,8 @@ chronicle prints DOORS CUT OFF; test `test_v3_sites`); a work step's loop is wal
 `journey_ok` keeps nursing mothers and women near term at home and babies are fed on trips; **no `^` in `sim/`** (lint rule `pow`);
 aim previews (`powers3.preview`, reads only, the cast's own target choices); the flood's edge by marching squares; the news so far,
 the Sound pill; oil on a coast fouls the shore and oils the gulls (D-185; premise `powers2` for the R7 v2 powers); no plan may need a
-house its household has lost - a household with no host camps by the square (D-186). Follow a long run's deaths from a year-boundary snapshot (`v3_chronicle --days N --save`, N a multiple of 48;
+house its household has lost - a household with no host camps by the square (D-186); R6f the palisade
+(`conflict.palisade_*`, D-187: laid out from remembered harm, every section checked with `map.cut_doors(s, true)`). Follow a long run's deaths from a year-boundary snapshot (`v3_chronicle --days N --save`, N a multiple of 48;
 `tools/v3_household.lua` for a household's larder and people) - a year0 save is not an exact continuation.
 
 ## Read order

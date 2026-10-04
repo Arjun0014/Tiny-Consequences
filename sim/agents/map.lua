@@ -589,19 +589,17 @@ function M.free_spot(s, x, y, r)
   return nil
 end
 
--- (S23) The buildings of settlement s whose doors nobody can walk to from its square (8-connected, no
--- corner cutting, as nav's A*): a site laid in front of a door once sealed a household in its house.
--- For tools and tests (the chronicle reports them); reads the cost field only.
-function M.cut_doors(s)
+-- (S23) The tiles walkable from settlement s's square (8-connected, no corner cutting, as nav's A*), as a set;
+-- nil when the square has no open tile near it. For tools, tests and planners that must never close a way.
+local function reach(s)
   local N, cost = s.N, s.cost
-  local cut = {}
-  if not N or not cost then return cut end
+  if not N or not cost then return nil end
   local i0 = M.tile_of(s, s.sqx or 0, s.sqy or 0)
   if i0 == 0 or cost[i0] <= 0 then
     local x, y = M.free_spot(s, s.sqx or 0, s.sqy or 0, 6)
     i0 = x and M.tile_of(s, x, y) or 0
   end
-  if i0 == 0 then return cut end
+  if i0 == 0 then return nil end
   local seen, q, h = { [i0] = true }, { i0 }, 1
   while h <= #q do
     local i = q[h]; h = h + 1
@@ -615,6 +613,19 @@ function M.cut_doors(s)
       end
     end
   end
+  return seen
+end
+M.reach = reach
+
+-- (S23) The buildings of settlement s whose doors nobody can walk to from its square: a site laid in front of
+-- a door once sealed a household in its house. For tools and tests (the chronicle reports them); reads the
+-- cost field only. With `fields`, also the fields none of whose ground can be walked to (as { kind = "plot",
+-- id = k }): a wall must never shut the village out of its corn.
+function M.cut_doors(s, fields)
+  local cut = {}
+  local seen = reach(s)
+  if not seen then return cut end
+  local N = s.N
   for _, id in ipairs(s.blist) do
     local b = s.buildings[id]
     if b.dx and not b.natural and b.kind ~= "bridge" and b.state ~= "gone" then
@@ -622,6 +633,19 @@ function M.cut_doors(s)
       local ok = k == 0
       for dy = -1, 1 do for dx = -1, 1 do if k > 0 and seen[k + dy * N + dx] then ok = true end end end
       if not ok then cut[#cut + 1] = b end
+    end
+  end
+  if fields then
+    for k, pl in ipairs(s.plots or {}) do
+      local ok = false
+      local ix0, iy0 = M.tile_ixy(s, M.tile_of(s, pl.x0 + s.T * 0.5, pl.y0 + s.T * 0.5))
+      local ix1, iy1 = M.tile_ixy(s, M.tile_of(s, pl.x1 - s.T * 0.5, pl.y1 - s.T * 0.5))
+      for iy = iy0, iy1 do
+        for ix = ix0, ix1 do
+          if not ok and seen[(iy - 1) * N + ix] then ok = true end
+        end
+      end
+      if not ok then cut[#cut + 1] = { kind = "plot", id = k } end
     end
   end
   return cut

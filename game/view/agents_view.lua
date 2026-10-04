@@ -309,6 +309,26 @@ local function fill_buildings(V)
         local x, y = mapm.tile_xy(s, b.tiles[q])
         add(V, K.stakes, x, y, 0, q, 0.3, 1, 0, 0, 0)
       end
+    elseif b.kind == "palisade" then
+      -- (S23, R6f) a section of the palisade round the houses: tall stakes along its tiles, two a tile, as far as it
+      -- is raised (a site: the stakes driven so far, the logs waiting by it)
+      local T = s.T
+      local horiz = (b.w or 1) >= (b.h or 1)
+      local n = horiz and (b.w or 1) or (b.h or 1)
+      local done = b.state == "standing" and 1 or (b.work_need > 0 and b.work_done / b.work_need or 0)
+      local x0 = horiz and b.cx - (n - 1) * 0.5 * T or b.cx
+      local y0 = horiz and b.cy or b.cy - (n - 1) * 0.5 * T
+      -- (one run of sharpened stakes with a rail a tile, along the section; K.stakes is a staked house lot)
+      -- (the run lies along the model's x: its yaw faces across the section)
+      local pyaw = horiz and yaw_z(V, b.cx, b.cy, 0, 1) or yaw_z(V, b.cx, b.cy, 1, 0)
+      local wood = pack(0.62, 0.46, 0.30)
+      for q = 0, floor(n * done + 0.5) - 1 do
+        local f = q * T
+        add(V, K.palisade, horiz and x0 + f or x0, horiz and y0 or y0 + f, 0, pyaw, 0.27, 3.4, wood, 0, 0)
+      end
+      if b.state == "site" and (b.logs_have or 0) > 0 then
+        add(V, K.logs, b.dx, b.dy, 0, yaw, 0.6, 1, pack(0.55, 0.40, 0.26), pack(0.45, 0.31, 0.2), 0)
+      end
     elseif b.kind == "camp" then
       -- (S17, R5) a founding household's camp: the packs set down on its ground, then (made) the fire
       -- ring with its embers, a brush lean-to on the far side from the square, firewood by it

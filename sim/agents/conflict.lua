@@ -127,6 +127,8 @@ local function weigh_at(W, s, p, hh, o, now, push, bold, only, party)
       local slow = tk.kind == "cattle" and 0.15 or 0
       -- (S20, R6f) a walled pen, as seen there
       local wall = (k.walled and k.walled[tk.kind]) and c.take_wall * (1.2 - bold) / (1 + 0.5 * (party or 0)) or 0
+      -- (S23, R6f) a palisade round their houses, as seen there or told
+      wall = wall + (k.palisade or 0) * c.take_pal * (1.2 - bold) / (1 + 0.5 * (party or 0))
       local net = gain - shared - restraint - hrs / 24 * 0.1 - slow - wall
       if net > bn then
         local why
@@ -504,6 +506,7 @@ function M.defence_daily(W, s, now)
     end
   end
   local cost = c.wall_logs * econ.GOODS.logs.base + c.wall_h * c.wall_hour_fu
+  M.palisade_daily(W, s, now)   -- (S23, R6f: and round the houses)
   for _, kind in ipairs(stock.HERDS) do
     local H = s.herds[kind]
     local b = H and s.buildings[H.pen]
@@ -523,6 +526,153 @@ function M.defence_daily(W, s, now)
       end
     end
   end
+end
+
+-- (S23, R6f) The palisade round the houses (docs/v3/60_R6_CONFLICT.md "The palisade"). Where: a ring pal_margin
+-- tiles outside the houses' yards (the houses, the granary, the woodstore and the well inside it), each side a row
+-- of stakes a tile thick; gates where the lanes cross it (the ways people walk every day) and at the middle of each
+-- side; any tile not free (a field, a pen, the river, a building) left open. Laid as sections of up to pal_section
+-- tiles; each one is first closed in the walking field and kept only if no door and no field is then cut off from
+-- the square (map.cut_doors with fields) - so the finished ring never shuts anyone in or out. Returns the sections
+-- { ix0, iy0, w, h, n } (tiles) and the number of tiles, or nil when there is nothing to wall.
+local mapm = require("sim.agents.map")
+local CORE = { house = true, hut = true, granary = true, woodstore = true, well = true }
+function M.palisade_plan(W, s)
+  local c = C()
+  local N = s.N
+  if not N then return nil end
+  local x0, y0, x1, y1 = 1e9, 1e9, -1e9, -1e9
+  local nh = 0
+  for _, id in ipairs(s.blist) do
+    local b = s.buildings[id]
+    if CORE[b.kind] and b.state ~= "gone" then
+      x0, y0 = min(x0, b.ix0), min(y0, b.iy0)
+      x1, y1 = max(x1, b.ix0 + b.w - 1), max(y1, b.iy0 + b.h - 1)
+      if b.kind == "house" or b.kind == "hut" then nh = nh + 1 end
+    end
+  end
+  if nh < 3 then return nil end
+  local m = 2 + c.pal_margin
+  x0, y0, x1, y1 = x0 - m, y0 - m, x1 + m, y1 + m
+  if x0 < 4 or y0 < 4 or x1 > N - 4 or y1 > N - 4 then return nil end
+  local land, occ, plot, riv, lane = s.land, s.occ, s.plot, s.riv, s.lane
+  local fd = mapm.FLOOD[s]
+  local function free(ix, iy)
+    local i = (iy - 1) * N + ix
+    -- (a lane - a way worn by the many - is a gate; a trail is walled over and its walkers go round by a gate)
+    return land[i] == 1 and occ[i] == 0 and plot[i] == 0 and riv[i] == 0 and (lane[i] or 0) < c.pal_gate_lane and not (fd and fd[i] > 0)
+  end
+  -- the four sides, each a run of tiles; a gate at each side's middle (two tiles)
+  local sides = {
+    { x0, y0, x1, y0, 1, 0 }, { x1, y0 + 1, x1, y1 - 1, 0, 1 }, { x0, y1, x1, y1, 1, 0 }, { x0, y0 + 1, x0, y1 - 1, 0, 1 },
+  }
+  local cost = s.cost
+  local saved = {}
+  local out, total = {}, 0
+  for _, sd in ipairs(sides) do
+    local ax, ay, bx, by, dx, dy = sd[1], sd[2], sd[3], sd[4], sd[5], sd[6]
+    local len = dx == 1 and (bx - ax + 1) or (by - ay + 1)
+    local mid = floor(len / 2)
+    local run = {}
+    local function flush()
+      local k = 1
+      while k <= #run do
+        local n = min(c.pal_section, #run - k + 1)
+        local t0 = run[k]
+        local sec = { ix0 = t0[1], iy0 = t0[2], w = dx == 1 and n or 1, h = dx == 1 and 1 or n, n = n }
+        -- closed in the walking field: does it shut a door or a field off? then it is left out
+        local tiles = {}
+        for q = 0, n - 1 do tiles[#tiles + 1] = (t0[2] + q * dy - 1) * N + t0[1] + q * dx end
+        for _, i in ipairs(tiles) do saved[#saved + 1] = { i, cost[i] }; cost[i] = -1 end
+        if #mapm.cut_doors(s, true) == 0 then
+          out[#out + 1] = sec
+          total = total + n
+        else
+          for _ = #tiles, 1, -1 do local sv = saved[#saved]; cost[sv[1]] = sv[2]; saved[#saved] = nil end
+        end
+        k = k + n
+      end
+      run = {}
+    end
+    for q = 0, len - 1 do
+      local ix, iy = ax + q * dx, ay + q * dy
+      local gate = q == mid or q == mid - 1
+      if not gate and free(ix, iy) then run[#run + 1] = { ix, iy } else flush() end
+    end
+    flush()
+  end
+  -- the walking field as it was (the sections are laid as sites, which close it again: settle.add_building)
+  for q = #saved, 1, -1 do cost[saved[q][1]] = saved[q][2] end
+  -- (a few stretches between fields and pens are no defence: nobody raises it unless it closes pal_cover of the ring)
+  local perim = 2 * (x1 - x0 + 1) + 2 * (y1 - y0 - 1)
+  if #out == 0 or total < c.pal_cover * perim then return nil end
+  return out, total, perim
+end
+
+-- (S23, R6f) Each day: the harm people of other villages did here (deeds this village knows, within pal_memory
+-- days: beasts taken at their worth, a blow or a death pal_blood FU) x pal_save against what a palisade would cost
+-- (pal_logs logs and pal_h work hours a tile). When it outweighs, the village lays the palisade out - its sections as
+-- sites the villagers raise like any other - and a deed answering the heaviest of those harms (the chain and the
+-- news read it). Once; a palisade gone to ruin is not planned again here.
+function M.palisade_daily(W, s, now)
+  local c = C()
+  if s.palisade or not s.dk or s.founding or not M.settle then return end
+  local L = deeds.list(W)
+  local harm, worst, wv = 0, nil, 0
+  for i = 1, #s.dk do
+    local d = L[s.dk[i].id]
+    if d and d.to_s == s.id and (d.by_s or 0) ~= 0 and d.by_s ~= s.id and now - d.t <= c.pal_memory * 24 then
+      local v = 0
+      if d.kind == "take" and d.harm then v = d.fu or 0
+      elseif d.kind == "wound" or d.kind == "kill" then v = c.pal_blood end
+      if v > 0 then
+        harm = harm + v
+        if v > wv then worst, wv = d, v end
+      end
+    end
+  end
+  if harm <= 0 then return end
+  -- (a first guess before the plan walks the walking field: a ring is at least some 24 tiles)
+  local tile_cost = c.pal_logs * econ.GOODS.logs.base + c.pal_h * c.wall_hour_fu
+  if harm * c.pal_save < 24 * tile_cost then return end
+  local secs, n, perim = M.palisade_plan(W, s)
+  if not secs or harm * c.pal_save < n * tile_cost then return end
+  local ids = {}
+  for _, sec in ipairs(secs) do
+    local b = M.settle.add_building(W, s, "palisade", sec.ix0, sec.iy0, "s", "site",
+      { w = sec.w, h = sec.h, for_name = "the village", prio = c.pal_prio })
+    b.logs_need = sec.n * c.pal_logs
+    b.work_need = sec.n * c.pal_h
+    b.pal_n = sec.n
+    ids[#ids + 1] = b.id
+  end
+  local why = sfmt("Beasts taken and blows struck by men of other villages (%.0f FU of harm in %d days): a palisade round the houses",
+    harm, c.pal_memory)
+  local d = deeds.add(W, { kind = "palisade", t = now, at = s.id, x = s.sqx or 0, y = s.sqy or 0, by = 0, by_hh = 0, by_s = s.id,
+    to = 0, to_hh = 0, to_s = s.id, what = "palisade", n = #ids, fu = 0, harm = false, answers = worst and worst.id or nil })
+  deeds.learn(W, s, d, "ours", 0, s.id, now, true)
+  s.palisade = { t = now, ids = ids, tiles = n, perim = perim, why = why, deed = d.id }
+  for _, hid in ipairs(s.households) do
+    local hh = W.S.v3.households[hid]
+    for _, id in ipairs(hh and hh.members or {}) do
+      local q = W.S.v3.people[id]
+      if q and q.alive and people.stage(q, now) == "adult" then people.remember(q, now, why) end
+    end
+  end
+end
+
+-- (S23, R6f) How much of village s's palisade stands (0..1): its sections' tiles standing over all its tiles; and,
+-- second, how much of the ring round the houses they close (what a raider who has seen it weighs - gates and the
+-- fields the ring crosses stay open).
+function M.palisade_built(s)
+  local P = s.palisade
+  if not P or (P.tiles or 0) <= 0 then return 0, 0 end
+  local n = 0
+  for _, id in ipairs(P.ids) do
+    local b = s.buildings[id]
+    if b and b.state == "standing" then n = n + (b.pal_n or 0) end
+  end
+  return n / P.tiles, n / max(n, P.perim or P.tiles)
 end
 
 -- (S20, R6f) The pen of herd kind at village s is walled (built)?

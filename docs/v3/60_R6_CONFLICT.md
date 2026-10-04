@@ -134,7 +134,7 @@ weight, so taking back, bands and restraint follow kin lines.
 Next for R6 (not done): a palisade round the houses (a ring footprint, gates), arms carried at night
 (spears from wood and iron), captives (only as specific people), kin walking over to stand with kin.
 
-### The palisade (designed in session 23, not built)
+### The palisade (session 23, D-187: built)
 - **Why**: remembered raids and takings by people of other villages (deeds, `s.dk`), weighed as expected loss against the timber
   and the work - never "N raids, then a wall".
 - **Where**: a ring a few tiles outside the houses' yards, laid as short sections (each a site: logs carried, work), with **gates
@@ -145,3 +145,6 @@ Next for R6 (not done): a palisade round the houses (a ring footprint, gates), a
   village as harder to take from (seen by its scouts or told by travellers); the night watch stands at the gates.
 - **Tests**: a premise of raids remembered -> a palisade planned and built in sections; no door ever cut off while it is built
   (`map.cut_doors` after each section); herds still reach their pasture.
+- **Built** (D-187): `conflict.palisade_plan` / `palisade_daily` / `palisade_built`; sections are `palisade` sites; `k.palisade` in
+  what a village knows of another; `take_pal` in the taking weigh; tests `test_v3_sites` (`a_palisade_never_shuts_anyone_in_or_out`,
+  `raids_remembered_raise_a_palisade`); premise `palisade`. Not yet: gates kept at night, a palisade mended or burnt in a raid.

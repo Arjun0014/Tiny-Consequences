@@ -337,6 +337,14 @@ function M.named(W, name)
     cmd(W, { power = "cull", cell = S[4].cell, species = "wolves" })
     cmd(W, { power = "bring", cell = S[4].cell, species = "deer" })
     return true
+  elseif name == "palisade" then
+    -- (S23, R6f) thirteen sheep of the first village taken by men of the second three days ago, remembered: the
+    -- village weighs a palisade round its houses against that harm (conflict.palisade_daily) - what follows is its own
+    local S = V.settlements
+    if not S[2] then return false end
+    M.wronged(W, S[1], S[2], 13, 3)
+    require("sim.agents.conflict").palisade_daily(W, S[1], V.now or W.hour)
+    return true
   elseif name == "powers2" then
     -- (S23) the R7 v2 god powers (D-183, D-185): oil on the sea beside the first village with a coast (its shore
     -- fouled, its gulls oiled), the sea warmed beside it, sickness in Tekheim's flock, blight in its corn, a meteor

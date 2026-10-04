@@ -92,4 +92,56 @@ function M.pits_never_seal_a_door()
   return string.format("%d pits laid, every door still reachable", laid)
 end
 
+-- (S23, R6f) The palisade round the houses, laid out in every village at once: its sections never shut a door or a
+-- field off from the square (each section is kept only if, closed, it cuts nothing - map.cut_doors with fields).
+function M.a_palisade_never_shuts_anyone_in_or_out()
+  local W = load()
+  require("sim.agents.init")
+  local conflict = require("sim.agents.conflict")
+  local laid = 0
+  for _, s in ipairs(W.S.v3.settlements) do
+    local secs, n = conflict.palisade_plan(W, s)
+    if secs then
+      for _, sec in ipairs(secs) do
+        settle.add_building(W, s, "palisade", sec.ix0, sec.iy0, "s", "site", { w = sec.w, h = sec.h })
+      end
+      laid = laid + 1
+      local cut = mapm.cut_doors(s, true)
+      local names = {}
+      for _, b in ipairs(cut) do names[#names + 1] = b.kind .. "#" .. tostring(b.id) end
+      T.eq(#cut, 0, string.format("%s: %d sections, %d tiles - cut off: %s", s.name, #secs, n, table.concat(names, ", ")))
+    end
+  end
+  T.ok(laid >= 4, "villages with a palisade laid out: " .. laid)
+  return string.format("%d villages walled, nothing cut off", laid)
+end
+
+-- (S23, R6f) Tekheim remembers thirteen sheep taken by men of Zurug three days ago: the harm outweighs what a
+-- palisade costs, so the village lays one out round its houses (a deed answering the taking) and its people raise
+-- it, section by section, like any other site; nothing is ever cut off while it goes up.
+function M.raids_remembered_raise_a_palisade()
+  local W = load()
+  require("sim.agents.init")
+  local V = W.S.v3
+  local conflict = require("sim.agents.conflict")
+  local premise = require("sim.agents.premise")
+  world.advance(W, W.hour + 24)
+  local s, o = V.settlements[1], V.settlements[2]
+  local d0 = premise.wronged(W, s, o, 13, 3)
+  conflict.palisade_daily(W, s, V.now or W.hour)
+  T.ok(s.palisade ~= nil, "a palisade laid out")
+  if not s.palisade then return end
+  local pd = require("sim.agents.deeds").get(W, s.palisade.deed)
+  T.ok(pd and pd.answers == d0.id, "its deed answers the taking")
+  T.eq(#mapm.cut_doors(s, true), 0, "nothing cut off when laid out")
+  for _ = 1, 12 do
+    world.advance(W, W.hour + 24)
+    T.eq(#mapm.cut_doors(s, true), 0, "nothing cut off while it goes up")
+  end
+  local built = conflict.palisade_built(s)
+  print(string.format("      %s: %d sections, %d tiles; %.0f%% standing after 12 days", s.name, #s.palisade.ids, s.palisade.tiles, built * 100))
+  T.ok(built > 0, "the villagers raised some of it")
+  return string.format("%.0f%% standing after 12 days", built * 100)
+end
+
 return M

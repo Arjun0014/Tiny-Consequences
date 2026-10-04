@@ -284,9 +284,9 @@ shore.)
 (Later in session 23, D-184: the second 8-year run's famine followed to four mechanisms - a pit that sealed a house, play loops
 that carried children through it, toddlers who never recovered, a crier who gave birth on the road - all fixed with tests; built
 the news history, the Sound pill, aim previews, the flood's smooth edge, harvest and taken-in stories; oil on a coast (D-185);
-a household with no roof (D-186). Next: R6 palisade (a ring
-with gates that never seals a door: `map.cut_doors`), captives as persistent people, traded grain carrying blight, oil on the
-shore and the gulls, the herd scan's cost at year 8.)
+a household with no roof (D-186); R6f the palisade round the houses (D-187). Next: captives as persistent
+people, the palisade's gates kept at night, traded grain carrying blight, the herd scan's cost
+at year 8.)
 
 ## Never cut
 Determinism, causality (every major change traceable), the planet layer, no scripted

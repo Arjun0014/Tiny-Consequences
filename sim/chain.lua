@@ -249,6 +249,10 @@ local function on_deed(W, R, d)
   elseif k == "impact" then
     nd = node(R, I, pnode, "impact:" .. d.id, "impact", sid, d.t, { deed = d.id, x = d.x, y = d.y })
     nd.title = sfmt("The rock struck by %s", sname(W, sid))
+  elseif k == "palisade" then
+    -- (S23, R6f) a village walling its houses after the harm it remembers (the deed answers the heaviest of it)
+    nd = node(R, I, pnode, "palisade:" .. sid, "palisade", sid, d.t, { deed = d.id, x = d.x, y = d.y })
+    nd.title = sfmt("%s began a palisade round its houses", sname(W, sid))
   elseif k == "fouled" then
     -- (S23, D-185) the oil on a village's shore
     nd = node(R, I, pnode, "fouled:" .. sid, "fouled", sid, d.t, { deed = d.id, x = d.x, y = d.y })

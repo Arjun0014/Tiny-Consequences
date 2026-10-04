@@ -3,18 +3,20 @@
 ## FINAL STATE (end of session 23)
 - main, all committed (last: the final docs commit after 76dd7d4). Nothing half-done in the tree. Worktrees made this session for snapshots and long runs (`../tc-snap`,
   `../tc-run`, `../tc-before`) are removed at the end.
-- Tests: quick sim suite **208/208 (at 870b987; then every test file the D-186 fix touches again: agents 14, animals, snow, year, lightning)** on the final code; web **11/11**; lint clean (309 files, new rule `pow`); debug and release
-  builds OK.
-- Browser = LuaJIT (release): untouched 72 h and `--premise flood5|conflict|fire|powers|pasture_fire` 96 h - all identical (final code: untouched, fire, powers2 rechecked on the last release build); new premise `powers2` (oil, warm sea, sickness, blight, meteor).
-- 8 untouched years (`luajit tools/v3_chronicle.lua --days 384`, run 5, on the D-184 code - D-185 leaves an untouched world exactly as
-  it was, its hash unchanged; D-186 changes only a household with no roof and no host): births 46; deaths illness 13, old age 4,
-  **hunger 0**; no door cut off (run 2 at the checkpoint: hunger 11).
+- Tests: quick sim suite **211/211** on the final code (D-187); web **11/11** (on the settled palisade code); lint clean (309
+  files, new rule `pow`); debug and release builds OK.
+- Browser = LuaJIT (release): on the final code untouched 72 h and `--premise conflict|palisade|powers2` 96 h identical; earlier
+  in the session flood5, fire, powers, pasture_fire too. New premises `powers2` (oil, warm sea, sickness, blight, meteor) and
+  `palisade` (raids remembered).
+- 8 untouched years on the final code (`luajit tools/v3_chronicle.lua --days 384`): births 45; deaths illness 14, old age 4,
+  **hunger 0**; no door cut off; Krikeivorn, raided, raised a 13-section palisade from day 157 (run 2 at the checkpoint: hunger 11;
+  run 5 on the D-184 code: births 46, illness 13, old age 4, hunger 0).
 - Cost: LuaJIT 4.06 M instructions a game hour at day 0 (S22 3.91 M), 4.02 M at day 192 (S22 4.41 M), 4.79 M at year 8 (172 people; S22 5.13 M; livestock 35.7%, the herd scan the hot spot)
 - Audio playtest (`scripts/play_audio.mjs`): the herd bed 0.14 close in / 0.10 at the square / 0.03 mid zoom, under the village
   bed (0.54 / 0.17); one-shots work and village; beast calls rare (none in these 45 s windows - by design a few a minute, near).
 - Release benchmark (`node scripts/prof_web.mjs --release --hours 288 --runs 3`): lower envelope 40.9 ms of sim a game hour, a 12-day season 11.8 s (S20: 10.8 s).
 
-## What session 23 built (D-179-D-186)
+## What session 23 built (D-179-D-187)
 1. **Hydrology** (D-179): the rain the ground cannot take in runs off without leaving the soil twice; the drifting tests followed
    (wolves eating across a river; hunting counted by spears thrown).
 2. **Clouds v5** (D-180): one cloud layer from the villages' own weather that the camera flies through; shadows from the same field.
@@ -25,14 +27,14 @@
    chronicle prints DOORS CUT OFF), play loops that carried children through it (`nav.los_last`), toddlers who never got their
    strength back (they recover when fed), a crier who gave birth on the road (`journey_ok`: no journeys near term or nursing; babies
    fed on trips).
-7. **Oil on a coast** (D-185): the shore fouled, the gulls oiled; **a household with no roof** (D-186): no plan needs the lost house.
+7. **Oil on a coast** (D-185): the shore fouled, the gulls oiled; **a household with no roof** (D-186): no plan needs the lost house;
+   **R6f the palisade** (D-187): laid out from remembered harm, sections as sites, never shutting a door or a field off.
 8. **Polish** (D-184): aim previews (`powers3.preview`), the flood's edge by marching squares, the news so far, harvest and taken-in
    stories, the chain's taken-in and fed-by-neighbours nodes, the Sound pill, no `^` in `sim/`.
 
 ## Next
-1. R6: a palisade round the houses - a ring with gates that never seals a door (check every placement with `map.cut_doors`; herds,
-   fields and the well outside need their way through a gate) - and captives only as persistent people (a household, a destination,
-   a way home).
+1. R6: captives only as persistent people (a household, a destination, a way home); the palisade's gates kept at night, a
+   palisade mended, or burnt in a raid (D-187 built the ring itself).
 2. Traded grain carrying blight's taint; oil fouling shore food and the gulls on the maps; relief to a village joined to its harm in
    the chain.
 3. The year-8 cost: the herd neighbour scan (`stock.lua` `scan`) is O(herd) per beast decision (the herd's middle needs every

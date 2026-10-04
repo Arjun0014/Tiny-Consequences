@@ -38,6 +38,9 @@ M.KINDS = {
   bog = { w = 2, h = 2, label = "bog", logs = 0, work = 0 },
   forge = { w = 3, h = 3, label = "forge", logs = 10, work = 40 },
   clamp = { w = 2, h = 2, label = "charcoal clamp", logs = 0, work = 4 },
+  -- (S23, R6f) a section of the palisade round the houses: a row of stakes a tile thick (its length in opts.w;
+  -- logs and work set by its length when it is laid out: conflict.palisade_daily)
+  palisade = { w = 1, h = 1, label = "palisade", logs = 1, work = 3 },
 }
 -- (S17) the kinds a household lives in
 M.HOME = { house = true, camp = true }

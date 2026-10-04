@@ -545,6 +545,10 @@ function M.learn(W, s, o, now)
     local b = H and o.buildings[H.pen]
     if b and (b.wall or 0) >= 1 then k.walled[kind] = true end
   end
+  -- (S23, R6f) and how much of the ring round its houses its palisade closes (none: no field kept)
+  local _, closed = 0, 0
+  if M.palisade_built then _, closed = M.palisade_built(o) end
+  k.palisade = closed > 0 and closed or nil
   k.watch = (o.wolf_alarm and now - o.wolf_alarm < C().guard_days * 24) or (o.thief_alarm and now - o.thief_alarm < C().guard_days * 24) or nil
   -- (S17) and what o's people know of places (founding.share; set by sim/agents/init.lua)
   if M.on_learn then M.on_learn(W, s, o, now) end

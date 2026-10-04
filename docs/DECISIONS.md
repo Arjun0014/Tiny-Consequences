@@ -1511,3 +1511,38 @@ the host's house); only the camped household had none.
 beast killed for the pot by a household with no roof is carried to the village's granary. Test
 `test_v3_agents.a_household_with_no_roof_lives_on` (a household with a dam in milk, its house gone and no host, lives three days; the
 old code fails with the very error).
+
+## D-187 · 2026-10-04 · R6f: the palisade round the houses (session 23)
+**Context.** R6's defence that is built had a fold wall (D-153) but nothing round the houses; the R6 plan's "later" list had the
+palisade, and D-184's sealed house showed what a careless wall does.
+
+**Decision** (`sim/agents/conflict.lua` `palisade_plan` / `palisade_daily` / `palisade_built`; design `60_R6_CONFLICT.md` "The
+palisade"):
+- **Why**: each day a village weighs the harm people of other villages did there that it knows of (deeds within `pal_memory` days:
+  beasts taken at their worth, a blow or a death `pal_blood` FU) x `pal_save` against what a palisade costs (`pal_logs` logs and `pal_h`
+  work hours a tile at `wall_hour_fu`) - a ring of ~60-75 tiles costs ~200-245 FU, so it takes some 80-100 FU of harm in 96 days (two
+  blows and four sheep, or a dozen sheep), never a count of raids. Once; a deed `palisade` answering the heaviest harm (the chain
+  and the news read it), the reason remembered by every grown-up.
+- **Where**: a ring `pal_margin` tiles outside the houses' yards (houses, granary, woodstore and well inside), a tile thick; gates
+  where the lanes cross it and at the middle of each side; any tile that is not free (a field, a pen, the river, a building, flood
+  water) left open. Laid as sections of up to `pal_section` tiles, each a site raised like any other (logs carried, work, `pal_prio`).
+  **Each section is first closed in the walking field and kept only if no door and no field is then cut off from the square**
+  (`map.cut_doors(s, true)`): the finished ring never shuts anyone in or out. Animals path round closed tiles (`nav.los`/`nav.path`),
+  so herds and wolves go through the gates. Gates only where a lane crosses (`pal_gate_lane`: a way worn by the many; a trail is
+  walled over and its walkers go round by a gate - when every trail was a gate, a grown village's ring was 1-19% stakes). A ring
+  whose sections would close less than `pal_cover` (25%) of it - the rest fields, pens, water - is not raised at all (the first
+  untouched 8-year run had villages with two- and four-section "palisades": stretches no one would build for defence). Measured
+  rings: day 0 55-67% closed, year 8 18-39%.
+- **What it does**: nothing scripted - the ways people and beasts walk, and a taker who knows of it (what one village learns of
+  another, `econ`: `k.palisade`, the share of the ring its standing stakes close - gates and fields stay open) weighs `take_pal` x
+  that share more risk.
+- **View**: one run of the old palisade model (sharpened stakes and a rail, `K.palisade`) a tile along each section, raised as the
+  work is done. (`K.stakes`, used by the fold walls, is a staked house lot, not a row of stakes.)
+
+**Tests** (`test_v3_sites`): `a_palisade_never_shuts_anyone_in_or_out` (laid out in all six villages, nothing cut off),
+`raids_remembered_raise_a_palisade` (thirteen sheep taken by men of Zurug: Tekheim lays out 18 sections, 68 tiles, a deed answering
+the taking; all of it standing after 12 days; nothing cut off on any of them). Named premise `palisade` (shots, hash). Under the
+conflict premise one or two takings a village in 16 days raise none. In 8 untouched years (before the coverage rule) Zurug, raided
+by hungry neighbours (54 FU of harm), raised a 12-section palisade from day 67, all of it standing at year 8, no door ever cut off. On
+the final rules 8 untouched years: Krikeivorn, raided, raised a 13-section palisade from day 157, all of it standing at year 8; no
+hunger deaths, no door cut off; browser = LuaJIT on the `palisade` and `conflict` premises.
