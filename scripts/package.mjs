@@ -35,7 +35,11 @@ if (WD) {
   fs.cpSync(APP, SRC, { recursive: true });
 }
 if (process.platform === 'win32') {
-  run('powershell', ['-NoProfile', '-Command', `Compress-Archive -Path '${SRC}\\*' -DestinationPath '${ZIP}' -Force`]);
+  // (S25f) not PowerShell's Compress-Archive: Windows PowerShell 5.1 stores the paths with backslashes ("archive\game0.arcd"),
+  // which itch.io's Linux unpacker keeps as one file name at the root - the engine's archive is then 404 and the game never
+  // starts. Windows' own bsdtar writes a zip with forward slashes.
+  const tar = path.join(process.env.SystemRoot || 'C:\Windows', 'System32', 'tar.exe');
+  run(tar, ['-a', '-c', '-f', ZIP, '-C', SRC, ...fs.readdirSync(SRC)]);
 } else {
   run('zip', ['-qr', ZIP, '.'], { cwd: SRC });
 }

@@ -2007,3 +2007,11 @@ IndexedDB before it starts the engine.
 **Decision.** `engine_template.html` opens IndexedDB once before `EngineLoader.load`; if it fails, throws or takes more than 2.5 s,
 the loader starts with `persistentStorage` off (the game runs, saving only for the visit). Checked: the zip unzipped, served and
 loaded in a cross-origin iframe starts as before.
+
+## D-226 · 2026-10-05 · The submission zip with forward slashes (session 25, itch)
+**Context.** itch.io's console: `GET .../archive/... 404`. `npm run package:itch` zipped with PowerShell's Compress-Archive, which
+in Windows PowerShell 5.1 stores paths with backslashes (`archive\game0.arcd`: 18 such names in the zip, none with "/"); itch's
+unpacker kept them as file names at the root, so the engine's archive was missing (Python's zipfile hides this on Windows: it
+turns backslashes into slashes when it reads). D-225's probe was not the cause.
+**Decision.** `scripts/package.mjs` zips with Windows' own bsdtar (`tar.exe -a -c -f`): forward slashes and an `archive/` entry.
+Checked on the raw bytes (`archive/` 20, backslash 0) and with `tar -tf`.
