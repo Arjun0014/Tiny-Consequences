@@ -162,4 +162,79 @@ function M.a_meteor_by_a_village()
   T.ok(burning, "something by the point caught fire")
 end
 
+-- Aim previews (S23, D-184): every v3 power says what it would act on where it is aimed, read by the same choices
+-- the cast makes, and reading it changes nothing. The bolt's preview names the thing the strike then records.
+function M.previews_read_what_the_cast_takes()
+  local W = load()
+  local V = W.S.v3
+  local s = V.settlements[1]
+  goto_local(W, s, 2, 10)
+  local p3 = require("sim.powers3")
+  local h0 = world.state_hash(W)
+  for _, kind in ipairs(p3.KINDS) do
+    local t = p3.preview(W, kind, s.cell, { sid = s.id, x = s.sqx or 0, y = s.sqy or 0, mode = "warm", species = "wolves" })
+    T.ok(type(t) == "string" and #t > 0, kind .. " says what it would act on")
+    print("      " .. kind .. ": " .. tostring(t))
+  end
+  T.eq(world.state_hash(W), h0, "reading the previews changed nothing")
+  -- the bolt, aimed between the houses: the preview's target is the strike's
+  local x, y = (s.sqx or 0) + 0.1, (s.sqy or 0) + 0.06
+  local best, bk = require("sim.agents.blaze").strike_target(W, s, x, y, V.now)
+  local said = p3.preview(W, "lightning", s.cell, { sid = s.id, x = x, y = y })
+  local ev = cast(W, { power = "lightning", cell = s.cell, sid = s.id, x = x, y = y })
+  local d
+  for _, q in ipairs(V.deeds) do if q.kind == "strike" and q.event == ev then d = q end end
+  T.ok(d ~= nil, "the bolt came down")
+  print(string.format("      said \"%s\"; the strike took %s", said, d and tostring(d.what) or "?"))
+  if d and (bk == "tree" or bk == "bld" or bk == nil) then
+    T.eq(d.what, bk or "ground", "what the preview named is what the bolt took")
+  end
+  T.ok(best == nil or bk ~= nil, "a target has a kind")
+end
+
+-- Oil off a coastal village (S23, D-185): the slick the currents carry reaches the village's sea - the shellfish and
+-- the weed on its rocks are fouled and its gulls oiled, each a deed carrying the spill as its cause; the chain reads
+-- them under the cast. (Where the slick drifts is the sea's: the cast is at the village's own sea cell.)
+function M.oil_on_the_coast()
+  local W = load()
+  local V = W.S.v3
+  local g = W.grid
+  local s, sea
+  for _, o in ipairs(V.settlements) do
+    local birds = require("sim.agents.birds")
+    if not sea and #birds.shore(o) >= 12 then
+      for k = 1, g.nbr_count[o.cell] do
+        local c = g.nbr[o.cell * 6 - 6 + k]
+        if W.geo.ocean[c] == 1 and not sea then s, sea = o, c end
+      end
+    end
+  end
+  T.ok(sea ~= nil, "a village with a shore and the sea beside its cell")
+  if not sea then return end
+  goto_local(W, s, 2, 10)
+  local f0 = s.birds and s.birds.flocks[1]
+  local n0 = f0 and f0.n or 0
+  local food0 = s.shore_food or 0
+  chain.update(W, V.now)
+  local ev = cast(W, { power = "oil", cell = sea })
+  T.ok(ev ~= 0, "the cast is a root event")
+  live(W, 24 * 4, 4)
+  local fouled, oiled = nil, 0
+  for _, d in ipairs(V.deeds) do
+    if d.at == s.id and d.event and W.E.root[d.event] == ev then
+      if d.kind == "fouled" then fouled = d end
+      if d.kind == "oiled" then oiled = oiled + (d.n or 0) end
+    end
+  end
+  local f = s.birds and s.birds.flocks[1]
+  print(string.format("      %s: the shore %.1f -> %.1f FU; gulls %d -> %d (%d oiled)", s.name, food0, s.shore_food or 0, n0,
+    f and f.n or 0, oiled))
+  T.ok(fouled ~= nil, "the shore fouled, its cause the spill")
+  T.ok((s.shore_food or 0) < food0, "less on the rocks to gather")
+  if n0 > 0 then T.ok(oiled >= 1, "gulls oiled, their cause the spill") end
+  local I = chain.get(W, ev)
+  local k = kinds(W, I)
+  T.ok((k.fouled or 0) >= 1, "the chain reads the fouled shore")
+end
+
 return M

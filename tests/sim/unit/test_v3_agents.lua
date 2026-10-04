@@ -133,6 +133,75 @@ function M.families_and_stages()
 end
 
 -- Positions are continuous: no step moves a person further than their speed allows.
+-- (S23) A toddler weakened by hungry nights gets its strength back once fed, as a grown-up does: it never did - every
+-- hungry night left its mark for good, and a toddler fed that morning died "at the edge" in year 7.
+function M.a_fed_toddler_recovers()
+  local W = fresh()
+  local V = W.S.v3
+  local now = W.hour
+  local ib
+  for id = 1, #V.people do
+    local p = V.people[id]
+    if not ib and p and p.alive and people.stage(p, now) == "infant" and (p.carer or 0) ~= 0 then ib = p end
+  end
+  T.ok(ib ~= nil, "an infant")
+  if not ib then return end
+  -- weaned (its mother no longer nursing it), weakened, and fed just now
+  local m = V.people[ib.mother or 0]
+  if m then m.nursing = 0 end
+  ib.health, ib.hunger, ib.diet_cap = 0.3, 0.1, nil
+  world.advance(W, now + 24)
+  T.ok(ib.alive, ib.name .. " alive")
+  T.ok(ib.health > 0.33, string.format("%s's health %.2f a day later (0.30 when fed)", ib.name, ib.health))
+  return string.format("%s: health 0.30 -> %.2f in a day", ib.name, ib.health)
+end
+
+-- (S23) A woman whose time is near does not set out on a journey (a crier about to give birth walked 20 hours to
+-- a neighbour and her newborn starved there), nor one with a baby at the breast; and a baby in its nursing mother's
+-- arms on a trip is fed where she is, as on the road (a trip's plan has no hour for nursing).
+function M.near_term_and_nursing_mothers_on_journeys()
+  local W = fresh()
+  local V = W.S.v3
+  world.advance(W, W.hour + 30)   -- (the villages' food reckoned)
+  local now = V.now or W.hour
+  local think = require("sim.agents.think")
+  local kin = require("sim.agents.kin")
+  local act = require("sim.agents.act")
+  local m, s, ctx
+  for id = 1, #V.people do
+    local p = V.people[id]
+    if not m and p and p.alive and p.sex == "f" and people.stage(p, now) == "adult" and (p.nursing or 0) <= now and (p.preg_due or 0) == 0 then
+      local hh = V.households[p.hh]
+      local o = V.settlements[p.sett]
+      local c = hh and hh.home ~= 0 and { home = o.buildings[hh.home], hh = hh }
+      p.hunger = 0.2
+      if c and think.journey_ok(W, o, p, c, 20) then m, s, ctx = p, o, c end
+    end
+  end
+  T.ok(m ~= nil, "a woman free to make a journey")
+  if not m then return end
+  local hh = ctx.hh
+  local free = true
+  m.preg_due = now + 30
+  T.ok(not think.journey_ok(W, s, m, ctx, 20), "due in 30 hours: no 20-hour journey")
+  m.preg_due = now + 2000
+  T.eq(think.journey_ok(W, s, m, ctx, 20), free, "due in 80 days: as anyone else")
+  m.preg_due = 0
+  m.nursing = now + 500
+  T.ok(not think.journey_ok(W, s, m, ctx, 20), "a baby at the breast: no journey")
+  -- a hungry baby in her arms while she is away on a trip, doing something other than walking
+  local ib = people.new(W, { born = now - 24, mother = m.id, father = 0, hh = 0, sett = s.id, surname = m.surname,
+    culture = s.culture, x = m.x, y = m.y })
+  people.join(W, ib, hh)
+  kin.give(W, ib, m)
+  m.trip, m.act = { to = s.id }, "news"
+  ib.hunger, ib.called = 0.7, nil
+  kin.infant_tick(W, s, ib, now, 0.1, function() end, act.pos)
+  T.ok(ib.hunger < 0.5, string.format("fed at the breast on the trip (hunger %.2f)", ib.hunger))
+  m.trip = nil
+  return string.format("free to go when not due: %s; fed on the trip: %.2f", tostring(free), ib.hunger)
+end
+
 function M.no_teleports()
   local W = fresh()
   local V = W.S.v3

@@ -118,6 +118,13 @@ SwiftShader pays for it - functional web specs use `gfx=low`); the village mix (
 **chain reaction** - `sim/chain.lua` (an observer: what each cast caused, forward along real links; never writes W.S),
 `game/ui/actions.lua` ("Your actions"), "chain N" on news cards, `tools/v3_chain.lua`; **R7 v2 powers** (sickness in a herd with
 incubation and a carried cause, `sim/agents/blight.lua`, warm/cool sea, oil, meteor); every journey checks `p.nursing`.
+Later in session 23 (D-184): **every site keeps a walkable yard** (a pit laid in a lane sealed a house; `map.cut_doors`, the
+chronicle prints DOORS CUT OFF; test `test_v3_sites`); a work step's loop is walked only as far as nothing closed stands in the way
+(`nav.los_last` - children were carried through walls into the sealed pocket); infants recover health when fed (they never did);
+`journey_ok` keeps nursing mothers and women near term at home and babies are fed on trips; **no `^` in `sim/`** (lint rule `pow`);
+aim previews (`powers3.preview`, reads only, the cast's own target choices); the flood's edge by marching squares; the news so far,
+the Sound pill; oil on a coast fouls the shore and oils the gulls (D-185; premise `powers2` for the R7 v2 powers). Follow a long run's deaths from a year-boundary snapshot (`v3_chronicle --days N --save`, N a multiple of 48;
+`tools/v3_household.lua` for a household's larder and people) - a year0 save is not an exact continuation.
 
 ## Read order
 

@@ -85,3 +85,8 @@ beast within a wide radius. Now (`game/audio/audio.lua` `M.MIX`):
 - **Measured** (`scripts/play_audio.mjs`: what the mixer plays, headless, at watch speed): at the flock close
   in the herd bed 0.44 -> 0.14 (under the village bed 0.41-0.54); among the flock the beasts' share of one-shot
   energy 88% -> rare; at the square the work carries it.
+
+## 10. The player's levels (session 23, D-184)
+A **Sound** pill (bottom right) opens four levels kept between visits: everything (`master`), the world (`ambient`:
+the beds), effects (`sfx`) and the interface (`ui`), each -/+ by a tenth, and the world's sound on/off (M). They are
+the mixer's group gains (`sound.set_group_gain`); the mix inside the world (`M.MIX`, §9) is unchanged by them.

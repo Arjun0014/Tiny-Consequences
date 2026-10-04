@@ -81,39 +81,50 @@ function M.entity_xy(W, s, sel)
   return nil
 end
 
+-- (S21, R7) The v3 cast's target under the pointer: its planet cell and, close to a village, the point on
+-- that village's map (lightning lands there; the rest by their cells). (S22) The ground under the pointer by
+-- the terrain's height; lightning or sickness aimed at a person or a beast under the pointer comes down where
+-- that one stands. Returns cell, opts { sid, x, y } (opts empty away from the villages), or nil.
+function M.v3_target(W, d, sx, sy)
+  local c, ux, uy, uz = picking.cell_at(W, sx, sy)
+  if not c then return nil end
+  local opts = {}
+  if not (ux and W.S.v3) then return c, opts end
+  local gx, gy, gz = picking.ground_at(W, sx, sy)
+  if gx then ux, uy, uz = gx, gy, gz end
+  local mapm = require("sim.agents.map")
+  local best, bd = nil, 0.985
+  for _, s in ipairs(W.S.v3.settlements) do
+    local f = s.frame
+    if f and s.alive then
+      local dd = f[1] * ux + f[2] * uy + f[3] * uz
+      if dd > bd then best, bd = s, dd end
+    end
+  end
+  if best then
+    local x, y = mapm.local_of(best, ux, uy, uz)
+    if d.id == "lightning" or d.id == "sickness" then
+      local ex, ey = M.entity_xy(W, best, picking.pick(W, sx, sy))
+      if ex then x, y = ex, ey end
+    end
+    local i = x and mapm.tile_of(best, x, y) or 0
+    if i > 0 then opts.sid, opts.x, opts.y = best.id, x, y end
+  end
+  return c, opts
+end
+
 -- Cast the armed power at the pointer (Lightning prefers a ship or villager under it).
 function M.cast(W, sx, sy)
   local d = powers.DEFS[powers.armed]
-  local c, ux, uy, uz = picking.cell_at(W, sx, sy)
-  if not c then return false end
-  local opts = {}
-  if W.v3 and ux and W.S.v3 then
-    -- (S21, R7) close to a village, the point on its map (lightning lands there; the rest by their cells).
-    -- (S22) The ground under the pointer by the terrain's height; lightning aimed at a person or a beast
-    -- under the pointer comes down where that one stands (the tallest thing near it still takes it).
-    local gx, gy, gz = picking.ground_at(W, sx, sy)
-    if gx then ux, uy, uz = gx, gy, gz end
-    local mapm = require("sim.agents.map")
-    local best, bd = nil, 0.985
-    for _, s in ipairs(W.S.v3.settlements) do
-      local f = s.frame
-      if f and s.alive then
-        local dd = f[1] * ux + f[2] * uy + f[3] * uz
-        if dd > bd then best, bd = s, dd end
-      end
-    end
-    if best then
-      local x, y = mapm.local_of(best, ux, uy, uz)
-      if d.id == "lightning" or d.id == "sickness" then
-        local ex, ey = M.entity_xy(W, best, picking.pick(W, sx, sy))
-        if ex then x, y = ex, ey end
-      end
-      local i = x and mapm.tile_of(best, x, y) or 0
-      if i > 0 then opts.sid, opts.x, opts.y = best.id, x, y end
-    end
+  if W.v3 and W.S.v3 then
+    local c, opts = M.v3_target(W, d, sx, sy)
+    if not c then return false end
     powers.cast(W, d.id, c, opts)
     return true
   end
+  local c = picking.cell_at(W, sx, sy)
+  if not c then return false end
+  local opts = {}
   if d.id == "lightning" or d.id == "oil" then
     local sel = picking.pick(W, sx, sy)
     if sel and sel.kind == "ship" then
@@ -132,6 +143,8 @@ end
 function M.hover(W, sx, sy)
   if not powers.armed or not W then return end
   local view = require("game.view.view")
+  -- (S23) where the pointer is, for the aim preview (game/ui/hud: what the cast would act on there)
+  view.aim_sx, view.aim_sy = sx, sy
   local c, ux, uy, uz = picking.cell_at(W, sx, sy)
   view.aim_cell = c
   -- (S22) the ring sits on the ground under the pointer (the terrain's height), where the bolt would land

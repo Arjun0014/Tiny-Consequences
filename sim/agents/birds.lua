@@ -112,12 +112,60 @@ local function shore(s)
 end
 M.shore = shore
 
+-- (S23, D-185) The planet's oil on settlement s's coast: the most of it in the sea within two rings of its cell,
+-- and the tag of that cell's oil (W.C.oil: the event whose spill it is). Reads only.
+function M.coast_oil(W, s)
+  local sites = require("sim.society.sites")
+  local oil, tag = 0, 0
+  local F, Cb = W.F.oil, W.C and W.C.oil
+  if not F then return 0, 0 end
+  for _, cc in ipairs(sites.rings(W, s.cell, 2)) do
+    if W.geo.ocean[cc] == 1 and (F[cc] or 0) > oil then oil, tag = F[cc], Cb and Cb[cc] or 0 end
+  end
+  return oil, tag
+end
+
+-- (S23, D-185) Oil on the coast oils the gulls (they dive through it for the fish it kills, and cannot fly once
+-- it is in their feathers): a share of the colony a day by how fouled the sea is, a deed with the oil's cause;
+-- a clean sea brings birds back to what it feeds, one at a time.
+local function oiled(W, s, f, day, push)
+  local c = C()
+  local oil, tag = M.coast_oil(W, s)
+  local now = W.S.v3.now or W.hour
+  if oil > c.oil_coast_min then
+    if not f.alive then return end
+    local k = min(1, oil / c.oil_coast_ref) * c.oil_gull_k
+    local lost = min(f.n, max(1, floor(f.n * k + rng.float(W.seed, rng.S.V3_MAP, s.key, day, 931))))
+    f.n = f.n - lost
+    f.oiled = (f.oiled or 0) + lost   -- (the birds the oil took: only these come back - an untouched colony keeps no count)
+    s.acc.gulls_oiled = (s.acc.gulls_oiled or 0) + lost
+    local deeds = require("sim.agents.deeds")
+    deeds.add(W, { kind = "oiled", t = now, at = s.id, x = f.rx, y = f.ry, by = 0, by_hh = 0, by_s = 0, to = 0, to_hh = 0,
+      to_s = s.id, what = "gulls", n = lost, fu = 0, harm = false, event = tag ~= 0 and tag or nil })
+    if f.n <= 0 then f.n, f.alive, f.ver = 0, false, (f.ver or 0) + 1 end
+  elseif not f.alive then
+    -- a clean sea again: a first bird back at the old roost
+    if (f.oiled or 0) > 0 and day % c.gull_back == 0 then
+      f.alive, f.n, f.ver, f.oiled = true, 1, (f.ver or 0) + 1, f.oiled - 1
+      f.act, f.fx, f.fy, f.x0, f.y0, f.z0, f.x1, f.y1, f.z1, f.cx, f.cy = "roost", f.rx, f.ry, f.rx, f.ry, 0, f.rx, f.ry, 0, f.rx, f.ry
+      f.t0, f.t1, f.obj, f.why, f.tgt_kind, f.tgt = now, now + 0.1, "Roost", "On the rocks", "roost", 0
+      if push then push(W, f.t1, M.event_id(s, f), f.ver) end
+    end
+  elseif (f.oiled or 0) > 0 and day % c.gull_back == 0 then
+    f.n, f.oiled = f.n + 1, f.oiled - 1
+    if f.oiled == 0 then f.oiled = nil end
+  end
+end
+
 -- A gull colony where the map has a coast: its roost on the shore farthest from the houses.
 function M.daily(W, s, day, push)
   local c = C()
   s.birds = s.birds or { flocks = {} }
   local B = s.birds
-  if #B.flocks > 0 then return end
+  if #B.flocks > 0 then
+    for _, f in ipairs(B.flocks) do if f.kind == "gull" then oiled(W, s, f, day, push) end end
+    return
+  end
   local L = shore(s)
   if #L < 12 then return end
   -- the roost: of the shore, far from the well and the dock (rocks the people leave alone)

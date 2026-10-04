@@ -249,6 +249,14 @@ local function on_deed(W, R, d)
   elseif k == "impact" then
     nd = node(R, I, pnode, "impact:" .. d.id, "impact", sid, d.t, { deed = d.id, x = d.x, y = d.y })
     nd.title = sfmt("The rock struck by %s", sname(W, sid))
+  elseif k == "fouled" then
+    -- (S23, D-185) the oil on a village's shore
+    nd = node(R, I, pnode, "fouled:" .. sid, "fouled", sid, d.t, { deed = d.id, x = d.x, y = d.y })
+    nd.title = sfmt("Oil on the shore at %s: the shellfish and the weed fouled", sname(W, sid))
+  elseif k == "oiled" then
+    nd = node(R, I, pnode, "oiled:" .. sid, "oiled", sid, d.t, { deed = d.id, x = d.x, y = d.y })
+    local n = count(nd, "gulls", d.n or 1)
+    nd.title = sfmt("%s oiled at %s", plural(n, "gull"), sname(W, sid))
   elseif k == "take" then
     nd = node(R, I, pnode, "take:" .. d.id, "take", sid, d.t, { deed = d.id, pid = d.by, x = d.x, y = d.y })
     nd.title = sfmt("%s of %s took %s from %s", pname(W, d.by), sname(W, d.by_s), plural(d.n or 1, d.what or "beast", d.what == "sheep" and "sheep" or nil), sname(W, sid))
@@ -446,6 +454,23 @@ local function poll_households(W, R, now)
           if nd then nd.active = false end
           nd = edge == 0 and I.by_key["hunger:" .. hid]
           if nd then nd.active = false end
+        end
+      end
+      -- (S23) food neighbours brought (the households' own gift accounts, hh.got) to a household whose heaviest
+      -- harm is in a chain: the help that came of it
+      local got, G = 0, hh.got
+      if G then for k = 1, (V.next_household or 1) - 1 do got = got + (G[k] or 0) end end
+      R.got = R.got or {}
+      local g0 = R.got[hid]
+      R.got[hid] = got
+      if g0 and got > g0 + 0.05 then
+        local h2 = deeds.top_harm(W, hid, now, 30)
+        local nf = h2 and R.node_of_deed[h2.id]
+        if nf then
+          local nd = node(R, nf.I, nf, "fed:" .. hid, "fed", hh.sett, now, { pid = hh.members[1] })
+          nd.n.fu = (nd.n.fu or 0) + (got - g0)
+          nd.title = sfmt("Neighbours brought %s food (worth %d FU)", hhname(W, hid), floor(nd.n.fu + 0.5))
+          touch(nf.I, nd, now)
         end
       end
     end
@@ -666,6 +691,32 @@ local function poll_v2(W, R, I, now)
   end
 end
 
+-- (S23) the children of the dead in a chain taken in by another household after the death, left with no
+-- grown-up at home (life.take_in records who took each child in and when: the link)
+local function poll_orphans(W, R, I, now)
+  local V = W.S.v3
+  for _, nd in ipairs(I.nodes) do
+    if nd.kind == "death" and nd.pid and not nd.orphans_done then
+      local p = V.people[nd.pid]
+      if p then
+        local n, by = 0, nil
+        for _, kid in ipairs(p.kids or {}) do
+          local k = V.people[kid]
+          if k and k.alive and k.taken_by and (k.taken_t or 0) >= nd.t0 then
+            n, by = n + 1, by or V.people[k.taken_by]
+          end
+        end
+        if n > 0 then
+          local cn = node(R, I, nd, "takenin:" .. nd.pid, "takenin", nd.sid, now, { pid = by and by.id })
+          cn.title = sfmt("%s %s taken in by %s", n == 1 and "A child of" or (n .. " children of"), p.name, by and (by.name .. " " .. by.surname) or "others")
+          touch(I, cn, now)
+          nd.orphans_done = true
+        end
+      end
+    end
+  end
+end
+
 -- Update ------------------------------------------------------------------------------------------
 function M.update(W, now)
   local V = W.S.v3
@@ -697,6 +748,7 @@ function M.update(W, now)
       if now - I.t < M.POLL_DAYS * 24 then
         for _, s in ipairs(V.settlements) do if s.alive then poll_village(W, R, I, s, now) end end
         if I.power == "cull" or I.power == "bring" then poll_wild(W, R, I, now) end
+        poll_orphans(W, R, I, now)
         if I.power == "sickness" or I.power == "blight" or I.power == "sea" or I.power == "oil" or I.power == "meteor" then poll_v2(W, R, I, now) end
       end
     end

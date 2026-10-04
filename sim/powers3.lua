@@ -208,22 +208,29 @@ end
 -- sickness the god sends. They carry it unseen for a day or two, then show it; the herd's own sickness does the
 -- rest - spread in the pen by the share sick, crowding, wet and hunger; beasts sold or droven carry it to
 -- other herds; the dead are their owners' loss. The cause travels with the sickness (stock.lua `sick_ev`).
-function P.sickness(W, p)
-  local s = village_at(W, p)
-  if not s or not s.herds then return 0 end
+-- (S23: the beast the sickness is sent into and its herd - reads only; the cast and the aim preview share it)
+local function sick_target(W, s, p, now)
   local stock = require("sim.agents.stock")
-  local now = W.S.v3.now or W.hour
   local best, bd, bH
   for _, kind in ipairs(stock.HERDS) do
     local H = s.herds[kind]
     for _, a in ipairs(H and H.animals or {}) do
       if a.alive and (a.sick or 0) == 0 and (a.sick_inc or 0) == 0 then
         local x, y = stock.pos(a, now)
-        local d = p.x and ((x - p.x) ^ 2 + (y - p.y) ^ 2) or -#H.animals
+        local d = p.x and ((x - p.x) * (x - p.x) + (y - p.y) * (y - p.y)) or -#H.animals
         if not best or d < bd then best, bd, bH = a, d, H end
       end
     end
   end
+  return best, bH
+end
+
+function P.sickness(W, p)
+  local s = village_at(W, p)
+  if not s or not s.herds then return 0 end
+  local stock = require("sim.agents.stock")
+  local now = W.S.v3.now or W.hour
+  local best, bH = sick_target(W, s, p, now)
   if not best then return 0 end
   local ev = root(W, "sickness", s.cell, C().v3_sick_n, { settlement = s.id, species = best.sp, x = p.x, y = p.y })
   -- (the one aimed at and the nearest of its herd to it)
@@ -232,7 +239,7 @@ function P.sickness(W, p)
   for _, a in ipairs(bH.animals) do
     if a.alive and a ~= best and (a.sick or 0) == 0 and (a.sick_inc or 0) == 0 then
       local x, y = stock.pos(a, now)
-      cand[#cand + 1] = { a, (x - bx) ^ 2 + (y - by) ^ 2 }
+      cand[#cand + 1] = { a, (x - bx) * (x - bx) + (y - by) * (y - by) }
     end
   end
   table.sort(cand, function(u1, u2) if u1[2] ~= u2[2] then return u1[2] < u2[2] end return u1[1].k < u2[1].k end)
@@ -293,7 +300,7 @@ function P.meteor(W, p)
     for _, id in ipairs(s.blist) do
       local b = s.buildings[id]
       local bx, by = b.cx or b.dx or 0, b.cy or b.dy or 0
-      local dd = math.sqrt((bx - x) ^ 2 + (by - y) ^ 2)
+      local dd = math.sqrt((bx - x) * (bx - x) + (by - y) * (by - y))
       if b.state == "standing" and not b.natural and dd < R then
         if dd < c.v3_meteor_blast * 0.6 then shake.fall_in(W, s, b, now, d, "quake") else blaze.ignite(W, s, "bld", id, now, d.id) end
       end
@@ -301,7 +308,7 @@ function P.meteor(W, p)
     for _, id in ipairs(s.members) do
       local q = V.people[id]
       if q and q.alive and not q.at then
-        local dd = math.sqrt((q.x - x) ^ 2 + (q.y - y) ^ 2)
+        local dd = math.sqrt((q.x - x) * (q.x - x) + (q.y - y) * (q.y - y))
         if dd < c.v3_meteor_blast then
           people.hurt(q, c.v3_meteor_hurt * (1 - dd / c.v3_meteor_blast), "burn", d.id, now)
           if (q.hurt or 0) >= 1 and blaze.kill then blaze.kill(W, s, q, "meteor", now) end
@@ -320,6 +327,186 @@ function P.blight(W, p)
   local ev = root(W, "blight", s.cell, 1, { settlement = s.id, x = p.x, y = p.y })
   if not require("sim.agents.blight").cast(W, s, p.x, p.y, ev) then return ev end
   return ev
+end
+
+-- Previews (S23) ------------------------------------------------------------------------------------------
+-- What a cast at (cell, o = { sid, x, y, mode, species }) would act on, read from the world by the same choices
+-- the cast makes: the thing the bolt takes, the herd and the beast, the field, the cells and the villages under
+-- them, the mountain and its pressure, the fault, the wild animals there, the buildings in the blast. For the HUD
+-- while aiming (game/ui/hud.gui_script); reads only, never writes. One line, or nil.
+local sfmt = string.format
+
+local function under(W, cells)
+  local set, out = {}, {}
+  for _, cl in ipairs(cells) do set[cl] = true end
+  for _, s in ipairs(W.S.v3.settlements) do if s.alive and set[s.cell] then out[#out + 1] = s.name end end
+  if #out == 0 then return nil end
+  if #out > 3 then return sfmt("%s, %s and %d more", out[1], out[2], #out - 2) end
+  if #out == 1 then return out[1] end
+  return table.concat(out, ", ", 1, #out - 1) .. " and " .. out[#out]
+end
+
+local function surname_of(W, hid)
+  local hh = W.S.v3.households[hid or 0]
+  local q = hh and W.S.v3.people[hh.members[1] or 0]
+  return q and q.surname or nil
+end
+
+local SP_NAME = { sheep = "sheep", goat = "goats", cattle = "cattle", pig = "pigs" }
+
+local function strike_words(W, s, best, bk)
+  local V = W.S.v3
+  if bk == "tree" then return "a tree" end
+  if bk == "bld" then
+    local b = s.buildings[best]
+    if not b then return "a roof" end
+    local sn = (b.kind == "house" or b.kind == "hut") and surname_of(W, b.hh)
+    return sn and ("the " .. sn .. " house") or ("the " .. (b.label or b.kind))
+  end
+  if bk == "person" then
+    local q = V.people[best]
+    return q and sfmt("%s %s, out of doors", q.name, q.surname) or "someone out of doors"
+  end
+  if bk == "beast" then
+    local sn = surname_of(W, best.owner)
+    return sn and sfmt("one of the %ss' %s", sn, SP_NAME[best.sp] or best.sp) or ("a " .. tostring(best.sp))
+  end
+  if bk == "wild" then return "a wild " .. tostring(best.sp) end
+  if bk == "dog" then return "a dog" end
+  return "the bare ground"
+end
+
+local PREVIEW = {}
+
+function PREVIEW.lightning(W, cell, o)
+  local s = o.sid and W.S.v3.settlements[o.sid]
+  if not (s and o.x) then return "A bolt on the land here - close in on a village to aim it at a point" end
+  local best, bk = require("sim.agents.blaze").strike_target(W, s, o.x, o.y, W.S.v3.now or W.hour)
+  return "The bolt would take " .. strike_words(W, s, best, bk)
+end
+
+local function weather(W, cell, what)
+  local vs = under(W, area(W, cell, C().radius))
+  return what .. (vs and (" over " .. vs) or " over open country - no village under it")
+end
+function PREVIEW.rain(W, cell) return weather(W, cell, sfmt("Rain for %d days", C().v3_rain_days)) end
+function PREVIEW.dry(W, cell) return weather(W, cell, sfmt("No rain for %d days", C().v3_dry_days)) end
+function PREVIEW.warm(W, cell) return weather(W, cell, sfmt("The air %d degrees warmer for %d days", C().v3_air_k, C().v3_air_days)) end
+function PREVIEW.cold(W, cell) return weather(W, cell, sfmt("The air %d degrees colder for %d days", C().v3_air_k, C().v3_air_days)) end
+
+function PREVIEW.stir(W, cell)
+  local best, bd = nil, -2
+  local VS = W.S.v3.volc   -- (never volcano.list: it makes the list when there is none - the view only reads)
+  for _, v in ipairs(VS and VS.list or {}) do
+    local d = dot(W, v.cell, cell)
+    if d > bd then best, bd = v, d end
+  end
+  if not best then return "The nearest mountain's pressure would rise" end
+  local after = (best.pressure + C().v3_stir_k * best.thr) / math.max(1e-6, best.thr)
+  return sfmt("%s: its pressure to %d%% of what makes it erupt%s", best.name or "The mountain", floor(after * 100 + 0.5),
+    after >= 1 and " - it would erupt" or "")
+end
+
+function PREVIEW.strain(W, cell)
+  local Q = W.S.v3.quake   -- (never shake.state: it makes the state when there is none)
+  if not (Q and Q.cells and #Q.cells > 0) then return "The nearest fault's stress would rise" end
+  local best, bd = nil, -2
+  for i = 1, #Q.cells do
+    local d = dot(W, Q.cells[i], cell)
+    if d > bd then best, bd = i, d end
+  end
+  local st, thr = Q.stress[best], Q.thr[best]
+  if not (st and thr) then return "The fault here: its stress would rise" end
+  local after = (st + C().v3_strain_k * thr) / math.max(1e-6, thr)
+  return sfmt("The fault here: its stress to %d%% of what makes it give%s", floor(after * 100 + 0.5), after >= 1 and " - it would give" or "")
+end
+
+function PREVIEW.cull(W, cell, o)
+  local pred = o.species ~= "deer"
+  local cells = area(W, cell, C().radius)
+  local set = {}
+  for _, cl in ipairs(cells) do set[cl] = true end
+  local n = 0
+  local mapm = require("sim.agents.map")
+  for _, s in ipairs(W.S.v3.settlements) do
+    for _, w in ipairs(s.wildlife and s.wildlife.animals or {}) do
+      if w.alive and not w.gone and (w.pred == pred) then
+        local i = mapm.tile_of(s, w.tx or w.x, w.ty or w.y)
+        if i > 0 and set[s.cell_of[i]] then n = n + 1 end
+      end
+    end
+  end
+  local F = W.F[pred and "predators" or "grazers"]
+  local fn = 0
+  if F then for _, cl in ipairs(cells) do fn = fn + (F[cl] or 0) end end
+  local what = pred and "wolves" or "deer"
+  if n == 0 and fn <= 0 then return sfmt("No %s here to cull", what) end
+  return sfmt("Nine in ten of the %s here%s", what, n > 0 and sfmt(" - %d of them by the villages", n) or "")
+end
+
+function PREVIEW.bring(W, cell, o)
+  local sea = W.geo.ocean[cell] == 1
+  if o.species == "fish" then return sea and "A shoal of fish here" or "Fish need the sea" end
+  if sea then return "Wolves and deer need land" end
+  return o.species == "wolves" and "A pack of wolves on this land" or "A herd of deer on this land"
+end
+
+function PREVIEW.sickness(W, cell, o)
+  local s = village_at(W, { cell = cell, sid = o.sid })
+  if not (s and s.herds) then return "No village's herds here" end
+  local best, H = sick_target(W, s, o, W.S.v3.now or W.hour)
+  if not best then return "No healthy beast here to fall sick" end
+  local n = 0
+  for _, a in ipairs(H.animals) do if a.alive then n = n + 1 end end
+  local sn = surname_of(W, best.owner)
+  return sfmt("The %s of %s (%d in the herd): %s and the %d nearest it", SP_NAME[best.sp] or best.sp, s.name, n,
+    sn and ("one of the " .. sn .. "s'") or "one", C().v3_sick_n - 1)
+end
+
+function PREVIEW.blight(W, cell, o)
+  local s = village_at(W, { cell = cell, sid = o.sid })
+  if not s then return "No village's fields here" end
+  local pl = require("sim.agents.blight").target(s, o.x, o.y)
+  if not pl then return sfmt("No growing field at %s", s.name) end
+  return sfmt("%s at %s (%s)", pl.name or "A field", s.name, pl.stage)
+end
+
+function PREVIEW.sea(W, cell, o)
+  local n = 0
+  for _, cl in ipairs(area(W, cell, C().radius)) do if W.geo.ocean[cl] == 1 then n = n + 1 end end
+  if n == 0 then return "No sea here" end
+  return sfmt("The sea here %d degrees %s for %d days", C().v3_sea_k, o.mode == "cool" and "cooler" or "warmer", C().v3_sea_days)
+end
+
+function PREVIEW.oil(W, cell)
+  return W.geo.ocean[cell] == 1 and "A slick on the sea here - the currents will carry it" or "Oil needs the sea"
+end
+
+function PREVIEW.meteor(W, cell, o)
+  local s = village_at(W, { cell = cell, sid = o.sid })
+  local c = C()
+  if s and s.land then
+    local x, y = o.x or s.sqx or 0, o.y or s.sqy or 0
+    local nb, np = 0, 0
+    for _, id in ipairs(s.blist) do
+      local b = s.buildings[id]
+      local bx, by = b.cx or b.dx or 0, b.cy or b.dy or 0
+      if b.state == "standing" and not b.natural and (bx - x) * (bx - x) + (by - y) * (by - y) < c.v3_meteor_fire * c.v3_meteor_fire then nb = nb + 1 end
+    end
+    for _, id in ipairs(s.members) do
+      local q = W.S.v3.people[id]
+      if q and q.alive and not q.at and (q.x - x) * (q.x - x) + (q.y - y) * (q.y - y) < c.v3_meteor_blast * c.v3_meteor_blast then np = np + 1 end
+    end
+    return sfmt("At %s: %d buildings in the fire's reach, %d people in the blast; the ground shaken", s.name, nb, np)
+  end
+  if W.geo.ocean[cell] == 1 then return "Into the sea: the ground shaken and a wave" end
+  return "On open land: fire, the ground shaken, dust in the air"
+end
+
+function M.preview(W, kind, cell, o)
+  local f = PREVIEW[kind]
+  if not (f and W.v3 and W.S.v3 and cell and cell >= 1 and cell <= W.n) then return nil end
+  return f(W, cell, o or {})
 end
 
 function M.apply(W, p)

@@ -971,6 +971,11 @@ local function journey_ok(W, s, p, ctx, hrs)
   if p.hunger > 0.55 then return false end
   -- (not with a babe in arms: a minder does not carry someone's baby off on a long road)
   if ctx.babe then return false end
+  -- (S23: not a mother with a baby at the breast, nor one whose time is near - due before she would be home
+  -- again: a crier set out about to give birth, and her newborn starved at the village she walked to)
+  local now = W.S.v3.now or W.hour
+  if (p.nursing or 0) > now then return false end
+  if (p.preg_due or 0) > 0 and p.preg_due < now + 2 * hrs + 48 then return false end
   if s.need and (s.need.food_days or 99) < 3 then return false end
   local home, hh = ctx.home, ctx.hh
   if not home or not hh then return false end
@@ -1005,6 +1010,8 @@ local function trade_candidate(W, s, p, ctx, now, fat)
   if not o or not o.alive then return end
   local GX, GH = econ.GOODS[plan.give], econ.GOODS[plan.take]
   if not plan.ask and not GH.food and not journey_ok(W, s, p, ctx, plan.hours) then return end
+  -- (S23: a woman whose time is near does not set out even for food: due before she would be home)
+  if (p.preg_due or 0) > 0 and p.preg_due < now + 2 * plan.hours + 48 then return end
   if which ~= 3 then
     -- (S14) a road is walked by day: set out when it can be walked before dusk, or early in the
     -- morning when it is more than a day's walk (a night camped on the road)

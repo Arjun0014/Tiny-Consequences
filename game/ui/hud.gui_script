@@ -14,6 +14,7 @@ local camera = require("game.view.camera")
 local powers = require("game.ui.powers")
 local newsfeed = require("game.ui.newsfeed")   -- (S21, R7: the world news)
 local actions = require("game.ui.actions")     -- (S23: what each of the god's casts caused)
+local sound_panel = require("game.ui.sound_panel")   -- (S23: the levels of the sound)
 
 local C = ui.C
 local V3 = vmath.vector3
@@ -345,8 +346,27 @@ local function build_powers(self)
 		self.popts[k] = { node = b, icon = ic, opt = k }
 	end
 	self.phint = ui.text(bar, 0, h / 2 + 64, "", "nunito_semi", 16, C.coral, gui.PIVOT_CENTER)
+	-- (S23) what the armed power would act on under the pointer, read from the world (sim/powers3.lua preview)
+	self.pprev = ui.box(bar, 0, h / 2 + 66, 300, 30, "pill", C.panel)
+	self.pprev_t = ui.text(self.pprev, 0, 0, "", "nunito_semi", 14, C.text, gui.PIVOT_CENTER)
+	gui.set_enabled(self.pprev, false)
 	gui.set_enabled(bar, false)
 	gui.set_enabled(bar_sh, false)
+end
+
+-- (S23) The armed power's preview at the pointer: the same target the cast would take (game/view/controls
+-- v3_target), described by the sim's own reading of what is there (sim/powers3.lua preview; reads only).
+local function aim_preview(d)
+	local W = view.W
+	if not (W and W.v3 and W.S.v3 and view.aim_sx) then return nil end
+	local p3 = require("sim.powers3")
+	if not p3.preview then return nil end
+	local c, opts = require("game.view.controls").v3_target(W, d, view.aim_sx, view.aim_sy)
+	if not c then return nil end
+	local k = powers.mode[d.id] or 1
+	if d.modes and d.modes[k] then opts.mode = d.modes[k].id end
+	if d.species and d.species[k] then opts.species = d.species[k].id end
+	return p3.preview(W, d.id, c, opts)
 end
 
 local function update_powers(self)
@@ -375,7 +395,28 @@ local function update_powers(self)
 			o.power = armed
 		end
 	end
-	gui.set_text(self.phint, powers.hint and powers.hint.text or "")
+	local hint = powers.hint and powers.hint.text or ""
+	gui.set_text(self.phint, hint)
+	-- (S23) the preview, a few times a second while aiming (hidden while a refusal is shown)
+	local pv = nil
+	if d and view.W and view.W.v3 and hint == "" then
+		self.pv_n = (self.pv_n or 0) + 1
+		if self.pv_n >= 8 or self.pv_armed ~= armed or self.pv_x ~= view.aim_sx or self.pv_y ~= view.aim_sy then
+			if self.pv_n >= 4 or self.pv_armed ~= armed then
+				self.pv_n, self.pv_armed, self.pv_x, self.pv_y = 0, armed, view.aim_sx, view.aim_sy
+				local ok, t = pcall(aim_preview, d)
+				self.pv_text = ok and t or nil
+			end
+		end
+		pv = self.pv_text
+	end
+	local on = pv ~= nil and pv ~= ""
+	gui.set_enabled(self.pprev, on)
+	if on and pv ~= self.pv_shown then
+		self.pv_shown = pv
+		gui.set_text(self.pprev_t, pv)
+		gui.set_size(self.pprev, V3(ui.text_width("nunito_semi", pv, 14) + 36, 30, 0))
+	end
 end
 
 -- Lifecycle ----------------------------------------------------------------------------------
@@ -386,6 +427,7 @@ function init(self)
 	build_misc(self)
 	newsfeed.build(self)
 	actions.build(self)
+	sound_panel.build(self)
 	build_loading(self)
 	self.sel_version = -1
 	self.refresh = 0
@@ -549,6 +591,7 @@ function update(self, dt)
 		self.shown.top = true
 	end
 	update_powers(self)
+	sound_panel.update(self)
 	if W.v3 then
 		actions.update(self, W, speed.v3_t or W.hour, dt)
 		newsfeed.update(self, W, speed.v3_t or W.hour, dt)
@@ -604,6 +647,8 @@ local function hit(self, x, y)
 	do
 		local ah = actions.hit(self, x, y)
 		if ah then return ah end
+		local sh = sound_panel.hit(self, x, y)
+		if sh then return sh end
 		local nh = newsfeed.hit(self, x, y)
 		if nh then return nh end
 	end
@@ -670,6 +715,7 @@ local function activate(self, h)
 		return
 	end
 	if view.W and actions.activate(self, view.W, h) then return end
+	if sound_panel.activate(self, h) then return end
 	if type(h) == "table" and h.news_card then go_story(self, h); return end
 	if h == "close" then selection.clear()
 	elseif h == "tab" then uistate.inspector_collapsed = not uistate.inspector_collapsed

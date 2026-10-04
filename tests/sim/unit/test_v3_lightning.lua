@@ -8,6 +8,8 @@ local worlds = require("sim.worlds")
 
 local M = {}
 
+local C_fire_sight = require("sim.config").V3.fire_sight
+
 local function shipped()
   local f = assert(io.open("assets/worlds/v3.tcsave", "rb"))
   local data = f:read("*a")
@@ -159,11 +161,66 @@ function M.a_wildfire_comes_onto_the_map()
     return orig(p, t, text, ...)
   end
   local t0 = W.hour
-  for h = 1, 48 do world.advance(W, t0 + h) end
+  -- (S23) whether it came within sight of anyone awake out of doors: then they saw it (where the fire goes is the
+  -- wind's and the woods' - in one run it reached the fields, in another it stayed at the map's edge, 1.1 from
+  -- anyone, unseen; the senses are what is tested, not where it went)
+  local act = require("sim.agents.act")
+  local near = C_fire_sight * 0.6
+  local close = 0
+  for h = 1, 48 do
+    world.advance(W, t0 + h)
+    for _, fr in ipairs(s.burn or {}) do
+      for _, id in ipairs(s.members) do
+        local q = V.people[id]
+        if q and q.alive and not q.at and q.inside == 0 and q.act ~= "sleep" and q.act ~= "carried" then
+          local x, y = act.pos(q, W.hour)
+          if (x - fr.x) * (x - fr.x) + (y - fr.y) * (y - fr.y) < near * near then close = close + 1 end
+        end
+      end
+    end
+  end
   people.remember = orig
   T.ok((s.acc.trees_burnt or 0) >= 5, (s.acc.trees_burnt or 0) .. " trees of the map burnt")
-  T.ok(saw >= 1, saw .. " people saw it")
-  return string.format("%d trees burnt on %s's map in 2 days; %d saw it", s.acc.trees_burnt or 0, s.name, saw)
+  if close > 0 then T.ok(saw >= 1, string.format("%d saw it (%d times someone awake was near it)", saw, close)) end
+  return string.format("%d trees burnt on %s's map in 2 days; %d saw it (%d times someone awake near it)", s.acc.trees_burnt or 0,
+    s.name, saw, close)
+end
+
+-- (S23) A tree catches fire beside someone awake out of doors: they see it within the hour (and remember it). The
+-- senses, tested where the fire is - a wildfire at the map's edge may burn unseen when nobody is near it.
+function M.a_fire_beside_someone_is_seen()
+  local W = shipped()
+  local V = W.S.v3
+  local s = at(W, 11, 0.15)
+  local act = require("sim.agents.act")
+  local blaze = require("sim.agents.blaze")
+  local people = require("sim.agents.people")
+  local now = V.now or W.hour
+  local who, tree
+  for _, id in ipairs(s.members) do
+    local q = V.people[id]
+    if not tree and q and q.alive and not q.at and q.inside == 0 and q.act ~= "sleep" and people.stage(q, now) == "adult" then
+      local x, y = act.pos(q, now)
+      local best, bd = nil, 0.3 * 0.3
+      blaze.trees_near(s, x, y, 0.3, function(k, d2) if d2 < bd and d2 > 0.03 * 0.03 then best, bd = k, d2 end end)
+      if best then who, tree = q, best end
+    end
+  end
+  T.ok(tree ~= nil, "someone awake out of doors with a tree near")
+  if not tree then return end
+  local orig = people.remember
+  local saw = {}
+  people.remember = function(p, t, text, ...)
+    if type(text) == "string" and text:find("^Fire") then saw[p.id] = true end
+    return orig(p, t, text, ...)
+  end
+  blaze.ignite(W, s, "tree", tree, now, nil)
+  world.advance(W, now + 1)
+  people.remember = orig
+  local n = 0
+  for _ in pairs(saw) do n = n + 1 end
+  T.ok(saw[who.id] == true, who.name .. " saw the tree burning beside them")
+  return string.format("%s and %d in all saw it", who.name, n)
 end
 
 -- (S20) A fold set alight in a dry evening with the sheep shut in it: they cry out, someone near

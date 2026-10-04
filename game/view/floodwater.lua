@@ -1,15 +1,16 @@
 -- Flood water over the land (S21, R6.5e): the tiles the sim's flood module has under water on the
 -- villages' maps (sim/agents/flood.lua -> mapm.FLOOD) drawn with the river's water shader (rippling,
 -- muddy toward its edges), rebuilt when the water moves. Read-only: the sim's runtime depth array.
--- Rows of flooded tiles are drawn as short spans (at most SPAN tiles: the planet curves under a long
--- one), each end at the terrain's own height.
+-- (S23) The water's outline by marching squares over the tile centres: a flooded tile's centre is in the
+-- water, a dry one's is not, and the edge runs midway between them - straight along a row, cut across a
+-- corner where it turns (a lone flooded tile is a diamond, not a square); every vertex at the terrain's own
+-- height. The edge's vertices are the shader's muddy bank, the centres the water's colour by its depth.
 local planet = require("game.view.planet")
 local mapm = require("sim.agents.map")
 local flood = require("sim.agents.flood")
 
 local M = {}
 M.LIFT = 0.007
-M.SPAN = 6
 M.CHECK_S = 0.4
 
 local H_POS, H_NRM, H_COL = hash("position"), hash("normal"), hash("color")
@@ -38,37 +39,59 @@ local function radius(PL, x, y, z)
   return r + M.LIFT
 end
 
+local function across_of(deep)
+  return deep > 0.6 and 0.55 or (deep > 0.25 and 0.7 or 0.86)
+end
+
+-- the corners of a dual cell (between four tile centres) counter-clockwise, and the edges between them
+local CX, CY = { 0, 1, 1, 0 }, { 0, 0, 1, 1 }
+
 function M.rebuild(W)
   local PL = M.PL
   local V = W.S.v3
   if not PL or not V then return false end
-  -- the spans: per village, per row, runs of flooded tiles cut at SPAN
-  local spans = {}
+  -- the water's pieces: per dual cell with water at a corner, its polygon (corners in the water and the
+  -- midpoints of the edges the shore crosses), as x, y, across, depth per vertex
+  local verts, nt = {}, 0
+  local poly = {}
   for _, s in ipairs(V.settlements) do
     local _, fd = flood.view(s)
     if fd and s.alive then
-      local N = s.N
-      for iy = 1, N do
-        local ix = 1
-        local row = (iy - 1) * N
-        while ix <= N do
-          if fd[row + ix] > 0.02 then
-            local a = ix
-            local deep = fd[row + ix]
-            while ix + 1 <= N and ix + 1 - a < M.SPAN and fd[row + ix + 1] > 0.02 do
-              ix = ix + 1
-              if fd[row + ix] > deep then deep = fd[row + ix] end
+      local N, T = s.N, s.T
+      local sid = s.id
+      for iy = 1, N - 1 do
+        for ix = 1, N - 1 do
+          local i1 = (iy - 1) * N + ix
+          local d1, d2, d3, d4 = fd[i1], fd[i1 + 1], fd[i1 + N + 1], fd[i1 + N]
+          if d1 > 0.02 or d2 > 0.02 or d3 > 0.02 or d4 > 0.02 then
+            local D = { d1, d2, d3, d4 }
+            local x0, y0 = mapm.ixy_xy(s, ix, iy)
+            local np = 0
+            for q = 1, 4 do
+              local r = q % 4 + 1
+              local wq, wr = D[q] > 0.02, D[r] > 0.02
+              if wq then
+                np = np + 1
+                poly[np] = { x0 + CX[q] * T, y0 + CY[q] * T, across_of(D[q]), D[q] }
+              end
+              if wq ~= wr then
+                np = np + 1
+                poly[np] = { x0 + (CX[q] + CX[r]) * 0.5 * T, y0 + (CY[q] + CY[r]) * 0.5 * T, 1.0, 0 }
+              end
             end
-            spans[#spans + 1] = { s, a, ix, iy, deep }
+            -- a fan of triangles (the pieces are convex; two corners across a diagonal join as one)
+            for k = 2, np - 1 do
+              local a, b, c = poly[1], poly[k], poly[k + 1]
+              nt = nt + 1
+              verts[nt] = { sid, a, b, c }
+            end
           end
-          ix = ix + 1
         end
       end
     end
   end
-  local n = #spans
-  local nv = n * 6
-  M.stats.spans, M.stats.verts = n, nv
+  local nv = nt * 3
+  M.stats.spans, M.stats.verts = nt, nv
   if nv == 0 then nv = 3 end
   local buf = buffer.create(nv, {
     { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
@@ -77,30 +100,19 @@ function M.rebuild(W)
   })
   local pos, nrm, col = buffer.get_stream(buf, H_POS), buffer.get_stream(buf, H_NRM), buffer.get_stream(buf, H_COL)
   local v = 0
-  for k = 1, n do
-    local sp = spans[k]
-    local s, a, b, iy, deep = sp[1], sp[2], sp[3], sp[4], sp[5]
+  for k = 1, nt do
+    local t = verts[k]
+    local s = V.settlements[t[1]]
     local T = s.T
-    local x0, y0 = mapm.ixy_xy(s, a, iy)
-    local x1 = mapm.ixy_xy(s, b, iy)
-    x0, x1 = x0 - T * 0.5, x1 + T * 0.5
-    local ya, yb = y0 - T * 0.5, y0 + T * 0.5
-    -- (shallow water reads muddy, deeper water as the river's own)
-    local across = deep > 0.6 and 0.55 or (deep > 0.25 and 0.7 or 0.86)
-    local corners = { { x0, ya }, { x1, ya }, { x1, yb }, { x0, yb } }
-    local P = {}
-    for q = 1, 4 do
-      local ux, uy, uz = mapm.unit(s, corners[q][1], corners[q][2])
+    for o = 2, 4 do
+      local p = t[o]
+      local x, y = p[1], p[2]
+      local ux, uy, uz = mapm.unit(s, x, y)
       local r = radius(PL, ux, uy, uz)
-      P[q] = { ux * r, uy * r, uz * r, ux, uy, uz, corners[q][1] * 9 + s.id * 3.7, corners[q][2] * 9 }
-    end
-    local order = { 1, 2, 3, 1, 3, 4 }
-    for o = 1, 6 do
-      local p = P[order[o]]
       local i3, i4 = v * 3, v * 4
-      pos[i3 + 1], pos[i3 + 2], pos[i3 + 3] = p[1], p[2], p[3]
-      nrm[i3 + 1], nrm[i3 + 2], nrm[i3 + 3] = p[4], p[5], p[6]
-      col[i4 + 1], col[i4 + 2], col[i4 + 3], col[i4 + 4] = p[7] + p[8] * 0.37, across, T, deep
+      pos[i3 + 1], pos[i3 + 2], pos[i3 + 3] = ux * r, uy * r, uz * r
+      nrm[i3 + 1], nrm[i3 + 2], nrm[i3 + 3] = ux, uy, uz
+      col[i4 + 1], col[i4 + 2], col[i4 + 3], col[i4 + 4] = x * 9 + s.id * 3.7 + y * 9 * 0.37, p[3], T, p[4]
       v = v + 1
     end
   end

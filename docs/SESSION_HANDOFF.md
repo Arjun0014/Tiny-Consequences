@@ -31,6 +31,13 @@ expected now; watch the herd sickness with incubation); profiles (`luajit -joff 
 `--load` the day-384 save; S22: 3.91 M / 5.13 M instructions an hour, stock 39%); `node scripts/prof_web.mjs --release --hours 288
 --runs 3`; the chain UI shots again with a new power (`scripts/shots_chain.mjs`); then PROGRESS/handoff numbers.
 
+## After the checkpoint (D-184) - read before anything else
+The pending checks were run; the second 8-year run starved 11 beside a full granary, followed to four mechanisms and fixed (a pit
+that sealed a house - every site keeps a walkable yard, `map.cut_doors`; play loops that carried children through it -
+`nav.los_last`; toddlers who never recovered - `kin.infant_tick`; a crier who gave birth on the road - `journey_ok`). Then aim
+previews (`powers3.preview`), the flood's edge by marching squares, the news so far, the Sound pill, no `^` in `sim/`. Checks: quick
+suite 206/206, browser = LuaJIT on all six, run 5 hunger 0. Details: D-184, PROGRESS session 23.
+
 ## Next (after the pending checks)
 1. The news: a history list; relief / orphans / harvest stories; everyday aggregation.
 2. A volume settings panel; per-power aim previews (what each writes, on the ring).

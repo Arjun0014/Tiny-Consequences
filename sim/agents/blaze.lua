@@ -494,9 +494,11 @@ end
 -- map, the flash seen. Beasts standing close by (four feet apart: more of the ground current than a
 -- man takes) are thrown down. Returns what was hit ("tree", "bld", "person", "beast", "wild", "dog" or
 -- nil) and its ref. `cause`: the deed or event that sent it.
-function M.strike(W, s, x, y, now, cause, ev)
+-- (S23) What a bolt at (x, y) takes: the tallest thing within strike_pull (reads only; the strike and the aim
+-- preview share it). Returns best (a tree index, building id, person id or beast), its kind ("tree", "bld",
+-- "person", "beast", "wild", "dog" or nil for the bare ground) and a beast's herd.
+function M.strike_target(W, s, x, y, now)
   local c = C()
-  local V = W.S.v3
   local best, bs, bk, bh = nil, -1e9, nil, nil
   local r2 = c.strike_pull * c.strike_pull
   local T = s.trees
@@ -531,6 +533,14 @@ function M.strike(W, s, x, y, now, cause, ev)
       if sc > bs then best, bs, bk, bh = o, sc, kind, H end
     end
   end)
+  return best, bk, bh
+end
+
+function M.strike(W, s, x, y, now, cause, ev)
+  local c = C()
+  local V = W.S.v3
+  local best, bk, bh = M.strike_target(W, s, x, y, now)
+  local T = s.trees
   local what = bk or "ground"
   if bk == "beast" or bk == "wild" then what = best.sp end
   local d = deeds.add(W, { kind = "strike", t = now, at = s.id, x = x, y = y, by = 0, by_hh = 0, by_s = 0, to = 0, to_hh = 0,

@@ -96,3 +96,16 @@ the tree of its consequences, read forward along the same real links (`77_CHAIN_
 `game/ui/actions.lua`). A pill at the bottom left ("Your actions 2") opens the list of casts (power, place, day,
 direct and downstream consequences, still unfolding); a cast opens its chain; every line goes there. A news card
 whose chain ends at YOU carries "chain N" - a click opens that cast's chain.
+
+## 11. The news so far, and the sound (session 23, D-184)
+- **News** (a pill above "Your actions"; at the bottom left alone before the first cast): every story the feed has
+  told, newest first - its icon, title, latest line, how long ago and its root (YOU / PEOPLE / NATURE); a click goes
+  there exactly as a card does (`game/ui/actions.lua`, the panel's news mode; bridge `actions{open=true, news=true}`).
+  The feed keeps showing only what matters now; the history is where a missed story is found again.
+- New everyday stories read from live state: **the harvest** (from the first ripe field of the season to the last one
+  cut - "12 sheaves in so far; 3 fields still standing ripe", then "All in: 152 sheaves") and **children taken in**
+  (the village's own count, `life.take_in`). A fire's story takes the cause of what it burns (`f.deed`: a bolt, the
+  god's meteor) - a meteor's fire was rooted at NATURE before.
+- **Sound** (a pill at the bottom right): four levels - everything, the world (its beds: wind, rain, the village,
+  the herds), effects (axes, thunder, shouts) and the interface (the feed's chimes) - each with - and +, and the
+  world's sound on or off (the same as M). Kept between visits (`sys.save`, `game/ui/sound_panel.lua`).

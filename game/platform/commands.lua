@@ -925,7 +925,7 @@ function M.register(G)
     chain.update(W, require("game.platform.speed").v3_t or W.hour)
     local list = chain.list(W)
     local ev = args.ev == "latest" and list[1] and list[1].ev or tonumber(args.ev)
-    if args.open ~= nil then require("game.ui.actions").request = { open = args.open and true or false, ev = ev } end
+    if args.open ~= nil then require("game.ui.actions").request = { open = args.open and true or false, ev = ev, news = args.news } end
     local out = { list = {} }
     for _, I in ipairs(list) do
       out.list[#out.list + 1] = { ev = I.ev, title = I.title, power = I.power, n_total = I.n_total, n_direct = I.n_direct, active = I.active }

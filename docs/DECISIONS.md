@@ -1400,3 +1400,103 @@ Every new power's consequences reach the chain-reaction view (sickness carried a
 and tainted grain, the sea's warmth and its fish, oil off a village, the meteor's records and dust) and the news
 (sickness among the beasts, blight in the corn, fire from the sky; what each cast changed at once).
 
+## D-184 · 2026-10-04 · The second 8-year run: a pit sealed a house and children were carried into the pocket; toddlers never got their strength back; a crier gave birth on the road; aim previews; the flood's edge; the news so far; the player's sound levels (session 23)
+**Context.** The second untouched 8-year run on the S23 checkpoint code (`out/s23/chron384b`) ended with 11 hunger deaths (run 1:
+one, the nursing case of D-179) - 10 at Little Leelee in days 344-370 with ~600 grain in its granary, 1 at Dreik Knoll. Each was
+followed from snapshots of the same trajectory (`tools/v3_chronicle.lua --save` at a year boundary, then `tools/v3_household.lua`
+and `tools/v3_follow.lua`). Four mechanisms, none of them scarcity:
+
+**1. A tanning pit sealed a house.** `settle.plan_tanpits` laid its 2x2 pit on the first free footprint near water with no yard
+round it (every other planner keeps one: lots two tiles, wells one, boats and racks one, pens three, rocks one). House #57's door
+opened into the two-tile lane the house yards leave between houses; one household's pit went down in that lane beside the door,
+a later one on the door's other side, and the door was sealed: the Weewicks inside could reach their own pit and nothing else
+("Fetch water -> the well: Cannot find a way there"), and the father, home from trading at Tekheim, could reach his son's house
+but never his own. Four starved over three weeks. **Fix:** a pit keeps a one-tile yard (`settle.pit_fits`). A ring of free tiles
+round a footprint is walkable (free land costs > 0 except under deep flood water), so a way that crossed the footprint goes round
+it: a yarded site can never disconnect two places (by induction, any sequence of them). `tools/v3_chronicle.lua` reports doors
+nobody can walk to from the square ("DOORS CUT OFF", `map.cut_doors`).
+
+**2. Children carried through the pit into the pocket.** The six children who starved in other Little Leelee households were in
+that pocket too. A child at play runs a short loop to another spot (a work step with a loop point `x1, y1`); `act.START.work`
+walked it as a straight two-point line and checked only that its end tile was open: Tin, playing at (-0.04,-0.04), was carried
+through pit #174 to (-0.05,-0.08), and the way out never existed again. **Fix:** a loop is walked straight only as far as nothing
+closed stands in the way (`nav.los_last`, the same traversal as `los`): through a closed tile it stops at the last open one (a
+first fix that dropped such loops entirely - working in place - changed too much: hunters never closed on prey across a stream,
+and a fold fire found no one near).
+
+**3. Toddlers never got their strength back.** Knald (1.6, Dreik Knoll, a lean time): a weaned toddler's hunger rises through the
+night while its carer sleeps (the carer is woken only at 0.9); each time it reached 1, `kin.infant_tick` took health away - and
+nothing ever gave it back: the grown-ups' recovery is in `act.body`, which carried infants never run. Hungry nights added up until
+health was 0, and the day's reckoning ("a day at the edge and still not fed") took him half an hour after a breakfast. **Fix:** fed
+again (hunger < 0.6), an infant recovers as a grown-up does (+0.004 an hour up to its diet's cap).
+
+**4. A crier gave birth on the road** (an 8-year run after fixes 1-3: Tanim, Zurug, 3 days old). The fair's crier check excluded a
+nursing mother but not one due any hour: Tuskta set out on a 20-hour walk to tell the neighbours of the fair, gave birth on the way
+at midnight, and at the village she walked to the trip's own plan had no hour for nursing (`think` returns the trip's plan before
+weighing care) - the baby was fed only while she walked. **Fix:** `journey_ok` refuses a woman due before she would be home again
+(2 x the road + 2 days) and a nursing mother (most callers checked nursing already; this is the one place); a trade for food (which
+skips `journey_ok`) checks the same; a baby in the arms of someone on a trip is fed where they are, as on the road.
+
+**Tests.** `test_v3_sites` (new): `pits_packed_round_doors_never_seal` - pits packed one after another wherever the pit rule accepts
+one within four tiles of any door, every door still reachable after each (the old rule fails at the third pit, "Tekheim: pit 3 at
+61,62 cut off the door of house #8"); `pits_never_seal_a_door` - the planner itself, every household three times over.
+`test_v3_agents`: `a_fed_toddler_recovers` (0.30 -> 0.39 in a day; the old code stays at 0.30), `near_term_and_nursing_mothers_on_journeys`
+(fails on the old code). `test_v3_lightning`: the wildfire test asserted "someone saw it", which depends on where the fire goes (in
+one trajectory it burnt 141 trees toward the fields and 8 saw it, in another 42 trees at the map's edge, 1.1 from anyone, mostly
+asleep): it now asserts that whoever was awake within sight saw it, and `a_fire_beside_someone_is_seen` (new) tests the senses
+directly - a tree alight beside someone awake out of doors is seen within the hour (21 saw it).
+
+**The 8-year runs.** Run 2 (checkpoint code): hunger 11. Run 3 (fixes 1-2 with the first loop fix): births 44; illness 12, old age 4,
+**hunger 0**; no door cut off. Run 4 (fixes 1-3): births 45; illness 14, old age 4, hunger 1 (the crier's newborn: fix 4). Run 5
+(everything): see the session 23 entry in PROGRESS.
+
+**Aim previews.** While a power is armed, a pill above the bar says what the cast would act on under the pointer: "The bolt would
+take the Tustrand house", "Rain for 3 days over Tekheim", "Mount Grumbles: its pressure to 99% of what makes it erupt", "The sheep of
+Tekheim (42 in the herd): one of the Knubrands' and the 2 nearest it", "Tustrand field at Tekheim (growing)", "At Tekheim: 11
+buildings in the fire's reach, 10 people in the blast; the ground shaken". `sim/powers3.lua` `M.preview` reads the world by the same
+choices the cast makes - the bolt's target is `blaze.strike_target` (the strike now calls it), the herd and beast `sick_target`, the
+field `blight.target`; the volcano list and the quake state are read where they are stored (never `volcano.list` / `shake.state`,
+which make them). Reads only (test `previews_read_what_the_cast_takes`: the state hash is unchanged by every preview, and the bolt's
+preview names what the strike's deed records). The pointer's target is `controls.v3_target`, shared with the cast. Shots
+`scripts/shots_aim.mjs`.
+
+**`^` in the sim.** The S23 code used `(x - a) ^ 2` (sickness, meteor, blight): the browser's Lua 5.1 computes `^` with the C
+library's pow(), LuaJIT folds it to a product - the worlds may differ in the last bit (D-110). Products now; the linter has a `pow`
+rule for `sim/` and `content/` (`lint:allow pow` on the two intended uses: `fmt.lua`'s fallback past its table, `mathcheck.lua`).
+
+**The flood's edge.** Flood water was drawn tile by tile and its edge stepped like stairs. Now marching squares over the tile
+centres (`game/view/floodwater.lua`): the edge runs midway between flooded and dry centres, cut across a corner where it turns (a
+lone flooded tile is a diamond), its vertices the shader's muddy bank fading to the water's colour by depth
+(`out/shots/flood/edges_before_after.png`).
+
+**The chain.** Children taken in after a death in a chain (`life.take_in` records `taken_by`/`taken_t`; the node reads exactly that,
+never a guess from household membership) and food neighbours bring to a household whose heaviest harm is in a chain (the
+households' own gift accounts `hh.got`; `deeds.top_harm` is the sim's own reading of that harm).
+
+**News and sound (polish).** The news so far (a "News" pill above "Your actions": every story told, newest first, a click goes
+there); harvest stories (from the first ripe field to the last cut) and children taken in; a fire's story takes what lit it (`f.deed`:
+a meteor's fire was rooted at NATURE); the sickness power's icon a thermometer, the sea's modes sun/snow (they were the air powers').
+A Sound pill (four levels and on/off, kept between visits). `75_PLAYER_EXPERIENCE.md` §11, `80_WORLD_AUDIO.md` §10. `test_v3_news`
+`every_story_rests_on_the_world` accepts harvest and taken-in stories as live-state stories (like hunger, leaving, fire).
+
+**Measured.** Year-8 world of run 2 (159 people): 4.90 M instructions a game hour (S22: 5.13 M); livestock 30.6% (was 39%), its hot
+spot the herd neighbour scan (`stock.lua` `scan`, 19%) - left as it is (no loss of agency is acceptable for it).
+
+## D-185 · 2026-10-04 · Oil on a village's coast: the shore fouled, the gulls oiled (session 23)
+**Context.** The oil power (R7 v2, D-183) put the planet's slick on the sea, where the currents carry it and it kills plankton and
+fish (the fishers catch less) - but nothing on a village's map answered it: the shore's food (shellfish and weed, the poor's and
+the famine's food, S19) and the gulls (agents since S14) went on as before beside a black sea.
+
+**Decision.** `birds.coast_oil(W, s)` reads the planet's oil in the sea within two rings of a village's cell (the most of it, and
+that cell's blame tag `W.C.oil`). Above `oil_coast_min`, by `oil / oil_coast_ref`:
+- **the shore** (`settle.shore_food`, daily): nothing grows back and `oil_shore_spoil` of what is on the rocks is lost a day at full
+  fouling; the first day of it, a deed `fouled` (harm; the village learns of it: "the oil on the shore"), its `event` the oil's tag;
+- **the gulls** (`birds.daily`): `oil_gull_k` of the colony oiled a day at full fouling (stochastic rounding keyed by the day), a
+  deed `oiled` with the number; a colony oiled to nothing is gone, and a clean sea brings back the birds the oil took (`f.oiled`), a first one to the
+  old roost, then one every `gull_back` days (an untouched colony keeps no such count: its state, and the world's hash, are
+  exactly as before).
+The chain reads `fouled` and `oiled` under the spill (their event's root is the cast, or a sunk tanker); the news tells "Oil on the
+coast at X". Nothing acts without oil: the untouched world's course is unchanged (hashes and the 8-year run hold).
+
+**Test.** `test_v3_powers2.oil_on_the_coast`: oil cast at the sea beside a village with a shore - within four days the shore is
+fouled and its food falls, gulls are oiled, both deeds rooted at the cast, and the chain reads them.

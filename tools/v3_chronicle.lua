@@ -166,14 +166,27 @@ local function state(s)
   return t
 end
 
+-- (S23) doors nobody can walk to from the square (map.cut_doors): reported the first day each is seen
+local mapm = require("sim.agents.map")
+local cut_seen = {}
+local cut_doors = mapm.cut_doors
+
 local function report(d)
   days_f:write(string.format("day %d\n", d))
   for _, s in ipairs(V.settlements) do
     if s.alive then
       local t = state(s)
-      days_f:write(string.format("  %-16s pop %3d hh %2d | house %2d site %d hut %d camp %d empty %d | dock %d pans %d boats %s | grain %5.0f relish %4.0f larders %5.0f logs %4.0f | salt %5.1f cloth %4.1f lthr %4.1f | %s | trips %d\n",
+      local cut = cut_doors(s)
+      days_f:write(string.format("  %-16s pop %3d hh %2d | house %2d site %d hut %d camp %d empty %d | dock %d pans %d boats %s | grain %5.0f relish %4.0f larders %5.0f logs %4.0f | salt %5.1f cloth %4.1f lthr %4.1f | %s | trips %d%s\n",
         s.name, t.n, t.nhh, t.houses, t.hsite, t.huts, t.camps, t.empty, t.docks, t.pans, t.boats, t.grain, t.relish, t.food, t.ws + t.logs,
-        t.salt, t.cloth, t.leather, t.herd, s.acc.trips or 0))
+        t.salt, t.cloth, t.leather, t.herd, s.acc.trips or 0, #cut > 0 and string.format(" | DOORS CUT OFF %d", #cut) or ""))
+      for _, b in ipairs(cut) do
+        local key = s.id .. ":" .. b.id
+        if not cut_seen[key] then
+          cut_seen[key] = d
+          say("  d%d %s: the door of %s #%d (household %s) cannot be reached from the square", d, s.name, b.kind, b.id, tostring(b.hh))
+        end
+      end
     end
   end
   days_f:flush()

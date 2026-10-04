@@ -29,7 +29,7 @@ end
 
 local function rd(v, n)
   if type(v) ~= "number" or v ~= v then return v end
-  local p = P10[n] or 10 ^ n
+  local p = P10[n] or 10 ^ n   -- lint:allow pow (only past the table: never in the sim's state)
   return floor(v * p + 0.5) / p
 end
 M.round = rd

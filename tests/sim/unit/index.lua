@@ -43,4 +43,5 @@ return {
   "tests.sim.unit.test_v3_namespace",
   "tests.sim.unit.test_v3_chain",
   "tests.sim.unit.test_v3_powers2",
+  "tests.sim.unit.test_v3_sites",
 }

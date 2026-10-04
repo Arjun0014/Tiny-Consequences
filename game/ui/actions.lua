@@ -3,10 +3,12 @@
 -- ("Your actions 3"); opened, a panel in the left column (the news steps aside): the casts, newest first -
 -- the power and the place, the day, how many consequences (direct / all), still unfolding; a cast opens its
 -- chain - the tree of incidents, each a line of what happened, clickable: the camera goes there and selects
--- whom it is about. News cards rooted at YOU open their cast's chain from their "chain" pill.
+-- whom it is about. News cards rooted at YOU open their cast's chain from their "chain" pill. A second pill,
+-- "News", opens the same panel on every story so far (sim/news.lua's history, newest first; click to go there).
 -- Call only from GUI script callbacks.
 local ui = require("game.ui.uikit")
 local chain = require("sim.chain")
+local news = require("sim.news")
 
 local M = {}
 local C = ui.C
@@ -20,12 +22,12 @@ M.TREE_N, M.TREE_H = 15, 25
 M.INDENT = 15
 
 local ICON = { lightning = "bolt", rain = "rain", dry = "drought", warm = "heat", cold = "chill", stir = "volcano",
-  strain = "pickaxe", cull = "skull", bring = "paw", meteor = "meteor", oil = "oil", blight = "blight", sickness = "skull", sea = "wave" }
+  strain = "pickaxe", cull = "skull", bring = "paw", meteor = "meteor", oil = "oil", blight = "blight", sickness = "thermo", sea = "wave" }
 M.ICON = ICON
 local DANGER = { fire = true, flood = true, quake = true, wave = true, death = true, wound = true, strike = true, fell = true,
   lost = true, hunger = true, take = true, ["event:quake"] = true, ["event:eruption"] = true, ["event:wildfire"] = true,
-  sickness = true, impact = true, blight = true }
-local HELP = { help = true, lodging = true, ["return"] = true, pay = true }
+  sickness = true, impact = true, blight = true, fouled = true, oiled = true }
+local HELP = { help = true, lodging = true, ["return"] = true, pay = true, takenin = true, fed = true }
 local STATE = { soil = true, river = true, air = true, crops = true, sick = true, fields = true, seed = true, sea = true, fish = true,
   oil = true, dust = true, packs = true, herds = true }
 local BLUE = vmath.vector4(0.24, 0.45, 0.70, 1)
@@ -56,6 +58,13 @@ function M.build(self)
   A.pill_n = ui.box(pill, 66, 0, 30, 22, "pill_s", C.gold)
   A.pill_nt = ui.text(A.pill_n, 0, 0, "0", "fredoka", 12, C.white, gui.PIVOT_CENTER)
   gui.set_enabled(pill, false)
+  -- the news so far (above it: the power bar takes the bottom edge beside it)
+  local np = ui.box(nil, M.X0 + 50, 14 + 20, 100, 40, "pill", C.panel)
+  ui.anchor(np, gui.ANCHOR_LEFT, gui.ANCHOR_BOTTOM)
+  A.npill = np
+  ui.icon(np, -30, 1, "globe", 20, C.teal)
+  ui.text(np, -14, 0, "News", "fredoka", 15, C.text)
+  gui.set_enabled(np, false)
   -- the panel
   local PW, PH = M.PW, M.PH
   local root = ui.box(nil, M.X0 + PW / 2, M.TOP - PH / 2, 1, 1, "px", C.clear)
@@ -134,13 +143,15 @@ function M.update(self, W, now, dt)
   if rq then
     M.request = nil
     set_open(self, rq.open)
-    if rq.open and rq.ev then A.mode, A.ev, A.scroll = "tree", rq.ev, 0 else A.mode, A.scroll = "list", 0 end
+    if rq.open and rq.news then A.mode, A.scroll = "news", 0
+    elseif rq.open and rq.ev then A.mode, A.ev, A.scroll = "tree", rq.ev, 0
+    else A.mode, A.scroll = "list", 0 end
     A.t = 1
   end
   A.t = A.t + dt
   if A.t < 0.2 then
     if A.open then
-      for _, r in ipairs(A.mode == "list" and A.rows or A.trows) do
+      for _, r in ipairs(A.mode == "tree" and A.trows or A.rows) do
         gui.set_color(r.bg, self.hover == r and C.hover or C.clear)
       end
       gui.set_color(A.close, self.hover == "act_close" and C.hover or C.soft)
@@ -154,9 +165,41 @@ function M.update(self, W, now, dt)
   -- the pill: shown once the god has acted
   gui.set_enabled(A.pill, #list > 0)
   gui.set_text(A.pill_nt, tostring(#list))
-  gui.set_color(A.pill, (self.hover == "act_pill" or A.open) and C.hover or C.panel)
+  gui.set_color(A.pill, (self.hover == "act_pill" or (A.open and A.mode ~= "news")) and C.hover or C.panel)
+  local NR = news.rt(W).list
+  gui.set_enabled(A.npill, #NR > 0)
+  gui.set_position(A.npill, V3(M.X0 + 50, #list > 0 and 82 or 34, 0))
+  gui.set_color(A.npill, (self.hover == "act_news" or (A.open and A.mode == "news")) and C.hover or C.panel)
   if not A.open then return end
   local PW = M.PW
+  if A.mode == "news" then
+    -- (S23) every story so far, newest first
+    gui.set_enabled(A.back, false)
+    gui.set_enabled(A.go, false)
+    for _, r in ipairs(A.trows) do gui.set_enabled(r.bg, false) end
+    gui.set_position(A.title, V3(-PW / 2 + 16, M.PH / 2 - 22, 0))
+    gui.set_text(A.title, "THE NEWS SO FAR")
+    gui.set_text(A.sub, string.format("%d stories, newest first - click one to go there", #NR))
+    A.max_scroll = math.max(0, #NR - M.LIST_N)
+    A.scroll = math.min(A.scroll, A.max_scroll)
+    for i, r in ipairs(A.rows) do
+      local st = NR[#NR - (i - 1) - A.scroll]
+      r.I, r.st = nil, st
+      gui.set_enabled(r.bg, st ~= nil and st.title ~= nil)
+      if st and st.title then
+        ui.set_icon(r.icon, st.icon or "info")
+        gui.set_text(r.title, trunc("fredoka", st.title, 14.5, PW - 130))
+        local h = now - (st.t1 or now)
+        local ago = h < 1 and "now" or (h < 24 and string.format("%dh ago", math.floor(h)) or string.format("%dd ago", math.floor(h / 24)))
+        gui.set_text(r.line, trunc("nunito_semi", (st.line or "") .. " - " .. ago, 12, PW - 110))
+        local root = st.root or news.chain(W, st).root
+        gui.set_text(r.n, root == "you" and "YOU" or (root == "people" and "PEOPLE" or "NATURE"))
+        gui.set_color(r.n, root == "you" and C.gold or (root == "people" and C.muted or C.teal))
+        gui.set_enabled(r.dot, st.active and st.level == 1)
+      end
+    end
+    return
+  end
   local list_mode = A.mode == "list"
   gui.set_enabled(A.back, not list_mode)
   gui.set_enabled(A.go, not list_mode)
@@ -171,7 +214,7 @@ function M.update(self, W, now, dt)
     A.scroll = math.min(A.scroll, A.max_scroll)
     for i, r in ipairs(A.rows) do
       local I = list[i + A.scroll]
-      r.I = I
+      r.I, r.st = I, nil
       gui.set_enabled(r.bg, I ~= nil)
       if I then
         ui.set_icon(r.icon, ICON[I.power] or "star")
@@ -179,6 +222,7 @@ function M.update(self, W, now, dt)
         local unf = I.active and " - still unfolding" or ""
         gui.set_text(r.line, trunc("nunito_semi", string.format("%s - %d direct, %d in all%s", day_of(W, I.t), I.n_direct, I.n_total, unf), 12, PW - 110))
         gui.set_text(r.n, tostring(I.n_total))
+        gui.set_color(r.n, C.text)
         gui.set_enabled(r.dot, I.active)
       end
     end
@@ -244,6 +288,7 @@ function M.hit(self, x, y)
   local A = self.actions
   if not A then return nil end
   if gui.is_enabled(A.pill) and gui.pick_node(A.pill, x, y) then return "act_pill" end
+  if gui.is_enabled(A.npill) and gui.pick_node(A.npill, x, y) then return "act_news" end
   if not A.open then return nil end
   if gui.pick_node(A.close, x, y) then return "act_close" end
   if A.mode ~= "list" then
@@ -254,7 +299,7 @@ function M.hit(self, x, y)
     end
   else
     for _, r in ipairs(A.rows) do
-      if gui.is_enabled(r.bg) and r.I and gui.pick_node(r.bg, x, y) then return r end
+      if gui.is_enabled(r.bg) and (r.I or r.st) and gui.pick_node(r.bg, x, y) then return r end
     end
   end
   if gui.pick_node(A.panel, x, y) then return "panel" end
@@ -289,13 +334,22 @@ function M.activate(self, W, h)
   local A = self.actions
   if not A then return false end
   if h == "act_pill" then
-    set_open(self, not A.open)
+    set_open(self, not (A.open and A.mode ~= "news"))
     A.mode, A.scroll = "list", 0
+    A.t = 1
+    return true
+  elseif h == "act_news" then
+    set_open(self, not (A.open and A.mode == "news"))
+    A.mode, A.scroll = "news", 0
     A.t = 1
     return true
   elseif h == "act_close" then set_open(self, false); return true
   elseif h == "act_back" then A.mode, A.scroll, A.t = "list", 0, 1; return true
   elseif h == "act_go" then M.go(W, nil, chain.get(W, A.ev)); return true
+  elseif type(h) == "table" and h.act_row and h.st then
+    -- (a story of the news so far: go there, as its card would)
+    require("game.ui.newsfeed").go(W, h.st)
+    return true
   elseif type(h) == "table" and h.act_row and h.I then
     A.mode, A.ev, A.scroll, A.t = "tree", h.I.ev, 0, 1
     return true

@@ -48,7 +48,7 @@ try {
     await cmd({ cmd: 'flush_view' });
     await page.waitForTimeout(2500);
     const file = path.join(outDir, `${premise}_s${sett}_${i + 1}.png`);
-    await page.screenshot({ path: file });
+    await page.screenshot({ path: file, timeout: 600_000 });   // (S23: the rain's cloud deck under SwiftShader)
     console.log(`shot ${rel(file)} (+${dt} h) at ${what}: ${JSON.stringify(lk.info || {})}`);
   }
 } catch (e) { console.log('FAILED ' + e.message); }

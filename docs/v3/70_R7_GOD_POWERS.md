@@ -122,3 +122,11 @@ Each cast: a root event (actor `player`, kind `power_*`) whose id is the **cause
   village's map). The bar has fourteen powers; sickness aims at the beast under the pointer like lightning.
 - Every power's consequences reach the chain-reaction view (`77_CHAIN_REACTION.md`).
 - Not yet: traded grain carrying blight's taint, oil fouling shore food and gulls on the maps, seed the woods (v3).
+- **Aim previews** (D-184): while a power is armed, a pill above the bar says what the cast would act on under the pointer -
+  the thing the bolt would take, the villages under the rain, the mountain's pressure after a stir, the herd and beast the
+  sickness goes into, the field the blight takes, the buildings and people in a meteor's reach. `sim/powers3.lua` `M.preview`
+  reads the world by the same choices the cast makes (`blaze.strike_target`, `sick_target`, `blight.target`) and writes nothing.
+- **Oil on a coast** (D-185): where the planet's slick lies in the sea within two rings of a village's cell, the shellfish and the
+  weed on its rocks are fouled (no regrowth, a share of what is there lost each day by how fouled the sea is) and its gulls are oiled
+  (a share of the colony a day; a clean sea brings birds back one at a time) - each a deed carrying the oil's own cause (`W.C.oil`:
+  the god's spill or a sunk tanker), so "Your actions" and the news follow a spill to the shore it reaches.

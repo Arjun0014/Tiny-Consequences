@@ -17,10 +17,10 @@ function M.run(n)
     { "sin", function(x) return math.sin(x) end, -50, 50 },
     { "cos", function(x) return math.cos(x) end, -50, 50 },
     { "exp", function(x) return math.exp(x) end, -20, 5 },
-    { "pow2", function(x) return x ^ 2 end, -3, 3 },
+    { "pow2", function(x) return x ^ 2 end, -3, 3 },   -- lint:allow pow (the check of pow itself)
     { "mul2", function(x) return x * x end, -3, 3 },
-    { "pow08", function(x) return x ^ 0.8 end, 0, 50 },
-    { "pow05", function(x) return x ^ 0.5 end, 0, 50 },
+    { "pow08", function(x) return x ^ 0.8 end, 0, 50 },   -- lint:allow pow
+    { "pow05", function(x) return x ^ 0.5 end, 0, 50 },   -- lint:allow pow
     { "sqrt", function(x) return math.sqrt(x) end, 0, 50 },
     { "acos", function(x) return math.acos(x) end, -1, 1 },
     { "log", function(x) return math.log(x) end, 0.001, 100 },

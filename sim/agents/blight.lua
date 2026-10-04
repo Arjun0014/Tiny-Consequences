@@ -70,7 +70,7 @@ function M.daily(W, s, day)
             local o = P[j]
             if j ~= k and o.stage == "growing" and (o.blight or 0) < 0.02 then
               local ox, oy = centre(o)
-              local dd = sqrt((ox - x) ^ 2 + (oy - y) ^ 2)
+              local dd = sqrt((ox - x) * (ox - x) + (oy - y) * (oy - y))
               if dd < c.blight_reach then
                 local pz = c.blight_spread * b * wet * (1 - dd / c.blight_reach)
                 if rng.float(W.seed, rng.S.BLIGHT, s.id * 1000 + j, day, k) < pz then M.infect(W, s, o, 0.02, pl.blight_ev) end
@@ -114,15 +114,21 @@ function M.on_sow(W, s, k, row, now)
 end
 
 -- The god's blight: the growing field nearest the point (else the village's largest growing field).
-function M.cast(W, s, x, y, ev)
+-- (S23: `target` reads only - the cast and the aim preview share it)
+function M.target(s, x, y)
   local best, bd
   for _, pl in ipairs(s.plots or {}) do
     if pl.stage == "growing" or pl.stage == "ripe" then
       local px, py = centre(pl)
-      local d = x and ((px - x) ^ 2 + (py - y) ^ 2) or -(pl.sown or 0)
+      local d = x and ((px - x) * (px - x) + (py - y) * (py - y)) or -(pl.sown or 0)
       if not best or d < bd then best, bd = pl, d end
     end
   end
+  return best
+end
+
+function M.cast(W, s, x, y, ev)
+  local best = M.target(s, x, y)
   if not best then return nil end
   M.infect(W, s, best, C().blight_cast, ev)
   return best

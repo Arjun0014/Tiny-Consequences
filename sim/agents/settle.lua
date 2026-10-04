@@ -1204,11 +1204,30 @@ M.wild_food = wild_food
 -- water - poor folk's food, and the coast's famine food.
 local function shore_food(W, s)
   local c = C()
-  local L = require("sim.agents.birds").shore(s)
+  local birds = require("sim.agents.birds")
+  local L = birds.shore(s)
   if #L == 0 then s.shore_food = nil; return end
   local g = #L * c.shore_regrow
   local f = (s.shore_food or g * c.shore_cap_days * 0.5) + g
-  s.shore_food = min(f, g * c.shore_cap_days)
+  -- (S23, D-185) oil on the coast: the shellfish and the weed on the rocks fouled - none grows back, and of what is
+  -- there a share is lost each day by how fouled the sea is; the first day of it a deed with the oil's cause
+  local oil, tag = birds.coast_oil(W, s)
+  if oil > c.oil_coast_min then
+    local k = min(1, oil / c.oil_coast_ref)
+    f = (f - g * k) * (1 - c.oil_shore_spoil * k)
+    if not s.shore_oil then
+      local now = W.S.v3.now or W.hour
+      local deeds = require("sim.agents.deeds")
+      local x, y = mapm.tile_xy(s, L[1 + floor(#L / 2)])
+      local d = deeds.add(W, { kind = "fouled", t = now, at = s.id, x = x, y = y, by = 0, by_hh = 0, by_s = 0, to = 0, to_hh = 0,
+        to_s = s.id, what = "shore", n = 1, fu = 0, harm = true, event = tag ~= 0 and tag or nil })
+      deeds.learn(W, s, d, "the oil on the shore", 0, 0, now)
+      s.shore_oil = { t = now, deed = d.id }
+    end
+  elseif s.shore_oil then
+    s.shore_oil = nil
+  end
+  s.shore_food = max(0, min(f, g * c.shore_cap_days))
 end
 
 -- Food: will the fields feed everyone to the next harvest and leave a store? If not, new field
@@ -1541,6 +1560,13 @@ local function plan_racks(W, s, day)
   end
 end
 
+-- (S23) A pit's 2x2 footprint at (jx, jy) with a one-tile yard round it, like every other site: a
+-- walkable ring round the pit, so it never closes a way (a pit laid snug in front of a neighbour's door
+-- sealed that house off from the village and its household starved inside it, year 8)
+function M.pit_fits(s, jx, jy)
+  return mapm.rect_free(s, jx - 1, jy - 1, jx + 2, jy + 2, true)
+end
+
 -- Tanning pits (D-104): a household with hides waiting lays out a pit by the water (the river's
 -- bank, else the shore, else the village's edge): logs and work like any site.
 local function plan_tanpits(W, s, day)
@@ -1573,7 +1599,7 @@ local function plan_tanpits(W, s, day)
                     if s.riv[k] > 0 or s.land[k] == 0 then near_water = true end
                   end
                 end
-                if (near_water or r >= 12) and mapm.rect_free(s, jx, jy, jx + 1, jy + 1, true) then
+                if (near_water or r >= 12) and M.pit_fits(s, jx, jy) then
                   local b = M.add_building(W, s, "tanpit", jx, jy, "s", "site", { for_hh = hh.id, for_name = "the household", prio = 0.25 })
                   if b then b.hh = hh.id; return end
                 end
@@ -1586,6 +1612,8 @@ local function plan_tanpits(W, s, day)
     end
   end
 end
+
+M.plan_tanpits = plan_tanpits
 
 local function dry_racks(W, s, day)
   local c = C()

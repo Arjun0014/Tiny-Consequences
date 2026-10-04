@@ -229,6 +229,7 @@ function M.take_in(W, s, day)
             local k = V.people[id]
             if k and k.alive then
               people.join(W, k, dest)
+              k.taken_by, k.taken_t = to.id, now   -- (S23: who took them in, when - the chain reads it)
               people.remember(k, now, "Taken in by " .. to.name .. (why == "kin" and ", our kin" or ""))
             end
           end

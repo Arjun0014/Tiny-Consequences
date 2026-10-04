@@ -84,6 +84,46 @@ local function los(s, a, b, cmax)
 end
 M.los = los
 
+-- (S23) The last open tile on the straight line from tile a toward tile b - b itself when nothing closed lies
+-- on the way: where someone heading straight for b is stopped (the same traversal as los; a corner passed
+-- exactly stops the line when either tile beside it is closed).
+function M.los_last(s, a, b)
+  local N = s.N
+  local IX, IY = ixy(N)
+  local cost = s.cost
+  local dx, dy = IX[b] - IX[a], IY[b] - IY[a]
+  local sx, sy = 1, N
+  if dx < 0 then dx, sx = -dx, -1 elseif dx == 0 then sx = 0 end
+  if dy < 0 then dy, sy = -dy, -N elseif dy == 0 then sy = 0 end
+  if dx == 0 and dy == 0 then return b end
+  local nx = dx > 0 and dy or 1e30
+  local ny = dy > 0 and dx or 1e30
+  if dy == 0 then nx = 1 end
+  if dx == 0 then ny = 1 end
+  local ddx, ddy = 2 * dy, 2 * dx
+  if dy == 0 then ddx = 2 end
+  if dx == 0 then ddy = 2 end
+  local i, last = a, a
+  for _ = 1, dx + dy do
+    if nx < ny then
+      i = i + sx
+      nx = nx + ddx
+    elseif ny < nx then
+      i = i + sy
+      ny = ny + ddy
+    else
+      if cost[i + sx] < 0 or cost[i + sy] < 0 then return last end
+      i = i + sx + sy
+      nx = nx + ddx
+      ny = ny + ddy
+    end
+    if cost[i] < 0 then return last end
+    last = i
+    if i == b then return b end
+  end
+  return last
+end
+
 -- A* from tile a to tile b; fills `tiles` with the tile path (a .. b); returns its length or 0.
 -- The open list is a bucket queue (D-086): f quantised to 1/BQ of an open-ground step, last in
 -- first out within a bucket — O(1) pushes and pops (a binary heap's sifting was half the cost in

@@ -27,14 +27,14 @@ M.KINDS = {
   wolves = { 3, "wolf" }, hunger = { 3, "bread" }, winter = { 3, "snow" }, heat = { 3, "heat" }, ash = { 3, "volcano" },
   -- (everyday life: STORY level, weighed below danger and pressure - a quiet world still shows its life)
   birth = { 2, "heart", 14 }, passing = { 2, "person", 16 }, wedding = { 2, "heart", 12 }, house = { 2, "house", 10 },
-  trade = { 2, "people", 16 }, fair = { 2, "star", 32 }, relief = { 2, "bread", 34 },
+  trade = { 2, "people", 16 }, fair = { 2, "star", 32 }, relief = { 2, "bread", 34 }, harvest = { 2, "wheat", 18 },
   -- (S22) a power cast: what it changed in the world, at once (its consequences are their own stories)
   power = { 2, "star", 30 }, culled = { 2, "paw", 26 },
   -- (S23, R7 v2)
-  sickness = { 3, "bubble", 26 }, blight = { 3, "blight", 26 }, impact = { 1, "meteor" },
+  sickness = { 3, "thermo", 26 }, blight = { 3, "blight", 26 }, impact = { 1, "meteor" }, oil = { 3, "oil", 30 },
 }
 -- (S22) everyday life: at most this many cards at once (four "a new house" cards hid the rest)
-M.EVERYDAY = { birth = true, passing = true, wedding = true, house = true, trade = true, fair = true }
+M.EVERYDAY = { birth = true, passing = true, wedding = true, house = true, trade = true, fair = true, harvest = true }
 M.EVERYDAY_MAX = 2
 
 local function rt(W)
@@ -237,6 +237,16 @@ local function on_deed(W, R, d, now)
     st.title = sfmt("Blight in the corn at %s", s.name)
     local nf = count(st, "fields")
     line(st, sfmt("%s spotted and withering (%s)", plural(nf, "field"), household_name(W, d.to_hh)), d.t)
+  elseif k == "fouled" or k == "oiled" then
+    -- (S23, D-185) the oil on a village's coast: the shore fouled, the gulls oiled - one story per village and slick
+    local st = story(W, R, "oil:" .. s.id, "oil", s.id, d.t, { deed = d.id, ev = d.event, x = d.x, y = d.y })
+    st.title = sfmt("Oil on the coast at %s", s.name)
+    if k == "fouled" then
+      line(st, "The shellfish and the weed on the rocks are black and dying", d.t)
+    else
+      local n = count(st, "gulls", d.n or 1)
+      line(st, sfmt("%s oiled, the colony dwindling", plural(n, "gull")), d.t)
+    end
   elseif k == "impact" then
     local st = story(W, R, "impact:" .. d.id, "impact", s.id, d.t, { deed = d.id, ev = d.event, x = d.x, y = d.y })
     st.title = sfmt("Fire from the sky at %s", s.name)
@@ -464,6 +474,9 @@ local function poll_fire(W, R, s, now)
     local b = f.kind == "bld" and s.buildings[f.ref]
     fs.title = sfmt("Fire in %s", s.name)
     fs.kind, fs.icon, fs.level = "fire", M.KINDS.fire[2], 1   -- (S22: a strike's story becomes the fire's)
+    -- (S23) the fire's cause: the deed that lit what burns (a bolt, the god's meteor); without it the story had no
+    -- link and fell back to NATURE
+    if not fs.deed and f.deed then fs.deed = f.deed end
     fs.burning = n
     fs.x, fs.y, fs.active, fs.t1 = f.x, f.y, true, now
     fs.weak = false
@@ -653,6 +666,40 @@ local function poll(W, R, s, now)
     if n ~= st.n.present then st.n.present = n; line(st, n > 0 and sfmt("%s come to it", plural(n, "person", "people")) or "Called for after the harvest", now) end
     st.active, st.t1 = true, now
   end
+  -- (S23) children left with no one to keep them, taken in (life.take_in: the village's own count)
+  R.taken = R.taken or {}
+  local tk = s.acc and s.acc.taken_in or 0
+  if R.taken[s.id] == nil then R.taken[s.id] = tk end
+  if tk > R.taken[s.id] then
+    local n = tk - R.taken[s.id]
+    R.taken[s.id] = tk
+    local st = story(W, R, "orphans:" .. s.id .. ":" .. floor(now / 24), "orphans", s.id, now, { x = s.sqx, y = s.sqy })
+    st.title = sfmt("Children taken in at %s", s.name)
+    local nn = count(st, "children", n)
+    line(st, sfmt("%s left with no one to keep them, taken in by kin or neighbours", plural(nn, "child", "children")), now)
+    st.active = false
+  end
+  -- (S23) the harvest: from the first ripe field of the season to the last one cut, what came in
+  local ripe = 0
+  for _, pl in ipairs(s.plots or {}) do if pl.stage == "ripe" then ripe = ripe + 1 end end
+  R.harv = R.harv or {}
+  local hv = R.harv[s.id]
+  local got = s.acc and s.acc.harvest or 0
+  if ripe > 0 and not (hv and hv.on) then
+    hv = { on = true, from = got, key = "harvest:" .. s.id .. ":" .. floor(now / 24) }
+    R.harv[s.id] = hv
+  end
+  if hv and hv.on then
+    local st = story(W, R, hv.key, "harvest", s.id, now, { x = s.sqx, y = s.sqy })
+    st.title = sfmt("Harvest at %s", s.name)
+    local inn = floor(got - hv.from + 0.5)
+    if inn ~= st.n.inn then
+      st.n.inn = inn
+      line(st, ripe > 0 and sfmt("%d sheaves in so far; %s still standing ripe", inn, plural(ripe, "field")) or sfmt("All in: %d sheaves", inn), now)
+    end
+    st.active = ripe > 0
+    if ripe == 0 then hv.on = false end
+  end
   -- hunger at the edge
   local edge, starving = 0, nil
   for _, id in ipairs(s.members) do
@@ -802,6 +849,8 @@ local DEED_TEXT = {
   sickness = function(W, d) return sfmt("%d %s died of a sickness at %s", d.n or 1, d.what or "beasts", (sett(W, d.at) or {}).name or "?") end,
   blight = function(W, d) return sfmt("Blight in a field of %s", household_name(W, d.to_hh)) end,
   impact = function(W, d) return sfmt("A rock fell from the sky by %s", (sett(W, d.at) or {}).name or "?") end,
+  fouled = function(W, d) return sfmt("Oil fouled the shore at %s", (sett(W, d.at) or {}).name or "?") end,
+  oiled = function(W, d) return sfmt("%d gulls oiled at %s", d.n or 1, (sett(W, d.at) or {}).name or "?") end,
   ["return"] = function(W, d) return "The beasts were given back" end,
   pay = function(W, d) return "It was made good" end,
   refuse = function(W, d) return "They refused to make it good" end,

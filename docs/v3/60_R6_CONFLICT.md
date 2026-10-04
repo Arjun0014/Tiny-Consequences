@@ -133,3 +133,15 @@ Then (D-161, D-168): blows between villages cost trust (trade, credit, relief an
 weight, so taking back, bands and restraint follow kin lines.
 Next for R6 (not done): a palisade round the houses (a ring footprint, gates), arms carried at night
 (spears from wood and iron), captives (only as specific people), kin walking over to stand with kin.
+
+### The palisade (designed in session 23, not built)
+- **Why**: remembered raids and takings by people of other villages (deeds, `s.dk`), weighed as expected loss against the timber
+  and the work - never "N raids, then a wall".
+- **Where**: a ring a few tiles outside the houses' yards, laid as short sections (each a site: logs carried, work), with **gates
+  where the lanes and the roads to the fields, the well, the pens and the shore cross it**. The pocket of D-184 is the risk: every
+  section is checked before it is laid - the doors of every building reachable from the square (`map.cut_doors`) and the square
+  reachable from the fields, pens, well and dock - else that section is a gate.
+- **What it does**: nothing scripted. People, herds and raiders path through the gates (the cost field); a band weighs a walled
+  village as harder to take from (seen by its scouts or told by travellers); the night watch stands at the gates.
+- **Tests**: a premise of raids remembered -> a palisade planned and built in sections; no door ever cut off while it is built
+  (`map.cut_doors` after each section); herds still reach their pasture.

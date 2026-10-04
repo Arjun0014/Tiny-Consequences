@@ -88,6 +88,7 @@ function M.every_story_rests_on_the_world()
       n = n + 1
       local ok = (st.deed and V.deeds[st.deed]) or (st.ev and W.E.rec[st.ev]) or st.kind == "hunger" or st.kind == "raid"
         or st.kind == "leaving" or st.kind == "founding" or st.kind == "fire"
+        or st.kind == "harvest" or st.kind == "orphans"   -- (S23: ripe fields being cut; the village's children taken in)
       if not ok then bad[#bad + 1] = st.kind .. ":" .. st.title end
     end
   end

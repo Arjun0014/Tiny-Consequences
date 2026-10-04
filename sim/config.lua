@@ -1300,6 +1300,11 @@ C.V3 = {
   -- with strike_ignite x (0.25 + 0.75 dryness), a roof strike_ignite_roof x (0.3 + 0.7 dryness); a
   -- person is hurt strike_hurt (at 1 they die), those within strike_side strike_side_hurt; thunder heard
   -- within thunder_sound; a downpour hour sends a strike to the map with chance strike_rate
+  -- (S23, D-185) the planet's oil on a village's coast (its cell and the sea within two rings): above oil_coast_min
+  -- the shore's food is fouled in proportion to oil / oil_coast_ref (no regrowth, oil_shore_spoil of what is there lost
+  -- a day at full fouling) and the gulls are oiled (oil_gull_k of the colony a day at full fouling); a clean sea
+  -- brings them back, one bird every gull_back days
+  oil_coast_min = 0.01, oil_coast_ref = 0.15, oil_shore_spoil = 0.3, oil_gull_k = 0.25, gull_back = 4,
   strike_pull = 0.08, strike_tree = 1.0, strike_roof = 0.9, strike_person = 0.5, strike_ignite = 0.5, strike_ignite_roof = 0.45,
   strike_hurt = { 0.5, 1.15 }, strike_side = 0.025, strike_side_hurt = 0.15, thunder_sound = 4, strike_rate = 0.12,
   -- (S20, R6.5c) the planet's fire on a cell above fire_planet_in comes onto the map; fire_planet_n

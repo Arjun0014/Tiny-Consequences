@@ -4,7 +4,7 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Current state
 
-- **SESSION 23 (4 Oct 2026, extended autonomous run - read `docs/SESSION_HANDOFF.md` session 23 first): the hydrology fix verified (D-179), clouds v5 - one cloud layer the camera flies through (D-180), the village mix with the herds as texture (D-181), CHAIN REACTION - "Your actions": what each cast caused, forward along real links (D-182, `docs/v3/77_CHAIN_REACTION.md`), R7 v2 powers - sickness in a herd, blight, warm/cool sea, oil, meteor (D-183).** Following the drifting tests found wolves eating at a kill from across a river; the 8-year run found a nursing mother walking to her kin for food while her newborn starved at home (both fixed). See the session 23 entry below for the checks run and pending.
+- **SESSION 23 (4 Oct 2026, extended autonomous run - read `docs/SESSION_HANDOFF.md` session 23 first): the hydrology fix verified (D-179), clouds v5 - one cloud layer the camera flies through (D-180), the village mix with the herds as texture (D-181), CHAIN REACTION - "Your actions": what each cast caused, forward along real links (D-182, `docs/v3/77_CHAIN_REACTION.md`), R7 v2 powers - sickness in a herd, blight, warm/cool sea, oil, meteor (D-183).** Following the drifting tests found wolves eating at a kill from across a river; the 8-year run found a nursing mother walking to her kin for food while her newborn starved at home (both fixed). **After the checkpoint (D-184):** the second 8-year run starved 11 beside a full granary - followed to four mechanisms (a pit that sealed a house, play loops that carried children through it, toddlers who never got their strength back, a crier who gave birth on the road), all fixed with tests; aim previews, the flood's smooth edge, the news so far, the Sound pill. See the session 23 entry below for the checks.
 
 - **SESSION 22 (4 Oct 2026, ENDED - read `docs/SESSION_HANDOFF.md` session 22 FINAL STATE first; FIRST next session: apply and verify the hydrology fix written there): the validation Session 21 left, then Arjun's playtest issues; the powers played (D-178).** Validation: full suite 190/190, web 11/11, browser = LuaJIT untouched and with flood5/conflict/fire/powers, day-0 3.91 M and day-192 4.41 M instructions a game hour, an 8-year untouched run with no hunger deaths - but the same run split by a save at day 192 starved 14 people, and following it found that **every person born in a running world was never scheduled** (37 of 168 alive after 8 years had never taken a step) - fixed with the queue rebuild, dogs, yearly cache resets, hunger answers by the granary and v3 commands at their own moment (D-176). **Animals and fire** rebuilt from the simulation (fire seen by its extent, each beast noticing in its own time, running its own way out, keeping away while it burns, burnt in the flames; planet fire no longer painted over a village map close in) and **lightning takes exposed beasts** (by height; the aim lands on the ground under the pointer or on the person/beast clicked) (D-177). Tests 194/194; browser = LuaJIT incl. `--premise pasture_fire`.
 
@@ -133,6 +133,29 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
   run: births 43, deaths illness 12 / old age 4 / lightning 1 / hunger 1 (the infant above). Pending at this checkpoint (see the
   handoff): the v3 unit tests after the R7 v2 sickness change, browser = LuaJIT (untouched + 5 premises), the 8-year run again,
   day-0 / year-8 profiles, the release benchmark.
+- **After the checkpoint (D-184)**: the second 8-year run starved 11 (10 at Little Leelee beside ~600 grain). Followed from
+  year-boundary snapshots, four mechanisms, none of them scarcity: a tanning pit laid with no yard sealed a house's door (the
+  household inside starved; its father, home from trading, could never reach his own door) - every site now keeps a walkable yard;
+  children at play were carried by a straight work loop through the pit into the sealed pocket - loops stop at the first closed
+  tile (`nav.los_last`); toddlers never recovered health once hungry nights had taken it - they recover as grown-ups do; a crier
+  set out about to give birth and her newborn starved at the village she walked to (a trip's plan has no hour for nursing) -
+  `journey_ok` keeps women near term and nursing mothers at home, babies are fed on trips. New tools/tests: `map.cut_doors`
+  (the chronicle prints DOORS CUT OFF), `tools/v3_household.lua`, `test_v3_sites` x2, `a_fed_toddler_recovers`,
+  `near_term_and_nursing_mothers_on_journeys`, `a_fire_beside_someone_is_seen`; the wildfire test now checks the senses, not where
+  the fire went.
+- **Polish (D-184)**: aim previews (a pill above the bar: what the armed power would act on - `powers3.preview`, the cast's own
+  target choices, reads only; `scripts/shots_aim.mjs`); the flood's edge by marching squares (no more staircase); the news so far
+  (News pill); harvest and taken-in stories; the chain reads children taken in and food neighbours brought; the Sound pill; no `^` in
+  `sim/` (lint rule `pow`).
+- Checks on the D-184 code: quick suite **206/206** (then every test file the journey fix touches again: agents 13, fair, sea,
+  credit, found, families, ferry, conflict 10, kin, year 10 - all pass); lint clean (309 files, rule `pow`); browser = LuaJIT
+  (release) identical untouched 72 h and with flood5 / conflict / fire / powers / pasture_fire 96 h; **8 untouched years (run 5,
+  every fix): births 46, deaths illness 13, old age 4, hunger 0, no door cut off** (run 2 had 11 hunger deaths). Year-8 cost
+  (run 2's world): 4.90 M instructions a game hour, livestock 30.6%.
+- **Oil on a coast (D-185)**: the planet's slick in a village's sea fouls the shore's food and oils its gulls - deeds with the
+  oil's cause, read by the chain and the news (`oil_on_the_coast`: Zurug's shore 25.8 -> 6.2 FU, 7 of 10 gulls oiled in four days).
+  Nothing acts without oil (the untouched 72 h hash unchanged, 302305833). New named premise `powers2` (oil, warm sea, sickness,
+  blight, meteor): browser = LuaJIT identical over 96 h.
 
 ### [v3] Session 22: validation; the frozen children; animals and fire; lightning on beasts (D-176, D-177) (2026-10-04)
 - **Validation** (S21 left it undone): `npm run test:sim` 190/190, `npm run test:web` 11/11, lint clean, release build OK, `v3_hash_web --release` untouched and `--premise flood5|conflict|fire|powers` (new: every v1 power cast at once) - browser = LuaJIT; LuaJIT 3.91 M instr/h at day 0, 4.41 M at day 192; 8 untouched years: no hunger deaths (illness 15, old age 4, drowned 1), 45 births.

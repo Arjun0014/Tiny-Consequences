@@ -124,7 +124,12 @@ function M.infant_tick(W, s, ib, now, dt, interrupt, pos)
   end
   local asleep = q and q.act == "sleep"
   ib.hunger = min(1, ib.hunger + dt * (asleep and c.infant_hunger_night or c.infant_hunger))
-  if ib.hunger >= 1 then ib.health = max(0, ib.health - c.infant_starve * dt) end
+  if ib.hunger >= 1 then ib.health = max(0, ib.health - c.infant_starve * dt)
+  elseif ib.hunger < 0.6 and ib.health < (ib.diet_cap or 1) then
+    -- (S23) fed again, a little one's strength comes back as a grown-up's does (act.body): it never did - every
+    -- hungry night left its mark for good, until a toddler fed that morning died "at the edge" (year 7)
+    ib.health = min(ib.diet_cap or 1, ib.health + 0.004 * dt)
+  end
   if ib.hunger > c.infant_feed and (ib.called or -1) < now - 0.75 then
     ib.called = now
     local m = M.nursing_mother(W, ib, now)
@@ -137,9 +142,10 @@ function M.infant_tick(W, s, ib, now, dt, interrupt, pos)
       local home = people.home(W, s, q)
       if not (home and ((home.stock.meals or 0) >= c.porridge or require("sim.agents.people").pantry(home) >= 0.3)) then who = nil end
     end
-    if who and (who.act == "travel" or who.act == "passage" or who.act == "ride" or who.act == "voyage") then
+    if who and (who.trip or who.at or who.act == "travel" or who.act == "passage" or who.act == "ride" or who.act == "voyage") then
       -- (S16: on the road the baby is fed as they walk - at the breast, or a toddler from the
-      -- provisions - and the walk goes on; S18: in a boat at sea the same)
+      -- provisions - and the walk goes on; S18: in a boat at sea the same; S23: and anywhere on a trip -
+      -- a trip's plan has no hour for nursing: a crier's newborn starved at the village she had walked to)
       if m then
         ib.hunger = max(0, ib.hunger - 0.6)
       elseif (who.prov or 0) >= 0.1 then

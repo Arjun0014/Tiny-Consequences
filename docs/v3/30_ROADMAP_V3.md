@@ -281,6 +281,12 @@ real links (`77_CHAIN_REACTION.md`); **R7 v2 powers built** (sickness in a herd,
 news history and more kinds, volume settings, per-power aim previews, palisade, captives; traded grain carrying blight, oil on the
 shore.)
 
+(Later in session 23, D-184: the second 8-year run's famine followed to four mechanisms - a pit that sealed a house, play loops
+that carried children through it, toddlers who never recovered, a crier who gave birth on the road - all fixed with tests; built
+the news history, the Sound pill, aim previews, the flood's smooth edge, harvest and taken-in stories. Next: R6 palisade (a ring
+with gates that never seals a door: `map.cut_doors`), captives as persistent people, traded grain carrying blight, oil on the
+shore and the gulls, the herd scan's cost at year 8.)
+
 ## Never cut
 Determinism, causality (every major change traceable), the planet layer, no scripted
 consequences, persistent people with continuous positions.

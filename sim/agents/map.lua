@@ -589,6 +589,44 @@ function M.free_spot(s, x, y, r)
   return nil
 end
 
+-- (S23) The buildings of settlement s whose doors nobody can walk to from its square (8-connected, no
+-- corner cutting, as nav's A*): a site laid in front of a door once sealed a household in its house.
+-- For tools and tests (the chronicle reports them); reads the cost field only.
+function M.cut_doors(s)
+  local N, cost = s.N, s.cost
+  local cut = {}
+  if not N or not cost then return cut end
+  local i0 = M.tile_of(s, s.sqx or 0, s.sqy or 0)
+  if i0 == 0 or cost[i0] <= 0 then
+    local x, y = M.free_spot(s, s.sqx or 0, s.sqy or 0, 6)
+    i0 = x and M.tile_of(s, x, y) or 0
+  end
+  if i0 == 0 then return cut end
+  local seen, q, h = { [i0] = true }, { i0 }, 1
+  while h <= #q do
+    local i = q[h]; h = h + 1
+    for dy = -1, 1 do
+      for dx = -1, 1 do
+        local j = i + dy * N + dx
+        if (dx ~= 0 or dy ~= 0) and j >= 1 and j <= N * N and not seen[j] and cost[j] > 0
+          and (dx == 0 or dy == 0 or (cost[i + dx] >= 0 and cost[i + dy * N] >= 0)) then
+          seen[j] = true; q[#q + 1] = j
+        end
+      end
+    end
+  end
+  for _, id in ipairs(s.blist) do
+    local b = s.buildings[id]
+    if b.dx and not b.natural and b.kind ~= "bridge" and b.state ~= "gone" then
+      local k = M.tile_of(s, b.dx, b.dy)
+      local ok = k == 0
+      for dy = -1, 1 do for dx = -1, 1 do if k > 0 and seen[k + dy * N + dx] then ok = true end end end
+      if not ok then cut[#cut + 1] = b end
+    end
+  end
+  return cut
+end
+
 -- Deterministic float for map placement (stream V3_MAP).
 function M.u(W, s, a, b)
   return rng.float(W.seed, rng.S.V3_MAP, s.key, a, b)

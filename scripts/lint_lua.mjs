@@ -126,6 +126,9 @@ const PURE_RULES = [
   { id: 'io', re: new RegExp(`${NB}io\\s*[.:]|\\bos\\s*\\.\\s*(getenv|execute|remove|rename|tmpname|exit)\\b`, 'g'), msg: 'io/os access in pure sim/content' },
   // Only globals count: a file that binds the name itself (`local sys = {}`, a parameter) is fine.
   { id: 'defold-api', re: new RegExp(`${NB}(go|msg|gui|vmath|sys|resource|html5|render|buffer|timer|socket|particlefx|profiler|collectionfactory)\\s*\\.|${NB}(pprint)\\s*\\(`, 'g'), msg: 'Defold API in pure sim/content', globalsOnly: true },
+  // (S23, D-110) the browser's Lua 5.1 computes a ^ b with the C library's pow(); LuaJIT folds x ^ 2 to x * x: the
+  // two worlds may differ in the last bit. Squares are x * x; anything else goes through sim/dmath.lua.
+  { id: 'pow', re: /\^/g, msg: "'^' is pow() in the browser and folded by LuaJIT (use x * x, or sim/dmath.lua)" },
 ];
 
 const LUAJIT_MODULES = new Set(['ffi', 'jit', 'table.new', 'table.clear', 'string.buffer', 'bit32', 'utf8']);
@@ -274,6 +277,9 @@ const CASES = [
   ['sim/a.lua', 'local m = 0b101 + 1LL', ['number-literal', 'number-literal']],
   ['sim/a.lua', 'xpcall(f, handler, 1, 2)', ['xpcall-args']],
   ['sim/a.lua', 'local t = table.new(10, 0)', ['luajit-only']],
+  ['sim/a.lua', 'local d = (x - a) ^ 2 + (y - b) ^ 2', ['pow', 'pow']],
+  ['game/a.lua', 'local d = (x - a) ^ 2', []],
+  ['sim/a.lua', 'local p = s:match("^%s*(.-)%s*$")', []],
   // Clean snippets (no findings expected)
   ['sim/a.lua', 'local url = "http://x.y//z" -- a // b goto x', []],
   ['sim/a.lua', 'if a ~= b then return end', []],

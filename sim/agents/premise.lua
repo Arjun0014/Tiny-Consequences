@@ -337,6 +337,27 @@ function M.named(W, name)
     cmd(W, { power = "cull", cell = S[4].cell, species = "wolves" })
     cmd(W, { power = "bring", cell = S[4].cell, species = "deer" })
     return true
+  elseif name == "powers2" then
+    -- (S23) the R7 v2 god powers (D-183, D-185): oil on the sea beside the first village with a coast (its shore
+    -- fouled, its gulls oiled), the sea warmed beside it, sickness in Tekheim's flock, blight in its corn, a meteor
+    -- by Krikeivorn - the browser and LuaJIT must live the same consequences
+    local cmd = require("sim.world").COMMANDS.power
+    local S, g = V.settlements, W.grid
+    local sea
+    for _, o in ipairs(S) do
+      for k = 1, g.nbr_count[o.cell] do
+        local c = g.nbr[o.cell * 6 - 6 + k]
+        if not sea and W.geo.ocean[c] == 1 then sea = c end
+      end
+    end
+    if sea then
+      cmd(W, { power = "oil", cell = sea })
+      cmd(W, { power = "sea", cell = sea, mode = "warm" })
+    end
+    cmd(W, { power = "sickness", cell = S[1].cell, sid = 1, x = S[1].sqx or 0, y = S[1].sqy or 0 })
+    cmd(W, { power = "blight", cell = S[1].cell, sid = 1, x = S[1].sqx or 0, y = S[1].sqy or 0 })
+    cmd(W, { power = "meteor", cell = S[6].cell, sid = 6, x = (S[6].sqx or 0) + 0.4, y = (S[6].sqy or 0) + 0.3 })
+    return true
   end
   return false
 end

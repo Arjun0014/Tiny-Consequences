@@ -199,7 +199,15 @@ START.work = function(W, s, p, st, now)
   local dur = st.dur
   if st.x1 then
     local ei = mapm.tile_of(s, st.x1, st.y1)
-    if ei == 0 or s.cost[ei] < 0 then st.x1, st.y1 = nil, nil end
+    if ei == 0 or s.cost[ei] < 0 then st.x1, st.y1 = nil, nil
+    else
+      -- (S23) walked straight only as far as nothing closed stands in the way: a child's play loop carried him
+      -- through a pit into the pocket it had sealed by a neighbour's door, where he starved (year 8)
+      local si = mapm.tile_of(s, p.x, p.y)
+      local li = si > 0 and nav.los_last(s, si, ei) or 0
+      if li == 0 or li == si then st.x1, st.y1 = nil, nil
+      elseif li ~= ei then st.x1, st.y1 = mapm.tile_xy(s, li) end
+    end
   end
   if st.x1 then
     -- working along a line (a row): a two-point path walked at the pace of the work
