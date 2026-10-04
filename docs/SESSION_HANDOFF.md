@@ -1,8 +1,12 @@
 # Session handoff — session 25 (4-5 Oct 2026, THE SUBMISSION SESSION): Arjun's playtest made the game's own authority; the meteor, fire, oil, Go there, cooldowns, menus, the tutorial, the guide; D-205-D-213
 
 ## FINAL STATE (end of session 25)
-- main, all committed (see `git log -1`). The submission build: `npm run build:release` -> `dist/web/app/` (zip it for the jam
-  page; `scripts/stub.mjs` still stands in for `package:itch`).
+- main, all committed (see `git log -1`). The submission build: `npm run package:itch` (a release build, zipped) ->
+  `dist/tiny-consequences-web.zip` (8.3 MB, index.html at its root; built from 7ed202e and smoke-tested unzipped from a clean static
+  server: title, Play, the tutorial, the guide, fullscreen, no console errors - `out/s25/final_smoke.mjs`).
+- Checks: quick suite 211/211; lint clean (315 files); web 11/11; browser = LuaJIT (release) identical untouched 72 h and with
+  `--premise powers2|fire|conflict` 96 h; 8 untouched years: births 43, deaths illness 15 / old age 4 / drowned 2 / hunger 0;
+  release benchmark lower envelope 41.2 ms of sim a game hour, a 12-day season 11.9 s (S24 12.1 s).
 - **What Arjun's playtest found** (reproduced in the real game first): the meteor read as fire + quake (a 3-tile crater, people
   answering the quake and the fires, not the strike; animals near it; an island = some burning trees); animals stood in flames
   (an hour to die); "a forest of trees with permanent flames" after a season (the planet's fire on a cell a village map covers in
