@@ -659,7 +659,10 @@ function update(self, dt)
 	menu.want = nil
 	if want == "play" then
 		menu.open(self, nil)
-		if not menu.prefs.tutorial_done then tutorial.start(self, W) end
+		-- (S25c) Play from the title always opens the tutorial ("Skip tutorial" on its card; "Free play" on the title skips it)
+		tutorial.start(self, W)
+	elseif want == "free" then
+		menu.open(self, nil)
 	elseif want == "resume" then
 		menu.open(self, nil)
 	elseif want == "tutorial" then

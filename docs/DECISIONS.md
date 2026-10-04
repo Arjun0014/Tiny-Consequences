@@ -1945,3 +1945,18 @@ consequence with its kind's icon on the branch lines (fire, death, flood, hunger
 seconds as they appear. (2) "How the World Works": pages of at most two rows of six boxes (set pages without arrows), the lines
 wrapped by measure and made smaller when a page has more to say than the room there is, a footer with Back, "N of 8", clickable
 page dots and Next, the arrow keys turning the pages. (3) Credits written for players (no file paths).
+
+## D-220 · 2026-10-05 · The planet's herds run from fire and the bolt; the tutorial on Play (session 25, third playtest)
+**Context.** Arjun: "the herd doesn't react to lightning or fire, no death, no running, just blobs walking around"; and the
+tutorial did not come on starting the game. The antelope he watched were a planet herd (`sim/systems/fauna.lua`, drawn by the
+view's puppets): it reconsiders its range only at the fauna step (every 4 ticks), nothing killed it in a fire, and the god's bolt
+off a village map only lit the cell. The tutorial ran only while `tutorial_done` was unset (his earlier run had set it).
+**Decision.** (1) `fauna.flee_fire(W, c, tag, kill)`: the herds whose range is on cell c bolt out of it at once to the
+neighbouring walkable cell that burns least and grazes most, and `kill` of them die there carrying the cause (the grazers' blame
+on the cell). Called when a cell catches (`fire.on_burn`, set by fauna.lua: ignition and spread; v3 worlds only - the legacy
+world's spin-up is unchanged) with `herd_fire_kill` 0.25 x the fire's intensity, and by the god's bolt off a map with
+`herd_bolt_kill` 0.08. The view runs a fleeing herd to its new cell in 0.4 h (`puppets.FLEE_H`; W.wild_fled is runtime, never
+saved). Probe: a bolt on a herd of 19.3 - 15.0 head on the next cell at once; fire on a herd of 11.8 - 10.1, gone from the cell. (2)
+Play on the title always opens the tutorial ("Skip tutorial" on its card); "Free play (no tutorial)" under it skips it. The
+tutorial gains "Why?" (the YOU badge on the meteor's story) and "Your tools" (every control: camera, inspect, Space/1-3 speeds,
+4-7 skips, Shift+number powers and their recharge, News, Why, Your actions, Esc/Menu, M, Sound, fullscreen).

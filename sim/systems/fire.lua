@@ -51,6 +51,8 @@ function sys.ignite(W, c, tag, natural_kind)
   F.fire[c] = cfg.start_intensity
   S.list[#S.list + 1] = c
   blame.set(W.C.fire, W.I.fire, c, ev ~= 0 and ev or parent)
+  -- (S25c, D-220) whatever lives on the cell answers at once (fauna.lua sets the hook: bob forbids the circular require)
+  if sys.on_burn then sys.on_burn(W, c, ev ~= 0 and ev or parent, F.fire[c]) end
   return true
 end
 
@@ -172,6 +174,7 @@ function sys.update(W)
                   tag = cl.tag
                 end
                 blame.set(cfire, ifire, j, tag)
+                if sys.on_burn then sys.on_burn(W, j, tag, fire[j]) end
               end
             end
           end

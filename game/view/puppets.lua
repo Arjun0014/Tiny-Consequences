@@ -246,10 +246,12 @@ local GROUPS = { deer = {}, wolf = {} }
 local SLOTS = { deer = {}, wolf = {} }
 
 -- Where group (cell, prev, moved) is at hour t: lat, lon.
-local function group_pos(g, cell, prev, moved, t)
+M.FLEE_H = 0.4         -- (S25c) hours a group fleeing a fire or a strike takes to reach its new cell (at a run)
+local function group_pos(g, cell, prev, moved, t, fled)
   local lat, lon = g.lat[cell], g.lon[cell]
-  if prev and prev ~= cell and t - moved < M.MOVE_H then
-    local f = (t - moved) / M.MOVE_H
+  local dur = (fled and fled == moved) and M.FLEE_H or M.MOVE_H
+  if prev and prev ~= cell and t - moved < dur then
+    local f = (t - moved) / dur
     if f < 0 then f = 0 end
     local plat, plon = g.lat[prev], g.lon[prev]
     local dl = lon - plon
@@ -275,7 +277,7 @@ local function assign_animals(W, fx, fy, fz)
       local d = g.X[c] * fx + g.Y[c] * fy + g.Z[c] * fz
       if d > 0.93 and A.h_n[i] >= 1 then
         local l = GROUPS.deer
-        l[#l + 1] = { id = A.h_id[i], d = d, cell = c, prev = A.h_prev[i], moved = A.h_moved[i],
+        l[#l + 1] = { id = A.h_id[i], d = d, cell = c, prev = A.h_prev[i], moved = A.h_moved[i], fled = W.wild_fled and W.wild_fled[A.h_id[i]],
           n = min(M.PER_HERD, max(1, floor(sqrt(A.h_n[i]) * 1.2 + 0.5))), sp = GRAZER_NAMES[A.h_sp[i]] or "deer",
           heads = A.h_n[i] }
       end
@@ -327,7 +329,7 @@ local function assign_animals(W, fx, fy, fz)
         p.head = rnd() * 6.283
       end
       -- the animal's spot in its group (fixed per group and animal), about the group's position
-      local lat, lon = group_pos(g, grp.cell, grp.prev, grp.moved, t)
+      local lat, lon = group_pos(g, grp.cell, grp.prev, grp.moved, t, grp.fled)
       local h1 = ((grp.id * 7919 + e.a * 104729) % 1000) / 1000
       local h2 = ((grp.id * 3571 + e.a * 7907) % 1000) / 1000
       local spread = sp * (k == "wolf" and 0.28 or 0.22)

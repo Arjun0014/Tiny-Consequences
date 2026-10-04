@@ -113,11 +113,12 @@ function M.build(self)
     ui.text(p, 0, 168, "TINY CONSEQUENCES", "fredoka", 44, C.text, gui.PIVOT_CENTER)
     ui.text(p, 0, 124, "A tiny planet that lives without you.", "nunito_semi", 17, C.muted, gui.PIVOT_CENTER)
     ui.text(p, 0, 100, "Touch it once - then follow everything it causes.", "nunito_semi", 17, C.muted, gui.PIVOT_CENTER)
-    R.play = button(R, p, 0, 40, 300, 58, "Play", "play", true, 26)
-    R.load_t = ui.text(p, 0, 2, "", "nunito_semi", 14, C.muted, gui.PIVOT_CENTER)
-    button(R, p, 0, -46, 300, 46, "How the World Works", "guide")
-    button(R, p, 0, -102, 300, 46, "Settings", "settings")
-    button(R, p, 0, -158, 300, 46, "Credits", "credits")
+    R.play = button(R, p, 0, 54, 300, 56, "Play", "play", true, 26)
+    R.load_t = ui.text(p, 0, 4, "", "nunito_semi", 14, C.muted, gui.PIVOT_CENTER)
+    R.free = button(R, p, 0, -4, 300, 38, "Free play (no tutorial)", "free", false, 16)
+    button(R, p, 0, -56, 300, 44, "How the World Works", "guide")
+    button(R, p, 0, -108, 300, 44, "Settings", "settings")
+    button(R, p, 0, -160, 300, 44, "Credits", "credits")
     ui.text(p, 0, -210, "Defold Game Jam 2026  -  theme: Chain Reaction", "nunito_semi", 13, C.muted, gui.PIVOT_CENTER)
   end
   -- the pause menu
@@ -378,6 +379,7 @@ function M.update(self, loaded, frac)
     gui.set_color(R.play.node, loaded and (self.hover == R.play and vmath.vector4(0.98, 0.76, 0.30, 1) or C.gold) or C.soft)
     gui.set_color(R.play.text, loaded and C.white or C.muted)
     gui.set_text(R.load_t, loaded and "" or string.format("Growing a tiny world... %d%%", math.floor((frac or 0) * 100)))
+    gui.set_enabled(R.free.node, loaded)
   end
   for _, b in ipairs(R.btns) do
     if b ~= R.play and not b.dot then
@@ -427,9 +429,9 @@ function M.activate(self, h)
   local id = h.menu_btn
   local R = self.menu
   do local ok, audio = pcall(require, "game.audio.audio"); if ok and audio.ui then audio.ui("ui_click") end end
-  if id == "play" then
+  if id == "play" or id == "free" then
     if not R.loaded then return true end
-    M.want = "play"
+    M.want = id
   elseif id == "resume" then M.want = "resume"
   elseif id == "tutorial" then M.want = "tutorial"
   elseif id == "title" then M.open(self, "title")

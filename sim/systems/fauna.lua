@@ -1391,6 +1391,52 @@ end
 
 -- `frac` of the animals of `species` ("grazers" / "predators") on `cells` die: each group loses
 -- that share of the time it spends there; their cause becomes `tag`.
+-- (S25c, D-220) Fire catching on cell c (or a god's bolt there): the herds whose range is on it bolt out of it at once -
+-- to the neighbouring cell they can walk that burns least and grazes most - and a share of them (`kill`, by the fire's
+-- intensity) is caught by the flames or the strike and dies there, carrying its cause. Returns how many died.
+-- W.wild_fled (runtime, never saved: the view's alone) marks the move as a flight, so the view runs it.
+function sys.flee_fire(W, c, tag, kill)
+  local A = W.S.wild
+  if not (A and A.nh and A.nh > 0) then return 0 end
+  local F, g = W.F, W.grid
+  local walk, lu = W.fauna_static and W.fauna_static.walk, F.land_use
+  if not walk then return 0 end
+  local dead, touched = 0, false
+  for i = 1, A.nh do
+    if A.h_cell[i] == c and A.h_n[i] > 0 then
+      touched = true
+      if kill and kill > 0 then
+        local d = A.h_n[i] * kill
+        A.h_n[i] = A.h_n[i] - d
+        dead = dead + d
+        if tag and tag ~= 0 then A.h_tag[i], A.h_idle[i] = tag, 0 end
+      end
+      local best, bs = nil, -1e9
+      local b = c * 6 - 6
+      for k = 1, g.nbr_count[c] do
+        local j = g.nbr[b + k]
+        if walk[j] == 1 and lu[j] >= 0 then
+          local s = (F.grass[j] or 0) + 0.5 * (F.forest[j] or 0) - 4 * (F.fire[j] or 0)
+          if s > bs then best, bs = j, s end
+        end
+      end
+      if best then
+        A.h_prev[i], A.h_cell[i], A.h_moved[i] = c, best, W.hour
+        if not cfgmod.WILD.migrates[A.h_sp[i]] then A.h_home[i] = best end
+        W.wild_fled = W.wild_fled or {}
+        W.wild_fled[A.h_id[i]] = W.hour
+      end
+    end
+  end
+  if not touched then return 0 end
+  if dead > 0 and tag and tag ~= 0 then
+    local ct, it = W.C.grazers, W.I.grazers
+    if ct then ct[c], it[c] = tag, 0 end
+  end
+  sys.refresh(W)
+  return dead
+end
+
 function sys.kill_in(W, cells, species, frac, tag)
   local A = W.S.wild
   local sc = scratch(W)
@@ -1514,6 +1560,12 @@ function sys.find(W, id)
   local A = W.S.wild
   for i = 1, A.nh do if A.h_id[i] == id then return "herd", i end end
   for i = 1, A.np do if A.p_id[i] == id then return "pack", i end end
+end
+
+-- (S25c, D-220) the herds answer a fire the moment it catches on their cell
+require("sim.systems.fire").on_burn = function(W, c, tag, inten)
+  if not W.v3 then return end   -- (the legacy world's spin-up as it was: its saved world unchanged)
+  sys.flee_fire(W, c, tag, cfgmod.WILD.herd_fire_kill * (inten or 0.6))
 end
 
 return sys

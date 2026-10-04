@@ -1,3 +1,11 @@
+# Session handoff — session 25, part 3 (5 Oct 2026, ~01:20-02:20 IST): Arjun's third playtest; D-220
+
+- The planet's herds (sim/systems/fauna.lua, drawn as puppets) now answer fire and the god's bolt at once: they run to the safest
+  neighbouring cell (the view runs them in 0.4 h) and a share dies (fire 0.25 x intensity, bolt 0.08), carrying the cause; the hook is
+  `fire.on_burn` (set by fauna.lua; v3 only). Seen in the browser: a bolt on a herd of 59 - 50 head on another cell, gone in seconds.
+- Play on the title always opens the tutorial ("Free play (no tutorial)" skips it); the tutorial gains "Why?" and "Your tools".
+- Next: Arjun's next playtest; the post-jam list below.
+
 # Session handoff — session 25, part 2 (5 Oct 2026, 00:20-01:30 IST): Arjun's second playtest of the submitted build; D-214-D-219
 
 ## FINAL STATE (part 2)

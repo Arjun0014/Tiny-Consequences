@@ -4,6 +4,9 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Current state
 
+- **SESSION 25 part 3 (5 Oct 2026, ~01:20-02:20 IST): the planet's herds run from fire and the bolt and die in it (D-220); the
+  tutorial opens on Play every time (Free play skips it), with "Why?" and "Your tools" added.** See the handoff part 3.
+
 - **SESSION 25 part 2 (5 Oct 2026, 00:20-01:30 IST): Arjun's second playtest of the submitted build (D-214-D-219).** The game opens on
   the whole planet; skips seen from above (the camera rises, the planet turns through its days, then back); the tutorial rebuilt
   around a meteor at the woods' edge and its real chain (19-25 consequences a day on: deaths, households without roofs, hunger),

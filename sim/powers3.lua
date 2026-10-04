@@ -66,6 +66,8 @@ function P.lightning(W, p)
   if W.geo.ocean[c] == 0 and (F.soil_water[c] or 1) < 0.4 and (F.forest[c] + F.grass[c]) > 0.2 then
     require("sim.systems.fire").ignite(W, c, ev)
   end
+  -- (S25c, D-220) the herds on the cell bolt from the strike (the ones it took dead where they stood)
+  if W.geo.ocean[c] == 0 then require("sim.systems.fauna").flee_fire(W, c, ev, cfgmod.WILD.herd_bolt_kill) end
   return ev
 end
 

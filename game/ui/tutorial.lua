@@ -216,6 +216,10 @@ local STEPS = {
       if T.wrong_go ~= lg then T.wrong_go = lg; T.wrong = true end
       return false
     end },
+  { id = "why", title = "Why?",
+    text = "Every story says why it happened. Click the gold YOU badge on the meteor's story: its causes, link by link, back to you. (A story from NATURE or PEOPLE has its own causes.)",
+    hl = "why",
+    done = function(T, W, self) return self.news and self.news.why_for ~= nil end },
   { id = "actions", title = "Your actions",
     text = function(T, W)
       local I = chain_of(W, T)
@@ -240,6 +244,9 @@ local STEPS = {
     text = "Skip again: 'Next season' - twelve days. Survivors bury their dead, lodge the homeless, rebuild, run short of food, ask their kin for help... or not: the world decides.",
     hl = "skip", want = 4,
     done = function(T, W) return T.skips.season end },
+  { id = "tools", title = "Your tools",
+    text = "Drag to turn the world, scroll to zoom, click anyone or anything to see who and why.\nSpace pauses; 1-3 set the speed; 4-7 skip to dawn, evening, a day, the next season.\nThe 14 powers are on the bar (Shift+number): each recharges in game time.\nNews (left) - Why? (the badges) - Your actions (bottom left).\nEsc or Menu: settings and How the World Works. M mutes; Sound and fullscreen are bottom right.",
+    next = true },
   { id = "final", title = "One touch, a world of consequences",
     text = function(T, W)
       local I = chain_of(W, T)
@@ -460,6 +467,14 @@ function M.update(self, W, dt)
     for _, c in ipairs(self.news.cards) do
       if c.st and gui.is_enabled(c.node) and news.chain(W, c.st).root_ev == T.ev then
         ringed = ring_node(T, c.node, "Click", T.clock, 1.05, "right")
+        break
+      end
+    end
+  elseif S.hl == "why" and self.news and T.ev then
+    local news = require("sim.news")
+    for _, c in ipairs(self.news.cards) do
+      if c.st and gui.is_enabled(c.node) and news.chain(W, c.st).root_ev == T.ev then
+        ringed = ring_node(T, c.badge, "Why?", T.clock, 1.6)
         break
       end
     end

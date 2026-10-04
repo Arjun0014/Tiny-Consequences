@@ -237,6 +237,9 @@ C.FAUNA = {
 -- ecology is FAUNA's (above); these are the groups': sizes, ranges, movement, migration, hunting.
 C.WILD = {
   every = 4,                              -- herds and packs update every N ticks (dt = N: a month)
+  -- (S25c, D-220) a fire catching on a herd's cell sends it running at once; the flames take herd_fire_kill x intensity of
+  -- it; a god's bolt on its cell takes herd_bolt_kill and scatters the rest
+  herd_fire_kill = 0.25, herd_bolt_kill = 0.08,
   look_every = 2,                         -- a settled herd reconsiders its range every this many updates
   gpc = 100, ppc = 25,                    -- animals per unit of the grazers / predators field (at the old equilibrium
                                           --   ~13 deer and ~1 wolf per cell; a wolf takes ~15-20 deer a year)
