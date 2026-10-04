@@ -824,7 +824,7 @@ end
 
 -- (S24, D-189) A sudden blow at a point (a god's bolt, a meteor's blast): every wild animal within r sees the flash
 -- and hears the crack and runs from it (a grazer with its band's flight; a wolf drops what it was about).
-function M.jolt(W, s, x, y, now, r)
+function M.jolt(W, s, x, y, now, r, k)
   local Wd = s.wildlife
   if not Wd then return end
   for _, w in ipairs(Wd.animals) do
@@ -833,6 +833,7 @@ function M.jolt(W, s, x, y, now, r)
       local d2 = dsq(wx - x) + dsq(wy - y)
       if d2 < r * r then
         w.flee_x, w.flee_y = x, y
+        w.flee_k = k   -- (S25: a meteor's blast sends them much farther than a bolt)
         if w.pred then w.prey = nil end
         decide_at(W, s, w, now, now + 0.001 + 0.004 * (1 - stock.trait(w, stock.T_ALERT)) * (0.5 + sqrt(d2) / r))
       end
@@ -961,7 +962,8 @@ function M.step(W, s, w, now)
     dx, dy = dx / d - dy / d * side, dy / d + dx / d * side
     local l = max(1e-6, sqrt(dx * dx + dy * dy))
     dx, dy = dx / l, dy / l
-    local run = c.wild_flee * (0.7 + 0.6 * u(W, s, w, now, 33))
+    local run = c.wild_flee * (w.flee_k or 1) * (0.7 + 0.6 * u(W, s, w, now, 33))
+    w.flee_k = nil
     for q = 0, 4 do
       local ang = q == 0 and 0 or ((q % 2 == 1) and 1 or -1) * (q <= 2 and 1.0 or 2.0)
       local ca, sa = cos(ang), sin(ang)
@@ -1271,7 +1273,8 @@ function M.step(W, s, w, now)
     local side = (stock.trait(w, stock.T_SIDE) - 0.5) * 1.2
     dx, dy = dx - dy * side, dy + dx * side
     local l = max(1e-6, sqrt(dx * dx + dy * dy))
-    local run = c.wild_flee * (0.7 + 0.6 * u(W, s, w, now, 5))
+    local run = c.wild_flee * (w.flee_k or 1) * (0.7 + 0.6 * u(W, s, w, now, 5))
+    w.flee_k = nil
     local pace = 0.85 + 0.3 * stock.trait(w, stock.T_PACE)
     dx, dy = dx / l, dy / l
     for q = 0, 4 do

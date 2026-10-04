@@ -71,6 +71,13 @@
 		display: flex; align-items: center; justify-content: center; cursor: pointer;
 	}
 	#tc-fullscreen:hover { background: rgba(255, 248, 236, 0.95); }
+	#tc-fullscreen.on { background: rgba(242, 178, 51, 0.85); }
+	#tc-fullscreen .exit { display: none; }
+	#tc-fullscreen.on .enter { display: none; }
+	#tc-fullscreen.on .exit { display: block; }
+	/* (S25) pseudo-fullscreen when the browser refuses the real one (an iframe without allowfullscreen):
+	   the game's container covers the whole viewport above everything else on the page */
+	body.tc-pseudo-fs .canvas-app-container { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 2147483000; background: #5FD0F0; }
 
 	{{{DEFOLD_CUSTOM_CSS_INLINE}}}
 	</style>
@@ -93,8 +100,9 @@
 		</div>
 		<!-- Tiny Consequences: no footer strip; the canvas fills the window and a small
 		     translucent fullscreen button floats in the bottom-right corner. -->
-		<div id="tc-fullscreen" title="Fullscreen" onclick="Module.toggleFullscreen();">
-			<svg width="18" height="18" viewBox="0 0 16 16"><path fill="#2A2335" fill-opacity="0.55" d="M1 1h5v2H3v3H1V1zm9 0h5v5h-2V3h-3V1zM1 10h2v3h3v2H1v-5zm12 3v-3h2v5h-5v-2h3z"/></svg>
+		<div id="tc-fullscreen" title="Fullscreen (F)" onclick="window.tcFS.toggle();">
+			<svg class="enter" width="18" height="18" viewBox="0 0 16 16"><path fill="#2A2335" fill-opacity="0.55" d="M1 1h5v2H3v3H1V1zm9 0h5v5h-2V3h-3V1zM1 10h2v3h3v2H1v-5zm12 3v-3h2v5h-5v-2h3z"/></svg>
+			<svg class="exit" width="18" height="18" viewBox="0 0 16 16"><path fill="#2A2335" fill-opacity="0.8" d="M4 1h2v5H1V4h3V1zm6 0h2v3h3v2h-5V1zM1 10h5v5H4v-3H1v-2zm9 0h5v2h-3v3h-2v-5z"/></svg>
 		</div>
 	</div>
 	<!-- -->
@@ -107,6 +115,45 @@
 		}
 	</script>
 	<script id='engine-loader' type='text/javascript' src="dmloader.js"></script>
+	<script type='text/javascript'>
+		// (S25) Fullscreen from the button (a real click) or from the game's own menus (html5.run right after a click:
+		// the browser's transient activation). The real Fullscreen API first; when the browser refuses it (an iframe
+		// without allowfullscreen), a pseudo-fullscreen: the game's container fixed over the whole viewport.
+		window.tcFS = {
+			pseudo: false,
+			real: function () { return !!(document.fullscreenElement || document.webkitFullscreenElement); },
+			isOn: function () { return this.real() || this.pseudo; },
+			toggle: function () { if (this.isOn()) this.exit(); else this.enter(); return this.isOn(); },
+			enter: function () {
+				var self = this, el = document.documentElement;
+				var req = el.requestFullscreen || el.webkitRequestFullscreen;
+				if (!req || !(document.fullscreenEnabled || document.webkitFullscreenEnabled)) { self.setPseudo(true); return; }
+				try {
+					var p = req.call(el);
+					if (p && p.then) p.then(function () { self.sync(); }, function () { self.setPseudo(true); });
+				} catch (e) { self.setPseudo(true); }
+			},
+			exit: function () {
+				if (this.pseudo) { this.setPseudo(false); return; }
+				var ex = document.exitFullscreen || document.webkitExitFullscreen;
+				if (ex && this.real()) { try { var p = ex.call(document); if (p && p.catch) p.catch(function () {}); } catch (e) {} }
+			},
+			setPseudo: function (on) {
+				this.pseudo = on;
+				document.body.classList.toggle('tc-pseudo-fs', on);
+				this.sync();
+				setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 30);
+			},
+			sync: function () {
+				var b = document.getElementById('tc-fullscreen');
+				if (b) { b.classList.toggle('on', this.isOn()); b.title = this.isOn() ? 'Leave fullscreen (F)' : 'Fullscreen (F)'; }
+				var c = document.getElementById('canvas');
+				if (c) try { c.focus(); } catch (e) {}
+			}
+		};
+		document.addEventListener('fullscreenchange', function () { window.tcFS.sync(); window.dispatchEvent(new Event('resize')); });
+		document.addEventListener('webkitfullscreenchange', function () { window.tcFS.sync(); window.dispatchEvent(new Event('resize')); });
+	</script>
 	<script id='engine-setup' type='text/javascript'>
 		// From here you can configure game startup parameters via the CUSTOM_PARAMETERS object,
 		// override ProgressView to create your own loader. See dmloader.js for more details.

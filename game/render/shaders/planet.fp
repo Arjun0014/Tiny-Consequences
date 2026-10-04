@@ -262,14 +262,26 @@ void main()
         float foam = smoothstep(0.02, 0.0, fl + 0.012 * sin(t * 1.5 + dot(var_wpos, vec3(9.0, 7.0, 8.0))));
         float band = sin(fl * 160.0 + t * 2.2);
         foam += smoothstep(0.75, 0.98, band) * smoothstep(0.07, 0.02, fl) * 0.6 * (0.6 + 0.4 * tc_noise(var_wpos * 25.0));
-        col = mix(col, vec3(0.94, 0.98, 0.97), clamp(foam, 0.0, 1.0) * 0.6);
-        // oil slick with a purple sheen
+        // (S25, D-209) the oil (F.oil, the ocean system's own field): a black, glossy, patchy slick with ragged edges
+        // where it thins, a rainbow film over its thin parts, the waves under it flattened; where it reaches the shore
+        // the foam is brown and greasy
         float oil = clamp(var_fx.g, 0.0, 1.0);
-        if (oil > 0.01) {
-            float sheen = 0.5 + 0.5 * sin(dot(var_wpos, vec3(21.0, 17.0, 19.0)) + t * 0.7);
-            col = mix(col, mix(OIL, vec3(0.24, 0.17, 0.35), sheen * 0.6), oil * 0.9);
-            spec *= 1.0 - oil * 0.5;
+        float ocov = 0.0;
+        if (oil > 0.004) {
+            highp float on1 = tc_fbm(var_wpos * 2.3 + vec3(t * 0.015, 0.0, -t * 0.01)) - 0.5;
+            highp float on2 = tc_noise(var_wpos * 9.0 + vec3(0.0, t * 0.05, 0.0)) - 0.5;
+            ocov = smoothstep(0.03, 0.30, oil + on1 * 0.22 + on2 * 0.06);
+            float thick = smoothstep(0.25, 0.85, oil + on1 * 0.3);
+            float ph = dot(var_wpos, vec3(13.0, 11.0, 17.0)) * 1.3 + on1 * 9.0 + t * 0.35;
+            vec3 film = 0.5 + 0.5 * cos(vec3(0.0, 2.1, 4.2) + ph);
+            vec3 slick = mix(mix(vec3(0.05, 0.045, 0.05), film * 0.55 + 0.05, 0.45), OIL * 0.55, thick);
+            col = mix(col, slick, ocov * 0.97);
+            // (glossy: the sun's highlight broad and bright on it, the glitter gone)
+            float gs = pow(max(dot(normalize(up + rn * 0.004), H), 0.0), 90.0) * 0.55;
+            spec = mix(spec, gs, ocov);
+            col = mix(col, vec3(0.20, 0.13, 0.07), clamp(foam, 0.0, 1.0) * ocov * 0.9);
         }
+        col = mix(col, vec3(0.94, 0.98, 0.97), clamp(foam, 0.0, 1.0) * 0.6 * (1.0 - ocov));
         // sea ice: matte, bright
         highp float inz = tc_fbm(var_wpos * 3.1) - 0.5;
         highp float inz2 = tc_fbm(var_wpos * 0.45 + 3.7) - 0.5;

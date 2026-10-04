@@ -124,7 +124,7 @@ function M.cell(W, c, out, base)
     out[base + 1], out[base + 2], out[base + 3] = 0, 0, 0
     out[base + 4] = byte(F.ice[c])
     out[base + 5] = 0
-    out[base + 6] = byte(min(1, F.oil[c] * 3))
+    out[base + 6] = byte(min(1, math.sqrt(F.oil[c]) * 2.0))   -- (S25, D-209: a thin film shows too)
     out[base + 7] = byte(F.plankton[c])
     out[base + 8] = byte(F.fish[c])
     out[base + 9], out[base + 10], out[base + 11], out[base + 12] = 0, 0, 0, 0

@@ -207,7 +207,7 @@ function sys.update(W)
     local og, of, oc = grass[c], forest[c], crop[c]
     local bg = cfg.burn_grass * inten
     if bg > og then bg = og end
-    local bf = cfg.burn_forest * inten
+    local bf = (W.v3 and cfg.burn_forest_v3 or cfg.burn_forest) * inten   -- (S25, D-207)
     if bf > of then bf = of end
     grass[c], forest[c] = og - bg, of - bf
     if oc > 0 then crop[c] = 0 end
@@ -231,7 +231,7 @@ function sys.update(W)
     local ni = fuel * cfg.intensity_per_fuel
     if ni > 1 then ni = 1 end
     ni = ni * (1 - cfg.rain_extinguish * precip[c])
-    if ni < cfg.min_intensity then
+    if ni < (W.v3 and cfg.min_intensity_v3 or cfg.min_intensity) then
       fire[c] = 0
       fert[c] = fert[c] + cfg.ash_fertility * (1 - fert[c])
       blame.set(cfert, ifert, c, tag)

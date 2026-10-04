@@ -33,32 +33,32 @@ M.DEFS = {
 -- (S21, R7 v1, D-174) the v3 world's powers (sim/powers3.lua): each tip says what it writes, never what
 -- will follow
 M.DEFS_V3 = {
-  { id = "lightning", icon = "bolt", name = "Lightning", cooldown = 1, radius = 0,
+  { id = "lightning", icon = "bolt", name = "Lightning", cooldown = 1, cool_h = 2, radius = 0,
     tip = "Lightning: a bolt at the point - close in, on a village; the tallest thing there takes it" },
-  { id = "rain", icon = "rain", name = "Rain", cooldown = 4, radius = 2, tip = "Rain: a cloudburst over these hills for three days" },
-  { id = "dry", icon = "drought", name = "Dry spell", cooldown = 4, radius = 2, tip = "Dry spell: no rain and a little heat here for six days" },
-  { id = "warm", icon = "heat", name = "Warm air", cooldown = 4, radius = 2, tip = "Warm air: 8 degrees warmer here for four days" },
-  { id = "cold", icon = "chill", name = "Cold air", cooldown = 4, radius = 2, tip = "Cold air: 8 degrees colder here for four days" },
-  { id = "stir", icon = "volcano", name = "Stir the mountain", cooldown = 10, radius = 0,
+  { id = "rain", icon = "rain", name = "Rain", cooldown = 4, cool_h = 12, radius = 2, tip = "Rain: a cloudburst over these hills for three days" },
+  { id = "dry", icon = "drought", name = "Dry spell", cooldown = 4, cool_h = 12, radius = 2, tip = "Dry spell: no rain and a little heat here for six days" },
+  { id = "warm", icon = "heat", name = "Warm air", cooldown = 4, cool_h = 12, radius = 2, tip = "Warm air: 8 degrees warmer here for four days" },
+  { id = "cold", icon = "chill", name = "Cold air", cooldown = 4, cool_h = 12, radius = 2, tip = "Cold air: 8 degrees colder here for four days" },
+  { id = "stir", icon = "volcano", name = "Stir the mountain", cooldown = 10, cool_h = 96, radius = 0,
     tip = "Stir the mountain: the nearest volcano's pressure rises (it erupts when it does)" },
-  { id = "strain", icon = "pickaxe", name = "Strain the fault", cooldown = 10, radius = 0,
+  { id = "strain", icon = "pickaxe", name = "Strain the fault", cooldown = 10, cool_h = 96, radius = 0,
     tip = "Strain the fault: the nearest plate boundary's stress rises (it gives when it does)" },
-  { id = "cull", icon = "skull", name = "Cull", cooldown = 5, radius = 2,
+  { id = "cull", icon = "skull", name = "Cull", cooldown = 5, cool_h = 48, radius = 2,
     species = { { id = "wolves", icon = "wolf", name = "wolves" }, { id = "deer", icon = "deer", name = "deer" } },
     tip = "Cull: nine in ten of the wolves or the deer here die where they stand" },
-  { id = "bring", icon = "paw", name = "Bring", cooldown = 5, radius = 1,
+  { id = "bring", icon = "paw", name = "Bring", cooldown = 5, cool_h = 48, radius = 1,
     species = { { id = "deer", icon = "deer", name = "deer" }, { id = "wolves", icon = "wolf", name = "wolves" }, { id = "fish", icon = "fish", name = "fish" } },
     tip = "Bring: a herd of deer, a pack of wolves, or a shoal of fish here" },
   -- (S23, R7 v2)
-  { id = "sickness", icon = "thermo", name = "Sickness in a herd", cooldown = 6, radius = 0,
+  { id = "sickness", icon = "thermo", name = "Sickness in a herd", cooldown = 6, cool_h = 48, radius = 0,
     tip = "Sickness in a herd: a few beasts of the herd you aim at catch a sickness - it shows in a day or two" },
-  { id = "blight", icon = "blight", name = "Blight", cooldown = 6, radius = 0,
+  { id = "blight", icon = "blight", name = "Blight", cooldown = 6, cool_h = 48, radius = 0,
     tip = "Blight: a plant sickness in the growing field you aim at" },
-  { id = "sea", icon = "wave", name = "Warm or cool the sea", cooldown = 6, radius = 2,
+  { id = "sea", icon = "wave", name = "Warm or cool the sea", cooldown = 6, cool_h = 72, radius = 2,
     modes = { { id = "warm", icon = "sun", name = "warm" }, { id = "cool", icon = "snow", name = "cool" } },
     tip = "Warm or cool the sea: the water here 4 degrees warmer or cooler for sixteen days" },
-  { id = "oil", icon = "oil", name = "Oil", cooldown = 8, radius = 0, tip = "Oil: a slick on the sea here - the currents carry it" },
-  { id = "meteor", icon = "meteor", name = "Meteor", cooldown = 20, radius = 2,
+  { id = "oil", icon = "oil", name = "Oil", cooldown = 8, cool_h = 48, radius = 0, tip = "Oil: a slick on the sea here - the currents carry it" },
+  { id = "meteor", icon = "meteor", name = "Meteor", cooldown = 20, cool_h = 168, radius = 2,
     tip = "Meteor: a rock from the sky here - heat, fire, the ground shaken, dust in the air; a wave if it falls in the sea" },
 }
 M.DEFS_V2 = M.DEFS
@@ -74,6 +74,35 @@ function M.use_world(W)
   M.BY_ID = {}
   for i, d in ipairs(list) do d.index = i; M.BY_ID[d.id] = d end
   M.armed = nil
+end
+
+-- (S25, D-205) The v3 powers recharge in GAME time: cool_h game hours after each cast (lightning 2 h, the air and the
+-- rain half a day, the beasts, the fields, the sea and oil two or three days, the mountain and the fault four, the
+-- meteor seven). Skipping time recharges them as it passes; the bar shows each one's countdown.
+M.ready = {}            -- power id -> the game hour it is ready again (v3)
+function M.now(W)
+  local sp = package.loaded["game.platform.speed"]
+  return (sp and sp.v3_t) or (W and W.hour) or 0
+end
+function M.left_h(W, d)
+  local r = d and M.ready[d.id]
+  if not r then return 0 end
+  local l = r - M.now(W)
+  return l > 0 and l or 0
+end
+function M.fmt_h(h)
+  if h <= 0 then return "now" end
+  if h < 1 then return string.format("%d min", math.max(1, math.floor(h * 60 + 0.5))) end
+  if h < 24 then return string.format("%d h", math.floor(h + 0.5)) end
+  local dd = math.floor(h / 24)
+  local hh = math.floor(h - dd * 24 + 0.5)
+  if hh == 24 then dd, hh = dd + 1, 0 end
+  return hh > 0 and string.format("%d d %d h", dd, hh) or string.format("%d d", dd)
+end
+function M.short_h(h)
+  if h < 1 then return string.format("%dm", math.max(1, math.floor(h * 60 + 0.5))) end
+  if h < 24 then return string.format("%dh", math.floor(h + 0.5)) end
+  return string.format("%dd", math.floor(h / 24 + 0.5))
 end
 
 M.armed = nil           -- index of the armed power, or nil
@@ -128,7 +157,10 @@ function M.cast(W, id, cell, opts)
   local d = M.BY_ID[id]
   if not d then return refuse("Unknown power") end
   if not cell or not W or cell < 1 or cell > W.n then return refuse("Nowhere to aim") end
-  if (M.cool[id] or 0) > 0 and not opts.force then return refuse(d.name .. " is recharging") end
+  if W.v3 and d.cool_h and not opts.force then
+    local left = M.left_h(W, d)
+    if left > 0 then return refuse(d.name .. " is recharging: ready in " .. M.fmt_h(left)) end
+  elseif (M.cool[id] or 0) > 0 and not opts.force then return refuse(d.name .. " is recharging") end
   local o = M.option(d)
   local p = { power = id, cell = cell }
   if d.modes then p.mode = opts.mode or (o and o.id) end
@@ -154,7 +186,7 @@ function M.cast(W, id, cell, opts)
     require("sim.world").command(W, "power", p)
     if M.on_cast then M.on_cast(W, id, cell, p) end
     do local ok, audio = pcall(require, "game.audio.audio"); if ok and audio.ui then audio.ui("ui_power") end end
-    M.cool[id] = d.cooldown
+    M.ready[id] = M.now(W) + (d.cool_h or 0)
     M.casts = M.casts + 1
     M.last = { id = id, cell = cell, p = p }
     return p

@@ -80,8 +80,9 @@ end
 function M.update(self, W, now, dt)
   local F = self.news
   if not F or not W or not W.v3 then return end
-  -- (S23) "Your actions" open in the same column: the cards step aside
-  if M.hidden then
+  -- (S23) "Your actions" open in the same column: the cards step aside; (S25) so do they while a dropdown or a menu
+  -- is open over them
+  if M.hidden or M.suppress or M.menu_open then
     for _, c in ipairs(F.cards) do gui.set_enabled(c.node, false); gui.set_enabled(c.sh, false) end
     gui.set_enabled(F.why, false)
     F.sig, F.t = nil, 1
@@ -206,7 +207,7 @@ end
 function M.hit(self, x, y)
   local F = self.news
   if not F then return nil end
-  if M.hidden then return nil end
+  if M.hidden or M.suppress or M.menu_open then return nil end
   for _, c in ipairs(F.cards) do
     if c.st and gui.is_enabled(c.node) then
       if c.chain_ev and gui.is_enabled(c.chain) and gui.pick_node(c.chain, x, y) then
@@ -244,19 +245,28 @@ function M.go(W, st)
   local speed = require("game.platform.speed")
   if not W or not W.v3 or not st then return nil end
   do local ok, audio = pcall(require, "game.audio.audio"); if ok and audio.ui then audio.ui("ui_click") end end
+  M.last_go = { st = st, t = speed.v3_t or W.hour }   -- (S25: the tutorial watches for it)
   local fo = news.focus(W, st)
   local s = W.S.v3.settlements[fo.sid or 0]
   local res = { sid = fo.sid, pid = nil }
   if s and s.frame then
-    local ux, uy, uz = require("sim.agents.map").unit(s, fo.x or 0, fo.y or 0)
-    camera.fly_to_dir(ux, uy, uz, 1.42)
+    -- (S25, D-208) the story's own place (the fire's hottest point, the flood's water, the crater, the bolt's mark, the
+    -- herd, the field); a story about someone on the move follows them
     local p = fo.pid and W.S.v3.people[fo.pid]
-    if p and p.alive then selection.set({ kind = "person", id = p.id, v3 = true }); res.pid = p.id
+    local x, y = fo.x or 0, fo.y or 0
+    if fo.follow and p and p.alive and p.at == nil and p.x then x, y = p.x, p.y end
+    local ux, uy, uz = require("sim.agents.map").unit(s, x, y)
+    camera.fly_to_dir(ux, uy, uz, 1.42)
+    res.x, res.y = x, y
+    if p and p.alive then
+      selection.set({ kind = "person", id = p.id, v3 = true }); res.pid = p.id
+      if fo.follow then uistate.request({ cmd = "follow", id = p.id }); res.follow = true end
     else selection.set({ kind = "settlement", sid = s.id }) end
     uistate.inspector_collapsed = false
   elseif fo.cell then
     local g = W.grid
-    camera.fly_to_dir(g.X[fo.cell], g.Y[fo.cell], g.Z[fo.cell], 0.7)
+    camera.fly_to_dir(g.X[fo.cell], g.Y[fo.cell], g.Z[fo.cell], 0.9)
+    res.cell = fo.cell
   end
   if st.active and st.level == 1 then
     if speed.v3_skipping() then speed.v3_skip_cancel() end

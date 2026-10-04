@@ -1797,3 +1797,94 @@ the least: what they found and were given), so nobody asks, as the rule says; (3
 comes, and is paid back, within 40.
 **Decision**: (1) six days; (2) the test accepts the two outcomes the rules give - relief filling the granary first, or a household
 with kin there never short at home (kin asking itself is `test_v3_kin`); (3) forty days. The mechanisms are unchanged.
+
+## D-205 · 2026-10-04 · The powers recharge in game time (session 25)
+**Context.** Arjun's playtest: catastrophic powers could be spammed (ten meteors in a row), which made them cheap and the world
+unreadable - no time to watch what one intervention did. The bar's cooldowns were a few real seconds.
+**Decision** (`game/ui/powers.lua`, `game/ui/hud.gui_script`): each v3 power has `cool_h` game hours: lightning 2, rain / dry spell /
+warm / cold air 12, cull / bring / sickness / blight / oil 48, warm or cool the sea 72, stir the mountain / strain the fault 96,
+**meteor 168 (seven days)**. `powers.ready[id]` is the game hour it is ready again; skipping time recharges it as it passes. The
+button shows it: the icon dimmed under the pie, the time left on it ("5d", "9h"), the tooltip "ready in 6 d 4 h (game time)", a
+refused cast says when. The test bridge's `power` still forces (harnesses cast many). The tutorial's bolt is always ready.
+
+## D-206 · 2026-10-04 · The meteor at the size a god throws, and the strike itself the danger (session 25)
+**Context.** Arjun's playtest: a meteor read as fire + quake. The crater was 3 tiles across on a 128-tile map; people reacted to the
+fires and the quake (the quake's alarm took the place of the strike's; out of doors, a quake alarm makes nobody move), wild animals
+stayed near; an island hit was a few burning trees.
+**Decision.** (1) The same laws of distance, a bigger rock (`sim/config.lua`): `imp_crater` 0.075 -> **0.2** (16 tiles wide),
+`imp_blast` 0.34 -> 0.62 (houses fall to about 0.55-0.9, trees thrown flat to about 0.5-0.7), `imp_flash` 0.46 -> 0.8 (reach x
+`imp_reach_k` 1.6), `imp_scorch` 0.6, `imp_jolt` 3.0 (the whole map). (2) The strike is its own danger kind, `impact`, seen, heard and
+felt over the whole map (`impact.strike`); for its first half hour no quake or fire alarm takes its place (`danger.raise`);
+`think.impact_choice`: whoever is within `imp_safe` 1.1 runs straight away from the point to beyond it (bent round water and the map's
+edge; a babe lying in the house snatched up; `PLAN.flee_impact`), then stands and looks back - the hurt are the down-choice's, the
+fires and the dead the world's after. (3) Beasts and wild animals bolt `imp_jolt_k` 3.5 x as far as from a bolt (`blaze.jolt` k:
+`stock` jolt runs, `wild` `w.flee_k`). (4) The planet's cells within the blast lose their woods and grass by the blast's share (thrown
+flat), with the cast's tag on the forest and grass blame, and take a scar (`burn_scar`: the ash biome, burnt stands drawn) - a small
+island under the blast is laid waste by reach, never by a rule about islands. (5) The view: the crater's rim of mounds and ejecta and
+the bowl's rubble scaled by its size (a double rim on a big one); a heavy column of dust over every crater at once (`fx.plume_dust`,
+from `W.S.powers.craters`), billowing, spreading low over the ground and settling over 36 game hours.
+**Seen in the browser** (Tekheim's square, `out/s25/play_cat.mjs village`): at once 11 of 31 people dead, every house down (16 -> 3
+buildings), 291 fires, 14 running from it (`flee_impact`), 33 beasts dead; 6 h on 3 fires; a season on: no fire, the crater and the
+scorch greening, 8 camps, two houses raised again, 41 consequences in "Your actions" (the dead by name, the quake, hunger, children
+taken in).
+
+## D-207 · 2026-10-04 · Fire that ends: beasts in the flames, the planet's fire beside a village (session 25)
+**Context.** Arjun's playtest: after skipping a season "trees + permanent orange flames"; animals standing in a fire. A probe
+(`out/s25/probe_fire.lua`): the village map's own fire was out within 8 h, but a planet cell the map covers in part burnt for a week
+at 0.8 -> 0.1 - and the view drew that cell's flames over the map's standing trees, which that fire never touched (one tree a day).
+A beast in the flames lost 1.5 x heat of its health an hour: an hour in a fire.
+**Decision.** (1) `fire_beast` 1.5 -> **12** (dead in minutes in the flames; still away from it by its own flight first). (2) v3 worlds:
+the planet's fire eats its fuel twice as fast (`burn_forest_v3` 0.5, `min_intensity_v3` 0.2; the legacy world's spin-up keeps 0.25
+/ 0.12 so its saved world is unchanged): a wood beside a village burns two or three days, not a week (probe: out by 48 h, was 192).
+(3) A planet fire on a cell a map covers in part comes onto the map as a front of `fire_front_n` trees (the map's own fire does the
+rest) instead of one tree a day; the view no longer draws the planet's flames on a cell a map covers by a quarter or more (its fire is
+the map's flames there). (4) The fire story says how long it burnt by when the last fire went out (`s.fire_last`), not by when the
+news looked ("out after 294 hours" after a season's skip).
+
+## D-208 · 2026-10-04 · "Go there" goes to the event (session 25)
+**Context.** "Flood at Little Leelee" -> Go there took the camera to the village's square; a cast's story to the square of the
+nearest village; an eruption to a village.
+**Decision.** (1) The cast's point is kept on its root event (`powers3.apply`: `data.at_sid/at_x/at_y`, and `settlement/x/y` when
+absent - the chain's "Go there" reads them; a meteor aimed from afar records the map it struck nearest its middle). (2) A power story
+goes to that point, or - cast far from any map - to the planet's cell (`at_cell`); an eruption to its mountain. (3) A flood with no
+building in the water goes to its water: the flooded tile nearest the middle of where it lies deepest (`mapm.FLOOD`, read only). (4) A
+death goes where it happened. (5) Stories about someone on the move (a bride, a household leaving or founding, a trader, relief, a raid)
+follow that person (`newsfeed.go` -> `follow`). Fires already went to the hottest fire, lightning to its strike, herds and fields to theirs.
+
+## D-209 · 2026-10-04 · Oil you can see (session 25)
+**Context.** "Oil feels like I clicked and nothing happened": the slick was drawn dark blue-purple at `min(1, 3 x oil)` - deep water's
+own colour - and thin oil not at all.
+**Decision.** The same `F.oil` (the ocean system's field; nothing animated apart from it): the cell's byte `min(1, 2 sqrt(oil))` (a
+thin film shows); the planet shader draws a black-brown, glossy, patchy slick with ragged edges, a rainbow film over its thin parts,
+the waves and glitter flattened, brown greasy foam where it meets the shore. The pulse 36 -> **54** level-4 cells (`POWERS.oil`).
+
+## D-210 · 2026-10-04 · A title screen, a pause menu, settings, the guide; layering; fullscreen (session 25)
+**Decision** (`game/ui/menu.lua`): the title (Play, How the World Works, Settings, Credits; Play waits for the world, showing its
+growth); Esc or the "Menu" pill in the clock opens the pause menu (Resume, the guide, Settings, the tutorial, Credits, Title screen);
+settings: master / ambient / effects / interface volume (the same groups and save as the Sound pill), world sound, clouds, shadows,
+fullscreen, the tutorial again. "How the World Works": eight pages, each a diagram of icon boxes and arrows and a few lines, describing
+only what the game simulates. Menus draw on the top layers; the world's clock stands still behind them; the news steps aside. The test
+harnesses (`?test=1` / `?skip_intro=1`) go straight in (`?menu=1` shows the title with the bridge on). UI layering: the skip dropdown is
+drawn on the top layers and hit first, the news cards step aside while it is open; the skip's progress moved above the power bar.
+Fullscreen (`game/html/engine_template.html`): the Fullscreen API from the button (and from the settings via `html5.run` inside the
+click's activation), a pseudo-fullscreen (the container fixed over the viewport) when the browser refuses, the button showing the state.
+
+## D-211 · 2026-10-04 · The opening tutorial: one bolt, its real chain (session 25)
+**Decision** (`game/ui/tutorial.lua`, `sim/tutorial3.lua`): a coach card walks through looking (the camera moved or "Take me there"),
+inspecting someone, choosing Lightning, striking a marked tree at the edge of a wood by the village (the ring where the tree is drawn),
+the news story it made (only the bolt's own story counts - another story says so), going there and watching (12 s), Your actions, a
+short skip, a season's skip, and back to the bolt: "Your one lightning bolt now has N consequences" with the first real branches
+(`sim/chain.rows`). Each step waits for the player's own action, read from the game's state. Its only starting condition is physical and
+logged: `tutorial_dry` (a command like the powers) sets the soil water about the village to at most 0.2 - a rainless spell; whether the
+tree catches, how far it goes and what follows are the world's. If nothing catches, it says so and offers another tree (a second real
+cast). Skippable, replayable from the menus; done once it is not shown again (`tc_prefs`).
+
+## D-212 · 2026-10-04 · Aimed where the player sees it (session 25)
+**Context.** In the tutorial a click on a tree's crown struck the bare ground beside it: the ray met the planet's sphere, not the
+village map's drawn ground, and a crown stands above its trunk (the bolt takes what is within `strike_pull_god` 0.025).
+**Decision** (`game/view/controls.lua` `v3_target`): the ray is met with the map's own drawn ground height (four refinements); for
+lightning, a standing tree whose drawn trunk-to-crown line passes within 16 px of the pointer takes the aim (after people and beasts).
+
+## D-213 · 2026-10-04 · The submission build (session 25)
+**Decision.** No new systems (captives, night gates, traded blight left for after the jam). Priorities were Arjun's: the meteor, danger
+responses, fire's end, oil, "Go there", layering, fullscreen, menus, the tutorial, the guide.

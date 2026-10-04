@@ -220,7 +220,7 @@ function M.strike(W, s, x, y, now, ev)
   -- 6. the trees: thrown flat by the blast (the trunk lies pointing away from the rock, its logs there to
   -- be had), the rest by the flash set alight where they are dry
   Tr.fall = Tr.fall or {}
-  local reach = c.imp_flash * 2.2
+  local reach = c.imp_flash * c.imp_reach_k
   blaze.trees_near(s, x, y, reach, function(k, d2)
     if Tr.st[k] ~= 1 then return end
     local r = sqrt(d2)
@@ -279,8 +279,10 @@ function M.strike(W, s, x, y, now, ev)
     end
   end
   -- 9. every living beast within reach looks up at once; the people already know (the quake, the fires)
-  blaze.jolt(W, s, x, y, now, c.imp_jolt)
-  danger.cue(W, s, x, y, now, { kind = "quake", src = 0, sight = 4, night = 4, sound = 6, loud = true, why = "Fire fell from the sky" })
+  blaze.jolt(W, s, x, y, now, c.imp_jolt, c.imp_jolt_k)
+  -- (S25, D-206) the strike itself is the danger: seen, heard and felt over the whole map, sleepers woken - whoever is near
+  -- the point runs from it (think.impact_choice), whatever else they were doing
+  danger.cue(W, s, x, y, now, { kind = "impact", src = 0, sight = 8, night = 8, sound = 8, loud = true, why = "Fire fell from the sky" })
   d.dead, d.hurt, d.fell, d.houses, d.beasts, d.flat, d.lit, d.fields = got.dead, got.hurt, got.fell, got.houses,
     got.beasts + got.wild + got.dogs, got.flat, got.lit, got.fields
   s.acc.impacts = (s.acc.impacts or 0) + 1

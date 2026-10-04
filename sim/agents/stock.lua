@@ -654,12 +654,12 @@ end
 -- every beast within r out of doors (or in an open fold). Each looks up within a breath or two (the alert first)
 -- and bolts its own way from it (M.step); then stands with its head up and comes back to the others in its own time.
 -- s.jolt = { { x, y, t, r } } (the last few; a beast answers each once: a.jt).
-function M.jolt(W, s, x, y, now, r)
+function M.jolt(W, s, x, y, now, r, k)
   local c = C()
   if not s.herds then return end
   s.jolt = s.jolt or {}
   local J = s.jolt
-  J[#J + 1] = { x = x, y = y, t = now, r = r }
+  J[#J + 1] = { x = x, y = y, t = now, r = r, k = k }
   while #J > 4 do table.remove(J, 1) end
   for _, kind in ipairs(M.HERDS) do
     local H = s.herds[kind]
@@ -965,7 +965,7 @@ function M.step(W, s, H, a, now)
     if d < 1e-6 then dx, dy, d = (a.hx or 1), (a.hy or 0), 1 end
     local hx, hy = dx / d, dy / d
     local fright = (0.55 + 0.9 * (1 - trait(a, T_BOLD))) * (0.35 + 0.65 * (1 - d / jt.r))
-    local run = c.jolt_run * fright * (0.8 + 0.4 * u(W, s, H, a, now, 49))
+    local run = c.jolt_run * fright * (jt.k or 1) * (0.8 + 0.4 * u(W, s, H, a, now, 49))
     local bend = (trait(a, T_SIDE) - 0.5) * c.beast_fan + (u(W, s, H, a, now, 50) - 0.5) * 0.7
     local pen0 = s.buildings[H.pen or 0]
     if not shut_in(s, H, pen0, a, now) then

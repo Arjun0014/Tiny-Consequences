@@ -15,6 +15,9 @@ local powers = require("game.ui.powers")
 local newsfeed = require("game.ui.newsfeed")   -- (S21, R7: the world news)
 local actions = require("game.ui.actions")     -- (S23: what each of the god's casts caused)
 local sound_panel = require("game.ui.sound_panel")   -- (S23: the levels of the sound)
+local menu = require("game.ui.menu")                 -- (S25: title, pause, settings, credits, the guide)
+local tutorial = require("game.ui.tutorial")         -- (S25: the opening tutorial)
+local H_ESC = hash("key_esc")
 
 local C = ui.C
 local V3 = vmath.vector3
@@ -73,6 +76,10 @@ local function build_top(self)
 	self.clock_icon = ui.icon(clock, -cw / 2 + 28, 0, "sun", 30, C.gold)
 	self.clock_year = ui.text(clock, -cw / 2 + 50, 8, "Year 0", "fredoka", 23, C.text)
 	self.clock_season = ui.text(clock, -cw / 2 + 51, -13, "Early Spring", "nunito_semi", 14, C.muted)
+	-- (S25) the menu (also Esc)
+	self.menu_btn = ui.box(clock, cw / 2 - 34, 0, 54, 32, "pill", C.soft)
+	ui.text(self.menu_btn, 0, 0, "Menu", "fredoka", 14, C.text, gui.PIVOT_CENTER)
+	self.menu_btn_hit = { menu_open = true }
 	self.speed_btns = {}
 	for i, sp in ipairs(SPEEDS) do
 		local x = -12 + (i - 1) * 36
@@ -82,7 +89,10 @@ local function build_top(self)
 	end
 	-- v3: the skip menu (under the clock) and the skip progress strip
 	local mx, mw = 12 + cw - 150, 196
-	local menu = ui.box(nil, mx, REF_H - 12 - ch - 8 - 4 * 34 / 2 - 8, mw, 4 * 34 + 16, "panel", C.panel)
+	-- (S25) a dropdown draws above the news and every panel (layers top_box / top_text; the news cards step aside
+	-- while it is open)
+	ui.top = true
+	local menu = ui.box(nil, mx, REF_H - 12 - ch - 8 - 4 * 34 / 2 - 8, mw, 4 * 34 + 16, "panel", C.panel_solid)
 	ui.anchor(menu, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
 	self.skip_menu = menu
 	self.skip_opts = {}
@@ -92,12 +102,14 @@ local function build_top(self)
 		ui.icon(row, -mw / 2 + 24, 0, k.icon, 18, C.text)
 		ui.text(row, -mw / 2 + 42, 0, k.label, "nunito_semi", 15, C.text)
 		ui.text(row, mw / 2 - 18, 0, k.key, "fredoka", 14, C.muted, gui.PIVOT_E)
-		self.skip_opts[i] = { node = row, skip = k.kind }
+		self.skip_opts[i] = { node = row, skip = k.kind, tip = nil }
 	end
+	ui.top = false
 	gui.set_enabled(menu, false)
+	-- (S25: the skip's progress above the power bar, clear of the news and "Your actions" column)
 	local pw = 300
-	local prog = ui.box(nil, 12 + pw / 2, REF_H - 12 - ch - 8 - 22, pw, 44, "panel", C.panel)
-	ui.anchor(prog, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
+	local prog = ui.box(nil, REF_W / 2, 14 + 74 + 34, pw, 44, "panel", C.panel_solid)
+	ui.anchor(prog, gui.ANCHOR_NONE, gui.ANCHOR_BOTTOM)
 	self.skip_prog = prog
 	ui.icon(prog, -pw / 2 + 22, 0, "hourglass", 20, C.gold)
 	self.skip_label = ui.text(prog, -pw / 2 + 40, 8, "", "nunito_semi", 14, C.text)
@@ -335,7 +347,11 @@ local function build_powers(self)
 		gui.set_layer(pie, "box")
 		gui.set_parent(pie, b, false)
 		local key = ui.text(b, PB_BTN / 2 - 9, -PB_BTN / 2 + 8, tostring(i), "fredoka", 12, C.muted, gui.PIVOT_CENTER)
-		self.pbtns[i] = { node = b, icon = ic, pie = pie, key = key, power = i, tip = d.tip .. "   (Shift+" .. i .. ")" }
+		-- (S25) the countdown while it recharges (game time)
+		local cdt = ui.text(b, 0, -1, "", "fredoka", 17, C.white, gui.PIVOT_CENTER)
+		gui.set_outline(cdt, vmath.vector4(0.16, 0.14, 0.21, 1))
+		self.pbtns[i] = { node = b, icon = ic, pie = pie, key = key, cdt = cdt, power = i, tip0 = d.tip .. "   (Shift+" .. i .. ")" }
+		self.pbtns[i].tip = self.pbtns[i].tip0
 	end
 	-- choices for the armed power (modes / species), above the bar
 	self.popts = {}
@@ -371,13 +387,27 @@ end
 
 local function update_powers(self)
 	local armed = powers.armed
+	local W = view.W
 	for i, b in ipairs(self.pbtns) do
 		local d = powers.DEFS[i]
-		local cd = powers.cool[d.id] or 0
-		gui.set_fill_angle(b.pie, cd > 0 and 360 * cd / d.cooldown or 0)
+		local frac, left = 0, 0
+		if W and W.v3 and d.cool_h then
+			left = powers.left_h(W, d)
+			frac = left > 0 and math.min(1, left / d.cool_h) or 0
+		else
+			local cd = powers.cool[d.id] or 0
+			frac = cd > 0 and cd / d.cooldown or 0
+		end
+		gui.set_fill_angle(b.pie, 360 * frac)
 		local col = (armed == i) and C.gold or (self.hover == b and C.hover or C.soft)
 		gui.set_color(b.node, col)
 		ui.set_icon(b.icon, powers.icon(d))
+		-- (S25) recharging: the icon dimmed under the pie, the time left on it, and its tooltip says when
+		local cooling = left > 0
+		gui.set_color(b.icon, cooling and vmath.vector4(0.165, 0.137, 0.208, 0.35) or C.text)
+		local txt = cooling and powers.short_h(left) or ""
+		if b.cdt_s ~= txt then b.cdt_s = txt; gui.set_text(b.cdt, txt) end
+		b.tip = cooling and (d.name .. " - recharging, ready in " .. powers.fmt_h(left) .. " (game time)") or b.tip0
 	end
 	local d = armed and powers.DEFS[armed]
 	local list = d and (d.modes or d.species)
@@ -429,6 +459,18 @@ function init(self)
 	actions.build(self)
 	sound_panel.build(self)
 	build_loading(self)
+	-- (S25) the menus and the tutorial last: they draw above everything (top layers)
+	tutorial.build(self)
+	menu.build(self)
+	-- (the test harnesses - ?test=1 / ?skip_intro=1 - go straight into the world, as before)
+	local query = require("game.platform.query")
+	if (query.flag("skip_intro") or query.flag("test")) and not query.flag("menu") then menu.open(self, nil); menu.prefs.tutorial_done = true
+	else menu.open(self, "title") end
+	menu.apply_gfx()
+	self.modal_hit = function(s, x, y)
+		if menu.is_open() then return menu.hit(s, x, y) end
+		return tutorial.hit(s, x, y)
+	end
 	self.sel_version = -1
 	self.refresh = 0
 	self.hover = nil
@@ -485,12 +527,13 @@ local function update_top(self)
 	local skipping = speed.v3_skipping()
 	if self.v3_ui then
 		if skipping and self.skip_menu_open then self.skip_menu_open = false end
+		newsfeed.suppress = self.skip_menu_open or nil
 		if gui.is_enabled(self.skip_menu) ~= (self.skip_menu_open or false) then gui.set_enabled(self.skip_menu, self.skip_menu_open or false) end
 		for _, o in ipairs(self.skip_opts) do gui.set_color(o.node, self.hover == o and C.hover or C.clear) end
 		if gui.is_enabled(self.skip_prog) ~= skipping then gui.set_enabled(self.skip_prog, skipping) end
 		if skipping then
 			local f = speed.v3_skip_progress() or 0
-			gui.set_text(self.skip_label, string.format("%s  9483  %d%%", speed.skip.label, math.floor(f * 100)))
+			gui.set_text(self.skip_label, string.format("%s  -  %d%%", speed.skip.label, math.floor(f * 100)))
 			gui.set_size(self.skip_bar, V3(math.max(8, 170 * f), 8, 0))
 			gui.set_color(self.skip_stop, self.hover == "skipstop" and C.text or C.coral)
 		end
@@ -564,8 +607,11 @@ end
 function update(self, dt)
 	-- loading screen
 	local L = state.loading
+	if self.menu then self.menu.loaded = not L.active end
+	if menu.is_open() then menu.update(self, not L.active, L.frac) end
 	if L.active then
-		gui.set_enabled(self.loading, true)
+		-- (S25: the title screen shows the progress itself)
+		gui.set_enabled(self.loading, not menu.is_open())
 		gui.set_text(self.load_label, L.text or "")
 		gui.set_size(self.load_bar, V3(math.max(14, 380 * (L.frac or 0)), 14, 0))
 		if self.shown.top then
@@ -592,6 +638,32 @@ function update(self, dt)
 	end
 	update_powers(self)
 	sound_panel.update(self)
+	-- (S25) the menus: the world's clock stands still behind them; what they ask for
+	local mopen = menu.is_open()
+	if mopen and not self.menu_paused then
+		self.menu_paused = true
+		if speed.v3_skipping() then speed.v3_skip_cancel() end
+		self.menu_speed = speed.get()
+		speed.set(0)
+		self.skip_menu_open = false
+		if powers.armed then powers.disarm() end
+	elseif not mopen and self.menu_paused then
+		self.menu_paused = false
+		speed.set((self.menu_speed and self.menu_speed > 0) and self.menu_speed or 1)
+	end
+	local want = menu.want
+	menu.want = nil
+	if want == "play" then
+		menu.open(self, nil)
+		if not menu.prefs.tutorial_done then tutorial.start(self, W) end
+	elseif want == "resume" then
+		menu.open(self, nil)
+	elseif want == "tutorial" then
+		menu.open(self, nil)
+		tutorial.start(self, W)
+	end
+	tutorial.update(self, W, dt)
+	gui.set_color(self.menu_btn, self.hover == self.menu_btn_hit and C.hover or C.soft)
 	if W.v3 then
 		actions.update(self, W, speed.v3_t or W.hour, dt)
 		newsfeed.update(self, W, speed.v3_t or W.hour, dt)
@@ -643,7 +715,19 @@ end
 -- Returns the interactive element under (x, y) in GUI coordinates, or "panel" when over a
 -- panel background (swallow but no action), or nil.
 local function hit(self, x, y)
+	-- (S25) modal panels (the menu, settings, the guide) and the open dropdown first: what is drawn on top is hit first
+	-- (the title screen's buttons work while the world is still growing)
+	if self.modal_hit then
+		local mh = self.modal_hit(self, x, y)
+		if mh then return mh end
+	end
 	if state.loading.active then return nil end
+	if self.skip_menu_open and gui.is_enabled(self.skip_menu) then
+		for _, o in ipairs(self.skip_opts) do
+			if gui.pick_node(o.node, x, y) then return o end
+		end
+		if gui.pick_node(self.skip_menu, x, y) then return "panel" end
+	end
 	do
 		local ah = actions.hit(self, x, y)
 		if ah then return ah end
@@ -653,6 +737,7 @@ local function hit(self, x, y)
 		if nh then return nh end
 	end
 	if gui.is_enabled(self.clock) then
+		if gui.pick_node(self.menu_btn, x, y) then return self.menu_btn_hit end
 		for _, b in ipairs(self.speed_btns) do
 			if not b.hidden and gui.pick_node(b.node, x, y) then return b end
 		end
@@ -709,6 +794,9 @@ end
 
 local function activate(self, h)
 	if type(h) ~= "table" and type(h) ~= "string" then return end
+	if menu.activate(self, h) then return end
+	if type(h) == "table" and h.tut then tutorial.activate(self, view.W, h); return end
+	if type(h) == "table" and h.menu_open then menu.open(self, "pause"); return end
 	if type(h) == "table" and h.news_why then newsfeed.toggle_why(self, h.news_why); return end
 	if type(h) == "table" and h.news_chain then
 		if h.news_chain.chain_ev then actions.open_for(self, h.news_chain.chain_ev) end
@@ -754,15 +842,27 @@ local function activate(self, h)
 end
 
 function on_input(self, action_id, action)
+	-- (S25) Esc: back out of a menu, close the skip menu, drop the armed power - else the pause menu
+	if action_id == H_ESC and action.pressed and not state.loading.active then
+		if menu.is_open() then
+			if menu.screen == "pause" then menu.want = "resume"
+			elseif menu.screen ~= "title" then menu.open(self, menu.prev or "title") end
+		elseif self.skip_menu_open then self.skip_menu_open = false
+		elseif powers.armed then powers.disarm()
+		else menu.open(self, "pause") end
+		return true
+	end
+	if menu.is_open() and action_id ~= nil and action_id ~= H_TOUCH then return true end
 	if action_id == nil then
 		self.px, self.py = action.x, action.y
 		local h = hit(self, action.x, action.y)
 		self.hover = (h ~= "panel") and h or nil
 		uistate.pointer_over_ui = h ~= nil
+		if menu.is_open() then show_tip(self, nil); uistate.pointer_over_ui = true; return true end
 		if type(h) == "table" and h.tip and (h.power or h.opt) then
 			local bx = gui.get_position(self.pbar).x + gui.get_position(h.node).x
 			show_tip(self, h.tip, bx, h.opt and 176 or 120)
-		elseif type(h) == "table" and h.tip then
+		elseif type(h) == "table" and h.tip and not (h.skipmenu and self.skip_menu_open) then
 			show_tip(self, h.tip, (h.level or h.skipmenu) and (gui.get_position(h.node).x + gui.get_position(self.clock).x) or (gui.get_position(self.stats).x + h.x), REF_H - 92)
 		else
 			show_tip(self, nil)

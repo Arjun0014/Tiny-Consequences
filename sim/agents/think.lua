@@ -4910,6 +4910,44 @@ function M.quake_choice(W, s, p, ctx, now)
   return false
 end
 
+-- (S25, D-206) A meteor struck the map (seen, heard, felt - everyone on the map knows it at once): whoever is within
+-- imp_safe of the point runs straight away from it to beyond that distance (a babe lying in the house snatched up on
+-- the way out), then stands and looks back; those farther off go on as they were (the fires it lit and the hurt are
+-- their own choices after). Never a list of who flees: where each one is.
+function M.impact_choice(W, s, p, ctx, now)
+  local c = C()
+  if p.at or ctx.stage == "infant" or now - p.alarm.t > c.imp_alarm_h then p.alarm = nil; return false end
+  local ax, ay = p.alarm.x, p.alarm.y
+  local dx, dy = p.x - ax, p.y - ay
+  local d = sqrt(dx * dx + dy * dy)
+  local safe = c.imp_safe
+  if d >= safe then p.alarm = nil; return false end
+  if d < 1e-6 then dx, dy, d = 1, 0, 1 end
+  local half = s.N * s.T * 0.5 - 0.08
+  local mapm = require("sim.agents.map")
+  local tx, ty = nil, nil
+  -- (straight away from it; bent a little either way when that way is water or off the map)
+  for q = 0, 6 do
+    local ang = (q == 0 and 0) or (((q % 2 == 1) and 1 or -1) * 0.45 * floor((q + 1) / 2))
+    local ca, sa = math.cos(ang), math.sin(ang)
+    local ux, uy = (dx * ca - dy * sa) / d, (dy * ca + dx * sa) / d
+    local x, y = ax + ux * (safe + 0.12), ay + uy * (safe + 0.12)
+    x, y = max(-half, min(half, x)), max(-half, min(half, y))
+    local i = mapm.tile_of(s, x, y)
+    if i > 0 and s.land[i] == 1 then
+      local fx, fy = mapm.free_spot(s, x, y, 4)
+      tx, ty = fx or x, fy or y
+      break
+    end
+  end
+  if not tx then p.alarm = nil; return false end
+  local F = M.FIRE
+  F.a, F.b = 0, 0
+  F.kind, F.why = "flee_impact", d < c.imp_blast and "Fire fell from the sky right by us: run!" or "Fire fell from the sky: away from it!"
+  F.fx, F.fy = tx, ty
+  return true
+end
+
 -- (S20, R6.5f) The sea drawing back (seen, or shouted): those near the shore run inland, babes in
 -- arms; those already far from the water go on as they were.
 function M.wave_choice(W, s, p, ctx, now)
@@ -5029,6 +5067,30 @@ PLAN.run_inland = function(W, s, p, ctx, now, cd)
     end
   end
   return "Up from the shore, away from the sea", "high ground"
+end
+
+-- (S25, D-206) Away from where the meteor struck, at a run; a grown-up snatches up a babe lying in the house they run
+-- out of; then they stand and look back at it.
+PLAN.flee_impact = function(W, s, p, ctx, now, cd)
+  local pl = plan_reset(p)
+  local F = M.FIRE
+  go(pl, F.fx, F.fy, "away from the blast")
+  pl[#pl].run = true
+  work(pl, "watch", 0.6, { fx = p.alarm and p.alarm.x, fy = p.alarm and p.alarm.y })
+  if p.inside ~= 0 and (ctx.stage == "adult" or ctx.stage == "elder") and (p.babe or 0) == 0 then
+    local V = W.S.v3
+    for _, id in ipairs(s.members) do
+      local ib = V.people[id]
+      if ib and ib.alive and ib.inside == p.inside and people.stage(ib, now) == "infant" and not (ib.act == "carried" and (ib.carer or 0) ~= 0) then
+        kin.give(W, ib, p)
+        ib.act = "carried"
+        people.remember(p, now, "Snatched up " .. ib.name .. " and ran from the fire from the sky")
+        break
+      end
+    end
+  end
+  people.remember(p, now, "Fire fell from the sky: we ran from it")
+  return "Away from where the fire fell from the sky", "away from the blast"
 end
 
 PLAN.run_out = function(W, s, p, ctx, now, cd)
@@ -6234,6 +6296,12 @@ function M.decide(W, s, p, now, reason)
     add(1, fc.kind, fc.a, fc.b, fc.why)
     M.cd = CAND[ncand]
   elseif p.alarm and p.alarm.kind == "flood" and M.flood_choice(W, s, p, ctx, now) then
+    local fc = M.FIRE
+    kind, why = fc.kind, fc.why
+    add(1, fc.kind, fc.a, fc.b, fc.why)
+    M.cd = CAND[ncand]
+  elseif p.alarm and p.alarm.kind == "impact" and M.impact_choice(W, s, p, ctx, now) then
+    -- (S25, D-206) fire fell from the sky: away from where it struck, babes snatched up
     local fc = M.FIRE
     kind, why = fc.kind, fc.why
     add(1, fc.kind, fc.a, fc.b, fc.why)

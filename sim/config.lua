@@ -138,6 +138,9 @@ C.FIRE = {
   k_spread = 0.46, wind_boost = 1.5,
   burn_grass = 0.6, burn_forest = 0.25,   -- fraction consumed per tick at intensity 1
   intensity_per_fuel = 1.5, min_intensity = 0.12,
+  -- (S25, D-207) v3 worlds: a wood burnt a week at full flame beside a village - now two or three days (the legacy world's
+  -- spin-up keeps the old rates: its saved world stays the same)
+  burn_forest_v3 = 0.5, min_intensity_v3 = 0.2,
   rain_extinguish = 4,                    -- intensity loss per unit precip
   k_co2 = 0.4,                            -- ppm per unit biomass burned
   k_heat = 3,                             -- heat_anom °C per unit intensity per tick
@@ -760,7 +763,7 @@ C.POWERS = {
   -- unseen for a day or two, then show it); warm / cool sea: degrees on the water about the point, days;
   -- meteor on the v3 world: the quake of the impact, the blast and the fire about the point on a map
   v3_sick_n = 3, v3_sea_k = 4, v3_sea_days = 16, v3_meteor_mag = 6.2, v3_meteor_wave = 3,
-  v3_meteor_blast = 0.32, v3_meteor_fire = 0.5, v3_meteor_hurt = 0.9,
+  v3_meteor_blast = 0.6, v3_meteor_fire = 0.9, v3_meteor_hurt = 0.9,
   v3_burst_h = 3,                         -- (S22) a god's rain on a village begins when cast: a downpour this many hours
   drought_mult = 0.05, drought_heat = 3,  -- drought: rain blocked, +3 °C heat anomaly (drier soil)
   temp_anom = 6,                          -- Heat / Chill: ± °C heat anomaly held for the season
@@ -770,7 +773,7 @@ C.POWERS = {
   settlers = 5,
   lightning_heat = 4,                     -- °C of heat anomaly where lightning strikes land
   boat_oil = 3,                           -- oil from a sunk fishing boat (level-4-equivalent cells)
-  oil = 36,                               -- Oil Spill pulse on open water, a tanker cargo (a tanker there is sunk instead)
+  oil = 54,                               -- (S25, D-209: was 36) Oil Spill pulse on open water, a tanker cargo (a tanker there is sunk instead)
   blight_dieback = 0.6,                   -- share of an infected farm's standing crop lost per month
   blight_spread = 0.3,                    -- monthly chance per neighbouring farm cell
   blight_trade = 0.08, blight_trade_steps = 12, -- monthly chance to reach another village within 12 level-4 steps (villages are sparse)
@@ -1375,7 +1378,7 @@ C.V3 = {
   -- within beast_keep of where it is kept (the herder, the ground, the pen - or of the way there) it keeps
   -- about where it got to; it cries out within beast_cry_r of the fire. Wild animals run to wild_fire_safe
   -- and dogs to dog_fire_safe.
-  beast_cry = 0.6, fire_beast = 1.5, loose_h = 3,
+  beast_cry = 0.6, fire_beast = 12, loose_h = 3,   -- (S25, D-207: in the flames a beast is dead in minutes)
   fire_crown = 0.012, fire_scorch = 0.015, fire_scorch_heat = 0.025,
   beast_notice = 0.6, beast_notice_h = 0.06, beast_fire_see = 0.6, beast_run = 2.4, beast_fan = 1.1, beast_flee_hop = 0.25,
   beast_safe = 0.45, beast_keep = 0.4, beast_cry_r = 0.25, wild_fire_safe = 0.6, dog_fire_safe = 0.35,
@@ -1415,8 +1418,11 @@ C.V3 = {
   -- fright (the timid and the near the farther) at a gallop, then stand jolt_stand (the bold less) before going back;
   -- a blow is answered while it is younger than jolt_h
   jolt_look = 0.002, jolt_run = 0.35, jolt_stand = 0.08, jolt_h = 0.25, jolt_speed = 6,   -- (a gallop: jolt_speed x its walking pace)
-  imp_crater = 0.075, imp_blast = 0.34, imp_flash = 0.46, imp_crack = 0.45, imp_hurt_blast = 0.36, imp_burn = 0.26,
-  imp_ign = 1.2, imp_scorch = 0.32, imp_jolt = 1.8, imp_plot_lodge = 0.55,
+  -- (S25, D-206) the rock a god throws is a big one: a crater 0.2 across its radius (16 tiles wide), houses down to about
+  -- 0.6-0.9, the flash's fires to past a unit; everyone within imp_safe runs from it for imp_alarm_h
+  imp_crater = 0.2, imp_blast = 0.62, imp_flash = 0.8, imp_crack = 0.45, imp_hurt_blast = 0.36, imp_burn = 0.26,
+  imp_ign = 1.2, imp_scorch = 0.6, imp_jolt = 3.0, imp_plot_lodge = 0.55, imp_reach_k = 1.6, imp_safe = 1.1, imp_alarm_h = 1.0,
+  imp_jolt_k = 3.5,
   imp_bld = { house = 1.0, hut = 1.6, granary = 0.8, woodstore = 1.15, forge = 0.75, well = 0.25, dock = 1.0, fold = 1.8,
     byre = 1.1, sty = 1.4, saltpan = 0.4, clamp = 0.9, bridge = 0.9, camp = 2.5, rack = 2.0, boat = 1.4, tanpit = 0.2,
     palisade = 1.2, quern = 0.5 },

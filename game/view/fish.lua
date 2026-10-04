@@ -132,6 +132,8 @@ function M.update(W, dt, zoom, frozen)
   -- (the cells' spacing in world units: the grid's is on the unit sphere)
   local sp = g.spacing * state.R
   local n = min(#M.list, M.POOL)
+  -- (S25) the sea's own current this season (sim/systems/ocean.lua): the schools of a cell go with it together
+  local CUR = W.currents and W.currents[floor(((W.tick or 0) % 48) / 12) + 1]
   for i, o in ipairs(M.pool) do
     local e = i <= n and M.list[i] or nil
     if e then
@@ -155,6 +157,22 @@ function M.update(W, dt, zoom, frozen)
       local el = sqrt(Ex * Ex + Ey * Ey + Ez * Ez)
       Ex, Ey, Ez = Ex / el, Ey / el, Ez / el
       local Nx, Ny, Nz = ny * Ez - nz * Ey, nz * Ex - nx * Ez, nx * Ey - ny * Ex
+      -- (S25) a coherent run along the current: every school of the cell drifting down it and back over the same slow
+      -- beat, heading the way they go - more so the stronger the current
+      if CUR and CUR.vx and CUR.vx[c] then
+        local ce = CUR.vx[c] * Ex + CUR.vy[c] * Ey + CUR.vz[c] * Ez
+        local cn = CUR.vx[c] * Nx + CUR.vy[c] * Ny + CUR.vz[c] * Nz
+        local cs = sqrt(ce * ce + cn * cn)
+        if cs > 1e-6 then
+          local beat = t * 0.045 + hsh(c, 0, 13) * 6.28
+          local amp = sp * 0.22
+          px, py = px + ce / cs * amp * sin(beat), py + cn / cs * amp * sin(beat)
+          local dv = cos(beat) >= 0 and 1 or -1
+          local k = min(0.85, 0.45 + cs * 3)
+          local lv = sqrt(vx * vx + vy * vy) + 1e-9
+          vx, vy = vx / lv * (1 - k) + ce / cs * dv * k, vy / lv * (1 - k) + cn / cs * dv * k
+        end
+      end
       local wx, wy, wz = nx + (Ex * px + Nx * py) / state.R, ny + (Ey * px + Ny * py) / state.R, nz + (Ez * px + Nz * py) / state.R
       local wl = sqrt(wx * wx + wy * wy + wz * wz)
       wx, wy, wz = wx / wl, wy / wl, wz / wl

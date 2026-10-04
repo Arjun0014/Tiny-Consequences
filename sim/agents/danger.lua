@@ -82,6 +82,10 @@ end
 -- near, later asleep or far).
 function M.raise(W, p, cue, x, y, now, how)
   local c = C()
+  -- (S25, D-206) a meteor's strike is the danger for its first moments: the quake it makes and the fires its flash lights
+  -- the same instant do not take its place (whoever is near it runs from it first)
+  local a = p.alarm
+  if a and a.kind == "impact" and cue.kind ~= "impact" and now - a.t < c.imp_alarm_h * 0.5 then return end
   p.alarm = { kind = cue.kind, x = x, y = y, t = now, src = cue.src or 0, how = how }
   local v = rng.float(W.seed, rng.S.V3_CONFLICT, p.key, floor(now * 60) % 4294967296, 7)
   local delay = (p.act == "sleep" and c.wake_delay or c.notice_delay) * (0.5 + v)

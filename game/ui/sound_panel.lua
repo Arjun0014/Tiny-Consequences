@@ -34,6 +34,7 @@ local function store()
   for k in pairs(M.DEFAULT) do t[k] = audio.GROUPS[k] end
   pcall(sys.save, save_path(), t)
 end
+M.store = store   -- (S25: the settings menu keeps the same levels)
 
 function M.build(self)
   local S = { open = false, rows = {} }

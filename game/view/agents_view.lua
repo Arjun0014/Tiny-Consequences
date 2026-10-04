@@ -608,23 +608,42 @@ local function fill_buildings(V)
   -- (S24, D-188) a meteor's crater: the rim of earth and broken rock it threw up, stones flung out over the ground
   for ci, cr in ipairs(s.craters or {}) do
     local r = cr.r or 0.07
-    local n = 18
+    -- (S25, D-206) a big crater's rim: more mounds round it (as many as its size needs), a double ring - the raised lip
+    -- and the earth slumped outside it - and blocks thrown out over the ground
+    local rk = r / 0.075
+    local n = min(72, floor(18 * rk))
+    local ms = 0.42 * min(r / 0.03, 3.2)
     for q = 1, n do
       local a = q / n * 6.2832 + ci
       local u1 = ((q * 7919 + ci * 104729) % 97) / 97
-      local rr = r * (1.08 + 0.12 * u1)
+      local rr = r * (1.04 + 0.10 * u1)
       local x, y = cr.x + math.cos(a) * rr, cr.y + math.sin(a) * rr
       local g = 0.40 + 0.08 * u1
-      add(V, K.mound, x, y, 0, a, r / 0.03 * 0.42 * (0.85 + 0.3 * u1), 1.2 + 0.8 * u1, pack(g, g * 0.82, g * 0.64), 0, 0)
+      add(V, K.mound, x, y, 0, a, ms * (0.85 + 0.3 * u1), 1.4 + 0.9 * u1, pack(g, g * 0.82, g * 0.64), 0, 0)
+      if rk > 1.5 then
+        local rr2 = r * (1.22 + 0.12 * u1)
+        local g2 = 0.36 + 0.06 * u1
+        add(V, K.mound, cr.x + math.cos(a + 0.09) * rr2, cr.y + math.sin(a + 0.09) * rr2, 0, a, ms * 0.7 * (0.8 + 0.4 * u1), 0.9 + 0.5 * u1,
+          pack(g2, g2 * 0.80, g2 * 0.62), 0, 0)
+      end
     end
-    for q = 1, 12 do
-      local a = q / 12 * 6.2832 + ci + 0.26
+    local nb = min(40, floor(12 * rk))
+    for q = 1, nb do
+      local a = q / nb * 6.2832 + ci + 0.26
       local u1 = ((q * 7919 + ci * 104729) % 97) / 97
-      local x, y = cr.x + math.cos(a) * r * 1.3, cr.y + math.sin(a) * r * 1.3
-      add(V, (q % 3 == 0) and K.slab or K.boulder, x, y, 0, a + u1 * 3, S * (0.08 + 0.08 * u1), 0.55,
+      local x, y = cr.x + math.cos(a) * r * (1.3 + 0.2 * u1), cr.y + math.sin(a) * r * (1.3 + 0.2 * u1)
+      add(V, (q % 3 == 0) and K.slab or K.boulder, x, y, 0, a + u1 * 3, S * (0.08 + 0.08 * u1) * min(2, rk), 0.55,
         pack(0.44, 0.37, 0.30), pack(0.33, 0.28, 0.23), 0)
     end
-    for q = 1, 26 do
+    -- (the bowl's floor: broken rock and the dark melt where the rock struck)
+    for q = 1, min(30, floor(8 * rk)) do
+      local a = q * 2.399963 + ci * 0.7
+      local u1 = ((q * 4567 + ci * 31) % 83) / 83
+      local rr = r * 0.75 * math.sqrt(u1)
+      add(V, (q % 2 == 0) and K.slab or K.boulder, cr.x + math.cos(a) * rr, cr.y + math.sin(a) * rr, 0, a, S * (0.05 + 0.06 * u1) * min(2, rk), 0.5,
+        pack(0.20, 0.17, 0.15), pack(0.14, 0.12, 0.11), 0)
+    end
+    for q = 1, floor(26 * min(2, rk)) do
       local a = q * 2.399963 + ci
       local u1 = ((q * 6007 + ci * 7) % 89) / 89
       local rr = r * (1.4 + 3.5 * u1 * u1)
@@ -1400,6 +1419,7 @@ function M.traveller_unit(W, p, t)
   return x, y, z
 end
 function M.update_travellers(W, t, zoom)
+  local trade = require("sim.agents.trade")   -- (S25: a boat on a sea journey read `trade` as an undefined global here)
   local V3 = W.S.v3
   if not V3 or not M.villager_factory_url then return end
   M.tpool = M.tpool or {}

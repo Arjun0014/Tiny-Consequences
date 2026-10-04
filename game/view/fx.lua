@@ -31,6 +31,10 @@ M.flames, M.smoke, M.chim, M.bolts, M.pulses = {}, {}, {}, {}, {}
 -- (S24) the v3 volcanoes' plumes: steam rising from a vent as the pressure under it builds, dark ash after it erupts
 M.PLUMES = 18
 M.plume_steam, M.plume_ash = {}, {}
+-- (S25, D-206) a meteor's dust: a heavy column of earth and smoke over the crater at once, spreading and settling over
+-- DUST_H game hours (the planet's craters, W.S.powers.craters - on a map or off it)
+M.DUST, M.DUST_H = 28, 36
+M.plume_dust = {}
 M.pulse_res = {}
 
 -- A jagged bolt from the ground (y = 0) to the cloud base (y = 1), crossed quads per segment.
@@ -166,6 +170,7 @@ function M.init(W, flame_factory, smoke_factory, surface, surface_exact)
     make("smoke", { 0.86, 0.86, 0.88 }, nil, smoke_factory, M.CHIMNEY, M.chim, "/tc/chimney_smoke.bufferc")
     make("smoke", { 0.58, 0.58, 0.60 }, nil, smoke_factory, M.PLUMES, M.plume_steam, "/tc/plume_steam.bufferc")
     make("smoke", { 0.30, 0.28, 0.27 }, nil, smoke_factory, M.PLUMES, M.plume_ash, "/tc/plume_ash.bufferc")
+    make("smoke", { 0.46, 0.39, 0.32 }, nil, smoke_factory, M.DUST, M.plume_dust, "/tc/plume_dust.bufferc")
     for i = 1, M.BOLTS do
       local id = factory.create(flame_factory, vmath.vector3(0, 0, 0))
       local url = msg.url(nil, id, "mesh")
@@ -227,7 +232,9 @@ local function scan(W)
   local O = W.v3 and W.S.v3 and require("sim.agents.map").owners(W) or nil
   for c = 1, W.n do
     local f = F.fire[c]
-    if f > M.FIRE_MIN and not (O and O.by[c]) then
+    -- (S25, D-207) nor one a map covers in good part: its flames would stand over the map's own trees, which that fire
+    -- lights where it comes onto the map (blaze.planet) - the map's own flames show it there
+    if f > M.FIRE_MIN and not (O and (O.by[c] or (O.share[c] or 0) >= 0.25)) then
       local d = (g.X[c] * eye.x + g.Y[c] * eye.y + g.Z[c] * eye.z) / el
       if d > 0.1 then list[#list + 1] = { c, f } end
     end
@@ -239,6 +246,26 @@ local function scan(W)
 end
 
 local pos, scl, rot = vmath.vector3(), vmath.vector3(), vmath.quat()
+
+-- (S25) obj at the point of unit direction (ux, uy, uz), off_e east and off_n north of it along the ground, lifted
+local function place_dir(obj, ux, uy, uz, off_e, off_n, lift, s, sh)
+  local ex, ez = uz, -ux
+  local el = sqrt(ex * ex + ez * ez)
+  if el < 1e-6 then ex, ez, el = 1, 0, 1 end
+  ex, ez = ex / el, ez / el
+  local nx, ny, nz = uy * ez, uz * ex - ux * ez, -uy * ex
+  local x, y, z = ux + (ex * off_e + nx * off_n) / M.R0, uy + (ny * off_n) / M.R0, uz + (ez * off_e + nz * off_n) / M.R0
+  local l = sqrt(x * x + y * y + z * z)
+  x, y, z = x / l, y / l, z / l
+  local r, v = M.surface(x, y, z, obj.v)
+  obj.v = v
+  r = r + lift
+  pos.x, pos.y, pos.z = x * r, y * r, z * r
+  go.set_position(pos, obj.id)
+  go.set_rotation(vmx.set_up_yaw(rot, x, y, z, obj.phase), obj.id)
+  scl.x, scl.y, scl.z = s, s * sh, s
+  go.set_scale(scl, obj.id)
+end
 
 local function place(obj, W, cell, off_a, off_b, lift, s, sh)
   local g = W.grid
@@ -429,7 +456,7 @@ function M.update(W, dt, frozen)
       m.boom = true
       -- (S24) the blast's ring and the flash's, as far as the impact's own physics reach (sim/config.lua imp_*)
       local cv = require("sim.config").V3
-      M.pulse(W, m.cell, "power_meteor", cv.imp_flash * 2.2, m.dir)
+      M.pulse(W, m.cell, "power_meteor", cv.imp_flash * cv.imp_reach_k, m.dir)
       M.pulse(W, m.cell, "power_heat", cv.imp_blast * 1.6, m.dir)
       M.bolt(W, m.cell, m.dir)
       M.shake = 0.9
@@ -471,6 +498,43 @@ function M.update(W, dt, frozen)
       end
     end
   end
+  -- (S25, D-206) the meteors' dust over their craters: thick and tall at once, thinning and settling over M.DUST_H
+  local CRS = W.v3 and W.S.powers and W.S.powers.craters
+  local nd = 0
+  if CRS and #CRS > 0 then
+    M.R0 = M.R0 or state.R or 10
+    local now = require("game.platform.speed").v3_t or W.hour
+    for ci = #CRS, 1, -1 do
+      local cr = CRS[ci]
+      local age = now - (cr.t or now)
+      if age >= 0 and age < M.DUST_H and cr.x then
+        local ul = sqrt(cr.x * cr.x + cr.y * cr.y + cr.z * cr.z)
+        local ux, uy, uz = cr.x / ul, cr.y / ul, cr.z / ul
+        if ux * fxv + uy * fyv + uz * fzv > 0.5 then
+          local k = 1 - age / M.DUST_H
+          local n = min(M.DUST - nd, floor(8 + 20 * k))
+          for q = 1, n do
+            nd = nd + 1
+            local o = M.plume_dust[nd]
+            if not frozen then o.life = o.life + dt * (0.10 + 0.08 * (q % 3)) end
+            if o.life > 1 then o.life = o.life - 1; o.phase = o.phase + 1.7 end
+            local l = o.life
+            local a, b = sin(o.phase * 1.9 + q * 0.9), cos(o.phase * 2.7 + q * 0.7)
+            -- (a column that billows out at its top; low rolling clouds of dust spreading over the ground about it)
+            local low = q % 3 == 0
+            local big = 0.5 + 1.8 * k
+            local sz = (low and (0.10 + 0.25 * l) or (0.10 + 0.40 * l)) * big * (1 - 0.5 * l * l) + 0.002
+            local spread = low and (0.25 + 0.9 * l) * big or (0.08 + 0.35 * l * l) * big
+            local lift = low and 0.03 + 0.08 * l or (0.05 + l * 1.5 * big)
+            place_dir(o, ux, uy, uz, a * spread, b * spread, lift, sz, low and 0.55 or 0.9)
+            if not o.on then o.on = true; msg.post(o.url, MSG_ENABLE) end
+          end
+        end
+      end
+      if nd >= M.DUST then break end
+    end
+  end
+  for i = nd + 1, #M.plume_dust do local o = M.plume_dust[i]; if o.on then o.on = false; msg.post(o.url, MSG_DISABLE) end end
   for i = ns + 1, #M.plume_steam do local o = M.plume_steam[i]; if o.on then o.on = false; msg.post(o.url, MSG_DISABLE) end end
   for i = na + 1, #M.plume_ash do local o = M.plume_ash[i]; if o.on then o.on = false; msg.post(o.url, MSG_DISABLE) end end
   -- chimney smoke: each chimney gets a couple of puffs at different ages, rising and drifting

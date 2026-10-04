@@ -302,14 +302,21 @@ function P.meteor(W, p)
   PS.craters = PS.craters or {}
   PS.craters[#PS.craters + 1] = { cell = p.cell, x = ux, y = uy, z = uz, t = now, ev = ev, sea = W.geo.ocean[p.cell] == 1 }
   -- the impact on the maps within reach of the point (each map's own coordinates of it)
-  local reach = cv.imp_flash * 2.2
+  local reach = cv.imp_flash * cv.imp_reach_k
   if W.geo.ocean[p.cell] == 0 then
     local impact = require("sim.agents.impact")
     for _, s in ipairs(V.settlements) do
       if s.alive and s.land then
         local x, y = mapm.local_of(s, ux, uy, uz)
         local half = s.N * s.T * 0.5
-        if x and math.abs(x) < half + reach and math.abs(y) < half + reach then impact.strike(W, s, x, y, now, ev) end
+        if x and math.abs(x) < half + reach and math.abs(y) < half + reach then
+          impact.strike(W, s, x, y, now, ev)
+          -- (S25: the map whose own ground it struck, nearest its middle - where the news goes)
+          if math.abs(x) < half and math.abs(y) < half then
+            local dd = x * x + y * y
+            if not p.hit_d or dd < p.hit_d then p.hit_sid, p.hit_x, p.hit_y, p.hit_d = s.id, x, y, dd end
+          end
+        end
       end
     end
   end
@@ -334,6 +341,19 @@ function P.meteor(W, p)
       if slain > 0 then
         fauna.kill_in(W, { cl }, "grazers", slain, ev)
         fauna.kill_in(W, { cl }, "predators", slain, ev)
+      end
+      -- (S25, D-206) the blast on the cell's cover: its share of the woods thrown flat and the grass torn up and scorched
+      -- (as the maps' trees are), the ground left a scar that greens again by the planet's own regrowth - an island the
+      -- blast covers is laid waste by its reach, not by a rule about islands
+      local flat = max(0, min(1, (cv.imp_blast * 1.6 + 0.47 - d) / 0.94))
+      if flat > 0 then
+        local F = W.F
+        local lf, lg = F.forest[cl] * flat * 0.9, F.grass[cl] * flat * 0.7
+        F.forest[cl], F.grass[cl] = F.forest[cl] - lf, F.grass[cl] - lg
+        local blame = require("sim.causality.blame")
+        blame.step(W.C.forest, W.I.forest, cl, -lf, 0.0002, 480, -lf, ev, 0, 0, 0, 0, 0, 0)
+        blame.step(W.C.grass, W.I.grass, cl, -lg, 0.0005, 96, -lg, ev, 0, 0, 0, 0, 0, 0)
+        F.burn_scar[cl] = 1
       end
     end
   end
@@ -540,7 +560,22 @@ function M.apply(W, p)
   local f = P[p.power]
   if not f then error("unknown v3 power " .. tostring(p.power)) end
   if not p.cell or p.cell < 1 or p.cell > W.n then error("power needs a cell") end
-  return f(W, p)
+  local ev = f(W, p)
+  -- (S25, D-208) where the cast landed, on its root event: the news goes there (a village's map point, or the map a meteor
+  -- struck nearest its middle), never the village's square
+  local r = type(ev) == "number" and ev > 0 and W.E and W.E.rec and W.E.rec[ev]
+  if r then
+    local sid, x, y = p.sid, p.x, p.y
+    if not (sid and x) and p.hit_sid then sid, x, y = p.hit_sid, p.hit_x, p.hit_y end
+    r.data = r.data or {}
+    if sid and x then
+      r.data.at_sid, r.data.at_x, r.data.at_y = sid, x, y
+      -- (the chain's "Go there" reads the same point)
+      if r.data.settlement == nil then r.data.settlement = sid end
+      if r.data.x == nil then r.data.x, r.data.y = x, y end
+    end
+  end
+  return ev
 end
 
 function M.has(kind) return P[kind] ~= nil end
@@ -555,6 +590,7 @@ do
     if W.v3 and P[p.power] then return M.apply(W, p) end
     return base(W, p)
   end
+  require("sim.tutorial3")   -- (S25: the tutorial's start condition, a command like the powers)
 end
 
 return M

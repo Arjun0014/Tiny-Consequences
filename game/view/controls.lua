@@ -103,9 +103,47 @@ function M.v3_target(W, d, sx, sy)
   end
   if best then
     local x, y = mapm.local_of(best, ux, uy, uz)
+    -- (S25, D-212) the point on the village's ground AS DRAWN under the pointer: the ray met with the map's own ground
+    -- height (the planet's sphere put it behind what was aimed at)
+    local av = require("game.view.agents_view")
+    local VV = nil
+    for _, v in ipairs(av.SETS or {}) do if v.s == best then VV = v; break end end
+    if VV and VV.hg and x then
+      local ox, oy, oz, rx, ry, rz = camera.ray(sx, sy)
+      for _ = 1, 4 do
+        local hx, hy, hz = camera.hit_sphere(ox, oy, oz, rx, ry, rz, av.height(VV, x, y))
+        if not hx then break end
+        local l = math.sqrt(hx * hx + hy * hy + hz * hz)
+        local nx, ny = mapm.local_of(best, hx / l, hy / l, hz / l)
+        if not nx then break end
+        x, y = nx, ny
+      end
+    end
     if d.id == "lightning" or d.id == "sickness" then
       local ex, ey = M.entity_xy(W, best, picking.pick(W, sx, sy))
-      if ex then x, y = ex, ey end
+      if ex then x, y = ex, ey
+      elseif d.id == "lightning" and VV and x then
+        -- (S25, D-212) a tree aimed at by its trunk or its crown takes the bolt: the standing tree whose drawn trunk-to-
+        -- crown line passes nearest the pointer (within a few pixels)
+        local T = best.trees
+        local bt, bdist = nil, 16
+        require("sim.agents.blaze").trees_near(best, x, y, 0.14, function(k)
+          local sc = (0.38 + 0.55 * (T.size[k] or 0.7)) * 1.25
+          local x0, y0, z0 = av.world_pos(VV, T.x[k], T.y[k], 0)
+          local x1, y1, z1 = av.world_pos(VV, T.x[k], T.y[k], 0.075 * sc)
+          local ax, ay = camera.project(x0, y0, z0)
+          local bx, by = camera.project(x1, y1, z1)
+          if ax and bx then
+            local vx, vy = bx - ax, by - ay
+            local q = ((sx - ax) * vx + (sy - ay) * vy) / math.max(1e-6, vx * vx + vy * vy)
+            q = math.max(0, math.min(1, q))
+            local ddx, ddy = sx - (ax + vx * q), sy - (ay + vy * q)
+            local dd = math.sqrt(ddx * ddx + ddy * ddy)
+            if dd < bdist then bt, bdist = k, dd end
+          end
+        end)
+        if bt then x, y = T.x[bt], T.y[bt] end
+      end
     end
     local i = x and mapm.tile_of(best, x, y) or 0
     if i > 0 then opts.sid, opts.x, opts.y = best.id, x, y end

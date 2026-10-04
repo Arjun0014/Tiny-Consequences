@@ -345,6 +345,8 @@ local function sweep(W, s)
     local f = B[i]
     if f.out then
       table.remove(B, i)
+      -- (S25) when the village's fire last went out (the news says how long it burnt by it, not by when it looked)
+      if not s.fire_last or f.t > s.fire_last then s.fire_last = f.t end
       if f.rained then rained, last = rained + 1, f end
       if f.out == "burnt" then
         burn_out(W, s, f, f.t)
@@ -534,17 +536,20 @@ function M.planet(W, s, now)
       if pf > c.fire_planet_in and (not s.fire_in or s.fire_in[cl] ~= day) then
         s.fire_in = s.fire_in or {}
         s.fire_in[cl] = day
+        -- (S25, D-207) the fire comes onto the map as a front: the fire_front_n trees of that cell nearest the map's edge
+        -- (one a day left the planet's fire burning beside the map's standing trees for a week)
         local N, T = s.N, s.trees
-        local best, bd = nil, -1
+        local cand = {}
         for i = 1, N * N do
           local k = s.tree[i]
           if k and k > 0 and T.st[k] == 1 and s.cell_of[i] == cl then
             local ix, iy = (i - 1) % N + 1, floor((i - 1) / N) + 1
-            local edge = max(math.abs(ix - N / 2), math.abs(iy - N / 2))
-            if edge > bd then best, bd = k, edge end
+            cand[#cand + 1] = { k, -max(math.abs(ix - N / 2), math.abs(iy - N / 2)) }
           end
         end
-        if best then M.ignite(W, s, "tree", best, now, nil, W.C and W.C.fire and W.C.fire[cl] or 0) end
+        table.sort(cand, function(a, b) if a[2] ~= b[2] then return a[2] < b[2] end return a[1] < b[1] end)
+        local ev = W.C and W.C.fire and W.C.fire[cl] or 0
+        for q = 1, min(#cand, c.fire_front_n) do M.ignite(W, s, "tree", cand[q][1], now, nil, ev) end
       end
     end
   end
@@ -574,9 +579,10 @@ end
 
 -- (S24, D-189) A sudden blow at (x, y) - a bolt, a blast: every beast, wild animal and dog within r sees and hears it
 -- at once and bolts (each its own way and time: stock.jolt, wild.jolt, dogs.jolt).
-function M.jolt(W, s, x, y, now, r)
-  stock.jolt(W, s, x, y, now, r)
-  wild.jolt(W, s, x, y, now, r)
+function M.jolt(W, s, x, y, now, r, k)
+  -- (S25, D-206) k: how much farther than from a bolt they run (a meteor's blast: imp_jolt_k)
+  stock.jolt(W, s, x, y, now, r, k)
+  wild.jolt(W, s, x, y, now, r, k)
   dogs.jolt(W, s, x, y, now, r)
 end
 

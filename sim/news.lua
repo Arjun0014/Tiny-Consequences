@@ -345,13 +345,13 @@ local function on_deed(W, R, d, now)
     else
       local age = to and (d.t - to.born) / 1152 or 30
       if cause == "old age" or (cause == "illness" and age >= 16) then
-        local st = story(W, R, "passing:" .. d.id, "passing", s.id, d.t, { deed = d.id, pid = d.to, x = s.sqx, y = s.sqy })
+        local st = story(W, R, "passing:" .. d.id, "passing", s.id, d.t, { deed = d.id, pid = d.to, x = d.x or s.sqx, y = d.y or s.sqy })
         st.title = sfmt("A death at %s", s.name)
         line(st, sfmt("%s %s died of %s, aged %d", to and to.name or "?", to and to.surname or "", cause, floor(age)), d.t)
         st.active = false
       end
       if age < 16 or cause == "hunger" or cause == "wounds" or cause == "drowned" then
-        local st = story(W, R, "death:" .. s.id .. ":" .. floor(d.t / 24), "death", s.id, d.t, { deed = d.id, pid = d.to, x = s.sqx, y = s.sqy })
+        local st = story(W, R, "death:" .. s.id .. ":" .. floor(d.t / 24), "death", s.id, d.t, { deed = d.id, pid = d.to, x = d.x or s.sqx, y = d.y or s.sqy })
         local nd = count(st, "dead")
         st.title = nd == 1 and sfmt("A death at %s", s.name) or sfmt("%d deaths at %s", nd, s.name)
         line(st, sfmt("%s, %s, died of %s", to and to.name or "?", age < 1 and "a baby" or (age < 13 and "a child" or sfmt("%d", floor(age))), cause), d.t)
@@ -425,8 +425,12 @@ local function on_event(W, R, e, now)
     local title, text
     if s then title, text = ps(W, e, s, near) end
     if title then
+      -- (S25, D-208) where it landed: the point on the village's map it was aimed at (or struck), else the planet's cell
+      local ad = e.data
+      local at = ad and ad.at_sid and sett(W, ad.at_sid)
+      local fields = at and { ev = e.id, cell = e.cell, x = ad.at_x, y = ad.at_y } or { ev = e.id, cell = e.cell, at_cell = true }
       -- (the same power cast again over the same village within a few hours: one story, counted)
-      local st = story(W, R, "power:" .. e.kind .. ":" .. s.id .. ":" .. floor(now / 6), "power", s.id, now, { ev = e.id, cell = e.cell, x = s.sqx, y = s.sqy })
+      local st = story(W, R, "power:" .. e.kind .. ":" .. s.id .. ":" .. floor(now / 6), "power", at and at.id or s.id, now, fields)
       local n = count(st, "casts")
       st.title = title
       line(st, n == 1 and text or sfmt("%s (cast %d times)", text, n), now)
@@ -442,7 +446,7 @@ local function on_event(W, R, e, now)
       local dd = g.X[s.cell] * g.X[e.cell] + g.Y[s.cell] * g.Y[e.cell] + g.Z[s.cell] * g.Z[e.cell]
       if s.alive and dd > bd then best, bd = s, dd end
     end
-    local st = story(W, R, "eruption:" .. e.id, "eruption", best and best.id or 0, now, { ev = e.id, cell = e.cell })
+    local st = story(W, R, "eruption:" .. e.id, "eruption", best and best.id or 0, now, { ev = e.id, cell = e.cell, at_cell = true })
     st.title = sfmt("%s erupted", e.data and e.data.name or "A volcano")
     line(st, sfmt("An eruption of size %d", e.data and e.data.vei or e.mag or 1), now)
     st.active = true
@@ -549,7 +553,7 @@ local function poll_fire(W, R, s, now)
     fs.active = false
     -- (S22: only a story that saw something burn - a bolt on bare ground left no fire to go out)
     if not fs.weak and fs.burning then
-      local hrs = max(1, floor(now - fs.t0 + 0.5))
+      local hrs = max(1, floor(min(now, s.fire_last or now) - fs.t0 + 0.5))
       line(fs, hrs == 1 and "The fire is out after an hour" or sfmt("The fire is out after %d hours", hrs), now)
     end
   end
@@ -615,6 +619,35 @@ local function poll(W, R, s, now)
       end
     end
     if wet > (ff.n.wet or 0) then ff.n.wet = wet; line(ff, sfmt("Water in %s", plural(wet, "building")), now) end
+    -- (S25, D-208) no building in the water: the flood's own water - the flooded tile nearest the middle of where it lies
+    -- deepest (never the village's square)
+    if wet == 0 then
+      local fd = require("sim.agents.map").FLOOD[s]
+      if fd then
+        local N = s.N
+        local mx = 0
+        for i = 1, N * N do local d = fd[i]; if d and d > mx then mx = d end end
+        if mx > 0 then
+          local sx, sy, sw = 0, 0, 0
+          local thr = mx * 0.3
+          for i = 1, N * N do
+            local d = fd[i]
+            if d and d > thr then sx, sy, sw = sx + ((i - 1) % N) * d, sy + floor((i - 1) / N) * d, sw + d end
+          end
+          local cx, cy = sx / sw, sy / sw
+          local bi, bd = 0, 1e18
+          for i = 1, N * N do
+            local d = fd[i]
+            if d and d > thr then
+              local ex, ey = (i - 1) % N - cx, floor((i - 1) / N) - cy
+              local e2 = ex * ex + ey * ey
+              if e2 < bd then bi, bd = i, e2 end
+            end
+          end
+          if bi > 0 then ff.x, ff.y = require("sim.agents.map").tile_xy(s, bi) end
+        end
+      end
+    end
     if not ff.x then ff.x, ff.y = s.sqx, s.sqy end
     for _, id in ipairs(s.members) do
       local p = V.people[id]
@@ -1017,9 +1050,14 @@ function M.chain(W, st)
 end
 
 -- Where the camera goes for story st: the village, the point, someone to look at.
+-- (S25, D-208) a story on the planet itself (an eruption, a cast far from any village's map): its cell; a story about
+-- someone on the move (a bride, a household leaving or founding, a trader, relief, a raiding band): follow them.
+local FOLLOW = { bride = true, leaving = true, founding = true, trade = true, relief = true, raid = true }
 function M.focus(W, st)
+  if st.at_cell and st.cell then return { sid = 0, cell = st.cell, pid = st.pid } end
   local s = sett(W, st.sid)
-  return { sid = s and s.id or 0, x = st.x or (s and s.sqx) or 0, y = st.y or (s and s.sqy) or 0, pid = st.pid, cell = st.cell }
+  return { sid = s and s.id or 0, x = st.x or (s and s.sqx) or 0, y = st.y or (s and s.sqy) or 0, pid = st.pid, cell = st.cell,
+    follow = FOLLOW[st.kind] or nil }
 end
 
 return M
