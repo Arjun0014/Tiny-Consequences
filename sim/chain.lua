@@ -437,6 +437,12 @@ local function poll_village(W, R, I, s, now)
       nd.title = sfmt("The air at %s %d degrees %s the season", s.name, floor(math.abs(nd.peak) + 0.5), nd.peak > 0 and "above" or "below")
       nd.active = true
       touch(I, nd, now)
+      -- (S24) snow lying when the warm air came, gone now: it melted (its water is the river's rise, its own node)
+      local sn0 = I.snow0 and I.snow0[s.id] or 0
+      if a > 0 and sn0 > 0.02 and (s.snow or 0) <= 0.02 then
+        local mn, new = node(R, I, nd, "melt:" .. s.id, "melt", s.id, now)
+        if new then mn.title = sfmt("The snow at %s melted", s.name); touch(I, mn, now) end
+      end
     end
   end
 end
@@ -812,8 +818,10 @@ function M.update(W, now)
     if not I.soil0 then
       I.soil0 = {}
       I.flood0 = {}
+      I.snow0 = {}
       for _, s in ipairs(V.settlements) do
         I.soil0[s.id] = W.F.soil_water[s.cell]
+        I.snow0[s.id] = s.snow or 0
         if s.fl and (I.power == "rain" or I.kind == "power_weather") then I.flood0[s.id] = flood_tiles(s) end
       end
     end

@@ -1776,7 +1776,9 @@ its draws `minute x 32 + k` while keys up to 86 were in use: a key above 31 was 
 **Decision** (`sim/agents/stock.lua`): 128 keys a minute (no draw repeats another); each grazing candidate takes its turn, step and
 whim from the bits of one hash (10, 10 and 12 bits) and the turn's cos/sin from the fixed headings' table and a series in the small
 turn (|e| <= 0.175: exact to 1e-9; plain arithmetic, the same in every runtime) - the same model, its randomness unrepeated. With
-the gate-jam fix (D-197): **4.29 M** a game hour at day 0.
+the gate-jam fix (D-197): **4.29 M** a game hour at day 0 (day 192 4.40 M, year 8 5.02 M; S23 4.06 / 4.02 / 4.79). And the herd's hot
+`floor` calls (its draws, its pasture blocks) written `v - v % 1` - floor bit for bit, without the browser's C call (D-090): the
+world's hashes unchanged; release season 12.5 -> **12.1 s** (42.1 ms of sim a game hour; S23 11.8 s).
 
 ## D-203 · 2026-10-04 · A flood leaves its mud (session 24)
 **Context.** Arjun's list of damage that must stay: "flood mud". When a flood went down nothing marked where it had lain (the

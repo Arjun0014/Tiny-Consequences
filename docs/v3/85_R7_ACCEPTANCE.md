@@ -71,7 +71,7 @@ real downstream consequences, told in News / Why / Your actions. The "now" readi
 | Rain | a soaked floodplain (E) | runoff, the river up | river x16, flood 461 -> 3,040 tiles | rain, the flood wide over the land | the flood (nature's, older) | river x16; "The flood at Little Leelee spread" (new) | PASS |
 | Dry spell | Little Leelee | soil drying, warmer | soil 0.46 -> 0.33, +2.4 C, its flood gone | the ground browner (slow) | at the cast only | air warmer, soil dried | PASS (slow by nature) |
 | Cold air | Krikeivorn (15 C); Hottoodingle Hop at night (13.6 C) | 8 C colder | air 6.9 / 5.6 C; the sea 15.0 -> 14.5 (was -0.7) | nothing beyond the news card (no frost above freezing - physics) | "Cold air over Hottoodingle Hop - 8 degrees colder for 4 days" YOU | air colder | PASS (told, not seen) |
-| Warm air | Krikeivorn | 8 C warmer | air 21.3 C; the sea 15.0 (was 30.7) | - | at the cast | air warmer | PASS |
+| Warm air | Krikeivorn; Tekheim under snow (cold snap, -0.9 C) | a warm air mass, 8 C above the season | 21.3 C; the sea 15.0 (was 30.7); on snow: melted in 12 h, the river x4.8 | the snow gone, white to green | "Warm air over Tekheim - 8 degrees above the season" YOU | air -> "The snow at Tekheim melted"; the river high | PASS |
 | Stir | Mount Fizzle (I) | pressure up | 58% at once; twice: erupted within a day (VEI 1), a quake 3.6 | grey steam at once; dark ash after | "Mount Fizzle stirred"; "Mount Fizzle erupted" YOU | pressure node, eruption, quake | PASS |
 | Strain | the fault under Tekheim (I) | stress up, a quake | magnitude 5.6 at Tekheim | the shake | "Quake at Tekheim" YOU | fault gave way -> ground shook | PASS |
 | Cull | deer about Hottoodingle Hop | 9 in 10 killed | 236 killed; the map 28 -> 7 -> 4 (was 24 again a day later) | fewer deer, carcasses | "21 boar dead about Hottoodingle Hop" | herds thinned, the dead | PASS |
@@ -83,7 +83,8 @@ real downstream consequences, told in News / Why / Your actions. The "now" readi
 | Warm sea | off Zurug (G) | the sea warmer | 28 -> 32 C; its fish 79% of before | fewer schools over days | at the cast; "Fewer fish off Zurug" (new) | sea warmer -> fish fewer | PASS |
 | Oil | off Zurug (F) | a slick | oil 1.0; the shore 22.5 -> 1.3; 10 gulls oiled; fish 0.73 -> 0.61 | a dark slick over the bay | "Oil on the coast at Zurug - 10 gulls oiled" YOU | slick -> fish fewer, shore fouled, gulls | PASS |
 
-## 4. The play matrix A-I (contact sheets in `docs/v3/accept/`)
+## 4. The play matrix A-I (contact sheets in `docs/v3/accept/`; also `bolt_targets.jpg`, `bolt_fields.jpg`, `warm_on_snow.jpg`,
+`herd_move.jpg`, `herd_close.jpg`, `fish.jpg`)
 
 A meteor on a village (`A_meteor_village.jpg`, `A_meteor_planet.jpg`), B a bolt into a flock (`B_lightning_herd.jpg`),
 C fire beside a flock (`C_fire_herd.jpg`: mean distance 0.20 -> 0.40 -> 0.53 in 18 min, none within 0.2 after, back when
@@ -91,9 +92,23 @@ it is out), D rain on a fire (`D_rain_fire.jpg`), E rain on a soaked floodplain 
 village (`F_oil_shore.jpg`), G warm sea (`G_sea_warm.jpg`), H blight (`H_blight.jpg`), I a volcano and a quake
 (`I_volcano.jpg`, `I_quake.jpg`).
 
-## 5. The god's bolt on each kind of target (matrix2)
+## 5. The god's bolt on each kind of target (`out/accept/matrix2`, aimed with `accept.aim_target`: a target the aimed bolt takes itself)
 
-(filled from `out/accept/matrix2`)
+| Target | Preview | Observed | News / Why | Your actions | Verdict |
+|---|---|---|---|---|---|
+| A sheep in a grazing flock | "The bolt would take ..." | 6 dead (5 by the current in the ground), the flock scattered running | "Lightning killed 6 beasts at Tekheim" YOU | "The bolt killed 6 beasts (5 by the current)" | PASS |
+| A cow | "one of the Stursons' cattle" | the cow killed | "Lightning killed a cow at Tekheim - Lost by the Stursons" YOU | 1 node | PASS |
+| A wild deer (Hottoodingle Hop) | "a wild deer" | killed where it stood | "Lightning killed a deer at Hottoodingle Hop - A wild one, dead where it stood" YOU | 1 node | PASS |
+| A wolf (a pack brought first) | "a wild wolf" | 3 wolves dead (2 by the current) | "Lightning killed 3 beasts at Tekheim" YOU | "The bolt killed 3 beasts (2 by the current)" | PASS |
+| A dog | "a dog" | the dog killed | "Lightning killed a dog at Tekheim - Lost by the Tustrands" YOU | 1 node | PASS |
+| A person out of doors | "Kirnor Tustrand, out of doors" | Kirnor killed | "Lightning struck Kirnor at Tekheim" YOU | "The bolt struck someone" -> "Kirnor died (lightning)" | PASS |
+| A dry tree by a house | "a tree" | the tree burnt alone (4 h) | "Fire in Tekheim" YOU | bolt -> fire | PASS |
+| The same tree on soaked ground | "a tree" | struck, no fire | "Lightning struck a tree at Tekheim" YOU | 1 node | PASS |
+| A house | "the Tustrand house" | the roof alight; put out by neighbours, or burnt (household lodged) | "A house caught fire" YOU | bolt -> fire -> lodging | PASS |
+| A green growing field | "the bare ground" | the ground struck; green corn does not burn | told | 1 node | PASS (physics) |
+| Dry standing corn and stooks in a drought (Krikeivorn) | "the bare ground" | the field alight, burnt in an hour, 10 sheaves lost (lights about 2 times in 3 at this dryness: 12 of 20 headless) | "Fire in Krikeivorn" YOU | bolt -> "a field caught fire; a field burnt" | PASS |
+
+The god's bolt never killed half a village: its lethal reach is its current's (`strike_gc x 4 x stride`), a few strides.
 
 ## 6. Herds and fish
 

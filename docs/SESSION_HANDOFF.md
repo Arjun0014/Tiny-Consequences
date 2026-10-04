@@ -1,6 +1,64 @@
-# Session handoff — session 24 (4 Oct 2026, R7 ACCEPTANCE AUDIT): the god powers made to work in real play - clouds, meteor, the god's bolt, one fire at two scales, scars, herds; D-188-D-194
+# Session handoff — session 24 (4 Oct 2026, R7 ACCEPTANCE AUDIT): every god power played in the real game and made to work; herds, fish, scars, what the world tells; D-188-D-204
 
-## CHECKPOINT (~900K tokens, session 24) - read this first after a compaction
+## FINAL STATE (end of session 24)
+- main, all committed (last: see `git log -1`). Worktrees made for long runs are removed.
+- **The acceptance audit**: `docs/v3/85_R7_ACCEPTANCE.md` - what was broken at the start (reproduced in the browser), why, what
+  changed physically and visually, every power in its contexts (a table, with the browser's readings), the play matrix A-I (contact
+  sheets in `docs/v3/accept/`). The tool: `node scripts/play_accept.mjs --case NAME[,NAME] --tag T [--no-build] [--sett K] [--lh H]`
+  (the real game in headless Chromium on the GPU, ANGLE D3D11; shots and `report.json` in `out/accept/<tag>/`).
+- Tests: quick sim suite **211/211** on the final sim code (three emergent tests widened, D-204); lint clean (312 files); debug and
+  release builds OK; web tests **11/11** (incl. W10: the v3 world in the browser equals LuaJIT).
+- Browser = LuaJIT (release): **identical** - untouched 72 h, and `--premise powers2|fire|flood5|conflict` 96 h.
+- 8 untouched years (`luajit tools/v3_chronicle.lua --days 384`, final sim): births 44; deaths illness 16, old age 4, **hunger 0**;
+  no door cut off; 167 people at the end (the checkpoint code: births 45, illness 12, old age 4, drowned 2 - a boat lost in a squall).
+- Cost (LuaJIT instructions a game hour, `luajit -joff tools/v3_profile.lua`): day 0 **4.29 M**, day 192 **4.40 M**, year 8 **5.02 M**
+  (S23 4.06 / 4.02 / 4.79); stock.lua 36-38% in grown worlds - the herd neighbour scan.
+- Release benchmark (`node scripts/prof_web.mjs --release --hours 288 --runs 3`): lower envelope **42.1 ms of sim a game hour, a
+  12-day season 12.1 s** (S23 11.8 s; 43.4 ms / 12.5 s before the last exact change: `v - v % 1` for the herd's hot `floor` calls).
+
+## What session 24 did (D-188-D-204)
+Arjun's playtest: the god powers weak or broken in real play; clouds hiding the village; herds as blobs. The brief: the playable
+game is the authority; no new systems; every power must hit where aimed, change physical state, respond visibly at once, affect
+what is exposed, make real consequences and tell them in News / Why / Your actions.
+- **Clouds** (D-193): the layer lifts as the eye comes down - the village clear from zoom 1.1 (the cloud hid >= 90% to 1.35).
+- **Meteor** (D-188): crater, blast by overpressure, thermal flash, shaking - by distance on people, beasts, buildings, trees,
+  fields; the planet's part by the same physics; its toll told. On Tekheim's square: 4-9 killed, every house down, 62-95 fires,
+  households camping, hunger two days on traced to it (before: nobody died).
+- **The god's bolt** (D-189): aimed; a superbolt's current through the ground by stride; fire by dryness; scorch; every beast
+  near bolts. Into a flock: 6 dead (before: 1); a cow; a deer; 3 wolves; a dog; a person in the open (killed); a dry tree; a house.
+- **One fire at two scales** (D-190, D-200): a map's cells burn by the map's fire; the planet's burns in patches by intensity.
+- **Scars** (D-191, D-203): ruins, snags, thrown trunks, crater (and a planet crater ring off the maps), scorch, dead livestock,
+  flood mud, blight drawn on the rows (D-201).
+- **Herds** (D-192, D-197): each follows where the one ahead is going; grazing each its own patch; making room from the whole
+  press; a fold passed only at its gate (the flock leaves as a stream: elongation 3.1, alignment 0.80 at the gate); spacing at
+  grazing 0.031-0.036 (sep 0.034; before 0.010-0.019).
+- **Fish** (D-195): drawn from the sea's own fish (`F.fish`), the same field the fishers' nets draw on.
+- **Honest maps** (D-196): a map shows one in five of its herds' wild animals - a cull now shows (28 -> 7).
+- **Told right** (D-198, D-201): fires carry their planet cause; a village's sea is two rings out; a stirred mountain's pressure;
+  hunger's cause; rain putting a fire out; a flood the rain spread; fewer fish; a later bolt is its own story.
+- **Bugs the audit found** (D-194, D-199, D-197): a village with no roof starved beside its granary (camps); deaths skipped the
+  next person; a burnt fold was never rebuilt (a lot's stumps never dug); the bolt on a pen's hurdles; a jolt before the queue;
+  the gate jam (one beast 3,900 decisions a day); lambs shut out of the fold at night; the herd's random keys repeating.
+- **Cost** (D-202): exact - three draws from one hash, the turn's trig by series; the gate jam fixed: day 0 4.29 M.
+
+## Next (in order)
+1. Play it as Arjun would - each power once, close in and from orbit; a flock going out at dawn; the sea off a fishing village; a
+   meteor on a village and its aftermath over days - and fix what reads wrong (the playable game is the authority).
+2. The herd neighbour scan's cost in grown worlds (exact changes only): day 192 4.40 M instructions a game hour (stock 36%), year 8
+   5.02 M (stock 38%); `stock.scan` is O(herd) per decision and herds grow - an index that keeps the same answers.
+3. R6: captives only as persistent people; the palisade's gates kept at night; traded grain carrying blight's taint.
+4. Smaller: a steam plume seen from straight above reads as a grey cloud; cold or warm air at mild temperatures shows nothing (told
+   only); the planet's crater is small as its physics says.
+
+## Pitfalls
+- `goto` is LuaJIT-only (the browser runs Lua 5.1); a view module must not require back into a module that requires it (bob);
+  the grid's `spacing` is on the unit sphere (world units = spacing x R); JS arrays are 0-based (a Lua `{x, y}` reaches JS as
+  `[x, y]` - return `{ x =, y = }`); running `node -e "import('./scripts/play_accept.mjs')"` RUNS the harness (it rebuilt the app
+  mid-batch) - use `node --check`; Python writes to repo files sometimes fail with Errno 22 while a test run reads them (retry);
+  `v3_goto{lh}` is the local hour of `sett`; a test that asserts one emergent outcome in a window breaks when the world's course
+  changes - assert the mechanism and accept the outcomes its rules allow (D-204).
+
+## CHECKPOINT (mid-session 24, kept for its record of Arjun's brief and the first half's state)
 **Arjun's brief (session 24 prompt, kept in this section):** the playable game is the authority; no new systems (no captives,
 no more powers, no social systems, nothing decorative) until the R7 acceptance audit is convincing. Every god power must (1) hit
 where aimed, (2) change physical state clearly, (3) show an immediate visual response, (4) affect what is exposed, (5) make real

@@ -4,15 +4,15 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Current state
 
-- **SESSION 24 (4 Oct 2026, R7 ACCEPTANCE AUDIT - read `docs/SESSION_HANDOFF.md` session 24 first): Arjun's playtest found the
-  god powers weak or broken in real play; no new systems until the existing game works.** The playable game is the authority:
-  `scripts/play_accept.mjs` plays each case in the real game drawn on the GPU (ANGLE D3D11) and shoots before / at once / after
-  with the sim's readings (`game/platform/accept.lua`, bridge `lua`), the news and "Your actions". Fixed so far: clouds high above
-  the village (D-193); the meteor as physics - crater, blast, flash (D-188); the god's bolt aimed, its current through the ground,
-  beasts bolting from a sudden blow (D-189); one fire at two scales (D-190); scars that stay (D-191); herds that string out and
-  graze their own patches (D-192); roofless households camp (D-194); deaths no longer skip the next person (D-188). Plan for the
-  rest of the session, in order: the remaining powers in their contexts (the acceptance matrix), the herds again (fences and the
-  gate), fish, the final play matrix A-I, performance, the end checks.
+- **SESSION 24 (4 Oct 2026, ENDED - R7 ACCEPTANCE AUDIT; read `docs/SESSION_HANDOFF.md` session 24 FINAL STATE and
+  `docs/v3/85_R7_ACCEPTANCE.md` first): Arjun's playtest found the god powers weak or broken in real play; no new systems until
+  the existing game works.** Every power was played in the real game (`scripts/play_accept.mjs`: headless Chromium on the GPU,
+  before / at once / after shots, the sim's readings, News, Why, Your actions) in two or more contexts and made to work: clouds
+  lifted above the village view (D-193); the meteor as physics - crater, blast, flash (D-188); the god's bolt aimed with its
+  current through the ground (D-189); one fire at two scales (D-190, D-200); scars that stay - ruins, snags, crater, scorch, flood
+  mud, blight on the rows (D-191, D-203, D-201); herds through their gate at natural spacing (D-192, D-197); fish from the sea's
+  own fish (D-195); honest wild herds on the maps (D-196); consequences told right (D-198, D-201); bugs the audit found (D-194,
+  D-199); the herd's cost exactly (D-202); three emergent tests widened (D-204). Final checks: quick suite 211/211; lint clean (312 files); debug and release builds OK; browser = LuaJIT identical (untouched 72 h; powers2, fire, flood5, conflict 96 h); 8 untouched years: births 44, deaths illness 16 / old age 4 / hunger 0; cost 4.29 / 4.40 / 5.02 M instructions a game hour at day 0 / 192 / year 8 (S23 4.06 / 4.02 / 4.79); release season 12.1 s (42.1 ms/h; S23 11.8 s).
 
 - **SESSION 23 (4 Oct 2026, extended autonomous run - read `docs/SESSION_HANDOFF.md` session 23 first): the hydrology fix verified (D-179), clouds v5 - one cloud layer the camera flies through (D-180), the village mix with the herds as texture (D-181), CHAIN REACTION - "Your actions": what each cast caused, forward along real links (D-182, `docs/v3/77_CHAIN_REACTION.md`), R7 v2 powers - sickness in a herd, blight, warm/cool sea, oil, meteor (D-183).** Following the drifting tests found wolves eating at a kill from across a river; the 8-year run found a nursing mother walking to her kin for food while her newborn starved at home (both fixed). **After the checkpoint (D-184):** the second 8-year run starved 11 beside a full granary - followed to four mechanisms (a pit that sealed a house, play loops that carried children through it, toddlers who never got their strength back, a crier who gave birth on the road), all fixed with tests; aim previews, the flood's smooth edge, the news so far, the Sound pill. Also oil on a coast (D-185), a household with no roof (D-186) and R6f the palisade (D-187). Final: suite 208/208, web 11/11, browser = LuaJIT identical, 8 years hunger 0. See the session 23 entry below.
 
@@ -118,6 +118,30 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 - Bundle size: 3.12 MB release
 
 ## Stage entries
+
+### [v3] Session 24 (second half): every power in its contexts, herds, fish, honest maps, what the world tells (D-195-D-204) (2026-10-04)
+- **The acceptance audit** (`docs/v3/85_R7_ACCEPTANCE.md`, contact sheets `docs/v3/accept/`): every power played in the real game in
+  two or more contexts (`scripts/play_accept.mjs`, ~45 cases), before / at once / after, sim, News, Why, Your actions; the play
+  matrix A-I. New cases: aimed bolts on a deer, wolves, a dog, a person, a ripe field, wet ground (`accept.aim_target`); second
+  contexts for dry, cold, warm (on snow), sickness (cattle), blight, warm sea and oil (Tekheim); volcano stirred past its threshold.
+- **Fish** (D-195, `game/view/fish.lua`): schools from `F.fish` (the fishers' field) - 13 over Tekheim's sea; a units bug (grid
+  spacing is on the unit sphere) had drawn them ten times too small.
+- **Wild herds on the maps** (D-196): `wild_seen` 1.0 -> 0.2, `wild_max` 24 -> 32 - every map sat at the cap; a deer cull now
+  shows (28 -> 7 -> 4).
+- **Herds** (D-197): through the gate only (shut behind them), round a fold, after where the one ahead is going, room from the whole
+  press, still-in beasts head for the gate (a jam made one beast decide 3,900 times a day), lambs follow mothers in at the gate.
+  Browser: the flock leaves as a stream (elongation 3.1, alignment 0.80), grazes at nn 0.031-0.036 (sep 0.034).
+- **Told right** (D-198, D-201): planet fires carry their cause onto the maps; a village's sea is two rings out; stir's pressure;
+  fish nodes; hunger traced to the harm; a later bolt its own story; "The rain put out the fire at Tekheim" (deed `rained_out`);
+  "The flood at Little Leelee spread: 3040 tiles (461 before)"; "Fewer fish off Zurug"; blight drawn (rows wither, the field
+  yellows by its spread).
+- **Bugs** (D-199): a lot's stumps were never dug (a burnt fold never rebuilt); the god's bolt on an open pen's hurdles; a jolt
+  before the event queue existed.
+- **Planet** (D-200): fire in patches by intensity; meteor craters as props; a volcano's steam and ash.
+- **Cost** (D-202): the herd's random keys repeated across minutes (fixed: 128 a minute); the grazing choice's three draws from one
+  hash and its trig by series (exact) - day 0 4.95 -> 4.29 M instructions a game hour; day 192 4.40 M (S23 4.02 M).
+- **Flood mud** (D-203); three emergent-outcome tests widened (D-204).
+- Checks: quick suite 211/211; lint clean (312 files); debug and release builds OK; browser = LuaJIT identical (untouched 72 h; powers2, fire, flood5, conflict 96 h); 8 untouched years: births 44, deaths illness 16 / old age 4 / hunger 0; cost 4.29 / 4.40 / 5.02 M instructions a game hour at day 0 / 192 / year 8 (S23 4.06 / 4.02 / 4.79); release season 12.1 s (42.1 ms/h; S23 11.8 s); web 11/11.
 
 ### [v3] Session 24: the R7 acceptance audit - the meteor, the god's bolt, one fire at two scales, scars, herds, clouds (D-188-D-194) (2026-10-04)
 - **Reproduced in the browser first** (`scripts/play_accept.mjs --case clouds|meteor_village|lightning_herd`, out/accept/before):

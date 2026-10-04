@@ -368,7 +368,8 @@ const PSPECS = {
   lightning_dog: { sid: 1, power: 'lightning', lh: 10, aim: { what: 'dog' }, zoom: 1.45, after: [0.25, 1] },
   lightning_person: { sid: 1, power: 'lightning', lh: 11, aim: { what: 'person' }, zoom: 1.45, after: [0.25, 2] },
   lightning_field_dry: { sid: 1, power: 'lightning', lh: 13, setup: SETUP.dry(1), field: true, zoom: 1.35, after: [1, 4] },
-  lightning_field_ripe: { sid: 6, power: 'lightning', lh: 13, setup: SETUP.dry(6), field: 'ripe', zoom: 1.35, after: [1, 4] },
+  lightning_field_ripe: { sid: 6, power: 'lightning', lh: 14, days: 0, setup: SETUP.dry(6), field: 'ripe', zoom: 1.35, after: [1, 4],
+    read: `local s = W.S.v3.settlements[6]; local d; for _, q in ipairs(W.S.v3.deeds) do if q.kind == "strike" and q.at == 6 then d = q end end; local b = require('sim.agents.blaze'); local m = require('sim.agents.map'); local n = 0; for _, f in ipairs(s.burn or {}) do n = n + 1 end; local i = d and m.tile_of(s, d.x, d.y) or 0; local pk = i > 0 and s.plot[i] or 0; local pl = pk > 0 and s.plots[pk]; return string.format("what %s at %.3f,%.3f plot %d fuel %.2f stage %s dry %.2f rain %s burning %d now %.3f t %.3f", d and d.what or "-", d and d.x or 0, d and d.y or 0, pk, pl and b.plot_fuel(pl) or -1, pl and pl.stage or "-", b.dryness(W, s), tostring(s.rain_now), n, now, d and d.t or 0)` },
   lightning_wet: { sid: 1, power: 'lightning', lh: 13, setup: SETUP.soaked(1), what: 'tree_near_house', zoom: 1.35, after: [1, 4] },
   // (S24) second contexts for the powers seen once
   dry_tekheim: { sid: 1, power: 'dry', lh: 10, zoom: 1.2, far: 0.8, after: [24, 96, 144] },
@@ -431,7 +432,7 @@ async function pcase(g, dir, out, sp) {
     look = await g.cmd({ cmd: 'v3_look', sett: sid, x: ax, y: ay, zoom: sp.zoom || 1.4 });
   } else if (sp.field) {
     const stage = sp.field === 'ripe' ? 'ripe' : 'growing';
-    const f = await g.lua(`local s = W.S.v3.settlements[${sid}]; for _, pl in ipairs(s.plots) do if pl.alive and pl.stage == "${stage}" then return { x = (pl.x0 + pl.x1) / 2, y = (pl.y0 + pl.y1) / 2 } end end; return nil`);
+    const f = await g.lua(`local s = W.S.v3.settlements[${sid}]; for _, pl in ipairs(s.plots) do if pl.alive and pl.stage == "${stage}" and ("${stage}" ~= "ripe" or require('sim.agents.blaze').plot_fuel(pl) > 0.3) then return { x = (pl.x0 + pl.x1) / 2, y = (pl.y0 + pl.y1) / 2 } end end; return nil`);
     if (!f) throw new Error(`no ${stage} field`);
     ax = f.x; ay = f.y;
     look = await g.cmd({ cmd: 'v3_look', sett: sid, x: ax, y: ay, zoom: sp.zoom || 1.35 });

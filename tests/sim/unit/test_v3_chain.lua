@@ -42,7 +42,7 @@ end
 
 -- every node rests on something real: a deed or event that exists, or a reading of live state
 local STATE = { soil = true, river = true, air = true, crops = true, packs = true, herds = true, lodging = true, hunger = true,
-  leaving = true, founding = true, fire = true, spread = true }
+  leaving = true, founding = true, fire = true, spread = true, melt = true }
 local function rests_on_the_world(W, I)
   local bad = {}
   for _, row in ipairs(chain.rows(W, I, 500)) do

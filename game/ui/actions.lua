@@ -29,7 +29,7 @@ local DANGER = { fire = true, flood = true, quake = true, wave = true, death = t
   sickness = true, impact = true, blight = true, fouled = true, oiled = true }
 local HELP = { help = true, lodging = true, ["return"] = true, pay = true, takenin = true, fed = true, palisade = true, rainout = true }
 local STATE = { soil = true, river = true, air = true, crops = true, sick = true, fields = true, seed = true, sea = true, fish = true,
-  oil = true, dust = true, packs = true, herds = true, volc = true, spread = true }
+  oil = true, dust = true, packs = true, herds = true, volc = true, spread = true, melt = true }
 local BLUE = vmath.vector4(0.24, 0.45, 0.70, 1)
 
 local function trunc(font, str, px, w)

@@ -127,12 +127,15 @@ function M.young(a, t) return M.age(a, t) < SP(a.sp).young_years end
 -- per draw keyed by the minute of the day (the browser's Lua pays dearly for every hash, D-089,
 -- D-092). (S24: 128 keys a minute - with 32, the keys above 31 were the next minutes' draws)
 local function u(W, s, H, a, now, k)
-  local day = floor(now / 24)
+  -- (S24: v - v % 1 is floor(v) for every finite v, bit for bit - and no C call in the browser's Lua, D-090)
+  local day = now / 24
+  day = day - day % 1
   if a.rd ~= day then
     a.rd = day
     a.rb = rng.hash(W.seed, rng.S.V3_MAP, s.key * 7 + M.HIDX[H.kind] * 20000 + a.k, day % 4294967296, 500)
   end
-  return rng.fbase(a.rb, (floor(now * 60) % 1440) * 128 + k)
+  local mn = now * 60
+  return rng.fbase(a.rb, ((mn - mn % 1) % 1440) * 128 + k)
 end
 -- (S24) the seven headings a grazer weighs: q x 0.6 rad about its way
 local CQ, SQ = {}, {}
@@ -145,8 +148,9 @@ M.BS = BS
 local function block_of(s, x, y)
   local N = s.N
   local bn = N / BS
-  local bx = floor((x / s.T + N / 2) / BS)
-  local by = floor((y / s.T + N / 2) / BS)
+  local bx = (x / s.T + N / 2) / BS
+  local by = (y / s.T + N / 2) / BS
+  bx, by = bx - bx % 1, by - by % 1
   if bx < 0 or by < 0 or bx >= bn or by >= bn then return 0 end
   return by * bn + bx + 1
 end

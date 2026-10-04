@@ -548,7 +548,10 @@ local function poll_fire(W, R, s, now)
   elseif fs and not fs.closed and fs.active then
     fs.active = false
     -- (S22: only a story that saw something burn - a bolt on bare ground left no fire to go out)
-    if not fs.weak and fs.burning then line(fs, sfmt("The fire is out after %d hours", max(1, floor(now - fs.t0 + 0.5))), now) end
+    if not fs.weak and fs.burning then
+      local hrs = max(1, floor(now - fs.t0 + 0.5))
+      line(fs, hrs == 1 and "The fire is out after an hour" or sfmt("The fire is out after %d hours", hrs), now)
+    end
   end
 end
 
