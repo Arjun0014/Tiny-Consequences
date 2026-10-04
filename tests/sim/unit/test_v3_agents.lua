@@ -450,7 +450,9 @@ function M.hungry_village_asks_for_help()
   end
   Z.granary.stock.grain = Z.granary.stock.grain + 1500
   local t0 = W.hour
-  for h = 1, 24 * 4 do world.advance(W, t0 + h) end
+  -- (S24, D-204: six days - in this world's course the first sent to ask, a man of 52, died of old age on the road; the
+  -- relief came with the second, on the fifth day)
+  for h = 1, 24 * 6 do world.advance(W, t0 + h) end
   T.ok((H.acc.relief_in or 0) >= 10, "relief carried to " .. H.name .. " " .. tostring(H.acc.relief_in))
   T.ok((Z.acc.relief_out or 0) >= 10, "relief given by " .. Z.name .. " " .. tostring(Z.acc.relief_out))
   local r = require("sim.agents.econ").rel(H, Z)
@@ -722,11 +724,21 @@ function M.a_man_goes_courting()
   local t2 = W.hour
   -- (S22: 9 days - with the babies born meanwhile living their own lives the village's course differs;
   -- relief from a neighbouring village may come first and the household ask its kin later)
+  -- (S24, D-204: the least food at home of a household with kin at O - kin are asked only when it runs short)
+  local thk = require("sim.agents.think")
+  local short = 1e9
   for h = 1, 24 * 9 do
     world.advance(W, t2 + h)
     for _, id in ipairs(H.members) do
       local q = V.people[id]
       if q.alive and q.trip and q.trip.ask_kin then asked, asker = true, q end
+      if q.alive and h % 6 == 0 then
+        local kin = false
+        for _, e in ipairs(thk.kin_away(W, q)) do if e.q.sett == O.id then kin = true end end
+        local hq = kin and V.households[q.hh]
+        local home = hq and H.buildings[hq.home or 0]
+        if home then short = math.min(short, (people.pantry(home) + (home.stock.meals or 0)) / (math.max(1, #hq.members) * 0.75)) end
+      end
     end
     if (O.acc.kin_help or 0) > 0 and asker and not asker.trip then break end
   end
@@ -735,6 +747,15 @@ function M.a_man_goes_courting()
   -- with them, on the road there, counts)
   local hb = V.households[bride.hh]
   local moved = hb and hb.migrate and hb.migrate.to == O.id and not hb.migrate.given_up
+  -- (S24, D-204: or a neighbour's relief filled the granary first - "the village has little" no longer held, and kin are
+  -- asked only then: the mechanism itself, test_v3_kin)
+  local cv = require("sim.config").V3
+  local relieved = not asked and not moved and (H.acc.relief_in or 0) > 0 and (H.need.store_days or 0) >= cv.kin_ask_village
+  if relieved then return string.format("relief reached %s first (%d in): no need to ask kin", H.name, H.acc.relief_in) end
+  -- (or the households with kin there never ran short at home: what they found and were given kept them fed)
+  if not asked and not moved and short >= cv.kin_ask_days then
+    return string.format("the households of %s with kin at %s kept %.1f days of food at home or more: no need to ask", H.name, O.name, short)
+  end
   T.ok(asked or moved, "someone of " .. H.name .. " went to kin at " .. O.name .. " for help: " .. tostring(asker and asker.name)
     .. string.format(" [village food %.1f days]", H.need.food_days or -1))
   if moved and not asked then

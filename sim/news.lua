@@ -32,6 +32,7 @@ M.KINDS = {
   power = { 2, "star", 30 }, culled = { 2, "paw", 26 },
   -- (S23, R7 v2)
   sickness = { 3, "thermo", 26 }, blight = { 3, "blight", 26 }, impact = { 1, "meteor" }, oil = { 3, "oil", 30 },
+  fish = { 3, "fish", 28 },
   palisade = { 2, "house", 40 },
 }
 -- (S22) everyday life: at most this many cards at once (four "a new house" cards hid the rest)
@@ -147,8 +148,12 @@ local function on_deed(W, R, d, now)
     return
   end
   if k == "strike" then
-    -- lightning: news when it starts a fire or strikes someone (the fire's own story carries on)
-    local st = story(W, R, "fire:" .. s.id, "strike", s.id, d.t, { x = d.x, y = d.y, deed = d.id })
+    -- lightning: news when it starts a fire or strikes someone (the fire's own story carries on); (S24) a bolt while a
+    -- fire of another cause burns there is its own story (it read as a line of the meteor's fire)
+    local key = "fire:" .. s.id
+    local open = R.by_key[key]
+    if open and not open.closed and ((open.deed and open.deed ~= d.id) or (open.ev and open.ev ~= d.event)) then key = "strike:" .. d.id end
+    local st = story(W, R, key, "strike", s.id, d.t, { x = d.x, y = d.y, deed = d.id })
     -- (S22: what it struck, in the title)
     st.title = st.title or sfmt("Lightning struck %s at %s", d.what == "tree" and "a tree" or (d.what == "ground" and "the ground"
       or (d.what == "bld" and (BUILDING_WORD[d.bkind or ""] or "a building")) or "someone"), s.name)
@@ -172,6 +177,15 @@ local function on_deed(W, R, d, now)
       st.weak = false
       st.pid = d.to
       st.title = sfmt("Lightning struck %s at %s", q and q.name or "someone", s.name)
+    end
+  elseif k == "rained_out" then
+    -- (S24) the rain put the village's fire out: a line on the fire's story (its cause stays the fire's), and the rain's
+    -- own cause - a storm's or the god's - is the deed's
+    local st = R.by_key["fire:" .. s.id]
+    if st and not st.closed then
+      line(st, "The rain put the fire out", d.t)
+      st.rain_deed = d.id
+      st.active = false
     end
   elseif k == "doused" then
     local st = story(W, R, "fire:" .. s.id, "fire", s.id, d.t, { x = d.x, y = d.y, deed = d.id })
@@ -277,8 +291,10 @@ local function on_deed(W, R, d, now)
     -- (S24) beasts the blast and the flash killed
     local st = open_at(R, "impact", s.id)
     if st then
-      local nm = d.what == "cattle" and "cattle" or (d.what == "sheep" and "sheep" or ((d.what or "beast") .. "s"))
-      line(st, sfmt("%d %s of the village dead in the blast", d.n or 1, nm), d.t)
+      local n = d.n or 1
+      local one = d.what == "cattle" and "cow" or (d.what or "beast")
+      local nm = n == 1 and one or (d.what == "cattle" and "cattle" or (d.what == "sheep" and "sheep" or ((d.what or "beast") .. "s")))
+      line(st, n == 1 and sfmt("A %s of the village dead in the blast", nm) or sfmt("%d %s of the village dead in the blast", n, nm), d.t)
     end
   elseif k == "snow" then
     local st = story(W, R, "winter:" .. s.id, "winter", s.id, d.t, { deed = d.id, x = s.sqx, y = s.sqy })
@@ -506,6 +522,9 @@ local function poll_fire(W, R, s, now)
     -- (S23) the fire's cause: the deed that lit what burns (a bolt, the god's meteor); without it the story had no
     -- link and fell back to NATURE
     if not fs.deed and f.deed then fs.deed = f.deed end
+    -- (S24) a fire no deed lit here - the planet's, come in from a cell about the map: the event behind it (the meteor's
+    -- fire, a wildfire from its strike)
+    if not fs.deed and not fs.ev and f.ev then fs.ev = f.ev end
     fs.burning = n
     fs.x, fs.y, fs.active, fs.t1 = f.x, f.y, true, now
     fs.weak = false
@@ -533,8 +552,52 @@ local function poll_fire(W, R, s, now)
   end
 end
 
+-- (S24) The sea off village s (within two rings): its fish fewer by a cause the sea's own blame carries back to the god
+-- (a warm sea, oil) - a story once they are down a tenth from when that cause first marked them
+local function poll_sea(W, R, s, now)
+  local F, Cb, E = W.F, W.C, W.E
+  if not (Cb and Cb.fish and E and E.root) then return end
+  R.sea_of = R.sea_of or {}
+  local cells = R.sea_of[s.id]
+  if not cells then
+    cells = {}
+    for _, c in ipairs(require("sim.society.sites").rings(W, s.cell, 2)) do if W.geo.ocean[c] == 1 then cells[#cells + 1] = c end end
+    R.sea_of[s.id] = cells
+  end
+  if #cells == 0 then return end
+  local tag, fish = 0, 0
+  for _, c in ipairs(cells) do
+    fish = fish + (F.fish[c] or 0)
+    local tg = Cb.fish[c] or 0
+    if tag == 0 and tg ~= 0 then tag = tg end
+  end
+  local root = tag ~= 0 and E.root[tag] or nil
+  local re = root and E.rec[root]
+  local key = "fish:" .. s.id
+  local st = R.by_key[key]
+  if re and re.actor == "player" then
+    R.fish0 = R.fish0 or {}
+    local k0 = s.id .. ":" .. root
+    R.fish0[k0] = R.fish0[k0] or fish
+    local f0 = R.fish0[k0]
+    if f0 > 0 and fish < f0 * 0.9 then
+      st = story(W, R, key, "fish", s.id, now, { ev = tag, x = s.sqx, y = s.sqy })
+      st.title = sfmt("Fewer fish off %s", s.name)
+      local pc = floor(fish / f0 * 100 + 0.5)
+      if not st.n.pc or math.abs(pc - st.n.pc) >= 10 then
+        st.n.pc = pc
+        line(st, sfmt("The fish at %d%% of what was there", pc), now)
+      end
+      st.active, st.t1 = true, now
+    end
+  elseif st and not st.closed and st.active then
+    st.active = false
+  end
+end
+
 local function poll(W, R, s, now)
   local V = W.S.v3
+  poll_sea(W, R, s, now)
   -- flood
   local fl = s.fl
   local ff = R.flood_at and R.flood_at[s.id]
@@ -739,6 +802,12 @@ local function poll(W, R, s, now)
   if edge >= 2 then
     hs = story(W, R, "hunger:" .. s.id, "hunger", s.id, now, { x = s.sqx, y = s.sqy })
     hs.title = sfmt("Hunger at %s", s.name)
+    -- (S24) its cause: the harm the sim reads as the hungry household's heaviest of late (deeds.top_harm, as the
+    -- chain reads it: a house and its larder thrown down, a granary burnt) - none, and it is the year's own
+    if not hs.deed and starving and V.deeds then
+      local harm = require("sim.agents.deeds").top_harm(W, starving.hh, now, 30)
+      if harm then hs.deed = harm.id end
+    end
     if edge ~= hs.n.edge then hs.n.edge = edge; line(hs, sfmt("%s at the edge of starving", plural(edge, "person", "people")), now) end
     hs.pid = starving and starving.id
     hs.active, hs.t1 = true, now
@@ -856,6 +925,7 @@ local DEED_TEXT = {
     return sfmt("Lightning struck at %s", (sett(W, d.at) or {}).name or "?")
   end,
   flood = function(W, d) return sfmt("The river came over its banks at %s", (sett(W, d.at) or {}).name or "?") end,
+  rained_out = function(W, d) return sfmt("The rain put out the fire at %s", (sett(W, d.at) or {}).name or "?") end,
   drowned = function(W, d)
     local what = d.what == "corn" and "The ripe corn of %s rotted in the flood" or "A field of %s drowned"
     return sfmt(what, (d.to_hh or 0) ~= 0 and household_name(W, d.to_hh) or "the village")

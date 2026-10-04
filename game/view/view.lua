@@ -8,6 +8,7 @@ local props = require("game.view.props")
 local clouds = require("game.view.clouds")
 local puppets = require("game.view.puppets")
 local fx = require("game.view.fx")
+local fish = require("game.view.fish")   -- (S24: schools from the sea's own fish)
 local selring = require("game.view.selring")
 local rivers = require("game.view.rivers")
 local floodwater = require("game.view.floodwater")   -- (S21, R6.5e)
@@ -64,6 +65,13 @@ function M.surface(x, y, z, start)
   return planet.surface_radius(M.PL, x, y, z, start)
 end
 
+-- (S24) the drawn ground's own radius there (the faces about the nearest vertex): things set on a slope sit on it
+function M.surface_exact(x, y, z, start)
+  if not M.PL then return state.R end
+  if not M.PL.rdist then return planet.surface_radius(M.PL, x, y, z, start) end
+  return planet.surface_exact(M.PL, x, y, z, start)
+end
+
 --- Builds all view data for world W. step(text, frac) is called often (it may yield).
 function M.build(W, urls, step)
   step = step or function() end
@@ -99,7 +107,8 @@ function M.build(W, urls, step)
   agents_view.init(W, PL, urls, terrain.tex)
   selring.init(urls.ring_factory, M.surface)
   aim.init(urls.ring_factory, M.surface)
-  fx.init(W, urls.flame_factory, urls.smoke_factory, M.surface)
+  fx.init(W, urls.flame_factory, urls.smoke_factory, M.surface, M.surface_exact)
+  fish.init(W, urls.flame_factory, M.surface)
   camera.height_fn = function(x, y, z) return M.surface(x, y, z) end
   camera.focus_cell = nil
   feed.reset(W)
@@ -258,6 +267,7 @@ function M.update(dt)
       agents_view.update(W, dt, camera.zoom, speed.v3_t or W.hour)
     end
     fx.update(W, dt, state.frozen)
+    if not skipping then fish.update(W, dt, camera.zoom, state.frozen) end
     if W.v3 then
       if not audio.ready then audio.init() end
       local ww = state.window_w or 1280

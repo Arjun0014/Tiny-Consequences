@@ -89,11 +89,14 @@ local function air(W, p, sign)
   local c = C()
   local cells = area(W, p.cell, c.radius)
   local ev = root(W, sign > 0 and "warm" or "cold", p.cell, c.v3_air_k)
-  forcing(W, sign > 0 and "heat" or "chill", cells, sign * c.v3_air_k, ev, c.v3_air_days)
-  -- (the air is changed now: the villages' weather today is redrawn from it)
+  forcing(W, sign > 0 and "heat" or "chill", cells, sign * c.v3_air_k, ev, c.v3_air_days).air = true
+  -- (the air is changed now: the villages' weather today is redrawn from it). (S24) Over the sea the air's few days of
+  -- warmth or cold barely touch the water (its heat is far greater: `v3_air_sea` of it) - it was doubled there, and a
+  -- warm spell over a fishing village heated its sea to 30 C (cold: below freezing) and killed the fish; the sea has
+  -- its own power.
   local F = W.F
   for _, cl in ipairs(cells) do
-    local a = (W.geo.ocean[cl] == 1 and c.sea_factor or 1) * sign * c.v3_air_k
+    local a = (W.geo.ocean[cl] == 1 and c.v3_air_sea or 1) * sign * c.v3_air_k
     if (a > 0 and F.heat_anom[cl] < a) or (a < 0 and F.heat_anom[cl] > a) then
       F.temp[cl] = F.temp[cl] + (a - F.heat_anom[cl])
       F.heat_anom[cl] = a

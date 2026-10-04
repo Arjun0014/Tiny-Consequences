@@ -290,6 +290,48 @@ CASES.herd_move = async (g, dir, out) => {
   }
 };
 
+// (S24) A herd seen close, as a player looking at it would: its middle from near (two zooms), every ten game minutes.
+CASES.herd_close = async (g, dir, out) => {
+  const sid = Number(getFlag(args, '--sett', 1));
+  const herd = getFlag(args, '--herd', 'flock');
+  await g.cmd({ cmd: 'v3_goto', lh: Number(getFlag(args, '--lh', 10)), days: 1, sett: sid });
+  out.rows = [];
+  out.shots = [];
+  const f3 = (v) => (v == null ? '-' : v.toFixed(3));
+  const t0 = await g.hour();
+  for (let m = 0; m <= Number(getFlag(args, '--minutes', 40)); m += 10) {
+    await g.cmd({ cmd: 'v3_goto', hour: t0 + m / 60 });
+    const sh = await g.lua(SHAPE(sid, herd));
+    const row = `+${m}min n ${sh.n} nn med ${f3(sh.nn_med)} p10 ${f3(sh.nn_p10)} rg ${f3(sh.rg)} long ${f3(sh.elong)} clumps ${sh.clumps} walking ${(100 * (sh.walking || 0)).toFixed(0)}% align ${f3(sh.align)}`;
+    out.rows.push(row);
+    console.log('  ' + row);
+    if (sh.cx != null) {
+      for (const z of [1.6, 1.85]) {
+        await g.cmd({ cmd: 'v3_look', sett: sid, x: sh.cx, y: sh.cy, zoom: z });
+        out.shots.push(await g.shoot(dir, `m${String(m).padStart(3, '0')}_z${z}`, 700));
+      }
+    }
+  }
+};
+
+// (S24) The sea's fish as the player sees them: the fish field on the cells off a fishing village and the schools drawn
+// for it, at a few zooms.
+CASES.fish_look = async (g, dir, out) => {
+  const sid = Number(getFlag(args, '--sett', 1));
+  await g.cmd({ cmd: 'v3_goto', lh: 11, days: 1, sett: sid });
+  const look = await g.cmd({ cmd: 'v3_look', sett: sid, what: 'sea', zoom: 1.0 });
+  const x = look.x + Number(getFlag(args, '--dx', 0)), y = look.y + Number(getFlag(args, '--dy', 0));
+  out.fish = await g.lua(`local s = W.S.v3.settlements[${sid}]; local o = {}; for _, c in ipairs(require('sim.society.sites').rings(W, s.cell, 2)) do if W.geo.ocean[c] == 1 then o[#o + 1] = string.format('%d:%.2f', c, W.F.fish[c]) end end; return table.concat(o, ' ')`);
+  console.log('  fish field: ' + out.fish);
+  out.shots = [];
+  for (const z of [0.85, 1.0, 1.15, 1.3]) {
+    await g.cmd({ cmd: 'v3_look', sett: sid, x, y, zoom: z });
+    out.shots.push(await g.shoot(dir, `z${z}`, 1200));
+    const st = await g.lua(`local f = require('game.view.fish'); return f.stats`);
+    console.log(`  zoom ${z}: ${st.schools} schools drawn over ${st.cells} cells`);
+  }
+};
+
 // (S24) Every power in its contexts: a state the world could reach (set as a premise), the cast through the game's
 // own power path, the world read before, at once and after, the scene shot close and from afar, the news and the
 // chain. Each spec: sid, power (+ mode / species), lh, setup (Lua run first: a state), premise (named), what/x/y (where
@@ -316,8 +358,27 @@ const PSPECS = {
   dry_spell: { sid: 5, power: 'dry', lh: 10, zoom: 1.25, after: [24, 96, 144] },
   cold_crops: { sid: 6, power: 'cold', lh: 10, zoom: 1.25, far: 0.8, after: [12, 48, 96] },
   warm_snow: { sid: 6, power: 'warm', lh: 10, premise: 'cold_snap', prelive: 48, zoom: 1.25, far: 0.8, after: [12, 48] },
-  stir_mountain: { sid: 4, power: 'stir', lh: 10, zoom: 0.7, far: 0.45, after: [24, 96] },
+  stir_mountain: { sid: 4, power: 'stir', lh: 10, what: 'volcano', zoom: 0.95, far: 0.6, after: [24, 96],
+    read: `local o = {} for i, p in ipairs(require('game.view.fx').plume_steam) do if p.on then o[#o + 1] = i end end return #o` },
   strain_coast: { sid: 1, power: 'strain', lh: 10, zoom: 1.2, far: 0.6, after: [24, 72] },
+  // (S24) the god's bolt on each kind of target (Arjun's list): a wild deer, a wolf (a pack brought first), a dog, a person
+  // out of doors, a dry field, wet ground
+  lightning_deer: { sid: 4, power: 'lightning', lh: 10, aim: { what: 'wild' }, zoom: 1.4, after: [0.25, 1] },
+  lightning_wolf: { sid: 1, power: 'lightning', lh: 21, precast: { power: 'bring', species: 'wolves' }, prelive: 2, aim: { what: 'wild', sp: 'wolf', wait: 30 }, zoom: 1.4, after: [0.25, 1] },
+  lightning_dog: { sid: 1, power: 'lightning', lh: 10, aim: { what: 'dog' }, zoom: 1.45, after: [0.25, 1] },
+  lightning_person: { sid: 1, power: 'lightning', lh: 11, aim: { what: 'person' }, zoom: 1.45, after: [0.25, 2] },
+  lightning_field_dry: { sid: 1, power: 'lightning', lh: 13, setup: SETUP.dry(1), field: true, zoom: 1.35, after: [1, 4] },
+  lightning_wet: { sid: 1, power: 'lightning', lh: 13, setup: SETUP.soaked(1), what: 'tree_near_house', zoom: 1.35, after: [1, 4] },
+  // (S24) second contexts for the powers seen once
+  dry_tekheim: { sid: 1, power: 'dry', lh: 10, zoom: 1.2, far: 0.8, after: [24, 96, 144] },
+  cold_mountain: { sid: 4, power: 'cold', lh: 22, zoom: 1.2, far: 0.8, after: [6, 24, 72] },
+  warm_on_snow: { sid: 1, power: 'warm', lh: 11, premise: 'cold_snap', prelive: 48, zoom: 1.2, far: 0.8, after: [12, 48] },
+  sickness_cattle: { sid: 1, power: 'sickness', lh: 10, what: 'byre', zoom: 1.4, after: [24, 72, 144] },
+  blight_krikeivorn: { sid: 6, power: 'blight', lh: 10, field: true, zoom: 1.35, after: [48, 144] },
+  sea_warm_tekheim: { sid: 1, power: 'sea', mode: 'warm', lh: 10, what: 'sea', zoom: 1.0, far: 0.6, after: [48, 192] },
+  oil_tekheim: { sid: 1, power: 'oil', lh: 10, what: 'sea', zoom: 1.0, far: 0.6, after: [24, 96, 192] },
+  // (S24, matrix I) a mountain stirred twice - past what makes it erupt - and watched through its eruption
+  volcano_erupt: { sid: 4, power: 'stir', casts: 2, lh: 10, what: 'volcano', zoom: 0.95, far: 0.6, after: [24, 48, 96] },
   strain_inland: { sid: 4, power: 'strain', lh: 10, zoom: 1.2, far: 0.6, after: [24, 72] },
   cull_wolves: { sid: 4, power: 'cull', species: 'wolves', lh: 22, zoom: 1.1, far: 0.7, after: [24, 96] },
   cull_deer: { sid: 4, power: 'cull', species: 'deer', lh: 10, what: 'wild', zoom: 1.2, far: 0.7, after: [24, 96] },
@@ -337,6 +398,7 @@ async function pcase(g, dir, out, sp) {
   await g.cmd({ cmd: 'v3_goto', lh: sp.lh ?? 10, days: sp.days ?? 1, sett: sid });
   if (sp.setup) await g.lua(sp.setup);
   if (sp.premise) await g.cmd({ cmd: 'v3_premise', sett: sid, kind: 'named', name: sp.premise });
+  if (sp.precast) await g.cmd({ cmd: 'power', ...sp.precast, cell: await g.lua(`return W.S.v3.settlements[${sid}].cell`) });
   if (sp.prelive) await g.advance(sp.prelive);
   let t0 = await g.hour();
   out.rows = [];
@@ -344,7 +406,16 @@ async function pcase(g, dir, out, sp) {
   // where: a point the spec names (a herd's beast in the open, a growing field, the square, a building...)
   let look;
   let ax, ay;
-  if (sp.herd) {
+  if (sp.aim) {
+    // (S24) a target the aimed bolt takes itself: a person out of doors, a wild deer, a wolf, a dog (waiting for one)
+    const q = `return require('game.platform.accept').aim_target(W, ${sid}, "${sp.aim.what}", ${sp.aim.sp ? `"${sp.aim.sp}"` : 'nil'}, now)`;
+    let f = await g.lua(q);
+    for (let k = 0; k < (sp.aim.wait || 12) && !f; k++) { await g.advance(1); f = await g.lua(q); }
+    if (!f) throw new Error(`no ${sp.aim.sp || sp.aim.what} the bolt would take`);
+    out.target = f.what;
+    ax = f.x; ay = f.y;
+    look = await g.cmd({ cmd: 'v3_look', sett: sid, x: ax, y: ay, zoom: sp.zoom || 1.4 });
+  } else if (sp.herd) {
     const bz = await g.cmd({ cmd: 'v3_beasts', sett: sid });
     let best = null, bn = -1;
     for (const b of bz.beasts) {
@@ -358,9 +429,9 @@ async function pcase(g, dir, out, sp) {
     ax = best.x; ay = best.y;
     look = await g.cmd({ cmd: 'v3_look', sett: sid, x: ax, y: ay, zoom: sp.zoom || 1.4 });
   } else if (sp.field) {
-    const f = await g.lua(`local s = W.S.v3.settlements[${sid}]; for _, pl in ipairs(s.plots) do if pl.alive and pl.stage == "growing" then return { (pl.x0 + pl.x1) / 2, (pl.y0 + pl.y1) / 2 } end end; return nil`);
+    const f = await g.lua(`local s = W.S.v3.settlements[${sid}]; for _, pl in ipairs(s.plots) do if pl.alive and pl.stage == "growing" then return { x = (pl.x0 + pl.x1) / 2, y = (pl.y0 + pl.y1) / 2 } end end; return nil`);
     if (!f) throw new Error('no growing field');
-    ax = f[1]; ay = f[2];
+    ax = f.x; ay = f.y;
     look = await g.cmd({ cmd: 'v3_look', sett: sid, x: ax, y: ay, zoom: sp.zoom || 1.35 });
   } else {
     look = await g.cmd({ cmd: 'v3_look', sett: sid, what: sp.what || 'square', zoom: sp.zoom || 1.3 });
@@ -382,7 +453,9 @@ async function pcase(g, dir, out, sp) {
   console.log(`  aim preview: ${out.preview}`);
   // the cast: the same path as the bar (bridge power = powers.cast)
   const onmap = await g.lua(`local s = W.S.v3.settlements[${sid}]; return require('sim.agents.map').tile_of(s, ${ax}, ${ay}) > 0`);
-  await g.cmd({ cmd: 'power', power: sp.power, cell, sid: onmap ? sid : undefined, x: onmap ? ax : undefined, y: onmap ? ay : undefined, mode: sp.mode, species: sp.species });
+  for (let q = 0; q < (sp.casts || 1); q++) {
+    await g.cmd({ cmd: 'power', power: sp.power, cell, sid: onmap ? sid : undefined, x: onmap ? ax : undefined, y: onmap ? ay : undefined, mode: sp.mode, species: sp.species });
+  }
   t0 = await g.hour();
   await g.cmd({ cmd: 'v3_goto', hour: t0 + 0.05 });
   const env1 = await g.lua(ENV(sid));
@@ -391,6 +464,7 @@ async function pcase(g, dir, out, sp) {
   console.log(`  at once: ${out.immediate}`);
   await g.cmd({ cmd: 'v3_look', sett: sid, x: ax, y: ay, zoom: sp.zoom || 1.3 });
   out.shots.push(await g.shoot(dir, '1_at_once', 1000));
+  if (sp.read) { out.read1 = await g.lua(sp.read); console.log(`  read at once: ${JSON.stringify(out.read1)}`); }
   if (sp.far) { await g.cmd({ cmd: 'v3_look', sett: sid, x: ax, y: ay, zoom: sp.far }); out.shots.push(await g.shoot(dir, '1_at_once_far', 900)); }
   let last = 0;
   for (const h of sp.after || []) {

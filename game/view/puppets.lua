@@ -1055,8 +1055,10 @@ function M.update_dolphins(W, dt, frozen)
       end
     end
     table.sort(best, function(a, b) return a[2] > b[2] end)
+    -- (S24: a pod of two over the richest water near the view - a rare sight, not four over every rich cell; the
+    -- sea's fish are the schools, game/view/fish.lua)
     for i, dph in ipairs(M.dolphins) do
-      local e = best[floor((i - 1) / 4) + 1]
+      local e = i <= 2 and best[1] or nil
       if e then
         if dph.cell ~= e[1] then
           dph.cell = e[1]

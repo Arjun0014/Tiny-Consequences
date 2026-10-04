@@ -444,6 +444,30 @@ function M.register(G)
       end
       assert(best > 0, "no " .. args.what)
       x, y = mapm.tile_xy(s, best)
+    elseif args.what == "volcano" then
+      -- (S24) the vent of the volcano nearest the village (where the world keeps them; none made by looking)
+      local g = W.grid
+      local VS = W.S.v3.volc
+      local best, bd = nil, -2
+      for _, v in ipairs(VS and VS.list or {}) do
+        local d = g.X[v.cell] * g.X[s.cell] + g.Y[v.cell] * g.Y[s.cell] + g.Z[v.cell] * g.Z[s.cell]
+        if d > bd then best, bd = v, d end
+      end
+      assert(best, "no volcano")
+      x, y = mapm.local_of(s, g.X[best.cell], g.Y[best.cell], g.Z[best.cell])
+      assert(x, "the volcano is behind the map")
+      info = { cell = best.cell, name = best.name, pressure = best.pressure, thr = best.thr }
+    elseif args.what == "sea" then
+      -- (S24) the middle of the sea cell by the village holding the most fish (where its fish are drawn)
+      local g = W.grid
+      local best, bf = nil, -1
+      for _, c in ipairs(require("sim.society.sites").rings(W, s.cell, 2)) do
+        if W.geo.ocean[c] == 1 and (W.F.fish[c] or 0) > bf then best, bf = c, W.F.fish[c] or 0 end
+      end
+      assert(best, "no sea near")
+      x, y = mapm.local_of(s, g.X[best], g.Y[best], g.Z[best])
+      assert(x, "the sea is behind the map")
+      info = { cell = best, fish = bf }
     elseif args.what == "flood" then
       -- (S21) the flood water nearest the village's square
       local fd = assert(mapm.FLOOD[s], "no flood water")

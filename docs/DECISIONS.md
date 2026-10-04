@@ -1674,3 +1674,124 @@ lodgers kept pointing at a gone house) and the last had no host - no hearth, no 
 in plans a camp by the square (`founding.plan_camp`, injected: a fire, a lean-to, its larder, made by its own hands in two hours) and
 waits there for a house; when a building goes, every household that lived in it - its own and those lodging - lodges anew or camps.
 The chain shows "The Tustrands, without a roof, camp by the square at Tekheim" under the harm that took the roof.
+
+## D-195 · 2026-10-04 · The sea's fish drawn from the sea's own fish (session 24)
+**Context.** Arjun: "fish redesign - sparse schools, natural spacing, swimming motion, density matching F.fish, thinning and
+recovering; never invent fish; fishers respond to the same state". The sea showed no fish at all (only two dolphins): nothing drew
+the planet's fish field.
+**Decision** (`game/view/fish.lua`, reads only): the sea cells near the view hold schools in proportion to their fish (`F.fish`,
+the ocean system's stock - the same field the fishers' nets draw on in `act.lua` WORK.fish and that warm water, oil and fishing
+thin): `PER` 3.6 schools a cell at fish 1.0, none where it holds none, fewer as it thins, more as it recovers (re-read every 0.6 s).
+Each school is 30 (or, in a rich cell, 48) dark-backed fish with a few silver flanks in a loose shoal denser at its middle, seen
+through the water (opacity 0.57), swimming its own slow loop about its patch of the cell and turning as one; each keeps its own
+shape (no flicker between formations). Seen from zoom 0.8 in; pool of 30. The dolphins are one pod of two.
+**Found**: the grid's spacing is on the unit sphere - the first schools were drawn ten times too small (invisible); sizes now
+`g.spacing * R`.
+**Browser** (`--case fish_look`, Tekheim's sea, fish 0.75): 13 schools over 5 cells, visible as dark shoals on the blue at zoom
+1.0-1.3; a brought shoal (fish 0.75 -> 1.0) shows more.
+
+## D-196 · 2026-10-04 · A village map shows its wild herds at a fixed share (session 24)
+**Context.** Culling nine in ten of the deer about Hottoodingle Hop (237 killed, 185 left) left its map with the same 24 deer a day
+later. Every map stood at the cap: `wild_seen` 1.0 drew every animal of a herd on the map's cells, 77-200 a map uncapped, and
+`wild_max` 24 cut them all to 24 - the map never showed the planet's herds as they were.
+**Decision** (`sim/config.lua`): `wild_seen` 0.2 (a map shows one in five of the herds' animals on its cells), `wild_max` 32 (binds
+only on the richest ground): Tekheim 14, Zurug 19, Dreik Knoll 26, Hottoodingle Hop 30, Little Leelee 20, Krikeivorn 32 (141 in all,
+144 before - the same cost and about the same hunting). A cull, a brought herd or a die-off now changes the map's herds.
+**Tests**: the wild-band fire test takes the biggest band on the map (Tekheim's first band now had 2); the animals audit no longer
+counts the end of a chase as a stop (a pack's run at its quarry ends for all of it by what the quarry does - caught or away; the
+measure is of travelling packs stopping as one): wolves' mass stops 17% (limit 20%).
+
+## D-197 · 2026-10-04 · A flock through its gate, after where the one ahead is going, making room from the whole press (session 24)
+**Context.** Watching the live herd (`--case herd_move|herd_close`, `out/s24/probe_herdmove.lua`): the flock left its fold through
+the hurdles anywhere, walked out as a milling clump (heading alignment 0.03-0.34 with 80% walking, nearest neighbour 0.010 - under
+a body length) and stayed packed while grazing (nn 0.014-0.019, the "too close" rule firing for 7-11 of 38 all the time).
+Causes: (1) a fold was open ground to a beast - it walked straight out of it and back in; (2) a beast already at the heels of the
+one it follows took a target behind itself and stepped back - the flock milled instead of going on; (3) making room stepped away
+from the nearest only - into the next.
+**Decision** (`sim/agents/stock.lua`): (1) a pen's hurdles are passed only at its gate - a beast inside bound out goes to the gate
+first, through it, and a step beyond it (stopping in the gate jammed it); with the herd out the gate is shut behind it (only one
+going in for the night, or kept in, goes in); a way that runs across a fold goes round it by the shortest corner; a grazing drift
+does not cross the hurdles; (2) it follows where the one ahead is going (its walk's end), a spacing behind it to its own side; at
+its heels already it takes a mouthful while the other moves on; (3) "too close" makes room away from the press of all those within
+a spacing (each pushing the more the closer), and the grazing choice weighs that press. No jitter, no formation.
+(4) one still inside its fold with the herd out heads for the gate itself (its way to the others, cut to a hop, ended inside
+the fold: it walked up and down in it - one beast made 3,900 decisions in a day - and the ones at the gate, making room, held the
+rest back).
+**Numbers**: herd decisions an hour (2 days, all villages) S23 437, at the checkpoint 630 (a third "Making room to graze"), with
+the gate jam 1,785-2,127, now 470; Tekheim's flock (headless, going out at 8:00) spreads from nn 0.010 at the gate to 0.019 in six
+minutes and 0.026-0.040 (sep 0.034) through the day, elongation 1.15-1.69, 1-3 clumps; browser (before the jam fix) elongation
+1.1-1.47 -> 1.53-1.92 on the way out; unit tests: herded velocity correlation 0.32 (limit 0.5 - the flock going out at its gate
+moves one way), mass stops 1%, mass rests 3%.
+
+## D-198 · 2026-10-04 · What a cast caused, told right: fires the planet carries in, a village's sea, a stirred mountain, fish (session 24)
+**Context.** The audit's News/Why/Your actions read: a fire the meteor started on the planet beside Hottoodingle Hop came onto its
+map as "Fire in Hottoodingle Hop - root NATURE, why: (none)"; a warm sea, oil or a brought shoal off Tekheim showed "0
+consequences" (Tekheim's shore is two cells off; the chain looked only at the cells next to a village); a stirred mountain showed
+"0 consequences" until it blew; air powers over a coast heated the sea to 30 C or froze it (-0.7 C) within the hour.
+**Decision**: (1) a fire lit on a map by the planet's fire carries the planet's cause (`blaze.ignite(..., ev)`: the blame on the
+burning cell it came from; spread passes it on; a map fire spreading to a cell the map does not own lights it with its own cause):
+the story reads "Fire in Hottoodingle Hop - YOU: Fire <- YOUR meteor"; (2) a village's sea for the chain is the sea within two
+rings (`sites.rings`); (3) a stirred mountain shows "Pressure under Mount Fizzle: 58% of what makes it erupt" at once (then "built
+past what makes it erupt" when the eruption, its own node, follows); a brought or culled shoal: "A shoal brought off Tekheim: the
+fish at 100% of what the sea there holds"; (4) the air powers force the sea's surface by `v3_air_sea` 0.12 of the air's change
+(`forcing.air`), the sea following by its own heat, not the air's.
+
+## D-199 · 2026-10-04 · Found by the audit: a lot whose stumps nobody dug, the god's bolt on a pen's hurdles, a jolt before the queue (session 24)
+**Context / Decision.** (1) A building's lot with stumps on it (a burnt fold's charred trees about it) was never finished: the
+stumps were dug out only while a *field* was being cleared (`need.clear_*` was set for `s.clearing` alone) - the burnt fold was
+never rebuilt (the flock slept in the open for good). Lots now count (`settle.lua`): the fold's site is laid within a day and stands
+by the second. (2) The god's bolt aimed at a beast standing in an open pen's gate struck the hurdles (a pen's footprint counted as
+its roof): an open pen's or a low thing's hurdles stand only at its edge (`blaze.strike_target`). (3) A beast jolted before the
+world's event queue existed crashed (`sys.push` builds the queue first).
+
+## D-200 · 2026-10-04 · The planet's own view of a fire, a crater, a stirred mountain (session 24)
+**Context.** Off the villages' maps the planet showed a burning cell as one flat orange wash over the whole cell ("paint"), no
+crater where a meteor fell, and nothing over a stirred mountain.
+**Decision**: (1) `planet.fp`: a cell burns in patches over the share of its ground its fire's intensity stands for (two octaves of
+noise, threshold by intensity), the rest ash under a faint glow - a front and hot spots, not a wash; (2) a meteor's crater on land
+off the maps is planet props (`propgen.plan_crater`, `props.lua`): nothing stands in its bowl, the rock it threw up rings it -
+lit like the planet's own rocks, rebuilt with its chunk, for good (small: `imp_crater` 0.075 - the blast's flattened, burnt ground is
+the large mark); (3) `fx.lua`: grey steam rises from a mountain whose pressure is past a third of what makes it erupt (more and
+taller the nearer it is), dark ash from one that erupted in the last days - read from where the world keeps its volcanoes, never
+making them.
+
+## D-201 · 2026-10-04 · The matrix's gaps in what the world tells: hunger's cause, rain on a fire, a flood the rain spread, fish (session 24)
+**Context.** The final play matrix (A-I) read the News and "Your actions" after each cast: hunger at Tekheim two days after the
+meteor (houses, larders and granary thrown down) read "root NATURE, why: (none)"; a storm's bolt while the meteor's fire burned was
+told as a line of the meteor's story ("Lightning struck a tree", root YOU); rain that put a fire out in two hours (eight untouched)
+was nowhere; rain on a floodplain that spread its flood from 461 to 3,040 tiles showed only "the river ran high" (the flood's own
+deed was older, the river's); a warm sea that thinned Zurug's fish had no story; blight on a field was not drawn on the map at all.
+**Decision**: (1) `news` hunger takes the hungry household's heaviest recent harm (`deeds.top_harm`, as the chain reads it) as its
+cause; (2) a bolt while a fire of another cause burns is its own story; (3) `blaze.sweep`: when rain put out a village's last fire,
+a deed `rained_out` (its cause the rain's own: a god's rain forcing on the cell, else the planet's blame on its rain) - the chain:
+"The rain put out the fire at Tekheim (6 things burning)" under the rain, the fire's story "The rain put the fire out"; (4) chain:
+"The flood at Little Leelee spread: N tiles under water (M before)" under the river the rain raised, when a flood was already there
+(`spread`, live state); (5) `news.poll_sea`: "Fewer fish off Zurug - the fish at 79% of what was there" when the sea's fish blame
+leads back to a god's cast; (6) `agents_view`: blighted rows (as many as the share it has taken) drawn brown and withered.
+
+## D-202 · 2026-10-04 · The herd's cost, exactly: random keys that collided, three draws from one hash (session 24)
+**Context.** Day-0 cost rose from 4.06 M instructions a game hour (S23) to 4.95 M at the checkpoint (D-192: the follow-the-one-ahead
+scan and seven grazing candidates each with three random draws and a cos/sin), 4.78 M after the wild sampling. And `stock.u` keyed
+its draws `minute x 32 + k` while keys up to 86 were in use: a key above 31 was the same number as a later minute's draw.
+**Decision** (`sim/agents/stock.lua`): 128 keys a minute (no draw repeats another); each grazing candidate takes its turn, step and
+whim from the bits of one hash (10, 10 and 12 bits) and the turn's cos/sin from the fixed headings' table and a series in the small
+turn (|e| <= 0.175: exact to 1e-9; plain arithmetic, the same in every runtime) - the same model, its randomness unrepeated. With
+the gate-jam fix (D-197): **4.29 M** a game hour at day 0.
+
+## D-203 · 2026-10-04 · A flood leaves its mud (session 24)
+**Context.** Arjun's list of damage that must stay: "flood mud". When a flood went down nothing marked where it had lain (the
+fields kept their silt as fertility, D-169, but the ground looked as before).
+**Decision** (`sim/agents/flood.lua`, `game/view/agents_view.lua`): the tiles the water lies on are kept as the flood goes, in the
+order they first went under (`s.fl.silt`: a list, saved - the depths being the stages' own, the same after a reload); when it goes
+down they become `s.silt` (the next flood's replaces it) and the map draws them as patchy dark mud drying out over `MUD_DAYS` 24.
+Little Leelee's own flood (day 3-11): 850 tiles of mud when the water went down.
+
+## D-204 · 2026-10-04 · Three tests of emergent outcomes, widened for this world's course (session 24)
+**Context.** After D-196 (more or fewer wild animals on each map), D-197 and D-202 (the herds' new course and their unrepeated
+draws) three tests asserting one outcome in a window failed: (1) relief to a starving village in 4 days - the first villager sent
+to ask, a man of 52, died of old age on the road on the second day; the second brought relief on the fifth; (2) asking kin for
+food after a failed harvest and a murrain in 9 days - the households with kin there never ran short at home (5.6 days of food at
+the least: what they found and were given), so nobody asks, as the rule says; (3) a quern bought partly on credit in 20 days - it
+comes, and is paid back, within 40.
+**Decision**: (1) six days; (2) the test accepts the two outcomes the rules give - relief filling the granary first, or a household
+with kin there never short at home (kin asking itself is `test_v3_kin`); (3) forty days. The mechanisms are unchanged.

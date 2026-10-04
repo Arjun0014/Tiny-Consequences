@@ -158,6 +158,7 @@ local function signature(W, c)
   end
   if M.logged and M.logged[c] then q = q + 7e7 end
   if M.quarries and M.quarries[c] then q = q + 1.3e8 end
+  if M.crater_cell and M.crater_cell[c] then q = q + 2.9e8 end
   local ic = F.ice[c]
   q = q + (ic > 0.55 and 2 or (ic > 0.3 and 1 or 0)) * 500000
   if M.preview and M.preview[c] then q = q + 1e7 * (M.preview[c] + 2) end
@@ -250,6 +251,7 @@ local function run_job(j, deadline)
     M.ctx.quarries = M.quarries
     M.ctx.preview = M.preview
     M.ctx.owned = M.owned and M.owned[j.k]
+    M.ctx.craters = M.crater_by and M.crater_by[j.k]
     local nfaces = #ch.faces
     while j.face <= nfaces do
       local t0 = clock.now_ms()
@@ -333,7 +335,32 @@ function M.recount()
   M.stats.instances, M.stats.verts = ti, tv
 end
 
+-- (S24) The planet's meteor craters on land no village's map holds (a map draws its own): the bowl kept clear of props,
+-- the rim's rock planned by the chunk that owns the crater's cell (propgen.plan_crater). Re-read when one is added.
+local function refresh_craters(W)
+  local CR = W.S and W.S.powers and W.S.powers.craters
+  local n = CR and #CR or 0
+  if n == (M.crater_n or 0) then return end
+  M.crater_n = n
+  local cr_r = require("sim.config").V3.imp_crater
+  local R = M.PL.R
+  local list, by, cells = {}, {}, {}
+  for i = 1, n do
+    local c = CR[i]
+    if not c.sea and not propgen.in_v3_square(c.x, c.y, c.z) then
+      local e = { c.x, c.y, c.z, math.cos(cr_r * 0.85 / R), c.cell, cr_r }
+      list[#list + 1] = e
+      cells[c.cell] = true
+      local k = M.owner_chunk(c.cell)
+      if k then by[k] = by[k] or {}; by[k][#by[k] + 1] = e end
+    end
+  end
+  M.crater_list, M.crater_by, M.crater_cell = list, by, cells
+  propgen.craters = #list > 0 and list or nil
+end
+
 local function check_dirty(W)
+  refresh_craters(W)
   local sig, cc = M.sig, M.cell_chunks
   local ocean = W.geo.ocean
   local force = M.force_signatures

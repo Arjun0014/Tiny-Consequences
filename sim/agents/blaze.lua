@@ -95,7 +95,9 @@ function M.plot_fuel(pl)
   return fu
 end
 
-function M.ignite(W, s, kind, ref, now, cause)
+-- (S24) `ev`: when no deed lit it, the planet's event behind the fire that reached it (a meteor's, a wildfire's from its
+-- strike) - its story and the planet's blame carry on from it.
+function M.ignite(W, s, kind, ref, now, cause, ev)
   local c = C()
   if find(s, kind, ref) then return nil end
   local x, y, fuel
@@ -117,7 +119,8 @@ function M.ignite(W, s, kind, ref, now, cause)
     x, y, fuel = b.cx or b.dx, b.cy or b.dy, c.fire_bld_h * (b.kind == "house" and 1 or 0.7)
   end
   s.burn = s.burn or {}
-  local f = { kind = kind, ref = ref, x = x, y = y, heat = 0.25, fuel = fuel, t0 = now, t = now, deed = cause, r = r > 0 and r or nil }
+  local f = { kind = kind, ref = ref, x = x, y = y, heat = 0.25, fuel = fuel, t0 = now, t = now, deed = cause, r = r > 0 and r or nil,
+    ev = (ev and ev ~= 0) and ev or nil }
   s.burn[#s.burn + 1] = f
   s.acc.fires = (s.acc.fires or 0) + 1
   M.cue(W, s, f, now, kind == "bld" and "Fire! The roof is burning" or (kind == "plot" and "Fire in the fields" or "Fire in the trees"))
@@ -281,7 +284,7 @@ local function live(W, s, f, to)
           if not find(s, "tree", k) then
             local dx, dy = T.x[k] - f.x, T.y[k] - f.y
             local down = 1 + c.fire_wind * max(0, dx * wx + dy * wy) / max(1e-6, sqrt(dx * dx + dy * dy))
-            if u(W, s, t, 11, k) < c.fire_spread * f.heat * dry * down * dt then M.ignite(W, s, "tree", k, t + dt, f.deed) end
+            if u(W, s, t, 11, k) < c.fire_spread * f.heat * dry * down * dt then M.ignite(W, s, "tree", k, t + dt, f.deed, f.ev) end
           end
         end)
         -- (S20) the fields: a fire within reach of a field's edge, a field burning to its neighbours
@@ -293,7 +296,7 @@ local function live(W, s, f, to)
             local ey = max(pl.y0 - f.y, 0, f.y - pl.y1)
             if ex * ex + ey * ey < rp * rp and not find(s, "plot", j) and M.plot_fuel(pl) > 0
               and u(W, s, t, 13, j) < c.fire_spread * c.fire_plot_catch * f.heat * dry * dt then
-              M.ignite(W, s, "plot", j, t + dt, f.deed)
+              M.ignite(W, s, "plot", j, t + dt, f.deed, f.ev)
             end
           end
         end
@@ -303,7 +306,7 @@ local function live(W, s, f, to)
           if b and b.state == "standing" and not b.natural and b.kind ~= "outcrop" and b.kind ~= "bog"
             and dsq((b.cx or b.dx) - f.x) + dsq((b.cy or b.dy) - f.y) < rb * rb
             and not find(s, "bld", b.id) and u(W, s, t, 12, b.id) < c.fire_spread * 0.7 * f.heat * dry * dt then
-            M.ignite(W, s, "bld", b.id, t + dt, f.deed)
+            M.ignite(W, s, "bld", b.id, t + dt, f.deed, f.ev)
           end
         end
         if f.kind == "bld" then
@@ -327,7 +330,7 @@ local function live(W, s, f, to)
       end
     end
     f.t = t + dt
-    if f.fuel <= 0 then f.out = "burnt" elseif f.heat <= 0 then f.out = "out" end
+    if f.fuel <= 0 then f.out = "burnt" elseif f.heat <= 0 then f.out = "out"; f.rained = rain >= 1 or nil end
   end
 end
 M.live = live
@@ -337,10 +340,12 @@ M.live = live
 local function sweep(W, s)
   local c = C()
   local B = s.burn
+  local rained, last = 0, nil
   for i = #B, 1, -1 do
     local f = B[i]
     if f.out then
       table.remove(B, i)
+      if f.rained then rained, last = rained + 1, f end
       if f.out == "burnt" then
         burn_out(W, s, f, f.t)
       elseif f.kind == "bld" then
@@ -356,6 +361,26 @@ local function sweep(W, s)
       elseif f.kind == "plot" then
         s.acc.fires_out = (s.acc.fires_out or 0) + 1
       end
+    end
+  end
+  -- (S24) the rain put out the village's last fire: a deed of it, its cause the rain's own (the planet's blame on the
+  -- cell's rain: a storm's - nature - or the god's)
+  if rained > 0 then
+    s.rained_out = (s.rained_out or 0) + rained
+    if #B == 0 then
+      -- (the rain's cause: a god's rain forced on the village's cell, else the planet's blame on its rain)
+      local ev = 0
+      local PS = W.S.powers
+      for _, fc in ipairs(PS and PS.forcings or {}) do
+        if ev == 0 and fc.kind == "rain" and W.tick < fc.to then
+          for _, cl in ipairs(fc.cells or {}) do if cl == s.cell then ev = fc.tag or 0 end end
+        end
+      end
+      if ev == 0 and W.C and W.C.precip then ev = W.C.precip[s.cell] or 0 end
+      local d = deeds.add(W, { kind = "rained_out", t = last.t, at = s.id, x = last.x, y = last.y, by = 0, by_hh = 0, by_s = 0,
+        to = 0, to_hh = 0, to_s = s.id, what = "fire", n = s.rained_out, fu = 0, harm = false, event = ev })
+      deeds.learn(W, s, d, "the rain put the fire out", 0, 0, last.t)
+      s.rained_out = nil
     end
   end
 end
@@ -427,9 +452,9 @@ local function map_heat(W, s)
       local cl = t > 0 and s.cell_of[t]
       if cl then
         out[cl] = (out[cl] or 0) + f.heat * (f.kind == "bld" and 3 or (f.kind == "plot" and 4 or 1))
-        if not tag[cl] then
+        if not tag[cl] or tag[cl] == 0 then
           local d = f.deed and deeds.get(W, f.deed)
-          tag[cl] = d and d.event or 0
+          tag[cl] = d and d.event or f.ev or 0
         end
       end
     end
@@ -443,13 +468,18 @@ local function enter(W, s, cl, now, O)
   local g = W.grid
   local sx, sy, n = 0, 0, 0
   local b6 = cl * 6 - 6
+  -- (S24) the cause it carries: the planet's blame on the burning cell it came from (else on this cell)
+  local CF = W.C and W.C.fire
+  local ev = 0
   for k = 1, g.nbr_count[cl] do
     local j = g.nbr[b6 + k]
     if (W.F.fire[j] or 0) > 0 and O.by[j] ~= s.id then
       local x, y = mapm.local_of(s, g.X[j], g.Y[j], g.Z[j])
       if x then sx, sy, n = sx + x, sy + y, n + 1 end
+      if ev == 0 and CF then ev = CF[j] or 0 end
     end
   end
+  if ev == 0 and CF then ev = CF[cl] or 0 end
   local T = s.trees
   local cand = {}
   if n > 0 then
@@ -467,7 +497,7 @@ local function enter(W, s, cl, now, O)
   end
   table.sort(cand, function(a, b) if a[2] ~= b[2] then return a[2] < b[2] end return a[1] < b[1] end)
   local lit = 0
-  for q = 1, min(#cand, c.fire_front_n) do if M.ignite(W, s, "tree", cand[q][1], now, nil) then lit = lit + 1 end end
+  for q = 1, min(#cand, c.fire_front_n) do if M.ignite(W, s, "tree", cand[q][1], now, nil, ev) then lit = lit + 1 end end
   return lit
 end
 
@@ -514,7 +544,7 @@ function M.planet(W, s, now)
             if edge > bd then best, bd = k, edge end
           end
         end
-        if best then M.ignite(W, s, "tree", best, now, nil) end
+        if best then M.ignite(W, s, "tree", best, now, nil, W.C and W.C.fire and W.C.fire[cl] or 0) end
       end
     end
   end
@@ -522,16 +552,22 @@ function M.planet(W, s, now)
   if B and #B >= c.fire_planet_n then
     -- (the cell under most of what burns, when the map does not own it)
     local count, top, tn = {}, nil, 0
+    local why = {}
     for _, f in ipairs(B) do
       local i = mapm.tile_of(s, f.x, f.y)
       local cl = i > 0 and s.cell_of[i] or nil
       if cl and not (O and O.by[cl] == s.id) then
         count[cl] = (count[cl] or 0) + 1
         if count[cl] > tn or (count[cl] == tn and cl < top) then top, tn = cl, count[cl] end
+        -- (S24) the cause the cell's fire carries on: the deed or the planet's event behind what burns there
+        if not why[cl] or why[cl] == 0 then
+          local d = f.deed and deeds.get(W, f.deed)
+          why[cl] = d and d.event or f.ev or 0
+        end
       end
     end
     if top and tn >= c.fire_planet_n and (F.fire[top] or 0) <= 0 then
-      fsys.ignite(W, top, 0)
+      fsys.ignite(W, top, why[top] or 0)
     end
   end
 end
@@ -627,8 +663,14 @@ function M.strike_target(W, s, x, y, now, god)
     local b = s.buildings[s.blist[j]]
     if b and b.state == "standing" and not b.natural and b.kind ~= "outcrop" and b.kind ~= "bog" then
       local d2 = dsq((b.cx or b.dx) - x) + dsq((b.cy or b.dy) - y)
-      -- (S24: a god's bolt on a building: the point within its walls is on its roof)
-      if god then d2 = dsq(max(0, math.abs((b.cx or b.dx) - x) - (b.w or 1) * s.T * 0.5)) + dsq(max(0, math.abs((b.cy or b.dy) - y) - (b.h or 1) * s.T * 0.5)) end
+      -- (S24: a god's bolt on a building: the point within its walls is on its roof; an open pen's or a low thing's
+      -- hurdles stand only at its edge - within it the bolt finds what stands there, a beast, before the fence)
+      if god then
+        local hx, hy = (b.w or 1) * s.T * 0.5, (b.h or 1) * s.T * 0.5
+        local ax, ay = math.abs((b.cx or b.dx) - x), math.abs((b.cy or b.dy) - y)
+        d2 = dsq(max(0, ax - hx)) + dsq(max(0, ay - hy))
+        if d2 == 0 and (c.strike_bld[b.kind] or c.strike_roof) < 0.5 then d2 = dsq(min(hx - ax, hy - ay)) end
+      end
       if d2 < r2 then
         local sc = (c.strike_bld[b.kind] or c.strike_roof) - sqrt(d2) * dk
         if sc > bs then best, bs, bk = b.id, sc, "bld" end

@@ -369,15 +369,18 @@ function powers.update(W)
         local sst, csst, isst = F.sst, W.C.sst, W.I.sst
         local temp, ocean = F.temp, W.geo.ocean
         local a0 = f.amount
+        -- (S24) a v3 warm or cold air (f.air) barely touches the sea under it in its few days (`v3_air_sea` of it, the
+        -- water's own warmth untouched); the v2 powers and the v3 sea power heat or chill the water itself
+        local airf = f.air
         for j = 1, #cells do
           local c = cells[j]
           -- the sea holds the heat (or cold) more than the land does
-          local a = ocean[c] == 1 and a0 * C.sea_factor or a0
+          local a = ocean[c] == 1 and (airf and a0 * C.v3_air_sea or a0 * C.sea_factor) or a0
           if (a > 0 and ha[c] < a) or (a < 0 and ha[c] > a) then ha[c] = a end
           if ch[c] ~= f.tag and not blame.descends(W.E.parent, ch[c], f.tag) then blame.set(ch, ih, c, f.tag) end
           -- over the sea the power heats (or chills) the water itself: the surface follows
           -- the forced air without the usual weeks of lag
-          if ocean[c] == 1 and ((a > 0 and sst[c] < temp[c]) or (a < 0 and sst[c] > temp[c])) then
+          if not airf and ocean[c] == 1 and ((a > 0 and sst[c] < temp[c]) or (a < 0 and sst[c] > temp[c])) then
             sst[c] = temp[c]
             if csst[c] ~= f.tag and not blame.descends(W.E.parent, csst[c], f.tag) then blame.set(csst, isst, c, f.tag) end
           end

@@ -66,7 +66,8 @@ function M.a_quern_paid_in_kind_and_owed()
     if type(text) == "string" and text:find("^Traded a quern") then sales[#sales + 1] = text end
     return orig(p, t, text, ...)
   end
-  for h = 1, 24 * 20 do
+  -- (S24, D-204: forty days - in this world's course the sale comes after the twentieth)
+  for h = 1, 24 * 40 do
     world.advance(W, t0 + h)
     if not debt then
       for _, d in ipairs(econ.debts(W)) do

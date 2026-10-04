@@ -704,7 +704,15 @@ local function fill_rows(V)
           CROP_GREEN[2] + (CROP_GOLD[2] - CROP_GREEN[2]) * max(0, g - 0.7) / 0.3,
           CROP_GREEN[3] + (CROP_GOLD[3] - CROP_GREEN[3]) * max(0, g - 0.7) / 0.3 }
         local wd = pl.weeds or 0
-        add(V, K.v3row_crop, cx, cy, 0, yaw, 1, 0.12 + 0.88 * g, pack(c[1] * (1 - wd * 0.2), c[2], c[3] * (1 - wd * 0.3)), e2, 0)
+        -- (S24) blight (`pl.blight`, the share of the crop it has taken): as many rows as that share spotted brown and
+        -- withered, row by row as it spreads
+        local bl = pl.blight or 0
+        local hgt = 0.12 + 0.88 * g
+        if bl > 0 and ((r * 0.6180339887 + pl.id * 0.3713) % 1) < bl then
+          c = { 0.50, 0.40, 0.24 }
+          hgt = hgt * 0.62
+        end
+        add(V, K.v3row_crop, cx, cy, 0, yaw, 1, hgt, pack(c[1] * (1 - wd * 0.2), c[2], c[3] * (1 - wd * 0.3)), e2, 0)
       else
         add(V, K.v3row_stubble, cx, cy, 0, yaw, 1, 1, pack(0.80, 0.70, 0.42), e2, 0)
       end
@@ -741,7 +749,7 @@ local function rows_sig(V)
     for r = 1, pl.rows do h = (h * 7 + pl.row_st[r] + 1) % 1000000007 end
     h = (h * 31 + floor((pl.growth or 0) * 24) + (pl.stage == "ripe" and 50 or 0) + (pl.stage == "rest" and 70 or 0)
       + floor(pl.sheaves / 12) * 3 + floor((pl.weeds or 0) * 4) + (pl.crop == "flax" and 90 or 0)
-      + (pl.stage == "retting" and 110 or 0) + floor((pl.flax or 0) / 3) * 5) % 1000000007
+      + (pl.stage == "retting" and 110 or 0) + floor((pl.flax or 0) / 3) * 5 + floor((pl.blight or 0) * 20) * 13) % 1000000007
   end
   if s.clearing then h = h + 777 end
   return h
@@ -752,10 +760,30 @@ end
 -- the ground the fireball scorched black - ragged at its edge, greening again over the weeks (the grass the sim
 -- burnt off grows back by the same days).
 M.SCORCH_DAYS = 36
+M.MUD_DAYS = 24      -- (S24, D-203) a flood's mud dries out over these days
 local function fill_scars_ground(V)
   local s = V.s
   local now = M.t or 0
   local T = s.T
+  -- (S24, D-203) a flood's mud over the ground it lay on: dark and wet at first, in drying patches over M.MUD_DAYS
+  local mud = s.silt
+  if mud and not s.fl then
+    local keep = 1 - (now - mud.t) / 24 / M.MUD_DAYS
+    if keep > 0 then
+      local N = s.N
+      for _, i in ipairs(mud.tiles) do
+        if s.land[i] == 1 and s.riv[i] == 0 and s.occ[i] == 0 then
+          local ix, iy = (i - 1) % N + 1, floor((i - 1) / N) + 1
+          local hsh = ((ix * 2654435761 + iy * 40503) % 1000) / 1000
+          if hsh < keep * 1.25 then
+            local x, y = mapm.ixy_xy(s, ix, iy)
+            local g = 0.24 + 0.08 * hsh + 0.10 * (1 - keep)
+            add(V, K.v3tile, x, y, 0.0002, hsh * 1.4, 2.0, 1, pack(g * 1.15, g * 0.92, g * 0.62), 0, 0)
+          end
+        end
+      end
+    end
+  end
   for _, sc in ipairs(s.scorch or {}) do
     local age = (now - (sc.t or now)) / 24
     local keep = 1 - age / M.SCORCH_DAYS
@@ -859,8 +887,9 @@ local function ground_sig(V)
     if l > 0 then h = (h * 3 + i * l) % 1000000007 end
   end
   -- (S24) the scorched ground fades as the grass comes back (by the day); craters stay
-  if s.scorch or s.craters then
-    h = (h * 7 + #(s.scorch or {}) * 13 + #(s.craters or {}) * 17 + floor((M.t or 0) / 24)) % 1000000007
+  if s.scorch or s.craters or s.silt then
+    h = (h * 7 + #(s.scorch or {}) * 13 + #(s.craters or {}) * 17 + (s.silt and #s.silt.tiles * 19 + floor(s.silt.t) or 0)
+      + (s.fl and 23 or 0) + floor((M.t or 0) / 24)) % 1000000007
   end
   return h
 end

@@ -40,6 +40,8 @@ M.kill = nil
 
 -- The course list of map s (map.lua's, static) and, for a flood, which carry a river today.
 local function courses(W, s) return mapm.courses(W, s) end
+-- (S24) runtime: the tiles already in a flood's silt list (rebuilt from the saved list after a reload)
+local SILT_SEEN = setmetatable({}, { __mode = "k" })
 
 -- Height above nearest drainage per tile (runtime), from the flood's saved course widths and
 -- gradients: { h = {}, ci = {} } (h 99 beyond reach or at sea).
@@ -180,6 +182,24 @@ local function fill(W, s)
   e.st = {}
   for j = 1, #st do e.st[j] = st[j] end
   mapm.FLOOD[s] = n > 0 and d or nil
+  -- (S24, D-203) the ground the water has lain on in this flood, kept in the order it first went under (saved: the same
+  -- after a reload, the depths being the stages' own): its mud when the water goes down
+  local fl = s.fl
+  if fl and n > 0 then
+    local sl = fl.silt
+    if not sl then sl = {}; fl.silt = sl end
+    local seen = SILT_SEEN[s]
+    if not seen or seen.list ~= sl then
+      seen = { list = sl, at = {} }
+      for k = 1, #sl do seen.at[sl[k]] = true end
+      SILT_SEEN[s] = seen
+    end
+    local at = seen.at
+    for k = 1, #list do
+      local i = list[k]
+      if d[i] > 0 and not at[i] then at[i] = true; sl[#sl + 1] = i end
+    end
+  end
   return e
 end
 
@@ -592,6 +612,8 @@ function M.recede(W, s, now)
   end
   local d = deeds.get(W, fl.deed)
   if d then d.peak = sfmt("%.2f", fl.peak); d.hours = floor(now - fl.t0) end
+  -- (S24, D-203) mud and silt over the ground it lay on, drying out over the weeks (drawn; the next flood's replaces it)
+  if fl.silt and #fl.silt > 0 then s.silt = { t = now, tiles = fl.silt } end
   danger.each_on_map(W, s, function(p)
     if p.flood_seen == fl.deed and people.stage(p, now) ~= "infant" then people.remember(p, now, "The flood water has gone down") end
   end)

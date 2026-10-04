@@ -87,7 +87,8 @@ local function exposed_beast(W, s)
           end
         end)
         local m = c.strike_beast[a.sp] - top
-        if m > 0.05 and (not bm or m > bm) then best, bx, by, bm = a, x, y, m end
+        -- (S24: and the god's aimed bolt there would take it - not the hurdles of a pen it stands in the gate of)
+        if m > 0.05 and (not bm or m > bm) and blaze.strike_target(W, s, x, y, now, true) == a then best, bx, by, bm = a, x, y, m end
       end
     end
   end

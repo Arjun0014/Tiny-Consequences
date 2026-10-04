@@ -63,9 +63,11 @@ function M.run(W, opts)
     fr.sep = sep
     if moving then fr.m = (fr.m or 0) + 1 end
     if moving and p and not p[3] then fr.s = (fr.s or 0) + 1 end   -- (appearing is not starting)
-    if p and p[3] and not moving then fr.e = (fr.e or 0) + 1 end
+    -- (S24, D-196: a chase's end is not counted as a stop - a pack's run at its quarry ends for all of it by what the
+    -- quarry does, caught or away; the measure is of travelling packs and herds stopping as one)
+    if p and p[3] and not moving and not p[5] then fr.e = (fr.e or 0) + 1 end
     if p and resting and not p[4] then fr.r = (fr.r or 0) + 1 end
-    prev[mk] = { x, y, moving, resting }
+    prev[mk] = { x, y, moving, resting, a.act == "chase" }
     g.samples = g.samples + 1
     if not a.why then g.nowhy = g.nowhy + 1 end
   end

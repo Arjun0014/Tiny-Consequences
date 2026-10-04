@@ -142,6 +142,9 @@ end
 
 function sys.push(W, t, id, ver)
   local R = W.v3rt
+  -- (S24) no queue yet (a command applied before the hour's first step - a god's bolt making a herd bolt): the queue is
+  -- built now from everyone's next step, this one's included
+  if not R then rt(W); return end
   local n = R.n + 1
   R.n = n
   local T, I, Vv = R.t, R.id, R.ver

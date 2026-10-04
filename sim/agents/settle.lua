@@ -940,10 +940,11 @@ function M.hourly(W, s, now)
   need.wood_short = want > 0 and max(0, min(1, (want - have) / want)) or 0
   s.wood_want, s.wood_have = want, have
   need.fell = max(0, ceil((want - have) / 3.5) - chopping)
-  -- new field ground: trees to fell and stumps to dig out
+  -- new field ground: trees to fell and stumps to dig out; (S24) a building's lot too - its stumps (a burnt fold's
+  -- charred trees about it) were never dug out unless a field was being cleared as well, and its site never laid
   local cl = s.clearing
   need.clear_trees, need.clear_stumps = 0, 0
-  if cl then need.clear_trees, need.clear_stumps = s.clear_t, s.clear_s end
+  if cl or s.lot then need.clear_trees, need.clear_stumps = s.clear_t, s.clear_s end
   if site_logs > 0 then
     need.fell_why = sfmt("Logs are wanted for the %s (%d more) and the woodstore holds %d",
       s.buildings[short_id].label, site_logs, s.wood_store and s.wood_store.stock.logs or 0)

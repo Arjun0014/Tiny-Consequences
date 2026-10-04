@@ -27,9 +27,9 @@ M.ICON = ICON
 local DANGER = { fire = true, flood = true, quake = true, wave = true, death = true, wound = true, strike = true, fell = true,
   lost = true, hunger = true, take = true, ["event:quake"] = true, ["event:eruption"] = true, ["event:wildfire"] = true,
   sickness = true, impact = true, blight = true, fouled = true, oiled = true }
-local HELP = { help = true, lodging = true, ["return"] = true, pay = true, takenin = true, fed = true, palisade = true }
+local HELP = { help = true, lodging = true, ["return"] = true, pay = true, takenin = true, fed = true, palisade = true, rainout = true }
 local STATE = { soil = true, river = true, air = true, crops = true, sick = true, fields = true, seed = true, sea = true, fish = true,
-  oil = true, dust = true, packs = true, herds = true }
+  oil = true, dust = true, packs = true, herds = true, volc = true, spread = true }
 local BLUE = vmath.vector4(0.24, 0.45, 0.70, 1)
 
 local function trunc(font, str, px, w)

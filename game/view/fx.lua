@@ -25,9 +25,12 @@ M.FIRE_MIN = 0.05
 
 local H_POS, H_NRM, H_COL = hash("position"), hash("normal"), hash("color")
 local MSG_ENABLE, MSG_DISABLE = hash("enable"), hash("disable")
-local sin, cos, sqrt, max, min = math.sin, math.cos, math.sqrt, math.max, math.min
+local sin, cos, sqrt, max, min, floor = math.sin, math.cos, math.sqrt, math.max, math.min, math.floor
 
 M.flames, M.smoke, M.chim, M.bolts, M.pulses = {}, {}, {}, {}, {}
+-- (S24) the v3 volcanoes' plumes: steam rising from a vent as the pressure under it builds, dark ash after it erupts
+M.PLUMES = 18
+M.plume_steam, M.plume_ash = {}, {}
 M.pulse_res = {}
 
 -- A jagged bolt from the ground (y = 0) to the cloud base (y = 1), crossed quads per segment.
@@ -155,12 +158,14 @@ local function make(kind, c1, c2, factory_url, n, out, own_res)
   end
 end
 
-function M.init(W, flame_factory, smoke_factory, surface)
-  M.W, M.surface = W, surface
+function M.init(W, flame_factory, smoke_factory, surface, surface_exact)
+  M.W, M.surface, M.surface_exact = W, surface, surface_exact or surface
   if #M.flames == 0 then
     make("flame", { 1.0, 0.50, 0.12 }, { 1.0, 0.86, 0.35 }, flame_factory, M.FLAMES, M.flames)
     make("smoke", { 0.45, 0.43, 0.42 }, nil, smoke_factory, M.SMOKE, M.smoke)
     make("smoke", { 0.86, 0.86, 0.88 }, nil, smoke_factory, M.CHIMNEY, M.chim, "/tc/chimney_smoke.bufferc")
+    make("smoke", { 0.58, 0.58, 0.60 }, nil, smoke_factory, M.PLUMES, M.plume_steam, "/tc/plume_steam.bufferc")
+    make("smoke", { 0.30, 0.28, 0.27 }, nil, smoke_factory, M.PLUMES, M.plume_ash, "/tc/plume_ash.bufferc")
     for i = 1, M.BOLTS do
       local id = factory.create(flame_factory, vmath.vector3(0, 0, 0))
       local url = msg.url(nil, id, "mesh")
@@ -433,6 +438,41 @@ function M.update(W, dt, frozen)
     if on ~= fb.on then fb.on = on; msg.post(fb.url, on and MSG_ENABLE or MSG_DISABLE) end
     if m.t > fall + 2 then M.meteor_fx = nil end
   end
+  -- (S24) the volcanoes near the view (read where the world keeps them - never volcano.list, which makes them): steam
+  -- from the vent of one whose pressure is building (from 35% of what makes it erupt; more and taller the nearer), dark
+  -- ash rising from one that erupted in the last days
+  local VS = W.v3 and W.S.v3 and W.S.v3.volc
+  local fxv, fyv, fzv = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
+  local day = W.v3 and floor((require("game.platform.speed").v3_t or W.hour) / 24) or 0
+  local ns, na = 0, 0
+  local g = W.grid
+  for _, v in ipairs(VS and VS.list or {}) do
+    local c = v.cell
+    local d = g.X[c] * fxv + g.Y[c] * fyv + g.Z[c] * fzv
+    if d > 0.6 then
+      local ratio = (v.thr or 1) > 0 and v.pressure / v.thr or 0
+      local erupting = v.last and day - v.last < 3 and (v.erupted or 0) > 0
+      local pool = erupting and M.plume_ash or M.plume_steam
+      local k = erupting and 12 or (ratio > 0.35 and min(M.PLUMES, floor(4 + ratio * 10)) or 0)
+      for q = 1, k do
+        local o
+        if erupting then na = na + 1; o = M.plume_ash[na] else ns = ns + 1; o = M.plume_steam[ns] end
+        if o then
+          if not frozen then o.life = o.life + dt * (erupting and 0.22 or 0.3) end
+          if o.life > 1 then o.life = o.life - 1; o.phase = o.phase + 1.7 end
+          local l = o.life
+          local a, b = sin(o.phase * 1.9) * 0.4, cos(o.phase * 2.7) * 0.4
+          -- (S24: grey-white steam, tall and broad enough to be seen over a snowy summit from the mid zoom)
+          local big = erupting and 2.6 or (0.8 + 1.2 * ratio)
+          local sz = (0.08 + 0.3 * l) * big * (1 - l * l) + 0.001
+          place(o, W, c, a * 0.3 + l * 0.2, b * 0.3, 0.1 + l * (erupting and 2.0 or 1.4) * big * 0.5, sz, 0.9)
+          if not o.on then o.on = true; msg.post(o.url, MSG_ENABLE) end
+        end
+      end
+    end
+  end
+  for i = ns + 1, #M.plume_steam do local o = M.plume_steam[i]; if o.on then o.on = false; msg.post(o.url, MSG_DISABLE) end end
+  for i = na + 1, #M.plume_ash do local o = M.plume_ash[i]; if o.on then o.on = false; msg.post(o.url, MSG_DISABLE) end end
   -- chimney smoke: each chimney gets a couple of puffs at different ages, rising and drifting
   local cl = M.chim_list or {}
   local nc = #cl

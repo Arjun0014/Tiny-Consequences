@@ -276,6 +276,14 @@ M.list = L
 local function add(kind, x, y, z, ux, uy, uz, yaw, sc, sh, c1, c2, c3, cell, rnd)
   local t = TPL[L.lod][kind]
   if not t then return end
+  -- (S24) nothing stands in a meteor's crater (its rim's thrown rock is added on purpose: M.rim)
+  local cr = M.craters
+  if cr and not L.v3 and not M.rim then
+    for q = 1, #cr do
+      local e = cr[q]
+      if ux * e[1] + uy * e[2] + uz * e[3] > e[4] then return end
+    end
+  end
   local ex = M.v3_exclude
   if ex and not L.v3 then
     for q = 1, #ex do
@@ -1020,6 +1028,10 @@ function M.plan_chunk(ctx, ch, i0, i1, append)
       end
     end
   end
+  -- (S24) the craters whose cell this chunk owns: their rims
+  if ctx.craters and (i1 == nil or i1 >= #list) then
+    for _, e in ipairs(ctx.craters) do M.plan_crater(ctx, e) end
+  end
   -- settlements whose centre this chunk owns (after the last face batch)
   if ctx.owned and (i1 == nil or i1 >= #list) then
     for _, vc in ipairs(ctx.owned) do
@@ -1078,6 +1090,37 @@ end
 
 -- placements inside these local squares are left to the v3 settlement renderer
 M.v3_exclude = nil   -- list of { nx, ny, nz, ex, ey, ez, qx, qy, qz, half, R, cosr }
+-- (S24) the planet's meteor craters off the villages' maps: { ux, uy, uz, cos of the bowl's radius, cell, radius }
+M.craters = nil
+M.rim = false
+
+-- (S24) A crater's rim: the rock it threw up, in a broken ring about its bowl (props, lit like the planet's own rocks).
+function M.plan_crater(ctx, e)
+  local surface = ctx.surface
+  local ux, uy, uz, R = e[1], e[2], e[3], ctx.PL.R
+  local ex, ey, ez, nx, ny, nz = M.frame(ux, uy, uz)
+  local S = ctx.lod ~= 2 and M.SCALE or M.SCALE_FAR
+  local pal = PAL[K.boulder]
+  local h = (e[5] * 7919 + 17) % 2147483647
+  M.rim = true
+  local n = ctx.lod ~= 2 and 22 or 10
+  for q = 1, n do
+    h = pm(h + q * 131); local u1 = h / 2147483647
+    h = pm(h); local u2 = h / 2147483647
+    h = pm(h); local u3 = h / 2147483647
+    local a = (q - 1 + u1 * 0.6) / n * 2 * pi
+    local rr = e[6] * (1.0 + 0.45 * u2)
+    local px, py = cos(a) * rr / R, sin(a) * rr / R
+    local wx, wy, wz = ux + ex * px + nx * py, uy + ey * px + ny * py, uz + ez * px + nz * py
+    local l = sqrt(wx * wx + wy * wy + wz * wz)
+    wx, wy, wz = wx / l, wy / l, wz / l
+    local r = surface(wx, wy, wz)
+    local col = pal[floor(u3 * 0.9999 * #pal) + 1]
+    local c1 = pack_rgb(col[1] * 0.8, col[2] * 0.78, col[3] * 0.76)
+    add(K.boulder, wx * r, wy * r, wz * r, wx, wy, wz, a + u3 * 3, (0.7 + 0.9 * u3) * S, 0.7 + 0.4 * u1, c1, c1, P_SNOW, e[5], u2)
+  end
+  M.rim = false
+end
 
 -- Is the unit point (ux, uy, uz) on a v3 settlement's square (drawn by agents_view)?
 function M.in_v3_square(ux, uy, uz, margin)

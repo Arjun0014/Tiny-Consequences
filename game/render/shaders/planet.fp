@@ -203,9 +203,18 @@ void main()
         }
         float fire = var_fx.r;
         if (fire > 0.01) {
+            // (S24) a cell burns in places - its front, its hot spots - over the share of its ground its fire's intensity
+            // (the fuel alight) stands for; the rest smoulders as ash under a faint glow. (A wash of orange over the whole
+            // cell read as paint, and as a fire far bigger than the one burning.)
+            highp vec3 fp = var_wpos * 7.0;
+            float pn = tc_noise(fp + vec3(0.0, t * 0.04, 0.0)) * 0.65 + tc_noise(fp * 3.3 + vec3(t * 0.15, 0.0, -t * 0.1)) * 0.35;
+            float cover = clamp(fire * 1.4, 0.0, 1.0);
+            float th = mix(0.80, 0.18, cover);
+            float alight = smoothstep(th, th + 0.06, pn);
             float fl = 0.75 + 0.25 * sin(t * 9.0 + dot(var_wpos, vec3(13.0, 7.0, 11.0)));
             float ember = tc_noise(var_wpos * 40.0 + vec3(0.0, t * 0.8, 0.0));
-            col = mix(col, FIRE * (1.0 + 0.5 * fl * ember), clamp(fire * 1.6, 0.0, 0.92));
+            col = mix(col, FIRE * (1.0 + 0.5 * fl * ember), alight * 0.95);
+            col += FIRE * 0.10 * cover * (1.0 - alight);
         }
     } else {
         // ---- water

@@ -76,8 +76,13 @@ function M.run(W, opts)
   if not ready() then return nil, "the group was never where it was wanted" end
   local G = {}
   if herd == "wild" then
-    local gid
-    wild.each(s, function(w) if not w.pred and not gid then gid = w.gid end end)
+    -- (S24: the biggest band on the map - a map shows its herds' animals at a fixed share now, D-196)
+    local cnt, gid, gn = {}, nil, 0
+    wild.each(s, function(w) if not w.pred then cnt[w.gid] = (cnt[w.gid] or 0) + 1 end end)
+    wild.each(s, function(w)
+      local n = cnt[w.gid] or 0
+      if not w.pred and (n > gn or (n == gn and w.gid < gid)) then gid, gn = w.gid, n end
+    end)
     wild.each(s, function(w) if w.gid == gid then G[#G + 1] = w end end)
   else
     for _, a in ipairs(H.animals) do

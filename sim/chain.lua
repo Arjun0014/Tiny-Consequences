@@ -179,6 +179,10 @@ local function on_deed(W, R, d)
   elseif mk == "fire" then
     nd = node(R, I, pnode, sfmt("fire:%d:%s", sid, pnode and pnode.key or "root"), "fire", sid, d.t, { x = d.x, y = d.y, deed = d.id })
     nd.title = sfmt("Fire at %s", sname(W, sid))
+  elseif k == "rained_out" then
+    -- (S24) the god's rain put a fire out (the fire's own cause is its own chain)
+    nd = node(R, I, I.by_key["soil:" .. sid] or pnode, "rainout:" .. d.id, "rainout", sid, d.t, { x = d.x, y = d.y, deed = d.id })
+    nd.title = sfmt("The rain put out the fire at %s (%s burning)", sname(W, sid), plural(d.n or 1, "thing", "things"))
   elseif k == "strike" then
     nd = node(R, I, pnode, "strike:" .. d.id, "strike", sid, d.t, { x = d.x, y = d.y, deed = d.id })
     local what = d.what
@@ -340,6 +344,15 @@ local function on_event(W, R, e)
 end
 
 -- Live state joined by links (once a game hour) --------------------------------------------------
+-- (S24) the tiles of map s under flood water now (the flood's own depths, published for the ways)
+local function flood_tiles(s)
+  local fd = s.fl and require("sim.agents.map").FLOOD[s]
+  if not fd then return 0 end
+  local n = 0
+  for i = 1, s.N * s.N do if fd[i] > 0 then n = n + 1 end end
+  return n
+end
+
 local function poll_village(W, R, I, s, now)
   local C, F = W.C, W.F
   local c = s.cell
@@ -402,6 +415,17 @@ local function poll_village(W, R, I, s, now)
         or sfmt("The river at %s ran low (%.1fx its usual)", s.name, nd.low)
       nd.active = true
       touch(I, nd, now)
+      -- (S24) a flood already on the land that the high river spread (its own deed is the river's, older than the cast)
+      if nd.peak >= 1.5 and s.fl then
+        local n, n0 = flood_tiles(s), I.flood0 and I.flood0[s.id] or 0
+        if n0 > 0 and n > n0 * 1.3 + 40 then
+          local fn = node(R, I, nd, "spread:" .. s.id, "spread", s.id, now)
+          fn.peak = max(fn.peak or 0, n)
+          fn.title = sfmt("The flood at %s spread: %d tiles under water (%d before)", s.name, fn.peak, n0)
+          fn.active = true
+          touch(I, fn, now)
+        end
+      end
     end
   end
   -- the air
@@ -607,12 +631,11 @@ end
 -- (S23, R7 v2) The live marks of the new powers: beasts carrying the god's sickness (unseen or showing), fields
 -- holding the god's blight (by the cause each carries), the sea's warmth and its fish off a village (the planet's
 -- blame on the sea cells beside it), oil off a village, the dust in the sky.
+-- (S24) a village's sea: the sea cells within two rings of it (its map reaches that far - Tekheim's shore is two cells
+-- off: with only the cells next to it its fishers' sea was not its own)
 local function sea_cells(W, s)
-  local g = W.grid
   local out = {}
-  if W.geo.ocean[s.cell] == 1 then out[1] = s.cell end
-  for k = 1, g.nbr_count[s.cell] do
-    local c = g.nbr[s.cell * 6 - 6 + k]
+  for _, c in ipairs(require("sim.society.sites").rings(W, s.cell, 2)) do
     if W.geo.ocean[c] == 1 then out[#out + 1] = c end
   end
   return out
@@ -668,14 +691,14 @@ local function poll_v2(W, R, I, now)
           sn.active = true
           if new then touch(I, sn, now) end
         end
-      elseif I.power == "sea" or I.power == "oil" then
+      elseif I.power == "sea" or I.power == "oil" or ((I.power == "bring" or I.power == "cull") and I.species == "fish") then
         local cells = sea_cells(W, s)
-        local t_on, f_on, o_on, dt, fish, oil = false, false, false, 0, 0, 0
+        local t_on, f_on, o_on, dt, fish, oil, fsum, fn = false, false, false, 0, 0, 0, 0, 0
         for _, c in ipairs(cells) do
           local tg = Cb.sst and Cb.sst[c]
           if tg and tg ~= 0 and E.root[tg] == I.ev then t_on = true; dt = max(dt, math.abs(F.heat_anom[c] or 0)) end
           local fg = Cb.fish and Cb.fish[c]
-          if fg and fg ~= 0 and E.root[fg] == I.ev then f_on = true end
+          if fg and fg ~= 0 and E.root[fg] == I.ev then f_on = true; fsum, fn = fsum + (F.fish and F.fish[c] or 0), fn + 1 end
           fish = fish + (F.fish and F.fish[c] or 0)
           local og = Cb.oil and Cb.oil[c]
           if og and og ~= 0 and E.root[og] == I.ev and (F.oil and F.oil[c] or 0) > 0.01 then o_on = true; oil = max(oil, F.oil[c]) end
@@ -701,11 +724,36 @@ local function poll_v2(W, R, I, now)
             local new
             nd, new = node(R, I, I.by_key["sst:" .. s.id] or I.by_key["oil:" .. s.id], fk, "fish", s.id, now)
             local f0 = I.fish0[s.id]
-            nd.title = sfmt("The fish off %s %s (%d%%)", s.name, fish >= f0 and "more" or "fewer", floor((fish / math.max(1e-6, f0)) * 100 + 0.5))
+            if I.power == "bring" or I.power == "cull" then
+              -- (S24: a shoal brought or fish taken - the sea there now, against what it can hold)
+              nd.title = sfmt("%s off %s: the fish at %d%% of what the sea there holds", I.power == "bring" and "A shoal brought" or "Fish taken",
+                s.name, floor((fn > 0 and fsum / fn or 0) * 100 + 0.5))
+            else
+              nd.title = sfmt("The fish off %s %s (%d%%)", s.name, fish >= f0 and "more" or "fewer", floor((fish / math.max(1e-6, f0)) * 100 + 0.5))
+            end
             nd.active = f_on
             if new then touch(I, nd, now) end
           end
         end
+      end
+    end
+  end
+  -- (S24) a stirred mountain: the pressure the god added under it, building day by day until it erupts (the eruption
+  -- itself comes in as its event, caused by the stirring) - the first thing it changed, shown at once
+  if I.power == "stir" then
+    local VS = V.volc
+    for _, v in ipairs(VS and VS.list or {}) do
+      local key = "volc:" .. v.cell
+      if v.cause == I.ev or I.by_key[key] then
+        local nd, new = node(R, I, nil, key, "volc", I.sid, now)
+        local erupted = v.cause ~= I.ev and v.last and v.last * 24 + 24 >= I.t
+        local r = (v.thr or 0) > 0 and v.pressure / v.thr or 0
+        nd.title = erupted and sfmt("The pressure under %s built past what makes it erupt", v.name or "the mountain")
+          or sfmt("Pressure under %s: %d%% of what makes it erupt", v.name or "the mountain", floor(r * 100 + 0.5))
+        nd.active = not erupted
+        local q = erupted and -1 or floor(r * 10)
+        if new or nd.last_q ~= q then touch(I, nd, now) end
+        nd.last_q = q
       end
     end
   end
@@ -762,7 +810,11 @@ function M.update(W, now)
   for _, I in ipairs(R.list) do
     if not I.soil0 then
       I.soil0 = {}
-      for _, s in ipairs(V.settlements) do I.soil0[s.id] = W.F.soil_water[s.cell] end
+      I.flood0 = {}
+      for _, s in ipairs(V.settlements) do
+        I.soil0[s.id] = W.F.soil_water[s.cell]
+        if s.fl and (I.power == "rain" or I.kind == "power_weather") then I.flood0[s.id] = flood_tiles(s) end
+      end
     end
   end
   local D = V.deeds or {}
@@ -777,7 +829,8 @@ function M.update(W, now)
         for _, s in ipairs(V.settlements) do if s.alive then poll_village(W, R, I, s, now) end end
         if I.power == "cull" or I.power == "bring" then poll_wild(W, R, I, now) end
         poll_orphans(W, R, I, now)
-        if I.power == "sickness" or I.power == "blight" or I.power == "sea" or I.power == "oil" or I.power == "meteor" then poll_v2(W, R, I, now) end
+        if I.power == "sickness" or I.power == "blight" or I.power == "sea" or I.power == "oil" or I.power == "meteor"
+          or I.power == "stir" or ((I.power == "bring" or I.power == "cull") and I.species == "fish") then poll_v2(W, R, I, now) end
       end
     end
     poll_households(W, R, now)

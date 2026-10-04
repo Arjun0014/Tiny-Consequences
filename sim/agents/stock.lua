@@ -125,15 +125,18 @@ function M.young(a, t) return M.age(a, t) < SP(a.sp).young_years end
 
 -- An animal's draws: one hash per (animal, day) kept on the animal, then a single mixing round
 -- per draw keyed by the minute of the day (the browser's Lua pays dearly for every hash, D-089,
--- D-092)
+-- D-092). (S24: 128 keys a minute - with 32, the keys above 31 were the next minutes' draws)
 local function u(W, s, H, a, now, k)
   local day = floor(now / 24)
   if a.rd ~= day then
     a.rd = day
     a.rb = rng.hash(W.seed, rng.S.V3_MAP, s.key * 7 + M.HIDX[H.kind] * 20000 + a.k, day % 4294967296, 500)
   end
-  return rng.fbase(a.rb, (floor(now * 60) % 1440) * 32 + k)
+  return rng.fbase(a.rb, (floor(now * 60) % 1440) * 128 + k)
 end
+-- (S24) the seven headings a grazer weighs: q x 0.6 rad about its way
+local CQ, SQ = {}, {}
+for q = -3, 3 do CQ[q + 4], SQ[q + 4] = dmath.cos(q * 0.6), dmath.sin(q * 0.6) end
 local P8 = { { 1, 0 }, { 0.7, 0.7 }, { 0, 1 }, { -0.7, 0.7 }, { -1, 0 }, { -0.7, -0.7 }, { 0, -1 }, { 0.7, -0.7 } }
 
 -- Pasture blocks -----------------------------------------------------------------------------
@@ -265,8 +268,93 @@ function M.herder(W, s, H)
   return nil
 end
 
+-- (S24, D-192) The pen of the beast being stepped (M.step sets it for its everyday moves): a fold's, a byre yard's or a
+-- sty's hurdles are passed only at its gate - a beast inside bound out (or outside bound in) goes to the gate first, then
+-- through it. A flock leaves its fold as a stream, one after another, not through its fence.
+local GATE, GATE_IN = nil, false
+local inside_pen
+local function gate_points(s, pen, a)
+  local T = s.T
+  local x0, y0 = mapm.ixy_xy(s, pen.ix0, pen.iy0)
+  local cx, cy = x0 + (pen.w - 1) * 0.5 * T, y0 + (pen.h - 1) * 0.5 * T
+  local dx, dy = pen.dx - cx, pen.dy - cy
+  local l = sqrt(dx * dx + dy * dy)
+  if l < 1e-6 then return pen.dx, pen.dy, cx, cy end
+  dx, dy = dx / l, dy / l
+  -- (each a little to its own side of the gate's width; out, a step beyond it - those coming out stood in the gate and
+  -- jammed it for the rest)
+  local sd = (((a.k + 0.5) * 0.2360679775) % 1 - 0.5) * T * 0.8
+  return pen.dx + dx * T * 1.2 - dy * sd, pen.dy + dy * T * 1.2 + dx * sd, pen.dx - dx * T * 1.6 - dy * sd, pen.dy - dy * T * 1.6 + dx * sd
+end
+
+-- (S24) Does the straight way from (x1, y1) to (x2, y2) run through pen's ground (its hurdles crossed)?
+local function through_pen(s, pen, x1, y1, x2, y2)
+  local T = s.T
+  local x0, y0 = mapm.ixy_xy(s, pen.ix0, pen.iy0)
+  local lo, hi = 0, 1
+  local dx, dy = x2 - x1, y2 - y1
+  local ax0, ax1, ay0, ay1 = x0 - 0.6 * T, x0 + (pen.w - 0.4) * T, y0 - 0.6 * T, y0 + (pen.h - 0.4) * T
+  if dx * dx < 1e-18 then
+    if x1 <= ax0 or x1 >= ax1 then return false end
+  else
+    local ta, tb = (ax0 - x1) / dx, (ax1 - x1) / dx
+    if ta > tb then ta, tb = tb, ta end
+    if ta > lo then lo = ta end
+    if tb < hi then hi = tb end
+    if lo >= hi then return false end
+  end
+  if dy * dy < 1e-18 then
+    if y1 <= ay0 or y1 >= ay1 then return false end
+  else
+    local ta, tb = (ay0 - y1) / dy, (ay1 - y1) / dy
+    if ta > tb then ta, tb = tb, ta end
+    if ta > lo then lo = ta end
+    if tb < hi then hi = tb end
+    if lo >= hi then return false end
+  end
+  return true
+end
+
 -- Walk from where it stands to (x, y) if the straight way is open, else as near as it can.
 local function walk_to(W, s, a, now, x, y, speed, here)
+  local pen = GATE
+  local gated = false
+  if pen and pen.state == "standing" and pen.kind ~= "camp" and pen.dx then
+    local fin, tin = inside_pen(s, pen, a.tx, a.ty), inside_pen(s, pen, x, y)
+    -- (out with the herd its gate is shut behind it: only one going in for the night, or kept in, goes in)
+    if tin and not fin and not GATE_IN then return false end
+    if fin ~= tin then
+      local ox, oy, ix, iy = gate_points(s, pen, a)
+      local gx, gy = ix, iy
+      if not fin then gx, gy = ox, oy end
+      if dsq(a.tx - gx) + dsq(a.ty - gy) > dsq(s.T * 0.8) then
+        x, y = gx, gy
+        a.why = fin and "To the gate" or "In at the gate"
+      elseif fin then
+        x, y = ox, oy
+      else
+        x, y = ix, iy
+      end
+      gated = true
+    elseif not fin and through_pen(s, pen, a.tx, a.ty, x, y) then
+      -- (its way runs across the fold: round it, by the corner that makes the way shortest)
+      local T = s.T
+      local x0, y0 = mapm.ixy_xy(s, pen.ix0, pen.iy0)
+      local bx, by, bd = nil, nil, 1e18
+      for q = 1, 4 do
+        local qx = (q == 1 or q == 3) and x0 - 1.6 * T or x0 + (pen.w + 0.6) * T
+        local qy = q <= 2 and y0 - 1.6 * T or y0 + (pen.h + 0.6) * T
+        if not through_pen(s, pen, a.tx, a.ty, qx, qy) then
+          local d = sqrt(dsq(qx - a.tx) + dsq(qy - a.ty)) + sqrt(dsq(x - qx) + dsq(y - qy))
+          if d < bd then bx, by, bd = qx, qy, d end
+        end
+      end
+      if not bx then return false end
+      x, y = bx, by
+    end
+  else
+    pen = nil
+  end
   local i0, i1 = mapm.tile_of(s, a.tx, a.ty), mapm.tile_of(s, x, y)
   if i1 == 0 or s.cost[i1] < 0 then
     -- (a step about where it stands that runs into a wall or water is not taken: S15)
@@ -282,6 +370,8 @@ local function walk_to(W, s, a, now, x, y, speed, here)
     local path = nav.path(s, a.tx, a.ty, x, y, 1, a.mv)
     if not path or path.n < 2 then return false end
     x, y = path.x[2], path.y[2]
+    -- (S24: the people's way may cut over a fold; a beast's does not)
+    if pen and not gated and (inside_pen(s, pen, x, y) ~= inside_pen(s, pen, a.tx, a.ty) or through_pen(s, pen, a.tx, a.ty, x, y)) then return false end
   end
   local dx, dy = x - a.tx, y - a.ty
   local d = sqrt(dx * dx + dy * dy)
@@ -306,6 +396,9 @@ local function graze_drift(s, a, now, hx, hy, L, dur, open_only)
   if L > 1e-5 then
     local tx, ty = x + hx * L, y + hy * L
     local i = mapm.tile_of(s, tx, ty)
+    -- (S24) a pen's hurdles are passed only at its gate: a grazer does not drift through them
+    local pen = GATE
+    if pen and pen.state == "standing" and pen.kind ~= "camp" and inside_pen(s, pen, x, y) ~= inside_pen(s, pen, tx, ty) then i = 0 end
     if i > 0 and s.cost[i] >= 0 then
       local k = s.tree[i]
       if open_only and k > 0 and s.trees.st[k] == 1 then
@@ -363,7 +456,7 @@ local function pen_spot(s, pen, fx, fy)
   return x0 + (0.3 + fx * (pen.w - 1.6)) * T, y0 + (0.3 + fy * (pen.h - 1.6)) * T
 end
 
-local function inside_pen(s, pen, x, y)
+function inside_pen(s, pen, x, y)
   local T = s.T
   local x0, y0 = mapm.ixy_xy(s, pen.ix0, pen.iy0)
   local fx, fy = (x - x0) / T, (y - y0) / T
@@ -461,7 +554,11 @@ local function scan(s, H, a, now, x, y, sight, hx, hy, hda)
   -- (S24, D-192) with (hx, hy, hda): the one ahead - the nearest in sight that is nearer (hx, hy) than hda by half a
   -- spacing (a beast following the herd follows it)
   local ld2, lead, lx, ly = 1e18, nil, 0, 0
-  local ahead = hx and (hda - SP(a.sp).sep * 0.5) or nil
+  local sep = SP(a.sp).sep
+  local ahead = hx and (hda - sep * 0.5) or nil
+  -- (S24) the press of those closer than a spacing: away from each, the more the closer (a beast in a crowd makes room
+  -- away from all of them, not only from its nearest - stepping from one into another kept the flock a packed ball)
+  local sep2, rx, ry = sep * sep, 0, 0
   local an = H.animals
   local inpen = a.act == "pen"
   local grp = a.led or 0
@@ -486,6 +583,11 @@ local function scan(s, H, a, now, x, y, sight, hx, hy, hda)
         local dx, dy = bx - x, by - y
         local d2 = dx * dx + dy * dy
         if d2 < nd2 then nn, nd2, nx, ny = b, d2, bx, by end
+        if d2 < sep2 and d2 > 1e-12 then
+          local d = sqrt(d2)
+          local w = (sep - d) / (sep * d)
+          rx, ry = rx - dx * w, ry - dy * w
+        end
         if d2 < s2 then
           ln = ln + 1
           if ba == "rest" then lr = lr + 1 end
@@ -501,6 +603,7 @@ local function scan(s, H, a, now, x, y, sight, hx, hy, hda)
   SC.nn, SC.nd, SC.nx, SC.ny = nn, sqrt(nd2), nx, ny
   SC.ln, SC.lrest, SC.cx, SC.cy, SC.cn = ln, lr, cx, cy, cn
   SC.lead, SC.lx, SC.ly = lead, lx, ly
+  SC.rx, SC.ry = rx, ry
 end
 M.scan = scan
 
@@ -731,6 +834,7 @@ end
 function M.step(W, s, H, a, now)
   local c = C()
   local S = SP(a.sp)
+  GATE, GATE_IN = nil, false
   local P = s.pasture
   local dt = now - a.t0
   -- the body: hunger rises; grazing (the block's grass), rooting and browsing (the woods), the
@@ -913,6 +1017,8 @@ function M.step(W, s, H, a, now)
       end
     end
   end
+  -- (S24) from here on its everyday moves: in and out of its pen at the gate
+  GATE = not drover and pen or nil
   -- the young keep to their mothers
   local mom = not drover and a.mother ~= 0 and H.animals[a.mother]
   if age < S.young_years and mom and mom.alive then
@@ -973,6 +1079,7 @@ function M.step(W, s, H, a, now)
   local x, y = a.tx, a.ty
   local pace = 0.85 + 0.3 * trait(a, T_PACE)
   if inpen then
+    GATE_IN = true
     local tx, ty
     local inside = inside_pen(s, pen, x, y)
     if night then
@@ -1046,7 +1153,10 @@ function M.step(W, s, H, a, now)
     a.why = "Moving off from the dog"
     if walk_to(W, s, a, now, x + ex * st, y + ey * st, S.speed * pace * 1.6, true) then return end
   end
-  if da > Ri * 1.5 or (led and da > Ri * 0.45) then
+  -- (S24) still inside its fold with the herd out: it goes out after them by the gate (making room or grazing inside it
+  -- held the ones at the gate back - the rest jammed behind them)
+  local still_in = GATE and not GATE_IN and GATE.state == "standing" and GATE.kind ~= "camp" and GATE.dx and inside_pen(s, GATE, x, y)
+  if da > Ri * 1.5 or (led and da > Ri * 0.45) or still_in then
     -- left behind, or the herder is moving on (a moving flock draws closer together than a grazing
     -- one): after them, to its own side of the herd. (S24, D-192) On the move it follows the one ahead of it - the
     -- nearest in sight nearer the herder - a spacing behind and a little to its own side: the flock strings out behind
@@ -1059,22 +1169,35 @@ function M.step(W, s, H, a, now)
     local trail = false
     if led and not drover then
       scan(s, H, a, now, x, y, S.sep * 5, cx, cy, da)
-      if SC.lead then
-        local ex, ey = x - SC.lx, y - SC.ly
+      local b = SC.lead
+      if b then
+        -- (after where the one ahead is going - not where it stands: one close behind it stepped back to keep its
+        -- distance from it and the flock milled about instead of going on)
+        local lx, ly = SC.lx, SC.ly
+        if b.act == "walk" and b.t1 > now then lx, ly = b.tx, b.ty end
+        local ex, ey = x - lx, y - ly
         local el = sqrt(ex * ex + ey * ey)
-        if el > 1e-6 then
+        local gap = S.sep * (0.9 + 0.7 * u(W, s, H, a, now, 60))
+        if el > gap then
           ex, ey = ex / el, ey / el
-          local gap = S.sep * (0.9 + 0.7 * u(W, s, H, a, now, 60))
           local sd = side * S.sep * 1.4
-          tx, ty = SC.lx + ex * gap - ey * sd, SC.ly + ey * gap + ex * sd
+          tx, ty = lx + ex * gap - ey * sd, ly + ey * gap + ex * sd
           trail = true
+        else
+          -- at its heels already: a mouthful while the one ahead moves on
+          a.why = "Waiting on the one ahead"
+          graze_drift(s, a, now, hx, hy, 0, S.sep / max(1e-6, S.speed) * (0.6 + 0.6 * u(W, s, H, a, now, 61)), true)
+          return
         end
       end
     end
+    -- (still in the fold: out by its gate first - its way to the others, cut to a hop, ended inside the fold, and it walked
+    -- up and down inside it)
+    if still_in then tx, ty = gate_points(s, GATE, a); trail = false end
     local dx, dy = tx - x, ty - y
     local d = sqrt(dx * dx + dy * dy)
     local hop = S.hop * pace * (0.8 + 0.5 * u(W, s, H, a, now, 5)) * (da > R * 2 and 1.6 or 1)
-    if d > hop then tx, ty = x + dx / d * hop, y + dy / d * hop end
+    if d > hop and not still_in then tx, ty = x + dx / d * hop, y + dy / d * hop end
     if d > 1e-6 then a.hx, a.hy = dx / d, dy / d end
     if drover then
       a.why = led and ("Following the drover" .. (drover.trip.to ~= s.id and (" to " .. (W.S.v3.settlements[drover.trip.to] or s).name) or ""))
@@ -1087,13 +1210,15 @@ function M.step(W, s, H, a, now)
   scan(s, H, a, now, x, y, S.sep * 4)
   local nn = SC.nn
   if nn and SC.nd < S.sep * c.stock_room and not sick then
-    -- too close: room to graze (away from the nearest, a little along its own way)
-    local ex, ey = x - SC.nx, y - SC.ny
+    -- too close: room to graze (away from those pressing on it - S24: all of them, not only its nearest - a little
+    -- along its own way)
+    local ex, ey = SC.rx, SC.ry
     local el = sqrt(ex * ex + ey * ey)
+    if el < 1e-6 then ex, ey = x - SC.nx, y - SC.ny; el = sqrt(ex * ex + ey * ey) end
     if el < 1e-6 then ex, ey, el = -hy, hx, 1 end
     ex, ey = ex / el + hx * 0.3, ey / el + hy * 0.3
     local l = max(1e-6, sqrt(ex * ex + ey * ey))
-    local st = S.sep * (0.4 + 0.3 * u(W, s, H, a, now, 19))
+    local st = S.sep * (0.6 + 0.4 * u(W, s, H, a, now, 19))
     a.why = "Making room to graze"
     if walk_to(W, s, a, now, x + ex / l * st, y + ey / l * st, S.speed * pace * 0.6, true) then return end
   end
@@ -1125,19 +1250,32 @@ function M.step(W, s, H, a, now)
   if l0 > 1e-6 then hx, hy = hx / l0, hy / l0 else hx, hy = 1, 0 end
   if P then
     local bsc, bx, by = -1e9, hx, hy
-    local dmax = S.sep * 0.8
+    local dmax = S.sep * 1.1
     for q = -3, 3 do
-      local ang = q * 0.6 + (u(W, s, H, a, now, 64 + q) - 0.5) * 0.35
-      local ca, sa = cos(ang), sin(ang)
+      -- (three draws from one hash's bits: ten for its turn, ten for its step, twelve for its whim; the turn's cos and sin by
+      -- their series - |e| <= 0.175, exact to 1e-9 - plain arithmetic, the same in every runtime)
+      local x0 = u(W, s, H, a, now, 64 + q)
+      local b1 = x0 * 1024
+      b1 = b1 - b1 % 1
+      local b2 = x0 * 1048576
+      b2 = (b2 - b2 % 1) % 1024
+      local b3 = x0 * 4294967296
+      b3 = (b3 - b3 % 1) % 4096
+      local e = (b1 / 1024 - 0.5) * 0.35
+      local e2 = e * e
+      local ce = 1 - e2 * (0.5 - e2 * (1 / 24 - e2 / 720))
+      local se = e * (1 - e2 * (1 / 6 - e2 * (1 / 120 - e2 / 5040)))
+      local c0, s0 = CQ[q + 4], SQ[q + 4]
+      local ca, sa = c0 * ce - s0 * se, s0 * ce + c0 * se
       local ex, ey = hx * ca - hy * sa, hy * ca + hx * sa
-      local st = S.sep * (0.5 + 0.7 * u(W, s, H, a, now, 72 + q))
+      local st = S.sep * (0.5 + 0.7 * (b2 / 1024))
       local px, py = x + ex * st, y + ey * st
       local g = forage_at(s, a, S, P, px, py)
       if g >= 0 then
-        local sc = g + ca * 0.1 + u(W, s, H, a, now, 80 + q) * 0.12
+        local sc = g + ca * 0.1 + (b3 / 4096) * 0.12 + (ex * SC.rx + ey * SC.ry) * 0.3
         if nn then
           local dn = sqrt(dsq(px - SC.nx) + dsq(py - SC.ny))
-          if dn < dmax then sc = sc - (dmax - dn) / dmax * 0.6 end
+          if dn < dmax then sc = sc - (dmax - dn) / dmax * 1.4 end
         end
         local dc = sqrt(dsq(px - cx) + dsq(py - cy))
         if dc > Ri then sc = sc - (dc - Ri) / max(1e-6, Ri) * 1.2 end

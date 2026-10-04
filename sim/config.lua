@@ -782,6 +782,7 @@ C.POWERS = {
   -- planet days; warm or cold air +-v3_air_k C for v3_air_days; stirring a mountain adds v3_stir_k of its
   -- threshold to its pressure, straining a fault v3_strain_k of its threshold to its stress
   v3_rain_days = 3, v3_dry_days = 6, v3_air_k = 8, v3_air_days = 4, v3_stir_k = 0.5, v3_strain_k = 0.9,
+  v3_air_sea = 0.12,                      -- (S24) the share of the air's warmth or cold the sea under it takes in those days
 }
 
 -- v3: the agentic world (docs/v3/, D-078). One planet step = one game day (W.hpt = 24); a year is
@@ -981,8 +982,11 @@ C.V3 = {
     wolf = { speed = 2.4, run = 6.0, sep = 0.035, meat = 0, hide = 1 },
     cat = { speed = 2.2, run = 6.5, sep = 0.04, meat = 0, hide = 1 },
   },
-  wild_seen = 1.0,                        -- share of a herd's animals on the map's cells drawn here
-  wild_max = 24,                          -- at most this many wild grazers on one map
+  -- (S24, D-196) a map shows one in five of the planet's herds' animals on its cells - a sample at a fixed ratio, so a
+  -- cull, a brought herd, a die-off show on the map as they are (at 1.0 every map stood at the cap of 24 whatever lived
+  -- there: 77-200 uncapped); the cap now binds only on the richest ground
+  wild_seen = 0.2,                        -- share of a herd's animals on the map's cells drawn here
+  wild_max = 32,                          -- at most this many wild grazers on one map
   wild_keep = 0.9,                        -- bands keep this far from the village square
   wild_alert = 0.2, wild_alert_wolf = 0.3,   -- grazers take flight from people / hunting wolves this close
   wild_flee = 0.35,                       -- how far a frightened grazer runs

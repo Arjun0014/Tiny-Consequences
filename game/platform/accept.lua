@@ -278,13 +278,41 @@ function M.env(W, sid, now)
   local sites = require("sim.society.sites")
   for _, cc in ipairs(sites.rings(W, c, 2)) do
     if W.geo.ocean[cc] == 1 then
-      if not o.sea_t or F.temp[cc] > o.sea_t then o.sea_t = F.temp[cc] end
+      local sst = (F.sst and F.sst[cc]) or F.temp[cc]
+      if not o.sea_t or sst > o.sea_t then o.sea_t = sst end
       o.fish = math.max(o.fish or 0, F.fish[cc] or 0)
       o.oil = math.max(o.oil, F.oil[cc] or 0)
     end
   end
   for _, f in ipairs(s.birds and s.birds.flocks or {}) do if f.alive ~= false then o.gulls = o.gulls + (f.n or 0) end end
   return o
+end
+
+-- (S24) A target the god's aimed bolt would take itself where it stands now: a person out of doors ("person"), or a beast
+-- of group `what` (flock, cattle, swine, wild, dog; `sp` its species) - { x, y, what } or nil. Reads only.
+function M.aim_target(W, sid, what, sp, now)
+  local s = W.S.v3.settlements[sid]
+  local blaze = require("sim.agents.blaze")
+  local danger = require("sim.agents.danger")
+  local found
+  if what == "person" then
+    danger.each_on_map(W, s, function(q)
+      if not found and q.inside == 0 and q.act ~= "carried" then
+        local x, y = danger.person_pos(q, now)
+        local best, bk = blaze.strike_target(W, s, x, y, now, true)
+        if bk == "person" and best == q.id then found = { x = x, y = y, what = q.name } end
+      end
+    end)
+  else
+    blaze.beasts_out(W, s, now, function(kind, o, H, x, y)
+      if found then return end
+      local grp = kind == "beast" and H.kind or kind
+      if grp == what and (not sp or o.sp == sp) and blaze.strike_target(W, s, x, y, now, true) == o then
+        found = { x = x, y = y, what = o.sp or kind }
+      end
+    end)
+  end
+  return found
 end
 
 return M
