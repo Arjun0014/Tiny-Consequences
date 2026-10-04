@@ -416,8 +416,10 @@ local function weather(W, cell, what)
 end
 function PREVIEW.rain(W, cell) return weather(W, cell, sfmt("Rain for %d days", C().v3_rain_days)) end
 function PREVIEW.dry(W, cell) return weather(W, cell, sfmt("No rain for %d days", C().v3_dry_days)) end
-function PREVIEW.warm(W, cell) return weather(W, cell, sfmt("The air %d degrees warmer for %d days", C().v3_air_k, C().v3_air_days)) end
-function PREVIEW.cold(W, cell) return weather(W, cell, sfmt("The air %d degrees colder for %d days", C().v3_air_k, C().v3_air_days)) end
+-- (S24) the power brings an air mass whose warmth is its own against the season - over a cold snap it is far warmer than the
+-- day was: the texts say so (they said "8 degrees warmer", and a cast in a cold snap went from -1 C to 21 C)
+function PREVIEW.warm(W, cell) return weather(W, cell, sfmt("Warm air %d degrees above the season for %d days", C().v3_air_k, C().v3_air_days)) end
+function PREVIEW.cold(W, cell) return weather(W, cell, sfmt("Cold air %d degrees below the season for %d days", C().v3_air_k, C().v3_air_days)) end
 
 function PREVIEW.stir(W, cell)
   local best, bd = nil, -2

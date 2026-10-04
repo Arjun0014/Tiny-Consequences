@@ -389,8 +389,8 @@ end
 local POWER_STORY = {
   power_rain = function(W, e, s) return sfmt("Rain over the hills about %s", s.name), sfmt("A cloudburst for %d days", require("sim.config").POWERS.v3_rain_days) end,
   power_drought = function(W, e, s) return sfmt("A dry spell about %s", s.name), sfmt("No rain and a little heat for %d days", require("sim.config").POWERS.v3_dry_days) end,
-  power_heat = function(W, e, s) return sfmt("Warm air over %s", s.name), sfmt("%d degrees warmer for %d days", floor(require("sim.config").POWERS.v3_air_k + 0.5), require("sim.config").POWERS.v3_air_days) end,
-  power_chill = function(W, e, s) return sfmt("Cold air over %s", s.name), sfmt("%d degrees colder for %d days", floor(require("sim.config").POWERS.v3_air_k + 0.5), require("sim.config").POWERS.v3_air_days) end,
+  power_heat = function(W, e, s) return sfmt("Warm air over %s", s.name), sfmt("%d degrees above the season for %d days", floor(require("sim.config").POWERS.v3_air_k + 0.5), require("sim.config").POWERS.v3_air_days) end,
+  power_chill = function(W, e, s) return sfmt("Cold air over %s", s.name), sfmt("%d degrees below the season for %d days", floor(require("sim.config").POWERS.v3_air_k + 0.5), require("sim.config").POWERS.v3_air_days) end,
   power_cull = function(W, e, s)
     local wolves = e.data and e.data.species == "predators"
     return sfmt("%s culled about %s", wolves and "Wolves" or "Deer", s.name), wolves and "The packs of the hills about thinned" or "The herds of the hills about thinned"
@@ -996,6 +996,8 @@ function M.chain(W, st)
       seen["e" .. ev] = true
       local K = W.E and require("sim.causality.events").KINDS[e.kind]
       local txt = EV_TEXT[e.kind] or (K and K.text) or e.kind
+      -- (S24: which way the god turned the sea, from the cast's own record)
+      if e.kind == "power_sea" then txt = (e.data and e.data.mode == "cool") and "YOU cooled the sea" or "YOU warmed the sea" end
       links[#links + 1] = { t = e.hour or (e.tick and e.tick * (W.hpt or 24)) or 0, text = txt, who = e.actor == "player" and "you" or "nature" }
       root = e.actor == "player" and "you" or "nature"
       if e.actor == "player" then root_ev = ev end

@@ -368,13 +368,14 @@ const PSPECS = {
   lightning_dog: { sid: 1, power: 'lightning', lh: 10, aim: { what: 'dog' }, zoom: 1.45, after: [0.25, 1] },
   lightning_person: { sid: 1, power: 'lightning', lh: 11, aim: { what: 'person' }, zoom: 1.45, after: [0.25, 2] },
   lightning_field_dry: { sid: 1, power: 'lightning', lh: 13, setup: SETUP.dry(1), field: true, zoom: 1.35, after: [1, 4] },
+  lightning_field_ripe: { sid: 6, power: 'lightning', lh: 13, setup: SETUP.dry(6), field: 'ripe', zoom: 1.35, after: [1, 4] },
   lightning_wet: { sid: 1, power: 'lightning', lh: 13, setup: SETUP.soaked(1), what: 'tree_near_house', zoom: 1.35, after: [1, 4] },
   // (S24) second contexts for the powers seen once
   dry_tekheim: { sid: 1, power: 'dry', lh: 10, zoom: 1.2, far: 0.8, after: [24, 96, 144] },
   cold_mountain: { sid: 4, power: 'cold', lh: 22, zoom: 1.2, far: 0.8, after: [6, 24, 72] },
   warm_on_snow: { sid: 1, power: 'warm', lh: 11, premise: 'cold_snap', prelive: 48, zoom: 1.2, far: 0.8, after: [12, 48] },
   sickness_cattle: { sid: 1, power: 'sickness', lh: 10, what: 'byre', zoom: 1.4, after: [24, 72, 144] },
-  blight_krikeivorn: { sid: 6, power: 'blight', lh: 10, field: true, zoom: 1.35, after: [48, 144] },
+  blight_krikeivorn: { sid: 6, power: 'blight', lh: 10, field: 'ripe', zoom: 1.35, after: [48, 144] },
   sea_warm_tekheim: { sid: 1, power: 'sea', mode: 'warm', lh: 10, what: 'sea', zoom: 1.0, far: 0.6, after: [48, 192] },
   oil_tekheim: { sid: 1, power: 'oil', lh: 10, what: 'sea', zoom: 1.0, far: 0.6, after: [24, 96, 192] },
   // (S24, matrix I) a mountain stirred twice - past what makes it erupt - and watched through its eruption
@@ -429,8 +430,9 @@ async function pcase(g, dir, out, sp) {
     ax = best.x; ay = best.y;
     look = await g.cmd({ cmd: 'v3_look', sett: sid, x: ax, y: ay, zoom: sp.zoom || 1.4 });
   } else if (sp.field) {
-    const f = await g.lua(`local s = W.S.v3.settlements[${sid}]; for _, pl in ipairs(s.plots) do if pl.alive and pl.stage == "growing" then return { x = (pl.x0 + pl.x1) / 2, y = (pl.y0 + pl.y1) / 2 } end end; return nil`);
-    if (!f) throw new Error('no growing field');
+    const stage = sp.field === 'ripe' ? 'ripe' : 'growing';
+    const f = await g.lua(`local s = W.S.v3.settlements[${sid}]; for _, pl in ipairs(s.plots) do if pl.alive and pl.stage == "${stage}" then return { x = (pl.x0 + pl.x1) / 2, y = (pl.y0 + pl.y1) / 2 } end end; return nil`);
+    if (!f) throw new Error(`no ${stage} field`);
     ax = f.x; ay = f.y;
     look = await g.cmd({ cmd: 'v3_look', sett: sid, x: ax, y: ay, zoom: sp.zoom || 1.35 });
   } else {

@@ -130,3 +130,17 @@ Each cast: a root event (actor `player`, kind `power_*`) whose id is the **cause
   weed on its rocks are fouled (no regrowth, a share of what is there lost each day by how fouled the sea is) and its gulls are oiled
   (a share of the colony a day; a clean sea brings birds back one at a time) - each a deed carrying the oil's own cause (`W.C.oil`:
   the god's spill or a sunk tanker), so "Your actions" and the news follow a spill to the shore it reaches.
+
+## 10. Status (session 24, D-188-D-204): the acceptance audit
+Arjun played the powers and found them weak or broken in real play. Every power was then played in the real game (headless
+Chromium on the GPU, `scripts/play_accept.mjs`) in two or more contexts, shot before / at once / after with the sim's readings,
+the News, the Why and "Your actions" - the full audit, what was broken and why, and the evidence: `85_R7_ACCEPTANCE.md`.
+- **Meteor** rebuilt as physics (`sim/agents/impact.lua`: crater, blast by overpressure, thermal flash, shaking, by distance on
+  everything; the planet's cells by the same laws; a crater ring of rock on the planet off the maps).
+- **Lightning**: the god's bolt aimed, a superbolt's current through the ground by stride, fire by dryness, scorch, beasts bolting;
+  played on a flock, cattle, a deer, wolves, a dog, a person, a dry tree, wet ground, a house, a field.
+- **Fire** at two scales (a map's cells burn by the map; the planet in patches by intensity); rain putting a fire out is told.
+- **Air powers** no longer set the sea's temperature (the sea follows by its own heat).
+- **Cull / bring** show on the maps (a fixed share of the herds drawn); **fish** drawn from `F.fish`.
+- **Stir**: steam at once, ash after; the pressure in "Your actions". **Blight** drawn on the rows.
+- Not yet: a cold or warm spell at mild temperatures changes nothing visible (physics: no frost at 7 C) - news and chain only.

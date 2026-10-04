@@ -1029,7 +1029,10 @@ function M.step(W, s, H, a, now)
       local ang = u(W, s, H, a, now, 1) * 6.2832
       local ox, oy = near * 0.5 * cos(ang), near * 0.5 * sin(ang)
       a.why = "After its mother"
+      -- (S24) where she goes it goes - in at the gate after her when she is in the pen for the night
+      GATE_IN = true
       if walk_to(W, s, a, now, mx + ox, my + oy, S.speed * 1.3) then return end
+      GATE_IN = false
     end
     a.why = "At its mother's side"
     local ma = mom.act

@@ -434,7 +434,7 @@ local function poll_village(W, R, I, s, now)
     if math.abs(a) >= 1 then
       local nd = node(R, I, nil, "air:" .. s.id, "air", s.id, now)
       nd.peak = (a > 0) and max(nd.peak or 0, a) or min(nd.peak or 0, a)
-      nd.title = sfmt("The air at %s %d degrees %s", s.name, floor(math.abs(nd.peak) + 0.5), nd.peak > 0 and "warmer" or "colder")
+      nd.title = sfmt("The air at %s %d degrees %s the season", s.name, floor(math.abs(nd.peak) + 0.5), nd.peak > 0 and "above" or "below")
       nd.active = true
       touch(I, nd, now)
     end
@@ -470,7 +470,8 @@ local function poll_households(W, R, now)
       -- (S24) no roof and nobody to take them in: a camp by the square (migrate.lodge)
       local camped = hh.lodge == 0
       local edge = 0
-      for _, id in ipairs(hh.members) do local p = V.people[id]; if p and p.alive and p.edge then edge = edge + 1 end end
+      -- (S24: as the news counts them - at the edge, or as hungry as that)
+      for _, id in ipairs(hh.members) do local p = V.people[id]; if p and p.alive and (p.edge or (p.hunger or 0) >= 0.95) then edge = edge + 1 end end
       local harm = (lodged or camped or edge > 0) and deeds.top_harm(W, hid, now, 30) or nil
       local nd0 = harm and R.node_of_deed[harm.id]
       if nd0 then

@@ -288,6 +288,12 @@ a household with no roof (D-186); R6f the palisade round the houses (D-187). Nex
 people, the palisade's gates kept at night, traded grain carrying blight, the herd scan's cost
 at year 8.)
 
+(Session 24, D-188-D-204: **the R7 acceptance audit** - Arjun found the powers weak in real play; every power played in the real
+game in its contexts and made to work (`85_R7_ACCEPTANCE.md`): clouds lifted above the village view, the meteor as physics, the
+god's bolt aimed with its ground current, one fire at two scales, scars that stay (ruins, snags, crater, scorch, mud, blight),
+herds through their gate at natural spacing, fish from the sea's own fish, honest wild herds on the maps, consequences told right.
+Next: the herd scan's cost in grown worlds (exact), then R6 captives / the palisade's gates, traded grain carrying blight.)
+
 ## Never cut
 Determinism, causality (every major change traceable), the planet layer, no scripted
 consequences, persistent people with continuous positions.
