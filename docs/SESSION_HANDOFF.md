@@ -1,7 +1,7 @@
-# Session handoff — session 23 (4 Oct 2026, extended autonomous run): the hydrology fix verified; clouds v5; the village mix; CHAIN REACTION ("Your actions"); R7 v2 powers; the second 8-year run's famine followed to four mechanisms; aim previews; D-179-D-186
+# Session handoff — session 23 (4 Oct 2026, extended autonomous run): the hydrology fix verified; clouds v5; the village mix; CHAIN REACTION ("Your actions"); R7 v2 powers; the second 8-year run's famine followed to four mechanisms; aim previews; the palisade; D-179-D-187
 
 ## FINAL STATE (end of session 23)
-- main, all committed (last: the final docs commit after 76dd7d4). Nothing half-done in the tree. Worktrees made this session for snapshots and long runs (`../tc-snap`,
+- main, all committed (last: 248db37, the palisade, and this docs commit). Nothing half-done in the tree. Worktrees made this session for snapshots and long runs (`../tc-snap`,
   `../tc-run`, `../tc-before`) are removed at the end.
 - Tests: quick sim suite **211/211** on the final code (D-187); web **11/11** (on the settled palisade code); lint clean (309
   files, new rule `pow`); debug and release builds OK.
