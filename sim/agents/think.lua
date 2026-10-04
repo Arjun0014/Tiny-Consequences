@@ -1985,7 +1985,8 @@ local function herd_candidates(W, s, p, ctx, now)
       if mine then
         -- milking: the household's dam with the fullest udder (wherever she is)
         local mk = HS.milk[p.hh]
-        if df > 0 and kind ~= "swine" and mk and claim_free(W, hh, "milking", p) then
+        -- (S23: the milk goes home - a household with no roof, camped by the square, does not milk)
+        if df > 0 and kind ~= "swine" and mk and ctx.home and claim_free(W, hh, "milking", p) then
           local best = H.animals[mk]
           local S = stock.SP(best.sp)
           local bv = (best.milk or 0) / (S.milk * 0.75)
@@ -1998,7 +1999,7 @@ local function herd_candidates(W, s, p, ctx, now)
         if not (st == "child" and ctx.age < c.help_age + 1) then
           -- shearing: a sheep of the household with its fleece grown, kept in the fold
           local sk = HS.shear[p.hh]
-          if kind == "flock" and sk and doy >= c.shearing[1] and doy <= c.shearing[2] and not H.out and st ~= "child" then
+          if kind == "flock" and sk and ctx.home and doy >= c.shearing[1] and doy <= c.shearing[2] and not H.out and st ~= "child" then
             local a = H.animals[sk]
             if a.alive and (a.wool or 0) >= 1 and (a.held or 0) == 0 then
               addw(0.48 * fatigue(p) * WEATHER_OK(ctx, p) - travel(ctx, pen.dx, pen.dy, p.x, p.y), "shear", sk, hi,
@@ -5678,9 +5679,13 @@ PLAN.slaughter = function(W, s, p, ctx, now, cd)
     pl[#pl + 1] = { op = "drop", to = "home", ref = fb.id, gift_to = fh.id }
     return "Kill a beast for the " .. (q and q.surname or "neighbour") .. "s, who have nothing", "the pen"
   end
-  local home = ctx.home
-  go(pl, home.dx, home.dy, "home", home.id)
-  pl[#pl + 1] = { op = "drop", to = "home", ref = home.id }
+  -- (S23) no roof of their own (it burnt or fell, and no one took them in): the meat to the village's granary - it
+  -- was "home" for a household camped by the square, and the plan failed on it
+  local home = ctx.home or s.granary
+  if home then
+    go(pl, home.dx, home.dy, home == ctx.home and "home" or "the granary", home.id)
+    pl[#pl + 1] = { op = "drop", to = "home", ref = home.id }
+  end
   return "Kill a beast for the larder", "the pen"
 end
 

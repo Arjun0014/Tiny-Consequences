@@ -1500,3 +1500,14 @@ coast at X". Nothing acts without oil: the untouched world's course is unchanged
 
 **Test.** `test_v3_powers2.oil_on_the_coast`: oil cast at the sea beside a village with a shore - within four days the shore is
 fouled and its food falls, gulls are oiled, both deeds rooted at the cast, and the chain reads them.
+
+## D-186 · 2026-10-04 · A household with no roof: no plan may need the house it lost (session 23)
+**Found** by the chain shots (`scripts/shots_powers2.mjs`): after a meteor's fire and quake at Tekheim the world stopped -
+`think.lua: attempt to index local 'home' (a nil value)` in `PLAN.slaughter`. A household whose house is lost and that no one takes
+in camps by the square (`migrate.lodge` without a host: `hh.home = 0`, `hh.camp`); the herd candidates (milking, shearing, a beast
+killed for the pot) never asked whether there was a home, and their plans took what they got "home". Lodgers are fine (their home is
+the host's house); only the camped household had none.
+**Decision.** Milking and shearing need a home (the milk and the wool go there): a household camped by the square does neither. A
+beast killed for the pot by a household with no roof is carried to the village's granary. Test
+`test_v3_agents.a_household_with_no_roof_lives_on` (a household with a dam in milk, its house gone and no host, lives three days; the
+old code fails with the very error).

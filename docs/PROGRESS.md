@@ -156,6 +156,10 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
   oil's cause, read by the chain and the news (`oil_on_the_coast`: Zurug's shore 25.8 -> 6.2 FU, 7 of 10 gulls oiled in four days).
   Nothing acts without oil (the untouched 72 h hash unchanged, 302305833). New named premise `powers2` (oil, warm sea, sickness,
   blight, meteor): browser = LuaJIT identical over 96 h.
+- **A household with no roof (D-186)**: the chain shots stopped the world after a meteor - a household with no house and no host
+  had its beast killed for the pot carried "home"; milking and shearing now need a home, the meat goes to the granary
+  (`a_household_with_no_roof_lives_on`). Profiles on the final code: LuaJIT 4.06 M instructions a game hour at day 0 (S22 3.91 M),
+  4.02 M at day 192 (S22 4.41 M), 4.79 M at year 8 (run 5's world, 172 people; S22 5.13 M; livestock 35.7%).
 
 ### [v3] Session 22: validation; the frozen children; animals and fire; lightning on beasts (D-176, D-177) (2026-10-04)
 - **Validation** (S21 left it undone): `npm run test:sim` 190/190, `npm run test:web` 11/11, lint clean, release build OK, `v3_hash_web --release` untouched and `--premise flood5|conflict|fire|powers` (new: every v1 power cast at once) - browser = LuaJIT; LuaJIT 3.91 M instr/h at day 0, 4.41 M at day 192; 8 untouched years: no hunger deaths (illness 15, old age 4, drowned 1), 45 births.

@@ -202,6 +202,53 @@ function M.near_term_and_nursing_mothers_on_journeys()
   return string.format("free to go when not due: %s; fed on the trip: %.2f", tostring(free), ib.hunger)
 end
 
+-- (S23) A household with no roof and no one to take it in (its house burnt, as migrate.lodge leaves it: camped by the
+-- square) lives on - it milks no cows into a house it has not, and the beast it kills for the pot goes to the granary
+-- (a meteor's fire left one so, and a plan that sent the meat "home" failed on the missing house).
+function M.a_household_with_no_roof_lives_on()
+  local W = fresh()
+  local V = W.S.v3
+  local stock = require("sim.agents.stock")
+  local s, hh
+  for _, o in ipairs(V.settlements) do
+    for _, hid in ipairs(o.households) do
+      local h = V.households[hid]
+      local owns = false   -- (a dam in milk: milked every day - into a house they no longer have)
+      for _, kind in ipairs(stock.HERDS) do
+        local H = o.herds and o.herds[kind]
+        for _, a in ipairs(H and H.animals or {}) do
+          if a.alive and a.owner == hid and a.sex == "f" and (a.sp == "goat" or a.sp == "cattle") and (a.lact or 0) > 0 then owns = true end
+        end
+      end
+      if not hh and owns and h.home ~= 0 and #h.members >= 2 then s, hh = o, h end
+    end
+  end
+  T.ok(hh ~= nil, "a household with a dam in milk")
+  if not hh then return end
+  local b = s.buildings[hh.home]
+  b.hh = 0
+  hh.home = 0
+  local fx, fy = require("sim.agents.map").free_spot(s, s.sqx or 0, s.sqy or 0, 6)
+  hh.camp, hh.lodge = { x = fx or 0, y = fy or 0 }, 0
+  s.waiting = s.waiting or {}
+  s.waiting[#s.waiting + 1] = hh.id
+  -- (one of their beasts failing: killed for the pot - the plan that needs somewhere to take the meat)
+  local marked
+  for _, kind in ipairs(stock.HERDS) do
+    local H = s.herds and s.herds[kind]
+    for _, a in ipairs(H and H.animals or {}) do
+      if not marked and a.alive and a.owner == hh.id and (a.held or 0) == 0 and not a.ox then
+        a.cull, a.hunger, a.health, marked = "failing", 1, 0.1, a
+      end
+    end
+  end
+  local ok, err = pcall(world.advance, W, W.hour + 72)
+  T.ok(ok, "three days lived without a plan failing: " .. tostring(err))
+  local alive = 0
+  for _, id in ipairs(hh.members) do if V.people[id] and V.people[id].alive then alive = alive + 1 end end
+  return string.format("the %s household: %d alive after three days with no roof", (V.people[hh.members[1]] or {}).surname or "?", alive)
+end
+
 function M.no_teleports()
   local W = fresh()
   local V = W.S.v3
