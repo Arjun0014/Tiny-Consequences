@@ -973,8 +973,10 @@ C.V3 = {
   -- (S23, R7 v2) blight in a field's corn: worse with mild wet days (between tmin and tmax), the yield it takes,
   -- seen by the owners from `seen`, carried by the wind `reach` (map units) at `spread`, in seed grain at `seed`;
   -- the god's blight starts at `cast`
-  blight_tmin = 10, blight_tmax = 27, blight_grow = 0.12, blight_harm = 0.85, blight_seen = 0.2, blight_reach = 0.35,
-  blight_spread = 0.25, blight_seed = 0.6, blight_cast = 0.12,    -- (S23) days a beast carries a sickness unseen (and passes it on at half) before it shows   -- livestock sickness (a day; health an hour)
+  -- (S25b, D-218) the god's blight takes hold at once and spreads in days, not weeks: cast 0.35 of the field, growth 0.35 a
+  -- day in mild weather (slower, never backward, in dry: blight_wet_min), carried by the wind twice as far and as often
+  blight_tmin = 10, blight_tmax = 27, blight_grow = 0.35, blight_harm = 0.85, blight_seen = 0.2, blight_reach = 0.5,
+  blight_spread = 0.6, blight_seed = 0.6, blight_cast = 0.35, blight_wet_min = 0.08,    -- (S23) days a beast carries a sickness unseen (and passes it on at half) before it shows   -- livestock sickness (a day; health an hour)
   -- wild animals on the map (D-093): per species walking and running speed (units an hour),
   -- spacing in a band, FU of meat, hides
   wild = {

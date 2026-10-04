@@ -40,7 +40,7 @@ function M.daily(W, s, day)
   local wet = min(1, (W.F.soil_water[s.cell] or 0.4) * 1.4 + ((s.rain_now or 0) > 0 and 0.3 or 0))
   -- (blights of corn love mild, damp weather; dry heat and cold hold them back)
   local warm = (T > c.blight_tmin and T < c.blight_tmax) and 1 or 0.2
-  local grow = c.blight_grow * warm * (wet - 0.35)
+  local grow = c.blight_grow * warm * max(c.blight_wet_min, wet - 0.35)
   local V = W.S.v3
   for k = 1, #P do
     local pl = P[k]

@@ -26,6 +26,7 @@ M.FIRE_MIN = 0.05
 local H_POS, H_NRM, H_COL = hash("position"), hash("normal"), hash("color")
 local MSG_ENABLE, MSG_DISABLE = hash("enable"), hash("disable")
 local sin, cos, sqrt, max, min, floor = math.sin, math.cos, math.sqrt, math.max, math.min, math.floor
+local disc_buffer, pool_of, place_flat   -- (S25b: defined below, used by init)
 
 M.flames, M.smoke, M.chim, M.bolts, M.pulses = {}, {}, {}, {}, {}
 -- (S24) the v3 volcanoes' plumes: steam rising from a vent as the pressure under it builds, dark ash after it erupts
@@ -35,6 +36,19 @@ M.plume_steam, M.plume_ash = {}, {}
 -- DUST_H game hours (the planet's craters, W.S.powers.craters - on a map or off it)
 M.DUST, M.DUST_H = 28, 36
 M.plume_dust = {}
+-- (S25b, D-216) the meteor's fall: a long slanted streak with a trail of fire behind the rock; the crater and the scorched
+-- ground it leaves as marks on the planet's surface, seen from every height (the village's map draws its own bowl close in)
+M.METEOR_FALL = 1.7
+M.TRAIL = 16
+M.trail = {}
+M.DECALS = 8
+M.decals = {}
+-- (S25b, D-217) oil you can see on the water: dark glossy blobs where the sea holds oil (F.oil), as many as it holds,
+-- drifting down the sea's own current and thinning as it disperses; a spill bursting out where the power is cast
+M.OILB = 56
+M.oilb = {}
+M.SPILLB = 14
+M.spillb = {}
 M.pulse_res = {}
 
 -- A jagged bolt from the ground (y = 0) to the cloud base (y = 1), crossed quads per segment.
@@ -171,6 +185,18 @@ function M.init(W, flame_factory, smoke_factory, surface, surface_exact)
     make("smoke", { 0.58, 0.58, 0.60 }, nil, smoke_factory, M.PLUMES, M.plume_steam, "/tc/plume_steam.bufferc")
     make("smoke", { 0.30, 0.28, 0.27 }, nil, smoke_factory, M.PLUMES, M.plume_ash, "/tc/plume_ash.bufferc")
     make("smoke", { 0.46, 0.39, 0.32 }, nil, smoke_factory, M.DUST, M.plume_dust, "/tc/plume_dust.bufferc")
+    -- (S25b) the meteor's trail, the crater marks, the oil
+    make("flame", { 1.0, 0.45, 0.10 }, { 1.0, 0.85, 0.40 }, flame_factory, M.TRAIL, M.trail, "/tc/meteor_trail.bufferc")
+    M.decal_res = resource.create_buffer("/tc/crater_mark.bufferc", { buffer = disc_buffer({
+      { 0.26, 0.05, 0.04, 0.04, 7 }, { 0.34, 0.16, 0.12, 0.10, 7 }, { 0.42, 0.46, 0.36, 0.26, 7 }, { 0.50, 0.36, 0.28, 0.20, 6 },
+      { 0.72, 0.13, 0.11, 0.10, 6 }, { 1.0, 0.16, 0.14, 0.12, 2 } }, 40, 7) })
+    M.decal_core_res = resource.create_buffer("/tc/crater_core.bufferc", { buffer = disc_buffer({
+      { 0.26, 0.07, 0.06, 0.05, 7 }, { 0.34, 0.18, 0.15, 0.12, 7 }, { 0.42, 0.44, 0.35, 0.26, 7 }, { 0.56, 0.34, 0.28, 0.21, 3 } }, 40, 11) })
+    pool_of(flame_factory, M.DECALS, M.decals, M.decal_res)
+    M.oil_res = resource.create_buffer("/tc/oil_blob.bufferc", { buffer = disc_buffer({
+      { 0.55, 0.02, 0.02, 0.025, 7 }, { 0.80, 0.05, 0.045, 0.06, 6 }, { 0.92, 0.22, 0.16, 0.30, 4 }, { 1.0, 0.10, 0.18, 0.22, 1 } }, 18, 23) })
+    pool_of(flame_factory, M.OILB, M.oilb, M.oil_res)
+    pool_of(flame_factory, M.SPILLB, M.spillb, M.oil_res)
     for i = 1, M.BOLTS do
       local id = factory.create(flame_factory, vmath.vector3(0, 0, 0))
       local url = msg.url(nil, id, "mesh")
@@ -215,6 +241,7 @@ function M.init(W, flame_factory, smoke_factory, surface, surface_exact)
       -- (S24: a bolt aimed at a village's map is drawn by its strike, where it comes down - the event feed)
       if id == "lightning" and not (Wc.v3 and p.sid and p.x) then M.bolt(Wc, cell) end
       if id == "meteor" then M.meteor(Wc, cell, p); return end
+      if id == "oil" then local x, y, z = point_dir(Wc, cell, p); M.spill = { t = 0, dir = { x, y, z } } end
       M.pulse(Wc, cell, k, aim.world_radius(Wc, steps[k] or 1))
     end
   end
@@ -246,6 +273,78 @@ local function scan(W)
 end
 
 local pos, scl, rot = vmath.vector3(), vmath.vector3(), vmath.quat()
+
+-- (S25b) A flat disc in the plane y = 0 (the object's up is the ground's): rings of colour { radius, r, g, b, opacity 0..7 },
+-- each ring's edge a little ragged (seeded) so a mark on the ground does not read as a drawn circle.
+disc_buffer = function(rings, seg, seed)
+  local h = seed or 1
+  local function u() h = (h * 48271) % 2147483647; return h / 2147483647 end
+  local rag = {}
+  for ri = 1, #rings do
+    rag[ri] = {}
+    for i = 0, seg - 1 do rag[ri][i] = 1 + (ri > 1 and (u() - 0.5) * 0.22 or 0) end
+    rag[ri][seg] = rag[ri][0]
+  end
+  local nv = seg * 3 + (#rings - 1) * seg * 6
+  local buf = buffer.create(nv, {
+    { name = H_POS, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+    { name = H_NRM, type = buffer.VALUE_TYPE_FLOAT32, count = 3 },
+    { name = H_COL, type = buffer.VALUE_TYPE_FLOAT32, count = 2 },
+  })
+  local P, N, Cc = buffer.get_stream(buf, H_POS), buffer.get_stream(buf, H_NRM), buffer.get_stream(buf, H_COL)
+  local pack = propgen.pack_rgb
+  local k = 0
+  local function vtx(x, z, ring)
+    local o = k * 3
+    P[o + 1], P[o + 2], P[o + 3] = x, 0, z
+    N[o + 1], N[o + 2], N[o + 3] = 0, 1, 0
+    Cc[k * 2 + 1], Cc[k * 2 + 2] = pack(ring[2], ring[3], ring[4]), 31 * 8 + ring[5]
+    k = k + 1
+  end
+  local function at(ri, i)
+    local a = i / seg * 2 * math.pi
+    local r = rings[ri][1] * rag[ri][i]
+    return cos(a) * r, sin(a) * r
+  end
+  for i = 0, seg - 1 do
+    local x1, z1 = at(1, i)
+    local x2, z2 = at(1, i + 1)
+    vtx(0, 0, rings[1]); vtx(x1, z1, rings[1]); vtx(x2, z2, rings[1])
+  end
+  for ri = 2, #rings do
+    for i = 0, seg - 1 do
+      local ax, az = at(ri - 1, i)
+      local bx, bz = at(ri - 1, i + 1)
+      local cx, cz = at(ri, i)
+      local dx, dz = at(ri, i + 1)
+      vtx(ax, az, rings[ri - 1]); vtx(cx, cz, rings[ri]); vtx(dx, dz, rings[ri])
+      vtx(ax, az, rings[ri - 1]); vtx(dx, dz, rings[ri]); vtx(bx, bz, rings[ri - 1])
+    end
+  end
+  return buf
+end
+
+pool_of = function(factory_url, n, out, res)
+  for i = 1, n do
+    local id = factory.create(factory_url, vmath.vector3(0, 0, 0))
+    local url = msg.url(nil, id, "mesh")
+    if res then go.set(url, "vertices", res) end
+    msg.post(url, MSG_DISABLE)
+    out[i] = { id = id, url = url, on = false, phase = i * 1.37, life = (i * 0.61) % 1 }
+  end
+end
+
+-- obj on the ground at unit direction (ux, uy, uz), lifted, turned, scaled (sx across, sy up)
+place_flat = function(obj, ux, uy, uz, lift, yaw, sx, sy)
+  local r, v = M.surface(ux, uy, uz, obj.v)
+  obj.v = v
+  r = r + lift
+  pos.x, pos.y, pos.z = ux * r, uy * r, uz * r
+  go.set_position(pos, obj.id)
+  go.set_rotation(vmx.set_up_yaw(rot, ux, uy, uz, yaw or 0), obj.id)
+  scl.x, scl.y, scl.z = sx, sy or sx, sx
+  go.set_scale(scl, obj.id)
+end
 
 -- (S25) obj at the point of unit direction (ux, uy, uz), off_e east and off_n north of it along the ground, lifted
 local function place_dir(obj, ux, uy, uz, off_e, off_n, lift, s, sh)
@@ -435,32 +534,61 @@ function M.update(W, dt, frozen)
   local fb = M.fireball
   if m and fb then
     if not frozen then m.t = m.t + dt end
-    local fall = 0.8
+    -- (S25b) a long slanted streak from high above: the rock swelling and glowing as it comes, a trail of fire and smoke
+    -- strung out behind it along its path
+    local fall = M.METEOR_FALL
     local on = m.t < fall
+    local g = W.grid
+    local x, y, z = g.X[m.cell], g.Y[m.cell], g.Z[m.cell]
+    if m.dir then x, y, z = m.dir[1], m.dir[2], m.dir[3] end
+    local ex, ez = z, -x
+    local el = sqrt(ex * ex + ez * ez) + 1e-6
+    ex, ez = ex / el, ez / el
+    local function path(k)
+      local q = 1 - k
+      local r = state.R + 22 * q * q + 0.02
+      local side = 11 * q
+      return x * r + ex * side, y * r + q * 3.0, z * r + ez * side
+    end
     if on then
-      local g = W.grid
-      local x, y, z = g.X[m.cell], g.Y[m.cell], g.Z[m.cell]
-      if m.dir then x, y, z = m.dir[1], m.dir[2], m.dir[3] end
       local k = m.t / fall
-      local r = state.R + 7 * (1 - k) * (1 - k)
-      local ex, ez = z, -x
-      local el = sqrt(ex * ex + ez * ez) + 1e-6
-      local side = 2.5 * (1 - k)
-      pos.x, pos.y, pos.z = x * r + ex / el * side, y * r, z * r + ez / el * side
+      local px, py, pz = path(k)
+      pos.x, pos.y, pos.z = px, py, pz
       go.set_position(pos, fb.id)
       go.set_rotation(vmx.set_up_yaw(rot, x, y, z, m.t * 9), fb.id)
-      local s = 0.35 + 0.25 * k
-      scl.x, scl.y, scl.z = s, s * 1.6, s
+      -- (seen from orbit as from close: the rock and its trail drawn larger the farther the eye)
+      local edx, edy, edz = px - state.eye.x, py - state.eye.y, pz - state.eye.z
+      M.far_k = max(1, sqrt(edx * edx + edy * edy + edz * edz) / 7)
+      local s = (0.55 + 0.9 * k) * M.far_k
+      scl.x, scl.y, scl.z = s, s * 1.5, s
       go.set_scale(scl, fb.id)
-    elseif not m.boom then
-      m.boom = true
-      -- (S24) the blast's ring and the flash's, as far as the impact's own physics reach (sim/config.lua imp_*)
-      local cv = require("sim.config").V3
-      M.pulse(W, m.cell, "power_meteor", cv.imp_flash * cv.imp_reach_k, m.dir)
-      M.pulse(W, m.cell, "power_heat", cv.imp_blast * 1.6, m.dir)
-      M.bolt(W, m.cell, m.dir)
-      M.shake = 0.9
-      M.flash = 1.4
+      for i, o in ipairs(M.trail) do
+        local kk = k - i * 0.022
+        local ton = kk > 0
+        if ton then
+          local tx, ty, tz = path(kk)
+          pos.x, pos.y, pos.z = tx, ty, tz
+          go.set_position(pos, o.id)
+          go.set_rotation(vmx.set_up_yaw(rot, x, y, z, i * 1.7 + m.t * 6), o.id)
+          local ts = (0.5 + 0.8 * kk) * (1 - i / (M.TRAIL + 2)) * (0.85 + 0.15 * sin(m.t * 30 + i)) * (M.far_k or 1)
+          scl.x, scl.y, scl.z = ts, ts * 1.3, ts
+          go.set_scale(scl, o.id)
+        end
+        if ton ~= o.on then o.on = ton; msg.post(o.url, ton and MSG_ENABLE or MSG_DISABLE) end
+      end
+    else
+      for _, o in ipairs(M.trail) do if o.on then o.on = false; msg.post(o.url, MSG_DISABLE) end end
+      if not m.boom then
+        m.boom = true
+        -- the strike: a blinding flash, the ground thrown about, the shock running out over the land as far as the
+        -- impact's own physics reach (sim/config.lua imp_*), and a second ring of the blast behind it
+        local cv = require("sim.config").V3
+        M.pulse(W, m.cell, "power_meteor", cv.imp_flash * cv.imp_reach_k * 1.5, m.dir)
+        M.pulse(W, m.cell, "power_heat", cv.imp_blast * 2.4, m.dir)
+        M.pulse(W, m.cell, "power_drought", cv.imp_blast * 1.2, m.dir)
+        M.shake = 1.8
+        M.flash = 2.4
+      end
     end
     if on ~= fb.on then fb.on = on; msg.post(fb.url, on and MSG_ENABLE or MSG_DISABLE) end
     if m.t > fall + 2 then M.meteor_fx = nil end
@@ -535,6 +663,139 @@ function M.update(W, dt, frozen)
     end
   end
   for i = nd + 1, #M.plume_dust do local o = M.plume_dust[i]; if o.on then o.on = false; msg.post(o.url, MSG_DISABLE) end end
+  -- (S25b, D-216) the craters' marks on the planet: a dark bowl, its pale rim of thrown earth and the scorched ground about
+  -- it out to the fireball's reach (fading into the core alone after M.SCORCH_DAYS); a crater on a village's map gives way
+  -- to the map's own bowl when the eye comes down to it
+  do
+    local nk = 0
+    local zoom = require("game.view.camera").zoom
+    local now = W.v3 and (require("game.platform.speed").v3_t or W.hour) or 0
+    local cv = require("sim.config").V3
+    local mapm = W.v3 and require("sim.agents.map")
+    M.cr_map = M.cr_map or {}
+    for ci = #(CRS or {}), 1, -1 do
+      local cr = CRS[ci]
+      if nk < M.DECALS and cr.x and not cr.sea then
+        local ul = sqrt(cr.x * cr.x + cr.y * cr.y + cr.z * cr.z)
+        local ux, uy, uz = cr.x / ul, cr.y / ul, cr.z / ul
+        local on_map = M.cr_map[cr]
+        if on_map == nil then
+          on_map = false
+          for _, s in ipairs(W.S.v3 and W.S.v3.settlements or {}) do
+            if s.alive and s.frame then
+              local lx, ly = mapm.local_of(s, ux, uy, uz)
+              local half = s.N * s.T * 0.5
+              if lx and math.abs(lx) < half and math.abs(ly) < half then on_map = true end
+            end
+          end
+          M.cr_map[cr] = on_map
+        end
+        local ex, ey, ez = state.eye.x, state.eye.y, state.eye.z
+        local el = sqrt(ex * ex + ey * ey + ez * ez)
+        if (ux * ex + uy * ey + uz * ez) / el > 0.05 and not (on_map and zoom > 0.78) then
+          nk = nk + 1
+          local o = M.decals[nk]
+          local young = (now - (cr.t or now)) / 24 < 36
+          local res = young and M.decal_res or M.decal_core_res
+          if o.res ~= res then o.res = res; go.set(o.url, "vertices", res) end
+          local S = young and cv.imp_scorch * 1.05 or cv.imp_crater * 1.8
+          place_flat(o, ux, uy, uz, 0.006, (ci * 2.3) % 6.28, S, 1)
+          if not o.on then o.on = true; msg.post(o.url, MSG_ENABLE) end
+        end
+      end
+    end
+    for i = nk + 1, #M.decals do local o = M.decals[i]; if o.on then o.on = false; msg.post(o.url, MSG_DISABLE) end end
+  end
+  -- (S25b, D-217) the oil on the sea near the view: blobs as many as each cell's oil (F.oil), each drifting down the cell's
+  -- own current (W.currents) over its beat, swelling up and thinning away so that none jumps, the whole of them a slick
+  -- that moves where the sea moves it
+  do
+    local no = 0
+    local zoom = require("game.view.camera").zoom
+    if zoom >= 0.25 and W.F.oil then
+      M.oil_timer = (M.oil_timer or 0) - dt
+      if M.oil_timer <= 0 then
+        M.oil_timer = 0.5
+        local L = {}
+        local F, g2 = W.F, W.grid
+        for c = 1, W.n do
+          local o = F.oil[c] or 0
+          if o > 0.004 and W.geo.ocean[c] == 1 then
+            local d = g2.X[c] * fxv + g2.Y[c] * fyv + g2.Z[c] * fzv
+            if d > 0.95 then L[#L + 1] = { c, o, d } end
+          end
+        end
+        table.sort(L, function(a, b) if a[3] ~= b[3] then return a[3] > b[3] end return a[1] < b[1] end)
+        M.oil_cells = L
+      end
+      local L = M.oil_cells or {}
+      local CUR = W.currents and W.currents[floor(((W.tick or 0) % 48) / 12) + 1]
+      local sp = W.grid.spacing * state.R
+      local t = state.time
+      for _, e in ipairs(L) do
+        local c, oil = e[1], e[2]
+        local n = math.min(6, math.max(1, math.floor(math.sqrt(oil) * 9 + 0.5)))
+        local cx, cy, cz = W.grid.X[c], W.grid.Y[c], W.grid.Z[c]
+        local Ex, Ez = cz, -cx
+        local El = sqrt(Ex * Ex + Ez * Ez) + 1e-9
+        Ex, Ez = Ex / El, Ez / El
+        local Nx, Ny, Nz = cy * Ez, cz * Ex - cx * Ez, -cy * Ex
+        local ce, cn = 1, 0
+        if CUR and CUR.vx and CUR.vx[c] then
+          local vx, vy, vz = CUR.vx[c], CUR.vy[c], CUR.vz[c]
+          ce, cn = vx * Ex + vz * Ez, vx * Nx + vy * Ny + vz * Nz
+          local cl = sqrt(ce * ce + cn * cn)
+          if cl > 1e-9 then ce, cn = ce / cl, cn / cl else ce, cn = 1, 0 end
+        end
+        for q = 1, n do
+          if no >= M.OILB then break end
+          no = no + 1
+          local o = M.oilb[no]
+          local h1 = ((c * 73856093 + q * 19349663) % 1000) / 1000
+          local h2 = ((c * 83492791 + q * 2654435761) % 1000) / 1000
+          local beat = (t * 0.035 + h1) % 1
+          local along = (beat - 0.5) * sp * 0.9
+          local ox = (h1 - 0.5) * sp * 0.8 + ce * along - cn * (h2 - 0.5) * sp * 0.5
+          local oy = (h2 - 0.5) * sp * 0.8 + cn * along + ce * (h1 - 0.5) * sp * 0.3
+          local wx, wy, wz = cx + (Ex * ox + Nx * oy) / state.R, cy + (Ny * oy) / state.R, cz + (Ez * ox + Nz * oy) / state.R
+          local wl = sqrt(wx * wx + wy * wy + wz * wz)
+          local size = sp * (0.16 + 0.22 * math.min(1, sqrt(oil))) * (0.7 + 0.6 * h2) * sin(beat * math.pi)
+          place_flat(o, wx / wl, wy / wl, wz / wl, 0.012, h1 * 6.28 + t * 0.05, size + 0.001, 1)
+          if not o.on then o.on = true; msg.post(o.url, MSG_ENABLE) end
+        end
+        if no >= M.OILB then break end
+      end
+    end
+    for i = no + 1, #M.oilb do local o = M.oilb[i]; if o.on then o.on = false; msg.post(o.url, MSG_DISABLE) end end
+    -- the spill itself: black oil bursting out over the water from where it was cast, for its first seconds
+    local spl = M.spill
+    local ns = 0
+    if spl then
+      if not frozen then spl.t = spl.t + dt end
+      local k = spl.t / 2.6
+      if k < 1 then
+        local x, y, z = spl.dir[1], spl.dir[2], spl.dir[3]
+        local Ex, Ez = z, -x
+        local El = sqrt(Ex * Ex + Ez * Ez) + 1e-9
+        Ex, Ez = Ex / El, Ez / El
+        local Nx, Ny, Nz = y * Ez, z * Ex - x * Ez, -y * Ex
+        for q = 1, M.SPILLB do
+          ns = ns + 1
+          local o = M.spillb[q]
+          local a = q / M.SPILLB * 6.283 + sin(q * 3.1) * 0.3
+          local rr = (0.15 + 1.6 * math.sqrt(k)) * (0.6 + 0.5 * ((q * 0.618) % 1))
+          local ox, oy = cos(a) * rr, sin(a) * rr
+          local wx, wy, wz = x + (Ex * ox + Nx * oy) / state.R, y + (Ny * oy) / state.R, z + (Ez * ox + Nz * oy) / state.R
+          local wl = sqrt(wx * wx + wy * wy + wz * wz)
+          place_flat(o, wx / wl, wy / wl, wz / wl, 0.014, q, (0.25 + 0.55 * math.sqrt(k)) * (1 - 0.3 * k), 1)
+          if not o.on then o.on = true; msg.post(o.url, MSG_ENABLE) end
+        end
+      else
+        M.spill = nil
+      end
+    end
+    for i = ns + 1, #M.spillb do local o = M.spillb[i]; if o.on then o.on = false; msg.post(o.url, MSG_DISABLE) end end
+  end
   for i = ns + 1, #M.plume_steam do local o = M.plume_steam[i]; if o.on then o.on = false; msg.post(o.url, MSG_DISABLE) end end
   for i = na + 1, #M.plume_ash do local o = M.plume_ash[i]; if o.on then o.on = false; msg.post(o.url, MSG_DISABLE) end end
   -- chimney smoke: each chimney gets a couple of puffs at different ages, rising and drifting

@@ -152,6 +152,20 @@ function M.drag(dx, dy)
   M.idle = 0
 end
 
+-- (S25) The current frame (the look direction and up, and the zoom), to fly back to later.
+function M.get_frame()
+  return { Sx, Sy, Sz, Ux, Uy, Uz, M.tzoom }
+end
+
+-- (S25) Turn the view about the planet's axis by `a` radians (the skip's spin), the targets with it.
+function M.spin(a)
+  Sx, Sy, Sz = rot(Sx, Sy, Sz, 0, 1, 0, a)
+  Ux, Uy, Uz = rot(Ux, Uy, Uz, 0, 1, 0, a)
+  TSx, TSy, TSz = rot(TSx, TSy, TSz, 0, 1, 0, a)
+  TUx, TUy, TUz = rot(TUx, TUy, TUz, 0, 1, 0, a)
+  M.idle = 0
+end
+
 function M.zoom_by(step)
   M.tzoom = max(0, min(M.ZOOM_MAX, M.tzoom + step))
   M.idle = 0
@@ -419,6 +433,8 @@ function M.preset(name, W)
   if v3s and (name == "default" or name == "title" or name == "village" or name == "v3") then
     -- (and down among the people: v3 lets the camera come closer)
     M.ZOOM_MAX, M.D_CLOSE = M.V3_ZOOM_MAX, M.V3_D_CLOSE
+    -- (S25) the title: the whole planet, turning slowly behind the menu (the tutorial flies down to the village)
+    if name == "title" then return g.lat[v3s.cell] * 0.6, g.lon[v3s.cell], M.ZOOM_DEFAULT end
     return g.lat[v3s.cell], g.lon[v3s.cell], M.V3_ZOOM or 1.25
   end
   if name == "default" or name == "title" then

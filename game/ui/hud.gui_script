@@ -18,6 +18,7 @@ local sound_panel = require("game.ui.sound_panel")   -- (S23: the levels of the 
 local menu = require("game.ui.menu")                 -- (S25: title, pause, settings, credits, the guide)
 local tutorial = require("game.ui.tutorial")         -- (S25: the opening tutorial)
 local H_ESC = hash("key_esc")
+local H_LEFT, H_RIGHT = hash("key_left"), hash("key_right")
 
 local C = ui.C
 local V3 = vmath.vector3
@@ -88,7 +89,8 @@ local function build_top(self)
 		self.speed_btns[i] = { node = b, icon = ic, level = sp.level, tip = sp.tip }
 	end
 	-- v3: the skip menu (under the clock) and the skip progress strip
-	local mx, mw = 12 + cw - 150, 196
+	local mw = 196
+	local mx = 12 + mw / 2 + 2   -- (S25b: under the clock's left end: clear of the tutorial's card and of the inspector)
 	-- (S25) a dropdown draws above the news and every panel (layers top_box / top_text; the news cards step aside
 	-- while it is open)
 	ui.top = true
@@ -528,6 +530,8 @@ local function update_top(self)
 	if self.v3_ui then
 		if skipping and self.skip_menu_open then self.skip_menu_open = false end
 		newsfeed.suppress = self.skip_menu_open or nil
+		-- (S25: "Your actions" steps aside under the open dropdown too)
+		if self.actions and self.actions.open then gui.set_enabled(self.actions.root, not self.skip_menu_open) end
 		if gui.is_enabled(self.skip_menu) ~= (self.skip_menu_open or false) then gui.set_enabled(self.skip_menu, self.skip_menu_open or false) end
 		for _, o in ipairs(self.skip_opts) do gui.set_color(o.node, self.hover == o and C.hover or C.clear) end
 		if gui.is_enabled(self.skip_prog) ~= skipping then gui.set_enabled(self.skip_prog, skipping) end
@@ -822,6 +826,7 @@ local function activate(self, h)
 		speed.v3_skip_cancel()
 	elseif type(h) == "table" and h.skipmenu then
 		if speed.v3_skipping() then speed.v3_skip_cancel() else self.skip_menu_open = not self.skip_menu_open end
+		show_tip(self, nil)
 	elseif type(h) == "table" and h.skip then
 		self.skip_menu_open = false
 		if view.W then speed.v3_skip(view.W, h.skip) end
@@ -850,6 +855,11 @@ function on_input(self, action_id, action)
 		elseif self.skip_menu_open then self.skip_menu_open = false
 		elseif powers.armed then powers.disarm()
 		else menu.open(self, "pause") end
+		return true
+	end
+	-- (S25) the guide's pages by the arrow keys
+	if menu.is_open() and menu.screen == "guide" and action.pressed and (action_id == H_LEFT or action_id == H_RIGHT) then
+		menu.page_step(self, action_id == H_LEFT and -1 or 1)
 		return true
 	end
 	if menu.is_open() and action_id ~= nil and action_id ~= H_TOUCH then return true end

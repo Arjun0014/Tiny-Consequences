@@ -729,11 +729,12 @@ local function fill_rows(V)
         local hgt = 0.12 + 0.88 * g
         if bl > 0 then
           if ((r * 0.6180339887 + pl.id * 0.3713) % 1) < bl then
-            c = { 0.46, 0.36, 0.22 }
-            hgt = hgt * 0.62
+            -- (S25b: rows the blight has taken - rotted dark and fallen over)
+            c = { 0.27, 0.19, 0.10 }
+            hgt = hgt * 0.42
           else
             -- (the rest of the field spotted: yellowing toward brown by how far it has spread)
-            local k = min(0.65, 0.2 + bl * 1.6)
+            local k = min(0.8, 0.35 + bl * 1.6)
             c = { c[1] + (0.58 - c[1]) * k, c[2] + (0.46 - c[2]) * k, c[3] + (0.24 - c[3]) * k }
           end
         end

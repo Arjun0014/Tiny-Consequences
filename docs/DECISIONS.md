@@ -1888,3 +1888,60 @@ lightning, a standing tree whose drawn trunk-to-crown line passes within 16 px o
 ## D-213 · 2026-10-04 · The submission build (session 25)
 **Decision.** No new systems (captives, night gates, traded blight left for after the jam). Priorities were Arjun's: the meteor, danger
 responses, fire's end, oil, "Go there", layering, fullscreen, menus, the tutorial, the guide.
+
+## D-214 · 2026-10-05 · Skipping time, seen; the game opens on the whole planet (session 25, second playtest)
+**Context.** Arjun's second playtest: the game must open zoomed fully out, and a skip must read as time passing - "we zoom out
+and the world keeps spinning with day-night cycles, then zoom back in to where we were".
+**Decision.** (1) A player's first view is the whole planet (camera preset `title`, `ZOOM_DEFAULT`), the title menu over it and the
+idle turn behind it; the test harnesses (`?test=1`) keep the village view. (2) `game/view/skipcam.lua`: when a skip begins the
+camera keeps the place under the eye and rises to the whole planet (zoom 0.14), then turns about the planet's axis (0.42 rad/s,
+easing in) while the sim runs - the planet's own day and night sweeping over it from the sim's clock; when the skip ends it flies
+back to the frame and zoom it left (and resumes following whoever it followed). It reads the speed controller and moves only
+the camera. (3) The skip dropdown: "Your actions" steps aside under it as the news does; the tutorial's labels sit beside the
+menu's rows, never over them.
+
+## D-215 · 2026-10-05 · The tutorial rebuilt: a meteor, and the chain it really sets off (session 25, second playtest)
+**Context.** "We do lightning and a tree gets burned, that's it? That's what we showcase as chain reaction?" A probe of the old
+lesson's bolt (`out/s25/probe_tut2.lua`): into the granary or a tree beside the houses, in the dry - one thing burnt, 2 nodes in
+a season. A meteor at the edge of the woods beside the village (0.6, 0.4 from the square): 6 killed at once, 165 trees flat, the
+quake 7 buildings down; a season on 40 consequences (the crushed, the dead of their wounds, households lodged and camping, hunger).
+**Decision** (`game/ui/tutorial.lua`): the lesson goes from the whole planet down to the village (fly there), meets someone,
+teaches the speeds (press Fast), then ONE strike that matters: the Meteor at the marked edge of the woods (the point among six
+about the square with the most trees near it). It then reads the strike from its own deed ("The rock killed 7 people, threw down
+3 houses and 2 other buildings, set 362 things alight and laid 168 trees flat. 12 people are running..."), the news story marked
+YOU (Go there), Your actions ("You caused ONE thing..."), a day's skip (the planet turning), "A day on, your meteor has N
+consequences" with its first real branches, a season's skip, and the season's chain. Nothing is scripted: the starting condition
+is the same dry ground (`tutorial_dry`); every number and branch is read from `sim/chain.lua` and the impact's deed. If the
+village's day is late when it starts, the night passes first (a skip to dawn while the intro is read). Done once, not shown again.
+
+## D-216 · 2026-10-05 · The meteor seen: the fall, the shock, the mark it leaves (session 25, second playtest)
+**Context.** "No crater or anything, the entire animation and effect is as bad as it can be": from orbit (where the game now
+opens) the village's crater is not drawn (the map is drawn only close in), a crater off the maps was a ring of small boulders, and
+the fall was a small blob for 0.8 s.
+**Decision** (`game/view/fx.lua`): the rock falls for 1.7 s along a long slanted path from high above, swelling as it comes, a
+trail of 16 flames strung out behind it; at the strike a blinding flash, a hard shake and three rings running out over the ground
+(the flash's reach x 1.5, the blast's x 2.4 and x 1.2). Every crater (on a map or not) leaves a mark on the planet's surface drawn
+at all heights: a dark bowl, a pale rim of thrown earth, the scorched ground out to the fireball's reach (`imp_scorch`), the
+scorch fading to the bowl alone after 36 days; a crater on a village's map gives way to the map's own bowl when the eye comes close.
+
+## D-217 · 2026-10-05 · Oil floating on the water (session 25, second playtest)
+**Context.** "Spilling oil needs a visual black oily substance being spilled and floating and drifting."
+**Decision** (`game/view/fx.lua`): over every sea cell near the view that holds oil (`F.oil`, the ocean system's own field), dark
+glossy blobs as many as it holds (1-6 by sqrt(oil)), each drifting down the cell's own current (`W.currents`, the season's) over
+its beat, swelling up and thinning away so that none jumps - a slick that moves where the sea moves it and thins as it disperses;
+at the cast, a burst of black spreading out from the point for its first seconds. Drawn from the mid zoom in; from orbit the
+shader's slick (D-209).
+
+## D-218 · 2026-10-05 · Blight that takes hold (session 25, second playtest)
+**Context.** "Blight doesn't do anything, no physical effect": the god's blight took 12% of a field and grew ~1% a day in damp mild
+weather (it shrank in the dry); the rows it took were drawn a mild brown.
+**Decision.** `blight_cast` 0.12 -> 0.35, `blight_grow` 0.12 -> 0.35, never backward in the dry (`blight_wet_min` 0.08), carried
+by the wind farther and more often (`blight_reach` 0.35 -> 0.5, `blight_spread` 0.25 -> 0.6); taken rows drawn rotted dark and
+fallen (`agents_view`). Test `blight_in_wet_and_dry`: damp 0.35 -> 0.85 in 6 days, parched 0.35 -> 0.48 (both pass the old assertions).
+
+## D-219 · 2026-10-05 · The chain shown as a chain; the guide laid out; credits (session 25, second playtest)
+**Decision.** (1) Your actions' tree: the chain's size large (a gold count, "consequences, N generations deep - K direct"), each
+consequence with its kind's icon on the branch lines (fire, death, flood, hunger, help, ...), new links glowing gold for three
+seconds as they appear. (2) "How the World Works": pages of at most two rows of six boxes (set pages without arrows), the lines
+wrapped by measure and made smaller when a page has more to say than the room there is, a footer with Back, "N of 8", clickable
+page dots and Next, the arrow keys turning the pages. (3) Credits written for players (no file paths).

@@ -70,3 +70,21 @@ lightning bolt now has N consequences" with its first real branches (`sim/chain.
 - The tutorial's strike step relies on the player clicking near the ring; the bolt still takes what is at the point (the world decides).
 - Dust puffs close in read as soft hexagons (the smoke mesh).
 - No village sits on a small island in the shipped world: an island hit is the planet's cells only (no people there to flee).
+
+## 6. The second playtest (later the same night, D-214-D-219)
+
+Arjun played the submitted build and found: the guide's text running under its buttons (and a page of seven boxes off the
+panel); step 5 of the tutorial unclear; the skip menu overlapping "Your actions" and the tutorial's label; the game opening close
+in instead of on the whole planet, and skips with no sense of time passing; "Your actions" not feeling like a chain reaction; the
+tutorial's chain (a bolt, a tree, a few trees) a poor showcase; oil with no visible substance; the meteor with no crater seen and a
+poor animation; blight with no physical effect; time controls not taught; a file path in the credits.
+
+What changed: the guide re-laid by measure (D-219); the game opens on the whole planet and a skip rises, turns the planet through
+its days and nights and comes back down (D-214); the skip menu opens at the left, "Your actions" stepping aside, the tutorial's
+labels beside the rows; the tutorial rebuilt around a meteor at the edge of the woods beside the village, with the speeds taught and
+two skips (D-215) - in the real game: the strike killed 7, threw down 3 houses and 2 other buildings, set 362 things alight, laid 168
+trees flat, 12 people ran; the chain 21 consequences at once, 25 a day on, 30 a season on; the meteor's fall, shock and its mark on the
+planet seen from every height (D-216); oil as black glossy blobs drifting on the current, and the spill bursting out (D-217); blight
+taking a third of a field at once and rotting it in days (D-218); "Your actions" with the chain's size, icons by kind and new links
+glowing (D-219); credits written for players.
+

@@ -185,8 +185,9 @@ local function finish_loading(self)
 		speed.v3_t = nil
 	end
 	self.perf_reset(self)
-	local cam = query.get().cam
-	local lat, lon, zoom = camera.preset(cam or "default", self.W)
+	-- (S25) a player opens on the whole planet (the title screen over it); the test harnesses keep the village view
+	local cam = query.get().cam or (((query.flag("test") or query.flag("skip_intro")) and not query.flag("menu")) and "default" or "title")
+	local lat, lon, zoom = camera.preset(cam, self.W)
 	if not lat then lat, lon, zoom = camera.preset("default", self.W) end
 	camera.set(lat, lon, zoom, true)
 	self.tps_tick0, self.tps_t0, self.tps = self.W.tick, clock.now_ms(), 0
@@ -410,6 +411,8 @@ function update(self, dt)
 
 	controls.tick(dt)
 	require("game.ui.powers").tick(dt)
+	-- (S25) a skip seen from above: the camera rises, the planet turns through its days, then back down
+	if self.ready and self.W and self.W.v3 and (not query.flag("test") or query.flag("menu")) then require("game.view.skipcam").update(dt) end
 	view.update(dt)
 	if self.ready and self.perf then
 		local p = self.perf

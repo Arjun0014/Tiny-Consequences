@@ -31,6 +31,14 @@ local HELP = { help = true, lodging = true, ["return"] = true, pay = true, taken
 local STATE = { soil = true, river = true, air = true, crops = true, sick = true, fields = true, seed = true, sea = true, fish = true,
   oil = true, dust = true, packs = true, herds = true, volc = true, spread = true, melt = true }
 local BLUE = vmath.vector4(0.24, 0.45, 0.70, 1)
+-- (S25b, D-219) each kind of consequence its icon in the tree (the chain read at a glance: fire, death, flood, hunger, help)
+local KIND_ICON = { fire = "fire", flood = "rain", quake = "pickaxe", wave = "wave", death = "skull", wound = "heart", strike = "bolt",
+  fell = "house", lost = "skull", hunger = "bread", take = "paw", ["event:quake"] = "pickaxe", ["event:eruption"] = "volcano",
+  ["event:wildfire"] = "fire", sickness = "thermo", impact = "meteor", blight = "blight", fouled = "oil", oiled = "oil",
+  help = "heart", lodging = "house", ["return"] = "paw", pay = "star", takenin = "people", fed = "bread", palisade = "house",
+  rainout = "rain", soil = "drop", river = "wave", air = "thermo", crops = "wheat", sick = "thermo", fields = "wheat", seed = "wheat",
+  sea = "wave", fish = "fish", oil = "oil", dust = "cloud", packs = "wolf", herds = "deer", volc = "volcano", spread = "rain",
+  melt = "snow", camp = "house", migrate = "settlers" }
 
 local function trunc(font, str, px, w)
   if ui.text_width(font, str, px) <= w then return str end
@@ -93,15 +101,21 @@ function M.build(self)
   -- the chain view: the cast, "go there", then the tree
   A.back = ui.box(A.panel, -PW / 2 + 26, PH / 2 - 22, 28, 28, "circle", C.soft)
   ui.icon(A.back, -1, 0, "chev_left", 16, C.text)
+  -- (S25b) the chain's size, large: how many consequences, how many generations deep
+  A.big = ui.box(A.panel, -PW / 2 + 52, PH / 2 - 80, 76, 30, "pill", C.gold)
+  A.big_t = ui.text(A.big, 0, 0, "", "fredoka", 19, C.white, gui.PIVOT_CENTER)
+  A.big_l = ui.text(A.panel, -PW / 2 + 98, PH / 2 - 80, "", "nunito_semi", 12.5, C.text)
+  gui.set_enabled(A.big, false)
   A.go = ui.box(A.panel, PW / 2 - 58, PH / 2 - 62, 84, 24, "pill_s", C.gold)
   A.go_t = ui.text(A.go, 0, 0, "Go there", "fredoka", 12.5, C.white, gui.PIVOT_CENTER)
   for i = 1, M.TREE_N do
-    local y = PH / 2 - 92 - M.TREE_H / 2 - (i - 1) * M.TREE_H
+    local y = PH / 2 - 108 - M.TREE_H / 2 - (i - 1) * M.TREE_H
     local r = {}
     r.bg = ui.box(A.panel, 0, y, PW - 16, M.TREE_H - 2, "pill_s", C.clear)
     r.vline = ui.box(r.bg, 0, 0, 2, M.TREE_H, "px", vmath.vector4(0.42, 0.38, 0.47, 0.35))
     r.tick = ui.box(r.bg, 0, 0, 8, 2, "px", vmath.vector4(0.42, 0.38, 0.47, 0.35))
     r.dot = ui.box(r.bg, 0, 0, 7, 7, "circle", C.gold)
+    r.kicon = ui.icon(r.bg, 0, 0, "info", 14, C.text)
     r.title = ui.text(r.bg, 0, 0, "", "nunito_semi", 12.5, C.text)
     r.i = i
     r.act_node = i
@@ -149,10 +163,12 @@ function M.update(self, W, now, dt)
     A.t = 1
   end
   A.t = A.t + dt
+  A.clock = (A.clock or 0) + dt
   if A.t < 0.2 then
     if A.open then
       for _, r in ipairs(A.mode == "tree" and A.trows or A.rows) do
-        gui.set_color(r.bg, self.hover == r and C.hover or C.clear)
+        local glow = A.mode == "tree" and r.nd and A.seen and A.seen[r.nd] and A.primed and (A.clock or 0) - A.seen[r.nd] < 3
+        if not glow then gui.set_color(r.bg, self.hover == r and C.hover or C.clear) end
       end
       gui.set_color(A.close, self.hover == "act_close" and C.hover or C.soft)
       gui.set_color(A.back, self.hover == "act_back" and C.hover or C.soft)
@@ -174,6 +190,8 @@ function M.update(self, W, now, dt)
   local PW = M.PW
   if A.mode == "news" then
     -- (S23) every story so far, newest first
+    gui.set_enabled(A.big, false)
+    gui.set_enabled(A.big_l, false)
     gui.set_enabled(A.back, false)
     gui.set_enabled(A.go, false)
     for _, r in ipairs(A.trows) do gui.set_enabled(r.bg, false) end
@@ -201,6 +219,8 @@ function M.update(self, W, now, dt)
     return
   end
   local list_mode = A.mode == "list"
+  gui.set_enabled(A.big, not list_mode)
+  gui.set_enabled(A.big_l, not list_mode)
   gui.set_enabled(A.back, not list_mode)
   gui.set_enabled(A.go, not list_mode)
   for _, r in ipairs(A.rows) do gui.set_enabled(r.bg, list_mode) end
@@ -233,9 +253,17 @@ function M.update(self, W, now, dt)
   if not I then A.mode = "list"; return end
   gui.set_position(A.title, V3(-PW / 2 + 48, M.PH / 2 - 22, 0))
   gui.set_text(A.title, trunc("fredoka", "YOUR " .. string.upper(I.title), 17, PW - 100))
-  gui.set_text(A.sub, string.format("%s - %d consequences (%d direct)%s", day_of(W, I.t), I.n_total, I.n_direct,
-    I.active and ", still unfolding" or ""))
+  gui.set_text(A.sub, string.format("%s - one cast, and all it set off%s", day_of(W, I.t), I.active and " (still unfolding)" or ""))
   local rows = chain.rows(W, I, 400)
+  -- (S25b) the size of it, and the new links since the panel looked (they glow for a few seconds)
+  local gen = 0
+  for _, rw in ipairs(rows) do if rw.depth > gen then gen = rw.depth end end
+  gui.set_text(A.big_t, tostring(I.n_total))
+  gui.set_text(A.big_l, string.format("consequence%s, %d generation%s deep - %d direct", I.n_total == 1 and "" or "s", gen, gen == 1 and "" or "s", I.n_direct))
+  A.seen = A.seen or {}
+  A.seen_ev = A.seen_ev or A.ev
+  if A.seen_ev ~= A.ev then A.seen, A.seen_ev, A.primed = {}, A.ev, false end
+  local tnow = (A.clock or 0)
   -- (for the tree's lines: does a later sibling follow each row?)
   local last_at = {}
   for k = #rows, 1, -1 do
@@ -253,7 +281,7 @@ function M.update(self, W, now, dt)
     gui.set_position(r.title, V3(-PW / 2 + 22, 0, 0))
     gui.set_text(r.title, I.active and "Nothing has come of it yet - give it time" or "Nothing came of it")
     gui.set_color(r.title, C.muted)
-    gui.set_enabled(r.vline, false); gui.set_enabled(r.tick, false); gui.set_enabled(r.dot, false)
+    gui.set_enabled(r.vline, false); gui.set_enabled(r.tick, false); gui.set_enabled(r.dot, false); gui.set_enabled(r.kicon, false)
     for k = 2, #A.trows do gui.set_enabled(A.trows[k].bg, false) end
     return
   end
@@ -272,15 +300,26 @@ function M.update(self, W, now, dt)
         gui.set_size(r.vline, V3(2, row.more and M.TREE_H or M.TREE_H / 2, 0))
         gui.set_position(r.tick, V3(lx + 4, 0, 0))
       end
+      -- (S25b) its kind's icon on the branch, a gold dot while it still unfolds, and a glow when it is new
+      gui.set_enabled(r.kicon, true)
+      ui.set_icon(r.kicon, KIND_ICON[nd.kind] or "star")
+      gui.set_position(r.kicon, V3(x0 + 5, 0, 0))
+      gui.set_color(r.kicon, kind_color(nd))
       gui.set_enabled(r.dot, nd.active)
-      gui.set_position(r.dot, V3(x0 + 3, 0, 0))
+      gui.set_position(r.dot, V3(x0 + 13, 6, 0))
       local tx = nd.title or nd.kind
       if nd.line then tx = tx .. " - " .. nd.line end
-      gui.set_position(r.title, V3(x0 + 12, 0, 0))
-      gui.set_text(r.title, trunc("nunito_semi", tx, 12.5, PW / 2 - 14 - (x0 + 12)))
+      gui.set_position(r.title, V3(x0 + 17, 0, 0))
+      gui.set_text(r.title, trunc("nunito_semi", tx, 12.5, PW / 2 - 14 - (x0 + 17)))
       gui.set_color(r.title, kind_color(nd))
+      local first = A.seen[nd]
+      if not first then first = A.primed and tnow or -100; A.seen[nd] = first end
+      if tnow - first < 3 and A.primed then gui.set_color(r.bg, vmath.vector4(1.0, 0.86, 0.45, 0.55)) end
     end
   end
+  -- (the rows below the window are seen too: what grows later glows)
+  for k = 1, #rows do if not A.seen[rows[k].node] then A.seen[rows[k].node] = A.primed and tnow or -100 end end
+  A.primed = true
 end
 
 -- What is under (x, y): the pill, a row, back, close, go there; "panel" over the panel; nil.

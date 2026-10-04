@@ -1,3 +1,18 @@
+# Session handoff — session 25, part 2 (5 Oct 2026, 00:20-01:30 IST): Arjun's second playtest of the submitted build; D-214-D-219
+
+## FINAL STATE (part 2)
+- Arjun's list (`docs/v3/86_S25_PLAYTEST.md` section 6): the guide's layout, the tutorial's step 5, the skip menu's overlaps, the game
+  opening close in, no sense of a skip, "Your actions" not a chain, the tutorial's chain too small, oil with no substance, the meteor
+  with no crater seen and a poor fall, blight with no effect, time controls not taught, a file path in the credits.
+- Done: the game opens on the whole planet; a skip rises, turns the planet through its days and comes back (`game/view/skipcam.lua`,
+  D-214); the tutorial rebuilt around a meteor at the woods' edge beside the village, with the speeds and two skips taught and every
+  number read from the world (D-215) - played in the real game (`out/s25/ui_check3.mjs tut`): 16-21 consequences at once, 19-25 a day
+  on ("4 people died, 4 households lost their roofs, hunger in a household..."), 26-30 a season on; the meteor's long fall with a trail
+  (scaled by the eye's distance), three shock rings, and its crater-and-scorch mark on the planet at every height (D-216); oil as black
+  blobs drifting on the current and a spill bursting out (D-217); blight 0.35 at once, rotting in days (D-218); "Your actions" with the
+  chain's size, icons by kind, new links glowing; the guide re-laid by measure with a proper footer and arrow keys; credits (D-219).
+- Checks (part 2): quick suite 211/211; web 11/11; browser = LuaJIT (release) `--premise powers2` identical; the zip rebuilt and smoke-tested.
+
 # Session handoff — session 25 (4-5 Oct 2026, THE SUBMISSION SESSION): Arjun's playtest made the game's own authority; the meteor, fire, oil, Go there, cooldowns, menus, the tutorial, the guide; D-205-D-213
 
 ## FINAL STATE (end of session 25)

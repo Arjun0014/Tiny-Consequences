@@ -133,7 +133,9 @@ Session 25 (D-205-D-213, the jam submission): Arjun's playtest is the authority 
 planet fire burns out in 2-3 days and is never drawn over a map's trees; Go there anchors (`data.at_sid/at_x/at_y` on cast events,
 `news.focus` at_cell/follow); oil drawn from `F.oil` as a black slick; menus `game/ui/menu.lua` (title pauses the world; `?test=1` skips
 it, `?menu=1` shows it), the tutorial `game/ui/tutorial.lua` + logged command `sim/tutorial3.lua` (`sim/tutorial.lua` is the LEGACY v2
-helper); `docs/v3/86_S25_PLAYTEST.md`.
+helper); `docs/v3/86_S25_PLAYTEST.md`. Part 2 (D-214-D-219): the game opens on the whole planet (camera preset `title`); skips are seen
+from above (`game/view/skipcam.lua`); the tutorial is a meteor at the woods' edge and its real chain; meteor/oil/crater visuals in
+`game/view/fx.lua` (trail, crater marks, oil blobs); blight tuned to take hold (`blight_cast` 0.35).
 
 ## Read order
 

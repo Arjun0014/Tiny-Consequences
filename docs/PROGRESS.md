@@ -4,6 +4,14 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Current state
 
+- **SESSION 25 part 2 (5 Oct 2026, 00:20-01:30 IST): Arjun's second playtest of the submitted build (D-214-D-219).** The game opens on
+  the whole planet; skips seen from above (the camera rises, the planet turns through its days, then back); the tutorial rebuilt
+  around a meteor at the woods' edge and its real chain (19-25 consequences a day on: deaths, households without roofs, hunger),
+  with the speeds and skips taught; the meteor's fall, shock rings and crater mark seen from orbit; oil as black blobs drifting on
+  the current; blight that takes hold; "Your actions" as a chain (size, generations, icons, new links glowing); the guide re-laid;
+  credits. Checks: quick suite 211/211; web 11/11; browser = LuaJIT (release) `--premise powers2` identical; the submission zip rebuilt
+  and smoke-tested from a clean static server.
+
 - **SESSION 25 (4-5 Oct 2026, THE SUBMISSION SESSION - read `docs/SESSION_HANDOFF.md` session 25 FINAL STATE and
   `docs/v3/86_S25_PLAYTEST.md` first): Arjun's human playtest as the authority.** Reproduced in the real game and fixed: the meteor
   at a god's size with the strike itself the danger (D-206); fire that ends - beasts die in flames, the planet's fire burns out beside a
