@@ -37,7 +37,7 @@ namespace TC2.Core.Worldgen
             w.History.Register(new EntityRef(EntityKind.World, 1), "the world", 0);
             var sites = ChooseSites(w, P);
             // the story begins on a morning at the first village (world time 0 is midnight at longitude 0)
-            if (sites.Count > 0) w.Now = SimTime.FloorMod(7 * SimTime.Hour - PlanetState.LocalOffset(P.Grid.Center[sites[0]]), SimTime.Day);
+            if (sites.Count > 0) w.Now = SimTime.FloorMod(9 * SimTime.Hour + 30 * SimTime.Minute - PlanetState.LocalOffset(P.Grid.Center[sites[0]]), SimTime.Day);
             w.ScheduleSystems();
             for (int i = 0; i < sites.Count; i++) Found(w, sites[i], i);
             return w;
@@ -145,6 +145,8 @@ namespace TC2.Core.Worldgen
                 P.Elev[c] = (float)DMath.Clamp(h, -2200, 2900);
             }
             P.SeaLevel = 0;
+            P.Plates = Tectonics.MakePlates(poles, omega, continental, P.Radius);
+            Tectonics.InitCrust(P, seed);
         }
 
         /// <summary>

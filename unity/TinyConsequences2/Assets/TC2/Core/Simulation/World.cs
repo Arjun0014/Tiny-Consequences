@@ -86,6 +86,7 @@ namespace TC2.Core.Simulation
         public PlanetSystems PlanetSys;     // derived helpers (weather blocks, mean temperatures)
         public FireSystem Fire;
         public Drainage Drainage;           // derived from relief and sea level
+        public Tectonics Tect;              // plate motion (scratch and frames; the plates live in the planet state)
         public readonly PagedStore<Settlement> Settlements = new PagedStore<Settlement>();
         public readonly PagedStore<Household> Households = new PagedStore<Household>();
         public readonly PagedStore<Person> People = new PagedStore<Person>();
@@ -126,6 +127,7 @@ namespace TC2.Core.Simulation
             _cellSettlement = new int[planet.Cells];
             PlanetSys = new PlanetSystems(planet);
             Drainage = new Drainage(planet.Cells);
+            Tect = new Tectonics(planet);
         }
 
         // ------------------------------------------------------------- history
@@ -288,10 +290,56 @@ namespace TC2.Core.Simulation
             var P = Planet;
             double before = P.SeaLevel;
             P.SeaLevel = P.SeaLevelNow;
+            LandChanged(before, true);
+        }
+
+        /// <summary>A step of the plates: the crust moves, boundaries rise and sink, villages ride their plate.</summary>
+        public void TectonicStep()
+        {
+            var P = Planet;
+            if (P.Plates.Length == 0) return;
+            RideSettlements(Tectonics.StepYears); // with the motion the crust has during this step
+            Tect.Step(P, Tectonics.StepYears, Seed, Now);
+            LandChanged(P.SeaLevel, false);
+            P.ReliefVersion++;
+        }
+
+        void RideSettlements(double dt)
+        {
+            var P = Planet;
+            bool moved = false;
+            for (int sid = Settlements.First(); sid != 0; sid = Settlements.Next(sid))
+            {
+                ref var s = ref Settlements.Get(sid);
+                int pl = P.Plate[s.Cell];
+                var plate = P.Plates[pl];
+                double a = plate.Omega * dt, cs = DMath.Cos(a), sn = DMath.Sin(a);
+                s.Anchor = Tectonics.Rotate(s.Anchor, plate.Pole, cs, sn);
+                s.East = Tectonics.Rotate(s.East, plate.Pole, cs, sn);
+                s.North = Tectonics.Rotate(s.North, plate.Pole, cs, sn);
+                int cell = P.Grid.CellOf(s.Anchor);
+                int fieldCell = P.Grid.CellOf(s.LocalToSphere(s.FieldX, s.FieldY, P.Radius));
+                if (cell != s.Cell || fieldCell != s.FieldCell) { s.Cell = cell; s.FieldCell = fieldCell; }
+                moved = true;
+            }
+            if (!moved) return;
+            for (int i = 0; i < _cellSettlement.Length; i++) _cellSettlement[i] = 0;
+            for (int sid = Settlements.First(); sid != 0; sid = Settlements.Next(sid)) IndexSettlementCells(sid);
+            Routes.Invalidate();
+            Agents.RebuildTravelIndex(); // legs follow the new routes, exactly as a loaded world registers them
+        }
+
+        /// <summary>
+        /// Land and sea changed under the drainage (the coastline or the relief moved): drowned land loses its use,
+        /// new land starts bare, the waters, climate terms, biomes and routes follow, and the history tells of it.
+        /// </summary>
+        void LandChanged(double coastBefore, bool record)
+        {
+            var P = Planet;
             int drowned = 0, emerged = 0, villages = 0;
             for (int c = 0; c < P.Cells; c++)
             {
-                bool was = P.Elev[c] > before, now = P.IsLand(c);
+                bool was = Drainage.BuiltLand(c), now = P.IsLand(c);
                 if (was == now) continue;
                 if (was)
                 {
@@ -309,9 +357,9 @@ namespace TC2.Core.Simulation
             for (int c = 0; c < P.Cells; c++) P.ClassifyBiome(c, Now);
             Routes.Invalidate();
             _landM2 = -1;
-            P.CoastVersion++;
-            if (drowned + emerged > 0)
-                Record(new HistoryEvent { Kind = HistoryKind.CoastChanged, Time = Now, Cell = -1, RootKind = RootKind.Nature, Magnitude = (float)(P.SeaLevel - before), ArgA = drowned, ArgB = emerged * 1000 + villages });
+            if (drowned + emerged > 0) P.CoastVersion++;
+            if (record && drowned + emerged > 0)
+                Record(new HistoryEvent { Kind = HistoryKind.CoastChanged, Time = Now, Cell = -1, RootKind = RootKind.Nature, Magnitude = (float)(P.SeaLevel - coastBefore), ArgA = drowned, ArgB = emerged * 1000 + villages });
         }
 
         public void RequestResolution(Resolution r, long at) => Issue(new Command { Time = at, Kind = CommandKind.SetResolution, Arg = (long)r });
@@ -394,6 +442,7 @@ namespace TC2.Core.Simulation
                 case SystemId.Weather: return Config.WeatherPeriod;
                 case SystemId.Vegetation: return coarse ? 3 * Config.VegetationPeriod : Config.VegetationPeriod;
                 case SystemId.ClimateSlow: return SimTime.Year / 4;
+                case SystemId.Tectonics: return DMath.ToLong(Tectonics.StepYears * SimTime.Year);
                 default: return SimTime.Day;
             }
         }
@@ -451,7 +500,8 @@ namespace TC2.Core.Simulation
         public void RebuildDerived()
         {
             PlanetSys = new PlanetSystems(Planet);
-            Drainage.Rebuild(Planet);
+            Tect = new Tectonics(Planet);
+            Drainage.Rebuild(Planet, fromSaved: true);
             Drainage.SettleStored(Planet);
             _landM2 = -1;
             _residents = new IntList[16]; _visitors = new IntList[16]; _hhOf = new IntList[16]; _members = new IntList[64]; _fieldCells = new IntList[16];

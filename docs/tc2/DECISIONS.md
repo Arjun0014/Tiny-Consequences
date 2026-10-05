@@ -316,3 +316,35 @@ recorded (relocation is F5's migration). Tectonics must rebuild the drainage and
 moves. CO2 sources and sinks (volcanoes, fire, forests, weathering) are F1 next.
 **Invalidation.** If regional climates matter beyond latitude and height (rain shadows, monsoons moving), move to a
 2-D per-cell balance on N32 with a multigrid solve.
+
+## D2-025 — 2026-10-05 — Plates in time: one crust sample per cell, handed over every 160 years
+
+**Context.** F1 needs drift, ranges rising and wearing, and coasts that move over millennia (01 §4). Resampling relief
+on the grid every step blurs it away; carrying samples that never change hands drifts out of the grid.
+**Alternatives.** (a) Semi-Lagrangian advection of elevation per plate (diffusive); (b) a free sample cloud with
+triangulation and periodic global resampling (Cortial et al. 2019; heavy for the Web); (c) one sample per cell with an
+exact sub-cell (gnomonic) offset; samples move every step and cells change hands only when the plates have moved about
+a cell.
+**Decision.** (c). State per cell: plate, crust kind, age, offset; per plate: Euler pole and angular speed. Every 10
+years the offsets move with their plates and boundary forcing acts (collision +2.2, arc +1.5, trench -0.35 offshore
+only, rift -0.4 m per m/yr of convergence, spread over a belt); every 16 steps the cells are handed over:
+nearest-sample resampling (no averaging), a gap where plates clearly part is new ocean floor at -650 m, a gap inside a
+plate takes the plate's nearest sample, two plates in one cell count as convergence only if they close on each other
+there (continents override oceans, younger oceans override older, colliding continents keep half of the loser's bulk
+as height), 35 % of subducted samples weld crust onto the overriding continent. The sea floor cools and sinks with age;
+continental crust above -300 m floats back to a shelf at -40 m over ~3,000 years; land creeps among land cells only
+(no flux across the coast); ranges above 2,600 m spread to their flanks. Colliding plates drag each other toward one
+motion and every plate's motion wanders on a 3,000-year scale (keyed). Villages ride their plate (anchor and frame
+rotate; routes and the travel index rebuilt as a load would). The drainage routes over rock plus the ice it was built
+with (a saved snapshot, so loads rebuild it exactly).
+**Evidence.** Tests: a rigidly turning crust keeps its continents (2,000 years, within 3 %); a plate's interior is where
+its motion carried it; new sea floor forms only at ridges; villages move exactly with their ground and stay indexed.
+Bugs found by measurement: hillslope diffusion across the coast drained land into the sea floor (-80 m per millennium
+at every coast); aliasing at plate boundaries counted as subduction and collision and grew continents 64 % under rigid
+motion; continents always won aliasing conflicts against oceanic plates; averaging refills blurred margins; per-step
+nearest-sample refills speckled coastlines (fixed by the 160-year hand-over). Seed 42, 4,000 years with climate: land
+36.4 % -> 35.6 %, continental crust 48.6 % -> 50.9 %, peaks to ~3-4 km and back, 28 world years/s headless (planet only).
+**Consequences.** Erosion by rivers (stream power) and sediment are next; quakes and volcanoes read the boundary forcing.
+The view rebuilds the relief on `ReliefVersion`.
+**Invalidation.** If coast speckle or crust drift returns in 10,000-year runs, move to (b) with resampling every few
+centuries.

@@ -25,6 +25,8 @@ namespace TC2.Core.Planet
         public readonly float[] Discharge;  // water passing through each cell in the last day (m3)
         public int Version;
         public double BuiltSeaLevel;
+        readonly bool[] _builtLand;          // the land mask the tree was built for
+        public bool BuiltLand(int c) => _builtLand[c];
 
         // depressions
         public readonly int[] BasinOf;      // basin of each cell, -1 when not in a depression
@@ -48,15 +50,16 @@ namespace TC2.Core.Planet
         {
             Cells = cells;
             Receiver = new int[cells]; Stack = new int[cells]; Filled = new float[cells]; AreaHa = new float[cells]; Discharge = new float[cells];
-            BasinOf = new int[cells]; BasinCells = new int[cells]; _exitBasin = new int[cells];
+            BasinOf = new int[cells]; BasinCells = new int[cells]; _exitBasin = new int[cells]; _builtLand = new bool[cells];
             _heapKey = new double[cells * 2]; _heapCell = new int[cells * 2]; _done = new bool[cells];
         }
 
         public int DeepestCell(int b) => BasinCells[BasinStart[b]];
 
         /// <summary>Recomputes receivers, the stack, filled levels, drainage areas and the depressions.</summary>
-        public void Rebuild(PlanetState P)
+        public void Rebuild(PlanetState P, bool fromSaved = false)
         {
+            if (!fromSaved) Array.Copy(P.Ice, P.DrainIce, Cells); // a loaded world rebuilds with the ice it was built with
             var g = P.Grid;
             int n = Cells;
             int heapN = 0;
@@ -66,9 +69,10 @@ namespace TC2.Core.Planet
                 _done[c] = false;
                 Receiver[c] = -1;
                 AreaHa[c] = 0;
-                Filled[c] = P.Elev[c];
+                Filled[c] = (float)P.DrainSurface(c);
                 BasinOf[c] = -1;
                 _exitBasin[c] = -1;
+                _builtLand[c] = P.IsLand(c);
             }
             // every sea cell next to land is an outlet at sea level
             double sea = P.SeaLevel;
@@ -89,7 +93,7 @@ namespace TC2.Core.Planet
                     int nb = g.Nbr8[c * 8 + k];
                     if (_done[nb]) continue;
                     _done[nb] = true;
-                    double f = Math.Max(P.Elev[nb], level + 0.01);
+                    double f = Math.Max(P.DrainSurface(nb), level + 0.01);
                     Filled[nb] = (float)f;
                     Receiver[nb] = c; // drains toward the cell it was reached from: downhill to the sea
                     Stack[StackCount++] = nb;
@@ -116,7 +120,7 @@ namespace TC2.Core.Planet
             for (int i = 0; i < StackCount; i++)
             {
                 int c = Stack[i];
-                if (Filled[c] - P.Elev[c] <= FilledMin) continue;
+                if (Filled[c] - P.DrainSurface(c) <= FilledMin) continue;
                 int r = Receiver[c];
                 if (r >= 0 && BasinOf[r] >= 0) { BasinOf[c] = BasinOf[r]; continue; }
                 if (_exitBasin[r] < 0) _exitBasin[r] = nb++;
@@ -156,7 +160,7 @@ namespace TC2.Core.Planet
             }
         }
 
-        static bool Deeper(PlanetState P, int a, int b) => P.Elev[a] < P.Elev[b] || (P.Elev[a] == P.Elev[b] && a < b);
+        static bool Deeper(PlanetState P, int a, int b) => P.DrainSurface(a) < P.DrainSurface(b) || (P.DrainSurface(a) == P.DrainSurface(b) && a < b);
 
         /// <summary>Water held in basin b when its surface stands at <paramref name="level"/>, and the wet area.</summary>
         public double VolumeBelow(PlanetState P, int b, double level, out double wetHa)
@@ -166,7 +170,7 @@ namespace TC2.Core.Planet
             for (int i = s; i < s + len; i++)
             {
                 int c = BasinCells[i];
-                double depth = level - P.Elev[c];
+                double depth = level - P.DrainSurface(c);
                 if (depth <= 0) break;
                 double ha = P.AreaHa(c);
                 v += depth * ha * 10000.0;
@@ -182,14 +186,14 @@ namespace TC2.Core.Planet
             wetHa = 0;
             double spill = BasinSpill[b];
             if (len == 0) return spill;
-            double level = P.Elev[BasinCells[s]];
+            double level = P.DrainSurface(BasinCells[s]);
             if (v <= 0) return level;
             double areaM2 = 0, held = 0;
             for (int i = s; i < s + len; i++)
             {
                 int c = BasinCells[i];
                 areaM2 += P.AreaHa(c) * 10000.0;
-                double next = i + 1 < s + len ? Math.Min(P.Elev[BasinCells[i + 1]], spill) : spill;
+                double next = i + 1 < s + len ? Math.Min(P.DrainSurface(BasinCells[i + 1]), spill) : spill;
                 if (next < level) next = level;
                 double room = areaM2 * (next - level);
                 if (held + room >= v)
@@ -280,7 +284,7 @@ namespace TC2.Core.Planet
             for (int i = s; i < s + len; i++)
             {
                 int c = BasinCells[i];
-                double depth = level - P.Elev[c];
+                double depth = level - P.DrainSurface(c);
                 P.LakeDepth[c] = depth > 0 && v > 0 ? (float)depth : 0f;
             }
         }

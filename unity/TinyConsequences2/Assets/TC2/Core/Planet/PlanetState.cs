@@ -49,6 +49,13 @@ namespace TC2.Core.Planet
         public float[] TMean, TAmp; // annual mean and seasonal swing per cell (degC)
         public double TGlobal, MoistFactor = 1.0;
         public int CoastVersion;    // bumps when the coastline moves (views rebuild)
+        // plates in time (D2-025)
+        public PlateInfo[] Plates = new PlateInfo[0];
+        public byte[] Crust;        // 1 continental, 0 oceanic
+        public float[] CrustAge;    // years since the crust formed at a ridge (oceanic)
+        public float[] CrustOx, CrustOy; // the crust sample's offset inside its cell (m, east/north)
+        public int ReliefVersion;   // bumps when the relief moves (views rebuild)
+        public float[] DrainIce;    // the ice the drainage was last built with (its surface = rock + this ice)
 
         // derived per-cell geometry (from the grid; never serialized)
         public readonly double[] Lat;       // radians
@@ -67,9 +74,14 @@ namespace TC2.Core.Planet
             Biome = new byte[Cells]; DryCause = new long[Cells]; FieldOwner = new int[Cells]; RiverFlow = new float[Cells];
             LakeWater = new float[Cells]; LakeDepth = new float[Cells];
             ZonalT = new double[Climate.Bands]; Ice = new float[Cells]; TMean = new float[Cells]; TAmp = new float[Cells];
+            Crust = new byte[Cells]; CrustAge = new float[Cells]; CrustOx = new float[Cells]; CrustOy = new float[Cells];
+            DrainIce = new float[Cells];
         }
 
         public bool IsLand(int c) => Elev[c] > SeaLevel;
+
+        /// <summary>The surface water runs over: rock plus the ice the drainage was built with.</summary>
+        public double DrainSurface(int c) => Elev[c] + DrainIce[c];
 
         /// <summary>Open water stands on the cell (a lake deeper than 0.3 m).</summary>
         public bool IsLake(int c) => LakeDepth[c] > 0.3f;
@@ -216,6 +228,10 @@ namespace TC2.Core.Planet
             w.Double(SeaLevel0); w.Double(SeaLevelRef); w.Double(TGlobalRef); w.Double(OceanAreaRef); w.Double(IceVolume);
             w.Byte(Glacial);
             w.Double(SeaLevelNow); w.Double(IceRef);
+            w.Int(Plates.Length);
+            for (int i = 0; i < Plates.Length; i++) { var pl = Plates[i]; w.Double(pl.Pole.X); w.Double(pl.Pole.Y); w.Double(pl.Pole.Z); w.Double(pl.Omega); w.Bool(pl.Continental); }
+            w.ByteArray(Crust, Cells); w.FloatArray(CrustAge, Cells); w.FloatArray(CrustOx, Cells); w.FloatArray(CrustOy, Cells);
+            w.FloatArray(DrainIce, Cells);
         }
 
         public static PlanetState Read(BinReader r)
@@ -236,6 +252,11 @@ namespace TC2.Core.Planet
             p.SeaLevel0 = r.Double(); p.SeaLevelRef = r.Double(); p.TGlobalRef = r.Double(); p.OceanAreaRef = r.Double(); p.IceVolume = r.Double();
             p.Glacial = r.Byte();
             p.SeaLevelNow = r.Double(); p.IceRef = r.Double();
+            int np = r.Int();
+            p.Plates = new PlateInfo[np];
+            for (int i = 0; i < np; i++) { double x = r.Double(), y = r.Double(), z = r.Double(); p.Plates[i] = new PlateInfo { Pole = new Vec3d(x, y, z), Omega = r.Double(), Continental = r.Bool() }; }
+            r.ByteArray(p.Crust); r.FloatArray(p.CrustAge); r.FloatArray(p.CrustOx); r.FloatArray(p.CrustOy);
+            r.FloatArray(p.DrainIce);
             return p;
         }
 
@@ -245,6 +266,8 @@ namespace TC2.Core.Planet
             for (int j = 0; j < ZonalT.Length; j++) h.Add(ZonalT[j]);
             h.Add(CO2); h.Add(Aerosol); h.Add(Ecc); h.Add(Perihelion); h.Add(SeaLevel0); h.Add(SeaLevelRef); h.Add(TGlobalRef); h.Add(OceanAreaRef); h.Add(IceVolume); h.Add(Glacial); h.Add(SeaLevelNow); h.Add(IceRef);
             for (int i = 0; i < Cells; i++) h.Add(Ice[i]);
+            for (int i = 0; i < Plates.Length; i++) { h.Add(Plates[i].Pole.X); h.Add(Plates[i].Pole.Y); h.Add(Plates[i].Pole.Z); h.Add(Plates[i].Omega); h.Add(Plates[i].Continental ? 1 : 0); }
+            for (int i = 0; i < Cells; i++) { h.Add(Crust[i]); h.Add(CrustAge[i]); h.Add(CrustOx[i]); h.Add(CrustOy[i]); h.Add(DrainIce[i]); }
             for (int i = 0; i < Cells; i++)
             {
                 h.Add(Elev[i]); h.Add(Plate[i]); h.Add(Moist[i]); h.Add(Temp[i]); h.Add(SoilWater[i]);

@@ -11,7 +11,8 @@ namespace TC2.Core.Planet
         public const int Weather = 2;
         public const int Vegetation = 3;
         public const int ClimateSlow = 4;
-        public const int Count = 5;
+        public const int Tectonics = 5;
+        public const int Count = 6;
     }
 
     /// <summary>
@@ -72,6 +73,7 @@ namespace TC2.Core.Planet
                 case SystemId.Weather: Weather(w); Rivers(w); break;
                 case SystemId.Vegetation: Vegetation(w); break;
                 case SystemId.ClimateSlow: SlowClimate(w); break;
+                case SystemId.Tectonics: w.TectonicStep(); break;
             }
         }
 

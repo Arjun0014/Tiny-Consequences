@@ -43,6 +43,7 @@ namespace TC2.Headless
                 w.AdvanceTo(next, ref b);
                 k++;
                 Console.WriteLine(PlanetLine(w));
+                if (a.Has("tect")) Console.WriteLine("      " + _tect);
                 if (mapDir != null) WriteMap(w, Path.Combine(mapDir, "map_" + k.ToString("0000") + ".png"), width);
             }
             FlowHistogram(w);
@@ -66,6 +67,8 @@ namespace TC2.Headless
             Console.WriteLine(sb.ToString());
         }
 
+        static string _tect = "";
+
         static string PlanetHeader() =>
             "date                      landT  soilW  rainy  forest grass  rivers lakes  maxQ(m3/s) seaQ(m3/s) pop  | obliq  ecc   Tglob  ice(km3) seaNow  coast  ice%  glac";
 
@@ -88,8 +91,18 @@ namespace TC2.Headless
             }
             int pop = 0;
             for (int s = w.Settlements.First(); s != 0; s = w.Settlements.Next(s)) pop += w.Settlements.Get(s).Population;
-            int iced = 0;
-            for (int c = 0; c < P.Cells; c++) if (P.IsLand(c) && P.Ice[c] > 5f) iced++;
+            int iced = 0, young = 0; double maxE = -1e9, contE = 0, landE = 0; int contN = 0, landN = 0;
+            for (int c = 0; c < P.Cells; c++)
+            {
+                if (P.IsLand(c) && P.Ice[c] > 5f) iced++;
+                if (P.Crust[c] == 0 && P.CrustAge[c] < 100) young++;
+                if (P.Elev[c] > maxE) maxE = P.Elev[c];
+                if (P.Crust[c] == 1) { contE += P.Elev[c]; contN++; }
+                if (P.IsLand(c)) { landE += P.Elev[c] - P.SeaLevel; landN++; }
+            }
+            var T = w.Tect;
+            _tect = string.Format(CultureInfo.InvariantCulture, "land {0:0.000} landE {18:0} ridge {1} maxE {2:0} contE {3:0} cont {4:0.000} | coll {5} subd {6} ridges {7} fills {8} lostFill {9} gainFill {14} dropC {15} dropO {16} ridgeOnCont {17} accr {10} upC {11:0} upO {12:0} sea {13:0.0}",
+                land / (double)P.Cells, young, maxE, contE / Math.Max(1, contN), contN / (double)P.Cells, T.Collided, T.Subducted, T.Ridges, T.Fills, T.ContLostToFill, T.Accreted, T.UpliftCont / Math.Max(1, contN), T.UpliftOcean / Math.Max(1, P.Cells - contN), P.SeaLevel - P.SeaLevel0, T.ContGainedByFill, T.DropC, T.DropO, T.RidgeOnCont, landE / Math.Max(1, landN));
             return string.Format(CultureInfo.InvariantCulture, "{0,-25} {1,5:0.0} {2,6:0.00} {3,6:0.00} {4,6:0.00} {5,5:0.00} {6,6} {7,5} {8,10:0.0} {9,10:0.0} {10,4}  | {11,5:0.0} {12,5:0.000} {13,6:0.00} {14,8:0.00} {15,6:0.0} {16,6:0.0} {17,5:0.0} {18,3}",
                 SimTime.Format(w.Now), t / area, sw / area, rainy / (double)land, forest / area, grass / area, rivers, lakes,
                 maxQ / 86400.0, seaQ / 86400.0, pop,
