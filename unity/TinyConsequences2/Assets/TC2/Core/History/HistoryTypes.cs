@@ -57,6 +57,7 @@ namespace TC2.Core.History
         Scouted = 49,           // someone of a village saw good land (Cell the site)
         HouseholdMoved = 50,    // a household left its village for another (Subject the household, Object the village it went to)
         HerdHuntedOut = 51,     // people hunted a herd near a village to nothing (Subject the herd, Object its kind; D2-047)
+        HomeTaken = 53,         // a household made its home in one that stood empty (Object: who lived there last; ArgA 1 a hut, 2 a house; D2-059)
         ColdHomes = 52,         // a village's homes were cold enough to harm (Magnitude homes, ArgA 1 the woodstore ran short, ArgB the day's mean C; D2-056)
     }
 
@@ -254,7 +255,7 @@ namespace TC2.Core.History
             switch (k)
             {
                 case HistoryKind.PersonDied: case HistoryKind.PersonBorn: case HistoryKind.Marriage: case HistoryKind.HouseholdFormed:
-                case HistoryKind.HouseholdMoved: case HistoryKind.HomeBuilt:
+                case HistoryKind.HouseholdMoved: case HistoryKind.HomeBuilt: case HistoryKind.HomeTaken:
                     return (float)b;
             }
             double m = magnitude < 0 ? 0 : magnitude;

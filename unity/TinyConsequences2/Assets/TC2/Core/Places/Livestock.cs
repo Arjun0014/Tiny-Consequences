@@ -701,30 +701,34 @@ namespace TC2.Core.Places
         /// </summary>
         public void Feral(int sid)
         {
-            var w = _w; var P = w.Planet; int n = P.Cells;
+            var w = _w;
             int cell = w.Settlements.Get(sid).Cell;
             var hhs = w.HouseholdsOf(sid);
-            for (int i = 0; i < hhs.Count; i++)
+            for (int i = 0; i < hhs.Count; i++) FeralHousehold(hhs[i], cell);
+        }
+
+        /// <summary>One household's animals left to the land at a cell (its keepers died out with nobody left to take them: D2-059).</summary>
+        public void FeralHousehold(int hid, int cell)
+        {
+            var w = _w; var P = w.Planet; int n = P.Cells;
+            var mine = w.BeastsOf(hid);
+            for (int j = 0; j < mine.Count; j++)
             {
-                var mine = w.BeastsOf(hhs[i]);
-                for (int j = 0; j < mine.Count; j++)
+                ref var b = ref w.Beasts.Get(mine[j]);
+                byte wk = Laws[b.Kind].WildKind;
+                int best = -1; double bv = -1;
+                for (int q = 0; q < P.Species.Count; q++)
                 {
-                    ref var b = ref w.Beasts.Get(mine[j]);
-                    byte wk = Laws[b.Kind].WildKind;
-                    int best = -1; double bv = -1;
-                    for (int q = 0; q < P.Species.Count; q++)
-                    {
-                        var sp = P.Species[q];
-                        if (sp.Habitat != 0 || sp.Gone != 0 || sp.Kind != wk) continue;
-                        double v = P.Abund[q * n + cell];
-                        if (v > bv) { bv = v; best = q; }
-                    }
-                    if (best >= 0) { P.Abund[best * n + cell] = (float)(P.Abund[best * n + cell] + 1.0); w.Metrics.BeastsFeral++; }
-                    else w.Metrics.BeastDeaths++;
-                    b.Alive = false; b.Died = w.Now;
+                    var sp = P.Species[q];
+                    if (sp.Habitat != 0 || sp.Gone != 0 || sp.Kind != wk) continue;
+                    double v = P.Abund[q * n + cell];
+                    if (v > bv) { bv = v; best = q; }
                 }
-                mine.Clear();
+                if (best >= 0) { P.Abund[best * n + cell] = (float)(P.Abund[best * n + cell] + 1.0); w.Metrics.BeastsFeral++; }
+                else w.Metrics.BeastDeaths++;
+                b.Alive = false; b.Died = w.Now;
             }
+            mine.Clear();
         }
 
         /// <summary>Dead animals leave the table (their history stays in the counts).</summary>

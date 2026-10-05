@@ -151,9 +151,10 @@ namespace TC2.Core.Places
         public float Water;          // litres in the household's pots
         public float Indoor;         // how warm its home was today (C): the roof and the fire against the day's cold
         public float Gear;           // person-equivalents of clothes, tools and vessels in hand (D2-058)
+        public int Building;         // the building it lives in (0: a camp; D2-059)
 
-        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(HomeX); w.Float(HomeY); w.Double(Larder); w.Long(Formed); w.Long(Dissolved); w.Int(FamilyName); w.Byte(Shelter); w.Float(Build); w.Int(Party); w.Double(Ready); w.Float(Water); w.Float(Indoor); w.Float(Gear); }
-        public static Household Read(BinReader r) => new Household { Id = r.Int(), Settlement = r.Int(), HomeX = r.Float(), HomeY = r.Float(), Larder = r.Double(), Formed = r.Long(), Dissolved = r.Long(), FamilyName = r.Int(), Shelter = r.Byte(), Build = r.Float(), Party = r.Int(), Ready = r.Double(), Water = r.Float(), Indoor = r.Float(), Gear = r.Float() };
-        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(HomeX); h.Add(HomeY); h.Add(Larder); h.Add(Formed); h.Add(Dissolved); h.Add(FamilyName); h.Add(Shelter); h.Add(Build); h.Add(Party); h.Add(Ready); h.Add(Water); h.Add(Indoor); h.Add(Gear); }
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(HomeX); w.Float(HomeY); w.Double(Larder); w.Long(Formed); w.Long(Dissolved); w.Int(FamilyName); w.Byte(Shelter); w.Float(Build); w.Int(Party); w.Double(Ready); w.Float(Water); w.Float(Indoor); w.Float(Gear); w.Int(Building); }
+        public static Household Read(BinReader r) => new Household { Id = r.Int(), Settlement = r.Int(), HomeX = r.Float(), HomeY = r.Float(), Larder = r.Double(), Formed = r.Long(), Dissolved = r.Long(), FamilyName = r.Int(), Shelter = r.Byte(), Build = r.Float(), Party = r.Int(), Ready = r.Double(), Water = r.Float(), Indoor = r.Float(), Gear = r.Float(), Building = r.Int() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(HomeX); h.Add(HomeY); h.Add(Larder); h.Add(Formed); h.Add(Dissolved); h.Add(FamilyName); h.Add(Shelter); h.Add(Build); h.Add(Party); h.Add(Ready); h.Add(Water); h.Add(Indoor); h.Add(Gear); h.Add(Building); }
     }
 }

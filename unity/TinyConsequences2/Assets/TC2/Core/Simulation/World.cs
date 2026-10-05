@@ -30,6 +30,7 @@ namespace TC2.Core.Simulation
         public double PrepHours, PrepFu, WaterHours;                      // the households' own work: hours making food ready, FU made, hours carrying water (D2-056)
         public long WaterTrips, ColdDeaths, ColdSpells;                   // trips to the well; deaths the cold at home caused; spells of cold homes
         public double CraftHours, GearMade;                               // hours making and mending goods, person-equivalents made (D2-058)
+        public long HomesTaken, DiedOut;                                  // empty homes taken; households that died out (D2-059)
 
         public void Write(BinWriter w)
         {
@@ -47,7 +48,7 @@ namespace TC2.Core.Simulation
             w.Long(Parties); w.Long(Foundings); w.Long(Scouts);
             w.Long(BeastBirths); w.Long(BeastDeaths); w.Long(BeastsTaken); w.Long(BeastsEaten); w.Long(BeastsFeral); w.Double(BeastFu); w.Long(TendDays);
             w.Double(PrepHours); w.Double(PrepFu); w.Double(WaterHours); w.Long(WaterTrips); w.Long(ColdDeaths); w.Long(ColdSpells);
-            w.Double(CraftHours); w.Double(GearMade);
+            w.Double(CraftHours); w.Double(GearMade); w.Long(HomesTaken); w.Long(DiedOut);
         }
 
         public void Read(BinReader r)
@@ -66,7 +67,7 @@ namespace TC2.Core.Simulation
             Parties = r.Long(); Foundings = r.Long(); Scouts = r.Long();
             BeastBirths = r.Long(); BeastDeaths = r.Long(); BeastsTaken = r.Long(); BeastsEaten = r.Long(); BeastsFeral = r.Long(); BeastFu = r.Double(); TendDays = r.Long();
             PrepHours = r.Double(); PrepFu = r.Double(); WaterHours = r.Double(); WaterTrips = r.Long(); ColdDeaths = r.Long(); ColdSpells = r.Long();
-            CraftHours = r.Double(); GearMade = r.Double();
+            CraftHours = r.Double(); GearMade = r.Double(); HomesTaken = r.Long(); DiedOut = r.Long();
         }
 
         public Metrics Clone() { var m = (Metrics)MemberwiseClone(); return m; }
@@ -112,7 +113,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 16; // 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
+        public const int FormatSimVersion = 17; // 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
@@ -134,6 +135,7 @@ namespace TC2.Core.Simulation
         public readonly PagedStore<Party> Parties = new PagedStore<Party>();   // households on their way to a new home (D2-045)
         public readonly PagedStore<Herd> Herds = new PagedStore<Herd>();       // herds and packs near villages (D2-047)
         public readonly PagedStore<Beast> Beasts = new PagedStore<Beast>();    // households' animals (D2-048)
+        public readonly PagedStore<Building> Buildings = new PagedStore<Building>();   // homes standing on their lots (D2-059)
         public readonly List<Command> CommandLog = new List<Command>();
         public readonly Metrics Metrics = new Metrics();
         public ISimProfiler Profiler;
@@ -157,6 +159,7 @@ namespace TC2.Core.Simulation
         IntList[] _fieldCells = new IntList[16];
         IntList[] _beastsOf = new IntList[64];   // each household's live animals (derived)
         IntList[] _herdsOf = new IntList[16];    // each village's wild herds (derived)
+        IntList[] _buildingsOf = new IntList[16];   // each village's buildings, standing or fallen (derived)
         int[] _cellSettlement;
         long[] _localOffset = new long[16];
 
@@ -200,6 +203,7 @@ namespace TC2.Core.Simulation
         public IntList FieldCellsOf(int sid) => Slot(ref _fieldCells, sid);
         public IntList BeastsOf(int hid) => Slot(ref _beastsOf, hid);
         public IntList HerdsOf(int sid) => Slot(ref _herdsOf, sid);
+        public IntList BuildingsOf(int sid) => Slot(ref _buildingsOf, sid);
 
         public int SettlementAtCell(int cell) => _cellSettlement == null || cell < 0 || cell >= _cellSettlement.Length ? 0 : _cellSettlement[cell];
 
@@ -1130,6 +1134,7 @@ namespace TC2.Core.Simulation
             }
             for (int i = 0; i < _prune.Count; i++) People.Remove(_prune[i]);
             Stock.Prune();   // dead animals leave the table
+            Homes.Prune(this);   // ruins gone into the land leave it too (D2-059)
         }
 
 
@@ -1169,7 +1174,8 @@ namespace TC2.Core.Simulation
             Drainage.SettleStored(Planet);
             _landM2 = -1;
             _residents = new IntList[16]; _visitors = new IntList[16]; _hhOf = new IntList[16]; _members = new IntList[64]; _fieldCells = new IntList[16];
-            _beastsOf = new IntList[64]; _herdsOf = new IntList[16];
+            _beastsOf = new IntList[64]; _herdsOf = new IntList[16]; _buildingsOf = new IntList[16];
+            for (int b = Buildings.First(); b != 0; b = Buildings.Next(b)) BuildingsOf(Buildings.Get(b).Settlement).Add(b);
             for (int b = Beasts.First(); b != 0; b = Beasts.Next(b)) { ref var be = ref Beasts.Get(b); if (be.Alive) BeastsOf(be.Owner).Add(b); }
             for (int h = Herds.First(); h != 0; h = Herds.Next(h)) HerdsOf(Herds.Get(h).Village).Add(h);
             for (int c = 0; c < Planet.Cells; c++) if (Planet.FieldOwner[c] != 0) FieldCellsOf(Planet.FieldOwner[c]).Add(c);
@@ -1207,6 +1213,7 @@ namespace TC2.Core.Simulation
             w.Int(Parties.Count); for (int id = Parties.First(); id != 0; id = Parties.Next(id)) Parties.Get(id).Write(w);
             w.Int(Herds.Count); for (int id = Herds.First(); id != 0; id = Herds.Next(id)) Herds.Get(id).Write(w);
             w.Int(Beasts.Count); for (int id = Beasts.First(); id != 0; id = Beasts.Next(id)) Beasts.Get(id).Write(w);
+            w.Int(Buildings.Count); for (int id = Buildings.First(); id != 0; id = Buildings.Next(id)) Buildings.Get(id).Write(w);
             History.Write(w);
             w.Int(CommandLog.Count); for (int i = 0; i < CommandLog.Count; i++) CommandLog[i].Write(w);
             Metrics.Write(w);
@@ -1228,12 +1235,14 @@ namespace TC2.Core.Simulation
             int npa = r.Int(); for (int i = 0; i < npa; i++) { var pa = Party.Read(r); w.Parties.Add(pa.Id, pa); }
             int nhe = r.Int(); for (int i = 0; i < nhe; i++) { var he = Herd.Read(r); w.Herds.Add(he.Id, he); }
             int nbe = r.Int(); for (int i = 0; i < nbe; i++) { var be = Beast.Read(r); w.Beasts.Add(be.Id, be); }
+            int nbu = r.Int(); for (int i = 0; i < nbu; i++) { var bu = Building.Read(r); w.Buildings.Add(bu.Id, bu); }
             w.Settlements.SetMaxId(w.Ids.Peek(EntityKind.Settlement) - 1);
             w.Households.SetMaxId(w.Ids.Peek(EntityKind.Household) - 1);
             w.People.SetMaxId(w.Ids.Peek(EntityKind.Person) - 1);
             w.Parties.SetMaxId(w.Ids.Peek(EntityKind.Process) - 1);
             w.Herds.SetMaxId(w.Ids.Peek(EntityKind.Process) - 1);
             w.Beasts.SetMaxId(w.Ids.Peek(EntityKind.Beast) - 1);
+            w.Buildings.SetMaxId(w.Ids.Peek(EntityKind.Building) - 1);
             w.History.Read(r);
             int nc = r.Int(); for (int i = 0; i < nc; i++) w.CommandLog.Add(Command.Read(r));
             w.Metrics.Read(r);
@@ -1257,6 +1266,7 @@ namespace TC2.Core.Simulation
             for (int id = Parties.First(); id != 0; id = Parties.Next(id)) Parties.Get(id).Hash(ref h);
             for (int id = Herds.First(); id != 0; id = Herds.Next(id)) Herds.Get(id).Hash(ref h);
             for (int id = Beasts.First(); id != 0; id = Beasts.Next(id)) Beasts.Get(id).Hash(ref h);
+            for (int id = Buildings.First(); id != 0; id = Buildings.Next(id)) Buildings.Get(id).Hash(ref h);
             History.Hash(ref h);
             h.Add(CommandLog.Count); for (int i = 0; i < CommandLog.Count; i++) CommandLog[i].Hash(ref h);
             return h.Value;

@@ -1274,3 +1274,31 @@ and fishing 0.9, wood, water and herding 0.3) with ~9 hours of rest and company;
 (herding most) - inside the ranges of time-allocation studies of farming peoples (grown people 6-9 h, children of 7-11 2-5 h),
 peaking at sowing and harvest. 200 coarse years: seed 42 3,570 people in 14 places (3,492 in 15 before), no hunger; seed 1
 1,084 in 6 (1,206), land-bound famines as before (1,001 hunger deaths, 50 famines); making 250 hours a good in both.
+
+## D2-059 — 2026-10-06 — Homes stand on their own; a household that dies out leaves its home and its goods to its kin
+
+**Context.** A household's shelter was a level on the household (camp, hut, house), so a home existed only while its household
+did: newlyweds always camped on a new lot and raised a hut beside empty houses, and a household moving away took its house
+with it. Worse, a household whose last member died was never dissolved: it lingered in its village's list with no members -
+its house still drawn, never taken, its hearth still burning wood (D2-056), its animals owned by no one - and every daily loop
+over households grew with the dead.
+**Decision.** (1) A hut or house is a `Building` on its lot (store `World.Buildings`, ids of `EntityKind.Building`, per-village
+index), raised by a household (`Homes.Raised` when its first stage completes, and at worldgen), lived in, left, taken again;
+`Household.Building` points to it (0: a camp) and the shelter level follows it. (2) A household leaves its home when it dies out
+or moves away (`Homes.Leave`): the building stands empty. Decay is read from the time it was left (`Homes.Condition`): an empty
+hut falls in after ~20 years, a house after ~60; past 0.35 nobody moves in (the roof is gone); its ruin then fades (~80 / ~300
+years, D2-052) and leaves the table at the yearly housekeeping. A home lived in is kept sound by its people (upkeep implicit).
+(3) A household without a home - a married couple, families arriving from elsewhere, a camp already in the village (checked
+daily) - first takes the best standing empty home of its village, a house before a hut, the soundest first (`Homes.TakeEmpty`;
+history `HomeTaken`, whose it was); only where none stands does it camp on a new lot and raise its own. (4) The last death of a
+household dissolves it (`SettlementSystem.DieOut`): its larder, cooked food, goods and animals go to its nearest kin in the
+village (a child's household, else a parent's, else a sibling's; else the household with the fewest animals), and with nobody
+left the animals go wild. (5) The view draws buildings (lived in, standing empty and weathering, roofless, fallen and sinking);
+D2-052's per-household ruins are gone - an abandoned village's homes simply decay. Sim version 17.
+**Evidence.** `HomesTests` (118 tests): a home outlives the household that lived in it (its larder and its six animals to the
+heir's household); a couple takes an empty home before raising their own (no new lot; "The Barnkreilds made their home in the
+house the Serndres had left in Vulstead"); an empty home falls in and fades while a lived-in one stands, one past mending is
+not taken, a gone ruin leaves the table. 200 coarse years: seed 42 3,588 people in 15 places (1,078 homes lived in, 62 empty,
+1,340 empty homes taken, 566 households died out); seed 1 1,120 in 6 (359 lived in, 116 empty, 16 fallen); a village-day 127 us.
+Shots `tc2/out/shots/homes40|50|100`: a village whose people all died stands empty at 40 years, roofless at 50, fallen at 100.
+Mono equals dotnet.

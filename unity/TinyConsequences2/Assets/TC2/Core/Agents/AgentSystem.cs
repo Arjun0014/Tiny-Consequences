@@ -1404,6 +1404,8 @@ namespace TC2.Core.Agents
             if (p.Partner != 0 && w.People.Exists(p.Partner)) w.People.Get(p.Partner).Partner = 0;
             w.Settlements.Get(p.Home).Population--;
             w.Metrics.Deaths++;
+            // the last of their household: it dies out, its home stands empty, its kin inherit (D2-059)
+            if (w.Households.Exists(p.Household) && w.Members(p.Household).Count == 0) w.SettlementSys.DieOut(p.Household, p.Id);
         }
     }
 }

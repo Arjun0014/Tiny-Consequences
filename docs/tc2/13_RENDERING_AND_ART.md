@@ -105,3 +105,6 @@ scattered trees read as a toy. Open: clouds, tilt-shift, close-in grass, night l
   buffers (a traced shader-variant collection warmed progressively at start is the planned fix; `WarmupAllShaders` took 36 s).
 - **Chimney smoke** reads the simulation (D2-056): a house smokes while one of its people cooks and all day while its hearth
   burns against the cold (what today's fire adds to its warmth), no longer by the clock and a temperature threshold.
+- **Homes** (D2-059): the view draws a village's buildings, not its households - lived in (windows lit while their people are
+  awake, smoke while one cooks or the hearth burns), standing empty (weathering toward the colours of the land), roofless
+  past mending, fallen and sinking (the ruin model), gone; camps only for households without a home that are not on the road.

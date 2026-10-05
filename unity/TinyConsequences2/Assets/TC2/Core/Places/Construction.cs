@@ -77,6 +77,7 @@ namespace TC2.Core.Places
                     if (hh.Build >= need - 1e-6)
                     {
                         hh.Shelter++; hh.Build = 0f;
+                        Homes.Raised(w, hid);   // a building on its lot, outliving its tenancy (D2-059)
                         w.Record(new HistoryEvent
                         {
                             Kind = HistoryKind.HomeBuilt, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Household(hid),

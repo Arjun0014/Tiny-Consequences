@@ -34,9 +34,14 @@ other; "village", "town" and "city" are names for what exists, never states that
   them back by the vegetation's own growth, and any village may claim them) and its ground is no longer a village's (a new
   village may be founded there: site choice already ignored abandoned villages). Its herds go wild (D2-048), its wild herds
   back to the land (D2-047). The view draws the houses of its last households as roofless ruins that sink and green over the
-  centuries (a house ~300 years, a hut ~80; camps leave nothing) and its well's stone ring for ~600. Not yet: ruins as
-  buildings in the simulation (stone to quarry, a roof to re-raise, a founding drawn to them) - houses are still a household's
-  shelter level, so a household that moves away takes its house with it; persistent buildings come with layouts.
+  centuries (a house ~300 years, a hut ~80; camps leave nothing) and its well's stone ring for ~600.
+- **Homes stand on their own (D2-059)**: a hut or house is a building on its lot (`Building`, `Core/Places/Buildings.cs`) that
+  outlives its household. A household that dies out (its last member dead: its kin in the village inherit its larder, goods and
+  animals) or moves away leaves its home standing empty; an empty home decays (a hut falls in after ~20 years, a house after
+  ~60; roofless below 0.35), then its ruin fades into the land (~80 / ~300 years) and leaves the table. A household without a
+  home - newlyweds, arriving families, a camp in the village - takes the best standing empty home before it raises its own
+  ("The Barnkreilds made their home in the house the Serndres had left"). An abandoned village's homes decay the same way. Not
+  yet: re-roofing a ruin, quarrying it, a founding drawn to one; upkeep labour (homes lived in are kept sound implicitly).
 
 ## 5. Scale terms used by historians (labels only)
 camp, hamlet, village, town, city - by population, buildings and functions present; "market town" if a

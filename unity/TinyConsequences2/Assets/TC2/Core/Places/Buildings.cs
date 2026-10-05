@@ -1,0 +1,128 @@
+using TC2.Core.Foundation;
+using TC2.Core.History;
+using TC2.Core.Simulation;
+
+namespace TC2.Core.Places
+{
+    /// <summary>A building on a village's lot (D2-059): raised by a household, lived in, left, taken again, fallen in.</summary>
+    public struct Building
+    {
+        public int Id;
+        public int Settlement;
+        public float X, Y;           // local metres: its lot
+        public byte Kind;            // Construction.Hut or Construction.House
+        public int Household;        // who lives in it (0 none)
+        public int Last;             // the household that last lived in it
+        public int Style;            // how it looks (the view's house kinds): the household that raised it
+        public long Built;           // when it was first raised
+        public long Left;            // when it was last left empty (0 while lived in)
+
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(X); w.Float(Y); w.Byte(Kind); w.Int(Household); w.Int(Last); w.Int(Style); w.Long(Built); w.Long(Left); }
+        public static Building Read(BinReader r) => new Building { Id = r.Int(), Settlement = r.Int(), X = r.Float(), Y = r.Float(), Kind = r.Byte(), Household = r.Int(), Last = r.Int(), Style = r.Int(), Built = r.Long(), Left = r.Long() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(X); h.Add(Y); h.Add(Kind); h.Add(Household); h.Add(Last); h.Add(Style); h.Add(Built); h.Add(Left); }
+    }
+
+    /// <summary>
+    /// Homes stand on their own (D2-059). A household's hut or house is a building on its lot that outlives its tenancy: when the
+    /// household dies out or moves away the building stands empty and decays - an empty hut falls in after ~20 years, a house
+    /// after ~60 (thatch and wattle go first) - and its ruin then fades into the land (a hut's in ~80 years, a house's in ~300:
+    /// D2-052). A household without a home - a married couple, families arriving, a camp in the village - first takes the best
+    /// standing empty home of its village (mended as they move in); only where none stands does it camp on a new lot and raise its
+    /// own. A building lived in is kept sound by its people. Decay is read from the time a building was left, so an abandoned
+    /// village's homes fall in with no step to run.
+    /// </summary>
+    public static class Homes
+    {
+        public const double HutFallYears = 20, HouseFallYears = 60;
+        public const double HutRuinYears = 80, HouseRuinYears = 300;
+        /// <summary>Soundness below which nobody moves in (the roof gone: re-roofing a ruin is not yet a work).</summary>
+        public const double Habitable = 0.35;
+
+        static double FallYears(byte kind) => kind >= Construction.House ? HouseFallYears : HutFallYears;
+        static double RuinYears(byte kind) => kind >= Construction.House ? HouseRuinYears : HutRuinYears;
+
+        /// <summary>How sound a building is at time t: 1 while lived in, down to 0 over its fall years once left empty.</summary>
+        public static double Condition(in Building b, long t) => b.Left == 0 ? 1.0 : DMath.Clamp01(1.0 - (t - b.Left) / (FallYears(b.Kind) * SimTime.Year));
+
+        /// <summary>How much of a fallen building's ruin is left at time t (1 as it falls in, 0 gone into the land; 1 while it stands).</summary>
+        public static double RuinLeft(in Building b, long t)
+        {
+            if (b.Left == 0) return 1.0;
+            double fallen = (t - b.Left) / (double)SimTime.Year - FallYears(b.Kind);
+            return fallen <= 0 ? 1.0 : DMath.Clamp01(1.0 - fallen / RuinYears(b.Kind));
+        }
+
+        public static bool Fallen(in Building b, long t) => b.Left != 0 && (t - b.Left) >= FallYears(b.Kind) * SimTime.Year;
+
+        /// <summary>A household raised its shelter a stage (Construction, worldgen): its first building on its lot, or its hut made a house.</summary>
+        public static void Raised(World w, int hid)
+        {
+            ref var hh = ref w.Households.Get(hid);
+            if (hh.Building != 0 && w.Buildings.Exists(hh.Building)) { w.Buildings.Get(hh.Building).Kind = hh.Shelter; return; }
+            int id = w.Ids.Next(EntityKind.Building);
+            w.Buildings.Add(id, new Building { Id = id, Settlement = hh.Settlement, X = hh.HomeX, Y = hh.HomeY, Kind = hh.Shelter, Household = hid, Last = hid, Style = hid, Built = w.Now });
+            w.BuildingsOf(hh.Settlement).InsertSorted(id);
+            hh.Building = id;
+        }
+
+        /// <summary>A household leaves its home (it dies out, it moves away): the building stands empty from now; the household is a camp.</summary>
+        public static void Leave(World w, int hid)
+        {
+            ref var hh = ref w.Households.Get(hid);
+            if (hh.Building != 0 && w.Buildings.Exists(hh.Building))
+            {
+                ref var b = ref w.Buildings.Get(hh.Building);
+                if (b.Household == hid) { b.Household = 0; b.Left = w.Now; }
+            }
+            hh.Building = 0; hh.Shelter = Construction.Camp; hh.Build = 0f;
+        }
+
+        /// <summary>
+        /// A household without a home takes the best standing empty home of its village - a house before a hut, the soundest
+        /// first, ties by id - and mends it as it moves in. True if it found one; history tells whose it was.
+        /// </summary>
+        public static bool TakeEmpty(World w, int hid)
+        {
+            ref var hh = ref w.Households.Get(hid);
+            var list = w.BuildingsOf(hh.Settlement);
+            int best = 0; double bv = -1;
+            for (int i = 0; i < list.Count; i++)
+            {
+                ref var b = ref w.Buildings.Get(list[i]);
+                if (b.Household != 0) continue;
+                double c = Condition(in b, w.Now);
+                if (c < Habitable) continue;
+                double v = b.Kind + c;
+                if (v > bv) { bv = v; best = list[i]; }
+            }
+            if (best == 0) return false;
+            ref var t = ref w.Buildings.Get(best);
+            int last = t.Last;
+            t.Household = hid; t.Last = hid; t.Left = 0;
+            hh.Building = best; hh.Shelter = t.Kind; hh.Build = 0f; hh.HomeX = t.X; hh.HomeY = t.Y;
+            w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.HomeTaken, Time = w.Now, Cell = w.Settlements.Get(hh.Settlement).Cell, Settlement = hh.Settlement,
+                Subject = EntityRef.Household(hid), Object = last != 0 && last != hid ? EntityRef.Household(last) : default, ArgA = t.Kind,
+                RootKind = RootKind.People,
+            });
+            w.Metrics.HomesTaken++;
+            return true;
+        }
+
+        static readonly System.Collections.Generic.List<int> _gone = new System.Collections.Generic.List<int>();
+
+        /// <summary>Ruins gone into the land leave the table (yearly housekeeping).</summary>
+        public static void Prune(World w)
+        {
+            _gone.Clear();
+            for (int id = w.Buildings.First(); id != 0; id = w.Buildings.Next(id)) if (RuinLeft(in w.Buildings.Get(id), w.Now) <= 0) _gone.Add(id);
+            for (int i = 0; i < _gone.Count; i++)
+            {
+                int id = _gone[i];
+                w.BuildingsOf(w.Buildings.Get(id).Settlement).Remove(id);
+                w.Buildings.Remove(id);
+            }
+        }
+    }
+}

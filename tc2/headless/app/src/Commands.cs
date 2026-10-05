@@ -151,6 +151,15 @@ namespace TC2.Headless
                               "  hunger deaths " + m.HungerDeaths + "  famines " + m.Famines);
             Console.WriteLine("household work: making food ready " + F(m.PrepHours, "0") + " h for " + F(m.PrepFu, "0") + " FU, water " + m.WaterTrips + " trips (" + F(m.WaterHours, "0") +
                               " h)  making and mending " + F(m.CraftHours, "0") + " h for " + F(m.GearMade, "0") + " goods  cold: spells " + m.ColdSpells + ", deaths " + m.ColdDeaths);
+            {
+                int lived = 0, empty = 0, fallen = 0;
+                for (int id = w.Buildings.First(); id != 0; id = w.Buildings.Next(id))
+                {
+                    var bu = w.Buildings.Get(id);
+                    if (TC2.Core.Places.Homes.Fallen(in bu, w.Now)) fallen++; else if (bu.Household != 0) lived++; else empty++;
+                }
+                Console.WriteLine("homes: lived in " + lived + ", standing empty " + empty + ", fallen " + fallen + "  taken empty " + m.HomesTaken + "  households died out " + m.DiedOut);
+            }
             var live = new int[3];
             for (int b = w.Beasts.First(); b != 0; b = w.Beasts.Next(b)) { ref var be = ref w.Beasts.Get(b); if (be.Alive) live[be.Kind]++; }
             Console.WriteLine("stock: cattle " + live[0] + " goats " + live[1] + " pigs " + live[2] + "  born " + m.BeastBirths + "  died " + m.BeastDeaths + "  taken by wolves " + m.BeastsTaken +

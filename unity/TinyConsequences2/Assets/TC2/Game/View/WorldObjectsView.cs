@@ -188,45 +188,34 @@ namespace TC2.Game
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
                 ref var s = ref w.Settlements.Get(sid);
-                if (!s.Inhabited) { Ruins(w, P, in s, sid); continue; }
                 Vector3 center = PlanetGeo.Surface(P, s.Anchor);
+                double gone = s.Inhabited ? 0.0 : (w.Now - s.Abandoned) / (double)SimTime.Year;
+                if (!s.Inhabited && (gone > 600 || (Rig != null && Rig.Cam != null && (center - Rig.Cam.transform.position).sqrMagnitude > 6000f * 6000f))) continue;
                 float ex = Exaggeration(center, 1.6f);
-                var hhs = w.HouseholdsOf(sid);
                 // after dark, a house whose people are home and awake shows its windows
                 Vector3 toSun = Rig != null && Rig.Sun != null ? -Rig.Sun.transform.forward : Vector3.up;
                 bool dark = Vector3.Dot(PlanetGeo.ToVector(s.Anchor), toSun) < 0.06f;
                 double tOut = w.PlanetSys.DayMean(s.Cell, PlanetSystems.Season(w.Now));   // the day the hearths burn against
+                // its buildings (D2-059): lived in, standing empty, fallen in - an abandoned village's too, as they decay
+                var bl = w.BuildingsOf(sid);
+                for (int i = 0; i < bl.Count; i++) DrawHome(w, P, in s, bl[i], ex, dark, tOut);
+                // households without a home camp on their lot (not those on the road to another village)
+                var hhs = w.HouseholdsOf(sid);
                 for (int i = 0; i < hhs.Count; i++)
                 {
                     ref var h = ref w.Households.Get(hhs[i]);
-                    int kind = HouseKind(hhs[i]);
-                    // the house faces the village square
+                    if (h.Building != 0 || h.Party != 0) continue;
                     float yaw = Mathf.Atan2(s.SquareX - h.HomeX, s.SquareY - h.HomeY) * Mathf.Rad2Deg + 180f + ((hhs[i] * 37) % 21 - 10);
-                    ulong hh = KeyedRng.Mix((ulong)hhs[i] + 77);
-                    float age = 0.88f + 0.2f * (float)KeyedRng.Unit(hh);           // weathering of roofs and walls
-                    bool awake = SomeoneAwakeHome(w, hhs[i], out bool cooking);
-                    bool lit = dark && awake;
-                    // what its people have raised (D2-045): a camp of hides, a round hut, a house
-                    if (h.Shelter == Construction.Camp)
-                    {
-                        _tents.Add((int)(age * 10) + (lit ? 100 : 0), new Color(age, age * 0.97f, age * 0.92f, 1f), Place(P, s, h.HomeX, h.HomeY, yaw, ex), lit ? -1f : 0f);
-                        continue;
-                    }
-                    if (h.Shelter < Construction.House)
-                    {
-                        _huts.Add(300 + (int)(age * 10) + (lit ? 100 : 0), new Color(age, age * 0.97f, age * 0.9f, 1f), Place(P, s, h.HomeX, h.HomeY, yaw, ex), lit ? -1f : 0f);
-                        continue;
-                    }
-                    var m = Place(P, s, h.HomeX, h.HomeY, yaw, ex);
-                    _houseKinds[kind].Add((int)(age * 10) + (lit ? 100 : 0), new Color(age, age * 0.98f, age * 0.94f, 1f), m, lit ? -1f : 0f);
-                    // a fire in the hearth: while someone cooks, and all day while it burns against the cold (what today's
-                    // fire adds to the house's warmth, D2-056)
-                    double heat = h.Indoor - Hearth.Indoors(tOut, h.Shelter, 0.0);
-                    if (awake && _hasChimney != null && _hasChimney[kind] && (cooking || heat > 0.5))
-                    {
-                        Vector3 top = m.MultiplyPoint3x4(_chimneyTop[kind]);
-                        _smoke.Add(new Vector4(top.x, top.y, top.z, cooking ? 1f : (float)(0.35 + 0.4 * System.Math.Min(1.0, heat / 8.0))));
-                    }
+                    float age = 0.88f + 0.2f * (float)KeyedRng.Unit(KeyedRng.Mix((ulong)hhs[i] + 77));
+                    bool lit = dark && SomeoneAwakeHome(w, hhs[i], out _);
+                    _tents.Add((int)(age * 10) + (lit ? 100 : 0), new Color(age, age * 0.97f, age * 0.92f, 1f), Place(P, s, h.HomeX, h.HomeY, yaw, ex), lit ? -1f : 0f);
+                }
+                if (!s.Inhabited)
+                {
+                    // an abandoned village's well: its stone ring outlasts the houses (D2-052)
+                    if ((s.Works & Construction.Well) != 0)
+                        _wells.Add(1, new Color(0.75f, 0.80f, 0.70f, 1f), Place(P, s, s.WellX, s.WellY, 30f, ex) * Matrix4x4.Scale(new Vector3(1f, 0.4f, 1f)));
+                    continue;
                 }
                 Beached(w, P, in s, sid, ex);
                 // the village store and its well, once its people have built them (D2-045); haystacks once the harvest is in
@@ -240,35 +229,48 @@ namespace TC2.Game
         }
 
         /// <summary>
-        /// An abandoned village (D2-052): the houses its last households lived in stand roofless and sink and green over the
-        /// centuries (a house's stone footings ~300 years, a hut ~80; a camp leaves nothing), its well's stone ring longer.
+        /// One building (D2-059): lived in - its windows lit after dark while its people are awake, smoke while one of them cooks
+        /// or the hearth burns against the cold (D2-056); standing empty - greying and greening as it decays; fallen in - a ruin
+        /// whose walls sink and green over as the land takes it back (D2-052). It faces the village square; its look is the one
+        /// it was raised with.
         /// </summary>
-        void Ruins(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int sid)
+        void DrawHome(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int bid, float ex, bool dark, double tOut)
         {
-            double years = (w.Now - s.Abandoned) / (double)SimTime.Year;
-            if (years > 600) return;
-            Vector3 center = PlanetGeo.Surface(P, s.Anchor);
-            if (Rig != null && Rig.Cam != null && (center - Rig.Cam.transform.position).sqrMagnitude > 6000f * 6000f) return;
-            float ex = Exaggeration(center, 1.6f);
-            var hhs = w.HouseholdsOf(sid);
-            for (int i = 0; i < hhs.Count; i++)
+            ref var b = ref w.Buildings.Get(bid);
+            float yaw = Mathf.Atan2(s.SquareX - b.X, s.SquareY - b.Y) * Mathf.Rad2Deg + 180f + ((b.Style * 37) % 21 - 10);
+            float age = 0.88f + 0.2f * (float)KeyedRng.Unit(KeyedRng.Mix((ulong)b.Style + 77));   // weathering of roofs and walls
+            if (Homes.Fallen(in b, w.Now) || (b.Household == 0 && Homes.Condition(in b, w.Now) < Homes.Habitable))
             {
-                ref var h = ref w.Households.Get(hhs[i]);
-                if (h.Shelter == Construction.Camp) continue;
-                double life = h.Shelter == Construction.House ? 300.0 : 80.0;
-                float c = (float)(1.0 - years / life);
-                if (c <= 0.03f) continue;
-                float yaw = Mathf.Atan2(s.SquareX - h.HomeX, s.SquareY - h.HomeY) * Mathf.Rad2Deg + 180f + ((hhs[i] * 37) % 21 - 10);
-                var m = Place(P, s, h.HomeX, h.HomeY, yaw, 1f);
-                float size = ex * (h.Shelter == Construction.House ? 1f : 0.6f);
-                m = m * Matrix4x4.Scale(new Vector3(size, size * (0.25f + 0.75f * c), size));   // the walls fall lower
+                // past mending its roof is gone (the walls stand roofless), then it falls in and sinks (RuinLeft: 1 while it stands)
+                float c = (float)Homes.RuinLeft(in b, w.Now);
+                if (c <= 0.03f) return;
+                var mr = Place(P, s, b.X, b.Y, yaw, 1f);
+                float size = ex * (b.Kind >= Construction.House ? 1f : 0.6f);
+                mr = mr * Matrix4x4.Scale(new Vector3(size, size * (0.25f + 0.75f * c), size));   // the walls fall lower
                 Color moss = new Color(0.50f, 0.60f, 0.40f, 1f);
-                _ruins.Add((int)(c * 4), Color.Lerp(moss, Color.white, c), m);
+                _ruins.Add((int)(c * 4), Color.Lerp(moss, Color.white, c), mr);
+                return;
             }
-            if ((s.Works & Construction.Well) != 0 && years < 600)
+            bool lived = b.Household != 0 && w.Households.Exists(b.Household);
+            bool cooking = false;
+            bool awake = lived && SomeoneAwakeHome(w, b.Household, out cooking);
+            bool lit = dark && awake;
+            Color tint = new Color(age, age * 0.98f, age * 0.94f, 1f);
+            if (!lived) tint = Color.Lerp(new Color(0.55f, 0.58f, 0.48f, 1f), tint, 0.45f + 0.55f * (float)Homes.Condition(in b, w.Now));   // an empty home weathers
+            int key = (int)(age * 10) + (lit ? 100 : 0) + (lived ? 0 : 200);
+            var m = Place(P, s, b.X, b.Y, yaw, ex);
+            if (b.Kind < Construction.House) { _huts.Add(300 + key, tint, m, lit ? -1f : 0f); return; }
+            int kind = HouseKind(b.Style);
+            _houseKinds[kind].Add(key, tint, m, lit ? -1f : 0f);
+            if (!lived || !awake || _hasChimney == null || !_hasChimney[kind]) return;
+            // a fire in the hearth: while someone cooks, and all day while it burns against the cold (what today's fire adds to
+            // the house's warmth, D2-056)
+            ref var h = ref w.Households.Get(b.Household);
+            double heat = h.Indoor - Hearth.Indoors(tOut, h.Shelter, 0.0);
+            if (cooking || heat > 0.5)
             {
-                var m = Place(P, s, s.WellX, s.WellY, 30f, ex) * Matrix4x4.Scale(new Vector3(1f, 0.4f, 1f));   // its stone ring
-                _wells.Add(1, new Color(0.75f, 0.80f, 0.70f, 1f), m);
+                Vector3 top = m.MultiplyPoint3x4(_chimneyTop[kind]);
+                _smoke.Add(new Vector4(top.x, top.y, top.z, cooking ? 1f : (float)(0.35 + 0.4 * System.Math.Min(1.0, heat / 8.0))));
             }
         }
 

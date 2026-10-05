@@ -246,6 +246,8 @@ namespace TC2.Core.Places
                 w.Parties.Remove(pid);
                 return;
             }
+            // their homes stand empty behind them (D2-059)
+            for (int i = 0; i < _leaving.Count; i++) Homes.Leave(w, _leaving[i]);
             // food for the way and the first weeks from the village's store, as their share of it allows
             double share = s.Population > 0 ? (double)people / s.Population : 0;
             double food = DMath.Min(s.Granary * share, CarryDays * people * w.Config.FoodPerAdultDay);
@@ -318,7 +320,7 @@ namespace TC2.Core.Places
             w.Parties.Remove(pid);
         }
 
-        /// <summary>A household moves its home to another village: a new lot, a camp to begin with, its people with it.</summary>
+        /// <summary>A household moves its home to another village: a home left empty there, else a new lot and a camp; its people with it.</summary>
         void Rehome(int hid, int dest)
         {
             var w = _w;
@@ -326,10 +328,16 @@ namespace TC2.Core.Places
             int from = hh.Settlement;
             if (from == dest) return;
             w.HouseholdsOf(from).Remove(hid);
-            ref var d = ref w.Settlements.Get(dest);
-            d.LotPosition(d.Lots++, out float hx, out float hy);
-            hh.Settlement = dest; hh.HomeX = hx; hh.HomeY = hy; hh.Shelter = Construction.Camp; hh.Build = 0f; hh.Water = 0f;   // (pots carried empty)
+            Homes.Leave(w, hid);   // (if they still had a home behind them)
+            hh.Settlement = dest; hh.Water = 0f;   // (pots carried empty)
             w.HouseholdsOf(dest).InsertSorted(hid);
+            // a home standing empty there, else a camp on a new lot (D2-059)
+            if (!Homes.TakeEmpty(w, hid))
+            {
+                ref var d = ref w.Settlements.Get(dest);
+                d.LotPosition(d.Lots++, out float hx, out float hy);
+                hh.HomeX = hx; hh.HomeY = hy; hh.Shelter = Construction.Camp; hh.Build = 0f;
+            }
             var mem = w.Members(hid);
             for (int j = 0; j < mem.Count; j++)
             {

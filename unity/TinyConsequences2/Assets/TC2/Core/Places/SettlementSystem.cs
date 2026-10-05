@@ -88,6 +88,8 @@ namespace TC2.Core.Places
             for (int i = 0; i < hhs.Count; i++)
             {
                 ref var hh = ref w.Households.Get(hhs[i]);
+                // a household in a camp moves into a home that stands empty (D2-059)
+                if (hh.Building == 0 && hh.Party == 0) Homes.TakeEmpty(w, hhs[i]);
                 double fire = Hearth.Wanted(tOut, hh.Shelter) * share;
                 hh.Indoor = (float)Hearth.Indoors(tOut, hh.Shelter, fire);
                 int members = w.Members(hhs[i]).Count;
@@ -105,6 +107,67 @@ namespace TC2.Core.Places
                 w.Metrics.ColdSpells++;
             }
             else if (cold == 0) s.ColdEvent = 0;
+        }
+
+        /// <summary>
+        /// The last of a household has died (D2-059): its home stands empty; its larder, goods and animals go to the nearest kin
+        /// in the village (a child's household, else a parent's, else a sibling's; else the household with the fewest animals,
+        /// which keeps them with the village's herd), and where nobody is left the animals go to the wild; the household is no more.
+        /// </summary>
+        public void DieOut(int hid, int lastPid)
+        {
+            var w = _w;
+            ref var hh = ref w.Households.Get(hid);
+            if (hh.Dissolved != 0) return;
+            int sid = hh.Settlement;
+            int heir = Heir(hid, lastPid, sid);
+            Homes.Leave(w, hid);
+            if (heir != 0)
+            {
+                ref var to = ref w.Households.Get(heir);
+                to.Larder += hh.Larder + hh.Ready;
+                to.Gear = (float)(to.Gear + (double)hh.Gear);
+                w.Stock.Inherit(hid, heir);
+            }
+            else w.Stock.FeralHousehold(hid, w.Settlements.Get(sid).Cell);
+            hh.Larder = 0; hh.Ready = 0; hh.Gear = 0f;
+            hh.Dissolved = w.Now;
+            w.History.EndEntity(EntityRef.Household(hid), w.Now);
+            w.HouseholdsOf(sid).Remove(hid);
+            w.Metrics.DiedOut++;
+        }
+
+        int Heir(int hid, int lastPid, int sid)
+        {
+            var w = _w;
+            ref var d = ref w.People.Get(lastPid);
+            int best = 0, rank = 9;
+            var hhs = w.HouseholdsOf(sid);
+            for (int i = 0; i < hhs.Count && rank > 0; i++)
+            {
+                int h = hhs[i];
+                if (h == hid) continue;
+                var mem = w.Members(h);
+                for (int k = 0; k < mem.Count; k++)
+                {
+                    ref var q = ref w.People.Get(mem[k]);
+                    if (!q.Alive) continue;
+                    int r = q.Mother == lastPid || q.Father == lastPid ? 0
+                          : (q.Id == d.Mother || q.Id == d.Father ? 1
+                          : ((d.Mother != 0 && q.Mother == d.Mother) || (d.Father != 0 && q.Father == d.Father) ? 2 : 9));
+                    if (r < rank) { rank = r; best = h; }
+                }
+            }
+            if (best != 0) return best;
+            int fewest = int.MaxValue;
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                int h = hhs[i];
+                if (h == hid || w.Members(h).Count == 0) continue;
+                int n = w.BeastsOf(h).Count;
+                if (n < fewest) { fewest = n; best = h; }
+            }
+            return best;
         }
 
         void Crops(ref Settlement s, int doy)
@@ -528,20 +591,29 @@ namespace TC2.Core.Places
             return false;
         }
 
+        /// <summary>Premise (tests, tools): a woman and a man of a village marry now, as the village's day would have them do.</summary>
+        public void Wed(int sid, int womanId, int manId) => Marry(sid, womanId, manId);
+
         void Marry(int sid, int womanId, int manId)
         {
             var w = _w;
             ref var s = ref w.Settlements.Get(sid);
             int hid = w.Ids.Next(EntityKind.Household);
-            s.LotPosition(s.Lots++, out float hx, out float hy);
             int manHh = w.People.Get(manId).Household;
             int fam = w.Households.Exists(manHh) ? w.Households.Get(manHh).FamilyName : manHh;
             var hh = new Household
             {
-                Id = hid, Settlement = sid, Formed = w.Now, FamilyName = fam,
-                HomeX = hx, HomeY = hy, Indoor = (float)Hearth.Comfort,
+                Id = hid, Settlement = sid, Formed = w.Now, FamilyName = fam, Indoor = (float)Hearth.Comfort,
             };
             w.Households.Add(hid, hh);
+            // an empty home in the village if one stands, else a camp on a new lot (D2-059)
+            if (!Homes.TakeEmpty(w, hid))
+            {
+                ref var s1 = ref w.Settlements.Get(sid);
+                s1.LotPosition(s1.Lots++, out float hx, out float hy);
+                ref var nh = ref w.Households.Get(hid);
+                nh.HomeX = hx; nh.HomeY = hy;
+            }
             w.HouseholdsOf(sid).InsertSorted(hid);
             w.History.Register(EntityRef.Household(hid), w.FamilyName(hh.FamilyName), w.Now);
             MoveTo(womanId, hid);
@@ -584,7 +656,7 @@ namespace TC2.Core.Places
                 double gear = left == 0 ? oh.Gear : (double)oh.Gear / (left + 1);
                 oh.Gear = (float)(oh.Gear - gear);
                 w.Households.Get(hid).Gear = (float)(w.Households.Get(hid).Gear + gear);
-                if (left == 0) { oh.Dissolved = w.Now; w.History.EndEntity(EntityRef.Household(old), w.Now); w.HouseholdsOf(oh.Settlement).Remove(old); w.Stock.Inherit(old, hid); }
+                if (left == 0) { Homes.Leave(w, old); oh.Dissolved = w.Now; w.History.EndEntity(EntityRef.Household(old), w.Now); w.HouseholdsOf(oh.Settlement).Remove(old); w.Stock.Inherit(old, hid); }
                 else w.Stock.Endow(old, hid);   // and a share of the herd (D2-048)
             }
             p.Household = hid;
