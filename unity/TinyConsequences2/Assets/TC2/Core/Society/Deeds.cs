@@ -11,7 +11,10 @@ namespace TC2.Core.Society
         public const byte Take = 1;         // took a load from a village's store in the night, unseen (a harm)
         public const byte TriedToTake = 2;  // was seen taking and ran, leaving it (a harm: the fright and the intent)
         public const byte Relief = 3;       // gave grain to a village in famine (a help)
-        public static bool Harm(byte k) => k == Take || k == TriedToTake;
+        public const byte Wound = 4;        // struck someone (Qty the hurt; D2-071)
+        public const byte Kill = 5;         // someone died of the wounds they were given
+        public static bool Harm(byte k) => k == Take || k == TriedToTake || k == Wound || k == Kill;
+        public static bool Blood(byte k) => k == Wound || k == Kill;
     }
 
     /// <summary>How a village knows a deed.</summary>
@@ -66,8 +69,8 @@ namespace TC2.Core.Society
 
         public void Bind(World w) { _w = w; }
 
-        /// <summary>Half-lives (years) of a harm to goods and of help: how fast they weigh less.</summary>
-        public const double HarmHalfLife = 2.0, HelpHalfLife = 4.0;
+        /// <summary>Half-lives (years) of a harm to goods, of help, and of blood: how fast they weigh less.</summary>
+        public const double HarmHalfLife = 2.0, HelpHalfLife = 4.0, BloodHalfLife = 10.0;
         /// <summary>A deed weighing less than this (FU) is forgotten.</summary>
         public const double ForgetBelow = 0.5;
 
@@ -129,7 +132,7 @@ namespace TC2.Core.Society
         public double Weight(in Deed d, long now)
         {
             double years = (double)(now - d.Time) / SimTime.Year;
-            double half = DeedKind.Harm(d.Kind) ? HarmHalfLife : HelpHalfLife;
+            double half = DeedKind.Blood(d.Kind) ? BloodHalfLife : DeedKind.Harm(d.Kind) ? HarmHalfLife : HelpHalfLife;
             return (double)d.Worth * DMath.Exp(-0.6931471805599453 * years / half);
         }
 
@@ -153,6 +156,31 @@ namespace TC2.Core.Society
                 ref var d = ref w.Deeds.Get(k.Deed);
                 if (DeedKind.Harm(d.Kind) != harm || d.ToS != sid || d.ByS != other) continue;
                 g += Weight(in d, now);
+            }
+            return g;
+        }
+
+        /// <summary>
+        /// The weight of the harms a village knows were done to it since a time - by whomever, the doer known or not (losses found
+        /// count): what a watch would guard against (D2-071). The latest such deed's event comes back as the cause.
+        /// </summary>
+        public double HarmSince(int sid, long since, out long latest)
+        {
+            latest = 0;
+            if (sid <= 0 || sid >= _known.Length || _known[sid] == null) return 0;
+            var list = _known[sid];
+            var w = _w;
+            long now = w.Now, at = long.MinValue;
+            double g = 0;
+            for (int i = list.Count - 1; i >= 0; i--)
+            {
+                var k = list[i];
+                if (k.How == KnownHow.Own) continue;
+                ref var d = ref w.Deeds.Get(k.Deed);
+                if (d.Time < since) break;   // (ids rise with time)
+                if (!DeedKind.Harm(d.Kind) || d.ToS != sid) continue;
+                g += Weight(in d, now);
+                if (d.Time > at) { at = d.Time; latest = d.Event; }
             }
             return g;
         }

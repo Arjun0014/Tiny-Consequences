@@ -14,7 +14,8 @@ namespace TC2.Tests.Core
     /// <summary>
     /// Deeds and taking by need (D2-069; F6 slice 1): the hungry take grain from a neighbour's full store in the night, seen or not
     /// by the homes round it; what villages know of deeds makes grievance and gratitude, read by trade, relief and the next taker's
-    /// restraint; a COARSE night takes at the lived rate. Mechanisms, not outcomes.
+    /// restraint; a COARSE night takes at the lived rate. The watch, blows and injury (D2-071, slice 2): a seen taker may be caught
+    /// and struck, wounds heal or kill as deeds, a village that remembers losses keeps a watch. Mechanisms, not outcomes.
     /// </summary>
     [TestFixture]
     public class TakingTests
@@ -101,9 +102,10 @@ namespace TC2.Tests.Core
             Assert.AreEqual(before, w.Settlements.Get(b).Granary, "they left the grain");
             Assert.AreEqual(0f, p.CargoQty);
             for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.TakingSeen) Console.WriteLine(HistoryText.Line(w, e)); }
-            Console.WriteLine("b's grievance against a " + w.DeedBook.Grievance(b, a).ToString("0.0") + " (grudge at " + Trade.Grudge + ")");
+            double g0 = w.DeedBook.Grievance(b, a);
+            Console.WriteLine("b's grievance against a " + g0.ToString("0.0") + " (grudge at " + Trade.Grudge + ")");
             Assert.Greater(w.DeedBook.Grievance(b, a), Trade.Grudge, "b knows who it was");
-            Assert.AreEqual(0.0, w.DeedBook.Grievance(a, b));
+            if (w.Metrics.Blows == 0) Assert.AreEqual(0.0, w.DeedBook.Grievance(a, b), "a holds nothing against b unless its man was struck there (D2-071)");
             Assert.AreEqual(0.0, w.Trade.Plan(a, b, out _, out _, out _), "no deals with those who wronged them");
             Assert.AreEqual(0.0, w.Trade.Plan(b, a, out _, out _, out _));
             // a famine at a, grain to spare at b: no relief from b - where, without the wrong, it sends some
@@ -111,10 +113,11 @@ namespace TC2.Tests.Core
             var w2 = Pair(out a, out b);
             w2.AdvanceTo(w2.Now + SimTime.Hours(30));
             Assert.AreNotEqual(0, ReliefFromBToA(w2, a, b), "(the same famine with no wrong known: b sends grain)");
-            // the grudge fades: a year and a half on, b deals again
+            // the grudge fades: the fright and the intent halve in two years (blood, if any was shed, in ten)
             w.AdvanceTo(w.Now + SimTime.Years(2));
             Console.WriteLine("two years on: b's grievance " + w.DeedBook.Grievance(b, a).ToString("0.0"));
-            Assert.Less(w.DeedBook.Grievance(b, a), Trade.Grudge, "it weighs less as it ages");
+            Assert.Less(w.DeedBook.Grievance(b, a), 0.75 * g0, "it weighs less as it ages");
+            if (w.Metrics.Blows == 0) Assert.Less(w.DeedBook.Grievance(b, a), Trade.Grudge, "and with no blood shed, b deals again");
         }
 
         static int ReliefFromBToA(World w, int a, int b)
@@ -262,6 +265,131 @@ namespace TC2.Tests.Core
             Console.WriteLine("in all: lived " + lived + " (" + lw + " weighed), COARSE " + coarse + " (" + cw + ")");
             Assert.Greater(lived, 0, "the hungry went to the full store");
             Assert.That((double)coarse / Math.Max(1, lived), Is.InRange(0.5, 2.0), "refit the lived bedtime or the COARSE night");
+        }
+
+        // ------------------------------------------------------------------ the watch, blows and injury (D2-071)
+        [Test]
+        public void ASeenTakerMayBeCaughtAndStruckAndTheWoundIsADeedBothVillagesKnow()
+        {
+            var w = Pair(out int a, out int b);
+            Assume.That(b != 0, "two villages a walk apart");
+            w.AdvanceTo(w.Now + SimTime.Hours(30));
+            Full(w, b);
+            long mark = w.History.LastId;
+            int attempts = 0;
+            for (int night = 0; night < 24 && w.Metrics.Blows == 0; night++)
+            {
+                var res = w.Residents(a);
+                for (int i = 0; i < res.Count; i++)
+                {
+                    ref var p = ref w.People.Get(res[i]);
+                    double age = p.AgeYears(w.Now);
+                    if (!p.Alive || age < 18 || age >= 50 || p.Hurt > 0f) continue;
+                    w.Conflict.TakeWith(ref p, b, -1.0);   // (seen: a sleeper by the store woke)
+                    attempts++;
+                }
+                w.AdvanceTo(w.Now + SimTime.Hours(1));
+            }
+            Console.WriteLine(attempts + " takers seen: " + w.Metrics.Blows + " blows");
+            Assert.Greater(w.Metrics.Blows, 0, "some were caught, or turned on those who came out");
+            HistoryEvent struck = default;
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.Struck) { struck = e; Console.WriteLine(HistoryText.Line(w, e)); } }
+            Assert.AreEqual(HistoryKind.Struck, struck.Kind);
+            var hit = w.People.Get(struck.Object.Id);
+            var by = w.People.Get(struck.Subject.Id);
+            Assert.Greater(hit.Hurt, 0f, "the one struck is hurt");
+            Assert.AreNotEqual(0, hit.HurtDeed);
+            var d = w.Deeds.Get(hit.HurtDeed);
+            Assert.AreEqual(DeedKind.Wound, d.Kind);
+            Assert.AreEqual(by.Id, d.By, "the striker's deed");
+            Assert.IsTrue(w.DeedBook.Knows(hit.Home, d.Id, out byte how) && how == KnownHow.Saw, "the struck one's village knows who did it");
+            Assert.IsTrue(w.DeedBook.Knows(by.Home, d.Id, out byte how2) && how2 == KnownHow.Own);
+            Assert.Greater(w.DeedBook.Grievance(hit.Home, by.Home), 0.0, "and holds it against the striker's village");
+            Assert.IsNull(TestWorlds.Audit(w));
+        }
+
+        [Test]
+        public void WoundsHealWhenFedAndDeepOnesMayKill()
+        {
+            var w = Pair(out int a, out int b);
+            Assume.That(b != 0, "two villages a walk apart");
+            w.AdvanceTo(w.Now + SimTime.Hours(30));
+            int striker = Grown(w, a);
+            // premise: ten of b's people struck by a man of a - five lightly, five deeply
+            var light = new List<int>(); var deep = new List<int>();
+            var res = w.Residents(b);
+            for (int i = 0; i < res.Count && light.Count + deep.Count < 10; i++)
+            {
+                ref var p = ref w.People.Get(res[i]);
+                double age = p.AgeYears(w.Now);
+                if (!p.Alive || age < 16 || age >= 60) continue;
+                double hurt = light.Count < 5 ? 0.35 : 0.95;
+                int deed = w.DeedBook.Record(DeedKind.Wound, striker, a, p.Household, b, 0, hurt, Conflict.WoundWorth * hurt, 0);
+                w.DeedBook.Learn(b, deed, KnownHow.Saw);
+                p.Hurt = (float)hurt; p.HurtDeed = deed;
+                (hurt < 0.5 ? light : deep).Add(res[i]);
+            }
+            Assume.That(deep.Count == 5, "ten grown people");
+            // the deeply hurt keep to their beds (lived: at noon)
+            w.AdvanceTo(SimTime.StartOfDay(w.Now + SimTime.Day) + SimTime.Hours(12) - w.LocalOffsetOf(b));
+            int abed = 0;
+            foreach (int id in deep) { var q = w.People.Get(id); if (q.Alive && q.Act == ActivityKind.Ill && q.Why == WhyCode.Hurt) abed++; }
+            Console.WriteLine(HistoryText.Doing(w, w.People.Get(deep[0])));
+            Assert.Greater(abed, 0, "the badly hurt are abed");
+            long mark = w.History.LastId;
+            w.AdvanceTo(w.Now + SimTime.Days(40));
+            int dead = 0;
+            foreach (int id in deep) if (!w.People.Get(id).Alive) dead++;
+            foreach (int id in light) { var q = w.People.Get(id); Assert.IsTrue(q.Alive, "light wounds do not kill"); Assert.AreEqual(0f, q.Hurt, "and heal"); }
+            int kills = 0;
+            for (int id = w.Deeds.First(); id != 0; id = w.Deeds.Next(id)) { var k = w.Deeds.Get(id); if (k.Kind == DeedKind.Kill && k.By == striker && k.ToS == b) kills++; }
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.PersonDied && e.ArgA == 11) Console.WriteLine(HistoryText.Line(w, e)); }
+            Console.WriteLine("deeply hurt: " + dead + " of 5 died; killings known " + kills + "; b's grievance against a " + w.DeedBook.Grievance(b, a).ToString("0"));
+            Assert.Greater(dead, 0, "deep wounds may kill");
+            Assert.AreEqual(dead, kills, "every death of wounds a killing, the striker's deed");
+            Assert.Greater(w.DeedBook.Grievance(b, a), dead * 0.5 * Conflict.KillWorth, "blood weighs long");
+        }
+
+        [Test]
+        public void AVillageThatRemembersLossesKeepsAWatchThatSeesTakers()
+        {
+            var w = Pair(out int a, out int b);
+            Assume.That(b != 0, "two villages a walk apart");
+            w.AdvanceTo(w.Now + SimTime.Hours(30));
+            double before = w.Conflict.SeenAt(b);
+            Assert.AreEqual(0, w.Settlements.Get(b).Watcher, "no watch without losses");
+            // premise: b has twice found grain gone from its store this year
+            for (int k = 0; k < 2; k++)
+            {
+                int d = w.DeedBook.Record(DeedKind.Take, Grown(w, a), a, 0, b, Trade.Grain, Conflict.LoadFu, Conflict.LoadFu, 0);
+                w.DeedBook.Learn(b, d, KnownHow.Found);
+            }
+            long mark = w.History.LastId;
+            w.Conflict.Watch(b);   // (the village's choice tonight)
+            w.Conflict.Watch(b);
+            int watcher = w.Settlements.Get(b).Watcher;
+            Assert.AreNotEqual(0, watcher, "losses worth more than a watcher's sleep: a watch");
+            int told = 0;
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.WatchSet) { told++; Console.WriteLine(HistoryText.Line(w, e)); } }
+            Assert.AreEqual(1, told, "history tells when a watch begins, not each night");
+            Console.WriteLine("seen at b's store: " + before.ToString("0.00") + " -> " + w.Conflict.SeenAt(b).ToString("0.00"));
+            Assert.GreaterOrEqual(w.Conflict.SeenAt(b), Conflict.WatchSeen, "a watcher sees takers");
+            // lived: tonight's watcher goes to the store at their bedtime and stands there until two in the morning
+            w.AdvanceTo(SimTime.StartOfDay(w.Now + SimTime.Days(2)) + SimTime.Hours(20) - w.LocalOffsetOf(b));
+            bool stood = false;
+            long end = w.Now + SimTime.Hours(7);
+            while (w.Now < end && !stood)
+            {
+                w.AdvanceTo(w.Now + 900);
+                int tonight = w.Settlements.Get(b).Watcher;
+                if (tonight == 0) continue;
+                var q = w.People.Get(tonight);
+                if (q.Act == ActivityKind.Watch) { stood = true; Console.WriteLine(HistoryText.Doing(w, in q)); }
+            }
+            Assert.IsTrue(stood, "the watcher stood at the store in the night");
+            // a year on with no more losses: the watch is let go
+            w.AdvanceTo(w.Now + SimTime.Years(1.1));
+            Assert.AreEqual(0, w.Settlements.Get(b).Watcher, "the losses forgotten enough, the watch ends");
         }
 
         [Test]

@@ -33,6 +33,22 @@ namespace TC2.Core.Society
         /// intent and the fright: one seen taker estranges two villages for a year and a half - Trade.Grudge).</summary>
         public const double SeenWorth = 0.5;
 
+        // ---- the watch, blows and injury (D2-071)
+        /// <summary>A watcher at the store sees a taker this often.</summary>
+        public const double WatchSeen = 0.85;
+        /// <summary>A village keeps a watch when what it lost to takers in the last year comes to more a night than this (FU): a
+        /// watcher's lost sleep, the hours of the next day's work it costs (a COARSE day takes them off the watcher).</summary>
+        public const double WatchCost = 1.0, WatchHours = 3.0;
+        /// <summary>After the shout, someone comes out this often; a taker who runs is caught this often; a taker turns on them by
+        /// boldness and desperation at most this often.</summary>
+        public const double ComeOut = 0.7, Caught = 0.35, TurnOn = 0.3;
+        /// <summary>A wound's worth to the one struck and theirs (FU a whole hurt), a killing's; a taker struck in the act weighs half.</summary>
+        public const double WoundWorth = 100.0, KillWorth = 600.0, Deserved = 0.5;
+        /// <summary>Hurt at which a person keeps to their bed, and below which they may take to the road again.</summary>
+        public const double AbedHurt = 0.4, RoadHurt = 0.25;
+        /// <summary>Healing a day (by how well they are fed) and the daily chance of dying of deep wounds (x 4 (hurt - 0.5)^2).</summary>
+        public const double HealPerDay = 0.03, DieOfWounds = 0.3;
+
         /// <summary>A person is hungry enough to go when the last day fed them less than this share of their need (both resolutions
         /// keep that share, the body's day: a lived meal-time flag would clear at the first bite).</summary>
         public const double HungryBelow = 0.5;
@@ -42,6 +58,7 @@ namespace TC2.Core.Society
         {
             if (!p.Alive || p.Nutrition >= HungryBelow || p.Sick != 0 || p.PregDue != 0) return false;
             if (p.NursingUntil != 0 && p.NursingUntil - now > SimTime.Year / 2) return false;
+            if (p.Hurt >= RoadHurt) return false;
             double age = p.AgeYears(now);
             return age >= 16 && age < 56 && p.Health > 0.4;
         }
@@ -74,7 +91,7 @@ namespace TC2.Core.Society
                 Trade.DaysOfFood(w, in t, out double daily);
                 if (t.Granary < FullStoreDays * daily + LoadFu) continue;
                 if (w.Routes.Get(w, home, o) == null) continue;
-                double f = (1.0 - Restraint(in p, o)) * (1.0 - SeenChance(o));
+                double f = (1.0 - Restraint(in p, o)) * (1.0 - SeenAt(o));
                 if (f > free) { free = f; best = o; }
             }
             return best;
@@ -133,6 +150,9 @@ namespace TC2.Core.Society
             return DMath.Min(SeenAtMost, 1.0 - DMath.Exp(-WakePerHome * near));
         }
 
+        /// <summary>The chance a taker at a village's store tonight is seen: its sleepers, or its watch (D2-071).</summary>
+        public double SeenAt(int o) => _w.Settlements.Get(o).Watcher != 0 ? DMath.Max(WatchSeen, SeenChance(o)) : SeenChance(o);
+
         /// <summary>The taker at the store in the night (lived: on arriving; COARSE: at once).</summary>
         public void Take(ref Person p, int at) => TakeWith(ref p, at, KeyedRng.Unit(_w.Seed, RngStream.Society, (ulong)p.Id, (ulong)_w.Now, 1));
 
@@ -147,7 +167,8 @@ namespace TC2.Core.Society
             double load = DMath.Min(LoadFu, t.Granary);
             if (load < 1.0) return;
             long cause = HungerCause(home, now);
-            if (roll < SeenChance(at))
+            bool watched = t.Watcher != 0;
+            if (roll < SeenAt(at))
             {
                 // seen: someone woke and called out; they run and leave it, and the village knows who it was
                 long ev = w.Record(new HistoryEvent
@@ -160,6 +181,7 @@ namespace TC2.Core.Society
                 w.DeedBook.Learn(at, d, KnownHow.Saw);
                 w.DeedBook.Learn(home, d, KnownHow.Own);
                 w.Metrics.TakingsSeen++;
+                Confront(ref p, at, watched, ev);   // (and what follows the shout: D2-071)
                 return;
             }
             ref var t2 = ref w.Settlements.Get(at);
@@ -178,6 +200,193 @@ namespace TC2.Core.Society
             w.Metrics.TakenFu += load;
         }
 
+        // ------------------------------------------------------------------ what follows the shout (D2-071)
+        /// <summary>
+        /// A taker seen at the store: the woken - or the watcher - may come out; the taker runs, or turns on them when bold and
+        /// desperate; a defender who catches them strikes. Who is hurt goes by strength, by the neighbours who come and by the
+        /// metal they hold. Both resolutions.
+        /// </summary>
+        void Confront(ref Person taker, int at, bool watched, long seen)
+        {
+            var w = _w;
+            long now = w.Now;
+            ulong seed = w.Seed;
+            ulong key = (ulong)taker.Id;
+            if (KeyedRng.Unit(seed, RngStream.Society, key, (ulong)now, 4) >= (watched ? 1.0 : ComeOut)) return;   // nobody came out
+            int defender = Defender(at, now, watched);
+            if (defender == 0) return;
+            double cap = AgentSystem.ReserveCap(in taker, seed, now);
+            double desperate = DMath.Clamp01(1.0 - taker.Reserve / cap);
+            bool turns = KeyedRng.Unit(seed, RngStream.Society, key, (ulong)now, 5) < TurnOn * (taker.Bold / 255.0) * (0.5 + desperate);
+            if (!turns && KeyedRng.Unit(seed, RngStream.Society, key, (ulong)now, 6) >= Caught) return;   // they got away in the dark
+            ref var d = ref w.People.Get(defender);
+            double st = Strength(in taker), sd = Strength(in d) * (1.0 + 0.5 * Helpers(at));
+            bool takerDown = KeyedRng.Unit(seed, RngStream.Society, key, (ulong)now, 7) < sd / (sd + st);
+            double hard = 0.3 + 0.6 * KeyedRng.Unit(seed, RngStream.Society, key, (ulong)now, 8);
+            double light = 0.15 * KeyedRng.Unit(seed, RngStream.Society, key, (ulong)now, 9);
+            if (takerDown)
+            {
+                Strike(ref d, ref taker, hard, at, true, seen);
+                if (light > 0.02) Strike(ref taker, ref d, light, at, false, seen);
+            }
+            else
+            {
+                Strike(ref taker, ref d, hard, at, false, seen);
+                if (light > 0.02) Strike(ref d, ref taker, light, at, true, seen);
+            }
+        }
+
+        /// <summary>Who comes out: the watcher, else the boldest fit grown person of the village (keyed by the night).</summary>
+        int Defender(int at, long now, bool watched)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(at);
+            if (watched && w.People.Exists(s.Watcher) && w.People.Get(s.Watcher).Alive && w.People.Get(s.Watcher).Home == at) return s.Watcher;
+            var res = w.Residents(at);
+            int best = 0; double bv = -1;
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var q = ref w.People.Get(res[i]);
+                if (!Fit(in q, now) || q.At != at) continue;
+                double v = q.Bold / 255.0 + 0.5 * KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)res[i], (ulong)now, 10);
+                if (v > bv) { bv = v; best = res[i]; }
+            }
+            return best;
+        }
+
+        /// <summary>Grown, fit and free: one who could keep a watch or come out to a shout.</summary>
+        static bool Fit(in Person q, long now)
+        {
+            if (!q.Alive || q.Sick != 0 || q.Hurt >= RoadHurt || q.Health <= 0.6) return false;
+            double age = q.AgeYears(now);
+            return age >= 16 && age < 60;
+        }
+
+        /// <summary>A body's strength in a struggle: its health and years, its hurt, and the metal its village holds (knives, axes).</summary>
+        double Strength(in Person q)
+        {
+            var w = _w;
+            double age = q.AgeYears(w.Now);
+            double years = age < 18 ? 0.8 : age < 45 ? 1.0 : age < 60 ? 0.8 : 0.6;
+            double armed = 0.0;
+            if (w.Settlements.Exists(q.Home)) { ref var hs = ref w.Settlements.Get(q.Home); armed = Knowledge.Tech.MetalShare(hs.Metal, hs.Population); }
+            return (double)q.Health * years * (1.0 - (double)q.Hurt) * (1.0 + 0.3 * armed);
+        }
+
+        /// <summary>The neighbours who come running at a shout: a third of the homes round the store, at most three.</summary>
+        int Helpers(int at)
+        {
+            var w = _w;
+            ref var t = ref w.Settlements.Get(at);
+            Construction.GranarySpot(in t, out double gx, out double gy);
+            var hhs = w.HouseholdsOf(at);
+            int near = 0;
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                ref var hh = ref w.Households.Get(hhs[i]);
+                double dx = hh.HomeX - gx, dy = hh.HomeY - gy;
+                if (dx * dx + dy * dy <= WakeRange * WakeRange) near++;
+            }
+            return near / 3 < 3 ? near / 3 : 3;
+        }
+
+        /// <summary>A blow: hurt on the one struck, a wound the deed of the striker, known to both villages; history tells it.</summary>
+        void Strike(ref Person by, ref Person to, double hurt, int at, bool taking, long cause)
+        {
+            var w = _w;
+            to.Hurt = (float)DMath.Min(1.0, (double)to.Hurt + hurt);
+            ref var s = ref w.Settlements.Get(at);
+            long ev = w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.Struck, Time = w.Now, Cell = s.Cell, Settlement = at, Subject = EntityRef.Person(by.Id), Object = EntityRef.Person(to.Id),
+                Cause1 = cause, Rel1 = CauseRel.CausedBy, Magnitude = (float)hurt, ArgA = taking ? 1 : 0, RootKind = RootKind.People,
+            });
+            int deed = w.DeedBook.Record(DeedKind.Wound, by.Id, by.Home, to.Household, to.Home, 0, hurt, (taking ? Deserved : 1.0) * WoundWorth * hurt, ev);
+            w.DeedBook.Learn(to.Home, deed, KnownHow.Saw);
+            w.DeedBook.Learn(by.Home, deed, KnownHow.Own);
+            to.HurtDeed = deed;
+            w.Metrics.Blows++;
+        }
+
+        // ------------------------------------------------------------------ wounds, healing and the dead (D2-071; both resolutions)
+        readonly System.Collections.Generic.List<int> _hurt = new System.Collections.Generic.List<int>();
+
+        /// <summary>A village's day of wounds: they heal, faster fed; deep ones may kill - the death a killing, the striker's deed.</summary>
+        public void Wounds(int sid)
+        {
+            var w = _w;
+            long now = w.Now;
+            var res = w.Residents(sid);
+            _hurt.Clear();
+            for (int i = 0; i < res.Count; i++) { ref var q = ref w.People.Get(res[i]); if (q.Alive && q.Hurt > 0f) _hurt.Add(res[i]); }
+            for (int i = 0; i < _hurt.Count; i++)
+            {
+                int pid = _hurt[i];
+                ref var p = ref w.People.Get(pid);
+                double hurt = p.Hurt;
+                double over = hurt - 0.5;
+                if (over > 0 && KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)pid, (ulong)now, 20) < DieOfWounds * 4.0 * over * over)
+                {
+                    long cause = 0;
+                    int wound = p.HurtDeed;
+                    if (wound != 0 && w.Deeds.Exists(wound))
+                    {
+                        ref var d = ref w.Deeds.Get(wound);
+                        cause = d.Event;
+                        // (a killing weighs as the wound did - half when they were struck taking)
+                        double share = d.Qty > 0f ? (double)d.Worth / (WoundWorth * (double)d.Qty) : 1.0;
+                        int by = d.By, byS = d.ByS;
+                        int kill = w.DeedBook.Record(DeedKind.Kill, by, byS, p.Household, sid, 0, 1.0, share * KillWorth, cause);
+                        w.DeedBook.Learn(sid, kill, KnownHow.Saw);
+                        w.DeedBook.Learn(byS, kill, KnownHow.Own);
+                    }
+                    ref var p2 = ref w.People.Get(pid);
+                    p2.Hurt = 0f; p2.HurtDeed = 0;
+                    w.Agents.Kill(ref p2, cause, 11);
+                    w.Metrics.WoundDeaths++;
+                    continue;
+                }
+                p.Hurt = (float)DMath.Max(0.0, hurt - HealPerDay * (0.5 + (double)p.Nutrition));
+                if (p.Hurt <= 0f) p.HurtDeed = 0;
+            }
+        }
+
+        // ------------------------------------------------------------------ the watch (D2-071; both resolutions)
+        /// <summary>
+        /// A village's choice of a watch at its store tonight: kept when what it lost to takers in the last year (the harms it
+        /// knows were done to it, the doer known or not) comes to more a night than a watcher's lost sleep; the watcher the boldest
+        /// fit grown person by turns. History tells when a watch begins.
+        /// </summary>
+        public void Watch(int sid)
+        {
+            var w = _w;
+            long now = w.Now;
+            ref var s = ref w.Settlements.Get(sid);
+            if (!s.Inhabited) return;
+            double lost = w.DeedBook.HarmSince(sid, now - SimTime.Year, out long latest);
+            if (lost / 48.0 <= WatchCost) { s.Watcher = 0; s.WatchEvent = 0; return; }
+            var res = w.Residents(sid);
+            int best = 0; double bv = -1;
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var q = ref w.People.Get(res[i]);
+                if (!Fit(in q, now) || q.At != sid || q.PregDue != 0 || (q.NursingUntil != 0 && q.NursingUntil - now > SimTime.Year / 2)) continue;
+                double v = q.Bold / 255.0 + KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)res[i], (ulong)now, 11);
+                if (v > bv) { bv = v; best = res[i]; }
+            }
+            ref var s2 = ref w.Settlements.Get(sid);
+            s2.Watcher = best;
+            if (best == 0) return;
+            w.Metrics.WatchNights++;
+            if (s2.WatchEvent == 0)
+                s2.WatchEvent = w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.WatchSet, Time = now, Cell = s2.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
+                    Cause1 = latest, Rel1 = CauseRel.InResponseTo, Magnitude = (float)lost, RootKind = RootKind.People,
+                });
+        }
+
+
         long HungerCause(int home, long now)
         {
             ref var s = ref _w.Settlements.Get(home);
@@ -189,6 +398,8 @@ namespace TC2.Core.Society
         public void Day(int sid)
         {
             var w = _w;
+            Wounds(sid);
+            Watch(sid);
             if (w.Resolution != Resolution.Coarse) return;
             long now = w.Now;
             var res = w.Residents(sid);

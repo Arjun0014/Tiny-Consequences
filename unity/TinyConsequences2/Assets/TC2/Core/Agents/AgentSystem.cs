@@ -748,6 +748,13 @@ namespace TC2.Core.Agents
             //    neighbour's full store (once a night, the first night decision before 2 am: D2-069)
             if (night)
             {
+                // the village keeps a watch at its store tonight and it is their turn: until two in the morning (D2-071)
+                if (atHome && here.Watcher == p.Id && p.Act != ActivityKind.Watch && (lsec >= bed || lsec < 2 * SimTime.Hour))
+                {
+                    Construction.GranarySpot(in here, out double wx, out double wy);
+                    long untilTwo = SimTime.FloorMod(2 * SimTime.Hour - lsec, SimTime.Day);
+                    if (untilTwo > 0) { BeginLocal(ref p, ActivityKind.Watch, WhyCode.Watch, 0, wx + rs.Range(-2, 2), wy + rs.Range(-2, 2), untilTwo); return; }
+                }
                 if (atHome && (lsec >= bed || lsec < 2 * SimTime.Hour) && p.Why != WhyCode.Take && TC2.Core.Society.Conflict.CanTake(in p, now))
                 {
                     w.Metrics.TakeWeighed++;
@@ -790,10 +797,15 @@ namespace TC2.Core.Agents
                 }
             }
 
-            // 3b. sick with a fever, a pox, a flux: abed at home until it passes (D2-066)
+            // 3b. sick with a fever, a pox, a flux: abed at home until it passes (D2-066); badly hurt: abed until it heals (D2-071)
             if (p.SickPhase == TC2.Core.Health.Disease.Infectious && p.At == p.Home)
             {
                 BeginLocal(ref p, ActivityKind.Ill, WhyCode.Sickness, p.Sick, homeX, homeY, SimTime.Hours(4));
+                return;
+            }
+            if (p.Hurt >= TC2.Core.Society.Conflict.AbedHurt && p.At == p.Home)
+            {
+                BeginLocal(ref p, ActivityKind.Ill, WhyCode.Hurt, 0, homeX, homeY, SimTime.Hours(4));
                 return;
             }
 
@@ -912,7 +924,7 @@ namespace TC2.Core.Agents
                     if (u > best) { best = u; choice = 6; wildKind = wk; }
                 }
             }
-            if (lsec >= 7 * SimTime.Hour && lsec < 13 * SimTime.Hour && age >= 16 && age < 62 && p.Health > 0.7 &&
+            if (lsec >= 7 * SimTime.Hour && lsec < 13 * SimTime.Hour && age >= 16 && age < 62 && p.Health > 0.7 && p.Hurt < TC2.Core.Society.Conflict.RoadHurt &&
                 !(p.PregDue != 0 && p.PregDue - now < 10 * SimTime.Day) && !(p.NursingUntil != 0 && p.NursingUntil - now > SimTime.Year / 2) &&
                 !(p.Alarm != 0 && now - p.AlarmT < SimTime.Day) &&
                 rs.Chance(w.Config.TripChancePerDecision * (0.4 + 1.2 * p.Social / 255.0)))
@@ -922,7 +934,7 @@ namespace TC2.Core.Agents
             }
             if (lsec >= 17 * SimTime.Hour) { double u = 0.25 + 0.3 * p.Social / 255.0 + 0.1 * rs.NextUnit(); if (u > best) { best = u; choice = 4; } }
             int tradeTo = 0;
-            if (lsec >= 7 * SimTime.Hour && lsec < 11 * SimTime.Hour && age >= 18 && age < 56 && p.Health > 0.7 && atHome &&
+            if (lsec >= 7 * SimTime.Hour && lsec < 11 * SimTime.Hour && age >= 18 && age < 56 && p.Health > 0.7 && p.Hurt < TC2.Core.Society.Conflict.RoadHurt && atHome &&
                 p.PregDue == 0 && !(p.NursingUntil != 0 && p.NursingUntil - now > SimTime.Year / 2) && p.Sick == 0 &&
                 rs.Chance(TradeChance * (0.5 + p.Bold / 255.0)))
             {
@@ -1237,7 +1249,7 @@ namespace TC2.Core.Agents
                     double age = q.AgeYears(now);
                     need += DailyNeed(in q, now);
                     litres += Hearth.WaterNeed(age);
-                    if (q.Health < 0.3 || q.SickPhase == TC2.Core.Health.Disease.Infectious) continue;
+                    if (q.Health < 0.3 || q.SickPhase == TC2.Core.Health.Disease.Infectious || q.Hurt >= TC2.Core.Society.Conflict.AbedHurt) continue;
                     if (age >= 6 && age < 12) _kids.Add(mem[k]); else if (age >= 12) _grown.Add(mem[k]);
                 }
                 if (need <= 0) continue;
@@ -1347,10 +1359,12 @@ namespace TC2.Core.Agents
                 // children of 8-11 lend a hand at the making when the household's goods are wearing thin (D2-058)
                 if (age >= 8 && age < 12 && p.Health >= 0.3) CoarseCraft(ref p, age, 0.6, 0.85);
                 if (age < 12 || p.Health < 0.3 || p.SickPhase == TC2.Core.Health.Disease.Infectious) continue;   // (the sick abed: D2-066)
+                if (p.Hurt >= TC2.Core.Society.Conflict.AbedHurt) continue;                                        // (the badly hurt: D2-071)
                 double tools = Tools(p.Household);
                 // youths (12-15) work part of a day, as they take part in a lived day's chores
                 double hours = 7.5 * (0.6 + 0.4 * p.Diligence / 255.0) * (age > 60 ? 0.5 : (age < 16 ? 0.6 : 1.0)) * (0.5 + 0.5 * p.Health);
                 if (_tendBy.Contains(p.Id)) hours = DMath.Max(0.0, hours - TendStint);   // out with the herd (D2-050)
+                if (p.Id == s.Watcher) hours = DMath.Max(0.0, hours - TC2.Core.Society.Conflict.WatchHours);   // a night at the store (D2-071)
                 if (_chore.TryGetValue(p.Id, out double chore)) hours = DMath.Max(0.0, hours - chore);   // the household's own work (D2-056)
                 double day0 = hours;
                 if (fuelWanted > 0 && hours > 0)

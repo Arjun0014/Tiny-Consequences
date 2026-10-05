@@ -28,7 +28,7 @@ namespace TC2.Core.History
                 case HistoryKind.PersonBorn: return subj + " was born to " + obj + (e.Other.IsNone ? "" : " and " + other) + " in " + place + ".";
                 case HistoryKind.PersonDied:
                     {
-                        string how = e.ArgA == 2 ? " of hunger" : (e.ArgA == 3 ? " in childbirth" : (e.ArgA == 4 ? " in the eruption" : (e.ArgA == 5 ? " when the earthquake brought the house down" : (e.ArgA == 6 ? " in the great wave" : (e.ArgA == 7 ? " in the storm" : (e.ArgA == 8 ? " when the storm drove the sea ashore" : (e.ArgA == 9 ? " of the cold" : (e.ArgA == 10 ? " of " + Sickness(w, e.Cause1) : ""))))))));
+                        string how = e.ArgA == 2 ? " of hunger" : (e.ArgA == 3 ? " in childbirth" : (e.ArgA == 4 ? " in the eruption" : (e.ArgA == 5 ? " when the earthquake brought the house down" : (e.ArgA == 6 ? " in the great wave" : (e.ArgA == 7 ? " in the storm" : (e.ArgA == 8 ? " when the storm drove the sea ashore" : (e.ArgA == 9 ? " of the cold" : (e.ArgA == 10 ? " of " + Sickness(w, e.Cause1) : (e.ArgA == 11 ? " of the wounds of a fight in the night" : "")))))))));
                         return subj + " died" + how + " in " + place + ", aged " + F(e.Magnitude, "0") + ".";
                     }
                 case HistoryKind.Marriage: return subj + " and " + obj + " married in " + place + ".";
@@ -91,6 +91,10 @@ namespace TC2.Core.History
                 case HistoryKind.ReliefSent: return "In the famine " + subj + " sent grain to " + obj + " (" + F(e.Magnitude, "0") + " days' food for one).";
                 case HistoryKind.Taken: return subj + " of " + other + " took " + F(e.Magnitude, "0") + " days' grain from the store of " + obj + " in the night.";
                 case HistoryKind.TakingSeen: return subj + " of " + other + " was seen at the store of " + obj + " in the night and ran, leaving the grain.";
+                case HistoryKind.Struck:
+                    return e.ArgA == 1 ? obj + " was caught at the store of " + place + " in the night and " + (e.Magnitude >= 0.6f ? "badly " : "") + "beaten by " + subj + "."
+                                       : subj + ", caught at the store of " + place + " in the night, " + (e.Magnitude >= 0.6f ? "struck down " : "struck ") + obj + ".";
+                case HistoryKind.WatchSet: return "The people of " + subj + " began to keep a watch at their store at night: grain has been taken from it.";
                 case HistoryKind.PathogenAppeared: return "A new sickness, " + subj + ", appeared in " + place + (e.ArgA == 1 ? ", caught from its animals" : "") + ".";
                 case HistoryKind.EpidemicArrived:
                     return e.ArgA == 1 ? Cap(obj) + " broke out in " + place + (e.Other.IsNone ? "" : ", " + other + " the first to fall ill") + "."
@@ -128,7 +132,10 @@ namespace TC2.Core.History
                 case ActivityKind.Fields: return p.Why == WhyCode.Harvest ? "bringing in the harvest of " + home : "working the fields of " + home + ": the crop needs hands";
                 case ActivityKind.Wood: return "cutting wood: " + home + "'s woodstore is low";
                 case ActivityKind.Water: return "fetching water " + ((w.Settlements.Exists(p.Home) && (w.Settlements.Get(p.Home).Works & 1) != 0) ? "from the well" : "from the stream") + ": the household's pots are low";
-                case ActivityKind.Ill: return "abed at home with " + w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick)) + ": it must run its course";
+                case ActivityKind.Ill:
+                    if (p.Why == WhyCode.Hurt) return "abed at home with wounds from a fight in the night: they must heal";
+                    return "abed at home with " + w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick)) + ": it must run its course";
+                case ActivityKind.Watch: return "keeping watch at " + home + "'s store through the night: grain has been taken from it";
                 case ActivityKind.Craft: return "making and mending at home - spinning, weaving, sewing, tools: the household's clothes and tools are wearing thin";
                 case ActivityKind.Cook: return p.Why == WhyCode.Hungry ? "making a meal: hungry, and nothing is cooked at home" : "grinding grain and cooking for the household: the next meals are not made";
                 case ActivityKind.Social: return "on the square with the neighbours, the day's work done";

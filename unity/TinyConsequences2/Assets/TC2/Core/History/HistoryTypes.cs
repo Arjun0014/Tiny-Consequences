@@ -66,6 +66,8 @@ namespace TC2.Core.History
         ReliefSent = 60,        // a village sent grain to a neighbour in famine (Subject the giver, Object the receiver, Magnitude FU; D2-067)
         Taken = 61,             // someone took a load from a village's store in the night, unseen (Subject the taker, Object the village, Other theirs; Magnitude FU; D2-069)
         TakingSeen = 62,        // a taker was seen at a village's store and ran, leaving it (the same fields)
+        Struck = 63,            // a blow in the night at a store (Subject the striker, Object the struck; Magnitude hurt; ArgA 1 the struck was taking; D2-071)
+        WatchSet = 64,          // a village began to keep a watch at its store at night (Magnitude the year's losses, FU)
         HomeTaken = 53,         // a household made its home in one that stood empty (Object: who lived there last; ArgA 1 a hut, 2 a house; D2-059)
         ColdHomes = 52,         // a village's homes were cold enough to harm (Magnitude homes, ArgA 1 the woodstore ran short, ArgB the day's mean C; D2-056)
     }
@@ -212,6 +214,8 @@ namespace TC2.Core.History
                 case HistoryKind.ReliefSent: return Tier.Historical;
                 case HistoryKind.Taken: return Tier.Local;
                 case HistoryKind.TakingSeen: return Tier.Local;
+                case HistoryKind.Struck: return Tier.Local;
+                case HistoryKind.WatchSet: return Tier.Local;
                 default: return Tier.Personal;
             }
         }
@@ -275,6 +279,8 @@ namespace TC2.Core.History
                 case HistoryKind.ReliefSent: b = 10; break;
                 case HistoryKind.Taken: b = 6; break;
                 case HistoryKind.TakingSeen: b = 8; break;
+                case HistoryKind.Struck: b = 10; break;
+                case HistoryKind.WatchSet: b = 6; break;
                 default: b = 1; break;
             }
             // magnitude raises importance sub-linearly - where it is a size; a person's events carry an age or a count there,

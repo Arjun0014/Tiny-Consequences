@@ -38,6 +38,7 @@ namespace TC2.Core.Simulation
         public double TradeValue, MetalTraded, ReliefFu;                  // gain in the villages' own values; kg of metal moved; grain given in famines
         public long Takings, TakingsSeen, TakeWeighed;                    // loads taken from neighbours' stores in the night; takers seen; hungry nights weighed (D2-069)
         public double TakenFu;
+        public long Blows, WoundDeaths, WatchNights;                      // blows struck; deaths of wounds; nights a watch was kept (D2-071)
 
         public void Write(BinWriter w)
         {
@@ -55,7 +56,7 @@ namespace TC2.Core.Simulation
             w.Long(Parties); w.Long(Foundings); w.Long(Scouts);
             w.Long(BeastBirths); w.Long(BeastDeaths); w.Long(BeastsTaken); w.Long(BeastsEaten); w.Long(BeastsFeral); w.Double(BeastFu); w.Long(TendDays);
             w.Double(PrepHours); w.Double(PrepFu); w.Double(WaterHours); w.Long(WaterTrips); w.Long(ColdDeaths); w.Long(ColdSpells);
-            w.Double(CraftHours); w.Double(GearMade); w.Long(HomesTaken); w.Long(DiedOut); w.Long(TechniquesFound); w.Long(TechniquesLost); w.Double(MetalKg); w.Long(Infections); w.Long(DiseaseDeaths); w.Long(Epidemics); w.Long(PathogensBorn); w.Long(Mutations); w.Long(TradeTrips); w.Double(TradeValue); w.Double(MetalTraded); w.Double(ReliefFu); w.Long(Takings); w.Long(TakingsSeen); w.Long(TakeWeighed); w.Double(TakenFu);
+            w.Double(CraftHours); w.Double(GearMade); w.Long(HomesTaken); w.Long(DiedOut); w.Long(TechniquesFound); w.Long(TechniquesLost); w.Double(MetalKg); w.Long(Infections); w.Long(DiseaseDeaths); w.Long(Epidemics); w.Long(PathogensBorn); w.Long(Mutations); w.Long(TradeTrips); w.Double(TradeValue); w.Double(MetalTraded); w.Double(ReliefFu); w.Long(Takings); w.Long(TakingsSeen); w.Long(TakeWeighed); w.Double(TakenFu); w.Long(Blows); w.Long(WoundDeaths); w.Long(WatchNights);
         }
 
         public void Read(BinReader r)
@@ -74,7 +75,7 @@ namespace TC2.Core.Simulation
             Parties = r.Long(); Foundings = r.Long(); Scouts = r.Long();
             BeastBirths = r.Long(); BeastDeaths = r.Long(); BeastsTaken = r.Long(); BeastsEaten = r.Long(); BeastsFeral = r.Long(); BeastFu = r.Double(); TendDays = r.Long();
             PrepHours = r.Double(); PrepFu = r.Double(); WaterHours = r.Double(); WaterTrips = r.Long(); ColdDeaths = r.Long(); ColdSpells = r.Long();
-            CraftHours = r.Double(); GearMade = r.Double(); HomesTaken = r.Long(); DiedOut = r.Long(); TechniquesFound = r.Long(); TechniquesLost = r.Long(); MetalKg = r.Double(); Infections = r.Long(); DiseaseDeaths = r.Long(); Epidemics = r.Long(); PathogensBorn = r.Long(); Mutations = r.Long(); TradeTrips = r.Long(); TradeValue = r.Double(); MetalTraded = r.Double(); ReliefFu = r.Double(); Takings = r.Long(); TakingsSeen = r.Long(); TakeWeighed = r.Long(); TakenFu = r.Double();
+            CraftHours = r.Double(); GearMade = r.Double(); HomesTaken = r.Long(); DiedOut = r.Long(); TechniquesFound = r.Long(); TechniquesLost = r.Long(); MetalKg = r.Double(); Infections = r.Long(); DiseaseDeaths = r.Long(); Epidemics = r.Long(); PathogensBorn = r.Long(); Mutations = r.Long(); TradeTrips = r.Long(); TradeValue = r.Double(); MetalTraded = r.Double(); ReliefFu = r.Double(); Takings = r.Long(); TakingsSeen = r.Long(); TakeWeighed = r.Long(); TakenFu = r.Double(); Blows = r.Long(); WoundDeaths = r.Long(); WatchNights = r.Long();
         }
 
         public Metrics Clone() { var m = (Metrics)MemberwiseClone(); return m; }
@@ -120,7 +121,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 24; // 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
+        public const int FormatSimVersion = 25; // 25: the watch, blows and injury (D2-071), 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;

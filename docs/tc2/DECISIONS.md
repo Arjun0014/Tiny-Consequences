@@ -1579,4 +1579,44 @@ spots (342) took 1,734 and 1,526 (14,151 -> 12,189 people, made good in twenty y
 people in 18 places from year 200; the cattle ague of year 232 (virulence 0.2) killed 1,363 of ~5,000 and the villages recovered.
 Taking in these saturated worlds: seed 42 11,107 loads (5,779 takers seen), seed 7 6,472 (3,158). A village-day's sickness costs
 11.3 us (5 before: six slots, kindred checks); 400 years of seed 42 take 245 s, knowledge copying (D2-062) the largest part of the
-village day after the COARSE day (94 us at ~450 people a village). Mono equals dotnet (gen cb0333f12013579a).
+village day after the COARSE day (94 us at ~450 people a village). Mono equals dotnet (gen cb0333f12013579a). **1,000 years of
+seed 42** (`tc2/out/society/sick42_1000.txt`, 1,046 s): 16,000-18,500 people in 35-36 places from year 300 (12,000-14,800 before
+sickness existed), famine-regulated (116 hunger deaths a year); 33 sicknesses from the animals, 1,090 village epidemics, 34,018
+deaths - three great plagues (the winter sickness of year 445, the sweating pox of 757, the cattle pox of 949, virulence
+0.28-0.36) each killed 6,300-7,000 (a third of the people: 15,984 -> 10,156 in the first) and were made good within fifty years;
+the ledger keeps 268,881 events at year 1,000.
+
+## D2-071 — 2026-10-06 — The watch, blows and injury (F6 slice 2)
+
+**Context.** 10 §6 slice 2, on TC1's primitives (`docs/v3/50_PRIMITIVES.md`): injury that heals or kills, the urgent choice at a
+danger (come out, run, turn on them), defence from remembered harm. Research (TC1 `40_RESEARCH_CONFLICT_PLANET.md` §A): most
+small raids are stealth and flight is common, death rare and enormous for a small group (Mathew & Boyd); each blow is a fresh
+decision (Boehm); defence - watching, gathering in, walls - is weighed against labour and the losses remembered, never a count.
+**Decision.** (1) Injury (`Person.Hurt` 0..1 and the wound behind it): abed above 0.4 (lived `Ill` with its own why; COARSE no
+work), off the roads above 0.25 (no visits, trading or taking); heals 0.03 a day x (0.5 + the last day's share eaten); above 0.5
+a daily chance of 0.3 x 4 (hurt - 0.5)^2 of dying of the wounds - the death a killing, the striker's deed ("died of the wounds of
+a fight in the night", caused by the blow). (2) What follows the shout (`Conflict.Confront`, both resolutions): when a taker is
+seen someone comes out 70 % of the time (the watcher always) - the watcher or the boldest fit grown person at home; the taker
+turns on them by boldness and desperation (at most 30 %) or runs and is caught 35 % of the time; blows go by strength (health,
+years, hurt, and the metal the village holds - knives and axes, up to 1.3x) and the neighbours who come (a third of the homes
+round the store, at most three, each half a defender more): the loser takes 0.3-0.9 of hurt, the winner up to 0.15. (3) A blow
+is a wound deed (100 FU a whole hurt; a taker struck in the act weighs half) known to the struck one's village by sight and to
+the striker's as its own; a killing weighs 600 FU (halved likewise); blood halves every 10 years. (4) The watch
+(`Conflict.Watch`, a village's choice each day): kept when what it knows it lost to takers in the last year (losses found count,
+the doer unknown) comes to more a night than a watcher's lost sleep (1 FU); the watcher the boldest fit grown person at home, by
+turns; lived, they stand at the store from their bedtime to two in the morning (`ActivityKind.Watch`); a COARSE day takes 3
+hours off their work; a taker at a watched store is seen 85 % of the time, and the next taker weighs that. History: `Struck`
+("Krukfald Haerfas was caught at the store of Kubroford in the night and badly beaten by Grend Drousaern"), `WatchSet` when a
+watch begins ("The people of Kubroford began to keep a watch at their store at night: grain has been taken from it"). Sim
+version 25.
+**Evidence.** `TakingTests` (151 tests): of 12 takers seen, 6 blows - the wound a deed the struck one's village knows by sight and
+holds against the striker's; of five people wounded deep (0.95) four died within 40 days, each death a killing known to their
+village (its grievance 2,877 FU), five wounded lightly (0.35) healed; a village that found two loads gone this year keeps a watch
+(told once), seen at its store 0.26 -> 0.85, the watcher "keeping watch at Kubroford's store through the night: grain has been
+taken from it", the watch let go a year on with no more losses. 400 coarse years: seed 42 (`tc2/out/society/blows42_400.txt`):
+4,126 loads taken (11,107 without the watch), 3,789 takers seen, 2,428 blows, 214 dead of their wounds (~9 a year for 100,000
+people at saturation - medieval England's homicide rates were 20-30), watches on 41,827 village-nights; 14,378 people in 36
+places, 14,954 hunger deaths; seed 7 (`blows7_400.txt`): 3,587 taken, 1,635 blows, 135 dead of wounds, 4,779 people in 18
+places. Conflict costs 7.8 us a village-day. Mono equals dotnet (gen 6444494b25d45671).
+**Next (F6 slice 3).** Answers and news: claims (return, pay in kind, deny, refuse), taking back as a choice, compensation;
+ties pressing for settlement; deeds carried as news by visitors, traders and brides (reputation).

@@ -70,3 +70,13 @@ same choices at the lived rate (measured, as visits and trade are). Long runs ar
 - **What deeds change**: no trade between villages either of which holds a grudge against the other (more than 10 FU of known
   harm); no relief for those who wronged a village; restraint read by the next taker. Next: the watch, blows and injury.
 
+## 8. Implemented: slice 2, the watch, blows and injury (D2-071)
+- **Injury**: a person's hurt keeps them abed above 0.4 and off the roads above 0.25; it heals by the day, faster fed; deep
+  wounds may kill, and a death of wounds is a killing, the striker's deed.
+- **What follows the shout**: a seen taker meets whoever comes out (the watcher, or the boldest of the village); they run and
+  may be caught, or turn on them; blows go by strength, the metal a village holds and the neighbours who come running. Each
+  blow is a wound deed both villages know; a taker struck in the act weighs half to their own.
+- **The watch**: a village that knows it lost grain to takers in the last year keeps a watch at its store when the losses
+  outweigh a watcher's lost sleep; the watcher stands there until two in the morning; takers are seen far more often there.
+- Measured: in famine-regulated worlds the watch halves the takings; ~9 deaths of wounds a year for 100,000 people.
+

@@ -5,10 +5,11 @@
 ### Exact state
 - Session 2 commits since the last checkpoint (newest last): 314fdd9 techniques (D2-062) · c8e9c23, 07b38be materials (D2-063) ·
   6bacfaa copper, F4 closed (D2-064/065) · 27d2a53 sickness (D2-066) · e01a933 trade and relief, F5 closed (D2-067/068) ·
-  b78117d deeds and taking (D2-069, F6 slice 1) · the commit with sickness at scale (D2-070).
-- Phases: F0 done; **F1 to F5 closed** (D2-043, D2-046, D2-060, D2-065, D2-068); **F6 in progress** (plan 10 §6). 148 headless
-  tests green; `headless.mjs test` runs the float lint first. Sim version 24.
-- Determinism: dotnet equals the editor's Mono (gen cb0333f12013579a, D2-070); the Web build equals both at D2-068
+  b78117d deeds and taking (D2-069, F6 slice 1) · 310ab38 sickness at scale (D2-070) · the commit with the watch, blows and
+  injury (D2-071, F6 slice 2).
+- Phases: F0 done; **F1 to F5 closed** (D2-043, D2-046, D2-060, D2-065, D2-068); **F6 in progress** (plan 10 §6). 151 headless
+  tests green; `headless.mjs test` runs the float lint first. Sim version 25.
+- Determinism: dotnet equals the editor's Mono (gen 6444494b25d45671, D2-071); the Web build equals both at D2-068
   (`tc2/out/webtest/s2webe`, `s2webe2`: 6/6).
 - Sickness at scale is fixed (D2-070): seed 42 holds 12,000-16,000 people from year 270 to 400 and seed 7 4,600-5,400
   (`tc2/out/society/sick42_400.txt`, `sick7_400.txt`; the run report lists the deadliest sicknesses). Saturated worlds are
@@ -69,13 +70,15 @@
   stocked), do not loosen the mechanism (D2-056).
 
 ### Next steps
-1. **A 1,000-year run of seed 42 on D2-070** (`tc2/out/society/sick42_1000.txt`): populations hold, plagues come and go, the
-   ledger and the cost at scale; compare with the pre-sickness run (`tc2/out/long/run42_1000*.txt`: 12,000-14,800 people).
-2. **F6 slice 2 - the watch, blows and injury** (10 §6): a village that remembers losses keeps a night watch (labour, sleep); a
-   taker met is struck or chased; injury that heals with care or kills; a death by violence is a deed with mourners.
-3. F6 slices 3-7 (10 §6): answers and news, raids, defence built, prestige and leaders, tribute and polities.
-4. **The sea's calibration**: fish at ~1 % of real biomass, so the miniature holds ~10-20 seals (D2-053).
-5. Look and Web: the after-a-century view at 48-68 fps (s2webe: measure layer by layer with `webperf.mjs`); WebGL2's first-entry
+1. **F6 slice 3 - answers and news** (10 §6): claims (walk to the doer's village: return, pay in kind, deny, refuse - weighed by
+   its need, the evidence, its ties and its wish for peace), taking back as a choice from state, compensation that settles a
+   deed; ties (kin across the line, trade, help received) press for settlement; deeds carried as news by visitors, traders and
+   brides (reputation: a village known to answer is less often robbed). Done on 1,000-year runs: feuds that end or grow.
+2. F6 slices 4-7 (10 §6): raids (bands of kin and friends), defence built (ditch, palisade), prestige and leaders, tribute
+   and polities. The 1,000-year run on D2-070 (`tc2/out/society/sick42_1000.txt`) is the baseline: 16,000-18,500 people, three
+   great plagues, famine regulation, ~114 takings a year before the watch.
+3. **The sea's calibration**: fish at ~1 % of real biomass, so the miniature holds ~10-20 seals (D2-053).
+4. Look and Web: the after-a-century view at 48-68 fps (s2webe: measure layer by layer with `webperf.mjs`); WebGL2's first-entry
    stall; coast shapes off the cell grid, gardens, orbit detail, smoke from huts and camps; traders and takers on the roads.
-6. **An aggregate layer of people for Ancient and Deep time** (D2-061), once F6's first slices settle the people model.
-7. F5's carried-forward items (D2-068): boats between coasts, roads worn by use, fairs, salt, credit, relief by kinship.
+5. **An aggregate layer of people for Ancient and Deep time** (D2-061), once F6's first slices settle the people model.
+6. F5's carried-forward items (D2-068): boats between coasts, roads worn by use, fairs, salt, credit, relief by kinship.
