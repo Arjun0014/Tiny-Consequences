@@ -57,6 +57,44 @@ Cause tags (`11` §6) accompany the causal fields: burning, drought anomaly, flo
 9. **Global climate** (daily): CO₂ sources (volcanoes, fires, burning, clearing) and sinks (growth,
    weathering, ocean), aerosol decay, ice volume -> sea level -> coastline reclassification events.
 
+## 3b. F1 designs in detail
+
+### Tectonics: crust samples that ride their plates (after Cortial et al. 2019)
+- **Samples**: one crust sample per surface cell at the start `{pos (unit vector), plate, crust kind, thickness,
+  elevation, age}`; samples move exactly with their plate (rotation about the plate's Euler pole by `Omega dt`), so
+  relief travels without numerical diffusion (semi-Lagrangian resampling on a grid would blur mountains away).
+- **Step** (every 10 world years): rotate samples; rasterise: each cell looks at the samples that landed in it -
+  none: a gap (divergence) gets a new oceanic sample at ridge depth, age 0, plate of the nearest neighbour;
+  one: the cell takes it; several plates: convergence - continental overrides oceanic, younger oceanic overrides
+  older (the loser subducts and is consumed: a trench on its side, arc volcanism and uplift on the overriding
+  side); continent against continent thickens and uplifts (collision ranges). Uplift rates accumulate in a field
+  that erosion works against.
+- **Stress** accumulates at boundary cells by relative velocity; past a noisy threshold it releases as a quake
+  event (magnitude from the stress), scheduled at a time inside the step. **Volcano pressure** gathers at arcs
+  and hotspots; eruptions are events (VEI by pressure), aerosol and ash written to fields.
+- At ~1 m/year and 245 m cells a sample crosses a cell in ~250 years: coasts and ranges move over millennia.
+- Cost: 24K rotations + cell lookups per 10 years: negligible.
+
+### Drainage and erosion
+- **Priority-flood** (Barnes et al. 2014) fills depressions to give every land cell a receiver (lowest of 8
+  neighbours after filling); filled depressions are lake basins (a lake where inflow exceeds evaporation).
+- **Stack order** from outlets upstream; drainage area by accumulation in reverse order; discharge from the
+  hydrology's runoff along the same tree (rivers = discharge above a threshold).
+- **Stream power** (Braun & Willett 2013, n = 1): for cells in stack order
+  `h_i' = (h_i + U dt + F h_r') / (1 + F)`, `F = K dt A^m / L` - implicit, O(n), stable for any dt; plus
+  hillslope diffusion; eroded mass deposited in lakes and offshore (deltas). Rebuild drainage when relief or
+  sea level changed enough (versioned; routes and settlements read the version).
+
+### Climate: an energy balance per cell
+- `C dT/dt = Q(lat, t, orbit) (1 - albedo) - (A + B T) + G(CO2) - k_aer * aerosol + D Lap(T)` on N32, daily;
+  heat capacity large over the sea (memory ~years), small on land; albedo from ice, snow, vegetation, sea.
+- Orbit (fictional, fast): obliquity 18-28 deg over ~1,300 years, eccentricity and precession modulating the
+  seasonal insolation over ~3,100 and ~600 years.
+- Moisture: evaporation by sea temperature, advection by the season's wind bands, precipitation above a
+  temperature-dependent capacity and on windward slopes (rain shadows), snow below freezing.
+- Ice: snow accumulates by degree-days, ice sheets grow and flow slowly, sea level follows land ice volume and
+  temperature; coastline reclassification is a historical event (land bridges, drowned plains).
+
 ## 4. Proof-of-concept scope (F0)
 
 Grid with neighbours and lookup; worldgen of relief from a few plates (static in F0) and noise; a sea

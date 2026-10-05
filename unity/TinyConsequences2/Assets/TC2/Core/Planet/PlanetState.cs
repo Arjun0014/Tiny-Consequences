@@ -29,6 +29,7 @@ namespace TC2.Core.Planet
         public float[] Forest;     // 0..1 biomass
         public byte[] Biome;
         public long[] DryCause;    // cause tag: event dominating a drought anomaly (0 none)
+        public int[] FieldOwner;   // settlement whose fields cover this cell (0 none): land use
         public double SeaLevel;
         public double Tilt = 23.0 * DMath.Deg2Rad;
         public double GlobalTempOffset;
@@ -47,10 +48,30 @@ namespace TC2.Core.Planet
             for (int c = 0; c < Cells; c++) { Lat[c] = Grid.Center[c].Latitude; Lon[c] = Grid.Center[c].Longitude; SinLat[c] = DMath.Sin(Lat[c]); }
             Elev = new float[Cells]; Plate = new byte[Cells]; Moist = new float[Cells]; Temp = new float[Cells];
             SoilWater = new float[Cells]; RainToday = new float[Cells]; Grass = new float[Cells]; Forest = new float[Cells];
-            Biome = new byte[Cells]; DryCause = new long[Cells];
+            Biome = new byte[Cells]; DryCause = new long[Cells]; FieldOwner = new int[Cells];
         }
 
         public bool IsLand(int c) => Elev[c] > SeaLevel;
+
+        /// <summary>Cell area in hectares.</summary>
+        public double AreaHa(int c) => Grid.Area[c] * Radius * Radius / 10000.0;
+
+        /// <summary>
+        /// How well a cell takes the plough (0..1): warm enough, wet enough but not a marsh, not steep, low.
+        /// Standing forest must be cleared first: it lowers what a season's work can open.
+        /// </summary>
+        public double Arability(int c, double meanTemp)
+        {
+            if (!IsLand(c)) return 0;
+            double t = DMath.SmoothStep(3, 10, meanTemp) * (1.0 - DMath.SmoothStep(27, 34, meanTemp));
+            double m = Moist[c];
+            double wet = DMath.SmoothStep(0.15, 0.35, m) * (1.0 - 0.5 * DMath.SmoothStep(0.85, 1.0, m));
+            double steep = 0;
+            for (int k = 0; k < 4; k++) steep = DMath.Max(steep, DMath.Abs(Elev[Grid.Nbr4[c * 4 + k]] - Elev[c]));
+            double flat = 1.0 - DMath.SmoothStep(60, 260, steep);
+            double low = 1.0 - DMath.SmoothStep(900, 1600, Elev[c] - SeaLevel);
+            return t * wet * flat * low * (1.0 - 0.6 * Forest[c]);
+        }
 
         /// <summary>Cell spacing in metres.</summary>
         public double CellSize => Grid.MeanSpacing * Radius;
@@ -156,6 +177,7 @@ namespace TC2.Core.Planet
             w.FloatArray(SoilWater, Cells); w.FloatArray(RainToday, Cells); w.FloatArray(Grass, Cells); w.FloatArray(Forest, Cells);
             w.ByteArray(Biome, Cells);
             w.Int(Cells); for (int i = 0; i < Cells; i++) w.Long(DryCause[i]);
+            w.IntArray(FieldOwner, Cells);
         }
 
         public static PlanetState Read(BinReader r)
@@ -167,6 +189,7 @@ namespace TC2.Core.Planet
             r.FloatArray(p.SoilWater); r.FloatArray(p.RainToday); r.FloatArray(p.Grass); r.FloatArray(p.Forest);
             r.ByteArray(p.Biome);
             int nc = r.Int(); for (int i = 0; i < nc; i++) p.DryCause[i] = r.Long();
+            r.IntArray(p.FieldOwner);
             return p;
         }
 
@@ -176,7 +199,7 @@ namespace TC2.Core.Planet
             for (int i = 0; i < Cells; i++)
             {
                 h.Add(Elev[i]); h.Add(Plate[i]); h.Add(Moist[i]); h.Add(Temp[i]); h.Add(SoilWater[i]);
-                h.Add(RainToday[i]); h.Add(Grass[i]); h.Add(Forest[i]); h.Add(Biome[i]); h.Add(DryCause[i]);
+                h.Add(RainToday[i]); h.Add(Grass[i]); h.Add(Forest[i]); h.Add(Biome[i]); h.Add(DryCause[i]); h.Add(FieldOwner[i]);
             }
         }
     }

@@ -89,14 +89,21 @@ namespace TC2.Game
                 Vector3 gp = PlanetGeo.Surface(P, gd);
                 float fill = Mathf.Clamp01((float)(s.Granary / System.Math.Max(1.0, s.Population * 60.0)));
                 _granaries.Add(0, Color.white, Matrix4x4.TRS(gp, PlanetGeo.Upright(gp, 0), new Vector3(ex, ex * (0.6f + 0.6f * fill), ex)));
-                // fields: a patch whose area is the settlement's field area, coloured by the crop's stage
-                Vec3d fd = s.LocalToSphere(s.FieldX, s.FieldY, P.Radius);
-                Vector3 fp = PlanetGeo.Surface(P, fd, 0.3f);
-                float side = Mathf.Sqrt((float)s.FieldHa * 10000f);
+                // fields: a patch on every claimed cell, sized by the share of the cell under the plough
                 Color fc = s.Crop == CropStage.Sown ? new Color(0.45f, 0.33f, 0.2f) : s.Crop == CropStage.Growing ? Color.Lerp(new Color(0.4f, 0.5f, 0.2f), new Color(0.3f, 0.7f, 0.2f), (float)s.CropGrowth)
                     : s.Crop == CropStage.Ripe ? new Color(0.85f, 0.72f, 0.25f) : new Color(0.55f, 0.48f, 0.3f);
                 if (s.CropBurnt > 0.2) fc = Color.Lerp(fc, new Color(0.12f, 0.1f, 0.08f), (float)s.CropBurnt);
-                _fields.Add((int)s.Crop * 100 + (int)(s.CropGrowth * 10) + (s.CropBurnt > 0.2 ? 5000 : 0), fc.linear, Matrix4x4.TRS(fp, PlanetGeo.Upright(fp, sid * 23 % 90), new Vector3(side, 1, side)));
+                int group = (int)s.Crop * 100 + (int)(s.CropGrowth * 10) + (s.CropBurnt > 0.2 ? 5000 : 0);
+                var cells = w.FieldCellsOf(sid);
+                double used = s.ArableHa > 0 ? System.Math.Min(1.0, s.FieldHa / s.ArableHa) : 1.0;
+                for (int i = 0; i < cells.Count; i++)
+                {
+                    int c = cells[i];
+                    double ha = P.AreaHa(c) * P.Arability(c, w.PlanetSys.MeanTemp(c)) * used;
+                    float side = Mathf.Sqrt((float)ha * 10000f);
+                    Vector3 fp = PlanetGeo.Surface(P, P.Grid.Center[c], 0.3f);
+                    _fields.Add(group, fc.linear, Matrix4x4.TRS(fp, PlanetGeo.Upright(fp, (c * 37) % 90), new Vector3(side, 1, side)));
+                }
             }
         }
 
@@ -130,8 +137,8 @@ namespace TC2.Game
                     ulong h = KeyedRng.Hash(w.Seed, RngStream.None, (ulong)c, (ulong)k);
                     double ox = (KeyedRng.Unit(h) * 2 - 1) * half, oy = (KeyedRng.Unit(KeyedRng.Mix(h)) * 2 - 1) * half;
                     Vec3d d = (ctr * P.Radius + east * ox + north * oy).Normalized;
-                    int sid = w.SettlementAtCell(P.Grid.CellOf(d));
-                    if (sid != 0) continue; // fields and houses are cleared ground
+                    int under = P.Grid.CellOf(d);
+                    if (w.SettlementAtCell(under) != 0 || P.FieldOwner[under] != 0) continue; // fields and houses are cleared ground
                     Vector3 pos = PlanetGeo.Surface(P, d);
                     float sc = ex * (0.7f + 0.6f * (float)KeyedRng.Unit(KeyedRng.Mix(h + 7)));
                     var m = Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, (float)(h % 360)), Vector3.one * sc);

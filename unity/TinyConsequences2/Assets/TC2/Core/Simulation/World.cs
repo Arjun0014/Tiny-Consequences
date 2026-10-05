@@ -100,6 +100,7 @@ namespace TC2.Core.Simulation
         IntList[] _visitors = new IntList[16];
         IntList[] _hhOf = new IntList[16];
         IntList[] _members = new IntList[64];
+        IntList[] _fieldCells = new IntList[16];
         int[] _cellSettlement;
         long[] _localOffset = new long[16];
 
@@ -134,6 +135,7 @@ namespace TC2.Core.Simulation
         public IntList Visitors(int sid) => Slot(ref _visitors, sid);
         public IntList HouseholdsOf(int sid) => Slot(ref _hhOf, sid);
         public IntList Members(int hid) => Slot(ref _members, hid);
+        public IntList FieldCellsOf(int sid) => Slot(ref _fieldCells, sid);
 
         public int SettlementAtCell(int cell) => _cellSettlement == null || cell < 0 || cell >= _cellSettlement.Length ? 0 : _cellSettlement[cell];
 
@@ -366,7 +368,8 @@ namespace TC2.Core.Simulation
         public void RebuildDerived()
         {
             PlanetSys = new PlanetSystems(Planet);
-            _residents = new IntList[16]; _visitors = new IntList[16]; _hhOf = new IntList[16]; _members = new IntList[64];
+            _residents = new IntList[16]; _visitors = new IntList[16]; _hhOf = new IntList[16]; _members = new IntList[64]; _fieldCells = new IntList[16];
+            for (int c = 0; c < Planet.Cells; c++) if (Planet.FieldOwner[c] != 0) FieldCellsOf(Planet.FieldOwner[c]).Add(c);
             for (int i = 0; i < _cellSettlement.Length; i++) _cellSettlement[i] = 0;
             for (int sid = Settlements.First(); sid != 0; sid = Settlements.Next(sid)) IndexSettlementCells(sid);
             for (int hid = Households.First(); hid != 0; hid = Households.Next(hid))

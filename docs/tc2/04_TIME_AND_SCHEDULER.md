@@ -84,12 +84,24 @@ step kinds: Travel(route) | Work(duration, effect) | Use(building) | Wait | Slee
 - **Interrupts**: hazards, alarms, calls for help or news cut the current step at a computed moment;
   the person re-decides from where they stand (partial work kept).
 
-### 4.3 COARSE (authoritative, deep time only; designed, not built in the foundation)
+### 4.3 COARSE (authoritative, deep time only)
 For catch-up beyond what ACTIVITY can do in the time available: households, not persons, are the
-decision unit, integrated by season with the same production, consumption and demographic laws
+decision unit, integrated with the same production, consumption and demographic laws
 (calibrated against ACTIVITY by distribution tests). Entering COARSE happens at a world midnight
 (everyone home); leaving it instantiates activities at the next dawn. Persons, families, knowledge and
 relations stay individual. Processes still run at their own resolution.
+
+Concrete plan (from the F0 prototype): the settlement's daily event already owns crops, food, demography,
+marriage and births; what the ACTIVITY layer adds is *labour* (rows sown, wood cut, by people's choices),
+*meals* (each person's last meal and nutrition), *trips* and *perception*. In COARSE each person has no step
+event; the settlement's day instead (1) gives each able person the day's work hours by the same priorities the
+decision generators use (crop stage needs first, then wood, foraging when stores are empty), with the same rates
+(skill, health, diligence); (2) feeds each person three rationed portions from the household larder and granary
+(the same `EatNow` arithmetic); (3) moves brides and migrants as timed relocations (departure and arrival recorded,
+no walk); (4) exposes people to processes by where their household's day puts them (fields by day in season,
+home by night). Cost: one event per settlement-day, O(people) simple arithmetic: ~50x fewer events than ACTIVITY.
+Switches are commands at a midnight (logged, so replays agree); a test compares 100-year distributions
+(population, harvests, deaths by cause, marriages) between the two resolutions on several seeds.
 
 ### 4.4 ELABORATION (presentation only, observed agents)
 Footsteps through streets, gestures, the members of a herd around its agent: generated in the Game

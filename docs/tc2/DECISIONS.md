@@ -177,3 +177,36 @@ period without people), then founding groups of people appear in habitable regio
 (fire, foraging, simple tools, early cultivation and herding for the first worlds). The foundation proof of
 concept starts with a few small villages.
 **Reason.** "Extremely simple beginnings"; later worlds may begin with foragers only.
+
+## D2-015 — 2026-10-05 — Activity granularity: one event per activity, meaningful blocks
+
+**Context.** The first POC scheduled a walk and a stay as two events and many short leisure blocks: ~29 events
+per person-day, 2.4 us each (dotnet), 1.3 world years/s for 145 people.
+**Alternatives.** Keep fine steps and optimise code; COARSE now; merge steps analytically.
+**Decision.** A local activity is one event: the walk part is analytic (`From -> To` over `[T0, TA]`), the activity
+is done at `To` until `T1`; interrupts split the stay by elapsed fraction. Blocks are sized like a day is lived
+(work 2.5-4.5 h, leisure 1.5-3 h, meals 25 min, children's play 2-3.5 h).
+**Evidence.** 210K -> 74K events per world year for ~170 people; steady-state 0.8 us per event; 13-14 world years/s
+for 300-400 people in dotnet, all tests (determinism, save/load equivalence) unchanged.
+**Invalidation.** Visible behaviour that needs finer authoritative steps (then a PROCESS, not finer activities).
+
+## D2-016 — 2026-10-05 — Food and land laws for a 48-day year
+
+**Context.** Yields calibrated per real year made granaries grow without bound (a person eats 48 FU a year here).
+**Decision.** World laws: 1 FU per adult-day; yields 130 FU/ha per good season; 0.5 ha per person; labour ~93 h/ha
+per season (sowing 40, tending 8, harvest 45), so farming fills the seasons; grain spoils ~12 %/year; rationing to
+the next harvest (minimum 45 %); foraging when stores are empty; health by nutrition and frailty per body.
+**Evidence.** 3 seeds x 30 years: granaries ~1-3 years of need, no starvation, villages survive failed harvests.
+**Consequences.** Land must become limiting (fields need real arable cells within reach) before long runs: next.
+
+## D2-017 — 2026-10-05 — Cross-runtime determinism verified (dotnet == Unity Mono); Web pending
+
+**Evidence.** `CrossRuntime.Probe()` (DMath, RNG, worldgen, 3 simulated days) gives identical hashes under .NET 8
+RyuJIT (headless) and the Unity 6.6 editor's Mono. The Web build (IL2CPP -> wasm) is checked by `webtest.mjs`.
+**Consequence.** Headless tests and long runs are evidence about the shipped world.
+
+## D2-018 — 2026-10-05 — IMGUI for the foundation HUD
+
+**Context.** UI Toolkit at runtime needs a theme style sheet and font assets created in the editor; the F0 HUD
+is a debug instrument. **Decision.** IMGUI (`OnGUI`) for F0 (works on every platform with zero assets); the
+player-facing UI (news, inspector, History Book) moves to UI Toolkit in F7 with assets made by an editor script.
