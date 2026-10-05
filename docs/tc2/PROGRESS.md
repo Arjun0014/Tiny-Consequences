@@ -85,6 +85,16 @@
     measures views layer by layer).
   - **Ruins (D2-052)**: an abandoned village gives back its fields and its ground (any village may claim or found there) and its
     last households' houses stand as roofless ruins that sink and green over the centuries (`shots --abandon YEARS`).
+  - **1,000 coarse years of seed 42 with people** (`tc2/out/long/run42_1000*.txt`): one cluster of 6 villages grows to ~11,600
+    people in 35 places by year 300 and holds 12,000-14,800 in 37-42 places to year 1,000 - saturation, no runaway, no
+    collapse of the whole; but famine-regulated: ~140 hunger deaths a year (1 % of the people) and 1,791 famines (each village
+    about one in 22 years) once the land is full - no relief or trade between villages yet (F5). All three kinds of livestock
+    kept (113 cattle, 1,327 goats, 470 pigs at year 1,000); 84 households move a year, 41 foundings in all; 220 scouting trips
+    a year. Cost: ~1.2 us per person-day in COARSE (a village-day 415 us at ~350 people) plus fires (35 % of the run: big
+    wildfires stepped hourly); the history ledger grew without bound (household events kept for ever: fixed, 780k -> bounded).
+    **Consequence for offline catch-up**: a saturated world (~14,000 people) costs ~1 s a world year headless, several times
+    that in the browser - "a day away" (a century) would take minutes; the catch-up must scale (cheaper person-days, or the
+    Living mode's span adapting to the world's size).
   - Seal shots: seal views take the seal shore's own hour and frame a shore where the view shows seals. **Found**: seed 42
     starts with ~6 seals, 411 cod and 91 tuna (the spin-up seeds the sea's predators ~10x below their level; they take a
     decade to grow into it) and its seals level at ~11-20 in all the world (food-limited, not territory: a colony cap of 4
