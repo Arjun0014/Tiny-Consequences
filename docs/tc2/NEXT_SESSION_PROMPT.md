@@ -49,12 +49,12 @@ real game screenshots (`node tc2/scripts/unity.mjs shots`), not in debug maps; k
 Headless Blender (`tc2/art/kit.py`) makes the asset kit. The god powers that exist (eruption, quake, storm, lightning)
 are logged commands and double as screenshot tools (`unity.mjs shots --erupt/--quake/--storm`).
 
-**Where we are (session 2, 6 Oct 2026)**: F1 and F2 are closed (10,000-year runs). F3 is well under way but not closed: wild
-food (D2-042), building, scouting, moving and founding (D2-045), wild herds and livestock with herders (D2-047/048/050), ruins
-(D2-052), the inspector and follow, the household's own work and warmth (D2-056: meals made ready, water, hearth fuel, a roof and
-a fire against the cold). Following people still shows idle grown people outside sowing and harvest: crafts and clothes, hay
-and infant care come next, then close F3 (SESSION_HANDOFF "Next steps"). Determinism across Mono and dotnet was repaired and is
-linted (D2-057); recheck the Web build. Run long headless jobs from a scratch copy of the binaries so the repo's DLL stays free.
+**Where we are (session 2, 6 Oct 2026)**: F1, F2 and F3 are closed (D2-043, D2-046, D2-060). Villages of persistent people live
+on their own: wild food, building, scouting, moving and founding, herds and livestock with herders, the household's own work
+(meals, water, hearth fuel, goods made and mended), warmth against the cold, homes that outlive their households and decay to
+ruins; followed days and lives are believable (`follow`, `timeuse`). Determinism holds across dotnet, Mono and the Web build and
+is linted (D2-057). Next (SESSION_HANDOFF "Next steps"): offline catch-up at scale, then F4 knowledge and technology. Run long
+headless jobs from a scratch copy of the binaries so the repo's DLL stays free.
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

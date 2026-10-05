@@ -1302,3 +1302,25 @@ not taken, a gone ruin leaves the table. 200 coarse years: seed 42 3,588 people 
 1,340 empty homes taken, 566 households died out); seed 1 1,120 in 6 (359 lived in, 116 empty, 16 fallen); a village-day 127 us.
 Shots `tc2/out/shots/homes40|50|100`: a village whose people all died stands empty at 40 years, roofless at 50, fallen at 100.
 Mono equals dotnet.
+
+## D2-060 — 2026-10-06 — F3 closed: villages of persistent people live on their own
+
+**Context.** F3's done-when: "a village lives 100 years untouched without scripted help, every visible action is the
+simulation, and following any person shows a believable life" - in headless runs and in the Web build (17).
+**Evidence.** (1) *Untouched centuries*: 200 coarse years on the final build - seed 42 grows from 145 people in 6 villages to
+3,588 in 15, with no hunger; seed 1 (cool, land-bound) keeps its 6 villages at ~1,100 people through recurring famines;
+1,000 years of seed 42 (before D2-056) saturated at 12,000-14,800 people in 37-42 places without collapse. No event in any of
+them is scripted: founding, famine, moving, dying out, homes taken and left all come from the same laws. (2) *The visible
+action is the simulation*: what people are seen doing is their activity step (fields, wood, building, herding, hunting,
+fishing from boats, gathering, cooking, carrying water, making and mending, company, play, scouting, moving house); homes
+are the simulation's buildings (lived in, standing empty, roofless, fallen); chimney smoke is someone cooking or a hearth
+burning against the cold; herds, livestock and pens are the simulation's animals; fields are claimed cells; seals are the
+fields' counts gathered at a haul-out; haystacks read the granary after the harvest. (3) *Believable lives*: a followed day
+(`follow`) is meals made and eaten, water carried, work by the season and the household's need, rest with its reason, the
+evening on the square; a year's time use (`timeuse`) puts grown people at ~6.5 h of work a day and children of 6-11 at ~3 -
+inside time-allocation studies of farming peoples; whole lives from the ledger (`follow --life`) are birth, marriage at
+20-23, six or seven children three or four years apart, a home raised or taken from those who left, death in the fifties or
+earlier. (4) *The Web build*: 6/6, bit-identical with headless and the editor's Mono (`tc2/out/webtest/s2webd`).
+**Verdict.** F3 is closed. Carried forward: minding infants and toddlers (07 §2's carer: babies stay at home and are fed
+there; nursing mothers stay near), hay and winter fodder, the materials of goods and specialised crafts (F4), re-roofing and
+quarrying ruins and the upkeep of homes, threshing, famine relief between villages (F5).

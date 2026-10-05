@@ -29,7 +29,7 @@ extinction as historical events; fish and plankton; visible animals elaborated f
 **Done when**: predator-prey cycles, recovery after catastrophes, adaptation measurable over centuries,
 at least one speciation in a long isolated run.
 
-## F3 — People and settlements
+## F3 — People and settlements (CLOSED 6 Oct 2026, session 2: D2-060)
 Households, bodies and needs, care obligations, life stages, marriage, births, deaths, inheritance;
 the work board; farming (fields, seasons, yields from climate and soil), foraging, hunting, herding
 (livestock individuals), fishing, wood; construction of buildings by stage from materials and labour;

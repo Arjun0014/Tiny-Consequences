@@ -3,17 +3,12 @@
 ## Session 2 (5 Oct 2026) — in progress (see PROGRESS.md CURRENT STATE)
 
 ### Exact state
-- Session 2 commits since the last checkpoint (newest last): 11fb029 stores free the pages of sparse ids (D2-055), DECISIONS
-  D2-053/054, tools `follow` and fire tallies · 3db0273 the household's own work and warmth (D2-056) and no float arithmetic in
-  the core (D2-057; `tc2/tools/floatcheck` runs before the headless tests).
-- Phases: F0 done, F1 closed, F2 closed, F3 in progress. **F3 is not closed**: following people showed grown people idle 7-9 hours
-  a day outside sowing and harvest (`timeuse`); D2-056 gave them meals, water, wood for the hearths and made houses matter
-  (warmth); the slack's real work is still missing (see Next steps 1). 111 headless tests green.
-- Determinism: Mono (editor), dotnet and the Web build (IL2CPP, WebGPU) are bit-identical after D2-056 to D2-058
-  (`tc2/out/webtest/s2webc`: 6/6). The WebGL2 build was not rebuilt since D2-051 (no rendering change but the smoke).
-- 3a26837 goods made and mended, a day's labour, weeding (D2-058). F3 still open: buildings belong to households, so a house
-  vanishes when its household dissolves or moves and newlyweds always start in a camp beside empty homes - persistent buildings
-  (D2-059, in progress) are the last F3 gap before closing it.
+- Session 2 commits since the last checkpoint (newest last): 3db0273 the household's work and warmth (D2-056) and no float
+  arithmetic in the core (D2-057) · 3a26837 goods, a day's labour, weeding (D2-058) · 706233a homes stand on their own (D2-059)
+  · the F3 closure (D2-060).
+- Phases: F0 done, F1, F2 and **F3 closed** (D2-060). 118 headless tests green; `headless.mjs test` runs the float lint first.
+- Determinism: dotnet, the editor's Mono and the Web build (IL2CPP, WebGPU) are bit-identical (`tc2/out/webtest/s2webd`). The
+  WebGL2 build was last rebuilt for D2-051 (no rendering change since but smoke and homes drawn from buildings).
 - Nothing running. Uncommitted legacy TC1 work may exist in the tree and is NOT ours: `game/html/engine_template.html` and
   `docs/DECISIONS.md` (D-227). Never stage them in [tc2] commits.
 
@@ -70,16 +65,14 @@
   stocked), do not loosen the mechanism (D2-056).
 
 ### Next steps
-1. **F3's believable day** (D2-056 open): crafts and the making and mending of clothes and gear in the slack hours (textiles took
-   farming households hours every day; clothes worn thin make the cold bite sooner), hay against the animals' winter (the view's
-   haystacks to come from it), weeding labour, and minding infants and toddlers (07 §2's carer). Measure with `timeuse` across
-   the year (sowing, growing, harvest, winter) and `follow`; then close F3.
-2. **Offline catch-up at scale**: a saturated world (~14,000 people) costs ~1 s a world year headless (fires no longer 35 % of it
-   since D2-055: measure again) - "a day away" (a century) would take minutes in the browser. Cheaper person-days, a cohort
-   resolution for deep time, or the Living span adapting to the world's size; measure the Web catch-up from a mature save.
-3. **The sea's calibration**: the fish fields hold ~1 % of real biomass, so the miniature holds ~10-20 seals (D2-053 found);
-   wide-ranging hunters should hunt over their range; 10,000-year reruns.
-4. **Famine in the full world**: ~1 % of the people die of hunger each year once the land is full - relief, exchange and storage
-   between villages (F5).
-5. WebGL2's first-entry stall (a traced shader-variant collection warmed progressively); look backlog: coast shapes off the
-   cell grid, gardens, orbit detail, smoke from huts and camps.
+1. **Offline catch-up at scale** (the biggest open risk): measure the saturated world again after D2-055 to D2-059 (`bench`
+   40 x 300 founders, `webbench.mjs`; a mature save through `run --load`); then cheaper person-days, a cohort resolution for
+   Ancient and Deep time (03, 12), or the Living span adapting to the world's size. "A day away" at saturation must stay a
+   minute or two in the browser.
+2. **F4 - knowledge and technology** (17): techniques as data with prerequisites, carried by people, taught and lost; tools and
+   crafts with materials from geology (D2-058's goods ask for fibre, hides, clay, stone, wood); D2-060's carried-forward items
+   that belong there.
+3. **The sea's calibration**: fish at ~1 % of real biomass, so the miniature holds ~10-20 seals (D2-053): wide-ranging hunters
+   over their range; 10,000-year reruns.
+4. **Famine in the full world** (F5): relief, exchange and storage between villages.
+5. WebGL2's first-entry stall; look backlog: coast shapes off the cell grid, gardens, orbit detail, smoke from huts and camps.

@@ -2,7 +2,7 @@
 
 ## CURRENT STATE (keep accurate; newest first below)
 
-**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 in progress (D2-042, -045, -047 to -050, -052, -056, -058, -059); Web checked on WebGPU and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
+**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); Web checked on WebGPU (s2webd) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
 - **Session 2 (5 Oct 2026, in progress)** - compaction-recovery hooks (`.claude/settings.json`, `.claude/hooks/tc2_compact.mjs`;
   Claude Code 2.1.289: PreCompact stdout joins the compaction instructions, SessionStart matcher `compact` stdout reaches Claude;
@@ -110,6 +110,9 @@
   - **Goods, a day's labour, weeding (D2-058)**: households make and mend their clothes, tools and vessels (worn goods let the
     cold in and slow hands); a day's labour bounds the slack's work; weeding asks 24 h a hectare and keeps pace with the season.
     A whole year of seed 42: grown people work ~6.5 h a day, children of 6-11 ~3 h - inside time-allocation ranges. 115 tests.
+  - **F3 CLOSED (D2-060)**: villages of persistent people live untouched for centuries, every visible action is the
+    simulation, followed days and lives are believable; Web 6/6 bit-identical (`tc2/out/webtest/s2webd`: village 89, close 84,
+    low 110 fps; a day away 38 s).
   - **Homes stand on their own (D2-059)**: huts and houses are buildings that outlive their households - left empty when a
     household dies out (kin inherit) or moves away, taken by newlyweds and arriving families before they raise their own,
     decaying to roofless walls and ruins that fade; households that died out no longer linger. 118 tests.
@@ -179,6 +182,7 @@
 | WebGL2 village view by layer (`tc2/scripts/webperf.mjs`) | Chromium | 4 cascades: 37 fps, 60 without shadows (trees' shadows the cost); 2 cascades at half reach 49; **1 cascade 60** (D2-051); `Shader.WarmupAllShaders` costs 36 s at start (removed) |
 | A full world in COARSE (bench 40 x 300 founders, ~13,300 people, 5 years) | dotnet / Chrome (WebGPU build) | 1.28 / 1.37 world years/s (1.22 us per person-day): the browser keeps pace with headless - a Living day away (96 years) in a full world ~70 s; Ancient (600) ~7 min, Deep time (4,800) ~1 h: those need a cheaper human layer |
 | Village-day cost at ~360 people (COARSE, year 320) | dotnet | 206 us (coarse-day 69, survey 42 of which herds 31, food 37 of which needs 26, demography 35, stock 19) |
+| Web (WebGPU) after D2-059, F3 closed (`tc2/out/webtest/s2webd`) | Chrome | 6/6, bit-identical (gen ae01d33f79af8525); start 6.1 s; orbit 119, region 120, village 89, close 84, low 110, close running 92, a century on 79 fps; a day away (96 years) 38 s; build 11.2 MB |
 | Web (WebGPU) after D2-056 to D2-058 (`tc2/out/webtest/s2webc`) | Chrome | 6/6, bit-identical with headless and the editor's Mono (gen 2c8c6fad6b24a0b9); start 7.1 s; orbit 119, region 119, village 90, close 80, low 91, close running 82, a century on 76 fps; a day away (96 years) 38 s; build 11.2 MB; cooks' smoke at breakfast in the close view |
 | Fire steps, seed 42 COARSE with people, 150 years (D2-055) | dotnet | 131 -> 2.6 us a step (379 -> 1 fire page held; heap 65 -> 41 MB; run 29.8 -> 23.0 s) |
 | 200 coarse years with household work (D2-056) | dotnet | seed 42: 32.9 s, 3,492 people in 15 places; seed 1 (cool): 31.2 s, 1,206 in 6; hearths 2.8 us a village-day |
