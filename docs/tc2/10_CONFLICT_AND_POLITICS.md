@@ -80,3 +80,12 @@ same choices at the lived rate (measured, as visits and trade are). Long runs ar
   outweigh a watcher's lost sleep; the watcher stands there until two in the morning; takers are seen far more often there.
 - Measured: in famine-regulated worlds the watch halves the takings; ~9 deaths of wounds a year for 100,000 people.
 
+## 9. Implemented: slice 3, answers, news and taking back (D2-072)
+- **Claims and answers**: a village asks amends for blood its people suffered from known doers; the doers' village pays from its
+  store when it can and is willing (the evidence, close kin across the line and help received press for it; what it holds
+  against the claimants presses against it) and the wrong is made good, or it refuses (or denies hearsay): a new wrong.
+- **News**: visits, trades and claims carry what each village saw done to it; a village known to beat takers keeps them off.
+- **Taking back**: the fed and bold of a village holding a heavy wrong against a neighbour go to take from its store.
+- Grievance and gratitude are ageing sums per pair of villages (state), read at once.
+- Measured (400 years): about four claims in five refused; feuds are carried on by taking back - raids are the next slice.
+

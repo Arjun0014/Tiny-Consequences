@@ -49,6 +49,14 @@ namespace TC2.Core.Society
         /// <summary>Healing a day (by how well they are fed) and the daily chance of dying of deep wounds (x 4 (hurt - 0.5)^2).</summary>
         public const double HealPerDay = 0.03, DieOfWounds = 0.3;
 
+        // ---- answers, news and taking back (D2-072)
+        /// <summary>Blood worth this much (FU, by its weight now) is worth walking over to ask amends for.</summary>
+        public const double ClaimFrom = 10.0;
+        /// <summary>What a village knows of another's beatings of takers (hurt dealt, by age) that keeps its takers away altogether.</summary>
+        public const double AnswersFull = 2.0;
+        /// <summary>A grievance this heavy (FU) moves the bold to take back; their chance a night at its fullest (200 FU).</summary>
+        public const double TakeBackFrom = 30.0, TakeBackPerNight = 0.01;
+
         /// <summary>A person is hungry enough to go when the last day fed them less than this share of their need (both resolutions
         /// keep that share, the body's day: a lived meal-time flag would clear at the first bite).</summary>
         public const double HungryBelow = 0.5;
@@ -91,7 +99,7 @@ namespace TC2.Core.Society
                 Trade.DaysOfFood(w, in t, out double daily);
                 if (t.Granary < FullStoreDays * daily + LoadFu) continue;
                 if (w.Routes.Get(w, home, o) == null) continue;
-                double f = (1.0 - Restraint(in p, o)) * (1.0 - SeenAt(o));
+                double f = (1.0 - Restraint(in p, o)) * (1.0 - SeenAt(o)) * (1.0 - DMath.Clamp01(w.DeedBook.Answers(home, o) / AnswersFull));
                 if (f > free) { free = f; best = o; }
             }
             return best;
@@ -166,7 +174,7 @@ namespace TC2.Core.Society
             ref var t = ref w.Settlements.Get(at);
             double load = DMath.Min(LoadFu, t.Granary);
             if (load < 1.0) return;
-            long cause = HungerCause(home, now);
+            long cause = p.Nutrition < HungryBelow ? HungerCause(home, now) : w.Settlements.Get(home).FoeEvent;   // (hunger, or a wrong taken back: D2-072)
             bool watched = t.Watcher != 0;
             if (roll < SeenAt(at))
             {
@@ -198,6 +206,7 @@ namespace TC2.Core.Society
             if (load >= FoundShare * (t2.Granary + load)) w.DeedBook.Learn(at, d2, KnownHow.Found);   // (the store visibly lower in the morning)
             w.Metrics.Takings++;
             w.Metrics.TakenFu += load;
+            if (p.Nutrition >= HungryBelow) w.Metrics.TakenBack++;
         }
 
         // ------------------------------------------------------------------ what follows the shout (D2-071)
@@ -302,6 +311,7 @@ namespace TC2.Core.Society
                 Cause1 = cause, Rel1 = CauseRel.CausedBy, Magnitude = (float)hurt, ArgA = taking ? 1 : 0, RootKind = RootKind.People,
             });
             int deed = w.DeedBook.Record(DeedKind.Wound, by.Id, by.Home, to.Household, to.Home, 0, hurt, (taking ? Deserved : 1.0) * WoundWorth * hurt, ev);
+            if (taking) { ref var wd = ref w.Deeds.Get(deed); wd.Flags |= DeedKind.InTheAct; }
             w.DeedBook.Learn(to.Home, deed, KnownHow.Saw);
             w.DeedBook.Learn(by.Home, deed, KnownHow.Own);
             to.HurtDeed = deed;
@@ -336,7 +346,9 @@ namespace TC2.Core.Society
                         // (a killing weighs as the wound did - half when they were struck taking)
                         double share = d.Qty > 0f ? (double)d.Worth / (WoundWorth * (double)d.Qty) : 1.0;
                         int by = d.By, byS = d.ByS;
+                        byte flags = (byte)(d.Flags & DeedKind.InTheAct);
                         int kill = w.DeedBook.Record(DeedKind.Kill, by, byS, p.Household, sid, 0, 1.0, share * KillWorth, cause);
+                        { ref var kd = ref w.Deeds.Get(kill); kd.Flags = flags; }
                         w.DeedBook.Learn(sid, kill, KnownHow.Saw);
                         w.DeedBook.Learn(byS, kill, KnownHow.Own);
                     }
@@ -387,6 +399,204 @@ namespace TC2.Core.Society
         }
 
 
+        // ------------------------------------------------------------------ answers: amends asked, made or refused (D2-072)
+        /// <summary>
+        /// A village's claims (once a day, both resolutions): the newest unanswered blood its people suffered from known doers -
+        /// not struck taking - worth asking amends for. Someone of the wronged household (else of the village) goes to ask: lived,
+        /// the next morning (their errand); COARSE, at once.
+        /// </summary>
+        void Claims(int sid)
+        {
+            var w = _w;
+            var list = w.DeedBook.KnownBy(sid);
+            if (list == null) return;
+            long now = w.Now;
+            for (int i = list.Count - 1; i >= 0; i--)
+            {
+                var k = list[i];
+                ref var d = ref w.Deeds.Get(k.Deed);
+                if (d.Time < now - SimTime.Year) break;   // (a year's wrongs: ids rise with time)
+                if (k.How != KnownHow.Saw && k.How != KnownHow.Told) continue;
+                if (!DeedKind.Blood(d.Kind) || d.ToS != sid || d.Answer != 0 || (d.Flags & (DeedKind.InTheAct | DeedKind.Claimed)) != 0) continue;
+                if (!w.Settlements.Exists(d.ByS) || !w.Settlements.Get(d.ByS).Inhabited || d.ByS == sid) continue;
+                if (w.DeedBook.Weight(in d, now) < ClaimFrom) continue;
+                int claimant = Claimant(sid, d.ToHh, now);
+                if (claimant == 0) return;
+                int deed = d.Id, doers = d.ByS;
+                d.Flags |= DeedKind.Claimed;
+                w.Metrics.Claims++;
+                ref var c = ref w.People.Get(claimant);
+                if (w.Resolution == Resolution.Coarse) Answer(ref c, doers, deed);
+                else c.Errand = deed;
+                return;
+            }
+        }
+
+        /// <summary>Who goes to ask: a fit grown member of the wronged household, else the boldest fit grown person of the village.</summary>
+        int Claimant(int sid, int hh, long now)
+        {
+            var w = _w;
+            if (hh != 0 && w.Households.Exists(hh))
+            {
+                var mem = w.Members(hh);
+                for (int i = 0; i < mem.Count; i++) { ref var q = ref w.People.Get(mem[i]); if (Fit(in q, now) && q.Home == sid && q.Errand == 0) return mem[i]; }
+            }
+            var res = w.Residents(sid);
+            int best = 0; double bv = -1;
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var q = ref w.People.Get(res[i]);
+                if (!Fit(in q, now) || q.Errand != 0) continue;
+                if (q.Bold > bv) { bv = q.Bold; best = res[i]; }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// The doers' village answers a claim (D2-072; Gluckman's ties, the evidence, their means and their own grievances): they
+        /// make amends in grain from their store when they can spare it and are willing - the wrong is settled - or they refuse
+        /// (when the claim rests on hearsay, they may deny it): a new wrong. Either way the talk carries news.
+        /// </summary>
+        public void Answer(ref Person claimant, int at, int deedId)
+        {
+            var w = _w;
+            long now = w.Now;
+            if (deedId == 0 || !w.Deeds.Exists(deedId)) return;
+            ref var d = ref w.Deeds.Get(deedId);
+            if (d.Answer != 0 || d.ByS != at || !w.Settlements.Exists(at)) return;
+            int from = d.ToS;
+            double worth = w.DeedBook.Weight(in d, now);
+            w.DeedBook.Knows(from, deedId, out byte how);
+            double evidence = how == KnownHow.Saw ? 1.0 : 0.6;
+            double ties = (KinAcross(at, from) ? 0.4 : 0.0) + 0.3 * DMath.Clamp01(w.DeedBook.Gratitude(at, from) / 100.0);
+            double counter = DMath.Clamp01(w.DeedBook.Grievance(at, from) / 50.0);
+            double willing = 0.2 + 0.3 * evidence + ties - 0.6 * counter;
+            double spare = w.Trade.Spare(at, Trade.Grain);
+            double u = KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)deedId, (ulong)now, 30);
+            ref var s = ref w.Settlements.Get(at);
+            byte kind = d.Kind;
+            long cause = d.Event;
+            int hh = d.ToHh;
+            int answer;
+            if (spare >= worth && u < willing)
+            {
+                s.Granary -= worth;
+                ref var f = ref w.Settlements.Get(from);
+                f.Granary += worth;
+                long ev = w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.AmendsMade, Time = now, Cell = s.Cell, Settlement = at, Subject = EntityRef.Settlement(at), Object = EntityRef.Settlement(from),
+                    Other = EntityRef.Person(claimant.Id), Cause1 = cause, Rel1 = CauseRel.InResponseTo, Magnitude = (float)worth, ArgA = kind, RootKind = RootKind.People,
+                });
+                answer = w.DeedBook.Record(DeedKind.Amends, 0, at, hh, from, Trade.Grain, worth, worth, ev);
+                w.Metrics.Amends++;
+            }
+            else
+            {
+                bool deny = evidence < 1.0 && u < willing + 0.3;
+                long ev = w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.ClaimRefused, Time = now, Cell = s.Cell, Settlement = at, Subject = EntityRef.Settlement(at), Object = EntityRef.Settlement(from),
+                    Other = EntityRef.Person(claimant.Id), Cause1 = cause, Rel1 = CauseRel.InResponseTo, Magnitude = (float)worth, ArgA = deny ? 1 : 0, ArgB = kind,
+                    RootKind = RootKind.People,
+                });
+                answer = w.DeedBook.Record(DeedKind.Refusal, 0, at, hh, from, 0, 0.0, (deny ? 0.25 : 0.5) * worth, ev);
+                w.Metrics.Refusals++;
+            }
+            w.DeedBook.Answered(deedId, answer);
+            w.DeedBook.Learn(from, answer, KnownHow.Saw);
+            w.DeedBook.Learn(at, answer, KnownHow.Own);
+            w.DeedBook.Meet(from, at);
+        }
+
+        /// <summary>Whether people of two villages are close kin (parents, partners, children, brothers and sisters across the line).</summary>
+        public bool KinAcross(int a, int b)
+        {
+            var w = _w;
+            var ra = w.Residents(a);
+            for (int i = 0; i < ra.Count; i++)
+            {
+                ref var q = ref w.People.Get(ra[i]);
+                if (q.Alive && (LivesIn(q.Mother, b) || LivesIn(q.Father, b) || LivesIn(q.Partner, b))) return true;
+            }
+            var rb = w.Residents(b);
+            for (int i = 0; i < rb.Count; i++)
+            {
+                ref var q = ref w.People.Get(rb[i]);
+                if (q.Alive && (LivesIn(q.Mother, a) || LivesIn(q.Father, a))) return true;
+            }
+            return false;
+        }
+
+        // ------------------------------------------------------------------ taking back (D2-072)
+        /// <summary>
+        /// A night's chance that a fed person goes to take back from the village theirs holds most against (both resolutions): by
+        /// boldness and the weight of the wrong; taking back is not stealing to the taker (restraint is lifted by the wrong).
+        /// </summary>
+        public double TakeBackChance(in Person p, in Settlement home)
+        {
+            if (home.Foe == 0 || home.FoeWorth < TakeBackFrom) return 0;
+            return TakeBackPerNight * (0.4 + 1.2 * p.Bold / 255.0) * DMath.Clamp01((double)home.FoeWorth / 200.0);
+        }
+
+        /// <summary>Whether a person could go taking back tonight: grown, fit, free, not hungry (hunger has its own way).</summary>
+        public static bool CanTakeBack(in Person p, long now)
+        {
+            if (!p.Alive || p.Nutrition < HungryBelow || p.Sick != 0 || p.PregDue != 0 || p.Hurt >= RoadHurt) return false;
+            if (p.NursingUntil != 0 && p.NursingUntil - now > SimTime.Year / 2) return false;
+            double age = p.AgeYears(now);
+            return age >= 16 && age < 50 && p.Health > 0.6;
+        }
+
+        /// <summary>The foe's store if it is a walk away, has grain to take and is worth the risk; how freely (else 0).</summary>
+        public int TakeBackTarget(in Person p, in Settlement home, out double free)
+        {
+            var w = _w;
+            free = 0;
+            int o = home.Foe;
+            if (o == 0 || !w.Settlements.Exists(o)) return 0;
+            ref var t = ref w.Settlements.Get(o);
+            if (!t.Inhabited || t.Granary < LoadFu || Vec3d.ArcDistance(home.Anchor, t.Anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, p.Home, o) == null) return 0;
+            free = (1.0 - Restraint(in p, o)) * (1.0 - SeenAt(o)) * (1.0 - DMath.Clamp01(w.DeedBook.Answers(p.Home, o) / AnswersFull));
+            return free > 0 ? o : 0;
+        }
+
+        /// <summary>The village's daily reading of its foe (both resolutions): who it holds most against, how much, the latest wrong.</summary>
+        void ReadFoe(int sid)
+        {
+            var w = _w;
+            int foe = w.DeedBook.Foe(sid, out double worst);
+            ref var s = ref w.Settlements.Get(sid);
+            s.Foe = foe; s.FoeWorth = (float)worst;
+            s.FoeEvent = foe != 0 ? w.DeedBook.LatestHarm(sid, foe) : 0;
+        }
+
+        // ------------------------------------------------------------------ news at COARSE resolution (D2-072)
+        /// <summary>The day's visits between a village and its neighbours (as many as a lived day makes) carry the news.</summary>
+        void News(int sid)
+        {
+            var w = _w;
+            long now = w.Now;
+            ref var s = ref w.Settlements.Get(sid);
+            int adults = 0;
+            var res = w.Residents(sid);
+            for (int i = 0; i < res.Count; i++) { ref var q = ref w.People.Get(res[i]); if (Fit(in q, now)) adults++; }
+            if (adults == 0) return;
+            int near = 0;
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+                if (o != sid && w.Settlements.Get(o).Inhabited && Vec3d.ArcDistance(s.Anchor, w.Settlements.Get(o).Anchor, w.Planet.Radius) <= 6000) near++;
+            if (near == 0) return;
+            double expect = adults * TC2.Core.Health.Disease.VisitsPerAdultDay / near;
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+            {
+                if (o == sid || !w.Settlements.Get(o).Inhabited) continue;
+                ref var t = ref w.Settlements.Get(o);
+                if (Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > 6000) continue;
+                if (KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)sid, (ulong)now, (ulong)(40 + o)) < 1.0 - DMath.Exp(-expect)) w.DeedBook.Meet(sid, o);
+            }
+        }
+
+
         long HungerCause(int home, long now)
         {
             ref var s = ref _w.Settlements.Get(home);
@@ -400,7 +610,10 @@ namespace TC2.Core.Society
             var w = _w;
             Wounds(sid);
             Watch(sid);
+            ReadFoe(sid);
+            Claims(sid);
             if (w.Resolution != Resolution.Coarse) return;
+            News(sid);
             long now = w.Now;
             var res = w.Residents(sid);
             for (int i = 0; i < res.Count; i++)
@@ -415,6 +628,21 @@ namespace TC2.Core.Society
                 Take(ref p, to);
                 if (p.CargoQty > 0f) w.Trade.Unload(ref p, sid);   // (home with it before the night is out)
             }
+            // taking back: the fed and bold of a village that holds a heavy wrong against a neighbour (D2-072)
+            ref var hs = ref w.Settlements.Get(sid);
+            if (hs.Foe != 0 && hs.FoeWorth >= TakeBackFrom)
+                for (int i = 0; i < res.Count; i++)
+                {
+                    int pid = res[i];
+                    ref var p = ref w.People.Get(pid);
+                    if (p.At != p.Home || !CanTakeBack(in p, now)) continue;
+                    ref var home = ref w.Settlements.Get(sid);
+                    if (KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)pid, (ulong)now, 21) >= TakeBackChance(in p, in home)) continue;
+                    int to = TakeBackTarget(in p, in home, out double free);
+                    if (to == 0 || KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)pid, (ulong)now, 22) >= free) continue;
+                    Take(ref p, to);
+                    if (p.CargoQty > 0f) w.Trade.Unload(ref p, sid);
+                }
         }
     }
 }

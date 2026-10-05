@@ -304,6 +304,8 @@ namespace TC2.Core.Agents
                     p.Visits++;
                     w.Disease.Arrive(ref p, arrived, p.Until - w.Now);   // what they may catch there and carry home (D2-066)
                     if (p.Why == WhyCode.Trade) w.Trade.Exchange(ref p, arrived);   // the load for what they want back (D2-067)
+                    w.DeedBook.Meet(p.Home, arrived);                        // the news each village tells (D2-072)
+                    if (p.Why == WhyCode.Claim) { int deed = p.Errand; p.Errand = 0; w.Conflict.Answer(ref p, arrived, deed); }   // amends asked (D2-072)
                 }
             }
             else if (p.CargoQty > 0f) w.Trade.Unload(ref p, arrived);   // home with it
@@ -764,6 +766,13 @@ namespace TC2.Core.Agents
                         if (to != 0 && rs.Chance(free) && StartTake(ref p, to)) return;
                     }
                 }
+                else if (atHome && (lsec >= bed || lsec < 2 * SimTime.Hour) && p.Why != WhyCode.Take && here.Foe != 0 &&
+                         TC2.Core.Society.Conflict.CanTakeBack(in p, now) && rs.Chance(w.Conflict.TakeBackChance(in p, in here)))
+                {
+                    // fed, but the village holds a heavy wrong against a neighbour: the bold go to take back (D2-072)
+                    int to = w.Conflict.TakeBackTarget(in p, in here, out double free);
+                    if (to != 0 && rs.Chance(free) && StartTake(ref p, to)) return;
+                }
                 long untilWake = wake - lsec;
                 if (untilWake <= 0) untilWake += SimTime.Day;
                 BeginLocal(ref p, ActivityKind.Sleep, WhyCode.Night, 0, homeX, homeY, untilWake);
@@ -853,7 +862,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends)
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -934,6 +943,13 @@ namespace TC2.Core.Agents
             }
             if (lsec >= 17 * SimTime.Hour) { double u = 0.25 + 0.3 * p.Social / 255.0 + 0.1 * rs.NextUnit(); if (u > best) { best = u; choice = 4; } }
             int tradeTo = 0;
+            if (p.Errand != 0 && lsec >= 7 * SimTime.Hour && lsec < 11 * SimTime.Hour && atHome && p.Hurt < TC2.Core.Society.Conflict.RoadHurt && p.Sick == 0 &&
+                w.Deeds.Exists(p.Errand) && w.Deeds.Get(p.Errand).Answer == 0)
+            {
+                // a wrong to ask amends for: the village sent them (D2-072)
+                double u = 1.05; if (u > best) { best = u; choice = 13; }
+            }
+            else if (p.Errand != 0 && (!w.Deeds.Exists(p.Errand) || w.Deeds.Get(p.Errand).Answer != 0)) p.Errand = 0;
             if (lsec >= 7 * SimTime.Hour && lsec < 11 * SimTime.Hour && age >= 18 && age < 56 && p.Health > 0.7 && p.Hurt < TC2.Core.Society.Conflict.RoadHurt && atHome &&
                 p.PregDue == 0 && !(p.NursingUntil != 0 && p.NursingUntil - now > SimTime.Year / 2) && p.Sick == 0 &&
                 rs.Chance(TradeChance * (0.5 + p.Bold / 255.0)))
@@ -976,6 +992,9 @@ namespace TC2.Core.Agents
                     return;
                 case 12:
                     if (StartTrade(ref p, tradeTo)) return;
+                    break;
+                case 13:
+                    if (StartErrand(ref p)) return;
                     break;
                 case 4:
                     BeginLocal(ref p, ActivityKind.Social, WhyCode.Leisure, 0, here.SquareX + rs.Range(-12, 12), here.SquareY + rs.Range(-12, 12), SimTime.Hours(1.5 + 1.5 * rs.NextUnit()));
@@ -1515,6 +1534,20 @@ namespace TC2.Core.Agents
             if (r == null) return false;
             double from = p.At == r.A ? 0.0 : r.Length, dest = to == r.A ? 0.0 : r.Length;
             BeginTravel(ref p, ActivityKind.TripOut, WhyCode.Take, r, from, dest, to);
+            return true;
+        }
+
+        /// <summary>A claimant sets out for the doers' village to ask amends (D2-072). False if there is no road.</summary>
+        bool StartErrand(ref Person p)
+        {
+            var w = _w;
+            if (p.Errand == 0 || !w.Deeds.Exists(p.Errand) || p.At != p.Home) return false;
+            int to = w.Deeds.Get(p.Errand).ByS;
+            if (!w.Settlements.Exists(to) || !w.Settlements.Get(to).Inhabited) { p.Errand = 0; return false; }
+            var r = w.Routes.Get(w, p.At, to);
+            if (r == null) { p.Errand = 0; return false; }
+            double from = p.At == r.A ? 0.0 : r.Length, dest = to == r.A ? 0.0 : r.Length;
+            BeginTravel(ref p, ActivityKind.TripOut, WhyCode.Claim, r, from, dest, to);
             return true;
         }
 

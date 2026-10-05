@@ -2,7 +2,7 @@
 
 ## CURRENT STATE (keep accurate; newest first below)
 
-**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 in progress (D2-069, D2-070, D2-071); Web checked on WebGPU (s2webe, after F5) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
+**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 in progress (D2-069 to D2-072); Web checked on WebGPU (s2webe, after F5) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
 - **Session 2 (5 Oct 2026, in progress)** - compaction-recovery hooks (`.claude/settings.json`, `.claude/hooks/tc2_compact.mjs`;
   Claude Code 2.1.289: PreCompact stdout joins the compaction instructions, SessionStart matcher `compact` stdout reaches Claude;
@@ -110,6 +110,10 @@
   - **Goods, a day's labour, weeding (D2-058)**: households make and mend their clothes, tools and vessels (worn goods let the
     cold in and slow hands); a day's labour bounds the slack's work; weeding asks 24 h a hectare and keeps pace with the season.
     A whole year of seed 42: grown people work ~6.5 h a day, children of 6-11 ~3 h - inside time-allocation ranges. 115 tests.
+  - **F6 slice 3 - answers, news and taking back (D2-072)**: claims for blood answered with amends (the wrong made good) or a
+    refusal (a new wrong); news of deeds on visits, trades and claims (a village known to beat takers is avoided); the fed and
+    bold take back from the village theirs holds most against. Grievance kept as ageing sums: conflict 87 -> 26 us, trade 127 ->
+    4 us a village-day, the same history. 156 tests.
   - **F6 slice 2 - the watch, blows and injury (D2-071)**: a seen taker may be caught and struck (or turn on those who come out);
     wounds heal or kill, each a deed; a village that remembers its losses keeps a watch at its store. 400 years: seed 42 2,428
     blows and 214 dead of wounds, takings 11,107 -> 4,126 with the watch; seed 7 1,635 and 135. 151 tests.
@@ -216,6 +220,7 @@
 | Fire steps, seed 42 COARSE with people, 150 years (D2-055) | dotnet | 131 -> 2.6 us a step (379 -> 1 fire page held; heap 65 -> 41 MB; run 29.8 -> 23.0 s) |
 | 200 coarse years with household work (D2-056) | dotnet | seed 42: 32.9 s, 3,492 people in 15 places; seed 1 (cool): 31.2 s, 1,206 in 6; hearths 2.8 us a village-day |
 | Web (WebGPU) after D2-062 to D2-068, F5 closed (`tc2/out/webtest/s2webe`, `s2webe2`) | Chrome | 6/6 twice, bit-identical with headless and the editor's Mono (gen dd0c2fd7a147d1d2); start 7.4 / 6.7 s; orbit 119 / 121, region 119 / 118, village 91 / 91, close 75 / 74, low 87 / 92, close running 93 / 79, **after a century 48 / 68 fps** (s2webd 79; the reading right after a catch-up varies run to run - its second sample 70 / 71, s2webc's 12 - but both are lower: to measure layer by layer); a day away (96 years) 42 / 41 s, 503 people in 16 places; build 11.2 MB |
+| 400 coarse years with answers and taking back (D2-072), seeds 42 / 7 | dotnet | seed 42: 221 s (271 before the ageing sums: conflict 87 -> 26, trade 127 -> 4 us a village-day), 14,776 people in 36 places, 1,493 claims (285 made good), 3,587 taken back; seed 7: 5,537 in 19, 2,027 claims (250), 5,607 |
 | 400 coarse years with the watch and blows (D2-071), seeds 42 / 7 | dotnet | seed 42: 14,378 people in 36 places, 4,126 takings, 2,428 blows, 214 dead of wounds; seed 7: 4,779 in 18, 3,587, 1,635, 135; conflict 7.8 us a village-day |
 | 1,000 coarse years after D2-070, seed 42 (`tc2/out/society/sick42_1000.txt`) | dotnet | 1,046 s; 16,000-18,500 people in 35-36 places from year 300; three great plagues (445, 757, 949) of a third each, made good in fifty years; 116 hunger deaths a year; ledger 268,881 kept |
 | 400 coarse years after D2-070, seeds 42 / 7 | dotnet | seed 42: 245 s, 15,984 people in 35 places (12,000-16,000 from year 270); seed 7: 5,392 in 18; village-day: COARSE day 201, knowledge copying 94, demography 55, food 53, sickness 11 us |

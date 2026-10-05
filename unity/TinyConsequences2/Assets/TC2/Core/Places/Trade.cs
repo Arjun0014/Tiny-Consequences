@@ -220,6 +220,7 @@ namespace TC2.Core.Places
                 Load(ref p, sid, to);
                 Exchange(ref p, to);
                 w.Disease.Arrive(ref p, to, SimTime.Hours(VisitHoursCoarse));   // (what they may catch there and carry home)
+                w.DeedBook.Meet(sid, to);                                        // (and the news: D2-072)
                 Unload(ref p, sid);
             }
         }
@@ -269,7 +270,7 @@ namespace TC2.Core.Places
                 }
                 // the help is a deed both villages know: one deed a giver and a famine, its worth what was given (D2-069)
                 int deed = w.DeedBook.HelpSince(sid, o, t2.FamineAt);
-                if (deed != 0) { ref var d = ref w.Deeds.Get(deed); d.Qty = (float)((double)d.Qty + gift); d.Worth = (float)((double)d.Worth + gift); }
+                if (deed != 0) w.DeedBook.AddWorth(deed, gift, gift);
                 else
                 {
                     deed = w.DeedBook.Record(TC2.Core.Society.DeedKind.Relief, 0, sid, 0, o, Grain, gift, gift, told);

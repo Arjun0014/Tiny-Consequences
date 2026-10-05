@@ -1620,3 +1620,39 @@ places, 14,954 hunger deaths; seed 7 (`blows7_400.txt`): 3,587 taken, 1,635 blow
 places. Conflict costs 7.8 us a village-day. Mono equals dotnet (gen 6444494b25d45671).
 **Next (F6 slice 3).** Answers and news: claims (return, pay in kind, deny, refuse), taking back as a choice, compensation;
 ties pressing for settlement; deeds carried as news by visitors, traders and brides (reputation).
+
+## D2-072 — 2026-10-06 — Answers, news and taking back (F6 slice 3); grievance kept as ageing sums
+
+**Context.** 10 §6 slice 3. Research (TC1 `40_RESEARCH_CONFLICT_PLANET.md` §A2, A4): a wrong is settled by return or payment,
+answered by a blow in kind, outweighed by ties, or forgotten slowly; compensation (wergild) exists in almost all feuding
+societies and buys peace; cross-cutting ties - kin across the line, help received - press for settlement (Gluckman); a
+household known to answer harm is less often robbed: reputation is knowledge of deeds carried as news.
+**Decision.** (1) Claims: once a day a village asks amends for the newest unanswered blood its people suffered in the last year
+from known doers (not struck taking), worth 10 FU or more; someone of the wronged household (else the boldest) walks over the
+next morning (`Person.Errand`) - COARSE: at once. (2) The answer (`Conflict.Answer`): the doers' village pays the wrong's weight
+in grain from its store when it can spare it and is willing - 0.2 + 0.3 x the evidence (seen 1, told 0.6) + its ties (close
+kin across the line 0.4, help received up to 0.3) - 0.6 x what it holds against the claimants (50 FU and more) - and the wrong
+is made good (it leaves the grievance); otherwise it refuses, or denies a claim that rests on hearsay: a new wrong of half (a
+quarter) the claim. History: "The people of Gouthorpe made amends to Kubroford for a wounding (60 days' grain), asked by Krarne
+Gairnstaer" - "... would make no amends to Kubroford for a wounding when Krarne Gairnstaer came to ask". (3) News
+(`DeedBook.Meet`): a visit, a trade or a claim between two villages tells each what was done to the other - what it saw itself,
+never hearsay, never the hearer's own people's deeds; a COARSE day has each village meet each neighbour within a day's walk at
+the lived rate of visits. A village known (seen or told) to beat takers keeps takers off: their freedom falls with the hurt it
+dealt (two hard beatings remembered keep them away). (4) Taking back: a fed, bold grown person whose village holds a heavy wrong
+(30 FU or more) against a neighbour may go at night to take from its store - 0.01 a night x boldness x the wrong's weight up to
+200 FU, restraint lifted by the wrong - the taking caused by the wrong ("to take back for the wrong Kubroford did Gouthorpe").
+(5) Grievance and gratitude are kept as sums that age as the deeds do - per pair of villages and kind (goods, blood, help),
+brought to the present when they change - read at once instead of scanning every known deed (which cost a dense world 87 + 127
+us a village-day in conflict and trade); saved as state, so a save continues exactly; the news told so far is a cache.
+Settlement is a flag on the deed. Sim version 26.
+**Evidence.** `TakingTests` (156 tests): amends made where ties and means allow (Kubroford's grievance 60 -> 0) and refused where
+Gouthorpe had nothing to spare (the grievance grows); a claimant "walking to Gouthorpe to ask amends for blood its people shed:
+Kubroford holds them to it" and the answer in history naming them; Kubroford learns from Gouthorpe's account that a third village
+beats takers, and does not pass it on; a fed village holding a killing against its neighbour takes back (2 loads in 40 days); a
+save with deeds, grudges, a claim and news continues identically. 400 coarse years (`tc2/out/society/answers42_400.txt`,
+`answers7_400.txt`): seed 42 1,493 amends asked, 285 made, 1,208 refused, 3,587 loads taken back, 4,971 blows, 294 dead of
+wounds, 14,776 people in 36 places; seed 7 2,027 asked, 250 made, 1,777 refused, 5,607 taken back, 6,744 blows, 373 dead of
+wounds, 5,537 people. With the sums the same history costs conflict 26 us and trade 4.2 us a village-day (400 years 221 s, 271
+before). Mono equals dotnet (gen 4b39f29b8ca834d3).
+**Next (F6 slice 4).** Raids: a band of kin and neighbours raised by a heavy wrong or hunger, each deciding; it walks together at
+night, takes several loads, meets the defenders as a group.

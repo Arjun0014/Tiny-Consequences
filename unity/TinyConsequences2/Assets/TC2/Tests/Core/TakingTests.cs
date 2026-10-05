@@ -4,6 +4,7 @@ using NUnit.Framework;
 using TC2.Core.Agents;
 using TC2.Core.Foundation;
 using TC2.Core.History;
+using TC2.Core.Persistence;
 using TC2.Core.Places;
 using TC2.Core.Simulation;
 using TC2.Core.Society;
@@ -390,6 +391,167 @@ namespace TC2.Tests.Core
             // a year on with no more losses: the watch is let go
             w.AdvanceTo(w.Now + SimTime.Years(1.1));
             Assert.AreEqual(0, w.Settlements.Get(b).Watcher, "the losses forgotten enough, the watch ends");
+        }
+
+        // ------------------------------------------------------------------ answers, news and taking back (D2-072)
+        /// <summary>Premise: a man of a struck a man of b (not taking) - a wound b knows by sight.</summary>
+        static int Wounding(World w, int a, int b, out int struck)
+        {
+            int striker = Grown(w, a);
+            struck = Grown(w, b);
+            ref var q = ref w.People.Get(struck);
+            int wound = w.DeedBook.Record(DeedKind.Wound, striker, a, q.Household, b, 0, 0.6, Conflict.WoundWorth * 0.6, 0);
+            w.DeedBook.Learn(b, wound, KnownHow.Saw);
+            w.DeedBook.Learn(a, wound, KnownHow.Own);
+            return wound;
+        }
+
+        static int Female(World w, int sid)
+        {
+            var res = w.Residents(sid);
+            for (int i = 0; i < res.Count; i++) { var p = w.People.Get(res[i]); if (p.Alive && p.SexKind == Sex.Female && p.AgeYears(w.Now) >= 30) return res[i]; }
+            return 0;
+        }
+
+        [Test]
+        public void AmendsAreMadeWhereTiesAndMeansAllowAndRefusedWhereNot()
+        {
+            // made: a has grain to spare, b once fed it, and a woman of a is the mother of a man of b
+            var w = Pair(out int a, out int b);
+            Assume.That(b != 0, "two villages a walk apart");
+            w.AdvanceTo(w.Now + SimTime.Hours(30));
+            int wound = Wounding(w, a, b, out int struck);
+            Full(w, a, 120);
+            int help = w.DeedBook.Record(DeedKind.Relief, 0, b, 0, a, Trade.Grain, 200, 200, 0);
+            w.DeedBook.Learn(a, help, KnownHow.Saw);
+            int mother = Female(w, a);
+            Assume.That(mother != 0);
+            ref var son = ref w.People.Get(Grown(w, b, struck));
+            son.Mother = mother;
+            Assert.IsTrue(w.Conflict.KinAcross(a, b), "kin across the line");
+            double g0 = w.DeedBook.Grievance(b, a), store = w.Settlements.Get(b).Granary;
+            ref var claimant = ref w.People.Get(struck);
+            long mark = w.History.LastId;
+            w.Conflict.Answer(ref claimant, a, wound);
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.AmendsMade) Console.WriteLine(HistoryText.Line(w, e)); }
+            var d = w.Deeds.Get(wound);
+            Assert.AreNotEqual(0, d.Answer);
+            Assert.AreEqual(DeedKind.Amends, w.Deeds.Get(d.Answer).Kind, "amends made");
+            Assert.Greater(w.Settlements.Get(b).Granary, store, "in grain to the wronged village's store");
+            Console.WriteLine("b's grievance against a: " + g0.ToString("0") + " -> " + w.DeedBook.Grievance(b, a).ToString("0"));
+            Assert.AreEqual(0.0, w.DeedBook.Grievance(b, a), 1e-9, "a wrong made good weighs no more");
+            Assert.Greater(w.DeedBook.Gratitude(b, a), 0.0);
+            // refused: a has nothing to spare
+            var w2 = Pair(out a, out b);
+            w2.AdvanceTo(w2.Now + SimTime.Hours(30));
+            int wound2 = Wounding(w2, a, b, out int struck2);
+            w2.Settlements.Get(a).Granary = 0;
+            double h0 = w2.DeedBook.Grievance(b, a);
+            ref var claimant2 = ref w2.People.Get(struck2);
+            mark = w2.History.LastId;
+            w2.Conflict.Answer(ref claimant2, a, wound2);
+            for (int i = w2.History.FirstIndexAfter(mark); i < w2.History.Count; i++) { var e = w2.History.At(i); if (e.Kind == HistoryKind.ClaimRefused) Console.WriteLine(HistoryText.Line(w2, e)); }
+            Assert.AreEqual(DeedKind.Refusal, w2.Deeds.Get(w2.Deeds.Get(wound2).Answer).Kind, "refused");
+            Assert.Greater(w2.DeedBook.Grievance(b, a), h0, "a refusal is a new wrong");
+        }
+
+        [Test]
+        public void AClaimantWalksOverInTheMorningAndTheAnswerIsHistory()
+        {
+            var w = Pair(out int a, out int b);
+            Assume.That(b != 0, "two villages a walk apart");
+            w.AdvanceTo(w.Now + SimTime.Hours(30));
+            int wound = Wounding(w, a, b, out int struck);
+            // the village's day sends someone of the wronged household (lived: an errand for the morning)
+            long off = w.LocalOffsetOf(b);
+            w.AdvanceTo(SimTime.StartOfDay(w.Now + off) + SimTime.Day + SimTime.Hours(6) - off);   // (the first morning after the village's day)
+            Assert.AreNotEqual(0, w.Deeds.Get(wound).Flags & DeedKind.Claimed, "amends asked");
+            int claimant = 0;
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id)) if (w.People.Get(id).Errand == wound) claimant = id;
+            Assume.That(claimant != 0, "someone has the errand");
+            string walking = "";
+            long end = w.Now + SimTime.Hours(16);
+            while (w.Now < end && w.Deeds.Get(wound).Answer == 0)
+            {
+                w.AdvanceTo(w.Now + 600);
+                var q = w.People.Get(claimant);
+                if (walking.Length == 0 && q.Act == ActivityKind.TripOut && q.Why == WhyCode.Claim) walking = HistoryText.Doing(w, in q);
+            }
+            Console.WriteLine(walking);
+            Assert.IsTrue(walking.Length > 0, "they walked over");
+            Assert.AreNotEqual(0, w.Deeds.Get(wound).Answer, "and had their answer");
+            var ans = w.Deeds.Get(w.Deeds.Get(wound).Answer);
+            Assert.IsTrue(w.History.TryGet(ans.Event, out var told), "the answer is history");
+            Console.WriteLine(HistoryText.Line(w, told));
+            Assert.AreEqual(claimant, told.Other.Id, "history names who asked");
+            Assert.IsNull(TestWorlds.Audit(w));
+        }
+
+        [Test]
+        public void NewsTellsWhoBeatsTakersAndTheirTakersKeepAway()
+        {
+            var w = Pair(out int a, out int b);
+            Assume.That(b != 0, "two villages a walk apart");
+            w.AdvanceTo(w.Now + SimTime.Hours(30));
+            int c = 0;
+            for (int s = w.Settlements.First(); s != 0; s = w.Settlements.Next(s)) if (s != a && s != b) { c = s; break; }
+            // premise: c's people beat a taker from a (a knows it by sight)
+            int beat = w.DeedBook.Record(DeedKind.Wound, Grown(w, c), c, w.People.Get(Grown(w, a)).Household, a, 0, 0.8, Conflict.Deserved * Conflict.WoundWorth * 0.8, 0);
+            { ref var bd = ref w.Deeds.Get(beat); bd.Flags |= DeedKind.InTheAct; }
+            w.DeedBook.Learn(a, beat, KnownHow.Saw);
+            Assert.Greater(w.DeedBook.Answers(a, c), 0.0, "a knows c answers takers");
+            Assert.AreEqual(0.0, w.DeedBook.Answers(b, c), "b does not yet");
+            w.DeedBook.Meet(a, b);   // (a visit between a and b)
+            Assert.Greater(w.DeedBook.Answers(b, c), 0.0, "the news reached b");
+            Assert.IsTrue(w.DeedBook.Knows(b, beat, out byte how) && how == KnownHow.Told);
+            // b retells nothing it only heard
+            int d = 0;
+            for (int s = w.Settlements.First(); s != 0; s = w.Settlements.Next(s)) if (s != a && s != b && s != c) { d = s; break; }
+            w.DeedBook.Meet(b, d);
+            Assert.IsFalse(w.DeedBook.Knows(d, beat, out _), "hearsay is not passed on");
+            // a taker of b weighs c's store less freely (c's people are known to beat takers)
+            Console.WriteLine("what b knows of c's answers: " + w.DeedBook.Answers(b, c).ToString("0.00") + " (keeps takers away " + (100 * Math.Min(1.0, w.DeedBook.Answers(b, c) / Conflict.AnswersFull)).ToString("0") + "%)");
+        }
+
+        [Test]
+        public void AFedVillageHoldingAHeavyWrongTakesBack()
+        {
+            var w = Pair(out int a, out int b);
+            Assume.That(b != 0, "two villages a walk apart");
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Day);
+            // premise: b's people killed a man of a; a knows it; a is fed, b's store holds grain
+            int kill = w.DeedBook.Record(DeedKind.Kill, Grown(w, b), b, w.People.Get(Grown(w, a)).Household, a, 0, 1.0, Conflict.KillWorth, 0);
+            w.DeedBook.Learn(a, kill, KnownHow.Saw);
+            { ref var kd = ref w.Deeds.Get(kill); kd.Flags |= DeedKind.Claimed; kd.Answer = 0; }
+            long n0 = w.Metrics.TakenBack;
+            for (int day = 0; day < 40; day++) { Full(w, b); w.AdvanceTo(w.Now + SimTime.Day); }
+            Console.WriteLine("a's foe " + w.Settlements.Get(a).Foe + " (b " + b + "), its weight " + w.Settlements.Get(a).FoeWorth.ToString("0") + "; loads taken back " + (w.Metrics.TakenBack - n0));
+            Assert.AreEqual(b, w.Settlements.Get(a).Foe, "a holds b most to account");
+            Assert.Greater(w.Metrics.TakenBack - n0, 0, "and its fed and bold took back from b's store");
+        }
+
+        [Test]
+        public void ASaveWithDeedsGrudgesAndNewsContinuesIdentically()
+        {
+            // (the sums of grievance and gratitude are state; the news a village has told another so far is not, and re-telling it
+            // after a load must change nothing)
+            var w = Pair(out int a, out int b);
+            Assume.That(b != 0, "two villages a walk apart");
+            w.AdvanceTo(w.Now + SimTime.Hours(30));
+            int wound = Wounding(w, a, b, out _);
+            int help = w.DeedBook.Record(DeedKind.Relief, 0, a, 0, b, Trade.Grain, 120, 120, 0);
+            w.DeedBook.Learn(b, help, KnownHow.Saw);
+            for (int k = 0; k < 2; k++) { int d = w.DeedBook.Record(DeedKind.Take, Grown(w, a), a, 0, b, Trade.Grain, Conflict.LoadFu, Conflict.LoadFu, 0); w.DeedBook.Learn(b, d, KnownHow.Found); }
+            w.AdvanceTo(w.Now + SimTime.Days(1) + SimTime.Hours(7));   // (a claim under way, a watch kept, news told on visits)
+            var bytes = SaveFile.Save(w, 0, OfflineMode.Living);
+            var w2 = SaveFile.Load(bytes, out _);
+            Assert.AreEqual(w.StateHash(), w2.StateHash(), "loaded as saved");
+            long end = w.Now + SimTime.Days(12);
+            w.AdvanceTo(end); w2.AdvanceTo(end);
+            Console.WriteLine("b's grievance against a " + w.DeedBook.Grievance(b, a).ToString("0.000") + " / " + w2.DeedBook.Grievance(b, a).ToString("0.000") + "; answered " + (w.Deeds.Get(wound).Answer != 0));
+            Assert.AreEqual(w.StateHash(), w2.StateHash(), "a world saved with its deeds and grudges continues as if never saved");
+            Assert.IsNull(TestWorlds.Audit(w2));
         }
 
         [Test]

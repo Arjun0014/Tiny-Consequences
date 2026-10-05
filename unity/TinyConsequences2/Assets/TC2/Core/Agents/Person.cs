@@ -47,6 +47,7 @@ namespace TC2.Core.Agents
         Take = 31,        // hungry, with nothing at home: to a neighbour's full store in the dark (D2-069)
         Hurt = 32,        // abed with wounds (D2-071)
         Watch = 33,       // the village keeps a watch at its store: grain has been taken from it
+        Claim = 34,       // walking to ask amends for blood shed (D2-072)
     }
 
     public static class Sex { public const byte Female = 0, Male = 1; }
@@ -115,6 +116,7 @@ namespace TC2.Core.Agents
         public byte CargoTo;                 // where it goes at home: Trade.ToStore (the village's), ToLarder (the household's: D2-069)
         public float Hurt;                   // wounds, 0..1: abed above 0.4, off the roads above 0.25; heals by the day (D2-071)
         public int HurtDeed;                 // the wound deed behind it (its striker; a death of it is a killing)
+        public int Errand;                   // a wrong to ask amends for at the doers' village (a deed id; 0 none: D2-072)
 
         public double AgeYears(long now) => (now - Born) / (double)SimTime.Year;
         public bool IsFemale => SexKind == Sex.Female;
@@ -131,7 +133,7 @@ namespace TC2.Core.Agents
             w.Int(ActVer); w.UInt(RngCount); w.Long(Alarm); w.Int(AlarmProc); w.Long(AlarmT); w.Int(AlarmVer); w.Int(StayDur); w.Int(Visits); w.Long(Until); w.Float(Worked); w.Float(KNets); w.Float(KLoom); w.Float(KQuern); w.Float(KPottery); w.Float(KArd); w.Float(KMetal);
             w.Int(Sick); w.Byte(SickPhase); w.Long(SickUntil); w.Long(SickCause); w.Int(Imm0); w.Int(Imm1); w.Long(ImmUntil0); w.Long(ImmUntil1); w.Byte(Cargo); w.Float(CargoQty); w.Byte(CargoTo);
             w.Int(Imm2); w.Int(Imm3); w.Int(Imm4); w.Int(Imm5); w.Long(ImmUntil2); w.Long(ImmUntil3); w.Long(ImmUntil4); w.Long(ImmUntil5);
-            w.Float(Hurt); w.Int(HurtDeed);
+            w.Float(Hurt); w.Int(HurtDeed); w.Int(Errand);
         }
 
         public static Person Read(BinReader r)
@@ -147,7 +149,7 @@ namespace TC2.Core.Agents
             p.ActVer = r.Int(); p.RngCount = r.UInt(); p.Alarm = r.Long(); p.AlarmProc = r.Int(); p.AlarmT = r.Long(); p.AlarmVer = r.Int(); p.StayDur = r.Int(); p.Visits = r.Int(); p.Until = r.Long(); p.Worked = r.Float(); p.KNets = r.Float(); p.KLoom = r.Float(); p.KQuern = r.Float(); p.KPottery = r.Float(); p.KArd = r.Float(); p.KMetal = r.Float();
             p.Sick = r.Int(); p.SickPhase = r.Byte(); p.SickUntil = r.Long(); p.SickCause = r.Long(); p.Imm0 = r.Int(); p.Imm1 = r.Int(); p.ImmUntil0 = r.Long(); p.ImmUntil1 = r.Long(); p.Cargo = r.Byte(); p.CargoQty = r.Float(); p.CargoTo = r.Byte();
             p.Imm2 = r.Int(); p.Imm3 = r.Int(); p.Imm4 = r.Int(); p.Imm5 = r.Int(); p.ImmUntil2 = r.Long(); p.ImmUntil3 = r.Long(); p.ImmUntil4 = r.Long(); p.ImmUntil5 = r.Long();
-            p.Hurt = r.Float(); p.HurtDeed = r.Int();
+            p.Hurt = r.Float(); p.HurtDeed = r.Int(); p.Errand = r.Int();
             return p;
         }
 
@@ -163,7 +165,7 @@ namespace TC2.Core.Agents
             h.Add(ActVer); h.Add(RngCount); h.Add(Alarm); h.Add(AlarmProc); h.Add(AlarmT); h.Add(AlarmVer); h.Add(StayDur); h.Add(Visits); h.Add(Until); h.Add(Worked); h.Add(KNets); h.Add(KLoom); h.Add(KQuern); h.Add(KPottery); h.Add(KArd); h.Add(KMetal);
             h.Add(Sick); h.Add(SickPhase); h.Add(SickUntil); h.Add(SickCause); h.Add(Imm0); h.Add(Imm1); h.Add(ImmUntil0); h.Add(ImmUntil1); h.Add(Cargo); h.Add(CargoQty); h.Add(CargoTo);
             h.Add(Imm2); h.Add(Imm3); h.Add(Imm4); h.Add(Imm5); h.Add(ImmUntil2); h.Add(ImmUntil3); h.Add(ImmUntil4); h.Add(ImmUntil5);
-            h.Add(Hurt); h.Add(HurtDeed);
+            h.Add(Hurt); h.Add(HurtDeed); h.Add(Errand);
         }
     }
 }
