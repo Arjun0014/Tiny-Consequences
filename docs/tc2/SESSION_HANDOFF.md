@@ -3,18 +3,16 @@
 ## Session 2 (5 Oct 2026) — in progress (see PROGRESS.md CURRENT STATE)
 
 ### Exact state
-- Session 2 commits since the last checkpoint (newest last): 4fb92e5 Web verified on both paths (D2-051) · 34d7699 ruins and land
-  given back (D2-052) · 98ef641 the inspector's sentences and follow · c94a9c1 history compaction lets households' events go ·
-  d436cef seals haul out together (D2-053, view) · e88ac31 fishing boats · 40a4ee9 fire steps without quadratic list work.
-  Earlier this session: compaction hooks, wild food (D2-042), relief/ice/densities (D2-043/044), building and parties (D2-045),
-  F1 closed, herds (D2-047), livestock (D2-048), farm animals in the view (D2-049), the village herd (D2-050), F2 closed (D2-046).
-- Phases: F0 done, F1 closed, F2 closed, F3 in progress (its done-when looks met: a village lives untouched for centuries, the
-  visible action is the simulation, the inspector tells a person's doing and why and follows them - close it after one more
-  review of a followed life). 106 headless tests green. Web: WebGPU and WebGL2 6/6, bit-identical (D2-051).
-- In flight: `tc2/out/long/run42_1000b.txt` (1,000 coarse years of seed 42 on the history-fixed binary, scratch copy
-  `scratchpad/bin_long2`): compare its ledger size, hunger and cost with `run42_1000.txt` (the binary before the fix).
-- Uncommitted legacy TC1 work may exist in the tree and is NOT ours: `game/html/engine_template.html` and `docs/DECISIONS.md`
-  (D-227). Never stage them in [tc2] commits.
+- Session 2 commits since the last checkpoint (newest last): 11fb029 stores free the pages of sparse ids (D2-055), DECISIONS
+  D2-053/054, tools `follow` and fire tallies · 3db0273 the household's own work and warmth (D2-056) and no float arithmetic in
+  the core (D2-057; `tc2/tools/floatcheck` runs before the headless tests).
+- Phases: F0 done, F1 closed, F2 closed, F3 in progress. **F3 is not closed**: following people showed grown people idle 7-9 hours
+  a day outside sowing and harvest (`timeuse`); D2-056 gave them meals, water, wood for the hearths and made houses matter
+  (warmth); the slack's real work is still missing (see Next steps 1). 111 headless tests green.
+- Determinism: Mono (editor) equals dotnet again from generation through day 3 (`hashtest --parts`); the Web build (IL2CPP) has not
+  been rebuilt since D2-056/057 - rebuild and run `webtest.mjs` on both paths at the next milestone.
+- Nothing running. Uncommitted legacy TC1 work may exist in the tree and is NOT ours: `game/html/engine_template.html` and
+  `docs/DECISIONS.md` (D-227). Never stage them in [tc2] commits.
 
 ### How to run things
 | Task | Command |
@@ -61,23 +59,24 @@
 - Any rule the simulation and the view must share (a herd's ground, the frost that pens the animals, which seals show) lives
   in Core or one static helper both call - never two copies.
 - Test mechanisms, not demography: "mostly children herd" failed because only 1 of 19 households had a child of 8-15.
+- **No float arithmetic in TC2.Core** (D2-057): `a + b` on two floats rounds differently under Mono; write `(double)a + b` and cast
+  to float only when storing. `headless.mjs test` runs `tc2/tools/floatcheck` first and fails on any.
+- A store whose ids come from a shared counter (process ids: herds, parties, fires, storms) is sparse: check `PagesHeld` and the
+  cost of a pass over it at scale (D2-055).
+- A new daily need (meals, water, fuel) changes what a "stocked" premise means in old tests: restate the premise (keep the store
+  stocked), do not loosen the mechanism (D2-056).
 
 ### Next steps
-1. **Offline catch-up at scale** (the biggest open risk): a saturated world (~14,000 people) costs ~1 s a world year headless
-   (~1.2 us per person-day in COARSE + fires) - "a day away" (a century) would take minutes in the browser. Options: cheaper
-   person-days (profile `daily.coarse-day` 149 us, `daily.food` 110 us per village-day at ~350 people), a cohort-level
-   resolution for deep time (03/12's Ancient/Deep modes), or the Living span adapting to the world's size. Measure the Web
-   catch-up from a mature save first (`webbench.mjs`).
-2. **The sea's calibration**: the fish fields hold ~1 % of real biomass (a coastal cell ~50 herring, ~2.5 kg/ha against
-   50-500 kg/ha in real coastal waters), so a seal (263 kg a year, Metab 9) needs about ten cells' yearly herring and the
-   miniature holds ~10-20 seals; `Species.Range` is documented as "cells' worth of prey their rounds cover" but only lowers the
-   half-saturation (never widens the reach); the spin-up seeds the sea's predators ~10x below their level. A recalibration of
-   D2-039/041 (fish biomass, wide-ranging hunters over their neighbourhood, human fishing returns re-fitted) with 10,000-year
-   reruns - the look wants seal colonies on some shores (the view already gathers seals at haul-outs, D2-053).
-3. **Famine in the full world**: ~1 % of the people die of hunger each year once the land is full (1,791 famines in 1,000 years)
-   - relief, exchange and storage between villages (F5) are the remedy; check that collapse stays possible.
-4. WebGL2's first-entry stall at a new view (1-5 s): a traced shader-variant collection warmed progressively at start
-   (`ShaderVariantCollection.WarmUpProgressively`), not `WarmupAllShaders` (36 s).
-5. F3 remainder: persistent buildings and layouts (ruins as buildings to quarry or re-roof; houses that stay when a household
-   moves), workshops and crafts, maintenance and decay; close F3. Look backlog: coast shapes off the cell grid (never sink a
-   coastal village), gardens, orbit detail.
+1. **F3's believable day** (D2-056 open): crafts and the making and mending of clothes and gear in the slack hours (textiles took
+   farming households hours every day; clothes worn thin make the cold bite sooner), hay against the animals' winter (the view's
+   haystacks to come from it), weeding labour, and minding infants and toddlers (07 §2's carer). Measure with `timeuse` across
+   the year (sowing, growing, harvest, winter) and `follow`; then close F3.
+2. **Offline catch-up at scale**: a saturated world (~14,000 people) costs ~1 s a world year headless (fires no longer 35 % of it
+   since D2-055: measure again) - "a day away" (a century) would take minutes in the browser. Cheaper person-days, a cohort
+   resolution for deep time, or the Living span adapting to the world's size; measure the Web catch-up from a mature save.
+3. **The sea's calibration**: the fish fields hold ~1 % of real biomass, so the miniature holds ~10-20 seals (D2-053 found);
+   wide-ranging hunters should hunt over their range; 10,000-year reruns.
+4. **Famine in the full world**: ~1 % of the people die of hunger each year once the land is full - relief, exchange and storage
+   between villages (F5).
+5. WebGL2's first-entry stall (a traced shader-variant collection warmed progressively); look backlog: coast shapes off the
+   cell grid, gardens, orbit detail, smoke from huts and camps.

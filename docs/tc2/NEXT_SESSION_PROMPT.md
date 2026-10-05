@@ -49,12 +49,12 @@ real game screenshots (`node tc2/scripts/unity.mjs shots`), not in debug maps; k
 Headless Blender (`tc2/art/kit.py`) makes the asset kit. The god powers that exist (eruption, quake, storm, lightning)
 are logged commands and double as screenshot tools (`unity.mjs shots --erupt/--quake/--storm`).
 
-**Where we are (session 2, 5 Oct 2026)**: F1 is closed (10,000-year runs on the corrected laws, D2-043). F2's done-when is
-met; a minimum-viable-population law for species turnover is in validation (SESSION_HANDOFF "Exact state"). F3 is well under
-way: wild food from the ecology's fields (D2-042), building, scouting, households moving and founding (D2-045), wild herds as
-identities near villages (D2-047), livestock as individuals on the same grass (D2-048). Next: the visual slice for F3 (farm
-animals, herds, camps), the look backlog and the Web/WebGL2 checks, then F3's tending activity, pens and long runs with
-people (SESSION_HANDOFF "Next steps"). Run long headless jobs from a scratch copy of the binaries so the repo's DLL stays free.
+**Where we are (session 2, 6 Oct 2026)**: F1 and F2 are closed (10,000-year runs). F3 is well under way but not closed: wild
+food (D2-042), building, scouting, moving and founding (D2-045), wild herds and livestock with herders (D2-047/048/050), ruins
+(D2-052), the inspector and follow, the household's own work and warmth (D2-056: meals made ready, water, hearth fuel, a roof and
+a fire against the cold). Following people still shows idle grown people outside sowing and harvest: crafts and clothes, hay
+and infant care come next, then close F3 (SESSION_HANDOFF "Next steps"). Determinism across Mono and dotnet was repaired and is
+linted (D2-057); recheck the Web build. Run long headless jobs from a scratch copy of the binaries so the repo's DLL stays free.
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

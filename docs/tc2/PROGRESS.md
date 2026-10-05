@@ -2,7 +2,7 @@
 
 ## CURRENT STATE (keep accurate; newest first below)
 
-**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 in progress (D2-042, -045, -047 to -050, -052); Web checked on WebGPU and WebGL2 (D2-051).**
+**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 in progress (D2-042, -045, -047 to -050, -052, -056); Web checked on WebGPU and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
 - **Session 2 (5 Oct 2026, in progress)** - compaction-recovery hooks (`.claude/settings.json`, `.claude/hooks/tc2_compact.mjs`;
   Claude Code 2.1.289: PreCompact stdout joins the compaction instructions, SessionStart matcher `compact` stdout reaches Claude;
@@ -95,6 +95,21 @@
     **Consequence for offline catch-up**: a saturated world (~14,000 people) costs ~1 s a world year headless, several times
     that in the browser - "a day away" (a century) would take minutes; the catch-up must scale (cheaper person-days, or the
     Living mode's span adapting to the world's size).
+  - **The fire store (D2-055)**: fire steps cost 1.15 ms in the 1,000-year run against 3.9 us without people - not big fires
+    (planet-only tally: ~400 fires a century, ~15 cells, ~54 hours) but `PagedStore` keeping every emptied newest page of
+    fire ids, which are sparse among the herds' process ids (887,000 ids in 150 years): 379 pages walked row by row each step.
+    Fixed (pages freed once ids move on, empty pages skipped): 131 -> 2.6 us a fire step, 65 -> 41 MB heap at year 150, hash
+    identical. DECISIONS also recorded D2-053 (seal haul-outs) and D2-054 (the ledger keeps what matters to the living).
+  - **The household's own work and warmth (D2-056)**: following people (`follow`, `timeuse`) showed grown people idle most of
+    the day and houses and chimney smoke meaning nothing to the simulation. Now meals are made ready (grinding and cooking, ~1
+    FU an hour, on the village's wood), water is carried from the well as the pots empty, and the hearths burn the woodstore
+    against the day's cold: a roof and a fire keep a home warm, a cold home takes health (infants and the old most) and can kill
+    (`ColdHomes`); children herd, carry water and help at the quern; COARSE charges the same work to the same people. 111 tests.
+    Time use (seed 42, sowing): grown people cook 1.3 h, cut wood 0.6 h, field 2.5 h; still 7-9 h idle outside sowing and harvest
+    - crafts, clothes, hay and infant care are the missing work (next).
+  - **Determinism repaired (D2-057)**: the editor's Mono had parted from dotnet at world generation (float sums in the climate
+    and in people's positions: 63 float operations); rewritten in double, `tc2/tools/floatcheck` fails the tests on any float
+    arithmetic; Mono equals dotnet again (`hashtest --parts` compares part by part). The Web build (IL2CPP) to recheck.
   - Seal shots: seal views take the seal shore's own hour and frame a shore where the view shows seals. **Found**: seed 42
     starts with ~6 seals, 411 cod and 91 tuna (the spin-up seeds the sea's predators ~10x below their level; they take a
     decade to grow into it) and its seals level at ~11-20 in all the world (food-limited, not territory: a colony cap of 4
@@ -158,6 +173,8 @@
 | WebGL2 village view by layer (`tc2/scripts/webperf.mjs`) | Chromium | 4 cascades: 37 fps, 60 without shadows (trees' shadows the cost); 2 cascades at half reach 49; **1 cascade 60** (D2-051); `Shader.WarmupAllShaders` costs 36 s at start (removed) |
 | A full world in COARSE (bench 40 x 300 founders, ~13,300 people, 5 years) | dotnet / Chrome (WebGPU build) | 1.28 / 1.37 world years/s (1.22 us per person-day): the browser keeps pace with headless - a Living day away (96 years) in a full world ~70 s; Ancient (600) ~7 min, Deep time (4,800) ~1 h: those need a cheaper human layer |
 | Village-day cost at ~360 people (COARSE, year 320) | dotnet | 206 us (coarse-day 69, survey 42 of which herds 31, food 37 of which needs 26, demography 35, stock 19) |
+| Fire steps, seed 42 COARSE with people, 150 years (D2-055) | dotnet | 131 -> 2.6 us a step (379 -> 1 fire page held; heap 65 -> 41 MB; run 29.8 -> 23.0 s) |
+| 200 coarse years with household work (D2-056) | dotnet | seed 42: 32.9 s, 3,492 people in 15 places; seed 1 (cool): 31.2 s, 1,206 in 6; hearths 2.8 us a village-day |
 | History ledger, seed 42 COARSE | dotnet | year 300: 95,615 -> 69,179 kept after two fixes (households' events kept for ever; a death's age counted as its importance); at year 1,000 before them 780,282 |
 
 ## Measurements (session 1)
