@@ -205,14 +205,19 @@ namespace TC2.Core.Places
         void Food(ref Settlement s, int doy)
         {
             var w = _w;
+            var prof = w.Profiler;
             // famine is remembered by the adults who lived through it: the memory fades as they die (D2-042)
+            prof?.Begin(10009);
             s.Memory = FamineMemory(s.Id, s.FamineAt);
+            prof?.End(10009);
+            prof?.Begin(10010);
             // the granary refills each household's larder to two days of its members' needs - rationed so
             // that what is stored lasts until the next harvest (the reversible first step of coping), and by
             // prudence a reserve beyond it, larger where famine is remembered (rations no lower than 0.8 for that alone)
             double daily = 0;
             var hhs = w.HouseholdsOf(s.Id);
             for (int i = 0; i < hhs.Count; i++) daily += HouseholdNeed(hhs[i]);
+            prof?.End(10010);
             int toHarvest = 39 - doy; if (toHarvest <= 0) toHarvest += SimTime.DaysPerYear;
             double lasts = daily > 0 ? DMath.Clamp(s.Granary / (daily * (toHarvest + 6)), 0.45, 1.0) : 1.0;
             double keep = 6.0 + 30.0 * s.Memory;
@@ -229,6 +234,7 @@ namespace TC2.Core.Places
                 });
             }
             else if (ration >= 0.98 && s.RationEvent != 0) s.RationEvent = 0;
+            prof?.Begin(10011);
             double total = daily * 2.0 * ration;
             double share = total > 0 ? Math.Min(1.0, s.Granary / total) : 1.0;
             for (int i = 0; i < hhs.Count; i++)
@@ -241,6 +247,7 @@ namespace TC2.Core.Places
                 give = Math.Min(give, s.Granary);
                 hh.Larder += give; s.Granary -= give;
             }
+            prof?.End(10011);
             // spoilage of stored grain (~12% a year)
             s.Granary *= 1.0 - 0.12 / SimTime.DaysPerYear;
             bool empty = s.Granary < 1.0;
