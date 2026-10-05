@@ -3,16 +3,16 @@
 ## Session 2 (5 Oct 2026) — in progress (see PROGRESS.md CURRENT STATE)
 
 ### Exact state
-- Session 2 commits (newest last): 9e18da6 compaction hooks · 321bcf9 wild food (D2-042) · 6522b94 relief, ice, densities
-  (D2-043/044) · 5f6c9e0 building, knowing places, parties (D2-045) · 8405b5e housekeeping speed · fb48f58 F1 closed ·
-  46631fa herds near people (D2-047) · 6b0903d livestock (D2-048) · 4cf5170 handoff checkpoint · e57666b farm animals, herds and
-  camps in the view (D2-049) · 7bfab6b herd claims array · a830732 the village herd and its herders (D2-050) · fdfa486 seal
-  shots · 65794ab one frost rule · 43e12a7 **F2 closed (D2-046)**.
-- Phases: F0 done, F1 closed (D2-043), F2 closed (D2-046), F3 in progress. 104 headless tests green.
-- In flight at this checkpoint: the Web build (`node tc2/scripts/unity.mjs build-web` -> `tc2/out/build_web_s2.txt`), to be
-  followed by `node tc2/scripts/webtest.mjs --tag s2web` (do not rebuild the headless DLL in between: the Web test compares
-  hashes with it), then the WebGL2 fallback (`build-web --webgl2`, `webtest --tag s2webgl2 --webgl2`). Record start time, fps per
-  view, a day away's catch-up time in PROGRESS Measurements (the last were session 1's: start 6.1 s, 88-120 fps, 27 s).
+- Session 2 commits since the last checkpoint (newest last): 4fb92e5 Web verified on both paths (D2-051) · 34d7699 ruins and land
+  given back (D2-052) · 98ef641 the inspector's sentences and follow · c94a9c1 history compaction lets households' events go ·
+  d436cef seals haul out together (D2-053, view) · e88ac31 fishing boats · 40a4ee9 fire steps without quadratic list work.
+  Earlier this session: compaction hooks, wild food (D2-042), relief/ice/densities (D2-043/044), building and parties (D2-045),
+  F1 closed, herds (D2-047), livestock (D2-048), farm animals in the view (D2-049), the village herd (D2-050), F2 closed (D2-046).
+- Phases: F0 done, F1 closed, F2 closed, F3 in progress (its done-when looks met: a village lives untouched for centuries, the
+  visible action is the simulation, the inspector tells a person's doing and why and follows them - close it after one more
+  review of a followed life). 106 headless tests green. Web: WebGPU and WebGL2 6/6, bit-identical (D2-051).
+- In flight: `tc2/out/long/run42_1000b.txt` (1,000 coarse years of seed 42 on the history-fixed binary, scratch copy
+  `scratchpad/bin_long2`): compare its ledger size, hunger and cost with `run42_1000.txt` (the binary before the fix).
 - Uncommitted legacy TC1 work may exist in the tree and is NOT ours: `game/html/engine_template.html` and `docs/DECISIONS.md`
   (D-227). Never stage them in [tc2] commits.
 
@@ -63,14 +63,18 @@
 - Test mechanisms, not demography: "mostly children herd" failed because only 1 of 19 households had a child of 8-15.
 
 ### Next steps
-1. Finish the Web checks above (WebGPU and WebGL2): bit-identical hashes, fps per view, start time, a day away; fix what breaks.
-2. Long runs with people: `run --seed 42 --years 1000 --report-days 4800 --tier 3 --coarse --places --profile` (and seed 7) -
-   saturation, collapse and abandonment possible? herds over centuries? the cost of a crowded world (village-days at 30-60
-   villages); Souhope re-checked.
-3. Ecology calibration with the look: the sea's predators start ~10x below their level (spin-up) and the miniature's seals
-   level at ~11-20 in all the world (food-limited: `planet --eco` reports; D2-039's functional response) - the look wants
-   colonies on some shores.
-4. F3 next: workshops and crafts, maintenance and decay of buildings, ruins of abandoned villages (08 §4), the survey's cost
-   (`survey.herds` 41 us per COARSE village-day), a "herd" shot view (the village herd with its herders on the day's ground).
-5. Look backlog: coast shapes off the cell grid (never sink a coastal village), boats, gardens, orbit detail; check the field
-   patchwork in a top-down shot (D2-049 consequence).
+1. **Offline catch-up at scale** (the biggest open risk): a saturated world (~14,000 people) costs ~1 s a world year headless
+   (~1.2 us per person-day in COARSE + fires) - "a day away" (a century) would take minutes in the browser. Options: cheaper
+   person-days (profile `daily.coarse-day` 149 us, `daily.food` 110 us per village-day at ~350 people), a cohort-level
+   resolution for deep time (03/12's Ancient/Deep modes), or the Living span adapting to the world's size. Measure the Web
+   catch-up from a mature save first (`webbench.mjs`).
+2. **Ecology calibration**: wide-ranging hunters (seals Range 12, tuna 3) must hunt over their range, not one cell (a seal may
+   take a quarter of one cell's fish a step but needs ~66 kg: the miniature holds ~10-20 seals); the spin-up seeds the sea's
+   predators ~10x below their level (they take a decade to grow into it). Validate with 10,000-year reruns (F2's evidence).
+3. **Famine in the full world**: ~1 % of the people die of hunger each year once the land is full (1,791 famines in 1,000 years)
+   - relief, exchange and storage between villages (F5) are the remedy; check that collapse stays possible.
+4. WebGL2's first-entry stall at a new view (1-5 s): a traced shader-variant collection warmed progressively at start
+   (`ShaderVariantCollection.WarmUpProgressively`), not `WarmupAllShaders` (36 s).
+5. F3 remainder: persistent buildings and layouts (ruins as buildings to quarry or re-roof; houses that stay when a household
+   moves), workshops and crafts, maintenance and decay; close F3. Look backlog: coast shapes off the cell grid (never sink a
+   coastal village), gardens, orbit detail.
