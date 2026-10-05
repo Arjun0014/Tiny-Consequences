@@ -25,6 +25,9 @@ namespace TC2.Headless
                         return Commands.Bench(args);
                     case "hash":
                         return Commands.Hash(args);
+                    case "hashtest":
+                        System.Console.WriteLine(TC2.Core.Diagnostics.CrossRuntime.Probe());
+                        return 0;
                     case "probe":
                         return Commands.Probe(args);
                     case "inspect":

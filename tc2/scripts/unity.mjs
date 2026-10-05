@@ -1,0 +1,87 @@
+// Runs the Unity 6.6 editor in batchmode for TC2 (one Unity process at a time: 11 GB RAM).
+// Usage: node tc2/scripts/unity.mjs <configure|test|hashtest|build-web|build-win|method NAME> [--dev] [--threads] [--webgl2] [--out PATH]
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(here, '..', '..');
+const project = path.join(root, 'unity', 'TinyConsequences2');
+const unity = process.env.TC2_UNITY || 'C:/Program Files/Unity/Hub/Editor/6000.6.4f1/Editor/Unity.exe';
+const outDir = path.join(root, 'tc2', 'out');
+mkdirSync(path.join(outDir, 'logs'), { recursive: true });
+
+const args = process.argv.slice(2);
+const cmd = args[0];
+const flag = (f) => args.includes(f);
+const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 && i + 1 < args.length ? args[i + 1] : d; };
+const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+const log = path.join(outDir, 'logs', `unity-${cmd}-${stamp}.log`);
+
+function run(extra, { quit = true } = {}) {
+  const a = ['-batchmode', '-projectPath', project, '-logFile', log, ...(quit ? ['-quit'] : []), ...extra];
+  const t0 = Date.now();
+  console.log('unity ' + a.join(' '));
+  const r = spawnSync(unity, a, { stdio: 'inherit' });
+  const secs = ((Date.now() - t0) / 1000).toFixed(0);
+  console.log(`exit ${r.status} after ${secs} s; log ${log}`);
+  return r.status ?? 1;
+}
+
+function tail(file, pattern) {
+  if (!existsSync(file)) return;
+  const lines = readFileSync(file, 'utf8').split(/\r?\n/);
+  const hits = lines.filter((l) => pattern.test(l));
+  console.log(hits.slice(-60).join('\n'));
+}
+
+let status = 0;
+switch (cmd) {
+  case 'configure':
+    status = run(['-executeMethod', 'TC2.EditorTools.ProjectSetup.Configure']);
+    tail(log, /error CS|\[TC2\]|Exception|Error:/);
+    break;
+  case 'test': {
+    const results = path.join(outDir, 'unity-tests.xml');
+    status = run(['-runTests', '-testPlatform', opt('--platform', 'EditMode'), '-testResults', results, ...(opt('--filter') ? ['-testFilter', opt('--filter')] : [])], { quit: false });
+    if (existsSync(results)) {
+      const x = readFileSync(results, 'utf8');
+      const m = x.match(/<test-run[^>]*>/);
+      console.log(m ? m[0] : 'no test-run element');
+      const fails = [...x.matchAll(/<test-case[^>]*name="([^"]+)"[^>]*result="Failed"/g)].map((f) => f[1]);
+      if (fails.length) console.log('FAILED: ' + fails.join(', '));
+    } else tail(log, /error CS|Exception|Error/);
+    break;
+  }
+  case 'hashtest': {
+    const out = path.join(outDir, 'hash-unity-editor.txt');
+    status = run(['-executeMethod', 'TC2.EditorTools.BatchTools.HashTest', '-tc2Out', out]);
+    if (existsSync(out)) console.log('editor (Mono): ' + readFileSync(out, 'utf8'));
+    else tail(log, /error CS|Exception|\[TC2\]/);
+    break;
+  }
+  case 'build-web': {
+    const out = opt('--out', path.join(root, 'tc2', 'web-build', 'web'));
+    const extra = ['-executeMethod', 'TC2.EditorTools.BuildScript.BuildWeb', '-buildTarget', 'WebGL', '-tc2Out', out];
+    if (flag('--dev')) extra.push('-tc2Dev');
+    if (flag('--threads')) extra.push('-tc2Threads');
+    if (flag('--webgl2')) extra.push('-tc2WebGL2Only');
+    status = run(extra);
+    tail(log, /error CS|\[TC2\]|Build Finished|Exception|Error building/);
+    break;
+  }
+  case 'build-win': {
+    status = run(['-executeMethod', 'TC2.EditorTools.BuildScript.BuildWindows', '-buildTarget', 'Win64']);
+    tail(log, /error CS|\[TC2\]|Exception/);
+    break;
+  }
+  case 'method':
+    status = run(['-executeMethod', args[1]]);
+    tail(log, /error CS|\[TC2\]|Exception/);
+    break;
+  default:
+    console.log('usage: node tc2/scripts/unity.mjs configure|test|hashtest|build-web|build-win|method NAME');
+    status = 2;
+}
+process.exit(status);
