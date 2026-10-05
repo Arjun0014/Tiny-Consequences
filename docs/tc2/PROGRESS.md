@@ -156,6 +156,9 @@
 | Web (WebGPU, Chrome, RX 5600M, 1280x720; `tc2/out/webtest/s2webb`) | Chrome | 6/6, bit-identical; start 7.3 s; orbit 120, region 121, village 83, close 79, low 111, close running 86, a century on 77 fps; a day away (96 years) 39 s; build 11.1 MB |
 | Web (WebGL2 fallback, Chromium; `s2webgl2b`) | Chromium | 6/6, bit-identical; start 6.4 s; orbit 59, region 60, close 59, low 60, running 60 fps (Chromium's cap; the same build in Chrome ~120); a day away 37 s; **first entry to a village view stalls 1-5 s** (driver shader/buffer creation) |
 | WebGL2 village view by layer (`tc2/scripts/webperf.mjs`) | Chromium | 4 cascades: 37 fps, 60 without shadows (trees' shadows the cost); 2 cascades at half reach 49; **1 cascade 60** (D2-051); `Shader.WarmupAllShaders` costs 36 s at start (removed) |
+| A full world in COARSE (bench 40 x 300 founders, ~13,300 people, 5 years) | dotnet / Chrome (WebGPU build) | 1.28 / 1.37 world years/s (1.22 us per person-day): the browser keeps pace with headless - a Living day away (96 years) in a full world ~70 s; Ancient (600) ~7 min, Deep time (4,800) ~1 h: those need a cheaper human layer |
+| Village-day cost at ~360 people (COARSE, year 320) | dotnet | 206 us (coarse-day 69, survey 42 of which herds 31, food 37 of which needs 26, demography 35, stock 19) |
+| History ledger, seed 42 COARSE | dotnet | year 300: 95,615 -> 69,179 kept after two fixes (households' events kept for ever; a death's age counted as its importance); at year 1,000 before them 780,282 |
 
 ## Measurements (session 1)
 
