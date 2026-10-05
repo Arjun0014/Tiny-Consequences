@@ -3,19 +3,16 @@
 ## Session 2 (5 Oct 2026) — in progress (see PROGRESS.md CURRENT STATE)
 
 ### Exact state
-- Session 2 commits (newest last): 9e18da6 compaction hooks · 321bcf9 F3 slice 1 wild food (D2-042) · 6522b94 relief, ice,
-  densities (D2-043/044) · 5f6c9e0 F3 slice 2 building, knowing places, parties (D2-045) · 8405b5e housekeeping speed ·
-  fb48f58 F1 closed · 46631fa herds near people (D2-047) · 6b0903d livestock (D2-048) + herd index + `--nopeople` fix.
-- **Uncommitted, tested (101 tests green)**: the minimum-viable-population law (`Planet/Evolution.cs` `MinViable`: a kind under
-  ~50 real animals may die out by chance each tectonic step) with `EvolutionTests.AKindTooFewDiesOutByChanceAThrivingKindNever`
-  and two test premises adjusted (`EvolutionTests` thriving kinds, `VolcanismTests` skips planet-step events). Its 10,000-year
-  validation runs in the background: `tc2/out/f1/run_42m.*` then `run_7m.*` (scratch binary `scratchpad/bin_f2m`; ~25 min each).
-  When they finish: compare species over time with `run_42k`/`run_7k` (D2-046 without the law), write **D2-046** in DECISIONS
-  (sister kinds share territory, drift 0.015, gentler split chance, minimum viable population; evidence from the k and m runs),
-  then commit Evolution.cs + the two test files.
-- F1 CLOSED (fb48f58). F2: done-when met (cycles, recovery, adaptation, speciation) - verdict in PROGRESS; turnover pending the m runs.
-- F3: wild food, reserves, famine memory (D2-042); building, scouting, moving, founding (D2-045); herds near people (D2-047);
-  livestock (D2-048). Next F3 items: a herding/tending activity (people's hours), pens and fences, workshops, maintenance, ruins.
+- Session 2 commits (newest last): 9e18da6 compaction hooks · 321bcf9 wild food (D2-042) · 6522b94 relief, ice, densities
+  (D2-043/044) · 5f6c9e0 building, knowing places, parties (D2-045) · 8405b5e housekeeping speed · fb48f58 F1 closed ·
+  46631fa herds near people (D2-047) · 6b0903d livestock (D2-048) · 4cf5170 handoff checkpoint · e57666b farm animals, herds and
+  camps in the view (D2-049) · 7bfab6b herd claims array · a830732 the village herd and its herders (D2-050) · fdfa486 seal
+  shots · 65794ab one frost rule · 43e12a7 **F2 closed (D2-046)**.
+- Phases: F0 done, F1 closed (D2-043), F2 closed (D2-046), F3 in progress. 104 headless tests green.
+- In flight at this checkpoint: the Web build (`node tc2/scripts/unity.mjs build-web` -> `tc2/out/build_web_s2.txt`), to be
+  followed by `node tc2/scripts/webtest.mjs --tag s2web` (do not rebuild the headless DLL in between: the Web test compares
+  hashes with it), then the WebGL2 fallback (`build-web --webgl2`, `webtest --tag s2webgl2 --webgl2`). Record start time, fps per
+  view, a day away's catch-up time in PROGRESS Measurements (the last were session 1's: start 6.1 s, 88-120 fps, 27 s).
 - Uncommitted legacy TC1 work may exist in the tree and is NOT ours: `game/html/engine_template.html` and `docs/DECISIONS.md`
   (D-227). Never stage them in [tc2] commits.
 
@@ -58,15 +55,22 @@
   call the system step directly when the test is about that step.
 - A planet step (tectonic, evolution) can fall inside any test's hour: filter history checks by the kinds under test.
 - Heredocs with apostrophes break: patch scripts go in `scratchpad/patch_*.py` written with the Write tool.
+- `headless.mjs test --filter A|B` matches nothing (no alternation): run the filters one by one.
+- Kit re-exports touch every FBX (new timestamps): restore the unchanged ones with
+  `git diff --name-only -- .../TC2Models/ | xargs -r git checkout --` before committing; a glob also catches new untracked files.
+- Any rule the simulation and the view must share (a herd's ground, the frost that pens the animals, which seals show) lives
+  in Core or one static helper both call - never two copies.
+- Test mechanisms, not demography: "mostly children herd" failed because only 1 of 19 households had a child of 8-15.
 
 ### Next steps
-1. When `run_42m`/`run_7m` finish: D2-046 entry, commit the minimum-viable-population law (see Exact state).
-2. Visual slice for F3: cow/goat/pig with the kit's `quadruped()` (same style as the wild animals); draw each household's
-   animals near its home and on the pasture (positions elaborated from the beast id; never written back), wild herds from the
-   herd identities, a tent for camps; check `WorldObjectsView` compiles in Unity (`unity.mjs test`), then `unity.mjs shots`
-   (village, close, low) and look at the PNGs.
-3. Look track backlog: seals in a daylight shot, coast shapes off the cell grid (never sink a coastal village), boats, fences
-   and gardens, orbit detail; Web build + WebGL2 fallback check (`build-web --webgl2`, `webtest --webgl2`) with fps per view.
-4. F3 next slices: a tending/herding activity (people's hours; children as herders), pens and fences, the survey's cost
-   (77 us per village-day: `HerdSystem.Update`'s new-herd scan), long runs with people (`run --coarse --places` 300-1,000
-   years: saturation, collapse possible, abandonment), the Web catch-up benchmark with livestock.
+1. Finish the Web checks above (WebGPU and WebGL2): bit-identical hashes, fps per view, start time, a day away; fix what breaks.
+2. Long runs with people: `run --seed 42 --years 1000 --report-days 4800 --tier 3 --coarse --places --profile` (and seed 7) -
+   saturation, collapse and abandonment possible? herds over centuries? the cost of a crowded world (village-days at 30-60
+   villages); Souhope re-checked.
+3. Ecology calibration with the look: the sea's predators start ~10x below their level (spin-up) and the miniature's seals
+   level at ~11-20 in all the world (food-limited: `planet --eco` reports; D2-039's functional response) - the look wants
+   colonies on some shores.
+4. F3 next: workshops and crafts, maintenance and decay of buildings, ruins of abandoned villages (08 §4), the survey's cost
+   (`survey.herds` 41 us per COARSE village-day), a "herd" shot view (the village herd with its herders on the day's ground).
+5. Look backlog: coast shapes off the cell grid (never sink a coastal village), boats, gardens, orbit detail; check the field
+   patchwork in a top-down shot (D2-049 consequence).
