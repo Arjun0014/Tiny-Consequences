@@ -99,7 +99,7 @@ namespace TC2.Core.Knowledge
             }
             // (pots where clay is near, the ard where the founders keep cattle: D2-063)
             bool clay = w.Learning.Clay(s.Cell), cattle = w.Stock.CountOf(sid, Livestock.Cattle) > 0;
-            double nets = coast ? 0.8 : 0.2, loom = 0.6, quern = 0.35, pottery = clay ? 0.5 : 0.1, ard = cattle ? 0.15 : 0.0;
+            double nets = coast ? 0.8 : 0.2, loom = 0.6, quern = 0.35, pottery = clay ? 0.75 : 0.2, ard = cattle ? 0.15 : 0.0;
             var res = w.Residents(sid);
             for (int t = 0; t < Tech.Count; t++)
             {
@@ -157,20 +157,21 @@ namespace TC2.Core.Knowledge
             w.Metrics.TechniquesFound++;
         }
 
-        /// <summary>Clay near a village (D2-063): a river or a lake within two rings of it, whose floods and shores lay it.</summary>
+        readonly System.Collections.Generic.List<int> _near = new System.Collections.Generic.List<int>();
+
+        /// <summary>Clay near a village (D2-063): a stream or a lake within 1.2 km of it, whose floods and shores lay it.</summary>
         public bool Clay(int cell)
         {
-            var P = _w.Planet; var g = P.Grid;
-            for (int a = 0; a < 8; a++)
-            {
-                int c1 = g.Nbr8[cell * 8 + a];
-                if (Wet(P, c1)) return true;
-                for (int b = 0; b < 8; b++) if (Wet(P, g.Nbr8[c1 * 8 + b])) return true;
-            }
-            return Wet(P, cell);
+            var P = _w.Planet;
+            _w.Hazards.CellsWithin(_w, cell, ClayReach, _near);
+            for (int i = 0; i < _near.Count; i++) if (Wet(P, _near[i])) return true;
+            return false;
         }
 
-        static bool Wet(Planet.PlanetState P, int c) => P.IsLand(c) && (P.IsRiver(c) || P.LakeDepth[c] > 0.3f);
+        /// <summary>How far a village fetches its clay (m).</summary>
+        public const double ClayReach = 1200.0;
+
+        static bool Wet(Planet.PlanetState P, int c) => P.IsLand(c) && (P.IsStream(c) || P.LakeDepth[c] > 0.3f);
 
         /// <summary>Rock showing near a village: a cell within two rings of it standing 40 m or more above or below a neighbour.</summary>
         public bool Rock(int cell)

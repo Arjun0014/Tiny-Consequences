@@ -2,7 +2,7 @@
 
 ## CURRENT STATE (keep accurate; newest first below)
 
-**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 in progress (D2-062); Web checked on WebGPU (s2webd) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
+**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 in progress (D2-062, D2-063); Web checked on WebGPU (s2webd) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
 - **Session 2 (5 Oct 2026, in progress)** - compaction-recovery hooks (`.claude/settings.json`, `.claude/hooks/tc2_compact.mjs`;
   Claude Code 2.1.289: PreCompact stdout joins the compaction instructions, SessionStart matcher `compact` stdout reaches Claude;
@@ -110,6 +110,9 @@
   - **Goods, a day's labour, weeding (D2-058)**: households make and mend their clothes, tools and vessels (worn goods let the
     cold in and slow hands); a day's labour bounds the slack's work; weeding asks 24 h a hectare and keeps pace with the season.
     A whole year of seed 42: grown people work ~6.5 h a day, children of 6-11 ~3 h - inside time-allocation ranges. 115 tests.
+  - **F4 slice 2 - materials, pottery, the ard (D2-063)**: goods draw fibre and hides from the village's store (from the
+    harvest's flax, the hunt and the slaughter) and are improvised without; pottery near clay keeps grain and saves wood; the ard
+    with an ox speeds the fields. 125 tests. Next: metals and techniques that need techniques, then close F4.
   - **F4 slice 1 - techniques carried by people (D2-062)**: nets, the loom and the rotary quern held as proficiencies, copied
     daily from the village's best with Henrich's loss and scatter, found by practice, carried by whoever moves, lost when the
     masters' line thins: a bride brings the loom and her new village weaves; one master of the quern in an isolated village of

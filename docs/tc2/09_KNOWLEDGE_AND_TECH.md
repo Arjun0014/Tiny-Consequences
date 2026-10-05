@@ -51,3 +51,10 @@ F4. F0 has no techniques beyond implicit farming and woodcutting.
 - History: `TechniqueFound` (Historical), `TechniqueKnown` (Local, who taught it), `TechniqueLost` (Historical).
 - Not yet: materials and tools from geology (clay, stone, ore, fibre, hides), techniques that need techniques, places as
   knowledge, apprenticeship as a relationship, observation of traded objects.
+
+## 8. Implemented: slice 2 (D2-063)
+- Materials: goods draw fibre (from the harvest's flax) and hides (from the hunt and the slaughter) from the village's store;
+  without, they are improvised at 0.4 pace. Stores rot slowly.
+- Pottery (clay within 1.2 km: a stream or a lake): grain keeps better, cooking burns less wood. The ard (a household's grown ox):
+  faster field work. The quern needs rock showing near the village.
+- Not yet: metals (ore from the crust, charcoal, smelting, the techniques they need), techniques that need techniques.

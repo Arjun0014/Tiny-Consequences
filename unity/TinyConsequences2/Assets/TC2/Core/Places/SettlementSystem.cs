@@ -172,7 +172,7 @@ namespace TC2.Core.Places
         }
 
         /// <summary>Kg of flax fibre a hectare of the village's fields gives a year (a corner of them sown with flax: D2-063).</summary>
-        public const double FibrePerHa = 0.6;
+        public const double FibrePerHa = 1.0;
 
         void Crops(ref Settlement s, int doy)
         {
@@ -367,6 +367,9 @@ namespace TC2.Core.Places
             prof?.End(10011);
             // spoilage of stored grain (~12% a year; less kept in fired pots: D2-063)
             s.Granary *= 1.0 - 0.12 / SimTime.DaysPerYear * Knowledge.Tech.PotteryKeeps(s.BestPottery);
+            // stored hides rot and are eaten by vermin (~20 % a year), fibre less (~5 %): a store holds what is used (D2-063)
+            s.Hides *= 1.0 - 0.20 / SimTime.DaysPerYear;
+            s.Fibre *= 1.0 - 0.05 / SimTime.DaysPerYear;
             bool empty = s.Granary < 1.0;
             if (empty && s.HungerEvent == 0 && s.Population > 0)
             {

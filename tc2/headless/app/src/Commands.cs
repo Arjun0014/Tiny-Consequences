@@ -128,7 +128,7 @@ namespace TC2.Headless
                                           "  knows " + ((st.TechKnown & 1) != 0 ? "N" : "-") + ((st.TechKnown & 2) != 0 ? "L" : "-") + ((st.TechKnown & 4) != 0 ? "Q" : "-") +
                                           ((st.TechKnown & 8) != 0 ? "P" : "-") + ((st.TechKnown & 16) != 0 ? "A" : "-") +
                                           " (" + F(st.BestNets, "0.00") + "/" + F(st.BestLoom, "0.00") + "/" + F(st.BestQuern, "0.00") + "/" + F(st.BestPottery, "0.00") + "/" + F(st.BestArd, "0.00") + ")" +
-                                          "  fibre " + F(st.Fibre, "0") + " hides " + F(st.Hides, "0") +
+                                          "  fibre " + F(st.Fibre, "0") + " hides " + F(st.Hides, "0") + (w.Learning.Clay(st.Cell) ? " clay" : "") + (w.Learning.Rock(st.Cell) ? " rock" : "") +
                                           "  stock cattle " + w.Stock.CountOf(sid, TC2.Core.Places.Livestock.Cattle) + " goats " + w.Stock.CountOf(sid, TC2.Core.Places.Livestock.Goat) + " pigs " + w.Stock.CountOf(sid, TC2.Core.Places.Livestock.Pig) + PastureLine(sid) + HerdLine(w, sid));
                     }
                 }

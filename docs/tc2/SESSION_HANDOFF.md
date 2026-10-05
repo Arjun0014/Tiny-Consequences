@@ -65,10 +65,9 @@
   stocked), do not loosen the mechanism (D2-056).
 
 ### Next steps
-1. **Finish F4 slice 2 (D2-063, committed untested)**: write its tests (hides and fibre into the store; goods improvised
-   without materials; pots keeping grain and saving wood; the ard with an ox; pottery found only near clay, the ard only with
-   an ox), run `unity.mjs hashtest` (Mono = dotnet), a 200-year run of seeds 42 and 1 (stores, techniques found), then
-   metals and techniques that need techniques; then close F4 (its done-when holds: `KnowledgeTests`).
+1. **F4 slice 3 - metals** (D2-063 next): ore from the crust (copper where volcanic arcs and old mountains are, bog iron in
+   wetlands), charcoal from the woods, smelting that needs pottery (crucibles, furnaces of clay); tools of metal making the
+   goods last and work go faster; techniques that need techniques. Then close F4 (its done-when holds: `KnowledgeTests`).
 2. **The sea's calibration**: fish at ~1 % of real biomass, so the miniature holds ~10-20 seals (D2-053): wide-ranging hunters
    over their range; 10,000-year reruns.
 3. **Famine in the full world** (F5): relief, exchange and storage between villages.
