@@ -129,7 +129,7 @@ namespace TC2.Core.Agents
         }
 
         /// <summary>Starts walking a route from arc length sFrom to sTo (either direction).</summary>
-        void BeginTravel(ref Person p, ActivityKind act, WhyCode why, Route r, double sFrom, double sTo, int dest)
+        void BeginTravel(ref Person p, ActivityKind act, WhyCode why, Route r, double sFrom, double sTo, int dest, long arriveAt = 0)
         {
             long now = _w.Now;
             if (p.At != 0 && p.At != p.Home) _w.Visitors(p.At).Remove(p.Id);
@@ -140,7 +140,7 @@ namespace TC2.Core.Agents
             p.S0 = (float)sFrom; p.S1 = (float)sTo;
             double len = DMath.Abs(sTo - sFrom);
             p.T0 = now;
-            p.T1 = now + Math.Max(1L, DMath.ToLong(DMath.RoundHalfUp(len / Speed(p, now))));
+            p.T1 = arriveAt > 0 ? Math.Max(now + 1, arriveAt) : now + Math.Max(1L, DMath.ToLong(DMath.RoundHalfUp(len / Speed(p, now))));
             Schedule(in p);
             RegisterLeg(ref p, r);
             _w.Metrics.Journeys++;
@@ -275,6 +275,14 @@ namespace TC2.Core.Agents
                     return;
                 }
                 BeginRoadWait(ref p, r, s, SimTime.Hour, p.Dest);
+                return;
+            }
+            // a scout at the far place: they look round, then walk home the way they came (D2-045)
+            if (p.Act == ActivityKind.Scout && r != null && r.B < 0 && p.S1 > 0.5f)
+            {
+                w.Migration.Look(p.Home, RouteCache.CellOfEnd(r.B), p.Id);
+                int back = r.A == p.Home ? p.Home : r.A;
+                BeginTravel(ref p, back == p.Home ? ActivityKind.TripHome : ActivityKind.TripOut, WhyCode.GoingHome, r, r.Length, 0.0, back);
                 return;
             }
             // arrival
@@ -428,6 +436,10 @@ namespace TC2.Core.Agents
                     break;
                 case ActivityKind.Haul:
                     if (p.Carry > 0f) { w.Wild.Deposit(p.Id, p.Carry); p.Carry = 0f; }
+                    break;
+                case ActivityKind.Build:
+                    if (p.At != 0 && p.At == p.Home && hours > 0)
+                        Construction.Work(w, p.At, p.Household, hours, BuildRate(in p));
                     break;
             }
         }
@@ -611,7 +623,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -621,10 +633,21 @@ namespace TC2.Core.Agents
                 if (u > best) { best = u; choice = 1; }
             }
             double woodTarget = 6.0 * Math.Max(1, here.Population);
-            if (day && here.Woodstore < woodTarget)
+            bool ownRoof = false, woodShort = false;
+            bool canBuild = atHome && Construction.HasWork(w, in here, p.Household, out ownRoof, out woodShort);
+            if (day && (here.Woodstore < woodTarget || woodShort))
             {
-                double u = 0.5 * (1.0 - here.Woodstore / woodTarget) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
+                // (wood is wanted most when a roof or a work waits for it)
+                double u = (woodShort ? 0.7 : 0.5 * (1.0 - here.Woodstore / woodTarget)) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
                 if (u > best) { best = u; choice = 2; }
+            }
+            if (day && canBuild)
+            {
+                // a camp wants a roof now; a hut wants to become a house; the village wants its well and its granary (D2-045)
+                byte shelter = w.Households.Exists(p.Household) ? w.Households.Get(p.Household).Shelter : Construction.House;
+                double need = ownRoof ? (shelter == Construction.Camp ? 0.85 : 0.4) : 0.45;
+                double u = need * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
+                if (u > best) { best = u; choice = 7; }
             }
             if (day && rs.Chance(0.12)) { double u = 0.3 + 0.1 * rs.NextUnit(); if (u > best) { best = u; choice = 3; } }
             int wildKind = -1;
@@ -647,6 +670,13 @@ namespace TC2.Core.Agents
                 if (tripDest != 0) { double u = 0.95; if (u > best) { best = u; choice = 5; } }
             }
             if (lsec >= 17 * SimTime.Hour) { double u = 0.25 + 0.3 * p.Social / 255.0 + 0.1 * rs.NextUnit(); if (u > best) { best = u; choice = 4; } }
+            if (lsec >= 6 * SimTime.Hour && lsec < 10 * SimTime.Hour && age >= 16 && age < 55 && p.Health > 0.7 && atHome &&
+                !(p.PregDue != 0) && !(p.NursingUntil != 0 && p.NursingUntil - now > SimTime.Year / 4) && w.Migration.WantsScout(in here))
+            {
+                // a bold one goes to see the land beyond for a pressed village that knows no good place (D2-045)
+                double u = (0.35 + 0.5 * p.Bold / 255.0) * DMath.Min(1.0, w.Migration.Pressure(in here)) + 0.1 * rs.NextUnit();
+                if (u > best) { best = u; choice = 8; }
+            }
 
             switch (choice)
             {
@@ -666,6 +696,18 @@ namespace TC2.Core.Agents
                 case 6:
                     BeginWild(ref p, ref here, wildKind, WildNeed(in here) > 0 ? WhyCode.FoodShort : WhyCode.Provide, ref rs);
                     return;
+                case 8:
+                    if (BeginScout(ref p, ref here, ref rs)) return;
+                    break;
+                case 7:
+                    {
+                        // at their own lot, or at the village's well or granary
+                        bool own = w.Households.Exists(p.Household) && w.Households.Get(p.Household).Shelter < Construction.House;
+                        double bx = own ? homeX : (Construction.NextWork(in here) == Construction.Well ? here.WellX : here.SquareX + 14);
+                        double by = own ? homeY : (Construction.NextWork(in here) == Construction.Well ? here.WellY : here.SquareY - 10);
+                        BeginLocal(ref p, ActivityKind.Build, own ? WhyCode.NoRoof : WhyCode.VillageWork, 0, bx + rs.Range(-3, 3), by + rs.Range(-3, 3), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
+                        return;
+                    }
                 case 5:
                     {
                         var r = w.Routes.Get(w, p.At, tripDest);
@@ -742,6 +784,9 @@ namespace TC2.Core.Agents
             if (why != WhyCode.Provide) w.SettlementSys.NoteWildFood(here.Id);
         }
 
+        /// <summary>Building pace: a woodworker's hand and a body's strength (labour-hours of progress per hour).</summary>
+        static double BuildRate(in Person p) => (0.7 + 0.6 * p.SkWood) * (0.5 + 0.5 * p.Health);
+
         /// <summary>The most hours of a COARSE day given to the wild (a long trip's worth).</summary>
         public const double WildCoarseMax = 7.0;
         /// <summary>The hours out in the wild a pressing need asks of a COARSE day (a lived day makes two trips).</summary>
@@ -794,6 +839,15 @@ namespace TC2.Core.Agents
             double cropNeed = Math.Max(0, s.CropWorkNeed - s.CropWork);
             double woodTarget = 6.0 * Math.Max(1, s.Population);
             bool shortNow = WildNeed(in s) > 0;
+            if (w.Migration.WantsScout(in s))
+            {
+                // a pressed village that knows no good place sends someone to look (D2-045): the same place a lived day's scout
+                // would choose, seen in the same day
+                var srs = new RandomSequence(KeyedRng.Hash(w.Seed, RngStream.Travel, (ulong)sid, (ulong)now, 45));
+                int target = w.Migration.ScoutTarget(sid, ref srs);
+                ref var s1 = ref w.Settlements.Get(sid);
+                if (target >= 0) { w.Migration.Look(sid, target, 0); w.Metrics.Scouts++; } else s1.ScoutAt = now;
+            }
             for (int i = 0; i < res.Count; i++)
             {
                 ref var p = ref w.People.Get(res[i]);
@@ -812,6 +866,21 @@ namespace TC2.Core.Agents
                     double h = Math.Min(hours, cropNeed / rate);
                     s.CropWork += h * rate; cropNeed -= h * rate; hours -= h;
                     p.SkFarm = (float)DMath.Min(1.0, p.SkFarm + 0.0015 * h);
+                }
+                // building, as a lived day builds: in every free hour it beats idling for, unless hunger sends them out first (D2-045)
+                bool ownRoof = false, noWood = false;
+                bool build = hours > 0 && Construction.HasWork(w, in s, p.Household, out ownRoof, out noWood);
+                double buildUrge = 0;
+                if (build)
+                {
+                    byte shelter = w.Households.Exists(p.Household) ? w.Households.Get(p.Household).Shelter : Construction.House;
+                    buildUrge = ownRoof ? (shelter == Construction.Camp ? 0.85 : 0.4) : 0.45;
+                    if (!(shortNow && WildNeed(in s) > buildUrge))
+                    {
+                        double used = Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0), BuildRate(in p));
+                        hours -= used;
+                        build = false;
+                    }
                 }
                 if (hours > 0)
                 {
@@ -845,6 +914,7 @@ namespace TC2.Core.Agents
                         }
                     }
                 }
+                if (build && hours > 0) hours -= Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0), BuildRate(in p));
                 if (hours > 0 && s.Woodstore < woodTarget)
                 {
                     double h = hours * 0.4;
@@ -852,6 +922,37 @@ namespace TC2.Core.Agents
                     p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * h);
                 }
             }
+        }
+
+        // ---------------------------------------------------------------- moving and scouting (D2-045)
+        /// <summary>
+        /// A member of a party sets out with it (Migration.Depart): whatever they were doing ends; they walk the route at the
+        /// party's pace, arriving with it. Those away from the village when it leaves follow when they next go home.
+        /// </summary>
+        public void Walk(int pid, Route r, bool forward, long arrive, int destEnd)
+        {
+            var w = _w;
+            ref var p = ref w.People.Get(pid);
+            if (!p.Alive || p.At != p.Home || p.At == 0) return;
+            if (p.Carry > 0f) { w.Wild.Deposit(p.Id, p.Carry); p.Carry = 0f; }   // (a catch in hand goes into the larder that travels)
+            CutStep(ref p);
+            p.Ground = -1;
+            // the party's pace, not their own
+            BeginTravel(ref p, ActivityKind.Move, WhyCode.NewHome, r, forward ? 0.0 : r.Length, forward ? r.Length : 0.0, destEnd, arrive);
+        }
+
+        /// <summary>A scout sets out to look at the land beyond (their village is pressed and knows no good place).</summary>
+        bool BeginScout(ref Person p, ref Settlement here, ref RandomSequence rs)
+        {
+            var w = _w;
+            int target = w.Migration.ScoutTarget(here.Id, ref rs);
+            if (target < 0) { here.ScoutAt = w.Now; return false; }
+            var r = w.Routes.GetToCell(w, here.Id, target);
+            if (r == null) { here.ScoutAt = w.Now; return false; }
+            here.ScoutAt = w.Now;   // one goes; the others wait for what they see
+            BeginTravel(ref p, ActivityKind.Scout, WhyCode.LookForLand, r, 0.0, r.Length, RouteCache.PlaceEnd(target));
+            w.Metrics.Scouts++;
+            return true;
         }
 
         // ---------------------------------------------------------------- premises (tests, tools)

@@ -46,14 +46,22 @@ namespace TC2.Core.Agents
     {
         readonly Dictionary<long, Route> _cache = new Dictionary<long, Route>();
         readonly HashSet<long> _unreachable = new HashSet<long>();
+        readonly Dictionary<long, Route> _toCell = new Dictionary<long, Route>();   // a settlement to a place (D2-045)
+        readonly HashSet<long> _cellUnreachable = new HashSet<long>();
         public int Version;
 
         public static long Key(int a, int b) { if (a > b) { int t = a; a = b; b = t; } return ((long)a << 32) | (uint)b; }
 
-        public void Invalidate() { _cache.Clear(); _unreachable.Clear(); Version++; }
+        /// <summary>A place as a route's end: cell c is -(c + 1) (settlements are positive ids).</summary>
+        public static int PlaceEnd(int cell) => -(cell + 1);
+        public static int CellOfEnd(int end) => -end - 1;
+
+        public void Invalidate() { _cache.Clear(); _unreachable.Clear(); _toCell.Clear(); _cellUnreachable.Clear(); Version++; }
 
         public Route Get(Simulation.World w, int s1, int s2)
         {
+            if (s1 < 0) return GetToCell(w, s2, CellOfEnd(s1));
+            if (s2 < 0) return GetToCell(w, s1, CellOfEnd(s2));
             int a = Math.Min(s1, s2), b = Math.Max(s1, s2);
             long key = Key(a, b);
             if (_cache.TryGetValue(key, out var r)) return r;
@@ -63,16 +71,33 @@ namespace TC2.Core.Agents
             return r;
         }
 
+        /// <summary>A walk from a settlement to a place (a cell's centre): A the settlement, B = PlaceEnd(cell).</summary>
+        public Route GetToCell(Simulation.World w, int sid, int cell)
+        {
+            if (sid <= 0 || cell < 0 || !w.Settlements.Exists(sid)) return null;
+            long key = ((long)sid << 32) | (uint)cell;
+            if (_toCell.TryGetValue(key, out var r)) return r;
+            if (_cellUnreachable.Contains(key)) return null;
+            ref var s = ref w.Settlements.Get(sid);
+            r = Path(w, s.Cell, cell, s.Anchor, w.Planet.Grid.Center[cell], sid, PlaceEnd(cell));
+            if (r == null) _cellUnreachable.Add(key); else _toCell[key] = r;
+            return r;
+        }
+
         // A* scratch (reused; derived data only)
         double[] _g; int[] _came; int[] _stamp; int _stampNow;
         readonly List<long> _open = new List<long>();
 
         Route Build(Simulation.World w, int a, int b)
         {
-            var P = w.Planet;
             ref var sa = ref w.Settlements.Get(a);
             ref var sb = ref w.Settlements.Get(b);
-            int start = sa.Cell, goal = sb.Cell;
+            return Path(w, sa.Cell, sb.Cell, sa.Anchor, sb.Anchor, a, b);
+        }
+
+        Route Path(Simulation.World w, int start, int goal, Vec3d from, Vec3d to, int a, int b)
+        {
+            var P = w.Planet;
             int n = P.Cells;
             if (_g == null || _g.Length != n) { _g = new double[n]; _came = new int[n]; _stamp = new int[n]; }
             _stampNow++;
@@ -107,11 +132,10 @@ namespace TC2.Core.Agents
             var cells = new List<int>();
             for (int c = found; c != -1; c = _came[c]) cells.Add(c);
             cells.Reverse();
-            // polyline: anchor A, centres of the intermediate cells, anchor B
-            var pts = new List<Vec3d> { sa.Anchor };
-            var segCells = new List<int>();
+            // polyline: anchor A, centres of the intermediate cells, anchor B (or the place's centre)
+            var pts = new List<Vec3d> { from };
             for (int i = 1; i < cells.Count - 1; i++) pts.Add(grid.Center[cells[i]]);
-            pts.Add(sb.Anchor);
+            pts.Add(to);
             var route = new Route { A = a, B = b, Pts = pts.ToArray() };
             route.S = new double[route.Pts.Length];
             route.Cell = new int[Math.Max(1, route.Pts.Length - 1)];

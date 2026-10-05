@@ -45,6 +45,10 @@ namespace TC2.Core.Places
         public long WildEvent;          // the current episode of living off the wild (0 none)
         public double Memory;           // share of today's adults who lived through the last famine (derived daily, kept for the view)
         public Grounds Hunt, Fish, Gath; // the day's survey of its grounds (D2-042)
+        public byte Works;              // what its people have built: 1 a well, 2 a granary (D2-045)
+        public float WorkBuild;         // labour-hours into the work being built
+        public KnownSites Lore;         // places its people have seen (D2-045)
+        public long ScoutAt;            // when someone last went to look at the land beyond
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
@@ -91,6 +95,7 @@ namespace TC2.Core.Places
             w.Long(HungerEvent); w.Int(FieldCell); w.Int(Lots); w.Double(Ration); w.Double(ArableHa); w.Int(FieldCells);
             w.Long(FamineAt); w.Long(FamineEvent); w.Long(RationEvent); w.Long(WildEvent); w.Double(Memory);
             Hunt.Write(w); Fish.Write(w); Gath.Write(w);
+            w.Byte(Works); w.Float(WorkBuild); Lore.Write(w); w.Long(ScoutAt);
             w.Float(SquareX); w.Float(SquareY); w.Float(FieldX); w.Float(FieldY); w.Float(WoodX); w.Float(WoodY); w.Float(WellX); w.Float(WellY);
         }
 
@@ -103,6 +108,7 @@ namespace TC2.Core.Places
             s.HungerEvent = r.Long(); s.FieldCell = r.Int(); s.Lots = r.Int(); s.Ration = r.Double(); s.ArableHa = r.Double(); s.FieldCells = r.Int();
             s.FamineAt = r.Long(); s.FamineEvent = r.Long(); s.RationEvent = r.Long(); s.WildEvent = r.Long(); s.Memory = r.Double();
             s.Hunt = Grounds.Read(r); s.Fish = Grounds.Read(r); s.Gath = Grounds.Read(r);
+            s.Works = r.Byte(); s.WorkBuild = r.Float(); s.Lore = KnownSites.Read(r); s.ScoutAt = r.Long();
             s.SquareX = r.Float(); s.SquareY = r.Float(); s.FieldX = r.Float(); s.FieldY = r.Float(); s.WoodX = r.Float(); s.WoodY = r.Float(); s.WellX = r.Float(); s.WellY = r.Float();
             return s;
         }
@@ -115,6 +121,7 @@ namespace TC2.Core.Places
             h.Add(HungerEvent); h.Add(FieldCell); h.Add(Lots); h.Add(Ration); h.Add(ArableHa); h.Add(FieldCells);
             h.Add(FamineAt); h.Add(FamineEvent); h.Add(RationEvent); h.Add(WildEvent); h.Add(Memory);
             Hunt.Hash(ref h); Fish.Hash(ref h); Gath.Hash(ref h);
+            h.Add(Works); h.Add(WorkBuild); Lore.Hash(ref h); h.Add(ScoutAt);
             h.Add(SquareX); h.Add(SquareY); h.Add(FieldX); h.Add(FieldY); h.Add(WoodX); h.Add(WoodY); h.Add(WellX); h.Add(WellY);
         }
 
@@ -133,9 +140,12 @@ namespace TC2.Core.Places
         public long Formed;
         public long Dissolved;       // 0 = exists
         public int FamilyName;       // registry key for the family name (household id of origin)
+        public byte Shelter;         // 0 a camp, 1 a hut, 2 a house (D2-045: raised by its people's labour and the village's wood)
+        public float Build;          // labour-hours into the next stage of its shelter
+        public int Party;            // the party it travels with to a new home (0 none; D2-045)
 
-        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(HomeX); w.Float(HomeY); w.Double(Larder); w.Long(Formed); w.Long(Dissolved); w.Int(FamilyName); }
-        public static Household Read(BinReader r) => new Household { Id = r.Int(), Settlement = r.Int(), HomeX = r.Float(), HomeY = r.Float(), Larder = r.Double(), Formed = r.Long(), Dissolved = r.Long(), FamilyName = r.Int() };
-        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(HomeX); h.Add(HomeY); h.Add(Larder); h.Add(Formed); h.Add(Dissolved); h.Add(FamilyName); }
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(HomeX); w.Float(HomeY); w.Double(Larder); w.Long(Formed); w.Long(Dissolved); w.Int(FamilyName); w.Byte(Shelter); w.Float(Build); w.Int(Party); }
+        public static Household Read(BinReader r) => new Household { Id = r.Int(), Settlement = r.Int(), HomeX = r.Float(), HomeY = r.Float(), Larder = r.Double(), Formed = r.Long(), Dissolved = r.Long(), FamilyName = r.Int(), Shelter = r.Byte(), Build = r.Float(), Party = r.Int() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(HomeX); h.Add(HomeY); h.Add(Larder); h.Add(Formed); h.Add(Dissolved); h.Add(FamilyName); h.Add(Shelter); h.Add(Build); h.Add(Party); }
     }
 }

@@ -33,6 +33,7 @@ namespace TC2.Core.Places
         readonly int[] _gq = new int[Ecology.MaxK], _fq = new int[Ecology.MaxK];
         readonly double[] _gm = new double[Ecology.MaxK], _gs = new double[Ecology.MaxK], _gk = new double[Ecology.MaxK];
         readonly double[] _fm = new double[Ecology.MaxK], _fr = new double[Ecology.MaxK];
+        readonly double[] _share = new double[9 * Ecology.MaxK];   // a hunt: each ground cell's reachable animals of each kind
         int _gN, _fN;
         readonly Dictionary<int, Reach> _reach = new Dictionary<int, Reach>();   // per settlement, by its cell (geometry only)
         readonly List<int> _scratch = new List<int>();
@@ -214,25 +215,47 @@ namespace TC2.Core.Places
             double expectKg = DMath.Min(hours * HuntRate * (0.5 + skill) * B / (B + HuntHalf), 0.3 * B);
             var rs = new RandomSequence(key);
             double kg = 0, biggest = 0;
+            // each kind's kills over the whole ground are one Poisson count (most hunts take none of a kind); any kills are then
+            // placed among the ground's cells by each cell's share of that kind's reachable animals - the same distribution as
+            // a count per cell, with a draw per kind instead of per kind and cell
             for (int i = 0; i < k; i++)
             {
                 int c = _ground[i];
                 double cover = 0.15 + 0.3 * P.Forest[c], steep = DMath.Clamp01(Ecology.Steepness(P, c));
                 for (int j = 0; j < _gN; j++)
                 {
-                    int q = _gq[j];
+                    double a = P.Abund[_gq[j] * n + c];
+                    _share[i * Ecology.MaxK + j] = a > 0 ? a * _gm[j] * ReachIn(cover, steep, _gs[j]) : 0.0;
+                }
+            }
+            for (int j = 0; j < _gN; j++)
+            {
+                double bj = 0;
+                for (int i = 0; i < k; i++) bj += _share[i * Ecology.MaxK + j];
+                if (bj <= 0) continue;
+                int kills = Poisson(expectKg * bj / B / _gm[j], ref rs);
+                int q = _gq[j];
+                for (int x = 0; x < kills; x++)
+                {
+                    // which cell: by its share of what is left of this kind on the ground
+                    double u = rs.NextUnit() * bj, acc = 0;
+                    int pick = -1;
+                    for (int i = 0; i < k; i++) { acc += _share[i * Ecology.MaxK + j]; if (u < acc) { pick = i; break; } }
+                    if (pick < 0) break;
+                    int c = _ground[pick];
                     double a = P.Abund[q * n + c];
                     if (a <= 0) continue;
-                    double b = a * _gm[j] * ReachIn(cover, steep, _gs[j]);
-                    double lambda = expectKg * b / B / _gm[j];
-                    int kills = Poisson(lambda, ref rs);
-                    if (kills <= 0) continue;
-                    // whole animals; where the field holds less than the kills, what it holds (the field is the truth)
-                    double taken = DMath.Min(kills, a);
+                    // a whole animal; where the field holds less than one, what it holds (the field is the truth)
+                    double taken = DMath.Min(1.0, a);
                     P.Abund[q * n + c] = (float)(a - taken);
+                    double was = _share[pick * Ecology.MaxK + j];
+                    double now = a - taken > 0 ? was * (a - taken) / a : 0.0;
+                    _share[pick * Ecology.MaxK + j] = now; bj -= was - now;
                     kg += taken * _gm[j];
-                    if (taken * _gm[j] > biggest) { biggest = taken * _gm[j]; mainKind = (int)_gk[j]; }
+                    if (bj <= 0) break;
                 }
+                double kindKg = 0;   // (the largest catch of the hunt names what they carry home)
+                if (kills > 0) { kindKg = kills * _gm[j]; if (kindKg > biggest) { biggest = kindKg; mainKind = (int)_gk[j]; } }
             }
             _w.Metrics.GameKg += kg;
             return kg * MeatShare * FuPerKg;

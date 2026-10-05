@@ -46,6 +46,12 @@ regular fair; "fortified" if defences stand.
 - Measured (seed 42, 300 coarse years): villages grow past their fields on the wild's food until the game within reach is
   gone, then live in recurring famine with nowhere to go - migration and founding are the next slice.
 
+## 5c. Building, knowing places, moving and founding (implemented, D2-045)
+- Camps, huts and houses raised by labour and wood; wells and granaries likewise (`Construction`). Nothing stands by fiat.
+- Villages know places only by having stood there (scouts in pressed villages); households leave once a year after the harvest
+  by a chance growing with the pressure (land too short, rations cut, famine remembered); together they found at a known place
+  (a camp that builds its well, its homes and sows in spring), alone they join a known village with land to spare.
+
 ## 6. Phase
 F3 (layout, construction, economy basics), F5 (exchange, migration, founding). F0: settlements as a few
 place nodes with granary and woodstore, fields by season, and trips between neighbours.

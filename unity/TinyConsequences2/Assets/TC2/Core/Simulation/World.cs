@@ -23,6 +23,7 @@ namespace TC2.Core.Simulation
         // the wild's food (D2-042): trips, hours and what came home (kg live game, kg fish, kg mast)
         public long HuntTrips, FishTrips, GatherTrips, HungerDeaths, Famines;
         public double GameKg, FishKg, GatherKg, WildHours, WildFu;
+        public long Parties, Foundings, Scouts;   // households on the move (D2-045)
 
         public void Write(BinWriter w)
         {
@@ -37,6 +38,7 @@ namespace TC2.Core.Simulation
             for (int i = 0; i < StormPeaks.Length; i++) w.Long(StormPeaks[i]);
             w.Long(HuntTrips); w.Long(FishTrips); w.Long(GatherTrips); w.Long(HungerDeaths); w.Long(Famines);
             w.Double(GameKg); w.Double(FishKg); w.Double(GatherKg); w.Double(WildHours); w.Double(WildFu);
+            w.Long(Parties); w.Long(Foundings); w.Long(Scouts);
         }
 
         public void Read(BinReader r)
@@ -52,6 +54,7 @@ namespace TC2.Core.Simulation
             for (int i = 0; i < StormPeaks.Length; i++) StormPeaks[i] = r.Long();
             HuntTrips = r.Long(); FishTrips = r.Long(); GatherTrips = r.Long(); HungerDeaths = r.Long(); Famines = r.Long();
             GameKg = r.Double(); FishKg = r.Double(); GatherKg = r.Double(); WildHours = r.Double(); WildFu = r.Double();
+            Parties = r.Long(); Foundings = r.Long(); Scouts = r.Long();
         }
 
         public Metrics Clone() { var m = (Metrics)MemberwiseClone(); return m; }
@@ -97,7 +100,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 11; // 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
+        public const int FormatSimVersion = 12; // 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
@@ -116,6 +119,7 @@ namespace TC2.Core.Simulation
         public readonly PagedStore<Settlement> Settlements = new PagedStore<Settlement>();
         public readonly PagedStore<Household> Households = new PagedStore<Household>();
         public readonly PagedStore<Person> People = new PagedStore<Person>();
+        public readonly PagedStore<Party> Parties = new PagedStore<Party>();   // households on their way to a new home (D2-045)
         public readonly List<Command> CommandLog = new List<Command>();
         public readonly Metrics Metrics = new Metrics();
         public ISimProfiler Profiler;
@@ -125,6 +129,7 @@ namespace TC2.Core.Simulation
         public readonly SettlementSystem SettlementSys = new SettlementSystem();
         public readonly Hazards Hazards = new Hazards();
         public readonly WildFood Wild = new WildFood();
+        public readonly Migration Migration = new Migration();
 
         // derived indexes (rebuilt after load; never serialized)
         public readonly RouteCache Routes = new RouteCache();
@@ -144,6 +149,7 @@ namespace TC2.Core.Simulation
             SettlementSys.Bind(this);
             Hazards.Bind(this);
             Wild.Bind(this);
+            Migration.Bind(this);
         }
 
         /// <summary>Allocates the planet-sized structures (worldgen and load call this).</summary>
@@ -1009,6 +1015,12 @@ namespace TC2.Core.Simulation
                 case EventKind.StormStep:
                     StormStep();
                     break;
+                case EventKind.PartyDepart:
+                    Migration.Depart(e.Target);
+                    break;
+                case EventKind.PartyArrive:
+                    Migration.Arrive(e.Target);
+                    break;
                 case EventKind.Eruption:
                     {
                         int v = Volcanism.IndexOf(Planet, (int)e.A);
@@ -1129,6 +1141,7 @@ namespace TC2.Core.Simulation
             w.Int(Settlements.Count); for (int id = Settlements.First(); id != 0; id = Settlements.Next(id)) Settlements.Get(id).Write(w);
             w.Int(Households.Count); for (int id = Households.First(); id != 0; id = Households.Next(id)) Households.Get(id).Write(w);
             w.Int(People.Count); for (int id = People.First(); id != 0; id = People.Next(id)) People.Get(id).Write(w);
+            w.Int(Parties.Count); for (int id = Parties.First(); id != 0; id = Parties.Next(id)) Parties.Get(id).Write(w);
             History.Write(w);
             w.Int(CommandLog.Count); for (int i = 0; i < CommandLog.Count; i++) CommandLog[i].Write(w);
             Metrics.Write(w);
@@ -1147,9 +1160,11 @@ namespace TC2.Core.Simulation
             int ns = r.Int(); for (int i = 0; i < ns; i++) { var s = Settlement.Read(r); w.Settlements.Add(s.Id, s); }
             int nh = r.Int(); for (int i = 0; i < nh; i++) { var h = Household.Read(r); w.Households.Add(h.Id, h); }
             int np = r.Int(); for (int i = 0; i < np; i++) { var p = Person.Read(r); w.People.Add(p.Id, p); }
+            int npa = r.Int(); for (int i = 0; i < npa; i++) { var pa = Party.Read(r); w.Parties.Add(pa.Id, pa); }
             w.Settlements.SetMaxId(w.Ids.Peek(EntityKind.Settlement) - 1);
             w.Households.SetMaxId(w.Ids.Peek(EntityKind.Household) - 1);
             w.People.SetMaxId(w.Ids.Peek(EntityKind.Person) - 1);
+            w.Parties.SetMaxId(w.Ids.Peek(EntityKind.Process) - 1);
             w.History.Read(r);
             int nc = r.Int(); for (int i = 0; i < nc; i++) w.CommandLog.Add(Command.Read(r));
             w.Metrics.Read(r);
@@ -1170,6 +1185,7 @@ namespace TC2.Core.Simulation
             for (int id = Settlements.First(); id != 0; id = Settlements.Next(id)) Settlements.Get(id).Hash(ref h);
             for (int id = Households.First(); id != 0; id = Households.Next(id)) Households.Get(id).Hash(ref h);
             for (int id = People.First(); id != 0; id = People.Next(id)) People.Get(id).Hash(ref h);
+            for (int id = Parties.First(); id != 0; id = Parties.Next(id)) Parties.Get(id).Hash(ref h);
             History.Hash(ref h);
             h.Add(CommandLog.Count); for (int i = 0; i < CommandLog.Count; i++) CommandLog[i].Hash(ref h);
             return h.Value;

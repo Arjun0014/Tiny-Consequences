@@ -51,6 +51,11 @@ namespace TC2.Core.History
         Extinction = 43,        // a species died out (Subject)
         Rationing = 44,         // a village began to ration its grain (Magnitude = ration, Cause1 the failed harvest) (D2-042)
         WildFood = 45,          // a village turned to the woods and the shore for food (InResponseTo the rationing or the hunger)
+        HomeBuilt = 46,         // a household raised its shelter (ArgA = 1 a hut, 2 a house) (D2-045)
+        WorkBuilt = 47,         // a village built a work (ArgA = 1 a well, 2 a granary)
+        PartySetOut = 48,       // households left a village to make a new home (Subject the origin, ArgA households, ArgB people)
+        Scouted = 49,           // someone of a village saw good land (Cell the site)
+        HouseholdMoved = 50,    // a household left its village for another (Subject the household, Object the village it went to)
     }
 
     /// <summary>History tiers (11 §4).</summary>
@@ -180,7 +185,10 @@ namespace TC2.Core.History
                 case HistoryKind.HarvestFailed:
                 case HistoryKind.Hunger:
                 case HistoryKind.Rationing:
-                case HistoryKind.WildFood: return Tier.Local;
+                case HistoryKind.WildFood:
+                case HistoryKind.WorkBuilt:
+                case HistoryKind.Scouted: return Tier.Local;
+                case HistoryKind.PartySetOut: return Tier.Historical;
                 default: return Tier.Personal;
             }
         }
@@ -228,6 +236,11 @@ namespace TC2.Core.History
                 case HistoryKind.Hunger: b = 4; break;
                 case HistoryKind.Rationing: b = 3; break;
                 case HistoryKind.WildFood: b = 3; break;
+                case HistoryKind.HomeBuilt: b = 1; break;
+                case HistoryKind.WorkBuilt: b = 3; break;
+                case HistoryKind.PartySetOut: b = 20; break;
+                case HistoryKind.Scouted: b = 2; break;
+                case HistoryKind.HouseholdMoved: b = 1.5; break;
                 default: b = 1; break;
             }
             // magnitude raises importance sub-linearly

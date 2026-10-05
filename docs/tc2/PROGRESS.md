@@ -32,8 +32,16 @@
     permanent ice age at -60..-100 m): the +-40 m law stands; ages of ice named against a 1,500-year running mean.
   - **D2-044 (densities, drift)**: `Ecology.Density` 0.15 (game ~30-45 kg/ha, deer/boar ~15-20 a km2), lineage drift 0.02.
     Hard hunting now leaves 18 % of a control's game; eight years later 98 %.
-  - Save sim version 11. 83 tests. **Running: 10,000-year reruns on the corrected laws** (`tc2/out/f1/run_42j.*`, `run_7j.*`,
-    full systems; ~20 min each) - verdicts for F1/F2 next.
+  - Save sim version 11. **10,000-year reruns on the corrected laws (planet + ecology, no people)**: seed 42 (`run_42j.*`) -
+    **F1 passes**: continental mean 94 -> 78 -> 89 m (+-10 %), crust 47.7 -> 47.3 %, peaks ~1,350-1,500 m; four ages of ice
+    (100-2,400, 2,900-3,700, 4,100-4,900, 5,500-6,100) with interglacials; ice 14-29 % of land; sea 0 to -20.5 m; 12.5-15.5 C;
+    CO2 280-409. F2: six new kinds in years 430-830 (three sand wolves on the same range, two sand foxes, warm-water sardine
+    and tuna), the 20-kind cap, then none for 9,000 years, no extinction: sister kinds shared nothing and splits came in a
+    burst - D2-046 (sister kinds share territory; drift 0.015; gentler split chance) in progress. Seed 7 (`run_7j.*`) running.
+  - **F3 slice 2 (D2-045)**: construction by labour and wood (camp -> hut -> house; well, granary; the view draws what stands),
+    knowledge of places by scouting, households leaving after the harvest (founding parties to known places; joining villages
+    with land), parties walking and founding unfinished villages. Seed 42, 300 coarse years: 6 -> 35 villages, 145 -> 11,744
+    people, famines 56 -> 3. 88 tests.
 
 - **F1 nearly done (verdict from the 10,000-year runs below), F2 nearly done (ecology, evolution, the sea's life), look-dev
   v1-v7 (Arjun: "a really beautiful miniature world, high detail, high performance"). Session 1 (5 Oct 2026), continuing.**

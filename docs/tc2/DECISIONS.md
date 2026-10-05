@@ -942,3 +942,43 @@ a control world's game and eight years later 98 %; ACTIVITY's ordinary wild hour
 scaled). The 10,000-year reruns (speciation, extinction, cycles at the new numbers) are in PROGRESS.
 **Invalidation.** If rare kinds (seals, aurochs, bears) die out in most worlds within centuries, widen their niches; if new
 kinds flood the cap within a few thousand years, lower the drift rate.
+
+## D2-045 — 2026-10-05 — Building by labour and wood; knowing places by going there; households leave, join and found
+
+**Context.** Session 2's 300-year run with wild food (D2-042) grew villages of 900-1,300 on land for ~300 that sat in
+recurring famine with nowhere to go; F3 asks for households that move and found, never a settlement that spawns finished,
+never omniscient site choice. Houses, wells and granaries were drawn for every household and village by fiat.
+**Decision.**
+- **Construction** (`Core/Places/Construction.cs`): a household lives in a camp, then a hut (30 labour-hours, 8 wood), then
+  a house (240 h, 35 wood); a village has a well (60 h) and a granary (120 h, 25 wood) only once built. The order: a camp's
+  first roof, the village's well (water before comfort), a hut made a house, the granary. Wood leaves the store as the work
+  goes - none, no progress; wood gathering turns urgent when building waits for it. ACTIVITY: a `Build` step scored by need
+  (camp 0.85, works 0.45, house 0.4); COARSE: the same order with the day's free hours (hunger's need first when stronger).
+  The first villages begin built; newly married couples and every founder begin in a camp. History `HomeBuilt` (personal),
+  `WorkBuilt` (local). The view draws camps (a small hide shelter), huts and houses, and wells/granaries only when built.
+- **Knowing places** (`Sites.cs`, `KnownSites` in settlement state): a village knows at most three sites, each seen by one of
+  its people. A pressed village (`Migration.Pressure` = the share of its food its claimed land cannot grow + 0.6 x the ration
+  cut + 0.4 x famine memory, at least 0.12) that knows no good place sends someone to look: in ACTIVITY a bold adult walks
+  2-4 km out over land (a route to a cell, `RouteCache.GetToCell`), looks round (500 m), and walks home; in COARSE the same
+  look on the same day. Site quality: worldgen's habitability x arable land within the fields' reach that no village holds,
+  with water (fresh, or the shore) and no village within 1.9 km. History `Scouted`.
+- **Leaving** (`Migration.cs`, once a year after the harvest, local day 41, both resolutions, villages older than 3 years):
+  each household with young enough heads and no birth near decides by a keyed chance `1.1 x pressure - 0.12` (0..0.45; x1.4
+  for households under six years old). Two or more households (five or more people) go together to the best known place;
+  otherwise each joins a village its people know (within a day's walk) with arable land to spare and less pressure, kin there
+  making it likelier. A **party** (saved state) sets out the next morning with the larders and up to 20 days of the village's
+  store, walks at a party's pace (ACTIVITY: every member a travel step to the same arrival), and on arrival either founds a
+  village - a camp: no houses, no well, no granary, no fields until it claims them in spring - or re-homes into the village it
+  joined (a new lot, a camp). History `PartySetOut` (historical; in response to the famine, the hunger or the rationing, else
+  the people's own choice), `SettlementFounded` (caused by the setting out), `HouseholdMoved` (personal).
+**Evidence.** Tests (88; `MigrationTests`): a home is raised only by labour and wood (hut day 8, house day 27 in COARSE; no
+wood, no house); a village knows no place until someone stands there, and the place is clear of villages; a pressed village
+founds an unfinished village at the place it knows, the founding caused by the setting out, and a year on it has dug its
+well and claimed fields; households with no place to found join a village with land; a party walks together and a save on the
+road continues identically. Seed 42, 300 coarse years: 6 villages -> 35, 145 -> 11,744 people, 29 parties, famines 56 -> 3
+(the expansion era: free land is being filled; behaviour at saturation is next to measure). Bugs found: a new camp measured
+its land by its first year without fields (crowding 1) and left again at once; every household upgraded its hut before anyone
+dug the well; COARSE gave building a fifth of a lived day's hours.
+**Invalidation.** If worlds fill their land and then never shrink, or no village is ever abandoned in long runs with hard
+times, the push or the coping is too strong; if parties found villages that die within a decade most of the time, the site
+quality or the carried food is too poor.

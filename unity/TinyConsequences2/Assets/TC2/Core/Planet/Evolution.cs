@@ -21,9 +21,9 @@ namespace TC2.Core.Planet
         public const double Pull = 0.0015;         // per year per (young per adult): how fast a population follows (e-fold ~250 y)
         public const int MaxSpecies = 20;          // (Ecology.MaxK sizes the arrays)
         public const double Load = 0.002;          // per year per C beyond 3 C of mismatch: the lives adaptation costs
-        public const double DriftRate = 0.02;      // a lineage marker wanders this much per square root of a year (at a 10-year life):
-                                                   // two populations cut off reach the line in ~1,500-2,500 years (01: 500-1,500 of
-                                                   // isolation; D2-044 - at 0.003 it took 25,000+ and no 10,000-year run split)
+        public const double DriftRate = 0.015;     // a lineage marker wanders this much per square root of a year (at a 10-year life):
+                                                   // two populations cut off reach the line in ~2,000-4,000 years (D2-046; at 0.003 it
+                                                   // took 25,000+ and no 10,000-year run split; at 0.02 six kinds split by year 830)
         public const double CoatWeight = 0.05;     // per C of coat difference: how much sooner two lineages part (10 C: 1.5 x)
         public const int MinCells = 40;            // a population that can become a kind: not a fragment at a range's edge
         public const double MinAnimals = 80 * Ecology.Density;
@@ -33,7 +33,7 @@ namespace TC2.Core.Planet
         /// The chance a tectonic step (ten years) that lineages this far apart become two kinds: none below 1, small just
         /// past it, certain by 4 - so the many refuges of one range, parted together, do not all split at once.
         /// </summary>
-        public static double SplitChance(double dist) => dist <= 1.0 ? 0.0 : DMath.Min(1.0, 0.004 + 0.12 * (dist - 1.0) * (dist - 1.0));
+        public static double SplitChance(double dist) => dist <= 1.0 ? 0.0 : DMath.Min(1.0, 0.002 + 0.03 * (dist - 1.0) * (dist - 1.0));
 
         /// <summary>How far a population's lineage wanders in a tectonic step (standard deviation): faster in short lives.</summary>
         public static double DriftStep(in Species sp) => DriftRate * DMath.Sqrt(Tectonics.StepYears) * DMath.Sqrt(DMath.Sqrt(10.0 / DMath.Max(1.0, sp.Lifespan)));

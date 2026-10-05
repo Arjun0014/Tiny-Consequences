@@ -19,6 +19,8 @@ namespace TC2.Core.Scheduling
         Eruption = 10,        // a volcano erupts (A = vent id)
         Quake = 11,           // a fault patch ruptures (A = cell)
         StormStep = 12,       // every storm moves and acts (A unused)
+        PartyDepart = 13,     // a party of households sets out (Target = party id; D2-045)
+        PartyArrive = 14,     // a party arrives at its new home (Target = party id)
     }
 
     /// <summary>Ordering classes at equal time (04 §2).</summary>

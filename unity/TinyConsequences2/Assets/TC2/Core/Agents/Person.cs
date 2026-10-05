@@ -8,6 +8,8 @@ namespace TC2.Core.Agents
         None = 0, Idle = 1, Sleep = 2, Eat = 3, Fields = 4, Wood = 5, Social = 6, Play = 7,
         TripOut = 8, Visit = 9, TripHome = 10, Flee = 11, Wait = 12, Infant = 13, Water = 14, Forage = 15,
         Hunt = 16, Fish = 17, Gather = 18, Haul = 19,   // the wild's food (D2-042): Forage is kept for old saves, Gather replaced it
+        Build = 20,                                     // raising a shelter or a village's work (D2-045)
+        Scout = 21, Move = 22,                          // looking over land far off; walking to a new home (D2-045)
     }
 
     /// <summary>The kind of the current step of an activity.</summary>
@@ -28,6 +30,10 @@ namespace TC2.Core.Agents
         FoodShort = 19,   // rations are short: the woods, the shore and the sea must make up the rest (D2-042)
         Provide = 20,     // an ordinary day's hunting or fishing: meat and fish for the table
         BringHome = 21,   // carrying a catch home
+        NoRoof = 22,      // the household lives in a camp or a hut: a roof to raise (D2-045)
+        VillageWork = 23, // the village needs a well or a granary
+        LookForLand = 24, // the village is crowded or hungry: someone goes to see the land beyond
+        NewHome = 25,     // walking with the household to a new home
     }
 
     public static class Sex { public const byte Female = 0, Male = 1; }

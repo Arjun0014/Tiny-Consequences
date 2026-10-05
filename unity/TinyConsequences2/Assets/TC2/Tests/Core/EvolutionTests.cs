@@ -74,7 +74,7 @@ namespace TC2.Tests.Core
             int n = P.Cells, before = P.Species.Count;
             Assert.AreEqual(0, Evolution.Speciate(w), "a different coat alone does not make a new kind at once");
             // as if they had been apart for a millennium and more: their lineages have wandered apart
-            foreach (int c in b) P.Drift[hare * n + c] = P.Drift[hare * n + a[0]] + 3.2f;   // long apart: 3.2 x (1 + 0.35) > 4, a certain split
+            foreach (int c in b) P.Drift[hare * n + c] = P.Drift[hare * n + a[0]] + 5.5f;   // long apart: 5.5 x (1 + 0.35) > 7, a certain split
             int wolf = Kind(P, 5);
             int wolfId = P.Species[wolf].Id;
             for (int c = 0; c < n; c++) P.Abund[wolf * n + c] = 0f;   // and the wolves are all gone
@@ -121,7 +121,7 @@ namespace TC2.Tests.Core
             Assert.AreEqual(0.0, Evolution.SplitChance(0.99));
             Assert.Less(Evolution.SplitChance(1.05), 0.01, "just past the line: a few in a thousand a decade");
             Assert.Greater(Evolution.SplitChance(2.0), Evolution.SplitChance(1.5));
-            Assert.AreEqual(1.0, Evolution.SplitChance(4.0));
+            Assert.AreEqual(1.0, Evolution.SplitChance(7.0), "certain once they are far apart");
         }
     }
 }

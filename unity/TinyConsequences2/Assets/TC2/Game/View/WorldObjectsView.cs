@@ -20,7 +20,7 @@ namespace TC2.Game
         public SimHost Host;
         public CameraRig Rig;
 
-        Instancer _people, _granaries, _wells, _hay, _flames;
+        Instancer _people, _granaries, _wells, _hay, _flames, _huts;
         struct TreeInst { public Vector3 Pos; public Quaternion Rot; public float Scale; public byte Kind, Shade; }
         sealed class CellTrees { public float Forest; public TreeInst[] Trees; }
         readonly System.Collections.Generic.Dictionary<int, CellTrees> _treeCache = new System.Collections.Generic.Dictionary<int, CellTrees>();
@@ -52,6 +52,7 @@ namespace TC2.Game
             _houseKinds = new Instancer[HouseModels.Length];
             for (int i = 0; i < HouseModels.Length; i++) _houseKinds[i] = new Instancer(Models.Get(HouseModels[i], ProcMeshes.House), _mat, true);
             _granaries = new Instancer(Models.Get("granary", ProcMeshes.Granary), _mat, true);
+            _huts = new Instancer(Models.Get("hut_round", ProcMeshes.House), _mat, true);   // huts, and camps (small, of hides)
             _wells = new Instancer(Models.Get("well", ProcMeshes.Granary), _mat, true);
             _hay = new Instancer(Models.Get("haystack", ProcMeshes.Granary), _mat, true);
             _trees = new Instancer[TreeModels.Length];
@@ -132,7 +133,7 @@ namespace TC2.Game
             RebuildPeople(w);
             var cam = Rig != null ? Rig.Cam : Camera.main;
             for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Draw(cam);
-            _granaries.Draw(cam); _wells.Draw(cam); _hay.Draw(cam);
+            _granaries.Draw(cam); _wells.Draw(cam); _hay.Draw(cam); _huts.Draw(cam);
             for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
             _flames.Draw(cam); _people.Draw(cam);
             EmitSmoke(w);
@@ -168,7 +169,7 @@ namespace TC2.Game
         {
             var P = w.Planet;
             for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Clear();
-            _granaries.Clear(); _wells.Clear(); _hay.Clear();
+            _granaries.Clear(); _wells.Clear(); _hay.Clear(); _huts.Clear();
             _smoke.Clear();
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
@@ -193,6 +194,15 @@ namespace TC2.Game
                     float age = 0.88f + 0.2f * (float)KeyedRng.Unit(hh);           // weathering of roofs and walls
                     bool awake = SomeoneAwakeHome(w, hhs[i]);
                     bool lit = dark && awake;
+                    // what its people have raised (D2-045): a camp of hides, a round hut, a house
+                    if (h.Shelter < Construction.House)
+                    {
+                        bool camp = h.Shelter == Construction.Camp;
+                        var mh = Place(P, s, h.HomeX, h.HomeY, yaw, ex * (camp ? 0.55f : 1f));
+                        Color hc = camp ? new Color(0.62f * age, 0.50f * age, 0.38f * age, 1f) : new Color(age, age * 0.97f, age * 0.9f, 1f);
+                        _huts.Add((camp ? 200 : 300) + (int)(age * 10) + (lit ? 100 : 0), hc, mh, lit ? -1f : 0f);
+                        continue;
+                    }
                     var m = Place(P, s, h.HomeX, h.HomeY, yaw, ex);
                     _houseKinds[kind].Add((int)(age * 10) + (lit ? 100 : 0), new Color(age, age * 0.98f, age * 0.94f, 1f), m, lit ? -1f : 0f);
                     // a fire in the hearth: cooking in the morning and the evening, all day when it is cold
@@ -202,9 +212,9 @@ namespace TC2.Game
                         _smoke.Add(new Vector4(top.x, top.y, top.z, cooking ? 1f : 0.6f));
                     }
                 }
-                // the village store and its well; haystacks once the harvest is in
-                _granaries.Add(0, Color.white, Place(P, s, s.SquareX + 14, s.SquareY - 10, 12f, ex));
-                _wells.Add(0, Color.white, Place(P, s, s.WellX, s.WellY, 30f, ex));
+                // the village store and its well, once its people have built them (D2-045); haystacks once the harvest is in
+                if ((s.Works & Construction.Granary) != 0) _granaries.Add(0, Color.white, Place(P, s, s.SquareX + 14, s.SquareY - 10, 12f, ex));
+                if ((s.Works & Construction.Well) != 0) _wells.Add(0, Color.white, Place(P, s, s.WellX, s.WellY, 30f, ex));
                 float fill = Mathf.Clamp01((float)(s.Granary / System.Math.Max(1.0, s.Population * 30.0)));
                 if (s.Crop == CropStage.Harvested || s.Crop == CropStage.Fallow)
                     for (int k = 0; k < Mathf.RoundToInt(fill * 4); k++)

@@ -292,8 +292,10 @@ namespace TC2.Core.Worldgen
                 double f = P.Moist[nb] + 0.3 * P.Grass[nb] - 0.2 * P.Forest[nb];
                 if (f > fbest) { fbest = f; fieldCell = nb; }
             }
+            // the first villages are already standing when history begins: houses, a well, a granary (D2-045)
             var s = new Settlement { Id = sid, Cell = cell, Anchor = anchor, East = east, North = north, Founded = w.Now, FieldCell = fieldCell, Ration = 1.0,
-                                     Hunt = Grounds.Empty, Fish = Grounds.Empty, Gath = Grounds.Empty };
+                                     Hunt = Grounds.Empty, Fish = Grounds.Empty, Gath = Grounds.Empty, Works = Construction.Well | Construction.Granary,
+                                     Lore = KnownSites.Empty };
             s.SphereToLocal(P.Grid.Center[fieldCell], P.Radius, out double fx, out double fy);
             double fl = DMath.Sqrt(fx * fx + fy * fy);
             if (fl < 1) { fx = 150; fy = 0; fl = 150; }
@@ -317,7 +319,7 @@ namespace TC2.Core.Worldgen
                 int hid = w.Ids.Next(EntityKind.Household);
                 ref var srr = ref w.Settlements.Get(sid);
                 srr.LotPosition(srr.Lots++, out float hx, out float hy);
-                var hh = new Household { Id = hid, Settlement = sid, Formed = w.Now, FamilyName = hid, HomeX = hx, HomeY = hy, Larder = 6 };
+                var hh = new Household { Id = hid, Settlement = sid, Formed = w.Now, FamilyName = hid, HomeX = hx, HomeY = hy, Larder = 6, Shelter = Construction.House };
                 w.Households.Add(hid, hh);
                 w.HouseholdsOf(sid).InsertSorted(hid);
                 w.History.Register(EntityRef.Household(hid), Names.Family(seed, hid), w.Now);

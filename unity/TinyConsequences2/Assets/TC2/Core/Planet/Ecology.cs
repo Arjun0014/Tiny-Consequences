@@ -531,7 +531,11 @@ namespace TC2.Core.Planet
                     double season = P.SinLat[c] >= 0 ? yf : (yf + 0.5) % 1.0;
                     if (season >= 0.12 && season < 0.12 + dt)
                     {
-                        double room = sp.Territory > 0 ? DMath.Clamp01(1.0 - N / sp.Territory) : 1.0;
+                        // a hunter's range holds so many of its kind - sister kinds of one first kind share it (D2-046): a split
+                        // does not make room for more wolves, the sisters compete for it
+                        double kin = N;
+                        if (sp.Territory > 0) for (int qi = 0; qi < nh; qi++) { int q = hs[qi]; if (q != s && sps[q].Kind == sp.Kind) kin += P.Abund[q * n + c]; }
+                        double room = sp.Territory > 0 ? DMath.Clamp01(1.0 - kin / sp.Territory) : 1.0;
                         double young = N * sp.Fecundity * DMath.Clamp01((cond - 0.5) / 0.4) * room;   // only the well fed raise young
                         if (Diag != null) Diag[s * 8 + 5] += young;
                         N += young;

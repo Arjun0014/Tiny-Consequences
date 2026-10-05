@@ -44,6 +44,7 @@ namespace TC2.Core.Places
             Crops(ref s, doy);
             Food(ref s, doy);
             w.Wild.Survey(sid);   // what the land and sea within reach hold today (D2-042)
+            if (doy == Migration.DecideDay) w.Migration.Weigh(sid);   // after the harvest: who leaves for a new home (D2-045)
             if (w.Resolution == Resolution.Coarse) w.Agents.CoarseDay(sid);
             Demography(sid);
             ref var s2 = ref w.Settlements.Get(sid);

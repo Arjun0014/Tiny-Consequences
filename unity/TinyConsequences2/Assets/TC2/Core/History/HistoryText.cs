@@ -80,6 +80,11 @@ namespace TC2.Core.History
                 case HistoryKind.Famine: return "Famine in " + subj + ": people are dying of hunger.";
                 case HistoryKind.Rationing: return subj + " began to ration its grain (" + F(e.Magnitude * 100, "0") + "% portions) to last until the harvest.";
                 case HistoryKind.WildFood: return "The people of " + subj + " turned to the woods and the shore for food.";
+                case HistoryKind.HomeBuilt: return "The " + subj + "s raised " + (e.ArgA >= 2 ? "a house" : "a hut") + " in " + place + ".";
+                case HistoryKind.WorkBuilt: return "The people of " + subj + (e.ArgA == 1 ? " dug a well." : " built a granary.");
+                case HistoryKind.PartySetOut: return e.ArgA + " households of " + subj + " (" + e.ArgB + " people) set out to make a new home.";
+                case HistoryKind.Scouted: return "Someone of " + subj + " saw good land near " + place + ".";
+                case HistoryKind.HouseholdMoved: return "The " + subj + "s left " + place + " for " + obj + ".";
                 case HistoryKind.GodCommand: return "You reached down near " + place + ".";
                 default: return e.Kind + " at " + place;
             }
