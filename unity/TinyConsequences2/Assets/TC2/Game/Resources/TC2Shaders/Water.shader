@@ -74,7 +74,8 @@ Shader "TC2/Water"
                 half fres = pow(1.0h - saturate(dot(n, v)), 4.0h);
                 float3 h = normalize(l.direction + v);
                 half spec = pow(saturate(dot(n, h)), lerp(60.0h, 220.0h, near)) * lerp(0.25h, 2.6h, near) * lerp(0.35h, 1.0h, l.shadowAttenuation);
-                half3 c = (body + _Sky.rgb * fres * 0.55h) * (0.12h + 0.88h * day) + l.color * spec * day;
+                half3 sky = lerp(_Sky.rgb, _TC2FogColor.rgb, 0.6h) * half3(0.85h, 0.95h, 1.05h);
+                half3 c = (body + sky * fres * 0.42h) * (0.12h + 0.88h * day) + l.color * spec * day;
                 half alpha = saturate(_Alpha + fres * 0.3h);
                 half fog = 1.0h - exp(-dist * _TC2FogDensity);
                 c = lerp(c, _TC2FogColor.rgb * (0.25h + 0.75h * day), fog * 0.85h);

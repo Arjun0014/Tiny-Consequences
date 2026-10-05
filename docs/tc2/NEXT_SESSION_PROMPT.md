@@ -34,6 +34,11 @@ iteration).
 `node tc2/scripts/headless.mjs ...`; Unity batch via `node tc2/scripts/unity.mjs ...`; Web build, serve
 (COOP/COEP) and Playwright via `tc2/scripts/*.mjs`. One heavy process at a time (11 GB RAM).
 
+**Direction from Arjun (5 Oct 2026)**: the world must be a *really beautiful miniature* with a high level of detail
+and high performance - look-dev is a first-class track beside the simulation (D2-026). Judge every visual change in
+real game screenshots (`node tc2/scripts/unity.mjs shots`), not in debug maps; keep 60 fps in the Web build.
+Headless Blender (`tc2/art/kit.py`) makes the asset kit.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

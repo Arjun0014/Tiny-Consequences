@@ -36,6 +36,7 @@ namespace TC2.Game
             public Color[] Colours;
             public Vector2[] Plots;   // field plot coordinates in the owning village's frame (m)
             public Vector2[] Farm;    // x: share of the land the village works, y: crop stage
+            public Matrix4x4[] Tufts; public byte[] TuftKind, TuftGroup; public int TuftCount; // ground cover (finest level)
             public int ColourCycle;
         }
 
@@ -44,6 +45,14 @@ namespace TC2.Game
         readonly List<Patch> _wanted = new List<Patch>();
         readonly List<Patch> _shownLast = new List<Patch>();
         Material _mat;
+        Instancer[] _cover;           // grass, flowers, reeds, boulders on the finest patches near the camera
+        const int Grass = 0, Flowers = 1, Reeds = 2, Boulder = 3;
+        static readonly Color[] GrassTints =
+        {
+            new Color(0.80f, 0.80f, 0.50f), new Color(0.70f, 0.80f, 0.44f), new Color(0.60f, 0.78f, 0.40f),
+            new Color(0.52f, 0.72f, 0.36f), new Color(0.46f, 0.64f, 0.32f), new Color(0.86f, 0.80f, 0.56f),
+        };
+        static readonly Color[] Petals = { new Color(0.97f, 0.96f, 0.90f), new Color(0.98f, 0.84f, 0.26f), new Color(0.66f, 0.46f, 0.84f), new Color(0.90f, 0.32f, 0.30f) };
         int _builtWorld = -1, _builtCoast = -1, _builtRelief = -1;
         int _frame, _cycle;
         float _recolourTimer;
@@ -65,6 +74,13 @@ namespace TC2.Game
         void Start()
         {
             _mat = Materials.Load("Terrain");
+            var inst = Materials.Load("Instanced");
+            inst.enableInstancing = true;
+            _cover = new Instancer[4];
+            _cover[Grass] = new Instancer(Models.Get("grass_tuft", ProcMeshes.Person), inst, false);
+            _cover[Flowers] = new Instancer(Models.Get("flowers", ProcMeshes.Person), inst, false);
+            _cover[Reeds] = new Instancer(Models.Get("reeds", ProcMeshes.Person), inst, false);
+            _cover[Boulder] = new Instancer(Models.Get("boulder", ProcMeshes.Person), inst, true);
         }
 
         static long Key(int f, int level, int i, int j) => ((long)f << 56) | ((long)level << 48) | ((long)i << 24) | (long)(uint)j;
@@ -87,6 +103,7 @@ namespace TC2.Game
             Select(w);
             BuildSome(w);
             Show();
+            DrawCover();
             _recolourTimer -= Time.unscaledDeltaTime;
             if (_recolourTimer <= 0) { _recolourTimer = RecolourSeconds; RefreshCellColours(w); _cycle++; }
             RecolourSome(w);
@@ -288,6 +305,7 @@ namespace TC2.Game
                     p.Dirs[o] = p.Dirs[src]; p.Cells[o] = p.Cells[src]; p.Rel[o] = p.Rel[src]; p.Slope[o] = p.Slope[src];
                 }
             Colourise(w, p);
+            if (p.Level >= MaxLevel) PlaceCover(w, p, pos, nrm); else p.TuftCount = 0;
             if (p.Mesh == null)
             {
                 p.Mesh = new Mesh { name = "tc2-terrain", indexFormat = IndexFormat.UInt16 };
@@ -331,6 +349,85 @@ namespace TC2.Game
                 for (int q = 0; q < _trisFlipped.Length; q += 3) { int t = _trisFlipped[q + 1]; _trisFlipped[q + 1] = _trisFlipped[q + 2]; _trisFlipped[q + 2] = t; }
             }
             return _winding[face] == 1 ? Tris : _trisFlipped;
+        }
+
+        // ------------------------------------------------------------------ ground cover
+        /// <summary>
+        /// Tufts of grass, wildflowers, reeds by the water and boulders on rocky slopes, on the patch's own surface
+        /// (interpolated between its vertices: no extra height lookups); none on fields, paths, sand, snow or water.
+        /// </summary>
+        void PlaceCover(TC2.Core.Simulation.World w, Patch p, Vector3[] pos, Vector3[] nrm)
+        {
+            var P = w.Planet;
+            int V = N + 1;
+            int max = N * N * 2;
+            if (p.Tufts == null) { p.Tufts = new Matrix4x4[max]; p.TuftKind = new byte[max]; p.TuftGroup = new byte[max]; }
+            int count = 0;
+            bool spring = SimTime.YearFraction(w.Now) < 0.5;
+            ulong key = (ulong)p.Key * 0x9E3779B97F4A7C15UL;
+            for (int j = 0; j < N; j++)
+                for (int i = 0; i < N; i++)
+                {
+                    int a = j * V + i, b = a + 1, c = a + V, d = c + 1;
+                    float rel = Mathf.Min(Mathf.Min(p.Rel[a], p.Rel[b]), Mathf.Min(p.Rel[c], p.Rel[d]));
+                    if (rel < 0.9f) continue;
+                    Color col = p.Colours[a];
+                    if (col.a > 0.15f) continue;                                  // farmland: the crop is the shader's
+                    float slope = p.Slope[a];
+                    ulong h = KeyedRng.Mix(key ^ ((ulong)(i * 73856093) ^ (ulong)(j * 19349663)));
+                    // meadows are patchy: thick in hollows, thin on the rises (a slow noise of where they are)
+                    Vector3 dq = p.Dirs[a];
+                    float lushness = 0.30f + 0.9f * (0.5f + (float)Noise.Perlin(dq.x * 420.0, dq.y * 420.0, dq.z * 420.0));
+                    for (int t = 0; t < 2; t++)
+                    {
+                        h = KeyedRng.Mix(h + (ulong)t);
+                        if (slope <= 0.17f && KeyedRng.Unit(KeyedRng.Mix(h ^ 0x77UL)) > lushness) continue;
+                        float u = (float)KeyedRng.Unit(h), v = (float)KeyedRng.Unit(KeyedRng.Mix(h ^ 0x51UL));
+                        Vector3 at = Vector3.Lerp(Vector3.Lerp(pos[a], pos[b], u), Vector3.Lerp(pos[c], pos[d], u), v);
+                        Vector3 up = Vector3.Lerp(Vector3.Lerp(nrm[a], nrm[b], u), Vector3.Lerp(nrm[c], nrm[d], u), v).normalized;
+                        // the ground's own colour decides: bare earth, sand and snow carry no grass
+                        float g = col.g, r = col.r, bl = col.b;
+                        bool earthy = r > g * 0.98f, snowy = bl > 0.55f && g > 0.55f;
+                        int kind = Grass;
+                        double pick = KeyedRng.Unit(KeyedRng.Mix(h + 99));
+                        int cell = p.Cells[a];
+                        if (slope > 0.17f) { if (pick > 0.30) continue; kind = Boulder; }
+                        else if (earthy || snowy) continue;
+                        else if (P.LakeDepth[cell] > 0.3f || P.IsStream(cell)) { if (pick < 0.45) kind = Reeds; }   // by fresh water
+                        else if (spring && pick < 0.09) kind = Flowers;
+                        float s = kind == Boulder ? 0.6f + 1.2f * (float)KeyedRng.Unit(KeyedRng.Mix(h + 7)) : (kind == Grass ? 1.5f + 1.0f : 1.0f) * (0.75f + 0.5f * (float)KeyedRng.Unit(KeyedRng.Mix(h + 7)));
+                        var rot = Quaternion.AngleAxis((float)(h % 360), up) * Quaternion.FromToRotation(Vector3.up, up);
+                        p.Tufts[count] = Matrix4x4.TRS(at, rot, Vector3.one * s);
+                        p.TuftKind[count] = (byte)kind;
+                        // tint group: from dry and yellow to lush, by how green the ground is (petals by hash)
+                        float lush = Mathf.Clamp01((g - r) * 6f + 0.5f);
+                        p.TuftGroup[count] = (byte)(kind == Flowers ? (int)((h >> 20) % (ulong)Petals.Length) : (r > g ? 5 : Mathf.Clamp((int)(lush * 4.99f), 0, 4)));
+                        count++;
+                    }
+                }
+            p.TuftCount = count;
+        }
+
+        void DrawCover()
+        {
+            for (int k = 0; k < _cover.Length; k++) _cover[k].Clear();
+            Vector3 cam = Rig.Cam.transform.position;
+            float alt = cam.magnitude - (float)Host.World.Planet.Radius;
+            if (alt > 600f) return;
+            for (int q = 0; q < _shownLast.Count; q++)
+            {
+                var p = _shownLast[q];
+                if (p.TuftCount == 0) continue;
+                if ((p.Tufts[0].GetColumn(3) - (Vector4)cam).sqrMagnitude > 260f * 260f) continue;
+                for (int t = 0; t < p.TuftCount; t++)
+                {
+                    int kind = p.TuftKind[t], gi = p.TuftGroup[t];
+                    Color tint = kind == Flowers ? Petals[gi] : (kind == Boulder ? new Color(1, 1, 1, 1) : GrassTints[gi]);
+                    _cover[kind].Add(gi, tint, p.Tufts[t]);
+                }
+            }
+            var c = Rig.Cam;
+            for (int k = 0; k < _cover.Length; k++) _cover[k].Draw(c);
         }
 
         // ------------------------------------------------------------------ colour
@@ -464,7 +561,8 @@ namespace TC2.Game
                     float fine = (float)Noise.Perlin(d.X * 140.0, d.Y * 140.0, d.Z * 140.0);
                     col = new Color(col.r * (1f + 0.10f * hue) + 0.015f * fine, col.g * (1f + 0.04f * hue) + 0.02f * fine, col.b * (1f - 0.08f * hue) + 0.01f * fine);
                     // beaches where the land meets the sea
-                    float beach = 1f - Edge(1.0f, 6.5f, rel);
+                    float beachW = (float)(1.0 + 0.9 * Noise.Fbm(d.X * 24.0, d.Y * 24.0, d.Z * 24.0, 2)) * (1f - Edge(0.05f, 0.25f, slope));
+                    float beach = 1f - Edge(0.6f, 0.6f + 4.2f * Mathf.Max(0.15f, beachW), rel);
                     if (beach > 0 && P.Ice[c] < 1f) col = Color.Lerp(col, rel < 1.2f ? WetSand : Sand, beach * 0.92f);
                     // rock on steep ground
                     float rock = Edge(0.10f, 0.30f, slope);

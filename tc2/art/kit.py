@@ -82,10 +82,12 @@ class Kit:
         self.paint([f], color)
         return f
 
-    def finish(self):
+    def finish(self, sheets=False):
+        """sheets: open double-sided leaves (grass): keep both sides as built (no merging, no normal fixing)."""
         bm = self.bm
-        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0005)
-        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        if not sheets:
+            bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0005)
+            bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
         mesh = bpy.data.meshes.new(self.name)
         bm.to_mesh(mesh)
         bm.free()
@@ -313,6 +315,76 @@ def well(name, seed=7):
     return k.finish()
 
 
+def blade(k, base, angle, lean, height, width, col_base, col_tip):
+    """One blade of grass: a thin bent triangle strip (two segments), double sided."""
+    ca, sa = math.cos(angle), math.sin(angle)
+    def p(t, side):
+        x = base[0] + ca * lean * t * t + (-sa) * width * side * (1 - t)
+        y = base[1] + sa * lean * t * t + ca * width * side * (1 - t)
+        return Vector((x, y, base[2] + height * t))
+    pts = [(p(0, -1), p(0, 1)), (p(0.55, -1), p(0.55, 1)), (p(1.0, 0), p(1.0, 0))]
+    for i in range(2):
+        a0, a1 = pts[i]; b0, b1 = pts[i + 1]
+        col = col_base if i == 0 else col_tip
+        if i == 1:
+            f = k.quad_strip([a0, a1, b0], col)
+            k.quad_strip([b0, a1, a0], col)
+        else:
+            k.quad_strip([a0, a1, b1, b0], col)
+            k.quad_strip([b0, b1, a1, a0], col)
+
+
+def grass_tuft(name, seed):
+    k = Kit(name, seed)
+    r = k.rng
+    base_c = srgb(0.62, 0.70, 0.40, 1.0)   # tinted per instance to the ground's green
+    tip_c = srgb(0.86, 0.92, 0.62, 1.0)
+    for i in range(7):
+        a = i / 7.0 * 6.283 + r.uniform(-0.4, 0.4)
+        off = (math.cos(a) * 0.05, math.sin(a) * 0.05, 0.0)
+        blade(k, off, a, r.uniform(0.08, 0.18), r.uniform(0.28, 0.48), 0.035, base_c, tip_c)
+    return k.finish(sheets=True)
+
+
+def flowers(name, seed):
+    k = Kit(name, seed)
+    r = k.rng
+    stem = srgb(0.36, 0.50, 0.24)
+    head = srgb(1.0, 1.0, 1.0, 1.0)        # petals take the instance colour
+    for i in range(5):
+        a = i * 1.26 + r.uniform(-0.3, 0.3)
+        x, y = math.cos(a) * 0.09, math.sin(a) * 0.09
+        h = r.uniform(0.22, 0.38)
+        k.cyl((x, y, 0), 0.008, 0.006, h, stem, seg=3)
+        k.blob((x, y, h), 0.035, head, subdiv=1, jitter=0.0, squash=0.6)
+    for i in range(4):
+        a = i * 1.57 + 0.4
+        blade(k, (0, 0, 0), a, 0.12, 0.25, 0.03, srgb(0.40, 0.55, 0.26), srgb(0.52, 0.66, 0.32))
+    return k.finish(sheets=True)
+
+
+def reeds(name, seed):
+    k = Kit(name, seed)
+    r = k.rng
+    for i in range(9):
+        a = r.uniform(0, 6.283)
+        d = r.uniform(0.0, 0.25)
+        blade(k, (math.cos(a) * d, math.sin(a) * d, 0), a, r.uniform(0.05, 0.15), r.uniform(0.9, 1.5), 0.03, srgb(0.42, 0.50, 0.26), srgb(0.66, 0.62, 0.36))
+    for i in range(2):
+        a = r.uniform(0, 6.283)
+        x, y = math.cos(a) * 0.1, math.sin(a) * 0.1
+        k.cyl((x, y, 0), 0.01, 0.008, 1.3, srgb(0.45, 0.48, 0.28), seg=3)
+        k.cyl((x, y, 1.3), 0.035, 0.035, 0.18, srgb(0.38, 0.24, 0.14), seg=5)  # bulrush head
+    return k.finish(sheets=True)
+
+
+def boulder(name, seed):
+    k = Kit(name, seed)
+    k.blob((0, 0, 0.35), 0.6, srgb(0.52, 0.50, 0.47), subdiv=1, jitter=0.22, squash=0.65)
+    k.blob((0.45, 0.2, 0.18), 0.32, srgb(0.47, 0.45, 0.43), subdiv=1, jitter=0.25, squash=0.6)
+    return k.finish()
+
+
 def build_all():
     objs = []
     objs.append(house("house_cottage", 7.0, 5.0, 2.6, 42, THATCH, seed=11))
@@ -331,6 +403,10 @@ def build_all():
     objs.append(fence("fence"))
     objs.append(haystack("haystack"))
     objs.append(well("well"))
+    objs.append(grass_tuft("grass_tuft", 31))
+    objs.append(flowers("flowers", 32))
+    objs.append(reeds("reeds", 33))
+    objs.append(boulder("boulder", 34))
     return objs
 
 

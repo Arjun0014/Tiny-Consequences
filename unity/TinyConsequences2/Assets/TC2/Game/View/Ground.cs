@@ -35,16 +35,29 @@ namespace TC2.Game
             var g = P.Grid;
             int c = g.CellOf(dir);
             cell = c;
-            double sw = 0, s = 0, sl = 0;
-            Accum(g.Center[c], P.Elev[c] + P.Ice[c], P.LakeDepth[c], dir, _r2, ref s, ref sl, ref sw);
+            double sw = 0, s = 0, sl = 0, si = 0, swi = 0;
+            Accum(g.Center[c], P.Elev[c], P.LakeDepth[c], dir, _r2, ref s, ref sl, ref sw);
+            AccumIce(g.Center[c], P.Ice[c], dir, ref si, ref swi);
             for (int k = 0; k < 8; k++)
             {
                 int n = g.Nbr8[c * 8 + k];
-                Accum(g.Center[n], P.Elev[n] + P.Ice[n], P.LakeDepth[n], dir, _r2, ref s, ref sl, ref sw);
+                Accum(g.Center[n], P.Elev[n], P.LakeDepth[n], dir, _r2, ref s, ref sl, ref sw);
+                AccumIce(g.Center[n], P.Ice[n], dir, ref si, ref swi);
             }
-            if (sw <= 1e-12) { lake = P.LakeDepth[c]; return P.Elev[c] + P.Ice[c]; }
+            double ice = swi > 1e-12 ? si / swi : P.Ice[c];
+            if (sw <= 1e-12) { lake = P.LakeDepth[c]; return P.Elev[c] + ice; }
             lake = sl / sw;
-            return s / sw;
+            return s / sw + ice;
+        }
+
+        static void AccumIce(Vec3d centre, double v, Vec3d dir, ref double s, ref double sw)
+        {
+            double dx = dir.X - centre.X, dy = dir.Y - centre.Y, dz = dir.Z - centre.Z;
+            double d2 = dx * dx + dy * dy + dz * dz;
+            if (d2 >= _r2c) return;
+            double u = 1.0 - d2 / _r2c;
+            double w = u * u;
+            s += w * v; sw += w;
         }
 
         static void Accum(Vec3d centre, double v, double lv, Vec3d dir, double r2, ref double s, ref double sl, ref double sw)
