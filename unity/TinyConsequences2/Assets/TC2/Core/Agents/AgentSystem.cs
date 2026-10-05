@@ -425,7 +425,7 @@ namespace TC2.Core.Agents
                         ulong key = KeyedRng.Hash(w.Seed, RngStream.Work, (ulong)p.Id, (ulong)now);
                         double fu;
                         int kind = -1;
-                        if (p.Act == ActivityKind.Hunt) { fu = w.Wild.Hunt(p.Ground, hours, p.SkHunt, key, out kind); p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hours); if (fu > 0) w.HerdSys.MarkHunted(p.Ground); }
+                        if (p.Act == ActivityKind.Hunt) { fu = w.Wild.Hunt(p.Ground, hours, p.SkHunt, key, out kind); p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hours); if (fu > 0) w.HerdSys.MarkHunted(p.Home, p.Ground); }
                         else if (p.Act == ActivityKind.Fish) { fu = w.Wild.Fish(p.Ground, hours, p.SkFish, key); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hours); if (fu > 0) kind = 64; }
                         else fu = w.Wild.Gather(p.Ground, hours, p.Health, key);
                         p.Carry = (float)(p.Carry + fu);
@@ -912,7 +912,7 @@ namespace TC2.Core.Agents
                                     int herd = w.HerdSys.BestGame(sid);   // (where a herd is, as a lived day's hunter goes)
                                     if (herd != 0 && rs.Chance(0.7)) ground = w.Herds.Get(herd).Cell;
                                     fu = w.Wild.Hunt(ground, hw, p.SkHunt, key, out _); p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hw); w.Metrics.HuntTrips++;
-                                    if (fu > 0) w.HerdSys.MarkHunted(ground);
+                                    if (fu > 0) w.HerdSys.MarkHunted(sid, ground);
                                 }
                                 else if (wk == WildFood.Fishing) { fu = w.Wild.Fish(ground, hw, p.SkFish, key); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hw); w.Metrics.FishTrips++; }
                                 else { fu = w.Wild.Gather(ground, hw, p.Health, key); w.Metrics.GatherTrips++; }

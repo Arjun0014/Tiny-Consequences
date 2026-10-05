@@ -47,12 +47,14 @@ namespace TC2.Core.Places
             prof?.Begin(10002); w.Wild.Survey(sid); w.HerdSys.Update(sid); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
             if (doy == Migration.DecideDay) { prof?.Begin(10003); w.Migration.Weigh(sid); prof?.End(10003); }   // who leaves (D2-045)
             if (w.Resolution == Resolution.Coarse) { prof?.Begin(10004); w.Agents.CoarseDay(sid); prof?.End(10004); }
+            prof?.Begin(10006); w.Stock.Day(sid); prof?.End(10006);   // the herds' day: grazing, milk, births, slaughter (D2-048)
             prof?.Begin(10005); Demography(sid); prof?.End(10005);
             ref var s2 = ref w.Settlements.Get(sid);
             if (s2.Population <= 0 && s2.Abandoned == 0)
             {
                 s2.Abandoned = now;
                 w.HerdSys.Dissolve(sid);
+                w.Stock.Feral(sid);   // its animals are left to the land (D2-048)
                 w.Record(new HistoryEvent { Kind = HistoryKind.SettlementAbandoned, Time = now, Cell = s2.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Cause1 = s2.HungerEvent });
                 w.History.EndEntity(EntityRef.Settlement(sid), now);
                 return;
@@ -500,7 +502,8 @@ namespace TC2.Core.Places
                 double take = left == 0 ? oh.Larder : oh.Larder / (left + 1);
                 oh.Larder -= take;
                 w.Households.Get(hid).Larder += take;
-                if (left == 0) { oh.Dissolved = w.Now; w.History.EndEntity(EntityRef.Household(old), w.Now); w.HouseholdsOf(oh.Settlement).Remove(old); }
+                if (left == 0) { oh.Dissolved = w.Now; w.History.EndEntity(EntityRef.Household(old), w.Now); w.HouseholdsOf(oh.Settlement).Remove(old); w.Stock.Inherit(old, hid); }
+                else w.Stock.Endow(old, hid);   // and a share of the herd (D2-048)
             }
             p.Household = hid;
             w.Members(hid).InsertSorted(pid);

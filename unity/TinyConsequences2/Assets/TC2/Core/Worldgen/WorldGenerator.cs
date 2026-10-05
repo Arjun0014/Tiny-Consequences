@@ -42,6 +42,7 @@ namespace TC2.Core.Worldgen
             // the story begins on a morning at the first village (world time 0 is midnight at longitude 0)
             if (sites.Count > 0) w.Now = SimTime.FloorMod(9 * SimTime.Hour + 30 * SimTime.Minute - PlanetState.LocalOffset(P.Grid.Center[sites[0]]), SimTime.Day);
             w.ScheduleSystems();
+            if (cfg.Settlements <= 0) sites.Clear();   // a world without people (tools): the clock still starts at the first site's morning
             for (int i = 0; i < sites.Count; i++) Found(w, sites[i], i);
             return w;
         }
@@ -340,6 +341,7 @@ namespace TC2.Core.Worldgen
                     childAge += rs.Range(1.8, 3.6);
                 }
                 if (made < target && rs.Chance(0.25)) { MakeFounder(w, rs.Chance(0.55) ? Sex.Female : Sex.Male, rs.Range(56, 70), 0, 0, hid, sid, ref rs); made++; }
+                StartingHerd(w, hid, sid);
             }
             // stores to see the founders through to their first harvest
             ref var st = ref w.Settlements.Get(sid);
@@ -357,6 +359,19 @@ namespace TC2.Core.Worldgen
             st.ExpectedHarvest = st.FieldHa * cfg.FieldYieldPerHa * 0.8;
             w.Wild.Survey(sid);   // the founders know the grounds round their new home (D2-042)
             w.SettlementSys.ScheduleFirstDaily(sid);
+        }
+
+        /// <summary>
+        /// A founding household's animals (D2-048; keyed by the household, so the people's draws stay where they were): a few goats,
+        /// a cow or two in some, pigs in some - grown animals of both sexes, the village's herds breeding among themselves.
+        /// </summary>
+        static void StartingHerd(World w, int hid, int sid)
+        {
+            var hrs = new RandomSequence(KeyedRng.Hash(w.Seed, RngStream.WorldgenSettle, (ulong)hid, 48));
+            int goats = 2 + hrs.NextBelow(3);
+            for (int i = 0; i < goats; i++) w.Stock.Add(Livestock.Goat, i == 0 || hrs.Chance(0.3) ? Sex.Male : Sex.Female, w.Now - SimTime.Years(1.2 + 4 * hrs.NextUnit()), 0, hid);
+            if (hrs.Chance(0.45)) { w.Stock.Add(Livestock.Cattle, Sex.Female, w.Now - SimTime.Years(3 + 5 * hrs.NextUnit()), 0, hid); if (hrs.Chance(0.5)) w.Stock.Add(Livestock.Cattle, Sex.Male, w.Now - SimTime.Years(3 + 4 * hrs.NextUnit()), 0, hid); }
+            if (hrs.Chance(0.4)) { w.Stock.Add(Livestock.Pig, Sex.Female, w.Now - SimTime.Years(1 + 3 * hrs.NextUnit()), 0, hid); w.Stock.Add(Livestock.Pig, Sex.Male, w.Now - SimTime.Years(1 + 3 * hrs.NextUnit()), 0, hid); }
         }
 
         static int MakeFounder(World w, byte sex, double age, int mother, int father, int hid, int sid, ref RandomSequence rs)

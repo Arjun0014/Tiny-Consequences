@@ -52,6 +52,27 @@ regular fair; "fortified" if defences stand.
   by a chance growing with the pressure (land too short, rations cut, famine remembered); together they found at a known place
   (a camp that builds its well, its homes and sows in spring), alone they join a known village with land to spare.
 
+## 5d. Livestock (implemented, D2-048)
+- Cattle, goats and pigs are individuals (`Beast`: kind, sex, mother, owner household, condition, pregnancy, milk), kept by
+  households (`Core/Places/Livestock.cs`). Once a day with their village they graze its pasture - the open land within 900 m
+  not under fields, the same `P.Grass` the wild grazers eat (out to 1,500 m when short; neighbours' herds may meet there) -
+  pigs root for the same mast as boar and gatherers (`P.Gathered`) and live partly on the village's scraps. Intake by the
+  wild animals' law (9 x mass^0.75 kg a year); lean in the cold (the day's mean temperature).
+- Condition follows how well they ate; they breed in spring when well fed and a grown male of their kind is in the village or
+  a neighbour's within 3.5 km; milk while the young are small; old age, hunger and wolves (by the wolves round the pasture,
+  the young three times as exposed, grown cattle a fifth) end them.
+- Households keep a breeding core per kind (the sire and his successor; the youngest females in their prime, then the eldest
+  young ones, then the ageing) and slaughter beyond it what their hands cannot tend (50 kg of fodder a day per grown hand,
+  children and the old half) and what the land does not offer with grass to spare (0.6 of a day's offer: the autumn
+  slaughter as the grass grows lean); grown males beyond two, the old and the failing are killed; a hungry household eats its
+  herd down to a pair of each kind. Milk and meat go to the larder first, the rest to the granary.
+- Animals follow the generations: a child marrying out takes the youngest of each kind and sex the family keeps more than one
+  of; a household that ends at a marriage passes its herd on, one that dies out leaves it to the village's household with the
+  fewest; a household on the road has its herd with it; an abandoned village's animals join the wild of their kind there.
+- Measured (seed 42, 200 coarse years): 38 cattle, 1,128 goats, 103 pigs for 3,539 people; ~8 % of the food from slaughter;
+  ACTIVITY and COARSE within 1 % over three years (one daily law, both resolutions). Goats lead: they breed fastest and turn
+  grass into food best under these laws.
+
 ## 6. Phase
 F3 (layout, construction, economy basics), F5 (exchange, migration, founding). F0: settlements as a few
 place nodes with granary and woodstore, fields by season, and trips between neighbours.

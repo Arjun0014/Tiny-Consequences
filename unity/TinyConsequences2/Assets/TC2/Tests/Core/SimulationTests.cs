@@ -51,6 +51,30 @@ namespace TC2.Tests.Core
             int alive = 0;
             for (int id = w.People.First(); id != 0; id = w.People.Next(id)) if (w.People.Get(id).Alive) alive++;
             if (pop != alive) return "population cache " + pop + " != living " + alive;
+            // livestock (D2-048): every live animal in its household's list and only there, kept by a household that exists
+            int listed = 0, beasts = 0;
+            for (int id = w.Beasts.First(); id != 0; id = w.Beasts.Next(id))
+            {
+                ref var be = ref w.Beasts.Get(id);
+                if (!be.Alive) continue;
+                beasts++;
+                if (!w.Households.Exists(be.Owner)) return "beast " + id + " of a missing household " + be.Owner;
+                var hh = w.Households.Get(be.Owner);
+                if (hh.Dissolved != 0) return "beast " + id + " of a dissolved household " + be.Owner;
+                if (!w.Settlements.Get(hh.Settlement).Inhabited) return "beast " + id + " left in an abandoned village";
+                if (!w.BeastsOf(be.Owner).Contains(id)) return "beast " + id + " missing from its household's list";
+            }
+            for (int h = w.Households.First(); h != 0; h = w.Households.Next(h))
+            {
+                var list = w.BeastsOf(h);
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (!w.Beasts.Exists(list[i]) || !w.Beasts.Get(list[i]).Alive || w.Beasts.Get(list[i]).Owner != h) return "household " + h + " lists beast " + list[i] + " that is not its live animal";
+                    if (i > 0 && list[i] <= list[i - 1]) return "household " + h + "'s animals out of id order";
+                }
+                listed += list.Count;
+            }
+            if (listed != beasts) return "households list " + listed + " animals, " + beasts + " live";
             return null;
         }
     }

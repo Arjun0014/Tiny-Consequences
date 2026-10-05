@@ -47,9 +47,17 @@ namespace TC2.Headless
             return sb.ToString();
         }
 
+        static string PastureLine(int sid)
+        {
+            var d = TC2.Core.Places.Livestock.Diag;
+            if (d == null || sid * 4 + 3 >= d.Length) return "";
+            return "  pasture " + F(d[sid * 4], "0") + "/" + F(d[sid * 4 + 1], "0") + " kg mast " + F(d[sid * 4 + 2], "0") + "/" + F(d[sid * 4 + 3], "0");
+        }
+
         public static int Run(Args a)
         {
             var sw = Stopwatch.StartNew();
+            if (a.Has("places")) { TC2.Core.Places.Livestock.Diag = new double[4 * 4096]; TC2.Core.Places.Livestock.DiagEnds = new long[4 * TC2.Core.Places.Livestock.Causes]; }
             World w;
             if (a.Has("load"))
             {
@@ -90,7 +98,8 @@ namespace TC2.Headless
                                           "  fields " + F(st.FieldHa, "0.0") + "/" + F(st.ArableHa, "0") + " ha  granary " + F(st.Granary, "0") + "  ration " + F(st.Ration, "0.00") +
                                           "  last harvest " + F(st.LastHarvest, "0") + "  T " + F(w.Planet.TMean[st.Cell], "0.0") +
                                           "  mem " + F(st.Memory, "0.00") + "  wild FU/h hunt " + F(st.Hunt.Expect, "0.00") + " (" + F(st.Hunt.Va, "0") + " kg) fish " + F(st.Fish.Expect, "0.00") +
-                                          " (" + F(st.Fish.Va, "0") + ") gather " + F(st.Gath.Expect, "0.00") + " (" + F(st.Gath.Va, "0") + ")" + HerdLine(w, sid));
+                                          " (" + F(st.Fish.Va, "0") + ") gather " + F(st.Gath.Expect, "0.00") + " (" + F(st.Gath.Va, "0") + ")" +
+                                          "  stock cattle " + w.Stock.CountOf(sid, TC2.Core.Places.Livestock.Cattle) + " goats " + w.Stock.CountOf(sid, TC2.Core.Places.Livestock.Goat) + " pigs " + w.Stock.CountOf(sid, TC2.Core.Places.Livestock.Pig) + PastureLine(sid) + HerdLine(w, sid));
                     }
                 }
                 int from = w.History.FirstIndexAfter(histCursor);
@@ -113,6 +122,19 @@ namespace TC2.Headless
             Console.WriteLine("wild: trips hunt " + m.HuntTrips + " fish " + m.FishTrips + " gather " + m.GatherTrips + "  hours " + F(m.WildHours, "0") + "  kg game " + F(m.GameKg, "0") +
                               " fish " + F(m.FishKg, "0") + " mast " + F(m.GatherKg, "0") + "  FU " + F(m.WildFu, "0") + " (" + F(m.WildFu / Math.Max(1, m.WildHours), "0.00") + "/h)" +
                               "  hunger deaths " + m.HungerDeaths + "  famines " + m.Famines);
+            var live = new int[3];
+            for (int b = w.Beasts.First(); b != 0; b = w.Beasts.Next(b)) { ref var be = ref w.Beasts.Get(b); if (be.Alive) live[be.Kind]++; }
+            Console.WriteLine("stock: cattle " + live[0] + " goats " + live[1] + " pigs " + live[2] + "  born " + m.BeastBirths + "  died " + m.BeastDeaths + "  taken by wolves " + m.BeastsTaken +
+                              "  slaughtered " + m.BeastsEaten + " (" + F(m.BeastFu, "0") + " FU)  gone wild " + m.BeastsFeral +
+                              "  parties " + m.Parties + "  foundings " + m.Foundings + "  scouts " + m.Scouts);
+            var ends = TC2.Core.Places.Livestock.DiagEnds;
+            if (ends != null)
+                for (int k = 0; k < TC2.Core.Places.Livestock.Kinds; k++)
+                {
+                    var sb = new System.Text.StringBuilder("  " + TC2.Core.Places.Livestock.Laws[k].Name + ": born " + ends[TC2.Core.Places.Livestock.Kinds * TC2.Core.Places.Livestock.Causes + k] + ", ended");
+                    for (int c = 0; c < TC2.Core.Places.Livestock.Causes; c++) sb.Append(" " + TC2.Core.Places.Livestock.CauseNames[c] + " " + ends[k * TC2.Core.Places.Livestock.Causes + c] + ",");
+                    Console.WriteLine(sb.ToString());
+                }
             Console.WriteLine("state hash " + w.StateHash().ToString("x16"));
             prof?.Print();
             string outDir = a.Get("out");

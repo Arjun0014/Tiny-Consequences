@@ -34,12 +34,17 @@ namespace TC2.Core.Agents
             _versionOf = pid => _w.People.Exists(pid) && _w.People.Get(pid).Alive ? _w.People.Get(pid).ActVer : -1;
         }
 
-        /// <summary>Cells whose centres lie within <paramref name="range"/> metres of the cell (BFS over neighbours).</summary>
+        /// <summary>
+        /// Cells whose centres lie within <paramref name="range"/> metres of the cell (BFS over neighbours). The grid never
+        /// changes: answers are kept (derived, never saved; the same list in the same order either way).
+        /// </summary>
         int[] _stamp; int _stampNow;
+        readonly Dictionary<(int, double), int[]> _within = new Dictionary<(int, double), int[]>();
 
         public void CellsWithin(World w, int cell, double range, List<int> into)
         {
             into.Clear();
+            if (_within.TryGetValue((cell, range), out var known)) { for (int i = 0; i < known.Length; i++) into.Add(known[i]); return; }
             var P = w.Planet; var g = P.Grid;
             if (_stamp == null || _stamp.Length != P.Cells) { _stamp = new int[P.Cells]; _stampNow = 0; }
             _stampNow++;
@@ -58,6 +63,8 @@ namespace TC2.Core.Agents
                 }
                 if (into.Count > 400) break;
             }
+            if (_within.Count >= 8192) _within.Clear();
+            _within[(cell, range)] = into.ToArray();
         }
 
         public void FireAt(World w, int cell, int proc, long fireEvent)

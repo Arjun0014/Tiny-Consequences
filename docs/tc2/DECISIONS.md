@@ -1007,3 +1007,41 @@ makes it smaller the next day; save/load with herds continues identically. Seed 
 adult-day; in a shortage 7.3 against 8.4.
 **Consequences.** The view can now draw herds near villages from these identities (next visual slice) and hunters walking to
 them; the stag that was hunted belongs to a herd with a history.
+**Addendum (D2-048's session).** At scale the herd lookups cost more than the rest of a village's day: `BestGame` and
+`MarkHunted` walked every herd in the world for every COARSE hunter, and each village's update walked all herds (a 300-year
+run of seed 42: 2.9 ms per COARSE village-day at 29 villages, 34 us before herds). Each village now indexes its herds
+(`World.HerdsOf`, derived, rebuilt on load in id order); hunters mark their own village's herds; the reach membership is a
+stamp array. Same run: 28 us per COARSE village-day; 200 coarse years in 51 s (was ~110 s).
+
+## D2-048 — 2026-10-05 — Livestock: a household's animals as individuals on the same grass as the wild
+
+**Context.** F3 asks for livestock that shares the planet's truth: animals that eat the grass the wild grazers eat, breed,
+give food, can be lost, and outlive their keepers - not a food multiplier.
+**Alternatives.** (a) A herd size per household (a number that grows): cheap, but no mothers, no sires, no animals to draw or
+follow; (b) every animal an individual in a store indexed by household. Chosen (b): a village keeps tens to hundreds; the
+daily cost is ~18 us per village-day in COARSE.
+**Decision.** `Core/Places/Livestock.cs` (`Beast`, saved; `Livestock` system), daily with the village in both resolutions
+(see 08 §5d). Laws: intake by the wild animals' law (9 x mass^0.75 kg a year, as `Ecology.LandMetab`); cattle 350 kg, calf
+after 36 days (0.75 year), grown at 2.5 years; goats 45 kg, 1.6 kids after 18 days; pigs 90 kg, ~6 piglets after 14 days;
+meat as game (half the live weight, 0.65 FU/kg); milk 0.9 (cow) / 0.25 (goat) FU a day while the young are small. Grazing
+takes a day's share of the standing grass above its floor (2 % warm, 0.4 % in the cold, by the day's mean temperature: the
+village's day turns at midnight, in the night's chill) out of `P.Grass`; pigs take 1/6 a day of the mast left in reach into
+`P.Gathered`, and 0.4 kg of scraps a day per villager feed their last share. Herders keep a breeding core and stock to
+their hands (50 kg of fodder a day per grown hand) and to 0.6 of the day's offer; a hungry household eats its herd to a pair;
+a marriage endows the couple; an abandoned village's animals join the wild field of their kind. No herding labour activity
+yet (the hands bound the herd; the work itself is a later slice).
+**Evidence.** Tests (11, `LivestockTests`; the shared audit checks every live animal is in its household's list and only
+there): the young are born to their mothers' households in season; no buck, no kids (the other kinds still breed); grazing
+lowers the pasture's grass and the wild grazers round it ate no better; a hungry household slaughters and keeps a pair; wolves
+take animals only where wolves are (20 in 30 days with packs, 0 without); a household that dies out leaves its animals to the
+living; an abandoned village's animals go wild; a herd is cut to what its hands can tend; save/load continues identically;
+counting the herds changes nothing; ACTIVITY and COARSE 248 / 250 animals and 287 / 287 births over three years. Seed 42,
+200 coarse years: all three kinds live (38 / 1,128 / 103 for 3,539 people). Found on the way: herds grew to the pasture
+and crashed (destocking spared every pregnant or nursing female: all of them); goats displaced cattle on free browse; a fire
+on the pasture left herds with no male that never recovered (neighbours' sires); the youngest-first cull ended the pig lines
+(replacements are kept now); new households had no animals and herds died out as the people multiplied (marriage endowment);
+the herd's day ran in a village whose people had all died (it waits for the abandonment); tool counts moved animals between
+households (counting is now a pure read).
+**Invalidation.** If herds of a kind vanish from most villages of a long run with land and people to keep them, or the
+slaughter feeds more than about a fifth of a farming village's food, the breeding core, the stocking or the endowment is
+wrong.

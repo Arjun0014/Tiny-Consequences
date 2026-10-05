@@ -22,6 +22,7 @@ namespace TC2.Core.Foundation
         Cell = 14,
         Command = 15,
         World = 16,
+        Beast = 17,   // a household's animal (D2-048)
     }
 
     /// <summary>A reference to any entity: (kind, id) packed into a long. 0 means none.</summary>

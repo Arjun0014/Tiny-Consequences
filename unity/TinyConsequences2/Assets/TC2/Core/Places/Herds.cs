@@ -48,6 +48,7 @@ namespace TC2.Core.Places
 
         World _w;
         readonly List<int> _cells = new List<int>(), _mine = new List<int>(), _done = new List<int>();
+        int[] _in; int _inNow;   // membership of today's reach (stamps: no search through the list)
         readonly Dictionary<long, double> _claimed = new Dictionary<long, double>();   // (lookups only: species x cell -> counted)
 
         public void Bind(World w) { _w = w; }
@@ -74,22 +75,26 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             if (!s.Inhabited) { Dissolve(sid); return; }
             w.Hazards.CellsWithin(w, s.Cell, WildFood.HuntReach, _cells);
+            if (_in == null || _in.Length != n) { _in = new int[n]; _inNow = 0; }
+            _inNow++;
+            for (int i = 0; i < _cells.Count; i++) _in[_cells[i]] = _inNow;
             _claimed.Clear();
             // this village's herds, in id order
             _mine.Clear(); _done.Clear();
-            for (int h = w.Herds.First(); h != 0; h = w.Herds.Next(h)) if (w.Herds.Get(h).Village == sid) _mine.Add(h);
+            var mine = w.HerdsOf(sid);
+            for (int i = 0; i < mine.Count; i++) _mine.Add(mine[i]);
             for (int i = 0; i < _mine.Count; i++)
             {
                 int hid = _mine[i];
                 ref var hd = ref w.Herds.Get(hid);
                 int q = IndexOfSpecies(P, hd.Species);
-                if (q < 0) { w.Herds.Remove(hid); continue; }   // the kind died out
+                if (q < 0) { Remove(hid); continue; }   // the kind died out
                 // it moves toward where its kind is thickest round it, within the village's reach
                 int best = hd.Cell; double bv = P.IsLand(hd.Cell) ? Around(q, hd.Cell) : -1;
                 for (int k = 0; k < 8; k++)
                 {
                     int nb = g.Nbr8[hd.Cell * 8 + k];
-                    if (!P.IsLand(nb) || !_cells.Contains(nb)) continue;
+                    if (!P.IsLand(nb) || _in[nb] != _inNow) continue;
                     double v = Around(q, nb);
                     if (v > bv * 1.15) { bv = v; best = nb; }
                 }
@@ -112,7 +117,7 @@ namespace TC2.Core.Places
                     if (add > 0) { o.Count = (float)(o.Count + DMath.Floor(add)); Claim(q, o.Cell, DMath.Floor(add)); }
                     if (o.Count > o.Peak) o.Peak = o.Count;
                     if (hd.Hunted > o.Hunted) o.Hunted = hd.Hunted;
-                    w.Herds.Remove(hid);
+                    Remove(hid);
                     continue;
                 }
                 double there = Around(q, hd.Cell) - Claimed(q, hd.Cell);
@@ -127,7 +132,7 @@ namespace TC2.Core.Places
                             Kind = HistoryKind.HerdHuntedOut, Time = w.Now, Cell = hd.Cell, Settlement = sid, Subject = new EntityRef(EntityKind.Process, hid),
                             Object = new EntityRef(EntityKind.Species, hd.Species), Magnitude = hd.Peak, RootKind = RootKind.People,
                         });
-                    w.Herds.Remove(hid);
+                    Remove(hid);
                     continue;
                 }
                 hd.Count = (float)DMath.Floor(count);
@@ -150,6 +155,7 @@ namespace TC2.Core.Places
                     int id = w.Ids.Next(EntityKind.Process);
                     double count = DMath.Floor(DMath.Min(free, max));
                     w.Herds.Add(id, new Herd { Id = id, Species = sp.Id, Kind = sp.Kind, Cell = c, Village = sid, Count = (float)count, Peak = (float)count, Born = w.Now });
+                    w.HerdsOf(sid).InsertSorted(id);
                     Claim(q, c, count);
                 }
             }
@@ -170,22 +176,29 @@ namespace TC2.Core.Places
             _claimed[key] = (_claimed.TryGetValue(key, out double a) ? a : 0) + count;
         }
 
+        void Remove(int hid)
+        {
+            _w.HerdsOf(_w.Herds.Get(hid).Village).Remove(hid);
+            _w.Herds.Remove(hid);
+        }
+
         /// <summary>A village's herds go back to being the land's (the village is gone).</summary>
         public void Dissolve(int sid)
         {
             var w = _w;
-            _mine.Clear();
-            for (int h = w.Herds.First(); h != 0; h = w.Herds.Next(h)) if (w.Herds.Get(h).Village == sid) _mine.Add(h);
-            for (int i = 0; i < _mine.Count; i++) w.Herds.Remove(_mine[i]);
+            var mine = w.HerdsOf(sid);
+            for (int i = 0; i < mine.Count; i++) w.Herds.Remove(mine[i]);
+            mine.Clear();
         }
 
-        /// <summary>People killed from the ground round a cell: the herds there were hunted today.</summary>
-        public void MarkHunted(int ground)
+        /// <summary>A village's people killed from the ground round a cell: its herds there were hunted today.</summary>
+        public void MarkHunted(int sid, int ground)
         {
             var w = _w; var g = w.Planet.Grid;
-            for (int h = w.Herds.First(); h != 0; h = w.Herds.Next(h))
+            var mine = w.HerdsOf(sid);
+            for (int i = 0; i < mine.Count; i++)
             {
-                ref var hd = ref w.Herds.Get(h);
+                ref var hd = ref w.Herds.Get(mine[i]);
                 if (hd.Cell == ground) { hd.Hunted = w.Now; continue; }
                 for (int k = 0; k < 8; k++) if (g.Nbr8[ground * 8 + k] == hd.Cell) { hd.Hunted = w.Now; break; }
             }
@@ -196,11 +209,12 @@ namespace TC2.Core.Places
         {
             var w = _w;
             int best = 0; float bc = 0;
-            for (int h = w.Herds.First(); h != 0; h = w.Herds.Next(h))
+            var mine = w.HerdsOf(sid);
+            for (int i = 0; i < mine.Count; i++)
             {
-                ref var hd = ref w.Herds.Get(h);
-                if (hd.Village != sid || hd.Kind == 5) continue;   // (people hunt game, not wolves)
-                if (hd.Count > bc) { bc = hd.Count; best = h; }
+                ref var hd = ref w.Herds.Get(mine[i]);
+                if (hd.Kind == 5) continue;   // (people hunt game, not wolves)
+                if (hd.Count > bc) { bc = hd.Count; best = mine[i]; }
             }
             return best;
         }

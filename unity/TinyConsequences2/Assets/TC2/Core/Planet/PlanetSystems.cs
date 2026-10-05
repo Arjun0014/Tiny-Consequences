@@ -95,6 +95,12 @@ namespace TC2.Core.Planet
 
         public double MeanTemp(int c) => _tmean[c];
 
+        /// <summary>The season's phase at a time (+1 at the northern summer's peak), as the fast climate reads it.</summary>
+        public static double Season(long t) => DMath.Sin(DMath.TwoPi * (SimTime.YearFraction(t) - 0.25));
+
+        /// <summary>A cell's mean temperature over the day at a season's phase (without the hours' swing).</summary>
+        public double DayMean(int c, double season) => _base[c] + _amp[c] * season;
+
         public void Tick(World w, int system)
         {
             switch (system)

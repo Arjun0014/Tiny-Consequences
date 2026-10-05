@@ -78,7 +78,7 @@ namespace TC2.Headless
                 var b = Budget.Unlimited;
                 w.AdvanceTo(next, ref b);
                 k++;
-                Console.WriteLine(PlanetLine(w));
+                Console.WriteLine(PlanetLine(w) + "  [" + run.ElapsedMilliseconds / 1000.0 + " s, " + w.Planet.Species.Count + " kinds]");
                 if (a.Has("tect")) Console.WriteLine("      " + _tect);
                 if (World.ReliefBudget != null)
                 {

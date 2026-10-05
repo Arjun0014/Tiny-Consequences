@@ -66,6 +66,7 @@ namespace TC2.Core.Planet
     /// </summary>
     public static class Ecology
     {
+        public const float LandMetab = 9f;       // a land animal's intake a year: this x mass^0.75 kg (livestock eat by the same law)
         public const double GrassMax = 1000.0;   // kg of grass on a hectare under full cover
         public const double BrowseMax = 600.0;   // kg of browse (shoots, leaves, mast) a hectare of full woods offers
         public const double EatShare = 0.3;      // at most this share of the standing grass above its floor is eaten in a step
@@ -151,7 +152,7 @@ namespace TC2.Core.Planet
                     Id = id, Kind = (byte)i, Role = t.Role, Mass = (float)(t.Mass * v()), Fecundity = (float)(t.Fec * v()), Lifespan = (float)(t.Life * v()),
                     ColdTol = (float)(t.Cold + 4.0 * (rs.NextUnit() - 0.5)), ForestPref = t.Forest, SlopePref = t.Slope, Grass = t.Grass, Browse = t.Browse,
                     Mast = t.Mast, Small = t.Small, Crag = t.Crag, Plankton = t.Plankton, Habitat = t.Habitat,
-                    HeatTol = t.Habitat == 1 ? (float)(t.Heat + 2.0 * (rs.NextUnit() - 0.5)) : 34f, Offshore = t.Offshore, Metab = t.Metab > 0 ? t.Metab : 9f,
+                    HeatTol = t.Habitat == 1 ? (float)(t.Heat + 2.0 * (rs.NextUnit() - 0.5)) : 34f, Offshore = t.Offshore, Metab = t.Metab > 0 ? t.Metab : LandMetab,
                     Range = t.Range > 0 ? t.Range : 1f,
                     Prey = t.Prey, Disperse = t.Disperse, Territory = (float)(t.Territory * Density), Born = 0,
                 });

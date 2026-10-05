@@ -48,6 +48,22 @@
     knowledge of places by scouting, households leaving after the harvest (founding parties to known places; joining villages
     with land), parties walking and founding unfinished villages. Seed 42, 300 coarse years: 6 -> 35 villages, 145 -> 11,744
     people, famines 56 -> 3. 88 tests.
+  - **Herds near people (D2-047)**: wild herds and packs as identities over the abundance field (89 tests). At scale their
+    lookups dominated (2.9 ms per COARSE village-day at 29 villages): a per-village herd index brought it back to 28 us.
+  - **Livestock (D2-048)**: cattle, goats and pigs as individuals of households, grazing the same `P.Grass` as the wild (pigs:
+    the same mast, and scraps), breeding with a sire near, milk and meat home like the hunters' catch, wolves, a breeding core,
+    stocking to hands and pasture (the autumn slaughter), endowment at marriage, inheritance, feral when a village is abandoned.
+    Seed 42, 200 coarse years: 38 cattle, 1,128 goats, 103 pigs for 3,539 people (~8 % of food); 100 tests (`LivestockTests` 11).
+    Save sim version 13.
+  - `planet --nopeople` made one village anyway (`Math.Max(1, ...)`): with migration (D2-045) it grew to ~13,000 people in 36
+    villages over 2,000 years - the first k runs were not planet-only (kept as `run_42k_people.*`: one village of 24 fills its
+    land in ~500 years and holds ~12-14,000 people for 1,600 years, no collapse). Fixed (no settlement at 0).
+  - **F2 verdict on the clean D2-046 runs** (`run_42k.*`, `run_7k.*`, planet + ecology, 10,000 years): new kinds one or two at a
+    time from ~850 (seed 42: 14 at 900, 15 at 1,200, 17-20 at 2,100-2,400; seed 7: 15-20 between ~1,400 and ~2,500) - no longer
+    a burst - then the 20-kind cap and no change for 7,500 years: no kind ever empties in a continuous field (seed 42 keeps 3
+    warm-water tuna, 14 seals for millennia). F2's done-when is met (cycles, recovery, adaptation, speciation); for turnover a
+    **minimum viable population** (a kind under ~50 real animals may die out by chance each decade) is in validation
+    (`run_42m.*`, `run_7m.*`).
 
 - **F1 nearly done (verdict from the 10,000-year runs below), F2 nearly done (ecology, evolution, the sea's life), look-dev
   v1-v7 (Arjun: "a really beautiful miniature world, high detail, high performance"). Session 1 (5 Oct 2026), continuing.**
