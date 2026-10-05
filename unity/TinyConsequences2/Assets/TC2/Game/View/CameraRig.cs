@@ -62,6 +62,35 @@ namespace TC2.Game
         }
 
         /// <summary>A named view of the first village (orbit, region, village, close, low) or "lat,lon,alt" (degrees, m).</summary>
+        /// <summary>
+        /// The liveliest shore cell within a reach of a point (seals first, then the shoals off a coast; D2-039), or -1. The
+        /// shots use it to frame the coast views and to set their clock by its longitude.
+        /// </summary>
+        public static int LivelyShore(TC2.Core.Simulation.World w, Vec3d near, double reach)
+        {
+            var P = w.Planet;
+            int best = -1; double bv = 0;
+            for (int c = 0; c < P.Cells; c++)
+            {
+                if (P.IsLand(c) || P.Species.Count == 0) continue;
+                if (reach < double.MaxValue && Vec3d.ArcDistance(P.Grid.Center[c], near, P.Radius) > reach) continue;
+                bool shore = false;
+                for (int q = 0; q < 4; q++) if (P.IsLand(P.Grid.Nbr4[c * 4 + q])) shore = true;
+                if (!shore) continue;
+                double v = 0, seals = 0;
+                for (int s = 0; s < P.Species.Count; s++)
+                {
+                    var sp = P.Species[s];
+                    if (sp.Habitat != 1) continue;
+                    double N = P.Abund[s * P.Cells + c];
+                    if (sp.Kind == 12) seals += N; else if (sp.Plankton > 0) v += N * 0.01;
+                }
+                v += 1000.0 * SeaLifeView.SealsShown(c, seals);   // (seals where the view shows them)
+                if (v > bv) { bv = v; best = c; }
+            }
+            return best;
+        }
+
         public void SetView(string view)
         {
             var w = Host.World;
@@ -103,25 +132,7 @@ namespace TC2.Game
                 // the liveliest shore within 8 km of the first village (seals: anywhere on the planet): seals first, then
                 // the shoals off a coast (D2-039)
                 var P = w.Planet;
-                bool anywhere = view.StartsWith("seals");
-                int best = -1; double bv = 0;
-                for (int c = 0; c < P.Cells; c++)
-                {
-                    if (P.IsLand(c) || P.Species.Count == 0) continue;
-                    if (!anywhere && Vec3d.ArcDistance(P.Grid.Center[c], d, P.Radius) > 8000) continue;
-                    bool shore = false;
-                    for (int q = 0; q < 4; q++) if (P.IsLand(P.Grid.Nbr4[c * 4 + q])) shore = true;
-                    if (!shore) continue;
-                    double v = 0;
-                    for (int s = 0; s < P.Species.Count; s++)
-                    {
-                        var sp = P.Species[s];
-                        if (sp.Habitat != 1) continue;
-                        double N = P.Abund[s * P.Cells + c];
-                        v += sp.Kind == 12 ? N * 1000.0 : sp.Plankton > 0 ? N * 0.01 : 0.0;
-                    }
-                    if (v > bv) { bv = v; best = c; }
-                }
+                int best = LivelyShore(w, d, view.StartsWith("seals") ? double.MaxValue : 8000);
                 if (best >= 0)
                 {
                     // look a little out to sea from that shore: the beach in view, and the water off it

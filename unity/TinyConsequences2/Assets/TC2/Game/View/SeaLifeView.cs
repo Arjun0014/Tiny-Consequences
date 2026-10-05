@@ -101,7 +101,7 @@ namespace TC2.Game
             }
             double gameT = Host.RenderTime;
             double surfaceR = P.Radius + P.SeaLevel;
-            int seaCells = 0, fishCells = 0, shallow = 0; double fishSum = 0;
+            int seaCells = 0, fishCells = 0, shallow = 0, sealCells = 0, sealsShown = 0, noShore = 0; double fishSum = 0, sealSum = 0;
             foreach (int c in _cells)
             {
                 if (P.IsLand(c)) continue;
@@ -156,12 +156,12 @@ namespace TC2.Game
                 // seals: the cell's seals (the fraction as a stable chance) rest on its shore, or swim off it, by turns
                 if (seals > 0.01)
                 {
-                    int count = (int)seals;
-                    if (KeyedRng.Unit(KeyedRng.Mix(key + 3)) < seals - count) count++;
+                    int count = SealsShown(c, seals);
+                    sealCells++; sealSum += seals; sealsShown += count;
                     for (int m = 0; m < count && m < 4; m++)
                     {
                         ulong mk = KeyedRng.Mix(key + 300 + (ulong)m * 13);
-                        if (!Shore(P, c, mk, out Vec3d land, out Vec3d sea)) continue;
+                        if (!Shore(P, c, mk, out Vec3d land, out Vec3d sea)) { noShore++; continue; }
                         double turn = 7.0 * SimTime.Hour * (1.0 + 0.6 * KeyedRng.Unit(KeyedRng.Mix(mk + 1)));
                         bool ashore = ((gameT / turn + KeyedRng.Unit(KeyedRng.Mix(mk + 2))) % 1.0) < 0.55;
                         Vec3d toSea = (sea - land);
@@ -195,7 +195,7 @@ namespace TC2.Game
                 }
                 if (_shoals.Count >= 120) break;
             }
-            Why = "cells " + _cells.Count + " sea " + seaCells + " with fish " + fishCells + " mean " + (seaCells > 0 ? fishSum / seaCells : 0).ToString("0") + " too shallow " + shallow + " alt " + alt.ToString("0");
+            Why = "cells " + _cells.Count + " sea " + seaCells + " with fish " + fishCells + " mean " + (seaCells > 0 ? fishSum / seaCells : 0).ToString("0") + " too shallow " + shallow + " alt " + alt.ToString("0") + " | seal cells " + sealCells + " (" + sealSum.ToString("0.00") + ") shown " + sealsShown + " no shore " + noShore;
         }
 
         /// <summary>Every frame: the shoals' fish swirl about their centres; now and then one leaps and splashes.</summary>
@@ -256,6 +256,15 @@ namespace TC2.Game
                 }
             }
             Drawn = _sealsDrawn + _fish.Count;
+        }
+
+        /// <summary>How many of a sea cell's seals are shown: the whole part, and the fraction as a stable chance of the cell.</summary>
+        public static int SealsShown(int c, double seals)
+        {
+            ulong key = KeyedRng.Mix((ulong)c * 0x9E3779B97F4A7C15UL ^ 0x5EA11FEUL);
+            int count = (int)seals;
+            if (KeyedRng.Unit(KeyedRng.Mix(key + 3)) < seals - count) count++;
+            return count;
         }
 
         /// <summary>A shore beside sea cell c for a seal (keyed): a point at the water's edge on a neighbouring land cell.</summary>

@@ -54,6 +54,13 @@ namespace TC2.Game
             double days = Parse(Arg("-tc2days"), 0), hour = Parse(Arg("-tc2hour"), 8.0);
             int sid = w.Settlements.First();
             long local = sid != 0 ? w.LocalOffsetOf(sid) : 0;
+            // seals live on a shore anywhere on the planet: when only they are shot, the hour is the shore's own (a daylight shot)
+            string viewsArg = Arg("-tc2views") ?? "";
+            if (viewsArg.Length > 0 && System.Array.TrueForAll(viewsArg.Split(','), v => v.StartsWith("seals")))
+            {
+                int shore = CameraRig.LivelyShore(w, sid != 0 ? w.Settlements.Get(sid).Anchor : w.Planet.Grid.Center[0], double.MaxValue);
+                if (shore >= 0) { local = TC2.Core.Planet.PlanetState.LocalOffset(w.Planet.Grid.Center[shore]); Debug.Log("[TC2] seal shore cell " + shore + ": its own hour"); }
+            }
             long target = SimTime.StartOfDay(w.Now + local) - local + DMath.ToLong(days * SimTime.Day) + DMath.ToLong(hour * SimTime.Hour);
             while (target <= w.Now) target += SimTime.Day;
             var b = Budget.Unlimited;
