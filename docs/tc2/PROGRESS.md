@@ -4,7 +4,7 @@
 
 - **F1 in progress (hydrology, climate, tectonics, volcanoes + carbon cycle, quakes, erosion, storms done) + look-dev v1-v5 (Arjun: "a really
   beautiful miniature world, high detail, high performance"). Session 1 (5 Oct 2026), continuing.**
-  - Docs: `docs/tc2/` 00-17, LEGACY_AUDIT, DECISIONS D2-001..032.
+  - Docs: `docs/tc2/` 00-17, LEGACY_AUDIT, DECISIONS D2-001..033.
   - Core (pure C# 9, headless-tested, 62 tests): everything of F0 (see the log) plus **hydrology** (D2-022: runoff
     down a priority-flood tree, depressions that fill/spill/evaporate/dry, smoothed river flow), **catch-up plan**
     (D2-023: COARSE for many lives, ACTIVITY on arrival), **climate** (D2-024: zonal energy balance, fictional fast
@@ -23,7 +23,9 @@
     surf, rivers, haze/sky/grade, Blender kit (`tc2/art/kit.py`); v2-v4 (D2-027) clouds from the weather with cloud
     shadows, tilt-shift, window lamplight, grass/flowers/reeds/boulders, roads, seasonal canopies, walking people, a
     slim HUD; v5 (D2-029) volcanoes drawn (cones, craters, steam, eruption columns, lava glow), puffs, gentle shores,
-    moonlight, quake shake/dust/foam from the `FxRing`, roads and farmland antialiased at region scale.
+    moonlight, quake shake/dust/foam from the `FxRing`, roads and farmland antialiased at region scale; v6 (D2-033)
+    one puff renderer, chimney smoke from lived-in houses, rain and snow round the camera, the sea's glint from orbit
+    and the moon's path on the water.
     Batch-editor screenshots: `node tc2/scripts/unity.mjs shots --tag T [--erupt VEI] [--quake M]`.
   - Web: volcanoes (look-dev v5 part 1) verified 6/6 (bit-identical, WebGPU, 89-121 fps by view); the quake Core and
     the antialiasing are in the next build.
@@ -61,6 +63,7 @@
 | Erosion, seed 42, 3,000 years | dotnet | 0.7-1.5 million m³ moved a decade, nearly all settling; valleys ~6 m (sim) below banks |
 | Storms, seed 42, 300 years | dotnet | ~2.8 a year, 20 above 40 m/s, ~0.55 landfalls a year; storm step 58 us (7 % of a coarse year) |
 | Web, quakes build | Chrome/WebGPU | 6/6, bit-identical; 89-124 fps by view |
+| Web, erosion + storms build | Chrome/WebGPU (10,000-year runs on the CPU meanwhile) | 6/6, bit-identical; 89-121 fps by view |
 | Slow climate alone | dotnet | ~3 ms per world year (0.75 ms per season step) |
 | Look-dev shot round (batch editor Play Mode, 5 views) | editor | ~40-45 s |
 

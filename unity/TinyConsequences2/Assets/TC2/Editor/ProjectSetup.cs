@@ -71,6 +71,7 @@ namespace TC2.EditorTools
             Make(dir + "/Clouds.mat", "TC2/Clouds", false);
             Make(dir + "/TiltShift.mat", "TC2/TiltShift", false);
             Make(dir + "/Puff.mat", "TC2/Puff", true);
+            Make(dir + "/Rain.mat", "TC2/Rain", false);
         }
 
         static void Make(string path, string shaderName, bool instancing)

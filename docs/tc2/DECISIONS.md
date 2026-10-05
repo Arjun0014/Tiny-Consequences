@@ -590,3 +590,25 @@ god storm reads from orbit as a spiral with an eye.
 **Invalidation.** If great storms are too rare to matter in play (this planet's tropics are ~26 C), let the potential
 follow the planet's own tropical mean rather than Earth's; if storms cost more than ~10 % of a coarse year, step them
 every six hours.
+
+## D2-033 — 2026-10-05 — Look-dev v6: chimney smoke, rain and snow, the sea's glint, one puff renderer
+
+**Context.** The miniature needed the small signs of life and weather that read at a glance: smoke from lived-in
+houses, rain falling where it rains, the sun's glint on the oceans from orbit.
+**Decision.**
+- **One puff renderer** (`Puffs` + `PuffRenderer`, execution order 900): every view adds soft puffs during the frame
+  (volcano steam and columns, lava glow, slide dust, wave foam, chimney smoke); the renderer sorts them far to near and
+  draws them last in batches of 1,023.
+- **Chimney smoke**: each house kind's chimney top found from its mesh (the centroid of its highest vertices; the
+  small house has none); a house smokes when someone of the household is home and awake and it is a cooking hour
+  (5:30-9, 16:30-21 local) or cold (< 11 C at the village); eight puffs rising ~9 m and drifting, within 1.1 km of the
+  camera.
+- **Rain and snow** (`RainView`, `Rain.shader`): a cylinder of procedural streaks (flakes below 0.5 C) round the
+  camera below ~700 m, as strong as the day's rain in the camera's cell, at least as strong as a storm's winds there
+  call for, leaning with them; it comes and goes over two seconds.
+- **The sea's glint**: from afar a broad soft sun glint (a rough sea) and broad wind patches that vary the colour; close
+  in the sharp sparkle as before; the moon's path on the water at night.
+**Evidence.** Batch-editor shots (village by day and dusk, a storm landfall, orbit): smoke over lived-in houses at
+breakfast, rain streaks under a storm, a sun glint on the oceans from orbit. Web build measured in the session log.
+**Invalidation.** If puffs exceed ~1 ms a frame on the Web with many villages in view, cap smoke by distance rank or
+drop sorting for smoke.

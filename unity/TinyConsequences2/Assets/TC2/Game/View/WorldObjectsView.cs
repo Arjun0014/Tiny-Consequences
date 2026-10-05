@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TC2.Core.Agents;
 using TC2.Core.Foundation;
 using TC2.Core.Places;
@@ -56,6 +57,59 @@ namespace TC2.Game
             _trees = new Instancer[TreeModels.Length];
             for (int i = 0; i < TreeModels.Length; i++) _trees[i] = new Instancer(Models.Get(TreeModels[i], i <= ConiferSmall ? (System.Func<Mesh>)ProcMeshes.Conifer : ProcMeshes.Broadleaf), _mat, true);
             _flames = new Instancer(ProcMeshes.Flame(), _mat, false);
+            // where each house's chimney stands (the top of its tallest part); the small house has none
+            _chimneyTop = new Vector3[HouseModels.Length];
+            _hasChimney = new bool[HouseModels.Length];
+            for (int i = 0; i < HouseModels.Length; i++)
+            {
+                if (HouseModels[i] == "house_small") continue;
+                var mesh = Models.Get(HouseModels[i], ProcMeshes.House);
+                var v = mesh.vertices;
+                if (v.Length == 0) continue;
+                float top = float.MinValue;
+                foreach (var p in v) if (p.y > top) top = p.y;
+                Vector3 sum = Vector3.zero; int n = 0;
+                foreach (var p in v) if (p.y > top - 0.12f) { sum += p; n++; }
+                _chimneyTop[i] = sum / Mathf.Max(1, n);
+                _hasChimney[i] = true;
+            }
+        }
+
+        Vector3[] _chimneyTop;
+        bool[] _hasChimney;
+        readonly List<Vector4> _smoke = new List<Vector4>();   // chimney tops with smoke (xyz) and how much (w)
+
+        /// <summary>
+        /// Smoke from the chimneys of houses whose people are home and awake: cooking in the morning and evening, a fire
+        /// all day when it is cold. Soft puffs that rise and drift with the wind; only near the camera.
+        /// </summary>
+        void EmitSmoke(TC2.Core.Simulation.World w)
+        {
+            if (_smoke.Count == 0 || Rig == null || Rig.Cam == null) return;
+            Vector3 cam = Rig.Cam.transform.position;
+            float now = Time.unscaledTime;
+            for (int i = 0; i < _smoke.Count; i++)
+            {
+                var c = _smoke[i];
+                Vector3 top = new Vector3(c.x, c.y, c.z);
+                if ((top - cam).sqrMagnitude > 1100f * 1100f) continue;
+                Vector3 up = top.normalized;
+                Vector3 east = Vector3.Cross(Vector3.up, up);
+                if (east.sqrMagnitude < 1e-6f) east = Vector3.right;
+                east.Normalize();
+                float seed = Mathf.Repeat(i * 0.6180339f, 1f);
+                Vector3 drift = (east * Mathf.Cos(seed * 2f + now * 0.05f) + Vector3.Cross(up, east) * Mathf.Sin(seed * 2f + now * 0.05f) * 0.4f).normalized;
+                const int n = 14;
+                const float life = 11f;
+                for (int k = 0; k < n; k++)
+                {
+                    float ph = Mathf.Repeat(now / life + k / (float)n + seed, 1f);
+                    Vector3 p = top + up * (0.4f + 8f * ph) + drift * (9f * ph * Mathf.Sqrt(ph));
+                    float size = 0.9f + 5.2f * ph;
+                    float a = c.w * 0.24f * Mathf.Pow(1f - ph, 1.3f) * Mathf.Min(1f, ph * 8f);
+                    Puffs.Add(p, size, a, 0.28f + 0.12f * ph, 0f, Mathf.Repeat(seed * 3f + k * 0.37f, 1f), 1f);
+                }
+            }
         }
 
         /// <summary>Presentation scale: real size close in, a little larger with distance so things stay readable.</summary>
@@ -81,6 +135,7 @@ namespace TC2.Game
             _granaries.Draw(cam); _wells.Draw(cam); _hay.Draw(cam);
             for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
             _flames.Draw(cam); _people.Draw(cam);
+            EmitSmoke(w);
         }
 
         static int HouseKind(int household)
@@ -114,6 +169,7 @@ namespace TC2.Game
             var P = w.Planet;
             for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Clear();
             _granaries.Clear(); _wells.Clear(); _hay.Clear();
+            _smoke.Clear();
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
                 ref var s = ref w.Settlements.Get(sid);
@@ -124,6 +180,9 @@ namespace TC2.Game
                 // after dark, a house whose people are home and awake shows its windows
                 Vector3 toSun = Rig != null && Rig.Sun != null ? -Rig.Sun.transform.forward : Vector3.up;
                 bool dark = Vector3.Dot(PlanetGeo.ToVector(s.Anchor), toSun) < 0.06f;
+                double hour = SimTime.FloorMod(w.Now + w.LocalOffsetOf(sid), SimTime.Day) / (double)SimTime.Hour;
+                bool cooking = (hour >= 5.5 && hour < 9.0) || (hour >= 16.5 && hour < 21.0);
+                bool cold = P.Temp[s.Cell] < 11f;
                 for (int i = 0; i < hhs.Count; i++)
                 {
                     ref var h = ref w.Households.Get(hhs[i]);
@@ -132,8 +191,16 @@ namespace TC2.Game
                     float yaw = Mathf.Atan2(s.SquareX - h.HomeX, s.SquareY - h.HomeY) * Mathf.Rad2Deg + 180f + ((hhs[i] * 37) % 21 - 10);
                     ulong hh = KeyedRng.Mix((ulong)hhs[i] + 77);
                     float age = 0.88f + 0.2f * (float)KeyedRng.Unit(hh);           // weathering of roofs and walls
-                    bool lit = dark && SomeoneAwakeHome(w, hhs[i]);
-                    _houseKinds[kind].Add((int)(age * 10) + (lit ? 100 : 0), new Color(age, age * 0.98f, age * 0.94f, 1f), Place(P, s, h.HomeX, h.HomeY, yaw, ex), lit ? -1f : 0f);
+                    bool awake = SomeoneAwakeHome(w, hhs[i]);
+                    bool lit = dark && awake;
+                    var m = Place(P, s, h.HomeX, h.HomeY, yaw, ex);
+                    _houseKinds[kind].Add((int)(age * 10) + (lit ? 100 : 0), new Color(age, age * 0.98f, age * 0.94f, 1f), m, lit ? -1f : 0f);
+                    // a fire in the hearth: cooking in the morning and the evening, all day when it is cold
+                    if (awake && _hasChimney != null && _hasChimney[kind] && (cooking || cold))
+                    {
+                        Vector3 top = m.MultiplyPoint3x4(_chimneyTop[kind]);
+                        _smoke.Add(new Vector4(top.x, top.y, top.z, cooking ? 1f : 0.6f));
+                    }
                 }
                 // the village store and its well; haystacks once the harvest is in
                 _granaries.Add(0, Color.white, Place(P, s, s.SquareX + 14, s.SquareY - 10, 12f, ex));

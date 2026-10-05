@@ -34,6 +34,7 @@ Shader "TC2/Water"
             TEXTURE2D(_TC2Detail); SAMPLER(sampler_TC2Detail);
             float4 _TC2FogColor;
             float _TC2FogDensity;
+            float4 _TC2MoonDir;
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; };
             struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; float4 screenPos : TEXCOORD2; };
@@ -65,7 +66,12 @@ Shader "TC2/Water"
                 half r2 = Noise2(uvA / 9.0 - float2(t * 0.019, -t * 0.013)) - 0.5h;
                 float3 tangent = normalize(cross(up, float3(0.0, 1.0, 0.001)));
                 float3 bitangent = cross(up, tangent);
-                float3 n = normalize(up + (tangent * (r1 * 0.22 + r2 * 0.12) + bitangent * (r2 * 0.22 - r1 * 0.10)) * near);
+                // far away the wind roughens the sea in broad patches: they break up the glint and the colour
+                half far = 1.0h - near;
+                half w1 = Noise2(uvA / 900.0 + float2(t * 0.002, t * 0.0013)) - 0.5h;
+                half w2 = Noise2(uvA / 2600.0 - float2(t * 0.0011, 0.0)) - 0.5h;
+                float3 n = normalize(up + (tangent * (r1 * 0.22 + r2 * 0.12) + bitangent * (r2 * 0.22 - r1 * 0.10)) * near
+                                        + (tangent * w1 + bitangent * w2) * 0.16 * far);
                 // the sea floor below is coloured by its own depth (sand in the shallows): the water lets it through
                 Light l = GetMainLight(TransformWorldToShadowCoord(i.positionWS));
                 half day = saturate(dot(up, l.direction) * 3.0h + 0.2h);
@@ -73,9 +79,13 @@ Shader "TC2/Water"
                 half3 body = lerp(_Shallow.rgb, _Deep.rgb, 0.55h) * (0.35h + 0.65h * ndl);
                 half fres = pow(1.0h - saturate(dot(n, v)), 4.0h);
                 float3 h = normalize(l.direction + v);
-                half spec = pow(saturate(dot(n, h)), lerp(60.0h, 220.0h, near)) * lerp(0.25h, 2.6h, near) * lerp(0.35h, 1.0h, l.shadowAttenuation);
+                // the sun's glint: a broad soft spot from afar (a rough sea), a sharp sparkle close in
+                half spec = pow(saturate(dot(n, h)), lerp(26.0h, 220.0h, near)) * lerp(0.95h, 2.6h, near) * lerp(0.35h, 1.0h, l.shadowAttenuation);
+                // the moon's path on the water at night
+                float3 hm = normalize(_TC2MoonDir.xyz + v);
+                half moon = pow(saturate(dot(n, hm)), 90.0h) * 0.55h * (1.0h - day);
                 half3 sky = lerp(_Sky.rgb, _TC2FogColor.rgb, 0.6h) * half3(0.85h, 0.95h, 1.05h);
-                half3 c = (body + sky * fres * 0.42h) * (0.12h + 0.88h * day) + l.color * spec * day;
+                half3 c = (body * (1.0h + (w1 + w2) * 0.25h * far) + sky * fres * 0.42h) * (0.12h + 0.88h * day) + l.color * spec * day + half3(0.62h, 0.70h, 0.85h) * moon;
                 half alpha = saturate(_Alpha + fres * 0.3h);
                 half fog = 1.0h - exp(-dist * _TC2FogDensity);
                 c = lerp(c, _TC2FogColor.rgb * (0.25h + 0.75h * day), fog * 0.85h);

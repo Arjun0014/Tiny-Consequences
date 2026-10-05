@@ -20,18 +20,9 @@ namespace TC2.Game
         public SimHost Host;
         public CameraRig Rig;
 
-        Material _mat;
-        Mesh _quad;
-        readonly List<Matrix4x4> _puffs = new List<Matrix4x4>(2048);
-        readonly List<float> _keys = new List<float>(2048);
-        Matrix4x4[] _sorted = new Matrix4x4[2048];
-        float[] _sortKeys = new float[2048];
-        int[] _order = new int[2048];
-        readonly Matrix4x4[] _batch = new Matrix4x4[1023];
         readonly Dictionary<int, Show> _shows = new Dictionary<int, Show>();
         readonly List<int> _path = new List<int>();
         object _world;
-        public int PuffsDrawn;
 
         struct Show { public int Eruptions; public float Real; public int Vei; public long At; }
 
@@ -40,26 +31,14 @@ namespace TC2.Game
         readonly List<Live> _live = new List<Live>();
         long _fxSeen = -1;
 
-        void Start()
-        {
-            _mat = Materials.Load("Puff");
-            _mat.enableInstancing = true;
-            _quad = new Mesh { name = "tc2-puff" };
-            _quad.vertices = new[] { new Vector3(-0.5f, -0.5f, 0), new Vector3(0.5f, -0.5f, 0), new Vector3(0.5f, 0.5f, 0), new Vector3(-0.5f, 0.5f, 0) };
-            _quad.uv = new[] { new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1) };
-            _quad.triangles = new[] { 0, 1, 2, 0, 2, 3 };
-            _quad.bounds = new Bounds(Vector3.zero, Vector3.one * 1e5f);
-        }
-
         void LateUpdate()
         {
             var w = Host != null ? Host.World : null;
-            if (w == null || _mat == null) return;
+            if (w == null) return;
             if (!ReferenceEquals(w, _world)) { _world = w; _shows.Clear(); _live.Clear(); _fxSeen = 0; } // replay what is recent
             var P = w.Planet;
             VolcanoShape.SetTime(w.Now);
-            _puffs.Clear();
-            Happenings(w); _keys.Clear();
+            Happenings(w);
             Vector3 cam = Rig.Cam.transform.position;
             float now = Time.unscaledTime;
             for (int v = 0; v < P.Vents.Count; v++)
@@ -96,7 +75,6 @@ namespace TC2.Game
                 if (column > 0f) Column(top, up, wind, column, Mathf.Max(1, show.Vei), seed, now);
                 if (lava > 0f && dist < 14000f && !LavaLive()) Lava(w, vt.Cell, up, lava, Mathf.Max(1, show.Vei), now);
             }
-            Draw(cam);
         }
 
         /// <summary>New entries of the Fx ring: a quake shakes the camera if felt where it looks; slides raise dust,
@@ -188,14 +166,7 @@ namespace TC2.Game
             return 2;
         }
 
-        void Add(Vector3 at, float size, float alpha, float ash, float glow, float seed, float sun)
-        {
-            var m = Matrix4x4.identity;
-            m.m03 = at.x; m.m13 = at.y; m.m23 = at.z;
-            m.m00 = size; m.m11 = Mathf.Max(0.002f, alpha); m.m22 = Mathf.Max(0.002f, ash);
-            m.m01 = glow; m.m02 = seed; m.m10 = sun;
-            _puffs.Add(m);
-        }
+        static void Add(Vector3 at, float size, float alpha, float ash, float glow, float seed, float sun) => Puffs.Add(at, size, alpha, ash, glow, seed, sun);
 
         void Steam(Vector3 top, Vector3 up, Vector3 wind, float s, float seed, float now, bool lavaLake)
         {
@@ -288,37 +259,6 @@ namespace TC2.Game
         {
             float a = Mathf.Sin(s * 12.9898f) * 43758.5453f, b = Mathf.Sin(s * 78.233f) * 12543.1234f, c = Mathf.Sin(s * 37.719f) * 24634.6345f;
             return new Vector3(a - Mathf.Floor(a) - 0.5f, b - Mathf.Floor(b) - 0.5f, c - Mathf.Floor(c) - 0.5f) * (2f * r);
-        }
-
-        void Draw(Vector3 cam)
-        {
-            int n = _puffs.Count;
-            PuffsDrawn = n;
-            if (n == 0) return;
-            if (_sortKeys.Length < n) { _sortKeys = new float[n * 2]; _order = new int[n * 2]; }
-            for (int i = 0; i < n; i++)
-            {
-                var m = _puffs[i];
-                float dx = m.m03 - cam.x, dy = m.m13 - cam.y, dz = m.m23 - cam.z;
-                _sortKeys[i] = -(dx * dx + dy * dy + dz * dz); // far first
-                _order[i] = i;
-            }
-            System.Array.Sort(_sortKeys, _order, 0, n);
-            var rp = new RenderParams(_mat)
-            {
-                worldBounds = new Bounds(Vector3.zero, Vector3.one * 2e5f),
-                shadowCastingMode = ShadowCastingMode.Off,
-                receiveShadows = false,
-                camera = Rig.Cam,
-            };
-            int done = 0;
-            while (done < n)
-            {
-                int k = Mathf.Min(_batch.Length, n - done);
-                for (int i = 0; i < k; i++) _batch[i] = _puffs[_order[done + i]];
-                Graphics.RenderMeshInstanced(rp, _quad, 0, _batch, k);
-                done += k;
-            }
         }
     }
 }

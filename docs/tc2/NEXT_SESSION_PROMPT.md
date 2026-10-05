@@ -37,7 +37,8 @@ iteration).
 **Direction from Arjun (5 Oct 2026)**: the world must be a *really beautiful miniature* with a high level of detail
 and high performance - look-dev is a first-class track beside the simulation (D2-026). Judge every visual change in
 real game screenshots (`node tc2/scripts/unity.mjs shots`), not in debug maps; keep 60 fps in the Web build.
-Headless Blender (`tc2/art/kit.py`) makes the asset kit.
+Headless Blender (`tc2/art/kit.py`) makes the asset kit. The god powers that exist (eruption, quake, storm, lightning)
+are logged commands and double as screenshot tools (`unity.mjs shots --erupt/--quake/--storm`).
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
