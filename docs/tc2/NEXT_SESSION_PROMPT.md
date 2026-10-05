@@ -40,10 +40,11 @@ real game screenshots (`node tc2/scripts/unity.mjs shots`), not in debug maps; k
 Headless Blender (`tc2/art/kit.py`) makes the asset kit. The god powers that exist (eruption, quake, storm, lightning)
 are logged commands and double as screenshot tools (`unity.mjs shots --erupt/--quake/--storm`).
 
-**Where we are (5 Oct 2026, late)**: F1 (the living planet) and F2 (ecology, evolution, the sea's life) are built and being
-closed by 10,000-year reruns (`tc2/out/f1/run_42h.txt`, `run_7h.txt`); look-dev v7 made the coasts clear water over
-sand with shoals and seals. Next is F3 (people and settlements: migration and founding, hunting and fishing from the
-fields, livestock). Run long headless jobs from a scratch copy of the binaries so the repo's DLL stays free.
+**Where we are (end of session 1, 5 Oct 2026)**: F1 (the living planet) and F2 (ecology, evolution, the sea's life) are
+built; close them with the 10,000-year reruns (SESSION_HANDOFF "Next steps" 1). Look-dev v7 made the coasts clear water
+over sand with shoals and seals. F3 is designed but not started in code: its first slice (hunting and fishing from the
+wildlife fields, reserves from remembered hunger, slower starvation) is specified step by step in SESSION_HANDOFF "Next
+steps" 2 - start there. Run long headless jobs from a scratch copy of the binaries so the repo's DLL stays free.
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

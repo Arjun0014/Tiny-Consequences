@@ -8,13 +8,15 @@
   2fbf6d4 look-dev v1 · b8f1593 v2 · c870730 v3 · 6848601 v4 · 80b99ce volcanoes + carbon cycle · 39fdcd1 quakes +
   look-dev v5 · a9149c0 erosion + storms · 4ea987a look-dev v6 · 8eab3ff coasts, thermostat, wildlife ·
   386e76d ice-aware weathering + evolution · 9e8122f crag fare, refuges, lineage drift · 3aa1321 the sea's life ·
-  e3b5f33 lineages in sizeable populations · 63da6b4 water by depth + sea life view · 9d925b6 kinds one at a time.
+  e3b5f33 lineages in sizeable populations · 63da6b4 water by depth + sea life view · 9d925b6 kinds one at a time ·
+  5fbed97 docs · (last) session-end handoff with `run --places`.
+- Nothing is running and nothing is half-built: the session ended (usage limit) while reading code for F3's first slice.
 - Headless: 73 tests green (`node tc2/scripts/headless.mjs test`).
 - Web: 6/6 each build (start, browser == headless bit for bit, time, reload, a day away, no console errors); last
   `tc2/out/webtest/sea2`: start 6.1 s, orbit/region 120, village 88, close 98, low 103 fps; a day away 27 s.
 - F1 status: all systems done; 10,000-year evidence in PROGRESS (seed 7: a full glacial cycle; seed 42: a long
-  glaciation, stable). Final reruns on the current build: `tc2/out/f1/run_42h.txt`, `run_7h.txt` (maps `maps42h/`,
-  `maps7h/`), run from a scratch copy of the headless binaries (so the repo's DLL stays free for builds and Web tests).
+  glaciation, stable). The final rerun on the current build was stopped at year 4,000 of seed 42 (`tc2/out/f1/run_42h.txt`);
+  rerun both seeds (below) from a scratch copy of the headless binaries so the repo's DLL stays free.
 - F2 status: ecology (13 kinds, land and sea), evolution (coats, lineages, speciation by chance, extinction) done;
   herds as agents near people and hunting/fishing wait for F3.
   Known weakness: villages empty within centuries in coarse runs (no migration or new villages before F3/F5).
@@ -29,6 +31,8 @@
 | Planet over time (+maps) | `node tc2/scripts/headless.mjs planet --seed 42 --years 3000 --every 9600 --nopeople --coarse [--tect] [--volc] [--quake] [--storms] [--erosion] [--map DIR --zoom first:55]` |
 | Climate alone (fast) | `node tc2/scripts/headless.mjs climate --seed 42 --years 4000 --every 200 [--co2 560]` |
 | People diagnostics | `node tc2/scripts/headless.mjs probe --seed 42 --days 4 --rows 30` |
+| Villages over time | `node tc2/scripts/headless.mjs run --seed 42 --years 300 --report-days 2400 --tier 3 --coarse --places` (per village: people, fields, granary, ration, harvest, mean temperature; `--tier 0` for every event) |
+| 10,000-year reruns (F1/F2 close) | copy `tc2/headless/app/bin/Release/net8.0` to the scratchpad, then `dotnet <copy>/tc2.dll planet --seed 42 --years 10000 --every 48000 --coarse --tect --volc --eco --map tc2/out/f1/maps42h --width 1024 > tc2/out/f1/run_42h.txt` and the same for seed 7 (~23 min each) |
 | Benchmarks | `node tc2/scripts/headless.mjs bench [--name queue|dmath|poc|save] [--coarse]` |
 | Cross-runtime probe | `node tc2/scripts/headless.mjs hashtest`; `node tc2/scripts/unity.mjs hashtest` |
 | Unity configure / tests | `node tc2/scripts/unity.mjs configure` (after new materials/features) / `node tc2/scripts/unity.mjs test` |
@@ -79,9 +83,30 @@
 - `Instancer` takes runs of one group cheaply; interleave groups as little as possible when adding thousands.
 
 ### Next steps
-1. Read the final 10,000-year reruns (`tc2/out/f1/run_42h.txt`, `run_7h.txt`, maps): record the F1 and F2 verdicts in
-   PROGRESS (speciation one at a time? kinds kept? climate stable?) and close both phases.
-2. F3: households that move between villages and found new ones (villages empty within centuries today); hunting and
-   fishing from the fields (herds as agents near people); livestock.
-3. Look: seals in a daylight shot (the planet clock is global: pick the hour for the seal shore's longitude), boats and
-   fences/gardens with F3, orbit detail, WebGL2 path check.
+1. Rerun the 10,000-year runs (seeds 42 and 7, command above) on the current build: record the F1 and F2 verdicts in
+   PROGRESS (speciation one at a time? all kinds kept? climate stable over seeds?) and close both phases.
+2. **F3, first slice (proposed D2-042, designed, not built)** - villages live off the land:
+   - `Core/Places/WildFood.cs` (new): `Hunt(w, sid, hours, skill)` and `Fish(...)` return FU and take the catch out of
+     the abundance fields. Game = land kinds that are not predators, 2 kg and up, no small omnivores (foxes), in the
+     village cell and its 8 neighbours; fish = cold-blooded sea kinds (`Metab` < 5: herring, sardines, cod, tuna) in sea
+     cells within two rings. Catch kg = hours x rate x (0.5 + skill) x avail / (avail + half), at most 30 % of what is in
+     reach, removed from each kind and cell by its share; starting tunings hunt 1.0 kg/h, half 1,500 kg; fish 2.5 kg/h,
+     half 1,200 kg; edible share 0.5 (game) / 0.6 (fish); 0.8 FU per kg.
+   - `Agents/Person.cs`: `ActivityKind.Hunt = 16, Fish = 17`, `WhyCode.FoodShort = 19`, skills `SkHunt`, `SkFish`
+     (save/read/hash; draw them keyed by person id, not from the trait sequence, so other draws stay put).
+   - `Agents/AgentSystem.cs`: in Decide's grown-ups scoring, hunt/fish when `here.Ration < 1` (urgency 0.45 + 1.2 x
+     shortfall) and a little always (0.06 + 0.18 x boldness); fish if the village is coastal and fish return beats
+     game; 3.5-5 h at the woods' far edge or the shore (local point of the nearest sea cell); apply the catch at the
+     step's end into the household larder (like Forage); in `CoarseDay` give short villages' adults up to 4.5 h a day
+     to it before foraging.
+   - `Places/SettlementSystem.cs`: starving health -0.04 x frail a day (was 0.10); rationing = min(what lasts to the
+     harvest, clamp 0.45..1; prudence = granary / (daily x (to harvest + 6 + reserve)), clamp 0.8..1) with reserve days
+     6 + 30 x memory of the last famine (`Settlement.LastFamine`, new saved field, fading over 25 years).
+   - `World.FormatSimVersion` 10. Tests: a village with game around outlives one without after a failed harvest;
+     hunting thins the game near a village against a control; a coastal village fishes the shoals off its shore.
+   - Then check Souhope (seed 42) with `run --coarse --places` for 100+ years, and the long-term population curve.
+3. F3 after that: households that move between villages and found new ones (F5 in the roadmap, but villages die out
+   without it), herds as agents near people, livestock, construction and layouts.
+4. Look: seals in a daylight shot (the planet clock is global: pick the hour for the seal shore's longitude), coast
+   shapes off the 245 m cell grid (a domain warp of the ground lookup, but protect villages: a coastal village's
+   ground must never drop into the water), boats and fences/gardens with F3, orbit detail, WebGL2 path check.

@@ -26,14 +26,23 @@
     ~7,000 years, melted back to 9 % and sea -2 m by year 9,000 as forests spread 0.20 -> 0.29, a new glaciation by
     10,000); seed 42 glaciated by year 3,000 (ice ~33 %, sea -60 to -78 m) and stayed glacial through 10,000 (CO2 rose
     to 525 ppm, then fell as the exposed shelves weathered) - stable, no runaway. Drift, rising and wearing ranges,
-    coastline change in both. Reruns on the final build: `tc2/out/f1/run_42h.txt`, `run_7h.txt` (maps `maps42h`, `maps7h`).
+    coastline change in both. The rerun on the final build (D2-041) was stopped at the session's end at year 4,000 of
+    seed 42 (`tc2/out/f1/run_42h.txt`: the same glaciation, ice 35 % by year 3,000, sea -79 m, no new kind yet - as
+    D2-041 intends); seed 7 was not rerun. Rerun both to close F1/F2 (commands in SESSION_HANDOFF).
   - F2 evidence: predator-prey quasi-cycles (hares 44-92k on a ~4-year period, foxes 2-3 years behind, r 0.41; wolves
     2 years behind deer, r 0.81); recovery after a crash (test); adaptation over centuries (mean cold tolerances shift
     5-9 C in 200 years as coats follow the climate); speciation in a long isolated run (seed 42: sand foxes in glacial
     refuges by year 9,000-10,000 - one-at-a-time rule D2-041 now in the reruns).
-  - Next: F2 close-out (verdict in the reruns), herds as agents near people and hunting (with F3), fishing; F3 people and
-    settlements (villages die out in coarse centuries: migration and founding needed); look follow-ups (seals in
-    daylight shots, boats, gardens, orbit detail, WebGL2 check).
+  - **F3 started (investigation only, nothing built yet)**: a 300-year coarse run of seed 42 (`run --coarse --places`)
+    grew 145 -> 1,428 people by year 200, then fell to 388 with 4 of 6 villages abandoned. Souhope (63 people, full
+    rations) died at year 47: its fields burned at year 46 -> the harvest failed (0 food) -> the granary (under a year
+    of food) emptied -> 40+ hunger deaths within 2-12 days -> abandoned. Causes in the model: no reserve beyond the next
+    harvest, starving health falls 10 %/day (dead in 5-17 days; real starvation takes weeks), foraging feeds about one
+    person per forager and takes nothing from the land, no hunting or fishing, no relief or migration (F5). The next
+    slice (proposed D2-042, see SESSION_HANDOFF "Next steps") is hunting and fishing from the wildlife fields, reserves
+    from remembered hunger, and slower starvation.
+  - Next: rerun the 10,000-year runs and close F1/F2; F3 D2-042 (above); herds as agents near people; look follow-ups
+    (seals in daylight shots, coast shapes off the cell grid, boats, gardens, orbit detail, WebGL2 check).
   - Headless tools: `planet` (`--tect`, `--volc`, `--quake`, `--storms`, `--erosion`, `--eco`, `--ecodiag` deaths by
     cause, `--ecocsv FILE` series, `--steep`, `--map DIR`), `climate`, `run --profile`.
 

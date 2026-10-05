@@ -66,6 +66,18 @@ namespace TC2.Headless
                 double ms = lastSw.Elapsed.TotalMilliseconds; lastSw.Restart();
                 Console.WriteLine(SimTime.FormatShort(w.Now) + "  pop " + w.LivingPeople() + "  places " + w.InhabitedSettlements() + "  granary " + F(TotalGranary(w), "0") +
                                   "  fires " + w.Fire.Active.Count + "  events " + ev + "  hist " + w.History.Count + "  " + F(ms, "0.0") + " ms");
+                if (a.Has("places"))
+                {
+                    // each village: people, fields (ha of arable), granary (FU) and its ration, last harvest
+                    for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                    {
+                        ref var st = ref w.Settlements.Get(sid);
+                        if (!st.Inhabited) continue;
+                        Console.WriteLine("      " + w.History.NameOf(new EntityRef(EntityKind.Settlement, sid)).PadRight(14) + " pop " + st.Population.ToString().PadLeft(4) +
+                                          "  fields " + F(st.FieldHa, "0.0") + "/" + F(st.ArableHa, "0") + " ha  granary " + F(st.Granary, "0") + "  ration " + F(st.Ration, "0.00") +
+                                          "  last harvest " + F(st.LastHarvest, "0") + "  T " + F(w.Planet.TMean[st.Cell], "0.0"));
+                    }
+                }
                 int from = w.History.FirstIndexAfter(histCursor);
                 for (int i = from; i < w.History.Count; i++)
                 {
