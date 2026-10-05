@@ -74,15 +74,18 @@ namespace TC2.Tests.Core
             int n = P.Cells, before = P.Species.Count;
             Assert.AreEqual(0, Evolution.Speciate(w), "a different coat alone does not make a new kind at once");
             // as if they had been apart for a millennium and more: their lineages have wandered apart
-            foreach (int c in b) P.Drift[hare * n + c] = P.Drift[hare * n + a[0]] + 0.8f;   // 0.8 x (1 + 0.35) > 1
+            foreach (int c in b) P.Drift[hare * n + c] = P.Drift[hare * n + a[0]] + 3.2f;   // long apart: 3.2 x (1 + 0.35) > 4, a certain split
             int wolf = Kind(P, 5);
+            int wolfId = P.Species[wolf].Id;
             for (int c = 0; c < n; c++) P.Abund[wolf * n + c] = 0f;   // and the wolves are all gone
             long last = w.History.LastId;
             Assert.AreEqual(1, Evolution.Speciate(w), "apart long enough, and made different by their climates: a kind of their own");
-            Assert.AreEqual(before + 1, P.Species.Count);
-            var child = P.Species[before];
+            Assert.AreEqual(before, P.Species.Count, "one kind more, and the wolves' place in the fields freed");
+            hare = Kind(P, 1);
+            var child = P.Species[P.Species.Count - 1];
             Assert.AreEqual(P.Species[hare].Id, child.Parent, "it descends from the hares");
             Assert.AreEqual(P.Species[hare].ColdTol + 7f, child.ColdTol, 0.01f, "its coat is its own now");
+            Assert.AreEqual(P.Species[hare].Kind, child.Kind);
             foreach (int c in b) Assert.AreEqual(0f, P.Abund[hare * n + c], "its animals are no longer counted as hares");
             bool speciation = false, extinction = false;
             for (int i = w.History.FirstIndexAfter(last); i < w.History.Count; i++)
@@ -93,7 +96,7 @@ namespace TC2.Tests.Core
             }
             Assert.IsTrue(speciation, "the history tells of the new kind");
             Assert.IsTrue(extinction, "and of the wolves that are no more");
-            Assert.AreNotEqual(0, P.Species[wolf].Gone);
+            for (int s = 0; s < P.Species.Count; s++) Assert.AreNotEqual(wolfId, P.Species[s].Id, "an extinct kind leaves the fields");
         }
 
         [Test]
@@ -110,6 +113,15 @@ namespace TC2.Tests.Core
             double step = Evolution.DriftStep(P.Species[hare]);
             Assert.LessOrEqual(System.Math.Abs(da), 1.74 * step);
             Assert.LessOrEqual(System.Math.Abs(db), 1.74 * step);
+        }
+
+        [Test]
+        public void LineagesJustApartRarelySplitAndFarApartCertainly()
+        {
+            Assert.AreEqual(0.0, Evolution.SplitChance(0.99));
+            Assert.Less(Evolution.SplitChance(1.05), 0.01, "just past the line: a few in a thousand a decade");
+            Assert.Greater(Evolution.SplitChance(2.0), Evolution.SplitChance(1.5));
+            Assert.AreEqual(1.0, Evolution.SplitChance(4.0));
         }
     }
 }

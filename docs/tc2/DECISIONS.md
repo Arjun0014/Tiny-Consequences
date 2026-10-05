@@ -806,3 +806,23 @@ over sand, turquoise shelves, deep blue.
 turquoise and deep blue, shoals glinting in the bay by the first village, leaps and splashes; 34 shoals (900 fish)
 near the shore, 90-120 shoals (2,500-3,300 fish) from the village view.
 **Invalidation.** If the Web frame budget suffers, cap the fish per frame (now up to ~3,300).
+
+## D2-041 — 2026-10-05 — New kinds come one at a time; extinct kinds leave the fields; fish within the frame budget
+
+**Context.** Seed 42's 10,000-year run (D2-039 build) formed no new kind for 9,000 years and then seven "sand foxes" in
+one millennium: the fox's many glacial refuges all began diverging at year 0 at one rate, so they crossed the line
+together, filled the 20-species cap, and extinct kinds kept their slots. In the browser the village view fell from
+~100 to 83 fps with ~3,300 fish built every frame.
+**Decision.**
+- **A split is a chance, not a line**: past a lineage distance of 1 a population becomes a kind with a keyed chance per
+  tectonic step `0.004 + 0.12 (d - 1)^2` (certain by d = 4) - refuges that parted together split at different times.
+- **At most four living kinds from one first kind.**
+- **Extinct kinds leave the fields** at the tectonic step that records them (the history keeps them by id): their
+  arrays are compacted and their slots are free. Species are found by kind or id, never by a remembered index.
+- **Fish budget**: 2,400 a frame (nearest shoals first); each fish turns from its shoal's upright frame (one quaternion
+  multiply), its place from two small tables (no hashing a frame); `Instancer.Add` skips its dictionaries for runs of
+  one group (every view benefits).
+**Evidence.** Tests (73), among them the split chance (none below 1, rare just past it, certain at 4) and an extinct kind
+gone from the fields. Web (WebGPU): start 6.1 s, orbit/region 120 fps, village 88 fps (83 before the budget), close
+98-103, a day away catches up 96 years in 27 s (22 s before the sea's life). The long runs are in PROGRESS.
+**Invalidation.** If no long run forms a kind, lower the chance's floor; if bursts remain, add a per-kind cooldown.

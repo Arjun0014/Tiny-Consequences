@@ -34,21 +34,35 @@ namespace TC2.Game
         {
             foreach (var k in _keys) _groups[k].Clear();
             Count = 0;
+            _lastKey = int.MinValue; _lastList = null;
         }
+
+        // the last group added to: views add runs of one group, so most adds skip the dictionaries
+        int _lastKey = int.MinValue;
+        List<Matrix4x4> _lastList;
+        Color _lastColor; float _lastEmission, _lastAnim;
 
         /// <summary>Adds an instance in colour group <paramref name="group"/> (colour set once per group).</summary>
         public void Add(int group, Color color, Matrix4x4 m, float emission = 0f, float anim = 0f)
         {
-            if (!_groups.TryGetValue(group, out var list))
+            if (group != _lastKey || _lastList == null)
             {
-                list = new List<Matrix4x4>(256);
-                _groups[group] = list;
-                _keys.Add(group);
+                if (!_groups.TryGetValue(group, out var list))
+                {
+                    list = new List<Matrix4x4>(256);
+                    _groups[group] = list;
+                    _keys.Add(group);
+                }
+                _lastKey = group; _lastList = list;
+                _colors[group] = color; _emission[group] = emission; _anim[group] = anim;
+                _lastColor = color; _lastEmission = emission; _lastAnim = anim;
             }
-            _colors[group] = color;
-            _emission[group] = emission;
-            _anim[group] = anim;
-            list.Add(m);
+            else if (color != _lastColor || emission != _lastEmission || anim != _lastAnim)
+            {
+                _colors[group] = color; _emission[group] = emission; _anim[group] = anim;
+                _lastColor = color; _lastEmission = emission; _lastAnim = anim;
+            }
+            _lastList.Add(m);
             Count++;
         }
 

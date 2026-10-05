@@ -56,8 +56,11 @@ namespace TC2.Tests.Core
                 for (int c = 0; c < c2.Planet.Cells; c++) c2.Planet.Abund[s * c2.Planet.Cells + c] = 0f;
             }
             Run(a, 6); Run(b, 6); Run(c2, 6);
-            Assert.Greater(Ecology.Total(b.Planet, deer), Ecology.Total(a.Planet, deer) * 1.1, "without wolves the deer come back faster");
-            Assert.Less(Ecology.Total(c2.Planet, wolf), Ecology.Total(a.Planet, wolf) * 0.3, "without their prey the wolves starve");
+            // (kinds that died out have left the fields: look each up again by its kind)
+            Assert.Greater(Ecology.Total(b.Planet, Kind(b.Planet, 0)), Ecology.Total(a.Planet, Kind(a.Planet, 0)) * 1.1, "without wolves the deer come back faster");
+            int wa = Kind(a.Planet, 5), wc = Kind(c2.Planet, 5);
+            Assert.GreaterOrEqual(wa, 0);
+            Assert.Less(wc < 0 ? 0.0 : Ecology.Total(c2.Planet, wc), Ecology.Total(a.Planet, wa) * 0.3, "without their prey the wolves starve");
         }
 
         [Test]

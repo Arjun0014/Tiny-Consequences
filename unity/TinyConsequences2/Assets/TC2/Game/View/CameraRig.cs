@@ -98,15 +98,17 @@ namespace TC2.Game
                 LookAt(d, view == "wildfar" ? 320 : 120);
                 return;
             }
-            if (view.StartsWith("coast"))
+            if (view.StartsWith("coast") || view.StartsWith("seals"))
             {
-                // the liveliest shore within 8 km of the first village: seals first, then the shoals off a coast (D2-039)
+                // the liveliest shore within 8 km of the first village (seals: anywhere on the planet): seals first, then
+                // the shoals off a coast (D2-039)
                 var P = w.Planet;
+                bool anywhere = view.StartsWith("seals");
                 int best = -1; double bv = 0;
                 for (int c = 0; c < P.Cells; c++)
                 {
                     if (P.IsLand(c) || P.Species.Count == 0) continue;
-                    if (Vec3d.ArcDistance(P.Grid.Center[c], d, P.Radius) > 8000) continue;
+                    if (!anywhere && Vec3d.ArcDistance(P.Grid.Center[c], d, P.Radius) > 8000) continue;
                     bool shore = false;
                     for (int q = 0; q < 4; q++) if (P.IsLand(P.Grid.Nbr4[c * 4 + q])) shore = true;
                     if (!shore) continue;
@@ -133,7 +135,7 @@ namespace TC2.Game
                     }
                     d = (P.Grid.Center[best] * 0.6 + P.Grid.Center[far] * 0.4).Normalized;
                 }
-                LookAt(d, view == "coastfar" ? 300 : 90);
+                LookAt(d, view == "coastfar" || view == "sealsfar" ? 300 : 90);
                 return;
             }
             if (view.StartsWith("volcano"))

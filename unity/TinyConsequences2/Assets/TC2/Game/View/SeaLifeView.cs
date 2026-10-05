@@ -30,6 +30,7 @@ namespace TC2.Game
         struct Shoal
         {
             public Vector3 Centre, East, North, Up;   // the shoal's centre just under the surface, and its local frame
+            public Quaternion Base;                   // upright at the shoal, facing south (a fish turns from it about Up)
             public int Group, Count;                  // colour group (0 herring, 1 sardine), fish in it
             public float Radius, Spin, Phase, Scale;  // m, rad/s, rad, fish size
             public ulong Key;
@@ -40,6 +41,9 @@ namespace TC2.Game
         // seen from above a fish shows its dark back (the flash of a turning flank is the shader's)
         static readonly Color[] Tints = { new Color(0.55f, 0.6f, 0.72f, 1f), new Color(0.48f, 0.66f, 0.6f, 1f), new Color(0.26f, 0.3f, 0.5f, 1f) };
         const float FishLength = 0.3f;   // the model's length (m)
+        const int MaxFish = 2400;          // a frame's budget of fish (the nearest shoals first)
+        static readonly float[] FishU = Table(0xF15Au), FishV = Table(0xF15Bu);
+        static float[] Table(ulong seed) { var a = new float[64]; for (int i = 0; i < 64; i++) a[i] = (float)KeyedRng.Unit(KeyedRng.Mix(seed + (ulong)i * 0x9E37UL)); return a; }
 
         void Start()
         {
@@ -141,6 +145,7 @@ namespace TC2.Game
                     float depth = Mathf.Min(len0 * (0.55f + 0.25f * (float)KeyedRng.Unit(KeyedRng.Mix(sk + 3))) + 0.2f, water * 0.45f);
                     shoal.Centre = Dir(d, surfaceR - depth);
                     shoal.Up = shoal.Centre.normalized;
+                    shoal.Base = PlanetGeo.Upright(shoal.Up, 0f);
                     shoal.East = ToV(east); shoal.North = ToV(north);
                     shoal.Count = 15 + (int)(KeyedRng.Unit(KeyedRng.Mix(sk + 4)) * 25);
                     shoal.Radius = FishLength * shoal.Scale * (1.6f + 1.2f * (float)KeyedRng.Unit(KeyedRng.Mix(sk + 5)));
@@ -197,14 +202,18 @@ namespace TC2.Game
         void SwimShoals(PlanetState P, float t)
         {
             _fish.Clear();
-            for (int s = 0; s < _shoals.Count; s++)
+            int budget = MaxFish;
+            for (int s = 0; s < _shoals.Count && budget > 0; s++)
             {
                 var sh = _shoals[s];
                 float len = FishLength * sh.Scale;
-                for (int i = 0; i < sh.Count; i++)
+                int count = Mathf.Min(sh.Count, budget);
+                budget -= count;
+                Vector3 fishScale = Vector3.one * sh.Scale;
+                for (int i = 0; i < count; i++)
                 {
-                    ulong fk = KeyedRng.Mix(sh.Key + 1000 + (ulong)i);
-                    float u = (float)KeyedRng.Unit(fk), v = (float)KeyedRng.Unit(KeyedRng.Mix(fk + 1));
+                    // the fish's own place in the shoal (two keyed numbers from a table: no hashing every frame)
+                    float u = FishU[i & 63], v = FishV[(i + (int)(sh.Key & 63)) & 63];
                     float r = sh.Radius * (0.35f + 0.65f * Mathf.Sqrt(u));
                     float a = sh.Phase + i * 2.39996f + sh.Spin * t * (1.15f - 0.3f * u);   // inner fish turn a little faster
                     float wob = Mathf.Sin(t * 2.3f + i * 1.7f) * 0.12f * len;
@@ -213,7 +222,7 @@ namespace TC2.Game
                     // they face along the swirl (the tangent of their ellipse)
                     float dx = -sa * Mathf.Sign(sh.Spin), dy = ca * 0.62f * Mathf.Sign(sh.Spin);
                     float yaw = Mathf.Atan2(dx, dy) * Mathf.Rad2Deg + 180f;
-                    _fish.Add(sh.Group, Tints[sh.Group], Matrix4x4.TRS(pos, PlanetGeo.Upright(sh.Up, yaw), Vector3.one * sh.Scale));
+                    _fish.Add(sh.Group, Tints[sh.Group], Matrix4x4.TRS(pos, Quaternion.AngleAxis(yaw, sh.Up) * sh.Base, fishScale));
                 }
                 // a leap: every 15-40 s one fish of the shoal (a tuna where tuna hunt) arcs out of the water
                 float every = 15f + 25f * (float)KeyedRng.Unit(KeyedRng.Mix(sh.Key + 9));

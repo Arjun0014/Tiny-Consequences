@@ -27,6 +27,7 @@ Material:
     m_Floats:
     - _Alpha: 0.72
     - _Anim: 0
+    - _Clear: 3.2
     - _Emission: 0
     - _Murk: 0.45
     m_Colors:

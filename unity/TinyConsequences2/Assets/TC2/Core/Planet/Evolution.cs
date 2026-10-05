@@ -25,6 +25,13 @@ namespace TC2.Core.Planet
                                                    // a range cut off for many thousand years may part (soonest where climates differ)
         public const double CoatWeight = 0.05;     // per C of coat difference: how much sooner two lineages part (10 C: 1.5 x)
         public const int MinCells = 40, MinAnimals = 80;   // a population that can become a kind: not a fragment at a range's edge
+        public const int MaxPerKind = 4;           // living kinds descended from one first kind (deer and their offshoots)
+
+        /// <summary>
+        /// The chance a tectonic step (ten years) that lineages this far apart become two kinds: none below 1, small just
+        /// past it, certain by 4 - so the many refuges of one range, parted together, do not all split at once.
+        /// </summary>
+        public static double SplitChance(double dist) => dist <= 1.0 ? 0.0 : DMath.Min(1.0, 0.004 + 0.12 * (dist - 1.0) * (dist - 1.0));
 
         /// <summary>How far a population's lineage wanders in a tectonic step (standard deviation): faster in short lives.</summary>
         public static double DriftStep(in Species sp) => DriftRate * DMath.Sqrt(Tectonics.StepYears) * DMath.Sqrt(DMath.Sqrt(10.0 / DMath.Max(1.0, sp.Lifespan)));
@@ -108,6 +115,13 @@ namespace TC2.Core.Planet
                     double dist = DMath.Abs(gr.d - bestD) * (1.0 + CoatWeight * DMath.Abs(gr.z - bestZ));
                     if (dist > far) { far = dist; pick = gr.id; zMean = gr.z; dMean = gr.d; }
                 }
+                if (pick >= 0)
+                {
+                    int alive = 0;
+                    for (int q = 0; q < P.Species.Count; q++) if (P.Species[q].Kind == sp.Kind && P.Species[q].Gone == 0) alive++;
+                    double u = KeyedRng.Unit(w.Seed, RngStream.Ecology, 0x5EC1E5UL + (ulong)sp.Id, (ulong)w.Now);
+                    if (alive >= MaxPerKind || u >= SplitChance(far)) pick = -1;   // not this time
+                }
                 if (pick >= 0) formed += Branch(w, s, pick, zMean, dMean);
                 // every sizeable population's lineage wanders a little; where they are one range they wander together
                 // (passing fragments at a range's edge do not: they are no lineage of their own, and soon mix back)
@@ -123,7 +137,28 @@ namespace TC2.Core.Planet
                 for (int c = 0; c < n; c++) if (_mark[c] != 0) drift[s * n + c] += incr[_mark[c]];
                 if (P.Species.Count >= MaxSpecies) break;
             }
+            Compact(P);
             return formed;
+        }
+
+        /// <summary>Extinct kinds leave the fields (the history keeps them): their slots are free for new kinds.</summary>
+        static void Compact(PlanetState P)
+        {
+            int n = P.Cells, k = P.Species.Count, keep = 0;
+            for (int s = 0; s < k; s++) if (P.Species[s].Gone == 0) keep++;
+            if (keep == k) return;
+            var ab = new float[keep * n]; var co = new float[keep * n]; var ct = new float[keep * n]; var dr = new float[keep * n];
+            var list = new List<Species>(keep);
+            for (int s = 0; s < k; s++)
+            {
+                if (P.Species[s].Gone != 0) continue;
+                int j = list.Count;
+                System.Array.Copy(P.Abund, s * n, ab, j * n, n); System.Array.Copy(P.Cond, s * n, co, j * n, n);
+                System.Array.Copy(P.Coat, s * n, ct, j * n, n); System.Array.Copy(P.Drift, s * n, dr, j * n, n);
+                list.Add(P.Species[s]);
+            }
+            P.Species.Clear(); P.Species.AddRange(list);
+            P.Abund = ab; P.Cond = co; P.Coat = ct; P.Drift = dr;
         }
 
         /// <summary>The group marked <paramref name="group"/> of species s becomes a new species (its coat its own).</summary>
