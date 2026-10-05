@@ -19,10 +19,10 @@ namespace TC2.Core.Planet
     {
         public const double Margin = 7.0;          // C: the coat a place asks for leaves this margin under its mean
         public const double Pull = 0.0015;         // per year per (young per adult): how fast a population follows (e-fold ~250 y)
-        public const int MaxSpecies = 16;
+        public const int MaxSpecies = 20;          // (Ecology.MaxK sizes the arrays)
         public const double Load = 0.002;          // per year per C beyond 3 C of mismatch: the lives adaptation costs
-        public const double DriftRate = 0.0117;    // a lineage marker wanders this much per square root of a year (at a 10-year life):
-                                                   // two deer ranges apart ~9,000 years have parted; hares in climates 10 C apart, ~2,000
+        public const double DriftRate = 0.007;     // a lineage marker wanders this much per square root of a year (at a 10-year life):
+                                                   // ranges apart ~5,000-20,000 years have parted (hares in climates 10 C apart soonest)
         public const double CoatWeight = 0.05;     // per C of coat difference: how much sooner two lineages part (10 C: 1.5 x)
         public const int MinCells = 30, MinAnimals = 30;   // a population that can become a kind: not a fragment at a range's edge
 
@@ -154,7 +154,7 @@ namespace TC2.Core.Planet
             }
             P.Abund = ab; P.Cond = co; P.Coat = ct; P.Drift = dr;
             P.Species.Add(child);
-            string name = (zMean < 0 ? "snow " : "sand ") + Ecology.KindName(parent.Kind);
+            string name = (parent.Habitat == 1 ? (zMean < 0 ? "ice " : "warm-water ") : (zMean < 0 ? "snow " : "sand ")) + Ecology.KindName(parent.Kind);
             w.History.Register(new EntityRef(EntityKind.Species, child.Id), name, w.Now);
             w.RecordSpeciation(k, s, at);
             return 1;

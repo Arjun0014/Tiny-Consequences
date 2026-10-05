@@ -744,3 +744,37 @@ two ranges cut off wander apart while a range wanders together. Seeds 42, 7, 123
 kinds alive (ibex 1,500-5,000 on the crags, aurochs 50-290, bears 160-230, foxes ~2,000), no new species yet.
 **Invalidation.** If no long isolated run ever speciates in 10,000 years, raise `DriftRate`; if worlds fill the
 16-species cap, lower it.
+
+## D2-039 — 2026-10-05 — The sea's life: plankton, shoals, their hunters, seals; hunters follow their prey
+
+**Context.** F2 (06 §5) asks for plankton and fish fields by temperature, nutrients, light and ice, for fishing and for
+chains through the sea (a warm sea, ash, oil later). The 10,000-year run of seed 7 (D2-038 build) also showed new species
+forming too early: eight in the first 2,000 years, then the cap - every isolated population starts identical, so the
+first centuries are a burst of divergence from the initial condition.
+**Decision.**
+- **Plankton** is derived each step for every sea cell (never stored): light (the noon sun's height from latitude and
+  the season's declination - none in the polar night) x nutrients (0.15 everywhere, +0.5 in cold seas that mix deep,
+  +0.35 on shelves, + river mouths: each river's flow over 20,000 m3/day, spread two rings out to sea) x growth with
+  warmth x open water (sea ice shuts out the light). `PlanktonMax` 400 kg/ha/yr for the richest sea.
+- **Five sea species** in the same fields as the land's (`Species.Habitat` 1): herring (cold shoals) and sardine
+  (warm) eat plankton; cod hunt herring; tuna hunt sardines and herring far offshore; seals hunt herring and cod
+  from the coasts (suitability needs a shore within ~3 cells). Sea suitability: warmth within each kind's band
+  (`ColdTol`..`HeatTol`), the depth it keeps to (`Offshore`), a coast for seals. Fish eat less for their size
+  (`Metab` 2.2-2.5 against 9 for warm-blooded animals); wide-ranging hunters are half sated at less prey per cell
+  (`Range`: tuna 3, seals 12). Each cell iterates only its habitat's species.
+- **Hunters wander toward their prey**: a predator's dispersal weight is its suitability x (0.3 + 0.7 x its reachable
+  prey against twice its half-satiation) - no pack (or seal) drifts into land or sea its prey has left.
+- Sea hunters start nearer what their prey can feed (1.5 x the prey's start share); the spin-up is 40 half-year steps
+  (was 80 quarter-year: -0.6 s of world creation).
+- Lineage drift slowed to 0.007 per sqrt-year (D2-038's 0.0117 split ranges within centuries).
+- Speed: sparse river mouths (a cached list), cached steepness (by relief version), the sea's geometry cached by
+  relief, coastline **and sea level** (shelf depth reads it: a cache that missed it would differ after a load),
+  interleaved dispersal arrays zeroed as they are read. The ecology step costs ~14 ms (8 before the sea).
+- Save sim version 9; `MaxSpecies` 20 (`Ecology.MaxK` 24 sizes the arrays).
+**Evidence.** Tests (72): fish never on land nor land animals at sea; plankton at river mouths > 1.5x the deep
+ocean's, none in the polar night; sardines in seas >8 C warmer than herring's; seals only near shores; without cod
+and seals the herring grow (+8 % over years 6-10) until they go hungry. Seeds 42 and 7, 200 coarse years: herring
+~2.5M, sardines 14-20M, cod ~25,000, tuna 6,000-9,000, seals 70-220, the land unchanged. Coarse years cost ~35 %
+more than before the sea (mostly the doubled occupied species-cells).
+**Invalidation.** If the sea's cost blocks the Web budgets, step the sea every other ecology step; if seals die out
+in most worlds, widen their prey (more kinds of fish).

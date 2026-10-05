@@ -40,10 +40,23 @@ catch per effort; oil and ash as pollutants; visible schools elaborated from fis
 ## 6. Phase
 F2. The F0 proof of concept keeps vegetation simple (fuel and biome) and has no animals.
 
-## 7. Implemented (first slice, D2-035)
-Eight species as data (deer, hare, aurochs, boar, ibex, wolf, fox, bear) varied per world; abundance and condition per
-species and cell; four foods (grass above a floor, shoots, mast and roots, small fare), lean winters, preferred mixes
-with substitution, Holling II hunting on reachable prey with refuges and size-limited vulnerability, territories,
-condition-gated spring breeding, hunger and cold deaths, habitat-weighted dispersal, grazing that the grass grows
-back from, hibernation; a 20-year spin-up with the plants; animals drawn near the camera from the fields. Not yet:
-age classes, trait evolution and speciation, extinction events, herds as agents, hunting by people, livestock, fish.
+## 7. Implemented (D2-035 - D2-039)
+- **Species as data** (D2-035): eight land kinds (deer, hare, aurochs, boar, ibex, wolf, fox, bear) and five of the sea
+  (herring, sardine, cod, tuna, seal; D2-039), varied per world; abundance and condition per species and cell.
+- **Land**: five foods (grass above a floor, shoots, mast and roots, small fare, crag fare for climbers), lean winters,
+  preferred mixes with substitution, Holling II hunting on reachable prey with refuges (woods, crags) and size-limited
+  vulnerability, territories, condition-gated spring breeding, hunger and cold deaths, hibernation, grazing that the
+  grass grows back from.
+- **Sea** (D2-039): plankton derived from light, nutrients (cold mixing, shelves, river mouths), warmth and ice; fish
+  eat it, cod/tuna/seals hunt them; wide-ranging hunters (`Range`), cold-blooded appetites (`Metab`).
+- **Dispersal** by suitability; hunters toward their prey.
+- **Evolution** (D2-037, D2-038): a coat per species and cell follows the climate at a breeding-paced rate (adaptation
+  measurable over centuries); a neutral lineage marker wanders per isolated population; a sizeable population whose
+  lineage has drifted far enough (sooner where climates made the coats differ) becomes a species of its own; empty
+  kinds are extinct - both Epochal history events.
+- **Worldgen**: a 20-year spin-up with the plants, refuges so no kind dies before history.
+- **Evidence tools**: `planet --eco --ecodiag` (deaths by cause, births), `--ecocsv` (series), `--steep`.
+- Predator-prey quasi-cycles measured (seed 42, 400 years): hares 44k-92k on a ~4-year quasi-period with foxes 2-3 years
+  behind (r 0.41), wolves 2 years behind deer (r 0.81).
+Not yet: age classes, herds as agents near people and hunting by people (with F3), livestock, fishing, the isolation
+event named as a speciation's cause, visible shoals and seals in the view.

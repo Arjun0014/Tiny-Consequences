@@ -61,6 +61,8 @@ namespace TC2.Headless
             Console.WriteLine(PlanetHeader());
             Console.WriteLine(PlanetLine(w));
             long end = w.Now + (long)(years * SimTime.Year);
+            string ecoCsv = a.Get("ecocsv");   // each species' animals at every report, for series (cycles, lags)
+            if (ecoCsv != null) File.WriteAllText(ecoCsv, "");
             int k = 0;
             var run = Stopwatch.StartNew();
             while (w.Now < end)
@@ -77,6 +79,7 @@ namespace TC2.Headless
                 if (a.Has("storms")) Console.WriteLine("      " + StormLine(w));
                 if (a.Has("eco")) Console.WriteLine("      " + EcoLine(w));
                 if (Ecology.Diag != null) { Console.WriteLine("      " + EcoDiagLine(w)); Array.Clear(Ecology.Diag, 0, Ecology.Diag.Length); }
+                if (ecoCsv != null) EcoCsv(w, ecoCsv);
                 if (mapDir != null) WriteMap(w, Path.Combine(mapDir, "map_" + k.ToString("0000") + ".png"), width);
             }
             FlowHistogram(w);
@@ -137,6 +140,23 @@ namespace TC2.Headless
                                 d[si * 8 + 0], d[si * 8 + 1], d[si * 8 + 2], d[si * 8 + 3], d[si * 8 + 4], d[si * 8 + 5]);
             }
             return sb.ToString();
+        }
+
+        static void EcoCsv(World w, string path)
+        {
+            var P = w.Planet;
+            var sb = new System.Text.StringBuilder();
+            if (new FileInfo(path).Length == 0)
+            {
+                sb.Append("year");
+                for (int si = 0; si < P.Species.Count; si++) sb.Append(',').Append(SpeciesName(w, si).Replace(' ', '_'));
+                sb.Append(",grass\n");
+            }
+            sb.Append((w.Now / (double)SimTime.Year).ToString("0.00", CultureInfo.InvariantCulture));
+            for (int si = 0; si < P.Species.Count; si++) sb.Append(',').Append(Ecology.Total(P, si).ToString("0.0", CultureInfo.InvariantCulture));
+            double g = 0, land = 0; for (int c = 0; c < P.Cells; c++) if (P.IsLand(c)) { g += P.Grass[c]; land++; }
+            sb.Append(',').Append((g / Math.Max(1, land)).ToString("0.000", CultureInfo.InvariantCulture)).Append('\n');
+            File.AppendAllText(path, sb.ToString());
         }
 
         static string SpeciesName(World w, int si)

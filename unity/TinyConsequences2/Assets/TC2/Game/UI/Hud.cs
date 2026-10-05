@@ -227,12 +227,22 @@ namespace TC2.Game
             _wildAt = Time.unscaledTime;
             var P = w.Planet;
             var sb = new System.Text.StringBuilder();
-            for (int s = 0; s < P.Species.Count; s++)
+            for (int habitat = 0; habitat < 2; habitat++)
             {
-                double t = TC2.Core.Planet.Ecology.Total(P, s);
-                if (t < 1) continue;
-                if (sb.Length > 0) sb.Append(", ");
-                sb.Append(TC2.Core.Planet.Ecology.KindName(P.Species[s].Kind)).Append(' ').Append(t >= 1000 ? (t / 1000).ToString("0.#", CultureInfo.InvariantCulture) + "k" : t.ToString("0", CultureInfo.InvariantCulture));
+                bool first = true;
+                for (int s = 0; s < P.Species.Count; s++)
+                {
+                    var sp = P.Species[s];
+                    if (sp.Habitat != habitat) continue;
+                    double t = TC2.Core.Planet.Ecology.Total(P, s);
+                    if (t < 1) continue;
+                    if (first) { if (sb.Length > 0) sb.Append(" | sea: "); first = false; }
+                    else sb.Append(", ");
+                    string name = w.History.NameOf(new TC2.Core.Foundation.EntityRef(TC2.Core.Foundation.EntityKind.Species, sp.Id));
+                    if (string.IsNullOrEmpty(name)) name = TC2.Core.Planet.Ecology.KindName(sp.Kind);
+                    sb.Append(name).Append(' ').Append(t >= 1e6 ? (t / 1e6).ToString("0.#", CultureInfo.InvariantCulture) + "M"
+                        : t >= 1000 ? (t / 1000).ToString("0.#", CultureInfo.InvariantCulture) + "k" : t.ToString("0", CultureInfo.InvariantCulture));
+                }
             }
             _wild = sb.ToString();
             return _wild;
