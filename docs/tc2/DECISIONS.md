@@ -766,7 +766,10 @@ first centuries are a burst of divergence from the initial condition.
   prey against twice its half-satiation) - no pack (or seal) drifts into land or sea its prey has left.
 - Sea hunters start nearer what their prey can feed (1.5 x the prey's start share); the spin-up is 40 half-year steps
   (was 80 quarter-year: -0.6 s of world creation).
-- Lineage drift slowed to 0.007 per sqrt-year (D2-038's 0.0117 split ranges within centuries).
+- Lineage drift slowed to 0.003 per sqrt-year (D2-038's 0.0117 split ranges within centuries; 0.007 still split the
+  patchy fox range seven ways by year 1,200), and only populations of at least 40 cells and 80 animals drift or become
+  kinds: passing fragments at a range's edge took their own steps and mixed them back as noise (the fox's lineage
+  spread grew to 0.4 across one range). Seed 7: no new kind in 3,000 years; the long runs decide.
 - Speed: sparse river mouths (a cached list), cached steepness (by relief version), the sea's geometry cached by
   relief, coastline **and sea level** (shelf depth reads it: a cache that missed it would differ after a load),
   interleaved dispersal arrays zeroed as they are read. The ecology step costs ~14 ms (8 before the sea).

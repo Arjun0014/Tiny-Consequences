@@ -21,10 +21,10 @@ namespace TC2.Core.Planet
         public const double Pull = 0.0015;         // per year per (young per adult): how fast a population follows (e-fold ~250 y)
         public const int MaxSpecies = 20;          // (Ecology.MaxK sizes the arrays)
         public const double Load = 0.002;          // per year per C beyond 3 C of mismatch: the lives adaptation costs
-        public const double DriftRate = 0.007;     // a lineage marker wanders this much per square root of a year (at a 10-year life):
-                                                   // ranges apart ~5,000-20,000 years have parted (hares in climates 10 C apart soonest)
+        public const double DriftRate = 0.003;     // a lineage marker wanders this much per square root of a year (at a 10-year life):
+                                                   // a range cut off for many thousand years may part (soonest where climates differ)
         public const double CoatWeight = 0.05;     // per C of coat difference: how much sooner two lineages part (10 C: 1.5 x)
-        public const int MinCells = 30, MinAnimals = 30;   // a population that can become a kind: not a fragment at a range's edge
+        public const int MinCells = 40, MinAnimals = 80;   // a population that can become a kind: not a fragment at a range's edge
 
         /// <summary>How far a population's lineage wanders in a tectonic step (standard deviation): faster in short lives.</summary>
         public static double DriftStep(in Species sp) => DriftRate * DMath.Sqrt(Tectonics.StepYears) * DMath.Sqrt(DMath.Sqrt(10.0 / DMath.Max(1.0, sp.Lifespan)));
@@ -109,12 +109,13 @@ namespace TC2.Core.Planet
                     if (dist > far) { far = dist; pick = gr.id; zMean = gr.z; dMean = gr.d; }
                 }
                 if (pick >= 0) formed += Branch(w, s, pick, zMean, dMean);
-                // every population's lineage wanders a little; where they are one range they wander together
+                // every sizeable population's lineage wanders a little; where they are one range they wander together
+                // (passing fragments at a range's edge do not: they are no lineage of their own, and soon mix back)
                 double step = DriftStep(sp);
                 var incr = new float[id + 1];   // by group id (ids run 1..id)
                 foreach (var gr in groups)
                 {
-                    if (gr.id == pick) continue;
+                    if (gr.id == pick || gr.cells < MinCells || gr.N < MinAnimals) continue;
                     double u = KeyedRng.Unit(w.Seed, RngStream.Ecology, 0x6472UL + (ulong)sp.Id, (ulong)w.Now, (ulong)gr.first);
                     incr[gr.id] = (float)((2.0 * u - 1.0) * 1.7320508 * step);   // uniform, standard deviation `step`
                 }

@@ -27,7 +27,7 @@ namespace TC2.Headless
             string zoom = a.Get("zoom"); // "LAT,LON,DEG": a region instead of the whole planet; "first" = the first village
             _zoom = zoom;
             var sw = Stopwatch.StartNew();
-            if (a.Has("ecodiag")) Ecology.Diag = new double[16 * 8];
+            if (a.Has("ecodiag")) Ecology.Diag = new double[Ecology.MaxK * 8];
             var w = WorldGenerator.Create(cfg);
             Console.WriteLine("worldgen " + sw.ElapsedMilliseconds + " ms; seed " + cfg.Seed + " cells " + w.Planet.Cells);
             if (Ecology.Diag != null)
@@ -113,15 +113,17 @@ namespace TC2.Headless
             {
                 var sp = P.Species[si];
                 if (sp.Gone != 0) { sb.Append(' ').Append(SpeciesName(w, si)).Append(" (extinct)"); continue; }
-                double tot = 0, cond = 0, cells = 0, coat = 0;
+                double tot = 0, cond = 0, cells = 0, coat = 0, lin = 0, lin2 = 0;
                 for (int c = 0; c < P.Cells; c++)
                 {
                     double v = P.Abund[si * P.Cells + c]; tot += v; coat += v * P.Coat[si * P.Cells + c];
+                    double dr = P.Drift[si * P.Cells + c]; lin += v * dr; lin2 += v * dr * dr;
                     if (v > 0.05) { cond += P.Cond[si * P.Cells + c]; cells++; }
                 }
+                double linSd = tot > 0 ? Math.Sqrt(Math.Max(0, lin2 / tot - (lin / tot) * (lin / tot))) : 0;
                 // tol: the population's mean cold tolerance (the kind's plus its coat): adaptation, measurable
-                sb.AppendFormat(CultureInfo.InvariantCulture, " {0} {1:0} (in {2:0} cells, cond {3:0.00}, tol {4:0.0})", SpeciesName(w, si), tot, cells,
-                                cells > 0 ? cond / cells : 0, sp.ColdTol + (tot > 0 ? coat / tot : 0));
+                sb.AppendFormat(CultureInfo.InvariantCulture, " {0} {1:0} (in {2:0} cells, cond {3:0.00}, tol {4:0.0}, lin sd {5:0.00})", SpeciesName(w, si), tot, cells,
+                                cells > 0 ? cond / cells : 0, sp.ColdTol + (tot > 0 ? coat / tot : 0), linSd);
             }
             double g = 0, land = 0; for (int c = 0; c < P.Cells; c++) if (P.IsLand(c)) { g += P.Grass[c]; land++; }
             sb.AppendFormat(CultureInfo.InvariantCulture, " | grass {0:0.00}", g / Math.Max(1, land));
