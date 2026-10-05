@@ -171,6 +171,9 @@ namespace TC2.Core.Places
             return best;
         }
 
+        /// <summary>Kg of flax fibre a hectare of the village's fields gives a year (a corner of them sown with flax: D2-063).</summary>
+        public const double FibrePerHa = 0.6;
+
         void Crops(ref Settlement s, int doy)
         {
             var w = _w;
@@ -203,6 +206,8 @@ namespace TC2.Core.Places
                 double yield = s.FieldHa * cfg.FieldYieldPerHa * DMath.Clamp01(s.CropGrowth) * s.Sown * s.Harvested * (1.0 - s.CropBurnt);
                 s.Granary += yield;
                 s.LastHarvest = yield;
+                // and the flax grown on a corner of the fields: fibre for clothes and cordage (D2-063)
+                s.Fibre += s.FieldHa * FibrePerHa * DMath.Clamp01(s.ExpectedHarvest > 0 ? yield / s.ExpectedHarvest : 1.0);
                 s.Crop = CropStage.Harvested; s.CropWorkNeed = 0; s.CropWork = 0;
                 long hev = w.Record(new HistoryEvent { Kind = HistoryKind.Harvest, Time = w.Now, Cell = s.FieldCell, Settlement = s.Id, Subject = EntityRef.Settlement(s.Id), Magnitude = (float)yield });
                 if (s.ExpectedHarvest > 0 && yield < 0.5 * s.ExpectedHarvest)
@@ -360,8 +365,8 @@ namespace TC2.Core.Places
                 hh.Larder += give; s.Granary -= give;
             }
             prof?.End(10011);
-            // spoilage of stored grain (~12% a year)
-            s.Granary *= 1.0 - 0.12 / SimTime.DaysPerYear;
+            // spoilage of stored grain (~12% a year; less kept in fired pots: D2-063)
+            s.Granary *= 1.0 - 0.12 / SimTime.DaysPerYear * Knowledge.Tech.PotteryKeeps(s.BestPottery);
             bool empty = s.Granary < 1.0;
             if (empty && s.HungerEvent == 0 && s.Population > 0)
             {

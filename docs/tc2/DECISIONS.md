@@ -1374,3 +1374,17 @@ the three by year 50 and have them at mastery by year 150 (the connected populat
 The learning step costs ~20 us a village-day. Editor, dotnet and headless agree (gen 0c2e8c8cc4c38bad).
 **Next (F4 slice 2).** Materials from the planet: clay where rivers and lakes lay it, stone where rock shows, ore from the crust
 (D2-058's goods ask for fibre and hides; pottery, the ard with oxen, metals); techniques with prerequisites among themselves.
+
+## D2-063 — 2026-10-06 — Materials from the planet; pottery and the ard (F4 slice 2, in progress)
+
+**Decision.** Goods (D2-058) draw materials from the village's store: 2.5 a person's goods, kg of flax fibre (from the harvest,
+0.6 kg a hectare of fields a year by its success) or hides counting two (from the hunt's kills - one an animal of 60 kg or
+more - and the slaughter: cattle 1, goats and pigs 0.5); with the store empty they are improvised at 0.4 pace. Founders start
+with 1.5 kg fibre and 0.5 hides a head. Two techniques join D2-062: pottery (found by cooks where a river or lake lays clay
+within two rings; a village's pots keep its grain - spoilage down to 0.65 - and a household's cooking burns down to 0.8 of the
+wood) and the ard (found by field workers of a household with a grown ox; up to 1.8x their field work while the household
+keeps one). Founders know pottery in 50 % of villages with clay near (10 % else), the ard in 15 % of those keeping cattle. Sim
+version 19.
+**State.** Built and green (121 tests: the existing ones, nothing broken). **Not yet**: tests of its own (hides and fibre into
+the store, goods improvised without materials, pots keeping grain, the ard with an ox, discovery needing clay or an ox), the
+editor's Mono probe and a long run - SESSION_HANDOFF next step 1.

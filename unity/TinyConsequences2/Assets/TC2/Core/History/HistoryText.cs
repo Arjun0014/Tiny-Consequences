@@ -89,7 +89,7 @@ namespace TC2.Core.History
                 case HistoryKind.HouseholdMoved: return "The " + subj + "s left " + place + " for " + obj + ".";
                 case HistoryKind.HerdHuntedOut: return "The " + obj + " herd near " + place + " was hunted out (" + F(e.Magnitude, "0") + " at its most).";
                 case HistoryKind.TechniqueFound: return subj + " of " + place + " found how to " + TechName(e.ArgA) + ".";
-                case HistoryKind.TechniqueKnown: return "The people of " + place + " now " + (e.ArgA == 0 ? "make fishing nets" : e.ArgA == 1 ? "weave on the loom" : "grind on rotary querns") + (e.Object.IsNone ? "" : " (taught by " + obj + ")") + ".";
+                case HistoryKind.TechniqueKnown: return "The people of " + place + " now " + (e.ArgA >= 0 && e.ArgA < Knowledge.Tech.Count ? Knowledge.Tech.Laws[e.ArgA].Now : "know it") + (e.Object.IsNone ? "" : " (taught by " + obj + ")") + ".";
                 case HistoryKind.TechniqueLost: return "The people of " + place + " no longer know how to " + TechName(e.ArgA) + ".";
                 case HistoryKind.ColdHomes:
                     return "The homes of " + subj + " were cold (" + F(e.Magnitude, "0") + (e.Magnitude >= 1.5 ? " households" : " household") + ", " + e.ArgB + " C outside)" +

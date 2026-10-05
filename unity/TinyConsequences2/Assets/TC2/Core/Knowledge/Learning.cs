@@ -97,11 +97,13 @@ namespace TC2.Core.Knowledge
                 if (!P.IsLand(c1)) coast = true;
                 for (int b = 0; b < 8 && !coast; b++) if (!P.IsLand(g.Nbr8[c1 * 8 + b])) coast = true;
             }
-            double nets = coast ? 0.8 : 0.2, loom = 0.6, quern = 0.35;
+            // (pots where clay is near, the ard where the founders keep cattle: D2-063)
+            bool clay = w.Learning.Clay(s.Cell), cattle = w.Stock.CountOf(sid, Livestock.Cattle) > 0;
+            double nets = coast ? 0.8 : 0.2, loom = 0.6, quern = 0.35, pottery = clay ? 0.5 : 0.1, ard = cattle ? 0.15 : 0.0;
             var res = w.Residents(sid);
             for (int t = 0; t < Tech.Count; t++)
             {
-                double chance = t == Tech.Nets ? nets : t == Tech.Loom ? loom : quern;
+                double chance = t == Tech.Nets ? nets : t == Tech.Loom ? loom : t == Tech.Quern ? quern : t == Tech.Pottery ? pottery : ard;
                 if (KeyedRng.Unit(seed, RngStream.Knowledge, (ulong)sid, 7000UL + (ulong)t) >= chance) continue;
                 double best = 0;
                 for (int i = 0; i < res.Count; i++)
@@ -122,10 +124,12 @@ namespace TC2.Core.Knowledge
         static void SetBest(ref Settlement s, int t, double v)
         {
             float f = (float)v;
-            if (t == Tech.Nets) s.BestNets = f; else if (t == Tech.Loom) s.BestLoom = f; else s.BestQuern = f;
+            if (t == Tech.Nets) s.BestNets = f; else if (t == Tech.Loom) s.BestLoom = f; else if (t == Tech.Quern) s.BestQuern = f;
+            else if (t == Tech.Pottery) s.BestPottery = f; else s.BestArd = f;
         }
 
-        public static double Best(in Settlement s, int t) => t == Tech.Nets ? s.BestNets : t == Tech.Loom ? s.BestLoom : s.BestQuern;
+        public static double Best(in Settlement s, int t) =>
+            t == Tech.Nets ? s.BestNets : t == Tech.Loom ? s.BestLoom : t == Tech.Quern ? s.BestQuern : t == Tech.Pottery ? s.BestPottery : s.BestArd;
 
         /// <summary>
         /// Hours of a person's work that belongs to a technique (fishing to nets, making and mending to the loom, grinding to the
@@ -138,6 +142,8 @@ namespace TC2.Core.Knowledge
             ref var s = ref w.Settlements.Get(p.Home);
             if (Best(in s, t) >= 0.1 || Tech.Get(in p, t) >= 0.1) return;
             if (t == Tech.Quern && !Rock(s.Cell)) return;   // a quern wants hard stone near: rock showing on steep ground
+            if (t == Tech.Pottery && !Clay(s.Cell)) return; // pots want clay: where rivers and lakes lay it (D2-063)
+            if (t == Tech.Ard && !w.Stock.HasOx(p.Household)) return;   // an ard wants an ox to draw it
             double chance = Tech.Laws[t].Discover * hours * (0.5 + p.Curious / 255.0);
             double u = KeyedRng.Unit(w.Seed, RngStream.Knowledge, (ulong)p.Id, (ulong)w.Now, (ulong)t);
             if (u >= chance) return;
@@ -151,8 +157,23 @@ namespace TC2.Core.Knowledge
             w.Metrics.TechniquesFound++;
         }
 
+        /// <summary>Clay near a village (D2-063): a river or a lake within two rings of it, whose floods and shores lay it.</summary>
+        public bool Clay(int cell)
+        {
+            var P = _w.Planet; var g = P.Grid;
+            for (int a = 0; a < 8; a++)
+            {
+                int c1 = g.Nbr8[cell * 8 + a];
+                if (Wet(P, c1)) return true;
+                for (int b = 0; b < 8; b++) if (Wet(P, g.Nbr8[c1 * 8 + b])) return true;
+            }
+            return Wet(P, cell);
+        }
+
+        static bool Wet(Planet.PlanetState P, int c) => P.IsLand(c) && (P.IsRiver(c) || P.LakeDepth[c] > 0.3f);
+
         /// <summary>Rock showing near a village: a cell within two rings of it standing 40 m or more above or below a neighbour.</summary>
-        bool Rock(int cell)
+        public bool Rock(int cell)
         {
             var P = _w.Planet; var g = P.Grid;
             for (int a = 0; a < 8; a++)

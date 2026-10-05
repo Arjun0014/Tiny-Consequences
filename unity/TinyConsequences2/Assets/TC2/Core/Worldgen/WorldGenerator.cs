@@ -351,6 +351,7 @@ namespace TC2.Core.Worldgen
             ref var st = ref w.Settlements.Get(sid);
             st.Granary = st.Population * cfg.FoodPerAdultDay * 70;
             st.Woodstore = st.Population * 4;
+            st.Fibre = st.Population * 1.5; st.Hides = st.Population * 0.5;   // fibre and hides put by (D2-063)
             w.SettlementSys.ClaimInitialFields(sid, st.Population * cfg.FieldHaPerPerson);
             ref var st2 = ref w.Settlements.Get(sid);
             st2.FieldHa = Math.Max(0.5, Math.Min(st2.Population * cfg.FieldHaPerPerson, st2.ArableHa));

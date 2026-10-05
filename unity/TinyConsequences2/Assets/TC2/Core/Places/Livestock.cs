@@ -530,6 +530,19 @@ namespace TC2.Core.Places
             return kind < 0 ? 0 : _pickOf[kind];
         }
 
+        /// <summary>A grown head of cattle in the household to draw an ard (D2-063).</summary>
+        public bool HasOx(int hid)
+        {
+            var w = _w;
+            var mine = w.BeastsOf(hid);
+            for (int i = 0; i < mine.Count; i++)
+            {
+                ref var b = ref w.Beasts.Get(mine[i]);
+                if (b.Alive && b.Kind == Cattle && b.AgeYears(w.Now) >= Laws[Cattle].Mature) return true;
+            }
+            return false;
+        }
+
         void Slaughter(ref Beast b, int hid, int sid)
         {
             var w = _w;
@@ -537,6 +550,7 @@ namespace TC2.Core.Places
             b.Alive = false; b.Died = w.Now;
             w.BeastsOf(hid).Remove(b.Id);
             Store(hid, sid, fu);
+            w.Settlements.Get(sid).Hides += b.Kind == Cattle ? 1.0 : 0.5;   // its hide to the store (D2-063)
             w.Metrics.BeastsEaten++;
             w.Metrics.BeastFu += fu;
         }

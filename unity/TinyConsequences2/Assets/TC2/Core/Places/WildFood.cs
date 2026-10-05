@@ -202,9 +202,12 @@ namespace TC2.Core.Places
         /// live kg an hour; kills are whole animals, a keyed Poisson count per species and cell by its share of B, taken out of
         /// the abundance field. Returns the FU of meat (and the kind of the largest kill, -1 none).
         /// </summary>
-        public double Hunt(int ground, double hours, double skill, ulong key, out int mainKind)
+        public double Hunt(int ground, double hours, double skill, ulong key, out int mainKind) => Hunt(ground, hours, skill, key, out mainKind, out _);
+
+        /// <summary>The same hunt, and the hides its kills give (one an animal of 60 kg or more, less for smaller game: D2-063).</summary>
+        public double Hunt(int ground, double hours, double skill, ulong key, out int mainKind, out double hides)
         {
-            mainKind = -1;
+            mainKind = -1; hides = 0;
             var P = _w.Planet; int n = P.Cells;
             if (ground < 0 || hours <= 0 || !P.IsLand(ground)) return 0;
             Kinds();
@@ -252,6 +255,7 @@ namespace TC2.Core.Places
                     double now = a - taken > 0 ? was * (a - taken) / a : 0.0;
                     _share[pick * Ecology.MaxK + j] = now; bj -= was - now;
                     kg += taken * _gm[j];
+                    hides += taken * DMath.Min(1.0, _gm[j] / 60.0);
                     if (bj <= 0) break;
                 }
                 double kindKg = 0;   // (the largest catch of the hunt names what they carry home)
