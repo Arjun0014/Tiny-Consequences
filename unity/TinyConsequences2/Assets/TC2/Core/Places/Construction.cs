@@ -15,6 +15,9 @@ namespace TC2.Core.Places
         public const byte Camp = 0, Hut = 1, House = 2;
         public const byte Well = 1, Granary = 2;            // a village's works (bits)
 
+        /// <summary>Where a village's store stands (its granary, or the heap before one is built): beside the square.</summary>
+        public static void GranarySpot(in Settlement s, out double x, out double y) { x = s.SquareX + 14.0; y = s.SquareY - 10.0; }
+
         // labour-hours and wood: a couple raises a hut in a few days and a house over some weeks; a village digs its well and
         // builds its granary together
         public const double HutHours = 30, HutWood = 8;       // a round hut of posts, wattle and thatch

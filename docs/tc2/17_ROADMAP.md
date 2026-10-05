@@ -49,7 +49,7 @@ Roads and boats; trade by want; gatherings; migration and founding; pathogens wi
 parties, transmission along routes and at gatherings, mutation; famine coping sequences.
 **Done when**: an epidemic jumps along trade and travel and is traceable; migrations found new places.
 
-## F6 — Society, conflict and polities
+## F6 — Society, conflict and polities (in progress: plan 10 §6; slice 1 deeds and taking D2-069)
 Relationships, deeds known per settlement, reputation, leadership from prestige; raids as parties of real
 people; defence that is built (ditch -> palisade -> wall -> towers -> gatehouse -> keep from a modular kit,
 from remembered harm, labour, materials, knowledge, coordination); alliances, tribute and polities

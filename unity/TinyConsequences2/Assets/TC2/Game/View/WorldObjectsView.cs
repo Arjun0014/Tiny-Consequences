@@ -219,7 +219,8 @@ namespace TC2.Game
                 }
                 Beached(w, P, in s, sid, ex);
                 // the village store and its well, once its people have built them (D2-045); haystacks once the harvest is in
-                if ((s.Works & Construction.Granary) != 0) _granaries.Add(0, Color.white, Place(P, s, s.SquareX + 14, s.SquareY - 10, 12f, ex));
+                Construction.GranarySpot(in s, out double gx, out double gy);
+                if ((s.Works & Construction.Granary) != 0) _granaries.Add(0, Color.white, Place(P, s, (float)gx, (float)gy, 12f, ex));
                 if ((s.Works & Construction.Well) != 0) _wells.Add(0, Color.white, Place(P, s, s.WellX, s.WellY, 30f, ex));
                 float fill = Mathf.Clamp01((float)(s.Granary / System.Math.Max(1.0, s.Population * 30.0)));
                 if (s.Crop == CropStage.Harvested || s.Crop == CropStage.Fallow)

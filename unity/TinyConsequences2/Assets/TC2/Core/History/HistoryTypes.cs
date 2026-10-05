@@ -64,6 +64,8 @@ namespace TC2.Core.History
         EpidemicArrived = 58,   // a sickness came to a village (Object the pathogen, Other its carrier; Cause1 the epidemic it came from)
         EpidemicEnded = 59,     // it left (Magnitude the dead, ArgA its days)
         ReliefSent = 60,        // a village sent grain to a neighbour in famine (Subject the giver, Object the receiver, Magnitude FU; D2-067)
+        Taken = 61,             // someone took a load from a village's store in the night, unseen (Subject the taker, Object the village, Other theirs; Magnitude FU; D2-069)
+        TakingSeen = 62,        // a taker was seen at a village's store and ran, leaving it (the same fields)
         HomeTaken = 53,         // a household made its home in one that stood empty (Object: who lived there last; ArgA 1 a hut, 2 a house; D2-059)
         ColdHomes = 52,         // a village's homes were cold enough to harm (Magnitude homes, ArgA 1 the woodstore ran short, ArgB the day's mean C; D2-056)
     }
@@ -208,6 +210,8 @@ namespace TC2.Core.History
                 case HistoryKind.EpidemicArrived: return Tier.Historical;
                 case HistoryKind.EpidemicEnded: return Tier.Local;
                 case HistoryKind.ReliefSent: return Tier.Historical;
+                case HistoryKind.Taken: return Tier.Local;
+                case HistoryKind.TakingSeen: return Tier.Local;
                 default: return Tier.Personal;
             }
         }
@@ -269,6 +273,8 @@ namespace TC2.Core.History
                 case HistoryKind.EpidemicArrived: b = 12; break;
                 case HistoryKind.EpidemicEnded: b = 5; break;
                 case HistoryKind.ReliefSent: b = 10; break;
+                case HistoryKind.Taken: b = 6; break;
+                case HistoryKind.TakingSeen: b = 8; break;
                 default: b = 1; break;
             }
             // magnitude raises importance sub-linearly - where it is a size; a person's events carry an age or a count there,

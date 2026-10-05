@@ -33,3 +33,40 @@ remains when these accumulate.
 
 ## 5. Phase
 F6. F0 has none.
+
+## 6. The plan for F6 in TC2 (D2-069)
+Every mechanism lives at both resolutions: a lived act (people walk, take, are seen, strike) and a COARSE day that makes the
+same choices at the lived rate (measured, as visits and trade are). Long runs are COARSE: F6's done-when is judged there.
+1. **Deeds and taking by need** (slice 1): deeds as records (`Core/Society`): who did what to whom, its worth; what each
+   village knows of them and how (saw, found, told, own); news carried by visitors, traders, brides and movers. The hungry take
+   grain from a neighbour's full store at night - seen or not by the homes round the store; relief given is a deed too.
+   Grievance and gratitude are read from known deeds (worth, age, settled or not), never stored as scores: relief and trade
+   pass by those who wronged a village; restraint toward kin and those who helped; taking back is not stealing to the taker.
+2. **Watch, blows and injury**: a village that remembers losses keeps a watch at night (labour, sleep); a thief met is
+   struck or chased; injury (hurt that heals with care, or kills); death by violence is a deed with mourners.
+3. **Answers**: claims (return, pay in kind, deny, refuse), taking back as a choice, compensation; ties (kin across the line,
+   trade, help received) press for settlement (Gluckman); feuds that end or grow from present state.
+4. **Raids**: a household with need or grievance raises a band of kin and friends (each deciding), which walks together, takes
+   beasts and stores, meets defenders; fights as processes; loot carried home.
+5. **Defence that is built**: a ditch and a palisade from remembered harm against timber and labour (gates; never a count),
+   later walls and towers from masonry; aggregation into bigger places for safety.
+6. **Prestige and leaders**: prestige from known deeds (generosity in famine, raids led, age, kin, founding); a village's
+   leader calls work (walls) and bands.
+7. **Tribute and polities**: a village raided where flight is hard (circumscription) yields a share of its harvest to the
+   stronger; a polity is a component of the tribute graph, its depth the historians' chiefdom or state; secession and collapse
+   from its strains. Done when a fortified town or a polity arises and falls in long runs and its history explains it.
+
+## 7. Implemented: slice 1, deeds and taking by need (D2-069)
+- **Deeds** (`Core/Society/Deeds.cs`): a record of who did what to whom (the doer and their village; the household or village
+  that suffered or gained; the good and its worth in FU; its history event). Each village keeps the deeds it knows and how
+  (its own people's, seen, found with the doer unknown; told comes with news in slice 3). Grievance and gratitude are sums
+  over them read when a choice needs them (harms halve every 2 years, help every 4); nothing is stored as a score. A deed
+  whose weight has faded below half a day's food is forgotten by every village.
+- **Taking by need** (`Core/Society/Conflict.cs`): a grown person whose last day fed them less than half their need may, going
+  to bed, go in the dark to a neighbour's store holding more than a month of its own need and take a load of grain - by their
+  boldness and how near they are to starving, held back by kin living there and help that village gave, freed by a wrong it
+  did them. The homes round the store may wake: seen, the taker runs and leaves it and the village knows who it was; unseen,
+  the load goes home to the household's larder and a store visibly lower finds the loss. A COARSE night makes the same choice.
+- **What deeds change**: no trade between villages either of which holds a grudge against the other (more than 10 FU of known
+  harm); no relief for those who wronged a village; restraint read by the next taker. Next: the watch, blows and injury.
+

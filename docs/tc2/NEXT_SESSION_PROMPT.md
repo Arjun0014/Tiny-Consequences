@@ -53,9 +53,10 @@ are logged commands and double as screenshot tools (`unity.mjs shots --erupt/--q
 people live on their own (wild food, building, moving and founding, herds and livestock, the household's own work, warmth, homes
 that outlive households), carry their technology as knowledge (nets, the loom, the rotary quern, pottery, the ard, copper), fall
 sick with sicknesses that come from their animals and travel with visitors, brides and traders, and trade what they spare for
-what they lack (copper from the ore villages; grain to a neighbour in famine as relief). Determinism holds across dotnet, Mono
-and the Web build and is linted (D2-057). Next (SESSION_HANDOFF "Next steps"): the Web check, then F6 - society, conflict and
-polities. Run long headless jobs from a scratch copy of the binaries so the repo's DLL stays free.
+what they lack (copper from the ore villages; grain to a neighbour in famine as relief). F6 (society, conflict and polities)
+has begun: deeds known per village, the hungry taking grain from a neighbour's store in the night, grudges that stop trade and
+relief (D2-069). Determinism holds across dotnet, Mono and the Web build and is linted (D2-057). Next (SESSION_HANDOFF "Next
+steps"): sickness at scale (D2-070: a dense world collapses), then F6's next slices. Run long headless jobs from a scratch copy of the binaries so the repo's DLL stays free.
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

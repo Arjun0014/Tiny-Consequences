@@ -28,9 +28,16 @@ namespace TC2.Core.Places
         public const double TripsPerAdultDay = 0.01;
         /// <summary>The least gain (in the villages' own values) worth a day's walk.</summary>
         public const double WorthAWalk = 4.0;
+        /// <summary>Where a load goes at home: the village's store, or the household's larder (what was taken: D2-069).</summary>
+        public const byte ToStore = 0, ToLarder = 1;
+        /// <summary>The known harm (FU, by its weight now) past which a village neither trades with nor feeds another (D2-069).</summary>
+        public const double Grudge = 10.0;
+
+        /// <summary>Whether either village holds a grudge against the other's people (known harms: D2-069).</summary>
+        public bool Estranged(int a, int b) => _w.DeedBook.Grievance(a, b) > Grudge || _w.DeedBook.Grievance(b, a) > Grudge;
 
         // ------------------------------------------------------------------ wants and spares (pure, from state)
-        static double DaysOfFood(World w, in Settlement s, out double daily)
+        public static double DaysOfFood(World w, in Settlement s, out double daily)
         {
             daily = DMath.Max(1.0, s.Population * w.Config.FoodPerAdultDay * 0.8);
             return s.Granary / daily;
@@ -78,6 +85,7 @@ namespace TC2.Core.Places
         {
             give = None; take = None; qty = 0;
             double best = 0;
+            if (Estranged(from, to)) return 0.0;   // (nobody deals with those who wronged them)
             for (byte g = 1; g < Goods; g++)
             {
                 double spare = Spare(from, g);
@@ -130,7 +138,7 @@ namespace TC2.Core.Places
             qty = DMath.Min(qty, Stock(ref s, give));
             if (qty <= 0) return;
             Add(ref s, give, -qty);
-            p.Cargo = give; p.CargoQty = (float)qty;
+            p.Cargo = give; p.CargoQty = (float)qty; p.CargoTo = ToStore;
         }
 
         /// <summary>At the other village: the load into its store, a return load out of it (as the deal stands now), both stores gaining.</summary>
@@ -168,10 +176,18 @@ namespace TC2.Core.Places
         public void Unload(ref Person p, int home)
         {
             var w = _w;
-            if (p.Cargo == None || p.CargoQty <= 0) { p.Cargo = None; p.CargoQty = 0f; return; }
-            ref var s = ref w.Settlements.Get(home);
-            Add(ref s, p.Cargo, p.CargoQty);
-            p.Cargo = None; p.CargoQty = 0f;
+            if (p.Cargo == None || p.CargoQty <= 0) { p.Cargo = None; p.CargoQty = 0f; p.CargoTo = ToStore; return; }
+            if (p.CargoTo == ToLarder && p.Cargo == Grain && w.Households.Exists(p.Household))
+            {
+                ref var hh = ref w.Households.Get(p.Household);
+                hh.Larder += p.CargoQty;
+            }
+            else
+            {
+                ref var s = ref w.Settlements.Get(home);
+                Add(ref s, p.Cargo, p.CargoQty);
+            }
+            p.Cargo = None; p.CargoQty = 0f; p.CargoTo = ToStore;
         }
 
         // ------------------------------------------------------------------ relief and the COARSE day
@@ -227,6 +243,7 @@ namespace TC2.Core.Places
                 ref var t = ref w.Settlements.Get(o);
                 if (!t.Inhabited || t.FamineEvent == 0 || w.Now - t.FamineAt > SimTime.Year / 4) continue;
                 if (Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > 6000) continue;
+                if (w.DeedBook.Grievance(sid, o) > Grudge) continue;   // (no grain for those who took from it: D2-069)
                 // a twentieth of what can be spared a day, as much as feeds them three days (what its people can carry over), while
                 // their store holds less than a month: relief feeds the hungry, it does not fill a granary (nor reach a village whose
                 // dead starved beside a full one)
@@ -239,15 +256,25 @@ namespace TC2.Core.Places
                 ref var t2 = ref w.Settlements.Get(o);
                 t2.Granary += gift;
                 w.Metrics.ReliefFu += gift;
+                long told = 0;
                 if (t2.ReliefAt != t2.FamineEvent)
                 {
                     // (told once a famine: the first neighbour to send grain)
                     t2.ReliefFrom = sid; t2.ReliefAt = t2.FamineEvent;
-                    w.Record(new HistoryEvent
+                    told = w.Record(new HistoryEvent
                     {
                         Kind = HistoryKind.ReliefSent, Time = w.Now, Cell = t2.Cell, Settlement = o, Subject = EntityRef.Settlement(sid),
                         Object = EntityRef.Settlement(o), Cause1 = t2.FamineEvent, Rel1 = CauseRel.InResponseTo, Magnitude = (float)gift, RootKind = RootKind.People,
                     });
+                }
+                // the help is a deed both villages know: one deed a giver and a famine, its worth what was given (D2-069)
+                int deed = w.DeedBook.HelpSince(sid, o, t2.FamineAt);
+                if (deed != 0) { ref var d = ref w.Deeds.Get(deed); d.Qty = (float)((double)d.Qty + gift); d.Worth = (float)((double)d.Worth + gift); }
+                else
+                {
+                    deed = w.DeedBook.Record(TC2.Core.Society.DeedKind.Relief, 0, sid, 0, o, Grain, gift, gift, told);
+                    w.DeedBook.Learn(o, deed, TC2.Core.Society.KnownHow.Saw);
+                    w.DeedBook.Learn(sid, deed, TC2.Core.Society.KnownHow.Own);
                 }
             }
         }

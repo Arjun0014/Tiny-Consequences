@@ -298,9 +298,13 @@ namespace TC2.Core.Agents
                 w.Visitors(arrived).InsertSorted(p.Id);
                 var rs = NextRandom(ref p);
                 p.Until = w.Now + SimTime.Hours(1.5 + 3.0 * rs.NextUnit());
-                p.Visits++;
-                w.Disease.Arrive(ref p, arrived, p.Until - w.Now);   // what they may catch there and carry home (D2-066)
-                if (p.Why == WhyCode.Trade) w.Trade.Exchange(ref p, arrived);   // the load for what they want back (D2-067)
+                if (p.Why == WhyCode.Take) { p.Until = w.Now; w.Conflict.Take(ref p, arrived); }   // at the store in the dark: no visit (D2-069)
+                else
+                {
+                    p.Visits++;
+                    w.Disease.Arrive(ref p, arrived, p.Until - w.Now);   // what they may catch there and carry home (D2-066)
+                    if (p.Why == WhyCode.Trade) w.Trade.Exchange(ref p, arrived);   // the load for what they want back (D2-067)
+                }
             }
             else if (p.CargoQty > 0f) w.Trade.Unload(ref p, arrived);   // home with it
             p.Dest = 0;
@@ -737,9 +741,22 @@ namespace TC2.Core.Agents
                 return;
             }
 
-            // 1. night: sleep until the morning
+            // 0c. a taker's work at the store is done (or they were seen): home by the road at once, in the dark (D2-069)
+            if (!atHome && p.Why == WhyCode.Take && TakerHome(ref p)) return;
+
+            // 1. night: sleep until the morning - unless, going to bed hungry with nothing to eat, they go in the dark to a
+            //    neighbour's full store (once a night, the first night decision before 2 am: D2-069)
             if (night)
             {
+                if (atHome && (lsec >= bed || lsec < 2 * SimTime.Hour) && p.Why != WhyCode.Take && TC2.Core.Society.Conflict.CanTake(in p, now))
+                {
+                    w.Metrics.TakeWeighed++;
+                    if (rs.Chance(w.Conflict.TakeChance(in p)))
+                    {
+                        int to = w.Conflict.TakeTarget(in p, out double free);
+                        if (to != 0 && rs.Chance(free) && StartTake(ref p, to)) return;
+                    }
+                }
                 long untilWake = wake - lsec;
                 if (untilWake <= 0) untilWake += SimTime.Day;
                 BeginLocal(ref p, ActivityKind.Sleep, WhyCode.Night, 0, homeX, homeY, untilWake);
@@ -964,8 +981,9 @@ namespace TC2.Core.Agents
                     {
                         // at their own lot, or at the village's well or granary
                         bool own = w.Households.Exists(p.Household) && w.Households.Get(p.Household).Shelter < Construction.House;
-                        double bx = own ? homeX : (Construction.NextWork(in here) == Construction.Well ? here.WellX : here.SquareX + 14.0);
-                        double by = own ? homeY : (Construction.NextWork(in here) == Construction.Well ? here.WellY : here.SquareY - 10.0);
+                        Construction.GranarySpot(in here, out double gx, out double gy);
+                        double bx = own ? homeX : (Construction.NextWork(in here) == Construction.Well ? here.WellX : gx);
+                        double by = own ? homeY : (Construction.NextWork(in here) == Construction.Well ? here.WellY : gy);
                         BeginLocal(ref p, ActivityKind.Build, own ? WhyCode.NoRoof : WhyCode.VillageWork, 0, bx + rs.Range(-3, 3), by + rs.Range(-3, 3), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
                         return;
                     }
@@ -1472,6 +1490,38 @@ namespace TC2.Core.Agents
             double from = p.At == r.A ? 0.0 : r.Length, dest = to == r.A ? 0.0 : r.Length;
             BeginTravel(ref p, ActivityKind.TripOut, WhyCode.Trade, r, from, dest, to);
             return true;
+        }
+
+        /// <summary>A hungry person sets out in the dark for a neighbour's store (D2-069). False if there is no road.</summary>
+        bool StartTake(ref Person p, int to)
+        {
+            var w = _w;
+            if (to == 0 || p.At != p.Home) return false;
+            var r = w.Routes.Get(w, p.At, to);
+            if (r == null) return false;
+            double from = p.At == r.A ? 0.0 : r.Length, dest = to == r.A ? 0.0 : r.Length;
+            BeginTravel(ref p, ActivityKind.TripOut, WhyCode.Take, r, from, dest, to);
+            return true;
+        }
+
+        /// <summary>A taker leaves the village they took from (or were seen at) for home at once.</summary>
+        bool TakerHome(ref Person p)
+        {
+            var w = _w;
+            var r = w.Routes.Get(w, p.At, p.Home);
+            if (r == null) return false;
+            double from = p.At == r.A ? 0.0 : r.Length, to = p.Home == r.A ? 0.0 : r.Length;
+            BeginTravel(ref p, ActivityKind.TripHome, WhyCode.Take, r, from, to, p.Home);
+            return true;
+        }
+
+        /// <summary>Premise (tests, tools): a person sets out now for a village's store in the dark, as if hunger had sent them.</summary>
+        public bool SendTaker(int pid, int to)
+        {
+            ref var p = ref _w.People.Get(pid);
+            if (!p.Alive || p.At != p.Home) return false;
+            CutStep(ref p);
+            return StartTake(ref p, to);
         }
 
         /// <summary>Premise (tests, tools): a person sets out now to trade with a village, as if they had chosen to.</summary>

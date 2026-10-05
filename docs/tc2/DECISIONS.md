@@ -1508,3 +1508,47 @@ marriages and trade, and burn out; copper spreads by trade from the villages nea
 **Verdict.** F5 is closed. Carried forward: boats between coasts and seafaring (the sea's routes), roads worn by use,
 gatherings and fairs (where epidemics jump and marriages are made), salt from the coast, trade passed on through villages and
 credit, relief weighed by kinship and trust (F6's deeds), and the hint a traded object carries (copying a technique from it).
+
+## D2-069 — 2026-10-06 — Deeds known per village; taking by need (F6 slice 1)
+
+**Context.** F6 (17, 10): society, conflict and polities built from shared primitives - deeds known per settlement - never war
+flags, hostility meters or scripted retaliation (10 §1; TC1's `docs/v3/50_PRIMITIVES.md` and R6). Research (TC1
+`docs/v3/40_RESEARCH_CONFLICT_PLANET.md` §A): people take from neighbours when hungry (Turkana raiders name hunger first;
+Hanawalt's medieval thefts rose with the price of grain, mostly food from neighbours, most in winter when the stores were full);
+ties restrain (Gluckman); a wrong is remembered as a specific deed - settled, answered or forgotten (Boehm, Kelly); refused help
+and harm cost trust (Halstead & O'Shea). The plan for F6 is 10 §6.
+**Decision.** (1) Deeds (`Core/Society/Deeds.cs`, store `World.Deeds`): who did what to whom - the doer and their village, the
+household or village that suffered or gained, the good and its worth in FU, its history event. Each village keeps the deeds it
+knows and how (its own people's, seen, found with the doer unknown; told comes with news, slice 3), sorted by id (`DeedBook`).
+Grievance and gratitude are sums read when a choice needs them - the worth of the harms (help) a village knows another's
+people did (gave) it, halved every 2 (4) years - never stored as scores; a deed whose weight has faded below half a day's food is
+forgotten by every village (yearly). (2) Taking by need (`Core/Society/Conflict.cs`): a grown person (16-55, health above 0.4,
+not pregnant, nursing or sick) whose last day fed them less than half their need (the body's day, kept the same at both
+resolutions: a lived meal-time flag clears at the first bite) weighs, going to bed (once a night, before 2 am), a load of grain
+(25 kg, 33 FU) from a neighbour within 6 km whose store holds more than a month of its own need: a chance of 0.03 x (0.4 + 1.2
+boldness) x (0.5 + how near their body is to starving), times how freely they would go - (1 - restraint) x (1 - the chance of
+being seen). Restraint: kin living there (parents, partner, children, brothers and sisters) 0.85, plus up to half for help that
+village gave (100 FU), less a wrong it did them (30 FU lifts it all: taking back is not stealing to the taker). Seen: each home
+within 50 m of the store may wake, 1 - e^(-0.05 n), at most 0.8. Lived, they walk there in the dark, take or are seen and run,
+and walk home with the load to their household's larder (`Person.CargoTo`); a COARSE night makes the same choice with the same
+chances. (3) Seen: a deed (worth half the load) the store's village knows by sight - "Krukfald Haerfas of Gouthorpe was seen at
+the store of Kubroford in the night and ran, leaving the grain". Unseen: a deed their own village knows; the store's village
+finds the loss when the load was 2 % of the store or more, the doer unknown - "Krukfald Haerfas of Gouthorpe took 33 days' grain
+from the store of Kubroford in the night", caused by the hunger at home. (4) What deeds change now: two villages either of which
+holds a grudge (more than 10 FU of known harm) against the other do not trade; a village sends no relief to those who wronged
+it; the next taker's restraint. One seen taker estranges two villages for about a year and a half. (5) The store's place
+(`Construction.GranarySpot`) is one rule for the builders, the takers and the view. Sim version 23.
+**Evidence.** `TakingTests` (145 tests): unseen, a load leaves a full store for the taker's larder, their village knows it as its
+own and the store's village does not know who; seen, the grain stays, Kubroford's grievance against Gouthorpe is 16.7 FU - no
+trade either way and no relief in a famine (the same famine without the wrong: Kubroford sends grain) - and two years on 8.2;
+restraint 0.00 at a stranger's store, 0.85 with kin there, 0.50 with help received, 0.00 once a wrong is known; seen 0.00 with no
+home near the store, 0.30 with 7 round it; a lived taker "walking to Kubroford in the dark to take grain from its store: there is
+nothing left to eat at home, and its store is full", then "hurrying home to Gouthorpe in the dark with 33 days' grain taken
+from a neighbour's store"; a starving month in four worlds takes 18 times lived and 24 at COARSE (a lived night weighs at bedtime
+with the body of the night before, a COARSE night with the day's account; instrumented, the expected takings were 22.6 lived and
+22.4 COARSE over five worlds); an untouched month takes nothing. Seed 7, 200 coarse years (`tc2/out/society/take7_200.txt`):
+11 loads taken, 3 takers seen, 31 deeds kept, five famines met by relief. Seed 42, 400 coarse years (`take42_400.txt`): 289
+loads taken (9,633 FU), 160 takers seen, 36 famines; taking costs 0.7-1.1 us a village-day. **That run also found the sickness
+model failing at scale**: 10,031 people at year 350, 1,963 at year 400 with full granaries - the black spots of year 362 and the
+strains that shifted from it reinfected everyone (D2-070). Mono equals dotnet (gen 964f7af16bd09bf4).
+**Next.** D2-070 (sickness at scale), then F6 slice 2: the watch, blows and injury.

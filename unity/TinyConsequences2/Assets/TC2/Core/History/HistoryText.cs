@@ -89,6 +89,8 @@ namespace TC2.Core.History
                 case HistoryKind.HouseholdMoved: return "The " + subj + "s left " + place + " for " + obj + ".";
                 case HistoryKind.HerdHuntedOut: return "The " + obj + " herd near " + place + " was hunted out (" + F(e.Magnitude, "0") + " at its most).";
                 case HistoryKind.ReliefSent: return "In the famine " + subj + " sent grain to " + obj + " (" + F(e.Magnitude, "0") + " days' food for one).";
+                case HistoryKind.Taken: return subj + " of " + other + " took " + F(e.Magnitude, "0") + " days' grain from the store of " + obj + " in the night.";
+                case HistoryKind.TakingSeen: return subj + " of " + other + " was seen at the store of " + obj + " in the night and ran, leaving the grain.";
                 case HistoryKind.PathogenAppeared: return "A new sickness, " + subj + ", appeared in " + place + (e.ArgA == 1 ? ", caught from its animals" : "") + ".";
                 case HistoryKind.EpidemicArrived:
                     return e.ArgA == 1 ? Cap(obj) + " broke out in " + place + (e.Other.IsNone ? "" : ", " + other + " the first to fall ill") + "."
@@ -143,8 +145,11 @@ namespace TC2.Core.History
                     }
                 case ActivityKind.TripOut:
                     if (p.Why == WhyCode.Trade) return "walking to " + (dest.Length > 0 ? dest : "a neighbouring village") + " with " + Load(p.Cargo, p.CargoQty) + " to trade: " + home + " spares it and they want it";
+                    if (p.Why == WhyCode.Take) return "walking to " + (dest.Length > 0 ? dest : "a neighbouring village") + " in the dark to take grain from its store: there is nothing left to eat at home, and its store is full";
                     return "walking to " + (dest.Length > 0 ? dest : "a neighbouring village") + (p.Why == WhyCode.VisitKin ? " to see kin" : " to see a friend");
-                case ActivityKind.TripHome: return "walking home to " + home + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "");
+                case ActivityKind.TripHome:
+                    if (p.Why == WhyCode.Take) return p.CargoQty > 0f ? "hurrying home to " + home + " in the dark with " + Load(p.Cargo, p.CargoQty) + " taken from a neighbour's store" : "running home to " + home + " in the dark: seen at the store, they left the grain";
+                    return "walking home to " + home + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "");
                 case ActivityKind.Visit: return "visiting " + at;
                 case ActivityKind.Flee: return "keeping to shelter: a fire is near";
                 case ActivityKind.Wait: return "waiting on the road for the fire ahead to burn out";

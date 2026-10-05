@@ -163,6 +163,19 @@ namespace TC2.Headless
                     if (TC2.Core.Places.Homes.Fallen(in bu, w.Now)) fallen++; else if (bu.Household != 0) lived++; else empty++;
                 }
                 Console.WriteLine("sickness: infections " + m.Infections + ", deaths " + m.DiseaseDeaths + ", epidemics " + m.Epidemics + ", new from animals " + m.PathogensBorn + ", mutations " + m.Mutations);
+                {
+                    // the sicknesses that killed most: their traits, when they came, what they did
+                    var killers = new List<int>();
+                    for (int id = w.Pathogens.First(); id != 0; id = w.Pathogens.Next(id)) killers.Add(id);
+                    killers.Sort((x, y) => { int c = w.Pathogens.Get(y).Deaths.CompareTo(w.Pathogens.Get(x).Deaths); return c != 0 ? c : x.CompareTo(y); });
+                    for (int i = 0; i < killers.Count && i < 8; i++)
+                    {
+                        var g = w.Pathogens.Get(killers[i]);
+                        Console.WriteLine("  " + w.History.NameOf(new EntityRef(EntityKind.Pathogen, g.Id)) + " (year " + F((double)g.Born / SimTime.Year, "0") + (g.Parent != 0 ? ", a strain" : "") + "): cases " + g.Cases + ", dead " + g.Deaths +
+                                          "; beta " + F(g.Beta, "0.00") + ", latent " + F(g.Latent, "0") + " d, infectious " + F(g.Infectious, "0") + " d, virulence " + F(g.Virulence, "0.000") + ", immunity " + (g.Immunity >= 99f ? "for life" : F(g.Immunity, "0") + " y"));
+                    }
+                }
+                Console.WriteLine("taking: loads taken " + m.Takings + " (" + F(m.TakenFu, "0") + " FU), takers seen " + m.TakingsSeen + "; deeds kept " + w.Deeds.Count);
                 Console.WriteLine("trade: trades " + m.TradeTrips + ", gain " + F(m.TradeValue, "0") + ", metal moved " + F(m.MetalTraded, "0") + " kg; relief " + F(m.ReliefFu, "0") + " FU");
                 Console.WriteLine("techniques: found " + m.TechniquesFound + ", lost by villages " + m.TechniquesLost + "  metal smelted " + F(m.MetalKg, "0") + " kg");
                 Console.WriteLine("homes: lived in " + lived + ", standing empty " + empty + ", fallen " + fallen + "  taken empty " + m.HomesTaken + "  households died out " + m.DiedOut);
