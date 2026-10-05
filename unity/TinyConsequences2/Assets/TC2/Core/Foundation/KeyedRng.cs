@@ -30,6 +30,7 @@ namespace TC2.Core.Foundation
         Ecology = 21,
         Orbit = 22,
         Knowledge = 23,     // techniques found by practice (D2-062)
+        Disease = 24,       // infection, its course, spillover and mutation (D2-066)
         Test = 1000,
     }
 

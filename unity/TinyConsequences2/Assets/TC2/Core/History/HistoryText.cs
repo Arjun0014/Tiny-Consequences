@@ -28,7 +28,7 @@ namespace TC2.Core.History
                 case HistoryKind.PersonBorn: return subj + " was born to " + obj + (e.Other.IsNone ? "" : " and " + other) + " in " + place + ".";
                 case HistoryKind.PersonDied:
                     {
-                        string how = e.ArgA == 2 ? " of hunger" : (e.ArgA == 3 ? " in childbirth" : (e.ArgA == 4 ? " in the eruption" : (e.ArgA == 5 ? " when the earthquake brought the house down" : (e.ArgA == 6 ? " in the great wave" : (e.ArgA == 7 ? " in the storm" : (e.ArgA == 8 ? " when the storm drove the sea ashore" : (e.ArgA == 9 ? " of the cold" : "")))))));
+                        string how = e.ArgA == 2 ? " of hunger" : (e.ArgA == 3 ? " in childbirth" : (e.ArgA == 4 ? " in the eruption" : (e.ArgA == 5 ? " when the earthquake brought the house down" : (e.ArgA == 6 ? " in the great wave" : (e.ArgA == 7 ? " in the storm" : (e.ArgA == 8 ? " when the storm drove the sea ashore" : (e.ArgA == 9 ? " of the cold" : (e.ArgA == 10 ? " of " + Sickness(w, e.Cause1) : ""))))))));
                         return subj + " died" + how + " in " + place + ", aged " + F(e.Magnitude, "0") + ".";
                     }
                 case HistoryKind.Marriage: return subj + " and " + obj + " married in " + place + ".";
@@ -88,6 +88,11 @@ namespace TC2.Core.History
                 case HistoryKind.Scouted: return "Someone of " + subj + " saw good land near " + place + ".";
                 case HistoryKind.HouseholdMoved: return "The " + subj + "s left " + place + " for " + obj + ".";
                 case HistoryKind.HerdHuntedOut: return "The " + obj + " herd near " + place + " was hunted out (" + F(e.Magnitude, "0") + " at its most).";
+                case HistoryKind.PathogenAppeared: return "A new sickness, " + subj + ", appeared in " + place + (e.ArgA == 1 ? ", caught from its animals" : "") + ".";
+                case HistoryKind.EpidemicArrived:
+                    return e.ArgA == 1 ? Cap(obj) + " broke out in " + place + (e.Other.IsNone ? "" : ", " + other + " the first to fall ill") + "."
+                                       : Cap(obj) + " came to " + place + (e.Other.IsNone ? "" : " with " + other) + ".";
+                case HistoryKind.EpidemicEnded: return Cap(obj) + " left " + place + " after " + e.ArgA + " days (" + F(e.Magnitude, "0") + " dead).";
                 case HistoryKind.TechniqueFound: return subj + " of " + place + " found how to " + TechName(e.ArgA) + ".";
                 case HistoryKind.TechniqueKnown: return "The people of " + place + " now " + (e.ArgA >= 0 && e.ArgA < Knowledge.Tech.Count ? Knowledge.Tech.Laws[e.ArgA].Now : "know it") + (e.Object.IsNone ? "" : " (taught by " + obj + ")") + ".";
                 case HistoryKind.TechniqueLost: return "The people of " + place + " no longer know how to " + TechName(e.ArgA) + ".";
@@ -120,6 +125,7 @@ namespace TC2.Core.History
                 case ActivityKind.Fields: return p.Why == WhyCode.Harvest ? "bringing in the harvest of " + home : "working the fields of " + home + ": the crop needs hands";
                 case ActivityKind.Wood: return "cutting wood: " + home + "'s woodstore is low";
                 case ActivityKind.Water: return "fetching water " + ((w.Settlements.Exists(p.Home) && (w.Settlements.Get(p.Home).Works & 1) != 0) ? "from the well" : "from the stream") + ": the household's pots are low";
+                case ActivityKind.Ill: return "abed at home with " + w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick)) + ": it must run its course";
                 case ActivityKind.Craft: return "making and mending at home - spinning, weaving, sewing, tools: the household's clothes and tools are wearing thin";
                 case ActivityKind.Cook: return p.Why == WhyCode.Hungry ? "making a meal: hungry, and nothing is cooked at home" : "grinding grain and cooking for the household: the next meals are not made";
                 case ActivityKind.Social: return "on the square with the neighbours, the day's work done";
@@ -154,6 +160,19 @@ namespace TC2.Core.History
                 case ActivityKind.Tend: return "watching " + home + "'s herd on the pasture" + ground + ": the animals must graze, and the wolves keep off a watched herd";
                 default: return p.Act + " (" + p.Why + ")";
             }
+        }
+
+        static string Cap(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
+
+        /// <summary>The sickness an epidemic event names (its pathogen), for a death it caused.</summary>
+        static string Sickness(World w, long cause)
+        {
+            if (cause != 0 && w.History.TryGet(cause, out var c))
+            {
+                if (c.Object.Kind == EntityKind.Pathogen) return w.History.NameOf(c.Object);
+                if (c.Subject.Kind == EntityKind.Pathogen) return w.History.NameOf(c.Subject);
+            }
+            return "a sickness";
         }
 
         static string TechName(int t) => t >= 0 && t < Knowledge.Tech.Count ? Knowledge.Tech.Laws[t].Name : "do it";

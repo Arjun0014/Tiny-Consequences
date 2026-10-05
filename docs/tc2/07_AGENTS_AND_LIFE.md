@@ -133,6 +133,15 @@ with dependants first (TC1 primitives B, C).
 - Not yet: minding infants and toddlers (an infant is "with the household" wherever its carers are), hay for the animals' winter,
   the house's upkeep and decay, materials for goods (F4).
 
+## 7d. Sickness (implemented, D2-066)
+
+- Pathogens are lineages with traits (transmissibility, latent and infectious days, virulence, immunity, an antigen) that come
+  over from animals and mutate as they spread (`Core/Health/Disease.cs`). Each person carries their own infection (latent, then
+  infectious and abed, then dead or immune) and two remembered immunities; each village's day infects the susceptible at home at
+  beta x I / N. A visitor catches what the infectious of the village they visit have and carries it home; brides and moving
+  households carry theirs; a COARSE day couples villages at the lived rate of visits. Every epidemic's cause is the epidemic its
+  first carrier caught it in, back to the animals.
+
 ## 8. Proof-of-concept subset (F0)
 
 People with identity, households, homes, analytic hunger/energy, health; generators: urgent (fire),

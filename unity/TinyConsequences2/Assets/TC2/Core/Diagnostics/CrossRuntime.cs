@@ -76,6 +76,7 @@ namespace TC2.Core.Diagnostics
             { var h = StateHasher.Create(); for (int id = w.Herds.First(); id != 0; id = w.Herds.Next(id)) w.Herds.Get(id).Hash(ref h); Put("herds", h); }
             { var h = StateHasher.Create(); for (int id = w.Beasts.First(); id != 0; id = w.Beasts.Next(id)) w.Beasts.Get(id).Hash(ref h); Put("beasts", h); }
             { var h = StateHasher.Create(); for (int id = w.Buildings.First(); id != 0; id = w.Buildings.Next(id)) w.Buildings.Get(id).Hash(ref h); Put("buildings", h); }
+            { var h = StateHasher.Create(); for (int id = w.Pathogens.First(); id != 0; id = w.Pathogens.Next(id)) w.Pathogens.Get(id).Hash(ref h); Put("pathogens", h); }
             { var h = StateHasher.Create(); w.History.Hash(ref h); Put("history", h); }
             return sb.ToString();
         }

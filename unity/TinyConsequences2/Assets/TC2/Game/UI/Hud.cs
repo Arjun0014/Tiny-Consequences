@@ -211,6 +211,8 @@ namespace TC2.Game
                   .Append(", ").Append(hh.Indoor.ToString("0", CultureInfo.InvariantCulture)).Append(" C indoors")
                   .Append(", goods ").Append((hh.Gear / System.Math.Max(1, w.Members(p.Household).Count)).ToString("0.00", CultureInfo.InvariantCulture)).Append(" a head").Append('\n');
             }
+            if (p.Sick != 0)
+                sb.Append(p.SickPhase == TC2.Core.Health.Disease.Latent ? "carrying " : "sick with ").Append(w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick))).Append('\n');
             if (p.KNets >= 0.1f || p.KLoom >= 0.1f || p.KQuern >= 0.1f || p.KPottery >= 0.1f || p.KArd >= 0.1f || p.KMetal >= 0.1f)
             {
                 sb.Append("knows:");

@@ -492,7 +492,7 @@ namespace TC2.Game
             {
                 ref var p = ref w.People.Get(id);
                 if (!p.Alive) continue;
-                if (p.Act == ActivityKind.Sleep || p.Act == ActivityKind.Infant) continue; // indoors
+                if (p.Act == ActivityKind.Sleep || p.Act == ActivityKind.Infant || p.Act == ActivityKind.Ill) continue; // indoors
                 Vec3d d = w.Agents.PositionAt(p, t);
                 Vector3 pos = PlanetGeo.Surface(P, d);
                 float age = (float)p.AgeYears((long)t);

@@ -13,6 +13,7 @@ namespace TC2.Core.Agents
         Tend = 23,                                      // out with the household's animals on their ground (D2-050)
         Cook = 24,                                      // grinding grain and cooking at the household's hearth (D2-056)
         Craft = 25,                                     // making and mending the household's clothes and tools (D2-058)
+        Ill = 26,                                       // abed at home with a sickness (D2-066)
     }
 
     /// <summary>The kind of the current step of an activity.</summary>
@@ -40,6 +41,7 @@ namespace TC2.Core.Agents
         Herd = 26,        // the household's animals are out on the pasture: someone watches them (D2-050)
         MealsToMake = 27, // nothing is cooked for the next meals: someone grinds and cooks (D2-056)
         GoodsWorn = 28,   // the household's clothes and tools are wearing thin: someone makes and mends (D2-058)
+        Sickness = 29,    // infectious with a sickness: abed (D2-066)
     }
 
     public static class Sex { public const byte Female = 0, Male = 1; }
@@ -97,6 +99,12 @@ namespace TC2.Core.Agents
         public float KNets, KLoom, KQuern;   // proficiency in the techniques a person carries (D2-062; Knowledge.Tech)
         public float KPottery, KArd;         // (D2-063)
         public float KMetal;                 // (D2-064)
+        public int Sick;                     // the pathogen they carry (0 none; D2-066)
+        public byte SickPhase;               // 1 latent, 2 infectious (abed)
+        public long SickUntil;               // the end of this phase
+        public long SickCause;               // the epidemic they caught it in (history)
+        public int Imm0, Imm1;               // antigens they are immune to after recovering
+        public long ImmUntil0, ImmUntil1;    // until when
 
         public double AgeYears(long now) => (now - Born) / (double)SimTime.Year;
         public bool IsFemale => SexKind == Sex.Female;
@@ -111,6 +119,7 @@ namespace TC2.Core.Agents
             w.Byte((byte)Act); w.Byte((byte)Step); w.Byte((byte)Why); w.Int(WhyArg); w.Int(Dest); w.Int(RouteA); w.Int(RouteB);
             w.Long(T0); w.Long(T1); w.Long(TA); w.Float(FromX); w.Float(FromY); w.Float(ToX); w.Float(ToY); w.Float(S0); w.Float(S1);
             w.Int(ActVer); w.UInt(RngCount); w.Long(Alarm); w.Int(AlarmProc); w.Long(AlarmT); w.Int(AlarmVer); w.Int(StayDur); w.Int(Visits); w.Long(Until); w.Float(Worked); w.Float(KNets); w.Float(KLoom); w.Float(KQuern); w.Float(KPottery); w.Float(KArd); w.Float(KMetal);
+            w.Int(Sick); w.Byte(SickPhase); w.Long(SickUntil); w.Long(SickCause); w.Int(Imm0); w.Int(Imm1); w.Long(ImmUntil0); w.Long(ImmUntil1);
         }
 
         public static Person Read(BinReader r)
@@ -124,6 +133,7 @@ namespace TC2.Core.Agents
             p.Act = (ActivityKind)r.Byte(); p.Step = (StepKind)r.Byte(); p.Why = (WhyCode)r.Byte(); p.WhyArg = r.Int(); p.Dest = r.Int(); p.RouteA = r.Int(); p.RouteB = r.Int();
             p.T0 = r.Long(); p.T1 = r.Long(); p.TA = r.Long(); p.FromX = r.Float(); p.FromY = r.Float(); p.ToX = r.Float(); p.ToY = r.Float(); p.S0 = r.Float(); p.S1 = r.Float();
             p.ActVer = r.Int(); p.RngCount = r.UInt(); p.Alarm = r.Long(); p.AlarmProc = r.Int(); p.AlarmT = r.Long(); p.AlarmVer = r.Int(); p.StayDur = r.Int(); p.Visits = r.Int(); p.Until = r.Long(); p.Worked = r.Float(); p.KNets = r.Float(); p.KLoom = r.Float(); p.KQuern = r.Float(); p.KPottery = r.Float(); p.KArd = r.Float(); p.KMetal = r.Float();
+            p.Sick = r.Int(); p.SickPhase = r.Byte(); p.SickUntil = r.Long(); p.SickCause = r.Long(); p.Imm0 = r.Int(); p.Imm1 = r.Int(); p.ImmUntil0 = r.Long(); p.ImmUntil1 = r.Long();
             return p;
         }
 
@@ -137,6 +147,7 @@ namespace TC2.Core.Agents
             h.Add((byte)Act); h.Add((byte)Step); h.Add((byte)Why); h.Add(WhyArg); h.Add(Dest); h.Add(RouteA); h.Add(RouteB);
             h.Add(T0); h.Add(T1); h.Add(TA); h.Add(FromX); h.Add(FromY); h.Add(ToX); h.Add(ToY); h.Add(S0); h.Add(S1);
             h.Add(ActVer); h.Add(RngCount); h.Add(Alarm); h.Add(AlarmProc); h.Add(AlarmT); h.Add(AlarmVer); h.Add(StayDur); h.Add(Visits); h.Add(Until); h.Add(Worked); h.Add(KNets); h.Add(KLoom); h.Add(KQuern); h.Add(KPottery); h.Add(KArd); h.Add(KMetal);
+            h.Add(Sick); h.Add(SickPhase); h.Add(SickUntil); h.Add(SickCause); h.Add(Imm0); h.Add(Imm1); h.Add(ImmUntil0); h.Add(ImmUntil1);
         }
     }
 }

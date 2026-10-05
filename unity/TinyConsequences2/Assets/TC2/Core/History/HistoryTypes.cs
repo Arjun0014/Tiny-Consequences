@@ -60,6 +60,9 @@ namespace TC2.Core.History
         TechniqueFound = 54,    // someone found a technique by practice where nobody knew it (Subject the person, Object the village, ArgA the technique; D2-062)
         TechniqueKnown = 55,    // a village first has a competent practitioner (Object the best of them, ArgA the technique)
         TechniqueLost = 56,     // a village's last competent practitioner is gone (ArgA the technique)
+        PathogenAppeared = 57,  // a new sickness came over from animals (Subject the pathogen, Object the village, ArgA 1 its animals; D2-066)
+        EpidemicArrived = 58,   // a sickness came to a village (Object the pathogen, Other its carrier; Cause1 the epidemic it came from)
+        EpidemicEnded = 59,     // it left (Magnitude the dead, ArgA its days)
         HomeTaken = 53,         // a household made its home in one that stood empty (Object: who lived there last; ArgA 1 a hut, 2 a house; D2-059)
         ColdHomes = 52,         // a village's homes were cold enough to harm (Magnitude homes, ArgA 1 the woodstore ran short, ArgB the day's mean C; D2-056)
     }
@@ -200,6 +203,9 @@ namespace TC2.Core.History
                 case HistoryKind.TechniqueFound: return Tier.Historical;
                 case HistoryKind.TechniqueKnown: return Tier.Local;
                 case HistoryKind.TechniqueLost: return Tier.Historical;
+                case HistoryKind.PathogenAppeared: return Tier.Historical;
+                case HistoryKind.EpidemicArrived: return Tier.Historical;
+                case HistoryKind.EpidemicEnded: return Tier.Local;
                 default: return Tier.Personal;
             }
         }
@@ -257,6 +263,9 @@ namespace TC2.Core.History
                 case HistoryKind.TechniqueFound: b = 25; break;
                 case HistoryKind.TechniqueKnown: b = 6; break;
                 case HistoryKind.TechniqueLost: b = 15; break;
+                case HistoryKind.PathogenAppeared: b = 30; break;
+                case HistoryKind.EpidemicArrived: b = 12; break;
+                case HistoryKind.EpidemicEnded: b = 5; break;
                 default: b = 1; break;
             }
             // magnitude raises importance sub-linearly - where it is a size; a person's events carry an age or a count there,

@@ -1427,3 +1427,35 @@ history writes itself: losses in small villages, independent discoveries, knowle
 **Verdict.** F4 is closed. Carried forward: iron (bog iron, the bloomery) and bronze (tin, rarely near: trade), knowledge of
 places, apprenticeship as a relationship, the hint a traded object carries (F5's trade), techniques of building (masonry) and
 war (F6).
+
+## D2-066 — 2026-10-06 — Sickness among persistent people: carried by whoever walks, traceable to the animals (F5 slice 1)
+
+**Context.** F5 (17): pathogens with SEIR in settlements and parties, transmission along routes and at gatherings, mutation;
+done when an epidemic jumps along trade and travel and is traceable. 02's research: metapopulation SEIR with travel coupling,
+pathogens as lineages that mutate (the virulence-transmission trade-off); in small populations crowd sicknesses burn out (the
+critical community size of measles is a quarter of a million people), so a miniature of a few thousand sees epidemics come and go.
+**Decision.** (1) Pathogens are lineages (`Core/Health/Disease.cs`, store `World.Pathogens`): transmissibility (infecting contacts a
+day), latent and infectious days, virulence, years of immunity, an antigen; new ones come over from animals (a keyed chance a
+village-day, more with its herds and its crowding: ~1 in 20 villages a century), with traits drawn from the ranges of farming
+peoples' sicknesses (0.15-1.5 contacts a day, 2-12 latent and 4-16 infectious days - shorter the deadlier -, virulence
+0.002-0.4, immunity for life or 2-42 years); they mutate as they spread (1 in 2,000 infections; a tenth of mutations shift the
+antigen past old immunity); people name them ("the shaking spots"). (2) Each person carries their own sickness (`Person.Sick`,
+latent then infectious, `SickCause` the epidemic they caught it in) and two remembered immunities. Each day in each village
+(`Disease.Day`, both resolutions) the infectious at home infect the susceptible at home at beta x I / N; at an infection's end
+the body dies by virulence x frailty (infants, the small, the old, the hungry most: `PersonDied` why 10, "of the cattle cough")
+or recovers immune. The infectious keep to their beds (`ActivityKind.Ill`; COARSE: no work, no chores). (3) Between villages: a
+lived visitor catches what their host village's infectious have, over the hours of the stay (`Disease.Arrive`), and carries it
+home; brides and households moving carry theirs; a COARSE day sends a village's healthy grown people visiting its neighbours
+within 6 km at the lived rate (0.025 a day each, measured: `TheCoarseVisitRateIsTheLivedOne`) and some bring it home. (4)
+History: `PathogenAppeared` (from its animals), `EpidemicArrived` (it broke out where it appeared; elsewhere it came with a
+carrier - its cause the epidemic the carrier caught it in), `EpidemicEnded` (days, the dead). Every arrival leads back by its
+causes to the animals. Sim version 21.
+**Evidence.** `DiseaseTests` (132 tests): a sickness runs its course in a village (18 of 20 caught it, the recovered immune,
+"The shaking sweat left Krendhope after 22 days"); people of a village visiting a stricken one carry it home - "The shaking flux
+came to Landton with Nuse Baka <- broke out in Naerkrornby, Dornbreith Vanvaern the first to fall ill <- A new sickness, the
+shaking flux, appeared in Naerkrornby"; a COARSE world carries it to two neighbours at the lived rate; lived visits 0.027 a
+grown person-day against COARSE's 0.025. Seed 42, 200 coarse years with no premise: four sicknesses from the animals (years 129,
+149, 158, 169), fifteen village epidemics jumping between the six villages within a year or two, 4,443 infections, 248 deaths.
+Mono equals dotnet (gen 28858362a12e24c7).
+**Next (F5 slice 2).** Trade by want between villages (metal from the ore villages, salt from the coast, grain to a famine:
+relief), walked by traders who carry sickness too; gatherings.

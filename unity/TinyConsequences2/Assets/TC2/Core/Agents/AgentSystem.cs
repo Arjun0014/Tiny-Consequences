@@ -299,6 +299,7 @@ namespace TC2.Core.Agents
                 var rs = NextRandom(ref p);
                 p.Until = w.Now + SimTime.Hours(1.5 + 3.0 * rs.NextUnit());
                 p.Visits++;
+                w.Disease.Arrive(ref p, arrived, p.Until - w.Now);   // what they may catch there and carry home (D2-066)
             }
             p.Dest = 0;
             Decide(ref p);
@@ -770,6 +771,13 @@ namespace TC2.Core.Agents
                 }
             }
 
+            // 3b. sick with a fever, a pox, a flux: abed at home until it passes (D2-066)
+            if (p.SickPhase == TC2.Core.Health.Disease.Infectious && p.At == p.Home)
+            {
+                BeginLocal(ref p, ActivityKind.Ill, WhyCode.Sickness, p.Sick, homeX, homeY, SimTime.Hours(4));
+                return;
+            }
+
             // 4. visiting elsewhere: stay a while, then go home
             if (!atHome)
             {
@@ -1196,7 +1204,7 @@ namespace TC2.Core.Agents
                     double age = q.AgeYears(now);
                     need += DailyNeed(in q, now);
                     litres += Hearth.WaterNeed(age);
-                    if (q.Health < 0.3) continue;
+                    if (q.Health < 0.3 || q.SickPhase == TC2.Core.Health.Disease.Infectious) continue;
                     if (age >= 6 && age < 12) _kids.Add(mem[k]); else if (age >= 12) _grown.Add(mem[k]);
                 }
                 if (need <= 0) continue;
@@ -1305,7 +1313,7 @@ namespace TC2.Core.Agents
                 if (p.Carry > 0f) { w.Wild.Deposit(p.Id, p.Carry); p.Carry = 0f; }
                 // children of 8-11 lend a hand at the making when the household's goods are wearing thin (D2-058)
                 if (age >= 8 && age < 12 && p.Health >= 0.3) CoarseCraft(ref p, age, 0.6, 0.85);
-                if (age < 12 || p.Health < 0.3) continue;
+                if (age < 12 || p.Health < 0.3 || p.SickPhase == TC2.Core.Health.Disease.Infectious) continue;   // (the sick abed: D2-066)
                 double tools = Tools(p.Household);
                 // youths (12-15) work part of a day, as they take part in a lived day's chores
                 double hours = 7.5 * (0.6 + 0.4 * p.Diligence / 255.0) * (age > 60 ? 0.5 : (age < 16 ? 0.6 : 1.0)) * (0.5 + 0.5 * p.Health);

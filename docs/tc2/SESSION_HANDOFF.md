@@ -65,10 +65,10 @@
   stocked), do not loosen the mechanism (D2-056).
 
 ### Next steps
-1. **F5 - exchange, movement and disease** (17): trade by want between villages (metal from the ore villages, salt, grain in a
-   famine - relief), gatherings, roads and boats (seafaring to reach other lands), pathogens with SEIR in villages and parties
-   carried along routes and at gatherings; famine coping between villages. Done when an epidemic jumps along trade and travel
-   and is traceable, and migrations found new places (the latter already true: D2-045).
+1. **F5 slice 2 - trade by want** (D2-066 next): traders walking routes between villages with what one has and the other wants
+   (metal from the ore villages, salt from the coast, hides and fibre, grain to a famine: relief between kin and neighbours),
+   worth judged by each village's want; traders carry sickness too (an epidemic jumping along trade closes F5's done-when);
+   gatherings (fairs) where epidemics jump. Then close F5.
 2. **The sea's calibration**: fish at ~1 % of real biomass, so the miniature holds ~10-20 seals (D2-053): wide-ranging hunters
    over their range; 10,000-year reruns.
 3. WebGL2's first-entry stall; look backlog: coast shapes off the cell grid, gardens, orbit detail, smoke from huts and camps.

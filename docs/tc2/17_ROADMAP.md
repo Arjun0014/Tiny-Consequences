@@ -44,7 +44,7 @@ observation; discovery as combination in the adjacent possible; loss with dying 
 populations (Henrich); tools and crafts; material chains (stone, clay, fibre, metal) from geology.
 **Done when**: a technique spreads by contact and is lost in an isolated shrinking group in tests.
 
-## F5 — Exchange, movement and disease
+## F5 — Exchange, movement and disease (in progress: slice 1 sickness D2-066; trade next)
 Roads and boats; trade by want; gatherings; migration and founding; pathogens with SEIR in settlements and
 parties, transmission along routes and at gatherings, mutation; famine coping sequences.
 **Done when**: an epidemic jumps along trade and travel and is traceable; migrations found new places.
