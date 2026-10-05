@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using System.Diagnostics;
 using System.Globalization;
@@ -135,6 +136,15 @@ namespace TC2.Headless
                     for (int c = 0; c < TC2.Core.Places.Livestock.Causes; c++) sb.Append(" " + TC2.Core.Places.Livestock.CauseNames[c] + " " + ends[k * TC2.Core.Places.Livestock.Causes + c] + ",");
                     Console.WriteLine(sb.ToString());
                 }
+            {
+                // the ledger by kind and tier (what history keeps after compaction)
+                var byKind = new Dictionary<string, int>();
+                for (int i = 0; i < w.History.Count; i++) { var e = w.History.At(i); string k = e.Kind + "/" + e.Tier; byKind[k] = byKind.TryGetValue(k, out int c) ? c + 1 : 1; }
+                var top = new List<KeyValuePair<string, int>>(byKind); top.Sort((x, y) => y.Value.CompareTo(x.Value));
+                var sbh = new System.Text.StringBuilder("history " + w.History.Count + " kept, " + w.History.Dropped + " dropped:");
+                for (int i = 0; i < top.Count && i < 14; i++) sbh.Append(" " + top[i].Key + " " + top[i].Value + ",");
+                Console.WriteLine(sbh.ToString());
+            }
             Console.WriteLine("state hash " + w.StateHash().ToString("x16"));
             prof?.Print();
             string outDir = a.Get("out");

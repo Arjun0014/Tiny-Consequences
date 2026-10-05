@@ -1129,6 +1129,16 @@ namespace TC2.Core.Simulation
 
         bool SubjectKept(EntityRef r)
         {
+            // a household's own events matter while it has living members, and thirty years after it ends (as a person's
+            // after death); its notable ones are kept by their importance - before, every household's huts and houses stayed
+            // in the ledger for ever (38,769 of 95,615 events at year 300 of seed 42)
+            if (r.Kind == EntityKind.Household)
+            {
+                if (!Households.Exists(r.Id)) return false;
+                ref var h = ref Households.Get(r.Id);
+                if (h.Dissolved != 0) return Now - h.Dissolved < 30 * SimTime.Year;
+                return Members(r.Id).Count > 0;
+            }
             if (r.Kind != EntityKind.Person) return true;
             if (!People.Exists(r.Id)) return false;
             ref var p = ref People.Get(r.Id);
