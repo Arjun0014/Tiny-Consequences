@@ -2,43 +2,40 @@
 
 ## CURRENT STATE (keep accurate; newest first below)
 
-- **F1 in progress (hydrology, climate, tectonics, volcanoes + carbon cycle, quakes, erosion, storms done) + look-dev v1-v5 (Arjun: "a really
-  beautiful miniature world, high detail, high performance"). Session 1 (5 Oct 2026), continuing.**
-  - Docs: `docs/tc2/` 00-17, LEGACY_AUDIT, DECISIONS D2-001..035.
-  - Core (pure C# 9, headless-tested, 66 tests): everything of F0 (see the log) plus **hydrology** (D2-022: runoff
-    down a priority-flood tree, depressions that fill/spill/evaporate/dry, smoothed river flow), **catch-up plan**
-    (D2-023: COARSE for many lives, ACTIVITY on arrival), **climate** (D2-024: zonal energy balance, fictional fast
-    orbit, ice-albedo, CO2/aerosol, land ice sheets, sea level, coastline in 1 m steps, ages of ice in the history),
-    **tectonics** (D2-025: one crust sample per cell, moved every 10 y and handed over every 160 y; ridges,
-    subduction, collisions, accretion, buoyant shelves, wandering plate motions; villages ride their plates),
-    **volcanoes** (D2-028: magma at arcs, rifts and fixed plumes; vents that ride their plates, pour out lava, build
-    islands and erupt by pressure against a per-vent seal; eruptions as events whose lava fires, ash on crops,
-    deaths and veil carry them as cause; named volcanoes) and the **carbon cycle** (outgassing vs weathering, a
-    ~2,000-year thermostat), **quakes** (D2-030: faults loaded by the plates' relative motion, Olami-Feder-Christensen
-    cascades, intensity by distance; deaths indoors, spilled stores, landslides, waves over low coasts), god powers
-    `GodEruption`, `GodQuake` and `GodStorm` (commands; consequences rooted in You), **erosion** (D2-031: stream power
-    on the drainage tree, sediment to lakes, floodplains and deltas), **storms** (D2-032: cyclones and winter storms that
-    move, rain, blow down woods, flatten crops and surge over low coasts; spiral clouds in the view).
-  - Look (Game code): v1 (D2-026) ground model + chunked LOD terrain, farmland and village ground, translucent sea +
-    surf, rivers, haze/sky/grade, Blender kit (`tc2/art/kit.py`); v2-v4 (D2-027) clouds from the weather with cloud
-    shadows, tilt-shift, window lamplight, grass/flowers/reeds/boulders, roads, seasonal canopies, walking people, a
-    slim HUD; v5 (D2-029) volcanoes drawn (cones, craters, steam, eruption columns, lava glow), puffs, gentle shores,
-    moonlight, quake shake/dust/foam from the `FxRing`, roads and farmland antialiased at region scale; v6 (D2-033)
-    one puff renderer, chimney smoke from lived-in houses, rain and snow round the camera, the sea's glint from orbit
-    and the moon's path on the water.
-    Batch-editor screenshots: `node tc2/scripts/unity.mjs shots --tag T [--erupt VEI] [--quake M]`.
-  - Web: volcanoes (look-dev v5 part 1) verified 6/6 (bit-identical, WebGPU, 89-121 fps by view); the quake Core and
-    the antialiasing are in the next build.
-  - F1 verdict pending the reruns (`tc2/out/f1/run_42c.txt`, `run_7c.txt`, maps in `maps42c`): first runs showed
-    drift, glacials, coastline change and moving forests, but speckled coasts and a bistable climate (hothouse in one
-    run, a 7,000-year ice age in the other) - fixed by coast processes, hand-over anti-aliasing and a faster carbon
-    thermostat (D2-034).
-  - F2 started (D2-035): eight wild species as abundance fields with predation, foods, seasons and dispersal; animals
-    drawn near the camera from Blender kit models. Next: trait evolution, speciation, extinction events, herds as
-    agents and hunting by people, fish. Known: in coarse runs 2-3 of 6 villages are abandoned within 300 years (agent/economy
-    fragility, pre-existing; look at it with F2/F3).
-  - Headless tools: `planet` (stats + maps, `--tect`, `--volc`, `--zoom first:DEG`), `climate` (climate-only
-    millennia), `run --profile` (time per event kind and system).
+- **F1 nearly done (verdict from the 10,000-year runs below), F2 nearly done (ecology, evolution, the sea's life), look-dev
+  v1-v7 (Arjun: "a really beautiful miniature world, high detail, high performance"). Session 1 (5 Oct 2026), continuing.**
+  - Docs: `docs/tc2/` 00-17, LEGACY_AUDIT, DECISIONS D2-001..041.
+  - Core (pure C# 9, headless-tested, 73 tests): F0 plus hydrology (D2-022), catch-up plan (D2-023), climate (D2-024),
+    tectonics (D2-025), volcanoes + carbon cycle (D2-028), quakes (D2-030), erosion (D2-031), storms (D2-032), coasts and
+    a faster thermostat (D2-034), ice-aware weathering (D2-036); **ecology** (D2-035: eight land kinds as abundance
+    fields, five foods, Holling II hunting with refuges, territories, seasons, dispersal), crag fare and spin-up refuges
+    (D2-038), **evolution** (D2-037/038/041: a coat per species and cell that follows the climate; a neutral lineage
+    marker per isolated population; new kinds by a keyed chance once lineages have parted, at most four per first kind;
+    extinct kinds leave the fields; both Epochal history events), **the sea's life** (D2-039: plankton from light,
+    nutrients, warmth and ice; herring, sardines, cod, tuna, seals; hunters wander toward their prey).
+  - Look (Game code): v1 (D2-026) terrain/farmland/water/sky/kit; v2-v4 (D2-027) clouds, tilt-shift, lamplight, ground
+    cover, roads, seasons, walking; v5 (D2-029) volcanoes, puffs, gentle shores, moonlight, quake effects; v6 (D2-033)
+    chimney smoke, rain and snow, the sea's glint, the moon's path; wildlife (D2-035); **v7 (D2-040)**: the sea floor
+    carries the water's colour by depth (clear shallows over sand, turquoise shelves, deep blue), a thin sea surface,
+    shoals swirling under it, leaping fish and splashes, seals on the shore (`SeaLifeView`, kit `animal_seal`,
+    `fish_shoal`, `Underwater.shader`).
+    Batch-editor screenshots: `node tc2/scripts/unity.mjs shots --tag T [--views coast,coastfar,seals,wild,...] [--days D]`.
+  - Web (last: `tc2/out/webtest/sea2`): 6/6, bit-identical, WebGPU; start 6.1 s; orbit/region 120, village 88, close 98,
+    low 103 fps; a day away catches up 96 years in 27 s.
+  - F1 evidence: seed 7 (D2-038 build) had a full glacial cycle in 10,000 years (ice 12 -> 25 % of land, sea -21 m, held
+    ~7,000 years, melted back to 9 % and sea -2 m by year 9,000 as forests spread 0.20 -> 0.29, a new glaciation by
+    10,000); seed 42 glaciated by year 3,000 (ice ~33 %, sea -60 to -78 m) and stayed glacial through 10,000 (CO2 rose
+    to 525 ppm, then fell as the exposed shelves weathered) - stable, no runaway. Drift, rising and wearing ranges,
+    coastline change in both. Reruns on the final build: `tc2/out/f1/run_42h.txt`, `run_7h.txt` (maps `maps42h`, `maps7h`).
+  - F2 evidence: predator-prey quasi-cycles (hares 44-92k on a ~4-year period, foxes 2-3 years behind, r 0.41; wolves
+    2 years behind deer, r 0.81); recovery after a crash (test); adaptation over centuries (mean cold tolerances shift
+    5-9 C in 200 years as coats follow the climate); speciation in a long isolated run (seed 42: sand foxes in glacial
+    refuges by year 9,000-10,000 - one-at-a-time rule D2-041 now in the reruns).
+  - Next: F2 close-out (verdict in the reruns), herds as agents near people and hunting (with F3), fishing; F3 people and
+    settlements (villages die out in coarse centuries: migration and founding needed); look follow-ups (seals in
+    daylight shots, boats, gardens, orbit detail, WebGL2 check).
+  - Headless tools: `planet` (`--tect`, `--volc`, `--quake`, `--storms`, `--erosion`, `--eco`, `--ecodiag` deaths by
+    cause, `--ecocsv FILE` series, `--steep`, `--map DIR`), `climate`, `run --profile`.
 
 ## Measurements (session 1)
 
@@ -71,6 +68,12 @@
 | Web, erosion + storms build | Chrome/WebGPU (10,000-year runs on the CPU meanwhile) | 6/6, bit-identical; 89-121 fps by view |
 | Slow climate alone | dotnet | ~3 ms per world year (0.75 ms per season step) |
 | Look-dev shot round (batch editor Play Mode, 5 views) | editor | ~40-45 s |
+| Ecology step, 8 land kinds (before / after precomputed intake, tables) | dotnet | 10.5 / 6 ms |
+| Ecology step with the sea (13 kinds; before / after sparse mouths, caches, interleaved arrays) | dotnet | 16.8 / ~14 ms |
+| COARSE century, seed 42, planet + eco (8 land kinds / + the sea) | dotnet | 9.1 s / 12.3 s |
+| Worldgen seed 42 (80-step / 40-step spin-up, with the sea) | dotnet | 2.7 s / 1.5 s |
+| 10,000 years planet + eco (seed 42, coarse, maps every 1,000) | dotnet | 1,367 s (7.3 years/s) |
+| Web, sea life + water by depth | Chrome/WebGPU | 6/6; start 6.1 s; village 88 fps; a day away (96 years) 27 s |
 
 ## Blockers
 None. (Wavedash cloud saves and itch upload need Arjun later; not needed for F0.)
@@ -123,3 +126,16 @@ None. (Wavedash cloud saves and itch upload need Arjun later; not needed for F0.
   (17.9 C); with coast smoothing it fell into an ice age it never left (9.6 C, sea -98 m) - the thermostat was too weak;
   the vegetation step had grown plants at a third of their rate in every coarse run. The wildlife's numbers found five
   model bugs (see D2-035).
+- Ecology and evolution (D2-036..041): ice-aware weathering (rock under ice does not weather); death-cause counters
+  (`--ecodiag`) showed the ibex starving on shared mountain grass and paying a harsh coat cost (crag fare, load 0.002);
+  the spin-up boom-bust (hares 88k -> 8k, foxes 3,975 -> 4) needed refuges; coats alone split hares within 200 years and
+  tectonic steps are every 10 years, not 50 (lineage drift); fragments at patchy range edges drifted as noise (only
+  sizeable populations drift); seven fox refuges crossed the line together after 9,000 years (a keyed split chance, a
+  per-kind cap, extinct kinds compacted). The `--ecodiag` arrays were sized for 16 species and crashed a 10,000-year
+  run at the 17th.
+- The sea's life (D2-039): tuna and seals starved on per-cell satiation tuned for wolves (hunting range, cold-blooded
+  appetites); seals spread along polar coasts with no fish (prey-aware dispersal, narrower band); the sea geometry cache
+  missed the sea level (a load would have differed).
+- Look v7 (D2-040): shoals were invisible under a 60-90 % opaque sea; the depth texture is off (D2-026), so the sea
+  floor now carries the water's colour by its own depth and the surface thinned to 30 %; shoals sat outside the 65 m
+  of water in a close view (one per ~500 fish now); far shoals read as confetti (falloff).
