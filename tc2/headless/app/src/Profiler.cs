@@ -13,20 +13,22 @@ namespace TC2.Headless
     {
         readonly Dictionary<int, (long ticks, long count)> _t = new Dictionary<int, (long, long)>();
         readonly Stopwatch _sw = Stopwatch.StartNew();
-        long _start;
-        public void Begin(int kind) { _start = _sw.ElapsedTicks; }
+        readonly Stack<long> _start = new Stack<long>();   // (parts of an event nest inside it: keys >= 10000)
+        public void Begin(int kind) { _start.Push(_sw.ElapsedTicks); }
         public void End(int kind)
         {
-            long d = _sw.ElapsedTicks - _start;
+            long d = _sw.ElapsedTicks - _start.Pop();
             _t[kind] = _t.TryGetValue(kind, out var v) ? (v.ticks + d, v.count + 1) : (d, 1);
         }
+        static readonly string[] Parts = { "crops", "food", "survey", "weigh", "coarse-day", "demography" };
         public void Print()
         {
-            double total = _t.Values.Sum(v => (double)v.ticks);
+            double total = _t.Where(k => k.Key < 10000).Sum(v => (double)v.Value.ticks);
             foreach (var kv in _t.OrderByDescending(k => k.Value.ticks))
             {
                 var kind = (EventKind)(kv.Key / 16);
-                string name = kind + (kind == EventKind.SystemTick ? "#" + (kv.Key % 16) : "");
+                string name = kv.Key >= 10000 ? "  daily." + (kv.Key - 10000 < Parts.Length ? Parts[kv.Key - 10000] : (kv.Key - 10000).ToString()) :
+                              kind + (kind == EventKind.SystemTick ? "#" + (kv.Key % 16) : "");
                 double ms = kv.Value.ticks * 1000.0 / Stopwatch.Frequency;
                 Console.WriteLine("  " + name.PadRight(22) + ms.ToString("0.0", CultureInfo.InvariantCulture).PadLeft(9) + " ms  " +
                                   (100 * kv.Value.ticks / total).ToString("0.0", CultureInfo.InvariantCulture).PadLeft(5) + "%  n " + kv.Value.count +

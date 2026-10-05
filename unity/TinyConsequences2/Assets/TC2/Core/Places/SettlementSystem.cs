@@ -41,12 +41,13 @@ namespace TC2.Core.Places
             long now = w.Now;
             int doy = SimTime.DayOfYear(now + Planet.PlanetState.LocalOffset(s.Anchor));
             if (s.Anchor.Y < 0) doy = (doy + 24) % SimTime.DaysPerYear; // southern seasons
-            Crops(ref s, doy);
-            Food(ref s, doy);
-            w.Wild.Survey(sid);   // what the land and sea within reach hold today (D2-042)
-            if (doy == Migration.DecideDay) w.Migration.Weigh(sid);   // after the harvest: who leaves for a new home (D2-045)
-            if (w.Resolution == Resolution.Coarse) w.Agents.CoarseDay(sid);
-            Demography(sid);
+            var prof = w.Profiler;   // (tools: the parts of a village's day; null in the game)
+            prof?.Begin(10000); Crops(ref s, doy); prof?.End(10000);
+            prof?.Begin(10001); Food(ref s, doy); prof?.End(10001);
+            prof?.Begin(10002); w.Wild.Survey(sid); prof?.End(10002);   // what the land and sea within reach hold today (D2-042)
+            if (doy == Migration.DecideDay) { prof?.Begin(10003); w.Migration.Weigh(sid); prof?.End(10003); }   // who leaves (D2-045)
+            if (w.Resolution == Resolution.Coarse) { prof?.Begin(10004); w.Agents.CoarseDay(sid); prof?.End(10004); }
+            prof?.Begin(10005); Demography(sid); prof?.End(10005);
             ref var s2 = ref w.Settlements.Get(sid);
             if (s2.Population <= 0 && s2.Abandoned == 0)
             {

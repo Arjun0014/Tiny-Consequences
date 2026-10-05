@@ -1051,18 +1051,48 @@ namespace TC2.Core.Simulation
             }
         }
 
+        readonly HashSet<int> _ancestors = new HashSet<int>();
+        HashSet<int> _gen = new HashSet<int>(), _next = new HashSet<int>();   // (set membership only: order never matters)
+        readonly List<int> _prune = new List<int>();
+
         void Housekeeping()
         {
             History.Compact(Now, SubjectKept);
+            // the long dead who matter to no one living leave the live table (their history stays): those who are not a parent,
+            // grandparent or great-grandparent of anyone alive - the living's ancestors marked once, not searched per dead
+            _ancestors.Clear(); _gen.Clear();
             for (int id = People.First(); id != 0; id = People.Next(id))
             {
-                // the long dead who matter to no one living leave the live table (their history stays)
+                ref var p = ref People.Get(id);
+                if (!p.Alive) continue;
+                if (p.Mother != 0) _gen.Add(p.Mother);
+                if (p.Father != 0) _gen.Add(p.Father);
+            }
+            for (int g = 0; g < 3 && _gen.Count > 0; g++)   // parents, grandparents, great-grandparents
+            {
+                _ancestors.UnionWith(_gen);
+                _next.Clear();
+                foreach (int a in _gen)
+                {
+                    if (!People.Exists(a)) continue;
+                    ref var q = ref People.Get(a);
+                    if (q.Mother != 0) _next.Add(q.Mother);
+                    if (q.Father != 0) _next.Add(q.Father);
+                }
+                var t = _gen; _gen = _next; _next = t;
+            }
+            _prune.Clear();
+            for (int id = People.First(); id != 0; id = People.Next(id))
+            {
                 ref var p = ref People.Get(id);
                 if (p.Alive || Now - p.Died < 60 * SimTime.Year) continue;
-                if (KinOfLiving(id)) continue;
-                People.Remove(id);
+                if (_ancestors.Contains(id)) continue;
+                _prune.Add(id);
             }
+            for (int i = 0; i < _prune.Count; i++) People.Remove(_prune[i]);
         }
+
+
 
         bool SubjectKept(EntityRef r)
         {
@@ -1070,26 +1100,6 @@ namespace TC2.Core.Simulation
             if (!People.Exists(r.Id)) return false;
             ref var p = ref People.Get(r.Id);
             return p.Alive || Now - p.Died < 30 * SimTime.Year;
-        }
-
-        bool KinOfLiving(int id)
-        {
-            // a parent, grandparent or great-grandparent of anyone alive
-            for (int pid = People.First(); pid != 0; pid = People.Next(pid))
-            {
-                ref var p = ref People.Get(pid);
-                if (!p.Alive) continue;
-                if (IsAncestor(id, pid, 3)) return true;
-            }
-            return false;
-        }
-
-        bool IsAncestor(int anc, int pid, int depth)
-        {
-            if (depth == 0 || !People.Exists(pid)) return false;
-            ref var p = ref People.Get(pid);
-            if (p.Mother == anc || p.Father == anc) return true;
-            return (p.Mother != 0 && IsAncestor(anc, p.Mother, depth - 1)) || (p.Father != 0 && IsAncestor(anc, p.Father, depth - 1));
         }
 
         /// <summary>Schedules the recurring systems for a new world (worldgen).</summary>
