@@ -213,6 +213,37 @@ def round_hut(name, radius, wall_h, roof_h, seed=3):
     return k.finish()
 
 
+def ruin(name, seed=9):
+    """An abandoned house (08 §4, D2-052): stone footings and broken wall stumps of a 7 x 5 m house, roofless, the doorway
+    open, rubble at the corners and a fallen beam. The game lowers and greens it as the centuries pass."""
+    k = Kit(name, seed)
+    rng = random.Random(seed)
+    stone, dark, beam = srgb(0.60, 0.57, 0.51), srgb(0.45, 0.43, 0.39), srgb(0.36, 0.28, 0.20)
+    L, W, t = 7.0, 5.0, 0.35
+    # the walls in stretches of broken height; the doorway on the front (-y) side left open
+    def stretch(x0, x1, y0, y1, door=None):
+        n = 4
+        for i in range(n):
+            a0, a1 = i / n, (i + 1) / n
+            mid = (a0 + a1) / 2
+            if door is not None and abs(mid - door) < 0.13:
+                continue
+            h = 0.35 + 1.25 * rng.random() ** 1.4
+            cx, cy = x0 + (x1 - x0) * mid, y0 + (y1 - y0) * mid
+            sx = abs(x1 - x0) / n + (t if x0 == x1 else 0.02)
+            sy = abs(y1 - y0) / n + (t if y0 == y1 else 0.02)
+            k.box((cx, cy, h / 2), (max(sx, t), max(sy, t), h), stone if rng.random() < 0.7 else dark, bevel=0.03)
+    stretch(-L / 2, L / 2, -W / 2, -W / 2, door=0.5)
+    stretch(-L / 2, L / 2, W / 2, W / 2)
+    stretch(-L / 2, -L / 2, -W / 2, W / 2)
+    stretch(L / 2, L / 2, -W / 2, W / 2)
+    # rubble where the walls fell, and a roof beam across the floor
+    for cx, cy in ((-L / 2 + 0.6, -W / 2 + 0.6), (L / 2 - 0.7, W / 2 - 0.5), (0.8, W / 2 - 0.6)):
+        k.blob((cx, cy, 0.15), 0.45 + 0.2 * rng.random(), dark, subdiv=1, jitter=0.25, squash=0.45)
+    k.box((0.3, 0.2, 0.12), (4.6, 0.22, 0.2), beam, rot_z=0.35)
+    return k.finish()
+
+
 def tent(name, seed=8):
     """A camp's shelter (D2-045): hides over a cone of poles, the poles crossing above, a flap open at the front."""
     k = Kit(name, seed)
@@ -543,6 +574,7 @@ def build_all():
     objs.append(house("house_small", 4.6, 3.8, 2.3, 44, THATCH, wall=srgb(0.80, 0.74, 0.62), chimney=False, seed=14))
     objs.append(round_hut("hut_round", 2.3, 2.1, 2.6))
     objs.append(tent("tent"))
+    objs.append(ruin("ruin"))
     # the wild animals (D2-035): one per species kind, at adult size
     objs.append(quadruped("animal_deer", 1.65, 1.1, 0.72, (0.55, 0.36, 0.20), belly=(0.82, 0.74, 0.62), head=0.24, neck=0.42, neck_up=55, ears=0.13, tail=0.12, antlers=0.45, seed=31))
     objs.append(quadruped("animal_hare", 0.48, 0.3, 0.12, (0.52, 0.45, 0.36), belly=(0.80, 0.76, 0.68), head=0.09, neck=0.06, neck_up=40, ears=0.12, tail=0.05, bushy=True, tail_tip=(0.95, 0.95, 0.92), snout=0.2, seed=32))

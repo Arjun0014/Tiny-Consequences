@@ -20,7 +20,7 @@ namespace TC2.Game
         public SimHost Host;
         public CameraRig Rig;
 
-        Instancer _people, _granaries, _wells, _hay, _flames, _huts, _tents;
+        Instancer _people, _granaries, _wells, _hay, _flames, _huts, _tents, _ruins;
         struct TreeInst { public Vector3 Pos; public Quaternion Rot; public float Scale; public byte Kind, Shade; }
         sealed class CellTrees { public float Forest; public TreeInst[] Trees; }
         readonly System.Collections.Generic.Dictionary<int, CellTrees> _treeCache = new System.Collections.Generic.Dictionary<int, CellTrees>();
@@ -55,6 +55,7 @@ namespace TC2.Game
             _granaries = new Instancer(Models.Get("granary", ProcMeshes.Granary), _mat, true);
             _huts = new Instancer(Models.Get("hut_round", ProcMeshes.House), _mat, true);
             _tents = new Instancer(Models.Get("tent", ProcMeshes.House), _mat, true);   // camps: hides over poles
+            _ruins = new Instancer(Models.Get("ruin", ProcMeshes.House), _mat, true);   // the houses of abandoned villages (D2-052)
             _wells = new Instancer(Models.Get("well", ProcMeshes.Granary), _mat, true);
             _hay = new Instancer(Models.Get("haystack", ProcMeshes.Granary), _mat, true);
             _trees = new Instancer[TreeModels.Length];
@@ -137,7 +138,7 @@ namespace TC2.Game
             if ((Off & 4) == 0)
             {
                 for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Draw(cam);
-                _granaries.Draw(cam); _wells.Draw(cam); _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam);
+                _granaries.Draw(cam); _wells.Draw(cam); _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam);
             }
             if ((Off & 1) == 0) for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
             _flames.Draw(cam);
@@ -175,12 +176,12 @@ namespace TC2.Game
         {
             var P = w.Planet;
             for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Clear();
-            _granaries.Clear(); _wells.Clear(); _hay.Clear(); _huts.Clear(); _tents.Clear();
+            _granaries.Clear(); _wells.Clear(); _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear();
             _smoke.Clear();
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
                 ref var s = ref w.Settlements.Get(sid);
-                if (!s.Inhabited) continue;
+                if (!s.Inhabited) { Ruins(w, P, in s, sid); continue; }
                 Vector3 center = PlanetGeo.Surface(P, s.Anchor);
                 float ex = Exaggeration(center, 1.6f);
                 var hhs = w.HouseholdsOf(sid);
@@ -227,6 +228,39 @@ namespace TC2.Game
                 if (s.Crop == CropStage.Harvested || s.Crop == CropStage.Fallow)
                     for (int k = 0; k < Mathf.RoundToInt(fill * 4); k++)
                         _hay.Add(0, Color.white, Place(P, s, s.SquareX + 22 + k * 4.5, s.SquareY - 16 + (k % 2) * 3.0, k * 40f, ex * (0.8f + 0.1f * k)));
+            }
+        }
+
+        /// <summary>
+        /// An abandoned village (D2-052): the houses its last households lived in stand roofless and sink and green over the
+        /// centuries (a house's stone footings ~300 years, a hut ~80; a camp leaves nothing), its well's stone ring longer.
+        /// </summary>
+        void Ruins(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int sid)
+        {
+            double years = (w.Now - s.Abandoned) / (double)SimTime.Year;
+            if (years > 600) return;
+            Vector3 center = PlanetGeo.Surface(P, s.Anchor);
+            if (Rig != null && Rig.Cam != null && (center - Rig.Cam.transform.position).sqrMagnitude > 6000f * 6000f) return;
+            float ex = Exaggeration(center, 1.6f);
+            var hhs = w.HouseholdsOf(sid);
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                ref var h = ref w.Households.Get(hhs[i]);
+                if (h.Shelter == Construction.Camp) continue;
+                double life = h.Shelter == Construction.House ? 300.0 : 80.0;
+                float c = (float)(1.0 - years / life);
+                if (c <= 0.03f) continue;
+                float yaw = Mathf.Atan2(s.SquareX - h.HomeX, s.SquareY - h.HomeY) * Mathf.Rad2Deg + 180f + ((hhs[i] * 37) % 21 - 10);
+                var m = Place(P, s, h.HomeX, h.HomeY, yaw, 1f);
+                float size = ex * (h.Shelter == Construction.House ? 1f : 0.6f);
+                m = m * Matrix4x4.Scale(new Vector3(size, size * (0.25f + 0.75f * c), size));   // the walls fall lower
+                Color moss = new Color(0.50f, 0.60f, 0.40f, 1f);
+                _ruins.Add((int)(c * 4), Color.Lerp(moss, Color.white, c), m);
+            }
+            if ((s.Works & Construction.Well) != 0 && years < 600)
+            {
+                var m = Place(P, s, s.WellX, s.WellY, 30f, ex) * Matrix4x4.Scale(new Vector3(1f, 0.4f, 1f));   // its stone ring
+                _wells.Add(1, new Color(0.75f, 0.80f, 0.70f, 1f), m);
             }
         }
 

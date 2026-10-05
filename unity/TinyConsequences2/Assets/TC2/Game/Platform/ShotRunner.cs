@@ -41,6 +41,23 @@ namespace TC2.Game
             StartCoroutine(Run());
         }
 
+        /// <summary>
+        /// Look-dev premise (not a god's power): everyone of a village dies and the world goes on some years - its fields go
+        /// back to the land and its houses stand as ruins (D2-052); the world then waits for the same local hour.
+        /// </summary>
+        static void Abandon(World w, int sid, double years, long local, double hour)
+        {
+            var res = w.Residents(sid); var dead = new System.Collections.Generic.List<int>();
+            for (int i = 0; i < res.Count; i++) dead.Add(res[i]);
+            foreach (int pid in dead) { ref var p = ref w.People.Get(pid); w.Agents.Kill(ref p, 0, 1); }
+            var ba = Budget.Unlimited;
+            w.RequestResolution(TC2.Core.Simulation.Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
+            w.AdvanceTo(w.Now + DMath.ToLong(years * SimTime.Year), ref ba);
+            long loc2 = SimTime.FloorMod(w.Now + local, SimTime.Day);
+            w.AdvanceTo(w.Now + SimTime.FloorMod(DMath.ToLong(hour * SimTime.Hour) - loc2, SimTime.Day), ref ba);
+            Debug.Log("[TC2] abandoned the first village " + years + " years ago: inhabited " + w.Settlements.Get(sid).Inhabited + ", now " + SimTime.Format(w.Now));
+        }
+
         IEnumerator Run()
         {
             while (!Host.Ready) yield return null;
@@ -84,6 +101,8 @@ namespace TC2.Game
                 w.AdvanceTo(w.Now + 3 * SimTime.Hour, ref bs);
                 Debug.Log("[TC2] storm: " + w.Planet.Storms.Count + " storms, landfalls " + w.Metrics.StormLandfalls);
             }
+            string abandon = Arg("-tc2abandon");
+            if (abandon != null && sid != 0) Abandon(w, sid, Parse(abandon, 20), local, hour);
             string quake = Arg("-tc2quake");
             if (quake != null && sid != 0)
             {

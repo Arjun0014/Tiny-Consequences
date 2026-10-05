@@ -55,6 +55,7 @@ namespace TC2.Core.Places
                 s2.Abandoned = now;
                 w.HerdSys.Dissolve(sid);
                 w.Stock.Feral(sid);   // its animals are left to the land (D2-048)
+                w.ReleaseSettlementLand(sid);   // and its fields and ground (D2-052)
                 w.Record(new HistoryEvent { Kind = HistoryKind.SettlementAbandoned, Time = now, Cell = s2.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Cause1 = s2.HungerEvent });
                 w.History.EndEntity(EntityRef.Settlement(sid), now);
                 return;

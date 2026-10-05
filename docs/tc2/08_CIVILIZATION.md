@@ -30,6 +30,13 @@ other; "village", "town" and "city" are names for what exists, never states that
 ## 4. Decline and ruins
 - Abandonment when the last household leaves or dies; buildings become ruins that decay over centuries
   and can be reoccupied, quarried for stone, or remembered (a place name, a legend in the History Book).
+- **Implemented (D2-052)**: at abandonment the village's fields go back to the land (no owner: the grass and the woods take
+  them back by the vegetation's own growth, and any village may claim them) and its ground is no longer a village's (a new
+  village may be founded there: site choice already ignored abandoned villages). Its herds go wild (D2-048), its wild herds
+  back to the land (D2-047). The view draws the houses of its last households as roofless ruins that sink and green over the
+  centuries (a house ~300 years, a hut ~80; camps leave nothing) and its well's stone ring for ~600. Not yet: ruins as
+  buildings in the simulation (stone to quarry, a roof to re-raise, a founding drawn to them) - houses are still a household's
+  shelter level, so a household that moves away takes its house with it; persistent buildings come with layouts.
 
 ## 5. Scale terms used by historians (labels only)
 camp, hamlet, village, town, city - by population, buildings and functions present; "market town" if a

@@ -67,6 +67,33 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void AnAbandonedVillagesLandGoesBackToTheLand()
+        {
+            var w = TestWorlds.Make(403);
+            int sid = w.Settlements.First();
+            var P = w.Planet;
+            int cell = w.Settlements.Get(sid).Cell;
+            var fields = new List<int>(); var mine = w.FieldCellsOf(sid); for (int i = 0; i < mine.Count; i++) fields.Add(mine[i]);
+            Assert.Greater(fields.Count, 0, "the village holds fields");
+            Assert.AreEqual(sid, w.SettlementAtCell(cell));
+            // premise: everyone in the village dies
+            var rs = w.Residents(sid); var people = new List<int>(); for (int i = 0; i < rs.Count; i++) people.Add(rs[i]);
+            foreach (int pid in people) { ref var p = ref w.People.Get(pid); w.Agents.Kill(ref p, 0, 1); }
+            w.AdvanceTo(w.Now + SimTime.Day + SimTime.Hour);
+            Assert.IsFalse(w.Settlements.Get(sid).Inhabited);
+            foreach (int c in fields) Assert.AreNotEqual(sid, P.FieldOwner[c], "its fields go back to the land");
+            Assert.AreEqual(0, w.FieldCellsOf(sid).Count);
+            Assert.AreNotEqual(sid, w.SettlementAtCell(cell), "its ground is no longer a village's");
+            // a world saved after it and loaded sees the same land
+            var bytes = SaveFile.Save(w, 0, OfflineMode.Living);
+            var w2 = SaveFile.Load(bytes, out _);
+            Assert.AreEqual(w.SettlementAtCell(cell), w2.SettlementAtCell(cell), "the loaded world indexes only the living villages");
+            long end = w.Now + SimTime.Days(10);
+            w.AdvanceTo(end); w2.AdvanceTo(end);
+            Assert.AreEqual(w.StateHash(), w2.StateHash(), "and lives on identically");
+        }
+
+        [Test]
         public void NobodyKnowsAPlaceNobodyWentToSee()
         {
             var w = TestWorlds.Make(402);

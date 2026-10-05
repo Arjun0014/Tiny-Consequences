@@ -204,8 +204,25 @@ namespace TC2.Core.Simulation
             ref var s = ref Settlements.Get(sid);
             if (sid >= _localOffset.Length) { int n = _localOffset.Length; while (n <= sid) n *= 2; Array.Resize(ref _localOffset, n); }
             _localOffset[sid] = PlanetState.LocalOffset(s.Anchor);
+            if (!s.Inhabited) return;   // an abandoned village's ground is anyone's again (D2-052)
             _cellSettlement[s.Cell] = sid;
             if (s.FieldCell >= 0 && _cellSettlement[s.FieldCell] == 0) _cellSettlement[s.FieldCell] = sid;
+        }
+
+        /// <summary>
+        /// A village is abandoned (D2-052): its fields go back to the land (the woods and the grass take them as the
+        /// vegetation will) and its ground is no longer a village's - another may claim or found there. Its houses stand
+        /// as ruins (the view's elaboration of the abandoned households' last homes).
+        /// </summary>
+        public void ReleaseSettlementLand(int sid)
+        {
+            ref var s = ref Settlements.Get(sid);
+            var cells = FieldCellsOf(sid);
+            for (int i = 0; i < cells.Count; i++) if (Planet.FieldOwner[cells[i]] == sid) Planet.FieldOwner[cells[i]] = 0;
+            cells.Clear();
+            s.FieldHa = 0; s.FieldCells = 0;
+            if (_cellSettlement[s.Cell] == sid) _cellSettlement[s.Cell] = 0;
+            if (s.FieldCell >= 0 && _cellSettlement[s.FieldCell] == sid) _cellSettlement[s.FieldCell] = 0;
         }
 
         public string PlaceName(int cell)

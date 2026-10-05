@@ -1122,3 +1122,16 @@ bridge toggles layers (`off/on` terrain, trees, people, buildings, shadows, tilt
 bit-identical. **Open**: the first-entry stall on WebGL2 (1-5 s); the fix is a traced shader-variant collection warmed at start
 (only the variants the views use), not all variants.
 
+## D2-052 — 2026-10-05 — An abandoned village gives back its land and leaves ruins
+
+**Context.** An abandoned village kept its field claims forever (the land locked against every other village and still drawn
+as tended farmland) and vanished from the view the day its last person died - the planet forgot its history at a glance.
+**Decision.** At abandonment (`World.ReleaseSettlementLand`) its field cells lose their owner and its ground leaves the
+village-cell index; the index (rebuilt on load and after relief changes) holds only inhabited villages, so a loaded world sees
+the same land. The view (`WorldObjectsView.Ruins`) draws the houses of its last households as roofless ruins (kit `ruin`)
+lowering and greening with the years (house ~300, hut ~80; camps nothing) and its well's ring (~600). Look-dev premise
+`unity.mjs shots --abandon YEARS` (everyone of the first village dies, the world goes on).
+**Evidence.** `MigrationTests.AnAbandonedVillagesLandGoesBackToTheLand` (no cell keeps its owner, its ground is free, a save
+after it loads and lives on identically); shots `tc2/out/shots/ruins1` (40 years after: five house ruins and the well in
+pasture, the fields grassed over, young trees). 105 tests.
+
