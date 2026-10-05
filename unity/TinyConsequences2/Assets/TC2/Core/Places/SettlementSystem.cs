@@ -44,7 +44,7 @@ namespace TC2.Core.Places
             var prof = w.Profiler;   // (tools: the parts of a village's day; null in the game)
             prof?.Begin(10000); Crops(ref s, doy); prof?.End(10000);
             prof?.Begin(10001); Food(ref s, doy); prof?.End(10001);
-            prof?.Begin(10002); w.Wild.Survey(sid); w.HerdSys.Update(sid); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
+            prof?.Begin(10002); prof?.Begin(10007); w.Wild.Survey(sid); prof?.End(10007); prof?.Begin(10008); w.HerdSys.Update(sid); prof?.End(10008); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
             if (doy == Migration.DecideDay) { prof?.Begin(10003); w.Migration.Weigh(sid); prof?.End(10003); }   // who leaves (D2-045)
             if (w.Resolution == Resolution.Coarse) { prof?.Begin(10004); w.Agents.CoarseDay(sid); prof?.End(10004); }
             prof?.Begin(10006); w.Stock.Day(sid); prof?.End(10006);   // the herds' day: grazing, milk, births, slaughter (D2-048)

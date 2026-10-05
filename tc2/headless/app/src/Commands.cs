@@ -95,7 +95,7 @@ namespace TC2.Headless
                         ref var st = ref w.Settlements.Get(sid);
                         if (!st.Inhabited) continue;
                         Console.WriteLine("      " + w.History.NameOf(new EntityRef(EntityKind.Settlement, sid)).PadRight(14) + " pop " + st.Population.ToString().PadLeft(4) +
-                                          "  fields " + F(st.FieldHa, "0.0") + "/" + F(st.ArableHa, "0") + " ha  granary " + F(st.Granary, "0") + "  ration " + F(st.Ration, "0.00") +
+                                          "  fields " + F(st.FieldHa, "0.0") + "/" + F(st.ArableHa, "0") + " ha (" + w.FieldCellsOf(sid).Count + " cells)  granary " + F(st.Granary, "0") + "  ration " + F(st.Ration, "0.00") +
                                           "  last harvest " + F(st.LastHarvest, "0") + "  T " + F(w.Planet.TMean[st.Cell], "0.0") +
                                           "  mem " + F(st.Memory, "0.00") + "  wild FU/h hunt " + F(st.Hunt.Expect, "0.00") + " (" + F(st.Hunt.Va, "0") + " kg) fish " + F(st.Fish.Expect, "0.00") +
                                           " (" + F(st.Fish.Va, "0") + ") gather " + F(st.Gath.Expect, "0.00") + " (" + F(st.Gath.Va, "0") + ")" +

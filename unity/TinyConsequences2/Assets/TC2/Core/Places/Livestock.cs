@@ -90,6 +90,7 @@ namespace TC2.Core.Places
         World _w;
         readonly List<int> _cells = new List<int>(), _herd = new List<int>(), _hhs = new List<int>();
         readonly List<double> _hhG = new List<double>(), _hhM = new List<double>(), _hhCap = new List<double>();
+        readonly List<byte> _hhOut = new List<byte>();   // per household and mode (bits 1, 2, 4): nothing more it would spare
         readonly int[] _kept = new int[Kinds], _males = new int[Kinds];
         readonly int[] _prime = new int[Kinds], _young = new int[Kinds], _seenP = new int[Kinds], _seenY = new int[Kinds], _seenA = new int[Kinds];
         readonly sbyte[] _sireNear = new sbyte[Kinds];   // today's answer per kind: -1 not yet asked, 0 none, 1 a sire near
@@ -291,7 +292,7 @@ namespace TC2.Core.Places
             var w = _w;
             long now = w.Now;
             var hhs = w.HouseholdsOf(sid);
-            _hhs.Clear(); _hhG.Clear(); _hhM.Clear(); _hhCap.Clear();
+            _hhs.Clear(); _hhG.Clear(); _hhM.Clear(); _hhCap.Clear(); _hhOut.Clear();
             double wantG = 0, wantM = 0;
             for (int i = 0; i < hhs.Count; i++)
             {
@@ -305,17 +306,26 @@ namespace TC2.Core.Places
                     double eat = _intake[b.Kind] * GrownShare(in b, now);
                     g += eat * Laws[b.Kind].GrassShare; m += eat * Laws[b.Kind].MastShare;
                 }
-                _hhs.Add(hid); _hhG.Add(g); _hhM.Add(m); _hhCap.Add(Hands(hid) * TendKg);
+                _hhs.Add(hid); _hhG.Add(g); _hhM.Add(m); _hhCap.Add(Hands(hid) * TendKg); _hhOut.Add(0);
                 wantG += g; wantM += m;
             }
             for (int guard = 0; guard < 100000; guard++)
             {
                 // more than its hands can tend (the household most over first): its biggest eater beyond the core
-                int pick = -1; int mode = 0; double most = 1.0;
-                for (int i = 0; i < _hhs.Count; i++)
+                int pick = -1, mode = 0, bid = 0;
+                while (true)
                 {
-                    double over = (_hhG[i] + _hhM[i]) / DMath.Max(1e-9, _hhCap[i]);
-                    if (over > most && Spare(_hhs[i], 0) != 0) { most = over; pick = i; }
+                    double most = 1.0; pick = -1;
+                    for (int i = 0; i < _hhs.Count; i++)
+                    {
+                        if ((_hhOut[i] & 1) != 0) continue;
+                        double over = (_hhG[i] + _hhM[i]) / DMath.Max(1e-9, _hhCap[i]);
+                        if (over > most) { most = over; pick = i; }
+                    }
+                    if (pick < 0) break;
+                    bid = Spare(_hhs[pick], 0);
+                    if (bid != 0) break;
+                    _hhOut[pick] |= 1;   // (nothing it would spare: it stays so while others kill)
                 }
                 if (pick < 0)
                 {
@@ -324,17 +334,25 @@ namespace TC2.Core.Places
                     double rm = offerM > 0 ? wantM / offerM : (wantM > 0 ? double.MaxValue : 0);
                     if (rg <= 1.0 && rm <= 1.0) break;
                     mode = rm > rg ? 2 : 1;
-                    most = 0;
-                    for (int i = 0; i < _hhs.Count; i++)
+                    byte bit = (byte)(mode == 2 ? 4 : 2);
+                    while (true)
                     {
-                        int people = w.Members(_hhs[i]).Count;
-                        double per = (mode == 2 ? _hhM[i] : _hhG[i]) / Math.Max(1, people);
-                        if (per > most && Spare(_hhs[i], mode) != 0) { most = per; pick = i; }
+                        double most = 0; pick = -1;
+                        for (int i = 0; i < _hhs.Count; i++)
+                        {
+                            if ((_hhOut[i] & bit) != 0) continue;
+                            int people = w.Members(_hhs[i]).Count;
+                            double per = (mode == 2 ? _hhM[i] : _hhG[i]) / Math.Max(1, people);
+                            if (per > most) { most = per; pick = i; }
+                        }
+                        if (pick < 0) break;
+                        bid = Spare(_hhs[pick], mode);
+                        if (bid != 0) break;
+                        _hhOut[pick] |= bit;
                     }
                 }
                 if (pick < 0) break;   // nothing more anyone would kill: the herds go short
                 int hid = _hhs[pick];
-                int bid = Spare(hid, mode);
                 ref var be = ref w.Beasts.Get(bid);
                 double e = _intake[be.Kind] * GrownShare(in be, now);
                 double dg = e * Laws[be.Kind].GrassShare, dm = e * Laws[be.Kind].MastShare;

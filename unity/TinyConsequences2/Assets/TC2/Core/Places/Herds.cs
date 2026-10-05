@@ -48,8 +48,8 @@ namespace TC2.Core.Places
 
         World _w;
         readonly List<int> _cells = new List<int>(), _mine = new List<int>(), _done = new List<int>();
-        int[] _in; int _inNow;   // membership of today's reach (stamps: no search through the list)
-        readonly Dictionary<long, double> _claimed = new Dictionary<long, double>();   // (lookups only: species x cell -> counted)
+        int[] _in, _at; int _inNow;   // membership of today's reach (stamps: no search through the list) and each cell's place in it
+        double[] _claimed = new double[0];   // animals already counted by a herd: [species x place in the reach]
 
         public void Bind(World w) { _w = w; }
 
@@ -76,9 +76,12 @@ namespace TC2.Core.Places
             if (!s.Inhabited) { Dissolve(sid); return; }
             w.Hazards.CellsWithin(w, s.Cell, WildFood.HuntReach, _cells);
             if (_in == null || _in.Length != n) { _in = new int[n]; _inNow = 0; }
+            if (_at == null || _at.Length != n) _at = new int[n];
             _inNow++;
-            for (int i = 0; i < _cells.Count; i++) _in[_cells[i]] = _inNow;
-            _claimed.Clear();
+            for (int i = 0; i < _cells.Count; i++) { _in[_cells[i]] = _inNow; _at[_cells[i]] = i; }
+            int places = _cells.Count, kinds = P.Species.Count;
+            if (_claimed.Length < places * kinds) _claimed = new double[places * kinds * 2];
+            System.Array.Clear(_claimed, 0, places * kinds);
             // this village's herds, in id order
             _mine.Clear(); _done.Clear();
             var mine = w.HerdsOf(sid);
@@ -161,19 +164,20 @@ namespace TC2.Core.Places
             }
         }
 
+        /// <summary>What herds already count of a species round a cell (claims are only ever made in the reach).</summary>
         double Claimed(int q, int c)
         {
             var g = _w.Planet.Grid;
+            int places = _cells.Count;
             double v = 0;
-            if (_claimed.TryGetValue(((long)q << 32) | (uint)c, out double a)) v += a;
-            for (int k = 0; k < 8; k++) if (_claimed.TryGetValue(((long)q << 32) | (uint)g.Nbr8[c * 8 + k], out double b)) v += b;
+            if (_in[c] == _inNow) v += _claimed[q * places + _at[c]];
+            for (int k = 0; k < 8; k++) { int nb = g.Nbr8[c * 8 + k]; if (_in[nb] == _inNow) v += _claimed[q * places + _at[nb]]; }
             return v;
         }
 
         void Claim(int q, int c, double count)
         {
-            long key = ((long)q << 32) | (uint)c;
-            _claimed[key] = (_claimed.TryGetValue(key, out double a) ? a : 0) + count;
+            if (_in[c] == _inNow) _claimed[q * _cells.Count + _at[c]] += count;
         }
 
         void Remove(int hid)

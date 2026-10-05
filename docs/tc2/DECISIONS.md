@@ -1058,6 +1058,7 @@ coats tinted), goat, pig, hide tent. See 13 §7.
 **Evidence.** Screenshots `tc2/out/shots/stock_h*` and `stock2_h*` (seed 42, day 3: 64 animals near the village; 11 herds
 drawn): pens full at 19.6-20.5 h, pigs at the yards and empty pens at noon, herds 250-570 m out on the outfield beyond the
 fields (the village's fields ring it), no deer among the houses after the edge rule.
-**Consequences.** The field patchwork drawn round seed 42's first village looks far larger than its ~14 ha of claimed fields:
-a look issue for the terrain's field drawing, not this slice.
+**Consequences.** To check: the field patchwork in the village shot spans ~20 cells while each of seed 42's villages claims
+4-6 (claims are whole 5-ha cells weighted by arability: ~30 ha drawn for ~12 ha of crops) - probably the neighbours' fields
+too (six villages within ~4 km); a top-down shot will tell (`run --places` now prints each village's claimed cells).
 
