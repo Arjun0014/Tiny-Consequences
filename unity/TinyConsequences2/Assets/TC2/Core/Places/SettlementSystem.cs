@@ -44,7 +44,7 @@ namespace TC2.Core.Places
             var prof = w.Profiler;   // (tools: the parts of a village's day; null in the game)
             prof?.Begin(10000); Crops(ref s, doy); prof?.End(10000);
             prof?.Begin(10001); Food(ref s, doy); prof?.End(10001);
-            prof?.Begin(10002); w.Wild.Survey(sid); prof?.End(10002);   // what the land and sea within reach hold today (D2-042)
+            prof?.Begin(10002); w.Wild.Survey(sid); w.HerdSys.Update(sid); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
             if (doy == Migration.DecideDay) { prof?.Begin(10003); w.Migration.Weigh(sid); prof?.End(10003); }   // who leaves (D2-045)
             if (w.Resolution == Resolution.Coarse) { prof?.Begin(10004); w.Agents.CoarseDay(sid); prof?.End(10004); }
             prof?.Begin(10005); Demography(sid); prof?.End(10005);
@@ -52,6 +52,7 @@ namespace TC2.Core.Places
             if (s2.Population <= 0 && s2.Abandoned == 0)
             {
                 s2.Abandoned = now;
+                w.HerdSys.Dissolve(sid);
                 w.Record(new HistoryEvent { Kind = HistoryKind.SettlementAbandoned, Time = now, Cell = s2.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Cause1 = s2.HungerEvent });
                 w.History.EndEntity(EntityRef.Settlement(sid), now);
                 return;

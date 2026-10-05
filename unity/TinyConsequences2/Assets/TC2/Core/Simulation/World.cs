@@ -120,6 +120,7 @@ namespace TC2.Core.Simulation
         public readonly PagedStore<Household> Households = new PagedStore<Household>();
         public readonly PagedStore<Person> People = new PagedStore<Person>();
         public readonly PagedStore<Party> Parties = new PagedStore<Party>();   // households on their way to a new home (D2-045)
+        public readonly PagedStore<Herd> Herds = new PagedStore<Herd>();       // herds and packs near villages (D2-047)
         public readonly List<Command> CommandLog = new List<Command>();
         public readonly Metrics Metrics = new Metrics();
         public ISimProfiler Profiler;
@@ -130,6 +131,7 @@ namespace TC2.Core.Simulation
         public readonly Hazards Hazards = new Hazards();
         public readonly WildFood Wild = new WildFood();
         public readonly Migration Migration = new Migration();
+        public readonly HerdSystem HerdSys = new HerdSystem();
 
         // derived indexes (rebuilt after load; never serialized)
         public readonly RouteCache Routes = new RouteCache();
@@ -150,6 +152,7 @@ namespace TC2.Core.Simulation
             Hazards.Bind(this);
             Wild.Bind(this);
             Migration.Bind(this);
+            HerdSys.Bind(this);
         }
 
         /// <summary>Allocates the planet-sized structures (worldgen and load call this).</summary>
@@ -1152,6 +1155,7 @@ namespace TC2.Core.Simulation
             w.Int(Households.Count); for (int id = Households.First(); id != 0; id = Households.Next(id)) Households.Get(id).Write(w);
             w.Int(People.Count); for (int id = People.First(); id != 0; id = People.Next(id)) People.Get(id).Write(w);
             w.Int(Parties.Count); for (int id = Parties.First(); id != 0; id = Parties.Next(id)) Parties.Get(id).Write(w);
+            w.Int(Herds.Count); for (int id = Herds.First(); id != 0; id = Herds.Next(id)) Herds.Get(id).Write(w);
             History.Write(w);
             w.Int(CommandLog.Count); for (int i = 0; i < CommandLog.Count; i++) CommandLog[i].Write(w);
             Metrics.Write(w);
@@ -1171,10 +1175,12 @@ namespace TC2.Core.Simulation
             int nh = r.Int(); for (int i = 0; i < nh; i++) { var h = Household.Read(r); w.Households.Add(h.Id, h); }
             int np = r.Int(); for (int i = 0; i < np; i++) { var p = Person.Read(r); w.People.Add(p.Id, p); }
             int npa = r.Int(); for (int i = 0; i < npa; i++) { var pa = Party.Read(r); w.Parties.Add(pa.Id, pa); }
+            int nhe = r.Int(); for (int i = 0; i < nhe; i++) { var he = Herd.Read(r); w.Herds.Add(he.Id, he); }
             w.Settlements.SetMaxId(w.Ids.Peek(EntityKind.Settlement) - 1);
             w.Households.SetMaxId(w.Ids.Peek(EntityKind.Household) - 1);
             w.People.SetMaxId(w.Ids.Peek(EntityKind.Person) - 1);
             w.Parties.SetMaxId(w.Ids.Peek(EntityKind.Process) - 1);
+            w.Herds.SetMaxId(w.Ids.Peek(EntityKind.Process) - 1);
             w.History.Read(r);
             int nc = r.Int(); for (int i = 0; i < nc; i++) w.CommandLog.Add(Command.Read(r));
             w.Metrics.Read(r);
@@ -1196,6 +1202,7 @@ namespace TC2.Core.Simulation
             for (int id = Households.First(); id != 0; id = Households.Next(id)) Households.Get(id).Hash(ref h);
             for (int id = People.First(); id != 0; id = People.Next(id)) People.Get(id).Hash(ref h);
             for (int id = Parties.First(); id != 0; id = Parties.Next(id)) Parties.Get(id).Hash(ref h);
+            for (int id = Herds.First(); id != 0; id = Herds.Next(id)) Herds.Get(id).Hash(ref h);
             History.Hash(ref h);
             h.Add(CommandLog.Count); for (int i = 0; i < CommandLog.Count; i++) CommandLog[i].Hash(ref h);
             return h.Value;

@@ -24,15 +24,19 @@ namespace TC2.Core.Foundation
 
         void EnsurePage(int p)
         {
-            if (p >= _pages.Length)
-            {
-                int n = _pages.Length;
-                while (n <= p) n *= 2;
-                Array.Resize(ref _pages, n);
-                Array.Resize(ref _alive, n);
-                Array.Resize(ref _pageLive, n);
-            }
+            EnsureSlots(p);
             if (_pages[p] == null) { _pages[p] = new T[PageSize]; _alive[p] = new bool[PageSize]; }
+        }
+
+        /// <summary>The page tables reach page p (pages themselves are allocated only when a row lands in them).</summary>
+        void EnsureSlots(int p)
+        {
+            if (p < _pages.Length) return;
+            int n = _pages.Length;
+            while (n <= p) n *= 2;
+            Array.Resize(ref _pages, n);
+            Array.Resize(ref _alive, n);
+            Array.Resize(ref _pageLive, n);
         }
 
         public bool Exists(int id)
@@ -91,6 +95,7 @@ namespace TC2.Core.Foundation
             while (i <= _maxId)
             {
                 int p = i >> Shift;
+                if (p >= _alive.Length) break;
                 var a = _alive[p];
                 if (a == null) { i = (p + 1) << Shift; continue; }
                 int end = Math.Min(((p + 1) << Shift) - 1, _maxId);
@@ -105,7 +110,7 @@ namespace TC2.Core.Foundation
         }
 
         /// <summary>Restores the max id after loading (so freed pages stay consistent with the allocator).</summary>
-        public void SetMaxId(int maxId) { if (maxId > _maxId) _maxId = maxId; }
+        public void SetMaxId(int maxId) { if (maxId > _maxId) { _maxId = maxId; EnsureSlots(maxId >> Shift); } }
     }
 
     /// <summary>A small growable list of ints without per-operation allocation churn.</summary>

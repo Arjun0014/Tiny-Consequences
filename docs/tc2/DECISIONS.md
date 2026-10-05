@@ -982,3 +982,28 @@ dug the well; COARSE gave building a fifth of a lived day's hours.
 **Invalidation.** If worlds fill their land and then never shrink, or no village is ever abandoned in long runs with hard
 times, the push or the coping is too strong; if parties found villages that die within a decade most of the time, the site
 quality or the carried food is too poor.
+
+## D2-047 — 2026-10-05 — Herds near people: identities over the field, never copies of it
+
+**Context.** F2/F3 ask for wild herds and packs near settlements as meaningful agents that share the ecology's truth: a hunted
+animal must come out of the same abundance the ecology steps, and agents returning or merging must not create or lose animals.
+**Alternatives.** (a) Take animals out of the field into agents and put them back later - two truths, reconciled at every
+ecology step, and every ecology rule needed again for agents; (b) a herd as an identity over the field: a name, a place and a
+size, re-read from the field each day. Chosen (b).
+**Decision.** `Core/Places/Herds.cs` (`Herd`, saved; `HerdSystem`): within a village's hunting reach, each herding kind (deer,
+aurochs, boar, ibex; wolf packs) forms herds of 3-14 (aurochs to 24, packs 2-9) where the field round a cell holds that many
+that no other herd counts. Once a day (with the village's survey) each herd moves toward where its kind is thickest round it,
+is re-read from the field (never more than the animals round its cell; it grows only from animals no herd counts), merges with
+another herd of its kind that comes within a cell (the elder keeps its name), and is dissolved when it falls below one - told as
+"hunted out" (Local) only when people killed there in the last ten days, it was a herd, and the land round it holds less than
+one of its kind. Hunters go to the largest herd of game (seven times in ten) in both resolutions; what they kill comes out of
+the field there, and the herd is smaller the next day. A village's herds go back to being the land's when it is abandoned.
+Also: `PagedStore.SetMaxId` now grows its page tables (a store loaded with a high max id walked past them: herds draw many
+process ids, and the fire store crashed on its first hash after a load - three save/load tests caught it).
+**Evidence.** Tests (89): no herd counts more than the field holds round it; taking nine tenths of a herd's kind from its land
+makes it smaller the next day; save/load with herds continues identically. Seed 42, 30 years: 15-25 herds round each village
+(deer to 14, boar to 12), none hunted out (game is plentiful near small villages). COARSE ordinary-time wild hours recalibrated
+(0.6 of the mapping: building, water and company take free slots in a lived day): 0.96 against ACTIVITY's 1.03 hours per
+adult-day; in a shortage 7.3 against 8.4.
+**Consequences.** The view can now draw herds near villages from these identities (next visual slice) and hunters walking to
+them; the stag that was hunted belongs to a herd with a history.

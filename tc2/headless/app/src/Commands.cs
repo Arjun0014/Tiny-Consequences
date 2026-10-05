@@ -34,6 +34,19 @@ namespace TC2.Headless
             return SimTime.Days(a.Double("days", defDays));
         }
 
+        /// <summary>A village's herds: "herds deer 8, boar 5+4, wolves 3".</summary>
+        static string HerdLine(World w, int sid)
+        {
+            var sb = new StringBuilder();
+            for (int h = w.Herds.First(); h != 0; h = w.Herds.Next(h))
+            {
+                var hd = w.Herds.Get(h);
+                if (hd.Village != sid) continue;
+                sb.Append(sb.Length == 0 ? "  herds " : ", ").Append(TC2.Core.Planet.Ecology.KindName(hd.Kind)).Append(' ').Append(hd.Count.ToString("0"));
+            }
+            return sb.ToString();
+        }
+
         public static int Run(Args a)
         {
             var sw = Stopwatch.StartNew();
@@ -77,7 +90,7 @@ namespace TC2.Headless
                                           "  fields " + F(st.FieldHa, "0.0") + "/" + F(st.ArableHa, "0") + " ha  granary " + F(st.Granary, "0") + "  ration " + F(st.Ration, "0.00") +
                                           "  last harvest " + F(st.LastHarvest, "0") + "  T " + F(w.Planet.TMean[st.Cell], "0.0") +
                                           "  mem " + F(st.Memory, "0.00") + "  wild FU/h hunt " + F(st.Hunt.Expect, "0.00") + " (" + F(st.Hunt.Va, "0") + " kg) fish " + F(st.Fish.Expect, "0.00") +
-                                          " (" + F(st.Fish.Va, "0") + ") gather " + F(st.Gath.Expect, "0.00") + " (" + F(st.Gath.Va, "0") + ")");
+                                          " (" + F(st.Fish.Va, "0") + ") gather " + F(st.Gath.Expect, "0.00") + " (" + F(st.Gath.Va, "0") + ")" + HerdLine(w, sid));
                     }
                 }
                 int from = w.History.FirstIndexAfter(histCursor);

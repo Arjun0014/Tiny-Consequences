@@ -85,6 +85,7 @@ namespace TC2.Core.History
                 case HistoryKind.PartySetOut: return e.ArgA + " households of " + subj + " (" + e.ArgB + " people) set out to make a new home.";
                 case HistoryKind.Scouted: return "Someone of " + subj + " saw good land near " + place + ".";
                 case HistoryKind.HouseholdMoved: return "The " + subj + "s left " + place + " for " + obj + ".";
+                case HistoryKind.HerdHuntedOut: return "The " + obj + " herd near " + place + " was hunted out (" + F(e.Magnitude, "0") + " at its most).";
                 case HistoryKind.GodCommand: return "You reached down near " + place + ".";
                 default: return e.Kind + " at " + place;
             }

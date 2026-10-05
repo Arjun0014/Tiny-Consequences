@@ -425,7 +425,7 @@ namespace TC2.Core.Agents
                         ulong key = KeyedRng.Hash(w.Seed, RngStream.Work, (ulong)p.Id, (ulong)now);
                         double fu;
                         int kind = -1;
-                        if (p.Act == ActivityKind.Hunt) { fu = w.Wild.Hunt(p.Ground, hours, p.SkHunt, key, out kind); p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hours); }
+                        if (p.Act == ActivityKind.Hunt) { fu = w.Wild.Hunt(p.Ground, hours, p.SkHunt, key, out kind); p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hours); if (fu > 0) w.HerdSys.MarkHunted(p.Ground); }
                         else if (p.Act == ActivityKind.Fish) { fu = w.Wild.Fish(p.Ground, hours, p.SkFish, key); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hours); if (fu > 0) kind = 64; }
                         else fu = w.Wild.Gather(p.Ground, hours, p.Health, key);
                         p.Carry = (float)(p.Carry + fu);
@@ -774,6 +774,8 @@ namespace TC2.Core.Agents
             var w = _w;
             var g = kind == WildFood.Hunting ? here.Hunt : kind == WildFood.Fishing ? here.Fish : here.Gath;
             int ground = WildFood.PickGround(in g, ref rs);
+            // a hunter goes where a herd is, when the village knows one (D2-047)
+            if (kind == WildFood.Hunting) { int herd = w.HerdSys.BestGame(here.Id); if (herd != 0 && rs.Chance(0.7)) ground = w.Herds.Get(herd).Cell; }
             if (ground < 0) return;
             w.Wild.GroundPoint(here.Id, ground, kind == WildFood.Fishing, ref rs, out double x, out double y);
             double hours = kind == WildFood.Gathering ? 2.5 + 1.5 * rs.NextUnit() : 3.5 + 1.5 * rs.NextUnit();
@@ -893,7 +895,9 @@ namespace TC2.Core.Agents
                         // wild's urge + 0.06 of chance): the same odds, as a share of the free hours
                         // a pressing need keeps people out from dawn to mid-afternoon, beyond an ordinary day's work (two trips)
                         double free = shortNow ? DMath.Max(hours, WildNeedDay * (0.5 + 0.5 * p.Health) * (age > 60 ? 0.6 : (age < 16 ? 0.7 : 1.0)) - (day0 - hours)) : hours;
-                        double hw = u > 0.005 ? DMath.Min(free, WildNeedDay) * DMath.Clamp01((u + 0.01) / 0.1) : 0.0;
+                        // (in ordinary times a lived day spends ~0.6 of the free hours this mapping gives: building, water and
+                        // company take free slots too - measured, CoarseAndActivityLiveOffTheWildAlike)
+                        double hw = u > 0.005 ? DMath.Min(free, WildNeedDay) * DMath.Clamp01((u + 0.01) / 0.1) * (shortNow ? 1.0 : 0.6) : 0.0;
                         if (hw >= 0.25)
                         {
                             var rs = NextRandom(ref p);
@@ -903,7 +907,13 @@ namespace TC2.Core.Agents
                             {
                                 ulong key = KeyedRng.Hash(w.Seed, RngStream.Work, (ulong)p.Id, (ulong)now);
                                 double fu;
-                                if (wk == WildFood.Hunting) { fu = w.Wild.Hunt(ground, hw, p.SkHunt, key, out _); p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hw); w.Metrics.HuntTrips++; }
+                                if (wk == WildFood.Hunting)
+                                {
+                                    int herd = w.HerdSys.BestGame(sid);   // (where a herd is, as a lived day's hunter goes)
+                                    if (herd != 0 && rs.Chance(0.7)) ground = w.Herds.Get(herd).Cell;
+                                    fu = w.Wild.Hunt(ground, hw, p.SkHunt, key, out _); p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hw); w.Metrics.HuntTrips++;
+                                    if (fu > 0) w.HerdSys.MarkHunted(ground);
+                                }
                                 else if (wk == WildFood.Fishing) { fu = w.Wild.Fish(ground, hw, p.SkFish, key); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hw); w.Metrics.FishTrips++; }
                                 else { fu = w.Wild.Gather(ground, hw, p.Health, key); w.Metrics.GatherTrips++; }
                                 w.Wild.Deposit(p.Id, fu);

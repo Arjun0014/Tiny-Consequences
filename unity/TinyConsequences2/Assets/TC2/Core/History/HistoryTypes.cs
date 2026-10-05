@@ -56,6 +56,7 @@ namespace TC2.Core.History
         PartySetOut = 48,       // households left a village to make a new home (Subject the origin, ArgA households, ArgB people)
         Scouted = 49,           // someone of a village saw good land (Cell the site)
         HouseholdMoved = 50,    // a household left its village for another (Subject the household, Object the village it went to)
+        HerdHuntedOut = 51,     // people hunted a herd near a village to nothing (Subject the herd, Object its kind; D2-047)
     }
 
     /// <summary>History tiers (11 §4).</summary>
@@ -189,6 +190,7 @@ namespace TC2.Core.History
                 case HistoryKind.WorkBuilt:
                 case HistoryKind.Scouted: return Tier.Local;
                 case HistoryKind.PartySetOut: return Tier.Historical;
+                case HistoryKind.HerdHuntedOut: return Tier.Local;
                 default: return Tier.Personal;
             }
         }
@@ -241,6 +243,7 @@ namespace TC2.Core.History
                 case HistoryKind.PartySetOut: b = 20; break;
                 case HistoryKind.Scouted: b = 2; break;
                 case HistoryKind.HouseholdMoved: b = 1.5; break;
+                case HistoryKind.HerdHuntedOut: b = 3; break;
                 default: b = 1; break;
             }
             // magnitude raises importance sub-linearly

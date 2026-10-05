@@ -386,6 +386,36 @@ namespace TC2.Tests.Core
             return n;
         }
 
+        [Test]
+        public void HerdsAreIdentitiesOverTheFieldNeverCopiesOfIt()
+        {
+            var w = TestWorlds.Make(311);
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Days(3));
+            var P = w.Planet; int n = P.Cells;
+            Assert.Greater(w.Herds.Count, 0, "the villages know herds round them");
+            // no herd counts more animals than the field holds round it (herds of a kind never count the same animals twice)
+            for (int h = w.Herds.First(); h != 0; h = w.Herds.Next(h))
+            {
+                var hd = w.Herds.Get(h);
+                int q = -1; for (int k = 0; k < P.Species.Count; k++) if (P.Species[k].Id == hd.Species) q = k;
+                Assert.GreaterOrEqual(q, 0);
+                double around = P.Abund[q * n + hd.Cell]; for (int k = 0; k < 8; k++) around += P.Abund[q * n + P.Grid.Nbr8[hd.Cell * 8 + k]];
+                Assert.LessOrEqual(hd.Count, around + 1e-3, "a herd is no more than the animals there");
+            }
+            // the largest herd of game: take most of its kind from the land round it (as hunters would) - the next day it is smaller
+            int sid = w.Settlements.First();
+            int big = w.HerdSys.BestGame(sid);
+            Assert.AreNotEqual(0, big);
+            var before = w.Herds.Get(big);
+            int sq = -1; for (int k = 0; k < P.Species.Count; k++) if (P.Species[k].Id == before.Species) sq = k;
+            P.Abund[sq * n + before.Cell] *= 0.1f;
+            for (int k = 0; k < 8; k++) P.Abund[sq * n + P.Grid.Nbr8[before.Cell * 8 + k]] *= 0.1f;
+            w.AdvanceTo(w.Now + SimTime.Day);
+            float after = w.Herds.Exists(big) ? w.Herds.Get(big).Count : 0f;
+            Assert.Less(after, before.Count, "the herd is what the field holds: fewer animals, a smaller herd");
+        }
+
         static int Adults(World w)
         {
             int n = 0;
