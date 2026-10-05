@@ -42,3 +42,12 @@ water, clouds and weather; the passage of ages visible (scars, ruins, coasts, fo
 The planet as six displaced face meshes coloured by biome, a sea sphere, a rim atmosphere, instanced
 trees from vegetation, settlements as clusters of simple buildings, agents as instanced figures moving on
 their analytic paths, fire cells glowing - built for the Web (WebGPU and WebGL2), screenshot-checked.
+
+## 5. Look-dev v1 (session 1, D2-026)
+
+Implemented: ground model (`Game/View/Ground.cs`), chunked LOD terrain (`TerrainLod`), farmland/village ground,
+translucent sea over the coloured sea floor, surf, meandering rivers, haze/sky/grade, Blender asset kit
+(`tc2/art/kit.py` -> `Resources/TC2Models`), batch-editor screenshots (`unity.mjs shots`). Art notes kept for the
+next passes: the miniature reads from soft morning light with long shadows, packed-earth paths and yards, patchwork
+fields with hedges, clustered groves, clear shallows and a broken surf line; flat, uniform greens and evenly
+scattered trees read as a toy. Open: clouds, tilt-shift, close-in grass, night lights, walking animation, boats.

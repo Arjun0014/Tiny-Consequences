@@ -23,6 +23,13 @@ namespace TC2.Core.Planet
     public sealed class PlanetSystems
     {
         readonly int[] _block;   // surface cell -> weather block (N8 cube-sphere cell)
+        // weather spells are smooth across blocks: each cell blends the daily normal draws of its block and the
+        // neighbouring blocks (kernel weights scaled to unit variance), then maps the blend back to a uniform value
+        const int Taps = 9;
+        readonly int[] _tapBlock;
+        readonly float[] _tapWeight;
+        readonly int _blocks;
+        readonly double[] _blockDraw;
         readonly float[] _tmean; // annual mean temperature per cell (static for a static climate)
         // closed-form temperature terms per cell (derived): T = base + amp*season + dAmp*cos(dayPhase + phase)
         readonly double[] _base, _amp, _dAmp, _cosPh, _sinPh, _hemi;
@@ -36,6 +43,29 @@ namespace TC2.Core.Planet
             _block = new int[n]; _tmean = new float[n];
             _base = new double[n]; _amp = new double[n]; _dAmp = new double[n]; _cosPh = new double[n]; _sinPh = new double[n]; _hemi = new double[n];
             _runoff = new float[n];
+            _blocks = coarse.CellCount;
+            _blockDraw = new double[_blocks];
+            _tapBlock = new int[n * Taps]; _tapWeight = new float[n * Taps];
+            double r = coarse.MeanSpacing * 1.15, r2 = r * r;
+            for (int c = 0; c < n; c++)
+            {
+                Vec3d at = P.Grid.Center[c];
+                int b0 = coarse.CellOf(at);
+                double sw2 = 0;
+                for (int k = 0; k < Taps; k++)
+                {
+                    int b = k == 0 ? b0 : coarse.Nbr8[b0 * 8 + k - 1];
+                    Vec3d ce = coarse.Center[b];
+                    double dx = at.X - ce.X, dy = at.Y - ce.Y, dz = at.Z - ce.Z;
+                    double d2 = dx * dx + dy * dy + dz * dz;
+                    double u = d2 < r2 ? 1.0 - d2 / r2 : 0.0;
+                    double wgt = u * u;
+                    _tapBlock[c * Taps + k] = b; _tapWeight[c * Taps + k] = (float)wgt;
+                    sw2 += wgt * wgt;
+                }
+                double norm = sw2 > 0 ? 1.0 / DMath.Sqrt(sw2) : 0.0;
+                for (int k = 0; k < Taps; k++) _tapWeight[c * Taps + k] = (float)(_tapWeight[c * Taps + k] * norm);
+            }
             for (int c = 0; c < n; c++)
             {
                 _block[c] = coarse.CellOf(P.Grid.Center[c]);
@@ -105,13 +135,17 @@ namespace TC2.Core.Planet
             double yf = SimTime.YearFraction(w.Now);
             double seasonN = DMath.Sin(DMath.TwoPi * (yf - 0.125));
             ulong seed = w.Seed;
+            for (int b = 0; b < _blocks; b++)
+                _blockDraw[b] = KeyedRng.Normal(KeyedRng.Hash(seed, RngStream.Weather, (ulong)b + 200000UL, (ulong)day), KeyedRng.Hash(seed, RngStream.Weather, (ulong)b + 300000UL, (ulong)day));
             for (int c = 0; c < P.Cells; c++)
             {
                 // wetter summers at mid latitudes, wet season shifting with the sun in the tropics
                 double season = seasonN * _hemi[c];
                 double moist = DMath.Min(1.0, P.Moist[c] * P.MoistFactor); // a warmer world is a wetter one
                 double pRain = DMath.Clamp(0.06 + 0.5 * moist + 0.08 * season * moist, 0.02, 0.85);
-                double ub = KeyedRng.Unit(seed, RngStream.Weather, (ulong)_block[c], (ulong)day);
+                double z = 0;
+                for (int k = 0; k < Taps; k++) z += _tapWeight[c * Taps + k] * _blockDraw[_tapBlock[c * Taps + k]];
+                double ub = 1.0 / (1.0 + DMath.Exp(-1.702 * z)); // the normal CDF (logistic form): a uniform again
                 double uc = KeyedRng.Unit(seed, RngStream.Weather, (ulong)c + 100000UL, (ulong)day);
                 double u = 0.7 * ub + 0.3 * uc;
                 double rain = u < pRain ? (pRain - u) / pRain * 1.6 : 0.0;

@@ -108,7 +108,8 @@ TILE = srgb(0.66, 0.30, 0.19, 1.0)
 STONE = srgb(0.55, 0.53, 0.49)
 STONE_DARK = srgb(0.42, 0.40, 0.38)
 DOOR = srgb(0.40, 0.25, 0.13)
-GLASS = srgb(0.16, 0.19, 0.24)
+GLASS = srgb(0.16, 0.19, 0.24, 0.5)   # alpha 0.5: a window (it glows at night when someone is home)
+WELL_WATER = srgb(0.10, 0.16, 0.22)
 CHIMNEY = srgb(0.56, 0.52, 0.49)
 
 
@@ -297,7 +298,7 @@ def fence(name, seed=5):
 
 def haystack(name, seed=6):
     k = Kit(name, seed)
-    k.blob((0, 0, 0.7), 1.0, srgb(0.80, 0.68, 0.38), subdiv=2, jitter=0.06, squash=1.15)
+    k.blob((0, 0, 0.55), 1.1, srgb(0.80, 0.68, 0.38), subdiv=2, jitter=0.06, squash=0.85)
     k.cyl((0, 0, 1.6), 0.05, 0.03, 0.6, srgb(0.4, 0.3, 0.2), seg=4)
     return k.finish()
 
@@ -305,7 +306,7 @@ def haystack(name, seed=6):
 def well(name, seed=7):
     k = Kit(name, seed)
     k.cyl((0, 0, 0), 0.9, 0.9, 0.8, STONE, seg=10)
-    k.cyl((0, 0, 0.75), 0.62, 0.62, 0.06, srgb(0.10, 0.16, 0.22), seg=10, cap=True)
+    k.cyl((0, 0, 0.75), 0.62, 0.62, 0.06, WELL_WATER, seg=10, cap=True)
     for sx in (-1, 1):
         k.box((sx * 0.75, 0, 1.4), (0.12, 0.12, 1.4), TIMBER)
     gable_roof(k, 1.0, 1.4, 2.0, 38, THATCH, overhang=0.2, thick=0.1)

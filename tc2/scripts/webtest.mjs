@@ -49,7 +49,10 @@ async function shot(name, settle = 1500) {
   const file = path.join(outDir, name + '.png');
   await page.screenshot({ path: file });
   report.shots.push(file);
-  console.log('shot ' + file);
+  const st = await state();
+  // frame rate and simulation cost at this view (the HUD's smoothed values)
+  (report.perf = report.perf || []).push({ view: name, fps: st && st.fps, simMs: st && st.simMs });
+  console.log('shot ' + file + (st ? `  fps ${st.fps} sim ${st.simMs} ms` : ''));
 }
 
 const base = `http://127.0.0.1:${port}/index.html`;
@@ -74,10 +77,11 @@ try {
   check('browser = headless (bit-identical probe)', web === ref, web === ref ? web : `web ${web} | ref ${ref}`);
 
   // views: orbit, region, village, close
-  await cmd('look 20 0 22000'); await shot('1_orbit', 2500);
+  await cmd('village 0 22000'); await shot('1_orbit', 2500);
   await cmd('village 0 6000'); await shot('2_region', 2500);
   await cmd('village 0 1400'); await shot('3_village', 2500);
   await cmd('village 0 380'); await shot('4_close', 2500);
+  await cmd('village 0 95'); await shot('4b_low', 3500);
   await cmd('speed 5'); await page.waitForTimeout(4000);
   const s1 = await state();
   check('time runs at 1 h/s', s1.now > s0.now, `now ${s0.now} -> ${s1.now}, achieved ${s1.achieved}`);

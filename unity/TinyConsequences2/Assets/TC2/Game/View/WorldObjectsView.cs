@@ -20,6 +20,12 @@ namespace TC2.Game
         public CameraRig Rig;
 
         Instancer _people, _granaries, _wells, _hay, _flames;
+        struct TreeInst { public Vector3 Pos; public Quaternion Rot; public float Scale; public byte Kind, Shade; }
+        sealed class CellTrees { public float Forest; public TreeInst[] Trees; }
+        readonly System.Collections.Generic.Dictionary<int, CellTrees> _treeCache = new System.Collections.Generic.Dictionary<int, CellTrees>();
+        readonly System.Collections.Generic.List<TreeInst> _scratch = new System.Collections.Generic.List<TreeInst>();
+        readonly System.Collections.Generic.List<int> _cells = new System.Collections.Generic.List<int>();
+        int _treeWorld = -1, _treeRelief = -1;
         Instancer[] _houseKinds, _trees;
         Material _mat;
         float _treeTimer, _placeTimer;
@@ -85,6 +91,17 @@ namespace TC2.Game
             return 0;
         }
 
+        static bool SomeoneAwakeHome(TC2.Core.Simulation.World w, int household)
+        {
+            var m = w.Members(household);
+            for (int i = 0; i < m.Count; i++)
+            {
+                ref var p = ref w.People.Get(m[i]);
+                if (p.Alive && p.Act != ActivityKind.Sleep && p.At == p.Home && p.Step != StepKind.Travel) return true;
+            }
+            return false;
+        }
+
         Matrix4x4 Place(PlanetState P, in Settlement s, double x, double y, float yaw, float scale, float lift = 0f)
         {
             Vec3d d = s.LocalToSphere(x, y, P.Radius);
@@ -104,6 +121,9 @@ namespace TC2.Game
                 Vector3 center = PlanetGeo.Surface(P, s.Anchor);
                 float ex = Exaggeration(center, 1.6f);
                 var hhs = w.HouseholdsOf(sid);
+                // after dark, a house whose people are home and awake shows its windows
+                Vector3 toSun = Rig != null && Rig.Sun != null ? -Rig.Sun.transform.forward : Vector3.up;
+                bool dark = Vector3.Dot(PlanetGeo.ToVector(s.Anchor), toSun) < 0.06f;
                 for (int i = 0; i < hhs.Count; i++)
                 {
                     ref var h = ref w.Households.Get(hhs[i]);
@@ -112,7 +132,8 @@ namespace TC2.Game
                     float yaw = Mathf.Atan2(s.SquareX - h.HomeX, s.SquareY - h.HomeY) * Mathf.Rad2Deg + 180f + ((hhs[i] * 37) % 21 - 10);
                     ulong hh = KeyedRng.Mix((ulong)hhs[i] + 77);
                     float age = 0.88f + 0.2f * (float)KeyedRng.Unit(hh);           // weathering of roofs and walls
-                    _houseKinds[kind].Add((int)(age * 10), new Color(age, age * 0.98f, age * 0.94f, 1f), Place(P, s, h.HomeX, h.HomeY, yaw, ex));
+                    bool lit = dark && SomeoneAwakeHome(w, hhs[i]);
+                    _houseKinds[kind].Add((int)(age * 10) + (lit ? 100 : 0), new Color(age, age * 0.98f, age * 0.94f, 1f), Place(P, s, h.HomeX, h.HomeY, yaw, ex), lit ? -1f : 0f);
                 }
                 // the village store and its well; haystacks once the harvest is in
                 _granaries.Add(0, Color.white, Place(P, s, s.SquareX + 14, s.SquareY - 10, 12f, ex));
@@ -133,48 +154,32 @@ namespace TC2.Game
             for (int i = 0; i < _trees.Length; i++) _trees[i].Clear();
             TreesDrawn = 0;
             if (camDist > 3200f) return; // further out the forest is the ground's colour
-            var cells = new System.Collections.Generic.List<int>();
-            w.Hazards.CellsWithin(w, focus, camDist < 2500f ? 1600 : 3200, cells);
+            // trees are placed once per cell (stable keyed positions on the drawn ground) and kept until the forest there
+            // changes, a fire passes, or the relief moves; each rebuild only assembles them at the current scale
+            if (_treeWorld != Host.WorldVersion || P.ReliefVersion - _treeRelief >= Tectonics.ResampleEvery || _treeCache.Count > 6000)
+            { _treeCache.Clear(); _treeWorld = Host.WorldVersion; _treeRelief = P.ReliefVersion; }
+            _cells.Clear();
+            w.Hazards.CellsWithin(w, focus, camDist < 2500f ? 1600 : 3200, _cells);
             float ex = Mathf.Clamp(camDist / 1600f, 1f, 1.5f);
-            int perCell = camDist < 2500f ? 30 : 12;
-            foreach (int c in cells)
+            int perCell = 30;
+            foreach (int c in _cells)
             {
                 if (!P.IsLand(c)) continue;
                 float forest = P.Forest[c];
-                if (forest < 0.04f) continue;
-                if (w.Fire.Intensity[c] > 0.5f) continue;
-                int n = Mathf.RoundToInt(Mathf.Sqrt(forest) * perCell * 2.2f);
-                Vec3d ctr = P.Grid.Center[c];
-                Settlement.Frame(ctr, out Vec3d east, out Vec3d north);
-                double half = P.CellSize * 0.5;
-                float tm = P.TMean[c];
-                for (int k = 0; k < n; k++)
+                bool burning = w.Fire.Intensity[c] > 0.5f;
+                if (!_treeCache.TryGetValue(c, out var entry) || System.Math.Abs(entry.Forest - forest) > 0.04f || burning)
                 {
-                    ulong h = KeyedRng.Hash(w.Seed, RngStream.None, (ulong)c, (ulong)k);
-                    double ox = (KeyedRng.Unit(h) * 2 - 1) * half, oy = (KeyedRng.Unit(KeyedRng.Mix(h)) * 2 - 1) * half;
-                    Vec3d d = (ctr * P.Radius + east * ox + north * oy).Normalized;
-                    // groves and glades: trees gather where a slow noise is high
-                    double clump = Noise.Fbm(d.X * 60.0, d.Y * 60.0, d.Z * 60.0, 2);
-                    if (KeyedRng.Unit(KeyedRng.Mix(h + 3)) > forest * (0.15 + 1.9 * System.Math.Max(0.0, clump + 0.15))) continue;
-                    int under = P.Grid.CellOf(d);
-                    if (w.SettlementAtCell(under) != 0 || P.FieldOwner[under] != 0) continue; // fields and houses are cleared ground
-                    if (Ground.Height(P, d) < P.SeaLevel + 1.5) continue;                 // not on the beach
-                    Vector3 pos = PlanetGeo.Surface(P, d);
-                    double u = KeyedRng.Unit(KeyedRng.Mix(h + 5));
-                    int kind;
-                    if (tm < 3) kind = u < 0.65 ? Conifer : ConiferSmall;
-                    else if (tm < 9) kind = u < 0.45 ? Conifer : (u < 0.62 ? ConiferSmall : (u < 0.82 ? Birch : Broadleaf));
-                    else if (tm < 19) kind = u < 0.10 ? Conifer : (u < 0.50 ? Broadleaf : (u < 0.80 ? BroadleafRound : (u < 0.90 ? Birch : Bush)));
-                    else kind = u < 0.55 ? BroadleafRound : (u < 0.85 ? Broadleaf : Bush);
-                    float sc = ex * (0.62f + 0.75f * (float)KeyedRng.Unit(KeyedRng.Mix(h + 7)));
-                    int shade = (int)((h >> 8) % 3);
-                    float b = 0.88f + 0.10f * shade;
-                    _trees[kind].Add(shade, new Color(b, b, b, b), Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, (float)(h % 360)), Vector3.one * sc));
-                    // undergrowth at the edge of groves
-                    if (clump < 0.0 && (h & 7) == 0)
-                        _trees[Bush].Add(shade, new Color(b, b, b, b), Matrix4x4.TRS(pos + (Vector3)(PlanetGeo.ToVector(east) * 2.5f), PlanetGeo.Upright(pos, (float)(h % 97)), Vector3.one * sc * 0.9f));
-                    TreesDrawn++;
+                    entry = new CellTrees { Forest = forest, Trees = burning || forest < 0.04f ? System.Array.Empty<TreeInst>() : PlaceTrees(w, c, forest, perCell) };
+                    _treeCache[c] = entry;
                 }
+                var list = entry.Trees;
+                for (int k = 0; k < list.Length; k++)
+                {
+                    var t = list[k];
+                    float b = 0.88f + 0.10f * t.Shade;
+                    _trees[t.Kind].Add(t.Shade, new Color(b, b, b, b), Matrix4x4.TRS(t.Pos, t.Rot, Vector3.one * (t.Scale * ex)));
+                }
+                TreesDrawn += list.Length;
             }
             // orchards and yard bushes in the villages near the camera
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
@@ -199,6 +204,45 @@ namespace TC2.Game
                     }
                 }
             }
+        }
+
+        /// <summary>The trees of one cell: groves and glades by a slow noise, species by the climate, keyed positions.</summary>
+        TreeInst[] PlaceTrees(TC2.Core.Simulation.World w, int c, float forest, int perCell)
+        {
+            var P = w.Planet;
+            _scratch.Clear();
+            int n = Mathf.RoundToInt(Mathf.Sqrt(forest) * perCell * 2.2f);
+            Vec3d ctr = P.Grid.Center[c];
+            Settlement.Frame(ctr, out Vec3d east, out Vec3d north);
+            double half = P.CellSize * 0.5;
+            float tm = P.TMean[c];
+            for (int k = 0; k < n; k++)
+            {
+                ulong h = KeyedRng.Hash(w.Seed, RngStream.None, (ulong)c, (ulong)k);
+                double ox = (KeyedRng.Unit(h) * 2 - 1) * half, oy = (KeyedRng.Unit(KeyedRng.Mix(h)) * 2 - 1) * half;
+                Vec3d d = (ctr * P.Radius + east * ox + north * oy).Normalized;
+                double clump = Noise.Fbm(d.X * 60.0, d.Y * 60.0, d.Z * 60.0, 2);
+                if (KeyedRng.Unit(KeyedRng.Mix(h + 3)) > forest * (0.15 + 1.9 * System.Math.Max(0.0, clump + 0.15))) continue;
+                int under = P.Grid.CellOf(d);
+                if (w.SettlementAtCell(under) != 0 || P.FieldOwner[under] != 0) continue; // fields and houses are cleared ground
+                if (Ground.Height(P, d) < P.SeaLevel + 1.5) continue;                 // not on the beach
+                Vector3 pos = PlanetGeo.Surface(P, d);
+                double u = KeyedRng.Unit(KeyedRng.Mix(h + 5));
+                int kind;
+                if (tm < 3) kind = u < 0.65 ? Conifer : ConiferSmall;
+                else if (tm < 9) kind = u < 0.45 ? Conifer : (u < 0.62 ? ConiferSmall : (u < 0.82 ? Birch : Broadleaf));
+                else if (tm < 19) kind = u < 0.10 ? Conifer : (u < 0.50 ? Broadleaf : (u < 0.80 ? BroadleafRound : (u < 0.90 ? Birch : Bush)));
+                else kind = u < 0.55 ? BroadleafRound : (u < 0.85 ? Broadleaf : Bush);
+                float sc = 0.62f + 0.75f * (float)KeyedRng.Unit(KeyedRng.Mix(h + 7));
+                byte shade = (byte)((h >> 8) % 3);
+                _scratch.Add(new TreeInst { Pos = pos, Rot = PlanetGeo.Upright(pos, (float)(h % 360)), Scale = sc, Kind = (byte)kind, Shade = shade });
+                if (clump < 0.0 && (h & 7) == 0)
+                {
+                    Vector3 bp = pos + (Vector3)(PlanetGeo.ToVector(east) * 2.5f);
+                    _scratch.Add(new TreeInst { Pos = bp, Rot = PlanetGeo.Upright(bp, (float)(h % 97)), Scale = sc * 0.9f, Kind = Bush, Shade = shade });
+                }
+            }
+            return _scratch.ToArray();
         }
 
         void RebuildFire(TC2.Core.Simulation.World w)

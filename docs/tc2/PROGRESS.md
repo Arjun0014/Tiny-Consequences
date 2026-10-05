@@ -2,29 +2,22 @@
 
 ## CURRENT STATE (keep accurate; newest first below)
 
-- **F0 Foundation done; F1 (living planet) started. Session 1 (5 Oct 2026), continuing.**
-  - Docs: `docs/tc2/` 00-17, LEGACY_AUDIT, DECISIONS D2-001..021.
-  - Core (`unity/TinyConsequences2/Assets/TC2/Core`, pure C# 9): ids, calendar, keyed RNG, DMath, binary I/O, paged
-    stores, event queue (4-ary heap, lazy cancellation), World root with `AdvanceTo`, cubed-sphere planet with
-    worldgen (plates, relief, sea level, moisture, vegetation), periodic planet systems (closed-form climate, daily
-    weather with lightning, vegetation), fire as a process, settlements (land claims, crops on their fields' weather,
-    harvest, granary, rationing, pre-modern demography, marriage across neighbouring villages), persistent people (one
-    event per activity, analytic walks, route travel, foraging), the space-time travel index and perception of fire,
-    causal history ledger (tiers, roots, importance, compaction), exact saves (deflate, hash-verified), offline
-    progression, **COARSE resolution** for deep-time catch-up (D2-021), cross-runtime probe. `Planet/Drainage.cs`
-    (priority-flood drainage) is written; rivers/runoff integration is the current slice.
-  - Headless (`tc2/headless`, dotnet 8 from the editor): 26 tests green; `run`, `bench` (`queue|dmath|poc [--coarse]|save`),
-    `probe`, `hash`, `hashtest`, `inspect`.
-  - Unity: URP + Web settings from code, bootstrap scene, SimHost, planet / sea / atmosphere / instanced objects
-    (material assets so instancing variants ship, D2-020), orbit camera and sun, IMGUI HUD, IndexedDB store + bridge,
-    custom Web template with a WebGPU device probe (D2-019), in-page benchmark (`bench S F Y activity|coarse`).
-  - **Web verified** (system Chrome, WebGPU): starts in 5.7 s; **browser probe == headless probe bit for bit**
-    (dotnet RyuJIT == Unity Mono == IL2CPP wasm); time runs; reload continues the IndexedDB save; a day away (Living)
-    catches up 96 years in 14.6 s (145 -> 739 people, ACTIVITY all the way). Remaining web item: one 404 (favicon;
-    fixed in the template, to confirm), WebGL2-path run, in-browser benchmark table.
-  - Visual state (screenshots `tc2/out/webtest/chrome2`): instanced houses, trees, people and fire visible; morning
-    start; open issues: sea glint aliasing, trees too dark, fields one dark green whatever the season, houses overlap
-    in grown villages.
+- **F1 in progress (hydrology, climate, tectonics done) + look-dev v1 (Arjun: "a really beautiful miniature world,
+  high detail, high performance"). Session 1 (5 Oct 2026), continuing.**
+  - Docs: `docs/tc2/` 00-17, LEGACY_AUDIT, DECISIONS D2-001..026.
+  - Core (pure C# 9, headless-tested, 48 tests): everything of F0 (see the log) plus **hydrology** (D2-022: runoff
+    down a priority-flood tree, depressions that fill/spill/evaporate/dry, smoothed river flow), **catch-up plan**
+    (D2-023: COARSE for many lives, ACTIVITY on arrival), **climate** (D2-024: zonal energy balance, fictional fast
+    orbit, ice-albedo, CO2/aerosol, land ice sheets, sea level, coastline in 1 m steps, ages of ice in the history),
+    **tectonics** (D2-025: one crust sample per cell, moved every 10 y and handed over every 160 y; ridges,
+    subduction, collisions, accretion, buoyant shelves, wandering plate motions; villages ride their plates).
+  - Look-dev v1 (D2-026, Game code): ground model + chunked LOD terrain, farmland and village ground in the terrain
+    shader/colours, translucent sea + surf, meandering rivers, haze/sky/grade (post-processing now actually on),
+    Blender asset kit (`tc2/art/kit.py`), clouds from the weather with cloud shadows (in progress), window glow at
+    night (in progress). Batch-editor screenshots: `node tc2/scripts/unity.mjs shots --tag T`.
+  - Web: last verified build 6/6 with climate (bit-identical); a build with look-dev v1 is being measured (fps, frame
+    time by view).
+  - Headless tools: `planet` (stats + maps, `--tect`, `--zoom first:DEG`), `climate` (climate-only millennia).
 
 ## Measurements (session 1)
 
@@ -45,6 +38,9 @@
 | Web catch-up, a day away (Living = 96 years), ACTIVITY | Chrome | 14.6 s (6.6 world years/s; 17M events, ~0.9 us/event) for 145 -> 739 people |
 | Web save | Chrome | 356 KB / 46 ms at year 0; 646 KB / 80 ms at year 96 (739 people, 5,640 history entries) |
 | Web frame rate | Chrome, RX 5600M, 1280x720 | orbit 120 fps; village/close 49-116 fps |
+| Planet only (climate + plates + weather), COARSE | dotnet | 25-28 world years/s (seed 42, 4,000 years) |
+| Slow climate alone | dotnet | ~3 ms per world year (0.75 ms per season step) |
+| Look-dev shot round (batch editor Play Mode, 5 views) | editor | ~40-45 s |
 
 ## Blockers
 None. (Wavedash cloud saves and itch upload need Arjun later; not needed for F0.)
@@ -73,3 +69,8 @@ None. (Wavedash cloud saves and itch upload need Arjun later; not needed for F0.
   probe hides WebGPU when no device can be made (D2-019); tests use system Chrome. Instanced objects were invisible:
   materials became assets (D2-020). A rebuild once "succeeded" with compile errors (CS0104 `Resolution` ambiguous with
   UnityEngine.Resolution): the wrapper now fails on `error CS` in the log. Web test 5/6 (a 404, the favicon).
+- F1 hydrology (a5c5c50), climate (30464c4), tectonics (19d7079): see D2-022..025; bugs found by tests and long
+  runs listed there (lake depth derived from double vs float, sea level vs coastline masks, aliasing biases in plates).
+- Look-dev v1 (2fbf6d4, D2-026): the terrain, farmland, village ground, water, sky, grade and the Blender kit; bugs:
+  reversed winding test, shots before instanced draws, a new world inheriting a catch-up, Mathf.SmoothStep semantics,
+  stale material values.

@@ -48,6 +48,8 @@ namespace TC2.Game
             terrain.Host = host; terrain.Rig = rig;
             var water = views.AddComponent<WaterView>();
             water.Host = host;
+            var clouds = views.AddComponent<CloudView>();
+            clouds.Host = host; clouds.Rig = rig;
             var sky = views.AddComponent<Sky>();
             sky.Host = host; sky.Rig = rig; sky.Sun = sun;
             var objects = views.AddComponent<WorldObjectsView>();

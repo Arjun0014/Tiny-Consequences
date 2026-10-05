@@ -68,6 +68,8 @@ namespace TC2.EditorTools
             Make(dir + "/Instanced.mat", "TC2/Instanced", true);
             Make(dir + "/Water.mat", "TC2/Water", false);
             Make(dir + "/Atmosphere.mat", "TC2/Atmosphere", false);
+            Make(dir + "/Clouds.mat", "TC2/Clouds", false);
+            Make(dir + "/TiltShift.mat", "TC2/TiltShift", false);
         }
 
         static void Make(string path, string shaderName, bool instancing)
@@ -111,6 +113,18 @@ namespace TC2.EditorTools
                 rd.postProcessData = AssetDatabase.LoadAssetAtPath<PostProcessData>("Packages/com.unity.render-pipelines.universal/Runtime/Data/PostProcessData.asset");
                 Debug.Log("[TC2] post-processing resources " + (rd.postProcessData != null ? "assigned" : "NOT FOUND"));
                 EditorUtility.SetDirty(rd);
+            }
+            // the tilt-shift pass (D2-027)
+            if (rd != null && !rd.rendererFeatures.Exists(f => f is TC2.Game.TiltShiftFeature))
+            {
+                EnsureMaterials();
+                var feat = ScriptableObject.CreateInstance<TC2.Game.TiltShiftFeature>();
+                feat.name = "TC2TiltShift";
+                feat.Material = AssetDatabase.LoadAssetAtPath<Material>("Assets/TC2/Game/Resources/TC2Materials/TiltShift.mat");
+                AssetDatabase.AddObjectToAsset(feat, rd);
+                rd.rendererFeatures.Add(feat);
+                EditorUtility.SetDirty(rd);
+                Debug.Log("[TC2] tilt-shift feature added");
             }
             EditorUtility.SetDirty(urp);
             AssetDatabase.SaveAssets();

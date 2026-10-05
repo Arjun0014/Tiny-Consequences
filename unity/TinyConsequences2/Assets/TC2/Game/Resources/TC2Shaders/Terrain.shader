@@ -28,6 +28,9 @@ Shader "TC2/Terrain"
                 half4 _AmbientGround;
             CBUFFER_END
             TEXTURE2D(_TC2Detail); SAMPLER(sampler_TC2Detail);
+            TEXTURECUBE(_TC2Clouds); SAMPLER(sampler_TC2Clouds);
+            float4 _TC2SunDir;
+            float _TC2CloudShell;
             float4 _TC2FogColor;
             float _TC2FogDensity;
             float _TC2SeaRadius;
@@ -103,7 +106,10 @@ Shader "TC2/Terrain"
                 half hemi = dot(n, up) * 0.5h + 0.5h;
                 half day = saturate(dot(up, l.direction) * 3.0h + 0.25h);
                 half3 amb = lerp(_AmbientGround.rgb, _AmbientSky.rgb, hemi) * lerp(half3(0.30h, 0.34h, 0.50h), half3(1.0h, 1.0h, 1.0h), day);
-                half3 sun = l.color * wrap * lerp(0.25h, 1.0h, l.shadowAttenuation) * 1.2h;
+                // the shadow of the cloud between this point and the sun
+                float3 toCloud = normalize(i.positionWS + _TC2SunDir.xyz * max(0.0, _TC2CloudShell - length(i.positionWS)));
+                half cloud = smoothstep(0.38h, 0.78h, SAMPLE_TEXTURECUBE_LOD(_TC2Clouds, sampler_TC2Clouds, toCloud, 0).r * 0.95h);
+                half3 sun = l.color * wrap * lerp(0.25h, 1.0h, l.shadowAttenuation) * 1.2h * (1.0h - 0.55h * cloud);
                 half3 c = albedo * (amb + sun);
                 // the surf: a broken, moving line of foam just below the sea surface, where waves run up the shore
                 float below = _TC2SeaRadius - length(i.positionWS);

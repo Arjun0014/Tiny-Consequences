@@ -20,6 +20,7 @@ namespace TC2.Game
         static readonly int Detail = Shader.PropertyToID("_TC2Detail");
         static readonly int SunDir = Shader.PropertyToID("_TC2SunDir");
         static readonly int SeaRadius = Shader.PropertyToID("_TC2SeaRadius");
+        static readonly int TiltShift = Shader.PropertyToID("_TC2TiltShift");
         Volume _volume;
         public Color Horizon;
 
@@ -65,6 +66,8 @@ namespace TC2.Game
             Shader.SetGlobalVector(FogColor, new Vector4(Horizon.linear.r, Horizon.linear.g, Horizon.linear.b, day));
             Shader.SetGlobalFloat(FogDensity, density);
             Shader.SetGlobalVector(SunDir, toSun);
+            // the miniature cue: strong close to the ground, gone by the region view
+            Shader.SetGlobalFloat(TiltShift, 1f - Mathf.InverseLerp(120f, 2600f, altitude));
             Shader.SetGlobalFloat(SeaRadius, (float)(w.Planet.Radius + Ground.WaterHeight(w.Planet, w.Planet.SeaLevel)));
             if (GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset urp)
                 urp.shadowDistance = Mathf.Clamp(altitude * 3.2f, 250f, 7000f);

@@ -348,3 +348,44 @@ nearest-sample refills speckled coastlines (fixed by the 160-year hand-over). Se
 The view rebuilds the relief on `ReliefVersion`.
 **Invalidation.** If coast speckle or crust drift returns in 10,000-year runs, move to (b) with resampling every few
 centuries.
+
+## D2-026 — 2026-10-05 — The miniature look: one ground model, chunked LOD terrain, farmland in the shader, a Blender kit
+
+**Context.** Arjun: the world must be a really beautiful miniature with a high level of detail and high performance.
+The F0 view (six face meshes at 82 m, objects as procedural boxes, colours converted to linear twice, no
+post-processing because the generated renderer had no post-process resources) looked crude.
+**Decision.**
+- **Ground model** (`Game/View/Ground.cs`, presentation only): the simulation's surface interpolated by a smooth
+  kernel over the containing cell and its 8 neighbours (exact at cell centres - coastal villages never sink;
+  seamless across cube faces), plus fine relief the 245 m cells cannot hold (rolling hills +-15 m, gullies, ridged
+  crags up to ~230 m on mountains, quiet at the shore and over lakes). The simulation's Earth-tall relief is drawn
+  at 0.4x about sea level (a globe from orbit, not a spiky ball); the sea floor gets a gentle shelf. Every object is
+  placed on this function, so nothing floats or sinks.
+- **Terrain** (`TerrainLod`): a quadtree of 32x32-quad patches per cube face, split near the camera to ~4 m quads,
+  built on the CPU within 3 ms a frame (parents shown until all four children are ready), skirts against cracks,
+  per-vertex colour (biome blend, beaches, slope rock, snow by the cell's climate and season, sea-floor sand),
+  recoloured in turn every 2.5 s. GPU-side displacement was rejected for now: WebGL2 limits (no structured buffers,
+  vertex texture fetch filtering of float textures) and the need for identical heights on the CPU for placement.
+- **Farmland** is drawn in the terrain shader in each village's own frame (uv0): furlongs with their own lie, strips,
+  furrows faded with distance, hedges, fallow where the village works less than its land; village ground (square,
+  yards, footpaths) in the vertex colours.
+- **Water**: a translucent sea over the depth-coloured sea floor (no depth texture: cheaper on the Web, and the
+  scene depth sampled was unreliable), surf in the terrain shader just below sea level; meandering rivers.
+- **Air and grade**: aerial haze by camera height, a sky background below the atmosphere, URP post-processing
+  (neutral tonemapping, +14 saturation, +9 contrast, soft bloom, vignette) with the renderer's post-process data
+  assigned by `ProjectSetup`.
+- **Asset kit**: models generated in headless Blender from `tc2/art/kit.py` (no external assets): four house types,
+  granary, round hut, well, haystack, conifers, broadleaf, birch, bush, person, fence; flat-shaded with smooth
+  canopies, linear vertex colours, vertex alpha = tint mask (clothes, roofs), metres, Y up, FBX in
+  `Resources/TC2Models`. Instanced with `Graphics.RenderMeshInstanced` as before.
+- **Look-dev loop**: `node tc2/scripts/unity.mjs shots --tag T [--views ...] [--hour H]` plays the real game in the
+  batch editor and writes PNGs in ~40 s (vs 5-9 min per Web build).
+**Bugs found on the way.** Mesh winding test reversed; shots rendered before the views queued their instanced draws;
+a new world kept running the previous world's catch-up (26 days ahead in a shot, and in the game after "New world"
+during a catch-up); Unity's `Mathf.SmoothStep(from, to, t)` is not GLSL `smoothstep` (beaches, rock and yards were
+wrong); a material asset keeps its first-saved property values (the sea stayed opaque).
+**Consequences.** Next: cloud layer from the weather, tilt-shift depth of field, grass and flower detail close in,
+night lights, people animation, more kit (boats, fields' haystacks, roads). Performance to be measured in the Web
+build (patch build time in wasm, draw calls, frame time at each view).
+**Invalidation.** If patch building costs too much in wasm or vertex-colour detail is too coarse, move displacement
+to the GPU on WebGPU (keep the CPU path for WebGL2) or bake per-patch colour textures.

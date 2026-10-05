@@ -62,10 +62,13 @@ Shader "TC2/Instanced"
                 // the kit marks tintable parts (clothes, roofs) with vertex alpha 1; the rest keeps its colour, scaled by alpha
                 half3 albedo = i.color.rgb * lerp(_BaseColor.aaa, _BaseColor.rgb, i.color.a);
                 half wrap = saturate((dot(n, l.direction) + 0.2h) / 1.2h);
-                half3 c = albedo * (amb * lerp(half3(0.34h, 0.38h, 0.52h), half3(1.0h, 1.0h, 1.0h), day) + l.color * wrap * lerp(0.3h, 1.0h, l.shadowAttenuation) * 1.15h) + albedo * _Emission;
+                // _Emission > 0 lights the whole object (fire); < 0 lights only its windows (vertex alpha 0.5)
+                half window = step(0.4h, i.color.a) * step(i.color.a, 0.6h);
+                half3 glow = _Emission > 0 ? albedo * _Emission : half3(1.0h, 0.52h, 0.18h) * (-_Emission) * window * 1.15h;
+                half3 c = albedo * (amb * lerp(half3(0.34h, 0.38h, 0.52h), half3(1.0h, 1.0h, 1.0h), day) + l.color * wrap * lerp(0.3h, 1.0h, l.shadowAttenuation) * 1.15h) + glow;
                 float dist = length(i.positionWS - _WorldSpaceCameraPos);
                 half fog = 1.0h - exp(-dist * _TC2FogDensity);
-                c = lerp(c, _TC2FogColor.rgb * (0.25h + 0.75h * day), fog * 0.85h * (1.0h - saturate(_Emission)));
+                c = lerp(c, _TC2FogColor.rgb * (0.25h + 0.75h * day), fog * 0.85h * (1.0h - saturate(abs(_Emission))));
                 return half4(c, 1);
             }
             ENDHLSL
