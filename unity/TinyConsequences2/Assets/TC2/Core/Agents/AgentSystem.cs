@@ -1231,7 +1231,8 @@ namespace TC2.Core.Agents
                 ref var s1 = ref w.Settlements.Get(sid);
                 if (target >= 0) { w.Migration.Look(sid, target, 0); w.Metrics.Scouts++; } else s1.ScoutAt = now;
             }
-            Chores(sid);
+            var prof = w.Profiler;   // (tools: the parts of a COARSE day; null in the game)
+            prof?.Begin(10013); Chores(sid); prof?.End(10013);
             // the hearths' wood comes first when it is running out: six days of fires kept in store (D2-056)
             double fuelWanted = DMath.Max(0.0, 6.0 * s.FuelDay - s.Woodstore);
             for (int i = 0; i < res.Count; i++)

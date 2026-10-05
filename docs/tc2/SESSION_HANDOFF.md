@@ -65,14 +65,12 @@
   stocked), do not loosen the mechanism (D2-056).
 
 ### Next steps
-1. **Offline catch-up at scale** (the biggest open risk): measure the saturated world again after D2-055 to D2-059 (`bench`
-   40 x 300 founders, `webbench.mjs`; a mature save through `run --load`); then cheaper person-days, a cohort resolution for
-   Ancient and Deep time (03, 12), or the Living span adapting to the world's size. "A day away" at saturation must stay a
-   minute or two in the browser.
-2. **F4 - knowledge and technology** (17): techniques as data with prerequisites, carried by people, taught and lost; tools and
+1. **F4 - knowledge and technology** (17): techniques as data with prerequisites, carried by people, taught and lost; tools and
    crafts with materials from geology (D2-058's goods ask for fibre, hides, clay, stone, wood); D2-060's carried-forward items
    that belong there.
 3. **The sea's calibration**: fish at ~1 % of real biomass, so the miniature holds ~10-20 seals (D2-053): wide-ranging hunters
    over their range; 10,000-year reruns.
 4. **Famine in the full world** (F5): relief, exchange and storage between villages.
 5. WebGL2's first-entry stall; look backlog: coast shapes off the cell grid, gardens, orbit detail, smoke from huts and camps.
+6. **An aggregate layer of people for Ancient and Deep time** (D2-061): a village's year as one step, fitted to COARSE, once
+   the people model is settled (after F4/F5). Living at saturation (~75 s a day away) holds meanwhile.

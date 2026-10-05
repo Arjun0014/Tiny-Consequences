@@ -1324,3 +1324,21 @@ earlier. (4) *The Web build*: 6/6, bit-identical with headless and the editor's 
 **Verdict.** F3 is closed. Carried forward: minding infants and toddlers (07 §2's carer: babies stay at home and are fed
 there; nursing mothers stay near), hay and winter fodder, the materials of goods and specialised crafts (F4), re-roofing and
 quarrying ruins and the upkeep of homes, threshing, famine relief between villages (F5).
+
+## D2-061 — 2026-10-06 — Catch-up at scale: Living holds; Ancient and Deep time wait for an aggregate layer of people
+
+**Context.** The handoff named offline catch-up at scale the biggest open risk (a saturated world costs ~1 s a world year). D2-055
+to D2-059 added a great deal to a person's day (meals, water, warmth, goods, homes).
+**Measured.** A saturated world (`bench --name poc --settlements 40 --founders 300 --coarse`: 13,316 people in 50 places) lives
+1.26 world years a second headless, 1.24 us a person-day - unchanged by D2-056 to D2-059 (1.28 / 1.22 before); the browser kept
+pace with headless before (1.37 years a second). Profile (`run --profile`): the village day is 71 % of the time (252 us at ~266
+people: the COARSE day 105 - its household chores 21, the meals ~19, each person's work ~0.3 us -, the survey 44 of which herds
+34, demography 43, livestock 29), the planet's ticks ~15 %; no single part dominates. So a day away in Living (~96 years) at
+saturation takes ~75 s, which the catch-up screen (the world's date, the planet, the history as it is made) carries; Ancient
+(~600 years a day away) would take ~8 minutes and Deep time (~4,800) about an hour - and both grow with the world's people
+once seafaring fills other lands (F5).
+**Decision.** Living stays as it is (D2-023: COARSE for many lives). Ancient and Deep time need an aggregate layer of people - a
+village's year lived as one step, its people still individuals (births, marriages, deaths, homes) - fitted to COARSE as COARSE
+was to ACTIVITY. It is built once the people model is settled (after F4 and F5), not now: every slice since D2-042 changed a
+person's day, and a year-step fitted today would be refitted at each. Until then Ancient and Deep time are lived at COARSE and
+are slow at scale. The COARSE day's household chores are timed in the profiler (`coarse.chores`).
