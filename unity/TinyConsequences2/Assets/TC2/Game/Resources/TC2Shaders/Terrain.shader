@@ -30,6 +30,7 @@ Shader "TC2/Terrain"
             TEXTURE2D(_TC2Detail); SAMPLER(sampler_TC2Detail);
             TEXTURECUBE(_TC2Clouds); SAMPLER(sampler_TC2Clouds);
             float4 _TC2SunDir;
+            float4 _TC2MoonDir;
             float _TC2CloudShell;
             float4 _TC2FogColor;
             float _TC2FogDensity;
@@ -53,7 +54,7 @@ Shader "TC2/Terrain"
             float Hash21(float2 p) { p = frac(p * float2(123.34, 456.21)); p += dot(p, p + 45.32); return frac(p.x * p.y); }
 
             // farmland in the village grid: long staggered strips, furrows, hedges, fallow where the land rests
-            half3 Farmland(half3 crop, float4 farm, float dist)
+            half3 Farmland(half3 crop, float4 farm, float dist, float px)
             {
                 float2 q = farm.xy;
                 // furlongs: blocks of strips, each lying its own way with its own strip size
@@ -74,7 +75,10 @@ Shader "TC2/Terrain"
                 half hedge = (1.0h - smoothstep(0.5, 1.5, edge)) * saturate(1.2 - dist / 2500.0);
                 half3 fallow = lerp(crop, half3(0.13h, 0.21h, 0.07h), 0.75h);
                 half3 plot = lerp(fallow, crop * (0.84h + 0.30h * h) * (1.0h - 0.16h * furAmp + 0.16h * furAmp * fur), worked);
-                return lerp(plot, half3(0.045h, 0.085h, 0.025h), hedge * 0.85h);
+                plot = lerp(plot, half3(0.045h, 0.085h, 0.025h), hedge * 0.85h);
+                // a pixel wider than a strip sees the field's average, not a moire of strips (px: metres per pixel)
+                half3 mean = lerp(fallow, crop * 0.99h, saturate(farm.z * 1.15h));
+                return lerp(plot, mean, smoothstep(0.18, 0.45, px / sz.x));
             }
 
             half Tri(float3 wp, float3 bw, float scale)
@@ -98,7 +102,8 @@ Shader "TC2/Terrain"
                 half d2 = Tri(i.positionWS, bw, 1.0 / 3.7) - 0.5h;
                 half d3 = (Tri(i.positionWS, bw, 1.0 / 0.9) - 0.5h) * saturate(1.0 - dist / 400.0);
                 half3 albedo = i.color.rgb;
-                if (i.color.a > 0.002h) albedo = lerp(albedo, Farmland(albedo, i.farm, dist), i.color.a);
+                float px = max(length(fwidth(i.farm.xy)), 1e-3);
+                if (i.color.a > 0.002h) albedo = lerp(albedo, Farmland(albedo, i.farm, dist, px), i.color.a);
                 albedo *= (1.0h + d1 * 0.32h * (0.35h + 0.65h * near) + d2 * 0.30h * near + d3 * 0.26h);
                 float4 sc = TransformWorldToShadowCoord(i.positionWS);
                 Light l = GetMainLight(sc);
@@ -109,8 +114,9 @@ Shader "TC2/Terrain"
                 // the shadow of the cloud between this point and the sun
                 float3 toCloud = normalize(i.positionWS + _TC2SunDir.xyz * max(0.0, _TC2CloudShell - length(i.positionWS)));
                 half cloud = smoothstep(0.38h, 0.78h, SAMPLE_TEXTURECUBE_LOD(_TC2Clouds, sampler_TC2Clouds, toCloud, 0).r * 0.95h);
-                half3 sun = l.color * wrap * lerp(0.25h, 1.0h, l.shadowAttenuation) * 1.2h * (1.0h - 0.55h * cloud);
-                half3 c = albedo * (amb + sun);
+                half3 sun = l.color * wrap * lerp(0.25h, 1.0h, l.shadowAttenuation) * 1.2h * (1.0h - 0.55h * cloud) * saturate(dot(up, l.direction) * 4.0h + 0.35h);
+                half moon = saturate(dot(n, _TC2MoonDir.xyz) * 0.7h + 0.3h) * (1.0h - day);
+                half3 c = albedo * (amb + sun + half3(0.13h, 0.17h, 0.29h) * moon);
                 // the surf: a broken, moving line of foam just below the sea surface, where waves run up the shore
                 float below = _TC2SeaRadius - length(i.positionWS);
                 if (below > -0.4 && below < 1.4)

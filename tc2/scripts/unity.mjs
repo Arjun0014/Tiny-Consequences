@@ -83,7 +83,7 @@ switch (cmd) {
     // the real game in Play Mode inside the batch editor: node tc2/scripts/unity.mjs shots --tag T [--seed N] [--hour H] [--days D] [--views a,b]
     const dir = path.join(outDir, 'shots', opt('--tag', 'latest'));
     const extra = ['-executeMethod', 'TC2.EditorTools.BatchTools.PlayShots', '-tc2shots', dir];
-    for (const [f, a] of [['--seed', '-tc2seed'], ['--hour', '-tc2hour'], ['--days', '-tc2days'], ['--views', '-tc2views'], ['--size', '-tc2size']]) if (opt(f)) extra.push(a, opt(f));
+    for (const [f, a] of [['--seed', '-tc2seed'], ['--hour', '-tc2hour'], ['--days', '-tc2days'], ['--views', '-tc2views'], ['--size', '-tc2size'], ['--erupt', '-tc2erupt'], ['--quake', '-tc2quake']]) if (opt(f)) extra.push(a, opt(f));
     status = run(extra, { quit: false });
     tail(log, /error CS|\[TC2\]|Exception/);
     console.log('shots in ' + dir);

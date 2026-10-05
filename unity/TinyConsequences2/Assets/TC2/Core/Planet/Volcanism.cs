@@ -254,6 +254,9 @@ namespace TC2.Core.Planet
         /// The size of an eruption from the pressure it releases: VEI 1-7 (each a tenfold step). A vent erupting at its
         /// typical critical pressure gives VEI 2; one holding four times that, VEI 4; twenty times, VEI 6.
         /// </summary>
+        /// <summary>The pressure whose release is an eruption of this VEI (the inverse of Vei, just inside the class).</summary>
+        public static double PressureFor(int vei) => 1.2 * PressureCrit * DMath.Exp((DMath.Clamp(vei, 1, 7) - 2) / 3.1 * DMath.Log(10.0)) * 1.02;
+
         public static int Vei(double pressure) =>
             (int)DMath.Clamp(DMath.Floor(2.0 + DMath.Log(DMath.Max(1e-6, pressure / (1.2 * PressureCrit))) / DMath.Log(10.0) * 3.1), 1, 7);
     }

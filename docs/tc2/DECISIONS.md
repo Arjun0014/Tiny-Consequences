@@ -469,3 +469,73 @@ the speed.
 vent state). Quakes read the same boundary forcing next.
 **Invalidation.** If eruptions crowd the history, raise the Local threshold for the news (VEI 1 is ~90 % of eruptions);
 if CO2 drifts beyond 200-600 ppm in 10,000-year runs, tie outgassing to subduction length rather than vent supply.
+
+## D2-029 — 2026-10-05 — Volcanoes drawn, puffs, gentle shores, moonlight; the god's eruption
+
+**Context.** D2-028 made volcanoes in the simulation; the miniature must show them (cones, plumes, eruptions) and the
+first look exposed two old faults: subduction coasts drew as sawtooth cliffs with a grey band of slope rock, and
+nights were nearly black with round objects lit from below by a sun under the horizon.
+**Decision.**
+- **Cones in the ground model** (`VolcanoShape`, presentation only): one cone per vent found through a per-cell index
+  (vents stand > 5 cells apart): arc volcano `H (1-t)^1.7`, H = 175 m x size (<= 340 m), base 1.9 cells; plume shield
+  `H (1-t²)(1-0.35t)`, 70 m x size, base 3.4 cells; size `0.35 + 0.65 age + 0.22 ln(1 + eruptions)` (age over 2,000
+  years; worldgen volcanoes are mature); crater bowl and radial gullies; rebuilt with the relief (`ReliefVersion`), so
+  terrain patches and the cone always agree. Summits bare (dark lava rock, cinders), lower flanks keep their green.
+- **Puffs** (`Puff.shader` + `VolcanoView`): billboards need no rotation, so the instance matrix's 3x3 carries size,
+  opacity, ash, glow, seed and sun share (no per-instance buffers: identical on WebGPU and WebGL2); culling bounds given
+  in `RenderParams`; sorted far to near; lit as balls with their own shadow side; glow strongest at night. Shows: steam
+  from vents fed or active in the last three centuries; a plume vent's lava-lake fire; after an eruption its column
+  (half a day of world time or 14 real seconds, whichever is longer) and lava glow along the steepest way (4 days or
+  25 s). All read from vent state and the eruption's history event (VEI).
+- **Gentle shores**: the ground model interpolates a drawn elevation per cell: land within d cells of the sea no higher
+  than sea + 45 + 110 d m, sea within d cells of land no deeper than sea - 60 - 400 d m (sim metres); lake cells keep
+  theirs. The coastline is unchanged; cliffs and the grey band of slope rock along trench coasts are gone.
+- **Night**: a moon opposite the sun (rotated 150 degrees, raised) lights terrain and objects softly blue; the night
+  horizon is bluer; every lit shader fades the sun by its height (`saturate(4 dot(up, sun) + 0.35)`).
+- **The god's eruption** (`CommandKind.GodEruption`, R7): the nearest vent within 2.5 km erupts now with at least twice
+  its critical pressure (or the size asked for); with none near, a new vent opens. Logged as a command; every
+  consequence roots in "You". Natural eruptions scheduled for a vent woken early are skipped (the queued event checks
+  the vent's `Next`). Screenshots: `unity.mjs shots --erupt VEI` uses this command.
+**Evidence.** Batch-editor shots at day, dusk and night: cones with craters and plumes on seed 42's arc coast, a VEI 4
+column with an orange root; no curtains or grey band on the coasts; moonlit village with lamplit windows. Test: the
+god's eruption opens a vent where none is, and every event it causes roots in You (54 tests).
+**Invalidation.** If puffs cost more than ~1 ms a frame on the Web (sorting, overdraw near a column), cap puff counts by
+distance or drop the sort for steam.
+
+## D2-030 — 2026-10-05 — Earthquakes: faults that load with the plates and break in cascades; slides and waves
+
+**Context.** F1 asks for quakes from plate stress with consequences people live with (05 §3b). Plates move (D2-025);
+their boundaries know how fast the plates slide past each other.
+**Decision.**
+- **Faults** are the boundary cells: each loads with the plates' relative motion across it (`Tectonics.Slip`: closing
+  and sliding plates fully, parting plates a third) into a slip deficit `P.Stress` (state, saved, hashed). Cells no
+  plate loads any more heal over 400 years and leave the network below 2 m.
+- **Ruptures**: a patch past 250 m is scheduled to break at a moment inside the tectonic step; a breaking patch keeps
+  2-10 % and passes 22 % of what it released to each fault neighbour (Olami-Feder-Christensen), which may break in turn.
+  Sizes follow from the cascade (no drawn magnitude): seed 42 over 3,000 years planet-only: 4,741 quakes of M 5, 1,753
+  of M 6, 93 of M 7, none of M 8 (a pass of 0.25 is near-critical: an M 8 every ~26 years).
+- **Magnitude** `5.5 + 1.4 log10(released / threshold)`; **intensity** (Mercalli-like) `6.42 + 1.333 M - 2.5 log10(d +
+  500)` (d in m: 9 over an M 7, 8 a kilometre away, 7 at 3 km; a small world feels its quakes across much of itself),
+  reach of intensity 6 at most 15 km.
+- **Consequences** (each caused by the quake event, recorded at once from M 6.5 or at the first harm): people die
+  where houses fall (indoors 90 % at night, 35 % by day; risk `0.04 (I-7.5)²` indoors, a fifth outdoors); stores spill
+  (`min(0.5, 0.08 (I-6))` of the granary from I 7); steep shaken slopes slide (sim slope > 0.8, chance `0.08 (I-6.5)`,
+  up to 40 m of rock moved to the lowest neighbour, woods and pasture stripped; the drainage is rebuilt at once, so a
+  slide can dam a river); a great quake mostly under the sea (M 7+) sends a wave: run-up 15 m (sim) at M 7, x3.2 per
+  magnitude, weakening as `sqrt(1500/(d+1500))`, flooding low land within two cells of the sea (woods and pasture
+  spoiled, the standing crop of villages whose fields lie there lost, half the people there drown).
+- **Worldgen**: every fault patch starts somewhere in its cycle (keyed). The god may shake the earth
+  (`CommandKind.GodQuake`, magnitude asked for: a fault line loaded to the brink through the cell and broken at once),
+  every consequence rooted in You.
+- **For the view** an `FxRing` of the latest happenings (quakes, slides, waves, lava cells) is written by the
+  simulation and never read by it, saved or hashed; the view shakes the camera when a quake is felt where it looks and
+  raises dust, foam and lava glow. Save sim version 3.
+**Evidence.** Tests: stress only on faults; 6,000 years of loading give >1,000 ruptures, most one patch, big ones
+rarer, the biggest rarest; magnitudes of one and ten patches in band; a great quake under a village kills people
+indoors and spills stores, every event rooted in it; a great quake under the sea floods a low coast with the quake as
+the wave's cause; save/load through pending quakes and tectonic steps continues bit-identically (58 tests). Seed 42's
+villages stand 3-5 km from active faults (sites follow water and soil), so M 7 quakes reach them at intensity ~6.6:
+in 3,000 years no quake deaths, slides on the arc mountains (~1 a year), small waves on empty coasts. 20 world
+years/s coarse with quakes.
+**Invalidation.** If villages drift onto faults and quakes empty them every century, revisit the indoor risk; if
+slides strip arc mountains bare, lower their chance or let them regrow faster (F2 ecology).

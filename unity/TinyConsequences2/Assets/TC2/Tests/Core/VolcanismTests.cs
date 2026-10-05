@@ -116,6 +116,31 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void AGodsEruptionRootsInYouAndOpensTheGroundWhereNoVolcanoIs()
+        {
+            var w = TestWorlds.Make(56);
+            var P = w.Planet;
+            int sid = w.Settlements.First();
+            int cell = w.Settlements.Get(sid).Cell;
+            P.Vents.Clear(); P.Hotspots = new Hotspot[0];
+            System.Array.Clear(P.Magma, 0, P.Magma.Length); // no volcano anywhere, nor magma to open one
+            long before = w.History.LastId;
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodEruption, Cell = cell });
+            var b = Budget.Unlimited;
+            w.AdvanceTo(w.Now + SimTime.Hour, ref b);
+            Assert.AreEqual(1, P.Vents.Count, "a new vent opened where the god struck");
+            bool born = false, erupted = false;
+            for (int i = w.History.FirstIndexAfter(before); i < w.History.Count; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Kind == HistoryKind.VentBorn) born = true;
+                if (e.Kind == HistoryKind.Eruption) erupted = true;
+                if (e.Kind != HistoryKind.GodCommand) Assert.AreEqual(RootKind.You, e.RootKind, e.Kind + " roots in the god");
+            }
+            Assert.IsTrue(born && erupted);
+        }
+
+        [Test]
         public void CarbonRelaxesTowardTheBalanceOfVolcanoesAndWeathering()
         {
             var w = TestWorlds.Make(54);

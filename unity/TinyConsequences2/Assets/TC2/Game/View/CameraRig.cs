@@ -76,8 +76,32 @@ namespace TC2.Game
                 LookAt(Vec3d.FromLatLon(lat, lon), double.Parse(parts[2], ci));
                 return;
             }
+            if (view.StartsWith("volcano"))
+            {
+                // the volcano nearest the first village (land vents first)
+                var P = w.Planet;
+                int best = -1; double bd = double.MaxValue;
+                for (int v = 0; v < P.Vents.Count; v++)
+                {
+                    double dd = Vec3d.Angle(P.Vents[v].At, d) + (P.IsLand(P.Vents[v].Cell) ? 0 : 1.0);
+                    if (dd < bd) { bd = dd; best = v; }
+                }
+                if (best >= 0) d = P.Vents[best].At;
+                LookAt(d, view == "volcanoclose" ? 650 : view == "volcanofar" ? 5200 : 2200);
+                return;
+            }
             double alt = view == "close" ? 260 : view == "low" ? 95 : view == "village" ? 900 : view == "region" ? 5000 : 22000;
             LookAt(d, alt);
+        }
+
+        float _shake, _shakeFade = 1f;
+
+        /// <summary>Shake the camera (0..1 strength, seconds): a quake felt where it looks.</summary>
+        public void Shake(float strength, float seconds)
+        {
+            if (strength <= _shake) return;
+            _shake = Mathf.Clamp01(strength);
+            _shakeFade = _shake / Mathf.Max(0.3f, seconds);
         }
 
         public void LookAt(Vec3d dir, double altitude)
@@ -110,6 +134,13 @@ namespace TC2.Game
             north.Normalize();
             Vector3 offset = (up * (float)System.Math.Cos(tilt) - north * (float)System.Math.Sin(tilt)) * (float)alt;
             Vector3 camPos = FocusPoint + offset;
+            // a quake felt where the camera looks shakes it (presentation only)
+            if (_shake > 0f)
+            {
+                float t = Time.unscaledTime * 23f, a = _shake * (float)System.Math.Max(4.0, alt * 0.004);
+                camPos += new Vector3(Mathf.PerlinNoise(t, 0.3f) - 0.5f, Mathf.PerlinNoise(1.7f, t) - 0.5f, Mathf.PerlinNoise(t, 5.1f) - 0.5f) * (2f * a);
+                _shake = Mathf.Max(0f, _shake - Time.unscaledDeltaTime * _shakeFade);
+            }
             Cam.transform.position = camPos;
             Cam.transform.rotation = Quaternion.LookRotation((FocusPoint - camPos).normalized, alt < 9000 ? north + up * 0.2f : Vector3.up);
             float far = (float)(Distance + R * 1.5);

@@ -35,6 +35,7 @@ Shader "TC2/Instanced"
             CBUFFER_END
             float4 _TC2FogColor;
             float _TC2FogDensity;
+            float4 _TC2MoonDir;
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; UNITY_VERTEX_INPUT_INSTANCE_ID };
             struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; };
@@ -88,7 +89,11 @@ Shader "TC2/Instanced"
                 // _Emission > 0 lights the whole object (fire); < 0 lights only its windows (vertex alpha 0.5)
                 half window = step(0.4h, i.color.a) * step(i.color.a, 0.6h);
                 half3 glow = _Emission > 0 ? albedo * _Emission : half3(1.0h, 0.52h, 0.18h) * (-_Emission) * window * 1.15h;
-                half3 c = albedo * (amb * lerp(half3(0.34h, 0.38h, 0.52h), half3(1.0h, 1.0h, 1.0h), day) + l.color * wrap * lerp(0.3h, 1.0h, l.shadowAttenuation) * 1.15h) + glow;
+                half moon = saturate(dot(n, _TC2MoonDir.xyz) * 0.7h + 0.3h) * (1.0h - day);
+                // the planet hides a sun below the horizon (shadow maps reach only near the camera): round shapes such as
+                // canopies would otherwise catch it from beneath at night
+                half sunUp = saturate(dot(up, l.direction) * 4.0h + 0.35h);
+                half3 c = albedo * (amb * lerp(half3(0.34h, 0.38h, 0.52h), half3(1.0h, 1.0h, 1.0h), day) + l.color * wrap * lerp(0.3h, 1.0h, l.shadowAttenuation) * 1.15h * sunUp + half3(0.13h, 0.17h, 0.29h) * moon) + glow;
                 float dist = length(i.positionWS - _WorldSpaceCameraPos);
                 half fog = 1.0h - exp(-dist * _TC2FogDensity);
                 c = lerp(c, _TC2FogColor.rgb * (0.25h + 0.75h * day), fog * 0.85h * (1.0h - saturate(abs(_Emission))));

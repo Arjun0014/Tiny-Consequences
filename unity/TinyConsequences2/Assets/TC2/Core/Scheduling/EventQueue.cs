@@ -17,6 +17,7 @@ namespace TC2.Core.Scheduling
         Housekeeping = 8,     // yearly compaction, audits
         Lightning = 9,        // a natural strike at a cell (A = cell)
         Eruption = 10,        // a volcano erupts (A = vent id)
+        Quake = 11,           // a fault patch ruptures (A = cell)
     }
 
     /// <summary>Ordering classes at equal time (04 §2).</summary>

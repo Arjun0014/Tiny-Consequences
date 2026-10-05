@@ -26,6 +26,7 @@ Laws: `01_WORLD_LAWS.md`. Research: `02_RESEARCH.md` §5.
 | `veg[pft]` | N64 | biomass per plant functional type (grass, shrub, broadleaf, conifer, crop) |
 | `fuel`, `burning` | N64 | dead fuel; active fire intensity (sparse set) |
 | `magma` | N64 | magma gathered under a cell, not yet drawn by a vent (D2-028) |
+| `stress` | N64 | slip deficit on fault patches (quakes, D2-030) |
 | global | - | CO₂, aerosol, sea level, ice volume, orbital phase, ledgers of contributors; vents, plumes, the volcanic supply reference |
 
 Cause tags (`11` §6) accompany the causal fields: burning, drought anomaly, flood, ash, ice.
@@ -94,6 +95,14 @@ Cause tags (`11` §6) accompany the causal fields: burning, drought anomaly, flo
   two); its cone joins the relief at the next tectonic step.
 - CO₂: volcanic outgassing (by the vents' supply against the world's starting supply) against silicate weathering
   (faster when warm and rich): a ~2,000-year thermostat.
+
+### Earthquakes (implemented, D2-030)
+- Boundary cells load with the plates' relative motion into a slip deficit; past a threshold a patch breaks at a moment
+  inside the decade and passes part of its stress to its fault neighbours (Olami-Feder-Christensen cascades: sizes
+  follow a power law without being drawn from one); faults no plate loads heal.
+- Magnitude from the stress released, intensity from magnitude and distance; consequences carry the quake as cause:
+  deaths indoors where houses fall, spilled stores, landslides on steep shaken slopes (a slide can dam a river), and
+  waves from great quakes under the sea over low coasts.
 
 ### Drainage and erosion
 - **Priority-flood** (Barnes et al. 2014) fills depressions to give every land cell a receiver (lowest of 8

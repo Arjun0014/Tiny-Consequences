@@ -441,7 +441,10 @@ namespace TC2.Core.Places
         }
 
         /// <summary>Ash (or lava) on a village's fields: the standing crop is lost by this share, the eruption its cause.</summary>
-        public void AshOnFields(int sid, double share, long cause)
+        public void AshOnFields(int sid, double share, long cause) => CropLoss(sid, share, cause, HistoryKind.AshFall);
+
+        /// <summary>A share of a village's standing crop lost (ash, the sea), with its cause; recorded as the given kind.</summary>
+        public void CropLoss(int sid, double share, long cause, HistoryKind kind)
         {
             var w = _w;
             if (!w.Settlements.Exists(sid)) return;
@@ -453,7 +456,7 @@ namespace TC2.Core.Places
             if (s.CropBurnt - before < 0.02) return;
             long ash = w.Record(new HistoryEvent
             {
-                Kind = HistoryKind.AshFall, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
+                Kind = kind, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
                 Cause1 = cause, Rel1 = CauseRel.CausedBy, Magnitude = (float)(s.CropBurnt - before), RootKind = RootKind.Nature,
             });
             if (s.CropCause == 0) s.CropCause = ash;

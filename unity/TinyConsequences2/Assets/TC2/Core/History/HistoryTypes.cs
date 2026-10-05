@@ -38,6 +38,11 @@ namespace TC2.Core.History
         VentExtinct = 30,       // a volcano fell silent (ArgB = eruptions in its life)
         AshFall = 31,           // ash fell on a village's fields (Magnitude = share of the crop lost)
         IslandRose = 32,        // a volcano in the sea built itself into an island
+        Quake = 33,             // the ground shook (Magnitude = M, ArgA = fault patches ruptured)
+        Landslides = 34,        // shaken slopes slid (ArgA = slopes)
+        StoresSpoiled = 35,     // a quake spilled a village's stores (Magnitude = share lost)
+        Tsunami = 36,           // a wave from a quake under the sea struck the coast (Magnitude = run-up m, ArgA = cells flooded)
+        FieldsFlooded = 37,     // the sea came over a village's fields (Magnitude = share of the crop lost)
     }
 
     /// <summary>History tiers (11 §4).</summary>
@@ -139,6 +144,11 @@ namespace TC2.Core.History
                 case HistoryKind.Eruption: return Tier.Historical;
                 case HistoryKind.VentBorn: return Tier.Historical;
                 case HistoryKind.IslandRose: return Tier.Historical;
+                case HistoryKind.Quake: return Tier.Local;
+                case HistoryKind.Landslides: return Tier.Local;
+                case HistoryKind.StoresSpoiled: return Tier.Local;
+                case HistoryKind.Tsunami: return Tier.Historical;
+                case HistoryKind.FieldsFlooded: return Tier.Local;
                 case HistoryKind.VentExtinct: return Tier.Local;
                 case HistoryKind.AshFall: return Tier.Local;
                 case HistoryKind.SettlementFounded:
@@ -176,6 +186,11 @@ namespace TC2.Core.History
                 case HistoryKind.Eruption: b = 0.6 * DMath.Exp(0.8 * magnitude); break; // VEI 2 ~5, VEI 4 ~26, VEI 6 ~140
                 case HistoryKind.VentBorn: b = 3; break;
                 case HistoryKind.IslandRose: b = 8; break;
+                case HistoryKind.Quake: b = 2.0 * DMath.Exp(1.2 * (magnitude - 5.5)); break; // M6 ~4, M7 ~12, M8 ~40
+                case HistoryKind.Landslides: b = 3; break;
+                case HistoryKind.StoresSpoiled: b = 4; break;
+                case HistoryKind.Tsunami: b = 30; break;
+                case HistoryKind.FieldsFlooded: b = 5; break;
                 case HistoryKind.AshFall: b = 5; break;
                 case HistoryKind.Wildfire: b = 15; break;
                 case HistoryKind.GodCommand: b = 10; break;

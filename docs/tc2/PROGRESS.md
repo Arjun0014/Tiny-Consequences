@@ -2,10 +2,10 @@
 
 ## CURRENT STATE (keep accurate; newest first below)
 
-- **F1 in progress (hydrology, climate, tectonics, volcanoes + carbon cycle done) + look-dev v1-v4 (Arjun: "a really
+- **F1 in progress (hydrology, climate, tectonics, volcanoes + carbon cycle, quakes done) + look-dev v1-v5 (Arjun: "a really
   beautiful miniature world, high detail, high performance"). Session 1 (5 Oct 2026), continuing.**
-  - Docs: `docs/tc2/` 00-17, LEGACY_AUDIT, DECISIONS D2-001..028.
-  - Core (pure C# 9, headless-tested, 53 tests): everything of F0 (see the log) plus **hydrology** (D2-022: runoff
+  - Docs: `docs/tc2/` 00-17, LEGACY_AUDIT, DECISIONS D2-001..030.
+  - Core (pure C# 9, headless-tested, 58 tests): everything of F0 (see the log) plus **hydrology** (D2-022: runoff
     down a priority-flood tree, depressions that fill/spill/evaporate/dry, smoothed river flow), **catch-up plan**
     (D2-023: COARSE for many lives, ACTIVITY on arrival), **climate** (D2-024: zonal energy balance, fictional fast
     orbit, ice-albedo, CO2/aerosol, land ice sheets, sea level, coastline in 1 m steps, ages of ice in the history),
@@ -14,15 +14,20 @@
     **volcanoes** (D2-028: magma at arcs, rifts and fixed plumes; vents that ride their plates, pour out lava, build
     islands and erupt by pressure against a per-vent seal; eruptions as events whose lava fires, ash on crops,
     deaths and veil carry them as cause; named volcanoes) and the **carbon cycle** (outgassing vs weathering, a
-    ~2,000-year thermostat).
+    ~2,000-year thermostat), **quakes** (D2-030: faults loaded by the plates' relative motion, Olami-Feder-Christensen
+    cascades, intensity by distance; deaths indoors, spilled stores, landslides, waves over low coasts), god powers
+    `GodEruption` and `GodQuake` (commands; consequences rooted in You).
   - Look (Game code): v1 (D2-026) ground model + chunked LOD terrain, farmland and village ground, translucent sea +
     surf, rivers, haze/sky/grade, Blender kit (`tc2/art/kit.py`); v2-v4 (D2-027) clouds from the weather with cloud
     shadows, tilt-shift, window lamplight, grass/flowers/reeds/boulders, roads, seasonal canopies, walking people, a
-    slim HUD. Batch-editor screenshots: `node tc2/scripts/unity.mjs shots --tag T`.
-  - Web: look-dev v4 verified 6/6 (bit-identical, WebGPU, 91-122 fps by view). The volcano Core is not yet in a Web
-    build (next build will carry it; its probe reference changes with the new weather and volcanoes).
-  - Next: draw volcanoes (cones, craters, plumes, lava glow), HUD date on one line, night ground light; then quakes,
-    stream-power erosion and sediment, storms, the 10,000-year untouched run (F1 done-when), then F2 ecology.
+    slim HUD; v5 (D2-029) volcanoes drawn (cones, craters, steam, eruption columns, lava glow), puffs, gentle shores,
+    moonlight, quake shake/dust/foam from the `FxRing`, roads and farmland antialiased at region scale.
+    Batch-editor screenshots: `node tc2/scripts/unity.mjs shots --tag T [--erupt VEI] [--quake M]`.
+  - Web: volcanoes (look-dev v5 part 1) verified 6/6 (bit-identical, WebGPU, 89-121 fps by view); the quake Core and
+    the antialiasing are in the next build.
+  - Next: stream-power erosion and sediment (river valleys, deltas), storms, the 10,000-year untouched run (F1
+    done-when), then F2 ecology. Known: in coarse runs 2-3 of 6 villages are abandoned within 300 years (agent/economy
+    fragility, pre-existing; look at it with F2/F3).
   - Headless tools: `planet` (stats + maps, `--tect`, `--volc`, `--zoom first:DEG`), `climate` (climate-only
     millennia), `run --profile` (time per event kind and system).
 
@@ -49,6 +54,8 @@
 | Planet + people COARSE, smooth weather (before / after tabulated logistic + one-mix hash) | dotnet | 14.3 / 19.4 world years/s (weather 1.25 / 0.82 ms a day) |
 | Volcanoes, seed 42, 4,000 years planet only | dotnet | 28-42 vents, 650 eruptions (574 VEI 1, 65 VEI 2, 7 VEI 3, 1 VEI 4), CO2 280 -> 336 ppm |
 | Web frame rate, look-dev v4 | Chrome/WebGPU, RX 5600M, 1280x720 | orbit 111, region 120, village 118, close 91, low 123 fps |
+| Web frame rate, volcanoes (v5 part 1) | Chrome/WebGPU, RX 5600M, 1280x720 | orbit 119, region 121, village 119, close 89, low 119 fps |
+| Quakes, seed 42, 3,000 years planet only | dotnet | M5 4,741, M6 1,753, M7 93, M8 0; ~1 landslide a year; 20.5 world years/s coarse |
 | Slow climate alone | dotnet | ~3 ms per world year (0.75 ms per season step) |
 | Look-dev shot round (batch editor Play Mode, 5 views) | editor | ~40-45 s |
 
@@ -91,3 +98,8 @@ None. (Wavedash cloud saves and itch upload need Arjun later; not needed for F0.
   derived drainage from relief the live world had not routed: cones now wait for the tectonic step). Profiling showed
   the smooth weather costing 86 % of a coarse planet year (exp per cell and a 4-mix hash per cell): tabulated logistic
   and a day key, 14.3 -> 19.4 world years/s.
+- Volcanoes drawn and quakes (D2-029, D2-030): the first cone draft drew sea points under a clamp - cliffs at every
+  coast near a vent; subduction coasts drew as sawtooth cliffs with a grey band of slope rock (coarse cells against a
+  trench) - fixed by a drawn elevation that ramps shores; round canopies were lit at night by the sun under the
+  horizon; quake cascades at pass 0.25 were near-critical and old faults kept stress for 2,000 years (an M 8 every 26
+  years); dust was added to the puff list before the frame cleared it.

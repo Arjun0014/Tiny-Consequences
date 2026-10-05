@@ -59,6 +59,33 @@ namespace TC2.Game
             var b = Budget.Unlimited;
             w.AdvanceTo(target, ref b);
             Debug.Log("[TC2] shots at " + SimTime.Format(w.Now) + " seed " + seed);
+            string quake = Arg("-tc2quake");
+            if (quake != null && sid != 0)
+            {
+                // the god shakes the earth under the first village (a logged command, as the player would give it)
+                w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodQuake, Cell = w.Settlements.Get(sid).Cell, Arg = (long)Parse(quake, 7) });
+                var bq = Budget.Unlimited;
+                w.AdvanceTo(w.Now + 2 * SimTime.Minute, ref bq);
+                long q = 0; foreach (long x in w.Metrics.Quakes) q += x;
+                Debug.Log("[TC2] quake: " + q + " quakes, " + w.Metrics.Landslides + " landslides, " + w.Metrics.QuakeDeaths + " deaths");
+            }
+            string erupt = Arg("-tc2erupt");
+            if (erupt != null && w.Planet.Vents.Count > 0)
+            {
+                // the volcano nearest the first village erupts (a god's command, as the player would give it)
+                var P = w.Planet;
+                Vec3d home = sid != 0 ? w.Settlements.Get(sid).Anchor : P.Vents[0].At;
+                int best = 0; double bd = double.MaxValue;
+                for (int v = 0; v < P.Vents.Count; v++)
+                {
+                    double dd = Vec3d.Angle(P.Vents[v].At, home) + (P.IsLand(P.Vents[v].Cell) ? 0 : 1.0);
+                    if (dd < bd) { bd = dd; best = v; }
+                }
+                w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodEruption, Cell = P.Vents[best].Cell, Arg = (long)Parse(erupt, 3) });
+                var be = Budget.Unlimited;
+                w.AdvanceTo(w.Now + 2 * SimTime.Minute, ref be);
+                Debug.Log("[TC2] eruption: " + P.Vents[best].Eruptions + " eruptions at vent " + P.Vents[best].Id + " land " + P.IsLand(P.Vents[best].Cell));
+            }
             if (sid != 0)
             {
                 long loc = SimTime.FloorMod(w.Now + w.LocalOffsetOf(sid), SimTime.Day);

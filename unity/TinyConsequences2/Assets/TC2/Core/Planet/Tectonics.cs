@@ -52,6 +52,7 @@ namespace TC2.Core.Planet
         readonly Vec3d[] _pos;
         readonly int[] _accrete; int _accreteN;
         public readonly float[] ArcSupply;   // magma rising per year at each cell this step (arcs over subduction, rifts)
+        public readonly float[] Slip;        // relative plate motion across a cell's boundary edges (m/yr; parting a third): loads faults
         readonly long[] _front = new long[16 * 16];   // collisions between plate pairs this step
         readonly int[] _plateCells = new int[16];
 
@@ -67,6 +68,7 @@ namespace TC2.Core.Planet
             _pos = new Vec3d[_cells];
             _accrete = new int[_cells];
             ArcSupply = new float[_cells];
+            Slip = new float[_cells];
         }
 
         static void Frame(Vec3d up, out Vec3d east, out Vec3d north)
@@ -119,7 +121,7 @@ namespace TC2.Core.Planet
             {
                 int pc = P.Plate[c];
                 Vec3d p = g.Center[c];
-                double u = 0, magma = 0;
+                double u = 0, magma = 0, slip = 0;
                 Vec3d vc = Velocity(P, pc, p);
                 for (int q = 0; q < 4; q++)
                 {
@@ -127,7 +129,9 @@ namespace TC2.Core.Planet
                     int pn = P.Plate[nb];
                     if (pn == pc) continue;
                     Vec3d dir = (g.Center[nb] - p).Normalized;
-                    double conv = Vec3d.Dot(vc - Velocity(P, pn, g.Center[nb]), dir); // m/yr, > 0 approaching
+                    Vec3d rel = vc - Velocity(P, pn, g.Center[nb]);
+                    double conv = Vec3d.Dot(rel, dir); // m/yr, > 0 approaching
+                    slip += conv >= 0 ? rel.Length : rel.Length * 0.33; // closing and sliding plates lock; parting ones barely
                     bool contC = P.Crust[c] == 1, contN = P.Crust[nb] == 1;
                     if (conv > 0)
                     {
@@ -141,6 +145,7 @@ namespace TC2.Core.Planet
                 }
                 _uplift[c] = (float)(u * 0.25); // per neighbour-sum -> per cell
                 ArcSupply[c] = (float)(magma * 0.25);
+                Slip[c] = (float)(slip * 0.25);
             }
         }
 

@@ -74,7 +74,7 @@ namespace TC2.Game
             _label.normal.textColor = new Color(0.92f, 0.93f, 0.95f);
             _small = new GUIStyle(_label) { fontSize = 12 };
             _small.normal.textColor = new Color(0.78f, 0.82f, 0.88f);
-            _title = new GUIStyle(_label) { fontSize = 18, fontStyle = FontStyle.Bold };
+            _title = new GUIStyle(_label) { fontSize = 16, fontStyle = FontStyle.Bold, wordWrap = false };
             _btn = new GUIStyle(GUI.skin.button) { fontSize = 12, padding = new RectOffset(7, 7, 3, 3) };
         }
 
@@ -89,10 +89,10 @@ namespace TC2.Game
 
             if (_hidden) { PointerOverUi = false; return; }
             // top-left: a slim bar - the date and the speeds
-            _left = new Rect(10, 10, 640, 40);
+            _left = new Rect(10, 10, Mathf.Min(sw - 270, 900), 40);
             GUILayout.BeginArea(_left, _box);
             GUILayout.BeginHorizontal();
-            GUILayout.Label(SimTime.Format(w.Now), _title, GUILayout.Width(300));
+            GUILayout.Label(SimTime.Format(w.Now), _title, GUILayout.Width(318));
             for (int i = 0; i < SimHost.Speeds.Length; i++)
             {
                 bool on = !Host.MaxSpeed && Host.SpeedIndex == i;

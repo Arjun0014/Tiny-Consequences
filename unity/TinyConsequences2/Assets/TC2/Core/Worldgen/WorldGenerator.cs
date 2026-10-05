@@ -23,6 +23,7 @@ namespace TC2.Core.Worldgen
             w.InitPlanet(P);
             Relief(w, P);
             Volcanism.SpinUp(w);
+            Quakes.Init(w);
             w.Drainage.Rebuild(P);
             Moisture(w, P);
             w.PlanetSys.Climate.Prime(P, w.Seed, 0);

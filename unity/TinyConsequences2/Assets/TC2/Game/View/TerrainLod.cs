@@ -102,6 +102,7 @@ namespace TC2.Game
             }
             _roadTimer -= Time.unscaledDeltaTime;
             if (_roadTimer <= 0 || _roadWorld != Host.WorldVersion) { _roadTimer = 10f; _roadWorld = Host.WorldVersion; BuildRoads(w); }
+            VolcanoShape.SetTime(w.Now); // cone ages (the cones change only with the relief)
             Select(w);
             BuildSome(w);
             Show();
@@ -511,7 +512,7 @@ namespace TC2.Game
         }
 
         /// <summary>How much of a point is road (metres to the nearest track, on the sphere's chord).</summary>
-        float RoadAt(PlanetState P, Vec3d d, int c)
+        float RoadAt(PlanetState P, Vec3d d, int c, float quad)
         {
             if (!_roads.TryGetValue(c, out var list)) return 0f;
             Vector3 p = PlanetGeo.ToVector(d);
@@ -524,7 +525,10 @@ namespace TC2.Game
                 if (dd < best) best = dd;
             }
             float m = Mathf.Sqrt(best) * (float)P.Radius;
-            return 1f - Edge(1.2f, 3.0f, m);
+            // ~4 m of packed earth; where the vertices stand further apart than that, the road is drawn wider and fainter
+            // (the same ink), so the grid samples a soft path instead of dots
+            float half = Mathf.Max(2.1f, 0.8f * quad);
+            return (1f - Edge(half * 0.55f, half * 1.4f, m)) * Mathf.Min(1f, 2.6f / half);
         }
         readonly System.Collections.Generic.List<int> _near = new System.Collections.Generic.List<int>();
 
@@ -555,6 +559,8 @@ namespace TC2.Game
         }
 
         static readonly Color Rock = new Color(0.47f, 0.44f, 0.40f), RockDark = new Color(0.33f, 0.31f, 0.30f);
+
+        static readonly Color VolcanoRock = new Color(0.25f, 0.22f, 0.21f), VolcanoAsh = new Color(0.46f, 0.41f, 0.36f), VolcanoCrater = new Color(0.17f, 0.14f, 0.13f);
         static readonly Color Sand = new Color(0.87f, 0.80f, 0.60f), WetSand = new Color(0.66f, 0.60f, 0.46f);
         static readonly Color Snow = new Color(0.95f, 0.96f, 0.98f), Glacier = new Color(0.86f, 0.92f, 0.97f);
         static readonly Color Shelf = new Color(0.82f, 0.78f, 0.60f), Abyss = new Color(0.05f, 0.11f, 0.17f);
@@ -566,6 +572,9 @@ namespace TC2.Game
             double sea = P.SeaLevel;
             double season = DMath.Sin(DMath.TwoPi * (SimTime.YearFraction(w.Now) - 0.25));
             var cols = p.Colours;
+            // roads are a few metres wide: on patches whose vertices stand far apart they would alias into dashes
+            float quad = (float)(DMath.HalfPi * P.Radius / (1 << p.Level) / N);
+            float roadLod = Edge(48f, 20f, quad);
             // villages near this patch
             _near.Clear();
             {
@@ -626,7 +635,7 @@ namespace TC2.Game
                         col = VillageGround(w, st, _near[q], vx, vy, col);
                         VillageVerts++;
                     }
-                    float road = RoadAt(P, d, c);
+                    float road = RoadAt(P, d, c, quad) * roadLod;
                     if (road > 0) col = Color.Lerp(col, Road, road * 0.85f);
                     // natural variation: meadow patches warmer or cooler, small brightness noise
                     float hue = (float)Noise.Fbm(d.X * 9.0, d.Y * 9.0, d.Z * 9.0, 2);
@@ -639,8 +648,17 @@ namespace TC2.Game
                     // rock on steep ground
                     float rock = Edge(0.10f, 0.30f, slope);
                     if (rock > 0) col = Color.Lerp(col, Color.Lerp(Rock, RockDark, Mathf.Clamp01(slope * 1.6f - 0.3f)), rock);
+                    // a volcano: dark lava rock at the summit, ash and cinders down the flanks, streaked by its gullies
+                    double cone = VolcanoShape.At(P, d, c, out float vrock, out float summit);
+                    if (vrock > 0)
+                    {
+                        float streak = (float)Noise.Perlin(d.X * 220.0, d.Y * 220.0, d.Z * 220.0);
+                        Color ash = Color.Lerp(VolcanoAsh, VolcanoRock, Mathf.Clamp01(vrock * 1.3f - 0.2f + 0.25f * streak));
+                        col = Color.Lerp(col, ash, Mathf.Clamp01(vrock * 1.15f));
+                        if (summit > 0) col = Color.Lerp(col, VolcanoCrater, summit * 0.8f);
+                    }
                     // snow: the cell's climate at this height (lapse), the season, and ice sheets
-                    double t = P.TMean[c] - 0.0065 * (rel - (P.Elev[c] - sea) * Ground.VScale) / Ground.VScale + P.TAmp[c] * season * (P.SinLat[c] >= 0 ? 1 : -1);
+                    double t = P.TMean[c] - 0.0065 * (rel - (Ground.DrawnElev(P, c) - sea) * Ground.VScale + cone) / Ground.VScale + P.TAmp[c] * season * (P.SinLat[c] >= 0 ? 1 : -1);
                     float snow = Mathf.Clamp01((float)(-t / 4.0 + 0.2)) * (1f - rock * 0.6f);
                     if (P.Ice[c] > 2f) snow = 1f;
                     if (snow > 0) col = Color.Lerp(col, P.Ice[c] > 2f ? Glacier : Snow, snow);

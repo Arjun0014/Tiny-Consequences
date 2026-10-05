@@ -21,6 +21,7 @@ namespace TC2.Game
         static readonly int SunDir = Shader.PropertyToID("_TC2SunDir");
         static readonly int SeaRadius = Shader.PropertyToID("_TC2SeaRadius");
         static readonly int TiltShift = Shader.PropertyToID("_TC2TiltShift");
+        static readonly int MoonDir = Shader.PropertyToID("_TC2MoonDir");
         Volume _volume;
         public Color Horizon;
 
@@ -59,13 +60,16 @@ namespace TC2.Game
             Vector3 up = cam.normalized, toSun = -Sun.transform.forward;
             float elev = Vector3.Dot(up, toSun);                 // sun height seen from under the camera
             float day = Mathf.Clamp01(elev * 3f + 0.25f);
-            Color night = new Color(0.04f, 0.06f, 0.13f), noon = new Color(0.66f, 0.79f, 0.93f), dusk = new Color(0.93f, 0.62f, 0.42f);
+            Color night = new Color(0.06f, 0.09f, 0.19f), noon = new Color(0.66f, 0.79f, 0.93f), dusk = new Color(0.93f, 0.62f, 0.42f);
             float duskness = Mathf.Clamp01(1f - Mathf.Abs(elev) * 4.5f) * Mathf.Clamp01(elev * 6f + 1f);
             Horizon = Color.Lerp(Color.Lerp(night, noon, day), dusk, duskness * 0.55f);
             float density = altitude < 14000f ? Mathf.Lerp(1f / 16000f, 1f / 150000f, Mathf.Sqrt(Mathf.InverseLerp(150f, 14000f, altitude))) : 0f;
             Shader.SetGlobalVector(FogColor, new Vector4(Horizon.linear.r, Horizon.linear.g, Horizon.linear.b, day));
             Shader.SetGlobalFloat(FogDensity, density);
             Shader.SetGlobalVector(SunDir, toSun);
+            // the moon: opposite the sun and a little to the side, so night has a light with a direction
+            Vector3 moon = (Quaternion.AngleAxis(150f, Vector3.up) * toSun + Vector3.up * 0.25f).normalized;
+            Shader.SetGlobalVector(MoonDir, moon);
             // the miniature cue: strong close to the ground, gone by the region view
             Shader.SetGlobalFloat(TiltShift, 1f - Mathf.InverseLerp(120f, 2600f, altitude));
             Shader.SetGlobalFloat(SeaRadius, (float)(w.Planet.Radius + Ground.WaterHeight(w.Planet, w.Planet.SeaLevel)));

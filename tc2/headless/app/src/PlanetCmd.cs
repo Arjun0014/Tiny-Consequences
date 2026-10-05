@@ -45,6 +45,7 @@ namespace TC2.Headless
                 Console.WriteLine(PlanetLine(w));
                 if (a.Has("tect")) Console.WriteLine("      " + _tect);
                 if (a.Has("volc")) Console.WriteLine("      " + VolcLine(w));
+                if (a.Has("quake")) Console.WriteLine("      " + QuakeLine(w));
                 if (mapDir != null) WriteMap(w, Path.Combine(mapDir, "map_" + k.ToString("0000") + ".png"), width);
             }
             FlowHistogram(w);
@@ -69,6 +70,25 @@ namespace TC2.Headless
         }
 
         static string _tect = "";
+
+        static string QuakeLine(World w)
+        {
+            var P = w.Planet; var m = w.Metrics;
+            int faults = 0, near = 0; double maxS = 0;
+            for (int c = 0; c < P.Cells; c++) { if (P.Stress[c] > 0f) faults++; if (P.Stress[c] > 0.8 * TC2.Core.Planet.Quakes.Threshold) near++; if (P.Stress[c] > maxS) maxS = P.Stress[c]; }
+            var sb = new System.Text.StringBuilder();
+            sb.AppendFormat(CultureInfo.InvariantCulture, "faults {0} near-critical {1} maxS {2:0} | quakes by M", faults, near, maxS);
+            for (int i = 4; i < m.Quakes.Length; i++) sb.Append(' ').Append(i).Append(':').Append(m.Quakes[i]);
+            sb.AppendFormat(CultureInfo.InvariantCulture, " | deaths {0} slides {1} waves {2} drowned {3} | village-fault km", m.QuakeDeaths, m.Landslides, m.Tsunamis, m.TsunamiDeaths);
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                var st = w.Settlements.Get(sid);
+                double best = 1e9;
+                for (int c = 0; c < P.Cells; c++) if (w.Tect.Slip[c] > 0.2f) best = Math.Min(best, TC2.Core.Foundation.Vec3d.ArcDistance(P.Grid.Center[c], st.Anchor, P.Radius));
+                sb.Append(' ').Append((best / 1000).ToString("0.0", CultureInfo.InvariantCulture)).Append(st.Inhabited ? "" : "x");
+            }
+            return sb.ToString();
+        }
 
         static string VolcLine(World w)
         {

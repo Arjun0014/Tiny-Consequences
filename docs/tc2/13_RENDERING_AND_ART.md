@@ -51,3 +51,20 @@ translucent sea over the coloured sea floor, surf, meandering rivers, haze/sky/g
 next passes: the miniature reads from soft morning light with long shadows, packed-earth paths and yards, patchwork
 fields with hedges, clustered groves, clear shallows and a broken surf line; flat, uniform greens and evenly
 scattered trees read as a toy. Open: clouds, tilt-shift, close-in grass, night lights, walking animation, boats.
+
+## 6. Look-dev v2-v5 (session 1, D2-027, D2-029)
+
+- v2-v4 (D2-027): clouds from the weather (cubemap of rain and moisture, cloud shadows), tilt-shift by camera height,
+  window lamplight, grass/flowers/reeds/boulders on the finest patches, roads along the villages' routes, seasonal
+  canopies, walking people, a slim HUD.
+- v5 (D2-029): **volcanoes** - a cone per vent in the ground model (`VolcanoShape`: concave flanks for an arc volcano,
+  a broad shield over a plume, a crater bowl, radial gullies; size from its age and eruptions; bare lava rock and
+  cinders at the summit, green lower flanks), **puffs** (`Puff.shader`: soft camera-facing sprites whose size,
+  opacity, ash, glow and seed ride in the instance matrix) for steam from fed vents, a plume volcano's lava-lake
+  fire, eruption columns (height by VEI, umbrella spreading downwind, fire at the base) and the lava's glow down the
+  steepest way, each show lasting its world time or a few real seconds; **gentle shores** (a drawn elevation per cell
+  that ramps land and sea toward the coast by distance in cells - coarse cells against a deep trench drew as
+  cliffs); **moonlight** (a moon opposite the sun in every lit shader, bluer nights) and a sun that the planet hides
+  below the horizon (round canopies caught it from beneath at night); the HUD date on one line.
+- Art notes: volcanoes read best as dark summits on green mountains with a thin white plume; an eruption reads from
+  orbit as a grey column with an orange root; the glow belongs to the night.

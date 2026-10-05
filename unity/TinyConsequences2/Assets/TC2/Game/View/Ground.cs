@@ -25,6 +25,58 @@ namespace TC2.Game
             _r2c = (1.45 * s) * (1.45 * s);
         }
 
+        // the drawn elevation per cell: the simulation's, but shores ramp gently - land near the sea no higher than
+        // 45 m + 110 m per cell inland, sea near land no deeper than 60 m + 400 m per cell out (sim metres). Coarse
+        // cells next to a deep trench would otherwise draw as cliffs; the coastline itself stays where it is.
+        static float[] _drawn;
+        static PlanetState _dp;
+        static int _dRelief = -1, _dCoast = -1;
+        static double _dSea = double.NaN;
+        static int[] _dist;
+
+        static void RefreshDrawn(PlanetState P)
+        {
+            if (P == _dp && P.ReliefVersion == _dRelief && P.CoastVersion == _dCoast && P.SeaLevel == _dSea) return;
+            _dp = P; _dRelief = P.ReliefVersion; _dCoast = P.CoastVersion; _dSea = P.SeaLevel;
+            int n = P.Cells;
+            var g = P.Grid;
+            if (_drawn == null || _drawn.Length != n) { _drawn = new float[n]; _dist = new int[n]; }
+            var queue = new System.Collections.Generic.List<int>(n / 4);
+            for (int c = 0; c < n; c++)
+            {
+                _dist[c] = int.MaxValue;
+                bool land = P.IsLand(c);
+                for (int k = 0; k < 8; k++)
+                    if (P.IsLand(g.Nbr8[c * 8 + k]) != land) { _dist[c] = 0; queue.Add(c); break; }
+            }
+            for (int head = 0; head < queue.Count; head++)
+            {
+                int c = queue[head];
+                int d = _dist[c];
+                if (d >= 4) continue;
+                bool land = P.IsLand(c);
+                for (int k = 0; k < 8; k++)
+                {
+                    int nb = g.Nbr8[c * 8 + k];
+                    if (P.IsLand(nb) != land || _dist[nb] <= d + 1) continue;
+                    _dist[nb] = d + 1;
+                    queue.Add(nb);
+                }
+            }
+            double sea = P.SeaLevel;
+            for (int c = 0; c < n; c++)
+            {
+                double e = P.Elev[c];
+                int d = _dist[c] == int.MaxValue ? 9 : _dist[c];
+                if (P.LakeDepth[c] > 0f) _drawn[c] = (float)e;                       // lakes keep their beds and shores
+                else if (e > sea) _drawn[c] = (float)System.Math.Min(e, sea + 45.0 + 110.0 * d);
+                else _drawn[c] = (float)System.Math.Max(e, sea - 60.0 - 400.0 * d);
+            }
+        }
+
+        /// <summary>A cell's elevation as drawn (sim metres; the shore ramp applied).</summary>
+        public static double DrawnElev(PlanetState P, int c) { RefreshDrawn(P); return _drawn[c]; }
+
         /// <summary>The simulation's surface (rock + ice) interpolated at a direction; also returns the containing cell.</summary>
         public static double SimElevation(PlanetState P, Vec3d dir, out int cell) => SimElevation(P, dir, out cell, out _);
 
@@ -32,20 +84,22 @@ namespace TC2.Game
         public static double SimElevation(PlanetState P, Vec3d dir, out int cell, out double lake)
         {
             if (_r2 < 0) Init(P);
+            RefreshDrawn(P);
+            var E = _drawn;
             var g = P.Grid;
             int c = g.CellOf(dir);
             cell = c;
             double sw = 0, s = 0, sl = 0, si = 0, swi = 0;
-            Accum(g.Center[c], P.Elev[c], P.LakeDepth[c], dir, _r2, ref s, ref sl, ref sw);
+            Accum(g.Center[c], E[c], P.LakeDepth[c], dir, _r2, ref s, ref sl, ref sw);
             AccumIce(g.Center[c], P.Ice[c], dir, ref si, ref swi);
             for (int k = 0; k < 8; k++)
             {
                 int n = g.Nbr8[c * 8 + k];
-                Accum(g.Center[n], P.Elev[n], P.LakeDepth[n], dir, _r2, ref s, ref sl, ref sw);
+                Accum(g.Center[n], E[n], P.LakeDepth[n], dir, _r2, ref s, ref sl, ref sw);
                 AccumIce(g.Center[n], P.Ice[n], dir, ref si, ref swi);
             }
             double ice = swi > 1e-12 ? si / swi : P.Ice[c];
-            if (sw <= 1e-12) { lake = P.LakeDepth[c]; return P.Elev[c] + ice; }
+            if (sw <= 1e-12) { lake = P.LakeDepth[c]; return E[c] + ice; }
             lake = sl / sw;
             return s / sw + ice;
         }
@@ -119,14 +173,16 @@ namespace TC2.Game
             double sea = P.SeaLevel;
             double rel = e - sea;
             double quiet = lake > 0 ? 1.0 - Smooth01(lake / 1.5) * 0.85 : 1.0; // lake beds and shores stay smooth
+            double cone = VolcanoShape.At(P, dir, cell, out float coneRock, out _);
+            quiet *= 1.0 - 0.75 * coneRock;                                    // a cone's flanks are its own shape
             if (rel < 0)
             {
                 // a gentle shelf: clear shallows along every coast, the deep further out
                 double depth = -rel;
                 double drawn = 26.0 * (1.0 - System.Math.Exp(-depth / 170.0)) + 0.11 * depth;
-                return sea - drawn + Detail(dir, rel) * quiet * System.Math.Min(1.0, depth / 60.0);
+                return sea - drawn + Detail(dir, rel) * quiet * System.Math.Min(1.0, depth / 60.0) + cone; // a cone runs on into the sea
             }
-            return sea + rel * VScale + Detail(dir, rel) * quiet;
+            return sea + rel * VScale + Detail(dir, rel) * quiet + cone;
         }
 
         public static double Height(PlanetState P, Vec3d dir) => Height(P, dir, out _);

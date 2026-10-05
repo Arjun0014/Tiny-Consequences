@@ -54,6 +54,8 @@ namespace TC2.Game
             sky.Host = host; sky.Rig = rig; sky.Sun = sun;
             var objects = views.AddComponent<WorldObjectsView>();
             objects.Host = host; objects.Rig = rig;
+            var volcanoes = views.AddComponent<VolcanoView>();
+            volcanoes.Host = host; volcanoes.Rig = rig;
 
             var hud = gameObject.AddComponent<Hud>();
             hud.Host = host; hud.Rig = rig; hud.Objects = objects;
