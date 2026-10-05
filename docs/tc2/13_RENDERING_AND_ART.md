@@ -1,0 +1,44 @@
+# TC2-13 — Rendering and art direction
+
+Decision: D2-011 (URP; WebGPU first, WebGL2 fallback; instancing without BRG). Quality bar: a readable,
+charming diorama from orbit; believable, dense life up close; strong light, lovely terrain, convincing
+water, clouds and weather; the passage of ages visible (scars, ruins, coasts, forests).
+
+## 1. Art direction (initial)
+- **Stylised natural**: low-to-mid poly forms with soft gradients, not flat-shaded toy primitives
+  (Arjun's TC1 feedback: "too comical/simple"). Saturated but natural palette; biome colour harmony
+  (grass greens shifting with season and moisture, ochre drylands, blue-white ice).
+- **Light**: one sun with soft shadows, sky and ground ambient, warm sunsets; rim atmosphere from orbit;
+  night side with settlement lights (lit windows from people awake inside).
+- **Scale**: real proportions close in; objects (trees, buildings, people) exaggerated progressively as
+  the camera rises so towns and forests read from orbit; mountains vertically exaggerated (~1.5-2x).
+- **Ages visible**: scars persist (burnt ground greening over years, ruins weathering, abandoned fields
+  returning to forest, new coasts), settlement architecture changes with knowledge and materials.
+
+## 2. Architecture
+| Layer | Technique | Data source |
+|---|---|---|
+| Camera | orbit -> region -> close continuous zoom; camera-relative (floating origin) rendering | Game |
+| Terrain | cube-sphere faces as quadtree patches; vertex displacement from per-face height textures (sim elevation upsampled + deterministic detail); normals from height; material weights from fields | N64 fields -> textures, updated on change |
+| Ocean | sea-level sphere: depth tint, Fresnel, sun glint, procedural waves, coast foam from a coast distance texture | elevation + sea level |
+| Atmosphere | outer shell, rim scattering | sun direction |
+| Clouds | shell textured from the climate cloud field + procedural detail; shadows from the same texture | N32 cloud |
+| Vegetation | instanced trees and shrubs (several species-shaped variants) placed by keyed hashing per cell x density; LOD and distance culling; far: terrain colour | PFT biomass |
+| Settlements | buildings assembled from a modular kit (footings, walls, frames, roofs, towers, gates) per building descriptor and construction state; roads and fields as meshes/decals | layout + building states |
+| Agents | low-poly people and animals, GPU-instanced, vertex animation textures (no skinned renderers at scale) | positions from activities + elaboration |
+| Effects | fire and smoke, rain and snow, lightning, dust, ash | processes and weather |
+| UI | UI Toolkit (runtime): HUD, inspector, news, History Book, catch-up screen | Core views |
+
+- Instancing: `Graphics.RenderMeshInstanced` with instanced properties (both APIs); WebGPU may later use
+  `RenderMeshIndirect` with structured buffers and compute culling. No BRG, no Entities Graphics (Web).
+- Shaders hand-written for URP (HLSL including URP's core and lighting libraries), compiled for GLSL ES 3.0
+  (WebGL2) and WGSL (WebGPU); no compute dependency in the WebGL2 path.
+
+## 3. Budgets (initial; to be measured)
+60 fps at 1080p on a mid-range GPU: terrain <= 400K triangles visible, <= 20K tree instances close/mid,
+<= 2,000 people and animals drawn, <= 150 draw calls; texture memory <= 512 MB.
+
+## 4. Foundation (F0) proof
+The planet as six displaced face meshes coloured by biome, a sea sphere, a rim atmosphere, instanced
+trees from vegetation, settlements as clusters of simple buildings, agents as instanced figures moving on
+their analytic paths, fire cells glowing - built for the Web (WebGPU and WebGL2), screenshot-checked.

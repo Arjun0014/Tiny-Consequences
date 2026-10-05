@@ -25,3 +25,44 @@ assets/3d-models/animals_quaternius/Preview.gif
 # secrets (ElevenLabs key etc.) - never committed
 .env
 .env.*
+
+# ---- Tiny Consequences 2.0 (Unity) ----
+# Unity-generated folders (never commit)
+unity/**/[Ll]ibrary/
+unity/**/[Tt]emp/
+unity/**/[Oo]bj/
+unity/**/[Ll]ogs/
+unity/**/[Bb]uild/
+unity/**/[Bb]uilds/
+unity/**/[Uu]ser[Ss]ettings/
+unity/**/[Mm]emoryCaptures/
+unity/**/[Rr]ecordings/
+unity/**/.vs/
+unity/**/.vscode/
+unity/**/.idea/
+unity/**/*.csproj
+unity/**/*.sln
+unity/**/*.slnx
+unity/**/*.suo
+unity/**/*.user
+unity/**/*.pidb
+unity/**/*.booproj
+unity/**/*.svd
+unity/**/*.pdb
+unity/**/*.mdb
+unity/**/*.opendb
+unity/**/*.VC.db
+unity/**/*.apk
+unity/**/*.aab
+unity/**/*.unitypackage
+unity/**/crashlytics-build.properties
+unity/**/sysinfo.txt
+unity/**/TestResults*.xml
+unity/**/Assets/StreamingAssets/aa/
+unity/**/Assets/TC2Generated/
+# TC2 tooling outputs
+tc2/out/
+tc2/**/bin/
+tc2/**/obj/
+tc2/web-build/
+tc2/node_modules/

@@ -1,0 +1,65 @@
+# TC2-05 — Planet simulation
+
+Grid and scale: D2-007 (equiangular cubed sphere; N32 climate, N64 surface; R = 10 km). Rates: `04` §3.
+Laws: `01_WORLD_LAWS.md`. Research: `02_RESEARCH.md` §5.
+
+## 1. The grid
+
+- Face f in 0..5, cell (i, j) in 0..N-1; index `f*N*N + j*N + i`. Cell centre: the cube point
+  `(tan a, tan b, 1)` rotated to face f, normalised, with `a, b` equally spaced angles in [-pi/4, pi/4]
+  (equiangular). Precomputed per level: centre unit vectors, areas (exact spherical quadrilateral areas),
+  4 edge neighbours + 4 corner neighbours across seams, and a lookup from a unit vector to its cell.
+- Parent/child mapping between levels (N32 <-> N64: 2x2) for coupling climate and surface fields.
+
+## 2. State (initial set; adding a field needs a DECISIONS entry)
+
+| Field | Grid | Meaning |
+|---|---|---|
+| `elev` | N64 | elevation (m) relative to the reference sphere |
+| `crust`, `crustThick`, `crustAge`, `plate` | N64 | continental/oceanic crust, thickness, age, plate id |
+| `stress` | N64 | accumulated boundary stress (quakes) |
+| `rock`, `soilDepth`, `fertility` | N64 | bedrock hardness/kind, soil, nutrients |
+| `temp`, `tempMeanYear` | N32 | air temperature now; running annual mean |
+| `moist`, `precip`, `cloud` | N32 | atmospheric water, precipitation in the last step, cloud cover |
+| `ice` | N64 | snow/ice water equivalent (land and sea) |
+| `soilWater`, `runoff`, `flow`, `lake` | N64 | hydrology; flow on the drainage DAG |
+| `veg[pft]` | N64 | biomass per plant functional type (grass, shrub, broadleaf, conifer, crop) |
+| `fuel`, `burning` | N64 | dead fuel; active fire intensity (sparse set) |
+| global | - | CO₂, aerosol, sea level, ice volume, orbital phase, ledgers of contributors |
+
+Cause tags (`11` §6) accompany the causal fields: burning, drought anomaly, flood, ash, ice.
+
+## 3. Systems (foundation versions first, full versions in F1)
+
+1. **Insolation and temperature** (N32, 6 h): daily-mean insolation by latitude, declination and orbital
+   phase; energy balance `C dT/dt = S(1-a) - (A + B T) + G(CO₂) + D·Lap(T)` with land/ocean heat capacity,
+   albedo from ice and vegetation; elevation lapse rate applied when sampling for N64.
+2. **Moisture and precipitation** (N32): evaporation by temperature and surface; advection along
+   prevailing wind bands (trades, westerlies, polar easterlies shifting with season); precipitation where
+   moisture exceeds capacity (orographic lift from N64 relief); snow below 0 °C.
+3. **Weather realisation** (daily): wet/dry spell Markov chain per climate cell keyed by (cell, day);
+   storm entities spawned over warm seas, moving with the wind, carrying their own rain and wind.
+4. **Hydrology** (N64, daily): soil bucket with infiltration excess and saturation excess runoff
+   (TC1 D-179: excess runs off without leaving the soil twice); flow accumulation down a drainage DAG
+   (priority-flood filled; rebuilt when relief or sea level changes); lakes in closed basins; rivers are
+   cells with flow above a threshold.
+5. **Vegetation and soil** (N64, 4 days): PFT growth by temperature, water, light and fertility;
+   competition for space; succession grass -> shrub -> forest; seed rain from neighbours (no life from
+   nothing); fire, grazing, clearing and blight as losses; fuel from litter.
+6. **Fire** (PROCESS while active): ignition by lightning (storms x dryness x fuel), people, lava,
+   impacts; spread to neighbours by fuel, dryness, wind and slope; burn-out; heat and ash; cause tags.
+7. **Tectonics** (decadal): plate rotations; semi-Lagrangian advection of crust properties per plate;
+   boundaries classified by relative motion (convergent / divergent / transform); uplift at collisions,
+   trenches and arcs at subduction, new crust at ridges; stress accumulation -> quake events; volcano
+   pressure -> eruption events.
+8. **Erosion** (decadal): stream power incision (Braun-Willett implicit O(n) on the drainage DAG), hillslope
+   diffusion, deposition in basins and at coasts, weathering to soil.
+9. **Global climate** (daily): CO₂ sources (volcanoes, fires, burning, clearing) and sinks (growth,
+   weathering, ocean), aerosol decay, ice volume -> sea level -> coastline reclassification events.
+
+## 4. Proof-of-concept scope (F0)
+
+Grid with neighbours and lookup; worldgen of relief from a few plates (static in F0) and noise; a sea
+level; a simple climate (latitude + elevation + season temperature; moisture from coasts and wind bands);
+biomes for colour and fuel; dryness; the fire process with spread, cause tags and history; deterministic
+lightning from a storm chance. The full systems follow in F1.
