@@ -52,7 +52,7 @@ namespace TC2.EditorTools
             string outFile = null;
             var a = System.Environment.GetCommandLineArgs();
             for (int i = 0; i < a.Length - 1; i++) if (a[i] == "-tc2Out") outFile = a[i + 1];
-            if (outFile != null) File.WriteAllText(outFile, probe);
+            if (outFile != null) File.WriteAllText(outFile, TC2.Core.Diagnostics.CrossRuntime.Parts() + "\n" + probe);
             Debug.Log("[TC2] hashtest " + probe);
         }
     }

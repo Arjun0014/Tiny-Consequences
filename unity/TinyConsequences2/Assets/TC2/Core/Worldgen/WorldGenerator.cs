@@ -320,7 +320,7 @@ namespace TC2.Core.Worldgen
                 int hid = w.Ids.Next(EntityKind.Household);
                 ref var srr = ref w.Settlements.Get(sid);
                 srr.LotPosition(srr.Lots++, out float hx, out float hy);
-                var hh = new Household { Id = hid, Settlement = sid, Formed = w.Now, FamilyName = hid, HomeX = hx, HomeY = hy, Larder = 6, Shelter = Construction.House };
+                var hh = new Household { Id = hid, Settlement = sid, Formed = w.Now, FamilyName = hid, HomeX = hx, HomeY = hy, Larder = 6, Shelter = Construction.House, Water = 30f, Indoor = (float)Hearth.Comfort };
                 w.Households.Add(hid, hh);
                 w.HouseholdsOf(sid).InsertSorted(hid);
                 w.History.Register(EntityRef.Household(hid), Names.Family(seed, hid), w.Now);

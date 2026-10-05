@@ -106,7 +106,7 @@ namespace TC2.Core.Planet
             {
                 int c = Stack[i];
                 int r = Receiver[c];
-                if (r >= 0 && P.IsLand(r)) AreaHa[r] += AreaHa[c];
+                if (r >= 0 && P.IsLand(r)) AreaHa[r] = (float)((double)AreaHa[r] + AreaHa[c]);
             }
             BuildBasins(P);
             BuiltSeaLevel = sea;
@@ -222,7 +222,7 @@ namespace TC2.Core.Planet
             {
                 int c = Stack[i];
                 int r = Receiver[c];
-                if (r >= 0 && P.IsLand(r)) Discharge[r] += Discharge[c];
+                if (r >= 0 && P.IsLand(r)) Discharge[r] = (float)((double)Discharge[r] + Discharge[c]);
             }
         }
 
@@ -245,11 +245,11 @@ namespace TC2.Core.Planet
             {
                 int c = Stack[i];
                 int eb = _exitBasin[c];
-                if (eb >= 0) Discharge[c] += (float)Settle(P, eb, ref evaporated); // all of that basin's inflow is in
+                if (eb >= 0) Discharge[c] = (float)(Discharge[c] + Settle(P, eb, ref evaporated)); // all of that basin's inflow is in
                 int bc = BasinOf[c];
                 if (bc >= 0) { BasinInflow[bc] += Discharge[c]; continue; } // what enters a depression is in it
                 int r = Receiver[c];
-                if (r >= 0 && P.IsLand(r)) Discharge[r] += Discharge[c];
+                if (r >= 0 && P.IsLand(r)) Discharge[r] = (float)((double)Discharge[r] + Discharge[c]);
             }
             // basins spilling straight into the sea (none with a land exit is left unsettled)
             for (int b = 0; b < BasinCount; b++) if (!P.IsLand(BasinExit[b])) Settle(P, b, ref evaporated);
@@ -303,7 +303,7 @@ namespace TC2.Core.Planet
                 int b = BasinOf[c];
                 if (b >= 0 && DeepestCell(b) == c) continue;
                 P.LakeWater[c] = 0f;
-                if (b >= 0) P.LakeWater[DeepestCell(b)] += v;
+                if (b >= 0) { int deep = DeepestCell(b); P.LakeWater[deep] = (float)((double)P.LakeWater[deep] + v); }
             }
             for (int b = 0; b < BasinCount; b++)
             {

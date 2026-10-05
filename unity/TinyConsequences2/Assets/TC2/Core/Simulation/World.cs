@@ -27,6 +27,8 @@ namespace TC2.Core.Simulation
         public long BeastBirths, BeastDeaths, BeastsTaken, BeastsEaten, BeastsFeral;   // livestock (D2-048): born, died, taken by wolves, slaughtered, gone wild
         public long TendDays;                                                         // household-days someone took the animals out (D2-050)
         public double BeastFu;                                            // FU of meat from slaughter
+        public double PrepHours, PrepFu, WaterHours;                      // the households' own work: hours making food ready, FU made, hours carrying water (D2-056)
+        public long WaterTrips, ColdDeaths, ColdSpells;                   // trips to the well; deaths the cold at home caused; spells of cold homes
 
         public void Write(BinWriter w)
         {
@@ -43,6 +45,7 @@ namespace TC2.Core.Simulation
             w.Double(GameKg); w.Double(FishKg); w.Double(GatherKg); w.Double(WildHours); w.Double(WildFu);
             w.Long(Parties); w.Long(Foundings); w.Long(Scouts);
             w.Long(BeastBirths); w.Long(BeastDeaths); w.Long(BeastsTaken); w.Long(BeastsEaten); w.Long(BeastsFeral); w.Double(BeastFu); w.Long(TendDays);
+            w.Double(PrepHours); w.Double(PrepFu); w.Double(WaterHours); w.Long(WaterTrips); w.Long(ColdDeaths); w.Long(ColdSpells);
         }
 
         public void Read(BinReader r)
@@ -60,6 +63,7 @@ namespace TC2.Core.Simulation
             GameKg = r.Double(); FishKg = r.Double(); GatherKg = r.Double(); WildHours = r.Double(); WildFu = r.Double();
             Parties = r.Long(); Foundings = r.Long(); Scouts = r.Long();
             BeastBirths = r.Long(); BeastDeaths = r.Long(); BeastsTaken = r.Long(); BeastsEaten = r.Long(); BeastsFeral = r.Long(); BeastFu = r.Double(); TendDays = r.Long();
+            PrepHours = r.Double(); PrepFu = r.Double(); WaterHours = r.Double(); WaterTrips = r.Long(); ColdDeaths = r.Long(); ColdSpells = r.Long();
         }
 
         public Metrics Clone() { var m = (Metrics)MemberwiseClone(); return m; }
@@ -105,7 +109,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 14; // 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
+        public const int FormatSimVersion = 15; // 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
@@ -544,7 +548,7 @@ namespace TC2.Core.Simulation
             {
                 Kind = HistoryKind.Speciation, Time = Now, Cell = cell, Settlement = cell >= 0 ? NearestSettlement(cell, 9000) : 0, RootKind = RootKind.Nature,
                 Subject = new EntityRef(EntityKind.Species, P.Species[child].Id), Object = new EntityRef(EntityKind.Species, P.Species[parent].Id),
-                Magnitude = P.Species[child].ColdTol - P.Species[parent].ColdTol,
+                Magnitude = (float)((double)P.Species[child].ColdTol - P.Species[parent].ColdTol),
             });
         }
 
@@ -589,7 +593,7 @@ namespace TC2.Core.Simulation
                 Tier = vei >= 4 ? Tier.Historical : Tier.Local, Magnitude = vei, ArgA = vt.Id, Subject = new EntityRef(EntityKind.Place, vt.Id),
             });
             // the cone it piles up joins the relief at the next tectonic step, where the drainage is rebuilt
-            vt.Cone += (float)(22.0 * vei);
+            vt.Cone = (float)(vt.Cone + 22.0 * vei);
             // lava down the steepest way
             int cur = c, length = 1 + (vei * 3) / 2;
             for (int k = 0; k < length; k++)
@@ -612,7 +616,7 @@ namespace TC2.Core.Simulation
             for (int a = 0; a < P.Cells; a++)
             {
                 if (!P.IsLand(a) || Vec3d.Dot(g.Center[a], vat) < ashCos) continue;
-                P.Grass[a] *= 0.7f; P.Forest[a] *= 0.93f;
+                P.Grass[a] = (float)(P.Grass[a] * 0.7); P.Forest[a] = (float)(P.Forest[a] * 0.93);
                 int owner = P.FieldOwner[a];
                 if (owner != 0 && !hit.Contains(owner)) hit.Add(owner);
             }
@@ -736,11 +740,11 @@ namespace TC2.Core.Simulation
                 int low = c; float le = P.Elev[c];
                 for (int k = 0; k < 8; k++) { int nb = g.Nbr8[c * 8 + k]; if (P.Elev[nb] < le) { le = P.Elev[nb]; low = nb; } }
                 if (low == c) continue;
-                double slope = (P.Elev[c] - le) / P.CellSize;
+                double slope = ((double)P.Elev[c] - le) / P.CellSize;
                 if (slope < 0.8) continue;
                 double pr = DMath.Min(0.9, 0.08 * (mmi - 6.5) * DMath.Min(2.0, slope / 0.8));
                 if (KeyedRng.Unit(Seed, RngStream.Tectonics, (ulong)c, (ulong)Now, 74) >= pr) continue;
-                double drop = DMath.Min(40.0, 0.15 * (P.Elev[c] - le));
+                double drop = DMath.Min(40.0, 0.15 * ((double)P.Elev[c] - le));
                 P.Elev[c] = (float)(P.Elev[c] - drop);
                 P.Elev[low] = (float)(P.Elev[low] + 0.9 * drop);
                 if (P.Forest[c] > 0.05f) P.Forest[c] = 0.05f;
@@ -805,7 +809,7 @@ namespace TC2.Core.Simulation
                 Cause1 = cause, Rel1 = CauseRel.CausedBy, Magnitude = (float)h0, ArgA = flooded.Count,
             });
             var mark = new HashSet<int>(flooded);
-            foreach (int c in flooded) { P.Forest[c] *= 0.5f; P.Grass[c] *= 0.3f; Fx.Add(Now, c, FxKind.Wave, (float)h0); }
+            foreach (int c in flooded) { P.Forest[c] = (float)(P.Forest[c] * 0.5); P.Grass[c] = (float)(P.Grass[c] * 0.3); Fx.Add(Now, c, FxKind.Wave, (float)h0); }
             var sids = new List<int>(hit.Keys);
             sids.Sort();
             foreach (int sid in sids)
@@ -909,7 +913,7 @@ namespace TC2.Core.Simulation
                 P.Storms[i] = st;
             }
             for (int i = P.Storms.Count - 1; i >= 0; i--)
-                if (TC2.Core.Planet.Storms.Spent(P.Storms[i], Now)) { Metrics.StormPeaks[(int)DMath.Clamp(P.Storms[i].Peak / 10f, 0, 7)]++; P.Storms.RemoveAt(i); }
+                if (TC2.Core.Planet.Storms.Spent(P.Storms[i], Now)) { Metrics.StormPeaks[(int)DMath.Clamp(P.Storms[i].Peak / 10.0, 0, 7)]++; P.Storms.RemoveAt(i); }
             if (P.Storms.Count > 0) Queue.Push(Now + TC2.Core.Planet.Storms.StepSeconds, Phase.Process, EventKind.StormStep, 0);
         }
 
@@ -963,7 +967,7 @@ namespace TC2.Core.Simulation
             var mark = new HashSet<int>(flooded);
             foreach (int c in flooded)
             {
-                P.Forest[c] *= 0.7f; P.Grass[c] *= 0.5f;
+                P.Forest[c] = (float)(P.Forest[c] * 0.7); P.Grass[c] = (float)(P.Grass[c] * 0.5);
                 Fx.Add(Now, c, FxKind.Wave, (float)h0);
                 int o = P.FieldOwner[c]; if (o != 0) hit[o] = hit.TryGetValue(o, out int n) ? n + 1 : 1;
             }

@@ -86,8 +86,9 @@ namespace TC2.Game
         readonly List<Vector4> _smoke = new List<Vector4>();   // chimney tops with smoke (xyz) and how much (w)
 
         /// <summary>
-        /// Smoke from the chimneys of houses whose people are home and awake: cooking in the morning and evening, a fire
-        /// all day when it is cold. Soft puffs that rise and drift with the wind; only near the camera.
+        /// Smoke from the chimneys of houses whose people are home and awake: while one of them cooks, and all day while the
+        /// hearth burns against the cold (the simulation's own cooking and fires, D2-056). Soft puffs that rise and drift with
+        /// the wind; only near the camera.
         /// </summary>
         void EmitSmoke(TC2.Core.Simulation.World w)
         {
@@ -157,15 +158,18 @@ namespace TC2.Game
             return 0;
         }
 
-        static bool SomeoneAwakeHome(TC2.Core.Simulation.World w, int household)
+        static bool SomeoneAwakeHome(TC2.Core.Simulation.World w, int household, out bool cooking)
         {
             var m = w.Members(household);
+            bool awake = false; cooking = false;
             for (int i = 0; i < m.Count; i++)
             {
                 ref var p = ref w.People.Get(m[i]);
-                if (p.Alive && p.Act != ActivityKind.Sleep && p.At == p.Home && p.Step != StepKind.Travel) return true;
+                if (!p.Alive || p.Act == ActivityKind.Sleep || p.At != p.Home || p.Step == StepKind.Travel) continue;
+                awake = true;
+                if (p.Act == ActivityKind.Cook) cooking = true;
             }
-            return false;
+            return awake;
         }
 
         Matrix4x4 Place(PlanetState P, in Settlement s, double x, double y, float yaw, float scale, float lift = 0f)
@@ -191,9 +195,7 @@ namespace TC2.Game
                 // after dark, a house whose people are home and awake shows its windows
                 Vector3 toSun = Rig != null && Rig.Sun != null ? -Rig.Sun.transform.forward : Vector3.up;
                 bool dark = Vector3.Dot(PlanetGeo.ToVector(s.Anchor), toSun) < 0.06f;
-                double hour = SimTime.FloorMod(w.Now + w.LocalOffsetOf(sid), SimTime.Day) / (double)SimTime.Hour;
-                bool cooking = (hour >= 5.5 && hour < 9.0) || (hour >= 16.5 && hour < 21.0);
-                bool cold = P.Temp[s.Cell] < 11f;
+                double tOut = w.PlanetSys.DayMean(s.Cell, PlanetSystems.Season(w.Now));   // the day the hearths burn against
                 for (int i = 0; i < hhs.Count; i++)
                 {
                     ref var h = ref w.Households.Get(hhs[i]);
@@ -202,7 +204,7 @@ namespace TC2.Game
                     float yaw = Mathf.Atan2(s.SquareX - h.HomeX, s.SquareY - h.HomeY) * Mathf.Rad2Deg + 180f + ((hhs[i] * 37) % 21 - 10);
                     ulong hh = KeyedRng.Mix((ulong)hhs[i] + 77);
                     float age = 0.88f + 0.2f * (float)KeyedRng.Unit(hh);           // weathering of roofs and walls
-                    bool awake = SomeoneAwakeHome(w, hhs[i]);
+                    bool awake = SomeoneAwakeHome(w, hhs[i], out bool cooking);
                     bool lit = dark && awake;
                     // what its people have raised (D2-045): a camp of hides, a round hut, a house
                     if (h.Shelter == Construction.Camp)
@@ -217,11 +219,13 @@ namespace TC2.Game
                     }
                     var m = Place(P, s, h.HomeX, h.HomeY, yaw, ex);
                     _houseKinds[kind].Add((int)(age * 10) + (lit ? 100 : 0), new Color(age, age * 0.98f, age * 0.94f, 1f), m, lit ? -1f : 0f);
-                    // a fire in the hearth: cooking in the morning and the evening, all day when it is cold
-                    if (awake && _hasChimney != null && _hasChimney[kind] && (cooking || cold))
+                    // a fire in the hearth: while someone cooks, and all day while it burns against the cold (what today's
+                    // fire adds to the house's warmth, D2-056)
+                    double heat = h.Indoor - Hearth.Indoors(tOut, h.Shelter, 0.0);
+                    if (awake && _hasChimney != null && _hasChimney[kind] && (cooking || heat > 0.5))
                     {
                         Vector3 top = m.MultiplyPoint3x4(_chimneyTop[kind]);
-                        _smoke.Add(new Vector4(top.x, top.y, top.z, cooking ? 1f : 0.6f));
+                        _smoke.Add(new Vector4(top.x, top.y, top.z, cooking ? 1f : (float)(0.35 + 0.4 * System.Math.Min(1.0, heat / 8.0))));
                     }
                 }
                 Beached(w, P, in s, sid, ex);

@@ -147,7 +147,7 @@ namespace TC2.Core.Planet
                     incr[gr.id] = (float)((2.0 * u - 1.0) * 1.7320508 * step);   // uniform, standard deviation `step`
                 }
                 var drift = P.Drift;
-                for (int c = 0; c < n; c++) if (_mark[c] != 0) drift[s * n + c] += incr[_mark[c]];
+                for (int c = 0; c < n; c++) if (_mark[c] != 0) drift[s * n + c] = (float)((double)drift[s * n + c] + incr[_mark[c]]);
                 if (P.Species.Count >= MaxSpecies) break;
             }
             Compact(P);

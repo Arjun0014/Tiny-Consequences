@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Determinism lint (D2-057): every arithmetic operation typed float in TC2.Core, which Mono (the Unity editor) may carry
+       out at double precision where CoreCLR and IL2CPP round to single. Roslyn from the editor's bundled SDK. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>floatcheck</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.CodeAnalysis">
+      <HintPath>C:/Program Files/Unity/Hub/Editor/6000.6.4f1/Editor/Data/DotNetSdk/sdk/8.0.318/Roslyn/bincore/Microsoft.CodeAnalysis.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.CodeAnalysis.CSharp">
+      <HintPath>C:/Program Files/Unity/Hub/Editor/6000.6.4f1/Editor/Data/DotNetSdk/sdk/8.0.318/Roslyn/bincore/Microsoft.CodeAnalysis.CSharp.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

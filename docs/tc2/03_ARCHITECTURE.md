@@ -92,7 +92,9 @@ populations, herds), `Agents` (persons, households, body, decisions, activities,
   fixed-capacity slices or chunked lists keyed by owner id.
 - **Fields**: `float[]`/`double[]` per quantity indexed by cell; neighbour reads use the previous step's
   buffer (double buffering) so update order cannot leak into results.
-- **Arithmetic**: `double` in all sim logic (storage may be `float`); transcendentals only via `DMath`.
+- **Arithmetic**: `double` in all sim logic (storage may be `float`: cast when stored); transcendentals only via `DMath`. No
+  operation may be typed `float` - Mono carries float arithmetic at double precision where CoreCLR and IL2CPP round to single;
+  `tc2/tools/floatcheck` fails the headless tests on any (D2-057).
 - **Allocation discipline**: no allocation per event in hot paths (pools, preallocated scratch); the Web GC
   only runs between frames.
 

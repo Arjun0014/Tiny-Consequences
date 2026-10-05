@@ -118,7 +118,7 @@ namespace TC2.Core.Agents
                     int nb = grid.Nbr8[c * 8 + k];
                     if (nb == c || !P.IsLand(nb)) continue;
                     double d = Vec3d.ArcDistance(grid.Center[c], grid.Center[nb], P.Radius);
-                    double climb = DMath.Abs(P.Elev[nb] - P.Elev[c]) / Math.Max(1.0, d);
+                    double climb = DMath.Abs((double)P.Elev[nb] - P.Elev[c]) / Math.Max(1.0, d);
                     double cost = d * (1.0 + 4.0 * climb + 0.35 * P.Forest[nb]);
                     double ng = gc + cost;
                     if (_stamp[nb] != _stampNow || ng < _g[nb] - 1e-9)

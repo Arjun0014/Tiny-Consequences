@@ -97,7 +97,7 @@ namespace TC2.Core.Planet
         public bool IsLand(int c) => Elev[c] > SeaLevel;
 
         /// <summary>The surface water runs over: rock plus the ice the drainage was built with.</summary>
-        public double DrainSurface(int c) => Elev[c] + DrainIce[c];
+        public double DrainSurface(int c) => (double)Elev[c] + DrainIce[c];
 
         /// <summary>Open water stands on the cell (a lake deeper than 0.3 m).</summary>
         public bool IsLake(int c) => LakeDepth[c] > 0.3f;
@@ -130,7 +130,7 @@ namespace TC2.Core.Planet
             double m = Moist[c];
             double wet = DMath.SmoothStep(0.15, 0.35, m) * (1.0 - 0.5 * DMath.SmoothStep(0.85, 1.0, m));
             double steep = 0;
-            for (int k = 0; k < 4; k++) steep = DMath.Max(steep, DMath.Abs(Elev[Grid.Nbr4[c * 4 + k]] - Elev[c]));
+            for (int k = 0; k < 4; k++) steep = DMath.Max(steep, DMath.Abs((double)Elev[Grid.Nbr4[c * 4 + k]] - Elev[c]));
             double flat = 1.0 - DMath.SmoothStep(60, 260, steep);
             double low = 1.0 - DMath.SmoothStep(900, 1600, Elev[c] - SeaLevel);
             return t * wet * flat * low * (1.0 - 0.6 * Forest[c]);

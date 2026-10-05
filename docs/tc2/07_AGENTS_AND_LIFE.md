@@ -104,6 +104,26 @@ with dependants first (TC1 primitives B, C).
 - **COARSE** uses the same choice and catch functions: a day's free hours times the odds that the wild beats idling, and
   under need a long day (two trips); fitted to ACTIVITY (ordinary 1.6 vs 1.1, shortage 7.3 vs 8.5 hours per adult-day).
 
+## 7c. The household's own work and warmth (implemented, D2-056)
+
+- **Meals are made ready** (`Core/Places/Hearth.cs`): the larder holds stores; meals are eaten from the household's cooked food
+  (`Household.Ready`), which `Cook` makes at ~1 FU an hour of a grown person's work (grinding on a quern, then the cooking; a
+  child of 8-11 half as fast, everyone half as fast with no wood) from the larder, else from grain fetched from the village's
+  store, burning ~1.2 kg of wood a FU. A hungry person of eight or more with nothing cooked makes the meal first (a meal is at
+  least 0.4 of their portion, not scraps); a member at home takes the next meals when less than one is cooked.
+- **Water is carried**: the household's pots (`Household.Water`) empty with the day's food (8 l a grown person, 5 a child, 1.5
+  an infant) and are filled at the well, or the stream before one is dug: a grown person's pot 15 l, a child's 6.
+- **The hearth and the roof**: each day the village's hearths burn its woodstore against the day's mean outdoor cold: a roof
+  keeps 4 / 7 / 9 C over the open air (camp, hut, house), a fed fire adds what the home wants to reach 14 C (up to 8 C in a
+  camp, 14 under a roof), ~1 kg of wood a degree a day; a short store is shared alike. Below 8 C indoors the cold takes health
+  by the degree (x2.5 infants, x1.5 under five, x1.8 over 65), raising the day's risk of death, and a body worn to nothing by
+  it dies of exposure. Wood is cut first when fewer than six days of the hearths' wood are in store.
+- **Children's chores**: herding first (from eight, D2-050), then water when the pots are low (from six) and help at the quern
+  when nothing is cooked (from eight), then play.
+- **COARSE** charges the same work to the same people as a share of the day before any other work.
+- Not yet: minding infants and toddlers (an infant is "with the household" wherever its carers are), crafts and the making and
+  mending of clothes and gear (the slack in grown people's days; F3/F4), the house's upkeep and decay.
+
 ## 8. Proof-of-concept subset (F0)
 
 People with identity, households, homes, analytic hunger/energy, health; generators: urgent (fire),

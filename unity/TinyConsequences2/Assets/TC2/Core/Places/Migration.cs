@@ -328,7 +328,7 @@ namespace TC2.Core.Places
             w.HouseholdsOf(from).Remove(hid);
             ref var d = ref w.Settlements.Get(dest);
             d.LotPosition(d.Lots++, out float hx, out float hy);
-            hh.Settlement = dest; hh.HomeX = hx; hh.HomeY = hy; hh.Shelter = Construction.Camp; hh.Build = 0f;
+            hh.Settlement = dest; hh.HomeX = hx; hh.HomeY = hy; hh.Shelter = Construction.Camp; hh.Build = 0f; hh.Water = 0f;   // (pots carried empty)
             w.HouseholdsOf(dest).InsertSorted(hid);
             var mem = w.Members(hid);
             for (int j = 0; j < mem.Count; j++)

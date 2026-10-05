@@ -205,7 +205,10 @@ namespace TC2.Game
                 int cattle = 0, goats = 0, pigs = 0; var beasts = w.BeastsOf(p.Household);
                 for (int i = 0; i < beasts.Count; i++) { byte k = w.Beasts.Get(beasts[i]).Kind; if (k == Livestock.Cattle) cattle++; else if (k == Livestock.Goat) goats++; else pigs++; }
                 if (cattle + goats + pigs > 0) sb.Append(", ").Append(cattle).Append(" cattle, ").Append(goats).Append(" goats, ").Append(pigs).Append(" pigs");
-                sb.Append(", larder ").Append(hh.Larder.ToString("0", CultureInfo.InvariantCulture)).Append('\n');
+                sb.Append(", larder ").Append(hh.Larder.ToString("0", CultureInfo.InvariantCulture))
+                  .Append(", cooked ").Append(hh.Ready.ToString("0.0", CultureInfo.InvariantCulture))
+                  .Append(", water ").Append(hh.Water.ToString("0", CultureInfo.InvariantCulture)).Append(" l")
+                  .Append(", ").Append(hh.Indoor.ToString("0", CultureInfo.InvariantCulture)).Append(" C indoors").Append('\n');
             }
             sb.Append("skills: farming ").Append(p.SkFarm.ToString("0.00", CultureInfo.InvariantCulture)).Append(", wood ").Append(p.SkWood.ToString("0.00", CultureInfo.InvariantCulture)).Append(", hunting ").Append(p.SkHunt.ToString("0.00", CultureInfo.InvariantCulture)).Append(", fishing ").Append(p.SkFish.ToString("0.00", CultureInfo.InvariantCulture)).Append("   trips ").Append(p.Visits).Append('\n');
             var evs = w.History.EventsOf(EntityRef.Person(p.Id));

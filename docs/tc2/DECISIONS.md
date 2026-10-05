@@ -1185,3 +1185,63 @@ the run 29.8 -> 23.0 s, state hash identical (a1c1a40d08f49a31). Over 1,000 year
 ids used, fire pages held, the managed heap and the fires ended by century.
 **Note.** Process ids are an `int`: ~6,000 a year at 8 villages, ~30,000 at 40 - about 300 million in 10,000 years of a full
 world, within range but worth watching (herds churn ids as they form and dissolve each day).
+
+## D2-056 — 2026-10-06 — The household's own work and warmth: meals made, water carried, the hearth fed, a roof against the cold
+
+**Context.** The F3 review followed people through their days (new tools `follow`, `timeuse`): grown people rested at home for
+most of the day once the village's fields and woodstore were seen to (seed 42, sowing: 7.3 h idle and 3.6 h on the square to
+4.9 h of work), children of 6-11 played ten hours, and two things the view showed meant nothing to the simulation - a house (a
+household in a hide tent through a frost lived as well as one in a timber house) and chimney smoke (no hearth burnt any wood:
+the woodstore went only into building). 07 §3's Household generator (water, firewood, food from the store, cooking) and the
+Body generator's warmth were never built.
+**Decision.** (1) **Meals are made ready**: the larder holds stores; meals are eaten from `Household.Ready`, food ground and
+cooked by `Cook` (`ActivityKind.Cook`, `WhyCode.MealsToMake`) at ~1 FU an hour of a grown person's work (a saddle quern grinds
+~1 kg of meal an hour, then the cooking; a child of 8-11 half as fast; half again with no wood), from the larder or else grain
+fetched from the village's store, burning 0.05 wood units (~1.2 kg) a FU. A hungry person of eight or more with nothing cooked
+makes the meal first (a meal is at least 0.4 of their portion, not scraps); a member at home takes the next meals when less
+than one is cooked (urgency 0.5-0.85). (2) **Water is carried**: the household's pots (`Household.Water`) empty with the day's
+food (8 l a grown person, 5 a child, 1.5 an infant: drink, cooking, washing) and are filled at the well, or the stream before
+one is dug - a grown person's pot 15 l, a child's 6; the coin-toss water trip is gone. (3) **The hearth and the roof**: each
+day (`SettlementSystem.Hearths`, both resolutions) the village's hearths burn its woodstore against the day's mean outdoor
+temperature: a roof keeps 4 / 7 / 9 C over the open air (camp, hut, house), a fed fire adds what the home wants to reach 14 C
+(up to 8 C in a camp, 14 under a roof), ~1 kg of wood a degree a day; a short store is shared alike (`Household.Indoor`).
+Below 8 C indoors the cold takes health by the degree (0.012 a day; x2.5 infants, x1.5 under five, x1.8 over 65), which raises
+the day's risk of death - the part of the risk the cold added is the cold's - and a body it wears to nothing dies of exposure
+(`PersonDied` why 9, caused by the village's `ColdHomes` spell, Local). `Settlement.FuelDay` is what the hearths and the
+cooking burn a day; wood is cut first when fewer than six days of it are in store (ACTIVITY urgency up to 0.85; COARSE hours
+before any other work). (4) **Children's chores**: the herd first (D2-050), then water when the pots are low (from six) and the
+quern when nothing is cooked (from eight), then play. (5) **COARSE** charges the same work to the same people as a share of
+the day before other work (`AgentSystem.Chores`: a child of 6-11 a pot every other day, of 8-11 up to 1.5 h at the quern, the
+grown members the rest; trips 0.2 h); the ordinary-day wild factor refitted 0.6 -> 0.9 (water and meals were in it). A wood
+unit is ~25 kg (a load cut and carried in about an hour). The view's chimney smoke reads the simulation: someone cooking, or
+the hearth's fire today. Sim version 15.
+**Evidence.** `HouseholdWorkTests` (111 tests): hungry people with nothing cooked make the meal first (15 of 15 fed within six
+hours, 1.0 FU an hour); children and grown people carry water when the pots are low (every home watered within four hours);
+a roof and a fire keep the cold out (twelve days at -12 C: houses with wood keep health 1.00 and lose nobody, camps without
+fall to 0.38 - under five 0.02 - and three die of the cold); COARSE and ACTIVITY keep house alike (0.75 / 0.77 hours and
+0.74 / 0.75 FU made ready per person-day, water 0.070 / 0.087 hours); the wild-food fit holds (0.82 / 0.92 hours,
+0.90 / 0.94 FU per adult-day); the herd still goes out with children first. Time use, seed 42, sowing: grown people cook 1.3 h
+a day, cut wood 0.6, carry water 0.1, children of 6-11 herd 2.9 h, help at the quern 0.7, carry water 0.1. 200 coarse years:
+seed 42 3,492 people in 15 places as before (warm villages: no cold); seed 1 (villages at 6-10 C) 1,206 people in 6, 1.08 hours
+a FU made ready, no cold homes - houses with wood stay warm at -2 C. The hearths cost 2.8 us a village-day.
+**Open.** Grown people still idle 7-9 hours a day outside sowing and harvest: crafts and the making and mending of clothes and
+gear (textiles took farming households hours every day), hay for the animals' winter and weeding labour are the slack's
+missing work; minding infants and toddlers (07 §2's carer) is not yet a task.
+
+## D2-057 — 2026-10-06 — No arithmetic typed float in the core; a lint keeps it out
+
+**Context.** Determinism across dotnet, Mono and IL2CPP is settled architecture (D2-003; 03 §4: "double in all sim logic,
+storage may be float"). The Unity editor's Mono had quietly parted from dotnet: the cross-runtime probe gave other hashes from
+the newly generated world on (dmath and rng equal). A new probe, `CrossRuntime.Parts()` (`headless.mjs hashtest --parts`; the
+editor's hashtest writes it first), hashed the world part by part: elevation, crust, moisture and water agreed; the climate's
+zonal temperatures, each cell's mean temperature, ice, vegetation, animals and the settlements' placing did not. The cause: float
+arithmetic - `P.Elev[c] + P.Ice[c]` in the climate, `p.ToX - p.FromX` in people's positions, 63 operations in 15 files. CoreCLR
+and IL2CPP round each float step to single precision; Mono may carry it at double precision (and keep float locals in double
+registers), so a sum widened into a double expression differs in its last bits, and the world grows apart from there.
+**Decision.** Floats are for storage only: every operation is done in double and cast to float when stored. The 63 operations
+were rewritten so (compound updates of stored floats too, for one simple rule). `tc2/tools/floatcheck` (Roslyn from the editor's
+SDK, semantic model over TC2.Core) lists every arithmetic operation typed float; `headless.mjs test` runs it first and fails on
+any (`headless.mjs floatcheck` alone).
+**Evidence.** After the rewrite the editor's probe equals dotnet's from generation through day three (gen e3a59d5f8bde854d, every
+part equal); 111 tests green. The world's state hash changed (operations that fed double expressions now keep their full
+precision).

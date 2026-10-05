@@ -48,6 +48,7 @@ namespace TC2.Core.Places
             if (doy == Migration.DecideDay) { prof?.Begin(10003); w.Migration.Weigh(sid); prof?.End(10003); }   // who leaves (D2-045)
             if (w.Resolution == Resolution.Coarse) { prof?.Begin(10004); w.Agents.CoarseDay(sid); prof?.End(10004); }
             prof?.Begin(10006); w.Stock.Day(sid); prof?.End(10006);   // the herds' day: grazing, milk, births, slaughter (D2-048)
+            prof?.Begin(10012); Hearths(sid); prof?.End(10012);       // the homes' warmth against the day's cold (D2-056)
             prof?.Begin(10005); Demography(sid); prof?.End(10005);
             ref var s2 = ref w.Settlements.Get(sid);
             if (s2.Population <= 0 && s2.Abandoned == 0)
@@ -61,6 +62,46 @@ namespace TC2.Core.Places
                 return;
             }
             w.Queue.Push(now + SimTime.Day, Phase.Settlement, EventKind.SettlementDaily, sid);
+        }
+
+        /// <summary>
+        /// The hearths' day (D2-056): each household's fire against the day's cold, as far as the village's woodstore allows (a
+        /// short store is shared alike), and how warm its home is - the roof and the fire between the weather and the body. The
+        /// first day of homes cold enough to harm is history; the spell ends when every home is warm again.
+        /// </summary>
+        void Hearths(int sid)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(sid);
+            double tOut = w.PlanetSys.DayMean(s.Cell, Planet.PlanetSystems.Season(w.Now));
+            var hhs = w.HouseholdsOf(sid);
+            double want = 0, cook = 0;
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                want += Hearth.Wanted(tOut, w.Households.Get(hhs[i]).Shelter) * Hearth.WarmFuel;
+                cook += HouseholdNeed(hhs[i]) * Hearth.CookFuel;
+            }
+            s.FuelDay = (float)(want + cook);   // what tomorrow's hearths will want: the wood to cut is judged by it
+            double share = want > 1e-9 ? DMath.Min(1.0, s.Woodstore / want) : 1.0;
+            s.Woodstore = DMath.Max(0.0, s.Woodstore - want * share);
+            int cold = 0;
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                ref var hh = ref w.Households.Get(hhs[i]);
+                double fire = Hearth.Wanted(tOut, hh.Shelter) * share;
+                hh.Indoor = (float)Hearth.Indoors(tOut, hh.Shelter, fire);
+                if (hh.Indoor < Hearth.ChillLine && w.Members(hhs[i]).Count > 0) cold++;
+            }
+            if (cold > 0 && s.ColdEvent == 0)
+            {
+                s.ColdEvent = w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.ColdHomes, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
+                    Magnitude = cold, ArgA = share < 0.999 ? 1 : 0, ArgB = (int)DMath.RoundHalfUp(tOut), RootKind = RootKind.Nature,
+                });
+                w.Metrics.ColdSpells++;
+            }
+            else if (cold == 0) s.ColdEvent = 0;
         }
 
         void Crops(ref Settlement s, int doy)
@@ -241,7 +282,7 @@ namespace TC2.Core.Places
             {
                 int hid = hhs[i];
                 ref var hh = ref w.Households.Get(hid);
-                double want = HouseholdNeed(hid) * 2.0 * ration - hh.Larder;
+                double want = HouseholdNeed(hid) * 2.0 * ration - hh.Larder - hh.Ready;
                 if (want <= 0) continue;
                 double give = Math.Min(want, want * share);
                 give = Math.Min(give, s.Granary);
@@ -383,9 +424,26 @@ namespace TC2.Core.Places
                 }
                 // health follows the reserve once half of it is gone; it mends slowly when the body is full again
                 double rr = p.Reserve / cap;
-                p.Health = (float)DMath.Min(p.Health + 0.05, rr >= 0.5 ? 1.0 : 0.15 + 1.7 * rr);
+                double fed = rr >= 0.5 ? 1.0 : 0.15 + 1.7 * rr;
+                // a cold home takes health, most from infants and the old (D2-056)
+                double chill = p.At == p.Home && w.Households.Exists(p.Household) ? Hearth.Chill(w.Households.Get(p.Household).Indoor, age) : 0.0;
+                p.Health = (float)DMath.Max(0.02, DMath.Min(p.Health + 0.05, fed) - chill);
+                // a body the cold has worn to nothing dies of exposure, as a starved one does when its reserve is spent
+                if (chill > 0 && p.Health <= 0.05 && KeyedRng.Unit(seed, RngStream.Death, (ulong)pid, (ulong)day, 9) < DMath.Min(1.0, 2.0 * chill))
+                {
+                    w.Agents.Kill(ref p, w.Settlements.Get(sid).ColdEvent, 9);
+                    w.Metrics.ColdDeaths++;
+                    continue;
+                }
                 double hazard = annual / SimTime.DaysPerYear * (1.0 + 3.0 * (1.0 - p.Health));
-                if (u < hazard) { w.Agents.Kill(ref p, 0, 1); continue; }
+                if (u < hazard)
+                {
+                    // the part of the day's risk the cold added (health under what the body's reserve allows) is the cold's
+                    double warm = annual / SimTime.DaysPerYear * (1.0 + 3.0 * (1.0 - fed));
+                    if (chill > 0 && u >= warm) { w.Agents.Kill(ref p, w.Settlements.Get(sid).ColdEvent, 9); w.Metrics.ColdDeaths++; }
+                    else w.Agents.Kill(ref p, 0, 1);
+                    continue;
+                }
             }
             // marriages (women in id order choose among unmarried men of the place)
             for (int i = 0; i < _scratch.Count; i++)
@@ -469,7 +527,7 @@ namespace TC2.Core.Places
             var hh = new Household
             {
                 Id = hid, Settlement = sid, Formed = w.Now, FamilyName = fam,
-                HomeX = hx, HomeY = hy,
+                HomeX = hx, HomeY = hy, Indoor = (float)Hearth.Comfort,
             };
             w.Households.Add(hid, hh);
             w.HouseholdsOf(sid).InsertSorted(hid);

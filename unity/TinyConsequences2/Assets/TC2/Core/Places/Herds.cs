@@ -116,7 +116,7 @@ namespace TC2.Core.Places
                 {
                     ref var o = ref w.Herds.Get(join);
                     double add = DMath.Min(hd.Count, DMath.Max(0.0, Around(q, o.Cell) - Claimed(q, o.Cell)));
-                    add = DMath.Min(add, max - o.Count);
+                    add = DMath.Min(add, (double)max - o.Count);
                     if (add > 0) { o.Count = (float)(o.Count + DMath.Floor(add)); Claim(q, o.Cell, DMath.Floor(add)); }
                     if (o.Count > o.Peak) o.Peak = o.Count;
                     if (hd.Hunted > o.Hunted) o.Hunted = hd.Hunted;

@@ -719,7 +719,7 @@ namespace TC2.Core.Places
                         double v = P.Abund[q * n + cell];
                         if (v > bv) { bv = v; best = q; }
                     }
-                    if (best >= 0) { P.Abund[best * n + cell] += 1f; w.Metrics.BeastsFeral++; }
+                    if (best >= 0) { P.Abund[best * n + cell] = (float)(P.Abund[best * n + cell] + 1.0); w.Metrics.BeastsFeral++; }
                     else w.Metrics.BeastDeaths++;
                     b.Alive = false; b.Died = w.Now;
                 }

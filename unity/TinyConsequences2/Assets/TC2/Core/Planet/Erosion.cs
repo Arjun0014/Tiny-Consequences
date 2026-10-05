@@ -67,7 +67,7 @@ namespace TC2.Core.Planet
                 if (h > top)
                 {
                     double fall = h - top;
-                    _ero[c] += (float)fall;
+                    _ero[c] = (float)(_ero[c] + fall);
                     P.Elev[c] = (float)top;
                     Failed += fall * P.AreaHa(c) * 1e4;
                 }
@@ -91,7 +91,7 @@ namespace TC2.Core.Planet
                 }
                 else if (r >= 0 && d.BuiltLand(r))
                 {
-                    double slope = (P.Elev[c] - P.Elev[r]) / Vec3d.ArcDistance(g.Center[c], g.Center[r], P.Radius);
+                    double slope = ((double)P.Elev[c] - P.Elev[r]) / Vec3d.ArcDistance(g.Center[c], g.Center[r], P.Radius);
                     if (slope < FlatSlope)
                     {
                         double keep = load / 3.0;

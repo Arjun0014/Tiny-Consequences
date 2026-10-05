@@ -26,12 +26,15 @@ namespace TC2.Headless
                     case "hash":
                         return Commands.Hash(args);
                     case "hashtest":
+                        if (args.Has("parts")) System.Console.WriteLine(TC2.Core.Diagnostics.CrossRuntime.Parts());
                         System.Console.WriteLine(TC2.Core.Diagnostics.CrossRuntime.Probe());
                         return 0;
                     case "probe":
                         return Commands.Probe(args);
                     case "follow":
                         return Commands.Follow(args);
+                    case "timeuse":
+                        return Commands.TimeUse(args);
                     case "inspect":
                         return Commands.Inspect(args);
                     case "planet":

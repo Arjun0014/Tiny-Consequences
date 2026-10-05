@@ -180,7 +180,7 @@ namespace TC2.Core.Planet
             // busts (hares eat the grass down, foxes starve): refuges keep a hundredth of each kind's first numbers through
             // the spin-up only - the world is older than its history; from the first day on, a kind can die out
             var refuge = new float[k * P.Cells];
-            for (int i = 0; i < refuge.Length; i++) refuge[i] = 0.01f * P.Abund[i];
+            for (int i = 0; i < refuge.Length; i++) refuge[i] = (float)(0.01 * P.Abund[i]);
             long t0 = 0;
             for (int i = 0; i < 40; i++)
             {
@@ -286,7 +286,7 @@ namespace TC2.Core.Planet
             {
                 int r = _mouthSea[m];
                 if (_mouth[r] == 0f) _touched.Add(r);
-                _mouth[r] += (float)DMath.Clamp01(P.RiverFlow[_mouthLand[m]] / RiverRich);
+                _mouth[r] = (float)(_mouth[r] + DMath.Clamp01(P.RiverFlow[_mouthLand[m]] / RiverRich));
             }
             // a river's waters spread a little way out to sea: two rings, fading
             int mouths = _touched.Count;
@@ -299,13 +299,13 @@ namespace TC2.Core.Planet
                     int a = g.Nbr4[r * 4 + q];
                     if (P.IsLand(a)) continue;
                     if (_mouth[a] == 0f) _touched.Add(a);
-                    if (0.6f * v > _mouth[a]) _mouth[a] = 0.6f * v;
+                    if (0.6 * v > _mouth[a]) _mouth[a] = (float)(0.6 * v);
                     for (int q2 = 0; q2 < 4; q2++)
                     {
                         int b = g.Nbr4[a * 4 + q2];
                         if (P.IsLand(b)) continue;
                         if (_mouth[b] == 0f) _touched.Add(b);
-                        if (0.36f * v > _mouth[b]) _mouth[b] = 0.36f * v;
+                        if (0.36 * v > _mouth[b]) _mouth[b] = (float)(0.36 * v);
                     }
                 }
             }
@@ -331,7 +331,7 @@ namespace TC2.Core.Planet
             double tm = P.TMean[c];
             double cold = DMath.Clamp01((tm - (sp.ColdTol + coat)) / 6.0);
             double heat = 1.0 - DMath.SmoothStep(30, 38, tm);
-            double cover = 1.0 - DMath.Min(1.0, DMath.Abs(P.Forest[c] - sp.ForestPref) * 1.4);
+            double cover = 1.0 - DMath.Min(1.0, DMath.Abs((double)P.Forest[c] - sp.ForestPref) * 1.4);
             double slope = 0.5 + 0.5 * (1.0 - DMath.Abs(DMath.Clamp01(steep) - sp.SlopePref));
             return cold * heat * DMath.Max(0.15, cover) * slope;
         }
@@ -409,7 +409,7 @@ namespace TC2.Core.Planet
                 {
                     int s = landSp[ti];
                     ref var sp = ref sps[s];
-                    double cold = DMath.Clamp01((tm - (sp.ColdTol + P.Coat[s * n + c])) / 6.0);
+                    double cold = DMath.Clamp01((tm - ((double)sp.ColdTol + P.Coat[s * n + c])) / 6.0);
                     double cover = 1.0 - DMath.Min(1.0, DMath.Abs(forest - sp.ForestPref) * 1.4);
                     double slope = 0.5 + 0.5 * (1.0 - DMath.Abs(st - sp.SlopePref));
                     suit[s * n + c] = (float)(cold * heat * DMath.Max(0.15, cover) * slope);
@@ -487,7 +487,7 @@ namespace TC2.Core.Planet
                     if (meat[s] <= 0) continue;
                     ref var sp = ref sps[s];
                     double avail = 0;
-                    for (int qi = 0; qi < nh; qi++) { int q = hs[qi]; if ((sp.Prey & (1 << sps[q].Kind)) != 0) avail += P.Abund[q * n + c] * sps[q].Mass * Reach(refuge, steep[c], sps[q].SlopePref) * vuln[s * MaxK + q]; }
+                    for (int qi = 0; qi < nh; qi++) { int q = hs[qi]; if ((sp.Prey & (1 << sps[q].Kind)) != 0) avail += (double)P.Abund[q * n + c] * sps[q].Mass * Reach(refuge, steep[c], sps[q].SlopePref) * vuln[s * MaxK + q]; }
                     if (avail <= 0) continue;
                     // half sated when a cell holds HalfPrey kg it can reach: hunters hold their prey near three times that
                     double take = DMath.Min(meat[s] * avail / (avail + half[s]), avail * 0.25);   // a small hunter is sated by less
@@ -495,7 +495,7 @@ namespace TC2.Core.Planet
                     {
                         int q = hs[qi];
                         if ((sp.Prey & (1 << sps[q].Kind)) == 0) continue;
-                        double share = P.Abund[q * n + c] * sps[q].Mass * Reach(refuge, steep[c], sps[q].SlopePref) * vuln[s * MaxK + q] / avail;
+                        double share = (double)P.Abund[q * n + c] * sps[q].Mass * Reach(refuge, steep[c], sps[q].SlopePref) * vuln[s * MaxK + q] / avail;
                         double eaten = DMath.Min(P.Abund[q * n + c], take * share / sps[q].Mass);
                         if (Diag != null) Diag[q * 8 + 4] += eaten;
                         P.Abund[q * n + c] = (float)(P.Abund[q * n + c] - eaten);
@@ -517,7 +517,7 @@ namespace TC2.Core.Planet
                     cond = DMath.Clamp01(cond + (fed - 0.75) * 2.0 * dt);
                     double mAge = dt / sp.Lifespan;                               // age
                     double mHunger = cond < 0.45 ? dt * 3.0 * (0.45 - cond) / 0.45 : 0.0;   // hunger
-                    double tol = sp.ColdTol + P.Coat[i];                         // this population's coat
+                    double tol = (double)sp.ColdTol + P.Coat[i];                         // this population's coat
                     double mCold = tm < tol ? dt * 0.8 * DMath.Min(1.0, (tol - tm) / 5.0) : 0.0; // cold
                     double mCoat = Evolution.Select(P, sp, i, c, dt, keepS[s]);   // the coat follows the place, slowly
                     double mort = mAge + mHunger + mCold + mCoat;

@@ -220,7 +220,7 @@ namespace TC2.Core.Planet
                 double x = _cellX[c];
                 double tz = ZonalAt(zt, x);
                 bool land = P.Elev[c] > P.SeaLevel;
-                double h = P.Elev[c] + P.Ice[c] - P.SeaLevel;
+                double h = (double)P.Elev[c] + P.Ice[c] - P.SeaLevel;
                 double tm = tz - (land ? Lapse * h : 0.0);
                 P.TMean[c] = (float)tm;
                 P.TAmp[c] = (float)((x >= 0 ? ampN : ampS) * DMath.Abs(x) * (land ? 1.0 : 0.4));
@@ -309,11 +309,11 @@ namespace TC2.Core.Planet
                 {
                     int n = g.Nbr4[c * 4 + q];
                     bool land = P.IsLand(n);
-                    double sn = land ? P.Elev[n] + P.Ice[n] : P.SeaLevel;
+                    double sn = land ? (double)P.Elev[n] + P.Ice[n] : P.SeaLevel;
                     if (sn >= s) continue;
                     double move = DMath.Min(k * (s - sn) * inv * dt, 0.2 * h);
-                    _dIce[c] -= (float)move;
-                    if (land) _dIce[n] += (float)move; // into the sea: it calves and melts
+                    _dIce[c] = (float)(_dIce[c] - move);
+                    if (land) _dIce[n] = (float)(_dIce[n] + move); // into the sea: it calves and melts
                 }
             }
             int n0 = _icedN;
@@ -337,7 +337,7 @@ namespace TC2.Core.Planet
             float d = _dIce[c];
             if (d == 0f) return;
             _dIce[c] = 0f;
-            double h = P.Ice[c] + d;
+            double h = (double)P.Ice[c] + d;   // (in double: float + float rounds differently under Mono)
             P.Ice[c] = (float)(h > 0 ? h : 0);
         }
 

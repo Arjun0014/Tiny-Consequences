@@ -54,9 +54,11 @@ namespace TC2.Tests.Core
             // premise: the household's house is gone (a camp); a: the village has wood; b: none is to be had
             foreach (var w in new[] { a, b }) { ref var hh = ref w.Households.Get(hid); hh.Shelter = Construction.Camp; hh.Build = 0f; }
             long mark = a.History.LastId;
-            a.Settlements.Get(sid).Woodstore = 200;
-            for (int d = 0; d < 40; d++)
+            for (int d = 0; d < 60; d++)
             {
+                // (kept stocked: since D2-056 every hearth in the village burns the store's wood too, and the household's own
+                // work - meals, water - takes its hours: a house of 240 hours takes a working household some 50 days)
+                if (a.Settlements.Get(sid).Woodstore < 200) a.Settlements.Get(sid).Woodstore = 200;
                 b.Settlements.Get(sid).Woodstore = 0;
                 a.AdvanceTo(a.Now + SimTime.Day); b.AdvanceTo(b.Now + SimTime.Day);
             }

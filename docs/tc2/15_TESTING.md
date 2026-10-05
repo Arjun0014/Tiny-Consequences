@@ -8,7 +8,7 @@ their own responses".
 
 | Runner | Command | Contents |
 |---|---|---|
-| Headless (dotnet, seconds) | `node tc2/scripts/headless.mjs test` | Core unit, invariant, determinism, save/load, catch-up, scenario and long-run tests |
+| Headless (dotnet, seconds) | `node tc2/scripts/headless.mjs test` | The determinism lint first (no float arithmetic in TC2.Core, D2-057), then core unit, invariant, determinism, save/load, catch-up, scenario and long-run tests |
 | Unity EditMode (batchmode) | `node tc2/scripts/unity.mjs test` | the same Core tests under Mono + Unity-specific tests |
 | Web (Playwright) | `node tc2/scripts/webtest.mjs` | build loads, renders, no console errors, world hash equals headless, save/reload in IndexedDB, in-browser benchmark |
 

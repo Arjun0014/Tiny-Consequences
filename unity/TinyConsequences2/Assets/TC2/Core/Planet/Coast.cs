@@ -42,9 +42,9 @@ namespace TC2.Core.Planet
                     double room = P.Elev[c] - (sea - 2.0);
                     double drop = DMath.Min(room, Rate * dt * exposure);
                     if (drop <= 0) continue;
-                    _delta[c] -= (float)drop;
+                    _delta[c] = (float)(_delta[c] - drop);
                     double each = drop * area / other;
-                    for (int k = 0; k < other; k++) _delta[nbs[k]] += (float)(each / (P.AreaHa(nbs[k]) * 1e4));
+                    for (int k = 0; k < other; k++) _delta[nbs[k]] = (float)(_delta[nbs[k]] + each / (P.AreaHa(nbs[k]) * 1e4));
                     Moved += drop * area;
                 }
                 else
@@ -53,13 +53,13 @@ namespace TC2.Core.Planet
                     double room = (sea + 1.0) - P.Elev[c];
                     double rise = DMath.Min(room, Rate * dt * exposure);
                     if (rise <= 0) continue;
-                    _delta[c] += (float)rise;
+                    _delta[c] = (float)(_delta[c] + rise);
                     double each = rise * area / other;
-                    for (int k = 0; k < other; k++) _delta[nbs[k]] -= (float)(each / (P.AreaHa(nbs[k]) * 1e4));
+                    for (int k = 0; k < other; k++) _delta[nbs[k]] = (float)(_delta[nbs[k]] - each / (P.AreaHa(nbs[k]) * 1e4));
                     Moved += rise * area;
                 }
             }
-            for (int c = 0; c < n; c++) if (_delta[c] != 0f) P.Elev[c] += _delta[c];
+            for (int c = 0; c < n; c++) if (_delta[c] != 0f) P.Elev[c] = (float)((double)P.Elev[c] + _delta[c]);
         }
     }
 }

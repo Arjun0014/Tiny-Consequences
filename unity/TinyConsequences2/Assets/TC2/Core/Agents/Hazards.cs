@@ -99,7 +99,8 @@ namespace TC2.Core.Agents
                 ref var p = ref w.People.Get(pid);
                 if (!p.Alive || p.At != sid) continue;
                 bool outdoors = p.Act == ActivityKind.Fields || p.Act == ActivityKind.Wood || p.Act == ActivityKind.Social ||
-                                p.Act == ActivityKind.Play || p.Act == ActivityKind.Water || p.Act == ActivityKind.Visit || p.Act == ActivityKind.Idle;
+                                p.Act == ActivityKind.Play || p.Act == ActivityKind.Water || p.Act == ActivityKind.Visit || p.Act == ActivityKind.Idle ||
+                                p.Act == ActivityKind.Cook;
                 if (outdoors || atDoor) _alarm.Add((pid, w.Now, sid));
             }
         }

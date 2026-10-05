@@ -170,7 +170,7 @@ namespace TC2.Core.Planet
                     if (m == 0f) continue;
                     float d = (float)(m * DrawShare);
                     take += d;
-                    P.Magma[c] = m - d;
+                    P.Magma[c] = (float)((double)m - d);
                 }
                 double quiet = take * (vt.Kind == 1 ? EffusiveHotspot : EffusiveBoundary);
                 vt.Pressure += take - quiet;

@@ -103,3 +103,5 @@ scattered trees read as a toy. Open: clouds, tilt-shift, close-in grass, night l
 - **WebGL2** (D2-051): one shadow cascade over 1.6 x the camera's height on OpenGLES3 (`Sky.GlCascades`, `GlShadowReach`):
   the village view 37 -> 60 fps. Open: the first entry to a new view stalls 1-5 s while the driver builds shaders and
   buffers (a traced shader-variant collection warmed progressively at start is the planned fix; `WarmupAllShaders` took 36 s).
+- **Chimney smoke** reads the simulation (D2-056): a house smokes while one of its people cooks and all day while its hearth
+  burns against the cold (what today's fire adds to its warmth), no longer by the clock and a temperature threshold.

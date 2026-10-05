@@ -42,8 +42,8 @@ namespace TC2.Core.Agents
             {
                 double span = p.TA - p.T0;
                 double u = span > 0 ? DMath.Clamp01((t - p.T0) / span) : 1.0;
-                x = p.FromX + (p.ToX - p.FromX) * u;
-                y = p.FromY + (p.ToY - p.FromY) * u;
+                x = p.FromX + ((double)p.ToX - p.FromX) * u;
+                y = p.FromY + ((double)p.ToY - p.FromY) * u;
             }
             else { x = p.ToX; y = p.ToY; }
         }
@@ -52,7 +52,7 @@ namespace TC2.Core.Agents
         {
             double span = p.T1 - p.T0;
             double u = span > 0 ? DMath.Clamp01((t - p.T0) / span) : 1.0;
-            return p.S0 + (p.S1 - p.S0) * u;
+            return p.S0 + ((double)p.S1 - p.S0) * u;
         }
 
         /// <summary>World direction (unit vector) of a person at time t (seconds, fractional allowed).</summary>
@@ -441,7 +441,90 @@ namespace TC2.Core.Agents
                     if (p.At != 0 && p.At == p.Home && hours > 0)
                         Construction.Work(w, p.At, p.Household, hours, BuildRate(in p));
                     break;
+                case ActivityKind.Cook:
+                    if (p.At != 0 && p.At == p.Home && hours > 0 && w.Households.Exists(p.Household))
+                    {
+                        // the larder's grain ground and cooked (fetched from the village's store when the larder is empty), on the
+                        // village's wood - half as fast with none to burn (D2-056)
+                        ref var hh = ref w.Households.Get(p.Household);
+                        ref var s = ref w.Settlements.Get(p.At);
+                        double made = Hearth.PrepPerHour(p.AgeYears(now), p.Health, s.Woodstore > 0.05) * hours;
+                        double fromLarder = Math.Min(made, hh.Larder);
+                        hh.Larder -= fromLarder;
+                        double fromStore = Math.Min(made - fromLarder, s.Granary);
+                        s.Granary -= fromStore;
+                        double done = fromLarder + fromStore;
+                        hh.Ready += done;
+                        s.Woodstore = DMath.Max(0.0, s.Woodstore - done * Hearth.CookFuel);
+                        w.Metrics.PrepHours += hours; w.Metrics.PrepFu += done;
+                    }
+                    break;
+                case ActivityKind.Water:
+                    if (frac >= 0.5 && p.At != 0 && p.At == p.Home && w.Households.Exists(p.Household))
+                    {
+                        ref var hh = ref w.Households.Get(p.Household);
+                        hh.Water = (float)(hh.Water + Hearth.Carry(p.AgeYears(now)));
+                        w.Metrics.WaterTrips++;
+                        w.Metrics.WaterHours += (p.T1 - p.T0 + (p.TA - p.T0)) / (double)SimTime.Hour;   // there, the filling, and back
+                    }
+                    break;
             }
+        }
+
+        // ---------------------------------------------------------------- the household's own work (D2-056)
+        /// <summary>FU of cooked food a meal of the whole household takes (a third of its day's need).</summary>
+        double MealOf(int hid) => _w.SettlementSys.HouseholdNeed(hid) / 3.0;
+
+        /// <summary>Litres the household's pots should hold: a day's water for its members.</summary>
+        double WaterTarget(int hid)
+        {
+            var w = _w;
+            var mem = w.Members(hid);
+            double l = 0;
+            for (int i = 0; i < mem.Count; i++) { ref var q = ref w.People.Get(mem[i]); if (q.Alive) l += Hearth.WaterNeed(q.AgeYears(w.Now)); }
+            return l;
+        }
+
+        /// <summary>What the household's members now at the hearth or gone to the well will add (so that two do not do one task).</summary>
+        void UnderWay(int hid, out double cooking, out double fetching)
+        {
+            var w = _w;
+            long now = w.Now;
+            var mem = w.Members(hid);
+            cooking = 0; fetching = 0;
+            for (int i = 0; i < mem.Count; i++)
+            {
+                ref var q = ref w.People.Get(mem[i]);
+                if (!q.Alive || q.T1 <= now) continue;
+                if (q.Act == ActivityKind.Cook) cooking += Hearth.PrepPerHour(q.AgeYears(now), q.Health, true) * (q.T1 - Math.Max(now, q.TA)) / (double)SimTime.Hour;
+                else if (q.Act == ActivityKind.Water) fetching += Hearth.Carry(q.AgeYears(now));
+            }
+        }
+
+        /// <summary>Food at home (or in the village's store) that a cook could make ready.</summary>
+        bool CanCook(in Person p)
+        {
+            var w = _w;
+            if (p.At == 0 || p.At != p.Home || !w.Households.Exists(p.Household)) return false;
+            return w.Households.Get(p.Household).Larder > 0.01 || w.Settlements.Get(p.At).Granary > 0.01;
+        }
+
+        /// <summary>Grinding and cooking at the household's hearth until the next two meals are made (D2-056).</summary>
+        void BeginCook(ref Person p, WhyCode why, double homeX, double homeY, ref RandomSequence rs)
+        {
+            var w = _w;
+            ref var hh = ref w.Households.Get(p.Household);
+            UnderWay(p.Household, out double cooking, out _);
+            double want = 2.0 * MealOf(p.Household) - hh.Ready - cooking;
+            double rate = Hearth.PrepPerHour(p.AgeYears(w.Now), p.Health, w.Settlements.Get(p.At).Woodstore > 0.05);
+            double h = DMath.Clamp(want / DMath.Max(0.05, rate), 0.5, 2.5);
+            BeginLocal(ref p, ActivityKind.Cook, why, 0, homeX + rs.Range(-2.5, 2.5), homeY + rs.Range(-2.5, 2.5), SimTime.Hours(h));
+        }
+
+        /// <summary>To the well (or the stream where none is dug yet) with a pot: filling it, a word with whoever is there (D2-056).</summary>
+        void BeginWater(ref Person p, in Settlement here, ref RandomSequence rs)
+        {
+            BeginLocal(ref p, ActivityKind.Water, WhyCode.WaterNeeded, 0, here.WellX + rs.Range(-2, 2), here.WellY + rs.Range(-2, 2), SimTime.Minutes(6 + 8 * rs.NextUnit()));
         }
 
         static double AgeFood(double age) => age < 2 ? 0.35 : (age < 12 ? 0.6 : (age > 60 ? 0.8 : 1.0));
@@ -478,30 +561,37 @@ namespace TC2.Core.Agents
         bool FoodAvailable(in Person p)
         {
             var w = _w;
-            if (p.At == p.Home && w.Households.Exists(p.Household) && w.Households.Get(p.Household).Larder > 0.01) return true;
+            // at home, what is cooked (D2-056); away, a host's table
+            if (p.At == p.Home && w.Households.Exists(p.Household)) return w.Households.Get(p.Household).Ready >= 0.4 * Portion(in p, w.Now);   // a meal, not scraps
             return p.At != 0 && w.Settlements.Get(p.At).Granary > 0.01;
         }
 
-        internal void EatNow(ref Person p) => Eat(ref p, Portion(in p, _w.Now));
+        internal void EatNow(ref Person p) => Eat(ref p, Portion(in p, _w.Now), false);
 
         /// <summary>A day's food at once (COARSE): the day's need, more while the body refills.</summary>
         internal void EatDay(ref Person p)
         {
             double cap = ReserveCap(in p, _w.Seed, _w.Now);
-            Eat(ref p, DailyNeed(in p, _w.Now) * (1.0 + 0.3 * DMath.Clamp01(1.0 - p.Reserve / cap)));
+            Eat(ref p, DailyNeed(in p, _w.Now) * (1.0 + 0.3 * DMath.Clamp01(1.0 - p.Reserve / cap)), true);
         }
 
-        void Eat(ref Person p, double need)
+        void Eat(ref Person p, double need, bool coarse)
         {
             var w = _w;
             double got = 0;
-            if (p.At == p.Home && w.Households.Exists(p.Household))
+            bool home = p.At == p.Home && w.Households.Exists(p.Household);
+            if (home)
             {
+                // a meal is what is cooked (D2-056); a COARSE day makes the rest ready from the larder with its share of hours
                 ref var hh = ref w.Households.Get(p.Household);
-                double take = Math.Min(need, hh.Larder);
-                hh.Larder -= take; got += take;
+                double take = Math.Min(need, hh.Ready);
+                hh.Ready -= take; got += take;
+                if (coarse && got < need - 1e-9) { take = Math.Min(need - got, hh.Larder); hh.Larder -= take; got += take; }
+                // the pots empty as the day's food is eaten: a day's water with a day's food (COARSE keeps them filled)
+                double dn = DailyNeed(in p, w.Now);
+                if (!coarse && dn > 0) hh.Water = (float)DMath.Max(0.0, hh.Water - Hearth.WaterNeed(p.AgeYears(w.Now)) * got / dn);
             }
-            if (got < need - 1e-9 && p.At != 0)
+            if (got < need - 1e-9 && p.At != 0 && (coarse || !home))
             {
                 ref var s = ref w.Settlements.Get(p.At);
                 double take = Math.Min(need - got, s.Granary);
@@ -583,6 +673,8 @@ namespace TC2.Core.Agents
                     BeginLocal(ref p, ActivityKind.Eat, WhyCode.Hungry, 0, homeX, homeY, 25 * SimTime.Minute);
                     return;
                 }
+                // nothing cooked at home: a hungry one of eight or more makes the meal (D2-056); the small wait for someone who will
+                if (age >= 8 && CanCook(in p)) { BeginCook(ref p, WhyCode.Hungry, homeX, homeY, ref rs); return; }
                 if (p.HungryFrom == 0 && now - p.LastMeal > SimTime.Day) p.HungryFrom = now;
                 // nothing at home or in the store: go out to what the woods, the game or the shore still hold (by day; D2-042)
                 if (!child && lsec >= 6 * SimTime.Hour && lsec < 19 * SimTime.Hour && p.At == p.Home)
@@ -610,9 +702,17 @@ namespace TC2.Core.Agents
                 return;
             }
 
-            // 5. children play near home or the square - or, from eight, take the household's animals out to their ground and
-            //    watch them until evening (D2-050)
+            // 5. children: from eight they take the household's animals out to their ground at first light and watch them until
+            //    evening (D2-050); then chores - from six they carry water when the pots are low, from eight they help at the
+            //    quern when nothing is cooked (D2-056); then they play near home or the square
             if (child && age >= 8 && atHome && lsec >= 6 * SimTime.Hour + 30 * SimTime.Minute && lsec < 15 * SimTime.Hour && Tend(ref p, ref here, lsec, true, ref rs)) return;
+            if (child && age >= 6 && atHome && lsec >= 7 * SimTime.Hour && lsec < 19 * SimTime.Hour && w.Households.Exists(p.Household))
+            {
+                ref var hh = ref w.Households.Get(p.Household);
+                UnderWay(p.Household, out double cooking, out double fetching);
+                if (hh.Water + fetching < 0.5 * WaterTarget(p.Household) && rs.Chance(0.7)) { BeginWater(ref p, in here, ref rs); return; }
+                if (age >= 8 && hh.Ready + cooking < MealOf(p.Household) && CanCook(in p) && rs.Chance(0.5)) { BeginCook(ref p, WhyCode.MealsToMake, homeX, homeY, ref rs); return; }
+            }
             if (child)
             {
                 bool sq = rs.Chance(0.5);
@@ -625,7 +725,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -637,10 +737,13 @@ namespace TC2.Core.Agents
             double woodTarget = 6.0 * Math.Max(1, here.Population);
             bool ownRoof = false, woodShort = false;
             bool canBuild = atHome && Construction.HasWork(w, in here, p.Household, out ownRoof, out woodShort);
-            if (day && (here.Woodstore < woodTarget || woodShort))
+            double fuelDays = here.FuelDay > 1e-6 ? here.Woodstore / here.FuelDay : 99.0;
+            if (day && (here.Woodstore < woodTarget || woodShort || fuelDays < 6.0))
             {
-                // (wood is wanted most when a roof or a work waits for it)
-                double u = (woodShort ? 0.7 : 0.5 * (1.0 - here.Woodstore / woodTarget)) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
+                // (wood is wanted most when a roof or a work waits for it, and more yet when the hearths are about to go cold: D2-056)
+                double u = woodShort ? 0.7 : 0.5 * (1.0 - here.Woodstore / woodTarget);
+                if (fuelDays < 6.0) u = DMath.Max(u, 0.85 * (1.0 - fuelDays / 6.0));
+                u = u * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
                 if (u > best) { best = u; choice = 2; }
             }
             if (day && canBuild)
@@ -651,7 +754,24 @@ namespace TC2.Core.Agents
                 double u = need * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
                 if (u > best) { best = u; choice = 7; }
             }
-            if (day && rs.Chance(0.12)) { double u = 0.3 + 0.1 * rs.NextUnit(); if (u > best) { best = u; choice = 3; } }
+            if (day && atHome && w.Households.Exists(p.Household))
+            {
+                // the household's own work (D2-056): the next meal to make when nothing is cooked, water when the pots are low
+                ref var hh = ref w.Households.Get(p.Household);
+                UnderWay(p.Household, out double cooking, out double fetching);
+                double meal = MealOf(p.Household), ready = hh.Ready + cooking;
+                if (ready < meal && CanCook(in p))
+                {
+                    double u = (0.5 + 0.35 * (1.0 - ready / DMath.Max(1e-6, meal))) * (0.6 + 0.4 * p.Diligence / 255.0) + 0.1 * rs.NextUnit();
+                    if (u > best) { best = u; choice = 10; }
+                }
+                double half = 0.5 * WaterTarget(p.Household), have = hh.Water + fetching;
+                if (have < half)
+                {
+                    double u = 0.35 + 0.45 * (1.0 - have / DMath.Max(1e-6, half)) + 0.08 * rs.NextUnit();
+                    if (u > best) { best = u; choice = 3; }
+                }
+            }
             int wildKind = -1;
             if (day && lsec < 15 * SimTime.Hour)
             {
@@ -696,7 +816,10 @@ namespace TC2.Core.Agents
                     BeginLocal(ref p, ActivityKind.Wood, WhyCode.WoodLow, 0, here.WoodX + rs.Range(-50, 50), here.WoodY + rs.Range(-50, 50), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
                     return;
                 case 3:
-                    BeginLocal(ref p, ActivityKind.Water, WhyCode.WaterNeeded, 0, here.WellX, here.WellY, 20 * SimTime.Minute);
+                    BeginWater(ref p, in here, ref rs);
+                    return;
+                case 10:
+                    BeginCook(ref p, WhyCode.MealsToMake, homeX, homeY, ref rs);
                     return;
                 case 4:
                     BeginLocal(ref p, ActivityKind.Social, WhyCode.Leisure, 0, here.SquareX + rs.Range(-12, 12), here.SquareY + rs.Range(-12, 12), SimTime.Hours(1.5 + 1.5 * rs.NextUnit()));
@@ -714,8 +837,8 @@ namespace TC2.Core.Agents
                     {
                         // at their own lot, or at the village's well or granary
                         bool own = w.Households.Exists(p.Household) && w.Households.Get(p.Household).Shelter < Construction.House;
-                        double bx = own ? homeX : (Construction.NextWork(in here) == Construction.Well ? here.WellX : here.SquareX + 14);
-                        double by = own ? homeY : (Construction.NextWork(in here) == Construction.Well ? here.WellY : here.SquareY - 10);
+                        double bx = own ? homeX : (Construction.NextWork(in here) == Construction.Well ? here.WellX : here.SquareX + 14.0);
+                        double by = own ? homeY : (Construction.NextWork(in here) == Construction.Well ? here.WellY : here.SquareY - 10.0);
                         BeginLocal(ref p, ActivityKind.Build, own ? WhyCode.NoRoof : WhyCode.VillageWork, 0, bx + rs.Range(-3, 3), by + rs.Range(-3, 3), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
                         return;
                     }
@@ -903,6 +1026,89 @@ namespace TC2.Core.Agents
         }
         public const double TendStint = 4.5;             // hours a youth or a grown member gives to the herd (a lived stint is 4-5)
 
+        readonly Dictionary<int, double> _chore = new Dictionary<int, double>();
+        readonly List<int> _kids = new List<int>(), _grown = new List<int>();
+
+        /// <summary>
+        /// A COARSE day's household work (D2-056), as lived days share it: each household's food for the day made ready (the
+        /// part its larder and the store can feed) and its water carried - a child of six to eleven carries a pot every other
+        /// day, those of eight help at the quern; the grown members share the rest evenly. The hours are taken off their day before any other
+        /// work. The cooking burns the village's wood.
+        /// </summary>
+        void Chores(int sid)
+        {
+            var w = _w;
+            long now = w.Now;
+            _chore.Clear();
+            var hhs = w.HouseholdsOf(sid);
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                int hid = hhs[i];
+                ref var hh = ref w.Households.Get(hid);
+                ref var s = ref w.Settlements.Get(sid);
+                var mem = w.Members(hid);
+                double need = 0, litres = 0;
+                _kids.Clear(); _grown.Clear();
+                for (int k = 0; k < mem.Count; k++)
+                {
+                    ref var q = ref w.People.Get(mem[k]);
+                    if (!q.Alive || q.At != sid) continue;
+                    double age = q.AgeYears(now);
+                    need += DailyNeed(in q, now);
+                    litres += Hearth.WaterNeed(age);
+                    if (q.Health < 0.3) continue;
+                    if (age >= 6 && age < 12) _kids.Add(mem[k]); else if (age >= 12) _grown.Add(mem[k]);
+                }
+                if (need <= 0) continue;
+                bool wood = s.Woodstore > 0.05;
+                // food: what is not yet cooked of what they will eat today
+                double raw = DMath.Max(0.0, DMath.Min(need, hh.Ready + hh.Larder + s.Granary) - hh.Ready);
+                double left = raw, hoursAll = 0;
+                for (int k = 0; k < _kids.Count && left > 1e-9; k++)
+                {
+                    ref var q = ref w.People.Get(_kids[k]);
+                    double age = q.AgeYears(now);
+                    if (age < 8) continue;
+                    double rate = Hearth.PrepPerHour(age, q.Health, wood);
+                    double h = DMath.Min(_grown.Count > 0 ? 1.5 : 4.0, left / rate);
+                    Add(_kids[k], h); left -= h * rate; hoursAll += h;
+                }
+                if (left > 1e-9 && _grown.Count > 0)
+                {
+                    double per = left / _grown.Count;
+                    for (int k = 0; k < _grown.Count; k++)
+                    {
+                        ref var q = ref w.People.Get(_grown[k]);
+                        double h = per / Hearth.PrepPerHour(q.AgeYears(now), q.Health, wood);
+                        Add(_grown[k], h); hoursAll += h;
+                    }
+                    left = 0;
+                }
+                double made = raw - left;
+                s.Woodstore = DMath.Max(0.0, s.Woodstore - made * Hearth.CookFuel);
+                w.Metrics.PrepHours += hoursAll; w.Metrics.PrepFu += made;
+                // water: the day's litres, a pot a trip
+                double wleft = litres, wh = 0;
+                for (int k = 0; k < _kids.Count && wleft > 1e-9; k++)
+                {
+                    double trips = DMath.Min(0.5, wleft / Hearth.CarryChild);   // a pot every other day: a lived day's grown members mostly see the need first
+                    Add(_kids[k], trips * Hearth.TripHours); wleft -= trips * Hearth.CarryChild; wh += trips * Hearth.TripHours;
+                    w.Metrics.WaterTrips += DMath.ToLong(-DMath.Floor(-trips));
+                }
+                if (wleft > 1e-9 && _grown.Count > 0)
+                {
+                    double trips = wleft / Hearth.CarryAdult, per = trips / _grown.Count;
+                    for (int k = 0; k < _grown.Count; k++) Add(_grown[k], per * Hearth.TripHours);
+                    wh += trips * Hearth.TripHours;
+                    w.Metrics.WaterTrips += DMath.ToLong(-DMath.Floor(-trips));
+                }
+                w.Metrics.WaterHours += wh;
+                hh.Water = (float)litres;   // the pots kept filled
+            }
+        }
+
+        void Add(int pid, double h) => _chore[pid] = (_chore.TryGetValue(pid, out double had) ? had : 0.0) + h;
+
         public void CoarseDay(int sid)
         {
             var w = _w;
@@ -940,6 +1146,9 @@ namespace TC2.Core.Agents
                 ref var s1 = ref w.Settlements.Get(sid);
                 if (target >= 0) { w.Migration.Look(sid, target, 0); w.Metrics.Scouts++; } else s1.ScoutAt = now;
             }
+            Chores(sid);
+            // the hearths' wood comes first when it is running out: six days of fires kept in store (D2-056)
+            double fuelWanted = DMath.Max(0.0, 6.0 * s.FuelDay - s.Woodstore);
             for (int i = 0; i < res.Count; i++)
             {
                 ref var p = ref w.People.Get(res[i]);
@@ -952,7 +1161,15 @@ namespace TC2.Core.Agents
                 // youths (12-15) work part of a day, as they take part in a lived day's chores
                 double hours = 7.5 * (0.6 + 0.4 * p.Diligence / 255.0) * (age > 60 ? 0.5 : (age < 16 ? 0.6 : 1.0)) * (0.5 + 0.5 * p.Health);
                 if (_tendBy.Contains(p.Id)) hours = DMath.Max(0.0, hours - TendStint);   // out with the herd (D2-050)
+                if (_chore.TryGetValue(p.Id, out double chore)) hours = DMath.Max(0.0, hours - chore);   // the household's own work (D2-056)
                 double day0 = hours;
+                if (fuelWanted > 0 && hours > 0)
+                {
+                    double rate = (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health);
+                    double h = DMath.Min(hours, fuelWanted / rate);
+                    s.Woodstore += h * rate; fuelWanted -= h * rate; hours -= h;
+                    p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * h);
+                }
                 if (cropNeed > 0)
                 {
                     double rate = (0.6 + p.SkFarm) * (0.5 + 0.5 * p.Health);
@@ -986,9 +1203,10 @@ namespace TC2.Core.Agents
                         // wild's urge + 0.06 of chance): the same odds, as a share of the free hours
                         // a pressing need keeps people out from dawn to mid-afternoon, beyond an ordinary day's work (two trips)
                         double free = shortNow ? DMath.Max(hours, WildNeedDay * (0.5 + 0.5 * p.Health) * (age > 60 ? 0.6 : (age < 16 ? 0.7 : 1.0)) - (day0 - hours)) : hours;
-                        // (in ordinary times a lived day spends ~0.6 of the free hours this mapping gives: building, water and
-                        // company take free slots too - measured, CoarseAndActivityLiveOffTheWildAlike)
-                        double hw = u > 0.005 ? DMath.Min(free, WildNeedDay) * DMath.Clamp01((u + 0.01) / 0.1) * (shortNow ? 1.0 : 0.6) : 0.0;
+                        // (in ordinary times a lived day spends ~0.9 of the free hours this mapping gives: building and company take
+                        // free slots too; the household's meals and water are charged first since D2-056, when it was 0.6 -
+                        // measured, CoarseAndActivityLiveOffTheWildAlike)
+                        double hw = u > 0.005 ? DMath.Min(free, WildNeedDay) * DMath.Clamp01((u + 0.01) / 0.1) * (shortNow ? 1.0 : 0.9) : 0.0;
                         if (hw >= 0.25)
                         {
                             var rs = NextRandom(ref p);

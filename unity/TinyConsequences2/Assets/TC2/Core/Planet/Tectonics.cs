@@ -172,7 +172,7 @@ namespace TC2.Core.Planet
             {
                 for (int c = 0; c < n; c++)
                 {
-                    double s = _uplift[c] * 2;
+                    double s = _uplift[c] * 2.0;
                     bool cont = P.Crust[c] == 1;
                     for (int q = 0; q < 4; q++)
                     {
@@ -240,7 +240,7 @@ namespace TC2.Core.Planet
                     if (Closing(P, best, s, at) < 0.05) { if (P.Crust[s] == 1) DropC++; else DropO++; continue; }
                     if (P.Crust[s] == 1 && P.Crust[best] == 1)
                     {
-                        elev += Thicken * DMath.Max(0, P.Elev[s] + 600); Collided++;
+                        elev += Thicken * DMath.Max(0, P.Elev[s] + 600.0); Collided++;
                         int pa = P.Plate[s], pb = P.Plate[best];
                         if (pa < 16 && pb < 16) { _front[pa * 16 + pb]++; _front[pb * 16 + pa]++; }
                     }
@@ -305,7 +305,7 @@ namespace TC2.Core.Planet
                 if (other < 6 || Volcanism.NearVent(P, c, 1.5)) continue;   // a volcano's island is real
                 // median of the eight (insertion sort: deterministic)
                 for (int i = 1; i < 8; i++) { float x = v[i]; int j = i - 1; while (j >= 0 && v[j] > x) { v[j + 1] = v[j]; j--; } v[j + 1] = x; }
-                _newElev[c] = 0.5f * (v[3] + v[4]);
+                _newElev[c] = (float)(0.5 * ((double)v[3] + v[4]));
                 Despeckled++;
             }
         }
@@ -516,10 +516,10 @@ namespace TC2.Core.Planet
                 int lower = 0;
                 for (int q = 0; q < 4; q++) if (P.Elev[g.Nbr4[c * 4 + q]] < e) lower++;
                 if (lower == 0) continue;
-                _tmp[c] -= (float)give;
-                for (int q = 0; q < 4; q++) { int nb = g.Nbr4[c * 4 + q]; if (P.Elev[nb] < e) _tmp[nb] += (float)(give / lower); }
+                _tmp[c] = (float)(_tmp[c] - give);
+                for (int q = 0; q < 4; q++) { int nb = g.Nbr4[c * 4 + q]; if (P.Elev[nb] < e) _tmp[nb] = (float)(_tmp[nb] + give / lower); }
             }
-            for (int c = 0; c < _cells; c++) if (_tmp[c] != 0f) P.Elev[c] += _tmp[c];
+            for (int c = 0; c < _cells; c++) if (_tmp[c] != 0f) P.Elev[c] = (float)((double)P.Elev[c] + _tmp[c]);
         }
 
         /// <summary>Worldgen: plate kinematics in m/yr and the first crust from the generated relief.</summary>

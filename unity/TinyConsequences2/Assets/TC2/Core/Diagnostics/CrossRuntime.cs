@@ -36,5 +36,47 @@ namespace TC2.Core.Diagnostics
             }
             return sb.ToString();
         }
+
+        /// <summary>
+        /// The same newly generated world hashed part by part - the planet field by field, then each store - so that two runtimes
+        /// whose probes differ show where they part.
+        /// </summary>
+        public static string Parts()
+        {
+            var w = WorldGenerator.Create(ReferenceConfig());
+            var P = w.Planet;
+            int n = P.Cells;
+            var sb = new StringBuilder("parts");
+            void Put(string name, StateHasher h) => sb.Append(' ').Append(name).Append(' ').Append(h.ToString());
+            { var h = StateHasher.Create(); w.Config.Hash(ref h); Put("config", h); }
+            { var h = StateHasher.Create(); w.Ids.Hash(ref h); Put("ids", h); }
+            { var h = StateHasher.Create(); w.Queue.Hash(ref h); Put("queue", h); }
+            { var h = StateHasher.Create(); h.Add(P.SeaLevel); h.Add(P.CO2); h.Add(P.GlobalTempOffset); h.Add(P.IceVolume); h.Add(P.SeaLevelRef); h.Add(P.TGlobalRef); h.Add(P.OceanAreaRef); h.Add(P.SupplyRef); h.Add(P.FreeLandRef); Put("globals", h); }
+            foreach (var (name, v) in new[] { ("sea", P.SeaLevel), ("co2", P.CO2), ("toff", P.GlobalTempOffset), ("icevol", P.IceVolume), ("seaRef", P.SeaLevelRef), ("tRef", P.TGlobalRef), ("oceanRef", P.OceanAreaRef), ("supplyRef", P.SupplyRef), ("landRef", P.FreeLandRef) })
+                sb.Append(' ').Append(name).Append(' ').Append(System.BitConverter.DoubleToInt64Bits(v).ToString("x16"));
+            { var h = StateHasher.Create(); for (int i = 0; i < n; i++) { h.Add(P.TMean[i]); } Put("tmean", h); }
+            { var h = StateHasher.Create(); for (int i = 0; i < n; i++) { h.Add(P.TAmp[i]); } Put("tamp", h); }
+            { var h = StateHasher.Create(); for (int j = 0; j < P.ZonalT.Length; j++) h.Add(P.ZonalT[j]); Put("zonal", h); }
+            { var h = StateHasher.Create(); for (int i = 0; i < n; i++) h.Add(P.Elev[i]); Put("elev", h); }
+            { var h = StateHasher.Create(); for (int i = 0; i < n; i++) { h.Add(P.Crust[i]); h.Add(P.CrustAge[i]); h.Add(P.Plate[i]); } Put("crust", h); }
+            { var h = StateHasher.Create(); for (int i = 0; i < n; i++) h.Add(P.Temp[i]); Put("temp", h); }
+            { var h = StateHasher.Create(); for (int i = 0; i < n; i++) h.Add(P.Moist[i]); Put("moist", h); }
+            { var h = StateHasher.Create(); for (int i = 0; i < n; i++) { h.Add(P.SoilWater[i]); h.Add(P.RiverFlow[i]); h.Add(P.LakeWater[i]); } Put("water", h); }
+            { var h = StateHasher.Create(); for (int i = 0; i < n; i++) { h.Add(P.Grass[i]); h.Add(P.Forest[i]); h.Add(P.Biome[i]); } Put("veg", h); }
+            { var h = StateHasher.Create(); for (int i = 0; i < n; i++) h.Add(P.Ice[i]); Put("ice", h); }
+            { var h = StateHasher.Create(); for (int i = 0; i < P.Species.Count; i++) P.Species[i].Hash(ref h); Put("species", h); }
+            { var h = StateHasher.Create(); for (int i = 0; i < P.Abund.Length; i++) h.Add(P.Abund[i]); Put("abund", h); }
+            { var h = StateHasher.Create(); for (int i = 0; i < P.Abund.Length; i++) { h.Add(P.Cond[i]); h.Add(P.Coat[i]); h.Add(P.Drift[i]); } Put("coat", h); }
+            { var h = StateHasher.Create(); for (int i = 0; i < n; i++) h.Add(P.FieldOwner[i]); Put("fields", h); }
+            { var h = StateHasher.Create(); P.Hash(ref h); Put("planet", h); }
+            { var h = StateHasher.Create(); w.Fire.Hash(ref h); Put("fire", h); }
+            { var h = StateHasher.Create(); for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id)) w.Settlements.Get(id).Hash(ref h); Put("settlements", h); }
+            { var h = StateHasher.Create(); for (int id = w.Households.First(); id != 0; id = w.Households.Next(id)) w.Households.Get(id).Hash(ref h); Put("households", h); }
+            { var h = StateHasher.Create(); for (int id = w.People.First(); id != 0; id = w.People.Next(id)) w.People.Get(id).Hash(ref h); Put("people", h); }
+            { var h = StateHasher.Create(); for (int id = w.Herds.First(); id != 0; id = w.Herds.Next(id)) w.Herds.Get(id).Hash(ref h); Put("herds", h); }
+            { var h = StateHasher.Create(); for (int id = w.Beasts.First(); id != 0; id = w.Beasts.Next(id)) w.Beasts.Get(id).Hash(ref h); Put("beasts", h); }
+            { var h = StateHasher.Create(); w.History.Hash(ref h); Put("history", h); }
+            return sb.ToString();
+        }
     }
 }
