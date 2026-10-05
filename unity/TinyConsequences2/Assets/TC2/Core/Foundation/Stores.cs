@@ -142,6 +142,8 @@ namespace TC2.Core.Foundation
             _a[i] = v; _n++;
         }
         public void Clear() { _n = 0; }
+        /// <summary>Keeps the first n values (a list compacted in place).</summary>
+        public void Truncate(int n) { if (n >= 0 && n < _n) _n = n; }
         public int[] Raw => _a;
 
         public void Write(BinWriter w) { w.Int(_n); for (int i = 0; i < _n; i++) w.Int(_a[i]); }

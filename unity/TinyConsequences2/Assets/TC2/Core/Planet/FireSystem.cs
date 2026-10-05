@@ -44,6 +44,8 @@ namespace TC2.Core.Planet
         // scratch
         readonly List<int> _ignite = new List<int>();
         readonly List<int> _out = new List<int>();
+        readonly List<int> _lit = new List<int>(), _merged = new List<int>();   // a step's new burning cells, merged in once
+        int[] _igniteStamp; int _stampNow;   // cells already among this step's ignitions (no search through the list)
 
         public FireSystem(int cells)
         {
@@ -79,11 +81,11 @@ namespace TC2.Core.Planet
             return id;
         }
 
-        void Light(World w, int cell, int proc, double intensity)
+        void Light(World w, int cell, int proc, double intensity, bool batch = false)
         {
             Intensity[cell] = (float)DMath.Clamp(intensity, 0.05, 1.0);
             ProcOf[cell] = proc;
-            Active.InsertSorted(cell);
+            if (batch) _lit.Add(cell); else Active.InsertSorted(cell);
             ref var p = ref Procs.Get(proc);
             p.Active++; p.Burned++;
             if (p.Active > p.MaxActive) p.MaxActive = p.Active;
@@ -97,7 +99,9 @@ namespace TC2.Core.Planet
             StepIndex++;
             var P = w.Planet;
             var grid = P.Grid;
-            _ignite.Clear(); _out.Clear();
+            _ignite.Clear(); _out.Clear(); _lit.Clear();
+            if (_igniteStamp == null || _igniteStamp.Length != P.Cells) { _igniteStamp = new int[P.Cells]; _stampNow = 0; }
+            _stampNow++;
             double hours = w.Config.FireStep / (double)SimTime.Hour;
             Vec3d windDir = Vec3d.Zero;
             long sod = SimTime.SecondOfDay(w.Now);
@@ -133,12 +137,18 @@ namespace TC2.Core.Planet
                     double p = 0.42 * hours * inten * nf * (nd * nd * 1.6 - 0.08) * (1.0 + 0.8 * align) * (k < 4 ? 1.0 : 0.7) * night;
                     if (P.RainToday[nb] > 0.4) p *= 0.2;
                     double u = KeyedRng.Unit(w.Seed, RngStream.FireSpread, (ulong)nb, (ulong)StepIndex, (ulong)c);
-                    if (u < p && !_ignite.Contains(nb)) { _ignite.Add(nb); _igniteFrom.Add(c); }
+                    if (u < p && _igniteStamp[nb] != _stampNow) { _igniteStamp[nb] = _stampNow; _ignite.Add(nb); _igniteFrom.Add(c); }
                 }
                 w.Settlements_FireOnCell(c, ProcOf[c]);
             }
-            // burn-outs
-            for (int i = 0; i < _out.Count; i++) Extinguish(w, _out[i]);
+            // burn-outs (the burning list compacted once, not searched per cell: big fires made this quadratic)
+            for (int i = 0; i < _out.Count; i++) Extinguish(w, _out[i], false);
+            if (_out.Count > 0)
+            {
+                int k = 0;
+                for (int i = 0; i < Active.Count; i++) { int c = Active[i]; if (Intensity[c] > 0) Active[k++] = c; }
+                Active.Truncate(k);
+            }
             // new ignitions (in the order found: ascending source cells, then neighbour order; deterministic)
             for (int i = 0; i < _ignite.Count; i++)
             {
@@ -146,7 +156,22 @@ namespace TC2.Core.Planet
                 if (IsBurning(nb)) continue;
                 int proc = ProcOf[_igniteFrom[i]];
                 if (proc == 0) continue;
-                Light(w, nb, proc, 0.3);
+                Light(w, nb, proc, 0.3, true);
+            }
+            // the new burning cells join the list in one sorted merge (the same ascending list as inserting each)
+            if (_lit.Count > 0)
+            {
+                _lit.Sort();
+                _merged.Clear();
+                int a = 0, b = 0;
+                while (a < Active.Count || b < _lit.Count)
+                {
+                    if (b >= _lit.Count || (a < Active.Count && Active[a] < _lit[b])) _merged.Add(Active[a++]);
+                    else _merged.Add(_lit[b++]);
+                }
+                Active.Clear();
+                for (int i = 0; i < _merged.Count; i++) Active.Add(_merged[i]);
+                _lit.Clear();
             }
             _igniteFrom.Clear();
             // process bookkeeping: large fires become history; finished fires end
@@ -189,13 +214,13 @@ namespace TC2.Core.Planet
         readonly List<int> _igniteFrom = new List<int>();
         readonly List<int> _ended = new List<int>();
 
-        void Extinguish(World w, int c)
+        void Extinguish(World w, int c, bool unlist = true)
         {
             int proc = ProcOf[c];
             Intensity[c] = 0;
             ProcOf[c] = 0;
             BurnedAt[c] = w.Now;
-            Active.Remove(c);
+            if (unlist) Active.Remove(c);
             if (proc != 0 && Procs.Exists(proc)) Procs.Get(proc).Active--;
         }
 
