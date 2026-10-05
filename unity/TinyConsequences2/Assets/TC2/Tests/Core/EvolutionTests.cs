@@ -34,45 +34,56 @@ namespace TC2.Tests.Core
             Assert.Greater(cost, 0, "a coat far from the place costs lives while it lasts");
         }
 
-        [Test]
-        public void ACutOffDivergedPopulationBecomesASpeciesAndAnEmptiedOneDiesOut()
+        /// <summary>Two groups of hares at opposite ends of the land, nothing between them; the second with a warmer coat.</summary>
+        static (World w, int hare, System.Collections.Generic.List<int> a, System.Collections.Generic.List<int> b) TwoGroups(ulong seed, float coatB)
         {
-            var w = TestWorlds.Make(112);
+            var w = TestWorlds.Make(seed);
             var P = w.Planet;
             var g = P.Grid;
             int hare = Kind(P, 1), n = P.Cells;
             for (int c = 0; c < n; c++) P.Abund[hare * n + c] = 0f;
-            // two groups of hares far apart (no occupied path between them), one with a much warmer coat
-            int a = -1, b = -1;
+            int a0 = -1, b0 = -1;
             double farthest = 0;
             for (int c = 0; c < n; c++)
             {
                 if (!P.IsLand(c)) continue;
-                if (a < 0) { a = c; continue; }
-                double ang = Vec3d.Angle(g.Center[c], g.Center[a]);
-                if (ang > farthest) { farthest = ang; b = c; }
+                if (a0 < 0) { a0 = c; continue; }
+                double ang = Vec3d.Angle(g.Center[c], g.Center[a0]);
+                if (ang > farthest) { farthest = ang; b0 = c; }
             }
             Assert.Greater(farthest, 0.5, "land far from the first group");
-            void Group(int c0, float coat)
+            System.Collections.Generic.List<int> Group(int c0, float coat)
             {
                 var list = new System.Collections.Generic.List<int> { c0 };
                 var seen = new System.Collections.Generic.HashSet<int> { c0 };
-                for (int h = 0; h < list.Count && list.Count < 20; h++)
-                    for (int q = 0; q < 4 && list.Count < 20; q++) { int nb = g.Nbr4[list[h] * 4 + q]; if (seen.Add(nb)) list.Add(nb); }
-                foreach (int c in list) { P.Abund[hare * n + c] = 3f; P.Coat[hare * n + c] = coat; }
+                for (int h = 0; h < list.Count && list.Count < 40; h++)
+                    for (int q = 0; q < 4 && list.Count < 40; q++) { int nb = g.Nbr4[list[h] * 4 + q]; if (seen.Add(nb)) list.Add(nb); }
+                foreach (int c in list) { P.Abund[hare * n + c] = 3f; P.Coat[hare * n + c] = coat; P.Drift[hare * n + c] = 0f; }
+                return list;
             }
-            Group(a, 0f);
-            Group(b, 7f);
-            int before = P.Species.Count;
+            var ga = Group(a0, 0f);
+            var gb = Group(b0, coatB);
+            return (w, hare, ga, gb);
+        }
+
+        [Test]
+        public void ACutOffPopulationBecomesASpeciesOnlyWhenItsLineageHasLongBeenApart()
+        {
+            var (w, hare, a, b) = TwoGroups(112, 7f);
+            var P = w.Planet;
+            int n = P.Cells, before = P.Species.Count;
+            Assert.AreEqual(0, Evolution.Speciate(w), "a different coat alone does not make a new kind at once");
+            // as if they had been apart for a millennium and more: their lineages have wandered apart
+            foreach (int c in b) P.Drift[hare * n + c] = P.Drift[hare * n + a[0]] + 0.8f;   // 0.8 x (1 + 0.35) > 1
             int wolf = Kind(P, 5);
             for (int c = 0; c < n; c++) P.Abund[wolf * n + c] = 0f;   // and the wolves are all gone
             long last = w.History.LastId;
-            int formed = Evolution.Speciate(w);
-            Assert.AreEqual(1, formed, "the cut-off, diverged group is a species of its own");
+            Assert.AreEqual(1, Evolution.Speciate(w), "apart long enough, and made different by their climates: a kind of their own");
             Assert.AreEqual(before + 1, P.Species.Count);
             var child = P.Species[before];
             Assert.AreEqual(P.Species[hare].Id, child.Parent, "it descends from the hares");
             Assert.AreEqual(P.Species[hare].ColdTol + 7f, child.ColdTol, 0.01f, "its coat is its own now");
+            foreach (int c in b) Assert.AreEqual(0f, P.Abund[hare * n + c], "its animals are no longer counted as hares");
             bool speciation = false, extinction = false;
             for (int i = w.History.FirstIndexAfter(last); i < w.History.Count; i++)
             {
@@ -83,6 +94,22 @@ namespace TC2.Tests.Core
             Assert.IsTrue(speciation, "the history tells of the new kind");
             Assert.IsTrue(extinction, "and of the wolves that are no more");
             Assert.AreNotEqual(0, P.Species[wolf].Gone);
+        }
+
+        [Test]
+        public void IsolatedLineagesWanderApartWhileARangeWandersTogether()
+        {
+            var (w, hare, a, b) = TwoGroups(113, 0f);
+            var P = w.Planet;
+            int n = P.Cells;
+            Evolution.Speciate(w);
+            float da = P.Drift[hare * n + a[0]], db = P.Drift[hare * n + b[0]];
+            foreach (int c in a) Assert.AreEqual(da, P.Drift[hare * n + c], "one range, one lineage");
+            foreach (int c in b) Assert.AreEqual(db, P.Drift[hare * n + c], "one range, one lineage");
+            Assert.AreNotEqual(da, db, "two ranges cut off from each other wander apart");
+            double step = Evolution.DriftStep(P.Species[hare]);
+            Assert.LessOrEqual(System.Math.Abs(da), 1.74 * step);
+            Assert.LessOrEqual(System.Math.Abs(db), 1.74 * step);
         }
     }
 }

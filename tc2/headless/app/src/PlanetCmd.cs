@@ -27,9 +27,36 @@ namespace TC2.Headless
             string zoom = a.Get("zoom"); // "LAT,LON,DEG": a region instead of the whole planet; "first" = the first village
             _zoom = zoom;
             var sw = Stopwatch.StartNew();
+            if (a.Has("ecodiag")) Ecology.Diag = new double[16 * 8];
             var w = WorldGenerator.Create(cfg);
             Console.WriteLine("worldgen " + sw.ElapsedMilliseconds + " ms; seed " + cfg.Seed + " cells " + w.Planet.Cells);
+            if (Ecology.Diag != null)
+            {
+                Console.WriteLine("spin-up " + EcoDiagLine(w)); Array.Clear(Ecology.Diag, 0, Ecology.Diag.Length);
+                for (int i = 0; i < Ecology.DiagSpin.Count; i += 4)
+                {
+                    var sb = new System.Text.StringBuilder("  spin year " + (i / 4 + 1) + ":");
+                    for (int si = 0; si < Ecology.DiagSpin[i].Length; si++) sb.AppendFormat(CultureInfo.InvariantCulture, " {0} {1:0}", SpeciesName(w, si), Ecology.DiagSpin[i][si]);
+                    Console.WriteLine(sb.ToString());
+                }
+            }
             if (a.Has("coarse")) w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
+            if (a.Has("steep"))
+            {
+                // how steep the land is (the share of land cells at or above each steepness)
+                var edges = new[] { 0.05, 0.1, 0.2, 0.3, 0.5, 0.8, 1.0, 1.5 };
+                var cnt = new int[edges.Length]; int land = 0;
+                for (int c = 0; c < w.Planet.Cells; c++)
+                {
+                    if (!w.Planet.IsLand(c)) continue;
+                    land++;
+                    double st = Ecology.Steepness(w.Planet, c);
+                    for (int e = 0; e < edges.Length; e++) if (st >= edges[e]) cnt[e]++;
+                }
+                var sb = new System.Text.StringBuilder("steepness (share of land at or above):");
+                for (int e = 0; e < edges.Length; e++) sb.AppendFormat(CultureInfo.InvariantCulture, " {0}:{1:0.000}", edges[e], cnt[e] / (double)land);
+                Console.WriteLine(sb.ToString());
+            }
             if (mapDir != null) { Directory.CreateDirectory(mapDir); WriteMap(w, Path.Combine(mapDir, "map_0000.png"), width); }
             Console.WriteLine(PlanetHeader());
             Console.WriteLine(PlanetLine(w));
@@ -49,6 +76,7 @@ namespace TC2.Headless
                 if (a.Has("erosion")) Console.WriteLine("      " + ErosionLine(w));
                 if (a.Has("storms")) Console.WriteLine("      " + StormLine(w));
                 if (a.Has("eco")) Console.WriteLine("      " + EcoLine(w));
+                if (Ecology.Diag != null) { Console.WriteLine("      " + EcoDiagLine(w)); Array.Clear(Ecology.Diag, 0, Ecology.Diag.Length); }
                 if (mapDir != null) WriteMap(w, Path.Combine(mapDir, "map_" + k.ToString("0000") + ".png"), width);
             }
             FlowHistogram(w);
@@ -80,13 +108,42 @@ namespace TC2.Headless
             var sb = new System.Text.StringBuilder("animals:");
             for (int si = 0; si < P.Species.Count; si++)
             {
-                double tot = 0, cond = 0, cells = 0;
-                for (int c = 0; c < P.Cells; c++) { double v = P.Abund[si * P.Cells + c]; tot += v; if (v > 0.05) { cond += P.Cond[si * P.Cells + c]; cells++; } }
-                sb.AppendFormat(CultureInfo.InvariantCulture, " {0} {1:0} (in {2:0} cells, cond {3:0.00})", TC2.Core.Planet.Ecology.KindName(P.Species[si].Kind), tot, cells, cells > 0 ? cond / cells : 0);
+                var sp = P.Species[si];
+                if (sp.Gone != 0) { sb.Append(' ').Append(SpeciesName(w, si)).Append(" (extinct)"); continue; }
+                double tot = 0, cond = 0, cells = 0, coat = 0;
+                for (int c = 0; c < P.Cells; c++)
+                {
+                    double v = P.Abund[si * P.Cells + c]; tot += v; coat += v * P.Coat[si * P.Cells + c];
+                    if (v > 0.05) { cond += P.Cond[si * P.Cells + c]; cells++; }
+                }
+                // tol: the population's mean cold tolerance (the kind's plus its coat): adaptation, measurable
+                sb.AppendFormat(CultureInfo.InvariantCulture, " {0} {1:0} (in {2:0} cells, cond {3:0.00}, tol {4:0.0})", SpeciesName(w, si), tot, cells,
+                                cells > 0 ? cond / cells : 0, sp.ColdTol + (tot > 0 ? coat / tot : 0));
             }
             double g = 0, land = 0; for (int c = 0; c < P.Cells; c++) if (P.IsLand(c)) { g += P.Grass[c]; land++; }
             sb.AppendFormat(CultureInfo.InvariantCulture, " | grass {0:0.00}", g / Math.Max(1, land));
             return sb.ToString();
+        }
+
+        /// <summary>Where each species' animals went since the last line: deaths by cause and the young born.</summary>
+        static string EcoDiagLine(World w)
+        {
+            var P = w.Planet; var d = Ecology.Diag;
+            var sb = new System.Text.StringBuilder("lost (age/hunger/cold/coat/hunted) born:");
+            for (int si = 0; si < P.Species.Count; si++)
+            {
+                if (P.Species[si].Gone != 0) continue;
+                sb.AppendFormat(CultureInfo.InvariantCulture, " {0} {1:0}/{2:0}/{3:0}/{4:0}/{5:0} +{6:0};", SpeciesName(w, si),
+                                d[si * 8 + 0], d[si * 8 + 1], d[si * 8 + 2], d[si * 8 + 3], d[si * 8 + 4], d[si * 8 + 5]);
+            }
+            return sb.ToString();
+        }
+
+        static string SpeciesName(World w, int si)
+        {
+            var sp = w.Planet.Species[si];
+            string n = w.History.NameOf(new EntityRef(EntityKind.Species, sp.Id));
+            return string.IsNullOrEmpty(n) ? TC2.Core.Planet.Ecology.KindName(sp.Kind) : n;
         }
 
         static string StormLine(World w)

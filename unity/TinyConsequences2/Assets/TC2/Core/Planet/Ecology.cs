@@ -20,6 +20,7 @@ namespace TC2.Core.Planet
         public float SlopePref;     // 0 flat .. 1 crags
         public float Grass, Browse; // share of its plant food from grass and from shoots (herbivores, omnivores)
         public float Mast, Small;   // ... from mast and roots in the woods, and from small fare in the grass (voles, beetles)
+        public float Crag;          // ... from the herbs and lichens of steep open ground, which only climbers reach
         public int Prey;            // bit mask of the kinds it hunts (predators, omnivores)
         public float Disperse;      // share that wanders to neighbouring cells each step
         public float Territory;     // hunters: animals a cell's range holds before the young find no room (0: no limit)
@@ -30,19 +31,19 @@ namespace TC2.Core.Planet
         public void Write(BinWriter w)
         {
             w.Int(Id); w.Byte(Kind); w.Byte((byte)Role); w.Float(Mass); w.Float(Fecundity); w.Float(Lifespan); w.Float(ColdTol);
-            w.Float(ForestPref); w.Float(SlopePref); w.Float(Grass); w.Float(Browse); w.Float(Mast); w.Float(Small); w.Int(Prey); w.Float(Disperse); w.Float(Territory); w.Int(Parent); w.Long(Born); w.Long(Gone);
+            w.Float(ForestPref); w.Float(SlopePref); w.Float(Grass); w.Float(Browse); w.Float(Mast); w.Float(Small); w.Float(Crag); w.Int(Prey); w.Float(Disperse); w.Float(Territory); w.Int(Parent); w.Long(Born); w.Long(Gone);
         }
 
         public static Species Read(BinReader r) => new Species
         {
             Id = r.Int(), Kind = r.Byte(), Role = (Role)r.Byte(), Mass = r.Float(), Fecundity = r.Float(), Lifespan = r.Float(), ColdTol = r.Float(),
-            ForestPref = r.Float(), SlopePref = r.Float(), Grass = r.Float(), Browse = r.Float(), Mast = r.Float(), Small = r.Float(), Prey = r.Int(), Disperse = r.Float(), Territory = r.Float(), Parent = r.Int(), Born = r.Long(), Gone = r.Long(),
+            ForestPref = r.Float(), SlopePref = r.Float(), Grass = r.Float(), Browse = r.Float(), Mast = r.Float(), Small = r.Float(), Crag = r.Float(), Prey = r.Int(), Disperse = r.Float(), Territory = r.Float(), Parent = r.Int(), Born = r.Long(), Gone = r.Long(),
         };
 
         public void Hash(ref StateHasher h)
         {
             h.Add(Id); h.Add(Kind); h.Add((byte)Role); h.Add(Mass); h.Add(Fecundity); h.Add(Lifespan); h.Add(ColdTol);
-            h.Add(ForestPref); h.Add(SlopePref); h.Add(Grass); h.Add(Browse); h.Add(Mast); h.Add(Small); h.Add(Prey); h.Add(Disperse); h.Add(Territory); h.Add(Parent); h.Add(Born); h.Add(Gone);
+            h.Add(ForestPref); h.Add(SlopePref); h.Add(Grass); h.Add(Browse); h.Add(Mast); h.Add(Small); h.Add(Crag); h.Add(Prey); h.Add(Disperse); h.Add(Territory); h.Add(Parent); h.Add(Born); h.Add(Gone);
         }
 
         /// <summary>Plant food it needs a year (kg dry matter), or meat for a predator: ~ mass^0.75.</summary>
@@ -65,12 +66,13 @@ namespace TC2.Core.Planet
         public const double GrassFloor = 0.25;   // the bottom of the sward (roots, short growth) cannot be grazed away
         public const double MastMax = 350.0;     // kg of mast, roots and fungi a hectare of full woods offers a year
         public const double SmallMax = 60.0;     // kg of voles and beetles a hectare of full grass offers a year
+        public const double CragMax = 150.0;     // kg of herbs and lichens a hectare of steep open ground offers a year (climbers only)
         public const double BrowseRenew = 1.0;   // browse is the woods' shoots and leaves: this many times BrowseMax a year
         public const double HalfPrey = 120.0;    // kg of reachable prey in a cell at which a hunter eats half its fill
 
         struct Template
         {
-            public string Name; public Role Role; public float Mass, Fec, Life, Cold, Forest, Slope, Grass, Browse, Mast, Small, Disperse, Territory; public int Prey;
+            public string Name; public Role Role; public float Mass, Fec, Life, Cold, Forest, Slope, Grass, Browse, Mast, Small, Crag, Disperse, Territory; public int Prey;
         }
 
         static readonly Template[] Templates =
@@ -79,7 +81,8 @@ namespace TC2.Core.Planet
             new Template { Name = "hare",    Role = Role.Grazer,   Mass = 3,   Fec = 4.0f, Life = 3,  Cold = -14, Forest = 0.2f,  Slope = 0.2f, Grass = 0.9f, Browse = 0.1f, Disperse = 0.08f },
             new Template { Name = "aurochs", Role = Role.Grazer,   Mass = 600, Fec = 0.45f, Life = 18, Cold = -10, Forest = 0.15f, Slope = 0.0f, Grass = 1.0f, Disperse = 0.05f },
             new Template { Name = "boar",    Role = Role.Omnivore, Mass = 80,  Fec = 2.5f, Life = 9,  Cold = -6,  Forest = 0.75f, Slope = 0.2f, Grass = 0.15f, Mast = 0.85f, Disperse = 0.06f },
-            new Template { Name = "ibex",    Role = Role.Grazer,   Mass = 60,  Fec = 0.7f, Life = 14, Cold = -16, Forest = 0.1f,  Slope = 0.9f, Grass = 0.8f, Browse = 0.2f, Disperse = 0.05f },
+            // an ibex lives on the crags: grass and shrubs where it can, the herbs of the steep ground no grazer reaches
+            new Template { Name = "ibex",    Role = Role.Grazer,   Mass = 60,  Fec = 0.7f, Life = 14, Cold = -16, Forest = 0.1f,  Slope = 0.9f, Grass = 0.45f, Browse = 0.15f, Crag = 0.4f, Disperse = 0.05f },
             new Template { Name = "wolf",    Role = Role.Predator, Mass = 35,  Fec = 1.5f, Life = 9,  Cold = -30, Forest = 0.4f,  Slope = 0.3f, Disperse = 0.10f, Territory = 0.5f, Prey = (1 << 0) | (1 << 2) | (1 << 3) | (1 << 4) },
             // a fox lives as much on voles and beetles in the grass as on hares
             new Template { Name = "fox",     Role = Role.Omnivore, Mass = 6,   Fec = 2.0f, Life = 5,  Cold = -25, Forest = 0.4f,  Slope = 0.2f, Small = 1.0f, Disperse = 0.10f, Territory = 1.2f, Prey = 1 << 1 },
@@ -89,10 +92,17 @@ namespace TC2.Core.Planet
 
         public static string KindName(byte kind) => kind < Templates.Length ? Templates[kind].Name : "beast";
 
-        [ThreadStatic] static double[] _grassEaten, _browseEaten, _flow, _in, _inZ;
+        [ThreadStatic] static double[] _grassEaten, _browseEaten, _flow, _in, _inZ, _inD;
         [ThreadStatic] static float[] _suit, _steep;
-        [ThreadStatic] static double[] _vuln, _keep;
-        [ThreadStatic] static Species[] _sp;   // per step: vulnerability [hunter*16+prey], coat-selection keep per species
+        [ThreadStatic] static double[] _vuln, _keep;   // per step: vulnerability [hunter*16+prey], coat-selection keep per species
+        [ThreadStatic] static Species[] _sp;
+        /// <summary>
+        /// Diagnostics for tools only (null in the game): per species [s*8 + k] animals lost to k = 0 age, 1 hunger,
+        /// 2 cold, 3 a coat far from the place, 4 hunters; 5 born; summed over the steps since it was cleared. Never read
+        /// by the simulation.
+        /// </summary>
+        public static double[] Diag;
+        public static readonly List<double[]> DiagSpin = new List<double[]>();   // tools: each species' animals after each spin-up step
 
         /// <summary>Worldgen: this world's species (the templates, varied by the seed), spread over the land and settled.</summary>
         public static void Create(Simulation.World w)
@@ -110,7 +120,7 @@ namespace TC2.Core.Planet
                 {
                     Id = id, Kind = (byte)i, Role = t.Role, Mass = (float)(t.Mass * v()), Fecundity = (float)(t.Fec * v()), Lifespan = (float)(t.Life * v()),
                     ColdTol = (float)(t.Cold + 4.0 * (rs.NextUnit() - 0.5)), ForestPref = t.Forest, SlopePref = t.Slope, Grass = t.Grass, Browse = t.Browse,
-                    Mast = t.Mast, Small = t.Small,
+                    Mast = t.Mast, Small = t.Small, Crag = t.Crag,
                     Prey = t.Prey, Disperse = t.Disperse, Territory = t.Territory, Born = 0,
                 });
                 w.History.Register(new EntityRef(EntityKind.Species, id), t.Name, 0);
@@ -118,6 +128,7 @@ namespace TC2.Core.Planet
             P.Abund = new float[k * P.Cells];
             P.Cond = new float[k * P.Cells];
             P.Coat = new float[k * P.Cells];
+            P.Drift = new float[k * P.Cells];
             // a few of each on every land cell they can live in; the spin-up spreads them to what the land holds
             for (int s = 0; s < k; s++)
                 for (int c = 0; c < P.Cells; c++)
@@ -130,9 +141,19 @@ namespace TC2.Core.Planet
                     P.Abund[s * P.Cells + c] = (float)start;
                     P.Cond[s * P.Cells + c] = 0.7f;
                 }
-            // twenty years before people, the plants growing back between the animals' steps
+            // twenty years before people, the plants growing back between the animals' steps. An untouched land booms and
+            // busts (hares eat the grass down, foxes starve): refuges keep a hundredth of each kind's first numbers through
+            // the spin-up only - the world is older than its history; from the first day on, a kind can die out
+            var refuge = new float[k * P.Cells];
+            for (int i = 0; i < refuge.Length; i++) refuge[i] = 0.01f * P.Abund[i];
             long t0 = 0;
-            for (int i = 0; i < 80; i++) { w.PlanetSys.GrowVegetation(w, 0.25); Step(w, 0.25, t0); t0 += SimTime.Year / 4; }
+            for (int i = 0; i < 80; i++)
+            {
+                w.PlanetSys.GrowVegetation(w, 0.25); Step(w, 0.25, t0); t0 += SimTime.Year / 4;
+                for (int j = 0; j < refuge.Length; j++)
+                    if (P.Abund[j] < refuge[j]) { P.Abund[j] = refuge[j]; if (P.Cond[j] < 0.5f) P.Cond[j] = 0.5f; }
+                if (Diag != null) { var tot = new double[k]; for (int s = 0; s < k; s++) tot[s] = Total(P, s); DiagSpin.Add(tot); }
+            }
         }
 
         /// <summary>How well a cell suits a species (0..1): climate, cover and slope.</summary>
@@ -149,7 +170,7 @@ namespace TC2.Core.Planet
             return cold * heat * DMath.Max(0.15, cover) * slope;
         }
 
-        static double Steepness(PlanetState P, int c)
+        public static double Steepness(PlanetState P, int c)
         {
             var g = P.Grid;
             double hi = P.Elev[c], lo = P.Elev[c];
@@ -165,19 +186,19 @@ namespace TC2.Core.Planet
             int n = P.Cells, k = P.Species.Count;
             if (k == 0 || P.Abund == null) return;
             if (_grassEaten == null || _grassEaten.Length != n) { _grassEaten = new double[n]; _browseEaten = new double[n]; }
-            if (_flow == null || _flow.Length != k * n) { _flow = new double[k * n]; _suit = new float[k * n]; _in = new double[k * n]; _inZ = new double[k * n]; }
+            if (_flow == null || _flow.Length != k * n) { _flow = new double[k * n]; _suit = new float[k * n]; _in = new double[k * n]; _inZ = new double[k * n]; _inD = new double[k * n]; }
             if (_steep == null || _steep.Length != n) _steep = new float[n];
             double yf = SimTime.YearFraction(t);
             Span<double> need = stackalloc double[16];   // plant food each wants this step (kg)
             Span<double> got = stackalloc double[16];    // what it got: plants, then meat
             Span<double> meat = stackalloc double[16];   // meat each hunter wants this step (kg)
             Span<double> wt = stackalloc double[4];
-            Span<double> food = stackalloc double[4], sum = stackalloc double[4], f = stackalloc double[4];   // per cell, reused
+            Span<double> food = stackalloc double[5], sum = stackalloc double[5], f = stackalloc double[5];   // per cell, reused
             if (_vuln == null) { _vuln = new double[16 * 16]; _keep = new double[16]; _sp = new Species[16]; }
             for (int a = 0; a < k; a++) _sp[a] = P.Species[a];   // a List's indexer copies the struct: read them from an array
             // [ThreadStatic] fields cost a thread-local lookup at every touch: the loops below use locals
             var sps = _sp; var suit = _suit; var steep = _steep; var vuln = _vuln; var keepS = _keep;
-            var flow = _flow; var inflow = _in; var inZ = _inZ; var grassEaten = _grassEaten; var browseEaten = _browseEaten;
+            var flow = _flow; var inflow = _in; var inZ = _inZ; var inD = _inD; var grassEaten = _grassEaten; var browseEaten = _browseEaten;
             // what each species eats a year and the prey that sates it half: computed once a step, not in every cell
             Span<double> intake = stackalloc double[16], half = stackalloc double[16];
             for (int a = 0; a < k; a++) { intake[a] = sps[a].Intake; half[a] = HalfPrey * DMath.Exp(0.75 * DMath.Log(sps[a].Mass / 35.0)); }
@@ -219,7 +240,8 @@ namespace TC2.Core.Planet
                 food[1] = P.Forest[c] * BrowseMax * ha * BrowseRenew * dt * lean;
                 food[2] = P.Forest[c] * MastMax * ha * dt * (0.5 + 0.5 * warm);
                 food[3] = P.Grass[c] * SmallMax * ha * dt * lean;
-                sum[0] = sum[1] = sum[2] = sum[3] = 0;
+                food[4] = DMath.SmoothStep(0.3, 0.8, steep[c]) * (1.0 - P.Forest[c]) * CragMax * ha * dt * lean;   // crags: ~5-10 % of land
+                sum[0] = sum[1] = sum[2] = sum[3] = sum[4] = 0;
                 // 1. plants: each eats its preferred mix; what one food lacks it makes up from what is left of the others
                 for (int s = 0; s < k; s++)
                 {
@@ -232,16 +254,16 @@ namespace TC2.Core.Planet
                     double awake = sp.Kind == 7 ? 0.15 + 0.85 * warm : 1.0;   // a bear sleeps through the cold
                     need[s] = N * intake[s] * dt * plant * awake;
                     if (sp.Prey != 0) meat[s] = N * intake[s] * dt * (1.0 - plant) * awake;
-                    sum[0] += need[s] * sp.Grass; sum[1] += need[s] * sp.Browse; sum[2] += need[s] * sp.Mast; sum[3] += need[s] * sp.Small;
+                    sum[0] += need[s] * sp.Grass; sum[1] += need[s] * sp.Browse; sum[2] += need[s] * sp.Mast; sum[3] += need[s] * sp.Small; sum[4] += need[s] * sp.Crag;
                 }
                 double left = 0;
-                for (int r = 0; r < 4; r++) { f[r] = sum[r] > 0 ? DMath.Min(1.0, food[r] / sum[r]) : 1.0; left += food[r] - sum[r] * f[r]; }
+                for (int r = 0; r < 5; r++) { f[r] = sum[r] > 0 ? DMath.Min(1.0, food[r] / sum[r]) : 1.0; if (r < 4) left += food[r] - sum[r] * f[r]; }   // only climbers reach the crags
                 double unmet = 0;
                 for (int s = 0; s < k; s++)
                 {
                     if (need[s] <= 0) continue;
                     ref var sp = ref sps[s];
-                    got[s] = need[s] * (sp.Grass * f[0] + sp.Browse * f[1] + sp.Mast * f[2] + sp.Small * f[3]);
+                    got[s] = need[s] * (sp.Grass * f[0] + sp.Browse * f[1] + sp.Mast * f[2] + sp.Small * f[3] + sp.Crag * f[4]);
                     unmet += need[s] - got[s];
                 }
                 // the second helping: what is left of any food, shared by the unmet need (a deer takes grass when shoots run out)
@@ -266,7 +288,9 @@ namespace TC2.Core.Planet
                     {
                         if ((sp.Prey & (1 << sps[q].Kind)) == 0) continue;
                         double share = P.Abund[q * n + c] * sps[q].Mass * Reach(refuge, steep[c], sps[q].SlopePref) * vuln[s * 16 + q] / avail;
-                        P.Abund[q * n + c] = (float)DMath.Max(0.0, P.Abund[q * n + c] - take * share / sps[q].Mass);
+                        double eaten = DMath.Min(P.Abund[q * n + c], take * share / sps[q].Mass);
+                        if (Diag != null) Diag[q * 8 + 4] += eaten;
+                        P.Abund[q * n + c] = (float)(P.Abund[q * n + c] - eaten);
                     }
                     got[s] += take;
                 }
@@ -282,18 +306,27 @@ namespace TC2.Core.Planet
                     double fed = want > 0 ? got[s] / want : 1.0;
                     double cond = P.Cond[i];
                     cond = DMath.Clamp01(cond + (fed - 0.75) * 2.0 * dt);
-                    double mort = dt / sp.Lifespan;                               // age
-                    if (cond < 0.45) mort += dt * 3.0 * (0.45 - cond) / 0.45;      // hunger
+                    double mAge = dt / sp.Lifespan;                               // age
+                    double mHunger = cond < 0.45 ? dt * 3.0 * (0.45 - cond) / 0.45 : 0.0;   // hunger
                     double tol = sp.ColdTol + P.Coat[i];                         // this population's coat
-                    if (tm < tol) mort += dt * 0.8 * DMath.Min(1.0, (tol - tm) / 5.0); // cold
-                    mort += Evolution.Select(P, sp, i, c, dt, keepS[s]);           // the coat follows the place, slowly
+                    double mCold = tm < tol ? dt * 0.8 * DMath.Min(1.0, (tol - tm) / 5.0) : 0.0; // cold
+                    double mCoat = Evolution.Select(P, sp, i, c, dt, keepS[s]);   // the coat follows the place, slowly
+                    double mort = mAge + mHunger + mCold + mCoat;
+                    double N0 = N;
                     N *= ExpNeg(mort);
+                    if (Diag != null && mort > 0)
+                    {
+                        double lost = (N0 - N) / mort;
+                        Diag[s * 8 + 0] += lost * mAge; Diag[s * 8 + 1] += lost * mHunger; Diag[s * 8 + 2] += lost * mCold; Diag[s * 8 + 3] += lost * mCoat;
+                    }
                     // spring: the young of the year, as many as condition (and, for hunters, room) allows
                     double season = P.SinLat[c] >= 0 ? yf : (yf + 0.5) % 1.0;
                     if (season >= 0.12 && season < 0.12 + dt)
                     {
                         double room = sp.Territory > 0 ? DMath.Clamp01(1.0 - N / sp.Territory) : 1.0;
-                        N += N * sp.Fecundity * DMath.Clamp01((cond - 0.5) / 0.4) * room;   // only the well fed raise young
+                        double young = N * sp.Fecundity * DMath.Clamp01((cond - 0.5) / 0.4) * room;   // only the well fed raise young
+                        if (Diag != null) Diag[s * 8 + 5] += young;
+                        N += young;
                     }
                     P.Abund[i] = (float)N;
                     P.Cond[i] = (float)cond;
@@ -308,7 +341,7 @@ namespace TC2.Core.Planet
                 // browse is the year's shoots and leaves: the woods stand (a heavy browsing slows their spread only)
             }
             // 5. wandering: a share of each cell's animals moves to its neighbours, more to the better ones
-            Array.Clear(flow, 0, k * n); Array.Clear(inflow, 0, k * n); Array.Clear(inZ, 0, k * n);
+            Array.Clear(flow, 0, k * n); Array.Clear(inflow, 0, k * n); Array.Clear(inZ, 0, k * n); Array.Clear(inD, 0, k * n);
             for (int s = 0; s < k; s++)
             {
                 ref var sp = ref sps[s];
@@ -329,14 +362,14 @@ namespace TC2.Core.Planet
                     if (wsum <= 0) continue;
                     double out_ = N * move;
                     flow[i] -= out_;
-                    double zc = P.Coat[i];
+                    double zc = P.Coat[i], dc = P.Drift[i];
                     for (int q = 0; q < 4; q++)
                     {
                         if (wt[q] <= 0) continue;
                         int nb = g.Nbr4[c * 4 + q];
                         double m = out_ * wt[q] / wsum;
                         flow[s * n + nb] += m;
-                        inflow[s * n + nb] += m; inZ[s * n + nb] += m * zc;
+                        inflow[s * n + nb] += m; inZ[s * n + nb] += m * zc; inD[s * n + nb] += m * dc;
                     }
                 }
             }
@@ -346,7 +379,12 @@ namespace TC2.Core.Planet
                 double stay = P.Abund[i] + (flow[i] - inflow[i]);   // the residents after some left
                 double v = P.Abund[i] + flow[i];
                 // newcomers bring their coats: the cell's coat is the mix
-                if (inflow[i] > 0 && v > 1e-6) P.Coat[i] = (float)((DMath.Max(0.0, stay) * P.Coat[i] + inZ[i]) / (DMath.Max(0.0, stay) + inflow[i]));
+                if (inflow[i] > 0 && v > 1e-6)
+                {
+                    double res = DMath.Max(0.0, stay), all = res + inflow[i];
+                    P.Coat[i] = (float)((res * P.Coat[i] + inZ[i]) / all);
+                    P.Drift[i] = (float)((res * P.Drift[i] + inD[i]) / all);   // and their lineage: gene flow keeps a range one kind
+                }
                 P.Abund[i] = (float)(v < 1e-4 ? 0.0 : v);
                 if (P.Cond[i] <= 0f && v > 0) P.Cond[i] = 0.6f;
             }

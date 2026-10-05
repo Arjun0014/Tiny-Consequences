@@ -700,7 +700,7 @@ history. A trait per animal is far beyond the budget; a trait per species is too
   clamped -14..12) at `0.0015 x (fecundity + 0.5)` a year (fast breeders adapt faster; an e-fold of ~250-600 years);
   a coat more than 3 C from that costs `0.01 x (off - 3)` of the population a year. Wanderers carry their coats and
   the cell's coat becomes the mix of residents and newcomers (gene flow, so a connected range stays one kind).
-- **Speciation at tectonic steps** (every 50 years): the occupied cells of each species are split into groups with no
+- **Speciation at tectonic steps** (every 10 years; superseded by D2-038): the occupied cells of each species are split into groups with no
   occupied path between them; the most diverged sizeable group (>= 12 cells, >= 20 animals) whose mean coat differs
   from the largest group's by more than 5 C becomes a species of its own (its coat folded into its `ColdTol`, its
   animals, condition and re-centred coats moved over, `Parent` the old kind; named "snow" or "sand" + kind). At most
@@ -718,3 +718,29 @@ differ - on an ice-age planet, the snow hares of a cold island. Other traits (si
 pattern if the budget allows. The view does not yet show lineages apart (next: tint by species, the history card).
 **Invalidation.** If worlds fill the species cap within a few thousand years, raise `Split` or the group minimum; if no
 world ever speciates over 10,000 years with real isolation, lower `Split` to 4 C.
+
+## D2-038 — 2026-10-05 — Crags feed climbers; adaptation costs less; spin-up refuges; new kinds need time apart
+
+**Context.** Death-cause counters (`planet --ecodiag`, tools only: `Ecology.Diag`) showed the ibex of seed 42 dying of
+hunger and of D2-037's coat cost - wolves took none: on mountain grass it competed with every grazer, and every
+population began with its kind's coat, so cold-hardy kinds in warm valleys paid up to 9 % a year. The spin-up booms and
+busts (hares 88,000 -> 8,000 in four years, foxes 3,975 -> 4), so a kind could die before history began. And the
+coat alone split species within two centuries: hares re-adapt ~9 C in 200 years, tectonic steps come every 10 years
+(not 50 as D2-037 assumed), and fragments at range edges were many candidates.
+**Decision.**
+- **Crag fare**: a fifth food, herbs and lichens of steep open ground (`CragMax` 150 kg/ha/yr x smoothstep(0.3, 0.8,
+  steepness) x open share, lean in winter), reached only by climbers (not shared in the second helping). Ibex eat
+  grass 0.45, shoots 0.15, crag 0.4. Crags are ~5-10 % of land (`planet --steep`).
+- **Adaptation load** 0.002 a year per C beyond 3 C of mismatch (was 0.01).
+- **Spin-up refuges**: during the 20-year spin-up only, no kind falls below a hundredth of its first numbers in a cell.
+- **Lineage drift**: a neutral marker per species and cell (`P.Drift`, saved and hashed), carried and mixed by wanderers
+  like the coat. At each tectonic step each population (group of occupied cells with no occupied path to the rest)
+  wanders by a keyed uniform step, sd `0.0117 sqrt(10 y) (10/lifespan)^0.25`; one range wanders together. A population
+  of at least 30 cells and 30 animals becomes a species when `|lineage difference| x (1 + 0.05 |coat difference|) > 1`:
+  time apart makes kinds, different climates only hasten it (two deer ranges ~9,000 years; hares 10 C apart ~2,000).
+- Save sim version 8.
+**Evidence.** Tests (69): a cut-off group differing only in coat stays one kind; with its lineage apart it becomes one;
+two ranges cut off wander apart while a range wanders together. Seeds 42, 7, 1234, 200-300 coarse years: all eight
+kinds alive (ibex 1,500-5,000 on the crags, aurochs 50-290, bears 160-230, foxes ~2,000), no new species yet.
+**Invalidation.** If no long isolated run ever speciates in 10,000 years, raise `DriftRate`; if worlds fill the
+16-species cap, lower it.

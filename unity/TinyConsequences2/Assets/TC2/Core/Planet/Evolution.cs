@@ -5,20 +5,29 @@ using TC2.Core.Foundation;
 namespace TC2.Core.Planet
 {
     /// <summary>
-    /// Adaptation and new species (06 §2, D2-037). Every species carries, in every cell, how far its coat has moved from
-    /// its kind's (`P.Coat`, C of cold tolerance: below zero bears colder). Each step the local population is pulled
-    /// toward the coat that place asks for (a 7 C margin under its annual mean) - slowly, faster for fast breeders; a
-    /// coat far from that costs lives; wanderers carry their coats and mix them where they arrive. At each tectonic step
-    /// a population cut off from the rest of its kind (no occupied path between them) whose coats differ by more than
-    /// 5 C becomes a species of its own - the history tells of it - and a species with no animals left is extinct. New
-    /// species come only from isolation and the climates that shaped them apart.
+    /// Adaptation and new species (06 §2, D2-037, D2-038). Every species carries, in every cell, how far its coat has moved
+    /// from its kind's (`P.Coat`, C of cold tolerance: below zero bears colder) and a neutral lineage marker (`P.Drift`).
+    /// Each step the local population is pulled toward the coat that place asks for (a 7 C margin under its annual mean) -
+    /// slowly, faster for fast breeders; a coat far from that costs lives; wanderers carry coats and lineage and mix them
+    /// where they arrive. At each tectonic step (ten years) every population (a group of occupied cells with no occupied path to the
+    /// rest of its kind) has its lineage wander a little - one range wanders together, ranges cut off from each other wander
+    /// apart - and a sizeable population whose lineage has wandered far enough from the main range's becomes a species of
+    /// its own (sooner where their climates made their coats different); the history tells of it. A species with no
+    /// animals left is extinct. New species come only from isolation, over time.
     /// </summary>
     public static class Evolution
     {
         public const double Margin = 7.0;          // C: the coat a place asks for leaves this margin under its mean
         public const double Pull = 0.0015;         // per year per (young per adult): how fast a population follows (e-fold ~250 y)
-        public const double Split = 5.0;           // C of coat between two isolated populations that makes two species
         public const int MaxSpecies = 16;
+        public const double Load = 0.002;          // per year per C beyond 3 C of mismatch: the lives adaptation costs
+        public const double DriftRate = 0.0117;    // a lineage marker wanders this much per square root of a year (at a 10-year life):
+                                                   // two deer ranges apart ~9,000 years have parted; hares in climates 10 C apart, ~2,000
+        public const double CoatWeight = 0.05;     // per C of coat difference: how much sooner two lineages part (10 C: 1.5 x)
+        public const int MinCells = 30, MinAnimals = 30;   // a population that can become a kind: not a fragment at a range's edge
+
+        /// <summary>How far a population's lineage wanders in a tectonic step (standard deviation): faster in short lives.</summary>
+        public static double DriftStep(in Species sp) => DriftRate * DMath.Sqrt(Tectonics.StepYears) * DMath.Sqrt(DMath.Sqrt(10.0 / DMath.Max(1.0, sp.Lifespan)));
 
         /// <summary>The coat a cell asks of a species (C, relative to the species' own cold tolerance).</summary>
         public static double Ideal(PlanetState P, in Species sp, int c) => DMath.Clamp(P.TMean[c] - Margin - sp.ColdTol, -14.0, 12.0);
@@ -30,7 +39,7 @@ namespace TC2.Core.Planet
             double z = P.Coat[i], ideal = Ideal(P, sp, c);
             P.Coat[i] = (float)(z + (ideal - z) * (1.0 - keep));
             double off = DMath.Abs(ideal - z);
-            return off > 3.0 ? 0.01 * (off - 3.0) * dt : 0.0;
+            return off > 3.0 ? Load * (off - 3.0) * dt : 0.0;
         }
 
         [ThreadStatic] static List<int> _comp, _queue;
@@ -63,20 +72,20 @@ namespace TC2.Core.Planet
                 if (P.Species.Count >= MaxSpecies) continue;
                 // the populations of this species: groups of occupied cells with no occupied path between them
                 for (int c = 0; c < n; c++) _mark[c] = 0;
-                int bestComp = -1; double bestN = 0, bestZ = 0;
-                var groups = new List<(int id, double N, double z, int cells)>();
+                int bestComp = -1; double bestN = 0, bestZ = 0, bestD = 0;
+                var groups = new List<(int id, double N, double z, double d, int cells, int first)>();
                 int id = 0;
                 for (int c0 = 0; c0 < n; c0++)
                 {
                     if (_mark[c0] != 0 || P.Abund[s * n + c0] < 0.05f) continue;
                     id++;
                     queue.Clear(); queue.Add(c0); _mark[c0] = id;
-                    double N = 0, zN = 0;
+                    double N = 0, zN = 0, dN = 0;
                     for (int h = 0; h < queue.Count; h++)
                     {
                         int c = queue[h];
                         double a = P.Abund[s * n + c];
-                        N += a; zN += a * P.Coat[s * n + c];
+                        N += a; zN += a * P.Coat[s * n + c]; dN += a * P.Drift[s * n + c];
                         for (int q = 0; q < 4; q++)
                         {
                             int nb = g.Nbr4[c * 4 + q];
@@ -85,29 +94,39 @@ namespace TC2.Core.Planet
                             queue.Add(nb);
                         }
                     }
-                    groups.Add((id, N, N > 0 ? zN / N : 0.0, queue.Count));
-                    if (N > bestN) { bestN = N; bestComp = id; bestZ = N > 0 ? zN / N : 0.0; }
+                    groups.Add((id, N, N > 0 ? zN / N : 0.0, N > 0 ? dN / N : 0.0, queue.Count, c0));
+                    if (N > bestN) { bestN = N; bestComp = id; bestZ = N > 0 ? zN / N : 0.0; bestD = N > 0 ? dN / N : 0.0; }
                 }
                 if (groups.Count < 2) continue;
-                // the most diverged sizeable group (other than the main one) becomes a species of its own
-                int pick = -1; double far = Split;
+                // the most diverged sizeable group (other than the main one) becomes a species of its own: lineages apart
+                // long enough (the marker), or sooner where their climates made them different (the coat)
+                int pick = -1; double far = 1.0, zMean = 0, dMean = 0;
                 foreach (var gr in groups)
                 {
-                    if (gr.id == bestComp || gr.cells < 12 || gr.N < 20) continue;
-                    double d = DMath.Abs(gr.z - bestZ);
-                    if (d > far) { far = d; pick = gr.id; }
+                    if (gr.id == bestComp || gr.cells < MinCells || gr.N < MinAnimals) continue;
+                    // only time apart makes two kinds; a different climate (the coat) makes them part sooner
+                    double dist = DMath.Abs(gr.d - bestD) * (1.0 + CoatWeight * DMath.Abs(gr.z - bestZ));
+                    if (dist > far) { far = dist; pick = gr.id; zMean = gr.z; dMean = gr.d; }
                 }
-                if (pick < 0) continue;
-                double zMean = 0;
-                foreach (var gr in groups) if (gr.id == pick) zMean = gr.z;
-                formed += Branch(w, s, pick, zMean);
+                if (pick >= 0) formed += Branch(w, s, pick, zMean, dMean);
+                // every population's lineage wanders a little; where they are one range they wander together
+                double step = DriftStep(sp);
+                var incr = new float[id + 1];   // by group id (ids run 1..id)
+                foreach (var gr in groups)
+                {
+                    if (gr.id == pick) continue;
+                    double u = KeyedRng.Unit(w.Seed, RngStream.Ecology, 0x6472UL + (ulong)sp.Id, (ulong)w.Now, (ulong)gr.first);
+                    incr[gr.id] = (float)((2.0 * u - 1.0) * 1.7320508 * step);   // uniform, standard deviation `step`
+                }
+                var drift = P.Drift;
+                for (int c = 0; c < n; c++) if (_mark[c] != 0) drift[s * n + c] += incr[_mark[c]];
                 if (P.Species.Count >= MaxSpecies) break;
             }
             return formed;
         }
 
         /// <summary>The group marked <paramref name="group"/> of species s becomes a new species (its coat its own).</summary>
-        static int Branch(Simulation.World w, int s, int group, double zMean)
+        static int Branch(Simulation.World w, int s, int group, double zMean, double dMean)
         {
             var P = w.Planet;
             int n = P.Cells, k = P.Species.Count;
@@ -122,17 +141,18 @@ namespace TC2.Core.Planet
             var ab = new float[(k + 1) * n]; Array.Copy(P.Abund, ab, k * n);
             var co = new float[(k + 1) * n]; Array.Copy(P.Cond, co, k * n);
             var ct = new float[(k + 1) * n]; Array.Copy(P.Coat, ct, k * n);
+            var dr = new float[(k + 1) * n]; Array.Copy(P.Drift, dr, k * n);
             int cells = 0, at = -1;
             for (int c = 0; c < n; c++)
             {
                 if (_mark[c] != group) continue;
                 int i = s * n + c, j = k * n + c;
-                ab[j] = ab[i]; co[j] = co[i]; ct[j] = (float)(ct[i] - zMean);
+                ab[j] = ab[i]; co[j] = co[i]; ct[j] = (float)(ct[i] - zMean); dr[j] = (float)(dr[i] - dMean);
                 ab[i] = 0f;
                 cells++;
                 if (at < 0) at = c;
             }
-            P.Abund = ab; P.Cond = co; P.Coat = ct;
+            P.Abund = ab; P.Cond = co; P.Coat = ct; P.Drift = dr;
             P.Species.Add(child);
             string name = (zMean < 0 ? "snow " : "sand ") + Ecology.KindName(parent.Kind);
             w.History.Register(new EntityRef(EntityKind.Species, child.Id), name, w.Now);
