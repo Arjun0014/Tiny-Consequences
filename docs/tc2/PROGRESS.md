@@ -37,7 +37,13 @@
     (100-2,400, 2,900-3,700, 4,100-4,900, 5,500-6,100) with interglacials; ice 14-29 % of land; sea 0 to -20.5 m; 12.5-15.5 C;
     CO2 280-409. F2: six new kinds in years 430-830 (three sand wolves on the same range, two sand foxes, warm-water sardine
     and tuna), the 20-kind cap, then none for 9,000 years, no extinction: sister kinds shared nothing and splits came in a
-    burst - D2-046 (sister kinds share territory; drift 0.015; gentler split chance) in progress. Seed 7 (`run_7j.*`) running.
+    burst - D2-046 (sister kinds share territory; drift 0.015; gentler split chance) in progress. Seed 7 (`run_7j.*`): continental
+    mean 5 -> 16 -> 3 m, crust 61 -> 60 %, peaks ~950-1,300 m; seven ages of ice (100-1,100 ... 9,600-) with interglacials, sea
+    +0.5..-7.8 m, ice 5-22 % of land, forests 0.17 -> 0.25 as CO2 drifts 332 -> 256 ppm; the same F2 burst (seven kinds by
+    1,150, one extinct). Maps (`tc2/out/f1/maps42j`): the continents rearranged over 10,000 years (the inland sea closed, three
+    continents apart), new coasts and rivers. **F1 CLOSED** (drift, ranges rising and wearing in balance, glacial cycles, coasts,
+    forests, stable over seeds 42 and 7; the orbit look to re-shoot with the current build). F2: D2-046 validation running
+    (`run_42k.*`, `run_7k.*`).
   - **F3 slice 2 (D2-045)**: construction by labour and wood (camp -> hut -> house; well, granary; the view draws what stands),
     knowledge of places by scouting, households leaving after the harvest (founding parties to known places; joining villages
     with land), parties walking and founding unfinished villages. Seed 42, 300 coarse years: 6 -> 35 villages, 145 -> 11,744

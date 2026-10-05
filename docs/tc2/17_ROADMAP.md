@@ -14,7 +14,7 @@ continue (equivalent), offline catch-up; a Unity view of it on the Web; benchmar
 **Done when**: all of the above run and are tested; equivalence and cross-runtime hash tests pass; numbers
 recorded.
 
-## F1 — The living planet
+## F1 — The living planet  (CLOSED 5 Oct 2026, session 2: D2-043; seeds 42 and 7, 10,000 years)
 Plates and tectonics; relief, uplift, erosion (Braun-Willett), drainage, rivers and lakes; climate energy
 balance with seasons, orbital cycles, CO₂, aerosols, ice-albedo, sea level and coastlines; weather and
 storms; vegetation by plant functional types, succession, fire regime, soils; biome classification;
