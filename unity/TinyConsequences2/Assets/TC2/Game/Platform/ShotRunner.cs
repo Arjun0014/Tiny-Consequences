@@ -71,17 +71,24 @@ namespace TC2.Game
             double days = Parse(Arg("-tc2days"), 0), hour = Parse(Arg("-tc2hour"), 8.0);
             int sid = w.Settlements.First();
             long local = sid != 0 ? w.LocalOffsetOf(sid) : 0;
-            // seals live on a shore anywhere on the planet: when only they are shot, the hour is the shore's own (a daylight shot)
-            string viewsArg = Arg("-tc2views") ?? "";
-            if (viewsArg.Length > 0 && System.Array.TrueForAll(viewsArg.Split(','), v => v.StartsWith("seals")))
-            {
-                int shore = CameraRig.LivelyShore(w, sid != 0 ? w.Settlements.Get(sid).Anchor : w.Planet.Grid.Center[0], double.MaxValue);
-                if (shore >= 0) { local = TC2.Core.Planet.PlanetState.LocalOffset(w.Planet.Grid.Center[shore]); Debug.Log("[TC2] seal shore cell " + shore + ": its own hour"); }
-            }
             long target = SimTime.StartOfDay(w.Now + local) - local + DMath.ToLong(days * SimTime.Day) + DMath.ToLong(hour * SimTime.Hour);
             while (target <= w.Now) target += SimTime.Day;
             var b = Budget.Unlimited;
             w.AdvanceTo(target, ref b);
+            // seals live on a shore anywhere on the planet: when only they are shot, the world goes on to the same hour at the
+            // shore they haul out on now (a daylight shot)
+            string viewsArg = Arg("-tc2views") ?? "";
+            if (viewsArg.Length > 0 && System.Array.TrueForAll(viewsArg.Split(','), v => v.StartsWith("seals")))
+            {
+                int shore = CameraRig.LivelyShore(w, sid != 0 ? w.Settlements.Get(sid).Anchor : w.Planet.Grid.Center[0], double.MaxValue);
+                if (shore >= 0)
+                {
+                    long off = TC2.Core.Planet.PlanetState.LocalOffset(w.Planet.Grid.Center[shore]);
+                    long at = SimTime.FloorMod(w.Now + off, SimTime.Day);
+                    w.AdvanceTo(w.Now + SimTime.FloorMod(DMath.ToLong(hour * SimTime.Hour) - at, SimTime.Day), ref b);
+                    Debug.Log("[TC2] seal shore cell " + shore + ": its own hour");
+                }
+            }
             Debug.Log("[TC2] shots at " + SimTime.Format(w.Now) + " seed " + seed);
             string storm = Arg("-tc2storm");
             if (storm != null && sid != 0)

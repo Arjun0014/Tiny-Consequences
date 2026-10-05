@@ -77,15 +77,14 @@ namespace TC2.Game
                 bool shore = false;
                 for (int q = 0; q < 4; q++) if (P.IsLand(P.Grid.Nbr4[c * 4 + q])) shore = true;
                 if (!shore) continue;
-                double v = 0, seals = 0;
+                double v = 0;
                 for (int s = 0; s < P.Species.Count; s++)
                 {
                     var sp = P.Species[s];
-                    if (sp.Habitat != 1) continue;
-                    double N = P.Abund[s * P.Cells + c];
-                    if (sp.Kind == 12) seals += N; else if (sp.Plankton > 0) v += N * 0.01;
+                    if (sp.Habitat != 1 || sp.Kind == 12) continue;
+                    if (sp.Plankton > 0) v += P.Abund[s * P.Cells + c] * 0.01;
                 }
-                v += 1000.0 * SeaLifeView.SealsShown(c, seals);   // (seals where the view shows them)
+                v += 1000.0 * SeaLifeView.HaulOut(P, c);   // (seals where the view shows them hauled out)
                 if (v > bv) { bv = v; best = c; }
             }
             return best;
@@ -142,6 +141,13 @@ namespace TC2.Game
                 // the shoals off a coast (D2-039)
                 var P = w.Planet;
                 int best = LivelyShore(w, d, view.StartsWith("seals") ? double.MaxValue : 8000);
+                if (view.StartsWith("seals") && Application.isBatchMode)
+                {
+                    double total = 0; int haul = 0, most = 0;
+                    for (int s = 0; s < P.Species.Count; s++) if (P.Species[s].Habitat == 1 && P.Species[s].Kind == 12) for (int c = 0; c < P.Cells; c++) total += P.Abund[s * P.Cells + c];
+                    for (int c = 0; c < P.Cells; c++) { int h = SeaLifeView.HaulOut(P, c); if (h > 0) { haul++; most = Mathf.Max(most, h); } }
+                    Debug.Log("[TC2] seals in the world " + total.ToString("0.0") + ", haul-outs " + haul + " (most " + most + "), framed cell " + best + " showing " + (best >= 0 ? SeaLifeView.HaulOut(P, best) : 0));
+                }
                 if (best >= 0)
                 {
                     // look a little out to sea from that shore: the beach in view, and the water off it

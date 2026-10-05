@@ -153,12 +153,14 @@ namespace TC2.Game
                     shoal.Phase = (float)(KeyedRng.Unit(KeyedRng.Mix(sk + 8)) * 6.28318);
                     _shoals.Add(shoal);
                 }
-                // seals: the cell's seals (the fraction as a stable chance) rest on its shore, or swim off it, by turns
-                if (seals > 0.01)
+                // seals: a stretch of coast's seals hauled out together at its best shore (the field's count, D2-053), resting
+                // on the shore or swimming off it, by turns
+                int hauled = seals > 0.01 || OnShore(P, c) ? HaulOut(P, c) : 0;
+                if (hauled > 0)
                 {
-                    int count = SealsShown(c, seals);
+                    int count = hauled;
                     sealCells++; sealSum += seals; sealsShown += count;
-                    for (int m = 0; m < count && m < 4; m++)
+                    for (int m = 0; m < count; m++)
                     {
                         ulong mk = KeyedRng.Mix(key + 300 + (ulong)m * 13);
                         if (!Shore(P, c, mk, out Vec3d land, out Vec3d sea)) { noShore++; continue; }
@@ -172,7 +174,8 @@ namespace TC2.Game
                         if (ashore)
                         {
                             // hauled out at the water's edge, side by side, looking out to sea
-                            double off = (m - 1.5) * 1.6 * scale;
+                            double off = ((m % 6) - 2.5) * 1.6 * scale;   // side by side, a second row behind the first
+                            if (m >= 6) land = (land * P.Radius - (sea - land).Normalized * ((m / 6) * 2.2 * scale)).Normalized;
                             Vec3d side = Vec3d.Cross(land, toSea).Normalized;
                             Vec3d at = (land * P.Radius + side * off).Normalized;
                             pos = Ground.Surface(P, at);
@@ -259,12 +262,54 @@ namespace TC2.Game
         }
 
         /// <summary>How many of a sea cell's seals are shown: the whole part, and the fraction as a stable chance of the cell.</summary>
-        public static int SealsShown(int c, double seals)
+        /// <summary>
+        /// Seals lie up in colonies (D2-053): the field spreads them thinly along a coast, so a shore sea cell whose seals with
+        /// its eight neighbours' are the most within two cells' reach gathers them - the field's count (its fraction as a stable
+        /// chance) drawn hauled out there; other cells show none. Haul-outs are three cells apart or more, so no seal is drawn
+        /// twice. How many to draw at c (0 if it is not a haul-out). Reads only.
+        /// </summary>
+        public static int HaulOut(PlanetState P, int c)
         {
-            ulong key = KeyedRng.Mix((ulong)c * 0x9E3779B97F4A7C15UL ^ 0x5EA11FEUL);
-            int count = (int)seals;
-            if (KeyedRng.Unit(KeyedRng.Mix(key + 3)) < seals - count) count++;
-            return count;
+            if (P.IsLand(c) || !OnShore(P, c)) return 0;
+            double here = SealsAround(P, c);
+            if (here < 0.02) return 0;
+            var g = P.Grid;
+            for (int k = 0; k < 8; k++)
+            {
+                int nb = g.Nbr8[c * 8 + k];
+                if (Beats(P, nb, c, here)) return 0;
+                for (int j = 0; j < 8; j++) { int nn = g.Nbr8[nb * 8 + j]; if (nn != c && Beats(P, nn, c, here)) return 0; }
+            }
+            int count = (int)here;   // the whole part, and the fraction as a stable chance of the cell (the count kept on average)
+            if (KeyedRng.Unit(KeyedRng.Mix(KeyedRng.Mix((ulong)c * 0x9E3779B97F4A7C15UL ^ 0x5EA11FEUL) + 3)) < here - count) count++;
+            return System.Math.Min(18, count);
+        }
+
+        static bool Beats(PlanetState P, int o, int c, double here)
+        {
+            if (P.IsLand(o) || !OnShore(P, o)) return false;
+            double v = SealsAround(P, o);
+            return v > here || (v == here && o < c);
+        }
+
+        static bool OnShore(PlanetState P, int c)
+        {
+            for (int q = 0; q < 4; q++) if (P.IsLand(P.Grid.Nbr4[c * 4 + q])) return true;
+            return false;
+        }
+
+        static double SealsAround(PlanetState P, int c)
+        {
+            int n = P.Cells; var g = P.Grid;
+            double v = 0;
+            for (int s = 0; s < P.Species.Count; s++)
+            {
+                var sp = P.Species[s];
+                if (sp.Habitat != 1 || sp.Kind != 12) continue;
+                v += P.Abund[s * n + c];
+                for (int k = 0; k < 8; k++) v += P.Abund[s * n + g.Nbr8[c * 8 + k]];
+            }
+            return v;
         }
 
         /// <summary>A shore beside sea cell c for a seal (keyed): a point at the water's edge on a neighbouring land cell.</summary>
