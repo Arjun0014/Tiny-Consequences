@@ -194,6 +194,34 @@
 			window.addEventListener('touchcancel', function () { pinch = null; }, { capture: true, passive: true });
 		})();
 
+		// (S25g) The mouse wheel on every host. The engine hears the wheel only as the old "mousewheel" event (Firefox:
+		// "DOMMouseScroll") on the window, and Chrome and Safari send the window a "mousewheel" only while nothing there
+		// listens for "wheel". The Wavedash SDK does (it marks the player active), so on Wavedash the zoom was dead; itch's
+		// page has no such script. Where the browser has "mousewheel", the page takes every "wheel" itself and hands it to
+		// the engine as a "mousewheel" of its own, with the browser's own wheelDelta (a notch zooms as before); the browser's
+		// own "mousewheel" is kept from the engine, so a notch counts once. Only a real wheel, as the browser did (the pinch
+		// above zooms through the game's own two-finger touch; its made-up wheels never reached the engine). Firefox fires
+		// "DOMMouseScroll" whoever listens for "wheel" (and the engine reads it the other way round): left as it was.
+		(function () {
+			if (!('onmousewheel' in window)) return;
+			var handing = false;
+			window.addEventListener('mousewheel', function (e) { if (!handing) e.stopImmediatePropagation(); }, { capture: true, passive: false });
+			window.addEventListener('wheel', function (e) {
+				if (!e.isTrusted) return;
+				var wd = e.wheelDelta;
+				if (typeof wd !== 'number' || !wd) {
+					var n = e.deltaY || 0;
+					if (e.deltaMode === 1) n /= 3; else if (e.deltaMode === 2) n *= 80; else n /= 100;
+					wd = -120 * n;
+				}
+				var ev;
+				try { ev = new Event('mousewheel', { bubbles: true, cancelable: true }); Object.defineProperty(ev, 'wheelDelta', { value: wd }); } catch (x) { return; }
+				handing = true;
+				try { (e.target && e.target.dispatchEvent ? e.target : window).dispatchEvent(ev); } finally { handing = false; }
+				if (ev.defaultPrevented && e.cancelable) e.preventDefault();
+			}, { capture: true, passive: false });
+		})();
+
 		// (S25d) Wavedash: the platform puts its SDK (window.Wavedash) on the page when the game runs there; anywhere else
 		// none of this does anything. The game calls tcWD.init() once it is ready (the platform's loading screen stays
 		// until then), reads the player's name for the title, and keeps the player's progress and settings in the cloud

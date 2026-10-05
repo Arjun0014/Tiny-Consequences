@@ -2015,3 +2015,16 @@ unpacker kept them as file names at the root, so the engine's archive was missin
 turns backslashes into slashes when it reads). D-225's probe was not the cause.
 **Decision.** `scripts/package.mjs` zips with Windows' own bsdtar (`tar.exe -a -c -f`): forward slashes and an `archive/` entry.
 Checked on the raw bytes (`archive/` 20, backslash 0) and with `tar -tf`.
+
+## D-227 · 2026-10-05 · The mouse wheel zooms on Wavedash (session 25, Wavedash)
+**Context.** On Wavedash the wheel did not zoom; on itch the same bundle did. The engine (Defold 1.13.1's GLFW) hears the wheel
+only as the old `mousewheel` event (Firefox: `DOMMouseScroll`) on the window, and Chrome and Safari send a target `mousewheel` only
+while it has no `wheel` listener. The Wavedash SDK (`@wvdsh/sdk-js` inject.global.js, put on the page before the game) adds
+`window.addEventListener("wheel", ..., {passive: true, capture: true})` to mark the player active - that alone silenced the zoom.
+Reproduced here with a stand-in for that one listener: one notch 0.14 on a plain page, 0.000 with it (Chromium and WebKit).
+**Decision.** `engine_template.html`: where the browser has `mousewheel`, the page takes every real (trusted) `wheel` itself and
+hands it to the engine as a `mousewheel` of its own with the browser's own `wheelDelta`; the browser's own `mousewheel` is kept
+from the engine (a notch counts once). Firefox is left as it was (`DOMMouseScroll` fires whoever listens; the engine reads it the
+other way round). Made-up wheels are not passed on, as before: the page's pinch wheels never reached the engine in Chrome - the
+pinch zooms through the game's own two-finger touch. Checked (`out/s25/wheel_check.mjs`): with and without the SDK's listener,
+1 notch 0.14 and 3 up / 3 down back to the start in Chromium, Firefox and WebKit; the emulated phone's pinch zooms in.

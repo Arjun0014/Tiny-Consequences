@@ -1,3 +1,17 @@
+# Session handoff - session 25, part 5 (5 Oct 2026, ~07:15-07:45 IST): the mouse wheel on Wavedash; D-227
+
+- Arjun: on Wavedash the wheel did not zoom (itch fine, same bundle). Cause: the Wavedash SDK (`@wvdsh/sdk-js` inject.global.js)
+  listens for `wheel` on the window (activity heartbeat), and Chrome/Safari then never send the window the old `mousewheel` event,
+  the only one Defold's engine hears (Firefox's `DOMMouseScroll` is unaffected). Fix in `game/html/engine_template.html` (S25g):
+  the page hands each real wheel to the engine as its own `mousewheel` (D-227). Rebuilt `dist/wavedash/` and
+  `dist/tiny-consequences-wavedash.zip` (`npm run build:wavedash`); the itch zip is unchanged.
+- Checks: `out/s25/wheel_check.mjs [dir] chromium|firefox|webkit` (a stand-in for the SDK's one listener): 0.000 a notch before
+  in Chromium and WebKit, 0.14 after in all three, with or without it; `out/s25/mobile_check.mjs` pinch 1.25 -> 1.75 as before.
+- Next: Arjun uploads `dist/wavedash/` and confirms the wheel on Wavedash itself.
+- Pitfall: any page script that adds a `wheel` listener on the window kills Defold's wheel in Chrome unless the page forwards it
+  (the S25g block does). The page's pinch wheels are made-up events and never reach the engine; the pinch zooms via TOUCH_MULTI.
+- Unity work (`unity/`, `tc2/`, `docs/tc2/`) belongs to another session working in the same folder - not touched here.
+
 # Session handoff - session 25, part 4 (5 Oct 2026, ~02:15-03:20 IST): Arjun's fourth playtest, the store media, the itch zip; D-221-D-226
 
 ## FINAL STATE (part 4)

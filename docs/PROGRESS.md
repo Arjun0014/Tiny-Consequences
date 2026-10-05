@@ -4,6 +4,12 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Current state
 
+- **SESSION 25 part 5 (5 Oct 2026, ~07:15-07:45 IST): the mouse wheel zooms on Wavedash (D-227).** The Wavedash SDK's own `wheel`
+  listener on the window stopped Chrome/Safari sending the engine its old `mousewheel` event; the page now hands each real wheel to
+  the engine itself (`game/html/engine_template.html`). Checked with and without a stand-in for the SDK's listener in Chromium,
+  Firefox and WebKit (`out/s25/wheel_check.mjs`: one notch 0.14 everywhere), the emulated phone's pinch 1.25 -> 1.75 as before.
+  `dist/wavedash/` and `dist/tiny-consequences-wavedash.zip` rebuilt; the itch zip was not rebuilt (itch was unaffected).
+
 - **SESSION 25 part 4 (5 Oct 2026, ~02:15-03:20 IST): Arjun's fourth playtest and the store assets.** Rain puts fire out
   (map fires stop growing in rain and are damped harder; a god's rain quenches the planet's burning cells, D-221); the water and path
   meshes can no longer throw a vertex off the planet (the "two planes" Arjun saw - not reproduced here, guarded, D-222); phones:
