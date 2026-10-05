@@ -91,6 +91,51 @@ namespace TC2.Core.History
             }
         }
 
+        /// <summary>
+        /// What a person is doing and why, as a sentence (the inspector's "why", section 8): the activity, the reason it won
+        /// (the WhyCode the decision recorded) and its place - read from state, nothing invented.
+        /// </summary>
+        public static string Doing(World w, in Person p)
+        {
+            var H = w.History;
+            string home = H.NameOf(EntityRef.Settlement(p.Home));
+            string at = p.At != 0 ? H.NameOf(EntityRef.Settlement(p.At)) : "";
+            string dest = p.Dest != 0 ? H.NameOf(EntityRef.Settlement(p.Dest)) : "";
+            string ground = p.Ground >= 0 ? " near " + w.PlaceName(p.Ground) : "";
+            if (!p.Alive) return "dead";
+            switch (p.Act)
+            {
+                case ActivityKind.Sleep: return "asleep at home";
+                case ActivityKind.Infant: return "a baby, kept at home and fed there";
+                case ActivityKind.Eat: return "eating at home";
+                case ActivityKind.Play: return "playing near home: a child";
+                case ActivityKind.Fields: return p.Why == WhyCode.Harvest ? "bringing in the harvest of " + home : "working the fields of " + home + ": the crop needs hands";
+                case ActivityKind.Wood: return "cutting wood: " + home + "'s woodstore is low";
+                case ActivityKind.Water: return "fetching water from the well";
+                case ActivityKind.Social: return "on the square with the neighbours, the day's work done";
+                case ActivityKind.Idle: return "resting at home";
+                case ActivityKind.TripOut: return "walking to " + (dest.Length > 0 ? dest : "a neighbouring village") + (p.Why == WhyCode.VisitKin ? " to see kin" : " to see a friend");
+                case ActivityKind.TripHome: return "walking home to " + home;
+                case ActivityKind.Visit: return "visiting " + at;
+                case ActivityKind.Flee: return "keeping to shelter: a fire is near";
+                case ActivityKind.Wait: return "waiting on the road for the fire ahead to burn out";
+                case ActivityKind.Hunt:
+                case ActivityKind.Fish:
+                case ActivityKind.Gather:
+                    {
+                        string what = p.Act == ActivityKind.Hunt ? "hunting" : p.Act == ActivityKind.Fish ? "fishing" : "gathering nuts, roots and berries";
+                        string why = p.Why == WhyCode.NoFood ? ": nothing is left to eat at home" : p.Why == WhyCode.FoodShort ? ": rations are short in " + home : ": food for the table";
+                        return what + ground + why;
+                    }
+                case ActivityKind.Haul: return "carrying the catch home";
+                case ActivityKind.Build: return p.Why == WhyCode.NoRoof ? "raising a roof for the household: they live in a camp or a hut" : "building for " + home + ": the village needs a well or a granary";
+                case ActivityKind.Scout: return "gone to look at the land beyond: " + home + " is crowded or hungry and knows no good place";
+                case ActivityKind.Move: return "walking with the household to a new home" + (dest.Length > 0 ? " at " + dest : "");
+                case ActivityKind.Tend: return "watching " + home + "'s herd on the pasture" + ground + ": the animals must graze, and the wolves keep off a watched herd";
+                default: return p.Act + " (" + p.Why + ")";
+            }
+        }
+
         public static string Line(World w, in HistoryEvent e)
         {
             return SimTime.FormatShort(e.Time) + "  [" + e.Tier + "/" + e.RootKind + "] " + Describe(w, e);

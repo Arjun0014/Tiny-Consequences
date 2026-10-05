@@ -4,6 +4,7 @@ using TC2.Core.Agents;
 using TC2.Core.Foundation;
 using TC2.Core.History;
 using TC2.Core.Persistence;
+using TC2.Core.Places;
 using UnityEngine;
 
 namespace TC2.Game
@@ -20,7 +21,7 @@ namespace TC2.Game
         public CameraRig Rig;
         public WorldObjectsView Objects;
         public static bool PointerOverUi;
-        int _selected;
+        int _selected, _follow;   // the person inspected; the person the camera keeps with (0 none)
         GUIStyle _box, _label, _small, _title, _btn;
         float _scale = 1f;
         Rect _left, _right, _bottom, _toggles, _ticker;
@@ -41,6 +42,17 @@ namespace TC2.Game
             for (int i = 0; i < SimHost.Speeds.Length && i < 8; i++) if (Input.GetKeyDown(KeyCode.Alpha1 + i)) { Host.SpeedIndex = i; Host.MaxSpeed = false; }
             if (Input.GetKeyDown(KeyCode.Alpha9)) Host.MaxSpeed = !Host.MaxSpeed;
             if (Input.GetMouseButtonUp(0) && !PointerOverUi) Pick();
+            // following: the camera keeps over the person as they go about their day (its height as the player left it)
+            var fw = Host.World;
+            if (_follow != 0 && fw != null)
+            {
+                if (!fw.People.Exists(_follow) || !fw.People.Get(_follow).Alive) _follow = 0;
+                else
+                {
+                    var d = fw.Agents.PositionAt(fw.People.Get(_follow), Host.RenderTime);
+                    Rig.Lat = d.Latitude; Rig.Lon = d.Longitude;
+                }
+            }
         }
 
         void Pick()
@@ -183,10 +195,19 @@ namespace TC2.Game
             string name = w.History.NameOf(EntityRef.Person(p.Id));
             sb.Append("<b>").Append(name).Append("</b>, ").Append(p.AgeYears(w.Now).ToString("0", CultureInfo.InvariantCulture)).Append(p.Alive ? "" : " (died)").Append('\n');
             sb.Append("home ").Append(w.History.NameOf(EntityRef.Settlement(p.Home))).Append(p.At == 0 ? ", on the road" : (p.At != p.Home ? ", visiting " + w.History.NameOf(EntityRef.Settlement(p.At)) : "")).Append('\n');
-            sb.Append("doing <b>").Append(p.Act).Append("</b> because ").Append(p.Why).Append('\n');
-            sb.Append("until ").Append(SimTime.FormatShort(p.T1)).Append("   health ").Append(p.Health.ToString("0.00", CultureInfo.InvariantCulture)).Append("   fed ").Append(p.Nutrition.ToString("0.00", CultureInfo.InvariantCulture)).Append('\n');
+            sb.Append("<b>").Append(HistoryText.Doing(w, in p)).Append("</b>\n");
+            sb.Append("until ").Append(SimTime.FormatShort(p.T1)).Append("   health ").Append(p.Health.ToString("0.00", CultureInfo.InvariantCulture)).Append("   fed ").Append(p.Nutrition.ToString("0.00", CultureInfo.InvariantCulture)).Append("   reserve ").Append(p.Reserve.ToString("0", CultureInfo.InvariantCulture)).Append(" days\n");
             if (p.Partner != 0) sb.Append("partner ").Append(w.History.NameOf(EntityRef.Person(p.Partner))).Append('\n');
-            sb.Append("skills: farming ").Append(p.SkFarm.ToString("0.00", CultureInfo.InvariantCulture)).Append(", wood ").Append(p.SkWood.ToString("0.00", CultureInfo.InvariantCulture)).Append("   trips ").Append(p.Visits).Append('\n');
+            if (w.Households.Exists(p.Household))
+            {
+                var hh = w.Households.Get(p.Household);
+                sb.Append("household: ").Append(w.Members(p.Household).Count).Append(" people, ").Append(hh.Shelter == Construction.House ? "a house" : hh.Shelter == Construction.Hut ? "a hut" : "a camp");
+                int cattle = 0, goats = 0, pigs = 0; var beasts = w.BeastsOf(p.Household);
+                for (int i = 0; i < beasts.Count; i++) { byte k = w.Beasts.Get(beasts[i]).Kind; if (k == Livestock.Cattle) cattle++; else if (k == Livestock.Goat) goats++; else pigs++; }
+                if (cattle + goats + pigs > 0) sb.Append(", ").Append(cattle).Append(" cattle, ").Append(goats).Append(" goats, ").Append(pigs).Append(" pigs");
+                sb.Append(", larder ").Append(hh.Larder.ToString("0", CultureInfo.InvariantCulture)).Append('\n');
+            }
+            sb.Append("skills: farming ").Append(p.SkFarm.ToString("0.00", CultureInfo.InvariantCulture)).Append(", wood ").Append(p.SkWood.ToString("0.00", CultureInfo.InvariantCulture)).Append(", hunting ").Append(p.SkHunt.ToString("0.00", CultureInfo.InvariantCulture)).Append(", fishing ").Append(p.SkFish.ToString("0.00", CultureInfo.InvariantCulture)).Append("   trips ").Append(p.Visits).Append('\n');
             var evs = w.History.EventsOf(EntityRef.Person(p.Id));
             if (evs != null)
             {
@@ -198,7 +219,7 @@ namespace TC2.Game
             }
             GUILayout.BeginArea(r, _box);
             GUILayout.Label(sb.ToString(), _small);
-            if (GUILayout.Button("Follow", _btn)) Rig.LookAt(w.Agents.PositionAt(p, Host.RenderTime), 260);
+            if (GUILayout.Button(_follow == _selected ? "Stop following" : "Follow", _btn)) _follow = _follow == _selected ? 0 : _selected;
             GUILayout.EndArea();
         }
 

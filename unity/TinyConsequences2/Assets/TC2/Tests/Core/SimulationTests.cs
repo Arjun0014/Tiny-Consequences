@@ -80,6 +80,33 @@ namespace TC2.Tests.Core
     }
 
     [TestFixture]
+    public class InspectorTests
+    {
+        [Test]
+        public void EveryActivityReadsAsASentence()
+        {
+            // what people take up over a few lived days: each reads as what they do and why, never a code
+            var w = TestWorlds.Make(77);
+            var seen = new System.Collections.Generic.HashSet<ActivityKind>();
+            for (int h = 0; h < 24 * 6; h++)
+            {
+                w.AdvanceTo(w.Now + SimTime.Hour);
+                for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+                {
+                    var p = w.People.Get(id);
+                    if (!p.Alive) continue;
+                    string text = TC2.Core.History.HistoryText.Doing(w, in p);
+                    Assert.IsFalse(string.IsNullOrEmpty(text));
+                    Assert.IsFalse(text.Contains("(" + p.Why + ")"), p.Act + " has no sentence: " + text);
+                    seen.Add(p.Act);
+                }
+            }
+            System.Console.WriteLine("activities seen: " + string.Join(", ", seen));
+            Assert.Greater(seen.Count, 8);
+        }
+    }
+
+    [TestFixture]
     public class DeterminismTests
     {
         [Test]
