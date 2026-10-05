@@ -2,7 +2,7 @@
 
 ## CURRENT STATE (keep accurate; newest first below)
 
-**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 in progress (D2-042, -045, -047, -048, -049, -050).**
+**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 in progress (D2-042, -045, -047 to -050, -052); Web checked on WebGPU and WebGL2 (D2-051).**
 
 - **Session 2 (5 Oct 2026, in progress)** - compaction-recovery hooks (`.claude/settings.json`, `.claude/hooks/tc2_compact.mjs`;
   Claude Code 2.1.289: PreCompact stdout joins the compaction instructions, SessionStart matcher `compact` stdout reaches Claude;
@@ -79,6 +79,12 @@
     goats 355, pigs 234 (before: cattle 6 as the fields took the pasture); wolves 4,570 (was 17,402). Sim version 14; 104 tests.
   - Speed: herd claims in a flat array (survey 74 -> 55 us per COARSE village-day, hash identical); the profiler splits the
     survey (grounds 13, herds 41 us) and shows livestock (~32-37 us).
+  - **Web verified on both paths (D2-051)**: WebGPU 6/6 bit-identical (village 83, close 79 fps; a day away 39 s); the WebGL2
+    fallback measured for the first time: its village view ran at 37 fps (the woods' shadows in four cascades) - now one
+    cascade there: 60 fps, 6/6 bit-identical; open: WebGL2's first-entry stall at a new view (1-5 s; `tc2/scripts/webperf.mjs`
+    measures views layer by layer).
+  - **Ruins (D2-052)**: an abandoned village gives back its fields and its ground (any village may claim or found there) and its
+    last households' houses stand as roofless ruins that sink and green over the centuries (`shots --abandon YEARS`).
   - Seal shots: seal views take the seal shore's own hour and frame a shore where the view shows seals. **Found**: seed 42
     starts with ~6 seals, 411 cod and 91 tuna (the spin-up seeds the sea's predators ~10x below their level; they take a
     decade to grow into it) and its seals level at ~11-20 in all the world (food-limited, not territory: a colony cap of 4
