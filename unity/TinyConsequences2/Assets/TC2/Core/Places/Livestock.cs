@@ -201,8 +201,16 @@ namespace TC2.Core.Places
             return n;
         }
 
-        /// <summary>Herders the village's herd wants a day: one for every sixty head (none without grazers).</summary>
-        public int HerdersWanted(int sid) { int g = Grazers(sid); return g == 0 ? 0 : (g + PerHerder - 1) / PerHerder; }
+        /// <summary>Herders the village's herd wants a day: one for every sixty head (none without grazers, none in a hard frost).</summary>
+        public int HerdersWanted(int sid)
+        {
+            if (Frost(sid, _w.Now)) return 0;
+            int g = Grazers(sid);
+            return g == 0 ? 0 : (g + PerHerder - 1) / PerHerder;
+        }
+
+        /// <summary>A hard frost at a village on a day (the day's mean below -4 C): the animals stay in their pens.</summary>
+        public bool Frost(int sid, long t) => _w.PlanetSys.DayMean(_w.Settlements.Get(sid).Cell, PlanetSystems.Season(t)) < -4.0;
 
         /// <summary>
         /// The chance a day that wolves round the pasture take an animal: by their numbers, the young three times as exposed,
@@ -298,7 +306,7 @@ namespace TC2.Core.Places
             // 2. each animal's day
             for (int k = 0; k < Kinds; k++) _sireNear[k] = -1;
             int today = (int)SimTime.FloorDiv(now + w.LocalOffsetOf(sid), SimTime.Day);
-            bool watched = s.Tended >= today - 1 && s.HerdersOut > 0;   // the herd had its herders yesterday
+            bool watched = (s.Tended >= today - 1 && s.HerdersOut > 0) || Frost(sid, now - SimTime.Day);   // its herders yesterday, or penned
             for (int i = 0; i < _herd.Count; i++)
             {
                 int id = _herd[i];

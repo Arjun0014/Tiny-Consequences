@@ -78,7 +78,6 @@ namespace TC2.Game
             Vec3d focus = PlanetGeo.ToVec(Rig.FocusPoint).Normalized;
             double reach = Mathf.Clamp(alt * 2.6f, 500f, 2600f);
             double t = Host.RenderTime;
-            double season = PlanetSystems.Season((long)t);
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
                 ref var s = ref w.Settlements.Get(sid);
@@ -98,7 +97,7 @@ namespace TC2.Game
                 double hour = SimTime.FloorMod((long)t + w.LocalOffsetOf(sid), SimTime.Day) / (double)SimTime.Hour;
                 // one presentation scale for the whole village (pens, fences and animals keep their proportions)
                 float ex = Exaggeration(At(P, in s, s.SquareX, s.SquareY));
-                bool frost = w.PlanetSys.DayMean(s.Cell, season) < -4.0;
+                bool frost = w.Stock.Frost(sid, (long)t);   // (the simulation's own rule: no herding, the animals penned)
                 var hhs = w.HouseholdsOf(sid);
                 // the village's herd: the households' cattle and goats together on the day's ground (the simulation's choice, D2-050)
                 long today = SimTime.FloorDiv((long)t + w.LocalOffsetOf(sid), SimTime.Day);
