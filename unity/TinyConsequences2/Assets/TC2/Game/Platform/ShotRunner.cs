@@ -71,6 +71,14 @@ namespace TC2.Game
             double days = Parse(Arg("-tc2days"), 0), hour = Parse(Arg("-tc2hour"), 8.0);
             int sid = w.Settlements.First();
             long local = sid != 0 ? w.LocalOffsetOf(sid) : 0;
+            if (Arg("-tc2hungry") != null && sid != 0)
+            {
+                // look-dev premise: the first village's stores are bare - its people turn to the woods, the game and the shore
+                w.Settlements.Get(sid).Granary = 0;
+                var hhs = w.HouseholdsOf(sid);
+                for (int i = 0; i < hhs.Count; i++) w.Households.Get(hhs[i]).Larder = 0;
+                Debug.Log("[TC2] the first village's stores emptied");
+            }
             long target = SimTime.StartOfDay(w.Now + local) - local + DMath.ToLong(days * SimTime.Day) + DMath.ToLong(hour * SimTime.Hour);
             while (target <= w.Now) target += SimTime.Day;
             var b = Budget.Unlimited;
@@ -208,6 +216,8 @@ namespace TC2.Game
             if (sea != null) Debug.Log("[TC2] sea life: shoals " + sea.Shoals + " drawn " + sea.Drawn + " seals " + sea.SealsDrawn + " | " + sea.Why);
             var wild = FindAnyObjectByType<WildlifeView>();
             if (wild != null) Debug.Log("[TC2] wildlife drawn " + wild.Drawn + " (herds " + wild.HerdsDrawn + ")");
+            var objs = FindAnyObjectByType<WorldObjectsView>();
+            if (objs != null) Debug.Log("[TC2] people drawn " + objs.PeopleDrawn + ", boats afloat " + objs.BoatsAfloat);
             var stock = FindAnyObjectByType<LivestockView>();
             if (stock != null) Debug.Log("[TC2] livestock drawn " + stock.Drawn + " |" + stock.Why);
         }

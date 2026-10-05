@@ -87,6 +87,12 @@ class Kit:
                 f.smooth = True
         return faces
 
+    def bowl(self, centre, r, color, cut_z, subdiv=2):
+        """An ellipsoid with its top removed above cut_z (Blender z): an open hull or a bowl."""
+        faces = self.ellipsoid(centre, r, color, subdiv=subdiv, smooth=False)
+        gone = [f for f in faces if all(v.co.z > cut_z for v in f.verts)]
+        bmesh.ops.delete(self.bm, geom=gone, context="FACES")
+
     def limb(self, a, b, r1, r2, color, seg=6):
         """A tapered cylinder from point a to point b."""
         a, b = Vector(a), Vector(b)
@@ -210,6 +216,22 @@ def round_hut(name, radius, wall_h, roof_h, seed=3):
     k.cyl((0, 0, 0.22), radius, radius, wall_h - 0.22, WALL2, seg=12)
     k.cyl((0, 0, wall_h - 0.1), radius + 0.6, 0.08, roof_h, THATCH, seg=12)
     k.box((0, -radius - 0.02, 0.9), (0.8, 0.1, 1.75), DOOR)
+    return k.finish()
+
+
+def boat(name, seed=10):
+    """A small wooden rowing boat (a village's fishing boat): an open 4 m hull, the floor inside it, two thwarts across the
+    gunwales, the oars shipped."""
+    k = Kit(name, seed)
+    wood, inner, dark = srgb(0.52, 0.37, 0.22), srgb(0.38, 0.27, 0.16), srgb(0.30, 0.21, 0.13)
+    k.bowl((0, 0, 0.42), (0.75, 2.0, 0.42), wood, cut_z=0.5, subdiv=3)    # the hull, open above its widest
+    k.box((0, 0, 0.30), (0.95, 2.6, 0.05), inner)                          # the floor boards inside it
+    for sx in (-1, 1):
+        k.ellipsoid((sx * 0.72, 0, 0.5), (0.06, 1.85, 0.05), dark, subdiv=1)   # the gunwales
+    for y in (-0.5, 0.45):
+        k.box((0, y, 0.48), (1.4, 0.16, 0.05), dark)                        # thwarts
+    for sx in (-1, 1):
+        k.box((sx * 0.4, -0.1, 0.55), (0.06, 2.2, 0.05), dark, rot_z=sx * 0.05)   # oars shipped on the thwarts
     return k.finish()
 
 
@@ -575,6 +597,7 @@ def build_all():
     objs.append(round_hut("hut_round", 2.3, 2.1, 2.6))
     objs.append(tent("tent"))
     objs.append(ruin("ruin"))
+    objs.append(boat("boat"))
     # the wild animals (D2-035): one per species kind, at adult size
     objs.append(quadruped("animal_deer", 1.65, 1.1, 0.72, (0.55, 0.36, 0.20), belly=(0.82, 0.74, 0.62), head=0.24, neck=0.42, neck_up=55, ears=0.13, tail=0.12, antlers=0.45, seed=31))
     objs.append(quadruped("animal_hare", 0.48, 0.3, 0.12, (0.52, 0.45, 0.36), belly=(0.80, 0.76, 0.68), head=0.09, neck=0.06, neck_up=40, ears=0.12, tail=0.05, bushy=True, tail_tip=(0.95, 0.95, 0.92), snout=0.2, seed=32))

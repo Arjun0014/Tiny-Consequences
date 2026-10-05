@@ -20,7 +20,7 @@ namespace TC2.Game
         public SimHost Host;
         public CameraRig Rig;
 
-        Instancer _people, _granaries, _wells, _hay, _flames, _huts, _tents, _ruins;
+        Instancer _people, _granaries, _wells, _hay, _flames, _huts, _tents, _ruins, _beached, _afloat;
         struct TreeInst { public Vector3 Pos; public Quaternion Rot; public float Scale; public byte Kind, Shade; }
         sealed class CellTrees { public float Forest; public TreeInst[] Trees; }
         readonly System.Collections.Generic.Dictionary<int, CellTrees> _treeCache = new System.Collections.Generic.Dictionary<int, CellTrees>();
@@ -30,7 +30,7 @@ namespace TC2.Game
         Instancer[] _houseKinds, _trees;
         Material _mat;
         float _treeTimer, _placeTimer;
-        public int PeopleDrawn, TreesDrawn;
+        public int PeopleDrawn, TreesDrawn, BoatsAfloat;
         public static int Off;   // tools (webperf): parts not drawn - 1 trees, 2 people, 4 buildings and yards
 
         static readonly string[] HouseModels = { "house_cottage", "house_timber", "house_long", "house_small" };
@@ -56,6 +56,8 @@ namespace TC2.Game
             _huts = new Instancer(Models.Get("hut_round", ProcMeshes.House), _mat, true);
             _tents = new Instancer(Models.Get("tent", ProcMeshes.House), _mat, true);   // camps: hides over poles
             _ruins = new Instancer(Models.Get("ruin", ProcMeshes.House), _mat, true);   // the houses of abandoned villages (D2-052)
+            _beached = new Instancer(Models.Get("boat", ProcMeshes.Granary), _mat, true);   // fishing boats drawn up on the shore
+            _afloat = new Instancer(Models.Get("boat", ProcMeshes.Granary), _mat, true);    // and out on the water with their fishers
             _wells = new Instancer(Models.Get("well", ProcMeshes.Granary), _mat, true);
             _hay = new Instancer(Models.Get("haystack", ProcMeshes.Granary), _mat, true);
             _trees = new Instancer[TreeModels.Length];
@@ -142,7 +144,8 @@ namespace TC2.Game
             }
             if ((Off & 1) == 0) for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
             _flames.Draw(cam);
-            if ((Off & 2) == 0) _people.Draw(cam);
+            if ((Off & 2) == 0) { _people.Draw(cam); _afloat.Draw(cam); }
+            if ((Off & 4) == 0) _beached.Draw(cam);
             EmitSmoke(w);
         }
 
@@ -176,7 +179,7 @@ namespace TC2.Game
         {
             var P = w.Planet;
             for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Clear();
-            _granaries.Clear(); _wells.Clear(); _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear();
+            _granaries.Clear(); _wells.Clear(); _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear();
             _smoke.Clear();
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
@@ -221,6 +224,7 @@ namespace TC2.Game
                         _smoke.Add(new Vector4(top.x, top.y, top.z, cooking ? 1f : 0.6f));
                     }
                 }
+                Beached(w, P, in s, sid, ex);
                 // the village store and its well, once its people have built them (D2-045); haystacks once the harvest is in
                 if ((s.Works & Construction.Granary) != 0) _granaries.Add(0, Color.white, Place(P, s, s.SquareX + 14, s.SquareY - 10, 12f, ex));
                 if ((s.Works & Construction.Well) != 0) _wells.Add(0, Color.white, Place(P, s, s.WellX, s.WellY, 30f, ex));
@@ -261,6 +265,58 @@ namespace TC2.Game
             {
                 var m = Place(P, s, s.WellX, s.WellY, 30f, ex) * Matrix4x4.Scale(new Vector3(1f, 0.4f, 1f));   // its stone ring
                 _wells.Add(1, new Color(0.75f, 0.80f, 0.70f, 1f), m);
+            }
+        }
+
+        /// <summary>
+        /// The water's edge at a fishing ground (sea cell): halfway to its land neighbour nearest the village, as the fishers go
+        /// (WildFood.GroundPoint without its jitter); also that land cell. False if the ground has no land beside it.
+        /// </summary>
+        static bool FishingShore(PlanetState P, in Settlement s, int ground, out Vec3d edge, out Vec3d land)
+        {
+            var g = P.Grid;
+            int best = -1; double bd = double.MaxValue;
+            for (int j = 0; j < 8; j++)
+            {
+                int nb = g.Nbr8[ground * 8 + j];
+                if (!P.IsLand(nb)) continue;
+                double d = Vec3d.ArcDistance(g.Center[nb], s.Anchor, P.Radius);
+                if (d < bd) { bd = d; best = nb; }
+            }
+            land = best >= 0 ? g.Center[best] : g.Center[ground];
+            edge = (land + g.Center[ground]).Normalized;
+            return best >= 0;
+        }
+
+        /// <summary>
+        /// A coastal village's fishing boats drawn up on the shore of its best fishing ground: one for every two of its people who
+        /// fish with skill, fewer by those out on the water now, bows to the land, side by side along the shore.
+        /// </summary>
+        void Beached(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int sid, float ex)
+        {
+            if (s.Fish.A < 0 || P.IsLand(s.Fish.A)) return;
+            var res = w.Residents(sid);
+            int fishers = 0, afloat = 0;
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var p = ref w.People.Get(res[i]);
+                if (!p.Alive) continue;
+                if (p.SkFish > 0.25f) fishers++;
+                if (p.Act == ActivityKind.Fish) afloat++;
+            }
+            int boats = Mathf.Min(6, (fishers + 1) / 2) - afloat;
+            if (boats <= 0 || !FishingShore(P, in s, s.Fish.A, out Vec3d edge, out Vec3d land)) return;
+            Vec3d inland = (land - edge).Normalized, along = Vec3d.Cross(edge, inland).Normalized;
+            for (int i = 0; i < boats; i++)
+            {
+                // a little up the beach from the water's edge, a boat's breadth apart
+                Vec3d at = (edge * P.Radius + inland * (0.06 * P.CellSize + 2.0 * ex) + along * ((i - (boats - 1) * 0.5) * 3.2 * ex)).Normalized;
+                Vector3 pos = PlanetGeo.Surface(P, at);
+                Vector3 up = pos.normalized;
+                Vector3 bow = PlanetGeo.Surface(P, (at * P.Radius + inland * 5.0).Normalized) - pos;
+                bow -= up * Vector3.Dot(bow, up);
+                if (bow.sqrMagnitude < 1e-8f) continue;
+                _beached.Add(0, Color.white, Matrix4x4.TRS(pos, Quaternion.LookRotation(bow.normalized, up) * Quaternion.Euler(0, (i * 37) % 13 - 6, 0), Vector3.one * ex));
             }
         }
 
@@ -420,8 +476,9 @@ namespace TC2.Game
         void RebuildPeople(TC2.Core.Simulation.World w)
         {
             var P = w.Planet;
-            _people.Clear();
-            PeopleDrawn = 0;
+            _people.Clear(); _afloat.Clear();
+            PeopleDrawn = 0; BoatsAfloat = 0;
+            float waterR = (float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel));
             double t = Host.RenderTime;
             float camDist = Rig != null && Rig.Cam != null ? Vector3.Distance(Rig.Cam.transform.position, Rig.FocusPoint) : 5000f;
             if (camDist > 6000f) return;
@@ -433,6 +490,27 @@ namespace TC2.Game
                 Vec3d d = w.Agents.PositionAt(p, t);
                 Vector3 pos = PlanetGeo.Surface(P, d);
                 float age = (float)p.AgeYears((long)t);
+                // a fisher at the water's edge rows out a little toward the ground and fishes from a boat
+                if (p.Act == ActivityKind.Fish && p.Ground >= 0 && !P.IsLand(p.Ground) && !(p.Step == StepKind.Local && t < p.TA))
+                {
+                    ulong fk = KeyedRng.Mix((ulong)id * 0x9E3779B97F4A7C15UL ^ 0xB0A7);
+                    double outBy = 0.35 + 0.3 * KeyedRng.Unit(fk);
+                    Vec3d onWater = (d * (1.0 - outBy) + P.Grid.Center[p.Ground] * outBy).Normalized;
+                    if (Ground.Height(P, onWater) < P.SeaLevel - 0.3)
+                    {
+                        Vector3 bpos = PlanetGeo.ToVector(onWater) * waterR;
+                        Vector3 bup = bpos.normalized;
+                        float drift = (float)(KeyedRng.Unit(KeyedRng.Mix(fk + 1)) * 360.0 + t / 600.0);   // swinging slowly on the water
+                        var brot = PlanetGeo.Upright(bpos, drift) * Quaternion.Euler(Mathf.Sin((float)(t / 7.0)) * 2f, 0, Mathf.Sin((float)(t / 5.0)) * 3f);
+                        float bex = Exaggeration(bpos, 2.5f);
+                        _afloat.Add(0, Color.white, Matrix4x4.TRS(bpos, brot, Vector3.one * bex));
+                        BoatsAfloat++;
+                        int dyeF = (int)(KeyedRng.Mix((ulong)id * 0x2545F4914F6CDD1DUL) % (ulong)Dyes.Length);
+                        _people.Add(dyeF, Dyes[dyeF], Matrix4x4.TRS(bpos + bup * (0.25f * bex), brot, Vector3.one * (1.2f * bex)), 0f, 0f);
+                        PeopleDrawn++;
+                        continue;
+                    }
+                }
                 float sc = (age < 12 ? 0.55f + age * 0.038f : 1f) * 1.35f * Exaggeration(pos, 2.5f); // a little larger than life, to be read
                 int dye = (int)(KeyedRng.Mix((ulong)id * 0x2545F4914F6CDD1DUL) % (ulong)Dyes.Length);
                 // walking: on a road, or the walk at the start of a step; they face where they go
