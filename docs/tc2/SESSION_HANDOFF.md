@@ -9,8 +9,11 @@
 - Phases: F0 done, F1 closed, F2 closed, F3 in progress. **F3 is not closed**: following people showed grown people idle 7-9 hours
   a day outside sowing and harvest (`timeuse`); D2-056 gave them meals, water, wood for the hearths and made houses matter
   (warmth); the slack's real work is still missing (see Next steps 1). 111 headless tests green.
-- Determinism: Mono (editor) equals dotnet again from generation through day 3 (`hashtest --parts`); the Web build (IL2CPP) has not
-  been rebuilt since D2-056/057 - rebuild and run `webtest.mjs` on both paths at the next milestone.
+- Determinism: Mono (editor), dotnet and the Web build (IL2CPP, WebGPU) are bit-identical after D2-056 to D2-058
+  (`tc2/out/webtest/s2webc`: 6/6). The WebGL2 build was not rebuilt since D2-051 (no rendering change but the smoke).
+- 3a26837 goods made and mended, a day's labour, weeding (D2-058). F3 still open: buildings belong to households, so a house
+  vanishes when its household dissolves or moves and newlyweds always start in a camp beside empty homes - persistent buildings
+  (D2-059, in progress) are the last F3 gap before closing it.
 - Nothing running. Uncommitted legacy TC1 work may exist in the tree and is NOT ours: `game/html/engine_template.html` and
   `docs/DECISIONS.md` (D-227). Never stage them in [tc2] commits.
 
