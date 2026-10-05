@@ -68,9 +68,12 @@
    person-days (profile `daily.coarse-day` 149 us, `daily.food` 110 us per village-day at ~350 people), a cohort-level
    resolution for deep time (03/12's Ancient/Deep modes), or the Living span adapting to the world's size. Measure the Web
    catch-up from a mature save first (`webbench.mjs`).
-2. **Ecology calibration**: wide-ranging hunters (seals Range 12, tuna 3) must hunt over their range, not one cell (a seal may
-   take a quarter of one cell's fish a step but needs ~66 kg: the miniature holds ~10-20 seals); the spin-up seeds the sea's
-   predators ~10x below their level (they take a decade to grow into it). Validate with 10,000-year reruns (F2's evidence).
+2. **The sea's calibration**: the fish fields hold ~1 % of real biomass (a coastal cell ~50 herring, ~2.5 kg/ha against
+   50-500 kg/ha in real coastal waters), so a seal (263 kg a year, Metab 9) needs about ten cells' yearly herring and the
+   miniature holds ~10-20 seals; `Species.Range` is documented as "cells' worth of prey their rounds cover" but only lowers the
+   half-saturation (never widens the reach); the spin-up seeds the sea's predators ~10x below their level. A recalibration of
+   D2-039/041 (fish biomass, wide-ranging hunters over their neighbourhood, human fishing returns re-fitted) with 10,000-year
+   reruns - the look wants seal colonies on some shores (the view already gathers seals at haul-outs, D2-053).
 3. **Famine in the full world**: ~1 % of the people die of hunger each year once the land is full (1,791 famines in 1,000 years)
    - relief, exchange and storage between villages (F5) are the remedy; check that collapse stays possible.
 4. WebGL2's first-entry stall at a new view (1-5 s): a traced shader-variant collection warmed progressively at start
