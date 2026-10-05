@@ -94,8 +94,8 @@ namespace TC2.Core.Places
                 double fire = Hearth.Wanted(tOut, hh.Shelter) * share;
                 hh.Indoor = (float)Hearth.Indoors(tOut, hh.Shelter, fire);
                 int members = w.Members(hhs[i]).Count;
-                // the day's wear of its members' clothes and tools (D2-058)
-                hh.Gear = (float)DMath.Max(0.0, hh.Gear - members * Goods.WearPerDay);
+                // the day's wear of its members' clothes and tools (D2-058), slower where the tools are metal (D2-064)
+                hh.Gear = (float)DMath.Max(0.0, hh.Gear - members * Goods.WearPerDay * Knowledge.Tech.MetalWear(Knowledge.Tech.MetalShare(s.Metal, s.Population)));
                 if (members > 0 && hh.Indoor < Goods.ChillLine(Goods.Condition(hh.Gear, members))) cold++;
             }
             if (cold > 0 && s.ColdEvent == 0)
@@ -370,6 +370,7 @@ namespace TC2.Core.Places
             // stored hides rot and are eaten by vermin (~20 % a year), fibre less (~5 %): a store holds what is used (D2-063)
             s.Hides *= 1.0 - 0.20 / SimTime.DaysPerYear;
             s.Fibre *= 1.0 - 0.05 / SimTime.DaysPerYear;
+            s.Metal *= 1.0 - 0.03 / SimTime.DaysPerYear;   // tools lost, broken, worn past mending (D2-064)
             bool empty = s.Granary < 1.0;
             if (empty && s.HungerEvent == 0 && s.Population > 0)
             {

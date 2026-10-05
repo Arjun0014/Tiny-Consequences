@@ -58,3 +58,9 @@ F4. F0 has no techniques beyond implicit farming and woodcutting.
 - Pottery (clay within 1.2 km: a stream or a lake): grain keeps better, cooking burns less wood. The ard (a household's grown ox):
   faster field work. The quern needs rock showing near the village.
 - Not yet: metals (ore from the crust, charcoal, smelting, the techniques they need), techniques that need techniques.
+
+## 9. Implemented: slice 3 (D2-064) and the close of F4 (D2-065)
+- Copper: ore where rock shows within 3 km of a volcano; smelting and working it is found only by a potter by the ore; smiths
+  (half their making while the village is short of tools) bring metal into its store from charcoal; metal tools quicken hands
+  (up to 1.25x) and slow the wear of goods (to 0.75). Metal moves only with trade (F5).
+- F4 closed (D2-065). Not yet: iron, bronze, knowledge of places, apprenticeship as a relationship, hints in traded objects.

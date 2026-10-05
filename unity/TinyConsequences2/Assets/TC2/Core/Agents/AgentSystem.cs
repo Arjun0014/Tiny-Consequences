@@ -456,6 +456,8 @@ namespace TC2.Core.Agents
                 case ActivityKind.Craft:
                     if (p.At != 0 && p.At == p.Home && hours > 0 && w.Households.Exists(p.Household))
                     {
+                        hours = Smith(ref p, hours);   // (a smith's half at the furnace: D2-064)
+                        w.Learning.Practice(ref p, Knowledge.Tech.Metal, hours);
                         ref var hh = ref w.Households.Get(p.Household);
                         double made = Goods.Materials(ref w.Settlements.Get(p.At), Goods.MakePerHour(p.AgeYears(now), p.Health) * Knowledge.Tech.LoomFactor(in p) * hours);
                         w.Learning.Practice(ref p, Knowledge.Tech.Loom, hours);
@@ -504,12 +506,36 @@ namespace TC2.Core.Agents
         /// <summary>How much a day's labour still leaves for the slack's work: whole until five hours, a fifth past eight.</summary>
         static double DayLeft(in Person p) => DMath.Clamp(1.0 - (p.Worked - 5.0) / 3.0, 0.2, 1.0);
 
-        /// <summary>The pace of a person's hands with their household's clothes and tools (worn ones down to 0.7).</summary>
+        /// <summary>The pace of a person's hands with their household's clothes and tools (worn ones down to 0.7), quicker where its village's tools are metal (D2-064).</summary>
         double Tools(int hid)
         {
             var w = _w;
             if (!w.Households.Exists(hid)) return 1.0;
-            return Goods.WorkFactor(Goods.Condition(w.Households.Get(hid).Gear, w.Members(hid).Count));
+            ref var hh = ref w.Households.Get(hid);
+            double metal = 1.0;
+            if (w.Settlements.Exists(hh.Settlement)) { ref var s = ref w.Settlements.Get(hh.Settlement); metal = Knowledge.Tech.MetalPace(Knowledge.Tech.MetalShare(s.Metal, s.Population)); }
+            return Goods.WorkFactor(Goods.Condition(hh.Gear, w.Members(hid).Count)) * metal;
+        }
+
+        /// <summary>
+        /// A maker who can smelt and work copper, where ore is near and the village is short of metal tools, gives half their
+        /// making to the furnace and the anvil (D2-064): metal into the village's store, charcoal out of its woodstore. Returns the
+        /// hours left for the household's goods.
+        /// </summary>
+        double Smith(ref Person p, double hours)
+        {
+            var w = _w;
+            if (hours <= 0 || p.KMetal < 0.3f || p.Home == 0 || !w.Settlements.Exists(p.Home)) return hours;
+            ref var s = ref w.Settlements.Get(p.Home);
+            if (Knowledge.Tech.MetalShare(s.Metal, s.Population) >= 1.0 || !w.Learning.Ore(s.Cell)) return hours;
+            double h = 0.5 * hours;
+            double kg = Knowledge.Tech.MetalPerHour(in p) * h;
+            double fuel = kg * Knowledge.Tech.MetalFuel;
+            if (s.Woodstore < fuel) { kg = s.Woodstore / Knowledge.Tech.MetalFuel; fuel = s.Woodstore; }
+            s.Metal += kg; s.Woodstore -= fuel;
+            w.Metrics.MetalKg += kg;
+            w.Learning.Practice(ref p, Knowledge.Tech.Metal, h);
+            return hours - h;
         }
 
         /// <summary>The household's goods against what it keeps its members in (1 = the target), counting what is being made.</summary>
@@ -1117,12 +1143,14 @@ namespace TC2.Core.Agents
             ref var hh = ref w.Households.Get(p.Household);
             double want = below * members * Goods.Target - hh.Gear;
             if (want <= 0) return;
+            maxH = Smith(ref p, maxH);   // (a smith's half at the furnace: D2-064)
             double rate = Goods.MakePerHour(age, p.Health) * Knowledge.Tech.LoomFactor(in p);
             double h = DMath.Min(maxH, want / rate);
             double made = Goods.Materials(ref w.Settlements.Get(hh.Settlement), h * rate);   // (as far as the store's fibre and hides go: D2-063)
             hh.Gear = (float)(hh.Gear + made);
             w.Metrics.CraftHours += h; w.Metrics.GearMade += made;
             w.Learning.Practice(ref p, Knowledge.Tech.Loom, h);
+            w.Learning.Practice(ref p, Knowledge.Tech.Metal, h);
         }
 
         /// <summary>The household's best at dressing quern stones: it grinds on a rotary quern when one of its people can keep one (D2-062).</summary>

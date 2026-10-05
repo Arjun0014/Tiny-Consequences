@@ -65,12 +65,13 @@
   stocked), do not loosen the mechanism (D2-056).
 
 ### Next steps
-1. **F4 slice 3 - metals** (D2-063 next): ore from the crust (copper where volcanic arcs and old mountains are, bog iron in
-   wetlands), charcoal from the woods, smelting that needs pottery (crucibles, furnaces of clay); tools of metal making the
-   goods last and work go faster; techniques that need techniques. Then close F4 (its done-when holds: `KnowledgeTests`).
+1. **F5 - exchange, movement and disease** (17): trade by want between villages (metal from the ore villages, salt, grain in a
+   famine - relief), gatherings, roads and boats (seafaring to reach other lands), pathogens with SEIR in villages and parties
+   carried along routes and at gatherings; famine coping between villages. Done when an epidemic jumps along trade and travel
+   and is traceable, and migrations found new places (the latter already true: D2-045).
 2. **The sea's calibration**: fish at ~1 % of real biomass, so the miniature holds ~10-20 seals (D2-053): wide-ranging hunters
    over their range; 10,000-year reruns.
-3. **Famine in the full world** (F5): relief, exchange and storage between villages.
-4. WebGL2's first-entry stall; look backlog: coast shapes off the cell grid, gardens, orbit detail, smoke from huts and camps.
-5. **An aggregate layer of people for Ancient and Deep time** (D2-061): a village's year as one step, fitted to COARSE, once
-   the people model is settled (after F4/F5). Living at saturation (~75 s a day away) holds meanwhile.
+3. WebGL2's first-entry stall; look backlog: coast shapes off the cell grid, gardens, orbit detail, smoke from huts and camps.
+4. **An aggregate layer of people for Ancient and Deep time** (D2-061): a village's year as one step, fitted to COARSE, once
+   the people model is settled (after F5). Living at saturation (~75 s a day away) holds meanwhile.
+5. Rebuild and run the Web test on both paths at the next milestone (last: s2webd, before D2-062 to D2-064).

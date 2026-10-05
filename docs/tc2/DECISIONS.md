@@ -1395,3 +1395,35 @@ the quern and pottery everywhere (its founders' and spread by marriage) and neve
 found it); its stores hold 10-125 kg of fibre; seed 1 (cold, famine-struck) knows all five but its failed harvests leave many
 villages without fibre - their goods improvised, their clothes thinner in the cold. Mono equals dotnet (gen 02b1010e12e4a49d
 before the clay and spoilage tuning).
+
+## D2-064 — 2026-10-06 — Copper from the ground: a technique that needs a technique (F4 slice 3)
+
+**Decision.** (1) Copper ore shows where rock shows within 3 km of a volcano, living or gone quiet (arcs lay copper:
+`Learning.Ore`) - near some villages in some worlds (seeds 2, 7, 11: two to four villages of six), none in others. (2) The
+technique "smelt copper and work it" (`Tech.Metal`: alpha 0.28, beta 0.065 - kept by ~40 learners) is found only by a maker who
+already fires pots (a furnace, a crucible: proficiency 0.5 in pottery) where the ore shows. (3) A maker who can work copper, in a
+village with ore near and short of metal tools, gives half their making to the furnace and the anvil (`AgentSystem.Smith`,
+both resolutions): 0.08 kg an hour at full proficiency into the village's `Metal`, ~10 kg of wood a kg as charcoal out of its
+woodstore. (4) A toolkit is ~0.5 kg a head; the share of its people a village's metal equips quickens all hands up to 1.25x
+(fields, wood, building, the wild: `Tools`) and slows the wear of goods to 0.75; metal is lost and broken ~3 % a year. (5)
+Founders know it in 25 % of villages with ore. Knowledge travels by marriage as any technique; metal itself does not move
+until trade (F5). Sim version 20.
+**Evidence.** `MetalTests` (128 tests): the laws; copper never found without pots or without ore, found by a potter by the ore
+("Fel Mogrund of Staernby found how to smelt copper and work it"); a village of smiths equips its 17 people in a year (9 kg)
+and its hands quicken 1.00 -> 1.25. Seed 7, 200 coarse years with no premise: a small village loses the loom in year 8;
+copper is found at Haesmere in year 147 and again, independently, at Taekdal in 151; by year 200 every village knows it (by
+marriage) but only the two with ore near hold metal (114.5 and 99 kg - full toolkits); 2,554 kg smelted in all. Mono equals
+dotnet (gen fba9c10ad37a945f).
+
+## D2-065 — 2026-10-06 — F4 closed: technology is knowledge carried by people
+
+**Context.** F4's done-when: "a technique spreads by contact and is lost in an isolated shrinking group in tests" (17).
+**Evidence.** `KnowledgeTests`: a bride brings the loom to a village without it and its own people weave; one master of the
+rotary quern is lost in an isolated village of 14 within 150 years and kept and bettered in one of ~150 (Henrich's mechanism,
+from the copying law alone). Beyond it: six techniques with prerequisites in the ground (rock, clay, ore), in the household (an
+ox) and in other techniques (pots before copper); discovery by practice; loss as history; materials from the harvest, the hunt
+and the slaughter (D2-063); copper and its charcoal (D2-064); all at both resolutions, Mono equal to dotnet. In free worlds the
+history writes itself: losses in small villages, independent discoveries, knowledge outrunning the ore it needs.
+**Verdict.** F4 is closed. Carried forward: iron (bog iron, the bloomery) and bronze (tin, rarely near: trade), knowledge of
+places, apprenticeship as a relationship, the hint a traded object carries (F5's trade), techniques of building (masonry) and
+war (F6).

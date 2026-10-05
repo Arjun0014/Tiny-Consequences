@@ -13,7 +13,7 @@ namespace TC2.Core.Knowledge
     /// </summary>
     public static class Tech
     {
-        public const int Nets = 0, Loom = 1, Quern = 2, Pottery = 3, Ard = 4, Count = 5;
+        public const int Nets = 0, Loom = 1, Quern = 2, Pottery = 3, Ard = 4, Metal = 5, Count = 6;
 
         public struct Law
         {
@@ -35,6 +35,9 @@ namespace TC2.Core.Knowledge
             new Law { Name = "fire pots of clay", Now = "fire pots of clay", Alpha = 0.18, Beta = 0.07, Discover = 1e-6 },
             // the ard drawn by oxen: kept by ~10 learners; found by those who work the fields of a household that keeps cattle (D2-063)
             new Law { Name = "plough with an ard and oxen", Now = "plough with the ard", Alpha = 0.20, Beta = 0.07, Discover = 1e-6 },
+            // smelting copper and working it: complex, kept by ~40 learners; found by potters (furnaces, crucibles) who make where
+            // copper ore shows near a volcano's ground (D2-064)
+            new Law { Name = "smelt copper and work it", Now = "smelt and work copper", Alpha = 0.28, Beta = 0.065, Discover = 3e-7 },
         };
 
         /// <summary>Proficiency at which a person counts as a practitioner, and a village as knowing the technique.</summary>
@@ -46,12 +49,13 @@ namespace TC2.Core.Knowledge
         /// <summary>What someone who first finds a technique knows of it.</summary>
         public const double FirstFound = 0.4;
 
-        public static float Get(in Person p, int t) => t == Nets ? p.KNets : t == Loom ? p.KLoom : t == Quern ? p.KQuern : t == Pottery ? p.KPottery : p.KArd;
+        public static float Get(in Person p, int t) => t == Nets ? p.KNets : t == Loom ? p.KLoom : t == Quern ? p.KQuern : t == Pottery ? p.KPottery : t == Ard ? p.KArd : p.KMetal;
 
         public static void Set(ref Person p, int t, double v)
         {
             float f = (float)DMath.Clamp01(v);
-            if (t == Nets) p.KNets = f; else if (t == Loom) p.KLoom = f; else if (t == Quern) p.KQuern = f; else if (t == Pottery) p.KPottery = f; else p.KArd = f;
+            if (t == Nets) p.KNets = f; else if (t == Loom) p.KLoom = f; else if (t == Quern) p.KQuern = f; else if (t == Pottery) p.KPottery = f;
+            else if (t == Ard) p.KArd = f; else p.KMetal = f;
         }
 
         /// <summary>A person's own scatter in copying a technique: a standard Gumbel draw fixed by their id (Henrich's epsilon).</summary>
@@ -77,6 +81,24 @@ namespace TC2.Core.Knowledge
 
         /// <summary>Cooking in fired pots: down to 0.8 of the wood a meal burns (D2-063).</summary>
         public static double PotteryFuel(double householdBest) => 1.0 - 0.2 * DMath.Clamp01(householdBest / 0.6);
+
+        /// <summary>Kg of metal tools a person's toolkit holds (a knife, a sickle, an axe-head, an awl: D2-064).</summary>
+        public const double MetalPerHead = 0.5;
+
+        /// <summary>The share of its people a village's metal can equip.</summary>
+        public static double MetalShare(double metalKg, int people) => people > 0 ? DMath.Clamp01(metalKg / (MetalPerHead * people)) : 0.0;
+
+        /// <summary>The pace of hands with metal tools: up to 1.25 times (axes, sickles, hoes of copper: D2-064).</summary>
+        public static double MetalPace(double share) => 1.0 + 0.25 * share;
+
+        /// <summary>Goods wear slower where the tools are metal: down to 0.75 of the wear.</summary>
+        public static double MetalWear(double share) => 1.0 - 0.25 * share;
+
+        /// <summary>Kg of metal an hour at the furnace and the anvil brings, by the smith's proficiency (D2-064).</summary>
+        public static double MetalPerHour(in Person p) => 0.08 * p.KMetal;
+
+        /// <summary>Wood units of charcoal a kg of smelted metal burns (~10 kg of wood).</summary>
+        public const double MetalFuel = 0.4;
 
         /// <summary>A field worker of a household with an ox, who can plough with the ard: up to 1.8 times the work (D2-063).</summary>
         public static double ArdFactor(in Person p, bool ox) => ox ? 1.0 + 0.8 * p.KArd : 1.0;
