@@ -84,6 +84,7 @@ namespace TC2.Core.Persistence
         {
             var r = new BinReader(data);
             header = ReadHeader(r);
+            if (header.SimVersion != World.FormatSimVersion) throw new FormatException("the save is from another model of the world (" + header.SimVersion + ", this game " + World.FormatSimVersion + ")");
             byte[] payload = new byte[header.PayloadLength];
             Buffer.BlockCopy(data, r.Position, payload, 0, header.PayloadLength);
             byte[] raw = header.Compression == 1 ? Inflate(payload, header.UncompressedLength) : payload;

@@ -14,12 +14,16 @@ namespace TC2.Core.Simulation
     {
         public long Events, Decisions, Steps, Stale, Activities, Journeys, JourneysInterrupted, Interrupts, InterruptsHandled;
         public long Meals, Births, Deaths, Marriages, SystemTicks, FireSteps, Lightning, Commands;
+        public readonly long[] Eruptions = new long[8]; // by VEI
+        public long VentsBorn, VentsDied, Islands, EruptionDeaths;
 
         public void Write(BinWriter w)
         {
             w.Long(Events); w.Long(Decisions); w.Long(Steps); w.Long(Stale); w.Long(Activities); w.Long(Journeys); w.Long(JourneysInterrupted);
             w.Long(Interrupts); w.Long(InterruptsHandled); w.Long(Meals); w.Long(Births); w.Long(Deaths); w.Long(Marriages);
             w.Long(SystemTicks); w.Long(FireSteps); w.Long(Lightning); w.Long(Commands);
+            for (int i = 0; i < Eruptions.Length; i++) w.Long(Eruptions[i]);
+            w.Long(VentsBorn); w.Long(VentsDied); w.Long(Islands); w.Long(EruptionDeaths);
         }
 
         public void Read(BinReader r)
@@ -27,6 +31,8 @@ namespace TC2.Core.Simulation
             Events = r.Long(); Decisions = r.Long(); Steps = r.Long(); Stale = r.Long(); Activities = r.Long(); Journeys = r.Long(); JourneysInterrupted = r.Long();
             Interrupts = r.Long(); InterruptsHandled = r.Long(); Meals = r.Long(); Births = r.Long(); Deaths = r.Long(); Marriages = r.Long();
             SystemTicks = r.Long(); FireSteps = r.Long(); Lightning = r.Long(); Commands = r.Long();
+            for (int i = 0; i < Eruptions.Length; i++) Eruptions[i] = r.Long();
+            VentsBorn = r.Long(); VentsDied = r.Long(); Islands = r.Long(); EruptionDeaths = r.Long();
         }
 
         public Metrics Clone() { var m = (Metrics)MemberwiseClone(); return m; }
@@ -72,7 +78,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 1;
+        public const int FormatSimVersion = 2; // 2: volcanoes (D2-028)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
@@ -299,7 +305,9 @@ namespace TC2.Core.Simulation
             var P = Planet;
             if (P.Plates.Length == 0) return;
             RideSettlements(Tectonics.StepYears); // with the motion the crust has during this step
+            Volcanism.Ride(this, Tectonics.StepYears);
             Tect.Step(P, Tectonics.StepYears, Seed, Now);
+            Volcanism.Step(this, Tectonics.StepYears, Tect.ArcSupply);
             LandChanged(P.SeaLevel, false);
             P.ReliefVersion++;
         }
@@ -362,6 +370,107 @@ namespace TC2.Core.Simulation
                 Record(new HistoryEvent { Kind = HistoryKind.CoastChanged, Time = Now, Cell = -1, RootKind = RootKind.Nature, Magnitude = (float)(P.SeaLevel - coastBefore), ArgA = drowned, ArgB = emerged * 1000 + villages });
         }
 
+        int NearestSettlement(int cell, double maxM)
+        {
+            int best = 0; double bd = maxM;
+            Vec3d at = Planet.Grid.Center[cell];
+            for (int sid = Settlements.First(); sid != 0; sid = Settlements.Next(sid))
+            {
+                ref var s = ref Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                double d = Vec3d.ArcDistance(at, s.Anchor, Planet.Radius);
+                if (d < bd) { bd = d; best = sid; }
+            }
+            return best;
+        }
+
+        public void RecordVentBorn(Vent v)
+        {
+            Metrics.VentsBorn++;
+            History.Register(new EntityRef(EntityKind.Place, v.Id), Worldgen.Names.Mountain(Seed, v.Id), Now);
+            Record(new HistoryEvent { Kind = HistoryKind.VentBorn, Time = Now, Cell = v.Cell, Settlement = NearestSettlement(v.Cell, 5000), RootKind = RootKind.Nature, ArgA = v.Id, ArgB = v.Kind, Subject = new EntityRef(EntityKind.Place, v.Id) });
+        }
+
+        public void RecordIslandRose(Vent v)
+        {
+            Metrics.Islands++;
+            Record(new HistoryEvent { Kind = HistoryKind.IslandRose, Time = Now, Cell = v.Cell, RootKind = RootKind.Nature, ArgA = v.Id, Subject = new EntityRef(EntityKind.Place, v.Id) });
+        }
+
+        public void RecordVentExtinct(Vent v)
+        {
+            Metrics.VentsDied++;
+            Record(new HistoryEvent { Kind = HistoryKind.VentExtinct, Time = Now, Cell = v.Cell, Settlement = NearestSettlement(v.Cell, 5000), RootKind = RootKind.Nature, ArgA = v.Id, ArgB = v.Eruptions, Subject = new EntityRef(EntityKind.Place, v.Id) });
+            History.EndEntity(new EntityRef(EntityKind.Place, v.Id), Now);
+        }
+
+        /// <summary>
+        /// A volcano erupts (D2-028): its size from the pressure released; the cone grows; lava runs down the steepest
+        /// way and sets the land alight; ash falls round it on woods and fields; near a great eruption people die; the veil
+        /// cools the world and the gas warms it a little - each consequence caused by the eruption.
+        /// </summary>
+        public void Erupt(int ventId)
+        {
+            var P = Planet;
+            var g = P.Grid;
+            int v = Volcanism.IndexOf(P, ventId);
+            if (v < 0) return;
+            var vt = P.Vents[v];
+            int vei = Volcanism.Vei(vt.Pressure);
+            int c = vt.Cell;
+            Metrics.Eruptions[vei]++;
+            long ev = Record(new HistoryEvent
+            {
+                Kind = HistoryKind.Eruption, Time = Now, Cell = c, Settlement = NearestSettlement(c, 8000), RootKind = RootKind.Nature,
+                Tier = vei >= 4 ? Tier.Historical : Tier.Local, Magnitude = vei, ArgA = vt.Id, Subject = new EntityRef(EntityKind.Place, vt.Id),
+            });
+            // the cone it piles up joins the relief at the next tectonic step, where the drainage is rebuilt
+            vt.Cone += (float)(22.0 * vei);
+            // lava down the steepest way
+            int cur = c, length = 1 + (vei * 3) / 2;
+            for (int k = 0; k < length; k++)
+            {
+                int next = -1; float low = P.Elev[cur];
+                for (int q = 0; q < 8; q++) { int nb = g.Nbr8[cur * 8 + q]; if (P.Elev[nb] < low) { low = P.Elev[nb]; next = nb; } }
+                if (next < 0 || !P.IsLand(next)) break;
+                cur = next;
+                Fire.TryIgnite(this, cur, ev, RootKind.Nature, 6.0);
+                if (P.Forest[cur] > 0.02f) P.Forest[cur] = 0.02f;
+                if (P.Grass[cur] > 0.05f) P.Grass[cur] = 0.05f;
+                if (P.FieldOwner[cur] != 0) SettlementSys.AshOnFields(P.FieldOwner[cur], 1.0, ev);
+            }
+            // ash round the vent: woods and pasture suffer, and the crops of every village whose fields lie under it
+            double ashR = 280.0 * DMath.Exp((vei - 2) * 0.6931);
+            double ashCos = DMath.Cos(ashR / P.Radius);
+            Vec3d vat = g.Center[c];
+            var hit = new List<int>();
+            for (int a = 0; a < P.Cells; a++)
+            {
+                if (!P.IsLand(a) || Vec3d.Dot(g.Center[a], vat) < ashCos) continue;
+                P.Grass[a] *= 0.7f; P.Forest[a] *= 0.93f;
+                int owner = P.FieldOwner[a];
+                if (owner != 0 && !hit.Contains(owner)) hit.Add(owner);
+            }
+            foreach (int sid in hit) SettlementSys.AshOnFields(sid, DMath.Min(0.9, 0.12 * (vei - 1)), ev);
+            // near a great eruption the clouds of hot ash kill
+            if (vei >= 4)
+            {
+                double deadR = 350.0 * (vei - 3);
+                Vec3d at = g.Center[c];
+                for (int id = People.First(); id != 0; id = People.Next(id))
+                {
+                    ref var p = ref People.Get(id);
+                    if (!p.Alive) continue;
+                    if (Vec3d.ArcDistance(Agents.PositionAt(p, Now), at, P.Radius) > deadR) continue;
+                    if (KeyedRng.Unit(Seed, RngStream.Death, (ulong)id, (ulong)Now, 51) < 0.55) { Agents.Kill(ref p, ev, 4); Metrics.EruptionDeaths++; }
+                }
+            }
+            // the veil (cooling for a few years) and the gas
+            P.Aerosol += 0.15 * DMath.Exp((vei - 6) * 1.61); // a VEI 6 (Pinatubo-like) veil ~0.15, a VEI 7 ~0.75
+            vt.Pressure = 0; vt.LastEruption = Now; vt.Eruptions++; vt.Next = 0;
+            P.Vents[v] = vt;
+        }
+
         public void RequestResolution(Resolution r, long at) => Issue(new Command { Time = at, Kind = CommandKind.SetResolution, Arg = (long)r });
 
         void Strike(int cell, long cause, RootKind root, double strength)
@@ -422,6 +531,9 @@ namespace TC2.Core.Simulation
                     break;
                 case EventKind.Lightning:
                     Strike((int)e.A, e.B, RootKind.Nature, 1.0);
+                    break;
+                case EventKind.Eruption:
+                    Erupt((int)e.A);
                     break;
                 case EventKind.Command:
                     ApplyCommand((int)e.A);

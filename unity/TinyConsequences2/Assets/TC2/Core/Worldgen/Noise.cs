@@ -50,6 +50,7 @@ namespace TC2.Core.Worldgen
         static readonly string[] Vowels = { "a", "e", "i", "o", "u", "a", "e", "o", "ai", "ei", "ou", "ae" };
         static readonly string[] Codas = { "", "", "", "n", "r", "l", "s", "th", "k", "m", "nd", "rn", "st", "ld" };
         static readonly string[] PlaceEnds = { "holm", "by", "stead", "ford", "wick", "ton", "mere", "dal", "hope", "thorpe" };
+        static readonly string[] MountEnds = { "fell", "tor", "berg", "crag", "pike", "scar" };
 
         static string Syllable(ref RandomSequence r)
         {
@@ -74,6 +75,15 @@ namespace TC2.Core.Worldgen
             var r = new RandomSequence(KeyedRng.Hash(seed, RngStream.Names, (ulong)householdKey, 2));
             string s = Syllable(ref r) + Syllable(ref r);
             return Cap(s);
+        }
+
+        public static string Mountain(ulong seed, int key)
+        {
+            var r = new RandomSequence(KeyedRng.Hash(seed, RngStream.Names, (ulong)key, 4));
+            string s = Syllable(ref r);
+            if (s.Length < 3) s += Syllable(ref r);
+            if (s.Length > 5) s = s.Substring(0, 5);
+            return r.Chance(0.5) ? "Mount " + Cap(s) : Cap(s + MountEnds[r.NextBelow(MountEnds.Length)]);
         }
 
         public static string Place(ulong seed, int key)

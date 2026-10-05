@@ -22,6 +22,7 @@ namespace TC2.Core.Worldgen
             var P = new PlanetState(cfg.SurfaceN, cfg.Radius);
             w.InitPlanet(P);
             Relief(w, P);
+            Volcanism.SpinUp(w);
             w.Drainage.Rebuild(P);
             Moisture(w, P);
             w.PlanetSys.Climate.Prime(P, w.Seed, 0);
@@ -147,6 +148,7 @@ namespace TC2.Core.Worldgen
             P.SeaLevel = 0;
             P.Plates = Tectonics.MakePlates(poles, omega, continental, P.Radius);
             Tectonics.InitCrust(P, seed);
+            P.Hotspots = Volcanism.MakeHotspots(seed);
         }
 
         /// <summary>

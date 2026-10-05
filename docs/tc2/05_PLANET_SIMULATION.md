@@ -25,7 +25,8 @@ Laws: `01_WORLD_LAWS.md`. Research: `02_RESEARCH.md` §5.
 | `soilWater`, `riverFlow`, `lakeWater` (state), `lakeDepth` (derived) | N64 | hydrology on the drainage tree (D2-022) |
 | `veg[pft]` | N64 | biomass per plant functional type (grass, shrub, broadleaf, conifer, crop) |
 | `fuel`, `burning` | N64 | dead fuel; active fire intensity (sparse set) |
-| global | - | CO₂, aerosol, sea level, ice volume, orbital phase, ledgers of contributors |
+| `magma` | N64 | magma gathered under a cell, not yet drawn by a vent (D2-028) |
+| global | - | CO₂, aerosol, sea level, ice volume, orbital phase, ledgers of contributors; vents, plumes, the volcanic supply reference |
 
 Cause tags (`11` §6) accompany the causal fields: burning, drought anomaly, flood, ash, ice.
 
@@ -80,6 +81,19 @@ Cause tags (`11` §6) accompany the causal fields: burning, drought anomaly, flo
   and hotspots; eruptions are events (VEI by pressure), aerosol and ash written to fields.
 - At ~1 m/year and 245 m cells a sample crosses a cell in ~250 years: coasts and ranges move over millennia.
 - Cost: 24K rotations + cell lookups per 10 years: negligible.
+
+### Volcanoes and the carbon cycle (implemented, D2-028)
+- Magma rises on the overriding side of subduction (from the tectonic forcing pass), a little at continental rifts,
+  and over 2-4 fixed mantle plumes; vents draw it from 5.5 cells around, new vents open where magma gathers beyond any
+  vent's reach, and vents ride their plates (a plume under a moving plate leaves a chain of volcanoes and islands).
+- Each vent pours part of its magma out quietly (plume vents most: shields and islands) and holds the rest against a
+  lognormal seal: most erupt often and small, a few stay plugged and blow big. Hazard ~ pressure³; VEI from the
+  pressure released.
+- An eruption is an event whose consequences carry it as their cause: lava fires and cleared land, ash on pasture,
+  woods and standing crops, deaths near great eruptions, a stratospheric veil (VEI 6 ~0.15 aerosol: a cold year or
+  two); its cone joins the relief at the next tectonic step.
+- CO₂: volcanic outgassing (by the vents' supply against the world's starting supply) against silicate weathering
+  (faster when warm and rich): a ~2,000-year thermostat.
 
 ### Drainage and erosion
 - **Priority-flood** (Barnes et al. 2014) fills depressions to give every land cell a receiver (lowest of 8

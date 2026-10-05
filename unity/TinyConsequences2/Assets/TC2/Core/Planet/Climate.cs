@@ -24,6 +24,7 @@ namespace TC2.Core.Planet
         const double IceSubstep = 0.1;                    // years (stability: dt K / h^2 < 0.25)
         public const double CLand = 0.25, COcean = 10.0;  // heat capacity (W yr m-2 K-1): ~0.1 y on land, ~5 y at sea
         public const double StepYears = 0.25;             // one step a season
+        public const double Outgassing = 0.28;            // ppm/yr at rest (balanced by weathering at 280 ppm: ~2,000-year memory)
         public const double Lapse = 0.0065;               // K per m of height above the sea
         const double IceAlbedo = 0.62, SeaIceAlbedo = 0.50, SeaAlbedo = 0.07;
 
@@ -119,7 +120,7 @@ namespace TC2.Core.Planet
         }
 
         /// <summary>One season of the energy balance (dt in years). Updates ZonalT and the derived per-cell climate.</summary>
-        public void Step(PlanetState P, ulong seed, long t, double dt, bool ice = true)
+        public void Step(PlanetState P, ulong seed, long t, double dt, bool ice = true, bool carbon = true)
         {
             Orbit(seed, t, out double obl, out double ecc, out double peri);
             P.Tilt = obl; P.Ecc = ecc; P.Perihelion = peri;
@@ -148,10 +149,25 @@ namespace TC2.Core.Planet
             }
             SolveTridiagonal(zt);
             P.Aerosol *= DMath.Exp(-dt / 0.7); // a veil fades over ~2 years
+            if (carbon) Carbon(P, dt);
             Derive(P);
             if (ice) Ice(P, dt);
             UpdateSeaLevel(P);
             Derive(P); // from the final state, exactly as a loaded world derives it
+        }
+
+        /// <summary>
+        /// The carbon thermostat (Walker-Hays-Kasting): volcanoes outgas in proportion to the magma they draw (against
+        /// the supply the world began with), rock weathers faster when the air is warm and rich - CO2 relaxes toward
+        /// their balance over ~2,000 years, so a world with more volcanoes grows warmer, slowly.
+        /// </summary>
+        public static void Carbon(PlanetState P, double dt)
+        {
+            double supply = 0;
+            for (int v = 0; v < P.Vents.Count; v++) supply += P.Vents[v].Supply;
+            double outgas = Outgassing * (0.6 + 0.4 * supply / DMath.Max(1.0, P.SupplyRef));
+            double weather = Outgassing * DMath.Sqrt(DMath.Max(1.0, P.CO2) / 280.0) * DMath.Exp(0.06 * (P.TGlobal - P.TGlobalRef));
+            P.CO2 = DMath.Clamp(P.CO2 + (outgas - weather) * dt, 100.0, 3000.0);
         }
 
         void SolveTridiagonal(double[] x)
@@ -324,9 +340,9 @@ namespace TC2.Core.Planet
             for (int j = 0; j < Bands; j++) P.ZonalT[j] = 27.0 - 40.0 * _x[j] * _x[j];
             P.TGlobalRef = 14.0; P.MoistFactor = 1.0;
             Derive(P);
-            for (int i = 0; i < 60; i++) Step(P, seed, t, 2.0, false);
+            for (int i = 0; i < 60; i++) Step(P, seed, t, 2.0, false, false);
             P.TGlobalRef = P.TGlobal;
-            for (int i = 0; i < 300; i++) Step(P, seed, t, 1.0, true);
+            for (int i = 0; i < 300; i++) Step(P, seed, t, 1.0, true, false);
             // the generated coastline is today's: the reference level carries the ice that has grown
             double sea = P.SeaLevel0;
             P.SeaLevelRef = sea + 0.9 * P.IceVolume / DMath.Max(1.0, OceanArea(P, sea));

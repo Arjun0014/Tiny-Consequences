@@ -25,6 +25,7 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
+    - _Anim: 0
     - _Emission: 0
     m_Colors:
     - _AmbientGround: {r: 0.21999997, g: 0.18999997, b: 0.15999997, a: 1}

@@ -389,3 +389,83 @@ night lights, people animation, more kit (boats, fields' haystacks, roads). Perf
 build (patch build time in wasm, draw calls, frame time at each view).
 **Invalidation.** If patch building costs too much in wasm or vertex-colour detail is too coarse, move displacement
 to the GPU on WebGPU (keep the CPU path for WebGL2) or bake per-patch colour textures.
+
+## D2-027 — 2026-10-05 — Look-dev v2-v4: weather clouds, tilt-shift, lamplight, ground cover, roads, seasons, walking, a slim HUD
+
+**Context.** Look-dev v1 (D2-026) gave a coherent ground; the miniature still lacked the cues that make a diorama read
+as small and alive: depth of field, clouds you can fly through, lights at night, grass at your feet, paths between
+villages, the colour of the year, people who move.
+**Decision.**
+- **Clouds from the world's weather** (`CloudView`, `Clouds.shader`): a 64² coverage cubemap filled one face per frame
+  from each cell's rain today and moisture (kernel-smoothed across cells), eased toward each day's weather, drawn as a
+  noise-warped shell 650 m up with shadows on the ground. The view reads state only.
+- **Smooth weather spells** in the simulation: a cell's daily draw blends per-block normal draws with a 9-tap kernel
+  (normalised to unit variance, then a logistic CDF back to a uniform), so rain comes in soft-edged spells with the same
+  per-cell statistics; square blocks were visible as square clouds. The logistic is tabulated (basic IEEE operations,
+  identical on every runtime) and the per-cell hash folds the day into one key: weather was 86 % of a planet-only
+  coarse year (1.25 ms a day), now 0.82 ms (14.3 -> 19.4 world years/s coarse).
+- **Tilt-shift** (`TiltShiftFeature`, RenderGraph, two blur passes before post-processing), strength 1 below 120 m
+  falling to 0 at 2.6 km: the camera height decides how small the world feels; skipped when off.
+- **Window lamplight**: a window mask in the kit (vertex alpha 0.5); a house glows after dark when someone of its
+  household is home and awake (state read by the view).
+- **Ground cover** on the finest terrain patches: grass clumps (tinted by the ground's own greenness), wildflowers in
+  spring, reeds by lakes and streams, boulders on rocky slopes; placed on the patch surface (no extra height lookups),
+  never on fields, paths, sand or snow; drawn within 260 m below 600 m altitude.
+- **Roads** between neighbouring villages along their own travel routes (`Routes`), Chaikin-smoothed and indexed per
+  cell into the ground colours.
+- **Seasons** in deciduous canopies (fresh spring, gold and rust autumn, bare winter; the south has the opposite year).
+- **Walking**: an animation flag per instance group swings legs and arms and bobs bodies of people who travel; they
+  face where they go.
+- **HUD**: a slim bar (date and speeds), Info / History / World panels behind toggles, a fading one-line ticker of the
+  latest history, H hides everything.
+**Evidence.** Chrome/WebGPU, 1280x720: look-dev v2 119-121 fps at every view; v4 (with grass, roads, walking, HUD)
+111-122 fps from orbit to the low view, 91 fps at the close village view; browser = headless bit-identical each time.
+**Consequences.** Next for the look: volcanoes drawn (cones, craters, plumes, lava glow), night ground light, chimney
+smoke, boats, fences and gardens; the HUD date must fit on one line.
+**Invalidation.** If grass costs more than ~2 ms a frame on the Web, instance it from a GPU buffer on WebGPU or thin it
+with distance.
+
+## D2-028 — 2026-10-05 — Volcanoes on the moving plates, eruptions as events, and the carbon cycle
+
+**Context.** F1 asks for volcanoes whose eruptions have consequences people live with, and a long-term climate that
+regulates itself (05 §3, 01 laws). Plates already move (D2-025) and know where ocean crust dives under another plate.
+**Decision.**
+- **Magma** (`P.Magma`, per cell, state) rises at arcs (overriding side of subduction: 0.9 per m/yr of convergence per
+  boundary edge, from the tectonic step's forcing pass `Tectonics.Forcing`), a little at continental rifts, and over
+  2-4 fixed mantle **plumes** (4-12 units a year); undrawn magma cools away over 400 years.
+- **Vents** (`P.Vents`: position, plate, kind, pressure, seal, supply, flags, pending cone) draw 60 % of the magma within
+  5.5 cells each decade; where magma gathers to 100 beyond any vent's reach, a new vent opens (spacing emerges from the
+  reach: ~30 vents on seed 42). Vents ride their plates like villages; a vent whose crust went under another plate, or
+  one fed nothing for 600 years, dies (history: fell silent). A plume under a moving plate therefore leaves a chain.
+- **Effusion and pressure**: hotspot vents pour 60 % of their magma out quietly, arc and rift vents 20 %; poured lava
+  builds the mountain (0.3 m per unit at the vent, 0.4x round it) and a sea vent that reaches the surface is an island
+  (history: a new island rose). The rest is pressure held by the vent's **seal** (lognormal sigma 0.9; plume vents x0.3).
+- **Eruptions**: hazard `0.0069 x³` per year with `x = pressure / (600 seal)`, drawn each decade with the moment inside
+  it; VEI = `floor(2 + 3.1 log10(pressure / 720))` clamped 1-7 (a vent at its typical critical pressure gives VEI 2,
+  four times that VEI 4, twenty times VEI 6). An eruption (`World.Erupt`) is a history event (Local below VEI 4,
+  Historical from 4; importance grows ~2.2x per VEI) and every consequence has it as its cause: lava down the steepest way
+  (1 + 1.5 VEI cells) sets the land alight and clears it; ash within 280 m x 2^(VEI-2) thins pasture and woods and costs
+  villages under it 12 % of the standing crop per VEI above 1 (AshFall); from VEI 4 people within 350 m x (VEI-3) die
+  (55 %, "in the eruption"); the stratospheric veil adds 0.15 e^(1.61 (VEI-6)) aerosol (VEI 6 ~0.15, VEI 7 ~0.75: a
+  year or two of cold summers through the energy balance). The cone (22 m x VEI) is laid on the relief at the next
+  tectonic step: relief changes only where the drainage is rebuilt, so loads derive exactly what the live world has.
+- **Carbon thermostat** (`Climate.Carbon`): outgassing `0.28 (0.6 + 0.4 supply / supplyRef)` ppm/yr against weathering
+  `0.28 sqrt(CO2/280) e^(0.06 (T - Tref))`: CO2 relaxes over ~2,000 years toward the balance of the planet's volcanism
+  (more subduction, a warmer world). Off during the climate spin-up.
+- **Worldgen**: 1,000 years of quiet gathering (no eruptions, history or rock) give the planet its volcanoes; each vent
+  starts with a random share of its critical pressure; their supply is `supplyRef`. Volcanoes have names (`Names.Mountain`).
+- Saves: format sim version 2 (older saves start a new world with a message); counters for eruptions by VEI, vents born
+  and died, islands and deaths in `Metrics`.
+**Evidence.** Tests: a plume under a plate moving 4 m/yr opens new vents as the plate carries the old ones away, the
+chain lying along the motion (dot > 0.8); arc vents all have a subducting boundary within reach; a VEI 5 under a village
+records ash on the standing crop, deaths "in the eruption", fires and a veil, every later event rooted in the eruption,
+and the cone joins the relief at the next tectonic step; CO2 560 relaxes to 290-360 ppm in 4,000 years, doubled supply
+holds 450-560; save/load through pending eruptions and a tectonic step continues bit-identically. Seed 42, 4,000 years
+planet only: 28-42 vents (arc 23-35, hotspot 4-7), 650 eruptions (574 VEI 1 - mostly plume vents every ~25-40 years -
+65 VEI 2, 7 VEI 3, 1 VEI 4), CO2 280 -> 336 ppm as arcs lengthened. A first design opened 200+ vents (8-cell draw) and
+piled magma under plumes beyond any vent's reach (VEI 6 from accumulated magma); per-eruption drainage rebuilds halved
+the speed.
+**Consequences.** The view must draw volcanoes (cone relief comes through `ReliefVersion`; plumes and lava glow from
+vent state). Quakes read the same boundary forcing next.
+**Invalidation.** If eruptions crowd the history, raise the Local threshold for the news (VEI 1 is ~90 % of eruptions);
+if CO2 drifts beyond 200-600 ppm in 10,000-year runs, tie outgassing to subduction length rather than vent supply.

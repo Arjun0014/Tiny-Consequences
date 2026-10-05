@@ -56,6 +56,11 @@ namespace TC2.Core.Planet
         public float[] CrustOx, CrustOy; // the crust sample's offset inside its cell (m, east/north)
         public int ReliefVersion;   // bumps when the relief moves (views rebuild)
         public float[] DrainIce;    // the ice the drainage was last built with (its surface = rock + this ice)
+        // volcanoes (D2-028)
+        public float[] Magma;       // magma gathered under each cell, not yet taken by a vent
+        public System.Collections.Generic.List<Vent> Vents = new System.Collections.Generic.List<Vent>();
+        public Hotspot[] Hotspots = new Hotspot[0];
+        public double SupplyRef;    // the volcanoes' magma supply when the world began (the carbon cycle's reference)
 
         // derived per-cell geometry (from the grid; never serialized)
         public readonly double[] Lat;       // radians
@@ -75,7 +80,7 @@ namespace TC2.Core.Planet
             LakeWater = new float[Cells]; LakeDepth = new float[Cells];
             ZonalT = new double[Climate.Bands]; Ice = new float[Cells]; TMean = new float[Cells]; TAmp = new float[Cells];
             Crust = new byte[Cells]; CrustAge = new float[Cells]; CrustOx = new float[Cells]; CrustOy = new float[Cells];
-            DrainIce = new float[Cells];
+            DrainIce = new float[Cells]; Magma = new float[Cells];
         }
 
         public bool IsLand(int c) => Elev[c] > SeaLevel;
@@ -232,6 +237,16 @@ namespace TC2.Core.Planet
             for (int i = 0; i < Plates.Length; i++) { var pl = Plates[i]; w.Double(pl.Pole.X); w.Double(pl.Pole.Y); w.Double(pl.Pole.Z); w.Double(pl.Omega); w.Bool(pl.Continental); }
             w.ByteArray(Crust, Cells); w.FloatArray(CrustAge, Cells); w.FloatArray(CrustOx, Cells); w.FloatArray(CrustOy, Cells);
             w.FloatArray(DrainIce, Cells);
+            w.FloatArray(Magma, Cells);
+            w.Int(Hotspots.Length);
+            for (int i = 0; i < Hotspots.Length; i++) { w.Double(Hotspots[i].At.X); w.Double(Hotspots[i].At.Y); w.Double(Hotspots[i].At.Z); w.Double(Hotspots[i].Rate); }
+            w.Int(Vents.Count);
+            for (int i = 0; i < Vents.Count; i++)
+            {
+                var v = Vents[i];
+                w.Int(v.Id); w.Int(v.Cell); w.Double(v.At.X); w.Double(v.At.Y); w.Double(v.At.Z); w.Int(v.Plate); w.Byte(v.Kind); w.Byte(v.Flags); w.Double(v.Pressure); w.Long(v.Born); w.Long(v.LastEruption); w.Long(v.Next); w.Int(v.Eruptions); w.Float(v.Supply); w.Float(v.Seal); w.Float(v.Cone);
+            }
+            w.Double(SupplyRef);
         }
 
         public static PlanetState Read(BinReader r)
@@ -257,6 +272,14 @@ namespace TC2.Core.Planet
             for (int i = 0; i < np; i++) { double x = r.Double(), y = r.Double(), z = r.Double(); p.Plates[i] = new PlateInfo { Pole = new Vec3d(x, y, z), Omega = r.Double(), Continental = r.Bool() }; }
             r.ByteArray(p.Crust); r.FloatArray(p.CrustAge); r.FloatArray(p.CrustOx); r.FloatArray(p.CrustOy);
             r.FloatArray(p.DrainIce);
+            r.FloatArray(p.Magma);
+            int nh = r.Int();
+            p.Hotspots = new Hotspot[nh];
+            for (int i = 0; i < nh; i++) { double x = r.Double(), y = r.Double(), z = r.Double(); p.Hotspots[i] = new Hotspot { At = new Vec3d(x, y, z), Rate = r.Double() }; }
+            int nv = r.Int();
+            for (int i = 0; i < nv; i++)
+                p.Vents.Add(new Vent { Id = r.Int(), Cell = r.Int(), At = new Vec3d(r.Double(), r.Double(), r.Double()), Plate = r.Int(), Kind = r.Byte(), Flags = r.Byte(), Pressure = r.Double(), Born = r.Long(), LastEruption = r.Long(), Next = r.Long(), Eruptions = r.Int(), Supply = r.Float(), Seal = r.Float(), Cone = r.Float() });
+            p.SupplyRef = r.Double();
             return p;
         }
 
@@ -267,7 +290,10 @@ namespace TC2.Core.Planet
             h.Add(CO2); h.Add(Aerosol); h.Add(Ecc); h.Add(Perihelion); h.Add(SeaLevel0); h.Add(SeaLevelRef); h.Add(TGlobalRef); h.Add(OceanAreaRef); h.Add(IceVolume); h.Add(Glacial); h.Add(SeaLevelNow); h.Add(IceRef);
             for (int i = 0; i < Cells; i++) h.Add(Ice[i]);
             for (int i = 0; i < Plates.Length; i++) { h.Add(Plates[i].Pole.X); h.Add(Plates[i].Pole.Y); h.Add(Plates[i].Pole.Z); h.Add(Plates[i].Omega); h.Add(Plates[i].Continental ? 1 : 0); }
-            for (int i = 0; i < Cells; i++) { h.Add(Crust[i]); h.Add(CrustAge[i]); h.Add(CrustOx[i]); h.Add(CrustOy[i]); h.Add(DrainIce[i]); }
+            for (int i = 0; i < Cells; i++) { h.Add(Crust[i]); h.Add(CrustAge[i]); h.Add(CrustOx[i]); h.Add(CrustOy[i]); h.Add(DrainIce[i]); h.Add(Magma[i]); }
+            for (int i = 0; i < Hotspots.Length; i++) { h.Add(Hotspots[i].At.X); h.Add(Hotspots[i].At.Y); h.Add(Hotspots[i].At.Z); h.Add(Hotspots[i].Rate); }
+            for (int i = 0; i < Vents.Count; i++) { var v = Vents[i]; h.Add(v.Id); h.Add(v.Cell); h.Add(v.At.X); h.Add(v.At.Y); h.Add(v.At.Z); h.Add(v.Plate); h.Add(v.Kind); h.Add(v.Flags); h.Add(v.Pressure); h.Add(v.Born); h.Add(v.LastEruption); h.Add(v.Next); h.Add(v.Eruptions); h.Add(v.Supply); h.Add(v.Seal); h.Add(v.Cone); }
+            h.Add(SupplyRef);
             for (int i = 0; i < Cells; i++)
             {
                 h.Add(Elev[i]); h.Add(Plate[i]); h.Add(Moist[i]); h.Add(Temp[i]); h.Add(SoilWater[i]);

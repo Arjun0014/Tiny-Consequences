@@ -2,22 +2,29 @@
 
 ## CURRENT STATE (keep accurate; newest first below)
 
-- **F1 in progress (hydrology, climate, tectonics done) + look-dev v1 (Arjun: "a really beautiful miniature world,
-  high detail, high performance"). Session 1 (5 Oct 2026), continuing.**
-  - Docs: `docs/tc2/` 00-17, LEGACY_AUDIT, DECISIONS D2-001..026.
-  - Core (pure C# 9, headless-tested, 48 tests): everything of F0 (see the log) plus **hydrology** (D2-022: runoff
+- **F1 in progress (hydrology, climate, tectonics, volcanoes + carbon cycle done) + look-dev v1-v4 (Arjun: "a really
+  beautiful miniature world, high detail, high performance"). Session 1 (5 Oct 2026), continuing.**
+  - Docs: `docs/tc2/` 00-17, LEGACY_AUDIT, DECISIONS D2-001..028.
+  - Core (pure C# 9, headless-tested, 53 tests): everything of F0 (see the log) plus **hydrology** (D2-022: runoff
     down a priority-flood tree, depressions that fill/spill/evaporate/dry, smoothed river flow), **catch-up plan**
     (D2-023: COARSE for many lives, ACTIVITY on arrival), **climate** (D2-024: zonal energy balance, fictional fast
     orbit, ice-albedo, CO2/aerosol, land ice sheets, sea level, coastline in 1 m steps, ages of ice in the history),
     **tectonics** (D2-025: one crust sample per cell, moved every 10 y and handed over every 160 y; ridges,
-    subduction, collisions, accretion, buoyant shelves, wandering plate motions; villages ride their plates).
-  - Look-dev v1 (D2-026, Game code): ground model + chunked LOD terrain, farmland and village ground in the terrain
-    shader/colours, translucent sea + surf, meandering rivers, haze/sky/grade (post-processing now actually on),
-    Blender asset kit (`tc2/art/kit.py`), clouds from the weather with cloud shadows (in progress), window glow at
-    night (in progress). Batch-editor screenshots: `node tc2/scripts/unity.mjs shots --tag T`.
-  - Web: last verified build 6/6 with climate (bit-identical); a build with look-dev v1 is being measured (fps, frame
-    time by view).
-  - Headless tools: `planet` (stats + maps, `--tect`, `--zoom first:DEG`), `climate` (climate-only millennia).
+    subduction, collisions, accretion, buoyant shelves, wandering plate motions; villages ride their plates),
+    **volcanoes** (D2-028: magma at arcs, rifts and fixed plumes; vents that ride their plates, pour out lava, build
+    islands and erupt by pressure against a per-vent seal; eruptions as events whose lava fires, ash on crops,
+    deaths and veil carry them as cause; named volcanoes) and the **carbon cycle** (outgassing vs weathering, a
+    ~2,000-year thermostat).
+  - Look (Game code): v1 (D2-026) ground model + chunked LOD terrain, farmland and village ground, translucent sea +
+    surf, rivers, haze/sky/grade, Blender kit (`tc2/art/kit.py`); v2-v4 (D2-027) clouds from the weather with cloud
+    shadows, tilt-shift, window lamplight, grass/flowers/reeds/boulders, roads, seasonal canopies, walking people, a
+    slim HUD. Batch-editor screenshots: `node tc2/scripts/unity.mjs shots --tag T`.
+  - Web: look-dev v4 verified 6/6 (bit-identical, WebGPU, 91-122 fps by view). The volcano Core is not yet in a Web
+    build (next build will carry it; its probe reference changes with the new weather and volcanoes).
+  - Next: draw volcanoes (cones, craters, plumes, lava glow), HUD date on one line, night ground light; then quakes,
+    stream-power erosion and sediment, storms, the 10,000-year untouched run (F1 done-when), then F2 ecology.
+  - Headless tools: `planet` (stats + maps, `--tect`, `--volc`, `--zoom first:DEG`), `climate` (climate-only
+    millennia), `run --profile` (time per event kind and system).
 
 ## Measurements (session 1)
 
@@ -39,6 +46,9 @@
 | Web save | Chrome | 356 KB / 46 ms at year 0; 646 KB / 80 ms at year 96 (739 people, 5,640 history entries) |
 | Web frame rate | Chrome, RX 5600M, 1280x720 | orbit 120 fps; village/close 49-116 fps |
 | Planet only (climate + plates + weather), COARSE | dotnet | 25-28 world years/s (seed 42, 4,000 years) |
+| Planet + people COARSE, smooth weather (before / after tabulated logistic + one-mix hash) | dotnet | 14.3 / 19.4 world years/s (weather 1.25 / 0.82 ms a day) |
+| Volcanoes, seed 42, 4,000 years planet only | dotnet | 28-42 vents, 650 eruptions (574 VEI 1, 65 VEI 2, 7 VEI 3, 1 VEI 4), CO2 280 -> 336 ppm |
+| Web frame rate, look-dev v4 | Chrome/WebGPU, RX 5600M, 1280x720 | orbit 111, region 120, village 118, close 91, low 123 fps |
 | Slow climate alone | dotnet | ~3 ms per world year (0.75 ms per season step) |
 | Look-dev shot round (batch editor Play Mode, 5 views) | editor | ~40-45 s |
 
@@ -74,3 +84,10 @@ None. (Wavedash cloud saves and itch upload need Arjun later; not needed for F0.
 - Look-dev v1 (2fbf6d4, D2-026): the terrain, farmland, village ground, water, sky, grade and the Blender kit; bugs:
   reversed winding test, shots before instanced draws, a new world inheriting a catch-up, Mathf.SmoothStep semantics,
   stale material values.
+- Look-dev v2-v4 (b8f1593, c870730, 6848601; D2-027): clouds from the weather, smooth weather spells, tilt-shift,
+  lamplight, ground cover, roads, seasons, walking, slim HUD; Web 6/6 each round.
+- Volcanoes and the carbon cycle (D2-028): the first design opened 200+ vents and piled magma under plumes beyond any
+  vent's reach (a VEI 6 from stored magma); each eruption rebuilt the drainage (half the speed, and a load would have
+  derived drainage from relief the live world had not routed: cones now wait for the tectonic step). Profiling showed
+  the smooth weather costing 86 % of a coarse planet year (exp per cell and a 4-mix hash per cell): tabulated logistic
+  and a day key, 14.3 -> 19.4 world years/s.

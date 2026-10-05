@@ -51,6 +51,7 @@ namespace TC2.Core.Planet
         readonly byte[] _newPlate, _newKind;
         readonly Vec3d[] _pos;
         readonly int[] _accrete; int _accreteN;
+        public readonly float[] ArcSupply;   // magma rising per year at each cell this step (arcs over subduction, rifts)
         readonly long[] _front = new long[16 * 16];   // collisions between plate pairs this step
         readonly int[] _plateCells = new int[16];
 
@@ -65,6 +66,7 @@ namespace TC2.Core.Planet
             _newPlate = new byte[_cells]; _newKind = new byte[_cells];
             _pos = new Vec3d[_cells];
             _accrete = new int[_cells];
+            ArcSupply = new float[_cells];
         }
 
         static void Frame(Vec3d up, out Vec3d east, out Vec3d north)
@@ -105,23 +107,19 @@ namespace TC2.Core.Planet
             oy = (float)(P.Radius * Vec3d.Dot(v, _north[c]) / vc);
         }
 
-        /// <summary>One step of plate motion and boundary processes (dt in years). Returns cells that changed land/sea.</summary>
-        public void Step(PlanetState P, double dt, ulong seed, long now)
+        /// <summary>
+        /// Boundary forcing from the present arrangement: uplift (collisions, arcs) and sinking (trenches, rifts) per
+        /// cell before the belts are widened, and the magma rising at arcs and rifts (Volcanism) - per year.
+        /// </summary>
+        public void Forcing(PlanetState P)
         {
             var g = P.Grid;
             int n = _cells;
-            _accreteN = 0;
-            for (int i = 0; i < _front.Length; i++) _front[i] = 0;
-            int k = P.Plates.Length;
-            Span<double> cs = stackalloc double[k], sn = stackalloc double[k];
-            for (int i = 0; i < k; i++) { double a = P.Plates[i].Omega * dt; cs[i] = DMath.Cos(a); sn[i] = DMath.Sin(a); }
-
-            // 1. boundary forcing from the present arrangement (convergence of neighbouring plates)
             for (int c = 0; c < n; c++)
             {
                 int pc = P.Plate[c];
                 Vec3d p = g.Center[c];
-                double u = 0;
+                double u = 0, magma = 0;
                 Vec3d vc = Velocity(P, pc, p);
                 for (int q = 0; q < 4; q++)
                 {
@@ -134,14 +132,31 @@ namespace TC2.Core.Planet
                     if (conv > 0)
                     {
                         if (contC && contN) u += CollisionGain * conv;
-                        else if (contC) u += ArcGain * conv;                    // the overriding continent rises
+                        else if (contC) { u += ArcGain * conv; magma += Volcanism.ArcGain * conv; }   // the overriding continent rises; magma rises
                         else if (contN) u += TrenchGain * conv;                 // the ocean going under sinks
-                        else u += (P.CrustAge[c] < P.CrustAge[nb] ? ArcGain * 0.6 : TrenchGain) * conv; // younger rides older
+                        else if (P.CrustAge[c] < P.CrustAge[nb]) { u += ArcGain * 0.6 * conv; magma += Volcanism.ArcGain * 0.8 * conv; } // younger rides older: an island arc
+                        else u += TrenchGain * conv;
                     }
-                    else if (contC) u += RiftGain * -conv;
+                    else if (contC) { u += RiftGain * -conv; magma += 0.15 * -conv; }
                 }
                 _uplift[c] = (float)(u * 0.25); // per neighbour-sum -> per cell
+                ArcSupply[c] = (float)(magma * 0.25);
             }
+        }
+
+        /// <summary>One step of plate motion and boundary processes (dt in years). Returns cells that changed land/sea.</summary>
+        public void Step(PlanetState P, double dt, ulong seed, long now)
+        {
+            var g = P.Grid;
+            int n = _cells;
+            _accreteN = 0;
+            for (int i = 0; i < _front.Length; i++) _front[i] = 0;
+            int k = P.Plates.Length;
+            Span<double> cs = stackalloc double[k], sn = stackalloc double[k];
+            for (int i = 0; i < k; i++) { double a = P.Plates[i].Omega * dt; cs[i] = DMath.Cos(a); sn[i] = DMath.Sin(a); }
+
+            // 1. boundary forcing from the present arrangement (convergence of neighbouring plates)
+            Forcing(P);
             // belts have width: spread the forcing over a few cells
             for (int pass = 0; pass < 2; pass++)
             {

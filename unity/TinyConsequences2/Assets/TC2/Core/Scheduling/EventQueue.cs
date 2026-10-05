@@ -16,6 +16,7 @@ namespace TC2.Core.Scheduling
         Birth = 7,            // a pregnancy comes to term (Target = mother id, Version = pregnancy stamp)
         Housekeeping = 8,     // yearly compaction, audits
         Lightning = 9,        // a natural strike at a cell (A = cell)
+        Eruption = 10,        // a volcano erupts (A = vent id)
     }
 
     /// <summary>Ordering classes at equal time (04 §2).</summary>

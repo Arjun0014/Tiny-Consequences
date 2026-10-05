@@ -128,6 +128,25 @@ namespace TC2.Core.Planet
                 T[c] = (float)(_base[c] + _amp[c] * season + _dAmp[c] * (ca * _cosPh[c] - sa * _sinPh[c]));
         }
 
+        // 1/(1+e^(-1.702 z)) tabulated over z in [-8, 8] (32 per unit) and interpolated: basic IEEE operations only,
+        // so it is the same on every runtime, and the weather's hottest loop has no exp in it (error < 2e-5)
+        static readonly double[] _logistic = BuildLogistic();
+        static double[] BuildLogistic()
+        {
+            var t = new double[16 * 32 + 2];
+            for (int i = 0; i < t.Length; i++) t[i] = 1.0 / (1.0 + DMath.Exp(-1.702 * (-8.0 + i / 32.0)));
+            return t;
+        }
+        static double Logistic(double z)
+        {
+            double x = (z + 8.0) * 32.0;
+            if (x <= 0.0) return _logistic[0];
+            if (x >= 512.0) return _logistic[512];
+            int i = (int)x;
+            double f = x - i;
+            return _logistic[i] + (_logistic[i + 1] - _logistic[i]) * f;
+        }
+
         void Weather(World w)
         {
             var P = w.Planet;
@@ -135,6 +154,7 @@ namespace TC2.Core.Planet
             double yf = SimTime.YearFraction(w.Now);
             double seasonN = DMath.Sin(DMath.TwoPi * (yf - 0.125));
             ulong seed = w.Seed;
+            ulong dayKey = KeyedRng.Hash(seed, RngStream.Weather, 100000UL, (ulong)day);
             for (int b = 0; b < _blocks; b++)
                 _blockDraw[b] = KeyedRng.Normal(KeyedRng.Hash(seed, RngStream.Weather, (ulong)b + 200000UL, (ulong)day), KeyedRng.Hash(seed, RngStream.Weather, (ulong)b + 300000UL, (ulong)day));
             for (int c = 0; c < P.Cells; c++)
@@ -144,9 +164,10 @@ namespace TC2.Core.Planet
                 double moist = DMath.Min(1.0, P.Moist[c] * P.MoistFactor); // a warmer world is a wetter one
                 double pRain = DMath.Clamp(0.06 + 0.5 * moist + 0.08 * season * moist, 0.02, 0.85);
                 double z = 0;
-                for (int k = 0; k < Taps; k++) z += _tapWeight[c * Taps + k] * _blockDraw[_tapBlock[c * Taps + k]];
-                double ub = 1.0 / (1.0 + DMath.Exp(-1.702 * z)); // the normal CDF (logistic form): a uniform again
-                double uc = KeyedRng.Unit(seed, RngStream.Weather, (ulong)c + 100000UL, (ulong)day);
+                int o = c * Taps;
+                for (int k = 0; k < Taps; k++) z += _tapWeight[o + k] * _blockDraw[_tapBlock[o + k]];
+                double ub = Logistic(z); // the normal CDF (logistic form): a uniform again
+                double uc = KeyedRng.Unit(KeyedRng.Mix(dayKey ^ ((ulong)c * 0xC2B2AE3D27D4EB4FUL))); // one mix a cell: the day is in the key
                 double u = 0.7 * ub + 0.3 * uc;
                 double rain = u < pRain ? (pRain - u) / pRain * 1.6 : 0.0;
                 P.RainToday[c] = (float)rain;

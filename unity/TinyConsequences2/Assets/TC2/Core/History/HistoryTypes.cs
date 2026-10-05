@@ -33,6 +33,11 @@ namespace TC2.Core.History
         CoastChanged = 25,      // the sea rose or fell past a coast (Magnitude = metres, ArgA drowned, ArgB emerged*1000+villages)
         IceAge = 26,
         IceAgeEnded = 27,
+        Eruption = 28,          // a volcano erupted (Magnitude = VEI, ArgA = vent id)
+        VentBorn = 29,          // a volcano opened (ArgA = vent id, ArgB = kind: 0 arc, 1 hotspot, 2 rift)
+        VentExtinct = 30,       // a volcano fell silent (ArgB = eruptions in its life)
+        AshFall = 31,           // ash fell on a village's fields (Magnitude = share of the crop lost)
+        IslandRose = 32,        // a volcano in the sea built itself into an island
     }
 
     /// <summary>History tiers (11 §4).</summary>
@@ -131,6 +136,11 @@ namespace TC2.Core.History
                 case HistoryKind.IceAge:
                 case HistoryKind.IceAgeEnded: return Tier.Epochal;
                 case HistoryKind.CoastChanged: return Tier.Local;
+                case HistoryKind.Eruption: return Tier.Historical;
+                case HistoryKind.VentBorn: return Tier.Historical;
+                case HistoryKind.IslandRose: return Tier.Historical;
+                case HistoryKind.VentExtinct: return Tier.Local;
+                case HistoryKind.AshFall: return Tier.Local;
                 case HistoryKind.SettlementFounded:
                 case HistoryKind.SettlementAbandoned:
                 case HistoryKind.Wildfire:
@@ -163,6 +173,10 @@ namespace TC2.Core.History
                 case HistoryKind.IceAge: b = 50; break;
                 case HistoryKind.IceAgeEnded: b = 40; break;
                 case HistoryKind.CoastChanged: b = 4; break;
+                case HistoryKind.Eruption: b = 0.6 * DMath.Exp(0.8 * magnitude); break; // VEI 2 ~5, VEI 4 ~26, VEI 6 ~140
+                case HistoryKind.VentBorn: b = 3; break;
+                case HistoryKind.IslandRose: b = 8; break;
+                case HistoryKind.AshFall: b = 5; break;
                 case HistoryKind.Wildfire: b = 15; break;
                 case HistoryKind.GodCommand: b = 10; break;
                 case HistoryKind.PersonDied: b = 2; break;

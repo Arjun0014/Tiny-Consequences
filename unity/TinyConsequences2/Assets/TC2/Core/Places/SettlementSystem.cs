@@ -440,6 +440,25 @@ namespace TC2.Core.Places
             if (KeyedRng.Unit(w.Seed, RngStream.Death, (ulong)motherId, (ulong)due, 9) < risk) w.Agents.Kill(ref mm, born, 3);
         }
 
+        /// <summary>Ash (or lava) on a village's fields: the standing crop is lost by this share, the eruption its cause.</summary>
+        public void AshOnFields(int sid, double share, long cause)
+        {
+            var w = _w;
+            if (!w.Settlements.Exists(sid)) return;
+            ref var s = ref w.Settlements.Get(sid);
+            if (!s.Inhabited) return;
+            if (s.Crop != CropStage.Sown && s.Crop != CropStage.Growing && s.Crop != CropStage.Ripe) return;
+            double before = s.CropBurnt;
+            s.CropBurnt = DMath.Min(1.0, s.CropBurnt + share);
+            if (s.CropBurnt - before < 0.02) return;
+            long ash = w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.AshFall, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
+                Cause1 = cause, Rel1 = CauseRel.CausedBy, Magnitude = (float)(s.CropBurnt - before), RootKind = RootKind.Nature,
+            });
+            if (s.CropCause == 0) s.CropCause = ash;
+        }
+
         /// <summary>Fire burning on a settlement's field or home cell damages the standing crop.</summary>
         public void FireOnCell(int cell, int proc)
         {

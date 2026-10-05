@@ -44,6 +44,7 @@ namespace TC2.Headless
                 k++;
                 Console.WriteLine(PlanetLine(w));
                 if (a.Has("tect")) Console.WriteLine("      " + _tect);
+                if (a.Has("volc")) Console.WriteLine("      " + VolcLine(w));
                 if (mapDir != null) WriteMap(w, Path.Combine(mapDir, "map_" + k.ToString("0000") + ".png"), width);
             }
             FlowHistogram(w);
@@ -68,6 +69,21 @@ namespace TC2.Headless
         }
 
         static string _tect = "";
+
+        static string VolcLine(World w)
+        {
+            var P = w.Planet; var m = w.Metrics;
+            int arc = 0, hot = 0; double maxP = 0, sumS = 0;
+            foreach (var v in P.Vents) { if (v.Kind == 1) hot++; else arc++; if (v.Pressure > maxP) maxP = v.Pressure; sumS += v.Supply; }
+            int feeding = 0; double maxA = 0, maxM = 0;
+            for (int c = 0; c < P.Cells; c++) { if (w.Tect.ArcSupply[c] > 0) feeding++; if (w.Tect.ArcSupply[c] > maxA) maxA = w.Tect.ArcSupply[c]; if (P.Magma[c] > maxM) maxM = P.Magma[c]; }
+            var sb = new System.Text.StringBuilder();
+            sb.AppendFormat(CultureInfo.InvariantCulture, "vents {0} (arc {1} hot {2}) maxP {3:0} supply {4:0.00}/yr | arc cells {5} maxArc {6:0.000}/yr maxMagma {7:0} | VEI",
+                P.Vents.Count, arc, hot, maxP, sumS, feeding, maxA, maxM);
+            for (int i = 1; i < m.Eruptions.Length; i++) sb.Append(' ').Append(m.Eruptions[i]);
+            sb.AppendFormat(CultureInfo.InvariantCulture, " | born {0} died {1} islands {2} killed {3} | CO2 {4:0.0} aer {5:0.000}", m.VentsBorn, m.VentsDied, m.Islands, m.EruptionDeaths, P.CO2, P.Aerosol);
+            return sb.ToString();
+        }
 
         static string PlanetHeader() =>
             "date                      landT  soilW  rainy  forest grass  rivers lakes  maxQ(m3/s) seaQ(m3/s) pop  | obliq  ecc   Tglob  ice(km3) seaNow  coast  ice%  glac";
