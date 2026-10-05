@@ -43,6 +43,7 @@ namespace TC2.Core.Places
             if (s.Anchor.Y < 0) doy = (doy + 24) % SimTime.DaysPerYear; // southern seasons
             Crops(ref s, doy);
             Food(ref s, doy);
+            w.Wild.Survey(sid);   // what the land and sea within reach hold today (D2-042)
             if (w.Resolution == Resolution.Coarse) w.Agents.CoarseDay(sid);
             Demography(sid);
             ref var s2 = ref w.Settlements.Get(sid);
@@ -64,8 +65,10 @@ namespace TC2.Core.Places
             if (doy == 0)
             {
                 s.Crop = CropStage.Sown; s.CropWork = 0; s.Sown = 0; s.Harvested = 0; s.CropGrowth = 0; s.CropBurnt = 0; s.CropCause = 0;
-                ClaimFields(ref s, s.Population * cfg.FieldHaPerPerson);
-                s.FieldHa = Math.Max(0.5, Math.Min(s.Population * cfg.FieldHaPerPerson, s.ArableHa));
+                // a village that remembers famine sows more than it needs, as far as its land allows (D2-042)
+                double perPerson = cfg.FieldHaPerPerson * (1.0 + 0.5 * s.Memory);
+                ClaimFields(ref s, s.Population * perPerson);
+                s.FieldHa = Math.Max(0.5, Math.Min(s.Population * perPerson, s.ArableHa));
                 s.CropWorkNeed = s.FieldHa * 40.0;
                 s.ExpectedHarvest = s.FieldHa * cfg.FieldYieldPerHa * 0.8;
             }
@@ -196,14 +199,30 @@ namespace TC2.Core.Places
         void Food(ref Settlement s, int doy)
         {
             var w = _w;
+            // famine is remembered by the adults who lived through it: the memory fades as they die (D2-042)
+            s.Memory = FamineMemory(s.Id, s.FamineAt);
             // the granary refills each household's larder to two days of its members' needs - rationed so
-            // that what is stored lasts until the next harvest (the reversible first step of coping)
+            // that what is stored lasts until the next harvest (the reversible first step of coping), and by
+            // prudence a reserve beyond it, larger where famine is remembered (rations no lower than 0.8 for that alone)
             double daily = 0;
             var hhs = w.HouseholdsOf(s.Id);
             for (int i = 0; i < hhs.Count; i++) daily += HouseholdNeed(hhs[i]);
             int toHarvest = 39 - doy; if (toHarvest <= 0) toHarvest += SimTime.DaysPerYear;
-            double ration = daily > 0 ? DMath.Clamp(s.Granary / (daily * (toHarvest + 6)), 0.45, 1.0) : 1.0;
+            double lasts = daily > 0 ? DMath.Clamp(s.Granary / (daily * (toHarvest + 6)), 0.45, 1.0) : 1.0;
+            double keep = 6.0 + 30.0 * s.Memory;
+            double prudent = daily > 0 ? DMath.Clamp(s.Granary / (daily * (toHarvest + 6 + keep)), 0.8, 1.0) : 1.0;
+            double ration = DMath.Min(lasts, prudent);
             s.Ration = ration;
+            if (ration < 0.85 && s.RationEvent == 0 && s.Population > 0)
+            {
+                long failed = LastFailedHarvest(s.Id, SimTime.Year + SimTime.Year / 2);
+                s.RationEvent = w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.Rationing, Time = w.Now, Cell = s.Cell, Settlement = s.Id, Subject = EntityRef.Settlement(s.Id),
+                    Cause1 = failed, Rel1 = CauseRel.CausedBy, Magnitude = (float)ration, RootKind = failed == 0 ? RootKind.Nature : RootKind.Unknown,
+                });
+            }
+            else if (ration >= 0.98 && s.RationEvent != 0) s.RationEvent = 0;
             double total = daily * 2.0 * ration;
             double share = total > 0 ? Math.Min(1.0, s.Granary / total) : 1.0;
             for (int i = 0; i < hhs.Count; i++)
@@ -224,18 +243,76 @@ namespace TC2.Core.Places
                 s.HungerEvent = w.Record(new HistoryEvent { Kind = HistoryKind.Hunger, Time = w.Now, Cell = s.Cell, Settlement = s.Id, Subject = EntityRef.Settlement(s.Id), Cause1 = LastFailedHarvest(s.Id), Rel1 = CauseRel.CausedBy });
             }
             else if (!empty && s.Granary > 2.0 * total && s.HungerEvent != 0) s.HungerEvent = 0;
+            if (s.RationEvent == 0 && s.HungerEvent == 0) s.WildEvent = 0;
         }
 
-        long LastFailedHarvest(int sid)
+        /// <summary>The share of a village's adults who were eight or older when its last famine struck (D2-042).</summary>
+        double FamineMemory(int sid, long famineAt)
+        {
+            if (famineAt <= 0) return 0;
+            var w = _w;
+            var res = w.Residents(sid);
+            long cutoff = famineAt - 8 * SimTime.Year;
+            int adults = 0, lived = 0;
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var p = ref w.People.Get(res[i]);
+                if (!p.Alive || p.AgeYears(w.Now) < 16) continue;
+                adults++;
+                if (p.Born <= cutoff) lived++;
+            }
+            return adults > 0 ? lived / (double)adults : 0;
+        }
+
+        /// <summary>The first need-driven trip to the wild of an episode enters the history, in response to the shortage (D2-042).</summary>
+        public void NoteWildFood(int sid)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.WildEvent != 0 || !s.Inhabited) return;
+            long cause = s.HungerEvent != 0 ? s.HungerEvent : s.RationEvent;
+            if (cause == 0) return;   // a prudent cut is not a shortage the history tells of
+            s.WildEvent = w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.WildFood, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
+                Cause1 = cause, Rel1 = CauseRel.InResponseTo, RootKind = cause == 0 ? RootKind.Nature : RootKind.Unknown,
+            });
+        }
+
+        /// <summary>A village's famine (D2-042): the first hunger death of a year records it, and later deaths that year share it.</summary>
+        long FamineCause(int sid)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.FamineEvent == 0 || w.Now - s.FamineAt > SimTime.Year)
+            {
+                long cause = s.HungerEvent != 0 ? s.HungerEvent : s.RationEvent;
+                s.FamineEvent = w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.Famine, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
+                    Cause1 = cause, Rel1 = CauseRel.CausedBy, RootKind = cause == 0 ? RootKind.Nature : RootKind.Unknown,
+                });
+                s.FamineAt = w.Now;
+                w.Metrics.Famines++;
+            }
+            return s.FamineEvent;
+        }
+
+        long LastFailedHarvest(int sid, long maxAge = long.MaxValue)
         {
             var list = _w.History.EventsOf(EntityRef.Settlement(sid));
             if (list == null) return 0;
             for (int i = list.Count - 1; i >= 0; i--)
-                if (_w.History.TryGet(list[i], out var e) && e.Kind == HistoryKind.HarvestFailed) return e.Id;
+            {
+                if (!_w.History.TryGet(list[i], out var e)) continue;
+                if (_w.Now - e.Time > maxAge) return 0;
+                if (e.Kind == HistoryKind.HarvestFailed) return e.Id;
+            }
             return 0;
         }
 
-        double HouseholdNeed(int hid)
+        /// <summary>FU a day a household's members need (by age, nursing mothers more: D2-042).</summary>
+        public double HouseholdNeed(int hid)
         {
             var w = _w;
             var mem = w.Members(hid);
@@ -243,8 +320,7 @@ namespace TC2.Core.Places
             for (int i = 0; i < mem.Count; i++)
             {
                 ref var p = ref w.People.Get(mem[i]);
-                double age = p.AgeYears(w.Now);
-                need += w.Config.FoodPerAdultDay * (age < 2 ? 0.35 : (age < 12 ? 0.6 : (age > 60 ? 0.8 : 1.0)));
+                need += w.Agents.DailyNeed(in p, w.Now);
             }
             return need;
         }
@@ -268,21 +344,33 @@ namespace TC2.Core.Places
                 double age = p.AgeYears(now);
                 double annual = age < 1 ? 0.22 : age < 5 ? 0.045 : age < 15 ? 0.008 : age < 45 ? 0.010 : age < 60 ? 0.020 : age < 70 ? 0.045 : age < 80 ? 0.10 : 0.22;
                 double u = KeyedRng.Unit(seed, RngStream.Death, (ulong)pid, (ulong)day);
-                bool starving = now - p.LastMeal > SimTime.Day;
-                // each body bears hunger differently: the young and old weaken first, reserves differ
-                double frail = (age < 5 ? 1.5 : age < 12 ? 1.2 : age > 60 ? 1.4 : 1.0) * (0.6 + 0.8 * KeyedRng.Unit(seed, RngStream.Death, (ulong)pid, (ulong)day, 3));
-                if (starving)
+                // the body's day (D2-042): what was eaten against what it needed draws on or refills its reserve
+                double need = w.Agents.DailyNeed(in p, now);
+                double share = need > 0 ? p.Ate / need : 1.0;
+                p.Ate = 0f;
+                if (now - p.Born < SimTime.Day) share = 1.0;   // born today: at the breast from the first hour
+                if (age < 2 && p.Mother != 0 && w.People.Exists(p.Mother))
                 {
-                    p.Health = (float)Math.Max(0.0, p.Health - 0.10 * frail);
-                    if (p.HungryFrom == 0) p.HungryFrom = now;
+                    // a baby at the breast lives on its mother's milk while her body can make it
+                    ref var mo = ref w.People.Get(p.Mother);
+                    if (mo.Alive && mo.NursingUntil > now && mo.Household == p.Household)
+                        share = DMath.Max(share, DMath.Clamp01(0.3 + 1.4 * mo.Reserve / AgentSystem.ReserveCap(in mo, seed, now)));
                 }
-                else if (p.Nutrition < 0.65) p.Health = (float)Math.Max(0.0, p.Health - (0.65 - p.Nutrition) * 0.12 * frail);
-                else p.Health = (float)Math.Min(1.0, p.Health + 0.05);
-                if (p.Health <= 0.0f)
+                p.Nutrition = (float)DMath.Clamp01(share);
+                double cap = AgentSystem.ReserveCap(in p, seed, now);
+                p.Reserve = (float)DMath.Min(cap, p.Reserve + share - 1.0);
+                if (share < 0.4) { if (p.HungryFrom == 0) p.HungryFrom = now; }
+                else if (share >= 0.8) p.HungryFrom = 0;
+                if (p.Reserve <= 0f)
                 {
-                    w.Agents.Kill(ref p, w.Settlements.Get(sid).HungerEvent, 2);
+                    // the body's reserve is spent: they die of hunger, the village's famine their cause
+                    w.Agents.Kill(ref p, FamineCause(sid), 2);
+                    w.Metrics.HungerDeaths++;
                     continue;
                 }
+                // health follows the reserve once half of it is gone; it mends slowly when the body is full again
+                double rr = p.Reserve / cap;
+                p.Health = (float)DMath.Min(p.Health + 0.05, rr >= 0.5 ? 1.0 : 0.15 + 1.7 * rr);
                 double hazard = annual / SimTime.DaysPerYear * (1.0 + 3.0 * (1.0 - p.Health));
                 if (u < hazard) { w.Agents.Kill(ref p, 0, 1); continue; }
             }

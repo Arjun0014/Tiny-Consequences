@@ -77,7 +77,9 @@ namespace TC2.Core.History
                 case HistoryKind.Harvest: return subj + " brought in its harvest (" + F(e.Magnitude, "0") + " food).";
                 case HistoryKind.HarvestFailed: return "The harvest failed at " + subj + " (" + F(e.Magnitude * 100, "0") + "% short).";
                 case HistoryKind.Hunger: return "Hunger came to " + subj + ": the granary is empty.";
-                case HistoryKind.Famine: return "Famine in " + subj + ".";
+                case HistoryKind.Famine: return "Famine in " + subj + ": people are dying of hunger.";
+                case HistoryKind.Rationing: return subj + " began to ration its grain (" + F(e.Magnitude * 100, "0") + "% portions) to last until the harvest.";
+                case HistoryKind.WildFood: return "The people of " + subj + " turned to the woods and the shore for food.";
                 case HistoryKind.GodCommand: return "You reached down near " + place + ".";
                 default: return e.Kind + " at " + place;
             }

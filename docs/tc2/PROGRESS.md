@@ -2,6 +2,33 @@
 
 ## CURRENT STATE (keep accurate; newest first below)
 
+- **Session 2 (5 Oct 2026, in progress)** - compaction-recovery hooks (`.claude/settings.json`, `.claude/hooks/tc2_compact.mjs`;
+  Claude Code 2.1.289: PreCompact stdout joins the compaction instructions, SessionStart matcher `compact` stdout reaches Claude;
+  validated with `claude doctor`). **F1/F2 10,000-year reruns on the current build (D2-041) done - F1 NOT closed**:
+  - seed 42 (`tc2/out/f1/run_42i.*`): glaciation from year 188 that never ends and deepens (global mean 15.0 -> 10.1 C, ice 19 ->
+    37 % of land, sea down to -100 m at 4,000-5,000 then -55..-62 m, CO2 rises to 537 and holds ~460 ppm); **relief drift**: mean
+    land elevation 160 -> 621 m, continental crust 47.8 -> 60.9 % of cells, peaks 2,165 -> 3,456 m.
+  - seed 7 (`run_7i.*`): a long glaciation (117-7,854), then two shorter cycles (8,015-8,955; 9,380-); sea +0.6..-25 m; forests
+    0.18 -> 0.27; the same drift (mean land 105 -> 302 m, continental crust 61 -> 67 %).
+  - Diagnosis: plates move ~100x Earth's rate (a world law) but erosion was not scaled with them: net uplift over all land is
+    ~30-46 mm a year against ~0.3 mm of denudation, and accretion welds 35 % of subducted samples onto continents. Higher land is
+    colder land: seed 42's permanent, deepening ice age and its -60..-100 m seas follow from the drift (seed 7, with less uplift,
+    stays inside 01's +-40 m). **Next: an erosion/uplift balance (relief at dynamic equilibrium) and slower continental growth,
+    then rerun.** F2: no new kind in 10,000 years on either seed under D2-041's rule (done-when unmet); all 13 kinds survive.
+  - **F3 slice 1 built (D2-042)**: hunting, fishing and gathering from the same fields (`Core/Places/WildFood.cs`; daily ground
+    survey in settlement state; whole animals by keyed Poisson; fish continuous; mast tallied in `P.Gathered` and taken from the
+    boar's and bears' share), carrying the catch home (`Haul`), skills `SkHunt`/`SkFish`, body reserves (`Person.Reserve`, days of
+    full food; fasting adults live 36-60 days, children 2-5 weeks, babies on their mother's milk), hunger-sized portions (people ate
+    2.7 meals a day at fixed 1/3 FU: ~10 % under need), prudence and famine memory (share of adults who lived the last famine),
+    history Rationing / WildFood / Famine; COARSE uses the same choice and catch functions (hours fitted to ACTIVITY: ordinary
+    1.6 vs 1.1, shortage 7.3 vs 8.5 h per adult-day); save sim version 10; 83 tests.
+  - Evidence: a 300-year coarse run of seed 42 now grows 145 -> 5,597 people (session 1: 1,428 by 200, then 388 with 4 villages
+    lost); all six villages live; villages of ~900-1,300 on land for ~300 deplete the game within reach by ~95 % (hunting
+    0.7 -> 0.1 FU/h) and sit in recurring famine (4,267 hunger deaths, 43 famines from year 216) - nowhere to go yet.
+  - **Calibration problem found (next decision, D2-043)**: wild animals are ~10x real densities (deer ~1.2/ha, boar ~1.2/ha,
+    game ~200-285 kg/ha against 5-30 for real temperate ungulates; wolves ~3/km2 against 0.01-0.1) and the woods give people
+    more food per hectare than fields - so only villages of ~1,000 can deplete them.
+
 - **F1 nearly done (verdict from the 10,000-year runs below), F2 nearly done (ecology, evolution, the sea's life), look-dev
   v1-v7 (Arjun: "a really beautiful miniature world, high detail, high performance"). Session 1 (5 Oct 2026), continuing.**
   - Docs: `docs/tc2/` 00-17, LEGACY_AUDIT, DECISIONS D2-001..041.

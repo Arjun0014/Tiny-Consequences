@@ -39,6 +39,12 @@ namespace TC2.Core.Places
         public double Ration;           // share of full meals the granary allows until the next harvest
         public double ArableHa;         // arable hectares in the cells its fields claim
         public int FieldCells;          // cells claimed for fields
+        public long FamineAt;           // when the last famine struck (0 never): remembered by those who lived it (D2-042)
+        public long FamineEvent;        // that famine's history event
+        public long RationEvent;        // the current rationing episode's event (0 none)
+        public long WildEvent;          // the current episode of living off the wild (0 none)
+        public double Memory;           // share of today's adults who lived through the last famine (derived daily, kept for the view)
+        public Grounds Hunt, Fish, Gath; // the day's survey of its grounds (D2-042)
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
@@ -83,6 +89,8 @@ namespace TC2.Core.Places
             w.Int(Population); w.Double(Granary); w.Double(Woodstore); w.Double(FieldHa); w.Byte((byte)Crop); w.Double(CropGrowth);
             w.Double(CropWork); w.Double(Sown); w.Double(Harvested); w.Double(CropWorkNeed); w.Double(CropBurnt); w.Long(CropCause); w.Double(LastHarvest); w.Double(ExpectedHarvest);
             w.Long(HungerEvent); w.Int(FieldCell); w.Int(Lots); w.Double(Ration); w.Double(ArableHa); w.Int(FieldCells);
+            w.Long(FamineAt); w.Long(FamineEvent); w.Long(RationEvent); w.Long(WildEvent); w.Double(Memory);
+            Hunt.Write(w); Fish.Write(w); Gath.Write(w);
             w.Float(SquareX); w.Float(SquareY); w.Float(FieldX); w.Float(FieldY); w.Float(WoodX); w.Float(WoodY); w.Float(WellX); w.Float(WellY);
         }
 
@@ -93,6 +101,8 @@ namespace TC2.Core.Places
             s.Population = r.Int(); s.Granary = r.Double(); s.Woodstore = r.Double(); s.FieldHa = r.Double(); s.Crop = (CropStage)r.Byte(); s.CropGrowth = r.Double();
             s.CropWork = r.Double(); s.Sown = r.Double(); s.Harvested = r.Double(); s.CropWorkNeed = r.Double(); s.CropBurnt = r.Double(); s.CropCause = r.Long(); s.LastHarvest = r.Double(); s.ExpectedHarvest = r.Double();
             s.HungerEvent = r.Long(); s.FieldCell = r.Int(); s.Lots = r.Int(); s.Ration = r.Double(); s.ArableHa = r.Double(); s.FieldCells = r.Int();
+            s.FamineAt = r.Long(); s.FamineEvent = r.Long(); s.RationEvent = r.Long(); s.WildEvent = r.Long(); s.Memory = r.Double();
+            s.Hunt = Grounds.Read(r); s.Fish = Grounds.Read(r); s.Gath = Grounds.Read(r);
             s.SquareX = r.Float(); s.SquareY = r.Float(); s.FieldX = r.Float(); s.FieldY = r.Float(); s.WoodX = r.Float(); s.WoodY = r.Float(); s.WellX = r.Float(); s.WellY = r.Float();
             return s;
         }
@@ -103,6 +113,8 @@ namespace TC2.Core.Places
             h.Add(Population); h.Add(Granary); h.Add(Woodstore); h.Add(FieldHa); h.Add((byte)Crop); h.Add(CropGrowth);
             h.Add(CropWork); h.Add(Sown); h.Add(Harvested); h.Add(CropWorkNeed); h.Add(CropBurnt); h.Add(CropCause); h.Add(LastHarvest); h.Add(ExpectedHarvest);
             h.Add(HungerEvent); h.Add(FieldCell); h.Add(Lots); h.Add(Ration); h.Add(ArableHa); h.Add(FieldCells);
+            h.Add(FamineAt); h.Add(FamineEvent); h.Add(RationEvent); h.Add(WildEvent); h.Add(Memory);
+            Hunt.Hash(ref h); Fish.Hash(ref h); Gath.Hash(ref h);
             h.Add(SquareX); h.Add(SquareY); h.Add(FieldX); h.Add(FieldY); h.Add(WoodX); h.Add(WoodY); h.Add(WellX); h.Add(WellY);
         }
 

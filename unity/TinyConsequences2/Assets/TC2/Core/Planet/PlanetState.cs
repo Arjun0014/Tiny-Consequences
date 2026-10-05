@@ -60,6 +60,7 @@ namespace TC2.Core.Planet
         public float[] Magma;       // magma gathered under each cell, not yet taken by a vent
         public float[] Stress;      // slip deficit on fault patches (m; quakes, D2-030); 0 off the faults
         public float[] StormRain;   // storm rain waiting for the next weather day (rain units; D2-032)
+        public float[] Gathered;    // kg of mast, roots and berries people took from a cell since the animals last ate (D2-042)
         public System.Collections.Generic.List<Storm> Storms = new System.Collections.Generic.List<Storm>();
         // wildlife (D2-035): the species and, per species and cell, how many animals and in what condition
         public System.Collections.Generic.List<Species> Species = new System.Collections.Generic.List<Species>();
@@ -90,6 +91,7 @@ namespace TC2.Core.Planet
             ZonalT = new double[Climate.Bands]; Ice = new float[Cells]; TMean = new float[Cells]; TAmp = new float[Cells];
             Crust = new byte[Cells]; CrustAge = new float[Cells]; CrustOx = new float[Cells]; CrustOy = new float[Cells];
             DrainIce = new float[Cells]; Magma = new float[Cells]; Stress = new float[Cells]; StormRain = new float[Cells];
+            Gathered = new float[Cells];
         }
 
         public bool IsLand(int c) => Elev[c] > SeaLevel;
@@ -268,6 +270,7 @@ namespace TC2.Core.Planet
             }
             w.Double(SupplyRef);
             w.Double(FreeLandRef);
+            w.FloatArray(Gathered, Cells);
         }
 
         public static PlanetState Read(BinReader r)
@@ -314,6 +317,7 @@ namespace TC2.Core.Planet
                 p.Vents.Add(new Vent { Id = r.Int(), Cell = r.Int(), At = new Vec3d(r.Double(), r.Double(), r.Double()), Plate = r.Int(), Kind = r.Byte(), Flags = r.Byte(), Pressure = r.Double(), Born = r.Long(), LastEruption = r.Long(), Next = r.Long(), Eruptions = r.Int(), Supply = r.Float(), Seal = r.Float(), Cone = r.Float() });
             p.SupplyRef = r.Double();
             p.FreeLandRef = r.Double();
+            r.FloatArray(p.Gathered);
             return p;
         }
 
@@ -336,6 +340,7 @@ namespace TC2.Core.Planet
             {
                 h.Add(Elev[i]); h.Add(Plate[i]); h.Add(Moist[i]); h.Add(Temp[i]); h.Add(SoilWater[i]);
                 h.Add(RainToday[i]); h.Add(Grass[i]); h.Add(Forest[i]); h.Add(Biome[i]); h.Add(DryCause[i]); h.Add(FieldOwner[i]); h.Add(RiverFlow[i]); h.Add(LakeWater[i]);
+                h.Add(Gathered[i]);
             }
         }
     }

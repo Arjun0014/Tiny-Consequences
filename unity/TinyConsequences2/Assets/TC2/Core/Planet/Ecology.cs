@@ -422,6 +422,8 @@ namespace TC2.Core.Planet
                     food[0] = DMath.Max(0.0, P.Grass[c] - GrassFloor) * GrassMax * ha * EatShare * lean;
                     food[1] = P.Forest[c] * BrowseMax * ha * BrowseRenew * dt * lean;
                     food[2] = P.Forest[c] * MastMax * ha * dt * (0.5 + 0.5 * warm);
+                    // what people gathered here since the animals last ate is gone from their mast (D2-042)
+                    if (P.Gathered[c] > 0f) { food[2] = DMath.Max(0.0, food[2] - P.Gathered[c]); P.Gathered[c] = 0f; }
                     food[3] = P.Grass[c] * SmallMax * ha * dt * lean;
                     food[4] = DMath.SmoothStep(0.3, 0.8, steep[c]) * (1.0 - P.Forest[c]) * CragMax * ha * dt * lean;   // crags: ~5-10 % of land
                     food[5] = 0;
@@ -533,6 +535,7 @@ namespace TC2.Core.Planet
             for (int c = 0; c < n; c++)
             {
                 if (!P.IsLand(c)) continue;
+                P.Gathered[c] = 0f;   // (a land with no animals left still forgets what was gathered)
                 double ha = P.AreaHa(c);
                 if (grassEaten[c] > 0) P.Grass[c] = (float)DMath.Max(0.0, P.Grass[c] - grassEaten[c] / (GrassMax * ha));
                 // browse is the year's shoots and leaves: the woods stand (a heavy browsing slows their spread only)

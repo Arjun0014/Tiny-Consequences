@@ -49,6 +49,8 @@ namespace TC2.Core.History
         StormSurge = 41,        // a storm drove the sea over a coast (Magnitude = surge m, ArgA = cells flooded)
         Speciation = 42,        // a population cut off from its kind became a species (Subject new, Object parent; Magnitude = coat C)
         Extinction = 43,        // a species died out (Subject)
+        Rationing = 44,         // a village began to ration its grain (Magnitude = ration, Cause1 the failed harvest) (D2-042)
+        WildFood = 45,          // a village turned to the woods and the shore for food (InResponseTo the rationing or the hunger)
     }
 
     /// <summary>History tiers (11 §4).</summary>
@@ -176,7 +178,9 @@ namespace TC2.Core.History
                 case HistoryKind.BuildingBurned:
                 case HistoryKind.Harvest:
                 case HistoryKind.HarvestFailed:
-                case HistoryKind.Hunger: return Tier.Local;
+                case HistoryKind.Hunger:
+                case HistoryKind.Rationing:
+                case HistoryKind.WildFood: return Tier.Local;
                 default: return Tier.Personal;
             }
         }
@@ -222,6 +226,8 @@ namespace TC2.Core.History
                 case HistoryKind.Harvest: b = 0.5; break;
                 case HistoryKind.HarvestFailed: b = 6; break;
                 case HistoryKind.Hunger: b = 4; break;
+                case HistoryKind.Rationing: b = 3; break;
+                case HistoryKind.WildFood: b = 3; break;
                 default: b = 1; break;
             }
             // magnitude raises importance sub-linearly

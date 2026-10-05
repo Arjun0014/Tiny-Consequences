@@ -86,6 +86,11 @@ namespace TC2.Core.Agents
                 Social = (byte)r.NextBelow(256), Bold = (byte)r.NextBelow(256), Curious = (byte)r.NextBelow(256),
                 SkFarm = (float)(0.2 + 0.3 * r.NextUnit()), SkWood = (float)(0.2 + 0.3 * r.NextUnit()),
             };
+            // the wild's skills are keyed by id, not drawn from the trait sequence, so every other draw stays where it was (D2-042)
+            p.SkHunt = (float)(0.05 + 0.25 * KeyedRng.Unit(seed, RngStream.Traits, (ulong)id, 101));
+            p.SkFish = (float)(0.05 + 0.25 * KeyedRng.Unit(seed, RngStream.Traits, (ulong)id, 102));
+            p.Ground = -1;
+            p.Reserve = (float)ReserveCap(in p, seed, w.Now);
             ref var hh = ref w.Households.Get(household);
             p.FromX = hh.HomeX; p.FromY = hh.HomeY; p.ToX = hh.HomeX; p.ToY = hh.HomeY;
             p.Step = StepKind.Local; p.Act = ActivityKind.Idle; p.T0 = w.Now; p.TA = w.Now; p.T1 = Math.Max(firstDecision, w.Now + 1);
@@ -403,23 +408,60 @@ namespace TC2.Core.Agents
                 case ActivityKind.Sleep:
                     p.Woke = now;
                     break;
-                case ActivityKind.Forage:
-                    if (p.At != 0)
+                case ActivityKind.Hunt:
+                case ActivityKind.Fish:
+                case ActivityKind.Gather:
+                    if (p.Ground >= 0 && hours > 0)
                     {
-                        // wild food from the meadows and woods around the place
-                        var P = w.Planet;
-                        ref var s = ref w.Settlements.Get(p.At);
-                        double wild = 0.5 * P.Grass[s.Cell] + 0.8 * P.Forest[s.Cell];
-                        double found = hours * 0.28 * DMath.Clamp01(wild) * (0.6 + 0.4 * p.Health);
-                        if (w.Households.Exists(p.Household)) w.Households.Get(p.Household).Larder += found;
-                        else s.Granary += found;
+                        // what they caught comes out of the land's own fields; they carry it home (D2-042)
+                        ulong key = KeyedRng.Hash(w.Seed, RngStream.Work, (ulong)p.Id, (ulong)now);
+                        double fu;
+                        int kind = -1;
+                        if (p.Act == ActivityKind.Hunt) { fu = w.Wild.Hunt(p.Ground, hours, p.SkHunt, key, out kind); p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hours); }
+                        else if (p.Act == ActivityKind.Fish) { fu = w.Wild.Fish(p.Ground, hours, p.SkFish, key); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hours); if (fu > 0) kind = 64; }
+                        else fu = w.Wild.Gather(p.Ground, hours, p.Health, key);
+                        p.Carry = (float)(p.Carry + fu);
+                        p.WhyArg = kind + 1;   // what they bring home (the view and the inspector read it from the haul)
+                        w.Metrics.WildHours += hours; w.Metrics.WildFu += fu;
                     }
+                    p.Ground = -1;
+                    break;
+                case ActivityKind.Haul:
+                    if (p.Carry > 0f) { w.Wild.Deposit(p.Id, p.Carry); p.Carry = 0f; }
                     break;
             }
         }
 
-        double Portion(in Person p) => _w.Config.FoodPerAdultDay / _w.Config.MealsPerDay * AgeFood(p.AgeYears(_w.Now));
         static double AgeFood(double age) => age < 2 ? 0.35 : (age < 12 ? 0.6 : (age > 60 ? 0.8 : 1.0));
+
+        /// <summary>FU a day a body needs (D2-042): by age, and a nursing mother's milk on top.</summary>
+        public double DailyNeed(in Person p, long now)
+        {
+            double need = _w.Config.FoodPerAdultDay * AgeFood(p.AgeYears(now));
+            if (p.NursingUntil > now) need += 0.25 * _w.Config.FoodPerAdultDay;
+            return need;
+        }
+
+        /// <summary>
+        /// Days of full food a body holds (D2-042): a grown body ~48 (x a build of 0.75-1.25, keyed by id), a child 16-34, an
+        /// infant 8, the old less with age. A fasting adult lives 36-60 days, a child two to five weeks.
+        /// </summary>
+        public static double ReserveCap(in Person p, ulong seed, long now)
+        {
+            double age = p.AgeYears(now);
+            double build = 0.75 + 0.5 * KeyedRng.Unit(seed, RngStream.Traits, (ulong)p.Id, 103);
+            double days = age < 2 ? 8.0 : age < 12 ? 12.0 + 2.0 * age : age < 18 ? 36.0 + 2.0 * (age - 12) : age < 60 ? 48.0 : DMath.Max(20.0, 48.0 - 1.1 * (age - 60));
+            return days * build;
+        }
+
+        /// <summary>A meal: what the hours since the last one burned (a share of the day's need), more while the body refills.</summary>
+        double Portion(in Person p, long now)
+        {
+            double since = (now - p.LastMeal) / (double)SimTime.Day;
+            double cap = ReserveCap(in p, _w.Seed, now);
+            double refeed = 1.0 + 0.3 * DMath.Clamp01(1.0 - p.Reserve / cap);
+            return DailyNeed(in p, now) * DMath.Clamp(since, 0.12, 0.55) * refeed;
+        }
 
         bool FoodAvailable(in Person p)
         {
@@ -428,10 +470,18 @@ namespace TC2.Core.Agents
             return p.At != 0 && w.Settlements.Get(p.At).Granary > 0.01;
         }
 
-        internal void EatNow(ref Person p)
+        internal void EatNow(ref Person p) => Eat(ref p, Portion(in p, _w.Now));
+
+        /// <summary>A day's food at once (COARSE): the day's need, more while the body refills.</summary>
+        internal void EatDay(ref Person p)
+        {
+            double cap = ReserveCap(in p, _w.Seed, _w.Now);
+            Eat(ref p, DailyNeed(in p, _w.Now) * (1.0 + 0.3 * DMath.Clamp01(1.0 - p.Reserve / cap)));
+        }
+
+        void Eat(ref Person p, double need)
         {
             var w = _w;
-            double need = Portion(p);
             double got = 0;
             if (p.At == p.Home && w.Households.Exists(p.Household))
             {
@@ -446,7 +496,7 @@ namespace TC2.Core.Agents
                 s.Granary -= take; got += take;
             }
             double share = need > 0 ? got / need : 1.0;
-            p.Nutrition = (float)(0.85 * p.Nutrition + 0.15 * share);
+            p.Ate = (float)(p.Ate + got);   // the body's account is kept once a day (Demography)
             if (share >= 0.4)
             {
                 p.LastMeal = w.Now;
@@ -489,6 +539,13 @@ namespace TC2.Core.Agents
                 return;
             }
 
+            // 0b. a catch reaches the larder when its carrier gets home with it (D2-042)
+            if (p.Carry > 0f && p.At == p.Home)
+            {
+                BeginLocal(ref p, ActivityKind.Haul, WhyCode.BringHome, p.WhyArg, homeX, homeY, 10 * SimTime.Minute);
+                return;
+            }
+
             // 1. night: sleep until the morning
             if (night)
             {
@@ -515,12 +572,11 @@ namespace TC2.Core.Agents
                     return;
                 }
                 if (p.HungryFrom == 0 && now - p.LastMeal > SimTime.Day) p.HungryFrom = now;
-                // nothing at home or in the store: go and gather what the land offers (by day)
+                // nothing at home or in the store: go out to what the woods, the game or the shore still hold (by day; D2-042)
                 if (!child && lsec >= 6 * SimTime.Hour && lsec < 19 * SimTime.Hour && p.At == p.Home)
                 {
-                    double fx = here.WoodX * 0.7 + rs.Range(-80, 80), fy = here.WoodY * 0.7 + rs.Range(-80, 80);
-                    BeginLocal(ref p, ActivityKind.Forage, WhyCode.NoFood, 0, fx, fy, SimTime.Hours(2.5 + rs.NextUnit()));
-                    return;
+                    int wk = WildChoice(in p, in here, age, now, out _);
+                    if (wk >= 0) { BeginWild(ref p, ref here, wk, WhyCode.NoFood, ref rs); return; }
                 }
             }
 
@@ -555,7 +611,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -571,6 +627,17 @@ namespace TC2.Core.Agents
                 if (u > best) { best = u; choice = 2; }
             }
             if (day && rs.Chance(0.12)) { double u = 0.3 + 0.1 * rs.NextUnit(); if (u > best) { best = u; choice = 3; } }
+            int wildKind = -1;
+            if (day && lsec < 15 * SimTime.Hour)
+            {
+                // the woods, the game and the shore: by need (short rations, empty stores) and habit, as good as the grounds are
+                int wk = WildChoice(in p, in here, age, now, out double expect);
+                if (wk >= 0)
+                {
+                    double u = WildUrge(in p, in here, wk, expect) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.06 * rs.NextUnit();
+                    if (u > best) { best = u; choice = 6; wildKind = wk; }
+                }
+            }
             if (lsec >= 7 * SimTime.Hour && lsec < 13 * SimTime.Hour && age >= 16 && age < 62 && p.Health > 0.7 &&
                 !(p.PregDue != 0 && p.PregDue - now < 10 * SimTime.Day) && !(p.NursingUntil != 0 && p.NursingUntil - now > SimTime.Year / 2) &&
                 !(p.Alarm != 0 && now - p.AlarmT < SimTime.Day) &&
@@ -596,6 +663,9 @@ namespace TC2.Core.Agents
                 case 4:
                     BeginLocal(ref p, ActivityKind.Social, WhyCode.Leisure, 0, here.SquareX + rs.Range(-12, 12), here.SquareY + rs.Range(-12, 12), SimTime.Hours(1.5 + 1.5 * rs.NextUnit()));
                     return;
+                case 6:
+                    BeginWild(ref p, ref here, wildKind, WildNeed(in here) > 0 ? WhyCode.FoodShort : WhyCode.Provide, ref rs);
+                    return;
                 case 5:
                     {
                         var r = w.Routes.Get(w, p.At, tripDest);
@@ -610,6 +680,72 @@ namespace TC2.Core.Agents
             }
             BeginLocal(ref p, ActivityKind.Idle, WhyCode.Leisure, 0, homeX + rs.Range(-6, 6), homeY + rs.Range(-6, 6), SimTime.Hours(1.5 + 1.5 * rs.NextUnit()));
         }
+
+        // ---------------------------------------------------------------- the wild's food (D2-042)
+        /// <summary>How hard a village's stores push its people to the wild: the ration's shortfall, or stores run dry.</summary>
+        public static double WildNeed(in Settlement s)
+        {
+            // a mild cut (prudence keeping a reserve) sends a few more out; a deep one sends everyone who can go
+            double shortage = DMath.Max(0.0, 1.0 - s.Ration);
+            double need = 1.8 * shortage;
+            if (s.Granary < 1.0) need = DMath.Max(need, 1.0);
+            return need;
+        }
+
+        /// <summary>
+        /// A person's own pull to the craft on an ordinary day - the bold hunt, the skilled go back to what they know - worth
+        /// less the fuller the village's stores (food beyond years of need only spoils): a quarter of it when the granary holds
+        /// a year and a half for everyone.
+        /// </summary>
+        static double WildHabit(in Person p, in Settlement here, int kind)
+        {
+            double habit = kind == WildFood.Hunting ? 0.02 + 0.06 * p.Bold / 255.0 + 0.22 * p.SkHunt :
+                           kind == WildFood.Fishing ? 0.03 + 0.22 * p.SkFish : 0.0;
+            double years = here.Granary / (DMath.Max(1, here.Population) * SimTime.DaysPerYear);
+            return habit * (1.0 - 0.75 * DMath.Clamp01(years / 1.5));
+        }
+
+        static double WildUrge(in Person p, in Settlement here, int kind, double expect) =>
+            (WildNeed(in here) + WildHabit(in p, in here, kind)) * DMath.Clamp(expect / 0.7, 0.0, 1.3);
+
+        /// <summary>
+        /// The livelihood of the wild a person would take up now (the best FU an hour they can expect from today's survey of the
+        /// grounds), or -1. Hunting asks a grown, healthy body free of a baby at the breast or one due; fishing and gathering less.
+        /// </summary>
+        public int WildChoice(in Person p, in Settlement here, double age, long now, out double expect)
+        {
+            expect = 0; int kind = -1;
+            bool heavy = p.PregDue != 0 && p.PregDue - now < 10 * SimTime.Day;
+            bool nursing = p.NursingUntil != 0 && p.NursingUntil - now > SimTime.Year / 2;
+            if (age >= 16 && age < 60 && p.Health > 0.5 && !heavy && !nursing && here.Hunt.Expect > 0f && here.Hunt.A >= 0)
+            { double e = here.Hunt.Expect * (0.5 + p.SkHunt); if (e > expect) { expect = e; kind = WildFood.Hunting; } }
+            if (age >= 14 && age < 70 && !heavy && here.Fish.Expect > 0f && here.Fish.A >= 0)
+            { double e = here.Fish.Expect * (0.5 + p.SkFish); if (e > expect) { expect = e; kind = WildFood.Fishing; } }
+            if (age >= 12 && here.Gath.Expect > 0f && here.Gath.A >= 0)
+            { double e = here.Gath.Expect * (0.6 + 0.4 * p.Health); if (e > expect) { expect = e; kind = WildFood.Gathering; } }
+            return kind;
+        }
+
+        /// <summary>Out to one of the village's best grounds for the livelihood (a shore for fishing), for a hunt's or a gathering's length.</summary>
+        void BeginWild(ref Person p, ref Settlement here, int kind, WhyCode why, ref RandomSequence rs)
+        {
+            var w = _w;
+            var g = kind == WildFood.Hunting ? here.Hunt : kind == WildFood.Fishing ? here.Fish : here.Gath;
+            int ground = WildFood.PickGround(in g, ref rs);
+            if (ground < 0) return;
+            w.Wild.GroundPoint(here.Id, ground, kind == WildFood.Fishing, ref rs, out double x, out double y);
+            double hours = kind == WildFood.Gathering ? 2.5 + 1.5 * rs.NextUnit() : 3.5 + 1.5 * rs.NextUnit();
+            var act = kind == WildFood.Hunting ? ActivityKind.Hunt : kind == WildFood.Fishing ? ActivityKind.Fish : ActivityKind.Gather;
+            BeginLocal(ref p, act, why, ground, x, y, SimTime.Hours(hours));
+            p.Ground = ground;
+            if (kind == WildFood.Hunting) w.Metrics.HuntTrips++; else if (kind == WildFood.Fishing) w.Metrics.FishTrips++; else w.Metrics.GatherTrips++;
+            if (why != WhyCode.Provide) w.SettlementSys.NoteWildFood(here.Id);
+        }
+
+        /// <summary>The most hours of a COARSE day given to the wild (a long trip's worth).</summary>
+        public const double WildCoarseMax = 7.0;
+        /// <summary>The hours out in the wild a pressing need asks of a COARSE day (a lived day makes two trips).</summary>
+        public const double WildNeedDay = 9.0;
 
         // ---------------------------------------------------------------- COARSE resolution (04 §4.3)
         /// <summary>Everyone stops what they are doing and is at home; nobody has a step event in COARSE.</summary>
@@ -657,16 +793,19 @@ namespace TC2.Core.Agents
             long now = w.Now;
             double cropNeed = Math.Max(0, s.CropWorkNeed - s.CropWork);
             double woodTarget = 6.0 * Math.Max(1, s.Population);
-            bool noFood = s.Granary < 1.0;
+            bool shortNow = WildNeed(in s) > 0;
             for (int i = 0; i < res.Count; i++)
             {
                 ref var p = ref w.People.Get(res[i]);
                 if (!p.Alive) continue;
                 double age = p.AgeYears(now);
-                // meals: three portions from the larder, then the granary
-                for (int m = 0; m < 3; m++) EatNow(ref p);
-                if (age < 16 || p.Health < 0.3) continue;
-                double hours = 7.5 * (0.6 + 0.4 * p.Diligence / 255.0) * (age > 60 ? 0.5 : 1.0) * (0.5 + 0.5 * p.Health);
+                // the day's food from the larder, then the granary (D2-042: one account a day, as the body keeps it)
+                EatDay(ref p);
+                if (p.Carry > 0f) { w.Wild.Deposit(p.Id, p.Carry); p.Carry = 0f; }
+                if (age < 12 || p.Health < 0.3) continue;
+                // youths (12-15) work part of a day, as they take part in a lived day's chores
+                double hours = 7.5 * (0.6 + 0.4 * p.Diligence / 255.0) * (age > 60 ? 0.5 : (age < 16 ? 0.6 : 1.0)) * (0.5 + 0.5 * p.Health);
+                double day0 = hours;
                 if (cropNeed > 0)
                 {
                     double rate = (0.6 + p.SkFarm) * (0.5 + 0.5 * p.Health);
@@ -674,14 +813,37 @@ namespace TC2.Core.Agents
                     s.CropWork += h * rate; cropNeed -= h * rate; hours -= h;
                     p.SkFarm = (float)DMath.Min(1.0, p.SkFarm + 0.0015 * h);
                 }
-                if (hours > 0 && noFood)
+                if (hours > 0)
                 {
-                    var P = w.Planet;
-                    double wild = 0.5 * P.Grass[s.Cell] + 0.8 * P.Forest[s.Cell];
-                    double fh = Math.Min(hours, 7.0);
-                    double found = fh * 0.28 * DMath.Clamp01(wild) * (0.6 + 0.4 * p.Health);
-                    if (w.Households.Exists(p.Household)) w.Households.Get(p.Household).Larder += found;
-                    hours -= fh;
+                    // the wild: the same choice and the same catch from the same fields as a day lived step by step (D2-042)
+                    int wk = WildChoice(in p, in s, age, now, out double expect);
+                    if (wk >= 0)
+                    {
+                        double u = WildUrge(in p, in s, wk, expect) * (age > 60 ? 0.5 : 1.0) * (0.6 + 0.4 * p.Diligence / 255.0);
+                        // a lived day offers the wild every free daytime slot it beats idling at (idle 0.08-0.13 against the
+                        // wild's urge + 0.06 of chance): the same odds, as a share of the free hours
+                        // a pressing need keeps people out from dawn to mid-afternoon, beyond an ordinary day's work (two trips)
+                        double free = shortNow ? DMath.Max(hours, WildNeedDay * (0.5 + 0.5 * p.Health) * (age > 60 ? 0.6 : (age < 16 ? 0.7 : 1.0)) - (day0 - hours)) : hours;
+                        double hw = u > 0.005 ? DMath.Min(free, WildNeedDay) * DMath.Clamp01((u + 0.01) / 0.1) : 0.0;
+                        if (hw >= 0.25)
+                        {
+                            var rs = NextRandom(ref p);
+                            var g = wk == WildFood.Hunting ? s.Hunt : wk == WildFood.Fishing ? s.Fish : s.Gath;
+                            int ground = WildFood.PickGround(in g, ref rs);
+                            if (ground >= 0)
+                            {
+                                ulong key = KeyedRng.Hash(w.Seed, RngStream.Work, (ulong)p.Id, (ulong)now);
+                                double fu;
+                                if (wk == WildFood.Hunting) { fu = w.Wild.Hunt(ground, hw, p.SkHunt, key, out _); p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hw); w.Metrics.HuntTrips++; }
+                                else if (wk == WildFood.Fishing) { fu = w.Wild.Fish(ground, hw, p.SkFish, key); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hw); w.Metrics.FishTrips++; }
+                                else { fu = w.Wild.Gather(ground, hw, p.Health, key); w.Metrics.GatherTrips++; }
+                                w.Wild.Deposit(p.Id, fu);
+                                w.Metrics.WildHours += hw; w.Metrics.WildFu += fu;
+                                hours = DMath.Max(0.0, hours - hw);
+                                if (shortNow) w.SettlementSys.NoteWildFood(sid);
+                            }
+                        }
+                    }
                 }
                 if (hours > 0 && s.Woodstore < woodTarget)
                 {

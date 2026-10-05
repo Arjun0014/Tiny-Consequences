@@ -7,6 +7,7 @@ namespace TC2.Core.Agents
     {
         None = 0, Idle = 1, Sleep = 2, Eat = 3, Fields = 4, Wood = 5, Social = 6, Play = 7,
         TripOut = 8, Visit = 9, TripHome = 10, Flee = 11, Wait = 12, Infant = 13, Water = 14, Forage = 15,
+        Hunt = 16, Fish = 17, Gather = 18, Haul = 19,   // the wild's food (D2-042): Forage is kept for old saves, Gather replaced it
     }
 
     /// <summary>The kind of the current step of an activity.</summary>
@@ -24,6 +25,9 @@ namespace TC2.Core.Agents
         None = 0, Night = 1, Hungry = 2, CropNeedsWork = 3, WoodLow = 4, Leisure = 5, VisitKin = 6, VisitFriend = 7,
         GoingHome = 8, FireAhead = 9, FireNear = 10, WaitingForFire = 11, Young = 12, Harvest = 13, Tired = 14,
         WaterNeeded = 15, FireBehind = 16, NoFood = 17, GaveUpWaiting = 18,
+        FoodShort = 19,   // rations are short: the woods, the shore and the sea must make up the rest (D2-042)
+        Provide = 20,     // an ordinary day's hunting or fishing: meat and fish for the table
+        BringHome = 21,   // carrying a catch home
     }
 
     public static class Sex { public const byte Female = 0, Male = 1; }
@@ -52,6 +56,11 @@ namespace TC2.Core.Agents
 
         public byte Chrono, Pace, Diligence, Social, Bold, Curious;
         public float SkFarm, SkWood;
+        public float SkHunt, SkFish;     // practice-driven, keyed by id at birth (D2-042)
+        public float Reserve;            // days of full food the body holds (fat and muscle): hunger draws it down (D2-042)
+        public float Ate;                // FU eaten since the last daily accounting
+        public float Carry;              // FU of catch being carried home (it reaches the larder when they do)
+        public int Ground;               // the cell of the current hunting, fishing or gathering ground (-1 none)
 
         public ActivityKind Act;
         public StepKind Step;
@@ -82,6 +91,7 @@ namespace TC2.Core.Agents
             w.Int(Mother); w.Int(Father); w.Int(Partner); w.Int(Household); w.Int(Home); w.Int(At);
             w.Long(LastMeal); w.Long(Woke); w.Float(Health); w.Float(Nutrition); w.Long(HungryFrom); w.Long(PregDue); w.Int(PregFather); w.Long(NursingUntil);
             w.Byte(Chrono); w.Byte(Pace); w.Byte(Diligence); w.Byte(Social); w.Byte(Bold); w.Byte(Curious); w.Float(SkFarm); w.Float(SkWood);
+            w.Float(SkHunt); w.Float(SkFish); w.Float(Reserve); w.Float(Ate); w.Float(Carry); w.Int(Ground);
             w.Byte((byte)Act); w.Byte((byte)Step); w.Byte((byte)Why); w.Int(WhyArg); w.Int(Dest); w.Int(RouteA); w.Int(RouteB);
             w.Long(T0); w.Long(T1); w.Long(TA); w.Float(FromX); w.Float(FromY); w.Float(ToX); w.Float(ToY); w.Float(S0); w.Float(S1);
             w.Int(ActVer); w.UInt(RngCount); w.Long(Alarm); w.Int(AlarmProc); w.Long(AlarmT); w.Int(AlarmVer); w.Int(StayDur); w.Int(Visits); w.Long(Until);
@@ -94,6 +104,7 @@ namespace TC2.Core.Agents
             p.Mother = r.Int(); p.Father = r.Int(); p.Partner = r.Int(); p.Household = r.Int(); p.Home = r.Int(); p.At = r.Int();
             p.LastMeal = r.Long(); p.Woke = r.Long(); p.Health = r.Float(); p.Nutrition = r.Float(); p.HungryFrom = r.Long(); p.PregDue = r.Long(); p.PregFather = r.Int(); p.NursingUntil = r.Long();
             p.Chrono = r.Byte(); p.Pace = r.Byte(); p.Diligence = r.Byte(); p.Social = r.Byte(); p.Bold = r.Byte(); p.Curious = r.Byte(); p.SkFarm = r.Float(); p.SkWood = r.Float();
+            p.SkHunt = r.Float(); p.SkFish = r.Float(); p.Reserve = r.Float(); p.Ate = r.Float(); p.Carry = r.Float(); p.Ground = r.Int();
             p.Act = (ActivityKind)r.Byte(); p.Step = (StepKind)r.Byte(); p.Why = (WhyCode)r.Byte(); p.WhyArg = r.Int(); p.Dest = r.Int(); p.RouteA = r.Int(); p.RouteB = r.Int();
             p.T0 = r.Long(); p.T1 = r.Long(); p.TA = r.Long(); p.FromX = r.Float(); p.FromY = r.Float(); p.ToX = r.Float(); p.ToY = r.Float(); p.S0 = r.Float(); p.S1 = r.Float();
             p.ActVer = r.Int(); p.RngCount = r.UInt(); p.Alarm = r.Long(); p.AlarmProc = r.Int(); p.AlarmT = r.Long(); p.AlarmVer = r.Int(); p.StayDur = r.Int(); p.Visits = r.Int(); p.Until = r.Long();
@@ -106,6 +117,7 @@ namespace TC2.Core.Agents
             h.Add(Mother); h.Add(Father); h.Add(Partner); h.Add(Household); h.Add(Home); h.Add(At);
             h.Add(LastMeal); h.Add(Woke); h.Add(Health); h.Add(Nutrition); h.Add(HungryFrom); h.Add(PregDue); h.Add(PregFather); h.Add(NursingUntil);
             h.Add(Chrono); h.Add(Pace); h.Add(Diligence); h.Add(Social); h.Add(Bold); h.Add(Curious); h.Add(SkFarm); h.Add(SkWood);
+            h.Add(SkHunt); h.Add(SkFish); h.Add(Reserve); h.Add(Ate); h.Add(Carry); h.Add(Ground);
             h.Add((byte)Act); h.Add((byte)Step); h.Add((byte)Why); h.Add(WhyArg); h.Add(Dest); h.Add(RouteA); h.Add(RouteB);
             h.Add(T0); h.Add(T1); h.Add(TA); h.Add(FromX); h.Add(FromY); h.Add(ToX); h.Add(ToY); h.Add(S0); h.Add(S1);
             h.Add(ActVer); h.Add(RngCount); h.Add(Alarm); h.Add(AlarmProc); h.Add(AlarmT); h.Add(AlarmVer); h.Add(StayDur); h.Add(Visits); h.Add(Until);

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using TC2.Core.Foundation;
+using TC2.Core.History;
 using TC2.Core.Planet;
 using TC2.Core.Simulation;
 using TC2.Core.Worldgen;
@@ -63,6 +64,9 @@ namespace TC2.Headless
             long end = w.Now + (long)(years * SimTime.Year);
             string ecoCsv = a.Get("ecocsv");   // each species' animals at every report, for series (cycles, lags)
             if (ecoCsv != null) File.WriteAllText(ecoCsv, "");
+            string csv = a.Get("csv");         // the planet's state at every report (climate, ice, sea, relief, life)
+            if (csv != null) { File.WriteAllText(csv, PlanetCsvHeader() + "\n"); File.AppendAllText(csv, PlanetCsvRow(w) + "\n"); }
+            int mapEvery = (int)a.Double("mapevery", 1);   // a map every Nth report
             int k = 0;
             var run = Stopwatch.StartNew();
             while (w.Now < end)
@@ -80,9 +84,11 @@ namespace TC2.Headless
                 if (a.Has("eco")) Console.WriteLine("      " + EcoLine(w));
                 if (Ecology.Diag != null) { Console.WriteLine("      " + EcoDiagLine(w)); Array.Clear(Ecology.Diag, 0, Ecology.Diag.Length); }
                 if (ecoCsv != null) EcoCsv(w, ecoCsv);
-                if (mapDir != null) WriteMap(w, Path.Combine(mapDir, "map_" + k.ToString("0000") + ".png"), width);
+                if (csv != null) File.AppendAllText(csv, PlanetCsvRow(w) + "\n");
+                if (mapDir != null && (k % Math.Max(1, mapEvery) == 0 || w.Now >= end)) WriteMap(w, Path.Combine(mapDir, "map_" + k.ToString("0000") + ".png"), width);
             }
             FlowHistogram(w);
+            EpochalList(w);
             double secs = run.Elapsed.TotalSeconds;
             Console.WriteLine("ran " + years.ToString("0.##", CultureInfo.InvariantCulture) + " years in " + secs.ToString("0.00", CultureInfo.InvariantCulture) +
                               " s (" + (years / Math.Max(1e-9, secs)).ToString("0.0", CultureInfo.InvariantCulture) + " years/s)");
@@ -104,6 +110,67 @@ namespace TC2.Headless
         }
 
         static string _tect = "";
+
+        static string PlanetCsvHeader() =>
+            "year,landT,forest,grass,Tglob,iceKm3,seaNow,coast,icePct,glac,co2,aerosol,tilt,ecc,landFrac,maxE,landE,contFrac,vents,eruptions,vei4plus,species,landAnimals,seaAnimals,people,villages";
+
+        /// <summary>One row of the planet's state for series analysis (cycles, drift, stability).</summary>
+        static string PlanetCsvRow(World w)
+        {
+            var P = w.Planet;
+            double t = 0, forest = 0, grass = 0, area = 0, landE = 0, maxE = -1e9;
+            int land = 0, iced = 0, cont = 0;
+            for (int c = 0; c < P.Cells; c++)
+            {
+                if (P.Elev[c] > maxE) maxE = P.Elev[c];
+                if (P.Crust[c] == 1) cont++;
+                if (!P.IsLand(c)) continue;
+                land++;
+                double ar = P.AreaHa(c);
+                area += ar; t += P.Temp[c] * ar; forest += P.Forest[c] * ar; grass += P.Grass[c] * ar;
+                landE += P.Elev[c] - P.SeaLevel;
+                if (P.Ice[c] > 5f) iced++;
+            }
+            long erupt = 0, big = 0;
+            var m = w.Metrics;
+            for (int i = 1; i < m.Eruptions.Length; i++) { erupt += m.Eruptions[i]; if (i >= 4) big += m.Eruptions[i]; }
+            double landA = 0, seaA = 0; int alive = 0;
+            for (int si = 0; si < P.Species.Count; si++)
+            {
+                if (P.Species[si].Gone != 0) continue;
+                alive++;
+                double tot = Ecology.Total(P, si);
+                if (P.Species[si].Habitat == 1) seaA += tot; else landA += tot;
+            }
+            int pop = 0, vill = 0;
+            for (int s = w.Settlements.First(); s != 0; s = w.Settlements.Next(s)) { var st = w.Settlements.Get(s); pop += st.Population; if (st.Population > 0) vill++; }
+            return string.Format(CultureInfo.InvariantCulture,
+                "{0:0.0},{1:0.00},{2:0.0000},{3:0.0000},{4:0.000},{5:0.000},{6:0.00},{7:0.0},{8:0.00},{9},{10:0.0},{11:0.0000},{12:0.000},{13:0.0000},{14:0.0000},{15:0},{16:0.0},{17:0.0000},{18},{19},{20},{21},{22:0},{23:0},{24},{25}",
+                w.Now / (double)SimTime.Year, t / Math.Max(1, area), forest / Math.Max(1, area), grass / Math.Max(1, area), P.TGlobal, P.IceVolume / 1e9,
+                P.SeaLevelNow - P.SeaLevel0, P.SeaLevel - P.SeaLevel0, 100.0 * iced / Math.Max(1, land), P.Glacial, P.CO2, P.Aerosol,
+                P.Tilt * 180 / DMath.PI, P.Ecc, land / (double)P.Cells, maxE, landE / Math.Max(1, land), cont / (double)P.Cells,
+                P.Vents.Count, erupt, big, alive, landA, seaA, pop, vill);
+        }
+
+        /// <summary>The epochal and climate events of the run, oldest first (ice ages, new kinds, extinctions).</summary>
+        static void EpochalList(World w)
+        {
+            var H = w.History;
+            Console.WriteLine("epochal events:");
+            for (int i = 0; i < H.Count; i++)
+            {
+                var e = H.At(i);
+                if (e.Kind != HistoryKind.Speciation && e.Kind != HistoryKind.Extinction && e.Kind != HistoryKind.IceAge && e.Kind != HistoryKind.IceAgeEnded) continue;
+                string what = e.Kind.ToString();
+                if (e.Kind == HistoryKind.Speciation || e.Kind == HistoryKind.Extinction)
+                {
+                    var subj = e.Subject;
+                    what += " " + H.NameOf(subj);
+                    if (e.Kind == HistoryKind.Speciation) what += " (from " + H.NameOf(e.Object) + ", coat " + e.Magnitude.ToString("0.0", CultureInfo.InvariantCulture) + ")";
+                }
+                Console.WriteLine("  year " + (e.Time / (double)SimTime.Year).ToString("0", CultureInfo.InvariantCulture) + ": " + what);
+            }
+        }
 
         static string EcoLine(World w)
         {

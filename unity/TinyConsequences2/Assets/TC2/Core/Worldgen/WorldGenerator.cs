@@ -292,7 +292,8 @@ namespace TC2.Core.Worldgen
                 double f = P.Moist[nb] + 0.3 * P.Grass[nb] - 0.2 * P.Forest[nb];
                 if (f > fbest) { fbest = f; fieldCell = nb; }
             }
-            var s = new Settlement { Id = sid, Cell = cell, Anchor = anchor, East = east, North = north, Founded = w.Now, FieldCell = fieldCell, Ration = 1.0 };
+            var s = new Settlement { Id = sid, Cell = cell, Anchor = anchor, East = east, North = north, Founded = w.Now, FieldCell = fieldCell, Ration = 1.0,
+                                     Hunt = Grounds.Empty, Fish = Grounds.Empty, Gath = Grounds.Empty };
             s.SphereToLocal(P.Grid.Center[fieldCell], P.Radius, out double fx, out double fy);
             double fl = DMath.Sqrt(fx * fx + fy * fy);
             if (fl < 1) { fx = 150; fy = 0; fl = 150; }
@@ -331,6 +332,8 @@ namespace TC2.Core.Worldgen
                 for (int c = 0; c < kids && childAge < motherAge - 16; c++)
                 {
                     MakeFounder(w, rs.Chance(0.5) ? Sex.Female : Sex.Male, childAge, mother, father, hid, sid, ref rs);
+                    // a baby still at the breast: its mother is nursing it (D2-042: milk carries it through hard days)
+                    if (childAge < 1.5) w.People.Get(mother).NursingUntil = w.Now + SimTime.Years(1.5 - childAge);
                     made++;
                     childAge += rs.Range(1.8, 3.6);
                 }
@@ -350,6 +353,7 @@ namespace TC2.Core.Worldgen
             st.Sown = 0.9; st.CropGrowth = doy < 12 ? 0 : 0.5;
             st.CropWorkNeed = st.Crop == CropStage.Sown ? st.FieldHa * 40 : (st.Crop == CropStage.Growing ? st.FieldHa * 8 : (st.Crop == CropStage.Ripe ? st.FieldHa * 45 : 0));
             st.ExpectedHarvest = st.FieldHa * cfg.FieldYieldPerHa * 0.8;
+            w.Wild.Survey(sid);   // the founders know the grounds round their new home (D2-042)
             w.SettlementSys.ScheduleFirstDaily(sid);
         }
 
@@ -361,6 +365,12 @@ namespace TC2.Core.Worldgen
             ref var p = ref w.People.Get(id);
             p.LastMeal = w.Now - (long)rs.Range(0, 4 * 3600);
             if (age > 20) { p.SkFarm = (float)(0.35 + 0.45 * rs.NextUnit()); p.SkWood = (float)(0.3 + 0.45 * rs.NextUnit()); }
+            // grown founders have hunted and fished before (keyed by id, so the founders' other draws stay put; D2-042)
+            if (age > 18)
+            {
+                p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.35 * KeyedRng.Unit(w.Seed, RngStream.Traits, (ulong)id, 104));
+                p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.35 * KeyedRng.Unit(w.Seed, RngStream.Traits, (ulong)id, 105));
+            }
             return id;
         }
     }

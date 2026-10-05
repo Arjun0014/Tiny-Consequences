@@ -826,3 +826,50 @@ together, filled the 20-species cap, and extinct kinds kept their slots. In the 
 gone from the fields. Web (WebGPU): start 6.1 s, orbit/region 120 fps, village 88 fps (83 before the budget), close
 98-103, a day away catches up 96 years in 27 s (22 s before the sea's life). The long runs are in PROGRESS.
 **Invalidation.** If no long run forms a kind, lower the chance's floor; if bursts remain, add a per-kind cooldown.
+
+## D2-042 — 2026-10-05 — Villages live off the land: wild food from the same fields, body reserves, remembered famine
+
+**Status.** Design recorded before implementation (session 2); the evidence section is filled in as the slice is built.
+**Context.** Session 1's 300-year coarse run of seed 42 lost 4 of 6 villages. Souhope's chain: field fire -> harvest
+failed -> granary (under a year) empty -> 40+ hunger deaths in 2-12 days -> abandoned. Mechanism gaps: no food but the
+fields; foraging fed ~1 person per forager from an infinite source (`0.28 x wild` per hour, nothing taken from the land);
+starving health fell 10 %/day (dead in 5-17 days; a fasting adult lives 30-70 days); no reserve beyond the next harvest
+and no memory of famine. Measured this session: people eat 2.7 meals a day in ACTIVITY at fixed 1/3-FU portions, so
+daily intake already runs ~10 % under need - any physiology on intake must first fix portions.
+**Alternatives.** (a) A generic anti-collapse rule (relief appears, deaths capped) - rejected: scripted protection.
+(b) Hunting and fishing as abstract settlement yields - rejected: not the ecosystem's animals, not visible agency.
+(c) People take whole animals and fish from the same abundance fields the ecology steps, by activities they choose,
+with the same functions in ACTIVITY and COARSE; bodies carry reserves; villages remember famine through the people who
+lived it. Chosen.
+**Decision (design).**
+- `Core/Places/WildFood.cs`: one ground-picking and one catch function per livelihood, shared by ACTIVITY and COARSE.
+  *Game* = land species that do not hunt (role not predator, no prey mask), 2 kg and up (deer, hares, aurochs, boar,
+  ibex and their descendant kinds). A hunter picks a ground (a land cell within reach of the village, weighted by the
+  game it holds, nearer better) and hunts that cell and its neighbours: expected live kg = hours x rate x (0.5 + skill)
+  x B / (B + half) over the reachable biomass B (woods and crags hide game, as from wolves); kills are whole animals
+  (keyed Poisson per species and cell, never more than half of what is reachable in a cell), removed from `P.Abund`.
+  *Fish* = cold-blooded sea kinds (herring, sardines, cod, tuna and descendants) in sea cells within reach of the shore,
+  continuous kg (shoals are many), offshore kinds hard to reach from the shore, removed from `P.Abund`. *Gathering*
+  (the old forage) takes mast, roots and berries from the woods: a new per-cell field `P.Gathered` (kg taken since the
+  animals last ate, saved) caps what people find and is subtracted from the mast the boar and bears eat at the next
+  ecology step - people and animals compete for the same food.
+- Food from the wild enters the household larder (a few days of its need), the rest the village store (big game is
+  shared). Edible share 0.5 (game) / 0.6 (fish); ~0.65 FU per kg of meat or fish, ~0.9 per kg of mast.
+- People: `ActivityKind` Hunt 16, Fish 17, Gather 18, Haul 19 (bringing a catch home: the food arrives when they do);
+  skills `SkHunt`, `SkFish` (keyed by person id, learned by practice); `WhyCode` FoodShort, Provide. Decisions: wild food
+  scores by need (the ration's shortfall, empty stores) times the expected return of the best ground, plus a small
+  ordinary share by boldness and skill (coastal villages fish); nursing mothers and those near term keep to short
+  gathering near home. COARSE gives each able adult the same expected hours by the same rule and calls the same catch
+  functions (comparison test of hours and catch per adult-day).
+- Bodies: portions follow hunger (the share of a day's need since the last meal; more while reserves refill); each person
+  carries `Reserve`, days of full food in the body (adults ~40 x a keyed body factor, children 12-34, infants ~8, elders
+  less); each day reserve += eaten/needed - 1; health follows the reserve below half of it; death when it is spent. A
+  fasting adult dies in 30-50 days, a child in 2-4 weeks; a nursing infant lives on its mother's reserve.
+- Villages: rationing to the next harvest as before, plus prudence (keep 6 + 30 x memory days beyond it, rations no lower
+  than 0.8 for prudence alone) and more fields (x (1 + 0.5 memory)); memory = the share of today's adults who lived through
+  the last famine (were 8 or older then) - it fades as they die. History: Rationing (Local, caused by the failed
+  harvest), WildFood (Local, in response to it), Famine (Historical, at the first hunger death of an episode; hunger
+  deaths caused by it). Save sim version 10.
+**Acceptance (mechanism, not outcome).** With game, fish or mast in reach, people physically take them; the fields
+fall and recover; stores and larders rise by exactly the edible catch; starvation responds to stores; a village with
+wild food in reach survives one failed harvest that kills a village without; two bad years in a row can still empty one.

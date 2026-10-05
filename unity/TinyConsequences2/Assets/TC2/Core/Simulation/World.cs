@@ -20,6 +20,9 @@ namespace TC2.Core.Simulation
         public long QuakeDeaths, Landslides, Tsunamis, TsunamiDeaths;
         public long Storms, GreatStorms, StormLandfalls, StormDeaths, Surges;
         public readonly long[] StormPeaks = new long[8];  // storms by their strongest wind, 10 m/s bins
+        // the wild's food (D2-042): trips, hours and what came home (kg live game, kg fish, kg mast)
+        public long HuntTrips, FishTrips, GatherTrips, HungerDeaths, Famines;
+        public double GameKg, FishKg, GatherKg, WildHours, WildFu;
 
         public void Write(BinWriter w)
         {
@@ -32,6 +35,8 @@ namespace TC2.Core.Simulation
             w.Long(QuakeDeaths); w.Long(Landslides); w.Long(Tsunamis); w.Long(TsunamiDeaths);
             w.Long(Storms); w.Long(GreatStorms); w.Long(StormLandfalls); w.Long(StormDeaths); w.Long(Surges);
             for (int i = 0; i < StormPeaks.Length; i++) w.Long(StormPeaks[i]);
+            w.Long(HuntTrips); w.Long(FishTrips); w.Long(GatherTrips); w.Long(HungerDeaths); w.Long(Famines);
+            w.Double(GameKg); w.Double(FishKg); w.Double(GatherKg); w.Double(WildHours); w.Double(WildFu);
         }
 
         public void Read(BinReader r)
@@ -45,6 +50,8 @@ namespace TC2.Core.Simulation
             QuakeDeaths = r.Long(); Landslides = r.Long(); Tsunamis = r.Long(); TsunamiDeaths = r.Long();
             Storms = r.Long(); GreatStorms = r.Long(); StormLandfalls = r.Long(); StormDeaths = r.Long(); Surges = r.Long();
             for (int i = 0; i < StormPeaks.Length; i++) StormPeaks[i] = r.Long();
+            HuntTrips = r.Long(); FishTrips = r.Long(); GatherTrips = r.Long(); HungerDeaths = r.Long(); Famines = r.Long();
+            GameKg = r.Double(); FishKg = r.Double(); GatherKg = r.Double(); WildHours = r.Double(); WildFu = r.Double();
         }
 
         public Metrics Clone() { var m = (Metrics)MemberwiseClone(); return m; }
@@ -90,7 +97,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 9; // 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039)
+        public const int FormatSimVersion = 10; // 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
@@ -117,6 +124,7 @@ namespace TC2.Core.Simulation
         public readonly AgentSystem Agents = new AgentSystem();
         public readonly SettlementSystem SettlementSys = new SettlementSystem();
         public readonly Hazards Hazards = new Hazards();
+        public readonly WildFood Wild = new WildFood();
 
         // derived indexes (rebuilt after load; never serialized)
         public readonly RouteCache Routes = new RouteCache();
@@ -135,6 +143,7 @@ namespace TC2.Core.Simulation
             Agents.Bind(this);
             SettlementSys.Bind(this);
             Hazards.Bind(this);
+            Wild.Bind(this);
         }
 
         /// <summary>Allocates the planet-sized structures (worldgen and load call this).</summary>
@@ -402,7 +411,7 @@ namespace TC2.Core.Simulation
                     drowned++;
                     if (P.FieldOwner[c] != 0) { FieldCellsOf(P.FieldOwner[c]).Remove(c); P.FieldOwner[c] = 0; }
                     if (SettlementAtCell(c) != 0) villages++;
-                    P.Forest[c] = 0; P.Grass[c] = 0; P.Ice[c] = 0; P.LakeWater[c] = 0; P.SoilWater[c] = 1;
+                    P.Forest[c] = 0; P.Grass[c] = 0; P.Ice[c] = 0; P.LakeWater[c] = 0; P.SoilWater[c] = 1; P.Gathered[c] = 0;
                 }
                 else { emerged++; P.SoilWater[c] = 0.6f; P.Grass[c] = 0.02f; P.Forest[c] = 0; }
             }
