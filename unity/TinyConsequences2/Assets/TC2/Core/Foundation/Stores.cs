@@ -4,7 +4,9 @@ namespace TC2.Core.Foundation
 {
     /// <summary>
     /// Rows of structs addressed directly by their stable id (ids are monotonic, never reused).
-    /// Pages of 1,024 rows; a page is freed when every id in it is gone (old cohorts of the dead).
+    /// Pages of 1,024 rows; a page is freed when every id in it is gone (old cohorts of the dead) - also the newest page,
+    /// once a later id lands beyond it: a store whose ids are sparse in a shared counter (fires among the herds' process ids)
+    /// kept every such page for ever and walked them all on each pass. Iteration skips empty pages whole.
     /// O(1) access, stable iteration in ascending id order (the only order simulation logic may use).
     /// </summary>
     public sealed class PagedStore<T> where T : struct
@@ -21,6 +23,9 @@ namespace TC2.Core.Foundation
 
         public int Count => _count;
         public int MaxId => _maxId;
+
+        /// <summary>Pages allocated now (diagnostics and tests: memory held, pages a pass may visit).</summary>
+        public int PagesHeld { get { int n = 0; for (int p = 0; p < _pages.Length; p++) if (_pages[p] != null) n++; return n; } }
 
         void EnsurePage(int p)
         {
@@ -61,6 +66,8 @@ namespace TC2.Core.Foundation
         {
             if (id <= 0) throw new ArgumentException("id must be positive");
             int p = id >> Shift;
+            int top = _maxId >> Shift;
+            if (p > top && _maxId > 0 && _pages[top] != null && _pageLive[top] == 0) { _pages[top] = null; _alive[top] = null; }   // the newest page emptied before ids moved on
             EnsurePage(p);
             if (_alive[p][id & Mask]) throw new InvalidOperationException(typeof(T).Name + " #" + id + " already exists");
             _pages[p][id & Mask] = row;
@@ -97,7 +104,7 @@ namespace TC2.Core.Foundation
                 int p = i >> Shift;
                 if (p >= _alive.Length) break;
                 var a = _alive[p];
-                if (a == null) { i = (p + 1) << Shift; continue; }
+                if (a == null || _pageLive[p] == 0) { i = (p + 1) << Shift; continue; }
                 int end = Math.Min(((p + 1) << Shift) - 1, _maxId);
                 for (; i <= end; i++) if (a[i & Mask]) return i;
             }

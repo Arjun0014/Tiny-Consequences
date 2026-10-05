@@ -55,6 +55,31 @@ namespace TC2.Headless
             return "  pasture " + F(d[sid * 4], "0") + "/" + F(d[sid * 4 + 1], "0") + " kg mast " + F(d[sid * 4 + 2], "0") + "/" + F(d[sid * 4 + 3], "0");
         }
 
+        // fires that ended, by century: how many, the cells they burnt, the largest, their hours (tool only; read from FireOut)
+        static readonly SortedDictionary<int, double[]> _fires = new SortedDictionary<int, double[]>();
+
+        static void TallyFire(in HistoryEvent e)
+        {
+            int century = (int)(e.Time / (100 * SimTime.Year));
+            if (!_fires.TryGetValue(century, out var t)) _fires[century] = t = new double[6];
+            double burnt = e.Magnitude, hours = e.ArgA;
+            t[0]++; t[1] += burnt; t[2] = Math.Max(t[2], burnt); t[3] += hours; t[4] = Math.Max(t[4], hours);
+            if (burnt >= 100) t[5]++;
+        }
+
+        static void PrintFires()
+        {
+            if (_fires.Count == 0) return;
+            Console.WriteLine("fires ended by century (count, cells burnt, mean, largest, of 100+ cells, mean and longest hours):");
+            foreach (var kv in _fires)
+            {
+                var t = kv.Value;
+                Console.WriteLine("  " + (kv.Key * 100).ToString().PadLeft(5) + "  " + t[0].ToString("0").PadLeft(5) + "  burnt " + t[1].ToString("0").PadLeft(7) +
+                                  "  mean " + (t[1] / t[0]).ToString("0.0", CultureInfo.InvariantCulture).PadLeft(6) + "  largest " + t[2].ToString("0").PadLeft(5) +
+                                  "  100+ " + t[5].ToString("0").PadLeft(3) + "  hours " + (t[3] / t[0]).ToString("0", CultureInfo.InvariantCulture).PadLeft(4) + " / " + t[4].ToString("0"));
+            }
+        }
+
         public static int Run(Args a)
         {
             var sw = Stopwatch.StartNew();
@@ -107,6 +132,7 @@ namespace TC2.Headless
                 for (int i = from; i < w.History.Count; i++)
                 {
                     var e = w.History.At(i);
+                    if (e.Kind == HistoryKind.FireOut) TallyFire(e);
                     if ((int)e.Tier >= minTier || verbose || e.Kind == HistoryKind.JourneyInterrupted || e.Kind == HistoryKind.FieldsBurned)
                         Console.WriteLine("    " + HistoryText.Line(w, e));
                 }
@@ -160,6 +186,9 @@ namespace TC2.Headless
                 Console.WriteLine("deaths kept: important " + imp + ", under two years " + young + ", subject recent " + recent + ", subject pruned " + gone + ", other " + other + ", other tiers " + tiers);
             }
             Console.WriteLine("state hash " + w.StateHash().ToString("x16"));
+            Console.WriteLine("process ids used " + w.Ids.Peek(EntityKind.Process) + "  (herds now " + w.Herds.Count + ", fires' highest id " + w.Fire.Procs.MaxId +
+                              ", fire pages held " + w.Fire.Procs.PagesHeld + ")  managed heap " + F(GC.GetTotalMemory(true) / 1048576.0, "0") + " MB");
+            PrintFires();
             prof?.Print();
             string outDir = a.Get("out");
             if (outDir != null)

@@ -87,3 +87,19 @@ scattered trees read as a toy. Open: clouds, tilt-shift, close-in grass, night l
 - Art notes: herds read as dots of white (goats) on the outfield beyond the fields from the village view; pens read as small
   rings of fence behind the houses from the close view and are full and lit by the windows at night.
 
+## 8. Ruins, seal haul-outs, boats and the WebGL2 path (session 2, D2-051 to D2-053)
+
+- **Ruins** (`WorldObjectsView.Ruins`, D2-052): an abandoned village's last households' houses stand roofless (kit `ruin`),
+  lowering and greening with the years since abandonment (a house ~300 years, a hut ~80, camps nothing) and its well's stone
+  ring (~600); its fields go back to the vegetation. Premise `unity.mjs shots --abandon YEARS`.
+- **Seal haul-outs** (`SeaLifeView.HaulOut`, D2-053): a stretch of coast's seals drawn together at its best shore (the field's
+  count kept on average; haul-outs three cells apart; at most 18), side by side at the water's edge looking out to sea.
+- **Boats** (`WorldObjectsView.Beached`, the people pass): a fisher at the water's edge is drawn rowed out 35-65 % of the way
+  toward the fishing ground (where the water is deeper than 0.3 m), sitting in a boat that swings slowly; a coastal village's
+  boats lie drawn up on the shore of its best fishing ground, bows to the land, one for two skilled fishers less those out.
+  Kit `boat` (an open hull: the kit's `bowl()` primitive).
+- **Inspector** (`Hud`): the person's doing and why in a sentence (`HistoryText.Doing`, read from state), the household
+  (people, shelter, cattle, goats, pigs, larder), the body's reserve, all four skills; Follow keeps the camera on the person.
+- **WebGL2** (D2-051): one shadow cascade over 1.6 x the camera's height on OpenGLES3 (`Sky.GlCascades`, `GlShadowReach`):
+  the village view 37 -> 60 fps. Open: the first entry to a new view stalls 1-5 s while the driver builds shaders and
+  buffers (a traced shader-variant collection warmed progressively at start is the planned fix; `WarmupAllShaders` took 36 s).

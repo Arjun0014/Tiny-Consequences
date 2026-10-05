@@ -1135,3 +1135,53 @@ lowering and greening with the years (house ~300, hut ~80; camps nothing) and it
 after it loads and lives on identically); shots `tc2/out/shots/ruins1` (40 years after: five house ruins and the well in
 pasture, the fields grassed over, young trees). 105 tests.
 
+## D2-053 — 2026-10-05 — Seals haul out together (view)
+
+**Context.** The sea's seals live in the ecology's fields as fractions of an animal per cell (seed 42 holds ~10-20 in all the
+world); the view drew each cell's share at its own shore, so the coasts showed a lone seal here and there, or none.
+**Decision.** `SeaLifeView.HaulOut(P, c)` (reads only): a shore sea cell whose seals, with its eight neighbours', are the most of
+any shore cell within two cells' reach is a haul-out and gathers them - the whole part of that count drawn, the fraction as a
+stable keyed chance of the cell (so the field's count is kept on average), at most 18, side by side at the water's edge looking
+out to sea; other cells show none. Haul-outs are three cells apart or more, so no seal is drawn twice. Seal shots choose the
+haul-out after the world has run and go on to its own local daylight hour; the shot log counts the world's seals and haul-outs.
+**Evidence.** Seal shots (`unity.mjs shots --views seals,sealsfar`): a group of seals on one shore instead of scattered singles.
+**Found.** Seed 42 holds ~9.5 seals at year 10: the sea's fish fields hold ~1 % of real biomass, and a seal may take at most
+a quarter of one cell's fish a step while it needs ~66 kg - wide-ranging hunters must hunt over their range. That is an
+ecology calibration (SESSION_HANDOFF next steps), not a view rule.
+
+## D2-054 — 2026-10-05 — The ledger keeps what matters to the living
+
+**Context.** 11 §4 keeps personal events while their subject matters. Two holes made the ledger grow without bound in long
+runs with people: `SubjectKept` answered "kept" for any subject that was not a person, so every household's events (homes
+built, moves, formations) stayed for ever (38,769 of 95,615 events at year 300 of seed 42); and `BaseImportance` raised every
+event's importance by its magnitude, which for a person's events is an age or a count - a death at sixty scored 6.1, over the
+keep line of 5, so every adult's death stayed (196,100 of 288,953 events at year 1,000).
+**Decision.** (1) A household's events are kept while it has living members and for thirty years after it dissolves, as a
+person's are while they live and thirty years after death. (2) Personal kinds (`PersonDied`, `PersonBorn`, `Marriage`,
+`HouseholdFormed`, `HouseholdMoved`, `HomeBuilt`) keep their base importance: magnitude raises importance only where it is a
+size (cells burnt, deaths, VEI). Importance propagated from descendants (11 §5) still keeps any of them that led somewhere.
+**Evidence.** Seed 42, COARSE with people: year 300, 95,615 -> 76,318 -> 69,179 events kept; year 1,000, 780,282 events before
+(1) and 288,953 after (1) alone, most of those adult deaths that (2) now lets go. `run` prints the ledger by kind and tier and
+why deaths stay.
+**Consequence.** The personal part of the ledger follows the living population, not the world's age; what grows with time is
+the Historical tier (famines, foundings, wildfires: a few thousand a millennium) and the Local tier's last 200 years.
+
+## D2-055 — 2026-10-05 — Stores free the pages of sparse ids (fires cost what they burn)
+
+**Context.** In the 1,000-year run with people fire steps took 35 % of the time (1.15 ms a step), against 3.9 us a step in the
+same 1,000 years without people - the same number of steps (~395,000) and the same fires (planet-only tally: ~400 fires a
+century, ~15 cells each, the largest 300-580 cells, ~54 hours). A first fix (40a4ee9: a step's ignitions deduplicated by a
+stamp, burnt-out cells compacted out of the burning list once, new ones merged in once) changed nothing measurable. The cause
+was the store: fires take their ids from the process counter that the herds (D2-047) and parties share - 887,000 ids in 150
+years of seed 42 - so nearly every fire lands in a page of its own; `PagedStore` freed an emptied page only if a later id
+already existed, so the newest fire's page was kept when it burnt out, for ever, and every pass over the store (each fire step)
+read every kept page row by row.
+**Decision.** A page is also freed when ids move past it empty (the next `Add` beyond it), and iteration skips pages with no
+live rows whole. Allocation and iteration order are unchanged (ascending ids); `PagesHeld` reports pages for diagnostics. The
+fire step's batching stays (it removes list work that grows with a big fire's square).
+**Evidence.** Seed 42, 150 coarse years with people: 379 fire pages held -> 1, managed heap 65 -> 41 MB, fire step 131 -> 2.6 us,
+the run 29.8 -> 23.0 s, state hash identical (a1c1a40d08f49a31). Over 1,000 years the pages would have reached thousands
+(hundreds of MB, fatal in a browser's heap). Test `StoreTests.ASparseStoreHoldsOnlyThePagesOfItsLiveRows`; `run` prints process
+ids used, fire pages held, the managed heap and the fires ended by century.
+**Note.** Process ids are an `int`: ~6,000 a year at 8 villages, ~30,000 at 40 - about 300 million in 10,000 years of a full
+world, within range but worth watching (herds churn ids as they form and dissolve each day).

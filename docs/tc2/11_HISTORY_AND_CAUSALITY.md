@@ -51,7 +51,7 @@ episode of a larger process: a house burnt in the Great Fire).
 | Tier | Stored | Examples | Kept |
 |---|---|---|---|
 | 0 Ephemeral | counted only | walking, eating, ordinary work, a row sown | never stored; daily/seasonal counters and time series |
-| 1 Personal | yes | birth, death, marriage, injury, apprenticeship, profession, a journey turned back, a move | while the person or a kin within 3 generations lives, or importance >= keep threshold, or notable |
+| 1 Personal | yes | birth, death, marriage, injury, apprenticeship, profession, a journey turned back, a move | while the person lives and 30 years after; a household's while it has members and 30 years after it ends; or importance >= 5 (base or propagated) (D2-054) |
 | 2 Local | yes | a house built or burnt, a harvest failed, a theft, a local fire, a bridge washed away | ~200 years unless important |
 | 3 Historical | yes | settlement founded or abandoned, battle, famine, epidemic, discovery, eruption, major migration, polity formed or collapsed, god intervention | forever |
 | 4 Epochal | yes | climate regime change, extinction, a species born, the human age ended, a continent split | forever |
@@ -61,7 +61,8 @@ cells and 6 houses") plus `PartOf` children only where they matter (deaths of pe
 
 ## 5. Importance
 
-- Base importance by kind, tier and magnitude (deaths, people affected, area, duration).
+- Base importance by kind, tier and magnitude (deaths, people affected, area, duration) - magnitude only where it is a size:
+  a person's events carry an age or a count there and keep their base importance (D2-054).
 - **Propagation**: when an event is appended with causes, a share of its base importance flows up its
   causal ancestry: `parent += b x 0.5^depth` for depth 1..8 or until the share < 0.01. A small fire whose
   descendants destroy a settlement, drive a migration and found a later kingdom becomes important

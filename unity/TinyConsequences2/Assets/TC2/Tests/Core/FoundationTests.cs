@@ -245,5 +245,31 @@ namespace TC2.Tests.Core
             Assert.AreEqual(1000, s.Count);
             Assert.AreEqual(4001, s.First());
         }
+
+        [Test]
+        public void ASparseStoreHoldsOnlyThePagesOfItsLiveRows()
+        {
+            // fires take their ids from the process counter the herds share: each new fire lands pages beyond the last,
+            // and an emptied newest page was kept for ever (hundreds of MB over a millennium, every pass walking them)
+            var s = new PagedStore<Row>();
+            int id = 7;
+            for (int i = 0; i < 2000; i++)
+            {
+                s.Add(id, new Row { V = i });
+                if (i % 5 == 0) s.Add(id + 3, new Row { V = -i });   // now and then two at once
+                Assert.LessOrEqual(s.PagesHeld, 2, "pages held after " + i + " sparse rows");
+                s.Remove(id);
+                if (i % 5 == 0) s.Remove(id + 3);
+                id += 1500 + (i % 7) * 300;
+            }
+            Assert.AreEqual(0, s.Count);
+            Assert.AreEqual(0, s.First());
+            s.Add(id, new Row { V = 1 });
+            s.Add(id + 2000, new Row { V = 2 });
+            Assert.AreEqual(id, s.First());
+            Assert.AreEqual(id + 2000, s.Next(id));
+            Assert.AreEqual(0, s.Next(id + 2000));
+            Assert.AreEqual(2, s.Get(id + 2000).V);
+        }
     }
 }

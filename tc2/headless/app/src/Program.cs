@@ -30,6 +30,8 @@ namespace TC2.Headless
                         return 0;
                     case "probe":
                         return Commands.Probe(args);
+                    case "follow":
+                        return Commands.Follow(args);
                     case "inspect":
                         return Commands.Inspect(args);
                     case "planet":
