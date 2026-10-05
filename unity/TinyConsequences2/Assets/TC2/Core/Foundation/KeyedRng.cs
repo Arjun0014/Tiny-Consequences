@@ -29,6 +29,7 @@ namespace TC2.Core.Foundation
         Tectonics = 20,
         Ecology = 21,
         Orbit = 22,
+        Knowledge = 23,     // techniques found by practice (D2-062)
         Test = 1000,
     }
 

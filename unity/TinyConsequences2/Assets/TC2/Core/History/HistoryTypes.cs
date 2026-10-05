@@ -57,6 +57,9 @@ namespace TC2.Core.History
         Scouted = 49,           // someone of a village saw good land (Cell the site)
         HouseholdMoved = 50,    // a household left its village for another (Subject the household, Object the village it went to)
         HerdHuntedOut = 51,     // people hunted a herd near a village to nothing (Subject the herd, Object its kind; D2-047)
+        TechniqueFound = 54,    // someone found a technique by practice where nobody knew it (Subject the person, Object the village, ArgA the technique; D2-062)
+        TechniqueKnown = 55,    // a village first has a competent practitioner (Object the best of them, ArgA the technique)
+        TechniqueLost = 56,     // a village's last competent practitioner is gone (ArgA the technique)
         HomeTaken = 53,         // a household made its home in one that stood empty (Object: who lived there last; ArgA 1 a hut, 2 a house; D2-059)
         ColdHomes = 52,         // a village's homes were cold enough to harm (Magnitude homes, ArgA 1 the woodstore ran short, ArgB the day's mean C; D2-056)
     }
@@ -194,6 +197,9 @@ namespace TC2.Core.History
                 case HistoryKind.PartySetOut: return Tier.Historical;
                 case HistoryKind.HerdHuntedOut: return Tier.Local;
                 case HistoryKind.ColdHomes: return Tier.Local;
+                case HistoryKind.TechniqueFound: return Tier.Historical;
+                case HistoryKind.TechniqueKnown: return Tier.Local;
+                case HistoryKind.TechniqueLost: return Tier.Historical;
                 default: return Tier.Personal;
             }
         }
@@ -248,6 +254,9 @@ namespace TC2.Core.History
                 case HistoryKind.HouseholdMoved: b = 1.5; break;
                 case HistoryKind.HerdHuntedOut: b = 3; break;
                 case HistoryKind.ColdHomes: b = 4; break;
+                case HistoryKind.TechniqueFound: b = 25; break;
+                case HistoryKind.TechniqueKnown: b = 6; break;
+                case HistoryKind.TechniqueLost: b = 15; break;
                 default: b = 1; break;
             }
             // magnitude raises importance sub-linearly - where it is a size; a person's events carry an age or a count there,

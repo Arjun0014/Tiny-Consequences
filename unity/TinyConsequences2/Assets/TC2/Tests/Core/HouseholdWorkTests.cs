@@ -33,6 +33,7 @@ namespace TC2.Tests.Core
             int sid = w.Settlements.First();
             w.AdvanceTo(w.Now + SimTime.Day);
             ToLocalHour(w, sid, 9.0);
+            GoodsTests.Unlearn(w, sid);   // (nobody grinds on a rotary quern: the law's own pace, D2-062)
             // premise: nothing is cooked in any home of the village, the larders are full, everyone has gone six hours unfed
             var hhs = w.HouseholdsOf(sid);
             var hungry = new List<int>();

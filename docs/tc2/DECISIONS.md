@@ -1342,3 +1342,35 @@ village's year lived as one step, its people still individuals (births, marriage
 was to ACTIVITY. It is built once the people model is settled (after F4 and F5), not now: every slice since D2-042 changed a
 person's day, and a year-step fitted today would be refitted at each. Until then Ancient and Deep time are lived at COARSE and
 are slow at scale. The COARSE day's household chores are timed in the profiler (`coarse.chores`).
+
+## D2-062 — 2026-10-06 — Techniques carried by people: copied from the best, found by practice, lost by small groups (F4 slice 1)
+
+**Context.** F4 (09, 17): technology is knowledge carried by real people - no tree to unlock; techniques spread by contact and
+die with their last practitioners; done when "a technique spreads by contact and is lost in an isolated shrinking group in
+tests". The research base: Henrich (2004) - learners copy the most skilled model imperfectly, so a population keeps a technique
+only if enough learners copy (the best of many copies may surpass the master, the best of a few falls short); Kline and Boyd
+(2010) - toolkits follow the size of the connected population; Arthur and Polak (2006) - invention as combination in practice.
+**Decision.** (1) Three techniques with effects in the living model (`Core/Knowledge/Techniques.cs`): fishing nets (a fisher's
+catch up to 1.6x), the warp-weighted loom (goods made up to 1.6x faster) and the rotary quern (a household with someone who
+can dress its stones grinds up to 1.8x faster) - simple to complex: copy loss alpha 0.15 / 0.20 / 0.30 against spread beta
+0.08 / 0.07 / 0.06, so a village keeps them with ~4 / ~10 / ~80 learners (exp(alpha/beta - 0.58)). Each person carries a
+proficiency 0..1 for each (`Person.KNets/KLoom/KQuern`, saved). (2) Each day (`Learning.Day`, the village's step at both
+resolutions) everyone of eight or more copies the village's best practitioner toward a target - the best less the technique's
+loss plus their own scatter, a standard Gumbel draw fixed by their id (Henrich's epsilon) - the young (8-19) closing 1 % of the
+gap a day, grown people a quarter of that. Masters keep their skill until they die; a village's best falls only as the masters'
+generation goes. (3) A village knows a technique while a competent practitioner (0.5) lives there; the day it first does
+(`TechniqueKnown`, Local, who taught it) and the day its best falls under 0.25 (`TechniqueLost`, Historical) are history. (4)
+Practice may find what nobody in the village knows (`Learning.Practice`): fishing hours to nets, making and mending to the loom,
+grinding to the quern where rock shows near the village (a cell within two rings 40 m above or below a neighbour) - a keyed chance
+an hour by curiosity (2e-5 / 4e-7 / 2e-7); the finder starts at 0.4 (`TechniqueFound`, Historical). (5) Knowledge travels with
+whoever moves (brides, households, parties) and takes root where they settle. (6) Founders know nets in 80 % of villages by the
+sea and 20 % inland, the loom in 60 %, the quern in 35 % (keyed by village). Sim version 18.
+**Evidence.** `KnowledgeTests` (121 tests): the law alone - from 0.8, six generations of six learners leave the quern at 0.06,
+of three hundred at 1.00, and nets hold among six; a weaver who marries into a village without the loom - "The people of
+Helerby now weave on the loom (taught by Dronaa Limvaend)" - and twelve years on eleven of its people weave; one master of the
+quern (0.6) in an isolated village of 14 - lost after 150 years (0.12; history tells it) - and in a village of ~150 founders kept
+and bettered (0.97 after 60 years). In seed 42's world the six villages, a few km apart and marrying among themselves, all know
+the three by year 50 and have them at mastery by year 150 (the connected population is large); none found or lost in 200 years.
+The learning step costs ~20 us a village-day. Editor, dotnet and headless agree (gen 0c2e8c8cc4c38bad).
+**Next (F4 slice 2).** Materials from the planet: clay where rivers and lakes lay it, stone where rock shows, ore from the crust
+(D2-058's goods ask for fibre and hides; pottery, the ard with oxen, metals); techniques with prerequisites among themselves.

@@ -38,7 +38,7 @@ settlement layouts that grow (lots, roads); elaboration of movement in the Web v
 **Done when**: a village lives 100 years untouched without scripted help, every visible action is the
 simulation, and following any person shows a believable life.
 
-## F4 — Knowledge and technology
+## F4 — Knowledge and technology (in progress: slice 1 D2-062 - the done-when holds in tests; materials from geology next)
 Techniques as data with prerequisites; proficiency carried by people; teaching, apprenticeship,
 observation; discovery as combination in the adjacent possible; loss with dying teachers and small
 populations (Henrich); tools and crafts; material chains (stone, clay, fibre, metal) from geology.

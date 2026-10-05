@@ -22,6 +22,18 @@ namespace TC2.Tests.Core
             for (int i = 0; i < hhs.Count; i++) w.Households.Get(hhs[i]).Gear = (float)(perHead * w.Members(hhs[i]).Count);
         }
 
+        /// <summary>Premise: nobody of the village knows a technique (D2-062), so the household's own laws show at their own pace.</summary>
+        internal static void Unlearn(World w, int sid)
+        {
+            for (int s2 = w.Settlements.First(); s2 != 0; s2 = w.Settlements.Next(s2))
+            {
+                var res = w.Residents(s2);
+                for (int i = 0; i < res.Count; i++) { ref var p = ref w.People.Get(res[i]); p.KNets = 0f; p.KLoom = 0f; p.KQuern = 0f; }
+                ref var s = ref w.Settlements.Get(s2);
+                s.BestNets = 0f; s.BestLoom = 0f; s.BestQuern = 0f; s.TechKnown = 0;
+            }
+        }
+
         static double GearPerHead(World w, int sid)
         {
             var hhs = w.HouseholdsOf(sid);
@@ -37,6 +49,7 @@ namespace TC2.Tests.Core
             int sid = w.Settlements.First();
             w.AdvanceTo(w.Now + SimTime.Day);
             SetGear(w, sid, 0.3);   // premise: the village's clothes and tools are worn thin
+            Unlearn(w, sid);        // and nobody weaves on the loom (the law's own pace: D2-062 speeds it)
             double h0 = w.Metrics.CraftHours, m0 = w.Metrics.GearMade;
             w.AdvanceTo(w.Now + SimTime.Days(4));
             double after = GearPerHead(w, sid), hours = w.Metrics.CraftHours - h0, made = w.Metrics.GearMade - m0;

@@ -38,3 +38,16 @@ When the last proficient holders in a connected population die or forget, the te
 
 ## 6. Phase
 F4. F0 has no techniques beyond implicit farming and woodcutting.
+
+## 7. Implemented: slice 1 (D2-062)
+- Techniques: fishing nets, the warp-weighted loom, the rotary quern (`Core/Knowledge/Techniques.cs`), each with a copy loss
+  (alpha) and spread (beta): a village keeps a technique with ~exp(alpha/beta - 0.58) learners (Henrich 2004: ~4, ~10, ~80).
+- Carriers: `Person.KNets/KLoom/KQuern`, proficiency 0..1; competent at 0.5. Effects: a fisher's catch (nets, up to 1.6x),
+  goods made (loom, up to 1.6x), grinding in a household with someone who can dress quern stones (up to 1.8x).
+- Transmission (`Learning.Day`, daily, both resolutions): everyone of eight or more copies the village's best toward the best
+  less the loss plus their own scatter (a Gumbel draw fixed by their id); the young 1 % of the gap a day, grown people a quarter.
+  Knowledge travels with whoever moves.
+- Discovery (`Learning.Practice`): fishing, making and grinding (where rock shows) may find what nobody in the village knows.
+- History: `TechniqueFound` (Historical), `TechniqueKnown` (Local, who taught it), `TechniqueLost` (Historical).
+- Not yet: materials and tools from geology (clay, stone, ore, fibre, hides), techniques that need techniques, places as
+  knowledge, apprenticeship as a relationship, observation of traded objects.

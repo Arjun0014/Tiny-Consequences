@@ -65,12 +65,12 @@
   stocked), do not loosen the mechanism (D2-056).
 
 ### Next steps
-1. **F4 - knowledge and technology** (17): techniques as data with prerequisites, carried by people, taught and lost; tools and
-   crafts with materials from geology (D2-058's goods ask for fibre, hides, clay, stone, wood); D2-060's carried-forward items
-   that belong there.
-3. **The sea's calibration**: fish at ~1 % of real biomass, so the miniature holds ~10-20 seals (D2-053): wide-ranging hunters
+1. **F4 slice 2 - materials from the planet** (D2-062 next): clay where rivers and lakes lay it, stone where rock shows, ore
+   from the crust; goods (D2-058) asking for fibre and hides; pottery, the ard with oxen, metals; techniques that need
+   techniques. Then close F4 (its done-when already holds in tests: `KnowledgeTests`).
+2. **The sea's calibration**: fish at ~1 % of real biomass, so the miniature holds ~10-20 seals (D2-053): wide-ranging hunters
    over their range; 10,000-year reruns.
-4. **Famine in the full world** (F5): relief, exchange and storage between villages.
-5. WebGL2's first-entry stall; look backlog: coast shapes off the cell grid, gardens, orbit detail, smoke from huts and camps.
-6. **An aggregate layer of people for Ancient and Deep time** (D2-061): a village's year as one step, fitted to COARSE, once
+3. **Famine in the full world** (F5): relief, exchange and storage between villages.
+4. WebGL2's first-entry stall; look backlog: coast shapes off the cell grid, gardens, orbit detail, smoke from huts and camps.
+5. **An aggregate layer of people for Ancient and Deep time** (D2-061): a village's year as one step, fitted to COARSE, once
    the people model is settled (after F4/F5). Living at saturation (~75 s a day away) holds meanwhile.

@@ -94,6 +94,7 @@ namespace TC2.Core.Agents
         public long Until;               // end of a multi-step activity (a visit's length)
         public long AlarmT;
         public float Worked;             // hours of work since waking: a day's labour weighs on the slack's choices (D2-058)
+        public float KNets, KLoom, KQuern;   // proficiency in the techniques a person carries (D2-062; Knowledge.Tech)
 
         public double AgeYears(long now) => (now - Born) / (double)SimTime.Year;
         public bool IsFemale => SexKind == Sex.Female;
@@ -107,7 +108,7 @@ namespace TC2.Core.Agents
             w.Float(SkHunt); w.Float(SkFish); w.Float(Reserve); w.Float(Ate); w.Float(Carry); w.Int(Ground);
             w.Byte((byte)Act); w.Byte((byte)Step); w.Byte((byte)Why); w.Int(WhyArg); w.Int(Dest); w.Int(RouteA); w.Int(RouteB);
             w.Long(T0); w.Long(T1); w.Long(TA); w.Float(FromX); w.Float(FromY); w.Float(ToX); w.Float(ToY); w.Float(S0); w.Float(S1);
-            w.Int(ActVer); w.UInt(RngCount); w.Long(Alarm); w.Int(AlarmProc); w.Long(AlarmT); w.Int(AlarmVer); w.Int(StayDur); w.Int(Visits); w.Long(Until); w.Float(Worked);
+            w.Int(ActVer); w.UInt(RngCount); w.Long(Alarm); w.Int(AlarmProc); w.Long(AlarmT); w.Int(AlarmVer); w.Int(StayDur); w.Int(Visits); w.Long(Until); w.Float(Worked); w.Float(KNets); w.Float(KLoom); w.Float(KQuern);
         }
 
         public static Person Read(BinReader r)
@@ -120,7 +121,7 @@ namespace TC2.Core.Agents
             p.SkHunt = r.Float(); p.SkFish = r.Float(); p.Reserve = r.Float(); p.Ate = r.Float(); p.Carry = r.Float(); p.Ground = r.Int();
             p.Act = (ActivityKind)r.Byte(); p.Step = (StepKind)r.Byte(); p.Why = (WhyCode)r.Byte(); p.WhyArg = r.Int(); p.Dest = r.Int(); p.RouteA = r.Int(); p.RouteB = r.Int();
             p.T0 = r.Long(); p.T1 = r.Long(); p.TA = r.Long(); p.FromX = r.Float(); p.FromY = r.Float(); p.ToX = r.Float(); p.ToY = r.Float(); p.S0 = r.Float(); p.S1 = r.Float();
-            p.ActVer = r.Int(); p.RngCount = r.UInt(); p.Alarm = r.Long(); p.AlarmProc = r.Int(); p.AlarmT = r.Long(); p.AlarmVer = r.Int(); p.StayDur = r.Int(); p.Visits = r.Int(); p.Until = r.Long(); p.Worked = r.Float();
+            p.ActVer = r.Int(); p.RngCount = r.UInt(); p.Alarm = r.Long(); p.AlarmProc = r.Int(); p.AlarmT = r.Long(); p.AlarmVer = r.Int(); p.StayDur = r.Int(); p.Visits = r.Int(); p.Until = r.Long(); p.Worked = r.Float(); p.KNets = r.Float(); p.KLoom = r.Float(); p.KQuern = r.Float();
             return p;
         }
 
@@ -133,7 +134,7 @@ namespace TC2.Core.Agents
             h.Add(SkHunt); h.Add(SkFish); h.Add(Reserve); h.Add(Ate); h.Add(Carry); h.Add(Ground);
             h.Add((byte)Act); h.Add((byte)Step); h.Add((byte)Why); h.Add(WhyArg); h.Add(Dest); h.Add(RouteA); h.Add(RouteB);
             h.Add(T0); h.Add(T1); h.Add(TA); h.Add(FromX); h.Add(FromY); h.Add(ToX); h.Add(ToY); h.Add(S0); h.Add(S1);
-            h.Add(ActVer); h.Add(RngCount); h.Add(Alarm); h.Add(AlarmProc); h.Add(AlarmT); h.Add(AlarmVer); h.Add(StayDur); h.Add(Visits); h.Add(Until); h.Add(Worked);
+            h.Add(ActVer); h.Add(RngCount); h.Add(Alarm); h.Add(AlarmProc); h.Add(AlarmT); h.Add(AlarmVer); h.Add(StayDur); h.Add(Visits); h.Add(Until); h.Add(Worked); h.Add(KNets); h.Add(KLoom); h.Add(KQuern);
         }
     }
 }

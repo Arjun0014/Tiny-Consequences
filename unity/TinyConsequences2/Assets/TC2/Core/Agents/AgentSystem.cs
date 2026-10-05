@@ -429,7 +429,11 @@ namespace TC2.Core.Agents
                         int kind = -1;
                         double worked = hours * Tools(p.Household);   // (worn spears and torn nets catch less in the hours: D2-058)
                         if (p.Act == ActivityKind.Hunt) { fu = w.Wild.Hunt(p.Ground, worked, p.SkHunt, key, out kind); p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hours); if (fu > 0) w.HerdSys.MarkHunted(p.Home, p.Ground); }
-                        else if (p.Act == ActivityKind.Fish) { fu = w.Wild.Fish(p.Ground, worked, p.SkFish, key); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hours); if (fu > 0) kind = 64; }
+                        else if (p.Act == ActivityKind.Fish)
+                        {
+                            fu = w.Wild.Fish(p.Ground, worked * Knowledge.Tech.NetsFactor(in p), p.SkFish, key); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hours); if (fu > 0) kind = 64;
+                            w.Learning.Practice(ref p, Knowledge.Tech.Nets, hours);
+                        }
                         else fu = w.Wild.Gather(p.Ground, worked, p.Health, key);
                         p.Carry = (float)(p.Carry + fu);
                         p.WhyArg = kind + 1;   // what they bring home (the view and the inspector read it from the haul)
@@ -448,7 +452,8 @@ namespace TC2.Core.Agents
                     if (p.At != 0 && p.At == p.Home && hours > 0 && w.Households.Exists(p.Household))
                     {
                         ref var hh = ref w.Households.Get(p.Household);
-                        double made = Goods.MakePerHour(p.AgeYears(now), p.Health) * hours;
+                        double made = Goods.MakePerHour(p.AgeYears(now), p.Health) * Knowledge.Tech.LoomFactor(in p) * hours;
+                        w.Learning.Practice(ref p, Knowledge.Tech.Loom, hours);
                         hh.Gear = (float)(hh.Gear + made);
                         w.Metrics.CraftHours += hours; w.Metrics.GearMade += made;
                     }
@@ -460,7 +465,8 @@ namespace TC2.Core.Agents
                         // village's wood - half as fast with none to burn (D2-056)
                         ref var hh = ref w.Households.Get(p.Household);
                         ref var s = ref w.Settlements.Get(p.At);
-                        double made = Hearth.PrepPerHour(p.AgeYears(now), p.Health, s.Woodstore > 0.05) * hours;
+                        double made = Hearth.PrepPerHour(p.AgeYears(now), p.Health, s.Woodstore > 0.05) * Knowledge.Tech.QuernFactor(QuernBest(p.Household)) * hours;
+                        w.Learning.Practice(ref p, Knowledge.Tech.Quern, hours);
                         double fromLarder = Math.Min(made, hh.Larder);
                         hh.Larder -= fromLarder;
                         double fromStore = Math.Min(made - fromLarder, s.Granary);
@@ -543,9 +549,9 @@ namespace TC2.Core.Agents
                 ref var q = ref w.People.Get(mem[i]);
                 if (!q.Alive || q.T1 <= now) continue;
                 double left = (q.T1 - Math.Max(now, q.TA)) / (double)SimTime.Hour;
-                if (q.Act == ActivityKind.Cook) cooking += Hearth.PrepPerHour(q.AgeYears(now), q.Health, true) * left;
+                if (q.Act == ActivityKind.Cook) cooking += Hearth.PrepPerHour(q.AgeYears(now), q.Health, true) * Knowledge.Tech.QuernFactor(QuernBest(hid)) * left;
                 else if (q.Act == ActivityKind.Water) fetching += Hearth.Carry(q.AgeYears(now));
-                else if (q.Act == ActivityKind.Craft) making += Goods.MakePerHour(q.AgeYears(now), q.Health) * left;
+                else if (q.Act == ActivityKind.Craft) making += Goods.MakePerHour(q.AgeYears(now), q.Health) * Knowledge.Tech.LoomFactor(in q) * left;
             }
         }
 
@@ -564,7 +570,7 @@ namespace TC2.Core.Agents
             ref var hh = ref w.Households.Get(p.Household);
             UnderWay(p.Household, out double cooking, out _);
             double want = 2.0 * MealOf(p.Household) - hh.Ready - cooking;
-            double rate = Hearth.PrepPerHour(p.AgeYears(w.Now), p.Health, w.Settlements.Get(p.At).Woodstore > 0.05);
+            double rate = Hearth.PrepPerHour(p.AgeYears(w.Now), p.Health, w.Settlements.Get(p.At).Woodstore > 0.05) * Knowledge.Tech.QuernFactor(QuernBest(p.Household));
             double h = DMath.Clamp(want / DMath.Max(0.05, rate), 0.5, 2.5);
             BeginLocal(ref p, ActivityKind.Cook, why, 0, homeX + rs.Range(-2.5, 2.5), homeY + rs.Range(-2.5, 2.5), SimTime.Hours(h));
         }
@@ -1105,10 +1111,21 @@ namespace TC2.Core.Agents
             ref var hh = ref w.Households.Get(p.Household);
             double want = below * members * Goods.Target - hh.Gear;
             if (want <= 0) return;
-            double rate = Goods.MakePerHour(age, p.Health);
+            double rate = Goods.MakePerHour(age, p.Health) * Knowledge.Tech.LoomFactor(in p);
             double h = DMath.Min(maxH, want / rate);
             hh.Gear = (float)(hh.Gear + h * rate);
             w.Metrics.CraftHours += h; w.Metrics.GearMade += h * rate;
+            w.Learning.Practice(ref p, Knowledge.Tech.Loom, h);
+        }
+
+        /// <summary>The household's best at dressing quern stones: it grinds on a rotary quern when one of its people can keep one (D2-062).</summary>
+        double QuernBest(int hid)
+        {
+            var w = _w;
+            var mem = w.Members(hid);
+            double best = 0;
+            for (int i = 0; i < mem.Count; i++) { double k = w.People.Get(mem[i]).KQuern; if (k > best) best = k; }
+            return best;
         }
 
         readonly Dictionary<int, double> _chore = new Dictionary<int, double>();
@@ -1146,6 +1163,7 @@ namespace TC2.Core.Agents
                 }
                 if (need <= 0) continue;
                 bool wood = s.Woodstore > 0.05;
+                double quern = Knowledge.Tech.QuernFactor(QuernBest(hid));   // (a rotary quern in the household: D2-062)
                 // food: what is not yet cooked of what they will eat today
                 double raw = DMath.Max(0.0, DMath.Min(need, hh.Ready + hh.Larder + s.Granary) - hh.Ready);
                 double left = raw, hoursAll = 0;
@@ -1154,9 +1172,10 @@ namespace TC2.Core.Agents
                     ref var q = ref w.People.Get(_kids[k]);
                     double age = q.AgeYears(now);
                     if (age < 8) continue;
-                    double rate = Hearth.PrepPerHour(age, q.Health, wood);
+                    double rate = Hearth.PrepPerHour(age, q.Health, wood) * quern;
                     double h = DMath.Min(_grown.Count > 0 ? 1.5 : 4.0, left / rate);
                     Add(_kids[k], h); left -= h * rate; hoursAll += h;
+                    w.Learning.Practice(ref q, Knowledge.Tech.Quern, h);
                 }
                 if (left > 1e-9 && _grown.Count > 0)
                 {
@@ -1164,8 +1183,9 @@ namespace TC2.Core.Agents
                     for (int k = 0; k < _grown.Count; k++)
                     {
                         ref var q = ref w.People.Get(_grown[k]);
-                        double h = per / Hearth.PrepPerHour(q.AgeYears(now), q.Health, wood);
+                        double h = per / (Hearth.PrepPerHour(q.AgeYears(now), q.Health, wood) * quern);
                         Add(_grown[k], h); hoursAll += h;
+                        w.Learning.Practice(ref q, Knowledge.Tech.Quern, h);
                     }
                     left = 0;
                 }
@@ -1312,7 +1332,11 @@ namespace TC2.Core.Agents
                                     fu = w.Wild.Hunt(ground, hw * tools, p.SkHunt, key, out _); p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hw); w.Metrics.HuntTrips++;
                                     if (fu > 0) w.HerdSys.MarkHunted(sid, ground);
                                 }
-                                else if (wk == WildFood.Fishing) { fu = w.Wild.Fish(ground, hw * tools, p.SkFish, key); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hw); w.Metrics.FishTrips++; }
+                                else if (wk == WildFood.Fishing)
+                                {
+                                    fu = w.Wild.Fish(ground, hw * tools * Knowledge.Tech.NetsFactor(in p), p.SkFish, key); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hw); w.Metrics.FishTrips++;
+                                    w.Learning.Practice(ref p, Knowledge.Tech.Nets, hw);
+                                }
                                 else { fu = w.Wild.Gather(ground, hw * tools, p.Health, key); w.Metrics.GatherTrips++; }
                                 w.Wild.Deposit(p.Id, fu);
                                 w.Metrics.WildHours += hw; w.Metrics.WildFu += fu;

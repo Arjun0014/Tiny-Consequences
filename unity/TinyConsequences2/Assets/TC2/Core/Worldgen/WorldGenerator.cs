@@ -345,6 +345,8 @@ namespace TC2.Core.Worldgen
                 Homes.Raised(w, hid);   // its house stands on its lot (D2-059)
                 StartingHerd(w, hid, sid);
             }
+            // what its founders know (D2-062)
+            Knowledge.Learning.Founders(w, sid);
             // stores to see the founders through to their first harvest
             ref var st = ref w.Settlements.Get(sid);
             st.Granary = st.Population * cfg.FoodPerAdultDay * 70;

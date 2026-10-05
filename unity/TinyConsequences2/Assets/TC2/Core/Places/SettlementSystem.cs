@@ -50,6 +50,7 @@ namespace TC2.Core.Places
             prof?.Begin(10006); w.Stock.Day(sid); prof?.End(10006);   // the herds' day: grazing, milk, births, slaughter (D2-048)
             prof?.Begin(10012); Hearths(sid); prof?.End(10012);       // the homes' warmth against the day's cold (D2-056)
             prof?.Begin(10005); Demography(sid); prof?.End(10005);
+            prof?.Begin(10014); w.Learning.Day(sid); prof?.End(10014);   // the young copy the best they can watch (D2-062)
             ref var s2 = ref w.Settlements.Get(sid);
             if (s2.Population <= 0 && s2.Abandoned == 0)
             {
