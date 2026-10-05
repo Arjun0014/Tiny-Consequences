@@ -29,7 +29,7 @@ namespace TC2.Tests.Core
             Assert.AreEqual(13, P.Species.Count, "eight wild species on land, five in the sea");
             for (int s = 0; s < P.Species.Count; s++)
             {
-                Assert.Greater(Ecology.Total(P, s), 10.0, Ecology.KindName(P.Species[s].Kind) + " live somewhere");
+                Assert.Greater(Ecology.Total(P, s), 10.0 * Ecology.Density, Ecology.KindName(P.Species[s].Kind) + " live somewhere");
                 bool sea = P.Species[s].Habitat == 1;
                 for (int c = 0; c < P.Cells; c++)
                     if (P.IsLand(c) == sea) Assert.AreEqual(0f, P.Abund[s * P.Cells + c], sea ? "no fish on land" : "no land animals at sea");

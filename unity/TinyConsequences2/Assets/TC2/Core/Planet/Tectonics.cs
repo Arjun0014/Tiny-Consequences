@@ -30,14 +30,16 @@ namespace TC2.Core.Planet
         public const double ArcGain = 1.5;           // uplift on an overriding plate per m/yr of subduction
         public const double TrenchGain = -0.35;      // the subducting side sinks (offshore only)
         public const double RiftGain = -0.4;         // continents pulled apart sag
-        public const double Thicken = 0.5;           // a collided column adds this share of its bulk (elev + 600 m) to the winner
-        public const double AccretionChance = 0.35; // a subducted sample welds a strip of crust onto the overriding continent
+        public const double Thicken = 0.15;          // a collided column adds this share of its bulk (elev + 600 m) to the winner:
+                                                     // thickened crust floats, so only ~1/6 of it shows as height (D2-043; was 0.5)
+        public const double AccretionChance = 0.1;  // a subducted sample welds a strip of crust onto the overriding continent (D2-043; was 0.35)
         public const double CollisionDrag = 6.0;     // colliding plates trade motion in proportion to the front's length
         public const double DriftYears = 3000;       // plate motions wander on this timescale (the mantle's forces)
         public const double PeakSpread = 2600;       // m: above this a range spreads its mass to its flanks
         public const double Buoyant = -40;           // m from the sea: thin continental crust floats back to a shelf
         public const double BuoyancyYears = 3000;    // isostatic rebound and basins filling (crust above -300 m only)
-        public const double Wear = 6.0;              // m2/yr: hillslope creep (a range 3 cells wide fades in ~10^4 y)
+        public const double AccreteDepth = 100;      // m under the sea: ocean floor that rises past this becomes continent
+        public const double Wear = 6.0;              // m2/yr: hillslope creep among land cells (a range 3 cells wide fades in ~10^4 y)
 
         readonly int _cells;
         readonly Vec3d[] _east, _north;
@@ -45,6 +47,9 @@ namespace TC2.Core.Planet
         public long Collided, Subducted, Ridges, Fills, Accreted, ContLostToFill, ContGainedByFill, DropC, DropO, RidgeOnCont;
         public bool Drift = true;   // plate motions change (collision drag, the mantle's wander); tests may hold them fixed
         public double UpliftCont, UpliftOcean;
+        /// <summary>Tools only: summed elevation change of continental crust by part of the step (hand-over, forcing, buoyancy,
+        /// accretion, wearing, peak spreading, ocean that became continent). Null in the game.</summary>
+        public static double[] Budget;
         // scratch
         readonly int[] _target, _count, _start, _order, _winner;
         readonly float[] _newElev, _newAge, _newOx, _newOy, _uplift, _tmp;
@@ -259,11 +264,23 @@ namespace TC2.Core.Planet
                 FillGap(P, t, dt);
             }
             Despeckle(P);
+            if (Budget != null)
+            {
+                // the hand-over: continental elevation before (the old arrangement) and after (the new, before forcing)
+                double before = 0, after = 0;
+                for (int c = 0; c < n; c++) { if (P.Crust[c] == 1) before += P.Elev[c]; if (_newKind[c] == 1) after += _newElev[c]; }
+                Budget[0] += after - before;
+            }
             Commit(P, dt);
+            double a0 = Budget != null ? Sum(P) : 0;
             Accrete(P);
+            double a1 = Budget != null ? Sum(P) : 0;
             Wearing(P, dt);
+            if (Budget != null) { Budget[3] += a1 - a0; }
             Plates(P, dt, seed, now);
         }
+
+        static double Sum(PlanetState P) { double s = 0; for (int c = 0; c < P.Cells; c++) if (P.Crust[c] == 1) s += P.Elev[c]; return s; }
 
         public int Despeckled;   // diagnostics: cells smoothed at hand-overs
 
@@ -302,6 +319,7 @@ namespace TC2.Core.Planet
                 P.Plate[c] = _newPlate[c]; P.Crust[c] = _newKind[c]; P.CrustAge[c] = _newAge[c];
                 P.CrustOx[c] = _newOx[c]; P.CrustOy[c] = _newOy[c];
                 double e = _newElev[c] + _uplift[c] * dt;
+                if (Budget != null && _newKind[c] == 1) Budget[1] += _uplift[c] * dt;
                 if (_newKind[c] == 1) UpliftCont += _uplift[c] * dt; else UpliftOcean += _uplift[c] * dt;
                 if (P.Crust[c] == 0)
                 {
@@ -311,11 +329,11 @@ namespace TC2.Core.Planet
                 else
                 {
                     double rel = e - P.SeaLevel;
-                    if (rel > -300 && rel < Buoyant) e += (Buoyant - rel) * dt / BuoyancyYears; // continents float
+                    if (rel > -300 && rel < Buoyant) { double up = (Buoyant - rel) * dt / BuoyancyYears; e += up; if (Budget != null) Budget[2] += up; } // continents float
                 }
                 P.Elev[c] = (float)DMath.Clamp(e, -2600, 4500);
                 // arcs and uplifted sea floor that reach the surface are new continental crust (accretion)
-                if (P.Crust[c] == 0 && P.Elev[c] > P.SeaLevel - 100) { P.Crust[c] = 1; Accreted++; }
+                if (P.Crust[c] == 0 && P.Elev[c] > P.SeaLevel - AccreteDepth) { P.Crust[c] = 1; Accreted++; if (Budget != null) Budget[4] += P.Elev[c]; }
             }
         }
 

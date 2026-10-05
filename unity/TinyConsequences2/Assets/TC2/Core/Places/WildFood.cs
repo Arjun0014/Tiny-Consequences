@@ -19,9 +19,9 @@ namespace TC2.Core.Places
         public const int Hunting = 0, Fishing = 1, Gathering = 2;
         public const double HuntReach = 1300, FishReach = 900, GatherReach = 750;   // m from the village
         // live kg an hour for an ordinary hunter (skill 0.5) on a ground of B reachable kg: HuntRate B / (B + HuntHalf)
-        public const double HuntRate = 2.8, HuntHalf = 3000.0;
-        public const double FishRate = 3.0, FishHalf = 1500.0;
-        public const double GatherRate = 0.8, GatherHalf = 150.0;
+        public const double HuntRate = 2.8, HuntHalf = 3000.0 * Ecology.Density;
+        public const double FishRate = 3.0, FishHalf = 1500.0 * Ecology.Density;
+        public const double GatherRate = 0.8, GatherHalf = 150.0 * Ecology.Density;
         public const double MeatShare = 0.5, FishShare = 0.6;     // edible share of the live weight
         public const double FuPerKg = 0.65, FuPerKgMast = 0.9;    // food units per kg of meat or fish / of nuts, roots, berries
         public const double PeopleMastShare = 0.6;                // of a step's mast, what people can find (the rest is the animals')
@@ -29,6 +29,11 @@ namespace TC2.Core.Places
 
         World _w;
         readonly int[] _ground = new int[9];
+        // this call's game and fish (a List's indexer copies each struct: read them once into small tables)
+        readonly int[] _gq = new int[Ecology.MaxK], _fq = new int[Ecology.MaxK];
+        readonly double[] _gm = new double[Ecology.MaxK], _gs = new double[Ecology.MaxK], _gk = new double[Ecology.MaxK];
+        readonly double[] _fm = new double[Ecology.MaxK], _fr = new double[Ecology.MaxK];
+        int _gN, _fN;
         readonly Dictionary<int, Reach> _reach = new Dictionary<int, Reach>();   // per settlement, by its cell (geometry only)
         readonly List<int> _scratch = new List<int>();
 
@@ -40,10 +45,6 @@ namespace TC2.Core.Places
         public static bool IsGame(in Species sp) => sp.Habitat == 0 && sp.Gone == 0 && sp.Role != Role.Predator && sp.Prey == 0 && sp.Mass >= 2f;
         public static bool IsFish(in Species sp) => sp.Habitat == 1 && sp.Gone == 0 && sp.Metab < 5f;
 
-        /// <summary>The share of a game species in a cell that people can find: woods hide it, climbers keep to their crags.</summary>
-        static double ReachP(PlanetState P, int c, in Species sp) =>
-            DMath.Max(0.1, 1.0 - (0.15 + 0.3 * P.Forest[c]) - 0.6 * DMath.Clamp01(Ecology.Steepness(P, c)) * sp.SlopePref);
-
         /// <summary>The share of a fish people reach from the shore and small boats: shoals of the shelves more than the ocean's.</summary>
         static double ReachF(in Species sp) => DMath.Max(0.1, 1.0 - 0.85 * sp.Offshore);
 
@@ -52,21 +53,37 @@ namespace TC2.Core.Places
         {
             if (!P.IsLand(c) || P.Ice[c] > 5f) return 0;
             double warm = DMath.SmoothStep(-2.0, 8.0, P.Temp[c]);
-            double flow = P.Forest[c] * Ecology.MastMax * P.AreaHa(c) * WindowYears * (0.5 + 0.5 * warm) * PeopleMastShare;
+            double flow = P.Forest[c] * Ecology.MastMax * Ecology.Density * P.AreaHa(c) * WindowYears * (0.5 + 0.5 * warm) * PeopleMastShare;
             return DMath.Max(0.0, flow - P.Gathered[c]);
         }
+
+        /// <summary>This world's game and fish now (kinds come and go): read once per call into small tables.</summary>
+        void Kinds()
+        {
+            var P = _w.Planet;
+            _gN = 0; _fN = 0;
+            for (int q = 0; q < P.Species.Count; q++)
+            {
+                var sp = P.Species[q];
+                if (IsGame(sp)) { _gq[_gN] = q; _gm[_gN] = sp.Mass; _gs[_gN] = sp.SlopePref; _gk[_gN] = sp.Kind; _gN++; }
+                else if (IsFish(sp)) { _fq[_fN] = q; _fm[_fN] = sp.Mass; _fr[_fN] = ReachF(sp); _fN++; }
+            }
+        }
+
+        /// <summary>People's reach of a game kind in a cell: its cover (woods hide game) and steepness (climbers keep to crags).</summary>
+        static double ReachIn(double cover, double steep, double slopePref) => DMath.Max(0.1, 1.0 - cover - 0.6 * steep * slopePref);
 
         double GameKg(int c)
         {
             var P = _w.Planet; int n = P.Cells;
             if (!P.IsLand(c)) return 0;
-            double v = 0;
-            for (int q = 0; q < P.Species.Count; q++)
+            double cover = 0.15 + 0.3 * P.Forest[c], steep = -1, v = 0;
+            for (int i = 0; i < _gN; i++)
             {
-                var sp = P.Species[q];
-                if (!IsGame(sp)) continue;
-                double a = P.Abund[q * n + c];
-                if (a > 0) v += a * sp.Mass * ReachP(P, c, sp);
+                double a = P.Abund[_gq[i] * n + c];
+                if (a <= 0) continue;
+                if (steep < 0) steep = DMath.Clamp01(Ecology.Steepness(P, c));
+                v += a * _gm[i] * ReachIn(cover, steep, _gs[i]);
             }
             return v;
         }
@@ -76,12 +93,10 @@ namespace TC2.Core.Places
             var P = _w.Planet; int n = P.Cells;
             if (P.IsLand(c)) return 0;
             double v = 0;
-            for (int q = 0; q < P.Species.Count; q++)
+            for (int i = 0; i < _fN; i++)
             {
-                var sp = P.Species[q];
-                if (!IsFish(sp)) continue;
-                double a = P.Abund[q * n + c];
-                if (a > 0) v += a * sp.Mass * ReachF(sp);
+                double a = P.Abund[_fq[i] * n + c];
+                if (a > 0) v += a * _fm[i] * _fr[i];
             }
             return v;
         }
@@ -119,6 +134,7 @@ namespace TC2.Core.Places
         public void Survey(int sid)
         {
             var P = _w.Planet;
+            Kinds();
             var r = ReachOf(sid);
             Grounds hunt = Grounds.Empty, fish = Grounds.Empty, gath = Grounds.Empty;
             for (int i = 0; i < r.Cells.Length; i++)
@@ -146,6 +162,7 @@ namespace TC2.Core.Places
         /// <summary>FU an hour an ordinary hunter (skill 0.5) can expect on a ground.</summary>
         public double ExpectHunt(int ground)
         {
+            Kinds();
             double B = 0; int k = GroundCells(ground, true);
             for (int i = 0; i < k; i++) B += GameKg(_ground[i]);
             return HuntRate * B / (B + HuntHalf) * MeatShare * FuPerKg;
@@ -153,6 +170,7 @@ namespace TC2.Core.Places
 
         public double ExpectFish(int ground)
         {
+            Kinds();
             double F = 0; int k = GroundCells(ground, false);
             for (int i = 0; i < k; i++) F += FishKg(_ground[i]);
             return FishRate * F / (F + FishHalf) * FishShare * FuPerKg;
@@ -188,6 +206,7 @@ namespace TC2.Core.Places
             mainKind = -1;
             var P = _w.Planet; int n = P.Cells;
             if (ground < 0 || hours <= 0 || !P.IsLand(ground)) return 0;
+            Kinds();
             int k = GroundCells(ground, true);
             double B = 0;
             for (int i = 0; i < k; i++) B += GameKg(_ground[i]);
@@ -198,20 +217,21 @@ namespace TC2.Core.Places
             for (int i = 0; i < k; i++)
             {
                 int c = _ground[i];
-                for (int q = 0; q < P.Species.Count; q++)
+                double cover = 0.15 + 0.3 * P.Forest[c], steep = DMath.Clamp01(Ecology.Steepness(P, c));
+                for (int j = 0; j < _gN; j++)
                 {
-                    var sp = P.Species[q];
-                    if (!IsGame(sp)) continue;
+                    int q = _gq[j];
                     double a = P.Abund[q * n + c];
-                    if (a < 1.0) continue;   // no whole animal to find
-                    double b = a * sp.Mass * ReachP(P, c, sp);
-                    double lambda = expectKg * b / B / sp.Mass;
+                    if (a <= 0) continue;
+                    double b = a * _gm[j] * ReachIn(cover, steep, _gs[j]);
+                    double lambda = expectKg * b / B / _gm[j];
                     int kills = Poisson(lambda, ref rs);
                     if (kills <= 0) continue;
-                    kills = Math.Min(kills, (int)DMath.Floor(a));
-                    P.Abund[q * n + c] = (float)(a - kills);
-                    kg += kills * sp.Mass;
-                    if (kills * sp.Mass > biggest) { biggest = kills * sp.Mass; mainKind = sp.Kind; }
+                    // whole animals; where the field holds less than the kills, what it holds (the field is the truth)
+                    double taken = DMath.Min(kills, a);
+                    P.Abund[q * n + c] = (float)(a - taken);
+                    kg += taken * _gm[j];
+                    if (taken * _gm[j] > biggest) { biggest = taken * _gm[j]; mainKind = (int)_gk[j]; }
                 }
             }
             _w.Metrics.GameKg += kg;
@@ -223,6 +243,7 @@ namespace TC2.Core.Places
         {
             var P = _w.Planet; int n = P.Cells;
             if (ground < 0 || hours <= 0 || P.IsLand(ground)) return 0;
+            Kinds();
             int k = GroundCells(ground, false);
             double F = 0;
             for (int i = 0; i < k; i++) F += FishKg(_ground[i]);
@@ -232,13 +253,12 @@ namespace TC2.Core.Places
             for (int i = 0; i < k; i++)
             {
                 int c = _ground[i];
-                for (int q = 0; q < P.Species.Count; q++)
+                for (int j = 0; j < _fN; j++)
                 {
-                    var sp = P.Species[q];
-                    if (!IsFish(sp)) continue;
+                    int q = _fq[j];
                     double a = P.Abund[q * n + c];
                     if (a <= 0) continue;
-                    double take = kg * (a * sp.Mass * ReachF(sp) / F) / sp.Mass;
+                    double take = kg * (a * _fm[j] * _fr[j] / F) / _fm[j];
                     P.Abund[q * n + c] = (float)DMath.Max(0.0, a - take);
                 }
             }

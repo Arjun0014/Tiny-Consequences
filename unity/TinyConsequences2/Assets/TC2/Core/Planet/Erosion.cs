@@ -15,13 +15,18 @@ namespace TC2.Core.Planet
     /// </summary>
     public static class Erosion
     {
-        public const double K = 1.1e-3;           // incision per sqrt(m3/day of flow) per year, over the drop per metre
+        // the land wears as fast as the plates raise it (D2-043): the plates move ~100x Earth's pace, and so must the rivers,
+        // the slopes and the sea's carrying-off of what they bring down, or the continents rise without end
+        public const double K = 5.5e-3;           // incision per sqrt(m3/day of flow) per year, over the drop per metre (D2-031: 1.1e-3)
+        public const double Critical = 2.5;       // gradient beyond which slopes fail (rockfall; the relief is Earth-tall on 245 m cells)
+        public const double ShelfKeep = 0.15;     // share of a river's load the shelf at its mouth keeps; the rest goes down the slope to the deep
+        public const double Kh = 2e-4;            // per year: every slope creeps and washes toward the way the water goes (joins the load)
         public const double MinFlow = 300.0;      // m3/day: smaller trickles are the hillslopes' work (Tectonics wear)
         public const double FlatSlope = 0.004;    // a river slower than this drops a third of its load (floodplain)
         public const double MouthDepth = 0.6;     // a delta's top stands this far below the sea until it emerges
 
         // diagnostics of the last step (m3)
-        public static double Eroded, Settled, ToDeep;
+        public static double Eroded, Settled, ToDeep, Failed;
 
         [ThreadStatic] static float[] _ero;
         [ThreadStatic] static double[] _load;
@@ -35,24 +40,37 @@ namespace TC2.Core.Planet
             if (_ero == null || _ero.Length != n) { _ero = new float[n]; _load = new double[n]; }
             Array.Clear(_ero, 0, n); Array.Clear(_load, 0, n);
             double sea = P.SeaLevel;
-            Eroded = Settled = ToDeep = 0;
+            Eroded = Settled = ToDeep = Failed = 0;
             // 1. incision, receivers first: h' = (h + F h_r') / (1 + F), F = K dt sqrt(Q) / L
             for (int k = 0; k < d.StackCount; k++)
             {
                 int c = d.Stack[k];
                 int r = d.Receiver[c];
                 if (r < 0 || P.Ice[c] > 5f || d.BasinOf[c] >= 0) continue;
-                double q = P.RiverFlow[c];
-                if (q < MinFlow) continue;
                 double hr = d.BuiltLand(r) ? P.Elev[r] : sea;   // land and sea as the tree was built (a delta may rise meanwhile)
                 double h = P.Elev[c];
                 if (h <= hr) continue;
                 double L = Vec3d.ArcDistance(g.Center[c], g.Center[r], P.Radius);
-                double F = K * dt * DMath.Sqrt(q) / L;
-                double hn = (h + F * hr) / (1.0 + F);
-                if (hn < sea + 0.2) hn = DMath.Min(h, sea + 0.2);   // rivers cut down to the sea, not below it
-                _ero[c] = (float)(h - hn);
-                P.Elev[c] = (float)hn;
+                double q = P.RiverFlow[c];
+                if (q >= MinFlow || Kh > 0)
+                {
+                    // rivers cut by their flow; every slope also creeps and washes toward the way the water goes
+                    double F = ((q >= MinFlow ? K * DMath.Sqrt(q) / L : 0.0) + Kh) * dt;
+                    double hn = (h + F * hr) / (1.0 + F);
+                    if (hn < sea + 0.2) hn = DMath.Min(h, sea + 0.2);   // rivers cut down to the sea, not below it
+                    _ero[c] = (float)(h - hn);
+                    P.Elev[c] = (float)hn;
+                    h = hn;
+                }
+                // a slope steeper than the critical gradient fails toward the way the water goes: the rock joins the load
+                double top = hr + Critical * L;
+                if (h > top)
+                {
+                    double fall = h - top;
+                    _ero[c] += (float)fall;
+                    P.Elev[c] = (float)top;
+                    Failed += fall * P.AreaHa(c) * 1e4;
+                }
             }
             // 2. the load travels down, tributaries first; lakes, flats and the mouth keep it
             for (int k = d.StackCount - 1; k >= 0; k--)
@@ -93,6 +111,9 @@ namespace TC2.Core.Planet
         /// <summary>A river's load at its mouth: it fills the shallows to just under the surface, then spills on outward.</summary>
         static void Mouth(PlanetState P, Drainage d, CubeSphere g, int c, double load, double sea)
         {
+            // most of what a river carries is carried past its mouth down the shelf's slope (D2-043); the shelf keeps a share
+            double past = load * (1.0 - ShelfKeep);
+            ToDeep += past; load -= past;
             for (int hop = 0; hop < 8 && load > 0; hop++)
             {
                 double area = P.AreaHa(c) * 1e4;

@@ -111,6 +111,14 @@ Cause tags (`11` §6) accompany the causal fields: burning, drought anomaly, flo
   blowdowns, flattened crops, surges where strong storms come ashore; a warmer world breeds more and stronger
   cyclones.
 
+### Erosion in balance with uplift (D2-043)
+- Stream power K 5.5e-3 (D2-031's 1.1e-3 let the continents rise ~46 m a millennium), every slope creeping and washing
+  toward its receiver (Kh 2e-4 a year, implicit with the river term, into the load), slopes past a gradient of 2.5 failing
+  into the load; mouths keep 15 % of their load on the shelf, the rest goes to the deep. Collision thickening 0.15 of the
+  loser's column (thickened crust floats), accretion welds 0.1. `planet --budget` prints the continents' elevation change
+  by process (plates: hand-over, forcing, buoyancy, welds, new land from the ocean; volcanoes; quakes; erosion; coasts).
+- Ice flows nine times faster (540 m2/yr per m of ice, cap 810,000): thin sheets that breathe with the tilt.
+
 ### Drainage and erosion (erosion implemented, D2-031)
 - **Priority-flood** (Barnes et al. 2014) fills depressions to give every land cell a receiver (lowest of 8
   neighbours after filling); filled depressions are lake basins (a lake where inflow exceeds evaporation).

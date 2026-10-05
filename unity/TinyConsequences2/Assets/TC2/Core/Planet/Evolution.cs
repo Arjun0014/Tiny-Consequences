@@ -21,10 +21,12 @@ namespace TC2.Core.Planet
         public const double Pull = 0.0015;         // per year per (young per adult): how fast a population follows (e-fold ~250 y)
         public const int MaxSpecies = 20;          // (Ecology.MaxK sizes the arrays)
         public const double Load = 0.002;          // per year per C beyond 3 C of mismatch: the lives adaptation costs
-        public const double DriftRate = 0.003;     // a lineage marker wanders this much per square root of a year (at a 10-year life):
-                                                   // a range cut off for many thousand years may part (soonest where climates differ)
+        public const double DriftRate = 0.02;      // a lineage marker wanders this much per square root of a year (at a 10-year life):
+                                                   // two populations cut off reach the line in ~1,500-2,500 years (01: 500-1,500 of
+                                                   // isolation; D2-044 - at 0.003 it took 25,000+ and no 10,000-year run split)
         public const double CoatWeight = 0.05;     // per C of coat difference: how much sooner two lineages part (10 C: 1.5 x)
-        public const int MinCells = 40, MinAnimals = 80;   // a population that can become a kind: not a fragment at a range's edge
+        public const int MinCells = 40;            // a population that can become a kind: not a fragment at a range's edge
+        public const double MinAnimals = 80 * Ecology.Density;
         public const int MaxPerKind = 4;           // living kinds descended from one first kind (deer and their offshoots)
 
         /// <summary>

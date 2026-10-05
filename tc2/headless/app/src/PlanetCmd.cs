@@ -29,6 +29,9 @@ namespace TC2.Headless
             _zoom = zoom;
             var sw = Stopwatch.StartNew();
             if (a.Has("ecodiag")) Ecology.Diag = new double[Ecology.MaxK * 8];
+            // relief experiments (tools only): skip the animals; the relief budget by process
+            if (a.Has("noeco")) Ecology.SkipForTools = true;
+            if (a.Has("budget")) { World.ReliefBudget = new double[5]; Tectonics.Budget = new double[5]; }
             var w = WorldGenerator.Create(cfg);
             Console.WriteLine("worldgen " + sw.ElapsedMilliseconds + " ms; seed " + cfg.Seed + " cells " + w.Planet.Cells);
             if (Ecology.Diag != null)
@@ -77,6 +80,16 @@ namespace TC2.Headless
                 k++;
                 Console.WriteLine(PlanetLine(w));
                 if (a.Has("tect")) Console.WriteLine("      " + _tect);
+                if (World.ReliefBudget != null)
+                {
+                    // m per continental cell since the last report, by process
+                    int cont = 0; for (int c = 0; c < w.Planet.Cells; c++) if (w.Planet.Crust[c] == 1) cont++;
+                    var rb = World.ReliefBudget; var tb = Tectonics.Budget;
+                    Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
+                        "      budget m/cont-cell: plates {0:0.0} (hand-over {5:0.0} forcing {6:0.0} buoyancy {7:0.0} accrete-weld {8:0.0} new-from-ocean {9:0.0}) volcanoes {1:0.0} quakes {2:0.0} erosion {3:0.0} coasts {4:0.0}",
+                        rb[0] / cont, rb[1] / cont, rb[2] / cont, rb[3] / cont, rb[4] / cont, tb[0] / cont, tb[1] / cont, tb[2] / cont, tb[3] / cont, tb[4] / cont));
+                    Array.Clear(rb, 0, rb.Length); Array.Clear(tb, 0, tb.Length);
+                }
                 if (a.Has("volc")) Console.WriteLine("      " + VolcLine(w));
                 if (a.Has("quake")) Console.WriteLine("      " + QuakeLine(w));
                 if (a.Has("erosion")) Console.WriteLine("      " + ErosionLine(w));
@@ -261,8 +274,8 @@ namespace TC2.Headless
                 relief += hi - lo;
                 if (P.RiverFlow[c] >= 5000f) { rivers++; double m = 0; for (int k = 0; k < 8; k++) m += P.Elev[g.Nbr8[c * 8 + k]]; valley += m / 8 - P.Elev[c]; }
             }
-            return string.Format(CultureInfo.InvariantCulture, "erosion last step: cut {0:0} m3 settled {1:0} deep {2:0} | land {3} local relief {4:0} m | river cells {5} mean valley depth {6:0.0} m",
-                TC2.Core.Planet.Erosion.Eroded, TC2.Core.Planet.Erosion.Settled, TC2.Core.Planet.Erosion.ToDeep, land, relief / Math.Max(1, land), rivers, valley / Math.Max(1, rivers));
+            return string.Format(CultureInfo.InvariantCulture, "erosion last step: cut {0:0} m3 (failed {7:0}) settled {1:0} deep {2:0} | land {3} local relief {4:0} m | river cells {5} mean valley depth {6:0.0} m",
+                TC2.Core.Planet.Erosion.Eroded, TC2.Core.Planet.Erosion.Settled, TC2.Core.Planet.Erosion.ToDeep, land, relief / Math.Max(1, land), rivers, valley / Math.Max(1, rivers), TC2.Core.Planet.Erosion.Failed);
         }
 
         static string QuakeLine(World w)

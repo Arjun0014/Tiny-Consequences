@@ -223,10 +223,10 @@ namespace TC2.Core.Planet
         void Vegetation(World w)
         {
             double dtY = w.Config.VegetationPeriod / (double)SimTime.Year;
-            if (w.Resolution == Resolution.Coarse) { GrowVegetation(w, dtY * 3); Ecology.Step(w, dtY * 3, w.Now); return; }
+            if (w.Resolution == Resolution.Coarse) { GrowVegetation(w, dtY * 3); if (!Ecology.SkipForTools) Ecology.Step(w, dtY * 3, w.Now); return; }
             GrowVegetation(w, dtY);
             // the animals live on a slower clock than the grass: every third plant step, by the world's time (D2-035)
-            if (SimTime.FloorDiv(w.Now, w.Config.VegetationPeriod) % 3 == 0) Ecology.Step(w, dtY * 3, w.Now);
+            if (!Ecology.SkipForTools && SimTime.FloorDiv(w.Now, w.Config.VegetationPeriod) % 3 == 0) Ecology.Step(w, dtY * 3, w.Now);
         }
 
         /// <summary>A step of plant growth (dt in years): forests and grass toward what climate and water allow.</summary>

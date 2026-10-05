@@ -25,7 +25,7 @@ history before people may span thousands of years; the calendar people use may s
 | Planet radius | **10 km** (sim metres) | surface 1,257 km²; land ~30-40% |
 | Surface grid | cubed sphere N64 (24,576 cells, ~245 m) | ecology, hydrology, soils, land use |
 | Climate grid | N32 (6,144 cells, ~490 m) | temperature, moisture, wind, cloud |
-| Relief | ocean floor to -1,500 m, peaks to +2,500 m | vertically exaggerated rendering is presentation |
+| Relief | ocean floor to -1,500 m, peaks ~1,000-2,500 m (uplift and wear in balance, D2-043) | vertically exaggerated rendering is presentation |
 | Walking | 1.25 m/s adult on open ground, slower uphill, loaded, old, young, at night | ~4.5 km/h |
 | Village footprint | 100-300 m houses; fields to ~600 m | 1-2 surface cells for the core, 4-20 for fields |
 | Neighbouring villages | 1-4 km (20 min - 1 h walk) | the world is small, but people mostly stay home |
@@ -46,7 +46,8 @@ people**; typical histories hold 500-5,000. Presentation exaggerates objects whe
   and wet: the thermostat that ends hothouses and snowballs over millennia).
 - Aerosols from eruptions and impacts cool within weeks and fade over ~2 years.
 - Sea level follows land ice volume and warmth: about **±40 m** between deep glacial and hothouse states,
-  enough to open land bridges and drown coastal plains.
+  enough to open land bridges and drown coastal plains. Ice sheets on so small a world are thin (a few hundred metres:
+  D2-043); a deep glacial lowers the sea to about the shelf break (-40 m), as Earth's did to its own.
 - Weather: daily stochastic wet/dry spells and storms from the climate state; storms are entities that
   travel.
 
@@ -58,8 +59,9 @@ people**; typical histories hold 500-5,000. Presentation exaggerates objects whe
 - **Quakes** release boundary stress: damaging ones near active boundaries every few decades.
 - **Volcanoes** gather pressure; eruptions every 50-300 years per active vent; planet-wide a VEI 5+
   every few centuries, VEI 6+ every one to three millennia (a volcanic winter).
-- **Erosion**: rivers incise by the stream power law; hillslopes creep; sediment fills valleys and
-  builds deltas; fresh rock weathers to soil over decades.
+- **Erosion**: as fast as the plates raise the land (a fast world law, D2-043): rivers incise by the stream power law,
+  every slope creeps and washes toward its river, oversteep slopes fail; sediment fills lakes and valleys, a little builds
+  deltas, most goes down the shelf to the deep; fresh rock weathers to soil over decades.
 
 ## 5. Life
 
@@ -74,7 +76,8 @@ people**; typical histories hold 500-5,000. Presentation exaggerates objects whe
 | Fish | generation 2 years |
 | Heritability of traits | 0.3-0.5; mutation variance large (fast evolution is a world law) |
 | Visible adaptation | trait means shift by ~1 SD in 50-150 years under steady selection |
-| Speciation | populations isolated for ~500-1,500 years diverge past the species threshold |
+| Speciation | populations isolated for ~500-1,500 years diverge past the species threshold (D2-044: ~1,500-2,500 to a new kind) |
+| Density | wild animals use ~15 % of the plants' growth: deer and boar ~15-20 a km2, game ~30-45 kg/ha (D2-044) |
 | Extinction | permanent unless the same lineage survives elsewhere |
 
 ## 6. People

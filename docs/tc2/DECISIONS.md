@@ -829,7 +829,7 @@ gone from the fields. Web (WebGPU): start 6.1 s, orbit/region 120 fps, village 8
 
 ## D2-042 — 2026-10-05 — Villages live off the land: wild food from the same fields, body reserves, remembered famine
 
-**Status.** Design recorded before implementation (session 2); the evidence section is filled in as the slice is built.
+**Status.** Built (session 2).
 **Context.** Session 1's 300-year coarse run of seed 42 lost 4 of 6 villages. Souhope's chain: field fire -> harvest
 failed -> granary (under a year) empty -> 40+ hunger deaths in 2-12 days -> abandoned. Mechanism gaps: no food but the
 fields; foraging fed ~1 person per forager from an infinite source (`0.28 x wild` per hour, nothing taken from the land);
@@ -873,3 +873,72 @@ lived it. Chosen.
 **Acceptance (mechanism, not outcome).** With game, fish or mast in reach, people physically take them; the fields
 fall and recover; stores and larders rise by exactly the edible catch; starvation responds to stores; a village with
 wild food in reach survives one failed harvest that kills a village without; two bad years in a row can still empty one.
+**Evidence (built, commit 321bcf9 and after).** Tests (83; `WildFoodTests`): hunters take whole animals only from their
+ground, the meat exactly the edible share; fishers take only fish, from the water; gatherers leave less mast and the boar
+of those woods eat worse at the next step; two years of hard hunting thin the game within reach to 55 % of a control world,
+and eight years after it stops the hunted land is back above the control; with nothing to eat at all nobody dies in the first
+9 days, no grown body before day 28, children die first, and every hunger death is caused by the Famine; a village of 18
+with its harvest lost and stores bare loses no one in 70 days on the wild's food while its barren twin loses everyone; famine
+memory raises prudence and fields and fades; save/load mid-hunt continues identically; COARSE and ACTIVITY give the wild
+similar hours and food in ordinary times and in a shortage. Measured: ACTIVITY ~0.2 trips and ~1.1 hours of wild work per
+adult-day in ordinary times (habit, damped by full granaries), ~8.5 hours in a shortage; 0.6-0.7 FU/h on fresh grounds.
+Bugs found on the way: founders' mothers did not nurse their babies (they starved in 6 days); a prudent cut recorded a
+WildFood event with no cause; the minimal headless runner has no NUnit TestContext. A 300-year coarse run of seed 42: 145 ->
+5,597 people, all six villages alive, the largest (870-1,300 on land for ~300) deplete their game by ~95 % and live in
+recurring famine (4,267 hunger deaths, 43 famines from year 216).
+**Consequences.** The wild is ~10x too rich (densities): the next ecology decision rescales it. Villages need to move:
+migration and founding come next in F3.
+
+## D2-043 — 2026-10-05 — The land wears as fast as the plates raise it; thin ice sheets; ages of ice against the planet's own normal
+
+**Context.** The 10,000-year reruns of the current build (seeds 42, 7) failed F1: mean land elevation 160 -> 621 m and
+105 -> 302 m, continental crust 47.8 -> 60.9 % and 61 -> 67 %, peaks to 3,500-4,300 m; seed 42 glaciated at year 188 for
+good (sea down to -100 m, global mean 15 -> 10 C) while 01 promises seas within about +-40 m. Erosion moved ~0.1 million m3
+a year against ~23 million of net uplift, and every cubic metre it cut settled on land or the shelf (none reached the deep).
+**Investigation (planet-only 3,000-year experiments of seed 42 and 7, `tc2/out/relief/`; a per-process budget of the
+continents' elevation, `planet --budget`).** (1) Erosion strong enough to balance uplift stops the drift, but a slope
+failure at a gradient near 1 cuts every peak to ~1,000 m - the planet carries Earth-tall relief on 245 m cells, so its
+gradients are steep by design. (2) River mouths that keep 40 % of their load build shallow shelves that a small fall of the
+sea turns into bright land, strengthening the ice-albedo feedback (sea -95 m). (3) Every run, with or without the drift,
+glaciated early and deeply: ice sheets were ~480 m thick on 5-30 km of land where a plastic sheet stands ~150-250 m
+(3.4 sqrt(half-width)) - the shallow-ice flow was ~9x too slow. With nine times the flow the ice breathes with the tilt
+(15-29 % of land, sea 0 to -18 m, 13.6-15.2 C, a ~1,300-year rhythm). (4) The budget then showed boundary forcing, ocean
+floor raised into new land, volcanoes and shelf buoyancy adding ~10 m per thousand years to the continents and only river
+cells eroding; hillslope creep only moved rock between land cells.
+**Decision.** Erosion scaled to the fast plates: stream power K 1.1e-3 -> 5.5e-3; **every slope also creeps and washes
+toward the way the water goes** (`Erosion.Kh` 2e-4 a year, implicit with the rivers' term, into the load); slopes past a
+gradient of 2.5 fail into the load; river mouths keep 15 % of their load on the shelf and the rest goes down the slope to the
+deep. Thickened crust floats (collision thickening 0.5 -> 0.15 of the loser's column) and accretion welds less (0.35 -> 0.1).
+Ice flows nine times faster (`Climate.IceFlowPerM` 540, cap 810,000 m2/yr, sub-steps short enough for the thickest ice).
+Ages of ice are named against a running mean of the last ~1,500 years of ice (from the ice the world was born with), entering
+at 1.35x and ending at 1.1x - not against the one moment of the orbit the world was born at. Tools: `planet --budget`
+(continental elevation change by process), `--noeco` (no animals: relief experiments), `--csv` (series).
+**Evidence.** 3,000-year planet runs: seed 42 continental mean elevation 86 -> 78 m (was 98 -> 157), continental crust 47.8 ->
+48.1 %, peaks 1,200-1,700 m, sea 0 to -18 m with glacial cycles on the tilt; seed 7 continental mean 6 -> 17 m (a shelf
+transient: the buoyancy input falls 2.8 -> 1.1 m per 300 years), sea 0 to -5 m. Tests: rivers cut ~13 m and slopes wear ~26 m
+in 1,000 years from worldgen's unrelaxed relief, every cubic metre settles or reaches the deep; a -8 C world grows ice, moves
+its coast and names an age of ice. The 10,000-year reruns are in PROGRESS.
+**Consequences.** The sea-level law of 01 (+-40 m) stands: seed 42's -60 to -100 m came from ice sheets three times too
+thick, not from a stronger law. Peaks now stand ~1,200-1,800 m (01 said "to +2,500 m": revised to 1,000-2,500).
+**Invalidation.** If the reruns still drift beyond ~+-15 % of mean continental elevation in 10,000 years, raise Kh; if
+mountain ranges vanish from the view, raise the critical gradient or the forcing.
+
+## D2-044 — 2026-10-05 — Wild animals at real densities; lineages part at the world law's pace
+
+**Context.** People hunting the wild (D2-042) exposed the fields' densities: deer and boar ~1.2 a hectare (120 a km2), game
+200-285 kg/ha against 5-30 for real temperate ungulates, wolves ~3 a km2 against 0.01-0.1; the woods fed people more per
+hectare than fields; only villages of ~1,000 could deplete their game. Separately, neither 10,000-year rerun formed a new
+kind: lineage drift of 0.003 per sqrt-year needs ~25,000-55,000 years of isolation to reach the line (01: 500-1,500).
+**Decision.** `Ecology.Density` = 0.15, the share of the plants' growth wild animals can use as food (most of what grows is
+out of reach, too poor to digest, or lost to the lean season), applied to every food (grass, browse, mast, small fare, crag
+fare, plankton); hunting's half-satiation, the hunters' territories, the first numbers and the speciation threshold of a
+population (80 animals -> 12) scale with it, so the food web keeps its shape at a seventh of the numbers. People's grounds
+scale too (HuntHalf, FishHalf, GatherHalf; the woods' mast for people is Density of the old). A kill drawn where a cell holds
+less than one animal takes what is there (the field is the truth: whole-animal kills only had made sparse game untouchable).
+`Evolution.DriftRate` 0.003 -> 0.02 (two populations cut off reach the line in ~1,500-2,500 years at a 10-year life; D2-041's
+keyed split chance and four kinds per first kind keep the refuges from splitting together).
+**Evidence.** Tests: all kinds start alive at the new numbers; hard hunting (3 % of the game within reach a day) leaves 18 % of
+a control world's game and eight years later 98 %; ACTIVITY's ordinary wild hours and returns unchanged (half-satiation
+scaled). The 10,000-year reruns (speciation, extinction, cycles at the new numbers) are in PROGRESS.
+**Invalidation.** If rare kinds (seals, aurochs, bears) die out in most worlds within centuries, widen their niches; if new
+kinds flood the cap within a few thousand years, lower the drift rate.

@@ -35,6 +35,17 @@ other; "village", "town" and "city" are names for what exists, never states that
 camp, hamlet, village, town, city - by population, buildings and functions present; "market town" if a
 regular fair; "fortified" if defences stand.
 
+## 5b. Storage, rationing and remembered famine (implemented, D2-042)
+- Rationing to the next harvest (no lower than 45 %), and by prudence a reserve beyond it (6 days, + 30 x memory), rations no
+  lower than 0.8 for prudence alone. **Memory** of famine is the share of today's adults who were eight or older when the last
+  famine struck: it fades as they die, with no timer. A remembering village also sows more (fields x (1 + 0.5 memory), as far
+  as its land allows).
+- History: `Rationing` (a ration below 0.85; caused by the failed harvest of the last 1.5 years, else Nature), `WildFood`
+  (the first need-driven trip of an episode, in response to the rationing or the hunger), `Famine` (the first hunger death in a
+  year; the hunger deaths of that year are caused by it).
+- Measured (seed 42, 300 coarse years): villages grow past their fields on the wild's food until the game within reach is
+  gone, then live in recurring famine with nowhere to go - migration and founding are the next slice.
+
 ## 6. Phase
 F3 (layout, construction, economy basics), F5 (exchange, migration, founding). F0: settlements as a few
 place nodes with granary and woodstore, fields by season, and trips between neighbours.

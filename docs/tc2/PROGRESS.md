@@ -25,9 +25,15 @@
   - Evidence: a 300-year coarse run of seed 42 now grows 145 -> 5,597 people (session 1: 1,428 by 200, then 388 with 4 villages
     lost); all six villages live; villages of ~900-1,300 on land for ~300 deplete the game within reach by ~95 % (hunting
     0.7 -> 0.1 FU/h) and sit in recurring famine (4,267 hunger deaths, 43 famines from year 216) - nowhere to go yet.
-  - **Calibration problem found (next decision, D2-043)**: wild animals are ~10x real densities (deer ~1.2/ha, boar ~1.2/ha,
-    game ~200-285 kg/ha against 5-30 for real temperate ungulates; wolves ~3/km2 against 0.01-0.1) and the woods give people
-    more food per hectare than fields - so only villages of ~1,000 can deplete them.
+  - **D2-043 (relief and ice)**: relief experiments (`tc2/out/relief/`, planet-only 3,000 years, `planet --budget`): erosion scaled
+    to the fast plates (K 5.5e-3, slopes creep and wash toward their rivers Kh 2e-4/yr, failure past gradient 2.5, mouths keep
+    15 %, the rest to the deep), floating thickened crust (0.15), fewer welds (0.1), **ice flowing 9x faster** (thin sheets) -
+    seed 42: continental mean 86 -> 78 m in 3,000 years (was 98 -> 157), sea 0 to -18 m with glacial cycles on the tilt (was a
+    permanent ice age at -60..-100 m): the +-40 m law stands; ages of ice named against a 1,500-year running mean.
+  - **D2-044 (densities, drift)**: `Ecology.Density` 0.15 (game ~30-45 kg/ha, deer/boar ~15-20 a km2), lineage drift 0.02.
+    Hard hunting now leaves 18 % of a control's game; eight years later 98 %.
+  - Save sim version 11. 83 tests. **Running: 10,000-year reruns on the corrected laws** (`tc2/out/f1/run_42j.*`, `run_7j.*`,
+    full systems; ~20 min each) - verdicts for F1/F2 next.
 
 - **F1 nearly done (verdict from the 10,000-year runs below), F2 nearly done (ecology, evolution, the sea's life), look-dev
   v1-v7 (Arjun: "a really beautiful miniature world, high detail, high performance"). Session 1 (5 Oct 2026), continuing.**

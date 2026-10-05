@@ -97,7 +97,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 10; // 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
+        public const int FormatSimVersion = 11; // 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
@@ -328,13 +328,16 @@ namespace TC2.Core.Simulation
             var P = Planet;
             if (DMath.Abs(P.SeaLevelNow - P.SeaLevel) >= 1.0) CoastMoved();
             double mean = P.IceVolume / DMath.Max(1.0, LandM2());
-            double rel = P.IceVolume / DMath.Max(1e6, P.IceRef);  // against the ice the world was born with
-            if (P.Glacial == 0 && rel > 1.6)
+            // the planet's normal ice: a running mean of the last ~1,500 years, from the ice it was born with (D2-043) - ages of
+            // ice are advances beyond what the world has lately known, not beyond one moment of its orbit
+            P.IceRef += (P.IceVolume - P.IceRef) * Climate.StepYears / 1500.0;
+            double rel = P.IceVolume / DMath.Max(1e6, P.IceRef);
+            if (P.Glacial == 0 && rel > 1.35)
             {
                 P.Glacial = 1;
                 Record(new HistoryEvent { Kind = HistoryKind.IceAge, Time = Now, Cell = -1, RootKind = RootKind.Nature, Magnitude = (float)mean });
             }
-            else if (P.Glacial == 1 && rel < 1.2)
+            else if (P.Glacial == 1 && rel < 1.1)
             {
                 P.Glacial = 0;
                 Record(new HistoryEvent { Kind = HistoryKind.IceAgeEnded, Time = Now, Cell = -1, RootKind = RootKind.Nature, Magnitude = (float)mean });
@@ -357,16 +360,34 @@ namespace TC2.Core.Simulation
             if (P.Plates.Length == 0) return;
             RideSettlements(Tectonics.StepYears); // with the motion the crust has during this step
             Volcanism.Ride(this, Tectonics.StepYears);
+            var bud = ReliefBudget;   // tools only: the change of the continents' summed elevation by process (null in the game)
+            double b0 = bud != null ? ContinentSum(P) : 0;
             Tect.Step(P, Tectonics.StepYears, Seed, Now);
+            double b1 = bud != null ? ContinentSum(P) : 0;
             Volcanism.Step(this, Tectonics.StepYears, Tect.ArcSupply);
+            double b2 = bud != null ? ContinentSum(P) : 0;
             TC2.Core.Planet.Quakes.Step(this, Tectonics.StepYears, Tect.Slip);
+            double b3 = bud != null ? ContinentSum(P) : 0;
             // rivers cut and carry on the tree of the moved relief (D2-031); the tree is rebuilt again for what they changed
             Drainage.Rebuild(P);
             Erosion.Step(this, Tectonics.StepYears);
+            double b4 = bud != null ? ContinentSum(P) : 0;
             Coast.Step(this, Tectonics.StepYears); // waves wear headlands, drift fills inlets (D2-034)
+            if (bud != null) { double b5 = ContinentSum(P); bud[0] += b1 - b0; bud[1] += b2 - b1; bud[2] += b3 - b2; bud[3] += b4 - b3; bud[4] += b5 - b4; }
             Evolution.Speciate(this);              // isolated, diverged populations become species (D2-037)
             LandChanged(P.SeaLevel, false);
             P.ReliefVersion++;
+        }
+
+        /// <summary>Tools only (relief experiments): summed elevation change of continental crust by process - plates, volcanoes,
+        /// quakes, erosion, coasts - accumulated over tectonic steps. Null in the game and the tests.</summary>
+        public static double[] ReliefBudget;
+
+        static double ContinentSum(PlanetState P)
+        {
+            double s = 0;
+            for (int c = 0; c < P.Cells; c++) if (P.Crust[c] == 1) s += P.Elev[c];
+            return s;
         }
 
         void RideSettlements(double dt)

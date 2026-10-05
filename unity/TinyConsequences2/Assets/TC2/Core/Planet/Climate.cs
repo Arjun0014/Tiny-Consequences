@@ -20,8 +20,11 @@ namespace TC2.Core.Planet
         // ice: a fast world law (sheets answer the orbit within centuries, not tens of millennia)
         public const double IceAccumulation = 2.6;        // x precipitation x the cold part of the year (m ice/yr)
         public const double IceMelt = 3.4;                // m ice per degC of mean positive temperature a year
-        public const double IceFlowMax = 90000;           // m2/yr: shallow-ice diffusivity cap
-        const double IceSubstep = 0.1;                    // years (stability: dt K / h^2 < 0.25)
+        // ice sheets on a small world are thin (a plastic sheet ~3.4 sqrt(half-width) m: 150-250 m for these 5-30 km sheets):
+        // they spread and drain nine times faster than D2-024's (D2-043), so deep glacials lower the sea by tens of metres, not 100
+        public const double IceFlowMax = 810000;          // m2/yr: shallow-ice diffusivity cap
+        public const double IceFlowPerM = 540.0;          // m2/yr of diffusivity per m of ice
+        const double IceSubstep = 0.1;                    // years at most (stability: dt K / h^2 < 0.25, by the thickest ice)
         public const double CLand = 0.25, COcean = 10.0;  // heat capacity (W yr m-2 K-1): ~0.1 y on land, ~5 y at sea
         public const double StepYears = 0.25;             // one step a season
         public const double Outgassing = 0.5;             // ppm/yr at rest (balanced by weathering at 280 ppm: ~1,100-year memory)
@@ -271,7 +274,12 @@ namespace TC2.Core.Planet
                 P.Ice[c] = (float)(h > 0 ? h : 0);
                 if (P.Ice[c] > 1f) _iced[_icedN++] = c;
             }
-            int sub = 1 + (int)DMath.Floor(dt / IceSubstep - 1e-9);
+            // sub-steps short enough for the fastest flow there is (explicit diffusion: dt k / L^2 < 0.24)
+            double hmax = 0;
+            for (int i = 0; i < _icedN; i++) if (P.Ice[_iced[i]] > hmax) hmax = P.Ice[_iced[i]];
+            double kmax = DMath.Min(IceFlowPerM * hmax, IceFlowMax);
+            double stable = kmax > 0 ? 0.24 * P.CellSize * P.CellSize / kmax : IceSubstep;
+            int sub = 1 + (int)DMath.Floor(dt / DMath.Min(IceSubstep, stable) - 1e-9);
             double h0 = dt / sub;
             for (int k = 0; k < sub; k++) Flow(P, h0);
             double vol = 0;
@@ -296,7 +304,7 @@ namespace TC2.Core.Planet
                 double h = P.Ice[c];
                 if (h <= 1.0) continue;
                 double s = P.Elev[c] + h;
-                double k = DMath.Min(60.0 * h, IceFlowMax);
+                double k = DMath.Min(IceFlowPerM * h, IceFlowMax);
                 for (int q = 0; q < 4; q++)
                 {
                     int n = g.Nbr4[c * 4 + q];

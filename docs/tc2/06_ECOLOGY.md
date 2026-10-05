@@ -58,5 +58,13 @@ F2. The F0 proof of concept keeps vegetation simple (fuel and biome) and has no 
 - **Evidence tools**: `planet --eco --ecodiag` (deaths by cause, births), `--ecocsv` (series), `--steep`.
 - Predator-prey quasi-cycles measured (seed 42, 400 years): hares 44k-92k on a ~4-year quasi-period with foxes 2-3 years
   behind (r 0.41), wolves 2 years behind deer (r 0.81).
-Not yet: age classes, herds as agents near people and hunting by people (with F3), livestock, fishing, the isolation
-event named as a speciation's cause, visible shoals and seals in the view.
+- **People take from the same fields** (D2-042): hunting removes whole animals of the game kinds (land kinds that do not hunt,
+  2 kg and up), fishing removes the cold-blooded sea kinds, gathering takes mast the boar and bears then lack (`P.Gathered`,
+  settled at each ecology step). Hard hunting thins the game within reach against a control world, and it comes back when
+  the hunting stops (test).
+- Visible shoals and seals in the view (D2-040).
+- **Real densities (D2-044)**: `Ecology.Density` 0.15 - wild animals use ~15 % of the plants' growth (every food scaled;
+  half-satiation, territories, first numbers and the population threshold of speciation with it), so deer and boar stand at
+  ~15-20 a km2 instead of ~120. Lineage drift 0.02 per sqrt-year: isolated populations part in ~1,500-2,500 years (at 0.003
+  neither 10,000-year rerun formed a kind).
+Not yet: age classes, herds as agents near people, livestock, the isolation event named as a speciation's cause.

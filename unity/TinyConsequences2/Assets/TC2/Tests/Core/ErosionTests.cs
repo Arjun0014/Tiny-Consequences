@@ -35,8 +35,10 @@ namespace TC2.Tests.Core
                 else if (P.RiverFlow[c] < Erosion.MinFlow) { dropSlope += drop; ns++; }
             }
             Assert.Greater(nr, 10, "the world has rivers");
+            System.Console.WriteLine("mean drop in 1,000 years: river cells " + (dropRiver / nr).ToString("0.0") + " m, hillslopes " + (dropSlope / ns).ToString("0.0") + " m");
             Assert.Greater(dropRiver / nr, 2.0, "river cells cut down metres in a thousand years");
-            Assert.Less(System.Math.Abs(dropSlope / ns), 0.5, "hillslopes away from rivers are left to the hillslope processes");
+            // (D2-043) every slope also creeps and washes toward the way the water goes: the land wears as the plates raise it
+            Assert.Greater(dropSlope / ns, 0.5, "hillslopes wear down toward their rivers");
             Assert.Greater(eroded, 0);
             Assert.AreEqual(eroded, settled + deep, eroded * 1e-6, "every cubic metre cut settles somewhere or reaches the deep");
             // the sea at river mouths shallows: deltas grow

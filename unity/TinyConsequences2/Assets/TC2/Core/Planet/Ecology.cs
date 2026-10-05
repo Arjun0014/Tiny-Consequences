@@ -77,7 +77,14 @@ namespace TC2.Core.Planet
         public const double RiverRich = 20000.0; // m3/day of river at which a mouth's waters are as rich as they get
         public const int MaxK = 24;              // species arrays are sized for this many (Evolution.MaxSpecies <= MaxK)
         public const double BrowseRenew = 1.0;   // browse is the woods' shoots and leaves: this many times BrowseMax a year
-        public const double HalfPrey = 120.0;    // kg of reachable prey in a cell at which a hunter eats half its fill
+        public const double HalfPrey = 120.0 * Density;   // kg of reachable prey in a cell at which a hunter eats half its fill
+        /// <summary>
+        /// The share of the plants' growth that wild animals can use as food (D2-044): most of what grows is out of reach, too
+        /// poor to digest or lost to the lean season. At 0.15 deer and boar stand at ~15-20 a km2 and game at ~30-45 kg/ha (real
+        /// temperate ranges 5-30 kg/ha); at 1 (D2-035-D2-041) they stood ten times thicker than any real land carries.
+        /// Hunting's half-satiation, territories and the first numbers scale with it, so the food web keeps its shape.
+        /// </summary>
+        public const double Density = 0.15;
 
         struct Template
         {
@@ -124,6 +131,8 @@ namespace TC2.Core.Planet
         /// </summary>
         public static double[] Diag;
         public static readonly List<double[]> DiagSpin = new List<double[]>();   // tools: each species' animals after each spin-up step
+        /// <summary>Tools only (relief and climate experiments): skip the animals' steps. Never set in the game or the tests.</summary>
+        public static bool SkipForTools;
 
         /// <summary>Worldgen: this world's species (the templates, varied by the seed), spread over the land and settled.</summary>
         public static void Create(Simulation.World w)
@@ -144,7 +153,7 @@ namespace TC2.Core.Planet
                     Mast = t.Mast, Small = t.Small, Crag = t.Crag, Plankton = t.Plankton, Habitat = t.Habitat,
                     HeatTol = t.Habitat == 1 ? (float)(t.Heat + 2.0 * (rs.NextUnit() - 0.5)) : 34f, Offshore = t.Offshore, Metab = t.Metab > 0 ? t.Metab : 9f,
                     Range = t.Range > 0 ? t.Range : 1f,
-                    Prey = t.Prey, Disperse = t.Disperse, Territory = t.Territory, Born = 0,
+                    Prey = t.Prey, Disperse = t.Disperse, Territory = (float)(t.Territory * Density), Born = 0,
                 });
                 w.History.Register(new EntityRef(EntityKind.Species, id), t.Name, 0);
             }
@@ -161,7 +170,7 @@ namespace TC2.Core.Planet
                     if (suit <= 0) continue;
                     // (hunters start few - on land their prey would not bear more; the sea's shoals bear more of theirs)
                     double share = P.Species[s].Role != Role.Predator ? 2.0 : P.Species[s].Habitat == 1 ? 1.5 : 0.3;
-                    double start = suit * share * DMath.Exp(-0.25 * DMath.Log(P.Species[s].Mass / 50.0));
+                    double start = suit * share * DMath.Exp(-0.25 * DMath.Log(P.Species[s].Mass / 50.0)) * Density;
                     if (P.Species[s].Territory > 0) start = DMath.Min(start, 0.5 * P.Species[s].Territory);   // hunters start within their ranges
                     P.Abund[s * P.Cells + c] = (float)start;
                     P.Cond[s * P.Cells + c] = 0.7f;
@@ -419,19 +428,19 @@ namespace TC2.Core.Planet
                     // winter is lean: in the cold the grass stops, the shoots are bare and the voles hide; mast lasts longer
                     warm = DMath.SmoothStep(-2.0, 8.0, P.Temp[c]);
                     double lean = 0.2 + 0.8 * warm;
-                    food[0] = DMath.Max(0.0, P.Grass[c] - GrassFloor) * GrassMax * ha * EatShare * lean;
-                    food[1] = P.Forest[c] * BrowseMax * ha * BrowseRenew * dt * lean;
-                    food[2] = P.Forest[c] * MastMax * ha * dt * (0.5 + 0.5 * warm);
+                    food[0] = DMath.Max(0.0, P.Grass[c] - GrassFloor) * GrassMax * ha * EatShare * lean * Density;
+                    food[1] = P.Forest[c] * BrowseMax * ha * BrowseRenew * dt * lean * Density;
+                    food[2] = P.Forest[c] * MastMax * ha * dt * (0.5 + 0.5 * warm) * Density;
                     // what people gathered here since the animals last ate is gone from their mast (D2-042)
                     if (P.Gathered[c] > 0f) { food[2] = DMath.Max(0.0, food[2] - P.Gathered[c]); P.Gathered[c] = 0f; }
-                    food[3] = P.Grass[c] * SmallMax * ha * dt * lean;
-                    food[4] = DMath.SmoothStep(0.3, 0.8, steep[c]) * (1.0 - P.Forest[c]) * CragMax * ha * dt * lean;   // crags: ~5-10 % of land
+                    food[3] = P.Grass[c] * SmallMax * ha * dt * lean * Density;
+                    food[4] = DMath.SmoothStep(0.3, 0.8, steep[c]) * (1.0 - P.Forest[c]) * CragMax * ha * dt * lean * Density;   // crags: ~5-10 % of land
                     food[5] = 0;
                 }
                 else
                 {
                     food[0] = food[1] = food[2] = food[3] = food[4] = 0;
-                    food[5] = plank[c] * PlanktonMax * ha * dt;   // the sea: its plankton
+                    food[5] = plank[c] * PlanktonMax * ha * dt * Density;   // the sea: its plankton
                 }
                 sum[0] = sum[1] = sum[2] = sum[3] = sum[4] = sum[5] = 0;
                 // 1. plants: each eats its preferred mix; what one food lacks it makes up from what is left of the others

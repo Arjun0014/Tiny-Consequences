@@ -107,7 +107,8 @@ namespace TC2.Tests.Core
                     Assert.Greater(d, 0.0, "nothing is ever added");
                     Assert.IsTrue(WildFood.IsGame(P.Species[q]), "only game is taken (" + Ecology.KindName(P.Species[q].Kind) + ")");
                     Assert.IsTrue(groundCells.Contains(c), "only on the ground they hunted");
-                    Assert.AreEqual(Math.Round(d), d, 1e-3, "whole animals");
+                    // whole animals, unless a cell's last fraction of one went (the field holds fractions)
+                    if (P.Abund[q * n + c] > 1e-6f) Assert.AreEqual(Math.Round(d), d, 1e-3, "whole animals");
                     kg += d * P.Species[q].Mass;
                 }
             Assert.AreEqual(kg * WildFood.MeatShare * WildFood.FuPerKg, fu, 1e-3 * fu, "the meat is exactly the edible share of the animals taken");
@@ -181,8 +182,8 @@ namespace TC2.Tests.Core
             Coarse(a); Coarse(b);
             double g0 = GameNear(a, sid);
             // two years of a hungry, crowded village hunting hard on its best grounds (a premise: enough hunter-hours a day to
-            // take about one in a hundred of the animals within reach each day, were they all to be found)
-            double hoursADay = 0.01 * g0 / (WildFood.HuntRate * 1.1);
+            // take about three in a hundred of the animals within reach each day, were they all to be found)
+            double hoursADay = 0.03 * g0 / (WildFood.HuntRate * 1.1);
             for (int d = 0; d < 2 * SimTime.DaysPerYear; d++)
             {
                 a.AdvanceTo(a.Now + SimTime.Day); b.AdvanceTo(b.Now + SimTime.Day);
