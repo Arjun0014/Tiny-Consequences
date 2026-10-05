@@ -46,7 +46,7 @@ Shader "TC2/Atmosphere"
                 half sun = dot(up, l.direction);
                 half day = saturate(sun * 2.0h + 0.35h);
                 half terminator = saturate(1.0h - abs(sun) * 4.0h);
-                half3 c = (_Color.rgb * day + _Sunset.rgb * terminator * 0.6h) * rim * _Strength;
+                half3 c = (_Color.rgb * (0.08h + day) + _Sunset.rgb * terminator * 0.25h * day) * rim * _Strength;
                 return half4(c, 1);
             }
             ENDHLSL

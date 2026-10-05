@@ -210,3 +210,35 @@ RyuJIT (headless) and the Unity 6.6 editor's Mono. The Web build (IL2CPP -> wasm
 **Context.** UI Toolkit at runtime needs a theme style sheet and font assets created in the editor; the F0 HUD
 is a debug instrument. **Decision.** IMGUI (`OnGUI`) for F0 (works on every platform with zero assets); the
 player-facing UI (news, inspector, History Book) moves to UI Toolkit in F7 with assets made by an editor script.
+
+## D2-019 — 2026-10-05 — A WebGPU device probe before Unity starts; WebGL2 when it fails
+
+**Context.** In Playwright's Chromium, `navigator.gpu` exists but device creation fails (Dawn cannot load
+`dxil.dll`); Unity 6.6 then initialised its WebGPU path with no device and crashed ("reading 'limits'") instead
+of falling back to WebGL2. Real players can have the same (old drivers, blocklists, missing compilers).
+**Decision.** A project web template (`Assets/WebGLTemplates/TC2`) requests an adapter *and a device* before
+loading Unity; on any failure it hides `navigator.gpu`, so Unity takes the next API in the list (WebGL2).
+`?gfx=webgl2` forces the fallback. The probe's verdict is in `window.__TC2_GFX`.
+**Evidence.** System Chrome: WebGPU, 5.4 s to a running world, no console errors; Playwright Chromium crashed
+before the probe existed.
+
+## D2-020 — 2026-10-05 — Materials are assets (so their shader variants ship)
+
+**Context.** Instanced objects drew nothing in the Web build: materials created at runtime meant the build kept
+no `INSTANCING_ON` variant ("strip unused" instancing variants is Unity's default).
+**Decision.** `ProjectSetup` creates `Assets/TC2/Game/Resources/TC2Materials/*.mat` (Instanced with GPU
+instancing on); views load copies (`Materials.Load`). Any new shader feature used at runtime gets a material
+asset with that keyword/feature enabled.
+
+## D2-021 — 2026-10-05 — COARSE resolution implemented (deep-time catch-up)
+
+**Decision.** `World.Resolution` (Activity | Coarse) changes only by a logged command at its time. Entering
+COARSE ends every activity (people at home, no step events); the settlement's day then gives each able person
+the day's work by the decision generators' priorities and rates and three rationed meals; brides relocate at
+once; perception does not run; planet periods coarsen (climate daily, vegetation every 12 days). Leaving COARSE
+gives everyone a fresh decision within the hour.
+**Evidence.** Tests: enter/leave keeps the audit and determinism; save/load in COARSE continues identically;
+people eat and harvest. 100-year runs, 2 seeds: ~3x faster in total (34-36 vs 12 world years/s headless; agent
+events 66K vs 15M per century: the planet systems now dominate); population 531/512 vs 567/674, marriages and
+births within ~20 %. COARSE showed more hunger deaths (foraging was capped at 3 h a day; ACTIVITY foragers go out
+several times) - foraging aligned; to re-measure. Famine responses (relief, migration) are F5 for both.

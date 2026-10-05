@@ -26,9 +26,9 @@ namespace TC2.Game
 
         void Start()
         {
-            _terrain = new Material(Resources.Load<Shader>("TC2Shaders/Terrain"));
-            _water = new Material(Resources.Load<Shader>("TC2Shaders/Water"));
-            _atmo = new Material(Resources.Load<Shader>("TC2Shaders/Atmosphere"));
+            _terrain = Materials.Load("Terrain");
+            _water = Materials.Load("Water");
+            _atmo = Materials.Load("Atmosphere");
         }
 
         void Update()
@@ -130,22 +130,17 @@ namespace TC2.Game
                     for (int i = 0; i <= _res; i++)
                     {
                         int k = j * (_res + 1) + i;
-                        // the sim cell under this vertex (nearest cell centre on this face)
-                        int ci = Mathf.Clamp(i / Detail, 0, n - 1), cj = Mathf.Clamp(j / Detail, 0, n - 1);
-                        int c = f * n * n + cj * n + ci;
-                        Color col = PlanetGeo.BiomeColor((Biome)P.Biome[c]);
+                        // bilinear blend of the four cell centres around this vertex (no blocky cells)
+                        double u = (i / (double)Detail) - 0.5, v = (j / (double)Detail) - 0.5;
+                        int i0 = (int)System.Math.Floor(u), j0 = (int)System.Math.Floor(v);
+                        float fu = (float)(u - i0), fv = (float)(v - j0);
+                        if (i0 < 0) { i0 = 0; fu = 0; } else if (i0 >= n - 1) { i0 = n - 2; fu = 1; }
+                        if (j0 < 0) { j0 = 0; fv = 0; } else if (j0 >= n - 1) { j0 = n - 2; fv = 1; }
+                        int c00 = f * n * n + j0 * n + i0;
+                        Color col = Color.Lerp(Color.Lerp(CellColor(w, c00), CellColor(w, c00 + 1), fu), Color.Lerp(CellColor(w, c00 + n), CellColor(w, c00 + n + 1), fu), fv);
+                        int c = (fu < 0.5f ? 0 : 1) + (fv < 0.5f ? 0 : n) + c00;
                         if (P.IsLand(c))
                         {
-                            // vegetation texture: blend greens by forest density, scorch by fire scars
-                            float forest = P.Forest[c], grass = P.Grass[c];
-                            col = Color.Lerp(col, new Color(0.15f, 0.34f, 0.14f), Mathf.Clamp01(forest - 0.3f) * 0.5f);
-                            col = Color.Lerp(col, new Color(0.62f, 0.56f, 0.40f), Mathf.Clamp01(0.25f - grass - forest) * 2f);
-                            if (fire.Intensity[c] > 0) col = Color.Lerp(col, new Color(1f, 0.35f, 0.05f), 0.4f + 0.6f * fire.Intensity[c]);
-                            else if (fire.BurnedAt[c] != 0 && w.Now - fire.BurnedAt[c] < 2 * SimTime.Year)
-                            {
-                                float age = (float)((w.Now - fire.BurnedAt[c]) / (double)(2 * SimTime.Year));
-                                col = Color.Lerp(new Color(0.16f, 0.13f, 0.11f), col, age);
-                            }
                             // a little variation so cells do not read as tiles
                             float jitter = ((KeyedRng.Hash(7, RngStream.None, (ulong)(f * 1000003 + k)) & 255) / 255f - 0.5f) * 0.05f;
                             col = new Color(col.r + jitter, col.g + jitter, col.b + jitter * 0.5f);
@@ -154,6 +149,26 @@ namespace TC2.Game
                     }
                 _faces[f].colors = cols;
             }
+        }
+
+        /// <summary>A cell's colour: biome, vegetation density, fire and scars, fields (sRGB).</summary>
+        static Color CellColor(TC2.Core.Simulation.World w, int c)
+        {
+            var P = w.Planet;
+            var fire = w.Fire;
+            Color col = PlanetGeo.BiomeColor((Biome)P.Biome[c]);
+            if (!P.IsLand(c)) return col;
+            float forest = P.Forest[c], grass = P.Grass[c];
+            col = Color.Lerp(col, new Color(0.16f, 0.40f, 0.15f), Mathf.Clamp01(forest - 0.3f) * 0.5f);
+            col = Color.Lerp(col, new Color(0.70f, 0.62f, 0.42f), Mathf.Clamp01(0.25f - grass - forest) * 2f);
+            if (P.FieldOwner[c] != 0) col = Color.Lerp(col, new Color(0.78f, 0.70f, 0.40f), 0.45f);
+            if (fire.Intensity[c] > 0) col = Color.Lerp(col, new Color(1f, 0.35f, 0.05f), 0.4f + 0.6f * fire.Intensity[c]);
+            else if (fire.BurnedAt[c] != 0 && w.Now - fire.BurnedAt[c] < 2 * SimTime.Year)
+            {
+                float age = (float)((w.Now - fire.BurnedAt[c]) / (double)(2 * SimTime.Year));
+                col = Color.Lerp(new Color(0.16f, 0.13f, 0.11f), col, age);
+            }
+            return col;
         }
     }
 }

@@ -94,7 +94,8 @@ namespace TC2.Core.Agents
             w.Members(household).InsertSorted(id);
             w.History.Register(EntityRef.Person(id), Worldgen.Names.Person(seed, id, sex == Sex.Female) + " " + w.FamilyName(household), born);
             ref var pr = ref w.People.Get(id);
-            Schedule(in pr);
+            if (w.Resolution == Simulation.Resolution.Activity) Schedule(in pr);
+            else { pr.Step = StepKind.None; pr.T1 = w.Now; }
             w.Settlements.Get(home).Population++;
             return id;
         }
@@ -427,7 +428,7 @@ namespace TC2.Core.Agents
             return p.At != 0 && w.Settlements.Get(p.At).Granary > 0.01;
         }
 
-        void EatNow(ref Person p)
+        internal void EatNow(ref Person p)
         {
             var w = _w;
             double need = Portion(p);
@@ -608,6 +609,87 @@ namespace TC2.Core.Agents
                     }
             }
             BeginLocal(ref p, ActivityKind.Idle, WhyCode.Leisure, 0, homeX + rs.Range(-6, 6), homeY + rs.Range(-6, 6), SimTime.Hours(1.5 + 1.5 * rs.NextUnit()));
+        }
+
+        // ---------------------------------------------------------------- COARSE resolution (04 §4.3)
+        /// <summary>Everyone stops what they are doing and is at home; nobody has a step event in COARSE.</summary>
+        public void EnterCoarse()
+        {
+            var w = _w;
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+            {
+                ref var p = ref w.People.Get(id);
+                if (!p.Alive) continue;
+                if (p.Step == StepKind.Local || p.Step == StepKind.Stay) CutStep(ref p);
+                if (p.At != 0 && p.At != p.Home) w.Visitors(p.At).Remove(p.Id);
+                p.At = p.Home;
+                p.Act = ActivityKind.Idle; p.Step = StepKind.None; p.Why = WhyCode.None; p.Dest = 0;
+                p.ActVer++; // cancels the pending step
+                if (w.Households.Exists(p.Household)) { ref var hh = ref w.Households.Get(p.Household); p.FromX = hh.HomeX; p.FromY = hh.HomeY; p.ToX = hh.HomeX; p.ToY = hh.HomeY; }
+                p.T0 = w.Now; p.TA = w.Now; p.T1 = w.Now;
+            }
+        }
+
+        /// <summary>Back to ACTIVITY: everyone decides afresh within the hour (positions come from those decisions).</summary>
+        public void LeaveCoarse()
+        {
+            var w = _w;
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+            {
+                ref var p = ref w.People.Get(id);
+                if (!p.Alive) continue;
+                long first = w.Now + 1 + (long)(KeyedRng.Unit(w.Seed, RngStream.Decide, (ulong)id, (ulong)w.Now, 77) * SimTime.Hour);
+                p.Step = StepKind.Local; p.Act = ActivityKind.Idle; p.T0 = w.Now; p.TA = w.Now; p.T1 = first;
+                p.ActVer++;
+                Schedule(in p);
+            }
+        }
+
+        /// <summary>
+        /// A settlement's people for one day in COARSE: the same work priorities and rates as the decision generators
+        /// (crop stage needs, then wood, foraging when stores are empty), and three rationed meals per person.
+        /// </summary>
+        public void CoarseDay(int sid)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(sid);
+            var res = w.Residents(sid);
+            long now = w.Now;
+            double cropNeed = Math.Max(0, s.CropWorkNeed - s.CropWork);
+            double woodTarget = 6.0 * Math.Max(1, s.Population);
+            bool noFood = s.Granary < 1.0;
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var p = ref w.People.Get(res[i]);
+                if (!p.Alive) continue;
+                double age = p.AgeYears(now);
+                // meals: three portions from the larder, then the granary
+                for (int m = 0; m < 3; m++) EatNow(ref p);
+                if (age < 16 || p.Health < 0.3) continue;
+                double hours = 7.5 * (0.6 + 0.4 * p.Diligence / 255.0) * (age > 60 ? 0.5 : 1.0) * (0.5 + 0.5 * p.Health);
+                if (cropNeed > 0)
+                {
+                    double rate = (0.6 + p.SkFarm) * (0.5 + 0.5 * p.Health);
+                    double h = Math.Min(hours, cropNeed / rate);
+                    s.CropWork += h * rate; cropNeed -= h * rate; hours -= h;
+                    p.SkFarm = (float)DMath.Min(1.0, p.SkFarm + 0.0015 * h);
+                }
+                if (hours > 0 && noFood)
+                {
+                    var P = w.Planet;
+                    double wild = 0.5 * P.Grass[s.Cell] + 0.8 * P.Forest[s.Cell];
+                    double fh = Math.Min(hours, 7.0);
+                    double found = fh * 0.28 * DMath.Clamp01(wild) * (0.6 + 0.4 * p.Health);
+                    if (w.Households.Exists(p.Household)) w.Households.Get(p.Household).Larder += found;
+                    hours -= fh;
+                }
+                if (hours > 0 && s.Woodstore < woodTarget)
+                {
+                    double h = hours * 0.4;
+                    s.Woodstore += h * (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health);
+                    p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * h);
+                }
+            }
         }
 
         // ---------------------------------------------------------------- premises (tests, tools)

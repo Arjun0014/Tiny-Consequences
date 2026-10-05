@@ -5,6 +5,7 @@ using TC2.Core.Foundation;
 using TC2.Core.History;
 using TC2.Core.Scheduling;
 using TC2.Core.Simulation;
+using Resolution = TC2.Core.Simulation.Resolution;
 
 namespace TC2.Core.Places
 {
@@ -42,6 +43,7 @@ namespace TC2.Core.Places
             if (s.Anchor.Y < 0) doy = (doy + 24) % SimTime.DaysPerYear; // southern seasons
             Crops(ref s, doy);
             Food(ref s, doy);
+            if (w.Resolution == Resolution.Coarse) w.Agents.CoarseDay(sid);
             Demography(sid);
             ref var s2 = ref w.Settlements.Get(sid);
             if (s2.Population <= 0 && s2.Abandoned == 0)
@@ -385,7 +387,8 @@ namespace TC2.Core.Places
                 woman.Home = sid;
                 w.Residents(sid).InsertSorted(womanId);
                 w.Settlements.Get(sid).Population++;
-                if (woman.At != 0 && woman.At != sid) { w.Visitors(woman.At).InsertSorted(womanId); woman.Until = w.Now; }
+                if (w.Resolution == Resolution.Coarse) { if (woman.At != sid && woman.At != 0) w.Visitors(woman.At).Remove(womanId); woman.At = sid; }
+                else if (woman.At != 0 && woman.At != sid) { w.Visitors(woman.At).InsertSorted(womanId); woman.Until = w.Now; }
                 else if (woman.At == sid) w.Visitors(sid).Remove(womanId);
             }
             long mev = w.Record(new HistoryEvent { Kind = HistoryKind.Marriage, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Person(womanId), Object = EntityRef.Person(manId), RootKind = RootKind.People });

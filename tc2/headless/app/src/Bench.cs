@@ -58,6 +58,7 @@ namespace TC2.Headless
                 var sw = Stopwatch.StartNew();
                 var w = WorldGenerator.Create(cfg);
                 double gen = sw.Elapsed.TotalMilliseconds;
+                if (a.Has("coarse")) w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
                 long span = SimTime.Years(a.Double("years", 1));
                 sw.Restart();
                 long ev0 = w.Metrics.Events;
@@ -65,7 +66,7 @@ namespace TC2.Headless
                 double ms = sw.Elapsed.TotalMilliseconds;
                 double years = span / (double)SimTime.Year;
                 double personDays = w.LivingPeople() * span / (double)SimTime.Day;
-                Console.WriteLine("poc    " + w.InhabitedSettlements() + " places, " + w.LivingPeople() + " people: gen " + gen.ToString("0", CultureInfo.InvariantCulture) + " ms; " +
+                Console.WriteLine("poc    " + (a.Has("coarse") ? "COARSE " : "ACTIVITY ") + w.InhabitedSettlements() + " places, " + w.LivingPeople() + " people: gen " + gen.ToString("0", CultureInfo.InvariantCulture) + " ms; " +
                                   years.ToString("0.##", CultureInfo.InvariantCulture) + " y in " + ms.ToString("0", CultureInfo.InvariantCulture) + " ms = " +
                                   (years / (ms / 1000)).ToString("0.00", CultureInfo.InvariantCulture) + " y/s; " +
                                   ((w.Metrics.Events - ev0) / (ms / 1000)).ToString("0", CultureInfo.InvariantCulture) + " events/s; " +

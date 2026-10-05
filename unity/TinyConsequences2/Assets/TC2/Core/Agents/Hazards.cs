@@ -62,6 +62,7 @@ namespace TC2.Core.Agents
 
         public void FireAt(World w, int cell, int proc, long fireEvent)
         {
+            if (w.Resolution == Resolution.Coarse) return; // nobody is out and about: deep time has no perception step
             double range = w.Config.FirePerceptionRange;
             CellsWithin(w, cell, range, _cells);
             _hits.Clear();
@@ -99,6 +100,7 @@ namespace TC2.Core.Agents
         /// <summary>When a new travel leg begins, it may pass near fires already burning (the traveller will see them).</summary>
         public void CheckNewLeg(World w, int pid, List<(int cell, long tEnter)> legCells)
         {
+            if (w.Resolution == Resolution.Coarse) return;
             var fire = w.Fire;
             if (fire.Active.Count == 0) return;
             var P = w.Planet;

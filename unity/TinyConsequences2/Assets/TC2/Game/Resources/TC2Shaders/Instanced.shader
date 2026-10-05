@@ -58,7 +58,7 @@ Shader "TC2/Instanced"
                 half3 amb = lerp(_AmbientGround.rgb, _AmbientSky.rgb, hemi);
                 half day = saturate(dot(up, l.direction) * 3.0h + 0.25h);
                 half3 albedo = _BaseColor.rgb * i.color.rgb;
-                half3 c = albedo * (amb * (0.18h + 0.82h * day) + l.color * ndl * l.shadowAttenuation) + albedo * _Emission;
+                half3 c = albedo * (amb * (0.30h + 0.70h * day) + l.color * ndl * l.shadowAttenuation * 1.15h) + albedo * _Emission;
                 return half4(c, 1);
             }
             ENDHLSL

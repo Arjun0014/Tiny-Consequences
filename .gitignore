@@ -66,3 +66,5 @@ tc2/**/bin/
 tc2/**/obj/
 tc2/web-build/
 tc2/node_modules/
+# Burst writes its generated Web plugin next to the project during a Web build
+unity/TinyConsequences2/Data/

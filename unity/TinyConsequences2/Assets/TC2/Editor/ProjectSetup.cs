@@ -46,13 +46,39 @@ namespace TC2.EditorTools
             PlayerSettings.WebGL.dataCaching = true;
             PlayerSettings.WebGL.maximumMemorySize = 2048;
             PlayerSettings.WebGL.wasm2023 = true;
-            PlayerSettings.WebGL.template = "APPLICATION:Default";
+            PlayerSettings.WebGL.template = "PROJECT:TC2";
             PlayerSettings.defaultWebScreenWidth = 1280;
             PlayerSettings.defaultWebScreenHeight = 720;
 
+            EnsureMaterials();
             EnsureScene();
             AssetDatabase.SaveAssets();
             Debug.Log("[TC2] project configured: URP " + urp.name + ", scene " + ScenePath);
+        }
+
+        /// <summary>
+        /// Materials as assets under Resources: builds keep only the shader variants some material in the build
+        /// uses, so a material made at runtime with instancing would find its INSTANCING_ON variant stripped.
+        /// </summary>
+        static void EnsureMaterials()
+        {
+            const string dir = "Assets/TC2/Game/Resources/TC2Materials";
+            Directory.CreateDirectory(dir);
+            Make(dir + "/Terrain.mat", "TC2/Terrain", false);
+            Make(dir + "/Instanced.mat", "TC2/Instanced", true);
+            Make(dir + "/Water.mat", "TC2/Water", false);
+            Make(dir + "/Atmosphere.mat", "TC2/Atmosphere", false);
+        }
+
+        static void Make(string path, string shaderName, bool instancing)
+        {
+            var shader = Shader.Find(shaderName);
+            if (shader == null) { Debug.LogError("[TC2] shader not found: " + shaderName); return; }
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null) { mat = new Material(shader); AssetDatabase.CreateAsset(mat, path); }
+            mat.shader = shader;
+            mat.enableInstancing = instancing;
+            EditorUtility.SetDirty(mat);
         }
 
         static UniversalRenderPipelineAsset EnsureUrp()

@@ -30,12 +30,16 @@ report.reference = ref;
 
 const port = 8642;
 const server = await startServer({ port, quiet: true });
-const browser = await chromium.launch({ headless: true, args: flag('--no-gpu') ? SOFT : GPU });
+// WebGPU needs a browser with Dawn's shader compilers (installed Chrome); Playwright's Chromium lacks dxil.dll.
+const useChrome = !flag('--webgl2') && !flag('--no-gpu') && !flag('--chromium');
+const browser = await chromium.launch({ headless: true, channel: useChrome ? 'chrome' : undefined, args: flag('--no-gpu') ? SOFT : GPU });
+report.browser = useChrome ? 'chrome' : 'chromium';
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
 const page = await context.newPage();
 const consoleLines = [];
 page.on('console', (m) => consoleLines.push(`[${m.type()}] ${m.text()}`));
 page.on('pageerror', (e) => consoleLines.push(`[pageerror] ${e.message}`));
+page.on('response', (r) => { if (r.status() >= 400) consoleLines.push(`[http ${r.status()}] ${r.url()}`); });
 
 async function state() { return page.evaluate(() => window.__TC2 || null); }
 async function cmd(c) { await page.evaluate((x) => { (window.__TC2_CMDS = window.__TC2_CMDS || []).push(x); }, c); }
@@ -49,13 +53,17 @@ async function shot(name, settle = 1500) {
 }
 
 const base = `http://127.0.0.1:${port}/index.html`;
+const gfxParam = flag('--webgl2') ? '&gfx=webgl2' : '';
 const t0 = Date.now();
 try {
-  await page.goto(`${base}?fresh=1&seed=42&speed=3`);
-  await waitFor(() => window.__TC2 && window.__TC2.ready === true && window.__TC2.people > 0, null, 300000);
+  await page.goto(`${base}?fresh=1&seed=42&speed=3${gfxParam}`);
+  await waitFor(() => (window.__TC2 && window.__TC2.ready === true && window.__TC2.people > 0) || window.__TC2_FATAL, null, 300000);
+  if (await page.evaluate(() => window.__TC2_FATAL)) throw new Error('fatal: ' + await page.evaluate(() => window.__TC2_FATAL));
   const s0 = await state();
   report.loadSeconds = (Date.now() - t0) / 1000;
-  check('starts', true, `${report.loadSeconds.toFixed(1)} s, gfx ${s0.gfx}, ${s0.people} people in ${s0.places} places`);
+  const probe = await page.evaluate(() => window.__TC2_GFX || '');
+  check('starts', true, `${report.loadSeconds.toFixed(1)} s, gfx ${s0.gfx} (probe: ${probe}), ${s0.people} people in ${s0.places} places`);
+  report.gfxProbe = probe;
   report.gfx = s0.gfx;
 
   // determinism probe in the browser (IL2CPP -> wasm) vs headless (RyuJIT)
@@ -80,7 +88,7 @@ try {
   await cmd('save');
   await waitFor(() => window.__TC2 && window.__TC2.saveOk === true, null, 60000);
   const before = await state();
-  await page.goto(`${base}?speed=0`);
+  await page.goto(`${base}?speed=0${gfxParam}`);
   await waitFor(() => window.__TC2 && window.__TC2.ready === true && window.__TC2.people > 0, null, 300000);
   await page.waitForTimeout(1500);
   const after = await state();
@@ -92,7 +100,7 @@ try {
     await cmd('save');
     await page.waitForTimeout(1500);
     const tAway = Date.now();
-    await page.goto(`${base}?speed=0&absence=24h`);
+    await page.goto(`${base}?speed=0&absence=24h${gfxParam}`);
     await waitFor(() => window.__TC2 && window.__TC2.ready === true, null, 300000);
     let sawCatchUp = false;
     for (let i = 0; i < 1200; i++) {

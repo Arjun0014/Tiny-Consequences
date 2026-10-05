@@ -25,8 +25,11 @@ function run(extra, { quit = true } = {}) {
   console.log('unity ' + a.join(' '));
   const r = spawnSync(unity, a, { stdio: 'inherit' });
   const secs = ((Date.now() - t0) / 1000).toFixed(0);
-  console.log(`exit ${r.status} after ${secs} s; log ${log}`);
-  return r.status ?? 1;
+  let status = r.status ?? 1;
+  // Unity can exit 0 when scripts fail to compile (the method never ran): treat compiler errors as failure
+  if (existsSync(log) && /error CS\d+/.test(readFileSync(log, 'utf8'))) { console.log('compiler errors in the log'); status = status || 3; }
+  console.log(`exit ${status} after ${secs} s; log ${log}`);
+  return status;
 }
 
 function tail(file, pattern) {

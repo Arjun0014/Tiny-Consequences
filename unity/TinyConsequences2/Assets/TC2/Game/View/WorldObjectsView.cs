@@ -33,7 +33,8 @@ namespace TC2.Game
 
         void Start()
         {
-            _mat = new Material(Resources.Load<Shader>("TC2Shaders/Instanced")) { enableInstancing = true };
+            _mat = Materials.Load("Instanced");
+            _mat.enableInstancing = true;
             _people = new Instancer(ProcMeshes.Person(), _mat, true);
             _houses = new Instancer(ProcMeshes.House(), _mat, true);
             _granaries = new Instancer(ProcMeshes.Granary(), _mat, true);

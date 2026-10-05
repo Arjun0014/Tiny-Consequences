@@ -42,7 +42,10 @@ namespace TC2.Core.Simulation
         public static Budget Events(long n) => new Budget { MaxEvents = n };
     }
 
-    public enum CommandKind : byte { None = 0, GodLightning = 1, Note = 2 }
+    public enum CommandKind : byte { None = 0, GodLightning = 1, Note = 2, SetResolution = 3 }
+
+    /// <summary>How people are simulated (04 §4): every activity, or households by the day (deep time).</summary>
+    public enum Resolution : byte { Activity = 0, Coarse = 1 }
 
     /// <summary>Optional host-side profiler (wall clock lives in the host; never affects state).</summary>
     public interface ISimProfiler
@@ -75,6 +78,7 @@ namespace TC2.Core.Simulation
         public ulong Seed => Config.Seed;
         public long Now;
         public long Created;
+        public Resolution Resolution;   // authoritative; changed only by a logged command
         public readonly IdAllocator Ids = new IdAllocator();
         public readonly EventQueue Queue = new EventQueue();
         public readonly HistoryLedger History = new HistoryLedger();
@@ -226,6 +230,9 @@ namespace TC2.Core.Simulation
             Metrics.Commands++;
             switch (c.Kind)
             {
+                case CommandKind.SetResolution:
+                    SetResolutionNow((Resolution)c.Arg);
+                    break;
                 case CommandKind.GodLightning:
                     {
                         long ev = Record(new HistoryEvent { Kind = HistoryKind.GodCommand, Time = Now, Cell = c.Cell, Settlement = SettlementAtCell(c.Cell), RootKind = RootKind.You, ArgA = (int)c.Kind });
@@ -234,6 +241,17 @@ namespace TC2.Core.Simulation
                     }
             }
         }
+
+        void SetResolutionNow(Resolution r)
+        {
+            if (r == Resolution) return;
+            if (r == Resolution.Coarse) Agents.EnterCoarse();
+            Resolution = r;
+            if (r == Resolution.Activity) Agents.LeaveCoarse();
+        }
+
+        /// <summary>Queues a resolution change (a logged command: replays and saves agree).</summary>
+        public void RequestResolution(Resolution r, long at) => Issue(new Command { Time = at, Kind = CommandKind.SetResolution, Arg = (long)r });
 
         void Strike(int cell, long cause, RootKind root, double strength)
         {
@@ -306,11 +324,12 @@ namespace TC2.Core.Simulation
 
         public long PeriodOf(int system)
         {
+            bool coarse = Resolution == Resolution.Coarse;
             switch (system)
             {
-                case SystemId.Climate: return Config.ClimatePeriod;
+                case SystemId.Climate: return coarse ? SimTime.Day : Config.ClimatePeriod;
                 case SystemId.Weather: return Config.WeatherPeriod;
-                case SystemId.Vegetation: return Config.VegetationPeriod;
+                case SystemId.Vegetation: return coarse ? 3 * Config.VegetationPeriod : Config.VegetationPeriod;
                 default: return SimTime.Day;
             }
         }
@@ -393,7 +412,7 @@ namespace TC2.Core.Simulation
         public void WriteState(BinWriter w)
         {
             Config.Write(w);
-            w.Long(Now); w.Long(Created);
+            w.Long(Now); w.Long(Created); w.Byte((byte)Resolution);
             Ids.Write(w);
             Queue.Write(w);
             Planet.Write(w);
@@ -410,7 +429,7 @@ namespace TC2.Core.Simulation
         {
             var cfg = WorldConfig.Read(r);
             var w = new World(cfg);
-            w.Now = r.Long(); w.Created = r.Long();
+            w.Now = r.Long(); w.Created = r.Long(); w.Resolution = (Resolution)r.Byte();
             w.Ids.Read(r);
             w.Queue.Read(r);
             var planet = PlanetState.Read(r);
@@ -434,7 +453,7 @@ namespace TC2.Core.Simulation
         {
             var h = StateHasher.Create();
             Config.Hash(ref h);
-            h.Add(Now); h.Add(Created);
+            h.Add(Now); h.Add(Created); h.Add((byte)Resolution);
             Ids.Hash(ref h);
             Queue.Hash(ref h);
             Planet.Hash(ref h);

@@ -18,6 +18,7 @@ namespace TC2.Game
         public CameraRig Rig;
         float _t;
         string _hashTest = "";
+        BenchRunner _bench;
         string _lastCmd = "";
 
         void Start() { Browser.TC2_RegisterPageEvents(); }
@@ -61,6 +62,14 @@ namespace TC2.Game
                     }
                 case "new": Host.NewWorld(ulong.Parse(a[1], inv)); break;
                 case "hashtest": _hashTest = HashTest(); break;
+                case "bench":
+                    {
+                        // bench SETTLEMENTS FOUNDERS YEARS activity|coarse
+                        if (_bench == null) _bench = gameObject.AddComponent<BenchRunner>();
+                        Host.SpeedIndex = 0; // the player's world waits while the bench runs
+                        _bench.Begin(int.Parse(a[1], inv), int.Parse(a[2], inv), double.Parse(a[3], inv), a.Length > 4 && a[4] == "coarse");
+                        break;
+                    }
             }
         }
 
@@ -97,6 +106,7 @@ namespace TC2.Game
             sb.Append(",\"gfx\":\"").Append(SystemInfo.graphicsDeviceType).Append('"');
             sb.Append(",\"fps\":").Append((1f / Mathf.Max(0.0001f, Time.smoothDeltaTime)).ToString("0.#", inv));
             sb.Append(",\"hashtest\":\"").Append(_hashTest).Append('"');
+            sb.Append(",\"bench\":\"").Append(_bench != null ? _bench.Result : "").Append('"');
             sb.Append(",\"lastCmd\":\"").Append(_lastCmd.Replace("\"", "'")).Append('"');
             sb.Append(",\"feed\":[");
             int from = Mathf.Max(0, Host.Feed.Count - 8);

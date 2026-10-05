@@ -38,12 +38,13 @@ namespace TC2.Tests.Core
                 ref var p = ref w.People.Get(id);
                 if (!p.Alive) continue;
                 live.TryGetValue(id, out int n);
-                if (n != 1) return "person " + id + " has " + n + " live step events";
+                int want = w.Resolution == Resolution.Coarse ? 0 : 1;
+                if (n != want) return "person " + id + " has " + n + " live step events (" + w.Resolution + ")";
                 if (!w.Residents(p.Home).Contains(id)) return "person " + id + " missing from residents of " + p.Home;
                 if (!w.Members(p.Household).Contains(id)) return "person " + id + " missing from household " + p.Household;
                 if (p.At != 0 && p.At != p.Home && !w.Visitors(p.At).Contains(id)) return "visitor " + id + " not listed at " + p.At;
                 if (p.Step == StepKind.Travel && p.At != 0) return "traveller " + id + " is also at a place";
-                if (p.T1 < w.Now && p.Step != StepKind.None) return "person " + id + " step ended in the past";
+                if (w.Resolution == Resolution.Activity && p.T1 < w.Now && p.Step != StepKind.None) return "person " + id + " step ended in the past";
             }
             int pop = 0;
             for (int s = w.Settlements.First(); s != 0; s = w.Settlements.Next(s)) pop += w.Settlements.Get(s).Population;
@@ -124,6 +125,63 @@ namespace TC2.Tests.Core
                 string err = TestWorlds.Audit(w);
                 Assert.IsNull(err, "day " + d + ": " + err);
             }
+        }
+    }
+
+    [TestFixture]
+    public class CoarseTests
+    {
+        static long Midnight(long t) => SimTime.StartOfDay(t) + SimTime.Day;
+
+        [Test]
+        public void EnteringAndLeavingCoarseKeepsTheWorldConsistentAndDeterministic()
+        {
+            var a = TestWorlds.Make(31); var b = TestWorlds.Make(31);
+            foreach (var w in new[] { a, b })
+            {
+                w.AdvanceTo(SimTime.Days(2) + 5000);
+                w.RequestResolution(Resolution.Coarse, Midnight(w.Now));
+                w.AdvanceTo(SimTime.Days(6));
+                Assert.AreEqual(Resolution.Coarse, w.Resolution);
+                Assert.IsNull(TestWorlds.Audit(w), "audit in COARSE");
+                w.RequestResolution(Resolution.Activity, Midnight(w.Now));
+                w.AdvanceTo(SimTime.Days(9));
+                Assert.AreEqual(Resolution.Activity, w.Resolution);
+                Assert.IsNull(TestWorlds.Audit(w), "audit back in ACTIVITY");
+            }
+            Assert.AreEqual(a.StateHash(), b.StateHash());
+        }
+
+        [Test]
+        public void SaveLoadInCoarseContinuesIdentically()
+        {
+            var a = TestWorlds.Make(32);
+            a.RequestResolution(Resolution.Coarse, SimTime.Day);
+            a.AdvanceTo(SimTime.Days(20) + 777);
+            var b = SaveFile.Load(SaveFile.Save(a, 5, OfflineMode.Ancient), out _);
+            a.AdvanceTo(SimTime.Days(60)); b.AdvanceTo(SimTime.Days(60));
+            Assert.AreEqual(a.StateHash(), b.StateHash());
+        }
+
+        [Test]
+        public void PeopleEatWorkAndHarvestInCoarse()
+        {
+            var w = TestWorlds.Make(33);
+            w.RequestResolution(Resolution.Coarse, SimTime.Day);
+            w.AdvanceTo(SimTime.Years(2));
+            int unfed = 0, alive = 0;
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+            {
+                ref var p = ref w.People.Get(id);
+                if (!p.Alive) continue;
+                alive++;
+                if (w.Now - p.LastMeal > SimTime.Day) unfed++;
+            }
+            Assert.Greater(alive, 40);
+            Assert.AreEqual(0, unfed, "everyone ate in the last day");
+            int harvests = 0;
+            for (int i = 0; i < w.History.Count; i++) if (w.History.At(i).Kind == HistoryKind.Harvest && w.History.At(i).Magnitude > 50) harvests++;
+            Assert.GreaterOrEqual(harvests, 4, "fields were sown, tended and brought in by COARSE labour");
         }
     }
 

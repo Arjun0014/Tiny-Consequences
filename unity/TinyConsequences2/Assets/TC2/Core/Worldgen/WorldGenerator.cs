@@ -28,8 +28,11 @@ namespace TC2.Core.Worldgen
             for (int c = 0; c < P.Cells; c++) { P.Temp[c] = (float)P.TemperatureAt(c, 0); P.ClassifyBiome(c, 0); }
             w.Record(new HistoryEvent { Kind = HistoryKind.WorldCreated, Time = 0, Cell = -1, Settlement = 0, RootKind = RootKind.Nature, Subject = new EntityRef(EntityKind.World, 1) });
             w.History.Register(new EntityRef(EntityKind.World, 1), "the world", 0);
+            var sites = ChooseSites(w, P);
+            // the story begins on a morning at the first village (world time 0 is midnight at longitude 0)
+            if (sites.Count > 0) w.Now = SimTime.FloorMod(7 * SimTime.Hour - PlanetState.LocalOffset(P.Grid.Center[sites[0]]), SimTime.Day);
             w.ScheduleSystems();
-            Settle(w, P);
+            for (int i = 0; i < sites.Count; i++) Found(w, sites[i], i);
             return w;
         }
 
@@ -194,7 +197,7 @@ namespace TC2.Core.Worldgen
         }
 
         // ------------------------------------------------------------------ people
-        static void Settle(World w, PlanetState P)
+        static List<int> ChooseSites(World w, PlanetState P)
         {
             var cfg = w.Config;
             ulong seed = cfg.Seed;
@@ -219,7 +222,7 @@ namespace TC2.Core.Worldgen
             // choose a home region (best cell), then settlements around it within walking reach
             int first = -1; double fb = 0;
             for (int c = 0; c < n; c++) if (score[c] > fb) { fb = score[c]; first = c; }
-            if (first < 0) return;
+            if (first < 0) return new List<int>();
             var chosen = new List<int> { first };
             double minSep = 5.0 * P.CellSize, maxSep = 16.0 * P.CellSize;
             int want = Math.Max(1, cfg.Settlements);
@@ -238,7 +241,7 @@ namespace TC2.Core.Worldgen
                 if (bestC < 0) { maxSep *= 1.5; continue; }
                 chosen.Add(bestC);
             }
-            for (int i = 0; i < chosen.Count; i++) Found(w, chosen[i], i);
+            return chosen;
         }
 
         static void Found(World w, int cell, int index)
