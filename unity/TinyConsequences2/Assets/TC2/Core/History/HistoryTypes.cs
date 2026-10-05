@@ -246,7 +246,14 @@ namespace TC2.Core.History
                 case HistoryKind.HerdHuntedOut: b = 3; break;
                 default: b = 1; break;
             }
-            // magnitude raises importance sub-linearly
+            // magnitude raises importance sub-linearly - where it is a size; a person's events carry an age or a count there,
+            // and a death at sixty scored 6.1 (over the keep-for-ever line): every adult's death stayed in the ledger
+            switch (k)
+            {
+                case HistoryKind.PersonDied: case HistoryKind.PersonBorn: case HistoryKind.Marriage: case HistoryKind.HouseholdFormed:
+                case HistoryKind.HouseholdMoved: case HistoryKind.HomeBuilt:
+                    return (float)b;
+            }
             double m = magnitude < 0 ? 0 : magnitude;
             return (float)(b * (1.0 + DMath.Log(1.0 + m) * 0.5));
         }

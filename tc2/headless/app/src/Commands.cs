@@ -144,6 +144,20 @@ namespace TC2.Headless
                 var sbh = new System.Text.StringBuilder("history " + w.History.Count + " kept, " + w.History.Dropped + " dropped:");
                 for (int i = 0; i < top.Count && i < 14; i++) sbh.Append(" " + top[i].Key + " " + top[i].Value + ",");
                 Console.WriteLine(sbh.ToString());
+                // why deaths stay in the ledger (tools: compaction's reasons)
+                int imp = 0, young = 0, recent = 0, gone = 0, other = 0, tiers = 0;
+                for (int i = 0; i < w.History.Count; i++)
+                {
+                    var e = w.History.At(i);
+                    if (e.Kind != TC2.Core.History.HistoryKind.PersonDied) continue;
+                    if (e.Tier != TC2.Core.History.Tier.Personal) { tiers++; continue; }
+                    if (e.Importance >= 5f) { imp++; continue; }
+                    if (w.Now - e.Time < 2 * SimTime.Year) { young++; continue; }
+                    if (!w.People.Exists(e.Subject.Id)) { gone++; continue; }
+                    var dp = w.People.Get(e.Subject.Id);
+                    if (dp.Alive || w.Now - dp.Died < 30 * SimTime.Year) recent++; else other++;
+                }
+                Console.WriteLine("deaths kept: important " + imp + ", under two years " + young + ", subject recent " + recent + ", subject pruned " + gone + ", other " + other + ", other tiers " + tiers);
             }
             Console.WriteLine("state hash " + w.StateHash().ToString("x16"));
             prof?.Print();
