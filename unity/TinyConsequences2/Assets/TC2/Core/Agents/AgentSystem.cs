@@ -38,14 +38,14 @@ namespace TC2.Core.Agents
 
         public static void LocalAt(in Person p, double t, out double x, out double y)
         {
-            if (p.Step == StepKind.Local)
+            if ((p.Step == StepKind.Local || p.Step == StepKind.Stay) && t < p.TA)
             {
-                double span = p.T1 - p.T0;
+                double span = p.TA - p.T0;
                 double u = span > 0 ? DMath.Clamp01((t - p.T0) / span) : 1.0;
                 x = p.FromX + (p.ToX - p.FromX) * u;
                 y = p.FromY + (p.ToY - p.FromY) * u;
             }
-            else { x = p.FromX; y = p.FromY; }
+            else { x = p.ToX; y = p.ToY; }
         }
 
         public static double RouteSAt(in Person p, double t)
@@ -81,14 +81,14 @@ namespace TC2.Core.Agents
             var p = new Person
             {
                 Id = id, SexKind = sex, Alive = true, Born = born, Mother = mother, Father = father, Household = household,
-                Home = home, At = home, LastMeal = w.Now, Woke = w.Now, Health = 1f,
+                Home = home, At = home, LastMeal = w.Now, Woke = w.Now, Health = 1f, Nutrition = 1f,
                 Chrono = (byte)r.NextBelow(256), Pace = (byte)r.NextBelow(256), Diligence = (byte)r.NextBelow(256),
                 Social = (byte)r.NextBelow(256), Bold = (byte)r.NextBelow(256), Curious = (byte)r.NextBelow(256),
                 SkFarm = (float)(0.2 + 0.3 * r.NextUnit()), SkWood = (float)(0.2 + 0.3 * r.NextUnit()),
             };
             ref var hh = ref w.Households.Get(household);
             p.FromX = hh.HomeX; p.FromY = hh.HomeY; p.ToX = hh.HomeX; p.ToY = hh.HomeY;
-            p.Step = StepKind.Stay; p.Act = ActivityKind.Idle; p.T0 = w.Now; p.T1 = Math.Max(firstDecision, w.Now + 1);
+            p.Step = StepKind.Local; p.Act = ActivityKind.Idle; p.T0 = w.Now; p.TA = w.Now; p.T1 = Math.Max(firstDecision, w.Now + 1);
             w.People.Add(id, p);
             w.Residents(home).InsertSorted(id);
             w.Members(household).InsertSorted(id);
@@ -105,28 +105,19 @@ namespace TC2.Core.Agents
         }
 
         // ---------------------------------------------------------------- steps
+        /// <summary>One event per local activity: walk to (tx, ty) (analytic), then do it there for stay seconds.</summary>
         void BeginLocal(ref Person p, ActivityKind act, WhyCode why, int whyArg, double tx, double ty, long stay)
         {
             long now = _w.Now;
-            double x = p.FromX, y = p.FromY;
-            if (p.Step == StepKind.Local) { x = p.ToX; y = p.ToY; }
+            LocalAt(p, now, out double x, out double y);
             p.Act = act; p.Why = why; p.WhyArg = whyArg; p.ActVer++;
             double dx = tx - x, dy = ty - y;
             double d = DMath.Sqrt(dx * dx + dy * dy);
-            if (d > 2.0)
-            {
-                p.Step = StepKind.Local;
-                p.FromX = (float)x; p.FromY = (float)y; p.ToX = (float)tx; p.ToY = (float)ty;
-                p.T0 = now; p.T1 = now + Math.Max(1L, DMath.ToLong(DMath.RoundHalfUp(d / Speed(p, now))));
-                p.StayDur = (int)Math.Min(int.MaxValue, Math.Max(60L, stay));
-            }
-            else
-            {
-                p.Step = StepKind.Stay;
-                p.FromX = (float)tx; p.FromY = (float)ty; p.ToX = (float)tx; p.ToY = (float)ty;
-                p.T0 = now; p.T1 = now + Math.Max(60L, stay);
-                p.StayDur = 0;
-            }
+            long walk = d > 2.0 ? Math.Max(1L, DMath.ToLong(DMath.RoundHalfUp(d / Speed(p, now)))) : 0;
+            p.Step = StepKind.Local;
+            p.FromX = (float)x; p.FromY = (float)y; p.ToX = (float)tx; p.ToY = (float)ty;
+            p.T0 = now; p.TA = now + walk; p.T1 = p.TA + Math.Max(60L, stay);
+            p.StayDur = 0;
             Schedule(in p);
             _w.Metrics.Activities++;
         }
@@ -239,21 +230,8 @@ namespace TC2.Core.Agents
             switch (p.Step)
             {
                 case StepKind.Local:
-                    if (p.StayDur > 0)
-                    {
-                        p.Step = StepKind.Stay;
-                        p.FromX = p.ToX; p.FromY = p.ToY;
-                        p.T0 = w.Now; p.T1 = w.Now + p.StayDur;
-                        p.StayDur = 0;
-                        p.ActVer++;
-                        Schedule(in p);
-                        return;
-                    }
-                    p.FromX = p.ToX; p.FromY = p.ToY; p.Step = StepKind.Stay;
-                    Complete(ref p, 1.0);
-                    Decide(ref p);
-                    return;
                 case StepKind.Stay:
+                    p.FromX = p.ToX; p.FromY = p.ToY;
                     Complete(ref p, 1.0);
                     Decide(ref p);
                     return;
@@ -279,6 +257,17 @@ namespace TC2.Core.Agents
                 if (!FireNearRoute(r, s, toward)) { Record(ref p, JourneyOutcome.Resumed, p.Alarm); BeginTravel(ref p, p.Dest == p.Home ? ActivityKind.TripHome : ActivityKind.TripOut, WhyCode.GoingHome, r, s, toward, p.Dest); return; }
                 int backDest = p.Dest == r.A ? r.B : r.A;
                 if (!FireNearRoute(r, s, back)) { Record(ref p, JourneyOutcome.TurnedBack, p.Alarm); BeginTravel(ref p, backDest == p.Home ? ActivityKind.TripHome : ActivityKind.TripOut, WhyCode.FireAhead, r, s, back, backDest); return; }
+                if (w.Now >= p.Until)
+                {
+                    // waited long enough: go home whatever the smoke (a person stuck on a road does not starve there)
+                    int homeEnd = p.Home == r.A ? 0 : (p.Home == r.B ? 1 : -1);
+                    double sHome = homeEnd == 0 ? 0.0 : r.Length;
+                    int destGo = homeEnd >= 0 ? p.Home : (p.Dest == r.A ? r.B : r.A);
+                    if (homeEnd < 0) sHome = destGo == r.A ? 0.0 : r.Length;
+                    Record(ref p, JourneyOutcome.GaveUp, p.Alarm);
+                    BeginTravel(ref p, destGo == p.Home ? ActivityKind.TripHome : ActivityKind.TripOut, WhyCode.GaveUpWaiting, r, s, sHome, destGo);
+                    return;
+                }
                 BeginRoadWait(ref p, r, s, SimTime.Hour, p.Dest);
                 return;
             }
@@ -289,7 +278,7 @@ namespace TC2.Core.Agents
             ref var s2 = ref w.Settlements.Get(arrived);
             double ax = s2.SquareX, ay = s2.SquareY;
             if (arrived == p.Home && w.Households.Exists(p.Household)) { ref var hh = ref w.Households.Get(p.Household); ax = hh.HomeX; ay = hh.HomeY; }
-            p.Step = StepKind.Stay; p.FromX = (float)ax; p.FromY = (float)ay; p.ToX = p.FromX; p.ToY = p.FromY;
+            p.Step = StepKind.Local; p.FromX = (float)ax; p.FromY = (float)ay; p.ToX = p.FromX; p.ToY = p.FromY; p.TA = w.Now; p.T0 = w.Now;
             if (arrived != p.Home)
             {
                 w.Visitors(arrived).InsertSorted(p.Id);
@@ -320,7 +309,7 @@ namespace TC2.Core.Agents
                 double s = RouteSAt(p, w.Now);
                 double end = p.S1, start = p.S0;
                 if (p.Act == ActivityKind.Wait) return; // already waiting: the wait's end re-decides
-                if (!FireNearRoute(r, s, end)) { Record(ref p, JourneyOutcome.Continued, cause); return; } // behind or beside: carry on
+                if (!FireNearRoute(r, s, end)) return; // behind or beside: carry on (not history)
                 int fromSettlement = start <= 0.5 ? r.A : r.B;
                 if (!FireNearRoute(r, s, start))
                 {
@@ -330,6 +319,7 @@ namespace TC2.Core.Agents
                 else
                 {
                     Record(ref p, JourneyOutcome.Waited, cause);
+                    p.Until = w.Now + 3 * SimTime.Hour;
                     BeginRoadWait(ref p, r, s, SimTime.Hour, p.Dest != 0 ? p.Dest : (end <= 0.5 ? r.A : r.B));
                 }
                 return;
@@ -371,17 +361,13 @@ namespace TC2.Core.Agents
         void CutStep(ref Person p)
         {
             long now = _w.Now;
-            if (p.Step == StepKind.Local)
+            if (p.Step == StepKind.Local || p.Step == StepKind.Stay)
             {
+                double worked = now > p.TA ? (now - p.TA) / (double)Math.Max(1L, p.T1 - p.TA) : 0.0;
+                if (worked > 0) Complete(ref p, DMath.Clamp01(worked));
                 LocalAt(p, now, out double x, out double y);
                 p.FromX = (float)x; p.FromY = (float)y; p.ToX = p.FromX; p.ToY = p.FromY;
-                p.Step = StepKind.Stay;
-            }
-            else if (p.Step == StepKind.Stay)
-            {
-                double span = p.T1 - p.T0;
-                double frac = span > 0 ? DMath.Clamp01((now - p.T0) / span) : 1.0;
-                Complete(ref p, frac);
+                p.TA = now;
             }
             p.T1 = now;
         }
@@ -391,7 +377,7 @@ namespace TC2.Core.Agents
         {
             var w = _w;
             long now = w.Now;
-            double hours = (p.T1 - p.T0) * frac / (double)SimTime.Hour;
+            double hours = (p.T1 - Math.Max(p.T0, p.TA)) * frac / (double)SimTime.Hour;
             switch (p.Act)
             {
                 case ActivityKind.Eat:
@@ -415,6 +401,18 @@ namespace TC2.Core.Agents
                     break;
                 case ActivityKind.Sleep:
                     p.Woke = now;
+                    break;
+                case ActivityKind.Forage:
+                    if (p.At != 0)
+                    {
+                        // wild food from the meadows and woods around the place
+                        var P = w.Planet;
+                        ref var s = ref w.Settlements.Get(p.At);
+                        double wild = 0.5 * P.Grass[s.Cell] + 0.8 * P.Forest[s.Cell];
+                        double found = hours * 0.28 * DMath.Clamp01(wild) * (0.6 + 0.4 * p.Health);
+                        if (w.Households.Exists(p.Household)) w.Households.Get(p.Household).Larder += found;
+                        else s.Granary += found;
+                    }
                     break;
             }
         }
@@ -446,7 +444,9 @@ namespace TC2.Core.Agents
                 double take = Math.Min(need - got, s.Granary);
                 s.Granary -= take; got += take;
             }
-            if (got >= need * 0.5)
+            double share = need > 0 ? got / need : 1.0;
+            p.Nutrition = (float)(0.85 * p.Nutrition + 0.15 * share);
+            if (share >= 0.4)
             {
                 p.LastMeal = w.Now;
                 p.HungryFrom = 0;
@@ -469,7 +469,7 @@ namespace TC2.Core.Agents
             if (p.At == 0) { p.At = p.Home; }
             ref var here = ref w.Settlements.Get(p.At);
             double age = p.AgeYears(now);
-            long lsec = Planet.PlanetState.LocalSecondOfDay(here.Anchor, now);
+            long lsec = SimTime.FloorMod(now + w.LocalOffsetOf(p.At), SimTime.Day);
             // integer seconds: a fractional wake time made sleepers wake one second "before morning" and sleep a whole day more
             long shift = DMath.ToLong(DMath.Floor((p.Chrono - 128) / 128.0 * 1.2 * SimTime.Hour));
             bool child = age < 12;
@@ -501,7 +501,7 @@ namespace TC2.Core.Agents
             if (age < 2)
             {
                 if (now - p.LastMeal > 4 * SimTime.Hour && FoodAvailable(p)) EatNow(ref p);
-                BeginLocal(ref p, ActivityKind.Infant, WhyCode.Young, 0, homeX, homeY, 3 * SimTime.Hour);
+                BeginLocal(ref p, ActivityKind.Infant, WhyCode.Young, 0, homeX, homeY, 4 * SimTime.Hour);
                 return;
             }
 
@@ -514,6 +514,13 @@ namespace TC2.Core.Agents
                     return;
                 }
                 if (p.HungryFrom == 0 && now - p.LastMeal > SimTime.Day) p.HungryFrom = now;
+                // nothing at home or in the store: go and gather what the land offers (by day)
+                if (!child && lsec >= 6 * SimTime.Hour && lsec < 19 * SimTime.Hour && p.At == p.Home)
+                {
+                    double fx = here.WoodX * 0.7 + rs.Range(-80, 80), fy = here.WoodY * 0.7 + rs.Range(-80, 80);
+                    BeginLocal(ref p, ActivityKind.Forage, WhyCode.NoFood, 0, fx, fy, SimTime.Hours(2.5 + rs.NextUnit()));
+                    return;
+                }
             }
 
             // 4. visiting elsewhere: stay a while, then go home
@@ -539,7 +546,7 @@ namespace TC2.Core.Agents
             {
                 bool sq = rs.Chance(0.5);
                 double px = sq ? here.SquareX : homeX, py = sq ? here.SquareY : homeY;
-                BeginLocal(ref p, ActivityKind.Play, WhyCode.Young, 0, px + rs.Range(-20, 20), py + rs.Range(-20, 20), SimTime.Hours(1 + rs.NextUnit()));
+                BeginLocal(ref p, ActivityKind.Play, WhyCode.Young, 0, px + rs.Range(-20, 20), py + rs.Range(-20, 20), SimTime.Hours(2 + 1.5 * rs.NextUnit()));
                 return;
             }
 
@@ -577,16 +584,16 @@ namespace TC2.Core.Agents
             {
                 case 1:
                     BeginLocal(ref p, ActivityKind.Fields, here.Crop == CropStage.Ripe ? WhyCode.Harvest : WhyCode.CropNeedsWork, 0,
-                        here.FieldX + rs.Range(-60, 60), here.FieldY + rs.Range(-60, 60), SimTime.Hours(2 + 1.5 * rs.NextUnit()));
+                        here.FieldX + rs.Range(-60, 60), here.FieldY + rs.Range(-60, 60), SimTime.Hours(3 + 1.5 * rs.NextUnit()));
                     return;
                 case 2:
-                    BeginLocal(ref p, ActivityKind.Wood, WhyCode.WoodLow, 0, here.WoodX + rs.Range(-50, 50), here.WoodY + rs.Range(-50, 50), SimTime.Hours(2 + rs.NextUnit()));
+                    BeginLocal(ref p, ActivityKind.Wood, WhyCode.WoodLow, 0, here.WoodX + rs.Range(-50, 50), here.WoodY + rs.Range(-50, 50), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
                     return;
                 case 3:
-                    BeginLocal(ref p, ActivityKind.Water, WhyCode.WaterNeeded, 0, here.WellX, here.WellY, 15 * SimTime.Minute);
+                    BeginLocal(ref p, ActivityKind.Water, WhyCode.WaterNeeded, 0, here.WellX, here.WellY, 20 * SimTime.Minute);
                     return;
                 case 4:
-                    BeginLocal(ref p, ActivityKind.Social, WhyCode.Leisure, 0, here.SquareX + rs.Range(-12, 12), here.SquareY + rs.Range(-12, 12), SimTime.Hours(0.7 + 0.8 * rs.NextUnit()));
+                    BeginLocal(ref p, ActivityKind.Social, WhyCode.Leisure, 0, here.SquareX + rs.Range(-12, 12), here.SquareY + rs.Range(-12, 12), SimTime.Hours(1.5 + 1.5 * rs.NextUnit()));
                     return;
                 case 5:
                     {
@@ -600,7 +607,7 @@ namespace TC2.Core.Agents
                         break;
                     }
             }
-            BeginLocal(ref p, ActivityKind.Idle, WhyCode.Leisure, 0, homeX + rs.Range(-6, 6), homeY + rs.Range(-6, 6), SimTime.Hours(0.6 + 0.6 * rs.NextUnit()));
+            BeginLocal(ref p, ActivityKind.Idle, WhyCode.Leisure, 0, homeX + rs.Range(-6, 6), homeY + rs.Range(-6, 6), SimTime.Hours(1.5 + 1.5 * rs.NextUnit()));
         }
 
         // ---------------------------------------------------------------- premises (tests, tools)

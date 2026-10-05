@@ -100,6 +100,7 @@ namespace TC2.Core.Planet
             _ignite.Clear(); _out.Clear();
             double hours = w.Config.FireStep / (double)SimTime.Hour;
             Vec3d windDir = Vec3d.Zero;
+            long sod = SimTime.SecondOfDay(w.Now);
             for (int ai = 0; ai < Active.Count; ai++)
             {
                 int c = Active[ai];
@@ -111,10 +112,14 @@ namespace TC2.Core.Planet
                 inten += (target - inten) * 0.35;
                 // consume fuel (grass fast, forest slower)
                 double g = P.Grass[c], f = P.Forest[c];
-                g -= g * 0.22 * inten * hours; f -= f * 0.07 * inten * hours;
+                g -= g * 0.65 * inten * hours; f -= f * 0.22 * inten * hours;
                 P.Grass[c] = (float)DMath.Max(0, g); P.Forest[c] = (float)DMath.Max(0, f);
-                if (inten < 0.06 || P.Fuel(c) < 0.04) { _out.Add(c); continue; }
+                if (inten < 0.08 || P.Fuel(c) < 0.06) { _out.Add(c); continue; }
                 Intensity[c] = (float)inten;
+                // cooler, damper nights slow the spread (local solar time of the cell)
+                double lh = (sod / 3600.0 + P.Lon[c] / DMath.TwoPi * 24.0);
+                lh -= 24.0 * DMath.Floor(lh / 24.0);
+                double night = (lh < 6 || lh > 20) ? 0.5 : 1.0;
                 // spread
                 Wind(grid.Center[c], out windDir);
                 for (int k = 0; k < 8; k++)
@@ -125,8 +130,8 @@ namespace TC2.Core.Planet
                     double nf = P.Fuel(nb), nd = P.Dryness(nb);
                     Vec3d dir = (grid.Center[nb] - grid.Center[c]).Normalized;
                     double align = Vec3d.Dot(dir, windDir);
-                    double p = 0.16 * hours * inten * nf * (0.1 + nd * nd * 1.4) * (1.0 + 0.8 * align) * (k < 4 ? 1.0 : 0.7);
-                    if (P.RainToday[nb] > 0.4) p *= 0.3;
+                    double p = 0.42 * hours * inten * nf * (nd * nd * 1.6 - 0.08) * (1.0 + 0.8 * align) * (k < 4 ? 1.0 : 0.7) * night;
+                    if (P.RainToday[nb] > 0.4) p *= 0.2;
                     double u = KeyedRng.Unit(w.Seed, RngStream.FireSpread, (ulong)nb, (ulong)StepIndex, (ulong)c);
                     if (u < p && !_ignite.Contains(nb)) { _ignite.Add(nb); _igniteFrom.Add(c); }
                 }

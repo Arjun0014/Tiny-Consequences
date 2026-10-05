@@ -101,6 +101,7 @@ namespace TC2.Core.Simulation
         IntList[] _hhOf = new IntList[16];
         IntList[] _members = new IntList[64];
         int[] _cellSettlement;
+        long[] _localOffset = new long[16];
 
         public World(WorldConfig config)
         {
@@ -136,9 +137,14 @@ namespace TC2.Core.Simulation
 
         public int SettlementAtCell(int cell) => _cellSettlement == null || cell < 0 || cell >= _cellSettlement.Length ? 0 : _cellSettlement[cell];
 
+        /// <summary>Seconds to add to world time for local solar time at a settlement (cached).</summary>
+        public long LocalOffsetOf(int sid) => _localOffset[sid];
+
         public void IndexSettlementCells(int sid)
         {
             ref var s = ref Settlements.Get(sid);
+            if (sid >= _localOffset.Length) { int n = _localOffset.Length; while (n <= sid) n *= 2; Array.Resize(ref _localOffset, n); }
+            _localOffset[sid] = PlanetState.LocalOffset(s.Anchor);
             _cellSettlement[s.Cell] = sid;
             if (s.FieldCell >= 0 && _cellSettlement[s.FieldCell] == 0) _cellSettlement[s.FieldCell] = sid;
         }

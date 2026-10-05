@@ -36,6 +36,7 @@ namespace TC2.Core.Places
         public long HungerEvent;        // current hunger episode event (0 none)
         public int FieldCell;           // planet cell holding most of the fields
         public int Lots;                // house lots laid out so far (the next lot's index)
+        public double Ration;           // share of full meals the granary allows until the next harvest
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
@@ -79,7 +80,7 @@ namespace TC2.Core.Places
             w.Int(Id); w.Int(Cell); WriteV(w, Anchor); WriteV(w, East); WriteV(w, North); w.Long(Founded); w.Long(Abandoned); w.Long(FoundedEvent);
             w.Int(Population); w.Double(Granary); w.Double(Woodstore); w.Double(FieldHa); w.Byte((byte)Crop); w.Double(CropGrowth);
             w.Double(CropWork); w.Double(Sown); w.Double(Harvested); w.Double(CropWorkNeed); w.Double(CropBurnt); w.Long(CropCause); w.Double(LastHarvest); w.Double(ExpectedHarvest);
-            w.Long(HungerEvent); w.Int(FieldCell); w.Int(Lots);
+            w.Long(HungerEvent); w.Int(FieldCell); w.Int(Lots); w.Double(Ration);
             w.Float(SquareX); w.Float(SquareY); w.Float(FieldX); w.Float(FieldY); w.Float(WoodX); w.Float(WoodY); w.Float(WellX); w.Float(WellY);
         }
 
@@ -89,7 +90,7 @@ namespace TC2.Core.Places
             s.Id = r.Int(); s.Cell = r.Int(); s.Anchor = ReadV(r); s.East = ReadV(r); s.North = ReadV(r); s.Founded = r.Long(); s.Abandoned = r.Long(); s.FoundedEvent = r.Long();
             s.Population = r.Int(); s.Granary = r.Double(); s.Woodstore = r.Double(); s.FieldHa = r.Double(); s.Crop = (CropStage)r.Byte(); s.CropGrowth = r.Double();
             s.CropWork = r.Double(); s.Sown = r.Double(); s.Harvested = r.Double(); s.CropWorkNeed = r.Double(); s.CropBurnt = r.Double(); s.CropCause = r.Long(); s.LastHarvest = r.Double(); s.ExpectedHarvest = r.Double();
-            s.HungerEvent = r.Long(); s.FieldCell = r.Int(); s.Lots = r.Int();
+            s.HungerEvent = r.Long(); s.FieldCell = r.Int(); s.Lots = r.Int(); s.Ration = r.Double();
             s.SquareX = r.Float(); s.SquareY = r.Float(); s.FieldX = r.Float(); s.FieldY = r.Float(); s.WoodX = r.Float(); s.WoodY = r.Float(); s.WellX = r.Float(); s.WellY = r.Float();
             return s;
         }
@@ -99,7 +100,7 @@ namespace TC2.Core.Places
             h.Add(Id); h.Add(Cell); HashV(ref h, Anchor); HashV(ref h, East); HashV(ref h, North); h.Add(Founded); h.Add(Abandoned); h.Add(FoundedEvent);
             h.Add(Population); h.Add(Granary); h.Add(Woodstore); h.Add(FieldHa); h.Add((byte)Crop); h.Add(CropGrowth);
             h.Add(CropWork); h.Add(Sown); h.Add(Harvested); h.Add(CropWorkNeed); h.Add(CropBurnt); h.Add(CropCause); h.Add(LastHarvest); h.Add(ExpectedHarvest);
-            h.Add(HungerEvent); h.Add(FieldCell); h.Add(Lots);
+            h.Add(HungerEvent); h.Add(FieldCell); h.Add(Lots); h.Add(Ration);
             h.Add(SquareX); h.Add(SquareY); h.Add(FieldX); h.Add(FieldY); h.Add(WoodX); h.Add(WoodY); h.Add(WellX); h.Add(WellY);
         }
 

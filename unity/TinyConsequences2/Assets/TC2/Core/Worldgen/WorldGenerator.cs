@@ -259,7 +259,7 @@ namespace TC2.Core.Worldgen
                 double f = P.Moist[nb] + 0.3 * P.Grass[nb] - 0.2 * P.Forest[nb];
                 if (f > fbest) { fbest = f; fieldCell = nb; }
             }
-            var s = new Settlement { Id = sid, Cell = cell, Anchor = anchor, East = east, North = north, Founded = w.Now, FieldCell = fieldCell };
+            var s = new Settlement { Id = sid, Cell = cell, Anchor = anchor, East = east, North = north, Founded = w.Now, FieldCell = fieldCell, Ration = 1.0 };
             s.SphereToLocal(P.Grid.Center[fieldCell], P.Radius, out double fx, out double fy);
             double fl = DMath.Sqrt(fx * fx + fy * fy);
             if (fl < 1) { fx = 150; fy = 0; fl = 150; }

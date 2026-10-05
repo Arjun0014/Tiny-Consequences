@@ -41,7 +41,7 @@ namespace TC2.Core.Places
             int doy = SimTime.DayOfYear(now + Planet.PlanetState.LocalOffset(s.Anchor));
             if (s.Anchor.Y < 0) doy = (doy + 24) % SimTime.DaysPerYear; // southern seasons
             Crops(ref s, doy);
-            Food(ref s);
+            Food(ref s, doy);
             Demography(sid);
             ref var s2 = ref w.Settlements.Get(sid);
             if (s2.Population <= 0 && s2.Abandoned == 0)
@@ -104,19 +104,24 @@ namespace TC2.Core.Places
             }
         }
 
-        void Food(ref Settlement s)
+        void Food(ref Settlement s, int doy)
         {
             var w = _w;
-            // the granary refills each household's larder to two days of its members' needs
-            double total = 0;
+            // the granary refills each household's larder to two days of its members' needs - rationed so
+            // that what is stored lasts until the next harvest (the reversible first step of coping)
+            double daily = 0;
             var hhs = w.HouseholdsOf(s.Id);
-            for (int i = 0; i < hhs.Count; i++) total += HouseholdNeed(hhs[i]) * 2.0;
+            for (int i = 0; i < hhs.Count; i++) daily += HouseholdNeed(hhs[i]);
+            int toHarvest = 39 - doy; if (toHarvest <= 0) toHarvest += SimTime.DaysPerYear;
+            double ration = daily > 0 ? DMath.Clamp(s.Granary / (daily * (toHarvest + 6)), 0.45, 1.0) : 1.0;
+            s.Ration = ration;
+            double total = daily * 2.0 * ration;
             double share = total > 0 ? Math.Min(1.0, s.Granary / total) : 1.0;
             for (int i = 0; i < hhs.Count; i++)
             {
                 int hid = hhs[i];
                 ref var hh = ref w.Households.Get(hid);
-                double want = HouseholdNeed(hid) * 2.0 - hh.Larder;
+                double want = HouseholdNeed(hid) * 2.0 * ration - hh.Larder;
                 if (want <= 0) continue;
                 double give = Math.Min(want, want * share);
                 give = Math.Min(give, s.Granary);
@@ -175,11 +180,14 @@ namespace TC2.Core.Places
                 double annual = age < 1 ? 0.10 : age < 5 ? 0.02 : age < 15 ? 0.004 : age < 45 ? 0.005 : age < 60 ? 0.014 : age < 70 ? 0.04 : age < 80 ? 0.10 : 0.25;
                 double u = KeyedRng.Unit(seed, RngStream.Death, (ulong)pid, (ulong)day);
                 bool starving = now - p.LastMeal > SimTime.Day;
+                // each body bears hunger differently: the young and old weaken first, reserves differ
+                double frail = (age < 5 ? 1.5 : age < 12 ? 1.2 : age > 60 ? 1.4 : 1.0) * (0.6 + 0.8 * KeyedRng.Unit(seed, RngStream.Death, (ulong)pid, (ulong)day, 3));
                 if (starving)
                 {
-                    p.Health = (float)Math.Max(0.0, p.Health - 0.12);
+                    p.Health = (float)Math.Max(0.0, p.Health - 0.10 * frail);
                     if (p.HungryFrom == 0) p.HungryFrom = now;
                 }
+                else if (p.Nutrition < 0.65) p.Health = (float)Math.Max(0.0, p.Health - (0.65 - p.Nutrition) * 0.12 * frail);
                 else p.Health = (float)Math.Min(1.0, p.Health + 0.05);
                 if (p.Health <= 0.0f)
                 {
@@ -199,19 +207,21 @@ namespace TC2.Core.Places
                 if (age < 17 || age > 36) continue;
                 if (KeyedRng.Unit(seed, RngStream.Marriage, (ulong)pid, (ulong)day) >= cfg.MarriageRatePerDay) continue;
                 _men.Clear();
-                for (int j = 0; j < _scratch.Count; j++)
+                AddSuitors(in woman, sid, now);
+                // neighbouring villages within a day's easy walk (exogamy keeps small places alive)
+                ref var here = ref w.Settlements.Get(sid);
+                for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
                 {
-                    int mid = _scratch[j];
-                    ref var man = ref w.People.Get(mid);
-                    if (!man.Alive || man.IsFemale || man.Partner != 0) continue;
-                    double ma = man.AgeYears(now);
-                    if (ma < 18 || ma > 48) continue;
-                    if (CloseKin(in woman, in man)) continue;
-                    _men.Add(mid);
+                    if (o == sid) continue;
+                    ref var other = ref w.Settlements.Get(o);
+                    if (!other.Inhabited) continue;
+                    if (Vec3d.ArcDistance(here.Anchor, other.Anchor, w.Planet.Radius) > cfg.MarriageReach) continue;
+                    if (w.Routes.Get(w, sid, o) == null) continue;
+                    AddSuitors(in woman, o, now);
                 }
                 if (_men.Count == 0) continue;
                 int pick = _men[KeyedRng.Below(KeyedRng.Hash(seed, RngStream.Marriage, (ulong)pid, (ulong)day, 1), _men.Count)];
-                Marry(sid, pid, pick);
+                Marry(w.People.Get(pick).Home, pid, pick);
             }
             // conceptions
             for (int i = 0; i < _scratch.Count; i++)
@@ -231,6 +241,21 @@ namespace TC2.Core.Places
                     p.PregFather = p.Partner;
                     w.Queue.Push(p.PregDue, Phase.Agent, EventKind.Birth, pid, 0, p.PregDue);
                 }
+            }
+        }
+
+        void AddSuitors(in Person woman, int sid, long now)
+        {
+            var res = _w.Residents(sid);
+            for (int j = 0; j < res.Count; j++)
+            {
+                int mid = res[j];
+                ref var man = ref _w.People.Get(mid);
+                if (!man.Alive || man.IsFemale || man.Partner != 0) continue;
+                double ma = man.AgeYears(now);
+                if (ma < 18 || ma > 48) continue;
+                if (CloseKin(in woman, in man)) continue;
+                _men.Add(mid);
             }
         }
 
@@ -263,6 +288,17 @@ namespace TC2.Core.Places
             ref var woman = ref w.People.Get(womanId);
             ref var man = ref w.People.Get(manId);
             woman.Partner = manId; man.Partner = womanId;
+            if (woman.Home != sid)
+            {
+                // she will walk to her new home when she next decides (her old village is no longer home)
+                w.Residents(woman.Home).Remove(womanId);
+                w.Settlements.Get(woman.Home).Population--;
+                woman.Home = sid;
+                w.Residents(sid).InsertSorted(womanId);
+                w.Settlements.Get(sid).Population++;
+                if (woman.At != 0 && woman.At != sid) { w.Visitors(woman.At).InsertSorted(womanId); woman.Until = w.Now; }
+                else if (woman.At == sid) w.Visitors(sid).Remove(womanId);
+            }
             long mev = w.Record(new HistoryEvent { Kind = HistoryKind.Marriage, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Person(womanId), Object = EntityRef.Person(manId), RootKind = RootKind.People });
             w.Record(new HistoryEvent { Kind = HistoryKind.HouseholdFormed, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Household(hid), Cause1 = mev, Rel1 = CauseRel.CausedBy });
             w.Metrics.Marriages++;

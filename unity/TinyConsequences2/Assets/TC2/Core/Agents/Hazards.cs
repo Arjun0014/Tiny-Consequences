@@ -35,20 +35,25 @@ namespace TC2.Core.Agents
         }
 
         /// <summary>Cells whose centres lie within <paramref name="range"/> metres of the cell (BFS over neighbours).</summary>
+        int[] _stamp; int _stampNow;
+
         public void CellsWithin(World w, int cell, double range, List<int> into)
         {
             into.Clear();
             var P = w.Planet; var g = P.Grid;
+            if (_stamp == null || _stamp.Length != P.Cells) { _stamp = new int[P.Cells]; _stampNow = 0; }
+            _stampNow++;
             Vec3d c0 = g.Center[cell];
             double lim = range + 0.75 * P.CellSize;
-            into.Add(cell);
+            into.Add(cell); _stamp[cell] = _stampNow;
             for (int head = 0; head < into.Count; head++)
             {
                 int c = into[head];
                 for (int k = 0; k < 8; k++)
                 {
                     int nb = g.Nbr8[c * 8 + k];
-                    if (into.Contains(nb)) continue;
+                    if (_stamp[nb] == _stampNow) continue;
+                    _stamp[nb] = _stampNow;
                     if (Vec3d.ArcDistance(c0, g.Center[nb], P.Radius) <= lim) into.Add(nb);
                 }
                 if (into.Count > 400) break;

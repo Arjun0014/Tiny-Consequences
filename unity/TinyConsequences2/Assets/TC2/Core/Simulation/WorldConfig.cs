@@ -24,22 +24,23 @@ namespace TC2.Core.Simulation
 
         // laws (tunable)
         public double WalkSpeed = 1.25;           // m/s adult on open ground
-        public double LightningPerCellDay = 0.0012; // strikes per land cell per stormy day
+        public double LightningPerCellDay = 0.0004; // strikes per land cell per stormy day
         public double FirePerceptionRange = 700;   // m: smoke and flames seen
         public double MealsPerDay = 3;
         public double FoodPerAdultDay = 1.0;       // FU
-        public double FieldYieldPerHa = 1100;      // FU per hectare per good season
-        public double FieldHaPerPerson = 0.45;
+        public double FieldYieldPerHa = 130;       // FU per hectare per good season (a 48-day year: a person eats 48 FU a year)
+        public double FieldHaPerPerson = 0.5;
         public double MarriageRatePerDay = 0.012;
         public double ConceptionPerDay = 0.022;
         public double TripChancePerDecision = 0.012;
+        public double MarriageReach = 6000;        // m: partners are found in villages within a day's easy walk
 
         public void Write(BinWriter w)
         {
             w.ULong(Seed); w.Int(SurfaceN); w.Double(Radius); w.Double(LandFraction); w.Int(Plates); w.Int(Settlements); w.Int(FoundersPerSettlement);
             w.Long(ClimatePeriod); w.Long(WeatherPeriod); w.Long(VegetationPeriod); w.Long(FireStep);
             w.Double(WalkSpeed); w.Double(LightningPerCellDay); w.Double(FirePerceptionRange); w.Double(MealsPerDay); w.Double(FoodPerAdultDay);
-            w.Double(FieldYieldPerHa); w.Double(FieldHaPerPerson); w.Double(MarriageRatePerDay); w.Double(ConceptionPerDay); w.Double(TripChancePerDecision);
+            w.Double(FieldYieldPerHa); w.Double(FieldHaPerPerson); w.Double(MarriageRatePerDay); w.Double(ConceptionPerDay); w.Double(TripChancePerDecision); w.Double(MarriageReach);
         }
 
         public static WorldConfig Read(BinReader r)
@@ -48,7 +49,7 @@ namespace TC2.Core.Simulation
             c.Seed = r.ULong(); c.SurfaceN = r.Int(); c.Radius = r.Double(); c.LandFraction = r.Double(); c.Plates = r.Int(); c.Settlements = r.Int(); c.FoundersPerSettlement = r.Int();
             c.ClimatePeriod = r.Long(); c.WeatherPeriod = r.Long(); c.VegetationPeriod = r.Long(); c.FireStep = r.Long();
             c.WalkSpeed = r.Double(); c.LightningPerCellDay = r.Double(); c.FirePerceptionRange = r.Double(); c.MealsPerDay = r.Double(); c.FoodPerAdultDay = r.Double();
-            c.FieldYieldPerHa = r.Double(); c.FieldHaPerPerson = r.Double(); c.MarriageRatePerDay = r.Double(); c.ConceptionPerDay = r.Double(); c.TripChancePerDecision = r.Double();
+            c.FieldYieldPerHa = r.Double(); c.FieldHaPerPerson = r.Double(); c.MarriageRatePerDay = r.Double(); c.ConceptionPerDay = r.Double(); c.TripChancePerDecision = r.Double(); c.MarriageReach = r.Double();
             return c;
         }
 
@@ -57,7 +58,7 @@ namespace TC2.Core.Simulation
             h.Add(Seed); h.Add(SurfaceN); h.Add(Radius); h.Add(LandFraction); h.Add(Plates); h.Add(Settlements); h.Add(FoundersPerSettlement);
             h.Add(ClimatePeriod); h.Add(WeatherPeriod); h.Add(VegetationPeriod); h.Add(FireStep);
             h.Add(WalkSpeed); h.Add(LightningPerCellDay); h.Add(FirePerceptionRange); h.Add(MealsPerDay); h.Add(FoodPerAdultDay);
-            h.Add(FieldYieldPerHa); h.Add(FieldHaPerPerson); h.Add(MarriageRatePerDay); h.Add(ConceptionPerDay); h.Add(TripChancePerDecision);
+            h.Add(FieldYieldPerHa); h.Add(FieldHaPerPerson); h.Add(MarriageRatePerDay); h.Add(ConceptionPerDay); h.Add(TripChancePerDecision); h.Add(MarriageReach);
         }
     }
 }
