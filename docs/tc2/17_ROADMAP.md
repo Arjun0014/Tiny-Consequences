@@ -22,7 +22,7 @@ planet rendering v1 (cube-sphere patches, water, atmosphere, clouds, biome mater
 **Done when**: 10,000 untouched years show drift, ranges rising and wearing, a glacial cycle, coastline
 change, forests moving; stable over seeds; beautiful enough from orbit to judge.
 
-## F2 — Ecology and evolution
+## F2 — Ecology and evolution (CLOSED 5 Oct 2026, D2-046)
 Species as data (diet, size, generation, traits); abundance fields; dispersal; food webs (Holling II with
 refuges); herds and packs as super-individual agents near people; trait evolution; speciation and
 extinction as historical events; fish and plankton; visible animals elaborated from herds.

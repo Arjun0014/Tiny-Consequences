@@ -2,6 +2,8 @@
 
 ## CURRENT STATE (keep accurate; newest first below)
 
+**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 in progress (D2-042, -045, -047, -048, -049, -050).**
+
 - **Session 2 (5 Oct 2026, in progress)** - compaction-recovery hooks (`.claude/settings.json`, `.claude/hooks/tc2_compact.mjs`;
   Claude Code 2.1.289: PreCompact stdout joins the compaction instructions, SessionStart matcher `compact` stdout reaches Claude;
   validated with `claude doctor`). **F1/F2 10,000-year reruns on the current build (D2-041) done - F1 NOT closed**:
@@ -63,7 +65,24 @@
     a burst - then the 20-kind cap and no change for 7,500 years: no kind ever empties in a continuous field (seed 42 keeps 3
     warm-water tuna, 14 seals for millennia). F2's done-when is met (cycles, recovery, adaptation, speciation); for turnover a
     **minimum viable population** (a kind under ~50 real animals may die out by chance each decade) is in validation
-    (`run_42m.*`, `run_7m.*`).
+    (`run_42m.*`, `run_7m.*`). At 50 x Density (7.5) seed 42 lost its seals in the first century (`run_42m_mv75.*`): the fields
+    hold real numbers since D2-044, and the miniature's seals (~11-15) and bears (~26-45) are small whole populations - the law
+    is now **a handful (5 animals)**: seed 42 keeps all 13 first kinds and its seals for 10,000 years, new kinds at 900, 1,200,
+    2,100-2,400, two kinds lost and replaced at 3,200-4,200, then the cap for 5,800 years; seed 7 likewise (cap by 2,500,
+    turnover 2,900-4,200, all first kinds kept, 63 seals). **F2 CLOSED (D2-046).**
+  - **Farm animals, herds and camps in the view (D2-049)**: `LivestockView` (by day on the pasture, at night in fenced pens
+    behind the homes, walking out and home; pigs at the yards), wild herds drawn from the simulation's herds (kept to a
+    village's edge), kit cow/goat/pig and a hide tent for camps. Shots `tc2/out/shots/stock*`, `herd1`.
+  - **The village herd (D2-050)**: the households' cattle and goats graze together on a ground of the day with one herder per
+    60 head, children of 8-15 first (`ActivityKind.Tend`, `WhyCode.Herd`; COARSE by turns); a watched herd a third as exposed
+    to wolves; herders keep a mixed herd and kill into the breeding cores in hard times. Seed 42, 200 coarse years: cattle 139,
+    goats 355, pigs 234 (before: cattle 6 as the fields took the pasture); wolves 4,570 (was 17,402). Sim version 14; 104 tests.
+  - Speed: herd claims in a flat array (survey 74 -> 55 us per COARSE village-day, hash identical); the profiler splits the
+    survey (grounds 13, herds 41 us) and shows livestock (~32-37 us).
+  - Seal shots: seal views take the seal shore's own hour and frame a shore where the view shows seals. **Found**: seed 42
+    starts with ~6 seals, 411 cod and 91 tuna (the spin-up seeds the sea's predators ~10x below their level; they take a
+    decade to grow into it) and its seals level at ~11-20 in all the world (food-limited, not territory: a colony cap of 4
+    instead of 0.5 gave 17-23) - an ecology calibration to revisit (the look wants seal colonies).
 
 - **F1 nearly done (verdict from the 10,000-year runs below), F2 nearly done (ecology, evolution, the sea's life), look-dev
   v1-v7 (Arjun: "a really beautiful miniature world, high detail, high performance"). Session 1 (5 Oct 2026), continuing.**

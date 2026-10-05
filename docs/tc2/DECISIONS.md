@@ -1083,3 +1083,28 @@ herder wanted; a watched herd's wolf risk is 0.35 of an open one's. Seed 42, 200
 **Invalidation.** If herds in crowded villages collapse to their nuclei for good while land is free nearby, or children in
 villages with herds never herd, the herding or the culling rules are wrong.
 
+## D2-046 — 2026-10-05 — New kinds spread over millennia; a remnant of a handful dies out (F2 closed)
+
+(Numbered when the tuning began in session 2; recorded here once its 10,000-year runs were in.)
+**Context.** On D2-043/044's laws both seeds formed six or seven kinds in a burst (seed 42: three sand wolves on one range by
+year ~830), hit the 20-kind cap and then nothing for 9,000 years, with no extinction: sister kinds shared nothing, so every
+refuge population split at once, and a continuous field never empties (seed 42 kept 3 warm-water tuna in 7 cells for
+millennia, holding a slot).
+**Decision.** (1) Sister kinds share territory (a kind's young find room only where its kin of the same template kind leave it);
+lineage drift 0.015 (two populations cut off part in ~2,000-4,000 years); the split chance gentle just past the line
+(0.002 + 0.03 (d - 1)^2 a tectonic step). (2) **A handful dies out**: at a tectonic step a kind with fewer than 5 animals in all
+the world dies out with chance 1 - N/5 (too few to find mates; `Evolution.MinViable`). Not 50 real animals: the fields hold real
+numbers since D2-044, and at 7.5 seed 42 lost its seals (~11-15 in all the world, a small but whole population) in the first
+century (`run_42m_mv75.*`).
+**Evidence.** Planet + ecology, no people, 10,000 years (`tc2/out/f1/run_42k|m.*`, `run_7k|m.*`; the first k runs had people
+by a `--nopeople` bug, kept as `run_42k_people.*`): new kinds one or two at a time - seed 42 at 900, 1,200, 2,100-2,400; seed 7
+at 1,500, 1,700, 2,000, 2,300-2,500 - the cap by ~2,500; then with the handful law turnover in the middle millennia (seed 42:
+19 at 3,200, 20 at 3,600, 19 at 3,800, 20 at 4,200; seed 7: 19, 18, 19, 20 between 2,900 and 4,200) and the cap held to 10,000.
+Both seeds keep all thirteen first kinds (seed 42: 12 seals, 47 bears, 60 aurochs; seed 7: 63 seals, 47 bears, 174 aurochs);
+the remnants go. Tests: `EvolutionTests.AKindTooFewDiesOutByChanceAThrivingKindNever` (two bears die out within decades, a kind
+of thousands never), the speciation test's premise keeps every kind thriving.
+**Verdict.** F2's done-when is met (predator-prey cycles, recovery after catastrophes, adaptation over centuries, speciation in
+long isolated runs) and **F2 is closed**. Known limits: the 20-kind cap binds after ~2,500 years (turnover needs kinds to
+dwindle, which a stable planet rarely asks); the sea's predators start ~10x below their level (the spin-up) and the
+miniature's seals are few (food-limited) - an ecology calibration to revisit with the look.
+

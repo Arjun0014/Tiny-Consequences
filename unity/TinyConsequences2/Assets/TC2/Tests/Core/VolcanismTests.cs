@@ -135,6 +135,7 @@ namespace TC2.Tests.Core
                 var e = w.History.At(i);
                 if (e.Kind == HistoryKind.VentBorn) born = true;
                 if (e.Kind == HistoryKind.Eruption) erupted = true;
+                if (e.Kind == HistoryKind.Extinction || e.Kind == HistoryKind.Speciation) continue;   // (the planet's own slow step may fall in the same hour)
                 if (e.Kind != HistoryKind.GodCommand) Assert.AreEqual(RootKind.You, e.RootKind, e.Kind + " roots in the god");
             }
             Assert.IsTrue(born && erupted);

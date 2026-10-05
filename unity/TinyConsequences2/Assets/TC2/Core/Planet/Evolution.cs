@@ -28,6 +28,11 @@ namespace TC2.Core.Planet
         public const int MinCells = 40;            // a population that can become a kind: not a fragment at a range's edge
         public const double MinAnimals = 80 * Ecology.Density;
         public const int MaxPerKind = 4;           // living kinds descended from one first kind (deer and their offshoots)
+        public const double MinViable = 5.0;       // a kind down to a handful of animals in all the world dies out by chance within
+                                                   // decades (too few to find mates); the fields are continuous: without this a remnant
+                                                   // of three animals held its place for millennia (D2-046). The fields hold real
+                                                   // numbers (D2-044): the miniature's seals (~11-15) and bears (~26-45) are small
+                                                   // but whole populations, above it.
 
         /// <summary>
         /// The chance a tectonic step (ten years) that lineages this far apart become two kinds: none below 1, small just
@@ -73,6 +78,12 @@ namespace TC2.Core.Planet
                 var sp = P.Species[s];
                 double total = 0;
                 for (int c = 0; c < n; c++) total += P.Abund[s * n + c];
+                // a kind this few may die out by chance this step (the fewer, the likelier); with none left it is gone
+                if (total >= 0.3 && total < MinViable && KeyedRng.Unit(w.Seed, RngStream.Ecology, 0xD1E0UL + (ulong)sp.Id, (ulong)w.Now) < 1.0 - total / MinViable)
+                {
+                    for (int c = 0; c < n; c++) P.Abund[s * n + c] = 0f;
+                    total = 0;
+                }
                 if (total < 0.3)
                 {
                     if (sp.Gone == 0) { sp.Gone = w.Now; P.Species[s] = sp; w.RecordExtinction(s); }

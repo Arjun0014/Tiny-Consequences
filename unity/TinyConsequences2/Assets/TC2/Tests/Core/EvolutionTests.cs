@@ -72,6 +72,11 @@ namespace TC2.Tests.Core
             var (w, hare, a, b) = TwoGroups(112, 7f);
             var P = w.Planet;
             int n = P.Cells, before = P.Species.Count;
+            for (int s = 0; s < P.Species.Count; s++)   // (every kind thriving: none dies out by chance in these steps)
+            {
+                double t = 0; for (int c = 0; c < n; c++) t += P.Abund[s * n + c];
+                if (t > 0 && t < 2 * Evolution.MinViable) for (int c = 0; c < n; c++) P.Abund[s * n + c] *= (float)(2 * Evolution.MinViable / t);
+            }
             Assert.AreEqual(0, Evolution.Speciate(w), "a different coat alone does not make a new kind at once");
             // as if they had been apart for a millennium and more: their lineages have wandered apart
             foreach (int c in b) P.Drift[hare * n + c] = P.Drift[hare * n + a[0]] + 5.5f;   // long apart: 5.5 x (1 + 0.35) > 7, a certain split
@@ -97,6 +102,32 @@ namespace TC2.Tests.Core
             Assert.IsTrue(speciation, "the history tells of the new kind");
             Assert.IsTrue(extinction, "and of the wolves that are no more");
             for (int s = 0; s < P.Species.Count; s++) Assert.AreNotEqual(wolfId, P.Species[s].Id, "an extinct kind leaves the fields");
+        }
+
+        [Test]
+        public void AKindTooFewDiesOutByChanceAThrivingKindNever()
+        {
+            var w = TestWorlds.Make(114);
+            var P = w.Planet;
+            int n = P.Cells;
+            int bear = Kind(P, 7), deer = Kind(P, 0);
+            int bearId = P.Species[bear].Id, deerId = P.Species[deer].Id;
+            // premise: the bears brought down to two animals in all the world
+            double total = 0; for (int c = 0; c < n; c++) total += P.Abund[bear * n + c];
+            Assert.Greater(total, Evolution.MinViable, "bears begin many enough");
+            for (int c = 0; c < n; c++) P.Abund[bear * n + c] = (float)(P.Abund[bear * n + c] * 2.0 / total);
+            bool gone = false;
+            for (int step = 0; step < 40 && !gone; step++)
+            {
+                w.Now += SimTime.Years(Tectonics.StepYears);
+                Evolution.Speciate(w);
+                gone = true;
+                for (int s = 0; s < P.Species.Count; s++) if (P.Species[s].Id == bearId) gone = false;
+                bool deerLive = false;
+                for (int s = 0; s < P.Species.Count; s++) if (P.Species[s].Id == deerId) deerLive = true;
+                Assert.IsTrue(deerLive, "a kind of thousands is never lost by chance");
+            }
+            Assert.IsTrue(gone, "two bears in all the world die out within decades");
         }
 
         [Test]
