@@ -48,6 +48,7 @@ namespace TC2.Headless
                 if (a.Has("quake")) Console.WriteLine("      " + QuakeLine(w));
                 if (a.Has("erosion")) Console.WriteLine("      " + ErosionLine(w));
                 if (a.Has("storms")) Console.WriteLine("      " + StormLine(w));
+                if (a.Has("eco")) Console.WriteLine("      " + EcoLine(w));
                 if (mapDir != null) WriteMap(w, Path.Combine(mapDir, "map_" + k.ToString("0000") + ".png"), width);
             }
             FlowHistogram(w);
@@ -72,6 +73,21 @@ namespace TC2.Headless
         }
 
         static string _tect = "";
+
+        static string EcoLine(World w)
+        {
+            var P = w.Planet;
+            var sb = new System.Text.StringBuilder("animals:");
+            for (int si = 0; si < P.Species.Count; si++)
+            {
+                double tot = 0, cond = 0, cells = 0;
+                for (int c = 0; c < P.Cells; c++) { double v = P.Abund[si * P.Cells + c]; tot += v; if (v > 0.05) { cond += P.Cond[si * P.Cells + c]; cells++; } }
+                sb.AppendFormat(CultureInfo.InvariantCulture, " {0} {1:0} (in {2:0} cells, cond {3:0.00})", TC2.Core.Planet.Ecology.KindName(P.Species[si].Kind), tot, cells, cells > 0 ? cond / cells : 0);
+            }
+            double g = 0, land = 0; for (int c = 0; c < P.Cells; c++) if (P.IsLand(c)) { g += P.Grass[c]; land++; }
+            sb.AppendFormat(CultureInfo.InvariantCulture, " | grass {0:0.00}", g / Math.Max(1, land));
+            return sb.ToString();
+        }
 
         static string StormLine(World w)
         {

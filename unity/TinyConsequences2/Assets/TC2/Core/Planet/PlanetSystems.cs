@@ -222,8 +222,16 @@ namespace TC2.Core.Planet
 
         void Vegetation(World w)
         {
-            var P = w.Planet;
             double dtY = w.Config.VegetationPeriod / (double)SimTime.Year;
+            if (w.Resolution == Resolution.Coarse) dtY *= 3;
+            GrowVegetation(w, dtY);
+            Ecology.Step(w, dtY, w.Now); // the animals eat what grew, hunt, breed, wander (D2-035)
+        }
+
+        /// <summary>A step of plant growth (dt in years): forests and grass toward what climate and water allow.</summary>
+        public void GrowVegetation(World w, double dtY)
+        {
+            var P = w.Planet;
             var grid = P.Grid;
             for (int c = 0; c < P.Cells; c++)
             {

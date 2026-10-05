@@ -612,3 +612,60 @@ houses, rain falling where it rains, the sun's glint on the oceans from orbit.
 breakfast, rain streaks under a storm, a sun glint on the oceans from orbit. Web build measured in the session log.
 **Invalidation.** If puffs exceed ~1 ms a frame on the Web with many villages in view, cap smoke by distance rank or
 drop sorting for smoke.
+
+## D2-034 — 2026-10-05 — Coasts that stay coasts; a faster carbon thermostat; vegetation in coarse time
+
+**Context.** The first 10,000-year run of seed 42 (F1 done-when) ended in speckled archipelagos: nearest-sample
+hand-overs left single cells on the wrong side of the sea and the noise accumulated (D2-025 named this risk). A rerun
+with coast smoothing slid into an ice age it never left (sea -98 m, ice on 39 % of land, 9.6 C), while the first run
+had warmed ice-free (17.9 C): the climate was bistable and the carbon thermostat (weathering e^(0.06 dT), ~2,000-year
+memory) too weak to end either state.
+**Decision.**
+- **The sea shapes its coasts** (`Coast.Step`, each tectonic step): a land cell with six or more sea neighbours (a
+  headland, an islet) wears down up to 3 m a decade toward the sea floor, its rock spread over the shallows round it; a
+  sea cell with six or more land neighbours (a narrow inlet) fills from its shores. Mass kept. High volcanic islands
+  stand for millennia (their vents build faster than the waves wear).
+- **Anti-aliasing of the hand-over** (`Tectonics.Despeckle`): at each 160-year hand-over a lone cell with six or more of
+  its eight neighbours on the other side of the sea level takes their median elevation (read from a copy; never under a
+  volcano).
+- **Carbon thermostat**: outgassing 0.5 ppm/yr at rest (~1,100-year memory) and silicate weathering e^(0.1 dT) (~10 % a
+  degree: faster reactions, more runoff) - a cold world builds CO2 faster, a hot one draws it down faster.
+- **Vegetation in coarse time**: the vegetation step ran every 12 days in COARSE but grew 4 days' worth (plants grew at a
+  third of the rate in every coarse run); it now grows by the step it covers.
+**Evidence.** Test: a low islet is gone and a narrow inlet filled within 120 years, rock volume kept. The 10,000-year
+reruns with these changes are in the session log (PROGRESS).
+**Invalidation.** If coasts still speckle after millennia, hand over more often with smaller offsets; if the climate
+still locks into either extreme for millennia, tie ice-sheet growth to snowfall more tightly (a cold world is dry).
+
+## D2-035 — 2026-10-05 — Wildlife as abundance fields (F2, first slice); animals in the miniature
+
+**Context.** F2 asks for species as data, abundance fields, predation and recovery (06, D2-013); the miniature needs
+visible animals.
+**Decision.**
+- **Species** (`P.Species`): eight templates varied per world (+-15 % size, fecundity, lifespan; cold tolerance +-2 C):
+  deer (browser), hare, aurochs, ibex (grazers), boar, fox, bear (omnivores), wolf (predator); each with diet shares
+  over four foods, habitat (cover, slope, cold), dispersal, and a territory cap for hunters. Names registered.
+- **Fields** `P.Abund` (animals per cell) and `P.Cond` (body condition) per species, saved and hashed. Each vegetation
+  step (4 days; 12 in COARSE): foods available - grass above a floor of 0.25 cover (at most 30 % of it a step),
+  shoots (renewed yearly), mast and roots in the woods, small fare in the grass (voles, beetles: the fox's other food) -
+  all lean in the cold (20 % at freezing; mast half); each animal eats its preferred mix and makes up a shortfall from
+  what is left; hunters take prey by a Holling II response on reachable prey biomass (a quarter always out of reach,
+  more in woods; half sated at 120 kg x (mass/35)^0.75; large prey less vulnerable, `(4 hunter/prey)^0.8`); condition
+  follows how well each ate; deaths by age, hunger (below 0.45) and cold; young in spring only above condition 0.5,
+  hunters only where their range has room; a share wanders to the better neighbouring cells. A bear sleeps through
+  the cold (15 % of its needs). Grazed grass grows back from less (the vegetation step); browse does not kill trees.
+- **Worldgen**: 20 years of the animals and the plants together before people (+1 s of world creation headless).
+- **View** (`WildlifeView`): within 2.4 km of the camera's focus (below 1.8 km), each cell shows the animals its fields
+  hold (the fraction as a keyed chance), in groups that wander the cell on slow loops of the world's time and face where
+  they go, kept 350 m from villages (hares and foxes slip in), 1.4-3x life size; Blender kit models for the eight kinds.
+**Evidence.** Tests: animals spread over the land they suit and never at sea or in the deep cold; after a deer crash,
+deer recover faster without wolves, and wolves without prey starve; grazed land holds less grass (66 tests). Seed 42,
+100 coarse years: deer ~35,000, boar ~38,000, hares ~60,000, wolves ~1,550, foxes ~2,400, bears recovering from a
+spin-up crash (~7), aurochs and ibex rare (~20 each); grass held at ~0.25 cover. Bugs found by these numbers: a
+spin-up that ate for 40 years with no regrowth (bare, treeless land), rigid diets (deer starving beside shoots),
+predators that found prey at any density (prey extinct), hunters started nine times above their ranges (bears
+unable to breed), fast breeders winning every pasture until breeding needed good condition.
+**Consequences.** Next in F2: trait evolution per regional population, speciation in isolation, extinction events in
+the history, herds as agents near people (hunting), fish in the sea.
+**Invalidation.** If herbivores keep the grass at its floor across most land (a brown world), lower forage or raise
+predation; if a species dies out in most worlds within centuries, revisit its niche.

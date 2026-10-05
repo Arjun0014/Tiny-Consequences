@@ -60,6 +60,8 @@ namespace TC2.Game
             puffs.Rig = rig;
             var rain = views.AddComponent<RainView>();
             rain.Host = host; rain.Rig = rig;
+            var wild = views.AddComponent<WildlifeView>();
+            wild.Host = host; wild.Rig = rig;
 
             var hud = gameObject.AddComponent<Hud>();
             hud.Host = host; hud.Rig = rig; hud.Objects = objects;

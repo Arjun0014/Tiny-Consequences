@@ -35,6 +35,7 @@ namespace TC2.Core.Worldgen
             w.PlanetSys.RefreshMeans(P);
             for (int c = 0; c < P.Cells; c++) { P.Temp[c] = (float)P.TemperatureAt(c, 0); P.ClassifyBiome(c, 0); }
             SpinUpRivers(w, P);
+            Ecology.Create(w);   // the wild animals, spread over the land before people come (D2-035)
             w.Record(new HistoryEvent { Kind = HistoryKind.WorldCreated, Time = 0, Cell = -1, Settlement = 0, RootKind = RootKind.Nature, Subject = new EntityRef(EntityKind.World, 1) });
             w.History.Register(new EntityRef(EntityKind.World, 1), "the world", 0);
             var sites = ChooseSites(w, P);

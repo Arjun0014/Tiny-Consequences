@@ -644,7 +644,7 @@ namespace TC2.Game
                     // beaches where the land meets the sea
                     float beachW = (float)(1.0 + 0.9 * Noise.Fbm(d.X * 24.0, d.Y * 24.0, d.Z * 24.0, 2)) * (1f - Edge(0.05f, 0.25f, slope));
                     float beach = 1f - Edge(0.6f, 0.6f + 4.2f * Mathf.Max(0.15f, beachW), rel);
-                    if (beach > 0 && P.Ice[c] < 1f) col = Color.Lerp(col, rel < 1.2f ? WetSand : Sand, beach * 0.92f);
+                    if (beach > 0 && P.Ice[c] < 1f) col = Color.Lerp(col, Color.Lerp(Sand, WetSand, 1f - Edge(0.3f, 1.6f, rel)), beach * 0.92f); // wet sand fades up the beach
                     // rock on steep ground
                     float rock = Edge(0.10f, 0.30f, slope);
                     if (rock > 0) col = Color.Lerp(col, Color.Lerp(Rock, RockDark, Mathf.Clamp01(slope * 1.6f - 0.3f)), rock);

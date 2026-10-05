@@ -4,8 +4,8 @@
 
 - **F1 in progress (hydrology, climate, tectonics, volcanoes + carbon cycle, quakes, erosion, storms done) + look-dev v1-v5 (Arjun: "a really
   beautiful miniature world, high detail, high performance"). Session 1 (5 Oct 2026), continuing.**
-  - Docs: `docs/tc2/` 00-17, LEGACY_AUDIT, DECISIONS D2-001..033.
-  - Core (pure C# 9, headless-tested, 62 tests): everything of F0 (see the log) plus **hydrology** (D2-022: runoff
+  - Docs: `docs/tc2/` 00-17, LEGACY_AUDIT, DECISIONS D2-001..035.
+  - Core (pure C# 9, headless-tested, 66 tests): everything of F0 (see the log) plus **hydrology** (D2-022: runoff
     down a priority-flood tree, depressions that fill/spill/evaporate/dry, smoothed river flow), **catch-up plan**
     (D2-023: COARSE for many lives, ACTIVITY on arrival), **climate** (D2-024: zonal energy balance, fictional fast
     orbit, ice-albedo, CO2/aerosol, land ice sheets, sea level, coastline in 1 m steps, ages of ice in the history),
@@ -29,8 +29,13 @@
     Batch-editor screenshots: `node tc2/scripts/unity.mjs shots --tag T [--erupt VEI] [--quake M]`.
   - Web: volcanoes (look-dev v5 part 1) verified 6/6 (bit-identical, WebGPU, 89-121 fps by view); the quake Core and
     the antialiasing are in the next build.
-  - Next: the 10,000-year untouched runs (F1 done-when: drift, ranges rising and wearing, a glacial cycle, coastline
-    change, forests moving, stable over seeds), then F2 ecology. Known: in coarse runs 2-3 of 6 villages are abandoned within 300 years (agent/economy
+  - F1 verdict pending the reruns (`tc2/out/f1/run_42c.txt`, `run_7c.txt`, maps in `maps42c`): first runs showed
+    drift, glacials, coastline change and moving forests, but speckled coasts and a bistable climate (hothouse in one
+    run, a 7,000-year ice age in the other) - fixed by coast processes, hand-over anti-aliasing and a faster carbon
+    thermostat (D2-034).
+  - F2 started (D2-035): eight wild species as abundance fields with predation, foods, seasons and dispersal; animals
+    drawn near the camera from Blender kit models. Next: trait evolution, speciation, extinction events, herds as
+    agents and hunting by people, fish. Known: in coarse runs 2-3 of 6 villages are abandoned within 300 years (agent/economy
     fragility, pre-existing; look at it with F2/F3).
   - Headless tools: `planet` (stats + maps, `--tect`, `--volc`, `--zoom first:DEG`), `climate` (climate-only
     millennia), `run --profile` (time per event kind and system).
@@ -114,3 +119,7 @@ None. (Wavedash cloud saves and itch upload need Arjun later; not needed for F0.
 - Erosion and storms (D2-031, D2-032): the mass-balance test caught a delta rising above the sea mid-pass and
   swallowing later loads (land/sea now judged by the tree's built mask); first storms never passed 30 m/s (Earth's
   potential-intensity curve on a planet whose tropics are ~26 C); the storm step looped every cell per storm (BFS now).
+- F1 long runs and F2 wildlife (D2-034, D2-035): the first 10,000-year run speckled its coasts and warmed ice-free
+  (17.9 C); with coast smoothing it fell into an ice age it never left (9.6 C, sea -98 m) - the thermostat was too weak;
+  the vegetation step had grown plants at a third of their rate in every coarse run. The wildlife's numbers found five
+  model bugs (see D2-035).

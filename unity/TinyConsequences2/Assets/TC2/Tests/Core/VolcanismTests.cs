@@ -154,7 +154,7 @@ namespace TC2.Tests.Core
                 Assert.LessOrEqual(P.CO2, last + 1e-9, "falls steadily");
                 last = P.CO2;
             }
-            Assert.That(P.CO2, Is.InRange(290.0, 360.0), "most of the excess weathered away in 4,000 years (~2,000-year memory)");
+            Assert.That(P.CO2, Is.InRange(281.0, 330.0), "most of the excess weathered away in 4,000 years (~1,100-year memory)");
             // twice the volcanic supply: a richer air that rock weathers as fast as it comes
             for (int v = 0; v < P.Vents.Count; v++) { var vt = P.Vents[v]; vt.Supply *= 2f; P.Vents[v] = vt; }
             P.CO2 = 280;

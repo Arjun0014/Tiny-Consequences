@@ -90,7 +90,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 4; // 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032)
+        public const int FormatSimVersion = 5; // 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
@@ -354,6 +354,7 @@ namespace TC2.Core.Simulation
             // rivers cut and carry on the tree of the moved relief (D2-031); the tree is rebuilt again for what they changed
             Drainage.Rebuild(P);
             Erosion.Step(this, Tectonics.StepYears);
+            Coast.Step(this, Tectonics.StepYears); // waves wear headlands, drift fills inlets (D2-034)
             LandChanged(P.SeaLevel, false);
             P.ReliefVersion++;
         }

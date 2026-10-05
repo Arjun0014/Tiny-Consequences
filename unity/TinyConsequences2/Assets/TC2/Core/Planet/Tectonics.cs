@@ -258,10 +258,39 @@ namespace TC2.Core.Planet
                 if (_winner[t] >= 0) continue;
                 FillGap(P, t, dt);
             }
+            Despeckle(P);
             Commit(P, dt);
             Accrete(P);
             Wearing(P, dt);
             Plates(P, dt, seed, now);
+        }
+
+        public int Despeckled;   // diagnostics: cells smoothed at hand-overs
+
+        /// <summary>
+        /// Anti-aliasing of the hand-over (D2-034): nearest-sample handing over can leave a lone cell on the wrong side of
+        /// the sea level among neighbours that are not (a sample duplicated or dropped); such a cell - six or more of its
+        /// eight neighbours on the other side, and no volcano standing on it - takes their median elevation. Read from a
+        /// copy: the order of cells does not matter.
+        /// </summary>
+        void Despeckle(PlanetState P)
+        {
+            var g = P.Grid;
+            int n = _cells;
+            double sea = P.SeaLevel;
+            Array.Copy(_newElev, _tmp, n);
+            Span<float> v = stackalloc float[8];
+            for (int c = 0; c < n; c++)
+            {
+                bool land = _tmp[c] > sea;
+                int other = 0;
+                for (int k = 0; k < 8; k++) { float e = _tmp[g.Nbr8[c * 8 + k]]; v[k] = e; if ((e > sea) != land) other++; }
+                if (other < 6 || Volcanism.NearVent(P, c, 1.5)) continue;   // a volcano's island is real
+                // median of the eight (insertion sort: deterministic)
+                for (int i = 1; i < 8; i++) { float x = v[i]; int j = i - 1; while (j >= 0 && v[j] > x) { v[j + 1] = v[j]; j--; } v[j + 1] = x; }
+                _newElev[c] = 0.5f * (v[3] + v[4]);
+                Despeckled++;
+            }
         }
 
         /// <summary>The new arrangement becomes the crust; age, boundary forcing, cooling and buoyancy change the relief.</summary>

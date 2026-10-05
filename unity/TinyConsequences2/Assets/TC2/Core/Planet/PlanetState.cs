@@ -61,6 +61,9 @@ namespace TC2.Core.Planet
         public float[] Stress;      // slip deficit on fault patches (m; quakes, D2-030); 0 off the faults
         public float[] StormRain;   // storm rain waiting for the next weather day (rain units; D2-032)
         public System.Collections.Generic.List<Storm> Storms = new System.Collections.Generic.List<Storm>();
+        // wildlife (D2-035): the species and, per species and cell, how many animals and in what condition
+        public System.Collections.Generic.List<Species> Species = new System.Collections.Generic.List<Species>();
+        public float[] Abund = new float[0], Cond = new float[0];
         public System.Collections.Generic.List<Vent> Vents = new System.Collections.Generic.List<Vent>();
         public Hotspot[] Hotspots = new Hotspot[0];
         public double SupplyRef;    // the volcanoes' magma supply when the world began (the carbon cycle's reference)
@@ -245,6 +248,11 @@ namespace TC2.Core.Planet
             w.FloatArray(StormRain, Cells);
             w.Int(Storms.Count);
             for (int i = 0; i < Storms.Count; i++) Storms[i].Write(w);
+            w.Int(Species.Count);
+            for (int i = 0; i < Species.Count; i++) Species[i].Write(w);
+            w.Int(Abund.Length);
+            w.FloatArray(Abund, Abund.Length);
+            w.FloatArray(Cond, Cond.Length);
             w.Int(Hotspots.Length);
             for (int i = 0; i < Hotspots.Length; i++) { w.Double(Hotspots[i].At.X); w.Double(Hotspots[i].At.Y); w.Double(Hotspots[i].At.Z); w.Double(Hotspots[i].Rate); }
             w.Int(Vents.Count);
@@ -284,6 +292,12 @@ namespace TC2.Core.Planet
             r.FloatArray(p.StormRain);
             int ns = r.Int();
             for (int i = 0; i < ns; i++) p.Storms.Add(Storm.Read(r));
+            int nsp = r.Int();
+            for (int i = 0; i < nsp; i++) p.Species.Add(Planet.Species.Read(r));
+            int na = r.Int();
+            p.Abund = new float[na]; p.Cond = new float[na];
+            r.FloatArray(p.Abund);
+            r.FloatArray(p.Cond);
             int nh = r.Int();
             p.Hotspots = new Hotspot[nh];
             for (int i = 0; i < nh; i++) { double x = r.Double(), y = r.Double(), z = r.Double(); p.Hotspots[i] = new Hotspot { At = new Vec3d(x, y, z), Rate = r.Double() }; }
@@ -303,6 +317,8 @@ namespace TC2.Core.Planet
             for (int i = 0; i < Plates.Length; i++) { h.Add(Plates[i].Pole.X); h.Add(Plates[i].Pole.Y); h.Add(Plates[i].Pole.Z); h.Add(Plates[i].Omega); h.Add(Plates[i].Continental ? 1 : 0); }
             for (int i = 0; i < Cells; i++) { h.Add(Crust[i]); h.Add(CrustAge[i]); h.Add(CrustOx[i]); h.Add(CrustOy[i]); h.Add(DrainIce[i]); h.Add(Magma[i]); h.Add(Stress[i]); h.Add(StormRain[i]); }
             for (int i = 0; i < Storms.Count; i++) Storms[i].Hash(ref h);
+            for (int i = 0; i < Species.Count; i++) Species[i].Hash(ref h);
+            for (int i = 0; i < Abund.Length; i++) { h.Add(Abund[i]); h.Add(Cond[i]); }
             for (int i = 0; i < Hotspots.Length; i++) { h.Add(Hotspots[i].At.X); h.Add(Hotspots[i].At.Y); h.Add(Hotspots[i].At.Z); h.Add(Hotspots[i].Rate); }
             for (int i = 0; i < Vents.Count; i++) { var v = Vents[i]; h.Add(v.Id); h.Add(v.Cell); h.Add(v.At.X); h.Add(v.At.Y); h.Add(v.At.Z); h.Add(v.Plate); h.Add(v.Kind); h.Add(v.Flags); h.Add(v.Pressure); h.Add(v.Born); h.Add(v.LastEruption); h.Add(v.Next); h.Add(v.Eruptions); h.Add(v.Supply); h.Add(v.Seal); h.Add(v.Cone); }
             h.Add(SupplyRef);

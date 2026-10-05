@@ -76,6 +76,26 @@ class Kit:
                 f.smooth = True
         return faces
 
+    def ellipsoid(self, centre, r, color, subdiv=2, rot=None, smooth=True):
+        m = Matrix.Translation(Vector(centre))
+        if rot is not None:
+            m = m @ rot
+        m = m @ Matrix.Diagonal((r[0], r[1], r[2], 1.0))
+        faces, verts = self.add(lambda bm: bmesh.ops.create_icosphere(bm, subdivisions=subdiv, radius=1.0), color, m)
+        if smooth:
+            for f in faces:
+                f.smooth = True
+        return faces
+
+    def limb(self, a, b, r1, r2, color, seg=6):
+        """A tapered cylinder from point a to point b."""
+        a, b = Vector(a), Vector(b)
+        d = b - a
+        h = d.length
+        rot = d.to_track_quat("Z", "Y").to_matrix().to_4x4()
+        m = Matrix.Translation(a) @ rot @ Matrix.Translation(Vector((0, 0, h / 2.0)))
+        return self.add(lambda bm: bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=seg, radius1=r1, radius2=r2, depth=h), color, m)[0]
+
     def quad_strip(self, pts, color):
         verts = [self.bm.verts.new(p) for p in pts]
         f = self.bm.faces.new(verts)
@@ -288,6 +308,83 @@ def person(name, seed=9):
     return k.finish()
 
 
+def quadruped(name, L, H, leg, body, belly=None, hoof=(0.12, 0.10, 0.09), width=None, head=0.22, neck=0.35, neck_up=40,
+              ears=0.0, tail=0.25, bushy=False, tail_tip=None, antlers=0.0, horns=0.0, horn_back=True, tusks=False,
+              snout=0.5, hump=0.0, seed=21):
+    """A low-poly four-legged animal facing +Y (Unity +Z): shoulder height H, body length L, legs `leg` long."""
+    k = Kit(name, seed)
+    col = srgb(*body)
+    bel = srgb(*(belly or body))
+    hf = srgb(*hoof)
+    bone = srgb(0.86, 0.80, 0.66)
+    w = width or L * 0.36
+    bh = (H - leg) * 1.0                     # the body's depth
+    zc = leg + bh * 0.5
+    # body: chest forward and higher, rump behind
+    k.ellipsoid((0, L * 0.12, zc + bh * 0.04), (w * 0.5, L * 0.36, bh * 0.55), col)
+    k.ellipsoid((0, -L * 0.18, zc - bh * 0.02), (w * 0.47, L * 0.32, bh * 0.5), col)
+    k.ellipsoid((0, -L * 0.02, zc - bh * 0.28), (w * 0.38, L * 0.34, bh * 0.25), bel)
+    if hump > 0:
+        k.ellipsoid((0, L * 0.18, zc + bh * 0.42), (w * 0.35, L * 0.2, bh * hump), col)
+    # legs, hooves or paws
+    for sx in (-1, 1):
+        for sy, yy in ((1, L * 0.3), (-1, -L * 0.3)):
+            x = sx * w * 0.3
+            top = (x, yy, zc - bh * 0.05)
+            knee = (x, yy + sy * 0.03 * L, leg * 0.45)
+            foot = (x, yy, leg * 0.06)
+            k.limb(top, knee, w * 0.16, w * 0.1, col)
+            k.limb(knee, foot, w * 0.1, w * 0.07, col)
+            k.box((x, yy + 0.02 * L, leg * 0.03), (w * 0.17, w * 0.22, leg * 0.06), hf)
+    # neck and head
+    a = math.radians(neck_up)
+    base = Vector((0, L * 0.38, zc + bh * 0.2))
+    tip = base + Vector((0, math.cos(a) * neck, math.sin(a) * neck))
+    k.limb(base, tip, w * 0.24, w * 0.17, col)
+    hc = tip + Vector((0, head * 0.45, head * 0.05))
+    k.ellipsoid(tuple(hc), (head * 0.42, head * 0.62, head * 0.45), col)
+    k.ellipsoid(tuple(hc + Vector((0, head * 0.55, -head * 0.12))), (head * 0.28 * (0.6 + snout), head * 0.4 * (0.6 + snout), head * 0.26), col)
+    k.ellipsoid(tuple(hc + Vector((0, head * (0.72 + 0.35 * snout), -head * 0.12))), (head * 0.12, head * 0.06, head * 0.1), srgb(0.08, 0.06, 0.05), subdiv=1)
+    for sx in (-1, 1):
+        k.ellipsoid(tuple(hc + Vector((sx * head * 0.3, head * 0.18, head * 0.18))), (head * 0.05, head * 0.05, head * 0.05), srgb(0.05, 0.04, 0.04), subdiv=1)
+        if ears > 0:
+            e0 = hc + Vector((sx * head * 0.28, -head * 0.15, head * 0.3))
+            k.limb(tuple(e0), tuple(e0 + Vector((sx * ears * 0.35, -ears * 0.2, ears))), head * 0.12, head * 0.02, col, seg=4)
+        if antlers > 0:
+            b0 = hc + Vector((sx * head * 0.18, -head * 0.1, head * 0.38))
+            b1 = b0 + Vector((sx * antlers * 0.35, -antlers * 0.2, antlers * 0.6))
+            b2 = b1 + Vector((sx * antlers * 0.15, antlers * 0.15, antlers * 0.45))
+            k.limb(tuple(b0), tuple(b1), 0.025, 0.02, bone, seg=4)
+            k.limb(tuple(b1), tuple(b2), 0.02, 0.012, bone, seg=4)
+            for t in (0.4, 0.75):
+                p0 = b0.lerp(b1, t) if t < 0.6 else b1.lerp(b2, (t - 0.5) * 2)
+                k.limb(tuple(p0), tuple(p0 + Vector((sx * antlers * 0.1, antlers * 0.25, antlers * 0.25))), 0.015, 0.008, bone, seg=4)
+        if horns > 0:
+            h0 = hc + Vector((sx * head * 0.22, -head * 0.05, head * 0.35))
+            if horn_back:
+                pts = [h0, h0 + Vector((sx * horns * 0.15, -horns * 0.45, horns * 0.55)), h0 + Vector((sx * horns * 0.25, -horns * 1.0, horns * 0.45))]
+            else:
+                pts = [h0, h0 + Vector((sx * horns * 0.6, horns * 0.05, horns * 0.15)), h0 + Vector((sx * horns * 0.75, horns * 0.25, horns * 0.55))]
+            k.limb(tuple(pts[0]), tuple(pts[1]), horns * 0.12, horns * 0.08, bone, seg=5)
+            k.limb(tuple(pts[1]), tuple(pts[2]), horns * 0.08, horns * 0.02, bone, seg=5)
+        if tusks:
+            t0 = hc + Vector((sx * head * 0.18, head * 0.75, -head * 0.2))
+            k.limb(tuple(t0), tuple(t0 + Vector((sx * head * 0.08, head * 0.12, head * 0.22))), head * 0.04, head * 0.01, bone, seg=4)
+    # tail
+    t0 = Vector((0, -L * 0.48, zc + bh * 0.15))
+    if bushy:
+        # a brush slanting down and back from the rump; its tip (if any) at the far end along the same slant
+        rot = Matrix.Rotation(0.6, 4, "X")
+        axis = rot @ Vector((0, 1, 0))
+        centre = t0 - axis * (tail * 0.5)
+        k.ellipsoid(tuple(centre), (w * 0.14, tail * 0.55, w * 0.14), col, rot=rot)
+        if tail_tip:
+            k.ellipsoid(tuple(centre - axis * (tail * 0.45)), (w * 0.11, tail * 0.18, w * 0.11), srgb(*tail_tip), rot=rot)
+    elif tail > 0:
+        k.limb(tuple(t0), tuple(t0 + Vector((0, -tail * 0.3, -tail))), w * 0.05, w * 0.03, col, seg=4)
+    return k.finish()
+
+
 def fence(name, seed=5):
     k = Kit(name, seed)
     wood = srgb(0.48, 0.36, 0.24)
@@ -392,6 +489,15 @@ def build_all():
     objs.append(house("house_long", 11.5, 5.2, 2.2, 40, THATCH, wall=WALL2, chimney=True, seed=13))
     objs.append(house("house_small", 4.6, 3.8, 2.3, 44, THATCH, wall=srgb(0.80, 0.74, 0.62), chimney=False, seed=14))
     objs.append(round_hut("hut_round", 2.3, 2.1, 2.6))
+    # the wild animals (D2-035): one per species kind, at adult size
+    objs.append(quadruped("animal_deer", 1.65, 1.1, 0.72, (0.55, 0.36, 0.20), belly=(0.82, 0.74, 0.62), head=0.24, neck=0.42, neck_up=55, ears=0.13, tail=0.12, antlers=0.45, seed=31))
+    objs.append(quadruped("animal_hare", 0.48, 0.3, 0.12, (0.52, 0.45, 0.36), belly=(0.80, 0.76, 0.68), head=0.09, neck=0.06, neck_up=40, ears=0.12, tail=0.05, bushy=True, tail_tip=(0.95, 0.95, 0.92), snout=0.2, seed=32))
+    objs.append(quadruped("animal_aurochs", 2.7, 1.65, 0.85, (0.20, 0.15, 0.12), belly=(0.28, 0.21, 0.16), hoof=(0.08, 0.07, 0.06), width=1.0, head=0.42, neck=0.4, neck_up=15, ears=0.12, tail=0.6, horns=0.55, horn_back=False, snout=0.6, hump=0.3, seed=33))
+    objs.append(quadruped("animal_boar", 1.35, 0.85, 0.36, (0.28, 0.23, 0.19), belly=(0.33, 0.28, 0.23), hoof=(0.10, 0.08, 0.07), width=0.55, head=0.3, neck=0.15, neck_up=-10, ears=0.1, tail=0.18, tusks=True, snout=1.0, hump=0.25, seed=34))
+    objs.append(quadruped("animal_ibex", 1.3, 0.9, 0.5, (0.50, 0.43, 0.34), belly=(0.80, 0.75, 0.66), head=0.2, neck=0.3, neck_up=50, ears=0.08, tail=0.1, horns=0.6, horn_back=True, seed=35))
+    objs.append(quadruped("animal_wolf", 1.25, 0.78, 0.42, (0.46, 0.44, 0.42), belly=(0.72, 0.70, 0.66), hoof=(0.18, 0.17, 0.16), head=0.21, neck=0.22, neck_up=25, ears=0.11, tail=0.45, bushy=True, snout=0.9, seed=36))
+    objs.append(quadruped("animal_fox", 0.75, 0.4, 0.2, (0.78, 0.38, 0.14), belly=(0.92, 0.88, 0.80), hoof=(0.12, 0.08, 0.06), head=0.13, neck=0.1, neck_up=30, ears=0.08, tail=0.38, bushy=True, tail_tip=(0.95, 0.94, 0.90), snout=1.0, seed=37))
+    objs.append(quadruped("animal_bear", 2.0, 1.15, 0.5, (0.36, 0.25, 0.16), belly=(0.32, 0.22, 0.14), hoof=(0.12, 0.09, 0.07), width=0.95, head=0.35, neck=0.25, neck_up=10, ears=0.07, tail=0.1, snout=0.7, hump=0.35, seed=38))
     objs.append(granary("granary"))
     objs.append(conifer("tree_conifer", 8.5, 21))
     objs.append(conifer("tree_conifer_small", 5.5, 22))
@@ -426,13 +532,13 @@ def export(objs, out):
 def preview(objs, out):
     """A contact sheet: every model in a row, workbench with vertex colours, soft studio light."""
     os.makedirs(out, exist_ok=True)
-    rows = [objs[: (len(objs) + 1) // 2], objs[(len(objs) + 1) // 2:]]
+    rows = [objs] if len(objs) <= 10 else [objs[: (len(objs) + 1) // 2], objs[(len(objs) + 1) // 2:]]
     width = 0.0
     for ri, row in enumerate(rows):
         x = 0.0
         for o in row:
             w = max(o.dimensions.x, o.dimensions.y)
-            o.location = (x + w / 2.0, ri * 16.0, 0)
+            o.location = (x + w / 2.0, (ri if len(rows) > 1 else 1) * 16.0, 0)   # a single row stands where the camera looks
             x += w + 1.5
         width = max(width, x)
     x = width
@@ -449,7 +555,7 @@ def preview(objs, out):
     scene.render.resolution_y = 1100
     cam_data = bpy.data.cameras.new("cam")
     cam_data.type = "ORTHO"
-    cam_data.ortho_scale = x * 0.52
+    cam_data.ortho_scale = x * (0.52 if len(rows) > 1 else 1.02)
     cam = bpy.data.objects.new("cam", cam_data)
     scene.collection.objects.link(cam)
     cam.location = (x / 2.0, -40.0, 24.0)
@@ -457,7 +563,7 @@ def preview(objs, out):
     scene.camera = cam
     world = bpy.data.worlds.new("w")
     scene.world = world
-    scene.render.filepath = os.path.join(out, "kit_preview.png")
+    scene.render.filepath = os.path.join(os.path.abspath(out), "kit_preview.png")   # absolute: no .blend to be relative to
     bpy.ops.render.render(write_still=True)
     print("[kit] preview", scene.render.filepath)
 
@@ -468,9 +574,20 @@ def main():
     prev = argv[argv.index("--preview") + 1] if "--preview" in argv else None
     for o in list(bpy.data.objects):
         bpy.data.objects.remove(o)
+    only = argv[argv.index("--only") + 1] if "--only" in argv else None
     objs = build_all()
+    if only:
+        # just these models (by name prefix); the others are dropped before export and preview
+        for o in list(objs):
+            if not o.name.startswith(only):
+                bpy.data.objects.remove(o)
+                objs.remove(o)
     export(objs, out)
     if prev:
+        if only:
+            for o in objs:
+                o.rotation_euler = (0, 0, math.radians(55))   # a three-quarter view (after export: never in the files)
+            bpy.context.view_layer.update()
         preview(objs, prev)
 
 

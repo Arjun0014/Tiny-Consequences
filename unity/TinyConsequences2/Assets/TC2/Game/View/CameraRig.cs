@@ -76,6 +76,28 @@ namespace TC2.Game
                 LookAt(Vec3d.FromLatLon(lat, lon), double.Parse(parts[2], ci));
                 return;
             }
+            if (view.StartsWith("wild"))
+            {
+                // the busiest wild ground within 6 km of the first village (no closer than 800 m to any village)
+                var P = w.Planet;
+                int best = -1; double bv = 0;
+                for (int c = 0; c < P.Cells; c++)
+                {
+                    if (!P.IsLand(c) || P.Species.Count == 0) continue;
+                    double dd = Vec3d.ArcDistance(P.Grid.Center[c], d, P.Radius);
+                    if (dd > 6000) continue;
+                    bool near = false;
+                    for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
+                        if (Vec3d.ArcDistance(w.Settlements.Get(sid2).Anchor, P.Grid.Center[c], P.Radius) < 800) { near = true; break; }
+                    if (near) continue;
+                    double v = 0;
+                    for (int s = 0; s < P.Species.Count; s++) v += P.Abund[s * P.Cells + c] * System.Math.Sqrt(P.Species[s].Mass);
+                    if (v > bv) { bv = v; best = c; }
+                }
+                if (best >= 0) d = P.Grid.Center[best];
+                LookAt(d, view == "wildfar" ? 320 : 120);
+                return;
+            }
             if (view.StartsWith("volcano"))
             {
                 // the volcano nearest the first village (land vents first)

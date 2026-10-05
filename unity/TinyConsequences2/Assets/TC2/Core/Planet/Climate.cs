@@ -24,7 +24,7 @@ namespace TC2.Core.Planet
         const double IceSubstep = 0.1;                    // years (stability: dt K / h^2 < 0.25)
         public const double CLand = 0.25, COcean = 10.0;  // heat capacity (W yr m-2 K-1): ~0.1 y on land, ~5 y at sea
         public const double StepYears = 0.25;             // one step a season
-        public const double Outgassing = 0.28;            // ppm/yr at rest (balanced by weathering at 280 ppm: ~2,000-year memory)
+        public const double Outgassing = 0.5;             // ppm/yr at rest (balanced by weathering at 280 ppm: ~1,100-year memory)
         public const double Lapse = 0.0065;               // K per m of height above the sea
         const double IceAlbedo = 0.62, SeaIceAlbedo = 0.50, SeaAlbedo = 0.07;
 
@@ -166,7 +166,8 @@ namespace TC2.Core.Planet
             double supply = 0;
             for (int v = 0; v < P.Vents.Count; v++) supply += P.Vents[v].Supply;
             double outgas = Outgassing * (0.6 + 0.4 * supply / DMath.Max(1.0, P.SupplyRef));
-            double weather = Outgassing * DMath.Sqrt(DMath.Max(1.0, P.CO2) / 280.0) * DMath.Exp(0.06 * (P.TGlobal - P.TGlobalRef));
+            // silicate weathering speeds up ~10 % per degree (faster reactions, more runoff): a cold world lets CO2 build
+            double weather = Outgassing * DMath.Sqrt(DMath.Max(1.0, P.CO2) / 280.0) * DMath.Exp(0.1 * (P.TGlobal - P.TGlobalRef));
             P.CO2 = DMath.Clamp(P.CO2 + (outgas - weather) * dt, 100.0, 3000.0);
         }
 

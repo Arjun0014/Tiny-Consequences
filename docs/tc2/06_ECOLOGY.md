@@ -39,3 +39,11 @@ catch per effort; oil and ash as pollutants; visible schools elaborated from fis
 
 ## 6. Phase
 F2. The F0 proof of concept keeps vegetation simple (fuel and biome) and has no animals.
+
+## 7. Implemented (first slice, D2-035)
+Eight species as data (deer, hare, aurochs, boar, ibex, wolf, fox, bear) varied per world; abundance and condition per
+species and cell; four foods (grass above a floor, shoots, mast and roots, small fare), lean winters, preferred mixes
+with substitution, Holling II hunting on reachable prey with refuges and size-limited vulnerability, territories,
+condition-gated spring breeding, hunger and cold deaths, habitat-weighted dispersal, grazing that the grass grows
+back from, hibernation; a 20-year spin-up with the plants; animals drawn near the camera from the fields. Not yet:
+age classes, trait evolution and speciation, extinction events, herds as agents, hunting by people, livestock, fish.
