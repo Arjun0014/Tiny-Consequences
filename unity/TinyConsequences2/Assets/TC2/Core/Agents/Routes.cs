@@ -1,0 +1,161 @@
+using System;
+using System.Collections.Generic;
+using TC2.Core.Foundation;
+using TC2.Core.Planet;
+
+namespace TC2.Core.Agents
+{
+    /// <summary>
+    /// A walking route between two settlements over the surface cells: a polyline of unit vectors with
+    /// cumulative arc length (metres). Geometry always runs from the lower settlement id A to the higher B;
+    /// a walk from B to A runs S from Length down to 0. Derived data: cached, rebuilt identically on demand.
+    /// </summary>
+    public sealed class Route
+    {
+        public int A, B;
+        public Vec3d[] Pts;
+        public double[] S;
+        public int[] Cell;     // cell of each segment (segment k is Pts[k] -> Pts[k+1])
+        public double Length;
+
+        public Vec3d PointAt(double s)
+        {
+            if (s <= 0) return Pts[0];
+            if (s >= Length) return Pts[Pts.Length - 1];
+            int k = Segment(s);
+            double seg = S[k + 1] - S[k];
+            double u = seg > 0 ? (s - S[k]) / seg : 0;
+            return (Pts[k] * (1 - u) + Pts[k + 1] * u).Normalized;
+        }
+
+        /// <summary>Index k of the segment containing arc length s (S[k] &lt;= s &lt; S[k+1]).</summary>
+        public int Segment(double s)
+        {
+            int lo = 0, hi = S.Length - 2;
+            while (lo < hi)
+            {
+                int mid = (lo + hi + 1) >> 1;
+                if (S[mid] <= s) lo = mid; else hi = mid - 1;
+            }
+            return lo;
+        }
+    }
+
+    /// <summary>Finds and caches routes (A* over land cells, 8-connected, slope and forest costs).</summary>
+    public sealed class RouteCache
+    {
+        readonly Dictionary<long, Route> _cache = new Dictionary<long, Route>();
+        readonly HashSet<long> _unreachable = new HashSet<long>();
+        public int Version;
+
+        public static long Key(int a, int b) { if (a > b) { int t = a; a = b; b = t; } return ((long)a << 32) | (uint)b; }
+
+        public void Invalidate() { _cache.Clear(); _unreachable.Clear(); Version++; }
+
+        public Route Get(Simulation.World w, int s1, int s2)
+        {
+            int a = Math.Min(s1, s2), b = Math.Max(s1, s2);
+            long key = Key(a, b);
+            if (_cache.TryGetValue(key, out var r)) return r;
+            if (_unreachable.Contains(key)) return null;
+            r = Build(w, a, b);
+            if (r == null) _unreachable.Add(key); else _cache[key] = r;
+            return r;
+        }
+
+        // A* scratch (reused; derived data only)
+        double[] _g; int[] _came; int[] _stamp; int _stampNow;
+        readonly List<long> _open = new List<long>();
+
+        Route Build(Simulation.World w, int a, int b)
+        {
+            var P = w.Planet;
+            ref var sa = ref w.Settlements.Get(a);
+            ref var sb = ref w.Settlements.Get(b);
+            int start = sa.Cell, goal = sb.Cell;
+            int n = P.Cells;
+            if (_g == null || _g.Length != n) { _g = new double[n]; _came = new int[n]; _stamp = new int[n]; }
+            _stampNow++;
+            var heap = new MinHeap();
+            double cellM = P.CellSize;
+            _g[start] = 0; _came[start] = -1; _stamp[start] = _stampNow;
+            heap.Push(Heuristic(P, start, goal), start);
+            var grid = P.Grid;
+            int found = -1, expanded = 0;
+            while (heap.Count > 0)
+            {
+                heap.Pop(out double f, out int c);
+                if (c == goal) { found = c; break; }
+                if (++expanded > 20000) break;
+                double gc = _g[c];
+                for (int k = 0; k < 8; k++)
+                {
+                    int nb = grid.Nbr8[c * 8 + k];
+                    if (nb == c || !P.IsLand(nb)) continue;
+                    double d = Vec3d.ArcDistance(grid.Center[c], grid.Center[nb], P.Radius);
+                    double climb = DMath.Abs(P.Elev[nb] - P.Elev[c]) / Math.Max(1.0, d);
+                    double cost = d * (1.0 + 4.0 * climb + 0.35 * P.Forest[nb]);
+                    double ng = gc + cost;
+                    if (_stamp[nb] != _stampNow || ng < _g[nb] - 1e-9)
+                    {
+                        _stamp[nb] = _stampNow; _g[nb] = ng; _came[nb] = c;
+                        heap.Push(ng + Heuristic(P, nb, goal), nb);
+                    }
+                }
+            }
+            if (found < 0) return null;
+            var cells = new List<int>();
+            for (int c = found; c != -1; c = _came[c]) cells.Add(c);
+            cells.Reverse();
+            // polyline: anchor A, centres of the intermediate cells, anchor B
+            var pts = new List<Vec3d> { sa.Anchor };
+            var segCells = new List<int>();
+            for (int i = 1; i < cells.Count - 1; i++) pts.Add(grid.Center[cells[i]]);
+            pts.Add(sb.Anchor);
+            var route = new Route { A = a, B = b, Pts = pts.ToArray() };
+            route.S = new double[route.Pts.Length];
+            route.Cell = new int[Math.Max(1, route.Pts.Length - 1)];
+            for (int i = 1; i < route.Pts.Length; i++)
+            {
+                route.S[i] = route.S[i - 1] + Vec3d.ArcDistance(route.Pts[i - 1], route.Pts[i], P.Radius);
+                // the segment's cell: the cell at its midpoint
+                route.Cell[i - 1] = grid.CellOf(route.Pts[i - 1] + route.Pts[i]);
+            }
+            route.Length = route.S[route.S.Length - 1];
+            return route;
+        }
+
+        static double Heuristic(PlanetState P, int c, int goal) => Vec3d.ArcDistance(P.Grid.Center[c], P.Grid.Center[goal], P.Radius);
+
+        /// <summary>Binary min-heap of (priority, cell) with deterministic ties (lower cell first).</summary>
+        sealed class MinHeap
+        {
+            double[] _p = new double[256]; int[] _c = new int[256]; int _n;
+            public int Count => _n;
+            static bool Less(double pa, int ca, double pb, int cb) => pa < pb || (pa == pb && ca < cb);
+            public void Push(double p, int c)
+            {
+                if (_n == _p.Length) { Array.Resize(ref _p, _n * 2); Array.Resize(ref _c, _n * 2); }
+                int i = _n++;
+                while (i > 0) { int par = (i - 1) >> 1; if (!Less(p, c, _p[par], _c[par])) break; _p[i] = _p[par]; _c[i] = _c[par]; i = par; }
+                _p[i] = p; _c[i] = c;
+            }
+            public void Pop(out double p, out int c)
+            {
+                p = _p[0]; c = _c[0];
+                _n--;
+                if (_n == 0) return;
+                double lp = _p[_n]; int lc = _c[_n];
+                int i = 0;
+                while (true)
+                {
+                    int l = 2 * i + 1; if (l >= _n) break;
+                    int r = l + 1; int m = (r < _n && Less(_p[r], _c[r], _p[l], _c[l])) ? r : l;
+                    if (!Less(_p[m], _c[m], lp, lc)) break;
+                    _p[i] = _p[m]; _c[i] = _c[m]; i = m;
+                }
+                _p[i] = lp; _c[i] = lc;
+            }
+        }
+    }
+}

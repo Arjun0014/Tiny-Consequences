@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The Unity project's Core tests (NUnit), compiled with the same limits. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Optimize>true</Optimize>
+    <AssemblyName>TC2.Tests.Core</AssemblyName>
+    <NoWarn>CS1591;MSB3277</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../unity/TinyConsequences2/Assets/TC2/Tests/Core/**/*.cs" />
+    <ProjectReference Include="../core/TC2.Core.csproj" />
+    <Reference Include="nunit.framework">
+      <HintPath>C:/Program Files/Unity/Hub/Editor/6000.6.4f1/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.ext.nunit/net472/unity-custom/nunit.framework.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
