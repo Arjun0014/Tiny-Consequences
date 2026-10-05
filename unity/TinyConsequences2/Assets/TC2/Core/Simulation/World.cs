@@ -253,6 +253,67 @@ namespace TC2.Core.Simulation
         }
 
         /// <summary>Queues a resolution change (a logged command: replays and saves agree).</summary>
+        double _landM2 = -1;
+
+        double LandM2()
+        {
+            if (_landM2 >= 0) return _landM2;
+            double a = 0;
+            for (int c = 0; c < Planet.Cells; c++) if (Planet.IsLand(c)) a += Planet.AreaHa(c) * 10000.0;
+            return _landM2 = a;
+        }
+
+        /// <summary>After a season of climate: a coast that moved rebuilds the drainage; ages of ice enter the history.</summary>
+        public void AfterClimate()
+        {
+            var P = Planet;
+            if (DMath.Abs(P.SeaLevelNow - P.SeaLevel) >= 1.0) CoastMoved();
+            double mean = P.IceVolume / DMath.Max(1.0, LandM2());
+            double rel = P.IceVolume / DMath.Max(1e6, P.IceRef);  // against the ice the world was born with
+            if (P.Glacial == 0 && rel > 1.6)
+            {
+                P.Glacial = 1;
+                Record(new HistoryEvent { Kind = HistoryKind.IceAge, Time = Now, Cell = -1, RootKind = RootKind.Nature, Magnitude = (float)mean });
+            }
+            else if (P.Glacial == 1 && rel < 1.2)
+            {
+                P.Glacial = 0;
+                Record(new HistoryEvent { Kind = HistoryKind.IceAgeEnded, Time = Now, Cell = -1, RootKind = RootKind.Nature, Magnitude = (float)mean });
+            }
+        }
+
+        /// <summary>The sea rose or fell past the coast the drainage was built for: land use, waters and routes follow.</summary>
+        void CoastMoved()
+        {
+            var P = Planet;
+            double before = P.SeaLevel;
+            P.SeaLevel = P.SeaLevelNow;
+            int drowned = 0, emerged = 0, villages = 0;
+            for (int c = 0; c < P.Cells; c++)
+            {
+                bool was = P.Elev[c] > before, now = P.IsLand(c);
+                if (was == now) continue;
+                if (was)
+                {
+                    drowned++;
+                    if (P.FieldOwner[c] != 0) { FieldCellsOf(P.FieldOwner[c]).Remove(c); P.FieldOwner[c] = 0; }
+                    if (SettlementAtCell(c) != 0) villages++;
+                    P.Forest[c] = 0; P.Grass[c] = 0; P.Ice[c] = 0; P.LakeWater[c] = 0; P.SoilWater[c] = 1;
+                }
+                else { emerged++; P.SoilWater[c] = 0.6f; P.Grass[c] = 0.02f; P.Forest[c] = 0; }
+            }
+            Drainage.Rebuild(P);
+            Drainage.SettleStored(P);
+            PlanetSys.Climate.Derive(P);
+            PlanetSys.RefreshMeans(P);
+            for (int c = 0; c < P.Cells; c++) P.ClassifyBiome(c, Now);
+            Routes.Invalidate();
+            _landM2 = -1;
+            P.CoastVersion++;
+            if (drowned + emerged > 0)
+                Record(new HistoryEvent { Kind = HistoryKind.CoastChanged, Time = Now, Cell = -1, RootKind = RootKind.Nature, Magnitude = (float)(P.SeaLevel - before), ArgA = drowned, ArgB = emerged * 1000 + villages });
+        }
+
         public void RequestResolution(Resolution r, long at) => Issue(new Command { Time = at, Kind = CommandKind.SetResolution, Arg = (long)r });
 
         void Strike(int cell, long cause, RootKind root, double strength)
@@ -332,6 +393,7 @@ namespace TC2.Core.Simulation
                 case SystemId.Climate: return coarse ? SimTime.Day : Config.ClimatePeriod;
                 case SystemId.Weather: return Config.WeatherPeriod;
                 case SystemId.Vegetation: return coarse ? 3 * Config.VegetationPeriod : Config.VegetationPeriod;
+                case SystemId.ClimateSlow: return SimTime.Year / 4;
                 default: return SimTime.Day;
             }
         }
@@ -391,6 +453,7 @@ namespace TC2.Core.Simulation
             PlanetSys = new PlanetSystems(Planet);
             Drainage.Rebuild(Planet);
             Drainage.SettleStored(Planet);
+            _landM2 = -1;
             _residents = new IntList[16]; _visitors = new IntList[16]; _hhOf = new IntList[16]; _members = new IntList[64]; _fieldCells = new IntList[16];
             for (int c = 0; c < Planet.Cells; c++) if (Planet.FieldOwner[c] != 0) FieldCellsOf(Planet.FieldOwner[c]).Add(c);
             for (int i = 0; i < _cellSettlement.Length; i++) _cellSettlement[i] = 0;

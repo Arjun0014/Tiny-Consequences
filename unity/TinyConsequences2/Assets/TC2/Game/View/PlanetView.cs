@@ -20,7 +20,9 @@ namespace TC2.Game
         readonly Color[][] _colors = new Color[6][];
         Vector3[][] _dirs = new Vector3[6][];
         int _res;
-        float _recolor;
+        float _recolor, _sinceBuild;
+        int _coast = -1;
+        double _builtIce;
         Material _terrain, _water, _atmo;
         GameObject _sea, _air;
 
@@ -35,7 +37,10 @@ namespace TC2.Game
         {
             var w = Host.World;
             if (w == null) return;
-            if (_built != Host.WorldVersion) Build();
+            var P = w.Planet;
+            _sinceBuild += Time.unscaledDeltaTime;
+            bool iceMoved = System.Math.Abs(P.IceVolume - _builtIce) > 0.04 * System.Math.Max(_builtIce, 1e9) && _sinceBuild > 10f;
+            if (_built != Host.WorldVersion || _coast != P.CoastVersion || iceMoved) Build(); // a new world, a new coast, grown or shrunk ice
             _recolor += Time.unscaledDeltaTime;
             if (_recolor > 2f) { _recolor = 0; Recolor(); }
         }
@@ -44,6 +49,9 @@ namespace TC2.Game
         {
             var P = Host.World.Planet;
             _built = Host.WorldVersion;
+            _coast = P.CoastVersion;
+            _builtIce = P.IceVolume;
+            _sinceBuild = 0;
             _res = P.Grid.N * Detail;
             int vn = (_res + 1) * (_res + 1);
             for (int f = 0; f < 6; f++)

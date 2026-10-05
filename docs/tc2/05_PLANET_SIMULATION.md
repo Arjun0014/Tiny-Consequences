@@ -91,7 +91,7 @@ Cause tags (`11` §6) accompany the causal fields: burning, drought anomaly, flo
   hillslope diffusion; eroded mass deposited in lakes and offshore (deltas). Rebuild drainage when relief or
   sea level changed enough (versioned; routes and settlements read the version).
 
-### Climate: an energy balance per cell
+### Climate: an energy balance (implemented as a zonal balance with per-cell ice and lapse, D2-024)
 - `C dT/dt = Q(lat, t, orbit) (1 - albedo) - (A + B T) + G(CO2) - k_aer * aerosol + D Lap(T)` on N32, daily;
   heat capacity large over the sea (memory ~years), small on land; albedo from ice, snow, vegetation, sea.
 - Orbit (fictional, fast): obliquity 18-28 deg over ~1,300 years, eccentricity and precession modulating the

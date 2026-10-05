@@ -33,9 +33,22 @@ namespace TC2.Core.Planet
         public float[] RiverFlow;  // discharge smoothed over ~a month (m3/day): what makes a river a river
         public float[] LakeWater;  // water held by a depression, kept at its deepest cell (m3)
         public float[] LakeDepth;  // derived from LakeWater and the drainage: water depth over each cell (m)
-        public double SeaLevel;
-        public double Tilt = 23.0 * DMath.Deg2Rad;
+        public double SeaLevel;      // the coastline's level: every land/sea mask reads it; moves in steps of >= 1 m
+        public double SeaLevelNow;   // the climate's sea level (continuous); the coast follows it when it is 1 m away
+        public double Tilt = 23.0 * DMath.Deg2Rad;   // obliquity at the last climate step (radians)
         public double GlobalTempOffset;
+        // the slow climate (D2-024)
+        public double[] ZonalT;     // zonal annual-mean sea-level temperature by band in sin(latitude) (degC)
+        public float[] Ice;         // land ice thickness (m)
+        public double CO2 = 280;    // ppm
+        public double Aerosol;      // stratospheric veil (optical depth)
+        public double Ecc, Perihelion;              // the orbit at the last climate step
+        public double SeaLevel0, SeaLevelRef, TGlobalRef, OceanAreaRef, IceVolume, IceRef;
+        public byte Glacial;        // 1 during an age of ice (hysteresis on the ice over land), for the history
+        // derived from the climate state (never serialized)
+        public float[] TMean, TAmp; // annual mean and seasonal swing per cell (degC)
+        public double TGlobal, MoistFactor = 1.0;
+        public int CoastVersion;    // bumps when the coastline moves (views rebuild)
 
         // derived per-cell geometry (from the grid; never serialized)
         public readonly double[] Lat;       // radians
@@ -53,6 +66,7 @@ namespace TC2.Core.Planet
             SoilWater = new float[Cells]; RainToday = new float[Cells]; Grass = new float[Cells]; Forest = new float[Cells];
             Biome = new byte[Cells]; DryCause = new long[Cells]; FieldOwner = new int[Cells]; RiverFlow = new float[Cells];
             LakeWater = new float[Cells]; LakeDepth = new float[Cells];
+            ZonalT = new double[Climate.Bands]; Ice = new float[Cells]; TMean = new float[Cells]; TAmp = new float[Cells];
         }
 
         public bool IsLand(int c) => Elev[c] > SeaLevel;
@@ -115,23 +129,19 @@ namespace TC2.Core.Planet
         }
 
         /// <summary>
-        /// Temperature at a cell and time: annual mean + seasonal swing (opposite in the south, lagged ~6 days)
-        /// + diurnal swing by local solar time + elevation lapse + global offset. Deterministic closed form.
+        /// Temperature at a cell and time: the climate's annual mean + seasonal swing (opposite in the south, lagged
+        /// ~6 days) + diurnal swing by local solar time (the same shape the climate tick uses).
         /// </summary>
         public double TemperatureAt(int c, long t)
         {
             Vec3d p = Grid.Center[c];
-            double lat = p.Latitude;
             bool land = Elev[c] > SeaLevel;
-            double mean = MeanTempAtLat(lat);
-            double amp = 13.0 * DMath.Abs(DMath.Sin(lat)) * (land ? 1.0 : 0.4);
             double f = SimTime.YearFraction(t);
-            double season = DMath.Sin(DMath.TwoPi * (f - 0.125 - 0.125)); // peak at f=0.5 (late summer, lagged)
-            if (lat < 0) season = -season;
+            double season = DMath.Sin(DMath.TwoPi * (f - 0.25)); // peak at f=0.5 (late summer, lagged)
+            if (SinLat[c] < 0) season = -season;
             double local = LocalSolarHour(p, t);
             double diurnal = (land ? 5.0 : 1.0) * DMath.Cos(DMath.TwoPi * (local - 15.0) / 24.0);
-            double lapse = land ? -0.0065 * (Elev[c] - SeaLevel) : 0.0;
-            return mean + amp * season + diurnal + lapse + GlobalTempOffset;
+            return TMean[c] + TAmp[c] * season + diurnal;
         }
 
         /// <summary>Local solar time in hours [0, 24) at a direction (longitude 0 = world clock).</summary>
@@ -175,12 +185,11 @@ namespace TC2.Core.Planet
                 Biome[c] = (byte)(depth > 600 ? Planet.Biome.DeepOcean : (depth > 120 ? Planet.Biome.Ocean : Planet.Biome.Coast));
                 return;
             }
-            double lat = Latitude(c);
-            double tmean = MeanTempAtLat(lat) - 0.0065 * (Elev[c] - SeaLevel) + GlobalTempOffset;
+            double tmean = TMean[c];
             double m = Moist[c];
             double h = Elev[c] - SeaLevel;
             Biome b;
-            if (tmean < -6) b = Planet.Biome.Ice;
+            if (Ice[c] > 5f || tmean < -6) b = Planet.Biome.Ice;
             else if (h > 1900) b = tmean < 2 ? Planet.Biome.Snowcap : Planet.Biome.Mountain;
             else if (tmean < 0) b = Planet.Biome.Tundra;
             else if (Forest[c] > 0.55) b = tmean > 22 && m > 0.6 ? Planet.Biome.Jungle : (tmean < 6 ? Planet.Biome.Taiga : Planet.Biome.Forest);
@@ -201,6 +210,12 @@ namespace TC2.Core.Planet
             w.IntArray(FieldOwner, Cells);
             w.FloatArray(RiverFlow, Cells);
             w.FloatArray(LakeWater, Cells);
+            w.Int(ZonalT.Length); for (int j = 0; j < ZonalT.Length; j++) w.Double(ZonalT[j]);
+            w.FloatArray(Ice, Cells);
+            w.Double(CO2); w.Double(Aerosol); w.Double(Ecc); w.Double(Perihelion);
+            w.Double(SeaLevel0); w.Double(SeaLevelRef); w.Double(TGlobalRef); w.Double(OceanAreaRef); w.Double(IceVolume);
+            w.Byte(Glacial);
+            w.Double(SeaLevelNow); w.Double(IceRef);
         }
 
         public static PlanetState Read(BinReader r)
@@ -215,12 +230,21 @@ namespace TC2.Core.Planet
             r.IntArray(p.FieldOwner);
             r.FloatArray(p.RiverFlow);
             r.FloatArray(p.LakeWater);
+            int nb = r.Int(); for (int j = 0; j < nb; j++) p.ZonalT[j] = r.Double();
+            r.FloatArray(p.Ice);
+            p.CO2 = r.Double(); p.Aerosol = r.Double(); p.Ecc = r.Double(); p.Perihelion = r.Double();
+            p.SeaLevel0 = r.Double(); p.SeaLevelRef = r.Double(); p.TGlobalRef = r.Double(); p.OceanAreaRef = r.Double(); p.IceVolume = r.Double();
+            p.Glacial = r.Byte();
+            p.SeaLevelNow = r.Double(); p.IceRef = r.Double();
             return p;
         }
 
         public void Hash(ref StateHasher h)
         {
             h.Add(Radius); h.Add(Grid.N); h.Add(SeaLevel); h.Add(Tilt); h.Add(GlobalTempOffset);
+            for (int j = 0; j < ZonalT.Length; j++) h.Add(ZonalT[j]);
+            h.Add(CO2); h.Add(Aerosol); h.Add(Ecc); h.Add(Perihelion); h.Add(SeaLevel0); h.Add(SeaLevelRef); h.Add(TGlobalRef); h.Add(OceanAreaRef); h.Add(IceVolume); h.Add(Glacial); h.Add(SeaLevelNow); h.Add(IceRef);
+            for (int i = 0; i < Cells; i++) h.Add(Ice[i]);
             for (int i = 0; i < Cells; i++)
             {
                 h.Add(Elev[i]); h.Add(Plate[i]); h.Add(Moist[i]); h.Add(Temp[i]); h.Add(SoilWater[i]);

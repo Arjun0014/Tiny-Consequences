@@ -10,7 +10,8 @@ namespace TC2.Core.Planet
         public const int Climate = 1;
         public const int Weather = 2;
         public const int Vegetation = 3;
-        public const int Count = 4;
+        public const int ClimateSlow = 4;
+        public const int Count = 5;
     }
 
     /// <summary>
@@ -25,6 +26,7 @@ namespace TC2.Core.Planet
         // closed-form temperature terms per cell (derived): T = base + amp*season + dAmp*cos(dayPhase + phase)
         readonly double[] _base, _amp, _dAmp, _cosPh, _sinPh, _hemi;
         readonly float[] _runoff;
+        public readonly Climate Climate;
 
         public PlanetSystems(PlanetState P)
         {
@@ -33,26 +35,30 @@ namespace TC2.Core.Planet
             _block = new int[n]; _tmean = new float[n];
             _base = new double[n]; _amp = new double[n]; _dAmp = new double[n]; _cosPh = new double[n]; _sinPh = new double[n]; _hemi = new double[n];
             _runoff = new float[n];
-            for (int c = 0; c < n; c++) _block[c] = coarse.CellOf(P.Grid.Center[c]);
+            for (int c = 0; c < n; c++)
+            {
+                _block[c] = coarse.CellOf(P.Grid.Center[c]);
+                _hemi[c] = P.Lat[c] >= 0 ? 1.0 : -1.0;
+                // local solar hour = world hour + lon/2pi*24; diurnal peak at 15:00 local
+                double ph = P.Lon[c] - DMath.TwoPi * 15.0 / 24.0;
+                _cosPh[c] = DMath.Cos(ph); _sinPh[c] = DMath.Sin(ph);
+            }
+            Climate = new Climate(P);
+            Climate.Derive(P);
             RefreshMeans(P);
         }
 
+        /// <summary>The fast climate's terms from the slow climate's per-cell annual mean and seasonal swing.</summary>
         public void RefreshMeans(PlanetState P)
         {
             for (int c = 0; c < P.Cells; c++)
             {
                 bool land = P.IsLand(c);
-                double lat = P.Lat[c];
-                double t = PlanetState.MeanTempAtLat(lat) + P.GlobalTempOffset;
-                if (land) t -= 0.0065 * (P.Elev[c] - P.SeaLevel);
+                double t = P.TMean[c];
                 _tmean[c] = (float)t;
                 _base[c] = t;
-                _hemi[c] = lat >= 0 ? 1.0 : -1.0;
-                _amp[c] = 13.0 * DMath.Abs(P.SinLat[c]) * (land ? 1.0 : 0.4) * _hemi[c];
+                _amp[c] = P.TAmp[c] * _hemi[c];
                 _dAmp[c] = land ? 5.0 : 1.0;
-                // local solar hour = world hour + lon/2pi*24; diurnal peak at 15:00 local
-                double ph = P.Lon[c] - DMath.TwoPi * 15.0 / 24.0;
-                _cosPh[c] = DMath.Cos(ph); _sinPh[c] = DMath.Sin(ph);
             }
         }
 
@@ -62,13 +68,23 @@ namespace TC2.Core.Planet
         {
             switch (system)
             {
-                case SystemId.Climate: Climate(w); break;
+                case SystemId.Climate: FastClimate(w); break;
                 case SystemId.Weather: Weather(w); Rivers(w); break;
                 case SystemId.Vegetation: Vegetation(w); break;
+                case SystemId.ClimateSlow: SlowClimate(w); break;
             }
         }
 
-        void Climate(World w)
+        /// <summary>A season of the slow climate: energy balance, ice, sea level; then the fast terms and the coast.</summary>
+        void SlowClimate(World w)
+        {
+            var P = w.Planet;
+            Climate.Step(P, w.Seed, w.Now, Climate.StepYears);
+            RefreshMeans(P);
+            w.AfterClimate();
+        }
+
+        void FastClimate(World w)
         {
             var P = w.Planet;
             double f = SimTime.YearFraction(w.Now);
@@ -91,7 +107,7 @@ namespace TC2.Core.Planet
             {
                 // wetter summers at mid latitudes, wet season shifting with the sun in the tropics
                 double season = seasonN * _hemi[c];
-                double moist = P.Moist[c];
+                double moist = DMath.Min(1.0, P.Moist[c] * P.MoistFactor); // a warmer world is a wetter one
                 double pRain = DMath.Clamp(0.06 + 0.5 * moist + 0.08 * season * moist, 0.02, 0.85);
                 double ub = KeyedRng.Unit(seed, RngStream.Weather, (ulong)_block[c], (ulong)day);
                 double uc = KeyedRng.Unit(seed, RngStream.Weather, (ulong)c + 100000UL, (ulong)day);

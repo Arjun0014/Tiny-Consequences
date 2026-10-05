@@ -24,7 +24,12 @@ namespace TC2.Core.Worldgen
             Relief(w, P);
             w.Drainage.Rebuild(P);
             Moisture(w, P);
+            w.PlanetSys.Climate.Prime(P, w.Seed, 0);
             Vegetation(w, P);
+            // the climate at equilibrium with this planet's land, sea and life; ice sheets grown; the coast kept
+            P.SeaLevel0 = P.SeaLevel;
+            w.PlanetSys.Climate.SpinUp(P, w.Seed, 0);
+            P.SeaLevel = P.SeaLevel0; P.SeaLevelNow = P.SeaLevel0;
             w.PlanetSys.RefreshMeans(P);
             for (int c = 0; c < P.Cells; c++) { P.Temp[c] = (float)P.TemperatureAt(c, 0); P.ClassifyBiome(c, 0); }
             SpinUpRivers(w, P);
@@ -202,7 +207,7 @@ namespace TC2.Core.Worldgen
             for (int c = 0; c < P.Cells; c++)
             {
                 if (!P.IsLand(c)) { P.Grass[c] = 0; P.Forest[c] = 0; continue; }
-                double tm = PlanetState.MeanTempAtLat(P.Latitude(c)) - 0.0065 * P.Elev[c];
+                double tm = P.TMean[c];
                 double m = P.Moist[c];
                 double tSuitF = DMath.SmoothStep(-1, 8, tm) * (1.0 - DMath.SmoothStep(30, 38, tm));
                 double kF = DMath.Clamp01(1.25 * m - 0.12) * tSuitF;
@@ -225,7 +230,8 @@ namespace TC2.Core.Worldgen
             for (int c = 0; c < n; c++)
             {
                 if (!P.IsLand(c)) { score[c] = -1; continue; }
-                double tm = PlanetState.MeanTempAtLat(P.Latitude(c)) - 0.0065 * P.Elev[c];
+                if (P.Ice[c] > 0.5f) { score[c] = -1; continue; }
+                double tm = P.TMean[c];
                 double m = P.Moist[c];
                 double s = DMath.SmoothStep(4, 11, tm) * (1.0 - DMath.SmoothStep(24, 30, tm));
                 s *= DMath.SmoothStep(0.22, 0.4, m) * (1.0 - DMath.SmoothStep(0.85, 1.0, m));

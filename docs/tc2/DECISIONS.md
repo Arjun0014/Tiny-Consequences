@@ -279,3 +279,40 @@ its plan (the commands are in the saved queue). The rule reads only world state,
 ACTIVITY before the target, and every person has a live activity on arrival (audit).
 **Invalidation.** If COARSE histories diverge from ACTIVITY ones beyond the bands of D2-021, lower the use of
 COARSE (higher threshold) until COARSE improves.
+
+## D2-024 — 2026-10-05 — The slow climate: a zonal energy balance with a fast orbit, ice sheets and sea level
+
+**Context.** F1 needs glacial cycles, coastline change and forests that move within playable history (01 §3), and
+CO2/aerosol forcing for later causes (volcanoes, fires, people, god powers). The foundation climate was a closed form
+with fixed means.
+**Alternatives.** (a) Per-cell 2-D energy balance with diffusion on the sphere (Jacobi or multigrid for the
+pole-to-equator scale; costly and slow to converge); (b) a zonal (1-D in sin latitude) Budyko-Sellers-North model with
+albedo from the cells, solved implicitly (Thomas algorithm, unconditionally stable) plus per-cell lapse, land ice and
+seasonal swing; (c) prescribed glacial cycles (scripted - rejected).
+**Decision.** (b), stepped every season (12 days): `C dT/dt = Q s(x; obliquity) (1 - albedo) - (A - 5.35 ln(CO2/280) +
+B T) - 25 x aerosol + d/dx[D (1 - x^2) dT/dx]`, 48 bands, A = 209, B = 2.09, D = 0.55 W/m2/K, heat capacity 0.25 (land)
+to 10 (sea) W yr m-2 K-1; planetary albedo 0.20 + 0.62 x the cells' surface albedo (sea 0.07, sea ice 0.50, snow 0.55,
+ice 0.62, forest 0.13, grass 0.20, bare 0.32). Orbit (fictional, fast, keyed by the seed): obliquity 23 +- 4 deg over
+1,300 y (+ 1 deg over 870 y), eccentricity 0.007-0.05 over 3,100 / 1,900 y, precession 600 y; the summer factor
+1 + 3 e sin(perihelion) per hemisphere scales the seasonal swing. Land ice per cell: accumulation 2.6 x precipitation x
+the cold part of the year, melt 3.4 m per degC of mean positive temperature (a fast world law: sheets answer the orbit
+within centuries), shallow-ice flow down the surface (calving at the sea). Sea level = reference - 0.9 x ice volume /
+reference ocean area + 0.5 m/K of warming; the **coastline** (every land mask) follows it in steps of >= 1 m, which
+rebuilds the drainage, drops drowned fields and records CoastChanged; ages of ice (ice volume > 1.6 x / < 1.2 x the
+world's ice at creation) are Epochal events. Worldgen spins the climate (120 y) and ice (300 y) up with the generated
+coast kept. New state: zonal temperatures, ice, CO2, aerosol, orbit, references, the continuous sea level and the
+coastline level (serialized and hashed); per-cell annual mean, swing, global mean and the moisture factor (+5 %/K)
+are derived.
+**Evidence.** Tests: a generated world is temperate (8-20 degC) with 30-55 degC from equator to pole; higher obliquity
+warms the poles and cools the tropics; doubled CO2 warms 1.5-6 degC; a veil cools within 1.5 years and the climate
+returns as it fades; a colder world grows ice and the sea falls by exactly the water locked up; a moving coast
+rebuilds the drainage, enters the history and leaves no field in the sea; save/load across climate steps continues
+identically. Seed 42, climate alone 4,000 y: global 14.3-15.1 degC, poles -17 to -23, ice 17-27 % of land, sea +1 to
+-11 m on the obliquity rhythm; with live vegetation 3,000 y: sea 0 to -20 m, two ages of ice, and the one village grew
+to 475, fell to ~100 in the first glacial maximum, recovered to 456 and died out in the second. Cost ~3 ms per world
+year (ice flow only over iced cells).
+**Consequences.** Moisture follows warmth (+5 %/K) - a cold world is a dry one. Villages on drowned cells are only
+recorded (relocation is F5's migration). Tectonics must rebuild the drainage and re-derive the climate when relief
+moves. CO2 sources and sinks (volcanoes, fire, forests, weathering) are F1 next.
+**Invalidation.** If regional climates matter beyond latitude and height (rain shadows, monsoons moving), move to a
+2-D per-cell balance on N32 with a multigrid solve.

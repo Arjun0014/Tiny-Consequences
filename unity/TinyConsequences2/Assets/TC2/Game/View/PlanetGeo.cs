@@ -29,7 +29,8 @@ namespace TC2.Game
             if (i0 < 0) { i0 = 0; fu = 0; } else if (i0 >= n - 1) { i0 = n - 2; fu = 1; }
             if (j0 < 0) { j0 = 0; fv = 0; } else if (j0 >= n - 1) { j0 = n - 2; fv = 1; }
             int c00 = f * n * n + j0 * n + i0;
-            double e00 = P.Elev[c00], e10 = P.Elev[c00 + 1], e01 = P.Elev[c00 + n], e11 = P.Elev[c00 + n + 1];
+            // the surface: rock plus the ice sheets on it
+            double e00 = P.Elev[c00] + P.Ice[c00], e10 = P.Elev[c00 + 1] + P.Ice[c00 + 1], e01 = P.Elev[c00 + n] + P.Ice[c00 + n], e11 = P.Elev[c00 + n + 1] + P.Ice[c00 + n + 1];
             return (e00 * (1 - fu) + e10 * fu) * (1 - fv) + (e01 * (1 - fu) + e11 * fu) * fv;
         }
 

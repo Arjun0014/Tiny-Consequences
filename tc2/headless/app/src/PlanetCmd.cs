@@ -29,6 +29,7 @@ namespace TC2.Headless
             var sw = Stopwatch.StartNew();
             var w = WorldGenerator.Create(cfg);
             Console.WriteLine("worldgen " + sw.ElapsedMilliseconds + " ms; seed " + cfg.Seed + " cells " + w.Planet.Cells);
+            if (a.Has("coarse")) w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
             if (mapDir != null) { Directory.CreateDirectory(mapDir); WriteMap(w, Path.Combine(mapDir, "map_0000.png"), width); }
             Console.WriteLine(PlanetHeader());
             Console.WriteLine(PlanetLine(w));
@@ -66,7 +67,7 @@ namespace TC2.Headless
         }
 
         static string PlanetHeader() =>
-            "date                      landT  soilW  rainy  forest grass  rivers lakes  maxQ(m3/s) seaQ(m3/s) pop";
+            "date                      landT  soilW  rainy  forest grass  rivers lakes  maxQ(m3/s) seaQ(m3/s) pop  | obliq  ecc   Tglob  ice(km3) seaNow  coast  ice%  glac";
 
         static string PlanetLine(World w)
         {
@@ -87,9 +88,12 @@ namespace TC2.Headless
             }
             int pop = 0;
             for (int s = w.Settlements.First(); s != 0; s = w.Settlements.Next(s)) pop += w.Settlements.Get(s).Population;
-            return string.Format(CultureInfo.InvariantCulture, "{0,-25} {1,5:0.0} {2,6:0.00} {3,6:0.00} {4,6:0.00} {5,5:0.00} {6,6} {7,5} {8,10:0.0} {9,10:0.0} {10,4}",
+            int iced = 0;
+            for (int c = 0; c < P.Cells; c++) if (P.IsLand(c) && P.Ice[c] > 5f) iced++;
+            return string.Format(CultureInfo.InvariantCulture, "{0,-25} {1,5:0.0} {2,6:0.00} {3,6:0.00} {4,6:0.00} {5,5:0.00} {6,6} {7,5} {8,10:0.0} {9,10:0.0} {10,4}  | {11,5:0.0} {12,5:0.000} {13,6:0.00} {14,8:0.00} {15,6:0.0} {16,6:0.0} {17,5:0.0} {18,3}",
                 SimTime.Format(w.Now), t / area, sw / area, rainy / (double)land, forest / area, grass / area, rivers, lakes,
-                maxQ / 86400.0, seaQ / 86400.0, pop);
+                maxQ / 86400.0, seaQ / 86400.0, pop,
+                P.Tilt * 180 / DMath.PI, P.Ecc, P.TGlobal, P.IceVolume / 1e9, P.SeaLevelNow - P.SeaLevel0, P.SeaLevel - P.SeaLevel0, 100.0 * iced / land, P.Glacial);
         }
 
         // ------------------------------------------------------------------ maps

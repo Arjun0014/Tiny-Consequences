@@ -28,6 +28,7 @@ namespace TC2.Core.Foundation
         Harvest = 19,
         Tectonics = 20,
         Ecology = 21,
+        Orbit = 22,
         Test = 1000,
     }
 

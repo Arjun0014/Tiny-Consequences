@@ -30,6 +30,9 @@ namespace TC2.Core.History
         GodCommand = 22,
         FledDanger = 23,
         Drought = 24,
+        CoastChanged = 25,      // the sea rose or fell past a coast (Magnitude = metres, ArgA drowned, ArgB emerged*1000+villages)
+        IceAge = 26,
+        IceAgeEnded = 27,
     }
 
     /// <summary>History tiers (11 §4).</summary>
@@ -124,7 +127,10 @@ namespace TC2.Core.History
             switch (k)
             {
                 case HistoryKind.WorldCreated:
-                case HistoryKind.PeopleArrived: return Tier.Epochal;
+                case HistoryKind.PeopleArrived:
+                case HistoryKind.IceAge:
+                case HistoryKind.IceAgeEnded: return Tier.Epochal;
+                case HistoryKind.CoastChanged: return Tier.Local;
                 case HistoryKind.SettlementFounded:
                 case HistoryKind.SettlementAbandoned:
                 case HistoryKind.Wildfire:
@@ -154,6 +160,9 @@ namespace TC2.Core.History
                 case HistoryKind.SettlementFounded: b = 30; break;
                 case HistoryKind.SettlementAbandoned: b = 40; break;
                 case HistoryKind.Famine: b = 40; break;
+                case HistoryKind.IceAge: b = 50; break;
+                case HistoryKind.IceAgeEnded: b = 40; break;
+                case HistoryKind.CoastChanged: b = 4; break;
                 case HistoryKind.Wildfire: b = 15; break;
                 case HistoryKind.GodCommand: b = 10; break;
                 case HistoryKind.PersonDied: b = 2; break;
