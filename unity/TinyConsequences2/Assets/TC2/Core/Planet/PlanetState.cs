@@ -64,9 +64,11 @@ namespace TC2.Core.Planet
         // wildlife (D2-035): the species and, per species and cell, how many animals and in what condition
         public System.Collections.Generic.List<Species> Species = new System.Collections.Generic.List<Species>();
         public float[] Abund = new float[0], Cond = new float[0];
+        public float[] Coat = new float[0];   // per species and cell: how far the coat has moved from its kind's (C; D2-037)
         public System.Collections.Generic.List<Vent> Vents = new System.Collections.Generic.List<Vent>();
         public Hotspot[] Hotspots = new Hotspot[0];
         public double SupplyRef;    // the volcanoes' magma supply when the world began (the carbon cycle's reference)
+        public double FreeLandRef;  // ice-free land (ha) when the world began: rock under ice does not weather (D2-036)
 
         // derived per-cell geometry (from the grid; never serialized)
         public readonly double[] Lat;       // radians
@@ -253,6 +255,7 @@ namespace TC2.Core.Planet
             w.Int(Abund.Length);
             w.FloatArray(Abund, Abund.Length);
             w.FloatArray(Cond, Cond.Length);
+            w.FloatArray(Coat, Coat.Length);
             w.Int(Hotspots.Length);
             for (int i = 0; i < Hotspots.Length; i++) { w.Double(Hotspots[i].At.X); w.Double(Hotspots[i].At.Y); w.Double(Hotspots[i].At.Z); w.Double(Hotspots[i].Rate); }
             w.Int(Vents.Count);
@@ -262,6 +265,7 @@ namespace TC2.Core.Planet
                 w.Int(v.Id); w.Int(v.Cell); w.Double(v.At.X); w.Double(v.At.Y); w.Double(v.At.Z); w.Int(v.Plate); w.Byte(v.Kind); w.Byte(v.Flags); w.Double(v.Pressure); w.Long(v.Born); w.Long(v.LastEruption); w.Long(v.Next); w.Int(v.Eruptions); w.Float(v.Supply); w.Float(v.Seal); w.Float(v.Cone);
             }
             w.Double(SupplyRef);
+            w.Double(FreeLandRef);
         }
 
         public static PlanetState Read(BinReader r)
@@ -295,9 +299,10 @@ namespace TC2.Core.Planet
             int nsp = r.Int();
             for (int i = 0; i < nsp; i++) p.Species.Add(Planet.Species.Read(r));
             int na = r.Int();
-            p.Abund = new float[na]; p.Cond = new float[na];
+            p.Abund = new float[na]; p.Cond = new float[na]; p.Coat = new float[na];
             r.FloatArray(p.Abund);
             r.FloatArray(p.Cond);
+            r.FloatArray(p.Coat);
             int nh = r.Int();
             p.Hotspots = new Hotspot[nh];
             for (int i = 0; i < nh; i++) { double x = r.Double(), y = r.Double(), z = r.Double(); p.Hotspots[i] = new Hotspot { At = new Vec3d(x, y, z), Rate = r.Double() }; }
@@ -305,6 +310,7 @@ namespace TC2.Core.Planet
             for (int i = 0; i < nv; i++)
                 p.Vents.Add(new Vent { Id = r.Int(), Cell = r.Int(), At = new Vec3d(r.Double(), r.Double(), r.Double()), Plate = r.Int(), Kind = r.Byte(), Flags = r.Byte(), Pressure = r.Double(), Born = r.Long(), LastEruption = r.Long(), Next = r.Long(), Eruptions = r.Int(), Supply = r.Float(), Seal = r.Float(), Cone = r.Float() });
             p.SupplyRef = r.Double();
+            p.FreeLandRef = r.Double();
             return p;
         }
 
@@ -318,10 +324,11 @@ namespace TC2.Core.Planet
             for (int i = 0; i < Cells; i++) { h.Add(Crust[i]); h.Add(CrustAge[i]); h.Add(CrustOx[i]); h.Add(CrustOy[i]); h.Add(DrainIce[i]); h.Add(Magma[i]); h.Add(Stress[i]); h.Add(StormRain[i]); }
             for (int i = 0; i < Storms.Count; i++) Storms[i].Hash(ref h);
             for (int i = 0; i < Species.Count; i++) Species[i].Hash(ref h);
-            for (int i = 0; i < Abund.Length; i++) { h.Add(Abund[i]); h.Add(Cond[i]); }
+            for (int i = 0; i < Abund.Length; i++) { h.Add(Abund[i]); h.Add(Cond[i]); h.Add(Coat[i]); }
             for (int i = 0; i < Hotspots.Length; i++) { h.Add(Hotspots[i].At.X); h.Add(Hotspots[i].At.Y); h.Add(Hotspots[i].At.Z); h.Add(Hotspots[i].Rate); }
             for (int i = 0; i < Vents.Count; i++) { var v = Vents[i]; h.Add(v.Id); h.Add(v.Cell); h.Add(v.At.X); h.Add(v.At.Y); h.Add(v.At.Z); h.Add(v.Plate); h.Add(v.Kind); h.Add(v.Flags); h.Add(v.Pressure); h.Add(v.Born); h.Add(v.LastEruption); h.Add(v.Next); h.Add(v.Eruptions); h.Add(v.Supply); h.Add(v.Seal); h.Add(v.Cone); }
             h.Add(SupplyRef);
+            h.Add(FreeLandRef);
             for (int i = 0; i < Cells; i++)
             {
                 h.Add(Elev[i]); h.Add(Plate[i]); h.Add(Moist[i]); h.Add(Temp[i]); h.Add(SoilWater[i]);

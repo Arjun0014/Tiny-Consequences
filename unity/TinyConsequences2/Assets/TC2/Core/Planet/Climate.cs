@@ -165,10 +165,21 @@ namespace TC2.Core.Planet
         {
             double supply = 0;
             for (int v = 0; v < P.Vents.Count; v++) supply += P.Vents[v].Supply;
+            // rock weathers where it is bare to the air: ice sheets shut it away (and so let CO2 build until they melt)
+            double free = FreeLand(P);
+            double exposed = P.FreeLandRef > 0 ? free / P.FreeLandRef : 1.0;
             double outgas = Outgassing * (0.6 + 0.4 * supply / DMath.Max(1.0, P.SupplyRef));
             // silicate weathering speeds up ~10 % per degree (faster reactions, more runoff): a cold world lets CO2 build
-            double weather = Outgassing * DMath.Sqrt(DMath.Max(1.0, P.CO2) / 280.0) * DMath.Exp(0.1 * (P.TGlobal - P.TGlobalRef));
+            double weather = Outgassing * DMath.Sqrt(DMath.Max(1.0, P.CO2) / 280.0) * DMath.Exp(0.1 * (P.TGlobal - P.TGlobalRef)) * exposed;
             P.CO2 = DMath.Clamp(P.CO2 + (outgas - weather) * dt, 100.0, 3000.0);
+        }
+
+        /// <summary>Land not under an ice sheet (ha).</summary>
+        public static double FreeLand(PlanetState P)
+        {
+            double a = 0;
+            for (int c = 0; c < P.Cells; c++) if (P.IsLand(c) && P.Ice[c] < 2f) a += P.AreaHa(c);
+            return a;
         }
 
         void SolveTridiagonal(double[] x)
@@ -350,6 +361,7 @@ namespace TC2.Core.Planet
             P.OceanAreaRef = OceanArea(P, sea);
             P.TGlobalRef = P.TGlobal;
             P.IceRef = DMath.Max(P.IceVolume, 1e6);
+            P.FreeLandRef = FreeLand(P);
             UpdateSeaLevel(P);
             Derive(P);
         }

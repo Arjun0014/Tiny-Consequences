@@ -116,7 +116,7 @@ namespace TC2.Game
             float ry = 56;
             if (_info)
             {
-                _right = new Rect(sw - 340, ry, 330, 110);
+                _right = new Rect(sw - 340, ry, 330, 130);
                 GUILayout.BeginArea(_right, _box);
                 GUILayout.Label("<b>" + w.LivingPeople() + "</b> people in <b>" + w.InhabitedSettlements() + "</b> places   fires " + w.Fire.Active.Count, _label);
                 var P = w.Planet;
@@ -124,8 +124,9 @@ namespace TC2.Game
                 GUILayout.Label("climate " + P.TGlobal.ToString("0.0", CultureInfo.InvariantCulture) + " °C   ice " + (P.IceVolume / 1e9).ToString("0.0", CultureInfo.InvariantCulture) + " km³   sea " + sea + " m   tilt " + (P.Tilt * 180 / System.Math.PI).ToString("0.0", CultureInfo.InvariantCulture) + "°" + (P.Glacial == 1 ? "   (an age of ice)" : ""), _small);
                 GUILayout.Label("achieved " + FormatSpeed(Host.AchievedSpeed) + "   sim " + Host.LastSimMs.ToString("0.0", CultureInfo.InvariantCulture) + " ms   " + _fps.ToString("0", CultureInfo.InvariantCulture) + " fps   " + SystemInfo.graphicsDeviceType, _small);
                 GUILayout.Label("events " + w.Metrics.Events.ToString("N0", CultureInfo.InvariantCulture) + "   history " + w.History.Count + "   drawn " + Objects.PeopleDrawn + " people, " + Objects.TreesDrawn + " trees", _small);
+                GUILayout.Label("CO2 " + P.CO2.ToString("0", CultureInfo.InvariantCulture) + " ppm   volcanoes " + P.Vents.Count + "   storms " + P.Storms.Count + "   " + Wild(w), _small);
                 GUILayout.EndArea();
-                ry += 116;
+                ry += 136;
             }
             Rect worldRect = Rect.zero;
             if (_worldPanel)
@@ -215,6 +216,26 @@ namespace TC2.Game
             float y = 200;
             int from = Mathf.Max(0, Host.CatchUpFeed.Count - 22);
             for (int i = from; i < Host.CatchUpFeed.Count; i++) { GUI.Label(new Rect(sw * 0.5f - 300, y, 600, 22), Host.CatchUpFeed[i], _small); y += 20; }
+        }
+
+        string _wild = ""; float _wildAt = -99f;
+
+        /// <summary>The wild animals on the planet, a few kinds in round numbers (summed every few seconds).</summary>
+        string Wild(TC2.Core.Simulation.World w)
+        {
+            if (Time.unscaledTime - _wildAt < 3f) return _wild;
+            _wildAt = Time.unscaledTime;
+            var P = w.Planet;
+            var sb = new System.Text.StringBuilder();
+            for (int s = 0; s < P.Species.Count; s++)
+            {
+                double t = TC2.Core.Planet.Ecology.Total(P, s);
+                if (t < 1) continue;
+                if (sb.Length > 0) sb.Append(", ");
+                sb.Append(TC2.Core.Planet.Ecology.KindName(P.Species[s].Kind)).Append(' ').Append(t >= 1000 ? (t / 1000).ToString("0.#", CultureInfo.InvariantCulture) + "k" : t.ToString("0", CultureInfo.InvariantCulture));
+            }
+            _wild = sb.ToString();
+            return _wild;
         }
 
         static string FormatSpeed(double s)

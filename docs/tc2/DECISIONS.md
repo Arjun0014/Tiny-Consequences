@@ -669,3 +669,52 @@ unable to breed), fast breeders winning every pasture until breeding needed good
 the history, herds as agents near people (hunting), fish in the sea.
 **Invalidation.** If herbivores keep the grass at its floor across most land (a brown world), lower forage or raise
 predation; if a species dies out in most worlds within centuries, revisit its niche.
+
+## D2-036 — 2026-10-05 — Rock under ice does not weather; crags shelter climbers
+
+**Context.** With the faster thermostat (D2-034) seed 42 still slid into a glaciation: ice locks the poles while the
+global mean falls only ~1.4 C, so a temperature-driven thermostat barely answers (CO2 +25 ppm a millennium). In the
+same run the ibex died out (wolves reached them on any ground) and aurochs dwindled.
+**Decision.**
+- **Silicate weathering scales with ice-free land** against the world's start (`P.FreeLandRef`, saved): as ice sheets
+  spread, weathering falls and CO2 builds until they melt; as they retreat, weathering resumes. Earth's own brake on
+  glaciations (with the temperature and CO2 terms of D2-034).
+- **Crags shelter climbers**: a prey's reachable share falls by 0.6 x steepness x its slope preference (ibex on their
+  cliffs), on top of the cover of woods.
+- Large prey are less vulnerable still (`(4 hunter/prey)^1.2`: a wolf rarely takes a grown aurochs); aurochs breed a
+  little faster (0.45 a year).
+**Evidence.** The 10,000-year reruns are recorded in PROGRESS.
+**Invalidation.** If worlds now oscillate too fast between ice and hothouse (cycles of a few centuries), weaken the ice
+term (weathering ~ free land^0.5).
+
+## D2-037 — 2026-10-05 — Coats that follow the climate; new species from isolation; extinction in the history
+
+**Context.** F2 asks for evolution that is mechanism, not decoration: populations should adapt to where they live,
+kinds should split only when something really separates them, and the loss of a kind should be an event of the
+history. A trait per animal is far beyond the budget; a trait per species is too coarse to diverge.
+**Decision.**
+- **One trait, per species and cell**: `P.Coat` (C, the shift of that population's cold tolerance from its kind's),
+  saved and hashed with the abundance fields. The cold that hurts a population and the cold that bounds where it
+  thrives use its own coat (`ColdTol + Coat`).
+- **Selection**: each ecology step a population's coat moves toward what its place asks (`TMean - 7 C - ColdTol`,
+  clamped -14..12) at `0.0015 x (fecundity + 0.5)` a year (fast breeders adapt faster; an e-fold of ~250-600 years);
+  a coat more than 3 C from that costs `0.01 x (off - 3)` of the population a year. Wanderers carry their coats and
+  the cell's coat becomes the mix of residents and newcomers (gene flow, so a connected range stays one kind).
+- **Speciation at tectonic steps** (every 50 years): the occupied cells of each species are split into groups with no
+  occupied path between them; the most diverged sizeable group (>= 12 cells, >= 20 animals) whose mean coat differs
+  from the largest group's by more than 5 C becomes a species of its own (its coat folded into its `ColdTol`, its
+  animals, condition and re-centred coats moved over, `Parent` the old kind; named "snow" or "sand" + kind). At most
+  16 species. A species with fewer than 0.3 animals left is extinct (`Gone`), and both are Epochal history events
+  (kinds 42, 43) with Nature at the root.
+- **Also**: bears eat a broader diet (browse 0.2, mast 0.45, small fare 0.35) so they no longer starve where boar take
+  the mast; the ecology step costs 6 ms instead of 10.5 (per-species intake and half-saturation precomputed, a
+  vulnerability table per step, suitability once per cell, a rational e^-x for deaths) and in ACTIVITY it runs every
+  third vegetation tick with three times the step (as COARSE already did). Save sim version 7.
+**Evidence.** Tests (68): a coat far from its place moves a good way toward it in a century but not all the way, and
+costs lives meanwhile; two cut-off groups of hares 7 C apart become two species with the history told, and a kind
+with no animals is recorded extinct. The long runs are in PROGRESS.
+**Consequences.** New species appear only where ranges are broken (sea, ice, desert, people later) and climates
+differ - on an ice-age planet, the snow hares of a cold island. Other traits (size, diet) can follow the same field
+pattern if the budget allows. The view does not yet show lineages apart (next: tint by species, the history card).
+**Invalidation.** If worlds fill the species cap within a few thousand years, raise `Split` or the group minimum; if no
+world ever speciates over 10,000 years with real isolation, lower `Split` to 4 C.

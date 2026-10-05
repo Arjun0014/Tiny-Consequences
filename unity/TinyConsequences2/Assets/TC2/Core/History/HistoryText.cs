@@ -57,6 +57,9 @@ namespace TC2.Core.History
                 case HistoryKind.VentBorn: return "A volcano, " + subj + ", " + (e.ArgB == 1 ? "broke out over the deep fire" : "opened") + " near " + place + ".";
                 case HistoryKind.IslandRose: return "A new island rose from the sea: " + subj + ", near " + place + ".";
                 case HistoryKind.VentExtinct: return subj + ", near " + place + ", has fallen silent (" + e.ArgB + " eruptions).";
+                case HistoryKind.Speciation:
+                    return "The " + obj + " of the land near " + place + ", long cut off from the rest of their kind, have become a kind of their own: the " + subj + ".";
+                case HistoryKind.Extinction: return "The last of the " + subj + " are gone: the kind has died out.";
                 case HistoryKind.Storm:
                     return (e.ArgA == 0 ? "A great storm gathered over the sea" : "A winter storm grew") + " near " + place + " (winds " + F(e.Magnitude, "0") + " m/s).";
                 case HistoryKind.StormLandfall: return "The storm came ashore near " + place + " (winds " + F(e.Magnitude, "0") + " m/s).";

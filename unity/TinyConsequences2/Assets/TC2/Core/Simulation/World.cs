@@ -90,7 +90,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 5; // 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035)
+        public const int FormatSimVersion = 7; // 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
@@ -355,6 +355,7 @@ namespace TC2.Core.Simulation
             Drainage.Rebuild(P);
             Erosion.Step(this, Tectonics.StepYears);
             Coast.Step(this, Tectonics.StepYears); // waves wear headlands, drift fills inlets (D2-034)
+            Evolution.Speciate(this);              // isolated, diverged populations become species (D2-037)
             LandChanged(P.SeaLevel, false);
             P.ReliefVersion++;
         }
@@ -466,6 +467,24 @@ namespace TC2.Core.Simulation
             if (vei > 0) vt.Pressure = DMath.Max(vt.Pressure, Volcanism.PressureFor(vei)); // a size asked for
             P.Vents[best] = vt;
             Erupt(vt.Id, why);
+        }
+
+        public void RecordSpeciation(int child, int parent, int cell)
+        {
+            var P = Planet;
+            Record(new HistoryEvent
+            {
+                Kind = HistoryKind.Speciation, Time = Now, Cell = cell, Settlement = cell >= 0 ? NearestSettlement(cell, 9000) : 0, RootKind = RootKind.Nature,
+                Subject = new EntityRef(EntityKind.Species, P.Species[child].Id), Object = new EntityRef(EntityKind.Species, P.Species[parent].Id),
+                Magnitude = P.Species[child].ColdTol - P.Species[parent].ColdTol,
+            });
+        }
+
+        public void RecordExtinction(int s)
+        {
+            var id = new EntityRef(EntityKind.Species, Planet.Species[s].Id);
+            Record(new HistoryEvent { Kind = HistoryKind.Extinction, Time = Now, Cell = -1, RootKind = RootKind.Nature, Subject = id });
+            History.EndEntity(id, Now);
         }
 
         public void RecordIslandRose(Vent v)

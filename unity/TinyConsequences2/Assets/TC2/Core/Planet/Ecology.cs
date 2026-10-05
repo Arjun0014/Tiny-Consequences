@@ -25,23 +25,24 @@ namespace TC2.Core.Planet
         public float Territory;     // hunters: animals a cell's range holds before the young find no room (0: no limit)
         public int Parent;          // lineage (0 for the first species)
         public long Born;
+        public long Gone;           // when it died out (0: alive)
 
         public void Write(BinWriter w)
         {
             w.Int(Id); w.Byte(Kind); w.Byte((byte)Role); w.Float(Mass); w.Float(Fecundity); w.Float(Lifespan); w.Float(ColdTol);
-            w.Float(ForestPref); w.Float(SlopePref); w.Float(Grass); w.Float(Browse); w.Float(Mast); w.Float(Small); w.Int(Prey); w.Float(Disperse); w.Float(Territory); w.Int(Parent); w.Long(Born);
+            w.Float(ForestPref); w.Float(SlopePref); w.Float(Grass); w.Float(Browse); w.Float(Mast); w.Float(Small); w.Int(Prey); w.Float(Disperse); w.Float(Territory); w.Int(Parent); w.Long(Born); w.Long(Gone);
         }
 
         public static Species Read(BinReader r) => new Species
         {
             Id = r.Int(), Kind = r.Byte(), Role = (Role)r.Byte(), Mass = r.Float(), Fecundity = r.Float(), Lifespan = r.Float(), ColdTol = r.Float(),
-            ForestPref = r.Float(), SlopePref = r.Float(), Grass = r.Float(), Browse = r.Float(), Mast = r.Float(), Small = r.Float(), Prey = r.Int(), Disperse = r.Float(), Territory = r.Float(), Parent = r.Int(), Born = r.Long(),
+            ForestPref = r.Float(), SlopePref = r.Float(), Grass = r.Float(), Browse = r.Float(), Mast = r.Float(), Small = r.Float(), Prey = r.Int(), Disperse = r.Float(), Territory = r.Float(), Parent = r.Int(), Born = r.Long(), Gone = r.Long(),
         };
 
         public void Hash(ref StateHasher h)
         {
             h.Add(Id); h.Add(Kind); h.Add((byte)Role); h.Add(Mass); h.Add(Fecundity); h.Add(Lifespan); h.Add(ColdTol);
-            h.Add(ForestPref); h.Add(SlopePref); h.Add(Grass); h.Add(Browse); h.Add(Mast); h.Add(Small); h.Add(Prey); h.Add(Disperse); h.Add(Territory); h.Add(Parent); h.Add(Born);
+            h.Add(ForestPref); h.Add(SlopePref); h.Add(Grass); h.Add(Browse); h.Add(Mast); h.Add(Small); h.Add(Prey); h.Add(Disperse); h.Add(Territory); h.Add(Parent); h.Add(Born); h.Add(Gone);
         }
 
         /// <summary>Plant food it needs a year (kg dry matter), or meat for a predator: ~ mass^0.75.</summary>
@@ -76,19 +77,22 @@ namespace TC2.Core.Planet
         {
             new Template { Name = "deer",    Role = Role.Browser,  Mass = 90,  Fec = 0.8f, Life = 12, Cold = -8,  Forest = 0.55f, Slope = 0.2f, Grass = 0.5f, Browse = 0.5f, Disperse = 0.06f },
             new Template { Name = "hare",    Role = Role.Grazer,   Mass = 3,   Fec = 4.0f, Life = 3,  Cold = -14, Forest = 0.2f,  Slope = 0.2f, Grass = 0.9f, Browse = 0.1f, Disperse = 0.08f },
-            new Template { Name = "aurochs", Role = Role.Grazer,   Mass = 600, Fec = 0.35f, Life = 18, Cold = -10, Forest = 0.15f, Slope = 0.0f, Grass = 1.0f, Disperse = 0.05f },
+            new Template { Name = "aurochs", Role = Role.Grazer,   Mass = 600, Fec = 0.45f, Life = 18, Cold = -10, Forest = 0.15f, Slope = 0.0f, Grass = 1.0f, Disperse = 0.05f },
             new Template { Name = "boar",    Role = Role.Omnivore, Mass = 80,  Fec = 2.5f, Life = 9,  Cold = -6,  Forest = 0.75f, Slope = 0.2f, Grass = 0.15f, Mast = 0.85f, Disperse = 0.06f },
             new Template { Name = "ibex",    Role = Role.Grazer,   Mass = 60,  Fec = 0.7f, Life = 14, Cold = -16, Forest = 0.1f,  Slope = 0.9f, Grass = 0.8f, Browse = 0.2f, Disperse = 0.05f },
             new Template { Name = "wolf",    Role = Role.Predator, Mass = 35,  Fec = 1.5f, Life = 9,  Cold = -30, Forest = 0.4f,  Slope = 0.3f, Disperse = 0.10f, Territory = 0.5f, Prey = (1 << 0) | (1 << 2) | (1 << 3) | (1 << 4) },
             // a fox lives as much on voles and beetles in the grass as on hares
             new Template { Name = "fox",     Role = Role.Omnivore, Mass = 6,   Fec = 2.0f, Life = 5,  Cold = -25, Forest = 0.4f,  Slope = 0.2f, Small = 1.0f, Disperse = 0.10f, Territory = 1.2f, Prey = 1 << 1 },
-            new Template { Name = "bear",    Role = Role.Omnivore, Mass = 250, Fec = 0.3f, Life = 22, Cold = -20, Forest = 0.85f, Slope = 0.5f, Browse = 0.25f, Mast = 0.75f, Disperse = 0.04f, Territory = 0.15f, Prey = 1 << 0 },
+            // a bear eats most things: shoots, mast, and roots, insects and berries (small fare), a deer when it can
+            new Template { Name = "bear",    Role = Role.Omnivore, Mass = 250, Fec = 0.3f, Life = 22, Cold = -20, Forest = 0.85f, Slope = 0.5f, Browse = 0.2f, Mast = 0.45f, Small = 0.35f, Disperse = 0.04f, Territory = 0.15f, Prey = 1 << 0 },
         };
 
         public static string KindName(byte kind) => kind < Templates.Length ? Templates[kind].Name : "beast";
 
-        [ThreadStatic] static double[] _grassEaten, _browseEaten, _flow;
+        [ThreadStatic] static double[] _grassEaten, _browseEaten, _flow, _in, _inZ;
         [ThreadStatic] static float[] _suit, _steep;
+        [ThreadStatic] static double[] _vuln, _keep;
+        [ThreadStatic] static Species[] _sp;   // per step: vulnerability [hunter*16+prey], coat-selection keep per species
 
         /// <summary>Worldgen: this world's species (the templates, varied by the seed), spread over the land and settled.</summary>
         public static void Create(Simulation.World w)
@@ -113,6 +117,7 @@ namespace TC2.Core.Planet
             }
             P.Abund = new float[k * P.Cells];
             P.Cond = new float[k * P.Cells];
+            P.Coat = new float[k * P.Cells];
             // a few of each on every land cell they can live in; the spin-up spreads them to what the land holds
             for (int s = 0; s < k; s++)
                 for (int c = 0; c < P.Cells; c++)
@@ -131,13 +136,13 @@ namespace TC2.Core.Planet
         }
 
         /// <summary>How well a cell suits a species (0..1): climate, cover and slope.</summary>
-        public static double Suitability(PlanetState P, in Species sp, int c) => Suitability(P, sp, c, Steepness(P, c));
+        public static double Suitability(PlanetState P, in Species sp, int c) => Suitability(P, sp, c, Steepness(P, c), 0.0);
 
-        static double Suitability(PlanetState P, in Species sp, int c, double steep)
+        static double Suitability(PlanetState P, in Species sp, int c, double steep, double coat)
         {
             if (!P.IsLand(c) || P.Ice[c] > 5f || P.LakeDepth[c] > 0.5f) return 0;
             double tm = P.TMean[c];
-            double cold = DMath.Clamp01((tm - sp.ColdTol) / 6.0);
+            double cold = DMath.Clamp01((tm - (sp.ColdTol + coat)) / 6.0);
             double heat = 1.0 - DMath.SmoothStep(30, 38, tm);
             double cover = 1.0 - DMath.Min(1.0, DMath.Abs(P.Forest[c] - sp.ForestPref) * 1.4);
             double slope = 0.5 + 0.5 * (1.0 - DMath.Abs(DMath.Clamp01(steep) - sp.SlopePref));
@@ -160,7 +165,7 @@ namespace TC2.Core.Planet
             int n = P.Cells, k = P.Species.Count;
             if (k == 0 || P.Abund == null) return;
             if (_grassEaten == null || _grassEaten.Length != n) { _grassEaten = new double[n]; _browseEaten = new double[n]; }
-            if (_flow == null || _flow.Length != k * n) { _flow = new double[k * n]; _suit = new float[k * n]; }
+            if (_flow == null || _flow.Length != k * n) { _flow = new double[k * n]; _suit = new float[k * n]; _in = new double[k * n]; _inZ = new double[k * n]; }
             if (_steep == null || _steep.Length != n) _steep = new float[n];
             double yf = SimTime.YearFraction(t);
             Span<double> need = stackalloc double[16];   // plant food each wants this step (kg)
@@ -168,11 +173,39 @@ namespace TC2.Core.Planet
             Span<double> meat = stackalloc double[16];   // meat each hunter wants this step (kg)
             Span<double> wt = stackalloc double[4];
             Span<double> food = stackalloc double[4], sum = stackalloc double[4], f = stackalloc double[4];   // per cell, reused
-            for (int c = 0; c < n; c++) _steep[c] = (float)Steepness(P, c);
-            for (int s = 0; s < k; s++)
+            if (_vuln == null) { _vuln = new double[16 * 16]; _keep = new double[16]; _sp = new Species[16]; }
+            for (int a = 0; a < k; a++) _sp[a] = P.Species[a];   // a List's indexer copies the struct: read them from an array
+            // [ThreadStatic] fields cost a thread-local lookup at every touch: the loops below use locals
+            var sps = _sp; var suit = _suit; var steep = _steep; var vuln = _vuln; var keepS = _keep;
+            var flow = _flow; var inflow = _in; var inZ = _inZ; var grassEaten = _grassEaten; var browseEaten = _browseEaten;
+            // what each species eats a year and the prey that sates it half: computed once a step, not in every cell
+            Span<double> intake = stackalloc double[16], half = stackalloc double[16];
+            for (int a = 0; a < k; a++) { intake[a] = sps[a].Intake; half[a] = HalfPrey * DMath.Exp(0.75 * DMath.Log(sps[a].Mass / 35.0)); }
+            for (int a = 0; a < k; a++)
             {
-                var sp = P.Species[s];
-                for (int c = 0; c < n; c++) _suit[s * n + c] = (float)Suitability(P, sp, c, _steep[c]);
+                keepS[a] = DMath.Exp(-Evolution.Pull * (sps[a].Fecundity + 0.5) * dt);
+                for (int b = 0; b < k; b++) vuln[a * 16 + b] = Vulnerable(sps[b].Mass, sps[a].Mass);
+            }
+            // suitability: what a cell offers (climate, cover, slope) once, then each species' match to it
+            for (int c = 0; c < n; c++)
+            {
+                if (!P.IsLand(c) || P.Ice[c] > 5f || P.LakeDepth[c] > 0.5f)
+                {
+                    steep[c] = 0f;
+                    for (int s = 0; s < k; s++) suit[s * n + c] = 0f;
+                    continue;
+                }
+                double stp = Steepness(P, c);
+                steep[c] = (float)stp;
+                double tm = P.TMean[c], heat = 1.0 - DMath.SmoothStep(30, 38, tm), forest = P.Forest[c], st = DMath.Clamp01(stp);
+                for (int s = 0; s < k; s++)
+                {
+                    ref var sp = ref sps[s];
+                    double cold = DMath.Clamp01((tm - (sp.ColdTol + P.Coat[s * n + c])) / 6.0);
+                    double cover = 1.0 - DMath.Min(1.0, DMath.Abs(forest - sp.ForestPref) * 1.4);
+                    double slope = 0.5 + 0.5 * (1.0 - DMath.Abs(st - sp.SlopePref));
+                    suit[s * n + c] = (float)(cold * heat * DMath.Max(0.15, cover) * slope);
+                }
             }
             for (int c = 0; c < n; c++)
             {
@@ -190,15 +223,15 @@ namespace TC2.Core.Planet
                 // 1. plants: each eats its preferred mix; what one food lacks it makes up from what is left of the others
                 for (int s = 0; s < k; s++)
                 {
-                    var sp = P.Species[s];
+                    ref var sp = ref sps[s];
                     need[s] = 0; got[s] = 0; meat[s] = 0;
                     double N = P.Abund[s * n + c];
                     if (N <= 0) continue;
-                    if (sp.Role == Role.Predator) { meat[s] = N * sp.Intake * dt; continue; }
-                    double plant = sp.Role == Role.Omnivore ? (sp.Small > 0 ? 0.6 : 0.7) : 1.0;
+                    if (sp.Role == Role.Predator) { meat[s] = N * intake[s] * dt; continue; }
+                    double plant = sp.Role == Role.Omnivore ? (sp.Kind == 6 ? 0.6 : 0.7) : 1.0;   // a fox lives more on hares
                     double awake = sp.Kind == 7 ? 0.15 + 0.85 * warm : 1.0;   // a bear sleeps through the cold
-                    need[s] = N * sp.Intake * dt * plant * awake;
-                    if (sp.Prey != 0) meat[s] = N * sp.Intake * dt * (1.0 - plant) * awake;
+                    need[s] = N * intake[s] * dt * plant * awake;
+                    if (sp.Prey != 0) meat[s] = N * intake[s] * dt * (1.0 - plant) * awake;
                     sum[0] += need[s] * sp.Grass; sum[1] += need[s] * sp.Browse; sum[2] += need[s] * sp.Mast; sum[3] += need[s] * sp.Small;
                 }
                 double left = 0;
@@ -207,7 +240,7 @@ namespace TC2.Core.Planet
                 for (int s = 0; s < k; s++)
                 {
                     if (need[s] <= 0) continue;
-                    var sp = P.Species[s];
+                    ref var sp = ref sps[s];
                     got[s] = need[s] * (sp.Grass * f[0] + sp.Browse * f[1] + sp.Mast * f[2] + sp.Small * f[3]);
                     unmet += need[s] - got[s];
                 }
@@ -215,26 +248,25 @@ namespace TC2.Core.Planet
                 double f2 = unmet > 1e-9 ? DMath.Min(1.0, left / unmet) : 0.0;
                 if (f2 > 0) for (int s = 0; s < k; s++) if (need[s] > 0) got[s] += (need[s] - got[s]) * 0.6 * f2;
                 double leftG = food[0] - sum[0] * f[0];
-                _grassEaten[c] = sum[0] * f[0] + (left > 0 ? unmet * 0.6 * f2 * leftG / left : 0.0);
-                _browseEaten[c] = sum[1] * f[1];
+                grassEaten[c] = sum[0] * f[0] + (left > 0 ? unmet * 0.6 * f2 * leftG / left : 0.0);
+                browseEaten[c] = sum[1] * f[1];
                 // 2. hunting (Holling II): a hunter meets prey in proportion to the prey it can reach, and is sated at
                 // what it can eat; a quarter of the prey (more in the woods) is always out of reach
                 double refuge = 0.25 + 0.35 * P.Forest[c];
                 for (int s = 0; s < k; s++)
                 {
                     if (meat[s] <= 0) continue;
-                    var sp = P.Species[s];
+                    ref var sp = ref sps[s];
                     double avail = 0;
-                    for (int q = 0; q < k; q++) if ((sp.Prey & (1 << P.Species[q].Kind)) != 0) avail += P.Abund[q * n + c] * P.Species[q].Mass * (1.0 - refuge) * Vulnerable(P.Species[q].Mass, sp.Mass);
+                    for (int q = 0; q < k; q++) if ((sp.Prey & (1 << sps[q].Kind)) != 0) avail += P.Abund[q * n + c] * sps[q].Mass * Reach(refuge, steep[c], sps[q].SlopePref) * vuln[s * 16 + q];
                     if (avail <= 0) continue;
                     // half sated when a cell holds HalfPrey kg it can reach: hunters hold their prey near three times that
-                    double half = HalfPrey * DMath.Exp(0.75 * DMath.Log(sp.Mass / 35.0));   // a small hunter is sated by less
-                    double take = DMath.Min(meat[s] * avail / (avail + half), avail * 0.25);
+                    double take = DMath.Min(meat[s] * avail / (avail + half[s]), avail * 0.25);   // a small hunter is sated by less
                     for (int q = 0; q < k; q++)
                     {
-                        if ((sp.Prey & (1 << P.Species[q].Kind)) == 0) continue;
-                        double share = P.Abund[q * n + c] * P.Species[q].Mass * (1.0 - refuge) * Vulnerable(P.Species[q].Mass, sp.Mass) / avail;
-                        P.Abund[q * n + c] = (float)DMath.Max(0.0, P.Abund[q * n + c] - take * share / P.Species[q].Mass);
+                        if ((sp.Prey & (1 << sps[q].Kind)) == 0) continue;
+                        double share = P.Abund[q * n + c] * sps[q].Mass * Reach(refuge, steep[c], sps[q].SlopePref) * vuln[s * 16 + q] / avail;
+                        P.Abund[q * n + c] = (float)DMath.Max(0.0, P.Abund[q * n + c] - take * share / sps[q].Mass);
                     }
                     got[s] += take;
                 }
@@ -245,15 +277,17 @@ namespace TC2.Core.Planet
                     int i = s * n + c;
                     double N = P.Abund[i];
                     if (N <= 0) continue;
-                    var sp = P.Species[s];
+                    ref var sp = ref sps[s];
                     double want = need[s] + meat[s];
                     double fed = want > 0 ? got[s] / want : 1.0;
                     double cond = P.Cond[i];
                     cond = DMath.Clamp01(cond + (fed - 0.75) * 2.0 * dt);
                     double mort = dt / sp.Lifespan;                               // age
                     if (cond < 0.45) mort += dt * 3.0 * (0.45 - cond) / 0.45;      // hunger
-                    if (tm < sp.ColdTol) mort += dt * 0.8 * DMath.Min(1.0, (sp.ColdTol - tm) / 5.0); // cold
-                    N *= DMath.Exp(-mort);
+                    double tol = sp.ColdTol + P.Coat[i];                         // this population's coat
+                    if (tm < tol) mort += dt * 0.8 * DMath.Min(1.0, (tol - tm) / 5.0); // cold
+                    mort += Evolution.Select(P, sp, i, c, dt, keepS[s]);           // the coat follows the place, slowly
+                    N *= ExpNeg(mort);
                     // spring: the young of the year, as many as condition (and, for hunters, room) allows
                     double season = P.SinLat[c] >= 0 ? yf : (yf + 0.5) % 1.0;
                     if (season >= 0.12 && season < 0.12 + dt)
@@ -270,14 +304,14 @@ namespace TC2.Core.Planet
             {
                 if (!P.IsLand(c)) continue;
                 double ha = P.AreaHa(c);
-                if (_grassEaten[c] > 0) P.Grass[c] = (float)DMath.Max(0.0, P.Grass[c] - _grassEaten[c] / (GrassMax * ha));
+                if (grassEaten[c] > 0) P.Grass[c] = (float)DMath.Max(0.0, P.Grass[c] - grassEaten[c] / (GrassMax * ha));
                 // browse is the year's shoots and leaves: the woods stand (a heavy browsing slows their spread only)
             }
             // 5. wandering: a share of each cell's animals moves to its neighbours, more to the better ones
-            Array.Clear(_flow, 0, k * n);
+            Array.Clear(flow, 0, k * n); Array.Clear(inflow, 0, k * n); Array.Clear(inZ, 0, k * n);
             for (int s = 0; s < k; s++)
             {
-                var sp = P.Species[s];
+                ref var sp = ref sps[s];
                 double move = DMath.Min(0.5, sp.Disperse * dt * 4.0);
                 for (int c = 0; c < n; c++)
                 {
@@ -288,32 +322,44 @@ namespace TC2.Core.Planet
                     for (int q = 0; q < 4; q++)
                     {
                         int nb = g.Nbr4[c * 4 + q];
-                        double su = _suit[s * n + nb];
+                        double su = suit[s * n + nb];
                         wt[q] = su * su;
                         wsum += wt[q];
                     }
                     if (wsum <= 0) continue;
                     double out_ = N * move;
-                    _flow[i] -= out_;
+                    flow[i] -= out_;
+                    double zc = P.Coat[i];
                     for (int q = 0; q < 4; q++)
                     {
                         if (wt[q] <= 0) continue;
                         int nb = g.Nbr4[c * 4 + q];
-                        _flow[s * n + nb] += out_ * wt[q] / wsum;
+                        double m = out_ * wt[q] / wsum;
+                        flow[s * n + nb] += m;
+                        inflow[s * n + nb] += m; inZ[s * n + nb] += m * zc;
                     }
                 }
             }
             for (int i = 0; i < k * n; i++)
             {
-                if (_flow[i] == 0) continue;
-                double v = P.Abund[i] + _flow[i];
+                if (flow[i] == 0) continue;
+                double stay = P.Abund[i] + (flow[i] - inflow[i]);   // the residents after some left
+                double v = P.Abund[i] + flow[i];
+                // newcomers bring their coats: the cell's coat is the mix
+                if (inflow[i] > 0 && v > 1e-6) P.Coat[i] = (float)((DMath.Max(0.0, stay) * P.Coat[i] + inZ[i]) / (DMath.Max(0.0, stay) + inflow[i]));
                 P.Abund[i] = (float)(v < 1e-4 ? 0.0 : v);
                 if (P.Cond[i] <= 0f && v > 0) P.Cond[i] = 0.6f;
             }
         }
 
+        /// <summary>e^-x for the small rates of a step (x >= 0): a rational form, ~1 % at x = 1, exact enough for deaths.</summary>
+        static double ExpNeg(double x) => 1.0 / (1.0 + x * (1.0 + x * (0.5 + x * (1.0 / 6.0 + x / 24.0))));
+
         /// <summary>How readily a hunter of this size takes prey of that size: a wolf takes deer, seldom a grown aurochs.</summary>
-        static double Vulnerable(double prey, double hunter) => DMath.Clamp(DMath.Exp(0.8 * DMath.Log(4.0 * hunter / prey)), 0.05, 1.0);
+        static double Vulnerable(double prey, double hunter) => DMath.Clamp(DMath.Exp(1.2 * DMath.Log(4.0 * hunter / prey)), 0.05, 1.0);
+
+        /// <summary>The share of a prey a hunter can reach in a cell: not those in the woods' cover, nor a climber on its crags.</summary>
+        static double Reach(double refuge, double steep, double slopePref) => DMath.Max(0.05, 1.0 - refuge - 0.6 * DMath.Clamp01(steep) * slopePref);
 
         /// <summary>Animals of a species on the whole planet.</summary>
         public static double Total(PlanetState P, int s)

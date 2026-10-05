@@ -47,6 +47,8 @@ namespace TC2.Core.History
         StormLandfall = 39,     // a storm came ashore (Magnitude = wind m/s)
         CropsFlattened = 40,    // a storm's wind flattened a village's crop (Magnitude = share lost)
         StormSurge = 41,        // a storm drove the sea over a coast (Magnitude = surge m, ArgA = cells flooded)
+        Speciation = 42,        // a population cut off from its kind became a species (Subject new, Object parent; Magnitude = coat C)
+        Extinction = 43,        // a species died out (Subject)
     }
 
     /// <summary>History tiers (11 §4).</summary>
@@ -157,6 +159,8 @@ namespace TC2.Core.History
                 case HistoryKind.StormLandfall: return Tier.Local;
                 case HistoryKind.CropsFlattened: return Tier.Local;
                 case HistoryKind.StormSurge: return Tier.Historical;
+                case HistoryKind.Speciation: return Tier.Epochal;
+                case HistoryKind.Extinction: return Tier.Epochal;
                 case HistoryKind.VentExtinct: return Tier.Local;
                 case HistoryKind.AshFall: return Tier.Local;
                 case HistoryKind.SettlementFounded:
@@ -203,6 +207,8 @@ namespace TC2.Core.History
                 case HistoryKind.StormLandfall: b = 0.6 * DMath.Exp(0.06 * magnitude); break;
                 case HistoryKind.CropsFlattened: b = 5; break;
                 case HistoryKind.StormSurge: b = 20; break;
+                case HistoryKind.Speciation: b = 45; break;
+                case HistoryKind.Extinction: b = 40; break;
                 case HistoryKind.AshFall: b = 5; break;
                 case HistoryKind.Wildfire: b = 15; break;
                 case HistoryKind.GodCommand: b = 10; break;
