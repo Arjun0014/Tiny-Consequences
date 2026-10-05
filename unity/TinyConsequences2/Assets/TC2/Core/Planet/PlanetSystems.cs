@@ -155,6 +155,7 @@ namespace TC2.Core.Planet
             double seasonN = DMath.Sin(DMath.TwoPi * (yf - 0.125));
             ulong seed = w.Seed;
             ulong dayKey = KeyedRng.Hash(seed, RngStream.Weather, 100000UL, (ulong)day);
+            Storms.Spawn(w, day, yf);
             for (int b = 0; b < _blocks; b++)
                 _blockDraw[b] = KeyedRng.Normal(KeyedRng.Hash(seed, RngStream.Weather, (ulong)b + 200000UL, (ulong)day), KeyedRng.Hash(seed, RngStream.Weather, (ulong)b + 300000UL, (ulong)day));
             for (int c = 0; c < P.Cells; c++)
@@ -170,6 +171,7 @@ namespace TC2.Core.Planet
                 double uc = KeyedRng.Unit(KeyedRng.Mix(dayKey ^ ((ulong)c * 0xC2B2AE3D27D4EB4FUL))); // one mix a cell: the day is in the key
                 double u = 0.7 * ub + 0.3 * uc;
                 double rain = u < pRain ? (pRain - u) / pRain * 1.6 : 0.0;
+                if (P.StormRain[c] > 0f) { rain += P.StormRain[c]; P.StormRain[c] = 0f; }  // what the storms brought
                 P.RainToday[c] = (float)rain;
                 _runoff[c] = 0;
                 if (!P.IsLand(c)) continue;

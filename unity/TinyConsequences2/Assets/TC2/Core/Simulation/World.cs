@@ -18,6 +18,8 @@ namespace TC2.Core.Simulation
         public long VentsBorn, VentsDied, Islands, EruptionDeaths;
         public readonly long[] Quakes = new long[10];   // by whole magnitude
         public long QuakeDeaths, Landslides, Tsunamis, TsunamiDeaths;
+        public long Storms, GreatStorms, StormLandfalls, StormDeaths, Surges;
+        public readonly long[] StormPeaks = new long[8];  // storms by their strongest wind, 10 m/s bins
 
         public void Write(BinWriter w)
         {
@@ -28,6 +30,8 @@ namespace TC2.Core.Simulation
             w.Long(VentsBorn); w.Long(VentsDied); w.Long(Islands); w.Long(EruptionDeaths);
             for (int i = 0; i < Quakes.Length; i++) w.Long(Quakes[i]);
             w.Long(QuakeDeaths); w.Long(Landslides); w.Long(Tsunamis); w.Long(TsunamiDeaths);
+            w.Long(Storms); w.Long(GreatStorms); w.Long(StormLandfalls); w.Long(StormDeaths); w.Long(Surges);
+            for (int i = 0; i < StormPeaks.Length; i++) w.Long(StormPeaks[i]);
         }
 
         public void Read(BinReader r)
@@ -39,6 +43,8 @@ namespace TC2.Core.Simulation
             VentsBorn = r.Long(); VentsDied = r.Long(); Islands = r.Long(); EruptionDeaths = r.Long();
             for (int i = 0; i < Quakes.Length; i++) Quakes[i] = r.Long();
             QuakeDeaths = r.Long(); Landslides = r.Long(); Tsunamis = r.Long(); TsunamiDeaths = r.Long();
+            Storms = r.Long(); GreatStorms = r.Long(); StormLandfalls = r.Long(); StormDeaths = r.Long(); Surges = r.Long();
+            for (int i = 0; i < StormPeaks.Length; i++) StormPeaks[i] = r.Long();
         }
 
         public Metrics Clone() { var m = (Metrics)MemberwiseClone(); return m; }
@@ -54,7 +60,7 @@ namespace TC2.Core.Simulation
         public static Budget Events(long n) => new Budget { MaxEvents = n };
     }
 
-    public enum CommandKind : byte { None = 0, GodLightning = 1, Note = 2, SetResolution = 3, GodEruption = 4, GodQuake = 5 }
+    public enum CommandKind : byte { None = 0, GodLightning = 1, Note = 2, SetResolution = 3, GodEruption = 4, GodQuake = 5, GodStorm = 6 }
 
     /// <summary>How people are simulated (04 §4): every activity, or households by the day (deep time).</summary>
     public enum Resolution : byte { Activity = 0, Coarse = 1 }
@@ -84,7 +90,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 3; // 2: volcanoes (D2-028), 3: quakes (D2-030)
+        public const int FormatSimVersion = 4; // 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
@@ -256,6 +262,23 @@ namespace TC2.Core.Simulation
                         Strike(c.Cell, ev, RootKind.You, 1.6);
                         break;
                     }
+                case CommandKind.GodStorm:
+                    {
+                        long ev = Record(new HistoryEvent { Kind = HistoryKind.GodCommand, Time = Now, Cell = c.Cell, Settlement = SettlementAtCell(c.Cell), RootKind = RootKind.You, ArgA = (int)c.Kind });
+                        // the god raises a storm at the place (its winds as asked, 50 m/s by default); it lives as storms do
+                        Vec3d at = Planet.Grid.Center[c.Cell];
+                        TC2.Core.Planet.Storms.Frame(at, out Vec3d east, out Vec3d north);
+                        bool had = Planet.Storms.Count > 0;
+                        float wind = c.Arg > 0 ? c.Arg : 50f;
+                        Planet.Storms.Add(new TC2.Core.Planet.Storm
+                        {
+                            Id = Ids.Next(EntityKind.Process), At = at, Heading = (east * -0.95 + north * (at.Y >= 0 ? 0.3 : -0.3)).Normalized, Speed = 0.05f,
+                            Wind = wind, Peak = wind, Radius = 2000f, Kind = 0, Born = Now, Cause = ev,
+                        });
+                        Metrics.Storms++;
+                        if (!had) Queue.Push(Now + TC2.Core.Planet.Storms.StepSeconds, Phase.Process, EventKind.StormStep, 0);
+                        break;
+                    }
                 case CommandKind.GodQuake:
                     {
                         long ev = Record(new HistoryEvent { Kind = HistoryKind.GodCommand, Time = Now, Cell = c.Cell, Settlement = SettlementAtCell(c.Cell), RootKind = RootKind.You, ArgA = (int)c.Kind });
@@ -328,6 +351,9 @@ namespace TC2.Core.Simulation
             Tect.Step(P, Tectonics.StepYears, Seed, Now);
             Volcanism.Step(this, Tectonics.StepYears, Tect.ArcSupply);
             TC2.Core.Planet.Quakes.Step(this, Tectonics.StepYears, Tect.Slip);
+            // rivers cut and carry on the tree of the moved relief (D2-031); the tree is rebuilt again for what they changed
+            Drainage.Rebuild(P);
+            Erosion.Step(this, Tectonics.StepYears);
             LandChanged(P.SeaLevel, false);
             P.ReliefVersion++;
         }
@@ -709,6 +735,163 @@ namespace TC2.Core.Simulation
             }
         }
 
+        /// <summary>
+        /// Every storm moves and acts (D2-032): rain for the next day's weather, blowdowns in woods, crops flattened, people
+        /// caught out in the worst winds, a surge over low coasts where a strong storm comes ashore - each consequence
+        /// caused by the storm's history event (recorded once it is a great storm or first does harm).
+        /// </summary>
+        public void StormStep()
+        {
+            var P = Planet;
+            var g = P.Grid;
+            double dt = TC2.Core.Planet.Storms.StepSeconds;
+            for (int i = 0; i < P.Storms.Count; i++)
+            {
+                var st = P.Storms[i];
+                bool wasLand = (st.Flags & 1) != 0;
+                TC2.Core.Planet.Storms.Move(P, ref st, dt, Now);
+                int cc = g.CellOf(st.At);
+                bool land = P.IsLand(cc);
+                st.Flags = (byte)(land ? st.Flags | 1 : st.Flags & ~1);
+                long Cause()
+                {
+                    if (st.Event == 0)
+                    {
+                        st.Event = Record(new HistoryEvent
+                        {
+                            Kind = HistoryKind.Storm, Time = Now, Cell = cc, Settlement = NearestSettlement(cc, 8000), RootKind = RootKind.Nature,
+                            Magnitude = st.Wind, ArgA = st.Kind, Subject = new EntityRef(EntityKind.Process, st.Id), Cause1 = st.Cause,
+                        });
+                    }
+                    return st.Event;
+                }
+                if (st.Wind >= TC2.Core.Planet.Storms.GreatWind && (st.Flags & 4) == 0) { st.Flags |= 4; Metrics.GreatStorms++; Cause(); }
+                if (land && !wasLand && st.Wind >= 25f)
+                {
+                    Metrics.StormLandfalls++;
+                    Record(new HistoryEvent
+                    {
+                        Kind = HistoryKind.StormLandfall, Time = Now, Cell = cc, Settlement = NearestSettlement(cc, 8000), Cause1 = Cause(), Rel1 = CauseRel.PartOf,
+                        Tier = st.Wind >= 50f ? Tier.Historical : Tier.Local, Magnitude = st.Wind, Subject = new EntityRef(EntityKind.Process, st.Id),
+                    });
+                    st.Flags |= 2;
+                    if (st.Wind >= 35f) Surge(st, Cause());
+                }
+                // the winds and the rain over everything within the storm's reach (a BFS out from its centre)
+                double cosR = DMath.Cos(st.Radius / P.Radius);
+                var crops = new SortedDictionary<int, double>();
+                var reach = StormCells(cc, st.At, cosR);
+                for (int ri = 0; ri < reach.Count; ri++)
+                {
+                    int c = reach[ri];
+                    double dot = Vec3d.Dot(g.Center[c], st.At);
+                    double r = DMath.Acos(DMath.Min(1.0, dot)) * P.Radius;
+                    double wv = TC2.Core.Planet.Storms.WindAt(st, r);
+                    double rf = 1.0 - r / st.Radius;
+                    P.StormRain[c] = (float)(P.StormRain[c] + 1.0 * (st.Wind / 35.0) * rf * DMath.Sqrt(rf));
+                    if (!P.IsLand(c)) continue;
+                    if (wv > 32.0) { double x = wv - 32.0; P.Forest[c] = (float)(P.Forest[c] * (1.0 - DMath.Min(0.6, 0.0006 * x * x))); }
+                    int owner = P.FieldOwner[c];
+                    if (owner != 0 && wv > 25.0) crops[owner] = crops.TryGetValue(owner, out double m) ? DMath.Max(m, wv) : wv;
+                }
+                foreach (var kv in crops)
+                {
+                    double share = DMath.Min(0.6, 0.004 * (kv.Value - 25.0));
+                    if (share < 0.01) continue;
+                    // one record per storm and village: later steps of the same storm add to the loss quietly
+                    bool told = false;
+                    var evs = History.EventsOf(EntityRef.Settlement(kv.Key));
+                    if (evs != null)
+                        for (int k = evs.Count - 1; k >= 0 && k >= evs.Count - 12; k--)
+                            if (History.TryGet(evs[k], out var he) && he.Kind == HistoryKind.CropsFlattened && he.Cause1 == st.Event && st.Event != 0) { told = true; break; }
+                    if (told) { ref var sv = ref Settlements.Get(kv.Key); if (sv.Inhabited) sv.CropBurnt = DMath.Min(1.0, sv.CropBurnt + share); }
+                    else SettlementSys.CropLoss(kv.Key, share, Cause(), HistoryKind.CropsFlattened);
+                }
+                // people caught out in the worst of it
+                if (st.Wind > 40f)
+                    for (int id = People.First(); id != 0; id = People.Next(id))
+                    {
+                        ref var p = ref People.Get(id);
+                        if (!p.Alive) continue;
+                        Vec3d at = Agents.PositionAt(p, Now);
+                        double wv = TC2.Core.Planet.Storms.WindAt(st, Vec3d.ArcDistance(at, st.At, P.Radius));
+                        if (wv <= 40.0) continue;
+                        if (KeyedRng.Unit(Seed, RngStream.Death, (ulong)id, (ulong)Now, 64) < 0.0003 * (wv - 40.0)) { Agents.Kill(ref p, Cause(), 7); Metrics.StormDeaths++; }
+                    }
+                P.Storms[i] = st;
+            }
+            for (int i = P.Storms.Count - 1; i >= 0; i--)
+                if (TC2.Core.Planet.Storms.Spent(P.Storms[i], Now)) { Metrics.StormPeaks[(int)DMath.Clamp(P.Storms[i].Peak / 10f, 0, 7)]++; P.Storms.RemoveAt(i); }
+            if (P.Storms.Count > 0) Queue.Push(Now + TC2.Core.Planet.Storms.StepSeconds, Phase.Process, EventKind.StormStep, 0);
+        }
+
+        List<int> _stormCells;
+
+        /// <summary>The cells whose centres lie within a storm's reach (dot with its centre at least cosR), by a BFS.</summary>
+        List<int> StormCells(int c0, Vec3d at, double cosR)
+        {
+            var P = Planet;
+            var g = P.Grid;
+            if (_qsrc == null || _qsrc.Length != P.Cells) { _qsrc = new int[P.Cells]; _qstamp = new int[P.Cells]; _qstampNow = 0; }
+            var list = _stormCells ?? (_stormCells = new List<int>());
+            list.Clear();
+            _qstampNow++;
+            _qstamp[c0] = _qstampNow;
+            if (Vec3d.Dot(g.Center[c0], at) >= cosR) list.Add(c0); else return list;
+            for (int head = 0; head < list.Count; head++)
+            {
+                int c = list[head];
+                for (int k = 0; k < 8; k++)
+                {
+                    int nb = g.Nbr8[c * 8 + k];
+                    if (_qstamp[nb] == _qstampNow) continue;
+                    _qstamp[nb] = _qstampNow;
+                    if (Vec3d.Dot(g.Center[nb], at) >= cosR) list.Add(nb);
+                }
+            }
+            return list;
+        }
+
+        /// <summary>A strong storm comes ashore: the sea is driven over low land near its centre (0.6 m per m/s above 30).</summary>
+        void Surge(in TC2.Core.Planet.Storm st, long cause)
+        {
+            var P = Planet;
+            var g = P.Grid;
+            double h0 = 0.6 * (st.Wind - 30.0);
+            double cosR = DMath.Cos(0.6 * st.Radius / P.Radius);
+            var flooded = new List<int>();
+            for (int c = 0; c < P.Cells; c++)
+            {
+                if (!P.IsLand(c) || P.LakeDepth[c] > 0.3f || Vec3d.Dot(g.Center[c], st.At) < cosR) continue;
+                bool coast = false;
+                for (int k = 0; k < 8 && !coast; k++) if (!P.IsLand(g.Nbr8[c * 8 + k])) coast = true;
+                if (!coast || P.Elev[c] - P.SeaLevel >= h0) continue;
+                flooded.Add(c);
+            }
+            if (flooded.Count == 0) return;
+            Metrics.Surges++;
+            long ev = Record(new HistoryEvent { Kind = HistoryKind.StormSurge, Time = Now, Cell = flooded[0], Settlement = NearestSettlement(flooded[0], 6000), Cause1 = cause, Rel1 = CauseRel.CausedBy, Magnitude = (float)h0, ArgA = flooded.Count });
+            var hit = new SortedDictionary<int, int>();
+            var mark = new HashSet<int>(flooded);
+            foreach (int c in flooded)
+            {
+                P.Forest[c] *= 0.7f; P.Grass[c] *= 0.5f;
+                Fx.Add(Now, c, FxKind.Wave, (float)h0);
+                int o = P.FieldOwner[c]; if (o != 0) hit[o] = hit.TryGetValue(o, out int n) ? n + 1 : 1;
+            }
+            foreach (var kv in hit)
+            {
+                if (!Settlements.Exists(kv.Key)) continue;
+                SettlementSys.CropLoss(kv.Key, DMath.Min(1.0, kv.Value / (double)DMath.Max(1, Settlements.Get(kv.Key).FieldCells)), ev, HistoryKind.FieldsFlooded);
+            }
+            for (int id = People.First(); id != 0; id = People.Next(id))
+            {
+                ref var p = ref People.Get(id);
+                if (!p.Alive || !mark.Contains(g.CellOf(Agents.PositionAt(p, Now)))) continue;
+                if (KeyedRng.Unit(Seed, RngStream.Death, (ulong)id, (ulong)Now, 65) < 0.25) { Agents.Kill(ref p, ev, 8); Metrics.StormDeaths++; }
+            }
+        }
+
         public void RequestResolution(Resolution r, long at) => Issue(new Command { Time = at, Kind = CommandKind.SetResolution, Arg = (long)r });
 
         void Strike(int cell, long cause, RootKind root, double strength)
@@ -772,6 +955,9 @@ namespace TC2.Core.Simulation
                     break;
                 case EventKind.Quake:
                     Quake((int)e.A);
+                    break;
+                case EventKind.StormStep:
+                    StormStep();
                     break;
                 case EventKind.Eruption:
                     {

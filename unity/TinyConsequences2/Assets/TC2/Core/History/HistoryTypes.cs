@@ -43,6 +43,10 @@ namespace TC2.Core.History
         StoresSpoiled = 35,     // a quake spilled a village's stores (Magnitude = share lost)
         Tsunami = 36,           // a wave from a quake under the sea struck the coast (Magnitude = run-up m, ArgA = cells flooded)
         FieldsFlooded = 37,     // the sea came over a village's fields (Magnitude = share of the crop lost)
+        Storm = 38,             // a great storm gathered (Magnitude = wind m/s, ArgA = kind: 0 cyclone, 1 winter storm)
+        StormLandfall = 39,     // a storm came ashore (Magnitude = wind m/s)
+        CropsFlattened = 40,    // a storm's wind flattened a village's crop (Magnitude = share lost)
+        StormSurge = 41,        // a storm drove the sea over a coast (Magnitude = surge m, ArgA = cells flooded)
     }
 
     /// <summary>History tiers (11 §4).</summary>
@@ -149,6 +153,10 @@ namespace TC2.Core.History
                 case HistoryKind.StoresSpoiled: return Tier.Local;
                 case HistoryKind.Tsunami: return Tier.Historical;
                 case HistoryKind.FieldsFlooded: return Tier.Local;
+                case HistoryKind.Storm: return Tier.Local;
+                case HistoryKind.StormLandfall: return Tier.Local;
+                case HistoryKind.CropsFlattened: return Tier.Local;
+                case HistoryKind.StormSurge: return Tier.Historical;
                 case HistoryKind.VentExtinct: return Tier.Local;
                 case HistoryKind.AshFall: return Tier.Local;
                 case HistoryKind.SettlementFounded:
@@ -191,6 +199,10 @@ namespace TC2.Core.History
                 case HistoryKind.StoresSpoiled: b = 4; break;
                 case HistoryKind.Tsunami: b = 30; break;
                 case HistoryKind.FieldsFlooded: b = 5; break;
+                case HistoryKind.Storm: b = 0.5 * DMath.Exp(0.06 * magnitude); break; // 33 m/s ~3.6, 60 m/s ~18
+                case HistoryKind.StormLandfall: b = 0.6 * DMath.Exp(0.06 * magnitude); break;
+                case HistoryKind.CropsFlattened: b = 5; break;
+                case HistoryKind.StormSurge: b = 20; break;
                 case HistoryKind.AshFall: b = 5; break;
                 case HistoryKind.Wildfire: b = 15; break;
                 case HistoryKind.GodCommand: b = 10; break;

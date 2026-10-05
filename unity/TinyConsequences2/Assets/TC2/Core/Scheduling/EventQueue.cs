@@ -18,6 +18,7 @@ namespace TC2.Core.Scheduling
         Lightning = 9,        // a natural strike at a cell (A = cell)
         Eruption = 10,        // a volcano erupts (A = vent id)
         Quake = 11,           // a fault patch ruptures (A = cell)
+        StormStep = 12,       // every storm moves and acts (A unused)
     }
 
     /// <summary>Ordering classes at equal time (04 §2).</summary>

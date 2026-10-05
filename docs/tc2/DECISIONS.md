@@ -539,3 +539,54 @@ in 3,000 years no quake deaths, slides on the arc mountains (~1 a year), small w
 years/s coarse with quakes.
 **Invalidation.** If villages drift onto faults and quakes empty them every century, revisit the indoor risk; if
 slides strip arc mountains bare, lower their chance or let them regrow faster (F2 ecology).
+
+## D2-031 — 2026-10-05 — Rivers cut and carry: stream-power erosion with sediment, lakes that fill, deltas
+
+**Context.** F1 asks for relief that rises and wears (05 §3b): plates raise ranges and a wear term smoothed them, but
+rivers did not shape the land, and nothing moved rock to the sea.
+**Decision.** Every tectonic step, on a drainage tree rebuilt for the moved relief (`Erosion.Step`):
+- **Incision** (Braun & Willett 2013, n = 1, implicit in stack order: stable for any step):
+  `h' = (h + F h_r') / (1 + F)`, `F = K dt sqrt(Q) / L`, K = 1.1e-3, Q the river's own smoothed flow (m³/day) - a
+  wetter climate cuts faster, a lower sea in an age of ice deepens the lower valleys; only where Q >= 300 m³/day
+  (smaller trickles are the hillslopes' work), never under ice sheets or inside lakes, never below the sea.
+- **Sediment** travels down the same tree (tributaries first) and settles where the water slows: lake beds rise toward
+  their surface (lakes fill over millennia), flats (slope < 0.004) keep a third (floodplains), and at the mouth the
+  load fills the shallows to 0.6 m under the surface, spilling outward down the shelf, until the mouth rises just above
+  the sea (a delta becomes land). Mass is kept: cut = settled + carried to the deep.
+- Land and sea are judged by the mask the tree was built with (a delta that rises during the pass must not swallow
+  later loads), and the drainage is rebuilt after: rivers follow their new valleys.
+**Evidence.** Test: 1,000 years of erosion cut river cells metres down, leave hillslopes away from rivers alone, keep
+mass to 1e-6, and fill the shallows at river mouths (a leak of 2e-5 found by this test: a delta rising mid-pass). Seed
+42, 3,000 years planet-only: 0.7-1.5 million m³ moved per decade, nearly all settling; valleys ~6 m (sim) below their
+banks; 20 world years/s unchanged.
+**Invalidation.** If deltas grow faster than a cell a century at many mouths, raise MouthDepth or let part of the load
+pass to the deep; if valleys stay too shallow to see, raise K (and check uplift keeps ranges).
+
+## D2-032 — 2026-10-05 — Storms: cyclones and winter storms as moving entities
+
+**Context.** F1 asks for weather and storms (05 §3): the daily weather had spells but no storms with a life, paths and
+harm.
+**Decision.**
+- **Storms** (`P.Storms`: centre, heading, speed, strongest wind, radius, kind, flags, peak, birth, event, cause) step
+  every three hours as one process. **Cyclones** are born over warm seas (8-20 degrees, sea >= 26 C) in late summer
+  (0.08 a day per hemisphere at the peak, more in a warmer world), drift west and curve poleward, then east past the
+  subtropics; they grow toward the sea's potential (`20 + 14 (SST - 24.5)` m/s, at most 78) and die over land
+  (e-folding 0.6 days) or cool water. **Winter storms** form on the polar front (38-56 degrees) in the cold half of the
+  year (0.07 a day), run east, grow for a day toward 34 m/s and fade. A storm dies below 14 m/s or after 10 days.
+- **Winds** are a Rankine vortex with a calm eye (strongest at a fifth of the radius). Consequences, each caused by the
+  storm's history event (recorded at 33 m/s, or at its first harm or landfall): rain for the next weather day
+  (`P.StormRain`, state; heavy near the eyewall: rivers flood through the bucket's quick runoff), blowdowns in woods
+  above 32 m/s, crops flattened above 25 m/s (one record per storm and village, later loss added quietly), people
+  caught out above 40 m/s (rare), and at landfall above 35 m/s a surge of 0.6 m per m/s above 30 over low coastal
+  land (woods and pasture spoiled, fields flooded, a quarter of the people there drown).
+- The god may raise a storm (`CommandKind.GodStorm`, winds asked for): its consequences root in You.
+- The view draws a storm in the cloud cover: a dense ring round a clear eye and spiral bands turning with the
+  hemisphere. Save sim version 4.
+**Evidence.** Tests: a 29 C sea makes a great storm in two days, a day over land makes a 50 m/s storm a gale; a 58 m/s
+eyewall over a village records the storm first and every later event (crops flattened) roots in it, and its rain
+reaches the next weather day; save/load with storms in flight continues bit-identically (62 tests). Seed 42, 300
+years: ~2.8 storms a year (most winter storms 20-30 m/s), 20 above 40 m/s, ~0.55 landfalls a year. Shots: a 60 m/s
+god storm reads from orbit as a spiral with an eye.
+**Invalidation.** If great storms are too rare to matter in play (this planet's tropics are ~26 C), let the potential
+follow the planet's own tropical mean rather than Earth's; if storms cost more than ~10 % of a coarse year, step them
+every six hours.

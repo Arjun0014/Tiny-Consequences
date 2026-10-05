@@ -27,6 +27,7 @@ Laws: `01_WORLD_LAWS.md`. Research: `02_RESEARCH.md` §5.
 | `fuel`, `burning` | N64 | dead fuel; active fire intensity (sparse set) |
 | `magma` | N64 | magma gathered under a cell, not yet drawn by a vent (D2-028) |
 | `stress` | N64 | slip deficit on fault patches (quakes, D2-030) |
+| `stormRain` | N64 | storm rain waiting for the next weather day (D2-032) |
 | global | - | CO₂, aerosol, sea level, ice volume, orbital phase, ledgers of contributors; vents, plumes, the volcanic supply reference |
 
 Cause tags (`11` §6) accompany the causal fields: burning, drought anomaly, flood, ash, ice.
@@ -104,7 +105,13 @@ Cause tags (`11` §6) accompany the causal fields: burning, drought anomaly, flo
   deaths indoors where houses fall, spilled stores, landslides on steep shaken slopes (a slide can dam a river), and
   waves from great quakes under the sea over low coasts.
 
-### Drainage and erosion
+### Storms (implemented, D2-032)
+- Cyclones over warm seas in late summer and winter storms on the polar front, as moving entities stepped every three
+  hours: winds (calm eye, fiercest eyewall), rain for the next day's weather (floods through the soil bucket),
+  blowdowns, flattened crops, surges where strong storms come ashore; a warmer world breeds more and stronger
+  cyclones.
+
+### Drainage and erosion (erosion implemented, D2-031)
 - **Priority-flood** (Barnes et al. 2014) fills depressions to give every land cell a receiver (lowest of 8
   neighbours after filling); filled depressions are lake basins (a lake where inflow exceeds evaporation).
 - **Stack order** from outlets upstream; drainage area by accumulation in reverse order; discharge from the

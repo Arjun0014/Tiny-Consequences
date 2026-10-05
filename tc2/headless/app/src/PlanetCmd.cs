@@ -46,6 +46,8 @@ namespace TC2.Headless
                 if (a.Has("tect")) Console.WriteLine("      " + _tect);
                 if (a.Has("volc")) Console.WriteLine("      " + VolcLine(w));
                 if (a.Has("quake")) Console.WriteLine("      " + QuakeLine(w));
+                if (a.Has("erosion")) Console.WriteLine("      " + ErosionLine(w));
+                if (a.Has("storms")) Console.WriteLine("      " + StormLine(w));
                 if (mapDir != null) WriteMap(w, Path.Combine(mapDir, "map_" + k.ToString("0000") + ".png"), width);
             }
             FlowHistogram(w);
@@ -70,6 +72,36 @@ namespace TC2.Headless
         }
 
         static string _tect = "";
+
+        static string StormLine(World w)
+        {
+            var P = w.Planet; var m = w.Metrics;
+            var sb = new System.Text.StringBuilder();
+            sb.AppendFormat(CultureInfo.InvariantCulture, "storms born {0} great {1} landfalls {2} surges {3} deaths {4} | peaks by 10 m/s", m.Storms, m.GreatStorms, m.StormLandfalls, m.Surges, m.StormDeaths);
+            for (int i = 0; i < m.StormPeaks.Length; i++) sb.Append(' ').Append(m.StormPeaks[i]);
+            sb.Append(" | now");
+            foreach (var st in P.Storms)
+                sb.AppendFormat(CultureInfo.InvariantCulture, " [{0} lat {1:0} wind {2:0} peak {3:0} r {4:0}]", st.Kind == 0 ? "cyclone" : "winter", st.At.Latitude * 180 / Math.PI, st.Wind, st.Peak, st.Radius);
+            return sb.ToString();
+        }
+
+        static string ErosionLine(World w)
+        {
+            var P = w.Planet;
+            int land = 0, rivers = 0; double relief = 0, valley = 0;
+            var g = P.Grid;
+            for (int c = 0; c < P.Cells; c++)
+            {
+                if (!P.IsLand(c)) continue;
+                land++;
+                double hi = P.Elev[c], lo = P.Elev[c];
+                for (int k = 0; k < 8; k++) { double e = P.Elev[g.Nbr8[c * 8 + k]]; if (e > hi) hi = e; if (e < lo) lo = e; }
+                relief += hi - lo;
+                if (P.RiverFlow[c] >= 5000f) { rivers++; double m = 0; for (int k = 0; k < 8; k++) m += P.Elev[g.Nbr8[c * 8 + k]]; valley += m / 8 - P.Elev[c]; }
+            }
+            return string.Format(CultureInfo.InvariantCulture, "erosion last step: cut {0:0} m3 settled {1:0} deep {2:0} | land {3} local relief {4:0} m | river cells {5} mean valley depth {6:0.0} m",
+                TC2.Core.Planet.Erosion.Eroded, TC2.Core.Planet.Erosion.Settled, TC2.Core.Planet.Erosion.ToDeep, land, relief / Math.Max(1, land), rivers, valley / Math.Max(1, rivers));
+        }
 
         static string QuakeLine(World w)
         {

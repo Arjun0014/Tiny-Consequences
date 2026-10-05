@@ -59,6 +59,24 @@ namespace TC2.Game
             var b = Budget.Unlimited;
             w.AdvanceTo(target, ref b);
             Debug.Log("[TC2] shots at " + SimTime.Format(w.Now) + " seed " + seed);
+            string storm = Arg("-tc2storm");
+            if (storm != null && sid != 0)
+            {
+                // the god raises a storm a little offshore of the first village (a logged command)
+                var P0 = w.Planet;
+                var home = w.Settlements.Get(sid).Anchor;
+                int best = w.Settlements.Get(sid).Cell; double bd = double.MaxValue;
+                for (int c = 0; c < P0.Cells; c++)
+                {
+                    if (P0.IsLand(c)) continue;
+                    double dd = System.Math.Abs(Vec3d.ArcDistance(P0.Grid.Center[c], home, P0.Radius) - 1500.0);
+                    if (dd < bd) { bd = dd; best = c; }
+                }
+                w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodStorm, Cell = best, Arg = (long)Parse(storm, 55) });
+                var bs = Budget.Unlimited;
+                w.AdvanceTo(w.Now + 3 * SimTime.Hour, ref bs);
+                Debug.Log("[TC2] storm: " + w.Planet.Storms.Count + " storms, landfalls " + w.Metrics.StormLandfalls);
+            }
             string quake = Arg("-tc2quake");
             if (quake != null && sid != 0)
             {

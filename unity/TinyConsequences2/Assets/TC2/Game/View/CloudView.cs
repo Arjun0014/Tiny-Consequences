@@ -105,6 +105,25 @@ namespace TC2.Game
                         int cq = _wc[q];
                         cover += _ww[q] * Mathf.Clamp01(P.RainToday[cq] * 0.75f + Mathf.Max(0f, P.Moist[cq] - 0.35f) * 0.55f);
                     }
+                    // storms: a dense ring round a clear eye, spiral bands outward (turning with the hemisphere)
+                    for (int k = 0; k < P.Storms.Count; k++)
+                    {
+                        var st = P.Storms[k];
+                        double dot = Vec3d.Dot(dir, st.At);
+                        double reach = st.Radius * 1.25 / P.Radius;
+                        if (dot < System.Math.Cos(reach)) continue;
+                        float t = (float)(System.Math.Acos(System.Math.Min(1.0, dot)) * P.Radius / st.Radius);
+                        TC2.Core.Planet.Storms.Frame(st.At, out Vec3d e, out Vec3d nn);
+                        float ang = (float)System.Math.Atan2(Vec3d.Dot(dir, nn), Vec3d.Dot(dir, e));
+                        float spin = st.At.Y >= 0 ? 1f : -1f;
+                        float arm = 0.5f + 0.5f * Mathf.Cos(2f * ang + spin * 5f * Mathf.Log(t + 0.06f) + st.Id * 1.7f);
+                        float strength = Mathf.Clamp01(st.Wind / 45f + 0.25f);
+                        float sc;
+                        if (t < 0.07f * (1f + 25f / Mathf.Max(20f, st.Wind))) sc = 0.05f;              // the eye
+                        else if (t < 0.38f) sc = 1f;                                                      // the eyewall's ring
+                        else sc = Mathf.Clamp01(arm * 1.3f - 0.15f) * Mathf.Clamp01((1.25f - t) * 1.6f);   // the bands
+                        cover = Mathf.Max(cover, sc * strength);
+                    }
                     target[y * Size + x] = cover;
                 }
         }
