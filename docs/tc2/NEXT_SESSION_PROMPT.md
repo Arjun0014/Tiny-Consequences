@@ -13,6 +13,15 @@ STATE), the newest entries of `DECISIONS.md`, then the design doc for the area y
 architecture, `04` time/scheduler, `11` history, `12` save/offline, `05`-`10` domains, `13` rendering,
 `14` performance, `15` testing, `17` roadmap). Then `git status` and `git log --oneline -15`.
 
+**After a context compaction (mandatory): DO NOT CODE YET.** Re-read this file, `SESSION_HANDOFF.md`, `PROGRESS.md`
+CURRENT STATE, the newest `DECISIONS.md` entries and the domain docs in play; run `git status` and
+`git log --oneline -20`; check every running process and output file the handoff names (and
+`tc2/out/compact/last_precompact.md`); reconstruct the exact step; then continue autonomously. The repo's hooks
+(`.claude/settings.json` -> `.claude/hooks/tc2_compact.mjs`; Claude Code 2.1.289: `PreCompact` stdout joins the
+compaction instructions, `SessionStart` matcher `compact` stdout is shown to Claude) inject this automatically; the
+root `CLAUDE.md` carries the same protocol in case they fail. Before a compaction is likely, checkpoint: commit, then
+DECISIONS, PROGRESS, SESSION_HANDOFF, this prompt, measurements and the exact next step.
+
 **The end goal**: a beautiful miniature planet that lives on its own for thousands of years (geology,
 climate, ecology, evolution, persistent people, settlements, knowledge, conflict, polities, collapse,
 ruins); zoom from orbit to one person; accelerate; leave and come back to the same world aged by the

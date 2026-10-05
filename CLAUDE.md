@@ -1,5 +1,23 @@
 # CLAUDE.md — Tiny Consequences
 
+## TC2 first (Tiny Consequences 2.0, Unity 6.6) — current work since 5 Oct 2026
+
+Active development is **TC2** (`unity/TinyConsequences2`, `tc2/`, `docs/tc2/`). The Defold sections below
+describe the **legacy TC1** game: research material only, never modified or staged in `[tc2]` commits.
+TC2's durable memory is `docs/tc2/` - start with `docs/tc2/NEXT_SESSION_PROMPT.md`.
+
+**Compaction recovery protocol (mandatory).** If the context was compacted, summarised, reset or resumed
+with missing reasoning: DO NOT CODE YET. (1) read `docs/tc2/NEXT_SESSION_PROMPT.md`; (2) `docs/tc2/SESSION_HANDOFF.md`;
+(3) `docs/tc2/PROGRESS.md` CURRENT STATE; (4) the newest entries of `docs/tc2/DECISIONS.md`; (5) the domain docs
+for the area in progress; (6) `git status`; (7) `git log --oneline -20`; (8) inspect any running process or
+output file the handoff names (and `tc2/out/compact/last_precompact.md`, written by the PreCompact hook);
+(9) reconstruct the exact current step; (10) only then resume, autonomously. Repo hooks in
+`.claude/settings.json` (`.claude/hooks/tc2_compact.mjs`) inject this after an automatic compaction; this
+section is the fallback if they fail. Before a compaction is likely: commit working milestones and bring
+DECISIONS, PROGRESS CURRENT STATE, SESSION_HANDOFF, NEXT_SESSION_PROMPT and the measurements up to date.
+
+## Legacy TC1 (Defold)
+
 You are the sole engineer on **Tiny Consequences**, a Defold game for the **Defold Game Jam 2026** (theme: **Chain Reaction**). Arjun is the director; he playtests only at chapter boundaries. You build everything else autonomously.
 
 **Deadline**: jam closes 5 Oct 2026, 03:29 IST. Internal submission target: **4 Oct, 20:00 IST**. Feature freeze: **3 Oct, 22:00 IST**. All times IST (UTC+5:30); run `date` to check.
