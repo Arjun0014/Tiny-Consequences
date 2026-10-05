@@ -30,6 +30,9 @@ namespace TC2.Core.Planet
         public byte[] Biome;
         public long[] DryCause;    // cause tag: event dominating a drought anomaly (0 none)
         public int[] FieldOwner;   // settlement whose fields cover this cell (0 none): land use
+        public float[] RiverFlow;  // discharge smoothed over ~a month (m3/day): what makes a river a river
+        public float[] LakeWater;  // water held by a depression, kept at its deepest cell (m3)
+        public float[] LakeDepth;  // derived from LakeWater and the drainage: water depth over each cell (m)
         public double SeaLevel;
         public double Tilt = 23.0 * DMath.Deg2Rad;
         public double GlobalTempOffset;
@@ -48,10 +51,28 @@ namespace TC2.Core.Planet
             for (int c = 0; c < Cells; c++) { Lat[c] = Grid.Center[c].Latitude; Lon[c] = Grid.Center[c].Longitude; SinLat[c] = DMath.Sin(Lat[c]); }
             Elev = new float[Cells]; Plate = new byte[Cells]; Moist = new float[Cells]; Temp = new float[Cells];
             SoilWater = new float[Cells]; RainToday = new float[Cells]; Grass = new float[Cells]; Forest = new float[Cells];
-            Biome = new byte[Cells]; DryCause = new long[Cells]; FieldOwner = new int[Cells];
+            Biome = new byte[Cells]; DryCause = new long[Cells]; FieldOwner = new int[Cells]; RiverFlow = new float[Cells];
+            LakeWater = new float[Cells]; LakeDepth = new float[Cells];
         }
 
         public bool IsLand(int c) => Elev[c] > SeaLevel;
+
+        /// <summary>Open water stands on the cell (a lake deeper than 0.3 m).</summary>
+        public bool IsLake(int c) => LakeDepth[c] > 0.3f;
+
+        /// <summary>A brook runs through the cell (smoothed discharge above ~12 l/s): fresh water to drink.</summary>
+        public bool IsStream(int c) => RiverFlow[c] >= 1000f && LakeDepth[c] <= 0.3f;
+
+        /// <summary>A river (above ~70 l/s): too wide to step over.</summary>
+        public bool IsRiver(int c) => RiverFlow[c] >= 6000f && LakeDepth[c] <= 0.3f;
+
+        /// <summary>Fresh water on the cell or next to it (a stream or a lake).</summary>
+        public bool FreshWaterNear(int c)
+        {
+            if (IsStream(c) || IsLake(c)) return true;
+            for (int k = 0; k < 8; k++) { int n = Grid.Nbr8[c * 8 + k]; if (IsLand(n) && (IsStream(n) || IsLake(n))) return true; }
+            return false;
+        }
 
         /// <summary>Cell area in hectares.</summary>
         public double AreaHa(int c) => Grid.Area[c] * Radius * Radius / 10000.0;
@@ -178,6 +199,8 @@ namespace TC2.Core.Planet
             w.ByteArray(Biome, Cells);
             w.Int(Cells); for (int i = 0; i < Cells; i++) w.Long(DryCause[i]);
             w.IntArray(FieldOwner, Cells);
+            w.FloatArray(RiverFlow, Cells);
+            w.FloatArray(LakeWater, Cells);
         }
 
         public static PlanetState Read(BinReader r)
@@ -190,6 +213,8 @@ namespace TC2.Core.Planet
             r.ByteArray(p.Biome);
             int nc = r.Int(); for (int i = 0; i < nc; i++) p.DryCause[i] = r.Long();
             r.IntArray(p.FieldOwner);
+            r.FloatArray(p.RiverFlow);
+            r.FloatArray(p.LakeWater);
             return p;
         }
 
@@ -199,7 +224,7 @@ namespace TC2.Core.Planet
             for (int i = 0; i < Cells; i++)
             {
                 h.Add(Elev[i]); h.Add(Plate[i]); h.Add(Moist[i]); h.Add(Temp[i]); h.Add(SoilWater[i]);
-                h.Add(RainToday[i]); h.Add(Grass[i]); h.Add(Forest[i]); h.Add(Biome[i]); h.Add(DryCause[i]); h.Add(FieldOwner[i]);
+                h.Add(RainToday[i]); h.Add(Grass[i]); h.Add(Forest[i]); h.Add(Biome[i]); h.Add(DryCause[i]); h.Add(FieldOwner[i]); h.Add(RiverFlow[i]); h.Add(LakeWater[i]);
             }
         }
     }

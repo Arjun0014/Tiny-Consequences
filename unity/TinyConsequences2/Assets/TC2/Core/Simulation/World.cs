@@ -85,6 +85,7 @@ namespace TC2.Core.Simulation
         public PlanetState Planet;
         public PlanetSystems PlanetSys;     // derived helpers (weather blocks, mean temperatures)
         public FireSystem Fire;
+        public Drainage Drainage;           // derived from relief and sea level
         public readonly PagedStore<Settlement> Settlements = new PagedStore<Settlement>();
         public readonly PagedStore<Household> Households = new PagedStore<Household>();
         public readonly PagedStore<Person> People = new PagedStore<Person>();
@@ -124,6 +125,7 @@ namespace TC2.Core.Simulation
             Travel = new TravelIndex(planet.Cells);
             _cellSettlement = new int[planet.Cells];
             PlanetSys = new PlanetSystems(planet);
+            Drainage = new Drainage(planet.Cells);
         }
 
         // ------------------------------------------------------------- history
@@ -387,6 +389,8 @@ namespace TC2.Core.Simulation
         public void RebuildDerived()
         {
             PlanetSys = new PlanetSystems(Planet);
+            Drainage.Rebuild(Planet);
+            Drainage.SettleStored(Planet);
             _residents = new IntList[16]; _visitors = new IntList[16]; _hhOf = new IntList[16]; _members = new IntList[64]; _fieldCells = new IntList[16];
             for (int c = 0; c < Planet.Cells; c++) if (Planet.FieldOwner[c] != 0) FieldCellsOf(Planet.FieldOwner[c]).Add(c);
             for (int i = 0; i < _cellSettlement.Length; i++) _cellSettlement[i] = 0;

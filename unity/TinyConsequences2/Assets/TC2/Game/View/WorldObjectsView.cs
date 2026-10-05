@@ -76,7 +76,7 @@ namespace TC2.Game
                 ref var s = ref w.Settlements.Get(sid);
                 if (!s.Inhabited) continue;
                 Vector3 center = PlanetGeo.Surface(P, s.Anchor);
-                float ex = Mathf.Min(Exaggeration(center), 6f);
+                float ex = Mathf.Min(Exaggeration(center), 2.2f);
                 var hhs = w.HouseholdsOf(sid);
                 for (int i = 0; i < hhs.Count; i++)
                 {
@@ -91,19 +91,34 @@ namespace TC2.Game
                 float fill = Mathf.Clamp01((float)(s.Granary / System.Math.Max(1.0, s.Population * 60.0)));
                 _granaries.Add(0, Color.white, Matrix4x4.TRS(gp, PlanetGeo.Upright(gp, 0), new Vector3(ex, ex * (0.6f + 0.6f * fill), ex)));
                 // fields: a patch on every claimed cell, sized by the share of the cell under the plough
-                Color fc = s.Crop == CropStage.Sown ? new Color(0.45f, 0.33f, 0.2f) : s.Crop == CropStage.Growing ? Color.Lerp(new Color(0.4f, 0.5f, 0.2f), new Color(0.3f, 0.7f, 0.2f), (float)s.CropGrowth)
-                    : s.Crop == CropStage.Ripe ? new Color(0.85f, 0.72f, 0.25f) : new Color(0.55f, 0.48f, 0.3f);
+                Color fc = s.Crop == CropStage.Sown ? new Color(0.42f, 0.32f, 0.21f)
+                    : s.Crop == CropStage.Growing ? Color.Lerp(new Color(0.46f, 0.42f, 0.24f), new Color(0.40f, 0.56f, 0.22f), (float)s.CropGrowth)
+                    : s.Crop == CropStage.Ripe ? new Color(0.80f, 0.68f, 0.30f) : new Color(0.62f, 0.55f, 0.36f);
                 if (s.CropBurnt > 0.2) fc = Color.Lerp(fc, new Color(0.12f, 0.1f, 0.08f), (float)s.CropBurnt);
                 int group = (int)s.Crop * 100 + (int)(s.CropGrowth * 10) + (s.CropBurnt > 0.2 ? 5000 : 0);
                 var cells = w.FieldCellsOf(sid);
                 double used = s.ArableHa > 0 ? System.Math.Min(1.0, s.FieldHa / s.ArableHa) : 1.0;
+                Color fc2 = Color.Lerp(fc, new Color(0.30f, 0.24f, 0.14f), 0.22f); // every other strip a shade darker
                 for (int i = 0; i < cells.Count; i++)
                 {
                     int c = cells[i];
                     double ha = P.AreaHa(c) * P.Arability(c, w.PlanetSys.MeanTemp(c)) * used;
                     float side = Mathf.Sqrt((float)ha * 10000f);
-                    Vector3 fp = PlanetGeo.Surface(P, P.Grid.Center[c], 0.3f);
-                    _fields.Add(group, fc.linear, Matrix4x4.TRS(fp, PlanetGeo.Upright(fp, (c * 37) % 90), new Vector3(side, 1, side)));
+                    Vec3d ctr = P.Grid.Center[c];
+                    float tilt = (c * 37) % 24 - 12; // a little off the village's grid
+                    const int Strips = 5;
+                    float sw = side / Strips;
+                    for (int k = 0; k < Strips; k++)
+                    {
+                        double off = (k - (Strips - 1) * 0.5) * sw;
+                        double ang = tilt * DMath.PI / 180.0;
+                        Vec3d d = (ctr * P.Radius + s.East * (off * DMath.Cos(ang)) + s.North * (off * DMath.Sin(ang))).Normalized;
+                        Vector3 fp = PlanetGeo.Surface(P, d, 0.3f);
+                        Vector3 upv = fp.normalized, nv = PlanetGeo.ToVector(s.North);
+                        Vector3 fwd = (nv - Vector3.Dot(nv, upv) * upv).normalized; // north, laid flat on this cell
+                        Quaternion rot = Quaternion.AngleAxis(tilt, upv) * Quaternion.LookRotation(fwd, upv);
+                        _fields.Add(group * 2 + (k & 1), (k & 1) == 0 ? fc : fc2, Matrix4x4.TRS(fp, rot, new Vector3(sw * 0.92f, 1, side)));
+                    }
                 }
             }
         }
@@ -146,7 +161,7 @@ namespace TC2.Game
                     bool conifer = cold || (h & 3) == 0;
                     int shade = (int)(h >> 8) % 3;
                     Color col = conifer ? new Color(0.12f + 0.03f * shade, 0.30f + 0.04f * shade, 0.16f) : new Color(0.24f + 0.04f * shade, 0.45f + 0.05f * shade, 0.18f);
-                    if (conifer) _conifers.Add(shade, col.linear, m); else _broadleaf.Add(shade, col.linear, m);
+                    if (conifer) _conifers.Add(shade, col, m); else _broadleaf.Add(shade, col, m);
                     TreesDrawn++;
                 }
             }
@@ -193,9 +208,9 @@ namespace TC2.Game
                 Vec3d d = w.Agents.PositionAt(p, t);
                 Vector3 pos = PlanetGeo.Surface(P, d);
                 float age = (float)p.AgeYears((long)t);
-                float sc = (age < 12 ? 0.6f + age * 0.035f : 1f) * Mathf.Min(Exaggeration(pos), 14f);
+                float sc = (age < 12 ? 0.6f + age * 0.035f : 1f) * Mathf.Min(Exaggeration(pos), 7f);
                 int a = (int)p.Act;
-                _people.Add(a, ActColors[a % ActColors.Length].linear, Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, (id * 53) % 360), Vector3.one * sc));
+                _people.Add(a, ActColors[a % ActColors.Length], Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, (id * 53) % 360), Vector3.one * sc));
                 PeopleDrawn++;
             }
         }

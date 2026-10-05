@@ -56,8 +56,8 @@ converts it to world time:
 |---|---|---|---|
 | Paused | 0 | - | none |
 | Gentle | 1 world year / real hour (~24 / day) | 100 years | ACTIVITY |
-| Living (default) | 4 years / hour (~96 / day) | 400 years | ACTIVITY (COARSE beyond its budget, later) |
-| Ancient | 25 years / hour (~600 / day) | 3,000 years | COARSE (later) |
+| Living (default) | 4 years / hour (~96 / day) | 400 years | ACTIVITY; COARSE when the span holds many lives (below) |
+| Ancient | 25 years / hour (~600 / day) | 3,000 years | COARSE (below) |
 | Deep time | 200 years / hour (~4,800 / day) | 20,000 years | COARSE / planet-only eras (later) |
 
 Flow:
@@ -69,6 +69,12 @@ Flow:
    world date, a slowly updating planet, and the historical events as they are recorded.
 4. Save periodically during catch-up; on arrival save, then enter the present; the History Book opens on
    "While you were away".
+
+**Resolution plan (D2-023)**: a new catch-up whose span holds more than 40,000 person-years (span x living
+people) is lived at COARSE resolution from the next midnight and returns to ACTIVITY two days before the target,
+so the player arrives among people in the middle of their activities. Both switches are logged commands (part of
+the world's history); a resumed catch-up keeps the plan it already has. Measured: ACTIVITY catch-up in the browser
+runs ~6.6 world years/s for ~150-740 people (a Living day away: 15 s); COARSE ~3x faster (planet systems dominate).
 
 Nothing is summarised or invented: the catch-up *is* the simulation. Equivalence test: catching up N
 years in frame slices equals advancing N years in one call (identical hash).

@@ -32,8 +32,10 @@ namespace TC2.Headless
                         return Commands.Probe(args);
                     case "inspect":
                         return Commands.Inspect(args);
+                    case "planet":
+                        return Commands.Planet(args);
                     default:
-                        Console.WriteLine("tc2 headless: test [--filter S] [--category C] [--explicit] [--v] | run [--seed N] [--years Y] [--out DIR] | bench [--name B] | hash [--seed N] [--days D] | inspect --save FILE");
+                        Console.WriteLine("tc2 headless: test [--filter S] [--category C] [--explicit] [--v] | run [--seed N] [--years Y] [--out DIR] | bench [--name B] | hash [--seed N] [--days D] | inspect --save FILE | planet [--seed N] [--years Y] [--every D] [--map DIR] [--nopeople]");
                         return cmd == "help" ? 0 : 2;
                 }
             }

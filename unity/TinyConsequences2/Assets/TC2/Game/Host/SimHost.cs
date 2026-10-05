@@ -39,6 +39,7 @@ namespace TC2.Game
         // catch-up
         public bool CatchingUp;
         public long CatchUpFrom, CatchUpTarget;
+        public bool CatchUpCoarse;          // the span is lived at COARSE resolution (shown on the catch-up screen)
         public long CatchUpRealStartMs;
         public readonly List<string> CatchUpFeed = new List<string>();
         long _catchUpCursor;
@@ -81,7 +82,7 @@ namespace TC2.Game
                     long extraMs = ParseAbsenceMs(absence);
                     long elapsed = Math.Max(0, now - hdr.SavedRealUtcMs) + extraMs;
                     long target = hdr.CatchUpTarget > w.Now ? hdr.CatchUpTarget : w.Now + OfflineProgress.WorldSecondsFor(elapsed, Offline);
-                    if (target > w.Now) BeginCatchUp(target);
+                    if (target > w.Now) BeginCatchUp(target, hdr.CatchUpTarget > w.Now);
                     Debug.Log("[TC2] loaded world seed " + w.Seed + " at " + SimTime.Format(w.Now) + "; away " + (elapsed / 3600000.0).ToString("0.0", CultureInfo.InvariantCulture) + " h");
                 }
                 catch (Exception e)
@@ -138,8 +139,10 @@ namespace TC2.Game
             _feedCursor = w.History.LastId;
         }
 
-        public void BeginCatchUp(long target)
+        public void BeginCatchUp(long target, bool resumed = false)
         {
+            bool coarse = !resumed && OfflineProgress.PlanCatchUp(World, target);
+            CatchUpCoarse = coarse || World.Resolution == TC2.Core.Simulation.Resolution.Coarse;
             CatchingUp = true;
             CatchUpFrom = World.Now;
             CatchUpTarget = target;

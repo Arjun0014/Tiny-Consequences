@@ -168,8 +168,7 @@ namespace TC2.Core.Places
                 {
                     int c = _claims[i];
                     if (P.FieldOwner[c] != 0 || !P.IsLand(c)) continue;
-                    int other = w.SettlementAtCell(c);
-                    if (other != 0 && other != s.Id) continue;
+                    if (w.SettlementAtCell(c) != 0) continue; // a village's own ground: houses, yards, gardens
                     double a = P.Arability(c, w.PlanetSys.MeanTemp(c));
                     if (a < 0.08) continue;
                     double d = Vec3d.ArcDistance(s.Anchor, P.Grid.Center[c], P.Radius);

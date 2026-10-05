@@ -24,6 +24,7 @@ namespace TC2.Core.Planet
         readonly float[] _tmean; // annual mean temperature per cell (static for a static climate)
         // closed-form temperature terms per cell (derived): T = base + amp*season + dAmp*cos(dayPhase + phase)
         readonly double[] _base, _amp, _dAmp, _cosPh, _sinPh, _hemi;
+        readonly float[] _runoff;
 
         public PlanetSystems(PlanetState P)
         {
@@ -31,6 +32,7 @@ namespace TC2.Core.Planet
             int n = P.Cells;
             _block = new int[n]; _tmean = new float[n];
             _base = new double[n]; _amp = new double[n]; _dAmp = new double[n]; _cosPh = new double[n]; _sinPh = new double[n]; _hemi = new double[n];
+            _runoff = new float[n];
             for (int c = 0; c < n; c++) _block[c] = coarse.CellOf(P.Grid.Center[c]);
             RefreshMeans(P);
         }
@@ -61,7 +63,7 @@ namespace TC2.Core.Planet
             switch (system)
             {
                 case SystemId.Climate: Climate(w); break;
-                case SystemId.Weather: Weather(w); break;
+                case SystemId.Weather: Weather(w); Rivers(w); break;
                 case SystemId.Vegetation: Vegetation(w); break;
             }
         }
@@ -96,12 +98,21 @@ namespace TC2.Core.Planet
                 double u = 0.7 * ub + 0.3 * uc;
                 double rain = u < pRain ? (pRain - u) / pRain * 1.6 : 0.0;
                 P.RainToday[c] = (float)rain;
+                _runoff[c] = 0;
                 if (!P.IsLand(c)) continue;
                 double t = P.Temp[c];
+                if (P.LakeDepth[c] > 0.3f) { _runoff[c] = (float)(rain * 0.020); P.SoilWater[c] = 1f; continue; } // open water
                 double sw = P.SoilWater[c];
-                sw += rain * 0.32;
+                // a rain unit is ~20 mm; a downpour runs off before it soaks in, a full soil sheds the rest
+                double quick = rain > 1.0 ? (rain - 1.0) * 0.35 : 0.0;
+                sw += (rain - quick) * 0.32;
                 double evap = (0.004 + 0.0016 * DMath.Max(0, t)) * (0.4 + sw);
                 sw -= evap;
+                double excess = sw > 0.85 ? sw - 0.85 : 0.0;
+                sw -= excess;
+                double baseflow = sw * 0.004;
+                sw -= baseflow;
+                _runoff[c] = (float)((quick + excess / 0.32 + baseflow / 0.32) * 0.020); // metres of water
                 P.SoilWater[c] = (float)DMath.Clamp01(sw);
                 // lightning: warm, wet, stormy days
                 if (rain > 0.35 && t > 10)
@@ -116,6 +127,21 @@ namespace TC2.Core.Planet
                         w.Queue.Push(at, Phase.Natural, EventKind.Lightning, 0, 0, c);
                     }
                 }
+            }
+        }
+
+        /// <summary>The day's runoff down the rivers; the monthly-smoothed flow defines rivers (and floods later).</summary>
+        void Rivers(World w)
+        {
+            var P = w.Planet;
+            var d = w.Drainage;
+            if (d == null) return;
+            d.Route(P, _runoff);
+            var flow = P.RiverFlow;
+            for (int c = 0; c < flow.Length; c++)
+            {
+                double q = d.Discharge[c];
+                flow[c] = (float)(flow[c] + (q - flow[c]) * (1.0 / 30.0));
             }
         }
 

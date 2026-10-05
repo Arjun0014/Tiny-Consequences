@@ -22,10 +22,12 @@ namespace TC2.Core.Worldgen
             var P = new PlanetState(cfg.SurfaceN, cfg.Radius);
             w.InitPlanet(P);
             Relief(w, P);
+            w.Drainage.Rebuild(P);
             Moisture(w, P);
             Vegetation(w, P);
             w.PlanetSys.RefreshMeans(P);
             for (int c = 0; c < P.Cells; c++) { P.Temp[c] = (float)P.TemperatureAt(c, 0); P.ClassifyBiome(c, 0); }
+            SpinUpRivers(w, P);
             w.Record(new HistoryEvent { Kind = HistoryKind.WorldCreated, Time = 0, Cell = -1, Settlement = 0, RootKind = RootKind.Nature, Subject = new EntityRef(EntityKind.World, 1) });
             w.History.Register(new EntityRef(EntityKind.World, 1), "the world", 0);
             var sites = ChooseSites(w, P);
@@ -140,6 +142,21 @@ namespace TC2.Core.Worldgen
             P.SeaLevel = 0;
         }
 
+        /// <summary>
+        /// Rivers and lakes at their long-run state: each cell's mean runoff from its moisture routed through the
+        /// depressions for a few hundred days (lakes fill where inflow beats evaporation), then the mean flow.
+        /// </summary>
+        static void SpinUpRivers(World w, PlanetState P)
+        {
+            var runoff = new float[P.Cells];
+            for (int c = 0; c < P.Cells; c++)
+                if (P.IsLand(c)) runoff[c] = (float)(DMath.Clamp01(P.Moist[c] - 0.15) * 0.0035); // m a day, wet lands shed more
+            var d = w.Drainage;
+            d.SettleStored(P);
+            for (int day = 0; day < 400; day++) d.Route(P, runoff);
+            for (int c = 0; c < P.Cells; c++) P.RiverFlow[c] = d.Discharge[c];
+        }
+
         // ------------------------------------------------------------------ moisture
         static void Moisture(World w, PlanetState P)
         {
@@ -216,6 +233,7 @@ namespace TC2.Core.Worldgen
                 bool coastal = false;
                 for (int j = 0; j < 4; j++) if (!P.IsLand(g.Nbr4[c * 4 + j])) coastal = true;
                 if (coastal) s *= 1.25;
+                if (P.FreshWaterNear(c)) s *= 1.35;
                 s *= 0.85 + 0.3 * KeyedRng.Unit(seed, RngStream.WorldgenSettle, (ulong)c);
                 score[c] = s;
             }

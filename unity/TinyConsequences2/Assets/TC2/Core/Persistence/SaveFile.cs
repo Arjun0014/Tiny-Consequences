@@ -171,5 +171,29 @@ namespace TC2.Core.Persistence
             double years = Math.Min(CapYears(mode), hours * YearsPerRealHour(mode));
             return SimTime.Years(years);
         }
+
+        /// <summary>Lives (person-years) above which a catch-up is lived at COARSE resolution (D2-023).</summary>
+        public const double CoarsePersonYears = 40000;
+
+        /// <summary>The last stretch before the player returns is lived in full, so everyone is mid-activity.</summary>
+        public const long ActivityTail = 2 * SimTime.Day;
+
+        /// <summary>
+        /// Plans how a new catch-up to <paramref name="target"/> is lived: a span holding many lives is lived COARSE
+        /// from the next midnight and in ACTIVITY again for the last two days. The switches are logged commands, so
+        /// the plan is part of the world's history (a resumed catch-up keeps the plan it has). Returns true if COARSE.
+        /// </summary>
+        public static bool PlanCatchUp(World w, long target, double coarsePersonYears = CoarsePersonYears)
+        {
+            if (w.Resolution != Resolution.Activity) return false;
+            double personYears = (target - w.Now) / (double)SimTime.Year * w.LivingPeople();
+            if (personYears < coarsePersonYears) return false;
+            long start = SimTime.StartOfDay(w.Now) + SimTime.Day;
+            long back = target - ActivityTail;
+            if (back <= start + SimTime.Day) return false;
+            w.RequestResolution(Resolution.Coarse, start);
+            w.RequestResolution(Resolution.Activity, back);
+            return true;
+        }
     }
 }

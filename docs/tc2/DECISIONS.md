@@ -242,3 +242,40 @@ people eat and harvest. 100-year runs, 2 seeds: ~3x faster in total (34-36 vs 12
 events 66K vs 15M per century: the planet systems now dominate); population 531/512 vs 567/674, marriages and
 births within ~20 %. COARSE showed more hunger deaths (foraging was capped at 3 h a day; ACTIVITY foragers go out
 several times) - foraging aligned; to re-measure. Famine responses (relief, migration) are F5 for both.
+
+## D2-022 — 2026-10-05 — Rivers and lakes as a water balance on the drainage tree
+
+**Context.** F1 needs rivers and lakes that are consequences (droughts shrink lakes, wet years swell rivers,
+villages choose fresh water). A first version marked every filled depression as a lake: 316 lake cells, many in
+deserts and on ice.
+**Alternatives.** (a) Every filled depression is a full lake (wrong in dry climates); (b) Fill-Spill-Merge with
+the full depression hierarchy (Barnes 2020; more machinery than N64 needs now); (c) depressions grouped by their
+spill cell, each holding a stored volume with a hypsometry from its cells (water fills the deepest beds first).
+**Decision.** (c). New state fields: `RiverFlow` (discharge smoothed over ~30 days) and `LakeWater` (m³ per
+depression, kept at its deepest cell); `LakeDepth` is derived (recomputed from `LakeWater` after a rebuild or load
+- derivations always from the stored float, so loads are exact). Daily: runoff -> `Drainage.Route` (what enters a
+depression stays in it; evaporation from the wet area; overflow to the spill cell) -> smoothed flow. Thresholds:
+stream >= 1,000 m³/day, river >= 6,000 m³/day, lake deeper than 0.3 m. Worldgen spins the waters up for 400 days on
+mean runoff, and site choice favours fresh water within a cell (x1.35). Physical scale is kept: the planet's
+450 km² of land makes brooks and small rivers; presentation widens them.
+**Evidence.** Tests: drainage reaches the sea downhill without cycles; routing conserves water; water is conserved
+through the lakes (runoff = to sea + storage gained + evaporated, 1e-3); a fed basin fills monotonically, never
+exceeds its capacity and spills only when full at its spill level; a lake without inflow loses exactly the
+evaporation of yesterday's wet area and dries; streams end only in rivers, lakes, depressions or the sea; lakes
+survive save/load and continue identically. Seed 42: 146-153 lake cells, 156-226 stream cells, 4.5 m³/s to the sea.
+**Consequences.** Floods (daily discharge vs the smoothed flow), wells vs streams for villages, fishing and
+irrigation can read these fields. Tectonics/erosion must call `Drainage.Rebuild` + `SettleStored` when relief changes.
+**Invalidation.** If lakes must be separate inside one depression (nested basins at different levels matter for
+play), move to Fill-Spill-Merge.
+
+## D2-023 — 2026-10-05 — How an absence is lived: COARSE for many lives, ACTIVITY on arrival
+
+**Context.** ACTIVITY catch-up in the browser runs ~6.6 world years/s with ~150-740 people (a Living day away:
+15 s). Larger worlds and the Ancient / Deep time modes would take minutes.
+**Decision.** `OfflineProgress.PlanCatchUp`: when a new catch-up's span holds more than 40,000 person-years, issue
+two logged commands - COARSE from the next midnight, ACTIVITY two days before the target. A resumed catch-up keeps
+its plan (the commands are in the saved queue). The rule reads only world state, so every host makes the same plan.
+**Evidence.** Tests: a short absence stays in ACTIVITY; a long one is COARSE from the next midnight, back in
+ACTIVITY before the target, and every person has a live activity on arrival (audit).
+**Invalidation.** If COARSE histories diverge from ACTIVITY ones beyond the bands of D2-021, lower the use of
+COARSE (higher threshold) until COARSE improves.

@@ -50,7 +50,7 @@ Shader "TC2/Terrain"
                 half hemi = dot(n, up) * 0.5h + 0.5h;
                 half3 amb = lerp(_AmbientGround.rgb, _AmbientSky.rgb, hemi);
                 half day = saturate(dot(up, l.direction) * 3.0h + 0.25h);
-                half3 c = i.color.rgb * (amb * (0.30h + 0.70h * day) + l.color * ndl * l.shadowAttenuation * 1.15h);
+                half3 c = i.color.rgb * (amb * lerp(half3(0.34h, 0.38h, 0.52h), half3(1.0h, 1.0h, 1.0h), day) + l.color * ndl * l.shadowAttenuation * 1.15h);
                 return half4(c, 1);
             }
             ENDHLSL

@@ -22,7 +22,7 @@ Laws: `01_WORLD_LAWS.md`. Research: `02_RESEARCH.md` §5.
 | `temp`, `tempMeanYear` | N32 | air temperature now; running annual mean |
 | `moist`, `precip`, `cloud` | N32 | atmospheric water, precipitation in the last step, cloud cover |
 | `ice` | N64 | snow/ice water equivalent (land and sea) |
-| `soilWater`, `runoff`, `flow`, `lake` | N64 | hydrology; flow on the drainage DAG |
+| `soilWater`, `riverFlow`, `lakeWater` (state), `lakeDepth` (derived) | N64 | hydrology on the drainage tree (D2-022) |
 | `veg[pft]` | N64 | biomass per plant functional type (grass, shrub, broadleaf, conifer, crop) |
 | `fuel`, `burning` | N64 | dead fuel; active fire intensity (sparse set) |
 | global | - | CO₂, aerosol, sea level, ice volume, orbital phase, ledgers of contributors |
@@ -39,10 +39,16 @@ Cause tags (`11` §6) accompany the causal fields: burning, drought anomaly, flo
    moisture exceeds capacity (orographic lift from N64 relief); snow below 0 °C.
 3. **Weather realisation** (daily): wet/dry spell Markov chain per climate cell keyed by (cell, day);
    storm entities spawned over warm seas, moving with the wind, carrying their own rain and wind.
-4. **Hydrology** (N64, daily): soil bucket with infiltration excess and saturation excess runoff
-   (TC1 D-179: excess runs off without leaving the soil twice); flow accumulation down a drainage DAG
-   (priority-flood filled; rebuilt when relief or sea level changes); lakes in closed basins; rivers are
-   cells with flow above a threshold.
+4. **Hydrology** (N64, daily; implemented in F1, D2-022): soil bucket with a downpour's quick runoff,
+   saturation excess above 85 % and a slow baseflow (TC1 D-179: excess runs off without leaving the soil twice);
+   `Drainage` (priority flood: receivers, stack, drainage areas; rebuilt and versioned when relief or sea level
+   change) routes the day's runoff; **depressions** (filled cells grouped by the cell they spill into) hold their
+   water (`lakeWater`, kept at the deepest cell), lose evaporation from their wet area (~0.6 mm + 0.16 mm/°C a day,
+   little under ice) and pass on only what overflows: lakes fill, spill, shrink in droughts and dry into flats.
+   Rain on open water falls straight in. `riverFlow` is the discharge smoothed over ~30 days: a **stream**
+   carries >= 1,000 m³/day (~12 l/s), a **river** >= 6,000 m³/day (~70 l/s); a **lake** is water deeper than
+   0.3 m. Scale: 450 km² of land in many small catchments makes brooks and small rivers (largest ~0.1-0.4 m³/s)
+   - physically consistent; the view widens them with distance.
 5. **Vegetation and soil** (N64, 4 days): PFT growth by temperature, water, light and fertility;
    competition for space; succession grass -> shrub -> forest; seed rain from neighbours (no life from
    nothing); fire, grazing, clearing and blight as losses; fuel from litter.

@@ -43,6 +43,8 @@ namespace TC2.Game
             var views = new GameObject("Views");
             var planet = views.AddComponent<PlanetView>();
             planet.Host = host;
+            var water = views.AddComponent<WaterView>();
+            water.Host = host;
             var objects = views.AddComponent<WorldObjectsView>();
             objects.Host = host; objects.Rig = rig;
 

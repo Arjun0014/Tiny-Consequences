@@ -44,7 +44,9 @@ Shader "TC2/Water"
                 float3 n = normalize(i.normalWS);
                 float t = _Time.y;
                 float3 q = i.positionWS * 0.02;
-                n = normalize(n + 0.035 * float3(sin(q.x * 3.1 + t * 0.7) + sin(q.z * 2.3 - t * 0.5), sin(q.y * 2.7 + t * 0.6), sin(q.z * 3.3 + t * 0.4) + sin(q.x * 1.9 - t * 0.8)));
+                float dist = length(_WorldSpaceCameraPos - i.positionWS);
+                float near = saturate(1.0 - dist / 6000.0);
+                n = normalize(n + 0.035 * near * float3(sin(q.x * 3.1 + t * 0.7) + sin(q.z * 2.3 - t * 0.5), sin(q.y * 2.7 + t * 0.6), sin(q.z * 3.3 + t * 0.4) + sin(q.x * 1.9 - t * 0.8)));
                 float3 v = normalize(GetWorldSpaceViewDir(i.positionWS));
                 Light l = GetMainLight();
                 float3 up = normalize(i.positionWS);
@@ -52,7 +54,7 @@ Shader "TC2/Water"
                 half fres = pow(1.0h - saturate(dot(n, v)), 4.0h);
                 half3 body = lerp(_Shallow.rgb, _Deep.rgb, saturate(dot(n, v)));
                 float3 h = normalize(l.direction + v);
-                half spec = pow(saturate(dot(n, h)), 180.0h) * 3.0h;
+                half spec = pow(saturate(dot(n, h)), lerp(48.0h, 180.0h, near)) * lerp(0.16h, 3.0h, near);
                 half3 c = (body * (0.25h + 0.75h * saturate(dot(n, l.direction) * 0.6h + 0.4h)) + _Sky.rgb * fres * 0.6h) * (0.15h + 0.85h * day) + l.color * spec * day;
                 return half4(c, saturate(_Alpha + fres * 0.3h));
             }
