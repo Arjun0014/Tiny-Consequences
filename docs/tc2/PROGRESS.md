@@ -2,7 +2,7 @@
 
 ## CURRENT STATE (keep accurate; newest first below)
 
-**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 in progress (D2-042, -045, -047 to -050, -052, -056); Web checked on WebGPU and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
+**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 in progress (D2-042, -045, -047 to -050, -052, -056, -058); Web checked on WebGPU and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
 - **Session 2 (5 Oct 2026, in progress)** - compaction-recovery hooks (`.claude/settings.json`, `.claude/hooks/tc2_compact.mjs`;
   Claude Code 2.1.289: PreCompact stdout joins the compaction instructions, SessionStart matcher `compact` stdout reaches Claude;
@@ -107,6 +107,9 @@
     (`ColdHomes`); children herd, carry water and help at the quern; COARSE charges the same work to the same people. 111 tests.
     Time use (seed 42, sowing): grown people cook 1.3 h, cut wood 0.6 h, field 2.5 h; still 7-9 h idle outside sowing and harvest
     - crafts, clothes, hay and infant care are the missing work (next).
+  - **Goods, a day's labour, weeding (D2-058)**: households make and mend their clothes, tools and vessels (worn goods let the
+    cold in and slow hands); a day's labour bounds the slack's work; weeding asks 24 h a hectare and keeps pace with the season.
+    A whole year of seed 42: grown people work ~6.5 h a day, children of 6-11 ~3 h - inside time-allocation ranges. 115 tests.
   - **Determinism repaired (D2-057)**: the editor's Mono had parted from dotnet at world generation (float sums in the climate
     and in people's positions: 63 float operations); rewritten in double, `tc2/tools/floatcheck` fails the tests on any float
     arithmetic; Mono equals dotnet again (`hashtest --parts` compares part by part). The Web build (IL2CPP) to recheck.

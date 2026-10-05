@@ -1245,3 +1245,32 @@ any (`headless.mjs floatcheck` alone).
 **Evidence.** After the rewrite the editor's probe equals dotnet's from generation through day three (gen e3a59d5f8bde854d, every
 part equal); 111 tests green. The world's state hash changed (operations that fed double expressions now keep their full
 precision).
+
+## D2-058 — 2026-10-06 — Goods made and mended, a day's labour, weeding that keeps pace
+
+**Context.** After D2-056, followed grown people still rested 7-9 hours a day outside sowing and harvest (seed 42, growing
+season: 8.7 h idle, 4.1 h on the square, ~3 h of work). Farming households spent hours every day on textiles (spinning above
+all) and on making and mending tools, vessels, baskets and nets, and the growing season's weeding was heavy work (hand weeding
+of a cereal took 50-100 hours a hectare a season) where the model asked 8 hours a hectare.
+**Decision.** (1) **Goods** (`Core/Places/Goods.cs`): a household holds `Household.Gear`, person-equivalents of clothes, tools
+and vessels (1 = one person clothed and equipped); each member wears through 1/300 of a person's goods a day; making one
+person's goods takes ~250 hours (`ActivityKind.Craft`, `WhyCode.GoodsWorn`, at home; a child of 8-11 at half pace); households
+keep 1.2 a head when they can. Worn goods matter: the chill line rises up to 6 C in rags, and hands work at 0.7-1.0 of their
+pace with worn tools (fields, wood, building, the wild's catch). Goods go with a person into a new household as the larder's
+share does; a newborn brings none. Materials are taken as found with the work - F4's chains will ask for fibre, hides, clay
+and wood. (2) **A day's labour**: `Person.Worked` counts the hours of work since waking (sleep resets it); the slack's work
+(making and mending) loses its pull past five hours of work (a fifth of it past eight), so rest and company keep their place;
+COARSE fills making into the rest of a 9.5-hour labour day after its chores, herding and other work (`LabourDay`, fitted to the
+lived day). (3) **Weeding**: the growing stage asks ~24 hours a hectare (was 8), and the crop thrives while its weeding keeps
+pace with the season so far (the tending factor reads the work against the need to date, so the larger need costs no yield
+where it is done). (4) The inspector gives rest its why (a long day's work behind them; the harvest in, the crop weeded and
+nothing at home pressing). Sim version 16.
+**Evidence.** `GoodsTests` (115 tests): worn goods are made again by the household's own hands (0.30 -> 0.41 a head in four
+days, 250 hours each); worn clothes let the cold into a warm house (ten days at -12 C in houses with wood: clothed health 1.00,
+in rags 0.92); worn tools work at 0.70 of good ones; COARSE and ACTIVITY make alike from worn goods (2.86 / 2.60 hours a
+person-day; 0.71 / 0.69 a head after twelve days; lived making while goods are short: 8-11 0.7 h, 12-59 5.2, 60+ 5.4 a day).
+A whole year of seed 42 (`timeuse --days 48`): grown people work ~6.5 hours a day (making 2.1, fields 1.8, cooking 1.3, hunting
+and fishing 0.9, wood, water and herding 0.3) with ~9 hours of rest and company; youths ~8, elders ~5.4, children of 6-11 ~3
+(herding most) - inside the ranges of time-allocation studies of farming peoples (grown people 6-9 h, children of 7-11 2-5 h),
+peaking at sowing and harvest. 200 coarse years: seed 42 3,570 people in 14 places (3,492 in 15 before), no hunger; seed 1
+1,084 in 6 (1,206), land-bound famines as before (1,001 hunger deaths, 50 famines); making 250 hours a good in both.

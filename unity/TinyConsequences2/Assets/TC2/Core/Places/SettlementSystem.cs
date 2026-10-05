@@ -90,7 +90,10 @@ namespace TC2.Core.Places
                 ref var hh = ref w.Households.Get(hhs[i]);
                 double fire = Hearth.Wanted(tOut, hh.Shelter) * share;
                 hh.Indoor = (float)Hearth.Indoors(tOut, hh.Shelter, fire);
-                if (hh.Indoor < Hearth.ChillLine && w.Members(hhs[i]).Count > 0) cold++;
+                int members = w.Members(hhs[i]).Count;
+                // the day's wear of its members' clothes and tools (D2-058)
+                hh.Gear = (float)DMath.Max(0.0, hh.Gear - members * Goods.WearPerDay);
+                if (members > 0 && hh.Indoor < Goods.ChillLine(Goods.Condition(hh.Gear, members))) cold++;
             }
             if (cold > 0 && s.ColdEvent == 0)
             {
@@ -122,7 +125,9 @@ namespace TC2.Core.Places
             else if (s.Crop == CropStage.Sown && doy >= 12)
             {
                 s.Sown = DMath.Clamp01(s.CropWork / Math.Max(1.0, s.CropWorkNeed));
-                s.Crop = CropStage.Growing; s.CropWork = 0; s.CropWorkNeed = s.FieldHa * 8.0;
+                // weeding, and keeping birds and beasts off the young crop: ~24 hours a hectare over the stage (hand weeding of a
+                // cereal took 50-100 hours a hectare a season; D2-058)
+                s.Crop = CropStage.Growing; s.CropWork = 0; s.CropWorkNeed = s.FieldHa * 24.0;
             }
             else if (s.Crop == CropStage.Growing && doy >= 30)
             {
@@ -164,7 +169,9 @@ namespace TC2.Core.Places
                     tf = DMath.SmoothStep(3, 13, P.Temp[fc]) * (1.0 - DMath.SmoothStep(31, 39, P.Temp[fc]));
                     wf = DMath.SmoothStep(0.06, 0.32, P.SoilWater[fc]);
                 }
-                double tend = 0.75 + 0.25 * DMath.Clamp01(s.CropWork / Math.Max(1.0, s.CropWorkNeed));
+                // the weeds grow with the crop: a field is kept while its weeding keeps pace with the season so far (D2-058)
+                double season = DMath.Clamp((doy - 11) / 18.0, 0.05, 1.0);
+                double tend = 0.75 + 0.25 * DMath.Clamp01(s.CropWork / Math.Max(1.0, s.CropWorkNeed * season));
                 s.CropGrowth = DMath.Clamp01(s.CropGrowth + tf * wf * tend / 16.0);
             }
         }
@@ -426,7 +433,12 @@ namespace TC2.Core.Places
                 double rr = p.Reserve / cap;
                 double fed = rr >= 0.5 ? 1.0 : 0.15 + 1.7 * rr;
                 // a cold home takes health, most from infants and the old (D2-056)
-                double chill = p.At == p.Home && w.Households.Exists(p.Household) ? Hearth.Chill(w.Households.Get(p.Household).Indoor, age) : 0.0;
+                double chill = 0.0;
+                if (p.At == p.Home && w.Households.Exists(p.Household))
+                {
+                    ref var home = ref w.Households.Get(p.Household);
+                    chill = Hearth.Chill(home.Indoor, age, Goods.Condition(home.Gear, w.Members(p.Household).Count));
+                }
                 p.Health = (float)DMath.Max(0.02, DMath.Min(p.Health + 0.05, fed) - chill);
                 // a body the cold has worn to nothing dies of exposure, as a starved one does when its reserve is spent
                 if (chill > 0 && p.Health <= 0.05 && KeyedRng.Unit(seed, RngStream.Death, (ulong)pid, (ulong)day, 9) < DMath.Min(1.0, 2.0 * chill))
@@ -568,6 +580,10 @@ namespace TC2.Core.Places
                 double take = left == 0 ? oh.Larder : oh.Larder / (left + 1);
                 oh.Larder -= take;
                 w.Households.Get(hid).Larder += take;
+                // and their own clothes and tools (D2-058)
+                double gear = left == 0 ? oh.Gear : (double)oh.Gear / (left + 1);
+                oh.Gear = (float)(oh.Gear - gear);
+                w.Households.Get(hid).Gear = (float)(w.Households.Get(hid).Gear + gear);
                 if (left == 0) { oh.Dissolved = w.Now; w.History.EndEntity(EntityRef.Household(old), w.Now); w.HouseholdsOf(oh.Settlement).Remove(old); w.Stock.Inherit(old, hid); }
                 else w.Stock.Endow(old, hid);   // and a share of the herd (D2-048)
             }

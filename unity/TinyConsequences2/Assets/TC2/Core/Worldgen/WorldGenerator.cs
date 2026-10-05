@@ -341,6 +341,7 @@ namespace TC2.Core.Worldgen
                     childAge += rs.Range(1.8, 3.6);
                 }
                 if (made < target && rs.Chance(0.25)) { MakeFounder(w, rs.Chance(0.55) ? Sex.Female : Sex.Male, rs.Range(56, 70), 0, 0, hid, sid, ref rs); made++; }
+                w.Households.Get(hid).Gear = (float)(1.1 * w.Members(hid).Count);   // clothed and equipped (D2-058)
                 StartingHerd(w, hid, sid);
             }
             // stores to see the founders through to their first harvest

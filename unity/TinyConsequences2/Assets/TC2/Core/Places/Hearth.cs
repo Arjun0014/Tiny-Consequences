@@ -48,8 +48,12 @@ namespace TC2.Core.Places
         /// <summary>How much more the cold takes from a body by its age: infants most, then the old and small children.</summary>
         public static double Frailty(double age) => age < 2 ? 2.5 : age < 5 ? 1.5 : age > 65 ? 1.8 : 1.0;
 
-        /// <summary>Health the day's cold takes from a body at home (0 at or above the chill line).</summary>
-        public static double Chill(double indoors, double age) => indoors >= ChillLine ? 0.0 : (ChillLine - indoors) * ChillPerDegree * Frailty(age);
+        /// <summary>Health the day's cold takes from a body at home (0 at or above the chill line, which rises as clothes wear: D2-058).</summary>
+        public static double Chill(double indoors, double age, double clothed = 1.0)
+        {
+            double line = Goods.ChillLine(clothed);
+            return indoors >= line ? 0.0 : (line - indoors) * ChillPerDegree * Frailty(age);
+        }
 
         /// <summary>FU an hour of preparing makes, by the cook's age and health, and half as much with no wood to cook on.</summary>
         public static double PrepPerHour(double age, double health, bool wood) => PrepRate * (age < 12 ? 0.5 : 1.0) * (0.5 + 0.5 * health) * (wood ? 1.0 : 0.5);

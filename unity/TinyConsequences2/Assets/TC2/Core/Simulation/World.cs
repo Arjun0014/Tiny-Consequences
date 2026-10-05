@@ -29,6 +29,7 @@ namespace TC2.Core.Simulation
         public double BeastFu;                                            // FU of meat from slaughter
         public double PrepHours, PrepFu, WaterHours;                      // the households' own work: hours making food ready, FU made, hours carrying water (D2-056)
         public long WaterTrips, ColdDeaths, ColdSpells;                   // trips to the well; deaths the cold at home caused; spells of cold homes
+        public double CraftHours, GearMade;                               // hours making and mending goods, person-equivalents made (D2-058)
 
         public void Write(BinWriter w)
         {
@@ -46,6 +47,7 @@ namespace TC2.Core.Simulation
             w.Long(Parties); w.Long(Foundings); w.Long(Scouts);
             w.Long(BeastBirths); w.Long(BeastDeaths); w.Long(BeastsTaken); w.Long(BeastsEaten); w.Long(BeastsFeral); w.Double(BeastFu); w.Long(TendDays);
             w.Double(PrepHours); w.Double(PrepFu); w.Double(WaterHours); w.Long(WaterTrips); w.Long(ColdDeaths); w.Long(ColdSpells);
+            w.Double(CraftHours); w.Double(GearMade);
         }
 
         public void Read(BinReader r)
@@ -64,6 +66,7 @@ namespace TC2.Core.Simulation
             Parties = r.Long(); Foundings = r.Long(); Scouts = r.Long();
             BeastBirths = r.Long(); BeastDeaths = r.Long(); BeastsTaken = r.Long(); BeastsEaten = r.Long(); BeastsFeral = r.Long(); BeastFu = r.Double(); TendDays = r.Long();
             PrepHours = r.Double(); PrepFu = r.Double(); WaterHours = r.Double(); WaterTrips = r.Long(); ColdDeaths = r.Long(); ColdSpells = r.Long();
+            CraftHours = r.Double(); GearMade = r.Double();
         }
 
         public Metrics Clone() { var m = (Metrics)MemberwiseClone(); return m; }
@@ -109,7 +112,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 15; // 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
+        public const int FormatSimVersion = 16; // 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;

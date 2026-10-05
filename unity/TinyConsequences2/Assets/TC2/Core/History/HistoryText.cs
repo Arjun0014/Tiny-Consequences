@@ -115,9 +115,20 @@ namespace TC2.Core.History
                 case ActivityKind.Fields: return p.Why == WhyCode.Harvest ? "bringing in the harvest of " + home : "working the fields of " + home + ": the crop needs hands";
                 case ActivityKind.Wood: return "cutting wood: " + home + "'s woodstore is low";
                 case ActivityKind.Water: return "fetching water " + ((w.Settlements.Exists(p.Home) && (w.Settlements.Get(p.Home).Works & 1) != 0) ? "from the well" : "from the stream") + ": the household's pots are low";
+                case ActivityKind.Craft: return "making and mending at home - spinning, weaving, sewing, tools: the household's clothes and tools are wearing thin";
                 case ActivityKind.Cook: return p.Why == WhyCode.Hungry ? "making a meal: hungry, and nothing is cooked at home" : "grinding grain and cooking for the household: the next meals are not made";
                 case ActivityKind.Social: return "on the square with the neighbours, the day's work done";
-                case ActivityKind.Idle: return "resting at home";
+                case ActivityKind.Idle:
+                    {
+                        // rest has its why too: a long day's work behind them, or nothing pressing in the fields or at home
+                        if (p.Worked >= 6f) return "resting at home after a long day's work";
+                        if (p.Why != WhyCode.Leisure || !w.Settlements.Exists(p.Home)) return "resting at home";
+                        var crop = w.Settlements.Get(p.Home).Crop;
+                        string fields = crop == TC2.Core.Places.CropStage.Harvested || crop == TC2.Core.Places.CropStage.Fallow ? "the harvest is in" :
+                                        crop == TC2.Core.Places.CropStage.Growing ? "the crop is weeded and growing" :
+                                        crop == TC2.Core.Places.CropStage.Sown ? "the day's sowing is done" : "the fields need no more hands today";
+                        return "resting at home: " + fields + " and nothing at home presses";
+                    }
                 case ActivityKind.TripOut: return "walking to " + (dest.Length > 0 ? dest : "a neighbouring village") + (p.Why == WhyCode.VisitKin ? " to see kin" : " to see a friend");
                 case ActivityKind.TripHome: return "walking home to " + home;
                 case ActivityKind.Visit: return "visiting " + at;

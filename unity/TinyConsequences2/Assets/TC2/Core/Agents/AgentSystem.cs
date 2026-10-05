@@ -392,6 +392,7 @@ namespace TC2.Core.Agents
             var w = _w;
             long now = w.Now;
             double hours = (p.T1 - Math.Max(p.T0, p.TA)) * frac / (double)SimTime.Hour;
+            if (IsWork(p.Act)) p.Worked = (float)(p.Worked + hours);   // a day's labour (D2-058)
             switch (p.Act)
             {
                 case ActivityKind.Eat:
@@ -401,7 +402,7 @@ namespace TC2.Core.Agents
                     if (p.At != 0)
                     {
                         ref var s = ref w.Settlements.Get(p.At);
-                        s.CropWork += hours * (0.6 + p.SkFarm) * (0.5 + 0.5 * p.Health);
+                        s.CropWork += hours * (0.6 + p.SkFarm) * (0.5 + 0.5 * p.Health) * Tools(p.Household);
                         p.SkFarm = (float)DMath.Min(1.0, p.SkFarm + 0.0015 * hours);
                     }
                     break;
@@ -409,12 +410,13 @@ namespace TC2.Core.Agents
                     if (p.At != 0)
                     {
                         ref var s = ref w.Settlements.Get(p.At);
-                        s.Woodstore += hours * (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health);
+                        s.Woodstore += hours * (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * Tools(p.Household);
                         p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * hours);
                     }
                     break;
                 case ActivityKind.Sleep:
                     p.Woke = now;
+                    p.Worked = 0f;   // a new day's labour
                     break;
                 case ActivityKind.Hunt:
                 case ActivityKind.Fish:
@@ -425,9 +427,10 @@ namespace TC2.Core.Agents
                         ulong key = KeyedRng.Hash(w.Seed, RngStream.Work, (ulong)p.Id, (ulong)now);
                         double fu;
                         int kind = -1;
-                        if (p.Act == ActivityKind.Hunt) { fu = w.Wild.Hunt(p.Ground, hours, p.SkHunt, key, out kind); p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hours); if (fu > 0) w.HerdSys.MarkHunted(p.Home, p.Ground); }
-                        else if (p.Act == ActivityKind.Fish) { fu = w.Wild.Fish(p.Ground, hours, p.SkFish, key); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hours); if (fu > 0) kind = 64; }
-                        else fu = w.Wild.Gather(p.Ground, hours, p.Health, key);
+                        double worked = hours * Tools(p.Household);   // (worn spears and torn nets catch less in the hours: D2-058)
+                        if (p.Act == ActivityKind.Hunt) { fu = w.Wild.Hunt(p.Ground, worked, p.SkHunt, key, out kind); p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hours); if (fu > 0) w.HerdSys.MarkHunted(p.Home, p.Ground); }
+                        else if (p.Act == ActivityKind.Fish) { fu = w.Wild.Fish(p.Ground, worked, p.SkFish, key); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hours); if (fu > 0) kind = 64; }
+                        else fu = w.Wild.Gather(p.Ground, worked, p.Health, key);
                         p.Carry = (float)(p.Carry + fu);
                         p.WhyArg = kind + 1;   // what they bring home (the view and the inspector read it from the haul)
                         w.Metrics.WildHours += hours; w.Metrics.WildFu += fu;
@@ -439,7 +442,16 @@ namespace TC2.Core.Agents
                     break;
                 case ActivityKind.Build:
                     if (p.At != 0 && p.At == p.Home && hours > 0)
-                        Construction.Work(w, p.At, p.Household, hours, BuildRate(in p));
+                        Construction.Work(w, p.At, p.Household, hours, BuildRate(in p) * Tools(p.Household));
+                    break;
+                case ActivityKind.Craft:
+                    if (p.At != 0 && p.At == p.Home && hours > 0 && w.Households.Exists(p.Household))
+                    {
+                        ref var hh = ref w.Households.Get(p.Household);
+                        double made = Goods.MakePerHour(p.AgeYears(now), p.Health) * hours;
+                        hh.Gear = (float)(hh.Gear + made);
+                        w.Metrics.CraftHours += hours; w.Metrics.GearMade += made;
+                    }
                     break;
                 case ActivityKind.Cook:
                     if (p.At != 0 && p.At == p.Home && hours > 0 && w.Households.Exists(p.Household))
@@ -471,6 +483,38 @@ namespace TC2.Core.Agents
             }
         }
 
+        // ---------------------------------------------------------------- goods (D2-058)
+        /// <summary>Activities that are work: they count toward a day's labour.</summary>
+        static bool IsWork(ActivityKind a) => a == ActivityKind.Fields || a == ActivityKind.Wood || a == ActivityKind.Build || a == ActivityKind.Hunt ||
+                                              a == ActivityKind.Fish || a == ActivityKind.Gather || a == ActivityKind.Haul || a == ActivityKind.Tend ||
+                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft;
+
+        /// <summary>How much a day's labour still leaves for the slack's work: whole until five hours, a fifth past eight.</summary>
+        static double DayLeft(in Person p) => DMath.Clamp(1.0 - (p.Worked - 5.0) / 3.0, 0.2, 1.0);
+
+        /// <summary>The pace of a person's hands with their household's clothes and tools (worn ones down to 0.7).</summary>
+        double Tools(int hid)
+        {
+            var w = _w;
+            if (!w.Households.Exists(hid)) return 1.0;
+            return Goods.WorkFactor(Goods.Condition(w.Households.Get(hid).Gear, w.Members(hid).Count));
+        }
+
+        /// <summary>The household's goods against what it keeps its members in (1 = the target), counting what is being made.</summary>
+        double GoodsHeld(int hid, double making)
+        {
+            var w = _w;
+            int members = w.Members(hid).Count;
+            if (members == 0) return 1.0;
+            return (w.Households.Get(hid).Gear + making) / (members * Goods.Target);
+        }
+
+        /// <summary>Making and mending at home: spinning, weaving, sewing, hafting, plaiting (D2-058).</summary>
+        void BeginCraft(ref Person p, double homeX, double homeY, double hours, ref RandomSequence rs)
+        {
+            BeginLocal(ref p, ActivityKind.Craft, WhyCode.GoodsWorn, 0, homeX + rs.Range(-3, 3), homeY + rs.Range(-3, 3), SimTime.Hours(hours));
+        }
+
         // ---------------------------------------------------------------- the household's own work (D2-056)
         /// <summary>FU of cooked food a meal of the whole household takes (a third of its day's need).</summary>
         double MealOf(int hid) => _w.SettlementSys.HouseholdNeed(hid) / 3.0;
@@ -486,18 +530,22 @@ namespace TC2.Core.Agents
         }
 
         /// <summary>What the household's members now at the hearth or gone to the well will add (so that two do not do one task).</summary>
-        void UnderWay(int hid, out double cooking, out double fetching)
+        void UnderWay(int hid, out double cooking, out double fetching) => UnderWay(hid, out cooking, out fetching, out _);
+
+        void UnderWay(int hid, out double cooking, out double fetching, out double making)
         {
             var w = _w;
             long now = w.Now;
             var mem = w.Members(hid);
-            cooking = 0; fetching = 0;
+            cooking = 0; fetching = 0; making = 0;
             for (int i = 0; i < mem.Count; i++)
             {
                 ref var q = ref w.People.Get(mem[i]);
                 if (!q.Alive || q.T1 <= now) continue;
-                if (q.Act == ActivityKind.Cook) cooking += Hearth.PrepPerHour(q.AgeYears(now), q.Health, true) * (q.T1 - Math.Max(now, q.TA)) / (double)SimTime.Hour;
+                double left = (q.T1 - Math.Max(now, q.TA)) / (double)SimTime.Hour;
+                if (q.Act == ActivityKind.Cook) cooking += Hearth.PrepPerHour(q.AgeYears(now), q.Health, true) * left;
                 else if (q.Act == ActivityKind.Water) fetching += Hearth.Carry(q.AgeYears(now));
+                else if (q.Act == ActivityKind.Craft) making += Goods.MakePerHour(q.AgeYears(now), q.Health) * left;
             }
         }
 
@@ -712,6 +760,9 @@ namespace TC2.Core.Agents
                 UnderWay(p.Household, out double cooking, out double fetching);
                 if (hh.Water + fetching < 0.5 * WaterTarget(p.Household) && rs.Chance(0.7)) { BeginWater(ref p, in here, ref rs); return; }
                 if (age >= 8 && hh.Ready + cooking < MealOf(p.Household) && CanCook(in p) && rs.Chance(0.5)) { BeginCook(ref p, WhyCode.MealsToMake, homeX, homeY, ref rs); return; }
+                // from eight a hand at the spinning and the plaiting when the household's goods are wearing thin (D2-058)
+                UnderWay(p.Household, out _, out _, out double making);
+                if (age >= 8 && GoodsHeld(p.Household, making) < 0.85 && rs.Chance(0.35)) { BeginCraft(ref p, homeX, homeY, 1.0 + rs.NextUnit(), ref rs); return; }
             }
             if (child)
             {
@@ -725,7 +776,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -770,6 +821,19 @@ namespace TC2.Core.Agents
                 {
                     double u = 0.35 + 0.45 * (1.0 - have / DMath.Max(1e-6, half)) + 0.08 * rs.NextUnit();
                     if (u > best) { best = u; choice = 3; }
+                }
+            }
+            if (atHome && w.Households.Exists(p.Household))
+            {
+                // making and mending (D2-058): the household's clothes and tools below what it keeps its members in - by day,
+                // and by the fire in the evening (night is sleep, above)
+                UnderWay(p.Household, out _, out _, out double making);
+                double held = GoodsHeld(p.Household, making);
+                if (held < 1.0)
+                {
+                    // (the slack's work: after a full day's labour it weighs less than rest and company)
+                    double u = ((0.2 + 0.5 * (1.0 - held)) * (0.6 + 0.4 * p.Diligence / 255.0) + 0.1 * rs.NextUnit()) * DayLeft(in p);
+                    if (u > best) { best = u; choice = 11; }
                 }
             }
             int wildKind = -1;
@@ -820,6 +884,9 @@ namespace TC2.Core.Agents
                     return;
                 case 10:
                     BeginCook(ref p, WhyCode.MealsToMake, homeX, homeY, ref rs);
+                    return;
+                case 11:
+                    BeginCraft(ref p, homeX, homeY, 1.5 + 1.5 * rs.NextUnit(), ref rs);
                     return;
                 case 4:
                     BeginLocal(ref p, ActivityKind.Social, WhyCode.Leisure, 0, here.SquareX + rs.Range(-12, 12), here.SquareY + rs.Range(-12, 12), SimTime.Hours(1.5 + 1.5 * rs.NextUnit()));
@@ -1025,6 +1092,24 @@ namespace TC2.Core.Agents
             return went;
         }
         public const double TendStint = 4.5;             // hours a youth or a grown member gives to the herd (a lived stint is 4-5)
+        public const double LabourDay = 9.5;             // a COARSE day's labour, as far as a lived day's slack work fills it (fitted, D2-058)
+
+        /// <summary>A COARSE day's making and mending for one person (D2-058): up to maxH hours while the household holds less than
+        /// `below` of what it keeps its members in.</summary>
+        void CoarseCraft(ref Person p, double age, double maxH, double below)
+        {
+            var w = _w;
+            if (maxH <= 0 || !w.Households.Exists(p.Household)) return;
+            int members = w.Members(p.Household).Count;
+            if (members == 0) return;
+            ref var hh = ref w.Households.Get(p.Household);
+            double want = below * members * Goods.Target - hh.Gear;
+            if (want <= 0) return;
+            double rate = Goods.MakePerHour(age, p.Health);
+            double h = DMath.Min(maxH, want / rate);
+            hh.Gear = (float)(hh.Gear + h * rate);
+            w.Metrics.CraftHours += h; w.Metrics.GearMade += h * rate;
+        }
 
         readonly Dictionary<int, double> _chore = new Dictionary<int, double>();
         readonly List<int> _kids = new List<int>(), _grown = new List<int>();
@@ -1157,7 +1242,10 @@ namespace TC2.Core.Agents
                 // the day's food from the larder, then the granary (D2-042: one account a day, as the body keeps it)
                 EatDay(ref p);
                 if (p.Carry > 0f) { w.Wild.Deposit(p.Id, p.Carry); p.Carry = 0f; }
+                // children of 8-11 lend a hand at the making when the household's goods are wearing thin (D2-058)
+                if (age >= 8 && age < 12 && p.Health >= 0.3) CoarseCraft(ref p, age, 0.6, 0.85);
                 if (age < 12 || p.Health < 0.3) continue;
+                double tools = Tools(p.Household);
                 // youths (12-15) work part of a day, as they take part in a lived day's chores
                 double hours = 7.5 * (0.6 + 0.4 * p.Diligence / 255.0) * (age > 60 ? 0.5 : (age < 16 ? 0.6 : 1.0)) * (0.5 + 0.5 * p.Health);
                 if (_tendBy.Contains(p.Id)) hours = DMath.Max(0.0, hours - TendStint);   // out with the herd (D2-050)
@@ -1165,14 +1253,14 @@ namespace TC2.Core.Agents
                 double day0 = hours;
                 if (fuelWanted > 0 && hours > 0)
                 {
-                    double rate = (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health);
+                    double rate = (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * tools;
                     double h = DMath.Min(hours, fuelWanted / rate);
                     s.Woodstore += h * rate; fuelWanted -= h * rate; hours -= h;
                     p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * h);
                 }
                 if (cropNeed > 0)
                 {
-                    double rate = (0.6 + p.SkFarm) * (0.5 + 0.5 * p.Health);
+                    double rate = (0.6 + p.SkFarm) * (0.5 + 0.5 * p.Health) * tools;
                     double h = Math.Min(hours, cropNeed / rate);
                     s.CropWork += h * rate; cropNeed -= h * rate; hours -= h;
                     p.SkFarm = (float)DMath.Min(1.0, p.SkFarm + 0.0015 * h);
@@ -1187,7 +1275,7 @@ namespace TC2.Core.Agents
                     buildUrge = ownRoof ? (shelter == Construction.Camp ? 0.85 : 0.4) : 0.45;
                     if (!(shortNow && WildNeed(in s) > buildUrge))
                     {
-                        double used = Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0), BuildRate(in p));
+                        double used = Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0), BuildRate(in p) * tools);
                         hours -= used;
                         build = false;
                     }
@@ -1220,11 +1308,11 @@ namespace TC2.Core.Agents
                                 {
                                     int herd = w.HerdSys.BestGame(sid);   // (where a herd is, as a lived day's hunter goes)
                                     if (herd != 0 && rs.Chance(0.7)) ground = w.Herds.Get(herd).Cell;
-                                    fu = w.Wild.Hunt(ground, hw, p.SkHunt, key, out _); p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hw); w.Metrics.HuntTrips++;
+                                    fu = w.Wild.Hunt(ground, hw * tools, p.SkHunt, key, out _); p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hw); w.Metrics.HuntTrips++;
                                     if (fu > 0) w.HerdSys.MarkHunted(sid, ground);
                                 }
-                                else if (wk == WildFood.Fishing) { fu = w.Wild.Fish(ground, hw, p.SkFish, key); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hw); w.Metrics.FishTrips++; }
-                                else { fu = w.Wild.Gather(ground, hw, p.Health, key); w.Metrics.GatherTrips++; }
+                                else if (wk == WildFood.Fishing) { fu = w.Wild.Fish(ground, hw * tools, p.SkFish, key); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hw); w.Metrics.FishTrips++; }
+                                else { fu = w.Wild.Gather(ground, hw * tools, p.Health, key); w.Metrics.GatherTrips++; }
                                 w.Wild.Deposit(p.Id, fu);
                                 w.Metrics.WildHours += hw; w.Metrics.WildFu += fu;
                                 hours = DMath.Max(0.0, hours - hw);
@@ -1233,13 +1321,18 @@ namespace TC2.Core.Agents
                         }
                     }
                 }
-                if (build && hours > 0) hours -= Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0), BuildRate(in p));
+                if (build && hours > 0) hours -= Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0), BuildRate(in p) * tools);
                 if (hours > 0 && s.Woodstore < woodTarget)
                 {
                     double h = hours * 0.4;
-                    s.Woodstore += h * (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health);
+                    s.Woodstore += h * (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * tools;
                     p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * h);
+                    hours -= h;
                 }
+                // making and mending in the rest of a day's labour - the day's slack and the evening by the fire - as a lived day
+                // fills it (D2-058)
+                double worked = chore + (_tendBy.Contains(p.Id) ? TendStint : 0.0) + (day0 - hours);
+                CoarseCraft(ref p, age, DMath.Max(0.0, LabourDay * (age > 60 ? 0.85 : 1.0) - worked), 1.0);
             }
         }
 

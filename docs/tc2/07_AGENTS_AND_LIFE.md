@@ -121,8 +121,17 @@ with dependants first (TC1 primitives B, C).
 - **Children's chores**: herding first (from eight, D2-050), then water when the pots are low (from six) and help at the quern
   when nothing is cooked (from eight), then play.
 - **COARSE** charges the same work to the same people as a share of the day before any other work.
-- Not yet: minding infants and toddlers (an infant is "with the household" wherever its carers are), crafts and the making and
-  mending of clothes and gear (the slack in grown people's days; F3/F4), the house's upkeep and decay.
+- **Goods made and mended (D2-058)**: `Household.Gear` holds person-equivalents of clothes, tools and vessels; each member wears
+  through ~1/300 of a person's goods a day and making one person's goods takes ~250 hours (`Craft`: spinning, weaving, sewing,
+  hafting, plaiting, at home; children of 8-11 at half pace); households keep 1.2 a head when they can. Worn goods raise the
+  chill line (up to +6 C in rags) and slow hands (0.7 with worn tools: fields, wood, building, the wild's catch). Goods go with a
+  person who leaves for a new household; a newborn brings none.
+- **A day's labour (D2-058)**: `Person.Worked` counts the hours of work since waking; the slack's work (making and mending)
+  loses its pull past five hours, so rest and company keep their place. COARSE fills making into the rest of a 9.5-hour labour
+  day after its chores, herding and other work.
+- **Weeding (D2-058)**: the growing stage asks ~24 hours a hectare; the crop thrives while its weeding keeps pace with the season.
+- Not yet: minding infants and toddlers (an infant is "with the household" wherever its carers are), hay for the animals' winter,
+  the house's upkeep and decay, materials for goods (F4).
 
 ## 8. Proof-of-concept subset (F0)
 
