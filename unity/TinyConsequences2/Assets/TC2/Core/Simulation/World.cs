@@ -25,6 +25,7 @@ namespace TC2.Core.Simulation
         public double GameKg, FishKg, GatherKg, WildHours, WildFu;
         public long Parties, Foundings, Scouts;   // households on the move (D2-045)
         public long BeastBirths, BeastDeaths, BeastsTaken, BeastsEaten, BeastsFeral;   // livestock (D2-048): born, died, taken by wolves, slaughtered, gone wild
+        public long TendDays;                                                         // household-days someone took the animals out (D2-050)
         public double BeastFu;                                            // FU of meat from slaughter
 
         public void Write(BinWriter w)
@@ -41,7 +42,7 @@ namespace TC2.Core.Simulation
             w.Long(HuntTrips); w.Long(FishTrips); w.Long(GatherTrips); w.Long(HungerDeaths); w.Long(Famines);
             w.Double(GameKg); w.Double(FishKg); w.Double(GatherKg); w.Double(WildHours); w.Double(WildFu);
             w.Long(Parties); w.Long(Foundings); w.Long(Scouts);
-            w.Long(BeastBirths); w.Long(BeastDeaths); w.Long(BeastsTaken); w.Long(BeastsEaten); w.Long(BeastsFeral); w.Double(BeastFu);
+            w.Long(BeastBirths); w.Long(BeastDeaths); w.Long(BeastsTaken); w.Long(BeastsEaten); w.Long(BeastsFeral); w.Double(BeastFu); w.Long(TendDays);
         }
 
         public void Read(BinReader r)
@@ -58,7 +59,7 @@ namespace TC2.Core.Simulation
             HuntTrips = r.Long(); FishTrips = r.Long(); GatherTrips = r.Long(); HungerDeaths = r.Long(); Famines = r.Long();
             GameKg = r.Double(); FishKg = r.Double(); GatherKg = r.Double(); WildHours = r.Double(); WildFu = r.Double();
             Parties = r.Long(); Foundings = r.Long(); Scouts = r.Long();
-            BeastBirths = r.Long(); BeastDeaths = r.Long(); BeastsTaken = r.Long(); BeastsEaten = r.Long(); BeastsFeral = r.Long(); BeastFu = r.Double();
+            BeastBirths = r.Long(); BeastDeaths = r.Long(); BeastsTaken = r.Long(); BeastsEaten = r.Long(); BeastsFeral = r.Long(); BeastFu = r.Double(); TendDays = r.Long();
         }
 
         public Metrics Clone() { var m = (Metrics)MemberwiseClone(); return m; }
@@ -104,7 +105,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 13; // 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
+        public const int FormatSimVersion = 14; // 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;

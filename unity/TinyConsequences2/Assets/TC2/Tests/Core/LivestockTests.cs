@@ -283,6 +283,92 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void TheVillageHerdGoesOutWithItsChildrenFirst()
+        {
+            var w = TestWorlds.Make(412);
+            // villages with children of eight to fifteen (the herders by custom)
+            var young = new Dictionary<int, int>();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                var res = w.Residents(sid); int n = 0;
+                for (int i = 0; i < res.Count; i++) { double a0 = w.People.Get(res[i]).AgeYears(w.Now); if (a0 >= 8 && a0 < 16) n++; }
+                young[sid] = n;
+            }
+            int herders = 0, atGround = 0, inYoung = 0, byYoung = 0;
+            var seen = new HashSet<(int, long)>();
+            var perDay = new Dictionary<(int, long), int>();
+            for (int h = 0; h < 24 * 4; h++)
+            {
+                w.AdvanceTo(w.Now + SimTime.Hour);
+                for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+                {
+                    var p = w.People.Get(id);
+                    if (!p.Alive || p.Act != ActivityKind.Tend) continue;
+                    long day = SimTime.FloorDiv(w.Now + w.LocalOffsetOf(p.Home), SimTime.Day);
+                    if (!seen.Add((id, day))) continue;
+                    herders++;
+                    Assert.AreEqual(WhyCode.Herd, p.Why);
+                    perDay[(p.Home, day)] = (perDay.TryGetValue((p.Home, day), out int c) ? c : 0) + 1;
+                    if (young[p.Home] > 0) { inYoung++; if (p.AgeYears(w.Now) < 16) byYoung++; }
+                    // out on the village's ground of the day (the simulation's choice, the view's too)
+                    int ground = w.Stock.GroundOf(p.Home, day);
+                    ref var s = ref w.Settlements.Get(p.Home);
+                    s.SphereToLocal(w.Planet.Grid.Center[ground], w.Planet.Radius, out double gx, out double gy);
+                    if (System.Math.Abs(p.ToX - gx) < 35 && System.Math.Abs(p.ToY - gy) < 35) atGround++;
+                }
+            }
+            Console.WriteLine("herder-days " + herders + ", at the day's ground " + atGround + "; in villages with children of 8-15: " + inYoung + ", by the young " + byYoung + "; tend days " + w.Metrics.TendDays);
+            Assert.Greater(herders, 0, "the herds go out");
+            Assert.AreEqual(herders, atGround, "each herder goes to the village's ground of the day");
+            Assert.Greater(inYoung, 0, "(a village with children of herding age keeps animals)");
+            Assert.Greater(byYoung, inYoung / 2, "where there are children of eight to fifteen, they mostly take the herd");
+            foreach (var kv in perDay) Assert.LessOrEqual(kv.Value, w.Stock.HerdersWanted(kv.Key.Item1) + 1, "no more herders than the herd wants");
+            // every village with grazers had its herd out today or yesterday
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                var st = w.Settlements.Get(sid);
+                if (!st.Inhabited || w.Stock.Grazers(sid) == 0) continue;
+                long today = SimTime.FloorDiv(w.Now + w.LocalOffsetOf(sid), SimTime.Day);
+                Assert.GreaterOrEqual(st.Tended, today - 1, "village " + sid + "'s herd went out");
+                Assert.Greater(st.HerdersOut, 0);
+            }
+            Assert.IsNull(TestWorlds.Audit(w));
+        }
+
+        [Test]
+        public void AWatchedHerdLosesFewerToWolves()
+        {
+            for (byte k = 0; k < Livestock.Kinds; k++)
+                foreach (double age in new[] { 0.5, 3.0 })
+                {
+                    double open = Livestock.WolfRisk(4.0, age, k, false), watched = Livestock.WolfRisk(4.0, age, k, true);
+                    Assert.Greater(open, 0.0);
+                    Assert.AreEqual(0.35 * open, watched, 1e-15, "a herder keeps the wolves off two times in three");
+                }
+            Assert.AreEqual(0.0, Livestock.WolfRisk(0.0, 0.5, Livestock.Goat, false), "no wolves, no risk");
+            Assert.Greater(Livestock.WolfRisk(4.0, 0.5, Livestock.Goat, false), Livestock.WolfRisk(4.0, 3.0, Livestock.Goat, false), "the young more exposed");
+        }
+
+        [Test]
+        public void CoarseAndActivityTendAlike()
+        {
+            var a = TestWorlds.Make(413); var b = TestWorlds.Make(413);
+            Coarse(b);
+            double wantA = 0, wantB = 0;
+            long end = a.Now + SimTime.Days(24);
+            while (a.Now < end)
+            {
+                a.AdvanceTo(a.Now + SimTime.Day); b.AdvanceTo(a.Now);
+                for (int sid = a.Settlements.First(); sid != 0; sid = a.Settlements.Next(sid)) if (a.Settlements.Get(sid).Inhabited) wantA += a.Stock.HerdersWanted(sid);
+                for (int sid = b.Settlements.First(); sid != 0; sid = b.Settlements.Next(sid)) if (b.Settlements.Get(sid).Inhabited) wantB += b.Stock.HerdersWanted(sid);
+            }
+            double ra = a.Metrics.TendDays / wantA, rb = b.Metrics.TendDays / wantB;
+            Console.WriteLine("herder-days per herder wanted: activity " + ra.ToString("0.000") + " coarse " + rb.ToString("0.000"));
+            Assert.That(ra, Is.InRange(0.8, 1.15), "the herds go out with their herders most days");
+            Assert.That(rb / ra, Is.InRange(0.85, 1.2), "at both resolutions alike");
+        }
+
+        [Test]
         public void CoarseAndActivityKeepHerdsAlike()
         {
             var a = TestWorlds.Make(411); var b = TestWorlds.Make(411);

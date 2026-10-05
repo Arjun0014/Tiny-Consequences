@@ -88,11 +88,14 @@ namespace TC2.Core.Places
         public const double TendKg = 50;          // food a day (kg) of the animals one pair of grown hands can herd, milk and pen
 
         World _w;
-        readonly List<int> _cells = new List<int>(), _herd = new List<int>(), _hhs = new List<int>();
-        readonly List<double> _hhG = new List<double>(), _hhM = new List<double>(), _hhCap = new List<double>();
+        readonly List<int> _cells = new List<int>(), _herd = new List<int>(), _hhs = new List<int>(), _ground = new List<int>();
+        readonly List<double> _hhG = new List<double>(), _hhM = new List<double>(), _hhAll = new List<double>(), _hhCap = new List<double>();
         readonly List<byte> _hhOut = new List<byte>();   // per household and mode (bits 1, 2, 4): nothing more it would spare
         readonly int[] _kept = new int[Kinds], _males = new int[Kinds];
         readonly int[] _prime = new int[Kinds], _young = new int[Kinds], _seenP = new int[Kinds], _seenY = new int[Kinds], _seenA = new int[Kinds];
+        readonly int[] _spares = new int[Kinds], _pickOf = new int[Kinds];
+        readonly double[] _pickEats = new double[Kinds];
+        readonly bool[] _pickMale = new bool[Kinds];
         readonly sbyte[] _sireNear = new sbyte[Kinds];   // today's answer per kind: -1 not yet asked, 0 none, 1 a sire near
         double _season;   // the season's phase today (the grass's leanness reads the day's mean temperature)
 
@@ -158,6 +161,55 @@ namespace TC2.Core.Places
                 if (heir != 0) Inherit(hid, heir);
             }
         }
+
+        public const int PerHerder = 60;   // head of cattle and goats one herder keeps together on the pasture
+
+        /// <summary>
+        /// The village herd's grazing ground on a day (D2-050): one of the ten nearest cells of the village's pasture (open land in
+        /// reach, no fields, no water, beyond the houses), a different one from day to day by a key of the village and the day -
+        /// where its herders take the households' cattle and goats together and where the view draws them. -1 if the village has
+        /// no pasture. Reads only.
+        /// </summary>
+        public int GroundOf(int sid, long day)
+        {
+            var w = _w; var P = w.Planet;
+            ref var s = ref w.Settlements.Get(sid);
+            w.Hazards.CellsWithin(w, s.Cell, PastureReach, _ground);
+            int n = 0;
+            for (int i = 0; i < _ground.Count && n < 10; i++)
+            {
+                int c = _ground[i];
+                if (!Grazes(P, c) || P.LakeDepth[c] > 0.3f || Vec3d.ArcDistance(P.Grid.Center[c], s.Anchor, P.Radius) < 160.0) continue;
+                _ground[n++] = c;
+            }
+            if (n == 0) return -1;
+            return _ground[(int)(KeyedRng.Unit(KeyedRng.Mix((ulong)sid * 0x9E3779B97F4A7C15UL + (ulong)day * 0xC2B2AE3D27D4EB4FUL + 0x5EED)) * n) % n];
+        }
+
+        /// <summary>The village's cattle and goats that go out to graze (pigs keep to the yards; a household on the road has its herd with it).</summary>
+        public int Grazers(int sid)
+        {
+            var w = _w;
+            var hhs = w.HouseholdsOf(sid);
+            int n = 0;
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                if (w.Households.Get(hhs[i]).Party != 0) continue;
+                var mine = w.BeastsOf(hhs[i]);
+                for (int j = 0; j < mine.Count; j++) if (w.Beasts.Get(mine[j]).Kind != Pig) n++;
+            }
+            return n;
+        }
+
+        /// <summary>Herders the village's herd wants a day: one for every sixty head (none without grazers).</summary>
+        public int HerdersWanted(int sid) { int g = Grazers(sid); return g == 0 ? 0 : (g + PerHerder - 1) / PerHerder; }
+
+        /// <summary>
+        /// The chance a day that wolves round the pasture take an animal: by their numbers, the young three times as exposed,
+        /// grown cattle a fifth; a herd someone watched the day before a third as exposed (D2-050).
+        /// </summary>
+        public static double WolfRisk(double wolves, double age, byte kind, bool watched) =>
+            wolves * 0.00025 * (age < 1 ? 3.0 : 1.0) * (kind == Cattle && age >= 1 ? 0.2 : 1.0) * (watched ? 0.35 : 1.0);
 
         public static double GrownShare(in Beast b, long now) => DMath.Clamp(0.25 + 0.75 * b.AgeYears(now) / Laws[b.Kind].Mature, 0.25, 1.0);
 
@@ -245,6 +297,8 @@ namespace TC2.Core.Places
             }
             // 2. each animal's day
             for (int k = 0; k < Kinds; k++) _sireNear[k] = -1;
+            int today = (int)SimTime.FloorDiv(now + w.LocalOffsetOf(sid), SimTime.Day);
+            bool watched = s.Tended >= today - 1 && s.HerdersOut > 0;   // the herd had its herders yesterday
             for (int i = 0; i < _herd.Count; i++)
             {
                 int id = _herd[i];
@@ -256,7 +310,7 @@ namespace TC2.Core.Places
                 double ate = k.GrassShare * fedG + k.MastShare * fedM + k.ScrapShare * fedS + (1.0 - k.GrassShare - k.MastShare - k.ScrapShare);
                 b.Cond = (float)DMath.Clamp01(b.Cond + (ate - 0.8) * 0.06);
                 // old age, hunger, wolves
-                double wolf = wolves * 0.00025 * (age < 1 ? 3.0 : 1.0) * (b.Kind == Cattle && age >= 1 ? 0.2 : 1.0);
+                double wolf = WolfRisk(wolves, age, b.Kind, watched);
                 double hazard = (1.0 / k.Lifespan) * (age > k.Lifespan * 0.7 ? 3.0 : 0.6) / SimTime.DaysPerYear + wolf;
                 if (b.Cond < 0.3) hazard += (0.3 - b.Cond) * 0.08;
                 double u = KeyedRng.Unit(seed, RngStream.Death, (ulong)id | (1UL << 40), (ulong)day);
@@ -292,21 +346,21 @@ namespace TC2.Core.Places
             var w = _w;
             long now = w.Now;
             var hhs = w.HouseholdsOf(sid);
-            _hhs.Clear(); _hhG.Clear(); _hhM.Clear(); _hhCap.Clear(); _hhOut.Clear();
+            _hhs.Clear(); _hhG.Clear(); _hhM.Clear(); _hhAll.Clear(); _hhCap.Clear(); _hhOut.Clear();
             double wantG = 0, wantM = 0;
             for (int i = 0; i < hhs.Count; i++)
             {
                 int hid = hhs[i];
                 var mine = w.BeastsOf(hid);
                 if (mine.Count == 0 || w.Households.Get(hid).Party != 0) continue;
-                double g = 0, m = 0;
+                double g = 0, m = 0, all = 0;
                 for (int j = 0; j < mine.Count; j++)
                 {
                     ref var b = ref w.Beasts.Get(mine[j]);
                     double eat = _intake[b.Kind] * GrownShare(in b, now);
-                    g += eat * Laws[b.Kind].GrassShare; m += eat * Laws[b.Kind].MastShare;
+                    g += eat * Laws[b.Kind].GrassShare; m += eat * Laws[b.Kind].MastShare; all += eat;
                 }
-                _hhs.Add(hid); _hhG.Add(g); _hhM.Add(m); _hhCap.Add(Hands(hid) * TendKg); _hhOut.Add(0);
+                _hhs.Add(hid); _hhG.Add(g); _hhM.Add(m); _hhAll.Add(all); _hhCap.Add(Hands(hid) * TendKg); _hhOut.Add(0);
                 wantG += g; wantM += m;
             }
             for (int guard = 0; guard < 100000; guard++)
@@ -319,7 +373,7 @@ namespace TC2.Core.Places
                     for (int i = 0; i < _hhs.Count; i++)
                     {
                         if ((_hhOut[i] & 1) != 0) continue;
-                        double over = (_hhG[i] + _hhM[i]) / DMath.Max(1e-9, _hhCap[i]);
+                        double over = _hhAll[i] / DMath.Max(1e-9, _hhCap[i]);   // (all it eats: the work is the whole herd's)
                         if (over > most) { most = over; pick = i; }
                     }
                     if (pick < 0) break;
@@ -351,14 +405,59 @@ namespace TC2.Core.Places
                         _hhOut[pick] |= bit;
                     }
                 }
-                if (pick < 0) break;   // nothing more anyone would kill: the herds go short
+                if (pick < 0) break;   // nothing more anyone would spare
                 int hid = _hhs[pick];
                 ref var be = ref w.Beasts.Get(bid);
                 double e = _intake[be.Kind] * GrownShare(in be, now);
                 double dg = e * Laws[be.Kind].GrassShare, dm = e * Laws[be.Kind].MastShare;
-                _hhG[pick] -= dg; _hhM[pick] -= dm; wantG -= dg; wantM -= dm;
+                _hhG[pick] -= dg; _hhM[pick] -= dm; _hhAll[pick] -= e; wantG -= dg; wantM -= dm;
                 Count(be.Kind, mode == 0 ? 7 : mode == 1 ? 8 : 9);
                 Slaughter(ref be, hid, sid);
+            }
+            HardTimes(sid, offerG / StockShare, offerM / StockShare, ref wantG, ref wantM);
+        }
+
+        /// <summary>
+        /// Hard times: the land cannot feed even the breeding cores (a pasture lost to fields, fire or drought) - the herders kill
+        /// into them rather than watch the herd starve: from the kind the village has most of, the most grown, until the herd eats
+        /// no more than the day's whole offer, keeping a nucleus of each kind in the village (a sire and two females) to breed
+        /// again when the land allows.
+        /// </summary>
+        void HardTimes(int sid, double offerG, double offerM, ref double wantG, ref double wantM)
+        {
+            var w = _w;
+            long now = w.Now;
+            if (wantG <= offerG && wantM <= offerM) return;
+            for (int k = 0; k < Kinds; k++) { _kept[k] = 0; _males[k] = 0; }   // the village's females and males of each kind
+            HerdOf(sid, _herd);
+            for (int i = 0; i < _herd.Count; i++) { ref var b = ref w.Beasts.Get(_herd[i]); if (b.Sex == Sex.Male) _males[b.Kind]++; else _kept[b.Kind]++; }
+            for (int guard = 0; guard < 100000 && (wantG > offerG || wantM > offerM); guard++)
+            {
+                bool mastShort = wantM / DMath.Max(offerM, 1e-9) > wantG / DMath.Max(offerG, 1e-9);
+                int kind = -1, most = 0;
+                for (int k = 0; k < Kinds; k++)
+                {
+                    if ((mastShort ? Laws[k].MastShare : Laws[k].GrassShare) <= 0) continue;
+                    int beyond = Math.Max(0, _males[k] - 1) + Math.Max(0, _kept[k] - 2);
+                    if (beyond > most) { most = beyond; kind = k; }
+                }
+                if (kind < 0) return;   // only the nuclei are left: they go short
+                bool male = _males[kind] - 1 >= _kept[kind] - 2 && _males[kind] > 1;
+                int pick = 0; double grown = -1;
+                for (int i = 0; i < _herd.Count; i++)
+                {
+                    ref var b = ref w.Beasts.Get(_herd[i]);
+                    if (!b.Alive || b.Kind != kind || (b.Sex == Sex.Male) != male) continue;
+                    double g = GrownShare(in b, now) + (b.Due == 0 && b.MilkUntil <= now ? 0.001 : 0.0);   // (an empty one first, among equals)
+                    if (g > grown) { grown = g; pick = _herd[i]; }
+                }
+                if (pick == 0) { if (male) _males[kind] = 1; else _kept[kind] = 2; continue; }
+                ref var be = ref w.Beasts.Get(pick);
+                double e = _intake[be.Kind] * GrownShare(in be, now);
+                wantG -= e * Laws[be.Kind].GrassShare; wantM -= e * Laws[be.Kind].MastShare;
+                if (male) _males[kind]--; else _kept[kind]--;
+                Count(be.Kind, mastShort ? 9 : 8);
+                Slaughter(ref be, be.Owner, sid);
             }
         }
 
@@ -377,10 +476,11 @@ namespace TC2.Core.Places
         }
 
         /// <summary>
-        /// The animal a household would kill first: of what it would spare beyond its breeding core, the one that eats the most
-        /// (mode 0), the most grass (1) or the most mast (2); the youngest among equals. 0 if none. The core of each kind: its
-        /// first two males (the sire and his successor) and its few breeding females - the youngest in their prime, then the
-        /// eldest of the young ones growing up to replace them, then the ageing.
+        /// The animal a household would kill first: of what it would spare beyond its breeding core, from the kind it has most to
+        /// spare of (herders keep a mixed herd), a male before a female, the most grown first; among the animals that eat (mode 0),
+        /// eat grass (1) or mast (2). 0 if none. The core of each kind: its first two males (the sire and his successor) and its few
+        /// breeding females - the youngest in their prime, then the eldest of the young ones growing up to replace them, then the
+        /// ageing.
         /// </summary>
         int Spare(int hid, int mode)
         {
@@ -396,7 +496,7 @@ namespace TC2.Core.Places
                 if (age < Laws[b.Kind].Mature) _young[b.Kind]++;
                 else if (age < 0.6 * Laws[b.Kind].Lifespan) _prime[b.Kind]++;
             }
-            int spare = 0; double most = 0;
+            for (int k = 0; k < Kinds; k++) { _spares[k] = 0; _pickOf[k] = 0; _pickEats[k] = 0; _pickMale[k] = false; }
             for (int j = 0; j < mine.Count; j++)   // (id order: the eldest first, the youngest last)
             {
                 ref var b = ref w.Beasts.Get(mine[j]);
@@ -412,9 +512,14 @@ namespace TC2.Core.Places
                 }
                 if (core) continue;
                 double eats = _intake[b.Kind] * GrownShare(in b, now) * (mode == 0 ? 1.0 : mode == 2 ? Laws[b.Kind].MastShare : Laws[b.Kind].GrassShare);
-                if (eats > 0 && eats >= most) { most = eats; spare = b.Id; }
+                if (eats <= 0) continue;
+                _spares[k]++;
+                bool male = b.Sex == Sex.Male;
+                if (_pickOf[k] == 0 || (male && !_pickMale[k]) || (male == _pickMale[k] && eats > _pickEats[k])) { _pickOf[k] = b.Id; _pickEats[k] = eats; _pickMale[k] = male; }
             }
-            return spare;
+            int kind = -1;
+            for (int k = 0; k < Kinds; k++) if (_spares[k] > 0 && (kind < 0 || _spares[k] > _spares[kind])) kind = k;
+            return kind < 0 ? 0 : _pickOf[kind];
         }
 
         void Slaughter(ref Beast b, int hid, int sid)

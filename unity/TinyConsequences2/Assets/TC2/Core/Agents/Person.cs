@@ -10,6 +10,7 @@ namespace TC2.Core.Agents
         Hunt = 16, Fish = 17, Gather = 18, Haul = 19,   // the wild's food (D2-042): Forage is kept for old saves, Gather replaced it
         Build = 20,                                     // raising a shelter or a village's work (D2-045)
         Scout = 21, Move = 22,                          // looking over land far off; walking to a new home (D2-045)
+        Tend = 23,                                      // out with the household's animals on their ground (D2-050)
     }
 
     /// <summary>The kind of the current step of an activity.</summary>
@@ -34,6 +35,7 @@ namespace TC2.Core.Agents
         VillageWork = 23, // the village needs a well or a granary
         LookForLand = 24, // the village is crowded or hungry: someone goes to see the land beyond
         NewHome = 25,     // walking with the household to a new home
+        Herd = 26,        // the household's animals are out on the pasture: someone watches them (D2-050)
     }
 
     public static class Sex { public const byte Female = 0, Male = 1; }

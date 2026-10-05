@@ -610,7 +610,9 @@ namespace TC2.Core.Agents
                 return;
             }
 
-            // 5. children play near home or the square
+            // 5. children play near home or the square - or, from eight, take the household's animals out to their ground and
+            //    watch them until evening (D2-050)
+            if (child && age >= 8 && atHome && lsec >= 6 * SimTime.Hour + 30 * SimTime.Minute && lsec < 15 * SimTime.Hour && Tend(ref p, ref here, lsec, true, ref rs)) return;
             if (child)
             {
                 bool sq = rs.Chance(0.5);
@@ -623,7 +625,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -670,6 +672,12 @@ namespace TC2.Core.Agents
                 if (tripDest != 0) { double u = 0.95; if (u > best) { best = u; choice = 5; } }
             }
             if (lsec >= 17 * SimTime.Hour) { double u = 0.25 + 0.3 * p.Social / 255.0 + 0.1 * rs.NextUnit(); if (u > best) { best = u; choice = 4; } }
+            if (day && atHome && lsec < 14 * SimTime.Hour && (age < 16 || lsec >= 9 * SimTime.Hour) && TendDue(here.Id))
+            {
+                // the animals wait to go out: a youth's chore first, a grown member's when no child has taken them by mid-morning (D2-050)
+                double u = (age < 16 ? 0.75 : 0.42) * elder + 0.1 * rs.NextUnit();
+                if (u > best) { best = u; choice = 9; }
+            }
             if (lsec >= 6 * SimTime.Hour && lsec < 10 * SimTime.Hour && age >= 16 && age < 55 && p.Health > 0.7 && atHome &&
                 !(p.PregDue != 0) && !(p.NursingUntil != 0 && p.NursingUntil - now > SimTime.Year / 4) && w.Migration.WantsScout(in here))
             {
@@ -699,6 +707,9 @@ namespace TC2.Core.Agents
                 case 8:
                     if (BeginScout(ref p, ref here, ref rs)) return;
                     break;
+                case 9:
+                    if (Tend(ref p, ref here, lsec, false, ref rs)) return;
+                    break;
                 case 7:
                     {
                         // at their own lot, or at the village's well or granary
@@ -721,6 +732,37 @@ namespace TC2.Core.Agents
                     }
             }
             BeginLocal(ref p, ActivityKind.Idle, WhyCode.Leisure, 0, homeX + rs.Range(-6, 6), homeY + rs.Range(-6, 6), SimTime.Hours(1.5 + 1.5 * rs.NextUnit()));
+        }
+
+        // ---------------------------------------------------------------- tending the household's animals (D2-050)
+        /// <summary>The village's herd wants more herders today than have gone out with it.</summary>
+        bool TendDue(int sid)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(sid);
+            int today = (int)SimTime.FloorDiv(w.Now + w.LocalOffsetOf(sid), SimTime.Day);
+            int out_ = s.Tended == today ? s.HerdersOut : 0;
+            return out_ < w.Stock.HerdersWanted(sid);
+        }
+
+        /// <summary>
+        /// Out with the village's herd - the households' cattle and goats together - to today's ground: a child until evening, a
+        /// grown member for a stint of four or five hours. False when the herd has its herders or there is nowhere to graze.
+        /// </summary>
+        bool Tend(ref Person p, ref Settlement here, long lsec, bool child, ref RandomSequence rs)
+        {
+            var w = _w;
+            if (!TendDue(here.Id)) return false;
+            int today = (int)SimTime.FloorDiv(w.Now + w.LocalOffsetOf(here.Id), SimTime.Day);
+            int ground = w.Stock.GroundOf(here.Id, today);
+            if (ground < 0) return false;
+            here.SphereToLocal(w.Planet.Grid.Center[ground], w.Planet.Radius, out double x, out double y);
+            long stay = child ? Math.Max(SimTime.Hour, 17 * SimTime.Hour + 36 * SimTime.Minute - lsec) : SimTime.Hours(4.0 + rs.NextUnit());
+            if (here.Tended != today) { here.Tended = today; here.HerdersOut = 0; }
+            here.HerdersOut++;
+            w.Metrics.TendDays++;
+            BeginLocal(ref p, ActivityKind.Tend, WhyCode.Herd, ground, x + rs.Range(-25, 25), y + rs.Range(-25, 25), stay);
+            return true;
         }
 
         // ---------------------------------------------------------------- the wild's food (D2-042)
@@ -832,6 +874,35 @@ namespace TC2.Core.Agents
         /// A settlement's people for one day in COARSE: the same work priorities and rates as the decision generators
         /// (crop stage needs, then wood, foraging when stores are empty), and three rationed meals per person.
         /// </summary>
+        readonly List<int> _tendBy = new List<int>(), _turns = new List<int>();   // today's herders who give working hours to it (COARSE)
+
+        /// <summary>
+        /// COARSE: up to `want` of a village's residents aged [lo, hi) in health go out with the herd today, by turns (the turn
+        /// moves on each day); those of twelve and over give their stint's hours. Returns how many went.
+        /// </summary>
+        int Herders(int sid, int today, int want, double lo, double hi, double health)
+        {
+            var w = _w;
+            var res = w.Residents(sid);
+            long now = w.Now;
+            _turns.Clear();
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var m = ref w.People.Get(res[i]);
+                double a = m.AgeYears(now);
+                if (m.Alive && m.Health >= health && a >= lo && a < hi && !_tendBy.Contains(res[i])) _turns.Add(res[i]);
+            }
+            int went = 0;
+            for (int k = 0; k < _turns.Count && went < want; k++)
+            {
+                int pid = _turns[(int)((today + k) % _turns.Count)];
+                if (w.People.Get(pid).AgeYears(now) >= 12) _tendBy.Add(pid);
+                went++;
+            }
+            return went;
+        }
+        public const double TendStint = 4.5;             // hours a youth or a grown member gives to the herd (a lived stint is 4-5)
+
         public void CoarseDay(int sid)
         {
             var w = _w;
@@ -841,6 +912,25 @@ namespace TC2.Core.Agents
             double cropNeed = Math.Max(0, s.CropWorkNeed - s.CropWork);
             double woodTarget = 6.0 * Math.Max(1, s.Population);
             bool shortNow = WildNeed(in s) > 0;
+            // the village's herd goes out with its herders, one for every sixty head: its children of eight to fifteen by turns,
+            // else its grown members by turns - a youth or a grown one gives a lived day's stint to it (D2-050)
+            int today = (int)SimTime.FloorDiv(now + w.LocalOffsetOf(sid), SimTime.Day);
+            _tendBy.Clear();
+            {
+                ref var st = ref w.Settlements.Get(sid);
+                int want = w.Stock.HerdersWanted(sid) - (st.Tended == today ? st.HerdersOut : 0);
+                if (want > 0 && w.Stock.GroundOf(sid, today) >= 0)
+                {
+                    int went = Herders(sid, today, want, 8, 16, 0.3) ;
+                    if (went < want) went += Herders(sid, today, want - went, 16, 60, 0.5);
+                    if (went > 0)
+                    {
+                        if (st.Tended != today) { st.Tended = today; st.HerdersOut = 0; }
+                        st.HerdersOut = (byte)Math.Min(255, st.HerdersOut + went);
+                        w.Metrics.TendDays += went;
+                    }
+                }
+            }
             if (w.Migration.WantsScout(in s))
             {
                 // a pressed village that knows no good place sends someone to look (D2-045): the same place a lived day's scout
@@ -861,6 +951,7 @@ namespace TC2.Core.Agents
                 if (age < 12 || p.Health < 0.3) continue;
                 // youths (12-15) work part of a day, as they take part in a lived day's chores
                 double hours = 7.5 * (0.6 + 0.4 * p.Diligence / 255.0) * (age > 60 ? 0.5 : (age < 16 ? 0.6 : 1.0)) * (0.5 + 0.5 * p.Health);
+                if (_tendBy.Contains(p.Id)) hours = DMath.Max(0.0, hours - TendStint);   // out with the herd (D2-050)
                 double day0 = hours;
                 if (cropNeed > 0)
                 {

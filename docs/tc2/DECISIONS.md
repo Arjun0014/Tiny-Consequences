@@ -1062,3 +1062,24 @@ fields (the village's fields ring it), no deer among the houses after the edge r
 4-6 (claims are whole 5-ha cells weighted by arability: ~30 ha drawn for ~12 ha of crops) - probably the neighbours' fields
 too (six villages within ~4 km); a top-down shot will tell (`run --places` now prints each village's claimed cells).
 
+## D2-050 — 2026-10-05 — The village herd and its herders; herders keep a mixed herd and cull in hard times
+
+**Context.** D2-048 bounded herds by a number (hands x 50 kg of fodder) with no one spending any time on them; long runs lost
+their cattle as villages grew (the biggest eaters were culled first and, on grass alone, starved first when the fields took
+the pasture). A first try sent one herder from every household with animals: 4.5 hours a day per household, enough to delay a
+house in the construction test - not how villages kept animals.
+**Decision.** The village's cattle and goats graze together each day on a ground of the day (`Livestock.GroundOf(sid, day)`,
+shared by the simulation and the view), with one herder for every 60 head (`HerdersWanted`): children of 8-15 first (a lived
+child takes the herd from 6:30 to evening; a grown member only after 9:00 when no child has, for a 4-5 hour stint; COARSE by
+turns among the same ages, youths and adults giving 4.5 hours), state `Settlement.Tended`/`HerdersOut` (saved; sim version 14),
+`ActivityKind.Tend`, `WhyCode.Herd`. Wolves take a third as many from a herd watched the day before (`WolfRisk`). Culling keeps
+a mixed herd (the kind with most to spare first, males before females, the most grown first) and the hands cap counts all a
+herd eats (a goat's browse too); in hard times the herders kill into the breeding cores (the village's most numerous kind,
+keeping a sire and two females of each kind in the village) rather than let the herd starve.
+**Evidence.** Tests (104): the village herd goes out every day with its herders on the day's ground, children taking it where
+the village has them (4 of 4 herder-days); no more herders than the herd wants; ACTIVITY 0.97 and COARSE 0.99 herder-days per
+herder wanted; a watched herd's wolf risk is 0.35 of an open one's. Seed 42, 200 coarse years: all three kinds held (cattle
+139, goats 355, pigs 234 at year 200, no starvation), wolves' toll 4,570 (was 17,402).
+**Invalidation.** If herds in crowded villages collapse to their nuclei for good while land is free nearby, or children in
+villages with herds never herd, the herding or the culling rules are wrong.
+

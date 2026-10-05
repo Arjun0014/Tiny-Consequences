@@ -100,6 +100,15 @@ namespace TC2.Game
                 float ex = Exaggeration(At(P, in s, s.SquareX, s.SquareY));
                 bool frost = w.PlanetSys.DayMean(s.Cell, season) < -4.0;
                 var hhs = w.HouseholdsOf(sid);
+                // the village's herd: the households' cattle and goats together on the day's ground (the simulation's choice, D2-050)
+                long today = SimTime.FloorDiv((long)t + w.LocalOffsetOf(sid), SimTime.Day);
+                double gx = s.SquareX, gy = s.SquareY;
+                int gc = w.Stock.GroundOf(sid, today);
+                if (gc >= 0) s.SphereToLocal(P.Grid.Center[gc], P.Radius, out gx, out gy);
+                ulong vk = KeyedRng.Mix((ulong)sid * 0x9E3779B97F4A7C15UL + 0x5EED);
+                double ph = t / (7.0 * SimTime.Hour) + KeyedRng.Unit(KeyedRng.Mix(vk + 1)) * 6.28318;
+                double hx = gx + 22.0 * System.Math.Sin(ph), hy = gy + 22.0 * System.Math.Sin(ph * 0.71 + 1.1);
+                int inHerd = 0;
                 for (int i = 0; i < hhs.Count; i++)
                 {
                     int hid = hhs[i];
@@ -114,17 +123,6 @@ namespace TC2.Game
                     double penR = (2.6 + 0.55 * System.Math.Sqrt(mine.Count)) * ex;
                     double px = h.HomeX + ax * (6.0 + penR), py = h.HomeY + ay * (6.0 + penR);
                     Fence(P, in s, px, py, penR, hid, ex);
-                    // the household's grazing ground (a stable choice among the pasture's cells)
-                    ulong hk = KeyedRng.Mix((ulong)hid * 0x9E3779B97F4A7C15UL + 0x5EED);
-                    double gx = px, gy = py;
-                    if (_pasture.Count > 0)
-                    {
-                        int gc = _pasture[(int)(KeyedRng.Unit(hk) * _pasture.Count) % _pasture.Count];
-                        s.SphereToLocal(P.Grid.Center[gc], P.Radius, out gx, out gy);
-                    }
-                    // the herd's centre on its ground wanders on a slow loop of the day
-                    double ph = t / (7.0 * SimTime.Hour) + KeyedRng.Unit(KeyedRng.Mix(hk + 1)) * 6.28318;
-                    double hx = gx + 70.0 * System.Math.Sin(ph), hy = gy + 70.0 * System.Math.Sin(ph * 0.71 + 1.1);
                     for (int j = 0; j < mine.Count; j++)
                     {
                         var b = w.Beasts.Get(mine[j]);
@@ -143,7 +141,8 @@ namespace TC2.Game
                         }
                         else
                         {
-                            double a2 = KeyedRng.Unit(bk) * 6.28318, r2 = Spacing[kind] * ex * System.Math.Sqrt(j + 0.5) * (0.7 + 0.6 * KeyedRng.Unit(KeyedRng.Mix(bk + 1)));
+                            int m = inHerd++;   // its place in the village's herd
+                            double a2 = KeyedRng.Unit(bk) * 6.28318, r2 = 2.4 * ex * System.Math.Sqrt(m + 0.5) * (0.7 + 0.6 * KeyedRng.Unit(KeyedRng.Mix(bk + 1)));
                             double wob = t / (1.3 * SimTime.Hour) + KeyedRng.Unit(KeyedRng.Mix(bk + 2)) * 6.28318;
                             dx = hx + System.Math.Cos(a2) * r2 + 1.5 * System.Math.Sin(wob); dy = hy + System.Math.Sin(a2) * r2 + 1.5 * System.Math.Cos(wob * 0.8);
                         }

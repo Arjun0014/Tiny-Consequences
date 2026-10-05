@@ -69,9 +69,19 @@ regular fair; "fortified" if defences stand.
 - Animals follow the generations: a child marrying out takes the youngest of each kind and sex the family keeps more than one
   of; a household that ends at a marriage passes its herd on, one that dies out leaves it to the village's household with the
   fewest; a household on the road has its herd with it; an abandoned village's animals join the wild of their kind there.
-- Measured (seed 42, 200 coarse years): 38 cattle, 1,128 goats, 103 pigs for 3,539 people; ~8 % of the food from slaughter;
-  ACTIVITY and COARSE within 1 % over three years (one daily law, both resolutions). Goats lead: they breed fastest and turn
-  grass into food best under these laws.
+- **The village herd (D2-050)**: the households' cattle and goats go out together each day to one of the ten nearest pasture
+  cells (a different one from day to day), with one herder for every sixty head - its children of eight to fifteen first
+  (in a lived day a child takes the herd from 6:30 until evening; a grown member only when no child has by mid-morning, for a
+  stint of four or five hours; COARSE: the same herders by turns, youths and grown ones giving 4.5 of their hours). A herd that
+  had its herders the day before is a third as exposed to wolves. Pigs keep to the yards. The view draws the village's herd
+  on the day's ground with its herders.
+- Herders keep a mixed herd: what they kill to ease the pasture or their hands comes from the kind they have most to spare
+  of (a male before a female, the most grown first); in hard times (the land cannot feed even the breeding cores) they kill
+  into the cores from the kind the village has most of, keeping a sire and two females of each kind in the village.
+- Measured (seed 42, 200 coarse years, D2-050): cattle 113 / 159 / 155 / 139, goats 789 / 252 / 165 / 355, pigs 108 / 78 / 81 /
+  234 at years 50 / 100 / 150 / 200 for ~3,500 people; no animal starved; wolves took 4,570 in 200 years (17,402 before
+  herding). Before the mixed-herd rule, cattle (the biggest eaters, grass only) were culled first and starved first as the
+  growing villages' fields took the pasture: 6 left at year 200.
 
 ## 6. Phase
 F3 (layout, construction, economy basics), F5 (exchange, migration, founding). F0: settlements as a few
