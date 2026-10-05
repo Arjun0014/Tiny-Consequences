@@ -1552,3 +1552,31 @@ loads taken (9,633 FU), 160 takers seen, 36 famines; taking costs 0.7-1.1 us a v
 model failing at scale**: 10,031 people at year 350, 1,963 at year 400 with full granaries - the black spots of year 362 and the
 strains that shifted from it reinfected everyone (D2-070). Mono equals dotnet (gen 964f7af16bd09bf4).
 **Next.** D2-070 (sickness at scale), then F6 slice 2: the watch, blows and injury.
+
+## D2-070 — 2026-10-06 — Sickness at scale: immunity remembered, strains of one sickness, spillover bounded
+
+**Context.** D2-066 was validated to 200 years (at most 2,640 people). A 400-year run of seed 42 (D2-069) grew to 10,031 people in
+30 places and fell to 1,963 in 50 years with full granaries: the black spots of year 362 (virulence 0.05, immunity 35 years) and
+the strains that shifted from it infected ~220,000 cases among ~10,000 people. Three faults: a person remembered two immunities
+and forgot the older as new antigens came, so they caught the same sickness again and again; a tenth of mutations shifted the
+antigen past all old immunity (one in 20,000 infections: a great epidemic made several new kinds of itself); the chance of a
+sickness coming from the animals grew without bound with herds and crowding (18x in a village of 500 with a hundred beasts:
+28 sicknesses in 400 years, most after year 250).
+**Decision.** (1) A person remembers six immunities (`Disease.Remember`: its own slot renewed, else a free or spent one, else the
+one ending soonest). (2) Strains belong to their sickness (`Pathogen.Family`, the lineage that came from the animals): immunity to
+one strain keeps off a strain of the same sickness with a shifted antigen 60 % of the time; a drifted strain meets the whole
+immunity. (3) A fiftieth of mutations shift the antigen (was a tenth). (4) The chance of a sickness from the animals is 6e-6 a
+village-day x herds (up to 3x) x crowding (up to 2x): a new sickness every ~20 years among thirty crowded villages, every few
+centuries among a few small ones (`Disease.SpillChance`). (5) A shifted strain is named for its sickness and the year it turned
+("the black spots (the new kind of year 364)"). (6) The run report lists the deadliest sicknesses with their traits. Sim
+version 24.
+**Evidence.** `DiseaseTests` (148 tests): six immunities remembered, a seventh in place of the one ending soonest, a renewed one
+kept; of 73 people immune to the old strain, a drifted strain took none and a shifted one 35 (0.48; 0.4 expected); spillover
+grows with herds and crowds and is bounded. Seed 42, 400 coarse years (`tc2/out/society/sick42_400.txt`): 15,984 people in 35
+places at year 400 - 12,000 to 16,000 from year 270, famine-regulated as before sickness existed (17,089 hunger deaths, 426
+famines); five sicknesses from the animals, 122 village epidemics, 3,376 deaths: the summer spots (year 338) and the sweating
+spots (342) took 1,734 and 1,526 (14,151 -> 12,189 people, made good in twenty years). Seed 7 (`sick7_400.txt`): 4,600-5,400
+people in 18 places from year 200; the cattle ague of year 232 (virulence 0.2) killed 1,363 of ~5,000 and the villages recovered.
+Taking in these saturated worlds: seed 42 11,107 loads (5,779 takers seen), seed 7 6,472 (3,158). A village-day's sickness costs
+11.3 us (5 before: six slots, kindred checks); 400 years of seed 42 take 245 s, knowledge copying (D2-062) the largest part of the
+village day after the COARSE day (94 us at ~450 people a village). Mono equals dotnet (gen cb0333f12013579a).

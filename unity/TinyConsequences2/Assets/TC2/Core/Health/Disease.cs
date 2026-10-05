@@ -13,6 +13,7 @@ namespace TC2.Core.Health
         public int Id;
         public int Parent;           // the lineage it mutated from (0: it came over from animals)
         public int Antigen;          // what immunity recognises: its lineage's, until a shift gives it a new one
+        public int Family;           // the sickness it is a strain of (the lineage that came over from the animals: D2-070)
         public int Origin;           // the village where it appeared
         public float Beta;           // infecting contacts a day of an infectious person
         public float Latent, Infectious;   // days carried without sign; days infectious (and abed)
@@ -22,9 +23,9 @@ namespace TC2.Core.Health
         public long Event;           // its appearance in history
         public int Cases, Deaths;
 
-        public void Write(BinWriter w) { w.Int(Id); w.Int(Parent); w.Int(Antigen); w.Int(Origin); w.Float(Beta); w.Float(Latent); w.Float(Infectious); w.Float(Virulence); w.Float(Immunity); w.Long(Born); w.Long(Event); w.Int(Cases); w.Int(Deaths); }
-        public static Pathogen Read(BinReader r) => new Pathogen { Id = r.Int(), Parent = r.Int(), Antigen = r.Int(), Origin = r.Int(), Beta = r.Float(), Latent = r.Float(), Infectious = r.Float(), Virulence = r.Float(), Immunity = r.Float(), Born = r.Long(), Event = r.Long(), Cases = r.Int(), Deaths = r.Int() };
-        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Parent); h.Add(Antigen); h.Add(Origin); h.Add(Beta); h.Add(Latent); h.Add(Infectious); h.Add(Virulence); h.Add(Immunity); h.Add(Born); h.Add(Event); h.Add(Cases); h.Add(Deaths); }
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Parent); w.Int(Antigen); w.Int(Family); w.Int(Origin); w.Float(Beta); w.Float(Latent); w.Float(Infectious); w.Float(Virulence); w.Float(Immunity); w.Long(Born); w.Long(Event); w.Int(Cases); w.Int(Deaths); }
+        public static Pathogen Read(BinReader r) => new Pathogen { Id = r.Int(), Parent = r.Int(), Antigen = r.Int(), Family = r.Int(), Origin = r.Int(), Beta = r.Float(), Latent = r.Float(), Infectious = r.Float(), Virulence = r.Float(), Immunity = r.Float(), Born = r.Long(), Event = r.Long(), Cases = r.Int(), Deaths = r.Int() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Parent); h.Add(Antigen); h.Add(Family); h.Add(Origin); h.Add(Beta); h.Add(Latent); h.Add(Infectious); h.Add(Virulence); h.Add(Immunity); h.Add(Born); h.Add(Event); h.Add(Cases); h.Add(Deaths); }
     }
 
     /// <summary>
@@ -44,10 +45,16 @@ namespace TC2.Core.Health
         public void Bind(World w) { _w = w; }
 
         public const byte Latent = 1, Infectious = 2;
-        /// <summary>Chance a village's day brings a sickness over from its animals, before its herds and its crowding.</summary>
-        public const double SpillPerDay = 1.5e-5;
-        /// <summary>Chance a new infection mutates the strain; a tenth of mutations shift its antigen.</summary>
-        public const double MutatePerCase = 5e-4, ShiftShare = 0.1;
+        /// <summary>Chance a village's day brings a sickness over from its animals, before its herds (up to 3x) and its crowding (up
+        /// to 2x): D2-070 - unbounded, a dense world of thirty villages met a new sickness every few years.</summary>
+        public const double SpillPerDay = 6e-6;
+        /// <summary>Chance a new infection mutates the strain; a fiftieth of mutations shift its antigen (D2-070: a tenth shifted
+        /// several times in one great epidemic).</summary>
+        public const double MutatePerCase = 5e-4, ShiftShare = 0.02;
+        /// <summary>Immunity to one strain of a sickness keeps off another strain of it this often (an antigen shifted, not new: D2-070).</summary>
+        public const double CrossProtection = 0.6;
+        /// <summary>The immunities a person remembers (D2-070: two were forgotten as new antigens came).</summary>
+        public const int Slots = 6;
         /// <summary>Visits a healthy grown person makes a day to a neighbouring village (measured in lived days: 0.032 over five test worlds,
         /// D2-067 - D2-066's 0.027 was one small sample), and their hours.</summary>
         public const double VisitsPerAdultDay = 0.03, VisitHours = 3.0;
@@ -59,8 +66,54 @@ namespace TC2.Core.Health
         readonly List<int> _paths = new List<int>();
 
         // ------------------------------------------------------------------ a person's sickness
-        public static bool ImmuneTo(in Person p, int antigen, long now) =>
-            (p.Imm0 == antigen && p.ImmUntil0 > now) || (p.Imm1 == antigen && p.ImmUntil1 > now);
+        static int SlotAntigen(in Person p, int i) => i == 0 ? p.Imm0 : i == 1 ? p.Imm1 : i == 2 ? p.Imm2 : i == 3 ? p.Imm3 : i == 4 ? p.Imm4 : p.Imm5;
+        static long SlotUntil(in Person p, int i) => i == 0 ? p.ImmUntil0 : i == 1 ? p.ImmUntil1 : i == 2 ? p.ImmUntil2 : i == 3 ? p.ImmUntil3 : i == 4 ? p.ImmUntil4 : p.ImmUntil5;
+
+        static void SetSlot(ref Person p, int i, int antigen, long until)
+        {
+            switch (i)
+            {
+                case 0: p.Imm0 = antigen; p.ImmUntil0 = until; break;
+                case 1: p.Imm1 = antigen; p.ImmUntil1 = until; break;
+                case 2: p.Imm2 = antigen; p.ImmUntil2 = until; break;
+                case 3: p.Imm3 = antigen; p.ImmUntil3 = until; break;
+                case 4: p.Imm4 = antigen; p.ImmUntil4 = until; break;
+                default: p.Imm5 = antigen; p.ImmUntil5 = until; break;
+            }
+        }
+
+        public static bool ImmuneTo(in Person p, int antigen, long now)
+        {
+            for (int i = 0; i < Slots; i++) if (SlotAntigen(in p, i) == antigen && SlotUntil(in p, i) > now) return true;
+            return false;
+        }
+
+        /// <summary>Whether a person is immune to some strain of a sickness (another antigen of the same family: D2-070).</summary>
+        public bool Kindred(in Person p, int family, long now)
+        {
+            var w = _w;
+            for (int i = 0; i < Slots; i++)
+            {
+                int a = SlotAntigen(in p, i);
+                if (a == 0 || SlotUntil(in p, i) <= now || !w.Pathogens.Exists(a)) continue;
+                if (w.Pathogens.Get(a).Family == family) return true;
+            }
+            return false;
+        }
+
+        /// <summary>A recovered body remembers an antigen: its own slot refreshed, else a free or spent one, else the one ending soonest.</summary>
+        public static void Remember(ref Person p, int antigen, long until, long now)
+        {
+            int pick = 0; long key = long.MaxValue;
+            for (int i = 0; i < Slots; i++)
+            {
+                int a = SlotAntigen(in p, i); long u = SlotUntil(in p, i);
+                if (a == antigen) { if (until > u) SetSlot(ref p, i, antigen, until); return; }
+                long k = a == 0 || u <= now ? long.MinValue : u;
+                if (k < key) { key = k; pick = i; }
+            }
+            SetSlot(ref p, pick, antigen, until);
+        }
 
         /// <summary>A person catches a pathogen: latent from now (cause: the epidemic they caught it in).</summary>
         public void Infect(ref Person p, int path, long cause)
@@ -69,6 +122,8 @@ namespace TC2.Core.Health
             if (!p.Alive || p.Sick != 0 || !w.Pathogens.Exists(path)) return;
             ref var g = ref w.Pathogens.Get(path);
             if (ImmuneTo(in p, g.Antigen, w.Now)) return;
+            // a strain of a sickness they had: their immunity holds in part against its new antigen (D2-070)
+            if (Kindred(in p, g.Family, w.Now) && KeyedRng.Unit(w.Seed, RngStream.Disease, (ulong)p.Id, (ulong)w.Now, (ulong)(14 + 31 * path)) < CrossProtection) return;
             // now and then the strain changes in the new host (D2-066: lineages mutate as they spread)
             double u = KeyedRng.Unit(w.Seed, RngStream.Disease, (ulong)p.Id, (ulong)w.Now, 11);
             if (u < MutatePerCase) path = Mutate(path, p.Home);
@@ -125,9 +180,9 @@ namespace TC2.Core.Health
                     w.Metrics.DiseaseDeaths++;
                     continue;
                 }
-                // recovered: immune to its antigen for its years (the older of two remembered immunities gives way)
+                // recovered: immune to its antigen for its years
                 long until = g.Immunity >= ForLife ? long.MaxValue / 4 : now + SimTime.Years(g.Immunity);
-                if (p.ImmUntil0 <= p.ImmUntil1) { p.Imm0 = g.Antigen; p.ImmUntil0 = until; } else { p.Imm1 = g.Antigen; p.ImmUntil1 = until; }
+                Remember(ref p, g.Antigen, until, now);
                 p.Sick = 0; p.SickPhase = 0;
             }
             // the infectious at home, by pathogen
@@ -283,6 +338,9 @@ namespace TC2.Core.Health
             return k - 1;
         }
 
+        /// <summary>A village's chance a day that a sickness comes over from its animals: more with herds and crowding, both bounded (D2-070).</summary>
+        public static double SpillChance(int beasts, int present) => SpillPerDay * DMath.Min(3.0, 1.0 + beasts / 40.0) * DMath.Min(2.0, present / 120.0);
+
         /// <summary>A sickness comes over from the village's animals (D2-066): a new lineage with traits of its own, one of its people its first host.</summary>
         void Spill(int sid, int present)
         {
@@ -290,7 +348,7 @@ namespace TC2.Core.Health
             if (present < 8) return;
             long now = w.Now;
             int beasts = w.Stock.CountOf(sid, Livestock.Cattle) + w.Stock.CountOf(sid, Livestock.Goat) + w.Stock.CountOf(sid, Livestock.Pig);
-            double chance = SpillPerDay * (1.0 + beasts / 20.0) * DMath.Min(3.0, present / 100.0);
+            double chance = SpillChance(beasts, present);
             if (KeyedRng.Unit(w.Seed, RngStream.Disease, (ulong)sid, (ulong)now, 1) >= chance) return;
             int id = w.Ids.Next(EntityKind.Pathogen);
             var rs = new RandomSequence(KeyedRng.Hash(w.Seed, RngStream.Disease, (ulong)id, 77));
@@ -314,7 +372,7 @@ namespace TC2.Core.Health
             long now = w.Now;
             var g = new Pathogen
             {
-                Id = id, Parent = 0, Antigen = id, Origin = sid, Beta = (float)beta, Latent = (float)latent, Infectious = (float)infectious,
+                Id = id, Parent = 0, Antigen = id, Family = id, Origin = sid, Beta = (float)beta, Latent = (float)latent, Infectious = (float)infectious,
                 Virulence = (float)virulence, Immunity = (float)immunity, Born = now,
             };
             w.Pathogens.Add(id, g);
@@ -361,7 +419,10 @@ namespace TC2.Core.Health
         }
 
         /// <summary>A strain mutates in a new host: its traits drift; a tenth of the time its antigen shifts past old immunity.</summary>
-        int Mutate(int path, int sid)
+        /// <summary>Premise (tests, tools): a new strain of a pathogen now, its antigen shifted or not.</summary>
+        public int Strain(int path, int sid, bool shift) => Mutate(path, sid, shift ? 1 : 0);
+
+        int Mutate(int path, int sid, int force = -1)
         {
             var w = _w;
             ref var g = ref w.Pathogens.Get(path);
@@ -370,14 +431,18 @@ namespace TC2.Core.Health
             double beta = g.Beta * DMath.Exp(0.3 * (rs.NextUnit() - 0.5));
             double vir = DMath.Clamp(g.Virulence * DMath.Exp(0.4 * (rs.NextUnit() - 0.5)), 0.001, 0.6);
             bool shift = rs.NextUnit() < ShiftShare;
+            if (force >= 0) shift = force == 1;
             var child = new Pathogen
             {
-                Id = id, Parent = path, Antigen = shift ? id : g.Antigen, Origin = sid, Beta = (float)beta, Latent = g.Latent,
+                Id = id, Parent = path, Antigen = shift ? id : g.Antigen, Family = g.Family, Origin = sid, Beta = (float)beta, Latent = g.Latent,
                 Infectious = (float)DMath.Max(2.0, g.Infectious * (1.0 - 0.5 * (vir - g.Virulence))), Virulence = (float)vir, Immunity = g.Immunity,
                 Born = w.Now, Event = g.Event,
             };
             w.Pathogens.Add(id, child);
-            w.History.Register(new EntityRef(EntityKind.Pathogen, id), w.History.NameOf(new EntityRef(EntityKind.Pathogen, path)) + (shift ? " (a new kind)" : ""), w.Now);
+            // (a shifted strain is named for its sickness and the year it turned: "the black spots (the new kind of year 364)")
+            string name = shift ? w.History.NameOf(new EntityRef(EntityKind.Pathogen, child.Family)) + " (the new kind of year " + (w.Now / SimTime.Year).ToString(System.Globalization.CultureInfo.InvariantCulture) + ")"
+                                : w.History.NameOf(new EntityRef(EntityKind.Pathogen, path));
+            w.History.Register(new EntityRef(EntityKind.Pathogen, id), name, w.Now);
             w.Metrics.Mutations++;
             return id;
         }

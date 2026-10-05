@@ -131,6 +131,63 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void ABodyRemembersSixSicknessesAndForgetsTheOneEndingSoonest()
+        {
+            // (D2-070: two were forgotten as new antigens came, and a dense world caught the same sickness again and again)
+            var p = new Person { Alive = true };
+            long now = SimTime.Years(10);
+            for (int a = 1; a <= Disease.Slots; a++) Disease.Remember(ref p, a, now + SimTime.Years(a), now);
+            for (int a = 1; a <= Disease.Slots; a++) Assert.IsTrue(Disease.ImmuneTo(in p, a, now), "remembers " + a);
+            Disease.Remember(ref p, 99, now + SimTime.Years(50), now);
+            Assert.IsTrue(Disease.ImmuneTo(in p, 99, now), "a seventh is remembered");
+            Assert.IsFalse(Disease.ImmuneTo(in p, 1, now), "in place of the one ending soonest");
+            for (int a = 2; a <= Disease.Slots; a++) Assert.IsTrue(Disease.ImmuneTo(in p, a, now));
+            Disease.Remember(ref p, 3, now + SimTime.Years(80), now);
+            Assert.IsTrue(Disease.ImmuneTo(in p, 3, now + SimTime.Years(60)), "caught again: its own slot renewed");
+            Assert.IsTrue(Disease.ImmuneTo(in p, 2, now), "and nothing else forgotten");
+            Assert.IsFalse(Disease.ImmuneTo(in p, 2, now + SimTime.Years(3)), "an immunity ends in its years");
+        }
+
+        [Test]
+        public void AStrainWithAShiftedAntigenMeetsPartOfTheOldImmunity()
+        {
+            var w = TestWorlds.Make(499);
+            w.AdvanceTo(w.Now + SimTime.Hours(30));
+            int sid = w.Settlements.First();
+            int path = w.Disease.Outbreak(sid, beta: 0.5, latent: 3, infectious: 6, virulence: 0.0, immunity: Disease.ForLife);
+            int shifted = w.Disease.Strain(path, sid, true), drifted = w.Disease.Strain(path, sid, false);
+            Assert.AreNotEqual(w.Pathogens.Get(path).Antigen, w.Pathogens.Get(shifted).Antigen, "a shifted antigen");
+            Assert.AreEqual(w.Pathogens.Get(path).Antigen, w.Pathogens.Get(drifted).Antigen, "a drift keeps it");
+            Assert.AreEqual(w.Pathogens.Get(path).Family, w.Pathogens.Get(shifted).Family, "the same sickness");
+            // premise: everyone who had the old strain recovered from it
+            int people = 0, caught = 0, caughtDrift = 0;
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+            {
+                ref var p = ref w.People.Get(id);
+                if (!p.Alive) continue;
+                p.Sick = 0; p.SickPhase = 0;
+                Disease.Remember(ref p, w.Pathogens.Get(path).Antigen, long.MaxValue / 4, w.Now);
+                people++;
+                w.Disease.Infect(ref p, drifted, 0);
+                if (p.Sick != 0) caughtDrift++;
+                w.Disease.Infect(ref p, shifted, 0);
+                if (p.Sick != 0) caught++;
+            }
+            double share = (double)caught / people;
+            Console.WriteLine(people + " immune to the old strain: the drifted one took " + caughtDrift + ", the shifted one " + caught + " (" + share.ToString("0.00") + "; " + (1 - Disease.CrossProtection) + " expected)");
+            Assert.AreEqual(0, caughtDrift, "a drifted strain meets the whole immunity");
+            Assert.That(share, Is.InRange(1 - Disease.CrossProtection - 0.15, 1 - Disease.CrossProtection + 0.15), "a shifted one meets part of it");
+        }
+
+        [Test]
+        public void SicknessesComeFromHerdsAndCrowdsBoundedly()
+        {
+            Assert.Greater(Disease.SpillChance(40, 100), Disease.SpillChance(0, 100), "more with herds");
+            Assert.Greater(Disease.SpillChance(0, 200), Disease.SpillChance(0, 100), "more with crowding");
+            Assert.AreEqual(6 * Disease.SpillPerDay, Disease.SpillChance(5000, 50000), 1e-15, "but bounded: a dense world of herds is not a sickness a year");
+        }
+
+        [Test]
         public void TheCoarseVisitRateIsTheLivedOne()
         {
             // lived days: arrivals of grown visitors per healthy grown person a day, against the constant a COARSE day uses

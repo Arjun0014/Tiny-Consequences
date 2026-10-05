@@ -4,18 +4,15 @@
 
 ### Exact state
 - Session 2 commits since the last checkpoint (newest last): 314fdd9 techniques (D2-062) · c8e9c23, 07b38be materials (D2-063) ·
-  6bacfaa copper, F4 closed (D2-064/065) · 27d2a53 sickness (D2-066) · e01a933 trade and relief, F5 closed (D2-067/068) · the
-  commit with deeds and taking (D2-069, F6 slice 1).
-- Phases: F0 done; **F1 to F5 closed** (D2-043, D2-046, D2-060, D2-065, D2-068); **F6 in progress** (plan 10 §6). 145 headless
-  tests green; `headless.mjs test` runs the float lint first. Sim version 23.
-- Determinism: dotnet equals the editor's Mono (gen 964f7af16bd09bf4, D2-069); the Web build equals both at D2-068
+  6bacfaa copper, F4 closed (D2-064/065) · 27d2a53 sickness (D2-066) · e01a933 trade and relief, F5 closed (D2-067/068) ·
+  b78117d deeds and taking (D2-069, F6 slice 1) · the commit with sickness at scale (D2-070).
+- Phases: F0 done; **F1 to F5 closed** (D2-043, D2-046, D2-060, D2-065, D2-068); **F6 in progress** (plan 10 §6). 148 headless
+  tests green; `headless.mjs test` runs the float lint first. Sim version 24.
+- Determinism: dotnet equals the editor's Mono (gen cb0333f12013579a, D2-070); the Web build equals both at D2-068
   (`tc2/out/webtest/s2webe`, `s2webe2`: 6/6).
-- **Open problem (D2-070, next)**: sickness collapses a dense world - seed 42 falls from 10,031 people at year 350 to 1,963 at
-  400 (`tc2/out/society/take42_400b.txt`: the run report now lists the deadliest sicknesses). The black spots (year 362, virulence
-  0.05, immunity 35 years) and the strains that shifted from it infected ~220,000 cases among ~10,000 people in ten years. Causes:
-  a person remembers only two immunities (`Imm0`, `Imm1`) and forgets older ones as new antigens come; a tenth of mutations shift
-  the antigen (1 in 20,000 infections: a big epidemic spawns several new strains); spillover multiplies without bound with herds
-  and crowding (~18x in a village of 500 with a hundred beasts: 28 sicknesses in 400 years, most after year 250).
+- Sickness at scale is fixed (D2-070): seed 42 holds 12,000-16,000 people from year 270 to 400 and seed 7 4,600-5,400
+  (`tc2/out/society/sick42_400.txt`, `sick7_400.txt`; the run report lists the deadliest sicknesses). Saturated worlds are
+  famine-regulated (~100 hunger deaths a year) and take from each other's stores often (~30-75 loads a year): F6's pressure.
 - Nothing running. Uncommitted legacy TC1 work may exist in the tree and is NOT ours: `game/html/engine_template.html` and
   `docs/DECISIONS.md` (D-227). Never stage them in [tc2] commits.
 
@@ -72,10 +69,8 @@
   stocked), do not loosen the mechanism (D2-056).
 
 ### Next steps
-1. **D2-070 sickness at scale**: more remembered immunities (or immunity by lineage: strains of one sickness protect in part),
-   antigen shifts far rarer (influenza-like shifts are a few a century), spillover multipliers capped; then rerun seed 42 for 400
-   and 1,000 coarse years and seed 7 for 400 (populations should hold with epidemics that come and go), the disease and trade
-   tests, Mono.
+1. **A 1,000-year run of seed 42 on D2-070** (`tc2/out/society/sick42_1000.txt`): populations hold, plagues come and go, the
+   ledger and the cost at scale; compare with the pre-sickness run (`tc2/out/long/run42_1000*.txt`: 12,000-14,800 people).
 2. **F6 slice 2 - the watch, blows and injury** (10 §6): a village that remembers losses keeps a night watch (labour, sleep); a
    taker met is struck or chased; injury that heals with care or kills; a death by violence is a deed with mourners.
 3. F6 slices 3-7 (10 §6): answers and news, raids, defence built, prestige and leaders, tribute and polities.

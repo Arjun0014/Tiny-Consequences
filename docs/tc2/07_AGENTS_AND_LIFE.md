@@ -141,6 +141,10 @@ with dependants first (TC1 primitives B, C).
   beta x I / N. A visitor catches what the infectious of the village they visit have and carries it home; brides and moving
   households carry theirs; a COARSE day couples villages at the lived rate of visits. Every epidemic's cause is the epidemic its
   first carrier caught it in, back to the animals.
+- At scale (D2-070): a person remembers six immunities; strains of one sickness share part of their immunity (a shifted antigen
+  is kept off 60 % of the time); shifts are rare (a fiftieth of mutations); sicknesses come from the animals more with herds and
+  crowding, both bounded. Dense worlds of 5,000-16,000 people see a plague every century or two and recover; famine, not
+  sickness, holds them at their land's size.
 
 ## 8. Proof-of-concept subset (F0)
 

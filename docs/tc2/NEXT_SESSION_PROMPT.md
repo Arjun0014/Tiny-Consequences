@@ -56,7 +56,8 @@ sick with sicknesses that come from their animals and travel with visitors, brid
 what they lack (copper from the ore villages; grain to a neighbour in famine as relief). F6 (society, conflict and polities)
 has begun: deeds known per village, the hungry taking grain from a neighbour's store in the night, grudges that stop trade and
 relief (D2-069). Determinism holds across dotnet, Mono and the Web build and is linted (D2-057). Next (SESSION_HANDOFF "Next
-steps"): sickness at scale (D2-070: a dense world collapses), then F6's next slices. Run long headless jobs from a scratch copy of the binaries so the repo's DLL stays free.
+steps"): F6's next slices (the watch, blows and injury; answers and news; raids; defence; leaders; polities) - sickness
+holds at scale since D2-070. Run long headless jobs from a scratch copy of the binaries so the repo's DLL stays free.
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

@@ -2,7 +2,7 @@
 
 ## CURRENT STATE (keep accurate; newest first below)
 
-**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 in progress (D2-069); Web checked on WebGPU (s2webe, after F5) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
+**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 in progress (D2-069, D2-070); Web checked on WebGPU (s2webe, after F5) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
 - **Session 2 (5 Oct 2026, in progress)** - compaction-recovery hooks (`.claude/settings.json`, `.claude/hooks/tc2_compact.mjs`;
   Claude Code 2.1.289: PreCompact stdout joins the compaction instructions, SessionStart matcher `compact` stdout reaches Claude;
@@ -110,6 +110,9 @@
   - **Goods, a day's labour, weeding (D2-058)**: households make and mend their clothes, tools and vessels (worn goods let the
     cold in and slow hands); a day's labour bounds the slack's work; weeding asks 24 h a hectare and keeps pace with the season.
     A whole year of seed 42: grown people work ~6.5 h a day, children of 6-11 ~3 h - inside time-allocation ranges. 115 tests.
+  - **Sickness at scale (D2-070)**: six remembered immunities, strains of one sickness sharing part of their immunity, rare
+    shifts, spillover bounded: seed 42 now holds 12,000-16,000 people from year 270 to 400 (plagues of ~14 % made good in twenty
+    years), seed 7 4,600-5,400; famine regulates them as before. 148 tests.
   - **F6 slice 1 - deeds and taking by need (D2-069)**: deeds known per village (own, seen, found) with grievance and gratitude
     read from them; the hungry take grain from a neighbour's full store in the night, seen or not by the homes round it; no trade
     and no relief across a grudge; restraint by kin and help received. 145 tests. **A 400-year run of seed 42 found sickness
@@ -210,6 +213,7 @@
 | Fire steps, seed 42 COARSE with people, 150 years (D2-055) | dotnet | 131 -> 2.6 us a step (379 -> 1 fire page held; heap 65 -> 41 MB; run 29.8 -> 23.0 s) |
 | 200 coarse years with household work (D2-056) | dotnet | seed 42: 32.9 s, 3,492 people in 15 places; seed 1 (cool): 31.2 s, 1,206 in 6; hearths 2.8 us a village-day |
 | Web (WebGPU) after D2-062 to D2-068, F5 closed (`tc2/out/webtest/s2webe`, `s2webe2`) | Chrome | 6/6 twice, bit-identical with headless and the editor's Mono (gen dd0c2fd7a147d1d2); start 7.4 / 6.7 s; orbit 119 / 121, region 119 / 118, village 91 / 91, close 75 / 74, low 87 / 92, close running 93 / 79, **after a century 48 / 68 fps** (s2webd 79; the reading right after a catch-up varies run to run - its second sample 70 / 71, s2webc's 12 - but both are lower: to measure layer by layer); a day away (96 years) 42 / 41 s, 503 people in 16 places; build 11.2 MB |
+| 400 coarse years after D2-070, seeds 42 / 7 | dotnet | seed 42: 245 s, 15,984 people in 35 places (12,000-16,000 from year 270); seed 7: 5,392 in 18; village-day: COARSE day 201, knowledge copying 94, demography 55, food 53, sickness 11 us |
 | 400 coarse years with taking (D2-069), seed 42 | dotnet | 134 s; 10,031 people in 30 places at year 350, **1,963 at 400** (the black spots and its strains: D2-070); taking 1.1 us, trade 2.9 us a village-day |
 | 200 coarse years with sickness and trade (D2-066, D2-067) | dotnet | seed 7: 40.9 s, 4,383 people in 18 places; seed 42: 41.0 s, 2,640 in 14; a village-day's sickness 4.5-5.3 us, trade 1.3-1.5 us |
 | History ledger, seed 42 COARSE | dotnet | year 300: 95,615 -> 69,179 kept after two fixes (households' events kept for ever; a death's age counted as its importance); at year 1,000 before them 780,282 |
