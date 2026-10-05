@@ -1108,3 +1108,17 @@ long isolated runs) and **F2 is closed**. Known limits: the 20-kind cap binds af
 dwindle, which a stable planet rarely asks); the sea's predators start ~10x below their level (the spin-up) and the
 miniature's seals are few (food-limited) - an ecology calibration to revisit with the look.
 
+## D2-051 — 2026-10-05 — The WebGL2 fallback draws one shadow cascade
+
+**Context.** The WebGL2 fallback (`?gfx=webgl2`, browsers without WebGPU) had never been measured at village scale: 6-12 fps
+in the Web test's village and close views. A layer-by-layer probe (`tc2/scripts/webperf.mjs`, the bridge's `off NAME`) showed
+two things: the first seconds at a new view stall (shader and buffer creation in the driver; 5 fps), and in steady state the
+village view ran at 37 fps, 60 with shadows off - the shadow pass of the woods in four cascades.
+**Decision.** On OpenGLES3 the URP asset draws one cascade over 1.6 x the camera's height (200-3,000 m) instead of four over
+3.2 x (WebGPU unchanged). `Shader.WarmupAllShaders` was tried for the stall and removed: it took 36 s at start. Tools: the
+bridge toggles layers (`off/on` terrain, trees, people, buildings, shadows, tilt, any view by type) and WebGL2 shadows
+(`glshadow N R`); the Web test reads a view's frame rate 4.5 s after framing (past a new view's first second).
+**Evidence.** WebGL2 village 37 -> 60 fps (two cascades at half reach gave 49-50), close 43 -> 60; Web test 6/6 on both paths,
+bit-identical. **Open**: the first-entry stall on WebGL2 (1-5 s); the fix is a traced shader-variant collection warmed at start
+(only the variants the views use), not all variants.
+

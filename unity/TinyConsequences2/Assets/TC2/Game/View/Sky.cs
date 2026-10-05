@@ -12,6 +12,9 @@ namespace TC2.Game
     /// </summary>
     public sealed class Sky : MonoBehaviour
     {
+        public static int GlCascades = 1;          // the WebGL2 fallback's shadow cascades (tools may change it: the bridge's `glshadow`)
+        public static float GlShadowReach = 1.6f;  // and its shadow distance per metre of the camera's height
+
         public SimHost Host;
         public CameraRig Rig;
         public Light Sun;
@@ -74,7 +77,13 @@ namespace TC2.Game
             Shader.SetGlobalFloat(TiltShift, 1f - Mathf.InverseLerp(120f, 2600f, altitude));
             Shader.SetGlobalFloat(SeaRadius, (float)(w.Planet.Radius + Ground.WaterHeight(w.Planet, w.Planet.SeaLevel)));
             if (GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset urp)
-                urp.shadowDistance = Mathf.Clamp(altitude * 3.2f, 250f, 7000f);
+            {
+                // the WebGL2 fallback draws its shadows nearer and in two cascades: there the shadow pass of the woods was the
+                // frame (37 fps in the village view, 60 without shadows; WebGPU keeps four cascades)
+                bool gl = SystemInfo.graphicsDeviceType == GraphicsDeviceType.OpenGLES3;
+                if (gl && urp.shadowCascadeCount != GlCascades) urp.shadowCascadeCount = GlCascades;
+                urp.shadowDistance = gl ? Mathf.Clamp(altitude * GlShadowReach, 200f, 3000f) : Mathf.Clamp(altitude * 3.2f, 250f, 7000f);
+            }
             // below the air the empty sky is the sky; from orbit it is space
             float sky = 1f - Mathf.InverseLerp(1500f, 7000f, altitude);
             Color zenith = Color.Lerp(new Color(0.01f, 0.015f, 0.035f), new Color(0.30f, 0.50f, 0.82f), day);

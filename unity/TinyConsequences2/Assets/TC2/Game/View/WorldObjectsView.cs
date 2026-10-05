@@ -31,6 +31,7 @@ namespace TC2.Game
         Material _mat;
         float _treeTimer, _placeTimer;
         public int PeopleDrawn, TreesDrawn;
+        public static int Off;   // tools (webperf): parts not drawn - 1 trees, 2 people, 4 buildings and yards
 
         static readonly string[] HouseModels = { "house_cottage", "house_timber", "house_long", "house_small" };
         static readonly float[] HouseShare = { 0.40f, 0.22f, 0.18f, 0.20f };
@@ -131,12 +132,16 @@ namespace TC2.Game
             _treeTimer -= Time.unscaledDeltaTime;
             if (_treeTimer <= 0) { _treeTimer = 1.5f; RebuildTrees(w); }
             RebuildFire(w);
-            RebuildPeople(w);
+            if ((Off & 2) == 0) RebuildPeople(w);
             var cam = Rig != null ? Rig.Cam : Camera.main;
-            for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Draw(cam);
-            _granaries.Draw(cam); _wells.Draw(cam); _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam);
-            for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
-            _flames.Draw(cam); _people.Draw(cam);
+            if ((Off & 4) == 0)
+            {
+                for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Draw(cam);
+                _granaries.Draw(cam); _wells.Draw(cam); _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam);
+            }
+            if ((Off & 1) == 0) for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
+            _flames.Draw(cam);
+            if ((Off & 2) == 0) _people.Draw(cam);
             EmitSmoke(w);
         }
 

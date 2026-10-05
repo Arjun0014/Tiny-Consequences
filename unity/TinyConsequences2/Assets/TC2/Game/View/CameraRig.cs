@@ -105,6 +105,15 @@ namespace TC2.Game
                 LookAt(Vec3d.FromLatLon(lat, lon), double.Parse(parts[2], ci));
                 return;
             }
+            if (view.StartsWith("herd") && sid != 0)
+            {
+                // the first village's herd on the day's ground, with its herders (D2-050)
+                long day = SimTime.FloorDiv(w.Now + w.LocalOffsetOf(sid), SimTime.Day);
+                int ground = w.Stock.GroundOf(sid, day);
+                if (ground >= 0) d = w.Planet.Grid.Center[ground];
+                LookAt(d, view == "herdfar" ? 260 : 70);
+                return;
+            }
             if (view.StartsWith("wild"))
             {
                 // the busiest wild ground within 6 km of the first village (no closer than 800 m to any village)

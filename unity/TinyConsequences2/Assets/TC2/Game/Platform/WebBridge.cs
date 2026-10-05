@@ -61,6 +61,8 @@ namespace TC2.Game
                         break;
                     }
                 case "new": Host.NewWorld(ulong.Parse(a[1], inv)); break;
+                case "off": case "on": Toggle(a[1], a[0] == "on"); break;   // tools: what a frame costs without a layer
+                case "glshadow": Sky.GlCascades = int.Parse(a[1], inv); Sky.GlShadowReach = float.Parse(a[2], inv); break;   // tools: WebGL2 shadows
                 case "hashtest": _hashTest = HashTest(); break;
                 case "bench":
                     {
@@ -74,6 +76,35 @@ namespace TC2.Game
         }
 
         public static string HashTest() => TC2.Core.Diagnostics.CrossRuntime.Probe();
+
+        LightShadows _sunShadows = LightShadows.Soft;
+
+        /// <summary>
+        /// Tools (webperf): a drawn layer off or on again - shadows, tilt-shift, the meshes of the terrain, the planet's faces,
+        /// the sea, the air or the rivers by name, or any view component by its type name (WorldObjectsView, CloudView, ...).
+        /// </summary>
+        void Toggle(string what, bool on)
+        {
+            if (what == "shadows")
+            {
+                var sun = FindAnyObjectByType<Light>();
+                if (sun != null) { if (!on && sun.shadows != LightShadows.None) _sunShadows = sun.shadows; sun.shadows = on ? _sunShadows : LightShadows.None; }
+                return;
+            }
+            if (what == "tilt") { TiltShiftFeature.Off = !on; return; }
+            int part = what == "trees" ? 1 : what == "people" ? 2 : what == "buildings" ? 4 : 0;
+            if (part != 0) { WorldObjectsView.Off = on ? WorldObjectsView.Off & ~part : WorldObjectsView.Off | part; return; }
+            string prefix = what == "terrain" ? "Patch" : what == "planet" ? "Face" : what == "sea" ? "Sea" : what == "air" ? "Atmosphere" : what == "rivers" ? "Rivers" : null;
+            if (what == "terrain") foreach (var t in FindObjectsByType<TerrainLod>(FindObjectsSortMode.None)) t.enabled = on;
+            if (prefix != null)
+            {
+                foreach (var r in FindObjectsByType<MeshRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                    if (r.gameObject.name.StartsWith(prefix) || (what == "rivers" && r.transform.parent != null && r.transform.parent.name == "Rivers")) r.enabled = on;
+                return;
+            }
+            foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+                if (string.Equals(mb.GetType().Name, what, System.StringComparison.OrdinalIgnoreCase)) mb.enabled = on;
+        }
 
         void Post()
         {

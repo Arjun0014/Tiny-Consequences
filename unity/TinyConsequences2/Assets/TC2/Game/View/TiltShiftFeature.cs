@@ -14,6 +14,7 @@ namespace TC2.Game
     public sealed class TiltShiftFeature : ScriptableRendererFeature
     {
         public Material Material;
+        public static bool Off;   // (tools: the frame cost measured without it)
         Pass _pass;
         static readonly int Strength = Shader.PropertyToID("_TC2TiltShift");
 
@@ -24,7 +25,7 @@ namespace TC2.Game
 
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
-            if (Material == null || Shader.GetGlobalFloat(Strength) < 0.01f) return;
+            if (Off || Material == null || Shader.GetGlobalFloat(Strength) < 0.01f) return;
             if (renderingData.cameraData.cameraType != CameraType.Game) return;
             _pass.Material = Material;
             renderer.EnqueuePass(_pass);

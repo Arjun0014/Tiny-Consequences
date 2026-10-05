@@ -79,9 +79,9 @@ try {
   // views: orbit, region, village, close
   await cmd('village 0 22000'); await shot('1_orbit', 2500);
   await cmd('village 0 6000'); await shot('2_region', 2500);
-  await cmd('village 0 1400'); await shot('3_village', 2500);
-  await cmd('village 0 380'); await shot('4_close', 2500);
-  await cmd('village 0 95'); await shot('4b_low', 3500);
+  await cmd('village 0 1400'); await shot('3_village', 4500);   // (past the first second of a new view: its meshes and shaders come up)
+  await cmd('village 0 380'); await shot('4_close', 4500);
+  await cmd('village 0 95'); await shot('4b_low', 4500);
   await cmd('speed 5'); await page.waitForTimeout(4000);
   const s1 = await state();
   check('time runs at 1 h/s', s1.now > s0.now, `now ${s0.now} -> ${s1.now}, achieved ${s1.achieved}`);

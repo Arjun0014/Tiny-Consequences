@@ -128,6 +128,19 @@
   - Headless tools: `planet` (`--tect`, `--volc`, `--quake`, `--storms`, `--erosion`, `--eco`, `--ecodiag` deaths by
     cause, `--ecocsv FILE` series, `--steep`, `--map DIR`), `climate`, `run --profile`.
 
+## Measurements (session 2)
+
+| What | Host | Result |
+|---|---|---|
+| 10,000 years planet + ecology (no people), seeds 42 / 7 | dotnet (scratch copy) | 1,298-1,537 s / 1,422-1,512 s (6.5-7.7 years/s) |
+| 300 coarse years, seed 42, people (before the herd index) | dotnet | 10,592 people in 29 places at year 300; 3,248 us per village-day (coarse-day 2,916: herd lookups) |
+| COARSE village-day, seed 42 (after the herd index, 100-200 years) | dotnet | 124-162 us: survey 55 (grounds 13, herds 41), livestock 32-37, coarse-day 17-28, demography 6-19 |
+| 200 coarse years, seed 42, with livestock and herding | dotnet | 51-63 s (3,500 people, 14-15 places) |
+| Livestock, ACTIVITY vs COARSE, 3 years | dotnet | 248 / 250 animals, 287 / 287 births; herders per herder wanted 0.97 / 0.99 |
+| Web (WebGPU, Chrome, RX 5600M, 1280x720; `tc2/out/webtest/s2webb`) | Chrome | 6/6, bit-identical; start 7.3 s; orbit 120, region 121, village 83, close 79, low 111, close running 86, a century on 77 fps; a day away (96 years) 39 s; build 11.1 MB |
+| Web (WebGL2 fallback, Chromium; `s2webgl2b`) | Chromium | 6/6, bit-identical; start 6.4 s; orbit 59, region 60, close 59, low 60, running 60 fps (Chromium's cap; the same build in Chrome ~120); a day away 37 s; **first entry to a village view stalls 1-5 s** (driver shader/buffer creation) |
+| WebGL2 village view by layer (`tc2/scripts/webperf.mjs`) | Chromium | 4 cascades: 37 fps, 60 without shadows (trees' shadows the cost); 2 cascades at half reach 49; **1 cascade 60** (D2-051); `Shader.WarmupAllShaders` costs 36 s at start (removed) |
+
 ## Measurements (session 1)
 
 | What | Host | Result |
