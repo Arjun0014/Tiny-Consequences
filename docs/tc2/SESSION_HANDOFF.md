@@ -3,12 +3,14 @@
 ## Session 2 (5 Oct 2026) — in progress (see PROGRESS.md CURRENT STATE)
 
 ### Exact state
-- Session 2 commits since the last checkpoint (newest last): 3db0273 the household's work and warmth (D2-056) and no float
-  arithmetic in the core (D2-057) · 3a26837 goods, a day's labour, weeding (D2-058) · 706233a homes stand on their own (D2-059)
-  · the F3 closure (D2-060).
-- Phases: F0 done, F1, F2 and **F3 closed** (D2-060). 118 headless tests green; `headless.mjs test` runs the float lint first.
-- Determinism: dotnet, the editor's Mono and the Web build (IL2CPP, WebGPU) are bit-identical (`tc2/out/webtest/s2webd`). The
-  WebGL2 build was last rebuilt for D2-051 (no rendering change since but smoke and homes drawn from buildings).
+- Session 2 commits since the last checkpoint (newest last): 314fdd9 techniques carried by people (D2-062) · c8e9c23, 07b38be
+  materials, pottery, the ard (D2-063) · 6bacfaa copper (D2-064) and F4 closed (D2-065) · 27d2a53 sickness (D2-066) · the
+  commit with trade by want and relief (D2-067) and the F5 closure (D2-068).
+- Phases: F0 done; **F1 to F5 closed** (D2-043, D2-046, D2-060, D2-065, D2-068). 138 headless tests green; `headless.mjs test`
+  runs the float lint first. Sim version 22.
+- Determinism: dotnet equals the editor's Mono (gen dd0c2fd7a147d1d2, D2-067). The Web build was last verified at s2webd
+  (before D2-062): rebuild and run the Web test (next step 1).
+- Long-run evidence: `tc2/out/trade/trade7_200.txt`, `trade42_200.txt` (200 coarse years with sickness and trade).
 - Nothing running. Uncommitted legacy TC1 work may exist in the tree and is NOT ours: `game/html/engine_template.html` and
   `docs/DECISIONS.md` (D-227). Never stage them in [tc2] commits.
 
@@ -65,13 +67,19 @@
   stocked), do not loosen the mechanism (D2-056).
 
 ### Next steps
-1. **F5 slice 2 - trade by want** (D2-066 next): traders walking routes between villages with what one has and the other wants
-   (metal from the ore villages, salt from the coast, hides and fibre, grain to a famine: relief between kin and neighbours),
-   worth judged by each village's want; traders carry sickness too (an epidemic jumping along trade closes F5's done-when);
-   gatherings (fairs) where epidemics jump. Then close F5.
-2. **The sea's calibration**: fish at ~1 % of real biomass, so the miniature holds ~10-20 seals (D2-053): wide-ranging hunters
+1. **The Web build after D2-062 to D2-067**: `node tc2/scripts/unity.mjs build-web`, `node tc2/scripts/webtest.mjs --tag s2webe`
+   (6/6 bit-identical expected; record fps and the day away in PROGRESS Measurements).
+2. **F6 - society, conflict and polities** (17, 10): start from the primitives 10 §1 shares with disasters - deeds known per
+   village (who did what to whom, how it was learned: relief given, help, theft, killing), read as gratitude, grievance and
+   prestige with half-lives (never meters); prestige of household heads from known deeds (generosity in famine now exists:
+   relief) and a village's leader from prestige; then taking by need (stores taken from a neighbour in famine when no relief
+   comes, weighed against risk, ties and boldness), owners who discover and claim, raids as parties of real people who each
+   decided to join, injuries and the dead with deeds; defence built from remembered harm (ditch, palisade). Done when a
+   fortified town or a polity can arise and fall in long runs and its history explains it.
+3. **The sea's calibration**: fish at ~1 % of real biomass, so the miniature holds ~10-20 seals (D2-053): wide-ranging hunters
    over their range; 10,000-year reruns.
-3. WebGL2's first-entry stall; look backlog: coast shapes off the cell grid, gardens, orbit detail, smoke from huts and camps.
-4. **An aggregate layer of people for Ancient and Deep time** (D2-061): a village's year as one step, fitted to COARSE, once
-   the people model is settled (after F5). Living at saturation (~75 s a day away) holds meanwhile.
-5. Rebuild and run the Web test on both paths at the next milestone (last: s2webd, before D2-062 to D2-064).
+4. WebGL2's first-entry stall; look backlog: coast shapes off the cell grid, gardens, orbit detail, smoke from huts and camps;
+   traders and their loads drawn on the roads.
+5. **An aggregate layer of people for Ancient and Deep time** (D2-061): a village's year as one step, fitted to COARSE, once
+   F6's first slices settle the people model. Living at saturation (~75 s a day away) holds meanwhile.
+6. F5's carried-forward items (D2-068): boats between coasts, roads worn by use, fairs, salt, credit, relief by kinship.

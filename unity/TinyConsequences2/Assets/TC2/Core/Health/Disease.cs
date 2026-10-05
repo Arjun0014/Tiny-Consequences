@@ -48,8 +48,9 @@ namespace TC2.Core.Health
         public const double SpillPerDay = 1.5e-5;
         /// <summary>Chance a new infection mutates the strain; a tenth of mutations shift its antigen.</summary>
         public const double MutatePerCase = 5e-4, ShiftShare = 0.1;
-        /// <summary>Visits a healthy grown person makes a day to a neighbouring village (measured in lived days, D2-066), and their hours.</summary>
-        public const double VisitsPerAdultDay = 0.025, VisitHours = 3.0;
+        /// <summary>Visits a healthy grown person makes a day to a neighbouring village (measured in lived days: 0.032 over five test worlds,
+        /// D2-067 - D2-066's 0.027 was one small sample), and their hours.</summary>
+        public const double VisitsPerAdultDay = 0.03, VisitHours = 3.0;
         public const double ForLife = 99.0;
 
         readonly List<int> _present = new List<int>();

@@ -88,6 +88,7 @@ namespace TC2.Core.History
                 case HistoryKind.Scouted: return "Someone of " + subj + " saw good land near " + place + ".";
                 case HistoryKind.HouseholdMoved: return "The " + subj + "s left " + place + " for " + obj + ".";
                 case HistoryKind.HerdHuntedOut: return "The " + obj + " herd near " + place + " was hunted out (" + F(e.Magnitude, "0") + " at its most).";
+                case HistoryKind.ReliefSent: return "In the famine " + subj + " sent grain to " + obj + " (" + F(e.Magnitude, "0") + " days' food for one).";
                 case HistoryKind.PathogenAppeared: return "A new sickness, " + subj + ", appeared in " + place + (e.ArgA == 1 ? ", caught from its animals" : "") + ".";
                 case HistoryKind.EpidemicArrived:
                     return e.ArgA == 1 ? Cap(obj) + " broke out in " + place + (e.Other.IsNone ? "" : ", " + other + " the first to fall ill") + "."
@@ -140,8 +141,10 @@ namespace TC2.Core.History
                                         crop == TC2.Core.Places.CropStage.Sown ? "the day's sowing is done" : "the fields need no more hands today";
                         return "resting at home: " + fields + " and nothing at home presses";
                     }
-                case ActivityKind.TripOut: return "walking to " + (dest.Length > 0 ? dest : "a neighbouring village") + (p.Why == WhyCode.VisitKin ? " to see kin" : " to see a friend");
-                case ActivityKind.TripHome: return "walking home to " + home;
+                case ActivityKind.TripOut:
+                    if (p.Why == WhyCode.Trade) return "walking to " + (dest.Length > 0 ? dest : "a neighbouring village") + " with " + Load(p.Cargo, p.CargoQty) + " to trade: " + home + " spares it and they want it";
+                    return "walking to " + (dest.Length > 0 ? dest : "a neighbouring village") + (p.Why == WhyCode.VisitKin ? " to see kin" : " to see a friend");
+                case ActivityKind.TripHome: return "walking home to " + home + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "");
                 case ActivityKind.Visit: return "visiting " + at;
                 case ActivityKind.Flee: return "keeping to shelter: a fire is near";
                 case ActivityKind.Wait: return "waiting on the road for the fire ahead to burn out";
@@ -161,6 +164,9 @@ namespace TC2.Core.History
                 default: return p.Act + " (" + p.Why + ")";
             }
         }
+
+        static string Load(byte g, float q) =>
+            g == 1 ? F(q, "0") + " days' grain" : g == 2 ? F(q, "0.0") + " kg of copper" : g == 3 ? F(q, "0") + " kg of fibre" : g == 4 ? F(q, "0") + " hides" : "a load";
 
         static string Cap(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
 

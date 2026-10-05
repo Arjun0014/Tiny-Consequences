@@ -95,6 +95,18 @@ regular fair; "fortified" if defences stand.
   herding). Before the mixed-herd rule, cattle (the biggest eaters, grass only) were culled first and starved first as the
   growing villages' fields took the pasture: 6 left at year 200.
 
+## 5e. Trade by want and relief (implemented, D2-067)
+- Each village values each good by its own want (grain by how far its store falls short of 60 days, metal by the share of its
+  people its tools leave unequipped, fibre and hides by its store a head) and spares what it holds beyond its own needs
+  (`Core/Places/Trade.cs`). A trader takes a load of what their village spares to a neighbour within a day's walk that values
+  it more and brings back what that neighbour spares and their own values more, at the middle of the two villages' values:
+  both gain or nobody goes. Traders are people of the village (lived: they walk, exchange and come home with the load; COARSE:
+  the same deals at the lived rate) and visitors who may carry a sickness home (D2-066).
+- Relief: a village with grain to spare sends a share of it each day to a neighbour in famine while that neighbour's store
+  holds less than a month; history tells it once a famine.
+- Measured (seed 7, 200 coarse years): copper travels from the villages near the ore to all the others; four famines met by
+  relief. Not yet: boats and the sea's routes, fairs, salt, credit, relief weighed by kinship and trust.
+
 ## 6. Phase
 F3 (layout, construction, economy basics), F5 (exchange, migration, founding). F0: settlements as a few
 place nodes with granary and woodstore, fields by season, and trips between neighbours.

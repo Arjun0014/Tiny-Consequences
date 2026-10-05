@@ -300,7 +300,9 @@ namespace TC2.Core.Agents
                 p.Until = w.Now + SimTime.Hours(1.5 + 3.0 * rs.NextUnit());
                 p.Visits++;
                 w.Disease.Arrive(ref p, arrived, p.Until - w.Now);   // what they may catch there and carry home (D2-066)
+                if (p.Why == WhyCode.Trade) w.Trade.Exchange(ref p, arrived);   // the load for what they want back (D2-067)
             }
+            else if (p.CargoQty > 0f) w.Trade.Unload(ref p, arrived);   // home with it
             p.Dest = 0;
             Decide(ref p);
         }
@@ -822,7 +824,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -902,6 +904,15 @@ namespace TC2.Core.Agents
                 if (tripDest != 0) { double u = 0.95; if (u > best) { best = u; choice = 5; } }
             }
             if (lsec >= 17 * SimTime.Hour) { double u = 0.25 + 0.3 * p.Social / 255.0 + 0.1 * rs.NextUnit(); if (u > best) { best = u; choice = 4; } }
+            int tradeTo = 0;
+            if (lsec >= 7 * SimTime.Hour && lsec < 11 * SimTime.Hour && age >= 18 && age < 56 && p.Health > 0.7 && atHome &&
+                p.PregDue == 0 && !(p.NursingUntil != 0 && p.NursingUntil - now > SimTime.Year / 2) && p.Sick == 0 &&
+                rs.Chance(TradeChance * (0.5 + p.Bold / 255.0)))
+            {
+                // a load of what the village spares to a neighbour that wants it more, for what it wants back (D2-067)
+                tradeTo = w.Trade.BestPartner(p.Home, out double gain);
+                if (tradeTo != 0) { double u = 0.9; if (u > best) { best = u; choice = 12; } }
+            }
             if (day && atHome && lsec < 14 * SimTime.Hour && (age < 16 || lsec >= 9 * SimTime.Hour) && TendDue(here.Id))
             {
                 // the animals wait to go out: a youth's chore first, a grown member's when no child has taken them by mid-morning (D2-050)
@@ -934,6 +945,9 @@ namespace TC2.Core.Agents
                 case 11:
                     BeginCraft(ref p, homeX, homeY, 1.5 + 1.5 * rs.NextUnit(), ref rs);
                     return;
+                case 12:
+                    if (StartTrade(ref p, tradeTo)) return;
+                    break;
                 case 4:
                     BeginLocal(ref p, ActivityKind.Social, WhyCode.Leisure, 0, here.SquareX + rs.Range(-12, 12), here.SquareY + rs.Range(-12, 12), SimTime.Hours(1.5 + 1.5 * rs.NextUnit()));
                     return;
@@ -1084,6 +1098,7 @@ namespace TC2.Core.Agents
                 if (p.Step == StepKind.Local || p.Step == StepKind.Stay) CutStep(ref p);
                 if (p.At != 0 && p.At != p.Home) w.Visitors(p.At).Remove(p.Id);
                 p.At = p.Home;
+                if (p.CargoQty > 0f && w.Settlements.Exists(p.Home)) w.Trade.Unload(ref p, p.Home);   // (a trader's load reaches home with them: D2-067)
                 p.Act = ActivityKind.Idle; p.Step = StepKind.None; p.Why = WhyCode.None; p.Dest = 0;
                 p.ActVer++; // cancels the pending step
                 if (w.Households.Exists(p.Household)) { ref var hh = ref w.Households.Get(p.Household); p.FromX = hh.HomeX; p.FromY = hh.HomeY; p.ToX = hh.HomeX; p.ToY = hh.HomeY; }
@@ -1440,6 +1455,32 @@ namespace TC2.Core.Agents
             BeginTravel(ref p, ActivityKind.Scout, WhyCode.LookForLand, r, 0.0, r.Length, RouteCache.PlaceEnd(target));
             w.Metrics.Scouts++;
             return true;
+        }
+
+        /// <summary>A trader's chance a morning decision to go, given a deal (fitted to Trade.TripsPerAdultDay at COARSE: D2-067).</summary>
+        public const double TradeChance = 0.004;
+
+        /// <summary>A trader sets out with the village's load for a neighbour (D2-067). False if there is no load or no road.</summary>
+        bool StartTrade(ref Person p, int to)
+        {
+            var w = _w;
+            if (to == 0 || p.At != p.Home) return false;
+            var r = w.Routes.Get(w, p.At, to);
+            if (r == null) return false;
+            w.Trade.Load(ref p, p.Home, to);
+            if (p.CargoQty <= 0f) return false;
+            double from = p.At == r.A ? 0.0 : r.Length, dest = to == r.A ? 0.0 : r.Length;
+            BeginTravel(ref p, ActivityKind.TripOut, WhyCode.Trade, r, from, dest, to);
+            return true;
+        }
+
+        /// <summary>Premise (tests, tools): a person sets out now to trade with a village, as if they had chosen to.</summary>
+        public bool SendTrader(int pid, int to)
+        {
+            ref var p = ref _w.People.Get(pid);
+            if (!p.Alive || p.At != p.Home) return false;
+            CutStep(ref p);
+            return StartTrade(ref p, to);
         }
 
         // ---------------------------------------------------------------- premises (tests, tools)

@@ -20,7 +20,7 @@ namespace TC2.Headless
             long d = _sw.ElapsedTicks - _start.Pop();
             _t[kind] = _t.TryGetValue(kind, out var v) ? (v.ticks + d, v.count + 1) : (d, 1);
         }
-        static readonly string[] Parts = { "crops", "food", "survey", "weigh", "coarse-day", "demography", "stock", "survey.grounds", "survey.herds", "food.memory", "food.need", "food.share", "hearths", "coarse.chores", "learning", "disease" };
+        static readonly string[] Parts = { "crops", "food", "survey", "weigh", "coarse-day", "demography", "stock", "survey.grounds", "survey.herds", "food.memory", "food.need", "food.share", "hearths", "coarse.chores", "learning", "disease", "trade" };
         public void Print()
         {
             double total = _t.Where(k => k.Key < 10000).Sum(v => (double)v.Value.ticks);

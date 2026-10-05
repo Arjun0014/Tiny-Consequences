@@ -49,12 +49,13 @@ real game screenshots (`node tc2/scripts/unity.mjs shots`), not in debug maps; k
 Headless Blender (`tc2/art/kit.py`) makes the asset kit. The god powers that exist (eruption, quake, storm, lightning)
 are logged commands and double as screenshot tools (`unity.mjs shots --erupt/--quake/--storm`).
 
-**Where we are (session 2, 6 Oct 2026)**: F1 to F4 are closed (D2-043, D2-046, D2-060, D2-065). Villages of persistent people
-live on their own (wild food, building, moving and founding, herds and livestock, the household's own work, warmth, homes that
-outlive households) and carry their technology as knowledge (nets, the loom, the rotary quern, pottery, the ard, copper:
-copied from the best, found by practice where the ground allows, carried by whoever moves, lost by small groups). Determinism
-holds across dotnet, Mono and the Web build and is linted (D2-057). Next (SESSION_HANDOFF "Next steps"): F5 - exchange,
-movement and disease. Run long headless jobs from a scratch copy of the binaries so the repo's DLL stays free.
+**Where we are (session 2, 6 Oct 2026)**: F1 to F5 are closed (D2-043, D2-046, D2-060, D2-065, D2-068). Villages of persistent
+people live on their own (wild food, building, moving and founding, herds and livestock, the household's own work, warmth, homes
+that outlive households), carry their technology as knowledge (nets, the loom, the rotary quern, pottery, the ard, copper), fall
+sick with sicknesses that come from their animals and travel with visitors, brides and traders, and trade what they spare for
+what they lack (copper from the ore villages; grain to a neighbour in famine as relief). Determinism holds across dotnet, Mono
+and the Web build and is linted (D2-057). Next (SESSION_HANDOFF "Next steps"): the Web check, then F6 - society, conflict and
+polities. Run long headless jobs from a scratch copy of the binaries so the repo's DLL stays free.
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

@@ -1459,3 +1459,52 @@ grown person-day against COARSE's 0.025. Seed 42, 200 coarse years with no premi
 Mono equals dotnet (gen 28858362a12e24c7).
 **Next (F5 slice 2).** Trade by want between villages (metal from the ore villages, salt from the coast, grain to a famine:
 relief), walked by traders who carry sickness too; gatherings.
+
+## D2-067 — 2026-10-06 — Trade by want and relief: what one village spares and another lacks, carried by people (F5 slice 2)
+
+**Context.** 08 §2: exchange by want (worth = what one lacks), gifts and relief between settlements; F5 (17): trade by want,
+famine coping sequences, an epidemic jumping along trade. Research: social storage - neighbours buffering bad years by giving
+and exchanging food (Halstead & O'Shea 1989); balanced reciprocity between neighbouring communities, generalised giving when
+they starve (Sahlins 1972). Under D2-064 copper stayed where the ore is: only the villages near it held metal.
+**Decision.** (1) Each village values each good by its own want (`Core/Places/Trade.cs`, `Trade.Value`): grain 1-4 by how far
+its store falls short of 60 days of food; metal 0.5-6.5 by the share of its people its tools leave unequipped; fibre 0.5-2.5
+and hides 1-4 by its store a head. It spares what it holds beyond 60 days of grain, full toolkits, 2 kg of fibre and a hide a
+head. (2) A deal (`Trade.Plan`): a load (25 kg; a FU of grain 0.75 kg, a hide 3 kg) of what a village spares and a neighbour
+within a day's walk (6 km) values more, for what the neighbour spares and the village values more, priced at the middle of
+the two villages' values - both gain or nobody goes; worth a walk only at a gain of 4. (3) Lived traders: in the morning a
+healthy grown person (18-55, not pregnant, nursing or sick) at a chance of 0.004 x (0.5 + boldness) with a deal to be had sets
+out with the load from the village's store (`Person.Cargo`), exchanges it in the other village as the deal stands when they
+arrive (nothing wanted for it there: it comes home again) and brings the return load to the store. Traders are visitors:
+they catch what their hosts have and carry it home (D2-066). The inspector: "walking to Kubroford with 10.7 kg of copper to
+trade: Gouthorpe spares it and they want it". (4) A COARSE day makes the same deals as trips at the lived rate (0.01 trips a
+healthy grown person-day with a deal: lived 0.0083), each trader 3 hours in the other village for the sickness. (5) Relief: a
+village with grain to spare sends each neighbour within 6 km in famine (a hunger death within a quarter year) a twentieth of
+its spare a day, at most three days of their need, while their store holds less than 30 days - relief feeds the hungry, it
+does not fill a granary (nor reach a village whose dead starved beside a full one); history tells it once a famine
+(`ReliefSent`, in response to the famine): "In the famine Neldthorpe sent grain to Lortharndal". (6) The COARSE visit rate
+refit on five test worlds (0.032 lived, pooled over 147 visits): 0.03 (D2-066's 0.027 was one small sample). (7) Goods are never
+lost: a trader the change to COARSE puts home unloads there (the player's speed-up can come mid-trip). Sim version 22.
+**Evidence.** `TradeTests` (138 tests): a deal follows want both ways (a village with metal to spare and no fibre gives 10.7 kg
+of copper for fibre, gain 114 in the two villages' values); a trader carried it (metal A 48.0 -> 37.3 kg, B 0 -> 10.7; fibre
+home 0 -> 24.9 kg); relief reached a famine within a day and was told once; **an epidemic jumped along a trade route and is
+traceable**: "The shaking flux came to Gouthorpe with Krukfald Haerfas <- broke out in Kubroford <- appeared in Kubroford";
+lived trading trips 0.0083 against COARSE's 0.01; a load on the road when the world goes COARSE reaches the store (10.7 kg; before
+the fix it stayed on the trader, to be overwritten on their next trip). Seed 7, 200 coarse years with no premise (`tc2/out/trade/trade7_200.txt`):
+4,383 people in 18 places; 521 trades, 509 kg of copper carried from the ore villages - **all eight villages without ore hold
+metal (6.7-99 kg)**; 16,504 FU of relief in four famines (5 hunger deaths in 200 years; 65,581 FU before the 30-day cap);
+sickness 31 epidemics, 297 deaths. Seed 42 (no ore, no famine): 22 trades in 200 years, no metal, no relief. Trade costs 1.5 us a
+village-day. Mono equals dotnet (gen dd0c2fd7a147d1d2).
+
+## D2-068 — 2026-10-06 — F5 closed: exchange, movement and disease
+
+**Context.** F5's done-when: "an epidemic jumps along trade and travel and is traceable; migrations found new places" (17).
+**Evidence.** Travel: a visitor carries a village's epidemic home and the arrival leads back by its causes to the epidemic it
+was caught in and to the animals (`DiseaseTests`, D2-066). Trade: a trader brings it home from the village they traded with,
+traceable the same way (`TradeTests`, D2-067). Migrations found new places: households leave pressed villages after the
+harvest and found at places their scouts know (D2-045, `MigrationTests`; seed 42 6 -> 35 villages in 300 years). The famine
+coping sequence is lived: rations cut (D2-042), the wild (D2-042), the herd eaten down to its core (D2-048), relief from
+neighbours (D2-067), leaving (D2-045). In free worlds sicknesses come from the animals, jump between villages along visits,
+marriages and trade, and burn out; copper spreads by trade from the villages near the ore.
+**Verdict.** F5 is closed. Carried forward: boats between coasts and seafaring (the sea's routes), roads worn by use,
+gatherings and fairs (where epidemics jump and marriages are made), salt from the coast, trade passed on through villages and
+credit, relief weighed by kinship and trust (F6's deeds), and the hint a traded object carries (copying a technique from it).

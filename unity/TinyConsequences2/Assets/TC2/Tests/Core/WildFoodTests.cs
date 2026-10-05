@@ -265,6 +265,14 @@ namespace TC2.Tests.Core
             for (int d = 0; d < 70; d++)
             {
                 Strip(b, sid, woods: false);
+                // (and no neighbour has grain to spare: this is the wild's test, relief has its own - D2-067)
+                foreach (var w in new[] { a, b })
+                    for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+                    {
+                        if (o == sid) continue;
+                        ref var so = ref w.Settlements.Get(o);
+                        so.Granary = Math.Min(so.Granary, 60.0 * so.Population * 0.8 * w.Config.FoodPerAdultDay);
+                    }
                 a.AdvanceTo(a.Now + SimTime.Day); b.AdvanceTo(b.Now + SimTime.Day);
                 ref var sa = ref a.Settlements.Get(sid); ref var sb = ref b.Settlements.Get(sid);
                 if (d < 30) { sa.CropBurnt = 1.0; sb.CropBurnt = 1.0; }   // (only the year that failed)

@@ -52,6 +52,7 @@ namespace TC2.Core.Places
             prof?.Begin(10005); Demography(sid); prof?.End(10005);
             prof?.Begin(10014); w.Learning.Day(sid); prof?.End(10014);   // the young copy the best they can watch (D2-062)
             prof?.Begin(10015); w.Disease.Day(sid); prof?.End(10015);    // sickness: its course, its spread, new ones from the animals (D2-066)
+            prof?.Begin(10016); w.Trade.Day(sid); prof?.End(10016);      // relief, and COARSE trading trips (D2-067)
             ref var s2 = ref w.Settlements.Get(sid);
             if (s2.Population <= 0 && s2.Abandoned == 0)
             {

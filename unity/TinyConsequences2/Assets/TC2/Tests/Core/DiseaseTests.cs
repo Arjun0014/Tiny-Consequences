@@ -134,20 +134,28 @@ namespace TC2.Tests.Core
         public void TheCoarseVisitRateIsTheLivedOne()
         {
             // lived days: arrivals of grown visitors per healthy grown person a day, against the constant a COARSE day uses
+            // (trading trips are visits too, but a COARSE day makes those in its trade step at their own rate: D2-067)
             var w = TestWorlds.Make(497);
             w.AdvanceTo(w.Now + SimTime.Day);
             long visits0 = 0;
             for (int id = w.People.First(); id != 0; id = w.People.Next(id)) visits0 += w.People.Get(id).Visits;
             double adultDays = 0;
+            var trading = new HashSet<(int, long)>();
             for (int d = 0; d < 20; d++)
             {
                 for (int id = w.People.First(); id != 0; id = w.People.Next(id)) { var p = w.People.Get(id); double age = p.AgeYears(w.Now); if (p.Alive && age >= 16 && age < 62 && p.Health > 0.7) adultDays++; }
-                w.AdvanceTo(w.Now + SimTime.Day);
+                long end = w.Now + SimTime.Day;
+                while (w.Now < end)
+                {
+                    w.AdvanceTo(w.Now + 600);
+                    for (int id = w.People.First(); id != 0; id = w.People.Next(id)) { ref var p = ref w.People.Get(id); if (p.Alive && p.Act == ActivityKind.TripOut && p.Why == WhyCode.Trade) trading.Add((id, p.T0)); }
+                }
             }
             long visits = -visits0;
             for (int id = w.People.First(); id != 0; id = w.People.Next(id)) visits += w.People.Get(id).Visits;
-            double rate = visits / adultDays;
-            Console.WriteLine("lived visits per healthy grown person a day " + rate.ToString("0.000") + " (COARSE uses " + Disease.VisitsPerAdultDay + ")");
+            double rate = (visits - trading.Count) / adultDays;
+            Console.WriteLine("lived visits per healthy grown person a day " + rate.ToString("0.000") + " and trading trips " + (trading.Count / adultDays).ToString("0.000") +
+                              " (COARSE uses " + Disease.VisitsPerAdultDay + ")");
             Assert.That(rate / Disease.VisitsPerAdultDay, Is.InRange(0.5, 2.0), "refit Disease.VisitsPerAdultDay if trips change");
         }
     }

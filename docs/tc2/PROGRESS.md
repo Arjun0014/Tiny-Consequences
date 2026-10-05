@@ -2,7 +2,7 @@
 
 ## CURRENT STATE (keep accurate; newest first below)
 
-**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 in progress (D2-066); Web checked on WebGPU (s2webd) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
+**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); Web checked on WebGPU (s2webd) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
 - **Session 2 (5 Oct 2026, in progress)** - compaction-recovery hooks (`.claude/settings.json`, `.claude/hooks/tc2_compact.mjs`;
   Claude Code 2.1.289: PreCompact stdout joins the compaction instructions, SessionStart matcher `compact` stdout reaches Claude;
@@ -110,6 +110,10 @@
   - **Goods, a day's labour, weeding (D2-058)**: households make and mend their clothes, tools and vessels (worn goods let the
     cold in and slow hands); a day's labour bounds the slack's work; weeding asks 24 h a hectare and keeps pace with the season.
     A whole year of seed 42: grown people work ~6.5 h a day, children of 6-11 ~3 h - inside time-allocation ranges. 115 tests.
+  - **F5 CLOSED (D2-068)** with slice 2, trade by want and relief (D2-067): villages value goods by their own want and their
+    traders carry what one spares to a neighbour that lacks it, both gaining; grain goes to a neighbour in famine while its store
+    is short (told once a famine); traders carry sickness home, traceable along the trade. Seed 7 free: 521 trades, copper from
+    the ore villages held by all eight villages without ore by year 200, four famines met by relief. 138 tests. Next: F6.
   - **F5 slice 1 - sickness (D2-066)**: pathogens come over from animals and mutate; each person carries their own infection;
     villages infect at beta x I / N; visitors carry it home, COARSE couples at the lived visit rate; every epidemic traceable to
     the animals. Seed 42 free: four sicknesses and fifteen village epidemics in 200 years. 132 tests. Next: trade by want.
@@ -200,6 +204,7 @@
 | Web (WebGPU) after D2-056 to D2-058 (`tc2/out/webtest/s2webc`) | Chrome | 6/6, bit-identical with headless and the editor's Mono (gen 2c8c6fad6b24a0b9); start 7.1 s; orbit 119, region 119, village 90, close 80, low 91, close running 82, a century on 76 fps; a day away (96 years) 38 s; build 11.2 MB; cooks' smoke at breakfast in the close view |
 | Fire steps, seed 42 COARSE with people, 150 years (D2-055) | dotnet | 131 -> 2.6 us a step (379 -> 1 fire page held; heap 65 -> 41 MB; run 29.8 -> 23.0 s) |
 | 200 coarse years with household work (D2-056) | dotnet | seed 42: 32.9 s, 3,492 people in 15 places; seed 1 (cool): 31.2 s, 1,206 in 6; hearths 2.8 us a village-day |
+| 200 coarse years with sickness and trade (D2-066, D2-067) | dotnet | seed 7: 40.9 s, 4,383 people in 18 places; seed 42: 41.0 s, 2,640 in 14; a village-day's sickness 4.5-5.3 us, trade 1.3-1.5 us |
 | History ledger, seed 42 COARSE | dotnet | year 300: 95,615 -> 69,179 kept after two fixes (households' events kept for ever; a death's age counted as its importance); at year 1,000 before them 780,282 |
 
 ## Measurements (session 1)
