@@ -174,7 +174,9 @@ namespace TC2.Game
             var sea = FindAnyObjectByType<SeaLifeView>();
             if (sea != null) Debug.Log("[TC2] sea life: shoals " + sea.Shoals + " drawn " + sea.Drawn + " seals " + sea.SealsDrawn + " | " + sea.Why);
             var wild = FindAnyObjectByType<WildlifeView>();
-            if (wild != null) Debug.Log("[TC2] wildlife drawn " + wild.Drawn);
+            if (wild != null) Debug.Log("[TC2] wildlife drawn " + wild.Drawn + " (herds " + wild.HerdsDrawn + ")");
+            var stock = FindAnyObjectByType<LivestockView>();
+            if (stock != null) Debug.Log("[TC2] livestock drawn " + stock.Drawn + " |" + stock.Why);
         }
     }
 }

@@ -62,6 +62,8 @@ namespace TC2.Game
             rain.Host = host; rain.Rig = rig;
             var wild = views.AddComponent<WildlifeView>();
             wild.Host = host; wild.Rig = rig;
+            var stock = views.AddComponent<LivestockView>();
+            stock.Host = host; stock.Rig = rig;
             var sea = views.AddComponent<SeaLifeView>();
             sea.Host = host; sea.Rig = rig;
 

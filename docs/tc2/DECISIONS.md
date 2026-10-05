@@ -1045,3 +1045,19 @@ households (counting is now a pure read).
 **Invalidation.** If herds of a kind vanish from most villages of a long run with land and people to keep them, or the
 slaughter feeds more than about a fifth of a farming village's food, the breeding core, the stocking or the endowment is
 wrong.
+
+## D2-049 — 2026-10-05 — Farm animals, herds and camps in the miniature
+
+**Context.** D2-045/047/048 gave the simulation camps, wild herds near villages and every household's animals; the view drew
+camps as shrunken huts, wild animals only from the abundance fields, and no farm animals.
+**Decision.** A `LivestockView` elaborates each village's animals from the simulation (positions from keys and the world's
+time only; never written back): by day on the household's own ground among the nearest pasture cells, at night in a fenced pen
+behind its home, walking between at dawn and dusk; pigs round the yard. The wild herds of D2-047 are drawn where the simulation
+keeps them, the field's animals they gather left out, kept to a village's edge. New kit models in the kit's own style: cow (dun:
+coats tinted), goat, pig, hide tent. See 13 §7.
+**Evidence.** Screenshots `tc2/out/shots/stock_h*` and `stock2_h*` (seed 42, day 3: 64 animals near the village; 11 herds
+drawn): pens full at 19.6-20.5 h, pigs at the yards and empty pens at noon, herds 250-570 m out on the outfield beyond the
+fields (the village's fields ring it), no deer among the houses after the edge rule.
+**Consequences.** The field patchwork drawn round seed 42's first village looks far larger than its ~14 ha of claimed fields:
+a look issue for the terrain's field drawing, not this slice.
+

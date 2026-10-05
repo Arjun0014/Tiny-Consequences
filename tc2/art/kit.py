@@ -213,6 +213,20 @@ def round_hut(name, radius, wall_h, roof_h, seed=3):
     return k.finish()
 
 
+def tent(name, seed=8):
+    """A camp's shelter (D2-045): hides over a cone of poles, the poles crossing above, a flap open at the front."""
+    k = Kit(name, seed)
+    hide = srgb(0.62, 0.50, 0.36)
+    pole = srgb(0.42, 0.32, 0.22)
+    k.cyl((0, 0, 0), 1.7, 0.12, 2.6, hide, seg=9)
+    k.cyl((0, 0, 0.02), 1.72, 1.72, 0.05, srgb(0.50, 0.40, 0.29), seg=9)
+    for i in range(5):
+        a = i * 2.0 * math.pi / 5.0 + 0.3
+        k.cyl((math.cos(a) * 0.22, math.sin(a) * 0.22, 2.35), 0.035, 0.03, 0.75, pole, seg=4, rot=Matrix.Rotation(0.4, 4, Vector((-math.sin(a), math.cos(a), 0.0))))
+    k.box((0, -1.38, 0.62), (0.72, 0.08, 1.15), srgb(0.24, 0.18, 0.13))
+    return k.finish()
+
+
 def granary(name, seed=4):
     k = Kit(name, seed)
     for sx in (-1, 1):
@@ -528,6 +542,7 @@ def build_all():
     objs.append(house("house_long", 11.5, 5.2, 2.2, 40, THATCH, wall=WALL2, chimney=True, seed=13))
     objs.append(house("house_small", 4.6, 3.8, 2.3, 44, THATCH, wall=srgb(0.80, 0.74, 0.62), chimney=False, seed=14))
     objs.append(round_hut("hut_round", 2.3, 2.1, 2.6))
+    objs.append(tent("tent"))
     # the wild animals (D2-035): one per species kind, at adult size
     objs.append(quadruped("animal_deer", 1.65, 1.1, 0.72, (0.55, 0.36, 0.20), belly=(0.82, 0.74, 0.62), head=0.24, neck=0.42, neck_up=55, ears=0.13, tail=0.12, antlers=0.45, seed=31))
     objs.append(quadruped("animal_hare", 0.48, 0.3, 0.12, (0.52, 0.45, 0.36), belly=(0.80, 0.76, 0.68), head=0.09, neck=0.06, neck_up=40, ears=0.12, tail=0.05, bushy=True, tail_tip=(0.95, 0.95, 0.92), snout=0.2, seed=32))
@@ -538,6 +553,10 @@ def build_all():
     objs.append(quadruped("animal_fox", 0.75, 0.4, 0.2, (0.78, 0.38, 0.14), belly=(0.92, 0.88, 0.80), hoof=(0.12, 0.08, 0.06), head=0.13, neck=0.1, neck_up=30, ears=0.08, tail=0.38, bushy=True, tail_tip=(0.95, 0.94, 0.90), snout=1.0, seed=37))
     objs.append(quadruped("animal_bear", 2.0, 1.15, 0.5, (0.36, 0.25, 0.16), belly=(0.32, 0.22, 0.14), hoof=(0.12, 0.09, 0.07), width=0.95, head=0.35, neck=0.25, neck_up=10, ears=0.07, tail=0.1, snout=0.7, hump=0.35, seed=38))
     objs.append(seal("animal_seal"))
+    # the households' animals (D2-048): a small dun cow with short horns (coats tinted in the game), a cream goat, a pink pig
+    objs.append(quadruped("animal_cow", 2.0, 1.3, 0.66, (0.78, 0.68, 0.54), belly=(0.92, 0.88, 0.80), hoof=(0.10, 0.08, 0.07), width=0.85, head=0.34, neck=0.3, neck_up=12, ears=0.12, tail=0.55, horns=0.22, horn_back=False, snout=0.55, seed=51))
+    objs.append(quadruped("animal_goat", 1.0, 0.72, 0.42, (0.88, 0.85, 0.78), belly=(0.93, 0.91, 0.86), hoof=(0.22, 0.19, 0.16), head=0.16, neck=0.22, neck_up=45, ears=0.09, tail=0.08, horns=0.26, horn_back=True, snout=0.45, seed=52))
+    objs.append(quadruped("animal_pig", 1.15, 0.66, 0.24, (0.88, 0.68, 0.62), belly=(0.92, 0.74, 0.70), hoof=(0.42, 0.32, 0.30), width=0.62, head=0.27, neck=0.1, neck_up=-5, ears=0.12, tail=0.1, snout=1.0, seed=53))
     objs.append(fish("fish_shoal"))
     objs.append(granary("granary"))
     objs.append(conifer("tree_conifer", 8.5, 21))

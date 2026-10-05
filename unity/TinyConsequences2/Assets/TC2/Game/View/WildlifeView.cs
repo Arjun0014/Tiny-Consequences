@@ -9,8 +9,9 @@ namespace TC2.Game
     /// The wild animals near the camera (D2-035), elaborated from the simulation's abundance fields: every cell close
     /// enough shows the animals its fields hold (a fraction shows as a chance, keyed and stable), as herds, packs or
     /// lone animals that wander the cell on slow paths of the world's time, keep their spacing and face where they go;
-    /// they keep away from villages and water. Presentation only: what is drawn is decided by the fields and the
-    /// keys, so watching never changes the world.
+    /// they keep away from villages and water. The herds and packs the simulation knows near villages (D2-047) are drawn
+    /// where they are, as many as they number, and the field's animals they gather are not drawn again round them.
+    /// Presentation only: what is drawn is decided by the fields, the herds and the keys, so watching never changes the world.
     /// </summary>
     public sealed class WildlifeView : MonoBehaviour
     {
@@ -23,8 +24,9 @@ namespace TC2.Game
         static readonly int[] MaxGroup = { 12, 5, 16, 8, 9, 7, 2, 2 };
         static readonly float[] Spacing = { 4.5f, 6f, 6.5f, 3.5f, 4f, 5f, 8f, 10f };
         readonly List<int> _cells = new List<int>();
-        readonly HashSet<int> _seen = new HashSet<int>();
-        public int Drawn;
+        readonly HashSet<int> _seen = new HashSet<int>(), _near = new HashSet<int>();
+        readonly HashSet<long> _covered = new HashSet<long>();   // (species index, cell) whose animals a herd gathers
+        public int Drawn, HerdsDrawn;
         float _timer;
 
         void Start()
@@ -48,7 +50,7 @@ namespace TC2.Game
         void Rebuild(TC2.Core.Simulation.World w)
         {
             for (int i = 0; i < _kinds.Length; i++) _kinds[i].Clear();
-            Drawn = 0;
+            Drawn = 0; HerdsDrawn = 0;
             var P = w.Planet;
             if (P.Species.Count == 0 || P.Abund.Length == 0) return;
             Vector3 camPos = Rig.Cam.transform.position;
@@ -76,6 +78,35 @@ namespace TC2.Game
             }
             double gameT = Host.RenderTime;
             int n = P.Cells;
+            // the herds near villages: where the simulation keeps them, all of them
+            _near.Clear(); foreach (int c in _cells) _near.Add(c);
+            _covered.Clear();
+            for (int h = w.Herds.First(); h != 0; h = w.Herds.Next(h))
+            {
+                var hd = w.Herds.Get(h);
+                if (!_near.Contains(hd.Cell) || hd.Kind >= Models.Length || hd.Count < 1f) continue;
+                int si = -1;
+                for (int q = 0; q < P.Species.Count; q++) if (P.Species[q].Id == hd.Species) { si = q; break; }
+                if (si < 0) continue;
+                _covered.Add(((long)si << 32) | (uint)hd.Cell);
+                for (int k = 0; k < 8; k++) _covered.Add(((long)si << 32) | (uint)g.Nbr8[hd.Cell * 8 + k]);
+                ulong hkey = KeyedRng.Mix((ulong)h * 0x9E3779B97F4A7C15UL ^ 0x4E7D);
+                // shy of villages: a herd whose ground is a village's keeps to the edge of it (350 m from the square)
+                Vec3d at = g.Center[hd.Cell];
+                for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                {
+                    ref var s = ref w.Settlements.Get(sid);
+                    if (!s.Inhabited) continue;
+                    double dist = Vec3d.ArcDistance(s.Anchor, at, P.Radius);
+                    if (dist >= 350.0) continue;
+                    Vec3d away = at - s.Anchor * Vec3d.Dot(at, s.Anchor);
+                    if (away.LengthSq < 1e-12) { double a0 = KeyedRng.Unit(hkey) * 6.28318; away = s.East * System.Math.Cos(a0) + s.North * System.Math.Sin(a0); }
+                    at = (s.Anchor + away.Normalized * (350.0 / P.Radius)).Normalized;
+                }
+                Group(P, at, hd.Kind, P.Species[si].Mass, (int)hd.Count, hkey, gameT);
+                HerdsDrawn++;
+                if (Drawn >= 1500) return;
+            }
             foreach (int c in _cells)
             {
                 if (!P.IsLand(c) || P.LakeDepth[c] > 0.3f) continue;
@@ -87,13 +118,13 @@ namespace TC2.Game
                     ref var s = ref w.Settlements.Get(sid);
                     if (s.Inhabited && Vec3d.ArcDistance(s.Anchor, cc, P.Radius) < 350.0) { nearVillage = true; break; }
                 }
-                Storms.Frame(cc, out Vec3d east, out Vec3d north);
                 for (int si = 0; si < P.Species.Count; si++)
                 {
                     var sp = P.Species[si];
                     int kind = sp.Kind;
                     if (kind >= Models.Length) continue;
                     if (nearVillage && kind != 1 && kind != 6) continue;
+                    if (_covered.Contains(((long)si << 32) | (uint)c)) continue;   // a herd gathers these
                     double N = P.Abund[si * n + c];
                     if (N < 0.02) continue;
                     // how many to show: the whole part, and the fraction as a stable chance
@@ -102,27 +133,34 @@ namespace TC2.Game
                     if (KeyedRng.Unit(key) < N - count) count++;
                     count = Mathf.Min(count, MaxGroup[kind]);
                     if (count <= 0) continue;
-                    // the group's centre wanders the cell on a slow loop of the world's time
-                    double period = 9.0 * SimTime.Hour * (1.0 + KeyedRng.Unit(KeyedRng.Mix(key + 1)));
-                    double ph = gameT / period + KeyedRng.Unit(KeyedRng.Mix(key + 2)) * 6.28318;
-                    double rx = P.CellSize * 0.32 * System.Math.Sin(ph * 1.0), ry = P.CellSize * 0.32 * System.Math.Sin(ph * 0.73 + 1.3);
-                    double vx = System.Math.Cos(ph * 1.0), vy = 0.73 * System.Math.Cos(ph * 0.73 + 1.3);  // the way it moves
-                    float heading = Mathf.Atan2((float)vx, (float)vy) * Mathf.Rad2Deg + 180f; // Upright's zero faces south
-                    float scale = Mathf.Pow(sp.Mass / BaseMass[kind], 1f / 3f);
-                    for (int m = 0; m < count; m++)
-                    {
-                        ulong mk = KeyedRng.Mix(key + 10 + (ulong)m);
-                        float ang = (float)(KeyedRng.Unit(mk) * 6.28318), rad = Spacing[kind] * Mathf.Sqrt(m + 0.5f) * (0.7f + 0.6f * (float)KeyedRng.Unit(KeyedRng.Mix(mk + 1)));
-                        double x = rx + Mathf.Cos(ang) * rad, y = ry + Mathf.Sin(ang) * rad;
-                        Vec3d d = (cc * P.Radius + east * x + north * y).Normalized;
-                        Vector3 pos = Ground.Surface(P, d);
-                        float yaw = heading + (float)(KeyedRng.Unit(KeyedRng.Mix(mk + 2)) - 0.5) * 70f;
-                        var rot = PlanetGeo.Upright(pos, yaw);
-                        _kinds[kind].Add(0, Color.white, Matrix4x4.TRS(pos, rot, Vector3.one * scale * Exaggeration(pos)));
-                        Drawn++;
-                        if (Drawn >= 1500) return;
-                    }
+                    Group(P, cc, kind, sp.Mass, count, key, gameT);
+                    if (Drawn >= 1500) return;
                 }
+            }
+        }
+
+        /// <summary>A group of one kind round a cell's centre, wandering the cell on a slow loop of the world's time.</summary>
+        void Group(PlanetState P, Vec3d cc, int kind, float mass, int count, ulong key, double gameT)
+        {
+            Storms.Frame(cc, out Vec3d east, out Vec3d north);
+            double period = 9.0 * SimTime.Hour * (1.0 + KeyedRng.Unit(KeyedRng.Mix(key + 1)));
+            double ph = gameT / period + KeyedRng.Unit(KeyedRng.Mix(key + 2)) * 6.28318;
+            double rx = P.CellSize * 0.32 * System.Math.Sin(ph * 1.0), ry = P.CellSize * 0.32 * System.Math.Sin(ph * 0.73 + 1.3);
+            double vx = System.Math.Cos(ph * 1.0), vy = 0.73 * System.Math.Cos(ph * 0.73 + 1.3);  // the way it moves
+            float heading = Mathf.Atan2((float)vx, (float)vy) * Mathf.Rad2Deg + 180f; // Upright's zero faces south
+            float scale = Mathf.Pow(mass / BaseMass[kind], 1f / 3f);
+            for (int m = 0; m < count; m++)
+            {
+                ulong mk = KeyedRng.Mix(key + 10 + (ulong)m);
+                float ang = (float)(KeyedRng.Unit(mk) * 6.28318), rad = Spacing[kind] * Mathf.Sqrt(m + 0.5f) * (0.7f + 0.6f * (float)KeyedRng.Unit(KeyedRng.Mix(mk + 1)));
+                double x = rx + Mathf.Cos(ang) * rad, y = ry + Mathf.Sin(ang) * rad;
+                Vec3d d = (cc * P.Radius + east * x + north * y).Normalized;
+                Vector3 pos = Ground.Surface(P, d);
+                float yaw = heading + (float)(KeyedRng.Unit(KeyedRng.Mix(mk + 2)) - 0.5) * 70f;
+                var rot = PlanetGeo.Upright(pos, yaw);
+                _kinds[kind].Add(0, Color.white, Matrix4x4.TRS(pos, rot, Vector3.one * scale * Exaggeration(pos)));
+                Drawn++;
+                if (Drawn >= 1500) return;
             }
         }
 

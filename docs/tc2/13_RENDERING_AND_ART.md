@@ -68,3 +68,22 @@ scattered trees read as a toy. Open: clouds, tilt-shift, close-in grass, night l
   below the horizon (round canopies caught it from beneath at night); the HUD date on one line.
 - Art notes: volcanoes read best as dark summits on green mountains with a thin white plume; an eruption reads from
   orbit as a grey column with an orange root; the glow belongs to the night.
+
+## 7. Farm animals, herds and camps (session 2, D2-049)
+
+- `LivestockView`: every live animal of a village near the camera, from the simulation's `Beast` store - by day each
+  household's cattle and goats on a grazing ground of their own (one of the ten nearest pasture cells: open land, no fields,
+  no water, beyond the houses; a stable key per household), the pigs rooting round the yard; at night penned behind the home
+  in a round fenced pen sized to the herd (the gate a different way at each home); walking out from 6.6 h and home from
+  17.9 h local, one after another; all day in when the day's mean is below -4 C. The young are smaller (cube root of their
+  grown share). Coats: cattle dun, brown, black or pale; goats white, brown or black; pigs pink or grey (tints over the kit's
+  colours). One presentation scale per village so pens, fences and animals keep their proportions. Headings follow the
+  motion (`LookRotation` on the walk), not a yaw convention.
+- Kit (`tc2/art/kit.py`, the same `quadruped()` as the wild animals): `animal_cow` (dun, short horns - the red-brown of the
+  first try read as deer), `animal_goat`, `animal_pig`, and a hide `tent` for camps (camps were a shrunken round hut).
+- `WildlifeView` draws the simulation's herds and packs near villages (D2-047) where they are and as many as they number, and
+  leaves out the field's animals they gather (their cell and its eight neighbours); a herd whose ground is a village's keeps
+  to its edge (350 m from the square) - the first shots had a deer herd walking among the houses at dusk.
+- Art notes: herds read as dots of white (goats) on the outfield beyond the fields from the village view; pens read as small
+  rings of fence behind the houses from the close view and are full and lit by the windows at night.
+
