@@ -117,8 +117,16 @@ Shader "TC2/Terrain"
                 half3 sun = l.color * wrap * lerp(0.25h, 1.0h, l.shadowAttenuation) * 1.2h * (1.0h - 0.55h * cloud) * saturate(dot(up, l.direction) * 4.0h + 0.35h);
                 half moon = saturate(dot(n, _TC2MoonDir.xyz) * 0.7h + 0.3h) * (1.0h - day);
                 half3 c = albedo * (amb + sun + half3(0.13h, 0.17h, 0.29h) * moon);
-                // the surf: a broken, moving line of foam just below the sea surface, where waves run up the shore
+                // under the sea, the water's own colour by the depth of water above (Beer-Lambert): the sand of the shallows
+                // shows clear and turquoise, the deep goes blue; the sea's surface on top adds only sky and sun (D2-040)
                 float below = _TC2SeaRadius - length(i.positionWS);
+                if (below > 0.0)
+                {
+                    half through = (half)exp(-below / 3.2);
+                    half3 waterCol = lerp(half3(0.07h, 0.42h, 0.50h), half3(0.015h, 0.075h, 0.20h), (half)saturate(below / 28.0)) * (0.3h + 0.7h * day);
+                    c = lerp(waterCol, c * half3(0.86h, 0.98h, 1.0h), through);
+                }
+                // the surf: a broken, moving line of foam just below the sea surface, where waves run up the shore
                 if (below > -0.4 && below < 1.4)
                 {
                     float2 fuv = (abs(up.y) > 0.5 ? i.positionWS.xz : (abs(up.x) > 0.5 ? i.positionWS.yz : i.positionWS.xy));

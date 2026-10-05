@@ -385,6 +385,45 @@ def quadruped(name, L, H, leg, body, belly=None, hoof=(0.12, 0.10, 0.09), width=
     return k.finish()
 
 
+def seal(name, seed=40):
+    """A seal hauled out, head up, facing +Y (Unity +Z): 1.6 m long, origin under its belly."""
+    k = Kit(name, seed)
+    back = srgb(0.40, 0.38, 0.36)
+    belly = srgb(0.62, 0.60, 0.56)
+    dark = srgb(0.07, 0.06, 0.06)
+    # the body: a long tapering drop resting on the ground, chest raised a little
+    k.ellipsoid((0, 0.18, 0.24), (0.26, 0.52, 0.24), back)
+    k.ellipsoid((0, -0.38, 0.17), (0.2, 0.42, 0.17), back)
+    k.ellipsoid((0, 0.0, 0.1), (0.22, 0.6, 0.1), belly)
+    # the neck and head, lifted to look about
+    k.limb((0, 0.52, 0.32), (0, 0.72, 0.5), 0.17, 0.13, back)
+    k.ellipsoid((0, 0.8, 0.54), (0.13, 0.17, 0.12), back)
+    k.ellipsoid((0, 0.95, 0.5), (0.07, 0.08, 0.06), back)
+    k.ellipsoid((0, 1.02, 0.5), (0.03, 0.02, 0.025), dark, subdiv=1)
+    for sx in (-1, 1):
+        k.ellipsoid((sx * 0.08, 0.86, 0.6), (0.025, 0.025, 0.025), dark, subdiv=1)
+        # fore flippers flat on the ground, hind flippers spread in a V behind
+        k.ellipsoid((sx * 0.27, 0.32, 0.06), (0.12, 0.07, 0.03), back, rot=Matrix.Rotation(sx * 0.5, 4, "Z"))
+        k.ellipsoid((sx * 0.1, -0.86, 0.07), (0.06, 0.16, 0.03), back, rot=Matrix.Rotation(sx * 0.35, 4, "Z"))
+    return k.finish()
+
+
+def fish(name, back=(0.30, 0.42, 0.52), seed=41):
+    """A small shoaling fish facing +Y (Unity +Z), 0.3 m long, origin at its middle; its back is tintable."""
+    k = Kit(name, seed)
+    top = srgb(*back, tint=1.0)
+    side = srgb(0.80, 0.84, 0.86)
+    fin = srgb(back[0] * 0.8, back[1] * 0.8, back[2] * 0.8, tint=1.0)
+    k.ellipsoid((0, 0.0, 0.012), (0.035, 0.13, 0.03), top, subdiv=2)
+    k.ellipsoid((0, 0.0, -0.008), (0.037, 0.125, 0.03), side, subdiv=2)
+    # the tail: two vanes in a fork
+    for sz in (-1, 1):
+        k.ellipsoid((0, -0.15, sz * 0.025), (0.006, 0.045, 0.022), fin, subdiv=1, rot=Matrix.Rotation(sz * -0.6, 4, "X"))
+    k.ellipsoid((0, -0.01, 0.045), (0.005, 0.04, 0.018), fin, subdiv=1)   # the dorsal fin
+    k.ellipsoid((0, 0.12, 0.012), (0.012, 0.01, 0.01), srgb(0.05, 0.05, 0.06), subdiv=1)   # the eyes, as one dark band
+    return k.finish()
+
+
 def fence(name, seed=5):
     k = Kit(name, seed)
     wood = srgb(0.48, 0.36, 0.24)
@@ -498,6 +537,8 @@ def build_all():
     objs.append(quadruped("animal_wolf", 1.25, 0.78, 0.42, (0.46, 0.44, 0.42), belly=(0.72, 0.70, 0.66), hoof=(0.18, 0.17, 0.16), head=0.21, neck=0.22, neck_up=25, ears=0.11, tail=0.45, bushy=True, snout=0.9, seed=36))
     objs.append(quadruped("animal_fox", 0.75, 0.4, 0.2, (0.78, 0.38, 0.14), belly=(0.92, 0.88, 0.80), hoof=(0.12, 0.08, 0.06), head=0.13, neck=0.1, neck_up=30, ears=0.08, tail=0.38, bushy=True, tail_tip=(0.95, 0.94, 0.90), snout=1.0, seed=37))
     objs.append(quadruped("animal_bear", 2.0, 1.15, 0.5, (0.36, 0.25, 0.16), belly=(0.32, 0.22, 0.14), hoof=(0.12, 0.09, 0.07), width=0.95, head=0.35, neck=0.25, neck_up=10, ears=0.07, tail=0.1, snout=0.7, hump=0.35, seed=38))
+    objs.append(seal("animal_seal"))
+    objs.append(fish("fish_shoal"))
     objs.append(granary("granary"))
     objs.append(conifer("tree_conifer", 8.5, 21))
     objs.append(conifer("tree_conifer_small", 5.5, 22))
@@ -558,7 +599,12 @@ def preview(objs, out):
     cam_data.ortho_scale = x * (0.52 if len(rows) > 1 else 1.02)
     cam = bpy.data.objects.new("cam", cam_data)
     scene.collection.objects.link(cam)
-    cam.location = (x / 2.0, -40.0, 24.0)
+    if len(rows) > 1:
+        cam.location = (x / 2.0, -40.0, 24.0)
+    else:
+        # a single row: aim at its middle (the camera looks down 22 degrees from the horizon)
+        top = max(o.dimensions.z for o in rows[0])
+        cam.location = (x / 2.0, 16.0 - 24.0 / math.tan(math.radians(22)), 24.0 + top * 0.5)
     cam.rotation_euler = (math.radians(68), 0, 0)
     scene.camera = cam
     world = bpy.data.worlds.new("w")
@@ -579,7 +625,7 @@ def main():
     if only:
         # just these models (by name prefix); the others are dropped before export and preview
         for o in list(objs):
-            if not o.name.startswith(only):
+            if not any(o.name.startswith(p) for p in only.split(",")):
                 bpy.data.objects.remove(o)
                 objs.remove(o)
     export(objs, out)

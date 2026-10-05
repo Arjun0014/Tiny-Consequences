@@ -171,6 +171,10 @@ namespace TC2.Game
             File.WriteAllBytes(Path.Combine(_dir, name + ".png"), tex.EncodeToPNG());
             Destroy(tex); rt.Release(); Destroy(rt);
             Debug.Log("[TC2] shot " + name);
+            var sea = FindAnyObjectByType<SeaLifeView>();
+            if (sea != null) Debug.Log("[TC2] sea life: shoals " + sea.Shoals + " drawn " + sea.Drawn + " seals " + sea.SealsDrawn + " | " + sea.Why);
+            var wild = FindAnyObjectByType<WildlifeView>();
+            if (wild != null) Debug.Log("[TC2] wildlife drawn " + wild.Drawn);
         }
     }
 }

@@ -98,6 +98,44 @@ namespace TC2.Game
                 LookAt(d, view == "wildfar" ? 320 : 120);
                 return;
             }
+            if (view.StartsWith("coast"))
+            {
+                // the liveliest shore within 8 km of the first village: seals first, then the shoals off a coast (D2-039)
+                var P = w.Planet;
+                int best = -1; double bv = 0;
+                for (int c = 0; c < P.Cells; c++)
+                {
+                    if (P.IsLand(c) || P.Species.Count == 0) continue;
+                    if (Vec3d.ArcDistance(P.Grid.Center[c], d, P.Radius) > 8000) continue;
+                    bool shore = false;
+                    for (int q = 0; q < 4; q++) if (P.IsLand(P.Grid.Nbr4[c * 4 + q])) shore = true;
+                    if (!shore) continue;
+                    double v = 0;
+                    for (int s = 0; s < P.Species.Count; s++)
+                    {
+                        var sp = P.Species[s];
+                        if (sp.Habitat != 1) continue;
+                        double N = P.Abund[s * P.Cells + c];
+                        v += sp.Kind == 12 ? N * 1000.0 : sp.Plankton > 0 ? N * 0.01 : 0.0;
+                    }
+                    if (v > bv) { bv = v; best = c; }
+                }
+                if (best >= 0)
+                {
+                    // look a little out to sea from that shore: the beach in view, and the water off it
+                    int far = best; double fd = -1;
+                    for (int q = 0; q < 4; q++)
+                    {
+                        int nb = P.Grid.Nbr4[best * 4 + q];
+                        if (P.IsLand(nb)) continue;
+                        double depth = P.SeaLevel - P.Elev[nb];
+                        if (depth > fd) { fd = depth; far = nb; }
+                    }
+                    d = (P.Grid.Center[best] * 0.6 + P.Grid.Center[far] * 0.4).Normalized;
+                }
+                LookAt(d, view == "coastfar" ? 300 : 90);
+                return;
+            }
             if (view.StartsWith("volcano"))
             {
                 // the volcano nearest the first village (land vents first)

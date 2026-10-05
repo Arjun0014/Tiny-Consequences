@@ -31,7 +31,7 @@ namespace TC2.Game
             _terrain = Materials.Load("Terrain");
             _water = Materials.Load("Water");
             // the look is defined here (a material asset keeps whatever values it was first saved with)
-            _water.SetFloat("_Alpha", 0.6f);
+            _water.SetFloat("_Alpha", 0.3f);   // the sea floor carries the water's colour by depth (Terrain.shader, D2-040)
             _water.SetColor("_Shallow", new Color(0.10f, 0.46f, 0.56f));
             _water.SetColor("_Deep", new Color(0.02f, 0.10f, 0.24f));
             _water.SetColor("_Sky", new Color(0.62f, 0.75f, 0.90f));

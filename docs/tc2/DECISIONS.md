@@ -781,3 +781,28 @@ and seals the herring grow (+8 % over years 6-10) until they go hungry. Seeds 42
 more than before the sea (mostly the doubled occupied species-cells).
 **Invalidation.** If the sea's cost blocks the Web budgets, step the sea every other ecology step; if seals die out
 in most worlds, widen their prey (more kinds of fish).
+
+## D2-040 — 2026-10-05 — Water coloured by its depth on the sea floor; the sea's life in the view
+
+**Context.** Shoals drawn a metre under the sea vanished: the sea surface was 60-90 % opaque everywhere (one colour,
+one alpha) because the scene depth texture is off (D2-026: unreliable and a cost on the Web), so the shallows read as
+flat grey-green and nothing under the water showed. The world's coasts should look like a miniature's: clear water
+over sand, turquoise shelves, deep blue.
+**Decision.**
+- **The sea floor carries the water's colour** (`Terrain.shader`): below the sea surface each fragment knows its own
+  depth (`_TC2SeaRadius`), so it is seen through that much water by Beer-Lambert (the floor shows through
+  `exp(-depth / 3.2 m)`, the rest is water whose colour runs from turquoise to deep blue over 28 m). The sea surface
+  thins to 30 % (+ fresnel): sky, sun glint, ripples and the moon's path - its body colour now matters little.
+- **Things under the water** use the same veil (`Underwater.shader`, opaque, instanced): the fish of a shoal are drawn
+  as solid objects veiled by their depth, the thin surface over them.
+- **Sea life view** (`SeaLifeView`): near the camera, sea cells show one shoal per ~500 shoaling fish (herring,
+  sardines and their descendants; up to ten a cell), 15-40 fish swirling about a centre that drifts on a slow loop of
+  the world's time, swimming higher (and drawn smaller) in the shallows, never into the sand; fish 6-9x life size with
+  dark backs and the flash of a turning flank; now and then a fish leaps and splashes (a tuna where tuna hunt); far
+  away fewer shoals and no leaps. Seals (Blender kit `animal_seal`) rest at the water's edge beside the sea cells that
+  hold them, side by side looking out to sea, and swim off it by turns (heads and backs above the water). All keyed
+  and drawn from the fields: watching never changes the world. Camera presets `coast`/`coastfar`.
+**Evidence.** Shots `tc2/out/shots/sea9`-`sea11` (coast, village, region, orbit): clear shallows over sand to
+turquoise and deep blue, shoals glinting in the bay by the first village, leaps and splashes; 34 shoals (900 fish)
+near the shore, 90-120 shoals (2,500-3,300 fish) from the village view.
+**Invalidation.** If the Web frame budget suffers, cap the fish per frame (now up to ~3,300).
