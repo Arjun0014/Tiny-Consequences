@@ -239,8 +239,8 @@ def broadleaf(name, height, seed, palette=((0.30, 0.47, 0.20), (0.36, 0.53, 0.23
         d = height * r.uniform(0.11, 0.19)
         c = (math.cos(a) * d, math.sin(a) * d, top + r.uniform(-0.10, 0.16) * height)
         p = palette[i % len(palette)]
-        k.blob(c, height * r.uniform(0.16, 0.22), srgb(p[0] + r.uniform(-0.03, 0.03), p[1] + r.uniform(-0.03, 0.03), p[2]), subdiv=2, jitter=0.10, squash=0.85, smooth=True)
-    k.blob((0, 0, top + height * 0.15), height * 0.23, srgb(*palette[1]), subdiv=2, jitter=0.08, squash=0.8, smooth=True)
+        k.blob(c, height * r.uniform(0.16, 0.22), srgb(p[0] + r.uniform(-0.03, 0.03), p[1] + r.uniform(-0.03, 0.03), p[2], 1.0), subdiv=2, jitter=0.10, squash=0.85, smooth=True)
+    k.blob((0, 0, top + height * 0.15), height * 0.23, srgb(palette[1][0], palette[1][1], palette[1][2], 1.0), subdiv=2, jitter=0.08, squash=0.8, smooth=True)
     return k.finish()
 
 
@@ -253,7 +253,7 @@ def birch(name, height, seed):
         k.box((0, 0, z), (0.27, 0.27, 0.06), srgb(0.2, 0.2, 0.2), rot_z=r.uniform(0, 3))
     for i in range(4):
         z = height * (0.55 + 0.12 * i)
-        k.blob((r.uniform(-0.3, 0.3), r.uniform(-0.3, 0.3), z), height * (0.16 - 0.02 * i), srgb(0.48, 0.62, 0.26), subdiv=2, jitter=0.12, squash=1.3, smooth=True)
+        k.blob((r.uniform(-0.3, 0.3), r.uniform(-0.3, 0.3), z), height * (0.16 - 0.02 * i), srgb(0.48, 0.62, 0.26, 1.0), subdiv=2, jitter=0.12, squash=1.3, smooth=True)
     return k.finish()
 
 
@@ -262,7 +262,7 @@ def bush(name, seed):
     r = k.rng
     for i in range(4):
         a = i * 1.7
-        k.blob((math.cos(a) * 0.4, math.sin(a) * 0.4, 0.45 + r.uniform(0, 0.2)), r.uniform(0.45, 0.65), srgb(0.28 + r.uniform(0, 0.05), 0.44 + r.uniform(0, 0.06), 0.19), subdiv=2, jitter=0.12, squash=0.8, smooth=True)
+        k.blob((math.cos(a) * 0.4, math.sin(a) * 0.4, 0.45 + r.uniform(0, 0.2)), r.uniform(0.45, 0.65), srgb(0.28 + r.uniform(0, 0.05), 0.44 + r.uniform(0, 0.06), 0.19, 1.0), subdiv=2, jitter=0.12, squash=0.8, smooth=True)
     return k.finish()
 
 

@@ -100,6 +100,8 @@ namespace TC2.Game
                 _builtWorld = Host.WorldVersion; _builtCoast = P.CoastVersion; _builtRelief = P.ReliefVersion;
                 for (int f = 0; f < 6; f++) Build(w, Get(f, 0, 0, 0)); // roots now: never a hole
             }
+            _roadTimer -= Time.unscaledDeltaTime;
+            if (_roadTimer <= 0 || _roadWorld != Host.WorldVersion) { _roadTimer = 10f; _roadWorld = Host.WorldVersion; BuildRoads(w); }
             Select(w);
             BuildSome(w);
             Show();
@@ -455,7 +457,75 @@ namespace TC2.Game
             }
         }
 
-        static readonly Color Earth = new Color(0.56f, 0.47f, 0.35f), Trodden = new Color(0.52f, 0.54f, 0.34f);
+        static readonly Color Earth = new Color(0.56f, 0.47f, 0.35f), Trodden = new Color(0.52f, 0.54f, 0.34f), Road = new Color(0.58f, 0.50f, 0.38f);
+        // roads: the villages' own routes, smoothed, indexed by the cells they pass (rebuilt now and then)
+        readonly System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<Vector3>> _roads = new System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<Vector3>>();
+        float _roadTimer;
+        int _roadWorld = -1;
+
+        void BuildRoads(TC2.Core.Simulation.World w)
+        {
+            var P = w.Planet;
+            _roads.Clear();
+            var pts = new System.Collections.Generic.List<Vec3d>();
+            var tmp = new System.Collections.Generic.List<Vec3d>();
+            for (int a = w.Settlements.First(); a != 0; a = w.Settlements.Next(a))
+            {
+                ref var sa = ref w.Settlements.Get(a);
+                if (!sa.Inhabited) continue;
+                for (int b = w.Settlements.Next(a); b != 0; b = w.Settlements.Next(b))
+                {
+                    ref var sb = ref w.Settlements.Get(b);
+                    if (!sb.Inhabited) continue;
+                    if (Vec3d.ArcDistance(sa.Anchor, sb.Anchor, P.Radius) > 4500) continue;
+                    var r = w.Routes.Get(w, a, b);
+                    if (r == null || r.Pts == null || r.Pts.Length < 2) continue;
+                    // Chaikin twice: a track that bends, not a chain of straight cell-to-cell legs
+                    pts.Clear(); pts.AddRange(r.Pts);
+                    for (int it = 0; it < 2; it++)
+                    {
+                        tmp.Clear(); tmp.Add(pts[0]);
+                        for (int k = 0; k + 1 < pts.Count; k++)
+                        {
+                            tmp.Add((pts[k] * 0.75 + pts[k + 1] * 0.25).Normalized);
+                            tmp.Add((pts[k] * 0.25 + pts[k + 1] * 0.75).Normalized);
+                        }
+                        tmp.Add(pts[pts.Count - 1]);
+                        pts.Clear(); pts.AddRange(tmp);
+                    }
+                    for (int k = 0; k + 1 < pts.Count; k++)
+                    {
+                        Vec3d p0 = pts[k], p1 = pts[k + 1];
+                        int c0 = P.Grid.CellOf(p0);
+                        AddRoad(P, c0, p0, p1);
+                        for (int q = 0; q < 8; q++) AddRoad(P, P.Grid.Nbr8[c0 * 8 + q], p0, p1);
+                    }
+                }
+            }
+        }
+
+        void AddRoad(PlanetState P, int cell, Vec3d a, Vec3d b)
+        {
+            if (!_roads.TryGetValue(cell, out var list)) { list = new System.Collections.Generic.List<Vector3>(); _roads[cell] = list; }
+            list.Add(PlanetGeo.ToVector(a)); list.Add(PlanetGeo.ToVector(b));
+        }
+
+        /// <summary>How much of a point is road (metres to the nearest track, on the sphere's chord).</summary>
+        float RoadAt(PlanetState P, Vec3d d, int c)
+        {
+            if (!_roads.TryGetValue(c, out var list)) return 0f;
+            Vector3 p = PlanetGeo.ToVector(d);
+            float best = 1e9f;
+            for (int k = 0; k + 1 < list.Count; k += 2)
+            {
+                Vector3 a = list[k], ab = list[k + 1] - a;
+                float t = Mathf.Clamp01(Vector3.Dot(p - a, ab) / Mathf.Max(1e-12f, ab.sqrMagnitude));
+                float dd = (a + ab * t - p).sqrMagnitude;
+                if (dd < best) best = dd;
+            }
+            float m = Mathf.Sqrt(best) * (float)P.Radius;
+            return 1f - Edge(1.2f, 3.0f, m);
+        }
         readonly System.Collections.Generic.List<int> _near = new System.Collections.Generic.List<int>();
 
         /// <summary>Packed earth on the square, yards round the houses, footpaths from each door to the square.</summary>
@@ -556,6 +626,8 @@ namespace TC2.Game
                         col = VillageGround(w, st, _near[q], vx, vy, col);
                         VillageVerts++;
                     }
+                    float road = RoadAt(P, d, c);
+                    if (road > 0) col = Color.Lerp(col, Road, road * 0.85f);
                     // natural variation: meadow patches warmer or cooler, small brightness noise
                     float hue = (float)Noise.Fbm(d.X * 9.0, d.Y * 9.0, d.Z * 9.0, 2);
                     float fine = (float)Noise.Perlin(d.X * 140.0, d.Y * 140.0, d.Z * 140.0);

@@ -6,6 +6,7 @@ Shader "TC2/Instanced"
     {
         _BaseColor ("Color", Color) = (1, 1, 1, 1)
         _Emission ("Emission", Float) = 0
+        _Anim ("Walk", Float) = 0
         _AmbientSky ("Ambient Sky", Color) = (0.45, 0.50, 0.62, 1)
         _AmbientGround ("Ambient Ground", Color) = (0.22, 0.19, 0.16, 1)
     }
@@ -28,6 +29,7 @@ Shader "TC2/Instanced"
             CBUFFER_START(UnityPerMaterial)
                 half4 _BaseColor;
                 half _Emission;
+                half _Anim;
                 half4 _AmbientSky;
                 half4 _AmbientGround;
             CBUFFER_END
@@ -41,7 +43,28 @@ Shader "TC2/Instanced"
             {
                 Varyings o;
                 UNITY_SETUP_INSTANCE_ID(v);
-                VertexPositionInputs p = GetVertexPositionInputs(v.positionOS.xyz);
+                float3 lp = v.positionOS.xyz;
+                if (_Anim > 0.5)
+                {
+                    // a walk: each leg swings about the hip, arms the other way, the body rises at each step
+                    float3 origin = mul(UNITY_MATRIX_M, float4(0, 0, 0, 1)).xyz;
+                    float phase = _Time.y * 7.0 + dot(origin, float3(0.37, 0.61, 0.83));
+                    float side = lp.x >= 0 ? 1.0 : -1.0;
+                    if (lp.y < 0.9)
+                    {
+                        float a = sin(phase) * 0.42 * side;
+                        float dy = lp.y - 0.9;
+                        lp.z += -dy * sin(a); lp.y = 0.9 + dy * cos(a);
+                    }
+                    else if (lp.y < 1.5 && abs(lp.x) > 0.2)
+                    {
+                        float a = -sin(phase) * 0.35 * side;
+                        float dy = lp.y - 1.5;
+                        lp.z += -dy * sin(a); lp.y = 1.5 + dy * cos(a);
+                    }
+                    lp.y += abs(sin(phase)) * 0.035;
+                }
+                VertexPositionInputs p = GetVertexPositionInputs(lp);
                 o.positionCS = p.positionCS;
                 o.positionWS = p.positionWS;
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);

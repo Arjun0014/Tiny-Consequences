@@ -173,11 +173,14 @@ namespace TC2.Game
                     _treeCache[c] = entry;
                 }
                 var list = entry.Trees;
+                Color leaf = SeasonTint(w, c);
                 for (int k = 0; k < list.Length; k++)
                 {
                     var t = list[k];
                     float b = 0.88f + 0.10f * t.Shade;
-                    _trees[t.Kind].Add(t.Shade, new Color(b, b, b, b), Matrix4x4.TRS(t.Pos, t.Rot, Vector3.one * (t.Scale * ex)));
+                    bool deciduous = t.Kind >= Broadleaf;
+                    Color tint = deciduous ? new Color(leaf.r * b, leaf.g * b, leaf.b * b, b) : new Color(b, b, b, b);
+                    _trees[t.Kind].Add(t.Shade + (deciduous ? 10 * SeasonBucket(w, c) : 0), tint, Matrix4x4.TRS(t.Pos, t.Rot, Vector3.one * (t.Scale * ex)));
                 }
                 TreesDrawn += list.Length;
             }
@@ -203,6 +206,31 @@ namespace TC2.Game
                         _trees[kind].Add(1, new Color(0.98f, 0.98f, 0.98f, 0.98f), Place(P, s, x, y, k * 70f, sc * ex));
                     }
                 }
+            }
+        }
+
+        /// <summary>Where the year stands at a cell (0 spring .. 1 end of winter; the south has the opposite seasons).</summary>
+        static float YearAt(TC2.Core.Simulation.World w, int c)
+        {
+            float f = (float)SimTime.YearFraction(w.Now);
+            if (w.Planet.SinLat[c] < 0) f = (f + 0.5f) % 1f;
+            return f;
+        }
+
+        static int SeasonBucket(TC2.Core.Simulation.World w, int c) => Mathf.Clamp((int)(YearAt(w, c) * 8f), 0, 7);
+
+        /// <summary>The colour leaves take through the year (deciduous canopies): fresh, summer, gold and rust, bare.</summary>
+        static Color SeasonTint(TC2.Core.Simulation.World w, int c)
+        {
+            if (w.Planet.TMean[c] > 21f) return Color.white; // no autumn in the tropics
+            switch (SeasonBucket(w, c))
+            {
+                case 0: return new Color(1.08f, 1.12f, 0.86f);      // early spring: fresh
+                case 1: case 2: case 3: return Color.white;         // late spring, summer
+                case 4: return new Color(1.12f, 1.0f, 0.70f);       // early autumn: turning
+                case 5: return new Color(1.45f, 0.86f, 0.40f);      // autumn: gold and rust
+                case 6: return new Color(0.78f, 0.60f, 0.45f);      // late autumn: falling
+                default: return new Color(0.58f, 0.50f, 0.44f);     // winter: bare
             }
         }
 
@@ -288,7 +316,18 @@ namespace TC2.Game
                 float age = (float)p.AgeYears((long)t);
                 float sc = (age < 12 ? 0.55f + age * 0.038f : 1f) * 1.35f * Exaggeration(pos, 2.5f); // a little larger than life, to be read
                 int dye = (int)(KeyedRng.Mix((ulong)id * 0x2545F4914F6CDD1DUL) % (ulong)Dyes.Length);
-                _people.Add(dye, Dyes[dye], Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, (id * 53) % 360), Vector3.one * sc));
+                // walking: on a road, or the walk at the start of a step; they face where they go
+                bool walking = p.Step == StepKind.Travel || (p.Step == StepKind.Local && t < p.TA);
+                float yaw = (id * 53) % 360;
+                if (walking)
+                {
+                    Vec3d ahead = w.Agents.PositionAt(p, t + 20.0);
+                    Vector3 dirTo = PlanetGeo.Surface(P, ahead) - pos;
+                    Vector3 up = pos.normalized;
+                    Vector3 flat = Vector3.ProjectOnPlane(dirTo, up);
+                    if (flat.sqrMagnitude > 1e-6f) yaw = Vector3.SignedAngle(Vector3.ProjectOnPlane(PlanetGeo.Upright(pos, 0) * Vector3.forward, up), flat, up);
+                }
+                _people.Add(dye + (walking ? 100 : 0), Dyes[dye], Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, yaw), Vector3.one * sc), 0f, walking ? 1f : 0f);
                 PeopleDrawn++;
             }
         }

@@ -17,6 +17,8 @@ namespace TC2.Game
         readonly List<int> _keys = new List<int>();
         readonly Dictionary<int, Color> _colors = new Dictionary<int, Color>();
         readonly Dictionary<int, float> _emission = new Dictionary<int, float>();
+        readonly Dictionary<int, float> _anim = new Dictionary<int, float>();
+        static readonly int Anim = Shader.PropertyToID("_Anim");
         readonly Matrix4x4[] _batch = new Matrix4x4[1023];
         readonly MaterialPropertyBlock _mpb = new MaterialPropertyBlock();
         static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
@@ -35,7 +37,7 @@ namespace TC2.Game
         }
 
         /// <summary>Adds an instance in colour group <paramref name="group"/> (colour set once per group).</summary>
-        public void Add(int group, Color color, Matrix4x4 m, float emission = 0f)
+        public void Add(int group, Color color, Matrix4x4 m, float emission = 0f, float anim = 0f)
         {
             if (!_groups.TryGetValue(group, out var list))
             {
@@ -45,6 +47,7 @@ namespace TC2.Game
             }
             _colors[group] = color;
             _emission[group] = emission;
+            _anim[group] = anim;
             list.Add(m);
             Count++;
         }
@@ -59,6 +62,7 @@ namespace TC2.Game
                 if (list.Count == 0) continue;
                 _mpb.SetColor(BaseColor, _colors[key]);
                 _mpb.SetFloat(Emission, _emission[key]);
+                _mpb.SetFloat(Anim, _anim[key]);
                 rp.matProps = _mpb;
                 for (int start = 0; start < list.Count; start += _batch.Length)
                 {
