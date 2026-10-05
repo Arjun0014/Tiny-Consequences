@@ -30,6 +30,11 @@ namespace TC2.Game
         {
             _terrain = Materials.Load("Terrain");
             _water = Materials.Load("Water");
+            // the look is defined here (a material asset keeps whatever values it was first saved with)
+            _water.SetFloat("_Alpha", 0.6f);
+            _water.SetColor("_Shallow", new Color(0.10f, 0.46f, 0.56f));
+            _water.SetColor("_Deep", new Color(0.02f, 0.10f, 0.24f));
+            _water.SetColor("_Sky", new Color(0.62f, 0.75f, 0.90f));
             _atmo = Materials.Load("Atmosphere");
         }
 
@@ -40,9 +45,27 @@ namespace TC2.Game
             var P = w.Planet;
             _sinceBuild += Time.unscaledDeltaTime;
             bool iceMoved = System.Math.Abs(P.IceVolume - _builtIce) > 0.04 * System.Math.Max(_builtIce, 1e9) && _sinceBuild > 10f;
-            if (_built != Host.WorldVersion || _coast != P.CoastVersion || iceMoved) Build(); // a new world, a new coast, grown or shrunk ice
-            _recolor += Time.unscaledDeltaTime;
-            if (_recolor > 2f) { _recolor = 0; Recolor(); }
+            if (_built != Host.WorldVersion || _coast != P.CoastVersion) BuildShell(); // the ground itself is TerrainLod
+        }
+
+        void BuildShell()
+        {
+            var P = Host.World.Planet;
+            _built = Host.WorldVersion;
+            _coast = P.CoastVersion;
+            if (_sea == null)
+            {
+                _sea = new GameObject("Sea");
+                _sea.transform.SetParent(transform, false);
+                _sea.AddComponent<MeshFilter>().sharedMesh = ProcMeshes.Sphere(1f, 192, 384);
+                var mr = _sea.AddComponent<MeshRenderer>(); mr.sharedMaterial = _water; mr.shadowCastingMode = ShadowCastingMode.Off;
+                _air = new GameObject("Atmosphere");
+                _air.transform.SetParent(transform, false);
+                _air.AddComponent<MeshFilter>().sharedMesh = ProcMeshes.Sphere(1f, 64, 128);
+                var ar = _air.AddComponent<MeshRenderer>(); ar.sharedMaterial = _atmo; ar.shadowCastingMode = ShadowCastingMode.Off;
+            }
+            _sea.transform.localScale = Vector3.one * (float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel));
+            _air.transform.localScale = Vector3.one * (float)(P.Radius * 1.07);
         }
 
         void Build()

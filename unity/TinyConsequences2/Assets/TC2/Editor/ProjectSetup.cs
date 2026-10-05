@@ -85,7 +85,7 @@ namespace TC2.EditorTools
         {
             string assetPath = SettingsDir + "/TC2_URP.asset";
             var urp = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(assetPath);
-            if (urp != null) return urp;
+            if (urp != null) { Tune(urp); return urp; }
             var rendererData = ScriptableObject.CreateInstance<UniversalRendererData>();
             AssetDatabase.CreateAsset(rendererData, SettingsDir + "/TC2_URP_Renderer.asset");
             urp = UniversalRenderPipelineAsset.Create(rendererData);
@@ -94,7 +94,26 @@ namespace TC2.EditorTools
             urp.supportsHDR = true;
             urp.msaaSampleCount = 4;
             AssetDatabase.CreateAsset(urp, assetPath);
+            Tune(urp);
             return urp;
+        }
+
+        /// <summary>The look's needs (D2-026): post-processing resources, the depth texture (water), four shadow cascades.</summary>
+        static void Tune(UniversalRenderPipelineAsset urp)
+        {
+            urp.supportsCameraDepthTexture = true;
+            urp.supportsHDR = true;
+            urp.shadowCascadeCount = 4;
+            urp.shadowDistance = 1500f;
+            var rd = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(SettingsDir + "/TC2_URP_Renderer.asset");
+            if (rd != null && rd.postProcessData == null)
+            {
+                rd.postProcessData = AssetDatabase.LoadAssetAtPath<PostProcessData>("Packages/com.unity.render-pipelines.universal/Runtime/Data/PostProcessData.asset");
+                Debug.Log("[TC2] post-processing resources " + (rd.postProcessData != null ? "assigned" : "NOT FOUND"));
+                EditorUtility.SetDirty(rd);
+            }
+            EditorUtility.SetDirty(urp);
+            AssetDatabase.SaveAssets();
         }
 
         static void EnsureScene()

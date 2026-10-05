@@ -118,6 +118,7 @@ namespace TC2.Game
         {
             var sw = Stopwatch.StartNew();
             var w = WorldGenerator.Create(new WorldConfig { Seed = seed });
+            CatchingUp = false; // a new world owes no absence
             SetWorld(w);
             Debug.Log("[TC2] new world seed " + seed + " generated in " + sw.ElapsedMilliseconds + " ms: " + w.LivingPeople() + " people in " + w.InhabitedSettlements() + " places");
             SaveNow();

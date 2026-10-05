@@ -34,14 +34,8 @@ namespace TC2.Game
             return (e00 * (1 - fu) + e10 * fu) * (1 - fv) + (e01 * (1 - fu) + e11 * fu) * fv;
         }
 
-        /// <summary>Scene position of a surface point (on land, never below the sea surface).</summary>
-        public static Vector3 Surface(PlanetState P, Vec3d dir, float lift = 0f)
-        {
-            double e = Elevation(P, dir);
-            double h = System.Math.Max(e, P.SeaLevel);
-            double r = P.Radius + h * VScale + lift;
-            return new Vector3((float)(dir.X * r), (float)(dir.Y * r), (float)(dir.Z * r));
-        }
+        /// <summary>Scene position of a surface point (on land, never below the sea surface): the drawn ground.</summary>
+        public static Vector3 Surface(PlanetState P, Vec3d dir, float lift = 0f) => Ground.Surface(P, dir, lift);
 
         public static Vector3 ToVector(Vec3d v) => new Vector3((float)v.X, (float)v.Y, (float)v.Z);
         public static Vec3d ToVec(Vector3 v) => new Vec3d(v.x, v.y, v.z);
@@ -65,9 +59,9 @@ namespace TC2.Game
                 case Biome.Ice: return new Color(0.92f, 0.95f, 0.98f);
                 case Biome.Tundra: return new Color(0.58f, 0.60f, 0.52f);
                 case Biome.Taiga: return new Color(0.17f, 0.33f, 0.24f);
-                case Biome.Grassland: return new Color(0.50f, 0.66f, 0.30f);
-                case Biome.Woodland: return new Color(0.32f, 0.52f, 0.22f);
-                case Biome.Forest: return new Color(0.18f, 0.40f, 0.16f);
+                case Biome.Grassland: return new Color(0.47f, 0.58f, 0.30f);
+                case Biome.Woodland: return new Color(0.35f, 0.48f, 0.24f);
+                case Biome.Forest: return new Color(0.25f, 0.38f, 0.19f);
                 case Biome.Jungle: return new Color(0.10f, 0.36f, 0.14f);
                 case Biome.Savanna: return new Color(0.70f, 0.64f, 0.34f);
                 case Biome.Desert: return new Color(0.86f, 0.76f, 0.52f);

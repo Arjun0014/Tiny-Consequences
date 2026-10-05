@@ -33,7 +33,8 @@ namespace TC2.Game
             sun.color = new Color(1f, 0.96f, 0.88f);
             sun.intensity = 1.25f;
             sun.shadows = LightShadows.Soft;
-            sun.shadowStrength = 0.75f;
+            sun.shadowStrength = 0.8f;
+            sun.shadowBias = 0.05f; sun.shadowNormalBias = 0.4f;
             RenderSettings.ambientMode = AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.25f, 0.27f, 0.32f);
 
@@ -43,8 +44,12 @@ namespace TC2.Game
             var views = new GameObject("Views");
             var planet = views.AddComponent<PlanetView>();
             planet.Host = host;
+            var terrain = views.AddComponent<TerrainLod>();
+            terrain.Host = host; terrain.Rig = rig;
             var water = views.AddComponent<WaterView>();
             water.Host = host;
+            var sky = views.AddComponent<Sky>();
+            sky.Host = host; sky.Rig = rig; sky.Sun = sun;
             var objects = views.AddComponent<WorldObjectsView>();
             objects.Host = host; objects.Rig = rig;
 
@@ -52,6 +57,11 @@ namespace TC2.Game
             hud.Host = host; hud.Rig = rig; hud.Objects = objects;
             var bridge = gameObject.AddComponent<WebBridge>();
             bridge.Host = host; bridge.Rig = rig;
+            if (ShotRunner.Arg("-tc2shots") != null)
+            {
+                var shots = gameObject.AddComponent<ShotRunner>();
+                shots.Host = host; shots.Rig = rig; shots.Sun = sun;
+            }
         }
     }
 }

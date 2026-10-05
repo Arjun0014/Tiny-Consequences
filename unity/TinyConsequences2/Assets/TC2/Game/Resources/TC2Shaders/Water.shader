@@ -1,12 +1,15 @@
-// TC2 sea: translucent, Fresnel sky reflection, sun glint, gentle procedural ripples.
+// TC2 water (D2-026): colour from the real depth of water under each pixel (the scene depth texture): clear
+// turquoise shallows over sand, deep blue offshore; foam where the water thins at the shore; ripples close in,
+// a soft sheen far away; fresnel sky reflection and sun glint; aerial haze like the land.
 Shader "TC2/Water"
 {
     Properties
     {
-        _Deep ("Deep", Color) = (0.03, 0.12, 0.26, 1)
-        _Shallow ("Shallow", Color) = (0.10, 0.38, 0.52, 1)
-        _Sky ("Sky", Color) = (0.55, 0.70, 0.90, 1)
-        _Alpha ("Alpha", Range(0, 1)) = 0.82
+        _Deep ("Deep", Color) = (0.02, 0.11, 0.24, 1)
+        _Shallow ("Shallow", Color) = (0.15, 0.55, 0.57, 1)
+        _Sky ("Sky", Color) = (0.58, 0.72, 0.90, 1)
+        _Alpha ("Alpha", Range(0, 1)) = 0.62
+        _DepthScale ("Depth scale (m)", Float) = 14
     }
     SubShader
     {
@@ -20,15 +23,20 @@ Shader "TC2/Water"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
-                half4 _Deep; half4 _Shallow; half4 _Sky; half _Alpha;
+                half4 _Deep; half4 _Shallow; half4 _Sky; half _Alpha; float _DepthScale;
             CBUFFER_END
+            TEXTURE2D(_TC2Detail); SAMPLER(sampler_TC2Detail);
+            float4 _TC2FogColor;
+            float _TC2FogDensity;
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; float4 screenPos : TEXCOORD2; };
 
             Varyings vert(Attributes v)
             {
@@ -36,27 +44,41 @@ Shader "TC2/Water"
                 VertexPositionInputs p = GetVertexPositionInputs(v.positionOS.xyz);
                 o.positionCS = p.positionCS; o.positionWS = p.positionWS;
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);
+                o.screenPos = ComputeScreenPos(p.positionCS);
                 return o;
             }
 
+            half Noise2(float2 uv) { return SAMPLE_TEXTURE2D(_TC2Detail, sampler_TC2Detail, uv).r; }
+
             half4 frag(Varyings i) : SV_Target
             {
-                float3 n = normalize(i.normalWS);
-                float t = _Time.y;
-                float3 q = i.positionWS * 0.02;
-                float dist = length(_WorldSpaceCameraPos - i.positionWS);
-                float near = saturate(1.0 - dist / 6000.0);
-                n = normalize(n + 0.035 * near * float3(sin(q.x * 3.1 + t * 0.7) + sin(q.z * 2.3 - t * 0.5), sin(q.y * 2.7 + t * 0.6), sin(q.z * 3.3 + t * 0.4) + sin(q.x * 1.9 - t * 0.8)));
-                float3 v = normalize(GetWorldSpaceViewDir(i.positionWS));
-                Light l = GetMainLight();
                 float3 up = normalize(i.positionWS);
+                float t = _Time.y;
+                float3 camRel = i.positionWS - _WorldSpaceCameraPos;
+                float dist = length(camRel);
+                float3 v = -camRel / dist;
+                half near = saturate(1.0 - dist / 6000.0);
+                // ripples: two scrolling noise layers tilt the normal (close in only)
+                float3 wp = i.positionWS;
+                float2 uvA = (abs(up.y) > 0.5 ? wp.xz : (abs(up.x) > 0.5 ? wp.yz : wp.xy));
+                half r1 = Noise2(uvA / 37.0 + float2(t * 0.011, t * 0.007)) - 0.5h;
+                half r2 = Noise2(uvA / 9.0 - float2(t * 0.019, -t * 0.013)) - 0.5h;
+                float3 tangent = normalize(cross(up, float3(0.0, 1.0, 0.001)));
+                float3 bitangent = cross(up, tangent);
+                float3 n = normalize(up + (tangent * (r1 * 0.22 + r2 * 0.12) + bitangent * (r2 * 0.22 - r1 * 0.10)) * near);
+                // the sea floor below is coloured by its own depth (sand in the shallows): the water lets it through
+                Light l = GetMainLight(TransformWorldToShadowCoord(i.positionWS));
                 half day = saturate(dot(up, l.direction) * 3.0h + 0.2h);
+                half ndl = saturate(dot(n, l.direction) * 0.6h + 0.4h);
+                half3 body = lerp(_Shallow.rgb, _Deep.rgb, 0.55h) * (0.35h + 0.65h * ndl);
                 half fres = pow(1.0h - saturate(dot(n, v)), 4.0h);
-                half3 body = lerp(_Shallow.rgb, _Deep.rgb, saturate(dot(n, v)));
                 float3 h = normalize(l.direction + v);
-                half spec = pow(saturate(dot(n, h)), lerp(48.0h, 180.0h, near)) * lerp(0.16h, 3.0h, near);
-                half3 c = (body * (0.25h + 0.75h * saturate(dot(n, l.direction) * 0.6h + 0.4h)) + _Sky.rgb * fres * 0.6h) * (0.15h + 0.85h * day) + l.color * spec * day;
-                return half4(c, saturate(_Alpha + fres * 0.3h));
+                half spec = pow(saturate(dot(n, h)), lerp(60.0h, 220.0h, near)) * lerp(0.25h, 2.6h, near) * lerp(0.35h, 1.0h, l.shadowAttenuation);
+                half3 c = (body + _Sky.rgb * fres * 0.55h) * (0.12h + 0.88h * day) + l.color * spec * day;
+                half alpha = saturate(_Alpha + fres * 0.3h);
+                half fog = 1.0h - exp(-dist * _TC2FogDensity);
+                c = lerp(c, _TC2FogColor.rgb * (0.25h + 0.75h * day), fog * 0.85h);
+                return half4(c, alpha);
             }
             ENDHLSL
         }

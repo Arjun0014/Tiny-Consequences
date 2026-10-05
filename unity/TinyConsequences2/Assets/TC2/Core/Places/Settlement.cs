@@ -63,7 +63,7 @@ namespace TC2.Core.Places
         /// <summary>Local position of house lot k: a golden-angle spiral around the square.</summary>
         public void LotPosition(int k, out float x, out float y)
         {
-            double ang = k * 2.39996323, rad = 26.0 + 10.0 * DMath.Sqrt(k + 1);
+            double ang = k * 2.39996323, rad = 15.0 + 9.5 * DMath.Sqrt(k + 1);
             x = (float)(SquareX + DMath.Cos(ang) * rad);
             y = (float)(SquareY + DMath.Sin(ang) * rad);
         }

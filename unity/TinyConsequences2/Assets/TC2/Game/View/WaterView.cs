@@ -14,7 +14,7 @@ namespace TC2.Game
     public sealed class WaterView : MonoBehaviour
     {
         public SimHost Host;
-        const int Pieces = 4;
+        const int Pieces = 8;
         Mesh _rivers, _lakes;
         Material _riverMat, _lakeMat;
         int _builtWorld = -1, _builtDrain = -1;
@@ -57,7 +57,8 @@ namespace TC2.Game
         {
             var P = w.Planet; var d = w.Drainage;
             _v.Clear(); _n.Clear(); _c.Clear(); _t.Clear();
-            Color water = new Color(0.20f, 0.42f, 0.62f).linear;
+            Color water = new Color(0.26f, 0.47f, 0.56f).linear;
+            water.a = 0f; // the terrain material reads alpha as farmland
             for (int c = 0; c < P.Cells; c++)
             {
                 if (!P.IsLand(c) || !P.IsStream(c)) continue;
@@ -65,12 +66,14 @@ namespace TC2.Game
                 if (r < 0) continue;
                 Vec3d a = P.Grid.Center[c];
                 Vec3d b = P.IsLand(r) ? P.Grid.Center[r] : (a * 0.35 + P.Grid.Center[r] * 0.65).Normalized; // reach into the sea
-                float width = Mathf.Clamp(Mathf.Sqrt(P.RiverFlow[c]) * 0.09f, 6f, 70f);
+                float width = Mathf.Clamp(Mathf.Sqrt(P.RiverFlow[c]) * 0.045f, 2.2f, 26f);
                 // a few pieces laid on the ground, so the ribbon follows the curve and the relief between centres
                 Vector3 prev = PlanetGeo.Surface(P, a, 1.2f), sidePrev = Vector3.zero;
                 for (int s = 1; s <= Pieces; s++)
                 {
-                    Vector3 cur = PlanetGeo.Surface(P, Vec3d.Slerp(a, b, s / (double)Pieces), 1.2f);
+                    Vec3d along = Vec3d.Slerp(a, b, s / (double)Pieces);
+                    if (s < Pieces) along = Meander(P, along, a, b);
+                    Vector3 cur = PlanetGeo.Surface(P, along, 0.9f);
                     Vector3 up = (prev + cur).normalized;
                     Vector3 side = Vector3.Cross(up, cur - prev).normalized * (width * 0.5f);
                     if (s == 1) sidePrev = side;
@@ -98,6 +101,15 @@ namespace TC2.Game
             _rivers.RecalculateBounds();
         }
 
+        /// <summary>Rivers wind: a point on a reach is pushed sideways by a smooth noise of where it is (presentation).</summary>
+        static Vec3d Meander(TC2.Core.Planet.PlanetState P, Vec3d at, Vec3d a, Vec3d b)
+        {
+            Vec3d dir = (b - a).Normalized;
+            Vec3d side = Vec3d.Cross(at, dir).Normalized;
+            double n = Noise.Fbm(at.X * 180.0, at.Y * 180.0, at.Z * 180.0, 2);
+            return (at * P.Radius + side * (n * 34.0)).Normalized;
+        }
+
         void BuildLakes(TC2.Core.Simulation.World w)
         {
             var P = w.Planet; var d = w.Drainage;
@@ -108,7 +120,7 @@ namespace TC2.Game
                 Vec3d ctr = P.Grid.Center[c];
                 Settlement.Frame(ctr, out Vec3d east, out Vec3d north);
                 double half = P.CellSize * 0.62;
-                double r = P.Radius + (P.Elev[c] + P.LakeDepth[c]) * PlanetGeo.VScale + 0.4;
+                double r = P.Radius + Ground.WaterHeight(P, P.Elev[c] + P.LakeDepth[c]) + 0.4;
                 int i = _v.Count;
                 for (int k = 0; k < 4; k++)
                 {

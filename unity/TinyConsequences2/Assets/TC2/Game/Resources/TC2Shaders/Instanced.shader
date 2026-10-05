@@ -31,6 +31,8 @@ Shader "TC2/Instanced"
                 half4 _AmbientSky;
                 half4 _AmbientGround;
             CBUFFER_END
+            float4 _TC2FogColor;
+            float _TC2FogDensity;
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; UNITY_VERTEX_INPUT_INSTANCE_ID };
             struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; };
@@ -57,8 +59,13 @@ Shader "TC2/Instanced"
                 half hemi = dot(n, up) * 0.5h + 0.5h;
                 half3 amb = lerp(_AmbientGround.rgb, _AmbientSky.rgb, hemi);
                 half day = saturate(dot(up, l.direction) * 3.0h + 0.25h);
-                half3 albedo = _BaseColor.rgb * i.color.rgb;
-                half3 c = albedo * (amb * lerp(half3(0.34h, 0.38h, 0.52h), half3(1.0h, 1.0h, 1.0h), day) + l.color * ndl * l.shadowAttenuation * 1.15h) + albedo * _Emission;
+                // the kit marks tintable parts (clothes, roofs) with vertex alpha 1; the rest keeps its colour, scaled by alpha
+                half3 albedo = i.color.rgb * lerp(_BaseColor.aaa, _BaseColor.rgb, i.color.a);
+                half wrap = saturate((dot(n, l.direction) + 0.2h) / 1.2h);
+                half3 c = albedo * (amb * lerp(half3(0.34h, 0.38h, 0.52h), half3(1.0h, 1.0h, 1.0h), day) + l.color * wrap * lerp(0.3h, 1.0h, l.shadowAttenuation) * 1.15h) + albedo * _Emission;
+                float dist = length(i.positionWS - _WorldSpaceCameraPos);
+                half fog = 1.0h - exp(-dist * _TC2FogDensity);
+                c = lerp(c, _TC2FogColor.rgb * (0.25h + 0.75h * day), fog * 0.85h * (1.0h - saturate(_Emission)));
                 return half4(c, 1);
             }
             ENDHLSL

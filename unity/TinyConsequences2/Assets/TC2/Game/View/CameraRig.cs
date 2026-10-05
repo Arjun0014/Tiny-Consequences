@@ -61,6 +61,25 @@ namespace TC2.Game
             Distance = R + alt;
         }
 
+        /// <summary>A named view of the first village (orbit, region, village, close, low) or "lat,lon,alt" (degrees, m).</summary>
+        public void SetView(string view)
+        {
+            var w = Host.World;
+            _framedVersion = Host.WorldVersion;
+            int sid = w.Settlements.First();
+            Vec3d d = sid != 0 ? w.Settlements.Get(sid).Anchor : new Vec3d(0, 0.4, 0.9).Normalized;
+            var parts = view.Split(',');
+            if (parts.Length == 3)
+            {
+                var ci = System.Globalization.CultureInfo.InvariantCulture;
+                double lat = double.Parse(parts[0], ci) * DMath.Deg2Rad, lon = double.Parse(parts[1], ci) * DMath.Deg2Rad;
+                LookAt(Vec3d.FromLatLon(lat, lon), double.Parse(parts[2], ci));
+                return;
+            }
+            double alt = view == "close" ? 260 : view == "low" ? 95 : view == "village" ? 900 : view == "region" ? 5000 : 22000;
+            LookAt(d, alt);
+        }
+
         public void LookAt(Vec3d dir, double altitude)
         {
             Lat = dir.Latitude; Lon = dir.Longitude; Distance = Host.World.Planet.Radius + altitude;
