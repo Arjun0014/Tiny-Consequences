@@ -49,7 +49,7 @@ try {
   const sq = await cmd(page, { cmd: 'v3_look', sett: 1, what: 'square', zoom: 1.35 });
   await shoot(page, '01_the_bar', 'the village and the fourteen powers');
   // a meteor a little off the square
-  await cmd(page, { cmd: 'power', power: 'meteor', cell: sq.cell, sid: 1, x: sq.x + 0.35, y: sq.y + 0.2 });
+  await cmd(page, { cmd: 'power', power: 'meteor', cell: sq.cell, sid: 1, x: sq.x + 0.35, y: sq.y + 0.2, instant: true });
   let t0 = await page.evaluate(() => window.__TC.hour);
   for (let h = 0.25; h <= 1.5; h += 0.25) await cmd(page, { cmd: 'v3_goto', hour: t0 + h });
   await shoot(page, '02_meteor', 'an hour and a half after the meteor');

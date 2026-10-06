@@ -187,6 +187,16 @@ function M.spin(a)
   M.idle = 0
 end
 
+-- (S26) Shake the view (the meteor's strike): amount ~0.2 a tremor .. 1.4 a blow close by, for len seconds, dying away.
+M.shake_t, M.shake_len, M.shake_a, M.shake_ph = 0, 1, 0, 0
+function M.shake(amount, len)
+  if amount * (M.shake_t / M.shake_len) > M.shake_a * (M.shake_t / M.shake_len) or M.shake_t <= 0 then
+    M.shake_a, M.shake_len, M.shake_t = amount, len or 1.5, len or 1.5
+  else
+    M.shake_a = max(M.shake_a, amount)
+  end
+end
+
 -- (S26) Turn the view's heading by `a` radians about the point looked at (the idle view's slow circling of a village).
 function M.orbit(a)
   Ux, Uy, Uz = rot(Ux, Uy, Uz, Sx, Sy, Sz, a)
@@ -269,6 +279,21 @@ function M.update(dt)
   target.x, target.y, target.z = tx, ty, tz
   eye.x, eye.y, eye.z = tx + dx * dist, ty + dy * dist, tz + dz * dist
   upv.x, upv.y, upv.z = ux, uy, uz
+  -- (S26) a shake (the meteor's strike): the eye and the point looked at thrown about together, a fraction of the eye's
+  -- distance, dying away; the camera's own frame is untouched (nothing drifts after)
+  if M.shake_t > 0 and dt > 0 then
+    M.shake_t = max(0, M.shake_t - dt)
+    M.shake_ph = M.shake_ph + dt
+    local f = M.shake_t / M.shake_len
+    local a = M.shake_a * f * f * dist * 0.018
+    local p = M.shake_ph
+    local ox = (sin(p * 61.3) + 0.5 * sin(p * 23.7)) * a
+    local oy = (sin(p * 53.9 + 1.7) + 0.5 * sin(p * 31.1)) * a
+    local rx, ry, rz = dy * uz - dz * uy, dz * ux - dx * uz, dx * uy - dy * ux
+    local mx, my, mz = rx * ox + ux * oy, ry * ox + uy * oy, rz * ox + uz * oy
+    eye.x, eye.y, eye.z = eye.x + mx, eye.y + my, eye.z + mz
+    target.x, target.y, target.z = target.x + mx * 0.6, target.y + my * 0.6, target.z + mz * 0.6
+  end
   state.view = vmath.matrix4_look_at(eye, target, upv)
   state.eye.x, state.eye.y, state.eye.z = eye.x, eye.y, eye.z
   state.target.x, state.target.y, state.target.z = tx, ty, tz

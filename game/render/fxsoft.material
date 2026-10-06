@@ -1,0 +1,30 @@
+name: "fxsoft"
+tags: "fx"
+vertex_program: "/game/render/shaders/fx.vp"
+fragment_program: "/game/render/shaders/fxsoft.fp"
+vertex_space: VERTEX_SPACE_WORLD
+vertex_constants {
+  name: "view_proj"
+  type: CONSTANT_TYPE_VIEWPROJ
+}
+fragment_constants {
+  name: "u_sky"
+  type: CONSTANT_TYPE_USER
+  value {
+    x: 0
+    y: 0
+    z: 0
+    w: 0
+  }
+}
+fragment_constants {
+  name: "u_tint"
+  type: CONSTANT_TYPE_USER
+  value {
+    x: 1.0
+    y: 1.0
+    z: 1.0
+    w: 1.0
+  }
+}
+max_page_count: 0

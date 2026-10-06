@@ -183,8 +183,15 @@ function M.cast(W, id, cell, opts)
       if not any then return refuse("Aim at the sea") end
     end
     if (id == "sickness" or id == "blight") and not opts.sid then return refuse("Come close to a village and aim at its " .. (id == "blight" and "fields" or "herds")) end
-    require("sim.world").command(W, "power", p)
-    if M.on_cast then M.on_cast(W, id, cell, p) end
+    -- (S26) the meteor's command is given when the rock it throws reaches the ground (game/view/meteor.lua), so nothing of
+    -- what it does begins before the strike is seen; opts.instant (the harnesses): at once, as every other power
+    local deferred = id == "meteor" and not opts.instant and M.defer_meteor ~= nil
+    if deferred then
+      M.defer_meteor(W, cell, p, function() require("sim.world").command(W, "power", p) end)
+    else
+      require("sim.world").command(W, "power", p)
+    end
+    if M.on_cast then M.on_cast(W, id, cell, p, deferred) end
     do local ok, audio = pcall(require, "game.audio.audio"); if ok and audio.ui then audio.ui("ui_power") end end
     M.ready[id] = M.now(W) + (d.cool_h or 0)
     M.casts = M.casts + 1
@@ -211,8 +218,13 @@ function M.cast(W, id, cell, opts)
     if sp == "fish" and not ocean then return refuse("No fish here") end
     if sp ~= "fish" and ocean then return refuse("No animals at sea") end
   end
-  require("sim.world").command(W, "power", p)
-  if M.on_cast then M.on_cast(W, id, cell, p) end
+  local deferred = id == "meteor" and not opts.instant and M.defer_meteor ~= nil
+  if deferred then
+    M.defer_meteor(W, cell, p, function() require("sim.world").command(W, "power", p) end)
+  else
+    require("sim.world").command(W, "power", p)
+  end
+  if M.on_cast then M.on_cast(W, id, cell, p, deferred) end
   M.cool[id] = d.cooldown
   M.casts = M.casts + 1
   M.last = { id = id, cell = cell, p = p }

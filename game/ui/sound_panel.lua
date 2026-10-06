@@ -49,6 +49,7 @@ function M.build(self)
   S.pill_t = ui.text(pill, -6, 0, "Sound", "fredoka", 12.5, C.text)
   S.pill_hit = "sound_pill"
   local PW, PH = 236, 182
+  M.PW, M.PH = PW, PH
   local panel, sh = ui.panel_nw(root, -PW, 32 + 8 + PH, PW, PH)
   S.panel, S.sh = panel, sh
   ui.text(panel, 14, -18, "SOUND", "fredoka", 14, C.text)
@@ -72,6 +73,16 @@ function M.build(self)
   gui.set_enabled(sh, false)
   M.load()
   return S
+end
+
+--- (S26) Where the open panel stands (above the pill, or above the power bar when the bar reaches under it): its top,
+-- in units from the screen's bottom (before the UI scale) - the inspector ends above it.
+function M.place(self, lifted)
+  local S = self.soundp
+  if not S then return end
+  local base = lifted and (require("game.ui.layout").BAR_ZONE + 8) or (32 + 8)
+  ui.size_panel(S.panel, S.sh, M.PW, M.PH, -M.PW, base + M.PH)
+  S.top_units = base + M.PH
 end
 
 function M.update(self)

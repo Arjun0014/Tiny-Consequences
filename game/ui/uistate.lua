@@ -8,6 +8,7 @@ local M = {
   requests = {},          -- GUI -> main: { cmd = "fly_to", cell = c } etc.
   edge = {},              -- edge indicators: id -> { x, y, z (world), icon, label }
   debug_lines = nil,      -- filled by main.script for the overlay
+  gui_do = {},            -- (S26) fn(hud) run by the HUD in its own context next frame (harnesses: menus, panels)
 }
 
 function M.request(r)

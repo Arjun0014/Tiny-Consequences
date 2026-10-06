@@ -602,7 +602,10 @@ function M.register(G)
     local powers = require("game.ui.powers")
     local W = G.W
     local cell, ship = power_target(W, args)
-    local opts = { mode = args.mode, species = args.species, ship = ship, force = args.force ~= false, sid = args.sid, x = args.x, y = args.y }
+    -- (S26) instant: a meteor's command at once (as the other powers) instead of at its drawn strike - harnesses that
+    -- advance the world straight after the cast
+    local opts = { mode = args.mode, species = args.species, ship = ship, force = args.force ~= false, sid = args.sid, x = args.x, y = args.y,
+      instant = args.instant }
     local p, why = powers.cast(W, args.power, cell, opts)
     if not p then error(why or "power refused", 0) end
     local sx, sy = screen_of(W, cell)

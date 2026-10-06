@@ -38,9 +38,6 @@ M.DUST, M.DUST_H = 28, 36
 M.plume_dust = {}
 -- (S25b, D-216) the meteor's fall: a long slanted streak with a trail of fire behind the rock; the crater and the scorched
 -- ground it leaves as marks on the planet's surface, seen from every height (the village's map draws its own bowl close in)
-M.METEOR_FALL = 1.7
-M.TRAIL = 16
-M.trail = {}
 M.DECALS = 8
 M.decals = {}
 -- (S25b, D-217) oil you can see on the water: dark glossy blobs where the sea holds oil (F.oil), as many as it holds,
@@ -128,10 +125,12 @@ local function point_dir(W, c, p)
 end
 M.point_dir = point_dir
 
---- A meteor falling on cell c (then the pulse; the sim's fires follow). (S24) On the point aimed at (p: sid, x, y).
-function M.meteor(W, c, p)
+--- A meteor falling on cell c, on the point aimed at (p: sid, x, y). (S26) The fall, the strike and what it throws up are
+-- game/view/meteor.lua's; commit() gives the sim its command when the rock reaches the ground (nil and instant: the
+-- command was given already - the strike is drawn at once).
+function M.meteor(W, c, p, commit, instant)
   local x, y, z = point_dir(W, c, p)
-  M.meteor_fx = { t = 0, cell = c, dir = { x, y, z } }
+  require("game.view.meteor").cast(W, x, y, z, commit, instant)
 end
 
 --- Lightning bolt at sim cell c (natural strikes, the Lightning power). (S24) dir: the unit direction of the point it
@@ -186,7 +185,6 @@ function M.init(W, flame_factory, smoke_factory, surface, surface_exact)
     make("smoke", { 0.30, 0.28, 0.27 }, nil, smoke_factory, M.PLUMES, M.plume_ash, "/tc/plume_ash.bufferc")
     make("smoke", { 0.46, 0.39, 0.32 }, nil, smoke_factory, M.DUST, M.plume_dust, "/tc/plume_dust.bufferc")
     -- (S25b) the meteor's trail, the crater marks, the oil
-    make("flame", { 1.0, 0.45, 0.10 }, { 1.0, 0.85, 0.40 }, flame_factory, M.TRAIL, M.trail, "/tc/meteor_trail.bufferc")
     M.decal_res = resource.create_buffer("/tc/crater_mark.bufferc", { buffer = disc_buffer({
       { 0.26, 0.05, 0.04, 0.04, 7 }, { 0.34, 0.16, 0.12, 0.10, 7 }, { 0.42, 0.46, 0.36, 0.26, 7 }, { 0.50, 0.36, 0.28, 0.20, 6 },
       { 0.72, 0.13, 0.11, 0.10, 6 }, { 1.0, 0.16, 0.14, 0.12, 2 } }, 40, 7) })
@@ -213,9 +211,6 @@ function M.init(W, flame_factory, smoke_factory, surface, surface_exact)
       M.pulses[i] = { id = id, url = url, on = false, t = 99 }
     end
     M.pulse_next = 1
-    local fid = factory.create(flame_factory, vmath.vector3(0, 0, 0))
-    M.fireball = { id = fid, url = msg.url(nil, fid, "mesh"), on = false }
-    msg.post(M.fireball.url, MSG_DISABLE)
     local feed = require("game.view.feed")
     feed.on("lightning_strike", function(Wf, r)
       -- (S24) the bolt comes down where it struck on the village's map, not at the middle of the planet's cell
@@ -236,11 +231,20 @@ function M.init(W, flame_factory, smoke_factory, surface, surface_exact)
       temperature = { heat = "power_heat", chill = "power_chill" } }
     local steps = { power_rain = 2, power_drought = 2, power_heat = 2, power_chill = 2, power_cull = 2,
       power_introduce = 1, power_blight = 1, power_oil = 1, power_meteor = 2, power_lightning = 0.3 }
-    require("game.ui.powers").on_cast = function(Wc, id, cell, p)
+    -- (S26) the meteor's command waits for its strike: the rock falls first (game/view/meteor.lua), then the world is hit.
+    -- Cast while time stands still, time runs at Watch (a god's strike is watched); a skip under way ends.
+    require("game.ui.powers").defer_meteor = function(Wc, cell, p, commit)
+      local speed = require("game.platform.speed")
+      if speed.v3_skipping and speed.v3_skipping() then speed.v3_skip_cancel() end
+      if speed.get() == 0 then speed.set(1) end
+      M.meteor(Wc, cell, p, commit, false)
+    end
+    require("game.ui.powers").on_cast = function(Wc, id, cell, p, deferred)
       local k = kinds[id] and kinds[id][p.mode] or ("power_" .. id)
       -- (S24: a bolt aimed at a village's map is drawn by its strike, where it comes down - the event feed)
       if id == "lightning" and not (Wc.v3 and p.sid and p.x) then M.bolt(Wc, cell) end
-      if id == "meteor" then M.meteor(Wc, cell, p); return end
+      -- (S26) a meteor cast for a later strike was started by defer_meteor; one given at once (the harnesses) strikes now
+      if id == "meteor" then if not deferred then M.meteor(Wc, cell, p, nil, true) end; return end
       if id == "oil" then local x, y, z = point_dir(Wc, cell, p); M.spill = { t = 0, dir = { x, y, z } } end
       M.pulse(Wc, cell, k, aim.world_radius(Wc, steps[k] or 1))
     end
@@ -529,69 +533,10 @@ function M.update(W, dt, frozen)
     end
     if on ~= p.on then p.on = on; msg.post(p.url, on and MSG_ENABLE or MSG_DISABLE) end
   end
-  -- meteor: a fireball falls from the sky along a slant, then the blast ring
-  local m = M.meteor_fx
-  local fb = M.fireball
-  if m and fb then
-    if not frozen then m.t = m.t + dt end
-    -- (S25b) a long slanted streak from high above: the rock swelling and glowing as it comes, a trail of fire and smoke
-    -- strung out behind it along its path
-    local fall = M.METEOR_FALL
-    local on = m.t < fall
-    local g = W.grid
-    local x, y, z = g.X[m.cell], g.Y[m.cell], g.Z[m.cell]
-    if m.dir then x, y, z = m.dir[1], m.dir[2], m.dir[3] end
-    local ex, ez = z, -x
-    local el = sqrt(ex * ex + ez * ez) + 1e-6
-    ex, ez = ex / el, ez / el
-    local function path(k)
-      local q = 1 - k
-      local r = state.R + 22 * q * q + 0.02
-      local side = 11 * q
-      return x * r + ex * side, y * r + q * 3.0, z * r + ez * side
-    end
-    if on then
-      local k = m.t / fall
-      local px, py, pz = path(k)
-      pos.x, pos.y, pos.z = px, py, pz
-      go.set_position(pos, fb.id)
-      go.set_rotation(vmx.set_up_yaw(rot, x, y, z, m.t * 9), fb.id)
-      -- (seen from orbit as from close: the rock and its trail drawn larger the farther the eye)
-      local edx, edy, edz = px - state.eye.x, py - state.eye.y, pz - state.eye.z
-      M.far_k = max(1, sqrt(edx * edx + edy * edy + edz * edz) / 7)
-      local s = (0.55 + 0.9 * k) * M.far_k
-      scl.x, scl.y, scl.z = s, s * 1.5, s
-      go.set_scale(scl, fb.id)
-      for i, o in ipairs(M.trail) do
-        local kk = k - i * 0.022
-        local ton = kk > 0
-        if ton then
-          local tx, ty, tz = path(kk)
-          pos.x, pos.y, pos.z = tx, ty, tz
-          go.set_position(pos, o.id)
-          go.set_rotation(vmx.set_up_yaw(rot, x, y, z, i * 1.7 + m.t * 6), o.id)
-          local ts = (0.5 + 0.8 * kk) * (1 - i / (M.TRAIL + 2)) * (0.85 + 0.15 * sin(m.t * 30 + i)) * (M.far_k or 1)
-          scl.x, scl.y, scl.z = ts, ts * 1.3, ts
-          go.set_scale(scl, o.id)
-        end
-        if ton ~= o.on then o.on = ton; msg.post(o.url, ton and MSG_ENABLE or MSG_DISABLE) end
-      end
-    else
-      for _, o in ipairs(M.trail) do if o.on then o.on = false; msg.post(o.url, MSG_DISABLE) end end
-      if not m.boom then
-        m.boom = true
-        -- the strike: a blinding flash, the ground thrown about, the shock running out over the land as far as the
-        -- impact's own physics reach (sim/config.lua imp_*), and a second ring of the blast behind it
-        local cv = require("sim.config").V3
-        M.pulse(W, m.cell, "power_meteor", cv.imp_flash * cv.imp_reach_k * 1.5, m.dir)
-        M.pulse(W, m.cell, "power_heat", cv.imp_blast * 2.4, m.dir)
-        M.pulse(W, m.cell, "power_drought", cv.imp_blast * 1.2, m.dir)
-        M.shake = 1.8
-        M.flash = 2.4
-      end
-    end
-    if on ~= fb.on then fb.on = on; msg.post(fb.url, on and MSG_ENABLE or MSG_DISABLE) end
-    if m.t > fall + 2 then M.meteor_fx = nil end
+  -- (S26) the meteor: its fall and strike in real time while the world runs (game/view/meteor.lua)
+  do
+    local sp = require("game.platform.speed")
+    require("game.view.meteor").update(W, dt, frozen, sp.get() > 0 or (sp.v3_skipping and sp.v3_skipping()) or false)
   end
   -- (S24) the volcanoes near the view (read where the world keeps them - never volcano.list, which makes them): steam
   -- from the vent of one whose pressure is building (from 35% of what makes it erupt; more and taller the nearer), dark

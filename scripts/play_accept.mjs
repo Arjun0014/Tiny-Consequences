@@ -77,7 +77,7 @@ const CASES = {
     out.shots = [await g.shoot(dir, '0_before_close')];
     await g.cmd({ cmd: 'v3_look', sett: sid, what: 'square', zoom: 0.85 });
     out.shots.push(await g.shoot(dir, '0_before_mid'));
-    await g.cmd({ cmd: 'power', power: 'meteor', cell: sq.cell, sid, x: sq.x, y: sq.y });
+    await g.cmd({ cmd: 'power', power: 'meteor', cell: sq.cell, sid, x: sq.x, y: sq.y, instant: true });
     // (the rock falling and striking, in real time on the paused world - the view's own effect)
     out.shots.push(await g.shoot(dir, '1a_falling', 250, false));
     out.shots.push(await g.shoot(dir, '1b_strike', 300, false));
@@ -457,7 +457,7 @@ async function pcase(g, dir, out, sp) {
   // the cast: the same path as the bar (bridge power = powers.cast)
   const onmap = await g.lua(`local s = W.S.v3.settlements[${sid}]; return require('sim.agents.map').tile_of(s, ${ax}, ${ay}) > 0`);
   for (let q = 0; q < (sp.casts || 1); q++) {
-    await g.cmd({ cmd: 'power', power: sp.power, cell, sid: onmap ? sid : undefined, x: onmap ? ax : undefined, y: onmap ? ay : undefined, mode: sp.mode, species: sp.species });
+    await g.cmd({ cmd: 'power', power: sp.power, cell, sid: onmap ? sid : undefined, x: onmap ? ax : undefined, y: onmap ? ay : undefined, mode: sp.mode, species: sp.species, instant: sp.power === 'meteor' });
   }
   t0 = await g.hour();
   await g.cmd({ cmd: 'v3_goto', hour: t0 + 0.05 });

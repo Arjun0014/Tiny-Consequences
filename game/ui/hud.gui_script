@@ -304,7 +304,7 @@ local function fill_inspector(self, data)
 	-- the panel: as tall as its lines, or the room the column has (then it scrolls)
 	local content = 0
 	for _, ln in ipairs(lines) do content = content + ln.h end
-	local maxh = layout.column_h(INS_W)
+	local maxh = layout.column_h(INS_W, (self.soundp and self.soundp.open) and self.soundp.top_units or nil)
 	local h = math.min(INS_HEAD + content + 12, maxh)
 	h = math.max(h, INS_HEAD + 30)
 	if h ~= self.ins_h then
@@ -623,6 +623,11 @@ local function relayout(self)
 	gui.set_position(self.dbg, V3(-dw / 2, 0, 0))
 	self.roots = R
 	self.placed_v = nil
+	menu.layout(self, k, layout.vw, layout.vh)
+	-- the sound's panel lifted above the power bar when the bar reaches under it
+	local bar_right = layout.vw / 2 + layout.bar_w * k / 2
+	local panel_left = layout.vw - MG - fsw - sound_panel.PW * k
+	sound_panel.place(self, bar_right > panel_left - layout.GAP * k)
 	self.ins_dirty = true
 	if self.news then self.news.sig = nil end
 	if self.actions then self.actions.t = 1; self.actions.sig = nil end
@@ -706,6 +711,22 @@ local function publish_bounds(self)
 	for i, sb in ipairs(self.speed_btns) do if layout.shown(sb.node) then btn["speed" .. i] = R(sb.node) end end
 	if self.ins_can_follow and layout.shown(self.ins_follow) then btn.follow = R(self.ins_follow) end
 	if layout.shown(self.ins_close) then btn.close = R(self.ins_close) end
+	local T = self.tut
+	if T then
+		for _, k in ipairs({ "next", "skip", "go", "min" }) do if T[k] and layout.shown(T[k]) then btn["tut_" .. k] = R(T[k]) end end
+	end
+	if self.pbtns then for i, b in ipairs(self.pbtns) do btn["power" .. i] = R(b.node) end end
+	if self.skip_menu_open then for i, o in ipairs(self.skip_opts) do btn["skip" .. i] = R(o.node) end end
+	local A = self.actions
+	if A then
+		if layout.shown(A.pill) then btn.actions_pill = R(A.pill) end
+		if layout.shown(A.npill) then btn.news_pill = R(A.npill) end
+	end
+	if self.news then
+		for i, c in ipairs(self.news.cards) do
+			if c.st and layout.shown(c.node) then btn["card" .. i] = R(c.node); btn["badge" .. i] = R(c.badge) end
+		end
+	end
 	uistate.buttons = btn
 end
 
@@ -872,6 +893,15 @@ end
 
 function update(self, dt)
 	self.clock_s = self.clock_s + dt
+	-- (S26) what the harnesses ask the HUD to do in its own context (gui nodes are this script's alone)
+	if #uistate.gui_do > 0 then
+		local q = uistate.gui_do
+		uistate.gui_do = {}
+		for _, f in ipairs(q) do
+			local ok, err = pcall(f, self)
+			if not ok then print("[hud] gui_do: " .. tostring(err)) end
+		end
+	end
 	if layout.update(state.window_w, state.window_h) then relayout(self) end
 	-- loading screen
 	local L = state.loading
@@ -1097,7 +1127,7 @@ local function activate(self, h)
 		return
 	end
 	if view.W and actions.activate(self, view.W, h) then return end
-	if sound_panel.activate(self, h) then return end
+	if sound_panel.activate(self, h) then self.ins_dirty = true; return end
 	if type(h) == "table" and h.news_card then go_story(self, h); return end
 	if h == "close" then selection.clear()
 	elseif h == "tab" then uistate.inspector_collapsed = not uistate.inspector_collapsed

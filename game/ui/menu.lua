@@ -131,6 +131,9 @@ end
 
 local function panel(R, w, h)
   local root = ui.box(nil, 640, 360, 1, 1, "px", C.clear)
+  -- (S26: its size, for the HUD's layout to scale it with the UI on small windows while it still fits - M.layout)
+  R.sizes = R.sizes or {}
+  R.sizes[root] = { w + 26, h + 26 }
   ui.box(root, 0, -4, w + 26, h + 26, "shadow", C.shadow)
   local p = ui.box(root, 0, 0, w, h, "panel", C.panel_solid)
   return root, p
@@ -141,6 +144,7 @@ function M.build(self)
   ui.top = true
   local R = { btns = {}, screens = {} }
   self.menu = R
+  M.hud = self   -- (S26: harnesses open a screen with menu.open(menu.hud, name))
   R.dim = ui.box(nil, 640, 360, 3000, 2000, "px", DIM)
   -- the title screen
   do
@@ -402,6 +406,17 @@ function M.open(self, name)
 end
 
 function M.is_open() return M.screen ~= nil end
+
+--- (S26) Scale the menus with the HUD's UI scale k (small windows), each as far as it still fits the visible area
+-- (vw x vh reference units) with a margin.
+function M.layout(self, k, vw, vh)
+  local R = self.menu
+  if not R or not R.sizes then return end
+  for root, sz in pairs(R.sizes) do
+    local s = math.max(0.6, math.min(k, (vw - 24) / sz[1], (vh - 24) / sz[2]))
+    gui.set_scale(root, vmath.vector3(s, s, 1))
+  end
+end
 
 local function fs_on()
   if not html5 then return false end

@@ -60,8 +60,9 @@ function M.set_widths(bar_w, pills_w, sound_w)
 end
 
 --- The height (in a panel's own units, before k) of a side column `w` units wide: from under the top bar down to above
--- the bottom pills - or above the power bar and its aiming row when the bar reaches under the column.
-function M.column_h(w)
+-- the bottom pills - or above the power bar and its aiming row when the bar reaches under the column, or above
+-- floor_units (from the screen's bottom edge, before k) when something is open there.
+function M.column_h(w, floor_units)
   local k = M.k
   w = w or M.COL_W
   local top = M.vh - M.MARGIN - (M.TOP_H + M.GAP) * k
@@ -69,6 +70,8 @@ function M.column_h(w)
   local col_right = M.MARGIN + (w + M.GAP) * k
   local bottom = M.MARGIN + (M.PILL_H + M.GAP) * k
   if bar_left < col_right then bottom = M.MARGIN + (M.BAR_ZONE + M.GAP) * k end
+  -- (something open under the column - the sound's panel: the column ends above it)
+  if floor_units then bottom = math.max(bottom, M.MARGIN + (floor_units + M.GAP) * k) end
   return math.max(120, (top - bottom) / k)
 end
 
@@ -111,9 +114,15 @@ end
 --- A text node's drawn rectangle in window pixels (its text measured in its font, its scale and its parents', its pivot).
 function M.text_rect(node)
   local res = gui.get_font_resource(gui.get_font(node))
-  local m = resource.get_text_metrics(res, gui.get_text(node) or "", { line_break = true, width = 100000 })
+  -- (each line measured on its own: the explicit breaks the HUD writes)
+  local w, h = 0, 0
+  for line in ((gui.get_text(node) or "") .. "\n"):gmatch("(.-)\n") do
+    local m = resource.get_text_metrics(res, line)
+    if m.width > w then w = m.width end
+    h = h + m.height
+  end
   local sx, sy = scale_of(node)
-  return box(node, m.width * sx * M.fit, m.height * sy * M.fit)
+  return box(node, w * sx * M.fit, h * sy * M.fit)
 end
 
 --- Is node and every parent of it enabled (drawn)?

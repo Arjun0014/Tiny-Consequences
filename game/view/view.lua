@@ -109,6 +109,7 @@ function M.build(W, urls, step)
   selring.init(urls.ring_factory, M.surface)
   aim.init(urls.ring_factory, M.surface)
   fx.init(W, urls.flame_factory, urls.smoke_factory, M.surface, M.surface_exact)
+  require("game.view.meteor").init(W, urls, M.surface_exact, fx)   -- (S26: the meteor, its fall and strike)
   step("Waking the village", 0.85)
   fish.init(W, urls.flame_factory, M.surface)
   camera.height_fn = function(x, y, z) return M.surface(x, y, z) end
