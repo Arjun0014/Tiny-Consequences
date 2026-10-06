@@ -27,11 +27,19 @@ images {
   sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
+  image: "/assets/ui/i_chev_down.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
+}
+images {
   image: "/assets/ui/i_chev_left.png"
   sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
   image: "/assets/ui/i_chev_right.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
+}
+images {
+  image: "/assets/ui/i_chev_up.png"
   sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
@@ -64,6 +72,10 @@ images {
 }
 images {
   image: "/assets/ui/i_drought.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
+}
+images {
+  image: "/assets/ui/i_eye.png"
   sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
@@ -123,7 +135,19 @@ images {
   sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
+  image: "/assets/ui/i_menu.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
+}
+images {
   image: "/assets/ui/i_meteor.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
+}
+images {
+  image: "/assets/ui/i_minus.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
+}
+images {
+  image: "/assets/ui/i_mute.png"
   sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
@@ -176,6 +200,10 @@ images {
 }
 images {
   image: "/assets/ui/i_snow.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
+}
+images {
+  image: "/assets/ui/i_sound.png"
   sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {

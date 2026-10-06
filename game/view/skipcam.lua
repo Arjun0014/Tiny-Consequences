@@ -15,8 +15,9 @@ function M.update(dt)
   if sk and not M.active then
     M.active = true
     M.saved = camera.get_frame()
-    M.follow = camera.follow
-    camera.follow = nil
+    M.follow, M.tag = camera.follow, camera.follow_tag
+    camera.stop_follow()
+    camera.parked = true
     local f = M.saved
     -- (up and out: the same place under the eye, the planet whole)
     camera.set_frame(f[1], f[2], f[3], f[4], f[5], f[6], M.ZOOM_OUT)
@@ -28,13 +29,15 @@ function M.update(dt)
     camera.spin(M.SPIN * k * dt)
   elseif not sk and M.active then
     M.active = false
+    camera.parked = false
     local f = M.saved
     if f then
       -- (back down to where the eye was, the planet having turned to bring it round again)
       camera.set_frame(f[1], f[2], f[3], f[4], f[5], f[6], f[7])
     end
-    if M.follow then camera.follow = M.follow end
-    M.saved, M.follow = nil, nil
+    -- (the follow parked by the skip comes back; one that ended meanwhile returns no direction and stops itself)
+    if M.follow and not camera.follow then camera.start_follow(M.follow, M.tag) end
+    M.saved, M.follow, M.tag = nil, nil, nil
   end
 end
 

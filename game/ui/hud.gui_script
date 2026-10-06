@@ -2,7 +2,12 @@
 -- (Stage 1.9, 04_PLAYER.md §3-5, 06_PRESENTATION.md §2). All nodes are built in code.
 -- Reads shared modules (shared_state = 1): the world via game.view.view, the selection,
 -- the speed controller. Clicks on panels are swallowed so they never reach the planet.
+-- (S26) The compact HUD: each panel's root sits at its screen corner, anchored and scaled by game/ui/layout.lua (a UI
+-- scale on small windows); the panels' heights come from the room the screen has, their text is measured and wrapped or
+-- cut to fit, and the inspector scrolls and folds its sections. When nobody touches anything for a while the HUD slides
+-- away and the world is watched (the idle view, game/view/idlecam.lua); any input brings it back.
 local ui = require("game.ui.uikit")
+local layout = require("game.ui.layout")
 local state = require("game.view.state")
 local uistate = require("game.ui.uistate")
 local selection = require("game.ui.selection")
@@ -25,10 +30,19 @@ local V3 = vmath.vector3
 local H_TOUCH = hash("touch")
 local H_WHEEL_UP, H_WHEEL_DOWN = hash("wheel_up"), hash("wheel_down")
 local REF_W, REF_H = 1280, 720
+local MG = layout.MARGIN
 
-local INS_W, INS_H = 330, 548
-local ROWS = 18
-local ROW_H = 24.5
+-- the inspector: a panel of measured lines under a header, as tall as its content or the room there is
+local INS_W = layout.COL_W
+local INS_HEAD = 56
+local LINE_H = 19
+local HEAD_H = 25
+local FS = 12.5                 -- the body's font size
+local BODY_X0, BODY_X1 = 12, INS_W - 16
+local ICON_W = 20
+local SLOTS = 40
+-- sections folded until opened (their header says how many lines they hold); the player's choice is kept for the visit
+local FOLD_DEFAULT = { Memories = true, Chronicle = true, ["Recent events"] = true, ["Last year"] = true }
 
 local SPEEDS = {
 	{ level = 0, icon = "pause", tip = "Pause  (Space)" },
@@ -55,302 +69,425 @@ local SKIPS = {
 	{ kind = "season", icon = "leaf", label = "Next season", key = "7" },
 }
 
+-- the idle view: after this many seconds without any input (?idle=N), the HUD slides away and the world is watched
+local IDLE_AFTER = 50
+
 -- Loading ------------------------------------------------------------------------------------
 
 local function build_loading(self)
-	local root = ui.box(nil, REF_W / 2, REF_H / 2 - 60, 460, 110, "panel", C.panel)
+	local root = ui.box(nil, REF_W / 2, REF_H / 2 - 60, 420, 96, "panel", C.panel)
 	self.loading = root
-	self.load_label = ui.text(root, 0, 18, "Growing a tiny world...", "fredoka", 24, C.text, gui.PIVOT_CENTER)
-	ui.box(root, -190, -22, 380, 14, "pill_s", C.soft, gui.PIVOT_W)
-	self.load_bar = ui.box(root, -190, -22, 14, 14, "pill_s", C.gold, gui.PIVOT_W)
+	self.load_label = ui.text(root, 0, 16, "Growing a tiny world...", "fredoka", 21, C.text, gui.PIVOT_CENTER)
+	ui.box(root, -170, -20, 340, 12, "pill_s", C.soft, gui.PIVOT_W)
+	self.load_bar = ui.box(root, -170, -20, 12, 12, "pill_s", C.gold, gui.PIVOT_W)
 end
 
 -- Top bar ------------------------------------------------------------------------------------
 
+local CLK_X0, CLK_STEP, CLK_BTN = 170, 32, 28
+
+local function clock_width(n) return CLK_X0 - 16 + n * CLK_STEP + 4 + CLK_BTN + 10 end
+
 local function build_top(self)
+	local H = layout.TOP_H
 	-- clock + speed buttons (top-left)
-	local cw, ch = 440, 58
-	local clock, clock_sh = ui.panel(nil, 12 + cw / 2, REF_H - 12 - ch / 2, cw, ch)
-	ui.anchor(clock, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
-	ui.anchor(clock_sh, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
-	self.clock = clock
-	self.clock_icon = ui.icon(clock, -cw / 2 + 28, 0, "sun", 30, C.gold)
-	self.clock_year = ui.text(clock, -cw / 2 + 50, 8, "Year 0", "fredoka", 23, C.text)
-	self.clock_season = ui.text(clock, -cw / 2 + 51, -13, "Early Spring", "nunito_semi", 14, C.muted)
-	-- (S25) the menu (also Esc)
-	self.menu_btn = ui.box(clock, cw / 2 - 34, 0, 54, 32, "pill", C.soft)
-	ui.text(self.menu_btn, 0, 0, "Menu", "fredoka", 14, C.text, gui.PIVOT_CENTER)
-	self.menu_btn_hit = { menu_open = true }
+	self.clock_root = ui.root(MG, REF_H - MG, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
+	local cw = clock_width(#SPEEDS)
+	local clock, clock_sh = ui.panel_nw(self.clock_root, 0, 0, cw, H)
+	self.clock, self.clock_sh = clock, clock_sh
+	self.clock_icon = ui.icon(clock, 21, -H / 2, "sun", 24, C.gold)
+	self.clock_year = ui.text(clock, 39, -15, "Year 0", "fredoka", 17, C.text)
+	self.clock_season = ui.text(clock, 40, -31, "Early Spring", "nunito_semi", 11.5, C.muted)
 	self.speed_btns = {}
 	for i, sp in ipairs(SPEEDS) do
-		local x = -12 + (i - 1) * 36
-		local b = ui.box(clock, x, 0, 33, 33, "circle", C.soft)
-		local ic = ui.icon(b, 0, 0, sp.icon, 18, C.text)
-		self.speed_btns[i] = { node = b, icon = ic, level = sp.level, tip = sp.tip }
+		local b = ui.box(clock, CLK_X0 + (i - 1) * CLK_STEP, -H / 2, CLK_BTN, CLK_BTN, "circle", C.soft)
+		local ic = ui.icon(b, 0, 0, sp.icon, 15, C.text)
+		self.speed_btns[i] = { node = b, icon = ic, level = sp.level, tip = sp.tip, i = i }
 	end
-	-- v3: the skip menu (under the clock) and the skip progress strip
-	local mw = 196
-	local mx = 12 + mw / 2 + 2   -- (S25b: under the clock's left end: clear of the tutorial's card and of the inspector)
-	-- (S25) a dropdown draws above the news and every panel (layers top_box / top_text; the news cards step aside
-	-- while it is open)
+	-- (S25) the menu (also Esc)
+	self.menu_btn = ui.box(clock, 0, -H / 2, CLK_BTN, CLK_BTN, "circle", C.soft)
+	ui.icon(self.menu_btn, 0, 0, "menu", 15, C.text)
+	self.menu_btn_hit = { menu_open = true, tip = "Menu: settings, How the World Works  (Esc)" }
+	-- v3: the skip menu (under the skip button) - a dropdown drawn above the news and every panel (layers top_box /
+	-- top_text; the news cards and "Your actions" step aside while it is open)
+	local mw, rh = 186, 30
 	ui.top = true
-	local menu = ui.box(nil, mx, REF_H - 12 - ch - 8 - 4 * 34 / 2 - 8, mw, 4 * 34 + 16, "panel", C.panel_solid)
-	ui.anchor(menu, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
+	local menu = ui.box(self.clock_root, 0, -H - 6, mw, 4 * rh + 12, "panel", C.panel_solid, gui.PIVOT_NW)
 	self.skip_menu = menu
 	self.skip_opts = {}
 	for i, k in ipairs(SKIPS) do
-		local y = (4 * 34 + 16) / 2 - 8 - 17 - (i - 1) * 34
-		local row = ui.box(menu, 0, y, mw - 12, 30, "panel", C.clear)
-		ui.icon(row, -mw / 2 + 24, 0, k.icon, 18, C.text)
-		ui.text(row, -mw / 2 + 42, 0, k.label, "nunito_semi", 15, C.text)
-		ui.text(row, mw / 2 - 18, 0, k.key, "fredoka", 14, C.muted, gui.PIVOT_E)
+		local y = -6 - rh / 2 - (i - 1) * rh
+		local row = ui.box(menu, mw / 2, y, mw - 10, rh - 2, "panel", C.clear)
+		ui.icon(row, -mw / 2 + 22, 0, k.icon, 16, C.text)
+		ui.text(row, -mw / 2 + 38, 0, k.label, "nunito_semi", 13.5, C.text)
+		ui.text(row, mw / 2 - 16, 0, k.key, "fredoka", 12.5, C.muted, gui.PIVOT_E)
 		self.skip_opts[i] = { node = row, skip = k.kind, tip = nil }
 	end
 	ui.top = false
 	gui.set_enabled(menu, false)
-	-- (S25: the skip's progress above the power bar, clear of the news and "Your actions" column)
-	local pw = 300
-	local prog = ui.box(nil, REF_W / 2, 14 + 74 + 34, pw, 44, "panel", C.panel_solid)
-	ui.anchor(prog, gui.ANCHOR_NONE, gui.ANCHOR_BOTTOM)
+	-- (S25: the skip's progress above the power bar)
+	local pw, ph = 280, 40
+	self.skip_root = ui.root(REF_W / 2, MG, gui.ANCHOR_NONE, gui.ANCHOR_BOTTOM)
+	local prog = ui.box(self.skip_root, -pw / 2, ph, pw, ph, "panel", C.panel_solid, gui.PIVOT_NW)
 	self.skip_prog = prog
-	ui.icon(prog, -pw / 2 + 22, 0, "hourglass", 20, C.gold)
-	self.skip_label = ui.text(prog, -pw / 2 + 40, 8, "", "nunito_semi", 14, C.text)
-	ui.box(prog, -pw / 2 + 40, -9, 170, 8, "pill_s", C.soft, gui.PIVOT_W)
-	self.skip_bar = ui.box(prog, -pw / 2 + 40, -9, 8, 8, "pill_s", C.gold, gui.PIVOT_W)
-	self.skip_stop = ui.text(prog, pw / 2 - 14, 0, "Stop", "fredoka", 16, C.coral, gui.PIVOT_E)
+	ui.icon(prog, 20, -ph / 2, "hourglass", 18, C.gold)
+	self.skip_label = ui.text(prog, 38, -ph / 2 + 8, "", "nunito_semi", 12.5, C.text)
+	ui.box(prog, 38, -ph / 2 - 8, 160, 7, "pill_s", C.soft, gui.PIVOT_W)
+	self.skip_bar = ui.box(prog, 38, -ph / 2 - 8, 7, 7, "pill_s", C.gold, gui.PIVOT_W)
+	self.skip_stop = ui.text(prog, pw - 14, -ph / 2, "Stop", "fredoka", 14, C.coral, gui.PIVOT_E)
 	gui.set_enabled(prog, false)
 
-	-- stats (top, right of the clock)
+	-- stats (top right)
 	local items = {
-		{ key = "population", icon = "people", w = 96, tip = "People (click: planet)", trend = true },
-		{ key = "grazers", icon = "deer", w = 104, tip = "Grazers (deer)", trend = true },
-		{ key = "predators", icon = "wolf", w = 96, tip = "Predators (wolves)", trend = true },
-		{ key = "fish", icon = "fish", w = 104, tip = "Fish", trend = true },
-		{ key = "g_temp", icon = "thermo", w = 96, tip = "Global temperature change" },
-		{ key = "co2", icon = "cloud", w = 118, tip = "CO₂ in the air (ppm)" },
-		{ key = "ice", icon = "snow", w = 82, tip = "Ice cover" },
-		{ key = "sea", icon = "wave", w = 86, tip = "Sea level" },
+		{ key = "population", icon = "people", w = 76, tip = "People (click: the planet)", trend = true },
+		{ key = "grazers", icon = "deer", w = 76, tip = "Grazers (deer)", trend = true },
+		{ key = "predators", icon = "wolf", w = 76, tip = "Predators (wolves)", trend = true },
+		{ key = "fish", icon = "fish", w = 80, tip = "Fish", trend = true },
+		{ key = "g_temp", icon = "thermo", w = 68, tip = "Global temperature change" },
+		{ key = "co2", icon = "cloud", w = 96, tip = "CO₂ in the air (ppm)" },
+		{ key = "ice", icon = "snow", w = 60, tip = "Ice cover" },
+		{ key = "sea", icon = "wave", w = 64, tip = "Sea level" },
 	}
-	local total = 16
-	for _, it in ipairs(items) do total = total + it.w end
-	local sw, sh = total, 58
-	local x0 = 12 + cw + 12
-	local stats, stats_sh = ui.panel(nil, x0 + sw / 2, REF_H - 12 - sh / 2, sw, sh)
-	ui.anchor(stats, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
-	ui.anchor(stats_sh, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
-	self.stats = stats
+	local sw = 10
+	for _, it in ipairs(items) do sw = sw + it.w end
+	self.stats_root = ui.root(REF_W - MG, REF_H - MG, gui.ANCHOR_RIGHT, gui.ANCHOR_TOP)
+	local stats, stats_sh = ui.panel_nw(self.stats_root, -sw, 0, sw, H)
+	self.stats, self.stats_sh = stats, stats_sh
 	self.stat_items = {}
-	local x = -sw / 2 + 8
+	local x = 5
 	for i, it in ipairs(items) do
-		local cx = x + it.w / 2
-		local hover = ui.box(stats, cx, 0, it.w - 4, 46, "panel", C.clear)
-		local ic = ui.icon(stats, x + 19, 0, it.icon, 25, C.text)
-		local val = ui.text(stats, x + 35, 1, "-", "fredoka", 20, C.text)
+		local hover = ui.box(stats, x + it.w / 2, -H / 2, it.w - 4, H - 10, "panel", C.clear)
+		local ic = ui.icon(stats, x + 14, -H / 2, it.icon, 19, C.text)
+		local val = ui.text(stats, x + 26, -H / 2 + 1, "-", "fredoka", 14.5, C.text)
 		local tr = nil
-		if it.trend then tr = ui.icon(stats, x + it.w - 13, 0, "flat", 13, C.muted) end
-		if i < #items then ui.box(stats, x + it.w, 0, 2, 30, "px", C.soft) end
-		self.stat_items[i] = { key = it.key, hover = hover, icon = ic, value = val, trend = tr, tip = it.tip, x = cx, w = it.w }
+		if it.trend then tr = ui.icon(stats, x + it.w - 9, -H / 2, "flat", 10, C.muted) end
+		if i < #items then ui.box(stats, x + it.w, -H / 2, 1.5, 22, "px", C.soft) end
+		self.stat_items[i] = { key = it.key, hover = hover, icon = ic, value = val, trend = tr, tip = it.tip, w = it.w }
 		x = x + it.w
+	end
+end
+
+-- (the clock's width and its buttons for the number of speed buttons shown)
+local function lay_clock(self)
+	local n = 0
+	for _, b in ipairs(self.speed_btns) do if not b.hidden then n = n + 1 end end
+	local cw = clock_width(n)
+	ui.size_panel(self.clock, self.clock_sh, cw, layout.TOP_H)
+	gui.set_position(self.menu_btn, V3(CLK_X0 + n * CLK_STEP + 4, -layout.TOP_H / 2, 0))
+	for _, b in ipairs(self.speed_btns) do
+		if b.skipmenu then gui.set_position(self.skip_menu, V3(gui.get_position(b.node).x - 18, -layout.TOP_H - 6, 0)) end
 	end
 end
 
 -- Inspector ----------------------------------------------------------------------------------
 
 local function build_inspector(self)
-	local x = REF_W - 12 - INS_W / 2
-	local y = REF_H - 84 - INS_H / 2
-	local root = ui.box(nil, x, y, 1, 1, "px", C.clear)
-	ui.anchor(root, gui.ANCHOR_RIGHT, gui.ANCHOR_TOP)
+	local root = ui.root(REF_W - MG, REF_H - MG - layout.TOP_H - layout.GAP, gui.ANCHOR_RIGHT, gui.ANCHOR_TOP)
 	self.ins_root = root
-	self.ins_x = x
-	local sh = ui.box(root, 0, -3, INS_W + 22, INS_H + 22, "shadow", C.shadow)
-	local panel = ui.box(root, 0, 0, INS_W, INS_H, "panel", C.panel)
-	self.ins_panel = panel
+	local panel, sh = ui.panel_nw(root, -INS_W, 0, INS_W, 200)
+	self.ins_panel, self.ins_sh = panel, sh
+	self.ins_h = 200
 	-- collapse tab on the left edge
-	local tab = ui.box(root, -INS_W / 2 - 16, INS_H / 2 - 48, 30, 62, "panel", C.panel)
+	local tab = ui.box(panel, -12, -30, 24, 44, "panel", C.panel)
 	self.ins_tab = tab
-	self.ins_tab_icon = ui.icon(tab, 0, 0, "chev_right", 18, C.text)
-	-- header
-	local top = INS_H / 2
-	self.ins_badge = ui.box(panel, -INS_W / 2 + 36, top - 38, 50, 50, "circle", C.gold)
-	self.ins_icon = ui.icon(self.ins_badge, 0, 0, "pin", 30, C.white)
-	self.ins_title = ui.text(panel, -INS_W / 2 + 70, top - 28, "", "fredoka", 24, C.text)
-	self.ins_sub = ui.text(panel, -INS_W / 2 + 71, top - 52, "", "nunito_semi", 14, C.muted)
-	self.ins_close = ui.box(panel, INS_W / 2 - 24, top - 24, 30, 30, "circle", C.soft)
-	ui.icon(self.ins_close, 0, 0, "close", 14, C.text)
-	ui.box(panel, 0, top - 74, INS_W - 28, 2, "px", C.soft)
-	-- rows
-	self.rows = {}
-	local y0 = top - 94
-	for i = 1, ROWS do
-		local ry = y0 - (i - 1) * ROW_H
+	self.ins_tab_icon = ui.icon(tab, -1, 0, "chev_right", 14, C.text)
+	-- header: badge, title, subtitle; Follow and close on the right
+	self.ins_badge = ui.box(panel, 28, -28, 38, 38, "circle", C.gold)
+	self.ins_icon = ui.icon(self.ins_badge, 0, 0, "pin", 22, C.white)
+	self.ins_title = ui.text(panel, 54, -20, "", "fredoka", 17, C.text)
+	self.ins_sub = ui.text(panel, 55, -38, "", "nunito_semi", 11.5, C.muted)
+	self.ins_close = ui.box(panel, INS_W - 20, -20, 24, 24, "circle", C.soft)
+	ui.icon(self.ins_close, 0, 0, "close", 11, C.text)
+	self.ins_follow = ui.box(panel, INS_W - 40, -20, 74, 24, "pill", C.soft, gui.PIVOT_E)
+	self.ins_follow_icon = ui.icon(self.ins_follow, -60, 0, "eye", 15, C.text)
+	self.ins_follow_t = ui.text(self.ins_follow, -50, 0, "Follow", "fredoka", 12, C.text)
+	self.ins_follow_hit = { follow = true, tip = "Follow with the camera  (F)" }
+	self.ins_line = ui.box(panel, INS_W / 2, -INS_HEAD + 2, INS_W - 24, 1.5, "px", C.soft)
+	-- the lines
+	self.slots = {}
+	for i = 1, SLOTS do
 		local r = {}
-		r.y = ry
-		r.bg = ui.box(panel, 0, ry, INS_W - 20, ROW_H - 2, "panel", C.clear)
-		r.icon = ui.icon(panel, -INS_W / 2 + 26, ry, "info", 18, C.muted)
-		r.label = ui.text(panel, -INS_W / 2 + 42, ry, "", "nunito_semi", 15, C.muted)
-		r.head = ui.text(panel, -INS_W / 2 + 16, ry - 2, "", "fredoka", 16, C.teal)
-		r.hl = ui.box(panel, INS_W / 2 - 14, ry, 60, ROW_H - 6, "pill_s", C.coral, gui.PIVOT_E)
-		r.value = ui.text(panel, INS_W / 2 - 20, ry, "", "nunito", 15, C.text, gui.PIVOT_E)
-		r.bar_bg = ui.box(panel, 4, ry, 74, 10, "pill_s", C.soft, gui.PIVOT_W)
-		r.bar = ui.box(panel, 4, ry, 10, 10, "pill_s", C.teal, gui.PIVOT_W)
-		r.bang = ui.text(panel, INS_W / 2 - 20, ry, "!", "fredoka", 16, C.white, gui.PIVOT_CENTER)
-		self.rows[i] = r
+		r.bg = ui.box(panel, INS_W / 2 - 3, 0, INS_W - 18, LINE_H - 1, "pill_s", C.clear)
+		r.icon = ui.icon(panel, BODY_X0 + 8, 0, "info", 14, C.muted)
+		r.label = ui.text(panel, BODY_X0 + ICON_W, 0, "", "nunito_semi", FS, C.muted)
+		r.head = ui.text(panel, BODY_X0, 0, "", "fredoka", 13, C.teal)
+		r.chev = ui.icon(panel, BODY_X1 - 6, 0, "chev_down", 11, C.teal)
+		r.hl = ui.box(panel, BODY_X1, 0, 60, LINE_H - 4, "pill_s", C.coral, gui.PIVOT_E)
+		r.value = ui.text(panel, BODY_X1, 0, "", "nunito", FS, C.text, gui.PIVOT_E)
+		r.bar_bg = ui.box(panel, 0, 0, 56, 8, "pill_s", C.soft, gui.PIVOT_W)
+		r.bar = ui.box(panel, 0, 0, 8, 8, "pill_s", C.teal, gui.PIVOT_W)
+		r.bang = ui.text(panel, BODY_X1 - 6, 0, "!", "fredoka", 13, C.white, gui.PIVOT_CENTER)
+		r.i = i
+		self.slots[i] = r
 	end
-	self.ins_more = ui.text(panel, INS_W / 2 - 18, -INS_H / 2 + 14, "", "nunito_semi", 13, C.muted, gui.PIVOT_E)
+	-- the scrollbar (when the lines do not fit)
+	self.ins_track = ui.box(panel, INS_W - 7, -INS_HEAD - 4, 4, 100, "pill_s", vmath.vector4(0.42, 0.38, 0.47, 0.14), gui.PIVOT_N)
+	self.ins_thumb = ui.box(panel, INS_W - 7, -INS_HEAD - 4, 4, 30, "pill_s", vmath.vector4(0.42, 0.38, 0.47, 0.55), gui.PIVOT_N)
+	self.ins_more = ui.text(panel, INS_W - 16, 0, "", "nunito_semi", 10.5, C.muted, gui.PIVOT_E)
 	self.ins_visible = false
+	self.ins_cb = 0          -- collapsed blend
+	self.fold = {}
 	gui.set_enabled(root, false)
 end
 
-local function hide_row(r)
-	for _, k in ipairs({ "bg", "icon", "label", "head", "hl", "value", "bar_bg", "bar", "bang" }) do
+local function hide_slot(r)
+	for _, k in ipairs({ "bg", "icon", "label", "head", "chev", "hl", "value", "bar_bg", "bar", "bang" }) do
 		gui.set_enabled(r[k], false)
 	end
-	r.link = nil
+	r.line = nil
 end
 
-local function tint_for(item)
-	if item.hl then return C.coral end
-	return C.muted
+local function folded(self, name)
+	local f = self.fold[name]
+	if f == nil then return FOLD_DEFAULT[name] or false end
+	return f
+end
+
+-- The inspector's items as measured lines: a section's header (foldable), a row (label and value on one line, or the
+-- value wrapped under its label when they do not fit side by side), a bar, a text wrapped by pixels.
+local function lay_lines(self, items)
+	local L = {}
+	local fold_on = false
+	local tw = ui.text_width
+	local avail = BODY_X1 - BODY_X0
+	for i, it in ipairs(items) do
+		if it.t == "head" then
+			local n = 0
+			for j = i + 1, #items do if items[j].t == "head" then break end; n = n + 1 end
+			fold_on = folded(self, it.text)
+			L[#L + 1] = { k = "head", text = it.text or "", folded = fold_on, n = n, h = HEAD_H }
+		elseif not fold_on then
+			if it.t == "text" then
+				local x = it.icon and ICON_W or 0
+				local lines = ui.wrap("nunito_semi", it.text or "", FS, avail - x)
+				for j, ln in ipairs(lines) do
+					L[#L + 1] = { k = "text", text = ln, icon = j == 1 and it.icon or nil, hl = it.hl, x = x, link = it.link, h = LINE_H }
+				end
+			else
+				local label, v = it.label or "", it.value or ""
+				local lw = tw("nunito_semi", label, FS)
+				local vw = tw("nunito", v, FS) + (it.hl and 24 or 0)
+				local bw = it.t == "bar" and 62 or 0
+				if ICON_W + lw + 10 + bw + vw <= avail then
+					L[#L + 1] = { k = "row", label = label, value = v, vw = vw, icon = it.icon, bar = it.t == "bar" and (it.frac or 0) or nil,
+						hl = it.hl, link = it.link, h = LINE_H }
+				else
+					-- the label (and its bar) on one line, the value wrapped under it
+					L[#L + 1] = { k = "row", label = ui.trunc("nunito_semi", label, FS, avail - ICON_W - bw - 6), value = "", vw = 0, icon = it.icon,
+						bar = it.t == "bar" and (it.frac or 0) or nil, hl = it.hl, link = it.link, h = LINE_H }
+					for _, ln in ipairs(ui.wrap("nunito", v, FS, avail - ICON_W - 6)) do
+						L[#L + 1] = { k = "value", text = ln, hl = it.hl, link = it.link, x = ICON_W + 6, h = LINE_H }
+					end
+				end
+			end
+		end
+	end
+	return L
 end
 
 local function fill_inspector(self, data)
-	gui.set_text(self.ins_title, data.title or "")
-	gui.set_text(self.ins_sub, data.subtitle or "")
+	local W_ = INS_W
+	local follow = data.can_follow and true or false
+	self.ins_can_follow = follow
+	gui.set_enabled(self.ins_follow, follow)
+	local tmax = W_ - 54 - (follow and 112 or 34)
+	gui.set_text(self.ins_title, ui.trunc("fredoka", data.title or "", 17, tmax))
+	gui.set_text(self.ins_sub, ui.trunc("nunito_semi", data.subtitle or "", 11.5, W_ - 70))
 	ui.set_icon(self.ins_icon, data.icon or "pin")
 	local tint = data.tint and vmath.vector4(data.tint[1], data.tint[2], data.tint[3], 1)
 		or (data.kind == "person" and C.gold) or (data.kind == "planet" and C.teal)
 		or (data.kind == "village" and C.coral) or C.teal
 	gui.set_color(self.ins_badge, tint)
 	gui.set_color(self.ins_icon, data.kind == "person" and C.text or C.white)
-	local items = data.items or {}
-	-- scrolling (mouse wheel over the panel): kept while the same subject is shown
+	local lines = lay_lines(self, data.items or {})
+	self.ins_lines = lines
+	-- the panel: as tall as its lines, or the room the column has (then it scrolls)
+	local content = 0
+	for _, ln in ipairs(lines) do content = content + ln.h end
+	local maxh = layout.column_h(INS_W)
+	local h = math.min(INS_HEAD + content + 12, maxh)
+	h = math.max(h, INS_HEAD + 30)
+	if h ~= self.ins_h then
+		self.ins_h = h
+		ui.size_panel(self.ins_panel, self.ins_sh, INS_W, h)
+	end
+	local body = h - INS_HEAD - 10
+	-- scrolling (the wheel over the panel, the scrollbar): kept while the same subject is shown
 	local subject = tostring(data.kind) .. ":" .. tostring(data.title)
 	if subject ~= self.ins_subject then self.ins_subject, self.ins_scroll = subject, 0 end
-	local off = math.max(0, math.min(self.ins_scroll or 0, #items - ROWS))
-	self.ins_scroll = off
-	self.ins_count = #items
-	local shown = 0
-	for i = 1, ROWS do
-		local r = self.rows[i]
-		hide_row(r)
-		local it = items[i + off]
-		if it then
-			shown = i
-			if it.t == "head" then
-				gui.set_enabled(r.head, true)
-				gui.set_text(r.head, it.text or "")
-			else
-				gui.set_enabled(r.icon, it.icon ~= nil)
-				if it.icon then ui.set_icon(r.icon, it.icon); gui.set_color(r.icon, tint_for(it)) end
-				gui.set_enabled(r.label, true)
-				if it.t == "text" then
-					gui.set_text(r.label, it.text or "")
-					gui.set_color(r.label, C.text)
-				else
-					gui.set_text(r.label, it.label or "")
-					gui.set_color(r.label, C.muted)
-					gui.set_enabled(r.value, true)
-					local v = it.value or ""
-					gui.set_text(r.value, v)
-					local vw = ui.text_width("nunito", v, 15)
-					if it.hl then
-						gui.set_enabled(r.hl, true)
-						gui.set_size(r.hl, V3(vw + 30, ROW_H - 6, 0))
-						gui.set_position(r.value, V3(INS_W / 2 - 34, r.y, 0))
-						gui.set_color(r.value, C.white)
-						gui.set_enabled(r.bang, true)
-						gui.set_position(r.bang, V3(INS_W / 2 - 24, r.y, 0))
-					else
-						gui.set_position(r.value, V3(INS_W / 2 - 20, r.y, 0))
-						gui.set_color(r.value, C.text)
-					end
-					if it.t == "bar" then
-						gui.set_enabled(r.bar_bg, true)
-						gui.set_enabled(r.bar, true)
-						local f = math.max(0, math.min(1, it.frac or 0))
-						gui.set_size(r.bar, V3(math.max(10, 74 * f), 10, 0))
-						gui.set_color(r.bar, it.hl and C.coral or C.teal)
-						-- keep the bar clear of long values
-						local bx = math.min(4, INS_W / 2 - 34 - vw - 82 - (it.hl and 14 or 0))
-						gui.set_position(r.bar_bg, V3(bx, r.y, 0))
-						gui.set_position(r.bar, V3(bx, r.y, 0))
-					end
-					if it.link then
-						r.link = it.link
-						gui.set_enabled(r.bg, true)
-						gui.set_color(r.bg, C.clear)
-						gui.set_color(r.label, C.text)
-					end
-				end
-			end
+	-- the first line shown and how many fit
+	local maxoff = 0
+	do
+		local acc = 0
+		for k = #lines, 1, -1 do
+			acc = acc + lines[k].h
+			if acc > body then maxoff = k; break end
 		end
 	end
-	local more = #items - shown - off
-	local txt = more > 0 and ("+" .. more .. " more") or ""
-	if off > 0 then txt = off .. " above" .. (txt ~= "" and (" · " .. txt) or "") end
-	if more > 0 and off == 0 then txt = txt .. " (scroll)" end
-	gui.set_text(self.ins_more, txt)
-end
-
-local function set_collapsed(self, on)
-	uistate.inspector_collapsed = on
-	local x = self.ins_x + (on and (INS_W + 4) or 0)
-	gui.animate(self.ins_root, "position.x", x, gui.EASING_OUTCUBIC, 0.25)
-	ui.set_icon(self.ins_tab_icon, on and "chev_left" or "chev_right")
+	local off = math.max(0, math.min(self.ins_scroll or 0, maxoff))
+	self.ins_scroll, self.ins_maxoff = off, maxoff
+	local y = -INS_HEAD - 4
+	local shown, last = 0, off
+	for i = 1, SLOTS do
+		local r = self.slots[i]
+		hide_slot(r)
+		local ln = lines[off + i]
+		if ln and (-y - INS_HEAD - 4) + ln.h <= body + 0.5 then
+			shown, last = i, off + i
+			local cy = y - ln.h / 2
+			r.line = ln
+			r.y = cy
+			gui.set_position(r.bg, V3(INS_W / 2 - 3, cy, 0))
+			gui.set_size(r.bg, V3(INS_W - 18, ln.h - 1, 0))
+			if ln.k == "head" then
+				gui.set_enabled(r.head, true)
+				gui.set_position(r.head, V3(BODY_X0, cy - 2, 0))
+				gui.set_text(r.head, ln.folded and string.format("%s  (%d)", ln.text, ln.n) or ln.text)
+				gui.set_enabled(r.chev, ln.n > 0)
+				ui.set_icon(r.chev, ln.folded and "chev_down" or "chev_up")
+				gui.set_position(r.chev, V3(BODY_X1 - 4, cy - 2, 0))
+				gui.set_enabled(r.bg, ln.n > 0)
+				gui.set_color(r.bg, C.clear)
+			elseif ln.k == "text" or ln.k == "value" then
+				gui.set_enabled(r.icon, ln.icon ~= nil)
+				if ln.icon then
+					ui.set_icon(r.icon, ln.icon)
+					gui.set_position(r.icon, V3(BODY_X0 + 7, cy, 0))
+					gui.set_color(r.icon, ln.hl and C.coral or C.muted)
+				end
+				gui.set_enabled(r.label, true)
+				gui.set_position(r.label, V3(BODY_X0 + (ln.x or 0), cy, 0))
+				gui.set_text(r.label, ln.text)
+				gui.set_color(r.label, ln.hl and C.coral or C.text)
+			else
+				gui.set_enabled(r.icon, ln.icon ~= nil)
+				if ln.icon then
+					ui.set_icon(r.icon, ln.icon)
+					gui.set_position(r.icon, V3(BODY_X0 + 7, cy, 0))
+					gui.set_color(r.icon, ln.hl and C.coral or C.muted)
+				end
+				gui.set_enabled(r.label, true)
+				gui.set_position(r.label, V3(BODY_X0 + ICON_W, cy, 0))
+				gui.set_text(r.label, ln.label)
+				gui.set_color(r.label, ln.link and C.text or C.muted)
+				local v = ln.value or ""
+				local vw = ui.text_width("nunito", v, FS)
+				gui.set_enabled(r.value, v ~= "")
+				gui.set_text(r.value, v)
+				local vx = BODY_X1
+				if ln.hl and v ~= "" then
+					gui.set_enabled(r.hl, true)
+					gui.set_size(r.hl, V3(vw + 26, LINE_H - 4, 0))
+					gui.set_position(r.hl, V3(BODY_X1, cy, 0))
+					vx = BODY_X1 - 16
+					gui.set_color(r.value, C.white)
+					gui.set_enabled(r.bang, true)
+					gui.set_position(r.bang, V3(BODY_X1 - 8, cy, 0))
+				else
+					gui.set_color(r.value, C.text)
+				end
+				gui.set_position(r.value, V3(vx, cy, 0))
+				if ln.bar then
+					gui.set_enabled(r.bar_bg, true)
+					gui.set_enabled(r.bar, true)
+					local f = math.max(0, math.min(1, ln.bar))
+					local bx = BODY_X1 - (v ~= "" and (vw + (ln.hl and 26 or 0) + 8) or 0) - 56
+					gui.set_position(r.bar_bg, V3(bx, cy, 0))
+					gui.set_position(r.bar, V3(bx, cy, 0))
+					gui.set_size(r.bar, V3(math.max(8, 56 * f), 8, 0))
+					gui.set_color(r.bar, ln.hl and C.coral or C.teal)
+				end
+				if ln.link then
+					gui.set_enabled(r.bg, true)
+					gui.set_color(r.bg, C.clear)
+				end
+			end
+			if ln.link and (ln.k == "text" or ln.k == "value") then gui.set_enabled(r.bg, true); gui.set_color(r.bg, C.clear) end
+			y = y - ln.h
+		end
+	end
+	-- the scrollbar and what is above / below
+	local scroll = maxoff > 0
+	gui.set_enabled(self.ins_track, scroll)
+	gui.set_enabled(self.ins_thumb, scroll)
+	gui.set_enabled(self.ins_more, scroll)
+	if scroll then
+		local th = body
+		gui.set_size(self.ins_track, V3(4, th, 0))
+		local vis = math.max(1, last - off)
+		local frac = vis / #lines
+		local tsz = math.max(22, th * frac)
+		gui.set_size(self.ins_thumb, V3(4, tsz, 0))
+		gui.set_position(self.ins_thumb, V3(INS_W - 7, -INS_HEAD - 4 - (th - tsz) * (off / maxoff), 0))
+		local below = #lines - last
+		gui.set_text(self.ins_more, below > 0 and string.format("%d more - scroll", below) or "")
+		gui.set_position(self.ins_more, V3(INS_W - 14, -h + 9, 0))
+	end
+	self.ins_count = #lines
 end
 
 -- Debug overlay, tooltip, edge indicator ----------------------------------------------------------
 
 local function build_misc(self)
-	local dbg = ui.box(nil, 12, 12, 560, 132, "panel", vmath.vector4(1, 0.973, 0.925, 0.82), gui.PIVOT_SW)
-	ui.anchor(dbg, gui.ANCHOR_LEFT, gui.ANCHOR_BOTTOM)
+	self.dbg_root = ui.root(REF_W / 2, REF_H - MG - layout.TOP_H - layout.GAP, gui.ANCHOR_NONE, gui.ANCHOR_TOP)
+	local dbg = ui.box(self.dbg_root, -220, 0, 440, 132, "panel", vmath.vector4(1, 0.973, 0.925, 0.82), gui.PIVOT_NW)
 	self.dbg = dbg
-	self.dbg_text = ui.text(dbg, 12, 122, "", "nunito_semi", 13, C.text, gui.PIVOT_NW)
-	gui.set_enabled(dbg, false)
+	self.dbg_text = ui.text(dbg, 10, -8, "", "nunito_semi", 11.5, C.text, gui.PIVOT_NW)
+	gui.set_enabled(self.dbg_root, false)
 
 	ui.top = true
-	local tip = ui.box(nil, 0, 0, 120, 28, "pill", vmath.vector4(0.165, 0.137, 0.208, 0.92))
+	local tip = ui.box(nil, 0, 0, 120, 26, "pill", vmath.vector4(0.165, 0.137, 0.208, 0.92))
 	self.tip = tip
-	self.tip_text = ui.text(tip, 0, 0, "", "nunito", 14, C.panel_solid, gui.PIVOT_CENTER)
+	self.tip_text = ui.text(tip, 0, 0, "", "nunito", 13, C.panel_solid, gui.PIVOT_CENTER)
 	gui.set_enabled(tip, false)
 	ui.top = false
 
-	local edge = ui.box(nil, 0, 0, 46, 46, "circle", C.gold)
+	local edge = ui.box(nil, 0, 0, 42, 42, "circle", C.gold)
 	self.edge = edge
-	self.edge_icon = ui.icon(edge, 0, 0, "info", 24, C.text)
-	self.edge_arrow = ui.icon(edge, 34, 0, "arrow_edge", 18, C.gold)
+	self.edge_icon = ui.icon(edge, 0, 0, "info", 22, C.text)
+	self.edge_arrow = ui.icon(edge, 31, 0, "arrow_edge", 16, C.gold)
 	gui.set_enabled(edge, false)
 end
 
--- Power bar (Stage 2.1, 04 §5): 8 round buttons with cooldown pies; the armed power glows gold
--- and, if it has modes or species, shows a row of choices above it.
-local PB_BTN, PB_GAP = 54, 10
+-- Power bar (Stage 2.1, 04 §5): round buttons with cooldown pies in groups (the sky, the earth, life, the sea, the meteor),
+-- the armed power glowing gold; a power with modes or species shows its choices above the bar.
+local PB_BTN, PB_GAP, PB_GROUP = 37, 4, 10
+-- (S26) the bar's groups for the v3 powers, by the power that starts each (the order and the keys stay the bar's)
+local GROUP_START = { stir = true, cull = true, sea = true, meteor = true }
 
 local function build_powers(self)
 	local n = #powers.DEFS
-	local w = n * PB_BTN + (n - 1) * PB_GAP + 28
-	local h = PB_BTN + 20
-	local bar, bar_sh = ui.panel(nil, REF_W / 2, 14 + h / 2, w, h)
-	ui.anchor(bar, gui.ANCHOR_NONE, gui.ANCHOR_BOTTOM)
-	ui.anchor(bar_sh, gui.ANCHOR_NONE, gui.ANCHOR_BOTTOM)
-	self.pbar = bar
-	self.pbar_sh = bar_sh
+	local xs, x = {}, 10 + PB_BTN / 2
+	for i, d in ipairs(powers.DEFS) do
+		if i > 1 then x = x + PB_BTN + PB_GAP + ((view.W and view.W.v3 and GROUP_START[d.id]) and PB_GROUP or 0) end
+		xs[i] = x
+	end
+	local w = x + PB_BTN / 2 + 10
+	local h = layout.BAR_H
+	self.pbar_root = ui.root(REF_W / 2, MG, gui.ANCHOR_NONE, gui.ANCHOR_BOTTOM)
+	local bar, bar_sh = ui.panel_nw(self.pbar_root, -w / 2, h, w, h)
+	self.pbar, self.pbar_sh = bar, bar_sh
+	self.pbar_w = w
+	layout.set_widths(w)
 	self.pbtns = {}
 	for i, d in ipairs(powers.DEFS) do
-		local x = -w / 2 + 14 + PB_BTN / 2 + (i - 1) * (PB_BTN + PB_GAP)
-		local b = ui.box(bar, x, 0, PB_BTN, PB_BTN, "circle", C.soft)
-		local ic = ui.icon(b, 0, 1, d.icon, 30, C.text)
+		local bx = xs[i]
+		if i > 1 and view.W and view.W.v3 and GROUP_START[d.id] then
+			ui.box(bar, bx - PB_BTN / 2 - (PB_GAP + PB_GROUP) / 2, -h / 2, 1.5, 26, "px", C.soft)
+		end
+		local b = ui.box(bar, bx, -h / 2, PB_BTN, PB_BTN, "circle", C.soft)
+		local ic = ui.icon(b, 0, 1, d.icon, 21, C.text)
 		local pie = gui.new_pie_node(V3(0, 0, 0), V3(PB_BTN, PB_BTN, 0))
 		gui.set_texture(pie, "ui")
 		gui.play_flipbook(pie, "circle")
 		gui.set_color(pie, vmath.vector4(0.16, 0.14, 0.21, 0.5))
 		gui.set_fill_angle(pie, 0)
 		gui.set_layer(pie, "box")
+		gui.set_adjust_mode(pie, gui.ADJUST_FIT)
 		gui.set_parent(pie, b, false)
-		local key = ui.text(b, PB_BTN / 2 - 9, -PB_BTN / 2 + 8, tostring(i), "fredoka", 12, C.muted, gui.PIVOT_CENTER)
+		local key = ui.text(b, PB_BTN / 2 - 6, -PB_BTN / 2 + 6, tostring(i), "fredoka", 9.5, C.muted, gui.PIVOT_CENTER)
 		-- (S25) the countdown while it recharges (game time)
-		local cdt = ui.text(b, 0, -1, "", "fredoka", 17, C.white, gui.PIVOT_CENTER)
+		local cdt = ui.text(b, 0, -1, "", "fredoka", 13, C.white, gui.PIVOT_CENTER)
 		gui.set_outline(cdt, vmath.vector4(0.16, 0.14, 0.21, 1))
 		self.pbtns[i] = { node = b, icon = ic, pie = pie, key = key, cdt = cdt, power = i, tip0 = d.tip .. "   (Shift+" .. i .. ")" }
 		self.pbtns[i].tip = self.pbtns[i].tip0
@@ -358,18 +495,18 @@ local function build_powers(self)
 	-- choices for the armed power (modes / species), above the bar
 	self.popts = {}
 	for k = 1, 4 do
-		local b = ui.box(bar, 0, h / 2 + 30, 42, 42, "circle", C.panel_solid)
-		local ic = ui.icon(b, 0, 0, "info", 24, C.text)
+		local b = ui.box(bar, 0, 26, 36, 36, "circle", C.panel_solid)
+		local ic = ui.icon(b, 0, 0, "info", 20, C.text)
 		gui.set_enabled(b, false)
 		self.popts[k] = { node = b, icon = ic, opt = k }
 	end
-	self.phint = ui.text(bar, 0, h / 2 + 64, "", "nunito_semi", 16, C.coral, gui.PIVOT_CENTER)
+	self.phint = ui.text(bar, w / 2, 56, "", "nunito_semi", 14, C.coral, gui.PIVOT_CENTER)
 	-- (S23) what the armed power would act on under the pointer, read from the world (sim/powers3.lua preview)
-	self.pprev = ui.box(bar, 0, h / 2 + 66, 300, 30, "pill", C.panel)
-	self.pprev_t = ui.text(self.pprev, 0, 0, "", "nunito_semi", 14, C.text, gui.PIVOT_CENTER)
+	self.pprev = ui.box(bar, w / 2, 58, 300, 26, "pill", C.panel)
+	self.pprev_t = ui.text(self.pprev, 0, 0, "", "nunito_semi", 12.5, C.text, gui.PIVOT_CENTER)
 	gui.set_enabled(self.pprev, false)
-	gui.set_enabled(bar, false)
-	gui.set_enabled(bar_sh, false)
+	gui.set_enabled(self.pbar_root, false)
+	self.lay_v = -1
 end
 
 -- (S23) The armed power's preview at the pointer: the same target the cast would take (game/view/controls
@@ -418,8 +555,9 @@ local function update_powers(self)
 		local item = list and list[k]
 		gui.set_enabled(o.node, item ~= nil)
 		if item then
-			local x = bx + (k - (#list + 1) / 2) * 48
-			gui.set_position(o.node, V3(x, gui.get_position(o.node).y, 0))
+			local x = bx + (k - (#list + 1) / 2) * 42
+			x = math.max(20, math.min(self.pbar_w - 20, x))
+			gui.set_position(o.node, V3(x, 26, 0))
 			ui.set_icon(o.icon, item.icon)
 			local sel = (powers.mode[d.id] or 1) == k
 			gui.set_color(o.node, sel and C.gold or (self.hover == o and C.hover or C.panel_solid))
@@ -429,6 +567,7 @@ local function update_powers(self)
 	end
 	local hint = powers.hint and powers.hint.text or ""
 	gui.set_text(self.phint, hint)
+	gui.set_position(self.phint, V3(self.pbar_w / 2, list and 62 or 22, 0))
 	-- (S23) the preview, a few times a second while aiming (hidden while a refusal is shown)
 	local pv = nil
 	if d and view.W and view.W.v3 and hint == "" then
@@ -446,8 +585,55 @@ local function update_powers(self)
 	gui.set_enabled(self.pprev, on)
 	if on and pv ~= self.pv_shown then
 		self.pv_shown = pv
-		gui.set_text(self.pprev_t, pv)
-		gui.set_size(self.pprev, V3(ui.text_width("nunito_semi", pv, 14) + 36, 30, 0))
+		local t = ui.trunc("nunito_semi", pv, 12.5, self.pbar_w - 32)
+		gui.set_text(self.pprev_t, t)
+		gui.set_size(self.pprev, V3(ui.text_width("nunito_semi", t, 12.5) + 32, 26, 0))
+	end
+	if on then gui.set_position(self.pprev, V3(self.pbar_w / 2, list and 64 or 24, 0)) end
+end
+
+-- Layout -------------------------------------------------------------------------------------
+
+-- The roots' places for this window (and how far each slides away in the idle view): the left column and the inspector
+-- under the top bar, the pills and the power bar on the bottom edge, the sound pill clear of the page's fullscreen button.
+local function relayout(self)
+	local k = layout.k
+	local top = REF_H - MG - (layout.TOP_H + layout.GAP) * k
+	local fsw = (10 + 30 + 6) / layout.fit   -- the page's fullscreen button (CSS pixels) in reference units
+	local R = {}
+	local function put(node, x, y, dx, dy, dist)
+		if not node then return end
+		gui.set_scale(node, V3(k, k, 1))
+		R[#R + 1] = { node = node, x = x, y = y, dx = dx, dy = dy, dist = dist }
+	end
+	put(self.clock_root, MG, REF_H - MG, 0, 1, (layout.TOP_H + 260) * k)
+	put(self.stats_root, REF_W - MG, REF_H - MG, 0, 1, (layout.TOP_H + 30) * k)
+	put(self.ins_root, REF_W - MG, top, 1, 0, (INS_W + 40) * k)
+	put(self.news and self.news.root, MG, top, -1, 0, (layout.COL_W + 40) * k)
+	put(self.actions and self.actions.root, MG, top, -1, 0, (actions.PW + 40) * k)
+	put(self.actions and self.actions.pills, MG, MG, 0, -1, (layout.PILL_H + 30) * k)
+	put(self.pbar_root, REF_W / 2, MG, 0, -1, (layout.BAR_H + 110) * k)
+	put(self.skip_root, REF_W / 2, MG + (layout.BAR_H + layout.GAP) * k, 0, -1, (layout.BAR_H + 110) * k)
+	put(self.soundp and self.soundp.root, REF_W - MG - fsw, MG, 0, -1, (layout.PILL_H + 260) * k)
+	put(self.tut and self.tut.root, REF_W / 2, top, 0, 1, (layout.TOP_H + 400) * k)
+	put(self.dbg_root, REF_W / 2, top, 0, 1, 0)
+	-- (the debug overlay as wide as the top centre's room)
+	local dw = math.floor(math.min(440, layout.center_w()))
+	gui.set_size(self.dbg, V3(dw, 132, 0))
+	gui.set_position(self.dbg, V3(-dw / 2, 0, 0))
+	self.roots = R
+	self.placed_v = nil
+	self.ins_dirty = true
+	if self.news then self.news.sig = nil end
+	if self.actions then self.actions.t = 1; self.actions.sig = nil end
+end
+
+-- each root at its place, slid away by the idle view's blend e (0 shown .. 1 away) - and the inspector by its collapse
+local function place_roots(self, e)
+	for _, r in ipairs(self.roots or {}) do
+		local x, y = r.x + r.dx * r.dist * e, r.y + r.dy * r.dist * e
+		if r.node == self.ins_root then x = x + (INS_W + 4) * layout.k * self.ins_cb end
+		gui.set_position(r.node, V3(x, y, 0))
 	end
 end
 
@@ -473,41 +659,61 @@ function init(self)
 		if menu.is_open() then return menu.hit(s, x, y) end
 		return tutorial.hit(s, x, y)
 	end
+	self.idle_after = query.number("idle", IDLE_AFTER)
 	self.sel_version = -1
 	self.refresh = 0
 	self.hover = nil
 	self.shown = { top = false }
-	for _, n in ipairs({ self.clock, self.stats }) do gui.set_enabled(n, false) end
-end
-
-local function rect_of(node)
-	local p = gui.get_screen_position(node)
-	local s = gui.get_size(node)
-	local sc = gui.get_scale(node)
-	local fit = math.min((state.window_w or REF_W) / REF_W, (state.window_h or REF_H) / REF_H)
-	local hw, hh = s.x * sc.x * fit / 2, s.y * sc.y * fit / 2
-	local pv = gui.get_pivot(node)
-	local cx, cy = p.x, p.y
-	if pv == gui.PIVOT_SW then cx, cy = p.x + hw, p.y + hh end
-	return { cx - hw, cy - hh, cx + hw, cy + hh }
+	self.idle_e, self.idle_on, self.input_t = 0, false, 0
+	self.clock_s = 0
+	gui.set_enabled(self.clock_root, false)
+	gui.set_enabled(self.stats_root, false)
+	layout.update(state.window_w, state.window_h)
+	relayout(self)
+	place_roots(self, 0)
 end
 
 local function publish_bounds(self)
 	local b = {}
-	if gui.is_enabled(self.clock) then b.clock = rect_of(self.clock); b.stats = rect_of(self.stats) end
-	if gui.is_enabled(self.ins_root) then
-		b.inspector_tab = rect_of(self.ins_tab)
-		if not uistate.inspector_collapsed then b.inspector = rect_of(self.ins_panel) end
+	local R = layout.rect
+	if layout.shown(self.clock) then b.clock = R(self.clock); b.stats = R(self.stats) end
+	if layout.shown(self.ins_root) then
+		b.inspector_tab = R(self.ins_tab)
+		if not uistate.inspector_collapsed then b.inspector = R(self.ins_panel) end
 	end
-	if gui.is_enabled(self.dbg) then b.debug = rect_of(self.dbg) end
+	if layout.shown(self.dbg) then b.debug = R(self.dbg) end
+	if self.pbar and layout.shown(self.pbar) then b.powers = R(self.pbar) end
+	if layout.shown(self.skip_menu) then b.skip_menu = R(self.skip_menu) end
+	if layout.shown(self.skip_prog) then b.skip_progress = R(self.skip_prog) end
+	-- (S26) the news column (its cards and Why? as one), Your actions, the corner pills, the sound, the tutorial's card
+	local nb = newsfeed.rect and newsfeed.rect(self)
+	if nb then b.news = nb end
+	local A = self.actions
+	if A then
+		if layout.shown(A.panel) then b.actions = R(A.panel) end
+		local pr = actions.pills_rect and actions.pills_rect(self)
+		if pr then b.pills = pr end
+	end
+	local S = self.soundp
+	if S then
+		if layout.shown(S.pill) then b.sound = R(S.pill) end
+		if layout.shown(S.panel) then b.sound_panel = R(S.panel) end
+	end
+	if self.tut and layout.shown(self.tut.card) then b.tutorial = R(self.tut.card) end
 	uistate.bounds = b
+	-- (the speed buttons, for harnesses that click them)
+	local btn = {}
+	for i, sb in ipairs(self.speed_btns) do if layout.shown(sb.node) then btn["speed" .. i] = R(sb.node) end end
+	if self.ins_can_follow and layout.shown(self.ins_follow) then btn.follow = R(self.ins_follow) end
+	if layout.shown(self.ins_close) then btn.close = R(self.ins_close) end
+	uistate.buttons = btn
 end
 
 local function update_top(self)
 	local s = hudstats.cur
 	if not s then return end
 	gui.set_text(self.clock_year, "Year " .. s.year)
-	gui.set_text(self.clock_season, s.part .. " " .. s.season .. "  \194\183  " .. s.clock)
+	gui.set_text(self.clock_season, ui.trunc("nunito_semi", s.part .. " " .. s.season .. "  \194\183  " .. s.clock, 11.5, CLK_X0 - 40 - 16))
 	local season_icon = ({ Spring = "leaf", Summer = "sun", Autumn = "leaf", Winter = "snow" })[s.season] or "sun"
 	ui.set_icon(self.clock_icon, season_icon)
 	gui.set_color(self.clock_icon, s.season == "Winter" and C.teal or (s.season == "Autumn" and C.coral or C.gold))
@@ -525,6 +731,10 @@ local function update_top(self)
 				gui.set_enabled(b.node, false)
 			end
 		end
+		lay_clock(self)
+	elseif W and not W.v3 and not self.v2_laid then
+		self.v2_laid = true
+		lay_clock(self)
 	end
 	local skipping = speed.v3_skipping()
 	if self.v3_ui then
@@ -537,8 +747,8 @@ local function update_top(self)
 		if gui.is_enabled(self.skip_prog) ~= skipping then gui.set_enabled(self.skip_prog, skipping) end
 		if skipping then
 			local f = speed.v3_skip_progress() or 0
-			gui.set_text(self.skip_label, string.format("%s  -  %d%%", speed.skip.label, math.floor(f * 100)))
-			gui.set_size(self.skip_bar, V3(math.max(8, 170 * f), 8, 0))
+			gui.set_text(self.skip_label, ui.trunc("nunito_semi", string.format("%s  -  %d%%", speed.skip.label, math.floor(f * 100)), 12.5, 180))
+			gui.set_size(self.skip_bar, V3(math.max(7, 160 * f), 7, 0))
 			gui.set_color(self.skip_stop, self.hover == "skipstop" and C.text or C.coral)
 		end
 	end
@@ -549,6 +759,7 @@ local function update_top(self)
 		gui.set_color(b.node, active and C.gold or (hover and C.hover or C.soft))
 		gui.set_scale(b.node, hover and V3(1.08, 1.08, 1) or V3(1, 1, 1))
 	end
+	gui.set_color(self.menu_btn, self.hover == self.menu_btn_hit and C.hover or C.soft)
 	local short = hudstats.short
 	local vals = {
 		population = short(s.population),
@@ -559,7 +770,7 @@ local function update_top(self)
 		sea = string.format("%+d m", math.floor(s.sea + 0.5)),
 	}
 	for _, it in ipairs(self.stat_items) do
-		gui.set_text(it.value, vals[it.key] or "-")
+		gui.set_text(it.value, ui.trunc("fredoka", vals[it.key] or "-", 14.5, it.w - 26 - (it.trend and 13 or 4)))
 		if it.trend then
 			local t = s["t_" .. it.key] or "flat"
 			ui.set_icon(it.trend, t)
@@ -570,8 +781,8 @@ local function update_top(self)
 end
 
 local function update_debug(self, dt)
-	local on = uistate.debug and not state.loading.active
-	if on ~= gui.is_enabled(self.dbg) then gui.set_enabled(self.dbg, on) end
+	local on = uistate.debug and not state.loading.active and not self.idle_on
+	if on ~= gui.is_enabled(self.dbg_root) then gui.set_enabled(self.dbg_root, on) end
 	if on and uistate.debug_lines then gui.set_text(self.dbg_text, uistate.debug_lines) end
 end
 
@@ -579,7 +790,7 @@ local function update_edge(self)
 	-- one pooled indicator: the first registered edge target that is off-screen / behind
 	local target = nil
 	for _, e in pairs(uistate.edge) do target = e; break end
-	if not target or state.loading.active then
+	if not target or state.loading.active or self.idle_on then
 		if gui.is_enabled(self.edge) then gui.set_enabled(self.edge, false) end
 		return
 	end
@@ -592,7 +803,6 @@ local function update_edge(self)
 		return
 	end
 	-- direction on screen from the centre toward the target (behind: toward its projection)
-	local fx, fy = state.focus_x or 0, state.focus_y or 0
 	local dx, dy = (sx or w / 2) - w / 2, (sy or h / 2) - h / 2
 	if not visible then dx, dy = -dx, -dy end
 	if math.abs(dx) + math.abs(dy) < 1 then dx, dy = 1, 0 end
@@ -601,14 +811,68 @@ local function update_edge(self)
 	local k = math.min(rx / math.max(1e-6, math.abs(math.cos(ang))), ry / math.max(1e-6, math.abs(math.sin(ang))))
 	gui.set_enabled(self.edge, true)
 	gui.set_position(self.edge, V3(REF_W / 2 + math.cos(ang) * k, REF_H / 2 - 20 + math.sin(ang) * k, 0))
-	gui.set_position(self.edge_arrow, V3(math.cos(ang) * 34, math.sin(ang) * 34, 0))
+	gui.set_position(self.edge_arrow, V3(math.cos(ang) * 31, math.sin(ang) * 31, 0))
 	gui.set_rotation(self.edge_arrow, vmath.quat_rotation_z(ang))
 	ui.set_icon(self.edge_icon, target.icon or "info")
 	self.edge_target = target
-	local _ = fx + fy
+end
+
+local function show_tip(self, text, node, below)
+	if not text or not node then gui.set_enabled(self.tip, false); return end
+	gui.set_enabled(self.tip, true)
+	text = ui.trunc("nunito", text, 13, 620)
+	gui.set_text(self.tip_text, text)
+	local w = ui.text_width("nunito", text, 13) + 22
+	gui.set_size(self.tip, V3(w, 26, 0))
+	-- beside the node: under it (the top bar) or over it (the bottom), kept on the screen
+	local r = layout.rect(node)
+	local fit = layout.fit
+	local half = w / 2 * fit
+	local x = math.max(half + 4, math.min((state.window_w or REF_W) - half - 4, (r[1] + r[3]) / 2))
+	local y = below and (r[2] - 18 * fit) or (r[4] + 18 * fit)
+	gui.set_screen_position(self.tip, V3(x, y, 0))
+end
+
+-- The idle view (S26): after a while without any input the HUD slides away (the clock up, the columns aside, the bars
+-- down; the page's fullscreen button fades), the selection set aside, and the camera is the idle view's
+-- (game/view/idlecam.lua: the planet turning, then a region, then a village, slowly) while the world lives on as it was.
+-- Any input brings everything back at once.
+local function idle_can(self)
+	if state.loading.active or menu.is_open() or tutorial.on or speed.v3_skipping() or powers.armed then return false end
+	if self.pressed or (self.soundp and self.soundp.open) or self.skip_menu_open then return false end
+	return view.W ~= nil
+end
+
+local function idle_enter(self)
+	self.idle_on = true
+	uistate.idle = true
+	show_tip(self, nil)
+	-- what was selected comes back when the player does
+	self.idle_sel = selection.sel
+	selection.clear()
+	uistate.request({ cmd = "follow_stop" })
+	uistate.request({ cmd = "idle", on = true })
+	if html5 then pcall(html5.run, "document.body.classList.add('tc-idle'); 0") end
+end
+
+local function idle_exit(self)
+	self.idle_on = false
+	uistate.idle = false
+	uistate.request({ cmd = "idle", on = false })
+	local s = self.idle_sel
+	self.idle_sel = nil
+	if s and not selection.sel then
+		local W = view.W
+		local ok = true
+		if s.kind == "person" and W and W.v3 then local p = W.S.v3.people[s.id]; ok = p ~= nil and p.alive end
+		if ok then selection.set(s) end
+	end
+	if html5 then pcall(html5.run, "document.body.classList.remove('tc-idle'); 0") end
 end
 
 function update(self, dt)
+	self.clock_s = self.clock_s + dt
+	if layout.update(state.window_w, state.window_h) then relayout(self) end
 	-- loading screen
 	local L = state.loading
 	if self.menu then self.menu.loaded = not L.active end
@@ -617,10 +881,10 @@ function update(self, dt)
 		-- (S25: the title screen shows the progress itself)
 		gui.set_enabled(self.loading, not menu.is_open())
 		gui.set_text(self.load_label, L.text or "")
-		gui.set_size(self.load_bar, V3(math.max(14, 380 * (L.frac or 0)), 14, 0))
+		gui.set_size(self.load_bar, V3(math.max(12, 340 * (L.frac or 0)), 12, 0))
 		if self.shown.top then
-			gui.set_enabled(self.clock, false); gui.set_enabled(self.stats, false)
-			if self.pbar then gui.set_enabled(self.pbar, false); gui.set_enabled(self.pbar_sh, false) end
+			gui.set_enabled(self.clock_root, false); gui.set_enabled(self.stats_root, false)
+			if self.pbar_root then gui.set_enabled(self.pbar_root, false) end
 			gui.set_enabled(self.ins_root, false)
 			self.shown.top = false
 		end
@@ -634,11 +898,31 @@ function update(self, dt)
 		-- (S21) the power bar for this world's powers (the v3 set in v3 worlds)
 		powers.use_world(W)
 		build_powers(self)
+		relayout(self)
 	end
 	if not self.shown.top then
-		gui.set_enabled(self.clock, true); gui.set_enabled(self.stats, true)
-		gui.set_enabled(self.pbar, true); gui.set_enabled(self.pbar_sh, true)
+		gui.set_enabled(self.clock_root, true); gui.set_enabled(self.stats_root, true)
+		gui.set_enabled(self.pbar_root, true)
 		self.shown.top = true
+		self.input_t = self.clock_s
+	end
+	-- the idle view: in after a while untouched, out at once on any input (on_input)
+	if not self.idle_on and self.clock_s - (self.input_t or 0) > self.idle_after and idle_can(self) then idle_enter(self) end
+	if self.idle_on and (menu.is_open() or tutorial.on) then idle_exit(self) end
+	local target = self.idle_on and 1 or 0
+	local was = self.idle_e
+	local rate = self.idle_on and 0.9 or 4.0       -- (slides away slowly, comes back at once)
+	if self.idle_e < target then self.idle_e = math.min(target, self.idle_e + dt * rate)
+	elseif self.idle_e > target then self.idle_e = math.max(target, self.idle_e - dt * rate) end
+	local cb_t = uistate.inspector_collapsed and 1 or 0
+	local cb_was = self.ins_cb
+	if self.ins_cb ~= cb_t then self.ins_cb = (cb_t > self.ins_cb) and math.min(1, self.ins_cb + dt * 5) or math.max(0, self.ins_cb - dt * 5) end
+	if was ~= self.idle_e or cb_was ~= self.ins_cb or self.placed_v ~= layout.version then
+		self.placed_v = layout.version
+		local e = self.idle_e
+		e = e * e * (3 - 2 * e)
+		place_roots(self, e)
+		ui.set_icon(self.ins_tab_icon, uistate.inspector_collapsed and "chev_left" or "chev_right")
 	end
 	update_powers(self)
 	sound_panel.update(self)
@@ -670,7 +954,6 @@ function update(self, dt)
 		tutorial.start(self, W)
 	end
 	tutorial.update(self, W, dt)
-	gui.set_color(self.menu_btn, self.hover == self.menu_btn_hit and C.hover or C.soft)
 	if W.v3 then
 		actions.update(self, W, speed.v3_t or W.hour, dt)
 		newsfeed.update(self, W, speed.v3_t or W.hour, dt)
@@ -693,8 +976,8 @@ function update(self, dt)
 			self.ins_visible = vis
 			gui.set_enabled(self.ins_root, vis)
 			if vis then
-				gui.set_scale(self.ins_panel, V3(0.96, 0.96, 1))
-				gui.animate(self.ins_panel, "scale", V3(1, 1, 1), gui.EASING_OUTBACK, 0.2)
+				gui.set_scale(self.ins_panel, V3(0.97, 0.97, 1))
+				gui.animate(self.ins_panel, "scale", V3(1, 1, 1), gui.EASING_OUTBACK, 0.18)
 			end
 		end
 		if data then fill_inspector(self, data) end
@@ -702,19 +985,35 @@ function update(self, dt)
 		fill_inspector(self, uistate.inspector_data)
 	end
 	self.ins_dirty = false
-	if uistate.inspector_collapsed ~= self.collapsed_applied then
-		self.collapsed_applied = uistate.inspector_collapsed
-		set_collapsed(self, uistate.inspector_collapsed)
+	-- row hover; the Follow button's state (the camera's follow is the truth: a drag or Esc ends it)
+	for _, r in ipairs(self.slots) do
+		if r.line and (r.line.link or r.line.k == "head") then gui.set_color(r.bg, self.hover == r and C.hover or C.clear) end
 	end
-	-- row hover
-	for _, r in ipairs(self.rows) do
-		if r.link then gui.set_color(r.bg, self.hover == r and C.hover or C.clear) end
+	if self.ins_can_follow then
+		local on = camera.following(selection.sel)
+		if on ~= self.ins_following then
+			self.ins_following = on
+			gui.set_text(self.ins_follow_t, on and "Following" or "Follow")
+			gui.set_size(self.ins_follow, V3(on and 92 or 74, 24, 0))
+			gui.set_position(self.ins_follow_icon, V3(on and -78 or -60, 0, 0))
+			gui.set_position(self.ins_follow_t, V3(on and -68 or -50, 0, 0))
+			gui.set_color(self.ins_follow_icon, on and C.white or C.text)
+			gui.set_color(self.ins_follow_t, on and C.white or C.text)
+			self.ins_follow_hit.tip = on and "Stop following  (F or Esc)" or "Follow with the camera  (F)"
+			gui.set_text(self.ins_title, ui.trunc("fredoka", (uistate.inspector_data and uistate.inspector_data.title) or "", 17, INS_W - 54 - (on and 130 or 112)))
+		end
+		gui.set_color(self.ins_follow, on and C.gold or (self.hover == self.ins_follow_hit and C.hover or C.soft))
 	end
 	gui.set_color(self.ins_close, self.hover == "close" and C.hover or C.soft)
 	gui.set_color(self.ins_tab, self.hover == "tab" and C.hover or C.panel)
 	update_debug(self, dt)
 	update_edge(self)
 	publish_bounds(self)
+	-- (S26) the layout audit on request (the bridge's ui{audit}): texts that leave their panel or the window
+	if uistate.audit_req then
+		uistate.audit_req = nil
+		uistate.audit = ui.audit(state.window_w or REF_W, state.window_h or REF_H)
+	end
 end
 
 -- Input ----------------------------------------------------------------------------------------
@@ -729,6 +1028,7 @@ local function hit(self, x, y)
 		if mh then return mh end
 	end
 	if state.loading.active then return nil end
+	if self.idle_on then return nil end
 	if self.skip_menu_open and gui.is_enabled(self.skip_menu) then
 		for _, o in ipairs(self.skip_opts) do
 			if gui.pick_node(o.node, x, y) then return o end
@@ -743,16 +1043,10 @@ local function hit(self, x, y)
 		local nh = newsfeed.hit(self, x, y)
 		if nh then return nh end
 	end
-	if gui.is_enabled(self.clock) then
+	if gui.is_enabled(self.clock_root) then
 		if gui.pick_node(self.menu_btn, x, y) then return self.menu_btn_hit end
 		for _, b in ipairs(self.speed_btns) do
 			if not b.hidden and gui.pick_node(b.node, x, y) then return b end
-		end
-		if self.skip_menu_open then
-			for _, o in ipairs(self.skip_opts) do
-				if gui.pick_node(o.node, x, y) then return o end
-			end
-			if gui.pick_node(self.skip_menu, x, y) then return "panel" end
 		end
 		if gui.is_enabled(self.skip_prog) and gui.pick_node(self.skip_prog, x, y) then return "skipstop" end
 		for _, it in ipairs(self.stat_items) do
@@ -764,13 +1058,14 @@ local function hit(self, x, y)
 		if gui.pick_node(self.ins_tab, x, y) then return "tab" end
 		if not uistate.inspector_collapsed then
 			if gui.pick_node(self.ins_close, x, y) then return "close" end
-			for _, r in ipairs(self.rows) do
-				if r.link and gui.pick_node(r.bg, x, y) then return r end
+			if self.ins_can_follow and gui.pick_node(self.ins_follow, x, y) then return self.ins_follow_hit end
+			for _, r in ipairs(self.slots) do
+				if r.line and (r.line.link or (r.line.k == "head" and r.line.n > 0)) and gui.is_enabled(r.bg) and gui.pick_node(r.bg, x, y) then return r end
 			end
 			if gui.pick_node(self.ins_panel, x, y) then return "panel" end
 		end
 	end
-	if self.pbar and gui.is_enabled(self.pbar) then
+	if self.pbar and gui.is_enabled(self.pbar_root) then
 		for _, o in ipairs(self.popts) do
 			if gui.is_enabled(o.node) and gui.pick_node(o.node, x, y) then return o end
 		end
@@ -781,15 +1076,6 @@ local function hit(self, x, y)
 	end
 	if gui.is_enabled(self.edge) and gui.pick_node(self.edge, x, y) then return "edge" end
 	return nil
-end
-
-local function show_tip(self, text, x, y)
-	if not text then gui.set_enabled(self.tip, false); return end
-	gui.set_enabled(self.tip, true)
-	gui.set_text(self.tip_text, text)
-	local w = ui.text_width("nunito", text, 14) + 24
-	gui.set_size(self.tip, V3(w, 28, 0))
-	gui.set_position(self.tip, V3(math.max(w / 2 + 4, math.min(REF_W - w / 2 - 4, x)), y, 0))
 end
 
 -- (S21, R7) A story card clicked: the camera flies to where it is happening, close in; the person at the
@@ -805,6 +1091,7 @@ local function activate(self, h)
 	if type(h) == "table" and h.tut then tutorial.activate(self, view.W, h); return end
 	if type(h) == "table" and h.menu_open then menu.open(self, "pause"); return end
 	if type(h) == "table" and h.news_why then newsfeed.toggle_why(self, h.news_why); return end
+	if type(h) == "table" and h.news_toggle then newsfeed.toggle(self); return end
 	if type(h) == "table" and h.news_chain then
 		if h.news_chain.chain_ev then actions.open_for(self, h.news_chain.chain_ev) end
 		return
@@ -814,6 +1101,8 @@ local function activate(self, h)
 	if type(h) == "table" and h.news_card then go_story(self, h); return end
 	if h == "close" then selection.clear()
 	elseif h == "tab" then uistate.inspector_collapsed = not uistate.inspector_collapsed
+	elseif type(h) == "table" and h.follow then
+		uistate.request({ cmd = "follow_toggle" })
 	elseif h == "edge" then
 		local t = self.edge_target
 		if t then
@@ -840,24 +1129,49 @@ local function activate(self, h)
 	elseif type(h) == "table" and h.key then
 		selection.set({ kind = "planet" })
 		uistate.inspector_collapsed = false
-	elseif type(h) == "table" and h.link and h.link.kind == "follow" then
-		-- v3: the camera follows this person (main.script)
-		uistate.request({ cmd = "follow", id = h.link.id })
-	elseif type(h) == "table" and h.link then
-		selection.set(h.link)
-		if h.link.kind == "village" or h.link.kind == "person" then uistate.request({ cmd = "fly_to_sel" }) end
+	elseif type(h) == "table" and h.line and h.line.k == "head" then
+		-- a section folded or opened (kept for the visit)
+		self.fold[h.line.text] = not folded(self, h.line.text)
+		self.ins_dirty = true
+	elseif type(h) == "table" and h.line and h.line.link and h.line.link.kind == "follow" then
+		uistate.request({ cmd = "follow", id = h.line.link.id })
+	elseif type(h) == "table" and h.line and h.line.link then
+		selection.set(h.line.link)
+		if h.line.link.kind == "village" or h.line.link.kind == "person" then uistate.request({ cmd = "fly_to_sel" }) end
 	end
 end
 
+-- (S26) Esc steps back one thing at a time: a menu, the skip menu, the armed power, the camera's follow, the selection,
+-- the open "Your actions" - and only then the pause menu.
+local function escape(self)
+	if menu.is_open() then
+		if menu.screen == "pause" then menu.want = "resume"
+		elseif menu.screen ~= "title" then menu.open(self, menu.prev or "title") end
+	elseif self.skip_menu_open then self.skip_menu_open = false
+	elseif powers.armed then powers.disarm()
+	elseif camera.follow then uistate.request({ cmd = "follow_stop" })
+	elseif selection.sel then selection.clear()
+	elseif self.actions and self.actions.open then actions.close(self)
+	elseif self.soundp and self.soundp.open then sound_panel.activate(self, "sound_pill")
+	else menu.open(self, "pause") end
+end
+
 function on_input(self, action_id, action)
+	-- (S26) any input: the idle view ends (the press that woke it does nothing else) and the clock of inactivity restarts
+	self.input_t = self.clock_s
+	if self.idle_on then
+		idle_exit(self)
+		if action_id ~= nil and action.pressed then self.wake_swallow = action_id; return true end
+	end
+	if self.wake_swallow and action_id == self.wake_swallow then
+		if action.released or not action.pressed then
+			if action.released then self.wake_swallow = nil end
+			return true
+		end
+	end
 	-- (S25) Esc: back out of a menu, close the skip menu, drop the armed power - else the pause menu
 	if action_id == H_ESC and action.pressed and not state.loading.active then
-		if menu.is_open() then
-			if menu.screen == "pause" then menu.want = "resume"
-			elseif menu.screen ~= "title" then menu.open(self, menu.prev or "title") end
-		elseif self.skip_menu_open then self.skip_menu_open = false
-		elseif powers.armed then powers.disarm()
-		else menu.open(self, "pause") end
+		escape(self)
 		return true
 	end
 	-- (S25) the guide's pages by the arrow keys
@@ -873,10 +1187,15 @@ function on_input(self, action_id, action)
 		uistate.pointer_over_ui = h ~= nil
 		if menu.is_open() then show_tip(self, nil); uistate.pointer_over_ui = true; return true end
 		if type(h) == "table" and h.tip and (h.power or h.opt) then
-			local bx = gui.get_position(self.pbar).x + gui.get_position(h.node).x
-			show_tip(self, h.tip, bx, h.opt and 176 or 120)
-		elseif type(h) == "table" and h.tip and not (h.skipmenu and self.skip_menu_open) then
-			show_tip(self, h.tip, (h.level or h.skipmenu) and (gui.get_position(h.node).x + gui.get_position(self.clock).x) or (gui.get_position(self.stats).x + h.x), REF_H - 92)
+			show_tip(self, h.tip, h.node, false)
+		elseif type(h) == "table" and h.tip and h.node and not (h.skipmenu and self.skip_menu_open) then
+			show_tip(self, h.tip, h.node, true)
+		elseif type(h) == "table" and h.tip and h.hover then
+			show_tip(self, h.tip, h.hover, true)
+		elseif h == self.menu_btn_hit then
+			show_tip(self, h.tip, self.menu_btn, true)
+		elseif h == self.ins_follow_hit then
+			show_tip(self, h.tip, self.ins_follow, true)
 		else
 			show_tip(self, nil)
 		end
@@ -891,7 +1210,7 @@ function on_input(self, action_id, action)
 	if (action_id == H_WHEEL_UP or action_id == H_WHEEL_DOWN) and wx and gui.is_enabled(self.ins_root)
 		and not uistate.inspector_collapsed and gui.pick_node(self.ins_panel, wx, wy) then
 		local step = action_id == H_WHEEL_UP and -3 or 3
-		self.ins_scroll = math.max(0, math.min((self.ins_scroll or 0) + step, (self.ins_count or 0) - ROWS))
+		self.ins_scroll = math.max(0, math.min((self.ins_scroll or 0) + step, self.ins_maxoff or 0))
 		self.ins_dirty = true
 		return true
 	end

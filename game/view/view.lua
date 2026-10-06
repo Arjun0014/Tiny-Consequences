@@ -105,9 +105,11 @@ function M.build(W, urls, step)
   agents_view.wild_species = puppets.SPECIES
   agents_view.surface = puppets.surface and function(x, y, z) return (puppets.surface(x, y, z)) end
   agents_view.init(W, PL, urls, terrain.tex)
+  step("Waking the village", 0.6)   -- (S26: the loading's progress inside this step - each a real part of it)
   selring.init(urls.ring_factory, M.surface)
   aim.init(urls.ring_factory, M.surface)
   fx.init(W, urls.flame_factory, urls.smoke_factory, M.surface, M.surface_exact)
+  step("Waking the village", 0.85)
   fish.init(W, urls.flame_factory, M.surface)
   camera.height_fn = function(x, y, z) return M.surface(x, y, z) end
   camera.focus_cell = nil

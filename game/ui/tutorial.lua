@@ -16,28 +16,17 @@ local V3 = vmath.vector3
 
 M.on = false
 M.step = 0
-M.CW, M.CH = 540, 150
-M.CX = 668   -- (clear of the news column and of "Your actions" beside it)
+-- (S26) a compact card at the top centre (its root placed and scaled by the HUD's layout, clear of the left column and the
+-- inspector); it can be minimised to its title (a new step opens it again)
+M.CW, M.CH = 420, 120
+M.MIN_H = 46
 
 local function now_h(W) return require("game.platform.speed").v3_t or W.hour end
 local function fmt_n(n, one, many) return n == 1 and ("1 " .. one) or (n .. " " .. (many or (one .. "s"))) end
 
 -- Words wrapped to `w` pixels at `px` (measured with the font): the text with its breaks, and the line count.
 local function wrap(font, txt, px, w)
-  local out = {}
-  for para in (txt .. "\n"):gmatch("(.-)\n") do
-    local line = ""
-    for word in para:gmatch("%S+") do
-      local try = line == "" and word or (line .. " " .. word)
-      if line ~= "" and ui.text_width(font, try, px) > w then
-        out[#out + 1] = line
-        line = word
-      else
-        line = try
-      end
-    end
-    out[#out + 1] = line
-  end
+  local out = ui.wrap(font, txt, px, w)
   return table.concat(out, "\n"), #out
 end
 
@@ -49,27 +38,30 @@ function M.build(self)
   T.rect = ui.box(nil, 0, 0, 80, 80, "pill", vmath.vector4(0.949, 0.698, 0.2, 0.35))
   T.ring = ui.box(nil, 0, 0, 80, 80, "ring", C.gold)
   T.ring2 = ui.box(nil, 0, 0, 60, 60, "ring", vmath.vector4(1, 1, 1, 0.9))
-  T.tag = ui.box(nil, 0, 0, 120, 26, "pill", C.gold)
-  T.tag_t = ui.text(T.tag, 0, 0, "", "fredoka", 14, C.white, gui.PIVOT_CENTER)
-  local root = ui.box(nil, M.CX, 720 - 92 - M.CH / 2, 1, 1, "px", C.clear)
-  ui.anchor(root, gui.ANCHOR_NONE, gui.ANCHOR_TOP)
+  T.tag = ui.box(nil, 0, 0, 120, 24, "pill", C.gold)
+  T.tag_t = ui.text(T.tag, 0, 0, "", "fredoka", 13, C.white, gui.PIVOT_CENTER)
+  local root = ui.root(640, 720 - 62, gui.ANCHOR_NONE, gui.ANCHOR_TOP)
   T.root = root
-  T.shadow = ui.box(root, 0, -4, M.CW + 24, M.CH + 24, "shadow", C.shadow)
-  T.card = ui.box(root, 0, 0, M.CW, M.CH, "panel", C.panel_solid)
-  T.stripe = ui.box(T.card, -M.CW / 2 + 4, 0, 6, M.CH - 18, "pill_s", C.gold)
-  T.count = ui.text(T.card, -M.CW / 2 + 20, M.CH / 2 - 18, "", "nunito_semi", 12, C.muted)
-  T.title = ui.text(T.card, -M.CW / 2 + 20, M.CH / 2 - 42, "", "fredoka", 21, C.text)
-  T.body = ui.text(T.card, -M.CW / 2 + 20, M.CH / 2 - 60, "", "nunito_semi", 14.5, C.text)
+  local CW = M.CW
+  T.card, T.shadow = ui.panel_nw(root, -CW / 2, 0, CW, M.CH, C.panel_solid)
+  T.stripe = ui.box(T.card, 6, -10, 5, M.CH - 20, "pill_s", C.gold, gui.PIVOT_N)
+  T.count = ui.text(T.card, 20, -14, "", "nunito_semi", 10.5, C.muted)
+  T.title = ui.text(T.card, 20, -32, "", "fredoka", 16.5, C.text)
+  T.body = ui.text(T.card, 20, -46, "", "nunito_semi", 13, C.text)
   gui.set_pivot(T.body, gui.PIVOT_NW)
-  T.next = ui.box(T.card, M.CW / 2 - 66, -M.CH / 2 + 22, 110, 30, "pill", C.gold)
-  T.next_t = ui.text(T.next, 0, 0, "Next", "fredoka", 15, C.white, gui.PIVOT_CENTER)
+  T.min = ui.box(T.card, CW - 18, -17, 22, 22, "circle", C.soft)
+  T.min_icon = ui.icon(T.min, 0, 0, "minus", 11, C.text)
+  T.min_hit = { tut = "min" }
+  T.next = ui.box(T.card, CW - 14 - 48, -M.CH + 20, 96, 26, "pill", C.gold)
+  T.next_t = ui.text(T.next, 0, 0, "Next", "fredoka", 13.5, C.white, gui.PIVOT_CENTER)
   T.next_hit = { tut = "next" }
-  T.skip = ui.box(T.card, M.CW / 2 - 186, -M.CH / 2 + 22, 116, 30, "pill", C.soft)
-  ui.text(T.skip, 0, 0, "Skip tutorial", "fredoka", 13, C.muted, gui.PIVOT_CENTER)
+  T.skip = ui.box(T.card, CW - 14 - 96 - 8 - 52, -M.CH + 20, 104, 26, "pill", C.soft)
+  ui.text(T.skip, 0, 0, "Skip tutorial", "fredoka", 12, C.muted, gui.PIVOT_CENTER)
   T.skip_hit = { tut = "skip" }
-  T.go = ui.box(T.card, M.CW / 2 - 326, -M.CH / 2 + 22, 140, 30, "pill", C.teal)
-  T.go_t = ui.text(T.go, 0, 0, "Take me there", "fredoka", 13, C.white, gui.PIVOT_CENTER)
+  T.go = ui.box(T.card, 20 + 64, -M.CH + 20, 128, 26, "pill", C.teal)
+  T.go_t = ui.text(T.go, 0, 0, "Take me there", "fredoka", 12, C.white, gui.PIVOT_CENTER)
   T.go_hit = { tut = "go" }
+  T.minimised = false
   for _, n in ipairs({ T.root, T.ring, T.ring2, T.tag, T.rect }) do gui.set_enabled(n, false) end
   ui.top = false
   return T
@@ -318,31 +310,44 @@ end
 local function layout(self, W, S)
   local T = self.tut
   local txt = type(S.text) == "function" and S.text(T, W) or S.text
+  -- (a new step opens a minimised card again)
+  if T.step_shown ~= M.step then T.step_shown, T.minimised = M.step, false end
+  -- (S26) as wide as the room between the columns allows (game/ui/layout.lua), 320-420
+  local CW = math.floor(math.max(require("game.ui.layout").CENTER_MIN, math.min(M.CW, require("game.ui.layout").center_w())))
+  if CW ~= T.cw then
+    T.cw, T.h = CW, nil
+    gui.set_position(T.card, V3(-CW / 2, 0, 0))
+    gui.set_position(T.shadow, V3(-CW / 2 - 11, 11 - 3, 0))
+    gui.set_position(T.min, V3(CW - 18, -17, 0))
+    local function px(nd, x) local p = gui.get_position(nd); gui.set_position(nd, V3(x, p.y, 0)) end
+    px(T.next, CW - 14 - 48)
+    px(T.skip, CW - 14 - 96 - 8 - 52)
+  end
   gui.set_text(T.count, M.step == 1 and "TUTORIAL" or string.format("TUTORIAL  -  step %d of %d", M.step - 1, #STEPS - 1))
-  gui.set_text(T.title, S.title)
-  local body, lines = wrap("nunito_semi", txt, 14.5, M.CW - 44)
+  gui.set_text(T.title, ui.trunc("fredoka", S.title, 16.5, CW - 20 - 36))
+  local body, lines = wrap("nunito_semi", txt, 13, CW - 40)
   gui.set_text(T.body, body)
-  local h = math.max(150, 100 + lines * 20)
+  local h = T.minimised and M.MIN_H or math.max(M.CH, 46 + lines * 17.5 + 12 + 26 + 12)
   if h ~= T.h then
     T.h = h
-    gui.set_size(T.card, V3(M.CW, h, 0))
-    gui.set_size(T.shadow, V3(M.CW + 24, h + 24, 0))
-    gui.set_position(T.root, V3(M.CX, 720 - 92 - h / 2, 0))
-    gui.set_position(T.count, V3(-M.CW / 2 + 20, h / 2 - 18, 0))
-    gui.set_position(T.title, V3(-M.CW / 2 + 20, h / 2 - 42, 0))
-    gui.set_position(T.body, V3(-M.CW / 2 + 20, h / 2 - 60, 0))
-    gui.set_size(T.stripe, V3(6, h - 18, 0))
+    ui.size_panel(T.card, T.shadow, CW, h)
+    gui.set_size(T.stripe, V3(5, h - 20, 0))
     for _, nd in ipairs({ T.next, T.skip, T.go }) do
       local p = gui.get_position(nd)
-      gui.set_position(nd, V3(p.x, -h / 2 + 22, 0))
+      gui.set_position(nd, V3(p.x, -h + 20, 0))
     end
   end
+  local mini = T.minimised
+  gui.set_enabled(T.body, not mini)
+  ui.set_icon(T.min_icon, mini and "chev_down" or "minus")
+  gui.set_color(T.min, self.hover == T.min_hit and C.hover or C.soft)
   local wait_left = S.wait and math.max(0, S.wait - T.t) or 0
-  gui.set_enabled(T.next, S.next and true or false)
+  gui.set_enabled(T.next, (not mini) and S.next and true or false)
   gui.set_color(T.next, (S.next and wait_left <= 0) and (self.hover == T.next_hit and vmath.vector4(0.98, 0.76, 0.30, 1) or C.gold) or C.soft)
   gui.set_text(T.next_t, S.final and "Finish" or (wait_left > 0 and string.format("Next (%d)", math.ceil(wait_left)) or "Next"))
-  gui.set_enabled(T.go, S.go and T.s ~= nil)
+  gui.set_enabled(T.go, (not mini) and S.go and T.s ~= nil)
   gui.set_text(T.go_t, S.id == "strike" and "Show me the place" or "Take me there")
+  gui.set_enabled(T.skip, not mini)
   gui.set_color(T.skip, self.hover == T.skip_hit and C.hover or C.soft)
 end
 
@@ -359,8 +364,8 @@ local function ring_at(T, sx, sy, size, label, t, side)
   if label then
     gui.set_enabled(T.tag, true)
     gui.set_text(T.tag_t, label)
-    local tw = ui.text_width("fredoka", label, 14) + 26
-    gui.set_size(T.tag, V3(tw, 26, 0))
+    local tw = ui.text_width("fredoka", label, 13) + 24
+    gui.set_size(T.tag, V3(tw, 24, 0))
     gui.set_screen_position(T.tag, V3(sx, sy, 0))
     local p = gui.get_position(T.tag)
     if side == "right" then
@@ -375,25 +380,28 @@ local function ring_at(T, sx, sy, size, label, t, side)
 end
 
 local function ring_node(T, node, label, t, grow, side)
-  if not node or not gui.is_enabled(node) then return false end
-  local p = gui.get_screen_position(node)
-  local s = gui.get_size(node)
-  if s.x > s.y * 1.8 then
+  if not node or not require("game.ui.layout").shown(node) then return false end
+  local L = require("game.ui.layout")
+  local r = L.rect(node)
+  local fit = L.fit
+  local px, py = (r[1] + r[3]) / 2, (r[2] + r[4]) / 2
+  local sx, sy = (r[3] - r[1]) / fit, (r[4] - r[2]) / fit   -- in the (unscaled) units of the marks
+  if sx > sy * 1.8 then
     -- (a wide thing - a story card, a pill, a menu row: a glowing frame over it, its label beside it, clear of the rest)
     gui.set_enabled(T.rect, true)
-    gui.set_screen_position(T.rect, V3(p.x, p.y, 0))
-    gui.set_size(T.rect, V3(s.x + 14, s.y + 12, 0))
+    gui.set_screen_position(T.rect, V3(px, py, 0))
+    gui.set_size(T.rect, V3(sx + 14, sy + 12, 0))
     gui.set_color(T.rect, vmath.vector4(0.949, 0.698, 0.2, 0.28 + 0.18 * math.sin(t * 6)))
     T.rect_on = true
-    ring_at(T, p.x, p.y, s.y, label, t, side)
+    ring_at(T, px, py, sy, label, t, side)
     if side == "right" and label then
       local rp, tp = gui.get_position(T.rect), gui.get_position(T.tag)
-      gui.set_position(T.tag, V3(rp.x + (s.x + 14) / 2 + ui.text_width("fredoka", label, 14) / 2 + 26, tp.y, 0))
+      gui.set_position(T.tag, V3(rp.x + (sx + 14) / 2 + ui.text_width("fredoka", label, 13) / 2 + 26, tp.y, 0))
     end
     gui.set_enabled(T.ring, false); gui.set_enabled(T.ring2, false)
     return true
   end
-  ring_at(T, p.x, p.y, math.max(s.x, s.y) * (grow or 1.35), label, t, side)
+  ring_at(T, px, py, math.max(sx, sy) * (grow or 1.35), label, t, side)
   return true
 end
 
@@ -501,8 +509,9 @@ end
 function M.hit(self, x, y)
   local T = self.tut
   if not M.on or not T or not gui.is_enabled(T.root) then return nil end
+  if gui.pick_node(T.min, x, y) then return T.min_hit end
   if gui.is_enabled(T.next) and gui.pick_node(T.next, x, y) then return T.next_hit end
-  if gui.pick_node(T.skip, x, y) then return T.skip_hit end
+  if gui.is_enabled(T.skip) and gui.pick_node(T.skip, x, y) then return T.skip_hit end
   if gui.is_enabled(T.go) and gui.pick_node(T.go, x, y) then return T.go_hit end
   if gui.pick_node(T.card, x, y) then return "panel" end
   return nil
@@ -513,6 +522,7 @@ function M.activate(self, W, h)
   if type(h) ~= "table" or not h.tut then return false end
   local S = STEPS[M.step]
   if h.tut == "skip" then M.stop(self, false); return true end
+  if h.tut == "min" then T.minimised = not T.minimised; T.h = nil; return true end
   if h.tut == "go" and T.s then
     if S and S.id == "strike" then fly_to_target(T); return true end
     local ux, uy, uz = require("sim.agents.map").unit(T.s, T.s.sqx or 0, T.s.sqy or 0)

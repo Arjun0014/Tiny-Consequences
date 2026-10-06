@@ -39,29 +39,31 @@ M.store = store   -- (S25: the settings menu keeps the same levels)
 function M.build(self)
   local S = { open = false, rows = {} }
   self.soundp = S
-  local pill = ui.box(nil, 1280 - 120, 14 + 20, 96, 40, "pill", C.panel)
-  ui.anchor(pill, gui.ANCHOR_RIGHT, gui.ANCHOR_BOTTOM)
+  -- (S26) a small round pill in the bottom-right corner (its root placed by the HUD's layout, clear of the page's
+  -- fullscreen button), the panel above it
+  local root = ui.root(1280 - 56, 10, gui.ANCHOR_RIGHT, gui.ANCHOR_BOTTOM)
+  S.root = root
+  local pill = ui.box(root, -40, 16, 80, 32, "pill", C.panel)
   S.pill = pill
-  S.pill_t = ui.text(pill, 0, 0, "Sound", "fredoka", 15, C.text, gui.PIVOT_CENTER)
-  local PW, PH = 250, 196
-  local panel, sh = ui.panel(nil, 1280 - 12 - PW / 2, 14 + 40 + 10 + PH / 2, PW, PH)
-  ui.anchor(panel, gui.ANCHOR_RIGHT, gui.ANCHOR_BOTTOM)
-  ui.anchor(sh, gui.ANCHOR_RIGHT, gui.ANCHOR_BOTTOM)
+  S.pill_icon = ui.icon(pill, -20, 0, "sound", 17, C.text)
+  S.pill_t = ui.text(pill, -6, 0, "Sound", "fredoka", 12.5, C.text)
+  S.pill_hit = "sound_pill"
+  local PW, PH = 236, 182
+  local panel, sh = ui.panel_nw(root, -PW, 32 + 8 + PH, PW, PH)
   S.panel, S.sh = panel, sh
-  ui.text(panel, -PW / 2 + 14, PH / 2 - 18, "SOUND", "fredoka", 15, C.text)
-  S.on = ui.box(panel, PW / 2 - 42, PH / 2 - 18, 64, 22, "pill_s", C.teal)
-  S.on_t = ui.text(S.on, 0, 0, "On", "fredoka", 12, C.white, gui.PIVOT_CENTER)
+  ui.text(panel, 14, -18, "SOUND", "fredoka", 14, C.text)
+  S.on = ui.box(panel, PW - 42, -18, 64, 22, "pill_s", C.teal)
+  S.on_t = ui.text(S.on, 0, 0, "On", "fredoka", 11.5, C.white, gui.PIVOT_CENTER)
   for i, r in ipairs(M.ROWS) do
-    local y = PH / 2 - 52 - (i - 1) * 36
+    local y = -50 - (i - 1) * 33
     local row = { key = r.key }
-    row.label = ui.text(panel, -PW / 2 + 14, y, r.name, "nunito_semi", 13, C.text)
-    row.minus = ui.box(panel, 10, y, 26, 26, "circle", C.soft)
-    ui.text(row.minus, 0, 1, "-", "fredoka", 16, C.text, gui.PIVOT_CENTER)
-    row.bar_bg = ui.box(panel, 58, y, 54, 8, "pill_s", C.soft, gui.PIVOT_W)
-    gui.set_position(row.bar_bg, V3(33, y, 0))
-    row.bar = ui.box(panel, 33, y, 54, 8, "pill_s", C.gold, gui.PIVOT_W)
-    row.plus = ui.box(panel, PW / 2 - 22, y, 26, 26, "circle", C.soft)
-    ui.text(row.plus, 0, 1, "+", "fredoka", 16, C.text, gui.PIVOT_CENTER)
+    row.label = ui.text(panel, 14, y, r.name, "nunito_semi", 12.5, C.text)
+    row.minus = ui.box(panel, 118, y, 24, 24, "circle", C.soft)
+    ui.text(row.minus, 0, 1, "-", "fredoka", 15, C.text, gui.PIVOT_CENTER)
+    row.bar_bg = ui.box(panel, 134, y, 54, 8, "pill_s", C.soft, gui.PIVOT_W)
+    row.bar = ui.box(panel, 134, y, 54, 8, "pill_s", C.gold, gui.PIVOT_W)
+    row.plus = ui.box(panel, PW - 22, y, 24, 24, "circle", C.soft)
+    ui.text(row.plus, 0, 1, "+", "fredoka", 15, C.text, gui.PIVOT_CENTER)
     row.minus_hit = { sound_step = -1, row = row }
     row.plus_hit = { sound_step = 1, row = row }
     S.rows[i] = row
@@ -77,6 +79,11 @@ function M.update(self)
   if not S then return end
   local audio = require("game.audio.audio")
   gui.set_color(S.pill, (self.hover == "sound_pill" or S.open) and C.hover or C.panel)
+  if S.shown_on ~= audio.ON then
+    S.shown_on = audio.ON
+    ui.set_icon(S.pill_icon, audio.ON and "sound" or "mute")
+    gui.set_color(S.pill_icon, audio.ON and C.text or C.coral)
+  end
   if not S.open then return end
   gui.set_color(S.on, audio.ON and C.teal or C.coral)
   gui.set_text(S.on_t, audio.ON and "On" or "Off (M)")

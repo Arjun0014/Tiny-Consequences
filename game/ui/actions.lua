@@ -14,12 +14,6 @@ local M = {}
 local C = ui.C
 local V3 = vmath.vector3
 
-M.PW, M.PH = 384, 470
-M.X0 = 12
-M.TOP = 720 - 84
-M.LIST_N, M.LIST_H = 8, 52
-M.TREE_N, M.TREE_H = 15, 25
-M.INDENT = 15
 
 local ICON = { lightning = "bolt", rain = "rain", dry = "drought", warm = "heat", cold = "chill", stir = "volcano",
   strain = "pickaxe", cull = "skull", bring = "paw", meteor = "meteor", oil = "oil", blight = "blight", sickness = "thermo", sea = "wave" }
@@ -40,12 +34,19 @@ local KIND_ICON = { fire = "fire", flood = "rain", quake = "pickaxe", wave = "wa
   sea = "wave", fish = "fish", oil = "oil", dust = "cloud", packs = "wolf", herds = "deer", volc = "volcano", spread = "rain",
   melt = "snow", camp = "house", migrate = "settlers" }
 
-local function trunc(font, str, px, w)
-  if ui.text_width(font, str, px) <= w then return str end
-  local s = str
-  while #s > 3 and ui.text_width(font, s .. "...", px) > w do s = s:sub(1, #s - 1) end
-  return s .. "..."
-end
+local layout = require("game.ui.layout")
+
+-- (S26) compact: the panel as tall as its content or the column's room (game/ui/layout.lua), its rows counted to fit
+-- (S25's 15 tree rows overran its 470 px panel), "Go there" beside the count rather than over the title, indentation
+-- capped so a deep chain's lines keep their room, a scrollbar when there is more; the News and Your actions pills side by
+-- side in the bottom-left corner
+M.PW = 300
+M.HEAD = 48
+M.LIST_N, M.LIST_H = 14, 42
+M.TREE_N, M.TREE_H = 30, 20
+M.BIG_H = 36
+M.INDENT, M.MAX_DEPTH = 13, 9
+M.PILL_H = 32
 
 local function day_of(W, t)
   local d = math.floor(t / 24)
@@ -57,70 +58,69 @@ end
 function M.build(self)
   local A = { open = false, mode = "list", scroll = 0, rows = {}, trows = {}, t = 0 }
   self.actions = A
-  -- the pill (bottom left)
-  local pill = ui.box(nil, M.X0 + 86, 14 + 20, 172, 40, "pill", C.panel)
-  ui.anchor(pill, gui.ANCHOR_LEFT, gui.ANCHOR_BOTTOM)
-  A.pill = pill
-  A.pill_icon = ui.icon(pill, -64, 1, "star", 22, C.gold)
-  A.pill_t = ui.text(pill, -46, 0, "Your actions", "fredoka", 15, C.text)
-  A.pill_n = ui.box(pill, 66, 0, 30, 22, "pill_s", C.gold)
-  A.pill_nt = ui.text(A.pill_n, 0, 0, "0", "fredoka", 12, C.white, gui.PIVOT_CENTER)
-  gui.set_enabled(pill, false)
-  -- the news so far (above it: the power bar takes the bottom edge beside it)
-  local np = ui.box(nil, M.X0 + 50, 14 + 20, 100, 40, "pill", C.panel)
-  ui.anchor(np, gui.ANCHOR_LEFT, gui.ANCHOR_BOTTOM)
+  -- the pills (bottom left): News, then Your actions
+  local pills = ui.root(10, 10, gui.ANCHOR_LEFT, gui.ANCHOR_BOTTOM)
+  A.pills = pills
+  local np = ui.box(pills, 42, M.PILL_H / 2, 84, M.PILL_H, "pill", C.panel)
   A.npill = np
-  ui.icon(np, -30, 1, "globe", 20, C.teal)
-  ui.text(np, -14, 0, "News", "fredoka", 15, C.text)
+  ui.icon(np, -24, 1, "globe", 17, C.teal)
+  ui.text(np, -10, 0, "News", "fredoka", 13.5, C.text)
   gui.set_enabled(np, false)
-  -- the panel
-  local PW, PH = M.PW, M.PH
-  local root = ui.box(nil, M.X0 + PW / 2, M.TOP - PH / 2, 1, 1, "px", C.clear)
-  ui.anchor(root, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
+  local pill = ui.box(pills, 90 + 76, M.PILL_H / 2, 152, M.PILL_H, "pill", C.panel)
+  A.pill = pill
+  A.pill_icon = ui.icon(pill, -58, 1, "star", 18, C.gold)
+  A.pill_t = ui.text(pill, -44, 0, "Your actions", "fredoka", 13.5, C.text)
+  A.pill_n = ui.box(pill, 56, 0, 28, 20, "pill_s", C.gold)
+  A.pill_nt = ui.text(A.pill_n, 0, 0, "0", "fredoka", 11, C.white, gui.PIVOT_CENTER)
+  gui.set_enabled(pill, false)
+  -- the panel (the left column's top-left corner)
+  local PW = M.PW
+  local root = ui.root(10, 720 - 62, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
   A.root = root
-  A.sh = ui.box(root, 0, -3, PW + 22, PH + 22, "shadow", C.shadow)
-  A.panel = ui.box(root, 0, 0, PW, PH, "panel", C.panel_solid)
-  A.title = ui.text(A.panel, -PW / 2 + 16, PH / 2 - 22, "YOUR ACTIONS", "fredoka", 17, C.text)
-  A.close = ui.box(A.panel, PW / 2 - 22, PH / 2 - 22, 28, 28, "circle", C.soft)
-  ui.icon(A.close, 0, 0, "close", 16, C.text)
-  A.sub = ui.text(A.panel, -PW / 2 + 16, PH / 2 - 44, "", "nunito_semi", 12, C.muted)
+  A.panel, A.sh = ui.panel_nw(root, 0, 0, PW, 300, C.panel_solid)
+  A.h = 300
+  A.title = ui.text(A.panel, 14, -18, "YOUR ACTIONS", "fredoka", 14.5, C.text)
+  A.close = ui.box(A.panel, PW - 18, -18, 24, 24, "circle", C.soft)
+  ui.icon(A.close, 0, 0, "close", 11, C.text)
+  A.sub = ui.text(A.panel, 14, -36, "", "nunito_semi", 10.5, C.muted)
   -- list rows
   for i = 1, M.LIST_N do
-    local y = PH / 2 - 62 - M.LIST_H / 2 - (i - 1) * M.LIST_H
     local r = {}
-    r.bg = ui.box(A.panel, 0, y, PW - 16, M.LIST_H - 4, "pill_s", C.clear)
-    r.icon = ui.icon(r.bg, -PW / 2 + 30, 0, "star", 24, C.text)
-    r.title = ui.text(r.bg, -PW / 2 + 50, 9, "", "fredoka", 14.5, C.text)
-    r.line = ui.text(r.bg, -PW / 2 + 50, -10, "", "nunito_semi", 12, C.muted)
-    r.dot = ui.box(r.bg, PW / 2 - 24, 9, 9, 9, "circle", C.gold)
-    r.n = ui.text(r.bg, PW / 2 - 18, -10, "", "fredoka", 13, C.text, gui.PIVOT_E)
+    r.bg = ui.box(A.panel, PW / 2, 0, PW - 14, M.LIST_H - 4, "pill_s", C.clear)
+    r.icon = ui.icon(r.bg, -PW / 2 + 26, 0, "star", 20, C.text)
+    r.title = ui.text(r.bg, -PW / 2 + 44, 8, "", "fredoka", 13, C.text)
+    r.line = ui.text(r.bg, -PW / 2 + 44, -9, "", "nunito_semi", 10.5, C.muted)
+    r.dot = ui.box(r.bg, PW / 2 - 22, 8, 8, 8, "circle", C.gold)
+    r.n = ui.text(r.bg, PW / 2 - 16, -9, "", "fredoka", 12, C.text, gui.PIVOT_E)
     r.i = i
     r.act_row = i
     A.rows[i] = r
   end
-  -- the chain view: the cast, "go there", then the tree
-  A.back = ui.box(A.panel, -PW / 2 + 26, PH / 2 - 22, 28, 28, "circle", C.soft)
-  ui.icon(A.back, -1, 0, "chev_left", 16, C.text)
+  -- the chain view: the cast, its size and "go there", then the tree
+  A.back = ui.box(A.panel, 18, -18, 24, 24, "circle", C.soft)
+  ui.icon(A.back, -1, 0, "chev_left", 12, C.text)
   -- (S25b) the chain's size, large: how many consequences, how many generations deep
-  A.big = ui.box(A.panel, -PW / 2 + 52, PH / 2 - 80, 76, 30, "pill", C.gold)
-  A.big_t = ui.text(A.big, 0, 0, "", "fredoka", 19, C.white, gui.PIVOT_CENTER)
-  A.big_l = ui.text(A.panel, -PW / 2 + 98, PH / 2 - 80, "", "nunito_semi", 12.5, C.text)
+  A.big = ui.box(A.panel, 14 + 31, -M.HEAD - M.BIG_H / 2 + 2, 62, 26, "pill", C.gold)
+  A.big_t = ui.text(A.big, 0, 0, "", "fredoka", 16, C.white, gui.PIVOT_CENTER)
+  A.big_l = ui.text(A.panel, 14 + 62 + 8, -M.HEAD - M.BIG_H / 2 + 2, "", "nunito_semi", 10.5, C.text)
   gui.set_enabled(A.big, false)
-  A.go = ui.box(A.panel, PW / 2 - 58, PH / 2 - 62, 84, 24, "pill_s", C.gold)
-  A.go_t = ui.text(A.go, 0, 0, "Go there", "fredoka", 12.5, C.white, gui.PIVOT_CENTER)
+  A.go = ui.box(A.panel, PW - 12 - 36, -M.HEAD - M.BIG_H / 2 + 2, 72, 22, "pill_s", C.gold)
+  A.go_t = ui.text(A.go, 0, 0, "Go there", "fredoka", 11.5, C.white, gui.PIVOT_CENTER)
   for i = 1, M.TREE_N do
-    local y = PH / 2 - 108 - M.TREE_H / 2 - (i - 1) * M.TREE_H
     local r = {}
-    r.bg = ui.box(A.panel, 0, y, PW - 16, M.TREE_H - 2, "pill_s", C.clear)
-    r.vline = ui.box(r.bg, 0, 0, 2, M.TREE_H, "px", vmath.vector4(0.42, 0.38, 0.47, 0.35))
-    r.tick = ui.box(r.bg, 0, 0, 8, 2, "px", vmath.vector4(0.42, 0.38, 0.47, 0.35))
-    r.dot = ui.box(r.bg, 0, 0, 7, 7, "circle", C.gold)
-    r.kicon = ui.icon(r.bg, 0, 0, "info", 14, C.text)
-    r.title = ui.text(r.bg, 0, 0, "", "nunito_semi", 12.5, C.text)
+    r.bg = ui.box(A.panel, PW / 2, 0, PW - 14, M.TREE_H - 1, "pill_s", C.clear)
+    r.vline = ui.box(r.bg, 0, 0, 1.5, M.TREE_H, "px", vmath.vector4(0.42, 0.38, 0.47, 0.35))
+    r.tick = ui.box(r.bg, 0, 0, 7, 1.5, "px", vmath.vector4(0.42, 0.38, 0.47, 0.35))
+    r.dot = ui.box(r.bg, 0, 0, 6, 6, "circle", C.gold)
+    r.kicon = ui.icon(r.bg, 0, 0, "info", 12, C.text)
+    r.title = ui.text(r.bg, 0, 0, "", "nunito_semi", 11.5, C.text)
     r.i = i
     r.act_node = i
     A.trows[i] = r
   end
+  -- the scrollbar
+  A.track = ui.box(A.panel, PW - 6, 0, 3.5, 100, "pill_s", vmath.vector4(0.42, 0.38, 0.47, 0.14), gui.PIVOT_N)
+  A.thumb = ui.box(A.panel, PW - 6, 0, 3.5, 30, "pill_s", vmath.vector4(0.42, 0.38, 0.47, 0.55), gui.PIVOT_N)
   gui.set_enabled(root, false)
   return A
 end
@@ -133,12 +133,18 @@ local function set_open(self, on)
   if ok then newsfeed.hidden = on end
 end
 
+--- (S26) Close the panel (Esc).
+function M.close(self)
+  if self.actions then set_open(self, false) end
+end
+
 -- Opens the chain of intervention ev (from a news card's "chain" pill).
 function M.open_for(self, ev)
   local A = self.actions
   if not A then return end
   set_open(self, true)
   A.mode, A.ev, A.scroll, A.sig = "tree", ev, 0, nil
+  A.t = 1
 end
 
 local function kind_color(nd)
@@ -148,7 +154,33 @@ local function kind_color(nd)
   return C.text
 end
 
--- Fill the panel and the pill from sim/chain.lua (five times a second).
+-- the panel's height for n rows of height rh under a header of top (the column's room at most); returns the height and
+-- how many rows fit
+local function size_for(A, top, n, rh)
+  local maxh = layout.column_h(M.PW)
+  local h = math.min(top + math.max(1, n) * rh + 10, maxh)
+  if h ~= A.h then
+    A.h = h
+    ui.size_panel(A.panel, A.sh, M.PW, h)
+  end
+  return h, math.max(1, math.floor((h - top - 8) / rh))
+end
+
+local function scrollbar(A, top, h, first, shown, total)
+  local on = total > shown
+  gui.set_enabled(A.track, on)
+  gui.set_enabled(A.thumb, on)
+  if not on then return end
+  local th = h - top - 10
+  gui.set_position(A.track, V3(M.PW - 6, -top, 0))
+  gui.set_size(A.track, V3(3.5, th, 0))
+  local tsz = math.max(20, th * shown / total)
+  gui.set_size(A.thumb, V3(3.5, tsz, 0))
+  local span = math.max(1, total - shown)
+  gui.set_position(A.thumb, V3(M.PW - 6, -top - (th - tsz) * math.min(1, first / span), 0))
+end
+
+-- Fill the panel and the pills from sim/chain.lua (five times a second).
 function M.update(self, W, now, dt)
   local A = self.actions
   if not A or not W or not W.v3 then return end
@@ -172,94 +204,89 @@ function M.update(self, W, now, dt)
       end
       gui.set_color(A.close, self.hover == "act_close" and C.hover or C.soft)
       gui.set_color(A.back, self.hover == "act_back" and C.hover or C.soft)
+      gui.set_color(A.go, self.hover == "act_go" and vmath.vector4(0.98, 0.76, 0.30, 1) or C.gold)
     end
     return
   end
   A.t = 0
   chain.update(W, now)
   local list = chain.list(W)
-  -- the pill: shown once the god has acted
-  gui.set_enabled(A.pill, #list > 0)
-  gui.set_text(A.pill_nt, tostring(#list))
-  gui.set_color(A.pill, (self.hover == "act_pill" or (A.open and A.mode ~= "news")) and C.hover or C.panel)
+  -- the pills: News once there is a story, Your actions once the god has acted (beside it)
   local NR = news.rt(W).list
   gui.set_enabled(A.npill, #NR > 0)
-  gui.set_position(A.npill, V3(M.X0 + 50, #list > 0 and 82 or 34, 0))
+  gui.set_enabled(A.pill, #list > 0)
+  gui.set_position(A.pill, V3((#NR > 0 and 90 or 0) + 76, M.PILL_H / 2, 0))
+  gui.set_text(A.pill_nt, tostring(#list))
+  gui.set_color(A.pill, (self.hover == "act_pill" or (A.open and A.mode ~= "news")) and C.hover or C.panel)
   gui.set_color(A.npill, (self.hover == "act_news" or (A.open and A.mode == "news")) and C.hover or C.panel)
   if not A.open then return end
   local PW = M.PW
-  if A.mode == "news" then
-    -- (S23) every story so far, newest first
+  if A.mode == "news" or A.mode == "list" then
+    -- the list: every story so far (newest first), or every cast and what it set off
     gui.set_enabled(A.big, false)
     gui.set_enabled(A.big_l, false)
     gui.set_enabled(A.back, false)
     gui.set_enabled(A.go, false)
     for _, r in ipairs(A.trows) do gui.set_enabled(r.bg, false) end
-    gui.set_position(A.title, V3(-PW / 2 + 16, M.PH / 2 - 22, 0))
-    gui.set_text(A.title, "THE NEWS SO FAR")
-    gui.set_text(A.sub, string.format("%d stories, newest first - click one to go there", #NR))
-    A.max_scroll = math.max(0, #NR - M.LIST_N)
+    gui.set_position(A.title, V3(14, -18, 0))
+    local news_mode = A.mode == "news"
+    local total = news_mode and #NR or #list
+    gui.set_text(A.title, news_mode and "THE NEWS SO FAR" or "YOUR ACTIONS")
+    gui.set_text(A.sub, ui.trunc("nunito_semi", news_mode and string.format("%d stories, newest first - click one to go there", #NR)
+      or (#list == 0 and "Nothing yet: cast a power, then come back" or "What each of your casts set off - click one to follow it"), 10.5, PW - 28))
+    local h, fit = size_for(A, M.HEAD, total, M.LIST_H)
+    fit = math.min(fit, M.LIST_N)
+    A.max_scroll = math.max(0, total - fit)
     A.scroll = math.min(A.scroll, A.max_scroll)
     for i, r in ipairs(A.rows) do
-      local st = NR[#NR - (i - 1) - A.scroll]
-      r.I, r.st = nil, st
-      gui.set_enabled(r.bg, st ~= nil and st.title ~= nil)
+      local on = i <= fit
+      local st = news_mode and on and NR[#NR - (i - 1) - A.scroll] or nil
+      local I = (not news_mode) and on and list[i + A.scroll] or nil
+      r.I, r.st = I, st
+      local any = (st ~= nil and st.title ~= nil) or I ~= nil
+      gui.set_enabled(r.bg, any)
+      gui.set_position(r.bg, V3(PW / 2, -M.HEAD - M.LIST_H / 2 - (i - 1) * M.LIST_H, 0))
       if st and st.title then
         ui.set_icon(r.icon, st.icon or "info")
-        gui.set_text(r.title, trunc("fredoka", st.title, 14.5, PW - 130))
-        local h = now - (st.t1 or now)
-        local ago = h < 1 and "now" or (h < 24 and string.format("%dh ago", math.floor(h)) or string.format("%dd ago", math.floor(h / 24)))
-        gui.set_text(r.line, trunc("nunito_semi", (st.line or "") .. " - " .. ago, 12, PW - 110))
+        gui.set_text(r.title, ui.trunc("fredoka", st.title, 13, PW - 120))
+        local hh = now - (st.t1 or now)
+        local ago = hh < 1 and "now" or (hh < 24 and string.format("%dh ago", math.floor(hh)) or string.format("%dd ago", math.floor(hh / 24)))
+        gui.set_text(r.line, ui.trunc("nunito_semi", (st.line or "") .. " - " .. ago, 10.5, PW - 104))
         local root = st.root or news.chain(W, st).root
         gui.set_text(r.n, root == "you" and "YOU" or (root == "people" and "PEOPLE" or "NATURE"))
         gui.set_color(r.n, root == "you" and C.gold or (root == "people" and C.muted or C.teal))
         gui.set_enabled(r.dot, st.active and st.level == 1)
-      end
-    end
-    return
-  end
-  local list_mode = A.mode == "list"
-  gui.set_enabled(A.big, not list_mode)
-  gui.set_enabled(A.big_l, not list_mode)
-  gui.set_enabled(A.back, not list_mode)
-  gui.set_enabled(A.go, not list_mode)
-  for _, r in ipairs(A.rows) do gui.set_enabled(r.bg, list_mode) end
-  for _, r in ipairs(A.trows) do gui.set_enabled(r.bg, not list_mode) end
-  if list_mode then
-    gui.set_position(A.title, V3(-PW / 2 + 16, M.PH / 2 - 22, 0))
-    gui.set_text(A.title, "YOUR ACTIONS")
-    gui.set_text(A.sub, #list == 0 and "Nothing yet: cast a power, then come back"
-      or "What each of your casts set off - click one to follow it")
-    A.max_scroll = math.max(0, #list - M.LIST_N)
-    A.scroll = math.min(A.scroll, A.max_scroll)
-    for i, r in ipairs(A.rows) do
-      local I = list[i + A.scroll]
-      r.I, r.st = I, nil
-      gui.set_enabled(r.bg, I ~= nil)
-      if I then
+      elseif I then
         ui.set_icon(r.icon, ICON[I.power] or "star")
-        gui.set_text(r.title, trunc("fredoka", I.title, 14.5, PW - 130))
+        gui.set_text(r.title, ui.trunc("fredoka", I.title, 13, PW - 120))
         local unf = I.active and " - still unfolding" or ""
-        gui.set_text(r.line, trunc("nunito_semi", string.format("%s - %d direct, %d in all%s", day_of(W, I.t), I.n_direct, I.n_total, unf), 12, PW - 110))
+        gui.set_text(r.line, ui.trunc("nunito_semi", string.format("%s - %d direct, %d in all%s", day_of(W, I.t), I.n_direct, I.n_total, unf), 10.5, PW - 104))
         gui.set_text(r.n, tostring(I.n_total))
         gui.set_color(r.n, C.text)
         gui.set_enabled(r.dot, I.active)
       end
     end
+    scrollbar(A, M.HEAD, h, A.scroll, fit, total)
     return
   end
   -- the chain of one cast
+  for _, r in ipairs(A.rows) do gui.set_enabled(r.bg, false) end
   local I = chain.get(W, A.ev)
   if not I then A.mode = "list"; return end
-  gui.set_position(A.title, V3(-PW / 2 + 48, M.PH / 2 - 22, 0))
-  gui.set_text(A.title, trunc("fredoka", "YOUR " .. string.upper(I.title), 17, PW - 100))
-  gui.set_text(A.sub, string.format("%s - one cast, and all it set off%s", day_of(W, I.t), I.active and " (still unfolding)" or ""))
+  gui.set_enabled(A.big, true)
+  gui.set_enabled(A.big_l, true)
+  gui.set_enabled(A.back, true)
+  gui.set_enabled(A.go, true)
+  gui.set_position(A.title, V3(38, -18, 0))
+  gui.set_text(A.title, ui.trunc("fredoka", "YOUR " .. string.upper(I.title), 14.5, PW - 38 - 34))
+  gui.set_text(A.sub, ui.trunc("nunito_semi", string.format("%s - one cast, and all it set off%s", day_of(W, I.t), I.active and " (still unfolding)" or ""), 10.5, PW - 28))
   local rows = chain.rows(W, I, 400)
   -- (S25b) the size of it, and the new links since the panel looked (they glow for a few seconds)
   local gen = 0
   for _, rw in ipairs(rows) do if rw.depth > gen then gen = rw.depth end end
   gui.set_text(A.big_t, tostring(I.n_total))
-  gui.set_text(A.big_l, string.format("consequence%s, %d generation%s deep - %d direct", I.n_total == 1 and "" or "s", gen, gen == 1 and "" or "s", I.n_direct))
+  gui.set_text(A.big_l, ui.trunc("nunito_semi", string.format("consequence%s, %d generation%s deep - %d direct", I.n_total == 1 and "" or "s", gen, gen == 1 and "" or "s", I.n_direct),
+    10.5, PW - (14 + 62 + 8) - 72 - 18))
   A.seen = A.seen or {}
   A.seen_ev = A.seen_ev or A.ev
   if A.seen_ev ~= A.ev then A.seen, A.seen_ev, A.primed = {}, A.ev, false end
@@ -270,47 +297,55 @@ function M.update(self, W, now, dt)
     local d = rows[k].depth
     rows[k].more = last_at[d] ~= nil and (last_at[d] > k)
     last_at[d] = last_at[d] or k
-    for dd = d + 1, 12 do last_at[dd] = nil end
+    for dd = d + 1, 40 do last_at[dd] = nil end
   end
-  A.max_scroll = math.max(0, #rows - M.TREE_N)
+  local top = M.HEAD + M.BIG_H + 4
+  local h, fit = size_for(A, top, math.max(1, #rows), M.TREE_H)
+  fit = math.min(fit, M.TREE_N)
+  A.max_scroll = math.max(0, #rows - fit)
   A.scroll = math.min(A.scroll, A.max_scroll)
   if #rows == 0 then
     local r = A.trows[1]
     gui.set_enabled(r.bg, true)
+    gui.set_position(r.bg, V3(PW / 2, -top - M.TREE_H / 2, 0))
     r.nd = nil
-    gui.set_position(r.title, V3(-PW / 2 + 22, 0, 0))
+    gui.set_position(r.title, V3(-PW / 2 + 18, 0, 0))
     gui.set_text(r.title, I.active and "Nothing has come of it yet - give it time" or "Nothing came of it")
     gui.set_color(r.title, C.muted)
     gui.set_enabled(r.vline, false); gui.set_enabled(r.tick, false); gui.set_enabled(r.dot, false); gui.set_enabled(r.kicon, false)
     for k = 2, #A.trows do gui.set_enabled(A.trows[k].bg, false) end
+    scrollbar(A, top, h, 0, 1, 1)
     return
   end
   for i, r in ipairs(A.trows) do
-    local row = rows[i + A.scroll]
+    local row = i <= fit and rows[i + A.scroll] or nil
     gui.set_enabled(r.bg, row ~= nil)
     r.nd = row and row.node
     if row then
+      gui.set_position(r.bg, V3(PW / 2, -top - M.TREE_H / 2 - (i - 1) * M.TREE_H, 0))
       local nd = row.node
-      local x0 = -PW / 2 + 18 + (row.depth - 1) * M.INDENT
+      local depth = math.min(row.depth, M.MAX_DEPTH)
+      local x0 = -PW / 2 + 16 + (depth - 1) * M.INDENT
       gui.set_enabled(r.vline, row.depth > 1)
       gui.set_enabled(r.tick, row.depth > 1)
+      gui.set_enabled(r.kicon, true)
       if row.depth > 1 then
         local lx = x0 - M.INDENT + 4
         gui.set_position(r.vline, V3(lx, row.more and 0 or M.TREE_H / 4, 0))
-        gui.set_size(r.vline, V3(2, row.more and M.TREE_H or M.TREE_H / 2, 0))
+        gui.set_size(r.vline, V3(1.5, row.more and M.TREE_H or M.TREE_H / 2, 0))
         gui.set_position(r.tick, V3(lx + 4, 0, 0))
       end
       -- (S25b) its kind's icon on the branch, a gold dot while it still unfolds, and a glow when it is new
-      gui.set_enabled(r.kicon, true)
       ui.set_icon(r.kicon, KIND_ICON[nd.kind] or "star")
       gui.set_position(r.kicon, V3(x0 + 5, 0, 0))
       gui.set_color(r.kicon, kind_color(nd))
       gui.set_enabled(r.dot, nd.active)
-      gui.set_position(r.dot, V3(x0 + 13, 6, 0))
+      gui.set_position(r.dot, V3(x0 + 12, 5, 0))
       local tx = nd.title or nd.kind
       if nd.line then tx = tx .. " - " .. nd.line end
-      gui.set_position(r.title, V3(x0 + 17, 0, 0))
-      gui.set_text(r.title, trunc("nunito_semi", tx, 12.5, PW / 2 - 14 - (x0 + 17)))
+      if row.depth > M.MAX_DEPTH then tx = string.format("(%d) ", row.depth) .. tx end
+      gui.set_position(r.title, V3(x0 + 15, 0, 0))
+      gui.set_text(r.title, ui.trunc("nunito_semi", tx, 11.5, PW / 2 - 14 - (x0 + 15)))
       gui.set_color(r.title, kind_color(nd))
       local first = A.seen[nd]
       if not first then first = A.primed and tnow or -100; A.seen[nd] = first end
@@ -320,6 +355,21 @@ function M.update(self, W, now, dt)
   -- (the rows below the window are seen too: what grows later glows)
   for k = 1, #rows do if not A.seen[rows[k].node] then A.seen[rows[k].node] = A.primed and tnow or -100 end end
   A.primed = true
+  scrollbar(A, top, h, A.scroll, fit, #rows)
+end
+
+--- (S26) The bottom-left pills' rectangle in window pixels (both as one), or nil.
+function M.pills_rect(self)
+  local A = self.actions
+  if not A then return nil end
+  local r = nil
+  for _, n in ipairs({ A.npill, A.pill }) do
+    if layout.shown(n) then
+      local q = layout.rect(n)
+      r = r and { math.min(r[1], q[1]), math.min(r[2], q[2]), math.max(r[3], q[3]), math.max(r[4], q[4]) } or q
+    end
+  end
+  return r
 end
 
 -- What is under (x, y): the pill, a row, back, close, go there; "panel" over the panel; nil.
@@ -328,11 +378,11 @@ function M.hit(self, x, y)
   if not A then return nil end
   if gui.is_enabled(A.pill) and gui.pick_node(A.pill, x, y) then return "act_pill" end
   if gui.is_enabled(A.npill) and gui.pick_node(A.npill, x, y) then return "act_news" end
-  if not A.open then return nil end
+  if not A.open or not gui.is_enabled(A.root) then return nil end
   if gui.pick_node(A.close, x, y) then return "act_close" end
-  if A.mode ~= "list" then
-    if gui.pick_node(A.back, x, y) then return "act_back" end
-    if gui.pick_node(A.go, x, y) then return "act_go" end
+  if A.mode == "tree" then
+    if gui.is_enabled(A.back) and gui.pick_node(A.back, x, y) then return "act_back" end
+    if gui.is_enabled(A.go) and gui.pick_node(A.go, x, y) then return "act_go" end
     for _, r in ipairs(A.trows) do
       if gui.is_enabled(r.bg) and r.nd and gui.pick_node(r.bg, x, y) then return r end
     end

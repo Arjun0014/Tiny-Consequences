@@ -78,15 +78,29 @@ highp float tc_hash(highp vec3 p)
     return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
 }
 
+// (S26) the same value noise, its eight corner hashes taken four at a time (tc_hash4: tc_hash's arithmetic on each
+// component - the same numbers) and blended in the same order (x, then y, then z): a quarter of the instructions, so the
+// D3D11 compiler behind ANGLE no longer spends seconds on the planet's shader (60 noises inlined) at start-up.
+highp vec4 tc_hash4(highp vec4 x, highp vec4 y, highp vec4 z)
+{
+    x = fract(x * 0.3183099 + 0.71) * 17.0;
+    y = fract(y * 0.3183099 + 0.113) * 17.0;
+    z = fract(z * 0.3183099 + 0.419) * 17.0;
+    return fract(x * y * z * (x + y + z));
+}
+
 highp float tc_noise(highp vec3 x)
 {
     highp vec3 i = floor(x);
     highp vec3 f = fract(x);
     f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(mix(tc_hash(i), tc_hash(i + vec3(1.0, 0.0, 0.0)), f.x),
-                   mix(tc_hash(i + vec3(0.0, 1.0, 0.0)), tc_hash(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
-               mix(mix(tc_hash(i + vec3(0.0, 0.0, 1.0)), tc_hash(i + vec3(1.0, 0.0, 1.0)), f.x),
-                   mix(tc_hash(i + vec3(0.0, 1.0, 1.0)), tc_hash(i + vec3(1.0, 1.0, 1.0)), f.x), f.y), f.z);
+    highp vec4 xs = i.x + vec4(0.0, 1.0, 0.0, 1.0);
+    highp vec4 ys = i.y + vec4(0.0, 0.0, 1.0, 1.0);
+    highp vec4 a = tc_hash4(xs, ys, vec4(i.z));          // the corners at z: (0,0) (1,0) (0,1) (1,1)
+    highp vec4 b = tc_hash4(xs, ys, vec4(i.z + 1.0));    // and at z + 1
+    highp vec4 bx = mix(vec4(a.xz, b.xz), vec4(a.yw, b.yw), f.x);
+    highp vec2 by = mix(bx.xz, bx.yw, f.y);
+    return mix(by.x, by.y, f.z);
 }
 
 highp float tc_fbm(highp vec3 x)

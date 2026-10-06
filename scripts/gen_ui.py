@@ -46,20 +46,22 @@ def line(d, pts, w, fill=W):
 
 
 CLEAR = (255, 255, 255, 0)
+ONLY = os.environ.get('TC_ICONS')   # (S26) a comma list: write only these icons (the others' PNGs stay byte-identical)
 
 # --- panels -------------------------------------------------------------------------------
-img, d = canvas(48); rrect(d, 0, 0, 48, 48, 16); save(img, 'panel', 48)
-img, d = canvas(48); rrect(d, 0, 0, 48, 48, 24); save(img, 'pill', 48)
-img, d = canvas(16); rrect(d, 0, 0, 16, 16, 8); save(img, 'pill_s', 16)
-Image.new('RGBA', (8, 8), (255, 255, 255, 255)).save(os.path.join(OUT, 'px.png'))
-img, d = canvas(64); circle(d, 32, 32, 31); save(img, 'circle', 64)
-img, d = canvas(64); circle(d, 32, 32, 30); circle(d, 32, 32, 24, CLEAR); save(img, 'ring', 64)
-# soft shadow: blurred rounded rect with a 16 px falloff border
-sh = Image.new('RGBA', (80, 80), (0, 0, 0, 0))
-sd = ImageDraw.Draw(sh)
-sd.rounded_rectangle([16, 16, 64, 64], radius=16, fill=(255, 255, 255, 255))
-sh = sh.filter(ImageFilter.GaussianBlur(6))
-sh.save(os.path.join(OUT, 'shadow.png'))
+if not ONLY:
+    img, d = canvas(48); rrect(d, 0, 0, 48, 48, 16); save(img, 'panel', 48)
+    img, d = canvas(48); rrect(d, 0, 0, 48, 48, 24); save(img, 'pill', 48)
+    img, d = canvas(16); rrect(d, 0, 0, 16, 16, 8); save(img, 'pill_s', 16)
+    Image.new('RGBA', (8, 8), (255, 255, 255, 255)).save(os.path.join(OUT, 'px.png'))
+    img, d = canvas(64); circle(d, 32, 32, 31); save(img, 'circle', 64)
+    img, d = canvas(64); circle(d, 32, 32, 30); circle(d, 32, 32, 24, CLEAR); save(img, 'ring', 64)
+    # soft shadow: blurred rounded rect with a 16 px falloff border
+    sh = Image.new('RGBA', (80, 80), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(sh)
+    sd.rounded_rectangle([16, 16, 64, 64], radius=16, fill=(255, 255, 255, 255))
+    sh = sh.filter(ImageFilter.GaussianBlur(6))
+    sh.save(os.path.join(OUT, 'shadow.png'))
 
 # --- icons (64 px, drawn on a 64 grid) --------------------------------------------------------
 ICONS = {}
@@ -434,7 +436,52 @@ def _(d):
     circle(d, 22, 30, 5)
 
 
+# (S26) the compact HUD: a menu, the Follow eye, the sound, minimise, a section's fold chevrons, a camera
+@icon('menu')
+def _(d):
+    for y in (18, 32, 46):
+        line(d, [(14, y), (50, y)], 7)
+
+
+@icon('eye')
+def _(d):
+    d.ellipse([S(4), S(16), S(60), S(48)], fill=W)
+    d.ellipse([S(10), S(21), S(54), S(43)], fill=CLEAR)
+    circle(d, 32, 32, 11)
+    circle(d, 28, 28, 3, CLEAR)
+
+
+@icon('sound')
+def _(d):
+    poly(d, [(8, 24), (20, 24), (34, 12), (34, 52), (20, 40), (8, 40)])
+    d.arc([S(30), S(20), S(50), S(44)], -55, 55, fill=W, width=S(5))
+    d.arc([S(30), S(10), S(60), S(54)], -55, 55, fill=W, width=S(5))
+
+
+@icon('mute')
+def _(d):
+    poly(d, [(8, 24), (20, 24), (34, 12), (34, 52), (20, 40), (8, 40)])
+    line(d, [(42, 24), (56, 40)], 5); line(d, [(56, 24), (42, 40)], 5)
+
+
+@icon('minus')
+def _(d):
+    line(d, [(14, 32), (50, 32)], 8)
+
+
+@icon('chev_down')
+def _(d):
+    line(d, [(12, 22), (32, 42), (52, 22)], 8)
+
+
+@icon('chev_up')
+def _(d):
+    line(d, [(12, 42), (32, 22), (52, 42)], 8)
+
+
 for name, fn in ICONS.items():
+    if ONLY and name not in ONLY.split(','):
+        continue
     img, d = canvas(64)
     fn(d)
     save(img, 'i_' + name, 64)

@@ -34,11 +34,16 @@ end
 local function follow_selection(W)
   local sel = selection.sel
   if not sel or sel.kind == "planet" then return false end
+  -- (S26) a v3 person: the agents' view follows them (one owner of the camera's follow; game/view/agents_view.lua)
+  if sel.kind == "person" and W and W.v3 and W.S and W.S.v3 then
+    require("game.view.agents_view").start_follow(W, sel.id)
+    return true
+  end
   if sel.kind == "person" or sel.kind == "ship" or sel.kind == "animal" then
-    camera.follow = function()
+    camera.start_follow(function()
       if not selection.same(selection.sel, sel) then return nil end
       return selring.sel_dir(W, sel)
-    end
+    end, sel)
     local want = sel.kind == "person" and 0.92 or 0.75
     if camera.tzoom < want then camera.tzoom = want end
   else
@@ -48,6 +53,19 @@ local function follow_selection(W)
   return true
 end
 M.follow_selection = follow_selection
+
+--- (S26) Stop any follow (the camera stays where it is, free to turn).
+function M.stop_follow()
+  local av = require("game.view.agents_view")
+  if av.follow then av.start_follow(nil, nil) end
+  camera.stop_follow()
+end
+
+--- (S26) Follow the selection, or stop following it if the camera already does (F, the inspector's Follow).
+function M.toggle_follow(W)
+  if camera.following(selection.sel) then M.stop_follow(); return false end
+  return follow_selection(W)
+end
 
 --- Fly to the current selection (GUI requests, e.g. a resident clicked in the inspector).
 function M.fly_to_selection(W, zoom)
@@ -261,12 +279,12 @@ function M.on_input(W, action_id, action)
   end
   if not action.pressed then return false end
   if action_id == H_F then
-    if W then follow_selection(W) end
+    if W then M.toggle_follow(W) end
     return true
   elseif action_id == H_ESC then
     if powers.armed then powers.disarm(); return true end
     selection.clear()
-    camera.follow = nil
+    M.stop_follow()
     return true
   elseif action_id == H_TAB then
     uistate.inspector_collapsed = not uistate.inspector_collapsed

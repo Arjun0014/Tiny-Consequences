@@ -987,8 +987,14 @@ function M.register(G)
     if args.inspector then res.inspector = W and selection.sel and summary(W, selection.sel) or false end
     if args.bounds then
       res.bounds = uistate.bounds
+      res.buttons = uistate.buttons
       res.window = { w = state.window_w, h = state.window_h }
+      res.k = require("game.ui.layout").k
     end
+    -- (S26) the layout audit: ask (audit_request), then read a frame later (audit) - texts leaving their panel or the window
+    if args.audit_request then uistate.audit_req = true; uistate.audit = nil end
+    if args.audit then res.audit = uistate.audit or false end
+    if args.idle ~= nil then res.idle = uistate.idle or false end
     res.collapsed = uistate.inspector_collapsed
     res.debug = uistate.debug
     return res

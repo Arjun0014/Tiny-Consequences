@@ -1786,6 +1786,56 @@ end
 M.chimneys = CHIM
 
 -- Per frame: t = view time (the sim has been advanced to it).
+-- (S26) Following a person (the inspector's Follow, F, a story about someone on the move). The camera's follow is one
+-- owner's at a time (game/view/camera.lua follow_tag): this one lasts while the person lives and stays selected and the
+-- camera's follow is still this one - closing the inspector, selecting someone else, a click on the empty world, a drag,
+-- Esc or the idle view each end it, and it is never put back after (S25 re-installed it every frame: a drag could not
+-- break it and closing the inspector left the camera following). A skip parks it and gives it back (skipcam).
+M.cam_fn = function()
+  local d = M.follow_dir
+  if d then return d[1], d[2], d[3] end
+  return nil
+end
+
+function M.follow_update(W, t)
+  local cam = require("game.view.camera")
+  local skipping = cam.parked   -- (a skip parks the camera's follow: game/view/skipcam.lua)
+  local sel = require("game.ui.selection").sel
+  local p = W.S.v3.people[M.follow]
+  local lost = not (p and p.alive) or not (sel and sel.kind == "person" and sel.id == M.follow)
+  if not lost and M.follow_on and not skipping and cam.follow ~= M.cam_fn then lost = true end
+  if lost then
+    if cam.follow == M.cam_fn then cam.stop_follow() end
+    M.follow, M.follow_on, M.follow_dir = nil, false, nil
+    return
+  end
+  local V = M.SETS[p.sett] or M.SETS[1]
+  local x, y = act.pos(p, t)
+  local carrier = p.act == "carried" and W.S.v3.people[p.carrier or 0]
+  if carrier then x, y = act.pos(carrier, t) end
+  local ux, uy, uz = mapm.unit(V.s, x, y)
+  local fd = M.follow_dir or {}
+  fd[1], fd[2], fd[3] = ux, uy, uz
+  M.follow_dir = fd
+  if not M.follow_on and not skipping then
+    cam.start_follow(M.cam_fn, { kind = "person", id = M.follow })
+    M.follow_on = true
+  end
+end
+
+--- (S26) Follow person pid (selected with it), or stop when pid is nil.
+function M.start_follow(W, pid)
+  local cam = require("game.view.camera")
+  if M.follow_on and cam.follow == M.cam_fn then cam.stop_follow() end
+  M.follow, M.follow_on, M.follow_dir = pid, false, nil
+  if pid and W and W.v3 and M.SETS[1] then
+    local sel = require("game.ui.selection")
+    if not (sel.sel and sel.sel.kind == "person" and sel.sel.id == pid) then sel.set({ kind = "person", id = pid, v3 = true }) end
+    M.follow_update(W, M.t or W.hour)
+    if cam.tzoom < 0.92 then cam.tzoom = 0.92 end
+  end
+end
+
 function M.update(W, dt, zoom, t)
   M.t = t
   new_settlements(W)
@@ -1796,23 +1846,7 @@ function M.update(W, dt, zoom, t)
     for k = #FIRES, 1, -1 do FIRES[k] = nil end
     for _, V in ipairs(M.SETS) do hearths(V, t) end
   end
-  if M.follow and M.SETS[1] then
-    local p = W.S.v3.people[M.follow]
-    if p and p.alive then
-      local V = M.SETS[p.sett] or M.SETS[1]
-      local x, y = act.pos(p, t)
-      local carrier = p.act == "carried" and W.S.v3.people[p.carrier or 0]
-      if carrier then x, y = act.pos(carrier, t) end
-      local ux, uy, uz = mapm.unit(V.s, x, y)
-      local fd = M.follow_dir or {}
-      fd[1], fd[2], fd[3] = ux, uy, uz
-      M.follow_dir = fd
-      local cam = require("game.view.camera")
-      if not cam.follow then cam.follow = function() local d = M.follow_dir; return d[1], d[2], d[3] end end
-    else
-      M.follow = nil
-    end
-  end
+  if M.follow and M.SETS[1] then M.follow_update(W, t) end
   local fx, fy, fz = state.focus_x or 0, state.focus_y or 0, state.focus_z or 1
   M.animals_begin()
   local bp = M.bird_pos

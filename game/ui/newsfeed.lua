@@ -11,23 +11,20 @@ local news = require("sim.news")
 local M = {}
 local C = ui.C
 local V3 = vmath.vector3
+local layout = require("game.ui.layout")
 
+-- (S26) compact cards in the left column under a "World news" header that folds the column away; as many cards as the
+-- column has room for (game/ui/layout.lua), every line cut to its card's width
 M.N = 5
-M.CW, M.CH, M.GAP = 336, 54, 6
-M.X0 = 12
-M.TOP = 720 - 84
-M.REF_H = 720
+M.CW, M.CH, M.GAP = 300, 46, 5
+M.HEAD = 24
+M.collapsed = false
 
 local LEVEL_C = { vmath.vector4(0.949, 0.42, 0.357, 1), vmath.vector4(0.227, 0.651, 0.627, 1), vmath.vector4(0.55, 0.45, 0.62, 1) }
 local ROOT_C = { you = C.gold, nature = C.teal, people = vmath.vector4(0.46, 0.43, 0.50, 1) }
 local ROOT_T = { you = "YOU", nature = "NATURE", people = "PEOPLE" }
 
-local function trunc(font, str, px, w)
-  if ui.text_width(font, str, px) <= w then return str end
-  local s = str
-  while #s > 3 and ui.text_width(font, s .. "...", px) > w do s = s:sub(1, #s - 1) end
-  return s .. "..."
-end
+local trunc = ui.trunc
 
 local function ago(h)
   if h < 1 then return "now" end
@@ -39,25 +36,31 @@ function M.build(self)
   local F = { cards = {} }
   self.news = F
   local CW, CH = M.CW, M.CH
-  local root = ui.box(nil, M.X0 + CW / 2, M.TOP, 1, 1, "px", C.clear)
-  ui.anchor(root, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
+  -- the root at the column's top-left corner (placed and scaled by the HUD's layout)
+  local root = ui.root(10, 720 - 62, gui.ANCHOR_LEFT, gui.ANCHOR_TOP)
   F.root = root
+  -- the header: "WORLD NEWS", folds the column
+  F.head = ui.box(root, 62, -M.HEAD / 2, 124, M.HEAD, "pill", C.panel)
+  F.head_icon = ui.icon(F.head, -48, 0, "globe", 14, C.teal)
+  F.head_t = ui.text(F.head, -36, 0, "WORLD NEWS", "fredoka", 11.5, C.text)
+  F.head_chev = ui.icon(F.head, 48, 0, "chev_up", 10, C.muted)
+  F.head_hit = { news_toggle = true, tip = "Fold the news away (or open it)" }
   for i = 1, M.N do
-    local y = -CH / 2 - (i - 1) * (CH + M.GAP)
+    local y = -M.HEAD - 6 - CH / 2 - (i - 1) * (CH + M.GAP)
     local c = {}
-    c.sh = ui.box(root, 0, y - 2, CW + 14, CH + 14, "shadow", C.shadow)
-    c.node = ui.box(root, 0, y, CW, CH, "panel", C.panel)
-    c.stripe = ui.box(c.node, -CW / 2 + 3, 0, 5, CH - 10, "pill_s", LEVEL_C[2])
-    c.icon = ui.icon(c.node, -CW / 2 + 24, 2, "info", 24, C.text)
-    c.dot = ui.box(c.node, -CW / 2 + 11, CH / 2 - 9, 9, 9, "circle", LEVEL_C[1])
-    c.title = ui.text(c.node, -CW / 2 + 42, 10, "", "fredoka", 15, C.text)
-    c.line = ui.text(c.node, -CW / 2 + 42, -11, "", "nunito_semi", 12.5, C.muted)
-    c.ago = ui.text(c.node, CW / 2 - 10, 13, "", "nunito_semi", 11, C.muted, gui.PIVOT_E)
-    c.badge = ui.box(c.node, CW / 2 - 32, -11, 52, 17, "pill_s", C.teal)
-    c.badge_t = ui.text(c.badge, 0, 0, "", "fredoka", 10.5, C.white, gui.PIVOT_CENTER)
+    c.sh = ui.box(root, CW / 2, y - 2, CW + 14, CH + 14, "shadow", C.shadow)
+    c.node = ui.box(root, CW / 2, y, CW, CH, "panel", C.panel)
+    c.stripe = ui.box(c.node, -CW / 2 + 3, 0, 4, CH - 12, "pill_s", LEVEL_C[2])
+    c.icon = ui.icon(c.node, -CW / 2 + 21, 1, "info", 20, C.text)
+    c.dot = ui.box(c.node, -CW / 2 + 10, CH / 2 - 8, 8, 8, "circle", LEVEL_C[1])
+    c.title = ui.text(c.node, -CW / 2 + 37, 9, "", "fredoka", 13.5, C.text)
+    c.line = ui.text(c.node, -CW / 2 + 37, -10, "", "nunito_semi", 11.5, C.muted)
+    c.ago = ui.text(c.node, CW / 2 - 9, 11, "", "nunito_semi", 10.5, C.muted, gui.PIVOT_E)
+    c.badge = ui.box(c.node, CW / 2 - 29, -10, 46, 16, "pill_s", C.teal)
+    c.badge_t = ui.text(c.badge, 0, 0, "", "fredoka", 9.5, C.white, gui.PIVOT_CENTER)
     -- (S23) for a story rooted at YOU: its cast's chain - all that cast has caused so far (game/ui/actions.lua)
-    c.chain = ui.box(c.node, CW / 2 - 92, -11, 62, 17, "pill_s", vmath.vector4(0.30, 0.25, 0.38, 1))
-    c.chain_t = ui.text(c.chain, 0, 0, "", "fredoka", 10.5, C.gold, gui.PIVOT_CENTER)
+    c.chain = ui.box(c.node, CW / 2 - 85, -10, 58, 16, "pill_s", vmath.vector4(0.30, 0.25, 0.38, 1))
+    c.chain_t = ui.text(c.chain, 0, 0, "", "fredoka", 9.5, C.gold, gui.PIVOT_CENTER)
     gui.set_enabled(c.chain, false)
     c.y = y
     F.cards[i] = c
@@ -65,15 +68,21 @@ function M.build(self)
     gui.set_enabled(c.sh, false)
   end
   -- the "Why?" panel, under the card it explains
-  F.why = ui.box(root, 0, 0, CW, 40, "panel", C.panel_solid)
+  F.why = ui.box(root, CW / 2, 0, CW, 40, "panel", C.panel_solid)
   F.why_lines = {}
   for k = 1, 7 do
-    F.why_lines[k] = ui.text(F.why, -CW / 2 + 14, 0, "", "nunito_semi", 12.5, C.text)
+    F.why_lines[k] = ui.text(F.why, -CW / 2 + 12, 0, "", "nunito_semi", 11.5, C.text)
   end
   gui.set_enabled(F.why, false)
+  gui.set_enabled(F.head, false)
   F.sig = nil
   F.t = 0
   return F
+end
+
+local function hide_all(F)
+  for _, c in ipairs(F.cards) do gui.set_enabled(c.node, false); gui.set_enabled(c.sh, false); c.st = nil end
+  gui.set_enabled(F.why, false)
 end
 
 -- The cards for now (sim/news.lua), refreshed when the stories change or every few seconds.
@@ -83,13 +92,14 @@ function M.update(self, W, now, dt)
   -- (S23) "Your actions" open in the same column: the cards step aside; (S25) so do they while a dropdown or a menu
   -- is open over them
   if M.hidden or M.suppress or M.menu_open then
-    for _, c in ipairs(F.cards) do gui.set_enabled(c.node, false); gui.set_enabled(c.sh, false) end
-    gui.set_enabled(F.why, false)
+    hide_all(F)
+    gui.set_enabled(F.head, false)
     F.sig, F.t = nil, 1
     return
   end
   F.t = (F.t or 0) + dt
   F.pulse = (F.pulse or 0) + dt
+  gui.set_color(F.head, self.hover == F.head_hit and C.hover or C.panel)
   -- (the stories are read five times a second; the pulse and hover every frame)
   if F.t < 0.2 and F.list then
     for _, c in ipairs(F.cards) do
@@ -119,7 +129,24 @@ function M.update(self, W, now, dt)
     end
   end
   F.primed = true
-  local sig = #cards
+  gui.set_enabled(F.head, #cards > 0)
+  gui.set_text(F.head_t, M.collapsed and string.format("WORLD NEWS (%d)", #cards) or "WORLD NEWS")
+  ui.set_icon(F.head_chev, M.collapsed and "chev_down" or "chev_up")
+  local hw = ui.text_width("fredoka", gui.get_text(F.head_t), 11.5) + 62
+  gui.set_size(F.head, V3(hw, M.HEAD, 0))
+  gui.set_position(F.head, V3(hw / 2, -M.HEAD / 2, 0))
+  gui.set_position(F.head_icon, V3(-hw / 2 + 14, 0, 0))
+  gui.set_position(F.head_t, V3(-hw / 2 + 26, 0, 0))
+  gui.set_position(F.head_chev, V3(hw / 2 - 14, 0, 0))
+  if M.collapsed then
+    hide_all(F)
+    F.list, F.sig = cards, nil
+    return
+  end
+  -- as many cards as the column has room for (the Why? panel below its card counts too)
+  local room = layout.column_h() - M.HEAD - 6
+  local fit_n = math.max(1, math.floor((room + M.GAP) / (M.CH + M.GAP)))
+  local sig = #cards * 7 + fit_n
   local chain = require("sim.chain")
   for _, st in ipairs(cards) do
     sig = sig * 31 + st.id * 7 + #st.lines * 3 + (st.active and 1 or 0) + math.floor((now - st.t1) / 6)
@@ -133,18 +160,18 @@ function M.update(self, W, now, dt)
   F.list = cards
   for i, c in ipairs(F.cards) do
     local st = cards[i]
-    local on = st ~= nil
+    local on = st ~= nil and i <= fit_n
     gui.set_enabled(c.node, on)
     gui.set_enabled(c.sh, on)
-    c.st = st
+    c.st = on and st or nil
     if on then
       if sig ~= F.sig then
         ui.set_icon(c.icon, st.icon or "info")
-        gui.set_text(c.title, trunc("fredoka", st.title or "", 15, M.CW - 84))
+        gui.set_text(c.title, trunc("fredoka", st.title or "", 13.5, M.CW - 37 - 34))
         local ch = news.chain(W, st)
         local I = ch.root_ev and require("sim.chain").get(W, ch.root_ev)
         local has_chain = I ~= nil and I.n_total > 0
-        gui.set_text(c.line, trunc("nunito_semi", st.line or "", 12.5, M.CW - (has_chain and 186 or 120)))
+        gui.set_text(c.line, trunc("nunito_semi", st.line or "", 11.5, M.CW - 37 - (has_chain and 126 or 64)))
         gui.set_text(c.ago, ago(now - st.t1))
         gui.set_color(c.stripe, LEVEL_C[st.level] or LEVEL_C[2])
         local root = st.root or ch.root
@@ -168,39 +195,63 @@ function M.update(self, W, now, dt)
   -- the "Why?" panel
   local wst = nil
   if F.why_for then
-    for i, st in ipairs(cards) do if st.id == F.why_for then wst = st; F.why_i = i end end
+    for i, st in ipairs(cards) do if st.id == F.why_for and i <= fit_n then wst = st; F.why_i = i end end
     if not wst then F.why_for = nil end
   end
   gui.set_enabled(F.why, wst ~= nil)
   if wst then
     local ch = news.chain(W, wst)
     local n = math.min(#ch.links, #F.why_lines - 1)
-    local h = 26 + n * 18
+    local h = 22 + n * 16
     local yb = F.cards[F.why_i].y - M.CH / 2 - 4 - h / 2
     gui.set_size(F.why, V3(M.CW, h, 0))
-    gui.set_position(F.why, V3(0, yb, 0))
+    gui.set_position(F.why, V3(M.CW / 2, yb, 0))
     for k, t in ipairs(F.why_lines) do
       local ln = k == 1 and { text = "Why?", t = nil } or ch.links[k - 1]
       gui.set_enabled(t, k <= n + 1)
       if k <= n + 1 then
-        gui.set_position(t, V3(-M.CW / 2 + 14, h / 2 - 13 - (k - 1) * 18, 0))
+        gui.set_position(t, V3(-M.CW / 2 + 12, h / 2 - 11 - (k - 1) * 16, 0))
         local txt = k == 1 and "Why?" or ((k == 2 and "" or "<- ") .. ln.text .. string.format("  (%s)", ago(now - (ln.t or now))))
-        gui.set_text(t, trunc("nunito_semi", txt, 12.5, M.CW - 28))
+        gui.set_text(t, trunc("nunito_semi", txt, 11.5, M.CW - 24))
         gui.set_color(t, k == 1 and C.muted or (ln.who == "you" and C.gold or (ln.who == "people" and C.text or C.teal)))
       end
     end
-    -- (the cards below the open card move down out of the panel's way)
+    -- (the cards below the open card move down out of the panel's way; those that would leave the column hide)
+    local bottom = -M.HEAD - 6 - room
     for i, c in ipairs(F.cards) do
       local dy = (i > F.why_i) and (h + 8) or 0
-      gui.set_position(c.node, V3(0, c.y - dy, 0))
-      gui.set_position(c.sh, V3(0, c.y - 2 - dy, 0))
+      gui.set_position(c.node, V3(M.CW / 2, c.y - dy, 0))
+      gui.set_position(c.sh, V3(M.CW / 2, c.y - 2 - dy, 0))
+      if c.st and c.y - dy - M.CH / 2 < bottom then gui.set_enabled(c.node, false); gui.set_enabled(c.sh, false); c.st = nil end
     end
   else
     for _, c in ipairs(F.cards) do
-      gui.set_position(c.node, V3(0, c.y, 0))
-      gui.set_position(c.sh, V3(0, c.y - 2, 0))
+      gui.set_position(c.node, V3(M.CW / 2, c.y, 0))
+      gui.set_position(c.sh, V3(M.CW / 2, c.y - 2, 0))
     end
   end
+end
+
+--- (S26) Fold the news column away, or open it.
+function M.toggle(self)
+  M.collapsed = not M.collapsed
+  if self.news then self.news.sig, self.news.t = nil, 1 end
+end
+
+--- (S26) The column's rectangle in window pixels (its header, cards and Why? as one), or nil when nothing shows.
+function M.rect(self)
+  local F = self.news
+  if not F or not layout.shown(F.head) then return nil end
+  local r = layout.rect(F.head)
+  local function grow(n)
+    if layout.shown(n) then
+      local q = layout.rect(n)
+      r = { math.min(r[1], q[1]), math.min(r[2], q[2]), math.max(r[3], q[3]), math.max(r[4], q[4]) }
+    end
+  end
+  for _, c in ipairs(F.cards) do grow(c.node) end
+  grow(F.why)
+  return r
 end
 
 -- What is under (x, y): a card's badge ({ badge = card }), a card, or nil.
@@ -208,6 +259,7 @@ function M.hit(self, x, y)
   local F = self.news
   if not F then return nil end
   if M.hidden or M.suppress or M.menu_open then return nil end
+  if gui.is_enabled(F.head) and gui.pick_node(F.head, x, y) then return F.head_hit end
   for _, c in ipairs(F.cards) do
     if c.st and gui.is_enabled(c.node) then
       if c.chain_ev and gui.is_enabled(c.chain) and gui.pick_node(c.chain, x, y) then

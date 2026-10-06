@@ -78,6 +78,18 @@ end
 
 -- Loading -----------------------------------------------------------------------------------
 
+-- (S26) The view's build steps and their shares of its time (release, measured: out/s26/load_probe.mjs - coastlines 0.36 s,
+-- the land 0.27, forests 0.41, clouds 0.22, the village 1.35), so the loading fraction only ever grows and moves as the
+-- work does (it is also the host's loading progress, window.tcLoad).
+local BUILD_STEPS = { { "Sculpting coastlines", 0.36 }, { "Painting the land", 0.27 }, { "Planting forests", 0.41 },
+	{ "Gathering clouds", 0.22 }, { "Waking the village", 1.35 }, { "Ready", 0 } }
+local BUILD_AT = {}
+do
+	local tot, cum = 0, 0
+	for _, st in ipairs(BUILD_STEPS) do tot = tot + st[2] end
+	for _, st in ipairs(BUILD_STEPS) do BUILD_AT[st[1]] = { cum / tot, st[2] / tot }; cum = cum + st[2] end
+end
+
 local function start_loading(self, seed)
 	self.seed = seed
 	self.W = nil
@@ -89,6 +101,7 @@ local function start_loading(self, seed)
 	state.loading.frac = 0
 	state.loading.text = "Growing a tiny world..."
 	self.load_t0 = clock.now_ms()
+	self.load_sent, self.load_mark = 0, nil
 	self.loader = coroutine.create(function()
 		local slice_start = clock.now_ms()
 		local function maybe_yield()
@@ -115,7 +128,11 @@ local function start_loading(self, seed)
 			data = ok_mod and data or nil
 			if data and worlds.from_save_string then
 				state.loading.text = "Unpacking a tiny world..."
+				local tu = clock.now_ms()
 				local ok, res, err = pcall(worlds.from_save_string, data)
+				-- (S26: unpacking is a quarter of the world's loading time - 0.9 s of 3.5 measured)
+				state.loading.frac = 0.26
+				print(string.format("[tc] load: world unpacked in %.0f ms (%.0f ms since start)", clock.now_ms() - tu, clock.now_ms() - self.load_t0))
 				if ok and res then
 					W = res
 					self.seed = W.seed or seed
@@ -136,12 +153,22 @@ local function start_loading(self, seed)
 				end,
 			})
 		end
-		state.loading.frac = 0.75
+		-- (a generated world has used three quarters of the bar on its own growth; a pre-spun one its unpacking)
+		local u0 = math.max(state.loading.frac or 0, self.prespun and 0.26 or 0.75)
+		state.loading.frac = u0
+		local tv = clock.now_ms()
 		view.build(W, URLS, function(text, f)
 			state.loading.text = text .. "..."
-			state.loading.frac = 0.75 + 0.25 * f
+			local at = BUILD_AT[text]
+			local g = at and (at[1] + at[2] * math.max(0, math.min(1, f))) or 0
+			state.loading.frac = math.max(state.loading.frac, u0 + (1 - u0) * g)
+			if html5 and text ~= self.load_mark then
+				self.load_mark = text
+				pcall(html5.run, "window.tcLoad ? window.tcLoad.mark('" .. text .. "') : 0")
+			end
 			maybe_yield()
 		end)
+		print(string.format("[tc] load: view built in %.0f ms", clock.now_ms() - tv))
 		self.W = W
 	end)
 end
@@ -317,6 +344,8 @@ function init(self)
 		}
 	end)
 
+	-- (S26) the engine is up and the game's first frame runs: the host's loading screen moves on (window.tcLoad)
+	if html5 then pcall(html5.run, "window.tcLoad ? window.tcLoad.boot() : 0") end
 	-- default start: the pre-spun world when it ships; ?seed=N always generates
 	self.use_prespun = query.get().seed == nil
 	start_loading(self, query.number("seed", 1))
@@ -366,6 +395,12 @@ function update(self, dt)
 	self.f_last = fa
 	if self.loader then
 		local ok, err = coroutine.resume(self.loader)
+		-- (S26) the world's loading as the host's loading progress (game/html/engine_template.html, window.tcLoad)
+		local lf = state.loading.frac or 0
+		if html5 and lf >= (self.load_sent or 0) + 0.01 then
+			self.load_sent = lf
+			pcall(html5.run, string.format("window.tcLoad ? window.tcLoad.world(%.3f) : 0", lf))
+		end
 		if not ok then
 			bridge.error("loading: " .. tostring(err))
 			self.loader = nil
@@ -406,7 +441,13 @@ function update(self, dt)
 		local r = uistate.pop_request()
 		while r do
 			if r.cmd == "fly_to_sel" then controls.fly_to_selection(W) end
-			if r.cmd == "follow" then require("game.view.agents_view").follow = r.id end
+			if r.cmd == "follow" then require("game.view.agents_view").start_follow(W, r.id) end
+			if r.cmd == "follow_toggle" then controls.toggle_follow(W) end
+			if r.cmd == "follow_stop" then controls.stop_follow() end
+			-- (S26) the idle view: the camera watches the world on its own until the player is back
+			if r.cmd == "idle" then
+				if r.on then require("game.view.idlecam").start(W) else require("game.view.idlecam").stop() end
+			end
 			r = uistate.pop_request()
 		end
 	end
@@ -415,6 +456,7 @@ function update(self, dt)
 	require("game.ui.powers").tick(dt)
 	-- (S25) a skip seen from above: the camera rises, the planet turns through its days, then back down
 	if self.ready and self.W and self.W.v3 and (not query.flag("test") or query.flag("menu")) then require("game.view.skipcam").update(dt) end
+	if self.ready and self.W then require("game.view.idlecam").update(self.W, dt) end
 	view.update(dt)
 	if self.ready and self.perf then
 		local p = self.perf

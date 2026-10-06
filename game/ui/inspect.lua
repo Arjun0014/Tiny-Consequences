@@ -72,28 +72,9 @@ function M.recent_events(W, cells, years, n)
   return out
 end
 
--- Text rows are one line in the panel: long texts wrap onto following rows at word breaks
--- (M.WRAP characters of the panel's body font; continuation rows carry no icon).
-M.WRAP = 40
+-- (S26) Items are kept whole: the inspector (game/ui/hud.gui_script) measures every label, value and text in its font and
+-- wraps them by pixels into its own lines (a long value goes under its label), so nothing is drawn over anything else.
 local function add(items, t)
-  -- (S19) a row whose label and value would not fit side by side becomes a text, wrapped (a long
-  -- value had been drawn over its label)
-  if t.t == "row" and not t.link and t.label and t.value and #t.label + #t.value > (t.hl and 34 or 38) then
-    t = { t = "text", icon = t.icon, text = t.label .. ": " .. t.value, hl = t.hl }
-  end
-  if t.t == "text" and t.text and #t.text > M.WRAP then
-    local line, first = "", true
-    for word in t.text:gmatch("%S+") do
-      if line ~= "" and #line + 1 + #word > (first and M.WRAP or M.WRAP + 3) then
-        items[#items + 1] = { t = "text", icon = first and t.icon or nil, text = line, hl = t.hl }
-        line, first = word, false
-      else
-        line = line == "" and word or (line .. " " .. word)
-      end
-    end
-    if line ~= "" then items[#items + 1] = { t = "text", icon = first and t.icon or nil, text = line, hl = t.hl } end
-    return
-  end
   items[#items + 1] = t
 end
 
@@ -935,7 +916,7 @@ local function v3_person_items(W, p, items)
       n = n + 1
     end
   end
-  add(items, { t = "row", icon = "pin", label = "Camera", value = "Follow", link = { kind = "follow", id = p.id } })
+  -- (S26: following them is the inspector's Follow button, in its header)
 end
 
 -- (S14) A bird flock: what it is doing and why, straight from the agent (sim/agents/birds.lua).
@@ -1155,7 +1136,17 @@ local function v3_settlement(W, sel)
   return out
 end
 
+local build
+
+--- The inspector's description of selection sel (nil when there is nothing to show). (S26) can_follow: the camera can
+-- follow it (a person, a ship, a beast of the legacy world) - the inspector's Follow button.
 function M.build(W, sel)
+  local out = build(W, sel)
+  if out and sel and (sel.kind == "person" or sel.kind == "ship" or sel.kind == "animal") then out.can_follow = true end
+  return out
+end
+
+build = function(W, sel)
   if not sel or not W then return nil end
   if W.v3 and sel.kind == "settlement" and W.S.v3 then return v3_settlement(W, sel) end
   if W.v3 and sel.kind == "flock" and W.S.v3 then return v3_flock(W, sel) end

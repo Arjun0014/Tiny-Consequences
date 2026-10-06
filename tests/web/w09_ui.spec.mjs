@@ -1,6 +1,7 @@
 // W09 (Chapter-1 scope) — UI: the inspector opens for a cell, a village, a person and the
 // planet (bridge `select{...}` and the real click/pick path), HUD panels don't overlap and stay
-// on screen at 1280x720 and 1920x1080, and the speed buttons work with a real mouse click.
+// on screen at 1280x720, 1920x1080, 1024x768 and 844x390 with every text inside its panel (S26), and the speed buttons
+// work with a real mouse click.
 import { test, expect } from '@playwright/test';
 import { openGame, readTC, sendCmd, waitForTC, expectNoErrors } from './lib/game.mjs';
 
@@ -19,7 +20,11 @@ function overlaps(a, b) {
 async function checkLayout(page, label, w, h) {
   await page.setViewportSize({ width: w, height: h });
   await page.waitForTimeout(1200);
-  const ui = (await sendCmd(page, { cmd: 'ui', bounds: true })).result;
+  // (S26) and every text drawn inside its panel and on the screen (the GUI's own measure: ui{audit})
+  await sendCmd(page, { cmd: 'ui', audit_request: true });
+  await page.waitForTimeout(300);
+  const ui = (await sendCmd(page, { cmd: 'ui', bounds: true, audit: true })).result;
+  expect(Array.isArray(ui.audit) ? ui.audit : [], `${label}: texts leaving their panel`).toEqual([]);
   expect(ui.window.w, `${label} window`).toBe(w);
   const names = Object.keys(ui.bounds);
   for (const k of ['clock', 'stats', 'inspector']) expect(names, `${label}: ${k} visible`).toContain(k);
@@ -81,14 +86,18 @@ test('W09 UI: inspector for cell/village/person/planet, HUD layout, speed button
   await sendCmd(page, { cmd: 'ui', debug: true });
   await checkLayout(page, '1280x720', 1280, 720);
   await checkLayout(page, '1920x1080', 1920, 1080);
+  // (S26) a 4:3 window and a phone held sideways (the UI scaled up, the panels' heights from the room left)
+  await checkLayout(page, '1024x768', 1024, 768);
+  await checkLayout(page, '844x390', 844, 390);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.waitForTimeout(1000);
 
-  // speed buttons respond to a real mouse click (fast = 3rd button in the clock panel)
+  // speed buttons respond to a real mouse click (fast = 3rd button in the clock panel, where the game draws it)
   const ui = (await sendCmd(page, { cmd: 'ui', bounds: true })).result;
-  const clock = ui.bounds.clock;
-  const fastX = clock[0] + (200 + 2 * 42 - 12);          // button centres: panel x + 200 + i*42 (logical px)
-  const topY = 720 - (clock[1] + clock[3]) / 2;          // bounds are y-up; mouse is y-down
+  const fb = ui.buttons.speed3;
+  expect(fb, 'the third speed button is drawn').toBeTruthy();
+  const fastX = (fb[0] + fb[2]) / 2;
+  const topY = 720 - (fb[1] + fb[3]) / 2;                // bounds are y-up; mouse is y-down
   await click(page, fastX, topY);
   await waitForTC(page, (t) => t.speed === 2, null, { timeout: 5_000 });
   // inspector close button clears the selection

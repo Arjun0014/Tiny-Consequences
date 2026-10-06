@@ -75,6 +75,10 @@
 	#tc-fullscreen .exit { display: none; }
 	#tc-fullscreen.on .enter { display: none; }
 	#tc-fullscreen.on .exit { display: block; }
+	/* (S26) the idle view: the page's own button fades with the HUD, and the pointer hides; any input brings them back */
+	#tc-fullscreen { transition: opacity 0.8s ease; }
+	body.tc-idle #tc-fullscreen { opacity: 0; pointer-events: none; }
+	body.tc-idle #canvas { cursor: none; }
 	/* (S25) pseudo-fullscreen when the browser refuses the real one (an iframe without allowfullscreen):
 	   the game's container covers the whole viewport above everything else on the page */
 	body.tc-pseudo-fs .canvas-app-container { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 2147483000; background: #5FD0F0; }
@@ -222,6 +226,39 @@
 			}, { capture: true, passive: false });
 		})();
 
+		// (S26) Loading progress for the host's loading screen (Wavedash: updateLoadProgressZeroToOne; it showed 0% until the
+		// game was ready, because nothing reported). Every step is real work, in the order it happens, never a timer:
+		//   0 .. 0.5     the engine's files downloaded and the wasm compiled - dmloader's own byte count (update_progress);
+		//   0.53         the engine started (start_success: main() called);
+		//   0.7          the game's first frame (main.script init) - between the two the engine loads its resources and the
+		//                GPU compiles every shader in one native call that no page script can interrupt (measured: 0.6 s in
+		//                software, ~10 s on a first visit with a D3D11 GPU, the planet's shader most of it);
+		//   0.7 .. 0.97  the world unpacked and its view built - the game's own loading fraction, its steps weighted by the
+		//                time each took (main.script BUILD_STEPS), sent with html5.run;
+		//   1            the game is playable (tcWD.init(), which also lifts Wavedash's loading screen).
+		// Measured with out/s26/load_probe.mjs (a stand-in SDK, the network throttled). Never backwards; the log keeps
+		// [ms since the page, progress, phase].
+		window.tcLoad = {
+			p: 0, log: [], DL: 0.5, BOOT: 0.7,
+			t0: (window.performance && performance.now) ? performance.now() : Date.now(),
+			now: function () { return ((window.performance && performance.now) ? performance.now() : Date.now()) - this.t0; },
+			set: function (p, phase) {
+				if (!(p >= 0)) return;
+				if (p > 1) p = 1;
+				if (p < this.p + 0.004 && !(p === 1 && this.p < 1)) return;
+				this.p = p;
+				if (this.log.length < 400) this.log.push([Math.round(this.now()), Math.round(p * 1000) / 1000, phase]);
+				var W = window.tcWD && window.tcWD.sdk();
+				if (W && typeof W.updateLoadProgressZeroToOne === 'function') { try { W.updateLoadProgressZeroToOne(p); } catch (e) {} }
+			},
+			download: function (pct) { this.set(this.DL * Math.max(0, Math.min(100, pct || 0)) / 100, 'download'); },
+			engine: function () { this.set(this.DL + 0.03, 'engine'); },
+			boot: function () { this.set(this.BOOT, 'boot'); },
+			// the game's own fraction (0..1) of unpacking its world and building the view; 1 itself is init's
+			marks: [], mark: function (label) { this.marks.push([Math.round(this.now()), label]); return 0; },
+			world: function (f) { this.set(this.BOOT + (1 - this.BOOT) * 0.97 * Math.max(0, Math.min(1, f || 0)), 'world'); return 0; }
+		};
+
 		// (S25d) Wavedash: the platform puts its SDK (window.Wavedash) on the page when the game runs there; anywhere else
 		// none of this does anything. The game calls tcWD.init() once it is ready (the platform's loading screen stays
 		// until then), reads the player's name for the title, and keeps the player's progress and settings in the cloud
@@ -231,6 +268,7 @@
 			sdk: function () { return (typeof window.Wavedash !== 'undefined' && window.Wavedash) ? window.Wavedash : null; },
 			init: function () {
 				var W = this.sdk(), self = this;
+				if (window.tcLoad) window.tcLoad.set(1, 'ready');
 				if (!W || this.on) return this.on;
 				try { W.init({}); this.on = true; } catch (e) { this.err = String(e); return false; }
 				try {
@@ -279,6 +317,10 @@
 	<script id='engine-setup' type='text/javascript'>
 		// From here you can configure game startup parameters via the CUSTOM_PARAMETERS object,
 		// override ProgressView to create your own loader. See dmloader.js for more details.
+		// (S26) the loader's own progress (bytes of the engine and its archive, then the wasm compiled) and the engine's
+		// start, to the host's loading screen (window.tcLoad above)
+		CUSTOM_PARAMETERS['update_progress'] = function (pct) { window.tcLoad.download(pct); };
+		CUSTOM_PARAMETERS['start_success'] = function () { window.tcLoad.engine(); };
 	</script>
 	<script id='engine-start' type='text/javascript'>
 		var runningFromFileWarning = document.getElementById("running-from-file-warning");

@@ -38,6 +38,10 @@ M.zoom, M.tzoom = M.ZOOM_DEFAULT, M.ZOOM_DEFAULT
 M.tweening = false
 M.idle = 0
 M.follow = nil        -- fn() -> x, y, z (unit direction) or nil to stop following
+-- (S26) whom the camera follows: { kind, id } (a person, a beast, a ship), set with the follow by whoever starts it, so the
+-- UI can show "Following" and every way out ends the same follow (M.stop_follow): a drag, Esc, the inspector closed,
+-- someone else selected, the idle view taking over
+M.follow_tag = nil
 M.focus_cell = nil
 M.height_fn = nil     -- fn(x, y, z) -> surface radius at unit direction
 
@@ -148,8 +152,25 @@ function M.drag(dx, dy)
   Sx, Sy, Sz, Ux, Uy, Uz = ortho(nsx, nsy, nsz, nux, nuy, nuz)
   TSx, TSy, TSz, TUx, TUy, TUz = Sx, Sy, Sz, Ux, Uy, Uz
   M.tweening = false
-  M.follow = nil
+  M.stop_follow()
   M.idle = 0
+end
+
+--- (S26) Start following: fn() -> unit direction (nil ends it), tag = { kind, id } of what is followed.
+function M.start_follow(fn, tag)
+  M.follow, M.follow_tag = fn, tag
+end
+
+--- (S26) Stop following, whoever started it (the camera stays where it is, free to turn).
+function M.stop_follow()
+  M.follow, M.follow_tag = nil, nil
+end
+
+--- (S26) Is the camera following this selection (kind + id)?
+function M.following(sel)
+  local t = M.follow_tag
+  return M.follow ~= nil and t ~= nil and sel ~= nil and t.kind == sel.kind and t.id == sel.id
+    and (t.index == nil or t.index == sel.index)
 end
 
 -- (S25) The current frame (the look direction and up, and the zoom), to fly back to later.
@@ -164,6 +185,17 @@ function M.spin(a)
   TSx, TSy, TSz = rot(TSx, TSy, TSz, 0, 1, 0, a)
   TUx, TUy, TUz = rot(TUx, TUy, TUz, 0, 1, 0, a)
   M.idle = 0
+end
+
+-- (S26) Turn the view's heading by `a` radians about the point looked at (the idle view's slow circling of a village).
+function M.orbit(a)
+  Ux, Uy, Uz = rot(Ux, Uy, Uz, Sx, Sy, Sz, a)
+  TUx, TUy, TUz = rot(TUx, TUy, TUz, TSx, TSy, TSz, a)
+end
+
+-- (S26) The look direction now (a unit vector from the planet's centre).
+function M.look_dir()
+  return Sx, Sy, Sz
 end
 
 function M.zoom_by(step)
@@ -188,7 +220,7 @@ function M.update(dt)
         M.tweening = true
         M.idle = 0
       else
-        M.follow = nil
+        M.stop_follow()
       end
     end
     if M.tweening then
