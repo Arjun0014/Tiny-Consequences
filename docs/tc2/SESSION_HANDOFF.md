@@ -10,8 +10,8 @@
   and F6 closed (D2-076).
 - Phases: F0 done; **F1 to F6 closed** (D2-043, D2-046, D2-060, D2-065, D2-068, D2-076). 166 headless
   tests green; `headless.mjs test` runs the float lint first. Sim version 29.
-- Determinism: dotnet equals the editor's Mono (gen 8dea367f3e835612, D2-075); the Web build equals both at D2-068
-  (`tc2/out/webtest/s2webe`, `s2webe2`: 6/6).
+- Determinism: dotnet, the editor's Mono and the Web build (IL2CPP, WebGPU) are bit-identical at D2-076 (gen 8dea367f3e835612,
+  `tc2/out/webtest/s2webf`: 6/6).
 - Sickness at scale is fixed (D2-070): seed 42 holds 12,000-16,000 people from year 270 to 400 and seed 7 4,600-5,400
   (`tc2/out/society/sick42_400.txt`, `sick7_400.txt`; the run report lists the deadliest sicknesses). Saturated worlds are
   famine-regulated (~100 hunger deaths a year) and take from each other's stores often (~30-75 loads a year): F6's pressure.
@@ -71,8 +71,9 @@
   stocked), do not loosen the mechanism (D2-056).
 
 ### Next steps
-1. **The Web build after F5 and F6** (`unity.mjs build-web`, `webtest.mjs --tag s2webf`): bit-identical, fps, a day away; the
-   after-a-century view (48-68 fps at s2webe) measured layer by layer (`webperf.mjs`).
+1. **Web performance after F6** (`tc2/out/webtest/s2webf`: 6/6 bit-identical, but a day away 54 s against 42 and the views ~10-15 %
+   slower; headless shows no slowdown at year 100): profile the browser's catch-up (the deed book's dictionaries and lists under
+   IL2CPP? the conflict day's resident scans?) and the views layer by layer (`webperf.mjs`).
 2. **F7 - the History Book, news and the four questions** (17): the ledger's chains are rich now (famines, feuds, walls,
    tribute, plagues); a book a player reads - chapters by village and age, every event's why to its roots (NATURE / PEOPLE /
    YOU), the four questions (who, why, what then, what if). Read 11_HISTORY_AND_CAUSALITY first.
