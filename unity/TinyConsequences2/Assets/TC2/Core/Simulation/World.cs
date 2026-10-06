@@ -127,7 +127,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 29; // 29: tribute and lordship (D2-075), 28: palisades (D2-074), 27: raids (D2-073), 26: amends, news and taking back (D2-072), 25: the watch, blows and injury (D2-071), 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
+        public const int FormatSimVersion = 30; // 30: the annals (D2-077), 29: tribute and lordship (D2-075), 28: palisades (D2-074), 27: raids (D2-073), 26: amends, news and taking back (D2-072), 25: the watch, blows and injury (D2-071), 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
@@ -157,6 +157,7 @@ namespace TC2.Core.Simulation
         public readonly TC2.Core.Society.DeedBook DeedBook = new TC2.Core.Society.DeedBook();   // what each village knows of them
         public readonly TC2.Core.Society.Conflict Conflict = new TC2.Core.Society.Conflict();   // taking by need (D2-069)
         public readonly PagedStore<TC2.Core.Society.Band> Bands = new PagedStore<TC2.Core.Society.Band>();   // bands raised (D2-073)
+        public readonly TC2.Core.History.Annals Annals = new TC2.Core.History.Annals();   // each year in numbers, for historians (D2-077)
         public readonly List<Command> CommandLog = new List<Command>();
         public readonly Metrics Metrics = new Metrics();
         public ISimProfiler Profiler;
@@ -1127,6 +1128,7 @@ namespace TC2.Core.Simulation
 
         void Housekeeping()
         {
+            Annals.Year(this);   // (the year just ended, in numbers: D2-077)
             DeedBook.Year();   // (deeds whose weight has faded are forgotten: D2-069)
             History.Compact(Now, SubjectKept);
             // the long dead who matter to no one living leave the live table (their history stays): those who are not a parent,
@@ -1249,6 +1251,7 @@ namespace TC2.Core.Simulation
             History.Write(w);
             w.Int(CommandLog.Count); for (int i = 0; i < CommandLog.Count; i++) CommandLog[i].Write(w);
             Metrics.Write(w);
+            Annals.Write(w);
         }
 
         public static World ReadState(BinReader r)
@@ -1285,6 +1288,7 @@ namespace TC2.Core.Simulation
             w.History.Read(r);
             int nc = r.Int(); for (int i = 0; i < nc; i++) w.CommandLog.Add(Command.Read(r));
             w.Metrics.Read(r);
+            w.Annals.Read(r);
             w.RebuildDerived();
             return w;
         }
@@ -1312,6 +1316,7 @@ namespace TC2.Core.Simulation
             DeedBook.Hash(ref h);
             History.Hash(ref h);
             h.Add(CommandLog.Count); for (int i = 0; i < CommandLog.Count; i++) CommandLog[i].Hash(ref h);
+            Annals.Hash(ref h);
             return h.Value;
         }
 

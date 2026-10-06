@@ -61,6 +61,13 @@ namespace TC2.Core.Foundation
             return "Year " + y + " · " + PartNames[part] + " " + SeasonNames[season] + " · Day " + (doy + 1) + " · " + Two(h) + ":" + Two(m);
         }
 
+        /// <summary>"Year 183, late summer" - a date as a reader of the History Book wants it (D2-077).</summary>
+        public static string FormatDate(long t)
+        {
+            int doy = DayOfYear(t);
+            return "Year " + YearOf(t) + ", " + PartNames[(doy % DaysPerSeason) / 4].ToLowerInvariant() + " " + SeasonNames[doy / DaysPerSeason].ToLowerInvariant();
+        }
+
         public static string FormatShort(long t)
         {
             long y = YearOf(t);

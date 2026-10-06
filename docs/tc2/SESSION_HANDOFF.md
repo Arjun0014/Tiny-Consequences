@@ -6,12 +6,13 @@
 - Session 2 commits since the last checkpoint (newest last): 314fdd9 techniques (D2-062) · c8e9c23, 07b38be materials (D2-063) ·
   6bacfaa copper, F4 closed (D2-064/065) · 27d2a53 sickness (D2-066) · e01a933 trade and relief, F5 closed (D2-067/068) ·
   b78117d deeds and taking (D2-069, F6 slice 1) · 310ab38 sickness at scale (D2-070) · ceadd36 the watch, blows and injury
-  (D2-071, F6 slice 2) · 0f2adde answers, news and taking back (D2-072, F6 slice 3) · 7121f7e raids (D2-073, F6 slice 4) · 41f5756 the palisade (D2-074, F6 slice 5) · the commit with tribute and lordship (D2-075)
-  and F6 closed (D2-076).
-- Phases: F0 done; **F1 to F6 closed** (D2-043, D2-046, D2-060, D2-065, D2-068, D2-076). 166 headless
-  tests green; `headless.mjs test` runs the float lint first. Sim version 29.
-- Determinism: dotnet, the editor's Mono and the Web build (IL2CPP, WebGPU) are bit-identical at D2-076 (gen 8dea367f3e835612,
-  `tc2/out/webtest/s2webf`: 6/6).
+  (D2-071, F6 slice 2) · 0f2adde answers, news and taking back (D2-072, F6 slice 3) · 7121f7e raids (D2-073, F6 slice 4) · 41f5756 the palisade (D2-074, F6 slice 5) · ff6fab8 tribute and lordship (D2-075), F6 closed
+  (D2-076) · 3d8f7b6 Web after F6 · the commit with the History Book (D2-077), F7 closed (D2-078) and the direction to make the
+  living world visible (D2-079).
+- Phases: F0 done; **F1 to F7 closed** (D2-043, D2-046, D2-060, D2-065, D2-068, D2-076, D2-078). 169
+  headless tests green; `headless.mjs test` runs the float lint first. Sim version 30.
+- Determinism: dotnet, the editor's Mono and the Web build (IL2CPP, WebGPU) are bit-identical at D2-077 (gen 9b6482ca9f9f606f,
+  `tc2/out/webtest/s2webg`: 6/6).
 - Sickness at scale is fixed (D2-070): seed 42 holds 12,000-16,000 people from year 270 to 400 and seed 7 4,600-5,400
   (`tc2/out/society/sick42_400.txt`, `sick7_400.txt`; the run report lists the deadliest sicknesses). Saturated worlds are
   famine-regulated (~100 hunger deaths a year) and take from each other's stores often (~30-75 loads a year): F6's pressure.
@@ -70,16 +71,26 @@
 - A new daily need (meals, water, fuel) changes what a "stocked" premise means in old tests: restate the premise (keep the store
   stocked), do not loosen the mechanism (D2-056).
 
+- **Another Claude session may share this machine** (6 Oct: one on another project, with a gstack browse daemon whose headless
+  Chromium renders WebGL with SwiftShader on ~7 cores). Its processes are not ours: never kill a process you did not start -
+  check its parent first (`Get-CimInstance Win32_Process`) - and measure timings only when the machine is quiet.
+- The History Book in the game: B or the Book toggle; `?book=1` opens it; a fresh world has little history - reload a saved one
+  with `?absence=24h` to live ~96 years first.
+
 ### Next steps
-1. **Web performance after F6** (`tc2/out/webtest/s2webf`: 6/6 bit-identical, but a day away 54 s against 42 and the views ~10-15 %
-   slower; headless shows no slowdown at year 100): profile the browser's catch-up (the deed book's dictionaries and lists under
-   IL2CPP? the conflict day's resident scans?) and the views layer by layer (`webperf.mjs`).
-2. **F7 - the History Book, news and the four questions** (17): the ledger's chains are rich now (famines, feuds, walls,
-   tribute, plagues); a book a player reads - chapters by village and age, every event's why to its roots (NATURE / PEOPLE /
-   YOU), the four questions (who, why, what then, what if). Read 11_HISTORY_AND_CAUSALITY first.
-3. F6's carried-forward items (D2-076): leaders from prestige, alliances, captives, gates and stone walls, bands of several
-   villages, beasts as loot, the violence rate, the view of lordships and bands on the roads.
-4. **The sea's calibration** (D2-053) and the look backlog (coast shapes, gardens, orbit detail, smoke from huts and camps).
-5. **An aggregate layer of people for Ancient and Deep time** (D2-061): a village's year as one step fitted to COARSE - the people
-   model now has F3-F6; a 1,000-year run of seed 42 takes ~17-20 min headless.
+1. **The living world made visible (D2-079, Arjun's direction)**: forests at their true density near the camera (instanced, with
+   cheap distant forms: `WorldObjectsView.RebuildTrees` now places ~4-5 trees a hectare at full forest and none beyond 3.2 km),
+   woodland visible from afar (a canopy on the ground by `P.Forest` in `TerrainLod`/`PlanetView`), ground cover by biome, tree
+   species by climate, animals readable; judged in `unity.mjs shots` and the Web build; 60 fps kept (`webperf.mjs`, quiet machine).
+2. **F8 - Deep time** (17): Ancient and Deep time need ~10x: in COARSE the planet alone costs ~150 ms a world year (daily weather
+   43, vegetation 54, housekeeping 43) and the village day ~620 us at ~500 people (coarse-day 252, learning 119 - each person's
+   Gumbel scatter recomputed daily -, food 65, demography 65; `tc2/out/society/sick42_1000.txt` profile): a season step for
+   households and coarser planet steps, fitted to COARSE by distribution tests (D2-061).
+3. **Web performance**: the catch-up of a day away measured 48-54 s after F6 (s2webf, s2webf2 - both before anything else shared
+   the machine, so the slowdown against 41-42 s is real): profile the browser's catch-up and the views layer by layer
+   (`webperf.mjs`). Measure only on a quiet machine.
+4. F7's carried-forward items (D2-078): Your Actions (with F9), timelines, news by incident, biography and polity pages, ages named
+   apart. F6's (D2-076): lordships that hold, leaders, alliances, captives, gates and stone walls, bands of several villages,
+   beasts as loot, the violence rate, the view of lordships and bands.
+5. **The sea's calibration** (D2-053) and the look backlog (coast shapes, gardens, orbit detail, smoke from huts and camps).
 6. F5's carried-forward items (D2-068): boats between coasts, roads worn by use, fairs, salt, credit, relief by kinship.

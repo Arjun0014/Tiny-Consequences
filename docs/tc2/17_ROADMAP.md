@@ -56,12 +56,12 @@ from remembered harm, labour, materials, knowledge, coordination); alliances, tr
 (Carneiro, Wright & Johnson, Turchin); collapse, ruins and reuse.
 **Done when**: a fortified town or a polity can arise and fall in long runs, and its history explains it.
 
-## F7 — History Book, news and the four questions
+## F7 — History Book, news and the four questions (CLOSED 6 Oct 2026, session 2: D2-078; D2-077)
 World News, Why?, Your Actions, the History Book (eras after the fact, biographies, settlement and polity
 histories, timelines, the catch-up feed "While you were away").
 **Done when**: a player can read 500 years and every claim links to records.
 
-## F8 — Deep time
+## F8 — Deep time (after the living world is made visible: D2-079)
 COARSE household-season integration calibrated against ACTIVITY; Ancient and Deep time offline modes;
 planet-only eras after human extinction; recovery; new life.
 **Done when**: 5,000 years catch up in minutes with distributions matching ACTIVITY.

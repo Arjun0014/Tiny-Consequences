@@ -2,7 +2,7 @@
 
 ## CURRENT STATE (keep accurate; newest first below)
 
-**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
+**Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
 - **Session 2 (5 Oct 2026, in progress)** - compaction-recovery hooks (`.claude/settings.json`, `.claude/hooks/tc2_compact.mjs`;
   Claude Code 2.1.289: PreCompact stdout joins the compaction instructions, SessionStart matcher `compact` stdout reaches Claude;
@@ -110,6 +110,13 @@
   - **Goods, a day's labour, weeding (D2-058)**: households make and mend their clothes, tools and vessels (worn goods let the
     cold in and slow hands); a day's labour bounds the slack's work; weeding asks 24 h a hectare and keeps pace with the season.
     A whole year of seed 42: grown people work ~6.5 h a day, children of 6-11 ~3 h - inside time-allocation ranges. 115 tests.
+  - **Direction (D2-079)**: Arjun found the Web build's world bland and empty ("trees and forest nothing is there"): the planet's
+    life is simulated but barely drawn (a full forest ~4-5 trees a hectare, none beyond 3.2 km, a flat ground colour). Next: the
+    living world made visible - forests at their true density, woodland seen from afar, ground cover by biome - before F8.
+  - **F7 CLOSED (D2-078)** with the History Book (D2-077): yearly annals (state); ages found after the fact by change points and
+    named for what marked them; chapters, places and lives whose every line is a record (an event with its walkable causes, or
+    the annals' numbers); the Book in the game (B) with each line's causes and Go there; `headless.mjs chronicle` (500-year books
+    of seeds 7 and 42: 9 and 10 ages, 99 and 420 lines, none without its record). 169 tests.
   - **F6 CLOSED (D2-076)** with slice 6, tribute and lordship (D2-075): a village beaten by a stronger band with nowhere to go
     bows and pays a tenth of its harvest until its lord is gone or no longer the stronger. In 1,000-year runs fortified places
     and lordships arise and fall, their history traced from famine through taking, blows, refused amends, bands and raids
@@ -230,6 +237,8 @@
 | Web (WebGPU) after D2-056 to D2-058 (`tc2/out/webtest/s2webc`) | Chrome | 6/6, bit-identical with headless and the editor's Mono (gen 2c8c6fad6b24a0b9); start 7.1 s; orbit 119, region 119, village 90, close 80, low 91, close running 82, a century on 76 fps; a day away (96 years) 38 s; build 11.2 MB; cooks' smoke at breakfast in the close view |
 | Fire steps, seed 42 COARSE with people, 150 years (D2-055) | dotnet | 131 -> 2.6 us a step (379 -> 1 fire page held; heap 65 -> 41 MB; run 29.8 -> 23.0 s) |
 | 200 coarse years with household work (D2-056) | dotnet | seed 42: 32.9 s, 3,492 people in 15 places; seed 1 (cool): 31.2 s, 1,206 in 6; hearths 2.8 us a village-day |
+| Web (WebGPU) with the History Book (D2-077; `tc2/out/webtest/s2webg`) | Chrome | 6/6, bit-identical with headless and the editor's Mono (gen 9b6482ca9f9f606f); the book reads in the browser (`8_book.png`); timings not comparable - another session's headless Chromium (SwiftShader WebGL) held ~7 of 12 threads (build 27 min, fps ~25, a day away 108 s) |
+| The History Book of 500 coarse years (D2-077; `chronicle`) | dotnet | seed 7: 9 ages, 99 lines with their causes, 0.28 s (the world 500 s, shared machine); seed 42: 10 ages, 420 lines with 31 places, 0.65 s (the world 761 s); no line without its record |
 | Web (WebGPU) after F6 (D2-069 to D2-076; `tc2/out/webtest/s2webf`) | Chrome | 6/6, bit-identical with headless and the editor's Mono (gen 8dea367f3e835612); start 6.7 s; orbit 119, region 120, village 81, close 66, low 74, close running 84, after a century 43 fps; **a day away (96 years) 54 s** (42 at s2webe; headless shows no slowdown at year 100 - a browser-side cost to find); 481 people in 20 places; build 11.2 MB |
 | Web (WebGPU) after D2-062 to D2-068, F5 closed (`tc2/out/webtest/s2webe`, `s2webe2`) | Chrome | 6/6 twice, bit-identical with headless and the editor's Mono (gen dd0c2fd7a147d1d2); start 7.4 / 6.7 s; orbit 119 / 121, region 119 / 118, village 91 / 91, close 75 / 74, low 87 / 92, close running 93 / 79, **after a century 48 / 68 fps** (s2webd 79; the reading right after a catch-up varies run to run - its second sample 70 / 71, s2webc's 12 - but both are lower: to measure layer by layer); a day away (96 years) 42 / 41 s, 503 people in 16 places; build 11.2 MB |
 | 1,000 coarse years with F6 (D2-074, D2-075), seeds 7 / 42 | dotnet | seed 7 (`lords7_1000.txt`): ~9 min, 4,300-5,800 people in 17-18 places, 302 raids, 23 palisades begun, 47 tributes agreed and ended; seed 42 (`f6_42_1000.txt`): 10,000-14,500 in 36-37, 530 raids, 42 palisades (4 fallen); its red spots (two years' immunity) endemic: 5.1 million infections |

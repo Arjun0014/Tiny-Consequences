@@ -233,6 +233,13 @@ namespace TC2.Core.History
             return SimTime.FormatShort(e.Time) + "  [" + e.Tier + "/" + e.RootKind + "] " + Describe(w, e);
         }
 
+        /// <summary>A line of the History Book: the record's own words under its date ("Year 41, late summer: the harvest failed
+        /// at Gouthorpe (100% short).") - the ledger's tier and root tags are for tools (D2-077).</summary>
+        public static string Dated(World w, in HistoryEvent e)
+        {
+            return SimTime.FormatDate(e.Time) + ": " + Describe(w, e);
+        }
+
         /// <summary>The chain of causes of an event, effect first, as text lines.</summary>
         public static string Why(World w, long eventId)
         {

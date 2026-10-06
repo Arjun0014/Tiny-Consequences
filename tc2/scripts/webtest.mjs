@@ -119,6 +119,8 @@ try {
     report.catchUpSeconds = secs;
     check('a day away catches up ~96 years', sawCatchUp && back.year >= 90, `year ${back.year}, ${back.people} people in ${back.places} places, ${secs.toFixed(0)} s`);
     await cmd('village 0 1400'); await shot('7_after_a_century', 2500);
+    // the History Book of the century lived while away (D2-077)
+    await cmd('book'); await shot('8_book', 3000);
     report.afterAway = back;
   }
 } catch (e) {

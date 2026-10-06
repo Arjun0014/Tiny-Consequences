@@ -61,6 +61,7 @@ namespace TC2.Game
                         break;
                     }
                 case "new": Host.NewWorld(ulong.Parse(a[1], inv)); break;
+                case "book": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.OpenBook(a.Length > 1 ? int.Parse(a[1], inv) : -1); break; }   // the History Book (D2-077)
                 case "off": case "on": Toggle(a[1], a[0] == "on"); break;   // tools: what a frame costs without a layer
                 case "glshadow": Sky.GlCascades = int.Parse(a[1], inv); Sky.GlShadowReach = float.Parse(a[2], inv); break;   // tools: WebGL2 shadows
                 case "hashtest": _hashTest = HashTest(); break;

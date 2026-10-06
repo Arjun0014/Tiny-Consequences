@@ -35,6 +35,8 @@ namespace TC2.Headless
                         return Commands.Follow(args);
                     case "timeuse":
                         return Commands.TimeUse(args);
+                    case "chronicle":
+                        return Commands.ChronicleBook(args);
                     case "inspect":
                         return Commands.Inspect(args);
                     case "planet":

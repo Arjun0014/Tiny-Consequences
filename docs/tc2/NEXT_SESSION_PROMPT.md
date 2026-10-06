@@ -49,13 +49,19 @@ real game screenshots (`node tc2/scripts/unity.mjs shots`), not in debug maps; k
 Headless Blender (`tc2/art/kit.py`) makes the asset kit. The god powers that exist (eruption, quake, storm, lightning)
 are logged commands and double as screenshot tools (`unity.mjs shots --erupt/--quake/--storm`).
 
-**Where we are (session 2, 6 Oct 2026)**: F1 to F6 are closed (D2-043, D2-046, D2-060, D2-065, D2-068, D2-076). Villages of
-persistent people live on their own, carry their technology as knowledge, fall sick and recover (sickness holds at scale:
-D2-070), trade and send relief, and - when scarcity bites - take from each other at night, strike and are struck, ask amends,
-take back, raise bands, raid, wall themselves in palisades and bow to stronger neighbours as tributaries; every one of these is a
-deed known per village and every event traces to its causes. Determinism holds across dotnet, Mono and the Web build and is
-linted (D2-057). Next (SESSION_HANDOFF "Next steps"): the Web check, then F7 - the History Book. Run long headless jobs from a
-scratch copy of the binaries so the repo's DLL stays free.
+**Direction from Arjun (6 Oct 2026, D2-079)**: "the entire world looks so empty and boring" - the planet's plants and animals are
+simulated but barely drawn. Make the living world visible (forests at their true density, woodland seen from afar, ground cover by
+biome, animals readable), read from the simulation's state and judged in real screenshots, before F8.
+
+**Where we are (session 2, 6 Oct 2026)**: F1 to F7 are closed (D2-043, D2-046, D2-060, D2-065, D2-068, D2-076, D2-078).
+Villages of persistent people live on their own, carry their technology as knowledge, fall sick and recover, trade and send
+relief, and - when scarcity bites - take from each other at night, strike and are struck, ask amends, take back, raise bands,
+raid, wall themselves in palisades and bow to stronger neighbours as tributaries; every one of these is a deed known per village
+and every event traces to its causes. The History Book (D2-077) reads the world's ages after the fact from its annals - chapters,
+places and lives whose every line is a record with its causes. Determinism holds across dotnet, Mono and the Web build and is
+linted (D2-057). Next (SESSION_HANDOFF "Next steps"): the living world made visible (D2-079), then F8 - deep time. Run long
+headless jobs from a scratch copy of the binaries so the repo's DLL stays free; another Claude session may share the machine -
+never kill its processes, and measure only when it is quiet.
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

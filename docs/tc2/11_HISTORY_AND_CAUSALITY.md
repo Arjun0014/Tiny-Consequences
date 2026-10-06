@@ -111,3 +111,9 @@ Ledger, entity registry, tiers, causes with relations, roots, importance propaga
 rewiring, per-entity index, serialization, a text formatter for the catch-up feed and debug dumps, and the
 events of the proof of concept (lightning -> fire -> fire spread -> journey interrupted / turned back;
 births, deaths, marriages, settlement founded, harvests).
+
+## 11. Implemented: the annals and the History Book (D2-077, F7 closed D2-078)
+- The annals keep each year in numbers (state); the Chronicle (an observer) finds ages by change points (nine indicators, 30-120
+  years an age), names them for what marked them, and writes chapters, places' histories and lives whose every line is a record.
+- In the game: the Book (B) - ages or places, chapters, each line a link to its causes and its place. Headless: `chronicle`.
+- Not yet: Your Actions (with F9), timelines, news by incident, biography and polity pages.

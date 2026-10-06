@@ -1755,3 +1755,72 @@ hard. All of it is deeds known per village, read as grievance and gratitude; not
 alliances (help sent to kin under attack, shared enemies), captives, gates kept at night and walls of stone (masonry), bands
 from several villages, beasts as loot and restocking, the violence rate (~37 deaths of wounds a year for 100,000 at saturation:
 on the high side of medieval homicide) to calibrate, the view of lordships (who pays whom) and of bands on the roads.
+
+## D2-077 — 2026-10-06 — The History Book: annals, ages found after the fact, every line its record (F7)
+
+**Context.** F7 (17): the History Book - eras after the fact, settlement and polity histories, biographies, the why of every
+event; done when a player can read 500 years and every claim links to records. 11 §7-8: historians are observers; eras are
+named templates over measured features, found by change points with a minimum length; the ongoing segment is the present age.
+**Decision.** (1) The annals (`Core/History/Annals.cs`, world state, saved): at each year's end the world's own counters as the
+year's numbers - people and places, births and deaths by cause (hunger, sickness, wounds, disaster), famines, epidemics, raids,
+walls begun, tributes, foundings and abandonments, techniques found and lost, the planet's mean temperature. Nothing in the
+simulation reads them. (2) The Chronicle (`Core/History/Chronicle.cs`, an observer): ages are found in the annals by binary
+segmentation of nine indicators (smoothed over nine years and standardized: hunger, sickness, wounds and raids a head, growth,
+foundings less abandonments, walls, tributes, disaster deaths, warmth; running sums make any span's spread a constant-time
+sum, so 5,000 years read as fast as 500) - a cut where it lowers the spread by more than a BIC-like penalty, each age at least
+thirty years and at most 120; each age is named for what marked it most, people's marks before the planet's ("The Age of
+Founders", "The Hungry Years", "The Years of the Black Pox" - the sickness that killed most -, "The Years of Feuds and Raids",
+"The Building of the Walls", "The Years of the Lords", "The Coming of the Ice"), the first "The First Years" unless strongly
+marked, a repeated name counted ("The Second Building of the Walls"). (3) A chapter is the age's numbers from the annals and its
+events - half the most important of what marked it, half the most important of all, in order - each line standing on its
+record: an event the ledger holds (the record's own words under its date, "Year 206, late spring: famine in Lortharndal",
+its causes walkable to the root) or the annals' years. A place's history and a person's life likewise. (4) The book in the
+game (`Hud`, the Book toggle or B, `?book=1`, the web bridge's `book`), on its own page: ages or places on the left, the chosen
+chapter on the right, each line a link to its causes - each cause a record to follow in turn - and to the place it happened
+(Go there). (5) `headless.mjs chronicle --seed N --years Y --coarse [--why] [--places]` writes the book and fails if a line
+lacks its record. Sim version 30 (the annals in the save).
+**Evidence.** `ChronicleTests` (169 tests): a record a year from the world's own counters; a hundred years quiet then hungry
+give two ages, the cut at year 50 +- 6, the second "The Hungry Years"; every line of a 90-year book is its record under its
+date and its causes can be walked; reading the book changes no state. 500-year books (`tc2/out/society/book7_500.txt` with
+each line's causes, `book42_500.txt` with every place's history): seed 7 - The First Years (0-88), The Age of Founders
+(88-119), The Years of Plenty (119-168), The Building of the Walls (168-198), The Years of the Lords (198-304), The Years of
+the Shaking Flux (304-334), The Years of the Spotted Pox (334-370), The Hungry Years (370-414), The Years of Feuds and Raids
+(414-), 99 lines, none without its record, every chain walkable ("Famine in Lortharndal <- hunger came to Lortharndal: the
+granary is empty <- the harvest failed at Lortharndal (88% short) <- the fields of Lortharndal burned <- a fire started near
+the land beyond Lortharndal <- lightning struck"; "a band of 12 from Kraistosthope fell on the store of Pairmaithby <- raised
+for a heavy wrong <- Kraistosthope's takers caught and beaten at Pairmaithby's store, night after night"); seed 42 - ten ages
+from "The Years of Plenty" to "The Years of the Black Pox" (470-), 420 lines with its 31 places' histories, none without its
+record; each book written in 0.3-0.7 s. In the browser the book reads the same (`tc2/out/webtest/s2webg`: 6/6, bit-identical
+with headless and the editor's Mono at gen 9b6482ca9f9f606f; `8_book.png`) - its timings were taken while another session's
+headless browser held ~7 of 12 threads and are not measurements.
+
+## D2-078 — 2026-10-06 — F7 closed: the History Book
+
+**Context.** F7's done-when: "a player can read 500 years and every claim links to records" (17).
+**Evidence.** D2-077: the book of a 500-year world reads as ages, chapters and places whose every line is a record - an event with
+its causes back to NATURE, PEOPLE or YOU, or the annals' numbers - in the game (Book, B) and headless (`chronicle`, which fails
+on a line without its record). The why of every line is walkable, each cause a record of its own; the inspector keeps a person's
+events; the catch-up feed and the ticker keep the news.
+**Verdict.** F7 is closed. Carried forward: Your Actions (what the player's own commands led to: the events rooted in each
+command, counted, still unfolding while a fire or storm it began lives - with F9, as the game has no power a player can cast yet;
+the ledger's roots already answer it), timelines and maps of an age, news sifted by incident (one story per process and place),
+biographies and polity histories as their own pages (lordships now show in the places' lines), ages named by what changed
+between neighbours of one mark (seed 42 reads "The Years of Plenty", "The Second Years of Plenty", "The Third Years of Plenty"
+in a row), era names that tell their place ("The Hungry Years of Voton").
+
+## D2-079 — 2026-10-06 — Direction: the living world must be seen (before F8)
+
+**Context.** Arjun (6 Oct 2026), playing the Web build: "why is the world looking so bland, like trees and forest nothing is
+there, the entire world looks so empty and boring, is ecological life and plants not implemented yet?" The planet does carry
+its life - every cell's forest and grass grow with the climate, burn, regrow and are cleared for fields; 13 wild kinds live as
+populations; villages keep herds - but the view barely shows it: a cell fully forested is drawn with ~23 trees (~4-5 a hectare,
+where a forest has hundreds) and an average cell (26 % forest) with ~3; no trees beyond 3.2 km of the camera (further out the
+forest is a tint of the ground's colour, so region and orbit views cannot tell wood from meadow); the ground is one smooth colour
+with sparse grass tufts; animals are drawn true to scale (a deer is a pixel at village distance). D2-026 made look-dev a
+first-class track; the vegetation fell behind it.
+**Decision.** Before F8, the living world made visible, every part read from the simulation's own state (the forest, grass,
+species and herds of each cell - nothing invented) and judged in real game screenshots: forests drawn at their true density near
+the camera (instanced, with cheap distant forms); woodland visible from afar (a canopy on the ground by the forest's share, so the
+region and orbit views show woods, meadows, scrub and tundra); ground cover by biome (grass, shrubs, flowers, rocks, undergrowth
+under trees); tree species by climate; animals readable at the views they belong to. The Web build keeps 60 fps (measured with
+`webperf.mjs` on a quiet machine).
