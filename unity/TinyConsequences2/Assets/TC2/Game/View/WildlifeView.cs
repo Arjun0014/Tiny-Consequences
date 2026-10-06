@@ -55,7 +55,7 @@ namespace TC2.Game
             if (P.Species.Count == 0 || P.Abund.Length == 0) return;
             Vector3 camPos = Rig.Cam.transform.position;
             float alt = camPos.magnitude - (float)P.Radius;
-            if (alt > 1800f) return;
+            if (alt > 3000f) return;   // (D2-081: herds read at the village view as groups of moving dots)
             float reach = Mathf.Clamp(alt * 2.6f, 350f, 2400f);
             // the cells round the point the camera looks at (a BFS out to the reach)
             Vector3 f = Rig.FocusPoint;
@@ -168,7 +168,7 @@ namespace TC2.Game
         {
             // a miniature's animals are a little larger than life (people are too), more so far away
             float d = Vector3.Distance(Rig.Cam.transform.position, at);
-            return Mathf.Clamp(1.4f * d / 500f, 1.4f, 3f);
+            return Mathf.Clamp(1.4f * d / 500f, 1.4f, 4f);
         }
     }
 }

@@ -70,6 +70,7 @@ switch (cmd) {
     if (flag('--dev')) extra.push('-tc2Dev');
     if (flag('--threads')) extra.push('-tc2Threads');
     if (flag('--webgl2')) extra.push('-tc2WebGL2Only');
+    if (opt('--jobs')) extra.push('-tc2Jobs', opt('--jobs'));   // (IL2CPP jobs: fewer on a shared machine)
     status = run(extra);
     tail(log, /error CS|\[TC2\]|Build Finished|Exception|Error building/);
     break;

@@ -172,13 +172,33 @@ namespace TC2.Game
             string size = Arg("-tc2size");
             if (size != null) { var p = size.Split('x'); width = int.Parse(p[0], CultureInfo.InvariantCulture); height = int.Parse(p[1], CultureInfo.InvariantCulture); }
             string views = Arg("-tc2views") ?? "orbit,region,village,close";
-            foreach (string view in views.Split(','))
+            foreach (string spec in views.Split(','))
             {
-                Rig.SetView(view.Trim());
+                // "view+D@H": the world lives on D days, then to the next local hour H at the first village, before this view is shot
+                // (seasons and nights in the same round; the world's state goes on as it would)
+                string view = spec.Trim();
+                int at = view.IndexOf('@');
+                double hAt = -1;
+                if (at > 0) { hAt = Parse(view.Substring(at + 1), hour); view = view.Substring(0, at); }
+                int plus = view.IndexOf('+');
+                if (plus > 0)
+                {
+                    double dAhead = Parse(view.Substring(plus + 1), 0);
+                    view = view.Substring(0, plus);
+                    if (dAhead > 0) { var bd = Budget.Unlimited; w.AdvanceTo(w.Now + DMath.ToLong(dAhead * SimTime.Day), ref bd); }
+                }
+                if (hAt >= 0)
+                {
+                    long locNow = SimTime.FloorMod(w.Now + local, SimTime.Day);
+                    long ahead = SimTime.FloorMod(DMath.ToLong(hAt * SimTime.Hour) - locNow, SimTime.Day);
+                    if (ahead > 0) { var bh = Budget.Unlimited; w.AdvanceTo(w.Now + ahead, ref bh); }
+                }
+                if (at > 0 || plus > 0) Debug.Log("[TC2] " + spec + ": the world at " + SimTime.Format(w.Now));
+                Rig.SetView(view);
                 // terrain patches, trees and people settle (real time: views rebuild on timers; no end-of-frame in batch mode)
                 yield return new WaitForSecondsRealtime(5f);
                 for (int i = 0; i < 5; i++) yield return null;
-                _pending = view.Trim(); _pendingW = width; _pendingH = height; _saved = false;
+                _pending = spec.Trim().Replace('@', '_').Replace('+', 'd'); _pendingW = width; _pendingH = height; _saved = false;
                 while (!_saved) yield return null;
             }
             foreach (var mn in new[] { "person", "house_cottage", "tree_broadleaf", "granary" })

@@ -20,7 +20,7 @@ namespace TC2.Game
         public SimHost Host;
         public CameraRig Rig;
 
-        Instancer _people, _granaries, _wells, _hay, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls;
+        Instancer _people, _granaries, _wells, _hay, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls, _woodpiles;
         Instancer[] _houseKinds, _trees;
         Material _mat;
         float _treeTimer, _placeTimer;
@@ -55,6 +55,7 @@ namespace TC2.Game
             _afloat = new Instancer(Models.Get("boat", ProcMeshes.Granary), _mat, true);    // and out on the water with their fishers
             _wells = new Instancer(Models.Get("well", ProcMeshes.Granary), _mat, true);
             _hay = new Instancer(Models.Get("haystack", ProcMeshes.Granary), _mat, true);
+            _woodpiles = new Instancer(ProcMeshes.Woodpile(), _mat, true);   // the village's woodstore, by the homes (D2-081)
             _trees = new Instancer[TreeModels.Length];
             for (int i = 0; i < TreeModels.Length; i++) _trees[i] = new Instancer(Models.Get(TreeModels[i], i <= ConiferSmall ? (System.Func<Mesh>)ProcMeshes.Conifer : ProcMeshes.Broadleaf), _mat, true);
             _flames = new Instancer(ProcMeshes.Flame(), _mat, false);
@@ -79,6 +80,56 @@ namespace TC2.Game
         Vector3[] _chimneyTop;
         bool[] _hasChimney;
         readonly List<Vector4> _smoke = new List<Vector4>();   // chimney tops with smoke (xyz) and how much (w)
+        readonly List<Vector4> _lights = new List<Vector4>();  // villages at night (xyz) and how many of their homes are lit (w)
+        readonly List<Vector4> _watch = new List<Vector4>();   // the watch fires at village stores tonight (xyz)
+
+        /// <summary>
+        /// A village's lights at night seen from high above (D2-081): a warm glow over the village, as wide and as bright as the homes
+        /// whose people are awake inside (lit windows, hearths) - the same homes whose windows the near view lights; nothing when all
+        /// sleep. Drawn only when the camera is too high to see the windows themselves.
+        /// </summary>
+        void EmitLights()
+        {
+            if (_lights.Count == 0 || Rig == null || Rig.Cam == null) return;
+            Vector3 cam = Rig.Cam.transform.position;
+            float R = (float)Host.World.Planet.Radius, alt = cam.magnitude - R;
+            float show = Mathf.InverseLerp(1500f, 4000f, alt);
+            if (show <= 0f) return;
+            for (int i = 0; i < _lights.Count; i++)
+            {
+                var v = _lights[i];
+                Vector3 at = new Vector3(v.x, v.y, v.z);
+                float lit = v.w;
+                // (a glow some pixels across at any height: wider as the camera rises, by the village's lit homes)
+                float size = Mathf.Max(60f, alt * 0.012f) * (0.6f + 0.25f * Mathf.Sqrt(lit));
+                float glow = show * Mathf.Clamp01(0.35f + lit / 12f);
+                Puffs.Add(at + at.normalized * (size * 0.1f), size, 0.05f * show, 0f, glow * 1.6f, Mathf.Repeat(i * 0.618f, 1f), 0f);
+            }
+        }
+
+        /// <summary>The watch fires (D2-071): a small fire by a village's store while someone keeps the watch there at night.</summary>
+        void EmitWatch()
+        {
+            if (_watch.Count == 0 || Rig == null || Rig.Cam == null) return;
+            Vector3 cam = Rig.Cam.transform.position;
+            float t = Time.unscaledTime;
+            for (int i = 0; i < _watch.Count; i++)
+            {
+                var v = _watch[i];
+                Vector3 at = new Vector3(v.x, v.y, v.z);
+                if ((at - cam).sqrMagnitude > 2500f * 2500f) continue;
+                Vector3 up = at.normalized;
+                float ex = Exaggeration(at, 2.5f);
+                for (int k = 0; k < 3; k++)
+                {
+                    float flicker = 0.75f + 0.25f * Mathf.Sin(t * 8f + k * 2.1f + i);
+                    float h = 1.1f * flicker * ex;
+                    _flames.Add(k % 2, k % 2 == 0 ? new Color(1f, 0.45f, 0.08f) : new Color(1f, 0.75f, 0.2f),
+                                Matrix4x4.TRS(at + Quaternion.AngleAxis(k * 120f, up) * Vector3.Cross(up, Vector3.right).normalized * 0.25f * ex, PlanetGeo.Upright(at, k * 60f), new Vector3(h * 0.45f, h, h * 0.45f)), 2.5f);
+                }
+                Puffs.Add(at + up * (1.2f * ex), 7f * ex, 0.04f, 0f, 1.1f, Mathf.Repeat(i * 0.37f, 1f), 0f);
+            }
+        }
 
         /// <summary>
         /// Smoke from the chimneys of houses whose people are home and awake: while one of them cooks, and all day while the
@@ -131,18 +182,20 @@ namespace TC2.Game
             _treeTimer -= Time.unscaledDeltaTime;
             if (_treeTimer <= 0) { _treeTimer = 1.5f; RebuildTrees(w); }
             RebuildFire(w);
+            EmitWatch();
             if ((Off & 2) == 0) RebuildPeople(w);
             var cam = Rig != null ? Rig.Cam : Camera.main;
             if ((Off & 4) == 0)
             {
                 for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Draw(cam);
-                _granaries.Draw(cam); _wells.Draw(cam); _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam);
+                _granaries.Draw(cam); _wells.Draw(cam); _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _woodpiles.Draw(cam);
             }
             if ((Off & 1) == 0) for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
             _flames.Draw(cam);
             if ((Off & 2) == 0) { _people.Draw(cam); _afloat.Draw(cam); }
             if ((Off & 4) == 0) _beached.Draw(cam);
             EmitSmoke(w);
+            EmitLights();
         }
 
         static int HouseKind(int household)
@@ -228,8 +281,8 @@ namespace TC2.Game
         {
             var P = w.Planet;
             for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Clear();
-            _granaries.Clear(); _wells.Clear(); _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _walls.Clear();
-            _smoke.Clear();
+            _granaries.Clear(); _wells.Clear(); _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _walls.Clear(); _woodpiles.Clear();
+            _smoke.Clear(); _lights.Clear(); _watch.Clear();
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
                 ref var s = ref w.Settlements.Get(sid);
@@ -242,9 +295,12 @@ namespace TC2.Game
                 bool dark = Vector3.Dot(PlanetGeo.ToVector(s.Anchor), toSun) < 0.06f;
                 double tOut = w.PlanetSys.DayMean(s.Cell, PlanetSystems.Season(w.Now));   // the day the hearths burn against
                 // its buildings (D2-059): lived in, standing empty, fallen in - an abandoned village's too, as they decay
+                // (and how many days its woodstore holds against what its hearths burn: the woodpiles by the homes, D2-081)
+                double woodDays = s.FuelDay > 1e-6f ? s.Woodstore / s.FuelDay : (s.Woodstore > 0 ? 30.0 : 0.0);
+                int litHomes = 0;
                 var bl = w.BuildingsOf(sid);
-                for (int i = 0; i < bl.Count; i++) DrawHome(w, P, in s, bl[i], ex, dark, tOut);
-                // households without a home camp on their lot (not those on the road to another village)
+                for (int i = 0; i < bl.Count; i++) if (DrawHome(w, P, in s, bl[i], ex, dark, tOut, woodDays)) litHomes++;
+                // households without a home camp on their lot (not those on the road to another village), a fire smoking by the tent
                 var hhs = w.HouseholdsOf(sid);
                 for (int i = 0; i < hhs.Count; i++)
                 {
@@ -252,8 +308,24 @@ namespace TC2.Game
                     if (h.Building != 0 || h.Party != 0) continue;
                     float yaw = Mathf.Atan2(s.SquareX - h.HomeX, s.SquareY - h.HomeY) * Mathf.Rad2Deg + 180f + ((hhs[i] * 37) % 21 - 10);
                     float age = 0.88f + 0.2f * (float)KeyedRng.Unit(KeyedRng.Mix((ulong)hhs[i] + 77));
-                    bool lit = dark && SomeoneAwakeHome(w, hhs[i], out _);
-                    _tents.Add((int)(age * 10) + (lit ? 100 : 0), new Color(age, age * 0.97f, age * 0.92f, 1f), Place(P, s, h.HomeX, h.HomeY, yaw, ex), lit ? -1f : 0f);
+                    bool awake = SomeoneAwakeHome(w, hhs[i], out bool cooking);
+                    bool lit = dark && awake;
+                    if (lit) litHomes++;
+                    var tm = Place(P, s, h.HomeX, h.HomeY, yaw, ex);
+                    _tents.Add((int)(age * 10) + (lit ? 100 : 0), new Color(age, age * 0.97f, age * 0.92f, 1f), tm, lit ? -1f : 0f);
+                    if (awake && (cooking || h.Indoor - Hearth.Indoors(tOut, h.Shelter, 0.0) > 0.5))
+                    {
+                        Vector3 top = tm.MultiplyPoint3x4(new Vector3(0f, 2.7f, 0f));
+                        _smoke.Add(new Vector4(top.x, top.y, top.z, cooking ? 0.8f : 0.45f));
+                    }
+                }
+                // after dark, the village's lit homes seen from high above; the watch fire by its store
+                if (s.Inhabited && dark && litHomes > 0) _lights.Add(new Vector4(center.x, center.y, center.z, litHomes));
+                if (s.Inhabited && dark && s.Watcher != 0 && (s.Works & Construction.Granary) != 0)
+                {
+                    Construction.GranarySpot(in s, out double wx, out double wy);
+                    Vector3 fireAt = PlanetGeo.Surface(P, s.LocalToSphere(wx + 4.5, wy - 3.0, P.Radius));
+                    _watch.Add(new Vector4(fireAt.x, fireAt.y, fireAt.z, 1f));
                 }
                 // its palisade (D2-074): standing (an abandoned village's too, as it rots), or as far as its people have set it
                 if (s.Wall == 1 || s.Wall == 2) DrawWall(w, P, in s, sid, ex);
@@ -282,7 +354,7 @@ namespace TC2.Game
         /// whose walls sink and green over as the land takes it back (D2-052). It faces the village square; its look is the one
         /// it was raised with.
         /// </summary>
-        void DrawHome(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int bid, float ex, bool dark, double tOut)
+        bool DrawHome(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int bid, float ex, bool dark, double tOut, double woodDays)
         {
             ref var b = ref w.Buildings.Get(bid);
             float yaw = Mathf.Atan2(s.SquareX - b.X, s.SquareY - b.Y) * Mathf.Rad2Deg + 180f + ((b.Style * 37) % 21 - 10);
@@ -291,13 +363,13 @@ namespace TC2.Game
             {
                 // past mending its roof is gone (the walls stand roofless), then it falls in and sinks (RuinLeft: 1 while it stands)
                 float c = (float)Homes.RuinLeft(in b, w.Now);
-                if (c <= 0.03f) return;
+                if (c <= 0.03f) return false;
                 var mr = Place(P, s, b.X, b.Y, yaw, 1f);
                 float size = ex * (b.Kind >= Construction.House ? 1f : 0.6f);
                 mr = mr * Matrix4x4.Scale(new Vector3(size, size * (0.25f + 0.75f * c), size));   // the walls fall lower
                 Color moss = new Color(0.50f, 0.60f, 0.40f, 1f);
                 _ruins.Add((int)(c * 4), Color.Lerp(moss, Color.white, c), mr);
-                return;
+                return false;
             }
             bool lived = b.Household != 0 && w.Households.Exists(b.Household);
             bool cooking = false;
@@ -307,19 +379,35 @@ namespace TC2.Game
             if (!lived) tint = Color.Lerp(new Color(0.55f, 0.58f, 0.48f, 1f), tint, 0.45f + 0.55f * (float)Homes.Condition(in b, w.Now));   // an empty home weathers
             int key = (int)(age * 10) + (lit ? 100 : 0) + (lived ? 0 : 200);
             var m = Place(P, s, b.X, b.Y, yaw, ex);
-            if (b.Kind < Construction.House) { _huts.Add(300 + key, tint, m, lit ? -1f : 0f); return; }
-            int kind = HouseKind(b.Style);
-            _houseKinds[kind].Add(key, tint, m, lit ? -1f : 0f);
-            if (!lived || !awake || _hasChimney == null || !_hasChimney[kind]) return;
-            // a fire in the hearth: while someone cooks, and all day while it burns against the cold (what today's fire adds to
-            // the house's warmth, D2-056)
+            bool hut = b.Kind < Construction.House;
+            int kind = hut ? -1 : HouseKind(b.Style);
+            if (hut) _huts.Add(300 + key, tint, m, lit ? -1f : 0f);
+            else _houseKinds[kind].Add(key, tint, m, lit ? -1f : 0f);
+            if (!lived) return false;
+            // its share of the village's woodstore stacked by the wall (D2-081): none when the store is all but empty, a bigger pile the
+            // more days of the hearths' wood the village holds
+            if (woodDays >= 2.0)
+            {
+                float fx = s.SquareX - b.X, fy = s.SquareY - b.Y, fl = Mathf.Max(0.01f, Mathf.Sqrt(fx * fx + fy * fy));
+                fx /= fl; fy /= fl;
+                float side = hut ? 3.4f : 5.6f;
+                float pile = Mathf.Clamp(0.5f + (float)woodDays / 50f, 0.5f, 1.25f);
+                _woodpiles.Add(0, Color.white, Place(P, s, b.X + fy * side - fx * 1.2f, b.Y - fx * side - fy * 1.2f, yaw + 90f, ex * pile));
+            }
+            if (!awake) return lit;
+            // a fire in the hearth: while someone cooks, and all day while it burns against the cold (what today's fire adds to the
+            // home's warmth, D2-056) - from the chimney, or a hut's thatch at its peak (D2-081)
             ref var h = ref w.Households.Get(b.Household);
             double heat = h.Indoor - Hearth.Indoors(tOut, h.Shelter, 0.0);
             if (cooking || heat > 0.5)
             {
-                Vector3 top = m.MultiplyPoint3x4(_chimneyTop[kind]);
+                Vector3 top;
+                if (hut) top = m.MultiplyPoint3x4(new Vector3(0f, 4.5f, 0f));
+                else if (_hasChimney != null && _hasChimney[kind]) top = m.MultiplyPoint3x4(_chimneyTop[kind]);
+                else return lit;
                 _smoke.Add(new Vector4(top.x, top.y, top.z, cooking ? 1f : (float)(0.35 + 0.4 * System.Math.Min(1.0, heat / 8.0))));
             }
+            return lit;
         }
 
         /// <summary>

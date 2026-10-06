@@ -27,6 +27,9 @@ namespace TC2.Game
         static readonly int MoonDir = Shader.PropertyToID("_TC2MoonDir");
         static readonly int Canopy = Shader.PropertyToID("_TC2Canopy");
         static readonly int CanopyTile = Shader.PropertyToID("_TC2CanopyTile");
+        static readonly int CanopyCover = Shader.PropertyToID("_TC2Cover");
+        static readonly int CanopyK = Shader.PropertyToID("_TC2CanopyK");
+        static readonly int CoverMean = Shader.PropertyToID("_TC2CoverMean");
         Volume _volume;
         public Color Horizon;
 
@@ -34,8 +37,12 @@ namespace TC2.Game
         {
             Shader.SetGlobalTexture(Detail, MakeDetail(256));
             Shader.SetGlobalTexture(Canopy, TC2.Game.Canopy.MakeTexture(512));   // the woods' crowns (D2-079)
+            Shader.SetGlobalTexture(CanopyCover, TC2.Game.Canopy.MakeCover(256)); // and the ground they cover, averaged far off (D2-081)
+            Shader.SetGlobalFloat(CanopyK, TC2.Game.Canopy.K);
+            Shader.SetGlobalVector(CoverMean, TC2.Game.Canopy.CoverMean);
             Shader.SetGlobalFloat(CanopyTile, TC2.Game.Canopy.TileMetres);
             Shader.SetGlobalFloat(FogDensity, 0f);
+            if (Application.isBatchMode) Debug.Log("[TC2] canopy K " + TC2.Game.Canopy.K.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture));
             MakeGrade();
         }
 

@@ -37,8 +37,9 @@ namespace TC2.Game
             public Vector2[] Plots;   // field plot coordinates in the owning village's frame (m)
             public Vector2[] Farm;    // x: share of the land the village works, y: crop stage
             public Vector4[] Wood;    // the woods here (D2-079): x forest share, y conifers' share, z the leaves' season, w snow
-            public Vector3[] Pos;     // the vertices as drawn (where the woods' trees stand)
-            public Matrix4x4[] Trees; public byte[] TreeKind, TreeGroup; public int TreeCount;   // the woods' trees (finest level)
+            public Vector4[] Land;    // the land's own (D2-081): x dryness of the climate, y meadow (grass where no wood), z bare earth or rock, w beach
+            public Vector3[] Pos, Nrm; // the vertices as drawn and their normals (where the woods' trees and the ground cover stand)
+            public Matrix4x4[] Trees; public byte[] TreeKind; public ushort[] TreeGroup; public int TreeCount;   // the woods' trees (finest level)
             public Matrix4x4[] Tufts; public byte[] TuftKind, TuftGroup; public int TuftCount; // ground cover (finest level)
             public int ColourCycle;
         }
@@ -50,21 +51,36 @@ namespace TC2.Game
         Material _mat;
         Instancer[] _cover;           // grass, flowers, reeds, boulders on the finest patches near the camera
         Instancer[] _forest;          // the woods' trees near the camera, where the canopy shows their crowns (D2-079)
-        const int BroadNear = 0, BroadFar = 1, BareBroad = 2, ConNear = 3, ConFar = 4;
+        const int BroadNear = 0, BroadFar = 1, BareBroad = 2, ConNear = 3, ConFar = 4, TallNear = 5, WideNear = 6, BirchNear = 7;
+        // the trees' kinds as placed (D2-081): a round broadleaf, a conifer, a tall broadleaf, a spreading one, a birch
+        const byte KRound = 0, KConifer = 1, KTall = 2, KWide = 3, KBirch = 4;
         const int MaxTrees = 640;
         /// <summary>The trees stand within this distance of the camera; the canopy hands over to them (the shader fades its crowns
         /// from 400 m to 300 m); the finest patches always reach past it.</summary>
         const float ForestReach = 440f, ForestNear = 190f;
         public static int ForestDrawn;
+        /// <summary>Tools (webperf): the ground cover not drawn.</summary>
+        public static bool CoverOff;
         readonly Plane[] _planes = new Plane[6];
-        static readonly Color[] LeafTints = new Color[128], ConiferTints = new Color[128], BareTints = new Color[128];
-        const int Grass = 0, Flowers = 1, Reeds = 2, Boulder = 3;
-        static readonly Color[] GrassTints =
+        static readonly Color[] LeafTints = new Color[512], ConiferTints = new Color[512], BareTints = new Color[512];
+        const int Grass = 0, Flowers = 1, Reeds = 2, Boulder = 3, Shrub = 4, Fern = 5, Cushion = 6, Stone = 7;
+        // ground cover colours by kind and group (sRGB): grass from straw to lush (5 dry, 6 dune grass), petals, reeds, boulders,
+        // shrubs (summer dark and light, olive, autumn russet and gold, winter twigs, evergreen), ferns (green, light, autumn bracken),
+        // cushions (heather green-brown, heather in bloom, tundra cushion, lichen), stones (grey, dark, warm)
+        static readonly Color[][] CoverTints =
         {
-            new Color(0.80f, 0.80f, 0.50f), new Color(0.70f, 0.80f, 0.44f), new Color(0.60f, 0.78f, 0.40f),
-            new Color(0.52f, 0.72f, 0.36f), new Color(0.46f, 0.64f, 0.32f), new Color(0.86f, 0.80f, 0.56f),
+            new[] { new Color(0.80f, 0.80f, 0.50f), new Color(0.70f, 0.80f, 0.44f), new Color(0.60f, 0.78f, 0.40f), new Color(0.52f, 0.72f, 0.36f),
+                    new Color(0.46f, 0.64f, 0.32f), new Color(0.86f, 0.80f, 0.56f), new Color(0.84f, 0.82f, 0.58f) },
+            new[] { new Color(0.97f, 0.96f, 0.90f), new Color(0.98f, 0.84f, 0.26f), new Color(0.66f, 0.46f, 0.84f), new Color(0.90f, 0.32f, 0.30f),
+                    new Color(0.52f, 0.62f, 0.95f), new Color(0.98f, 0.62f, 0.80f) },
+            new[] { Color.white },
+            new[] { Color.white },
+            new[] { new Color(0.22f, 0.35f, 0.16f), new Color(0.31f, 0.44f, 0.19f), new Color(0.46f, 0.48f, 0.25f), new Color(0.60f, 0.33f, 0.16f),
+                    new Color(0.74f, 0.56f, 0.22f), new Color(0.44f, 0.36f, 0.29f), new Color(0.22f, 0.37f, 0.24f) },
+            new[] { new Color(0.36f, 0.56f, 0.22f), new Color(0.48f, 0.64f, 0.27f), new Color(0.66f, 0.42f, 0.20f) },
+            new[] { new Color(0.40f, 0.37f, 0.25f), new Color(0.62f, 0.38f, 0.60f), new Color(0.52f, 0.56f, 0.40f), new Color(0.74f, 0.76f, 0.60f) },
+            new[] { new Color(0.66f, 0.64f, 0.60f), new Color(0.48f, 0.46f, 0.44f), new Color(0.70f, 0.61f, 0.50f) },
         };
-        static readonly Color[] Petals = { new Color(0.97f, 0.96f, 0.90f), new Color(0.98f, 0.84f, 0.26f), new Color(0.66f, 0.46f, 0.84f), new Color(0.90f, 0.32f, 0.30f) };
         int _builtWorld = -1, _builtCoast = -1, _builtRelief = -1;
         int _frame, _cycle;
         float _recolourTimer;
@@ -88,23 +104,31 @@ namespace TC2.Game
             _mat = Materials.Load("Terrain");
             var inst = Materials.Load("Instanced");
             inst.enableInstancing = true;
-            _cover = new Instancer[4];
+            _cover = new Instancer[8];
             _cover[Grass] = new Instancer(Models.Get("grass_tuft", ProcMeshes.Person), inst, false);
             _cover[Flowers] = new Instancer(Models.Get("flowers", ProcMeshes.Person), inst, false);
             _cover[Reeds] = new Instancer(Models.Get("reeds", ProcMeshes.Person), inst, false);
             _cover[Boulder] = new Instancer(Models.Get("boulder", ProcMeshes.Person), inst, true);
-            _forest = new Instancer[5];
+            _cover[Shrub] = new Instancer(ProcMeshes.Shrub(), inst, true);
+            _cover[Fern] = new Instancer(ProcMeshes.Fern(), inst, false);
+            _cover[Cushion] = new Instancer(ProcMeshes.Cushion(), inst, false);
+            _cover[Stone] = new Instancer(ProcMeshes.Stone(), inst, false);
+            _forest = new Instancer[8];
             _forest[BroadNear] = new Instancer(ProcMeshes.ForestBroad(0), inst, true);
             _forest[BroadFar] = new Instancer(ProcMeshes.ForestBroad(1), inst, true);
             _forest[BareBroad] = new Instancer(ProcMeshes.ForestBare(), inst, true);
             _forest[ConNear] = new Instancer(ProcMeshes.ForestConifer(0), inst, true);
             _forest[ConFar] = new Instancer(ProcMeshes.ForestConifer(1), inst, true);
+            _forest[TallNear] = new Instancer(ProcMeshes.ForestBroadKind(1), inst, true);
+            _forest[WideNear] = new Instancer(ProcMeshes.ForestBroadKind(2), inst, true);
+            _forest[BirchNear] = new Instancer(ProcMeshes.ForestBroadKind(3), inst, true);
             Tints();
         }
 
         /// <summary>
-        /// The trees' colours by group (shade 0-3, the leaves' season 0-7, snow 0-3): summer greens, autumn's gold and rust, the
-        /// bare boughs of winter, conifers dark and snow-dusted - the canopy shader's own colours, so the woods hand over unseen.
+        /// The trees' colours by group (shade 0-3, the leaves' season 0-7, snow 0-3, the climate's dryness 0-3): summer greens - olive
+        /// where the land is dry -, autumn's gold and rust, the bare boughs of winter, conifers dark and snow-dusted - the canopy
+        /// shader's own colours, so the woods hand over unseen.
         /// </summary>
         static void Tints()
         {
@@ -112,15 +136,23 @@ namespace TC2.Game
             var autumn = new[] { new Color(0.78f, 0.60f, 0.21f), new Color(0.69f, 0.37f, 0.17f), new Color(0.80f, 0.50f, 0.16f), new Color(0.66f, 0.30f, 0.15f) };
             var needles = new[] { new Color(0.16f, 0.29f, 0.19f), new Color(0.19f, 0.33f, 0.21f), new Color(0.14f, 0.26f, 0.17f), new Color(0.21f, 0.35f, 0.22f) };
             var snow = new Color(0.88f, 0.90f, 0.94f);
-            for (int g = 0; g < 128; g++)
+            for (int g = 0; g < 512; g++)
             {
                 int shade = g & 3, leaf = (g >> 2) & 7, sn = (g >> 5) & 3;
+                float dry = ((g >> 7) & 3) / 3f;
                 float leaves = (leaf + 0.5f) / 8f;
                 float turn = Mathf.Clamp01((leaves - 0.1f) / 0.55f);
-                LeafTints[g] = Color.Lerp(summer[shade], autumn[shade], turn);
-                ConiferTints[g] = Color.Lerp(needles[shade], snow, sn / 3f * 0.55f);
+                LeafTints[g] = Color.Lerp(Dry(summer[shade], dry * 0.8f, 1.6f, 0.015f, 0.90f, 0.60f), autumn[shade], turn);
+                ConiferTints[g] = Color.Lerp(Dry(needles[shade], dry * 0.5f, 1.35f, 0f, 0.95f, 0.75f), snow, sn / 3f * 0.55f);
                 BareTints[g] = Color.Lerp(new Color(0.42f + 0.03f * shade, 0.35f + 0.02f * shade, 0.29f), snow, sn / 3f * 0.35f);
             }
+        }
+
+        /// <summary>The shader's dry-land shift of a leaf colour (sRGB in and out, the shift and the blend made on linear values).</summary>
+        static Color Dry(Color c, float k, float r, float add, float g, float b)
+        {
+            Color lin = c.linear;
+            return Color.Lerp(lin, new Color(lin.r * r + add, lin.g * g, lin.b * b), k).gamma;
         }
 
         static long Key(int f, int level, int i, int j) => ((long)f << 56) | ((long)level << 48) | ((long)i << 24) | (long)(uint)j;
@@ -323,7 +355,7 @@ namespace TC2.Game
             int count = V * V + 4 * V;
             var pos = new Vector3[count];
             var nrm = new Vector3[count];
-            if (p.Dirs == null || p.Dirs.Length != count) { p.Dirs = new Vector3[count]; p.Cells = new int[count]; p.Rel = new float[count]; p.Slope = new float[count]; p.Colours = new Color[count]; p.Plots = new Vector2[count]; p.Farm = new Vector2[count]; p.Wood = new Vector4[count]; }
+            if (p.Dirs == null || p.Dirs.Length != count) { p.Dirs = new Vector3[count]; p.Cells = new int[count]; p.Rel = new float[count]; p.Slope = new float[count]; p.Colours = new Color[count]; p.Plots = new Vector2[count]; p.Farm = new Vector2[count]; p.Wood = new Vector4[count]; p.Land = new Vector4[count]; }
             for (int j = 0; j < V; j++)
                 for (int i = 0; i < V; i++)
                 {
@@ -349,8 +381,8 @@ namespace TC2.Game
                     p.Dirs[o] = p.Dirs[src]; p.Cells[o] = p.Cells[src]; p.Rel[o] = p.Rel[src]; p.Slope[o] = p.Slope[src];
                 }
             Colourise(w, p);
-            p.Pos = pos;
-            if (p.Level >= MaxLevel) { PlaceCover(w, p, pos, nrm); PlaceForest(p); } else { p.TuftCount = 0; p.TreeCount = 0; }
+            p.Pos = pos; p.Nrm = nrm;
+            if (p.Level >= MaxLevel) { PlaceCover(w, p, pos, nrm); PlaceForest(w, p); } else { p.TuftCount = 0; p.TreeCount = 0; }
             if (p.Mesh == null)
             {
                 p.Mesh = new Mesh { name = "tc2-terrain", indexFormat = IndexFormat.UInt16 };
@@ -371,6 +403,7 @@ namespace TC2.Game
             m.SetUVs(0, p.Plots);
             m.SetUVs(1, p.Farm);
             m.SetUVs(2, p.Wood);
+            m.SetUVs(3, p.Land);
             m.triangles = FixWinding(p.Face, pos, nrm);
             m.RecalculateBounds();
             p.Built = true;
@@ -399,17 +432,21 @@ namespace TC2.Game
 
         // ------------------------------------------------------------------ ground cover
         /// <summary>
-        /// Tufts of grass, wildflowers, reeds by the water and boulders on rocky slopes, on the patch's own surface
-        /// (interpolated between its vertices: no extra height lookups); none on fields, paths, sand, snow or water.
+        /// The ground's cover on a finest patch (D2-081), chosen by what the land is (on the patch's own surface, interpolated
+        /// between its vertices: no extra height lookups; none on fields, paths, snow or water): meadows of grass, patchy - thick in
+        /// hollows, thin on the rises - with wildflowers in their season and a few shrubs; the woods' floor with ferns and
+        /// undergrowth in the gaps and shrubs thick at their edges; heather where the climate is cool and wet and the land open;
+        /// cushions and stones on the tundra; straw-dry tufts and stones where the climate is dry; dune grass on the sand above the
+        /// tide; reeds by fresh water; boulders on rocky slopes.
         /// </summary>
         void PlaceCover(TC2.Core.Simulation.World w, Patch p, Vector3[] pos, Vector3[] nrm)
         {
             var P = w.Planet;
             int V = N + 1;
-            int max = N * N * 2;
-            if (p.Tufts == null) { p.Tufts = new Matrix4x4[max]; p.TuftKind = new byte[max]; p.TuftGroup = new byte[max]; }
+            int max = N * N * 3;
+            if (p.Tufts == null || p.Tufts.Length < max) { p.Tufts = new Matrix4x4[max]; p.TuftKind = new byte[max]; p.TuftGroup = new byte[max]; }
             int count = 0;
-            bool spring = SimTime.YearFraction(w.Now) < 0.5;
+            float yearNorth = (float)SimTime.YearFraction(w.Now);
             ulong key = (ulong)p.Key * 0x9E3779B97F4A7C15UL;
             for (int j = 0; j < N; j++)
                 for (int i = 0; i < N; i++)
@@ -420,34 +457,93 @@ namespace TC2.Game
                     Color col = p.Colours[a];
                     if (col.a > 0.15f) continue;                                  // farmland: the crop is the shader's
                     float slope = p.Slope[a];
+                    int cell = p.Cells[a];
+                    float wood = 0.25f * (p.Wood[a].x + p.Wood[b].x + p.Wood[c].x + p.Wood[d].x);
+                    float dry = p.Land[a].x;
+                    float tm = P.TMean[cell];
+                    // the season where this is (the leaves' year: 0 spring ... 0.5 late summer ... 0.875 winter)
+                    float f = P.SinLat[cell] < 0 ? (yearNorth + 0.5f) % 1f : yearNorth;
+                    bool bloom = f > 0.04f && f < 0.48f && tm > -2f, heatherBloom = f > 0.38f && f < 0.62f;
+                    int leafGroup = f < 0.5f || tm > 20f ? -1 : (f < 0.875f ? 3 : 5);   // (shrubs: summer, autumn, winter twigs)
+                    // what the ground is: snow (its colour), packed earth and rock, beach sand (the land's own, from Colourise)
+                    float g = col.g, r = col.r, bl = col.b;
+                    bool snowy = bl > 0.55f && g > 0.55f;
+                    float bare = p.Land[a].z;
+                    bool sandy = BeachAt(rel, p.Land[a].w) > 0.2f || P.Biome[cell] == (byte)Biome.Desert;
+                    if (snowy || (slope <= 0.17f && bare > 0.35f)) continue;
+                    bool water = P.LakeDepth[cell] > 0.3f || P.IsStream(cell);
+                    bool tundra = tm < 0f || P.Biome[cell] == (byte)Biome.Tundra;
+                    bool heath = !tundra && tm < 9f && P.Moist[cell] > 0.45f && wood < 0.2f;
                     ulong h = KeyedRng.Mix(key ^ ((ulong)(i * 73856093) ^ (ulong)(j * 19349663)));
                     // meadows are patchy: thick in hollows, thin on the rises (a slow noise of where they are)
                     Vector3 dq = p.Dirs[a];
-                    float lushness = 0.30f + 0.9f * (0.5f + (float)Noise.Perlin(dq.x * 420.0, dq.y * 420.0, dq.z * 420.0));
-                    for (int t = 0; t < 2; t++)
+                    float lushness = 0.40f + 0.9f * (0.5f + (float)Noise.Perlin(dq.x * 420.0, dq.y * 420.0, dq.z * 420.0));
+                    if (dry > 0.5f) lushness *= 1.4f - dry;
+                    for (int t = 0; t < 3; t++)
                     {
                         h = KeyedRng.Mix(h + (ulong)t);
-                        if (slope <= 0.17f && KeyedRng.Unit(KeyedRng.Mix(h ^ 0x77UL)) > lushness) continue;
+                        double pick = KeyedRng.Unit(KeyedRng.Mix(h + 99));
+                        float grow = (float)KeyedRng.Unit(KeyedRng.Mix(h ^ 0x77UL));
+                        int kind = Grass, group = 0;
+                        float scale = 1f;
+                        if (slope > 0.17f) { if (pick > 0.30) continue; kind = Boulder; }
+                        else if (sandy)
+                        {
+                            // the sand above the tide: tufts of dune grass, more of them further up the beach
+                            if (rel < 1.5f || grow > 0.12f + 0.22f * Mathf.Clamp01((rel - 1.5f) / 3f)) continue;
+                            group = 6; scale = 1.1f;
+                        }
+                        else if (water) { if (grow > lushness) continue; if (pick < 0.45) kind = Reeds; }   // by fresh water
+                        else if (wood > 0.55f)
+                        {
+                            // under the woods: ferns and undergrowth where the light comes through, little grass
+                            if (pick < 0.30) { kind = Fern; group = leafGroup >= 0 ? 2 : (pick < 0.15 ? 0 : 1); scale = 0.50f + 0.45f * grow; }
+                            else if (pick < 0.40) { kind = Shrub; group = leafGroup >= 0 ? leafGroup + (pick < 0.35 ? 0 : 1) : (pick < 0.35 ? 0 : 6); scale = 0.8f + 0.7f * grow; }
+                            else continue;
+                        }
+                        else if (wood > 0.10f)
+                        {
+                            // the woods' edges and open woodland: shrubs and ferns among the grass
+                            if (pick < 0.28) { kind = Shrub; group = leafGroup >= 0 ? leafGroup + (pick < 0.14 ? 0 : 1) : (dry > 0.5f ? 2 : (pick < 0.14 ? 0 : 1)); scale = 0.9f + 1.1f * grow; }
+                            else if (pick < 0.40 && dry < 0.5f) { kind = Fern; group = leafGroup >= 0 ? 2 : 1; scale = 0.45f + 0.40f * grow; }
+                            else if (grow > lushness) continue;
+                        }
+                        else if (tundra)
+                        {
+                            // the tundra: low cushions, lichen and stones; a little grass
+                            if (pick < 0.35) { kind = Cushion; group = pick < 0.22 ? 2 : 3; scale = 0.45f + 0.5f * grow; }
+                            else if (pick < 0.50) { kind = Stone; group = pick < 0.43 ? 0 : 1; scale = 0.5f + 1.3f * grow; }
+                            else if (grow > lushness * 0.6f) continue;
+                        }
+                        else if (heath)
+                        {
+                            // heath: heather, purple in late summer, with grass between
+                            if (pick < 0.45) { kind = Cushion; group = heatherBloom ? 1 : 0; scale = 0.5f + 0.55f * grow; }
+                            else if (grow > lushness) continue;
+                        }
+                        else
+                        {
+                            // meadow: grass, flowers in their season, a shrub here and there; in dry lands straw tufts and stones
+                            if (grow > lushness) continue;
+                            if (dry > 0.55f && pick < 0.10) { kind = Stone; group = 2; scale = 0.4f + 1.0f * grow; }
+                            else if (bloom && pick < 0.16 * (1f - dry)) { kind = Flowers; group = (int)((h >> 20) % 6UL); }
+                            else if (pick > 0.975) { kind = Shrub; group = leafGroup >= 0 ? leafGroup : (dry > 0.5f ? 2 : 1); scale = 0.8f + 0.8f * grow; }
+                        }
                         float u = (float)KeyedRng.Unit(h), v = (float)KeyedRng.Unit(KeyedRng.Mix(h ^ 0x51UL));
                         Vector3 at = Vector3.Lerp(Vector3.Lerp(pos[a], pos[b], u), Vector3.Lerp(pos[c], pos[d], u), v);
                         Vector3 up = Vector3.Lerp(Vector3.Lerp(nrm[a], nrm[b], u), Vector3.Lerp(nrm[c], nrm[d], u), v).normalized;
-                        // the ground's own colour decides: bare earth, sand and snow carry no grass
-                        float g = col.g, r = col.r, bl = col.b;
-                        bool earthy = r > g * 0.98f, snowy = bl > 0.55f && g > 0.55f;
-                        int kind = Grass;
-                        double pick = KeyedRng.Unit(KeyedRng.Mix(h + 99));
-                        int cell = p.Cells[a];
-                        if (slope > 0.17f) { if (pick > 0.30) continue; kind = Boulder; }
-                        else if (earthy || snowy) continue;
-                        else if (P.LakeDepth[cell] > 0.3f || P.IsStream(cell)) { if (pick < 0.45) kind = Reeds; }   // by fresh water
-                        else if (spring && pick < 0.09) kind = Flowers;
-                        float s = kind == Boulder ? 0.6f + 1.2f * (float)KeyedRng.Unit(KeyedRng.Mix(h + 7)) : (kind == Grass ? 1.5f + 1.0f : 1.0f) * (0.75f + 0.5f * (float)KeyedRng.Unit(KeyedRng.Mix(h + 7)));
+                        float s = kind == Boulder ? 0.6f + 1.2f * (float)KeyedRng.Unit(KeyedRng.Mix(h + 7))
+                                : (kind == Grass ? 2.5f : kind == Flowers ? 1.8f : 1.0f) * scale * (0.75f + 0.5f * (float)KeyedRng.Unit(KeyedRng.Mix(h + 7)));
                         var rot = Quaternion.AngleAxis((float)(h % 360), up) * Quaternion.FromToRotation(Vector3.up, up);
                         p.Tufts[count] = Matrix4x4.TRS(at, rot, Vector3.one * s);
                         p.TuftKind[count] = (byte)kind;
-                        // tint group: from dry and yellow to lush, by how green the ground is (petals by hash)
-                        float lush = Mathf.Clamp01((g - r) * 6f + 0.5f);
-                        p.TuftGroup[count] = (byte)(kind == Flowers ? (int)((h >> 20) % (ulong)Petals.Length) : (r > g ? 5 : Mathf.Clamp((int)(lush * 4.99f), 0, 4)));
+                        if (kind == Grass && group == 0)
+                        {
+                            // grass from dry and yellow to lush, by how green the ground is and how dry the climate
+                            float lush = Mathf.Clamp01((g - r) * 6f + 0.5f - dry * 0.6f + 0.35f * (float)Noise.Perlin(dq.x * 1900.0, dq.y * 1900.0, dq.z * 1900.0));
+                            group = r > g ? 5 : Mathf.Clamp((int)(lush * 4.99f), 0, 4);
+                        }
+                        p.TuftGroup[count] = (byte)group;
                         count++;
                     }
                 }
@@ -459,17 +555,20 @@ namespace TC2.Game
             for (int k = 0; k < _cover.Length; k++) _cover[k].Clear();
             Vector3 cam = Rig.Cam.transform.position;
             float alt = cam.magnitude - (float)Host.World.Planet.Radius;
-            if (alt > 600f) return;
+            if (alt > 600f || CoverOff) return;
             for (int q = 0; q < _shownLast.Count; q++)
             {
                 var p = _shownLast[q];
                 if (p.TuftCount == 0) continue;
-                if ((p.Tufts[0].GetColumn(3) - (Vector4)cam).sqrMagnitude > 260f * 260f) continue;
+                float d2 = (p.Tufts[0].GetColumn(3) - (Vector4)cam).sqrMagnitude;
+                if (d2 > 480f * 480f) continue;
+                bool onlyBig = d2 > 260f * 260f;   // (further off, only what stands out: shrubs and boulders - the woods' edges)
                 for (int t = 0; t < p.TuftCount; t++)
                 {
                     int kind = p.TuftKind[t], gi = p.TuftGroup[t];
-                    Color tint = kind == Flowers ? Petals[gi] : (kind == Boulder ? new Color(1, 1, 1, 1) : GrassTints[gi]);
-                    _cover[kind].Add(gi, tint, p.Tufts[t]);
+                    if (onlyBig && kind != Shrub && kind != Boulder) continue;
+                    var tints = CoverTints[kind];
+                    _cover[kind].Add(gi, tints[gi < tints.Length ? gi : 0], p.Tufts[t]);
                 }
             }
             var c = Rig.Cam;
@@ -480,18 +579,20 @@ namespace TC2.Game
         /// The woods' trees on a finest patch (D2-079): every crown of the canopy's layout that falls on the patch, in the projection
         /// the shader uses on this face, stands as a tree where its number is below the threshold of the forest share there (the
         /// patch's own vertices, interpolated: the shader's value) - a conifer or a broadleaf as the canopy decides, as wide as its
-        /// crown and as tall as its number says.
+        /// crown and as tall as its number says. Broadleaves come in kinds by their number (D2-081): round, tall and narrow, broad
+        /// and spreading, and birches where the woods are mixed with conifers; where a fire went through in the last decades the
+        /// trees are young and short.
         /// </summary>
-        void PlaceForest(Patch p)
+        void PlaceForest(TC2.Core.Simulation.World w, Patch p)
         {
             p.TreeCount = 0;
-            var pos = p.Pos; var wood = p.Wood;
-            if (pos == null || wood == null) return;
+            var pos = p.Pos; var wood = p.Wood; var land = p.Land;
+            if (pos == null || wood == null || land == null) return;
             int V = N + 1;
             bool any = false;
             for (int o = 0; o < V * V && !any; o++) any = wood[o].x > 0.004f;
             if (!any) return;
-            if (p.Trees == null) { p.Trees = new Matrix4x4[MaxTrees]; p.TreeKind = new byte[MaxTrees]; p.TreeGroup = new byte[MaxTrees]; }
+            if (p.Trees == null) { p.Trees = new Matrix4x4[MaxTrees]; p.TreeKind = new byte[MaxTrees]; p.TreeGroup = new ushort[MaxTrees]; }
             Vector3 cd = p.Dirs[(N / 2) * V + N / 2];
             float axx = Mathf.Abs(cd.x), axy = Mathf.Abs(cd.y), axz = Mathf.Abs(cd.z);
             int ax = axx >= axy && axx >= axz ? 0 : (axy >= axz ? 1 : 2);
@@ -524,11 +625,25 @@ namespace TC2.Game
                             Vector3 at = Vector3.Lerp(Vector3.Lerp(pos[a], pos[b], s), Vector3.Lerp(pos[c], pos[d], s), t);
                             float r = Canopy.Radius[k] * Canopy.Spacing * (con ? 1f / 1.32f : 1f);
                             float h = r * Canopy.Top(num) * (con ? 1.05f : 1.1f);
+                            // young trees where a fire burnt the woods in the last few decades: they grow back from short to full height
+                            int cell = p.Cells[a];
+                            long burnt = w.Fire.BurnedAt[cell];
+                            if (burnt != 0) h *= Mathf.Clamp(0.35f + (float)((w.Now - burnt) / (double)SimTime.Year) / 40f, 0.35f, 1f);
+                            byte kind = con ? KConifer : KRound;
+                            if (!con)
+                            {
+                                float v = num * 3.71f - Mathf.Floor(num * 3.71f);
+                                if (wd.y > 0.12f && v < 0.40f) kind = KBirch;          // (mixed woods of the cool lands)
+                                else if (v < 0.28f) kind = KTall;
+                                else if (v < 0.52f) kind = KWide;
+                            }
                             p.Trees[p.TreeCount] = Matrix4x4.TRS(at, PlanetGeo.Upright(at, num * 2617f), new Vector3(r, h, r));
-                            p.TreeKind[p.TreeCount] = (byte)(con ? 1 : 0);
+                            p.TreeKind[p.TreeCount] = kind;
                             int shade = (int)((num * 5.31f - Mathf.Floor(num * 5.31f)) * 4f) & 3;   // (the shader's hue)
                             int leaf = Mathf.Clamp((int)(wd.z * 8f), 0, 7), snowB = Mathf.Clamp((int)(wd.w * 4f), 0, 3);
-                            p.TreeGroup[p.TreeCount] = (byte)(shade | (leaf << 2) | (snowB << 5));
+                            float dry = Mathf.Lerp(Mathf.Lerp(land[a].x, land[b].x, s), Mathf.Lerp(land[c].x, land[d].x, s), t);
+                            int dryB = Mathf.Clamp(Mathf.RoundToInt(dry * 3f), 0, 3);
+                            p.TreeGroup[p.TreeCount] = (ushort)(shade | (leaf << 2) | (snowB << 5) | (dryB << 7));
                             p.TreeCount++;
                         }
                 }
@@ -559,9 +674,11 @@ namespace TC2.Game
                     for (int t = 0; t < p.TreeCount; t++)
                     {
                         int g = p.TreeGroup[t];
-                        if (p.TreeKind[t] == 1) _forest[close ? ConNear : ConFar].Add(g, ConiferTints[g], p.Trees[t]);
+                        byte kind = p.TreeKind[t];
+                        if (kind == KConifer) _forest[close ? ConNear : ConFar].Add(g, ConiferTints[g], p.Trees[t]);
                         else if (((g >> 2) & 7) >= 7) _forest[BareBroad].Add(g, BareTints[g], p.Trees[t]);
-                        else _forest[close ? BroadNear : BroadFar].Add(g, LeafTints[g], p.Trees[t]);
+                        else if (!close) _forest[BroadFar].Add(g, LeafTints[g], p.Trees[t]);
+                        else _forest[kind == KTall ? TallNear : kind == KWide ? WideNear : kind == KBirch ? BirchNear : BroadNear].Add(g, LeafTints[g], p.Trees[t]);
                     }
                     ForestDrawn += p.TreeCount;
                 }
@@ -591,7 +708,8 @@ namespace TC2.Game
                 p.Mesh.SetUVs(0, p.Plots);
                 p.Mesh.SetUVs(1, p.Farm);
                 p.Mesh.SetUVs(2, p.Wood);
-                if (p.Level >= MaxLevel) PlaceForest(p);   // (the woods change with the forest and the seasons)
+                p.Mesh.SetUVs(3, p.Land);
+                if (p.Level >= MaxLevel && p.Pos != null && p.Nrm != null) { PlaceForest(w, p); PlaceCover(w, p, p.Pos, p.Nrm); }   // (the woods and the cover change with the forest and the seasons)
                 p.ColourCycle = _cycle;
             }
         }
@@ -670,8 +788,8 @@ namespace TC2.Game
         }
         readonly System.Collections.Generic.List<int> _near = new System.Collections.Generic.List<int>();
 
-        /// <summary>Packed earth on the square, yards round the houses, footpaths from each door to the square.</summary>
-        static Color VillageGround(TC2.Core.Simulation.World w, in TC2.Core.Places.Settlement s, int sid, double x, double y, Color col)
+        /// <summary>Packed earth on the square, yards round the houses, footpaths from each door to the square (and how much is bare earth).</summary>
+        static Color VillageGround(TC2.Core.Simulation.World w, in TC2.Core.Places.Settlement s, int sid, double x, double y, Color col, out float bare)
         {
             double dsq = System.Math.Sqrt((x - s.SquareX) * (x - s.SquareX) + (y - s.SquareY) * (y - s.SquareY));
             float green = Mathf.Clamp01(1f - (float)(dsq - 40.0) / 45f);
@@ -693,13 +811,14 @@ namespace TC2.Game
                 double dp = System.Math.Sqrt(px * px + py * py);
                 earth = Mathf.Max(earth, (1f - Edge(1.0f, 2.6f, (float)dp)) * 0.85f);
             }
+            bare = earth;
             return Color.Lerp(col, Earth, earth);
         }
 
         static readonly Color Rock = new Color(0.47f, 0.44f, 0.40f), RockDark = new Color(0.33f, 0.31f, 0.30f);
 
         static readonly Color VolcanoRock = new Color(0.25f, 0.22f, 0.21f), VolcanoAsh = new Color(0.46f, 0.41f, 0.36f), VolcanoCrater = new Color(0.17f, 0.14f, 0.13f);
-        static readonly Color Sand = new Color(0.87f, 0.80f, 0.60f), WetSand = new Color(0.66f, 0.60f, 0.46f);
+        // (beach sand and wet sand: the terrain shader's, drawn per pixel since D2-081)
         static readonly Color Snow = new Color(0.95f, 0.96f, 0.98f), Glacier = new Color(0.86f, 0.92f, 0.97f);
         static readonly Color Shelf = new Color(0.82f, 0.78f, 0.60f), Abyss = new Color(0.05f, 0.11f, 0.17f);
 
@@ -735,6 +854,7 @@ namespace TC2.Game
                 float rel = p.Rel[o], slope = p.Slope[o];
                 Color col;
                 p.Wood[o] = Vector4.zero;
+                p.Land[o] = Vector4.zero;
                 if (rel < 0)
                 {
                     // the sea floor as seen through the water: sand in the shallows, dark below
@@ -747,11 +867,13 @@ namespace TC2.Game
                     col = new Color(0, 0, 0, 1);
                     float farm = 0; int owner = 0; float ow = 0;
                     float forest = 0, clear = 0;   // (the woods' share here, and how much of it is cleared ground)
+                    float moist = 0, grass = 0;    // (the climate's moisture, the grass)
                     for (int q = 0; q < n; q++)
                     {
                         int cq = _wc[q]; var cc = _cellColour[cq]; float ww = _ww[q];
                         col.r += cc.r * ww; col.g += cc.g * ww; col.b += cc.b * ww;
                         forest += P.Forest[cq] * ww;
+                        moist += P.Moist[cq] * ww; grass += P.Grass[cq] * ww;
                         if (w.Fire.Intensity[cq] > 0) clear += ww * Mathf.Clamp01(w.Fire.Intensity[cq] * 2f);
                         int fo = P.FieldOwner[cq];
                         if (fo != 0) { farm += ww; if (ww > ow) { ow = ww; owner = fo; } }
@@ -769,17 +891,20 @@ namespace TC2.Game
                         Color crop = CropColour(st);
                         col = Color.Lerp(col, crop, Mathf.SmoothStep(0f, 1f, farm));
                     }
+                    float bare = 0f;   // (packed earth: the square, yards, paths and roads)
                     for (int q = 0; q < _near.Count; q++)
                     {
                         ref var st = ref w.Settlements.Get(_near[q]);
                         double dot = st.Anchor.X * d.X + st.Anchor.Y * d.Y + st.Anchor.Z * d.Z;
                         if (dot < System.Math.Cos(130.0 / P.Radius)) continue;
                         st.SphereToLocal(d, P.Radius, out double vx, out double vy);
-                        col = VillageGround(w, st, _near[q], vx, vy, col);
+                        col = VillageGround(w, st, _near[q], vx, vy, col, out float earth);
+                        bare = Mathf.Max(bare, earth);
                         clear = Mathf.Max(clear, 1f - Edge(95f, 150f, (float)System.Math.Sqrt(vx * vx + vy * vy)));   // (no wood in the village)
                         VillageVerts++;
                     }
                     float road = RoadAt(P, d, c, quad) * roadLod;
+                    bare = Mathf.Max(bare, road);
                     if (road > 0) col = Color.Lerp(col, Road, road * 0.85f);
                     // natural variation: meadow patches warmer or cooler, small brightness noise
                     float hue = (float)Noise.Fbm(d.X * 9.0, d.Y * 9.0, d.Z * 9.0, 2);
@@ -787,8 +912,9 @@ namespace TC2.Game
                     col = new Color(col.r * (1f + 0.10f * hue) + 0.015f * fine, col.g * (1f + 0.04f * hue) + 0.02f * fine, col.b * (1f - 0.08f * hue) + 0.01f * fine);
                     // beaches where the land meets the sea
                     float beachW = (float)(1.0 + 0.9 * Noise.Fbm(d.X * 24.0, d.Y * 24.0, d.Z * 24.0, 2)) * (1f - Edge(0.05f, 0.25f, slope));
-                    float beach = 1f - Edge(0.6f, 0.6f + 4.2f * Mathf.Max(0.15f, beachW), rel);
-                    if (beach > 0 && P.Ice[c] < 1f) col = Color.Lerp(col, Color.Lerp(Sand, WetSand, 1f - Edge(0.3f, 1.6f, rel)), beach * 0.92f); // wet sand fades up the beach
+                    float beachWidth = Mathf.Max(0.15f, beachW), beach = BeachAt(rel, beachWidth);
+                    // (the sand itself is drawn per pixel by the shader from the ground's own height over the sea, D2-081: a vertex colour
+                    // follows the triangles of coarse patches, a staircase along every coast)
                     // rock on steep ground
                     float rock = Edge(0.10f, 0.30f, slope);
                     if (rock > 0) col = Color.Lerp(col, Color.Lerp(Rock, RockDark, Mathf.Clamp01(slope * 1.6f - 0.3f)), rock);
@@ -813,6 +939,10 @@ namespace TC2.Game
                                  * (1f - Mathf.Clamp01(vrock * 1.15f)) * (P.Ice[c] > 2f ? 0f : 1f);
                     // glades and thickets over a hundred metres or so (the trees and the canopy read the same value)
                     wood *= Mathf.Clamp01(0.35f + 1.3f * (0.5f + 0.5f * (float)Noise.Fbm(d.X * 60.0, d.Y * 60.0, d.Z * 60.0, 2)));
+                    // and clumps of trees with gaps between, some twenty to forty metres across, where the woods are open; a closed wood
+                    // stays closed (D2-081: the canopy's own tile repeats, so the woods' pattern lives here, where nothing repeats)
+                    float clump = (float)Noise.Fbm(d.X * 230.0 + 5.1, d.Y * 230.0 - 2.7, d.Z * 230.0 + 1.3, 2);
+                    wood = Mathf.Clamp01(wood * (1f + 1.5f * clump * Mathf.Clamp01((1.05f - wood) * 1.4f)));
                     if (wood > 0.005f)
                     {
                         float tm = P.TMean[c];
@@ -822,6 +952,9 @@ namespace TC2.Game
                         leaves *= 1f - Edge(17f, 22f, tm);   // (no autumn in the tropics)
                         p.Wood[o] = new Vector4(wood, con, leaves, snow);
                     }
+                    // the land's own (D2-081): how dry its climate is (leaves olive, grass straw), and its meadow (grass where no wood)
+                    p.Land[o] = new Vector4(Mathf.Clamp01((0.45f - moist) / 0.30f), Mathf.Clamp01(grass) * (1f - Mathf.Clamp01(wood * 1.6f)) * (1f - snow),
+                                            Mathf.Max(bare, rock), P.Ice[c] < 1f ? beachWidth : 0f);
                 }
                 var lin = col.linear;
                 lin.a = rel < 0 || p.Farm[o].x <= 0 ? 0f : Mathf.Clamp01(FarmWeight(P, d, c) * CoreMask(p.Plots[o]));
@@ -831,6 +964,10 @@ namespace TC2.Game
 
         /// <summary>GLSL smoothstep(edge0, edge1, x) - not Unity's Mathf.SmoothStep, which interpolates between its first two arguments.</summary>
         static float Edge(float e0, float e1, float x) { float t = Mathf.Clamp01((x - e0) / (e1 - e0)); return t * t * (3f - 2f * t); }
+
+        /// <summary>How much of a point is beach (D2-081): sand from the water's edge to 0.6 + 4.2 x its width metres over the sea - the
+        /// terrain shader's own rule, which draws it per pixel.</summary>
+        static float BeachAt(float rel, float width) => width <= 0f ? 0f : 1f - Edge(0.6f, 0.6f + 4.2f * width, rel);
 
         static float CoreMask(Vector2 local) => Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(85f, 135f, local.magnitude));
 

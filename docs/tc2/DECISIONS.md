@@ -1850,3 +1850,37 @@ pastures in woodland with copses and hedgerow trees; the forest views a wood's e
 over leaf litter. **Not yet measured in the browser**: the Web build and its test were stopped when the machine ran out of memory
 (other sessions shared it); the frame cost of the trees and the canopy is the next check.
 
+
+## D2-081 — 2026-10-06 — The woods as masses, the land's cover by what it is, the villages' signs (D2-079, slice 2)
+
+**Context.** D2-080 drew the woods as a canopy of crowns near the camera and as a flat tint beyond: from the region view the crowns
+aliased into a faint speckle (1-4 m a pixel) and then vanished into one green, so woods and meadows could not be told apart; the
+ground near the camera was one flat colour; every tree was the same round crown; the beach was baked into vertex colours.
+**Decision.** (1) **The far woods are the near canopy averaged** (`Canopy.MakeCover`): a texture keeps, at four crown thresholds,
+whether a standing crown covers each texel; its mips are the share of ground covered, so where a crown is under a few pixels
+(1.3-3 m a pixel) the woods are drawn as their crowns' mean colour over the ground they cover, the floor between them shaded by
+the crowns sunward, the clumps lit by a bump from their cover. (2) **Nothing in the repeating tile may make a pattern**: crown
+numbers that were ranks of a smooth noise (clumped crowns) showed the 156 m tile as a grid from orbit (`woods1`), so the numbers
+are plain chance again and the woods' pattern lives in the forest share, which never repeats - glades of ~170 m (D2-080) and now
+clumps of 20-45 m where the woods are open (a closed wood stays closed; the share's mean is kept). Past 3.5-7 m a pixel the cover is
+read a second time turned 37 degrees and scaled 2.4x (clumps of crowns ~20 m, the same share covered, a period that never lines up
+with the tile), and past 10-20 m a pixel from its exact mean (`Canopy.CoverMean`). The share-to-threshold factor K is fitted on the
+layout (0.532). (3) **Stands**: the far woods take a grain of a few hundred metres (older and darker, younger and lighter) - the
+woods' texture from orbit. (4) **The climate's dryness** (the moisture index: desert < 0.16, savanna < 0.45) turns leaves olive, in
+the canopy and in the trees (two dryness bits in the trees' colour groups). (5) A fourth vertex stream carries the land's own state
+(dryness, meadow, bare earth or rock, the beach's width). (6) **The ground's cover by what the land is**, near the camera (to
+260 m; shrubs and boulders to 480 m): meadow grass patchy in density and tone, wildflowers in their season, a shrub here and there;
+the woods' floor with ferns and undergrowth in the gaps; shrubs thick at the woods' edges; heather on cool, wet, open land (purple
+in late summer); cushions, lichen and stones on the tundra; straw tufts and stones where the climate is dry; dune grass on the sand
+above the tide; reeds by fresh water; boulders on rocky slopes; re-placed as the seasons turn (`ProcMeshes` Shrub, Fern, Cushion,
+Stone: 20-60 triangles each). (7) **Kinds of trees** near the camera, by each crown's number: round, tall and narrow, broad and
+spreading, and birches where the woods are mixed with conifers; where a fire burnt the woods the trees are young and short,
+regrowing over ~40 years (`Fire.BurnedAt`). (8) **Beaches per pixel** from the ground's own height over the sea (a vertex colour
+followed the triangles of coarse patches as a staircase along every coast). (9) **The villages' signs**, each read from the
+simulation: smoke from huts and camps (cooking, the hearth against the cold) as from chimneys; woodpiles by the lived-in homes, as
+big as the days of the hearths' wood the village holds (`Woodstore / FuelDay`; none when it is nearly out); a fire by the store while
+someone keeps the watch there at night (D2-071); at night, seen from high above, a warm glow over each village as wide and bright as
+its homes whose people are awake. (10) Wild herds are drawn up to 3 km of altitude and up to 4x their size far off, so they read at
+the village view as groups of moving dots. (11) Tools: `unity.mjs shots --views view+D@H` lives D days and to local hour H before a
+view (seasons and nights in one round); `unity.mjs build-web --jobs N` caps IL2CPP's parallel jobs (a shared machine).
+**Evidence.** Editor shot rounds `tc2/out/shots/woods1` to `woods4` (see 13 §9). The Web frame cost is measured next (14).

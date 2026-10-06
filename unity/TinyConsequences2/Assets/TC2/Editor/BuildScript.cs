@@ -36,7 +36,14 @@ namespace TC2.EditorTools
                 target = BuildTarget.WebGL,
                 options = dev ? BuildOptions.Development : BuildOptions.None,
             };
-            var report = BuildPipeline.BuildPlayer(opts);
+            // -tc2Jobs N: IL2CPP converts and compiles with N jobs instead of one per thread (a shared machine: less memory and CPU at
+            // once, a slower build); the project's own setting is restored afterwards
+            string jobs = Arg("-tc2Jobs", null);
+            string il2cppArgs = PlayerSettings.GetAdditionalIl2CppArgs() ?? "";
+            if (jobs != null) PlayerSettings.SetAdditionalIl2CppArgs((il2cppArgs + " --jobs=" + jobs).Trim());
+            BuildReport report;
+            try { report = BuildPipeline.BuildPlayer(opts); }
+            finally { if (jobs != null) PlayerSettings.SetAdditionalIl2CppArgs(il2cppArgs); }
             var s = report.summary;
             Debug.Log("[TC2] web build " + s.result + " in " + s.totalTime + " size " + s.totalSize + " -> " + outDir);
             if (s.result != BuildResult.Succeeded) EditorApplication.Exit(1);

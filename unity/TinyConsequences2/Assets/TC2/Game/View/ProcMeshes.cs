@@ -92,11 +92,13 @@ namespace TC2.Game
             /// A lump of leaves (D2-079): an icosphere subdivided once (80 faces), smooth-shaded, its points a little in or out,
             /// squashed; white above and darker below (the draw colours it; the dark is the crown's own shade).
             /// </summary>
-            public void Blob(Vector3 c, float r, float squash, float jitter, int seed)
+            public void Blob(Vector3 c, float r, float squash, float jitter, int seed, bool low = false)
             {
                 var rnd = new System.Random(seed);
                 int b0 = V.Count;
-                for (int k = 0; k < IcoPoints.Length; k++)
+                int points = low ? 12 : IcoPoints.Length;   // (low: the icosahedron itself, 20 faces)
+                var faces = low ? IcoFaces0 : IcoFaces;
+                for (int k = 0; k < points; k++)
                 {
                     Vector3 d = IcoPoints[k];
                     float s = r * (1f + jitter * ((float)rnd.NextDouble() * 2f - 1f));
@@ -105,7 +107,13 @@ namespace TC2.Game
                     float ao = 0.52f + 0.48f * Mathf.Clamp01(d.y * 0.5f + 0.55f);
                     C.Add(new Color(ao, ao, ao, 1f));
                 }
-                for (int f = 0; f < IcoFaces.Length; f += 3) { T.Add(b0 + IcoFaces[f]); T.Add(b0 + IcoFaces[f + 1]); T.Add(b0 + IcoFaces[f + 2]); }
+                for (int f = 0; f < faces.Length; f += 3) { T.Add(b0 + faces[f]); T.Add(b0 + faces[f + 1]); T.Add(b0 + faces[f + 2]); }
+            }
+
+            /// <summary>A triangle facing up (the winding chosen so its normal points up): leaves seen from above.</summary>
+            public void TriUp(Vector3 a, Vector3 b, Vector3 c, Color col)
+            {
+                if (Vector3.Cross(b - a, c - a).y < 0f) Tri(a, c, b, col); else Tri(a, b, c, col);
             }
 
             public Mesh Build(string name)
@@ -119,9 +127,9 @@ namespace TC2.Game
 
         static Color Lin(float r, float g, float b) => new Color(r, g, b).linear;
 
-        // an icosahedron subdivided once, its faces wound to look outward
+        // an icosahedron subdivided once, its faces wound to look outward (its first twelve points and IcoFaces0: the icosahedron)
         static readonly Vector3[] IcoPoints;
-        static readonly int[] IcoFaces;
+        static readonly int[] IcoFaces, IcoFaces0;
 
         static ProcMeshes()
         {
@@ -151,6 +159,9 @@ namespace TC2.Game
                 if (Vector3.Dot(Vector3.Cross(pts[b] - pts[a], pts[c] - pts[a]), pts[a] + pts[b] + pts[c]) < 0) { int x = b; b = c; c = x; }
                 faces.Add(a); faces.Add(b); faces.Add(c);
             }
+            for (int k = 0; k < f0.Length; k += 3) Face(f0[k], f0[k + 1], f0[k + 2]);
+            IcoFaces0 = faces.ToArray();
+            faces.Clear();
             for (int k = 0; k < f0.Length; k += 3)
             {
                 int a = f0[k], b = f0[k + 1], c = f0[k + 2];
@@ -179,6 +190,43 @@ namespace TC2.Game
             }
             else b.Blob(new Vector3(0f, 1.85f, 0f), 0.98f, 0.80f, 0.10f, 14);
             return b.Build(lod == 0 ? "tc2-forest-broad" : "tc2-forest-broad-far");
+        }
+
+        /// <summary>
+        /// The woods' other broadleaves near the camera (D2-081), crowns of radius 1 like <see cref="ForestBroad"/>: 1 a tall, narrow
+        /// crown on a longer bole (beech, lime, poplar), 2 a broad, spreading crown low on a stout trunk (oak, chestnut), 3 a birch -
+        /// a slender pale trunk under a small loose crown. Leaves white (the draw colours them); bark keeps its own.
+        /// </summary>
+        public static Mesh ForestBroadKind(int kind)
+        {
+            var b = new Builder();
+            if (kind == 1)
+            {
+                Color bark = Lin(0.40f, 0.36f, 0.30f); bark.a = 0f;
+                b.Prism(0f, 1.6f, 0.075f, 6, bark);
+                b.Blob(new Vector3(0f, 2.05f, 0f), 0.66f, 1.05f, 0.14f, 51);
+                b.Blob(new Vector3(0.10f, 2.85f, -0.05f), 0.52f, 1.10f, 0.14f, 52);
+                b.Blob(new Vector3(-0.30f, 1.80f, 0.22f), 0.42f, 0.95f, 0.14f, 53);
+            }
+            else if (kind == 2)
+            {
+                Color bark = Lin(0.30f, 0.23f, 0.16f); bark.a = 0f;
+                b.Prism(0f, 0.95f, 0.11f, 6, bark);
+                b.Stick(new Vector3(0f, 0.85f, 0f), new Vector3(0.45f, 1.30f, 0.10f), 0.07f, 0.04f, 4, bark);
+                b.Stick(new Vector3(0f, 0.85f, 0f), new Vector3(-0.40f, 1.25f, -0.18f), 0.07f, 0.04f, 4, bark);
+                b.Blob(new Vector3(0f, 1.55f, 0f), 0.70f, 0.62f, 0.16f, 54);
+                b.Blob(new Vector3(0.58f, 1.40f, 0.12f), 0.52f, 0.66f, 0.16f, 55);
+                b.Blob(new Vector3(-0.52f, 1.38f, -0.20f), 0.54f, 0.66f, 0.16f, 56);
+                b.Blob(new Vector3(0.05f, 1.42f, -0.58f), 0.46f, 0.66f, 0.16f, 57);
+            }
+            else
+            {
+                Color birch = Lin(0.86f, 0.84f, 0.78f); birch.a = 0f;
+                b.Prism(0f, 2.2f, 0.055f, 5, birch);
+                b.Blob(new Vector3(0f, 2.55f, 0f), 0.50f, 1.25f, 0.20f, 58);
+                b.Blob(new Vector3(0.22f, 2.05f, 0.10f), 0.36f, 1.15f, 0.20f, 59);
+            }
+            return b.Build("tc2-forest-broad-" + kind);
         }
 
         /// <summary>A broadleaf in winter (D2-079): trunk, boughs and twigs, bare (it takes the draw's colour: bark, or snow on it).</summary>
@@ -215,6 +263,84 @@ namespace TC2.Game
             }
             else b.Cone(0.55f, 4.25f, 1.0f, 6, new Color(0.78f, 0.78f, 0.78f, 1f));
             return b.Build(lod == 0 ? "tc2-forest-conifer" : "tc2-forest-conifer-far");
+        }
+
+        /// <summary>A shrub (D2-081): three low lumps of leaves, ~1 m tall and ~1 m round at scale 1 (60 triangles); takes the draw's colour.</summary>
+        public static Mesh Shrub()
+        {
+            var b = new Builder();
+            b.Blob(new Vector3(0f, 0.48f, 0f), 0.60f, 0.78f, 0.20f, 21, true);
+            b.Blob(new Vector3(0.46f, 0.32f, 0.20f), 0.44f, 0.78f, 0.20f, 22, true);
+            b.Blob(new Vector3(-0.40f, 0.34f, -0.22f), 0.47f, 0.78f, 0.20f, 23, true);
+            return b.Build("tc2-shrub");
+        }
+
+        /// <summary>A fern (D2-081): seven fronds arching out from the crown, ~0.5 m tall and ~1 m round at scale 1; takes the draw's colour.</summary>
+        public static Mesh Fern()
+        {
+            var b = new Builder();
+            for (int k = 0; k < 7; k++)
+            {
+                float a = k * 0.8976f + 0.25f * (k % 2);
+                var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                var side = new Vector3(-dir.z, 0f, dir.x) * 0.13f;
+                float reach = 0.85f + 0.15f * ((k * 5) % 3) / 2f;
+                Vector3 root = Vector3.up * 0.04f, mid = dir * (0.45f * reach) + Vector3.up * 0.44f, tip = dir * reach + Vector3.up * 0.16f;
+                Color c = new Color(0.86f + 0.02f * (k % 3), 0.86f + 0.02f * (k % 3), 0.86f, 1f);
+                b.TriUp(root, mid + side, mid, c * 0.85f); b.TriUp(root, mid, mid - side, c * 0.85f);
+                b.TriUp(mid, mid + side, tip, c); b.TriUp(mid, tip, mid - side, c);
+            }
+            return b.Build("tc2-fern");
+        }
+
+        /// <summary>A low cushion of heather, crowberry or moss campion (D2-081): two flattened lumps a third of a metre high; takes the draw's colour.</summary>
+        public static Mesh Cushion()
+        {
+            var b = new Builder();
+            b.Blob(new Vector3(0f, 0.14f, 0f), 0.62f, 0.42f, 0.25f, 31, true);
+            b.Blob(new Vector3(0.42f, 0.10f, 0.25f), 0.40f, 0.45f, 0.25f, 32, true);
+            return b.Build("tc2-cushion");
+        }
+
+        /// <summary>A stone (D2-081): a rough, half-sunk lump half a metre round at scale 1; takes the draw's colour.</summary>
+        public static Mesh Stone()
+        {
+            var b = new Builder();
+            b.Blob(new Vector3(0f, 0.08f, 0f), 0.5f, 0.55f, 0.32f, 41, true);
+            return b.Build("tc2-stone");
+        }
+
+        /// <summary>
+        /// A woodpile (D2-081): split logs stacked in three courses, 1.8 m long and ~1 m high, the cut ends pale; its draw scales it
+        /// to the wood the village holds.
+        /// </summary>
+        public static Mesh Woodpile()
+        {
+            var b = new Builder();
+            Color bark = Lin(0.36f, 0.27f, 0.19f), ends = Lin(0.74f, 0.62f, 0.44f);
+            bark.a = 0f; ends.a = 0f;
+            for (int row = 0; row < 3; row++)
+            {
+                int logs = 4 - row;
+                for (int k = 0; k < logs; k++)
+                {
+                    float x = (k - (logs - 1) * 0.5f) * 0.36f, y = 0.17f + row * 0.29f;
+                    float r = 0.16f + 0.015f * ((k + row) % 3);
+                    var a = new Vector3(x, y, -0.9f + 0.04f * ((k * 7 + row) % 3));
+                    var e = new Vector3(x, y, 0.9f - 0.04f * ((k * 5 + row) % 3));
+                    b.Stick(a, e, r, r, 6, bark);
+                    // the cut ends
+                    for (int s = 0; s < 6; s++)
+                    {
+                        float a0 = s * Mathf.PI / 3f, a1 = (s + 1) * Mathf.PI / 3f;
+                        var o0 = new Vector3(Mathf.Cos(a0) * r, Mathf.Sin(a0) * r, 0f);
+                        var o1 = new Vector3(Mathf.Cos(a1) * r, Mathf.Sin(a1) * r, 0f);
+                        b.Tri(a, a + o1, a + o0, ends);
+                        b.Tri(e, e + o0, e + o1, ends);
+                    }
+                }
+            }
+            return b.Build("tc2-woodpile");
         }
 
         /// <summary>A person 1.7 m tall: body and head (colour comes from the draw).</summary>

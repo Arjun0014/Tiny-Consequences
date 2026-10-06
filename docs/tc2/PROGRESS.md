@@ -4,6 +4,24 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 3 (6 Oct 2026, from 17:57 IST, in progress)** - Arjun's direction: the living world made visible first (D2-079), then
+  F8. **Operating constraint: keep the shared machine under ~50 % CPU and RAM** - it already sits at ~66-70 % RAM from other
+  people's work (Chrome, Oracle, another Claude session with a headless Chromium on SwiftShader at up to ~76 % of all threads), so:
+  one heavy TC2 job at a time, launched only when `scratchpad/quiet.ps1` finds the machine quiet (CPU < 40 %, >= 3 GB available),
+  at below-normal priority (`scratchpad/lowrun.cmd`: children inherit it); the batch editor's shot round takes ~2 GB and paged the
+  machine once (available 0.45 GB) - never start it with less than ~3 GB available. Compaction hooks re-verified on Claude Code
+  2.1.291 (PreCompact exit 0 stdout joins the compaction instructions; SessionStart `compact` stdout reaches Claude).
+  - **The woods as masses, the land's cover, the villages' signs (D2-081, slice 2 of D2-079)** - seen in six editor shot rounds
+    (`tc2/out/shots/woods1`-`woods6`): the far woods are the near canopy averaged (a cover texture whose mips are the share covered),
+    with clumps lit and floors shaded, a second turned and scaled lookup past 3.5-7 m a pixel and the exact mean past 10-20 m, stands
+    of a few hundred metres - region and orbit read as forest (and savanna, where the share thins) without speckle or tiling (the first
+    try, clumps baked into the 156 m tile, showed a grid from orbit: now nothing in the tile may pattern; clumps live in the share);
+    leaves olive by the climate's dryness; ground cover by the land (meadow grass patchy in density and tone, flowers in their season,
+    shrubs, ferns under the woods, heather, tundra cushions and stones, dune grass, reeds, boulders); round, tall, spreading and birch
+    trees near the camera, young trees where fire passed; beaches and the sea floor per pixel (the coast's staircase gone); smoke from
+    huts and camps, woodpiles by the days of wood, a watch fire, villages glowing at night from orbit; herds at the village view.
+    Tools: `shots --views view+D@H`, `build-web --jobs N`, the bridge's `off cover`. The Web frame rate is measured next.
+
 - **Session 2 (5 Oct 2026, in progress)** - compaction-recovery hooks (`.claude/settings.json`, `.claude/hooks/tc2_compact.mjs`;
   Claude Code 2.1.289: PreCompact stdout joins the compaction instructions, SessionStart matcher `compact` stdout reaches Claude;
   validated with `claude doctor`). **F1/F2 10,000-year reruns on the current build (D2-041) done - F1 NOT closed**:

@@ -108,3 +108,36 @@ scattered trees read as a toy. Open: clouds, tilt-shift, close-in grass, night l
 - **Homes** (D2-059): the view draws a village's buildings, not its households - lived in (windows lit while their people are
   awake, smoke while one cooks or the hearth burns), standing empty (weathering toward the colours of the land), roofless
   past mending, fallen and sinking (the ruin model), gone; camps only for households without a home that are not on the road.
+
+## 9. The living world seen: woods, cover, villages' signs (session 2-3, D2-079 to D2-081)
+
+- **One layout of crowns** (`Game/View/Canopy.cs`): 24 x 24 jittered crowns on a 156 m tile, each with a radius (0.52-0.94 of the
+  spacing; a few old broad ones) and a number of plain chance. A crown stands where its number is below -ln(1 - share) x K (K fitted
+  on the layout so the standing crowns cover the share); it is a conifer where a hash of its number is below the conifers' share.
+  The terrain shader and the trees near the camera read the same layout, so a tree stands where the canopy shows its crown.
+- **Three distances of woods** in `Terrain.shader`: near (the crowns: lit domes and pointed conifers with shadows sunward, mixed
+  greens, autumn's gold and rust where there is an autumn, bare boughs, snow on conifers, leaf litter between); within 440 m of the
+  camera every standing crown is a tree mesh (`TerrainLod.PlaceForest`: round, tall, spreading and birch broadleaves, conifers in tiers
+  or one cone; bare in winter; young and short where a fire burnt in the last ~40 years), the canopy fading to them from 400 to 300 m;
+  far (crowns under a few pixels) the **cover texture** (`Canopy.MakeCover`: whether a standing crown covers each texel at four
+  thresholds; its mips the share covered) - the near canopy averaged, with clumps lit by a bump and floors shaded sunward; past
+  3.5-7 m a pixel the cover read turned and scaled up (clumps of ~20 m that never line up with the tile), past 10-20 m a pixel its mean;
+  **stands** of a few hundred metres shade the far woods (their texture from orbit).
+- **Rule: nothing in a repeating tile may make a pattern.** The woods' clumps (20-45 m, open woods only), glades (~170 m) and stands
+  live in the forest share and the stand noise, which never repeat; the tile holds only chance (`woods1`: clumped numbers in the tile
+  read as a grid from orbit).
+- **The land's own vertex stream** (`TerrainLod` uv3): the climate's dryness (leaves olive, grass straw), the meadow, bare earth or
+  rock, the beach's width. **Beaches are drawn per pixel** from the ground's height over the sea (vertex colours made a staircase along
+  coasts on coarse patches).
+- **Ground cover by what the land is** (`TerrainLod.PlaceCover`, finest patches, to 260 m; shrubs and boulders to 480 m): meadow grass
+  patchy in density and tone, wildflowers in their season, shrubs here and there; ferns and undergrowth under the woods; shrubs at
+  their edges; heather on cool wet open land (purple in late summer); cushions, lichen and stones on tundra; straw and stones where dry;
+  dune grass above the tide; reeds by fresh water; boulders on slopes. Kit-free meshes `ProcMeshes.Shrub/Fern/Cushion/Stone`.
+- **The villages' signs** (`WorldObjectsView`): smoke from chimneys, huts and camps while someone cooks or the hearth burns against the
+  cold; woodpiles by lived-in homes sized by the days of wood the village holds; a watch fire by the store at night while the watch is
+  kept; from high above at night a warm glow over each village by its lit homes (puffs; drawn above 1.5 km).
+- **Animals**: wild herds drawn to 3 km of altitude, up to 4x far off; livestock in pens and on the pasture (§7).
+- Shots: `unity.mjs shots --tag T --views orbit,region,village,close,low,forest,forestlow,forestfar,coast,low+14,orbit@21` (`+D` days
+  ahead, `@H` local hour: seasons and nights in one round). Art notes: forests read from afar by value (darker than meadow) and by grain
+  (clumps and gaps); a meadow reads by patchiness in density and tone, not by more of the same tuft; shrubs read best darker than the
+  grass; lights at night tell "inhabited" from orbit more than anything by day.

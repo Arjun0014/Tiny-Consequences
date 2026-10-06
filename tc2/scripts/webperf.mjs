@@ -15,7 +15,7 @@ const opt = (f, d) => { const i = a.indexOf(f); return i >= 0 ? a[i + 1] : d; };
 const webgl2 = flag('--webgl2');
 const view = opt('--view', 'village');
 const tag = opt('--tag', 'perf');
-const layers = opt('--layers', 'tilt,shadows,terrain,clouds,sky,air,sea,planet,rivers,worldobjectsview,trees,people,buildings,wildlifeview,livestockview,sealifeview,puffrenderer,rainview,volcanoview').split(',');
+const layers = opt('--layers', 'tilt,shadows,terrain,cover,clouds,sky,air,sea,planet,rivers,worldobjectsview,trees,people,buildings,wildlifeview,livestockview,sealifeview,puffrenderer,rainview,volcanoview').split(',');
 const alt = { orbit: 22000, region: 6000, village: 1500, close: 450, low: 160 }[view];
 const outDir = path.join(root, 'tc2', 'out', 'webperf', tag);
 fs.mkdirSync(outDir, { recursive: true });
