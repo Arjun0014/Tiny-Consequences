@@ -161,19 +161,20 @@ namespace TC2.Core.Places
         }
 
         /// <summary>
-        /// DEEP (F8): the gathering ground as the step's middle day would find it - the village's herds having rooted half the step's
-        /// mast out of the woods they share (days lived choose their work each day as the woods empty; a step chooses once, so it
-        /// chooses on its middle day's woods, not its first: hunting was chosen a third less often).
+        /// DEEP (F8): the gathering ground as the step's middle day would find it - the village's herds having rooted the woods they
+        /// share day by day until then, `keep` the share of the mast left (Livestock.MidStepMast). Days lived choose their work each day
+        /// as the woods empty; a step chooses once, so it chooses on its middle day's woods, not its first (hunting was chosen a third
+        /// less often).
         /// </summary>
-        public void MidStep(int sid, double rootPerDay, double inReach, int days)
+        public void MidStep(int sid, double keep)
         {
-            if (days <= 1 || rootPerDay <= 0 || inReach <= 0) return;
+            if (keep >= 1.0) return;
             ref var s = ref _w.Settlements.Get(sid);
             if (s.Gath.A < 0) return;
             var P = _w.Planet;
             double A = 0; int k = GroundCells(s.Gath.A, true);
             for (int i = 0; i < k; i++) A += MastLeft(P, _ground[i]);
-            A *= DMath.Max(0.0, 1.0 - rootPerDay * (days - 1) * 0.5 / inReach);
+            A *= DMath.Max(0.0, keep);
             s.Gath.Expect = (float)(GatherRate * A / (A + GatherHalf) * FuPerKgMast);
         }
 

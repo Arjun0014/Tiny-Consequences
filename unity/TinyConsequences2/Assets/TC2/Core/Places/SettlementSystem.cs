@@ -60,7 +60,7 @@ namespace TC2.Core.Places
             prof?.Begin(10001); Food(ref s, doy, days); prof?.End(10001);
             if (days > 1) Ahead(sid, g0, days);   // (the step's own work reads its store as days lived hold it too: F8)
             prof?.Begin(10002); prof?.Begin(10007); w.Wild.Survey(sid); prof?.End(10007); prof?.Begin(10008); w.HerdSys.Update(sid); prof?.End(10008); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
-            if (days > 1) { w.Stock.Rooting(sid, out double root, out double reach); w.Wild.MidStep(sid, root, reach, days); }   // (DEEP: the woods as the step's middle day finds them)
+            if (days > 1) w.Wild.MidStep(sid, w.Stock.MidStepMast(sid, days));   // (DEEP: the woods as the step's middle day finds them)
             if (doy == Migration.DecideDay) { prof?.Begin(10003); w.Migration.Weigh(sid); prof?.End(10003); }   // who leaves (D2-045)
             if (w.Resolution == Resolution.Coarse) { prof?.Begin(10004); w.Agents.CoarseDay(sid, days); prof?.End(10004); }
             // DEEP: the step's later days grow the crop after its work, as days lived grow each day on the work done before it (grown
@@ -157,6 +157,10 @@ namespace TC2.Core.Places
         /// <summary>Tools: the harvests - yield, hectares, how many, and the sums of the crop's growth, the share sown and the share brought
         /// in; null in the game.</summary>
         public static double[] Harvests;
+
+        /// <summary>Tools: demography - person-days, natural deaths, -, infant-days, infant deaths, conception exposure weighted by fertility
+        /// and health, conceptions, marriage exposure weighted by age, marriages, conception woman-days; null in the game.</summary>
+        public static double[] Demo;
         static bool Unrest(int why) { if (Unrests != null) Unrests[why]++; return false; }
 
         /// <summary>The days of a step from <paramref name="now"/> (a village's midnight) before the one on which time t has come (0 when it has).</summary>
@@ -625,6 +629,7 @@ namespace TC2.Core.Places
                 double share = need > 0 ? p.Ate / need : 1.0;
                 p.Ate = 0f;
                 if (now - p.Born < SimTime.Day * days) share = 1.0;   // born today (or this step): at the breast from the first hour
+                if (Demo != null) { Demo[0] += days; if (age < 1) Demo[3] += days; }
                 if (days > 1) { DeepBody(ref p, sid, share, age, annual, u, day, days); continue; }
                 if (age < 2 && p.Mother != 0 && w.People.Exists(p.Mother))
                 {
@@ -669,7 +674,7 @@ namespace TC2.Core.Places
                     // the part of the day's risk the cold added (health under what the body's reserve allows) is the cold's
                     double warm = annual / SimTime.DaysPerYear * (1.0 + 3.0 * (1.0 - fed));
                     if (chill > 0 && u >= warm) { w.Agents.Kill(ref p, w.Settlements.Get(sid).ColdEvent, 9); w.Metrics.ColdDeaths++; }
-                    else w.Agents.Kill(ref p, 0, 1);
+                    else { w.Agents.Kill(ref p, 0, 1); if (Demo != null) { Demo[1]++; if (age < 1) Demo[4]++; } }
                     continue;
                 }
             }
@@ -689,6 +694,7 @@ namespace TC2.Core.Places
                 }
                 if (age > 36) continue;
                 double peak = age < 21 ? 0.6 : (age < 27 ? 1.0 : (age < 31 ? 0.6 : 0.3));
+                if (Demo != null) Demo[7] += open * peak;
                 if (KeyedRng.Unit(seed, RngStream.Marriage, (ulong)pid, (ulong)day) >= Over(cfg.MarriageRatePerDay * peak, open)) continue;   // (DEEP: over the step)
                 _men.Clear();
                 AddSuitors(in woman, sid, now);
@@ -706,6 +712,7 @@ namespace TC2.Core.Places
                 if (_men.Count == 0) continue;
                 int pick = _men[KeyedRng.Below(KeyedRng.Hash(seed, RngStream.Marriage, (ulong)pid, (ulong)day, 1), _men.Count)];
                 Marry(w.People.Get(pick).Home, pid, pick);
+                if (Demo != null) Demo[8]++;
             }
             // conceptions
             for (int i = 0; i < _scratch.Count; i++)
@@ -740,8 +747,10 @@ namespace TC2.Core.Places
                     long onDay = days == 1 ? 0 : from + (long)(KeyedRng.Unit(seed, RngStream.Birth, (ulong)pid, (ulong)day, 7) * (days - from));
                     p.PregDue = now + (36 + onDay) * SimTime.Day;
                     p.PregFather = p.Partner;
+                    if (Demo != null) { Demo[5] += (onDay - from + 1) * fert * health; Demo[9] += onDay - from + 1; Demo[6]++; }
                     w.Queue.Push(p.PregDue, Phase.Agent, EventKind.Birth, pid, 0, p.PregDue);
                 }
+                else if (Demo != null) { Demo[5] += (days - from) * fert * health; Demo[9] += days - from; }
             }
         }
 
@@ -805,7 +814,7 @@ namespace TC2.Core.Places
             if (u < 1.0 - keep)
             {
                 if (chill > 0 && u >= 1.0 - keepWarm) { w.Agents.Kill(ref p, w.Settlements.Get(sid).ColdEvent, 9); w.Metrics.ColdDeaths++; }
-                else w.Agents.Kill(ref p, 0, 1);
+                else { w.Agents.Kill(ref p, 0, 1); if (Demo != null) { Demo[1]++; if (age < 1) Demo[4]++; } }
             }
         }
 

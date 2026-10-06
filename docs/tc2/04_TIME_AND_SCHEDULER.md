@@ -130,8 +130,9 @@ What a step must keep of its days (learned in F8's calibration, D2-083) - a step
    on the woods as its middle day finds them, the village's pigs having rooted half the step's mast.
 3. **A cap or threshold meant for a day stays a day's.** A trip takes at most a share s of a ground: a step's trips at most
    1 - (1 - s)^K; the least wild trip is a quarter-hour a day; grazing takes each cell's day share for each day (capped at one day's
-   offer, a twelve-day step grazed less than two and the pastures stayed lush); herds are kept to the pasture as the step leaves it,
-   as days lived cull at the grass's leanest; a smith stops when the village has its metal.
+   offer, a twelve-day step grazed less than two and the pastures stayed lush); pigs root day by day, a sixth at most of what is left
+   each day (at the first day's find a step took up to twice the woods); herds are kept to the pasture as the step leaves it, as days
+   lived cull at the grass's leanest; a smith stops when the village has its metal.
 4. **What the step moves at its start is seen as days lived would hold it.** Meals, larders, the catch and the meat move in or out
    of the store at the step's start; the store read by trade, relief, amends, the hungry choosing a store, the step's own urge to the
    wild and whether its store is empty is the granary plus the step's lead, spent evenly through it (`Settlement.StoreSeen`; seen at

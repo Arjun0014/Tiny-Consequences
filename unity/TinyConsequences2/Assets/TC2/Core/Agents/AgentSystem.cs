@@ -1482,7 +1482,7 @@ namespace TC2.Core.Agents
                         // free slots too; the household's meals and water are charged first since D2-056, when it was 0.6 -
                         // measured, CoarseAndActivityLiveOffTheWildAlike)
                         double hw = u > 0.005 ? DMath.Min(free, WildNeedDay * days) * DMath.Clamp01((u + 0.01) / 0.1) * (shortNow ? 1.0 : 0.9) : 0.0;
-                        if (Hours != null) { Hours[8] += hw; Hours[9] += days; Hours[10] += u * days; if (hw < 0.25 * days) Hours[11] += hw; Hours[12] += free; Hours[13 + wk] += days; int cyc = (int)(SimTime.FloorDiv(now, SimTime.Day) % 12); Hours[16 + cyc] += days; if (wk == WildFood.Hunting) Hours[28 + cyc] += days; }
+                        if (Hours != null) { Hours[8] += hw; Hours[9] += days; Hours[10] += u * days; if (hw < 0.25 * days) Hours[11] += hw; Hours[12] += free; Hours[13 + wk] += days; int cyc = (int)(SimTime.FloorDiv(now, SimTime.Day) % 12); Hours[16 + cyc] += days; if (wk == WildFood.Hunting) Hours[28 + cyc] += days; Hours[40] += DMath.Max(0.0, 1.0 - ration) * days; if (s.StoreSeen(now) < 1.0) Hours[41] += days; if (shortNow) Hours[42] += days; }
                         if (hw >= 0.25 * days)   // (DEEP: a quarter-hour a day, as a day's least trip - not a quarter-hour a step)
                         {
                             var rs = NextRandom(ref p);

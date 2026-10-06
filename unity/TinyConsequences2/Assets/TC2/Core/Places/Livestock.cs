@@ -291,12 +291,22 @@ namespace TC2.Core.Places
                     P.Grass[c] = (float)DMath.Max(Ecology.GrassFloor * 0.5, P.Grass[c] - take);
                 }
             }
-            if (eatenM > 0 && mast > 0)
+            // (DEEP: the pigs root day by day - each day what they find of what is left, a sixth at most, the woods emptying as they go
+            // and their fill with them; a step's days at the first day's find took up to twice the woods, left them bare, and the herders
+            // culled the pigs to their core each step: F8 calibration)
+            double rootedM = eatenM;
+            if (days > 1 && wantM > 0)
+            {
+                double m = mast, sum = 0, fill = 0;
+                for (int d = 0; d < days; d++) { double f = DMath.Min(1.0, m * MastFind / wantM); sum += wantM * f; fill += f; m -= wantM * f; }
+                rootedM = sum; fedM = fill / days;
+            }
+            if (rootedM > 0 && mast > 0)
                 for (int i = 0; i < _cells.Count; i++)
                 {
                     int c = _cells[i];
                     double left = WildFood.MastLeft(P, c);
-                    if (left > 0) P.Gathered[c] = (float)(P.Gathered[c] + DMath.Min(left, eatenM * days * left / mast));
+                    if (left > 0) P.Gathered[c] = (float)(P.Gathered[c] + (days == 1 ? DMath.Min(left, eatenM * days * left / mast) : DMath.Min(left, rootedM * left / mast)));
                 }
             // wolves round the pasture take the weak and the young now and then
             double wolves = 0;
@@ -350,9 +360,21 @@ namespace TC2.Core.Places
         }
 
         /// <summary>
-        /// DEEP (F8): what the village's herds root out of the woods in a day (kg of mast), and the mast left within their reach -
-        /// the same reckoning as the day's rooting (read before the step's work, to see the woods as its middle day finds them).
+        /// DEEP (F8): the share of the mast within the village's herds' reach still left on the step's middle day, its pigs having
+        /// rooted day by day until then - the same reckoning as the step's rooting (read before the step's work, to see the woods as
+        /// its middle day finds them). 1 when nothing roots.
         /// </summary>
+        public double MidStepMast(int sid, int days)
+        {
+            Rooting(sid, out double wantM, out double mast);
+            if (wantM <= 0 || mast <= 0) return 1.0;
+            double half = (days - 1) * 0.5, m = mast;
+            for (int d = 0; d < (int)half; d++) m -= wantM * DMath.Min(1.0, m * MastFind / wantM);
+            m -= (half - (int)half) * wantM * DMath.Min(1.0, m * MastFind / wantM);
+            return DMath.Clamp01(m / mast);
+        }
+
+        /// <summary>DEEP (F8): what the village's herds would root out of the woods in a day at the full (kg of mast), and the mast left within their reach.</summary>
         public void Rooting(int sid, out double perDay, out double inReach)
         {
             perDay = 0; inReach = 0;
@@ -374,7 +396,7 @@ namespace TC2.Core.Places
             w.Hazards.CellsWithin(w, s.Cell, PastureReach, _cells);
             Offer(out double offer, out double mast);
             if (wantG > StockShare * offer || wantM > StockShare * mast * MastFind) { w.Hazards.CellsWithin(w, s.Cell, FarReach, _cells); Offer(out offer, out mast); }
-            perDay = wantM * DMath.Min(1.0, mast * MastFind / wantM);
+            perDay = wantM;
             inReach = mast;
         }
 

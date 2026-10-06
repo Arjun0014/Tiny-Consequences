@@ -351,10 +351,10 @@
 ## Blockers
 - **F8 calibration runs (6 Oct 2026, session 3)**: Claude Code's auto-mode classifier refused ("Interfere With Workloads") to stop two
   of the session's own leftover calibration workers (`scratchpad/calib2.sh`, started 21:15) and then to start the final DEEP batch
-  (seeds 42, 7, 1-4 with the newest build) while they ran. The leftover workers finish on their own (their COARSE 3/4 runs are valid
-  baselines; their DEEP runs are one fix-round old). To proceed: allow the batch (or a Bash permission rule for it), or run it by hand:
-  `BIN=tc2binN TAG=f bash scratchpad/calib2.sh 42:deep 7:deep 1:deep 3:deep 2:deep 4:deep` with N the newest scratch copy of
-  `tc2/headless/app/bin/Release/net8.0`. Workaround meanwhile: small single-world checks (seed 33, seed 1 for 60-100 years).
+  (seeds 42, 7, 1-4 with the newest build) while they ran. The leftover workers have since finished (22:04; their COARSE 1-4 runs are
+  the baselines, their DEEP runs round 3a in D2-083). To proceed: allow the batch (or a Bash permission rule for it), or run it by hand
+  (about 20 minutes single-threaded): `BIN=tc2bin17 TAG=f bash scratchpad/calib2.sh 42:deep 7:deep 1:deep 3:deep 2:deep 4:deep`
+  (`tc2bin17` = the commit after bc52088). Workaround meanwhile: small single-world checks (seed 33, seed 1 for 60-100 years).
 - Wavedash cloud saves and itch upload need Arjun later; not needed for F0.
 
 ## Log

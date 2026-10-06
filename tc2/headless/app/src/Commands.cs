@@ -83,7 +83,7 @@ namespace TC2.Headless
         public static int Run(Args a)
         {
             var sw = Stopwatch.StartNew();
-            if (a.Has("places")) { TC2.Core.Places.Livestock.Diag = new double[4 * 4096]; TC2.Core.Places.Livestock.DiagEnds = new long[4 * TC2.Core.Places.Livestock.Causes]; TC2.Core.Places.SettlementSystem.Unrests = new long[7]; TC2.Core.Agents.AgentSystem.Hours = new double[40]; TC2.Core.Places.SettlementSystem.Harvests = new double[6]; TC2.Core.Places.Migration.Weighs = new double[8]; }
+            if (a.Has("places")) { TC2.Core.Places.Livestock.Diag = new double[4 * 4096]; TC2.Core.Places.Livestock.DiagEnds = new long[4 * TC2.Core.Places.Livestock.Causes]; TC2.Core.Places.SettlementSystem.Unrests = new long[7]; TC2.Core.Agents.AgentSystem.Hours = new double[44]; TC2.Core.Places.SettlementSystem.Harvests = new double[6]; TC2.Core.Places.Migration.Weighs = new double[8]; TC2.Core.Places.SettlementSystem.Demo = new double[10]; }
             World w;
             if (a.Has("load"))
             {
@@ -228,6 +228,11 @@ namespace TC2.Headless
                 if (hv != null && hv[2] > 0)
                     Console.WriteLine("harvests " + F(hv[2], "0") + ": " + F(hv[0] / Math.Max(1e-9, hv[1]), "0.0") + " FU a hectare, crop grown " + F(hv[3] / hv[2], "0.000") +
                                       ", sown " + F(hv[4] / hv[2], "0.000") + ", brought in " + F(hv[5] / hv[2], "0.000") + "  (" + F(hv[0], "0") + " FU on " + F(hv[1], "0") + " ha)");
+                var dm = TC2.Core.Places.SettlementSystem.Demo;
+                if (dm != null && dm[0] > 0)
+                    Console.WriteLine("demography: deaths " + F(dm[1] / dm[0] * 1000 * SimTime.DaysPerYear, "0.00") + " a 1000 person-years, infants " + F(dm[3] > 0 ? dm[4] / dm[3] * 1000 * SimTime.DaysPerYear : 0, "0.0") +
+                                      " a 1000 infant-years; conceptions " + F(dm[5] > 0 ? dm[6] / dm[5] : 0, "0.00000") + " a weighted woman-day (" + F(dm[9] > 0 ? dm[6] / dm[9] : 0, "0.00000") + " a woman-day), marriages " +
+                                      F(dm[7] > 0 ? dm[8] / dm[7] : 0, "0.00000") + " a weighted woman-day  (" + F(dm[0], "0") + " person-days, " + F(dm[9], "0") + " woman-days open to conceive)");
                 var wg = TC2.Core.Places.Migration.Weighs;
                 if (wg != null && wg[0] > 0)
                     Console.WriteLine("weighing leaving: " + F(wg[0], "0") + " village-years, pressure " + F(wg[1] / wg[0], "0.000") + " (crowding " + F(wg[2] / wg[0], "0.000") +
@@ -245,6 +250,8 @@ namespace TC2.Headless
                                           " h, planned " + F(hb[8] / hb[9], "0.000") + " h a day, below the least trip " + F(hb[11] / hb[9], "0.000") + " h a day; chose hunting " + F(hb[13] / hb[9], "0.000") + ", fishing " + F(hb[14] / hb[9], "0.000") + ", gathering " + F(hb[15] / hb[9], "0.000"));
                     if (hb[9] > 0)
                     {
+                        Console.WriteLine("  rations short by " + F(hb[40] / hb[9], "0.0000") + " on average; the store seen empty on " + F(hb[41] / hb[9], "0.0000") +
+                                          " of those days, short (out for need) on " + F(hb[42] / hb[9], "0.0000"));
                         var sbc = new StringBuilder("  hunting chosen by day of the world's 12-day plant cycle:");
                         for (int i = 0; i < 12; i++) sbc.Append(" " + (hb[16 + i] > 0 ? F(hb[28 + i] / hb[16 + i], "0.000") : "-"));
                         Console.WriteLine(sbc.ToString());

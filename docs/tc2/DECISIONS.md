@@ -1936,8 +1936,10 @@ step; each is now kept as days lived keep it (04 §4.3b, "what a step must keep 
    `WildFood.MidStep`).
 3. *A day's cap stays a day's*: a trip takes at most a share s of a ground - over a step 1 - (1 - s)^K (`WildFood.Most`); the least
    wild trip is a quarter-hour a day; grazing takes each cell's daily share for each day (capped at one day's offer a twelve-day step
-   grazed less than two and cattle tripled); herds are kept to the pasture as the step leaves it (days lived cull at its leanest); a
-   smith stops when the village has its metal.
+   grazed less than two and cattle tripled); pigs root day by day, a sixth at most of what is left each day (a step's days at the
+   first day's find took up to twice the woods, left them bare, and the pigs were culled to their core each step: pigs x0.07 on six
+   seeds); herds are kept to the pasture as the step leaves it (days lived cull at its leanest); a smith stops when the village has
+   its metal.
 4. *What the step moves at its start is seen as days lived would hold it*: the store's lead (`Settlement.Ahead/AheadFrom/AheadTo`,
    `StoreSeen`; saved, hashed only when set, so other worlds hash as before), read by trade, relief, amends, the hungry choosing a
    store, the step's own urge to the wild and whether its store is empty (a step's larders and decay at once could empty a lean store
@@ -1952,9 +1954,14 @@ with them (`Person.Derive`, filled when made or loaded, never saved).
 Found and left for its own slice (it changes COARSE): COARSE never improves hunting skill nor counts hunting trips - the line has sat
 inside a comment in `CoarseDay` since D2-063.
 **Evidence (so far).** Round 2 (seeds 42, 7; `*_400d`): relief at par (0.98), herds closer, but hunger and famine up (+10..39 %), wild
-hours +33..50 %, conflict up on seed 42. Round 3a (`*_400e`, seeds 42, 7, 1; before the pulse, middle-woods, step-ration and tending
-rules): population at year 400 lower on all three (-7, -25, -24 %), relief -28 %, parties x2. Small-world checks after all rules: seed
-33 (60 years) DEEP wild work matches COARSE (0.141 against 0.147 h a working person-day, was 0.115; wild food 49.4k against 47.8k FU),
-harvests 120.4 against 120.0 FU a hectare; seed 1 (100 years) crop 0.871 against 0.884, but people +9 % at year 100 and still three
-times the households leaving - DEEP's early growth runs ahead on the small worlds. **Pending**: DEEP with the newest build on seeds
-42, 7, 1-4 against COARSE (COARSE 42/7 in `*_400d`, 1/2 in `*_400e`, 3/4 from the round-3a workers), then speed on a quiet machine.
+hours +33..50 %, conflict up on seed 42. Round 3a (`*_400e`, six seeds 42, 7, 1-4, built before the pulse, middle-woods, tending and
+pig-rooting rules): no bias in early growth (people at years 100 and 200 higher on three seeds, lower on three) and births and deaths
+per person at par (1.02, 1.03), but the population at year 400 lower on all six (about -15 %) with less food than days lived: pigs
+x0.07 (0/4), fish 1/5, herd births and slaughter -16 %, relief -24 % (1/5), and more households leaving (x1.6, 5/1). Small-world checks
+after all rules: seed 33 (60 years) DEEP wild work matches COARSE (0.141 against 0.147 h a working person-day, was 0.115; wild food 49.4k
+against 47.8k FU), harvests 120.4 against 120.0 FU a hectare; seed 1 (100 years): crop 0.871 against 0.884 (0.853 before the tending
+rule), pigs no longer lost (born 6,069 against 4,878), deaths 26.9 against 27.0 a 1000 person-years, conceptions 0.0216 against 0.0221
+a weighted woman-day - but its rations ran short far more often (shortfall 0.011 against 0.0007; out for need on 8.6 against 1.2 % of
+person-days) and households left three times as often: its people were 9 % more by year 100 (an early lead, not a rate: on the six
+seeds early growth goes both ways), and a threshold crossed by more mouths on the same fields. **Pending**: DEEP with the newest build on
+the six seeds against COARSE (COARSE 42/7 in `*_400d`, 1-4 in `*_400e`), then speed on a quiet machine.
