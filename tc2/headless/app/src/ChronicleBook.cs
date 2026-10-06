@@ -18,7 +18,8 @@ namespace TC2.Headless
         public static int ChronicleBook(Args a)
         {
             var w = WorldGenerator.Create(ConfigFrom(a));
-            if (a.Has("coarse")) w.RequestResolution(Resolution.Coarse, w.Now + 1);
+            if (a.Has("coarse") || a.Has("deep")) w.RequestResolution(Resolution.Coarse, w.Now + 1);
+            if (a.Has("deep")) w.RequestStepDays(a.Int("deep", 12), w.Now + 1);   // DEEP (F8)
             var watch = System.Diagnostics.Stopwatch.StartNew();
             w.AdvanceTo(w.Now + SimTime.Years(a.Double("years", 100)));
             Console.WriteLine("a world of seed " + w.Seed + " lived " + F(a.Double("years", 100), "0") + " years in " + F(watch.Elapsed.TotalSeconds, "0") + " s: " + w.LivingPeople() + " people in " + w.InhabitedSettlements() + " places; annals of " + w.Annals.Count + " years, " + w.History.Count + " events kept");

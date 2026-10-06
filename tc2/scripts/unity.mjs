@@ -23,7 +23,10 @@ function run(extra, { quit = true } = {}) {
   const a = ['-batchmode', '-projectPath', project, '-logFile', log, ...(quit ? ['-quit'] : []), ...extra];
   const t0 = Date.now();
   console.log('unity ' + a.join(' '));
-  const r = spawnSync(unity, a, { stdio: 'inherit' });
+  // --jobs N also caps the build backend's threads (Bee compiles the generated C++ one job per thread otherwise)
+  // (and emscripten's and binaryen's: wasm-opt otherwise takes every core at the end of a Web build)
+  const env = opt('--jobs') ? { ...process.env, BEE_BUILD_THREADS: String(opt('--jobs')), EMCC_CORES: String(opt('--jobs')), BINARYEN_CORES: String(opt('--jobs')) } : process.env;
+  const r = spawnSync(unity, a, { stdio: 'inherit', env });
   const secs = ((Date.now() - t0) / 1000).toFixed(0);
   let status = r.status ?? 1;
   // Unity can exit 0 when scripts fail to compile (the method never ran): treat compiler errors as failure

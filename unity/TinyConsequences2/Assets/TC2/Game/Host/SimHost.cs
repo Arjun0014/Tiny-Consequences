@@ -28,7 +28,7 @@ namespace TC2.Game
         public int SpeedIndex = 3;
         public bool MaxSpeed;
         public float WatchBudgetMs = 6f;
-        public float CatchUpBudgetMs = 40f;
+        public float CatchUpBudgetMs = 90f;   // (the catch-up screen needs ~10 frames a second: the rest of each is the world's, D2-082)
         public OfflineMode Offline = OfflineMode.Living;
         public ISaveStore Store;
         public string StatusLine = "";
@@ -142,7 +142,7 @@ namespace TC2.Game
 
         public void BeginCatchUp(long target, bool resumed = false)
         {
-            bool coarse = !resumed && OfflineProgress.PlanCatchUp(World, target);
+            bool coarse = !resumed && OfflineProgress.PlanCatchUp(World, target, Offline);   // (Ancient and Deep time: DEEP, F8)
             CatchUpCoarse = coarse || World.Resolution == TC2.Core.Simulation.Resolution.Coarse;
             CatchingUp = true;
             CatchUpFrom = World.Now;

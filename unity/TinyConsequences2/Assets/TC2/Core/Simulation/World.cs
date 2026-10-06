@@ -45,6 +45,7 @@ namespace TC2.Core.Simulation
         public long Tributes, TributesEnded;                              // tribute agreed; ended (D2-075)
         public double TributeFu;
         public double RaidLoot;
+        public long VillageSteps, VillageDays;                            // village days processed, and the days they covered (DEEP, F8: several a step)
 
         public void Write(BinWriter w)
         {
@@ -62,7 +63,7 @@ namespace TC2.Core.Simulation
             w.Long(Parties); w.Long(Foundings); w.Long(Scouts);
             w.Long(BeastBirths); w.Long(BeastDeaths); w.Long(BeastsTaken); w.Long(BeastsEaten); w.Long(BeastsFeral); w.Double(BeastFu); w.Long(TendDays);
             w.Double(PrepHours); w.Double(PrepFu); w.Double(WaterHours); w.Long(WaterTrips); w.Long(ColdDeaths); w.Long(ColdSpells);
-            w.Double(CraftHours); w.Double(GearMade); w.Long(HomesTaken); w.Long(DiedOut); w.Long(TechniquesFound); w.Long(TechniquesLost); w.Double(MetalKg); w.Long(Infections); w.Long(DiseaseDeaths); w.Long(Epidemics); w.Long(PathogensBorn); w.Long(Mutations); w.Long(TradeTrips); w.Double(TradeValue); w.Double(MetalTraded); w.Double(ReliefFu); w.Long(Takings); w.Long(TakingsSeen); w.Long(TakeWeighed); w.Double(TakenFu); w.Long(Blows); w.Long(WoundDeaths); w.Long(WatchNights); w.Long(Claims); w.Long(Amends); w.Long(Refusals); w.Long(TakenBack); w.Long(Bands); w.Long(Raids); w.Long(RaidsBeaten); w.Double(RaidLoot); w.Long(WallsPlanned); w.Long(Tributes); w.Long(TributesEnded); w.Double(TributeFu);
+            w.Double(CraftHours); w.Double(GearMade); w.Long(HomesTaken); w.Long(DiedOut); w.Long(TechniquesFound); w.Long(TechniquesLost); w.Double(MetalKg); w.Long(Infections); w.Long(DiseaseDeaths); w.Long(Epidemics); w.Long(PathogensBorn); w.Long(Mutations); w.Long(TradeTrips); w.Double(TradeValue); w.Double(MetalTraded); w.Double(ReliefFu); w.Long(Takings); w.Long(TakingsSeen); w.Long(TakeWeighed); w.Double(TakenFu); w.Long(Blows); w.Long(WoundDeaths); w.Long(WatchNights); w.Long(Claims); w.Long(Amends); w.Long(Refusals); w.Long(TakenBack); w.Long(Bands); w.Long(Raids); w.Long(RaidsBeaten); w.Double(RaidLoot); w.Long(WallsPlanned); w.Long(Tributes); w.Long(TributesEnded); w.Double(TributeFu); w.Long(VillageSteps); w.Long(VillageDays);
         }
 
         public void Read(BinReader r)
@@ -81,7 +82,7 @@ namespace TC2.Core.Simulation
             Parties = r.Long(); Foundings = r.Long(); Scouts = r.Long();
             BeastBirths = r.Long(); BeastDeaths = r.Long(); BeastsTaken = r.Long(); BeastsEaten = r.Long(); BeastsFeral = r.Long(); BeastFu = r.Double(); TendDays = r.Long();
             PrepHours = r.Double(); PrepFu = r.Double(); WaterHours = r.Double(); WaterTrips = r.Long(); ColdDeaths = r.Long(); ColdSpells = r.Long();
-            CraftHours = r.Double(); GearMade = r.Double(); HomesTaken = r.Long(); DiedOut = r.Long(); TechniquesFound = r.Long(); TechniquesLost = r.Long(); MetalKg = r.Double(); Infections = r.Long(); DiseaseDeaths = r.Long(); Epidemics = r.Long(); PathogensBorn = r.Long(); Mutations = r.Long(); TradeTrips = r.Long(); TradeValue = r.Double(); MetalTraded = r.Double(); ReliefFu = r.Double(); Takings = r.Long(); TakingsSeen = r.Long(); TakeWeighed = r.Long(); TakenFu = r.Double(); Blows = r.Long(); WoundDeaths = r.Long(); WatchNights = r.Long(); Claims = r.Long(); Amends = r.Long(); Refusals = r.Long(); TakenBack = r.Long(); Bands = r.Long(); Raids = r.Long(); RaidsBeaten = r.Long(); RaidLoot = r.Double(); WallsPlanned = r.Long(); Tributes = r.Long(); TributesEnded = r.Long(); TributeFu = r.Double();
+            CraftHours = r.Double(); GearMade = r.Double(); HomesTaken = r.Long(); DiedOut = r.Long(); TechniquesFound = r.Long(); TechniquesLost = r.Long(); MetalKg = r.Double(); Infections = r.Long(); DiseaseDeaths = r.Long(); Epidemics = r.Long(); PathogensBorn = r.Long(); Mutations = r.Long(); TradeTrips = r.Long(); TradeValue = r.Double(); MetalTraded = r.Double(); ReliefFu = r.Double(); Takings = r.Long(); TakingsSeen = r.Long(); TakeWeighed = r.Long(); TakenFu = r.Double(); Blows = r.Long(); WoundDeaths = r.Long(); WatchNights = r.Long(); Claims = r.Long(); Amends = r.Long(); Refusals = r.Long(); TakenBack = r.Long(); Bands = r.Long(); Raids = r.Long(); RaidsBeaten = r.Long(); RaidLoot = r.Double(); WallsPlanned = r.Long(); Tributes = r.Long(); TributesEnded = r.Long(); TributeFu = r.Double(); VillageSteps = r.Long(); VillageDays = r.Long();
         }
 
         public Metrics Clone() { var m = (Metrics)MemberwiseClone(); return m; }
@@ -97,7 +98,7 @@ namespace TC2.Core.Simulation
         public static Budget Events(long n) => new Budget { MaxEvents = n };
     }
 
-    public enum CommandKind : byte { None = 0, GodLightning = 1, Note = 2, SetResolution = 3, GodEruption = 4, GodQuake = 5, GodStorm = 6 }
+    public enum CommandKind : byte { None = 0, GodLightning = 1, Note = 2, SetResolution = 3, GodEruption = 4, GodQuake = 5, GodStorm = 6, SetStepDays = 7 }
 
     /// <summary>How people are simulated (04 §4): every activity, or households by the day (deep time).</summary>
     public enum Resolution : byte { Activity = 0, Coarse = 1 }
@@ -127,13 +128,18 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 30; // 30: the annals (D2-077), 29: tribute and lordship (D2-075), 28: palisades (D2-074), 27: raids (D2-073), 26: amends, news and taking back (D2-072), 25: the watch, blows and injury (D2-071), 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
+        public const int FormatSimVersion = 31; // 31: DEEP steps (F8), 30: the annals (D2-077), 29: tribute and lordship (D2-075), 28: palisades (D2-074), 27: raids (D2-073), 26: amends, news and taking back (D2-072), 25: the watch, blows and injury (D2-071), 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
         public long Now;
         public long Created;
         public Resolution Resolution;   // authoritative; changed only by a logged command
+        /// <summary>
+        /// DEEP (04 §4.3b, F8): in COARSE, the days a calm village lives at a step (1 or 0: every day). Changed only by a logged
+        /// command, at a midnight; Ancient and Deep time catch-ups set it.
+        /// </summary>
+        public int StepDays;
         public readonly IdAllocator Ids = new IdAllocator();
         public readonly EventQueue Queue = new EventQueue();
         public readonly FxRing Fx = new FxRing();   // for the view only: never read by the simulation, never saved
@@ -341,6 +347,9 @@ namespace TC2.Core.Simulation
             {
                 case CommandKind.SetResolution:
                     SetResolutionNow((Resolution)c.Arg);
+                    break;
+                case CommandKind.SetStepDays:
+                    StepDays = c.Arg > 0 ? (int)c.Arg : 0;   // (DEEP: the days a calm village lives at a step, F8)
                     break;
                 case CommandKind.GodLightning:
                     {
@@ -1021,6 +1030,9 @@ namespace TC2.Core.Simulation
 
         public void RequestResolution(Resolution r, long at) => Issue(new Command { Time = at, Kind = CommandKind.SetResolution, Arg = (long)r });
 
+        /// <summary>Queues DEEP's step (F8): from then on a calm village lives this many days at a step in COARSE (0 or 1: every day).</summary>
+        public void RequestStepDays(int days, long at) => Issue(new Command { Time = at, Kind = CommandKind.SetStepDays, Arg = days });
+
         void Strike(int cell, long cause, RootKind root, double strength)
         {
             Metrics.Lightning++;
@@ -1232,7 +1244,7 @@ namespace TC2.Core.Simulation
         public void WriteState(BinWriter w)
         {
             Config.Write(w);
-            w.Long(Now); w.Long(Created); w.Byte((byte)Resolution);
+            w.Long(Now); w.Long(Created); w.Byte((byte)Resolution); w.Int(StepDays);
             Ids.Write(w);
             Queue.Write(w);
             Planet.Write(w);
@@ -1258,7 +1270,7 @@ namespace TC2.Core.Simulation
         {
             var cfg = WorldConfig.Read(r);
             var w = new World(cfg);
-            w.Now = r.Long(); w.Created = r.Long(); w.Resolution = (Resolution)r.Byte();
+            w.Now = r.Long(); w.Created = r.Long(); w.Resolution = (Resolution)r.Byte(); w.StepDays = r.Int();
             w.Ids.Read(r);
             w.Queue.Read(r);
             var planet = PlanetState.Read(r);
@@ -1299,6 +1311,7 @@ namespace TC2.Core.Simulation
             var h = StateHasher.Create();
             Config.Hash(ref h);
             h.Add(Now); h.Add(Created); h.Add((byte)Resolution);
+            if (StepDays > 1) h.Add(StepDays);   // (a world never in DEEP hashes as it did before F8)
             Ids.Hash(ref h);
             Queue.Hash(ref h);
             Planet.Hash(ref h);

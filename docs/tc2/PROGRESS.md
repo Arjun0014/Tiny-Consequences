@@ -20,7 +20,22 @@
     shrubs, ferns under the woods, heather, tundra cushions and stones, dune grass, reeds, boulders); round, tall, spreading and birch
     trees near the camera, young trees where fire passed; beaches and the sea floor per pixel (the coast's staircase gone); smoke from
     huts and camps, woodpiles by the days of wood, a watch fire, villages glowing at night from orbit; herds at the village view.
-    Tools: `shots --views view+D@H`, `build-web --jobs N`, the bridge's `off cover`. The Web frame rate is measured next.
+    Tools: `shots --views view+D@H`, `build-web --jobs N`, the bridge's `off cover`.
+  - **The woods in the browser (D2-082)**: the D2-081 build dropped the close and low views to 40-49 fps - gathering the ground
+    cover's instances every frame; now gathered only when patches, content or the camera change (and every 15 frames), patches out of
+    view left out, cover sorted for long runs, trees and cover re-placed at most once a world day: settled close 65, low 69, forest 68
+    fps (`s3webb`, 6/6, probe unchanged). The catch-up holds the camera at orbit and takes 90 ms of each frame: a day away 48-49 s at any
+    camera (was 56-57 s from a village view, 54 s at s2webf). Web builds share the machine (`--jobs 3`: IL2CPP, Bee, emscripten,
+    binaryen capped).
+  - **F8 started - DEEP (04 §4.3b)**: in COARSE a calm village (fed, nobody sick or hurt, no band, no party leaving) lives up to K = 12
+    days at a step, never across a day of its calendar (sowing 0, growing 12, ripe 30, harvest 39, leaving 41); every part of the
+    village day takes the step (crop calendar walked day by day; larders for the step; decay (1 - r)^K; bodies K x (share - 1) with
+    health day by day; deaths, marriages, conceptions, raids, trips, visits, spillover, taking back at 1 - (1 - p)^K; labour, chores,
+    making and herding for the step; learning's closed form); one-day arithmetic unchanged (all 169 tests, and the Web probe, identical);
+    `World.StepDays` (a logged command `SetStepDays`, saved, hashed only when > 1; sim version 31); Ancient and Deep time catch-ups plan
+    DEEP (`OfflineProgress.PlanCatchUp(.., mode)`, ending 13 days before full activity); `headless run|bench|chronicle --deep K`;
+    `DeepTimeTests` (6). Saturated world: 1.8x COARSE (villages 2.3x; events still happen at their rate, and the planet now matters).
+    **Calibration over 400 years of seeds 42 and 7 (COARSE vs DEEP) is running** (`tc2/out/deep/`).
 
 - **Session 2 (5 Oct 2026, in progress)** - compaction-recovery hooks (`.claude/settings.json`, `.claude/hooks/tc2_compact.mjs`;
   Claude Code 2.1.289: PreCompact stdout joins the compaction instructions, SessionStart matcher `compact` stdout reaches Claude;
@@ -239,6 +254,19 @@
     (seals in daylight shots, coast shapes off the cell grid, boats, gardens, orbit detail, WebGL2 check).
   - Headless tools: `planet` (`--tect`, `--volc`, `--quake`, `--storms`, `--erosion`, `--eco`, `--ecodiag` deaths by
     cause, `--ecocsv FILE` series, `--steep`, `--map DIR`), `climate`, `run --profile`.
+
+## Measurements (session 3)
+
+| What | Host | Result |
+|---|---|---|
+| Editor shot round (batch editor Play Mode, 8-12 views) | editor | ~2-4 min; the editor takes ~2 GB (on this shared machine available memory fell to ~0.45 GB once: start it only with >= 3 GB available) |
+| Web build, IL2CPP `--jobs 3` + `BEE_BUILD_THREADS=3` (D2-081 build) | editor | 8 min (part of the C++ cached from an aborted run), 11.2 MB; CPU ~35-48 % while compiling, but the final wasm-opt took every core (89-100 %) - now capped with `BINARYEN_CORES`/`EMCC_CORES`; available memory ~0.5-0.7 GB at the link |
+| Web (WebGPU) after D2-081 (`tc2/out/webtest/s3weba`) | Chrome, RX 5600M, 1280x720 | 6/6, bit-identical (gen 9b6482ca9f9f606f); start 7.3 s; orbit 114, region 119, **village 96.5** (81 before), **close 39.5** (66), **low 49** (74), forest 72, forestlow 50, close running 39, after a century 49 fps; a day away 49 s |
+| Web close/low by layer (`webperf`, D2-081 build; noisy) | Chrome | close: all ~44, without cover 66, without shadows 100, without terrain (+trees +cover) 123; low: all ~38, without cover 68, without shadows 75, without terrain 94 - gathering the cover's instances every frame was the cost (now cached: D2-082) |
+| Web catch-up of a day away (`webcatchup`, D2-081 build) | Chrome | camera at 1,400 m: 57.3 / 56.0 s; at 22 km: 46.6 / 49.3 s (with ~7 s of page load); ~17-19 fps during |
+| Web (WebGPU) after D2-082 (`tc2/out/webtest/s3webb`) | Chrome | 6/6, bit-identical (probe unchanged); settled (`webperf` after 30 s): close 65, low 69, forest 68 fps; quick readings orbit 108, region 104, village 75, close 56, low 62; a day away 48.2 s (camera held at 22 km) / 48.9 s (held at 1.4 km) |
+| Saturated world, 40 x 300 founders, 5 years (`bench --name poc`) | dotnet | COARSE 0.85 world years/s (1.76 us a person-day; 1.26 at D2-061 before F4-F7); **DEEP (K = 12) 1.54** (0.99 us) |
+| Same world profiled, 5 years (`run --profile`) | dotnet | COARSE: 10,235 village days at 448 us; DEEP: 1,863 village steps at 1,055 us (7.9 a village-year; the calendar forces 6) - villages 2.3x cheaper; the planet ~157 ms a world year (vegetation + ecology 67, weather 52) is now a quarter of DEEP |
 
 ## Measurements (session 2)
 

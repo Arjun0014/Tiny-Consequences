@@ -184,7 +184,15 @@ namespace TC2.Core.Persistence
         /// from the next midnight and in ACTIVITY again for the last two days. The switches are logged commands, so
         /// the plan is part of the world's history (a resumed catch-up keeps the plan it has). Returns true if COARSE.
         /// </summary>
-        public static bool PlanCatchUp(World w, long target, double coarsePersonYears = CoarsePersonYears)
+        public static bool PlanCatchUp(World w, long target, double coarsePersonYears = CoarsePersonYears) =>
+            PlanCatchUp(w, target, OfflineMode.Living, coarsePersonYears);
+
+        /// <summary>
+        /// As above, by the offline mode: Ancient and Deep time live their COARSE span in DEEP (F8) - calm villages
+        /// <see cref="DeepStepDays"/> days at a step - and back to day by day <see cref="DeepTail"/> before the world returns to full
+        /// activity, so every village's step has ended by then.
+        /// </summary>
+        public static bool PlanCatchUp(World w, long target, OfflineMode mode, double coarsePersonYears = CoarsePersonYears)
         {
             if (w.Resolution != Resolution.Activity) return false;
             double personYears = (target - w.Now) / (double)SimTime.Year * w.LivingPeople();
@@ -193,8 +201,19 @@ namespace TC2.Core.Persistence
             long back = target - ActivityTail;
             if (back <= start + SimTime.Day) return false;
             w.RequestResolution(Resolution.Coarse, start);
+            if ((mode == OfflineMode.Ancient || mode == OfflineMode.DeepTime) && back - DeepTail > start + SimTime.Day)
+            {
+                w.RequestStepDays(DeepStepDays, start);
+                w.RequestStepDays(1, back - DeepTail);
+            }
             w.RequestResolution(Resolution.Activity, back);
             return true;
         }
+
+        /// <summary>The days a calm village lives at a step in DEEP (F8).</summary>
+        public const int DeepStepDays = 12;
+
+        /// <summary>How long before the return to full activity DEEP ends (longer than any step).</summary>
+        public const long DeepTail = (DeepStepDays + 1) * SimTime.Day;
     }
 }

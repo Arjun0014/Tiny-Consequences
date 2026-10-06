@@ -1884,3 +1884,28 @@ its homes whose people are awake. (10) Wild herds are drawn up to 3 km of altitu
 the village view as groups of moving dots. (11) Tools: `unity.mjs shots --views view+D@H` lives D days and to local hour H before a
 view (seasons and nights in one round); `unity.mjs build-web --jobs N` caps IL2CPP's parallel jobs (a shared machine).
 **Evidence.** Editor shot rounds `tc2/out/shots/woods1` to `woods4` (see 13 §9). The Web frame cost is measured next (14).
+
+## D2-082 — 2026-10-06 — The woods in the browser: near views gathered once, the catch-up seen from orbit, builds that share the machine
+
+**Context.** The Web build of D2-081 (`tc2/out/webtest/s3weba`, WebGPU, RX 5600M, 1280x720) was 6/6 and bit-identical with headless
+(gen 9b6482ca9f9f606f), the village view faster than before (96.5 fps, 81 at s2webf), but the close view fell to 39.5 fps (66) and
+the low view to 49 (74). Layer by layer (`webperf`, noisy): close all ~44, without the ground cover 66, without shadows 100; low all
+~38, without the cover 68, without shadows 75. A day away caught up in 56-57 s with the camera at 1.4 km and 46.6-49.3 s with it at
+22 km (`webcatchup`). And a Web build took every core twice: Bee compiled the C++ one job a thread, and binaryen's wasm-opt took
+every core at the end, with available memory down to ~0.4 GB on a machine other people's work shares.
+**Decision.** (1) The ground cover's and the woods' instances are gathered into the instancers only when the patches shown or what
+stands on them change, when the camera moves more than 12 m or turns more than ~3 degrees, or every 15 frames; between, the
+gathered lists are drawn again (gathering them every frame - walking every tuft of every near patch - was the near views' cost).
+Cover patches out of the view are left out; a patch's cover is kept sorted by kind and colour so a gathering adds long runs of one
+group; trees and cover are placed again at most once a world day per patch (seasons, growth and fire move no faster); tools can
+switch the shrubs' and boulders' shadows (`off covershadow`). (2) While the world catches up an absence the camera rises to the
+planet (`CameraRig.CatchUpAltitude`, 22 km) - 12 §5's "slowly updating planet" - and returns to the view the player left; the
+catch-up's slice of each frame is 90 ms (was 40): the catch-up screen needs ~10 frames a second. (3) `unity.mjs build-web --jobs N`
+caps IL2CPP (`--jobs`), Bee (`BEE_BUILD_THREADS`), emscripten (`EMCC_CORES`) and binaryen (`BINARYEN_CORES`); builds on this machine
+use 3.
+**Evidence.** The rebuilt Web build (`tc2/out/webtest/s3webb`): 6/6, bit-identical with headless and the earlier builds (gen 9b6482ca9f9f606f,
+d1-d3 unchanged); settled frame rates (`webperf`, after 30 s: shaders compiled, patches built) close 65, low 69, forest 68 fps (the test's
+readings 4.5 s after framing are lower: close 55.8, low 61.7, forest 55); shadows are now the largest single cost (close 81, low 82,
+forest 91 without them). A day away: 48.2 s with the camera at 22 km and 48.9 s held at 1.4 km (was 56-57 s there; 54 s at s2webf) -
+at orbit the time is the simulation's own (this young world's 96 years are lived at ACTIVITY). The build with `--jobs 3`: 14.8 min,
+CPU at most ~47 %; available memory still touched ~0.34 GB at the link while other work held the machine.

@@ -622,7 +622,7 @@ namespace TC2.Core.Society
 
         // ------------------------------------------------------------------ news at COARSE resolution (D2-072)
         /// <summary>The day's visits between a village and its neighbours (as many as a lived day makes) carry the news.</summary>
-        void News(int sid)
+        void News(int sid, int days = 1)
         {
             var w = _w;
             long now = w.Now;
@@ -635,7 +635,7 @@ namespace TC2.Core.Society
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
                 if (o != sid && w.Settlements.Get(o).Inhabited && Vec3d.ArcDistance(s.Anchor, w.Settlements.Get(o).Anchor, w.Planet.Radius) <= 6000) near++;
             if (near == 0) return;
-            double expect = adults * TC2.Core.Health.Disease.VisitsPerAdultDay / near;
+            double expect = adults * TC2.Core.Health.Disease.VisitsPerAdultDay * days / near;   // (DEEP: the step's visits)
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
             {
                 if (o == sid || !w.Settlements.Get(o).Inhabited) continue;
@@ -660,7 +660,7 @@ namespace TC2.Core.Society
         /// without the day's chance. Returns the band, or 0.</summary>
         public int RaiseBandNow(int sid) { long n0 = _w.Metrics.Bands; Raids(sid, true); return _w.Metrics.Bands > n0 ? _w.Ids.Peek(EntityKind.Band) - 1 : 0; }
 
-        void Raids(int sid, bool force = false)
+        void Raids(int sid, bool force = false, int days = 1)
         {
             var w = _w;
             long now = w.Now;
@@ -683,7 +683,7 @@ namespace TC2.Core.Society
             if (target == 0 || urge <= 0) return;
             // (a village whose takers and bands that target beat back thinks twice: D2-073)
             urge *= 1.0 - DMath.Clamp01(w.DeedBook.Answers(sid, target) / AnswersFull);
-            if (!force && KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)sid, (ulong)now, 50) >= RaidPerDay * urge) return;
+            if (!force && KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)sid, (ulong)now, 50) >= Places.SettlementSystem.Over(RaidPerDay * urge, days)) return;
             ref var t = ref w.Settlements.Get(target);
             if (!t.Inhabited || Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, sid, target) == null) return;
             int leader = Boldest(sid, now, target);
@@ -947,14 +947,14 @@ namespace TC2.Core.Society
         /// (built as a village work by its people's hours and wood); a walled village keeps mending while what it guards is worth it.
         /// Never a count of raids: losses remembered against labour and wood.
         /// </summary>
-        void Defence(int sid)
+        void Defence(int sid, int days = 1)
         {
             var w = _w;
             long now = w.Now;
             ref var s = ref w.Settlements.Get(sid);
             if (s.Wall == 2)
             {
-                s.WallCond = (float)DMath.Max(0.0, (double)s.WallCond - 1.0 / (WallYears * 48.0));
+                s.WallCond = (float)DMath.Max(0.0, (double)s.WallCond - (double)days / (WallYears * 48.0));   // (DEEP: the step's days of rot)
                 if (s.WallCond <= 0f)
                 {
                     s.Wall = 3; s.WallKeep = 0; s.Works = (byte)(s.Works & ~Construction.Palisade);
@@ -1138,19 +1138,19 @@ namespace TC2.Core.Society
         }
 
         /// <summary>A village's night of taking at COARSE resolution: each hungry, fit grown person's lived chance, the act at once.</summary>
-        public void Day(int sid)
+        public void Day(int sid, int days = 1)
         {
             var w = _w;
             Wounds(sid);
-            Defence(sid);
+            Defence(sid, days);
             Watch(sid);
             ReadFoe(sid);
             Claims(sid);
             Submit(sid);
             Disband(sid);
-            Raids(sid);
+            Raids(sid, false, days);
             if (w.Resolution != Resolution.Coarse) return;
-            News(sid);
+            News(sid, days);
             long now = w.Now;
             var res = w.Residents(sid);
             for (int i = 0; i < res.Count; i++)
@@ -1174,7 +1174,7 @@ namespace TC2.Core.Society
                     ref var p = ref w.People.Get(pid);
                     if (p.At != p.Home || !CanTakeBack(in p, now)) continue;
                     ref var home = ref w.Settlements.Get(sid);
-                    if (KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)pid, (ulong)now, 21) >= TakeBackChance(in p, in home)) continue;
+                    if (KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)pid, (ulong)now, 21) >= Places.SettlementSystem.Over(TakeBackChance(in p, in home), days)) continue;
                     int to = TakeBackTarget(in p, in home, out double free);
                     if (to == 0 || KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)pid, (ulong)now, 22) >= free) continue;
                     Take(ref p, to);

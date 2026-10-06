@@ -97,7 +97,8 @@ namespace TC2.Headless
             Console.WriteLine("world seed " + w.Seed + "  cells " + w.Planet.Cells + "  settlements " + w.InhabitedSettlements() + "  people " + w.LivingPeople() + "  (generated in " + genMs + " ms)");
             long span = SpanFrom(a, 2);
             long end = w.Now + span;
-            if (a.Has("coarse")) w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
+            if (a.Has("coarse") || a.Has("deep")) w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
+            if (a.Has("deep")) w.RequestStepDays(a.Int("deep", 12), SimTime.StartOfDay(w.Now) + SimTime.Day);   // DEEP (F8): calm villages live K days at a step
             long report = a.Has("report-days") ? SimTime.Days(a.Double("report-days", 1)) : (span > 3 * SimTime.Year ? SimTime.Year : (span > 20 * SimTime.Day ? 4 * SimTime.Day : SimTime.Day));
             long histCursor = 0;
             bool verbose = a.Has("v");

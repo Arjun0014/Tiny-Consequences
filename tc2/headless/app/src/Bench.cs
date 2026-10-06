@@ -58,7 +58,8 @@ namespace TC2.Headless
                 var sw = Stopwatch.StartNew();
                 var w = WorldGenerator.Create(cfg);
                 double gen = sw.Elapsed.TotalMilliseconds;
-                if (a.Has("coarse")) w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
+                if (a.Has("coarse") || a.Has("deep")) w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
+                if (a.Has("deep")) w.RequestStepDays(a.Int("deep", 12), SimTime.StartOfDay(w.Now) + SimTime.Day);   // DEEP (F8): calm villages live K days at a step
                 long span = SimTime.Years(a.Double("years", 1));
                 sw.Restart();
                 long ev0 = w.Metrics.Events;

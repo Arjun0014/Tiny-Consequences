@@ -243,7 +243,7 @@ namespace TC2.Core.Places
         }
 
         /// <summary>A village's herds live a day (both resolutions; SettlementSystem.Daily).</summary>
-        public void Day(int sid)
+        public void Day(int sid, int days = 1)
         {
             var w = _w; var P = w.Planet;
             ref var s = ref w.Settlements.Get(sid);
@@ -280,7 +280,7 @@ namespace TC2.Core.Places
             double eatenG = wantG * fedG, eatenM = wantM * fedM;
             if (eatenG > 0 && offer > 0)
             {
-                double share = eatenG / offer;
+                double share = days == 1 ? eatenG / offer : DMath.Min(1.0, eatenG * days / offer);   // (DEEP: the step's grazing)
                 for (int i = 0; i < _cells.Count; i++)
                 {
                     int c = _cells[i];
@@ -294,7 +294,7 @@ namespace TC2.Core.Places
                 {
                     int c = _cells[i];
                     double left = WildFood.MastLeft(P, c);
-                    if (left > 0) P.Gathered[c] = (float)(P.Gathered[c] + eatenM * left / mast);
+                    if (left > 0) P.Gathered[c] = (float)(P.Gathered[c] + eatenM * days * left / mast);
                 }
             // wolves round the pasture take the weak and the young now and then
             double wolves = 0;
@@ -316,24 +316,25 @@ namespace TC2.Core.Places
                 double age = b.AgeYears(now);
                 // condition follows how well it ate (a goat's browse is never short)
                 double ate = k.GrassShare * fedG + k.MastShare * fedM + k.ScrapShare * fedS + (1.0 - k.GrassShare - k.MastShare - k.ScrapShare);
-                b.Cond = (float)DMath.Clamp01(b.Cond + (ate - 0.8) * 0.06);
+                b.Cond = (float)DMath.Clamp01(b.Cond + (ate - 0.8) * 0.06 * days);
                 // old age, hunger, wolves
                 double wolf = WolfRisk(wolves, age, b.Kind, watched);
                 double hazard = (1.0 / k.Lifespan) * (age > k.Lifespan * 0.7 ? 3.0 : 0.6) / SimTime.DaysPerYear + wolf;
                 if (b.Cond < 0.3) hazard += (0.3 - b.Cond) * 0.08;
                 double u = KeyedRng.Unit(seed, RngStream.Death, (ulong)id | (1UL << 40), (ulong)day);
+                if (days > 1) { hazard = SettlementSystem.Over(hazard, days); wolf = SettlementSystem.Over(wolf, days); }   // (DEEP: over the step)
                 if (u < hazard) { Count(b.Kind, u < wolf ? 1 : b.Cond < 0.3 && u >= hazard - (0.3 - b.Cond) * 0.08 ? 2 : 0); Die(ref b, u < wolf); continue; }
                 // birth
-                if (b.Due != 0 && now >= b.Due) Birth(ref b);
+                if (b.Due != 0 && now + (days - 1) * SimTime.Day >= b.Due) Birth(ref b);   // (due within the step: born at its start)
                 // milk for the household while the young are small
-                if (b.MilkUntil > now && k.MilkFu > 0) Store(b.Owner, sid, k.MilkFu * DMath.Clamp01(b.Cond / 0.6));
+                if (b.MilkUntil > now && k.MilkFu > 0) Store(b.Owner, sid, k.MilkFu * DMath.Clamp01(b.Cond / 0.6) * days);
                 // the season: a grown, well-fed female with a grown male of her kind in the village conceives
                 if (b.Sex == Sex.Female && b.Due == 0 && age >= k.Mature && b.Cond > 0.55)
                 {
                     double yf = SimTime.YearFraction(now + w.LocalOffsetOf(sid));
                     double season = s.Anchor.Y >= 0 ? yf : (yf + 0.5) % 1.0;
                     if (season >= k.Season && season < k.Season + 0.25 && SireNear(sid, b.Kind) &&
-                        KeyedRng.Unit(seed, RngStream.Birth, (ulong)id | (1UL << 40), (ulong)day) < 0.08 * b.Cond)
+                        KeyedRng.Unit(seed, RngStream.Birth, (ulong)id | (1UL << 40), (ulong)day) < SettlementSystem.Over(0.08 * b.Cond, days))
                         b.Due = now + DMath.ToLong(k.Gestation * SimTime.Day);
                 }
             }

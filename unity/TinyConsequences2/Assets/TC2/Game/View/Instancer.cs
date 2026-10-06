@@ -12,7 +12,9 @@ namespace TC2.Game
     {
         readonly Mesh _mesh;
         readonly Material _mat;
-        readonly ShadowCastingMode _shadows;
+        ShadowCastingMode _shadows;
+        /// <summary>Whether the instances cast shadows (tools may switch it).</summary>
+        public bool Shadows { get => _shadows == ShadowCastingMode.On; set => _shadows = value ? ShadowCastingMode.On : ShadowCastingMode.Off; }
         readonly Dictionary<int, List<Matrix4x4>> _groups = new Dictionary<int, List<Matrix4x4>>();
         readonly List<int> _keys = new List<int>();
         readonly Dictionary<int, Color> _colors = new Dictionary<int, Color>();

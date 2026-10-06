@@ -61,10 +61,19 @@ World News, Why?, Your Actions, the History Book (eras after the fact, biographi
 histories, timelines, the catch-up feed "While you were away").
 **Done when**: a player can read 500 years and every claim links to records.
 
-## F8 — Deep time (after the living world is made visible: D2-079)
+## F8 — Deep time (after the living world is made visible: D2-079; started session 3)
 COARSE household-season integration calibrated against ACTIVITY; Ancient and Deep time offline modes;
 planet-only eras after human extinction; recovery; new life.
 **Done when**: 5,000 years catch up in minutes with distributions matching ACTIVITY.
+Plan (session 3, from the 1,000-year profile of a saturated world - ~17,000 people in 35 villages, 0.96 world years a second:
+the village day 81 % at 617 us, the planet ~165 ms a world year): (a) exact speedups that keep every hash (per-person work cached
+where it is a pure function, yearly housekeeping made cheaper); (b) a DEEP resolution whose calm villages step K days at once
+through the same laws written for a step of any length (labour, meals, rations, decay, learning's closed form, hazards as
+1 - (1 - p)^K, crop stages by the days the step spans), back to daily steps while famine, epidemic or conflict is under way;
+(c) coarser planet cadences in DEEP where the dynamics stay stable (weather, vegetation, ecology, housekeeping); (d) distribution
+tests COARSE vs DEEP over centuries on several seeds (population, deaths by cause, births, households, places founded and
+abandoned, harvests, famines, livestock, techniques, epidemics, trade, raids, walls, tributes, the planet's fields); (e) Ancient and
+Deep time on DEEP, measured in the browser.
 
 ## F9 — The god
 Powers that write physical state (lightning, rain, drought, warmth, cull, bring, plague, blight, meteor,

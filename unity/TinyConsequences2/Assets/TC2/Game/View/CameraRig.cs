@@ -48,9 +48,23 @@ namespace TC2.Game
             if (Input.GetKey(KeyCode.W)) Lat += Time.unscaledDeltaTime * kk;
             if (Input.GetKey(KeyCode.S)) Lat -= Time.unscaledDeltaTime * kk;
             Lat = System.Math.Max(-1.45, System.Math.Min(1.45, Lat));
+            // while the world lives through an absence the camera rises to the planet (12 §5: the catch-up shows the world ageing from
+            // above), leaving the frame's time to the simulation rather than to the near views behind the catch-up screen; the view
+            // the player left comes back when the world arrives
+            if (Host.CatchingUp)
+            {
+                if (!_holding) { _held = Distance; _holding = true; }
+                Distance = R + CatchUpAltitude;
+            }
+            else if (_holding) { Distance = _held; _holding = false; }
             Apply();
             UpdateSun();
         }
+
+        /// <summary>The camera's height while the world catches up an absence (m).</summary>
+        public static double CatchUpAltitude = 22000;
+        bool _holding;
+        double _held;
 
         public void Zoom(float notches)
         {

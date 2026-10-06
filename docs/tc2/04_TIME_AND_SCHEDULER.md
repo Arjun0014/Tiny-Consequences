@@ -103,6 +103,20 @@ home by night). Cost: one event per settlement-day, O(people) simple arithmetic:
 Switches are commands at a midnight (logged, so replays agree); a test compares 100-year distributions
 (population, harvests, deaths by cause, marriages) between the two resolutions on several seeds.
 
+### 4.3b DEEP (authoritative, Ancient and Deep time; F8, design of session 3)
+COARSE whose calm villages live K days at a step (K = 12, a season's quarter; set by a logged command at a midnight, kept in
+the save). The village's event carries the step's length; each part of the village's day takes it: the crop calendar walks the
+days the step spans (stages by their days, growth by the day's weather times the days), rations and the larders' refill cover
+the step, meals are eaten for the step, stores decay by (1 - r)^K, a body's reserve moves by K x (share - 1), deaths, marriages
+and conceptions by 1 - (1 - p)^K (a conception's day drawn within the step, its birth its own event as ever), labour, wild food,
+chores and making by the step's hours, learning by its closed form (x moves toward its target by 1 - (1 - r)^K), livestock and
+hearths by the step's days. A village is calm when it is fed (no hunger, rations of at least 0.7), nobody in it is sick or hurt, no band
+of its is under way and no party is leaving; otherwise it lives day by day until it is calm again. The planet's cadences
+stretch where the dynamics stay stable (weather, vegetation and ecology, the yearly compaction; the annals stay yearly).
+DEEP is fitted to COARSE as COARSE was to ACTIVITY: distribution tests over centuries (population, deaths by cause, births,
+households, foundings and abandonments, harvests, famines, livestock, techniques, epidemics, trade, raids, walls, tributes, the
+planet's fields). Nothing is skipped or summarised: the same people, households and laws, a longer step.
+
 ### 4.4 ELABORATION (presentation only, observed agents)
 Footsteps through streets, gestures, the members of a herd around its agent: generated in the Game
 layer from the authoritative activity (same endpoints, same times, same effects); never written back.

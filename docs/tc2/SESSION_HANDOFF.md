@@ -3,9 +3,15 @@
 ## Session 3 (6 Oct 2026, from 17:57 IST) — in progress
 
 ### Exact state
-- **D2-081 committed** (see git log; the slice below). Next: the Web build with `--jobs 3` at low priority when the machine is quiet,
-  `webtest.mjs --tag s3weba`, `webperf.mjs --view forest|forestlow|close|village|region|orbit` (now with `cover`), recorded in 14 and
-  PROGRESS; then the look's next items (below) or F8.
+- Commits: 1156d3d D2-081 (the woods as masses, cover, villages' signs) - then D2-082 (Web: cover gathering cached, catch-up at orbit,
+  capped builds; `s3webb` 6/6) and F8 slice 1 (DEEP) committed together after it (see git log).
+- **F8 in progress - DEEP**: code, tests (`DeepTimeTests`, 6) and the offline plan done; **calibration running**: `scratchpad/calib.sh`
+  (seeds 42 and 7, 400 years, COARSE then DEEP, each to `tc2/out/deep/{coarse,deep}{seed}_400.txt`, from the scratch copy
+  `scratchpad/tc2bin1`). Next: compare the runs (population by 50 years, deaths by cause, births, famines, epidemics, trade, raids,
+  walls, tributes, techniques, livestock), fix any bias, write D2-083; then speed: per-step costs (coarse-day 425 us, chores 183,
+  conflict 133, demography 135, stock 91, survey.herds 70 a step) and the planet in DEEP (vegetation + ecology every 24 days, weather).
+- Tools added: `tc2/scripts/webcatchup.mjs` (a day away's catch-up time by camera height and layers), the bridge's `catchupalt`,
+  `covershadow`; `scratchpad/perfviews.sh` (webperf view by view), `scratchpad/calib.sh`.
 - The slice (for reference) - **D2-081 (the woods as masses, ground cover by biome)**: `Canopy.cs` (plain-chance
   crown numbers - the tile repeats, so nothing in it may pattern -, radius 0.52-0.94 with few broad old crowns, height 0.64-1, K
   fitted on the layout (`Fit`), the cover texture `MakeCover` - whether a standing crown covers each texel at four thresholds, its

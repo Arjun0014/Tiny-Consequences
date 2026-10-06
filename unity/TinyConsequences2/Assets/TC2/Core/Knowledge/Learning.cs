@@ -18,7 +18,7 @@ namespace TC2.Core.Knowledge
         public void Bind(World w) { _w = w; }
 
         /// <summary>The village's day of learning (SettlementSystem.Daily, after demography).</summary>
-        public void Day(int sid)
+        public void Day(int sid, int days = 1)
         {
             var w = _w;
             long now = w.Now;
@@ -51,7 +51,8 @@ namespace TC2.Core.Knowledge
                         double had = Tech.Get(in p, t);
                         if (had >= target) continue;
                         double rate = age < 20 ? Tech.LearnRate : 0.25 * Tech.LearnRate;
-                        Tech.Set(ref p, t, had + rate * (target - had));
+                        // (DEEP: the step's days at once - the same daily copying, closed: x moves 1 - (1 - r)^days of the way)
+                        Tech.Set(ref p, t, days == 1 ? had + rate * (target - had) : had + (1.0 - Places.SettlementSystem.Keep(rate, days)) * (target - had));
                     }
                 }
                 // the village's knowing: told when it begins and when it ends

@@ -39,7 +39,8 @@ namespace TC2.EditorTools
             // -tc2Jobs N: IL2CPP converts and compiles with N jobs instead of one per thread (a shared machine: less memory and CPU at
             // once, a slower build); the project's own setting is restored afterwards
             string jobs = Arg("-tc2Jobs", null);
-            string il2cppArgs = PlayerSettings.GetAdditionalIl2CppArgs() ?? "";
+            // (a build stopped before its restore leaves its --jobs behind: any such is dropped first)
+            string il2cppArgs = System.Text.RegularExpressions.Regex.Replace(PlayerSettings.GetAdditionalIl2CppArgs() ?? "", @"\s*--jobs=\d+", "").Trim();
             if (jobs != null) PlayerSettings.SetAdditionalIl2CppArgs((il2cppArgs + " --jobs=" + jobs).Trim());
             BuildReport report;
             try { report = BuildPipeline.BuildPlayer(opts); }

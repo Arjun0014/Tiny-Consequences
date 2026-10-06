@@ -195,20 +195,20 @@ namespace TC2.Core.Places
         /// A village's day of trade and relief at COARSE resolution (and relief at both): its traders' trips at the lived rate, each
         /// the whole deal at once (the trader a visitor who may catch what the other village has); grain to a neighbour in famine.
         /// </summary>
-        public void Day(int sid)
+        public void Day(int sid, int step = 1)
         {
             var w = _w;
             long now = w.Now;
             ref var s = ref w.Settlements.Get(sid);
             if (!s.Inhabited) return;
-            Relief(sid);
+            Relief(sid, step);
             if (w.Resolution != Resolution.Coarse) return;
             int to = BestPartner(sid, out double gain);
             if (to == 0) return;
             int adults = 0;
             var res = w.Residents(sid);
             for (int i = 0; i < res.Count; i++) { ref var p = ref w.People.Get(res[i]); double age = p.AgeYears(now); if (p.Alive && p.Sick == 0 && age >= 18 && age < 56 && p.Health > 0.7) adults++; }
-            int trips = Poisson(adults * TripsPerAdultDay, KeyedRng.Hash(w.Seed, RngStream.Travel, (ulong)sid, (ulong)now, 501));
+            int trips = Poisson(adults * TripsPerAdultDay * step, KeyedRng.Hash(w.Seed, RngStream.Travel, (ulong)sid, (ulong)now, 501));   // (DEEP: the step's trips)
             for (int k = 0; k < trips && res.Count > 0; k++)
             {
                 if (Plan(sid, to, out _, out _, out _) <= 0) break;
@@ -232,7 +232,7 @@ namespace TC2.Core.Places
         /// Relief: a village with grain to spare sends a share of it to each neighbour within a day's walk whose people are dying
         /// of hunger (a famine this year), carried by its people as gifts - history tells it (D2-067; F5's famine coping).
         /// </summary>
-        void Relief(int sid)
+        void Relief(int sid, int step)
         {
             var w = _w;
             ref var s = ref w.Settlements.Get(sid);
@@ -250,7 +250,7 @@ namespace TC2.Core.Places
                 // dead starved beside a full one)
                 double days = DaysOfFood(w, in t, out double need);
                 if (days >= ReliefUpToDays) continue;
-                double gift = DMath.Min(DMath.Min(0.05 * spare, 3.0 * need), (ReliefUpToDays - days) * need);
+                double gift = DMath.Min(DMath.Min(0.05 * spare * step, 3.0 * need * step), (ReliefUpToDays - days) * need);   // (DEEP: the step's days of it)
                 if (gift < 1.0) continue;
                 ref var s2 = ref w.Settlements.Get(sid);
                 s2.Granary -= gift; spare -= gift;

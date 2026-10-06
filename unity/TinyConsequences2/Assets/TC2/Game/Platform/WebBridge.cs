@@ -62,6 +62,7 @@ namespace TC2.Game
                     }
                 case "new": Host.NewWorld(ulong.Parse(a[1], inv)); break;
                 case "view": Rig.SetView(a[1]); break;   // the camera's named views (forest, forestlow, coast, volcano...: D2-079)
+                case "catchupalt": CameraRig.CatchUpAltitude = double.Parse(a[1], CultureInfo.InvariantCulture); break;   // tools: the camera's height while catching up
                 case "book": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.OpenBook(a.Length > 1 ? int.Parse(a[1], inv) : -1); break; }   // the History Book (D2-077)
                 case "off": case "on": Toggle(a[1], a[0] == "on"); break;   // tools: what a frame costs without a layer
                 case "glshadow": Sky.GlCascades = int.Parse(a[1], inv); Sky.GlShadowReach = float.Parse(a[2], inv); break;   // tools: WebGL2 shadows
@@ -95,6 +96,7 @@ namespace TC2.Game
             }
             if (what == "tilt") { TiltShiftFeature.Off = !on; return; }
             if (what == "cover") { TerrainLod.CoverOff = !on; return; }   // (the ground cover near the camera: D2-081)
+            if (what == "covershadow") { TerrainLod.CoverShadows = on; return; }   // (shrubs' and boulders' shadows)
             int part = what == "trees" ? 1 : what == "people" ? 2 : what == "buildings" ? 4 : 0;
             if (part != 0) { WorldObjectsView.Off = on ? WorldObjectsView.Off & ~part : WorldObjectsView.Off | part; return; }
             string prefix = what == "terrain" ? "Patch" : what == "planet" ? "Face" : what == "sea" ? "Sea" : what == "air" ? "Atmosphere" : what == "rivers" ? "Rivers" : null;

@@ -42,6 +42,7 @@ namespace TC2.Game
             public Matrix4x4[] Trees; public byte[] TreeKind; public ushort[] TreeGroup; public int TreeCount;   // the woods' trees (finest level)
             public Matrix4x4[] Tufts; public byte[] TuftKind, TuftGroup; public int TuftCount; // ground cover (finest level)
             public int ColourCycle;
+            public long PlacedDay = long.MinValue;   // the world day its trees and cover were last placed (D2-081: once a day at most)
         }
 
         readonly Dictionary<long, Patch> _cache = new Dictionary<long, Patch>();
@@ -61,6 +62,8 @@ namespace TC2.Game
         public static int ForestDrawn;
         /// <summary>Tools (webperf): the ground cover not drawn.</summary>
         public static bool CoverOff;
+        /// <summary>Tools (webperf): whether shrubs and boulders cast shadows.</summary>
+        public static bool CoverShadows = true;
         readonly Plane[] _planes = new Plane[6];
         static readonly Color[] LeafTints = new Color[512], ConiferTints = new Color[512], BareTints = new Color[512];
         const int Grass = 0, Flowers = 1, Reeds = 2, Boulder = 3, Shrub = 4, Fern = 5, Cushion = 6, Stone = 7;
@@ -178,6 +181,13 @@ namespace TC2.Game
             Select(w);
             BuildSome(w);
             Show();
+            if (NeedGather())
+            {
+                GeometryUtility.CalculateFrustumPlanes(Rig.Cam, _planes);
+                GatherCover();
+                GatherForest();
+                Gathered();
+            }
             DrawCover();
             DrawForest();
             _recolourTimer -= Time.unscaledDeltaTime;
@@ -266,12 +276,12 @@ namespace TC2.Game
         {
             foreach (var p in _shownLast) p.Shown = false;
             for (int k = 0; k < _draw.Count; k++) _draw[k].Shown = true;
-            foreach (var p in _shownLast) if (!p.Shown && p.Go != null) p.Go.SetActive(false);
+            foreach (var p in _shownLast) if (!p.Shown && p.Go != null) { p.Go.SetActive(false); _shownVersion++; }
             _shownLast.Clear();
             for (int k = 0; k < _draw.Count; k++)
             {
                 var p = _draw[k];
-                if (!p.Go.activeSelf) p.Go.SetActive(true);
+                if (!p.Go.activeSelf) { p.Go.SetActive(true); _shownVersion++; }
                 _shownLast.Add(p);
             }
             PatchesDrawn = _draw.Count;
@@ -382,7 +392,7 @@ namespace TC2.Game
                 }
             Colourise(w, p);
             p.Pos = pos; p.Nrm = nrm;
-            if (p.Level >= MaxLevel) { PlaceCover(w, p, pos, nrm); PlaceForest(w, p); } else { p.TuftCount = 0; p.TreeCount = 0; }
+            if (p.Level >= MaxLevel) { PlaceCover(w, p, pos, nrm); SortCover(p); PlaceForest(w, p); _contentVersion++; p.PlacedDay = SimTime.FloorDiv(w.Now, SimTime.Day); } else { p.TuftCount = 0; p.TreeCount = 0; }
             if (p.Mesh == null)
             {
                 p.Mesh = new Mesh { name = "tc2-terrain", indexFormat = IndexFormat.UInt16 };
@@ -550,7 +560,28 @@ namespace TC2.Game
             p.TuftCount = count;
         }
 
-        void DrawCover()
+        // the cover's and the trees' instance lists are gathered again only when the patches shown or what stands on them change, the
+        // camera moves or turns by much, or a few times a second; between, the lists already gathered are drawn (D2-081: gathering
+        // them every frame was the near views' largest cost in the browser)
+        int _shownVersion, _contentVersion, _gatheredShown = -1, _gatheredContent = -1, _gatheredFrame = -999;
+        Vector3 _gatheredPos, _gatheredFwd;
+
+        bool NeedGather()
+        {
+            var t = Rig.Cam.transform;
+            if (_gatheredShown != _shownVersion || _gatheredContent != _contentVersion || _frame - _gatheredFrame >= 15) return true;
+            if ((t.position - _gatheredPos).sqrMagnitude > 12f * 12f) return true;
+            return Vector3.Dot(t.forward, _gatheredFwd) < 0.9986f;   // (about three degrees)
+        }
+
+        void Gathered()
+        {
+            var t = Rig.Cam.transform;
+            _gatheredShown = _shownVersion; _gatheredContent = _contentVersion; _gatheredFrame = _frame;
+            _gatheredPos = t.position; _gatheredFwd = t.forward;
+        }
+
+        void GatherCover()
         {
             for (int k = 0; k < _cover.Length; k++) _cover[k].Clear();
             Vector3 cam = Rig.Cam.transform.position;
@@ -559,9 +590,12 @@ namespace TC2.Game
             for (int q = 0; q < _shownLast.Count; q++)
             {
                 var p = _shownLast[q];
-                if (p.TuftCount == 0) continue;
+                if (p.TuftCount == 0 || p.Renderer == null) continue;
                 float d2 = (p.Tufts[0].GetColumn(3) - (Vector4)cam).sqrMagnitude;
                 if (d2 > 480f * 480f) continue;
+                var bounds = p.Renderer.bounds;
+                bounds.Expand(30f);
+                if (!GeometryUtility.TestPlanesAABB(_planes, bounds)) continue;
                 bool onlyBig = d2 > 260f * 260f;   // (further off, only what stands out: shrubs and boulders - the woods' edges)
                 for (int t = 0; t < p.TuftCount; t++)
                 {
@@ -571,9 +605,29 @@ namespace TC2.Game
                     _cover[kind].Add(gi, tints[gi < tints.Length ? gi : 0], p.Tufts[t]);
                 }
             }
+        }
+
+        void DrawCover()
+        {
             var c = Rig.Cam;
+            _cover[Shrub].Shadows = CoverShadows; _cover[Boulder].Shadows = CoverShadows;
             for (int k = 0; k < _cover.Length; k++) _cover[k].Draw(c);
         }
+
+        /// <summary>A patch's cover in order of kind and colour, so a gathering adds it in long runs of one group.</summary>
+        static void SortCover(Patch p)
+        {
+            int n = p.TuftCount;
+            if (n < 2) return;
+            if (_sortKeys == null || _sortKeys.Length < n) { _sortKeys = new int[p.Tufts.Length]; _sortIdx = new int[p.Tufts.Length]; _sortM = new Matrix4x4[p.Tufts.Length]; _sortK = new byte[p.Tufts.Length]; _sortG = new byte[p.Tufts.Length]; }
+            for (int t = 0; t < n; t++) { _sortKeys[t] = (p.TuftKind[t] << 8 | p.TuftGroup[t]) * 4096 + t; _sortIdx[t] = t; }
+            System.Array.Sort(_sortKeys, _sortIdx, 0, n);
+            for (int t = 0; t < n; t++) { int s = _sortIdx[t]; _sortM[t] = p.Tufts[s]; _sortK[t] = p.TuftKind[s]; _sortG[t] = p.TuftGroup[s]; }
+            System.Array.Copy(_sortM, p.Tufts, n); System.Array.Copy(_sortK, p.TuftKind, n); System.Array.Copy(_sortG, p.TuftGroup, n);
+        }
+        static int[] _sortKeys, _sortIdx;
+        static Matrix4x4[] _sortM;
+        static byte[] _sortK, _sortG;
 
         /// <summary>
         /// The woods' trees on a finest patch (D2-079): every crown of the canopy's layout that falls on the patch, in the projection
@@ -653,7 +707,7 @@ namespace TC2.Game
             ax == 0 ? new Vector2(p.y * sc + off, p.z * sc + off) : ax == 1 ? new Vector2(p.x * sc + off, p.z * sc + off) : new Vector2(p.x * sc + off, p.y * sc + off);
 
         /// <summary>The woods' trees of the shown finest patches within reach and in view, near ones in full, further ones lighter.</summary>
-        void DrawForest()
+        void GatherForest()
         {
             for (int k = 0; k < _forest.Length; k++) _forest[k].Clear();
             ForestDrawn = 0;
@@ -661,7 +715,6 @@ namespace TC2.Game
             Vector3 cp = cam.transform.position;
             if ((WorldObjectsView.Off & 1) == 0 && cp.magnitude - (float)Host.World.Planet.Radius < ForestReach)
             {
-                GeometryUtility.CalculateFrustumPlanes(cam, _planes);
                 for (int q = 0; q < _shownLast.Count; q++)
                 {
                     var p = _shownLast[q];
@@ -683,6 +736,11 @@ namespace TC2.Game
                     ForestDrawn += p.TreeCount;
                 }
             }
+        }
+
+        void DrawForest()
+        {
+            var cam = Rig.Cam;
             for (int k = 0; k < _forest.Length; k++) _forest[k].Draw(cam);
         }
 
@@ -709,7 +767,12 @@ namespace TC2.Game
                 p.Mesh.SetUVs(1, p.Farm);
                 p.Mesh.SetUVs(2, p.Wood);
                 p.Mesh.SetUVs(3, p.Land);
-                if (p.Level >= MaxLevel && p.Pos != null && p.Nrm != null) { PlaceForest(w, p); PlaceCover(w, p, p.Pos, p.Nrm); }   // (the woods and the cover change with the forest and the seasons)
+                long today = SimTime.FloorDiv(w.Now, SimTime.Day);
+                if (p.Level >= MaxLevel && p.Pos != null && p.Nrm != null && p.PlacedDay != today)
+                {
+                    // the woods and the cover change with the forest and the seasons: placed again once a world day at most
+                    PlaceForest(w, p); PlaceCover(w, p, p.Pos, p.Nrm); SortCover(p); _contentVersion++; p.PlacedDay = today;
+                }
                 p.ColourCycle = _cycle;
             }
         }

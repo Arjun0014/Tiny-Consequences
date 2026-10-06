@@ -52,3 +52,15 @@ and step. Planet systems must stay below ~25% of that.
 - Pairwise social structures: sparse (only pairs that met), bounded per entity.
 - Planet systems: land-only loops; multi-rate; Burst + SIMD + threads (when cross-origin isolated).
 - GC on the Web: allocation-free hot paths; pools; struct events.
+
+## 5. Session 3 notes (D2-082, F8)
+
+- **View work per frame scales with instances, not with what changed**: gathering the ground cover's and the trees' instances each
+  frame cost the near views ~7-8 ms in the browser; gather on change (patches, content, camera) and redraw the gathered lists.
+- **Measure settled frames**: a view's first seconds compile shaders and build patches; `webperf` reads at 5, 15 and 30 s - quote the
+  30 s value.
+- **A shared machine**: Web builds with `--jobs 3` (IL2CPP, Bee, emscripten, binaryen capped; ~15 min); heavy jobs one at a time at
+  below-normal priority, launched only on a quiet machine (`scratchpad/quiet.ps1`).
+- **DEEP (F8)**: a step's cost grows with what happens in it (trips, births, deaths, news are still made at their rate); only the
+  per-day polling shrinks. At saturation villages became 2.3x cheaper at K = 12 and the planet (~157 ms a world year) became a quarter
+  of the time: both must shrink for Ancient and Deep time.

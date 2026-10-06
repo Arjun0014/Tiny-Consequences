@@ -138,7 +138,7 @@ namespace TC2.Core.Health
             (age < 2 ? 3.0 : age < 5 ? 2.0 : age < 15 ? 0.6 : age > 65 ? 2.5 : age > 50 ? 1.4 : 1.0) * (1.0 + 2.0 * (1.0 - health));
 
         // ------------------------------------------------------------------ a village's day
-        public void Day(int sid)
+        public void Day(int sid, int days = 1)
         {
             var w = _w;
             long now = w.Now;
@@ -214,9 +214,9 @@ namespace TC2.Core.Health
                     }
                 }
             // COARSE: the visits a lived day would make to stricken neighbours, and the sickness they bring home (D2-066)
-            if (w.Resolution == Resolution.Coarse) Visits(sid);
+            if (w.Resolution == Resolution.Coarse) Visits(sid, days);
             // a sickness comes over from the animals now and then: more where more are kept and more crowd together
-            Spill(sid, n);
+            Spill(sid, n, days);
             // the village's tally: what is infectious here today (neighbours' COARSE visits read it); an epidemic that has
             // left nobody sick is over
             ref var s2 = ref w.Settlements.Get(sid);
@@ -281,7 +281,7 @@ namespace TC2.Core.Health
         }
 
         /// <summary>COARSE: the village's healthy grown people visit stricken neighbours at the lived rate and some bring the sickness home.</summary>
-        void Visits(int sid)
+        void Visits(int sid, int days)
         {
             var w = _w;
             long now = w.Now;
@@ -304,7 +304,7 @@ namespace TC2.Core.Health
                 if (d <= 6000) total += 1.0 / (300.0 + d);
             }
             if (total <= 0) return;
-            double visits = adults * VisitsPerAdultDay;
+            double visits = adults * VisitsPerAdultDay * days;   // (DEEP: the step's visits)
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
             {
                 if (o == sid) continue;
@@ -342,14 +342,14 @@ namespace TC2.Core.Health
         public static double SpillChance(int beasts, int present) => SpillPerDay * DMath.Min(3.0, 1.0 + beasts / 40.0) * DMath.Min(2.0, present / 120.0);
 
         /// <summary>A sickness comes over from the village's animals (D2-066): a new lineage with traits of its own, one of its people its first host.</summary>
-        void Spill(int sid, int present)
+        void Spill(int sid, int present, int days)
         {
             var w = _w;
             if (present < 8) return;
             long now = w.Now;
             int beasts = w.Stock.CountOf(sid, Livestock.Cattle) + w.Stock.CountOf(sid, Livestock.Goat) + w.Stock.CountOf(sid, Livestock.Pig);
             double chance = SpillChance(beasts, present);
-            if (KeyedRng.Unit(w.Seed, RngStream.Disease, (ulong)sid, (ulong)now, 1) >= chance) return;
+            if (KeyedRng.Unit(w.Seed, RngStream.Disease, (ulong)sid, (ulong)now, 1) >= Places.SettlementSystem.Over(chance, days)) return;
             int id = w.Ids.Next(EntityKind.Pathogen);
             var rs = new RandomSequence(KeyedRng.Hash(w.Seed, RngStream.Disease, (ulong)id, 77));
             // traits from the ranges of the sicknesses of farming peoples: a crowd fever, a pox, a cough, a flux

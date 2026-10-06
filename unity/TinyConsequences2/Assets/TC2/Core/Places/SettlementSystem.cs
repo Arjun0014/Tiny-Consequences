@@ -41,19 +41,24 @@ namespace TC2.Core.Places
             long now = w.Now;
             int doy = SimTime.DayOfYear(now + Planet.PlanetState.LocalOffset(s.Anchor));
             if (s.Anchor.Y < 0) doy = (doy + 24) % SimTime.DaysPerYear; // southern seasons
+            // DEEP (04 §4.3b, F8): a calm village lives several days at a step - never across a day of its calendar (sowing, the crop
+            // growing, ripe, the harvest, the day households weigh leaving), so a step's work belongs to one stage
+            int days = 1;
+            if (w.Resolution == Resolution.Coarse && w.StepDays > 1 && Calm(sid)) days = DaysToCalendar(doy, w.StepDays);
+            w.Metrics.VillageSteps++; w.Metrics.VillageDays += days;
             var prof = w.Profiler;   // (tools: the parts of a village's day; null in the game)
-            prof?.Begin(10000); Crops(ref s, doy); prof?.End(10000);
-            prof?.Begin(10001); Food(ref s, doy); prof?.End(10001);
+            prof?.Begin(10000); Crops(ref s, doy, days); prof?.End(10000);
+            prof?.Begin(10001); Food(ref s, doy, days); prof?.End(10001);
             prof?.Begin(10002); prof?.Begin(10007); w.Wild.Survey(sid); prof?.End(10007); prof?.Begin(10008); w.HerdSys.Update(sid); prof?.End(10008); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
             if (doy == Migration.DecideDay) { prof?.Begin(10003); w.Migration.Weigh(sid); prof?.End(10003); }   // who leaves (D2-045)
-            if (w.Resolution == Resolution.Coarse) { prof?.Begin(10004); w.Agents.CoarseDay(sid); prof?.End(10004); }
-            prof?.Begin(10006); w.Stock.Day(sid); prof?.End(10006);   // the herds' day: grazing, milk, births, slaughter (D2-048)
-            prof?.Begin(10012); Hearths(sid); prof?.End(10012);       // the homes' warmth against the day's cold (D2-056)
-            prof?.Begin(10005); Demography(sid); prof?.End(10005);
-            prof?.Begin(10014); w.Learning.Day(sid); prof?.End(10014);   // the young copy the best they can watch (D2-062)
-            prof?.Begin(10015); w.Disease.Day(sid); prof?.End(10015);    // sickness: its course, its spread, new ones from the animals (D2-066)
-            prof?.Begin(10016); w.Trade.Day(sid); prof?.End(10016);      // relief, and COARSE trading trips (D2-067)
-            prof?.Begin(10017); w.Conflict.Day(sid); prof?.End(10017);   // COARSE: the hungry who go to a neighbour's store in the night (D2-069)
+            if (w.Resolution == Resolution.Coarse) { prof?.Begin(10004); w.Agents.CoarseDay(sid, days); prof?.End(10004); }
+            prof?.Begin(10006); w.Stock.Day(sid, days); prof?.End(10006);   // the herds' day: grazing, milk, births, slaughter (D2-048)
+            prof?.Begin(10012); Hearths(sid, days); prof?.End(10012);       // the homes' warmth against the day's cold (D2-056)
+            prof?.Begin(10005); Demography(sid, days); prof?.End(10005);
+            prof?.Begin(10014); w.Learning.Day(sid, days); prof?.End(10014);   // the young copy the best they can watch (D2-062)
+            prof?.Begin(10015); w.Disease.Day(sid, days); prof?.End(10015);    // sickness: its course, its spread, new ones from the animals (D2-066)
+            prof?.Begin(10016); w.Trade.Day(sid, days); prof?.End(10016);      // relief, and COARSE trading trips (D2-067)
+            prof?.Begin(10017); w.Conflict.Day(sid, days); prof?.End(10017);   // COARSE: the hungry who go to a neighbour's store in the night (D2-069)
             ref var s2 = ref w.Settlements.Get(sid);
             if (s2.Population <= 0 && s2.Abandoned == 0)
             {
@@ -65,15 +70,69 @@ namespace TC2.Core.Places
                 w.History.EndEntity(EntityRef.Settlement(sid), now);
                 return;
             }
-            w.Queue.Push(now + SimTime.Day, Phase.Settlement, EventKind.SettlementDaily, sid);
+            w.Queue.Push(now + days * SimTime.Day, Phase.Settlement, EventKind.SettlementDaily, sid);
         }
+
+        /// <summary>The village's calendar days (its own year's local days): a DEEP step never runs across one.</summary>
+        static readonly int[] Calendar = { 0, 12, 30, 39, Migration.DecideDay };
+
+        /// <summary>A step of up to <paramref name="most"/> days from <paramref name="doy"/> that ends at or before the next calendar day.</summary>
+        public static int DaysToCalendar(int doy, int most)
+        {
+            int days = most;
+            for (int i = 0; i < Calendar.Length; i++)
+            {
+                int ahead = Calendar[i] - doy;
+                if (ahead <= 0) ahead += SimTime.DaysPerYear;
+                if (ahead < days) days = ahead;
+            }
+            return Math.Max(1, days);
+        }
+
+        /// <summary>
+        /// A village calm enough to live several days at a step (DEEP, F8): fed (no hunger, rations of 0.7 or more), nobody sick in it, nobody
+        /// abed with wounds, no household leaving, no band of its out and no raid on it under way. Otherwise it lives day by day.
+        /// </summary>
+        public bool Calm(int sid)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.HungerEvent != 0 || s.Ration < 0.7 || s.Granary < 1.0) return false;   // (a prudent ration is lived as well by the step; hunger is not)
+            if (s.Epidemic != 0 || s.InfNow > 0) return false;
+            var res = w.Residents(sid);
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var p = ref w.People.Get(res[i]);
+                if (!p.Alive) continue;
+                if (p.Sick != 0 || p.Hurt > 0f || p.At != sid || p.Step == Agents.StepKind.Travel) return false;
+            }
+            var hhs = w.HouseholdsOf(sid);
+            for (int i = 0; i < hhs.Count; i++) if (w.Households.Get(hhs[i]).Party != 0) return false;
+            for (int b = w.Bands.First(); b != 0; b = w.Bands.Next(b))
+            {
+                ref var band = ref w.Bands.Get(b);
+                if (band.Origin == sid || band.Target == sid) return false;
+            }
+            return true;
+        }
+
+        /// <summary>(1 - p)^n by repeated products (exact and the same on every runtime).</summary>
+        public static double Keep(double p, int n)
+        {
+            double k = 1.0 - p, r = 1.0;
+            for (int i = 0; i < n; i++) r *= k;
+            return r;
+        }
+
+        /// <summary>The chance that a daily chance p comes at least once in n days (p itself for one day).</summary>
+        public static double Over(double p, int n) => n == 1 ? p : 1.0 - Keep(p, n);
 
         /// <summary>
         /// The hearths' day (D2-056): each household's fire against the day's cold, as far as the village's woodstore allows (a
         /// short store is shared alike), and how warm its home is - the roof and the fire between the weather and the body. The
         /// first day of homes cold enough to harm is history; the spell ends when every home is warm again.
         /// </summary>
-        void Hearths(int sid)
+        void Hearths(int sid, int days)
         {
             var w = _w;
             ref var s = ref w.Settlements.Get(sid);
@@ -86,8 +145,8 @@ namespace TC2.Core.Places
                 cook += HouseholdNeed(hhs[i]) * Hearth.CookFuel;
             }
             s.FuelDay = (float)(want + cook);   // what tomorrow's hearths will want: the wood to cut is judged by it
-            double share = want > 1e-9 ? DMath.Min(1.0, s.Woodstore / want) : 1.0;
-            s.Woodstore = DMath.Max(0.0, s.Woodstore - want * share);
+            double share = want > 1e-9 ? DMath.Min(1.0, s.Woodstore / (want * days)) : 1.0;   // (DEEP: the step's fires)
+            s.Woodstore = DMath.Max(0.0, s.Woodstore - want * days * share);
             int cold = 0;
             for (int i = 0; i < hhs.Count; i++)
             {
@@ -98,7 +157,7 @@ namespace TC2.Core.Places
                 hh.Indoor = (float)Hearth.Indoors(tOut, hh.Shelter, fire);
                 int members = w.Members(hhs[i]).Count;
                 // the day's wear of its members' clothes and tools (D2-058), slower where the tools are metal (D2-064)
-                hh.Gear = (float)DMath.Max(0.0, hh.Gear - members * Goods.WearPerDay * Knowledge.Tech.MetalWear(Knowledge.Tech.MetalShare(s.Metal, s.Population)));
+                hh.Gear = (float)DMath.Max(0.0, hh.Gear - members * Goods.WearPerDay * days * Knowledge.Tech.MetalWear(Knowledge.Tech.MetalShare(s.Metal, s.Population)));
                 if (members > 0 && hh.Indoor < Goods.ChillLine(Goods.Condition(hh.Gear, members))) cold++;
             }
             if (cold > 0 && s.ColdEvent == 0)
@@ -177,7 +236,13 @@ namespace TC2.Core.Places
         /// <summary>Kg of flax fibre a hectare of the village's fields gives a year (a corner of them sown with flax: D2-063).</summary>
         public const double FibrePerHa = 1.0;
 
-        void Crops(ref Settlement s, int doy)
+        /// <summary>The crop calendar over a step's days, each as a day of its own (DEEP, F8: a step never crosses a stage's day).</summary>
+        void Crops(ref Settlement s, int doy, int days)
+        {
+            for (int k = 0; k < days; k++) CropDay(ref s, (doy + k) % SimTime.DaysPerYear);
+        }
+
+        void CropDay(ref Settlement s, int doy)
         {
             var w = _w;
             var cfg = w.Config;
@@ -323,7 +388,7 @@ namespace TC2.Core.Places
             ClaimFields(ref s, needHa);
         }
 
-        void Food(ref Settlement s, int doy)
+        void Food(ref Settlement s, int doy, int days)
         {
             var w = _w;
             var prof = w.Profiler;
@@ -356,13 +421,14 @@ namespace TC2.Core.Places
             }
             else if (ration >= 0.98 && s.RationEvent != 0) s.RationEvent = 0;
             prof?.Begin(10011);
-            double total = daily * 2.0 * ration;
+            double cover = days == 1 ? 2.0 : days + 1.0;   // (the larders hold the step's meals and a day more: two days for a day)
+            double total = daily * cover * ration;
             double share = total > 0 ? Math.Min(1.0, s.Granary / total) : 1.0;
             for (int i = 0; i < hhs.Count; i++)
             {
                 int hid = hhs[i];
                 ref var hh = ref w.Households.Get(hid);
-                double want = HouseholdNeed(hid) * 2.0 * ration - hh.Larder - hh.Ready;
+                double want = HouseholdNeed(hid) * cover * ration - hh.Larder - hh.Ready;
                 if (want <= 0) continue;
                 double give = Math.Min(want, want * share);
                 give = Math.Min(give, s.Granary);
@@ -370,11 +436,12 @@ namespace TC2.Core.Places
             }
             prof?.End(10011);
             // spoilage of stored grain (~12% a year; less kept in fired pots: D2-063)
-            s.Granary *= 1.0 - 0.12 / SimTime.DaysPerYear * Knowledge.Tech.PotteryKeeps(s.BestPottery);
+            double rot = 0.12 / SimTime.DaysPerYear * Knowledge.Tech.PotteryKeeps(s.BestPottery);
+            s.Granary *= days == 1 ? 1.0 - rot : Keep(rot, days);
             // stored hides rot and are eaten by vermin (~20 % a year), fibre less (~5 %): a store holds what is used (D2-063)
-            s.Hides *= 1.0 - 0.20 / SimTime.DaysPerYear;
-            s.Fibre *= 1.0 - 0.05 / SimTime.DaysPerYear;
-            s.Metal *= 1.0 - 0.03 / SimTime.DaysPerYear;   // tools lost, broken, worn past mending (D2-064)
+            s.Hides *= days == 1 ? 1.0 - 0.20 / SimTime.DaysPerYear : Keep(0.20 / SimTime.DaysPerYear, days);
+            s.Fibre *= days == 1 ? 1.0 - 0.05 / SimTime.DaysPerYear : Keep(0.05 / SimTime.DaysPerYear, days);
+            s.Metal *= days == 1 ? 1.0 - 0.03 / SimTime.DaysPerYear : Keep(0.03 / SimTime.DaysPerYear, days);   // tools lost, broken, worn past mending (D2-064)
             bool empty = s.Granary < 1.0;
             if (empty && s.HungerEvent == 0 && s.Population > 0)
             {
@@ -463,7 +530,7 @@ namespace TC2.Core.Places
             return need;
         }
 
-        void Demography(int sid)
+        void Demography(int sid, int days)
         {
             var w = _w;
             var cfg = w.Config;
@@ -482,11 +549,13 @@ namespace TC2.Core.Places
                 double age = p.AgeYears(now);
                 double annual = age < 1 ? 0.22 : age < 5 ? 0.045 : age < 15 ? 0.008 : age < 45 ? 0.010 : age < 60 ? 0.020 : age < 70 ? 0.045 : age < 80 ? 0.10 : 0.22;
                 double u = KeyedRng.Unit(seed, RngStream.Death, (ulong)pid, (ulong)day);
-                // the body's day (D2-042): what was eaten against what it needed draws on or refills its reserve
-                double need = w.Agents.DailyNeed(in p, now);
+                // the body's day (D2-042): what was eaten against what it needed draws on or refills its reserve (DEEP: the step's
+                // meals against the step's need)
+                double need = w.Agents.DailyNeed(in p, now) * days;
                 double share = need > 0 ? p.Ate / need : 1.0;
                 p.Ate = 0f;
-                if (now - p.Born < SimTime.Day) share = 1.0;   // born today: at the breast from the first hour
+                if (now - p.Born < SimTime.Day * days) share = 1.0;   // born today (or this step): at the breast from the first hour
+                if (days > 1) { DeepBody(ref p, sid, share, age, annual, u, day, days); continue; }
                 if (age < 2 && p.Mother != 0 && w.People.Exists(p.Mother))
                 {
                     // a baby at the breast lives on its mother's milk while her body can make it
@@ -543,7 +612,7 @@ namespace TC2.Core.Places
                 double age = woman.AgeYears(now);
                 if (age < 18 || age > 36) continue;
                 double peak = age < 21 ? 0.6 : (age < 27 ? 1.0 : (age < 31 ? 0.6 : 0.3));
-                if (KeyedRng.Unit(seed, RngStream.Marriage, (ulong)pid, (ulong)day) >= cfg.MarriageRatePerDay * peak) continue;
+                if (KeyedRng.Unit(seed, RngStream.Marriage, (ulong)pid, (ulong)day) >= Over(cfg.MarriageRatePerDay * peak, days)) continue;   // (DEEP: over the step)
                 _men.Clear();
                 AddSuitors(in woman, sid, now);
                 // neighbouring villages within a day's easy walk (exogamy keeps small places alive)
@@ -573,12 +642,73 @@ namespace TC2.Core.Places
                 ref var partner = ref w.People.Get(p.Partner);
                 if (!partner.Alive) continue;
                 double fert = age < 25 ? 1.0 : (age < 30 ? 0.93 : (age < 35 ? 0.82 : (age < 40 ? 0.62 : 0.3)));
-                if (KeyedRng.Unit(seed, RngStream.Birth, (ulong)pid, (ulong)day) < cfg.ConceptionPerDay * fert * p.Health)
+                if (KeyedRng.Unit(seed, RngStream.Birth, (ulong)pid, (ulong)day) < Over(cfg.ConceptionPerDay * fert * p.Health, days))
                 {
-                    p.PregDue = now + 36 * SimTime.Day;
+                    // (DEEP: conceived on one of the step's days, by a keyed draw; a day's step is its own day)
+                    long onDay = days == 1 ? 0 : (long)(KeyedRng.Unit(seed, RngStream.Birth, (ulong)pid, (ulong)day, 7) * days);
+                    p.PregDue = now + (36 + onDay) * SimTime.Day;
                     p.PregFather = p.Partner;
                     w.Queue.Push(p.PregDue, Phase.Agent, EventKind.Birth, pid, 0, p.PregDue);
                 }
+            }
+        }
+
+        /// <summary>
+        /// A body's step of several days (DEEP, F8): the step's meals against its need draw on or refill the reserve, health follows
+        /// it day by day against the cold at home, and the step's deaths come by the same causes at their chance over its days.
+        /// </summary>
+        void DeepBody(ref Person p, int sid, double share, double age, double annual, double u, long day, int days)
+        {
+            var w = _w;
+            long now = w.Now;
+            ulong seed = w.Seed;
+            if (age < 2 && p.Mother != 0 && w.People.Exists(p.Mother))
+            {
+                // a baby at the breast lives on its mother's milk while her body can make it
+                ref var mo = ref w.People.Get(p.Mother);
+                if (mo.Alive && mo.NursingUntil > now && mo.Household == p.Household)
+                    share = DMath.Max(share, DMath.Clamp01(0.3 + 1.4 * mo.Reserve / AgentSystem.ReserveCap(in mo, seed, now)));
+            }
+            p.Nutrition = (float)DMath.Clamp01(share);
+            double cap = AgentSystem.ReserveCap(in p, seed, now);
+            p.Reserve = (float)DMath.Min(cap, p.Reserve + (share - 1.0) * days);
+            if (share < 0.4) { if (p.HungryFrom == 0) p.HungryFrom = now; }
+            else if (share >= 0.8) p.HungryFrom = 0;
+            if (p.Reserve <= 0f)
+            {
+                w.Agents.Kill(ref p, FamineCause(sid), 2);
+                w.Metrics.HungerDeaths++;
+                return;
+            }
+            double rr = p.Reserve / cap;
+            double fed = rr >= 0.5 ? 1.0 : 0.15 + 1.7 * rr;
+            double chill = 0.0;
+            if (p.At == p.Home && w.Households.Exists(p.Household))
+            {
+                ref var home = ref w.Households.Get(p.Household);
+                chill = Hearth.Chill(home.Indoor, age, Goods.Condition(home.Gear, w.Members(p.Household).Count));
+            }
+            // health day by day over the step: the cold may wear a body to nothing on one of its days
+            double hp = p.Health;
+            for (int k = 0; k < days; k++)
+            {
+                hp = DMath.Max(0.02, DMath.Min(hp + 0.05, fed) - chill);
+                if (chill > 0 && hp <= 0.05 && KeyedRng.Unit(seed, RngStream.Death, (ulong)p.Id, (ulong)(day + k), 9) < DMath.Min(1.0, 2.0 * chill))
+                {
+                    p.Health = (float)hp;
+                    w.Agents.Kill(ref p, w.Settlements.Get(sid).ColdEvent, 9);
+                    w.Metrics.ColdDeaths++;
+                    return;
+                }
+            }
+            p.Health = (float)hp;
+            // the step's other deaths: the day's hazard (by health) over its days, the cold's part as the day's
+            double hazard = annual / SimTime.DaysPerYear * (1.0 + 3.0 * (1.0 - p.Health));
+            if (u < Over(hazard, days))
+            {
+                double warm = Over(annual / SimTime.DaysPerYear * (1.0 + 3.0 * (1.0 - fed)), days);
+                if (chill > 0 && u >= warm) { w.Agents.Kill(ref p, w.Settlements.Get(sid).ColdEvent, 9); w.Metrics.ColdDeaths++; }
+                else w.Agents.Kill(ref p, 0, 1);
             }
         }
 
