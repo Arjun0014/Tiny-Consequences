@@ -341,7 +341,15 @@ namespace TC2.Tests.Core
             w.AdvanceTo(w.Now + SimTime.Days(40));
             int dead = 0;
             foreach (int id in deep) if (!w.People.Get(id).Alive) dead++;
-            foreach (int id in light) { var q = w.People.Get(id); Assert.IsTrue(q.Alive, "light wounds do not kill"); Assert.AreEqual(0f, q.Hurt, "and heal"); }
+            // (light wounds heal - unless they were struck again: a village holding four killings raises bands: D2-073)
+            var struckAgain = new HashSet<int>();
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Kind == HistoryKind.Struck) struckAgain.Add(e.Object.Id);
+                if (e.Kind == HistoryKind.Raid || e.Kind == HistoryKind.BandRaised) Console.WriteLine(HistoryText.Line(w, e));
+            }
+            foreach (int id in light) { if (struckAgain.Contains(id)) continue; var q = w.People.Get(id); Assert.IsTrue(q.Alive, "light wounds do not kill"); Assert.AreEqual(0f, q.Hurt, "and heal"); }
             int kills = 0;
             for (int id = w.Deeds.First(); id != 0; id = w.Deeds.Next(id)) { var k = w.Deeds.Get(id); if (k.Kind == DeedKind.Kill && k.By == striker && k.ToS == b) kills++; }
             for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.PersonDied && e.ArgA == 11) Console.WriteLine(HistoryText.Line(w, e)); }
@@ -552,6 +560,115 @@ namespace TC2.Tests.Core
             Console.WriteLine("b's grievance against a " + w.DeedBook.Grievance(b, a).ToString("0.000") + " / " + w2.DeedBook.Grievance(b, a).ToString("0.000") + "; answered " + (w.Deeds.Get(wound).Answer != 0));
             Assert.AreEqual(w.StateHash(), w2.StateHash(), "a world saved with its deeds and grudges continues as if never saved");
             Assert.IsNull(TestWorlds.Audit(w2));
+        }
+
+        // ------------------------------------------------------------------ raids (D2-073)
+        /// <summary>Premise: a's people killed a man of b, and b knows it (amends already asked: the wrong stands).</summary>
+        /// <summary>Premise: a village's people are bold (a band dares only what it can win: D2-073).</summary>
+        static void Bold(World w, int sid)
+        {
+            var res = w.Residents(sid);
+            for (int i = 0; i < res.Count; i++) w.People.Get(res[i]).Bold = 255;
+        }
+
+        static int Killing(World w, int a, int b)
+        {
+            int kill = w.DeedBook.Record(DeedKind.Kill, Grown(w, a), a, w.People.Get(Grown(w, b)).Household, b, 0, 1.0, Conflict.KillWorth, 0);
+            { ref var kd = ref w.Deeds.Get(kill); kd.Flags |= DeedKind.Claimed; }
+            w.DeedBook.Learn(b, kill, KnownHow.Saw);
+            w.DeedBook.Learn(a, kill, KnownHow.Own);
+            return kill;
+        }
+
+        [Test]
+        public void AHeavyWrongRaisesABandThatFallsOnTheStoreTogether()
+        {
+            var w = Pair(out int a, out int b);
+            Assume.That(b != 0, "two villages a walk apart");
+            w.AdvanceTo(w.Now + SimTime.Hours(30));
+            Killing(w, a, b);
+            Bold(w, b);
+            Full(w, a);
+            long mark = w.History.LastId;
+            HistoryEvent raised = default, raid = default;
+            int marching = 0, size = 0;
+            for (int h = 0; h < 60 * 24 && raid.Kind != HistoryKind.Raid; h++)
+            {
+                w.AdvanceTo(w.Now + SimTime.Hour);
+                for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++)
+                {
+                    var e = w.History.At(i);
+                    if (e.Kind == HistoryKind.BandRaised && raised.Kind != HistoryKind.BandRaised) { raised = e; size = e.ArgA; Console.WriteLine(HistoryText.Line(w, e)); }
+                    if (e.Kind == HistoryKind.Raid && raid.Kind != HistoryKind.Raid) { raid = e; Console.WriteLine(HistoryText.Line(w, e)); }
+                }
+                mark = w.History.LastId;
+                if (raised.Kind == HistoryKind.BandRaised && raid.Kind != HistoryKind.Raid)
+                {
+                    int now = 0;
+                    var res = w.Residents(b);
+                    for (int i = 0; i < res.Count; i++) { var q = w.People.Get(res[i]); if (q.Act == ActivityKind.TripOut && q.Why == WhyCode.Raid) { now++; if (now == 1) Console.WriteLine(HistoryText.Doing(w, in q)); } }
+                    if (now > marching) marching = now;
+                }
+            }
+            Assert.AreEqual(HistoryKind.BandRaised, raised.Kind, "the wrong raised a band");
+            Assert.GreaterOrEqual(size, Conflict.BandAtLeast, "of people who each chose to go");
+            Assert.AreEqual(HistoryKind.Raid, raid.Kind, "and it fell on the store");
+            Assert.AreEqual(raised.Id, raid.Cause1, "the raid's cause is the band, whose cause is the wrong");
+            Assert.Greater(marching, 1, "they walked there together in the night");
+            // a day on: home, the band over
+            w.AdvanceTo(w.Now + SimTime.Days(2));
+            int still = 0;
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id)) if (w.People.Get(id).Alive && w.People.Get(id).Band != 0) still++;
+            Assert.AreEqual(0, still, "the band is over and its people home");
+            Assert.AreEqual(0, w.Bands.Count);
+            Assert.IsNull(TestWorlds.Audit(w));
+        }
+
+        [Test]
+        public void TheCoarseDayRaisesBandsAtTheLivedRate()
+        {
+            long lived = 0, coarse = 0;
+            foreach (ulong seed in new ulong[] { 42, 43, 44 })
+                for (int k = 0; k < 2; k++)
+                {
+                    var w = Pair(out int a, out int b, seed);
+                    if (b == 0) continue;
+                    if (k == 1) Coarse(w);
+                    w.AdvanceTo(w.Now + SimTime.Hours(30));
+                    Killing(w, a, b);
+                    Bold(w, b);
+                    long n0 = w.Metrics.Bands;
+                    for (int d = 0; d < 60; d++) { Full(w, a); w.AdvanceTo(w.Now + SimTime.Day); }
+                    if (k == 0) lived += w.Metrics.Bands - n0; else coarse += w.Metrics.Bands - n0;
+                }
+            Console.WriteLine("bands raised in 60 days of a killing unanswered, three worlds: lived " + lived + ", COARSE " + coarse);
+            Assert.Greater(lived, 0);
+            Assert.That((double)coarse / Math.Max(1, lived), Is.InRange(0.5, 2.0), "the same daily choice at both resolutions");
+        }
+
+        [Test]
+        public void NumbersAndAWatchTellInTheFight()
+        {
+            // the same village falls to a large band and drives a small one off, more often than not (many nights)
+            int bigWon = 0, smallWon = 0, tries = 12;
+            for (int k = 0; k < tries; k++)
+            {
+                foreach (int n in new[] { 8, Conflict.BandAtLeast })
+                {
+                    var w = Pair(out int a, out int b);
+                    w.AdvanceTo(w.Now + SimTime.Hours(30 + 24 * k));
+                    Full(w, a);
+                    var raiders = new List<int>();
+                    var res = w.Residents(b);
+                    for (int i = 0; i < res.Count && raiders.Count < n; i++) { var q = w.People.Get(res[i]); if (q.Alive && q.AgeYears(w.Now) >= 18 && q.AgeYears(w.Now) < 45 && q.Health > 0.8) raiders.Add(res[i]); }
+                    if (raiders.Count < n) continue;
+                    double before = w.Settlements.Get(a).Granary;
+                    w.Conflict.FallNow(b, a, raiders, seen: true);
+                    if (w.Settlements.Get(a).Granary < before) { if (n == 8) bigWon++; else smallWon++; }
+                }
+            }
+            Console.WriteLine("seen bands that carried grain off: of 8, " + bigWon + " of " + tries + "; of " + Conflict.BandAtLeast + ", " + smallWon);
+            Assert.Greater(bigWon, smallWon, "a larger band overwhelms the defenders more often");
         }
 
         [Test]

@@ -6,10 +6,10 @@
 - Session 2 commits since the last checkpoint (newest last): 314fdd9 techniques (D2-062) · c8e9c23, 07b38be materials (D2-063) ·
   6bacfaa copper, F4 closed (D2-064/065) · 27d2a53 sickness (D2-066) · e01a933 trade and relief, F5 closed (D2-067/068) ·
   b78117d deeds and taking (D2-069, F6 slice 1) · 310ab38 sickness at scale (D2-070) · ceadd36 the watch, blows and injury
-  (D2-071, F6 slice 2) · the commit with answers, news and taking back (D2-072, F6 slice 3).
-- Phases: F0 done; **F1 to F5 closed** (D2-043, D2-046, D2-060, D2-065, D2-068); **F6 in progress** (plan 10 §6). 156 headless
-  tests green; `headless.mjs test` runs the float lint first. Sim version 26.
-- Determinism: dotnet equals the editor's Mono (gen 4b39f29b8ca834d3, D2-072); the Web build equals both at D2-068
+  (D2-071, F6 slice 2) · 0f2adde answers, news and taking back (D2-072, F6 slice 3) · the commit with raids (D2-073, F6 slice 4).
+- Phases: F0 done; **F1 to F5 closed** (D2-043, D2-046, D2-060, D2-065, D2-068); **F6 in progress** (plan 10 §6). 159 headless
+  tests green; `headless.mjs test` runs the float lint first. Sim version 27.
+- Determinism: dotnet equals the editor's Mono (gen 1e8c1954f8ae3dce, D2-073); the Web build equals both at D2-068
   (`tc2/out/webtest/s2webe`, `s2webe2`: 6/6).
 - Sickness at scale is fixed (D2-070): seed 42 holds 12,000-16,000 people from year 270 to 400 and seed 7 4,600-5,400
   (`tc2/out/society/sick42_400.txt`, `sick7_400.txt`; the run report lists the deadliest sicknesses). Saturated worlds are
@@ -70,13 +70,12 @@
   stocked), do not loosen the mechanism (D2-056).
 
 ### Next steps
-1. **F6 slice 4 - raids** (10 §6): a band of kin and neighbours raised by a heavy wrong (the village's foe) or hunger - each
-   deciding by boldness, ties and hunger - walks together at night (the party's pace, as migration parties do), takes several
-   loads (later beasts), meets the defenders as a group (the watch and the neighbours who come; group strength and numbers);
-   loot carried home; deeds and history ("A band of six from Voton fell on Thestford's store in the night"). COARSE: the same
-   band and its outcome at once. Then slice 5, defence that is built (a ditch, a palisade: remembered harm against labour and
-   timber, gates).
-2. F6 slices 5-7 (10 §6): defence built (ditch, palisade), prestige and leaders, tribute and polities. The 1,000-year run on D2-070 (`tc2/out/society/sick42_1000.txt`) is the baseline: 16,000-18,500 people, three
+1. **F6 slice 5 - defence that is built** (10 §3, §6): a palisade weighed from what other villages' people cost a village (three
+   years of harm, half saved over a wall's life) against the labour and timber of a ring round its homes; built as a village work
+   (`Construction`), rotting in ~30 years unless mended while it is worth it, falling when spent; a walled store sees takers and
+   doubles its defenders' ground; the view draws the ring of posts with gates on the roads. History: begun, finished ("a walled
+   place"), fallen. With long runs, F6's done-when (a fortified town arises and falls, explained) can be judged.
+2. F6 slices 6-7 (10 §6): prestige and leaders, tribute and polities (a raided village that cannot flee pays). The 1,000-year run on D2-070 (`tc2/out/society/sick42_1000.txt`) is the baseline: 16,000-18,500 people, three
    great plagues, famine regulation, ~114 takings a year before the watch.
 3. **The sea's calibration**: fish at ~1 % of real biomass, so the miniature holds ~10-20 seals (D2-053).
 4. Look and Web: the after-a-century view at 48-68 fps (s2webe: measure layer by layer with `webperf.mjs`); WebGL2's first-entry

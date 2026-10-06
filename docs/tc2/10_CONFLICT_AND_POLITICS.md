@@ -89,3 +89,11 @@ same choices at the lived rate (measured, as visits and trade are). Long runs ar
 - Grievance and gratitude are ageing sums per pair of villages (state), read at once.
 - Measured (400 years): about four claims in five refused; feuds are carried on by taking back - raids are the next slice.
 
+## 10. Implemented: slice 4, raids (D2-073)
+- A village holding a heavy wrong against its foe, or starving beside a full store, may raise a band: its boldest leads and each
+  fit grown person decides to go (boldness, kin of the leader, never against their own kin); a band dares only what it expects
+  to win. Lived, its people walk there together in the night; COARSE, it falls at once.
+- At the store: unseen, a load each; seen, the village rallies round by round and blows go by numbers, strength and ground until
+  one side breaks. Wounds are deeds; the raid is a deed; the loot answers the wrongs the band went for.
+- Measured: large villages are safe from a lone band; small ones are raided (seed 7: 161 raids in 400 years, 44 % beaten off).
+

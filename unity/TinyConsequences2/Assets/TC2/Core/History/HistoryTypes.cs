@@ -70,6 +70,8 @@ namespace TC2.Core.History
         WatchSet = 64,          // a village began to keep a watch at its store at night (Magnitude the year's losses, FU)
         AmendsMade = 65,        // a village made amends for blood its people shed (Subject the payers, Object the wronged, Other who asked; Magnitude FU; ArgA the deed kind; D2-072)
         ClaimRefused = 66,      // a village would not make amends (ArgA 1 they denied it; ArgB the deed kind)
+        BandRaised = 67,        // someone raised a band to fall on a village (Subject the leader, Object the target; ArgA its size, ArgB 1 a wrong, 0 hunger; D2-073)
+        Raid = 68,              // a band fell on a village's store (Subject the raiders' village, Object the raided, Other the leader; Magnitude loot; ArgA size, ArgB outcome x 100 + blows)
         HomeTaken = 53,         // a household made its home in one that stood empty (Object: who lived there last; ArgA 1 a hut, 2 a house; D2-059)
         ColdHomes = 52,         // a village's homes were cold enough to harm (Magnitude homes, ArgA 1 the woodstore ran short, ArgB the day's mean C; D2-056)
     }
@@ -220,6 +222,8 @@ namespace TC2.Core.History
                 case HistoryKind.WatchSet: return Tier.Local;
                 case HistoryKind.AmendsMade: return Tier.Local;
                 case HistoryKind.ClaimRefused: return Tier.Local;
+                case HistoryKind.BandRaised: return Tier.Local;
+                case HistoryKind.Raid: return Tier.Historical;
                 default: return Tier.Personal;
             }
         }
@@ -287,6 +291,8 @@ namespace TC2.Core.History
                 case HistoryKind.WatchSet: b = 6; break;
                 case HistoryKind.AmendsMade: b = 8; break;
                 case HistoryKind.ClaimRefused: b = 9; break;
+                case HistoryKind.BandRaised: b = 8; break;
+                case HistoryKind.Raid: b = 14; break;
                 default: b = 1; break;
             }
             // magnitude raises importance sub-linearly - where it is a size; a person's events carry an age or a count there,

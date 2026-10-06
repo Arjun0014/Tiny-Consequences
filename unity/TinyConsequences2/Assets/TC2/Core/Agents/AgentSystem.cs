@@ -299,6 +299,7 @@ namespace TC2.Core.Agents
                 var rs = NextRandom(ref p);
                 p.Until = w.Now + SimTime.Hours(1.5 + 3.0 * rs.NextUnit());
                 if (p.Why == WhyCode.Take) { p.Until = w.Now; w.Conflict.Take(ref p, arrived); }   // at the store in the dark: no visit (D2-069)
+                else if (p.Why == WhyCode.Raid) { p.Until = w.Now; w.Conflict.RaidArrive(ref p, arrived); }   // the band falls on the store (D2-073)
                 else
                 {
                     p.Visits++;
@@ -309,6 +310,7 @@ namespace TC2.Core.Agents
                 }
             }
             else if (p.CargoQty > 0f) w.Trade.Unload(ref p, arrived);   // home with it
+            if (arrived == p.Home && p.Band != 0 && TC2.Core.Society.Conflict.RaidDone(in p, w)) p.Band = 0;
             p.Dest = 0;
             Decide(ref p);
         }
@@ -744,12 +746,18 @@ namespace TC2.Core.Agents
             }
 
             // 0c. a taker's work at the store is done (or they were seen): home by the road at once, in the dark (D2-069)
-            if (!atHome && p.Why == WhyCode.Take && TakerHome(ref p)) return;
+            if (!atHome && (p.Why == WhyCode.Take || p.Why == WhyCode.Raid) && TakerHome(ref p)) return;
 
             // 1. night: sleep until the morning - unless, going to bed hungry with nothing to eat, they go in the dark to a
             //    neighbour's full store (once a night, the first night decision before 2 am: D2-069)
             if (night)
             {
+                // a band is to fall on a village tonight and they are of it: they go at bedtime, to come there together (D2-073)
+                if (atHome && p.Band != 0 && w.Bands.Exists(p.Band))
+                {
+                    ref var band = ref w.Bands.Get(p.Band);
+                    if (band.State == 0 && band.Arrive > now && band.Arrive - now <= SimTime.Hours(6) && p.Hurt < TC2.Core.Society.Conflict.RoadHurt && StartRaid(ref p)) return;
+                }
                 // the village keeps a watch at its store tonight and it is their turn: until two in the morning (D2-071)
                 if (atHome && here.Watcher == p.Id && p.Act != ActivityKind.Watch && (lsec >= bed || lsec < 2 * SimTime.Hour))
                 {
@@ -1558,7 +1566,20 @@ namespace TC2.Core.Agents
             var r = w.Routes.Get(w, p.At, p.Home);
             if (r == null) return false;
             double from = p.At == r.A ? 0.0 : r.Length, to = p.Home == r.A ? 0.0 : r.Length;
-            BeginTravel(ref p, ActivityKind.TripHome, WhyCode.Take, r, from, to, p.Home);
+            BeginTravel(ref p, ActivityKind.TripHome, p.Why == WhyCode.Raid ? WhyCode.Raid : WhyCode.Take, r, from, to, p.Home);
+            return true;
+        }
+
+        /// <summary>A band's member sets out at their bedtime, the band to come to the village together (D2-073).</summary>
+        bool StartRaid(ref Person p)
+        {
+            var w = _w;
+            if (p.Band == 0 || !w.Bands.Exists(p.Band) || p.At != p.Home) return false;
+            ref var b = ref w.Bands.Get(p.Band);
+            var r = w.Routes.Get(w, p.At, b.Target);
+            if (r == null) return false;
+            double from = p.At == r.A ? 0.0 : r.Length, dest = b.Target == r.A ? 0.0 : r.Length;
+            BeginTravel(ref p, ActivityKind.TripOut, WhyCode.Raid, r, from, dest, b.Target, b.Arrive);
             return true;
         }
 

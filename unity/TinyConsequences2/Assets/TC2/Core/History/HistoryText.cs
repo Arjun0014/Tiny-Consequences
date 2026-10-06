@@ -101,6 +101,16 @@ namespace TC2.Core.History
                 case HistoryKind.ClaimRefused:
                     return "The people of " + subj + (e.ArgA == 1 ? " said they had no part in " : " would make no amends to " + obj + " for ") + (e.ArgB == 5 ? "a death" : "a wounding") +
                            (e.ArgA == 1 ? " that " + obj + " laid at their door" : "") + (e.Other.IsNone ? "" : " when " + other + " came to ask") + ".";
+                case HistoryKind.BandRaised:
+                    return subj + " raised a band of " + e.ArgA + " in " + place + " to fall on " + obj + (e.ArgB == 1 ? ": they hold a heavy wrong against it." : ": they are starving and its store is full.");
+                case HistoryKind.Raid:
+                    {
+                        int outcome = e.ArgB / 100, blows = e.ArgB % 100;
+                        string band = "A band of " + e.ArgA + " from " + subj + (e.Other.IsNone ? "" : ", led by " + other + ",") + " fell on the store of " + obj + " in the night";
+                        if (outcome == 0) return band + " and carried off " + F(e.Magnitude, "0") + " days' grain unseen.";
+                        if (outcome == 1) return band + ", fought off its people (" + blows + (blows == 1 ? " blow" : " blows") + ") and carried off " + F(e.Magnitude, "0") + " days' grain.";
+                        return band + " but was driven off (" + blows + (blows == 1 ? " blow" : " blows") + ").";
+                    }
                 case HistoryKind.PathogenAppeared: return "A new sickness, " + subj + ", appeared in " + place + (e.ArgA == 1 ? ", caught from its animals" : "") + ".";
                 case HistoryKind.EpidemicArrived:
                     return e.ArgA == 1 ? Cap(obj) + " broke out in " + place + (e.Other.IsNone ? "" : ", " + other + " the first to fall ill") + "."
@@ -161,9 +171,11 @@ namespace TC2.Core.History
                     if (p.Why == WhyCode.Take)
                         return "walking to " + (dest.Length > 0 ? dest : "a neighbouring village") + " in the dark to take grain from its store: " +
                                (p.Nutrition < 0.5f ? "there is nothing left to eat at home, and its store is full" : "to take back for the wrong " + dest + " did " + home);
+                    if (p.Why == WhyCode.Raid) return "walking with a band to fall on " + (dest.Length > 0 ? dest : "a neighbouring village") + " in the night: " + home + " holds a wrong against it, or hunger drives it";
                     if (p.Why == WhyCode.Claim) return "walking to " + (dest.Length > 0 ? dest : "a neighbouring village") + " to ask amends for blood its people shed: " + home + " holds them to it";
                     return "walking to " + (dest.Length > 0 ? dest : "a neighbouring village") + (p.Why == WhyCode.VisitKin ? " to see kin" : " to see a friend");
                 case ActivityKind.TripHome:
+                    if (p.Why == WhyCode.Raid) return "coming home to " + home + " from a raid in the night" + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "") + (p.Hurt > 0f ? ", hurt" : "");
                     if (p.Why == WhyCode.Take) return p.CargoQty > 0f ? "hurrying home to " + home + " in the dark with " + Load(p.Cargo, p.CargoQty) + " taken from a neighbour's store" : "running home to " + home + " in the dark: seen at the store, they left the grain";
                     return "walking home to " + home + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "");
                 case ActivityKind.Visit: return "visiting " + at;

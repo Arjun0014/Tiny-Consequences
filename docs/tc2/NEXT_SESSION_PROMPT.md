@@ -55,9 +55,9 @@ that outlive households), carry their technology as knowledge (nets, the loom, t
 sick with sicknesses that come from their animals and travel with visitors, brides and traders, and trade what they spare for
 what they lack (copper from the ore villages; grain to a neighbour in famine as relief). F6 (society, conflict and polities)
 has begun: deeds known per village, the hungry taking grain from a neighbour's store in the night, grudges that stop trade and
-relief (D2-069); the watch, blows and injury (D2-071); claims and amends, news, taking back (D2-072); sickness holds at
-scale (D2-070). Determinism holds across dotnet, Mono and the Web build and is linted (D2-057). Next (SESSION_HANDOFF "Next
-steps"): F6's next slices (raids; defence; leaders; polities). Run long headless jobs from a scratch copy of the binaries so the repo's DLL stays free.
+relief (D2-069); the watch, blows and injury (D2-071); claims and amends, news, taking back (D2-072); raids by bands of
+people who each chose to go (D2-073); sickness holds at scale (D2-070). Determinism holds across dotnet, Mono and the Web build and is linted (D2-057). Next (SESSION_HANDOFF "Next
+steps"): F6's next slices (defence that is built; leaders; polities). Run long headless jobs from a scratch copy of the binaries so the repo's DLL stays free.
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

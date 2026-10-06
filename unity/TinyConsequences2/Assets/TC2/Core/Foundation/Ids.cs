@@ -24,6 +24,7 @@ namespace TC2.Core.Foundation
         World = 16,
         Beast = 17,   // a household's animal (D2-048)
         Deed = 18,    // a deed: who did what to whom (D2-069)
+        Band = 19,    // a band raised to fall on a village (D2-073)
     }
 
     /// <summary>A reference to any entity: (kind, id) packed into a long. 0 means none.</summary>

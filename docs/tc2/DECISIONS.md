@@ -1656,3 +1656,35 @@ wounds, 5,537 people. With the sums the same history costs conflict 26 us and tr
 before). Mono equals dotnet (gen 4b39f29b8ca834d3).
 **Next (F6 slice 4).** Raids: a band of kin and neighbours raised by a heavy wrong or hunger, each deciding; it walks together at
 night, takes several loads, meets the defenders as a group.
+
+## D2-073 — 2026-10-06 — Raids: bands of people who each chose to go (F6 slice 4)
+
+**Context.** 10 §6 slice 4. Research (TC1 `40_RESEARCH_CONFLICT_PLANET.md` §A1, A3): raiding parties form along kin and friendship
+(Glowacki et al. 2016), each member deciding for their own reasons; most small raids are stealth raids, flight is common and
+death rare (Mathew & Boyd); revenge raids follow losses; need and grievance are the motives. TC1's lesson (D-151): bands are
+real people walking together, never a counter or a war flag.
+**Decision.** (1) A village's day may raise a band (`Conflict.Raids`, both resolutions): when it holds a heavy wrong against its
+foe (150 FU, more readily up to 600) or half its fit grown people go hungry beside a full store a walk away; a chance of 0.02 a day
+at the fullest, less the more its takers and bands were beaten back at that village (the deterrence of known answers). Its boldest
+fit grown person without kin there leads; each fit grown person decides to go - by boldness, half again for the leader's close
+kin, never against a village where they have close kin; three to twelve go. A band dares only what it expects to win: its
+strength against the defence it knows (the neighbours round the store, the watch, and the help a village of that size rallies).
+(2) Lived, the band's people set out at their bedtime the next night and come to the village together at one in the morning
+(`Band`, one pace, as migration parties walk); COARSE, it falls at once. (3) The fall (`Conflict.Fall`, shared): a band is seen
+more readily than one taker (1 - (1 - seen)^(1 + 0.3 (n - 1))); unseen, each carries off a load; seen, the watcher, the first to
+wake and the neighbours round the store come out and, each round, more of the village wakes (two and 15 % of its fit grown
+people); blows go round by numbers and strength (health, years, hurt, metal) and the defenders' home ground (1.2), until one side
+breaks (half the other's strength) - a band that holds the field carries off half its loads. Every blow a wound deed; the raid a
+deed the raided village holds against the raiders' (the loot and 30 FU of fright); what the band carries home answers the oldest
+of the wrongs it went for, each wholly (they are made good). History: "Bae Drousaern raised a band of 7 in Kubroford to fall on
+Gouthorpe: they hold a heavy wrong against it" - "A band of 7 from Kubroford, led by Bae Drousaern, fell on the store of
+Gouthorpe in the night, fought off its people (4 blows) and carried off 117 days' grain". Sim version 27.
+**Evidence.** `TakingTests` (159 tests): a killing unanswered raises a band whose people walk there together and fall on the store,
+its cause the band and the band's the wrong, and all come home; the COARSE day raises bands at the lived rate (5 / 3 in 60 days,
+three worlds); a band of 8 beats a village's defence 12 times in 12, a band of 3 rarely. Tuning on 400-year runs: with a share of
+the whole village coming out, 5,461 raids were nearly all beaten (no band weighed its chances); with only the first to wake, 725
+nearly all won; with the village rallying round by round and bands daring only what they can win: seed 42 (villages of ~400) 18
+raids in 400 years, 2 beaten off; seed 7 (villages of ~270) 161 raids, 71 beaten off, 16,426 FU carried off
+(`tc2/out/society/raids42_400.txt`, `raids7_400.txt`) - large villages are safe from a lone band, small ones are prey. Mono equals
+dotnet (gen 1e8c1954f8ae3dce).
+**Next (F6 slice 5).** Defence that is built: a palisade from remembered losses against its labour and timber.

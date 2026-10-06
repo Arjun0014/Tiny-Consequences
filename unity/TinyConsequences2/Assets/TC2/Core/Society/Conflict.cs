@@ -6,6 +6,19 @@ using TC2.Core.Simulation;
 
 namespace TC2.Core.Society
 {
+    /// <summary>A band raised to fall on a village (D2-073): its people carry its id; it is resolved once, when it comes.</summary>
+    public struct Band
+    {
+        public int Id, Origin, Target, Leader;
+        public byte Size, Motive, State;   // Motive 1 a wrong, 0 hunger; State 0 raised, 1 fallen
+        public long Formed, Arrive, Event;
+        public float Loot;
+
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Origin); w.Int(Target); w.Int(Leader); w.Byte(Size); w.Byte(Motive); w.Byte(State); w.Long(Formed); w.Long(Arrive); w.Long(Event); w.Float(Loot); }
+        public static Band Read(BinReader r) => new Band { Id = r.Int(), Origin = r.Int(), Target = r.Int(), Leader = r.Int(), Size = r.Byte(), Motive = r.Byte(), State = r.Byte(), Formed = r.Long(), Arrive = r.Long(), Event = r.Long(), Loot = r.Float() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Origin); h.Add(Target); h.Add(Leader); h.Add(Size); h.Add(Motive); h.Add(State); h.Add(Formed); h.Add(Arrive); h.Add(Event); h.Add(Loot); }
+    }
+
     /// <summary>
     /// Taking by need (D2-069; F6 slice 1; 10 §2): a hungry grown person may go in the night to a neighbour's full store and take a
     /// load of grain - more readily the bolder they are and the nearer to starving, held back by kin living there and by help that
@@ -56,6 +69,17 @@ namespace TC2.Core.Society
         public const double AnswersFull = 2.0;
         /// <summary>A grievance this heavy (FU) moves the bold to take back; their chance a night at its fullest (200 FU).</summary>
         public const double TakeBackFrom = 30.0, TakeBackPerNight = 0.01;
+
+        // ---- raids (D2-073)
+        /// <summary>A wrong this heavy (FU) may raise a band, the more readily up to RaidFull; a village's chance a day at the fullest.</summary>
+        public const double RaidFrom = 150.0, RaidFull = 600.0, RaidPerDay = 0.02;
+        /// <summary>A band needs this many to go and takes no more than BandAtMost.</summary>
+        public const int BandAtLeast = 3, BandAtMost = 12;
+        /// <summary>The defenders' home ground, the strength below which a side breaks against the other, a fighter's chance to land a
+        /// blow a round, a raid's fright (FU); a band goes only when it is this strong against the defence it expects.</summary>
+        public const double HomeGround = 1.2, BreakAt = 0.5, HitChance = 0.5, RaidFright = 30.0, BandDares = 0.8;
+        /// <summary>Each round of a fight more of the village wakes and comes: two and this share of its fit grown people.</summary>
+        public const double Reinforce = 0.15;
 
         /// <summary>A person is hungry enough to go when the last day fed them less than this share of their need (both resolutions
         /// keep that share, the body's day: a lived meal-time flag would clear at the first bite).</summary>
@@ -597,6 +621,294 @@ namespace TC2.Core.Society
         }
 
 
+        // ------------------------------------------------------------------ raids (D2-073)
+        readonly System.Collections.Generic.List<int> _band = new System.Collections.Generic.List<int>();
+        readonly System.Collections.Generic.List<int> _defend = new System.Collections.Generic.List<int>();
+
+        /// <summary>
+        /// A village's day may raise a band (both resolutions): when it holds a heavy wrong against its foe, or its grown people
+        /// starve beside a full store a walk away. Its boldest fit person leads; each fit grown person decides to go - by boldness,
+        /// by kinship with the leader, never against a village where they have close kin. Three or more go: lived, the next night
+        /// (they leave at bedtime and come to the village together at one in the morning); COARSE, at once.
+        /// </summary>
+        void Raids(int sid)
+        {
+            var w = _w;
+            long now = w.Now;
+            ref var s = ref w.Settlements.Get(sid);
+            if (!s.Inhabited) return;
+            for (int b = w.Bands.First(); b != 0; b = w.Bands.Next(b)) if (w.Bands.Get(b).Origin == sid) return;   // (one band at a time)
+            // the motive: a heavy wrong, or hunger
+            var res = w.Residents(sid);
+            int fit = 0, hungry = 0;
+            for (int i = 0; i < res.Count; i++) { ref var q = ref w.People.Get(res[i]); if (!Fit(in q, now) || q.AgeYears(now) >= 50) continue; fit++; if (q.Nutrition < HungryBelow) hungry++; }
+            if (fit < BandAtLeast) return;
+            int target = 0; byte motive = 0;
+            double urge = 0;
+            if (s.Foe != 0 && s.FoeWorth >= RaidFrom) { target = s.Foe; motive = 1; urge = DMath.Clamp01((double)s.FoeWorth / RaidFull); }
+            else if (hungry * 2 >= fit)
+            {
+                int leader0 = Boldest(sid, now, 0);
+                if (leader0 != 0) { target = TakeTarget(in w.People.Get(leader0), out double free); urge = (double)hungry / fit * free; }
+            }
+            if (target == 0 || urge <= 0) return;
+            // (a village whose takers and bands that target beat back thinks twice: D2-073)
+            urge *= 1.0 - DMath.Clamp01(w.DeedBook.Answers(sid, target) / AnswersFull);
+            if (KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)sid, (ulong)now, 50) >= RaidPerDay * urge) return;
+            ref var t = ref w.Settlements.Get(target);
+            if (!t.Inhabited || Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, sid, target) == null) return;
+            int leader = Boldest(sid, now, target);
+            if (leader == 0) return;
+            // who goes with them: each decides
+            _band.Clear();
+            _band.Add(leader);
+            ref var L = ref w.People.Get(leader);
+            for (int i = 0; i < res.Count && _band.Count < BandAtMost; i++)
+            {
+                int pid = res[i];
+                if (pid == leader) continue;
+                ref var q = ref w.People.Get(pid);
+                if (!Fit(in q, now) || q.AgeYears(now) >= 50 || q.PregDue != 0 || (q.NursingUntil != 0 && q.NursingUntil - now > SimTime.Year / 2) || q.Band != 0) continue;
+                if (KinIn(in q, target)) continue;   // (not against their own kin)
+                bool kin = q.Mother == leader || q.Father == leader || L.Mother == pid || L.Father == pid || q.Partner == leader || (q.Mother != 0 && q.Mother == L.Mother);
+                double join = (0.15 + 0.7 * q.Bold / 255.0) * (kin ? 1.5 : 1.0) * (motive == 1 ? 1.0 : (q.Nutrition < HungryBelow ? 1.0 : 0.3));
+                if (KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)pid, (ulong)now, 51) < join) _band.Add(pid);
+            }
+            if (_band.Count < BandAtLeast) return;
+            // too few against the defence they expect (the neighbours round the store and its watch, on their own ground): they stay
+            double bandStrength = 0;
+            for (int i = 0; i < _band.Count; i++) bandStrength += Strength(in w.People.Get(_band[i]));
+            // (they know the village: its neighbours round the store, its watch, and how many more would wake)
+            double expect = (1 + Helpers(target) + (w.Settlements.Get(target).Watcher != 0 ? 1 : 0) + 2 + Reinforce * FitAt(target, now)) * 0.8 * HomeGround;
+            if (bandStrength < BandDares * expect) return;
+            // the band
+            int id = w.Ids.Next(EntityKind.Band);
+            long off = w.LocalOffsetOf(sid);
+            long arrive = SimTime.StartOfDay(now + off) + SimTime.Day + SimTime.Hours(1) - off;   // (one in the morning, the coming night)
+            long cause = motive == 1 ? s.FoeEvent : HungerCause(sid, now);
+            long ev = w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.BandRaised, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Person(leader), Object = EntityRef.Settlement(target),
+                Cause1 = cause, Rel1 = CauseRel.InResponseTo, ArgA = _band.Count, ArgB = motive, RootKind = RootKind.People,
+            });
+            w.Bands.Add(id, new Band { Id = id, Origin = sid, Target = target, Leader = leader, Size = (byte)_band.Count, Motive = motive, Formed = now, Arrive = arrive, Event = ev });
+            for (int i = 0; i < _band.Count; i++) w.People.Get(_band[i]).Band = id;
+            w.Metrics.Bands++;
+            if (w.Resolution == Resolution.Coarse) Fall(id, _band);
+        }
+
+        /// <summary>Premise (tests, tools): a band of these people of a village falls on another's store now (seen, or as the night goes).</summary>
+        public void FallNow(int origin, int target, System.Collections.Generic.List<int> raiders, bool seen)
+        {
+            var w = _w;
+            int id = w.Ids.Next(EntityKind.Band);
+            w.Bands.Add(id, new Band { Id = id, Origin = origin, Target = target, Leader = raiders[0], Size = (byte)raiders.Count, Motive = 1, Formed = w.Now, Arrive = w.Now });
+            for (int i = 0; i < raiders.Count; i++) w.People.Get(raiders[i]).Band = id;
+            _forceSeen = seen ? 1 : 0;
+            var list = new System.Collections.Generic.List<int>(raiders);
+            Fall(id, list);
+            _forceSeen = -1;
+            for (int i = 0; i < raiders.Count; i++) { ref var q = ref w.People.Get(raiders[i]); if (q.CargoQty > 0f) w.Trade.Unload(ref q, origin); q.Band = 0; }
+            if (w.Bands.Exists(id)) w.Bands.Remove(id);
+        }
+        int _forceSeen = -1;
+
+        /// <summary>The boldest fit grown person of a village (who would lead a band), without close kin in the target.</summary>
+        int Boldest(int sid, long now, int target)
+        {
+            var w = _w;
+            var res = w.Residents(sid);
+            int best = 0; double bv = -1;
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var q = ref w.People.Get(res[i]);
+                if (!Fit(in q, now) || q.AgeYears(now) >= 50 || q.Band != 0) continue;
+                if (target != 0 && KinIn(in q, target)) continue;
+                double v = q.Bold / 255.0 + 0.2 * KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)res[i], (ulong)now, 52);
+                if (v > bv) { bv = v; best = res[i]; }
+            }
+            return best;
+        }
+
+        /// <summary>Lived: a band's member arrives at the target; the first to come resolves the raid for all the band on the road there.</summary>
+        public void RaidArrive(ref Person p, int at)
+        {
+            var w = _w;
+            if (p.Band == 0 || !w.Bands.Exists(p.Band)) return;
+            ref var b = ref w.Bands.Get(p.Band);
+            if (b.State != 0 || b.Target != at) return;
+            _band.Clear();
+            var res = w.Residents(b.Origin);
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var q = ref w.People.Get(res[i]);
+                if (q.Alive && q.Band == b.Id && (q.Id == p.Id || (q.Act == ActivityKind.TripOut && q.Why == WhyCode.Raid && q.Dest == at) || (q.At == at && q.Why == WhyCode.Raid))) _band.Add(res[i]);
+            }
+            Fall(b.Id, _band);
+        }
+
+        /// <summary>
+        /// The band falls on the village's store (D2-073; both resolutions). A band is louder than one taker: the store's sleepers
+        /// or its watch see it the more readily. Unseen, each carries off a load. Seen, the watcher and the woken come out - a share
+        /// of the village's grown people, up to the band's size and more - and blows go round by round, each side striking by its
+        /// numbers and strength (health, years, hurt, metal), until one side breaks: the band that holds the field takes half its
+        /// loads. Every blow a wound deed; the raid a deed the raided village holds against the raiders'; what the band carries
+        /// home answers part of the wrong it went for.
+        /// </summary>
+        void Fall(int bandId, System.Collections.Generic.List<int> raiders)
+        {
+            var w = _w;
+            long now = w.Now;
+            ulong seed = w.Seed;
+            ref var b = ref w.Bands.Get(bandId);
+            int at = b.Target, origin = b.Origin;
+            b.State = 1;
+            ref var t = ref w.Settlements.Get(at);
+            int n = raiders.Count;
+            bool watched = t.Watcher != 0;
+            double seenOne = SeenAt(at);
+            double seen = 1.0 - DMath.Exp((1.0 + 0.3 * (n - 1)) * DMath.Log(DMath.Max(1e-9, 1.0 - seenOne)));
+            bool isSeen = _forceSeen >= 0 ? _forceSeen == 1 : KeyedRng.Unit(seed, RngStream.Society, (ulong)bandId, (ulong)now, 60) < seen;
+            double loads = n;
+            int blows0 = (int)w.Metrics.Blows;
+            byte outcome = 0;   // 0 unseen, 1 seen and the band held the field, 2 seen and the band was driven off
+            if (isSeen)
+            {
+                // the defenders: the watcher, the first to wake and the neighbours round the store who come running; each round
+                // more of the village wakes and comes
+                _defend.Clear();
+                int fitThere = FitAt(at, now);
+                if (watched && w.People.Exists(t.Watcher) && Fit(in w.People.Get(t.Watcher), now)) _defend.Add(t.Watcher);
+                Rally(at, 1 + Helpers(at) + (watched ? 1 : 0), now);
+                outcome = 0;
+                for (int round = 0; round < 4 && outcome == 0; round++)
+                {
+                    if (round > 0) Rally(at, _defend.Count + (int)DMath.Floor(2 + Reinforce * fitThere), now);
+                    if (_defend.Count == 0) { outcome = 1; break; }
+                    double sr = SideStrength(raiders), sd = SideStrength(_defend) * HomeGround;
+                    // each side strikes by its numbers and strength
+                    Exchange(raiders, _defend, sr / (sr + sd), bandId, round, true);
+                    Exchange(_defend, raiders, sd / (sr + sd), bandId, round, false);
+                    sr = SideStrength(raiders); sd = SideStrength(_defend) * HomeGround;
+                    if (sr < BreakAt * sd) outcome = 2;                    // the band breaks and runs
+                    else if (round >= 1 && sd < BreakAt * sr) outcome = 1; // the defenders give way
+                }
+                if (outcome == 0) outcome = SideStrength(raiders) >= SideStrength(_defend) * HomeGround ? (byte)1 : (byte)2;
+                loads = outcome == 1 ? 0.5 * n : 0.0;
+            }
+            // the loot: a load each that the band carries (half when it had to fight for the field)
+            ref var t2 = ref w.Settlements.Get(at);
+            double loot = DMath.Min(loads * LoadFu, t2.Granary);
+            if (loot > 0)
+            {
+                t2.Granary -= loot;
+                double each = loot / n;
+                for (int i = 0; i < n; i++) { ref var q = ref w.People.Get(raiders[i]); q.Cargo = Trade.Grain; q.CargoQty = (float)each; q.CargoTo = Trade.ToLarder; }
+            }
+            ref var b2 = ref w.Bands.Get(bandId);
+            b2.Loot = (float)loot;
+            long ev = w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.Raid, Time = now, Cell = t2.Cell, Settlement = at, Subject = EntityRef.Settlement(origin), Object = EntityRef.Settlement(at),
+                Other = EntityRef.Person(b2.Leader), Cause1 = b2.Event, Rel1 = CauseRel.PartOf, Magnitude = (float)loot, ArgA = n, ArgB = outcome * 100 + ((int)w.Metrics.Blows - blows0),
+                RootKind = RootKind.People,
+            });
+            // the raid a deed (the doers known when seen; a loss found when not), and what it answers
+            int deed = w.DeedBook.Record(DeedKind.Raid, b2.Leader, origin, 0, at, Trade.Grain, loot, loot + RaidFright, ev);
+            w.DeedBook.Learn(at, deed, isSeen ? KnownHow.Saw : KnownHow.Found);
+            w.DeedBook.Learn(origin, deed, KnownHow.Own);
+            if (b2.Motive == 1 && loot > 0) w.DeedBook.SettleBy(origin, at, loot);
+            w.Metrics.Raids++;
+            w.Metrics.RaidLoot += loot;
+            if (outcome == 2) w.Metrics.RaidsBeaten++;
+            // COARSE: home at once with what they carry
+            if (w.Resolution == Resolution.Coarse)
+                for (int i = 0; i < n; i++) { ref var q = ref w.People.Get(raiders[i]); if (q.CargoQty > 0f) w.Trade.Unload(ref q, origin); q.Band = 0; }
+            if (w.Resolution == Resolution.Coarse) w.Bands.Remove(bandId);
+        }
+
+        /// <summary>The defenders come out, the boldest first, until there are this many (as many as there are fit and at home).</summary>
+        void Rally(int at, int count, long now)
+        {
+            var w = _w;
+            var res = w.Residents(at);
+            while (_defend.Count < count)
+            {
+                int best = 0; double bv = -1;
+                for (int i = 0; i < res.Count; i++)
+                {
+                    ref var q = ref w.People.Get(res[i]);
+                    if (!Fit(in q, now) || q.At != at || _defend.Contains(res[i])) continue;
+                    double v = q.Bold / 255.0 + 0.5 * KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)res[i], (ulong)now, 61);
+                    if (v > bv) { bv = v; best = res[i]; }
+                }
+                if (best == 0) return;
+                _defend.Add(best);
+            }
+        }
+
+        /// <summary>A village's fit grown people at home.</summary>
+        int FitAt(int sid, long now)
+        {
+            var w = _w;
+            var res = w.Residents(sid);
+            int n = 0;
+            for (int i = 0; i < res.Count; i++) { ref var q = ref w.People.Get(res[i]); if (Fit(in q, now) && q.At == sid) n++; }
+            return n;
+        }
+
+        double SideStrength(System.Collections.Generic.List<int> side)
+        {
+            double s = 0;
+            for (int i = 0; i < side.Count; i++) { ref var q = ref _w.People.Get(side[i]); if (q.Alive && q.Hurt < AbedHurt) s += Strength(in q); }
+            return s;
+        }
+
+        /// <summary>A round of blows from one side to the other: each fighter strikes with a chance by the side's share of strength.</summary>
+        void Exchange(System.Collections.Generic.List<int> from, System.Collections.Generic.List<int> to, double share, int bandId, int round, bool raiders)
+        {
+            var w = _w;
+            long now = w.Now;
+            ulong seed = w.Seed;
+            for (int i = 0; i < from.Count; i++)
+            {
+                ref var a = ref w.People.Get(from[i]);
+                if (!a.Alive || a.Hurt >= AbedHurt) continue;
+                ulong k = (ulong)(bandId * 1000 + round * 100 + (raiders ? 0 : 50) + i);
+                if (KeyedRng.Unit(seed, RngStream.Society, k, (ulong)now, 62) >= HitChance * 2.0 * share) continue;
+                // a fighter of the other side still standing, by a keyed pick
+                int pick = -1;
+                int start = (int)KeyedRng.Below(KeyedRng.Hash(seed, RngStream.Society, k, (ulong)now, 63), to.Count);
+                for (int j = 0; j < to.Count; j++) { int c = (start + j) % to.Count; ref var q = ref w.People.Get(to[c]); if (q.Alive && q.Hurt < AbedHurt) { pick = c; break; } }
+                if (pick < 0) return;
+                ref var v = ref w.People.Get(to[pick]);
+                double hurt = 0.2 + 0.6 * KeyedRng.Unit(seed, RngStream.Society, k, (ulong)now, 64);
+                Strike(ref a, ref v, hurt, w.Bands.Get(bandId).Target, !raiders, w.Bands.Get(bandId).Event);
+            }
+        }
+
+        /// <summary>Lived: a raider who has done (or was driven off) goes home with what they carry.</summary>
+        public static bool RaidDone(in Person p, World w) => p.Band != 0 && w.Bands.Exists(p.Band) && w.Bands.Get(p.Band).State != 0;
+
+        /// <summary>A band whose night has passed without falling (its people never set out) is given up.</summary>
+        void Disband(int sid)
+        {
+            var w = _w;
+            long now = w.Now;
+            for (int b = w.Bands.First(); b != 0; b = w.Bands.Next(b))
+            {
+                ref var band = ref w.Bands.Get(b);
+                if (band.Origin != sid) continue;
+                if (band.State == 0 && now < band.Arrive + SimTime.Hours(6)) continue;
+                if (band.State != 0 && now < band.Arrive + SimTime.Day) continue;
+                var res = w.Residents(sid);
+                for (int i = 0; i < res.Count; i++) { ref var q = ref w.People.Get(res[i]); if (q.Band == b && (q.At == q.Home || !q.Alive)) q.Band = 0; }
+                bool anyOut = false;
+                for (int i = 0; i < res.Count; i++) if (w.People.Get(res[i]).Band == b) anyOut = true;
+                if (!anyOut) { w.Bands.Remove(b); return; }
+            }
+        }
+
         long HungerCause(int home, long now)
         {
             ref var s = ref _w.Settlements.Get(home);
@@ -612,6 +924,8 @@ namespace TC2.Core.Society
             Watch(sid);
             ReadFoe(sid);
             Claims(sid);
+            Disband(sid);
+            Raids(sid);
             if (w.Resolution != Resolution.Coarse) return;
             News(sid);
             long now = w.Now;

@@ -15,7 +15,8 @@ namespace TC2.Core.Society
         public const byte Kill = 5;         // someone died of the wounds they were given
         public const byte Amends = 6;       // a village made amends for a wrong (a help; Answer: the wrong it settles; D2-072)
         public const byte Refusal = 7;      // a village would not make amends when asked (a harm; Answer: the wrong claimed)
-        public static bool Harm(byte k) => k == Take || k == TriedToTake || k == Wound || k == Kill || k == Refusal;
+        public const byte Raid = 8;         // a band fell on a village's store (a harm: the loot and the fright; D2-073)
+        public static bool Harm(byte k) => k == Take || k == TriedToTake || k == Wound || k == Kill || k == Refusal || k == Raid;
         /// <summary>Flags: the one struck was taking when struck; amends were asked for it; amends made it good.</summary>
         public const byte InTheAct = 1, Claimed = 2, Made = 4;   // (Made: amends made it good)
         public static bool Blood(byte k) => k == Wound || k == Kill;
@@ -238,6 +239,31 @@ namespace TC2.Core.Society
             }
             a.Answer = deedId;
             d.Answer = answerId;
+        }
+
+        /// <summary>
+        /// What a band carried home answers part of the wrong it went for (D2-073): the oldest wrongs that other village's people did
+        /// this one, each wholly answered, are made good up to that worth.
+        /// </summary>
+        public void SettleBy(int sid, int other, double worth)
+        {
+            if (sid <= 0 || sid >= _known.Length || _known[sid] == null) return;
+            var list = _known[sid];
+            var w = _w;
+            long now = w.Now;
+            double left = worth;
+            for (int i = 0; i < list.Count && left > 0; i++)
+            {
+                var k = list[i];
+                if (k.How != KnownHow.Saw && k.How != KnownHow.Told) continue;
+                ref var d = ref w.Deeds.Get(k.Deed);
+                if (!DeedKind.Harm(d.Kind) || d.ToS != sid || d.ByS != other || Settled(in d)) continue;
+                double wt = Weight(in d, now);
+                if (wt > left) continue;
+                AddSum(sid, in d, -1.0);
+                d.Flags |= DeedKind.Made;
+                left -= wt;
+            }
         }
 
         /// <summary>More given under one deed (relief carried over days): the receiver's sums take the increase.</summary>
