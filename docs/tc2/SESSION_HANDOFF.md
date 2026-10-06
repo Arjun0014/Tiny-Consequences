@@ -6,10 +6,11 @@
 - Session 2 commits since the last checkpoint (newest last): 314fdd9 techniques (D2-062) · c8e9c23, 07b38be materials (D2-063) ·
   6bacfaa copper, F4 closed (D2-064/065) · 27d2a53 sickness (D2-066) · e01a933 trade and relief, F5 closed (D2-067/068) ·
   b78117d deeds and taking (D2-069, F6 slice 1) · 310ab38 sickness at scale (D2-070) · ceadd36 the watch, blows and injury
-  (D2-071, F6 slice 2) · 0f2adde answers, news and taking back (D2-072, F6 slice 3) · 7121f7e raids (D2-073, F6 slice 4) · the commit with the palisade (D2-074, F6 slice 5).
-- Phases: F0 done; **F1 to F5 closed** (D2-043, D2-046, D2-060, D2-065, D2-068); **F6 in progress** (plan 10 §6). 163 headless
-  tests green; `headless.mjs test` runs the float lint first. Sim version 28.
-- Determinism: dotnet equals the editor's Mono (gen db59e3c26d81b966, D2-074); the Web build equals both at D2-068
+  (D2-071, F6 slice 2) · 0f2adde answers, news and taking back (D2-072, F6 slice 3) · 7121f7e raids (D2-073, F6 slice 4) · 41f5756 the palisade (D2-074, F6 slice 5) · the commit with tribute and lordship (D2-075)
+  and F6 closed (D2-076).
+- Phases: F0 done; **F1 to F6 closed** (D2-043, D2-046, D2-060, D2-065, D2-068, D2-076). 166 headless
+  tests green; `headless.mjs test` runs the float lint first. Sim version 29.
+- Determinism: dotnet equals the editor's Mono (gen 8dea367f3e835612, D2-075); the Web build equals both at D2-068
   (`tc2/out/webtest/s2webe`, `s2webe2`: 6/6).
 - Sickness at scale is fixed (D2-070): seed 42 holds 12,000-16,000 people from year 270 to 400 and seed 7 4,600-5,400
   (`tc2/out/society/sick42_400.txt`, `sick7_400.txt`; the run report lists the deadliest sicknesses). Saturated worlds are
@@ -70,13 +71,14 @@
   stocked), do not loosen the mechanism (D2-056).
 
 ### Next steps
-1. **Judge F6's done-when on 1,000-year runs** (seeds 42 and 7; the run report prints why the first wall rose and why the first
-   fell): fortified places arise from remembered losses and fall when no longer kept - if the history explains them, F6 can close
-   with leaders and polities as its last slices or carried forward.
-2. F6 slices 6-7 (10 §6): prestige and leaders, tribute and polities (a raided village that cannot flee pays). The 1,000-year run on D2-070 (`tc2/out/society/sick42_1000.txt`) is the baseline: 16,000-18,500 people, three
-   great plagues, famine regulation, ~114 takings a year before the watch.
-3. **The sea's calibration**: fish at ~1 % of real biomass, so the miniature holds ~10-20 seals (D2-053).
-4. Look and Web: the after-a-century view at 48-68 fps (s2webe: measure layer by layer with `webperf.mjs`); WebGL2's first-entry
-   stall; coast shapes off the cell grid, gardens, orbit detail, smoke from huts and camps; traders and takers on the roads.
-5. **An aggregate layer of people for Ancient and Deep time** (D2-061), once F6's first slices settle the people model.
+1. **The Web build after F5 and F6** (`unity.mjs build-web`, `webtest.mjs --tag s2webf`): bit-identical, fps, a day away; the
+   after-a-century view (48-68 fps at s2webe) measured layer by layer (`webperf.mjs`).
+2. **F7 - the History Book, news and the four questions** (17): the ledger's chains are rich now (famines, feuds, walls,
+   tribute, plagues); a book a player reads - chapters by village and age, every event's why to its roots (NATURE / PEOPLE /
+   YOU), the four questions (who, why, what then, what if). Read 11_HISTORY_AND_CAUSALITY first.
+3. F6's carried-forward items (D2-076): leaders from prestige, alliances, captives, gates and stone walls, bands of several
+   villages, beasts as loot, the violence rate, the view of lordships and bands on the roads.
+4. **The sea's calibration** (D2-053) and the look backlog (coast shapes, gardens, orbit detail, smoke from huts and camps).
+5. **An aggregate layer of people for Ancient and Deep time** (D2-061): a village's year as one step fitted to COARSE - the people
+   model now has F3-F6; a 1,000-year run of seed 42 takes ~17-20 min headless.
 6. F5's carried-forward items (D2-068): boats between coasts, roads worn by use, fairs, salt, credit, relief by kinship.

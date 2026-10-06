@@ -213,6 +213,7 @@ namespace TC2.Core.Places
                 s.Fibre += s.FieldHa * FibrePerHa * DMath.Clamp01(s.ExpectedHarvest > 0 ? yield / s.ExpectedHarvest : 1.0);
                 s.Crop = CropStage.Harvested; s.CropWorkNeed = 0; s.CropWork = 0;
                 long hev = w.Record(new HistoryEvent { Kind = HistoryKind.Harvest, Time = w.Now, Cell = s.FieldCell, Settlement = s.Id, Subject = EntityRef.Settlement(s.Id), Magnitude = (float)yield });
+                w.Conflict.Harvested(s.Id, yield);   // (a tributary pays its lord: D2-075)
                 if (s.ExpectedHarvest > 0 && yield < 0.5 * s.ExpectedHarvest)
                 {
                     w.Record(new HistoryEvent

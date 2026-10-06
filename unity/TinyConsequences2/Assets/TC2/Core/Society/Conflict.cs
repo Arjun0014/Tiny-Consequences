@@ -89,6 +89,10 @@ namespace TC2.Core.Society
         /// <summary>A palisade sees takers this often (they must climb it or come by a gate), and doubles its defenders' ground when sound.</summary>
         public const double WallSeen = 0.6;
 
+        // ---- tribute and lordship (D2-075)
+        /// <summary>A tributary pays its lord this share of each harvest; it bows only to raiders this much stronger (fit grown people).</summary>
+        public const double TributeShare = 0.1, TributeOdds = 1.2;
+
         /// <summary>A person is hungry enough to go when the last day fed them less than this share of their need (both resolutions
         /// keep that share, the body's day: a lived meal-time flag would clear at the first bite).</summary>
         public const double HungryBelow = 0.5;
@@ -670,7 +674,7 @@ namespace TC2.Core.Society
             if (fit < BandAtLeast) return;
             int target = 0; byte motive = 0;
             double urge = 0;
-            if (s.Foe != 0 && s.FoeWorth >= RaidFrom) { target = s.Foe; motive = 1; urge = DMath.Clamp01((double)s.FoeWorth / RaidFull); }
+            if (s.Foe != 0 && s.FoeWorth >= RaidFrom && LordOf(s.Foe) != sid) { target = s.Foe; motive = 1; urge = DMath.Clamp01((double)s.FoeWorth / RaidFull); }
             else if (hungry * 2 >= fit)
             {
                 int leader0 = Boldest(sid, now, 0);
@@ -1004,6 +1008,128 @@ namespace TC2.Core.Society
             return DMath.Clamp(far + 15.0, 25.0, 170.0);   // (its pens and yards behind the homes inside)
         }
 
+        // ------------------------------------------------------------------ tribute and lordship (D2-075; both resolutions)
+        /// <summary>
+        /// A raided village weighs bowing to its raiders (Carneiro's circumscription): when a band of theirs held the field here within
+        /// a month, they are stronger (a fifth more fit grown people), it knows no good land to flee to, and what they cost it these
+        /// years outweighs a tenth of its harvest, it agrees to pay them that tenth each harvest for peace - they raise no band against
+        /// their own tributary. History tells it, its cause the raid.
+        /// </summary>
+        void Submit(int sid)
+        {
+            var w = _w;
+            long now = w.Now;
+            ref var s = ref w.Settlements.Get(sid);
+            if (!s.Inhabited || s.Lord != 0) return;
+            int lord = LatestRaider(sid, now - SimTime.Days(30), out long raidEvent);
+            if (lord == 0 || !w.Settlements.Exists(lord) || !w.Settlements.Get(lord).Inhabited) return;
+            if (LordOf(lord) == sid) return;   // (not to its own tributary's lord-in-turn)
+            double cost = w.DeedBook.Grievance(sid, lord) / 3.0;   // what they cost it a year, as it weighs it
+            double harvest = DMath.Max(s.LastHarvest, s.ExpectedHarvest);
+            double tribute = TributeShare * harvest;
+            int mine = FitAt(sid, now), theirs = FitAt(lord, now);
+            s.Lore.Best(out float place);
+            bool hemmed = place < 0.6f;                 // (no good land known to go to: flight is hard)
+            bool weaker = theirs >= TributeOdds * mine;
+            if (!(hemmed && weaker && cost > tribute && tribute > 0)) return;
+            ref var s2 = ref w.Settlements.Get(sid);
+            s2.Lord = lord; s2.LordSince = now;
+            s2.LordEvent = w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.TributeAgreed, Time = now, Cell = s2.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Object = EntityRef.Settlement(lord),
+                Cause1 = raidEvent, Rel1 = CauseRel.InResponseTo, Magnitude = (float)TributeShare, ArgA = PolitySize(Root(lord)), RootKind = RootKind.People,
+            });
+            w.Metrics.Tributes++;
+        }
+
+        /// <summary>The village whose band last held the field here (seen, loot carried off) since a time, and that raid's event; or 0.</summary>
+        int LatestRaider(int sid, long since, out long ev)
+        {
+            ev = 0;
+            var list = _w.DeedBook.KnownBy(sid);
+            if (list == null) return 0;
+            for (int i = list.Count - 1; i >= 0; i--)
+            {
+                var k = list[i];
+                ref var d = ref _w.Deeds.Get(k.Deed);
+                if (d.Time < since) break;
+                if (d.Kind != DeedKind.Raid || d.ToS != sid || k.How != KnownHow.Saw || d.Qty <= 0f) continue;
+                ev = d.Event;
+                return d.ByS;
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// A village's harvest (both resolutions): a tributary pays its lord a tenth of what it brought in - unless the lord has grown
+        /// no stronger than it, or is gone: then it pays no more (a refusal the lord holds against it). The tribute answers the lord's
+        /// wrongs against it.
+        /// </summary>
+        public void Harvested(int sid, double yield)
+        {
+            var w = _w;
+            long now = w.Now;
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.Lord == 0) return;
+            int lord = s.Lord;
+            bool gone = !w.Settlements.Exists(lord) || !w.Settlements.Get(lord).Inhabited;
+            if (gone || FitAt(lord, now) < FitAt(sid, now))
+            {
+                long agreed = s.LordEvent;
+                s.Lord = 0; s.LordEvent = 0;
+                long ev = w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.TributeEnded, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Object = EntityRef.Settlement(lord),
+                    Cause1 = agreed, Rel1 = CauseRel.PartOf, ArgA = gone ? 1 : 0, RootKind = RootKind.People,
+                });
+                if (!gone)
+                {
+                    int refusal = w.DeedBook.Record(DeedKind.Refusal, 0, sid, 0, lord, Trade.Grain, 0.0, TributeShare * DMath.Max(yield, s.LastHarvest), ev);
+                    w.DeedBook.Learn(lord, refusal, KnownHow.Saw);
+                    w.DeedBook.Learn(sid, refusal, KnownHow.Own);
+                }
+                w.Metrics.TributesEnded++;
+                return;
+            }
+            double pay = DMath.Min(TributeShare * yield, s.Granary);
+            if (pay <= 0) return;
+            s.Granary -= pay;
+            ref var l = ref w.Settlements.Get(lord);
+            l.Granary += pay;
+            w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.TributePaid, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Object = EntityRef.Settlement(lord),
+                Cause1 = s.LordEvent, Rel1 = CauseRel.PartOf, Magnitude = (float)pay, RootKind = RootKind.People,
+            });
+            w.DeedBook.SettleBy(lord, sid, pay);
+            w.Metrics.TributeFu += pay;
+        }
+
+        /// <summary>The village a village pays tribute to (0 none).</summary>
+        public int LordOf(int sid) => sid > 0 && _w.Settlements.Exists(sid) ? _w.Settlements.Get(sid).Lord : 0;
+
+        /// <summary>The head of a village's polity: its lord's lord, and so on (guarded against loops).</summary>
+        public int Root(int sid)
+        {
+            int r = sid;
+            for (int i = 0; i < 16; i++) { int l = LordOf(r); if (l == 0 || l == sid) break; r = l; }
+            return r;
+        }
+
+        /// <summary>The villages that pay a lord, directly or through their own lords (its lordship, the lord not counted).</summary>
+        public int PolitySize(int lord)
+        {
+            var w = _w;
+            int n = 0;
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+            {
+                if (o == lord || !w.Settlements.Get(o).Inhabited) continue;
+                int r = LordOf(o);
+                for (int i = 0; i < 16 && r != 0; i++) { if (r == lord) { n++; break; } if (r == o) break; r = LordOf(r); }
+            }
+            return n;
+        }
+
         long HungerCause(int home, long now)
         {
             ref var s = ref _w.Settlements.Get(home);
@@ -1020,6 +1146,7 @@ namespace TC2.Core.Society
             Watch(sid);
             ReadFoe(sid);
             Claims(sid);
+            Submit(sid);
             Disband(sid);
             Raids(sid);
             if (w.Resolution != Resolution.Coarse) return;

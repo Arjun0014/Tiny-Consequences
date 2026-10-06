@@ -104,3 +104,11 @@ same choices at the lived rate (measured, as visits and trade are). Long runs ar
   what it guards is worth it. The view draws the ring of posts with gates on the roads.
 - Measured (400 years): walls rise where takings and raids are remembered and keep bands away (seed 42 raids 18 -> 6).
 
+## 12. Implemented: slice 6, tribute and lordship (D2-075), and the close of F6 (D2-076)
+- A village beaten by a stronger neighbour's band, with no good land known to go to, bows: a tenth of each harvest to the
+  raiders, who raise no band against their tributary. It pays until its lord is gone or no longer the stronger; then the
+  refusal is a wrong the lord holds. A lordship is the villages whose lords lead to it (tributaries' tributaries included).
+- F6 closed: fortified places and lordships arise and fall in 1,000-year runs, their history traced from scarcity through
+  taking, blows, refused amends, bands and raids. Carried forward: leaders, alliances, captives, gates and stone walls, multi-
+  village bands, beasts as loot, the violence rate, the view of lordships and bands.
+

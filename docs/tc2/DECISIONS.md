@@ -1715,3 +1715,43 @@ walled itself, its bold took back from the killers' store, the killers walled th
 built at year 400) and saw 6 raids (18 without walls); seed 7 began 19 (9 standing, 8 building, 1 fallen), 70 raids (161 without).
 Shots `tc2/out/shots/wall1`. Mono equals dotnet (gen db59e3c26d81b966).
 **Next.** A 1,000-year run to judge F6's done-when; then leaders and tribute (polities).
+
+## D2-075 — 2026-10-06 — Tribute and lordship (F6 slice 6)
+
+**Context.** 10 §4: tribute after defeats where flight is hard (Carneiro's circumscription); a polity is a connected component of
+the tribute graph, its depth what historians call a chiefdom or a state; secession, conquest and collapse come from the graph and
+its strains (Turchin). Never a polity as a switch.
+**Decision.** (1) A raided village weighs bowing to its raiders (`Conflict.Submit`, both resolutions): when a band of theirs held
+the field there within a month (a raid it saw), they are stronger (a fifth more fit grown people), it knows no good land to go to,
+and what they cost it a year outweighs a tenth of its harvest, it agrees to pay them a tenth of every harvest (`Settlement.Lord`;
+history, caused by the raid: "The people of Thestford bowed to Taekdal and agreed to pay it a tenth of every harvest: they could
+neither stand against its bands nor go elsewhere"). A lord raises no band against its own tributary. (2) At each harvest a
+tributary pays (grain to the lord's store; the tribute answers the lord's wrongs against it) - unless the lord is gone or no longer
+the stronger: then it pays no more, a refusal the lord holds against it ("Voton would pay Rirndrondmere tribute no more:
+Rirndrondmere is no longer the stronger"). (3) A lordship is the villages whose lords lead to it, directly or through their own
+lords (`Conflict.Root`, `PolitySize`): a tributary's tributaries are its lord's too (depth). The run report lists lordships and
+traces why the first tribute was agreed and why the first ended. Sim version 29.
+**Evidence.** `DefenceTests` (166 tests): a village beaten by a stronger neighbour's band, hemmed in with nowhere to go, bows the
+next day, its cause the raid; it pays a tenth of its harvest; its lord raises no band against it though it holds a killing
+against it; when the lord's people are weak and its own mended, it pays no more and the lord holds the refusal against it; a
+lordship counts its tributaries' tributaries. Seed 7, 1,000 coarse years (`tc2/out/society/lords7_1000.txt`): 47 tributes agreed
+and 47 ended, 450,019 FU paid; the first, Thestford to Taekdal in year 168, traced through Taekdal's band of 12 to a feud of takings
+and beatings; the first ended, Voton's to Rirndrondmere in year 178, five years after it bowed. Seed 42 (`lords42_1000.txt`): 31 agreed and 29 ended, 306,078 FU paid, one lordship standing at year 1,000 (Mildlouby, one tributary); the first, Stoukgathby to Faemford in year 433 after a band of 12 fought off its people, ended in 441 when Faemford was no longer the stronger - lordships stay small and short (a tributary or two, years not generations) while a lord's strength is only its own village's. Mono equals dotnet (gen
+8dea367f3e835612).
+
+## D2-076 — 2026-10-06 — F6 closed: society, conflict and polities
+
+**Context.** F6's done-when: "a fortified town or a polity can arise and fall in long runs, and its history explains it" (17).
+**Evidence.** 1,000 coarse years of seeds 7 and 42 with no premise (`tc2/out/society/f6_7_1000.txt`, `f6_42_1000.txt`,
+`lords7_1000.txt`, `lords42_1000.txt`). Fortified places: seed 7 began 21 palisades - the first, Pairmaithby's (year 169, 499 m
+round), traced back through takings, beatings and refused amends to Traiskulton's famine of year 166; the first to fall,
+Traiskulton's (begun 185 after a feud, rotted and fallen 347); seed 42 began 42, 4 fallen - Gouthorpe's (229) after Kubroford's
+takers were beaten, Hostead's (begun 291, fallen 550). Lordships: 47 tributes agreed and ended in seed 7, each caused by a raid
+and ended by the lord's weakness, told. The chain from scarcity to walls and tribute is lived by persistent people at both
+resolutions: hunger -> taking (seen or not) -> blows, wounds and deaths as deeds -> claims answered or refused -> taking back ->
+bands raised by heavy wrongs -> raids (beaten off or carried) -> palisades from remembered losses, and tribute where flight is
+hard. All of it is deeds known per village, read as grievance and gratitude; nothing is a war flag, a hostility score or a count.
+**Verdict.** F6 is closed. Carried forward: lordships that hold (a lord's strength the whole lordship's fighters; protection of tributaries; depth beyond one), prestige and leaders (a village's head from known deeds, calling work and bands),
+alliances (help sent to kin under attack, shared enemies), captives, gates kept at night and walls of stone (masonry), bands
+from several villages, beasts as loot and restocking, the violence rate (~37 deaths of wounds a year for 100,000 at saturation:
+on the high side of medieval homicide) to calibrate, the view of lordships (who pays whom) and of bands on the roads.

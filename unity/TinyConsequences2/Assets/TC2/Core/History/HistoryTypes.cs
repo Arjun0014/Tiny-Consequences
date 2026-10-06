@@ -75,6 +75,9 @@ namespace TC2.Core.History
         WallPlanned = 69,       // a village began a palisade (Magnitude its losses a year, FU; Cause1 the latest; D2-074)
         WallBuilt = 70,         // a village finished its palisade (ArgA its length, m)
         WallFallen = 71,        // a palisade rotted and fell
+        TributeAgreed = 72,     // a village bowed to its raiders and agreed to pay them tribute (Subject the payer, Object the lord; Magnitude the share; ArgA the lordship's size after; D2-075)
+        TributePaid = 73,       // a tributary paid its lord at harvest (Magnitude FU)
+        TributeEnded = 74,      // a tributary paid no more (ArgA 1 the lord is gone, 0 grown too weak)
         HomeTaken = 53,         // a household made its home in one that stood empty (Object: who lived there last; ArgA 1 a hut, 2 a house; D2-059)
         ColdHomes = 52,         // a village's homes were cold enough to harm (Magnitude homes, ArgA 1 the woodstore ran short, ArgB the day's mean C; D2-056)
     }
@@ -230,6 +233,9 @@ namespace TC2.Core.History
                 case HistoryKind.WallPlanned: return Tier.Local;
                 case HistoryKind.WallBuilt: return Tier.Historical;
                 case HistoryKind.WallFallen: return Tier.Historical;
+                case HistoryKind.TributeAgreed: return Tier.Historical;
+                case HistoryKind.TributePaid: return Tier.Local;
+                case HistoryKind.TributeEnded: return Tier.Historical;
                 default: return Tier.Personal;
             }
         }
@@ -302,6 +308,9 @@ namespace TC2.Core.History
                 case HistoryKind.WallPlanned: b = 8; break;
                 case HistoryKind.WallBuilt: b = 16; break;
                 case HistoryKind.WallFallen: b = 12; break;
+                case HistoryKind.TributeAgreed: b = 18; break;
+                case HistoryKind.TributePaid: b = 4; break;
+                case HistoryKind.TributeEnded: b = 16; break;
                 default: b = 1; break;
             }
             // magnitude raises importance sub-linearly - where it is a size; a person's events carry an age or a count there,

@@ -136,6 +136,91 @@ namespace TC2.Tests.Core
             Assert.Greater(walled, open, "behind a palisade the defenders hold");
         }
 
+        // ------------------------------------------------------------------ tribute and lordship (D2-075)
+        /// <summary>Premise: b's band held the field at a this month and b's people once killed a man of a; half a's grown people are
+        /// unfit for a fight; a knows no good land to go to.</summary>
+        static long Beaten(World w, int a, int b)
+        {
+            long ev = w.Record(new HistoryEvent { Kind = HistoryKind.Raid, Time = w.Now, Settlement = a, Subject = EntityRef.Settlement(b), Object = EntityRef.Settlement(a) });
+            int kill = w.DeedBook.Record(DeedKind.Kill, Grown(w, b), b, 0, a, 0, 1.0, Conflict.KillWorth, 0);
+            { ref var kd = ref w.Deeds.Get(kill); kd.Flags |= DeedKind.Claimed; }
+            w.DeedBook.Learn(a, kill, KnownHow.Saw);
+            int raid = w.DeedBook.Record(DeedKind.Raid, Grown(w, b), b, 0, a, Trade.Grain, 120, 150, ev);
+            w.DeedBook.Learn(a, raid, KnownHow.Saw);
+            var res = w.Residents(a);
+            int k = 0;
+            for (int i = 0; i < res.Count; i++) { ref var q = ref w.People.Get(res[i]); if (q.Alive && q.AgeYears(w.Now) >= 16 && (k++ % 2) == 0) q.Health = 0.5f; }
+            ref var sa = ref w.Settlements.Get(a);
+            sa.Lore = KnownSites.Empty;
+            if (sa.ExpectedHarvest < 500) sa.ExpectedHarvest = 500;
+            return ev;
+        }
+
+        [Test]
+        public void AVillageThatCanNeitherStandNorFleeBowsToItsRaiders()
+        {
+            var w = Pair(out int a, out int b);
+            Assume.That(b != 0, "two villages a walk apart");
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Day);
+            long raid = Beaten(w, a, b);
+            long mark = w.History.LastId;
+            w.AdvanceTo(w.Now + SimTime.Day);
+            Assert.AreEqual(b, w.Settlements.Get(a).Lord, "it bowed to its raiders");
+            HistoryEvent agreed = default;
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.TributeAgreed) { agreed = e; Console.WriteLine(HistoryText.Line(w, e)); } }
+            Assert.AreEqual(raid, agreed.Cause1, "because of the raid");
+            // at its harvest it pays a tenth
+            double lordStore = w.Settlements.Get(b).Granary;
+            w.Settlements.Get(a).Granary += 1000;
+            w.Conflict.Harvested(a, 1000);
+            Assert.AreEqual(lordStore + 100, w.Settlements.Get(b).Granary, 1e-6, "a tenth of the harvest to its lord");
+            // and the lord raises no band against its own tributary, though it holds a wrong against it
+            int wrong = w.DeedBook.Record(DeedKind.Kill, Grown(w, a), a, 0, b, 0, 1.0, Conflict.KillWorth, 0);
+            { ref var kd = ref w.Deeds.Get(wrong); kd.Flags |= DeedKind.Claimed; }
+            w.DeedBook.Learn(b, wrong, KnownHow.Saw);
+            w.AdvanceTo(w.Now + SimTime.Day);
+            Assert.AreEqual(a, w.Settlements.Get(b).Foe, "b holds a against it");
+            Assert.AreEqual(0, w.Conflict.RaiseBandNow(b), "but raises no band against its tributary");
+        }
+
+        [Test]
+        public void TributeEndsWhenTheLordIsNoLongerTheStronger()
+        {
+            var w = Pair(out int a, out int b);
+            Assume.That(b != 0, "two villages a walk apart");
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Day);
+            Beaten(w, a, b);
+            w.AdvanceTo(w.Now + SimTime.Day);
+            Assume.That(w.Settlements.Get(a).Lord == b, "a pays b");
+            // premise: the lord's people fall sick and weak; the tributary has mended
+            var rb = w.Residents(b);
+            for (int i = 0; i < rb.Count; i++) w.People.Get(rb[i]).Health = 0.5f;
+            var ra = w.Residents(a);
+            for (int i = 0; i < ra.Count; i++) w.People.Get(ra[i]).Health = 1f;
+            long mark = w.History.LastId;
+            w.Conflict.Harvested(a, 1000);
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.TributeEnded) Console.WriteLine(HistoryText.Line(w, e)); }
+            Assert.AreEqual(0, w.Settlements.Get(a).Lord, "it pays no more");
+            Assert.Greater(w.DeedBook.Grievance(b, a), 0.0, "and the lord holds the refusal against it");
+        }
+
+        [Test]
+        public void ALordshipIsItsTributariesThroughTheirOwnLords()
+        {
+            var w = Pair(out int a, out int b);
+            Assume.That(b != 0, "two villages a walk apart");
+            int c = 0;
+            for (int s = w.Settlements.First(); s != 0; s = w.Settlements.Next(s)) if (s != a && s != b) { c = s; break; }
+            // premise: a pays b, c pays a
+            w.Settlements.Get(a).Lord = b;
+            w.Settlements.Get(c).Lord = a;
+            Assert.AreEqual(b, w.Conflict.Root(c), "c's polity is headed by b");
+            Assert.AreEqual(2, w.Conflict.PolitySize(b), "b's lordship: a, and c through a");
+            Assert.AreEqual(1, w.Conflict.PolitySize(a));
+        }
+
         [Test]
         public void AnUnkeptPalisadeRotsAndFalls()
         {

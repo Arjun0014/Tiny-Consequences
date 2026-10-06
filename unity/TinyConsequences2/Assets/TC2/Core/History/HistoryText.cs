@@ -114,6 +114,11 @@ namespace TC2.Core.History
                 case HistoryKind.WallPlanned: return "The people of " + subj + " began a palisade round their homes: other villages' people have cost them " + F(e.Magnitude, "0") + " days' food a year.";
                 case HistoryKind.WallBuilt: return "The people of " + subj + " finished their palisade (" + e.ArgA + " m round): " + subj + " is a walled place.";
                 case HistoryKind.WallFallen: return "The palisade of " + subj + " has rotted and fallen.";
+                case HistoryKind.TributeAgreed:
+                    return "The people of " + subj + " bowed to " + obj + " and agreed to pay it a tenth of every harvest: they could neither stand against its bands nor go elsewhere" +
+                           (e.ArgA > 1 ? " (" + obj + " now has " + e.ArgA + " villages paying)." : ".");
+                case HistoryKind.TributePaid: return subj + " paid " + obj + " its tribute (" + F(e.Magnitude, "0") + " days' grain).";
+                case HistoryKind.TributeEnded: return e.ArgA == 1 ? subj + " pays tribute no more: " + obj + " is gone." : subj + " would pay " + obj + " tribute no more: " + obj + " is no longer the stronger.";
                 case HistoryKind.PathogenAppeared: return "A new sickness, " + subj + ", appeared in " + place + (e.ArgA == 1 ? ", caught from its animals" : "") + ".";
                 case HistoryKind.EpidemicArrived:
                     return e.ArgA == 1 ? Cap(obj) + " broke out in " + place + (e.Other.IsNone ? "" : ", " + other + " the first to fall ill") + "."

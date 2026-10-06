@@ -189,6 +189,30 @@ namespace TC2.Headless
                   }
                   if (firstBuilt != 0) Console.WriteLine("  the first wall raised:"); Console.Write(HistoryText.Why(w, firstBuilt));
                   if (firstFallen != 0) Console.WriteLine("  the first wall fallen:"); Console.Write(HistoryText.Why(w, firstFallen)); }
+                {
+                    // lordships: the villages each lord has paying it, directly or through their own lords (D2-075)
+                    int lords = 0, biggest = 0, biggestRoot = 0, deepest = 0;
+                    for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                    {
+                        if (!w.Settlements.Get(sid).Inhabited || w.Conflict.LordOf(sid) != 0) continue;
+                        int n = w.Conflict.PolitySize(sid);
+                        if (n == 0) continue;
+                        lords++;
+                        if (n > biggest) { biggest = n; biggestRoot = sid; }
+                    }
+                    for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) { int d = 0, r = sid; while (w.Conflict.LordOf(r) != 0 && d < 16) { r = w.Conflict.LordOf(r); d++; } if (d > deepest) deepest = d; }
+                    Console.WriteLine("lordships: tribute agreed " + m.Tributes + ", ended " + m.TributesEnded + ", paid " + F(m.TributeFu, "0") + " FU; lords now " + lords +
+                                      (biggest > 0 ? ", the greatest " + w.History.NameOf(EntityRef.Settlement(biggestRoot)) + " with " + biggest + " paying, depth " + deepest : ""));
+                    long firstLord = 0, firstEnd = 0;
+                    for (int i = 0; i < w.History.Count && (firstLord == 0 || firstEnd == 0); i++)
+                    {
+                        var e = w.History.At(i);
+                        if (e.Kind == HistoryKind.TributeAgreed && firstLord == 0) firstLord = e.Id;
+                        if (e.Kind == HistoryKind.TributeEnded && firstEnd == 0) firstEnd = e.Id;
+                    }
+                    if (firstLord != 0) { Console.WriteLine("  the first tribute:"); Console.Write(HistoryText.Why(w, firstLord)); }
+                    if (firstEnd != 0) { Console.WriteLine("  the first tribute ended:"); Console.Write(HistoryText.Why(w, firstEnd)); }
+                }
                 Console.WriteLine("raids: bands raised " + m.Bands + ", raids " + m.Raids + " (driven off " + m.RaidsBeaten + "), loot " + F(m.RaidLoot, "0") + " FU");
                 Console.WriteLine("answers: amends asked " + m.Claims + ", made " + m.Amends + ", refused " + m.Refusals + "; loads taken back " + m.TakenBack);
                 Console.WriteLine("trade: trades " + m.TradeTrips + ", gain " + F(m.TradeValue, "0") + ", metal moved " + F(m.MetalTraded, "0") + " kg; relief " + F(m.ReliefFu, "0") + " FU");
