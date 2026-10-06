@@ -74,14 +74,18 @@
 - **Another Claude session may share this machine** (6 Oct: one on another project, with a gstack browse daemon whose headless
   Chromium renders WebGL with SwiftShader on ~7 cores). Its processes are not ours: never kill a process you did not start -
   check its parent first (`Get-CimInstance Win32_Process`) - and measure timings only when the machine is quiet.
+- Claude Code stops background jobs when the machine runs critically low on memory (6 Oct: other sessions and their browsers
+  shared it; the Web build and the local server were stopped). Check free memory before the Web build (it wants ~4-5 GB).
 - The History Book in the game: B or the Book toggle; `?book=1` opens it; a fresh world has little history - reload a saved one
   with `?absence=24h` to live ~96 years first.
 
 ### Next steps
-1. **The living world made visible (D2-079, Arjun's direction)**: forests at their true density near the camera (instanced, with
-   cheap distant forms: `WorldObjectsView.RebuildTrees` now places ~4-5 trees a hectare at full forest and none beyond 3.2 km),
-   woodland visible from afar (a canopy on the ground by `P.Forest` in `TerrainLod`/`PlanetView`), ground cover by biome, tree
-   species by climate, animals readable; judged in `unity.mjs shots` and the Web build; 60 fps kept (`webperf.mjs`, quiet machine).
+1. **The living world made visible (D2-079, Arjun's direction)** - slice 1 done (D2-080: the canopy and the near trees). Next:
+   (a) the Web build and its frame rate with the woods (`webtest.mjs`, `webperf.mjs --view forest|forestlow|close`) - stopped once
+   for lack of memory; (b) the far woods at the region view read as a faint speckle: keep the near crowns' shadows and the floor's
+   occlusion out of the far blend (`farCol` from the litter without `shade`; `floorOcc` toward 1 - 0.25 x share with the far fade)
+   and darken the mean crown (0.74 -> 0.62); (c) ground cover by biome (shrubs at wood edges, meadow flowers, heath), animals
+   readable at the village view, the orbit's woods (`PlanetView`).
 2. **F8 - Deep time** (17): Ancient and Deep time need ~10x: in COARSE the planet alone costs ~150 ms a world year (daily weather
    43, vegetation 54, housekeeping 43) and the village day ~620 us at ~500 people (coarse-day 252, learning 119 - each person's
    Gumbel scatter recomputed daily -, food 65, demography 65; `tc2/out/society/sick42_1000.txt` profile): a season step for

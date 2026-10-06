@@ -164,6 +164,25 @@ namespace TC2.Game
                 LookAt(d, view == "coastfar" || view == "sealsfar" ? 300 : 90);
                 return;
             }
+            if (view.StartsWith("forest"))
+            {
+                // the most wooded land within 6 km of the first village, no closer than 600 m to any village (D2-079)
+                var P = w.Planet;
+                int best = -1; double bv = 0;
+                for (int c = 0; c < P.Cells; c++)
+                {
+                    if (!P.IsLand(c) || P.Forest[c] <= bv) continue;
+                    if (Vec3d.ArcDistance(P.Grid.Center[c], d, P.Radius) > 6000) continue;
+                    bool near = false;
+                    for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
+                        if (Vec3d.ArcDistance(w.Settlements.Get(sid2).Anchor, P.Grid.Center[c], P.Radius) < 600) { near = true; break; }
+                    if (near) continue;
+                    bv = P.Forest[c]; best = c;
+                }
+                if (best >= 0) d = P.Grid.Center[best];
+                LookAt(d, view == "forestfar" ? 900 : view == "forestlow" ? 95 : 260);
+                return;
+            }
             if (view.StartsWith("volcano"))
             {
                 // the volcano nearest the first village (land vents first)

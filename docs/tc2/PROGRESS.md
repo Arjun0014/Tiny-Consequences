@@ -110,6 +110,10 @@
   - **Goods, a day's labour, weeding (D2-058)**: households make and mend their clothes, tools and vessels (worn goods let the
     cold in and slow hands); a day's labour bounds the slack's work; weeding asks 24 h a hectare and keeps pace with the season.
     A whole year of seed 42: grown people work ~6.5 h a day, children of 6-11 ~3 h - inside time-allocation ranges. 115 tests.
+  - **The woods drawn (D2-080, slice 1 of D2-079)**: a canopy of crowns on the ground from the simulation's forest share, at every
+    view (lit domes and conifers with their shadows, the seasons' colours, the far woods as their mean), and within 440 m of the
+    camera a tree at every standing crown (light meshes, two distances); the old sparse trees gone. Seen in editor shots
+    (`tc2/out/shots/forest4`); the Web build's frame rate with them is not measured yet (the build was stopped for lack of memory).
   - **Direction (D2-079)**: Arjun found the Web build's world bland and empty ("trees and forest nothing is there"): the planet's
     life is simulated but barely drawn (a full forest ~4-5 trees a hectare, none beyond 3.2 km, a flat ground colour). Next: the
     living world made visible - forests at their true density, woodland seen from afar, ground cover by biome - before F8.

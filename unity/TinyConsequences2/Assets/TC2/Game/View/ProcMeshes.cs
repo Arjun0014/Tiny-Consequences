@@ -68,6 +68,46 @@ namespace TC2.Game
                 }
             }
 
+            /// <summary>A quad whose face looks along <paramref name="outward"/> (the winding is chosen to match).</summary>
+            public void QuadOut(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 outward, Color col)
+            {
+                if (Vector3.Dot(Vector3.Cross(b - a, c - a), outward) < 0) Quad(d, c, b, a, col); else Quad(a, b, c, d, col);
+            }
+
+            /// <summary>A branch: a tapering prism from a to b.</summary>
+            public void Stick(Vector3 a, Vector3 b, float r0, float r1, int sides, Color col)
+            {
+                Vector3 dir = (b - a).normalized;
+                Vector3 u = Vector3.Cross(dir, Mathf.Abs(dir.y) < 0.9f ? Vector3.up : Vector3.right).normalized;
+                Vector3 v = Vector3.Cross(dir, u);
+                for (int s = 0; s < sides; s++)
+                {
+                    float a0 = s * Mathf.PI * 2 / sides, a1 = (s + 1) * Mathf.PI * 2 / sides;
+                    Vector3 o0 = u * Mathf.Cos(a0) + v * Mathf.Sin(a0), o1 = u * Mathf.Cos(a1) + v * Mathf.Sin(a1);
+                    QuadOut(a + o0 * r0, b + o0 * r1, b + o1 * r1, a + o1 * r0, o0 + o1, col);
+                }
+            }
+
+            /// <summary>
+            /// A lump of leaves (D2-079): an icosphere subdivided once (80 faces), smooth-shaded, its points a little in or out,
+            /// squashed; white above and darker below (the draw colours it; the dark is the crown's own shade).
+            /// </summary>
+            public void Blob(Vector3 c, float r, float squash, float jitter, int seed)
+            {
+                var rnd = new System.Random(seed);
+                int b0 = V.Count;
+                for (int k = 0; k < IcoPoints.Length; k++)
+                {
+                    Vector3 d = IcoPoints[k];
+                    float s = r * (1f + jitter * ((float)rnd.NextDouble() * 2f - 1f));
+                    V.Add(c + new Vector3(d.x * s, d.y * s * squash, d.z * s));
+                    N.Add(new Vector3(d.x, d.y / squash, d.z).normalized);
+                    float ao = 0.52f + 0.48f * Mathf.Clamp01(d.y * 0.5f + 0.55f);
+                    C.Add(new Color(ao, ao, ao, 1f));
+                }
+                for (int f = 0; f < IcoFaces.Length; f += 3) { T.Add(b0 + IcoFaces[f]); T.Add(b0 + IcoFaces[f + 1]); T.Add(b0 + IcoFaces[f + 2]); }
+            }
+
             public Mesh Build(string name)
             {
                 var m = new Mesh { name = name };
@@ -78,6 +118,104 @@ namespace TC2.Game
         }
 
         static Color Lin(float r, float g, float b) => new Color(r, g, b).linear;
+
+        // an icosahedron subdivided once, its faces wound to look outward
+        static readonly Vector3[] IcoPoints;
+        static readonly int[] IcoFaces;
+
+        static ProcMeshes()
+        {
+            float t = (1f + Mathf.Sqrt(5f)) / 2f;
+            var pts = new List<Vector3>
+            {
+                new Vector3(-1, t, 0), new Vector3(1, t, 0), new Vector3(-1, -t, 0), new Vector3(1, -t, 0),
+                new Vector3(0, -1, t), new Vector3(0, 1, t), new Vector3(0, -1, -t), new Vector3(0, 1, -t),
+                new Vector3(t, 0, -1), new Vector3(t, 0, 1), new Vector3(-t, 0, -1), new Vector3(-t, 0, 1),
+            };
+            for (int i = 0; i < pts.Count; i++) pts[i] = pts[i].normalized;
+            int[] f0 = { 0, 11, 5, 0, 5, 1, 0, 1, 7, 0, 7, 10, 0, 10, 11, 1, 5, 9, 5, 11, 4, 11, 10, 2, 10, 7, 6, 7, 1, 8,
+                         3, 9, 4, 3, 4, 2, 3, 2, 6, 3, 6, 8, 3, 8, 9, 4, 9, 5, 2, 4, 11, 6, 2, 10, 8, 6, 7, 9, 8, 1 };
+            var mid = new Dictionary<long, int>();
+            int Mid(int a, int b)
+            {
+                long key = a < b ? ((long)a << 32) | (uint)b : ((long)b << 32) | (uint)a;
+                if (mid.TryGetValue(key, out int m)) return m;
+                pts.Add(((pts[a] + pts[b]) * 0.5f).normalized);
+                mid[key] = pts.Count - 1;
+                return pts.Count - 1;
+            }
+            var faces = new List<int>();
+            void Face(int a, int b, int c)
+            {
+                // (front faces look outward: the normal the builder computes, cross(b - a, c - a), points away from the centre)
+                if (Vector3.Dot(Vector3.Cross(pts[b] - pts[a], pts[c] - pts[a]), pts[a] + pts[b] + pts[c]) < 0) { int x = b; b = c; c = x; }
+                faces.Add(a); faces.Add(b); faces.Add(c);
+            }
+            for (int k = 0; k < f0.Length; k += 3)
+            {
+                int a = f0[k], b = f0[k + 1], c = f0[k + 2];
+                int ab = Mid(a, b), bc = Mid(b, c), ca = Mid(c, a);
+                Face(a, ab, ca); Face(b, bc, ab); Face(c, ca, bc); Face(ab, bc, ca);
+            }
+            IcoPoints = pts.ToArray();
+            IcoFaces = faces.ToArray();
+        }
+
+        /// <summary>
+        /// A broadleaf of the woods (D2-079) with a crown of radius 1 (the draw scales it to its crown): a trunk and three lumps of
+        /// leaves near the camera (~250 triangles), one further off (~90). The leaves are white and take the draw's colour (the
+        /// season's); the bark keeps its own.
+        /// </summary>
+        public static Mesh ForestBroad(int lod)
+        {
+            var b = new Builder();
+            Color bark = Lin(0.34f, 0.25f, 0.17f); bark.a = 0f;
+            b.Prism(0f, 1.25f, 0.085f, lod == 0 ? 6 : 4, bark);
+            if (lod == 0)
+            {
+                b.Blob(new Vector3(0f, 1.95f, 0f), 0.80f, 0.82f, 0.16f, 11);
+                b.Blob(new Vector3(0.46f, 1.62f, 0.16f), 0.58f, 0.86f, 0.16f, 12);
+                b.Blob(new Vector3(-0.38f, 1.70f, -0.28f), 0.60f, 0.86f, 0.16f, 13);
+            }
+            else b.Blob(new Vector3(0f, 1.85f, 0f), 0.98f, 0.80f, 0.10f, 14);
+            return b.Build(lod == 0 ? "tc2-forest-broad" : "tc2-forest-broad-far");
+        }
+
+        /// <summary>A broadleaf in winter (D2-079): trunk, boughs and twigs, bare (it takes the draw's colour: bark, or snow on it).</summary>
+        public static Mesh ForestBare()
+        {
+            var b = new Builder();
+            var col = new Color(0.92f, 0.92f, 0.92f, 1f);
+            b.Prism(0f, 1.3f, 0.085f, 5, col);
+            for (int k = 0; k < 6; k++)
+            {
+                float a = k * 1.047f + 0.35f * (k % 2);
+                var from = new Vector3(0f, 1.0f + 0.07f * k, 0f);
+                var mid = new Vector3(Mathf.Cos(a) * 0.55f, 1.75f + 0.1f * (k % 3), Mathf.Sin(a) * 0.55f);
+                var tip = new Vector3(Mathf.Cos(a + 0.25f) * 0.95f, 2.35f + 0.15f * (k % 2), Mathf.Sin(a + 0.25f) * 0.95f);
+                b.Stick(from, mid, 0.05f, 0.032f, 4, col);
+                b.Stick(mid, tip, 0.03f, 0.012f, 3, col * 0.95f);
+            }
+            b.Stick(new Vector3(0f, 1.25f, 0f), new Vector3(0.05f, 2.6f, -0.04f), 0.06f, 0.015f, 4, col);
+            return b.Build("tc2-forest-bare");
+        }
+
+        /// <summary>A conifer of the woods (D2-079) with a crown of radius 1 at its foot: tiers of needles near the camera, one
+        /// cone further off. The needles are white and take the draw's colour.</summary>
+        public static Mesh ForestConifer(int lod)
+        {
+            var b = new Builder();
+            Color bark = Lin(0.32f, 0.23f, 0.15f); bark.a = 0f;
+            b.Prism(0f, 0.8f, 0.08f, lod == 0 ? 5 : 4, bark);
+            if (lod == 0)
+            {
+                b.Cone(0.55f, 2.45f, 1.00f, 7, new Color(0.62f, 0.62f, 0.62f, 1f));
+                b.Cone(1.45f, 3.35f, 0.78f, 7, new Color(0.80f, 0.80f, 0.80f, 1f));
+                b.Cone(2.35f, 4.25f, 0.52f, 7, Color.white);
+            }
+            else b.Cone(0.55f, 4.25f, 1.0f, 6, new Color(0.78f, 0.78f, 0.78f, 1f));
+            return b.Build(lod == 0 ? "tc2-forest-conifer" : "tc2-forest-conifer-far");
+        }
 
         /// <summary>A person 1.7 m tall: body and head (colour comes from the draw).</summary>
         public static Mesh Person()

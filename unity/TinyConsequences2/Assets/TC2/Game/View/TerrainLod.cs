@@ -36,6 +36,9 @@ namespace TC2.Game
             public Color[] Colours;
             public Vector2[] Plots;   // field plot coordinates in the owning village's frame (m)
             public Vector2[] Farm;    // x: share of the land the village works, y: crop stage
+            public Vector4[] Wood;    // the woods here (D2-079): x forest share, y conifers' share, z the leaves' season, w snow
+            public Vector3[] Pos;     // the vertices as drawn (where the woods' trees stand)
+            public Matrix4x4[] Trees; public byte[] TreeKind, TreeGroup; public int TreeCount;   // the woods' trees (finest level)
             public Matrix4x4[] Tufts; public byte[] TuftKind, TuftGroup; public int TuftCount; // ground cover (finest level)
             public int ColourCycle;
         }
@@ -46,6 +49,15 @@ namespace TC2.Game
         readonly List<Patch> _shownLast = new List<Patch>();
         Material _mat;
         Instancer[] _cover;           // grass, flowers, reeds, boulders on the finest patches near the camera
+        Instancer[] _forest;          // the woods' trees near the camera, where the canopy shows their crowns (D2-079)
+        const int BroadNear = 0, BroadFar = 1, BareBroad = 2, ConNear = 3, ConFar = 4;
+        const int MaxTrees = 640;
+        /// <summary>The trees stand within this distance of the camera; the canopy hands over to them (the shader fades its crowns
+        /// from 400 m to 300 m); the finest patches always reach past it.</summary>
+        const float ForestReach = 440f, ForestNear = 190f;
+        public static int ForestDrawn;
+        readonly Plane[] _planes = new Plane[6];
+        static readonly Color[] LeafTints = new Color[128], ConiferTints = new Color[128], BareTints = new Color[128];
         const int Grass = 0, Flowers = 1, Reeds = 2, Boulder = 3;
         static readonly Color[] GrassTints =
         {
@@ -81,6 +93,34 @@ namespace TC2.Game
             _cover[Flowers] = new Instancer(Models.Get("flowers", ProcMeshes.Person), inst, false);
             _cover[Reeds] = new Instancer(Models.Get("reeds", ProcMeshes.Person), inst, false);
             _cover[Boulder] = new Instancer(Models.Get("boulder", ProcMeshes.Person), inst, true);
+            _forest = new Instancer[5];
+            _forest[BroadNear] = new Instancer(ProcMeshes.ForestBroad(0), inst, true);
+            _forest[BroadFar] = new Instancer(ProcMeshes.ForestBroad(1), inst, true);
+            _forest[BareBroad] = new Instancer(ProcMeshes.ForestBare(), inst, true);
+            _forest[ConNear] = new Instancer(ProcMeshes.ForestConifer(0), inst, true);
+            _forest[ConFar] = new Instancer(ProcMeshes.ForestConifer(1), inst, true);
+            Tints();
+        }
+
+        /// <summary>
+        /// The trees' colours by group (shade 0-3, the leaves' season 0-7, snow 0-3): summer greens, autumn's gold and rust, the
+        /// bare boughs of winter, conifers dark and snow-dusted - the canopy shader's own colours, so the woods hand over unseen.
+        /// </summary>
+        static void Tints()
+        {
+            var summer = new[] { new Color(0.25f, 0.40f, 0.21f), new Color(0.31f, 0.47f, 0.21f), new Color(0.38f, 0.51f, 0.22f), new Color(0.45f, 0.56f, 0.23f) };
+            var autumn = new[] { new Color(0.78f, 0.60f, 0.21f), new Color(0.69f, 0.37f, 0.17f), new Color(0.80f, 0.50f, 0.16f), new Color(0.66f, 0.30f, 0.15f) };
+            var needles = new[] { new Color(0.16f, 0.29f, 0.19f), new Color(0.19f, 0.33f, 0.21f), new Color(0.14f, 0.26f, 0.17f), new Color(0.21f, 0.35f, 0.22f) };
+            var snow = new Color(0.88f, 0.90f, 0.94f);
+            for (int g = 0; g < 128; g++)
+            {
+                int shade = g & 3, leaf = (g >> 2) & 7, sn = (g >> 5) & 3;
+                float leaves = (leaf + 0.5f) / 8f;
+                float turn = Mathf.Clamp01((leaves - 0.1f) / 0.55f);
+                LeafTints[g] = Color.Lerp(summer[shade], autumn[shade], turn);
+                ConiferTints[g] = Color.Lerp(needles[shade], snow, sn / 3f * 0.55f);
+                BareTints[g] = Color.Lerp(new Color(0.42f + 0.03f * shade, 0.35f + 0.02f * shade, 0.29f), snow, sn / 3f * 0.35f);
+            }
         }
 
         static long Key(int f, int level, int i, int j) => ((long)f << 56) | ((long)level << 48) | ((long)i << 24) | (long)(uint)j;
@@ -107,6 +147,7 @@ namespace TC2.Game
             BuildSome(w);
             Show();
             DrawCover();
+            DrawForest();
             _recolourTimer -= Time.unscaledDeltaTime;
             if (_recolourTimer <= 0) { _recolourTimer = RecolourSeconds; RefreshCellColours(w); _cycle++; }
             RecolourSome(w);
@@ -282,7 +323,7 @@ namespace TC2.Game
             int count = V * V + 4 * V;
             var pos = new Vector3[count];
             var nrm = new Vector3[count];
-            if (p.Dirs == null || p.Dirs.Length != count) { p.Dirs = new Vector3[count]; p.Cells = new int[count]; p.Rel = new float[count]; p.Slope = new float[count]; p.Colours = new Color[count]; p.Plots = new Vector2[count]; p.Farm = new Vector2[count]; }
+            if (p.Dirs == null || p.Dirs.Length != count) { p.Dirs = new Vector3[count]; p.Cells = new int[count]; p.Rel = new float[count]; p.Slope = new float[count]; p.Colours = new Color[count]; p.Plots = new Vector2[count]; p.Farm = new Vector2[count]; p.Wood = new Vector4[count]; }
             for (int j = 0; j < V; j++)
                 for (int i = 0; i < V; i++)
                 {
@@ -308,7 +349,8 @@ namespace TC2.Game
                     p.Dirs[o] = p.Dirs[src]; p.Cells[o] = p.Cells[src]; p.Rel[o] = p.Rel[src]; p.Slope[o] = p.Slope[src];
                 }
             Colourise(w, p);
-            if (p.Level >= MaxLevel) PlaceCover(w, p, pos, nrm); else p.TuftCount = 0;
+            p.Pos = pos;
+            if (p.Level >= MaxLevel) { PlaceCover(w, p, pos, nrm); PlaceForest(p); } else { p.TuftCount = 0; p.TreeCount = 0; }
             if (p.Mesh == null)
             {
                 p.Mesh = new Mesh { name = "tc2-terrain", indexFormat = IndexFormat.UInt16 };
@@ -328,6 +370,7 @@ namespace TC2.Game
             m.colors = p.Colours;
             m.SetUVs(0, p.Plots);
             m.SetUVs(1, p.Farm);
+            m.SetUVs(2, p.Wood);
             m.triangles = FixWinding(p.Face, pos, nrm);
             m.RecalculateBounds();
             p.Built = true;
@@ -433,6 +476,99 @@ namespace TC2.Game
             for (int k = 0; k < _cover.Length; k++) _cover[k].Draw(c);
         }
 
+        /// <summary>
+        /// The woods' trees on a finest patch (D2-079): every crown of the canopy's layout that falls on the patch, in the projection
+        /// the shader uses on this face, stands as a tree where its number is below the threshold of the forest share there (the
+        /// patch's own vertices, interpolated: the shader's value) - a conifer or a broadleaf as the canopy decides, as wide as its
+        /// crown and as tall as its number says.
+        /// </summary>
+        void PlaceForest(Patch p)
+        {
+            p.TreeCount = 0;
+            var pos = p.Pos; var wood = p.Wood;
+            if (pos == null || wood == null) return;
+            int V = N + 1;
+            bool any = false;
+            for (int o = 0; o < V * V && !any; o++) any = wood[o].x > 0.004f;
+            if (!any) return;
+            if (p.Trees == null) { p.Trees = new Matrix4x4[MaxTrees]; p.TreeKind = new byte[MaxTrees]; p.TreeGroup = new byte[MaxTrees]; }
+            Vector3 cd = p.Dirs[(N / 2) * V + N / 2];
+            float axx = Mathf.Abs(cd.x), axy = Mathf.Abs(cd.y), axz = Mathf.Abs(cd.z);
+            int ax = axx >= axy && axx >= axz ? 0 : (axy >= axz ? 1 : 2);
+            float sc = Canopy.Side / Canopy.TileMetres, off = (ax == 0 ? 0f : ax == 1 ? 0.37f : 0.71f) * Canopy.Side;
+            int side = Canopy.Side;
+            for (int j = 0; j < N; j++)
+                for (int i = 0; i < N; i++)
+                {
+                    int a = j * V + i, b = a + 1, c = a + V, d = c + 1;
+                    if (wood[a].x <= 0.004f && wood[b].x <= 0.004f && wood[c].x <= 0.004f && wood[d].x <= 0.004f) continue;
+                    Vector2 qa = Proj(pos[a], ax, sc, off), qb = Proj(pos[b], ax, sc, off), qc = Proj(pos[c], ax, sc, off), qd = Proj(pos[d], ax, sc, off);
+                    Vector2 e1 = qb - qa, e2 = qc - qa;
+                    float det = e1.x * e2.y - e1.y * e2.x;
+                    if (Mathf.Abs(det) < 1e-9f) continue;
+                    int u0 = Mathf.FloorToInt(Mathf.Min(Mathf.Min(qa.x, qb.x), Mathf.Min(qc.x, qd.x))), u1 = Mathf.FloorToInt(Mathf.Max(Mathf.Max(qa.x, qb.x), Mathf.Max(qc.x, qd.x)));
+                    int v0 = Mathf.FloorToInt(Mathf.Min(Mathf.Min(qa.y, qb.y), Mathf.Min(qc.y, qd.y))), v1 = Mathf.FloorToInt(Mathf.Max(Mathf.Max(qa.y, qb.y), Mathf.Max(qc.y, qd.y)));
+                    for (int gv = v0; gv <= v1; gv++)
+                        for (int gu = u0; gu <= u1; gu++)
+                        {
+                            int mu = ((gu % side) + side) % side, mv = ((gv % side) + side) % side;
+                            int k = mv * side + mu;
+                            // the crown of this square of the layout: its centre lies in the square
+                            float cu = gu - mu + Canopy.X[k], cv = gv - mv + Canopy.Y[k];
+                            float s = ((cu - qa.x) * e2.y - (cv - qa.y) * e2.x) / det, t = (e1.x * (cv - qa.y) - e1.y * (cu - qa.x)) / det;
+                            if (s < 0f || s >= 1f || t < 0f || t >= 1f) continue;
+                            Vector4 wd = Vector4.Lerp(Vector4.Lerp(wood[a], wood[b], s), Vector4.Lerp(wood[c], wood[d], s), t);
+                            float num = Canopy.Num[k];
+                            if (num >= Canopy.Threshold(wd.x) || p.TreeCount >= MaxTrees) continue;
+                            bool con = Canopy.Conifer(num, wd.y);
+                            Vector3 at = Vector3.Lerp(Vector3.Lerp(pos[a], pos[b], s), Vector3.Lerp(pos[c], pos[d], s), t);
+                            float r = Canopy.Radius[k] * Canopy.Spacing * (con ? 1f / 1.32f : 1f);
+                            float h = r * Canopy.Top(num) * (con ? 1.05f : 1.1f);
+                            p.Trees[p.TreeCount] = Matrix4x4.TRS(at, PlanetGeo.Upright(at, num * 2617f), new Vector3(r, h, r));
+                            p.TreeKind[p.TreeCount] = (byte)(con ? 1 : 0);
+                            int shade = (int)((num * 5.31f - Mathf.Floor(num * 5.31f)) * 4f) & 3;   // (the shader's hue)
+                            int leaf = Mathf.Clamp((int)(wd.z * 8f), 0, 7), snowB = Mathf.Clamp((int)(wd.w * 4f), 0, 3);
+                            p.TreeGroup[p.TreeCount] = (byte)(shade | (leaf << 2) | (snowB << 5));
+                            p.TreeCount++;
+                        }
+                }
+        }
+
+        static Vector2 Proj(Vector3 p, int ax, float sc, float off) =>
+            ax == 0 ? new Vector2(p.y * sc + off, p.z * sc + off) : ax == 1 ? new Vector2(p.x * sc + off, p.z * sc + off) : new Vector2(p.x * sc + off, p.y * sc + off);
+
+        /// <summary>The woods' trees of the shown finest patches within reach and in view, near ones in full, further ones lighter.</summary>
+        void DrawForest()
+        {
+            for (int k = 0; k < _forest.Length; k++) _forest[k].Clear();
+            ForestDrawn = 0;
+            var cam = Rig.Cam;
+            Vector3 cp = cam.transform.position;
+            if ((WorldObjectsView.Off & 1) == 0 && cp.magnitude - (float)Host.World.Planet.Radius < ForestReach)
+            {
+                GeometryUtility.CalculateFrustumPlanes(cam, _planes);
+                for (int q = 0; q < _shownLast.Count; q++)
+                {
+                    var p = _shownLast[q];
+                    if (p.TreeCount == 0 || p.Renderer == null) continue;
+                    var bounds = p.Renderer.bounds;
+                    bounds.Expand(36f);   // (the trees stand above the ground)
+                    float near = Mathf.Sqrt(bounds.SqrDistance(cp));
+                    if (near > ForestReach || !GeometryUtility.TestPlanesAABB(_planes, bounds)) continue;
+                    bool close = near < ForestNear;
+                    for (int t = 0; t < p.TreeCount; t++)
+                    {
+                        int g = p.TreeGroup[t];
+                        if (p.TreeKind[t] == 1) _forest[close ? ConNear : ConFar].Add(g, ConiferTints[g], p.Trees[t]);
+                        else if (((g >> 2) & 7) >= 7) _forest[BareBroad].Add(g, BareTints[g], p.Trees[t]);
+                        else _forest[close ? BroadNear : BroadFar].Add(g, LeafTints[g], p.Trees[t]);
+                    }
+                    ForestDrawn += p.TreeCount;
+                }
+            }
+            for (int k = 0; k < _forest.Length; k++) _forest[k].Draw(cam);
+        }
+
         // ------------------------------------------------------------------ colour
         void RefreshCellColours(TC2.Core.Simulation.World w)
         {
@@ -454,6 +590,8 @@ namespace TC2.Game
                 p.Mesh.colors = p.Colours;
                 p.Mesh.SetUVs(0, p.Plots);
                 p.Mesh.SetUVs(1, p.Farm);
+                p.Mesh.SetUVs(2, p.Wood);
+                if (p.Level >= MaxLevel) PlaceForest(p);   // (the woods change with the forest and the seasons)
                 p.ColourCycle = _cycle;
             }
         }
@@ -571,6 +709,7 @@ namespace TC2.Game
             if (_cellColour.Length != P.Cells) RefreshCellColours(w);
             double sea = P.SeaLevel;
             double season = DMath.Sin(DMath.TwoPi * (SimTime.YearFraction(w.Now) - 0.25));
+            float yearNorth = (float)SimTime.YearFraction(w.Now);
             var cols = p.Colours;
             // roads are a few metres wide: on patches whose vertices stand far apart they would alias into dashes
             float quad = (float)(DMath.HalfPi * P.Radius / (1 << p.Level) / N);
@@ -595,6 +734,7 @@ namespace TC2.Game
                 int c = p.Cells[o];
                 float rel = p.Rel[o], slope = p.Slope[o];
                 Color col;
+                p.Wood[o] = Vector4.zero;
                 if (rel < 0)
                 {
                     // the sea floor as seen through the water: sand in the shallows, dark below
@@ -606,10 +746,13 @@ namespace TC2.Game
                     int n = Ground.ColourWeights(P, d, c, _wc, _ww);
                     col = new Color(0, 0, 0, 1);
                     float farm = 0; int owner = 0; float ow = 0;
+                    float forest = 0, clear = 0;   // (the woods' share here, and how much of it is cleared ground)
                     for (int q = 0; q < n; q++)
                     {
                         int cq = _wc[q]; var cc = _cellColour[cq]; float ww = _ww[q];
                         col.r += cc.r * ww; col.g += cc.g * ww; col.b += cc.b * ww;
+                        forest += P.Forest[cq] * ww;
+                        if (w.Fire.Intensity[cq] > 0) clear += ww * Mathf.Clamp01(w.Fire.Intensity[cq] * 2f);
                         int fo = P.FieldOwner[cq];
                         if (fo != 0) { farm += ww; if (ww > ow) { ow = ww; owner = fo; } }
                     }
@@ -633,6 +776,7 @@ namespace TC2.Game
                         if (dot < System.Math.Cos(130.0 / P.Radius)) continue;
                         st.SphereToLocal(d, P.Radius, out double vx, out double vy);
                         col = VillageGround(w, st, _near[q], vx, vy, col);
+                        clear = Mathf.Max(clear, 1f - Edge(95f, 150f, (float)System.Math.Sqrt(vx * vx + vy * vy)));   // (no wood in the village)
                         VillageVerts++;
                     }
                     float road = RoadAt(P, d, c, quad) * roadLod;
@@ -662,6 +806,22 @@ namespace TC2.Game
                     float snow = Mathf.Clamp01((float)(-t / 4.0 + 0.2)) * (1f - rock * 0.6f);
                     if (P.Ice[c] > 2f) snow = 1f;
                     if (snow > 0) col = Color.Lerp(col, P.Ice[c] > 2f ? Glacier : Snow, snow);
+                    // the woods (D2-079): the simulation's forest share, less what is fields, village, road, beach, rock, lava or ice;
+                    // conifers in the cold, broadleaves in the warm (as the trees drawn near the camera); the leaves' season where
+                    // there is an autumn; the snow lying on them
+                    float wood = forest * (1f - Mathf.SmoothStep(0f, 1f, farm)) * (1f - Mathf.Clamp01(clear)) * (1f - road) * (1f - Edge(0f, 0.5f, beach)) * (1f - rock)
+                                 * (1f - Mathf.Clamp01(vrock * 1.15f)) * (P.Ice[c] > 2f ? 0f : 1f);
+                    // glades and thickets over a hundred metres or so (the trees and the canopy read the same value)
+                    wood *= Mathf.Clamp01(0.35f + 1.3f * (0.5f + 0.5f * (float)Noise.Fbm(d.X * 60.0, d.Y * 60.0, d.Z * 60.0, 2)));
+                    if (wood > 0.005f)
+                    {
+                        float tm = P.TMean[c];
+                        float con = 1f - Edge(1.5f, 15f, tm);
+                        float f = P.SinLat[c] < 0 ? (yearNorth + 0.5f) % 1f : yearNorth;
+                        float leaves = f < 0.5f ? 0f : (f < 0.875f ? (f - 0.5f) / 0.375f * 0.8f : 1f);
+                        leaves *= 1f - Edge(17f, 22f, tm);   // (no autumn in the tropics)
+                        p.Wood[o] = new Vector4(wood, con, leaves, snow);
+                    }
                 }
                 var lin = col.linear;
                 lin.a = rel < 0 || p.Farm[o].x <= 0 ? 0f : Mathf.Clamp01(FarmWeight(P, d, c) * CoreMask(p.Plots[o]));

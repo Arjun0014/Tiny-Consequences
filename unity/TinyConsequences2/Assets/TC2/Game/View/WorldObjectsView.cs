@@ -21,12 +21,6 @@ namespace TC2.Game
         public CameraRig Rig;
 
         Instancer _people, _granaries, _wells, _hay, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls;
-        struct TreeInst { public Vector3 Pos; public Quaternion Rot; public float Scale; public byte Kind, Shade; }
-        sealed class CellTrees { public float Forest; public TreeInst[] Trees; }
-        readonly System.Collections.Generic.Dictionary<int, CellTrees> _treeCache = new System.Collections.Generic.Dictionary<int, CellTrees>();
-        readonly System.Collections.Generic.List<TreeInst> _scratch = new System.Collections.Generic.List<TreeInst>();
-        readonly System.Collections.Generic.List<int> _cells = new System.Collections.Generic.List<int>();
-        int _treeWorld = -1, _treeRelief = -1;
         Instancer[] _houseKinds, _trees;
         Material _mat;
         float _treeTimer, _placeTimer;
@@ -380,46 +374,16 @@ namespace TC2.Game
             }
         }
 
+        /// <summary>The orchard trees and bushes in the yards of the villages near the camera (the woods are the terrain's: D2-079).</summary>
         void RebuildTrees(TC2.Core.Simulation.World w)
         {
             var P = w.Planet;
             if (Rig == null) return;
-            int focus = P.Grid.CellOf(PlanetGeo.ToVec(Rig.FocusPoint));
             float camDist = Rig.Cam != null ? Vector3.Distance(Rig.Cam.transform.position, Rig.FocusPoint) : 5000f;
             for (int i = 0; i < _trees.Length; i++) _trees[i].Clear();
             TreesDrawn = 0;
-            if (camDist > 3200f) return; // further out the forest is the ground's colour
-            // trees are placed once per cell (stable keyed positions on the drawn ground) and kept until the forest there
-            // changes, a fire passes, or the relief moves; each rebuild only assembles them at the current scale
-            if (_treeWorld != Host.WorldVersion || P.ReliefVersion - _treeRelief >= Tectonics.ResampleEvery || _treeCache.Count > 6000)
-            { _treeCache.Clear(); _treeWorld = Host.WorldVersion; _treeRelief = P.ReliefVersion; }
-            _cells.Clear();
-            w.Hazards.CellsWithin(w, focus, camDist < 2500f ? 1600 : 3200, _cells);
+            if (camDist > 3200f) return;
             float ex = Mathf.Clamp(camDist / 1600f, 1f, 1.5f);
-            int perCell = 30;
-            foreach (int c in _cells)
-            {
-                if (!P.IsLand(c)) continue;
-                float forest = P.Forest[c];
-                bool burning = w.Fire.Intensity[c] > 0.5f;
-                if (!_treeCache.TryGetValue(c, out var entry) || System.Math.Abs(entry.Forest - forest) > 0.04f || burning)
-                {
-                    entry = new CellTrees { Forest = forest, Trees = burning || forest < 0.04f ? System.Array.Empty<TreeInst>() : PlaceTrees(w, c, forest, perCell) };
-                    _treeCache[c] = entry;
-                }
-                var list = entry.Trees;
-                Color leaf = SeasonTint(w, c);
-                for (int k = 0; k < list.Length; k++)
-                {
-                    var t = list[k];
-                    float b = 0.88f + 0.10f * t.Shade;
-                    bool deciduous = t.Kind >= Broadleaf;
-                    Color tint = deciduous ? new Color(leaf.r * b, leaf.g * b, leaf.b * b, b) : new Color(b, b, b, b);
-                    _trees[t.Kind].Add(t.Shade + (deciduous ? 10 * SeasonBucket(w, c) : 0), tint, Matrix4x4.TRS(t.Pos, t.Rot, Vector3.one * (t.Scale * ex)));
-                }
-                TreesDrawn += list.Length;
-            }
-            // orchards and yard bushes in the villages near the camera
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
                 ref var s = ref w.Settlements.Get(sid);
@@ -439,73 +403,10 @@ namespace TC2.Game
                         int kind = k == 2 ? Bush : BroadleafRound;
                         float sc = k == 2 ? 0.8f : 0.55f + 0.2f * k;
                         _trees[kind].Add(1, new Color(0.98f, 0.98f, 0.98f, 0.98f), Place(P, s, x, y, k * 70f, sc * ex));
+                        TreesDrawn++;
                     }
                 }
             }
-        }
-
-        /// <summary>Where the year stands at a cell (0 spring .. 1 end of winter; the south has the opposite seasons).</summary>
-        static float YearAt(TC2.Core.Simulation.World w, int c)
-        {
-            float f = (float)SimTime.YearFraction(w.Now);
-            if (w.Planet.SinLat[c] < 0) f = (f + 0.5f) % 1f;
-            return f;
-        }
-
-        static int SeasonBucket(TC2.Core.Simulation.World w, int c) => Mathf.Clamp((int)(YearAt(w, c) * 8f), 0, 7);
-
-        /// <summary>The colour leaves take through the year (deciduous canopies): fresh, summer, gold and rust, bare.</summary>
-        static Color SeasonTint(TC2.Core.Simulation.World w, int c)
-        {
-            if (w.Planet.TMean[c] > 21f) return Color.white; // no autumn in the tropics
-            switch (SeasonBucket(w, c))
-            {
-                case 0: return new Color(1.08f, 1.12f, 0.86f);      // early spring: fresh
-                case 1: case 2: case 3: return Color.white;         // late spring, summer
-                case 4: return new Color(1.12f, 1.0f, 0.70f);       // early autumn: turning
-                case 5: return new Color(1.45f, 0.86f, 0.40f);      // autumn: gold and rust
-                case 6: return new Color(0.78f, 0.60f, 0.45f);      // late autumn: falling
-                default: return new Color(0.58f, 0.50f, 0.44f);     // winter: bare
-            }
-        }
-
-        /// <summary>The trees of one cell: groves and glades by a slow noise, species by the climate, keyed positions.</summary>
-        TreeInst[] PlaceTrees(TC2.Core.Simulation.World w, int c, float forest, int perCell)
-        {
-            var P = w.Planet;
-            _scratch.Clear();
-            int n = Mathf.RoundToInt(Mathf.Sqrt(forest) * perCell * 2.2f);
-            Vec3d ctr = P.Grid.Center[c];
-            Settlement.Frame(ctr, out Vec3d east, out Vec3d north);
-            double half = P.CellSize * 0.5;
-            float tm = P.TMean[c];
-            for (int k = 0; k < n; k++)
-            {
-                ulong h = KeyedRng.Hash(w.Seed, RngStream.None, (ulong)c, (ulong)k);
-                double ox = (KeyedRng.Unit(h) * 2 - 1) * half, oy = (KeyedRng.Unit(KeyedRng.Mix(h)) * 2 - 1) * half;
-                Vec3d d = (ctr * P.Radius + east * ox + north * oy).Normalized;
-                double clump = Noise.Fbm(d.X * 60.0, d.Y * 60.0, d.Z * 60.0, 2);
-                if (KeyedRng.Unit(KeyedRng.Mix(h + 3)) > forest * (0.15 + 1.9 * System.Math.Max(0.0, clump + 0.15))) continue;
-                int under = P.Grid.CellOf(d);
-                if (w.SettlementAtCell(under) != 0 || P.FieldOwner[under] != 0) continue; // fields and houses are cleared ground
-                if (Ground.Height(P, d) < P.SeaLevel + 1.5) continue;                 // not on the beach
-                Vector3 pos = PlanetGeo.Surface(P, d);
-                double u = KeyedRng.Unit(KeyedRng.Mix(h + 5));
-                int kind;
-                if (tm < 3) kind = u < 0.65 ? Conifer : ConiferSmall;
-                else if (tm < 9) kind = u < 0.45 ? Conifer : (u < 0.62 ? ConiferSmall : (u < 0.82 ? Birch : Broadleaf));
-                else if (tm < 19) kind = u < 0.10 ? Conifer : (u < 0.50 ? Broadleaf : (u < 0.80 ? BroadleafRound : (u < 0.90 ? Birch : Bush)));
-                else kind = u < 0.55 ? BroadleafRound : (u < 0.85 ? Broadleaf : Bush);
-                float sc = 0.62f + 0.75f * (float)KeyedRng.Unit(KeyedRng.Mix(h + 7));
-                byte shade = (byte)((h >> 8) % 3);
-                _scratch.Add(new TreeInst { Pos = pos, Rot = PlanetGeo.Upright(pos, (float)(h % 360)), Scale = sc, Kind = (byte)kind, Shade = shade });
-                if (clump < 0.0 && (h & 7) == 0)
-                {
-                    Vector3 bp = pos + (Vector3)(PlanetGeo.ToVector(east) * 2.5f);
-                    _scratch.Add(new TreeInst { Pos = bp, Rot = PlanetGeo.Upright(bp, (float)(h % 97)), Scale = sc * 0.9f, Kind = Bush, Shade = shade });
-                }
-            }
-            return _scratch.ToArray();
         }
 
         void RebuildFire(TC2.Core.Simulation.World w)

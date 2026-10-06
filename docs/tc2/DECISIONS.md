@@ -1824,3 +1824,29 @@ the camera (instanced, with cheap distant forms); woodland visible from afar (a 
 region and orbit views show woods, meadows, scrub and tundra); ground cover by biome (grass, shrubs, flowers, rocks, undergrowth
 under trees); tree species by climate; animals readable at the views they belong to. The Web build keeps 60 fps (measured with
 `webperf.mjs` on a quiet machine).
+
+## D2-080 — 2026-10-06 — The woods drawn from the simulation (D2-079, slice 1)
+
+**Context.** D2-079: the planet's forests were simulated but drawn as ~4-5 trees a hectare near the camera and as a tint of the
+ground beyond 3.2 km, so the world looked empty.
+**Decision.** (1) One layout of tree crowns (`Game/View/Canopy.cs`: 24 x 24 jittered crowns on a 156 m tile, radius 0.60-0.82 of
+their spacing, each with its number) shared by the ground's shader and the trees: a crown stands where its number is below the
+threshold of the forest share there, -ln(1 - share) x 0.62, so the standing discs cover that share of the ground; it is a conifer
+where a hash of its number is below the conifers' share. (2) Each ground vertex carries its woods (`TerrainLod`, uv2): the
+simulation's forest share blended over the cells, less fields, villages, roads, sand, rock, lava, ice and fire, times glades of
+~170 m; the conifers' share by the cell's mean temperature; the leaves' season where there is an autumn; snow. (3) The terrain
+shader draws the canopy of standing crowns (three projections blended by the up vector): domes and pointed conifers, each lit by a
+bump from its height (a surface gradient, no tangents) and casting a short shadow sunward, greens from dark to yellow by its
+number, autumn's gold and rust, bare boughs in winter, snow on conifers, the floor between them leaf litter out of the sky's light;
+a crown under ~3 pixels gives way to the canopy's mean. The block is branch-free (WebGPU wants derivatives and filtered samples in
+uniform control flow). (4) Within 440 m of the camera, on the finest ground patches in view, every standing crown is a tree at its
+crown (`TerrainLod.PlaceForest`, `DrawForest`), the canopy fading to them from 400 m to 300 m: broadleaves of three lumps of leaves
+(~250 triangles) within 190 m and one (~90) beyond, bare boughs in winter, conifers in tiers (~57) or one cone (~24), coloured as
+their crowns (`ProcMeshes.ForestBroad`, `ForestBare`, `ForestConifer`). (5) The old sparse woods (`WorldObjectsView`, per cell to
+3.2 km) are gone; the villages' yard trees stay. The bridge's `view NAME` frames the camera's named views (forest, forestlow,
+forestfar: the most wooded land near the first village); the Web test shoots the woods (4c, 4d); `webperf.mjs --view forest`.
+**Evidence.** Editor shots `tc2/out/shots/canopy1`, `canopy2`, `forest3`, `forest4`: the village view a clearing of fields and
+pastures in woodland with copses and hedgerow trees; the forest views a wood's edge of trees with trunks, shadows and mixed greens
+over leaf litter. **Not yet measured in the browser**: the Web build and its test were stopped when the machine ran out of memory
+(other sessions shared it); the frame cost of the trees and the canopy is the next check.
+

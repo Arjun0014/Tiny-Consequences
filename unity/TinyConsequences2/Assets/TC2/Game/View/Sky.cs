@@ -25,12 +25,16 @@ namespace TC2.Game
         static readonly int SeaRadius = Shader.PropertyToID("_TC2SeaRadius");
         static readonly int TiltShift = Shader.PropertyToID("_TC2TiltShift");
         static readonly int MoonDir = Shader.PropertyToID("_TC2MoonDir");
+        static readonly int Canopy = Shader.PropertyToID("_TC2Canopy");
+        static readonly int CanopyTile = Shader.PropertyToID("_TC2CanopyTile");
         Volume _volume;
         public Color Horizon;
 
         void Start()
         {
             Shader.SetGlobalTexture(Detail, MakeDetail(256));
+            Shader.SetGlobalTexture(Canopy, TC2.Game.Canopy.MakeTexture(512));   // the woods' crowns (D2-079)
+            Shader.SetGlobalFloat(CanopyTile, TC2.Game.Canopy.TileMetres);
             Shader.SetGlobalFloat(FogDensity, 0f);
             MakeGrade();
         }

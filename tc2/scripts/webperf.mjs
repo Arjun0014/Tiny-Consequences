@@ -1,6 +1,6 @@
 // What a frame costs in the Web build, layer by layer: load the build (WebGPU in Chrome, or WebGL2 in Chromium), frame a
 // view, read the HUD's frame rate, then turn each drawn layer off in turn (the bridge's `off NAME`) and read it again.
-// Usage: node tc2/scripts/webperf.mjs [--webgl2] [--view village|close|low|orbit] [--layers a,b,c] [--tag NAME]
+// Usage: node tc2/scripts/webperf.mjs [--webgl2] [--view village|close|low|orbit|forest|forestlow|...] [--layers a,b,c] [--tag NAME]
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,7 +16,7 @@ const webgl2 = flag('--webgl2');
 const view = opt('--view', 'village');
 const tag = opt('--tag', 'perf');
 const layers = opt('--layers', 'tilt,shadows,terrain,clouds,sky,air,sea,planet,rivers,worldobjectsview,trees,people,buildings,wildlifeview,livestockview,sealifeview,puffrenderer,rainview,volcanoview').split(',');
-const alt = { orbit: 22000, region: 6000, village: 1500, close: 450, low: 160 }[view] || 1500;
+const alt = { orbit: 22000, region: 6000, village: 1500, close: 450, low: 160 }[view];
 const outDir = path.join(root, 'tc2', 'out', 'webperf', tag);
 fs.mkdirSync(outDir, { recursive: true });
 
@@ -37,7 +37,7 @@ try {
   await page.waitForFunction(() => (window.__TC2 && window.__TC2.ready === true && window.__TC2.people > 0) || window.__TC2_FATAL, null, { timeout: 300000, polling: 200 });
   const s0 = await state();
   for (const l of logs) console.log('  log: ' + l.slice(0, 160));
-  await cmd(`village 0 ${alt}`);
+  await cmd(alt ? `village 0 ${alt}` : `view ${view}`);   // (named views: forest, forestlow, ...)
   if (flag('--trace')) {
     // the frame rate second by second after the camera comes down (the HUD's value is smoothed over ~0.5 s)
     const seq = [];

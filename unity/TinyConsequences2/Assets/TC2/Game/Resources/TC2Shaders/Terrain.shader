@@ -1,6 +1,7 @@
 // TC2 terrain (D2-026): vertex colours from the cells, triplanar detail at two scales in world space, wrapped sun
-// light with soft shadows, sky and ground bounce, a night floor, and aerial haze toward the horizon colour.
-// Globals set by the sky each frame: _TC2FogColor (rgb, a = day), _TC2FogDensity (per metre), _TC2Detail (noise).
+// light with soft shadows, sky and ground bounce, a night floor, and aerial haze toward the horizon colour; the woods as a
+// canopy of lit crowns from the simulation's forest share (D2-079).
+// Globals set by the sky: _TC2FogColor (rgb, a = day), _TC2FogDensity (per metre), _TC2Detail (noise), _TC2Canopy (crowns).
 Shader "TC2/Terrain"
 {
     Properties
@@ -28,6 +29,8 @@ Shader "TC2/Terrain"
                 half4 _AmbientGround;
             CBUFFER_END
             TEXTURE2D(_TC2Detail); SAMPLER(sampler_TC2Detail);
+            TEXTURE2D(_TC2Canopy); SAMPLER(sampler_TC2Canopy);
+            float _TC2CanopyTile;
             TEXTURECUBE(_TC2Clouds); SAMPLER(sampler_TC2Clouds);
             float4 _TC2SunDir;
             float4 _TC2MoonDir;
@@ -36,8 +39,8 @@ Shader "TC2/Terrain"
             float _TC2FogDensity;
             float _TC2SeaRadius;
 
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; float4 farm : TEXCOORD2; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; float4 uv2 : TEXCOORD2; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; float4 farm : TEXCOORD2; half4 wood : TEXCOORD3; };
 
             Varyings vert(Attributes v)
             {
@@ -48,6 +51,7 @@ Shader "TC2/Terrain"
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);
                 o.color = v.color;
                 o.farm = float4(v.uv0, v.uv1);
+                o.wood = v.uv2;
                 return o;
             }
 
@@ -81,6 +85,31 @@ Shader "TC2/Terrain"
                 return lerp(plot, mean, smoothstep(0.18, 0.45, px / sz.x));
             }
 
+            // a crown at a point (D2-079): d its distance from the centre over its radius, num its number - it stands where its
+            // number is below thr; conifers (by their number against the conifers' share) are narrower and pointed
+            half CrownH(half d, half num, half thr, half con, out half isCon)
+            {
+                isCon = (half)(frac(num * 13.73h) < con);
+                half top = 0.72h + 0.28h * frac(num * 7.31h);
+                half dd = d * lerp(1.0h, 1.32h, isCon);
+                half shape = lerp(sqrt(saturate(1.0h - dd * dd)), saturate(1.0h - dd), isCon);
+                return (half)(num < thr) * top * shape;
+            }
+
+            // one projection of the woods: the taller of the two crowns of lowest number over this point, if they stand;
+            // h its height (0-1), isCon 1 for a conifer, id its number (its colour)
+            void Crowns(float2 uv, half thr, half con, out half h, out half isCon, out half id)
+            {
+                half4 t = SAMPLE_TEXTURE2D(_TC2Canopy, sampler_TC2Canopy, uv);
+                half c1, c2;
+                half h1 = CrownH(t.r, t.g, thr, con, c1);
+                half h2 = CrownH(t.b, t.a, thr, con, c2);
+                half second = (half)(h2 > h1);
+                h = max(h1, h2);
+                isCon = lerp(c1, c2, second);
+                id = lerp(t.g, t.a, second);
+            }
+
             half Tri(float3 wp, float3 bw, float scale)
             {
                 half x = SAMPLE_TEXTURE2D(_TC2Detail, sampler_TC2Detail, wp.yz * scale).r;
@@ -105,17 +134,83 @@ Shader "TC2/Terrain"
                 float px = max(length(fwidth(i.farm.xy)), 1e-3);
                 if (i.color.a > 0.002h) albedo = lerp(albedo, Farmland(albedo, i.farm, dist, px), i.color.a);
                 albedo *= (1.0h + d1 * 0.32h * (0.35h + 0.65h * near) + d2 * 0.30h * near + d3 * 0.26h);
+                // the woods (D2-079): a canopy of crowns where the simulation has forest - each crown lit as the dome or spire it
+                // is, the floor between them in their shade; autumn's colours and winter's bare branches where there is an autumn,
+                // snow on the conifers; a crown smaller than a few pixels gives way to the canopy's mean colour (no shimmer)
+                // (no branch: derivatives and filtered samples must run in uniform control flow on WebGPU; with no forest the
+                // block leaves the ground as it was)
+                float3 nl = n;
+                half floorOcc = 1.0h;
+                {
+                    half dens = i.wood.x;
+                    half con = i.wood.y, leaves = i.wood.z, snowy = i.wood.w;
+                    float3 ub = abs(up); ub = ub * ub; ub = ub * ub; ub = ub * ub; ub /= (ub.x + ub.y + ub.z + 1e-5);
+                    // the crowns that stand cover the forest's share of the ground (its glades are in the share); near the camera the
+                    // trees themselves stand there, at these crowns, and the canopy gives way to them (400 m to 300 m)
+                    half dl = saturate(dens);
+                    half handOver = smoothstep(300.0h, 400.0h, (half)dist);
+                    half thr = saturate(-log(1.0h - min(dl, 0.97h)) * 0.62h);
+                    float sc0 = 1.0 / _TC2CanopyTile;
+                    float2 uvx = i.positionWS.yz * sc0, uvy = i.positionWS.xz * sc0 + 0.37, uvz = i.positionWS.xy * sc0 + 0.71;
+                    half h0, c0, id0, h1, c1, id1, h2, c2, id2;
+                    Crowns(uvx, thr, con, h0, c0, id0);
+                    Crowns(uvy, thr, con, h1, c1, id1);
+                    Crowns(uvz, thr, con, h2, c2, id2);
+                    half h = h0 * ub.x + h1 * ub.y + h2 * ub.z;
+                    half isCon = c0 * ub.x + c1 * ub.y + c2 * ub.z;
+                    half cid = id0 * ub.x + id1 * ub.y + id2 * ub.z;
+                    // the shadow of the crowns toward the sun: is there a taller crown a few metres sunward?
+                    float3 Ls = _TC2SunDir.xyz;
+                    float3 lt = (Ls - up * dot(Ls, up)) / max(0.3, dot(Ls, up)) * (7.0 * sc0);
+                    half s0, s1, s2, k0, k1, k2;
+                    Crowns(uvx + lt.yz, thr, con, s0, k0, k1);
+                    Crowns(uvy + lt.xz, thr, con, s1, k0, k1);
+                    Crowns(uvz + lt.xy, thr, con, s2, k0, k2);
+                    half hs = s0 * ub.x + s1 * ub.y + s2 * ub.z;
+                    half shade = 1.0h - 0.55h * saturate((hs - h) * 2.5h) * handOver;
+                    // the leaves: summer greens by the crown, autumn's gold and rust, bare branches in winter (broadleaves)
+                    half bare = saturate((leaves - 0.8h) * 5.0h);
+                    half turn = saturate((leaves - 0.1h) / 0.55h);
+                    half hue = frac(cid * 5.31h);   // (the trees near the camera take the same green: TerrainLod.Tints)
+                    half3 broad = lerp(lerp(half3(0.046h, 0.125h, 0.036h), half3(0.090h, 0.200h, 0.040h), saturate(hue * 2.0h)), half3(0.170h, 0.262h, 0.046h), saturate(hue * 2.0h - 1.0h));
+                    broad = lerp(broad, lerp(half3(0.52h, 0.31h, 0.035h), half3(0.42h, 0.11h, 0.025h), hue), turn);
+                    broad = lerp(broad, half3(0.105h, 0.082h, 0.064h), bare);
+                    half3 needle = lerp(half3(0.020h, 0.058h, 0.028h), half3(0.040h, 0.092h, 0.042h), hue);
+                    half3 crown = lerp(broad, needle, isCon);
+                    crown = lerp(crown, half3(0.78h, 0.80h, 0.84h), snowy * isCon * saturate(h * 1.4h - 0.25h) * 0.65h);
+                    crown *= 0.50h + 0.50h * h;                                   // (the lower parts of a crown are in its own shade)
+                    half mask = smoothstep(0.02h, 0.12h, h) * lerp(1.0h, 0.4h, bare * (1.0h - isCon)) * handOver;
+                    half3 floorCol = lerp(albedo, half3(0.060h, 0.050h, 0.028h), 0.45h * dl) * (1.0h - 0.25h * dl) * shade;   // (leaf litter)
+                    floorOcc = 1.0h - 0.55h * dl * (1.0h - mask);   // (the floor under the trees sees little of the sky)
+                    half3 nearCol = lerp(floorCol, crown * lerp(1.0h, shade, 0.7h), mask);
+                    // far: the canopy's mean (a crown under ~3 pixels)
+                    float pxw = length(fwidth(i.positionWS));
+                    half fade = smoothstep(1.6h, 4.0h, (half)pxw);
+                    half cover = dl * lerp(1.0h, 0.45h, bare * (1.0h - con));
+                    half3 meanCrown = lerp(lerp(lerp(half3(0.097h, 0.20h, 0.038h), half3(0.47h, 0.21h, 0.03h), turn), half3(0.105h, 0.082h, 0.064h), bare),
+                                           half3(0.030h, 0.075h, 0.035h), con) * 0.74h;
+                    half3 farCol = lerp(floorCol, meanCrown, cover);
+                    albedo = lerp(nearCol, farCol, fade);
+                    // each crown bends the light it takes (a bump from its height, without tangents: Mikkelsen 2010)
+                    float hm = h * 5.0;
+                    float3 dpdx = ddx(i.positionWS), dpdy = ddy(i.positionWS);
+                    float3 r1 = cross(dpdy, n), r2 = cross(n, dpdx);
+                    float det = dot(dpdx, r1);
+                    float3 grad = (det < 0.0 ? -1.0 : 1.0) * (ddx(hm) * r1 + ddy(hm) * r2);
+                    float3 nb = abs(det) > 1e-8 ? normalize(abs(det) * n - grad) : n;
+                    nl = normalize(lerp(n, nb, mask * (1.0h - fade)));
+                }
                 float4 sc = TransformWorldToShadowCoord(i.positionWS);
                 Light l = GetMainLight(sc);
-                half wrap = saturate((dot(n, l.direction) + 0.18h) / 1.18h);
-                half hemi = dot(n, up) * 0.5h + 0.5h;
+                half wrap = saturate((dot(nl, l.direction) + 0.18h) / 1.18h);
+                half hemi = dot(nl, up) * 0.5h + 0.5h;
                 half day = saturate(dot(up, l.direction) * 3.0h + 0.25h);
-                half3 amb = lerp(_AmbientGround.rgb, _AmbientSky.rgb, hemi) * lerp(half3(0.30h, 0.34h, 0.50h), half3(1.0h, 1.0h, 1.0h), day);
+                half3 amb = lerp(_AmbientGround.rgb, _AmbientSky.rgb, hemi) * lerp(half3(0.30h, 0.34h, 0.50h), half3(1.0h, 1.0h, 1.0h), day) * floorOcc;
                 // the shadow of the cloud between this point and the sun
                 float3 toCloud = normalize(i.positionWS + _TC2SunDir.xyz * max(0.0, _TC2CloudShell - length(i.positionWS)));
                 half cloud = smoothstep(0.38h, 0.78h, SAMPLE_TEXTURECUBE_LOD(_TC2Clouds, sampler_TC2Clouds, toCloud, 0).r * 0.95h);
                 half3 sun = l.color * wrap * lerp(0.25h, 1.0h, l.shadowAttenuation) * 1.2h * (1.0h - 0.55h * cloud) * saturate(dot(up, l.direction) * 4.0h + 0.35h);
-                half moon = saturate(dot(n, _TC2MoonDir.xyz) * 0.7h + 0.3h) * (1.0h - day);
+                half moon = saturate(dot(nl, _TC2MoonDir.xyz) * 0.7h + 0.3h) * (1.0h - day);
                 half3 c = albedo * (amb + sun + half3(0.13h, 0.17h, 0.29h) * moon);
                 // under the sea, the water's own colour by the depth of water above (Beer-Lambert): the sand of the shallows
                 // shows clear and turquoise, the deep goes blue; the sea's surface on top adds only sky and sun (D2-040)
