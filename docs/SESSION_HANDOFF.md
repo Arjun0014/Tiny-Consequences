@@ -1,3 +1,69 @@
+# Session handoff - session 26 (7 Oct 2026): the TC1 polish pass - a compact HUD, Follow, the idle view, the meteor, Wavedash progress and a playtest build; D-228-D-233
+
+TC1 only (Defold). TC2 (`unity/`, `tc2/`, `docs/tc2/`) belongs to another session in the same folder - never touched or staged.
+
+## FINAL STATE
+- main, committed (see `git log -1`). Wavedash: a playtest build pushed with `npm run deploy:wavedash` (build id in
+  out/wavedash_last_push.json and below) - NOT published; Arjun playtests it, then publishes on wavedash.com if he likes it.
+- What changed (DECISIONS D-228-D-233):
+  - HUD (D-228): `game/ui/layout.lua` (corners, UI scale k on small windows, room per region); hud.gui_script rewritten for
+    it; newsfeed/actions/tutorial/sound_panel compact; inspector of measured lines with folds and Follow; menus scale.
+    Proof: `ui{bounds}` (every panel), `ui{audit}` (every text inside its panel and the window), W09 at four sizes.
+  - Follow (D-229): `camera.start_follow/stop_follow/following`, `agents_view.start_follow/follow_update`,
+    `controls.toggle_follow/stop_follow`; Esc's back stack in the HUD.
+  - Idle (D-230): `game/view/idlecam.lua`; the HUD's idle_enter/idle_exit; `?idle=N`; `body.tc-idle` in the page.
+  - Meteor (D-231): `game/view/meteor.lua`; `powers.defer_meteor` (set by fx) - the command at the strike;
+    `power{instant}` for harnesses; fxglow/fxsoft materials, glow/soft factories; `camera.shake`.
+  - Loading (D-232): `window.tcLoad` in engine_template.html; main.script's monotonic, time-weighted fraction;
+    vectorised `tc_noise` (light.glsl).
+  - Deploy (D-233): `scripts/deploy_wavedash.mjs`, `scripts/lib/dotenv.mjs`; wavedash.toml game_id set.
+
+## Checks (session 26)
+- Quick sim suite 210/211 (the sim is byte-identical to S25 part 4). The one failure, `unit.test_v3_lightning.beasts_shut_in_a_
+  burning_fold_are_let_out` ("a new fold for the flock"), predates this session: since D-221 (S25 part 4, rain puts fire out -
+  that commit ran only the fire/power/world sets) the shipped world's day-3 evening at Tekheim has light rain, the fold's fire is
+  damped out and the fold stands (no new fold); tried on the next DRY evening, the fold burns but only 17 of 48 sheep live (the
+  test wants 80%) - D-207 made beasts die in minutes in flames, before anyone opens the fold. A sim question between D-207/D-221
+  and this S20 test, left for its own session (the test is unchanged).
+- Web 11/11 (W03 with the meteor's command at its strike, W09 at four sizes with the text audit, W10 browser = LuaJIT); lint
+  clean (319 files); debug and release builds OK.
+- In the real game: `ui_audit.mjs` 12 states x 7 sizes 0 problems; `follow_idle.mjs` 22/22; `tut_play.mjs` Play -> Finish, 0
+  errors; meteor at four zooms (sim impact 70-140 ms after the drawn strike); on the release package: `load_probe` (local 10.4 s
+  to init, 33 reports; 20 Mbps 14.9 s, 119 reports), `out/s25/wd_check.mjs` (init after ready, the name, prefs down and up),
+  `out/s25/wheel_check.mjs` Chromium + Firefox with and without the SDK's wheel listener (1 notch 0.14), `out/s25/mobile_check.mjs`
+  (rotate screen upright, drag, pinch 1.25 -> 1.75).
+
+## Tools of this session (out/s26/, not committed)
+- `ui_audit.mjs [tag] [sizes]` - 12 UI states x sizes, panel overlaps / off-screen / texts out of their panel.
+- `follow_idle.mjs` - Follow and idle with the real mouse and keyboard (22 checks; `?idle=6`).
+- `tut_play.mjs` - the tutorial from the title's Play to Finish, clicking where the game draws its buttons.
+- `meteor_video.mjs [tag] [scales] [cinematic|instant]` - the meteor recorded (screencast), frames cut on the meteor's own
+  clock, sim-vs-view strike timing; `meteor_steps.mjs [zoom]` - the meteor's clock stepped while paused (exact frames);
+  `meteor_fps.mjs [zoom]` - frame rate through a meteor.
+- `load_probe.mjs [dir] [mbps] [gpu]` - start-up as a player, a stand-in Wavedash SDK recording every progress call;
+  `shader_probe.mjs` / `shader_bench.mjs` - which GL programs cost the boot.
+- `wd_list.mjs` (the account's teams/projects with the .env key), `wd_dev.mjs` (`wavedash dev`, which hands off to a
+  wavedash.com sign-in).
+
+## Next
+1. Arjun's playtest of the Wavedash build: the loading bar (it moves through the download, holds near 53% while his GPU
+   compiles the shaders on a first visit, then climbs), the compact HUD at his window sizes, Follow, the idle view (leave it
+   50 s), the meteor from the planet, a region and the village.
+2. If the shader-compile hold is still too long on his machine: the planet's fragment shader is the cost (5.6 s of ~9 s on
+   this laptop's D3D11); a texture-based noise or fewer noise sites would cut it further (visuals to compare).
+3. The idle view's shots are fixed (planet 34 s, region 26 s, village 40 s): tune with his eye.
+4. The failing fold test (Checks above): decide between D-207 (beasts die in minutes in flames) and the S20 expectation that
+   most of a shut-in flock is let out alive; then fix the premise (a dry evening) or the mechanism.
+
+## Pitfalls (this session)
+- Bob forbids circular requires even inside functions: agents_view must not require skipcam/speed; meteor must not require
+  fx (fx hands itself over at init). Run `npm run build` after adding any require between view modules.
+- GUI node functions only work from the GUI script: harnesses queue `uistate.gui_do` functions (run by the HUD next frame).
+- Defold 1.13 has no `gui.get_text_metrics_from_node`: measure with `resource.get_text_metrics` (layout.text_rect).
+- Playwright's screencast slows the game's frames (planet ~5 fps): cut video frames by the game's own clock, not wall time.
+- Heredocs here turn `\\n` into real newlines in some quoting: write patch files with the editor (again).
+- `.env` reads are denied to the agent's own tools by policy; scripts read it (scripts/lib/dotenv.mjs) and never print values.
+
 # Session handoff - session 25, part 5 (5 Oct 2026, ~07:15-07:45 IST): the mouse wheel on Wavedash; D-227
 
 - Arjun: on Wavedash the wheel did not zoom (itch fine, same bundle). Cause: the Wavedash SDK (`@wvdsh/sdk-js` inject.global.js)

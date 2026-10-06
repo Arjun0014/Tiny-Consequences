@@ -4,6 +4,20 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 
 ## Current state
 
+- **SESSION 26 (7 Oct 2026): the TC1 polish pass and a Wavedash playtest build (D-228-D-233; read `docs/SESSION_HANDOFF.md`
+  session 26 first).** A compact HUD laid out by measure: every panel rooted at its corner and scaled up on small windows,
+  heights from the room left, text measured into its panel, the inspector a scrolling list with foldable sections and a
+  Follow button, a grouped power bar between the columns, news under a foldable header (D-228; `ui{audit}` and W09 at four
+  sizes; 12 states x 7 sizes clean). Following ends on close, someone else, a click, a drag, Esc or idle; Esc steps back one
+  thing at a time (D-229). The idle view: after 50 s untouched the HUD slides away and the camera glides between the planet,
+  a region and a village in daylight; any input brings it back (D-230). The meteor rebuilt from scratch and its command
+  given at the drawn strike (sim impact 70-140 ms after it at four zooms; S25 1.4-1.8 s before) (D-231). Wavedash loading
+  progress from the real work (download bytes, engine start, the world's weighted build steps; the GPU's shader compile is
+  the one unreportable stretch, shortened 7.0 -> 5.6 s) (D-232); `npm run deploy:wavedash` pushes a playtest build with the
+  key from `.env`, never publishing (D-233). Checks: sim 210/211 (the one failure pre-existing since S25 part 4, see the
+  handoff), web 11/11, lint clean; the release package probed as a player (start-up 10.4 s locally, was 14.1 s), the Wavedash
+  glue, wheel and phone checks.
+
 - **SESSION 25 part 5 (5 Oct 2026, ~07:15-07:45 IST): the mouse wheel zooms on Wavedash (D-227).** The Wavedash SDK's own `wheel`
   listener on the window stopped Chrome/Safari sending the engine its old `mousewheel` event; the page now hands each real wheel to
   the engine itself (`game/html/engine_template.html`). Checked with and without a stand-in for the SDK's listener in Chromium,

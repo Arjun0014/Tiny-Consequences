@@ -2028,3 +2028,100 @@ from the engine (a notch counts once). Firefox is left as it was (`DOMMouseScrol
 other way round). Made-up wheels are not passed on, as before: the page's pinch wheels never reached the engine in Chrome - the
 pinch zooms through the game's own two-finger touch. Checked (`out/s25/wheel_check.mjs`): with and without the SDK's listener,
 1 notch 0.14 and 3 up / 3 down back to the start in Chromium, Firefox and WebKit; the emulated phone's pinch zooms in.
+
+
+## D-228 · 2026-10-07 · A compact HUD, laid out by measure (session 26, polish pass)
+**Context.** Arjun: the screen too cluttered; Your actions and the inspector overflowing, text out of its panels, panels
+over each other, unusable on smaller windows. Measured on S25's build at 1280x720: the chain tree laid 15 rows of 25 px into
+a 470 px panel (the last spilled out); the inspector's "Home" drawn under its value; the panels took over half the frame; at
+844x390 (a phone sideways) everything drew at 0.54x - 7-8 px text.
+**Decision.** (1) `game/ui/layout.lua`: the GUI stays on its 1280x720 reference with ADJUST_FIT (one uniform scale; the
+reference is only a coordinate system - at 1080p everything already draws at 1.5x, fonts are distance fields and the icons
+64 px sources); every panel's root sits at its screen corner, anchored there and scaled by `k` - 1 normally, up to 1.45 on
+small windows (a reference unit at least ~0.8 px) as far as the bottom row (pills, power bar, sound) and the top centre
+(the tutorial's card, 320 units at least) still fit across. Panel heights come from the room left (`column_h`: under the
+top bar, above the pills - or above the power bar and its aiming row where the bar reaches under the column, or above an
+open Sound panel). (2) Compact panels: a 44-unit top bar (clock with icon speed buttons and a menu icon; stats in measured
+slots); news cards 300x46 under a foldable "World news" header, as many as fit; Your actions 300 wide, rows counted to fit,
+"Go there" beside the chain's size (not over its title), indentation capped at 9 generations, a scrollbar; the inspector a
+list of measured lines - a value that does not fit beside its label goes under it, texts wrapped by pixels, sections
+foldable (Memories, Chronicle, Recent events, Last year folded until opened, their size on the header), a scrollbar, a
+Follow/Following button in its header; a 37-unit power bar in groups (sky, earth, life, sea, the meteor) that fits between
+the columns; News and Your actions pills side by side; a round Sound pill clear of the page's fullscreen button; the
+tutorial's card as wide as the room between the columns (320-420), minimisable; menus scaled with k while they fit. Every
+text is measured and cut or wrapped to its panel (`uikit.trunc/wrap`). (3) Proof built in: `ui{audit}` measures every text
+drawn and reports any leaving its panel or the window; `ui{bounds}` gives every panel's rectangle. W09 now checks four
+window sizes (1280x720, 1920x1080, 1024x768, 844x390) with no overlap, nothing off-screen and no text out of its panel
+(it clicks the speed button where the game draws it). `out/s26/ui_audit.mjs`: 12 states (Your actions' chain, news + Why,
+the tutorial's longest card, a power armed with its choices and preview, the skip menu, the Sound panel, pause, settings,
+the guide, credits, the title, back) x 7 sizes (adding 1366x768, 2560x1080, 1280x1024): 0 problems.
+
+## D-229 · 2026-10-07 · Following ends when the player says so (session 26)
+**Context.** Arjun: Follow, then close the profile - the camera keeps following and the world cannot be turned. Cause:
+`agents_view.follow` re-installed `camera.follow` every frame, so a drag (which cleared it) was undone the next frame and
+closing the inspector never touched it.
+**Decision.** One owner of the camera's follow: `camera.start_follow(fn, tag)` / `stop_follow()` / `following(sel)`
+(`follow_tag` = { kind, id }). The agents' view follows a person only while that person lives, stays selected and the
+camera's follow is still its own: closing the inspector, selecting someone else, a click on the empty world, a drag, Esc
+and the idle view all end it, and it is never put back. A skip parks it (`camera.parked`) and gives it back. F toggles;
+the inspector's header button shows Follow / Following. Esc steps back one thing at a time: a menu, the skip menu, the
+armed power, the follow, the selection, Your actions, the Sound panel, and only then the pause menu.
+Played with the real mouse and keyboard (`out/s26/follow_idle.mjs`, 22/22).
+
+## D-230 · 2026-10-07 · The idle view: the world watched on its own (session 26)
+**Decision.** After 50 s with no input at all (`?idle=N`) - not in a menu, the tutorial, a skip, while aiming, or with a
+panel held open - the HUD slides away (top up, columns aside, bars down; the page's fullscreen button fades and the pointer
+hides), the selection is set aside and any follow ends, and `game/view/idlecam.lua` takes the camera: long eased glides
+(the camera's tween at 0.45/s) between the whole planet turning, a region over a village in daylight, and low over that
+village circling it slowly - a new village each time round. The world runs exactly as it was left (a paused world stays
+paused). Any input - a mouse move, a click, a key, a touch - brings the HUD back at once (sliding in 4x faster than it
+left) and the selection with it; the press that woke it does nothing else. Never a separate scene: the real world, watched.
+
+## D-231 · 2026-10-07 · The meteor rebuilt, and its command given at the strike (session 26)
+**Context.** Arjun: the meteor looks cheap, and the damage can begin before the rock lands. Measured: S25 queued the sim
+command at the cast (applied 50-93 ms later) while the drawn rock reached the ground 1.4-1.85 s later - houses fell and
+fires started before the strike; from orbit the fall was a string of orange flame blobs; the impact flat orange rings.
+**Decision.** (1) `game/ui/powers.lua`: a meteor's logged `power` command is handed to the view (`defer_meteor`), which
+queues it the frame the rock reaches the ground; the world applies it at that moment (`world.command` stamps it). Measured
+at four zooms: the sim's impact 70-140 ms after the drawn strike (the next frame or two). Cast while time is paused, time
+runs at Watch (a god's strike is watched); a skip under way ends. The bridge's `power{instant}` keeps the immediate
+command for harnesses that advance the world straight after a cast. Nothing in the sim changed. (2) `game/view/meteor.lua`
+(new): the rock appears high above and beyond the point, inside the frame at any zoom (its path sampled against the view:
+from afar it comes in long and low across the planet's face, close in steeply out of the sky), a white-hot head with a
+corona and a halo that grow and brighten as it falls into thicker air, a tapering plasma streak, a smoke trail left hanging
+in the sky, sparks; the ground below lit in the last 1.6 s, the frame brightening and a tremor; then a blinding flash, flame
+tongues that swell and cool from white to orange, two shock rings out to past the blast's reach (the impact's own physics,
+`imp_*`), a curtain of thrown earth, rock and embers flung out and falling back, a column, a cap and a low surge of smoke
+and dust, the crater glowing as it cools, the camera shaken (`camera.shake`; fx.shake had never been read). New effect
+materials in the fx pass: `fxglow` (additive light) and `fxsoft` (soft billboards that fade to nothing at their edges), with
+a per-object `u_tint`. The fall runs in real time while the world runs (paused, the rock hangs). Cost: the fall 32-43 fps
+in headless D3D11 where the view ran 42 (pools trimmed after a first build dipped to 27), the sim's own impact work (290
+fires, everyone fleeing) dips the frames after it as before. Seen on video at four zooms (`out/s26/meteor_video.mjs`; the
+meteor's own clock stepped in `out/s26/meteor_steps.mjs`) and in the tutorial played through (`out/s26/tut_play.mjs`: "The
+rock is coming down..." until the strike, then its real toll).
+
+## D-232 · 2026-10-07 · Loading progress for Wavedash, from the real work (session 26)
+**Context.** On Wavedash the loading percentage sat at 0% for a long time, then the game started. Cause: nothing reported
+progress - the Defold docs' automatic progress comes from Wavedash's Lua extension, which this build does not use (it finds
+`window.Wavedash` at run time, D-224); only `init()` (100%) was ever called.
+**Decision.** `engine_template.html` `window.tcLoad` reports `Wavedash.updateLoadProgressZeroToOne` from real work only,
+never a timer: 0-50% dmloader's own byte count of the engine and its archive (the wasm compiled; `update_progress`), 53%
+the engine's main() (`start_success`), 70% the game's first frame (main.script init), 70-97% the world unpacked and the view
+built - main.script's loading fraction, now one that only grows, its steps weighted by the time each took (unpack 0.9 s,
+coastlines 0.36, land 0.27, forests 0.41, clouds 0.22, village 1.35; release, measured), with marks inside the village
+step - and 100% at `tcWD.init()`. Measured (`out/s26/load_probe.mjs`, a stand-in SDK recording every call): 39 reports,
+smooth through the download (5 s at 20 Mbps) and the world. The one stretch no page can report: between main() and the
+first frame the engine loads its resources and the GPU compiles every shader in one native call (0.6 s in software, ~10 s
+on a first visit with a D3D11 GPU, Chrome's shader cache shortening later visits) - the planet's fragment shader (192 KB
+after Defold's SPIR-V pipeline inlines ~60 value noises) alone took 7 s. `tc_noise` now takes its eight corner hashes four
+at a time (the same arithmetic per component, the same blend order): the translated shader 90 KB, that compile 5.6 s.
+The bar therefore moves steadily, holds at 53% through that compile, then climbs to the end.
+
+## D-233 · 2026-10-07 · Pushing a playtest build to Wavedash (session 26)
+**Decision.** `npm run deploy:wavedash` (`scripts/deploy_wavedash.mjs`, replacing the stub): builds the release package
+(`package.mjs --wavedash`), checks it (index.html at the root, every archive piece listed in archive_files.json present,
+forward-slash names, a release build, the SDK and progress glue in the page), then `wavedash build push` with the API key
+from `.env` (`WAVEDASH_TOKEN`, else `WAVEDASH_API_KEY` / `WAVEDASH_API` / `WAVEDASH_KEY`) passed only in the CLI's
+environment, its output masked; the key is never printed or written (`scripts/lib/dotenv.mjs`). wavedash.toml's game_id is
+the "Tiny Consequences" project. The script never publishes: a pushed build is for playtesting; publishing stays a
+person's decision (on wavedash.com or `wavedash publish <build id>`). The last push is recorded in out/wavedash_last_push.json.
