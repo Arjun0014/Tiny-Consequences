@@ -81,6 +81,14 @@ namespace TC2.Core.Society
         /// <summary>Each round of a fight more of the village wakes and comes: two and this share of its fit grown people.</summary>
         public const double Reinforce = 0.15;
 
+        // ---- defence that is built (D2-074)
+        /// <summary>A palisade halves what takers and bands carry off (WallGuards) for the years it stands sound (WallLife); its labour
+        /// and timber are worth LabourWorth FU an hour or a wood unit; timber rots in WallYears unmended; mending is kept up while what it
+        /// guards outweighs MendShare of its cost.</summary>
+        public const double WallGuards = 0.5, WallLife = 15.0, LabourWorth = 0.25, WallYears = 30.0, MendShare = 0.3;
+        /// <summary>A palisade sees takers this often (they must climb it or come by a gate), and doubles its defenders' ground when sound.</summary>
+        public const double WallSeen = 0.6;
+
         /// <summary>A person is hungry enough to go when the last day fed them less than this share of their need (both resolutions
         /// keep that share, the body's day: a lived meal-time flag would clear at the first bite).</summary>
         public const double HungryBelow = 0.5;
@@ -183,7 +191,20 @@ namespace TC2.Core.Society
         }
 
         /// <summary>The chance a taker at a village's store tonight is seen: its sleepers, or its watch (D2-071).</summary>
-        public double SeenAt(int o) => _w.Settlements.Get(o).Watcher != 0 ? DMath.Max(WatchSeen, SeenChance(o)) : SeenChance(o);
+        public double SeenAt(int o)
+        {
+            ref var s = ref _w.Settlements.Get(o);
+            double seen = SeenChance(o);
+            if (s.Wall == 2) seen = DMath.Max(seen, WallSeen * (double)s.WallCond);   // (over a palisade, or through its gate: D2-074)
+            return s.Watcher != 0 ? DMath.Max(WatchSeen, seen) : seen;
+        }
+
+        /// <summary>The defenders' ground: their own, and behind a sound palisade the more (D2-074).</summary>
+        public double Ground(int o)
+        {
+            ref var s = ref _w.Settlements.Get(o);
+            return HomeGround * (s.Wall == 2 ? 1.0 + (double)s.WallCond : 1.0);
+        }
 
         /// <summary>The taker at the store in the night (lived: on arriving; COARSE: at once).</summary>
         public void Take(ref Person p, int at) => TakeWith(ref p, at, KeyedRng.Unit(_w.Seed, RngStream.Society, (ulong)p.Id, (ulong)_w.Now, 1));
@@ -631,7 +652,11 @@ namespace TC2.Core.Society
         /// by kinship with the leader, never against a village where they have close kin. Three or more go: lived, the next night
         /// (they leave at bedtime and come to the village together at one in the morning); COARSE, at once.
         /// </summary>
-        void Raids(int sid)
+        /// <summary>Premise (tests, tools): the village's day raises a band now if it would (its motive, its people's choices, its daring),
+        /// without the day's chance. Returns the band, or 0.</summary>
+        public int RaiseBandNow(int sid) { long n0 = _w.Metrics.Bands; Raids(sid, true); return _w.Metrics.Bands > n0 ? _w.Ids.Peek(EntityKind.Band) - 1 : 0; }
+
+        void Raids(int sid, bool force = false)
         {
             var w = _w;
             long now = w.Now;
@@ -654,7 +679,7 @@ namespace TC2.Core.Society
             if (target == 0 || urge <= 0) return;
             // (a village whose takers and bands that target beat back thinks twice: D2-073)
             urge *= 1.0 - DMath.Clamp01(w.DeedBook.Answers(sid, target) / AnswersFull);
-            if (KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)sid, (ulong)now, 50) >= RaidPerDay * urge) return;
+            if (!force && KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)sid, (ulong)now, 50) >= RaidPerDay * urge) return;
             ref var t = ref w.Settlements.Get(target);
             if (!t.Inhabited || Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, sid, target) == null) return;
             int leader = Boldest(sid, now, target);
@@ -679,7 +704,7 @@ namespace TC2.Core.Society
             double bandStrength = 0;
             for (int i = 0; i < _band.Count; i++) bandStrength += Strength(in w.People.Get(_band[i]));
             // (they know the village: its neighbours round the store, its watch, and how many more would wake)
-            double expect = (1 + Helpers(target) + (w.Settlements.Get(target).Watcher != 0 ? 1 : 0) + 2 + Reinforce * FitAt(target, now)) * 0.8 * HomeGround;
+            double expect = (1 + Helpers(target) + (w.Settlements.Get(target).Watcher != 0 ? 1 : 0) + 2 + Reinforce * FitAt(target, now)) * 0.8 * Ground(target);
             if (bandStrength < BandDares * expect) return;
             // the band
             int id = w.Ids.Next(EntityKind.Band);
@@ -785,15 +810,16 @@ namespace TC2.Core.Society
                 {
                     if (round > 0) Rally(at, _defend.Count + (int)DMath.Floor(2 + Reinforce * fitThere), now);
                     if (_defend.Count == 0) { outcome = 1; break; }
-                    double sr = SideStrength(raiders), sd = SideStrength(_defend) * HomeGround;
+                    double ground = Ground(at);
+                    double sr = SideStrength(raiders), sd = SideStrength(_defend) * ground;
                     // each side strikes by its numbers and strength
                     Exchange(raiders, _defend, sr / (sr + sd), bandId, round, true);
                     Exchange(_defend, raiders, sd / (sr + sd), bandId, round, false);
-                    sr = SideStrength(raiders); sd = SideStrength(_defend) * HomeGround;
+                    sr = SideStrength(raiders); sd = SideStrength(_defend) * ground;
                     if (sr < BreakAt * sd) outcome = 2;                    // the band breaks and runs
                     else if (round >= 1 && sd < BreakAt * sr) outcome = 1; // the defenders give way
                 }
-                if (outcome == 0) outcome = SideStrength(raiders) >= SideStrength(_defend) * HomeGround ? (byte)1 : (byte)2;
+                if (outcome == 0) outcome = SideStrength(raiders) >= SideStrength(_defend) * Ground(at) ? (byte)1 : (byte)2;
                 loads = outcome == 1 ? 0.5 * n : 0.0;
             }
             // the loot: a load each that the band carries (half when it had to fight for the field)
@@ -909,6 +935,75 @@ namespace TC2.Core.Society
             }
         }
 
+        // ------------------------------------------------------------------ defence that is built (D2-074; both resolutions)
+        /// <summary>
+        /// A village's day of walls: its palisade's timber rots (about thirty years unmended) and falls when spent; a village that
+        /// has none weighs one - what other villages' people took and did to it these three years, a year, half of it saved for the
+        /// years a wall stands, against the labour and timber of a ring round its homes - and begins one when the losses outweigh it
+        /// (built as a village work by its people's hours and wood); a walled village keeps mending while what it guards is worth it.
+        /// Never a count of raids: losses remembered against labour and wood.
+        /// </summary>
+        void Defence(int sid)
+        {
+            var w = _w;
+            long now = w.Now;
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.Wall == 2)
+            {
+                s.WallCond = (float)DMath.Max(0.0, (double)s.WallCond - 1.0 / (WallYears * 48.0));
+                if (s.WallCond <= 0f)
+                {
+                    s.Wall = 3; s.WallKeep = 0; s.Works = (byte)(s.Works & ~Construction.Palisade);
+                    w.Record(new HistoryEvent
+                    {
+                        Kind = HistoryKind.WallFallen, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
+                        Cause1 = s.WallEvent, Rel1 = CauseRel.PartOf, RootKind = RootKind.Nature,
+                    });
+                }
+            }
+            if (!s.Inhabited) return;
+            double lost = w.DeedBook.HarmSince(sid, now - 3 * SimTime.Year, out long latest) / 3.0;
+            double guards = WallGuards * lost * WallLife;
+            if (s.Wall == 0 || s.Wall == 3)
+            {
+                double r = WallRadius(sid);
+                double cost = LabourWorth * (Construction.PalisadeHoursPerM + Construction.PalisadeWoodPerM) * 2.0 * DMath.PI * r;
+                if (guards <= cost) return;
+                ref var s2 = ref w.Settlements.Get(sid);
+                s2.Wall = 1; s2.WallR = (float)r; s2.WallCond = 0f; s2.WallKeep = 1;
+                s2.WallEvent = w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.WallPlanned, Time = now, Cell = s2.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
+                    Cause1 = latest, Rel1 = CauseRel.InResponseTo, Magnitude = (float)lost, RootKind = RootKind.People,
+                });
+                w.Metrics.WallsPlanned++;
+                return;
+            }
+            if (s.Wall == 2)
+            {
+                double cost = LabourWorth * (Construction.PalisadeHoursPerM + Construction.PalisadeWoodPerM) * 2.0 * DMath.PI * (double)s.WallR;
+                s.WallKeep = (byte)(guards > MendShare * cost ? 1 : 0);
+            }
+        }
+
+        /// <summary>The ring a palisade would run on: outside the village's farthest home, its yards and its store (25-170 m).</summary>
+        public double WallRadius(int sid)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(sid);
+            Construction.GranarySpot(in s, out double gx, out double gy);
+            double far = DMath.Sqrt((gx - s.SquareX) * (gx - s.SquareX) + (gy - s.SquareY) * (gy - s.SquareY));
+            var hhs = w.HouseholdsOf(sid);
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                ref var hh = ref w.Households.Get(hhs[i]);
+                double dx = (double)hh.HomeX - s.SquareX, dy = (double)hh.HomeY - s.SquareY;
+                double d = DMath.Sqrt(dx * dx + dy * dy);
+                if (d > far) far = d;
+            }
+            return DMath.Clamp(far + 15.0, 25.0, 170.0);   // (its pens and yards behind the homes inside)
+        }
+
         long HungerCause(int home, long now)
         {
             ref var s = ref _w.Settlements.Get(home);
@@ -921,6 +1016,7 @@ namespace TC2.Core.Society
         {
             var w = _w;
             Wounds(sid);
+            Defence(sid);
             Watch(sid);
             ReadFoe(sid);
             Claims(sid);

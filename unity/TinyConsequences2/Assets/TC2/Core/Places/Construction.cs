@@ -13,7 +13,10 @@ namespace TC2.Core.Places
     public static class Construction
     {
         public const byte Camp = 0, Hut = 1, House = 2;
-        public const byte Well = 1, Granary = 2;            // a village's works (bits)
+        public const byte Well = 1, Granary = 2, Palisade = 4;   // a village's works (bits)
+        public const byte Mend = 8;                              // (a work, not a bit: mending the palisade; D2-074)
+        /// <summary>A palisade a metre of its ring: felling, carrying, digging and setting the posts; the timber (D2-074).</summary>
+        public const double PalisadeHoursPerM = 2.5, PalisadeWoodPerM = 0.8;
 
         /// <summary>Where a village's store stands (its granary, or the heap before one is built): beside the square.</summary>
         public static void GranarySpot(in Settlement s, out double x, out double y) { x = s.SquareX + 14.0; y = s.SquareY - 10.0; }
@@ -38,14 +41,35 @@ namespace TC2.Core.Places
         {
             if ((s.Works & Well) == 0) return Well;
             if ((s.Works & Granary) == 0 && (s.LastHarvest > 0 || s.Granary > 5 * s.Population)) return Granary;
+            if (s.Wall == 1) return Palisade;
+            if (s.Wall == 2 && s.WallKeep != 0 && s.WallCond < 0.6f) return Mend;
             return 0;
         }
 
-        public static void WorkCost(byte work, out double hours, out double wood)
+        public static void WorkCost(byte work, in Settlement s, out double hours, out double wood)
         {
             if (work == Well) { hours = WellHours; wood = WellWood; }
             else if (work == Granary) { hours = GranaryHours; wood = GranaryWood; }
+            else if (work == Palisade || work == Mend)
+            {
+                double perim = 2.0 * DMath.PI * DMath.Max(1.0, (double)s.WallR);
+                double share = work == Mend ? 0.6 * DMath.Max(0.05, 1.0 - (double)s.WallCond) : 1.0;
+                hours = PalisadeHoursPerM * perim * share; wood = PalisadeWoodPerM * perim * share;
+            }
             else { hours = 0; wood = 0; }
+        }
+
+        /// <summary>Where the village's work goes on: its well, its store, or a stretch of its palisade's ring (u picks the stretch).</summary>
+        public static void WorkSpot(in Settlement s, byte work, double u, out double x, out double y)
+        {
+            if (work == Well) { x = s.WellX; y = s.WellY; return; }
+            if (work == Palisade || work == Mend)
+            {
+                double a = 2.0 * DMath.PI * u;
+                x = s.SquareX + (double)s.WallR * DMath.Cos(a); y = s.SquareY + (double)s.WallR * DMath.Sin(a);
+                return;
+            }
+            GranarySpot(in s, out x, out y);
         }
 
         /// <summary>
@@ -92,12 +116,25 @@ namespace TC2.Core.Places
             }
             byte work = NextWork(in s);
             if (work == 0) return 0;
-            WorkCost(work, out double needW, out double woodW);
+            WorkCost(work, in s, out double needW, out double woodW);
             double doneW = Spend(ref s, hours * rate, needW - s.WorkBuild, woodW / needW);
             s.WorkBuild = (float)(s.WorkBuild + doneW);
             if (s.WorkBuild >= needW - 1e-6)
             {
-                s.Works |= work; s.WorkBuild = 0f;
+                s.WorkBuild = 0f;
+                if (work == Mend) { s.WallCond = 1f; return rate > 0 ? doneW / rate : 0; }   // (the rotten posts replaced)
+                s.Works |= work;
+                if (work == Palisade)
+                {
+                    // the village walled (D2-074): a fortified place, its cause the losses that moved it
+                    s.Wall = 2; s.WallCond = 1f; s.WallKeep = 1;
+                    w.Record(new HistoryEvent
+                    {
+                        Kind = HistoryKind.WallBuilt, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
+                        ArgA = (int)DMath.Floor(2.0 * DMath.PI * (double)s.WallR + 0.5), RootKind = RootKind.People, Cause1 = s.WallEvent, Rel1 = CauseRel.CausedBy,
+                    });
+                    return rate > 0 ? doneW / rate : 0;
+                }
                 w.Record(new HistoryEvent
                 {
                     Kind = HistoryKind.WorkBuilt, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
@@ -138,7 +175,7 @@ namespace TC2.Core.Places
             }
             byte work = NextWork(in s);
             if (work == 0) return false;
-            WorkCost(work, out double needW, out double woodW);
+            WorkCost(work, in s, out double needW, out double woodW);
             woodShort = s.Woodstore < woodW / needW;
             return !woodShort;
         }

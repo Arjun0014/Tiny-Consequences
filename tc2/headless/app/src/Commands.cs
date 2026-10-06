@@ -177,6 +177,18 @@ namespace TC2.Headless
                 }
                 Console.WriteLine("taking: loads taken " + m.Takings + " (" + F(m.TakenFu, "0") + " FU), takers seen " + m.TakingsSeen + "; deeds kept " + w.Deeds.Count);
                 Console.WriteLine("blows: " + m.Blows + " struck, " + m.WoundDeaths + " dead of their wounds; watch kept " + m.WatchNights + " village-nights");
+                { int walled = 0, building = 0, wallsDown = 0; for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) { var st = w.Settlements.Get(sid); if (st.Wall == 2) walled++; else if (st.Wall == 1) building++; else if (st.Wall == 3) wallsDown++; }
+                  Console.WriteLine("walls: palisades begun " + m.WallsPlanned + "; standing " + walled + ", being built " + building + ", fallen " + wallsDown);
+                  // why the first wall was raised and why the first fell (the history explains them: F6's done-when)
+                  long firstBuilt = 0, firstFallen = 0;
+                  for (int i = 0; i < w.History.Count && (firstBuilt == 0 || firstFallen == 0); i++)
+                  {
+                      var e = w.History.At(i);
+                      if (e.Kind == HistoryKind.WallBuilt && firstBuilt == 0) firstBuilt = e.Id;
+                      if (e.Kind == HistoryKind.WallFallen && firstFallen == 0) firstFallen = e.Id;
+                  }
+                  if (firstBuilt != 0) Console.WriteLine("  the first wall raised:"); Console.Write(HistoryText.Why(w, firstBuilt));
+                  if (firstFallen != 0) Console.WriteLine("  the first wall fallen:"); Console.Write(HistoryText.Why(w, firstFallen)); }
                 Console.WriteLine("raids: bands raised " + m.Bands + ", raids " + m.Raids + " (driven off " + m.RaidsBeaten + "), loot " + F(m.RaidLoot, "0") + " FU");
                 Console.WriteLine("answers: amends asked " + m.Claims + ", made " + m.Amends + ", refused " + m.Refusals + "; loads taken back " + m.TakenBack);
                 Console.WriteLine("trade: trades " + m.TradeTrips + ", gain " + F(m.TradeValue, "0") + ", metal moved " + F(m.MetalTraded, "0") + " kg; relief " + F(m.ReliefFu, "0") + " FU");

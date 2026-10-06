@@ -123,6 +123,26 @@ namespace TC2.Game
             return b.Build("tc2-house");
         }
 
+        /// <summary>
+        /// A stretch of palisade 2 m long (D2-074): five sharpened posts set close along X, a rail binding them at waist height.
+        /// Drawn in a ring round a walled village, the instance colour greying the timber as it rots.
+        /// </summary>
+        public static Mesh Palisade()
+        {
+            var b = new Builder();
+            Color wood = Lin(0.58f, 0.44f, 0.30f), tip = Lin(0.50f, 0.38f, 0.26f);
+            for (int k = 0; k < 5; k++)
+            {
+                float x = -0.8f + 0.4f * k, h = 2.25f + 0.12f * ((k * 7) % 3);   // (posts of a little different height)
+                b.Box(new Vector3(x - 0.13f, 0f, -0.13f), new Vector3(x + 0.13f, h, 0.13f), wood);
+                Vector3 apex = new Vector3(x, h + 0.35f, 0f);
+                Vector3 p0 = new Vector3(x - 0.13f, h, -0.13f), p1 = new Vector3(x + 0.13f, h, -0.13f), p2 = new Vector3(x + 0.13f, h, 0.13f), p3 = new Vector3(x - 0.13f, h, 0.13f);
+                b.Tri(p0, apex, p1, tip); b.Tri(p1, apex, p2, tip * 0.85f); b.Tri(p2, apex, p3, tip); b.Tri(p3, apex, p0, tip * 0.85f);
+            }
+            b.Box(new Vector3(-1.0f, 1.05f, -0.2f), new Vector3(1.0f, 1.2f, -0.13f), Lin(0.45f, 0.34f, 0.22f));
+            return b.Build("tc2-palisade");
+        }
+
         public static Mesh Granary()
         {
             var b = new Builder();

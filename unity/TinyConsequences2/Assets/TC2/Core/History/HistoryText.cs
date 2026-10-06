@@ -111,6 +111,9 @@ namespace TC2.Core.History
                         if (outcome == 1) return band + ", fought off its people (" + blows + (blows == 1 ? " blow" : " blows") + ") and carried off " + F(e.Magnitude, "0") + " days' grain.";
                         return band + " but was driven off (" + blows + (blows == 1 ? " blow" : " blows") + ").";
                     }
+                case HistoryKind.WallPlanned: return "The people of " + subj + " began a palisade round their homes: other villages' people have cost them " + F(e.Magnitude, "0") + " days' food a year.";
+                case HistoryKind.WallBuilt: return "The people of " + subj + " finished their palisade (" + e.ArgA + " m round): " + subj + " is a walled place.";
+                case HistoryKind.WallFallen: return "The palisade of " + subj + " has rotted and fallen.";
                 case HistoryKind.PathogenAppeared: return "A new sickness, " + subj + ", appeared in " + place + (e.ArgA == 1 ? ", caught from its animals" : "") + ".";
                 case HistoryKind.EpidemicArrived:
                     return e.ArgA == 1 ? Cap(obj) + " broke out in " + place + (e.Other.IsNone ? "" : ", " + other + " the first to fall ill") + "."
@@ -190,7 +193,11 @@ namespace TC2.Core.History
                         return what + ground + why;
                     }
                 case ActivityKind.Haul: return "carrying the catch home";
-                case ActivityKind.Build: return p.Why == WhyCode.NoRoof ? "raising a roof for the household: they live in a camp or a hut" : "building for " + home + ": the village needs a well or a granary";
+                case ActivityKind.Build:
+                    if (p.Why == WhyCode.NoRoof) return "raising a roof for the household: they live in a camp or a hut";
+                    if (w.Settlements.Exists(p.Home) && (w.Settlements.Get(p.Home).Wall == 1 || (w.Settlements.Get(p.Home).Wall == 2 && TC2.Core.Places.Construction.NextWork(w.Settlements.Get(p.Home)) == TC2.Core.Places.Construction.Mend)))
+                        return "setting posts in " + home + "'s palisade: other villages' people have cost it dear";
+                    return "building for " + home + ": the village needs a well or a granary";
                 case ActivityKind.Scout: return "gone to look at the land beyond: " + home + " is crowded or hungry and knows no good place";
                 case ActivityKind.Move: return "walking with the household to a new home" + (dest.Length > 0 ? " at " + dest : "");
                 case ActivityKind.Tend: return "watching " + home + "'s herd on the pasture" + ground + ": the animals must graze, and the wolves keep off a watched herd";

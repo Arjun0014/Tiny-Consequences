@@ -1020,9 +1020,9 @@ namespace TC2.Core.Agents
                     {
                         // at their own lot, or at the village's well or granary
                         bool own = w.Households.Exists(p.Household) && w.Households.Get(p.Household).Shelter < Construction.House;
-                        Construction.GranarySpot(in here, out double gx, out double gy);
-                        double bx = own ? homeX : (Construction.NextWork(in here) == Construction.Well ? here.WellX : gx);
-                        double by = own ? homeY : (Construction.NextWork(in here) == Construction.Well ? here.WellY : gy);
+                        Construction.WorkSpot(in here, Construction.NextWork(in here), rs.NextUnit(), out double gx, out double gy);
+                        double bx = own ? homeX : gx;
+                        double by = own ? homeY : gy;
                         BeginLocal(ref p, ActivityKind.Build, own ? WhyCode.NoRoof : WhyCode.VillageWork, 0, bx + rs.Range(-3, 3), by + rs.Range(-3, 3), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
                         return;
                     }

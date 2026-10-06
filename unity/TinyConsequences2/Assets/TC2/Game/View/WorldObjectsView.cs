@@ -20,7 +20,7 @@ namespace TC2.Game
         public SimHost Host;
         public CameraRig Rig;
 
-        Instancer _people, _granaries, _wells, _hay, _flames, _huts, _tents, _ruins, _beached, _afloat;
+        Instancer _people, _granaries, _wells, _hay, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls;
         struct TreeInst { public Vector3 Pos; public Quaternion Rot; public float Scale; public byte Kind, Shade; }
         sealed class CellTrees { public float Forest; public TreeInst[] Trees; }
         readonly System.Collections.Generic.Dictionary<int, CellTrees> _treeCache = new System.Collections.Generic.Dictionary<int, CellTrees>();
@@ -53,6 +53,7 @@ namespace TC2.Game
             _houseKinds = new Instancer[HouseModels.Length];
             for (int i = 0; i < HouseModels.Length; i++) _houseKinds[i] = new Instancer(Models.Get(HouseModels[i], ProcMeshes.House), _mat, true);
             _granaries = new Instancer(Models.Get("granary", ProcMeshes.Granary), _mat, true);
+            _walls = new Instancer(Models.Get("palisade", ProcMeshes.Palisade), _mat, true);   // walled villages (D2-074)
             _huts = new Instancer(Models.Get("hut_round", ProcMeshes.House), _mat, true);
             _tents = new Instancer(Models.Get("tent", ProcMeshes.House), _mat, true);   // camps: hides over poles
             _ruins = new Instancer(Models.Get("ruin", ProcMeshes.House), _mat, true);   // the houses of abandoned villages (D2-052)
@@ -141,7 +142,7 @@ namespace TC2.Game
             if ((Off & 4) == 0)
             {
                 for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Draw(cam);
-                _granaries.Draw(cam); _wells.Draw(cam); _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam);
+                _granaries.Draw(cam); _wells.Draw(cam); _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam);
             }
             if ((Off & 1) == 0) for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
             _flames.Draw(cam);
@@ -172,6 +173,56 @@ namespace TC2.Game
             return awake;
         }
 
+        readonly System.Collections.Generic.List<double> _gates = new System.Collections.Generic.List<double>();
+
+        /// <summary>
+        /// A village's palisade (D2-074): stretches of posts round the ring its people laid out, with gates where the roads leave
+        /// for its neighbours; while being built, as many stretches as the work has set; the timber greys as it rots.
+        /// </summary>
+        void DrawWall(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int sid, float ex)
+        {
+            double r = s.WallR;
+            if (r < 5.0) return;
+            int stretches = Mathf.Max(8, (int)(2.0 * System.Math.PI * r / 2.0));
+            double share = 1.0;
+            if (s.Wall == 1)
+            {
+                Construction.WorkCost(Construction.Palisade, in s, out double need, out _);
+                share = Construction.NextWork(in s) == Construction.Palisade && need > 0 ? Mathf.Clamp01((float)(s.WorkBuild / need)) : 0.0;
+            }
+            int set = (int)(stretches * share);
+            if (set == 0) return;
+            // the gates: toward each neighbour within a day's walk, where its road leaves
+            _gates.Clear();
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+            {
+                if (o == sid || !w.Settlements.Get(o).Inhabited) continue;
+                ref var t = ref w.Settlements.Get(o);
+                if (Vec3d.ArcDistance(s.Anchor, t.Anchor, P.Radius) > 6000) continue;
+                s.SphereToLocal(t.Anchor, P.Radius, out double ox, out double oy);
+                _gates.Add(System.Math.Atan2(oy - s.SquareY, ox - s.SquareX));
+            }
+            double gateHalf = 3.0 / r;   // (a gate some six metres wide)
+            float cond = s.Wall == 2 ? s.WallCond : 1f;
+            Color timber = Color.Lerp(new Color(0.62f, 0.62f, 0.60f, 1f), Color.white, cond);
+            for (int k = 0; k < set; k++)
+            {
+                double a = 2.0 * System.Math.PI * (k + 0.5) / stretches;
+                bool gate = false;
+                for (int g = 0; g < _gates.Count && !gate; g++)
+                {
+                    double d = System.Math.Abs(System.Math.IEEERemainder(a - _gates[g], 2.0 * System.Math.PI));
+                    if (d < gateHalf) gate = true;
+                }
+                if (gate) continue;
+                double x = s.SquareX + r * System.Math.Cos(a), y = s.SquareY + r * System.Math.Sin(a);
+                float yaw = Mathf.Atan2((float)(s.SquareX - x), (float)(s.SquareY - y)) * Mathf.Rad2Deg;
+                // (old palisades lean a little as the posts rot)
+                float lean = (1f - cond) * 0.25f * (((k * 13) % 5) - 2);
+                _walls.Add(0, timber, Place(P, s, x, y, yaw, ex) * Matrix4x4.Rotate(Quaternion.Euler(lean * 10f, 0f, 0f)));
+            }
+        }
+
         Matrix4x4 Place(PlanetState P, in Settlement s, double x, double y, float yaw, float scale, float lift = 0f)
         {
             Vec3d d = s.LocalToSphere(x, y, P.Radius);
@@ -183,7 +234,7 @@ namespace TC2.Game
         {
             var P = w.Planet;
             for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Clear();
-            _granaries.Clear(); _wells.Clear(); _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear();
+            _granaries.Clear(); _wells.Clear(); _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _walls.Clear();
             _smoke.Clear();
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
@@ -210,6 +261,8 @@ namespace TC2.Game
                     bool lit = dark && SomeoneAwakeHome(w, hhs[i], out _);
                     _tents.Add((int)(age * 10) + (lit ? 100 : 0), new Color(age, age * 0.97f, age * 0.92f, 1f), Place(P, s, h.HomeX, h.HomeY, yaw, ex), lit ? -1f : 0f);
                 }
+                // its palisade (D2-074): standing (an abandoned village's too, as it rots), or as far as its people have set it
+                if (s.Wall == 1 || s.Wall == 2) DrawWall(w, P, in s, sid, ex);
                 if (!s.Inhabited)
                 {
                     // an abandoned village's well: its stone ring outlasts the houses (D2-052)

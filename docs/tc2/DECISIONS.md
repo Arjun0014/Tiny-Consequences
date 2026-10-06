@@ -1688,3 +1688,30 @@ raids in 400 years, 2 beaten off; seed 7 (villages of ~270) 161 raids, 71 beaten
 (`tc2/out/society/raids42_400.txt`, `raids7_400.txt`) - large villages are safe from a lone band, small ones are prey. Mono equals
 dotnet (gen 1e8c1954f8ae3dce).
 **Next (F6 slice 5).** Defence that is built: a palisade from remembered losses against its labour and timber.
+
+## D2-074 — 2026-10-06 — Defence that is built: the palisade (F6 slice 5)
+
+**Context.** 10 §3, §6: settlements weigh defences from remembered harm against labour, materials and knowledge - a ditch, a
+palisade, later walls - never "N raids, then a wall" (TC1 D-187). Research (TC1 40 §A5): warfare drives palisaded and walled
+villages and aggregation (LeBlanc; Allen & Arkush); defence is a choice weighed against labour and the losses remembered.
+**Decision.** (1) A village's day (`Conflict.Defence`, both resolutions) weighs a palisade: what other villages' people took and
+did to it in three years (`HarmSince`: losses found count, the doer unknown), a year, half of it saved over the fifteen years a
+sound wall serves, against the labour and timber of a ring round its homes and yards (2.5 hours and 0.8 wood units a metre, worth
+0.25 FU each; the ring 15 m beyond its farthest home, 25-170 m from the square). When the losses outweigh it, it begins one
+(`WallPlanned`, caused by the latest loss) and builds it as a village work after its well and granary (`Construction`: its
+people's hours and its woodstore; lived, at the ring: "setting posts in Kubroford's palisade: other villages' people have cost it
+dear"). Finished (`WallBuilt`, caused by its beginning): "The people of Kubroford finished their palisade (302 m round): Kubroford
+is a walled place". (2) The timber rots in thirty years unmended; a walled village mends it (60 % of the work, past 40 % rot) while
+what it guards outweighs 30 % of its cost; spent, it falls (`WallFallen`). (3) A sound palisade sees takers (0.6 x its soundness:
+they climb it or come by a gate) and doubles its defenders' ground (home ground x (1 + soundness)); bands weigh it before they go.
+(4) The view draws it: stretches of sharpened posts round the ring with gates where the roads to the neighbours leave, as many
+as the work has set, greying and leaning as the timber rots (`ProcMeshes.Palisade`; `unity.mjs shots --wall 1`). Sim version 28.
+**Evidence.** `DefenceTests` (163 tests): a village that lost a raid and two loads this year begins a palisade the next day
+("other villages' people have cost them 82 days' food a year"), its people finish it in 19 days, its cause the raid; seen at its
+store 0.85, its defenders' ground x2.4; its people set the posts themselves; a band of 6 is beaten off 9 times in 12 at a walled
+village, 4 at an open one; an unkept palisade rots and falls, told. Emergent in a test world: the village that suffered a killing
+walled itself, its bold took back from the killers' store, the killers walled themselves too, and no band dared either wall.
+400 coarse years (`tc2/out/society/walls42_400.txt`, `walls7_400.txt`): seed 42 began 35 palisades (20 standing, 15 still being
+built at year 400) and saw 6 raids (18 without walls); seed 7 began 19 (9 standing, 8 building, 1 fallen), 70 raids (161 without).
+Shots `tc2/out/shots/wall1`. Mono equals dotnet (gen db59e3c26d81b966).
+**Next.** A 1,000-year run to judge F6's done-when; then leaders and tribute (polities).

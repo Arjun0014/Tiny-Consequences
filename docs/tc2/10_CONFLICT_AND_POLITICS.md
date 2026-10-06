@@ -97,3 +97,10 @@ same choices at the lived rate (measured, as visits and trade are). Long runs ar
   one side breaks. Wounds are deeds; the raid is a deed; the loot answers the wrongs the band went for.
 - Measured: large villages are safe from a lone band; small ones are raided (seed 7: 161 raids in 400 years, 44 % beaten off).
 
+## 11. Implemented: slice 5, the palisade (D2-074)
+- A village weighs a palisade from what other villages' people cost it these three years (losses found count) against the labour
+  and timber of a ring round its homes; when the losses outweigh it, it builds one as a village work. A sound palisade sees
+  takers and doubles its defenders' ground; bands weigh it. Unmended timber rots in thirty years and falls; it is mended while
+  what it guards is worth it. The view draws the ring of posts with gates on the roads.
+- Measured (400 years): walls rise where takings and raids are remembered and keep bands away (seed 42 raids 18 -> 6).
+

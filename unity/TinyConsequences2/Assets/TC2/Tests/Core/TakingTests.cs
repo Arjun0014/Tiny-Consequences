@@ -591,6 +591,9 @@ namespace TC2.Tests.Core
             Full(w, a);
             long mark = w.History.LastId;
             HistoryEvent raised = default, raid = default;
+            // (the village's day would raise it by its own chance - a walled target might come first: D2-074; here it rises now)
+            w.AdvanceTo(w.Now + SimTime.Day);
+            Assume.That(w.Conflict.RaiseBandNow(b) != 0, "the wrong raises a band");
             int marching = 0, size = 0;
             for (int h = 0; h < 60 * 24 && raid.Kind != HistoryKind.Raid; h++)
             {

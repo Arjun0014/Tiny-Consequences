@@ -45,6 +45,15 @@ namespace TC2.Game
         /// Look-dev premise (not a god's power): everyone of a village dies and the world goes on some years - its fields go
         /// back to the land and its houses stand as ruins (D2-052); the world then waits for the same local hour.
         /// </summary>
+        /// <summary>Look-dev premise: the first village is walled (D2-074) - a palisade round its homes, its timber this sound.</summary>
+        static void Wall(World w, int sid, double cond)
+        {
+            ref var ws = ref w.Settlements.Get(sid);
+            ws.Wall = 2; ws.WallR = (float)w.Conflict.WallRadius(sid); ws.WallCond = (float)cond; ws.WallKeep = 1;
+            ws.Works = (byte)(ws.Works | TC2.Core.Places.Construction.Palisade);
+            Debug.Log("[TC2] the first village walled: a palisade " + (2 * System.Math.PI * ws.WallR).ToString("0", CultureInfo.InvariantCulture) + " m round");
+        }
+
         static void Abandon(World w, int sid, double years, long local, double hour)
         {
             var res = w.Residents(sid); var dead = new System.Collections.Generic.List<int>();
@@ -79,6 +88,8 @@ namespace TC2.Game
                 for (int i = 0; i < hhs.Count; i++) w.Households.Get(hhs[i]).Larder = 0;
                 Debug.Log("[TC2] the first village's stores emptied");
             }
+            string wall = Arg("-tc2wall");
+            if (wall != null && sid != 0) Wall(w, sid, Parse(wall, 1.0));
             long target = SimTime.StartOfDay(w.Now + local) - local + DMath.ToLong(days * SimTime.Day) + DMath.ToLong(hour * SimTime.Hour);
             while (target <= w.Now) target += SimTime.Day;
             var b = Budget.Unlimited;
