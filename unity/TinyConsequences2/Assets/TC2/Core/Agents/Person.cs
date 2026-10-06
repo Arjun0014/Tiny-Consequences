@@ -120,6 +120,26 @@ namespace TC2.Core.Agents
         public int Errand;                   // a wrong to ask amends for at the doers' village (a deed id; 0 none: D2-072)
         public int Band;                     // the band they go with (0 none; D2-073)
 
+        // derived from the world's seed and the person's id - never saved or hashed: filled when a person is made or loaded (Derive);
+        // readers fall back to computing them where it is 0 (the same values: an exact speedup, F8)
+        public byte Derived;
+        public double Build;                 // the body's build (AgentSystem.ReserveCap)
+        public double Sc0, Sc1, Sc2, Sc3, Sc4, Sc5;   // how each technique is copied, above or below the model (Knowledge.Tech.Scatter)
+
+        public void Derive(ulong seed)
+        {
+            Build = AgentSystem.BuildOf(seed, Id);
+            Sc0 = Knowledge.Tech.Scatter(seed, Id, 0); Sc1 = Knowledge.Tech.Scatter(seed, Id, 1); Sc2 = Knowledge.Tech.Scatter(seed, Id, 2);
+            Sc3 = Knowledge.Tech.Scatter(seed, Id, 3); Sc4 = Knowledge.Tech.Scatter(seed, Id, 4); Sc5 = Knowledge.Tech.Scatter(seed, Id, 5);
+            Derived = 1;
+        }
+
+        public double ScatterOf(int t) => t == 0 ? Sc0 : t == 1 ? Sc1 : t == 2 ? Sc2 : t == 3 ? Sc3 : t == 4 ? Sc4 : Sc5;
+
+        /// <summary>DEEP: the mean health over the village step just lived (set by the step's bodies, read by its conceptions in the
+        /// same call; never saved).</summary>
+        public double StepHealth;
+
         public double AgeYears(long now) => (now - Born) / (double)SimTime.Year;
         public bool IsFemale => SexKind == Sex.Female;
 

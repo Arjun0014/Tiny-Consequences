@@ -45,6 +45,10 @@ namespace TC2.Core.Places
         World _w;
         readonly List<int> _scratch = new List<int>(), _cells = new List<int>(), _leaving = new List<int>();
 
+        /// <summary>Tools: the yearly weighing - villages weighed, the sums of their pressure, crowding, short rations and famine memory,
+        /// those pressed, the households that could go and those that chose to; null in the game.</summary>
+        public static double[] Weighs;
+
         public void Bind(World w) { _w = w; }
 
         /// <summary>
@@ -90,6 +94,13 @@ namespace TC2.Core.Places
             // a new village has not sown its land yet: it does not measure its land by a year without fields
             if (w.Now - s.Founded < SimTime.Years(3)) return;
             double pressure = Pressure(in s);
+            if (Weighs != null)
+            {
+                var cfg = w.Config;
+                double need = DMath.Max(1.0, s.Population * cfg.FieldHaPerPerson);
+                Weighs[0]++; Weighs[1] += pressure; Weighs[2] += DMath.Clamp01(1.0 - s.ArableHa / need); Weighs[3] += DMath.Max(0.0, 1.0 - s.Ration); Weighs[4] += s.Memory;
+                if (pressure >= 0.15) Weighs[5]++;
+            }
             if (pressure < 0.15) return;
             // the place: the best the village knows that is still free and still good (or none)
             int site = BestSite(sid, out double q);
@@ -102,7 +113,9 @@ namespace TC2.Core.Places
                 ref var hh = ref w.Households.Get(hid);
                 if (hh.Party != 0 || !Mobile(hid)) continue;
                 double chance = DMath.Clamp(1.1 * pressure - 0.12, 0.0, 0.45) * (w.Now - hh.Formed < SimTime.Years(6) ? 1.4 : 1.0);
+                if (Weighs != null) Weighs[6]++;
                 if (KeyedRng.Unit(w.Seed, RngStream.Demography, (ulong)hid, (ulong)SimTime.FloorDiv(w.Now, SimTime.Day), 41) >= chance) continue;
+                if (Weighs != null) Weighs[7]++;
                 _leaving.Add(hid);
                 people += w.Members(hid).Count;
             }
@@ -413,6 +426,21 @@ namespace TC2.Core.Places
             if (_w.Now - s.ScoutAt < 6 * SimTime.Day) return false;   // someone went lately
             s.Lore.Best(out float q);
             return q < 0.6f;
+        }
+
+        /// <summary>
+        /// DEEP (F8): the scouts a run of days lived would send from a village that wants them - one each six days from the last
+        /// one - and the day of the first; 0 when none is due within the step.
+        /// </summary>
+        public int ScoutsDue(in Settlement s, int days, out long first)
+        {
+            first = 0;
+            if (!s.Inhabited || _w.Now - s.Founded < SimTime.Years(3) || Pressure(in s) < 0.12) return 0;
+            s.Lore.Best(out float q);
+            if (q >= 0.6f) return 0;
+            first = Math.Max(_w.Now, s.ScoutAt + 6 * SimTime.Day);
+            long end = _w.Now + days * SimTime.Day;
+            return first >= end ? 0 : 1 + (int)((end - 1 - first) / (6 * SimTime.Day));
         }
 
         /// <summary>A land cell 2-4 km out in a keyed direction, reachable on foot, or -1 (a scout's goal).</summary>

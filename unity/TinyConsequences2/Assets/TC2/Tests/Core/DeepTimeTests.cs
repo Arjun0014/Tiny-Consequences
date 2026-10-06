@@ -43,6 +43,28 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void AStepKeepsItsDays()
+        {
+            // a gate that opens within a step opens on its day: the days of the step before a moment has come
+            long now = 100 * SimTime.Day;
+            Assert.AreEqual(0, SettlementSystem.DaysUntil(now - 5, now), "come already");
+            Assert.AreEqual(0, SettlementSystem.DaysUntil(now, now), "comes now");
+            Assert.AreEqual(1, SettlementSystem.DaysUntil(now + 1, now), "comes within the first day: from the second");
+            Assert.AreEqual(1, SettlementSystem.DaysUntil(now + SimTime.Day, now));
+            Assert.AreEqual(2, SettlementSystem.DaysUntil(now + SimTime.Day + 1, now));
+            // a day's cap stays a day's: a share of a ground a day, over a step as day after day
+            Assert.AreEqual(0.3, WildFood.Most(0.3, 1), "a day's step is the day's cap, exactly");
+            Assert.AreEqual(1.0 - 0.7 * 0.7 * 0.7, WildFood.Most(0.3, 3), 1e-15);
+            // the store a DEEP step leads is seen as days lived would hold it: the lead spent evenly through the step
+            var s = new Settlement { Granary = 100.0, Ahead = 24.0, AheadFrom = now, AheadTo = now + 12 * SimTime.Day };
+            Assert.AreEqual(124.0, s.StoreSeen(now), 1e-12, "at the step's start: the step's draws not yet made");
+            Assert.AreEqual(112.0, s.StoreSeen(now + 6 * SimTime.Day), 1e-12, "half way");
+            Assert.AreEqual(100.0, s.StoreSeen(now + 12 * SimTime.Day), "at its end: the granary");
+            var plain = new Settlement { Granary = 37.25 };
+            Assert.AreEqual(37.25, plain.StoreSeen(now), "outside DEEP the store seen is the granary, exactly");
+        }
+
+        [Test]
         public void CalmVillagesLiveSeveralDaysAtAStep()
         {
             var w = Lived(31, 12);
@@ -118,6 +140,15 @@ namespace TC2.Tests.Core
                 Assert.AreEqual(mc.Births, md.Births, 0.30 * mc.Births + 10, "births");
                 Assert.AreEqual(mc.Deaths, md.Deaths, 0.30 * mc.Deaths + 10, "deaths");
                 Assert.AreEqual(mc.Marriages, md.Marriages, 0.30 * mc.Marriages + 10, "marriages");
+                // the herds keep their mix (a step that read its first day for all its days bred cattle three times as often)
+                var kc = new int[Livestock.Kinds]; var kd = new int[Livestock.Kinds];
+                for (int b = c.Beasts.First(); b != 0; b = c.Beasts.Next(b)) if (c.Beasts.Get(b).Alive) kc[c.Beasts.Get(b).Kind]++;
+                for (int b = d.Beasts.First(); b != 0; b = d.Beasts.Next(b)) if (d.Beasts.Get(b).Alive) kd[d.Beasts.Get(b).Kind]++;
+                for (int k = 0; k < Livestock.Kinds; k++)
+                {
+                    System.Console.WriteLine("  " + Livestock.Laws[k].Name + " " + kc[k] + " / " + kd[k]);
+                    Assert.AreEqual(kc[k], kd[k], 0.5 * System.Math.Max(kc[k], kd[k]) + 15, Livestock.Laws[k].Name);
+                }
             }
         }
     }

@@ -40,7 +40,7 @@ namespace TC2.Core.Places
         public static double DaysOfFood(World w, in Settlement s, out double daily)
         {
             daily = DMath.Max(1.0, s.Population * w.Config.FoodPerAdultDay * 0.8);
-            return s.Granary / daily;
+            return s.StoreSeen(w.Now) / daily;   // (the store as days lived hold it: F8)
         }
 
         /// <summary>What a unit of a good is worth to a village now (its want: scarcer, dearer).</summary>
@@ -66,7 +66,7 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             switch (g)
             {
-                case Grain: { DaysOfFood(w, in s, out double daily); return DMath.Max(0.0, s.Granary - 60.0 * daily); }
+                case Grain: { DaysOfFood(w, in s, out double daily); return DMath.Max(0.0, s.StoreSeen(w.Now) - 60.0 * daily); }
                 case Metal: return DMath.Max(0.0, s.Metal - Knowledge.Tech.MetalPerHead * s.Population);
                 case Fibre: return DMath.Max(0.0, s.Fibre - 2.0 * s.Population);
                 case Hides: return DMath.Max(0.0, s.Hides - 1.0 * s.Population);
@@ -242,7 +242,7 @@ namespace TC2.Core.Places
             {
                 if (o == sid) continue;
                 ref var t = ref w.Settlements.Get(o);
-                if (!t.Inhabited || t.FamineEvent == 0 || w.Now - t.FamineAt > SimTime.Year / 4) continue;
+                if (!t.Inhabited || t.FamineEvent == 0 || w.Now - t.FamineAt > SimTime.Year / 4 + (step - 1) * SimTime.Day) continue;   // (DEEP: a step that began in the window)
                 if (Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > 6000) continue;
                 if (w.DeedBook.Grievance(sid, o) > Grudge) continue;   // (no grain for those who took from it: D2-069)
                 // a twentieth of what can be spared a day, as much as feeds them three days (what its people can carry over), while

@@ -90,6 +90,7 @@ namespace TC2.Core.Agents
             p.SkHunt = (float)(0.05 + 0.25 * KeyedRng.Unit(seed, RngStream.Traits, (ulong)id, 101));
             p.SkFish = (float)(0.05 + 0.25 * KeyedRng.Unit(seed, RngStream.Traits, (ulong)id, 102));
             p.Ground = -1;
+            p.Derive(seed);
             p.Reserve = (float)ReserveCap(in p, seed, w.Now);
             ref var hh = ref w.Households.Get(household);
             p.FromX = hh.HomeX; p.FromY = hh.HomeY; p.ToX = hh.HomeX; p.ToY = hh.HomeY;
@@ -533,7 +534,7 @@ namespace TC2.Core.Agents
         /// making to the furnace and the anvil (D2-064): metal into the village's store, charcoal out of its woodstore. Returns the
         /// hours left for the household's goods.
         /// </summary>
-        double Smith(ref Person p, double hours)
+        double Smith(ref Person p, double hours, int days = 1)
         {
             var w = _w;
             if (hours <= 0 || p.KMetal < 0.3f || p.Home == 0 || !w.Settlements.Exists(p.Home)) return hours;
@@ -541,6 +542,12 @@ namespace TC2.Core.Agents
             if (Knowledge.Tech.MetalShare(s.Metal, s.Population) >= 1.0 || !w.Learning.Ore(s.Cell)) return hours;
             double h = 0.5 * hours;
             double kg = Knowledge.Tech.MetalPerHour(in p) * h;
+            if (days > 1)
+            {
+                // (DEEP: days lived stop smelting the day the village has its metal - a step smelted all its days past it: F8)
+                double most = DMath.Max(0.0, Knowledge.Tech.MetalPerHead * s.Population - s.Metal) + kg / days;
+                if (kg > most) { h *= most / kg; kg = most; }
+            }
             double fuel = kg * Knowledge.Tech.MetalFuel;
             if (s.Woodstore < fuel) { kg = s.Woodstore / Knowledge.Tech.MetalFuel; fuel = s.Woodstore; }
             s.Metal += kg; s.Woodstore -= fuel;
@@ -626,6 +633,9 @@ namespace TC2.Core.Agents
 
         static double AgeFood(double age) => age < 2 ? 0.35 : (age < 12 ? 0.6 : (age > 60 ? 0.8 : 1.0));
 
+        /// <summary>A body's build, keyed by id (0.75-1.25: Person.Build keeps it).</summary>
+        public static double BuildOf(ulong seed, int id) => 0.75 + 0.5 * KeyedRng.Unit(seed, RngStream.Traits, (ulong)id, 103);
+
         /// <summary>FU a day a body needs (D2-042): by age, and a nursing mother's milk on top.</summary>
         public double DailyNeed(in Person p, long now)
         {
@@ -641,7 +651,7 @@ namespace TC2.Core.Agents
         public static double ReserveCap(in Person p, ulong seed, long now)
         {
             double age = p.AgeYears(now);
-            double build = 0.75 + 0.5 * KeyedRng.Unit(seed, RngStream.Traits, (ulong)p.Id, 103);
+            double build = p.Derived != 0 ? p.Build : BuildOf(seed, p.Id);
             double days = age < 2 ? 8.0 : age < 12 ? 12.0 + 2.0 * age : age < 18 ? 36.0 + 2.0 * (age - 12) : age < 60 ? 48.0 : DMath.Max(20.0, 48.0 - 1.1 * (age - 60));
             return days * build;
         }
@@ -944,7 +954,7 @@ namespace TC2.Core.Agents
                 int wk = WildChoice(in p, in here, age, now, out double expect);
                 if (wk >= 0)
                 {
-                    double u = WildUrge(in p, in here, wk, expect) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.06 * rs.NextUnit();
+                    double u = WildUrge(in p, in here, wk, expect, now) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.06 * rs.NextUnit();
                     if (u > best) { best = u; choice = 6; wildKind = wk; }
                 }
             }
@@ -1015,7 +1025,7 @@ namespace TC2.Core.Agents
                     BeginLocal(ref p, ActivityKind.Social, WhyCode.Leisure, 0, here.SquareX + rs.Range(-12, 12), here.SquareY + rs.Range(-12, 12), SimTime.Hours(1.5 + 1.5 * rs.NextUnit()));
                     return;
                 case 6:
-                    BeginWild(ref p, ref here, wildKind, WildNeed(in here) > 0 ? WhyCode.FoodShort : WhyCode.Provide, ref rs);
+                    BeginWild(ref p, ref here, wildKind, WildNeed(in here, w.Now) > 0 ? WhyCode.FoodShort : WhyCode.Provide, ref rs);
                     return;
                 case 8:
                     if (BeginScout(ref p, ref here, ref rs)) return;
@@ -1081,12 +1091,15 @@ namespace TC2.Core.Agents
 
         // ---------------------------------------------------------------- the wild's food (D2-042)
         /// <summary>How hard a village's stores push its people to the wild: the ration's shortfall, or stores run dry.</summary>
-        public static double WildNeed(in Settlement s)
+        public static double WildNeed(in Settlement s, long now) => WildNeed(in s, now, s.Ration);
+
+        /// <summary>The same, with the ration given (DEEP: the step's mean ration, Settlement.RationStep).</summary>
+        public static double WildNeed(in Settlement s, long now, double ration)
         {
             // a mild cut (prudence keeping a reserve) sends a few more out; a deep one sends everyone who can go
-            double shortage = DMath.Max(0.0, 1.0 - s.Ration);
+            double shortage = DMath.Max(0.0, 1.0 - ration);
             double need = 1.8 * shortage;
-            if (s.Granary < 1.0) need = DMath.Max(need, 1.0);
+            if (s.StoreSeen(now) < 1.0) need = DMath.Max(need, 1.0);   // (the store as days lived hold it: F8)
             return need;
         }
 
@@ -1095,16 +1108,17 @@ namespace TC2.Core.Agents
         /// less the fuller the village's stores (food beyond years of need only spoils): a quarter of it when the granary holds
         /// a year and a half for everyone.
         /// </summary>
-        static double WildHabit(in Person p, in Settlement here, int kind)
+        static double WildHabit(in Person p, in Settlement here, int kind, long now)
         {
             double habit = kind == WildFood.Hunting ? 0.02 + 0.06 * p.Bold / 255.0 + 0.22 * p.SkHunt :
                            kind == WildFood.Fishing ? 0.03 + 0.22 * p.SkFish : 0.0;
-            double years = here.Granary / (DMath.Max(1, here.Population) * SimTime.DaysPerYear);
+            double years = here.StoreSeen(now) / (DMath.Max(1, here.Population) * SimTime.DaysPerYear);
             return habit * (1.0 - 0.75 * DMath.Clamp01(years / 1.5));
         }
 
-        static double WildUrge(in Person p, in Settlement here, int kind, double expect) =>
-            (WildNeed(in here) + WildHabit(in p, in here, kind)) * DMath.Clamp(expect / 0.7, 0.0, 1.3);
+        static double WildUrge(in Person p, in Settlement here, int kind, double expect, long now) => WildUrge(in p, in here, kind, expect, now, here.Ration);
+        static double WildUrge(in Person p, in Settlement here, int kind, double expect, long now, double ration) =>
+            (WildNeed(in here, now, ration) + WildHabit(in p, in here, kind, now)) * DMath.Clamp(expect / 0.7, 0.0, 1.3);
 
         /// <summary>
         /// The livelihood of the wild a person would take up now (the best FU an hour they can expect from today's survey of the
@@ -1219,9 +1233,13 @@ namespace TC2.Core.Agents
         public const double TendStint = 4.5;             // hours a youth or a grown member gives to the herd (a lived stint is 4-5)
         public const double LabourDay = 9.5;             // a COARSE day's labour, as far as a lived day's slack work fills it (fitted, D2-058)
 
+        /// <summary>Tools: COARSE hours by use - hearth wood, crops, building, (unused), building after the wild, store wood, the hours
+        /// people had, and the person-days they had them for; null in the game.</summary>
+        public static double[] Hours;
+
         /// <summary>A COARSE day's making and mending for one person (D2-058): up to maxH hours while the household holds less than
         /// `below` of what it keeps its members in.</summary>
-        void CoarseCraft(ref Person p, double age, double maxH, double below)
+        void CoarseCraft(ref Person p, double age, double maxH, double below, int days = 1)
         {
             var w = _w;
             if (maxH <= 0 || !w.Households.Exists(p.Household)) return;
@@ -1230,7 +1248,7 @@ namespace TC2.Core.Agents
             ref var hh = ref w.Households.Get(p.Household);
             double want = below * members * Goods.Target - hh.Gear;
             if (want <= 0) return;
-            maxH = Smith(ref p, maxH);   // (a smith's half at the furnace: D2-064)
+            maxH = Smith(ref p, maxH, days);   // (a smith's half at the furnace: D2-064)
             double rate = Goods.MakePerHour(age, p.Health) * Knowledge.Tech.LoomFactor(in p);
             double h = DMath.Min(maxH, want / rate);
             double made = Goods.Materials(ref w.Settlements.Get(hh.Settlement), h * rate);   // (as far as the store's fibre and hides go: D2-063)
@@ -1350,9 +1368,11 @@ namespace TC2.Core.Agents
             long now = w.Now;
             double cropNeed = Math.Max(0, s.CropWorkNeed - s.CropWork);
             double woodTarget = 6.0 * Math.Max(1, s.Population);
-            bool shortNow = WildNeed(in s) > 0;
+            double ration = days == 1 ? s.Ration : s.RationStep;   // (DEEP: the step's mean ration)
+            bool shortNow = WildNeed(in s, now, ration) > 0;
             // the village's herd goes out with its herders, one for every sixty head: its children of eight to fifteen by turns,
             // else its grown members by turns - a youth or a grown one gives a lived day's stint to it (D2-050)
+            w.Profiler?.Begin(10018);
             int today = (int)SimTime.FloorDiv(now + w.LocalOffsetOf(sid), SimTime.Day);
             _tendBy.Clear();
             {
@@ -1370,15 +1390,26 @@ namespace TC2.Core.Agents
                     }
                 }
             }
-            if (w.Migration.WantsScout(in s))
             {
                 // a pressed village that knows no good place sends someone to look (D2-045): the same place a lived day's scout
-                // would choose, seen in the same day
-                var srs = new RandomSequence(KeyedRng.Hash(w.Seed, RngStream.Travel, (ulong)sid, (ulong)now, 45));
-                int target = w.Migration.ScoutTarget(sid, ref srs);
-                ref var s1 = ref w.Settlements.Get(sid);
-                if (target >= 0) { w.Migration.Look(sid, target, 0); w.Metrics.Scouts++; } else s1.ScoutAt = now;
+                // would choose, seen in the same day (DEEP: those days lived would send in the step - one each six days - until
+                // a good place is known)
+                long first = now;
+                int scouts = days == 1 ? (w.Migration.WantsScout(in s) ? 1 : 0) : w.Migration.ScoutsDue(in s, days, out first);
+                for (int k = 0; k < scouts; k++)
+                {
+                    long at = first + k * 6 * SimTime.Day;
+                    var srs = new RandomSequence(KeyedRng.Hash(w.Seed, RngStream.Travel, (ulong)sid, (ulong)at, (ulong)45));
+                    int target = w.Migration.ScoutTarget(sid, ref srs);
+                    ref var s1 = ref w.Settlements.Get(sid);
+                    if (target >= 0) { w.Migration.Look(sid, target, 0); w.Metrics.Scouts++; } else s1.ScoutAt = now;
+                    if (days == 1) continue;
+                    s1.ScoutAt = at;
+                    s1.Lore.Best(out float known);
+                    if (known >= 0.6f) break;
+                }
             }
+            w.Profiler?.End(10018);
             var prof = w.Profiler;   // (tools: the parts of a COARSE day; null in the game)
             prof?.Begin(10013); Chores(sid, days); prof?.End(10013);
             // the hearths' wood comes first when it is running out: six days of fires kept in store (D2-056)
@@ -1389,10 +1420,12 @@ namespace TC2.Core.Agents
                 if (!p.Alive) continue;
                 double age = p.AgeYears(now);
                 // the day's food from the larder, then the granary (D2-042: one account a day, as the body keeps it)
+                prof?.Begin(10019);
                 if (days == 1) EatDay(ref p); else EatDays(ref p, days);
+                prof?.End(10019);
                 if (p.Carry > 0f) { w.Wild.Deposit(p.Id, p.Carry); p.Carry = 0f; }
                 // children of 8-11 lend a hand at the making when the household's goods are wearing thin (D2-058)
-                if (age >= 8 && age < 12 && p.Health >= 0.3) CoarseCraft(ref p, age, 0.6 * days, 0.85);
+                if (age >= 8 && age < 12 && p.Health >= 0.3) CoarseCraft(ref p, age, 0.6 * days, 0.85, days);
                 if (age < 12 || p.Health < 0.3 || p.SickPhase == TC2.Core.Health.Disease.Infectious) continue;   // (the sick abed: D2-066)
                 if (p.Hurt >= TC2.Core.Society.Conflict.AbedHurt) continue;                                        // (the badly hurt: D2-071)
                 double tools = Tools(p.Household);
@@ -1402,18 +1435,19 @@ namespace TC2.Core.Agents
                 if (p.Id == s.Watcher) hours = DMath.Max(0.0, hours - TC2.Core.Society.Conflict.WatchHours * days);   // a night at the store (D2-071)
                 if (_chore.TryGetValue(p.Id, out double chore)) hours = DMath.Max(0.0, hours - chore);   // the household's own work (D2-056)
                 double day0 = hours;
+                if (Hours != null) { Hours[6] += day0; Hours[7] += days; }
                 if (fuelWanted > 0 && hours > 0)
                 {
                     double rate = (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * tools;
                     double h = DMath.Min(hours, fuelWanted / rate);
-                    s.Woodstore += h * rate; fuelWanted -= h * rate; hours -= h;
+                    s.Woodstore += h * rate; fuelWanted -= h * rate; hours -= h; if (Hours != null) Hours[0] += h;
                     p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * h);
                 }
                 if (cropNeed > 0)
                 {
                     double rate = (0.6 + p.SkFarm) * (0.5 + 0.5 * p.Health) * tools * Knowledge.Tech.ArdFactor(in p, w.Stock.HasOx(p.Household));
                     double h = Math.Min(hours, cropNeed / rate);
-                    s.CropWork += h * rate; cropNeed -= h * rate; hours -= h;
+                    s.CropWork += h * rate; cropNeed -= h * rate; hours -= h; if (Hours != null) Hours[1] += h;
                     w.Learning.Practice(ref p, Knowledge.Tech.Ard, h);
                     p.SkFarm = (float)DMath.Min(1.0, p.SkFarm + 0.0015 * h);
                 }
@@ -1425,20 +1459,21 @@ namespace TC2.Core.Agents
                 {
                     byte shelter = w.Households.Exists(p.Household) ? w.Households.Get(p.Household).Shelter : Construction.House;
                     buildUrge = ownRoof ? (shelter == Construction.Camp ? 0.85 : 0.4) : 0.45;
-                    if (!(shortNow && WildNeed(in s) > buildUrge))
+                    if (!(shortNow && WildNeed(in s, now, ration) > buildUrge))
                     {
                         double used = Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0 * days), BuildRate(in p) * tools);
-                        hours -= used;
+                        hours -= used; if (Hours != null) Hours[2] += used;
                         build = false;
                     }
                 }
+                prof?.Begin(10022);
                 if (hours > 0)
                 {
                     // the wild: the same choice and the same catch from the same fields as a day lived step by step (D2-042)
                     int wk = WildChoice(in p, in s, age, now, out double expect);
                     if (wk >= 0)
                     {
-                        double u = WildUrge(in p, in s, wk, expect) * (age > 60 ? 0.5 : 1.0) * (0.6 + 0.4 * p.Diligence / 255.0);
+                        double u = WildUrge(in p, in s, wk, expect, now, ration) * (age > 60 ? 0.5 : 1.0) * (0.6 + 0.4 * p.Diligence / 255.0);
                         // a lived day offers the wild every free daytime slot it beats idling at (idle 0.08-0.13 against the
                         // wild's urge + 0.06 of chance): the same odds, as a share of the free hours
                         // a pressing need keeps people out from dawn to mid-afternoon, beyond an ordinary day's work (two trips)
@@ -1447,7 +1482,8 @@ namespace TC2.Core.Agents
                         // free slots too; the household's meals and water are charged first since D2-056, when it was 0.6 -
                         // measured, CoarseAndActivityLiveOffTheWildAlike)
                         double hw = u > 0.005 ? DMath.Min(free, WildNeedDay * days) * DMath.Clamp01((u + 0.01) / 0.1) * (shortNow ? 1.0 : 0.9) : 0.0;
-                        if (hw >= 0.25)
+                        if (Hours != null) { Hours[8] += hw; Hours[9] += days; Hours[10] += u * days; if (hw < 0.25 * days) Hours[11] += hw; Hours[12] += free; Hours[13 + wk] += days; int cyc = (int)(SimTime.FloorDiv(now, SimTime.Day) % 12); Hours[16 + cyc] += days; if (wk == WildFood.Hunting) Hours[28 + cyc] += days; }
+                        if (hw >= 0.25 * days)   // (DEEP: a quarter-hour a day, as a day's least trip - not a quarter-hour a step)
                         {
                             var rs = NextRandom(ref p);
                             var g = wk == WildFood.Hunting ? s.Hunt : wk == WildFood.Fishing ? s.Fish : s.Gath;
@@ -1460,16 +1496,16 @@ namespace TC2.Core.Agents
                                 {
                                     int herd = w.HerdSys.BestGame(sid);   // (where a herd is, as a lived day's hunter goes)
                                     if (herd != 0 && rs.Chance(0.7)) ground = w.Herds.Get(herd).Cell;
-                                    fu = w.Wild.Hunt(ground, hw * tools, p.SkHunt, key, out _, out double hides);
+                                    fu = w.Wild.Hunt(ground, hw * tools, p.SkHunt, key, out _, out double hides, days);
                                     s.Hides += hides;   // (D2-063) p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hw); w.Metrics.HuntTrips++;
                                     if (fu > 0) w.HerdSys.MarkHunted(sid, ground);
                                 }
                                 else if (wk == WildFood.Fishing)
                                 {
-                                    fu = w.Wild.Fish(ground, hw * tools * Knowledge.Tech.NetsFactor(in p), p.SkFish, key); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hw); w.Metrics.FishTrips++;
+                                    fu = w.Wild.Fish(ground, hw * tools * Knowledge.Tech.NetsFactor(in p), p.SkFish, key, days); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hw); w.Metrics.FishTrips++;
                                     w.Learning.Practice(ref p, Knowledge.Tech.Nets, hw);
                                 }
-                                else { fu = w.Wild.Gather(ground, hw * tools, p.Health, key); w.Metrics.GatherTrips++; }
+                                else { fu = w.Wild.Gather(ground, hw * tools, p.Health, key, days); w.Metrics.GatherTrips++; }
                                 w.Wild.Deposit(p.Id, fu);
                                 w.Metrics.WildHours += hw; w.Metrics.WildFu += fu;
                                 hours = DMath.Max(0.0, hours - hw);
@@ -1478,18 +1514,19 @@ namespace TC2.Core.Agents
                         }
                     }
                 }
-                if (build && hours > 0) hours -= Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0 * days), BuildRate(in p) * tools);
+                prof?.End(10022);
+                if (build && hours > 0) { double used2 = Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0 * days), BuildRate(in p) * tools); hours -= used2; if (Hours != null) Hours[4] += used2; }
                 if (hours > 0 && s.Woodstore < woodTarget)
                 {
                     double h = hours * 0.4;
                     s.Woodstore += h * (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * tools;
                     p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * h);
-                    hours -= h;
+                    hours -= h; if (Hours != null) Hours[5] += h;
                 }
                 // making and mending in the rest of a day's labour - the day's slack and the evening by the fire - as a lived day
                 // fills it (D2-058)
                 double worked = chore + (_tendBy.Contains(p.Id) ? TendStint * days : 0.0) + (day0 - hours);
-                CoarseCraft(ref p, age, DMath.Max(0.0, LabourDay * (age > 60 ? 0.85 : 1.0) * days - worked), 1.0);
+                prof?.Begin(10020); CoarseCraft(ref p, age, DMath.Max(0.0, LabourDay * (age > 60 ? 0.85 : 1.0) * days - worked), 1.0, days); prof?.End(10020);
             }
         }
 

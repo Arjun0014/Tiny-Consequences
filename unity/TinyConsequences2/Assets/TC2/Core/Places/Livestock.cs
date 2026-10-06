@@ -254,7 +254,7 @@ namespace TC2.Core.Places
             long now = w.Now;
             ulong seed = w.Seed;
             long day = SimTime.FloorDiv(now, SimTime.Day);
-            _season = PlanetSystems.Season(now);
+            _season = PlanetSystems.Season(days == 1 ? now : now + days / 2 * SimTime.Day);   // (DEEP: the step's middle day)
             // 1. grazing and rooting: the pasture is the open land within reach not under the village's fields; what the herds
             //    eat comes out of its grass, and what the pigs root out of the woods' mast - the wild find that much less
             double wantG = 0, wantM = 0, wantS = 0;
@@ -280,7 +280,9 @@ namespace TC2.Core.Places
             double eatenG = wantG * fedG, eatenM = wantM * fedM;
             if (eatenG > 0 && offer > 0)
             {
-                double share = days == 1 ? eatenG / offer : DMath.Min(1.0, eatenG * days / offer);   // (DEEP: the step's grazing)
+                // (DEEP: the step's grazing - each cell gives its day's share for each day; capped at one day's offer, a step of twelve
+                // days grazed less than two, the pastures stayed lush and the cattle tripled: F8 calibration)
+                double share = days == 1 ? eatenG / offer : eatenG * days / offer;
                 for (int i = 0; i < _cells.Count; i++)
                 {
                     int c = _cells[i];
@@ -294,7 +296,7 @@ namespace TC2.Core.Places
                 {
                     int c = _cells[i];
                     double left = WildFood.MastLeft(P, c);
-                    if (left > 0) P.Gathered[c] = (float)(P.Gathered[c] + eatenM * days * left / mast);
+                    if (left > 0) P.Gathered[c] = (float)(P.Gathered[c] + DMath.Min(left, eatenM * days * left / mast));
                 }
             // wolves round the pasture take the weak and the young now and then
             double wolves = 0;
@@ -316,32 +318,119 @@ namespace TC2.Core.Places
                 double age = b.AgeYears(now);
                 // condition follows how well it ate (a goat's browse is never short)
                 double ate = k.GrassShare * fedG + k.MastShare * fedM + k.ScrapShare * fedS + (1.0 - k.GrassShare - k.MastShare - k.ScrapShare);
-                b.Cond = (float)DMath.Clamp01(b.Cond + (ate - 0.8) * 0.06 * days);
+                if (days > 1) { DeepBeast(id, sid, ate, age, WolfRisk(wolves, age, b.Kind, watched), day, days); continue; }
+                b.Cond = (float)DMath.Clamp01(b.Cond + (ate - 0.8) * 0.06);
                 // old age, hunger, wolves
                 double wolf = WolfRisk(wolves, age, b.Kind, watched);
                 double hazard = (1.0 / k.Lifespan) * (age > k.Lifespan * 0.7 ? 3.0 : 0.6) / SimTime.DaysPerYear + wolf;
                 if (b.Cond < 0.3) hazard += (0.3 - b.Cond) * 0.08;
                 double u = KeyedRng.Unit(seed, RngStream.Death, (ulong)id | (1UL << 40), (ulong)day);
-                if (days > 1) { hazard = SettlementSystem.Over(hazard, days); wolf = SettlementSystem.Over(wolf, days); }   // (DEEP: over the step)
                 if (u < hazard) { Count(b.Kind, u < wolf ? 1 : b.Cond < 0.3 && u >= hazard - (0.3 - b.Cond) * 0.08 ? 2 : 0); Die(ref b, u < wolf); continue; }
                 // birth
-                if (b.Due != 0 && now + (days - 1) * SimTime.Day >= b.Due) Birth(ref b);   // (due within the step: born at its start)
+                if (b.Due != 0 && now >= b.Due) Birth(ref b);
                 // milk for the household while the young are small
-                if (b.MilkUntil > now && k.MilkFu > 0) Store(b.Owner, sid, k.MilkFu * DMath.Clamp01(b.Cond / 0.6) * days);
+                if (b.MilkUntil > now && k.MilkFu > 0) Store(b.Owner, sid, k.MilkFu * DMath.Clamp01(b.Cond / 0.6));
                 // the season: a grown, well-fed female with a grown male of her kind in the village conceives
                 if (b.Sex == Sex.Female && b.Due == 0 && age >= k.Mature && b.Cond > 0.55)
                 {
                     double yf = SimTime.YearFraction(now + w.LocalOffsetOf(sid));
                     double season = s.Anchor.Y >= 0 ? yf : (yf + 0.5) % 1.0;
                     if (season >= k.Season && season < k.Season + 0.25 && SireNear(sid, b.Kind) &&
-                        KeyedRng.Unit(seed, RngStream.Birth, (ulong)id | (1UL << 40), (ulong)day) < SettlementSystem.Over(0.08 * b.Cond, days))
+                        KeyedRng.Unit(seed, RngStream.Birth, (ulong)id | (1UL << 40), (ulong)day) < 0.08 * b.Cond)
                         b.Due = now + DMath.ToLong(k.Gestation * SimTime.Day);
                 }
             }
             // 3. the households keep their herds to what their hands can tend and the land feeds (with grass to spare: a pasture
             //    grazed to its offer every day wears thin), and eat from them when hungry
+            // (DEEP: to the pasture as the step leaves it - days lived keep the herds to the grass at its leanest, before it grows
+            // again, not to the grass as it stood before the step's grazing, which kept herds half as large again: F8 calibration)
+            if (days > 1) Offer(out offer, out mast);
             Destock(sid, StockShare * offer, StockShare * mast * MastFind);
             Cull(sid);
+        }
+
+        /// <summary>
+        /// DEEP (F8): what the village's herds root out of the woods in a day (kg of mast), and the mast left within their reach -
+        /// the same reckoning as the day's rooting (read before the step's work, to see the woods as its middle day finds them).
+        /// </summary>
+        public void Rooting(int sid, out double perDay, out double inReach)
+        {
+            perDay = 0; inReach = 0;
+            var w = _w;
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.Population <= 0) return;
+            HerdOf(sid, _herd);
+            if (_herd.Count == 0) return;
+            long now = w.Now;
+            double wantG = 0, wantM = 0;
+            for (int i = 0; i < _herd.Count; i++)
+            {
+                ref var b = ref w.Beasts.Get(_herd[i]);
+                double eat = _intake[b.Kind] * GrownShare(in b, now);
+                wantG += eat * Laws[b.Kind].GrassShare; wantM += eat * Laws[b.Kind].MastShare;
+            }
+            if (wantM <= 0) return;
+            _season = PlanetSystems.Season(now);
+            w.Hazards.CellsWithin(w, s.Cell, PastureReach, _cells);
+            Offer(out double offer, out double mast);
+            if (wantG > StockShare * offer || wantM > StockShare * mast * MastFind) { w.Hazards.CellsWithin(w, s.Cell, FarReach, _cells); Offer(out offer, out mast); }
+            perDay = wantM * DMath.Min(1.0, mast * MastFind / wantM);
+            inReach = mast;
+        }
+
+        /// <summary>
+        /// DEEP (F8): an animal's step of several days, lived day by day where the days differ - its condition day by day at the
+        /// step's feeding, each day's hazard on that day's condition, milk on the days in milk, and conception on the days of the
+        /// step in its kind's season, each with that day's condition (the day it conceives found from one draw, so it is born when
+        /// its time comes). Taking the step's change of condition first and the season at the step's start made the kinds that
+        /// recover in spring (cattle on the new grass) breed three times as often as days lived, and pigs a fifth (F8 calibration).
+        /// </summary>
+        void DeepBeast(int id, int sid, double ate, double age, double wolf, long day, int days)
+        {
+            var w = _w;
+            ref var b = ref w.Beasts.Get(id);
+            var k = Laws[b.Kind];
+            long now = w.Now;
+            ulong seed = w.Seed;
+            double dc = (ate - 0.8) * 0.06;
+            double old = (1.0 / k.Lifespan) * (age > k.Lifespan * 0.7 ? 3.0 : 0.6) / SimTime.DaysPerYear;
+            // old age, hunger, wolves: the step's survival, each day on its condition
+            double c = b.Cond, keep = 1.0, keepFed = 1.0;
+            for (int j = 0; j < days; j++)
+            {
+                c = DMath.Clamp01(c + dc);
+                keep *= 1.0 - (old + wolf + (c < 0.3 ? (0.3 - c) * 0.08 : 0.0));
+                keepFed *= 1.0 - (old + wolf);
+            }
+            double u = KeyedRng.Unit(seed, RngStream.Death, (ulong)id | (1UL << 40), (ulong)day);
+            if (u < 1.0 - keep)
+            {
+                double wolfAll = SettlementSystem.Over(wolf, days);
+                Count(b.Kind, u < wolfAll ? 1 : u >= 1.0 - keepFed ? 2 : 0);
+                Die(ref b, u < wolfAll);
+                return;
+            }
+            // born within the step: at its start
+            if (b.Due != 0 && now + (days - 1) * SimTime.Day >= b.Due) Birth(ref b);
+            long off = w.LocalOffsetOf(sid);
+            bool south = w.Settlements.Get(sid).Anchor.Y < 0;
+            double ub = KeyedRng.Unit(seed, RngStream.Birth, (ulong)id | (1UL << 40), (ulong)day);
+            double milk = 0, open = 1.0;
+            c = b.Cond;
+            for (int j = 0; j < days; j++)
+            {
+                c = DMath.Clamp01(c + dc);
+                long t = now + j * SimTime.Day;
+                if (b.MilkUntil > t) milk += DMath.Clamp01(c / 0.6);
+                if (b.Sex != Sex.Female || b.Due != 0 || c <= 0.55 || age + j / (double)SimTime.DaysPerYear < k.Mature) continue;
+                double yf = SimTime.YearFraction(t + off);
+                double season = south ? (yf + 0.5) % 1.0 : yf;
+                if (season < k.Season || season >= k.Season + 0.25 || !SireNear(sid, b.Kind)) continue;
+                open *= 1.0 - 0.08 * c;
+                if (ub < 1.0 - open) b.Due = t + DMath.ToLong(k.Gestation * SimTime.Day);
+            }
+            b.Cond = (float)c;
+            if (milk > 0 && k.MilkFu > 0) Store(b.Owner, sid, k.MilkFu * milk);
         }
 
         /// <summary>

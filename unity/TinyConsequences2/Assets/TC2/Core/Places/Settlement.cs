@@ -77,10 +77,20 @@ namespace TC2.Core.Places
         public long FoeEvent;
         public int InfNow, InfPath, InfPresent;   // infectious at home at its last day, their main pathogen, and all at home (COARSE visits read them)
         public byte TechKnown;          // the techniques it knows (bits: a competent practitioner lives here)
+        public double Ahead;            // DEEP (F8): what its last step moved in or out of the store at the step's start that days lived
+        public long AheadFrom, AheadTo; // would move through it (the step's start and end; 0 when none)
+        public double RationStep;       // DEEP: the mean ration the step's days would set (set by its food, read by its work; never saved)
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
         public bool Inhabited => Abandoned == 0;
+
+        /// <summary>
+        /// The store as its neighbours and its own trade see it at a moment (F8): the granary, and while a DEEP step runs, the
+        /// share of what the step took at its start (meals, larders filled) or brought in (the wild's food, meat) that days lived
+        /// would not yet have taken or brought - the store days lived would hold then. Equal to the granary outside DEEP.
+        /// </summary>
+        public double StoreSeen(long now) => AheadTo <= now ? Granary : Granary + Ahead * ((AheadTo - now) / (double)(AheadTo - AheadFrom));
 
         /// <summary>Unit vector of a local point (metres east, north) by the gnomonic projection.</summary>
         public Vec3d LocalToSphere(double x, double y, double radius)
@@ -124,6 +134,7 @@ namespace TC2.Core.Places
             w.Long(FamineAt); w.Long(FamineEvent); w.Long(RationEvent); w.Long(WildEvent); w.Double(Memory);
             Hunt.Write(w); Fish.Write(w); Gath.Write(w);
             w.Byte(Works); w.Float(WorkBuild); Lore.Write(w); w.Long(ScoutAt); w.Int(Tended); w.Byte(HerdersOut); w.Long(ColdEvent); w.Float(FuelDay); w.Float(BestNets); w.Float(BestLoom); w.Float(BestQuern); w.Byte(TechKnown); w.Float(BestPottery); w.Float(BestArd); w.Double(Fibre); w.Double(Hides); w.Float(BestMetal); w.Double(Metal); w.Long(Epidemic); w.Int(EpiPath); w.Int(EpiDead); w.Long(EpiStart); w.Int(InfNow); w.Int(InfPath); w.Int(InfPresent); w.Int(ReliefFrom); w.Long(ReliefAt); w.Int(Watcher); w.Long(WatchEvent); w.Int(Foe); w.Float(FoeWorth); w.Long(FoeEvent); w.Byte(Wall); w.Byte(WallKeep); w.Float(WallR); w.Float(WallCond); w.Long(WallEvent); w.Int(Lord); w.Long(LordSince); w.Long(LordEvent);
+            w.Double(Ahead); w.Long(AheadFrom); w.Long(AheadTo);
             w.Float(SquareX); w.Float(SquareY); w.Float(FieldX); w.Float(FieldY); w.Float(WoodX); w.Float(WoodY); w.Float(WellX); w.Float(WellY);
         }
 
@@ -137,6 +148,7 @@ namespace TC2.Core.Places
             s.FamineAt = r.Long(); s.FamineEvent = r.Long(); s.RationEvent = r.Long(); s.WildEvent = r.Long(); s.Memory = r.Double();
             s.Hunt = Grounds.Read(r); s.Fish = Grounds.Read(r); s.Gath = Grounds.Read(r);
             s.Works = r.Byte(); s.WorkBuild = r.Float(); s.Lore = KnownSites.Read(r); s.ScoutAt = r.Long(); s.Tended = r.Int(); s.HerdersOut = r.Byte(); s.ColdEvent = r.Long(); s.FuelDay = r.Float(); s.BestNets = r.Float(); s.BestLoom = r.Float(); s.BestQuern = r.Float(); s.TechKnown = r.Byte(); s.BestPottery = r.Float(); s.BestArd = r.Float(); s.Fibre = r.Double(); s.Hides = r.Double(); s.BestMetal = r.Float(); s.Metal = r.Double(); s.Epidemic = r.Long(); s.EpiPath = r.Int(); s.EpiDead = r.Int(); s.EpiStart = r.Long(); s.InfNow = r.Int(); s.InfPath = r.Int(); s.InfPresent = r.Int(); s.ReliefFrom = r.Int(); s.ReliefAt = r.Long(); s.Watcher = r.Int(); s.WatchEvent = r.Long(); s.Foe = r.Int(); s.FoeWorth = r.Float(); s.FoeEvent = r.Long(); s.Wall = r.Byte(); s.WallKeep = r.Byte(); s.WallR = r.Float(); s.WallCond = r.Float(); s.WallEvent = r.Long(); s.Lord = r.Int(); s.LordSince = r.Long(); s.LordEvent = r.Long();
+            s.Ahead = r.Double(); s.AheadFrom = r.Long(); s.AheadTo = r.Long();
             s.SquareX = r.Float(); s.SquareY = r.Float(); s.FieldX = r.Float(); s.FieldY = r.Float(); s.WoodX = r.Float(); s.WoodY = r.Float(); s.WellX = r.Float(); s.WellY = r.Float();
             return s;
         }
@@ -150,6 +162,7 @@ namespace TC2.Core.Places
             h.Add(FamineAt); h.Add(FamineEvent); h.Add(RationEvent); h.Add(WildEvent); h.Add(Memory);
             Hunt.Hash(ref h); Fish.Hash(ref h); Gath.Hash(ref h);
             h.Add(Works); h.Add(WorkBuild); Lore.Hash(ref h); h.Add(ScoutAt); h.Add(Tended); h.Add(HerdersOut); h.Add(ColdEvent); h.Add(FuelDay); h.Add(BestNets); h.Add(BestLoom); h.Add(BestQuern); h.Add(TechKnown); h.Add(BestPottery); h.Add(BestArd); h.Add(Fibre); h.Add(Hides); h.Add(BestMetal); h.Add(Metal); h.Add(Epidemic); h.Add(EpiPath); h.Add(EpiDead); h.Add(EpiStart); h.Add(InfNow); h.Add(InfPath); h.Add(InfPresent); h.Add(ReliefFrom); h.Add(ReliefAt); h.Add(Watcher); h.Add(WatchEvent); h.Add(Foe); h.Add(FoeWorth); h.Add(FoeEvent); h.Add(Wall); h.Add(WallKeep); h.Add(WallR); h.Add(WallCond); h.Add(WallEvent); h.Add(Lord); h.Add(LordSince); h.Add(LordEvent);
+            if (AheadTo != 0) { h.Add(Ahead); h.Add(AheadFrom); h.Add(AheadTo); }   // (only DEEP sets them: other worlds hash as before)
             h.Add(SquareX); h.Add(SquareY); h.Add(FieldX); h.Add(FieldY); h.Add(WoodX); h.Add(WoodY); h.Add(WellX); h.Add(WellY);
         }
 

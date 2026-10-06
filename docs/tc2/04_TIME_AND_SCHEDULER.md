@@ -117,6 +117,31 @@ DEEP is fitted to COARSE as COARSE was to ACTIVITY: distribution tests over cent
 households, foundings and abandonments, harvests, famines, livestock, techniques, epidemics, trade, raids, walls, tributes, the
 planet's fields). Nothing is skipped or summarised: the same people, households and laws, a longer step.
 
+What a step must keep of its days (learned in F8's calibration, D2-083) - a step is its days, so:
+1. **A gate that opens within the step opens on its day.** A mother whose nursing ends mid-step may conceive from that day (waiting
+   for the next step cost ~5 days a birth: 3 % of births, a sixth of the people by year 200); a beast's maturity and its kind's
+   breeding season are counted day by day; scouts go every six days from the last, not one a step.
+2. **What changes through the step is walked through it where a law reads it.** The crop grows each day at that day's place on the
+   season's curve (the first growing step began at the year's mean as summer warmed: grown at the start's temperature, the crop was
+   several degrees too cold); an animal's condition moves day by day before its hazard and its conception are read (taking the
+   step's change first bred cattle, which recover on the spring grass, three times as often); a body's chance of death is each day's
+   on that day's health and conception reads the step's mean health; the step's work reads the mean of the rations its days would set
+   toward the harvest; hearths and pasture take the step's middle day; a choice made once for the step (hunt, fish or gather) is made
+   on the woods as its middle day finds them, the village's pigs having rooted half the step's mast.
+3. **A cap or threshold meant for a day stays a day's.** A trip takes at most a share s of a ground: a step's trips at most
+   1 - (1 - s)^K; the least wild trip is a quarter-hour a day; grazing takes each cell's day share for each day (capped at one day's
+   offer, a twelve-day step grazed less than two and the pastures stayed lush); herds are kept to the pasture as the step leaves it,
+   as days lived cull at the grass's leanest; a smith stops when the village has its metal.
+4. **What the step moves at its start is seen as days lived would hold it.** Meals, larders, the catch and the meat move in or out
+   of the store at the step's start; the store read by trade, relief, amends, the hungry choosing a store, the step's own urge to the
+   wild and whether its store is empty is the granary plus the step's lead, spent evenly through it (`Settlement.StoreSeen`; seen at
+   the start, the store was half a step poorer and relief came at half its rate).
+5. **Chances that come once a day come once a day.** Claims for amends, one a day of the step; Over(p, K) for a daily chance.
+6. **A step never spans a pulse of the planet that settles accounts with it.** The plants and animals take their step every twelve
+   days, charging what people and herds took from the woods in that window and forgetting it; a village step that spanned one charged
+   its whole step before the pulse, which forgot it, and the woods looked full all the next window. So a calm step ends at or before
+   the next plant pulse (`World.NextPlantTick`), as it ends at or before the next day of its calendar.
+
 ### 4.4 ELABORATION (presentation only, observed agents)
 Footsteps through streets, gestures, the members of a herd around its agent: generated in the Game
 layer from the authoritative activity (same endpoints, same times, same effects); never written back.

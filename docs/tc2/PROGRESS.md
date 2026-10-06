@@ -35,7 +35,15 @@
     `World.StepDays` (a logged command `SetStepDays`, saved, hashed only when > 1; sim version 31); Ancient and Deep time catch-ups plan
     DEEP (`OfflineProgress.PlanCatchUp(.., mode)`, ending 13 days before full activity); `headless run|bench|chronicle --deep K`;
     `DeepTimeTests` (6). Saturated world: 1.8x COARSE (villages 2.3x; events still happen at their rate, and the planet now matters).
-    **Calibration over 400 years of seeds 42 and 7 (COARSE vs DEEP) is running** (`tc2/out/deep/`).
+    **Calibration (D2-083, in progress; 400 years, `tc2/out/deep/`)**: the first DEEP runs were biased - people -15..-37 % at year
+    200, cattle x3 and pigs x0.2, relief x0.5, wild hours +10 %, scouts x0.75, raids and claims up. Each bias was a step forgetting
+    its days; six rules now keep them (04 §4.3b): gates open on their day (nursing's end, 16th/18th birthdays, a beast's maturity and
+    season, scouts every six days), changes walked through the step (a beast's condition, the crop's season curve and its later days
+    grown after the step's weeding, death on each day's health, the step's rations, the woods at its middle), day caps kept a day's
+    (catch shares, grazing, culling at the leanest pasture, the smith), the store seen as days lived hold it (`StoreSeen`, sim version
+    32), chances once a day, and no step across a plant pulse (`World.NextPlantTick`). COARSE hashes unchanged; 176 tests pass.
+    Small worlds now match on wild work and harvests; DEEP's early growth still runs ahead (seed 1 +9 % people at year 100, three
+    times the households leaving). **The multi-seed run with the newest build is pending** (see Blockers).
 
 - **Session 2 (5 Oct 2026, in progress)** - compaction-recovery hooks (`.claude/settings.json`, `.claude/hooks/tc2_compact.mjs`;
   Claude Code 2.1.289: PreCompact stdout joins the compaction instructions, SessionStart matcher `compact` stdout reaches Claude;
@@ -341,7 +349,13 @@
 | Web, sea life + water by depth | Chrome/WebGPU | 6/6; start 6.1 s; village 88 fps; a day away (96 years) 27 s |
 
 ## Blockers
-None. (Wavedash cloud saves and itch upload need Arjun later; not needed for F0.)
+- **F8 calibration runs (6 Oct 2026, session 3)**: Claude Code's auto-mode classifier refused ("Interfere With Workloads") to stop two
+  of the session's own leftover calibration workers (`scratchpad/calib2.sh`, started 21:15) and then to start the final DEEP batch
+  (seeds 42, 7, 1-4 with the newest build) while they ran. The leftover workers finish on their own (their COARSE 3/4 runs are valid
+  baselines; their DEEP runs are one fix-round old). To proceed: allow the batch (or a Bash permission rule for it), or run it by hand:
+  `BIN=tc2binN TAG=f bash scratchpad/calib2.sh 42:deep 7:deep 1:deep 3:deep 2:deep 4:deep` with N the newest scratch copy of
+  `tc2/headless/app/bin/Release/net8.0`. Workaround meanwhile: small single-world checks (seed 33, seed 1 for 60-100 years).
+- Wavedash cloud saves and itch upload need Arjun later; not needed for F0.
 
 ## Log
 

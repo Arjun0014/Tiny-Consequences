@@ -63,6 +63,12 @@ linted (D2-057). Next (SESSION_HANDOFF "Next steps"): the living world made visi
 headless jobs from a scratch copy of the binaries so the repo's DLL stays free; another Claude session may share the machine -
 never kill its processes, and measure only when it is quiet.
 
+**Where we are (session 3, 6 Oct 2026, evening)**: the living world made visible (D2-080-D2-082: woods drawn from the simulation,
+the far woods as masses, ground cover by biome, villages' signs; the Web build at 65-69 fps near the ground). F8 started: DEEP (04
+§4.3b, calm villages live up to twelve days at a step) and its calibration against COARSE (D2-083, in progress): six rules of "what
+a step must keep of its days" fixed every bias found; COARSE hashes unchanged; the final multi-seed run is pending (PROGRESS
+"Blockers"). Then: DEEP's early growth on small worlds, speed (per-step costs, the planet), Ancient and Deep time in the browser.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

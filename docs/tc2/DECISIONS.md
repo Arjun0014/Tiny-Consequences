@@ -1909,3 +1909,52 @@ readings 4.5 s after framing are lower: close 55.8, low 61.7, forest 55); shadow
 forest 91 without them). A day away: 48.2 s with the camera at 22 km and 48.9 s held at 1.4 km (was 56-57 s there; 54 s at s2webf) -
 at orbit the time is the simulation's own (this young world's 96 years are lived at ACTIVITY). The build with `--jobs 3`: 14.8 min,
 CPU at most ~47 %; available memory still touched ~0.34 GB at the link while other work held the machine.
+
+## D2-083 — 2026-10-06 — DEEP calibration: a step keeps its days (in progress: the final multi-seed run is pending)
+
+**Context.** F8 slice 1 (committed with D2-082) gave COARSE a DEEP resolution: calm villages live up to twelve days at a step through
+the same laws. Lived 400 years beside COARSE on seeds 42 and 7 (`tc2/out/deep/`), the first DEEP runs were biased beyond the seeds'
+own scatter: people -15..-37 % at year 200 (seed 7: 4,607 against 2,925), cattle x3 and pigs x0.2 at the end, relief x0.5, wild hours
++10 % for less food an hour, scouts x0.75, raids x6 on seed 42 (6 against 35). Tools made to find why: headless `run --annals F.csv`
+(the annals, yearly), and tools-only tallies printed by `run --places` - why villages were not calm (`SettlementSystem.Unrests`), a
+COARSE person-day's hours by use and the wild choice by kind and by day of the plant cycle (`AgentSystem.Hours`), the harvests
+(`SettlementSystem.Harvests`), the yearly weighing of leaving (`Migration.Weighs`); `scratchpad/annals.mjs` (rates per 1000
+person-years by century), `calsum.mjs` (paired totals), `calib.sh`/`calib2.sh` (runs).
+**Decision.** A step is its days. Each bias was a law that read the step's start for all its days, or a daily limit applied once a
+step; each is now kept as days lived keep it (04 §4.3b, "what a step must keep of its days", rules 1-6):
+1. *Gates open on their day*: a mother may conceive from the day her nursing ends (it waited for the next step: ~5 days a birth), a
+   girl from her 16th birthday, marry from her 18th (`SettlementSystem.DaysUntil`); a beast's maturity and its kind's twelve-day
+   breeding season counted day by day; scouts every six days from the last (`Migration.ScoutsDue`); claims, one a day of the step.
+2. *What changes through the step is walked through it*: the crop grows each day at that day's place on the season's curve (the
+   fields' temperature marched by `DayMean`), and the step's later days grow it after the step's work (grown before its weeding, a
+   growing step was three-quarters tended - seed 1's crop grew 0.853 against 0.884, its rations ran short four times as often and
+   three times as many households left); a beast's condition day by day, its hazard, milk and conception on each day's condition
+   (`Livestock.DeepBeast`); a body's chance of death each day on that day's health, conception on the step's mean health
+   (`Person.StepHealth`); the step's work reads the mean of the rations its days would set toward the harvest
+   (`Settlement.RationStep`); hearths and pasture take the step's middle day; the step's one choice of hunting, fishing or gathering
+   is made on the woods as its middle day finds them, its pigs having rooted half the step's mast (`Livestock.Rooting`,
+   `WildFood.MidStep`).
+3. *A day's cap stays a day's*: a trip takes at most a share s of a ground - over a step 1 - (1 - s)^K (`WildFood.Most`); the least
+   wild trip is a quarter-hour a day; grazing takes each cell's daily share for each day (capped at one day's offer a twelve-day step
+   grazed less than two and cattle tripled); herds are kept to the pasture as the step leaves it (days lived cull at its leanest); a
+   smith stops when the village has its metal.
+4. *What the step moves at its start is seen as days lived would hold it*: the store's lead (`Settlement.Ahead/AheadFrom/AheadTo`,
+   `StoreSeen`; saved, hashed only when set, so other worlds hash as before), read by trade, relief, amends, the hungry choosing a
+   store, the step's own urge to the wild and whether its store is empty (a step's larders and decay at once could empty a lean store
+   and record a hunger).
+5. *Chances that come once a day come once a day* (claims; Over(p, K)).
+6. *A step never spans a plant pulse* (`World.NextPlantTick`, derived from the queue): the plants and animals take their step every
+   twelve days, charging what people and herds took from the woods in that window and forgetting it; a village step that spanned one
+   charged its whole rooting before the pulse, which forgot it - the woods looked full all the next window and a third fewer hunted.
+Sim version 32. One-day arithmetic unchanged: COARSE's 400-year state hashes of seeds 42 and 7 are identical before and after
+(55cfd96b471db300, 8c3e14c324165015); 176 tests pass. An exact speedup on the way: a person's body build and copying scatter are kept
+with them (`Person.Derive`, filled when made or loaded, never saved).
+Found and left for its own slice (it changes COARSE): COARSE never improves hunting skill nor counts hunting trips - the line has sat
+inside a comment in `CoarseDay` since D2-063.
+**Evidence (so far).** Round 2 (seeds 42, 7; `*_400d`): relief at par (0.98), herds closer, but hunger and famine up (+10..39 %), wild
+hours +33..50 %, conflict up on seed 42. Round 3a (`*_400e`, seeds 42, 7, 1; before the pulse, middle-woods, step-ration and tending
+rules): population at year 400 lower on all three (-7, -25, -24 %), relief -28 %, parties x2. Small-world checks after all rules: seed
+33 (60 years) DEEP wild work matches COARSE (0.141 against 0.147 h a working person-day, was 0.115; wild food 49.4k against 47.8k FU),
+harvests 120.4 against 120.0 FU a hectare; seed 1 (100 years) crop 0.871 against 0.884, but people +9 % at year 100 and still three
+times the households leaving - DEEP's early growth runs ahead on the small worlds. **Pending**: DEEP with the newest build on seeds
+42, 7, 1-4 against COARSE (COARSE 42/7 in `*_400d`, 1/2 in `*_400e`, 3/4 from the round-3a workers), then speed on a quiet machine.

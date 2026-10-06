@@ -47,7 +47,7 @@ namespace TC2.Core.Knowledge
                         if (!p.Alive) continue;
                         double age = p.AgeYears(now);
                         if (age < 8) continue;
-                        double target = DMath.Clamp01(best - law.Alpha + law.Beta * Tech.Scatter(seed, res[i], t));
+                        double target = DMath.Clamp01(best - law.Alpha + law.Beta * (p.Derived != 0 ? p.ScatterOf(t) : Tech.Scatter(seed, res[i], t)));   // (kept with the person: F8)
                         double had = Tech.Get(in p, t);
                         if (had >= target) continue;
                         double rate = age < 20 ? Tech.LearnRate : 0.25 * Tech.LearnRate;

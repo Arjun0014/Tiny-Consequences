@@ -83,7 +83,7 @@ namespace TC2.Headless
         public static int Run(Args a)
         {
             var sw = Stopwatch.StartNew();
-            if (a.Has("places")) { TC2.Core.Places.Livestock.Diag = new double[4 * 4096]; TC2.Core.Places.Livestock.DiagEnds = new long[4 * TC2.Core.Places.Livestock.Causes]; }
+            if (a.Has("places")) { TC2.Core.Places.Livestock.Diag = new double[4 * 4096]; TC2.Core.Places.Livestock.DiagEnds = new long[4 * TC2.Core.Places.Livestock.Causes]; TC2.Core.Places.SettlementSystem.Unrests = new long[7]; TC2.Core.Agents.AgentSystem.Hours = new double[40]; TC2.Core.Places.SettlementSystem.Harvests = new double[6]; TC2.Core.Places.Migration.Weighs = new double[8]; }
             World w;
             if (a.Has("load"))
             {
@@ -222,6 +222,37 @@ namespace TC2.Headless
             }
             var live = new int[3];
             for (int b = w.Beasts.First(); b != 0; b = w.Beasts.Next(b)) { ref var be = ref w.Beasts.Get(b); if (be.Alive) live[be.Kind]++; }
+            {
+                var un = TC2.Core.Places.SettlementSystem.Unrests;
+                var hv = TC2.Core.Places.SettlementSystem.Harvests;
+                if (hv != null && hv[2] > 0)
+                    Console.WriteLine("harvests " + F(hv[2], "0") + ": " + F(hv[0] / Math.Max(1e-9, hv[1]), "0.0") + " FU a hectare, crop grown " + F(hv[3] / hv[2], "0.000") +
+                                      ", sown " + F(hv[4] / hv[2], "0.000") + ", brought in " + F(hv[5] / hv[2], "0.000") + "  (" + F(hv[0], "0") + " FU on " + F(hv[1], "0") + " ha)");
+                var wg = TC2.Core.Places.Migration.Weighs;
+                if (wg != null && wg[0] > 0)
+                    Console.WriteLine("weighing leaving: " + F(wg[0], "0") + " village-years, pressure " + F(wg[1] / wg[0], "0.000") + " (crowding " + F(wg[2] / wg[0], "0.000") +
+                                      ", short rations " + F(wg[3] / wg[0], "0.000") + ", famine memory " + F(wg[4] / wg[0], "0.000") + "), pressed " + F(wg[5] / wg[0], "0.000") +
+                                      "; households able " + F(wg[6], "0") + ", chose to go " + F(wg[7], "0"));
+                var hb = TC2.Core.Agents.AgentSystem.Hours;
+                if (hb != null && hb[7] > 0)
+                {
+                    double pd = hb[7];
+                    Console.WriteLine("COARSE hours a working person-day: had " + F(hb[6] / pd, "0.000") + "  hearth wood " + F(hb[0] / pd, "0.000") + "  crops " + F(hb[1] / pd, "0.000") +
+                                      "  building " + F((hb[2] + hb[4]) / pd, "0.000") + "  wild " + F(m.WildHours / pd, "0.000") + "  store wood " + F(hb[5] / pd, "0.000") +
+                                      "  craft " + F(m.CraftHours / pd, "0.000") + "  (" + F(pd, "0") + " person-days)");
+                    if (hb[9] > 0)
+                        Console.WriteLine("  the wild weighed on " + F(hb[9], "0") + " person-days: urge " + F(hb[10] / hb[9], "0.0000") + ", free " + F(hb[12] / hb[9], "0.000") +
+                                          " h, planned " + F(hb[8] / hb[9], "0.000") + " h a day, below the least trip " + F(hb[11] / hb[9], "0.000") + " h a day; chose hunting " + F(hb[13] / hb[9], "0.000") + ", fishing " + F(hb[14] / hb[9], "0.000") + ", gathering " + F(hb[15] / hb[9], "0.000"));
+                    if (hb[9] > 0)
+                    {
+                        var sbc = new StringBuilder("  hunting chosen by day of the world's 12-day plant cycle:");
+                        for (int i = 0; i < 12; i++) sbc.Append(" " + (hb[16 + i] > 0 ? F(hb[28 + i] / hb[16 + i], "0.000") : "-"));
+                        Console.WriteLine(sbc.ToString());
+                    }
+                }
+                Console.WriteLine("village steps " + m.VillageSteps + " for " + m.VillageDays + " village-days" +
+                                  (un != null && w.StepDays > 1 ? "  not calm (days): hunger " + un[0] + ", epidemic " + un[1] + ", sick " + un[2] + ", hurt " + un[3] + ", away " + un[4] + ", leaving " + un[5] + ", band " + un[6] : ""));
+            }
             Console.WriteLine("stock: cattle " + live[0] + " goats " + live[1] + " pigs " + live[2] + "  born " + m.BeastBirths + "  died " + m.BeastDeaths + "  taken by wolves " + m.BeastsTaken +
                               "  slaughtered " + m.BeastsEaten + " (" + F(m.BeastFu, "0") + " FU)  gone wild " + m.BeastsFeral +
                               "  parties " + m.Parties + "  foundings " + m.Foundings + "  scouts " + m.Scouts);
@@ -261,6 +292,21 @@ namespace TC2.Headless
                               ", fire pages held " + w.Fire.Procs.PagesHeld + ")  managed heap " + F(GC.GetTotalMemory(true) / 1048576.0, "0") + " MB");
             PrintFires();
             prof?.Print();
+            string annals = a.Get("annals");
+            if (annals != null)
+            {
+                // each year in numbers (calibration: rates per person-year, by year)
+                var sb = new StringBuilder("year,people,places,births,deaths,hunger,sick,wounds,disaster,famines,epidemics,raids,walls,tributes,founded,abandoned,found,lost\n");
+                for (int i = 0; i < w.Annals.Count; i++)
+                {
+                    var y = w.Annals[i];
+                    sb.Append(y.Year).Append(',').Append(y.People).Append(',').Append(y.Places).Append(',').Append(y.Births).Append(',').Append(y.Deaths).Append(',')
+                      .Append(y.Hunger).Append(',').Append(y.Sick).Append(',').Append(y.Wounds).Append(',').Append(y.Disaster).Append(',').Append(y.Famines).Append(',')
+                      .Append(y.Epidemics).Append(',').Append(y.Raids).Append(',').Append(y.Walls).Append(',').Append(y.Tributes).Append(',').Append(y.Founded).Append(',')
+                      .Append(y.Abandoned).Append(',').Append(y.Found).Append(',').Append(y.Lost).Append('\n');
+                }
+                File.WriteAllText(annals, sb.ToString());
+            }
             string outDir = a.Get("out");
             if (outDir != null)
             {

@@ -133,7 +133,7 @@ namespace TC2.Core.Society
                 ref var t = ref w.Settlements.Get(o);
                 if (!t.Inhabited || Vec3d.ArcDistance(anchor, t.Anchor, w.Planet.Radius) > 6000) continue;
                 Trade.DaysOfFood(w, in t, out double daily);
-                if (t.Granary < FullStoreDays * daily + LoadFu) continue;
+                if (t.StoreSeen(w.Now) < FullStoreDays * daily + LoadFu) continue;   // (the store as days lived hold it: F8)
                 if (w.Routes.Get(w, home, o) == null) continue;
                 double f = (1.0 - Restraint(in p, o)) * (1.0 - SeenAt(o)) * (1.0 - DMath.Clamp01(w.DeedBook.Answers(home, o) / AnswersFull));
                 if (f > free) { free = f; best = o; }
@@ -454,12 +454,13 @@ namespace TC2.Core.Society
         /// not struck taking - worth asking amends for. Someone of the wronged household (else of the village) goes to ask: lived,
         /// the next morning (their errand); COARSE, at once.
         /// </summary>
-        void Claims(int sid)
+        void Claims(int sid, int days = 1)
         {
             var w = _w;
             var list = w.DeedBook.KnownBy(sid);
             if (list == null) return;
             long now = w.Now;
+            int asked = 0;
             for (int i = list.Count - 1; i >= 0; i--)
             {
                 var k = list[i];
@@ -477,7 +478,7 @@ namespace TC2.Core.Society
                 ref var c = ref w.People.Get(claimant);
                 if (w.Resolution == Resolution.Coarse) Answer(ref c, doers, deed);
                 else c.Errand = deed;
-                return;
+                if (++asked >= days) return;   // (a claim a day: DEEP's step asks up to one for each of its days)
             }
         }
 
@@ -605,7 +606,7 @@ namespace TC2.Core.Society
             int o = home.Foe;
             if (o == 0 || !w.Settlements.Exists(o)) return 0;
             ref var t = ref w.Settlements.Get(o);
-            if (!t.Inhabited || t.Granary < LoadFu || Vec3d.ArcDistance(home.Anchor, t.Anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, p.Home, o) == null) return 0;
+            if (!t.Inhabited || t.StoreSeen(w.Now) < LoadFu || Vec3d.ArcDistance(home.Anchor, t.Anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, p.Home, o) == null) return 0;
             free = (1.0 - Restraint(in p, o)) * (1.0 - SeenAt(o)) * (1.0 - DMath.Clamp01(w.DeedBook.Answers(p.Home, o) / AnswersFull));
             return free > 0 ? o : 0;
         }
@@ -1141,16 +1142,19 @@ namespace TC2.Core.Society
         public void Day(int sid, int days = 1)
         {
             var w = _w;
-            Wounds(sid);
-            Defence(sid, days);
-            Watch(sid);
-            ReadFoe(sid);
-            Claims(sid);
-            Submit(sid);
-            Disband(sid);
-            Raids(sid, false, days);
+            var prof = w.Profiler;   // (tools: the parts of the day; null in the game)
+            prof?.Begin(10023); Wounds(sid); Defence(sid, days); Watch(sid); prof?.End(10023);
+            prof?.Begin(10024); ReadFoe(sid); Claims(sid, days); Submit(sid); Disband(sid); prof?.End(10024);
+            prof?.Begin(10025); Raids(sid, false, days); prof?.End(10025);
             if (w.Resolution != Resolution.Coarse) return;
-            News(sid, days);
+            prof?.Begin(10026); News(sid, days); prof?.End(10026);
+            prof?.Begin(10027); Taking(sid, days); prof?.End(10027);
+        }
+
+        /// <summary>COARSE: the hungry who go to a neighbour's store in the night, and the fed and bold who take back (D2-069, D2-072).</summary>
+        void Taking(int sid, int days)
+        {
+            var w = _w;
             long now = w.Now;
             var res = w.Residents(sid);
             for (int i = 0; i < res.Count; i++)

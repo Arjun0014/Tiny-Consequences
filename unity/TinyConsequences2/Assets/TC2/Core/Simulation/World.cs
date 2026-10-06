@@ -128,7 +128,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 31; // 31: DEEP steps (F8), 30: the annals (D2-077), 29: tribute and lordship (D2-075), 28: palisades (D2-074), 27: raids (D2-073), 26: amends, news and taking back (D2-072), 25: the watch, blows and injury (D2-071), 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
+        public const int FormatSimVersion = 32; // 32: the store a DEEP step leads (F8), 31: DEEP steps (F8), 30: the annals (D2-077), 29: tribute and lordship (D2-075), 28: palisades (D2-074), 27: raids (D2-073), 26: amends, news and taking back (D2-072), 25: the watch, blows and injury (D2-071), 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
@@ -140,6 +140,12 @@ namespace TC2.Core.Simulation
         /// command, at a midnight; Ancient and Deep time catch-ups set it.
         /// </summary>
         public int StepDays;
+
+        /// <summary>
+        /// When the plants and the animals next take their step (the vegetation system's tick): a DEEP step never spans one, so what
+        /// a village's herds root and graze is charged to the plants' window it belongs to (F8). Derived from the queue: never saved.
+        /// </summary>
+        public long NextPlantTick;
         public readonly IdAllocator Ids = new IdAllocator();
         public readonly EventQueue Queue = new EventQueue();
         public readonly FxRing Fx = new FxRing();   // for the view only: never read by the simulation, never saved
@@ -1073,6 +1079,7 @@ namespace TC2.Core.Simulation
                     PlanetSys.Tick(this, e.Target);
                     Metrics.SystemTicks++;
                     Queue.Push(Now + PeriodOf(e.Target), Phase.SystemBase + e.Target, EventKind.SystemTick, e.Target);
+                    if (e.Target == SystemId.Vegetation) NextPlantTick = Now + PeriodOf(e.Target);
                     break;
                 case EventKind.ProcessStep:
                     if (e.Target == 1) { Fire.Step(this); Metrics.FireSteps++; }
@@ -1203,6 +1210,7 @@ namespace TC2.Core.Simulation
         public void ScheduleSystems()
         {
             for (int s = 1; s < SystemId.Count; s++) Queue.Push(Now, Phase.SystemBase + s, EventKind.SystemTick, s);
+            NextPlantTick = Now;
             Queue.Push(Now + SimTime.Year, Phase.Housekeeping, EventKind.Housekeeping, 0);
         }
 
@@ -1210,6 +1218,12 @@ namespace TC2.Core.Simulation
         /// <summary>Rebuilds every derived index from authoritative state (after load).</summary>
         public void RebuildDerived()
         {
+            NextPlantTick = 0;
+            for (int i = 0; i < Queue.RawCount; i++)
+            {
+                var e = Queue.RawAt(i);
+                if (e.Kind == EventKind.SystemTick && e.Target == SystemId.Vegetation && (NextPlantTick == 0 || e.Time < NextPlantTick)) NextPlantTick = e.Time;
+            }
             PlanetSys = new PlanetSystems(Planet);
             Tect = new Tectonics(Planet);
             Drainage.Rebuild(Planet, fromSaved: true);
@@ -1278,7 +1292,7 @@ namespace TC2.Core.Simulation
             w.Fire.Read(r);
             int ns = r.Int(); for (int i = 0; i < ns; i++) { var s = Settlement.Read(r); w.Settlements.Add(s.Id, s); }
             int nh = r.Int(); for (int i = 0; i < nh; i++) { var h = Household.Read(r); w.Households.Add(h.Id, h); }
-            int np = r.Int(); for (int i = 0; i < np; i++) { var p = Person.Read(r); w.People.Add(p.Id, p); }
+            int np = r.Int(); for (int i = 0; i < np; i++) { var p = Person.Read(r); p.Derive(w.Seed); w.People.Add(p.Id, p); }
             int npa = r.Int(); for (int i = 0; i < npa; i++) { var pa = Party.Read(r); w.Parties.Add(pa.Id, pa); }
             int nhe = r.Int(); for (int i = 0; i < nhe; i++) { var he = Herd.Read(r); w.Herds.Add(he.Id, he); }
             int nbe = r.Int(); for (int i = 0; i < nbe; i++) { var be = Beast.Read(r); w.Beasts.Add(be.Id, be); }

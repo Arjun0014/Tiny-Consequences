@@ -160,6 +160,23 @@ namespace TC2.Core.Places
             s.Hunt = hunt; s.Fish = fish; s.Gath = gath;
         }
 
+        /// <summary>
+        /// DEEP (F8): the gathering ground as the step's middle day would find it - the village's herds having rooted half the step's
+        /// mast out of the woods they share (days lived choose their work each day as the woods empty; a step chooses once, so it
+        /// chooses on its middle day's woods, not its first: hunting was chosen a third less often).
+        /// </summary>
+        public void MidStep(int sid, double rootPerDay, double inReach, int days)
+        {
+            if (days <= 1 || rootPerDay <= 0 || inReach <= 0) return;
+            ref var s = ref _w.Settlements.Get(sid);
+            if (s.Gath.A < 0) return;
+            var P = _w.Planet;
+            double A = 0; int k = GroundCells(s.Gath.A, true);
+            for (int i = 0; i < k; i++) A += MastLeft(P, _ground[i]);
+            A *= DMath.Max(0.0, 1.0 - rootPerDay * (days - 1) * 0.5 / inReach);
+            s.Gath.Expect = (float)(GatherRate * A / (A + GatherHalf) * FuPerKgMast);
+        }
+
         /// <summary>FU an hour an ordinary hunter (skill 0.5) can expect on a ground.</summary>
         public double ExpectHunt(int ground)
         {
@@ -198,6 +215,12 @@ namespace TC2.Core.Places
 
         // ------------------------------------------------------------------ the catch
         /// <summary>
+        /// The most a day's trip takes of a ground's game, fish or mast is a share of it; a DEEP step's trips over its days take at
+        /// most what that share taken day after day would (F8: capped at one day's share, a step's hours caught less an hour).
+        /// </summary>
+        public static double Most(double share, int days) => days == 1 ? share : 1.0 - SettlementSystem.Keep(share, days);
+
+        /// <summary>
         /// A hunt (D2-042): over the ground's reachable game B the hunter can expect HuntRate (0.5 + skill) B / (B + half)
         /// live kg an hour; kills are whole animals, a keyed Poisson count per species and cell by its share of B, taken out of
         /// the abundance field. Returns the FU of meat (and the kind of the largest kill, -1 none).
@@ -205,7 +228,7 @@ namespace TC2.Core.Places
         public double Hunt(int ground, double hours, double skill, ulong key, out int mainKind) => Hunt(ground, hours, skill, key, out mainKind, out _);
 
         /// <summary>The same hunt, and the hides its kills give (one an animal of 60 kg or more, less for smaller game: D2-063).</summary>
-        public double Hunt(int ground, double hours, double skill, ulong key, out int mainKind, out double hides)
+        public double Hunt(int ground, double hours, double skill, ulong key, out int mainKind, out double hides, int days = 1)
         {
             mainKind = -1; hides = 0;
             var P = _w.Planet; int n = P.Cells;
@@ -215,7 +238,7 @@ namespace TC2.Core.Places
             double B = 0;
             for (int i = 0; i < k; i++) B += GameKg(_ground[i]);
             if (B <= 0) return 0;
-            double expectKg = DMath.Min(hours * HuntRate * (0.5 + skill) * B / (B + HuntHalf), 0.3 * B);
+            double expectKg = DMath.Min(hours * HuntRate * (0.5 + skill) * B / (B + HuntHalf), Most(0.3, days) * B);
             var rs = new RandomSequence(key);
             double kg = 0, biggest = 0;
             // each kind's kills over the whole ground are one Poisson count (most hunts take none of a kind); any kills are then
@@ -266,7 +289,7 @@ namespace TC2.Core.Places
         }
 
         /// <summary>A day's fishing: shoals are many, so the catch is continuous kg with the luck of the day, taken from the fields.</summary>
-        public double Fish(int ground, double hours, double skill, ulong key)
+        public double Fish(int ground, double hours, double skill, ulong key, int days = 1)
         {
             var P = _w.Planet; int n = P.Cells;
             if (ground < 0 || hours <= 0 || P.IsLand(ground)) return 0;
@@ -276,7 +299,7 @@ namespace TC2.Core.Places
             for (int i = 0; i < k; i++) F += FishKg(_ground[i]);
             if (F <= 0) return 0;
             double luck = 0.5 + KeyedRng.Unit(key);
-            double kg = DMath.Min(hours * FishRate * (0.5 + skill) * F / (F + FishHalf) * luck, 0.2 * F);
+            double kg = DMath.Min(hours * FishRate * (0.5 + skill) * F / (F + FishHalf) * luck, Most(0.2, days) * F);
             for (int i = 0; i < k; i++)
             {
                 int c = _ground[i];
@@ -294,7 +317,7 @@ namespace TC2.Core.Places
         }
 
         /// <summary>Gathering in the woods: nuts, roots, berries and fungi the animals will then not find (P.Gathered).</summary>
-        public double Gather(int ground, double hours, double health, ulong key)
+        public double Gather(int ground, double hours, double health, ulong key, int days = 1)
         {
             var P = _w.Planet;
             if (ground < 0 || hours <= 0 || !P.IsLand(ground)) return 0;
@@ -303,7 +326,7 @@ namespace TC2.Core.Places
             for (int i = 0; i < k; i++) A += MastLeft(P, _ground[i]);
             if (A <= 0) return 0;
             double luck = 0.7 + 0.6 * KeyedRng.Unit(key);
-            double kg = DMath.Min(hours * GatherRate * (0.6 + 0.4 * health) * A / (A + GatherHalf) * luck, 0.5 * A);
+            double kg = DMath.Min(hours * GatherRate * (0.6 + 0.4 * health) * A / (A + GatherHalf) * luck, Most(0.5, days) * A);
             for (int i = 0; i < k; i++)
             {
                 int c = _ground[i];
