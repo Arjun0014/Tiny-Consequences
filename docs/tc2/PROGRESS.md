@@ -25,9 +25,10 @@
   that fear their neighbours, armed fighters strike 1.3x; rings enclose works; smoke while a smith works; 200 tests; every village has a
   smithy by year 300, 18 of 19 armed (seed 42); shots `civ4*`. **C1.5 training done (D2-094)**: fighting skill from practice (a
   two-hour session every third day for the bold of a fearing village) and fights survived, fading unused; strength x (1 + 0.6 skill); seed 42
-  at year 300: 16 grounds, a third of the living with some skill, 647 who have fought; 204 tests; shots `civ5`. **Next: C1.6 market and
-  gates** (a market place where trade is heavy; the palisade's gates as structures), then C1.7 the pressure premise; C7 (rings that grow,
-  rings off the shore) is the most visible open fault.
+  at year 300: 16 grounds, a third of the living with some skill, 647 who have fought; 204 tests; shots `civ5`. **C1.6 markets done (D2-095)**: markets made by traders
+  (10 a year), drawing them from 9 km and dealing 1.2x better; palisades on dry ground only; seed 42 has 2 markets at year 300; 207 tests;
+  shots `civ6` (Heldholm's green with its stalls). **Next: C1.7 the pressure premise** (two villages, one scarce resource; watch what
+  emerges), then the C1 acceptance shots and C1's close; C7 (rings that grow with the town) is the most visible open fault.
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

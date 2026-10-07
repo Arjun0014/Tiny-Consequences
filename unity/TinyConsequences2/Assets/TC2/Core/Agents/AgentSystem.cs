@@ -880,7 +880,9 @@ namespace TC2.Core.Agents
                     }
                 }
                 long stay = Math.Max(20 * SimTime.Minute, Math.Min(SimTime.Hour, p.Until - now));
-                BeginLocal(ref p, ActivityKind.Visit, WhyCode.VisitKin, 0, here.SquareX + rs.Range(-15, 15), here.SquareY + rs.Range(-15, 15), stay);
+                double vx = here.SquareX, vy = here.SquareY;
+                if (here.Market != 0 && w.Buildings.Exists(here.Market)) { ref var mk = ref w.Buildings.Get(here.Market); if (mk.Done != 0) { vx = mk.X; vy = mk.Y; } }   // (at the stalls: C1.6)
+                BeginLocal(ref p, ActivityKind.Visit, WhyCode.VisitKin, 0, vx + rs.Range(-15, 15), vy + rs.Range(-15, 15), stay);
                 return;
             }
 

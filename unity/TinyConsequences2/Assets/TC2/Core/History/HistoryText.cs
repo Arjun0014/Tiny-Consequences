@@ -239,6 +239,7 @@ namespace TC2.Core.History
             if (kind == TC2.Core.Places.Structures.Granary)
                 return granaries > 0 ? "another granary: their harvest overfilled the store" : "a granary: their harvest needs a store";
             if (kind == TC2.Core.Places.Structures.Barn) return "a barn: their harvest overfilled the granaries";
+            if (kind == TC2.Core.Places.Structures.Market) return "a market on the green: traders come often to deal there";
             if (kind == TC2.Core.Places.Structures.Ground) return "a training ground: they fear their neighbours";
             if (kind == TC2.Core.Places.Structures.Smithy) return "a smithy: they have a smith and use for metal";
             if (kind == TC2.Core.Places.Structures.Quarry) return "a quarry at the rock they found: stone for their houses' footings";

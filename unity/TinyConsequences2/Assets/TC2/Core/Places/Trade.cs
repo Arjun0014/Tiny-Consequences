@@ -120,12 +120,23 @@ namespace TC2.Core.Places
             {
                 if (o == sid) continue;
                 ref var t = ref w.Settlements.Get(o);
-                if (!t.Inhabited || Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > 6000) continue;
-                double g = Plan(sid, o, out _, out _, out _);
+                if (!t.Inhabited) continue;
+                // (a market draws traders from farther - a long day's walk - and they deal better there: many buyers and sellers in one
+                // place; C1.6, a central place made by its traders)
+                bool market = t.Market != 0 && w.Buildings.Exists(t.Market) && Structures.Working(in w.Buildings.Get(t.Market), w.Now);
+                if (Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > (market ? MarketReach : 6000)) continue;
+                double g = Plan(sid, o, out _, out _, out _) * (market ? MarketGain : 1.0);
                 if (g > gain) { gain = g; bestTo = o; }
             }
             return bestTo;
         }
+
+        /// <summary>m: how far traders walk to a market (a day's walk is 6 km).</summary>
+        public const double MarketReach = 9000.0;
+        /// <summary>How much better a deal at a market is weighed (more buyers and sellers to match a load with).</summary>
+        public const double MarketGain = 1.2;
+        /// <summary>Traders arriving a year (the halving count) from which a village lays out a market.</summary>
+        public const double MarketFrom = 10.0;
 
         // ------------------------------------------------------------------ a trader's trip (ACTIVITY) - the same steps a COARSE trip takes at once
         /// <summary>At departure: the load out of the village's store onto the trader's back.</summary>
@@ -167,6 +178,7 @@ namespace TC2.Core.Places
             Add(ref t, take, -qh);
             p.Cargo = take; p.CargoQty = (float)qh;
             w.Metrics.TradeTrips++;
+            t.TradeIn = (float)((double)t.TradeIn + 1.0);   // (one more trader came to deal here: C1.6)
             Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Trade, home, at);
             w.Metrics.TradeValue += (vt - vf) * qg + bestGain;
             if (g == Metal) w.Metrics.MetalTraded += qg;

@@ -2319,3 +2319,25 @@ as ten hours' practice, half-trained strike 1.3x; the bold practise lived (20 h 
 2,354 people (at par). Shots `tc2/out/shots/civ5`: Souhope's people drilling at its ground by the shore in the afternoon.
 **Open.** No arms or skill carried into a band's choice yet beyond strength (C6: who goes, retainers, roles); training is not seen as
 movement (no drill animation); the ground's posts are too thin to read from the village view (a beaten-earth patch is the next look item).
+
+## D2-095 — 2026-10-07 — Markets made by traders; palisades on dry ground (C1.6)
+
+**Context.** D2-089 (`21` §2, `24`): a market must be actual exchange. Trade (D2-067) was a trader walking a load to a neighbour within a
+day's walk (6 km) and dealing at the middle of the two villages' values. The shots since C1.1 showed palisade rings drawn through the sea.
+**Decision.** (1) **Traders' coming is counted**: each deal made at a village adds one to its `TradeIn`, a count halving each year. (2) A
+village with water and a store, 100 people or more, and **10 or more traders a year** lays out a **market** on its green (`Structures.Market`,
+Core zone, 60 h, 15 wood; the building keeps how many came the year it was laid out). (3) **What a market does**: traders walk to a market
+from up to **9 km** (a long day's walk; others 6 km) and weigh a deal there **1.2x** (more buyers and sellers to match a load with)
+(`Trade.BestPartner`) - so trade concentrates on market villages and a central place is made by its traders; visitors gather at the stalls
+rather than the green's middle. (4) **Palisades on dry ground**: the share of a ring standing on dry ground (`Structures.DryShare`, 72
+points against the drawn shore) is kept when a palisade is planned (`Settlement.WallDry`); its labour and timber are for the dry stretches
+only, and the view sets no posts in the sea or a lake. (5) The palisade's gates stay drawn gaps on the roads (structures with C7). (6)
+Building page (traders a year, the reach); run report `markets:` line. (7) Sim version 38.
+**Evidence.** 207 tests (`MarketTests` 3: a village traders come to often lays out a market, the count halves in a year; a market 8.8 km off
+draws a trader who had no partner within a day's walk (gain 0 -> 137); a coastal ring 60 % on dry ground costs 60 %). 300 years DEEP
+(`tc2/out/civ/s42_c16a`, `s7_c16a`): seed 42 - **2 markets** (Heldholm, 658 people, ~10 traders a year), trades 1,257 (1,054 at C1.5); seed 7
+- none (its busiest village sees one trader a year: trade there is thin and grudges close it); people 7,241 / 2,410 (at par). Shots
+`tc2/out/shots/civ6`: Heldholm's green - well, granaries, a barn, the market's stalls and a midday crowd.
+**Open.** Trade volume is low everywhere (~4 deals a year in a world of thousands: `Trade.TripsPerAdultDay` and grudges); fairs, more goods
+(stone, arms, salt, pots), carts and boats (C4, C9) will make markets matter more. Market days (a weekly gathering) and stalls kept by
+households are later.

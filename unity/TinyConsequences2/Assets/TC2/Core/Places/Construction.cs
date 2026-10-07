@@ -68,7 +68,7 @@ namespace TC2.Core.Places
         {
             if (work == Palisade || work == Mend)
             {
-                double perim = 2.0 * DMath.PI * DMath.Max(1.0, (double)s.WallR);
+                double perim = 2.0 * DMath.PI * DMath.Max(1.0, (double)s.WallR) * (s.WallDry > 0f ? (double)s.WallDry : 1.0);   // (the dry stretches only: C1.6)
                 double share = work == Mend ? 0.6 * DMath.Max(0.05, 1.0 - (double)s.WallCond) : 1.0;
                 hours = PalisadeHoursPerM * perim * share; wood = PalisadeWoodPerM * perim * share;
             }

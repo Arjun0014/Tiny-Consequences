@@ -20,7 +20,11 @@
   **Pitfall (again)**: heredocs with apostrophes break in this Bash tool - docs and commit messages go in scratchpad files (Write tool).
 - **C1.4 the smithy done (D2-093)**: runs `tc2/out/civ/s{42,7}_c14c`, shots `civ4c` (`work12`, `work12far`).
 - **C1.5 training done (D2-094)**: runs `tc2/out/civ/s{42,7}_c15a`, shots `civ5` (`work14` at 15:30 shows the afternoon drill).
-- **Next: C1.6 market and gates** - a market (`Structures.Market`, Core zone, stalls) planned when the village hosts heavy trade (count trades
+- **C1.6 markets done (D2-095)**: runs `tc2/out/civ/s{42,7}_c16a`, shots `civ6` (`--village 3`, `work15`).
+- **Next: C1.7 the pressure premise** - a tier-A world where two villages share one scarce useful thing (a rock outcrop or copper ore near
+  both, or one fertile valley) and nothing is scripted: run it lived/COARSE for decades and read the history (claims? taking? raids? walls?
+  trade? migration?); the premise is set up in a test helper or a headless `--premise` flag; then the C1 acceptance (founding vs decades
+  later at village and street views) and close C1 (D2-0xx). (Was the C1.6 plan: a market (`Structures.Market`, Core zone, stalls) planned when the village hosts heavy trade (count trades
   arriving per year: `Settlement.TradeIn` decaying); trades made at a village with a market gain more (a better match of wants: the deal's
   surplus x1.25?) or more partners come; the palisade's gates as structures on the roads (they exist as drawn gaps: make them buildings with
   condition, shut at night when a watch is kept); then **C1.7 the pressure premise** (`Core/Places/Premise`-like test world: two villages and

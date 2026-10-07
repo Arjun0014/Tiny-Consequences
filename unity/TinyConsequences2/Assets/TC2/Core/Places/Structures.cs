@@ -118,6 +118,9 @@ namespace TC2.Core.Places
             // a competent smith and use for metal: a smithy (C1.4) - after water and a store, never while walls rise
             if (s.Smithy == 0 && (s.TechKnown & Forge.Bit) != 0 && s.Wall != 1 && (s.Works & Construction.Granary) != 0 && Forge.Use(w, in s))
             { Begin(w, sid, Smithy, s.SmithEvent, CauseRel.EnabledBy); return; }
+            // traders come often to deal: a market on its green (C1.6)
+            if (s.Market == 0 && s.TradeIn >= Trade.MarketFrom && s.Population >= 100 && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
+            { Begin(w, sid, Market, 0, CauseRel.None); return; }
             // a village that fears its neighbours lays out a training ground (C1.5) - after water and a store, never while walls rise
             if (s.Ground == 0 && Forge.Threatened(in s) && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
             { Begin(w, sid, Ground, s.WallEvent != 0 ? s.WallEvent : (s.FoeEvent != 0 ? s.FoeEvent : s.WatchEvent), CauseRel.InResponseTo); return; }
@@ -157,6 +160,7 @@ namespace TC2.Core.Places
             w.BuildingsOf(sid).InsertSorted(id);
             ref var s2 = ref w.Settlements.Get(sid);
             s2.Project = id; s2.ProjectKind = kind;
+            if (kind == Market) w.Buildings.Get(id).Stock = s2.TradeIn;   // (how many traders came the year it was laid out)
             w.Record(new HistoryEvent
             {
                 Kind = HistoryKind.WorkBegun, Time = w.Now, Cell = s2.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
@@ -184,6 +188,7 @@ namespace TC2.Core.Places
             if (b.Kind == Barn) s.Barns++;
             if (b.Kind == Quarry) s.Quarry = bid;
             if (b.Kind == Ground) s.Ground = bid;
+            if (b.Kind == Market) s.Market = bid;
             if (b.Kind == Smithy)
             {
                 s.Smithy = bid;
@@ -211,6 +216,7 @@ namespace TC2.Core.Places
             if (kind == Quarry) s.Quarry = id;
             if (kind == Smithy) s.Smithy = id;
             if (kind == Ground) s.Ground = id;
+            if (kind == Market) s.Market = id;
             return id;
         }
 
@@ -227,6 +233,7 @@ namespace TC2.Core.Places
             if (b.Kind == Quarry && s.Quarry == bid) { s.Quarry = 0; s.StoneCell = 0; s.StoneDist = 0; }   // (the rock it stood at is gone: they must find rock again)
             if (b.Kind == Smithy && s.Smithy == bid) s.Smithy = 0;
             if (b.Kind == Ground && s.Ground == bid) s.Ground = 0;
+            if (b.Kind == Market && s.Market == bid) s.Market = 0;
             if (b.Kind == Well && !Has(w, b.Settlement, Well, bid)) s.Works = (byte)(s.Works & ~Construction.Well);
         }
 
@@ -329,6 +336,21 @@ namespace TC2.Core.Places
             double qx = (double)s.SquareX - px, qy = (double)s.SquareY - py, sq = footprint + 8.0;   // (the green itself stays open)
             if (qx * qx + qy * qy < sq * sq) return false;
             return !OnRing(in s, px, py, footprint + 2.5);
+        }
+
+        /// <summary>Where the palisade's ring at angle a (radians, local frame) stands on dry ground (never in the sea or a lake: C1.6).</summary>
+        public static bool RingDry(World w, in Settlement s, double r, double a)
+        {
+            var P = w.Planet;
+            return Shore.Dry(P, s.LocalToSphere(s.SquareX + r * DMath.Cos(a), s.SquareY + r * DMath.Sin(a), P.Radius));
+        }
+
+        /// <summary>The share of a ring of this radius that stands on dry ground (72 points).</summary>
+        public static double DryShare(World w, in Settlement s, double r)
+        {
+            int dry = 0;
+            for (int k = 0; k < 72; k++) if (RingDry(w, in s, r, 2.0 * DMath.PI * (k + 0.5) / 72.0)) dry++;
+            return dry / 72.0;
         }
 
         /// <summary>A spot lies across the village's palisade ring (standing or being raised): nothing is built astride its posts.</summary>

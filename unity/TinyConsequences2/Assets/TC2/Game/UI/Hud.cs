@@ -342,6 +342,10 @@ namespace TC2.Game
                       .Append(place).Append("'s tools: ").Append(s.Metal.ToString("0", CultureInfo.InvariantCulture)).Append(" kg of metal (").Append((share * 100).ToString("0", CultureInfo.InvariantCulture)).Append("% of what its people want); arms ")
                       .Append(s.Arms.ToString("0", CultureInfo.InvariantCulture)).Append(want > 0 ? " - it wants " + want.ToString("0", CultureInfo.InvariantCulture) + ": it fears its neighbours" : "").Append('\n');
                 }
+                else if (b.Kind == Structures.Market)
+                    sb.Append("stalls on the green: traders come from up to ").Append((Trade.MarketReach / 1000.0).ToString("0", CultureInfo.InvariantCulture))
+                      .Append(" km and deal better here; ").Append(s.TradeIn.ToString("0", CultureInfo.InvariantCulture)).Append(" came to deal this past year (")
+                      .Append(b.Stock.ToString("0", CultureInfo.InvariantCulture)).Append(" the year it was laid out)\n");
                 else if (b.Kind == Structures.Ground)
                 {
                     int trained = 0; var res = w.Residents(b.Settlement);

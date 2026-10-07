@@ -307,6 +307,7 @@ namespace TC2.Game
                     if (d < gateHalf) gate = true;
                 }
                 if (gate) continue;
+                if (!Structures.RingDry(w, in s, r, a)) continue;   // (no posts in the sea or a lake: C1.6)
                 double x = s.SquareX + r * System.Math.Cos(a), y = s.SquareY + r * System.Math.Sin(a);
                 float yaw = Mathf.Atan2((float)(s.SquareX - x), (float)(s.SquareY - y)) * Mathf.Rad2Deg;
                 // (old palisades lean a little as the posts rot)

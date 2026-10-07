@@ -502,6 +502,7 @@ namespace TC2.Core.Places
             double rot = 0.12 / SimTime.DaysPerYear * Knowledge.Tech.PotteryKeeps(s.BestPottery);
             Structures.Rot(ref s, rot, days);   // (what lies beyond the granaries' capacity rots faster: C1.1)
             if (s.Arms > 0) s.Arms *= Keep(Forge.ArmsDecay / SimTime.DaysPerYear, days);   // (arms broken, lost, rusted: C1.4)
+            if (s.TradeIn > 0f) s.TradeIn = (float)((double)s.TradeIn * Keep(0.693147 / SimTime.DaysPerYear, days));   // (traders' coming, a year: C1.6)
             // stored hides rot and are eaten by vermin (~20 % a year), fibre less (~5 %): a store holds what is used (D2-063)
             s.Hides *= days == 1 ? 1.0 - 0.20 / SimTime.DaysPerYear : Keep(0.20 / SimTime.DaysPerYear, days);
             s.Fibre *= days == 1 ? 1.0 - 0.05 / SimTime.DaysPerYear : Keep(0.05 / SimTime.DaysPerYear, days);

@@ -985,6 +985,7 @@ namespace TC2.Core.Society
                 if (guards <= cost) return;
                 ref var s2 = ref w.Settlements.Get(sid);
                 s2.Wall = 1; s2.WallR = (float)r; s2.WallCond = 0f; s2.WallKeep = 1;
+                s2.WallDry = (float)Places.Structures.DryShare(w, in s2, r);   // (its posts on dry ground only: C1.6)
                 s2.WallEvent = w.Record(new HistoryEvent
                 {
                     Kind = HistoryKind.WallPlanned, Time = now, Cell = s2.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),

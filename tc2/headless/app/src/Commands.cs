@@ -259,6 +259,17 @@ namespace TC2.Headless
                         int grounds = 0, trainedPeople = 0, veterans = 0; double best = 0;
                         for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2)) { var st2 = w.Settlements.Get(sid2); if (st2.Inhabited && TC2.Core.Places.Training.Ground(w, sid2) != 0) grounds++; }
                         for (int pid = w.People.First(); pid != 0; pid = w.People.Next(pid)) { var q = w.People.Get(pid); if (!q.Alive) continue; if (q.SkFight >= 0.1f) trainedPeople++; if (q.Fights > 0) veterans++; if (q.SkFight > best) best = q.SkFight; }
+                        {
+                            int markets = 0; double busiest = 0; int bsid = 0;
+                            for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
+                            {
+                                var st2 = w.Settlements.Get(sid2);
+                                if (!st2.Inhabited) continue;
+                                if (st2.Market != 0) markets++;
+                                if (st2.TradeIn > busiest) { busiest = st2.TradeIn; bsid = sid2; }
+                            }
+                            Console.WriteLine("markets: " + markets + "; the busiest " + (bsid != 0 ? w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(bsid)) + " (" + F(busiest, "0") + " traders a year, " + w.Settlements.Get(bsid).Population + " people" + (w.Settlements.Get(bsid).Market != 0 ? ", a market" : "") + ")" : "none"));
+                        }
                         Console.WriteLine("training: " + grounds + " grounds, " + F(w.Metrics.TrainHours, "0") + " h of practice; " + trainedPeople + " living people with some skill, " + veterans + " who have fought, the best " + F(best, "0.00"));
                         Console.WriteLine("force: " + smithies + " smithies; " + fearing + " villages fear their neighbours, " + armed + " hold arms (" + F(arms, "0") + "); arms forged " + F(w.Metrics.ArmsMade, "0") +
                                           ", hours at the smithies " + F(w.Metrics.SmithyHours, "0") + ", metal smelted " + F(w.Metrics.MetalKg, "0") + " kg");
