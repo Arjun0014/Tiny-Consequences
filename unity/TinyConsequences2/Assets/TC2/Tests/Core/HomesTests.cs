@@ -188,5 +188,38 @@ namespace TC2.Tests.Core
             Assert.LessOrEqual(fromSquare, best + 1e-3, "the freed inner lot (or one as near the square) is the new home's, not the spiral's end");
             Console.WriteLine("innermost home " + best.ToString("0.0") + " m from the square; the next new home after its ruin went " + fromSquare.ToString("0.0") + " m; lots used " + w.Settlements.Get(sid).Lots);
         }
+            [Test]
+        public void AHomeTheSeaTakesIsLostAndItsPeopleMoveToDryLand()
+        {
+            // premise: the sea rises over one home's lot (its cell sinks under the sea); the home is a drowned ruin, its household lives on
+            // dry land in the village, and the history says the sea took it (D2-087: before, households lived on in houses in the sea)
+            var w = TestWorlds.Make(445);
+            var P = w.Planet;
+            int sid = w.Settlements.First();
+            ref var s = ref w.Settlements.Get(sid);
+            int hid = w.HouseholdsOf(sid)[0];
+            int home = w.Households.Get(hid).Building;
+            Assert.AreNotEqual(0, home);
+            // (the home stands at the village's edge, 150 m out: on another cell than the square and the well, which stay dry)
+            ref var bm = ref w.Buildings.Get(home);
+            bm.X = (float)((double)s.SquareX + 150.0); bm.Y = s.SquareY;
+            w.Households.Get(hid).HomeX = bm.X; w.Households.Get(hid).HomeY = bm.Y;
+            var b = w.Buildings.Get(home);
+            int cell = P.Grid.CellOf(s.LocalToSphere(b.X, b.Y, P.Radius));
+            Assert.AreNotEqual(s.Cell, cell);
+            P.Elev[cell] = (float)(P.SeaLevel - 5.0);
+            long mark = w.History.LastId;
+            Homes.SeaTook(w, 0);
+            Assert.IsTrue(Homes.Fallen(w.Buildings.Get(home), w.Now), "the drowned home is a ruin");
+            Assert.AreEqual(0, w.Buildings.Get(home).Household);
+            ref var hh = ref w.Households.Get(hid);
+            Assert.AreNotEqual(home, hh.Building, "they no longer live in it");
+            int now = P.Grid.CellOf(s.LocalToSphere(hh.HomeX, hh.HomeY, P.Radius));
+            Assert.IsTrue(P.IsLand(now), "their home or camp is on dry land");
+            bool told = false;
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) if (w.History.At(i).Kind == HistoryKind.HomesDrowned && w.History.At(i).Settlement == sid) told = true;
+            Assert.IsTrue(told, "the history tells the sea took homes");
+            Assert.IsNull(TestWorlds.Audit(w));
+        }
     }
 }

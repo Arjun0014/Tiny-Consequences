@@ -1,5 +1,6 @@
 using TC2.Core.Foundation;
 using TC2.Core.History;
+using TC2.Core.Planet;
 using TC2.Core.Simulation;
 
 namespace TC2.Core.Places
@@ -127,13 +128,58 @@ namespace TC2.Core.Places
             {
                 s.LotPosition(k, out float lx, out float ly);
                 if (Taken(w, bl, hl, forHid, lx, ly)) continue;
-                int c = P.Grid.CellOf(s.LocalToSphere(lx, ly, P.Radius));
-                if (!P.IsLand(c) || P.IsLake(c)) continue;
+                if (!Shore.Dry(P, s.LocalToSphere(lx, ly, P.Radius))) continue;   // (the ground as drawn: D2-088)
                 if (k >= s.Lots) s.Lots = k + 1;
                 x = lx; y = ly;
                 return;
             }
             s.LotPosition(s.Lots++, out x, out y);   // (nothing free within reach: the next lot)
+        }
+
+        /// <summary>
+        /// The sea rose over homes' lots (D2-087, a coast's change): each such home is lost - left at once as a drowned ruin that fades -
+        /// and its household takes an empty home of the village or the innermost free lot; camps on drowned lots move too. One history
+        /// line a village, caused by the coast's change (0 when the plates or the waves moved it). Before, households lived on in houses
+        /// standing in the sea.
+        /// </summary>
+        public static void SeaTook(World w, long cause)
+        {
+            var P = w.Planet;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                int lost = 0;
+                var bl = w.BuildingsOf(sid);
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    ref var b = ref w.Buildings.Get(bl[i]);
+                    if (Fallen(in b, w.Now)) continue;   // (a ruin already)
+                    if (Shore.Dry(P, s.LocalToSphere(b.X, b.Y, P.Radius))) continue;
+                    int hid = b.Household;
+                    b.Household = 0; b.Left = w.Now - DMath.ToLong(FallYears(b.Kind) * SimTime.Year) - 1;   // (drowned: fallen at once)
+                    lost++;
+                    if (hid == 0 || !w.Households.Exists(hid)) continue;
+                    ref var hh = ref w.Households.Get(hid);
+                    hh.Building = 0; hh.Shelter = Construction.Camp; hh.Build = 0f;
+                    if (!TakeEmpty(w, hid)) { FreeLot(w, sid, hid, out float x, out float y); ref var h2 = ref w.Households.Get(hid); h2.HomeX = x; h2.HomeY = y; }
+                }
+                var hl = w.HouseholdsOf(sid);
+                for (int i = 0; i < hl.Count; i++)
+                {
+                    ref var hh = ref w.Households.Get(hl[i]);
+                    if (hh.Building != 0) continue;
+                    if (Shore.Dry(P, s.LocalToSphere(hh.HomeX, hh.HomeY, P.Radius))) continue;
+                    FreeLot(w, sid, hl[i], out float x, out float y);
+                    ref var h2 = ref w.Households.Get(hl[i]); h2.HomeX = x; h2.HomeY = y;
+                }
+                if (lost > 0)
+                    w.Record(new HistoryEvent
+                    {
+                        Kind = HistoryKind.HomesDrowned, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
+                        ArgA = lost, Cause1 = cause, Rel1 = CauseRel.CausedBy, RootKind = cause == 0 ? RootKind.Nature : RootKind.Unknown,
+                    });
+            }
         }
 
         /// <summary>A home, a ruin or another household's camp stands within 6 m of a lot (lots lie ~8-9 m apart).</summary>

@@ -21,6 +21,10 @@
     down to a copse by 1,000). Failing: villages sprawled over centuries (fixed, D2-086: homes 128 m from the square at year 1,000, was
     212), the mature land a brown quilt at the year's first day (shots at other seasons next), people ~3 px at the village view, rivers
     hairlines, far views at their own local time (a scar shot at night).
+  - **D2-087, D2-088** (shots `ages6b`, `drown1`, `shore1`): seasons read (summer green, harvest gold: the brown was the year's first
+    day); homes the sea takes are lost (`Homes.SeaTook`: drowned ruins, the household to dry land, "The sea took N homes of X"); one
+    shore for the simulation and the view (`Core/Planet/Shore.cs`): no home is drawn in the water. View: people at least ~4 px tall
+    (at most 4x) so activity reads at the village view; a `street` view (32 m). 179 tests.
   - **Known bug, its own calibrated slice** (it changes COARSE): a COARSE disease catch that falls on a child is dropped
     (`Disease.Visits` picks among everyone present), halving the sickness visits carry home.
 - **Session 4 (7 Oct 2026, from 00:16 IST, closed into session 5)** - Arjun (7 Oct): finish D2-083, then **the world made legible** is the

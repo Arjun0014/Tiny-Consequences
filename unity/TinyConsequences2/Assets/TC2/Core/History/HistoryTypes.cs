@@ -78,6 +78,7 @@ namespace TC2.Core.History
         TributeAgreed = 72,     // a village bowed to its raiders and agreed to pay them tribute (Subject the payer, Object the lord; Magnitude the share; ArgA the lordship's size after; D2-075)
         TributePaid = 73,       // a tributary paid its lord at harvest (Magnitude FU)
         TributeEnded = 74,      // a tributary paid no more (ArgA 1 the lord is gone, 0 grown too weak)
+        HomesDrowned = 75,      // the sea rose over homes' lots (Settlement; ArgA homes lost; Cause1 the coast's change; D2-087)
         HomeTaken = 53,         // a household made its home in one that stood empty (Object: who lived there last; ArgA 1 a hut, 2 a house; D2-059)
         ColdHomes = 52,         // a village's homes were cold enough to harm (Magnitude homes, ArgA 1 the woodstore ran short, ArgB the day's mean C; D2-056)
     }
@@ -178,6 +179,7 @@ namespace TC2.Core.History
                 case HistoryKind.IceAge:
                 case HistoryKind.IceAgeEnded: return Tier.Epochal;
                 case HistoryKind.CoastChanged: return Tier.Local;
+                case HistoryKind.HomesDrowned: return Tier.Local;
                 case HistoryKind.Eruption: return Tier.Historical;
                 case HistoryKind.VentBorn: return Tier.Historical;
                 case HistoryKind.IslandRose: return Tier.Historical;
@@ -254,6 +256,7 @@ namespace TC2.Core.History
                 case HistoryKind.IceAge: b = 50; break;
                 case HistoryKind.IceAgeEnded: b = 40; break;
                 case HistoryKind.CoastChanged: b = 4; break;
+                case HistoryKind.HomesDrowned: b = 4; break;
                 case HistoryKind.Eruption: b = 0.6 * DMath.Exp(0.8 * magnitude); break; // VEI 2 ~5, VEI 4 ~26, VEI 6 ~140
                 case HistoryKind.VentBorn: b = 3; break;
                 case HistoryKind.IslandRose: b = 8; break;

@@ -257,7 +257,7 @@ namespace TC2.Game
             }
             // (orbit and region frame the planet and a part of it, so they go with its size; the village and nearer views are metres, D2-085)
             double S = Host.World.Planet.GeoScale;
-            double alt = view == "close" ? 260 : view == "low" ? 95 : view == "village" ? 900 : view == "region" ? 5000 * S : 22000 * S;
+            double alt = view == "street" ? 32 : view == "close" ? 260 : view == "low" ? 95 : view == "village" ? 900 : view == "region" ? 5000 * S : 22000 * S;
             LookAt(d, alt);
         }
 

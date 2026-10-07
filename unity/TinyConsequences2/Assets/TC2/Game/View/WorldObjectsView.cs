@@ -165,6 +165,20 @@ namespace TC2.Game
             }
         }
 
+        /// <summary>
+        /// People's presentation scale (D2-084): a little larger than life, more with distance, and never under ~4 px tall on screen so
+        /// a village's activity reads from the village view (at 900 m true size is ~3 px); at most 4x. Presentation only.
+        /// </summary>
+        float PeopleScale(Vector3 at)
+        {
+            if (Rig == null || Rig.Cam == null) return 1.35f;
+            float d = Vector3.Distance(Rig.Cam.transform.position, at);
+            float h = Rig.Cam.pixelHeight > 100 ? Rig.Cam.pixelHeight : 900f;
+            float mpp = 2f * d * Mathf.Tan(Rig.Cam.fieldOfView * 0.5f * Mathf.Deg2Rad) / h;   // metres a pixel there
+            float floor = 4f * mpp / (1.35f * 1.72f);
+            return 1.35f * Mathf.Clamp(Mathf.Max(d / 900f, floor), 1f, 4f);
+        }
+
         /// <summary>Presentation scale: real size close in, a little larger with distance so things stay readable.</summary>
         float Exaggeration(Vector3 at, float max)
         {
@@ -560,7 +574,7 @@ namespace TC2.Game
                         continue;
                     }
                 }
-                float sc = (age < 12 ? 0.55f + age * 0.038f : 1f) * 1.35f * Exaggeration(pos, 2.5f); // a little larger than life, to be read
+                float sc = (age < 12 ? 0.55f + age * 0.038f : 1f) * PeopleScale(pos);   // a little larger than life, to be read
                 int dye = (int)(KeyedRng.Mix((ulong)id * 0x2545F4914F6CDD1DUL) % (ulong)Dyes.Length);
                 // walking: on a road, or the walk at the start of a step; they face where they go
                 bool walking = p.Step == StepKind.Travel || (p.Step == StepKind.Local && t < p.TA);

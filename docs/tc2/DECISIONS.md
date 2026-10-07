@@ -2092,3 +2092,34 @@ lot until it has gone into the land (80-300 years, D2-052). Used by marriages, h
 **Evidence.** 1,000 years on 6 km (`tc2/out/scale/r6000_s{42,7}_ages2`): homes 128 m from the square on average, the farthest 208 m
 (seed 42; was 212 / 276), 92 / 141 m (seed 7; was 171 / 234); people 5,823 / 2,315 (5,823 vs 6,178 and 2,315 vs 1,957 before - the seeds'
 own scatter). Test `HomesTests.ANewHomeTakesTheInnermostFreeLotSoAVillageKeepsItsShape`; 178 tests pass.
+
+## D2-087 — 2026-10-07 — A home the sea takes is lost (D2-084 slice: history must be true where it is seen)
+
+**Context.** The 6 km season round (`tc2/out/shots/ages6b`, seed 42 at year 1,000, the street view) showed half of the first village
+standing in open water: the sea had risen over the lots of lived-in homes (a coast's change: `World.LandChanged` drowned their cells,
+removed the fields there and counted the village, but never touched its homes), and households lived on in houses in the sea. On a
+6 km planet the coast lies nearer a village's anchor in metres, so the gap showed sooner, but it held at any size.
+**Decision.** `Homes.SeaTook(w, cause)`, called by `LandChanged` whenever cells drowned: a standing home whose lot is now sea is lost
+(left at once as a drowned ruin, which fades as ruins do); its household takes an empty home of the village or the innermost free lot
+(D2-086); camps on drowned lots move too; one history line a village - "The sea took N homes of X: their people made new homes on
+higher ground." (`HistoryKind.HomesDrowned`, Local tier, caused by the coast's change event; 0, rooted in nature, when the plates or the
+waves moved the coast). The village's own cell drowning (its square and well) is left to the existing pressures of leaving (no
+arable, no water) and to a later slice if it shows.
+**Evidence.** Test `HomesTests.AHomeTheSeaTakesIsLostAndItsPeopleMoveToDryLand`; the 1,000-year world shot again (below).
+**Evidence (7 Oct).** 179 tests; the 1,000-year seed 42 world (`tc2/out/scale/r6000_s42_ages3`) shot again (`tc2/out/shots/drown1`):
+the drowned half of the first village is ruins under the water and its living homes stand inland. The same shots found the rest of the
+problem - houses drawn in the shallows at year 300 before any rise: D2-088.
+
+## D2-088 — 2026-10-07 — One shore for the simulation and the view (`Core/Planet/Shore.cs`)
+
+**Context.** At year 300 the first village of seed 42 had lived-in houses and palisade posts drawn standing in the sea although no
+coast had moved: the simulation judged a lot dry by its cell (land if the cell's centre is above the sea) while the view draws the
+ground between cell centres by a kernel over the cell and its neighbours, with the shore ramped - so within about half a cell of a sea
+cell (~70 m on the 6 km world) the drawn ground lies under the drawn water. Two rules for one coast (the pitfall: "any rule the
+simulation and the view must share lives in Core").
+**Decision.** The shore-ramped per-cell elevation and its kernel move from the view (`Ground`) to Core (`Planet.Shore`: `Drawn`,
+`DrawnAll`, `At`, `Dry`; cached on the planet by relief, coast and sea level, never saved); the view draws `Shore.At` (plus its ice,
+detail and exaggeration as before) and the simulation asks `Shore.Dry` - the drawn ground at least 2 m (sim) above the sea and no lake -
+for every new home's lot (`Homes.FreeLot`) and for the homes and camps the sea takes (`Homes.SeaTook`).
+**Evidence.** 179 tests; fresh 300-year worlds of seeds 42 and 7 (`tc2/out/scale/r6000_s{42,7}_shore`, shots `tc2/out/shots/shore1`): no
+lived-in home in the water; what stands in the shallows are the ruins of homes the sea took.

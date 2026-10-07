@@ -148,6 +148,9 @@ namespace TC2.Core.Planet
         /// </summary>
         public int PatchRings => System.Math.Max(1, (int)DMath.Floor(1.0 / GeoScale + 0.5));
 
+        // the ground between cell centres (Shore, D2-088): derived, never saved or hashed
+        public float[] ShoreDrawn; public int ShoreRelief = -1, ShoreCoast = -1; public double ShoreSea = double.NaN;
+
         System.Collections.Generic.Dictionary<int, int[][]> _patches;   // (derived, never serialized: per ring count, per cell, built when asked)
 
         /// <summary>
