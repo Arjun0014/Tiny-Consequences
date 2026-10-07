@@ -60,9 +60,11 @@
   **D2-109 the Web frame rate**: the frame was bounded by the main thread's draw submission (one draw per colour group, the whole world as
   bounds, into every cascade); per-instance colours and draws with their own bounds - 34-37 instanced draws a frame; settled close
   60-70 -> 90-102 fps, forest 66 -> 100; Web test 6/6 with every view 73-120 fps (after a century 88).
-  **C9.1 boats from the woods (D2-110, committed c674892, final checks open)**: dugouts made by fishing households from their woods, rowed
-  out to the open sea's shoals, lost in rising wind; ten seeds: people at par, fish x1.65; 252 tests. Open: ten-seed rerun after the
-  landing fix, Web build and shots (SESSION_HANDOFF).
+  **C9.1 boats from the woods (D2-110)**: dugouts made by fishing households from their woods, rowed out to the open sea's shoals, lost in
+  rising wind. **Closed in session 8**: the ten-seed rerun found boats laid in the square (and twice in the sea) where the ground fished lay
+  cells out from the shore - fixed (`Boats.ShoreOf` ring search; boats follow the coast both ways, `ShoreMoved`; in the water only below the
+  waterline, `Afloat`); ten seeds `_c91k`: no boat in the water or away from it at years 100/200/300, people x1.01 (t 0.4), fish x1.57
+  against D2-108; 253 tests. Web build and shots: next.
   **Browser**: the settlement page renders; the true Web frame rate is 35-56 fps near the ground (below 60: earlier 57-121 fps readings
   since C1.4 were inflated by the smithy error stopping the view's setup). **Next**: SESSION_HANDOFF "Next".
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and

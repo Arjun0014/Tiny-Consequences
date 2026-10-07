@@ -230,6 +230,45 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void BoatsLieOnDrySandByTheWater()
+        {
+            // the ground fished may lie cells out from the shore (ten seeds showed boats laid in the square, and in the sea when the square
+            // was): the landing is the nearest dry sand to the shore nearest that ground; a boat left away from the water follows the coast
+            var w = Coast(out int sid);
+            Assume.That(w != null, "a fishing village with promising open sea");
+            var P = w.Planet; var g = P.Grid;
+            ref var s = ref w.Settlements.Get(sid);
+            // premise: the village fishes a ground of open water with no land among its neighbours (the farthest such of the sea's reach)
+            int far = -1; double fd = 0;
+            for (int c = 0; c < P.Cells; c++)
+            {
+                if (P.IsLand(c)) continue;
+                bool open = true;
+                for (int j = 0; j < 8 && open; j++) if (P.IsLand(g.Nbr8[c * 8 + j])) open = false;
+                if (!open) continue;
+                double d = Vec3d.ArcDistance(g.Center[c], s.Anchor, P.Radius);
+                if (d < WildFood.SeaReach && d > fd) { fd = d; far = c; }
+            }
+            Assume.That(far >= 0, "open water within a boat's reach");
+            s.Fish.A = far;
+            Assert.IsTrue(Boats.Landing(w, sid, out float x, out float y), "a landing found");
+            Assert.IsTrue(Boats.AtWater(w, in w.Settlements.Get(sid), x, y), "dry, by the water");
+            Console.WriteLine("ground " + (fd / 1000.0).ToString("0.0") + " km out: landing at " + x.ToString("0") + "," + y.ToString("0"));
+            // a boat lying on dry land away from the water (where the sea drew back) is drawn down to the shore when the coast moves
+            int hid = Fishers(w, sid, out int fisher);
+            Assume.That(hid != 0, "a household that fishes");
+            int bid = Made(w, sid, hid, fisher);
+            ref var s2 = ref w.Settlements.Get(sid);
+            float ix = s2.SquareX, iy = s2.SquareY;
+            for (int k = 0; k < 40 && Boats.AtWater(w, in s2, ix, iy); k++) { ix += 10f; }   // (a spot inland of the beach)
+            Assume.That(!Boats.AtWater(w, in s2, ix, iy) && Shore.Dry(P, s2.LocalToSphere(ix, iy, P.Radius)), "dry ground away from the water");
+            w.Buildings.Get(bid).X = ix; w.Buildings.Get(bid).Y = iy;
+            Boats.ShoreMoved(w);
+            var b = w.Buildings.Get(bid);
+            Assert.IsTrue(Boats.AtWater(w, in w.Settlements.Get(sid), b.X, b.Y), "drawn down to the water's edge");
+        }
+
+        [Test]
         public void BothResolutionsFishFromTheBoat()
         {
             foreach (bool coarse in new[] { true, false })

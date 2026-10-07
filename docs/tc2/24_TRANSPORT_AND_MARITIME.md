@@ -61,8 +61,9 @@ people, maintained, damaged and lost in storms (`Storms`), drawn up in bad weath
 fields (D2-039, D2-042); cargo boats carry real loads between real stores; people aboard are real people.
 
 **Implemented (C9.1, D2-110)**: the dugout, `Core/Places/Boats.cs` - a structure that floats (`Structures.Boat` 20), owned by a household
-(`Household.Boat`), lying on dry sand at the landing of the village's best fishing ground (`Boats.Landing`: a ring search for dry ground
-round the water's edge). Wanted when the village's **sea grounds** (open water within 2.5 km, `WildFood.SurveySea`: the offshore shoals
+(`Household.Boat`), lying on dry sand at the landing of the village's best fishing ground (`Boats.Landing`: the shore nearest that ground, ring by
+ring of cells out from it, then the nearest dry sand; boats follow the coast when it moves either way, `Boats.ShoreMoved`; a boat is in the water only below the
+waterline, `Boats.Afloat`). Wanted when the village's **sea grounds** (open water within 2.5 km, `WildFood.SurveySea`: the offshore shoals
 reachable from a boat) promise 1.25x the shore's catch an hour with the row paid, a grown member is a fisher (skill 0.5), the household is
 housed, rations are not short, its woods hold trunks to hollow (forest 0.3 at the woodlot) and the store the trunk's timber; one begun a
 village-day; 90 labour-hours and 30 loads; given up when not made within a year. Up to two of the household row out (`ActivityKind.Sail`;

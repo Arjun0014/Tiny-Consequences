@@ -2764,6 +2764,22 @@ x0.79 (D2-083's known lean, x0.81). Cost: 1.71 against 1.69 us a person-day (a c
 DEEP's Retake recomputes only the ground fished). `DeepTimeTests.DeepLivesTheWorldAsCoarseDoes` reads the herds' mix at five moments
 over the last eight years (one moment's pigs on a four-village world swung past the band, x2.65, when boats moved the trajectory; mean
 x2.15). Headless `run --load S --years 0 --boats SID` lists a village's boats.
-**Open (first next step).** A shot of the year-300 seed-2 world showed boats lying in the water (`Landing` walked only toward the square,
-which can lie across a bay); fixed by a ring search for dry ground (a fresh seed-2 run: no boat on wet ground), but the ten-seed comparison
-above predates the fix: rerun it, rebuild the Web build, shoot `work20`/`work20far` and judge the boats and sailors.
+**Closed (session 8).** The rerun found the landing still wrong: ten seeds' saves at years 100, 200 and 300 (headless `boats:` line now
+counts boats "lying in the water" and "away from it" - no water within 40 m - and names their villages) showed 2-8 boats a world laid in the
+square, and in two worlds in the sea where the square had become sea: the ground a village fishes may lie two or more cells out from the
+shore, where `Landing` found no land among its eight neighbours, searched only 300 m round the ground's centre and fell back to the
+square. Fixed: the shore nearest the ground is found ring by ring of neighbours out from it (`Boats.ShoreOf`, the nearest the village of
+the first ring with land; identical to before whenever a neighbour is land), and `Landing` says when it failed. Boats now also follow the
+coast both ways (`Boats.ShoreMoved` from `World.LandChanged`: a kept boat the sea rose over, or one it drew back from, is drawn up at the
+landing on the new shore - before, only drowned ones moved). A boat is "in the water" only where the ground is at the sea's surface or a
+lake covers it (`Boats.Afloat`): one counted wet lay 1.9 m above a sea risen a few centimetres - the 2 m a home keeps (`Shore.Dry`) is not
+asked of a boat on its beach. Test `BoatTests.BoatsLieOnDrySandByTheWater` (a ground with no land round it; a boat left inland drawn down).
+Ten seeds rerun (`tc2/out/civ/s*_c91k`): every save at years 100, 200 and 300 has no boat in the water and none away from it (four seeds
+again on the final rule, `_c91m`: bit-identical to `_c91k`); against D2-108 people over years 200-299 x1.012 (t 0.4), at year 300 x1.020, births and
+deaths a thousand person-years x0.998 and x0.999, fish x1.57 (t 11.7), the wild's food x1.08 (t 2.2); seven of the ten worlds are
+bit-identical to the run before the fix (only the three that hit the square changed). At year 300: 0-48 dugouts a world, 108-870 made in
+300 years, 1-18 lost at sea (0-7 drowned), 46-73 % of the fish from boats. The Web build and shots follow in the next commit. Known, for C9.2: a village's
+boats lie at the beach of the day's best fishing ground, so they scatter along its shores (one village's lay 200-700 m from the square on
+three beaches; a landing can be ~1 km out) - C9.2 gives a village one landing, kept; boats are begun where the sea is worth 1.25 times the
+shore even when both are nearly empty (Toularndal, seed 4: 0.02 against 0.01 FU an hour, eight dugouts in two years - its boats had
+emptied the shoals).

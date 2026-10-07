@@ -558,6 +558,7 @@ namespace TC2.Core.Simulation
             if (record && drowned + emerged > 0)
                 coastEvent = Record(new HistoryEvent { Kind = HistoryKind.CoastChanged, Time = Now, Cell = -1, RootKind = RootKind.Nature, Magnitude = (float)(P.SeaLevel - coastBefore), ArgA = drowned, ArgB = emerged * 1000 + villages });
             if (drowned > 0) Homes.SeaTook(this, coastEvent);   // (homes on drowned lots are lost: D2-087)
+            if (drowned + emerged > 0) Boats.ShoreMoved(this);   // (boats follow the water's edge, risen or fallen: C9.1)
         }
 
         int NearestSettlement(int cell, double maxM)
