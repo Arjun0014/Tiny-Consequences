@@ -32,6 +32,7 @@ namespace TC2.Core.Foundation
         Knowledge = 23,     // techniques found by practice (D2-062)
         Disease = 24,       // infection, its course, spillover and mutation (D2-066)
         Society = 25,       // taking, being seen (D2-069)
+        Geology = 26,       // what the ground holds where the planet's rule allows it: ore bodies and their size (C5.1)
         Test = 1000,
     }
 

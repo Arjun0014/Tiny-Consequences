@@ -2446,3 +2446,46 @@ and ledger unchanged). Unity compiles (shot `person1`). Year 300 of `tc2/out/civ
 the smithy, potter and weaver, 14 fights lived through, strikes at 2.48; nine deeds still weighed (two killings and seven woundings of night
 takers from Thathastwick, Heldholm and Draton); Velhope holds a wrong against Thathastwick; his life lists every beating at the store between
 his children's births. The page's layout is checked in the next Web build (IMGUI is not drawn in batch-mode shots).
+
+## D2-100 — 2026-10-07 — Copper from the ground: finite ore bodies, seen, mined, carried and dug out (C5.1)
+
+**Context.** `25` §4 (the resource town) and `22` §2: deposits come from geology, are known by seeing, deplete, and make history. Until now
+copper was a flag on a village's cell (D2-064: rock within two rings and a volcano within 3 km): its smiths smelted metal from nothing but
+hours and wood, forever, with no ore, no mine, no carrying and no end. Deposits were not worth walking to, trading for or fighting over.
+**Decision.** (1) **Ore bodies** (`Core/Places/Mining.cs`, `World.Deposits`): copper lies on crags (the quarry's outcrop: land breaking 80 m
+from a land neighbour, above the shore) within **2 km (geo) of a volcano**, living or quiet, on **15 %** of such crags (keyed by the cell,
+`RngStream.Geology`), each body holding **1-20 t** of workable ore (log-even, keyed). A body enters the world's state the first time anyone
+sees it and is counted down by what is dug, whoever digs it (two villages working one body share it). (2) **Seeing**: wherever the quarry's
+rule looks (grounds, woodlot) a village sees copper too (`Stone.Saw` -> `Mining.Saw`); it keeps the nearest body with ore left within
+**2 km** of its anchor; the first villages' founders saw what lay within 1 km of their site (`Mining.Look` before `Learning.Founders`); copper
+known again after a body gave out is history (`OreFound`). Finding the technique needs copper the village has seen (was: ore near its cell).
+(3) **The mine** (structure kind 17, at the body; 40 h, 6 loads of wood): planned when the village knows copper, someone of it can smelt
+(best skill 0.3, the hearth's rule) and its ore in store is short of what its smiths want - metal for its tools (0.5 kg a head) and arms when
+it fears its neighbours, 5 kg of ore a kilo, up to 1.5 t ahead (`Settlement.OreWant`, read daily). (4) **Digging** (`ActivityKind.Mine`,
+`WhyCode.Ore`; COARSE in the free hours like the quarry): 25 kg an hour at the face, every load carried home (Stone's law: the walk both ways
+per load); a lived stint is as long as the ore still wanted takes and stops at it (others dig too). (5) **Smelting takes ore**: at the hearth
+and the smithy 5 kg of ore a kilo of copper - no ore in store, no metal; D2-064's rates and fuel stand. (6) **A body gives out** when its last
+ore is dug: history `OreGaveOut` (caused by the find), its mines are left, every village that knew it forgets it and looks again. (7) The view
+draws the mine (kit `mine_pit`: a shaft with a windlass, a spoil heap growing with the ore dug, green and blue ore sorted on a floor, a
+lean-to; drawn 1.5x life to read at the village view) on broken ground; the building page tells the body's ore left or when it gave out;
+headless `ores:` report line; civ timelines show finds and give-outs. Sim version 41.
+**Tuning.** First try (half the crags within 3 km geo of a volcano, dug from 3 km): every village knew copper (17 of 18 on seed 42, 9 of 9 on
+seed 7), metal was everywhere and trade fell to a third (markets 7 -> 1). On the 6 km planet a 3 km walk is half a radian of arc - several
+villages' lands - and the arcs' ground covers much of these volcanic worlds. Tightened to 2 km (geo) round the arcs, 15 % of crags and a 2 km
+reach (25 % gave 14 of 19 and 8 of 10).
+**Evidence.** 220 tests (`MiningTests` 6: copper only on crags near arcs in finite keyed bodies; known only by seeing, one body however often
+seen and shared between villages; a village short of metal opens a mine at the body, the walk costs per load, the body loses what is dug;
+no ore no copper, five kilos a kilo; a body gives out, the mine is left, the village forgets it and does not know it again; both resolutions
+dig at par - COARSE 49 kg in 5.5 h, lived 52 kg in 5.7 h at 552 m). 300 years DEEP (`tc2/out/civ/s{42,7,11}_c51d`): seed 42 - 12 of 19
+villages know copper, 12 mines ~970 m out, 23 bodies seen, **7 dug out**, 64 t of ore dug in 4,141 h, metal smelted 12.7 t (C7.1: 15.6 t),
+people 6,556 (7,137), markets 3 (7), trades 696 (1,592); seed 7 - 7 of 9, 15 bodies seen, 5 dug out, 51 t, metal 10.1 t (9.0), people 2,044
+(2,063); seed 11 - 4 of 15 know copper but nobody learnt to smelt: no mines, no metal. Chains in the annals: Tousholm saw copper 1.9 km off
+(year 222), dug it (226), got smiths and a smithy (242), forged arms from its ore when it feared its neighbours (244); the body gave out after
+9.7 t (294). Velhope's gave out after 2.4 t (265) and it saw another 1.8 km off the next year. Shots `tc2/out/shots/mine1`, `mine2`
+(Heldholm's mine on its broken ground among the fields).
+**Seen and left.** COARSE smelts at the hearth only in craft hours when a household's goods are short, a lived day more often (D2-064,
+pre-existing: 1.8 vs 9.2 kg in six days with ore in store); fields are drawn over the crag the copper shows on; ore is not traded yet.
+**Next (C5).** C5.2 iron: bog ore where water stands on flat ground, charcoal from a clamp at the woodlot, the bloomery, iron's larger use a
+head (tools, nails, arms). C5.3 distant work: smelting at a far mine (carry metal, not ore), stints of days with a camp at the site, households
+moving to the work (a mining hamlet founded by work). C5.4 claims: a body a village works is known as theirs; others digging it is a deed;
+news of bodies through traders; a deposit worth holding (tribute, raids).

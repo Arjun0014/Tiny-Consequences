@@ -51,7 +51,7 @@ namespace TC2.Core.Places
         /// <summary>A village has use for a smith's hours: its tools short of metal with ore near to smelt, or arms wanted (from ore or tools).</summary>
         public static bool Use(World w, in Settlement s)
         {
-            bool ore = w.Learning.Ore(s.Cell);
+            bool ore = Mining.MetalIn(in s) >= 0.05;   // (ore dug and waiting to be smelted: C5.1)
             if (ore && Knowledge.Tech.MetalShare(s.Metal, s.Population) < 1.0) return true;
             return s.Arms < ArmsWant(in s) && (ore || s.Metal >= ArmKg);
         }
@@ -74,7 +74,7 @@ namespace TC2.Core.Places
         {
             if (hours <= 0 || smithy == 0) return 0;
             ref var s = ref w.Settlements.Get(sid);
-            bool ore = w.Learning.Ore(s.Cell);
+            bool ore = Mining.MetalIn(in s) > 1e-6;   // (ore dug and carried home: copper is never smelted from nothing, C5.1)
             double rate = Knowledge.Tech.MetalPerHour(in p) * Pace;   // kg an hour smelted and worked
             if (rate <= 0) return 0;
             double used = 0;
@@ -87,9 +87,11 @@ namespace TC2.Core.Places
                 if (!ore) arms = DMath.Min(arms, s.Metal / ArmKg);
                 if (ore)
                 {
+                    arms = DMath.Min(arms, Mining.MetalIn(in s) / ArmKg);   // (no more arms than the ore smelts)
                     double fuel = arms * ArmKg * Knowledge.Tech.MetalFuel * FuelShare;
                     if (s.Woodstore < fuel) { arms *= s.Woodstore / fuel; fuel = s.Woodstore; }
                     s.Woodstore -= fuel;
+                    Mining.Smelt(ref s, arms * ArmKg);
                     w.Metrics.MetalKg += arms * ArmKg;
                 }
                 else s.Metal -= arms * ArmKg;
@@ -106,7 +108,7 @@ namespace TC2.Core.Places
                     });
             }
             double left = hours - used;
-            if (left > 0 && ore && Knowledge.Tech.MetalShare(s.Metal, s.Population) < 1.0)
+            if (left > 0 && Mining.MetalIn(in s) > 1e-6 && Knowledge.Tech.MetalShare(s.Metal, s.Population) < 1.0)
             {
                 double kg = rate * left;
                 if (days > 1)
@@ -115,9 +117,12 @@ namespace TC2.Core.Places
                     double most = DMath.Max(0.0, Knowledge.Tech.MetalPerHead * s.Population - s.Metal) + kg / days;
                     if (kg > most) { left *= most / kg; kg = most; }
                 }
+                double inOre = Mining.MetalIn(in s);
+                if (kg > inOre) { left *= inOre / kg; kg = inOre; }   // (as far as the ore in store goes)
                 double fuel = kg * Knowledge.Tech.MetalFuel * FuelShare;
                 if (s.Woodstore < fuel) { kg = s.Woodstore / (Knowledge.Tech.MetalFuel * FuelShare); fuel = s.Woodstore; left = kg / rate; }
                 s.Metal += kg; s.Woodstore -= fuel;
+                Mining.Smelt(ref s, kg);
                 w.Metrics.MetalKg += kg;
                 used += left;
             }

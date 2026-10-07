@@ -37,7 +37,11 @@
   seed 42 at year 300: 18 walled (was 8 + 9 stuck), 5 larger rings; 211 tests; shots `rings1` (Thathastwick's two rings).
   **C12.1 the person page done (D2-099)**: `Core/History/Biography` - identity, now and why, family, work (roles read from practice), deeds and
   force, home, life (every record, in order); the HUD's "Life page" (tabs), WebBridge `person`, headless `person --load S --pick fighter`; reads
-  only; 214 tests. **Next: C2.x** (clearing as labour, kilns), **C5** (claims on deposits that deplete).
+  only; 214 tests. **C5.1 copper from the ground done (D2-100)**: ore bodies on crags near volcanoes (15 %, 1-20 t, kept from the first
+  sight, counted down by what is dug), seen where people go, a mine at the body when someone can smelt and metal is short, every load carried
+  home, smelting takes 5 kg of ore a kilo, bodies give out; tuned from "every village knows copper" to seed 42 12 of 19 (7 bodies dug out in
+  300 years), seed 7 7 of 9; 220 tests; shots `mine1`, `mine2`. **Next: C5.2 iron** (bog ore, charcoal, bloomery), C5.3 distant work and the
+  mining hamlet, C5.4 claims (`25` C5 plan).
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

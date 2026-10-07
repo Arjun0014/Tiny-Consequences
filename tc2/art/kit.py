@@ -658,6 +658,34 @@ def quarry_face(name, seed=63):
     return k.finish()
 
 
+def mine_pit(name, seed=67):
+    """A copper mine (C5.1): a shaft in the rock with a timber collar and a windlass over it, a spoil heap of broken rock beside it,
+    the ore sorted out on a floor of flat stones - green and blue stone - and a lean-to for the miners' tools."""
+    k = Kit(name, seed)
+    ORE_GREEN, ORE_BLUE = srgb(0.22, 0.52, 0.40), srgb(0.20, 0.38, 0.55)
+    SPOIL = srgb(0.50, 0.40, 0.33)
+    k.box((0, 0, 0.12), (3.4, 3.4, 0.24), srgb(0.40, 0.33, 0.27), bevel=0.04)       # the trodden ground round the shaft
+    k.box((0, 0, 0.16), (1.7, 1.7, 0.2), srgb(0.05, 0.05, 0.05))                    # the shaft's dark mouth
+    for sx in (-1, 1):                                                               # its timber collar
+        k.box((sx * 0.95, 0, 0.3), (0.2, 2.1, 0.22), TIMBER)
+        k.box((0, sx * 0.95, 0.3), (2.1, 0.2, 0.22), TIMBER)
+    for sx in (-1, 1):                                                               # the windlass: two posts, a drum, a crank
+        k.limb((sx * 1.15, -0.25, 0.2), (sx * 1.0, 0.0, 1.9), 0.09, 0.08, TIMBER)
+        k.limb((sx * 1.15, 0.25, 0.2), (sx * 1.0, 0.0, 1.9), 0.09, 0.08, TIMBER)
+    k.limb((-1.25, 0.0, 1.85), (1.25, 0.0, 1.85), 0.16, 0.16, srgb(0.42, 0.30, 0.19), seg=8)
+    k.limb((1.25, 0.0, 1.85), (1.25, -0.45, 1.85), 0.04, 0.04, TIMBER)
+    k.limb((0.0, 0.0, 1.7), (0.0, 0.0, 0.35), 0.025, 0.025, srgb(0.70, 0.62, 0.45), seg=4)   # the rope
+    k.cyl((0.0, 0.0, 0.3), 0.28, 0.32, 0.4, srgb(0.45, 0.32, 0.20), seg=8)          # a bucket at the mouth
+    for i in range(6):                                                               # the spoil heap
+        k.blob((2.8 + k.rng.uniform(-0.7, 0.7), 1.6 + k.rng.uniform(-0.8, 0.8), 0.35), 0.9 + 0.2 * (i % 3), SPOIL if i % 2 else ROCK, subdiv=2, jitter=0.2, squash=0.55)
+    k.box((-2.6, -1.4, 0.06), (1.8, 1.4, 0.12), ROCK_CUT, bevel=0.02)               # the sorting floor
+    for i in range(11):                                                              # ore picked out: green and blue stone
+        k.blob((-2.6 + k.rng.uniform(-0.65, 0.65), -1.4 + k.rng.uniform(-0.45, 0.45), 0.2), 0.16 + 0.05 * (i % 3), ORE_GREEN if i % 3 else ORE_BLUE, jitter=0.25, squash=0.7)
+    k.box((-2.4, 1.9, 0.7), (1.6, 1.0, 1.4), TIMBER)                                 # the lean-to
+    k.box((-2.4, 1.6, 1.45), (2.0, 1.6, 0.14), THATCH, rot_z=0.0, bevel=0.02)
+    return k.finish()
+
+
 def stone_pile(name, seed=64):
     """Stone carried home and stacked (C1.3): a low heap of rough blocks."""
     k = Kit(name, seed)
@@ -750,6 +778,7 @@ def build_all():
     objs.append(smithy("smithy"))
     objs.append(quarry_face("quarry_face"))
     objs.append(stone_pile("stone_pile"))
+    objs.append(mine_pit("mine_pit"))
     objs.append(training_ground("training_ground"))
     objs.append(market_stalls("market_stalls"))
     objs.append(grass_tuft("grass_tuft", 31))

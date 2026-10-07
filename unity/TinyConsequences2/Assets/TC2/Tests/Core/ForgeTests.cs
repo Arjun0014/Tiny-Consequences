@@ -17,16 +17,12 @@ namespace TC2.Tests.Core
     [TestFixture]
     public class ForgeTests
     {
+        /// <summary>Premise: a village whose people have seen copper and have dug ore and carried it home (C5.1).</summary>
         static World WorldWithOre(out int sid)
         {
-            for (ulong seed = 481; seed < 540; seed++)
-            {
-                var w = TestWorlds.Make(seed);
-                for (sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
-                    if (w.Learning.Ore(w.Settlements.Get(sid).Cell)) return w;
-            }
-            sid = 0;
-            return null;
+            var w = TestWorlds.WithCopper(out sid);
+            if (w != null) w.Settlements.Get(sid).Ore = Mining.StoreMost;
+            return w;
         }
 
         /// <summary>Premise: one grown person of the village is a competent smith (the village knows the technique).</summary>

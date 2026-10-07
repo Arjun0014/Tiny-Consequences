@@ -401,6 +401,21 @@ namespace TC2.Game
                       .Append("'s people have some skill, its best ").Append(s.BestFight.ToString("0.00", CultureInfo.InvariantCulture))
                       .Append(Forge.Threatened(in s) ? " - it fears its neighbours" : " - unused while it fears no one").Append('\n');
                 }
+                else if (b.Kind == Structures.Mine)
+                {
+                    // the body it digs (C5.1): what is left in it, or when it gave out
+                    sb.Append("digs copper ore and carries it home to ").Append(place).Append(": ").Append(b.Stock.ToString("N0", CultureInfo.InvariantCulture)).Append(" kg dug in ")
+                      .Append(b.Use.ToString("N0", CultureInfo.InvariantCulture)).Append(" hours; the store holds ").Append(s.Ore.ToString("0", CultureInfo.InvariantCulture)).Append(" kg of ore (its smiths want ")
+                      .Append(s.OreWant.ToString("0", CultureInfo.InvariantCulture)).Append(")\n");
+                    var cs = w.Planet.Grid.CellOf(s.LocalToSphere(b.X, b.Y, w.Planet.Radius));   // (a mine stands at its body's cell centre)
+                    int di = w.Deposits.IndexAt(cs, Mining.Copper);
+                    if (di >= 0)
+                    {
+                        var d = w.Deposits.Get(di);
+                        sb.Append(d.GaveOut != 0 ? "its copper gave out in year " + (d.GaveOut / SimTime.Year) + " after " + (d.Taken / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " t of ore"
+                                                 : "the body holds about " + (d.Ore / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " t of ore more (" + (d.Taken / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " t dug from it by everyone)").Append('\n');
+                    }
+                }
                 else if (b.Kind == Structures.Quarry)
                     sb.Append("cuts building stone at rock ").Append((s.StoneDist / 1000.0).ToString("0.0", CultureInfo.InvariantCulture)).Append(" km from ").Append(place).Append(": ")
                       .Append(b.Stock.ToString("N0", CultureInfo.InvariantCulture)).Append(" loads cut and carried home in ").Append(b.Use.ToString("N0", CultureInfo.InvariantCulture)).Append(" hours; the store holds ")

@@ -66,6 +66,7 @@ namespace TC2.Game
             _works[Structures.Smithy] = new Instancer(Models.Get("smithy", ProcMeshes.House), _mat, true);
             _forgeTop = PartTop(Models.Get("smithy", ProcMeshes.House), new Color(0.274f, 0.234f, 0.205f));   // (the kit's CHIMNEY colour, linear)
             _works[Structures.Quarry] = new Instancer(Models.Get("quarry_face", ProcMeshes.Granary), _mat, true);
+            _works[Structures.Mine] = new Instancer(Models.Get("mine_pit", ProcMeshes.Granary), _mat, true);
             _works[Structures.Ground] = new Instancer(Models.Get("training_ground", ProcMeshes.Granary), _mat, true);
             _works[Structures.Market] = new Instancer(Models.Get("market_stalls", ProcMeshes.Granary), _mat, true);
             _hay = new Instancer(Models.Get("haystack", ProcMeshes.Granary), _mat, true);
@@ -450,6 +451,13 @@ namespace TC2.Game
                 // the face cut back as the stone is taken: larger with every thousand loads (C1.3)
                 float cut = 0.55f + 0.45f * Mathf.Clamp01(b.Stock / 1500f) + 0.25f * Mathf.Clamp01((b.Stock - 1500f) / 6000f);
                 m = m * Matrix4x4.Scale(new Vector3(cut, cut, cut));
+            }
+            if (b.Kind == Structures.Mine)
+            {
+                // the spoil heap and the workings grow with the ore dug (C5.1: kg carried out of the ground)
+                // (drawn half as large again as life: a 7 m pit is lost on its broken ground at the views people read a village from)
+                float dug = 1.5f * (0.7f + 0.3f * Mathf.Clamp01(b.Stock / 3000f) + 0.25f * Mathf.Clamp01((b.Stock - 3000f) / 15000f));
+                m = m * Matrix4x4.Scale(new Vector3(dug, dug, dug));
             }
             inst.Add(0, Color.Lerp(moss, Color.white, 0.45f + 0.55f * cond), m);
         }

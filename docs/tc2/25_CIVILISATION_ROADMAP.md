@@ -59,7 +59,13 @@ Sub-slices, each committed with tests, runs, shots and docs:
    copper smiths forge arms; deposits are not yet worth fighting over (no claims, no depletion: C5, C10).
 **C1 closed 7 Oct 2026 (D2-096)**; acceptance sheet `tc2/out/shots/civA_sheet.png`.
 
-**C4.1 roads by use done (D2-097). C7.1 rings that grow done (D2-098). C12.1 the person page done (D2-099).**
+**C4.1 roads by use done (D2-097). C7.1 rings that grow done (D2-098). C12.1 the person page done (D2-099). C5.1 copper ore bodies and
+mines done (D2-100).**
+
+### C5 mining and metallurgy, by slices (D2-100): ~~C5.1 copper ore bodies, the mine, depletion~~ (done); C5.2 iron (bog ore, charcoal clamp,
+bloomery, iron's use a head); C5.3 distant work (smelting at a far mine, stints with a camp, households moving to the work: a mining hamlet);
+C5.4 claims (a worked body known as a village's, digging it a deed, news of bodies by traders, deposits worth holding). Then C2.x clearing as
+labour, C3 kilns and workshops.
 
 ### Next (D2-096): ~~C4.1 roads by use~~, ~~C7.1 rings that grow with the town~~, ~~C12.1 the person page~~ (done), C2.x clearing and kilns, C5 claims on
 deposits that deplete.

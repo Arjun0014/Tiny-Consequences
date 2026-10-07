@@ -82,6 +82,8 @@ namespace TC2.Core.History
         WoodsReceded = 77,      // a village's woods were cut back past a mark (Magnitude the woodlot's distance, m; ArgA 1 600 m, 2 1 km, 3 1.5 km, 4 none within reach; C1.2)
         StoneFound = 78,        // someone of a village saw rock fit for building (Cell the rock, Other who; Magnitude m from the village; C1.3)
         ArmsMade = 79,          // a village's smiths began to forge arms (Subject the smith, Object the village, Other the smithy; ArgA 1 from ore, 0 its tools; Cause1 what it fears; C1.4)
+        OreFound = 81,          // someone of a village saw copper ore showing (Cell the body, Other who; ArgA the kind; Magnitude m from the village; C5.1)
+        OreGaveOut = 82,        // the last of an ore body was dug (Subject the village that dug it out, Object its mine; Magnitude kg dug from it in all; C5.1)
         WayWorn = 80,           // the way between two villages is worn into a path (ArgA 2) or beaten into a road (ArgA 3) by their people's walking (Subject, Object the villages; Magnitude the wear; C4.1)
         WorkBegun = 76,         // a village laid out a structure and began it (Object the building; ArgA its kind, ArgB granaries standing; Cause1 the need; C1.1)
         HomeTaken = 53,         // a household made its home in one that stood empty (Object: who lived there last; ArgA 1 a hut, 2 a house; D2-059)
@@ -223,6 +225,8 @@ namespace TC2.Core.History
                 case HistoryKind.StoneFound:
                 case HistoryKind.ArmsMade:
                 case HistoryKind.WayWorn:
+                case HistoryKind.OreFound:
+                case HistoryKind.OreGaveOut:
                 case HistoryKind.Scouted: return Tier.Local;
                 case HistoryKind.PartySetOut: return Tier.Historical;
                 case HistoryKind.HerdHuntedOut: return Tier.Local;
@@ -303,6 +307,8 @@ namespace TC2.Core.History
                 case HistoryKind.StoneFound: b = 5; break;
                 case HistoryKind.ArmsMade: b = 8; break;
                 case HistoryKind.WayWorn: b = 4; break;
+                case HistoryKind.OreFound: b = 6; break;
+                case HistoryKind.OreGaveOut: b = 7; break;
                 case HistoryKind.PartySetOut: b = 20; break;
                 case HistoryKind.Scouted: b = 2; break;
                 case HistoryKind.HouseholdMoved: b = 1.5; break;

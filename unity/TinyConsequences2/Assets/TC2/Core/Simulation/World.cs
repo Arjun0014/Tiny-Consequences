@@ -53,6 +53,8 @@ namespace TC2.Core.Simulation
         public double ArmsMade, SmithyHours;                              // arms forged; hours at the smithies (C1.4)
         public double TrainHours;                                         // hours of practice at the training grounds (C1.5)
         public long RingsGrown;                                           // larger palisades begun round grown towns (C7.1)
+        public double OreDug, MineHours;                                  // kg of ore dug and carried home; hours at the mines (C5.1)
+        public long OreFound, OreSpent;                                   // villages that came to know copper; ore bodies dug out (C5.1)
 
         public void Write(BinWriter w)
         {
@@ -70,7 +72,7 @@ namespace TC2.Core.Simulation
             w.Long(Parties); w.Long(Foundings); w.Long(Scouts);
             w.Long(BeastBirths); w.Long(BeastDeaths); w.Long(BeastsTaken); w.Long(BeastsEaten); w.Long(BeastsFeral); w.Double(BeastFu); w.Long(TendDays);
             w.Double(PrepHours); w.Double(PrepFu); w.Double(WaterHours); w.Long(WaterTrips); w.Long(ColdDeaths); w.Long(ColdSpells);
-            w.Double(CraftHours); w.Double(GearMade); w.Long(HomesTaken); w.Long(DiedOut); w.Long(TechniquesFound); w.Long(TechniquesLost); w.Double(MetalKg); w.Long(Infections); w.Long(DiseaseDeaths); w.Long(Epidemics); w.Long(PathogensBorn); w.Long(Mutations); w.Long(TradeTrips); w.Double(TradeValue); w.Double(MetalTraded); w.Double(ReliefFu); w.Long(Takings); w.Long(TakingsSeen); w.Long(TakeWeighed); w.Double(TakenFu); w.Long(Blows); w.Long(WoundDeaths); w.Long(WatchNights); w.Long(Claims); w.Long(Amends); w.Long(Refusals); w.Long(TakenBack); w.Long(Bands); w.Long(Raids); w.Long(RaidsBeaten); w.Double(RaidLoot); w.Long(WallsPlanned); w.Long(Tributes); w.Long(TributesEnded); w.Double(TributeFu); w.Long(VillageSteps); w.Long(VillageDays); w.Double(WoodFelled); w.Long(WoodsReceded); w.Double(StoneCut); w.Double(QuarryHours); w.Long(Footings); w.Double(ArmsMade); w.Double(SmithyHours); w.Double(TrainHours); w.Long(RingsGrown);
+            w.Double(CraftHours); w.Double(GearMade); w.Long(HomesTaken); w.Long(DiedOut); w.Long(TechniquesFound); w.Long(TechniquesLost); w.Double(MetalKg); w.Long(Infections); w.Long(DiseaseDeaths); w.Long(Epidemics); w.Long(PathogensBorn); w.Long(Mutations); w.Long(TradeTrips); w.Double(TradeValue); w.Double(MetalTraded); w.Double(ReliefFu); w.Long(Takings); w.Long(TakingsSeen); w.Long(TakeWeighed); w.Double(TakenFu); w.Long(Blows); w.Long(WoundDeaths); w.Long(WatchNights); w.Long(Claims); w.Long(Amends); w.Long(Refusals); w.Long(TakenBack); w.Long(Bands); w.Long(Raids); w.Long(RaidsBeaten); w.Double(RaidLoot); w.Long(WallsPlanned); w.Long(Tributes); w.Long(TributesEnded); w.Double(TributeFu); w.Long(VillageSteps); w.Long(VillageDays); w.Double(WoodFelled); w.Long(WoodsReceded); w.Double(StoneCut); w.Double(QuarryHours); w.Long(Footings); w.Double(ArmsMade); w.Double(SmithyHours); w.Double(TrainHours); w.Long(RingsGrown); w.Double(OreDug); w.Double(MineHours); w.Long(OreFound); w.Long(OreSpent);
         }
 
         public void Read(BinReader r)
@@ -89,7 +91,7 @@ namespace TC2.Core.Simulation
             Parties = r.Long(); Foundings = r.Long(); Scouts = r.Long();
             BeastBirths = r.Long(); BeastDeaths = r.Long(); BeastsTaken = r.Long(); BeastsEaten = r.Long(); BeastsFeral = r.Long(); BeastFu = r.Double(); TendDays = r.Long();
             PrepHours = r.Double(); PrepFu = r.Double(); WaterHours = r.Double(); WaterTrips = r.Long(); ColdDeaths = r.Long(); ColdSpells = r.Long();
-            CraftHours = r.Double(); GearMade = r.Double(); HomesTaken = r.Long(); DiedOut = r.Long(); TechniquesFound = r.Long(); TechniquesLost = r.Long(); MetalKg = r.Double(); Infections = r.Long(); DiseaseDeaths = r.Long(); Epidemics = r.Long(); PathogensBorn = r.Long(); Mutations = r.Long(); TradeTrips = r.Long(); TradeValue = r.Double(); MetalTraded = r.Double(); ReliefFu = r.Double(); Takings = r.Long(); TakingsSeen = r.Long(); TakeWeighed = r.Long(); TakenFu = r.Double(); Blows = r.Long(); WoundDeaths = r.Long(); WatchNights = r.Long(); Claims = r.Long(); Amends = r.Long(); Refusals = r.Long(); TakenBack = r.Long(); Bands = r.Long(); Raids = r.Long(); RaidsBeaten = r.Long(); RaidLoot = r.Double(); WallsPlanned = r.Long(); Tributes = r.Long(); TributesEnded = r.Long(); TributeFu = r.Double(); VillageSteps = r.Long(); VillageDays = r.Long(); WoodFelled = r.Double(); WoodsReceded = r.Long(); StoneCut = r.Double(); QuarryHours = r.Double(); Footings = r.Long(); ArmsMade = r.Double(); SmithyHours = r.Double(); TrainHours = r.Double(); RingsGrown = r.Long();
+            CraftHours = r.Double(); GearMade = r.Double(); HomesTaken = r.Long(); DiedOut = r.Long(); TechniquesFound = r.Long(); TechniquesLost = r.Long(); MetalKg = r.Double(); Infections = r.Long(); DiseaseDeaths = r.Long(); Epidemics = r.Long(); PathogensBorn = r.Long(); Mutations = r.Long(); TradeTrips = r.Long(); TradeValue = r.Double(); MetalTraded = r.Double(); ReliefFu = r.Double(); Takings = r.Long(); TakingsSeen = r.Long(); TakeWeighed = r.Long(); TakenFu = r.Double(); Blows = r.Long(); WoundDeaths = r.Long(); WatchNights = r.Long(); Claims = r.Long(); Amends = r.Long(); Refusals = r.Long(); TakenBack = r.Long(); Bands = r.Long(); Raids = r.Long(); RaidsBeaten = r.Long(); RaidLoot = r.Double(); WallsPlanned = r.Long(); Tributes = r.Long(); TributesEnded = r.Long(); TributeFu = r.Double(); VillageSteps = r.Long(); VillageDays = r.Long(); WoodFelled = r.Double(); WoodsReceded = r.Long(); StoneCut = r.Double(); QuarryHours = r.Double(); Footings = r.Long(); ArmsMade = r.Double(); SmithyHours = r.Double(); TrainHours = r.Double(); RingsGrown = r.Long(); OreDug = r.Double(); MineHours = r.Double(); OreFound = r.Long(); OreSpent = r.Long();
         }
 
         public Metrics Clone() { var m = (Metrics)MemberwiseClone(); return m; }
@@ -135,7 +137,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 40; // 40: rings that grow (C7.1, D2-098), 39: ways worn by use (C4.1, D2-097), 38: markets, rings on dry ground (C1.6, D2-095), 37: training grounds and fighting skill (C1.5, D2-094), 36: the smithy and arms (C1.4, D2-093), 35: stone and the quarry (C1.3, D2-092), 34: timber from the woods (C1.2, D2-091), 33: structures by kind, works by need, granary capacity (C1.1, D2-090), 32: the store a DEEP step leads (F8), 31: DEEP steps (F8), 30: the annals (D2-077), 29: tribute and lordship (D2-075), 28: palisades (D2-074), 27: raids (D2-073), 26: amends, news and taking back (D2-072), 25: the watch, blows and injury (D2-071), 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
+        public const int FormatSimVersion = 41; // 41: copper ore bodies and mines (C5.1, D2-100), 40: rings that grow (C7.1, D2-098), 39: ways worn by use (C4.1, D2-097), 38: markets, rings on dry ground (C1.6, D2-095), 37: training grounds and fighting skill (C1.5, D2-094), 36: the smithy and arms (C1.4, D2-093), 35: stone and the quarry (C1.3, D2-092), 34: timber from the woods (C1.2, D2-091), 33: structures by kind, works by need, granary capacity (C1.1, D2-090), 32: the store a DEEP step leads (F8), 31: DEEP steps (F8), 30: the annals (D2-077), 29: tribute and lordship (D2-075), 28: palisades (D2-074), 27: raids (D2-073), 26: amends, news and taking back (D2-072), 25: the watch, blows and injury (D2-071), 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
@@ -177,6 +179,7 @@ namespace TC2.Core.Simulation
         public readonly TC2.Core.Society.Conflict Conflict = new TC2.Core.Society.Conflict();   // taking by need (D2-069)
         public readonly PagedStore<TC2.Core.Society.Band> Bands = new PagedStore<TC2.Core.Society.Band>();   // bands raised (D2-073)
         public readonly Agents.Ways Ways = new Agents.Ways();   // the ground between villages as their people walk it (C4.1)
+        public readonly Places.Deposits Deposits = new Places.Deposits();   // the ore bodies people have seen (C5.1)
         public readonly TC2.Core.History.Annals Annals = new TC2.Core.History.Annals();   // each year in numbers, for historians (D2-077)
         public readonly List<Command> CommandLog = new List<Command>();
         public readonly Metrics Metrics = new Metrics();
@@ -1287,6 +1290,7 @@ namespace TC2.Core.Simulation
             w.Int(Bands.Count); for (int id = Bands.First(); id != 0; id = Bands.Next(id)) Bands.Get(id).Write(w);
             DeedBook.Write(w);
             Ways.Write(w);
+            Deposits.Write(w);
             History.Write(w);
             w.Int(CommandLog.Count); for (int i = 0; i < CommandLog.Count; i++) CommandLog[i].Write(w);
             Metrics.Write(w);
@@ -1315,6 +1319,7 @@ namespace TC2.Core.Simulation
             int nba = r.Int(); for (int i = 0; i < nba; i++) { var ba = TC2.Core.Society.Band.Read(r); w.Bands.Add(ba.Id, ba); }
             w.DeedBook.Read(r);
             w.Ways.Read(r);
+            w.Deposits.Read(r);
             w.Settlements.SetMaxId(w.Ids.Peek(EntityKind.Settlement) - 1);
             w.Households.SetMaxId(w.Ids.Peek(EntityKind.Household) - 1);
             w.People.SetMaxId(w.Ids.Peek(EntityKind.Person) - 1);
@@ -1356,6 +1361,7 @@ namespace TC2.Core.Simulation
             for (int id = Bands.First(); id != 0; id = Bands.Next(id)) Bands.Get(id).Hash(ref h);
             DeedBook.Hash(ref h);
             Ways.Hash(ref h);
+            Deposits.Hash(ref h);
             History.Hash(ref h);
             h.Add(CommandLog.Count); for (int i = 0; i < CommandLog.Count; i++) CommandLog[i].Hash(ref h);
             Annals.Hash(ref h);

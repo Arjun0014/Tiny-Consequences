@@ -154,7 +154,7 @@ namespace TC2.Headless
                                           "  knows " + ((st.TechKnown & 1) != 0 ? "N" : "-") + ((st.TechKnown & 2) != 0 ? "L" : "-") + ((st.TechKnown & 4) != 0 ? "Q" : "-") +
                                           ((st.TechKnown & 8) != 0 ? "P" : "-") + ((st.TechKnown & 16) != 0 ? "A" : "-") + ((st.TechKnown & 32) != 0 ? "M" : "-") +
                                           " (" + F(st.BestNets, "0.00") + "/" + F(st.BestLoom, "0.00") + "/" + F(st.BestQuern, "0.00") + "/" + F(st.BestPottery, "0.00") + "/" + F(st.BestArd, "0.00") + ")" +
-                                          "  fibre " + F(st.Fibre, "0") + " hides " + F(st.Hides, "0") + " metal " + F(st.Metal, "0.0") + (w.Learning.Clay(st.Cell) ? " clay" : "") + (w.Learning.Rock(st.Cell) ? " rock" : "") + (w.Learning.Ore(st.Cell) ? " ore" : "") +
+                                          "  fibre " + F(st.Fibre, "0") + " hides " + F(st.Hides, "0") + " metal " + F(st.Metal, "0.0") + (w.Learning.Clay(st.Cell) ? " clay" : "") + (w.Learning.Rock(st.Cell) ? " rock" : "") + (st.OreCell != 0 ? " copper " + F(st.OreDist, "0") + " m" : "") +
                                           "  stock cattle " + w.Stock.CountOf(sid, TC2.Core.Places.Livestock.Cattle) + " goats " + w.Stock.CountOf(sid, TC2.Core.Places.Livestock.Goat) + " pigs " + w.Stock.CountOf(sid, TC2.Core.Places.Livestock.Pig) + PastureLine(sid) + HerdLine(w, sid));
                     }
                 }
@@ -244,6 +244,21 @@ namespace TC2.Headless
                         }
                         Console.WriteLine("stone: " + know + " of " + villages2 + " villages know rock, " + quarries + " quarries (" + F(quarries > 0 ? dq / quarries : 0, "0") + " m out on average); cut " + F(w.Metrics.StoneCut, "0") +
                                           " loads in " + F(w.Metrics.QuarryHours, "0") + " h; houses on stone footings " + footed + " of " + houses + " standing (" + w.Metrics.Footings + " raised so)");
+                    }
+                    // copper ore and the mines (C5.1)
+                    {
+                        int know = 0, mines = 0, villages3 = 0; double dm = 0, left = 0, taken = 0; int bodies = w.Deposits.Count, spent = 0;
+                        for (int sid3 = w.Settlements.First(); sid3 != 0; sid3 = w.Settlements.Next(sid3))
+                        {
+                            var st3 = w.Settlements.Get(sid3);
+                            if (!st3.Inhabited) continue;
+                            villages3++;
+                            if (st3.OreCell > 0) know++;
+                            if (TC2.Core.Places.Mining.Mine(w, sid3) != 0) { mines++; dm += st3.OreDist; }
+                        }
+                        for (int i = 0; i < bodies; i++) { var d = w.Deposits.Get(i); left += d.Ore; taken += d.Taken; if (d.GaveOut != 0) spent++; }
+                        Console.WriteLine("ores: " + know + " of " + villages3 + " villages know copper, " + mines + " mines (" + F(mines > 0 ? dm / mines : 0, "0") + " m out on average); " + bodies + " bodies seen, " + spent +
+                                          " dug out; ore dug " + F(w.Metrics.OreDug / 1000.0, "0.0") + " t in " + F(w.Metrics.MineHours, "0") + " h (left in the bodies seen " + F(left / 1000.0, "0") + " t); metal smelted " + F(w.Metrics.MetalKg, "0") + " kg");
                     }
                     // the smithy and arms (C1.4)
                     {
@@ -524,7 +539,7 @@ namespace TC2.Headless
                     switch (e.Kind)
                     {
                         case HistoryKind.SettlementFounded: case HistoryKind.WorkBegun: case HistoryKind.WorkBuilt: case HistoryKind.WoodsReceded:
-                        case HistoryKind.StoneFound: case HistoryKind.ArmsMade: case HistoryKind.WatchSet: case HistoryKind.WallPlanned:
+                        case HistoryKind.StoneFound: case HistoryKind.OreFound: case HistoryKind.OreGaveOut: case HistoryKind.ArmsMade: case HistoryKind.WatchSet: case HistoryKind.WallPlanned:
                         case HistoryKind.WallBuilt: case HistoryKind.WallFallen: case HistoryKind.BandRaised: case HistoryKind.Raid:
                         case HistoryKind.TributeAgreed: case HistoryKind.TributeEnded: case HistoryKind.Famine: case HistoryKind.TechniqueKnown:
                         case HistoryKind.HomesDrowned: case HistoryKind.SettlementAbandoned:

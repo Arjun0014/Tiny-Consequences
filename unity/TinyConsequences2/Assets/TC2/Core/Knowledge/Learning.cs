@@ -100,7 +100,7 @@ namespace TC2.Core.Knowledge
                 for (int b = 0; b < 8 && !coast; b++) if (!P.IsLand(g.Nbr8[c1 * 8 + b])) coast = true;
             }
             // (pots where clay is near, the ard where the founders keep cattle: D2-063)
-            bool clay = w.Learning.Clay(s.Cell), cattle = w.Stock.CountOf(sid, Livestock.Cattle) > 0, ore = w.Learning.Ore(s.Cell);
+            bool clay = w.Learning.Clay(s.Cell), cattle = w.Stock.CountOf(sid, Livestock.Cattle) > 0, ore = s.OreCell != 0;   // (the copper its founders saw: C5.1)
             double nets = coast ? 0.8 : 0.2, loom = 0.6, quern = 0.35, pottery = clay ? 0.75 : 0.2, ard = cattle ? 0.15 : 0.0, metal = ore ? 0.25 : 0.0;
             var res = w.Residents(sid);
             for (int t = 0; t < Tech.Count; t++)
@@ -147,7 +147,7 @@ namespace TC2.Core.Knowledge
             if (t == Tech.Pottery && !Clay(s.Cell)) return; // pots want clay: where rivers and lakes lay it (D2-063)
             if (t == Tech.Ard && !w.Stock.HasOx(p.Household)) return;   // an ard wants an ox to draw it
             // copper wants ore near (D2-064), and a potter's furnace and crucible: a technique that needs a technique
-            if (t == Tech.Metal && (!Ore(s.Cell) || p.KPottery < Tech.Competent)) return;
+            if (t == Tech.Metal && (s.OreCell == 0 || p.KPottery < Tech.Competent)) return;   // (copper its people have seen: C5.1)
             double chance = Tech.Laws[t].Discover * hours * (0.5 + p.Curious / 255.0);
             double u = KeyedRng.Unit(w.Seed, RngStream.Knowledge, (ulong)p.Id, (ulong)w.Now, (ulong)t);
             if (u >= chance) return;
@@ -176,19 +176,6 @@ namespace TC2.Core.Knowledge
         public const double ClayReach = 1200.0;
 
         static bool Wet(Planet.PlanetState P, int c) => P.IsLand(c) && (P.IsStream(c) || P.LakeDepth[c] > 0.3f);
-
-        /// <summary>Copper ore near a village (D2-064): rock showing, and a volcano - living or gone quiet - within 3 km (arcs lay copper).</summary>
-        public bool Ore(int cell)
-        {
-            var P = _w.Planet;
-            if (!Rock(cell)) return false;
-            Foundation.Vec3d at = P.Grid.Center[cell];
-            for (int i = 0; i < P.Vents.Count; i++) if (Foundation.Vec3d.ArcDistance(P.Vents[i].At, at, Planet.PlanetState.GeoRadius) <= OreReach) return true;
-            return false;
-        }
-
-        /// <summary>How far from a volcano copper ore shows (geo-m: the arc's ground, D2-085).</summary>
-        public const double OreReach = 3000.0;
 
         /// <summary>Rock showing near a village: a cell within two rings of it standing 40 m or more above or below a neighbour.</summary>
         public bool Rock(int cell)

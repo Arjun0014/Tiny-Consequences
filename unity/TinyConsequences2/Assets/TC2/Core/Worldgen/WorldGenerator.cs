@@ -349,7 +349,8 @@ namespace TC2.Core.Worldgen
                 Homes.Raised(w, hid);   // its house stands on its lot (D2-059)
                 StartingHerd(w, hid, sid);
             }
-            // what its founders know (D2-062)
+            // the copper its founders saw round their site (C5.1), then what they know (D2-062)
+            Places.Mining.Look(w, sid);
             Knowledge.Learning.Founders(w, sid);
             // stores to see the founders through to their first harvest
             ref var st = ref w.Settlements.Get(sid);

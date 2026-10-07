@@ -935,11 +935,16 @@ namespace TC2.Game
                 for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
                 {
                     ref var st = ref w.Settlements.Get(sid);
-                    if (st.Quarry == 0 || !w.Buildings.Exists(st.Quarry)) continue;
-                    ref var qb = ref w.Buildings.Get(st.Quarry);
-                    Vec3d at = st.LocalToSphere(qb.X, qb.Y, P.Radius);
-                    double dq = System.Math.Acos(System.Math.Min(1.0, at.X * pc.x + at.Y * pc.y + at.Z * pc.z));
-                    if (dq < reach) _sites.Add(at);
+                    for (int k = 0; k < 2; k++)
+                    {
+                        // the ground broken at a quarry and at a mine (C1.3, C5.1)
+                        int site = k == 0 ? st.Quarry : st.Mine;
+                        if (site == 0 || !w.Buildings.Exists(site)) continue;
+                        ref var qb = ref w.Buildings.Get(site);
+                        Vec3d at = st.LocalToSphere(qb.X, qb.Y, P.Radius);
+                        double dq = System.Math.Acos(System.Math.Min(1.0, at.X * pc.x + at.Y * pc.y + at.Z * pc.z));
+                        if (dq < reach) _sites.Add(at);
+                    }
                 }
             }
             for (int o = 0; o < cols.Length; o++)

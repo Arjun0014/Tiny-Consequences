@@ -21,6 +21,29 @@ namespace TC2.Tests.Core
 
         public static World Make(ulong seed = 7) => WorldGenerator.Create(Small(seed));
 
+        /// <summary>
+        /// A small world in which a village's people have seen copper (C5.1): its founders saw it, or - the premise - someone of it went to
+        /// the nearest copper body within its reach and saw it there.
+        /// </summary>
+        public static World WithCopper(out int sid, ulong from = 481, ulong to = 600)
+        {
+            for (ulong seed = from; seed < to; seed++)
+            {
+                var w = Make(seed);
+                for (sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) if (w.Settlements.Get(sid).OreCell != 0) return w;
+                for (sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                {
+                    var near = new List<int>();
+                    w.Hazards.CellsWithin(w, w.Settlements.Get(sid).Cell, 0.9 * TC2.Core.Places.Mining.Reach, near);
+                    near.Sort();
+                    for (int i = 0; i < near.Count; i++)
+                        if (TC2.Core.Places.Mining.CopperAt(w, near[i])) { TC2.Core.Places.Mining.Saw(w, sid, 0, near[i]); if (w.Settlements.Get(sid).OreCell != 0) return w; }
+                }
+            }
+            sid = 0;
+            return null;
+        }
+
         /// <summary>Every living person has exactly one live (non-stale) step event, and lists agree with state.</summary>
         public static string Audit(World w)
         {

@@ -78,3 +78,8 @@ their users. Stores rot by kind (grain 0.3 % a day kept well, D2-042; pottery sl
   ~3 loads an hour cut, every load carried home; houses on footings last twice as long once left; villages without rock at hand build on
   posts. Seed 42, 300 years: 13 of 19 villages quarry, 2,079 of 3,278 houses on footings. Not yet: masonry, stone walls, dressed stone,
   sleds and carts for the carry (C4), upkeep of lived-in homes (C13).
+- **Copper ore bodies and the mine (C5.1, D2-100)**: `Core/Places/Mining.cs`, `World.Deposits` - copper on 15 % of the crags within 2 km (geo)
+  of a volcano, 1-20 t a body (keyed by its cell), kept from the first sight and counted down by what is dug; seen where its people go, kept
+  within 2 km; a mine at the body when someone can smelt and the tools or arms are short of metal; 25 kg an hour dug, every load carried home;
+  smelting takes 5 kg of ore a kilo; a body gives out (history), its mine is left, the village looks again. Seed 42, 300 years: 12 of 19
+  villages know copper, 7 of 23 bodies seen dug out, 64 t dug. Not yet: iron and bog ore, charcoal, smelting at the mine, ore traded, claims.

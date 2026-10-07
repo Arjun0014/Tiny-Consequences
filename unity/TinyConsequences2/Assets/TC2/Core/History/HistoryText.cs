@@ -94,6 +94,10 @@ namespace TC2.Core.History
                                        : "A path is worn between " + subj + " and " + obj + ": their people walk it often.";
                 case HistoryKind.ArmsMade:
                     return subj + " began to forge arms at the smithy of " + obj + (e.ArgA == 1 ? " from the ore they smelt" : ", reforging its tools") + ": " + obj + " fears its neighbours.";
+                case HistoryKind.OreFound:
+                    return (e.Other.IsNone ? "The people of " + subj : other + " of " + subj) + " saw copper ore - green stone - showing " + F(e.Magnitude / 1000.0, "0.0") + " km from " + subj + ".";
+                case HistoryKind.OreGaveOut:
+                    return "The copper at " + subj + "'s mine gave out: " + (e.Magnitude >= 1000f ? F(e.Magnitude / 1000.0, "0.0") + " t" : F(e.Magnitude, "0") + " kg") + " of ore had been dug from it.";
                 case HistoryKind.StoneFound:
                     return (e.Other.IsNone ? "The people of " + subj : other + " of " + subj) + " saw rock fit for building " + F(e.Magnitude / 1000.0, "0.0") + " km from " + subj + ".";
                 case HistoryKind.WoodsReceded:
@@ -229,6 +233,7 @@ namespace TC2.Core.History
                 case ActivityKind.Train: return "practising with spear and shield at " + home + "'s training ground: " + home + " fears its neighbours";
                 case ActivityKind.Smith:
                     return "at " + home + "'s smithy, " + (w.Settlements.Exists(p.Home) && w.Settlements.Get(p.Home).Arms < TC2.Core.Places.Forge.ArmsWant(w.Settlements.Get(p.Home)) ? "forging arms: " + home + " fears its neighbours" : "smelting and working metal for the village's tools");
+                case ActivityKind.Mine: return "digging copper ore at " + home + "'s mine and carrying it home: its smiths want ore for tools and arms";
                 case ActivityKind.Quarry: return "cutting stone at " + home + "'s quarry and carrying it home: the village wants stone for its houses' footings";
                 case ActivityKind.Scout: return "gone to look at the land beyond: " + home + " is crowded or hungry and knows no good place";
                 case ActivityKind.Move: return "walking with the household to a new home" + (dest.Length > 0 ? " at " + dest : "");
@@ -247,6 +252,7 @@ namespace TC2.Core.History
             if (kind == TC2.Core.Places.Structures.Market) return "a market on the green: traders come often to deal there";
             if (kind == TC2.Core.Places.Structures.Ground) return "a training ground: they fear their neighbours";
             if (kind == TC2.Core.Places.Structures.Smithy) return "a smithy: they have a smith and use for metal";
+            if (kind == TC2.Core.Places.Structures.Mine) return "a mine at the copper they found: ore for their smiths";
             if (kind == TC2.Core.Places.Structures.Quarry) return "a quarry at the rock they found: stone for their houses' footings";
             return "a " + TC2.Core.Places.Structures.Name(kind);
         }

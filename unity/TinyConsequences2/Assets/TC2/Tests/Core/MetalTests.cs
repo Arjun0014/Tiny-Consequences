@@ -27,12 +27,15 @@ namespace TC2.Tests.Core
                 ore = 0; none = 0;
                 for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
                 {
-                    if (w.Learning.Ore(w.Settlements.Get(sid).Cell)) { if (ore == 0) ore = sid; } else if (none == 0) none = sid;
+                    if (w.Settlements.Get(sid).OreCell != 0) { if (ore == 0) ore = sid; } else if (none == 0) none = sid;
                 }
                 if (ore != 0) return w;
             }
-            ore = 0; none = 0;
-            return null;
+            // (no founders saw copper in these worlds: one whose people went to a body near them - C5.1)
+            var w2 = TestWorlds.WithCopper(out ore);
+            none = 0;
+            if (w2 != null) for (int sid = w2.Settlements.First(); sid != 0; sid = w2.Settlements.Next(sid)) if (w2.Settlements.Get(sid).OreCell == 0) { none = sid; break; }
+            return w2;
         }
 
         static void Unknown(World w)
@@ -93,7 +96,8 @@ namespace TC2.Tests.Core
             var res = w.Residents(ore);
             for (int i = 0; i < res.Count; i++) { ref var p = ref w.People.Get(res[i]); if (p.AgeYears(w.Now) >= 16) { p.KMetal = 0.9f; p.KPottery = 0.8f; } }
             ref var s0 = ref w.Settlements.Get(ore);
-            s0.Metal = 0; s0.Woodstore = 500;
+            s0.Metal = 0; s0.Woodstore = 500; s0.Ore = 0; s0.BestMetal = 0.9f;
+            double dug0 = w.Metrics.OreDug;
             double kg0 = w.Metrics.MetalKg;
             double pace0 = Tech.MetalPace(Tech.MetalShare(0, s0.Population));
             w.AdvanceTo(w.Now + SimTime.Years(1));
@@ -101,6 +105,8 @@ namespace TC2.Tests.Core
             double share = Tech.MetalShare(s.Metal, s.Population);
             Console.WriteLine("a year of smiths in a village of " + s.Population + ": " + s.Metal.ToString("0.0") + " kg of metal tools (" + (100 * share).ToString("0") + " % of a toolkit a head), smelted in the world " + (w.Metrics.MetalKg - kg0).ToString("0.0") + " kg; the pace of hands " + pace0.ToString("0.00") + " -> " + Tech.MetalPace(share).ToString("0.00"));
             Assert.Greater(s.Metal, 0.0, "metal in the store");
+            Console.WriteLine("ore dug in the world " + (w.Metrics.OreDug - dug0).ToString("0") + " kg; left in the village's store " + s.Ore.ToString("0") + " kg; its mine " + s.Mine);
+            Assert.Greater(w.Metrics.OreDug - dug0, 0.0, "the ore was dug first (no metal from nothing: C5.1)");
             Assert.Greater(Tech.MetalPace(share), pace0, "and quicker hands for it");
             Assert.IsNull(TestWorlds.Audit(w));
         }

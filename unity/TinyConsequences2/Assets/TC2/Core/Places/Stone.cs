@@ -52,6 +52,7 @@ namespace TC2.Core.Places
         public static void Saw(World w, int sid, int pid, int cell)
         {
             if (cell < 0 || !w.Settlements.Exists(sid)) return;
+            Mining.Saw(w, sid, pid, cell);   // (and copper, where it shows: C5.1)
             var P = w.Planet;
             ref var s = ref w.Settlements.Get(sid);
             int best = -1; double bd = s.StoneCell > 0 ? s.StoneDist : Reach + 1;

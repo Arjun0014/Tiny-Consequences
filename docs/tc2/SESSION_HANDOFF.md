@@ -31,11 +31,16 @@
   `Hud.ShowPerson`), WebBridge `person PID|oldest [TAB]`, `webtest.mjs` shots `9_person*`, headless `person --load SAVE [--pid N | --pick
   oldest|smith|fighter|elder|child] [--village ID]` (`tc2/headless/app/src/Person.cs`). The page's look is not yet seen: IMGUI is not drawn in
   batch shots - check it in the next Web build (`unity.mjs configure` first for River.mat/Road.mat).
-- **Next**: C2.x (clearing as labour, kilns), then C5 claims on deposits that deplete (the resource town proof). (Was the C4.1 plan: each route keeps its use (walkers and loads, decaying); track -> path -> road by use; speed by
-  state; the view draws roads by use only (today every pair of villages within 4.5 km gets a road whatever its use - theatre); then **C7.1**
-  rings that grow with the town (a new, larger ring when homes outgrow a sound palisade; gates as structures); **C12.1** the person page
-  (`07` §9); C2.x clearing as labour, kilns; C5 claims on deposits that deplete. Seen and left: people walking routes across cells the sea
-  has since drowned; works hard to tell from homes at the village view; the training ground's posts too thin to read.
+- **C5.1 copper from the ground done (D2-100)**: `Core/Places/Mining.cs` (`Deposit`, `Deposits` store in `World`, `Mining` law), structure
+  kind 17 mine, `ActivityKind.Mine` 31, `WhyCode.Ore` 39, history `OreFound` 81 / `OreGaveOut` 82, `RngStream.Geology`, settlement fields
+  `OreCell/OreDist/OreEvent/Ore/OreWant/Mine`; `TestWorlds.WithCopper` premise; kit `mine_pit`; headless `ores:` line. Runs
+  `tc2/out/civ/s{42,7,11}_c51d` (saves 100/200/300; `_c51a`-`_c51c` are the tuning tries), shots `mine1`, `mine2` (`--village 3 --views work17`).
+- **Next**: **C5.2 iron** - bog ore where water stands on flat ground (a second deposit kind in `Mining`), charcoal made in a clamp at the
+  woodlot (a store of the village's; smelting and smithing burn it instead of wood), the bloomery (iron from ore and charcoal, ~8 kg ore and
+  ~10 kg charcoal a kilo: `22` §1), a technique found by smiths who know copper, iron's larger use a head and stronger arms; then C5.3 distant
+  work (smelting at a far mine, camps, a mining hamlet founded by work), C5.4 claims. Seen and left: people walking routes across cells the
+  sea has since drowned; works hard to tell from homes at the village view; the training ground's posts too thin to read; fields drawn over
+  crags; COARSE hearth smelting only when goods are short (D2-100); the person page's look in a Web build.
 
 ## Session 5 (7 Oct 2026, from 06:40 IST) — in progress
 

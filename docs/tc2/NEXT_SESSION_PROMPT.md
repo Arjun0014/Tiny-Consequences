@@ -109,8 +109,9 @@ kind with works by need and their causes (well, granaries and barns with real ca
 timber felled from real woods (woodlots recede; fields clear what they farm), stone known by seeing it and carried home (houses on footings),
 arms forged only at a smithy by villages that fear their neighbours, fighting skill from practice and fights survived, markets made by
 traders, rings on dry ground; building page in the HUD. Since: C4.1 roads by use (D2-097), C7.1 rings that grow (D2-098), C12.1 the
-person page (D2-099: `Core/History/Biography`, the HUD's Life page, headless `person`). Next: C2.x clearing as labour and kilns, C5 claims on
-deposits that deplete (SESSION_HANDOFF "Next").
+person page (D2-099: `Core/History/Biography`, the HUD's Life page, headless `person`), C5.1 copper from the ground (D2-100: finite ore
+bodies seen, mined, carried and dug out - `Core/Places/Mining.cs`). Next: C5.2 iron, C5.3 distant work and the mining hamlet, C5.4 claims
+(SESSION_HANDOFF "Next").
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
