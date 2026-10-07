@@ -81,10 +81,12 @@ namespace TC2.Core.History
                 for (int i = 0; i < bl.Count; i++)
                 {
                     ref var b = ref w.Buildings.Get(bl[i]);
-                    if (b.Kind != Structures.Boat) continue;
+                    if (!Boats.IsBoat(b.Kind)) continue;
                     if (b.Done == 0 && b.Left == 0) making++; else if (Boats.Sound(in b, w.Now)) boats++; else if (b.Done != 0) hulks++;
                 }
+                double ldx = (double)s.LandX - s.SquareX, ldy = (double)s.LandY - s.SquareY;
                 sb.Append("It fishes from the shore").Append(boats > 0 ? " and from " + boats + (boats == 1 ? " dugout" : " dugouts") + " at its landing" : "")
+                  .Append(s.LandAt != 0 ? " (the landing " + F(DMath.Sqrt(ldx * ldx + ldy * ldy), "0") + " m from the square, since " + Year(s.LandAt) + ")" : "")
                   .Append(making > 0 ? " (" + making + " being hollowed)" : "").Append(hulks > 0 ? "; " + hulks + " old hulks on the beach" : "")
                   .Append(s.Sea.A >= 0 ? "; an hour at sea is worth " + F(Boats.SeaExpect(w, in s), "0.0") + " days' food against " + F(s.Fish.Expect, "0.0") + " on the shore" : "").Append(".\n");
             }

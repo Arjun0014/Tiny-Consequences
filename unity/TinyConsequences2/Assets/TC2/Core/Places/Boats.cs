@@ -41,7 +41,7 @@ namespace TC2.Core.Places
         public const double Drown = 0.4;
 
         /// <summary>A boat that can go out: made, kept (its household still owns it) and not yet split with age.</summary>
-        public static bool Sound(in Building b, long now) => b.Kind == Structures.Boat && b.Done != 0 && b.Left == 0 && now - b.Built < (long)(Years * SimTime.Year);
+        public static bool Sound(in Building b, long now) => IsBoat(b.Kind) && b.Done != 0 && b.Left == 0 && now - b.Built < (long)(Years * SimTime.Year);
 
         /// <summary>The household's boat when it can go out now (worn ones are left on the beach first), or 0.</summary>
         public static int Of(World w, int hid)
@@ -167,7 +167,21 @@ namespace TC2.Core.Places
         {
             ref var s = ref w.Settlements.Get(sid);
             if (!s.Inhabited || s.Sea.A < 0) return;
+            if (!EnsureLanding(w, sid)) return;   // (no beach to launch from: no boats - C9.2)
             var hl = w.HouseholdsOf(sid);
+            // a sea risen over the beach: the boats lying in it are drawn up again at the landing (C9.2; a coast that changed cells: ShoreMoved)
+            var P = w.Planet;
+            for (int i = 0; i < hl.Count; i++)
+            {
+                int hb = w.Households.Get(hl[i]).Boat;
+                if (hb == 0 || !w.Buildings.Exists(hb)) continue;
+                ref var b = ref w.Buildings.Get(hb);
+                ref var sb = ref w.Settlements.Get(sid);
+                if (b.Left != 0 || !Afloat(P, sb.LocalToSphere(b.X, b.Y, P.Radius))) continue;
+                if (Aboard(w, hl[i], hb) > 0) continue;   // (out at sea: drawn up when it is back)
+                if (!Landing(w, sid, out float lx, out float ly, hb)) continue;
+                ref var b2 = ref w.Buildings.Get(hb); b2.X = lx; b2.Y = ly;
+            }
             // a boat still not made a year after it was laid down is given up (no timber came, or no hands): the half-hollowed trunk is left
             for (int i = 0; i < hl.Count; i++)
             {
@@ -192,7 +206,7 @@ namespace TC2.Core.Places
         public static int Begin(World w, int sid, int hid)
         {
             ref var s = ref w.Settlements.Get(sid);
-            Landing(w, sid, out float x, out float y);
+            Landing(w, sid, out float x, out float y);   // (at the village's landing, a free spot on its beach: C9.2)
             int id = w.Ids.Next(EntityKind.Building);
             w.Buildings.Add(id, new Building { Id = id, Settlement = sid, X = x, Y = y, Kind = Structures.Boat, Household = hid, Style = hid, Built = w.Now, Cond = 1f });
             w.BuildingsOf(sid).InsertSorted(id);
@@ -235,33 +249,152 @@ namespace TC2.Core.Places
         /// <summary>Whether the household has a boat to make and the store has timber for it.</summary>
         public static bool HasWork(World w, in Settlement s, int hid) => Making(w, hid) != 0 && s.Woodstore >= Wood / Hours;
 
-        /// <summary>Where the village's boats are drawn up: on the beach of its best fishing ground, a boat's length apart, on dry sand (the
-        /// square when it fishes no water, or no dry sand lies near it: false).</summary>
-        public static bool Landing(World w, int sid, out float x, out float y)
+        // ---------------------------------------------------------------- the landing (C9.2)
+
+        /// <summary>
+        /// A place for a boat at the village's landing: the landing kept (EnsureLanding), then the first free spot along the beach either side
+        /// of it - a boat's length and a half apart, each drawn up to just above the waterline there (Drawn), none within a boat's width of
+        /// another boat of the village (`except`: the boat being placed). False when the village has no beach (the square then).
+        /// </summary>
+        public static bool Landing(World w, int sid, out float x, out float y, int except = 0)
+        {
+            ref var s0 = ref w.Settlements.Get(sid);
+            x = s0.SquareX; y = s0.SquareY;
+            if (!EnsureLanding(w, sid)) return false;
+            ref var s = ref w.Settlements.Get(sid);
+            double vx = -s.LandUy, vy = s.LandUx;   // (along the beach)
+            for (int k = 0; k < 24; k++)
+            {
+                double side = ((k & 1) == 0 ? 1.0 : -1.0) * ((k + 1) >> 1) * 3.5;
+                if (!Drawn(w, in s, s.LandX + vx * side, s.LandY + vy * side, s.LandUx, s.LandUy, out double bx, out double by)) continue;
+                if (Taken(w, sid, bx, by, except)) continue;
+                x = (float)bx; y = (float)by;
+                return true;
+            }
+            x = s.LandX; y = s.LandY;   // (two dozen boats on one beach: the next lies by the first)
+            return true;
+        }
+
+        /// <summary>m above the sea a boat is drawn up to - above the reach of a sea a little risen - or as far as UpTheBeachMost up a flat beach.</summary>
+        const double DrawnUp = 1.0, UpTheBeachMost = 25.0;
+
+        /// <summary>
+        /// A boat drawn up from the sea at (x, y): down the beach (against u) to the sea's surface within 40 m, or - where that spot lies in the
+        /// water (a beach curving out) - up it out of the water; then up the beach from the waterline (UpTheBeach). False when no sea is that near.
+        /// </summary>
+        static bool Drawn(World w, in Settlement s, double x, double y, double ux, double uy, out double bx, out double by)
+        {
+            var P = w.Planet;
+            bx = x; by = y;
+            if (Afloat(P, s.LocalToSphere(x, y, P.Radius)))
+            {
+                for (double t = 1.0; t <= 40.0; t += 1.0)
+                    if (!Afloat(P, s.LocalToSphere(x + ux * t, y + uy * t, P.Radius))) return UpTheBeach(w, in s, x + ux * t, y + uy * t, ux, uy, out bx, out by);
+                return false;
+            }
+            for (double t = 1.0; t <= 40.0; t += 1.0)
+                if (AtSea(P, s.LocalToSphere(x - ux * t, y - uy * t, P.Radius)))
+                    return UpTheBeach(w, in s, x - ux * (t - 1.0), y - uy * (t - 1.0), ux, uy, out bx, out by);
+            return false;
+        }
+
+        /// <summary>From the waterline at (x, y), up the beach (u) until the ground stands DrawnUp above the sea - at most UpTheBeachMost metres:
+        /// where a boat is drawn up out of the reach of a sea a little risen. False when that spot is itself in the water.</summary>
+        static bool UpTheBeach(World w, in Settlement s, double x, double y, double ux, double uy, out double bx, out double by)
+        {
+            var P = w.Planet;
+            bx = x; by = y;
+            for (double t = 0.0; t <= UpTheBeachMost; t += 1.0)
+            {
+                bx = x + ux * t; by = y + uy * t;
+                if (Shore.At(P, s.LocalToSphere(bx, by, P.Radius), out _, out double lake) >= P.SeaLevel + DrawnUp && lake <= 0.3) break;
+            }
+            return !Afloat(P, s.LocalToSphere(bx, by, P.Radius));
+        }
+
+        /// <summary>Another kept boat of the village lies within a boat's width of this spot.</summary>
+        static bool Taken(World w, int sid, double x, double y, int except)
+        {
+            var bl = w.BuildingsOf(sid);
+            for (int i = 0; i < bl.Count; i++)
+            {
+                if (bl[i] == except) continue;
+                ref var o = ref w.Buildings.Get(bl[i]);
+                if (!IsBoat(o.Kind) || o.Left != 0) continue;
+                double dx = (double)o.X - x, dy = (double)o.Y - y;
+                if (dx * dx + dy * dy < 2.5 * 2.5) return true;
+            }
+            return false;
+        }
+
+        /// <summary>A kind of structure that floats (C9.1: the dugout).</summary>
+        public static bool IsBoat(byte kind) => kind == Structures.Boat;
+
+        /// <summary>
+        /// The village's landing (C9.2): the beach nearest its square - chosen when it first lays down a boat and kept while the water is there;
+        /// when the coast has left it, the beach nearest then. Before, each boat lay at the beach of the day's best fishing ground, so a
+        /// village's boats lay scattered along its shores, some a kilometre out.
+        /// </summary>
+        public static bool EnsureLanding(World w, int sid)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.LandAt != 0 && AtWater(w, in s, s.LandX, s.LandY)) return true;
+            if (!Beach(w, sid, out double x, out double y, out double ux, out double uy)) return false;
+            ref var s2 = ref w.Settlements.Get(sid);
+            s2.LandX = (float)x; s2.LandY = (float)y; s2.LandUx = (float)ux; s2.LandUy = (float)uy; s2.LandAt = w.Now;
+            return true;
+        }
+
+        /// <summary>
+        /// The beach nearest the village's square: the sea nearest it, ring by ring of cells out from the village's cell (of the first ring that
+        /// reaches the sea, the cell nearest the square), then the drawn waterline on the way from the square to that sea (the shore as the
+        /// view draws it, Shore.At - not a cell's edge: on a low coast the cells' midpoint lay a hundred metres from the water), the landing
+        /// DrawnUp metres up from it; `ux, uy` up the beach (toward the square). Where the way meets no sea, the shore nearest the village's best
+        /// fishing ground instead.
+        /// </summary>
+        static bool Beach(World w, int sid, out double x, out double y, out double ux, out double uy)
         {
             var P = w.Planet; var g = P.Grid;
             ref var s = ref w.Settlements.Get(sid);
+            x = s.SquareX; y = s.SquareY; ux = 0; uy = 1;
+            Vec3d square = s.LocalToSphere(s.SquareX, s.SquareY, P.Radius);
+            if (Edge(w, s.Cell, square, false, out int sea, out _))
+            {
+                s.SphereToLocal(g.Center[sea], P.Radius, out double tx, out double ty);
+                if (Waterline(w, in s, s.SquareX, s.SquareY, tx, ty, out x, out y, out ux, out uy)) return true;
+            }
             int ground = s.Fish.A >= 0 ? s.Fish.A : s.Sea.A;
-            if (ground < 0) { x = s.SquareX; y = s.SquareY; return false; }
-            // the water's edge of that ground nearest the village (WildFood.GroundPoint's shore): the land nearest the ground, ring by ring
-            // of neighbours out from it (a ground fished from the shore may lie a few cells out), the nearest the village of the first ring
-            // that reaches land, and the water it was reached from
-            Vec3d at = g.Center[ground];
-            if (ShoreOf(w, ground, s.Anchor, out int land, out int water)) at = (g.Center[land] + g.Center[water]).Normalized;
-            s.SphereToLocal(at, P.Radius, out double ex, out double ey);
-            // the nearest dry sand to that edge (rings outward: the square may lie across a bay), then along the beach by how many boats lie
-            // there - each spot itself dry
-            int n = 0;
-            var bl = w.BuildingsOf(sid);
-            for (int i = 0; i < bl.Count; i++) { ref var o = ref w.Buildings.Get(bl[i]); if (o.Kind == Structures.Boat && o.Left == 0) n++; }
-            if (!NearestDry(w, in s, ex, ey, out double px, out double py)) { x = s.SquareX; y = s.SquareY; return false; }
-            double side = ((n & 1) == 0 ? 1.0 : -1.0) * ((n + 1) >> 1) * 3.5;
-            double dx = px - ex, dy = py - ey, len = DMath.Max(1.0, DMath.Sqrt(dx * dx + dy * dy));
-            double ux = dx / len, uy = dy / len;   // (up the beach: from the water's edge to the dry sand)
-            if (!NearestDry(w, in s, px + 2.0 * ux - uy * side, py + 2.0 * uy + ux * side, out double bx, out double by)) { bx = px; by = py; }
-            x = (float)bx; y = (float)by;
-            return true;
+            if (ground < 0) return false;
+            s.SphereToLocal(g.Center[ground], P.Radius, out double gx, out double gy);
+            return Waterline(w, in s, s.SquareX, s.SquareY, gx, gy, out x, out y, out ux, out uy);
         }
+
+        /// <summary>
+        /// On the way from (fx, fy) toward (tx, ty) (and a little beyond: the drawn shore may lie past a cell's centre), the first spot at the
+        /// sea's surface; the landing DrawnUp metres back from the last spot out of the water, `u` the way back. False when no sea is met.
+        /// </summary>
+        static bool Waterline(World w, in Settlement s, double fx, double fy, double tx, double ty, out double x, out double y, out double ux, out double uy)
+        {
+            var P = w.Planet;
+            x = fx; y = fy; ux = 0; uy = 1;
+            // (from dry ground: a square the sea has risen over starts from the nearest spot out of the water)
+            OutOfTheWater(w, in s, ref fx, ref fy);
+            if (Afloat(P, s.LocalToSphere(fx, fy, P.Radius))) return false;
+            double dx = tx - fx, dy = ty - fy, len = DMath.Sqrt(dx * dx + dy * dy);
+            if (len < 1.0) return false;
+            dx /= len; dy /= len;
+            for (double t = 2.0; t <= len + 300.0; t += 2.0)
+            {
+                if (!AtSea(P, s.LocalToSphere(fx + dx * t, fy + dy * t, P.Radius))) continue;
+                ux = -dx; uy = -dy;
+                double back = t - 2.0;   // (the last spot out of the water on the way)
+                return UpTheBeach(w, in s, fx + dx * back, fy + dy * back, ux, uy, out x, out y);
+            }
+            return false;
+        }
+
+        /// <summary>The sea's surface at a spot (the drawn ground at or below it): the water a boat is launched into.</summary>
+        public static bool AtSea(PlanetState P, Vec3d dir) => Shore.At(P, dir, out _, out _) <= P.SeaLevel + 0.3;
 
         /// <summary>
         /// A spot under water: the sea's surface or a lake over it. A boat drawn up a beach lies a little above the waterline - the two metres
@@ -273,49 +406,56 @@ namespace TC2.Core.Places
             return e <= P.SeaLevel + 0.3 || lake > 0.3;
         }
 
-        /// <summary>A spot where a boat can be kept: out of the water, with the water's edge (the beach below a home's margin) within 40 m of it.</summary>
+        /// <summary>A spot where a boat can be kept: out of the water, with the sea itself within 40 m of it (not merely low ground: a coastal
+        /// plain below a home's two-metre margin let boats lie a hundred metres from the water).</summary>
         public static bool AtWater(World w, in Settlement s, double x, double y)
         {
             var P = w.Planet;
             if (Afloat(P, s.LocalToSphere(x, y, P.Radius))) return false;
-            for (int k = 0; k < 8; k++)
+            for (int k = 0; k < 16; k++)
             {
-                double a = k * DMath.PI / 4.0;
-                if (!Shore.Dry(P, s.LocalToSphere(x + 40.0 * DMath.Cos(a), y + 40.0 * DMath.Sin(a), P.Radius))) return true;
+                double a = k * DMath.PI / 8.0;
+                for (double r = 10.0; r <= 40.0; r += 10.0)
+                    if (AtSea(P, s.LocalToSphere(x + r * DMath.Cos(a), y + r * DMath.Sin(a), P.Radius))) return true;
             }
             return false;
         }
 
         /// <summary>
-        /// The coast moved (World.LandChanged): a kept boat the sea has risen over, or one it has drawn back from - left on dry land away from
-        /// the water - is drawn up again at the village's landing on the new shore. Before, boats lay on where the sea had gone (C9.1).
+        /// The coast moved (World.LandChanged): a landing the water has left (risen over it, or drawn back from it) gives way to the beach nearest
+        /// now and its boats are drawn up there; a kept boat that lies in the water or away from it is drawn up at the landing. Before C9.1's
+        /// close, boats lay on where the sea had gone.
         /// </summary>
         public static void ShoreMoved(World w)
         {
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
-                if (!w.Settlements.Get(sid).Inhabited) continue;
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                bool moved = s.LandAt != 0 && !AtWater(w, in s, s.LandX, s.LandY);
+                if (moved) s.LandAt = 0;
                 var bl = w.BuildingsOf(sid);
                 for (int i = 0; i < bl.Count; i++)
                 {
                     ref var b = ref w.Buildings.Get(bl[i]);
-                    if (b.Kind != Structures.Boat || b.Left != 0 || AtWater(w, in w.Settlements.Get(sid), b.X, b.Y)) continue;
-                    if (!Landing(w, sid, out float x, out float y)) continue;
+                    if (!IsBoat(b.Kind) || b.Left != 0) continue;
+                    if (!moved && AtWater(w, in w.Settlements.Get(sid), b.X, b.Y)) continue;
+                    if (!Landing(w, sid, out float x, out float y, bl[i])) continue;
                     ref var bb = ref w.Buildings.Get(bl[i]); bb.X = x; bb.Y = y;
                 }
             }
         }
 
         /// <summary>
-        /// The shore nearest a ground of water: rings of neighbours out from it (up to 16), the first ring with land in it, and of its land
-        /// the cell nearest `toward` (the village); `water` the cell of the ring before it was reached from. False when no land is that near.
+        /// The nearest cell of the other kind: rings of neighbours out from `start` (up to 16), the first ring with a cell that is land (`wantLand`)
+        /// or sea, and of those the cell nearest `toward`; `from` the cell of the ring before it was reached from. False when none is that near.
         /// </summary>
-        static bool ShoreOf(World w, int ground, Vec3d toward, out int land, out int water)
+        public static bool Edge(World w, int start, Vec3d toward, bool wantLand, out int found, out int from)
         {
             var P = w.Planet; var g = P.Grid;
-            land = -1; water = -1;
-            var seen = new System.Collections.Generic.HashSet<int> { ground };
-            var ring = new System.Collections.Generic.List<int> { ground };
+            found = -1; from = -1;
+            var seen = new System.Collections.Generic.HashSet<int> { start };
+            var ring = new System.Collections.Generic.List<int> { start };
             var next = new System.Collections.Generic.List<int>();
             for (int r = 0; r < 16 && ring.Count > 0; r++)
             {
@@ -326,25 +466,24 @@ namespace TC2.Core.Places
                     {
                         int nb = g.Nbr8[ring[i] * 8 + j];
                         if (!seen.Add(nb)) continue;
-                        if (P.IsLand(nb))
+                        if (P.IsLand(nb) == wantLand)
                         {
                             double d = Vec3d.ArcDistance(g.Center[nb], toward, P.Radius);
-                            if (d < bd) { bd = d; land = nb; water = ring[i]; }
+                            if (d < bd) { bd = d; found = nb; from = ring[i]; }
                         }
                         else next.Add(nb);
                     }
-                if (land >= 0) return true;
+                if (found >= 0) return true;
                 var t = ring; ring = next; next = t;
             }
             return false;
         }
 
-        /// <summary>The nearest point on dry ground to (x, y) (local metres), searched in rings out to 300 m; false when there is none.</summary>
-        static bool NearestDry(World w, in Settlement s, double x, double y, out double dx, out double dy)
+        /// <summary>A spot in the water moved to the nearest one out of it (rings out to 300 m, 4 m apart): where someone stands to fish from the shore.</summary>
+        public static void OutOfTheWater(World w, in Settlement s, ref double x, ref double y)
         {
             var P = w.Planet;
-            dx = x; dy = y;
-            if (Shore.Dry(P, s.LocalToSphere(x, y, P.Radius))) return true;
+            if (!Afloat(P, s.LocalToSphere(x, y, P.Radius))) return;
             for (double r = 4.0; r <= 300.0; r += 4.0)
             {
                 int steps = (int)DMath.Max(8.0, DMath.Floor(2.0 * DMath.PI * r / 4.0));
@@ -352,10 +491,9 @@ namespace TC2.Core.Places
                 {
                     double a = 2.0 * DMath.PI * k / steps;
                     double qx = x + r * DMath.Cos(a), qy = y + r * DMath.Sin(a);
-                    if (Shore.Dry(P, s.LocalToSphere(qx, qy, P.Radius))) { dx = qx; dy = qy; return true; }
+                    if (!Afloat(P, s.LocalToSphere(qx, qy, P.Radius))) { x = qx; y = qy; return; }
                 }
             }
-            return false;
         }
 
         // ---------------------------------------------------------------- the sea's dangers

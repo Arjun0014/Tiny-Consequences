@@ -113,7 +113,7 @@ namespace TC2.Core.Agents
 
         // ---------------------------------------------------------------- steps
         /// <summary>One event per local activity: walk to (tx, ty) (analytic), then do it there for stay seconds.</summary>
-        void BeginLocal(ref Person p, ActivityKind act, WhyCode why, int whyArg, double tx, double ty, long stay)
+        void BeginLocal(ref Person p, ActivityKind act, WhyCode why, int whyArg, double tx, double ty, long stay, long endAt = 0)
         {
             long now = _w.Now;
             LocalAt(p, now, out double x, out double y);
@@ -123,7 +123,7 @@ namespace TC2.Core.Agents
             long walk = d > 2.0 ? Math.Max(1L, DMath.ToLong(DMath.RoundHalfUp(d / Speed(p, now)))) : 0;
             p.Step = StepKind.Local;
             p.FromX = (float)x; p.FromY = (float)y; p.ToX = (float)tx; p.ToY = (float)ty;
-            p.T0 = now; p.TA = now + walk; p.T1 = p.TA + Math.Max(60L, stay);
+            p.T0 = now; p.TA = now + walk; p.T1 = endAt > 0 ? Math.Max(p.TA + 60L, endAt) : p.TA + Math.Max(60L, stay);   // (endAt: done with others - a boat's crew back together)
             p.StayDur = 0;
             Schedule(in p);
             _w.Metrics.Activities++;
@@ -293,8 +293,7 @@ namespace TC2.Core.Agents
             int arrived = r == null ? p.Home : (p.S1 <= 0.5f ? r.A : r.B);
             if (!w.Settlements.Exists(arrived)) arrived = p.Home;
             p.At = arrived;
-            ref var s2 = ref w.Settlements.Get(arrived);
-            double ax = s2.SquareX, ay = s2.SquareY;
+            Green(arrived, out double ax, out double ay);   // (at its green: C9.2)
             if (arrived == p.Home && w.Households.Exists(p.Household)) { ref var hh = ref w.Households.Get(p.Household); ax = hh.HomeX; ay = hh.HomeY; }
             p.Step = StepKind.Local; p.FromX = (float)ax; p.FromY = (float)ay; p.ToX = p.FromX; p.ToY = p.FromY; p.TA = w.Now; p.T0 = w.Now;
             if (arrived != p.Home)
@@ -820,7 +819,7 @@ namespace TC2.Core.Agents
             long bed = (child ? 20 * SimTime.Hour : 21 * SimTime.Hour + 30 * SimTime.Minute) + shift;
             bool night = lsec < wake || lsec >= bed;
             bool atHome = p.At == p.Home;
-            double homeX = here.SquareX, homeY = here.SquareY;
+            Green(p.At, out double homeX, out double homeY);
             if (atHome && w.Households.Exists(p.Household)) { ref var hh = ref w.Households.Get(p.Household); homeX = hh.HomeX; homeY = hh.HomeY; }
             var rs = NextRandom(ref p);
 
@@ -933,9 +932,11 @@ namespace TC2.Core.Agents
                     }
                 }
                 long stay = Math.Max(20 * SimTime.Minute, Math.Min(SimTime.Hour, p.Until - now));
-                double vx = here.SquareX, vy = here.SquareY;
+                Green(here.Id, out double vx, out double vy);
                 if (here.Market != 0 && w.Buildings.Exists(here.Market)) { ref var mk = ref w.Buildings.Get(here.Market); if (mk.Done != 0) { vx = mk.X; vy = mk.Y; } }   // (at the stalls: C1.6)
-                BeginLocal(ref p, ActivityKind.Visit, WhyCode.VisitKin, 0, vx + rs.Range(-15, 15), vy + rs.Range(-15, 15), stay);
+                vx += rs.Range(-15, 15); vy += rs.Range(-15, 15);
+                Ashore(here.Id, ref vx, ref vy);
+                BeginLocal(ref p, ActivityKind.Visit, WhyCode.VisitKin, 0, vx, vy, stay);
                 return;
             }
 
@@ -956,8 +957,11 @@ namespace TC2.Core.Agents
             if (child)
             {
                 bool sq = rs.Chance(0.5);
-                double px = sq ? here.SquareX : homeX, py = sq ? here.SquareY : homeY;
-                BeginLocal(ref p, ActivityKind.Play, WhyCode.Young, 0, px + rs.Range(-20, 20), py + rs.Range(-20, 20), SimTime.Hours(2 + 1.5 * rs.NextUnit()));
+                double px = homeX, py = homeY;
+                if (sq) Green(here.Id, out px, out py);
+                px += rs.Range(-20, 20); py += rs.Range(-20, 20);
+                Ashore(here.Id, ref px, ref py);
+                BeginLocal(ref p, ActivityKind.Play, WhyCode.Young, 0, px, py, SimTime.Hours(2 + 1.5 * rs.NextUnit()));
                 return;
             }
 
@@ -1197,8 +1201,13 @@ namespace TC2.Core.Agents
                         return;
                     }
                 case 4:
-                    BeginLocal(ref p, ActivityKind.Social, WhyCode.Leisure, 0, here.SquareX + rs.Range(-12, 12), here.SquareY + rs.Range(-12, 12), SimTime.Hours(1.5 + 1.5 * rs.NextUnit()));
-                    return;
+                    {
+                        Green(here.Id, out double gx, out double gy);
+                        gx += rs.Range(-12, 12); gy += rs.Range(-12, 12);
+                        Ashore(here.Id, ref gx, ref gy);
+                        BeginLocal(ref p, ActivityKind.Social, WhyCode.Leisure, 0, gx, gy, SimTime.Hours(1.5 + 1.5 * rs.NextUnit()));
+                        return;
+                    }
                 case 6:
                     BeginWild(ref p, ref here, wildKind, WildNeed(in here, w.Now) > 0 ? WhyCode.FoodShort : WhyCode.Provide, ref rs, wildBoat);
                     return;
@@ -1325,8 +1334,9 @@ namespace TC2.Core.Agents
 
         /// <summary>
         /// The household's boat if this person could take it out now (C9.1): sound, lying at this village's landing, the wind over the sea's
-        /// grounds below what anyone rows out in, and a seat free (lived: those of the household out in it; COARSE: the seats the day has
-        /// given), or 0.
+        /// grounds below what anyone rows out in, and - lived - not out at sea already (a boat goes out once, with its crew: C9.2; before,
+        /// a second of the household took the "same" boat out hours after the first, and the view drew two), COARSE a seat of the day's trip
+        /// free; or 0.
         /// </summary>
         int SeaBoat(in Person p, in Settlement here)
         {
@@ -1335,8 +1345,62 @@ namespace TC2.Core.Agents
             if (b == 0 || w.Buildings.Get(b).Settlement != here.Id) return 0;
             SeaHere(in here, out double wind);
             if (wind >= Boats.Max) return 0;
-            int aboard = _seatsOn ? (_seats.TryGetValue(b, out int n) ? n : 0) : Boats.Aboard(w, p.Household, b);
-            return aboard < Boats.Seats ? b : 0;
+            if (!_seatsOn)
+            {
+                // lived: at the landing, or just put out with a seat free - they catch it before it is out (a crew gathers as it leaves)
+                int aboard = Boats.Aboard(w, p.Household, b);
+                return aboard == 0 || (aboard < Boats.Seats && Outing(p.Household, b, out _) != 0) ? b : 0;
+            }
+            return (_seats.TryGetValue(b, out int n) ? n : 0) < Boats.Seats ? b : 0;
+        }
+
+        /// <summary>How long a boat's crew waits for those who would come (lived): one who chooses the sea this soon after it put out joins it.</summary>
+        public const long CrewWait = 30 * SimTime.Minute;
+
+        /// <summary>The one of the household who took its boat out, if the boat put out within CrewWait (0 otherwise); `back` when its trip ends.</summary>
+        int Outing(int hid, int boat, out long back)
+        {
+            var w = _w;
+            back = 0;
+            var mem = w.Members(hid);
+            long now = w.Now;
+            int first = 0; long t0 = long.MaxValue;
+            for (int i = 0; i < mem.Count; i++)
+            {
+                ref var q = ref w.People.Get(mem[i]);
+                if (!q.Alive || q.Act != ActivityKind.Sail || q.WhyArg != boat) continue;
+                if (q.T0 < t0) { t0 = q.T0; first = mem[i]; back = q.T1; }
+            }
+            return first != 0 && now - t0 <= CrewWait ? first : 0;
+        }
+
+        /// <summary>
+        /// Lived (C9.2): one of the household takes its boat out - those of it at leisure in the village who could go to sea go with them, a
+        /// seat each: the same boat, the same ground, back together. Returns how many went with the one who took it out.
+        /// </summary>
+        int Crew(ref Person skipper, ref Settlement here, int boat, WhyCode why, int ground, double tx, double ty)
+        {
+            var w = _w;
+            long now = w.Now;
+            var mem = w.Members(skipper.Household);
+            int crew = 0;
+            for (int i = 0; i < mem.Count && 1 + crew < Boats.Seats; i++)
+            {
+                if (mem[i] == skipper.Id) continue;
+                ref var q = ref w.People.Get(mem[i]);
+                if (!q.Alive || q.At != here.Id || q.Home != here.Id || q.Band != 0) continue;
+                if (q.Act != ActivityKind.Idle && q.Act != ActivityKind.Social && q.Act != ActivityKind.Craft) continue;   // (at leisure, or mending what can wait)
+                double age = q.AgeYears(now);
+                if (age < 14 || age >= 60 || q.Health <= 0.5) continue;
+                if (q.PregDue != 0 && q.PregDue - now < 10 * SimTime.Day) continue;
+                if (q.NursingUntil != 0 && q.NursingUntil - now > SimTime.Year / 2) continue;
+                BeginLocal(ref q, ActivityKind.Sail, why, boat, tx, ty, 0, skipper.T1);
+                q.Ground = ground;
+                crew++;
+                w.Metrics.FishTrips++; w.Metrics.BoatTrips++;
+            }
+            if (crew > 0) w.Metrics.CrewSeats += crew;
+            return crew;
         }
 
         /// <summary>A village's sea now (C9.1): what an hour at its sea's grounds is worth, the row paid, and the wind over them - read once
@@ -1370,12 +1434,25 @@ namespace TC2.Core.Agents
             if (boat != 0 && kind == WildFood.Fishing)
             {
                 // out in the household's boat to one of the sea's grounds (C9.1): rowed out over the water, fishing there
+                int skipper = Outing(p.Household, boat, out long back);
+                if (skipper != 0)
+                {
+                    // the boat has just put out with a seat free: they go with it - the same ground, back with the rest (C9.2)
+                    ref var sk = ref w.People.Get(skipper);
+                    BeginLocal(ref p, ActivityKind.Sail, why, boat, sk.ToX, sk.ToY, 0, back);
+                    p.Ground = sk.Ground;
+                    w.Metrics.FishTrips++; w.Metrics.BoatTrips++; w.Metrics.CrewSeats++;
+                    if (why != WhyCode.Provide) w.SettlementSys.NoteWildFood(here.Id);
+                    return;
+                }
                 int sg = WildFood.PickGround(in here.Sea, ref rs);
                 if (sg < 0) return;
                 here.SphereToLocal(w.Planet.Grid.Center[sg], w.Planet.Radius, out double sx, out double sy);
-                BeginLocal(ref p, ActivityKind.Sail, why, boat, sx + rs.Range(-60, 60), sy + rs.Range(-60, 60), SimTime.Hours(3.5 + 1.5 * rs.NextUnit()));
+                double tx = sx + rs.Range(-60, 60), ty = sy + rs.Range(-60, 60);
+                BeginLocal(ref p, ActivityKind.Sail, why, boat, tx, ty, SimTime.Hours(3.5 + 1.5 * rs.NextUnit()));
                 p.Ground = sg;
-                w.Metrics.FishTrips++; w.Metrics.BoatTrips++;
+                w.Metrics.FishTrips++; w.Metrics.BoatTrips++; w.Metrics.BoatOutings++;
+                Crew(ref p, ref here, boat, why, sg, tx, ty);   // (its crew: those of the household at leisure go too - C9.2)
                 if (why != WhyCode.Provide) w.SettlementSys.NoteWildFood(here.Id);
                 return;
             }
@@ -1393,6 +1470,26 @@ namespace TC2.Core.Agents
             if (kind == WildFood.Hunting) w.Metrics.HuntTrips++; else if (kind == WildFood.Fishing) w.Metrics.FishTrips++; else w.Metrics.GatherTrips++;
             if (why != WhyCode.Provide) w.SettlementSys.NoteWildFood(here.Id);
         }
+
+        /// <summary>
+        /// Where a village's people gather (C9.2): its square, or - where the sea has risen over the square - the dry ground nearest it. Shots of
+        /// drowned towns (0-5 squares a world under the sea by year 300) showed their people at leisure standing out in the sea.
+        /// </summary>
+        void Green(int sid, out double x, out double y)
+        {
+            var w = _w; var P = w.Planet;
+            ref var s = ref w.Settlements.Get(sid);
+            if (_greens.TryGetValue(sid, out var g) && g.Coast == P.CoastVersion && g.Sea == P.SeaLevel && g.Sx == s.SquareX && g.Sy == s.SquareY) { x = g.X; y = g.Y; return; }
+            x = s.SquareX; y = s.SquareY;
+            Boats.OutOfTheWater(w, in s, ref x, ref y);
+            _greens[sid] = new GreenAt { Coast = P.CoastVersion, Sea = P.SeaLevel, Sx = s.SquareX, Sy = s.SquareY, X = x, Y = y };
+        }
+
+        /// <summary>A spot near the green that falls in the water moved to the nearest one out of it.</summary>
+        void Ashore(int sid, ref double x, ref double y) => Boats.OutOfTheWater(_w, in _w.Settlements.Get(sid), ref x, ref y);
+
+        struct GreenAt { public int Coast; public double Sea; public float Sx, Sy; public double X, Y; }
+        readonly System.Collections.Generic.Dictionary<int, GreenAt> _greens = new System.Collections.Generic.Dictionary<int, GreenAt>();   // (a cache of each village's green: by the coast and the sea's level)
 
         /// <summary>Building pace: a woodworker's hand and a body's strength (labour-hours of progress per hour).</summary>
         static double BuildRate(in Person p) => (0.7 + 0.6 * p.SkWood) * (0.5 + 0.5 * p.Health);
@@ -1770,7 +1867,9 @@ namespace TC2.Core.Agents
                                 {
                                     // out in the household's boat (C9.1): a seat of it today, the row out paid from the hours, the open sea's shoals, and
                                     // the trip's chance under the wind it is out in (the drowned die after the day)
-                                    _seats[boat] = (_seats.TryGetValue(boat, out int taken) ? taken : 0) + 1;
+                                    int taken = _seats.TryGetValue(boat, out int tk) ? tk : 0;
+                                    _seats[boat] = taken + 1;
+                                    if (taken == 0) w.Metrics.BoatOutings++; else w.Metrics.CrewSeats++;   // (the day's trip and its crew: C9.2)
                                     int outcome = Boats.Trip(w, sid, p.Household, boat, p.Id, Boats.WindAt(w, w.Planet.Grid.Center[ground]), out long lostEv, days, false);
                                     fu = outcome == 0 ? w.Wild.Fish(ground, hw * Boats.AfterRow(w, in s) * tools * Knowledge.Tech.NetsFactor(in p), p.SkFish, key, days, true) : 0.0;
                                     if (outcome == 2) { _drowned.Add(p.Id); _drownedEv.Add(lostEv); }

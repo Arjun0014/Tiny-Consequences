@@ -71,6 +71,8 @@ COARSE: the day's seats); nobody goes out at 12 m/s of wind over the grounds; a 
 each aboard drowning with 0.4; a dugout splits in 12 years. The view draws the real boats and the people out in them. Not yet: plank boats
 and boatbuilding (a technique found by dugout owners), docks, cargo boats and coastal trade, ferries.
 
+**Implemented (C9.2a, D2-111)**: a village keeps **one landing** - the beach nearest its square, found on the drawn waterline from the square toward the nearest sea, a metre above the sea (`Boats.EnsureLanding/Beach/Waterline/UpTheBeach`), kept while the sea is within 40 m; its boats lie in a row along it, each drawn down to the waterline and a metre up (`Landing`, `Drawn`); they follow the coast and a risen sea (`ShoreMoved`, `Plan`). **A boat goes out with its crew**: lived, the one who takes it out is joined by those of the household at leisure or mending, the same ground and return; one who chooses the sea within half an hour of its leaving catches it; a boat at sea is not taken out again (`AgentSystem.Crew`, `Outing`). Shore fishers stand at the waterline (`Boats.Edge`, `OutOfTheWater`); people gather at the village's green, its square or the dry ground nearest it where the sea took the square (`AgentSystem.Green`).
+
 ## 6. Ports (C9)
 
 landing (a beach: nothing built) -> fishing jetty and boat shed -> dock (timber quay) -> harbour (stone quay, warehouses) -> shipyard.

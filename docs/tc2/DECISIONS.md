@@ -2783,3 +2783,49 @@ boats lie at the beach of the day's best fishing ground, so they scatter along i
 three beaches; a landing can be ~1 km out) - C9.2 gives a village one landing, kept; boats are begun where the sea is worth 1.25 times the
 shore even when both are nearly empty (Toularndal, seed 4: 0.02 against 0.01 FU an hour, eight dugouts in two years - its boats had
 emptied the shoals).
+
+## D2-111 — 2026-10-08 — The landing and the crew: a village's boats lie at one beach, a boat goes out with its crew, nobody stands in the sea (C9.2a)
+
+**Context.** C9.1 (D2-110) left three things that read wrong in the game and one that was wrong in the simulation. Each boat lay at the
+beach of the day's best fishing ground, so a village's boats scattered along its shores (one village's on three beaches 200-700 m from its
+square, some a kilometre out) and, when a slot was reused, on top of each other. In lived days "up to two of the household at once" took
+the boat out at their own moments, hours apart: two people at two places in one boat, drawn as two hulls. Shore fishers stood out in the
+sea, up to 100 m off the beach (`WildFood.GroundPoint` put them at a ground's centre when no neighbour was land - the fault D2-110 fixed
+for the landing). And people at leisure gathered at their village's square when the sea had risen over it (0-5 villages a world by year
+300). Measured while fixing the second: C9.1's lived days caught less from boats than COARSE days did (below).
+**Decision.** (1) **A village keeps one landing** (`Settlement.LandX/LandY`, `LandUx/LandUy` up the beach, `LandAt`; `Boats.EnsureLanding`,
+`Beach`, `Waterline`): the beach nearest its square - the sea nearest it by cells, then the drawn waterline on the way from the square to that
+sea (`Shore.At`, the ground the view draws: a cell edge's midpoint lay a hundred metres from the water on a low coast), the landing drawn up
+the beach to a metre above the sea (`UpTheBeach`, at most 25 m). Chosen when the village first looks to its boats (`Boats.Plan` asks for a
+landing first: no beach, no boats), kept while the sea is within 40 m of it (`AtWater`: the sea's surface itself, `AtSea` - "below a home's
+two-metre margin" let a coastal plain pass). (2) **Boats lie in a row along it** (`Landing`: slots a boat's length and a half apart either
+side, each drawn down to the waterline there and up a metre above the sea, `Drawn`; none within a boat's width of another, `Taken`). (3)
+**The coast moves, the boats follow**: a landing the sea has left or risen over gives way to the beach nearest then, its boats drawn up there
+(`ShoreMoved`); and each village-day boats the sea has risen over are drawn up again (`Plan`; the sea's level moves in steps without cells
+changing). (4) **A boat goes out with its crew** (lived; `AgentSystem.Crew`, `Outing`): the one who takes the household's boat out is joined
+by those of the household at leisure or at their mending (Idle, Social, Craft) who could go to sea - the same ground, back together
+(`BeginLocal(.., endAt)`); one who chooses the sea within half an hour of its putting out catches it (`CrewWait`); a boat out at sea is not
+taken out again; never more than its seats. COARSE keeps its day's seats (the first a day is the boat's outing). Metrics `BoatOutings`,
+`CrewSeats`. (5) **Nobody stands in the sea**: a shore fisher stands at the waterline of the shore nearest the ground (`Boats.Edge` ring
+search, cached per village and ground by the coast; `Boats.OutOfTheWater`); people gather at the village's **green** - its square, or where
+the sea took the square the dry ground nearest it (`AgentSystem.Green`, cached by the coast and the sea's level) - for leisure, children's
+play, visits and arrivals, and a spot near it that falls in the water is moved ashore. (6) **Seen**: the view draws a boat's hull once, at the
+first of its crew on the water, the others seated in it; boats on the beach lie bows down the landing's slope; the place page tells the
+landing ("the landing N m from the square, since year Y"); headless `boats:` reports landings (range and mean distance from their squares),
+boats in the water / away from it / their mean height above the sea, outings and crew seats, and `squares under the sea`. Sim version 50.
+**Evidence.** 258 tests (`BoatTests` 14): `AVillageKeepsOneLandingItsBoatsInARow` (chosen with the first boat, the beach nearest the square,
+kept; a dozen boats in a row, each by the water, none on another), `ABoatGoesOutWithItsCrew` (one trip, the same ground and return, never
+over its seats), `ShoreFishersStandOnTheShoreNeverInTheSea` (8 worlds, 32 fishing villages, 1,860 spots, none in the sea; 14 of their grounds
+had no land round them), `WhereTheSeaTookTheSquarePeopleGatherOnDryGround` (a square moved onto the sea: 227 person-hours of leisure, play,
+visits and shore fishing, none in the sea), `BoatsGoOutAlikeAtBothResolutions` (below). **Lived against COARSE** (5 worlds x 24 days, every
+fishing household given a dugout): fish from boats a grown person-day COARSE/lived x0.90 (C9.1's rule x1.23), all fish x1.22 (x1.50); over
+12 days x1.21 and x1.68 (x1.92 and x2.19) - crews brought lived days near COARSE ones (35 outings and 24 crew seats a thousand grown
+person-days lived). Ten seeds 300 years DEEP (`tc2/out/civ/s*_c92c`) against C9.1 (`_c91k`): people over years 200-299 x1.001 (t 0.04),
+births and deaths a thousand person-years x1.001 and x1.001, fish x1.02 (t 1.7), the wild's food x1.02; at years 100, 200 and 300 no boat
+away from the water, one in it in 30 saves (seed 5, year 100: the sea had risen that day, its boat drawn up the next village-day); boats 1.1-3.2 m
+above the sea on average; landings 0-805 m from their squares (world means 39-263 m: some villages' nearest sea is far). Earlier tries: the
+landing at a cell edge's midpoint and "by the water" as ground below two metres put a village's boats in a column on the grass 35-40 m and
+15 m above the sea (`tc2/out/shots/boats3`); slots two metres from the edge left boats a few centimetres above a sea that later rose (16
+"in the water" in one world). Shots: `boats4` (Haisthorpe, seed 4, year 300: eight boats in a row on the sand above the waterline, bows to the
+sea), `boats5` (Drildbrahope, seed 3: the dugouts in a row; its people at leisure out in the sea at its drowned square - fixed by the green).
+**Open.** Crews are of the household only (a plank boat's four seats may want neighbours: C9.2b); the shots after the green: next commit.

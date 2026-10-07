@@ -21,6 +21,10 @@ namespace TC2.Game
         public CameraRig Rig;
 
         Instancer _people, _granaries, _wells, _hay, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls, _woodpiles;
+        // the boats out this frame (C9.2): a boat's hull is drawn once, its crew seated in it
+        readonly System.Collections.Generic.Dictionary<int, int> _hulls = new System.Collections.Generic.Dictionary<int, int>();
+        readonly System.Collections.Generic.List<(Vector3 pos, Quaternion rotation, float scale)> _hullAt = new System.Collections.Generic.List<(Vector3 pos, Quaternion rotation, float scale)>();
+        readonly System.Collections.Generic.List<int> _hullSeats = new System.Collections.Generic.List<int>();
         /// <summary>The village works by structure kind (C1.1; the civilisation kit, D2-089); null where a kind has no model yet.</summary>
         readonly Instancer[] _works = new Instancer[24];
         Instancer[] _housePosts;   // the same homes on earth-fast posts: no stone footings (C1.3)
@@ -361,7 +365,7 @@ namespace TC2.Game
                 {
                     // its works are structures too (C1.1): wells and granaries by the table, standing, being raised or fallen
                     byte bk = w.Buildings.Get(bl[i]).Kind;
-                    if (bk == Structures.Boat) { DrawBoat(w, P, in s, bl[i], ex); continue; }   // (a household's dugout at the landing: C9.1)
+                    if (Boats.IsBoat(bk)) { DrawBoat(w, P, in s, bl[i], ex); continue; }   // (a household's dugout at the landing: C9.1)
                     if (!Structures.IsHome(bk)) { DrawWork(w, P, in s, bl[i], ex); continue; }
                     if (DrawHome(w, P, in s, bl[i], ex, dark, tOut, woodDays)) litHomes++;
                 }
@@ -552,8 +556,9 @@ namespace TC2.Game
             Vec3d at = s.LocalToSphere(b.X, b.Y, P.Radius);
             Vector3 pos = PlanetGeo.Surface(P, at);
             Vector3 up = pos.normalized;
-            // the bow away from the square: toward the water the boat was drawn up from
-            Vector3 toSea = pos - PlanetGeo.Surface(P, s.LocalToSphere(s.SquareX, s.SquareY, P.Radius));
+            // the bow down the beach toward the water (the landing's slope, C9.2; away from the square before a landing was kept)
+            Vector3 toSea = s.LandAt != 0 ? PlanetGeo.Surface(P, s.LocalToSphere(b.X - s.LandUx, b.Y - s.LandUy, P.Radius)) - pos
+                                          : pos - PlanetGeo.Surface(P, s.LocalToSphere(s.SquareX, s.SquareY, P.Radius));
             toSea -= up * Vector3.Dot(toSea, up);
             if (toSea.sqrMagnitude < 1e-6f) toSea = Vector3.Cross(up, Vector3.right);
             var rot = Quaternion.LookRotation(toSea.normalized, up) * Quaternion.Euler(0f, (bid * 37) % 13 - 6, 0f);
@@ -640,7 +645,7 @@ namespace TC2.Game
         void RebuildPeople(TC2.Core.Simulation.World w)
         {
             var P = w.Planet;
-            _people.Clear(); _afloat.Clear();
+            _people.Clear(); _afloat.Clear(); _hulls.Clear();
             PeopleDrawn = 0; BoatsAfloat = 0;
             float waterR = (float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel));
             double t = Host.RenderTime;
@@ -654,13 +659,25 @@ namespace TC2.Game
                 Vec3d d = w.Agents.PositionAt(p, t);
                 Vector3 pos = PlanetGeo.Surface(P, d);
                 float age = (float)p.AgeYears((long)t);
-                // out in the household's dugout (C9.1): drawn in it wherever they are on the water - rowing out, fishing, rowing home
+                // out in the household's boat (C9.1): drawn in it wherever they are on the water - rowing out, fishing, rowing home. A boat
+                // goes out with its crew (C9.2): one hull for the boat, where the first of its crew on the water is, the others seated in it
                 if (p.Act == ActivityKind.Sail)
                 {
-                    ulong fk = KeyedRng.Mix((ulong)id * 0x9E3779B97F4A7C15UL ^ 0xB0A7);
                     Vec3d onWater = d;
                     if (Ground.Height(P, onWater) < P.SeaLevel - 0.3)
                     {
+                        int boat = p.WhyArg;
+                        int dyeF = (int)(KeyedRng.Mix((ulong)id * 0x2545F4914F6CDD1DUL) % (ulong)Dyes.Length);
+                        if (_hulls.TryGetValue(boat, out int hi))
+                        {
+                            var hull = _hullAt[hi];
+                            int seat = ++_hullSeats[hi];
+                            Vector3 aft = hull.rotation * Vector3.back * ((seat & 1) == 1 ? 0.9f : -0.9f) * ((seat + 1) >> 1) * hull.scale;
+                            _people.Add(dyeF, Dyes[dyeF], Matrix4x4.TRS(hull.pos + hull.pos.normalized * (0.25f * hull.scale) + aft, hull.rotation, Vector3.one * (1.2f * hull.scale)), 0f, 0f);
+                            PeopleDrawn++;
+                            continue;
+                        }
+                        ulong fk = KeyedRng.Mix((ulong)boat * 0x9E3779B97F4A7C15UL ^ 0xB0A7);
                         Vector3 bpos = PlanetGeo.ToVector(onWater) * waterR;
                         Vector3 bup = bpos.normalized;
                         float drift = (float)(KeyedRng.Unit(KeyedRng.Mix(fk + 1)) * 360.0 + t / 600.0);   // swinging slowly on the water
@@ -668,7 +685,9 @@ namespace TC2.Game
                         float bex = Exaggeration(bpos, 2.5f);
                         _afloat.Add(0, Color.white, Matrix4x4.TRS(bpos, brot, Vector3.one * bex));
                         BoatsAfloat++;
-                        int dyeF = (int)(KeyedRng.Mix((ulong)id * 0x2545F4914F6CDD1DUL) % (ulong)Dyes.Length);
+                        if (_hullAt.Count == _hulls.Count) { _hullAt.Add(default); _hullSeats.Add(0); }
+                        _hullAt[_hulls.Count] = (bpos, brot, bex); _hullSeats[_hulls.Count] = 0;
+                        _hulls[boat] = _hulls.Count;
                         _people.Add(dyeF, Dyes[dyeF], Matrix4x4.TRS(bpos + bup * (0.25f * bex), brot, Vector3.one * (1.2f * bex)), 0f, 0f);
                         PeopleDrawn++;
                         continue;

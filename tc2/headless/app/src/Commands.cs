@@ -286,6 +286,7 @@ namespace TC2.Headless
                         {
                             int coast = 0, withBoats = 0, sound = 0, making = 0, topBoats = 0, topBoatSid = 0, wet = 0, inland = 0;
                             var P6 = w.Planet; var badAt = new System.Text.StringBuilder();
+                            int landings = 0, keptN = 0; double landMin = double.MaxValue, landMax = 0, landSum = 0, keptUp = 0;
                             for (int sid6 = w.Settlements.First(); sid6 != 0; sid6 = w.Settlements.Next(sid6))
                             {
                                 ref var st6 = ref w.Settlements.Get(sid6);
@@ -295,19 +296,31 @@ namespace TC2.Headless
                                 for (int i = 0; i < bl6.Count; i++)
                                 {
                                     ref var b6 = ref w.Buildings.Get(bl6[i]);
-                                    if (b6.Kind != TC2.Core.Places.Structures.Boat) continue;
+                                    if (!TC2.Core.Places.Boats.IsBoat(b6.Kind)) continue;
                                     if (TC2.Core.Places.Boats.Sound(in b6, w.Now)) here++; else if (b6.Done == 0 && b6.Left == 0) making++;
                                     if (b6.Left != 0) continue;
                                     // (where it lies: never in the water, never far from it - sampled 40 m round)
+                                    keptN++; keptUp += TC2.Core.Planet.Shore.At(P6, st6.LocalToSphere(b6.X, b6.Y, P6.Radius), out _, out _) - P6.SeaLevel;
                                     if (TC2.Core.Places.Boats.Afloat(P6, st6.LocalToSphere(b6.X, b6.Y, P6.Radius))) { wet++; badAt.Append(" #").Append(sid6).Append(" wet"); continue; }
                                     if (!TC2.Core.Places.Boats.AtWater(w, in st6, b6.X, b6.Y)) { inland++; badAt.Append(" #").Append(sid6).Append(" dry"); }
                                 }
                                 sound += here; if (here > 0) withBoats++;
+                                if (st6.LandAt != 0) { double ldx = (double)st6.LandX - st6.SquareX, ldy = (double)st6.LandY - st6.SquareY, ld = System.Math.Sqrt(ldx * ldx + ldy * ldy); landings++; landMin = System.Math.Min(landMin, ld); landMax = System.Math.Max(landMax, ld); landSum += ld; }
                                 if (here > topBoats) { topBoats = here; topBoatSid = sid6; }
                             }
+                            int drownedSquares = 0; var dsq = new System.Text.StringBuilder();
+                            for (int sid7 = w.Settlements.First(); sid7 != 0; sid7 = w.Settlements.Next(sid7))
+                            {
+                                ref var st7 = ref w.Settlements.Get(sid7);
+                                if (!st7.Inhabited) continue;
+                                if (TC2.Core.Places.Boats.Afloat(P6, st7.LocalToSphere(st7.SquareX, st7.SquareY, P6.Radius))) { drownedSquares++; dsq.Append(" #").Append(sid7); }
+                            }
+                            Console.WriteLine("squares under the sea: " + drownedSquares + (dsq.Length > 0 ? " (" + dsq.ToString().Trim() + ")" : ""));
                             Console.WriteLine("boats: " + withBoats + " of " + coast + " fishing villages have boats (" + sound + " dugouts, " + making + " being hollowed); begun " + w.Metrics.BoatsBegun + ", made " + w.Metrics.BoatsBuilt + ", given up half-made " + w.Metrics.BoatsGivenUp +
                                               ", worn out " + w.Metrics.BoatsWorn + ", lost at sea " + w.Metrics.BoatsLost + " (" + w.Metrics.Drowned + " drowned); trips " + w.Metrics.BoatTrips + " of " + w.Metrics.FishTrips + " fishing; fish from boats " +
-                                              F(w.Metrics.BoatFishKg / 1000.0, "0.0") + " t of " + F(w.Metrics.FishKg / 1000.0, "0.0") + " t; lying in the water " + wet + ", away from it " + inland + (badAt.Length > 0 ? " (at" + badAt + ")" : "") + (topBoatSid != 0 ? "; most at " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(topBoatSid)) + " #" + topBoatSid + " (" + topBoats + ")" : ""));
+                                              F(w.Metrics.BoatFishKg / 1000.0, "0.0") + " t of " + F(w.Metrics.FishKg / 1000.0, "0.0") + " t; lying in the water " + wet + ", away from it " + inland + (keptN > 0 ? ", " + F(keptUp / keptN, "0.0") + " m above the sea on average" : "") + (badAt.Length > 0 ? " (at" + badAt + ")" : "") +
+                                              (landings > 0 ? "; " + landings + " landings " + F(landMin, "0") + "-" + F(landMax, "0") + " m from their squares (mean " + F(landSum / landings, "0") + ")" : "") +
+                                              "; outings " + w.Metrics.BoatOutings + ", crew seats " + w.Metrics.CrewSeats + (topBoatSid != 0 ? "; most at " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(topBoatSid)) + " #" + topBoatSid + " (" + topBoats + ")" : ""));
                         }
                         Console.WriteLine("ore sites: land told as by the ore wanted " + w.Metrics.ScoutedForOre + " times; villages founded knowing ore round their site " + w.Metrics.FoundedByOre + " of " + w.Metrics.Foundings);
                     }
@@ -516,16 +529,19 @@ namespace TC2.Headless
                 Console.WriteLine("boats of " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(bsid)) + " #" + bsid + ": sea ground " + bs.Sea.A + ", shore ground " + bs.Fish.A + ", sea worth " + F(TC2.Core.Places.Boats.SeaExpect(w, in bs), "0.00") + " against " + F(bs.Fish.Expect, "0.00"));
                 if (bs.Fish.A >= 0 || bs.Sea.A >= 0)
                 {
-                    // where a boat begun now would be laid down (reads only)
+                    // the landing (C9.2) and where a boat begun now would be laid down
                     TC2.Core.Places.Boats.Landing(w, bsid, out float lx, out float ly);
+                    ref var bs2 = ref w.Settlements.Get(bsid);
+                    double cdx = (double)bs2.LandX - bs2.SquareX, cdy = (double)bs2.LandY - bs2.SquareY;
+                    Console.WriteLine("  the landing at " + F(bs2.LandX, "0") + "," + F(bs2.LandY, "0") + " (" + F(System.Math.Sqrt(cdx * cdx + cdy * cdy), "0") + " m from the square) since " + SimTime.Format(bs2.LandAt));
                     double ldx = (double)lx - bs.SquareX, ldy = (double)ly - bs.SquareY;
-                    Console.WriteLine("  landing now at " + F(lx, "0") + "," + F(ly, "0") + " (" + F(System.Math.Sqrt(ldx * ldx + ldy * ldy), "0") + " m from the square)" + (TC2.Core.Planet.Shore.Dry(P, bs.LocalToSphere(lx, ly, P.Radius)) ? " dry" : " WET"));
+                    Console.WriteLine("  next boat at " + F(lx, "0") + "," + F(ly, "0") + " (" + F(System.Math.Sqrt(ldx * ldx + ldy * ldy), "0") + " m from the square)" + (TC2.Core.Planet.Shore.Dry(P, bs.LocalToSphere(lx, ly, P.Radius)) ? " dry" : " WET"));
                 }
                 var bl = w.BuildingsOf(bsid);
                 for (int i = 0; i < bl.Count; i++)
                 {
                     ref var b = ref w.Buildings.Get(bl[i]);
-                    if (b.Kind != TC2.Core.Places.Structures.Boat) continue;
+                    if (!TC2.Core.Places.Boats.IsBoat(b.Kind)) continue;
                     double dx = (double)b.X - bs.SquareX, dy = (double)b.Y - bs.SquareY;
                     bool dry = TC2.Core.Planet.Shore.Dry(P, bs.LocalToSphere(b.X, b.Y, P.Radius));
                     double ground = TC2.Core.Planet.Shore.At(P, bs.LocalToSphere(b.X, b.Y, P.Radius), out _, out double lakeAt) - P.SeaLevel;

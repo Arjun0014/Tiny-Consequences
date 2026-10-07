@@ -269,6 +269,229 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void AVillageKeepsOneLandingItsBoatsInARow()
+        {
+            // C9.2: the landing is the beach nearest the village's square, chosen with its first boat and kept; its boats lie along it
+            var w = Coast(out int sid);
+            Assume.That(w != null, "a fishing village with promising open sea");
+            var P = w.Planet; var g = P.Grid;
+            Assert.AreEqual(0L, w.Settlements.Get(sid).LandAt, "no landing before a boat");
+            var hl = w.HouseholdsOf(sid);
+            Assume.That(hl.Count >= 3, "three households");
+            int b1 = Boats.Begin(w, sid, hl[0]);
+            ref var s = ref w.Settlements.Get(sid);
+            Assert.AreNotEqual(0L, s.LandAt, "chosen with the first boat");
+            Assert.IsTrue(Boats.AtWater(w, in s, s.LandX, s.LandY), "the landing is by the water, out of it");
+            long at = s.LandAt; float lx = s.LandX, ly = s.LandY;
+            // the beach nearest the square: no sea within reach lies much nearer the square than the landing does
+            Vec3d sq = s.LocalToSphere(s.SquareX, s.SquareY, P.Radius);
+            double nearest = double.MaxValue;
+            for (int c = 0; c < P.Cells; c++)
+            {
+                if (P.IsLand(c)) continue;
+                double d = Vec3d.ArcDistance(g.Center[c], sq, P.Radius);
+                if (d < nearest) nearest = d;
+            }
+            double ldx = lx - s.SquareX, ldy = ly - s.SquareY, land = Math.Sqrt(ldx * ldx + ldy * ldy);
+            Console.WriteLine("landing " + land.ToString("0") + " m from the square; the nearest sea cell's centre " + nearest.ToString("0") + " m");
+            Assert.Less(land, nearest + 1.0 * P.Grid.MeanSpacing * P.Radius, "the beach nearest the square");
+            w.AdvanceTo(w.Now + 3 * SimTime.Day);
+            // (a dozen boats: the row runs along the beach, every one by the water)
+            var bl = new List<int> { b1 };
+            for (int i = 1; i < hl.Count && bl.Count < 12; i++) bl.Add(Boats.Begin(w, sid, hl[i]));
+            ref var s2 = ref w.Settlements.Get(sid);
+            Assert.AreEqual(at, s2.LandAt, "kept");
+            int[] bs = bl.ToArray();
+            for (int i = 0; i < bs.Length; i++)
+            {
+                var b = w.Buildings.Get(bs[i]);
+                Assert.IsTrue(Boats.AtWater(w, in s2, b.X, b.Y), "boat " + i + " on the sand by the water");
+                double dx = b.X - lx, dy = b.Y - ly;
+                Assert.Less(Math.Sqrt(dx * dx + dy * dy), 60.0, "boat " + i + " at the landing");
+                for (int j = 0; j < i; j++)
+                {
+                    var o = w.Buildings.Get(bs[j]);
+                    double ex = b.X - o.X, ey = b.Y - o.Y;
+                    Assert.GreaterOrEqual(Math.Sqrt(ex * ex + ey * ey), 2.4, "boats " + j + " and " + i + " side by side, not on each other");
+                }
+            }
+        }
+
+        [Test]
+        public void ABoatGoesOutWithItsCrew()
+        {
+            // C9.2 (lived): the one who takes the household's boat out is joined by those of it at leisure - one trip, the same ground, back
+            // together; a boat out at sea is not taken out again, and it never carries more than its seats
+            var w = Coast(out int sid);
+            Assume.That(w != null, "a fishing village with promising open sea");
+            int hid = Fishers(w, sid, out int fisher);
+            Assume.That(hid != 0, "a household that fishes");
+            int bid = Made(w, sid, hid, fisher);
+            w.Settlements.Get(sid).Ration = 0.6;   // (premise: rations are short - the sea is worth going out to)
+            long out0 = w.Metrics.BoatOutings, seats0 = w.Metrics.CrewSeats;
+            int most = 0, hoursOut = 0;
+            for (int h = 0; h < 8 * 24; h++)
+            {
+                w.AdvanceTo(w.Now + SimTime.Hour);
+                var mem = w.Members(hid);
+                int n = 0; long t1 = 0; float tx = 0, ty = 0;
+                for (int j = 0; j < mem.Count; j++)
+                {
+                    var q = w.People.Get(mem[j]);
+                    if (!q.Alive || q.Act != ActivityKind.Sail || q.WhyArg != bid) continue;
+                    if (n == 0) { t1 = q.T1; tx = q.ToX; ty = q.ToY; }
+                    else
+                    {
+                        Assert.AreEqual(t1, q.T1, "back together");
+                        Assert.AreEqual(tx, q.ToX, 1e-3f, "to the same ground");
+                        Assert.AreEqual(ty, q.ToY, 1e-3f);
+                    }
+                    n++;
+                }
+                Assert.LessOrEqual(n, Boats.Seats, "no more than its seats");
+                if (n > 0) hoursOut++;
+                if (n > most) most = n;
+            }
+            long outings = w.Metrics.BoatOutings - out0, crew = w.Metrics.CrewSeats - seats0;
+            Console.WriteLine("lived: " + outings + " outings, " + crew + " crew seats beside the ones who took it out; most aboard at once " + most + "; hours with the boat out " + hoursOut);
+            Assert.Greater(outings, 0, "the boat went out");
+            Assert.IsNull(TestWorlds.Audit(w));
+        }
+
+        [Test]
+        public void ShoreFishersStandOnTheShoreNeverInTheSea()
+        {
+            // a village's fishing grounds may lie cells out from its shore: those who fish from the shore stand at the water's edge (shots of
+            // a year-300 world showed fifteen of them standing up to 100 m out in the sea, at the grounds' centres)
+            int villages = 0, spots = 0, afar = 0;
+            for (ulong seed = 701; seed < 709; seed++)
+            {
+                var w = TestWorlds.Make(seed);
+                var P = w.Planet;
+                for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                {
+                    ref var s = ref w.Settlements.Get(sid);
+                    if (!s.Inhabited || s.Fish.A < 0) continue;
+                    villages++;
+                    int[] grounds = { s.Fish.A, s.Fish.B, s.Fish.C };
+                    var rs = new RandomSequence(seed * 131 + (ulong)sid);
+                    foreach (int ground in grounds)
+                    {
+                        if (ground < 0) continue;
+                        bool open = true;
+                        for (int j = 0; j < 8 && open; j++) if (P.IsLand(P.Grid.Nbr8[ground * 8 + j])) open = false;
+                        if (open) afar++;
+                        for (int k = 0; k < 20; k++)
+                        {
+                            w.Wild.GroundPoint(sid, ground, true, ref rs, out double x, out double y);
+                            Assert.IsFalse(Boats.Afloat(P, w.Settlements.Get(sid).LocalToSphere(x, y, P.Radius)), "seed " + seed + " village " + sid + " ground " + ground + ": standing in the sea");
+                            spots++;
+                        }
+                    }
+                }
+            }
+            Console.WriteLine(villages + " fishing villages, " + spots + " spots on the shore; grounds with no land round them " + afar);
+            Assert.Greater(spots, 0);
+        }
+
+        [Test]
+        public void WhereTheSeaTookTheSquarePeopleGatherOnDryGround()
+        {
+            // 0-5 villages a world have their square under the sea by year 300: their people at leisure, children at play and visitors gathered
+            // there, standing out in the sea (shots of a drowned town). Premise: the square moved onto the sea by the village
+            var w = Coast(out int sid);
+            Assume.That(w != null, "a fishing village");
+            var P = w.Planet;
+            ref var s = ref w.Settlements.Get(sid);
+            double wx = double.NaN, wy = 0;
+            for (double r = 20.0; r <= 600.0 && double.IsNaN(wx); r += 10.0)
+                for (int k = 0; k < 36 && double.IsNaN(wx); k++)
+                {
+                    double qx = s.SquareX + r * Math.Cos(k * Math.PI / 18.0), qy = s.SquareY + r * Math.Sin(k * Math.PI / 18.0);
+                    if (Boats.AtSea(P, s.LocalToSphere(qx, qy, P.Radius)) && Boats.AtSea(P, s.LocalToSphere(qx + 12, qy + 12, P.Radius)) && Boats.AtSea(P, s.LocalToSphere(qx - 12, qy - 12, P.Radius))) { wx = qx; wy = qy; }
+                }
+            Assume.That(!double.IsNaN(wx), "the sea near the village");
+            s.SquareX = (float)wx; s.SquareY = (float)wy;
+            int seen = 0;
+            for (int h = 0; h < 3 * 24; h++)
+            {
+                w.AdvanceTo(w.Now + SimTime.Hour);
+                var res = w.Residents(sid);
+                ref var s2 = ref w.Settlements.Get(sid);
+                for (int i = 0; i < res.Count; i++)
+                {
+                    var q = w.People.Get(res[i]);
+                    if (!q.Alive || q.At != sid || q.Step != StepKind.Local) continue;
+                    if (q.Act != ActivityKind.Social && q.Act != ActivityKind.Play && q.Act != ActivityKind.Visit && q.Act != ActivityKind.Fish) continue;
+                    seen++;
+                    Assert.IsFalse(Boats.Afloat(P, s2.LocalToSphere(q.ToX, q.ToY, P.Radius)), q.Act + " in the sea, hour " + h);
+                }
+            }
+            Console.WriteLine(seen + " person-hours at leisure, play, visits or fishing from the shore - none in the sea");
+            Assert.Greater(seen, 0);
+        }
+
+        [Test]
+        public void BoatsGoOutAlikeAtBothResolutions()
+        {
+            // pooled over worlds (C9.2): every household of the coast's villages that lives by the fish given a dugout, the same days lived
+            // hour by hour and as COARSE days - the boats' trips, their crews and their catch a grown person-day at par
+            double tripsA = 0, tripsB = 0, kgA = 0, kgB = 0, crewA = 0, crewB = 0, outA = 0, outB = 0, adA = 0, adB = 0, fishA = 0, fishB = 0;
+            for (ulong seed = 701; seed < 706; seed++)
+            {
+                foreach (bool coarse in new[] { false, true })
+                {
+                    var w = TestWorlds.Make(seed);
+                    if (coarse) { w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day); w.AdvanceTo(w.Now + SimTime.Day + SimTime.Hours(1)); }
+                    else w.AdvanceTo(w.Now + SimTime.Day + SimTime.Hours(1));
+                    int boats = 0;
+                    for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                    {
+                        ref var s = ref w.Settlements.Get(sid);
+                        if (!s.Inhabited || s.Fish.A < 0 || s.Sea.A < 0) continue;
+                        var hl = w.HouseholdsOf(sid);
+                        for (int i = 0; i < hl.Count; i++)
+                        {
+                            var mem = w.Members(hl[i]);
+                            int fisher = 0;
+                            for (int j = 0; j < mem.Count && fisher == 0; j++) { var q = w.People.Get(mem[j]); double a = q.AgeYears(w.Now); if (q.Alive && a >= 16 && a < 60 && q.SkFish >= Boats.FisherSkill) fisher = mem[j]; }
+                            if (fisher == 0 || w.Households.Get(hl[i]).Boat != 0) continue;
+                            Made(w, sid, hl[i], fisher);
+                            boats++;
+                        }
+                    }
+                    long t0 = w.Metrics.BoatTrips, c0 = w.Metrics.CrewSeats, o0 = w.Metrics.BoatOutings; double k0 = w.Metrics.BoatFishKg, f0 = w.Metrics.FishKg;
+                    double ad = 0;
+                    for (int d = 0; d < 24; d++)
+                    {
+                        w.AdvanceTo(w.Now + SimTime.Day);
+                        for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) ad += Adults(w, sid);
+                    }
+                    double trips = w.Metrics.BoatTrips - t0, kg = w.Metrics.BoatFishKg - k0, crew = w.Metrics.CrewSeats - c0, outs = w.Metrics.BoatOutings - o0;
+                    Console.WriteLine("seed " + seed + (coarse ? " COARSE" : " lived ") + ": " + boats + " boats; outings " + outs + ", trips " + trips + " (crew seats " + crew + "), " + kg.ToString("0") + " kg, " + ad.ToString("0") + " grown person-days");
+                    double fish = w.Metrics.FishKg - f0;
+                    if (coarse) { tripsB += trips; kgB += kg; crewB += crew; outB += outs; adB += ad; fishB += fish; } else { tripsA += trips; kgA += kg; crewA += crew; outA += outs; adA += ad; fishA += fish; }
+                }
+            }
+            Console.WriteLine("lived: outings " + (outA / adA * 1000).ToString("0.0") + ", trips " + (tripsA / adA * 1000).ToString("0.0") + ", crew seats " + (crewA / adA * 1000).ToString("0.0") + ", kg " + (kgA / adA).ToString("0.000") + " a grown person-day (x1000 for counts)");
+            Console.WriteLine("COARSE: outings " + (outB / adB * 1000).ToString("0.0") + ", trips " + (tripsB / adB * 1000).ToString("0.0") + ", crew seats " + (crewB / adB * 1000).ToString("0.0") + ", kg " + (kgB / adB).ToString("0.000"));
+            Console.WriteLine("all fish: lived " + (fishA / adA).ToString("0.000") + ", COARSE " + (fishB / adB).ToString("0.000") + " kg a grown person-day");
+            Assert.Greater(tripsA, 0); Assert.Greater(tripsB, 0);
+            Assert.Greater(crewA, 0, "lived: boats went out with crews");
+            // (a COARSE trip is the day's hours in the wild, often an hour or two; a lived one 3.5-5 h: trips are not compared, the catch is.
+            // C9.1's rule - a second of the household taking the boat out hours after the first - gave lived days half the COARSE catch, x1.92)
+            Assert.That((kgB / adB) / (kgA / adA), Is.InRange(0.6, 1.6), "the same fish from boats at both resolutions");
+            Assert.That((fishB / adB) / (fishA / adA), Is.InRange(0.6, 1.6), "and the same fish in all");
+        }
+
+        static int Adults(World w, int sid)
+        {
+            int n = 0; var res = w.Residents(sid);
+            for (int i = 0; i < res.Count; i++) { var p = w.People.Get(res[i]); if (p.Alive && p.AgeYears(w.Now) >= 16) n++; }
+            return n;
+        }
+
+        [Test]
         public void BothResolutionsFishFromTheBoat()
         {
             foreach (bool coarse in new[] { true, false })

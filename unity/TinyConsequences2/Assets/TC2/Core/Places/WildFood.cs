@@ -47,7 +47,7 @@ namespace TC2.Core.Places
 
         sealed class Reach { public int Cell = -1; public int[] Cells; public float[] Dist; }
 
-        public void Bind(World w) { _w = w; _reach.Clear(); _seaReach.Clear(); }
+        public void Bind(World w) { _w = w; _reach.Clear(); _seaReach.Clear(); _edges.Clear(); }
 
         // ------------------------------------------------------------------ what counts as food
         public static bool IsGame(in Species sp) => sp.Habitat == 0 && sp.Gone == 0 && sp.Role != Role.Predator && sp.Prey == 0 && sp.Mass >= 2f;
@@ -427,21 +427,26 @@ namespace TC2.Core.Places
             Vec3d at = g.Center[ground];
             if (fishing)
             {
-                // the water's edge: halfway to the land neighbour nearest the village
-                int best = -1; double bd = double.MaxValue;
-                for (int j = 0; j < 8; j++)
+                // the water's edge nearest the ground on the village's side: the land nearest it, ring by ring of cells out from it (a ground
+                // may lie cells out from the shore - fishers stood out in the sea), and the water it was reached from (C9.2)
+                long key = ((long)sid << 32) | (uint)ground;
+                if (!_edges.TryGetValue(key, out var e) || e.Coast != P.CoastVersion)
                 {
-                    int nb = g.Nbr8[ground * 8 + j];
-                    if (!P.IsLand(nb)) continue;
-                    double d = Vec3d.ArcDistance(g.Center[nb], s.Anchor, P.Radius);
-                    if (d < bd) { bd = d; best = nb; }
+                    e.Coast = P.CoastVersion;
+                    e.Land = Boats.Edge(_w, ground, s.Anchor, true, out int land, out int water) ? land : -1;
+                    e.Water = water;
+                    _edges[key] = e;
                 }
-                if (best >= 0) at = (g.Center[best] + g.Center[ground]).Normalized;
+                if (e.Land >= 0) at = (g.Center[e.Land] + g.Center[e.Water]).Normalized;
             }
             s.SphereToLocal(at, P.Radius, out x, out y);
             double j0 = fishing ? 25 : 70;
             x += rs.Range(-j0, j0); y += rs.Range(-j0, j0);
+            if (fishing) Boats.OutOfTheWater(_w, in s, ref x, ref y);   // (at the waterline, on the sand: never standing in the sea)
         }
+
+        struct EdgeOf { public int Coast, Land, Water; }
+        readonly Dictionary<long, EdgeOf> _edges = new Dictionary<long, EdgeOf>();   // (a cache of each village's shore by a fishing ground: geometry, by the coast)
 
         /// <summary>Keyed Poisson count (Knuth below 30, a rounded normal above): whole animals from an expected number.</summary>
         static int Poisson(double lambda, ref RandomSequence rs)
