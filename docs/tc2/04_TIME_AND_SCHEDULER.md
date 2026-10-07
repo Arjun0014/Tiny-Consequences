@@ -125,14 +125,20 @@ What a step must keep of its days (learned in F8's calibration, D2-083) - a step
    season's curve (the first growing step began at the year's mean as summer warmed: grown at the start's temperature, the crop was
    several degrees too cold); an animal's condition moves day by day before its hazard and its conception are read (taking the
    step's change first bred cattle, which recover on the spring grass, three times as often); a body's chance of death is each day's
-   on that day's health and conception reads the step's mean health; the step's work reads the mean of the rations its days would set
-   toward the harvest; hearths and pasture take the step's middle day; a choice made once for the step (hunt, fish or gather) is made
-   on the woods as its middle day finds them, the village's pigs having rooted half the step's mast.
+   on that day's health and conception reads the step's mean health; hearths and pasture take the step's middle day; a choice made
+   once for the step (hunt, fish or gather) is made on the woods as its middle day finds them, the village's pigs having rooted the
+   woods day by day until then, and each worker of the step chooses on the ground as the step's earlier workers left it (days lived
+   choose each day on that day's woods and game, so as a village's own take empties a ground its people turn to another; chosen on
+   the step's first woods, a twelve-day step gathered where days lived turn to hunting: hunting half as often, the woods overdrawn,
+   0.05 FU an hour against 0.08). (Not everything drifts: the step's work reads its first day's ration, because the step's own
+   foraging, milk and meat hold the store as days lived would - a ration walked down by the need alone marked whole steps short.)
 3. **A cap or threshold meant for a day stays a day's.** A trip takes at most a share s of a ground: a step's trips at most
    1 - (1 - s)^K; the least wild trip is a quarter-hour a day; grazing takes each cell's day share for each day (capped at one day's
    offer, a twelve-day step grazed less than two and the pastures stayed lush); pigs root day by day, a sixth at most of what is left
    each day (at the first day's find a step took up to twice the woods); herds are kept to the pasture as the step leaves it, as days
-   lived cull at the grass's leanest; a smith stops when the village has its metal.
+   lived cull at the grass's leanest; a smith stops when the village has its metal. And an allowance meant for a day is given each
+   day: a pressing need keeps people out up to nine hours a day, each day of the step (given once a step, a short step foraged a
+   day's need-hours less a day and stayed short longer).
 4. **What the step moves at its start is seen as days lived would hold it.** Meals, larders, the catch and the meat move in or out
    of the store at the step's start; the store read by trade, relief, amends, the hungry choosing a store, the step's own urge to the
    wild and whether its store is empty is the granary plus the step's lead, spent evenly through it (`Settlement.StoreSeen`; seen at

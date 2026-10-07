@@ -79,7 +79,6 @@ namespace TC2.Core.Places
         public byte TechKnown;          // the techniques it knows (bits: a competent practitioner lives here)
         public double Ahead;            // DEEP (F8): what its last step moved in or out of the store at the step's start that days lived
         public long AheadFrom, AheadTo; // would move through it (the step's start and end; 0 when none)
-        public double RationStep;       // DEEP: the mean ration the step's days would set (set by its food, read by its work; never saved)
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 

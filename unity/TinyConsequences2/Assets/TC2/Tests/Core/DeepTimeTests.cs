@@ -65,6 +65,27 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void EachWorkerOfAStepChoosesOnTheGroundTheStepLeft()
+        {
+            // days lived choose their work each day on that day's woods, so a village's own take turns its people to other work; a
+            // DEEP step chooses once a person, each on the ground as the step's earlier workers left it (Retake, 04 §4.3b rule 2)
+            var w = TestWorlds.Make(31);
+            int sid = w.Settlements.First();
+            w.Wild.Survey(sid);
+            w.Wild.MidStep(sid, 1.0);
+            ref var s = ref w.Settlements.Get(sid);
+            Assert.GreaterOrEqual(s.Gath.A, 0, "the village has woods to gather in");
+            float before = s.Gath.Expect;
+            Assert.Greater(before, 0f);
+            for (int k = 0; k < 6; k++) w.Wild.Gather(s.Gath.A, 60.0, 1.0, (ulong)(k + 1), 12);   // (six workers' twelve-day takes)
+            Assert.AreEqual(before, w.Settlements.Get(sid).Gath.Expect, "the take alone changes nothing a worker reads");
+            w.Wild.Retake(sid, WildFood.Gathering);
+            float after = w.Settlements.Get(sid).Gath.Expect;
+            System.Console.WriteLine("gathering FU an hour: " + before.ToString("0.000") + " -> " + after.ToString("0.000"));
+            Assert.Less(after, before, "the next worker sees the woods the step's earlier workers left");
+        }
+
+        [Test]
         public void CalmVillagesLiveSeveralDaysAtAStep()
         {
             var w = Lived(31, 12);
@@ -140,14 +161,17 @@ namespace TC2.Tests.Core
                 Assert.AreEqual(mc.Births, md.Births, 0.30 * mc.Births + 10, "births");
                 Assert.AreEqual(mc.Deaths, md.Deaths, 0.30 * mc.Deaths + 10, "deaths");
                 Assert.AreEqual(mc.Marriages, md.Marriages, 0.30 * mc.Marriages + 10, "marriages");
-                // the herds keep their mix (a step that read its first day for all its days bred cattle three times as often)
+                // the herds keep their mix (a step that read its first day for all its days bred cattle three times as often, and culled
+                // pigs to a fourteenth): a beast count on a four-village world at one moment swings with a few herds' culls, so the test
+                // catches a factor of 2.5 (D2-083: the six-seed 400-year comparison is the calibration - goats 1.11, pigs 0.73, n.s.)
                 var kc = new int[Livestock.Kinds]; var kd = new int[Livestock.Kinds];
                 for (int b = c.Beasts.First(); b != 0; b = c.Beasts.Next(b)) if (c.Beasts.Get(b).Alive) kc[c.Beasts.Get(b).Kind]++;
                 for (int b = d.Beasts.First(); b != 0; b = d.Beasts.Next(b)) if (d.Beasts.Get(b).Alive) kd[d.Beasts.Get(b).Kind]++;
                 for (int k = 0; k < Livestock.Kinds; k++)
                 {
-                    System.Console.WriteLine("  " + Livestock.Laws[k].Name + " " + kc[k] + " / " + kd[k]);
-                    Assert.AreEqual(kc[k], kd[k], 0.5 * System.Math.Max(kc[k], kd[k]) + 15, Livestock.Laws[k].Name);
+                    double ratio = (kd[k] + 15.0) / (kc[k] + 15.0);
+                    System.Console.WriteLine("  " + Livestock.Laws[k].Name + " " + kc[k] + " / " + kd[k] + " (x" + ratio.ToString("0.00") + ")");
+                    Assert.That(ratio, Is.InRange(1.0 / 2.5, 2.5), Livestock.Laws[k].Name);
                 }
             }
         }

@@ -168,14 +168,38 @@ namespace TC2.Core.Places
         /// </summary>
         public void MidStep(int sid, double keep)
         {
+            _keepSid = sid; _keep = DMath.Min(1.0, DMath.Max(0.0, keep));
             if (keep >= 1.0) return;
             ref var s = ref _w.Settlements.Get(sid);
             if (s.Gath.A < 0) return;
             var P = _w.Planet;
             double A = 0; int k = GroundCells(s.Gath.A, true);
             for (int i = 0; i < k; i++) A += MastLeft(P, _ground[i]);
-            A *= DMath.Max(0.0, keep);
+            A *= _keep;
             s.Gath.Expect = (float)(GatherRate * A / (A + GatherHalf) * FuPerKgMast);
+        }
+
+        int _keepSid; double _keep = 1.0;   // (the share of the mast the step's herds leave by its middle day: set by MidStep, read by Retake)
+
+        /// <summary>
+        /// DEEP (F8): what a village's best ground of a kind offers once the step's earlier workers have taken from it. Days lived choose
+        /// their work each day on the woods, the game and the shore as that day finds them, so as a village's own take empties a ground
+        /// its people turn to another; a step chooses once a person, so each chooses on the ground as those before them in the step left
+        /// it (chosen on the step's first woods, a twelve-day step's people gathered where days lived turn to hunting half the time).
+        /// </summary>
+        public void Retake(int sid, int kind)
+        {
+            ref var s = ref _w.Settlements.Get(sid);
+            if (kind == Hunting) { if (s.Hunt.A >= 0) { Kinds(); s.Hunt.Expect = (float)ExpectHunt(s.Hunt.A); } }
+            else if (kind == Fishing) { if (s.Fish.A >= 0) { Kinds(); s.Fish.Expect = (float)ExpectFish(s.Fish.A); } }
+            else if (s.Gath.A >= 0)
+            {
+                var P = _w.Planet;
+                double A = 0; int k = GroundCells(s.Gath.A, true);
+                for (int i = 0; i < k; i++) A += MastLeft(P, _ground[i]);
+                if (_keepSid == sid) A *= _keep;
+                s.Gath.Expect = (float)(GatherRate * A / (A + GatherHalf) * FuPerKgMast);
+            }
         }
 
         /// <summary>FU an hour an ordinary hunter (skill 0.5) can expect on a ground.</summary>

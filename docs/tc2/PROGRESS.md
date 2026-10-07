@@ -4,7 +4,24 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
-- **Session 3 (6 Oct 2026, from 17:57 IST, in progress)** - Arjun's direction: the living world made visible first (D2-079), then
+- **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
+  reconsider the planet's physical size** (D2-007's 10 km reopened; `19_PLANET_SCALE.md`). D2-083 closed and committed (177 tests,
+  COARSE hashes unchanged). Scale study tools in the working tree: the planet's geophysics in geo-lengths (the same ground at any size),
+  living laws per hectare and grounds as real-size patches (bit-identical at 10 km), headless `--radius`, `run --scale`, the view's
+  framing, relief, LOD and haze relative to R. Runs: seeds 42, 7, 1, 2 at R = 10, 7, 6, 5, 4 km, 400 years DEEP.
+- **Session 4 (7 Oct 2026, from 00:16 IST, closed into session 5)** - Arjun (7 Oct): finish D2-083, then **the world made legible** is the
+  priority (D2-084, `18_WORLD_READABILITY.md`, roadmap phase W - "the simulation exists, but almost none of it is legible from looking
+  at the world"; no simulation theatre; the order audit -> composition -> forests -> rivers -> biomes -> terrain -> settlements -> life
+  -> scars -> orbit -> multi-age acceptance -> browser performance; the UI art pass recorded for later). Same machine rule (~50 % CPU
+  and RAM; ordinary low-priority runs need no permission).
+  - **D2-083 closed (DEEP calibration)**: the step ration removed (the step's work reads its first day's ration), a pressing need's
+    hours given each day of a step, each worker of a step choosing on the ground the step's earlier workers left (`WildFood.Retake`).
+    Six seeds (round j): people at par at every century (0.85-1.00, n.s.), births, deaths, conceptions, harvests per person at par;
+    known residual leans in the wild choice (hunting 1.34x, fish 0.81x, out for need 1.09x), smelting and tributes per person-year.
+    A tried "walked take" (round k) made it worse and was reverted.
+  - **Visual slice 1 (D2-084)** written, being shot: stands and glades, the open land's palette, relief from afar, rivers and their
+    corridors, seven tree kinds in variants, less blur and haze (13 §10).
+- **Session 3 (6 Oct 2026, from 17:57 IST, closed into session 4)** - Arjun's direction: the living world made visible first (D2-079), then
   F8. **Operating constraint: keep the shared machine under ~50 % CPU and RAM** - it already sits at ~66-70 % RAM from other
   people's work (Chrome, Oracle, another Claude session with a headless Chromium on SwiftShader at up to ~76 % of all threads), so:
   one heavy TC2 job at a time, launched only when `scratchpad/quiet.ps1` finds the machine quiet (CPU < 40 %, >= 3 GB available),
@@ -44,6 +61,9 @@
     32), chances once a day, and no step across a plant pulse (`World.NextPlantTick`). COARSE hashes unchanged; 176 tests pass.
     Small worlds now match on wild work and harvests; DEEP's early growth still runs ahead (seed 1 +9 % people at year 100, three
     times the households leaving). **The multi-seed run with the newest build is pending** (see Blockers).
+  - **Known COARSE bug, its own calibrated change after D2-083** (Arjun: not inside D2-083, since changing COARSE moves DEEP's
+    reference): COARSE hunters never improve their skill and their trips are not counted - the line sits inside a comment in
+    `AgentSystem.CoarseDay` since D2-063. Fix it after D2-083 closes, recalibrated against ACTIVITY, with new COARSE baselines.
 
 - **Session 2 (5 Oct 2026, in progress)** - compaction-recovery hooks (`.claude/settings.json`, `.claude/hooks/tc2_compact.mjs`;
   Claude Code 2.1.289: PreCompact stdout joins the compaction instructions, SessionStart matcher `compact` stdout reaches Claude;
@@ -263,6 +283,13 @@
   - Headless tools: `planet` (`--tect`, `--volc`, `--quake`, `--storms`, `--erosion`, `--eco`, `--ecodiag` deaths by
     cause, `--ecocsv FILE` series, `--steep`, `--map DIR`), `climate`, `run --profile`.
 
+## Measurements (session 5)
+
+| What | Host | Result |
+|---|---|---|
+| D2-083 closed, the final tree: 400 years, no profiler (the machine shared, 50-80 % CPU from other sessions) | dotnet | DEEP 7 3.20 world years/s, COARSE 7 2.42 (same load), DEEP 42 2.23; COARSE hashes 42 55cfd96b471db300, 7 8c3e14c324165015 (unchanged) |
+| Full headless tests | dotnet | 177 pass (324 s; the DEEP-vs-COARSE herd check now a factor-2.5 bound) |
+
 ## Measurements (session 3)
 
 | What | Host | Result |
@@ -349,7 +376,16 @@
 | Web, sea life + water by depth | Chrome/WebGPU | 6/6; start 6.1 s; village 88 fps; a day away (96 years) 27 s |
 
 ## Blockers
-- **F8 calibration runs (6 Oct 2026, session 3)**: Claude Code's auto-mode classifier refused ("Interfere With Workloads") to stop two
+- **Memory pressure stop (6 Oct 2026, 23:56; resolved 7 Oct 00:16 - Arjun: resume, run the retests and the six seeds yourself, no
+  server)**: Claude Code had stopped the local game server, the COARSE 7/42 tally chain and the queued DEEP 7 retest. Standing rule
+  from Arjun (7 Oct): ordinary low-priority runs within the ~50 % CPU/RAM rule need no further permission; start the game server only
+  when inspecting the game, then shut it down. Headless runs gate at CPU < 40 % and >= 2 GB available (`calib2.sh` `MEMMIN`; a 400-year
+  run's working set is ~0.1-0.3 GB); the editor and the Web build keep the 3 GB gate.
+- **Note (7 Oct 00:24)**: the auto-mode classifier refused ("Interfere With Workloads") to stop this session's own leftover waiting
+  chain (a `calib2.sh` of TAG i waiting in `quiet.ps1`, started 00:21 by a task already stopped). Left alone it reran the same
+  deterministic DEEP 7 test into the same file when the machine was quiet and exited - harmless; recorded so a later session does not
+  mistake a second dotnet run for someone else's.
+- **F8 calibration runs (6 Oct 2026, session 3; resolved 23:06 - Arjun allowed the batch)**: Claude Code's auto-mode classifier refused ("Interfere With Workloads") to stop two
   of the session's own leftover calibration workers (`scratchpad/calib2.sh`, started 21:15) and then to start the final DEEP batch
   (seeds 42, 7, 1-4 with the newest build) while they ran. The leftover workers have since finished (22:04; their COARSE 1-4 runs are
   the baselines, their DEEP runs round 3a in D2-083). To proceed: allow the batch (or a Bash permission rule for it), or run it by hand

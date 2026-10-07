@@ -75,6 +75,18 @@ tests COARSE vs DEEP over centuries on several seeds (population, deaths by caus
 abandoned, harvests, famines, livestock, techniques, epidemics, trade, raids, walls, tributes, the planet's fields); (e) Ancient and
 Deep time on DEEP, measured in the browser.
 
+## W — The world made legible (D2-084; the current priority once D2-083 closes - a standing requirement after it)
+The simulation is legible from the picture (`18_WORLD_READABILITY.md`): audit of state against what is drawn; landscape
+composition (relief legible, height and slope driving cover, biome palettes); forests beyond D2-080 (kinds, ages, understorey,
+edges, clearings; near forms, mid groups, far masses); rivers and river corridors; biome and ground-cover differentiation;
+terrain and geology; settlements that read as places (and founding analysed in the simulation); wildlife, livestock and activity;
+persistent scars and history (the smallest real state where needed: disturbance per cell, roads by use); orbit-scale legibility;
+the multi-age acceptance; browser performance. No simulation theatre.
+**Done when**: the same seed shot at years 0, 25, 100, 300 and 1,000 from the orbit, region, river, forest, village and close views
+shows its history without the date - year 0 a natural world worth watching, later ages visibly changed by people and events - and
+the Web build keeps 60 fps in its normal views (WebGPU; WebGL2 fallback measured). Then F8's remaining work (speed, Ancient and Deep
+time in the browser; the COARSE hunting-skill fix as its own calibrated change) and a full UI art pass (no debug panels).
+
 ## F9 — The god
 Powers that write physical state (lightning, rain, drought, warmth, cull, bring, plague, blight, meteor,
 stir a mountain, strain a fault); chains rooted at YOU.

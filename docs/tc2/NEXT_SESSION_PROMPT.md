@@ -69,6 +69,27 @@ the far woods as masses, ground cover by biome, villages' signs; the Web build a
 a step must keep of its days" fixed every bias found; COARSE hashes unchanged; the final multi-seed run is pending (PROGRESS
 "Blockers"). Then: DEEP's early growth on small worlds, speed (per-step costs, the planet), Ancient and Deep time in the browser.
 
+**Direction from Arjun (7 Oct 2026, D2-084) - the current priority**: "the simulation exists, but almost none of it is legible from
+looking at the world." Make the world legible from the picture at the orbit, region, village and close views, and let it carry its
+history (`docs/tc2/18_WORLD_READABILITY.md`, roadmap phase W): audit what the simulation knows against what is drawn, then landscape
+composition, forests, rivers and river corridors, biomes and ground cover, terrain and geology, settlements that read as places (and
+whether founding fragments people too much - fixed in the simulation if so), wildlife and activity, persistent scars, orbit-scale
+legibility, a multi-age acceptance (the same seed at years 0, 25, 100, 300, 1,000: "can I see history without reading the date?"),
+browser performance at 60 fps. **No simulation theatre**: presentation may elaborate and exaggerate real state, never invent it; add the
+smallest real state where a meaningful difference cannot be drawn. Judge across views and ages, never one cherry-picked angle. The UI
+gets a full art pass later (no debug panels at ship). Invisible simulation features wait until this is convincing.
+
+**Where we are (session 4, 7 Oct 2026)**: D2-083 (DEEP calibration) closed - six seeds at par in people and per-person rates, residual
+leans in the wild choice recorded. Visual slice 1 of D2-084 in progress (stands and glades, palette, relief, rivers, tree kinds). Machine
+rule: total CPU and RAM ~50 %, one heavy job at a time, low priority, never kill processes you did not start (the classifier also refuses
+to stop this session's own leftover runs - let them finish).
+
+**Direction from Arjun (7 Oct 2026, D2-085) - before D2-084's polish**: reconsider the planet's physical size. D2-007's R = 10 km was
+chosen before any playtest; the world feels enormous and empty. Study TC1's real scale, test smaller TC2 planets (N64 kept) really
+simulated - population, interaction density, travel, performance, comparable shots - decide the radius and change it now if the evidence
+supports it (old saves may be invalidated), then redo D2-084 on the chosen scale. Fewer people is fine (2,000-8,000 mature), more detail
+per person, settlement and feature; never a world where everyone reaches everyone. The study: `docs/tc2/19_PLANET_SCALE.md`.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

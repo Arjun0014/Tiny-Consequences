@@ -106,10 +106,31 @@ namespace TC2.Headless
             sw.Restart();
             long lastEvents = w.Metrics.Events;
             var lastSw = Stopwatch.StartNew();
-            while (w.Now < end)
+            // (--snap Y1,Y2,..: the world saved Y years from its start as DIR/world_yY.tc2 - DIR is --snapdir, default tc2/out/ages/sSEED;
+            // look-dev and acceptance shots of one world at several ages load them: unity.mjs shots --load F)
+            var snapAt = new List<long>(); var snapName = new List<string>();
+            long start0 = w.Now;
+            if (a.Has("snap"))
+                foreach (var ys in a.Get("snap").Split(','))
+                {
+                    double y = double.Parse(ys, CultureInfo.InvariantCulture);
+                    snapAt.Add(start0 + SimTime.Years(y)); snapName.Add(ys.Trim());
+                }
+            string snapDir = a.Get("snapdir", Path.Combine("tc2", "out", "ages", "s" + w.Seed));
+            while (w.Now < end || (snapAt.Count > 0 && snapAt[0] <= w.Now))
             {
                 long next = Math.Min(end, w.Now + report);
+                bool snapNow = snapAt.Count > 0 && snapAt[0] <= next;
+                if (snapNow) next = snapAt[0];
                 w.AdvanceTo(next);
+                if (snapNow)
+                {
+                    Directory.CreateDirectory(snapDir);
+                    string sf = Path.Combine(snapDir, "world_y" + snapName[0] + ".tc2");
+                    File.WriteAllBytes(sf, SaveFile.Save(w, 0, OfflineMode.Living));
+                    Console.WriteLine("saved " + sf + " at " + SimTime.Format(w.Now) + "  pop " + w.LivingPeople() + "  places " + w.InhabitedSettlements());
+                    snapAt.RemoveAt(0); snapName.RemoveAt(0);
+                }
                 long ev = w.Metrics.Events - lastEvents; lastEvents = w.Metrics.Events;
                 double ms = lastSw.Elapsed.TotalMilliseconds; lastSw.Restart();
                 Console.WriteLine(SimTime.FormatShort(w.Now) + "  pop " + w.LivingPeople() + "  places " + w.InhabitedSettlements() + "  granary " + F(TotalGranary(w), "0") +

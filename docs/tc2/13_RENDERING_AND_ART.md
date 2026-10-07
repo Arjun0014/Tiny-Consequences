@@ -141,3 +141,29 @@ scattered trees read as a toy. Open: clouds, tilt-shift, close-in grass, night l
   ahead, `@H` local hour: seasons and nights in one round). Art notes: forests read from afar by value (darker than meadow) and by grain
   (clumps and gaps); a meadow reads by patchiness in density and tone, not by more of the same tuft; shrubs read best darker than the
   grass; lights at night tell "inhabited" from orbit more than anything by day.
+
+## 10. The world made legible (D2-084; slices in `18_WORLD_READABILITY.md`)
+
+Slice 1 (composition, forests, rivers - in progress, session 4):
+- **Stands and glades** (`Canopy.Stands`, the terrain shader's `StandRank`): where the land is wooded its forest share is drawn as stands
+  of closed canopy with edges and glades and meadows between - a stand where the share is above the point's rank in a never-repeating
+  value noise (~150-300 m), the ranks spread evenly through the noise's own distribution (`Canopy.StandCdf`, a 256-texel texture), so
+  the stands cover the share; thin woods (share < ~0.12) stay scattered trees; a pixel wider than ~45-110 m draws the share itself.
+  The trees near the camera and the ground cover follow the same rule (the CPU's copy of the shader's arithmetic). Near a river the
+  rank is lowered: the woods keep to the banks.
+- **The open land's palette** (`TerrainLod.CellColour`) from the climate and the ground's water, not the biome's class: lush meadow,
+  gold-olive steppe, sand, grey-green tundra, grass browning in a dry spell (soil water), thin alpine turf, dark wet meadow on valley
+  floors (`Ground.Relief`: a cell's height against its two rings of neighbours, -1 valley .. +1 ridge). Conifers keep to ridges and
+  broadleaves to valleys where the climate holds both.
+- **Relief from afar**: past ~0.5-5 km the ground's slopes are lit as if steeper (a cartographer's hillshade in the terrain shader);
+  haze ~40 % thinner; the tilt-shift a hint at the frame's edges below ~1 km (it softened whole views).
+- **Rivers** (`Rivers.cs`, `River.shader`, `WaterView`): one shape for every reach (the drainage's path, meandering), shared by the
+  water and the ground; the water is a ribbon on the centre line, as wide as the flow says near the camera (~2.5x a real river) and,
+  for the planet's larger rivers (by their rank in flow), never thinner than ~2.6 pixels far off; ripples run down its course, the
+  sky in its fresnel, the sun's glint; brooks fade below a pixel. The ground draws the corridor: wet earth at the edge, a lusher
+  riparian strip as wide as the river is large, reeds at the edge only (no cover in the channel), no trees in the water.
+- **Trees** (`ProcMeshes.ForestTree`): seven kinds in three variants each - round, tall, wide and forked (oak), birch, willow and alder by
+  the water, spruce in tiers, pine (a tall bare bole under a flat broken crown) on dry or coastal land - every crown lumps of different
+  sizes and shades (never one smooth ball); the far forms as before.
+- Tools: `unity.mjs shots --load "F1;F2"` (saved worlds, each into its own folder), views `river`, `riverfar`, `town`, `townclose`,
+  `scar`, `scarfar`; headless `run --snap Y1,Y2` saves the world at those years (`tc2/out/ages/sS/world_yY.tc2`).

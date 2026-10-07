@@ -467,20 +467,6 @@ namespace TC2.Core.Places
             double prudent = daily > 0 ? DMath.Clamp(s.Granary / (daily * (toHarvest + 6 + keep)), 0.8, 1.0) : 1.0;
             double ration = DMath.Min(lasts, prudent);
             s.Ration = ration;
-            // (DEEP: the rations days lived would set through the step - the store drawn a day at a time toward the harvest, the cut
-            // deepening as it nears; the step's work reads their mean as its shortage, not its first day's: F8 calibration)
-            s.RationStep = ration;
-            if (days > 1 && daily > 0)
-            {
-                double sum = 0;
-                for (int k = 0; k < days; k++)
-                {
-                    double g = s.Granary - k * daily;
-                    int th = toHarvest - k; if (th <= 0) th += SimTime.DaysPerYear;
-                    sum += DMath.Min(DMath.Clamp(g / (daily * (th + 6)), 0.45, 1.0), DMath.Clamp(g / (daily * (th + 6 + keep)), 0.8, 1.0));
-                }
-                s.RationStep = sum / days;
-            }
             if (ration < 0.85 && s.RationEvent == 0 && s.Population > 0)
             {
                 long failed = LastFailedHarvest(s.Id, SimTime.Year + SimTime.Year / 2);

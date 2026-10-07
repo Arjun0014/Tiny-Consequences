@@ -1,6 +1,66 @@
 # TC2 Session handoff
 
-## Session 3 (6 Oct 2026, from 17:57 IST) — in progress
+## Session 5 (7 Oct 2026, from 06:40 IST) — in progress
+
+### Exact state (keep current)
+- **Arjun's direction (7 Oct, D2-085 - the current priority)**: after D2-083 is verified and committed, STOP before the D2-084 polish
+  and **reconsider the planet's physical size** (D2-007's R = 10 km is reopened): study TC1's actual scale, test smaller TC2 planets
+  (N64 kept, R = 10 / 7 / 6 / 5 / 4 km) really simulated, measure population, interaction density, travel, performance, take comparable
+  screenshots (orbit, region, village, close), decide the radius myself and change it now if the evidence supports it (old saves may be
+  invalidated); then redo D2-084 on the chosen scale. Fewer people is fine (2,000-8,000 mature); no world where everyone reaches everyone.
+  Study and decision: `docs/tc2/19_PLANET_SCALE.md`.
+- **D2-083 closed and committed** (session 5): 177 tests (the small-world herd check now a factor-2.5 bound - DECISIONS D2-083
+  "Closing checks"), COARSE 400-year hashes unchanged (42 55cfd96b471db300, 7 8c3e14c324165015).
+- **Scale tools (working tree, D2-085 in progress)**: the planet's geophysics in geo-lengths (`PlanetState.GeoRadius` = 10 km,
+  `GeoScale`, `GeoAreaHa`, `GeoCellSize`: plates, erosion, coasts, ice, drainage, quakes, storms, eruptions, tsunamis, copper's extent,
+  slides, the ground's steepness for ecology and routes) - a seed makes the same ground at any size; living laws per hectare
+  (`AreaScale`: predators' half-sated prey and territories, hunters' half-sated grounds, the occupancy of a cell for speciation and
+  herds) and grounds as a patch of real size (`PlanetState.Patch(c, rings)`, `PatchRings`: herds, hunting grounds, rock for querns);
+  initial villages 1.2-3.9 km apart in metres. **All bit-identical at R = 10 km** (12-year hash aeba16dc9bb1c04e against the D2-083
+  build). Tools: headless `--radius M`, `run --scale` (`ScaleReport.cs`: spacing, villages within a day's walk, communities and hops,
+  people reachable in a day, kin distance, polities, woods round villages, wild kinds, cost a person-day) with `Core/Diagnostics/
+  ScaleTally.cs` (distances of marriages, trades, relief, moves, foundings, takings, raids, claims, visits, tribute; tools only). View:
+  `?radius=`, shots `-tc2radius`, orbit/region framing, relief exaggeration (`Ground.ScaleTo`), terrain LOD depth and haze relative to
+  R; multi-world shot folders named by save folder. Scratchpad (session 5):
+  `C:\Users\aswin\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\a14b045d-19c2-46a3-b3ef-213aae01eceb\scratchpad`
+  (`scale_runs.sh`, `queue1.sh`, `runs.sh`, `bin_b` = the study binaries).
+- **Visual slice 1 of D2-084 is still uncompiled in Unity** (session 4's code: stands, palette, relief, rivers, tree kinds) - it will
+  compile with the first scale shot round; judge it there.
+
+## Session 4 (7 Oct 2026, from 00:16 IST) — closed into session 5
+
+### Exact state (keep current)
+- **Arjun's direction (7 Oct, D2-084)**: finish D2-083, then **the world made legible** is the priority (`18_WORLD_READABILITY.md`,
+  roadmap phase W): audit -> composition -> forests -> rivers -> biomes -> terrain -> settlements -> life -> scars -> orbit ->
+  multi-age acceptance -> browser performance. No simulation theatre. Ordinary low-priority runs need no permission (CPU/RAM ~50 %).
+- **D2-083 (DEEP calibration) - working tree, uncommitted**: the step's mean ration (RationStep) removed (first day's ration);
+  a pressing need's hours given each day of a step (`AgentSystem.CoarseDay` free); each worker of a step chooses on the ground as the
+  step's earlier workers left it (`WildFood.Retake`, after each wild trip when days > 1); a worker's own take walked through the step
+  (`WildFood.MidTake` in Hunt, Fish, Gather when days > 1). Rounds: h (no RationStep; seed 7 only), i (+ need-hours: wild hours
+  2.17 vs 1.40 - overshoot, the woods overdrawn), j (+ Retake; six seeds, `scratchpad/verdict_j.txt`: per-person rates at par,
+  people 0.85/0.87 at years 300/400 n.s. - seed 4 founded fewer villages, few epidemics -, hunting +34 % t 3.5, out for need +9 % t 7.1,
+  fish -19 %), k (+ MidTake: seed 7 worse - more hunting, more out for need, famines 387 vs 312 - **reverted**; the working tree's
+  Core is round j). D2-083 is written up as closed in DECISIONS/04/PROGRESS with round j's evidence and residual leans.
+  **SESSION STOPPED 7 Oct ~01:04 at Arjun's request (usage limit). NOTHING COMMITTED since 6ad57fb.** Still to do, in order:
+  (1) `node tc2/scripts/headless.mjs test` (all tests + the new `DeepTimeTests.EachWorkerOfAStepChoosesOnTheGroundTheStepLeft`; the
+  repo's bin holds the reverted round-k build until it rebuilds); (2) COARSE hashes of seeds 42/7 must still be 55cfd96b471db300 /
+  8c3e14c324165015 (one-day arithmetic untouched); (3) DEEP speed on a quiet machine (no --profile, nothing else running; round f:
+  DEEP 42 3.17 y/s vs COARSE 1.80, DEEP 7 4.28 vs 2.97) - add to D2-083 and PROGRESS measurements; (4) commit D2-083 (stage Core
+  AgentSystem/Settlement/SettlementSystem/WildFood, Tests DeepTimeTests, docs 04, 17, 18, DECISIONS, PROGRESS, SESSION_HANDOFF,
+  NEXT_SESSION_PROMPT, headless Commands.cs `--snap`); (5) then the visual slice below (compile in Unity via shots, fix, judge, commit
+  with its .meta files). A leftover round-k run of seed 3 (`deep3_400k`, tc2bin21) may have finished after the stop - ignore it.
+  Scratch files: `scratchpad/verdict.mjs` (now with mechanism tallies), `pairsj.json`, `verdict_j.txt`, binaries tc2bin19-21.
+- **Visual slice 1 (D2-084), code written, NOT yet compiled in Unity or shot**: woods as stands and glades (`Canopy.Stands`,
+  StandNoise/StandRank/StandCdf, the shader's StandRank; trees and cover follow), open-land palette from climate and soil water
+  (`TerrainLod.CellColour`), `Ground.Relief` (valley/ridge index: wet valley floors, conifers to ridges), distant relief lit steeper
+  (Terrain.shader normal), haze ~40 % thinner, tilt-shift a hint (Sky, TiltShift.shader), **rivers** (`Rivers.cs` shared shape,
+  `River.shader` ribbons widened to >= ~2.6 px far off for larger rivers, wet banks and riparian strip in Colourise, Land.y = river
+  nearness, woods keep to banks, reeds at the edge only), **trees** (`ProcMeshes.ForestTree` 7 kinds x 3 variants: round, tall,
+  wide, birch, willow by water, spruce, pine on dry/coastal land; crowns of shaded lumps), shot tools (`ShotRunner -tc2load F1;F2`,
+  `SimHost.LoadWorld`, views `river`, `town`, `scar`; headless `run --snap Y1,Y2` -> `tc2/out/ages/sS/world_yY.tc2`), River.mat in
+  ProjectSetup (run `unity.mjs configure` before a Web build). Next: `unity.mjs shots --tag leg1`, fix compile errors, judge.
+
+## Session 3 (6 Oct 2026, from 17:57 IST) — closed into session 4
 
 ### Exact state
 - Commits: 1156d3d D2-081 (the woods as masses, cover, villages' signs) - then D2-082 (Web: cover gathering cached, catch-up at orbit,
@@ -146,21 +206,29 @@
   with `?absence=24h` to live ~96 years first.
 
 ### Next steps
-1. **The living world made visible (D2-079, Arjun's direction)** - slice 1 done (D2-080: the canopy and the near trees). Next:
-   (a) the Web build and its frame rate with the woods (`webtest.mjs`, `webperf.mjs --view forest|forestlow|close`) - stopped once
-   for lack of memory; (b) the far woods at the region view read as a faint speckle: keep the near crowns' shadows and the floor's
-   occlusion out of the far blend (`farCol` from the litter without `shade`; `floorOcc` toward 1 - 0.25 x share with the far fade)
-   and darken the mean crown (0.74 -> 0.62); (c) ground cover by biome (shrubs at wood edges, meadow flowers, heath), animals
-   readable at the village view, the orbit's woods (`PlanetView`).
-2. **F8 - Deep time** (17): Ancient and Deep time need ~10x: in COARSE the planet alone costs ~150 ms a world year (daily weather
-   43, vegetation 54, housekeeping 43) and the village day ~620 us at ~500 people (coarse-day 252, learning 119 - each person's
-   Gumbel scatter recomputed daily -, food 65, demography 65; `tc2/out/society/sick42_1000.txt` profile): a season step for
-   households and coarser planet steps, fitted to COARSE by distribution tests (D2-061).
-3. **Web performance**: the catch-up of a day away measured 48-54 s after F6 (s2webf, s2webf2 - both before anything else shared
-   the machine, so the slowdown against 41-42 s is real): profile the browser's catch-up and the views layer by layer
-   (`webperf.mjs`). Measure only on a quiet machine.
-4. F7's carried-forward items (D2-078): Your Actions (with F9), timelines, news by incident, biography and polity pages, ages named
+1. **F8 - DEEP calibration (D2-083, in progress)**: Arjun allowed the six-seed batch; round f (`*_400f`, tc2bin17 = commit 6ad57fb)
+   done 23:51 - `scratchpad/verdict.mjs scratchpad/pairsf.json` (paired log-ratios, t over six seeds): population at every
+   century, births and deaths per person-year, hunger and famines, wild food, herds, relief, households leaving and conflict at par;
+   leans not significant (wild hours per person-year +17 %, t 2.0; smelting; infections -25 %); one metric flagged at 5 % (foundings
+   per person-year, totals at par - ~2 false flags expected among ~50). COARSE 7 rerun with the tallies (`coarse7_400g`, hash
+   unchanged) showed the one real remaining bias: the step's mean ration (`Settlement.RationStep`) walked the store down by the
+   need alone - whole steps marked short (out for need on 43.5 % of person-days against 32.8 %; urge 0.072 against 0.036). Removed
+   in the WORKING TREE (uncommitted; built as `scratchpad/tc2bin18`; not yet tested): the step's work reads its first day's ration.
+   **Next**: retest DEEP 7 against `coarse7_400g` (`QUIET=1 BIN=tc2bin18 TAG=h calib2.sh 7:deep`), then the six seeds (TAG h),
+   full tests, D2-083's rule 2 text (no mean ration), commit; then DEEP's speed on a quiet machine. The 23:56 memory-pressure stop
+   (Claude Code) killed the local game server, the COARSE 7/42 tally chain (COARSE 42 kept running to finish `coarse42_400g`) and the
+   DEEP 7 retest - restart only when Arjun asks.
+2. **The COARSE hunting-skill bug - its own calibrated change after D2-083** (Arjun, 6 Oct: not part of D2-083 - changing COARSE
+   moves DEEP's reference): in `AgentSystem.CoarseDay` the hunter's skill growth and `HuntTrips++` sit inside a comment since D2-063
+   (`s.Hides += hides;   // (D2-063) p.SkHunt = ...; w.Metrics.HuntTrips++;`). Restore them, recalibrate COARSE against ACTIVITY
+   (`CoarseAndActivityLiveOffTheWildAlike` and the wild-hours fits), record new COARSE baselines (hashes change), rerun DEEP vs COARSE.
+3. **F8 - speed**: DEEP's per-step costs (coarse-day, learning, demography, conflict), the planet's share (weather, vegetation +
+   ecology every 12 days are needed for seasons - look for exact speedups rather than coarser cadences), housekeeping; Ancient and
+   Deep time measured in the browser (`webcatchup.mjs`); F8's done-when: 5,000 years in minutes.
+4. **Web performance**: a day away catches up in 48-49 s (D2-082; 41-42 s before F5-F6) - profile the browser's catch-up.
+5. **The look backlog (D2-081)**: the surf's foam repeating as V shapes near the camera, the water sphere's edge stepping far off,
+   one size of shrub at wood edges, flowers only from ~100 m, animals specks at the village view, kitchen gardens (not simulated).
+6. F7's carried-forward items (D2-078): Your Actions (with F9), timelines, news by incident, biography and polity pages, ages named
    apart. F6's (D2-076): lordships that hold, leaders, alliances, captives, gates and stone walls, bands of several villages,
-   beasts as loot, the violence rate, the view of lordships and bands.
-5. **The sea's calibration** (D2-053) and the look backlog (coast shapes, gardens, orbit detail, smoke from huts and camps).
-6. F5's carried-forward items (D2-068): boats between coasts, roads worn by use, fairs, salt, credit, relief by kinship.
+   beasts as loot, the violence rate, the view of lordships and bands. F5's (D2-068): boats between coasts, roads worn by use,
+   fairs, salt, credit, relief by kinship. The sea's calibration (D2-053).

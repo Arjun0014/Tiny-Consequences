@@ -1093,7 +1093,7 @@ namespace TC2.Core.Agents
         /// <summary>How hard a village's stores push its people to the wild: the ration's shortfall, or stores run dry.</summary>
         public static double WildNeed(in Settlement s, long now) => WildNeed(in s, now, s.Ration);
 
-        /// <summary>The same, with the ration given (DEEP: the step's mean ration, Settlement.RationStep).</summary>
+        /// <summary>The same, with the ration given.</summary>
         public static double WildNeed(in Settlement s, long now, double ration)
         {
             // a mild cut (prudence keeping a reserve) sends a few more out; a deep one sends everyone who can go
@@ -1368,7 +1368,10 @@ namespace TC2.Core.Agents
             long now = w.Now;
             double cropNeed = Math.Max(0, s.CropWorkNeed - s.CropWork);
             double woodTarget = 6.0 * Math.Max(1, s.Population);
-            double ration = days == 1 ? s.Ration : s.RationStep;   // (DEEP: the step's mean ration)
+            // (DEEP: the step's first day's ration for all its work - the step's foraging, milk and meat hold the store as days lived
+            // would; walking it down by the step's need alone marked whole steps short for a dip at their end, and sent people out for
+            // need on 44 % of days against 33 % lived: F8 calibration)
+            double ration = s.Ration;
             bool shortNow = WildNeed(in s, now, ration) > 0;
             // the village's herd goes out with its herders, one for every sixty head: its children of eight to fifteen by turns,
             // else its grown members by turns - a youth or a grown one gives a lived day's stint to it (D2-050)
@@ -1476,8 +1479,10 @@ namespace TC2.Core.Agents
                         double u = WildUrge(in p, in s, wk, expect, now, ration) * (age > 60 ? 0.5 : 1.0) * (0.6 + 0.4 * p.Diligence / 255.0);
                         // a lived day offers the wild every free daytime slot it beats idling at (idle 0.08-0.13 against the
                         // wild's urge + 0.06 of chance): the same odds, as a share of the free hours
-                        // a pressing need keeps people out from dawn to mid-afternoon, beyond an ordinary day's work (two trips)
-                        double free = shortNow ? DMath.Max(hours, WildNeedDay * (0.5 + 0.5 * p.Health) * (age > 60 ? 0.6 : (age < 16 ? 0.7 : 1.0)) - (day0 - hours)) : hours;
+                        // a pressing need keeps people out from dawn to mid-afternoon, beyond an ordinary day's work (two trips) - each
+                        // day of the step (DEEP: allowed once a step, a short step foraged a day's need-hours less a day, stayed short
+                        // longer and sent people out for need on 40 % of days against 33 % lived: F8 calibration)
+                        double free = shortNow ? DMath.Max(hours, WildNeedDay * days * (0.5 + 0.5 * p.Health) * (age > 60 ? 0.6 : (age < 16 ? 0.7 : 1.0)) - (day0 - hours)) : hours;
                         // (in ordinary times a lived day spends ~0.9 of the free hours this mapping gives: building and company take
                         // free slots too; the household's meals and water are charged first since D2-056, when it was 0.6 -
                         // measured, CoarseAndActivityLiveOffTheWildAlike)
@@ -1507,6 +1512,7 @@ namespace TC2.Core.Agents
                                 }
                                 else { fu = w.Wild.Gather(ground, hw * tools, p.Health, key, days); w.Metrics.GatherTrips++; }
                                 w.Wild.Deposit(p.Id, fu);
+                                if (days > 1) w.Wild.Retake(sid, wk);   // (DEEP: the next chooses on the ground this step's take left)
                                 w.Metrics.WildHours += hw; w.Metrics.WildFu += fu;
                                 hours = DMath.Max(0.0, hours - hw);
                                 if (shortNow) w.SettlementSys.NoteWildFood(sid);
