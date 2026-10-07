@@ -64,6 +64,7 @@ namespace TC2.Game
             _works[Structures.Well] = _wells; _works[Structures.Granary] = _granaries;
             _works[Structures.Barn] = new Instancer(Models.Get("barn", ProcMeshes.House), _mat, true);
             _works[Structures.Smithy] = new Instancer(Models.Get("smithy", ProcMeshes.House), _mat, true);
+            _forgeTop = PartTop(Models.Get("smithy", ProcMeshes.House), new Color(0.274f, 0.234f, 0.205f));   // (the kit's CHIMNEY colour, linear)
             _works[Structures.Quarry] = new Instancer(Models.Get("quarry_face", ProcMeshes.Granary), _mat, true);
             _works[Structures.Ground] = new Instancer(Models.Get("training_ground", ProcMeshes.Granary), _mat, true);
             _works[Structures.Market] = new Instancer(Models.Get("market_stalls", ProcMeshes.Granary), _mat, true);
@@ -92,6 +93,21 @@ namespace TC2.Game
 
         Vector3[] _chimneyTop;
         bool[] _hasChimney;
+        Vector3 _forgeTop;   // the smithy's chimney top in its model's frame (C1.4): smoke while a smith works there
+
+        /// <summary>The top of a model's part painted in one colour (the smithy's chimney), or the model's top.</summary>
+        static Vector3 PartTop(Mesh mesh, Color part)
+        {
+            var v = mesh.vertices; var c = mesh.colors;
+            float top = float.MinValue; Vector3 at = Vector3.zero;
+            for (int i = 0; i < v.Length; i++)
+            {
+                bool ofPart = c != null && c.Length == v.Length && Mathf.Abs(c[i].r - part.r) < 0.03f && Mathf.Abs(c[i].g - part.g) < 0.03f && Mathf.Abs(c[i].b - part.b) < 0.03f;
+                if (ofPart && v[i].y > top) { top = v[i].y; at = v[i]; }
+            }
+            if (top == float.MinValue) foreach (var p in v) if (p.y > top) { top = p.y; at = p; }
+            return at;
+        }
         readonly List<Vector4> _smoke = new List<Vector4>();   // chimney tops with smoke (xyz) and how much (w)
         readonly List<Vector4> _lights = new List<Vector4>();  // villages at night (xyz) and how many of their homes are lit (w)
         readonly List<Vector4> _watch = new List<Vector4>();   // the watch fires at village stores tonight (xyz)
@@ -410,6 +426,19 @@ namespace TC2.Game
                 return;
             }
             float cond = (float)Structures.Condition(in b, w.Now);
+            if (b.Kind == Structures.Smithy)
+            {
+                // smoke from its chimney while a smith of the village works at it (C1.4: the simulation's own work, never for show)
+                var res = w.Residents(b.Settlement);
+                for (int i = 0; i < res.Count; i++)
+                {
+                    ref var q = ref w.People.Get(res[i]);
+                    if (q.Act != ActivityKind.Smith || q.At != b.Settlement || q.Step == StepKind.Travel) continue;
+                    Vector3 top = m.MultiplyPoint3x4(_forgeTop);
+                    _smoke.Add(new Vector4(top.x, top.y, top.z, 1.2f));
+                    break;
+                }
+            }
             if (b.Kind == Structures.Quarry)
             {
                 // the face cut back as the stone is taken: larger with every thousand loads (C1.3)

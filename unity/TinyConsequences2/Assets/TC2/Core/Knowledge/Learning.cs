@@ -62,11 +62,12 @@ namespace TC2.Core.Knowledge
                 if (!knew && best >= Tech.Competent)
                 {
                     s.TechKnown |= bit;
-                    w.Record(new HistoryEvent
+                    long kev = w.Record(new HistoryEvent
                     {
                         Kind = HistoryKind.TechniqueKnown, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
                         Object = bestPid != 0 ? EntityRef.Person(bestPid) : default, ArgA = t, RootKind = RootKind.People,
                     });
+                    if (t == Tech.Metal) { ref var sk = ref w.Settlements.Get(sid); sk.SmithEvent = kev; }   // (what moves its smithy: C1.4)
                 }
                 else if (knew && best < Tech.Forgotten)
                 {

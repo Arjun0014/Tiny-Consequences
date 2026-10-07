@@ -332,6 +332,14 @@ namespace TC2.Game
                       .Append(" of ").Append(cap.ToString("N0", CultureInfo.InvariantCulture)).Append(s.Granary > cap ? " - the rest lies in heaps and rots fast" : "").Append('\n');
                 }
                 else if (b.Kind == Structures.Well) sb.Append("water for ").Append(s.Population).Append(" people, drawn by the pot\n");
+                else if (b.Kind == Structures.Smithy)
+                {
+                    double share = TC2.Core.Knowledge.Tech.MetalShare(s.Metal, s.Population), want = Forge.ArmsWant(in s);
+                    sb.Append("the smith's workshop: smelts and forges at twice an open hearth's pace").Append(b.Mat >= 1 ? ", on a hearth of stone" : "").Append("; ")
+                      .Append(b.Use.ToString("N0", CultureInfo.InvariantCulture)).Append(" hours worked here\n")
+                      .Append(place).Append("'s tools: ").Append(s.Metal.ToString("0", CultureInfo.InvariantCulture)).Append(" kg of metal (").Append((share * 100).ToString("0", CultureInfo.InvariantCulture)).Append("% of what its people want); arms ")
+                      .Append(s.Arms.ToString("0", CultureInfo.InvariantCulture)).Append(want > 0 ? " - it wants " + want.ToString("0", CultureInfo.InvariantCulture) + ": it fears its neighbours" : "").Append('\n');
+                }
                 else if (b.Kind == Structures.Quarry)
                     sb.Append("cuts building stone at rock ").Append((s.StoneDist / 1000.0).ToString("0.0", CultureInfo.InvariantCulture)).Append(" km from ").Append(place).Append(": ")
                       .Append(b.Stock.ToString("N0", CultureInfo.InvariantCulture)).Append(" loads cut and carried home in ").Append(b.Use.ToString("N0", CultureInfo.InvariantCulture)).Append(" hours; the store holds ")

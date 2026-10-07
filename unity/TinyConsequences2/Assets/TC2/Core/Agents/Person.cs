@@ -16,6 +16,7 @@ namespace TC2.Core.Agents
         Ill = 26,                                       // abed at home with a sickness (D2-066) or wounds (D2-071)
         Watch = 27,                                     // keeping the night watch at the village's store (D2-071)
         Quarry = 28,                                    // cutting stone at the village's quarry and carrying it home (C1.3)
+        Smith = 29,                                     // at the village's smithy: smelting, working metal, forging arms (C1.4)
     }
 
     /// <summary>The kind of the current step of an activity.</summary>
@@ -51,6 +52,7 @@ namespace TC2.Core.Agents
         Claim = 34,       // walking to ask amends for blood shed (D2-072)
         Raid = 35,        // with a band to fall on a village's store (D2-073)
         Stone = 36,       // the village wants stone for its houses' footings: someone cuts it at the quarry (C1.3)
+        Forge = 37,       // the village has use for its smith: tools short of metal, or arms wanted (C1.4)
     }
 
     public static class Sex { public const byte Female = 0, Male = 1; }

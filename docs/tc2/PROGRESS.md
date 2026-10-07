@@ -21,8 +21,10 @@
   year 300; 41,600 t felled, woodlots ~770 m out); 190 tests (rate checks pooled over worlds); shots `civ2`. **C1.3 stone done (D2-092)**: rock known by
   seeing it (80 m land breaks, within 1 km, above the shore), quarries at the rock, every load carried home, houses on stone footings
   (seed 42: 13 of 19 villages quarry, 2,079 of 3,278 houses on footings); walls before non-essential works; 195 tests; shots `civ3`.
-  **Next: C1.4 the smithy** (a workplace for the smith's work, faster there, arms forged only there, arms in fights; its hearth of stone
-  where the village has it), then training, market, gates and the pressure premise.
+  **C1.4 the smithy done (D2-093)**: a smith's workshop (twice the open hearth's pace, less fuel), arms forged only there by villages
+  that fear their neighbours, armed fighters strike 1.3x; rings enclose works; smoke while a smith works; 200 tests; every village has a
+  smithy by year 300, 18 of 19 armed (seed 42); shots `civ4*`. **Next: C1.5 the training ground** (practice hours, fighting skill, veterans
+  from fights survived; strength uses skill), then market and gates, the pressure premise.
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

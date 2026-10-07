@@ -27,6 +27,10 @@ holds a side longer before it breaks) applied to the side.
 
 Arms are kept by the village (its store) and given to its fighters when a band forms or the village rallies (C1.4); later by
 households and retainers. Arms wear and are lost with the fallen (taken by the victors).
+**Implemented (C1.4, D2-093)**: `Settlement.Arms` - spear and axe heads forged only at a smithy (`Core/Places/Forge.cs`), a kilo of metal and
+two hours each, from smelted ore or reforged tools, by a village that fears its neighbours (a palisade, a heavy wrong held, a watch kept),
+up to 0.35 a head, lost at 3 % a year; `Conflict.Strength` x (1 + 0.3 x the share of its fighters armed). Not yet: arms carried by people,
+lost with the fallen and taken as loot; shields, bows, armour.
 
 ## 3. Roles that emerge (only as economy and politics sustain them)
 

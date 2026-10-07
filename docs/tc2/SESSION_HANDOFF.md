@@ -18,7 +18,12 @@
   (saves at years 100 and 300), shots `civ2`.
 - **C1.3 stone done (D2-092)**: runs `tc2/out/civ/s{42,7}_c13d`, shots `civ3` (views `work13`, `work13far` frame a village's quarry).
   **Pitfall (again)**: heredocs with apostrophes break in this Bash tool - docs and commit messages go in scratchpad files (Write tool).
-- **Next: C1.4 the smithy** - `Structures.Smithy` planned when a competent smith (KMetal >= 0.5) lives in a village short of metal tools (or
+- **C1.4 the smithy done (D2-093)**: runs `tc2/out/civ/s{42,7}_c14c`, shots `civ4c` (`work12`, `work12far`).
+- **Next: C1.5 the training ground** - `Structures.Ground` (Zone.Outer) planned by a village that fears its neighbours (`Forge.Threatened`)
+  once it has a granary; a person skill `SkFight` (Person field: saved, hashed) grown by practice hours there (a lived choice ~2 h, a few times a
+  week, fit 16-45 by boldness and the threat; COARSE the same hours) and by fights survived (Conflict's blows: veterans), fading slowly; the most
+  skilled present speeds others' learning; `Conflict.Strength` x (1 + 0.6 skill); building page; person page shows training; tests; runs
+  (raids won/lost, the hours it costs); shots (`work14`). (Was the C1.4 plan: `Structures.Smithy` planned when a competent smith (KMetal >= 0.5) lives in a village short of metal tools (or
   wanting arms) with ore known (D2-064's `Learning.Ore`); smithing (AgentSystem.Smith) done there at 2x and only there for arms; arms as a
   village store (`Settlement.Arms`, count) used by `Conflict.Strength` (x1.3 armed); the smith walks to the smithy (lived: a Craft step at the
   smithy, or a new ActivityKind.Smith); COARSE the same hours; building page; tests; runs; shots (`work12`). (Was the C1.3 plan: `Settlement` knows stone it has seen (outcrops = `Learning.Rock`'s steep cells, seen by its people's work grounds,

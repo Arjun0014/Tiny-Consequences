@@ -2265,3 +2265,34 @@ implicitly (D2-059), so the cheaper upkeep of a house on a stone sill is not yet
 is the local tradition where rock is at hand, not a reckoning of cost (C11 makes such traditions explicit). Lived quarrying overshoots the
 want by parallel starts (the store fills past it); COARSE stays under: timing differs, not the long-run use. The drawn relief is smoothed,
 so a quarry's crag shows only in its model and the rock under it.
+
+## D2-093 — 2026-10-07 — The smithy: a smith's workshop, arms forged only there, fighters who strike harder with them (C1.4)
+
+**Context.** D2-064's smiths smelted copper at an open hearth at home (half their making hours while the village was short of tools and ore
+was near); metal tools were the only metal good and they doubled as arms (`Conflict.Strength` x (1 + 0.3 x the tools' share)). D2-089: a
+smithy must be a real system - a real smith, fuel, ore or metal, a building that is the only place certain work happens, and that takes the
+work with it when it goes.
+**Decision.** (1) **`Core/Places/Forge.cs`** and the kind `Structures.Smithy` (Zone.Edge: on the main road past the homes; 160 h, 20 wood;
+a hearth of 16 loads of stone where the village has them). It is planned when the village knows metal (a competent smith; its cause the
+`TechniqueKnown` event, now kept as `Settlement.SmithEvent`) and has use for it - tools short of metal with ore near, or arms wanted - after
+water and a store, never while walls rise. (2) **At the smithy** a smith works at twice the open hearth's pace on three-quarters of its
+fuel a kilo; with a smithy the open hearth is no longer used. Lived: `ActivityKind.Smith` (WhyCode.Forge) - the smith walks to the smithy;
+COARSE: up to 0.6 of a smith's free hours there. (3) **Arms** (`Settlement.Arms`): forged only at a smithy, a kilo of metal and two hours each
+- from smelted ore, or by reforging the village's tools where none is near (arms cost tools: a real trade-off) - by a village that **fears
+its neighbours** (a palisade raised or rising, a wrong of 50 FU or more held against a neighbour, a night watch kept), up to 0.35 a head;
+lost at 3 % a year; history `ArmsMade` (the first arms of an arming, in response to what it fears). (4) **Fighters strike harder**:
+`Conflict.Strength` x (1 + 0.3 x the share of the village's fighters it can arm) - so bands weigh armed defenders and armed raiders dare
+more. (5) **Rings enclose works**: the palisade's radius counts the green's and the edge's works (stores, barns, the smithy) as well as homes;
+no work or new home is laid astride a standing or rising ring (`Structures.OnRing`). (6) View: smoke from the smithy's chimney only while a
+smith works there; the building page (pace, hearth, hours, the village's tools and arms and what it fears); shot view `work12`. (7) Sim
+version 36.
+**Evidence.** 200 tests (`ForgeTests` 6: a smithy where a smith has use for metal, its cause the smith, at the edge of the homes, none
+without a smith; twice the metal on three-quarters of the fuel; a threatened village forges arms to its want, history tells it, its
+fighters strike 1.3x, arms wear ~3 % a year; no smithy no arms; smiths at the smithy lived (seen "forging arms: Tothindby fears its
+neighbours") and COARSE). 300 years DEEP (`tc2/out/civ/s42_c14c`, `s7_c14c`): every village has a smithy by year 300 (19 of 19, 10 of 10 - most
+know metal by then and nearly all keep a watch or hold a grudge), 18 of 19 hold arms (2,589 for ~7,200 people); raids seed 42 8 (4 driven
+off) against 19 (6) at C1.3, seed 7 14 (10 driven off) against 21 (11); people 7,200 / 2,315 (C1.3: 7,037 / 2,369). Shots
+`tc2/out/shots/civ4*`: Souhope's smithy at the edge of its homes, smoke from its chimney, its smiths at the open front.
+**Consequences / open.** A smithy in every village by year 300 is historically ordinary; arms almost everywhere follow from the watch being
+kept nearly everywhere in these scarce worlds (a measure of fear to refine with C6's training and C10's leaders). The ring does not grow
+with the town (C7): homes now stand outside old palisades and some rings cross the shore.

@@ -465,6 +465,13 @@ namespace TC2.Core.Agents
                     if (p.At != 0 && p.At == p.Home && hours > 0)
                         Construction.Work(w, p.At, p.Household, hours, BuildRate(in p) * Tools(p.Household), p.Id);
                     break;
+                case ActivityKind.Smith:
+                    if (p.At != 0 && p.At == p.Home && hours > 0)
+                    {
+                        int fid = Forge.Smithy(w, p.At);   // (smelting, working metal, forging arms at the smithy: C1.4)
+                        if (fid != 0) Forge.Work(w, ref p, p.At, fid, hours);
+                    }
+                    break;
                 case ActivityKind.Quarry:
                     if (p.At != 0 && p.At == p.Home && hours > 0)
                     {
@@ -521,7 +528,7 @@ namespace TC2.Core.Agents
         /// <summary>Activities that are work: they count toward a day's labour.</summary>
         static bool IsWork(ActivityKind a) => a == ActivityKind.Fields || a == ActivityKind.Wood || a == ActivityKind.Build || a == ActivityKind.Hunt ||
                                               a == ActivityKind.Fish || a == ActivityKind.Gather || a == ActivityKind.Haul || a == ActivityKind.Tend ||
-                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry;
+                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry || a == ActivityKind.Smith;
 
         /// <summary>How much a day's labour still leaves for the slack's work: whole until five hours, a fifth past eight.</summary>
         static double DayLeft(in Person p) => DMath.Clamp(1.0 - (p.Worked - 5.0) / 3.0, 0.2, 1.0);
@@ -546,6 +553,7 @@ namespace TC2.Core.Agents
         {
             var w = _w;
             if (hours <= 0 || p.KMetal < 0.3f || p.Home == 0 || !w.Settlements.Exists(p.Home)) return hours;
+            if (Forge.Smithy(w, p.Home) != 0) return hours;   // (with a smithy the smith works there, not at the open hearth: C1.4)
             ref var s = ref w.Settlements.Get(p.Home);
             if (Knowledge.Tech.MetalShare(s.Metal, s.Population) >= 1.0 || !w.Learning.Ore(s.Cell)) return hours;
             double h = 0.5 * hours;
@@ -895,7 +903,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying, 15 the smithy
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -915,6 +923,13 @@ namespace TC2.Core.Agents
                 if (fuelDays < 6.0) u = DMath.Max(u, 0.85 * (1.0 - fuelDays / 6.0));
                 u = u * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
                 if (u > best) { best = u; choice = 2; }
+            }
+            int smithy = 0;
+            if (day && atHome && lsec < 16 * SimTime.Hour && Forge.Wanted(w, in here, in p, out smithy))
+            {
+                // a smith with work at the village's smithy (C1.4): its tools short of metal with ore near, or arms wanted - their craft
+                double u = (here.Arms < Forge.ArmsWant(in here) ? 0.7 : 0.5) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
+                if (u > best) { best = u; choice = 15; }
             }
             int quarry = 0;
             if (day && atHome && lsec < 15 * SimTime.Hour && age >= 16 && age < 60 && p.Health > 0.6 && Stone.Wanted(w, in here, out quarry))
@@ -1036,6 +1051,12 @@ namespace TC2.Core.Agents
                 case 13:
                     if (StartErrand(ref p)) return;
                     break;
+                case 15:
+                    {
+                        ref var sb = ref w.Buildings.Get(smithy);
+                        BeginLocal(ref p, ActivityKind.Smith, WhyCode.Forge, 0, sb.X + rs.Range(-2, 2), sb.Y + rs.Range(-2, 2), SimTime.Hours(3.0 + 1.5 * rs.NextUnit()));
+                        return;
+                    }
                 case 14:
                     {
                         ref var qb = ref w.Buildings.Get(quarry);
@@ -1550,6 +1571,12 @@ namespace TC2.Core.Agents
                 }
                 prof?.End(10022);
                 if (build && hours > 0) { double used2 = Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0 * days), BuildRate(in p) * tools, p.Id); hours -= used2; if (Hours != null) Hours[4] += used2; }
+                if (hours > 0 && Forge.Wanted(w, in s, in p, out int fid))
+                {
+                    // a smith with work at the village's smithy (C1.4): most of their free hours there, as a lived day's craft
+                    double used = Forge.Work(w, ref p, sid, fid, hours * 0.6, days);
+                    hours -= used;
+                }
                 if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Stone.Wanted(w, in s, out int qid))
                 {
                     // the village wants stone and its quarry stands (C1.3): cut and carry it in the free hours, up to what it wants

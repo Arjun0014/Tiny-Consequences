@@ -141,7 +141,7 @@ namespace TC2.Core.Places
             for (int k = 0; k < limit; k++)
             {
                 s.LotPosition(k, out float lx, out float ly);
-                if (Taken(w, bl, hl, forHid, lx, ly)) continue;
+                if (Taken(w, bl, hl, forHid, lx, ly) || Structures.OnRing(in s, lx, ly, 4.5)) continue;   // (never astride the palisade: C1.4)
                 if (!Shore.Dry(P, s.LocalToSphere(lx, ly, P.Radius))) continue;   // (the ground as drawn: D2-088)
                 if (k >= s.Lots) s.Lots = k + 1;
                 x = lx; y = ly;

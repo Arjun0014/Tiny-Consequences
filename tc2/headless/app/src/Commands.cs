@@ -245,6 +245,20 @@ namespace TC2.Headless
                         Console.WriteLine("stone: " + know + " of " + villages2 + " villages know rock, " + quarries + " quarries (" + F(quarries > 0 ? dq / quarries : 0, "0") + " m out on average); cut " + F(w.Metrics.StoneCut, "0") +
                                           " loads in " + F(w.Metrics.QuarryHours, "0") + " h; houses on stone footings " + footed + " of " + houses + " standing (" + w.Metrics.Footings + " raised so)");
                     }
+                    // the smithy and arms (C1.4)
+                    {
+                        int smithies = 0, armed = 0, fearing = 0; double arms = 0;
+                        for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
+                        {
+                            var st2 = w.Settlements.Get(sid2);
+                            if (!st2.Inhabited) continue;
+                            if (TC2.Core.Places.Forge.Smithy(w, sid2) != 0) smithies++;
+                            if (st2.Arms >= 1) { armed++; arms += st2.Arms; }
+                            if (TC2.Core.Places.Forge.Threatened(in st2)) fearing++;
+                        }
+                        Console.WriteLine("force: " + smithies + " smithies; " + fearing + " villages fear their neighbours, " + armed + " hold arms (" + F(arms, "0") + "); arms forged " + F(w.Metrics.ArmsMade, "0") +
+                                          ", hours at the smithies " + F(w.Metrics.SmithyHours, "0") + ", metal smelted " + F(w.Metrics.MetalKg, "0") + " kg");
+                    }
                     sb.Append("  most granaries ").Append(most).Append(mostSid != 0 ? " (" + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(mostSid)) + ", " + w.Settlements.Get(mostSid).Population + " people)" : "").Append("; grain beyond the granaries now ").Append(F(over, "0")).Append(" FU");
                     Console.WriteLine(sb.ToString());
                 }

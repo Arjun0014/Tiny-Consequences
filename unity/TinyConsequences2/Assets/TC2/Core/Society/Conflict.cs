@@ -322,14 +322,19 @@ namespace TC2.Core.Society
         }
 
         /// <summary>A body's strength in a struggle: its health and years, its hurt, and the metal its village holds (knives, axes).</summary>
-        double Strength(in Person q)
+        public double Strength(in Person q)
         {
             var w = _w;
             double age = q.AgeYears(w.Now);
             double years = age < 18 ? 0.8 : age < 45 ? 1.0 : age < 60 ? 0.8 : 0.6;
-            double armed = 0.0;
-            if (w.Settlements.Exists(q.Home)) { ref var hs = ref w.Settlements.Get(q.Home); armed = Knowledge.Tech.MetalShare(hs.Metal, hs.Population); }
-            return (double)q.Health * years * (1.0 - (double)q.Hurt) * (1.0 + 0.3 * armed);
+            double armed = 0.0, arms = 0.0;
+            if (w.Settlements.Exists(q.Home))
+            {
+                ref var hs = ref w.Settlements.Get(q.Home);
+                armed = Knowledge.Tech.MetalShare(hs.Metal, hs.Population);
+                arms = hs.Population > 0 ? DMath.Clamp01(hs.Arms / (Places.Forge.ArmsPerHead * hs.Population)) : 0.0;   // (a spear or an axe for its fighters: C1.4)
+            }
+            return (double)q.Health * years * (1.0 - (double)q.Hurt) * (1.0 + 0.3 * armed) * (1.0 + 0.3 * arms);
         }
 
         /// <summary>The neighbours who come running at a shout: a third of the homes round the store, at most three.</summary>
@@ -1007,6 +1012,18 @@ namespace TC2.Core.Society
                 ref var hh = ref w.Households.Get(hhs[i]);
                 double dx = (double)hh.HomeX - s.SquareX, dy = (double)hh.HomeY - s.SquareY;
                 double d = DMath.Sqrt(dx * dx + dy * dy);
+                if (d > far) far = d;
+            }
+            // and its works on the green and at its edge - stores, barns, the smithy - inside too (C1.4: a smithy stood astride the ring)
+            var bl = w.BuildingsOf(sid);
+            for (int i = 0; i < bl.Count; i++)
+            {
+                ref var b = ref w.Buildings.Get(bl[i]);
+                if (Places.Structures.IsHome(b.Kind)) continue;
+                var k = Places.Structures.Of(b.Kind);
+                if (k.Zone != Places.Zone.Core && k.Zone != Places.Zone.Edge) continue;
+                double dx = (double)b.X - s.SquareX, dy = (double)b.Y - s.SquareY;
+                double d = DMath.Sqrt(dx * dx + dy * dy) + k.Footprint + 3.0 - 15.0;   // (its far side clear of the posts)
                 if (d > far) far = d;
             }
             return DMath.Clamp(far + 15.0, 25.0, 170.0);   // (its pens and yards behind the homes inside)

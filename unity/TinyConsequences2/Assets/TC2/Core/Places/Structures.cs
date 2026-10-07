@@ -115,6 +115,9 @@ namespace TC2.Core.Places
             if ((s.Works & Construction.Well) == 0) { Begin(w, sid, Well, s.FoundedEvent, CauseRel.EnabledBy); return; }
             if ((s.Works & Construction.Granary) == 0 && (s.LastHarvest > 0 || s.Granary > 5 * s.Population))
             { Begin(w, sid, Granary, s.HarvestEvent != 0 ? s.HarvestEvent : s.FoundedEvent, CauseRel.CausedBy); return; }
+            // a competent smith and use for metal: a smithy (C1.4) - after water and a store, never while walls rise
+            if (s.Smithy == 0 && (s.TechKnown & Forge.Bit) != 0 && s.Wall != 1 && (s.Works & Construction.Granary) != 0 && Forge.Use(w, in s))
+            { Begin(w, sid, Smithy, s.SmithEvent, CauseRel.EnabledBy); return; }
             // stone wanted and rock known within reach: a quarry opened at the rock (C1.3) - after water and a store, never while walls rise
             if (s.StoneWant > 0 && s.Quarry == 0 && s.StoneCell > 0 && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
             {
@@ -177,6 +180,11 @@ namespace TC2.Core.Places
             if (b.Kind == Granary) { s.Works |= Construction.Granary; s.Granaries++; }
             if (b.Kind == Barn) s.Barns++;
             if (b.Kind == Quarry) s.Quarry = bid;
+            if (b.Kind == Smithy)
+            {
+                s.Smithy = bid;
+                if (s.Stone >= Forge.HearthStone) { s.Stone -= Forge.HearthStone; b.Stone = (float)(b.Stone + Forge.HearthStone); b.Mat = 1; }   // (a hearth of stone when there is stone)
+            }
             b.Event = w.Record(new HistoryEvent
             {
                 Kind = HistoryKind.WorkBuilt, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
@@ -197,6 +205,7 @@ namespace TC2.Core.Places
             if (kind == Granary) { s.Works |= Construction.Granary; s.Granaries++; }
             if (kind == Barn) s.Barns++;
             if (kind == Quarry) s.Quarry = id;
+            if (kind == Smithy) s.Smithy = id;
             return id;
         }
 
@@ -211,6 +220,7 @@ namespace TC2.Core.Places
             if (b.Kind == Granary && s.Granaries > 0) { s.Granaries--; if (s.Granaries == 0) s.Works = (byte)(s.Works & ~Construction.Granary); }
             if (b.Kind == Barn && s.Barns > 0) s.Barns--;
             if (b.Kind == Quarry && s.Quarry == bid) { s.Quarry = 0; s.StoneCell = 0; s.StoneDist = 0; }   // (the rock it stood at is gone: they must find rock again)
+            if (b.Kind == Smithy && s.Smithy == bid) s.Smithy = 0;
             if (b.Kind == Well && !Has(w, b.Settlement, Well, bid)) s.Works = (byte)(s.Works & ~Construction.Well);
         }
 
@@ -311,7 +321,16 @@ namespace TC2.Core.Places
             }
             ref var s = ref w.Settlements.Get(sid);
             double qx = (double)s.SquareX - px, qy = (double)s.SquareY - py, sq = footprint + 8.0;   // (the green itself stays open)
-            return qx * qx + qy * qy >= sq * sq;
+            if (qx * qx + qy * qy < sq * sq) return false;
+            return !OnRing(in s, px, py, footprint + 2.5);
+        }
+
+        /// <summary>A spot lies across the village's palisade ring (standing or being raised): nothing is built astride its posts.</summary>
+        public static bool OnRing(in Settlement s, double px, double py, double half)
+        {
+            if (s.Wall != 1 && s.Wall != 2) return false;
+            double dx = px - s.SquareX, dy = py - s.SquareY;
+            return DMath.Abs(DMath.Sqrt(dx * dx + dy * dy) - (double)s.WallR) < half;
         }
 
         /// <summary>How far from the square the village's homes reach (the farthest standing home or camp).</summary>
