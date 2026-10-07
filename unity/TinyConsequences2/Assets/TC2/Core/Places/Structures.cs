@@ -179,7 +179,7 @@ namespace TC2.Core.Places
             b.Hours = (float)(b.Hours + done); b.Wood = (float)(b.Wood + wood);
             if (b.Leader == 0 && worker != 0) b.Leader = worker;
             var k = Of(b.Kind);
-            if (b.Hours < k.Hours - 1e-6) return;
+            if (b.Hours < k.Hours - Construction.Done) return;
             b.Done = 1;
             ref var s = ref w.Settlements.Get(sid);
             s.Project = 0; s.ProjectKind = 0;
@@ -356,9 +356,10 @@ namespace TC2.Core.Places
         /// <summary>A spot lies across the village's palisade ring (standing or being raised): nothing is built astride its posts.</summary>
         public static bool OnRing(in Settlement s, double px, double py, double half)
         {
+            double dx = px - s.SquareX, dy = py - s.SquareY, r = DMath.Sqrt(dx * dx + dy * dy);
+            if (s.OldR > 0f && DMath.Abs(r - (double)s.OldR) < half) return true;   // (the old ring inside a grown town: C7.1)
             if (s.Wall != 1 && s.Wall != 2) return false;
-            double dx = px - s.SquareX, dy = py - s.SquareY;
-            return DMath.Abs(DMath.Sqrt(dx * dx + dy * dy) - (double)s.WallR) < half;
+            return DMath.Abs(r - (double)s.WallR) < half;
         }
 
         /// <summary>How far from the square the village's homes reach (the farthest standing home or camp).</summary>

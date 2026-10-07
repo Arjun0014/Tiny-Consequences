@@ -273,15 +273,20 @@ namespace TC2.Game
         /// </summary>
         void DrawWall(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int sid, float ex)
         {
-            double r = s.WallR;
-            if (r < 5.0) return;
-            int stretches = Mathf.Max(8, (int)(2.0 * System.Math.PI * r / 2.0));
             double share = 1.0;
             if (s.Wall == 1)
             {
                 Construction.WorkCost(Construction.Palisade, in s, out double need, out _);
                 share = Construction.NextWork(in s) == Construction.Palisade && need > 0 ? Mathf.Clamp01((float)(s.WorkBuild / need)) : 0.0;
             }
+            if (s.Wall == 1 || s.Wall == 2) DrawRing(w, P, in s, sid, ex, s.WallR, s.Wall == 2 ? s.WallCond : 1f, share);
+            if (s.OldR > 0f) DrawRing(w, P, in s, sid, ex, s.OldR, s.OldCond, 1.0);   // (the old ring inside a grown town, rotting: C7.1)
+        }
+
+        void DrawRing(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int sid, float ex, double r, float condition, double share)
+        {
+            if (r < 5.0) return;
+            int stretches = Mathf.Max(8, (int)(2.0 * System.Math.PI * r / 2.0));
             int set = (int)(stretches * share);
             if (set == 0) return;
             // the gates: toward each neighbour within a day's walk, where its road leaves
@@ -295,7 +300,7 @@ namespace TC2.Game
                 _gates.Add(System.Math.Atan2(oy - s.SquareY, ox - s.SquareX));
             }
             double gateHalf = 3.0 / r;   // (a gate some six metres wide)
-            float cond = s.Wall == 2 ? s.WallCond : 1f;
+            float cond = condition;
             Color timber = Color.Lerp(new Color(0.62f, 0.62f, 0.60f, 1f), Color.white, cond);
             for (int k = 0; k < set; k++)
             {
@@ -381,7 +386,7 @@ namespace TC2.Game
                     _watch.Add(new Vector4(fireAt.x, fireAt.y, fireAt.z, 1f));
                 }
                 // its palisade (D2-074): standing (an abandoned village's too, as it rots), or as far as its people have set it
-                if (s.Wall == 1 || s.Wall == 2) DrawWall(w, P, in s, sid, ex);
+                if (s.Wall == 1 || s.Wall == 2 || s.OldR > 0f) DrawWall(w, P, in s, sid, ex);
                 if (!s.Inhabited) continue;   // (an abandoned village's well and granary decay as structures: C1.1)
                 Beached(w, P, in s, sid, ex);
                 // the stone in its store, stacked by the store: a pile for every ~40 loads, up to four (C1.3)

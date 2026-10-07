@@ -1103,7 +1103,8 @@ namespace TC2.Core.Agents
                 case 7:
                     {
                         // at their own lot, or at the village's well or granary
-                        bool own = w.Households.Exists(p.Household) && w.Households.Get(p.Household).Shelter < Construction.House;
+                        // (where their hours go: their own roof, or the village's work - C7.1: a rising palisade before a hut is made a house)
+                        bool own = Construction.OwnFirst(w, in here, p.Household) || (Construction.NextWork(in here) == 0 && w.Households.Exists(p.Household) && w.Households.Get(p.Household).Shelter < Construction.House);
                         Construction.WorkSpot(w, in here, Construction.NextWork(in here), rs.NextUnit(), out double gx, out double gy);
                         double bx = own ? homeX : gx;
                         double by = own ? homeY : gy;

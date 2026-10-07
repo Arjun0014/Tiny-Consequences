@@ -32,7 +32,10 @@
   where copper smiths forge arms (seed 11); acceptance sheet `tc2/out/shots/civA_sheet.png` (a hamlet of 84 -> a walled town of 358).
   **C4.1 roads by use done (D2-097)**: ways worn by walking (track/path/road, halving each year unwalked), quicker underfoot, drawn by use
   only (ribbons for the beaten roads at the region view); seed 42 at year 300: 74 paths, 17 roads; 210 tests; shots `ways1`, `ways2`.
-  **Next: C7.1 rings that grow with the town** (a new ring when homes outgrow a sound palisade; gates as structures), C12.1 the person page.
+  **C7.1 rings that grow done (D2-098)**: a larger ring when homes outgrow a sound palisade, the old one inside until it rots; walls before
+  hut upgrades; **a float stall fixed** (works a hair short of a non-round need never finished: palisades stood "rising" for a century);
+  seed 42 at year 300: 18 walled (was 8 + 9 stuck), 5 larger rings; 211 tests; shots `rings1` (Thathastwick's two rings).
+  **Next: C12.1 the person page** (`07` §9), then C2.x (clearing as labour, kilns), C5 (claims on deposits that deplete).
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

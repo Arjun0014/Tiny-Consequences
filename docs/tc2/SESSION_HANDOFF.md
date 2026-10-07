@@ -25,7 +25,10 @@
   200). Shots `tc2/out/shots/civ1`-`civ6`, `civA_y25`, `civA_y200`, sheet `civA_sheet.png`.
 - **C4.1 roads by use done (D2-097)**: runs `tc2/out/civ/s{42,7}_c41a`, shots `ways1`, `ways2`; `Road.mat` needs `unity.mjs configure`
   before a Web build (the editor builds it from the shader meanwhile).
-- **Next**: **C7.1 rings that grow**, then **C12.1** the person page. (Was the C4.1 plan: each route keeps its use (walkers and loads, decaying); track -> path -> road by use; speed by
+- **C7.1 rings that grow done (D2-098)**: runs `tc2/out/civ/s{42,7}_c71d` (saves at 100, 200, 250, 300), shots `rings1` (`--village 15`). The
+  civ header shows walls in progress, old rings, wood and the project. Found: works stalled by float rounding (`Construction.Done`).
+- **Next**: **C12.1 the person page** (`07` §9: identity, now and why, work and roles from hours, knowledge, social, force, economy, history -
+  sections in the HUD from state and the ledger), then C2.x, C5. (Was the C4.1 plan: each route keeps its use (walkers and loads, decaying); track -> path -> road by use; speed by
   state; the view draws roads by use only (today every pair of villages within 4.5 km gets a road whatever its use - theatre); then **C7.1**
   rings that grow with the town (a new, larger ring when homes outgrow a sound palisade; gates as structures); **C12.1** the person page
   (`07` §9); C2.x clearing as labour, kilns; C5 claims on deposits that deplete. Seen and left: people walking routes across cells the sea

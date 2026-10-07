@@ -278,6 +278,11 @@ namespace TC2.Headless
                             Console.WriteLine("ways: " + w.Ways.Count + " walked; " + tracks + " tracks, " + paths + " paths, " + roads + " roads");
                         }
                         Console.WriteLine("training: " + grounds + " grounds, " + F(w.Metrics.TrainHours, "0") + " h of practice; " + trainedPeople + " living people with some skill, " + veterans + " who have fought, the best " + F(best, "0.00"));
+                        {
+                            int walled = 0, inner = 0, rising = 0;
+                            for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2)) { var st2 = w.Settlements.Get(sid2); if (!st2.Inhabited) continue; if (st2.Wall == 2) walled++; if (st2.Wall == 1) rising++; if (st2.OldR > 0f) inner++; }
+                            Console.WriteLine("walls: " + walled + " walled, " + rising + " rising; larger rings begun " + w.Metrics.RingsGrown + ", old rings standing inside " + inner + "; palisades begun " + w.Metrics.WallsPlanned);
+                        }
                         Console.WriteLine("force: " + smithies + " smithies; " + fearing + " villages fear their neighbours, " + armed + " hold arms (" + F(arms, "0") + "); arms forged " + F(w.Metrics.ArmsMade, "0") +
                                           ", hours at the smithies " + F(w.Metrics.SmithyHours, "0") + ", metal smelted " + F(w.Metrics.MetalKg, "0") + " kg");
                     }
@@ -508,7 +513,8 @@ namespace TC2.Headless
                 int sid = sids[k];
                 var st = w.Settlements.Get(sid);
                 Console.WriteLine("CIV " + w.History.NameOf(EntityRef.Settlement(sid)) + " #" + sid + " (" + st.Population + " people; granaries " + st.Granaries + ", barns " + st.Barns +
-                                  ", stone " + F(st.Stone, "0") + ", arms " + F(st.Arms, "0") + ", metal " + F(st.Metal, "0") + " kg, wall " + st.Wall + (st.Lord != 0 ? ", pays tribute to " + w.History.NameOf(EntityRef.Settlement(st.Lord)) : "") + "):");
+                                  ", stone " + F(st.Stone, "0") + ", arms " + F(st.Arms, "0") + ", metal " + F(st.Metal, "0") + " kg, wall " + st.Wall + (st.Wall == 1 ? " (" + F(st.WorkBuild, "0") + " h in, ring " + F(st.WallR, "0") + " m)" : "") +
+                                  (st.OldR > 0f ? ", an old ring of " + F(st.OldR, "0") + " m inside (" + F(st.OldCond, "0.00") + ")" : "") + ", wood " + F(st.Woodstore, "0") + " (woodlot " + F(st.WoodDist, "0") + " m), project " + (st.Project != 0 ? TC2.Core.Places.Structures.Name(st.ProjectKind) : "none") + (st.Lord != 0 ? ", pays tribute to " + w.History.NameOf(EntityRef.Settlement(st.Lord)) : "") + "):");
                 int lines = 0;
                 for (int i = 0; i < w.History.Count && lines < 60; i++)
                 {

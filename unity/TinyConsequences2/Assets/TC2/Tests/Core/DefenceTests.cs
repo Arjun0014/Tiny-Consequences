@@ -241,5 +241,33 @@ namespace TC2.Tests.Core
             Assert.AreEqual(HistoryKind.WallFallen, fell.Kind, "and history tells it");
             Assert.AreEqual(0, s2.WallKeep, "nobody mends what nothing threatens");
         }
+            // ------------------------------------------------------------------ rings that grow (C7.1, D2-098)
+        [Test]
+        public void ATownThatOutgrowsItsPalisadeRaisesALargerRingAndTheOldOneRotsInside()
+        {
+            var w = Pair(out int a, out int b);
+            Assume.That(b != 0, "two villages a walk apart");
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Day);
+            // premise: b is walled by a small ring - most of its homes stand outside it - and it keeps losing to a's people
+            ref var s = ref w.Settlements.Get(b);
+            s.Wall = 2; s.WallCond = 0.9f; s.WallR = 25f; s.WallKeep = 1; s.Works |= Construction.Palisade; s.Project = 0;
+            Losses(w, a, b); Losses(w, a, b);
+            long mark = w.History.LastId;
+            w.AdvanceTo(w.Now + SimTime.Day);
+            var s2 = w.Settlements.Get(b);
+            Assert.AreEqual(1, s2.Wall, "a larger ring begun");
+            Assert.Greater(s2.WallR, 40f, "round the grown town");
+            Assert.AreEqual(25f, s2.OldR, 1e-4, "the old ring stays inside");
+            Assert.IsTrue(Conflict.Walled(in s2, out double c), "and still guards while the new one rises");
+            Assert.Greater(c, 0.8);
+            bool told = false;
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++)
+                if (w.History.At(i).Kind == HistoryKind.WallPlanned && w.History.At(i).Settlement == b) { told = true; Assert.AreEqual(1, w.History.At(i).ArgB); Console.WriteLine(HistoryText.Line(w, w.History.At(i))); }
+            Assert.IsTrue(told);
+            // the old ring is not mended: it rots in its years and is gone
+            for (int y = 0; y < 30; y++) { ref var sk = ref w.Settlements.Get(b); sk.WallCond = 1f; sk.Wall = 2; w.AdvanceTo(w.Now + SimTime.Year); }
+            Assert.AreEqual(0f, w.Settlements.Get(b).OldR, "rotted and gone");
+        }
     }
 }

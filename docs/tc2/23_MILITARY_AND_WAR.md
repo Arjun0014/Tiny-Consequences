@@ -92,6 +92,11 @@ the parts of a place worth guarding (homes and stores; later the market); as a t
 old one remains inside. A wall has state per stretch (condition, breach) and gates that are shut at night or under threat; towers add
 sight and ground. Stone is expensive (~400 loads a metre of curtain): stone walls belong to places with surplus, labour and authority.
 
+**Implemented (C7.1, D2-098)**: rings that grow - a walled village whose homes have spread beyond its ring (four or more, a fifth of its homes)
+raises a larger one when its losses still outweigh the cost; the old ring stays inside, unmended, guarding while the new one rises, until it
+rots; palisades go before hut upgrades. Seed 42 at year 300: 18 walled villages, 5 larger rings. Not yet: gates as structures, ditches and
+banks, stronger timber, stone curtains, towers.
+
 ## 9. Sieges (C8, after the logistics are convincing)
 
 A siege is time against stores: the defenders' granary and well against the besiegers' carried food and foraging; assaults on gates

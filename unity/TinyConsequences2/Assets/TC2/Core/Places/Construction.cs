@@ -105,7 +105,9 @@ namespace TC2.Core.Places
             ref var hh = ref w.Households.Get(hid);
             if (hh.Settlement != s.Id || hh.Shelter >= House) return false;
             if (hh.Shelter == Camp) return true;
-            return (s.Works & Well) != 0;   // a hut waits for the well
+            // a hut waits for the well - and for a palisade being raised (C7.1: in crowded, threatened villages every hut became a house
+            // first and walls stood half-built for a century)
+            return (s.Works & Well) != 0 && s.Wall != 1;
         }
 
         /// <summary>
@@ -124,7 +126,7 @@ namespace TC2.Core.Places
                     NextShelter(hh.Shelter, out double need, out double wood);
                     double done = Spend(ref s, hours * rate, need - hh.Build, wood / need);
                     hh.Build = (float)(hh.Build + done);
-                    if (hh.Build >= need - 1e-6)
+                    if (hh.Build >= need - Done)
                     {
                         hh.Shelter++; hh.Build = 0f;
                         Homes.Raised(w, hid);   // a building on its lot, outliving its tenancy (D2-059)
@@ -154,7 +156,7 @@ namespace TC2.Core.Places
             WorkCost(work, in s, out double needW, out double woodW);
             double doneW = Spend(ref s, hours * rate, needW - s.WorkBuild, woodW / needW);
             s.WorkBuild = (float)(s.WorkBuild + doneW);
-            if (s.WorkBuild >= needW - 1e-6)
+            if (s.WorkBuild >= needW - Done)
             {
                 s.WorkBuild = 0f;
                 if (work == Mend) { s.WallCond = 1f; return rate > 0 ? doneW / rate : 0; }   // (the rotten posts replaced)
@@ -173,6 +175,12 @@ namespace TC2.Core.Places
             }
             return rate > 0 ? doneW / rate : 0;
         }
+
+        /// <summary>
+        /// A work is done when what is left is under this many hours: the hours put in are kept as floats, and a work whose need is not a round
+        /// number could stall a hair short of it for ever (a palisade 0.000016 h from done added that much and rounded back: C7.1).
+        /// </summary>
+        public const double Done = 0.01;
 
         /// <summary>Work-hours spent, as far as the wood allows (wood per work-hour), never past what is left to do.</summary>
         static double Spend(ref Settlement s, double effort, double left, double woodPerHour)

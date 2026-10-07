@@ -127,7 +127,9 @@ namespace TC2.Core.History
                         if (outcome == 1) return band + ", fought off its people (" + blows + (blows == 1 ? " blow" : " blows") + ") and carried off " + F(e.Magnitude, "0") + " days' grain.";
                         return band + " but was driven off (" + blows + (blows == 1 ? " blow" : " blows") + ").";
                     }
-                case HistoryKind.WallPlanned: return "The people of " + subj + " began a palisade round their homes: other villages' people have cost them " + F(e.Magnitude, "0") + " days' food a year.";
+                case HistoryKind.WallPlanned:
+                    if (e.ArgB == 1) return "The people of " + subj + " began a larger palisade: " + e.ArgA + " of their homes stood outside the old one, and other villages' people cost them " + F(e.Magnitude, "0") + " days' food a year.";
+                    return "The people of " + subj + " began a palisade round their homes: other villages' people have cost them " + F(e.Magnitude, "0") + " days' food a year.";
                 case HistoryKind.WallBuilt: return "The people of " + subj + " finished their palisade (" + e.ArgA + " m round): " + subj + " is a walled place.";
                 case HistoryKind.WallFallen: return "The palisade of " + subj + " has rotted and fallen.";
                 case HistoryKind.TributeAgreed:

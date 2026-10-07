@@ -2394,3 +2394,26 @@ seed 7: 37 paths, 2 roads. Shots `tc2/out/shots/ways1`, `ways2`: roads leave Sou
 village view; at the region view thin earth lines link the villages; from orbit a faint network.
 **Open.** Nearly every neighbour pair is a path by year 300 (the COARSE visit rate, 0.03 a grown person-day, is twice the lived one: D2-091's
 pooled checks); roads are the arteries between big near neighbours. Routes are recomputed as cells; the ribbon follows the route's cells.
+
+## D2-098 — 2026-10-07 — Rings that grow with the town; walls before hut upgrades; works no longer stall a hair short (C7.1)
+
+**Context.** `23` §8: as towns grow, old walls may become internal structures and larger walls may be built. The C1 shots showed towns spread
+far beyond palisades laid out when they were villages. Investigating why so many palisades stood "rising" for a century found two faults:
+everyone living in a hut made it a house before any village work (D2-045's order), and - the real stall - a work's hours are kept as floats:
+a palisade 0.000016 h short of its (non-round) need added that much and rounded back to the same float, for ever (latent since D2-074; likelier
+once C1.6 made ring costs non-round by their dry share).
+**Decision.** (1) **A larger ring** (`Conflict.Defence`): a walled village whose lived-in homes beyond its ring are at least four and a fifth of
+its homes weighs a ring round them (`WallRadius`, enclosing homes and the green's and edge's works) - begun when the losses that walled it,
+saved for a wall's years, still outweigh the new ring's labour and timber (its dry stretches). History `WallPlanned` (ArgB 1: "a larger
+palisade: N of their homes stood outside the old one"); metric `RingsGrown`. (2) **The old ring stays inside** (`Settlement.OldR`, `OldCond`):
+unmended, it rots in its thirty years and is gone; while the new ring rises it still guards (`Conflict.Walled`: a taker is seen, defenders
+hold their ground); nothing new is built astride it. (3) **Walls before comfort**: a household in a hut makes it a house only after the well
+and **not while a palisade is rising** (a roof over a camp still comes first); a lived builder walks to where the hours go. (4) **A work is
+done within 0.01 h of its need** (`Construction.Done`: homes, village works, palisades, structures). (5) The view draws both rings. Sim
+version 40.
+**Evidence.** 211 tests (`DefenceTests.ATownThatOutgrowsItsPalisadeRaisesALargerRingAndTheOldOneRotsInside`: Kubroford, five homes outside,
+begins a larger ring; the old still guards; thirty years on it is gone). The stall: seed 7's Voton had 2,268.1536 h of 2,268.15358 needed at
+years 250 and 300; with the fix its wall stands. 300 years DEEP (`tc2/out/civ/s{42,7}_c71d`): seed 42 - **18 walled villages, none stuck
+rising** (before: 8 walled, 9 rising), 5 larger rings begun, one old ring still standing inside at year 300; seed 7 - 10 walled (3), 2 larger
+rings; tributes 7 agreed (3 ended), 3 lords at year 300. People 7,137 / 2,063. Shots `tc2/out/shots/rings1`: Thathastwick (417 people) - the
+old palisade through its houses, the larger ring beyond, roads leaving its green.

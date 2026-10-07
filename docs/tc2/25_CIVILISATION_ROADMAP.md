@@ -59,7 +59,7 @@ Sub-slices, each committed with tests, runs, shots and docs:
    copper smiths forge arms; deposits are not yet worth fighting over (no claims, no depletion: C5, C10).
 **C1 closed 7 Oct 2026 (D2-096)**; acceptance sheet `tc2/out/shots/civA_sheet.png`.
 
-**C4.1 roads by use done (D2-097).**
+**C4.1 roads by use done (D2-097). C7.1 rings that grow done (D2-098).**
 
 ### Next (D2-096): ~~C4.1 roads by use~~ (done), C7.1 rings that grow with the town, C12.1 the person page, C2.x clearing and kilns, C5 claims on
 deposits that deplete.

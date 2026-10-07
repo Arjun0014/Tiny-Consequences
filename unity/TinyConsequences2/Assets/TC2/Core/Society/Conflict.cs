@@ -199,7 +199,7 @@ namespace TC2.Core.Society
         {
             ref var s = ref _w.Settlements.Get(o);
             double seen = SeenChance(o);
-            if (s.Wall == 2) seen = DMath.Max(seen, WallSeen * (double)s.WallCond);   // (over a palisade, or through its gate: D2-074)
+            if (Walled(in s, out double wc)) seen = DMath.Max(seen, WallSeen * wc);   // (over a palisade, or through its gate: D2-074)
             return s.Watcher != 0 ? DMath.Max(WatchSeen, seen) : seen;
         }
 
@@ -207,8 +207,40 @@ namespace TC2.Core.Society
         public double Ground(int o)
         {
             ref var s = ref _w.Settlements.Get(o);
-            return HomeGround * (s.Wall == 2 ? 1.0 + (double)s.WallCond : 1.0);
+            return HomeGround * (Walled(in s, out double wc) ? 1.0 + wc : 1.0);
         }
+
+        /// <summary>
+        /// A village behind a palisade: its standing ring, or while a larger one is being raised, the old ring still standing inside (C7.1);
+        /// how sound it is.
+        /// </summary>
+        public static bool Walled(in Settlement s, out double cond)
+        {
+            if (s.Wall == 2) { cond = s.WallCond; return true; }
+            if (s.Wall == 1 && s.OldR > 0f && s.OldCond > 0f) { cond = s.OldCond; return true; }
+            cond = 0; return false;
+        }
+
+        /// <summary>A walled village's homes beyond its ring (lived in), and all its lived-in homes.</summary>
+        int Outside(int sid, out int homes)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(sid);
+            int outside = 0; homes = 0;
+            var bl = w.BuildingsOf(sid);
+            for (int i = 0; i < bl.Count; i++)
+            {
+                ref var b = ref w.Buildings.Get(bl[i]);
+                if (!Places.Structures.IsHome(b.Kind) || b.Household == 0) continue;
+                homes++;
+                double dx = (double)b.X - s.SquareX, dy = (double)b.Y - s.SquareY;
+                if (DMath.Sqrt(dx * dx + dy * dy) > (double)s.WallR + 6.0) outside++;
+            }
+            return outside;
+        }
+
+        /// <summary>Homes beyond a sound palisade from which a town weighs a larger ring (at least this many, and a fifth of its homes).</summary>
+        public const int OutgrownFrom = 4;
 
         /// <summary>The taker at the store in the night (lived: on arriving; COARSE: at once).</summary>
         public void Take(ref Person p, int at) => TakeWith(ref p, at, KeyedRng.Unit(_w.Seed, RngStream.Society, (ulong)p.Id, (ulong)_w.Now, 1));
@@ -963,6 +995,12 @@ namespace TC2.Core.Society
             var w = _w;
             long now = w.Now;
             ref var s = ref w.Settlements.Get(sid);
+            if (s.OldR > 0f)
+            {
+                // the old ring inside a grown town is not mended: it rots and is gone (C7.1)
+                s.OldCond = (float)DMath.Max(0.0, (double)s.OldCond - (double)days / (WallYears * 48.0));
+                if (s.OldCond <= 0f) { s.OldR = 0f; s.OldCond = 0f; }
+            }
             if (s.Wall == 2)
             {
                 s.WallCond = (float)DMath.Max(0.0, (double)s.WallCond - (double)days / (WallYears * 48.0));   // (DEEP: the step's days of rot)
@@ -999,6 +1037,30 @@ namespace TC2.Core.Society
             {
                 double cost = LabourWorth * (Construction.PalisadeHoursPerM + Construction.PalisadeWoodPerM) * 2.0 * DMath.PI * (double)s.WallR;
                 s.WallKeep = (byte)(guards > MendShare * cost ? 1 : 0);
+                // the town has grown past its ring: a larger one, if what it loses still outweighs its labour and timber (C7.1); the old ring
+                // stays inside, unmended, until it rots
+                int outside = Outside(sid, out int homes);
+                if (outside >= OutgrownFrom && outside * 5 >= homes)
+                {
+                    double r = WallRadius(sid);
+                    ref var s3 = ref w.Settlements.Get(sid);
+                    if (r > (double)s3.WallR + 15.0)
+                    {
+                        double dry = Places.Structures.DryShare(w, in s3, r);
+                        double bigger = LabourWorth * (Construction.PalisadeHoursPerM + Construction.PalisadeWoodPerM) * 2.0 * DMath.PI * r * dry;
+                        if (guards > bigger)
+                        {
+                            s3.OldR = s3.WallR; s3.OldCond = s3.WallCond;
+                            s3.Wall = 1; s3.WallR = (float)r; s3.WallCond = 0f; s3.WallKeep = 1; s3.WallDry = (float)dry; s3.WorkBuild = 0f;
+                            s3.WallEvent = w.Record(new HistoryEvent
+                            {
+                                Kind = HistoryKind.WallPlanned, Time = now, Cell = s3.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
+                                Cause1 = latest, Rel1 = CauseRel.InResponseTo, Magnitude = (float)lost, ArgA = outside, ArgB = 1, RootKind = RootKind.People,
+                            });
+                            w.Metrics.WallsPlanned++; w.Metrics.RingsGrown++;
+                        }
+                    }
+                }
             }
         }
 
