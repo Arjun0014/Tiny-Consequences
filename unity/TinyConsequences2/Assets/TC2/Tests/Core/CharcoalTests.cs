@@ -122,10 +122,13 @@ namespace TC2.Tests.Core
                 ref var s = ref w.Settlements.Get(sid);
                 s.BestMetal = 0.8f; s.Metal = 0; s.Charcoal = 0; s.Wall = 0; s.Granary = 30 * s.Population;
                 if (Charcoal.Site(w, sid) == 0) { Structures.Place(w, sid, Structures.CharHearth, out float x, out float y); Structures.Standing(w, sid, Structures.CharHearth, x, y); }
+                // (premise, C9.1: its households have made the boats they wanted - the six days measured are not spent hollowing trunks)
+                var hl = w.HouseholdsOf(sid);
+                for (int i = 0; i < hl.Count; i++) if (Boats.Making(w, hl[i]) != 0) { w.Settlements.Get(sid).Woodstore += Boats.Wood; Boats.Work(w, sid, hl[i], Boats.Hours + 1.0, 1.0, 0); }
                 double kg0 = w.Metrics.CharcoalKg, h0 = w.Metrics.BurnHours;
                 w.AdvanceTo(w.Now + SimTime.Days(6));
                 var s3 = w.Settlements.Get(sid);
-                Console.WriteLine((coarse ? "COARSE" : "lived") + ": charcoal " + (w.Metrics.CharcoalKg - kg0).ToString("0") + " kg in " + (w.Metrics.BurnHours - h0).ToString("0.0") + " h at " + s3.WoodDist.ToString("0") + " m; store " + s3.Charcoal.ToString("0") + " (wants " + s3.CharcoalWant.ToString("0") + "), metal " + s3.Metal.ToString("0.0") + " kg");
+                Console.WriteLine((coarse ? "COARSE" : "lived") + ": charcoal " + (w.Metrics.CharcoalKg - kg0).ToString("0") + " kg in " + (w.Metrics.BurnHours - h0).ToString("0.0") + " h at " + s3.WoodDist.ToString("0") + " m; store " + s3.Charcoal.ToString("0") + " (wants " + s3.CharcoalWant.ToString("0") + "), metal " + s3.Metal.ToString("0.0") + " kg; boats begun " + w.Metrics.BoatsBegun + ", made " + w.Metrics.BoatsBuilt + ", trips " + w.Metrics.BoatTrips);
                 Assert.Greater(w.Metrics.CharcoalKg - kg0, 10, (coarse ? "COARSE" : "lived") + ": charcoal burnt");
                 Assert.IsNull(TestWorlds.Audit(w));
             }

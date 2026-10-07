@@ -295,7 +295,7 @@ namespace TC2.Core.Worldgen
             }
             // the first villages are already standing when history begins: houses, a well, a granary (D2-045)
             var s = new Settlement { Id = sid, Cell = cell, Anchor = anchor, East = east, North = north, Founded = w.Now, FieldCell = fieldCell, Ration = 1.0,
-                                     Hunt = Grounds.Empty, Fish = Grounds.Empty, Gath = Grounds.Empty,
+                                     Hunt = Grounds.Empty, Fish = Grounds.Empty, Gath = Grounds.Empty, Sea = Grounds.Empty,
                                      Lore = KnownSites.Empty };
             s.SphereToLocal(P.Grid.Center[fieldCell], P.Radius, out double fx, out double fy);
             double fl = DMath.Sqrt(fx * fx + fy * fy);

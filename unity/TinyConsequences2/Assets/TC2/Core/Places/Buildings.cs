@@ -170,6 +170,7 @@ namespace TC2.Core.Places
                     ref var b = ref w.Buildings.Get(bl[i]);
                     if (Fallen(in b, w.Now)) continue;   // (a ruin already)
                     if (Shore.Dry(P, s.LocalToSphere(b.X, b.Y, P.Radius))) continue;
+                    if (b.Kind == Structures.Boat) { Boats.Landing(w, sid, out float lx, out float ly); ref var bb = ref w.Buildings.Get(bl[i]); bb.X = lx; bb.Y = ly; continue; }   // (a boat floats: drawn up the new shore, C9.1)
                     int hid = b.Household;
                     b.Household = 0; b.Left = w.Now - DMath.ToLong(FallYears(in b) * SimTime.Year) - 1;   // (drowned: fallen at once)
                     if (!Structures.IsHome(b.Kind)) { Structures.Lost(w, bl[i]); continue; }   // (a work the sea took: its use is gone, C1.1)

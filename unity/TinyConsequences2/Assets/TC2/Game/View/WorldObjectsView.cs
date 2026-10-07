@@ -360,7 +360,9 @@ namespace TC2.Game
                 for (int i = 0; i < bl.Count; i++)
                 {
                     // its works are structures too (C1.1): wells and granaries by the table, standing, being raised or fallen
-                    if (!Structures.IsHome(w.Buildings.Get(bl[i]).Kind)) { DrawWork(w, P, in s, bl[i], ex); continue; }
+                    byte bk = w.Buildings.Get(bl[i]).Kind;
+                    if (bk == Structures.Boat) { DrawBoat(w, P, in s, bl[i], ex); continue; }   // (a household's dugout at the landing: C9.1)
+                    if (!Structures.IsHome(bk)) { DrawWork(w, P, in s, bl[i], ex); continue; }
                     if (DrawHome(w, P, in s, bl[i], ex, dark, tOut, woodDays)) litHomes++;
                 }
                 // households without a home camp on their lot (not those on the road to another village), a fire smoking by the tent
@@ -393,7 +395,6 @@ namespace TC2.Game
                 // its palisade (D2-074): standing (an abandoned village's too, as it rots), or as far as its people have set it
                 if (s.Wall == 1 || s.Wall == 2 || s.OldR > 0f) DrawWall(w, P, in s, sid, ex);
                 if (!s.Inhabited) continue;   // (an abandoned village's well and granary decay as structures: C1.1)
-                Beached(w, P, in s, sid, ex);
                 // the stone in its store, stacked by the store: a pile for every ~40 loads, up to four (C1.3)
                 if (s.Stone >= 5)
                 {
@@ -540,55 +541,40 @@ namespace TC2.Game
         }
 
         /// <summary>
-        /// The water's edge at a fishing ground (sea cell): halfway to its land neighbour nearest the village, as the fishers go
-        /// (WildFood.GroundPoint without its jitter); also that land cell. False if the ground has no land beside it.
+        /// A household's dugout (C9.1, from the simulation's own boats): drawn up on the beach where it was made, its bow to the water -
+        /// while being hollowed a pale hull growing with the hours put in; not there while its people are out in it (they are drawn at sea
+        /// in it); split with age, a grey hulk sinking into the sand; overturned at sea, gone.
         /// </summary>
-        static bool FishingShore(PlanetState P, in Settlement s, int ground, out Vec3d edge, out Vec3d land)
+        void DrawBoat(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int bid, float ex)
         {
-            var g = P.Grid;
-            int best = -1; double bd = double.MaxValue;
-            for (int j = 0; j < 8; j++)
+            ref var b = ref w.Buildings.Get(bid);
+            if (b.Cond <= 0f) return;   // (lost at sea)
+            Vec3d at = s.LocalToSphere(b.X, b.Y, P.Radius);
+            Vector3 pos = PlanetGeo.Surface(P, at);
+            Vector3 up = pos.normalized;
+            // the bow away from the square: toward the water the boat was drawn up from
+            Vector3 toSea = pos - PlanetGeo.Surface(P, s.LocalToSphere(s.SquareX, s.SquareY, P.Radius));
+            toSea -= up * Vector3.Dot(toSea, up);
+            if (toSea.sqrMagnitude < 1e-6f) toSea = Vector3.Cross(up, Vector3.right);
+            var rot = Quaternion.LookRotation(toSea.normalized, up) * Quaternion.Euler(0f, (bid * 37) % 13 - 6, 0f);
+            float bex = ex * 1.15f;
+            if (b.Done == 0)
             {
-                int nb = g.Nbr8[ground * 8 + j];
-                if (!P.IsLand(nb)) continue;
-                double d = Vec3d.ArcDistance(g.Center[nb], s.Anchor, P.Radius);
-                if (d < bd) { bd = d; best = nb; }
+                if (b.Left != 0) return;   // (left half-made when its household went)
+                float done = Mathf.Clamp01((float)(b.Hours / Boats.Hours));
+                if (done <= 0.05f) return;
+                _beached.Add(0, new Color(1.10f, 1.02f, 0.86f, 1f), Matrix4x4.TRS(pos, rot, new Vector3(bex, bex * (0.4f + 0.6f * done), bex * (0.5f + 0.5f * done))));   // (the hollowing trunk)
+                return;
             }
-            land = best >= 0 ? g.Center[best] : g.Center[ground];
-            edge = (land + g.Center[ground]).Normalized;
-            return best >= 0;
-        }
-
-        /// <summary>
-        /// A coastal village's fishing boats drawn up on the shore of its best fishing ground: one for every two of its people who
-        /// fish with skill, fewer by those out on the water now, bows to the land, side by side along the shore.
-        /// </summary>
-        void Beached(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int sid, float ex)
-        {
-            if (s.Fish.A < 0 || P.IsLand(s.Fish.A)) return;
-            var res = w.Residents(sid);
-            int fishers = 0, afloat = 0;
-            for (int i = 0; i < res.Count; i++)
+            if (b.Left != 0)
             {
-                ref var p = ref w.People.Get(res[i]);
-                if (!p.Alive) continue;
-                if (p.SkFish > 0.25f) fishers++;
-                if (p.Act == ActivityKind.Fish) afloat++;
+                float c = (float)Homes.RuinLeft(in b, w.Now);
+                if (c <= 0.05f) return;
+                _beached.Add(0, Color.Lerp(new Color(0.45f, 0.45f, 0.42f, 1f), new Color(0.8f, 0.8f, 0.78f, 1f), c), Matrix4x4.TRS(pos - up * (0.3f * (1f - c)), rot, new Vector3(bex, bex * (0.4f + 0.6f * c), bex)));
+                return;
             }
-            int boats = Mathf.Min(6, (fishers + 1) / 2) - afloat;
-            if (boats <= 0 || !FishingShore(P, in s, s.Fish.A, out Vec3d edge, out Vec3d land)) return;
-            Vec3d inland = (land - edge).Normalized, along = Vec3d.Cross(edge, inland).Normalized;
-            for (int i = 0; i < boats; i++)
-            {
-                // a little up the beach from the water's edge, a boat's breadth apart
-                Vec3d at = (edge * P.Radius + inland * (0.06 * P.CellSize + 2.0 * ex) + along * ((i - (boats - 1) * 0.5) * 3.2 * ex)).Normalized;
-                Vector3 pos = PlanetGeo.Surface(P, at);
-                Vector3 up = pos.normalized;
-                Vector3 bow = PlanetGeo.Surface(P, (at * P.Radius + inland * 5.0).Normalized) - pos;
-                bow -= up * Vector3.Dot(bow, up);
-                if (bow.sqrMagnitude < 1e-8f) continue;
-                _beached.Add(0, Color.white, Matrix4x4.TRS(pos, Quaternion.LookRotation(bow.normalized, up) * Quaternion.Euler(0, (i * 37) % 13 - 6, 0), Vector3.one * ex));
-            }
+            if (b.Household != 0 && w.Households.Exists(b.Household) && Boats.Aboard(w, b.Household, bid) > 0) return;   // (out at sea)
+            _beached.Add(0, Color.white, Matrix4x4.TRS(pos, rot, Vector3.one * bex));
         }
 
         /// <summary>The orchard trees and bushes in the yards of the villages near the camera (the woods are the terrain's: D2-079).</summary>
@@ -668,12 +654,11 @@ namespace TC2.Game
                 Vec3d d = w.Agents.PositionAt(p, t);
                 Vector3 pos = PlanetGeo.Surface(P, d);
                 float age = (float)p.AgeYears((long)t);
-                // a fisher at the water's edge rows out a little toward the ground and fishes from a boat
-                if (p.Act == ActivityKind.Fish && p.Ground >= 0 && !P.IsLand(p.Ground) && !(p.Step == StepKind.Local && t < p.TA))
+                // out in the household's dugout (C9.1): drawn in it wherever they are on the water - rowing out, fishing, rowing home
+                if (p.Act == ActivityKind.Sail)
                 {
                     ulong fk = KeyedRng.Mix((ulong)id * 0x9E3779B97F4A7C15UL ^ 0xB0A7);
-                    double outBy = 0.35 + 0.3 * KeyedRng.Unit(fk);
-                    Vec3d onWater = (d * (1.0 - outBy) + P.Grid.Center[p.Ground] * outBy).Normalized;
+                    Vec3d onWater = d;
                     if (Ground.Height(P, onWater) < P.SeaLevel - 0.3)
                     {
                         Vector3 bpos = PlanetGeo.ToVector(onWater) * waterR;

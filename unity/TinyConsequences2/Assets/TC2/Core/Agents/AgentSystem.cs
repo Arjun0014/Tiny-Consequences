@@ -242,6 +242,7 @@ namespace TC2.Core.Agents
                 case StepKind.Stay:
                     p.FromX = p.ToX; p.FromY = p.ToY;
                     Complete(ref p, 1.0);
+                    if (!p.Alive) return;   // (drowned when their boat overturned: C9.1)
                     Decide(ref p);
                     return;
                 case StepKind.Travel:
@@ -460,12 +461,40 @@ namespace TC2.Core.Agents
                     }
                     p.Ground = -1;
                     break;
+                case ActivityKind.Sail:
+                    if (p.Ground >= 0 && hours > 0)
+                    {
+                        // out at the sea's grounds in the household's boat (C9.1): the open water's shoals; the trip ends under the wind it is
+                        // out in - the boat may overturn (with someone else aboard it already has: they are in the water too)
+                        int bid = p.WhyArg;
+                        double wind = Boats.WindAt(w, w.Planet.Grid.Center[p.Ground]);
+                        bool gone = !w.Buildings.Exists(bid) || w.Buildings.Get(bid).Cond <= 0f;
+                        if (gone) Boats.Overturned(w, p.Home, p.Household, bid, p.Id, wind, out _);
+                        else if (frac >= 1.0 && Boats.Trip(w, p.Home, p.Household, bid, p.Id, wind, out _) != 0) gone = true;
+                        if (!p.Alive) { p.Ground = -1; break; }
+                        double fu = 0;
+                        if (!gone)
+                        {
+                            ulong key = KeyedRng.Hash(w.Seed, RngStream.Work, (ulong)p.Id, (ulong)now);
+                            fu = w.Wild.Fish(p.Ground, hours * Tools(p.Household) * Knowledge.Tech.NetsFactor(in p), p.SkFish, key, 1, true);
+                            w.Learning.Practice(ref p, Knowledge.Tech.Nets, hours);
+                        }
+                        p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hours);
+                        p.Carry = (float)(p.Carry + fu);
+                        p.WhyArg = 65;   // (fish: what they bring home)
+                        w.Metrics.WildHours += hours; w.Metrics.WildFu += fu;
+                    }
+                    p.Ground = -1;
+                    break;
                 case ActivityKind.Haul:
                     if (p.Carry > 0f) { w.Wild.Deposit(p.Id, p.Carry); p.Carry = 0f; }
                     break;
                 case ActivityKind.Build:
                     if (p.At != 0 && p.At == p.Home && hours > 0)
-                        Construction.Work(w, p.At, p.Household, hours, BuildRate(in p) * Tools(p.Household), p.Id);
+                    {
+                        if (p.Why == WhyCode.Boat) Boats.Work(w, p.At, p.Household, hours, BuildRate(in p) * Tools(p.Household), p.Id);   // (the household's boat: C9.1)
+                        else Construction.Work(w, p.At, p.Household, hours, BuildRate(in p) * Tools(p.Household), p.Id);
+                    }
                     break;
                 case ActivityKind.Train:
                     if (p.At != 0 && p.At == p.Home && hours > 0)
@@ -557,7 +586,7 @@ namespace TC2.Core.Agents
         /// <summary>Activities that are work: they count toward a day's labour.</summary>
         static bool IsWork(ActivityKind a) => a == ActivityKind.Fields || a == ActivityKind.Wood || a == ActivityKind.Build || a == ActivityKind.Hunt ||
                                               a == ActivityKind.Fish || a == ActivityKind.Gather || a == ActivityKind.Haul || a == ActivityKind.Tend ||
-                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry || a == ActivityKind.Smith || a == ActivityKind.Train || a == ActivityKind.Mine || a == ActivityKind.Burn;
+                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry || a == ActivityKind.Smith || a == ActivityKind.Train || a == ActivityKind.Mine || a == ActivityKind.Burn || a == ActivityKind.Sail;
 
         /// <summary>How much a day's labour still leaves for the slack's work: whole until five hours, a fifth past eight.</summary>
         static double DayLeft(in Person p) => DMath.Clamp(1.0 - (p.Worked - 5.0) / 3.0, 0.2, 1.0);
@@ -873,8 +902,8 @@ namespace TC2.Core.Agents
                 // nothing at home or in the store: go out to what the woods, the game or the shore still hold (by day; D2-042)
                 if (!child && lsec >= 6 * SimTime.Hour && lsec < 19 * SimTime.Hour && p.At == p.Home)
                 {
-                    int wk = WildChoice(in p, in here, age, now, out _);
-                    if (wk >= 0) { BeginWild(ref p, ref here, wk, WhyCode.NoFood, ref rs); return; }
+                    int wk = WildChoice(in p, in here, age, now, out _, out int hboat);
+                    if (wk >= 0) { BeginWild(ref p, ref here, wk, WhyCode.NoFood, ref rs, hboat); return; }
                 }
             }
 
@@ -936,7 +965,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying, 15 the smithy, 16 practice, 17 mining, 18 charcoal, 19 bog ore
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying, 15 the smithy, 16 practice, 17 mining, 18 charcoal, 19 bog ore, 20 the household's boat
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -1039,15 +1068,21 @@ namespace TC2.Core.Agents
                     if (u > best) { best = u; choice = 11; }
                 }
             }
-            int wildKind = -1;
+            if (day && atHome && age >= 16 && age < 60 && p.Health > 0.6 && Boats.HasWork(w, in here, p.Household))
+            {
+                // the household is making a boat (C9.1): its grown members fell, drag down and hollow the trunk, as they would raise a roof
+                double u = 0.42 * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
+                if (u > best) { best = u; choice = 20; }
+            }
+            int wildKind = -1, wildBoat = 0;
             if (day && lsec < 15 * SimTime.Hour)
             {
                 // the woods, the game and the shore: by need (short rations, empty stores) and habit, as good as the grounds are
-                int wk = WildChoice(in p, in here, age, now, out double expect);
+                int wk = WildChoice(in p, in here, age, now, out double expect, out int wboat);
                 if (wk >= 0)
                 {
                     double u = WildUrge(in p, in here, wk, expect, now) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.06 * rs.NextUnit();
-                    if (u > best) { best = u; choice = 6; wildKind = wk; }
+                    if (u > best) { best = u; choice = 6; wildKind = wk; wildBoat = wboat; }
                 }
             }
             if (lsec >= 7 * SimTime.Hour && lsec < 13 * SimTime.Hour && age >= 16 && age < 62 && p.Health > 0.7 && p.Hurt < TC2.Core.Society.Conflict.RoadHurt &&
@@ -1155,11 +1190,17 @@ namespace TC2.Core.Agents
                         BeginLocal(ref p, ActivityKind.Quarry, WhyCode.Stone, 0, qb.X + rs.Range(-6, 6), qb.Y + rs.Range(-6, 6), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
                         return;
                     }
+                case 20:
+                    {
+                        ref var bb = ref w.Buildings.Get(Boats.Making(w, p.Household));
+                        BeginLocal(ref p, ActivityKind.Build, WhyCode.Boat, 0, bb.X + rs.Range(-3, 3), bb.Y + rs.Range(-3, 3), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
+                        return;
+                    }
                 case 4:
                     BeginLocal(ref p, ActivityKind.Social, WhyCode.Leisure, 0, here.SquareX + rs.Range(-12, 12), here.SquareY + rs.Range(-12, 12), SimTime.Hours(1.5 + 1.5 * rs.NextUnit()));
                     return;
                 case 6:
-                    BeginWild(ref p, ref here, wildKind, WildNeed(in here, w.Now) > 0 ? WhyCode.FoodShort : WhyCode.Provide, ref rs);
+                    BeginWild(ref p, ref here, wildKind, WildNeed(in here, w.Now) > 0 ? WhyCode.FoodShort : WhyCode.Provide, ref rs, wildBoat);
                     return;
                 case 8:
                     if (BeginScout(ref p, ref here, ref rs)) return;
@@ -1259,24 +1300,85 @@ namespace TC2.Core.Agents
         /// The livelihood of the wild a person would take up now (the best FU an hour they can expect from today's survey of the
         /// grounds), or -1. Hunting asks a grown, healthy body free of a baby at the breast or one due; fishing and gathering less.
         /// </summary>
-        public int WildChoice(in Person p, in Settlement here, double age, long now, out double expect)
+        public int WildChoice(in Person p, in Settlement here, double age, long now, out double expect) => WildChoice(in p, in here, age, now, out expect, out _);
+
+        /// <summary>The same, and the household's boat when they would take it out to the sea's grounds (0: the shore; C9.1).</summary>
+        public int WildChoice(in Person p, in Settlement here, double age, long now, out double expect, out int boat)
         {
-            expect = 0; int kind = -1;
+            expect = 0; int kind = -1; boat = 0;
             bool heavy = p.PregDue != 0 && p.PregDue - now < 10 * SimTime.Day;
             bool nursing = p.NursingUntil != 0 && p.NursingUntil - now > SimTime.Year / 2;
             if (age >= 16 && age < 60 && p.Health > 0.5 && !heavy && !nursing && here.Hunt.Expect > 0f && here.Hunt.A >= 0)
             { double e = here.Hunt.Expect * (0.5 + p.SkHunt); if (e > expect) { expect = e; kind = WildFood.Hunting; } }
             if (age >= 14 && age < 70 && !heavy && here.Fish.Expect > 0f && here.Fish.A >= 0)
             { double e = here.Fish.Expect * (0.5 + p.SkFish); if (e > expect) { expect = e; kind = WildFood.Fishing; } }
+            if (age >= 14 && age < 60 && !heavy && here.Sea.A >= 0 && here.Fish.A >= 0)
+            {
+                // the household's boat, a seat free and the wind fair: the open sea, the row paid (C9.1)
+                int b = SeaBoat(in p, in here);
+                if (b != 0) { double e = SeaHere(in here, out _) * (0.5 + p.SkFish); if (e > expect) { expect = e; kind = WildFood.Fishing; boat = b; } }
+            }
             if (age >= 12 && here.Gath.Expect > 0f && here.Gath.A >= 0)
-            { double e = here.Gath.Expect * (0.6 + 0.4 * p.Health); if (e > expect) { expect = e; kind = WildFood.Gathering; } }
+            { double e = here.Gath.Expect * (0.6 + 0.4 * p.Health); if (e > expect) { expect = e; kind = WildFood.Gathering; boat = 0; } }
             return kind;
         }
 
-        /// <summary>Out to one of the village's best grounds for the livelihood (a shore for fishing), for a hunt's or a gathering's length.</summary>
-        void BeginWild(ref Person p, ref Settlement here, int kind, WhyCode why, ref RandomSequence rs)
+        /// <summary>
+        /// The household's boat if this person could take it out now (C9.1): sound, lying at this village's landing, the wind over the sea's
+        /// grounds below what anyone rows out in, and a seat free (lived: those of the household out in it; COARSE: the seats the day has
+        /// given), or 0.
+        /// </summary>
+        int SeaBoat(in Person p, in Settlement here)
         {
             var w = _w;
+            int b = Boats.Of(w, p.Household);
+            if (b == 0 || w.Buildings.Get(b).Settlement != here.Id) return 0;
+            SeaHere(in here, out double wind);
+            if (wind >= Boats.Max) return 0;
+            int aboard = _seatsOn ? (_seats.TryGetValue(b, out int n) ? n : 0) : Boats.Aboard(w, p.Household, b);
+            return aboard < Boats.Seats ? b : 0;
+        }
+
+        /// <summary>A village's sea now (C9.1): what an hour at its sea's grounds is worth, the row paid, and the wind over them - read once
+        /// a village and moment (each of its boat households' people asked it: two spherical distances and every storm's wind a person).</summary>
+        double SeaHere(in Settlement here, out double wind)
+        {
+            var w = _w;
+            var st = w.Planet.Storms;
+            double storms = st.Count;   // (the storms as they are: a storm born, moved or grown since is another sea)
+            for (int i = 0; i < st.Count; i++) storms += (double)st[i].Wind + st[i].At.X + st[i].At.Y;
+            if (_seaSid != here.Id || _seaAt != w.Now || _seaGround != here.Sea.A || _seaExpect != here.Sea.Expect || _seaStorms != storms)
+            {
+                _seaSid = here.Id; _seaAt = w.Now; _seaGround = here.Sea.A; _seaExpect = here.Sea.Expect; _seaStorms = storms;
+                _seaValue = Boats.SeaExpect(w, in here); _seaWind = Boats.SeaWind(w, in here);
+            }
+            wind = _seaWind;
+            return _seaValue;
+        }
+        int _seaSid, _seaGround; long _seaAt; float _seaExpect; double _seaValue, _seaWind, _seaStorms;   // (a cache, not state)
+
+        readonly System.Collections.Generic.Dictionary<int, int> _seats = new System.Collections.Generic.Dictionary<int, int>();   // COARSE: seats taken in each boat today
+        bool _seatsOn;
+        readonly System.Collections.Generic.List<int> _drowned = new System.Collections.Generic.List<int>();   // COARSE: the drowned, to die after the day's loop
+        readonly System.Collections.Generic.List<long> _drownedEv = new System.Collections.Generic.List<long>();   // and each one's loss (its event)
+
+
+        /// <summary>Out to one of the village's best grounds for the livelihood (a shore for fishing), for a hunt's or a gathering's length.</summary>
+        void BeginWild(ref Person p, ref Settlement here, int kind, WhyCode why, ref RandomSequence rs, int boat = 0)
+        {
+            var w = _w;
+            if (boat != 0 && kind == WildFood.Fishing)
+            {
+                // out in the household's boat to one of the sea's grounds (C9.1): rowed out over the water, fishing there
+                int sg = WildFood.PickGround(in here.Sea, ref rs);
+                if (sg < 0) return;
+                here.SphereToLocal(w.Planet.Grid.Center[sg], w.Planet.Radius, out double sx, out double sy);
+                BeginLocal(ref p, ActivityKind.Sail, why, boat, sx + rs.Range(-60, 60), sy + rs.Range(-60, 60), SimTime.Hours(3.5 + 1.5 * rs.NextUnit()));
+                p.Ground = sg;
+                w.Metrics.FishTrips++; w.Metrics.BoatTrips++;
+                if (why != WhyCode.Provide) w.SettlementSys.NoteWildFood(here.Id);
+                return;
+            }
             var g = kind == WildFood.Hunting ? here.Hunt : kind == WildFood.Fishing ? here.Fish : here.Gath;
             int ground = WildFood.PickGround(in g, ref rs);
             // a hunter goes where a herd is, when the village knows one (D2-047)
@@ -1553,6 +1655,7 @@ namespace TC2.Core.Agents
             prof?.Begin(10013); Chores(sid, days); prof?.End(10013);
             // the hearths' wood comes first when it is running out: six days of fires kept in store (D2-056)
             double fuelWanted = DMath.Max(0.0, (5.0 + days) * s.FuelDay - s.Woodstore);   // (and the step's fires: DEEP)
+            _seats.Clear(); _seatsOn = true; _drowned.Clear();   // (the boats' seats a day gives; the drowned die after the day: C9.1)
             for (int i = 0; i < res.Count; i++)
             {
                 ref var p = ref w.People.Get(res[i]);
@@ -1620,11 +1723,17 @@ namespace TC2.Core.Agents
                         build = false;
                     }
                 }
+                if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Boats.HasWork(w, in s, p.Household) && !(shortNow && WildNeed(in s, now, ration) > 0.42))
+                {
+                    // the household is making a boat (C9.1): its grown members' free hours go to it, as a lived day's would
+                    double used = Boats.Work(w, sid, p.Household, DMath.Min(hours, 7.0 * days), BuildRate(in p) * tools, p.Id);
+                    hours -= used;
+                }
                 prof?.Begin(10022);
                 if (hours > 0)
                 {
                     // the wild: the same choice and the same catch from the same fields as a day lived step by step (D2-042)
-                    int wk = WildChoice(in p, in s, age, now, out double expect);
+                    int wk = WildChoice(in p, in s, age, now, out double expect, out int boat);
                     if (wk >= 0)
                     {
                         double u = WildUrge(in p, in s, wk, expect, now, ration) * (age > 60 ? 0.5 : 1.0) * (0.6 + 0.4 * p.Diligence / 255.0);
@@ -1642,7 +1751,7 @@ namespace TC2.Core.Agents
                         if (hw >= 0.25 * days)   // (DEEP: a quarter-hour a day, as a day's least trip - not a quarter-hour a step)
                         {
                             var rs = NextRandom(ref p);
-                            var g = wk == WildFood.Hunting ? s.Hunt : wk == WildFood.Fishing ? s.Fish : s.Gath;
+                            var g = wk == WildFood.Hunting ? s.Hunt : wk == WildFood.Fishing ? (boat != 0 ? s.Sea : s.Fish) : s.Gath;   // (by boat: the sea's grounds, C9.1)
                             int ground = WildFood.PickGround(in g, ref rs);
                             if (ground >= 0)
                             {
@@ -1657,6 +1766,17 @@ namespace TC2.Core.Agents
                                     s.Hides += hides;   // (D2-063) p.SkHunt = (float)DMath.Min(1.0, p.SkHunt + 0.002 * hw); w.Metrics.HuntTrips++;
                                     if (fu > 0) w.HerdSys.MarkHunted(sid, ground);
                                 }
+                                else if (wk == WildFood.Fishing && boat != 0)
+                                {
+                                    // out in the household's boat (C9.1): a seat of it today, the row out paid from the hours, the open sea's shoals, and
+                                    // the trip's chance under the wind it is out in (the drowned die after the day)
+                                    _seats[boat] = (_seats.TryGetValue(boat, out int taken) ? taken : 0) + 1;
+                                    int outcome = Boats.Trip(w, sid, p.Household, boat, p.Id, Boats.WindAt(w, w.Planet.Grid.Center[ground]), out long lostEv, days, false);
+                                    fu = outcome == 0 ? w.Wild.Fish(ground, hw * Boats.AfterRow(w, in s) * tools * Knowledge.Tech.NetsFactor(in p), p.SkFish, key, days, true) : 0.0;
+                                    if (outcome == 2) { _drowned.Add(p.Id); _drownedEv.Add(lostEv); }
+                                    p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hw); w.Metrics.FishTrips++; w.Metrics.BoatTrips++;
+                                    w.Learning.Practice(ref p, Knowledge.Tech.Nets, hw);
+                                }
                                 else if (wk == WildFood.Fishing)
                                 {
                                     fu = w.Wild.Fish(ground, hw * tools * Knowledge.Tech.NetsFactor(in p), p.SkFish, key, days); p.SkFish = (float)DMath.Min(1.0, p.SkFish + 0.002 * hw); w.Metrics.FishTrips++;
@@ -1664,7 +1784,7 @@ namespace TC2.Core.Agents
                                 }
                                 else { fu = w.Wild.Gather(ground, hw * tools, p.Health, key, days); w.Metrics.GatherTrips++; }
                                 w.Wild.Deposit(p.Id, fu);
-                                if (days > 1) w.Wild.Retake(sid, wk);   // (DEEP: the next chooses on the ground this step's take left)
+                                if (days > 1) w.Wild.Retake(sid, wk, boat != 0);   // (DEEP: the next chooses on the ground this step's take left)
                                 w.Metrics.WildHours += hw; w.Metrics.WildFu += fu;
                                 hours = DMath.Max(0.0, hours - hw);
                                 if (shortNow) w.SettlementSys.NoteWildFood(sid);
@@ -1738,6 +1858,14 @@ namespace TC2.Core.Agents
                 double worked = chore + (_tendBy.Contains(p.Id) ? TendStint * days : 0.0) + (day0 - hours) + smithExtra;
                 prof?.Begin(10020); CoarseCraft(ref p, age, DMath.Max(0.0, LabourDay * (age > 60 ? 0.85 : 1.0) * days - worked), 1.0, days); prof?.End(10020);
             }
+            _seatsOn = false;
+            for (int k = 0; k < _drownedEv.Count; k++)
+            {
+                // those drowned when their boats overturned today (C9.1: not while the day's list of its people is walked)
+                ref var q = ref w.People.Get(_drowned[k]);
+                if (q.Alive) Kill(ref q, _drownedEv[k], 12);
+            }
+            _drowned.Clear(); _drownedEv.Clear();
         }
 
         // ---------------------------------------------------------------- moving and scouting (D2-045)

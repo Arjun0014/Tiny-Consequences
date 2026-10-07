@@ -424,6 +424,17 @@ namespace TC2.Game
                       .Append(" of ").Append(cap.ToString("N0", CultureInfo.InvariantCulture)).Append(s.Granary > cap ? " - the rest lies in heaps and rots fast" : "").Append('\n');
                 }
                 else if (b.Kind == Structures.Well) sb.Append("water for ").Append(s.Population).Append(" people, drawn by the pot\n");
+                else if (b.Kind == Structures.Boat)
+                {
+                    // a household's dugout (C9.1): whose, what the sea gives against the shore, how long it will last
+                    int owner = b.Household != 0 ? b.Household : b.Last;
+                    if (owner != 0) sb.Append(b.Household != 0 ? "the " : "left by the ").Append(w.History.NameOf(EntityRef.Household(owner))).Append("s'").Append(b.Household != 0 ? " boat" : "").Append('\n');
+                    if (b.Cond <= 0f) sb.Append("overturned at sea and lost\n");
+                    else if (b.Done != 0 && b.Left == 0)
+                        sb.Append("seats two; rows out to the open sea's grounds within ").Append((WildFood.SeaReach / 1000.0).ToString("0.0", CultureInfo.InvariantCulture)).Append(" km: an hour there is worth ")
+                          .Append(Boats.SeaExpect(w, in s).ToString("0.0", CultureInfo.InvariantCulture)).Append(" days' food against ").Append(s.Fish.Expect.ToString("0.0", CultureInfo.InvariantCulture))
+                          .Append(" on the shore; it will split with age in about ").Append(System.Math.Max(0.0, Boats.Years - age).ToString("0", CultureInfo.InvariantCulture)).Append(" years\n");
+                }
                 else if (b.Kind == Structures.Smithy)
                 {
                     double share = TC2.Core.Knowledge.Tech.MetalShare(s.Metal, s.Population), want = Forge.ArmsWant(in s);

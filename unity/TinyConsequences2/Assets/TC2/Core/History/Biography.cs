@@ -229,6 +229,13 @@ namespace TC2.Core.History
             if (goats > 0) an.Add(goats + (goats == 1 ? " goat" : " goats"));
             if (pigs > 0) an.Add(pigs + (pigs == 1 ? " pig" : " pigs"));
             sb.Append(an.Count > 0 ? "Animals: " + string.Join(", ", an) + ".\n" : "No animals.\n");
+            // the household's boat (C9.1)
+            if (hh.Boat != 0 && w.Buildings.Exists(hh.Boat))
+            {
+                ref var bt = ref w.Buildings.Get(hh.Boat);
+                if (bt.Done == 0) sb.Append("They are hollowing a dugout at the landing (").Append(F(100.0 * bt.Hours / Boats.Hours, "0")).Append(" % done).\n");
+                else sb.Append("A dugout of theirs lies at the landing, made in ").Append(Year(bt.Built)).Append(Boats.Sound(in bt, w.Now) ? "" : ", split with age").Append(".\n");
+            }
             return sb.ToString();
         }
 

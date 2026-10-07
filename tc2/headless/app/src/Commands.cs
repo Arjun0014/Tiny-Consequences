@@ -282,6 +282,23 @@ namespace TC2.Headless
                                           F(w.Metrics.BogOreDug / 1000.0, "0.0") + " t, iron smelted " + F(w.Metrics.IronKg, "0") + " kg, traded " + F(w.Metrics.IronTraded, "0") + " kg; iron tools for " + F(pop5 > 0 ? 100.0 * share / pop5 : 0, "0") + " % of the people (" + F(iron, "0") + " kg); iron arms " + F(ironArms, "0") + " of " + F(arms5, "0") +
                                           (topSeller != 0 ? "; most sold lately: " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(topSeller)) + " #" + topSeller + " (" + F(topSold, "0") + " kg a year, " + w.Settlements.Get(topSeller).Population + " people)" : ""));
                         Console.WriteLine("claims: ore dug at bodies other villages work " + F(w.Metrics.OreClaimedKg / 1000.0, "0.0") + " t in " + w.Metrics.OreClaims + " takings");
+                        // boats (C9.1): the coast's villages, the boats at their landings, what the sea gave
+                        {
+                            int coast = 0, withBoats = 0, sound = 0, making = 0, topBoats = 0, topBoatSid = 0;
+                            for (int sid6 = w.Settlements.First(); sid6 != 0; sid6 = w.Settlements.Next(sid6))
+                            {
+                                ref var st6 = ref w.Settlements.Get(sid6);
+                                if (!st6.Inhabited || st6.Fish.A < 0) continue;
+                                coast++;
+                                int here = 0; var bl6 = w.BuildingsOf(sid6);
+                                for (int i = 0; i < bl6.Count; i++) { ref var b6 = ref w.Buildings.Get(bl6[i]); if (b6.Kind != TC2.Core.Places.Structures.Boat) continue; if (TC2.Core.Places.Boats.Sound(in b6, w.Now)) here++; else if (b6.Done == 0 && b6.Left == 0) making++; }
+                                sound += here; if (here > 0) withBoats++;
+                                if (here > topBoats) { topBoats = here; topBoatSid = sid6; }
+                            }
+                            Console.WriteLine("boats: " + withBoats + " of " + coast + " fishing villages have boats (" + sound + " dugouts, " + making + " being hollowed); begun " + w.Metrics.BoatsBegun + ", made " + w.Metrics.BoatsBuilt + ", given up half-made " + w.Metrics.BoatsGivenUp +
+                                              ", worn out " + w.Metrics.BoatsWorn + ", lost at sea " + w.Metrics.BoatsLost + " (" + w.Metrics.Drowned + " drowned); trips " + w.Metrics.BoatTrips + " of " + w.Metrics.FishTrips + " fishing; fish from boats " +
+                                              F(w.Metrics.BoatFishKg / 1000.0, "0.0") + " t of " + F(w.Metrics.FishKg / 1000.0, "0.0") + " t" + (topBoatSid != 0 ? "; most at " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(topBoatSid)) + " #" + topBoatSid + " (" + topBoats + ")" : ""));
+                        }
                         Console.WriteLine("ore sites: land told as by the ore wanted " + w.Metrics.ScoutedForOre + " times; villages founded knowing ore round their site " + w.Metrics.FoundedByOre + " of " + w.Metrics.Foundings);
                     }
                     // charcoal (C5.2a)
@@ -480,6 +497,25 @@ namespace TC2.Headless
             prof?.Print();
             if (a.Has("civ")) CivTimelines(w, a.Int("civ", 4));
             if (a.Has("civ-of")) CivTimelines(w, 1, a.Int("civ-of", 0));   // (one village's timeline by its id: C5.3)
+            if (a.Has("boats"))
+            {
+                // a village's boats (C9.1): each row of kind Boat - its owner, where it lies, whether it is made, kept, lost, and whether its spot is dry
+                int bsid = a.Int("boats", 0);
+                var P = w.Planet;
+                ref var bs = ref w.Settlements.Get(bsid);
+                Console.WriteLine("boats of " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(bsid)) + " #" + bsid + ": sea ground " + bs.Sea.A + ", shore ground " + bs.Fish.A + ", sea worth " + F(TC2.Core.Places.Boats.SeaExpect(w, in bs), "0.00") + " against " + F(bs.Fish.Expect, "0.00"));
+                var bl = w.BuildingsOf(bsid);
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    ref var b = ref w.Buildings.Get(bl[i]);
+                    if (b.Kind != TC2.Core.Places.Structures.Boat) continue;
+                    double dx = (double)b.X - bs.SquareX, dy = (double)b.Y - bs.SquareY;
+                    bool dry = TC2.Core.Planet.Shore.Dry(P, bs.LocalToSphere(b.X, b.Y, P.Radius));
+                    Console.WriteLine("  #" + bl[i] + " hh " + b.Household + " (last " + b.Last + ") at " + F(b.X, "0") + "," + F(b.Y, "0") + " (" + F(System.Math.Sqrt(dx * dx + dy * dy), "0") + " m from the square) done " + b.Done +
+                                      " hours " + F(b.Hours, "0") + " left " + (b.Left != 0 ? SimTime.Format(b.Left) : "-") + " cond " + F(b.Cond, "0.0") + " built " + SimTime.Format(b.Built) + (dry ? " dry" : " WET") +
+                                      (TC2.Core.Places.Boats.Sound(in b, w.Now) ? " sound" : ""));
+                }
+            }
             if (a.Has("events"))
             {
                 // every kept record of one kind, with its cause (C5.4: `--events OreTaken`)

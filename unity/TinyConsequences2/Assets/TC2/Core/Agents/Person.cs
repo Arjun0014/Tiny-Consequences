@@ -20,6 +20,7 @@ namespace TC2.Core.Agents
         Train = 30,                                     // practising at the village's training ground (C1.5)
         Mine = 31,                                      // digging ore at the village's mine and carrying it home (C5.1)
         Burn = 32,                                      // felling wood and burning charcoal at the village's hearth by its woodlot (C5.2a)
+        Sail = 33,                                      // out in the household's boat fishing the open sea (C9.1; WhyArg the boat)
     }
 
     /// <summary>The kind of the current step of an activity.</summary>
@@ -60,6 +61,7 @@ namespace TC2.Core.Agents
         Ore = 39,         // the village's smiths want ore and its mine stands: someone digs it (C5.1)
         BogOre = 41,      // the village's smiths want bog iron ore and its pits stand: someone digs it (C5.2b)
         Charcoal = 40,    // the village's smiths want charcoal and its hearth stands: someone burns it (C5.2a)
+        Boat = 42,        // the household makes a boat: the sea beyond the shore promises more fish (C9.1)
     }
 
     public static class Sex { public const byte Female = 0, Male = 1; }

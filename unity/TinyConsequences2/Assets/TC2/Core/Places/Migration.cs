@@ -343,6 +343,7 @@ namespace TC2.Core.Places
             if (from == dest) return;
             w.HouseholdsOf(from).Remove(hid);
             Homes.Leave(w, hid);   // (if they still had a home behind them)
+            Boats.Leave(w, hid);   // (a dugout is not carried overland: left on the beach - C9.1)
             hh.Settlement = dest; hh.Water = 0f;   // (pots carried empty)
             w.HouseholdsOf(dest).InsertSorted(hid);
             // a home standing empty there, else a camp on a new lot (D2-059)
@@ -391,7 +392,7 @@ namespace TC2.Core.Places
             var s = new Settlement
             {
                 Id = sid, Cell = cell, Anchor = anchor, East = east, North = north, Founded = w.Now, FieldCell = fieldCell, Ration = 1.0,
-                Hunt = Grounds.Empty, Fish = Grounds.Empty, Gath = Grounds.Empty, Lore = KnownSites.Empty, Works = 0, Crop = CropStage.Fallow,
+                Hunt = Grounds.Empty, Fish = Grounds.Empty, Gath = Grounds.Empty, Sea = Grounds.Empty, Lore = KnownSites.Empty, Works = 0, Crop = CropStage.Fallow,
             };
             s.SphereToLocal(P.Grid.Center[fieldCell], P.Radius, out double fx, out double fy);
             double fl = DMath.Sqrt(fx * fx + fy * fy);

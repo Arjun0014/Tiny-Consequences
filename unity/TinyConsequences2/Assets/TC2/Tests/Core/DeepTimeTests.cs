@@ -150,7 +150,17 @@ namespace TC2.Tests.Core
                 var c = Lived(seed, 1);
                 var d = Lived(seed, 12);
                 long end = c.Now + SimTime.Years(60);
-                c.AdvanceTo(end); d.AdvanceTo(end);
+                // the herds read at five moments over the last eight years, not one (C9.1: a moment's count on four villages swung with a
+                // few herds' culls past the band when boats moved the trajectories - the mix is what is kept)
+                var kc = new int[Livestock.Kinds]; var kd = new int[Livestock.Kinds];
+                for (int m = 4; m >= 0; m--)
+                {
+                    long at = end - m * SimTime.Years(2);
+                    c.AdvanceTo(at); d.AdvanceTo(at);
+                    for (int b = c.Beasts.First(); b != 0; b = c.Beasts.Next(b)) if (c.Beasts.Get(b).Alive) kc[c.Beasts.Get(b).Kind]++;
+                    for (int b = d.Beasts.First(); b != 0; b = d.Beasts.Next(b)) if (d.Beasts.Get(b).Alive) kd[d.Beasts.Get(b).Kind]++;
+                }
+                for (int k = 0; k < Livestock.Kinds; k++) { kc[k] = (kc[k] + 2) / 5; kd[k] = (kd[k] + 2) / 5; }
                 Assert.IsNull(TestWorlds.Audit(d));
                 var mc = c.Metrics; var md = d.Metrics;
                 System.Console.WriteLine("seed " + seed + " COARSE vs DEEP: people " + c.LivingPeople() + " / " + d.LivingPeople() + ", places " + c.InhabitedSettlements() + " / " + d.InhabitedSettlements()
@@ -164,9 +174,6 @@ namespace TC2.Tests.Core
                 // the herds keep their mix (a step that read its first day for all its days bred cattle three times as often, and culled
                 // pigs to a fourteenth): a beast count on a four-village world at one moment swings with a few herds' culls, so the test
                 // catches a factor of 2.5 (D2-083: the six-seed 400-year comparison is the calibration - goats 1.11, pigs 0.73, n.s.)
-                var kc = new int[Livestock.Kinds]; var kd = new int[Livestock.Kinds];
-                for (int b = c.Beasts.First(); b != 0; b = c.Beasts.Next(b)) if (c.Beasts.Get(b).Alive) kc[c.Beasts.Get(b).Kind]++;
-                for (int b = d.Beasts.First(); b != 0; b = d.Beasts.Next(b)) if (d.Beasts.Get(b).Alive) kd[d.Beasts.Get(b).Kind]++;
                 for (int k = 0; k < Livestock.Kinds; k++)
                 {
                     double ratio = (kd[k] + 15.0) / (kc[k] + 15.0);

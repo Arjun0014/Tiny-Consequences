@@ -61,7 +61,7 @@ namespace TC2.Core.Places
             { ref var sw = ref w.Settlements.Get(sid); sw.StoneWant = (float)Stone.Want(w, sid); sw.OreWant = (float)Mining.Want(w, sid); sw.CharcoalWant = (float)Charcoal.Want(w, sid); sw.FeOreWant = (float)Mining.Want(w, sid, Mining.Iron); }   // (stone for its next houses' footings: C1.3; ore for its smiths: C5.1)
             Structures.Plan(w, sid);   // what its people want built next, by need (C1.1)
             if (days > 1) Ahead(sid, g0, days);   // (the step's own work reads its store as days lived hold it too: F8)
-            prof?.Begin(10002); prof?.Begin(10007); w.Wild.Survey(sid); prof?.End(10007); prof?.Begin(10008); w.HerdSys.Update(sid); prof?.End(10008); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
+            prof?.Begin(10002); prof?.Begin(10007); w.Wild.Survey(sid); prof?.End(10007); Boats.Plan(w, sid, days); prof?.Begin(10008); w.HerdSys.Update(sid); prof?.End(10008); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
             if (days > 1) w.Wild.MidStep(sid, w.Stock.MidStepMast(sid, days));   // (DEEP: the woods as the step's middle day finds them)
             if (doy == Migration.DecideDay) { prof?.Begin(10003); w.Migration.Weigh(sid); prof?.End(10003); }   // who leaves (D2-045)
             if (w.Resolution == Resolution.Coarse) { prof?.Begin(10004); w.Agents.CoarseDay(sid, days); prof?.End(10004); }
@@ -240,6 +240,7 @@ namespace TC2.Core.Places
             int sid = hh.Settlement;
             int heir = Heir(hid, lastPid, sid);
             Homes.Leave(w, hid);
+            Boats.Leave(w, hid, heir);   // (the heir takes the boat, else it is left on the beach: C9.1)
             if (heir != 0)
             {
                 ref var to = ref w.Households.Get(heir);
@@ -903,7 +904,7 @@ namespace TC2.Core.Places
                 double gear = left == 0 ? oh.Gear : (double)oh.Gear / (left + 1);
                 oh.Gear = (float)(oh.Gear - gear);
                 w.Households.Get(hid).Gear = (float)(w.Households.Get(hid).Gear + gear);
-                if (left == 0) { Homes.Leave(w, old); oh.Dissolved = w.Now; w.History.EndEntity(EntityRef.Household(old), w.Now); w.HouseholdsOf(oh.Settlement).Remove(old); w.Stock.Inherit(old, hid); }
+                if (left == 0) { Homes.Leave(w, old); Boats.Leave(w, old, hid); oh.Dissolved = w.Now; w.History.EndEntity(EntityRef.Household(old), w.Now); w.HouseholdsOf(oh.Settlement).Remove(old); w.Stock.Inherit(old, hid); }
                 else w.Stock.Endow(old, hid);   // and a share of the herd (D2-048)
             }
             p.Household = hid;

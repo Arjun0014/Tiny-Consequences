@@ -6,7 +6,7 @@ using TC2.Core.Simulation;
 namespace TC2.Core.Places
 {
     /// <summary>What a structure is for (21 §1).</summary>
-    public enum Function : byte { Dwelling = 0, Water = 1, Store = 2, Smith = 3, Quarry = 4, Train = 5, Market = 6, Gate = 7, Mine = 8, Charcoal = 9 }   // (bog-ore pits are mines too)
+    public enum Function : byte { Dwelling = 0, Water = 1, Store = 2, Smith = 3, Quarry = 4, Train = 5, Market = 6, Gate = 7, Mine = 8, Charcoal = 9, Boat = 10 }   // (bog-ore pits are mines too)
 
     /// <summary>Where a structure is laid out (21 §4).</summary>
     public enum Zone : byte { Homes = 0, Core = 1, Edge = 2, Outer = 3, Site = 4, Shore = 5 }
@@ -46,6 +46,7 @@ namespace TC2.Core.Places
         public const byte Mine = 17;                                              // a pit at an ore body (C5.1)
         public const byte CharHearth = 18;                                            // a charcoal hearth at the woodlot (C5.2a)
         public const byte BogPits = 19;                                               // pits at a bed of bog ore (C5.2b)
+        public const byte Boat = 20;                                                  // a household's dugout at the landing (C9.1, `Boats`)
 
         /// <summary>FU of grain a granary keeps well (~7.5 t: a raised timber store of ~10 m3).</summary>
         public const double GranaryHolds = 10000.0;
@@ -73,6 +74,7 @@ namespace TC2.Core.Places
             t[BogPits] = new KindInfo("bog-ore pits", Function.Mine, Zone.Site, 7.0, 16, 2, 15, 40, 0);
             t[Mine] = new KindInfo("mine", Function.Mine, Zone.Site, 7.0, 40, 6, 60, 300, 0);
             t[Barn] = new KindInfo("barn", Function.Store, Zone.Edge, 7.0, 360, 90, 60, 200, BarnHolds);
+            t[Boat] = new KindInfo("dugout", Function.Boat, Zone.Shore, 2.5, Boats.Hours, Boats.Wood, 5, 2, 0);   // (left unkept it splits in a few years)
             return t;
         }
 

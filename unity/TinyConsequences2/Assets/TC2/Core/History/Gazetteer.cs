@@ -73,6 +73,21 @@ namespace TC2.Core.History
             sb.Append("The store holds ").Append(F(s.Granary, "0")).Append(" days' food (").Append(F(days, "0")).Append(" days for its people), in ")
               .Append(s.Granaries).Append(s.Granaries == 1 ? " granary" : " granaries").Append(s.Barns > 0 ? " and " + s.Barns + (s.Barns == 1 ? " barn" : " barns") : "")
               .Append(" holding ").Append(F(Structures.StoreCapacity(in s), "0")).Append(s.Ration < 0.999 ? "; meals rationed to " + F(100 * s.Ration, "0") + " %" : "").Append(".\n");
+            // its fishing and its boats (C9.1)
+            if (s.Fish.A >= 0)
+            {
+                int boats = 0, making = 0, hulks = 0;
+                var bl = w.BuildingsOf(sid);
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    ref var b = ref w.Buildings.Get(bl[i]);
+                    if (b.Kind != Structures.Boat) continue;
+                    if (b.Done == 0 && b.Left == 0) making++; else if (Boats.Sound(in b, w.Now)) boats++; else if (b.Done != 0) hulks++;
+                }
+                sb.Append("It fishes from the shore").Append(boats > 0 ? " and from " + boats + (boats == 1 ? " dugout" : " dugouts") + " at its landing" : "")
+                  .Append(making > 0 ? " (" + making + " being hollowed)" : "").Append(hulks > 0 ? "; " + hulks + " old hulks on the beach" : "")
+                  .Append(s.Sea.A >= 0 ? "; an hour at sea is worth " + F(Boats.SeaExpect(w, in s), "0.0") + " days' food against " + F(s.Fish.Expect, "0.0") + " on the shore" : "").Append(".\n");
+            }
             if (s.FamineAt != 0) sb.Append("Last famine: ").Append(Year(s.FamineAt)).Append(" (").Append(F(100 * s.Memory, "0")).Append(" % of its grown people lived through it).\n");
             return sb.ToString();
         }
@@ -86,7 +101,7 @@ namespace TC2.Core.History
             for (int i = 0; i < bl.Count; i++)
             {
                 ref var b = ref w.Buildings.Get(bl[i]);
-                if (Structures.IsHome(b.Kind)) continue;
+                if (Structures.IsHome(b.Kind) || b.Kind == Structures.Boat) continue;   // (boats are the households': Food)
                 if (b.Left != 0 || !Structures.Working(in b, w.Now)) { if (b.Done != 0) left++; continue; }
                 sb.Append(Structures.Name(b.Kind)).Append(" (").Append(Year(b.Built)).Append(")\n");
             }
