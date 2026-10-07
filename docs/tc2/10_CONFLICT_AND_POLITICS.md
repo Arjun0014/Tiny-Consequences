@@ -113,6 +113,15 @@ same choices at the lived rate (measured, as visits and trade are). Long runs ar
   village bands, beasts as loot, the violence rate, the view of lordships and bands.
 
 
+## 12b. Implemented: the lord's call and the lord's answer (C10.1: D2-107, D2-108)
+- **The call**: a lord's band against those who wronged it is joined by fit grown people of its direct tributaries within a day's walk
+  of the foe (owed: a quarter even of the meek, more of the bold; never against their kin), up to 36 in all; each goes home with their own
+  share.
+- **The answer**: a lord weighs the heaviest wrong each tributary holds at half - a wrong moves it only when twice as heavy as would move
+  the tributary itself - and its band goes for the tributary ("they answer the wrongs it did Heiby, which pays them tribute"). What the
+  band carries home answers the tributary's wrong, so a wrong is avenged once; the lord's own watch, walls and taking back read only what
+  was done to it. Ten seeds: no change in people; lords answered three times in 3,000 world-years, as most tributaries answer first.
+
 ## 13. Civilisation depth (D2-089)
 
 Force, fortification, war and sieges are designed in `23_MILITARY_AND_WAR.md` (fighters as persistent people, arms as goods, training,

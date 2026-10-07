@@ -10,14 +10,15 @@ namespace TC2.Core.Society
     public struct Band
     {
         public int Id, Origin, Target, Leader;
-        public byte Size, Motive, State;   // Motive 1 a wrong, 0 hunger; State 0 raised, 1 fallen
+        public byte Size, Motive, State;   // Motive 1 its village's wrong, 2 a tributary's wrong its lord answers (For), 0 hunger; State 0 raised, 1 fallen
         public byte Called;                // tributaries whose people answered its lord's call (C10.1; 0: its own village's people only)
+        public int For;                    // the tributary whose wrong it answers (Motive 2; D2-108)
         public long Formed, Arrive, Event;
         public float Loot;
 
-        public void Write(BinWriter w) { w.Int(Id); w.Int(Origin); w.Int(Target); w.Int(Leader); w.Byte(Size); w.Byte(Motive); w.Byte(State); w.Long(Formed); w.Long(Arrive); w.Long(Event); w.Float(Loot); w.Byte(Called); }
-        public static Band Read(BinReader r) => new Band { Id = r.Int(), Origin = r.Int(), Target = r.Int(), Leader = r.Int(), Size = r.Byte(), Motive = r.Byte(), State = r.Byte(), Formed = r.Long(), Arrive = r.Long(), Event = r.Long(), Loot = r.Float(), Called = r.Byte() };
-        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Origin); h.Add(Target); h.Add(Leader); h.Add(Size); h.Add(Motive); h.Add(State); h.Add(Formed); h.Add(Arrive); h.Add(Event); h.Add(Loot); h.Add(Called); }
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Origin); w.Int(Target); w.Int(Leader); w.Byte(Size); w.Byte(Motive); w.Byte(State); w.Long(Formed); w.Long(Arrive); w.Long(Event); w.Float(Loot); w.Byte(Called); w.Int(For); }
+        public static Band Read(BinReader r) => new Band { Id = r.Int(), Origin = r.Int(), Target = r.Int(), Leader = r.Int(), Size = r.Byte(), Motive = r.Byte(), State = r.Byte(), Formed = r.Long(), Arrive = r.Long(), Event = r.Long(), Loot = r.Float(), Called = r.Byte(), For = r.Int() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Origin); h.Add(Target); h.Add(Leader); h.Add(Size); h.Add(Motive); h.Add(State); h.Add(Formed); h.Add(Arrive); h.Add(Event); h.Add(Loot); h.Add(Called); h.Add(For); }
     }
 
     /// <summary>
@@ -80,7 +81,8 @@ namespace TC2.Core.Society
         public const int CallAtMost = 36;
         /// <summary>How readily a tributary's fit grown person answers the lord's call: owed, so a quarter even of the meek, more of the bold.</summary>
         public const double CallOwed = 0.25, CallBold = 0.5;
-        /// <summary>The share of a raid on a tributary its lord takes as a wrong to itself (C10.1: its tribute's ground harmed).</summary>
+        /// <summary>The weight a lord gives the wrongs its tributary holds when it answers them (D2-108: the protection tribute buys - a
+        /// tributary's wrong moves its lord only when twice as heavy as would move the tributary itself).</summary>
         public const double LordsShare = 0.5;
         /// <summary>The defenders' home ground, the strength below which a side breaks against the other, a fighter's chance to land a
         /// blow a round, a raid's fright (FU); a band goes only when it is this strong against the defence it expects.</summary>
@@ -739,10 +741,22 @@ namespace TC2.Core.Society
             int fit = 0, hungry = 0;
             for (int i = 0; i < res.Count; i++) { ref var q = ref w.People.Get(res[i]); if (!Fit(in q, now) || q.AgeYears(now) >= 50) continue; fit++; if (q.Nutrition < HungryBelow) hungry++; }
             if (fit < BandAtLeast) return;
-            int target = 0; byte motive = 0;
+            int target = 0, forT = 0; byte motive = 0;
             double urge = 0;
             if (s.Foe != 0 && s.FoeWorth >= RaidFrom && LordOf(s.Foe) != sid) { target = s.Foe; motive = 1; urge = DMath.Clamp01((double)s.FoeWorth / RaidFull); }
-            else if (hungry * 2 >= fit)
+            // the lord answers for its tributaries (D2-108): the heaviest wrong one of them holds, weighed at the lord's share, when heavier
+            // than its own - never against another of its tributaries, never against itself
+            double heaviest = motive == 1 ? (double)s.FoeWorth : 0.0;
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+            {
+                if (o == sid) continue;
+                ref var tr = ref w.Settlements.Get(o);
+                if (tr.Lord != sid || !tr.Inhabited || tr.Foe == 0 || tr.Foe == sid || LordOf(tr.Foe) == sid) continue;
+                double taken = LordsShare * tr.FoeWorth;
+                if (taken < RaidFrom || taken <= heaviest) continue;
+                heaviest = taken; target = tr.Foe; forT = o; motive = 2; urge = DMath.Clamp01(taken / RaidFull);
+            }
+            if (motive == 0 && hungry * 2 >= fit)
             {
                 int leader0 = Boldest(sid, now, 0);
                 if (leader0 != 0) { target = TakeTarget(in w.People.Get(leader0), out double free); urge = (double)hungry / fit * free; }
@@ -767,13 +781,13 @@ namespace TC2.Core.Society
                 if (!Fit(in q, now) || q.AgeYears(now) >= 50 || q.PregDue != 0 || (q.NursingUntil != 0 && q.NursingUntil - now > SimTime.Year / 2) || q.Band != 0) continue;
                 if (KinIn(in q, target)) continue;   // (not against their own kin)
                 bool kin = q.Mother == leader || q.Father == leader || L.Mother == pid || L.Father == pid || q.Partner == leader || (q.Mother != 0 && q.Mother == L.Mother);
-                double join = (0.15 + 0.7 * q.Bold / 255.0) * (kin ? 1.5 : 1.0) * (motive == 1 ? 1.0 : (q.Nutrition < HungryBelow ? 1.0 : 0.3));
+                double join = (0.15 + 0.7 * q.Bold / 255.0) * (kin ? 1.5 : 1.0) * (motive != 0 ? 1.0 : (q.Nutrition < HungryBelow ? 1.0 : 0.3));
                 if (KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)pid, (ulong)now, 51) < join) _band.Add(pid);
             }
             // the lord's call (C10.1): against those who wronged it, a lord's tributaries owe it men - each fit grown person of a tributary
             // within a day's walk of the foe goes as owed (a quarter even of the meek, more of the bold), never against their own kin
             _callers.Clear();
-            if (motive == 1)
+            if (motive != 0)
                 for (int o = w.Settlements.First(); o != 0 && _band.Count < CallAtMost; o = w.Settlements.Next(o))
                 {
                     ref var tr = ref w.Settlements.Get(o);
@@ -802,15 +816,16 @@ namespace TC2.Core.Society
             int id = w.Ids.Next(EntityKind.Band);
             long off = w.LocalOffsetOf(sid);
             long arrive = SimTime.StartOfDay(now + off) + SimTime.Day + SimTime.Hours(1) - off;   // (one in the morning, the coming night)
-            long cause = motive == 1 ? s.FoeEvent : HungerCause(sid, now);
+            long cause = motive == 1 ? s.FoeEvent : motive == 2 ? w.Settlements.Get(forT).FoeEvent : HungerCause(sid, now);
             long ev = w.Record(new HistoryEvent
             {
                 Kind = HistoryKind.BandRaised, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Person(leader), Object = EntityRef.Settlement(target),
-                Cause1 = cause, Rel1 = CauseRel.InResponseTo, ArgA = _band.Count, ArgB = motive, RootKind = RootKind.People,
+                Other = forT != 0 ? EntityRef.Settlement(forT) : default, Cause1 = cause, Rel1 = CauseRel.InResponseTo, ArgA = _band.Count, ArgB = motive, RootKind = RootKind.People,
             });
-            w.Bands.Add(id, new Band { Id = id, Origin = sid, Target = target, Leader = leader, Size = (byte)_band.Count, Motive = motive, Formed = now, Arrive = arrive, Event = ev, Called = (byte)(_callers.Count / 2) });
+            w.Bands.Add(id, new Band { Id = id, Origin = sid, Target = target, Leader = leader, Size = (byte)_band.Count, Motive = motive, Formed = now, Arrive = arrive, Event = ev, Called = (byte)(_callers.Count / 2), For = forT });
             for (int i = 0; i < _band.Count; i++) w.People.Get(_band[i]).Band = id;
             w.Metrics.Bands++;
+            if (motive == 2) w.Metrics.LordsAnswered++;
             for (int k = 0; k < _callers.Count; k += 2)
             {
                 // each tributary whose people answered: history, caused by the band's raising
@@ -949,15 +964,8 @@ namespace TC2.Core.Society
             int deed = w.DeedBook.Record(DeedKind.Raid, b2.Leader, origin, 0, at, Trade.Grain, loot, loot + RaidFright, ev);
             w.DeedBook.Learn(at, deed, isSeen ? KnownHow.Saw : KnownHow.Found);
             w.DeedBook.Learn(origin, deed, KnownHow.Own);
-            if (b2.Motive == 1 && loot > 0) w.DeedBook.SettleBy(origin, at, loot);
-            // a raid on a tributary seen is a wrong to its lord too (C10.1): the ground of its tribute harmed - told to it at once
-            int lordOf = w.Settlements.Get(at).Lord;
-            if (isSeen && lordOf != 0 && lordOf != origin && w.Settlements.Exists(lordOf) && w.Settlements.Get(lordOf).Inhabited)
-            {
-                int ld = w.DeedBook.Record(DeedKind.Raid, b2.Leader, origin, 0, lordOf, Trade.Grain, 0.0, LordsShare * (loot + RaidFright), ev);
-                w.DeedBook.Learn(lordOf, ld, KnownHow.Told);
-                w.Metrics.LordsWronged++;
-            }
+            // (what it carries home answers the wrong it went for: its village's own, or the tributary's its lord answered - once: D2-108)
+            if (b2.Motive != 0 && loot > 0) w.DeedBook.SettleBy(b2.Motive == 2 && b2.For != 0 ? b2.For : origin, at, loot);
             w.Metrics.Raids++;
             Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Raid, origin, at);
             w.Metrics.RaidLoot += loot;

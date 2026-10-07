@@ -12,7 +12,8 @@ namespace TC2.Tests.Core
 {
     /// <summary>
     /// The lord's call (C10.1, D2-107): against those who wronged it, a lord's band is joined by people of its tributaries who answer the call
-    /// (owed, never against their kin), and they go home with their share; a raid on a tributary is a wrong to its lord too. Mechanisms.
+    /// (owed, never against their kin), and they go home with their share. The lord answers for its tributaries (D2-108): a wrong too heavy for
+    /// a tributary moves its lord, whose band answers it once. Mechanisms.
     /// </summary>
     [TestFixture]
     public class LordshipTests
@@ -74,19 +75,75 @@ namespace TC2.Tests.Core
         }
 
         [Test]
-        public void ARaidOnATributaryIsAWrongToItsLord()
+        public void ARaidOnATributaryIsItsOwnWrongNotItsLordsStore()
         {
+            // D2-108: the raid is the tributary's wrong; its lord's store, watch and walls are untouched by it
             var w = Three(out int lord, out int trib, out int foe);
             Assume.That(w != null, "three villages near each other");
-            Assert.AreEqual(0.0, w.DeedBook.Grievance(lord, foe));
             var raiders = new List<int>();
             var res = w.Residents(foe);
             for (int i = 0; i < res.Count && raiders.Count < 5; i++) { var q = w.People.Get(res[i]); if (q.Alive && q.AgeYears(w.Now) >= 18 && q.AgeYears(w.Now) < 45 && q.Health > 0.8) raiders.Add(res[i]); }
             Assume.That(raiders.Count >= 3, "raiders");
             w.Conflict.FallNow(foe, trib, raiders, seen: true);
             Assert.Greater(w.DeedBook.Grievance(trib, foe), 0.0, "the tributary holds it");
-            Assert.Greater(w.DeedBook.Grievance(lord, foe), 0.0, "and its lord takes it as a wrong to itself");
-            Assert.Less(w.DeedBook.Grievance(lord, foe), w.DeedBook.Grievance(trib, foe), "half of it");
+            Assert.AreEqual(0.0, w.DeedBook.Grievance(lord, foe), "its lord holds no wrong of its own");
+            Assert.AreEqual(0.0, w.DeedBook.HarmSince(lord, w.Now - SimTime.Year, out _), "nor anything its watch or walls would guard against");
+        }
+
+        /// <summary>Premise: a tributary has seen its foe's bands carry off its grain - four raids of this worth each - and reads its foe.</summary>
+        static void RaidedOften(World w, int trib, int foe, double each)
+        {
+            long ev = 0;
+            for (int k = 0; k < 4; k++)
+            {
+                ev = w.Record(new HistoryEvent { Kind = HistoryKind.Raid, Time = w.Now, Settlement = trib, Subject = EntityRef.Settlement(foe), Object = EntityRef.Settlement(trib), Magnitude = (float)each });
+                int d = w.DeedBook.Record(DeedKind.Raid, w.Residents(foe)[0], foe, 0, trib, Trade.Grain, each, each, ev);
+                w.DeedBook.Learn(trib, d, KnownHow.Saw);
+            }
+            ref var t = ref w.Settlements.Get(trib);
+            t.Foe = foe; t.FoeWorth = (float)w.DeedBook.Grievance(trib, foe); t.FoeEvent = ev;
+        }
+
+        [Test]
+        public void ALordAnswersItsTributarysHeavyWrongOnce()
+        {
+            // D2-108: a wrong too heavy for the tributary moves its lord (at half its weight); the lord's band goes for it, the tributary's
+            // people answering the call, and what it carries home answers the tributary's wrong - so it is avenged once
+            var w = Three(out int lord, out int trib, out int foe);
+            Assume.That(w != null, "three villages near each other");
+            w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
+            w.AdvanceTo(w.Now + SimTime.Days(2));
+            w.Settlements.Get(lord).Foe = 0; w.Settlements.Get(lord).FoeWorth = 0f;
+            w.Settlements.Get(foe).Granary += 2000.0;   // (a full store a band takes from)
+            // a lighter wrong is the tributary's own to answer: its lord stays home
+            RaidedOften(w, trib, foe, 0.6 * Conflict.RaidFrom / Conflict.LordsShare / 4.0);
+            Assert.AreEqual(0, w.Conflict.RaiseBandNow(lord), "below twice what moves the tributary, the lord does not go");
+            // a heavier one moves it
+            RaidedOften(w, trib, foe, 0.6 * Conflict.RaidFrom / Conflict.LordsShare / 4.0);
+            Assert.GreaterOrEqual(Conflict.LordsShare * w.Settlements.Get(trib).FoeWorth, Conflict.RaidFrom);
+            double before = w.DeedBook.Grievance(trib, foe);
+            long mark = w.History.LastId;
+            int band = w.Conflict.RaiseBandNow(lord);
+            Assume.That(band != 0, "the lord's people dare it");
+            HistoryEvent raised = default, raid = default;
+            bool called = false;
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Kind == HistoryKind.BandRaised) raised = e;
+                if (e.Kind == HistoryKind.Raid) raid = e;
+                if (e.Kind == HistoryKind.CallAnswered && e.Subject.Id == trib) called = true;
+            }
+            Console.WriteLine(HistoryText.Line(w, raised));
+            Console.WriteLine(HistoryText.Line(w, raid));
+            Assert.AreEqual(lord, w.People.Exists(raised.Subject.Id) ? w.People.Get(raised.Subject.Id).Home : lord, "the lord's band");
+            Assert.AreEqual(foe, raised.Object.Id, "against the tributary's foe");
+            Assert.AreEqual(2, raised.ArgB, "for the tributary's wrong");
+            Assert.AreEqual(trib, raised.Other.Id, "naming it");
+            Assert.AreEqual(w.Settlements.Get(trib).FoeEvent, raised.Cause1, "caused by the latest wrong the tributary suffered");
+            Assert.IsTrue(called, "the tributary's people went with it");
+            Assume.That(raid.Magnitude > 0f, "the band carried something home");
+            Assert.Less(w.DeedBook.Grievance(trib, foe), before, "what it carried home answered the tributary's wrong");
         }
 
         [Test]

@@ -53,7 +53,10 @@
   caused a taking-back of grain within a feud; 238 tests; `run --events KIND`. **C12.2 the settlement page done (D2-106)**: `Core/History/
   Gazetteer` (founding, people and homes, food, works, land and making, knowledge, neighbours and wrongs, history), HUD from a person's card
   or a structure's page, headless `place`; 240 tests. **C10.1 the lord's call done (D2-107)**: tributaries' people answer their lord's call
-  against those who wronged it; a raid on a tributary is a wrong to its lord; 243 tests; seeds 7 and 2 lost a quarter of their people (open).
+  against those who wronged it; 243 tests. **D2-108 the lord answers for its tributaries** (the C10.1 drops followed - session 7): ten seeds show
+  no systematic loss (people over years 200-299 x0.992; seed 2's drop an epidemic, seed 7's Voton's famines), but the lord's share was a
+  second wrong (one raid avenged twice; the lord's watch, walls and taking back moved by harm not done to it) - now a lord weighs its
+  tributaries' wrongs at half and its band's loot answers the tributary's wrong; 244 tests; ten seeds at par with C5.4.
   **Browser**: the settlement page renders; the true Web frame rate is 35-56 fps near the ground (below 60: earlier 57-121 fps readings
   since C1.4 were inflated by the smithy error stopping the view's setup). **Next**: SESSION_HANDOFF "Next".
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and

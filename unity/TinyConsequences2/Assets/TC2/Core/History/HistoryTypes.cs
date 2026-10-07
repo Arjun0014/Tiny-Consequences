@@ -70,7 +70,7 @@ namespace TC2.Core.History
         WatchSet = 64,          // a village began to keep a watch at its store at night (Magnitude the year's losses, FU)
         AmendsMade = 65,        // a village made amends for blood its people shed (Subject the payers, Object the wronged, Other who asked; Magnitude FU; ArgA the deed kind; D2-072)
         ClaimRefused = 66,      // a village would not make amends (ArgA 1 they denied it; ArgB the deed kind)
-        BandRaised = 67,        // someone raised a band to fall on a village (Subject the leader, Object the target; ArgA its size, ArgB 1 a wrong, 0 hunger; D2-073)
+        BandRaised = 67,        // someone raised a band to fall on a village (Subject the leader, Object the target; ArgA its size, ArgB 1 a wrong, 2 a tributary's wrong its lord answers (Other the tributary; D2-108), 0 hunger; D2-073)
         Raid = 68,              // a band fell on a village's store (Subject the raiders' village, Object the raided, Other the leader; Magnitude loot; ArgA size, ArgB outcome x 100 + blows)
         WallPlanned = 69,       // a village began a palisade (Magnitude its losses a year, FU; Cause1 the latest; D2-074)
         WallBuilt = 70,         // a village finished its palisade (ArgA its length, m)

@@ -1,5 +1,18 @@
 # TC2 Session handoff
 
+## Session 7 (7 Oct 2026, from 18:50 IST; Control Room continuation) - in progress
+
+### Exact state (keep current)
+- **D2-108 done** (the C10.1 drops followed): ten seeds (42, 7, 4, 2, 1, 3, 5, 6, 8, 11) of C5.4 vs C10.1 show no systematic loss (century
+  means at par); the lord's half-share was a second wrong - replaced by the lord answering its tributaries' wrongs at half, its band's loot
+  settling the tributary's wrong (`Band.Motive` 2, `Band.For`; metric `LordsAnswered`; history ArgB 2 "they answer the wrongs it did X").
+  Sim version 48; 244 tests. Runs `tc2/out/civ/s*_c108a` (and `s{1,3,5,6,8,11}_c54a/_c101a` added for the comparison).
+- **Scratchpad (session 7)**: `C:\Users\aswin\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\dd8879ca-9abf-4584-bd64-5ba72f80ce6a\scratchpad`:
+  `wrun.sh` (BIN = a folder in this or the session-6 scratchpad, or a path), `cmp.py TAG_A TAG_B seeds...` (paired log-ratios of annals
+  and report lines: judge mechanisms by century means, never the last year), `bin_c108a`.
+- **Next**: the Web frame rate (webperf by layer at close/forest; trees and cover draw one call per colour group per mesh - up to 512
+  groups - consider per-instance colour), then C8/C9/C10.2.
+
 ## Session 6 (7 Oct 2026, from 10:56 IST) — handed off at ~19:30 IST (context full)
 
 ### Exact state at handoff (read first)

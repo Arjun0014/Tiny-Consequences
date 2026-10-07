@@ -128,7 +128,8 @@ namespace TC2.Core.History
                     return "The people of " + subj + (e.ArgA == 1 ? " said they had no part in " : " would make no amends to " + obj + " for ") + (e.ArgB == 5 ? "a death" : "a wounding") +
                            (e.ArgA == 1 ? " that " + obj + " laid at their door" : "") + (e.Other.IsNone ? "" : " when " + other + " came to ask") + ".";
                 case HistoryKind.BandRaised:
-                    return subj + " raised a band of " + e.ArgA + " in " + place + " to fall on " + obj + (e.ArgB == 1 ? ": they hold a heavy wrong against it." : ": they are starving and its store is full.");
+                    return subj + " raised a band of " + e.ArgA + " in " + place + " to fall on " + obj + (e.ArgB == 1 ? ": they hold a heavy wrong against it."
+                         : e.ArgB == 2 ? ": they answer the wrongs it did " + other + ", which pays them tribute." : ": they are starving and its store is full.");
                 case HistoryKind.Raid:
                     {
                         int outcome = e.ArgB / 100, blows = e.ArgB % 100;

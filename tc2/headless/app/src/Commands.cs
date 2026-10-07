@@ -393,7 +393,7 @@ namespace TC2.Headless
                     if (firstLord != 0) { Console.WriteLine("  the first tribute:"); Console.Write(HistoryText.Why(w, firstLord)); }
                     if (firstEnd != 0) { Console.WriteLine("  the first tribute ended:"); Console.Write(HistoryText.Why(w, firstEnd)); }
                 }
-                Console.WriteLine("raids: bands raised " + m.Bands + ", raids " + m.Raids + " (driven off " + m.RaidsBeaten + "), loot " + F(m.RaidLoot, "0") + " FU; bands joined by tributaries " + m.CalledBands + " (" + m.CalledMen + " men answered the call), raids on tributaries their lords took as their own " + m.LordsWronged);
+                Console.WriteLine("raids: bands raised " + m.Bands + ", raids " + m.Raids + " (driven off " + m.RaidsBeaten + "), loot " + F(m.RaidLoot, "0") + " FU; bands joined by tributaries " + m.CalledBands + " (" + m.CalledMen + " men answered the call), bands lords raised over their tributaries' wrongs " + m.LordsAnswered);
                 Console.WriteLine("answers: amends asked " + m.Claims + ", made " + m.Amends + ", refused " + m.Refusals + "; loads taken back " + m.TakenBack);
                 Console.WriteLine("trade: trades " + m.TradeTrips + ", gain " + F(m.TradeValue, "0") + ", metal moved " + F(m.MetalTraded, "0") + " kg; relief " + F(m.ReliefFu, "0") + " FU");
                 Console.WriteLine("techniques: found " + m.TechniquesFound + ", lost by villages " + m.TechniquesLost + "  metal smelted " + F(m.MetalKg, "0") + " kg");

@@ -2654,4 +2654,40 @@ a raid on a tributary weighed by its lord at half; every member home and unloade
 6,119 although hunger deaths fell 2,794 -> 436 and blows 2,111 -> 1,656; seed 42 6,392 -> 6,590; seed 4 identical (no lords).
 **Open (first next step).** Two of four seeds lost a quarter of their people. Seed 7's loss follows more fighting; seed 2's does not
 (fewer hungry deaths, fewer blows) and needs following (abandonments, migration, births: `run --civ`, `--events`) before LordsShare and the
-call are trusted. Check also whether a raid seen is now weighed twice in the escalation (the tributary's and the lord's bands both answer it).
+call are trusted. Check also whether a raid seen is now weighed twice in the escalation (the tributary's and the lord's bands both answer it). **Followed in D2-108**: no systematic loss over ten seeds; the share was a second wrong (one raid avenged twice) - replaced by the lord answering its tributaries' wrongs.
+
+## D2-108 — 2026-10-07 — The lord answers for its tributaries: one wrong, avenged once (C10.1 followed)
+
+**Context.** D2-107 left open why seeds 7 and 2 ended 300 years with a quarter fewer people. Followed (`tc2/out/civ/s*_c54a` against
+`s*_c101a`, ten seeds 42, 7, 4, 2, 1, 3, 5, 6, 8, 11; `scratchpad cmp.py`: paired log-ratios): **no systematic loss** - people averaged
+over years 200-299 x0.992 (t -1.2), at year 300 x0.934 (t -1.7, three seeds down at the last year, two up), births, deaths, hunger, blows
+and wound deaths per seed at par. The two drops were the trajectories' own regulators, reached on different paths once the worlds
+diverged (seed 2 at year 260, seed 7 at 180): on seed 2 two new sicknesses caught from animals (the cattle pox, year 281, 1,640 dead; the
+summer sickness, 286, 2,660) where C5.4's world met famine instead (hunger deaths 2,776 against 418); on seed 7 the famines of Voton in
+years 285-291 (466 hungry deaths in year 290). A last-year count is too volatile to judge a mechanism by in these famine- and
+epidemic-regulated worlds: compare century means. Following the histories found two faults of the lord's share itself (`run --events`):
+1. **One raid avenged twice.** The share was a second wrong, the lord's own (a raid deed against the lord's store at half weight): the
+   lord's band settled the lord's deed and the tributary's band the tributary's, so each answered the same raid. Seed 7: Steldwick raided
+   Askrenstead (279, 281); Askrenstead's lord Gaethdal answered twice with bands of 22 and 21 (ten of them Askrenstead's own people) - and
+   in 294 Askrenstead still raised its own band against Steldwick.
+2. **The lord's store treated as harmed.** The share counted wherever a village weighs harm done to it: the lord kept a watch and weighed
+   a palisade against it (`HarmSince`), and its fed and bold went "taking back" grain at night from a village that had taken nothing of
+   theirs.
+**Decision.** The lord no longer holds a wrong of its own for a raid on its tributary; it **answers the wrongs its tributaries hold**.
+(1) A lord's day weighs, beside its own foe, the heaviest wrong each direct tributary holds (the tributary's own reading of its deeds)
+at `LordsShare` 0.5 - so a wrong moves the lord only when twice as heavy as would move the tributary itself (the protection tribute buys
+falls where the tributary cannot answer alone); never against another of its own tributaries, never against itself. (2) When that weight
+is the heavier, its band goes for it (`Band.Motive` 2, `Band.For` the tributary; the call as D2-107); history: "Nair Douskak raised a band
+of 23 in Haesmere to fall on Thestford: they answer the wrongs it did Heiby, which pays them tribute", caused by the tributary's latest
+wrong. (3) **Once**: what the band carries home answers the tributary's wrong (`DeedBook.SettleBy` for the tributary); a wrong the
+tributary answered itself no longer moves its lord. (4) The lord's watch, walls, taking back and its own grievances read only what was done
+to it. Metric `LordsAnswered` (was `LordsWronged`); headless raids line "bands lords raised over their tributaries' wrongs". Sim version 48.
+**Evidence.** 244 tests (`LordshipTests` 4: a raid on a tributary leaves its lord with no grievance and nothing its watch or walls would
+guard against; a tributary's wrong below twice its own threshold leaves the lord at home, above it the lord's band goes against the foe
+naming the tributary, its people answering the call, and the loot answers the tributary's wrong). Ten seeds, 300 years DEEP
+(`tc2/out/civ/s*_c108a`) against C5.4: people averaged over years 200-299 x1.002 (t 0.8), at year 300 x0.982 (t -1.2), bands x0.92
+(t -1.5), blows, wound deaths, takings, watches and palisades at par; against C10.1 bands x0.92, people x1.01. Seed 7 bands 61 (C10.1)
+-> 30 (C5.4: 47), people 2,398 (C5.4 2,445); seed 2 8,173 (C5.4 8,221). Lords answered for tributaries three times in the ten worlds
+(Haesmere for Heiby twice on seed 7, Drildbrahope's band of 36 for Uskorthorpe on seed 3); tributaries' people answered calls on six of them (8 bands, 86 men).
+Protection is rare because most tributaries answer their own wrongs first - honest to the rule, and the ground C10.2 (leaders,
+obligations kept or refused) builds on.
