@@ -276,7 +276,9 @@ namespace TC2.Game
                 if (p.KMetal >= 0.1f) sb.Append(" copper ").Append(p.KMetal.ToString("0.00", CultureInfo.InvariantCulture));
                 sb.Append('\n');
             }
-            sb.Append("skills: farming ").Append(p.SkFarm.ToString("0.00", CultureInfo.InvariantCulture)).Append(", wood ").Append(p.SkWood.ToString("0.00", CultureInfo.InvariantCulture)).Append(", hunting ").Append(p.SkHunt.ToString("0.00", CultureInfo.InvariantCulture)).Append(", fishing ").Append(p.SkFish.ToString("0.00", CultureInfo.InvariantCulture)).Append("   trips ").Append(p.Visits).Append('\n');
+            sb.Append("skills: farming ").Append(p.SkFarm.ToString("0.00", CultureInfo.InvariantCulture)).Append(", wood ").Append(p.SkWood.ToString("0.00", CultureInfo.InvariantCulture)).Append(", hunting ").Append(p.SkHunt.ToString("0.00", CultureInfo.InvariantCulture)).Append(", fishing ").Append(p.SkFish.ToString("0.00", CultureInfo.InvariantCulture))
+              .Append(p.SkFight > 0.005f ? ", fighting " + p.SkFight.ToString("0.00", CultureInfo.InvariantCulture) : "").Append(p.Fights > 0 ? " (" + p.Fights + (p.Fights == 1 ? " fight" : " fights") + " lived through)" : "")
+              .Append("   trips ").Append(p.Visits).Append('\n');
             var evs = w.History.EventsOf(EntityRef.Person(p.Id));
             if (evs != null)
             {
@@ -339,6 +341,14 @@ namespace TC2.Game
                       .Append(b.Use.ToString("N0", CultureInfo.InvariantCulture)).Append(" hours worked here\n")
                       .Append(place).Append("'s tools: ").Append(s.Metal.ToString("0", CultureInfo.InvariantCulture)).Append(" kg of metal (").Append((share * 100).ToString("0", CultureInfo.InvariantCulture)).Append("% of what its people want); arms ")
                       .Append(s.Arms.ToString("0", CultureInfo.InvariantCulture)).Append(want > 0 ? " - it wants " + want.ToString("0", CultureInfo.InvariantCulture) + ": it fears its neighbours" : "").Append('\n');
+                }
+                else if (b.Kind == Structures.Ground)
+                {
+                    int trained = 0; var res = w.Residents(b.Settlement);
+                    for (int i = 0; i < res.Count; i++) if (w.People.Get(res[i]).SkFight >= 0.1f) trained++;
+                    sb.Append("practice with spear and shield: ").Append(b.Use.ToString("N0", CultureInfo.InvariantCulture)).Append(" hours here; ").Append(trained).Append(" of ").Append(place)
+                      .Append("'s people have some skill, its best ").Append(s.BestFight.ToString("0.00", CultureInfo.InvariantCulture))
+                      .Append(Forge.Threatened(in s) ? " - it fears its neighbours" : " - unused while it fears no one").Append('\n');
                 }
                 else if (b.Kind == Structures.Quarry)
                     sb.Append("cuts building stone at rock ").Append((s.StoneDist / 1000.0).ToString("0.0", CultureInfo.InvariantCulture)).Append(" km from ").Append(place).Append(": ")

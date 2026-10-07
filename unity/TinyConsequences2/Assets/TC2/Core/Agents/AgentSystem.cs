@@ -465,6 +465,13 @@ namespace TC2.Core.Agents
                     if (p.At != 0 && p.At == p.Home && hours > 0)
                         Construction.Work(w, p.At, p.Household, hours, BuildRate(in p) * Tools(p.Household), p.Id);
                     break;
+                case ActivityKind.Train:
+                    if (p.At != 0 && p.At == p.Home && hours > 0)
+                    {
+                        int gid = Training.Ground(w, p.At);   // (practice at the training ground: C1.5)
+                        if (gid != 0) Training.Practise(w, ref p, p.At, gid, hours);
+                    }
+                    break;
                 case ActivityKind.Smith:
                     if (p.At != 0 && p.At == p.Home && hours > 0)
                     {
@@ -528,7 +535,7 @@ namespace TC2.Core.Agents
         /// <summary>Activities that are work: they count toward a day's labour.</summary>
         static bool IsWork(ActivityKind a) => a == ActivityKind.Fields || a == ActivityKind.Wood || a == ActivityKind.Build || a == ActivityKind.Hunt ||
                                               a == ActivityKind.Fish || a == ActivityKind.Gather || a == ActivityKind.Haul || a == ActivityKind.Tend ||
-                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry || a == ActivityKind.Smith;
+                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry || a == ActivityKind.Smith || a == ActivityKind.Train;
 
         /// <summary>How much a day's labour still leaves for the slack's work: whole until five hours, a fifth past eight.</summary>
         static double DayLeft(in Person p) => DMath.Clamp(1.0 - (p.Worked - 5.0) / 3.0, 0.2, 1.0);
@@ -903,7 +910,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying, 15 the smithy
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying, 15 the smithy, 16 practice
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -923,6 +930,14 @@ namespace TC2.Core.Agents
                 if (fuelDays < 6.0) u = DMath.Max(u, 0.85 * (1.0 - fuelDays / 6.0));
                 u = u * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
                 if (u > best) { best = u; choice = 2; }
+            }
+            int ground = 0;
+            if (atHome && lsec >= 14 * SimTime.Hour && lsec < 17 * SimTime.Hour && Training.Willing(in p, now) && Training.Practising(w, in here, out ground) &&
+                Training.Day(p.Id, SimTime.FloorDiv(now + w.LocalOffsetOf(p.At), SimTime.Day)) && p.Act != ActivityKind.Train)
+            {
+                // the village fears its neighbours: on their practice day the bold go to its training ground in the afternoon (C1.5)
+                double u = (0.45 + 0.3 * p.Bold / 255.0) + 0.1 * rs.NextUnit();
+                if (u > best) { best = u; choice = 16; }
             }
             int smithy = 0;
             if (day && atHome && lsec < 16 * SimTime.Hour && Forge.Wanted(w, in here, in p, out smithy))
@@ -1051,6 +1066,12 @@ namespace TC2.Core.Agents
                 case 13:
                     if (StartErrand(ref p)) return;
                     break;
+                case 16:
+                    {
+                        ref var gb = ref w.Buildings.Get(ground);
+                        BeginLocal(ref p, ActivityKind.Train, WhyCode.Train, 0, gb.X + rs.Range(-8, 8), gb.Y + rs.Range(-6, 6), SimTime.Hours(Training.Session));
+                        return;
+                    }
                 case 15:
                     {
                         ref var sb = ref w.Buildings.Get(smithy);
@@ -1571,6 +1592,13 @@ namespace TC2.Core.Agents
                 }
                 prof?.End(10022);
                 if (build && hours > 0) { double used2 = Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0 * days), BuildRate(in p) * tools, p.Id); hours -= used2; if (Hours != null) Hours[4] += used2; }
+                if (hours > 0 && Training.Willing(in p, now) && Training.Practising(w, in s, out int gid))
+                {
+                    // the bold practise at the village's training ground on their practice days, as a lived afternoon (C1.5)
+                    int n = Training.Days(p.Id, SimTime.FloorDiv(now + w.LocalOffsetOf(sid), SimTime.Day), days);
+                    double h = DMath.Min(hours, Training.Session * n);
+                    if (h > 0) { Training.Practise(w, ref p, sid, gid, h); hours -= h; }
+                }
                 if (hours > 0 && Forge.Wanted(w, in s, in p, out int fid))
                 {
                     // a smith with work at the village's smithy (C1.4): most of their free hours there, as a lived day's craft

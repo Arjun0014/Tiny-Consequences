@@ -221,6 +221,7 @@ namespace TC2.Core.History
                     if (w.Settlements.Exists(p.Home) && (w.Settlements.Get(p.Home).Wall == 1 || (w.Settlements.Get(p.Home).Wall == 2 && TC2.Core.Places.Construction.NextWork(w.Settlements.Get(p.Home)) == TC2.Core.Places.Construction.Mend)))
                         return "setting posts in " + home + "'s palisade: other villages' people have cost it dear";
                     return "building for " + home + ": the village needs a well or a granary";
+                case ActivityKind.Train: return "practising with spear and shield at " + home + "'s training ground: " + home + " fears its neighbours";
                 case ActivityKind.Smith:
                     return "at " + home + "'s smithy, " + (w.Settlements.Exists(p.Home) && w.Settlements.Get(p.Home).Arms < TC2.Core.Places.Forge.ArmsWant(w.Settlements.Get(p.Home)) ? "forging arms: " + home + " fears its neighbours" : "smelting and working metal for the village's tools");
                 case ActivityKind.Quarry: return "cutting stone at " + home + "'s quarry and carrying it home: the village wants stone for its houses' footings";
@@ -238,6 +239,7 @@ namespace TC2.Core.History
             if (kind == TC2.Core.Places.Structures.Granary)
                 return granaries > 0 ? "another granary: their harvest overfilled the store" : "a granary: their harvest needs a store";
             if (kind == TC2.Core.Places.Structures.Barn) return "a barn: their harvest overfilled the granaries";
+            if (kind == TC2.Core.Places.Structures.Ground) return "a training ground: they fear their neighbours";
             if (kind == TC2.Core.Places.Structures.Smithy) return "a smithy: they have a smith and use for metal";
             if (kind == TC2.Core.Places.Structures.Quarry) return "a quarry at the rock they found: stone for their houses' footings";
             return "a " + TC2.Core.Places.Structures.Name(kind);

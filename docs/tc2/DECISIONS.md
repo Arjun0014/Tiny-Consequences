@@ -2296,3 +2296,26 @@ off) against 19 (6) at C1.3, seed 7 14 (10 driven off) against 21 (11); people 7
 **Consequences / open.** A smithy in every village by year 300 is historically ordinary; arms almost everywhere follow from the watch being
 kept nearly everywhere in these scarce worlds (a measure of fear to refine with C6's training and C10's leaders). The ring does not grow
 with the town (C7): homes now stand outside old palisades and some rings cross the shore.
+
+## D2-094 — 2026-10-07 — Training grounds and fighting skill: fighters made by practice and by fights survived (C1.5)
+
+**Context.** D2-089 (`23` §1, §4): every fighter is a persistent person; training consumes time and improves real people; veterans carry
+experience and can die with it. Before, strength in a blow came from health, age, wounds and the village's metal only.
+**Decision.** (1) **`Person.SkFight`** (0..1, saved, hashed) and **`Person.Fights`** (fights lived through). (2) **`Core/Places/Training.cs`**: a
+village that fears its neighbours (`Forge.Threatened`: a palisade, a heavy wrong held, a watch kept) lays out a **training ground**
+(`Structures.Ground`, Zone.Outer beyond the homes away from the fields; 30 h, 4 wood; its cause what it fears) once it has water and a
+store. (3) Its willing people - 16-45, fit, boldness 90 or more, not near a birth or nursing a young child, not hurt - practise a two-hour
+session every third day (by their own turn) in the afternoon: lived `ActivityKind.Train` (WhyCode.Train) at the ground; COARSE the same
+sessions from the free hours. (4) Skill: 0.004 an hour of what is still to learn, x (1 + 0.5 x the village's best fighter's skill: a
+trainer); a blow given or taken teaches 0.04 of what is left (`Veteran`: raids and fights at stores); it fades 5 % a year unused (10 % past
+fifty) and dies with the person. (5) **The trained strike harder**: `Conflict.Strength` x (1 + 0.6 skill). (6) Building page (practice hours,
+how many have skill, the best, whether it is used); person page (fighting skill, fights lived through); run report `training:` line. (7) Sim
+version 37.
+**Evidence.** 204 tests (`TrainingTests` 4: a fearing village lays out a ground beyond its homes, not astride its ring, in response to what
+it fears; practice toward the ceiling, a trainer lifts it, unused it fades ~5 % a year, the village's best is known; a blow teaches as much
+as ten hours' practice, half-trained strike 1.3x; the bold practise lived (20 h in six days) and COARSE (16 h)). 300 years DEEP
+(`tc2/out/civ/s42_c15a`, `s7_c15a`): seed 42 - 16 grounds, 1.7 M hours of practice (~0.5 % of all labour), 2,378 living people with some skill
+(the best 0.80), 647 who have fought; raids 18 (10 driven off); 7,350 people. Seed 7 - 8 grounds, 714 with skill, raids 27 (20 driven off);
+2,354 people (at par). Shots `tc2/out/shots/civ5`: Souhope's people drilling at its ground by the shore in the afternoon.
+**Open.** No arms or skill carried into a band's choice yet beyond strength (C6: who goes, retainers, roles); training is not seen as
+movement (no drill animation); the ground's posts are too thin to read from the village view (a beaten-earth patch is the next look item).

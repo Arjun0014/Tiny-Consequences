@@ -334,7 +334,7 @@ namespace TC2.Core.Society
                 armed = Knowledge.Tech.MetalShare(hs.Metal, hs.Population);
                 arms = hs.Population > 0 ? DMath.Clamp01(hs.Arms / (Places.Forge.ArmsPerHead * hs.Population)) : 0.0;   // (a spear or an axe for its fighters: C1.4)
             }
-            return (double)q.Health * years * (1.0 - (double)q.Hurt) * (1.0 + 0.3 * armed) * (1.0 + 0.3 * arms);
+            return (double)q.Health * years * (1.0 - (double)q.Hurt) * (1.0 + 0.3 * armed) * (1.0 + 0.3 * arms) * (1.0 + 0.6 * (double)q.SkFight);   // (trained: C1.5)
         }
 
         /// <summary>The neighbours who come running at a shout: a third of the homes round the store, at most three.</summary>
@@ -359,6 +359,7 @@ namespace TC2.Core.Society
         {
             var w = _w;
             to.Hurt = (float)DMath.Min(1.0, (double)to.Hurt + hurt);
+            Places.Training.Veteran(ref by); Places.Training.Veteran(ref to);   // (a blow given or taken teaches: C1.5)
             ref var s = ref w.Settlements.Get(at);
             long ev = w.Record(new HistoryEvent
             {

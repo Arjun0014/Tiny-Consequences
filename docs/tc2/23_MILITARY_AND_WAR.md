@@ -52,6 +52,11 @@ grows with hours toward a ceiling and fades slowly without practice and with age
 practice. Training costs real hours - off the fields, the woods and the wild - so a village that trains eats into its harvest.
 Barracks (living quarters for retainers), armouries (arms kept in one place) and mustering grounds come with C8/C10.
 
+**Implemented (C1.5, D2-094)**: `Person.SkFight`, `Person.Fights`; `Core/Places/Training.cs` - a fearing village's training ground beyond its
+homes; the willing (16-45, fit, bold) practise two hours every third day; 0.004 an hour of what is left, lifted by the village's best; a blow
+given or taken teaches 0.04; fades 5 % a year unused; strength x (1 + 0.6 skill). Seed 42 at year 300: 16 grounds, ~0.5 % of all labour,
+a third of the living with some skill.
+
 ## 5. The cost of service
 
 Every hour of training, watch or campaign is an hour not farmed, cut, built or herded. A campaign's fighters are fed from the store

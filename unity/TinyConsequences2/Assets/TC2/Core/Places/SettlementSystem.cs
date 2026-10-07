@@ -72,6 +72,7 @@ namespace TC2.Core.Places
             prof?.Begin(10012); Hearths(sid, days); prof?.End(10012);       // the homes' warmth against the day's cold (D2-056)
             prof?.Begin(10005); Demography(sid, days); prof?.End(10005);
             prof?.Begin(10014); w.Learning.Day(sid, days); prof?.End(10014);   // the young copy the best they can watch (D2-062)
+            Training.Daily(w, sid, days);   // fighting skill fades unused; the village's best is known (C1.5)
             prof?.Begin(10015); w.Disease.Day(sid, days); prof?.End(10015);    // sickness: its course, its spread, new ones from the animals (D2-066)
             if (days > 1) Ahead(sid, g0, days);                                 // (its store as days lived would hold it: F8)
             prof?.Begin(10016); w.Trade.Day(sid, days); prof?.End(10016);      // relief, and COARSE trading trips (D2-067)

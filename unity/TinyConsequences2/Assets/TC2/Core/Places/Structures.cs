@@ -118,6 +118,9 @@ namespace TC2.Core.Places
             // a competent smith and use for metal: a smithy (C1.4) - after water and a store, never while walls rise
             if (s.Smithy == 0 && (s.TechKnown & Forge.Bit) != 0 && s.Wall != 1 && (s.Works & Construction.Granary) != 0 && Forge.Use(w, in s))
             { Begin(w, sid, Smithy, s.SmithEvent, CauseRel.EnabledBy); return; }
+            // a village that fears its neighbours lays out a training ground (C1.5) - after water and a store, never while walls rise
+            if (s.Ground == 0 && Forge.Threatened(in s) && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
+            { Begin(w, sid, Ground, s.WallEvent != 0 ? s.WallEvent : (s.FoeEvent != 0 ? s.FoeEvent : s.WatchEvent), CauseRel.InResponseTo); return; }
             // stone wanted and rock known within reach: a quarry opened at the rock (C1.3) - after water and a store, never while walls rise
             if (s.StoneWant > 0 && s.Quarry == 0 && s.StoneCell > 0 && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
             {
@@ -180,6 +183,7 @@ namespace TC2.Core.Places
             if (b.Kind == Granary) { s.Works |= Construction.Granary; s.Granaries++; }
             if (b.Kind == Barn) s.Barns++;
             if (b.Kind == Quarry) s.Quarry = bid;
+            if (b.Kind == Ground) s.Ground = bid;
             if (b.Kind == Smithy)
             {
                 s.Smithy = bid;
@@ -206,6 +210,7 @@ namespace TC2.Core.Places
             if (kind == Barn) s.Barns++;
             if (kind == Quarry) s.Quarry = id;
             if (kind == Smithy) s.Smithy = id;
+            if (kind == Ground) s.Ground = id;
             return id;
         }
 
@@ -221,6 +226,7 @@ namespace TC2.Core.Places
             if (b.Kind == Barn && s.Barns > 0) s.Barns--;
             if (b.Kind == Quarry && s.Quarry == bid) { s.Quarry = 0; s.StoneCell = 0; s.StoneDist = 0; }   // (the rock it stood at is gone: they must find rock again)
             if (b.Kind == Smithy && s.Smithy == bid) s.Smithy = 0;
+            if (b.Kind == Ground && s.Ground == bid) s.Ground = 0;
             if (b.Kind == Well && !Has(w, b.Settlement, Well, bid)) s.Works = (byte)(s.Works & ~Construction.Well);
         }
 

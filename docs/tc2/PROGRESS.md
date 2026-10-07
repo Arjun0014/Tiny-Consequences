@@ -23,8 +23,11 @@
   (seed 42: 13 of 19 villages quarry, 2,079 of 3,278 houses on footings); walls before non-essential works; 195 tests; shots `civ3`.
   **C1.4 the smithy done (D2-093)**: a smith's workshop (twice the open hearth's pace, less fuel), arms forged only there by villages
   that fear their neighbours, armed fighters strike 1.3x; rings enclose works; smoke while a smith works; 200 tests; every village has a
-  smithy by year 300, 18 of 19 armed (seed 42); shots `civ4*`. **Next: C1.5 the training ground** (practice hours, fighting skill, veterans
-  from fights survived; strength uses skill), then market and gates, the pressure premise.
+  smithy by year 300, 18 of 19 armed (seed 42); shots `civ4*`. **C1.5 training done (D2-094)**: fighting skill from practice (a
+  two-hour session every third day for the bold of a fearing village) and fights survived, fading unused; strength x (1 + 0.6 skill); seed 42
+  at year 300: 16 grounds, a third of the living with some skill, 647 who have fought; 204 tests; shots `civ5`. **Next: C1.6 market and
+  gates** (a market place where trade is heavy; the palisade's gates as structures), then C1.7 the pressure premise; C7 (rings that grow,
+  rings off the shore) is the most visible open fault.
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

@@ -256,6 +256,10 @@ namespace TC2.Headless
                             if (st2.Arms >= 1) { armed++; arms += st2.Arms; }
                             if (TC2.Core.Places.Forge.Threatened(in st2)) fearing++;
                         }
+                        int grounds = 0, trainedPeople = 0, veterans = 0; double best = 0;
+                        for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2)) { var st2 = w.Settlements.Get(sid2); if (st2.Inhabited && TC2.Core.Places.Training.Ground(w, sid2) != 0) grounds++; }
+                        for (int pid = w.People.First(); pid != 0; pid = w.People.Next(pid)) { var q = w.People.Get(pid); if (!q.Alive) continue; if (q.SkFight >= 0.1f) trainedPeople++; if (q.Fights > 0) veterans++; if (q.SkFight > best) best = q.SkFight; }
+                        Console.WriteLine("training: " + grounds + " grounds, " + F(w.Metrics.TrainHours, "0") + " h of practice; " + trainedPeople + " living people with some skill, " + veterans + " who have fought, the best " + F(best, "0.00"));
                         Console.WriteLine("force: " + smithies + " smithies; " + fearing + " villages fear their neighbours, " + armed + " hold arms (" + F(arms, "0") + "); arms forged " + F(w.Metrics.ArmsMade, "0") +
                                           ", hours at the smithies " + F(w.Metrics.SmithyHours, "0") + ", metal smelted " + F(w.Metrics.MetalKg, "0") + " kg");
                     }

@@ -19,7 +19,12 @@
 - **C1.3 stone done (D2-092)**: runs `tc2/out/civ/s{42,7}_c13d`, shots `civ3` (views `work13`, `work13far` frame a village's quarry).
   **Pitfall (again)**: heredocs with apostrophes break in this Bash tool - docs and commit messages go in scratchpad files (Write tool).
 - **C1.4 the smithy done (D2-093)**: runs `tc2/out/civ/s{42,7}_c14c`, shots `civ4c` (`work12`, `work12far`).
-- **Next: C1.5 the training ground** - `Structures.Ground` (Zone.Outer) planned by a village that fears its neighbours (`Forge.Threatened`)
+- **C1.5 training done (D2-094)**: runs `tc2/out/civ/s{42,7}_c15a`, shots `civ5` (`work14` at 15:30 shows the afternoon drill).
+- **Next: C1.6 market and gates** - a market (`Structures.Market`, Core zone, stalls) planned when the village hosts heavy trade (count trades
+  arriving per year: `Settlement.TradeIn` decaying); trades made at a village with a market gain more (a better match of wants: the deal's
+  surplus x1.25?) or more partners come; the palisade's gates as structures on the roads (they exist as drawn gaps: make them buildings with
+  condition, shut at night when a watch is kept); then **C1.7 the pressure premise** (`Core/Places/Premise`-like test world: two villages and
+  one scarce outcrop/ore between them) and watch what emerges. (Was the C1.5 plan: `Structures.Ground` (Zone.Outer) planned by a village that fears its neighbours (`Forge.Threatened`)
   once it has a granary; a person skill `SkFight` (Person field: saved, hashed) grown by practice hours there (a lived choice ~2 h, a few times a
   week, fit 16-45 by boldness and the threat; COARSE the same hours) and by fights survived (Conflict's blows: veterans), fading slowly; the most
   skilled present speeds others' learning; `Conflict.Strength` x (1 + 0.6 skill); building page; person page shows training; tests; runs

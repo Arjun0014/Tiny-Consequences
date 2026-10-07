@@ -51,7 +51,7 @@ Sub-slices, each committed with tests, runs, shots and docs:
 4. **C1.4 The smithy** (D2-093, done 7 Oct): a workplace raised when a competent smith and a want of metal meet; smithing there
    (twice as fast, less fuel), arms forged only there by villages that fear their neighbours (from ore, or reforged tools); arms in fights;
    rings enclose works.
-5. **C1.5 Training ground**: practice hours, fighting skill, veterans; strength uses skill.
+5. **C1.5 Training ground** (D2-094, done 7 Oct): practice hours, fighting skill, veterans; strength uses skill.
 6. **C1.6 Market and gates**: a market place where trade is heavy; the palisade's gates as structures.
 7. **C1.7 Pressure**: a premise with two settlements and one scarce outcrop or ore; observe what emerges (trade, claims, taking, raids,
    fortification, migration) - nothing scripted.
