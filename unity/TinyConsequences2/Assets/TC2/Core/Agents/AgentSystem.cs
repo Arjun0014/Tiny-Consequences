@@ -498,7 +498,7 @@ namespace TC2.Core.Agents
                         byte mk = p.Why == WhyCode.BogOre ? Mining.Iron : Mining.Copper;
                         int mid = Mining.Mine(w, p.At, mk);
                         ref var ms = ref w.Settlements.Get(p.At);
-                        if (mid != 0) Mining.Dig(w, p.At, mid, hours, Mining.DigRate(in p, Tools(p.Household)), false, DMath.Max(0.0, Mining.WantOf(in ms, mk) - Mining.OreIn(in ms, mk)), mk);
+                        if (mid != 0 && Mining.MayDig(w, p.At, mk)) Mining.Dig(w, p.At, mid, hours, Mining.DigRate(in p, Tools(p.Household)), false, DMath.Max(0.0, Mining.WantOf(in ms, mk) - Mining.OreIn(in ms, mk)), mk, p.Id);
                     }
                     break;
                 case ActivityKind.Quarry:
@@ -1699,7 +1699,7 @@ namespace TC2.Core.Agents
                     if (rate > 0)
                     {
                         double h = DMath.Min(hours * 0.5, (s.OreWant - s.Ore) / rate);
-                        Mining.Dig(w, sid, mid, h, r0, true);
+                        Mining.Dig(w, sid, mid, h, r0, true, double.MaxValue, Mining.Copper, p.Id);
                         hours -= h;
                     }
                 }
@@ -1710,7 +1710,7 @@ namespace TC2.Core.Agents
                     if (rate > 0)
                     {
                         double h = DMath.Min(hours * 0.5, (s.FeOreWant - s.FeOre) / rate);
-                        Mining.Dig(w, sid, bid2, h, r0, true, double.MaxValue, Mining.Iron);
+                        Mining.Dig(w, sid, bid2, h, r0, true, double.MaxValue, Mining.Iron, p.Id);
                         hours -= h;
                     }
                 }

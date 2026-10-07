@@ -123,13 +123,13 @@ namespace TC2.Core.Places
             { Begin(w, sid, Granary, s.HarvestEvent != 0 ? s.HarvestEvent : s.FoundedEvent, CauseRel.CausedBy); return; }
             // copper known, someone who can smelt it, and tools or arms short of metal: a mine at the body (C5.1) - after water and a store,
             // never while walls rise
-            if (s.OreWant > 0 && s.Mine == 0 && s.OreCell > 0 && s.Ore < s.OreWant && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
+            if (s.OreWant > 0 && s.Mine == 0 && s.OreCell > 0 && s.Ore < s.OreWant && s.Wall != 1 && (s.Works & Construction.Granary) != 0 && Mining.MayDig(w, sid, Mining.Copper))
             {
                 if (!Shore.Dry(w.Planet, w.Planet.Grid.Center[s.OreCell - 1])) { s.OreCell = 0; s.OreDist = 0; return; }   // (the sea has taken that ground)
                 Begin(w, sid, Mine, s.OreEvent, CauseRel.EnabledBy); return;
             }
             // bog ore known, someone who can smelt iron, and iron short: pits at the bed (C5.2b)
-            if (s.FeOreWant > 0 && s.FeMine == 0 && s.FeCell > 0 && s.FeOre < s.FeOreWant && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
+            if (s.FeOreWant > 0 && s.FeMine == 0 && s.FeCell > 0 && s.FeOre < s.FeOreWant && s.Wall != 1 && (s.Works & Construction.Granary) != 0 && Mining.MayDig(w, sid, Mining.Iron))
             {
                 if (!Shore.Dry(w.Planet, w.Planet.Grid.Center[s.FeCell - 1])) { s.FeCell = 0; s.FeDist = 0; return; }
                 Begin(w, sid, BogPits, s.FeEvent, CauseRel.EnabledBy); return;

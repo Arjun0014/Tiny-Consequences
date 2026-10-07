@@ -89,4 +89,7 @@ their users. Stores rot by kind (grain 0.3 % a day kept well, D2-042; pottery sl
 - **Bog iron and the bloomery (C5.2b, D2-102)**: beds on wet flats (lakes, brooks, fens; 35 %, 0.5-8 t, forming again in 40 years), pits
   at the bed, the bloomery found at a smithy by copper smiths who have seen bog ore, 8 kg of ore and 15 kg of charcoal a kilo, 2 kg of iron
   tools a head (1.4x hands, replacing copper), iron arms 1.15x. Seed 7, 300 years: 12.3 t of iron, iron tools for 61 % of the people,
-  charcoal 199 t from 994 t of wood. Not yet: smelting at the bed or the woods (C5.3), iron and charcoal traded, ironstone in old crust.
+  charcoal 199 t from 994 t of wood. Not yet: smelting at the bed or the woods (C5.3c), charcoal traded, ironstone in old crust.
+- **Places by their ore, iron traded, whose ore (C5.3a-C5.4, D2-103 to D2-105)**: scouts of a village lacking ore value land by it; founders
+  know the ore round their site; iron traded and made for buyers known from real sales; a body worked by a village is its own - others dig
+  it only in pressing need or with a wrong held, and each stint is a taking the owners know (grievance, taking back, amends, bands follow).

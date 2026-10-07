@@ -97,6 +97,9 @@ namespace TC2.Core.History
                 case HistoryKind.OreFound:
                     return (e.Other.IsNone ? "The people of " + subj : other + " of " + subj) + (e.ArgA == TC2.Core.Places.Mining.Iron ? " saw bog iron ore - rust-red lumps where water stands - " : " saw copper ore - green stone - showing ")
                          + F(e.Magnitude / 1000.0, "0.0") + " km from " + subj + ".";
+                case HistoryKind.OreTaken:
+                    return (e.Other.IsNone ? "People of " + subj : other + " of " + subj) + " dug " + (e.ArgA == TC2.Core.Places.Mining.Iron ? "bog ore at the pits" : "copper ore at the mine")
+                         + " of " + obj + ": " + obj + " counts it as taken from them.";
                 case HistoryKind.OreGaveOut:
                     return (e.ArgA == TC2.Core.Places.Mining.Iron ? "The bog ore at " + subj + "'s pits was dug out: " : "The copper at " + subj + "'s mine gave out: ") + (e.Magnitude >= 1000f ? F(e.Magnitude / 1000.0, "0.0") + " t" : F(e.Magnitude, "0") + " kg") + " of ore had been dug from it.";
                 case HistoryKind.StoneFound:

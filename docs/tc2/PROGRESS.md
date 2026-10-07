@@ -48,8 +48,10 @@
   **C5.3a places by their ore done (D2-103)**: scouts of a village lacking ore value land by ore they see (1.5x), founders know the ore round
   their site; eight seeds compared (no systematic change; iron's arrival contingent: seed 2 lost it, seed 4 gained 20.6 t); 234 tests.
   **C5.3b iron traded done (D2-104)**: iron a trade good valued by each village's lack; smiths make for buyers known from real sales;
-  seed 7: 3.4 t of iron traded, trade gain x3.6, markets 0 -> 2; 235 tests. **Next: C5.4 claims** (a worked bed or body known as a village's;
-  others digging it a deed), then C5.3c work at a distance (`25` C5 plan).
+  seed 7: 3.4 t of iron traded, trade gain x3.6, markets 0 -> 2; 235 tests. **C5.4 whose ore done (D2-105)**: worked bodies belong to
+  their workers; others dig only in pressing need or with a wrong held, and each stint is a taking the owners know; on seed 7 an ore taking
+  caused a taking-back of grain within a feud; 238 tests; `run --events KIND`. **Next**: C5.3c work at a distance, or the browser check of the
+  person page and the new works (SESSION_HANDOFF "Next").
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

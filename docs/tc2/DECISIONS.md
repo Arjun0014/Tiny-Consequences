@@ -2585,3 +2585,27 @@ iron; the buyers' store gets it, the sellers know what they sold and their smith
 7 - 3,390 kg of iron traded, trade gain 8,014 -> 28,777, markets 0 -> 2, people 1,835 -> 2,219, iron arms 666 -> 952; seed 4 - 4,510 kg
 traded, gain 22,181 -> 46,393, markets 2 -> 8; seed 42 - 78 kg (its bog beds are dug out: iron is scarce there). The biggest seller on seed
 7 is Steldwick (114 people, founded in year 133, walled, three bands driven off its store), 51 kg a year.
+
+## D2-105 — 2026-10-07 — Whose ore: worked bodies belong to their workers; digging another's is a taking (C5.4)
+
+**Context.** `25` §4 ends the resource town with "strategic importance -> conflict or political interest", and C1.7 found deposits were
+never worth fighting over: two villages digging one body simply shared it. The conflict machinery (deeds known per village, grievance,
+amends asked and refused, taking back, bands, palisades: D2-069 to D2-074) already turns harms into history; ore needed to become something
+a village can be wronged over - without a war flag or a "contested" state.
+**Decision.** (1) **Worked ore**: a body or bed is worked by the village whose standing mine (or pits) there was raised first
+(`Mining.WorkedBy`, read from the structures - no owner field). (2) **The right to dig** (`Mining.MayDig`): freely where nobody works it or
+the village works it first; at another's worked ore only when the village's need presses (fewer than half its people with metal tools,
+`Mining.Pressing`) or it holds a wrong against the owners (taking back is not taking to them, as D2-069). Mines are planned and stints
+chosen only where a village may dig. (3) **A taking**: every stint dug at another's worked ore is a `DeedKind.Take` of the metal it would
+have made (good `Trade.Metal`/`Iron`), worth that metal in the owners' own values against their grain, known to the owners (they work beside
+the diggers); stints within twelve days add to the same deed; history `OreTaken` (83), caused by the owners' find. Everything after is the
+existing machinery. (4) Knowing ore prefers free bodies (another's worked body counts as twice as far); scouts see only free ore (C5.3).
+(5) The person page says "dug ore at the works of"; headless `claims:` line and `run --events KIND` (every kept record of a kind with its
+cause). Sim version 46.
+**Evidence.** 238 tests (`ClaimsTests` 3: the first mine's village works the body; a neighbour with most tools of metal leaves it alone,
+with its need pressing or a wrong held it digs there; each stint is a taking the owners know, adding to one deed within days; the owners'
+own digging takes from nobody). 300 years DEEP (`tc2/out/civ/s{42,7,4,2}_c54a`): takings of ore on seed 7 (8, 0.8 t), seed 4 (7, 10.8 t),
+seed 2 (11, 2.7 t), none on seed 42; people 6,392 / 2,445 / 10,108 / 8,221 (C5.3b: 6,375 / 2,219 / 10,418 / -). On seed 7, Thestford's people
+dug at Neldthorpe's copper mine four times in years 281-285; nine days after the last, "Keithvel Drostlaes of Neldthorpe took 33 days' grain
+from the store of Thestford in the night", its recorded cause the ore taking - one strand of a feud of night takings, beatings and amends
+between them. Drikkawick dug at Brernthorpe's bog pits (seed 4), Taildvehope at Mestskouford's mine (seed 2).

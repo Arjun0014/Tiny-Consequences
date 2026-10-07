@@ -176,6 +176,78 @@ namespace TC2.Core.Places
             return w.Deposits.Add(new Deposit { Id = w.Deposits.Count + 1, Cell = c, Kind = kind, Ore = OreOf(w, c, kind), Found = w.Now, By = sid });
         }
 
+        // ---------------------------------------------------------------- whose ore (C5.4)
+
+        /// <summary>The share of its people with metal tools below which a village's need presses: it digs ore others work.</summary>
+        public const double Pressing = 0.5;
+        /// <summary>Days within which another stint at the same village's ore adds to the same taking.</summary>
+        public const int ClaimDays = 12;
+
+        /// <summary>
+        /// The village that works the body of a kind at a cell: the one whose standing mine (or pits) there was raised first (the lowest
+        /// building id) - 0 when none works it. Worked ore is its own; others digging it take from it.
+        /// </summary>
+        public static int WorkedBy(World w, int cell, byte kind)
+        {
+            int owner = 0, first = int.MaxValue;
+            for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id))
+            {
+                ref var s = ref w.Settlements.Get(id);
+                if (!s.Inhabited || CellOf(in s, kind) != cell + 1) continue;
+                int m = Mine(w, id, kind);
+                if (m != 0 && m < first) { first = m; owner = id; }
+            }
+            return owner;
+        }
+
+        /// <summary>
+        /// Whether a village's people dig the body of a kind it knows: freely when no other village works it (or it works it first); at another's
+        /// worked ore only when its need presses (fewer than half its people with metal tools) or it holds a wrong against the owners (taking
+        /// back is not taking to them: D2-069).
+        /// </summary>
+        public static bool MayDig(World w, int sid, byte kind)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            int cell = CellOf(in s, kind) - 1;
+            if (cell < 0) return false;
+            int owner = WorkedBy(w, cell, kind);
+            if (owner == 0 || owner == sid) return true;
+            return Knowledge.Tech.ToolShare(in s) < Pressing || w.DeedBook.Grievance(sid, owner) > Trade.Grudge;
+        }
+
+        /// <summary>
+        /// Ore dug at another village's worked body: a taking from it (a harm deed of the metal it would have made, worth that metal in the
+        /// owners' own values against their grain), seen by the owners working beside them; history the first time in a while; stints within
+        /// twelve days add to the same deed. The owners' grievance, amends asked and refused, bands and walls follow as for any taking.
+        /// </summary>
+        static void Claim(World w, int sid, int owner, int pid, byte kind, double kg)
+        {
+            byte good = kind == Iron ? Trade.Iron : Trade.Metal;
+            double metal = kg / (kind == Iron ? FeOrePerKg : OrePerKg);
+            double worth = metal * w.Trade.Value(owner, good) / DMath.Max(0.5, w.Trade.Value(owner, Trade.Grain));
+            ref var s = ref w.Settlements.Get(sid);
+            w.Metrics.OreClaimedKg += kg;
+            if (s.ClaimDeed != 0 && w.Deeds.Exists(s.ClaimDeed) && s.ClaimOn == owner && w.Now - s.ClaimAt < ClaimDays * SimTime.Day)
+            {
+                w.DeedBook.AddWorth(s.ClaimDeed, metal, worth);
+                s.ClaimAt = w.Now;
+                return;
+            }
+            ref var o = ref w.Settlements.Get(owner);
+            long ev = w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.OreTaken, Time = w.Now, Cell = CellOf(in s, kind) - 1, Settlement = owner, Subject = EntityRef.Settlement(sid),
+                Object = EntityRef.Settlement(owner), Other = pid != 0 ? EntityRef.Person(pid) : default, ArgA = kind, Magnitude = (float)kg,
+                RootKind = RootKind.People, Cause1 = EventOf(in o, kind), Rel1 = CauseRel.InResponseTo,
+            });
+            int d = w.DeedBook.Record(Society.DeedKind.Take, pid, sid, 0, owner, good, metal, worth, ev);
+            w.DeedBook.Learn(owner, d, Society.KnownHow.Saw);
+            w.DeedBook.Learn(sid, d, Society.KnownHow.Own);
+            ref var s2 = ref w.Settlements.Get(sid);
+            s2.ClaimDeed = d; s2.ClaimOn = owner; s2.ClaimAt = w.Now;
+            w.Metrics.OreClaims++;
+        }
+
         // ---------------------------------------------------------------- places by their ore (C5.3)
 
         /// <summary>m: a site this near ore its village lacks is worth more to its people (a short walk to the work).</summary>
@@ -205,7 +277,7 @@ namespace TC2.Core.Places
             {
                 if (!Lacks(in s, k)) continue;
                 for (int i = 0; i < sight.Count; i++)
-                    if (Seen(w, sid, sight[i], k) >= 0) { kind = k; return sight[i]; }
+                    if (Seen(w, sid, sight[i], k) >= 0 && WorkedBy(w, sight[i], k) == 0) { kind = k; return sight[i]; }   // (ore nobody works: C5.4)
             }
             return -1;
         }
@@ -227,18 +299,23 @@ namespace TC2.Core.Places
             {
                 ref var s = ref w.Settlements.Get(sid);
                 int known = CellOf(in s, kind);
-                int best = -1; double bd = known > 0 ? DistOf(in s, kind) : Reach + 1;
+                // (ore another village works counts as twice as far: a free body is better to know - C5.4)
+                int knownOwner = known > 0 ? WorkedBy(w, known - 1, kind) : 0;
+                int best = -1; double bd = known > 0 ? DistOf(in s, kind) * (knownOwner != 0 && knownOwner != sid ? 2.0 : 1.0) : double.MaxValue;
                 for (int k = -1; k < 8; k++)
                 {
                     int c = k < 0 ? cell : P.Grid.Nbr8[cell * 8 + k];
                     if (c + 1 == known) continue;
                     if (kind == Copper ? !Stone.Outcrop(P, c) : !Wet(P, c)) continue;   // (the cheap part of the rule first)
                     double d = Vec3d.ArcDistance(s.Anchor, P.Grid.Center[c], P.Radius);
-                    if (d >= bd - 1e-6) continue;
+                    if (d > Reach || d >= bd - 1e-6) continue;
                     if (Seen(w, sid, c, kind) < 0) continue;
-                    bd = d; best = c;
+                    int ow = WorkedBy(w, c, kind);
+                    double de = ow != 0 && ow != sid ? 2.0 * d : d;
+                    if (de >= bd - 1e-6) continue;
+                    bd = de; best = c;
                 }
-                if (best >= 0) Know(w, sid, pid, best, bd, kind);
+                if (best >= 0) Know(w, sid, pid, best, Vec3d.ArcDistance(w.Settlements.Get(sid).Anchor, P.Grid.Center[best], P.Radius), kind);
             }
         }
 
@@ -313,7 +390,7 @@ namespace TC2.Core.Places
             double want = WantOf(in s, kind);
             if (want <= 0 || OreIn(in s, kind) >= want) return false;
             mine = Mine(w, s.Id, kind);
-            return mine != 0;
+            return mine != 0 && MayDig(w, s.Id, kind);   // (another's worked ore only when need presses: C5.4)
         }
 
         // ---------------------------------------------------------------- digging it
@@ -334,7 +411,7 @@ namespace TC2.Core.Places
         /// village's store; the body gives out when the last is dug; a lived stint stops at what the store still wants (`most`, others dig
         /// too). Returns kg.
         /// </summary>
-        public static double Dig(World w, int sid, int mine, double hours, double r0, bool coarse, double most = double.MaxValue, byte kind = Copper)
+        public static double Dig(World w, int sid, int mine, double hours, double r0, bool coarse, double most = double.MaxValue, byte kind = Copper, int pid = 0)
         {
             if (hours <= 0 || mine == 0) return 0;
             ref var s = ref w.Settlements.Get(sid);
@@ -351,7 +428,9 @@ namespace TC2.Core.Places
             m.Stock = (float)(m.Stock + kg); m.Use = (float)(m.Use + hours);
             w.Metrics.OreDug += kg; w.Metrics.MineHours += hours;
             if (kind == Iron) w.Metrics.BogOreDug += kg;
-            if (d.Ore < 1.0) GaveOut(w, di, sid);
+            int owner = WorkedBy(w, d.Cell, kind);
+            if (owner != 0 && owner != sid) Claim(w, sid, owner, pid, kind, kg);   // (another village's ore: C5.4)
+            if (w.Deposits.Get(di).Ore < 1.0) GaveOut(w, di, sid);
             return kg;
         }
 

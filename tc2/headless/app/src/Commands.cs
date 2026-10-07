@@ -281,6 +281,7 @@ namespace TC2.Headless
                         Console.WriteLine("iron: " + knowBog + " of " + villages5 + " villages know bog ore (" + beds + " beds seen, " + bedsSpent + " dug out), " + pits + " pits; " + smelt + " villages smelt iron; bog ore dug " +
                                           F(w.Metrics.BogOreDug / 1000.0, "0.0") + " t, iron smelted " + F(w.Metrics.IronKg, "0") + " kg, traded " + F(w.Metrics.IronTraded, "0") + " kg; iron tools for " + F(pop5 > 0 ? 100.0 * share / pop5 : 0, "0") + " % of the people (" + F(iron, "0") + " kg); iron arms " + F(ironArms, "0") + " of " + F(arms5, "0") +
                                           (topSeller != 0 ? "; most sold lately: " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(topSeller)) + " #" + topSeller + " (" + F(topSold, "0") + " kg a year, " + w.Settlements.Get(topSeller).Population + " people)" : ""));
+                        Console.WriteLine("claims: ore dug at bodies other villages work " + F(w.Metrics.OreClaimedKg / 1000.0, "0.0") + " t in " + w.Metrics.OreClaims + " takings");
                         Console.WriteLine("ore sites: land told as by the ore wanted " + w.Metrics.ScoutedForOre + " times; villages founded knowing ore round their site " + w.Metrics.FoundedByOre + " of " + w.Metrics.Foundings);
                     }
                     // charcoal (C5.2a)
@@ -478,7 +479,20 @@ namespace TC2.Headless
             PrintFires();
             prof?.Print();
             if (a.Has("civ")) CivTimelines(w, a.Int("civ", 4));
-            if (a.Has("civ-of")) CivTimelines(w, 1, a.Int("civ-of", 0));   // (one village's timeline by its id: C5.3)   // (C1: each village's works, woods, rock, arms, walls, raids - and why)
+            if (a.Has("civ-of")) CivTimelines(w, 1, a.Int("civ-of", 0));   // (one village's timeline by its id: C5.3)
+            if (a.Has("events"))
+            {
+                // every kept record of one kind, with its cause (C5.4: `--events OreTaken`)
+                if (System.Enum.TryParse(a.Get("events"), out HistoryKind ek))
+                    for (int i = 0; i < w.History.Count; i++)
+                    {
+                        var e = w.History.At(i);
+                        if (e.Kind != ek) continue;
+                        string why = e.Cause1 != 0 && w.History.TryGet(e.Cause1, out var c) ? "   <- " + HistoryText.Line(w, c) : "";
+                        Console.WriteLine("EVENT " + HistoryText.Line(w, e) + why);
+                    }
+                else Console.WriteLine("no such history kind: " + a.Get("events"));
+            }   // (C1: each village's works, woods, rock, arms, walls, raids - and why)
             string annals = a.Get("annals");
             if (annals != null)
             {
@@ -577,7 +591,7 @@ namespace TC2.Headless
                     switch (e.Kind)
                     {
                         case HistoryKind.SettlementFounded: case HistoryKind.WorkBegun: case HistoryKind.WorkBuilt: case HistoryKind.WoodsReceded:
-                        case HistoryKind.StoneFound: case HistoryKind.OreFound: case HistoryKind.OreGaveOut: case HistoryKind.ArmsMade: case HistoryKind.WatchSet: case HistoryKind.WallPlanned:
+                        case HistoryKind.StoneFound: case HistoryKind.OreFound: case HistoryKind.OreGaveOut: case HistoryKind.OreTaken: case HistoryKind.ArmsMade: case HistoryKind.WatchSet: case HistoryKind.WallPlanned:
                         case HistoryKind.WallBuilt: case HistoryKind.WallFallen: case HistoryKind.BandRaised: case HistoryKind.Raid:
                         case HistoryKind.TributeAgreed: case HistoryKind.TributeEnded: case HistoryKind.Famine: case HistoryKind.TechniqueKnown:
                         case HistoryKind.HomesDrowned: case HistoryKind.SettlementAbandoned:

@@ -64,7 +64,7 @@ mines done (D2-100).**
 
 ### C5 mining and metallurgy, by slices (D2-100): ~~C5.1 copper ore bodies, the mine, depletion~~ (done); ~~C5.2a charcoal~~ (done, D2-101); ~~C5.2b
 iron~~ (done, D2-102: bog ore, bloomery, iron's use a head); ~~C5.3a places by their ore~~ (done, D2-103); ~~C5.3b iron traded~~
-(done, D2-104); C5.3c work at a distance (smelting at the bed or the woods, stints with a camp); C5.3 distant work (smelting at a far mine, stints with a camp, households moving to the work: a mining hamlet);
+(done, D2-104); ~~C5.4 whose ore~~ (done, D2-105); C5.3c work at a distance (smelting at the bed or the woods, stints with a camp); C5.3 distant work (smelting at a far mine, stints with a camp, households moving to the work: a mining hamlet);
 C5.4 claims (a worked body known as a village's, digging it a deed, news of bodies by traders, deposits worth holding). Then C2.x clearing as
 labour, C3 kilns and workshops.
 

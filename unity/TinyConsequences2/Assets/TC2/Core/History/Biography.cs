@@ -195,7 +195,7 @@ namespace TC2.Core.History
                 if (d.By != pid) continue;
                 if (n == 0) sb.Append("Deeds still weighed by the villages:\n");
                 if (n++ >= 12) continue;
-                sb.Append("  ").Append(Year(d.Time)).Append(": ").Append(DeedWord(d.Kind)).Append(' ').Append(Place(w, d.ToS))
+                sb.Append("  ").Append(Year(d.Time)).Append(": ").Append(DeedWord(d.Kind, d.Good)).Append(' ').Append(Place(w, d.ToS))
                   .Append(d.Worth > 0f ? " (" + F(d.Worth, "0") + " days' food in weight)" : "").Append(d.Answer != 0 ? (DeedKind.Harm(d.Kind) ? ", answered" : "") : "").Append('\n');
             }
             if (n == 0) sb.Append("No deed of theirs is still weighed by any village (their life below keeps what they did).\n");
@@ -207,7 +207,7 @@ namespace TC2.Core.History
             return sb.ToString();
         }
 
-        static string DeedWord(byte k) => k == DeedKind.Take ? "took grain from the store of" : k == DeedKind.TriedToTake ? "was seen taking at the store of" :
+        static string DeedWord(byte k, byte good) => k == DeedKind.Take ? (good == Trade.Metal || good == Trade.Iron ? "dug ore at the works of" : "took grain from the store of") : k == DeedKind.TriedToTake ? "was seen taking at the store of" :
             k == DeedKind.Wound ? "wounded someone of" : k == DeedKind.Kill ? "killed someone of" : k == DeedKind.Raid ? "led a band on" :
             k == DeedKind.Relief ? "gave grain to" : k == DeedKind.Amends ? "made amends to" : "refused amends to";
 

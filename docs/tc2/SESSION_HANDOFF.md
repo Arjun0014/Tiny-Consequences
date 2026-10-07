@@ -49,9 +49,11 @@
   against `_c52c` (seeds 1-6 added for the comparison; `s{7,42}_c53x` = the pull switched off: identical).
 - **C5.3b iron traded done (D2-104)**: `Trade.Iron` (goods 6), `Settlement.IronSold`, `Forge.IronTarget/ForSale`, metric `IronTraded`;
   headless `iron:` line (traded, biggest seller), `run --civ-of ID`. Runs `tc2/out/civ/s{42,7,4}_c53b`.
-- **Next**: **C5.4 claims** - a body or bed a village works is known as its own (by its mine or pits); another village's people digging
-  there is a taking of the first's ore (a deed, the D2-069 machinery: seen, grievance, amends, bands); news of beds with traders. Then C5.3c
-  work at a distance: when ore or wood is far, smelt where it is (a bloomery at the bed or the woods: carry iron, not ore and
+- **C5.4 whose ore done (D2-105)**: `Mining.WorkedBy/MayDig/Claim/Pressing/ClaimDays`, settlement `ClaimDeed/ClaimOn/ClaimAt`, history
+  `OreTaken` 83, metrics `OreClaimedKg/OreClaims`; `Mining.Dig(..., pid)`; headless `claims:` line, `run --events KIND`. Runs
+  `tc2/out/civ/s{42,7,4,2}_c54a`. Story: seed 7 Thestford/Neldthorpe (years 281-288; `--events OreTaken`, `--events Taken`).
+- **Next**: (1) a Web build to see the person page, the mine, the hearth and the pits in the browser (`unity.mjs configure` first: River.mat,
+  Road.mat; `webtest.mjs` shoots `9_person*`); (2) C5.3c work at a distance: when ore or wood is far, smelt where it is (a bloomery at the bed or the woods: carry iron, not ore and
   charcoal), stints of days with a camp at the site, households moving to steady work there (a work hamlet founded by its work); then C5.4
   claims (a worked bed or body known as a village's, digging it a deed; news of beds by traders). To check: whether the bloomery holds in
   small villages over long runs (a complex technique); copper ore is still dug where iron serves only some. Seen before: people walking routes across cells the
