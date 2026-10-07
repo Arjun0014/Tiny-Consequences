@@ -29,6 +29,9 @@ namespace TC2.Game
         Rect _left, _right, _bottom, _toggles, _ticker;
         float _fps; int _frames; float _fpsT;
         bool _info, _history, _worldPanel, _hidden, _book;
+        // the person page (C12.1): a person's life in sections, from the world's state and its ledger (Core/History/Biography)
+        bool _personPage; int _pageTab, _pagePid = -1, _pageTabBuilt = -1; float _pageAt; string _pageText = "", _pageTitle = ""; Vector2 _pageScroll; Rect _pageRect;
+        static readonly string[] PageTabs = { "Now", "Family", "Work", "Deeds", "Home", "Life" };
         // the History Book (D2-077): ages or places on the left, a chapter's lines on the right, a line's causes under it
         int _bookTab, _era = -1, _place, _bookKey = -1, _bookYear = -1;
         long _line;
@@ -235,9 +238,11 @@ namespace TC2.Game
             Rect insp = new Rect(sw - 400, 190, 390, 300);
             bool showInsp = _selected != 0 && w.People.Exists(_selected);
             if (showInsp) Inspector(insp, w);
+            _pageRect = Rect.zero;
+            if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), 60, pw, sh - 130); PersonPage(_pageRect, w); }
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
             Vector2 m = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / _scale;
-            PointerOverUi = _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || _bookRect.Contains(m);
+            PointerOverUi = _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || _bookRect.Contains(m) || _pageRect.Contains(m);
         }
 
         void Inspector(Rect r, TC2.Core.Simulation.World w)
@@ -290,9 +295,51 @@ namespace TC2.Game
             }
             GUILayout.BeginArea(r, _box);
             GUILayout.Label(sb.ToString(), _small);
+            GUILayout.BeginHorizontal();
             if (GUILayout.Button(_follow == _selected ? "Stop following" : "Follow", _btn)) _follow = _follow == _selected ? 0 : _selected;
+            if (GUILayout.Button(_personPage ? "Close life page" : "Life page", _btn)) { _personPage = !_personPage; _pagePid = -1; }
+            GUILayout.EndHorizontal();
             GUILayout.EndArea();
         }
+
+        /// <summary>
+        /// The person page (C12.1, D2-099; 07 §9): who they are, then a section at a time - what they are doing now and why, their family, their
+        /// work and what they know, their deeds and what they can do in a fight, their home, their life as the ledger keeps it. The text comes
+        /// from Biography (Core), rebuilt once a second; nothing here writes the world.
+        /// </summary>
+        void PersonPage(Rect r, TC2.Core.Simulation.World w)
+        {
+            if (_pagePid != _selected || _pageTabBuilt != _pageTab || Time.unscaledTime - _pageAt > 1f)
+            {
+                _pagePid = _selected; _pageTabBuilt = _pageTab; _pageAt = Time.unscaledTime;
+                _pageTitle = Biography.Title(w, _selected);
+                string body;
+                switch (_pageTab)
+                {
+                    case 0: body = Biography.Identity(w, _selected) + "\n" + Biography.Now(w, _selected); break;
+                    case 1: body = Biography.Family(w, _selected); break;
+                    case 2: body = Biography.Work(w, _selected); break;
+                    case 3: body = Biography.Deeds(w, _selected); break;
+                    case 4: body = Biography.Home(w, _selected); break;
+                    default: body = Biography.Life(w, _selected, 80); break;
+                }
+                _pageText = body;
+            }
+            GUILayout.BeginArea(r, _page);
+            GUILayout.Label(_pageTitle, _title);
+            GUILayout.BeginHorizontal();
+            for (int i = 0; i < PageTabs.Length; i++) if (GUILayout.Toggle(_pageTab == i, PageTabs[i], _btn) && _pageTab != i) _pageTab = i;
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Close", _btn)) _personPage = false;
+            GUILayout.EndHorizontal();
+            _pageScroll = GUILayout.BeginScrollView(_pageScroll);
+            GUILayout.Label(_pageText, _small);
+            GUILayout.EndScrollView();
+            GUILayout.EndArea();
+        }
+
+        /// <summary>Opens a person's page (tools: shots of the page; a click in the world selects, the button opens it).</summary>
+        public void ShowPerson(int pid, int tab = 0) { _book = false; _selected = pid; _building = 0; _personPage = true; _pageTab = tab; _pagePid = -1; }
 
         /// <summary>
         /// A structure's page (C1.1, 21 §7): what it is and is for, how sound it is, who raised it and why, what it holds, and its history -

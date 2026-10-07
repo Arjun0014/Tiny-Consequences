@@ -170,3 +170,6 @@ filled only from state and history (no invented prose):
 - **History**: birth, marriages, children, migrations, work, discoveries, buildings they led or worked on, raids and fights, famines,
   sicknesses and disasters survived - each a history record with its causes.
 Roles and labels are derived; the page writes nothing.
+**C12.1 built (D2-099)**: `Core/History/Biography` (identity, now, family, work, deeds and force, home, life), the HUD's "Life page" and the
+headless `person` command. Roles are read from skills and crafts (practice), not hours; knowledge of places, teachers, friends and rivals,
+debts and trades per person come with the slices that make that state.

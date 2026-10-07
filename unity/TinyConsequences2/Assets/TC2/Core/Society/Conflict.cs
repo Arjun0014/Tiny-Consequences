@@ -346,7 +346,7 @@ namespace TC2.Core.Society
         }
 
         /// <summary>Grown, fit and free: one who could keep a watch or come out to a shout.</summary>
-        static bool Fit(in Person q, long now)
+        public static bool Fit(in Person q, long now)
         {
             if (!q.Alive || q.Sick != 0 || q.Hurt >= RoadHurt || q.Health <= 0.6) return false;
             double age = q.AgeYears(now);

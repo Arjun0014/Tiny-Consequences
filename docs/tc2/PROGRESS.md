@@ -35,7 +35,9 @@
   **C7.1 rings that grow done (D2-098)**: a larger ring when homes outgrow a sound palisade, the old one inside until it rots; walls before
   hut upgrades; **a float stall fixed** (works a hair short of a non-round need never finished: palisades stood "rising" for a century);
   seed 42 at year 300: 18 walled (was 8 + 9 stuck), 5 larger rings; 211 tests; shots `rings1` (Thathastwick's two rings).
-  **Next: C12.1 the person page** (`07` §9), then C2.x (clearing as labour, kilns), C5 (claims on deposits that deplete).
+  **C12.1 the person page done (D2-099)**: `Core/History/Biography` - identity, now and why, family, work (roles read from practice), deeds and
+  force, home, life (every record, in order); the HUD's "Life page" (tabs), WebBridge `person`, headless `person --load S --pick fighter`; reads
+  only; 214 tests. **Next: C2.x** (clearing as labour, kilns), **C5** (claims on deposits that deplete).
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

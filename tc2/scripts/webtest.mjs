@@ -123,6 +123,9 @@ try {
     await cmd('village 0 1400'); await shot('7_after_a_century', 2500);
     // the History Book of the century lived while away (D2-077)
     await cmd('book'); await shot('8_book', 3000);
+    // the person page (C12.1): the oldest living person, their now and their life
+    await cmd('person oldest 0'); await shot('9_person', 2500);
+    await cmd('person oldest 5'); await shot('9_person_life', 2500);
     report.afterAway = back;
   }
 } catch (e) {

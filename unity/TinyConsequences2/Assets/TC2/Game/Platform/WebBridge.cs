@@ -64,6 +64,15 @@ namespace TC2.Game
                 case "view": Rig.SetView(a[1]); break;   // the camera's named views (forest, forestlow, coast, volcano...: D2-079)
                 case "catchupalt": CameraRig.CatchUpAltitude = double.Parse(a[1], CultureInfo.InvariantCulture); break;   // tools: the camera's height while catching up
                 case "book": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.OpenBook(a.Length > 1 ? int.Parse(a[1], inv) : -1); break; }   // the History Book (D2-077)
+                case "person":
+                    {
+                        // the person page (C12.1): "person PID [TAB]", or "person oldest" - the oldest living person
+                        var hud = Object.FindFirstObjectByType<Hud>(); var w = Host.World; int pid = 0;
+                        if (a.Length > 1 && a[1] != "oldest") pid = int.Parse(a[1], inv);
+                        else { double best = -1; for (int id = w.People.First(); id != 0; id = w.People.Next(id)) { ref var p = ref w.People.Get(id); if (p.Alive && p.AgeYears(w.Now) > best) { best = p.AgeYears(w.Now); pid = id; } } }
+                        if (hud != null && pid != 0 && w.People.Exists(pid)) hud.ShowPerson(pid, a.Length > 2 ? int.Parse(a[2], inv) : 0);
+                        break;
+                    }
                 case "off": case "on": Toggle(a[1], a[0] == "on"); break;   // tools: what a frame costs without a layer
                 case "glshadow": Sky.GlCascades = int.Parse(a[1], inv); Sky.GlShadowReach = float.Parse(a[2], inv); break;   // tools: WebGL2 shadows
                 case "hashtest": _hashTest = HashTest(); break;

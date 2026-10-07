@@ -108,8 +108,9 @@ transport and sea) and `25_CIVILISATION_ROADMAP.md` (C1-C13; **the current slice
 kind with works by need and their causes (well, granaries and barns with real capacity, quarries, smithies, training grounds, markets),
 timber felled from real woods (woodlots recede; fields clear what they farm), stone known by seeing it and carried home (houses on footings),
 arms forged only at a smithy by villages that fear their neighbours, fighting skill from practice and fights survived, markets made by
-traders, rings on dry ground; building page in the HUD. Next: C4.1 roads by use, C7.1 rings that grow, C12.1 the person page
-(SESSION_HANDOFF "Next").
+traders, rings on dry ground; building page in the HUD. Since: C4.1 roads by use (D2-097), C7.1 rings that grow (D2-098), C12.1 the
+person page (D2-099: `Core/History/Biography`, the HUD's Life page, headless `person`). Next: C2.x clearing as labour and kilns, C5 claims on
+deposits that deplete (SESSION_HANDOFF "Next").
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

@@ -39,6 +39,8 @@ namespace TC2.Headless
                         return Commands.ChronicleBook(args);
                     case "inspect":
                         return Commands.Inspect(args);
+                    case "person":
+                        return Commands.PersonPage(args);
                     case "planet":
                         return Commands.Planet(args);
                     case "climate":

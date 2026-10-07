@@ -2417,3 +2417,32 @@ years 250 and 300; with the fix its wall stands. 300 years DEEP (`tc2/out/civ/s{
 rising** (before: 8 walled, 9 rising), 5 larger rings begun, one old ring still standing inside at year 300; seed 7 - 10 walled (3), 2 larger
 rings; tributes 7 agreed (3 ended), 3 lords at year 300. People 7,137 / 2,063. Shots `tc2/out/shots/rings1`: Thathastwick (417 people) - the
 old palisade through its houses, the larger ring beyond, roads leaving its green.
+
+## D2-099 — 2026-10-07 — The person page: a life read from state and the ledger (C12.1)
+
+**Context.** `07` §9 (D2-089, non-negotiable): clicking a person must show a person, and one life must be followable end to end. Until now a
+person was one small card (name, what they do, health). Some of §9 needs state the world does not keep: roles "from this year's hours"
+(no per-person hour tallies), places and deposits known through a person (knowledge of places is per village), teachers and pupils, friends
+and rivals, per-person debts and trades.
+**Decision.** (1) **`Core/History/Biography`** builds the page from state and the ledger, reading only: *identity* (born when, where - the
+birth's record - and to whom; home and household), *now* (where, doing what and why, until when; health, food, the body's reserve, wounds,
+sickness, a child due; what they carry), *family* (parents, partner, children living and dead, brothers and sisters - half-siblings marked -
+grandchildren), *work* (skills, crafts and how well they carry them, the works they led from `WorkBuilt`), *deeds and force* (fighting skill,
+fights lived through, strength only for one who could come out to a fight - `Conflict.Fit`, now public; the band they are with; the deeds the
+villages still weigh; tribute and grievance of their village), *home* (the household's home and its year, larder, water, warmth, clothes and
+tools a head, animals), *life* (every record they are part of, in order). (2) **Roles are read from practice**, never assigned: "known for"
+a smith at the smithy, a seasoned farmer, a hunter, a fisher, a woodcutter and builder, a potter, a weaver, a fighter - from skills and crafts
+(practice accumulated), not from hours; per-person hour tallies wait until a role needs them (C10/C11). Skills are worded as a knack grown by
+practice (newborns start with an aptitude). (3) Warmth indoors is shown only when it is below comfort (the roof's degrees are added on hot
+days too, a simplification that matters only in the cold). (4) **HUD**: "Life page" beside Follow opens a page with tabs Now, Family, Work,
+Deeds, Home, Life, rebuilt once a second; WebBridge `person PID|oldest [TAB]`; the Web test shoots `9_person` and `9_person_life`. (5)
+**Headless** `person --load SAVE [--pid N | --pick oldest|smith|fighter|elder|child] [--village ID]` prints the same page. No state change
+(sim version 40).
+**Not yet** (needs state first): places and deposits known through a person, teachers and pupils, friends and rivals, debts and trades per
+person, roles by hours. Each comes with the slice that makes the state (C5 deposits, C10 governance, C11 culture).
+**Evidence.** 214 tests (`BiographyTests`: the page from state and the ledger - the mother's page counts the child, every line of a life is one
+of their records in order and nothing else; roles appear and vanish with practice; reading every page of a lived world leaves its state hash
+and ledger unchanged). Unity compiles (shot `person1`). Year 300 of `tc2/out/civ/s42_c71d`: Sothskei Deldho of Velhope, 39, farmer, smith at
+the smithy, potter and weaver, 14 fights lived through, strikes at 2.48; nine deeds still weighed (two killings and seven woundings of night
+takers from Thathastwick, Heldholm and Draton); Velhope holds a wrong against Thathastwick; his life lists every beating at the store between
+his children's births. The page's layout is checked in the next Web build (IMGUI is not drawn in batch-mode shots).
