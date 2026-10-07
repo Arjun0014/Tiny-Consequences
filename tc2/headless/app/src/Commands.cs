@@ -264,7 +264,7 @@ namespace TC2.Headless
                     }
                     // iron (C5.2b)
                     {
-                        int knowBog = 0, pits = 0, smelt = 0, villages5 = 0; double iron = 0, ironArms = 0, arms5 = 0, share = 0, beds = 0, bedsSpent = 0;
+                        int knowBog = 0, pits = 0, smelt = 0, villages5 = 0, topSeller = 0; double topSold = 0; double iron = 0, ironArms = 0, arms5 = 0, share = 0, beds = 0, bedsSpent = 0;
                         for (int sid5 = w.Settlements.First(); sid5 != 0; sid5 = w.Settlements.Next(sid5))
                         {
                             var st5 = w.Settlements.Get(sid5);
@@ -274,11 +274,13 @@ namespace TC2.Headless
                             if (TC2.Core.Places.Mining.Mine(w, sid5, TC2.Core.Places.Mining.Iron) != 0) pits++;
                             if (st5.BestIron >= TC2.Core.Places.Mining.Smelter) smelt++;
                             iron += st5.Iron; ironArms += st5.IronArms; arms5 += st5.Arms; share += TC2.Core.Knowledge.Tech.IronShare(in st5) * st5.Population;
+                            if (st5.IronSold > topSold) { topSold = st5.IronSold; topSeller = sid5; }
                         }
                         for (int i = 0; i < w.Deposits.Count; i++) { var d = w.Deposits.Get(i); if (d.Kind != TC2.Core.Places.Mining.Iron) continue; beds++; if (d.GaveOut != 0) bedsSpent++; }
                         int pop5 = w.LivingPeople();
                         Console.WriteLine("iron: " + knowBog + " of " + villages5 + " villages know bog ore (" + beds + " beds seen, " + bedsSpent + " dug out), " + pits + " pits; " + smelt + " villages smelt iron; bog ore dug " +
-                                          F(w.Metrics.BogOreDug / 1000.0, "0.0") + " t, iron smelted " + F(w.Metrics.IronKg, "0") + " kg; iron tools for " + F(pop5 > 0 ? 100.0 * share / pop5 : 0, "0") + " % of the people (" + F(iron, "0") + " kg); iron arms " + F(ironArms, "0") + " of " + F(arms5, "0"));
+                                          F(w.Metrics.BogOreDug / 1000.0, "0.0") + " t, iron smelted " + F(w.Metrics.IronKg, "0") + " kg, traded " + F(w.Metrics.IronTraded, "0") + " kg; iron tools for " + F(pop5 > 0 ? 100.0 * share / pop5 : 0, "0") + " % of the people (" + F(iron, "0") + " kg); iron arms " + F(ironArms, "0") + " of " + F(arms5, "0") +
+                                          (topSeller != 0 ? "; most sold lately: " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(topSeller)) + " #" + topSeller + " (" + F(topSold, "0") + " kg a year, " + w.Settlements.Get(topSeller).Population + " people)" : ""));
                         Console.WriteLine("ore sites: land told as by the ore wanted " + w.Metrics.ScoutedForOre + " times; villages founded knowing ore round their site " + w.Metrics.FoundedByOre + " of " + w.Metrics.Foundings);
                     }
                     // charcoal (C5.2a)
@@ -475,7 +477,8 @@ namespace TC2.Headless
                               ", fire pages held " + w.Fire.Procs.PagesHeld + ")  managed heap " + F(GC.GetTotalMemory(true) / 1048576.0, "0") + " MB");
             PrintFires();
             prof?.Print();
-            if (a.Has("civ")) CivTimelines(w, a.Int("civ", 4));   // (C1: each village's works, woods, rock, arms, walls, raids - and why)
+            if (a.Has("civ")) CivTimelines(w, a.Int("civ", 4));
+            if (a.Has("civ-of")) CivTimelines(w, 1, a.Int("civ-of", 0));   // (one village's timeline by its id: C5.3)   // (C1: each village's works, woods, rock, arms, walls, raids - and why)
             string annals = a.Get("annals");
             if (annals != null)
             {
@@ -553,10 +556,10 @@ namespace TC2.Headless
         /// C1 tools (`run --civ N`): the N largest inhabited villages' civilisation in the order it happened - founded, works begun and raised,
         /// woods receded, rock found, the first arms, the watch, walls, bands and raids, tribute, famines - each line with its cause.
         /// </summary>
-        static void CivTimelines(World w, int n)
+        static void CivTimelines(World w, int n, int only = 0)
         {
             var sids = new List<int>();
-            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) if (w.Settlements.Get(sid).Inhabited) sids.Add(sid);
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) if (w.Settlements.Get(sid).Inhabited && (only == 0 || sid == only)) sids.Add(sid);
             sids.Sort((x, y) => { int c = w.Settlements.Get(y).Population.CompareTo(w.Settlements.Get(x).Population); return c != 0 ? c : x.CompareTo(y); });
             for (int k = 0; k < sids.Count && k < n; k++)
             {

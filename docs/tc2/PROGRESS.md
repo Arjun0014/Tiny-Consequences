@@ -47,7 +47,9 @@
   COARSE smith now works a labour day at the forge (year parity); seed 7: 12.3 t of iron, iron tools for 61 %; 232 tests; shots `iron1`.
   **C5.3a places by their ore done (D2-103)**: scouts of a village lacking ore value land by ore they see (1.5x), founders know the ore round
   their site; eight seeds compared (no systematic change; iron's arrival contingent: seed 2 lost it, seed 4 gained 20.6 t); 234 tests.
-  **Next: C5.3b** (iron and charcoal traded; smelting at the bed or the woods; stints with a camp), C5.4 claims (`25` C5 plan).
+  **C5.3b iron traded done (D2-104)**: iron a trade good valued by each village's lack; smiths make for buyers known from real sales;
+  seed 7: 3.4 t of iron traded, trade gain x3.6, markets 0 -> 2; 235 tests. **Next: C5.4 claims** (a worked bed or body known as a village's;
+  others digging it a deed), then C5.3c work at a distance (`25` C5 plan).
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

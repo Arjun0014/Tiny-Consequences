@@ -2569,3 +2569,19 @@ seed 4 the reverse (0 -> 20.6 t, iron tools for 32 % of its people). Land was to
 villages founded on seed 4 knew ore round their site.
 **Not yet (C5.3b).** Work at a distance: smelting at the bed or the woods (carry iron, not ore and charcoal), stints with a camp at a far
 site, households moving to steady work; iron and charcoal as trade goods (the hamlet's living).
+
+## D2-104 — 2026-10-07 — Iron traded, and made for buyers known from real sales (C5.3b)
+
+**Context.** A place that has bog ore and smiths can only live by its iron if iron travels: until now it was not a trade good, and smiths
+stopped once their own village's people were equipped, so no village ever had iron to spare.
+**Decision.** (1) **Iron is a trade good** (`Trade.Iron`): valued by each village by the share of its people its iron leaves unequipped
+(8 x (1 - share) + 0.5 a kilo, above copper's 6), spared beyond its own toolkits; traded by the existing want-and-spare deals (D2-067),
+both sides gaining or nobody goes. (2) **Made for buyers**: a village's smiths make iron up to its people's toolkits, a tenth more (a few
+pieces ahead for whoever comes), and as much again as it parted with in trade over the past year (`Settlement.IronSold`, halving each year)
+- demand known only from real sales (`Forge.IronTarget`; bog ore and charcoal wanted follow it). Copper keeps its D2-064 rule. Headless
+`iron:` line (traded, the biggest seller lately), `run --civ-of ID` (one village's timeline). Sim version 45.
+**Evidence.** 235 tests (`IronTests`: a village with iron to spare and little grain deals iron for grain with one that has grain and no
+iron; the buyers' store gets it, the sellers know what they sold and their smiths' target rises by it). 300 years DEEP against C5.3a: seed
+7 - 3,390 kg of iron traded, trade gain 8,014 -> 28,777, markets 0 -> 2, people 1,835 -> 2,219, iron arms 666 -> 952; seed 4 - 4,510 kg
+traded, gain 22,181 -> 46,393, markets 2 -> 8; seed 42 - 78 kg (its bog beds are dug out: iron is scarce there). The biggest seller on seed
+7 is Steldwick (114 people, founded in year 133, walled, three bands driven off its store), 51 kg a year.

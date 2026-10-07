@@ -57,9 +57,16 @@ namespace TC2.Core.Places
         public static double CopperWanted(in Settlement s) =>
             Knowledge.Tech.CopperWanted(in s) + (IronArms(in s) ? 0.0 : DMath.Max(0.0, ArmsWant(in s) - s.Arms) * ArmKg);
 
-        /// <summary>kg of iron the village still wants: its people's tools (2 kg a head), and its arms where its smiths smelt iron.</summary>
+        /// <summary>Share beyond its own people's toolkits a village's smiths make to sell (a few pieces ahead for whoever comes to buy).</summary>
+        public const double ForSale = 0.1;
+
+        /// <summary>kg of iron the village's smiths make up to: its people's toolkits, a few pieces to sell, and as much again as it sold in the
+        /// past year (demand known from real trades only: C5.3b).</summary>
+        public static double IronTarget(in Settlement s) => Knowledge.Tech.IronPerHead * s.Population * (1.0 + ForSale) + s.IronSold;
+
+        /// <summary>kg of iron the village still wants made: up to its target, and its arms where its smiths smelt iron.</summary>
         public static double IronWanted(in Settlement s) =>
-            DMath.Max(0.0, Knowledge.Tech.IronPerHead * s.Population - s.Iron) + (IronArms(in s) ? DMath.Max(0.0, ArmsWant(in s) - s.Arms) * ArmKg : 0.0);
+            DMath.Max(0.0, IronTarget(in s) - s.Iron) + (IronArms(in s) ? DMath.Max(0.0, ArmsWant(in s) - s.Arms) * ArmKg : 0.0);
 
         /// <summary>kg of iron the village's bog ore and charcoal in store will make.</summary>
         public static double IronCan(in Settlement s) => DMath.Min(Mining.IronIn(in s), Charcoal.IronFrom(in s));
@@ -75,7 +82,7 @@ namespace TC2.Core.Places
         {
             bool fe = s.BestIron >= Mining.Smelter && IronCan(in s) >= 0.05;
             bool cu = CopperCan(in s) >= 0.05;
-            if (fe && Knowledge.Tech.IronShare(in s) < 1.0) return true;
+            if (fe && s.Iron < IronTarget(in s)) return true;
             if (cu && Knowledge.Tech.CopperWanted(in s) > 0) return true;
             return s.Arms < ArmsWant(in s) && (fe || cu || s.Metal + s.Iron >= ArmKg);
         }
@@ -150,14 +157,14 @@ namespace TC2.Core.Places
                     });
             }
             double left = hours - used;
-            if (left > 0 && fe && IronCan(in s) > 1e-6 && Knowledge.Tech.IronShare(in s) < 1.0)
+            if (left > 0 && fe && IronCan(in s) > 1e-6 && s.Iron < IronTarget(in s))
             {
                 // iron for its tools: bog ore in the bloomery, the bloom forged to a bar
                 double kg = feRate * left;
                 if (days > 1)
                 {
                     // (DEEP: days lived stop smelting the day the village has its iron: F8)
-                    double most = DMath.Max(0.0, Knowledge.Tech.IronPerHead * s.Population - s.Iron) + kg / days;
+                    double most = DMath.Max(0.0, IronTarget(in s) - s.Iron) + kg / days;
                     if (kg > most) { left *= most / kg; kg = most; }
                 }
                 double can = IronCan(in s);

@@ -83,7 +83,7 @@ namespace TC2.Core.History
             if (p.Sick != 0) sb.Append(p.SickPhase == Health.Disease.Latent ? ", carrying " : ", sick with ").Append(w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick)));
             if (p.PregDue != 0) sb.Append(", with child (due ").Append(SimTime.FormatShort(p.PregDue)).Append(")");
             sb.Append(".\n");
-            if (p.CargoQty > 0f) sb.Append("Carrying ").Append(F(p.CargoQty, "0.0")).Append(p.Cargo == Trade.Metal ? " kg of metal" : p.Cargo == Trade.Grain ? " days' grain" : p.Cargo == Trade.Fibre ? " kg of fibre" : " hides").Append(".\n");
+            if (p.CargoQty > 0f) sb.Append("Carrying ").Append(F(p.CargoQty, "0.0")).Append(p.Cargo == Trade.Metal ? " kg of copper" : p.Cargo == Trade.Iron ? " kg of iron" : p.Cargo == Trade.Grain ? " days' grain" : p.Cargo == Trade.Fibre ? " kg of fibre" : " hides").Append(".\n");
             return sb.ToString();
         }
 

@@ -172,6 +172,30 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void IronIsTradedToWhereItIsLackedAndItsSmithsMakeForTheNextBuyers()
+        {
+            var w = TestWorlds.Make(1402);
+            int a = w.Settlements.First(), b = w.Settlements.Next(a);
+            ref var sa = ref w.Settlements.Get(a); ref var sb = ref w.Settlements.Get(b);
+            // premise: a has iron beyond its toolkits and little grain; b has no iron and grain to spare
+            sa.Iron = Tech.IronPerHead * sa.Population * 1.5; sa.Granary = 5 * sa.Population; sa.Metal = 0;
+            sb.Iron = 0; sb.Granary = 400 * sb.Population; sb.Metal = Tech.MetalPerHead * sb.Population;
+            double gain = w.Trade.Plan(a, b, out byte give, out double qty, out byte take);
+            Console.WriteLine("deal: " + give + " x" + qty.ToString("0.0") + " for " + take + ", gain " + gain.ToString("0.0"));
+            Assert.Greater(gain, 0.0);
+            Assert.AreEqual(Trade.Iron, give, "iron goes where it is lacked");
+            double target0 = Forge.IronTarget(in w.Settlements.Get(a));
+            int trader = w.Residents(a)[0];
+            ref var p = ref w.People.Get(trader);
+            w.Trade.Load(ref p, a, b);
+            double carried = p.CargoQty;
+            w.Trade.Exchange(ref p, b);
+            Assert.AreEqual(carried, w.Settlements.Get(b).Iron, 1e-4, "into the buyers' store");
+            Assert.AreEqual(carried, w.Settlements.Get(a).IronSold, 1e-4, "the sellers know what they sold");
+            Assert.AreEqual(target0 + carried, Forge.IronTarget(in w.Settlements.Get(a)), 1e-4, "and their smiths make that much more");
+        }
+
+        [Test]
         public void IronArmsStrikeHarder()
         {
             var w = WithBog(out int sid);

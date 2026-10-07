@@ -19,8 +19,8 @@ namespace TC2.Core.Places
         World _w;
         public void Bind(World w) { _w = w; }
 
-        public const byte None = 0, Grain = 1, Metal = 2, Fibre = 3, Hides = 4;
-        public const int Goods = 5;
+        public const byte None = 0, Grain = 1, Metal = 2, Fibre = 3, Hides = 4, Iron = 5;   // (Metal is copper; iron since C5.3b)
+        public const int Goods = 6;
         /// <summary>A trader's load (kg) and each good's weight a unit (a FU of grain, a kg of metal or fibre, a hide).</summary>
         public const double LoadKg = 25.0;
         static double Kg(byte g) => g == Grain ? 0.75 : g == Hides ? 3.0 : 1.0;
@@ -55,6 +55,7 @@ namespace TC2.Core.Places
                 case Metal: return 6.0 * (1.0 - Knowledge.Tech.ToolShare(in s)) + 0.5;   // (copper, worth less where iron serves: C5.2b)
                 case Fibre: return 0.5 + 2.0 * DMath.Clamp01(1.0 - s.Fibre / (2.0 * pop));
                 case Hides: return 1.0 + 3.0 * DMath.Clamp01(1.0 - s.Hides / (1.0 * pop));
+                case Iron: return 8.0 * (1.0 - Knowledge.Tech.IronShare(in s)) + 0.5;   // (iron tools, by the share of its people they leave unequipped: C5.3b)
             }
             return 0;
         }
@@ -70,12 +71,17 @@ namespace TC2.Core.Places
                 case Metal: return DMath.Max(0.0, s.Metal - Knowledge.Tech.MetalPerHead * s.Population);
                 case Fibre: return DMath.Max(0.0, s.Fibre - 2.0 * s.Population);
                 case Hides: return DMath.Max(0.0, s.Hides - 1.0 * s.Population);
+                case Iron: return DMath.Max(0.0, s.Iron - Knowledge.Tech.IronPerHead * s.Population);
             }
             return 0;
         }
 
-        static double Stock(ref Settlement s, byte g) => g == Grain ? s.Granary : g == Metal ? s.Metal : g == Fibre ? s.Fibre : s.Hides;
-        static void Add(ref Settlement s, byte g, double q) { if (g == Grain) s.Granary += q; else if (g == Metal) s.Metal += q; else if (g == Fibre) s.Fibre += q; else if (g == Hides) s.Hides += q; }
+        static double Stock(ref Settlement s, byte g) => g == Grain ? s.Granary : g == Metal ? s.Metal : g == Fibre ? s.Fibre : g == Iron ? s.Iron : s.Hides;
+        static void Add(ref Settlement s, byte g, double q)
+        {
+            if (g == Grain) s.Granary += q; else if (g == Metal) s.Metal += q; else if (g == Fibre) s.Fibre += q; else if (g == Hides) s.Hides += q;
+            else if (g == Iron) { s.Iron += q; if (q < 0) s.IronSold = (float)((double)s.IronSold - q); }   // (iron parted with: its smiths make that much more for the next buyers, C5.3b)
+        }
 
         /// <summary>
         /// The best deal a village's trader could make with a neighbour now: the good to take out (and how much a load holds, as
@@ -183,6 +189,8 @@ namespace TC2.Core.Places
             w.Metrics.TradeValue += (vt - vf) * qg + bestGain;
             if (g == Metal) w.Metrics.MetalTraded += qg;
             if (take == Metal) w.Metrics.MetalTraded += qh;
+            if (g == Iron) w.Metrics.IronTraded += qg;
+            if (take == Iron) w.Metrics.IronTraded += qh;
         }
 
         /// <summary>Home again: the load into the village's store.</summary>
