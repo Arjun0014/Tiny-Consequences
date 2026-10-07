@@ -74,6 +74,7 @@ namespace TC2.EditorTools
             Make(dir + "/Rain.mat", "TC2/Rain", false);
             Make(dir + "/Underwater.mat", "TC2/Underwater", true);
             Make(dir + "/River.mat", "TC2/River", false);   // (D2-084)
+            Make(dir + "/Road.mat", "TC2/Road", false);     // (C4.1)
         }
 
         static void Make(string path, string shaderName, bool instancing)

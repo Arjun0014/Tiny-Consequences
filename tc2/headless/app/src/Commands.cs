@@ -270,6 +270,13 @@ namespace TC2.Headless
                             }
                             Console.WriteLine("markets: " + markets + "; the busiest " + (bsid != 0 ? w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(bsid)) + " (" + F(busiest, "0") + " traders a year, " + w.Settlements.Get(bsid).Population + " people" + (w.Settlements.Get(bsid).Market != 0 ? ", a market" : "") + ")" : "none"));
                         }
+                        {
+                            var ways = new List<TC2.Core.Agents.Way>();
+                            w.Ways.Collect(w.Now, ways);
+                            int tracks = 0, paths = 0, roads = 0;
+                            foreach (var wy in ways) { byte st = TC2.Core.Agents.Ways.StateOf(wy.Use); if (st >= 3) roads++; else if (st == 2) paths++; else tracks++; }
+                            Console.WriteLine("ways: " + w.Ways.Count + " walked; " + tracks + " tracks, " + paths + " paths, " + roads + " roads");
+                        }
                         Console.WriteLine("training: " + grounds + " grounds, " + F(w.Metrics.TrainHours, "0") + " h of practice; " + trainedPeople + " living people with some skill, " + veterans + " who have fought, the best " + F(best, "0.00"));
                         Console.WriteLine("force: " + smithies + " smithies; " + fearing + " villages fear their neighbours, " + armed + " hold arms (" + F(arms, "0") + "); arms forged " + F(w.Metrics.ArmsMade, "0") +
                                           ", hours at the smithies " + F(w.Metrics.SmithyHours, "0") + ", metal smelted " + F(w.Metrics.MetalKg, "0") + " kg");

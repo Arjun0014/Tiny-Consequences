@@ -141,10 +141,12 @@ namespace TC2.Core.Agents
             p.S0 = (float)sFrom; p.S1 = (float)sTo;
             double len = DMath.Abs(sTo - sFrom);
             p.T0 = now;
-            p.T1 = arriveAt > 0 ? Math.Max(now + 1, arriveAt) : now + Math.Max(1L, DMath.ToLong(DMath.RoundHalfUp(len / Speed(p, now))));
+            // (a worn way is quicker underfoot: C4.1)
+            p.T1 = arriveAt > 0 ? Math.Max(now + 1, arriveAt) : now + Math.Max(1L, DMath.ToLong(DMath.RoundHalfUp(len / (Speed(p, now) * _w.Ways.Speed(now, r.A, r.B)))));
             Schedule(in p);
             RegisterLeg(ref p, r);
             _w.Metrics.Journeys++;
+            _w.Ways.Walk(_w, r.A, r.B, 1.0);   // (and its walking wears it: C4.1)
         }
 
         /// <summary>A traveller standing still on the road (waiting), as a travel step with S0 = S1.</summary>

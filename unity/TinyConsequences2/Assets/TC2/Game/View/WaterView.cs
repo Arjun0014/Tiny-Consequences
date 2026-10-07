@@ -15,8 +15,11 @@ namespace TC2.Game
     {
         public SimHost Host;
         const int Pieces = 8;
-        Mesh _rivers, _lakes;
-        Material _riverMat, _lakeMat;
+        Mesh _rivers, _lakes, _roads;
+        Material _riverMat, _lakeMat, _roadMat;
+        float _roadTimer;
+        readonly List<TC2.Core.Agents.Way> _ways = new List<TC2.Core.Agents.Way>();
+        readonly List<Vec3d> _pts = new List<Vec3d>(), _tmp = new List<Vec3d>();
         int _builtWorld = -1, _builtDrain = -1;
         float _timer;
         readonly List<Vector3> _v = new List<Vector3>();
@@ -36,6 +39,11 @@ namespace TC2.Game
             var r = new GameObject("Rivers"); r.transform.SetParent(transform, false);
             r.AddComponent<MeshFilter>().sharedMesh = _rivers;
             var rr = r.AddComponent<MeshRenderer>(); rr.sharedMaterial = _riverMat; rr.shadowCastingMode = ShadowCastingMode.Off;
+            _roadMat = Materials.Load("Road");   // (C4.1: the ways people wore between villages)
+            _roads = new Mesh { name = "tc2-roads", indexFormat = IndexFormat.UInt32 };
+            var rd = new GameObject("Roads"); rd.transform.SetParent(transform, false);
+            rd.AddComponent<MeshFilter>().sharedMesh = _roads;
+            var rdr = rd.AddComponent<MeshRenderer>(); rdr.sharedMaterial = _roadMat; rdr.shadowCastingMode = ShadowCastingMode.Off;
             var l = new GameObject("Lakes"); l.transform.SetParent(transform, false);
             l.AddComponent<MeshFilter>().sharedMesh = _lakes;
             var lr = l.AddComponent<MeshRenderer>(); lr.sharedMaterial = _lakeMat; lr.shadowCastingMode = ShadowCastingMode.Off;
@@ -45,6 +53,8 @@ namespace TC2.Game
         {
             var w = Host.World;
             if (w == null || w.Drainage == null) return;
+            _roadTimer -= Time.unscaledDeltaTime;
+            if (_roadTimer <= 0f || _builtWorld != Host.WorldVersion) { _roadTimer = 6f; BuildRoads(w); }
             _timer -= Time.unscaledDeltaTime;
             if (_builtWorld == Host.WorldVersion && _builtDrain == w.Drainage.Version && _timer > 0) return;
             _timer = 5f;
@@ -103,6 +113,58 @@ namespace TC2.Game
             var bd = new Bounds(Vector3.zero, Vector3.zero);
             if (_v.Count > 0) { bd = new Bounds(_v[0], Vector3.zero); for (int k = 1; k < _v.Count; k++) bd.Encapsulate(_v[k]); bd.Expand(400f); }
             _rivers.bounds = bd;
+        }
+
+        /// <summary>
+        /// The ways between villages as their people have worn them (C4.1, D2-097): a ribbon along each worn way's route - a faint track 1 m
+        /// wide, a path 1.8 m, a beaten road 3 m near the camera, and the roads kept a pixel or two wide far off so the network reads from
+        /// the region view. A way nobody walks is not drawn.
+        /// </summary>
+        void BuildRoads(TC2.Core.Simulation.World w)
+        {
+            var P = w.Planet;
+            w.Ways.Collect(w.Now, _ways);
+            _v.Clear(); _n.Clear(); _u0.Clear(); _u1.Clear(); _t.Clear();
+            for (int i = 0; i < _ways.Count; i++)
+            {
+                var way = _ways[i];
+                if (!w.Settlements.Exists(way.A) || !w.Settlements.Exists(way.B)) continue;
+                var r = w.Routes.Get(w, way.A, way.B);
+                if (r == null || r.Pts == null || r.Pts.Length < 2) continue;
+                byte state = TC2.Core.Agents.Ways.StateOf(way.Use);
+                float worn = state >= 3 ? 1f : state == 2 ? 0.55f : 0.15f;
+                float half = state >= 3 ? 1.5f : state == 2 ? 0.9f : 0.5f;
+                _pts.Clear(); _pts.AddRange(r.Pts);
+                for (int it = 0; it < 2; it++)   // (Chaikin twice: a way that bends)
+                {
+                    _tmp.Clear(); _tmp.Add(_pts[0]);
+                    for (int k = 0; k + 1 < _pts.Count; k++) { _tmp.Add((_pts[k] * 0.75 + _pts[k + 1] * 0.25).Normalized); _tmp.Add((_pts[k] * 0.25 + _pts[k + 1] * 0.75).Normalized); }
+                    _tmp.Add(_pts[_pts.Count - 1]);
+                    _pts.Clear(); _pts.AddRange(_tmp);
+                }
+                var u1 = new Vector4(half, worn, 0f, 0f);
+                Vector3 sidePrev = Vector3.zero;
+                for (int k = 0; k + 1 < _pts.Count; k++)
+                {
+                    if (!P.IsLand(P.Grid.CellOf(_pts[k])) && !P.IsLand(P.Grid.CellOf(_pts[k + 1]))) { sidePrev = Vector3.zero; continue; }   // (no road over the sea)
+                    Vector3 a = PlanetGeo.Surface(P, _pts[k], 0.4f), b = PlanetGeo.Surface(P, _pts[k + 1], 0.4f);
+                    Vector3 up = (a + b).normalized;
+                    Vector3 side = Vector3.Cross(up, b - a).normalized;
+                    if (sidePrev == Vector3.zero) sidePrev = side;
+                    int j = _v.Count;
+                    _v.Add(a); _v.Add(a); _v.Add(b); _v.Add(b);
+                    _u0.Add(new Vector4(sidePrev.x, sidePrev.y, sidePrev.z, -1f)); _u0.Add(new Vector4(sidePrev.x, sidePrev.y, sidePrev.z, 1f));
+                    _u0.Add(new Vector4(side.x, side.y, side.z, 1f)); _u0.Add(new Vector4(side.x, side.y, side.z, -1f));
+                    for (int q = 0; q < 4; q++) { _n.Add(up); _u1.Add(u1); }
+                    _t.Add(j); _t.Add(j + 2); _t.Add(j + 1); _t.Add(j); _t.Add(j + 3); _t.Add(j + 2);
+                    sidePrev = side;
+                }
+            }
+            _roads.Clear();
+            _roads.SetVertices(_v); _roads.SetNormals(_n); _roads.SetUVs(0, _u0); _roads.SetUVs(1, _u1); _roads.SetTriangles(_t, 0);
+            var bd = new Bounds(Vector3.zero, Vector3.zero);
+            if (_v.Count > 0) { bd = new Bounds(_v[0], Vector3.zero); for (int k = 1; k < _v.Count; k++) bd.Encapsulate(_v[k]); bd.Expand(200f); }
+            _roads.bounds = bd;
         }
 
         void BuildLakes(TC2.Core.Simulation.World w)

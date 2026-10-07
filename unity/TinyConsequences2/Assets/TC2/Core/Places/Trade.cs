@@ -232,6 +232,7 @@ namespace TC2.Core.Places
                 if (!p.Alive || p.Sick != 0 || age < 18 || age >= 56 || p.Health <= 0.7) continue;
                 Load(ref p, sid, to);
                 Exchange(ref p, to);
+                w.Ways.Walk(w, sid, to, 2.0);   // (the trader walked there and back: C4.1)
                 w.Disease.Arrive(ref p, to, SimTime.Hours(VisitHoursCoarse));   // (what they may catch there and carry home)
                 w.DeedBook.Meet(sid, to);                                        // (and the news: D2-072)
                 Unload(ref p, sid);

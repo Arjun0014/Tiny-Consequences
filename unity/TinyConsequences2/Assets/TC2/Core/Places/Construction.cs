@@ -81,7 +81,14 @@ namespace TC2.Core.Places
             if (work == Structure && s.Project != 0 && w.Buildings.Exists(s.Project)) { ref var b = ref w.Buildings.Get(s.Project); x = b.X; y = b.Y; return; }
             if (work == Palisade || work == Mend)
             {
+                // a stretch on dry ground (C4.1: builders were seen standing in the sea where the ring crosses the shore)
                 double a = 2.0 * DMath.PI * u;
+                for (int i = 0; i < 16; i++)
+                {
+                    double v = u + i * 0.6180339887498949;
+                    double ai = 2.0 * DMath.PI * (v - DMath.Floor(v));
+                    if (Structures.RingDry(w, in s, s.WallR, ai)) { a = ai; break; }
+                }
                 x = s.SquareX + (double)s.WallR * DMath.Cos(a); y = s.SquareY + (double)s.WallR * DMath.Sin(a);
                 return;
             }

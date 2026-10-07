@@ -305,6 +305,15 @@ namespace TC2.Core.Health
             }
             if (total <= 0) return;
             double visits = adults * VisitsPerAdultDay * days;   // (DEEP: the step's visits)
+            // every visit is a walk there and back: it wears the way to each neighbour, by how near it is (C4.1)
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+            {
+                if (o == sid) continue;
+                ref var t = ref w.Settlements.Get(o);
+                if (!t.Inhabited) continue;
+                double d = Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius);
+                if (d <= 6000) w.Ways.Walk(w, sid, o, 2.0 * visits * (1.0 / (300.0 + d)) / total);
+            }
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
             {
                 if (o == sid) continue;

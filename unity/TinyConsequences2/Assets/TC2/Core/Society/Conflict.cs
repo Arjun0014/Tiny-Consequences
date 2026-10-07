@@ -743,6 +743,7 @@ namespace TC2.Core.Society
             w.Bands.Add(id, new Band { Id = id, Origin = origin, Target = target, Leader = raiders[0], Size = (byte)raiders.Count, Motive = 1, Formed = w.Now, Arrive = w.Now });
             for (int i = 0; i < raiders.Count; i++) w.People.Get(raiders[i]).Band = id;
             _forceSeen = seen ? 1 : 0;
+            w.Ways.Walk(w, origin, target, 2.0 * raiders.Count);   // (the band walked there and back: C4.1)
             var list = new System.Collections.Generic.List<int>(raiders);
             Fall(id, list);
             _forceSeen = -1;

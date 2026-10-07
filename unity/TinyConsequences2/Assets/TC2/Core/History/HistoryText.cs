@@ -89,6 +89,9 @@ namespace TC2.Core.History
                     if (e.ArgA == TC2.Core.Places.Structures.Well) return "The people of " + subj + " dug a well" + (e.Other.IsNone ? "." : ", " + other + " the first at the digging.");
                     if (e.ArgA == TC2.Core.Places.Structures.Granary && e.ArgB > 1) return "The people of " + subj + " built another granary (" + e.ArgB + " now)" + (e.Other.IsNone ? "." : ", " + other + " the first at the work.");
                     return "The people of " + subj + " built a " + TC2.Core.Places.Structures.Name((byte)e.ArgA) + (e.Other.IsNone ? "." : ", " + other + " the first at the work.");
+                case HistoryKind.WayWorn:
+                    return e.ArgA >= 3 ? "The way between " + subj + " and " + obj + " is beaten into a road: their people walk it hundreds of times a year."
+                                       : "A path is worn between " + subj + " and " + obj + ": their people walk it often.";
                 case HistoryKind.ArmsMade:
                     return subj + " began to forge arms at the smithy of " + obj + (e.ArgA == 1 ? " from the ore they smelt" : ", reforging its tools") + ": " + obj + " fears its neighbours.";
                 case HistoryKind.StoneFound:

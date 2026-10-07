@@ -38,6 +38,11 @@ others have worn, so trails merge into minimal-detour systems).
   audit flagged it). Unused roads green over and the woods return.
 - Later, a per-cell wear field so new routes follow old trails (a field-budget decision).
 
+**Implemented (C4.1, D2-097)**: `Core/Agents/Ways.cs` - the wear of the way between two villages (walks, halving each year unwalked; lived legs,
+COARSE visits, trades and raids); track 4, path 40, road 250; a path 1.08x and a road 1.15x underfoot; `WayWorn` history; the view draws ways by
+use only (ground roads by wear; ribbons kept visible far off for the beaten roads). Seed 42 at year 300: 74 paths, 17 roads. Not yet: road works
+(clearing a corridor, ditching, upkeep), bridges and fords, carts, per-cell wear so new routes follow old trails.
+
 ## 4. River crossings (C4)
 
 Fords where a stream is small (the drainage's discharge class); ferries (a boat and a ferryman) on larger rivers; a bridge when a

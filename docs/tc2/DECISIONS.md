@@ -2370,3 +2370,27 @@ cleared farmed land, its old shore lots drowned ruins, its green kept by granari
 their history while they stand (local events of a building are no longer dropped after 200 years). Seen, left for later: people walking a
 route across cells the sea has since drowned (routes after coast changes); rings that do not grow with the town (C7); works hard to tell
 apart from homes at the village view (look slice).
+
+## D2-097 — 2026-10-07 — Roads by use: the ground between villages worn by their people's walking (C4.1)
+
+**Context.** The D2-084 audit and D2-089: the view drew a road between every pair of villages within 4.5 km whatever their use (theatre),
+and only within ~48 m a vertex (no roads at the region view). `24` §3: roads emerge from use - repeated travel makes paths, heavy use
+improves them, abandonment lets nature take them back.
+**Decision.** (1) **`Core/Agents/Ways.cs`** (`World.Ways`, saved and hashed in key order): every pair of villages keeps the **wear** of the way
+between them - walks counted, halving each year it is not renewed, read with its decay at any moment (no daily pass; pruned yearly when
+worn to nothing). (2) **What wears it**: every lived travel leg between two villages (`AgentSystem.BeginTravel`); COARSE visits (`Disease.Visits`:
+there and back, spread over the neighbours by nearness as the visits are), COARSE trading trips (2 a trip), raids (2 for each of the band).
+(3) **States**: a **track** from 4, a **path** from 40 (walked some 28 times a year), a **road** from 250 (beaten broad by some 170 walks a year);
+history `WayWorn` (Local) the first time a way becomes a path and a road. (4) **Quicker underfoot**: a lived walker on a path goes 1.08x, on a
+road 1.15x. (5) **The view draws ways by use only**: the ground's roads (TerrainLod) by how worn they are - narrow and faint to broad and dark
+- and a ribbon along each worn way (`WaterView.BuildRoads`, `Road.shader`: the river's ribbon with packed earth; the beaten roads kept ~2 px
+wide far off so the network reads from the region and orbit views); never over the sea; a way nobody walks fades and is gone. (6) Palisade
+builders and menders stand on dry stretches of the ring (they stood in the sea where it crossed the shore). (7) Sim version 39; `Road.mat`
+in ProjectSetup (run `unity.mjs configure` before a Web build). Cleared and kept roads, bridges and carts are C4.2.
+**Evidence.** 210 tests (`WaysTests` 3: walking wears a way, it halves each year unwalked and is pruned, a path is history; a path 1.08x and a
+road 1.15x; villages wear their ways lived (45 walks in 24 days) and COARSE (49)). 300 years DEEP (`tc2/out/civ/s{42,7}_c41a`): COARSE outcomes
+unchanged (7,241 / 2,410 people - the ways only record and speed lived walkers); seed 42 at year 300: 98 ways walked, 74 paths and 17 roads;
+seed 7: 37 paths, 2 roads. Shots `tc2/out/shots/ways1`, `ways2`: roads leave Souhope west across its river and south through the fields at the
+village view; at the region view thin earth lines link the villages; from orbit a faint network.
+**Open.** Nearly every neighbour pair is a path by year 300 (the COARSE visit rate, 0.03 a grown person-day, is twice the lived one: D2-091's
+pooled checks); roads are the arteries between big near neighbours. Routes are recomputed as cells; the ribbon follows the route's cells.

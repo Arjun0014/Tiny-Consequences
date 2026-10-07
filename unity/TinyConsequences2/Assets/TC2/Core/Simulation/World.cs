@@ -134,7 +134,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 38; // 38: markets, rings on dry ground (C1.6, D2-095), 37: training grounds and fighting skill (C1.5, D2-094), 36: the smithy and arms (C1.4, D2-093), 35: stone and the quarry (C1.3, D2-092), 34: timber from the woods (C1.2, D2-091), 33: structures by kind, works by need, granary capacity (C1.1, D2-090), 32: the store a DEEP step leads (F8), 31: DEEP steps (F8), 30: the annals (D2-077), 29: tribute and lordship (D2-075), 28: palisades (D2-074), 27: raids (D2-073), 26: amends, news and taking back (D2-072), 25: the watch, blows and injury (D2-071), 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
+        public const int FormatSimVersion = 39; // 39: ways worn by use (C4.1, D2-097), 38: markets, rings on dry ground (C1.6, D2-095), 37: training grounds and fighting skill (C1.5, D2-094), 36: the smithy and arms (C1.4, D2-093), 35: stone and the quarry (C1.3, D2-092), 34: timber from the woods (C1.2, D2-091), 33: structures by kind, works by need, granary capacity (C1.1, D2-090), 32: the store a DEEP step leads (F8), 31: DEEP steps (F8), 30: the annals (D2-077), 29: tribute and lordship (D2-075), 28: palisades (D2-074), 27: raids (D2-073), 26: amends, news and taking back (D2-072), 25: the watch, blows and injury (D2-071), 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
@@ -175,6 +175,7 @@ namespace TC2.Core.Simulation
         public readonly TC2.Core.Society.DeedBook DeedBook = new TC2.Core.Society.DeedBook();   // what each village knows of them
         public readonly TC2.Core.Society.Conflict Conflict = new TC2.Core.Society.Conflict();   // taking by need (D2-069)
         public readonly PagedStore<TC2.Core.Society.Band> Bands = new PagedStore<TC2.Core.Society.Band>();   // bands raised (D2-073)
+        public readonly Agents.Ways Ways = new Agents.Ways();   // the ground between villages as their people walk it (C4.1)
         public readonly TC2.Core.History.Annals Annals = new TC2.Core.History.Annals();   // each year in numbers, for historians (D2-077)
         public readonly List<Command> CommandLog = new List<Command>();
         public readonly Metrics Metrics = new Metrics();
@@ -1192,6 +1193,7 @@ namespace TC2.Core.Simulation
             for (int i = 0; i < _prune.Count; i++) People.Remove(_prune[i]);
             Stock.Prune();   // dead animals leave the table
             Homes.Prune(this);   // ruins gone into the land leave it too (D2-059)
+            Ways.Prune(Now);     // and ways nobody walks any more (C4.1)
         }
 
 
@@ -1283,6 +1285,7 @@ namespace TC2.Core.Simulation
             w.Int(Deeds.Count); for (int id = Deeds.First(); id != 0; id = Deeds.Next(id)) Deeds.Get(id).Write(w);
             w.Int(Bands.Count); for (int id = Bands.First(); id != 0; id = Bands.Next(id)) Bands.Get(id).Write(w);
             DeedBook.Write(w);
+            Ways.Write(w);
             History.Write(w);
             w.Int(CommandLog.Count); for (int i = 0; i < CommandLog.Count; i++) CommandLog[i].Write(w);
             Metrics.Write(w);
@@ -1310,6 +1313,7 @@ namespace TC2.Core.Simulation
             int nde = r.Int(); for (int i = 0; i < nde; i++) { var de = TC2.Core.Society.Deed.Read(r); w.Deeds.Add(de.Id, de); }
             int nba = r.Int(); for (int i = 0; i < nba; i++) { var ba = TC2.Core.Society.Band.Read(r); w.Bands.Add(ba.Id, ba); }
             w.DeedBook.Read(r);
+            w.Ways.Read(r);
             w.Settlements.SetMaxId(w.Ids.Peek(EntityKind.Settlement) - 1);
             w.Households.SetMaxId(w.Ids.Peek(EntityKind.Household) - 1);
             w.People.SetMaxId(w.Ids.Peek(EntityKind.Person) - 1);
@@ -1350,6 +1354,7 @@ namespace TC2.Core.Simulation
             for (int id = Deeds.First(); id != 0; id = Deeds.Next(id)) Deeds.Get(id).Hash(ref h);
             for (int id = Bands.First(); id != 0; id = Bands.Next(id)) Bands.Get(id).Hash(ref h);
             DeedBook.Hash(ref h);
+            Ways.Hash(ref h);
             History.Hash(ref h);
             h.Add(CommandLog.Count); for (int i = 0; i < CommandLog.Count; i++) CommandLog[i].Hash(ref h);
             Annals.Hash(ref h);

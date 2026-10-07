@@ -794,55 +794,60 @@ namespace TC2.Game
 
         static readonly Color Earth = new Color(0.56f, 0.47f, 0.35f), Trodden = new Color(0.52f, 0.54f, 0.34f), Road = new Color(0.58f, 0.50f, 0.38f);
         // roads: the villages' own routes, smoothed, indexed by the cells they pass (rebuilt now and then)
-        readonly System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<Vector3>> _roads = new System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<Vector3>>();
+        readonly System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<Vector4>> _roads = new System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<Vector4>>();   // (segment ends; w: how worn, C4.1)
+        readonly System.Collections.Generic.List<TC2.Core.Agents.Way> _ways = new System.Collections.Generic.List<TC2.Core.Agents.Way>();
         float _roadTimer;
         int _roadWorld = -1;
 
+        /// <summary>
+        /// The ways between villages as their people have worn them (C4.1, D2-097): a faint track, a worn path, a broad beaten road - each
+        /// drawn along its route by how worn it is now; a way nobody walks is not drawn (before, every pair of villages within 4.5 km had a road).
+        /// </summary>
         void BuildRoads(TC2.Core.Simulation.World w)
         {
             var P = w.Planet;
             _roads.Clear();
             var pts = new System.Collections.Generic.List<Vec3d>();
             var tmp = new System.Collections.Generic.List<Vec3d>();
-            for (int a = w.Settlements.First(); a != 0; a = w.Settlements.Next(a))
+            w.Ways.Collect(w.Now, _ways);
+            for (int i = 0; i < _ways.Count; i++)
             {
-                ref var sa = ref w.Settlements.Get(a);
-                if (!sa.Inhabited) continue;
-                for (int b = w.Settlements.Next(a); b != 0; b = w.Settlements.Next(b))
+                var way = _ways[i];
+                if (!w.Settlements.Exists(way.A) || !w.Settlements.Exists(way.B)) continue;
+                var r = w.Routes.Get(w, way.A, way.B);
+                if (r == null || r.Pts == null || r.Pts.Length < 2) continue;
+                byte state = TC2.Core.Agents.Ways.StateOf(way.Use);
+                // how it is drawn: a track faint and narrow, a path, a road broad and dark (and a little more with every walk between)
+                float worn = state >= 3 ? 1f : state == 2 ? 0.62f + 0.3f * Mathf.Clamp01((float)((way.Use - TC2.Core.Agents.Ways.Path) / (TC2.Core.Agents.Ways.Road - TC2.Core.Agents.Ways.Path)))
+                                                       : 0.25f + 0.3f * Mathf.Clamp01((float)((way.Use - TC2.Core.Agents.Ways.Track) / (TC2.Core.Agents.Ways.Path - TC2.Core.Agents.Ways.Track)));
+                // Chaikin twice: a track that bends, not a chain of straight cell-to-cell legs
+                pts.Clear(); pts.AddRange(r.Pts);
+                for (int it = 0; it < 2; it++)
                 {
-                    ref var sb = ref w.Settlements.Get(b);
-                    if (!sb.Inhabited) continue;
-                    if (Vec3d.ArcDistance(sa.Anchor, sb.Anchor, P.Radius) > 4500) continue;
-                    var r = w.Routes.Get(w, a, b);
-                    if (r == null || r.Pts == null || r.Pts.Length < 2) continue;
-                    // Chaikin twice: a track that bends, not a chain of straight cell-to-cell legs
-                    pts.Clear(); pts.AddRange(r.Pts);
-                    for (int it = 0; it < 2; it++)
-                    {
-                        tmp.Clear(); tmp.Add(pts[0]);
-                        for (int k = 0; k + 1 < pts.Count; k++)
-                        {
-                            tmp.Add((pts[k] * 0.75 + pts[k + 1] * 0.25).Normalized);
-                            tmp.Add((pts[k] * 0.25 + pts[k + 1] * 0.75).Normalized);
-                        }
-                        tmp.Add(pts[pts.Count - 1]);
-                        pts.Clear(); pts.AddRange(tmp);
-                    }
+                    tmp.Clear(); tmp.Add(pts[0]);
                     for (int k = 0; k + 1 < pts.Count; k++)
                     {
-                        Vec3d p0 = pts[k], p1 = pts[k + 1];
-                        int c0 = P.Grid.CellOf(p0);
-                        AddRoad(P, c0, p0, p1);
-                        for (int q = 0; q < 8; q++) AddRoad(P, P.Grid.Nbr8[c0 * 8 + q], p0, p1);
+                        tmp.Add((pts[k] * 0.75 + pts[k + 1] * 0.25).Normalized);
+                        tmp.Add((pts[k] * 0.25 + pts[k + 1] * 0.75).Normalized);
                     }
+                    tmp.Add(pts[pts.Count - 1]);
+                    pts.Clear(); pts.AddRange(tmp);
+                }
+                for (int k = 0; k + 1 < pts.Count; k++)
+                {
+                    Vec3d p0 = pts[k], p1 = pts[k + 1];
+                    int c0 = P.Grid.CellOf(p0);
+                    AddRoad(P, c0, p0, p1, worn);
+                    for (int q = 0; q < 8; q++) AddRoad(P, P.Grid.Nbr8[c0 * 8 + q], p0, p1, worn);
                 }
             }
         }
 
-        void AddRoad(PlanetState P, int cell, Vec3d a, Vec3d b)
+        void AddRoad(PlanetState P, int cell, Vec3d a, Vec3d b, float worn)
         {
-            if (!_roads.TryGetValue(cell, out var list)) { list = new System.Collections.Generic.List<Vector3>(); _roads[cell] = list; }
-            list.Add(PlanetGeo.ToVector(a)); list.Add(PlanetGeo.ToVector(b));
+            if (!_roads.TryGetValue(cell, out var list)) { list = new System.Collections.Generic.List<Vector4>(); _roads[cell] = list; }
+            Vector3 va = PlanetGeo.ToVector(a), vb = PlanetGeo.ToVector(b);
+            list.Add(new Vector4(va.x, va.y, va.z, worn)); list.Add(new Vector4(vb.x, vb.y, vb.z, worn));
         }
 
         /// <summary>How much of a point is road (metres to the nearest track, on the sphere's chord).</summary>
@@ -850,19 +855,20 @@ namespace TC2.Game
         {
             if (!_roads.TryGetValue(c, out var list)) return 0f;
             Vector3 p = PlanetGeo.ToVector(d);
-            float best = 1e9f;
+            float most = 0f;
             for (int k = 0; k + 1 < list.Count; k += 2)
             {
-                Vector3 a = list[k], ab = list[k + 1] - a;
+                Vector3 a = list[k], ab = (Vector3)list[k + 1] - a;
                 float t = Mathf.Clamp01(Vector3.Dot(p - a, ab) / Mathf.Max(1e-12f, ab.sqrMagnitude));
-                float dd = (a + ab * t - p).sqrMagnitude;
-                if (dd < best) best = dd;
+                float m = (a + ab * t - p).magnitude * (float)P.Radius;
+                // ~2-6 m of packed earth by how worn it is (C4.1); where the vertices stand further apart than that, the road is drawn
+                // wider and fainter (the same ink), so the grid samples a soft path instead of dots
+                float worn = list[k].w;
+                float half = Mathf.Max(1.2f + 2.0f * worn, 0.8f * quad);
+                float v = (1f - Edge(half * 0.55f, half * 1.4f, m)) * Mathf.Min(1f, (1.6f + 2.0f * worn) / half) * (0.35f + 0.65f * worn);
+                if (v > most) most = v;
             }
-            float m = Mathf.Sqrt(best) * (float)P.Radius;
-            // ~4 m of packed earth; where the vertices stand further apart than that, the road is drawn wider and fainter
-            // (the same ink), so the grid samples a soft path instead of dots
-            float half = Mathf.Max(2.1f, 0.8f * quad);
-            return (1f - Edge(half * 0.55f, half * 1.4f, m)) * Mathf.Min(1f, 2.6f / half);
+            return most;
         }
         readonly System.Collections.Generic.List<int> _near = new System.Collections.Generic.List<int>();
         /// <summary>Works out on the land near this patch - quarries (C1.3): cut rock where they stand, no fields or woods over them.</summary>

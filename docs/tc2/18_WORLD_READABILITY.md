@@ -128,6 +128,12 @@ full art pass - it must not ship as debug UI.
 
 ## 9. The civilisation made visible (D2-089)
 
+Done so far (D2-090-D2-097): works drawn from the structure table (granaries on staddles, barns, the smithy with smoke while a smith works,
+the quarry face on cut rock, the training ground, market stalls, stone piles, houses on posts or footings); woods thinned where felled and
+cleared under fields; roads drawn by use (no road nobody walks; beaten roads visible from the region view). Open: works hard to tell from homes
+at the village view; rings that do not grow with the town; the training ground's posts too thin.
+
+
 The C-phases (`25`) make this doc's requirement larger, not smaller: lumber cut and woods thinned, quarry faces and stone piles, smithy
 smoke and the smith at work, training grounds in use, roads worn by use (replacing roads drawn by distance), markets, walls and gates,
 docks and boats, forces on the move, ruins, battle damage, recovering woods - each drawn from state when its slice lands, judged at the
