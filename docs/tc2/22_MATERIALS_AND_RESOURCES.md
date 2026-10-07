@@ -73,4 +73,8 @@ their users. Stores rot by kind (grain 0.3 % a day kept well, D2-042; pottery sl
   farmed share (fixed point with arability), released fields regrow, `WoodsReceded` history. 300 years on seed 42: 41,600 t felled,
   woodlots ~770 m out at year 300; cleared fields fully arable (arable land +39 %, people +41 %). Not yet: clearing as labour and as timber,
   sawn timber vs firewood, charcoal.
-- Stone and the quarry (C1.3): next.
+- **Stone and the quarry (C1.3, D2-092)**: `Core/Places/Stone.cs` - outcrops where land breaks 80 m from a land neighbour, above the
+  shore; known only where its people went (grounds, woodlot, scouts), within 1 km; footings wanted for the next houses; a quarry at the rock;
+  ~3 loads an hour cut, every load carried home; houses on footings last twice as long once left; villages without rock at hand build on
+  posts. Seed 42, 300 years: 13 of 19 villages quarry, 2,079 of 3,278 houses on footings. Not yet: masonry, stone walls, dressed stone,
+  sleds and carts for the carry (C4), upkeep of lived-in homes (C13).

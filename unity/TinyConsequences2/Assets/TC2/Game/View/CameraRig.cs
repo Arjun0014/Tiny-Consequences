@@ -121,6 +121,25 @@ namespace TC2.Game
                 LookAt(Vec3d.FromLatLon(lat, lon), double.Parse(parts[2], ci));
                 return;
             }
+            if (view.StartsWith("work") && sid != 0)
+            {
+                // a structure of the framed village (C1 tools): "work13" its quarry, "work11" a granary - from 90 m ("work13far": 250 m)
+                string num = view.Substring(4).Replace("far", "");
+                if (int.TryParse(num, out int kind))
+                {
+                    var bl = w.BuildingsOf(sid);
+                    ref var vs = ref w.Settlements.Get(sid);
+                    for (int i = 0; i < bl.Count; i++)
+                    {
+                        ref var b = ref w.Buildings.Get(bl[i]);
+                        if (b.Kind != kind) continue;
+                        d = vs.LocalToSphere(b.X, b.Y, w.Planet.Radius);
+                        break;
+                    }
+                }
+                LookAt(d, view.EndsWith("far") ? 250 : 90);
+                return;
+            }
             if (view.StartsWith("herd") && sid != 0)
             {
                 // the first village's herd on the day's ground, with its herders (D2-050)

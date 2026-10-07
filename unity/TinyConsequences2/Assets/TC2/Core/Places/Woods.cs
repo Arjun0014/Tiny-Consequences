@@ -74,6 +74,7 @@ namespace TC2.Core.Places
             s2.WoodLot = best + 1;
             if (best < 0) { Receded(w, sid, 4, 0); return -1; }
             s2.WoodDist = (float)bd;
+            Stone.Saw(w, sid, 0, best);   // (the woodcutters see what rock shows there: C1.3)
             s2.SphereToLocal(P.Grid.Center[best], P.Radius, out double x, out double y);
             s2.WoodX = (float)x; s2.WoodY = (float)y;
             byte far = bd >= 1500 ? (byte)3 : bd >= 1000 ? (byte)2 : bd >= 600 ? (byte)1 : (byte)0;

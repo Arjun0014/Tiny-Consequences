@@ -51,21 +51,23 @@ namespace TC2.Core.Places
         /// <summary>Soundness below which nobody moves in (the roof gone: re-roofing a ruin is not yet a work).</summary>
         public const double Habitable = 0.35;
 
-        static double FallYears(byte kind) => Structures.Of(kind).FallYears;   // (homes: 20 and 60 years; works by their kind, C1.1)
-        static double RuinYears(byte kind) => Structures.Of(kind).RuinYears;
+        /// <summary>Years an unkept building stands: by its kind (homes 20 and 60, works by the table: C1.1), twice that on stone footings (C1.3).</summary>
+        public static double FallYears(in Building b) => Structures.Of(b.Kind).FallYears * (b.Mat >= 1 ? 2.0 : 1.0);
+        /// <summary>Years its ruin lasts (stone footings outlast the timber by half again).</summary>
+        public static double RuinYears(in Building b) => Structures.Of(b.Kind).RuinYears * (b.Mat >= 1 ? 1.5 : 1.0);
 
         /// <summary>How sound a building is at time t: 1 while lived in, down to 0 over its fall years once left empty.</summary>
-        public static double Condition(in Building b, long t) => b.Left == 0 ? 1.0 : DMath.Clamp01(1.0 - (t - b.Left) / (FallYears(b.Kind) * SimTime.Year));
+        public static double Condition(in Building b, long t) => b.Left == 0 ? 1.0 : DMath.Clamp01(1.0 - (t - b.Left) / (FallYears(in b) * SimTime.Year));
 
         /// <summary>How much of a fallen building's ruin is left at time t (1 as it falls in, 0 gone into the land; 1 while it stands).</summary>
         public static double RuinLeft(in Building b, long t)
         {
             if (b.Left == 0) return 1.0;
-            double fallen = (t - b.Left) / (double)SimTime.Year - FallYears(b.Kind);
-            return fallen <= 0 ? 1.0 : DMath.Clamp01(1.0 - fallen / RuinYears(b.Kind));
+            double fallen = (t - b.Left) / (double)SimTime.Year - FallYears(in b);
+            return fallen <= 0 ? 1.0 : DMath.Clamp01(1.0 - fallen / RuinYears(in b));
         }
 
-        public static bool Fallen(in Building b, long t) => b.Left != 0 && (t - b.Left) >= FallYears(b.Kind) * SimTime.Year;
+        public static bool Fallen(in Building b, long t) => b.Left != 0 && (t - b.Left) >= FallYears(in b) * SimTime.Year;
 
         /// <summary>A household raised its shelter a stage (Construction, worldgen): its first building on its lot, or its hut made a house.</summary>
         public static void Raised(World w, int hid)
@@ -169,7 +171,7 @@ namespace TC2.Core.Places
                     if (Fallen(in b, w.Now)) continue;   // (a ruin already)
                     if (Shore.Dry(P, s.LocalToSphere(b.X, b.Y, P.Radius))) continue;
                     int hid = b.Household;
-                    b.Household = 0; b.Left = w.Now - DMath.ToLong(FallYears(b.Kind) * SimTime.Year) - 1;   // (drowned: fallen at once)
+                    b.Household = 0; b.Left = w.Now - DMath.ToLong(FallYears(in b) * SimTime.Year) - 1;   // (drowned: fallen at once)
                     if (!Structures.IsHome(b.Kind)) { Structures.Lost(w, bl[i]); continue; }   // (a work the sea took: its use is gone, C1.1)
                     lost++;
                     if (hid == 0 || !w.Households.Exists(hid)) continue;

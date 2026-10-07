@@ -23,6 +23,8 @@ namespace TC2.Game
         Instancer _people, _granaries, _wells, _hay, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls, _woodpiles;
         /// <summary>The village works by structure kind (C1.1; the civilisation kit, D2-089); null where a kind has no model yet.</summary>
         readonly Instancer[] _works = new Instancer[24];
+        Instancer[] _housePosts;   // the same homes on earth-fast posts: no stone footings (C1.3)
+        Instancer _stonePiles;     // stone carried home and stacked by the store (C1.3)
         Instancer[] _houseKinds, _trees;
         Material _mat;
         float _treeTimer, _placeTimer;
@@ -48,6 +50,9 @@ namespace TC2.Game
             _people = new Instancer(Models.Get("person", ProcMeshes.Person), _mat, true);
             _houseKinds = new Instancer[HouseModels.Length];
             for (int i = 0; i < HouseModels.Length; i++) _houseKinds[i] = new Instancer(Models.Get(HouseModels[i], ProcMeshes.House), _mat, true);
+            _housePosts = new Instancer[HouseModels.Length];
+            for (int i = 0; i < HouseModels.Length; i++) _housePosts[i] = new Instancer(Models.Get(HouseModels[i] + "_posts", ProcMeshes.House), _mat, true);
+            _stonePiles = new Instancer(Models.Get("stone_pile", ProcMeshes.Granary), _mat, true);
             _granaries = new Instancer(Models.Get("granary", ProcMeshes.Granary), _mat, true);
             _walls = new Instancer(Models.Get("palisade", ProcMeshes.Palisade), _mat, true);   // walled villages (D2-074)
             _huts = new Instancer(Models.Get("hut_round", ProcMeshes.House), _mat, true);
@@ -209,7 +214,8 @@ namespace TC2.Game
             var cam = Rig != null ? Rig.Cam : Camera.main;
             if ((Off & 4) == 0)
             {
-                for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Draw(cam);
+                for (int i = 0; i < _houseKinds.Length; i++) { _houseKinds[i].Draw(cam); _housePosts[i].Draw(cam); }
+                _stonePiles.Draw(cam);
                 for (int i = 0; i < _works.Length; i++) _works[i]?.Draw(cam);
                 _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _woodpiles.Draw(cam);
             }
@@ -303,7 +309,8 @@ namespace TC2.Game
         void RebuildPlaces(TC2.Core.Simulation.World w)
         {
             var P = w.Planet;
-            for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Clear();
+            for (int i = 0; i < _houseKinds.Length; i++) { _houseKinds[i].Clear(); _housePosts[i].Clear(); }
+            _stonePiles.Clear();
             for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
             _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _walls.Clear(); _woodpiles.Clear();
             _smoke.Clear(); _lights.Clear(); _watch.Clear();
@@ -360,6 +367,13 @@ namespace TC2.Game
                 if (s.Wall == 1 || s.Wall == 2) DrawWall(w, P, in s, sid, ex);
                 if (!s.Inhabited) continue;   // (an abandoned village's well and granary decay as structures: C1.1)
                 Beached(w, P, in s, sid, ex);
+                // the stone in its store, stacked by the store: a pile for every ~40 loads, up to four (C1.3)
+                if (s.Stone >= 5)
+                {
+                    Construction.GranarySpot(in s, out double sx, out double sy);
+                    int piles = Mathf.Clamp(Mathf.CeilToInt((float)(s.Stone / 40.0)), 1, 4);
+                    for (int k = 0; k < piles; k++) _stonePiles.Add(0, Color.white, Place(P, s, sx - 7.0 - k * 2.4, sy + 5.0 + (k % 2) * 1.8, 20f * k, ex * 1.1f));
+                }
                 // haystacks once the harvest is in
                 float fill = Mathf.Clamp01((float)(s.Granary / System.Math.Max(1.0, s.Population * 30.0)));
                 if (s.Crop == CropStage.Harvested || s.Crop == CropStage.Fallow)
@@ -396,6 +410,12 @@ namespace TC2.Game
                 return;
             }
             float cond = (float)Structures.Condition(in b, w.Now);
+            if (b.Kind == Structures.Quarry)
+            {
+                // the face cut back as the stone is taken: larger with every thousand loads (C1.3)
+                float cut = 0.55f + 0.45f * Mathf.Clamp01(b.Stock / 1500f) + 0.25f * Mathf.Clamp01((b.Stock - 1500f) / 6000f);
+                m = m * Matrix4x4.Scale(new Vector3(cut, cut, cut));
+            }
             inst.Add(0, Color.Lerp(moss, Color.white, 0.45f + 0.55f * cond), m);
         }
 
@@ -433,7 +453,7 @@ namespace TC2.Game
             bool hut = b.Kind < Construction.House;
             int kind = hut ? -1 : HouseKind(b.Style);
             if (hut) _huts.Add(300 + key, tint, m, lit ? -1f : 0f);
-            else _houseKinds[kind].Add(key, tint, m, lit ? -1f : 0f);
+            else (b.Mat >= 1 ? _houseKinds[kind] : _housePosts[kind]).Add(key, tint, m, lit ? -1f : 0f);   // (on stone footings or on posts: C1.3)
             if (!lived) return false;
             // its share of the village's woodstore stacked by the wall (D2-081): none when the store is all but empty, a bigger pile the
             // more days of the hearths' wood the village holds

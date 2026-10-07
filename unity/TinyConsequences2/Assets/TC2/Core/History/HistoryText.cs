@@ -89,6 +89,8 @@ namespace TC2.Core.History
                     if (e.ArgA == TC2.Core.Places.Structures.Well) return "The people of " + subj + " dug a well" + (e.Other.IsNone ? "." : ", " + other + " the first at the digging.");
                     if (e.ArgA == TC2.Core.Places.Structures.Granary && e.ArgB > 1) return "The people of " + subj + " built another granary (" + e.ArgB + " now)" + (e.Other.IsNone ? "." : ", " + other + " the first at the work.");
                     return "The people of " + subj + " built a " + TC2.Core.Places.Structures.Name((byte)e.ArgA) + (e.Other.IsNone ? "." : ", " + other + " the first at the work.");
+                case HistoryKind.StoneFound:
+                    return (e.Other.IsNone ? "The people of " + subj : other + " of " + subj) + " saw rock fit for building " + F(e.Magnitude / 1000.0, "0.0") + " km from " + subj + ".";
                 case HistoryKind.WoodsReceded:
                     return e.ArgA >= 4 ? "The people of " + subj + " have cut the woods within reach: they have no more wood to fetch."
                                        : "The woods near " + subj + " are cut back: its people now fetch their wood from " + F(e.Magnitude / 1000.0, "0.0") + " km away.";
@@ -209,7 +211,7 @@ namespace TC2.Core.History
                 case ActivityKind.Haul: return "carrying the catch home";
                 case ActivityKind.Build:
                     if (p.Why == WhyCode.NoRoof) return "raising a roof for the household: they live in a camp or a hut";
-                    if (w.Settlements.Exists(p.Home) && w.Settlements.Get(p.Home).Project != 0 && w.Buildings.Exists(w.Settlements.Get(p.Home).Project))
+                    if (w.Settlements.Exists(p.Home) && TC2.Core.Places.Construction.NextWork(w.Settlements.Get(p.Home)) == TC2.Core.Places.Construction.Structure && w.Buildings.Exists(w.Settlements.Get(p.Home).Project))
                     {
                         ref var pb = ref w.Buildings.Get(w.Settlements.Get(p.Home).Project);
                         return "building for " + home + ": " + WorkWhy(pb.Kind, w.Settlements.Get(p.Home).Granaries);
@@ -217,6 +219,7 @@ namespace TC2.Core.History
                     if (w.Settlements.Exists(p.Home) && (w.Settlements.Get(p.Home).Wall == 1 || (w.Settlements.Get(p.Home).Wall == 2 && TC2.Core.Places.Construction.NextWork(w.Settlements.Get(p.Home)) == TC2.Core.Places.Construction.Mend)))
                         return "setting posts in " + home + "'s palisade: other villages' people have cost it dear";
                     return "building for " + home + ": the village needs a well or a granary";
+                case ActivityKind.Quarry: return "cutting stone at " + home + "'s quarry and carrying it home: the village wants stone for its houses' footings";
                 case ActivityKind.Scout: return "gone to look at the land beyond: " + home + " is crowded or hungry and knows no good place";
                 case ActivityKind.Move: return "walking with the household to a new home" + (dest.Length > 0 ? " at " + dest : "");
                 case ActivityKind.Tend: return "watching " + home + "'s herd on the pasture" + ground + ": the animals must graze, and the wolves keep off a watched herd";
@@ -231,6 +234,7 @@ namespace TC2.Core.History
             if (kind == TC2.Core.Places.Structures.Granary)
                 return granaries > 0 ? "another granary: their harvest overfilled the store" : "a granary: their harvest needs a store";
             if (kind == TC2.Core.Places.Structures.Barn) return "a barn: their harvest overfilled the granaries";
+            if (kind == TC2.Core.Places.Structures.Quarry) return "a quarry at the rock they found: stone for their houses' footings";
             return "a " + TC2.Core.Places.Structures.Name(kind);
         }
 

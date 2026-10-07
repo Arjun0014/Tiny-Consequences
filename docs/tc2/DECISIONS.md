@@ -2231,3 +2231,37 @@ Shots `tc2/out/shots/civ2`: the year-300 coastal town of 612 in an open farmed h
 **Consequences.** Mature 6 km worlds now carry more people than D2-085 measured (its 2,000-7,100 was held down by uncleared fields): no cap
 is added (D2-089: land decides). Clearing is not yet labour (fields claimed in spring are cleared by the next vegetation step) - a C2
 item; nor does clearing yield timber. Pigs depend on woods (pannage) as they did: a pig-poor heartland is a consequence, not a bug.
+
+## D2-092 — 2026-10-07 — Stone from the ground: rock known by seeing it, a quarry at the rock, every load carried home, houses on footings (C1.3)
+
+**Context.** D2-089 (`22` §1-§2): stone needs a source, discovery, extraction, transport, use and scarcity. Before, "rock showing within two
+rings" only gated the quern technique; no stone was cut, carried or built with.
+**Decision.** (1) **`Core/Places/Stone.cs`**: rock shows where land breaks **80 m or more from a neighbouring land cell** (`Outcrop`: ~9-16 %
+of the land on the 6 km worlds; a coast's drop to the sea bed is no rock - the quern's 40 m rule counting sea neighbours marked 44 % of the
+land and put rock beside every village) and above the drawn shore. (2) **Known only by seeing it** (`Saw`): where a village's people go -
+the hunting, fishing and gathering grounds they walk to (lived and COARSE), its woodlot, a scout's look-out - the nearest dry rock within
+**1 km** ("at hand") is kept (`StoneCell`, `StoneDist`); the first sight is history (`StoneFound`, with who saw it). (3) **Want**: footings
+for its next houses (40 loads a house, up to three houses ahead) while it knows rock (`StoneWant`, read daily). (4) **The quarry** (`Structures`
+kind Quarry, Zone.Site) is planned at the rock it knows - after water and a store, never while walls rise; its cause the rock's finding; a
+quarry the sea takes makes the village forget that rock (one village planned 39 quarries on drowning rock before this). (5) **Quarrying**
+(ActivityKind.Quarry, WhyCode.Stone; lived choice at a village work's urgency, COARSE in the free hours after building): ~3 loads an hour of
+rubble (body and tools), every load carried home both ways (`Stone.Rate`), COARSE paying the walk out once a stint; stone into
+`Settlement.Stone`, the quarry's face (`Stock`, `Use`) growing. (6) **Footings**: a house raised with 40 loads in store stands on them
+(`Building.Mat` 1): twice as long before it falls once left, its ruin half again (`Homes.FallYears/RuinYears(in Building)`); without, a house on
+earth-fast posts. (7) **Work order**: a palisade being raised goes before every work but water and the first store (`ProjectKind`): a quarry
+begun earlier no longer delays the walls. (8) View: houses on posts (kit `house_*_posts`, no plinth) vs on stone footings; the quarry face
+scaled by what was cut; cut rock under it (no fields, plots or woods drawn over a quarry); stone stacked by the store; the building page
+(quarry: rock distance, loads cut, hours, store and want; house: footings or posts); shot views `work<kind>`/`work<kind>far`. (9) Sim
+version 35.
+**Evidence.** 195 tests (`StoneTests` 5: rock known where its people saw it, first sight history with the seer; a village that wants stone
+opens a quarry at the rock with the finding as cause; quarrying cuts and carries, the walk costs; a house raised with stone stands on
+footings and lasts twice as long, without stone on posts; quarrying at both resolutions - 6 days 146 loads lived, 108 COARSE). 300 years DEEP
+(`tc2/out/civ/s42_c13d`, `s7_c13d`): seed 42 - 13 of 19 villages know rock, 13 quarries 355 m out on average, 88,600 loads (2,200 t) cut in
+45,400 h, **2,079 of 3,278 houses on footings**, 7,037 people; seed 7 - 6 of 10 know rock, 5 quarries, 926 of 1,192 houses on footings, 2,369
+people (populations at par with C1.2's). Shots `tc2/out/shots/civ3`: Taekdal (seed 7, 298 people) - stone stacked by the green's well and
+granaries, its quarry ~350 m out among the fields on cut rock.
+**Consequences / open.** The benefit of footings to a household is only the house's longer life once left: lived-in homes are kept
+implicitly (D2-059), so the cheaper upkeep of a house on a stone sill is not yet simulated (C13: aging and rebuilding). The choice to quarry
+is the local tradition where rock is at hand, not a reckoning of cost (C11 makes such traditions explicit). Lived quarrying overshoots the
+want by parallel starts (the store fills past it); COARSE stays under: timing differs, not the long-run use. The drawn relief is smoothed,
+so a quarry's crag shows only in its model and the rock under it.

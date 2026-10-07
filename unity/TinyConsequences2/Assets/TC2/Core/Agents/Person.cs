@@ -15,6 +15,7 @@ namespace TC2.Core.Agents
         Craft = 25,                                     // making and mending the household's clothes and tools (D2-058)
         Ill = 26,                                       // abed at home with a sickness (D2-066) or wounds (D2-071)
         Watch = 27,                                     // keeping the night watch at the village's store (D2-071)
+        Quarry = 28,                                    // cutting stone at the village's quarry and carrying it home (C1.3)
     }
 
     /// <summary>The kind of the current step of an activity.</summary>
@@ -49,6 +50,7 @@ namespace TC2.Core.Agents
         Watch = 33,       // the village keeps a watch at its store: grain has been taken from it
         Claim = 34,       // walking to ask amends for blood shed (D2-072)
         Raid = 35,        // with a band to fall on a village's store (D2-073)
+        Stone = 36,       // the village wants stone for its houses' footings: someone cuts it at the quarry (C1.3)
     }
 
     public static class Sex { public const byte Female = 0, Male = 1; }

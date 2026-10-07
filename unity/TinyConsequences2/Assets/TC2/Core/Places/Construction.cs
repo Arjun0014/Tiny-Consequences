@@ -43,8 +43,10 @@ namespace TC2.Core.Places
         /// </summary>
         public static byte NextWork(in Settlement s)
         {
-            if (s.Project != 0) return Structure;
+            // (a palisade being raised goes before every work but water and the first store: C1.3)
+            if (s.Project != 0 && (s.Wall != 1 || s.ProjectKind == Structures.Well || (s.ProjectKind == Structures.Granary && s.Granaries == 0))) return Structure;
             if (s.Wall == 1) return Palisade;
+            if (s.Project != 0) return Structure;
             if (s.Wall == 2 && s.WallKeep != 0 && s.WallCond < 0.6f) return Mend;
             return 0;
         }
@@ -119,6 +121,7 @@ namespace TC2.Core.Places
                     {
                         hh.Shelter++; hh.Build = 0f;
                         Homes.Raised(w, hid);   // a building on its lot, outliving its tenancy (D2-059)
+                        if (hh.Shelter == House) Stone.Footings(w, sid, w.Households.Get(hid).Building);   // on stone footings, when the store has them (C1.3)
                         w.Record(new HistoryEvent
                         {
                             Kind = HistoryKind.HomeBuilt, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Household(hid),

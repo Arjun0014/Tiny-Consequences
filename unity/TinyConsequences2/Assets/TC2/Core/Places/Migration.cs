@@ -477,6 +477,7 @@ namespace TC2.Core.Places
                 double q = Sites.Quality(w, _cells[i], _scratch);
                 if (q > bq) { bq = q; best = _cells[i]; }
             }
+            Stone.Saw(w, sid, person, at);   // (and what rock shows there: C1.3)
             ref var s = ref w.Settlements.Get(sid);
             s.ScoutAt = w.Now;
             if (best < 0 || bq < Sites.MinQuality) return;

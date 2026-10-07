@@ -18,9 +18,11 @@
   300 years DEEP at par with the baselines (`tc2/out/civ/s42_c11c`, `s7_c11c`; 17 barns and 56 granaries in 18 villages on seed 42);
   shots `tc2/out/shots/civ1`. **C1.2 timber from the woods done (D2-091)**: felling takes forest at a woodlot that moves as the woods
   recede, the walk paid per load; fields clear what they farm (cleared fields fully arable: seed 42 arable +39 %, people 5,295 -> 7,481 at
-  year 300; 41,600 t felled, woodlots ~770 m out); 190 tests (rate checks pooled over worlds); shots `civ2`. **Next: C1.3 stone** (outcrops
-  known by people, the quarry as a work site, stone cut and carried, footings, the smithy's hearth), then the smithy, training, market,
-  gates and the pressure premise.
+  year 300; 41,600 t felled, woodlots ~770 m out); 190 tests (rate checks pooled over worlds); shots `civ2`. **C1.3 stone done (D2-092)**: rock known by
+  seeing it (80 m land breaks, within 1 km, above the shore), quarries at the rock, every load carried home, houses on stone footings
+  (seed 42: 13 of 19 villages quarry, 2,079 of 3,278 houses on footings); walls before non-essential works; 195 tests; shots `civ3`.
+  **Next: C1.4 the smithy** (a workplace for the smith's work, faster there, arms forged only there, arms in fights; its hearth of stone
+  where the village has it), then training, market, gates and the pressure premise.
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

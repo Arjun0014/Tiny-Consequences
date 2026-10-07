@@ -225,6 +225,26 @@ namespace TC2.Headless
                                           " times; woodlots " + F(lots > 0 ? dsum / lots : 0, "0") + " m from the square on average, the farthest " + F(dmax, "0") + " m, " + none + " villages with none in reach;" +
                                           " fields " + F(fieldHa, "0") + " of " + F(arableHa, "0") + " arable ha");
                     }
+                    // stone (C1.3): who knows rock, quarries, what was cut, houses on footings
+                    {
+                        int know = 0, quarries = 0, villages2 = 0, footed = 0, houses = 0; double dq = 0;
+                        for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
+                        {
+                            var st2 = w.Settlements.Get(sid2);
+                            if (!st2.Inhabited) continue;
+                            villages2++;
+                            if (st2.StoneCell > 0) know++;
+                            if (st2.Quarry != 0) { quarries++; dq += st2.StoneDist; }
+                        }
+                        for (int id = w.Buildings.First(); id != 0; id = w.Buildings.Next(id))
+                        {
+                            var bu = w.Buildings.Get(id);
+                            if (bu.Kind != TC2.Core.Places.Structures.House || TC2.Core.Places.Homes.Fallen(in bu, w.Now)) continue;
+                            houses++; if (bu.Mat >= 1) footed++;
+                        }
+                        Console.WriteLine("stone: " + know + " of " + villages2 + " villages know rock, " + quarries + " quarries (" + F(quarries > 0 ? dq / quarries : 0, "0") + " m out on average); cut " + F(w.Metrics.StoneCut, "0") +
+                                          " loads in " + F(w.Metrics.QuarryHours, "0") + " h; houses on stone footings " + footed + " of " + houses + " standing (" + w.Metrics.Footings + " raised so)");
+                    }
                     sb.Append("  most granaries ").Append(most).Append(mostSid != 0 ? " (" + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(mostSid)) + ", " + w.Settlements.Get(mostSid).Population + " people)" : "").Append("; grain beyond the granaries now ").Append(F(over, "0")).Append(" FU");
                     Console.WriteLine(sb.ToString());
                 }

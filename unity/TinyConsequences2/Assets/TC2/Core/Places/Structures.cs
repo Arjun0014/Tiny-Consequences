@@ -79,7 +79,7 @@ namespace TC2.Core.Places
         /// <summary>How sound a structure is at time t: its condition, and once left unkept, down to 0 over its fall years (homes: D2-059).</summary>
         public static double Condition(in Building b, long t)
         {
-            double c = b.Left == 0 ? 1.0 : DMath.Clamp01(1.0 - (t - b.Left) / (Of(b.Kind).FallYears * SimTime.Year));
+            double c = b.Left == 0 ? 1.0 : DMath.Clamp01(1.0 - (t - b.Left) / (Homes.FallYears(in b) * SimTime.Year));
             return IsHome(b.Kind) ? c : DMath.Min(c, (double)b.Cond);
         }
 
@@ -114,7 +114,13 @@ namespace TC2.Core.Places
             if (!s.Inhabited || s.Project != 0) return;
             if ((s.Works & Construction.Well) == 0) { Begin(w, sid, Well, s.FoundedEvent, CauseRel.EnabledBy); return; }
             if ((s.Works & Construction.Granary) == 0 && (s.LastHarvest > 0 || s.Granary > 5 * s.Population))
-                Begin(w, sid, Granary, s.HarvestEvent != 0 ? s.HarvestEvent : s.FoundedEvent, CauseRel.CausedBy);
+            { Begin(w, sid, Granary, s.HarvestEvent != 0 ? s.HarvestEvent : s.FoundedEvent, CauseRel.CausedBy); return; }
+            // stone wanted and rock known within reach: a quarry opened at the rock (C1.3) - after water and a store, never while walls rise
+            if (s.StoneWant > 0 && s.Quarry == 0 && s.StoneCell > 0 && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
+            {
+                if (!Shore.Dry(w.Planet, w.Planet.Grid.Center[s.StoneCell - 1])) { s.StoneCell = 0; s.StoneDist = 0; return; }   // (the sea has taken that rock)
+                Begin(w, sid, Quarry, s.StoneEvent, CauseRel.EnabledBy);
+            }
         }
 
         /// <summary>
@@ -144,7 +150,7 @@ namespace TC2.Core.Places
             w.Buildings.Add(id, new Building { Id = id, Settlement = sid, X = x, Y = y, Kind = kind, Style = sid, Built = w.Now, Cond = 1f, Cause = cause });
             w.BuildingsOf(sid).InsertSorted(id);
             ref var s2 = ref w.Settlements.Get(sid);
-            s2.Project = id;
+            s2.Project = id; s2.ProjectKind = kind;
             w.Record(new HistoryEvent
             {
                 Kind = HistoryKind.WorkBegun, Time = w.Now, Cell = s2.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
@@ -166,10 +172,11 @@ namespace TC2.Core.Places
             if (b.Hours < k.Hours - 1e-6) return;
             b.Done = 1;
             ref var s = ref w.Settlements.Get(sid);
-            s.Project = 0;
+            s.Project = 0; s.ProjectKind = 0;
             if (b.Kind == Well) s.Works |= Construction.Well;
             if (b.Kind == Granary) { s.Works |= Construction.Granary; s.Granaries++; }
             if (b.Kind == Barn) s.Barns++;
+            if (b.Kind == Quarry) s.Quarry = bid;
             b.Event = w.Record(new HistoryEvent
             {
                 Kind = HistoryKind.WorkBuilt, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
@@ -188,6 +195,8 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             if (kind == Well) s.Works |= Construction.Well;
             if (kind == Granary) { s.Works |= Construction.Granary; s.Granaries++; }
+            if (kind == Barn) s.Barns++;
+            if (kind == Quarry) s.Quarry = id;
             return id;
         }
 
@@ -197,10 +206,11 @@ namespace TC2.Core.Places
             ref var b = ref w.Buildings.Get(bid);
             if (!w.Settlements.Exists(b.Settlement)) return;
             ref var s = ref w.Settlements.Get(b.Settlement);
-            if (s.Project == bid) { s.Project = 0; return; }   // (an unfinished work abandoned)
+            if (s.Project == bid) { s.Project = 0; s.ProjectKind = 0; return; }   // (an unfinished work abandoned)
             if (b.Done == 0) return;
             if (b.Kind == Granary && s.Granaries > 0) { s.Granaries--; if (s.Granaries == 0) s.Works = (byte)(s.Works & ~Construction.Granary); }
             if (b.Kind == Barn && s.Barns > 0) s.Barns--;
+            if (b.Kind == Quarry && s.Quarry == bid) { s.Quarry = 0; s.StoneCell = 0; s.StoneDist = 0; }   // (the rock it stood at is gone: they must find rock again)
             if (b.Kind == Well && !Has(w, b.Settlement, Well, bid)) s.Works = (byte)(s.Works & ~Construction.Well);
         }
 
@@ -230,7 +240,7 @@ namespace TC2.Core.Places
                 b.Left = w.Now;
             }
             ref var s = ref w.Settlements.Get(sid);
-            s.Project = 0;
+            s.Project = 0; s.ProjectKind = 0;
         }
 
         // ---------------------------------------------------------------- where it goes (21 §4)
@@ -246,6 +256,7 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             if (kind == Well && !HasAny(w, sid, Well)) { x = s.WellX; y = s.WellY; return; }
             if (kind == Granary && !HasAny(w, sid, Granary)) { Construction.GranarySpot(in s, out double gx, out double gy); x = (float)gx; y = (float)gy; return; }
+            if (kind == Quarry && s.StoneCell > 0) { s.SphereToLocal(w.Planet.Grid.Center[s.StoneCell - 1], w.Planet.Radius, out double qx, out double qy); x = (float)qx; y = (float)qy; return; }   // (at the rock)
             var k = Of(kind);
             var P = w.Planet;
             double r0, dir, r1;

@@ -16,7 +16,12 @@
   `\` inside heredocs - patch scripts with backslashes go through the Write tool (`/tmp/*.py`).
 - **C1.2 timber from the woods done (D2-091)**; rate tests pooled over worlds (single worlds gave 3-20 events). Runs `tc2/out/civ/s{42,7}_c12a`
   (saves at years 100 and 300), shots `civ2`.
-- **Next: C1.3 stone** - `Settlement` knows stone it has seen (outcrops = `Learning.Rock`'s steep cells, seen by its people's work grounds,
+- **C1.3 stone done (D2-092)**: runs `tc2/out/civ/s{42,7}_c13d`, shots `civ3` (views `work13`, `work13far` frame a village's quarry).
+  **Pitfall (again)**: heredocs with apostrophes break in this Bash tool - docs and commit messages go in scratchpad files (Write tool).
+- **Next: C1.4 the smithy** - `Structures.Smithy` planned when a competent smith (KMetal >= 0.5) lives in a village short of metal tools (or
+  wanting arms) with ore known (D2-064's `Learning.Ore`); smithing (AgentSystem.Smith) done there at 2x and only there for arms; arms as a
+  village store (`Settlement.Arms`, count) used by `Conflict.Strength` (x1.3 armed); the smith walks to the smithy (lived: a Craft step at the
+  smithy, or a new ActivityKind.Smith); COARSE the same hours; building page; tests; runs; shots (`work12`). (Was the C1.3 plan: `Settlement` knows stone it has seen (outcrops = `Learning.Rock`'s steep cells, seen by its people's work grounds,
   woodlots and scouts); a quarry (`Structures.Quarry`, Zone.Site, at the outcrop) opened when a planned work wants stone; quarrying hours cut
   ~4 loads an hour, carrying home costs the walk (as wood); `s.Stone` store; uses: house footings (homes on stone last ~2x), the well's
   lining, the smithy's hearth; masonry later. (Was the C1.2 plan: `Settlement.WoodCell` (the woodlot, chosen as the nearest cell within ~1.6 km with forest worth

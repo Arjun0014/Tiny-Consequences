@@ -465,6 +465,14 @@ namespace TC2.Core.Agents
                     if (p.At != 0 && p.At == p.Home && hours > 0)
                         Construction.Work(w, p.At, p.Household, hours, BuildRate(in p) * Tools(p.Household), p.Id);
                     break;
+                case ActivityKind.Quarry:
+                    if (p.At != 0 && p.At == p.Home && hours > 0)
+                    {
+                        // stone cut at the quarry and carried home, a load at a time (C1.3)
+                        int qid = Stone.Quarry(w, p.At);
+                        if (qid != 0) Stone.Cut(w, p.At, qid, hours, Stone.CutRate(in p, Tools(p.Household)), false);
+                    }
+                    break;
                 case ActivityKind.Craft:
                     if (p.At != 0 && p.At == p.Home && hours > 0 && w.Households.Exists(p.Household))
                     {
@@ -513,7 +521,7 @@ namespace TC2.Core.Agents
         /// <summary>Activities that are work: they count toward a day's labour.</summary>
         static bool IsWork(ActivityKind a) => a == ActivityKind.Fields || a == ActivityKind.Wood || a == ActivityKind.Build || a == ActivityKind.Hunt ||
                                               a == ActivityKind.Fish || a == ActivityKind.Gather || a == ActivityKind.Haul || a == ActivityKind.Tend ||
-                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft;
+                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry;
 
         /// <summary>How much a day's labour still leaves for the slack's work: whole until five hours, a fifth past eight.</summary>
         static double DayLeft(in Person p) => DMath.Clamp(1.0 - (p.Worked - 5.0) / 3.0, 0.2, 1.0);
@@ -887,7 +895,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends)
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -907,6 +915,13 @@ namespace TC2.Core.Agents
                 if (fuelDays < 6.0) u = DMath.Max(u, 0.85 * (1.0 - fuelDays / 6.0));
                 u = u * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
                 if (u > best) { best = u; choice = 2; }
+            }
+            int quarry = 0;
+            if (day && atHome && lsec < 15 * SimTime.Hour && age >= 16 && age < 60 && p.Health > 0.6 && Stone.Wanted(w, in here, out quarry))
+            {
+                // the village wants stone for its houses' footings and its quarry stands (C1.3): cut and carry it - wanted as a village work is
+                double u = (0.3 + 0.2 * DMath.Clamp01(1.0 - here.Stone / DMath.Max(1.0, (double)here.StoneWant))) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
+                if (u > best) { best = u; choice = 14; }
             }
             if (day && canBuild)
             {
@@ -1021,6 +1036,12 @@ namespace TC2.Core.Agents
                 case 13:
                     if (StartErrand(ref p)) return;
                     break;
+                case 14:
+                    {
+                        ref var qb = ref w.Buildings.Get(quarry);
+                        BeginLocal(ref p, ActivityKind.Quarry, WhyCode.Stone, 0, qb.X + rs.Range(-6, 6), qb.Y + rs.Range(-6, 6), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
+                        return;
+                    }
                 case 4:
                     BeginLocal(ref p, ActivityKind.Social, WhyCode.Leisure, 0, here.SquareX + rs.Range(-12, 12), here.SquareY + rs.Range(-12, 12), SimTime.Hours(1.5 + 1.5 * rs.NextUnit()));
                     return;
@@ -1152,6 +1173,7 @@ namespace TC2.Core.Agents
             var act = kind == WildFood.Hunting ? ActivityKind.Hunt : kind == WildFood.Fishing ? ActivityKind.Fish : ActivityKind.Gather;
             BeginLocal(ref p, act, why, ground, x, y, SimTime.Hours(hours));
             p.Ground = ground;
+            Stone.Saw(w, here.Id, p.Id, ground);   // (what rock shows where they go: C1.3)
             if (kind == WildFood.Hunting) w.Metrics.HuntTrips++; else if (kind == WildFood.Fishing) w.Metrics.FishTrips++; else w.Metrics.GatherTrips++;
             if (why != WhyCode.Provide) w.SettlementSys.NoteWildFood(here.Id);
         }
@@ -1500,6 +1522,7 @@ namespace TC2.Core.Agents
                             int ground = WildFood.PickGround(in g, ref rs);
                             if (ground >= 0)
                             {
+                                Stone.Saw(w, sid, p.Id, ground);   // (what rock shows where they go: C1.3)
                                 ulong key = KeyedRng.Hash(w.Seed, RngStream.Work, (ulong)p.Id, (ulong)now);
                                 double fu;
                                 if (wk == WildFood.Hunting)
@@ -1527,6 +1550,17 @@ namespace TC2.Core.Agents
                 }
                 prof?.End(10022);
                 if (build && hours > 0) { double used2 = Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0 * days), BuildRate(in p) * tools, p.Id); hours -= used2; if (Hours != null) Hours[4] += used2; }
+                if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Stone.Wanted(w, in s, out int qid))
+                {
+                    // the village wants stone and its quarry stands (C1.3): cut and carry it in the free hours, up to what it wants
+                    double r0 = Stone.CutRate(in p, tools), rate = Stone.HourRate(w, sid, qid, r0, true);
+                    if (rate > 0)
+                    {
+                        double h = DMath.Min(hours * 0.5, (s.StoneWant - s.Stone) / rate);
+                        Stone.Cut(w, sid, qid, h, r0, true);
+                        hours -= h;
+                    }
+                }
                 if (hours > 0 && s.Woodstore < woodTarget && Woods.Lot(in s) >= 0)
                 {
                     double h = hours * 0.4;

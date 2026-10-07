@@ -46,8 +46,8 @@ Sub-slices, each committed with tests, runs, shots and docs:
    inspector; drawn from the table.
 2. **C1.2 Timber from the woods** (D2-091, done 7 Oct): felling removes forest share at the woodlot (which moves as the woods recede:
    walking time per load); fields keep the woods off what they farm; regrowth where people stop.
-3. **C1.3 Stone**: outcrops known by people who saw them; the quarry as a work site; stone cut and carried (trip time); the stone store;
-   footings (homes last longer), a well's lining, the smithy's hearth.
+3. **C1.3 Stone** (D2-092, done 7 Oct): outcrops known by people who saw them; the quarry as a work site; stone cut and carried (trip
+   time); the stone store; footings (homes last longer). (The well's lining and the smithy's hearth move to C1.4 and later.)
 4. **C1.4 The smithy**: a workplace raised when a competent smith and a want of metal meet; smithing there (faster), arms forged only
    there; arms in fights.
 5. **C1.5 Training ground**: practice hours, fighting skill, veterans; strength uses skill.

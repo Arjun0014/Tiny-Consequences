@@ -319,6 +319,7 @@ namespace TC2.Game
                 if (b.Household != 0 && w.Households.Exists(b.Household)) sb.Append("home of the ").Append(w.History.NameOf(EntityRef.Household(b.Household))).Append("s (").Append(w.Members(b.Household).Count).Append(" people)\n");
                 else sb.Append("standing empty").Append(b.Last != 0 ? "; the " + w.History.NameOf(EntityRef.Household(b.Last)) + "s lived in it last" : "").Append('\n');
                 if (b.Style != 0) sb.Append("raised by the ").Append(w.History.NameOf(EntityRef.Household(b.Style))).Append("s\n");
+                if (b.Kind == Structures.House) sb.Append(b.Mat >= 1 ? "on stone footings (" + b.Stone.ToString("0", CultureInfo.InvariantCulture) + " loads of stone): it stands twice as long once left\n" : "on earth-fast posts: no stone near enough\n");
             }
             else if (w.Settlements.Exists(b.Settlement))
             {
@@ -331,6 +332,10 @@ namespace TC2.Game
                       .Append(" of ").Append(cap.ToString("N0", CultureInfo.InvariantCulture)).Append(s.Granary > cap ? " - the rest lies in heaps and rots fast" : "").Append('\n');
                 }
                 else if (b.Kind == Structures.Well) sb.Append("water for ").Append(s.Population).Append(" people, drawn by the pot\n");
+                else if (b.Kind == Structures.Quarry)
+                    sb.Append("cuts building stone at rock ").Append((s.StoneDist / 1000.0).ToString("0.0", CultureInfo.InvariantCulture)).Append(" km from ").Append(place).Append(": ")
+                      .Append(b.Stock.ToString("N0", CultureInfo.InvariantCulture)).Append(" loads cut and carried home in ").Append(b.Use.ToString("N0", CultureInfo.InvariantCulture)).Append(" hours; the store holds ")
+                      .Append(s.Stone.ToString("0", CultureInfo.InvariantCulture)).Append(" loads (it wants ").Append(s.StoneWant.ToString("0", CultureInfo.InvariantCulture)).Append(")\n");
                 if (b.Hours > 0) sb.Append("raised with ").Append(b.Hours.ToString("0", CultureInfo.InvariantCulture)).Append(" hours of work and ").Append(b.Wood.ToString("0", CultureInfo.InvariantCulture)).Append(" loads of wood").Append(b.Stone > 0 ? ", " + b.Stone.ToString("0", CultureInfo.InvariantCulture) + " of stone" : "").Append('\n');
                 if (b.Leader != 0) sb.Append("the first at the work: ").Append(w.History.NameOf(EntityRef.Person(b.Leader))).Append('\n');
                 if (b.Cause != 0 && w.History.TryGet(b.Cause, out var ce)) sb.Append("<b>why</b>: ").Append(HistoryText.Line(w, ce)).Append('\n');

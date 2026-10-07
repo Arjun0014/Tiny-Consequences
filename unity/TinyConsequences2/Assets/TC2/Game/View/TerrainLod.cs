@@ -865,6 +865,8 @@ namespace TC2.Game
             return (1f - Edge(half * 0.55f, half * 1.4f, m)) * Mathf.Min(1f, 2.6f / half);
         }
         readonly System.Collections.Generic.List<int> _near = new System.Collections.Generic.List<int>();
+        /// <summary>Works out on the land near this patch - quarries (C1.3): cut rock where they stand, no fields or woods over them.</summary>
+        readonly System.Collections.Generic.List<Vec3d> _sites = new System.Collections.Generic.List<Vec3d>();
 
         /// <summary>Packed earth on the square, yards round the houses, footpaths from each door to the square (and how much is bare earth).</summary>
         static Color VillageGround(TC2.Core.Simulation.World w, in TC2.Core.Places.Settlement s, int sid, double x, double y, Color col, out float bare)
@@ -923,6 +925,16 @@ namespace TC2.Game
                     double dd = System.Math.Acos(System.Math.Min(1.0, st.Anchor.X * pc.x + st.Anchor.Y * pc.y + st.Anchor.Z * pc.z));
                     if (dd < reach) { _near.Add(sid); NearPatches++; }
                 }
+                _sites.Clear();
+                for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                {
+                    ref var st = ref w.Settlements.Get(sid);
+                    if (st.Quarry == 0 || !w.Buildings.Exists(st.Quarry)) continue;
+                    ref var qb = ref w.Buildings.Get(st.Quarry);
+                    Vec3d at = st.LocalToSphere(qb.X, qb.Y, P.Radius);
+                    double dq = System.Math.Acos(System.Math.Min(1.0, at.X * pc.x + at.Y * pc.y + at.Z * pc.z));
+                    if (dq < reach) _sites.Add(at);
+                }
             }
             for (int o = 0; o < cols.Length; o++)
             {
@@ -958,6 +970,15 @@ namespace TC2.Game
                         int fo = P.FieldOwner[cq];
                         if (fo != 0) { farm += ww; if (ww > ow) { ow = ww; owner = fo; } }
                     }
+                    // a quarry's ground (C1.3): cut rock and spoil within ~20 m of the face - never a field or a wood over it
+                    float site = 0f;
+                    for (int q = 0; q < _sites.Count; q++)
+                    {
+                        Vec3d sv = _sites[q];
+                        double ang = System.Math.Acos(System.Math.Min(1.0, sv.X * d.X + sv.Y * d.Y + sv.Z * d.Z));
+                        site = Mathf.Max(site, 1f - Edge(16f, 28f, (float)(ang * P.Radius)));
+                    }
+                    farm *= 1f - site;
                     // farmland: the shader draws plots, furrows and hedges in the village's own grid
                     p.Plots[o] = Vector2.zero; p.Farm[o] = Vector2.zero;
                     if (owner != 0 && w.Settlements.Exists(owner))
@@ -967,7 +988,7 @@ namespace TC2.Game
                         p.Plots[o] = new Vector2((float)fx, (float)fy);
                         farm *= Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(85f, 135f, Mathf.Sqrt((float)(fx * fx + fy * fy)))); // houses and yards
                         float used = st.ArableHa > 0 ? (float)System.Math.Min(1.0, st.FieldHa / st.ArableHa) : 1f;
-                        p.Farm[o] = new Vector2(used, (float)st.Crop + (float)System.Math.Min(0.99, st.CropGrowth));
+                        p.Farm[o] = site > 0.4f ? Vector2.zero : new Vector2(used, (float)st.Crop + (float)System.Math.Min(0.99, st.CropGrowth));   // (no plots on a quarry's ground)
                         Color crop = CropColour(st);
                         col = Color.Lerp(col, crop, Mathf.SmoothStep(0f, 1f, farm));
                     }
@@ -1009,7 +1030,7 @@ namespace TC2.Game
                     // (the sand itself is drawn per pixel by the shader from the ground's own height over the sea, D2-081: a vertex colour
                     // follows the triangles of coarse patches, a staircase along every coast)
                     // rock on steep ground
-                    float rock = Edge(0.10f, 0.30f, slope);
+                    float rock = Mathf.Max(Edge(0.10f, 0.30f, slope), site * 0.9f);
                     if (rock > 0) col = Color.Lerp(col, Color.Lerp(Rock, RockDark, Mathf.Clamp01(slope * 1.6f - 0.3f)), rock);
                     // a volcano: dark lava rock at the summit, ash and cinders down the flanks, streaked by its gullies
                     double cone = VolcanoShape.At(P, d, c, out float vrock, out float summit);

@@ -80,12 +80,19 @@ namespace TC2.Core.Places
         public double Ahead;            // DEEP (F8): what its last step moved in or out of the store at the step's start that days lived
         public long AheadFrom, AheadTo; // would move through it (the step's start and end; 0 when none)
         public int Project;             // the structure its people are raising now (0 none: C1.1, `Structures.Plan`)
+        public byte ProjectKind;        // its kind (a cache: walls go before all but water and the first store)
         public byte Granaries, Barns;   // its standing granaries and barns (a cache of the structures: the store's capacity)
         public long HarvestEvent;       // its last harvest in history (what overfilled its store: C1.1)
         public int WoodLot;             // its woodlot: the cell its people fell wood at, + 1 (0 none chosen; C1.2, `Woods`)
         public float WoodDist;          // m from its square to the woodlot
         public byte WoodFar;            // how far its woods have receded (0 near, 1 past 600 m, 2 past 1 km, 3 past 1.5 km, 4 none within reach)
         public long WoodLook;           // when it last looked for woods (none within reach: it looks again every twelve days)
+        public int StoneCell;           // the nearest rock its people have seen, + 1 (0 none; C1.3, `Stone`)
+        public float StoneDist;         // m from its square to that rock
+        public long StoneEvent;         // when they first found rock (history)
+        public double Stone;            // loads of stone in its store
+        public float StoneWant;         // loads it wants in store (footings for its next houses), read once a day
+        public int Quarry;              // its quarry (a structure at the rock; 0 none)
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
@@ -141,7 +148,7 @@ namespace TC2.Core.Places
             Hunt.Write(w); Fish.Write(w); Gath.Write(w);
             w.Byte(Works); w.Float(WorkBuild); Lore.Write(w); w.Long(ScoutAt); w.Int(Tended); w.Byte(HerdersOut); w.Long(ColdEvent); w.Float(FuelDay); w.Float(BestNets); w.Float(BestLoom); w.Float(BestQuern); w.Byte(TechKnown); w.Float(BestPottery); w.Float(BestArd); w.Double(Fibre); w.Double(Hides); w.Float(BestMetal); w.Double(Metal); w.Long(Epidemic); w.Int(EpiPath); w.Int(EpiDead); w.Long(EpiStart); w.Int(InfNow); w.Int(InfPath); w.Int(InfPresent); w.Int(ReliefFrom); w.Long(ReliefAt); w.Int(Watcher); w.Long(WatchEvent); w.Int(Foe); w.Float(FoeWorth); w.Long(FoeEvent); w.Byte(Wall); w.Byte(WallKeep); w.Float(WallR); w.Float(WallCond); w.Long(WallEvent); w.Int(Lord); w.Long(LordSince); w.Long(LordEvent);
             w.Double(Ahead); w.Long(AheadFrom); w.Long(AheadTo);
-            w.Int(Project); w.Byte(Granaries); w.Byte(Barns); w.Long(HarvestEvent); w.Int(WoodLot); w.Float(WoodDist); w.Byte(WoodFar); w.Long(WoodLook);
+            w.Int(Project); w.Byte(ProjectKind); w.Byte(Granaries); w.Byte(Barns); w.Long(HarvestEvent); w.Int(WoodLot); w.Float(WoodDist); w.Byte(WoodFar); w.Long(WoodLook); w.Int(StoneCell); w.Float(StoneDist); w.Long(StoneEvent); w.Double(Stone); w.Float(StoneWant); w.Int(Quarry);
             w.Float(SquareX); w.Float(SquareY); w.Float(FieldX); w.Float(FieldY); w.Float(WoodX); w.Float(WoodY); w.Float(WellX); w.Float(WellY);
         }
 
@@ -156,7 +163,7 @@ namespace TC2.Core.Places
             s.Hunt = Grounds.Read(r); s.Fish = Grounds.Read(r); s.Gath = Grounds.Read(r);
             s.Works = r.Byte(); s.WorkBuild = r.Float(); s.Lore = KnownSites.Read(r); s.ScoutAt = r.Long(); s.Tended = r.Int(); s.HerdersOut = r.Byte(); s.ColdEvent = r.Long(); s.FuelDay = r.Float(); s.BestNets = r.Float(); s.BestLoom = r.Float(); s.BestQuern = r.Float(); s.TechKnown = r.Byte(); s.BestPottery = r.Float(); s.BestArd = r.Float(); s.Fibre = r.Double(); s.Hides = r.Double(); s.BestMetal = r.Float(); s.Metal = r.Double(); s.Epidemic = r.Long(); s.EpiPath = r.Int(); s.EpiDead = r.Int(); s.EpiStart = r.Long(); s.InfNow = r.Int(); s.InfPath = r.Int(); s.InfPresent = r.Int(); s.ReliefFrom = r.Int(); s.ReliefAt = r.Long(); s.Watcher = r.Int(); s.WatchEvent = r.Long(); s.Foe = r.Int(); s.FoeWorth = r.Float(); s.FoeEvent = r.Long(); s.Wall = r.Byte(); s.WallKeep = r.Byte(); s.WallR = r.Float(); s.WallCond = r.Float(); s.WallEvent = r.Long(); s.Lord = r.Int(); s.LordSince = r.Long(); s.LordEvent = r.Long();
             s.Ahead = r.Double(); s.AheadFrom = r.Long(); s.AheadTo = r.Long();
-            s.Project = r.Int(); s.Granaries = r.Byte(); s.Barns = r.Byte(); s.HarvestEvent = r.Long(); s.WoodLot = r.Int(); s.WoodDist = r.Float(); s.WoodFar = r.Byte(); s.WoodLook = r.Long();
+            s.Project = r.Int(); s.ProjectKind = r.Byte(); s.Granaries = r.Byte(); s.Barns = r.Byte(); s.HarvestEvent = r.Long(); s.WoodLot = r.Int(); s.WoodDist = r.Float(); s.WoodFar = r.Byte(); s.WoodLook = r.Long(); s.StoneCell = r.Int(); s.StoneDist = r.Float(); s.StoneEvent = r.Long(); s.Stone = r.Double(); s.StoneWant = r.Float(); s.Quarry = r.Int();
             s.SquareX = r.Float(); s.SquareY = r.Float(); s.FieldX = r.Float(); s.FieldY = r.Float(); s.WoodX = r.Float(); s.WoodY = r.Float(); s.WellX = r.Float(); s.WellY = r.Float();
             return s;
         }
@@ -171,7 +178,7 @@ namespace TC2.Core.Places
             Hunt.Hash(ref h); Fish.Hash(ref h); Gath.Hash(ref h);
             h.Add(Works); h.Add(WorkBuild); Lore.Hash(ref h); h.Add(ScoutAt); h.Add(Tended); h.Add(HerdersOut); h.Add(ColdEvent); h.Add(FuelDay); h.Add(BestNets); h.Add(BestLoom); h.Add(BestQuern); h.Add(TechKnown); h.Add(BestPottery); h.Add(BestArd); h.Add(Fibre); h.Add(Hides); h.Add(BestMetal); h.Add(Metal); h.Add(Epidemic); h.Add(EpiPath); h.Add(EpiDead); h.Add(EpiStart); h.Add(InfNow); h.Add(InfPath); h.Add(InfPresent); h.Add(ReliefFrom); h.Add(ReliefAt); h.Add(Watcher); h.Add(WatchEvent); h.Add(Foe); h.Add(FoeWorth); h.Add(FoeEvent); h.Add(Wall); h.Add(WallKeep); h.Add(WallR); h.Add(WallCond); h.Add(WallEvent); h.Add(Lord); h.Add(LordSince); h.Add(LordEvent);
             if (AheadTo != 0) { h.Add(Ahead); h.Add(AheadFrom); h.Add(AheadTo); }   // (only DEEP sets them: other worlds hash as before)
-            h.Add(Project); h.Add(Granaries); h.Add(Barns); h.Add(HarvestEvent); h.Add(WoodLot); h.Add(WoodDist); h.Add(WoodFar); h.Add(WoodLook);
+            h.Add(Project); h.Add(ProjectKind); h.Add(Granaries); h.Add(Barns); h.Add(HarvestEvent); h.Add(WoodLot); h.Add(WoodDist); h.Add(WoodFar); h.Add(WoodLook); h.Add(StoneCell); h.Add(StoneDist); h.Add(StoneEvent); h.Add(Stone); h.Add(StoneWant); h.Add(Quarry);
             h.Add(SquareX); h.Add(SquareY); h.Add(FieldX); h.Add(FieldY); h.Add(WoodX); h.Add(WoodY); h.Add(WellX); h.Add(WellY);
         }
 
