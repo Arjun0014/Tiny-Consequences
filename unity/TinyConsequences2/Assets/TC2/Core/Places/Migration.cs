@@ -348,8 +348,7 @@ namespace TC2.Core.Places
             // a home standing empty there, else a camp on a new lot (D2-059)
             if (!Homes.TakeEmpty(w, hid))
             {
-                ref var d = ref w.Settlements.Get(dest);
-                d.NextDryLot(w.Planet, out float hx, out float hy);
+                Homes.FreeLot(w, dest, hid, out float hx, out float hy);
                 hh.HomeX = hx; hh.HomeY = hy; hh.Shelter = Construction.Camp; hh.Build = 0f;
             }
             var mem = w.Members(hid);

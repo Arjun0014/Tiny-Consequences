@@ -150,5 +150,43 @@ namespace TC2.Tests.Core
             Assert.IsFalse(w.BuildingsOf(sid).Contains(home));
             Assert.IsNull(TestWorlds.Audit(w));
         }
+            [Test]
+        public void ANewHomeTakesTheInnermostFreeLotSoAVillageKeepsItsShape()
+        {
+            // a ruin keeps its lot; when it has gone into the land its lot is the next new home's (before, every new home took the next
+            // lot of an ever-longer spiral and villages of a few hundred sprawled 400 m out over the centuries); never a lot in the water
+            const long y = SimTime.Year;
+            var w = TestWorlds.Make(445);
+            int sid = w.Settlements.First();
+            ref var s = ref w.Settlements.Get(sid);
+            int lots = s.Lots;
+            Homes.FreeLot(w, sid, 0, out float nx, out float ny);
+            Assert.GreaterOrEqual(w.Settlements.Get(sid).Lots, lots, "a lived-in village's lots are taken: a new one beyond them");
+            // premise: the household on the innermost lot dies out and its home stands empty, then falls, then its ruin goes
+            int inner = 0; double best = double.MaxValue;
+            var bl = w.BuildingsOf(sid);
+            for (int i = 0; i < bl.Count; i++)
+            {
+                var b0 = w.Buildings.Get(bl[i]);
+                double d = Math.Sqrt(((double)b0.X - s.SquareX) * ((double)b0.X - s.SquareX) + ((double)b0.Y - s.SquareY) * ((double)b0.Y - s.SquareY));
+                if (d < best) { best = d; inner = bl[i]; }
+            }
+            Assert.AreNotEqual(0, inner);
+            var b = w.Buildings.Get(inner);
+            int gone = b.Household;
+            DieOut(w, gone);
+            w.Buildings.Get(inner).Left = w.Now - 100 * y;   // premise: fallen in long ago, its ruin still there
+            Homes.FreeLot(w, sid, 0, out float rx, out float ry);
+            Assert.Greater((rx - b.X) * (double)(rx - b.X) + (ry - b.Y) * (double)(ry - b.Y), 36.0, "a ruin keeps its lot");
+            w.Buildings.Get(inner).Left = w.Now - 400 * y;   // premise: its ruin is gone into the land
+            Homes.Prune(w);
+            Homes.FreeLot(w, sid, 0, out float fx, out float fy);
+            var P = w.Planet;
+            int cell = P.Grid.CellOf(w.Settlements.Get(sid).LocalToSphere(fx, fy, P.Radius));
+            Assert.IsTrue(P.IsLand(cell) && !P.IsLake(cell), "on dry land");
+            double fromSquare = Math.Sqrt(((double)fx - s.SquareX) * ((double)fx - s.SquareX) + ((double)fy - s.SquareY) * ((double)fy - s.SquareY));
+            Assert.LessOrEqual(fromSquare, best + 1e-3, "the freed inner lot (or one as near the square) is the new home's, not the spiral's end");
+            Console.WriteLine("innermost home " + best.ToString("0.0") + " m from the square; the next new home after its ruin went " + fromSquare.ToString("0.0") + " m; lots used " + w.Settlements.Get(sid).Lots);
+        }
     }
 }

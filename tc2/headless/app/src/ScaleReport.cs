@@ -36,6 +36,7 @@ namespace TC2.Headless
         sealed class Snap
         {
             public int Villages, People, Communities, LandParts, InhabitedParts, MaxPerPart, Polities, Tributaries, LargestPolity;
+            public double HomeMean, HomeMax; public int Ruins, Homes;
             public double LandKm2, NearestKm, WithinWalk, Within3, Reachable, LargestShare, Hops, KinKm, KinAway, KinN, WoodsNear, WoodsAll, LargestPartKm2;
         }
 
@@ -146,6 +147,24 @@ namespace TC2.Headless
             sn.WoodsNear = fa > 0 ? fw / fa : 0;
             double fl = 0, la = 0; for (int c = 0; c < P.Cells; c++) if (P.IsLand(c)) { fl += P.Forest[c] * P.AreaHa(c); la += P.AreaHa(c); }
             sn.WoodsAll = la > 0 ? fl / la : 0;
+            // the villages' shape: how far their lived-in homes lie from the square (mean, and the farthest), and their ruins
+            double sumMean = 0, sumMax = 0; int vs = 0, ruins = 0, homes = 0;
+            foreach (int sid in ids)
+            {
+                ref var st = ref w.Settlements.Get(sid);
+                var bl = w.BuildingsOf(sid);
+                double sd = 0, mx = 0; int k = 0;
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    var b = w.Buildings.Get(bl[i]);
+                    if (b.Household == 0) { ruins++; continue; }
+                    double dx = (double)b.X - st.SquareX, dy = (double)b.Y - st.SquareY, dd = Math.Sqrt(dx * dx + dy * dy);
+                    sd += dd; k++; if (dd > mx) mx = dd;
+                }
+                homes += k;
+                if (k > 0) { sumMean += sd / k; sumMax += mx; vs++; }
+            }
+            sn.HomeMean = vs > 0 ? sumMean / vs : 0; sn.HomeMax = vs > 0 ? sumMax / vs : 0; sn.Ruins = ruins; sn.Homes = homes;
             return sn;
         }
 
@@ -158,6 +177,7 @@ namespace TC2.Headless
                           "  inhabited land parts " + s.InhabitedParts + " (most villages on one " + s.MaxPerPart + ")");
             sb.AppendLine("SCALE nearest village " + F(s.NearestKm, "0.00") + " km  within a day's walk (6 km) " + F(s.WithinWalk, "0.0") + "  within 3 km " + F(s.Within3, "0.0") +
                           "  communities " + s.Communities + " (largest " + F(100 * s.LargestShare, "0") + " % of people; hops between its villages " + F(s.Hops, "0.0") + ")  people a person can reach in a day " + F(s.Reachable, "0"));
+            sb.AppendLine("SCALE villages' shape: homes lived in " + s.Homes + ", mean " + F(s.HomeMean, "0") + " m from the square, the farthest " + F(s.HomeMax, "0") + " m (village means); ruins and empty homes " + s.Ruins);
             sb.AppendLine("SCALE kin: grown people with a living mother " + F(s.KinN, "0") + ", " + F(100 * s.KinAway, "0") + " % in another village, " + F(s.KinKm, "0.00") + " km away" +
                           "  polities " + s.Polities + " (tributaries " + s.Tributaries + ", largest " + s.LargestPolity + " villages)  woods round villages " + F(s.WoodsNear, "0.00") + " / all land " + F(s.WoodsAll, "0.00"));
             var t = ScaleTally.Sums;

@@ -16,6 +16,11 @@
     hectare (`AreaScale`) and real-size patches (`Patch`); first villages in metres; new homes on dry lots; the view relative to R
     (framing, relief, clouds, LOD, haze). Tools: headless `--radius`, `run --scale`; shots `--radius`. Shots: `tc2/out/shots/scale1`,
     `scale2` (contact sheets). Tests at 6 km: eight 10 km premises restated, no law loosened.
+  - **D2-084 on 6 km, the multi-age baseline** (`tc2/out/shots/ages6`, sheets `sheet_s42.png`, `sheet_s7.png`; seeds 42 and 7 at years
+    0/25/100/300/1,000): history reads without the date at orbit and region (woods -> clearings -> a farmed heartland; seed 7's woods
+    down to a copse by 1,000). Failing: villages sprawled over centuries (fixed, D2-086: homes 128 m from the square at year 1,000, was
+    212), the mature land a brown quilt at the year's first day (shots at other seasons next), people ~3 px at the village view, rivers
+    hairlines, far views at their own local time (a scar shot at night).
   - **Known bug, its own calibrated slice** (it changes COARSE): a COARSE disease catch that falls on a child is dropped
     (`Disease.Visits` picks among everyone present), halving the sickness visits carry home.
 - **Session 4 (7 Oct 2026, from 00:16 IST, closed into session 5)** - Arjun (7 Oct): finish D2-083, then **the world made legible** is the
@@ -301,6 +306,7 @@
 | D2-085 scale study, 400 years DEEP, seeds 42/7/1/2 at R = 10/7/6/5/4 km (`tc2/out/scale/table.txt`) | dotnet | people at year 400: 10 km 13,546/4,876/963/19,043; 7 km 6,439/2,471/816/8,197; **6 km 5,471/1,995/1,116/7,110**; 5 km 2,564/1,238/450/5,121; 4 km 3,774/1,010/2,164/3,062; ms a world year 10 km 179-413, 6 km 188-319 (seed 42: 413 -> 264); the planet ~150-180 ms a world year at any size |
 | Planet only, seed 42, 600 years at 10 and 5 km (`tc2/out/scale/ground42_r*.txt`) | dotnet | the same tectonic history step for step (collisions, subductions, ridges, peaks, eruptions); 99 s against 82 s; at 5 km seals extinct at year 0, bears at 180 |
 | Editor shot rounds `scale1` (6 worlds x 7 views) and `scale2` (9 x 6) | editor | ~6-8 min each with the machine shared; contact sheets `sheet_*.png` |
+| 6 km acceptance worlds, 1,000 years DEEP, saves at 0/25/100/300/1,000 (`tc2/out/scale/r6000_s{42,7}_ages/`) | dotnet | seed 42: 4,950-6,180 people in 18-21 villages from year 400 to 1,000 (324 epidemics, 87 raids, 20 tributes, 30 palisades, 8,295 trades; 469 ms a world year); seed 7: 1,957 in 11 (282 ms); **new kinds appeared** (seed 42: boar twice; seed 7: hare, wolf) where 10 km's planet-only 10,000-year runs made none - and the 10 km seed 42 run with people (1,000 years, `r10000_s42_1000.txt`) also split its boar into three kinds: people fragmenting the woods make kinds (F2's done-when met with people), not the planet's size |
 | Tests and determinism at 6 km (D2-085) | dotnet, editor Mono | 177 pass (351 s); probe identical on both: gen 392cf8631e08dc36, d1 67ad8d195d58819d, d2 4260ca6bd3b0f492, d3 46da96b46a778f32 |
 
 ## Measurements (session 3)

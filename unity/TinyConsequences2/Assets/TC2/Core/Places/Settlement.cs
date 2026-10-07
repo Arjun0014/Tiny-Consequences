@@ -115,21 +115,6 @@ namespace TC2.Core.Places
             y = (float)(SquareY + DMath.Sin(ang) * rad);
         }
 
-        /// <summary>
-        /// The next lot of the spiral that stands on dry land, for a new home (D2-085): lots in the sea or a lake are passed over (at
-        /// most 64 in a row). On a smaller planet the coast lies nearer the village's anchor in metres and the spiral reached the water.
-        /// </summary>
-        public void NextDryLot(Planet.PlanetState P, out float x, out float y)
-        {
-            for (int tries = 0; ; tries++)
-            {
-                LotPosition(Lots++, out x, out y);
-                if (tries >= 64) return;
-                int c = P.Grid.CellOf(LocalToSphere(x, y, P.Radius));
-                if (P.IsLand(c) && !P.IsLake(c)) return;
-            }
-        }
-
         public static void Frame(Vec3d anchor, out Vec3d east, out Vec3d north)
         {
             Vec3d up = Vec3d.UnitY;

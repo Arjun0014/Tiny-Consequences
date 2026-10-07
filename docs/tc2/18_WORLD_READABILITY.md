@@ -10,8 +10,8 @@ The simulation already knows forests, grass, climate, rivers, lakes, coasts, fir
 fields, homes, ruins, roads, people at work, famine, sickness, raids, walls and lordships - but on 7 Oct 2026 almost none of it
 could be read by looking at the planet. The world must read as alive, and as historical, from the picture itself:
 
-- at the **region** view (~5 km up) a player can point and say "a forest", "a valley", "pasture", "a river", "a village";
-- at the **orbit** view (~22 km) the planet reads as land with structure (mountain ranges, river basins, woodland masses, dry
+- at the **region** view (half the radius up: 3 km on the 6 km world of D2-085) a player can point and say "a forest", "a valley", "pasture", "a river", "a village";
+- at the **orbit** view (2.2 radii: 13 km) the planet reads as land with structure (mountain ranges, river basins, woodland masses, dry
   lands, ice, inhabited places), not "a dark coloured sphere";
 - at the **village** and **close** views a hamlet of 20-50 people reads as a place (clustered homes, paths, smoke, gardens, pens,
   animals, fields, stores, wells, fences) and the land round it as a working landscape;
@@ -37,7 +37,7 @@ simulation keeps no state for it, add the **smallest real state** that makes it 
 
 | Category | Simulation state (Core) | Drawn now | Should read |
 |---|---|---|---|
-| Woods | `Forest` 0-1 per 245 m cell (logistic to a climate capacity); `BurnedAt`; conifer share from `TMean` (view) | canopy shader (crowns in a 156 m tile, cover texture far off), trees within 440 m: five meshes of one style | interiors vs edges vs glades; broadleaf / conifer / mixed by climate; young / mature / old stands; dead and burnt; seasons; masses from orbit |
+| Woods | `Forest` 0-1 per cell (137 m on the 6 km world) (logistic to a climate capacity); `BurnedAt`; conifer share from `TMean` (view) | canopy shader (crowns in a 156 m tile, cover texture far off), trees within 440 m: five meshes of one style | interiors vs edges vs glades; broadleaf / conifer / mixed by climate; young / mature / old stands; dead and burnt; seasons; masses from orbit |
 | Woods' age / structure | **none** (only `Forest` and fire's `BurnedAt`) | young trees for ~40 y after fire | regrowth after clearing, abandonment, slides and fire; old-growth vs young -> **needs real state** (disturbance kind + time per cell) |
 | Grass, open land | `Grass` 0-1, `SoilWater`, `Moist`, `RainToday` | ground colour (biome colour lerps), tufts near camera | meadow vs grazed pasture vs dry steppe vs heath vs bare; drought browning that follows the weather |
 | Climate | `TMean`, `TAmp`, `Temp`, `Moist`, `SoilWater`, `Ice` | snow from temperature by height; olive leaves by dryness | snowline and its season, frost, drought, wet lowlands |
@@ -105,10 +105,18 @@ To be added slice by slice, each with tests and documented here:
 11. Multi-age acceptance (§7) passed.
 12. Browser performance (60 fps in normal views, WebGPU and WebGL2).
 
+## 6b. On the 6 km planet (D2-085)
+
+The planet's size was reopened before these slices were spent on 10 km (`19_PLANET_SCALE.md`): the work from here is judged on the
+6 km world. What the radius gives and what it does not: every human and historical mark is 1.67x wider against the globe (a village
+with its fields 0.17 of its diameter), villages read as places from the region view, the curve of the world shows from 900 m; people
+and animals are no larger on screen (that is the camera and readable exaggeration - slice 8), and the good seeds' year-300 heartland is
+one quilt of fields at any size (farmland legibility - seasons, crops, fallow, hedges, pasture - is slices 2 and 5).
+
 ## 7. Acceptance: can I see history without reading the date?
 
-`node tc2/scripts/headless.mjs run --seed S --years 1000 --coarse --snap 0,25,100,300,1000` saves the same world at five ages
-(`tc2/out/ages/sS/world_yY.tc2`); `node tc2/scripts/unity.mjs shots --load F --tag ages_S_yY --views ...` shoots each in the editor
+`node tc2/scripts/headless.mjs run --seed S --years 1000 --deep 12 --snap 0,25,100,300,1000 --snapdir DIR` saves the same world at five
+ages (6 km: `tc2/out/scale/r6000_sS_ages/world_yY.tc2`); `node tc2/scripts/unity.mjs shots --load F --tag ages_S_yY --views ...` shoots each in the editor
 (orbit, region, river, forest, village, close, and a disturbance scar where one exists). The rounds are compared side by side: over
 centuries the land must visibly transform (clearings, fields and their abandonment, regrowth, scars, roads, villages growing and
 falling) and each view must read without the HUD.

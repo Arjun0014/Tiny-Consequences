@@ -110,6 +110,52 @@ namespace TC2.Core.Places
             return true;
         }
 
+        /// <summary>
+        /// The lot a household without a home camps on (D2-084, D2-085): the innermost lot of its village's spiral on dry land that no
+        /// home, ruin or camp of the village stands on. Before, every new home took the next lot of an ever-longer spiral: over centuries
+        /// a village of a few hundred spread its houses 400 m out (and its palisade round them all) while its old lots lay empty when
+        /// their ruins had gone into the land; now new homes take those lots and a village keeps its shape. Lots in the sea or a lake are
+        /// passed over (on a smaller planet the coast lies nearer the anchor in metres).
+        /// </summary>
+        public static void FreeLot(World w, int sid, int forHid, out float x, out float y)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            var P = w.Planet;
+            var bl = w.BuildingsOf(sid); var hl = w.HouseholdsOf(sid);
+            int limit = s.Lots + 64;
+            for (int k = 0; k < limit; k++)
+            {
+                s.LotPosition(k, out float lx, out float ly);
+                if (Taken(w, bl, hl, forHid, lx, ly)) continue;
+                int c = P.Grid.CellOf(s.LocalToSphere(lx, ly, P.Radius));
+                if (!P.IsLand(c) || P.IsLake(c)) continue;
+                if (k >= s.Lots) s.Lots = k + 1;
+                x = lx; y = ly;
+                return;
+            }
+            s.LotPosition(s.Lots++, out x, out y);   // (nothing free within reach: the next lot)
+        }
+
+        /// <summary>A home, a ruin or another household's camp stands within 6 m of a lot (lots lie ~8-9 m apart).</summary>
+        static bool Taken(World w, IntList buildings, IntList households, int forHid, float lx, float ly)
+        {
+            for (int i = 0; i < buildings.Count; i++)
+            {
+                ref var b = ref w.Buildings.Get(buildings[i]);
+                double dx = (double)b.X - lx, dy = (double)b.Y - ly;
+                if (dx * dx + dy * dy < 36.0) return true;
+            }
+            for (int i = 0; i < households.Count; i++)
+            {
+                if (households[i] == forHid) continue;
+                ref var h = ref w.Households.Get(households[i]);
+                if (h.Building != 0) continue;   // (its home is among the buildings)
+                double dx = (double)h.HomeX - lx, dy = (double)h.HomeY - ly;
+                if (dx * dx + dy * dy < 36.0) return true;
+            }
+            return false;
+        }
+
         static readonly System.Collections.Generic.List<int> _gone = new System.Collections.Generic.List<int>();
 
         /// <summary>Ruins gone into the land leave the table (yearly housekeeping).</summary>

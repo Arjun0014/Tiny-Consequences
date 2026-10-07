@@ -845,8 +845,7 @@ namespace TC2.Core.Places
             // an empty home in the village if one stands, else a camp on a new lot (D2-059)
             if (!Homes.TakeEmpty(w, hid))
             {
-                ref var s1 = ref w.Settlements.Get(sid);
-                s1.NextDryLot(w.Planet, out float hx, out float hy);
+                Homes.FreeLot(w, sid, hid, out float hx, out float hy);
                 ref var nh = ref w.Households.Get(hid);
                 nh.HomeX = hx; nh.HomeY = hy;
             }

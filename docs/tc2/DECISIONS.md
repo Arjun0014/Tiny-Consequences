@@ -2077,3 +2077,18 @@ are brooks at any size (the largest carries < 0.3 m3/s): their reading is presen
 premises restated). D2-084's readability pass is redone on 6 km.
 **Invalidation.** Playtests of the 6 km world finding it cramped (then 7 km) or still empty (then 5 km with denser contacts decay);
 a planet cost that makes Ancient and Deep time miss their targets.
+
+## D2-086 — 2026-10-07 — Villages keep their shape: a new home takes the innermost free lot (D2-084 slice, settlements)
+
+**Context.** The 6 km multi-age baseline (`tc2/out/shots/ages6`, 1,000 years of seeds 42 and 7) showed old villages sprawling: every
+household that found no empty home took the next lot of an ever-longer spiral (`Settlement.LotPosition(Lots++)`), while the lots of
+homes whose ruins had gone into the land lay empty; by year 1,000 a village of ~110 households had its homes on average 212 m from the
+square (farthest 276 m; compact, they fit within ~115 m), ruins outnumbered homes, and the palisade - sized from the farthest home - ran
+round a field of scattered houses.
+**Decision.** `Homes.FreeLot(w, sid, forHid)`: the innermost lot of the village's spiral that is on dry land and where no home, ruin or
+other household's camp stands within 6 m (lots lie ~8-9 m apart); the spiral grows only when every inner lot is taken. A ruin keeps its
+lot until it has gone into the land (80-300 years, D2-052). Used by marriages, households arriving and worldgen (replacing D2-085's
+`NextDryLot`). Headless `run --scale` reports the villages' shape (mean and farthest lived-in home from the square, ruins).
+**Evidence.** 1,000 years on 6 km (`tc2/out/scale/r6000_s{42,7}_ages2`): homes 128 m from the square on average, the farthest 208 m
+(seed 42; was 212 / 276), 92 / 141 m (seed 7; was 171 / 234); people 5,823 / 2,315 (5,823 vs 6,178 and 2,315 vs 1,957 before - the seeds'
+own scatter). Test `HomesTests.ANewHomeTakesTheInnermostFreeLotSoAVillageKeepsItsShape`; 178 tests pass.
