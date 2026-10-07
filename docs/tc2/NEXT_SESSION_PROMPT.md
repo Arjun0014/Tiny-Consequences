@@ -93,7 +93,8 @@ per person, settlement and feature; never a world where everyone reaches everyon
 **Where we are (session 5, 7 Oct 2026)**: D2-083 closed (22cad8d). **D2-085 made: the planet is 6 km** - the same ground at any size
 (geophysics in geo-lengths of a 10 km sphere), living laws per hectare and real-size patches, the view relative to R; a village with its
 fields is 0.17 of the globe (TC1's 0.16); mature worlds of 2,000-7,100 people in 10-30 villages; 177 tests and the Mono probe at 6 km.
-Next: D2-084 on the 6 km world (SESSION_HANDOFF "Next").
+D2-084 on 6 km began: villages keep their shape (D2-086), homes the sea takes are lost and one shore serves sim and view (D2-087,
+D2-088), people readable at the village view. Next: SESSION_HANDOFF "Next" (farmland, rivers, settlements as places, wildlife, scars).
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

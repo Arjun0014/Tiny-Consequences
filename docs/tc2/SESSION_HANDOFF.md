@@ -26,10 +26,16 @@
 - **Known bugs, each its own calibrated slice** (they change COARSE): COARSE hunting skill and trips never updated (`CoarseDay`, since
   D2-063); a COARSE disease catch that falls on a child is dropped (`Disease.Visits` picks among everyone present), halving the sickness
   visits carry home.
-- **Next**: D2-084 on the 6 km world (`18_WORLD_READABILITY.md`): people and animals readable at the near views (camera and readable
-  exaggeration), farmland that reads by season, crop, hedges, pasture and fallow (the year-300 quilt), rivers and corridors, settlements
-  as places, scars, the multi-age acceptance (shoot the 6 km saves in `tc2/out/scale/r6000_s*/`; add years 0, 25, 1,000), the great
-  beasts' viability decision, then the Web build at 60 fps (run `unity.mjs configure` first: River.mat).
+- **D2-084 slices on 6 km, committed**: the multi-age baseline (`tc2/out/shots/ages6`: history reads at orbit and region); D2-086 villages
+  keep their shape (`Homes.FreeLot`, d775460); D2-087 homes the sea takes are lost (`Homes.SeaTook`, `HistoryKind.HomesDrowned`) and D2-088
+  one shore for sim and view (`Core/Planet/Shore.cs`) with the people pixel floor and a `street` view (1625d2f). Acceptance worlds:
+  `tc2/out/scale/r6000_s{42,7}_ages2/` (0/25/100/300/1,000, compact lots), `_ages3` (seed 42 with drowning), `_shore` (300 years, all
+  rules). Shots: `ages6b` (seasons: summer `regiond18_10`, harvest `regiond14_10`/`village_10`), `drown1`, `shore1`.
+- **Next**: (1) farmland beyond the crop stage (all a village's fields share one stage; fallow and pasture where state allows - check
+  what Core knows before drawing anything: no theatre); (2) rivers and corridors (hairlines now; the network is real); (3) settlements as
+  places (palisade ring vs the compact village; the square, yards and paths); (4) wildlife and herds readable; (5) scars; (6) orbit;
+  the great beasts' viability decision; far views at their own local time (ShotRunner: an hour at the view's place); then the Web build
+  at 60 fps (run `unity.mjs configure` first: River.mat).
 
 ## Session 4 (7 Oct 2026, from 00:16 IST) — closed into session 5
 
