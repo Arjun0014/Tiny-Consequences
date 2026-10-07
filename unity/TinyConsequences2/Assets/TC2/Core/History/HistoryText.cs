@@ -85,7 +85,11 @@ namespace TC2.Core.History
                     return "The sea took " + (e.ArgA == 1 ? "a home" : e.ArgA + " homes") + " of " + place + ": their people made new homes on higher ground.";
                 case HistoryKind.HomeTaken:
                     return "The " + subj + "s made their home in " + (e.Object.IsNone ? (e.ArgA >= 2 ? "an empty house" : "an empty hut") : "the " + (e.ArgA >= 2 ? "house" : "hut") + " the " + obj + "s had left") + " in " + place + ".";
-                case HistoryKind.WorkBuilt: return "The people of " + subj + (e.ArgA == 1 ? " dug a well." : " built a granary.");
+                case HistoryKind.WorkBuilt:
+                    if (e.ArgA == TC2.Core.Places.Structures.Well) return "The people of " + subj + " dug a well" + (e.Other.IsNone ? "." : ", " + other + " the first at the digging.");
+                    if (e.ArgA == TC2.Core.Places.Structures.Granary && e.ArgB > 1) return "The people of " + subj + " built another granary (" + e.ArgB + " now)" + (e.Other.IsNone ? "." : ", " + other + " the first at the work.");
+                    return "The people of " + subj + " built a " + TC2.Core.Places.Structures.Name((byte)e.ArgA) + (e.Other.IsNone ? "." : ", " + other + " the first at the work.");
+                case HistoryKind.WorkBegun: return "The people of " + subj + " began " + WorkWhy((byte)e.ArgA, e.ArgB) + ".";
                 case HistoryKind.PartySetOut: return e.ArgA + " households of " + subj + " (" + e.ArgB + " people) set out to make a new home.";
                 case HistoryKind.Scouted: return "Someone of " + subj + " saw good land near " + place + ".";
                 case HistoryKind.HouseholdMoved: return "The " + subj + "s left " + place + " for " + obj + ".";
@@ -202,6 +206,11 @@ namespace TC2.Core.History
                 case ActivityKind.Haul: return "carrying the catch home";
                 case ActivityKind.Build:
                     if (p.Why == WhyCode.NoRoof) return "raising a roof for the household: they live in a camp or a hut";
+                    if (w.Settlements.Exists(p.Home) && w.Settlements.Get(p.Home).Project != 0 && w.Buildings.Exists(w.Settlements.Get(p.Home).Project))
+                    {
+                        ref var pb = ref w.Buildings.Get(w.Settlements.Get(p.Home).Project);
+                        return "building for " + home + ": " + WorkWhy(pb.Kind, w.Settlements.Get(p.Home).Granaries);
+                    }
                     if (w.Settlements.Exists(p.Home) && (w.Settlements.Get(p.Home).Wall == 1 || (w.Settlements.Get(p.Home).Wall == 2 && TC2.Core.Places.Construction.NextWork(w.Settlements.Get(p.Home)) == TC2.Core.Places.Construction.Mend)))
                         return "setting posts in " + home + "'s palisade: other villages' people have cost it dear";
                     return "building for " + home + ": the village needs a well or a granary";
@@ -210,6 +219,16 @@ namespace TC2.Core.History
                 case ActivityKind.Tend: return "watching " + home + "'s herd on the pasture" + ground + ": the animals must graze, and the wolves keep off a watched herd";
                 default: return p.Act + " (" + p.Why + ")";
             }
+        }
+
+        /// <summary>A village work and why it was wanted (C1.1): "a granary: their harvest needs a store".</summary>
+        public static string WorkWhy(byte kind, int granaries)
+        {
+            if (kind == TC2.Core.Places.Structures.Well) return "a well: water near the homes";
+            if (kind == TC2.Core.Places.Structures.Granary)
+                return granaries > 0 ? "another granary: their harvest overfilled the store" : "a granary: their harvest needs a store";
+            if (kind == TC2.Core.Places.Structures.Barn) return "a barn: their harvest overfilled the granaries";
+            return "a " + TC2.Core.Places.Structures.Name(kind);
         }
 
         static string Load(byte g, float q) =>

@@ -184,10 +184,35 @@ namespace TC2.Headless
                               " h)  making and mending " + F(m.CraftHours, "0") + " h for " + F(m.GearMade, "0") + " goods  cold: spells " + m.ColdSpells + ", deaths " + m.ColdDeaths);
             {
                 int lived = 0, empty = 0, fallen = 0;
+                var works = new int[32]; var raising = new int[32]; var worksFallen = new int[32];
                 for (int id = w.Buildings.First(); id != 0; id = w.Buildings.Next(id))
                 {
                     var bu = w.Buildings.Get(id);
+                    if (!TC2.Core.Places.Structures.IsHome(bu.Kind))
+                    {
+                        // the village's works (C1.1): standing, being raised, fallen
+                        if (bu.Done == 0) raising[bu.Kind]++; else if (TC2.Core.Places.Structures.Working(in bu, w.Now)) works[bu.Kind]++; else worksFallen[bu.Kind]++;
+                        continue;
+                    }
                     if (TC2.Core.Places.Homes.Fallen(in bu, w.Now)) fallen++; else if (bu.Household != 0) lived++; else empty++;
+                }
+                {
+                    var sb = new System.Text.StringBuilder("works:");
+                    for (int k = 0; k < works.Length; k++)
+                        if (works[k] + raising[k] + worksFallen[k] > 0)
+                            sb.Append(' ').Append(TC2.Core.Places.Structures.Name((byte)k)).Append(' ').Append(works[k]).Append(" standing, ").Append(raising[k]).Append(" being raised, ").Append(worksFallen[k]).Append(" fallen;");
+                    int most = 0, mostSid = 0; double over = 0; int villages = 0;
+                    for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                    {
+                        var st = w.Settlements.Get(sid);
+                        if (!st.Inhabited) continue;
+                        villages++;
+                        if (st.Granaries > most) { most = st.Granaries; mostSid = sid; }
+                        double cap = TC2.Core.Places.Structures.StoreCapacity(in st);
+                        if (st.Granary > cap) over += st.Granary - cap;
+                    }
+                    sb.Append("  most granaries ").Append(most).Append(mostSid != 0 ? " (" + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(mostSid)) + ", " + w.Settlements.Get(mostSid).Population + " people)" : "").Append("; grain beyond the granaries now ").Append(F(over, "0")).Append(" FU");
+                    Console.WriteLine(sb.ToString());
                 }
                 Console.WriteLine("sickness: infections " + m.Infections + ", deaths " + m.DiseaseDeaths + ", epidemics " + m.Epidemics + ", new from animals " + m.PathogensBorn + ", mutations " + m.Mutations);
                 {

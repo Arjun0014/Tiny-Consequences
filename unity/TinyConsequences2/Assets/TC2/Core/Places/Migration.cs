@@ -411,6 +411,7 @@ namespace TC2.Core.Places
                 Kind = HistoryKind.SettlementFounded, Time = w.Now, Cell = cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
                 Object = EntityRef.Settlement(origin), Cause1 = cause, Rel1 = CauseRel.CausedBy,
             });
+            Structures.Plan(w, sid);   // (their first work: a well, laid out at once - C1.1)
             w.Routes.Invalidate();
             w.Wild.Survey(sid);
             w.SettlementSys.ScheduleFirstDaily(sid);

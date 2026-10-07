@@ -10,9 +10,15 @@
 - Session start: repo clean at 057420a (only the empty `Assets/Resources.meta` untracked - Unity's, harmless); no TC2 process running;
   machine ~81 % RAM used by others (2.1 GB free of 11.4) - Unity shot rounds need ~2-3 GB: check first.
 - Docs written: 20-25 and pointers (00, 07 §9, 08 §7, 09 §10, 10 §13, 13 §12, 14 §6, 17, 18 §9), DECISIONS D2-089.
-- **Next: C1.1 structures** (D2-090): extend `Building` (condition, materials, builder, cause, stock, use), a kinds table
-  (`Core/Places/Structures.cs`), well and granary as structures (`Settlement.Works` bits kept as a cache), granary capacity, works by
-  need with causes, placement by zone, the building inspector (Hud), drawn from the table; then C1.2 timber from the woods.
+- **C1.1 structures done (D2-090)** - see DECISIONS; scratchpad (session 6) `wrun.sh` (BIN, TAG, YEARS, SNAP, MODE; DEEP 12 runs with
+  the scale report, annals and saves into `tc2/out/civ/s<seed><TAG>`), binaries `bin_c11*`; shots `--village big|ID` frame the village
+  with the most works (absolute `--load` paths: Unity resolves relative ones from the project folder). **Pitfall**: this Bash tool collapses
+  `\` inside heredocs - patch scripts with backslashes go through the Write tool (`/tmp/*.py`).
+- **Next: C1.2 timber from the woods**: `Settlement.WoodCell` (the woodlot, chosen as the nearest cell within ~1.6 km with forest worth
+  going to; moved when it thins), each 25 kg load felled takes its mass from that cell's forest share (~120 t/ha at full cover), the walk
+  beyond the near woods slows each load (both resolutions, same formula), fields keep the woods off their farmed share in
+  `PlanetSystems.GrowVegetation` (Arability already falls with forest), a history line when the woods recede past 600/1,000/1,500 m;
+  tests; 300-year runs of seeds 42 and 7 against `tc2/out/civ/*_c11c`; shots of the thinned woods.
 
 ## Session 5 (7 Oct 2026, from 06:40 IST) — in progress
 

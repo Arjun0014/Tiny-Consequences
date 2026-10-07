@@ -168,6 +168,7 @@ namespace TC2.Tests.Core
             for (int i = 0; i < bl.Count; i++)
             {
                 var b0 = w.Buildings.Get(bl[i]);
+                if (!Structures.IsHome(b0.Kind)) continue;   // (the village's well and granary are structures too: C1.1)
                 double d = Math.Sqrt(((double)b0.X - s.SquareX) * ((double)b0.X - s.SquareX) + ((double)b0.Y - s.SquareY) * ((double)b0.Y - s.SquareY));
                 if (d < best) { best = d; inner = bl[i]; }
             }

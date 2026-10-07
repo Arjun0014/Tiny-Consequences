@@ -295,7 +295,7 @@ namespace TC2.Core.Worldgen
             }
             // the first villages are already standing when history begins: houses, a well, a granary (D2-045)
             var s = new Settlement { Id = sid, Cell = cell, Anchor = anchor, East = east, North = north, Founded = w.Now, FieldCell = fieldCell, Ration = 1.0,
-                                     Hunt = Grounds.Empty, Fish = Grounds.Empty, Gath = Grounds.Empty, Works = Construction.Well | Construction.Granary,
+                                     Hunt = Grounds.Empty, Fish = Grounds.Empty, Gath = Grounds.Empty,
                                      Lore = KnownSites.Empty };
             s.SphereToLocal(P.Grid.Center[fieldCell], P.Radius, out double fx, out double fy);
             double fl = DMath.Sqrt(fx * fx + fy * fy);
@@ -312,6 +312,9 @@ namespace TC2.Core.Worldgen
             long arrived = w.Record(new HistoryEvent { Kind = HistoryKind.PeopleArrived, Time = w.Now, Cell = cell, Settlement = sid, Subject = EntityRef.Settlement(sid), RootKind = RootKind.People });
             ref var sr = ref w.Settlements.Get(sid);
             sr.FoundedEvent = w.Record(new HistoryEvent { Kind = HistoryKind.SettlementFounded, Time = w.Now, Cell = cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Cause1 = arrived, Rel1 = CauseRel.CausedBy });
+            // its well and granary are structures on its ground (C1.1), laid out before the homes take their lots
+            Structures.Standing(w, sid, Structures.Well, sr.WellX, sr.WellY);
+            { ref var sg = ref w.Settlements.Get(sid); Construction.GranarySpot(in sg, out double gx, out double gy); Structures.Standing(w, sid, Structures.Granary, (float)gx, (float)gy); }
             // founding households: couples with children, a few elders, a few single adults
             int target = cfg.FoundersPerSettlement;
             int made = 0;

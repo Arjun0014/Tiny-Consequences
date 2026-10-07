@@ -58,6 +58,7 @@ namespace TC2.Core.Places
             prof?.Begin(10000); Crops(ref s, doy, 1); prof?.End(10000);   // (the step's first day: a stage begins on it, before its work)
             double g0 = s.Granary;   // (DEEP: the store before the step's meals, larders and catch; the harvest is the day's own)
             prof?.Begin(10001); Food(ref s, doy, days); prof?.End(10001);
+            Structures.Plan(w, sid);   // what its people want built next, by need (C1.1)
             if (days > 1) Ahead(sid, g0, days);   // (the step's own work reads its store as days lived hold it too: F8)
             prof?.Begin(10002); prof?.Begin(10007); w.Wild.Survey(sid); prof?.End(10007); prof?.Begin(10008); w.HerdSys.Update(sid); prof?.End(10008); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
             if (days > 1) w.Wild.MidStep(sid, w.Stock.MidStepMast(sid, days));   // (DEEP: the woods as the step's middle day finds them)
@@ -79,6 +80,7 @@ namespace TC2.Core.Places
             if (s2.Population <= 0 && s2.Abandoned == 0)
             {
                 s2.Abandoned = now;
+                Structures.Abandon(w, sid);   // its works are left unkept (C1.1)
                 w.HerdSys.Dissolve(sid);
                 w.Stock.Feral(sid);   // its animals are left to the land (D2-048)
                 w.ReleaseSettlementLand(sid);   // and its fields and ground (D2-052)
@@ -330,6 +332,7 @@ namespace TC2.Core.Places
                 s.Fibre += s.FieldHa * FibrePerHa * DMath.Clamp01(s.ExpectedHarvest > 0 ? yield / s.ExpectedHarvest : 1.0);
                 s.Crop = CropStage.Harvested; s.CropWorkNeed = 0; s.CropWork = 0;
                 long hev = w.Record(new HistoryEvent { Kind = HistoryKind.Harvest, Time = w.Now, Cell = s.FieldCell, Settlement = s.Id, Subject = EntityRef.Settlement(s.Id), Magnitude = (float)yield });
+                Structures.AfterHarvest(w, s.Id, hev);   // (an overfilled store wants another granary: C1.1)
                 w.Conflict.Harvested(s.Id, yield);   // (a tributary pays its lord: D2-075)
                 if (s.ExpectedHarvest > 0 && yield < 0.5 * s.ExpectedHarvest)
                 {
@@ -495,7 +498,7 @@ namespace TC2.Core.Places
             prof?.End(10011);
             // spoilage of stored grain (~12% a year; less kept in fired pots: D2-063)
             double rot = 0.12 / SimTime.DaysPerYear * Knowledge.Tech.PotteryKeeps(s.BestPottery);
-            s.Granary *= days == 1 ? 1.0 - rot : Keep(rot, days);
+            Structures.Rot(ref s, rot, days);   // (what lies beyond the granaries' capacity rots faster: C1.1)
             // stored hides rot and are eaten by vermin (~20 % a year), fibre less (~5 %): a store holds what is used (D2-063)
             s.Hides *= days == 1 ? 1.0 - 0.20 / SimTime.DaysPerYear : Keep(0.20 / SimTime.DaysPerYear, days);
             s.Fibre *= days == 1 ? 1.0 - 0.05 / SimTime.DaysPerYear : Keep(0.05 / SimTime.DaysPerYear, days);

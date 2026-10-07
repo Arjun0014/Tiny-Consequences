@@ -5,22 +5,34 @@ using TC2.Core.Simulation;
 
 namespace TC2.Core.Places
 {
-    /// <summary>A building on a village's lot (D2-059): raised by a household, lived in, left, taken again, fallen in.</summary>
+    /// <summary>
+    /// A structure on a village's ground (D2-059 homes; C1.1 every kind, `Structures`): raised by people's labour and material, lived in or
+    /// worked at, left, fallen in, gone into the land - with what went into it, who began it and why.
+    /// </summary>
     public struct Building
     {
         public int Id;
         public int Settlement;
         public float X, Y;           // local metres: its lot
-        public byte Kind;            // Construction.Hut or Construction.House
+        public byte Kind;            // Structures: Hut, House (homes) or a work (Well, Granary, ...)
         public int Household;        // who lives in it (0 none)
         public int Last;             // the household that last lived in it
         public int Style;            // how it looks (the view's house kinds): the household that raised it
-        public long Built;           // when it was first raised
-        public long Left;            // when it was last left empty (0 while lived in)
+        public long Built;           // when it was first raised (a work: when it was laid out)
+        public long Left;            // when it was last left empty or unkept (0 while lived in or kept)
+        public float Cond;           // a work's soundness (1 sound; damage lowers it); homes read theirs from Left (C1.1)
+        public byte Done;            // 1 standing; 0 being raised
+        public float Hours, Wood, Stone;   // labour-hours and 25 kg loads put into raising it
+        public byte Mat;             // its form: 0 timber, 1 on stone footings, 2 stone (C1.3)
+        public int Leader;           // the person who began its raising (the first to work on it; 0 for homes and the first villages' works)
+        public long Cause;           // the event that moved its making (the need)
+        public long Event;           // its completion in history (0 while being raised)
+        public float Stock;          // what it holds (a work's own goods; the village's grain stays in Settlement.Granary)
+        public float Use;            // hours worked at it
 
-        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(X); w.Float(Y); w.Byte(Kind); w.Int(Household); w.Int(Last); w.Int(Style); w.Long(Built); w.Long(Left); }
-        public static Building Read(BinReader r) => new Building { Id = r.Int(), Settlement = r.Int(), X = r.Float(), Y = r.Float(), Kind = r.Byte(), Household = r.Int(), Last = r.Int(), Style = r.Int(), Built = r.Long(), Left = r.Long() };
-        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(X); h.Add(Y); h.Add(Kind); h.Add(Household); h.Add(Last); h.Add(Style); h.Add(Built); h.Add(Left); }
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(X); w.Float(Y); w.Byte(Kind); w.Int(Household); w.Int(Last); w.Int(Style); w.Long(Built); w.Long(Left); w.Float(Cond); w.Byte(Done); w.Float(Hours); w.Float(Wood); w.Float(Stone); w.Byte(Mat); w.Int(Leader); w.Long(Cause); w.Long(Event); w.Float(Stock); w.Float(Use); }
+        public static Building Read(BinReader r) => new Building { Id = r.Int(), Settlement = r.Int(), X = r.Float(), Y = r.Float(), Kind = r.Byte(), Household = r.Int(), Last = r.Int(), Style = r.Int(), Built = r.Long(), Left = r.Long(), Cond = r.Float(), Done = r.Byte(), Hours = r.Float(), Wood = r.Float(), Stone = r.Float(), Mat = r.Byte(), Leader = r.Int(), Cause = r.Long(), Event = r.Long(), Stock = r.Float(), Use = r.Float() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(X); h.Add(Y); h.Add(Kind); h.Add(Household); h.Add(Last); h.Add(Style); h.Add(Built); h.Add(Left); h.Add(Cond); h.Add(Done); h.Add(Hours); h.Add(Wood); h.Add(Stone); h.Add(Mat); h.Add(Leader); h.Add(Cause); h.Add(Event); h.Add(Stock); h.Add(Use); }
     }
 
     /// <summary>
@@ -39,8 +51,8 @@ namespace TC2.Core.Places
         /// <summary>Soundness below which nobody moves in (the roof gone: re-roofing a ruin is not yet a work).</summary>
         public const double Habitable = 0.35;
 
-        static double FallYears(byte kind) => kind >= Construction.House ? HouseFallYears : HutFallYears;
-        static double RuinYears(byte kind) => kind >= Construction.House ? HouseRuinYears : HutRuinYears;
+        static double FallYears(byte kind) => Structures.Of(kind).FallYears;   // (homes: 20 and 60 years; works by their kind, C1.1)
+        static double RuinYears(byte kind) => Structures.Of(kind).RuinYears;
 
         /// <summary>How sound a building is at time t: 1 while lived in, down to 0 over its fall years once left empty.</summary>
         public static double Condition(in Building b, long t) => b.Left == 0 ? 1.0 : DMath.Clamp01(1.0 - (t - b.Left) / (FallYears(b.Kind) * SimTime.Year));
@@ -61,7 +73,7 @@ namespace TC2.Core.Places
             ref var hh = ref w.Households.Get(hid);
             if (hh.Building != 0 && w.Buildings.Exists(hh.Building)) { w.Buildings.Get(hh.Building).Kind = hh.Shelter; return; }
             int id = w.Ids.Next(EntityKind.Building);
-            w.Buildings.Add(id, new Building { Id = id, Settlement = hh.Settlement, X = hh.HomeX, Y = hh.HomeY, Kind = hh.Shelter, Household = hid, Last = hid, Style = hid, Built = w.Now });
+            w.Buildings.Add(id, new Building { Id = id, Settlement = hh.Settlement, X = hh.HomeX, Y = hh.HomeY, Kind = hh.Shelter, Household = hid, Last = hid, Style = hid, Built = w.Now, Cond = 1f, Done = 1 });
             w.BuildingsOf(hh.Settlement).InsertSorted(id);
             hh.Building = id;
         }
@@ -90,7 +102,7 @@ namespace TC2.Core.Places
             for (int i = 0; i < list.Count; i++)
             {
                 ref var b = ref w.Buildings.Get(list[i]);
-                if (b.Household != 0) continue;
+                if (b.Household != 0 || !Structures.IsHome(b.Kind)) continue;   // (a home: not the village's well or granary, C1.1)
                 double c = Condition(in b, w.Now);
                 if (c < Habitable) continue;
                 double v = b.Kind + c;
@@ -158,6 +170,7 @@ namespace TC2.Core.Places
                     if (Shore.Dry(P, s.LocalToSphere(b.X, b.Y, P.Radius))) continue;
                     int hid = b.Household;
                     b.Household = 0; b.Left = w.Now - DMath.ToLong(FallYears(b.Kind) * SimTime.Year) - 1;   // (drowned: fallen at once)
+                    if (!Structures.IsHome(b.Kind)) { Structures.Lost(w, bl[i]); continue; }   // (a work the sea took: its use is gone, C1.1)
                     lost++;
                     if (hid == 0 || !w.Households.Exists(hid)) continue;
                     ref var hh = ref w.Households.Get(hid);
@@ -188,8 +201,8 @@ namespace TC2.Core.Places
             for (int i = 0; i < buildings.Count; i++)
             {
                 ref var b = ref w.Buildings.Get(buildings[i]);
-                double dx = (double)b.X - lx, dy = (double)b.Y - ly;
-                if (dx * dx + dy * dy < 36.0) return true;
+                double dx = (double)b.X - lx, dy = (double)b.Y - ly, need = Structures.IsHome(b.Kind) ? 6.0 : Structures.Of(b.Kind).Footprint + 6.0;
+                if (dx * dx + dy * dy < need * need) return true;
             }
             for (int i = 0; i < households.Count; i++)
             {

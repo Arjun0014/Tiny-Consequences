@@ -104,11 +104,14 @@ namespace TC2.Game
             return best;
         }
 
+        /// <summary>The village the shot views frame (0: the first; tools: `-tc2village`).</summary>
+        public static int FocusSid;
+
         public void SetView(string view)
         {
             var w = Host.World;
             _framedVersion = Host.WorldVersion;
-            int sid = w.Settlements.First();
+            int sid = FocusSid != 0 && w.Settlements.Exists(FocusSid) ? FocusSid : w.Settlements.First();
             Vec3d d = sid != 0 ? w.Settlements.Get(sid).Anchor : new Vec3d(0, 0.4, 0.9).Normalized;
             var parts = view.Split(',');
             if (parts.Length == 3)

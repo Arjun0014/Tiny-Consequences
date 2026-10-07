@@ -23,6 +23,7 @@ namespace TC2.Game
         public WorldObjectsView Objects;
         public static bool PointerOverUi;
         int _selected, _follow;   // the person inspected; the person the camera keeps with (0 none)
+        int _building;            // the structure inspected (0 none: C1.1)
         GUIStyle _box, _label, _small, _title, _btn;
         float _scale = 1f;
         Rect _left, _right, _bottom, _toggles, _ticker;
@@ -88,7 +89,27 @@ namespace TC2.Game
                 float d = Vector2.Distance(mp, sp);
                 if (d < best) { best = d; bestId = id; }
             }
-            if (bestId != 0) _selected = bestId;
+            if (bestId != 0) { _selected = bestId; _building = 0; return; }
+            // no one there: the structure under the pointer (C1.1) - a home, a well, a granary
+            var P = w.Planet;
+            float bestB = 30f * _scale; int bestBid = 0;
+            Vector3 camPos = cam.transform.position;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                Vector3 c = PlanetGeo.Surface(P, s.Anchor);
+                if ((c - camPos).sqrMagnitude > 3000f * 3000f) continue;
+                var bl = w.BuildingsOf(sid);
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    ref var b = ref w.Buildings.Get(bl[i]);
+                    Vector3 sp = cam.WorldToScreenPoint(PlanetGeo.Surface(P, s.LocalToSphere(b.X, b.Y, P.Radius)));
+                    if (sp.z < 0) continue;
+                    float d = Vector2.Distance(mp, sp);
+                    if (d < bestB) { bestB = d; bestBid = bl[i]; }
+                }
+            }
+            if (bestBid != 0) { _building = bestBid; _selected = 0; }
         }
 
         void Styles()
@@ -214,6 +235,7 @@ namespace TC2.Game
             Rect insp = new Rect(sw - 400, 190, 390, 300);
             bool showInsp = _selected != 0 && w.People.Exists(_selected);
             if (showInsp) Inspector(insp, w);
+            else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
             Vector2 m = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / _scale;
             PointerOverUi = _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || _bookRect.Contains(m);
         }
@@ -267,6 +289,63 @@ namespace TC2.Game
             GUILayout.BeginArea(r, _box);
             GUILayout.Label(sb.ToString(), _small);
             if (GUILayout.Button(_follow == _selected ? "Stop following" : "Follow", _btn)) _follow = _follow == _selected ? 0 : _selected;
+            GUILayout.EndArea();
+        }
+
+        /// <summary>
+        /// A structure's page (C1.1, 21 §7): what it is and is for, how sound it is, who raised it and why, what it holds, and its history -
+        /// read from the building's state and the ledger; writes nothing.
+        /// </summary>
+        void BuildingPage(Rect r, TC2.Core.Simulation.World w)
+        {
+            ref var b = ref w.Buildings.Get(_building);
+            var sb = new StringBuilder();
+            string place = w.History.NameOf(EntityRef.Settlement(b.Settlement));
+            bool home = Structures.IsHome(b.Kind);
+            var k = Structures.Of(b.Kind);
+            long now = w.Now;
+            double age = (now - b.Built) / (double)SimTime.Year;
+            sb.Append("<b>").Append(home ? (b.Kind == Structures.House ? "A house" : "A hut") : "The " + k.Name).Append(" of ").Append(place).Append("</b>\n");
+            bool fallen = Homes.Fallen(in b, now);
+            double cond = Structures.Condition(in b, now);
+            if (b.Done == 0)
+                sb.Append("being raised: ").Append(b.Hours.ToString("0", CultureInfo.InvariantCulture)).Append(" of ").Append(k.Hours.ToString("0", CultureInfo.InvariantCulture)).Append(" hours of work, ")
+                  .Append(b.Wood.ToString("0", CultureInfo.InvariantCulture)).Append(" of ").Append(k.Wood.ToString("0", CultureInfo.InvariantCulture)).Append(" loads of wood; laid out ").Append(age.ToString("0.0", CultureInfo.InvariantCulture)).Append(" years ago\n");
+            else if (fallen) sb.Append("fallen in: a ruin (").Append((Homes.RuinLeft(in b, now) * 100).ToString("0", CultureInfo.InvariantCulture)).Append("% of it still stands out of the ground)\n");
+            else sb.Append("standing ").Append(age.ToString("0", CultureInfo.InvariantCulture)).Append(" years   condition ").Append(cond.ToString("0.00", CultureInfo.InvariantCulture)).Append(b.Left != 0 ? "   unkept since " + SimTime.FormatShort(b.Left) : "").Append('\n');
+            // what it is for
+            if (home)
+            {
+                if (b.Household != 0 && w.Households.Exists(b.Household)) sb.Append("home of the ").Append(w.History.NameOf(EntityRef.Household(b.Household))).Append("s (").Append(w.Members(b.Household).Count).Append(" people)\n");
+                else sb.Append("standing empty").Append(b.Last != 0 ? "; the " + w.History.NameOf(EntityRef.Household(b.Last)) + "s lived in it last" : "").Append('\n');
+                if (b.Style != 0) sb.Append("raised by the ").Append(w.History.NameOf(EntityRef.Household(b.Style))).Append("s\n");
+            }
+            else if (w.Settlements.Exists(b.Settlement))
+            {
+                ref var s = ref w.Settlements.Get(b.Settlement);
+                if (k.Function == Function.Store)
+                {
+                    double cap = Structures.StoreCapacity(in s);
+                    sb.Append("keeps grain: up to ").Append(k.Capacity.ToString("N0", CultureInfo.InvariantCulture)).Append(" days' food for one; ")
+                      .Append(place).Append("'s ").Append(s.Granaries).Append(s.Granaries == 1 ? " granary" : " granaries").Append(s.Barns > 0 ? " and " + s.Barns + (s.Barns == 1 ? " barn" : " barns") : "").Append(" hold ").Append(s.Granary.ToString("N0", CultureInfo.InvariantCulture))
+                      .Append(" of ").Append(cap.ToString("N0", CultureInfo.InvariantCulture)).Append(s.Granary > cap ? " - the rest lies in heaps and rots fast" : "").Append('\n');
+                }
+                else if (b.Kind == Structures.Well) sb.Append("water for ").Append(s.Population).Append(" people, drawn by the pot\n");
+                if (b.Hours > 0) sb.Append("raised with ").Append(b.Hours.ToString("0", CultureInfo.InvariantCulture)).Append(" hours of work and ").Append(b.Wood.ToString("0", CultureInfo.InvariantCulture)).Append(" loads of wood").Append(b.Stone > 0 ? ", " + b.Stone.ToString("0", CultureInfo.InvariantCulture) + " of stone" : "").Append('\n');
+                if (b.Leader != 0) sb.Append("the first at the work: ").Append(w.History.NameOf(EntityRef.Person(b.Leader))).Append('\n');
+                if (b.Cause != 0 && w.History.TryGet(b.Cause, out var ce)) sb.Append("<b>why</b>: ").Append(HistoryText.Line(w, ce)).Append('\n');
+                else if (b.Hours <= 0) sb.Append("standing when its people came\n");
+            }
+            var evs = w.History.EventsOf(new EntityRef(EntityKind.Building, _building));
+            if (evs != null && evs.Count > 0)
+            {
+                sb.Append("<b>history</b>\n");
+                for (int i = System.Math.Max(0, evs.Count - 6); i < evs.Count; i++)
+                    if (w.History.TryGet(evs[i], out var e)) sb.Append(HistoryText.Line(w, e)).Append('\n');
+            }
+            GUILayout.BeginArea(r, _box);
+            GUILayout.Label(sb.ToString(), _small);
+            if (GUILayout.Button("Close", _btn)) _building = 0;
             GUILayout.EndArea();
         }
 

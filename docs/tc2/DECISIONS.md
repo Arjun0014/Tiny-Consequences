@@ -2167,3 +2167,36 @@ such change is its own decision with long-run evidence on several seeds and both
 (farmland, rivers, wildlife, scars, orbit) interleave with the C-slices instead of preceding them. The person, building and settlement
 pages are built slice by slice (the person page is non-negotiable).
 **Invalidation.** None expected for the direction; individual numbers (loads, rates, capacities) are tuned with evidence.
+
+## D2-090 — 2026-10-07 — Structures by kind: one primitive for everything built; works by need with their causes; stores with capacity (C1.1)
+
+**Context.** D2-089's first slice (`25` §2). Before: homes were rows of `Buildings` (D2-059) but a village's well and granary were bits
+in `Settlement.Works`, its palisade a ring, and nothing else could be built; no structure had a cause, a builder, materials recorded or a
+page; the granary kept any amount of grain.
+**Decision.** (1) **`Core/Places/Structures.cs`**: a kinds table (`KindInfo`: name, `Function`, `Zone`, footprint, labour, wood, fall and
+ruin years, capacity) - homes (hut, house), works (well, granary, barn) and the kinds of the coming slices (smithy, quarry, training
+ground, market; in the table, planned when their slices land). (2) **`Building` extended** (saved, hashed): condition, standing or being
+raised, labour and wood (and stone) put in, its form (timber/footings/stone), the person who led it (the first to work on it), the event
+that moved it, its completion event, stock and use. Homes keep D2-059's rules. (3) **Works by need** (`Structures.Plan`, daily and at
+founding; `AfterHarvest`): no well -> a well (cause: the founding); a harvest to keep and no granary -> a granary (cause: the harvest);
+at harvest, a store past 90 % of its capacity -> another store, a **barn** (40,000 FU, 360 h, 90 wood) where the harvest alone would
+fill a granary (10,000 FU, ~7.5 t) or the overflow exceeds one, else a granary - so small villages keep granaries and big ones raise
+barns, and a town's stores show its growth. The palisade and its mending stay ring works after the planned structure.
+(4) **`Construction.Structure`**: the village work is the planned structure (`Settlement.Project`); hours and wood go into its row;
+it stands when its hours are in (`WorkBegun`/`WorkBuilt` history under the building, the leader as Other). (5) **Capacity is real**:
+grain within the stores rots at the store's rate (D2-042, D2-063), grain beyond it at 4x (heaps, pits, sacks: `Structures.Rot`, a step
+of days as the days lived). (6) **Placement by zone** (`Structures.Place`): the first well and granary where the village drew water and
+kept its heap (unchanged spots), later ones round the square (Core), barns on the main road past the homes (Edge), clear of every
+structure, lot and camp, on dry ground; homes keep clear of works (`Homes.FreeLot` by footprint). (7) Works are kept while the village
+lives and decay from its abandonment as homes do (`Structures.Abandon`); the sea takes a work as it takes a home (`Lost`: the Works
+cache and the capacity follow). (8) **The building page** (Hud: click a structure) - kind, standing/being raised/fallen, condition,
+what it is for (a store's capacity and fill, a well's people), hours and wood put in, who led it, **why** (its cause's history line),
+its history. (9) The view draws works from the table (wells, granaries, barns; new timber rising while being raised; ruins); kit
+models for barn, smithy, quarry face, stone pile, training ground and market stalls (`tc2/art/kit.py`). (10) Sim version 33.
+**Evidence.** 185 tests (`StructuresTests` 6: worldgen works as structures with homes clear of them, grain beyond capacity rots
+HeapRot times faster and a step of days as days lived, an overfilled harvest begins another store with the harvest as its cause and its
+leader recorded, no wood no work, the planned granary raised in COARSE (7 days) and in lived days (4), a granary the sea takes takes its
+capacity and the village plans another). 300 years DEEP on 6 km (`tc2/out/civ/s42_c11c`, `s7_c11c`): seed 42 765 / 3,660 / 5,295 people
+at years 100/200/300 against 765 / 3,729 / 5,611 before (the first century identical; the rest the seed's scatter), 17 barns and 56
+granaries standing in 18 villages; seed 7 738 / 1,795 / 1,732 against 738 / 1,936 / 1,648, 4 barns and 24 granaries in 10 villages.
+4.5 world years a second (seed 42) against 4.6 before.

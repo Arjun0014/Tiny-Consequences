@@ -41,8 +41,9 @@ P (performance tiers A/B/C) and W (legibility) run alongside; E (ecology richnes
 
 The smallest proof of the architecture: a settlement of 100-300 people becomes economically differentiated through real work.
 Sub-slices, each committed with tests, runs, shots and docs:
-1. **C1.1 Structures** (D2-090): the kind table; the well and granary become structures (state, condition, builders, cause, history,
-   capacity: grain beyond it rots faster); works by need with causes; placement by zone; the building inspector; drawn from the table.
+1. **C1.1 Structures** (D2-090, done 7 Oct): the kind table; the well and granary become structures (state, condition, builders, cause,
+   history, capacity: grain beyond it rots faster; barns for big harvests); works by need with causes; placement by zone; the building
+   inspector; drawn from the table.
 2. **C1.2 Timber from the woods**: felling removes forest share at the woodlot (which moves as the woods recede: walking time per load);
    fields keep the woods off what they farm; regrowth where people stop.
 3. **C1.3 Stone**: outcrops known by people who saw them; the quarry as a work site; stone cut and carried (trip time); the stone store;

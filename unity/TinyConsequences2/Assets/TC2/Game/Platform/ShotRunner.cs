@@ -100,6 +100,26 @@ namespace TC2.Game
             // run to the wanted day and local hour at the first village (the world lives up to that moment)
             double days = Parse(Arg("-tc2days"), 0), hour = Parse(Arg("-tc2hour"), 8.0);
             int sid = w.Settlements.First();
+            // the village to frame (C1.1 tools): an id, or "big" - the inhabited village with the most standing works
+            string vArg = Arg("-tc2village");
+            if (vArg != null)
+            {
+                int pick = 0;
+                if (vArg == "big")
+                {
+                    int most = -1;
+                    for (int s2 = w.Settlements.First(); s2 != 0; s2 = w.Settlements.Next(s2))
+                    {
+                        if (!w.Settlements.Get(s2).Inhabited) continue;
+                        int n = 0; var bl2 = w.BuildingsOf(s2);
+                        for (int i = 0; i < bl2.Count; i++) { var bb = w.Buildings.Get(bl2[i]); if (!TC2.Core.Places.Structures.IsHome(bb.Kind) && TC2.Core.Places.Structures.Working(in bb, w.Now)) n++; }
+                        n = n * 1000 + w.Settlements.Get(s2).Population;
+                        if (n > most) { most = n; pick = s2; }
+                    }
+                }
+                else int.TryParse(vArg, out pick);
+                if (pick != 0 && w.Settlements.Exists(pick)) { sid = pick; CameraRig.FocusSid = pick; Debug.Log("[TC2] framing village " + pick + " (" + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(pick)) + ", " + w.Settlements.Get(pick).Population + " people)"); }
+            }
             long local = sid != 0 ? w.LocalOffsetOf(sid) : 0;
             if (Arg("-tc2hungry") != null && sid != 0)
             {

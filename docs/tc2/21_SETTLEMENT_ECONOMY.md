@@ -108,4 +108,12 @@ All read state and history; none writes.
 
 ## 8. Implemented
 
-- C1 slice 1 (D2-090): see `25` §3 and DECISIONS.
+- **C1.1 structures (D2-090)**: `Core/Places/Structures.cs` - the kinds table (hut, house, well, granary, barn; smithy, quarry,
+  training ground and market waiting for their slices), `Building` extended (condition, being raised, labour/wood/stone put in, form,
+  leader, cause, completion event, stock, use), works by need (`Plan`: a well from the founding, a granary from the harvest;
+  `AfterHarvest`: a store past 90 % of capacity raises a barn where the harvest alone fills a granary, else a granary), the village work
+  as its planned structure (`Construction.Structure`, `Settlement.Project`), capacity real (grain beyond the stores rots at 4x),
+  placement by zone (first well and granary at their old spots; Core round the green; Edge on the main road past the homes), decay from
+  abandonment, the sea taking works, the building page (click a structure), works drawn from the table with kit models. Shots
+  `tc2/out/shots/civ1` (seed 42, year 300, Heldholm 602 people): the green with its well and five granaries reads at the street view;
+  at the village view the works are lost among the homes (a legibility item: distinct silhouettes, works outside the home ring).

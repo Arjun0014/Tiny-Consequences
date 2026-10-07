@@ -12,9 +12,12 @@
   research (bloomery yields, transport cost ratios, trail formation, army rations, village layout, ship timber); the design docs
   `20_CIVILISATION_DEPTH.md`, `21_SETTLEMENT_ECONOMY.md`, `22_MATERIALS_AND_RESOURCES.md`, `23_MILITARY_AND_WAR.md`,
   `24_TRANSPORT_AND_MARITIME.md`, `25_CIVILISATION_ROADMAP.md`; pointers in 00, 07 (§9 the person page), 08, 09, 10, 13, 14, 17, 18.
-  **Now: C1 "the working town"** (`25` §2) - C1.1 structures (well and granary as structures with capacity, works by need with
-  causes, placement by zone, building inspector), then timber from the woods, stone, the smithy, the training ground, market and gates,
-  a pressure premise.
+  **C1 "the working town"** (`25` §2): **C1.1 structures done (D2-090)** - the kinds table, well/granary/barn as structures with
+  capacity (grain beyond rots 4x), works by need with their causes (`WorkBegun`/`WorkBuilt` under the building), placement by zone, the
+  building page (click a structure), kit models (barn, smithy, quarry face, stone pile, training ground, market stalls); 185 tests;
+  300 years DEEP at par with the baselines (`tc2/out/civ/s42_c11c`, `s7_c11c`; 17 barns and 56 granaries in 18 villages on seed 42);
+  shots `tc2/out/shots/civ1`. **Next: C1.2 timber from the woods** (felling takes forest share at a woodlot that moves as the woods
+  recede, the walk in every load; fields keep the woods off what they farm), then stone, the smithy, training, market and gates.
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

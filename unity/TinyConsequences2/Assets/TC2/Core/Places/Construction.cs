@@ -15,6 +15,7 @@ namespace TC2.Core.Places
         public const byte Camp = 0, Hut = 1, House = 2;
         public const byte Well = 1, Granary = 2, Palisade = 4;   // a village's works (bits)
         public const byte Mend = 8;                              // (a work, not a bit: mending the palisade; D2-074)
+        public const byte Structure = 16;                        // (a work, not a bit: raising the village's planned structure, C1.1)
         /// <summary>A palisade a metre of its ring: felling, carrying, digging and setting the posts; the timber (D2-074).</summary>
         public const double PalisadeHoursPerM = 2.5, PalisadeWoodPerM = 0.8;
 
@@ -36,21 +37,34 @@ namespace TC2.Core.Places
             else { hours = 0; wood = 0; }
         }
 
-        /// <summary>The village work to build next (a well first, then a granary once there is a harvest to keep), or 0.</summary>
+        /// <summary>
+        /// The village work to do next: the structure its people are raising (planned by need: a well first, then a granary once there is
+        /// a harvest to keep, another when the store overfills - `Structures.Plan`, C1.1), then its palisade and its mending, or 0.
+        /// </summary>
         public static byte NextWork(in Settlement s)
         {
-            if ((s.Works & Well) == 0) return Well;
-            if ((s.Works & Granary) == 0 && (s.LastHarvest > 0 || s.Granary > 5 * s.Population)) return Granary;
+            if (s.Project != 0) return Structure;
             if (s.Wall == 1) return Palisade;
             if (s.Wall == 2 && s.WallKeep != 0 && s.WallCond < 0.6f) return Mend;
             return 0;
         }
 
+        /// <summary>Labour and wood a village work asks in all (a planned structure: its kind's, C1.1).</summary>
+        public static void WorkCost(World w, byte work, in Settlement s, out double hours, out double wood)
+        {
+            if (work == Structure && s.Project != 0 && w.Buildings.Exists(s.Project))
+            {
+                var k = Structures.Of(w.Buildings.Get(s.Project).Kind);
+                hours = k.Hours; wood = k.Wood;
+                return;
+            }
+            WorkCost(work, in s, out hours, out wood);
+        }
+
+        /// <summary>Labour and wood of the ring works (the palisade and its mending, D2-074).</summary>
         public static void WorkCost(byte work, in Settlement s, out double hours, out double wood)
         {
-            if (work == Well) { hours = WellHours; wood = WellWood; }
-            else if (work == Granary) { hours = GranaryHours; wood = GranaryWood; }
-            else if (work == Palisade || work == Mend)
+            if (work == Palisade || work == Mend)
             {
                 double perim = 2.0 * DMath.PI * DMath.Max(1.0, (double)s.WallR);
                 double share = work == Mend ? 0.6 * DMath.Max(0.05, 1.0 - (double)s.WallCond) : 1.0;
@@ -59,10 +73,10 @@ namespace TC2.Core.Places
             else { hours = 0; wood = 0; }
         }
 
-        /// <summary>Where the village's work goes on: its well, its store, or a stretch of its palisade's ring (u picks the stretch).</summary>
-        public static void WorkSpot(in Settlement s, byte work, double u, out double x, out double y)
+        /// <summary>Where the village's work goes on: the structure being raised, or a stretch of its palisade's ring (u picks the stretch).</summary>
+        public static void WorkSpot(World w, in Settlement s, byte work, double u, out double x, out double y)
         {
-            if (work == Well) { x = s.WellX; y = s.WellY; return; }
+            if (work == Structure && s.Project != 0 && w.Buildings.Exists(s.Project)) { ref var b = ref w.Buildings.Get(s.Project); x = b.X; y = b.Y; return; }
             if (work == Palisade || work == Mend)
             {
                 double a = 2.0 * DMath.PI * u;
@@ -90,7 +104,7 @@ namespace TC2.Core.Places
         /// village's next work. Wood comes out of the store in step with the labour; a stage completes when its hours are in
         /// (history). Returns the hours that found work (none when there is nothing to build or no wood).
         /// </summary>
-        public static double Work(World w, int sid, int hid, double hours, double rate)
+        public static double Work(World w, int sid, int hid, double hours, double rate, int worker = 0)
         {
             if (hours <= 0) return 0;
             ref var s = ref w.Settlements.Get(sid);
@@ -116,6 +130,17 @@ namespace TC2.Core.Places
             }
             byte work = NextWork(in s);
             if (work == 0) return 0;
+            if (work == Structure)
+            {
+                // the village's planned structure (C1.1): its hours and wood go into it; it stands when they are in
+                int bid = s.Project;
+                if (!w.Buildings.Exists(bid)) { s.Project = 0; return 0; }
+                ref var b = ref w.Buildings.Get(bid);
+                var k = Structures.Of(b.Kind);
+                double doneS = Spend(ref s, hours * rate, k.Hours - b.Hours, k.Wood / k.Hours);
+                Structures.Raised(w, sid, bid, doneS, doneS * k.Wood / k.Hours, worker);
+                return rate > 0 ? doneS / rate : 0;
+            }
             WorkCost(work, in s, out double needW, out double woodW);
             double doneW = Spend(ref s, hours * rate, needW - s.WorkBuild, woodW / needW);
             s.WorkBuild = (float)(s.WorkBuild + doneW);
@@ -135,11 +160,6 @@ namespace TC2.Core.Places
                     });
                     return rate > 0 ? doneW / rate : 0;
                 }
-                w.Record(new HistoryEvent
-                {
-                    Kind = HistoryKind.WorkBuilt, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
-                    ArgA = work, RootKind = RootKind.People, Cause1 = s.FoundedEvent, Rel1 = CauseRel.EnabledBy,
-                });
             }
             return rate > 0 ? doneW / rate : 0;
         }
@@ -175,7 +195,7 @@ namespace TC2.Core.Places
             }
             byte work = NextWork(in s);
             if (work == 0) return false;
-            WorkCost(work, in s, out double needW, out double woodW);
+            WorkCost(w, work, in s, out double needW, out double woodW);
             woodShort = s.Woodstore < woodW / needW;
             return !woodShort;
         }

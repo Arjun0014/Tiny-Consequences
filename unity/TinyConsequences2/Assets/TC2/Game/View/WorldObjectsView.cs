@@ -21,6 +21,8 @@ namespace TC2.Game
         public CameraRig Rig;
 
         Instancer _people, _granaries, _wells, _hay, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls, _woodpiles;
+        /// <summary>The village works by structure kind (C1.1; the civilisation kit, D2-089); null where a kind has no model yet.</summary>
+        readonly Instancer[] _works = new Instancer[24];
         Instancer[] _houseKinds, _trees;
         Material _mat;
         float _treeTimer, _placeTimer;
@@ -54,6 +56,12 @@ namespace TC2.Game
             _beached = new Instancer(Models.Get("boat", ProcMeshes.Granary), _mat, true);   // fishing boats drawn up on the shore
             _afloat = new Instancer(Models.Get("boat", ProcMeshes.Granary), _mat, true);    // and out on the water with their fishers
             _wells = new Instancer(Models.Get("well", ProcMeshes.Granary), _mat, true);
+            _works[Structures.Well] = _wells; _works[Structures.Granary] = _granaries;
+            _works[Structures.Barn] = new Instancer(Models.Get("barn", ProcMeshes.House), _mat, true);
+            _works[Structures.Smithy] = new Instancer(Models.Get("smithy", ProcMeshes.House), _mat, true);
+            _works[Structures.Quarry] = new Instancer(Models.Get("quarry_face", ProcMeshes.Granary), _mat, true);
+            _works[Structures.Ground] = new Instancer(Models.Get("training_ground", ProcMeshes.Granary), _mat, true);
+            _works[Structures.Market] = new Instancer(Models.Get("market_stalls", ProcMeshes.Granary), _mat, true);
             _hay = new Instancer(Models.Get("haystack", ProcMeshes.Granary), _mat, true);
             _woodpiles = new Instancer(ProcMeshes.Woodpile(), _mat, true);   // the village's woodstore, by the homes (D2-081)
             _trees = new Instancer[TreeModels.Length];
@@ -202,7 +210,8 @@ namespace TC2.Game
             if ((Off & 4) == 0)
             {
                 for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Draw(cam);
-                _granaries.Draw(cam); _wells.Draw(cam); _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _woodpiles.Draw(cam);
+                for (int i = 0; i < _works.Length; i++) _works[i]?.Draw(cam);
+                _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _woodpiles.Draw(cam);
             }
             if ((Off & 1) == 0) for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
             _flames.Draw(cam);
@@ -295,7 +304,8 @@ namespace TC2.Game
         {
             var P = w.Planet;
             for (int i = 0; i < _houseKinds.Length; i++) _houseKinds[i].Clear();
-            _granaries.Clear(); _wells.Clear(); _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _walls.Clear(); _woodpiles.Clear();
+            for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
+            _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _walls.Clear(); _woodpiles.Clear();
             _smoke.Clear(); _lights.Clear(); _watch.Clear();
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
@@ -313,7 +323,12 @@ namespace TC2.Game
                 double woodDays = s.FuelDay > 1e-6f ? s.Woodstore / s.FuelDay : (s.Woodstore > 0 ? 30.0 : 0.0);
                 int litHomes = 0;
                 var bl = w.BuildingsOf(sid);
-                for (int i = 0; i < bl.Count; i++) if (DrawHome(w, P, in s, bl[i], ex, dark, tOut, woodDays)) litHomes++;
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    // its works are structures too (C1.1): wells and granaries by the table, standing, being raised or fallen
+                    if (!Structures.IsHome(w.Buildings.Get(bl[i]).Kind)) { DrawWork(w, P, in s, bl[i], ex); continue; }
+                    if (DrawHome(w, P, in s, bl[i], ex, dark, tOut, woodDays)) litHomes++;
+                }
                 // households without a home camp on their lot (not those on the road to another village), a fire smoking by the tent
                 var hhs = w.HouseholdsOf(sid);
                 for (int i = 0; i < hhs.Count; i++)
@@ -343,23 +358,45 @@ namespace TC2.Game
                 }
                 // its palisade (D2-074): standing (an abandoned village's too, as it rots), or as far as its people have set it
                 if (s.Wall == 1 || s.Wall == 2) DrawWall(w, P, in s, sid, ex);
-                if (!s.Inhabited)
-                {
-                    // an abandoned village's well: its stone ring outlasts the houses (D2-052)
-                    if ((s.Works & Construction.Well) != 0)
-                        _wells.Add(1, new Color(0.75f, 0.80f, 0.70f, 1f), Place(P, s, s.WellX, s.WellY, 30f, ex) * Matrix4x4.Scale(new Vector3(1f, 0.4f, 1f)));
-                    continue;
-                }
+                if (!s.Inhabited) continue;   // (an abandoned village's well and granary decay as structures: C1.1)
                 Beached(w, P, in s, sid, ex);
-                // the village store and its well, once its people have built them (D2-045); haystacks once the harvest is in
-                Construction.GranarySpot(in s, out double gx, out double gy);
-                if ((s.Works & Construction.Granary) != 0) _granaries.Add(0, Color.white, Place(P, s, (float)gx, (float)gy, 12f, ex));
-                if ((s.Works & Construction.Well) != 0) _wells.Add(0, Color.white, Place(P, s, s.WellX, s.WellY, 30f, ex));
+                // haystacks once the harvest is in
                 float fill = Mathf.Clamp01((float)(s.Granary / System.Math.Max(1.0, s.Population * 30.0)));
                 if (s.Crop == CropStage.Harvested || s.Crop == CropStage.Fallow)
                     for (int k = 0; k < Mathf.RoundToInt(fill * 4); k++)
                         _hay.Add(0, Color.white, Place(P, s, s.SquareX + 22 + k * 4.5, s.SquareY - 16 + (k % 2) * 3.0, k * 40f, ex * (0.8f + 0.1f * k)));
             }
+        }
+
+        /// <summary>
+        /// A village work (C1.1): a well or a granary where its people raised it - while being raised a pale frame rising with the hours put
+        /// in, standing as it was built and weathering with its condition, fallen a low ruin (a well's stone ring outlasts the rest, D2-052).
+        /// </summary>
+        void DrawWork(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int bid, float ex)
+        {
+            ref var b = ref w.Buildings.Get(bid);
+            var k = Structures.Of(b.Kind);
+            float yaw = Mathf.Atan2(s.SquareX - b.X, s.SquareY - b.Y) * Mathf.Rad2Deg + 180f + ((bid * 37) % 21 - 10);
+            var inst = b.Kind < _works.Length && _works[b.Kind] != null ? _works[b.Kind] : _granaries;
+            var m = Place(P, s, b.X, b.Y, yaw, ex);
+            if (b.Done == 0)
+            {
+                float up = Mathf.Clamp01((float)(b.Hours / System.Math.Max(1.0, k.Hours)));
+                if (up <= 0.01f) return;
+                inst.Add(2, new Color(1.08f, 1.0f, 0.86f, 1f), m * Matrix4x4.Scale(new Vector3(1f, 0.15f + 0.85f * up, 1f)));   // new timber
+                return;
+            }
+            Color moss = new Color(0.55f, 0.62f, 0.45f, 1f);
+            if (Homes.Fallen(in b, w.Now))
+            {
+                float c = (float)Homes.RuinLeft(in b, w.Now);
+                if (c <= 0.03f) return;
+                if (b.Kind == Structures.Well) inst.Add(1, Color.Lerp(moss, new Color(0.75f, 0.80f, 0.70f, 1f), c), m * Matrix4x4.Scale(new Vector3(1f, 0.4f, 1f)));
+                else _ruins.Add((int)(c * 4), Color.Lerp(moss, Color.white, c), Place(P, s, b.X, b.Y, yaw, 1f) * Matrix4x4.Scale(new Vector3(ex * 0.7f, ex * 0.7f * (0.25f + 0.75f * c), ex * 0.7f)));
+                return;
+            }
+            float cond = (float)Structures.Condition(in b, w.Now);
+            inst.Add(0, Color.Lerp(moss, Color.white, 0.45f + 0.55f * cond), m);
         }
 
         /// <summary>

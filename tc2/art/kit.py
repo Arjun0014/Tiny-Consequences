@@ -588,6 +588,122 @@ def boulder(name, seed):
     return k.finish()
 
 
+# --------------------------------------------------------------------------- the civilisation kit (D2-089, C1)
+CLOTH = srgb(0.80, 0.74, 0.62, 1.0)    # awnings and sacking (tinted per instance)
+CHARCOAL = srgb(0.12, 0.11, 0.10)
+IRON = srgb(0.24, 0.25, 0.27)
+STRAW = srgb(0.80, 0.68, 0.40)
+ROCK = srgb(0.58, 0.56, 0.52)
+ROCK_CUT = srgb(0.70, 0.68, 0.63)
+
+
+def barn(name, seed=61):
+    """A great timber barn (a large store, C1.1): long, tall, steep thatch, wide double doors on the long side, no chimney, no windows."""
+    k = Kit(name, seed)
+    L, W, H = 12.0, 7.0, 3.4
+    k.box((0, 0, 0.15), (L + 0.3, W + 0.3, 0.3), STONE, bevel=0.03)          # a stone sill against the damp
+    k.box((0, 0, 0.3 + (H - 0.3) / 2.0), (L, W, H - 0.3), WALL2, bevel=0.04)
+    for x in (-L / 2.0, -L / 6.0, L / 6.0, L / 2.0):                        # the frame's posts and a rail
+        for sy in (-1, 1):
+            k.box((x, sy * (W / 2.0 + 0.03), H / 2.0 + 0.1), (0.24, 0.08, H - 0.1), TIMBER)
+    for sy in (-1, 1):
+        k.box((0, sy * (W / 2.0 + 0.04), H * 0.5), (L, 0.07, 0.16), TIMBER)
+    gable_walls(k, L, W, H, 52, WALL2)
+    for sx in (-1, 1):                                                        # the double doors, a wagon's width
+        k.box((sx * 0.85, -(W / 2.0 + 0.05), 1.35), (1.6, 0.1, 2.7), DOOR)
+    k.box((0, -(W / 2.0 + 0.08), 2.78), (3.6, 0.14, 0.18), TIMBER)
+    gable_roof(k, L, W, H, 52, THATCH, overhang=0.45, thick=0.28, ridge_color=THATCH_DARK)
+    return k.finish()
+
+
+def smithy(name, seed=62):
+    """A smithy (C1.4): an open-fronted timber shop over a stone forge with its chimney, an anvil on a stump, a quench trough, charcoal."""
+    k = Kit(name, seed)
+    L, W, H = 6.0, 4.6, 2.5
+    k.box((0, 0, 0.08), (L + 0.6, W + 0.6, 0.16), STONE_DARK, bevel=0.02)   # a beaten floor of stones
+    k.box((0, W / 2.0 - 0.1, H / 2.0), (L, 0.2, H), WALL2, bevel=0.03)     # the back wall
+    for sx in (-1, 1):
+        k.box((sx * L / 2.0, 0.2, H / 2.0), (0.2, W - 0.4, H), WALL2, bevel=0.03)   # side walls
+    for sx in (-1, 1):
+        k.box((sx * (L / 2.0 - 0.1), -W / 2.0 + 0.1, H / 2.0), (0.2, 0.2, H), TIMBER)   # the open front's posts
+    gable_walls(k, L, W, H, 30, WALL2)
+    gable_roof(k, L, W, H, 30, TILE, overhang=0.4, thick=0.18, ridge_color=srgb(0.5, 0.22, 0.14, 1.0))
+    k.box((-L * 0.22, W / 2.0 - 0.75, 0.55), (1.6, 1.1, 1.1), STONE, bevel=0.05)   # the forge hearth
+    k.box((-L * 0.22, W / 2.0 - 0.75, 1.12), (1.2, 0.8, 0.05), CHARCOAL)
+    k.box((-L * 0.22, W / 2.0 - 0.35, 2.4), (0.8, 0.7, 3.0), CHIMNEY, bevel=0.03)   # its chimney through the roof
+    k.cyl((-L * 0.22 + 1.1, W / 2.0 - 0.6, 0.6), 0.32, 0.2, 0.5, srgb(0.45, 0.30, 0.18), seg=6)   # the bellows
+    k.cyl((L * 0.12, -0.2, 0.0), 0.32, 0.30, 0.6, TIMBER, seg=8)            # the anvil's stump
+    k.box((L * 0.12, -0.2, 0.72), (0.62, 0.24, 0.24), IRON, bevel=0.02)       # the anvil
+    k.box((L * 0.34, 0.5, 0.3), (1.0, 0.5, 0.6), TIMBER)                     # the quench trough
+    k.box((L * 0.34, 0.5, 0.58), (0.86, 0.36, 0.04), WELL_WATER)
+    for i in range(5):                                                        # charcoal heaped by the forge
+        k.blob((-L * 0.5 - 0.8 + k.rng.uniform(-0.3, 0.3), W * 0.1 + k.rng.uniform(-0.6, 0.6), 0.25), 0.45, CHARCOAL, jitter=0.3, squash=0.6)
+    return k.finish()
+
+
+def quarry_face(name, seed=63):
+    """A quarry (C1.3): a rock face cut in steps, loose blocks at its foot, a sled for hauling."""
+    k = Kit(name, seed)
+    for i, (h, y) in enumerate(((4.2, 2.6), (2.9, 1.3), (1.6, 0.1))):           # the face: the uncut rock behind, steps cut down toward the front
+        k.box((0, y, h / 2.0), (9.0 - i * 1.6, 1.4, h), ROCK if i == 0 else ROCK_CUT, bevel=0.06)
+    for sx in (-1, 1):                                                        # the hillside either side of the cut
+        k.blob((sx * 5.0, 2.4, 1.2), 1.6, ROCK, subdiv=2, jitter=0.18, squash=0.75)
+        k.blob((sx * 4.2, 3.4, 2.4), 1.3, ROCK, subdiv=2, jitter=0.18, squash=0.8)
+    for i in range(7):                                                        # blocks cut and waiting
+        k.box((k.rng.uniform(-3.5, 3.5), k.rng.uniform(-2.8, -0.4), 0.25), (k.rng.uniform(0.5, 0.9), k.rng.uniform(0.4, 0.7), 0.5), ROCK_CUT, rot_z=k.rng.uniform(0, 1.5), bevel=0.03)
+    for sx in (-1, 1):                                                        # a sled
+        k.box((2.4, -3.6 + sx * 0.45, 0.12), (2.2, 0.12, 0.12), TIMBER)
+    for x in (1.6, 2.4, 3.2):
+        k.box((x, -3.6, 0.22), (0.12, 1.0, 0.08), TIMBER)
+    return k.finish()
+
+
+def stone_pile(name, seed=64):
+    """Stone carried home and stacked (C1.3): a low heap of rough blocks."""
+    k = Kit(name, seed)
+    for i in range(9):
+        a = i * 2.4
+        r = 0.35 + 0.25 * (i % 3)
+        k.box((math.cos(a) * r, math.sin(a) * r, 0.18 + 0.28 * (i // 4)), (0.55, 0.42, 0.34), ROCK_CUT if i % 2 else ROCK, rot_z=a, bevel=0.03)
+    return k.finish()
+
+
+def training_ground(name, seed=65):
+    """A training ground (C1.5): straw marks on posts, a rack of practice spears, a ring of low posts round beaten earth."""
+    k = Kit(name, seed)
+    for i in range(14):                                                        # the ring of posts
+        a = i / 14.0 * 2 * math.pi
+        k.cyl((math.cos(a) * 7.5, math.sin(a) * 5.5, 0), 0.09, 0.07, 0.8, TIMBER, seg=5)
+    for x in (-3.5, -1.2, 1.2, 3.5):                                           # the marks: a post, a straw body, a cross-arm
+        k.cyl((x, 2.5, 0), 0.1, 0.08, 1.9, TIMBER, seg=5)
+        k.ellipsoid((x, 2.5, 1.35), (0.32, 0.26, 0.5), STRAW, subdiv=1, smooth=False)
+        k.box((x, 2.5, 1.55), (1.0, 0.1, 0.1), TIMBER)
+    k.box((0, -3.2, 0.9), (2.4, 0.12, 0.12), TIMBER)                           # the spear rack
+    for sx in (-1, 1):
+        k.box((sx * 1.1, -3.2, 0.5), (0.12, 0.12, 1.0), TIMBER)
+    for i in range(6):
+        x = -0.9 + i * 0.36
+        k.cyl((x, -3.12, 0), 0.03, 0.025, 2.2, srgb(0.55, 0.42, 0.26), seg=4, rot=Matrix.Rotation(math.radians(8), 4, "X"))
+    return k.finish()
+
+
+def market_stalls(name, seed=66):
+    """A market (C1.6): three stalls with cloth awnings, tables of goods, barrels and crates."""
+    k = Kit(name, seed)
+    for i, x in enumerate((-3.6, 0.0, 3.6)):
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                k.box((x + sx * 1.3, sy * 0.9, 1.1), (0.1, 0.1, 2.2), TIMBER)
+        k.box((x, 0, 2.25), (2.9, 2.1, 0.06), CLOTH, rot_z=0.0)                # the awning
+        k.box((x, -0.6, 0.8), (2.4, 0.7, 0.08), TIMBER)                         # the table
+        for j in range(3):
+            k.box((x - 0.7 + j * 0.7, -0.6, 0.95), (0.4, 0.35, 0.22), (STRAW, WALL2, srgb(0.62, 0.36, 0.22))[(i + j) % 3])
+    for j in range(4):                                                          # barrels and crates
+        k.cyl((-5.6 + (j % 2) * 0.7, 1.2 - (j // 2) * 0.8, 0), 0.32, 0.32, 0.8, srgb(0.45, 0.30, 0.17), seg=8)
+        k.box((5.4, 1.0 - j * 0.6, 0.25), (0.55, 0.5, 0.5), TIMBER)
+    return k.finish()
+
+
 def build_all():
     objs = []
     objs.append(house("house_cottage", 7.0, 5.0, 2.6, 42, THATCH, seed=11))
@@ -624,6 +740,13 @@ def build_all():
     objs.append(fence("fence"))
     objs.append(haystack("haystack"))
     objs.append(well("well"))
+    # the civilisation kit (D2-089, C1)
+    objs.append(barn("barn"))
+    objs.append(smithy("smithy"))
+    objs.append(quarry_face("quarry_face"))
+    objs.append(stone_pile("stone_pile"))
+    objs.append(training_ground("training_ground"))
+    objs.append(market_stalls("market_stalls"))
     objs.append(grass_tuft("grass_tuft", 31))
     objs.append(flowers("flowers", 32))
     objs.append(reeds("reeds", 33))

@@ -52,7 +52,7 @@ namespace TC2.Core.History
         Rationing = 44,         // a village began to ration its grain (Magnitude = ration, Cause1 the failed harvest) (D2-042)
         WildFood = 45,          // a village turned to the woods and the shore for food (InResponseTo the rationing or the hunger)
         HomeBuilt = 46,         // a household raised its shelter (ArgA = 1 a hut, 2 a house) (D2-045)
-        WorkBuilt = 47,         // a village built a work (ArgA = 1 a well, 2 a granary)
+        WorkBuilt = 47,         // a village finished a structure (Object the building, Other who led it; ArgA its kind (Structures), ArgB granaries after; C1.1)
         PartySetOut = 48,       // households left a village to make a new home (Subject the origin, ArgA households, ArgB people)
         Scouted = 49,           // someone of a village saw good land (Cell the site)
         HouseholdMoved = 50,    // a household left its village for another (Subject the household, Object the village it went to)
@@ -79,6 +79,7 @@ namespace TC2.Core.History
         TributePaid = 73,       // a tributary paid its lord at harvest (Magnitude FU)
         TributeEnded = 74,      // a tributary paid no more (ArgA 1 the lord is gone, 0 grown too weak)
         HomesDrowned = 75,      // the sea rose over homes' lots (Settlement; ArgA homes lost; Cause1 the coast's change; D2-087)
+        WorkBegun = 76,         // a village laid out a structure and began it (Object the building; ArgA its kind, ArgB granaries standing; Cause1 the need; C1.1)
         HomeTaken = 53,         // a household made its home in one that stood empty (Object: who lived there last; ArgA 1 a hut, 2 a house; D2-059)
         ColdHomes = 52,         // a village's homes were cold enough to harm (Magnitude homes, ArgA 1 the woodstore ran short, ArgB the day's mean C; D2-056)
     }
@@ -213,6 +214,7 @@ namespace TC2.Core.History
                 case HistoryKind.Rationing:
                 case HistoryKind.WildFood:
                 case HistoryKind.WorkBuilt:
+                case HistoryKind.WorkBegun:
                 case HistoryKind.Scouted: return Tier.Local;
                 case HistoryKind.PartySetOut: return Tier.Historical;
                 case HistoryKind.HerdHuntedOut: return Tier.Local;
@@ -288,6 +290,7 @@ namespace TC2.Core.History
                 case HistoryKind.WildFood: b = 3; break;
                 case HistoryKind.HomeBuilt: b = 1; break;
                 case HistoryKind.WorkBuilt: b = 3; break;
+                case HistoryKind.WorkBegun: b = 2; break;
                 case HistoryKind.PartySetOut: b = 20; break;
                 case HistoryKind.Scouted: b = 2; break;
                 case HistoryKind.HouseholdMoved: b = 1.5; break;

@@ -463,7 +463,7 @@ namespace TC2.Core.Agents
                     break;
                 case ActivityKind.Build:
                     if (p.At != 0 && p.At == p.Home && hours > 0)
-                        Construction.Work(w, p.At, p.Household, hours, BuildRate(in p) * Tools(p.Household));
+                        Construction.Work(w, p.At, p.Household, hours, BuildRate(in p) * Tools(p.Household), p.Id);
                     break;
                 case ActivityKind.Craft:
                     if (p.At != 0 && p.At == p.Home && hours > 0 && w.Households.Exists(p.Household))
@@ -1037,7 +1037,7 @@ namespace TC2.Core.Agents
                     {
                         // at their own lot, or at the village's well or granary
                         bool own = w.Households.Exists(p.Household) && w.Households.Get(p.Household).Shelter < Construction.House;
-                        Construction.WorkSpot(in here, Construction.NextWork(in here), rs.NextUnit(), out double gx, out double gy);
+                        Construction.WorkSpot(w, in here, Construction.NextWork(in here), rs.NextUnit(), out double gx, out double gy);
                         double bx = own ? homeX : gx;
                         double by = own ? homeY : gy;
                         BeginLocal(ref p, ActivityKind.Build, own ? WhyCode.NoRoof : WhyCode.VillageWork, 0, bx + rs.Range(-3, 3), by + rs.Range(-3, 3), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
@@ -1464,7 +1464,7 @@ namespace TC2.Core.Agents
                     buildUrge = ownRoof ? (shelter == Construction.Camp ? 0.85 : 0.4) : 0.45;
                     if (!(shortNow && WildNeed(in s, now, ration) > buildUrge))
                     {
-                        double used = Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0 * days), BuildRate(in p) * tools);
+                        double used = Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0 * days), BuildRate(in p) * tools, p.Id);
                         hours -= used; if (Hours != null) Hours[2] += used;
                         build = false;
                     }
@@ -1521,7 +1521,7 @@ namespace TC2.Core.Agents
                     }
                 }
                 prof?.End(10022);
-                if (build && hours > 0) { double used2 = Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0 * days), BuildRate(in p) * tools); hours -= used2; if (Hours != null) Hours[4] += used2; }
+                if (build && hours > 0) { double used2 = Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0 * days), BuildRate(in p) * tools, p.Id); hours -= used2; if (Hours != null) Hours[4] += used2; }
                 if (hours > 0 && s.Woodstore < woodTarget)
                 {
                     double h = hours * 0.4;
