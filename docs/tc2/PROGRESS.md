@@ -60,6 +60,9 @@
   **D2-109 the Web frame rate**: the frame was bounded by the main thread's draw submission (one draw per colour group, the whole world as
   bounds, into every cascade); per-instance colours and draws with their own bounds - 34-37 instanced draws a frame; settled close
   60-70 -> 90-102 fps, forest 66 -> 100; Web test 6/6 with every view 73-120 fps (after a century 88).
+  **C9.1 boats from the woods (D2-110, committed c674892, final checks open)**: dugouts made by fishing households from their woods, rowed
+  out to the open sea's shoals, lost in rising wind; ten seeds: people at par, fish x1.65; 252 tests. Open: ten-seed rerun after the
+  landing fix, Web build and shots (SESSION_HANDOFF).
   **Browser**: the settlement page renders; the true Web frame rate is 35-56 fps near the ground (below 60: earlier 57-121 fps readings
   since C1.4 were inflated by the smithy error stopping the view's setup). **Next**: SESSION_HANDOFF "Next".
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and

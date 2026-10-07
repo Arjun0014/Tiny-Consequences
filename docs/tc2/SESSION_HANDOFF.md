@@ -1,6 +1,6 @@
 # TC2 Session handoff
 
-## Session 7 (7 Oct 2026, from 18:50 IST; Control Room continuation) - in progress
+## Session 7 (7 Oct 2026, 18:50-~23:00 IST; Control Room continuation) - handed off (context full)
 
 ### Exact state (keep current)
 - **D2-108 done** (the C10.1 drops followed): ten seeds (42, 7, 4, 2, 1, 3, 5, 6, 8, 11) of C5.4 vs C10.1 show no systematic loss (century
@@ -15,8 +15,19 @@
   buffer) and gives each batch of 1,023 its own bounds: 34-37 instanced draws a frame; close 90-102 fps, forest 100; Web test 6/6
   (`tc2/out/webtest/s7webb`, every view 73-120 fps). Tools: `FrameClock` (bridge `cpuMs`, `draws`), bridge `cull`, `shadow C R`, `webperf
   --sets/--reset`. The Web build in `tc2/web-build/web` is current (D2-109).
-- **Next**: the roadmap - C9 maritime (boats as real state: built from timber, owned, crewed, fishing beyond the shore, lost in storms;
-  then docks and coastal trade) or C10.2 (leaders, succession, the polity page).
+- **C9.1 boats from the woods (D2-110) - code committed c674892, NOT yet closed**: `Core/Places/Boats.cs` (want, Begin, Work, Of/Worn,
+  AfterRow, SeaExpect, WindAt/Risk/Trip/Overturned, Leave, Landing + NearestDry), `WildFood.SurveySea/ExpectSea/Fish(.., boat)`,
+  `Settlement.Sea`, `Household.Boat`, `Structures.Boat` 20, `ActivityKind.Sail` 33, `WhyCode.Boat` 42, history BoatBuilt 85 / BoatLost 86,
+  death 12 (drowned), metrics BoatsBegun/Built/Worn/Lost/GivenUp/BoatTrips/Drowned/BoatFishKg, AgentSystem (choice 20, SeaBoat with the
+  `SeaHere` cache, Sail completion, COARSE seats and deferred drownings), view (`WorldObjectsView.DrawBoat`, sailors in boats), HUD building
+  page, Biography/Gazetteer lines, headless `boats:` line and `run --load S --years 0 --boats SID`. Sim version 49; 252 tests at the commit
+  and again on the final code at handoff (252 pass). D2-110 is in DECISIONS with its evidence and an "Open".
+- **Next, in order**: (1) close C9.1: rerun ten seeds (`BIN=<copy of tc2/headless/app/bin/Release/net8.0> TAG=_c91j ... wrun.sh` in two
+  chains, then `python cmp.py c108a c91j 42 7 4 2 1 3 5 6 8 11`), check `--boats SID` shows no WET boats on a few villages, Web build
+  (`node tc2/scripts/unity.mjs build-web --jobs 3`, ~6-11 min), `webtest.mjs --tag c91web`, shots `unity.mjs shots --tag boats2 --load
+  <abs save> --village <id with boats> --views "work20@10,work20far@10,close@10,village@10"` and judge them; update D2-110's Open, commit.
+  (2) Then C9.2 plank boats and boatbuilding, or C10.2 (leaders, succession, the polity page).
+- **Known**: COARSE never counts hunting trips (`wild: trips hunt 0` - the D2-063 comment bug); DEEP's fish x0.8 of COARSE (D2-083 lean).
 
 ## Session 6 (7 Oct 2026, from 10:56 IST) — handed off at ~19:30 IST (context full)
 

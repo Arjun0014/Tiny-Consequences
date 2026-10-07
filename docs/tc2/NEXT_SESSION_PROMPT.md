@@ -120,7 +120,10 @@ frame rate, then C5.3c)
 **Where we are (session 7, 7 Oct 2026, evening)**: the C10.1 population drops followed (D2-108): over ten seeds there is no systematic
 loss (seed 2's drop was an epidemic, seed 7's Voton's famines - judge mechanisms by century means, never the last year), but the lord's
 half-share was a second wrong: now a lord answers its tributaries' wrongs (at half weight) and its band's loot settles the tributary's
-wrong, so a wrong is avenged once. Sim version 48, 244 tests. Next: the Web frame rate, then C8/C9/C10.2 (SESSION_HANDOFF "Next").
+wrong, so a wrong is avenged once. The Web frame rate (D2-109): the frame was bounded by the main thread's draw submission - per-instance
+colours and draws with their own bounds took the near views from 60-70 to 90-102 fps. C9.1 boats from the woods (D2-110, sim version 49,
+252 tests): dugouts made by fishing households, rowed out to the open sea's shoals, lost in rising wind - committed, but its final checks
+(ten seeds after the landing fix, Web build, shots) are open: SESSION_HANDOFF "Next".
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

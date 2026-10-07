@@ -2718,3 +2718,52 @@ Shadows keep four cascades.
 away catches up 96 years in 55 s. Editor shots (`tc2/out/shots/pi1`) and the browser's (`4c_forest` against `c122web`) look the same.
 What is left of the CPU's frame (~9.5 ms; ~6 ms without shadows): the terrain's patch renderers drawn into each cascade, the views' own
 work - the next places to look if a frame falls short again.
+
+## D2-110 — 2026-10-07 — Boats from the woods: dugouts made, owned and rowed out to the open sea's shoals (C9.1)
+
+**Context.** `24` §5-6 and `25` §5 (the coastal proof: fish shortage or opportunity -> boats -> dock -> fishing -> boatbuilding -> cargo ->
+coastal trade -> port wealth). Until now fishing was from the shore only (900 m reach, the shelf's shoals); the view drew "one boat for two
+skilled fishers" rowed a little way out (D2-053) - an elaboration of shore fishing with no boat in state.
+**Decision.** (1) **A boat is a structure that floats**: a row of `World.Buildings` of kind `Structures.Boat` (20, "dugout", Function.Boat,
+Zone.Shore), owned by a household (`Household.Boat`), lying at the village's landing - the beach of its best fishing ground, on dry sand
+(`Boats.Landing`). (2) **Wanted from state** (`Boats.Wants`, a village's day: `Boats.Plan`, one begun a day): the village fishes from its
+shore and its **sea grounds** - the day's survey of open water within 2.5 km (`WildFood.SurveySea`, `Settlement.Sea`), where a boat
+reaches the offshore shoals too (reach max(0.3, 1 - 0.45 offshore) against the shore's max(0.1, 1 - 0.85 offshore)) - promise 1.25 times
+the shore's catch an hour, the row paid (`Boats.AfterRow`: a 4-hour trip against the extra row out and back); a grown member of the
+household is a fisher (skill 0.5: practice beyond what anyone is born with); the household is housed and not leaving; its woods still
+stand with trunks to hollow (the woodlot's forest share at least 0.3) and the store holds the trunk's timber. (3) **Made by its people**:
+90 labour-hours (the builder's pace and tools) and 30 loads of the store's timber (`Boats.Work`; lived: a choice like raising a roof,
+`WhyCode.Boat`; COARSE: free hours after the village's works); history `BoatBuilt` (85). (4) **Rowed out**: up to two of the household at
+once (lived: those out in it; COARSE: the day's seats) take it to one of the sea's grounds when it promises them more than the shore -
+`ActivityKind.Sail` lived (rowed out over the water, 3.5-5 h at the ground), the same catch function at both resolutions
+(`WildFood.Fish(.., boat: true)`, `Metrics.BoatFishKg`). (5) **The sea's danger**: nobody rows out when the wind over the sea's grounds
+reaches 12 m/s; a trip begun under a rising wind (5-12 m/s) overturns the boat with a chance up to 8 % (`Boats.Risk`; a DEEP step's
+days are its trips); the boat is lost (`BoatLost` 86, its cause the boat's making) and each aboard drowns with 0.4 (death 12, "at sea,
+when their boat overturned"; COARSE kills after its day's loop). (6) **Wear**: a dugout splits in 12 years from its making (read from
+time, no daily update) and lies as a hulk for two; an heir in the village takes a boat; a household that moves leaves it; when the sea
+rises over a landing its boats are drawn up the new shore. (7) **Seen and read**: the view draws the real boats (being hollowed, at the
+landing, old hulks) and people out in them at sea; shore fishers stand at the water's edge (D2-053's elaboration removed); the person page
+(the household's dugout), the place page (its fishing: shore and boats, the sea's worth against the shore), the building page and the
+headless `boats:` line. Sim version 49.
+**Evidence.** 251 tests (`BoatTests` 7: a household that fishes makes a dugout from its woods and the store's timber, history telling who
+led it; no trunk to hollow or nobody who fishes, no boat; the same ground fished from a boat gives at least the shore's catch, counted as
+the boat's; nobody rows out in a storm's wind, the risk grows with the wind and a calm sea is safe; a dugout splits with age and the
+household would make another; an overturned boat is lost with its people in the water, the drowned dead of it; both resolutions fish from
+the boat - lived 5 trips / 87 kg, COARSE 6 / 89 kg in the same premise). `CharcoalTests.AVillageBurnsCharcoalAtBothResolutions` restated:
+its households have made the boats they wanted (the six days measured were spent hollowing trunks). First tries: with a fisher's skill at
+0.2 (below what worldgen hands out at random) every household that ever fished made boats - seed 4 made 6,868 in 300 years (595 standing,
+65 at one village), ~620,000 hours and 5,000 t of timber, people x0.95 and runs 9 % slower; a fisher's skill 0.5 brought it to 2-6 boats a
+fishing village. Then households began boats with no timber in the store and stalled (79 "being hollowed" on seed 6): the trunk must be at
+hand. Then households in hungry villages began boats they never had hands for (seed 6: 2,486 begun, 1,953 given up): no long work is begun
+while rations are short. DEEP planned one boat a step, not one a day (fixed: one per day of the step). Ten seeds, 300 years DEEP
+(`tc2/out/civ/s*_c91h`, `scratchpad cmp.py`) against D2-108: people over years 200-299 x1.015 (t 0.7), at year 300 x1.005, births and
+deaths at par; fish caught x1.65 (t 12), the wild's food x1.09 (t 3.6); at year 300 0-71 dugouts a world (2-6 at a fishing village),
+117-999 made in 300 years, 1-23 lost at sea (0-10 drowned); 55-73 % of the fish from boats. COARSE against DEEP (seeds 42, 7, 4, 2,
+`_c91i_coarse` vs `_c91i`): boats made at par (0.78-1.38), the boats' share of the catch at par (63-72 % against 66-78 %), DEEP's fish
+x0.79 (D2-083's known lean, x0.81). Cost: 1.71 against 1.69 us a person-day (a cache of the sea's worth and wind per village and moment;
+DEEP's Retake recomputes only the ground fished). `DeepTimeTests.DeepLivesTheWorldAsCoarseDoes` reads the herds' mix at five moments
+over the last eight years (one moment's pigs on a four-village world swung past the band, x2.65, when boats moved the trajectory; mean
+x2.15). Headless `run --load S --years 0 --boats SID` lists a village's boats.
+**Open (first next step).** A shot of the year-300 seed-2 world showed boats lying in the water (`Landing` walked only toward the square,
+which can lie across a bay); fixed by a ring search for dry ground (a fresh seed-2 run: no boat on wet ground), but the ten-seed comparison
+above predates the fix: rerun it, rebuild the Web build, shoot `work20`/`work20far` and judge the boats and sailors.

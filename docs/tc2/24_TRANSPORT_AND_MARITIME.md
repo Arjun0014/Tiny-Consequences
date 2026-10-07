@@ -60,6 +60,16 @@ Boats are structures that move: owned by a household or a village, built at a la
 people, maintained, damaged and lost in storms (`Storms`), drawn up in bad weather, captured later. Fishing boats fish the same fish
 fields (D2-039, D2-042); cargo boats carry real loads between real stores; people aboard are real people.
 
+**Implemented (C9.1, D2-110)**: the dugout, `Core/Places/Boats.cs` - a structure that floats (`Structures.Boat` 20), owned by a household
+(`Household.Boat`), lying on dry sand at the landing of the village's best fishing ground (`Boats.Landing`: a ring search for dry ground
+round the water's edge). Wanted when the village's **sea grounds** (open water within 2.5 km, `WildFood.SurveySea`: the offshore shoals
+reachable from a boat) promise 1.25x the shore's catch an hour with the row paid, a grown member is a fisher (skill 0.5), the household is
+housed, rations are not short, its woods hold trunks to hollow (forest 0.3 at the woodlot) and the store the trunk's timber; one begun a
+village-day; 90 labour-hours and 30 loads; given up when not made within a year. Up to two of the household row out (`ActivityKind.Sail`;
+COARSE: the day's seats); nobody goes out at 12 m/s of wind over the grounds; a trip under a rising wind may overturn the boat (up to 8 %),
+each aboard drowning with 0.4; a dugout splits in 12 years. The view draws the real boats and the people out in them. Not yet: plank boats
+and boatbuilding (a technique found by dugout owners), docks, cargo boats and coastal trade, ferries.
+
 ## 6. Ports (C9)
 
 landing (a beach: nothing built) -> fishing jetty and boat shed -> dock (timber quay) -> harbour (stone quay, warehouses) -> shipyard.

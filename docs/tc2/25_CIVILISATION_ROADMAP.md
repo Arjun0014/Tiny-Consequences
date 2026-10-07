@@ -60,7 +60,13 @@ Sub-slices, each committed with tests, runs, shots and docs:
 **C1 closed 7 Oct 2026 (D2-096)**; acceptance sheet `tc2/out/shots/civA_sheet.png`.
 
 **C4.1 roads by use done (D2-097). C7.1 rings that grow done (D2-098). C12.1 the person page done (D2-099). C5.1 copper ore bodies and
-mines done (D2-100). C12.2 the settlement page done (D2-106). C10.1 the lord's call done (D2-107); the lord answers for its tributaries, once (D2-108).**
+mines done (D2-100). C12.2 the settlement page done (D2-106). C10.1 the lord's call done (D2-107); the lord answers for its tributaries, once (D2-108). C9.1 boats from the woods (D2-110: code
+committed, final checks open - see SESSION_HANDOFF).**
+
+### C9 maritime, by slices (D2-110): C9.1 the dugout - made from the woods, owned, rowed out to the open sea's shoals, lost in rising wind
+(committed c674892; open: ten-seed rerun with the landing fix, Web build and shots); C9.2 plank boats and boatbuilding (a technique found by
+dugout owners; a boat shed at the landing); C9.3 the landing and the dock (by catches landed and boats kept); C9.4 cargo boats and coastal
+trade (loads by water at the sea's cost ratio); C9.5 ferries; then the coastal proof (`§5`).
 
 ### C5 mining and metallurgy, by slices (D2-100): ~~C5.1 copper ore bodies, the mine, depletion~~ (done); ~~C5.2a charcoal~~ (done, D2-101); ~~C5.2b
 iron~~ (done, D2-102: bog ore, bloomery, iron's use a head); ~~C5.3a places by their ore~~ (done, D2-103); ~~C5.3b iron traded~~
