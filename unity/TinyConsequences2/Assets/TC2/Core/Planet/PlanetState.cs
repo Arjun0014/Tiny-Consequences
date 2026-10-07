@@ -191,7 +191,10 @@ namespace TC2.Core.Planet
         /// How well a cell takes the plough (0..1): warm enough, wet enough but not a marsh, not steep, low.
         /// Standing forest must be cleared first: it lowers what a season's work can open.
         /// </summary>
-        public double Arability(int c, double meanTemp)
+        public double Arability(int c, double meanTemp) => ArabilityOpen(c, meanTemp) * (1.0 - 0.6 * Forest[c]);
+
+        /// <summary>How arable a cell's land is once its woods are cleared (Arability without the woods' share: C1.2).</summary>
+        public double ArabilityOpen(int c, double meanTemp)
         {
             if (!IsLand(c)) return 0;
             double t = DMath.SmoothStep(3, 10, meanTemp) * (1.0 - DMath.SmoothStep(27, 34, meanTemp));
@@ -201,7 +204,7 @@ namespace TC2.Core.Planet
             for (int k = 0; k < 4; k++) steep = DMath.Max(steep, DMath.Abs((double)Elev[Grid.Nbr4[c * 4 + k]] - Elev[c]));
             double flat = 1.0 - DMath.SmoothStep(60, 260, steep);
             double low = 1.0 - DMath.SmoothStep(900, 1600, Elev[c] - SeaLevel);
-            return t * wet * flat * low * (1.0 - 0.6 * Forest[c]);
+            return t * wet * flat * low;
         }
 
         /// <summary>Cell spacing in metres.</summary>

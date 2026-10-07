@@ -422,8 +422,8 @@ namespace TC2.Core.Agents
                 case ActivityKind.Wood:
                     if (p.At != 0)
                     {
-                        ref var s = ref w.Settlements.Get(p.At);
-                        s.Woodstore += hours * (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * Tools(p.Household);
+                        // felled at the village's woodlot, carried home from there (C1.2: the woods it came from are thinner by it)
+                        Woods.Cut(w, p.At, hours, (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * Tools(p.Household), false);
                         p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * hours);
                     }
                     break;
@@ -1441,10 +1441,15 @@ namespace TC2.Core.Agents
                 if (Hours != null) { Hours[6] += day0; Hours[7] += days; }
                 if (fuelWanted > 0 && hours > 0)
                 {
-                    double rate = (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * tools;
-                    double h = DMath.Min(hours, fuelWanted / rate);
-                    s.Woodstore += h * rate; fuelWanted -= h * rate; hours -= h; if (Hours != null) Hours[0] += h;
-                    p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * h);
+                    // (C1.2: at the woodlot's distance, the walk out once a stint and every load home - felled from its woods)
+                    double r0 = (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * tools, rate = Woods.HourRate(w, sid, r0, true);
+                    if (rate > 0)
+                    {
+                        double h = DMath.Min(hours, fuelWanted / rate);
+                        double loads = Woods.Cut(w, sid, h, r0, true);
+                        fuelWanted -= loads; hours -= h; if (Hours != null) Hours[0] += h;
+                        p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * h);
+                    }
                 }
                 if (cropNeed > 0)
                 {
@@ -1522,10 +1527,10 @@ namespace TC2.Core.Agents
                 }
                 prof?.End(10022);
                 if (build && hours > 0) { double used2 = Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0 * days), BuildRate(in p) * tools, p.Id); hours -= used2; if (Hours != null) Hours[4] += used2; }
-                if (hours > 0 && s.Woodstore < woodTarget)
+                if (hours > 0 && s.Woodstore < woodTarget && Woods.Lot(in s) >= 0)
                 {
                     double h = hours * 0.4;
-                    s.Woodstore += h * (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * tools;
+                    Woods.Cut(w, sid, h, (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * tools, true);   // (C1.2)
                     p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * h);
                     hours -= h; if (Hours != null) Hours[5] += h;
                 }

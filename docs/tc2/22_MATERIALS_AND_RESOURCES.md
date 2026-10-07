@@ -68,4 +68,9 @@ their users. Stores rot by kind (grain 0.3 % a day kept well, D2-042; pottery sl
 
 ## 5. Implemented
 
-- Stone and the quarry (C1.3), timber from the woods (C1.2): see DECISIONS and `25` §3 as they land.
+- **Timber from the woods (C1.2, D2-091)**: `Core/Places/Woods.cs` - the woodlot (nearest good woods within 1.5 km), each load's mass off
+  its forest share (~120 t/ha at full cover; felling leaves 0.02), the walk paid per load and per stint, fields keep the woods off their
+  farmed share (fixed point with arability), released fields regrow, `WoodsReceded` history. 300 years on seed 42: 41,600 t felled,
+  woodlots ~770 m out at year 300; cleared fields fully arable (arable land +39 %, people +41 %). Not yet: clearing as labour and as timber,
+  sawn timber vs firewood, charcoal.
+- Stone and the quarry (C1.3): next.

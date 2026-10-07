@@ -211,6 +211,20 @@ namespace TC2.Headless
                         double cap = TC2.Core.Places.Structures.StoreCapacity(in st);
                         if (st.Granary > cap) over += st.Granary - cap;
                     }
+                    // timber from the woods (C1.2): what was felled, how far the woodlots are now, the fields and the arable land
+                    {
+                        double fieldHa = 0, arableHa = 0, dsum = 0, dmax = 0; int lots = 0, none = 0;
+                        for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
+                        {
+                            var st2 = w.Settlements.Get(sid2);
+                            if (!st2.Inhabited) continue;
+                            fieldHa += st2.FieldHa; arableHa += st2.ArableHa;
+                            if (st2.WoodLot > 0) { lots++; dsum += st2.WoodDist; if (st2.WoodDist > dmax) dmax = st2.WoodDist; } else none++;
+                        }
+                        Console.WriteLine("woods: felled " + F(w.Metrics.WoodFelled, "0") + " loads (" + F(w.Metrics.WoodFelled * 25.0 / 1000.0, "0") + " t), receded past a mark " + w.Metrics.WoodsReceded +
+                                          " times; woodlots " + F(lots > 0 ? dsum / lots : 0, "0") + " m from the square on average, the farthest " + F(dmax, "0") + " m, " + none + " villages with none in reach;" +
+                                          " fields " + F(fieldHa, "0") + " of " + F(arableHa, "0") + " arable ha");
+                    }
                     sb.Append("  most granaries ").Append(most).Append(mostSid != 0 ? " (" + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(mostSid)) + ", " + w.Settlements.Get(mostSid).Population + " people)" : "").Append("; grain beyond the granaries now ").Append(F(over, "0")).Append(" FU");
                     Console.WriteLine(sb.ToString());
                 }

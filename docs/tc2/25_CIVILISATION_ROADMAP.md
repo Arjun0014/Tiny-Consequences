@@ -44,8 +44,8 @@ Sub-slices, each committed with tests, runs, shots and docs:
 1. **C1.1 Structures** (D2-090, done 7 Oct): the kind table; the well and granary become structures (state, condition, builders, cause,
    history, capacity: grain beyond it rots faster; barns for big harvests); works by need with causes; placement by zone; the building
    inspector; drawn from the table.
-2. **C1.2 Timber from the woods**: felling removes forest share at the woodlot (which moves as the woods recede: walking time per load);
-   fields keep the woods off what they farm; regrowth where people stop.
+2. **C1.2 Timber from the woods** (D2-091, done 7 Oct): felling removes forest share at the woodlot (which moves as the woods recede:
+   walking time per load); fields keep the woods off what they farm; regrowth where people stop.
 3. **C1.3 Stone**: outcrops known by people who saw them; the quarry as a work site; stone cut and carried (trip time); the stone store;
    footings (homes last longer), a well's lining, the smithy's hearth.
 4. **C1.4 The smithy**: a workplace raised when a competent smith and a want of metal meet; smithing there (faster), arms forged only

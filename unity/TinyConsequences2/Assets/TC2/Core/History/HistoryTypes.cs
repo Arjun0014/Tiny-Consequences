@@ -79,6 +79,7 @@ namespace TC2.Core.History
         TributePaid = 73,       // a tributary paid its lord at harvest (Magnitude FU)
         TributeEnded = 74,      // a tributary paid no more (ArgA 1 the lord is gone, 0 grown too weak)
         HomesDrowned = 75,      // the sea rose over homes' lots (Settlement; ArgA homes lost; Cause1 the coast's change; D2-087)
+        WoodsReceded = 77,      // a village's woods were cut back past a mark (Magnitude the woodlot's distance, m; ArgA 1 600 m, 2 1 km, 3 1.5 km, 4 none within reach; C1.2)
         WorkBegun = 76,         // a village laid out a structure and began it (Object the building; ArgA its kind, ArgB granaries standing; Cause1 the need; C1.1)
         HomeTaken = 53,         // a household made its home in one that stood empty (Object: who lived there last; ArgA 1 a hut, 2 a house; D2-059)
         ColdHomes = 52,         // a village's homes were cold enough to harm (Magnitude homes, ArgA 1 the woodstore ran short, ArgB the day's mean C; D2-056)
@@ -215,6 +216,7 @@ namespace TC2.Core.History
                 case HistoryKind.WildFood:
                 case HistoryKind.WorkBuilt:
                 case HistoryKind.WorkBegun:
+                case HistoryKind.WoodsReceded:
                 case HistoryKind.Scouted: return Tier.Local;
                 case HistoryKind.PartySetOut: return Tier.Historical;
                 case HistoryKind.HerdHuntedOut: return Tier.Local;
@@ -291,6 +293,7 @@ namespace TC2.Core.History
                 case HistoryKind.HomeBuilt: b = 1; break;
                 case HistoryKind.WorkBuilt: b = 3; break;
                 case HistoryKind.WorkBegun: b = 2; break;
+                case HistoryKind.WoodsReceded: b = 4; break;
                 case HistoryKind.PartySetOut: b = 20; break;
                 case HistoryKind.Scouted: b = 2; break;
                 case HistoryKind.HouseholdMoved: b = 1.5; break;

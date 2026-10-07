@@ -2200,3 +2200,34 @@ capacity and the village plans another). 300 years DEEP on 6 km (`tc2/out/civ/s4
 at years 100/200/300 against 765 / 3,729 / 5,611 before (the first century identical; the rest the seed's scatter), 17 barns and 56
 granaries standing in 18 villages; seed 7 738 / 1,795 / 1,732 against 738 / 1,936 / 1,648, 4 barns and 24 granaries in 10 villages.
 4.5 world years a second (seed 42) against 4.6 before.
+
+## D2-091 — 2026-10-07 — Timber from the woods: felling takes real forest at a woodlot that moves; fields clear what they farm (C1.2)
+
+**Context.** The D2-089 audit: woodcutting added to `Woodstore` and removed nothing from the planet; claimed fields left the forest
+standing in the simulation (the view hid trees under fields). Timber had no source, no shortage was possible, and - found in this slice
+- the land's own law already discounted a cell's arability under woods (`Arability` x (1 - 0.6 forest)) while fields never cleared them:
+farmland was held down by woods nobody felled.
+**Decision.** (1) **`Core/Places/Woods.cs`**: a village fells at a **woodlot** - among the cells within 1.5 km of its own, land not under
+ice or fields with a forest share of at least 0.12, the one nearest for the woods it holds ((d + 200 m) / (forest + 0.2)); its woodcutters
+walk there (`WoodX/WoodY`). Each 25 kg load takes its mass from that cell's forest share (a full cover stands ~120 t a hectare); felling
+leaves 0.02 (stumps, scrub); a woodlot cut below 0.12 is left for the next. (2) **The walk is paid**: a load from beyond the near woods
+(210 m, the old woodlot's distance) costs the carry home both ways (`Woods.Rate`); a COARSE share of a day also pays the walk out and home
+once a 3.25 h stint (`AfterWalk`), as a lived stint walks it; lived woodcutting, the COARSE hearths' wood and the COARSE store's top-up all
+fell through `Woods.Cut`. (3) **Fields clear what they farm** (`PlanetSystems.GrowVegetation`): a field cell keeps at most the cover its
+fields leave - the fixed point F = (1 - a) / (1 - 0.6 a), a = the village's used share x the cell's arability once cleared
+(`PlanetState.ArabilityOpen`) - and released fields regrow by the same vegetation law. (4) History `WoodsReceded` (Local) when a
+village's woodlot first lies past 600 m, 1 km, 1.5 km, or none is within reach (it then looks again every twelve days); metrics
+`WoodFelled`, `WoodsReceded`; the run report's `woods:` line. (5) Sim version 34.
+**Evidence.** 190 tests (`WoodsTests` 5: a load's mass comes off the woodlot's forest; farther woods cost more hours a load; the woodlot
+moves on as the woods are cut and history tells it; fields keep the woods off and released fields grow back - 0.22 -> 0.45 in 40 years;
+a village burns and builds from its own woods lived and COARSE). Three COARSE-vs-lived rate checks drifted out of their bands on single
+worlds (visits, trades, night takings: ~3-20 events each); pooled over four to eight worlds with the same bands they pass, and the same
+pooled checks on the pre-C1.2 code give the same rates within noise (trades 0.0062 both; visits 0.025 vs 0.022; takings 28 vs 20 lived) -
+the time use of a lived day is unchanged (woodcutting 0.5 h a grown person-day). 300 years DEEP (`tc2/out/civ/s42_c12a`, `s7_c12a`): seed
+42 felled 41,600 t, its woods receded past a mark 24 times, woodlots 766 m out on average at year 300 (farthest 1.45 km); **arable land
+1,854 -> 2,570 ha and people 5,295 -> 7,481** (seed 7 1,732 -> 2,034): cleared fields are fully arable. Mast gathered fell 3.5x (seed 42) as
+the woods near villages went, hares rose (open land), pigs fell (195 -> 68; seed 7 128 -> 0) with the pannage. 4.2 world years a second.
+Shots `tc2/out/shots/civ2`: the year-300 coastal town of 612 in an open farmed heartland, the woods pushed back to the west and the coast.
+**Consequences.** Mature 6 km worlds now carry more people than D2-085 measured (its 2,000-7,100 was held down by uncleared fields): no cap
+is added (D2-089: land decides). Clearing is not yet labour (fields claimed in spring are cleared by the next vegetation step) - a C2
+item; nor does clearing yield timber. Pigs depend on woods (pannage) as they did: a pig-poor heartland is a consequence, not a bug.

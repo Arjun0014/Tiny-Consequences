@@ -258,6 +258,8 @@ namespace TC2.Core.Planet
                     for (int k = 0; k < 4; k++) nbF += P.Forest[grid.Nbr4[c * 4 + k]];
                     f += dtY * 0.02 * (nbF > 0.3 ? 1.0 : 0.05);
                 }
+                // fields keep the woods off the share they farm (C1.2: cleared as they are farmed; released fields regrow by this same law)
+                if (P.FieldOwner[c] != 0) { double open = Places.Woods.Open(w, c, tm); if (f > open) f = open; }
                 g += 1.1 * dtY * g * (1.0 - (g + 0.5 * f) / DMath.Max(0.05, kG));
                 if (g < 0.02 && kG > 0.1) g += dtY * 0.05;
                 P.Forest[c] = (float)DMath.Clamp01(f);

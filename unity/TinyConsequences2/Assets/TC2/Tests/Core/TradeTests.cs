@@ -21,9 +21,9 @@ namespace TC2.Tests.Core
         static void Coarse(World w) => w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
 
         /// <summary>Two villages of seed 42's world a short walk apart (with a road).</summary>
-        static World Pair(out int a, out int b)
+        static World Pair(out int a, out int b, ulong seed = 42)
         {
-            var w = WorldGenerator.Create(new WorldConfig { Seed = 42 });
+            var w = WorldGenerator.Create(new WorldConfig { Seed = seed });
             a = w.Settlements.First(); b = 0;
             for (int s = w.Settlements.Next(a); s != 0; s = w.Settlements.Next(s))
                 if (Vec3d.ArcDistance(w.Settlements.Get(a).Anchor, w.Settlements.Get(s).Anchor, w.Planet.Radius) <= 6000 && w.Routes.Get(w, a, s) != null) { b = s; break; }
@@ -168,11 +168,16 @@ namespace TC2.Tests.Core
         [Test]
         public void TheCoarseTradeRateIsTheLivedOne()
         {
-            var w = Pair(out int a, out int b);
-            Assume.That(b != 0, "two villages a walk apart");
-            w.AdvanceTo(w.Now + SimTime.Day);
+            // pooled over four worlds (C1.2: one world's ~3 trips moved with any change of its trajectory)
             double adultDays = 0;
             var seen = new System.Collections.Generic.HashSet<(int, long)>();
+            int worlds = 0;
+            foreach (ulong seed in new ulong[] { 42, 43, 44, 45 })
+            {
+            var w = Pair(out int a, out int b, seed);
+            if (b == 0) continue;
+            worlds++;
+            w.AdvanceTo(w.Now + SimTime.Day);
             for (int d = 0; d < 30; d++)
             {
                 Stocks(w, a, b);   // (the deal kept to be had)
@@ -185,9 +190,11 @@ namespace TC2.Tests.Core
                     for (int i = 0; i < res.Count; i++) { var p = w.People.Get(res[i]); if (p.Alive && p.Act == ActivityKind.TripOut && p.Why == WhyCode.Trade) seen.Add((res[i], p.T0)); }
                 }
             }
+            }
+            Assume.That(worlds > 0, "two villages a walk apart");
             // A's own trading trips (a trader seen setting out), per healthy grown person of A a day
             double rate = seen.Count / adultDays;
-            Console.WriteLine("lived trades per healthy grown person a day with a deal to be had " + rate.ToString("0.0000") + " (COARSE uses " + Trade.TripsPerAdultDay + ")");
+            Console.WriteLine("lived trades per healthy grown person a day with a deal to be had " + rate.ToString("0.0000") + " (" + seen.Count + " trips in " + adultDays + " grown person-days, " + worlds + " worlds; COARSE uses " + Trade.TripsPerAdultDay + ")");
             Assert.That(rate / Trade.TripsPerAdultDay, Is.InRange(0.4, 2.5), "refit AgentSystem.TradeChance or Trade.TripsPerAdultDay");
         }
     }

@@ -14,7 +14,12 @@
   the scale report, annals and saves into `tc2/out/civ/s<seed><TAG>`), binaries `bin_c11*`; shots `--village big|ID` frame the village
   with the most works (absolute `--load` paths: Unity resolves relative ones from the project folder). **Pitfall**: this Bash tool collapses
   `\` inside heredocs - patch scripts with backslashes go through the Write tool (`/tmp/*.py`).
-- **Next: C1.2 timber from the woods**: `Settlement.WoodCell` (the woodlot, chosen as the nearest cell within ~1.6 km with forest worth
+- **C1.2 timber from the woods done (D2-091)**; rate tests pooled over worlds (single worlds gave 3-20 events). Runs `tc2/out/civ/s{42,7}_c12a`
+  (saves at years 100 and 300), shots `civ2`.
+- **Next: C1.3 stone** - `Settlement` knows stone it has seen (outcrops = `Learning.Rock`'s steep cells, seen by its people's work grounds,
+  woodlots and scouts); a quarry (`Structures.Quarry`, Zone.Site, at the outcrop) opened when a planned work wants stone; quarrying hours cut
+  ~4 loads an hour, carrying home costs the walk (as wood); `s.Stone` store; uses: house footings (homes on stone last ~2x), the well's
+  lining, the smithy's hearth; masonry later. (Was the C1.2 plan: `Settlement.WoodCell` (the woodlot, chosen as the nearest cell within ~1.6 km with forest worth
   going to; moved when it thins), each 25 kg load felled takes its mass from that cell's forest share (~120 t/ha at full cover), the walk
   beyond the near woods slows each load (both resolutions, same formula), fields keep the woods off their farmed share in
   `PlanetSystems.GrowVegetation` (Arability already falls with forest), a history line when the woods recede past 600/1,000/1,500 m;

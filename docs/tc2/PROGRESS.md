@@ -16,8 +16,11 @@
   capacity (grain beyond rots 4x), works by need with their causes (`WorkBegun`/`WorkBuilt` under the building), placement by zone, the
   building page (click a structure), kit models (barn, smithy, quarry face, stone pile, training ground, market stalls); 185 tests;
   300 years DEEP at par with the baselines (`tc2/out/civ/s42_c11c`, `s7_c11c`; 17 barns and 56 granaries in 18 villages on seed 42);
-  shots `tc2/out/shots/civ1`. **Next: C1.2 timber from the woods** (felling takes forest share at a woodlot that moves as the woods
-  recede, the walk in every load; fields keep the woods off what they farm), then stone, the smithy, training, market and gates.
+  shots `tc2/out/shots/civ1`. **C1.2 timber from the woods done (D2-091)**: felling takes forest at a woodlot that moves as the woods
+  recede, the walk paid per load; fields clear what they farm (cleared fields fully arable: seed 42 arable +39 %, people 5,295 -> 7,481 at
+  year 300; 41,600 t felled, woodlots ~770 m out); 190 tests (rate checks pooled over worlds); shots `civ2`. **Next: C1.3 stone** (outcrops
+  known by people, the quarry as a work site, stone cut and carried, footings, the smithy's hearth), then the smithy, training, market,
+  gates and the pressure premise.
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

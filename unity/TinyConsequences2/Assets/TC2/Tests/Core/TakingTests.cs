@@ -257,7 +257,7 @@ namespace TC2.Tests.Core
             // the same starving month lived and at COARSE, in four worlds: a lived night weighs going at bedtime with the body of
             // the night before, a COARSE night once with the day's account - the same choice, so the month's takings agree
             long lived = 0, coarse = 0, lw = 0, cw = 0;
-            foreach (ulong seed in new ulong[] { 42, 43, 44, 45 })
+            foreach (ulong seed in new ulong[] { 42, 43, 44, 45, 46, 47, 48, 49 })   // (eight worlds, C1.2: four gave ~10-20 takings a side)
             {
                 long l = HungryMonth(seed, false, out long lwi, out double ln), c = HungryMonth(seed, true, out long cwi, out double cn);
                 Console.WriteLine("seed " + seed + ", a starving month: lived " + l + " takings in " + lwi + " nights weighed (" + ln + " hungry grown person-nights), COARSE " + c + " in " + cwi + " (" + cn + ")");

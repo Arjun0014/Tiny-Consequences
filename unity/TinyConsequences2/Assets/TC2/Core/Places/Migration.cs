@@ -412,6 +412,7 @@ namespace TC2.Core.Places
                 Object = EntityRef.Settlement(origin), Cause1 = cause, Rel1 = CauseRel.CausedBy,
             });
             Structures.Plan(w, sid);   // (their first work: a well, laid out at once - C1.1)
+            Woods.Choose(w, sid);      // (and where they will fell their wood: C1.2)
             w.Routes.Invalidate();
             w.Wild.Survey(sid);
             w.SettlementSys.ScheduleFirstDaily(sid);

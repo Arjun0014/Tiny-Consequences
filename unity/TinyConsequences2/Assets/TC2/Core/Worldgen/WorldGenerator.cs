@@ -314,6 +314,7 @@ namespace TC2.Core.Worldgen
             sr.FoundedEvent = w.Record(new HistoryEvent { Kind = HistoryKind.SettlementFounded, Time = w.Now, Cell = cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Cause1 = arrived, Rel1 = CauseRel.CausedBy });
             // its well and granary are structures on its ground (C1.1), laid out before the homes take their lots
             Structures.Standing(w, sid, Structures.Well, sr.WellX, sr.WellY);
+            Woods.Choose(w, sid);   // (where its people fell their wood: the nearest good woods, C1.2)
             { ref var sg = ref w.Settlements.Get(sid); Construction.GranarySpot(in sg, out double gx, out double gy); Structures.Standing(w, sid, Structures.Granary, (float)gx, (float)gy); }
             // founding households: couples with children, a few elders, a few single adults
             int target = cfg.FoundersPerSettlement;
