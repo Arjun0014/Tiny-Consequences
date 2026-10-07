@@ -31,8 +31,11 @@
   crews are of the household only; births and deaths a thousand person-years ~1-2 % lower with plank boats (people at par); COARSE never
   counts hunting trips (D2-063 comment bug); DEEP's fish x0.8 of COARSE (D2-083 lean).
 
+- **C9.3 voyages (D2-113) IN PROGRESS**, committed as work in progress (sim version 52): `Places/SeaRoutes.cs`, `Trade.BestSeaPartner/Voyages/LoadBoats`, relief by sea in `Trade.Relief`, `Plan/Load/Exchange(.., loadKg)`, metrics `Voyages/SeaCargoKg/ReliefBySeaFu`, `VoyageTests` 3. Runs `tc2/out/civ/s*_c93a` (seed 4 trade only), `_c93b` (seeds 4, 8), `_c93c` (ten seeds). Finding: famines x1.18 (t 2.1) with relief by sea.
+
 ### Next, in order
 1. (done: the Web build of 1808e81 tested 5/5, every view 73-120 fps, `tc2/out/webtest/c92web`.)
+1b. **First**: D2-113 "Open" - why relief by sea brings more famines (seeds 2, 11, 8); fix (likely a cap on what a giver sends by sea), rerun ten seeds against `_c92r`, then lived voyages (crews rowing along `SeaRoutes`, drawn), shots, Web build, close C9.3.
 2. C9.3 the landing and the dock (by catches landed and boats kept: a jetty/quay where boats are many), or crews beyond the household
    (neighbours, shares), or farther grounds for plank boats; then C9.4 cargo boats and coastal trade (the coastal proof, `25` §5).
 3. Or C10.2 leaders, succession and the polity page.

@@ -121,7 +121,7 @@ namespace TC2.Core.History
                     return "The " + TC2.Core.Places.Boats.NameOf((byte)e.ArgB) + " of the " + subj + "s of " + place + " overturned at sea in a rising wind (" + F(e.Magnitude, "0") + " m/s)" +
                            (e.Other.IsNone ? "." : e.ArgA == 1 ? ": " + other + " drowned." : ": " + other + " clung to it and came ashore.");
                 case HistoryKind.HerdHuntedOut: return "The " + obj + " herd near " + place + " was hunted out (" + F(e.Magnitude, "0") + " at its most).";
-                case HistoryKind.ReliefSent: return "In the famine " + subj + " sent grain to " + obj + " (" + F(e.Magnitude, "0") + " days' food for one).";
+                case HistoryKind.ReliefSent: return "In the famine " + subj + " sent grain to " + obj + (e.ArgA == 1 ? " by sea, a boatload along the coast" : "") + " (" + F(e.Magnitude, "0") + " days' food for one).";
                 case HistoryKind.Taken: return subj + " of " + other + " took " + F(e.Magnitude, "0") + " days' grain from the store of " + obj + " in the night.";
                 case HistoryKind.TakingSeen: return subj + " of " + other + " was seen at the store of " + obj + " in the night and ran, leaving the grain.";
                 case HistoryKind.Struck:

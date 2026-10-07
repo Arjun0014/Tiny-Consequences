@@ -15,10 +15,12 @@ modify or stage it.
 
 ## Where things stand (8 Oct 2026, session 8 of TC2 work; Control Room run #7 session 3)
 - Commits this session: 9a2ceb7 + 23ac1c9 **C9.1 closed** (D2-110), c5fd15f **C9.2a the landing and the crew** (D2-111), then **C9.2b boats of
-  planks** (D2-112). Sim version 51; 262 headless tests pass on the final code.
+  planks** (D2-112). Sim version 52 after the C9.3 work-in-progress commit; 265 headless tests pass.
 - The Web build in `tc2/web-build/web` is of 1808e81 (C9.2b): Web test 5/5, every view 73-120 fps.
 
 ## Do next, in order
+0. **C9.3 voyages is in progress** (D2-113, committed as such): first find why relief by sea brings more famines (D2-113 "Open"),
+   fix, rerun ten seeds against `_c92r` (`python cmp.py c92r <tag> 42 7 4 2 1 3 5 6 8 11`), then lived voyages, shots, close C9.3.
 1. The roadmap (`docs/tc2/SESSION_HANDOFF.md` session 8 "Next"): C9.3 the dock (by catches landed and boats kept), crews beyond the
    household, farther grounds for plank boats, then C9.4 cargo boats and coastal trade; or C10.2 leaders, succession and the polity page.
    Tools: `tc2/out/tools/wrun.sh` (fix its `SCR=` to the new scratchpad) and `cmp.py` (`python cmp.py c92c c92r 42 7 4 2 1 3 5 6 8 11`).

@@ -87,7 +87,7 @@ namespace TC2.Core.Places
         /// The best deal a village's trader could make with a neighbour now: the good to take out (and how much a load holds, as
         /// far as it is spared) and the gain to both, valued at the middle of the two villages' values. 0 when none is worth a walk.
         /// </summary>
-        public double Plan(int from, int to, out byte give, out double qty, out byte take)
+        public double Plan(int from, int to, out byte give, out double qty, out byte take, double loadKg = LoadKg)
         {
             give = None; take = None; qty = 0;
             double best = 0;
@@ -98,7 +98,7 @@ namespace TC2.Core.Places
                 if (spare <= 0) continue;
                 double vf = Value(from, g), vt = Value(to, g);
                 if (vt <= vf) continue;   // they would not give more for it than it is worth at home
-                double q = DMath.Min(spare, LoadKg / Kg(g));
+                double q = DMath.Min(spare, loadKg / Kg(g));
                 // what comes back: a good the other spares and this village wants more than they do
                 for (byte h = 1; h < Goods; h++)
                 {
@@ -107,7 +107,7 @@ namespace TC2.Core.Places
                     double vfh = Value(from, h), vth = Value(to, h);
                     if (spareH <= 0 || vfh <= vth) continue;
                     double price = (vf + vt) / (vfh + vth);   // units of h a unit of g fetches, at the middle of both values
-                    double qh = DMath.Min(DMath.Min(q * price, spareH), LoadKg / Kg(h));
+                    double qh = DMath.Min(DMath.Min(q * price, spareH), loadKg / Kg(h));
                     double qg = qh / price;
                     double gain = (vt - vf) * qg + (vfh - vth) * qh;
                     if (gain > best) { best = gain; give = g; qty = qg; take = h; }
@@ -146,11 +146,11 @@ namespace TC2.Core.Places
 
         // ------------------------------------------------------------------ a trader's trip (ACTIVITY) - the same steps a COARSE trip takes at once
         /// <summary>At departure: the load out of the village's store onto the trader's back.</summary>
-        public void Load(ref Person p, int from, int to)
+        public void Load(ref Person p, int from, int to, double loadKg = LoadKg)
         {
             var w = _w;
             if (p.CargoQty > 0f && w.Settlements.Exists(p.Home)) Unload(ref p, p.Home);   // (whatever they still carry is home first: goods are never lost)
-            if (Plan(from, to, out byte give, out double qty, out _) <= 0 || give == None) return;
+            if (Plan(from, to, out byte give, out double qty, out _, loadKg) <= 0 || give == None) return;
             ref var s = ref w.Settlements.Get(from);
             qty = DMath.Min(qty, Stock(ref s, give));
             if (qty <= 0) return;
@@ -159,7 +159,7 @@ namespace TC2.Core.Places
         }
 
         /// <summary>At the other village: the load into its store, a return load out of it (as the deal stands now), both stores gaining.</summary>
-        public void Exchange(ref Person p, int at)
+        public void Exchange(ref Person p, int at, double loadKg = LoadKg)
         {
             var w = _w;
             if (p.Cargo == None || p.CargoQty <= 0) return;
@@ -175,7 +175,7 @@ namespace TC2.Core.Places
                 double spareH = Spare(at, h), vfh = Value(home, h), vth = Value(at, h);
                 if (spareH <= 0 || vfh <= vth) continue;
                 double price = (vf + vt) / (vfh + vth);
-                double q = DMath.Min(DMath.Min(qg * price, spareH), LoadKg / Kg(h));
+                double q = DMath.Min(DMath.Min(qg * price, spareH), loadKg / Kg(h));
                 double gain = (vfh - vth) * q;
                 if (gain > bestGain) { bestGain = gain; take = h; qh = q; }
             }
@@ -223,6 +223,7 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             if (!s.Inhabited) return;
             Relief(sid, step);
+            Voyages(sid, step);   // (by sea, at both resolutions - abstract, as relief is: C9.3)
             if (w.Resolution != Resolution.Coarse) return;
             int to = BestPartner(sid, out double gain);
             if (to == 0) return;
@@ -247,6 +248,100 @@ namespace TC2.Core.Places
             }
         }
 
+        // ------------------------------------------------------------------ by sea (C9.3)
+        /// <summary>kg a plank boat carries besides its crew (24 §5: a plank fishing boat, ~500 kg - twenty walkers' loads).</summary>
+        public const double BoatLoadKg = 500.0;
+        /// <summary>The least gain (in the villages' own values) worth a boat's crew's day at sea (three walks).</summary>
+        public const double WorthAVoyage = 12.0;
+        /// <summary>Voyages a village's plank boat makes a day while a deal by sea is to be had (COARSE: about one a month).</summary>
+        public const double VoyagesPerBoatDay = 0.04;
+
+        /// <summary>
+        /// The coastal village with the best deal for a boat's load from this one now, reached over the sea from landing to landing (its way:
+        /// `SeaRoutes`), or 0 - a market there deals better, as on land; none worth a crew's day at sea.
+        /// </summary>
+        public int BestSeaPartner(int sid, out double gain, out Agents.Route way)
+        {
+            var w = _w;
+            gain = 0; way = null; int best = 0;
+            ref var s = ref w.Settlements.Get(sid);
+            if (!s.Inhabited || s.LandAt == 0) return 0;
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+            {
+                if (o == sid) continue;
+                ref var t = ref w.Settlements.Get(o);
+                if (!t.Inhabited || t.LandAt == 0) continue;
+                if (Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > SeaRoutes.Most) continue;
+                bool market = t.Market != 0 && w.Buildings.Exists(t.Market) && Structures.Working(in w.Buildings.Get(t.Market), w.Now);
+                double g = Plan(sid, o, out _, out _, out _, BoatLoadKg) * (market ? MarketGain : 1.0);
+                if (g <= gain) continue;
+                var r = w.SeaRoutes.Get(w, sid, o);
+                if (r == null) continue;
+                gain = g; best = o; way = r;
+            }
+            return gain >= WorthAVoyage ? best : 0;
+        }
+
+        /// <summary>
+        /// A village's day of voyages (COARSE, DEEP: a step's): its plank boats lying at the landing put out to the coastal village with the
+        /// best deal for a boat's load, at the lived rate - each with a crew of its household, the whole voyage at once: the sea's chance on
+        /// the way (the wind over its middle; nobody puts out in a wind the boat would not fish in), the load out and the return load home,
+        /// the crew visitors there (what they may catch, the news). A boat overturned is lost with its load.
+        /// </summary>
+        void Voyages(int sid, int step)
+        {
+            var w = _w;
+            long now = w.Now;
+            int to = BestSeaPartner(sid, out _, out var way);
+            if (to == 0) return;
+            var bl = w.BuildingsOf(sid);
+            int boats = 0;
+            for (int i = 0; i < bl.Count; i++) { ref var b = ref w.Buildings.Get(bl[i]); if (Boats.IsPlank(b.Kind) && Boats.Sound(in b, now) && b.Household != 0) boats++; }
+            if (boats == 0) return;
+            int n = System.Math.Min(boats, Poisson(boats * VoyagesPerBoatDay * step, KeyedRng.Hash(w.Seed, RngStream.Travel, (ulong)sid, (ulong)now, 601)));
+            int k = 0;
+            for (int i = 0; i < bl.Count && k < n; i++)
+            {
+                int bid = bl[i];
+                ref var b = ref w.Buildings.Get(bid);
+                if (!Boats.IsPlank(b.Kind) || !Boats.Sound(in b, now) || b.Household == 0) continue;
+                k++;
+                int hid = b.Household;
+                byte kind = b.Kind;
+                // its crew: the household's healthy grown people, a seat each
+                var crew = _crew; crew.Clear();
+                var mem = w.Members(hid);
+                for (int j = 0; j < mem.Count && crew.Count < Boats.SeatsOf(kind); j++)
+                {
+                    ref var q = ref w.People.Get(mem[j]);
+                    double age = q.AgeYears(now);
+                    if (q.Alive && q.Sick == 0 && age >= 16 && age < 56 && q.Health > 0.7 && q.At == sid) crew.Add(mem[j]);
+                }
+                if (crew.Count < 2) continue;   // (a boat's load wants two at the oars at least)
+                if (Plan(sid, to, out _, out _, out _, BoatLoadKg) < WorthAVoyage) break;   // (the deal as it stands after the voyages before)
+                double wind = Boats.WindAt(w, way.PointAt(0.5 * way.Length));
+                if (wind >= Boats.MaxOf(kind)) continue;
+                int outcome = Boats.Trip(w, sid, hid, bid, crew[0], wind, out long lost, 1, true);
+                if (outcome != 0)
+                {
+                    for (int j = 1; j < crew.Count; j++) Boats.Overturned(w, sid, hid, bid, crew[j], wind, out _, true);   // (all of them in the water)
+                    continue;
+                }
+                ref var p = ref w.People.Get(crew[0]);
+                Load(ref p, sid, to, BoatLoadKg);
+                if (p.Cargo == None) continue;
+                double outKg = p.CargoQty * Kg(p.Cargo);
+                Exchange(ref p, to, BoatLoadKg);
+                double backKg = p.Cargo != None ? p.CargoQty * Kg(p.Cargo) : 0.0;
+                for (int j = 0; j < crew.Count; j++) w.Disease.Arrive(ref w.People.Get(crew[j]), to, SimTime.Hours(VisitHoursCoarse));
+                w.DeedBook.Meet(sid, to);
+                Unload(ref w.People.Get(crew[0]), sid);
+                w.Metrics.Voyages++; w.Metrics.SeaCargoKg += outKg + backKg;
+            }
+        }
+
+        readonly System.Collections.Generic.List<int> _crew = new System.Collections.Generic.List<int>();
+
         /// <summary>The hours a COARSE trader spends in the other village (a lived trader's stay).</summary>
         public const double VisitHoursCoarse = 3.0;
 
@@ -260,20 +355,36 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             double spare = Spare(sid, Grain);
             if (spare <= 0) return;
+            int boats = -1;   // (its plank boats that can carry a load: counted when a famine beyond a day's walk calls for them, C9.3)
             for (int o = w.Settlements.First(); o != 0 && spare > 0; o = w.Settlements.Next(o))
             {
                 if (o == sid) continue;
                 ref var t = ref w.Settlements.Get(o);
                 if (!t.Inhabited || t.FamineEvent == 0 || w.Now - t.FamineAt > SimTime.Year / 4 + (step - 1) * SimTime.Day) continue;   // (DEEP: a step that began in the window)
-                if (Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > 6000) continue;
                 if (w.DeedBook.Grievance(sid, o) > Grudge) continue;   // (no grain for those who took from it: D2-069)
+                double far = Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius);
                 // a twentieth of what can be spared a day, as much as feeds them three days (what its people can carry over), while
                 // their store holds less than a month: relief feeds the hungry, it does not fill a granary (nor reach a village whose
-                // dead starved beside a full one)
+                // dead starved beside a full one). Beyond a day's walk, by sea: a boat's load a day for each of its plank boats, along
+                // the coast to the famine's landing, in a calm sea (C9.3)
+                double carry;
+                bool bySea = false;
+                if (far <= 6000) carry = 3.0 * need0(w, in t) * step;
+                else
+                {
+                    if (far > SeaRoutes.Most || t.LandAt == 0) continue;
+                    if (boats < 0) boats = LoadBoats(sid);
+                    if (boats == 0) continue;
+                    var way = w.SeaRoutes.Get(w, sid, o);
+                    if (way == null || Boats.WindAt(w, way.PointAt(0.5 * way.Length)) > Boats.Calm) continue;
+                    carry = boats * BoatLoadKg / Kg(Grain) * step;
+                    bySea = true;
+                }
                 double days = DaysOfFood(w, in t, out double need);
                 if (days >= ReliefUpToDays) continue;
-                double gift = DMath.Min(DMath.Min(0.05 * spare * step, 3.0 * need * step), (ReliefUpToDays - days) * need);   // (DEEP: the step's days of it)
+                double gift = DMath.Min(DMath.Min(0.05 * spare * step, carry), (ReliefUpToDays - days) * need);   // (DEEP: the step's days of it)
                 if (gift < 1.0) continue;
+                if (bySea) { w.Metrics.ReliefBySeaFu += gift; w.Metrics.Voyages++; w.Metrics.SeaCargoKg += gift * Kg(Grain); }
                 ref var s2 = ref w.Settlements.Get(sid);
                 s2.Granary -= gift; spare -= gift;
                 ref var t2 = ref w.Settlements.Get(o);
@@ -289,6 +400,7 @@ namespace TC2.Core.Places
                     {
                         Kind = HistoryKind.ReliefSent, Time = w.Now, Cell = t2.Cell, Settlement = o, Subject = EntityRef.Settlement(sid),
                         Object = EntityRef.Settlement(o), Cause1 = t2.FamineEvent, Rel1 = CauseRel.InResponseTo, Magnitude = (float)gift, RootKind = RootKind.People,
+                        ArgA = bySea ? 1 : 0,
                     });
                 }
                 // the help is a deed both villages know: one deed a giver and a famine, its worth what was given (D2-069)
@@ -301,6 +413,18 @@ namespace TC2.Core.Places
                     w.DeedBook.Learn(sid, deed, TC2.Core.Society.KnownHow.Own);
                 }
             }
+        }
+
+        static double need0(World w, in Settlement t) { DaysOfFood(w, in t, out double need); return need; }
+
+        /// <summary>The village's plank boats that can carry a load now: sound, at its landing, of a household (C9.3).</summary>
+        int LoadBoats(int sid)
+        {
+            var w = _w;
+            var bl = w.BuildingsOf(sid);
+            int n = 0;
+            for (int i = 0; i < bl.Count; i++) { ref var b = ref w.Buildings.Get(bl[i]); if (Boats.IsPlank(b.Kind) && Boats.Sound(in b, w.Now) && b.Household != 0) n++; }
+            return n;
         }
 
         /// <summary>Relief goes to a famine while the receiver's store holds less than this many days of its need.</summary>

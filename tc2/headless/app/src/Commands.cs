@@ -438,6 +438,13 @@ namespace TC2.Headless
                 Console.WriteLine("raids: bands raised " + m.Bands + ", raids " + m.Raids + " (driven off " + m.RaidsBeaten + "), loot " + F(m.RaidLoot, "0") + " FU; bands joined by tributaries " + m.CalledBands + " (" + m.CalledMen + " men answered the call), bands lords raised over their tributaries' wrongs " + m.LordsAnswered);
                 Console.WriteLine("answers: amends asked " + m.Claims + ", made " + m.Amends + ", refused " + m.Refusals + "; loads taken back " + m.TakenBack);
                 Console.WriteLine("trade: trades " + m.TradeTrips + ", gain " + F(m.TradeValue, "0") + ", metal moved " + F(m.MetalTraded, "0") + " kg; relief " + F(m.ReliefFu, "0") + " FU");
+                {
+                    // by sea (C9.3): voyages, cargo, and the villages traders come to most (a port's custom)
+                    int topIn = 0; float most = 0f; int markets = 0;
+                    for (int sid8 = w.Settlements.First(); sid8 != 0; sid8 = w.Settlements.Next(sid8)) { var st8 = w.Settlements.Get(sid8); if (!st8.Inhabited) continue; if (st8.Market != 0) markets++; if (st8.LandAt != 0 && st8.TradeIn > most) { most = st8.TradeIn; topIn = sid8; } }
+                    Console.WriteLine("sea trade: voyages " + m.Voyages + ", cargo " + F(m.SeaCargoKg / 1000.0, "0.0") + " t; relief by sea " + F(m.ReliefBySeaFu, "0") + " FU; markets " + markets +
+                                      (topIn != 0 ? "; the landing traders come to most: " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(topIn)) + " #" + topIn + " (" + F(most, "0") + " a year)" : ""));
+                }
                 Console.WriteLine("techniques: found " + m.TechniquesFound + ", lost by villages " + m.TechniquesLost + "  metal smelted " + F(m.MetalKg, "0") + " kg");
                 Console.WriteLine("homes: lived in " + lived + ", standing empty " + empty + ", fallen " + fallen + "  taken empty " + m.HomesTaken + "  households died out " + m.DiedOut);
             }

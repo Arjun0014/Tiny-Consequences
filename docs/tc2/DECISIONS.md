@@ -2876,3 +2876,32 @@ sea is often fished nearly empty by year 300 (0.0-0.1 FU an hour at several vill
 1.25 times a nearly empty shore; plank boats reach the same grounds as dugouts (2.5 km) - farther grounds for them would spread the
 pressure (C9.3 or later). Web build of 1808e81: Web test 5/5 (`tc2/out/webtest/c92web`: the browser bit-identical to headless, every view
 73-120 fps, no console errors).
+
+## D2-113 — 2026-10-08 — Voyages: ways over the sea, a boat's load in trade, grain by sea to a famine (C9.3, IN PROGRESS)
+
+**Context.** `25` §5 (boatbuilding -> cargo capacity -> coastal trade -> port wealth). Trade (D2-067) is barter carried on people's backs within
+a day's walk (25 kg); famine relief is grain carried within a day's walk.
+**Decision (so far, committed as work in progress).** (1) **Ways over the sea** (`Places/SeaRoutes.cs`, `World.SeaRoutes`): from one village's
+landing out to the nearest sea cell, A* over the sea's cells to the sea cell nearest the other landing, and in - a `Route` polyline; cached by
+the pair, rebuilt when the coast moves or a landing is chosen again; none past `Most` (16 km). (2) **A boat's load**: `Trade.Plan/Load/Exchange`
+take a load (`BoatLoadKg` 500, twenty walkers' loads); `BestSeaPartner` - the coastal village with the best deal for a boat's load, reached by
+sea, worth a crew's day (`WorthAVoyage` 12). (3) **Voyages** (`Trade.Voyages`, at both resolutions, abstract like relief - no crew is seen
+rowing yet): a village's plank boats put out at `VoyagesPerBoatDay` 0.04 while a deal stands, a crew of the household (two at least), the sea's
+chance on the way (wind over the way's middle; lost with the load), the load out and the return load home, the crew visitors there. (4)
+**Relief by sea** (`Trade.Relief`): a famine beyond a day's walk and within a way by sea gets a boatload of grain a day for each of the
+giver's plank boats, in a calm sea (`LoadBoats`; history `ReliefSent` ArgA 1, "by sea, a boatload along the coast"); metrics `Voyages`,
+`SeaCargoKg`, `ReliefBySeaFu`; headless `sea trade:` line. Sim version 52.
+**Evidence so far.** 265 tests; `VoyageTests` 3 (the way keeps to the water and is no shorter than the straight line, cached and rebuilt when the coast
+moves; a boat's load is twenty walkers' loads - iron 5 kg against 93 kg, gain 62 against 1,241; grain by sea to a famine 7 km off only with a
+plank boat and only in a calm sea, at most a boatload, told). Probe at year 300 (seed 4): trade by barter finds almost no deals (grain-rich
+villages spare grain, the hungry spare nothing back) - trade voyages are rare (seed 4: 40 in 300 years, 2.9 t); relief is where the boats
+matter. Ten seeds 300 years DEEP (`tc2/out/civ/s*_c93c`) against C9.2b (`_c92r`): seeds 1, 5, 6 (no plank boats) identical; relief by sea
+0-388k FU a world (seed 4: 254k, 59 % of its relief), total relief x1.10; people over years 200-299 x0.987 (t -0.5); **but famines x1.18
+(t 2.1) and hunger x1.12**: seed 2 famines 123 -> 227 and hunger deaths 1,704 -> 4,791 (people +6 %), seed 11 famines 238 -> 403, seed 8
+206 -> 272; seed 4 fewer famines and hunger deaths yet people over years 200-299 -22 % (6,865 -> 5,372).
+**Open (first next step).** Find why relief by sea brings more famines before closing C9.3: (a) givers drained toward their 60-day floor
+(sea relief carries up to a boatload a day per boat to every famine in reach - land relief only three days of the receiver's need a day) and
+then failing a harvest; (b) receivers kept from moving away (migration's push reads their stores) and starving again; (c) chance. Read the
+annals of seeds 2 and 11 around the first divergence (`run --load .. --events ReliefSent|Famine`), compare givers' stores; a cap on what a
+giver sends by sea (a share of what it can spare, as on land, or the receiver's few days' need a day) is the likely fix. Then lived voyages
+(crews rowing, the view), runs, shots, docs.
