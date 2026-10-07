@@ -2874,4 +2874,5 @@ comes into the game as -z).
 **Open.** Crews are of the household (a plank boat's four seats are often half used: crews of neighbours, shares of the catch); a village's
 sea is often fished nearly empty by year 300 (0.0-0.1 FU an hour at several villages of seed 4) - boats are still begun where the sea promises
 1.25 times a nearly empty shore; plank boats reach the same grounds as dugouts (2.5 km) - farther grounds for them would spread the
-pressure (C9.3 or later); the Web build and Web test for C9.2 (next).
+pressure (C9.3 or later). Web build of 1808e81: Web test 5/5 (`tc2/out/webtest/c92web`: the browser bit-identical to headless, every view
+73-120 fps, no console errors).

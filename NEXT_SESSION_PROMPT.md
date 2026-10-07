@@ -16,12 +16,10 @@ modify or stage it.
 ## Where things stand (8 Oct 2026, session 8 of TC2 work; Control Room run #7 session 3)
 - Commits this session: 9a2ceb7 + 23ac1c9 **C9.1 closed** (D2-110), c5fd15f **C9.2a the landing and the crew** (D2-111), then **C9.2b boats of
   planks** (D2-112). Sim version 51; 262 headless tests pass on the final code.
-- The Web build in `tc2/web-build/web` is of 9a2ceb7 (C9.1 closed): C9.2a/b not yet in it.
+- The Web build in `tc2/web-build/web` is of 1808e81 (C9.2b): Web test 5/5, every view 73-120 fps.
 
 ## Do next, in order
-1. Web build of the C9.2b commit (`node tc2/scripts/unity.mjs build-web --jobs 3`, ~8 min), then `node tc2/scripts/webtest.mjs --tag c92web
-   --skip-away` with nothing else running (headless tests beside it cut the page frame rates); record in D2-112.
-2. Then the roadmap (`docs/tc2/SESSION_HANDOFF.md` session 8 "Next"): C9.3 the dock (by catches landed and boats kept), crews beyond the
+1. The roadmap (`docs/tc2/SESSION_HANDOFF.md` session 8 "Next"): C9.3 the dock (by catches landed and boats kept), crews beyond the
    household, farther grounds for plank boats, then C9.4 cargo boats and coastal trade; or C10.2 leaders, succession and the polity page.
    Tools: `tc2/out/tools/wrun.sh` (fix its `SCR=` to the new scratchpad) and `cmp.py` (`python cmp.py c92c c92r 42 7 4 2 1 3 5 6 8 11`).
 

@@ -32,8 +32,7 @@
   counts hunting trips (D2-063 comment bug); DEEP's fish x0.8 of COARSE (D2-083 lean).
 
 ### Next, in order
-1. Web build of the C9.2b commit (`node tc2/scripts/unity.mjs build-web --jobs 3`), `node tc2/scripts/webtest.mjs --tag c92web --skip-away` on a
-   quiet machine; record in D2-112.
+1. (done: the Web build of 1808e81 tested 5/5, every view 73-120 fps, `tc2/out/webtest/c92web`.)
 2. C9.3 the landing and the dock (by catches landed and boats kept: a jetty/quay where boats are many), or crews beyond the household
    (neighbours, shares), or farther grounds for plank boats; then C9.4 cargo boats and coastal trade (the coastal proof, `25` §5).
 3. Or C10.2 leaders, succession and the polity page.
