@@ -6,43 +6,28 @@
 - **Arjun's direction (7 Oct, D2-089 - the standing direction)**: an autonomous medieval civilisation inside a living miniature planet
   (`20_CIVILISATION_DEPTH.md`): Age-of-Empires system breadth and readability with no player orders; fewer, deeper people (tiers A
   100-500 dev, B 500-1,500, C 1,500-3,000); every structure from need, labour, material and knowledge (the ten questions, `20` §2);
-  presentation develops with the simulation (D2-084 stands). Roadmap `25_CIVILISATION_ROADMAP.md` (C1-C13, W and P alongside).
-- Session start: repo clean at 057420a (only the empty `Assets/Resources.meta` untracked - Unity's, harmless); no TC2 process running;
-  machine ~81 % RAM used by others (2.1 GB free of 11.4) - Unity shot rounds need ~2-3 GB: check first.
-- Docs written: 20-25 and pointers (00, 07 §9, 08 §7, 09 §10, 10 §13, 13 §12, 14 §6, 17, 18 §9), DECISIONS D2-089.
-- **C1.1 structures done (D2-090)** - see DECISIONS; scratchpad (session 6) `wrun.sh` (BIN, TAG, YEARS, SNAP, MODE; DEEP 12 runs with
-  the scale report, annals and saves into `tc2/out/civ/s<seed><TAG>`), binaries `bin_c11*`; shots `--village big|ID` frame the village
-  with the most works (absolute `--load` paths: Unity resolves relative ones from the project folder). **Pitfall**: this Bash tool collapses
-  `\` inside heredocs - patch scripts with backslashes go through the Write tool (`/tmp/*.py`).
-- **C1.2 timber from the woods done (D2-091)**; rate tests pooled over worlds (single worlds gave 3-20 events). Runs `tc2/out/civ/s{42,7}_c12a`
-  (saves at years 100 and 300), shots `civ2`.
-- **C1.3 stone done (D2-092)**: runs `tc2/out/civ/s{42,7}_c13d`, shots `civ3` (views `work13`, `work13far` frame a village's quarry).
-  **Pitfall (again)**: heredocs with apostrophes break in this Bash tool - docs and commit messages go in scratchpad files (Write tool).
-- **C1.4 the smithy done (D2-093)**: runs `tc2/out/civ/s{42,7}_c14c`, shots `civ4c` (`work12`, `work12far`).
-- **C1.5 training done (D2-094)**: runs `tc2/out/civ/s{42,7}_c15a`, shots `civ5` (`work14` at 15:30 shows the afternoon drill).
-- **C1.6 markets done (D2-095)**: runs `tc2/out/civ/s{42,7}_c16a`, shots `civ6` (`--village 3`, `work15`).
-- **Next: C1.7 the pressure premise** - a tier-A world where two villages share one scarce useful thing (a rock outcrop or copper ore near
-  both, or one fertile valley) and nothing is scripted: run it lived/COARSE for decades and read the history (claims? taking? raids? walls?
-  trade? migration?); the premise is set up in a test helper or a headless `--premise` flag; then the C1 acceptance (founding vs decades
-  later at village and street views) and close C1 (D2-0xx). (Was the C1.6 plan: a market (`Structures.Market`, Core zone, stalls) planned when the village hosts heavy trade (count trades
-  arriving per year: `Settlement.TradeIn` decaying); trades made at a village with a market gain more (a better match of wants: the deal's
-  surplus x1.25?) or more partners come; the palisade's gates as structures on the roads (they exist as drawn gaps: make them buildings with
-  condition, shut at night when a watch is kept); then **C1.7 the pressure premise** (`Core/Places/Premise`-like test world: two villages and
-  one scarce outcrop/ore between them) and watch what emerges. (Was the C1.5 plan: `Structures.Ground` (Zone.Outer) planned by a village that fears its neighbours (`Forge.Threatened`)
-  once it has a granary; a person skill `SkFight` (Person field: saved, hashed) grown by practice hours there (a lived choice ~2 h, a few times a
-  week, fit 16-45 by boldness and the threat; COARSE the same hours) and by fights survived (Conflict's blows: veterans), fading slowly; the most
-  skilled present speeds others' learning; `Conflict.Strength` x (1 + 0.6 skill); building page; person page shows training; tests; runs
-  (raids won/lost, the hours it costs); shots (`work14`). (Was the C1.4 plan: `Structures.Smithy` planned when a competent smith (KMetal >= 0.5) lives in a village short of metal tools (or
-  wanting arms) with ore known (D2-064's `Learning.Ore`); smithing (AgentSystem.Smith) done there at 2x and only there for arms; arms as a
-  village store (`Settlement.Arms`, count) used by `Conflict.Strength` (x1.3 armed); the smith walks to the smithy (lived: a Craft step at the
-  smithy, or a new ActivityKind.Smith); COARSE the same hours; building page; tests; runs; shots (`work12`). (Was the C1.3 plan: `Settlement` knows stone it has seen (outcrops = `Learning.Rock`'s steep cells, seen by its people's work grounds,
-  woodlots and scouts); a quarry (`Structures.Quarry`, Zone.Site, at the outcrop) opened when a planned work wants stone; quarrying hours cut
-  ~4 loads an hour, carrying home costs the walk (as wood); `s.Stone` store; uses: house footings (homes on stone last ~2x), the well's
-  lining, the smithy's hearth; masonry later. (Was the C1.2 plan: `Settlement.WoodCell` (the woodlot, chosen as the nearest cell within ~1.6 km with forest worth
-  going to; moved when it thins), each 25 kg load felled takes its mass from that cell's forest share (~120 t/ha at full cover), the walk
-  beyond the near woods slows each load (both resolutions, same formula), fields keep the woods off their farmed share in
-  `PlanetSystems.GrowVegetation` (Arability already falls with forest), a history line when the woods recede past 600/1,000/1,500 m;
-  tests; 300-year runs of seeds 42 and 7 against `tc2/out/civ/*_c11c`; shots of the thinned woods.
+  presentation develops with the simulation (D2-084 stands). Docs `20`-`25`; roadmap `25_CIVILISATION_ROADMAP.md` (C1-C13, W and P alongside).
+- **C1 "the working town" closed (D2-090 to D2-096)**, all committed (last: the C1 close commit after 08c2a56):
+  C1.1 structures by kind (`Core/Places/Structures.cs`: kinds table, works by need with causes, store capacity, placement by zone, building
+  page); C1.2 timber from the woods (`Woods.cs`); C1.3 stone (`Stone.cs`); C1.4 the smithy and arms (`Forge.cs`); C1.5 training grounds and
+  `Person.SkFight` (`Training.cs`); C1.6 markets and rings on dry ground; C1.7 tier-A pressure worlds read through `run --civ`. Sim version
+  38; 207 tests. Structures keep their history while they exist (HistoryLedger local-tier keep).
+- **Tools**: scratchpad (session 6) `C:\Users\aswin\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\2b3f3bc2-f71a-43e5-9ab3-082850348dfd\scratchpad`:
+  `wrun.sh` (BIN=bin_x TAG=_x YEARS SNAP MODE EXTRA; DEEP 12 runs with the scale report, annals and saves into `tc2/out/civ/s<seed><TAG>`),
+  `sheet.py` (contact sheets), patch and doc scripts. Headless `run` report lines: `works:`, `woods:`, `stone:`, `markets:`, `training:`,
+  `force:`; `run --civ N` prints the N largest villages' civilisation timelines with causes (`#id` for shots). Shots: `--village big|ID`,
+  views `work<kind>` / `work<kind>far` frame a village's structure (kinds: 10 well, 11 granary, 12 smithy, 13 quarry, 14 ground, 15 market,
+  16 barn); `--load` needs absolute paths.
+- **Pitfalls found this session**: this Bash tool collapses `\\` and breaks on apostrophes inside heredocs - write patch scripts, docs and
+  commit messages to scratchpad files with the Write tool, then `python file.py` / `git commit -F file`. COARSE-vs-lived rate tests need pooled
+  worlds (single worlds give 3-20 events). A quarry on rock the sea later takes was re-planned forever (fixed: forget drowned rock).
+- **Runs**: `tc2/out/civ/s{42,7}_c1{1c,2a,3d,4c,5a,6a}` (300 years, saves at 100 and 300), `s{42,7,11}_tierA` (200 years, saves at 25, 100,
+  200). Shots `tc2/out/shots/civ1`-`civ6`, `civA_y25`, `civA_y200`, sheet `civA_sheet.png`.
+- **Next (D2-096)**: **C4.1 roads by use** - each route keeps its use (walkers and loads, decaying); track -> path -> road by use; speed by
+  state; the view draws roads by use only (today every pair of villages within 4.5 km gets a road whatever its use - theatre); then **C7.1**
+  rings that grow with the town (a new, larger ring when homes outgrow a sound palisade; gates as structures); **C12.1** the person page
+  (`07` §9); C2.x clearing as labour, kilns; C5 claims on deposits that deplete. Seen and left: people walking routes across cells the sea
+  has since drowned; works hard to tell from homes at the village view; the training ground's posts too thin to read.
 
 ## Session 5 (7 Oct 2026, from 06:40 IST) — in progress
 

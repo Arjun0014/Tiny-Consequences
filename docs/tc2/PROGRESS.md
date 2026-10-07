@@ -27,8 +27,11 @@
   two-hour session every third day for the bold of a fearing village) and fights survived, fading unused; strength x (1 + 0.6 skill); seed 42
   at year 300: 16 grounds, a third of the living with some skill, 647 who have fought; 204 tests; shots `civ5`. **C1.6 markets done (D2-095)**: markets made by traders
   (10 a year), drawing them from 9 km and dealing 1.2x better; palisades on dry ground only; seed 42 has 2 markets at year 300; 207 tests;
-  shots `civ6` (Heldholm's green with its stalls). **Next: C1.7 the pressure premise** (two villages, one scarce resource; watch what
-  emerges), then the C1 acceptance shots and C1's close; C7 (rings that grow with the town) is the most visible open fault.
+  shots `civ6` (Heldholm's green with its stalls). **C1.7 and C1 closed (D2-096)**: tier-A worlds read
+  through `run --civ`: peace where land is plenty, famine -> takings -> watch -> training ground -> palisade where it is short, an armed feud
+  where copper smiths forge arms (seed 11); acceptance sheet `tc2/out/shots/civA_sheet.png` (a hamlet of 84 -> a walled town of 358).
+  **Next: C4.1 roads by use** (the roads drawn by distance are the most visible theatre left), then C7.1 rings that grow, C12.1 the person
+  page.
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

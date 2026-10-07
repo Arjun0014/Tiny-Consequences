@@ -218,6 +218,9 @@ namespace TC2.Core.History
             if (e.Tier == Tier.Local)
             {
                 if (age < 200 * SimTime.Year) return true;
+                // a structure's own story is kept while the structure stands or its ruin lasts (C1.6: a 300-year-old town's buildings
+                // keep their histories)
+                if (e.Object.Kind == EntityKind.Building && subjectKept != null && subjectKept(e.Object)) return true;
                 return e.Importance >= 10f;
             }
             // personal

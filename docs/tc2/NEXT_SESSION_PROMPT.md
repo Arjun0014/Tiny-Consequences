@@ -104,6 +104,13 @@ knowledge, resources, labour, politics and history (the ten questions, `20` §2)
 with the simulation (D2-084). Read `20_CIVILISATION_DEPTH.md` (audit, architecture), `21`-`24` (settlement economy, materials, force,
 transport and sea) and `25_CIVILISATION_ROADMAP.md` (C1-C13; **the current slice is C1 "the working town"**, §2).
 
+**Where we are (session 6, 7 Oct 2026)**: D2-089 written up (`20`-`25`) and **C1 "the working town" closed** (D2-090 to D2-096): structures by
+kind with works by need and their causes (well, granaries and barns with real capacity, quarries, smithies, training grounds, markets),
+timber felled from real woods (woodlots recede; fields clear what they farm), stone known by seeing it and carried home (houses on footings),
+arms forged only at a smithy by villages that fear their neighbours, fighting skill from practice and fights survived, markets made by
+traders, rings on dry ground; building page in the HUD. Next: C4.1 roads by use, C7.1 rings that grow, C12.1 the person page
+(SESSION_HANDOFF "Next").
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

@@ -413,6 +413,7 @@ namespace TC2.Headless
                               ", fire pages held " + w.Fire.Procs.PagesHeld + ")  managed heap " + F(GC.GetTotalMemory(true) / 1048576.0, "0") + " MB");
             PrintFires();
             prof?.Print();
+            if (a.Has("civ")) CivTimelines(w, a.Int("civ", 4));   // (C1: each village's works, woods, rock, arms, walls, raids - and why)
             string annals = a.Get("annals");
             if (annals != null)
             {
@@ -485,6 +486,44 @@ namespace TC2.Headless
             var w = SaveFile.Load(data, out _);
             Console.WriteLine("loaded and verified: state hash " + w.StateHash().ToString("x16"));
             return 0;
+        }
+            /// <summary>
+        /// C1 tools (`run --civ N`): the N largest inhabited villages' civilisation in the order it happened - founded, works begun and raised,
+        /// woods receded, rock found, the first arms, the watch, walls, bands and raids, tribute, famines - each line with its cause.
+        /// </summary>
+        static void CivTimelines(World w, int n)
+        {
+            var sids = new List<int>();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) if (w.Settlements.Get(sid).Inhabited) sids.Add(sid);
+            sids.Sort((x, y) => { int c = w.Settlements.Get(y).Population.CompareTo(w.Settlements.Get(x).Population); return c != 0 ? c : x.CompareTo(y); });
+            for (int k = 0; k < sids.Count && k < n; k++)
+            {
+                int sid = sids[k];
+                var st = w.Settlements.Get(sid);
+                Console.WriteLine("CIV " + w.History.NameOf(EntityRef.Settlement(sid)) + " #" + sid + " (" + st.Population + " people; granaries " + st.Granaries + ", barns " + st.Barns +
+                                  ", stone " + F(st.Stone, "0") + ", arms " + F(st.Arms, "0") + ", metal " + F(st.Metal, "0") + " kg, wall " + st.Wall + (st.Lord != 0 ? ", pays tribute to " + w.History.NameOf(EntityRef.Settlement(st.Lord)) : "") + "):");
+                int lines = 0;
+                for (int i = 0; i < w.History.Count && lines < 60; i++)
+                {
+                    var e = w.History.At(i);
+                    bool mine = e.Settlement == sid || (e.Kind == HistoryKind.BandRaised && e.Subject.Kind == EntityKind.Person && w.People.Exists(e.Subject.Id) && w.People.Get(e.Subject.Id).Home == sid);
+                    if (!mine) continue;
+                    switch (e.Kind)
+                    {
+                        case HistoryKind.SettlementFounded: case HistoryKind.WorkBegun: case HistoryKind.WorkBuilt: case HistoryKind.WoodsReceded:
+                        case HistoryKind.StoneFound: case HistoryKind.ArmsMade: case HistoryKind.WatchSet: case HistoryKind.WallPlanned:
+                        case HistoryKind.WallBuilt: case HistoryKind.WallFallen: case HistoryKind.BandRaised: case HistoryKind.Raid:
+                        case HistoryKind.TributeAgreed: case HistoryKind.TributeEnded: case HistoryKind.Famine: case HistoryKind.TechniqueKnown:
+                        case HistoryKind.HomesDrowned: case HistoryKind.SettlementAbandoned:
+                            break;
+                        default: continue;
+                    }
+                    string why = "";
+                    if (e.Cause1 != 0 && w.History.TryGet(e.Cause1, out var c)) why = "   <- " + HistoryText.Line(w, c);
+                    Console.WriteLine("  " + HistoryText.Line(w, e) + why);
+                    lines++;
+                }
+            }
         }
     }
 }

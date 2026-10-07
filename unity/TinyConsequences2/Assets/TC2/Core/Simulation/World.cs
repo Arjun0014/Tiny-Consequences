@@ -1201,6 +1201,7 @@ namespace TC2.Core.Simulation
             // a household's own events matter while it has living members, and thirty years after it ends (as a person's
             // after death); its notable ones are kept by their importance - before, every household's huts and houses stayed
             // in the ledger for ever (38,769 of 95,615 events at year 300 of seed 42)
+            if (r.Kind == EntityKind.Building) return Buildings.Exists(r.Id);   // (a structure's story while it or its ruin lasts: C1.6)
             if (r.Kind == EntityKind.Household)
             {
                 if (!Households.Exists(r.Id)) return false;

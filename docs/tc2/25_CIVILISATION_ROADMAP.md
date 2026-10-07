@@ -54,8 +54,13 @@ Sub-slices, each committed with tests, runs, shots and docs:
 5. **C1.5 Training ground** (D2-094, done 7 Oct): practice hours, fighting skill, veterans; strength uses skill.
 6. **C1.6 Market** (D2-095, done 7 Oct): a market where traders come often (10 a year), drawing traders from 9 km and dealing better;
    palisades on dry ground only. (Gates as structures move to C7.)
-7. **C1.7 Pressure**: a premise with two settlements and one scarce outcrop or ore; observe what emerges (trade, claims, taking, raids,
-   fortification, migration) - nothing scripted.
+7. **C1.7 Pressure** (D2-096, done 7 Oct): tier-A worlds (3 villages of 40 founders, 200 years) read through `run --civ`: peace where
+   land is plenty (daughter villages), famine -> takings -> watch -> training ground -> palisade where it is short, an armed feud where
+   copper smiths forge arms; deposits are not yet worth fighting over (no claims, no depletion: C5, C10).
+**C1 closed 7 Oct 2026 (D2-096)**; acceptance sheet `tc2/out/shots/civA_sheet.png`.
+
+### Next (D2-096): C4.1 roads by use, C7.1 rings that grow with the town, C12.1 the person page, C2.x clearing and kilns, C5 claims on
+deposits that deplete.
 Acceptance: a tier-A world (one to three settlements, 100-500 people) shot at its founding and decades later at the village and street
 views shows the differentiation; every structure is clickable; headless runs at both resolutions and DEEP agree within tolerance.
 

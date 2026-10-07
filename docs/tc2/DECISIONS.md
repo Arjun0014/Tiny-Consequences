@@ -2341,3 +2341,32 @@ draws a trader who had no partner within a day's walk (gain 0 -> 137); a coastal
 **Open.** Trade volume is low everywhere (~4 deals a year in a world of thousands: `Trade.TripsPerAdultDay` and grudges); fairs, more goods
 (stone, arms, salt, pots), carts and boats (C4, C9) will make markets matter more. Market days (a weekly gathering) and stalls kept by
 households are later.
+
+## D2-096 — 2026-10-07 — C1.7 the pressure premise, observed; C1 "the working town" closed
+
+**Context.** `25` §2: after the working town's structures, create pressure - settlements competing for scarce useful things - and observe
+whether trade, negotiation, migration, taking, raids, fortification or conflict emerge through the rules, never scripted.
+**What was run.** Tier-A worlds (D2-089 §3): `run --settlements 3 --founders 40` (~120 people at founding) for 200 years DEEP on seeds 42,
+7 and 11 (`tc2/out/civ/s{42,7,11}_tierA.txt`, saves at years 25, 100, 200), read through the new `run --civ N` report: each village's
+civilisation in the order it happened, every line with its cause.
+**What emerged.** (1) **Seed 42 - peace**: land was plentiful; villages budded daughters (Velhope, 43 people of 10 households of Heldholm,
+year 159) instead of fighting; Heldholm's own chain: rock seen 0.8 km off (year 4) -> a quarry -> granaries at each overfilled harvest ->
+barns (from year 103, harvests of 12,800-37,000 FU) -> its woods cut back to 0.7 km (114) and 1.1 km (147) -> copper and the ard learnt late
+(194, 198); Gouthorpe on its coast lost homes, its well and its granary to the rising sea and rebuilt them (well again at 110, granary at 140).
+(2) **Seed 7 - famine into walls**: Taekdal's woods receded (89, 117); famine at 165 -> takings at night between three neighbours -> a
+watch (166) -> a training ground the next day -> a palisade (166, its cost "125 days' food a year") -> years of famine, refused amends,
+blows at stores; Thestford likewise (watch 170, ground 170, palisade 175 at 285 days' food a year lost). No smiths (no copper): no arms.
+(3) **Seed 11 - an armed feud**: Greithstead had smiths from its founding (copper near; a smithy in year 0); famine from 166 -> takings ->
+a watch, a training ground and **arms forged from its ore** (167) -> a palisade (170) -> raided by armed, walled Skornskouton (a band of 12
+won at 179, beaten off at 183 and 188) -> it raised its own bands against Kreiskrouldby over a death that village would make no amends for
+(184, 189, 194); 13 raids in the world, 4 tributes agreed and ended. In all three the chain runs from physical scarcity through deeds -
+never from a war flag. **What did not emerge** (and why): competition over a deposit itself - rock, ore and woods are used by whoever is
+near, with no claims, no exclusion and (but woods) no depletion, so they are not yet worth fighting over; that needs claims on sites and
+deposits that run out (C5, C10).
+**C1 closed** (D2-090 to D2-096): structures by kind with works by need and their causes; timber from real woods; stone quarried and
+carried; the smithy and arms; training grounds and fighting skill; markets; rings on dry ground. Acceptance shot `tc2/out/shots/civA_sheet.png`
+(seed 11, Greithstead #2, years 25 and 200, village/close/street views): a hamlet of 84 by its woods becomes a walled town of 358 in a
+cleared farmed land, its old shore lots drowned ruins, its green kept by granaries and a well. 207 tests; sim version 38. Structures keep
+their history while they stand (local events of a building are no longer dropped after 200 years). Seen, left for later: people walking a
+route across cells the sea has since drowned (routes after coast changes); rings that do not grow with the town (C7); works hard to tell
+apart from homes at the village view (look slice).
