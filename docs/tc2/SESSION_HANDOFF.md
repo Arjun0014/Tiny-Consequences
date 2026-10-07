@@ -1,8 +1,23 @@
 # TC2 Session handoff
 
-## Session 6 (7 Oct 2026, from 10:56 IST) — in progress
+## Session 6 (7 Oct 2026, from 10:56 IST) — handed off at ~19:30 IST (context full)
 
-### Exact state (keep current)
+### Exact state at handoff (read first)
+- **Last commit 00ae0d6** (C10.1). Working tree clean except an untracked `unity/TinyConsequences2/Assets/Resources.meta` (an empty
+  `Assets/Resources` folder from 6 Oct - not ours; leave it). No background jobs running. **Sim version 47; 243 headless tests pass**
+  (full suite at 00ae0d6). Unity compiles (shots `place1`); Web build in `tc2/web-build/web` is current up to C12.2 (not C10.1 - Core-only).
+- **Done this session after C1**: C4.1 roads by use (D2-097), C7.1 rings that grow (D2-098), C12.1 person page (D2-099), C5.1 copper (D2-100),
+  C5.2a charcoal (D2-101), C5.2b iron + the COARSE smith's labour day (D2-102), C5.3a places by their ore (D2-103), C5.3b iron traded
+  (D2-104), C5.4 whose ore (D2-105), C12.2 settlement page + smithy mesh fix (D2-106), C10.1 the lord's call (D2-107).
+- **Open, in order**: (1) C10.1's population drops (seeds 7 -24 %, 2 -26 %: D2-107 "Open"); (2) Web frame rate 35-56 fps near the ground
+  (target 60; earlier readings since C1.4 were false - see the bullet below); (3) C5.3c work at a distance (low value: the carry is ~5 % of a
+  kilo of iron's labour - consider skipping to C8/C9/C10.2).
+- **New headless tools**: `person --load S [--pid N|--pick oldest|smith|fighter|elder|child]`, `place --load S [--sid N|--pick big|iron|claims]`,
+  `run --load S --years 0 --civ-of ID`, `run --load S --years 0 --events KIND` (any `HistoryKind` name, with its cause); report lines
+  `ores:`, `iron:`, `charcoal:`, `claims:`, `ore sites:`, raids line with the call. Shots views `work17` mine, `work18` charcoal hearth,
+  `work19` bog pits.
+
+### Exact state (session 6, earlier - kept for reference)
 - **Arjun's direction (7 Oct, D2-089 - the standing direction)**: an autonomous medieval civilisation inside a living miniature planet
   (`20_CIVILISATION_DEPTH.md`): Age-of-Empires system breadth and readability with no player orders; fewer, deeper people (tiers A
   100-500 dev, B 500-1,500, C 1,500-3,000); every structure from need, labour, material and knowledge (the ten questions, `20` §2);
