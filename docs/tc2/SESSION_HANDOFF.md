@@ -1,6 +1,6 @@
 # TC2 Session handoff
 
-## Session 8 (7 Oct 2026 22:40 - 8 Oct 2026, Control Room continuation run #7 session 3) - in progress
+## Session 8 (7 Oct 2026 22:40 - 8 Oct 2026 ~02:20 IST, Control Room run #7 session 3) - handed off (context full; C9.3 in progress)
 
 ### Exact state (keep current)
 - **Commits this session**: 9a2ceb7 + 23ac1c9 **C9.1 closed** (D2-110: ten seeds after the landing fix found boats in the square and twice in

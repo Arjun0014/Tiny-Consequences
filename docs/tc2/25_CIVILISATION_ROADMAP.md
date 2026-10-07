@@ -65,8 +65,8 @@ and the crew (D2-111). C9.2b boats of planks (D2-112).**
 
 ### C9 maritime, by slices (D2-110): C9.1 the dugout - made from the woods, owned, rowed out to the open sea's shoals, lost in rising wind
 (closed in session 8: 9a2ceb7, 23ac1c9); **C9.2a the landing and the crew** (D2-111: one landing a village, boats in a row on it, a boat goes out with its crew, nobody stands in the sea); **C9.2b plank boats and boatbuilding** (D2-112: a technique found by
-woodworkers at a dugout; a boat shed at the landing; plank boats built there); C9.3 the landing and the dock (by catches landed and boats kept); C9.4 cargo boats and coastal
-trade (loads by water at the sea's cost ratio); C9.5 ferries; then the coastal proof (`§5`).
+woodworkers at a dugout; a boat shed at the landing; plank boats built there); **C9.3 voyages** (D2-113, in progress: ways over the sea, a boat's load in trade, grain by sea to famines); C9.4 the dock (by catches landed
+and loads moved) and cargo boats, coastal trade at the sea's cost ratio; C9.5 ferries; then the coastal proof (`§5`).
 
 ### C5 mining and metallurgy, by slices (D2-100): ~~C5.1 copper ore bodies, the mine, depletion~~ (done); ~~C5.2a charcoal~~ (done, D2-101); ~~C5.2b
 iron~~ (done, D2-102: bog ore, bloomery, iron's use a head); ~~C5.3a places by their ore~~ (done, D2-103); ~~C5.3b iron traded~~

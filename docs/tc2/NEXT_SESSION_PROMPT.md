@@ -129,7 +129,8 @@ colours and draws with their own bounds took the near views from 60-70 to 90-102
 crew** (D2-111): one landing a village on the drawn waterline, boats in a row a metre above the sea; a boat goes out with its crew (lived days had caught a third
 less from boats than COARSE ones); nobody stands in the sea (shore fishers at the waterline; the green where the sea took the square). **C9.2b boats of
 planks** (D2-112): a technique found by woodworkers at a dugout, a boat shed at the landing, plank boats built there (four aboard, harder weather, 25 years);
-sim version 51. Next: SESSION_HANDOFF "Next" (Web build of C9.2b, then C9.3 the dock, crews beyond the household, or C10.2).
+sim version 51 (Web test 5/5). **C9.3 voyages** (D2-113, IN PROGRESS, sim version 52): ways over the sea, a boat's load in trade, grain by sea
+to famines - its relief raises famines x1.18 over ten seeds: find why first (D2-113 "Open", SESSION_HANDOFF "Next").
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
