@@ -135,7 +135,7 @@ namespace TC2.Tests.Core
             Structures.Place(w, sid, Structures.Smithy, out float x, out float y);
             int smithy = Structures.Standing(w, sid, Structures.Smithy, x, y);
             ref var s = ref w.Settlements.Get(sid);
-            s.Ore = 0; s.Woodstore = 500; s.FoeWorth = 0; s.WatchEvent = 0;
+            s.Ore = 0; s.Charcoal = Charcoal.StoreMost; s.FoeWorth = 0; s.WatchEvent = 0;
             int smith = 0; var res = w.Residents(sid);
             for (int i = 0; i < res.Count; i++) if (w.People.Get(res[i]).KMetal >= 0.8f) smith = res[i];
             Assert.IsFalse(Forge.Use(w, in w.Settlements.Get(sid)), "no ore dug: nothing to smelt");

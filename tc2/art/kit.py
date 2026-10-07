@@ -686,6 +686,26 @@ def mine_pit(name, seed=67):
     return k.finish()
 
 
+def charcoal_clamp(name, seed=68):
+    """A charcoal hearth (C5.2a): a blackened floor at the woods, a clamp - billets stacked round a flue and earthed over with turf - with
+    its vent at the top, split billets stacked waiting, and a rake leaning on them."""
+    k = Kit(name, seed)
+    TURF, EARTH = srgb(0.36, 0.40, 0.22), srgb(0.30, 0.24, 0.18)
+    k.cyl((0, 0, 0), 4.2, 4.2, 0.06, CHARCOAL, seg=14)                            # the hearth floor, black with old burns
+    k.blob((0, 0, 0.2), 2.2, EARTH, subdiv=2, jitter=0.05, squash=0.62)           # the clamp, earthed over
+    for i in range(7):                                                             # turf laid on it
+        a = i * 0.9
+        k.blob((math.cos(a) * 1.2, math.sin(a) * 1.2, 0.95), 0.75, TURF, subdiv=1, jitter=0.1, squash=0.45)
+    k.cyl((0, 0, 1.35), 0.22, 0.16, 0.25, CHARCOAL, seg=6)                         # the vent at its crown
+    for row in range(3):                                                           # billets stacked waiting
+        for j in range(5):
+            k.limb((2.6, -1.0 + j * 0.42, 0.18 + row * 0.34), (3.9, -1.0 + j * 0.42 + 0.05, 0.18 + row * 0.34), 0.16, 0.15, srgb(0.50, 0.38, 0.25), seg=6)
+    k.limb((2.5, 1.2, 0.0), (3.0, 0.4, 1.6), 0.04, 0.04, TIMBER)                   # a rake
+    for i in range(4):                                                             # charcoal raked out
+        k.blob((-2.8 + k.rng.uniform(-0.4, 0.4), -1.6 + k.rng.uniform(-0.4, 0.4), 0.12), 0.35, CHARCOAL, jitter=0.3, squash=0.5)
+    return k.finish()
+
+
 def stone_pile(name, seed=64):
     """Stone carried home and stacked (C1.3): a low heap of rough blocks."""
     k = Kit(name, seed)
@@ -779,6 +799,7 @@ def build_all():
     objs.append(quarry_face("quarry_face"))
     objs.append(stone_pile("stone_pile"))
     objs.append(mine_pit("mine_pit"))
+    objs.append(charcoal_clamp("charcoal_clamp"))
     objs.append(training_ground("training_ground"))
     objs.append(market_stalls("market_stalls"))
     objs.append(grass_tuft("grass_tuft", 31))

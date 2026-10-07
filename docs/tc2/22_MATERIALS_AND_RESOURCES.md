@@ -82,4 +82,7 @@ their users. Stores rot by kind (grain 0.3 % a day kept well, D2-042; pottery sl
   of a volcano, 1-20 t a body (keyed by its cell), kept from the first sight and counted down by what is dug; seen where its people go, kept
   within 2 km; a mine at the body when someone can smelt and the tools or arms are short of metal; 25 kg an hour dug, every load carried home;
   smelting takes 5 kg of ore a kilo; a body gives out (history), its mine is left, the village looks again. Seed 42, 300 years: 12 of 19
-  villages know copper, 7 of 23 bodies seen dug out, 64 t dug. Not yet: iron and bog ore, charcoal, smelting at the mine, ore traded, claims.
+  villages know copper, 7 of 23 bodies seen dug out, 64 t dug. Not yet: iron and bog ore, smelting at the mine, ore traded, claims.
+- **Charcoal (C5.2a, D2-101)**: `Core/Places/Charcoal.cs` - a hearth at the woodlot (the next at the woods when they recede), burners felling
+  by the woods' law and burning 5 kg a load, the clamp smouldering three days, 2 kg a kilo of copper (0.75 of that at a smithy); smelting
+  stops without it. Seed 42, 300 years: 21.9 t of charcoal from 109 t of wood. Not yet: charcoal traded; iron's appetite (C5.2b).

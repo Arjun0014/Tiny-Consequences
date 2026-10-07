@@ -401,6 +401,10 @@ namespace TC2.Game
                       .Append("'s people have some skill, its best ").Append(s.BestFight.ToString("0.00", CultureInfo.InvariantCulture))
                       .Append(Forge.Threatened(in s) ? " - it fears its neighbours" : " - unused while it fears no one").Append('\n');
                 }
+                else if (b.Kind == Structures.CharHearth)
+                    sb.Append("burns charcoal for ").Append(place).Append("'s smiths from wood felled at its woodlot: ").Append(b.Stock.ToString("N0", CultureInfo.InvariantCulture))
+                      .Append(" kg burnt here in ").Append(b.Use.ToString("N0", CultureInfo.InvariantCulture)).Append(" hours (a load of wood makes 5 kg); the store holds ")
+                      .Append(s.Charcoal.ToString("0", CultureInfo.InvariantCulture)).Append(" kg").Append(s.ClampUntil > w.Now && b.Left == 0 ? "; a clamp is smouldering" : "").Append('\n');
                 else if (b.Kind == Structures.Mine)
                 {
                     // the body it digs (C5.1): what is left in it, or when it gave out

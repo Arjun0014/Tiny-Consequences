@@ -35,9 +35,12 @@
   kind 17 mine, `ActivityKind.Mine` 31, `WhyCode.Ore` 39, history `OreFound` 81 / `OreGaveOut` 82, `RngStream.Geology`, settlement fields
   `OreCell/OreDist/OreEvent/Ore/OreWant/Mine`; `TestWorlds.WithCopper` premise; kit `mine_pit`; headless `ores:` line. Runs
   `tc2/out/civ/s{42,7,11}_c51d` (saves 100/200/300; `_c51a`-`_c51c` are the tuning tries), shots `mine1`, `mine2` (`--village 3 --views work17`).
-- **Next**: **C5.2 iron** - bog ore where water stands on flat ground (a second deposit kind in `Mining`), charcoal made in a clamp at the
-  woodlot (a store of the village's; smelting and smithing burn it instead of wood), the bloomery (iron from ore and charcoal, ~8 kg ore and
-  ~10 kg charcoal a kilo: `22` §1), a technique found by smiths who know copper, iron's larger use a head and stronger arms; then C5.3 distant
+- **C5.2a charcoal done (D2-101)**: `Core/Places/Charcoal.cs`, structure kind 18 `CharHearth` (at `WoodX/WoodY`), `ActivityKind.Burn` 32,
+  `WhyCode.Charcoal` 40, settlement `Charcoal/CharcoalWant/CharHearth/ClampUntil`, kit `charcoal_clamp`, smoke while `ClampUntil > now`,
+  headless `charcoal:` line; `Tech.MetalFuel` removed. Runs `tc2/out/civ/s{42,7}_c52a`, shots `char1` (`--village big --views work18`).
+- **Next**: **C5.2b iron** - bog ore where water stands on flat ground (a second deposit kind in `Mining`), the bloomery (iron from ore and
+  charcoal, ~8 kg ore and ~10 kg charcoal a kilo of bloom, half lost forging it to a bar: `22` §1), a technique found by smiths who know
+  copper, iron's larger use a head and stronger arms; then C5.3 distant
   work (smelting at a far mine, camps, a mining hamlet founded by work), C5.4 claims. Seen and left: people walking routes across cells the
   sea has since drowned; works hard to tell from homes at the village view; the training ground's posts too thin to read; fields drawn over
   crags; COARSE hearth smelting only when goods are short (D2-100); the person page's look in a Web build.

@@ -19,6 +19,7 @@ namespace TC2.Core.Agents
         Smith = 29,                                     // at the village's smithy: smelting, working metal, forging arms (C1.4)
         Train = 30,                                     // practising at the village's training ground (C1.5)
         Mine = 31,                                      // digging ore at the village's mine and carrying it home (C5.1)
+        Burn = 32,                                      // felling wood and burning charcoal at the village's hearth by its woodlot (C5.2a)
     }
 
     /// <summary>The kind of the current step of an activity.</summary>
@@ -57,6 +58,7 @@ namespace TC2.Core.Agents
         Forge = 37,       // the village has use for its smith: tools short of metal, or arms wanted (C1.4)
         Train = 38,       // the village fears its neighbours: its bold practise at its training ground (C1.5)
         Ore = 39,         // the village's smiths want ore and its mine stands: someone digs it (C5.1)
+        Charcoal = 40,    // the village's smiths want charcoal and its hearth stands: someone burns it (C5.2a)
     }
 
     public static class Sex { public const byte Female = 0, Male = 1; }

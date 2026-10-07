@@ -105,7 +105,8 @@ namespace TC2.Tests.Core
             double share = Tech.MetalShare(s.Metal, s.Population);
             Console.WriteLine("a year of smiths in a village of " + s.Population + ": " + s.Metal.ToString("0.0") + " kg of metal tools (" + (100 * share).ToString("0") + " % of a toolkit a head), smelted in the world " + (w.Metrics.MetalKg - kg0).ToString("0.0") + " kg; the pace of hands " + pace0.ToString("0.00") + " -> " + Tech.MetalPace(share).ToString("0.00"));
             Assert.Greater(s.Metal, 0.0, "metal in the store");
-            Console.WriteLine("ore dug in the world " + (w.Metrics.OreDug - dug0).ToString("0") + " kg; left in the village's store " + s.Ore.ToString("0") + " kg; its mine " + s.Mine);
+            Console.WriteLine("ore dug in the world " + (w.Metrics.OreDug - dug0).ToString("0") + " kg; left in the village's store " + s.Ore.ToString("0") + " kg; its mine " + s.Mine + "; charcoal burnt " + w.Metrics.CharcoalKg.ToString("0") + " kg (store " + s.Charcoal.ToString("0") + ", hearth " + s.CharHearth + ")");
+            Assert.Greater(w.Metrics.CharcoalKg, 0.0, "and charcoal burnt to smelt it (C5.2a)");
             Assert.Greater(w.Metrics.OreDug - dug0, 0.0, "the ore was dug first (no metal from nothing: C5.1)");
             Assert.Greater(Tech.MetalPace(share), pace0, "and quicker hands for it");
             Assert.IsNull(TestWorlds.Audit(w));

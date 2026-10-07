@@ -97,8 +97,7 @@ namespace TC2.Core.Knowledge
         /// <summary>Kg of metal an hour at the furnace and the anvil brings, by the smith's proficiency (D2-064).</summary>
         public static double MetalPerHour(in Person p) => 0.08 * p.KMetal;
 
-        /// <summary>Wood units of charcoal a kg of smelted metal burns (~10 kg of wood).</summary>
-        public const double MetalFuel = 0.4;
+        // (the charcoal a kilo of metal burns: `Places.Charcoal.PerKg`, made at the village's charcoal hearth since C5.2a)
 
         /// <summary>A field worker of a household with an ox, who can plough with the ard: up to 1.8 times the work (D2-063).</summary>
         public static double ArdFactor(in Person p, bool ox) => ox ? 1.0 + 0.8 * p.KArd : 1.0;

@@ -260,6 +260,20 @@ namespace TC2.Headless
                         Console.WriteLine("ores: " + know + " of " + villages3 + " villages know copper, " + mines + " mines (" + F(mines > 0 ? dm / mines : 0, "0") + " m out on average); " + bodies + " bodies seen, " + spent +
                                           " dug out; ore dug " + F(w.Metrics.OreDug / 1000.0, "0.0") + " t in " + F(w.Metrics.MineHours, "0") + " h (left in the bodies seen " + F(left / 1000.0, "0") + " t); metal smelted " + F(w.Metrics.MetalKg, "0") + " kg");
                     }
+                    // charcoal (C5.2a)
+                    {
+                        int hearths = 0, smouldering = 0; double held = 0;
+                        for (int sid4 = w.Settlements.First(); sid4 != 0; sid4 = w.Settlements.Next(sid4))
+                        {
+                            var st4 = w.Settlements.Get(sid4);
+                            if (!st4.Inhabited) continue;
+                            if (TC2.Core.Places.Charcoal.Site(w, sid4) != 0) hearths++;
+                            if (st4.ClampUntil > w.Now) smouldering++;
+                            held += st4.Charcoal;
+                        }
+                        Console.WriteLine("charcoal: " + hearths + " hearths at the woods (" + smouldering + " clamps smouldering); burnt " + F(w.Metrics.CharcoalKg / 1000.0, "0.0") + " t from " +
+                                          F(w.Metrics.CharcoalKg / TC2.Core.Places.Charcoal.Yield / 1000.0, "0") + " t of wood felled for it, in " + F(w.Metrics.BurnHours, "0") + " h; in store " + F(held, "0") + " kg");
+                    }
                     // the smithy and arms (C1.4)
                     {
                         int smithies = 0, armed = 0, fearing = 0; double arms = 0;

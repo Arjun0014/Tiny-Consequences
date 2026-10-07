@@ -40,8 +40,10 @@
   only; 214 tests. **C5.1 copper from the ground done (D2-100)**: ore bodies on crags near volcanoes (15 %, 1-20 t, kept from the first
   sight, counted down by what is dug), seen where people go, a mine at the body when someone can smelt and metal is short, every load carried
   home, smelting takes 5 kg of ore a kilo, bodies give out; tuned from "every village knows copper" to seed 42 12 of 19 (7 bodies dug out in
-  300 years), seed 7 7 of 9; 220 tests; shots `mine1`, `mine2`. **Next: C5.2 iron** (bog ore, charcoal, bloomery), C5.3 distant work and the
-  mining hamlet, C5.4 claims (`25` C5 plan).
+  300 years), seed 7 7 of 9; 220 tests; shots `mine1`, `mine2`. **C5.2a charcoal done (D2-101)**: a hearth at the woodlot (following the
+  woods), burners felling real forest, 5 kg a load, clamps smouldering; smelting burns charcoal (none, no copper); seed 42: 14 hearths, 21.9 t
+  from 109 t of wood; 225 tests; shots `char1`. **Next: C5.2b iron** (bog ore, bloomery), C5.3 distant work and the mining hamlet, C5.4
+  claims (`25` C5 plan).
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

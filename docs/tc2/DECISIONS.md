@@ -2489,3 +2489,27 @@ pre-existing: 1.8 vs 9.2 kg in six days with ore in store); fields are drawn ove
 head (tools, nails, arms). C5.3 distant work: smelting at a far mine (carry metal, not ore), stints of days with a camp at the site, households
 moving to the work (a mining hamlet founded by work). C5.4 claims: a body a village works is known as theirs; others digging it is a deed;
 news of bodies through traders; a deposit worth holding (tribute, raids).
+
+## D2-101 — 2026-10-07 — Charcoal burnt at the woods: smelting burns charcoal, made from felled forest at a hearth that follows the woods (C5.2a)
+
+**Context.** `22` §1: charcoal is the link between the woods and metal (a clamp: ~5 kg of wood a kg of charcoal, days of watching); iron
+(C5.2b) will need ~15 kg of charcoal a kilo. Until now smelting took "charcoal" straight out of the village's woodstore (D2-064:
+`Tech.MetalFuel`, 0.4 loads a kilo) - no burners, no clamp, no place, nothing to see.
+**Decision.** (1) `Core/Places/Charcoal.cs`: a village whose people can smelt and that has ore or knows copper wants charcoal for the metal
+its tools and arms still want (2 kg a kilo of copper at an open hearth - the same 10 kg of wood D2-064 counted - three-quarters at a smithy;
+up to 400 kg ahead; `Settlement.CharcoalWant`, read daily). (2) **The charcoal hearth** (structure kind 18, `Structures.CharHearth`; 12 h,
+no wood): laid out at the woodlot (`WoodX/WoodY`); when the woods have receded more than 300 m past it the old hearth is left and the next is
+laid out at the woods - charcoal follows the forest. (3) **Burning** (`ActivityKind.Burn` 32, `WhyCode.Charcoal` 40; COARSE in the free
+hours): the burners fell at the woodlot by the woods' own law (`Woods.Fell`: each load's mass off the forest share, the walk per load) and
+stack, earth over, fire and watch - 0.6 h a load beyond the felling; a load makes 5 kg; nothing goes to the homes' woodstore; the clamp
+smoulders three days (`Settlement.ClampUntil`); a lived stint is as long as the charcoal still wanted takes. (4) **Smelting burns charcoal**
+at the hearth and the smithy - none in store, no smelting (`Forge.Use` wants ore and charcoal); `Tech.MetalFuel` is gone. (5) The view: kit
+`charcoal_clamp` (a blackened floor, the earthed clamp with turf and its vent, billets, a rake), 1.4x life; smoke from the vent while the
+clamp smoulders; the building page; headless `charcoal:` line. Sim version 42.
+**Evidence.** 225 tests (`CharcoalTests` 5: a hearth laid out at the woodlot when smiths want charcoal, none without a smelter; burning
+fells the woods and a load makes five kilos, none into the woodstore, the clamp smoulders; no charcoal, no copper - as far as the charcoal
+goes; the next hearth at the woods when they recede, the old one left; both resolutions at par - COARSE 18 kg in 5.4 h, lived 19 kg in
+5.3 h; `MetalTests`: a village of smiths now digs its ore and burns its charcoal itself in its first year). 300 years DEEP
+(`tc2/out/civ/s{42,7}_c52a`): seed 42 - 14 hearths at the woods, 21.9 t of charcoal from 109 t of wood in 8,070 h (against 40,600 t felled
+for homes and hearths: copper is a small trade), metal 13.6 t (C5.1 12.7 t), 8 copper bodies dug out, people 7,629; seed 7 - 8 hearths,
+16.7 t from 83 t of wood, metal 10.9 t, people 2,329. Shots `tc2/out/shots/char1` (Heldholm's hearth at its thinned woodlot).

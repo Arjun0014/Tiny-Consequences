@@ -62,8 +62,8 @@ Sub-slices, each committed with tests, runs, shots and docs:
 **C4.1 roads by use done (D2-097). C7.1 rings that grow done (D2-098). C12.1 the person page done (D2-099). C5.1 copper ore bodies and
 mines done (D2-100).**
 
-### C5 mining and metallurgy, by slices (D2-100): ~~C5.1 copper ore bodies, the mine, depletion~~ (done); C5.2 iron (bog ore, charcoal clamp,
-bloomery, iron's use a head); C5.3 distant work (smelting at a far mine, stints with a camp, households moving to the work: a mining hamlet);
+### C5 mining and metallurgy, by slices (D2-100): ~~C5.1 copper ore bodies, the mine, depletion~~ (done); ~~C5.2a charcoal~~ (done, D2-101); C5.2b
+iron (bog ore, bloomery, iron's use a head); C5.3 distant work (smelting at a far mine, stints with a camp, households moving to the work: a mining hamlet);
 C5.4 claims (a worked body known as a village's, digging it a deed, news of bodies by traders, deposits worth holding). Then C2.x clearing as
 labour, C3 kilns and workshops.
 

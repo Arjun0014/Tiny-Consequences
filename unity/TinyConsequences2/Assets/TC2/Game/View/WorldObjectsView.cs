@@ -67,6 +67,7 @@ namespace TC2.Game
             _forgeTop = PartTop(Models.Get("smithy", ProcMeshes.House), new Color(0.274f, 0.234f, 0.205f));   // (the kit's CHIMNEY colour, linear)
             _works[Structures.Quarry] = new Instancer(Models.Get("quarry_face", ProcMeshes.Granary), _mat, true);
             _works[Structures.Mine] = new Instancer(Models.Get("mine_pit", ProcMeshes.Granary), _mat, true);
+            _works[Structures.CharHearth] = new Instancer(Models.Get("charcoal_clamp", ProcMeshes.Granary), _mat, true);
             _works[Structures.Ground] = new Instancer(Models.Get("training_ground", ProcMeshes.Granary), _mat, true);
             _works[Structures.Market] = new Instancer(Models.Get("market_stalls", ProcMeshes.Granary), _mat, true);
             _hay = new Instancer(Models.Get("haystack", ProcMeshes.Granary), _mat, true);
@@ -451,6 +452,16 @@ namespace TC2.Game
                 // the face cut back as the stone is taken: larger with every thousand loads (C1.3)
                 float cut = 0.55f + 0.45f * Mathf.Clamp01(b.Stock / 1500f) + 0.25f * Mathf.Clamp01((b.Stock - 1500f) / 6000f);
                 m = m * Matrix4x4.Scale(new Vector3(cut, cut, cut));
+            }
+            if (b.Kind == Structures.CharHearth)
+            {
+                // smoke from the clamp's vent while it smoulders - for three days after its wood was fired (C5.2a: the simulation's own state)
+                m = m * Matrix4x4.Scale(new Vector3(1.4f, 1.4f, 1.4f));   // (drawn larger than life to read at the village view, as the mine)
+                if (s.ClampUntil > w.Now && b.Left == 0)
+                {
+                    Vector3 top = m.MultiplyPoint3x4(new Vector3(0f, 1.5f, 0f));
+                    _smoke.Add(new Vector4(top.x, top.y, top.z, 1.6f));
+                }
             }
             if (b.Kind == Structures.Mine)
             {

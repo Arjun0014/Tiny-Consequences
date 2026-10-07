@@ -21,7 +21,7 @@ namespace TC2.Tests.Core
         static World WorldWithOre(out int sid)
         {
             var w = TestWorlds.WithCopper(out sid);
-            if (w != null) w.Settlements.Get(sid).Ore = Mining.StoreMost;
+            if (w != null) { w.Settlements.Get(sid).Ore = Mining.StoreMost; w.Settlements.Get(sid).Charcoal = Charcoal.StoreMost; }   // (and charcoal burnt: C5.2a)
             return w;
         }
 
@@ -77,13 +77,13 @@ namespace TC2.Tests.Core
             int fid = StandingSmithy(w, sid);
             ref var s = ref w.Settlements.Get(sid);
             s.Metal = 0; s.Woodstore = 500; s.Wall = 0; s.FoeWorth = 0; s.WatchEvent = 0;   // (no fear: metal for tools)
-            double m0 = s.Metal, wood0 = s.Woodstore;
+            double m0 = s.Metal, char0 = s.Charcoal;
             ref var p = ref w.People.Get(smith);
             double used = Forge.Work(w, ref p, sid, fid, 3.0);
-            double kg = w.Settlements.Get(sid).Metal - m0, fuel = wood0 - w.Settlements.Get(sid).Woodstore;
+            double kg = w.Settlements.Get(sid).Metal - m0, fuel = char0 - w.Settlements.Get(sid).Charcoal;
             Assert.AreEqual(3.0, used, 1e-9);
             Assert.AreEqual(Tech.MetalPerHour(in w.People.Get(smith)) * Forge.Pace * 3.0, kg, 1e-6, "twice the open hearth's kilos an hour");
-            Assert.AreEqual(kg * Tech.MetalFuel * Forge.FuelShare, fuel, 1e-6, "on three-quarters of its fuel a kilo");
+            Assert.AreEqual(kg * Charcoal.PerKg * Forge.FuelShare, fuel, 1e-6, "on three-quarters of the open hearth's charcoal a kilo");
             Assert.AreEqual(0.0, w.Settlements.Get(sid).Arms, "no fear, no arms");
             Assert.Greater(w.Buildings.Get(fid).Use, 0f, "the smithy's hours");
         }
