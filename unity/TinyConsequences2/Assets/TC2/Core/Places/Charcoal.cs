@@ -21,8 +21,10 @@ namespace TC2.Core.Places
         public const double BurnPerLoad = 0.6;
         /// <summary>kg of charcoal a kilo of copper takes at an open hearth (D2-064's fuel: 10 kg of wood).</summary>
         public const double PerKg = 2.0;
+        /// <summary>kg of charcoal a kilo of bar iron takes at a bloomery and its forging (C5.2b; `22` §1: 10-15 kg).</summary>
+        public const double PerKgIron = 15.0;
         /// <summary>kg of charcoal a village keeps ahead at most.</summary>
-        public const double StoreMost = 400.0;
+        public const double StoreMost = 2000.0;
         /// <summary>How long a clamp smoulders once fired.</summary>
         public static readonly long Smoulder = 3 * SimTime.Day;
         /// <summary>m: a hearth this far from where the village now fells its wood is left, and the next laid out at the woods.</summary>
@@ -35,9 +37,10 @@ namespace TC2.Core.Places
         public static double Want(World w, int sid)
         {
             ref var s = ref w.Settlements.Get(sid);
-            if (!s.Inhabited || s.BestMetal < Mining.Smelter || (s.OreCell == 0 && s.Ore <= 0)) return 0;
-            double metal = DMath.Max(0.0, Knowledge.Tech.MetalPerHead * s.Population - s.Metal) + DMath.Max(0.0, Forge.ArmsWant(in s) - s.Arms) * Forge.ArmKg;
-            return DMath.Min(StoreMost, metal * PerKg);
+            if (!s.Inhabited) return 0;
+            double cu = s.BestMetal >= Mining.Smelter && (s.OreCell != 0 || s.Ore > 0) ? Forge.CopperWanted(in s) * PerKg : 0.0;
+            double fe = Forge.IronArms(in s) ? Forge.IronWanted(in s) * PerKgIron : 0.0;   // (iron, where its smiths smelt it: C5.2b)
+            return DMath.Min(StoreMost, cu + fe);
         }
 
         /// <summary>The village's working charcoal hearth (0 none).</summary>
@@ -100,6 +103,12 @@ namespace TC2.Core.Places
 
         /// <summary>kg of copper the village's charcoal will smelt, at a fire that burns `share` of the open hearth's charcoal.</summary>
         public static double MetalFrom(in Settlement s, double share) => s.Charcoal / (PerKg * share);
+
+        /// <summary>kg of iron the village's charcoal will smelt and forge.</summary>
+        public static double IronFrom(in Settlement s) => s.Charcoal / PerKgIron;
+
+        /// <summary>The charcoal burnt smelting and forging kg of iron.</summary>
+        public static void BurntIron(ref Settlement s, double kg) { s.Charcoal = DMath.Max(0.0, s.Charcoal - kg * PerKgIron); }
 
         /// <summary>The charcoal burnt smelting kg of copper at that fire.</summary>
         public static void Burnt(ref Settlement s, double kg, double share) { s.Charcoal = DMath.Max(0.0, s.Charcoal - kg * PerKg * share); }

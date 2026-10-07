@@ -38,10 +38,16 @@
 - **C5.2a charcoal done (D2-101)**: `Core/Places/Charcoal.cs`, structure kind 18 `CharHearth` (at `WoodX/WoodY`), `ActivityKind.Burn` 32,
   `WhyCode.Charcoal` 40, settlement `Charcoal/CharcoalWant/CharHearth/ClampUntil`, kit `charcoal_clamp`, smoke while `ClampUntil > now`,
   headless `charcoal:` line; `Tech.MetalFuel` removed. Runs `tc2/out/civ/s{42,7}_c52a`, shots `char1` (`--village big --views work18`).
-- **Next**: **C5.2b iron** - bog ore where water stands on flat ground (a second deposit kind in `Mining`), the bloomery (iron from ore and
-  charcoal, ~8 kg ore and ~10 kg charcoal a kilo of bloom, half lost forging it to a bar: `22` §1), a technique found by smiths who know
-  copper, iron's larger use a head and stronger arms; then C5.3 distant
-  work (smelting at a far mine, camps, a mining hamlet founded by work), C5.4 claims. Seen and left: people walking routes across cells the
+- **C5.2b iron done (D2-102)**: `Mining` handles two kinds (`Copper`, `Iron`; `CellOf/DistOf/OreIn/WantOf`), structure kind 19 `BogPits`,
+  `WhyCode.BogOre` 41 (digging stays `ActivityKind.Mine`), `Tech.Iron` (seventh technique; `Person.KIron`, `Sc6`), settlement
+  `BestIron/Iron/IronArms/FeCell/FeDist/FeEvent/FeOre/FeOreWant/FeMine`, `Tech.ToolPace/ToolWear/IronShare/CopperWanted`, `Forge.IronWanted/
+  CopperWanted/IronCan/CopperCan/IronArms`, `Charcoal.PerKgIron/IronFrom/BurntIron`; the COARSE smith's labour day (AgentSystem, before the
+  fields); kit `bog_pits`; headless `iron:` line. Runs `tc2/out/civ/s{42,7}_c52c` (`_c52b` was the narrow stream-only bog rule), shots `iron1`
+  (`--village 6 --views work19`).
+- **Next**: **C5.3 distant work** - when ore or wood is far, smelt where it is (a bloomery at the bed or the woods: carry iron, not ore and
+  charcoal), stints of days with a camp at the site, households moving to steady work there (a work hamlet founded by its work); then C5.4
+  claims (a worked bed or body known as a village's, digging it a deed; news of beds by traders). To check: whether the bloomery holds in
+  small villages over long runs (a complex technique); copper ore is still dug where iron serves only some. Seen before: people walking routes across cells the
   sea has since drowned; works hard to tell from homes at the village view; the training ground's posts too thin to read; fields drawn over
   crags; COARSE hearth smelting only when goods are short (D2-100); the person page's look in a Web build.
 

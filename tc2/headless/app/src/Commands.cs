@@ -256,9 +256,29 @@ namespace TC2.Headless
                             if (st3.OreCell > 0) know++;
                             if (TC2.Core.Places.Mining.Mine(w, sid3) != 0) { mines++; dm += st3.OreDist; }
                         }
-                        for (int i = 0; i < bodies; i++) { var d = w.Deposits.Get(i); left += d.Ore; taken += d.Taken; if (d.GaveOut != 0) spent++; }
+                        int cuBodies = 0;
+                        for (int i = 0; i < bodies; i++) { var d = w.Deposits.Get(i); if (d.Kind != TC2.Core.Places.Mining.Copper) continue; cuBodies++; left += d.Ore; taken += d.Taken; if (d.GaveOut != 0) spent++; }
+                        bodies = cuBodies;
                         Console.WriteLine("ores: " + know + " of " + villages3 + " villages know copper, " + mines + " mines (" + F(mines > 0 ? dm / mines : 0, "0") + " m out on average); " + bodies + " bodies seen, " + spent +
-                                          " dug out; ore dug " + F(w.Metrics.OreDug / 1000.0, "0.0") + " t in " + F(w.Metrics.MineHours, "0") + " h (left in the bodies seen " + F(left / 1000.0, "0") + " t); metal smelted " + F(w.Metrics.MetalKg, "0") + " kg");
+                                          " dug out; copper ore dug " + F((w.Metrics.OreDug - w.Metrics.BogOreDug) / 1000.0, "0.0") + " t (all mines and pits " + F(w.Metrics.MineHours, "0") + " h; left in the bodies seen " + F(left / 1000.0, "0") + " t); copper smelted " + F(w.Metrics.MetalKg, "0") + " kg");
+                    }
+                    // iron (C5.2b)
+                    {
+                        int knowBog = 0, pits = 0, smelt = 0, villages5 = 0; double iron = 0, ironArms = 0, arms5 = 0, share = 0, beds = 0, bedsSpent = 0;
+                        for (int sid5 = w.Settlements.First(); sid5 != 0; sid5 = w.Settlements.Next(sid5))
+                        {
+                            var st5 = w.Settlements.Get(sid5);
+                            if (!st5.Inhabited) continue;
+                            villages5++;
+                            if (st5.FeCell > 0) knowBog++;
+                            if (TC2.Core.Places.Mining.Mine(w, sid5, TC2.Core.Places.Mining.Iron) != 0) pits++;
+                            if (st5.BestIron >= TC2.Core.Places.Mining.Smelter) smelt++;
+                            iron += st5.Iron; ironArms += st5.IronArms; arms5 += st5.Arms; share += TC2.Core.Knowledge.Tech.IronShare(in st5) * st5.Population;
+                        }
+                        for (int i = 0; i < w.Deposits.Count; i++) { var d = w.Deposits.Get(i); if (d.Kind != TC2.Core.Places.Mining.Iron) continue; beds++; if (d.GaveOut != 0) bedsSpent++; }
+                        int pop5 = w.LivingPeople();
+                        Console.WriteLine("iron: " + knowBog + " of " + villages5 + " villages know bog ore (" + beds + " beds seen, " + bedsSpent + " dug out), " + pits + " pits; " + smelt + " villages smelt iron; bog ore dug " +
+                                          F(w.Metrics.BogOreDug / 1000.0, "0.0") + " t, iron smelted " + F(w.Metrics.IronKg, "0") + " kg; iron tools for " + F(pop5 > 0 ? 100.0 * share / pop5 : 0, "0") + " % of the people (" + F(iron, "0") + " kg); iron arms " + F(ironArms, "0") + " of " + F(arms5, "0"));
                     }
                     // charcoal (C5.2a)
                     {

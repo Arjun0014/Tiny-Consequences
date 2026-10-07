@@ -6,7 +6,7 @@ using TC2.Core.Simulation;
 namespace TC2.Core.Places
 {
     /// <summary>What a structure is for (21 §1).</summary>
-    public enum Function : byte { Dwelling = 0, Water = 1, Store = 2, Smith = 3, Quarry = 4, Train = 5, Market = 6, Gate = 7, Mine = 8, Charcoal = 9 }
+    public enum Function : byte { Dwelling = 0, Water = 1, Store = 2, Smith = 3, Quarry = 4, Train = 5, Market = 6, Gate = 7, Mine = 8, Charcoal = 9 }   // (bog-ore pits are mines too)
 
     /// <summary>Where a structure is laid out (21 §4).</summary>
     public enum Zone : byte { Homes = 0, Core = 1, Edge = 2, Outer = 3, Site = 4, Shore = 5 }
@@ -45,6 +45,7 @@ namespace TC2.Core.Places
         public const byte Barn = 16;                                              // a large store (C1.1)
         public const byte Mine = 17;                                              // a pit at an ore body (C5.1)
         public const byte CharHearth = 18;                                            // a charcoal hearth at the woodlot (C5.2a)
+        public const byte BogPits = 19;                                               // pits at a bed of bog ore (C5.2b)
 
         /// <summary>FU of grain a granary keeps well (~7.5 t: a raised timber store of ~10 m3).</summary>
         public const double GranaryHolds = 10000.0;
@@ -69,6 +70,7 @@ namespace TC2.Core.Places
             t[Ground] = new KindInfo("training ground", Function.Train, Zone.Outer, 12.0, 30, 4, 15, 40, 0);
             t[Market] = new KindInfo("market", Function.Market, Zone.Core, 9.0, 60, 15, 30, 100, 0);
             t[CharHearth] = new KindInfo("charcoal hearth", Function.Charcoal, Zone.Site, 6.0, 12, 0, 20, 60, 0);
+            t[BogPits] = new KindInfo("bog-ore pits", Function.Mine, Zone.Site, 7.0, 16, 2, 15, 40, 0);
             t[Mine] = new KindInfo("mine", Function.Mine, Zone.Site, 7.0, 40, 6, 60, 300, 0);
             t[Barn] = new KindInfo("barn", Function.Store, Zone.Edge, 7.0, 360, 90, 60, 200, BarnHolds);
             return t;
@@ -125,6 +127,12 @@ namespace TC2.Core.Places
             {
                 if (!Shore.Dry(w.Planet, w.Planet.Grid.Center[s.OreCell - 1])) { s.OreCell = 0; s.OreDist = 0; return; }   // (the sea has taken that ground)
                 Begin(w, sid, Mine, s.OreEvent, CauseRel.EnabledBy); return;
+            }
+            // bog ore known, someone who can smelt iron, and iron short: pits at the bed (C5.2b)
+            if (s.FeOreWant > 0 && s.FeMine == 0 && s.FeCell > 0 && s.FeOre < s.FeOreWant && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
+            {
+                if (!Shore.Dry(w.Planet, w.Planet.Grid.Center[s.FeCell - 1])) { s.FeCell = 0; s.FeDist = 0; return; }
+                Begin(w, sid, BogPits, s.FeEvent, CauseRel.EnabledBy); return;
             }
             // charcoal wanted for its smiths: a hearth at the woodlot - and when the woods have receded past it, the next at the woods (C5.2a)
             if (s.CharcoalWant > 0 && s.Charcoal < s.CharcoalWant && s.Wall != 1 && (s.Works & Construction.Granary) != 0 && Woods.Lot(in s) >= 0)
@@ -210,6 +218,7 @@ namespace TC2.Core.Places
             if (b.Kind == Quarry) s.Quarry = bid;
             if (b.Kind == Mine) s.Mine = bid;
             if (b.Kind == CharHearth) s.CharHearth = bid;
+            if (b.Kind == BogPits) s.FeMine = bid;
             if (b.Kind == Ground) s.Ground = bid;
             if (b.Kind == Market) s.Market = bid;
             if (b.Kind == Smithy)
@@ -239,6 +248,7 @@ namespace TC2.Core.Places
             if (kind == Quarry) s.Quarry = id;
             if (kind == Mine) s.Mine = id;
             if (kind == CharHearth) s.CharHearth = id;
+            if (kind == BogPits) s.FeMine = id;
             if (kind == Smithy) s.Smithy = id;
             if (kind == Ground) s.Ground = id;
             if (kind == Market) s.Market = id;
@@ -258,6 +268,7 @@ namespace TC2.Core.Places
             if (b.Kind == Quarry && s.Quarry == bid) { s.Quarry = 0; s.StoneCell = 0; s.StoneDist = 0; }   // (the rock it stood at is gone: they must find rock again)
             if (b.Kind == Mine && s.Mine == bid) s.Mine = 0;
             if (b.Kind == CharHearth && s.CharHearth == bid) s.CharHearth = 0;
+            if (b.Kind == BogPits && s.FeMine == bid) s.FeMine = 0;
             if (b.Kind == Smithy && s.Smithy == bid) s.Smithy = 0;
             if (b.Kind == Ground && s.Ground == bid) s.Ground = 0;
             if (b.Kind == Market && s.Market == bid) s.Market = 0;
@@ -306,6 +317,7 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             if (kind == Well && !HasAny(w, sid, Well)) { x = s.WellX; y = s.WellY; return; }
             if (kind == Granary && !HasAny(w, sid, Granary)) { Construction.GranarySpot(in s, out double gx, out double gy); x = (float)gx; y = (float)gy; return; }
+            if (kind == BogPits && s.FeCell > 0) { s.SphereToLocal(w.Planet.Grid.Center[s.FeCell - 1], w.Planet.Radius, out double bx, out double by); x = (float)bx; y = (float)by; return; }   // (at the bed)
             if (kind == CharHearth && Woods.Lot(in s) >= 0) { x = s.WoodX; y = s.WoodY; return; }   // (at the woods)
             if (kind == Mine && s.OreCell > 0) { s.SphereToLocal(w.Planet.Grid.Center[s.OreCell - 1], w.Planet.Radius, out double mx, out double my); x = (float)mx; y = (float)my; return; }   // (at the ore)
             if (kind == Quarry && s.StoneCell > 0) { s.SphereToLocal(w.Planet.Grid.Center[s.StoneCell - 1], w.Planet.Radius, out double qx, out double qy); x = (float)qx; y = (float)qy; return; }   // (at the rock)

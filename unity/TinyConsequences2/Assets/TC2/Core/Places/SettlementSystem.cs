@@ -58,7 +58,7 @@ namespace TC2.Core.Places
             prof?.Begin(10000); Crops(ref s, doy, 1); prof?.End(10000);   // (the step's first day: a stage begins on it, before its work)
             double g0 = s.Granary;   // (DEEP: the store before the step's meals, larders and catch; the harvest is the day's own)
             prof?.Begin(10001); Food(ref s, doy, days); prof?.End(10001);
-            { ref var sw = ref w.Settlements.Get(sid); sw.StoneWant = (float)Stone.Want(w, sid); sw.OreWant = (float)Mining.Want(w, sid); sw.CharcoalWant = (float)Charcoal.Want(w, sid); }   // (stone for its next houses' footings: C1.3; ore for its smiths: C5.1)
+            { ref var sw = ref w.Settlements.Get(sid); sw.StoneWant = (float)Stone.Want(w, sid); sw.OreWant = (float)Mining.Want(w, sid); sw.CharcoalWant = (float)Charcoal.Want(w, sid); sw.FeOreWant = (float)Mining.Want(w, sid, Mining.Iron); }   // (stone for its next houses' footings: C1.3; ore for its smiths: C5.1)
             Structures.Plan(w, sid);   // what its people want built next, by need (C1.1)
             if (days > 1) Ahead(sid, g0, days);   // (the step's own work reads its store as days lived hold it too: F8)
             prof?.Begin(10002); prof?.Begin(10007); w.Wild.Survey(sid); prof?.End(10007); prof?.Begin(10008); w.HerdSys.Update(sid); prof?.End(10008); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
@@ -212,7 +212,7 @@ namespace TC2.Core.Places
                 hh.Indoor = (float)Hearth.Indoors(tOut, hh.Shelter, fire);
                 int members = w.Members(hhs[i]).Count;
                 // the day's wear of its members' clothes and tools (D2-058), slower where the tools are metal (D2-064)
-                hh.Gear = (float)DMath.Max(0.0, hh.Gear - members * Goods.WearPerDay * days * Knowledge.Tech.MetalWear(Knowledge.Tech.MetalShare(s.Metal, s.Population)));
+                hh.Gear = (float)DMath.Max(0.0, hh.Gear - members * Goods.WearPerDay * days * Knowledge.Tech.ToolWear(in s));
                 if (members > 0 && hh.Indoor < Goods.ChillLine(Goods.Condition(hh.Gear, members))) cold++;
             }
             if (cold > 0 && s.ColdEvent == 0)
@@ -507,6 +507,8 @@ namespace TC2.Core.Places
             s.Hides *= days == 1 ? 1.0 - 0.20 / SimTime.DaysPerYear : Keep(0.20 / SimTime.DaysPerYear, days);
             s.Fibre *= days == 1 ? 1.0 - 0.05 / SimTime.DaysPerYear : Keep(0.05 / SimTime.DaysPerYear, days);
             s.Metal *= days == 1 ? 1.0 - 0.03 / SimTime.DaysPerYear : Keep(0.03 / SimTime.DaysPerYear, days);   // tools lost, broken, worn past mending (D2-064)
+            if (s.Iron > 0) s.Iron *= days == 1 ? 1.0 - 0.03 / SimTime.DaysPerYear : Keep(0.03 / SimTime.DaysPerYear, days);   // (iron rusts and is lost too: C5.2b)
+            if (s.IronArms > s.Arms) s.IronArms = s.Arms;   // (iron arms are lost with the rest)
             // (DEEP: empty as days lived would find it after their first day - a step's larders and decay at once could empty a lean
             // store that days lived would not, and record a hunger: F8)
             bool empty = (days == 1 ? s.Granary : s.Granary + (gFill - s.Granary) * (days - 1) / days) < 1.0;

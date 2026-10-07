@@ -144,7 +144,7 @@ namespace TC2.Core.History
             if (roles.Length > 0) sb.Append("Known for: ").Append(roles).Append(".\n");
             var crafts = new StringBuilder();
             Craft(crafts, "nets", p.KNets); Craft(crafts, "the loom", p.KLoom); Craft(crafts, "querns", p.KQuern); Craft(crafts, "pots", p.KPottery);
-            Craft(crafts, "the ard", p.KArd); Craft(crafts, "copper", p.KMetal);
+            Craft(crafts, "the ard", p.KArd); Craft(crafts, "copper", p.KMetal); Craft(crafts, "the bloomery (iron)", p.KIron);
             sb.Append(crafts.Length > 0 ? "Crafts they carry: " + crafts + ".\n" : "No craft beyond the everyday.\n");
             // works they were first at (history keeps the leader as Other)
             var evs = w.History.EventsOf(EntityRef.Person(pid));
@@ -167,6 +167,7 @@ namespace TC2.Core.History
         {
             var r = new List<string>();
             int home = p.Home;
+            if (p.KIron >= 0.5f) r.Add("an ironsmith");
             if (p.KMetal >= 0.5f) r.Add(home != 0 && w.Settlements.Exists(home) && Forge.Smithy(w, home) != 0 ? "a smith at the smithy" : "a smith");
             if (p.SkFarm >= 0.6f) r.Add("a seasoned farmer");
             if (p.SkHunt >= 0.5f) r.Add("a hunter");

@@ -52,7 +52,7 @@ namespace TC2.Core.Places
             switch (g)
             {
                 case Grain: { double d = DaysOfFood(w, in s, out _); return 1.0 + 3.0 * DMath.Clamp01(1.0 - d / 60.0); }
-                case Metal: return 6.0 * (1.0 - Knowledge.Tech.MetalShare(s.Metal, s.Population)) + 0.5;
+                case Metal: return 6.0 * (1.0 - Knowledge.Tech.ToolShare(in s)) + 0.5;   // (copper, worth less where iron serves: C5.2b)
                 case Fibre: return 0.5 + 2.0 * DMath.Clamp01(1.0 - s.Fibre / (2.0 * pop));
                 case Hides: return 1.0 + 3.0 * DMath.Clamp01(1.0 - s.Hides / (1.0 * pop));
             }

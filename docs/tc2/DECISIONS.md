@@ -2513,3 +2513,38 @@ goes; the next hearth at the woods when they recede, the old one left; both reso
 (`tc2/out/civ/s{42,7}_c52a`): seed 42 - 14 hearths at the woods, 21.9 t of charcoal from 109 t of wood in 8,070 h (against 40,600 t felled
 for homes and hearths: copper is a small trade), metal 13.6 t (C5.1 12.7 t), 8 copper bodies dug out, people 7,629; seed 7 - 8 hearths,
 16.7 t from 83 t of wood, metal 10.9 t, people 2,329. Shots `tc2/out/shots/char1` (Heldholm's hearth at its thinned woodlot).
+
+## D2-102 — 2026-10-07 — Iron: bog ore, the bloomery found by copper smiths, iron tools and arms; a COARSE smith's labour day (C5.2b)
+
+**Context.** `22` §1-§2 and `25` C5: iron is the metal of a medieval economy - bog ore where water stands, the bloomery (~8 kg of ore and
+10-15 kg of charcoal a kilo of bar iron), tools for every household and better arms. It needs the charcoal of C5.2a, and it is what turns
+the woods into a resource worth fighting over.
+**Decision.** (1) **Bog ore** (`Mining.Iron`, a second deposit kind): beds where the ground lies wet - a lake, a brook draining through (river
+flow 300 m3 a day or more), or a wet climate's fen (moisture 0.7 or more) - on flat land (no neighbour 12 m above or below), above the shore,
+in 35 % of such places; 0.5-8 t a bed (keyed); **a bed dug out forms again in forty years** (iron carried in by the water). Known by seeing
+as copper is (`Settlement.FeCell/FeDist/FeEvent`); **bog-ore pits** (structure kind 19, 16 h) at the bed; digging is the mine's activity with
+`WhyCode.BogOre`; the store `FeOre`. (2) **The bloomery** (`Tech.Iron`, the seventh technique; `Person.KIron`, `Settlement.BestIron`): found
+at a smithy (2e-5 an hour, by curiosity) only by a competent copper smith whose village has seen bog ore; copied and carried as every
+technique is; nobody begins knowing it. (3) **Iron at the smithy** only (`Forge.Work`): arms first while wanted (of iron where this smith
+smelts it, else copper, else reforged tools), then iron for tools, then copper for tools iron does not yet serve; 0.03 kg an hour per skill
+(0.06 at a smithy) - 8 kg of bog ore and 15 kg of charcoal a kilo. (4) **Iron's use**: 2 kg of iron tools a head (`Tech.IronPerHead`;
+`Settlement.Iron`, rusting 3 % a year); tools quicken hands up to 1.4x and cut the wear of goods to 0.6, replacing copper's 1.25x / 0.75
+(`Tech.ToolPace`, `ToolWear`); copper is wanted only for those iron does not serve (`Tech.CopperWanted`) and is worth less in trade where iron
+serves; iron arms (`Settlement.IronArms`) strike 1.15x more (`Conflict.Strength`). Charcoal wanted grows with iron (15 kg a kilo; up to 2 t
+ahead). (5) **A COARSE smith's labour day**: a year's comparison showed a lived iron smith at the forge ~7.4 h a day and a COARSE one, given
+0.6 of the hours left after the household's work and the fields, 2.6 h (iron made 1.7 vs 16.7 kg a year). A COARSE smith with work at the
+smithy now gives it the labour day (9.5 h) less the household's own work, before the village's shared field work (others take it up, as in a
+lived village); counted as worked, so the evening's making shrinks. Year-long parity now: bog ore 356 vs 354 kg, charcoal 640 vs 666 kg,
+iron 18.9 vs 17.3 kg (COARSE vs lived). This also speeds copper smithing and arming in COARSE/DEEP worlds. (6) View: kit `bog_pits` (pits
+with brown water, turf stacked, ore drying on boards, a roasting fire, a spade), 1.4x life, on broken ground; the building page; HUD skills
+and the person page show the bloomery and "an ironsmith"; headless `iron:` line. Sim version 43.
+**Also seen.** In a sowing season a COARSE day gives all free hours to the fields before any village work (a lived day interleaves): a
+six-day window can differ several-fold while a year is at par; tests of village works compare years.
+**Evidence.** 232 tests (`IronTests` 7: beds only on wet flats, a share of them; known by seeing and formed again forty years after being dug
+out; the bloomery found only by a copper smith who has seen bog ore; 8 kg of ore and 15 of charcoal a kilo, none without ore; iron tools 1.4x
+and replacing copper; iron arms 1.15x; a year's bog ore and iron at par between resolutions). 300 years DEEP (`tc2/out/civ/s{42,7}_c52c`): seed
+42 - the bloomery found three times and known in all 19 villages, 23 beds seen and 20 dug out, 51 t of bog ore, **6.4 t of iron**: iron tools
+for 16 % of the people, 1,205 of 2,493 arms iron; charcoal 133 t from 666 t of wood; copper 11.0 t; people 7,570; seed 7 - 14 beds seen, 12
+dug out, 98.7 t of bog ore, **12.3 t of iron**: iron tools for 61 %, 715 of 813 arms iron; charcoal 199 t from 994 t of wood (5 % of all
+felling); people 2,278. Seed 11 (no copper smiths): beds known, no iron. Voton (seed 7) saw bog ore in year 11, opened pits only when the
+bloomery reached it (117) and has dug out bed after bed since, each 1.4-1.9 km out. Shots `tc2/out/shots/iron1` (Voton's pits by the shore).

@@ -8,18 +8,20 @@ namespace TC2.Core.Places
     /// <summary>
     /// The smithy (C1.4, D2-093; 21 §3, 23 §2): a smith's workshop - a hearth with bellows, an anvil, a quench trough - raised by a village
     /// whose people can work metal (a competent smith: D2-064) and have use for it. At the smithy a smith smelts and forges twice as fast as at
-    /// an open hearth at home, on three-quarters of the fuel, and only there are **arms** forged: spear and axe heads, a kilo of metal and two
+    /// an open hearth at home, on three-quarters of the charcoal, and only there are **arms** forged: spear and axe heads, a kilo of metal and two
     /// hours' forging each. A village forges arms when it fears its neighbours (a palisade raised or rising, a heavy wrong held, a watch kept)
-    /// - up to about one for each of its people of fighting age - from the ore it smelts, or, with no ore near, by reforging its tools. Arms
-    /// are a store of the village's (`Settlement.Arms`), broken and lost at ~3 % a year, and its fighters strike harder with them
+    /// - up to about one for each of its people of fighting age - from the ore it smelts, or, with none, by reforging its tools. Arms are a
+    /// store of the village's (`Settlement.Arms`), broken and lost at ~3 % a year, and its fighters strike harder with them
     /// (`Conflict.Strength`). Without a smithy, smiths keep to the open hearth (D2-064) and make no arms; a smithy burnt or fallen takes the
-    /// forging with it. One law for lived days and COARSE/DEEP steps.
+    /// forging with it. **Iron** (C5.2b, D2-102): only a smithy holds a bloomery; a smith who knows iron smelts bog ore there - 8 kg of ore and
+    /// 15 kg of charcoal a kilo of bar iron, at about a third of copper's pace - for tools (2 kg a head, quicker and longer-lasting than copper,
+    /// which they replace) and for arms, which strike harder. One law for lived days and COARSE/DEEP steps.
     /// </summary>
     public static class Forge
     {
         /// <summary>A smith at a smithy works this many times as fast as at an open hearth (bellows, a proper hearth, an anvil).</summary>
         public const double Pace = 2.0;
-        /// <summary>And burns this share of the open hearth's fuel a kilo.</summary>
+        /// <summary>And burns this share of the open hearth's charcoal a kilo.</summary>
         public const double FuelShare = 0.75;
         /// <summary>kg of metal in an arm (a spearhead, an axe head) and the hours of forging it takes beyond the metal's smelting.</summary>
         public const double ArmKg = 1.0, ArmHours = 2.0;
@@ -48,12 +50,34 @@ namespace TC2.Core.Places
         /// <summary>Arms a village wants in store now (0 unless it fears its neighbours).</summary>
         public static double ArmsWant(in Settlement s) => Threatened(in s) ? ArmsPerHead * s.Population : 0.0;
 
-        /// <summary>A village has use for a smith's hours: its tools short of metal with ore near to smelt, or arms wanted (from ore or tools).</summary>
+        /// <summary>The village's arms are forged of iron: someone of it smelts iron and it has bog ore or knows a bed.</summary>
+        public static bool IronArms(in Settlement s) => s.BestIron >= Mining.Smelter && (s.FeCell != 0 || s.FeOre > 0);
+
+        /// <summary>kg of copper the village still wants: tools while iron does not yet serve them, and arms while they are not of iron.</summary>
+        public static double CopperWanted(in Settlement s) =>
+            Knowledge.Tech.CopperWanted(in s) + (IronArms(in s) ? 0.0 : DMath.Max(0.0, ArmsWant(in s) - s.Arms) * ArmKg);
+
+        /// <summary>kg of iron the village still wants: its people's tools (2 kg a head), and its arms where its smiths smelt iron.</summary>
+        public static double IronWanted(in Settlement s) =>
+            DMath.Max(0.0, Knowledge.Tech.IronPerHead * s.Population - s.Iron) + (IronArms(in s) ? DMath.Max(0.0, ArmsWant(in s) - s.Arms) * ArmKg : 0.0);
+
+        /// <summary>kg of iron the village's bog ore and charcoal in store will make.</summary>
+        public static double IronCan(in Settlement s) => DMath.Min(Mining.IronIn(in s), Charcoal.IronFrom(in s));
+
+        /// <summary>kg of copper the village's copper ore and charcoal in store will make at a smithy.</summary>
+        public static double CopperCan(in Settlement s) => DMath.Min(Mining.MetalIn(in s), Charcoal.MetalFrom(in s, FuelShare));
+
+        /// <summary>
+        /// A village has use for a smith's hours: ore and charcoal to smelt for tools short of metal (iron, or copper while iron does not serve
+        /// them), or arms wanted (from ore or tools).
+        /// </summary>
         public static bool Use(World w, in Settlement s)
         {
-            bool ore = Mining.MetalIn(in s) >= 0.05 && Charcoal.MetalFrom(in s, FuelShare) >= 0.05;   // (ore dug and charcoal burnt to smelt it: C5.1, C5.2a)
-            if (ore && Knowledge.Tech.MetalShare(s.Metal, s.Population) < 1.0) return true;
-            return s.Arms < ArmsWant(in s) && (ore || s.Metal >= ArmKg);
+            bool fe = s.BestIron >= Mining.Smelter && IronCan(in s) >= 0.05;
+            bool cu = CopperCan(in s) >= 0.05;
+            if (fe && Knowledge.Tech.IronShare(in s) < 1.0) return true;
+            if (cu && Knowledge.Tech.CopperWanted(in s) > 0) return true;
+            return s.Arms < ArmsWant(in s) && (fe || cu || s.Metal + s.Iron >= ArmKg);
         }
 
         /// <summary>A smith of this village (competent in metal) has work at its smithy now.</summary>
@@ -66,33 +90,53 @@ namespace TC2.Core.Places
         }
 
         /// <summary>
-        /// Hours at the smithy: arms first while the village wants them (smelted from ore, or reforged from its tools with none near), else
-        /// metal for its tools from ore - twice the open hearth's pace on three-quarters of its fuel, as far as the woodstore holds. History
-        /// tells the first arms of an arming. Returns the hours used.
+        /// Hours at the smithy: arms first while the village wants them (iron where this smith smelts it, else copper from ore, else reforged
+        /// from its tools), then iron for its tools, then copper for its tools while iron does not yet serve them - twice the open hearth's
+        /// pace, as far as the ore and the charcoal in store go. History tells the first arms of an arming. Returns the hours used.
         /// </summary>
         public static double Work(World w, ref Person p, int sid, int smithy, double hours, int days = 1)
         {
             if (hours <= 0 || smithy == 0) return 0;
             ref var s = ref w.Settlements.Get(sid);
-            bool ore = Mining.MetalIn(in s) > 1e-6 && s.Charcoal > 1e-6;   // (ore dug and carried home, charcoal to smelt it: never from nothing, C5.1, C5.2a)
-            double rate = Knowledge.Tech.MetalPerHour(in p) * Pace;   // kg an hour smelted and worked
+            double rate = Knowledge.Tech.MetalPerHour(in p) * Pace;   // kg of copper an hour smelted and worked
+            double feRate = Knowledge.Tech.IronPerHour(in p) * Pace;  // kg of bar iron an hour from the bloomery and the anvil
             if (rate <= 0) return 0;
-            double used = 0;
+            bool fe = p.KIron >= Mining.Smelter && feRate > 0 && IronCan(in s) > 1e-6;
+            bool ore = CopperCan(in s) > 1e-6;
+            double used = 0, feUsed = 0;
             double armsWant = ArmsWant(in s) - s.Arms;
-            if (armsWant > 0 && (ore || s.Metal >= ArmKg))
+            if (armsWant > 0 && (fe || ore || s.Metal + s.Iron >= ArmKg))
             {
-                // an arm: its kilo of metal (smelted, or taken from the tools) and two hours at the anvil
-                double perArm = (ore ? ArmKg / rate : 0.0) + ArmHours;
+                // an arm: its kilo of metal (iron smelted, copper smelted, or taken from the tools) and two hours at the anvil
+                double perArm = (fe ? ArmKg / feRate : ore ? ArmKg / rate : 0.0) + ArmHours;
                 double arms = DMath.Min(hours / perArm, armsWant);
-                if (!ore) arms = DMath.Min(arms, s.Metal / ArmKg);
-                if (ore)
+                byte from;
+                if (fe)
                 {
-                    arms = DMath.Min(arms, DMath.Min(Mining.MetalIn(in s), Charcoal.MetalFrom(in s, FuelShare)) / ArmKg);   // (no more arms than the ore and the charcoal smelt)
+                    from = 2;
+                    arms = DMath.Min(arms, IronCan(in s) / ArmKg);   // (no more arms than the bog ore and the charcoal smelt)
+                    Charcoal.BurntIron(ref s, arms * ArmKg);
+                    Mining.SmeltIron(ref s, arms * ArmKg);
+                    s.IronArms += arms;
+                    w.Metrics.IronKg += arms * ArmKg;
+                    feUsed += arms * perArm;
+                }
+                else if (ore)
+                {
+                    from = 1;
+                    arms = DMath.Min(arms, CopperCan(in s) / ArmKg);   // (no more arms than the ore and the charcoal smelt)
                     Charcoal.Burnt(ref s, arms * ArmKg, FuelShare);
                     Mining.Smelt(ref s, arms * ArmKg);
                     w.Metrics.MetalKg += arms * ArmKg;
                 }
-                else s.Metal -= arms * ArmKg;
+                else
+                {
+                    from = 0;
+                    arms = DMath.Min(arms, (s.Metal + s.Iron) / ArmKg);
+                    double ironPart = DMath.Min(arms * ArmKg, s.Iron);   // (iron tools reforged into iron arms first)
+                    s.Iron -= ironPart; s.IronArms += ironPart / ArmKg;
+                    s.Metal = DMath.Max(0.0, s.Metal - (arms * ArmKg - ironPart));
+                }
                 bool first = s.Arms < 0.5;
                 s.Arms += arms;
                 used = arms * perArm;
@@ -101,21 +145,41 @@ namespace TC2.Core.Places
                     w.Record(new HistoryEvent
                     {
                         Kind = HistoryKind.ArmsMade, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Person(p.Id), Object = EntityRef.Settlement(sid),
-                        Other = new EntityRef(EntityKind.Building, smithy), ArgA = ore ? 1 : 0, RootKind = RootKind.People,
+                        Other = new EntityRef(EntityKind.Building, smithy), ArgA = from, RootKind = RootKind.People,
                         Cause1 = s.WallEvent != 0 ? s.WallEvent : (s.FoeEvent != 0 ? s.FoeEvent : s.WatchEvent), Rel1 = CauseRel.InResponseTo,
                     });
             }
             double left = hours - used;
-            if (left > 0 && Mining.MetalIn(in s) > 1e-6 && s.Charcoal > 1e-6 && Knowledge.Tech.MetalShare(s.Metal, s.Population) < 1.0)
+            if (left > 0 && fe && IronCan(in s) > 1e-6 && Knowledge.Tech.IronShare(in s) < 1.0)
             {
+                // iron for its tools: bog ore in the bloomery, the bloom forged to a bar
+                double kg = feRate * left;
+                if (days > 1)
+                {
+                    // (DEEP: days lived stop smelting the day the village has its iron: F8)
+                    double most = DMath.Max(0.0, Knowledge.Tech.IronPerHead * s.Population - s.Iron) + kg / days;
+                    if (kg > most) { left *= most / kg; kg = most; }
+                }
+                double can = IronCan(in s);
+                if (kg > can) { left *= can / kg; kg = can; }   // (as far as the bog ore and the charcoal in store go)
+                s.Iron += kg;
+                Charcoal.BurntIron(ref s, kg);
+                Mining.SmeltIron(ref s, kg);
+                w.Metrics.IronKg += kg;
+                used += left; feUsed += left;
+                left = hours - used;
+            }
+            if (left > 0 && CopperCan(in s) > 1e-6 && Knowledge.Tech.CopperWanted(in s) > 0)
+            {
+                // copper for its tools while iron does not yet serve them
                 double kg = rate * left;
                 if (days > 1)
                 {
                     // (DEEP: days lived stop smelting the day the village has its metal, as at the open hearth: F8)
-                    double most = DMath.Max(0.0, Knowledge.Tech.MetalPerHead * s.Population - s.Metal) + kg / days;
+                    double most = Knowledge.Tech.CopperWanted(in s) + kg / days;
                     if (kg > most) { left *= most / kg; kg = most; }
                 }
-                double can = DMath.Min(Mining.MetalIn(in s), Charcoal.MetalFrom(in s, FuelShare));
+                double can = CopperCan(in s);
                 if (kg > can) { left *= can / kg; kg = can; }   // (as far as the ore and the charcoal in store go)
                 s.Metal += kg;
                 Charcoal.Burnt(ref s, kg, FuelShare);
@@ -127,6 +191,7 @@ namespace TC2.Core.Places
             b.Use = (float)(b.Use + used);
             w.Metrics.SmithyHours += used;
             w.Learning.Practice(ref p, Knowledge.Tech.Metal, used);
+            w.Learning.Practice(ref p, Knowledge.Tech.Iron, used);   // (a copper smith who has seen bog ore may find the bloomery: C5.2b)
             return used;
         }
     }

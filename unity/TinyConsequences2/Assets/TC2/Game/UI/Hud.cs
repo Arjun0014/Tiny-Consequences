@@ -270,7 +270,7 @@ namespace TC2.Game
             }
             if (p.Sick != 0)
                 sb.Append(p.SickPhase == TC2.Core.Health.Disease.Latent ? "carrying " : "sick with ").Append(w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick))).Append('\n');
-            if (p.KNets >= 0.1f || p.KLoom >= 0.1f || p.KQuern >= 0.1f || p.KPottery >= 0.1f || p.KArd >= 0.1f || p.KMetal >= 0.1f)
+            if (p.KNets >= 0.1f || p.KLoom >= 0.1f || p.KQuern >= 0.1f || p.KPottery >= 0.1f || p.KArd >= 0.1f || p.KMetal >= 0.1f || p.KIron >= 0.1f)
             {
                 sb.Append("knows:");
                 if (p.KNets >= 0.1f) sb.Append(" nets ").Append(p.KNets.ToString("0.00", CultureInfo.InvariantCulture));
@@ -279,6 +279,7 @@ namespace TC2.Game
                 if (p.KPottery >= 0.1f) sb.Append(" pots ").Append(p.KPottery.ToString("0.00", CultureInfo.InvariantCulture));
                 if (p.KArd >= 0.1f) sb.Append(" ard ").Append(p.KArd.ToString("0.00", CultureInfo.InvariantCulture));
                 if (p.KMetal >= 0.1f) sb.Append(" copper ").Append(p.KMetal.ToString("0.00", CultureInfo.InvariantCulture));
+                if (p.KIron >= 0.1f) sb.Append(" iron ").Append(p.KIron.ToString("0.00", CultureInfo.InvariantCulture));
                 sb.Append('\n');
             }
             sb.Append("skills: farming ").Append(p.SkFarm.ToString("0.00", CultureInfo.InvariantCulture)).Append(", wood ").Append(p.SkWood.ToString("0.00", CultureInfo.InvariantCulture)).Append(", hunting ").Append(p.SkHunt.ToString("0.00", CultureInfo.InvariantCulture)).Append(", fishing ").Append(p.SkFish.ToString("0.00", CultureInfo.InvariantCulture))
@@ -405,6 +406,10 @@ namespace TC2.Game
                     sb.Append("burns charcoal for ").Append(place).Append("'s smiths from wood felled at its woodlot: ").Append(b.Stock.ToString("N0", CultureInfo.InvariantCulture))
                       .Append(" kg burnt here in ").Append(b.Use.ToString("N0", CultureInfo.InvariantCulture)).Append(" hours (a load of wood makes 5 kg); the store holds ")
                       .Append(s.Charcoal.ToString("0", CultureInfo.InvariantCulture)).Append(" kg").Append(s.ClampUntil > w.Now && b.Left == 0 ? "; a clamp is smouldering" : "").Append('\n');
+                else if (b.Kind == Structures.BogPits)
+                    sb.Append("digs bog iron ore and carries it home to ").Append(place).Append(": ").Append(b.Stock.ToString("N0", CultureInfo.InvariantCulture)).Append(" kg dug in ")
+                      .Append(b.Use.ToString("N0", CultureInfo.InvariantCulture)).Append(" hours; the store holds ").Append(s.FeOre.ToString("0", CultureInfo.InvariantCulture)).Append(" kg (its smiths want ")
+                      .Append(s.FeOreWant.ToString("0", CultureInfo.InvariantCulture)).Append("); iron tools for ").Append((100.0 * TC2.Core.Knowledge.Tech.IronShare(in s)).ToString("0", CultureInfo.InvariantCulture)).Append(" % of its people\n");
                 else if (b.Kind == Structures.Mine)
                 {
                     // the body it digs (C5.1): what is left in it, or when it gave out

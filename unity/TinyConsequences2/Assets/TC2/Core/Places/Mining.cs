@@ -11,7 +11,7 @@ namespace TC2.Core.Places
     public struct Deposit
     {
         public int Id, Cell;
-        public byte Kind;          // Mining.Copper (iron with C5.2)
+        public byte Kind;          // Mining.Copper, Mining.Iron (bog ore, C5.2b)
         public double Ore, Taken;  // kg of ore left in the ground; kg dug out
         public long Found;         // when it was first seen
         public int By;             // the village that first saw it
@@ -60,36 +60,59 @@ namespace TC2.Core.Places
     }
 
     /// <summary>
-    /// Ore from the ground (C5.1, D2-100; 22 §1-§2): copper shows where rock breaks through the land (the quarry's outcrop, 80 m from a
-    /// land neighbour) near a volcanic arc - a volcano, living or gone quiet, within 3 km - and only on some such crags (half), each body
-    /// holding 1-20 t of workable ore (the oxidised cap of a vein: green and blue stone). A village knows copper only when one of its
-    /// people has seen it (the grounds they go to, the woodlot, the land the founders looked over) and keeps the nearest body it knows
-    /// within 3 km that still has ore. A village whose people can smelt (one who works copper) and whose tools or arms are short of
-    /// metal opens a **mine** at the body (a pit with a windlass and a shelter: a structure at the site) and digs: ~a load (25 kg) of ore
-    /// an hour, every load carried home - the walk is most of the work at a far body. Smelting at the hearth or the smithy takes
-    /// 5 kg of ore for a kilo of copper (D2-064's rates and fuel stand); no ore in store, no metal - copper is never made from nothing.
-    /// The body is counted down by what is dug, whoever digs it; when the last is dug it **gives out**: history, the mine is left,
-    /// the villages that knew it forget it and look for another. One law for lived days and COARSE/DEEP steps.
+    /// Ore from the ground (C5.1, D2-100; C5.2b, D2-102; 22 §1-§2). **Copper** shows where rock breaks through the land (the quarry's outcrop,
+    /// 80 m from a land neighbour) within 2 km (geo) of a volcano, living or gone quiet, on some such crags (15 %), each body 1-20 t of workable
+    /// ore (the oxidised cap of a vein: green and blue stone); 5 kg of ore make a kilo of copper. **Bog iron** forms where water stands on flat
+    /// ground (a lake, a brook draining through, or a wet climate's fen, no neighbour 12 m above or below) - in a third of such places, a bed of 0.5-8 t of rust-red lumps;
+    /// 8 kg of it make a kilo of bar iron in a bloomery; a bed dug out forms again in forty years. A village knows ore only when one of its
+    /// people has seen it (the grounds they go to, the woodlot, the land the founders looked over) and keeps, of each kind, the nearest body it
+    /// knows within 2 km that still has ore. A village whose people can smelt it and whose tools or arms are short of it opens a **mine** at a
+    /// copper body (a pit with a windlass) or **bog-ore pits** at a bed, and digs: a load (25 kg) of ore an hour, every load carried home. No ore
+    /// in store, no metal - nothing is smelted from nothing. A body is counted down by what is dug, whoever digs it; when the last is dug it
+    /// **gives out**: history, the mine is left, the villages that knew it forget it and look for another. One law for lived days and COARSE/DEEP.
     /// </summary>
     public static class Mining
     {
-        public const byte Copper = 1;
-        /// <summary>m: how far from a volcano copper shows (geo-m: the arc's ground, D2-085; D2-064's rule).</summary>
+        public const byte Copper = 1, Iron = 2;
+        /// <summary>m: how far from a volcano copper shows (geo-m: the arc's ground, D2-085).</summary>
         public const double ArcReach = 2000.0;
-        /// <summary>Share of the crags near an arc that carry a copper body.</summary>
-        public const double CopperShare = 0.15;
+        /// <summary>Share of the crags near an arc that carry a copper body; of the wet flats that hold a bed of bog ore.</summary>
+        public const double CopperShare = 0.15, BogShare = 0.35;
+        /// <summary>m: a wet cell is flat when no land neighbour stands this much above or below it (water stands; iron settles out).</summary>
+        public const double BogFlat = 12.0;
         /// <summary>kg of workable ore a body holds: from this to that, evenly in its logarithm (keyed by its cell).</summary>
-        public const double OreMin = 1000.0, OreMax = 20000.0;
-        /// <summary>m: the farthest copper a village digs from home (worth a longer walk than stone).</summary>
+        public const double OreMin = 1000.0, OreMax = 20000.0, BogMin = 500.0, BogMax = 8000.0;
+        /// <summary>Years in which a dug-out bed of bog ore forms again (iron carried in by the water, settling out).</summary>
+        public const double BogRegrowYears = 40.0;
+        /// <summary>m: the farthest ore a village digs from home (worth a longer walk than stone).</summary>
         public const double Reach = 2000.0;
         /// <summary>m: how far round their site the founders of the first villages looked over the land.</summary>
         public const double FoundersLook = 1000.0;
-        /// <summary>kg of ore dug an hour at the face by a fit grown person (a load: picks, fire-setting, sorting).</summary>
+        /// <summary>kg of ore dug an hour at the face by a fit grown person (a load: picks, fire-setting, sorting; spades in a bog).</summary>
         public const double DigPerHour = 25.0;
         /// <summary>kg of ore a kilo of copper takes (a rich oxidised ore, smelted in a crucible or a small furnace).</summary>
         public const double OrePerKg = 5.0;
+        /// <summary>kg of bog ore a kilo of bar iron takes (the bloom a fifth of the ore, half of it lost forging it to a bar).</summary>
+        public const double FeOrePerKg = 8.0;
         /// <summary>kg of ore a village keeps ahead at most (what its smiths will smelt in a season or two).</summary>
-        public const double StoreMost = 1500.0;
+        public const double StoreMost = 1500.0, FeStoreMost = 3000.0;
+        /// <summary>Skill in a metal from which someone smelts it (the open hearth's rule, D2-064).</summary>
+        public const float Smelter = 0.3f;
+
+        // ---------------------------------------------------------------- a kind's fields
+
+        public static int CellOf(in Settlement s, byte kind) => kind == Iron ? s.FeCell : s.OreCell;
+        public static double DistOf(in Settlement s, byte kind) => kind == Iron ? s.FeDist : s.OreDist;
+        public static double OreIn(in Settlement s, byte kind) => kind == Iron ? s.FeOre : s.Ore;
+        public static double WantOf(in Settlement s, byte kind) => kind == Iron ? s.FeOreWant : s.OreWant;
+        public static long EventOf(in Settlement s, byte kind) => kind == Iron ? s.FeEvent : s.OreEvent;
+        static int MineOf(in Settlement s, byte kind) => kind == Iron ? s.FeMine : s.Mine;
+        public static byte MineKind(byte kind) => kind == Iron ? Structures.BogPits : Structures.Mine;
+
+        static void SetKnown(ref Settlement s, byte kind, int cell1, double dist)
+        {
+            if (kind == Iron) { s.FeCell = cell1; s.FeDist = (float)dist; } else { s.OreCell = cell1; s.OreDist = (float)dist; }
+        }
 
         // ---------------------------------------------------------------- the ground
 
@@ -104,20 +127,53 @@ namespace TC2.Core.Places
             return false;
         }
 
-        /// <summary>kg of ore the body at a cell held when first seen (keyed by the cell: the same body whoever finds it, whenever).</summary>
-        public static double OreOf(World w, int c)
+        /// <summary>m3 a day of water draining through a cell from which its ground is a brook's wet margin (a stream is 1,000).</summary>
+        public const double BrookFlow = 300.0;
+        /// <summary>The climate's moisture index from which flat ground lies waterlogged (fens, wet meadows).</summary>
+        public const double FenMoist = 0.7;
+
+        /// <summary>The ground lies wet on this cell: a lake, a brook or a stream draining through it, or a wet climate's fen - land under no ice.</summary>
+        static bool Wet(PlanetState P, int c) => P.IsLand(c) && P.Ice[c] < 0.5f && (P.LakeDepth[c] > 0.3f || P.RiverFlow[c] >= BrookFlow || P.Moist[c] >= FenMoist);
+
+        /// <summary>A bed of bog ore lies at this cell: water standing on flat ground, above the shore, in a share of such places.</summary>
+        public static bool BogAt(World w, int c)
         {
-            double u = KeyedRng.Unit(w.Seed, RngStream.Geology, (ulong)c, 2UL);
-            return DMath.Exp(DMath.Log(OreMin) + u * (DMath.Log(OreMax) - DMath.Log(OreMin)));
+            var P = w.Planet;
+            if (!Wet(P, c)) return false;
+            for (int k = 0; k < 4; k++)
+            {
+                int nb = P.Grid.Nbr4[c * 4 + k];
+                if (P.IsLand(nb) && DMath.Abs((double)P.Elev[nb] - P.Elev[c]) >= BogFlat) return false;
+            }
+            if (!Shore.Dry(P, P.Grid.Center[c])) return false;
+            return KeyedRng.Unit(w.Seed, RngStream.Geology, (ulong)c, 3UL) < BogShare;
         }
 
-        /// <summary>The kept deposit at a cell, made the first time anyone sees it (-1 when no copper lies there or it gave out).</summary>
-        static int Seen(World w, int sid, int c)
+        public static bool At(World w, int c, byte kind) => kind == Iron ? BogAt(w, c) : CopperAt(w, c);
+
+        /// <summary>kg of ore the body at a cell holds when first seen (keyed by the cell: the same body whoever finds it, whenever).</summary>
+        public static double OreOf(World w, int c, byte kind = Copper)
         {
-            int i = w.Deposits.IndexAt(c, Copper);
-            if (i >= 0) return w.Deposits.Get(i).GaveOut == 0 ? i : -1;
-            if (!CopperAt(w, c)) return -1;
-            return w.Deposits.Add(new Deposit { Id = w.Deposits.Count + 1, Cell = c, Kind = Copper, Ore = OreOf(w, c), Found = w.Now, By = sid });
+            double u = KeyedRng.Unit(w.Seed, RngStream.Geology, (ulong)c, kind == Iron ? 4UL : 2UL);
+            double lo = kind == Iron ? BogMin : OreMin, hi = kind == Iron ? BogMax : OreMax;
+            return DMath.Exp(DMath.Log(lo) + u * (DMath.Log(hi) - DMath.Log(lo)));
+        }
+
+        /// <summary>The kept deposit at a cell, made the first time anyone sees it (-1 when none lies there or it is dug out); a bed of
+        /// bog ore dug out forty years ago has formed again.</summary>
+        static int Seen(World w, int sid, int c, byte kind)
+        {
+            int i = w.Deposits.IndexAt(c, kind);
+            if (i >= 0)
+            {
+                ref var d = ref w.Deposits.At(i);
+                if (d.GaveOut == 0) return i;
+                if (kind != Iron || w.Now - d.GaveOut < DMath.ToLong(BogRegrowYears * SimTime.Year)) return -1;
+                d.Ore = OreOf(w, c, kind); d.GaveOut = 0;   // (formed again)
+                return i;
+            }
+            if (!At(w, c, kind)) return -1;
+            return w.Deposits.Add(new Deposit { Id = w.Deposits.Count + 1, Cell = c, Kind = kind, Ore = OreOf(w, c, kind), Found = w.Now, By = sid });
         }
 
         // ---------------------------------------------------------------- knowing it
@@ -126,90 +182,103 @@ namespace TC2.Core.Places
         public static int Known(in Settlement s) => s.OreCell - 1;
 
         /// <summary>
-        /// Someone of a village (0: its people at large) was at a cell and saw what shows there or beside it: copper within reach that is
-        /// nearer than the body the village knows is kept; the first is history.
+        /// Someone of a village (0: its people at large) was at a cell and saw what shows there or beside it: ore within reach that is nearer
+        /// than the body of its kind the village knows is kept; the first is history.
         /// </summary>
         public static void Saw(World w, int sid, int pid, int cell)
         {
             if (cell < 0 || !w.Settlements.Exists(sid)) return;
             var P = w.Planet;
-            ref var s = ref w.Settlements.Get(sid);
-            int best = -1; double bd = s.OreCell > 0 ? s.OreDist : Reach + 1;
-            for (int k = -1; k < 8; k++)
+            for (byte kind = Copper; kind <= Iron; kind++)
             {
-                int c = k < 0 ? cell : P.Grid.Nbr8[cell * 8 + k];
-                if (c + 1 == s.OreCell || !Stone.Outcrop(P, c)) continue;
-                double d = Vec3d.ArcDistance(s.Anchor, P.Grid.Center[c], P.Radius);
-                if (d >= bd - 1e-6) continue;
-                if (Seen(w, sid, c) < 0) continue;
-                bd = d; best = c;
+                ref var s = ref w.Settlements.Get(sid);
+                int known = CellOf(in s, kind);
+                int best = -1; double bd = known > 0 ? DistOf(in s, kind) : Reach + 1;
+                for (int k = -1; k < 8; k++)
+                {
+                    int c = k < 0 ? cell : P.Grid.Nbr8[cell * 8 + k];
+                    if (c + 1 == known) continue;
+                    if (kind == Copper ? !Stone.Outcrop(P, c) : !Wet(P, c)) continue;   // (the cheap part of the rule first)
+                    double d = Vec3d.ArcDistance(s.Anchor, P.Grid.Center[c], P.Radius);
+                    if (d >= bd - 1e-6) continue;
+                    if (Seen(w, sid, c, kind) < 0) continue;
+                    bd = d; best = c;
+                }
+                if (best >= 0) Know(w, sid, pid, best, bd, kind);
             }
-            if (best < 0) return;
-            Know(w, sid, pid, best, bd);
         }
 
-        static void Know(World w, int sid, int pid, int cell, double dist)
+        static void Know(World w, int sid, int pid, int cell, double dist, byte kind)
         {
             ref var s = ref w.Settlements.Get(sid);
-            bool first = s.OreCell == 0;   // (copper known again after a body gave out is history too; a nearer one found is not)
-            s.OreCell = cell + 1; s.OreDist = (float)dist;
+            bool first = CellOf(in s, kind) == 0;   // (ore known again after a body gave out is history too; a nearer one found is not)
+            SetKnown(ref s, kind, cell + 1, dist);
             if (!first) return;
             w.Metrics.OreFound++;
-            s.OreEvent = w.Record(new HistoryEvent
-                {
-                    Kind = HistoryKind.OreFound, Time = w.Now, Cell = cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
-                    Other = pid != 0 ? EntityRef.Person(pid) : default, ArgA = Copper, Magnitude = (float)dist, RootKind = RootKind.People,
-                });
+            long ev = w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.OreFound, Time = w.Now, Cell = cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
+                Other = pid != 0 ? EntityRef.Person(pid) : default, ArgA = kind, Magnitude = (float)dist, RootKind = RootKind.People,
+            });
+            ref var s2 = ref w.Settlements.Get(sid);
+            if (kind == Iron) s2.FeEvent = ev; else s2.OreEvent = ev;
         }
 
-        /// <summary>The founders of a first village looked over the land round their site (worldgen): the copper they saw there.</summary>
+        /// <summary>The founders of a first village looked over the land round their site (worldgen): the ore they saw there.</summary>
         public static void Look(World w, int sid)
         {
-            ref var s = ref w.Settlements.Get(sid);
             var near = new List<int>();
-            w.Hazards.CellsWithin(w, s.Cell, FoundersLook, near);
+            w.Hazards.CellsWithin(w, w.Settlements.Get(sid).Cell, FoundersLook, near);
             near.Sort();
-            int best = -1; double bd = Reach + 1;
-            for (int i = 0; i < near.Count; i++)
+            for (byte kind = Copper; kind <= Iron; kind++)
             {
-                double d = Vec3d.ArcDistance(s.Anchor, w.Planet.Grid.Center[near[i]], w.Planet.Radius);
-                if (d >= bd - 1e-6 || Seen(w, sid, near[i]) < 0) continue;
-                bd = d; best = near[i];
+                int best = -1; double bd = Reach + 1;
+                for (int i = 0; i < near.Count; i++)
+                {
+                    double d = Vec3d.ArcDistance(w.Settlements.Get(sid).Anchor, w.Planet.Grid.Center[near[i]], w.Planet.Radius);
+                    if (d >= bd - 1e-6 || Seen(w, sid, near[i], kind) < 0) continue;
+                    bd = d; best = near[i];
+                }
+                if (best >= 0) Know(w, sid, 0, best, bd, kind);
             }
-            if (best >= 0) Know(w, sid, 0, best, bd);
         }
 
         // ---------------------------------------------------------------- wanting it
 
         /// <summary>
-        /// kg of ore the village wants in store (read once a day): what its smiths need to bring its tools to their metal and its arms to what
-        /// it fears - while it knows copper and someone of it can smelt; 0 without.
+        /// kg of ore of a kind the village wants in store (read once a day): copper for its tools while iron does not yet serve them, iron for
+        /// its tools, and either for the arms it wants when it fears its neighbours (iron where its smiths can smelt it) - while it knows the ore
+        /// and someone of it can smelt it; 0 without.
         /// </summary>
-        public static double Want(World w, int sid)
+        public static double Want(World w, int sid, byte kind = Copper)
         {
             ref var s = ref w.Settlements.Get(sid);
-            if (s.OreCell == 0 || !s.Inhabited || s.BestMetal < Smelter) return 0;
-            double metal = DMath.Max(0.0, Knowledge.Tech.MetalPerHead * s.Population - s.Metal) + DMath.Max(0.0, Forge.ArmsWant(in s) - s.Arms) * Forge.ArmKg;
-            return DMath.Min(StoreMost, metal * OrePerKg);
+            if (CellOf(in s, kind) == 0 || !s.Inhabited) return 0;
+            if (kind == Iron)
+            {
+                if (s.BestIron < Smelter) return 0;
+                return DMath.Min(FeStoreMost, Forge.IronWanted(in s) * FeOrePerKg);
+            }
+            if (s.BestMetal < Smelter) return 0;
+            return DMath.Min(StoreMost, Forge.CopperWanted(in s) * OrePerKg);
         }
 
-        /// <summary>Skill in copper from which someone smelts (the open hearth's rule, D2-064).</summary>
-        public const float Smelter = 0.3f;
-
-        /// <summary>The village's standing mine (0 none).</summary>
-        public static int Mine(World w, int sid)
+        /// <summary>The village's standing mine of a kind (0 none).</summary>
+        public static int Mine(World w, int sid, byte kind = Copper)
         {
             ref var s = ref w.Settlements.Get(sid);
-            if (s.Mine != 0 && w.Buildings.Exists(s.Mine) && Structures.Working(in w.Buildings.Get(s.Mine), w.Now)) return s.Mine;
+            int m = MineOf(in s, kind);
+            if (m != 0 && w.Buildings.Exists(m) && Structures.Working(in w.Buildings.Get(m), w.Now)) return m;
             return 0;
         }
 
-        /// <summary>The village wants ore dug now: a mine stands and its store is short of what it wants.</summary>
-        public static bool Wanted(World w, in Settlement s, out int mine)
+        /// <summary>The village wants ore of a kind dug now: its mine stands and its store is short of what it wants.</summary>
+        public static bool Wanted(World w, in Settlement s, out int mine, byte kind = Copper)
         {
             mine = 0;
-            if (s.OreWant <= 0 || s.Ore >= s.OreWant) return false;
-            mine = Mine(w, s.Id);
+            double want = WantOf(in s, kind);
+            if (want <= 0 || OreIn(in s, kind) >= want) return false;
+            mine = Mine(w, s.Id, kind);
             return mine != 0;
         }
 
@@ -219,74 +288,83 @@ namespace TC2.Core.Places
         public static double DigRate(in Person p, double tools) => DigPerHour * (0.5 + 0.5 * p.Health) * tools;
 
         /// <summary>kg of ore an hour of mining brings home from the village's mine: every 25 kg load carried both ways (Stone's law).</summary>
-        public static double HourRate(World w, int sid, double r0, bool coarse)
+        public static double HourRate(World w, int sid, double r0, bool coarse, byte kind = Copper)
         {
             ref var s = ref w.Settlements.Get(sid);
-            double walk = w.Config.WalkSpeed, d = s.OreDist;
+            double walk = w.Config.WalkSpeed, d = DistOf(in s, kind);
             return Stone.Rate(r0 / Trade.LoadKg, d, walk) * Trade.LoadKg * (coarse ? Stone.AfterWalk(d, walk) : 1.0);
         }
 
         /// <summary>
-        /// Mining hours given at the village's mine: ore dug from the body (never more than it holds) and carried home into the village's store;
-        /// the body gives out when the last is dug; a lived stint stops at what the store still wants (`most`, others dig too). Returns kg.
+        /// Mining hours given at the village's mine of a kind: ore dug from the body (never more than it holds) and carried home into the
+        /// village's store; the body gives out when the last is dug; a lived stint stops at what the store still wants (`most`, others dig
+        /// too). Returns kg.
         /// </summary>
-        public static double Dig(World w, int sid, int mine, double hours, double r0, bool coarse, double most = double.MaxValue)
+        public static double Dig(World w, int sid, int mine, double hours, double r0, bool coarse, double most = double.MaxValue, byte kind = Copper)
         {
             if (hours <= 0 || mine == 0) return 0;
             ref var s = ref w.Settlements.Get(sid);
-            int di = w.Deposits.IndexAt(s.OreCell - 1, Copper);
+            int di = w.Deposits.IndexAt(CellOf(in s, kind) - 1, kind);
             if (di < 0) return 0;
             ref var d = ref w.Deposits.At(di);
-            double rate = HourRate(w, sid, r0, coarse);
+            double rate = HourRate(w, sid, r0, coarse, kind);
             double kg = DMath.Min(DMath.Min(hours * rate, d.Ore), most);
             if (kg <= 0 || rate <= 0) return 0;
             hours = DMath.Min(hours, kg / rate);
             d.Ore -= kg; d.Taken += kg;
-            s.Ore += kg;
+            if (kind == Iron) s.FeOre += kg; else s.Ore += kg;
             ref var m = ref w.Buildings.Get(mine);
             m.Stock = (float)(m.Stock + kg); m.Use = (float)(m.Use + hours);
             w.Metrics.OreDug += kg; w.Metrics.MineHours += hours;
+            if (kind == Iron) w.Metrics.BogOreDug += kg;
             if (d.Ore < 1.0) GaveOut(w, di, sid);
             return kg;
         }
 
         /// <summary>
         /// The last of a body is dug: history (under the village that dug it out), its mines are left, every village that knew it forgets it
-        /// (they look for copper again).
+        /// (they look for ore again).
         /// </summary>
         static void GaveOut(World w, int di, int sid)
         {
             ref var d = ref w.Deposits.At(di);
             d.Ore = 0; d.GaveOut = w.Now;
             w.Metrics.OreSpent++;
-            int cell = d.Cell; double taken = d.Taken;
-            long cause = w.Settlements.Get(sid).OreEvent;
+            int cell = d.Cell; double taken = d.Taken; byte kind = d.Kind;
+            ref var s0 = ref w.Settlements.Get(sid);
             w.Record(new HistoryEvent
             {
                 Kind = HistoryKind.OreGaveOut, Time = w.Now, Cell = cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
-                Object = new EntityRef(EntityKind.Building, w.Settlements.Get(sid).Mine), ArgA = Copper, Magnitude = (float)taken,
-                RootKind = RootKind.People, Cause1 = cause, Rel1 = CauseRel.CausedBy,
+                Object = new EntityRef(EntityKind.Building, MineOf(in s0, kind)), ArgA = kind, Magnitude = (float)taken,
+                RootKind = RootKind.People, Cause1 = EventOf(in s0, kind), Rel1 = CauseRel.CausedBy,
             });
             for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id))
             {
                 ref var s = ref w.Settlements.Get(id);
-                if (s.OreCell != cell + 1) continue;
-                s.OreCell = 0; s.OreDist = 0;
-                if (s.Mine != 0 && w.Buildings.Exists(s.Mine))
+                if (CellOf(in s, kind) != cell + 1) continue;
+                SetKnown(ref s, kind, 0, 0);
+                int m = MineOf(in s, kind);
+                if (m != 0 && w.Buildings.Exists(m))
                 {
-                    ref var m = ref w.Buildings.Get(s.Mine);
-                    if (m.Left == 0) m.Left = w.Now;
-                    Structures.Lost(w, s.Mine);
+                    ref var mb = ref w.Buildings.Get(m);
+                    if (mb.Left == 0) mb.Left = w.Now;
+                    Structures.Lost(w, m);
                 }
             }
         }
 
         // ---------------------------------------------------------------- smelting it
 
-        /// <summary>kg of copper the village's ore in store will make.</summary>
+        /// <summary>kg of copper the village's copper ore in store will make.</summary>
         public static double MetalIn(in Settlement s) => s.Ore / OrePerKg;
 
-        /// <summary>Ore smelted into kg of copper: taken from the store.</summary>
+        /// <summary>Copper ore smelted into kg of copper: taken from the store.</summary>
         public static void Smelt(ref Settlement s, double kg) { s.Ore = DMath.Max(0.0, s.Ore - kg * OrePerKg); }
+
+        /// <summary>kg of bar iron the village's bog ore in store will make.</summary>
+        public static double IronIn(in Settlement s) => s.FeOre / FeOrePerKg;
+
+        /// <summary>Bog ore smelted into kg of iron: taken from the store.</summary>
+        public static void SmeltIron(ref Settlement s, double kg) { s.FeOre = DMath.Max(0.0, s.FeOre - kg * FeOrePerKg); }
     }
 }

@@ -105,7 +105,7 @@ namespace TC2.Core.Knowledge
             var res = w.Residents(sid);
             for (int t = 0; t < Tech.Count; t++)
             {
-                double chance = t == Tech.Nets ? nets : t == Tech.Loom ? loom : t == Tech.Quern ? quern : t == Tech.Pottery ? pottery : t == Tech.Ard ? ard : metal;
+                double chance = t == Tech.Nets ? nets : t == Tech.Loom ? loom : t == Tech.Quern ? quern : t == Tech.Pottery ? pottery : t == Tech.Ard ? ard : t == Tech.Metal ? metal : 0.0;   // (nobody begins knowing the bloomery: C5.2b)
                 if (KeyedRng.Unit(seed, RngStream.Knowledge, (ulong)sid, 7000UL + (ulong)t) >= chance) continue;
                 double best = 0;
                 for (int i = 0; i < res.Count; i++)
@@ -127,11 +127,11 @@ namespace TC2.Core.Knowledge
         {
             float f = (float)v;
             if (t == Tech.Nets) s.BestNets = f; else if (t == Tech.Loom) s.BestLoom = f; else if (t == Tech.Quern) s.BestQuern = f;
-            else if (t == Tech.Pottery) s.BestPottery = f; else if (t == Tech.Ard) s.BestArd = f; else s.BestMetal = f;
+            else if (t == Tech.Pottery) s.BestPottery = f; else if (t == Tech.Ard) s.BestArd = f; else if (t == Tech.Metal) s.BestMetal = f; else s.BestIron = f;
         }
 
         public static double Best(in Settlement s, int t) =>
-            t == Tech.Nets ? s.BestNets : t == Tech.Loom ? s.BestLoom : t == Tech.Quern ? s.BestQuern : t == Tech.Pottery ? s.BestPottery : t == Tech.Ard ? s.BestArd : s.BestMetal;
+            t == Tech.Nets ? s.BestNets : t == Tech.Loom ? s.BestLoom : t == Tech.Quern ? s.BestQuern : t == Tech.Pottery ? s.BestPottery : t == Tech.Ard ? s.BestArd : t == Tech.Metal ? s.BestMetal : s.BestIron;
 
         /// <summary>
         /// Hours of a person's work that belongs to a technique (fishing to nets, making and mending to the loom, grinding to the
@@ -148,6 +148,8 @@ namespace TC2.Core.Knowledge
             if (t == Tech.Ard && !w.Stock.HasOx(p.Household)) return;   // an ard wants an ox to draw it
             // copper wants ore near (D2-064), and a potter's furnace and crucible: a technique that needs a technique
             if (t == Tech.Metal && (s.OreCell == 0 || p.KPottery < Tech.Competent)) return;   // (copper its people have seen: C5.1)
+            // the bloomery wants a copper smith's furnace and bellows, and bog ore its people have seen (C5.2b)
+            if (t == Tech.Iron && (s.FeCell == 0 || p.KMetal < Tech.Competent)) return;
             double chance = Tech.Laws[t].Discover * hours * (0.5 + p.Curious / 255.0);
             double u = KeyedRng.Unit(w.Seed, RngStream.Knowledge, (ulong)p.Id, (ulong)w.Now, (ulong)t);
             if (u >= chance) return;

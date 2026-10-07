@@ -13,7 +13,7 @@ namespace TC2.Core.Knowledge
     /// </summary>
     public static class Tech
     {
-        public const int Nets = 0, Loom = 1, Quern = 2, Pottery = 3, Ard = 4, Metal = 5, Count = 6;
+        public const int Nets = 0, Loom = 1, Quern = 2, Pottery = 3, Ard = 4, Metal = 5, Iron = 6, Count = 7;
 
         public struct Law
         {
@@ -38,6 +38,9 @@ namespace TC2.Core.Knowledge
             // smelting copper and working it: complex, kept by ~40 learners; found by potters (furnaces, crucibles) who make where
             // copper ore shows near a volcano's ground (D2-064)
             new Law { Name = "smelt copper and work it", Now = "smelt and work copper", Alpha = 0.28, Beta = 0.065, Discover = 3e-7 },
+            // the bloomery: smelting bog ore into a bloom and forging it to a bar - complex, kept by ~60 learners; found at a smithy by a
+            // copper smith whose village has seen bog ore (C5.2b, D2-102)
+            new Law { Name = "smelt iron in a bloomery and forge it", Now = "smelt and forge iron", Alpha = 0.30, Beta = 0.065, Discover = 2e-5 },
         };
 
         /// <summary>Proficiency at which a person counts as a practitioner, and a village as knowing the technique.</summary>
@@ -49,13 +52,13 @@ namespace TC2.Core.Knowledge
         /// <summary>What someone who first finds a technique knows of it.</summary>
         public const double FirstFound = 0.4;
 
-        public static float Get(in Person p, int t) => t == Nets ? p.KNets : t == Loom ? p.KLoom : t == Quern ? p.KQuern : t == Pottery ? p.KPottery : t == Ard ? p.KArd : p.KMetal;
+        public static float Get(in Person p, int t) => t == Nets ? p.KNets : t == Loom ? p.KLoom : t == Quern ? p.KQuern : t == Pottery ? p.KPottery : t == Ard ? p.KArd : t == Metal ? p.KMetal : p.KIron;
 
         public static void Set(ref Person p, int t, double v)
         {
             float f = (float)DMath.Clamp01(v);
             if (t == Nets) p.KNets = f; else if (t == Loom) p.KLoom = f; else if (t == Quern) p.KQuern = f; else if (t == Pottery) p.KPottery = f;
-            else if (t == Ard) p.KArd = f; else p.KMetal = f;
+            else if (t == Ard) p.KArd = f; else if (t == Metal) p.KMetal = f; else p.KIron = f;
         }
 
         /// <summary>A person's own scatter in copying a technique: a standard Gumbel draw fixed by their id (Henrich's epsilon).</summary>
@@ -96,6 +99,36 @@ namespace TC2.Core.Knowledge
 
         /// <summary>Kg of metal an hour at the furnace and the anvil brings, by the smith's proficiency (D2-064).</summary>
         public static double MetalPerHour(in Person p) => 0.08 * p.KMetal;
+
+        /// <summary>Kg of iron tools a person's toolkit holds (a knife, a sickle, an axe, a spade's shoe, the ard's share, nails: C5.2b).</summary>
+        public const double IronPerHead = 2.0;
+
+        /// <summary>The share of its people a village's iron can equip.</summary>
+        public static double IronShare(in Places.Settlement s) => s.Population > 0 ? DMath.Clamp01(s.Iron / (IronPerHead * s.Population)) : 0.0;
+
+        /// <summary>kg of copper tools the village still wants: what iron does not yet serve.</summary>
+        public static double CopperWanted(in Places.Settlement s) => DMath.Max(0.0, MetalPerHead * s.Population * (1.0 - IronShare(in s)) - s.Metal);
+
+        /// <summary>The share of its people with metal tools of either kind.</summary>
+        public static double ToolShare(in Places.Settlement s) => DMath.Max(MetalShare(s.Metal, s.Population), IronShare(in s));
+
+        /// <summary>The pace of hands with the village's tools: copper up to 1.25 times (D2-064), iron - harder edges - up to 1.4 times, replacing it.</summary>
+        public static double ToolPace(in Places.Settlement s)
+        {
+            double cu = MetalShare(s.Metal, s.Population), fe = IronShare(in s);
+            return 1.0 + 0.25 * cu * (1.0 - fe) + 0.4 * fe;
+        }
+
+        /// <summary>Goods wear slower with metal tools: copper down to 0.75 of the wear, iron to 0.6.</summary>
+        public static double ToolWear(in Places.Settlement s)
+        {
+            double cu = MetalShare(s.Metal, s.Population), fe = IronShare(in s);
+            return 1.0 - 0.25 * cu * (1.0 - fe) - 0.4 * fe;
+        }
+
+        /// <summary>Kg of bar iron an hour at a bloomery and the anvil, by the smith's proficiency (a smelt a day of a few kilos of bloom,
+        /// half of it lost forging it to a bar; at a smithy twice this: C5.2b).</summary>
+        public static double IronPerHour(in Person p) => 0.03 * p.KIron;
 
         // (the charcoal a kilo of metal burns: `Places.Charcoal.PerKg`, made at the village's charcoal hearth since C5.2a)
 

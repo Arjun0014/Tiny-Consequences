@@ -359,14 +359,15 @@ namespace TC2.Core.Society
             var w = _w;
             double age = q.AgeYears(w.Now);
             double years = age < 18 ? 0.8 : age < 45 ? 1.0 : age < 60 ? 0.8 : 0.6;
-            double armed = 0.0, arms = 0.0;
+            double armed = 0.0, arms = 0.0, iron = 0.0;
             if (w.Settlements.Exists(q.Home))
             {
                 ref var hs = ref w.Settlements.Get(q.Home);
-                armed = Knowledge.Tech.MetalShare(hs.Metal, hs.Population);
+                armed = Knowledge.Tech.ToolShare(in hs);
                 arms = hs.Population > 0 ? DMath.Clamp01(hs.Arms / (Places.Forge.ArmsPerHead * hs.Population)) : 0.0;   // (a spear or an axe for its fighters: C1.4)
+                iron = hs.Population > 0 ? DMath.Clamp01(hs.IronArms / (Places.Forge.ArmsPerHead * hs.Population)) : 0.0;   // (of iron: C5.2b)
             }
-            return (double)q.Health * years * (1.0 - (double)q.Hurt) * (1.0 + 0.3 * armed) * (1.0 + 0.3 * arms) * (1.0 + 0.6 * (double)q.SkFight);   // (trained: C1.5)
+            return (double)q.Health * years * (1.0 - (double)q.Hurt) * (1.0 + 0.3 * armed) * (1.0 + 0.3 * arms) * (1.0 + 0.15 * iron) * (1.0 + 0.6 * (double)q.SkFight);   // (trained: C1.5; iron: C5.2b)
         }
 
         /// <summary>The neighbours who come running at a shout: a third of the homes round the store, at most three.</summary>

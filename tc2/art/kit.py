@@ -706,6 +706,27 @@ def charcoal_clamp(name, seed=68):
     return k.finish()
 
 
+def bog_pits(name, seed=69):
+    """Bog-ore pits (C5.2b): shallow pits cut in wet ground with brown water standing in them, the turf stacked aside, a heap of
+    rust-red ore lumps drying on a floor of boards, and a roasting fire of logs to drive the water off before the bloomery."""
+    k = Kit(name, seed)
+    WATER, TURF, RUST = srgb(0.20, 0.17, 0.10), srgb(0.32, 0.38, 0.20), srgb(0.55, 0.27, 0.14)
+    k.cyl((0, 0, 0), 4.0, 4.0, 0.05, srgb(0.30, 0.26, 0.18), seg=12)              # the trodden wet ground
+    for i, (x, y, r) in enumerate(((-1.4, 0.8, 0.9), (0.6, 1.3, 0.75), (1.2, -0.6, 0.85), (-0.6, -1.3, 0.7))):
+        k.cyl((x, y, 0.02), r, r * 0.9, 0.06, WATER, seg=9)                          # pits with water standing in them
+    for i in range(5):                                                              # turf cut and stacked
+        k.box((2.8, -2.0 + i * 0.5, 0.2), (0.7, 0.4, 0.4), TURF, rot_z=0.1 * i, bevel=0.02)
+    k.box((-2.6, -1.8, 0.06), (1.8, 1.2, 0.1), srgb(0.48, 0.36, 0.24))               # boards
+    for i in range(12):                                                             # ore lumps drying
+        k.blob((-2.6 + k.rng.uniform(-0.7, 0.7), -1.8 + k.rng.uniform(-0.45, 0.45), 0.24), 0.15 + 0.05 * (i % 3), RUST, jitter=0.3, squash=0.7)
+    for i in range(4):                                                              # the roasting fire's logs
+        a = i * 0.8
+        k.limb((-2.2 + math.cos(a) * 0.5, 2.0 + math.sin(a) * 0.5, 0.12), (-2.2 - math.cos(a) * 0.5, 2.0 - math.sin(a) * 0.5, 0.12), 0.1, 0.1, srgb(0.36, 0.26, 0.17))
+    k.blob((-2.2, 2.0, 0.2), 0.35, RUST, jitter=0.2, squash=0.5)
+    k.limb((1.8, 2.2, 0.0), (2.2, 1.9, 1.3), 0.035, 0.035, TIMBER)                 # a spade
+    return k.finish()
+
+
 def stone_pile(name, seed=64):
     """Stone carried home and stacked (C1.3): a low heap of rough blocks."""
     k = Kit(name, seed)
@@ -800,6 +821,7 @@ def build_all():
     objs.append(stone_pile("stone_pile"))
     objs.append(mine_pit("mine_pit"))
     objs.append(charcoal_clamp("charcoal_clamp"))
+    objs.append(bog_pits("bog_pits"))
     objs.append(training_ground("training_ground"))
     objs.append(market_stalls("market_stalls"))
     objs.append(grass_tuft("grass_tuft", 31))

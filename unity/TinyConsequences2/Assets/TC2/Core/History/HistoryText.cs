@@ -95,9 +95,10 @@ namespace TC2.Core.History
                 case HistoryKind.ArmsMade:
                     return subj + " began to forge arms at the smithy of " + obj + (e.ArgA == 1 ? " from the ore they smelt" : ", reforging its tools") + ": " + obj + " fears its neighbours.";
                 case HistoryKind.OreFound:
-                    return (e.Other.IsNone ? "The people of " + subj : other + " of " + subj) + " saw copper ore - green stone - showing " + F(e.Magnitude / 1000.0, "0.0") + " km from " + subj + ".";
+                    return (e.Other.IsNone ? "The people of " + subj : other + " of " + subj) + (e.ArgA == TC2.Core.Places.Mining.Iron ? " saw bog iron ore - rust-red lumps where water stands - " : " saw copper ore - green stone - showing ")
+                         + F(e.Magnitude / 1000.0, "0.0") + " km from " + subj + ".";
                 case HistoryKind.OreGaveOut:
-                    return "The copper at " + subj + "'s mine gave out: " + (e.Magnitude >= 1000f ? F(e.Magnitude / 1000.0, "0.0") + " t" : F(e.Magnitude, "0") + " kg") + " of ore had been dug from it.";
+                    return (e.ArgA == TC2.Core.Places.Mining.Iron ? "The bog ore at " + subj + "'s pits was dug out: " : "The copper at " + subj + "'s mine gave out: ") + (e.Magnitude >= 1000f ? F(e.Magnitude / 1000.0, "0.0") + " t" : F(e.Magnitude, "0") + " kg") + " of ore had been dug from it.";
                 case HistoryKind.StoneFound:
                     return (e.Other.IsNone ? "The people of " + subj : other + " of " + subj) + " saw rock fit for building " + F(e.Magnitude / 1000.0, "0.0") + " km from " + subj + ".";
                 case HistoryKind.WoodsReceded:
@@ -234,7 +235,7 @@ namespace TC2.Core.History
                 case ActivityKind.Smith:
                     return "at " + home + "'s smithy, " + (w.Settlements.Exists(p.Home) && w.Settlements.Get(p.Home).Arms < TC2.Core.Places.Forge.ArmsWant(w.Settlements.Get(p.Home)) ? "forging arms: " + home + " fears its neighbours" : "smelting and working metal for the village's tools");
                 case ActivityKind.Burn: return "burning charcoal at " + home + "'s hearth by the woodlot: its smiths want charcoal to smelt";
-                case ActivityKind.Mine: return "digging copper ore at " + home + "'s mine and carrying it home: its smiths want ore for tools and arms";
+                case ActivityKind.Mine: return p.Why == WhyCode.BogOre ? "digging bog iron ore at " + home + "'s pits and carrying it home: its smiths want iron" : "digging copper ore at " + home + "'s mine and carrying it home: its smiths want ore for tools and arms";
                 case ActivityKind.Quarry: return "cutting stone at " + home + "'s quarry and carrying it home: the village wants stone for its houses' footings";
                 case ActivityKind.Scout: return "gone to look at the land beyond: " + home + " is crowded or hungry and knows no good place";
                 case ActivityKind.Move: return "walking with the household to a new home" + (dest.Length > 0 ? " at " + dest : "");
@@ -254,6 +255,7 @@ namespace TC2.Core.History
             if (kind == TC2.Core.Places.Structures.Ground) return "a training ground: they fear their neighbours";
             if (kind == TC2.Core.Places.Structures.Smithy) return "a smithy: they have a smith and use for metal";
             if (kind == TC2.Core.Places.Structures.CharHearth) return "a charcoal hearth at the woodlot: charcoal for their smiths";
+            if (kind == TC2.Core.Places.Structures.BogPits) return "pits at the bog ore they found: ore for the bloomery";
             if (kind == TC2.Core.Places.Structures.Mine) return "a mine at the copper they found: ore for their smiths";
             if (kind == TC2.Core.Places.Structures.Quarry) return "a quarry at the rock they found: stone for their houses' footings";
             return "a " + TC2.Core.Places.Structures.Name(kind);

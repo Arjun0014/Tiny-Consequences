@@ -68,6 +68,7 @@ namespace TC2.Game
             _works[Structures.Quarry] = new Instancer(Models.Get("quarry_face", ProcMeshes.Granary), _mat, true);
             _works[Structures.Mine] = new Instancer(Models.Get("mine_pit", ProcMeshes.Granary), _mat, true);
             _works[Structures.CharHearth] = new Instancer(Models.Get("charcoal_clamp", ProcMeshes.Granary), _mat, true);
+            _works[Structures.BogPits] = new Instancer(Models.Get("bog_pits", ProcMeshes.Granary), _mat, true);
             _works[Structures.Ground] = new Instancer(Models.Get("training_ground", ProcMeshes.Granary), _mat, true);
             _works[Structures.Market] = new Instancer(Models.Get("market_stalls", ProcMeshes.Granary), _mat, true);
             _hay = new Instancer(Models.Get("haystack", ProcMeshes.Granary), _mat, true);
@@ -463,6 +464,7 @@ namespace TC2.Game
                     _smoke.Add(new Vector4(top.x, top.y, top.z, 1.6f));
                 }
             }
+            if (b.Kind == Structures.BogPits) m = m * Matrix4x4.Scale(new Vector3(1.4f, 1.4f, 1.4f));   // (larger than life, as the mine: C5.2b)
             if (b.Kind == Structures.Mine)
             {
                 // the spoil heap and the workings grow with the ore dug (C5.1: kg carried out of the ground)

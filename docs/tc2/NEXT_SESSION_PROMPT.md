@@ -111,7 +111,8 @@ arms forged only at a smithy by villages that fear their neighbours, fighting sk
 traders, rings on dry ground; building page in the HUD. Since: C4.1 roads by use (D2-097), C7.1 rings that grow (D2-098), C12.1 the
 person page (D2-099: `Core/History/Biography`, the HUD's Life page, headless `person`), C5.1 copper from the ground (D2-100: finite ore
 bodies seen, mined, carried and dug out - `Core/Places/Mining.cs`), C5.2a charcoal (D2-101: burnt at a hearth by the woodlot from real
-forest; smelting burns it). Next: C5.2b iron, C5.3 distant work and the mining hamlet, C5.4 claims
+forest; smelting burns it), C5.2b iron (D2-102: bog ore, the bloomery found by copper smiths, iron tools and arms; a COARSE smith's labour
+day). Next: C5.3 distant work and the work hamlet, C5.4 claims
 (SESSION_HANDOFF "Next").
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy

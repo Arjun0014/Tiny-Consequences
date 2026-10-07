@@ -494,10 +494,11 @@ namespace TC2.Core.Agents
                 case ActivityKind.Mine:
                     if (p.At != 0 && p.At == p.Home && hours > 0)
                     {
-                        // ore dug at the village's mine and carried home, a load at a time (C5.1)
-                        int mid = Mining.Mine(w, p.At);
+                        // ore dug at the village's mine - or bog ore at its pits - and carried home, a load at a time (C5.1, C5.2b)
+                        byte mk = p.Why == WhyCode.BogOre ? Mining.Iron : Mining.Copper;
+                        int mid = Mining.Mine(w, p.At, mk);
                         ref var ms = ref w.Settlements.Get(p.At);
-                        if (mid != 0) Mining.Dig(w, p.At, mid, hours, Mining.DigRate(in p, Tools(p.Household)), false, DMath.Max(0.0, (double)ms.OreWant - ms.Ore));
+                        if (mid != 0) Mining.Dig(w, p.At, mid, hours, Mining.DigRate(in p, Tools(p.Household)), false, DMath.Max(0.0, Mining.WantOf(in ms, mk) - Mining.OreIn(in ms, mk)), mk);
                     }
                     break;
                 case ActivityKind.Quarry:
@@ -568,7 +569,7 @@ namespace TC2.Core.Agents
             if (!w.Households.Exists(hid)) return 1.0;
             ref var hh = ref w.Households.Get(hid);
             double metal = 1.0;
-            if (w.Settlements.Exists(hh.Settlement)) { ref var s = ref w.Settlements.Get(hh.Settlement); metal = Knowledge.Tech.MetalPace(Knowledge.Tech.MetalShare(s.Metal, s.Population)); }
+            if (w.Settlements.Exists(hh.Settlement)) { ref var s = ref w.Settlements.Get(hh.Settlement); metal = Knowledge.Tech.ToolPace(in s); }
             return Goods.WorkFactor(Goods.Condition(hh.Gear, w.Members(hid).Count)) * metal;
         }
 
@@ -583,13 +584,13 @@ namespace TC2.Core.Agents
             if (hours <= 0 || p.KMetal < 0.3f || p.Home == 0 || !w.Settlements.Exists(p.Home)) return hours;
             if (Forge.Smithy(w, p.Home) != 0) return hours;   // (with a smithy the smith works there, not at the open hearth: C1.4)
             ref var s = ref w.Settlements.Get(p.Home);
-            if (Knowledge.Tech.MetalShare(s.Metal, s.Population) >= 1.0 || Mining.MetalIn(in s) <= 1e-6 || s.Charcoal <= 1e-6) return hours;   // (ore dug and carried home, charcoal burnt: C5.1, C5.2a)
+            if (Knowledge.Tech.CopperWanted(in s) <= 0 || Mining.MetalIn(in s) <= 1e-6 || s.Charcoal <= 1e-6) return hours;   // (ore dug and carried home, charcoal burnt: C5.1, C5.2a)
             double h = 0.5 * hours;
             double kg = Knowledge.Tech.MetalPerHour(in p) * h;
             if (days > 1)
             {
                 // (DEEP: days lived stop smelting the day the village has its metal - a step smelted all its days past it: F8)
-                double most = DMath.Max(0.0, Knowledge.Tech.MetalPerHead * s.Population - s.Metal) + kg / days;
+                double most = Knowledge.Tech.CopperWanted(in s) + kg / days;
                 if (kg > most) { h *= most / kg; kg = most; }
             }
             double can = DMath.Min(Mining.MetalIn(in s), Charcoal.MetalFrom(in s, 1.0));
@@ -935,7 +936,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying, 15 the smithy, 16 practice, 17 mining, 18 charcoal
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying, 15 the smithy, 16 practice, 17 mining, 18 charcoal, 19 bog ore
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -984,6 +985,13 @@ namespace TC2.Core.Agents
                 // the village's smiths want ore and its mine stands (C5.1): dig it and carry it home - wanted as a village work is
                 double u = (0.3 + 0.2 * DMath.Clamp01(1.0 - here.Ore / DMath.Max(1.0, (double)here.OreWant))) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
                 if (u > best) { best = u; choice = 17; }
+            }
+            int bog = 0;
+            if (day && atHome && lsec < 14 * SimTime.Hour && age >= 16 && age < 60 && p.Health > 0.6 && Mining.Wanted(w, in here, out bog, Mining.Iron))
+            {
+                // the village's smiths want bog ore and its pits stand (C5.2b): dig it and carry it home - wanted as a village work is
+                double u = (0.3 + 0.2 * DMath.Clamp01(1.0 - here.FeOre / DMath.Max(1.0, (double)here.FeOreWant))) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
+                if (u > best) { best = u; choice = 19; }
             }
             int hearth = 0;
             if (day && atHome && lsec < 14 * SimTime.Hour && age >= 16 && age < 60 && p.Health > 0.6 && Charcoal.Wanted(w, in here, out hearth))
@@ -1115,6 +1123,14 @@ namespace TC2.Core.Agents
                     {
                         ref var sb = ref w.Buildings.Get(smithy);
                         BeginLocal(ref p, ActivityKind.Smith, WhyCode.Forge, 0, sb.X + rs.Range(-2, 2), sb.Y + rs.Range(-2, 2), SimTime.Hours(3.0 + 1.5 * rs.NextUnit()));
+                        return;
+                    }
+                case 19:
+                    {
+                        ref var bb = ref w.Buildings.Get(bog);
+                        // (a stint as long as the ore still wanted takes, half an hour at least)
+                        double need = DMath.Max(0.0, (double)here.FeOreWant - here.FeOre) / DMath.Max(1.0, Mining.HourRate(w, here.Id, Mining.DigRate(in p, Tools(p.Household)), false, Mining.Iron));
+                        BeginLocal(ref p, ActivityKind.Mine, WhyCode.BogOre, 0, bb.X + rs.Range(-5, 5), bb.Y + rs.Range(-5, 5), SimTime.Hours(DMath.Clamp(need, 0.5, 3.0 + 1.5 * rs.NextUnit())));
                         return;
                     }
                 case 18:
@@ -1559,6 +1575,16 @@ namespace TC2.Core.Agents
                 if (_chore.TryGetValue(p.Id, out double chore)) hours = DMath.Max(0.0, hours - chore);   // the household's own work (D2-056)
                 double day0 = hours;
                 if (Hours != null) { Hours[6] += day0; Hours[7] += days; }
+                double smithExtra = 0;
+                if (hours > 0 && Forge.Wanted(w, in s, in p, out int fid))
+                {
+                    // a smith with work at the village's smithy (C1.4): their labour day there, less the household's own work, before the
+                    // village's shared field work - a lived smith works full days at the forge while it has work and the others farm
+                    // (measured: a lived iron smith ~7.4 h a day, a COARSE one given 0.6 of the free hours 2.6: C5.2b)
+                    double give = DMath.Max(hours, LabourDay * (age > 60 ? 0.85 : 1.0) * days - chore);
+                    double used = Forge.Work(w, ref p, sid, fid, give, days);
+                    if (used > hours) { smithExtra = used - hours; hours = 0; } else hours -= used;
+                }
                 if (fuelWanted > 0 && hours > 0)
                 {
                     // (C1.2: at the woodlot's distance, the walk out once a stint and every load home - felled from its woods)
@@ -1655,12 +1681,6 @@ namespace TC2.Core.Agents
                     double h = DMath.Min(hours, Training.Session * n);
                     if (h > 0) { Training.Practise(w, ref p, sid, gid, h); hours -= h; }
                 }
-                if (hours > 0 && Forge.Wanted(w, in s, in p, out int fid))
-                {
-                    // a smith with work at the village's smithy (C1.4): most of their free hours there, as a lived day's craft
-                    double used = Forge.Work(w, ref p, sid, fid, hours * 0.6, days);
-                    hours -= used;
-                }
                 if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Stone.Wanted(w, in s, out int qid))
                 {
                     // the village wants stone and its quarry stands (C1.3): cut and carry it in the free hours, up to what it wants
@@ -1680,6 +1700,17 @@ namespace TC2.Core.Agents
                     {
                         double h = DMath.Min(hours * 0.5, (s.OreWant - s.Ore) / rate);
                         Mining.Dig(w, sid, mid, h, r0, true);
+                        hours -= h;
+                    }
+                }
+                if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Mining.Wanted(w, in s, out int bid2, Mining.Iron))
+                {
+                    // the village's smiths want bog ore and its pits stand (C5.2b): dig and carry it in the free hours, up to what they want
+                    double r0 = Mining.DigRate(in p, tools), rate = Mining.HourRate(w, sid, r0, true, Mining.Iron);
+                    if (rate > 0)
+                    {
+                        double h = DMath.Min(hours * 0.5, (s.FeOreWant - s.FeOre) / rate);
+                        Mining.Dig(w, sid, bid2, h, r0, true, double.MaxValue, Mining.Iron);
                         hours -= h;
                     }
                 }
@@ -1704,7 +1735,7 @@ namespace TC2.Core.Agents
                 }
                 // making and mending in the rest of a day's labour - the day's slack and the evening by the fire - as a lived day
                 // fills it (D2-058)
-                double worked = chore + (_tendBy.Contains(p.Id) ? TendStint * days : 0.0) + (day0 - hours);
+                double worked = chore + (_tendBy.Contains(p.Id) ? TendStint * days : 0.0) + (day0 - hours) + smithExtra;
                 prof?.Begin(10020); CoarseCraft(ref p, age, DMath.Max(0.0, LabourDay * (age > 60 ? 0.85 : 1.0) * days - worked), 1.0, days); prof?.End(10020);
             }
         }

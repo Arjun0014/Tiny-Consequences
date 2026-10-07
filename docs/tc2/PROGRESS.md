@@ -42,8 +42,10 @@
   home, smelting takes 5 kg of ore a kilo, bodies give out; tuned from "every village knows copper" to seed 42 12 of 19 (7 bodies dug out in
   300 years), seed 7 7 of 9; 220 tests; shots `mine1`, `mine2`. **C5.2a charcoal done (D2-101)**: a hearth at the woodlot (following the
   woods), burners felling real forest, 5 kg a load, clamps smouldering; smelting burns charcoal (none, no copper); seed 42: 14 hearths, 21.9 t
-  from 109 t of wood; 225 tests; shots `char1`. **Next: C5.2b iron** (bog ore, bloomery), C5.3 distant work and the mining hamlet, C5.4
-  claims (`25` C5 plan).
+  from 109 t of wood; 225 tests; shots `char1`. **C5.2b iron done (D2-102)**: bog ore on wet flats (forming again in 40 years), pits, the
+  bloomery found by copper smiths, 8 kg ore + 15 kg charcoal a kilo, iron tools (2 kg a head, 1.4x) replacing copper, iron arms 1.15x; a
+  COARSE smith now works a labour day at the forge (year parity); seed 7: 12.3 t of iron, iron tools for 61 %; 232 tests; shots `iron1`.
+  **Next: C5.3 distant work** (smelting at a far bed or the woods, stints with a camp, a work hamlet), C5.4 claims (`25` C5 plan).
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

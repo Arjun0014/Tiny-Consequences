@@ -85,4 +85,8 @@ their users. Stores rot by kind (grain 0.3 % a day kept well, D2-042; pottery sl
   villages know copper, 7 of 23 bodies seen dug out, 64 t dug. Not yet: iron and bog ore, smelting at the mine, ore traded, claims.
 - **Charcoal (C5.2a, D2-101)**: `Core/Places/Charcoal.cs` - a hearth at the woodlot (the next at the woods when they recede), burners felling
   by the woods' law and burning 5 kg a load, the clamp smouldering three days, 2 kg a kilo of copper (0.75 of that at a smithy); smelting
-  stops without it. Seed 42, 300 years: 21.9 t of charcoal from 109 t of wood. Not yet: charcoal traded; iron's appetite (C5.2b).
+  stops without it. Seed 42, 300 years: 21.9 t of charcoal from 109 t of wood. Not yet: charcoal traded.
+- **Bog iron and the bloomery (C5.2b, D2-102)**: beds on wet flats (lakes, brooks, fens; 35 %, 0.5-8 t, forming again in 40 years), pits
+  at the bed, the bloomery found at a smithy by copper smiths who have seen bog ore, 8 kg of ore and 15 kg of charcoal a kilo, 2 kg of iron
+  tools a head (1.4x hands, replacing copper), iron arms 1.15x. Seed 7, 300 years: 12.3 t of iron, iron tools for 61 % of the people,
+  charcoal 199 t from 994 t of wood. Not yet: smelting at the bed or the woods (C5.3), iron and charcoal traded, ironstone in old crust.

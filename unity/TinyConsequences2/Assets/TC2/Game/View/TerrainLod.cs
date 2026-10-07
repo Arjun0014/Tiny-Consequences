@@ -935,10 +935,10 @@ namespace TC2.Game
                 for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
                 {
                     ref var st = ref w.Settlements.Get(sid);
-                    for (int k = 0; k < 2; k++)
+                    for (int k = 0; k < 3; k++)
                     {
-                        // the ground broken at a quarry and at a mine (C1.3, C5.1)
-                        int site = k == 0 ? st.Quarry : st.Mine;
+                        // the ground broken at a quarry, a mine and bog-ore pits (C1.3, C5.1, C5.2b)
+                        int site = k == 0 ? st.Quarry : k == 1 ? st.Mine : st.FeMine;
                         if (site == 0 || !w.Buildings.Exists(site)) continue;
                         ref var qb = ref w.Buildings.Get(site);
                         Vec3d at = st.LocalToSphere(qb.X, qb.Y, P.Radius);
