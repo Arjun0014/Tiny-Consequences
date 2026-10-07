@@ -5,87 +5,93 @@ using UnityEngine.Rendering;
 namespace TC2.Game
 {
     /// <summary>
-    /// GPU-instanced drawing of one mesh in colour groups (one draw per group of up to 1,023 instances),
-    /// using Graphics.RenderMeshInstanced - available on WebGL2 and WebGPU (no BRG / Entities Graphics on the Web).
+    /// GPU-instanced drawing of one mesh, using Graphics.RenderMeshInstanced - available on WebGL2 and WebGPU (no BRG / Entities
+    /// Graphics on the Web). Each instance carries its own colour, emission and walk (per-instance properties of TC2/Instanced and
+    /// TC2/Underwater), so the instances go in batches of up to 1,023 in the order they were added - one draw a batch, whatever their
+    /// colours - and each draw carries the bounds of its own instances, so the camera and every shadow cascade cull what they cannot
+    /// see (D2-109: one draw per colour group, with the whole world as its bounds, drawn into every cascade, bounded the Web build's
+    /// frame by the main thread's draw submission).
     /// </summary>
     public sealed class Instancer
     {
+        /// <summary>Tools (webperf, the bridge's `cull`): whether draws carry their instances' bounds (else the whole world's).</summary>
+        public static bool Cull = true;
+        /// <summary>Tools: draws issued since the frame began (FrameClock resets it).</summary>
+        public static int Draws;
+
         readonly Mesh _mesh;
         readonly Material _mat;
+        readonly float _meshRadius;
         ShadowCastingMode _shadows;
         /// <summary>Whether the instances cast shadows (tools may switch it).</summary>
         public bool Shadows { get => _shadows == ShadowCastingMode.On; set => _shadows = value ? ShadowCastingMode.On : ShadowCastingMode.Off; }
-        readonly Dictionary<int, List<Matrix4x4>> _groups = new Dictionary<int, List<Matrix4x4>>();
-        readonly List<int> _keys = new List<int>();
-        readonly Dictionary<int, Color> _colors = new Dictionary<int, Color>();
-        readonly Dictionary<int, float> _emission = new Dictionary<int, float>();
-        readonly Dictionary<int, float> _anim = new Dictionary<int, float>();
-        static readonly int Anim = Shader.PropertyToID("_Anim");
-        readonly Matrix4x4[] _batch = new Matrix4x4[1023];
+
+        const int BatchSize = 1023;
+        readonly List<Matrix4x4> _m = new List<Matrix4x4>(256);
+        readonly List<Vector4> _c = new List<Vector4>(256);
+        readonly List<float> _e = new List<float>(256), _a = new List<float>(256);
+        readonly List<Vector3> _min = new List<Vector3>(), _max = new List<Vector3>();   // per batch
+        // (the property block's arrays keep the length they were first set with: always the whole batch)
+        readonly Matrix4x4[] _bm = new Matrix4x4[BatchSize];
+        readonly Vector4[] _bc = new Vector4[BatchSize];
+        readonly float[] _be = new float[BatchSize], _ba = new float[BatchSize];
         readonly MaterialPropertyBlock _mpb = new MaterialPropertyBlock();
         static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
         static readonly int Emission = Shader.PropertyToID("_Emission");
-        public int Count;
+        static readonly int Anim = Shader.PropertyToID("_Anim");
+        static readonly Bounds World = new Bounds(Vector3.zero, Vector3.one * 60000f);
+        static readonly bool Linear = QualitySettings.activeColorSpace == ColorSpace.Linear;
+        public int Count => _m.Count;
 
         public Instancer(Mesh mesh, Material mat, bool shadows = true)
         {
             _mesh = mesh; _mat = mat; _shadows = shadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
+            var b = mesh.bounds;
+            _meshRadius = b.center.magnitude + b.extents.magnitude;
         }
 
         public void Clear()
         {
-            foreach (var k in _keys) _groups[k].Clear();
-            Count = 0;
-            _lastKey = int.MinValue; _lastList = null;
+            _m.Clear(); _c.Clear(); _e.Clear(); _a.Clear(); _min.Clear(); _max.Clear();
+            _lastColor = new Color(-1f, -1f, -1f, -1f);
         }
 
-        // the last group added to: views add runs of one group, so most adds skip the dictionaries
-        int _lastKey = int.MinValue;
-        List<Matrix4x4> _lastList;
-        Color _lastColor; float _lastEmission, _lastAnim;
+        // (colours come in runs: convert each only when it changes)
+        Color _lastColor = new Color(-1f, -1f, -1f, -1f);
+        Vector4 _lastLinear;
 
-        /// <summary>Adds an instance in colour group <paramref name="group"/> (colour set once per group).</summary>
+        /// <summary>Adds an instance with its colour (sRGB, as a material colour), emission and walk. <paramref name="group"/> is
+        /// the caller's own grouping (it orders nothing here: kept so callers read as before).</summary>
         public void Add(int group, Color color, Matrix4x4 m, float emission = 0f, float anim = 0f)
         {
-            if (group != _lastKey || _lastList == null)
-            {
-                if (!_groups.TryGetValue(group, out var list))
-                {
-                    list = new List<Matrix4x4>(256);
-                    _groups[group] = list;
-                    _keys.Add(group);
-                }
-                _lastKey = group; _lastList = list;
-                _colors[group] = color; _emission[group] = emission; _anim[group] = anim;
-                _lastColor = color; _lastEmission = emission; _lastAnim = anim;
-            }
-            else if (color != _lastColor || emission != _lastEmission || anim != _lastAnim)
-            {
-                _colors[group] = color; _emission[group] = emission; _anim[group] = anim;
-                _lastColor = color; _lastEmission = emission; _lastAnim = anim;
-            }
-            _lastList.Add(m);
-            Count++;
+            if (color != _lastColor) { _lastColor = color; _lastLinear = Linear ? (Vector4)color.linear : (Vector4)color; }
+            // its batch's bounds: where it stands, padded by its mesh at its largest scale
+            float sx = m.m00 * m.m00 + m.m10 * m.m10 + m.m20 * m.m20, sy = m.m01 * m.m01 + m.m11 * m.m11 + m.m21 * m.m21, sz = m.m02 * m.m02 + m.m12 * m.m12 + m.m22 * m.m22;
+            float pad = Mathf.Sqrt(Mathf.Max(sx, Mathf.Max(sy, sz))) * _meshRadius;
+            Vector3 lo = new Vector3(m.m03 - pad, m.m13 - pad, m.m23 - pad), hi = new Vector3(m.m03 + pad, m.m13 + pad, m.m23 + pad);
+            int bi = _m.Count / BatchSize;
+            if (bi == _min.Count) { _min.Add(lo); _max.Add(hi); }
+            else { _min[bi] = Vector3.Min(_min[bi], lo); _max[bi] = Vector3.Max(_max[bi], hi); }
+            _m.Add(m); _c.Add(_lastLinear); _e.Add(emission); _a.Add(anim);
         }
 
         public void Draw(Camera cam)
         {
-            var rp = new RenderParams(_mat) { shadowCastingMode = _shadows, receiveShadows = true, matProps = _mpb, camera = null, worldBounds = new Bounds(Vector3.zero, Vector3.one * 60000f) };
-            for (int g = 0; g < _keys.Count; g++)
+            int total = _m.Count;
+            if (total == 0) return;
+            var rp = new RenderParams(_mat) { shadowCastingMode = _shadows, receiveShadows = true, matProps = _mpb, camera = null };
+            for (int start = 0, bi = 0; start < total; start += BatchSize, bi++)
             {
-                int key = _keys[g];
-                var list = _groups[key];
-                if (list.Count == 0) continue;
-                _mpb.SetColor(BaseColor, _colors[key]);
-                _mpb.SetFloat(Emission, _emission[key]);
-                _mpb.SetFloat(Anim, _anim[key]);
-                rp.matProps = _mpb;
-                for (int start = 0; start < list.Count; start += _batch.Length)
-                {
-                    int n = Mathf.Min(_batch.Length, list.Count - start);
-                    list.CopyTo(start, _batch, 0, n);
-                    Graphics.RenderMeshInstanced(rp, _mesh, 0, _batch, n);
-                }
+                int n = Mathf.Min(BatchSize, total - start);
+                _m.CopyTo(start, _bm, 0, n); _c.CopyTo(start, _bc, 0, n); _e.CopyTo(start, _be, 0, n); _a.CopyTo(start, _ba, 0, n);
+                _mpb.SetVectorArray(BaseColor, _bc);
+                _mpb.SetFloatArray(Emission, _be);
+                _mpb.SetFloatArray(Anim, _ba);
+                var bounds = World;
+                if (Cull) bounds.SetMinMax(_min[bi], _max[bi]);
+                rp.worldBounds = bounds;
+                Graphics.RenderMeshInstanced(rp, _mesh, 0, _bm, n);
+                Draws++;
             }
         }
     }

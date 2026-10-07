@@ -57,6 +57,9 @@
   no systematic loss (people over years 200-299 x0.992; seed 2's drop an epidemic, seed 7's Voton's famines), but the lord's share was a
   second wrong (one raid avenged twice; the lord's watch, walls and taking back moved by harm not done to it) - now a lord weighs its
   tributaries' wrongs at half and its band's loot answers the tributary's wrong; 244 tests; ten seeds at par with C5.4.
+  **D2-109 the Web frame rate**: the frame was bounded by the main thread's draw submission (one draw per colour group, the whole world as
+  bounds, into every cascade); per-instance colours and draws with their own bounds - 34-37 instanced draws a frame; settled close
+  60-70 -> 90-102 fps, forest 66 -> 100; Web test 6/6 with every view 73-120 fps (after a century 88).
   **Browser**: the settlement page renders; the true Web frame rate is 35-56 fps near the ground (below 60: earlier 57-121 fps readings
   since C1.4 were inflated by the smithy error stopping the view's setup). **Next**: SESSION_HANDOFF "Next".
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
@@ -355,6 +358,17 @@
     (seals in daylight shots, coast shapes off the cell grid, boats, gardens, orbit detail, WebGL2 check).
   - Headless tools: `planet` (`--tect`, `--volc`, `--quake`, `--storms`, `--erosion`, `--eco`, `--ecodiag` deaths by
     cause, `--ecocsv FILE` series, `--steep`, `--map DIR`), `climate`, `run --profile`.
+
+## Measurements (session 7)
+
+| What | Host | Result |
+|---|---|---|
+| C10.1 vs C5.4, ten seeds 300 years DEEP (`tc2/out/civ/s*_c54a`, `_c101a`; `scratchpad/cmp.py`) | dotnet | people over years 200-299 x0.992 (t -1.2), at year 300 x0.934 (t -1.7); seed 2's drop two new sicknesses from animals, seed 7's Voton's famines |
+| D2-108 vs C5.4, the same ten seeds (`s*_c108a`) | dotnet | people over years 200-299 x1.002, at year 300 x0.982 (n.s.); bands x0.92; lords answered for tributaries 3 times |
+| Full headless tests | dotnet | 244 pass (382 s) |
+| Web frame by layer, C12.2 build (`webperf`, settled) | Chrome/WebGPU, RX 5600M, 1280x720 | close 60.4 fps (without shadows 119, trees 97, buildings 88); forest 66 (without shadows 120, trees 103) |
+| Web frame after D2-109 (`webperf` sets, `tc2/out/webperf/s7perf3`) | Chrome/WebGPU | close 90-102 fps, cpu 9.2-10.2 ms, 37 draws (cull off 98.6; 3 cascades 111; 2 cascades 117; no shadows 121, cpu 5.7); forest 100-103, cpu 9.5, 34 draws (cull off 79) |
+| Web test after D2-109 (`tc2/out/webtest/s7webb`) | Chrome/WebGPU | 6/6, bit-identical (gen 9294339ab8f5d2da); start 7.7 s; orbit 120, region 120, village 101, close 83, low 114, forest 88, forest low 81, close running 82, after a century 88 fps; a day away (96 years) 55 s |
 
 ## Measurements (session 5)
 

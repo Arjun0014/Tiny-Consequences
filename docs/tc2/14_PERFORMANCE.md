@@ -59,6 +59,10 @@ and step. Planet systems must stay below ~25% of that.
   frame cost the near views ~7-8 ms in the browser; gather on change (patches, content, camera) and redraw the gathered lists.
 - **Measure settled frames**: a view's first seconds compile shaders and build patches; `webperf` reads at 5, 15 and 30 s - quote the
   30 s value.
+- **Know which side bounds the frame (D2-109)**: the bridge posts `cpuMs` (the main thread from the first Update to the end of
+  rendering) and `draws` (instanced draws); `webperf` prints both. CPU near the frame's interval means submission bounds it - on WebGPU
+  each draw (and each shadow cascade it falls in) costs main-thread time. Instanced views draw per-instance colours in batches of
+  1,023 with their own bounds (34-37 draws a frame in the near views), never one draw per colour group with the world as bounds.
 - **A shared machine**: Web builds with `--jobs 3` (IL2CPP, Bee, emscripten, binaryen capped; ~15 min); heavy jobs one at a time at
   below-normal priority, launched only on a quiet machine (`scratchpad/quiet.ps1`).
 - **DEEP (F8)**: a step's cost grows with what happens in it (trips, births, deaths, news are still made at their rate); only the

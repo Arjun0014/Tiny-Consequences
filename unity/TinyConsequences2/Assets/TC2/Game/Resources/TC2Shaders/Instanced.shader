@@ -1,5 +1,5 @@
-// TC2 instanced objects (people, trees, houses, fire): one colour per draw (instances grouped by colour),
-// optional emission, sun + ambient + shadows. GPU instancing via Graphics.RenderMeshInstanced.
+// TC2 instanced objects (people, trees, houses, fire): a colour, emission and walk of its own per instance (D2-109: one draw a
+// batch, whatever the colours), sun + ambient + shadows. GPU instancing via Graphics.RenderMeshInstanced.
 Shader "TC2/Instanced"
 {
     Properties
@@ -27,25 +27,30 @@ Shader "TC2/Instanced"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
-                half4 _BaseColor;
-                half _Emission;
-                half _Anim;
                 half4 _AmbientSky;
                 half4 _AmbientGround;
             CBUFFER_END
+            UNITY_INSTANCING_BUFFER_START(PerInstance)
+                UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
+                UNITY_DEFINE_INSTANCED_PROP(float, _Emission)
+                UNITY_DEFINE_INSTANCED_PROP(float, _Anim)
+            UNITY_INSTANCING_BUFFER_END(PerInstance)
             float4 _TC2FogColor;
             float _TC2FogDensity;
             float4 _TC2MoonDir;
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; UNITY_VERTEX_INPUT_INSTANCE_ID };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; half4 base : TEXCOORD2; half emission : TEXCOORD3; };
 
             Varyings vert(Attributes v)
             {
                 Varyings o;
                 UNITY_SETUP_INSTANCE_ID(v);
+                o.base = (half4)UNITY_ACCESS_INSTANCED_PROP(PerInstance, _BaseColor);
+                o.emission = (half)UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Emission);
+                float anim = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Anim);
                 float3 lp = v.positionOS.xyz;
-                if (_Anim > 0.5)
+                if (anim > 0.5)
                 {
                     // a walk: each leg swings about the hip, arms the other way, the body rises at each step
                     float3 origin = mul(UNITY_MATRIX_M, float4(0, 0, 0, 1)).xyz;
@@ -84,11 +89,13 @@ Shader "TC2/Instanced"
                 half3 amb = lerp(_AmbientGround.rgb, _AmbientSky.rgb, hemi);
                 half day = saturate(dot(up, l.direction) * 3.0h + 0.25h);
                 // the kit marks tintable parts (clothes, roofs) with vertex alpha 1; the rest keeps its colour, scaled by alpha
-                half3 albedo = i.color.rgb * lerp(_BaseColor.aaa, _BaseColor.rgb, i.color.a);
+                half4 baseC = i.base;
+                half emission = i.emission;
+                half3 albedo = i.color.rgb * lerp(baseC.aaa, baseC.rgb, i.color.a);
                 half wrap = saturate((dot(n, l.direction) + 0.2h) / 1.2h);
                 // _Emission > 0 lights the whole object (fire); < 0 lights only its windows (vertex alpha 0.5)
                 half window = step(0.4h, i.color.a) * step(i.color.a, 0.6h);
-                half3 glow = _Emission > 0 ? albedo * _Emission : half3(1.0h, 0.52h, 0.18h) * (-_Emission) * window * 1.15h;
+                half3 glow = emission > 0 ? albedo * emission : half3(1.0h, 0.52h, 0.18h) * (-emission) * window * 1.15h;
                 half moon = saturate(dot(n, _TC2MoonDir.xyz) * 0.7h + 0.3h) * (1.0h - day);
                 // the planet hides a sun below the horizon (shadow maps reach only near the camera): round shapes such as
                 // canopies would otherwise catch it from beneath at night
@@ -96,7 +103,7 @@ Shader "TC2/Instanced"
                 half3 c = albedo * (amb * lerp(half3(0.34h, 0.38h, 0.52h), half3(1.0h, 1.0h, 1.0h), day) + l.color * wrap * lerp(0.3h, 1.0h, l.shadowAttenuation) * 1.15h * sunUp + half3(0.13h, 0.17h, 0.29h) * moon) + glow;
                 float dist = length(i.positionWS - _WorldSpaceCameraPos);
                 half fog = 1.0h - exp(-dist * _TC2FogDensity);
-                c = lerp(c, _TC2FogColor.rgb * (0.25h + 0.75h * day), fog * 0.85h * (1.0h - saturate(abs(_Emission))));
+                c = lerp(c, _TC2FogColor.rgb * (0.25h + 0.75h * day), fog * 0.85h * (1.0h - saturate(abs(emission))));
                 return half4(c, 1);
             }
             ENDHLSL

@@ -25,22 +25,25 @@ Shader "TC2/Underwater"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
-                half4 _BaseColor;
-                half _Emission;
-                half _Anim;
                 float _Clear;
             CBUFFER_END
+            UNITY_INSTANCING_BUFFER_START(PerInstance)
+                UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
+                UNITY_DEFINE_INSTANCED_PROP(float, _Emission)
+                UNITY_DEFINE_INSTANCED_PROP(float, _Anim)
+            UNITY_INSTANCING_BUFFER_END(PerInstance)
             float4 _TC2FogColor;
             float _TC2FogDensity;
             float _TC2SeaRadius;
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; UNITY_VERTEX_INPUT_INSTANCE_ID };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; float flash : TEXCOORD2; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; float flash : TEXCOORD2; half4 base : TEXCOORD3; };
 
             Varyings vert(Attributes v)
             {
                 Varyings o;
                 UNITY_SETUP_INSTANCE_ID(v);
+                o.base = (half4)UNITY_ACCESS_INSTANCED_PROP(PerInstance, _BaseColor);
                 VertexPositionInputs p = GetVertexPositionInputs(v.positionOS.xyz);
                 o.positionCS = p.positionCS;
                 o.positionWS = p.positionWS;
@@ -59,7 +62,7 @@ Shader "TC2/Underwater"
                 Light l = GetMainLight();
                 float3 up = normalize(i.positionWS);
                 half day = saturate(dot(up, l.direction) * 3.0h + 0.25h);
-                half3 albedo = i.color.rgb * lerp(_BaseColor.aaa, _BaseColor.rgb, i.color.a);
+                half3 albedo = i.color.rgb * lerp(i.base.aaa, i.base.rgb, i.color.a);
                 half wrap = saturate((dot(n, l.direction) + 0.4h) / 1.4h);
                 half3 c = albedo * (half3(0.30h, 0.38h, 0.44h) + l.color * wrap * 0.9h) * (0.15h + 0.85h * day);
                 c += half3(0.75h, 0.85h, 0.90h) * (half)i.flash * 0.9h * day;   // the flash of a turning flank

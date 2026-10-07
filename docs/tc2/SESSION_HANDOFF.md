@@ -10,8 +10,13 @@
 - **Scratchpad (session 7)**: `C:\Users\aswin\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\dd8879ca-9abf-4584-bd64-5ba72f80ce6a\scratchpad`:
   `wrun.sh` (BIN = a folder in this or the session-6 scratchpad, or a path), `cmp.py TAG_A TAG_B seeds...` (paired log-ratios of annals
   and report lines: judge mechanisms by century means, never the last year), `bin_c108a`.
-- **Next**: the Web frame rate (webperf by layer at close/forest; trees and cover draw one call per colour group per mesh - up to 512
-  groups - consider per-instance colour), then C8/C9/C10.2.
+- **D2-109 done** (the Web frame rate): the frame was CPU-bound in draw submission (one draw per colour group, world-sized bounds, into all
+  four cascades). `Instancer` now keeps colour/emission/walk per instance (`TC2/Instanced`, `TC2/Underwater` read them from the instancing
+  buffer) and gives each batch of 1,023 its own bounds: 34-37 instanced draws a frame; close 90-102 fps, forest 100; Web test 6/6
+  (`tc2/out/webtest/s7webb`, every view 73-120 fps). Tools: `FrameClock` (bridge `cpuMs`, `draws`), bridge `cull`, `shadow C R`, `webperf
+  --sets/--reset`. The Web build in `tc2/web-build/web` is current (D2-109).
+- **Next**: the roadmap - C9 maritime (boats as real state: built from timber, owned, crewed, fishing beyond the shore, lost in storms;
+  then docks and coastal trade) or C10.2 (leaders, succession, the polity page).
 
 ## Session 6 (7 Oct 2026, from 10:56 IST) — handed off at ~19:30 IST (context full)
 

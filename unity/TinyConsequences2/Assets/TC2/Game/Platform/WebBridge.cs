@@ -21,7 +21,7 @@ namespace TC2.Game
         BenchRunner _bench;
         string _lastCmd = "";
 
-        void Start() { Browser.TC2_RegisterPageEvents(); }
+        void Start() { Browser.TC2_RegisterPageEvents(); if (GetComponent<FrameClock>() == null) gameObject.AddComponent<FrameClock>(); }
 
         void Update()
         {
@@ -84,6 +84,8 @@ namespace TC2.Game
                     }
                 case "off": case "on": Toggle(a[1], a[0] == "on"); break;   // tools: what a frame costs without a layer
                 case "glshadow": Sky.GlCascades = int.Parse(a[1], inv); Sky.GlShadowReach = float.Parse(a[2], inv); break;   // tools: WebGL2 shadows
+                case "shadow": Sky.GpuCascades = int.Parse(a[1], inv); Sky.GpuShadowReach = float.Parse(a[2], inv); break;   // tools: WebGPU shadows
+                case "cull": Instancer.Cull = a[1] == "on"; break;          // tools: instanced draws with their own bounds (D2-109)
                 case "hashtest": _hashTest = HashTest(); break;
                 case "bench":
                     {
@@ -159,6 +161,8 @@ namespace TC2.Game
             sb.Append(",\"saveOk\":").Append(Host.LastSaveOk ? "true" : "false");
             sb.Append(",\"gfx\":\"").Append(SystemInfo.graphicsDeviceType).Append('"');
             sb.Append(",\"fps\":").Append((1f / Mathf.Max(0.0001f, Time.smoothDeltaTime)).ToString("0.#", inv));
+            sb.Append(",\"cpuMs\":").Append(FrameClock.CpuMs.ToString("0.##", inv));
+            sb.Append(",\"draws\":").Append(FrameClock.LastDraws);
             sb.Append(",\"hashtest\":\"").Append(_hashTest).Append('"');
             sb.Append(",\"bench\":\"").Append(_bench != null ? _bench.Result : "").Append('"');
             sb.Append(",\"lastCmd\":\"").Append(_lastCmd.Replace("\"", "'")).Append('"');

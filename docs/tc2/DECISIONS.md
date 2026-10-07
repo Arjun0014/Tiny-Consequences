@@ -2691,3 +2691,30 @@ naming the tributary, its people answering the call, and the loot answers the tr
 (Haesmere for Heiby twice on seed 7, Drildbrahope's band of 36 for Uskorthorpe on seed 3); tributaries' people answered calls on six of them (8 bands, 86 men).
 Protection is rare because most tributaries answer their own wrongs first - honest to the rule, and the ground C10.2 (leaders,
 obligations kept or refused) builds on.
+
+## D2-109 — 2026-10-07 — The Web frame bounded by draw submission: per-instance colours, draws with their own bounds
+
+**Context.** Session 6 read the Web build at 35-56 fps near the ground (target 60). Measured again on a quiet machine
+(`webperf`, WebGPU, Chrome, RX 5600M, 1280x720, the C12.2 build): settled, the close view ran 60-70 fps and the forest 65-66, and the
+Web test's readings (1.5 s after each camera move: patches built, cover and trees gathered) 34-56. Shadows were half the frame (119-120
+fps without them), the woods' trees a quarter. A new reading of the main thread's part of a frame (`FrameClock`: from the first script's
+Update to the end of rendering; the bridge's `cpuMs`, printed by `webperf`) showed 11-14 ms of CPU against a 12-15 ms frame: **the CPU
+bounded the frame, in draw submission**. Every `Instancer` drew one call per colour group (the woods' trees have 512 tints: shade x the
+leaves' season x snow x dryness; people one per dye, houses one per tint), each with the whole world as its bounds, so every call was also
+drawn into each of the four shadow cascades.
+**Decision.** (1) **Per-instance colour, emission and walk**: `TC2/Instanced` and `TC2/Underwater` read `_BaseColor`, `_Emission` and
+`_Anim` from the instancing buffer (passed to the fragment stage), the `Instancer` keeps them per instance (colours converted to linear as
+`SetColor` did) and draws its instances in batches of up to 1,023 in the order they were added, whatever their colours - the group key
+callers pass orders nothing now. (2) **Each draw carries its own bounds** (its instances' positions padded by the mesh at their largest
+scale), so the camera and each cascade cull batches they cannot see; views add instances patch by patch or village by village, so batches
+are compact. (3) Tools: the bridge's `cull on|off`, `shadow CASCADES REACH` (WebGPU/desktop; `Sky.GpuCascades/GpuShadowReach`),
+posted `cpuMs` and `draws`; `webperf --sets "cmd;cmd|cmd" --reset "..."` tries command sets in turn. Tried and dropped: a low-poly
+shadow proxy for the trees (a second draw a batch: more CPU, and the GPU was not the bound - proxy off read 89 fps against 84 with it).
+Shadows keep four cascades.
+**Evidence.** Instanced draws a frame: 34-37 at the close and forest views. `webperf` settled (4 cascades): close 60-70 -> 90-102 fps
+(cpu 9-10 ms), forest 66 -> 100-103; with draws given the world's bounds again (`cull off`) 79-99. Web test (`tc2/out/webtest/s7webb`,
+6/6, bit-identical probe, no console errors): village 56.5 -> 101, close 54.6 -> 83, low 56 -> 114, forest 35.5 -> 87.5, forest low
+38.6 -> 80.7, close running 39.4 -> 82, the person page 34 -> 75, the place page 47 -> 80, after a century 88 fps (s3webb 47.6); a day
+away catches up 96 years in 55 s. Editor shots (`tc2/out/shots/pi1`) and the browser's (`4c_forest` against `c122web`) look the same.
+What is left of the CPU's frame (~9.5 ms; ~6 ms without shadows): the terrain's patch renderers drawn into each cascade, the views' own
+work - the next places to look if a frame falls short again.

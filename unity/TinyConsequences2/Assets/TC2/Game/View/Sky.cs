@@ -14,6 +14,8 @@ namespace TC2.Game
     {
         public static int GlCascades = 1;          // the WebGL2 fallback's shadow cascades (tools may change it: the bridge's `glshadow`)
         public static float GlShadowReach = 1.6f;  // and its shadow distance per metre of the camera's height
+        public static int GpuCascades = 4;         // WebGPU's (and the desktop's) shadow cascades (tools: the bridge's `shadow`)
+        public static float GpuShadowReach = 3.2f; // and their shadow distance per metre of the camera's height
 
         public SimHost Host;
         public CameraRig Rig;
@@ -97,8 +99,9 @@ namespace TC2.Game
                 // the WebGL2 fallback draws its shadows nearer and in two cascades: there the shadow pass of the woods was the
                 // frame (37 fps in the village view, 60 without shadows; WebGPU keeps four cascades)
                 bool gl = SystemInfo.graphicsDeviceType == GraphicsDeviceType.OpenGLES3;
-                if (gl && urp.shadowCascadeCount != GlCascades) urp.shadowCascadeCount = GlCascades;
-                urp.shadowDistance = gl ? Mathf.Clamp(altitude * GlShadowReach, 200f, 3000f) : Mathf.Clamp(altitude * 3.2f, 250f, 7000f);
+                int cascades = gl ? GlCascades : GpuCascades;
+                if (urp.shadowCascadeCount != cascades) urp.shadowCascadeCount = cascades;
+                urp.shadowDistance = gl ? Mathf.Clamp(altitude * GlShadowReach, 200f, 3000f) : Mathf.Clamp(altitude * GpuShadowReach, 250f, 7000f);
             }
             // below the air the empty sky is the sky; from orbit it is space
             float sky = 1f - Mathf.InverseLerp(1500f, Mathf.Max(2000f, top * 0.5f), altitude);

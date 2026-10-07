@@ -29,7 +29,8 @@ water, clouds and weather; the passage of ages visible (scars, ruins, coasts, fo
 | Effects | fire and smoke, rain and snow, lightning, dust, ash | processes and weather |
 | UI | UI Toolkit (runtime): HUD, inspector, news, History Book, catch-up screen | Core views |
 
-- Instancing: `Graphics.RenderMeshInstanced` with instanced properties (both APIs); WebGPU may later use
+- Instancing: `Graphics.RenderMeshInstanced` with instanced properties (both APIs; per-instance colour, emission and walk, batches of
+  1,023 with their own bounds: D2-109); WebGPU may later use
   `RenderMeshIndirect` with structured buffers and compute culling. No BRG, no Entities Graphics (Web).
 - Shaders hand-written for URP (HLSL including URP's core and lighting libraries), compiled for GLSL ES 3.0
   (WebGL2) and WGSL (WebGPU); no compute dependency in the WebGL2 path.
