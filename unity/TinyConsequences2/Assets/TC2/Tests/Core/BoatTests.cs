@@ -68,12 +68,22 @@ namespace TC2.Tests.Core
         }
 
         /// <summary>Premise: the household's boat laid down and its hours put in.</summary>
-        static int Made(World w, int sid, int hid, int worker)
+        static int Made(World w, int sid, int hid, int worker, byte kind = Structures.Boat)
         {
-            int bid = Boats.Begin(w, sid, hid);
-            w.Settlements.Get(sid).Woodstore += Boats.Wood;
-            Boats.Work(w, sid, hid, Boats.Hours + 1.0, 1.0, worker);
+            w.Settlements.Get(sid).Woodstore += Boats.WoodOf(kind);
+            int bid = Boats.Begin(w, sid, hid, kind);
+            if (Boats.IsPlank(kind) && w.People.Exists(worker)) w.People.Get(worker).KBoat = 0.8f;   // (premise: a builder who knows the craft)
+            Boats.Work(w, sid, hid, Boats.HoursOf(kind) + 1.0, 1.0, worker);
             return bid;
+        }
+
+        /// <summary>Premise: the village builds boats of planks - its people know the craft (the best at 0.8, the rest at 0.6).</summary>
+        static void Knows(World w, int sid)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            s.TechKnown |= (byte)Boats.Bit; s.BestBoat = 0.8f;
+            var res = w.Residents(sid);
+            for (int i = 0; i < res.Count; i++) w.People.Get(res[i]).KBoat = i == 0 ? 0.8f : 0.6f;
         }
 
         [Test]
@@ -84,17 +94,17 @@ namespace TC2.Tests.Core
             int hid = Fishers(w, sid, out int fisher);
             Assume.That(hid != 0 && Woods.Lot(in w.Settlements.Get(sid)) >= 0, "a household that fishes; woods within reach");
             Assert.IsTrue(Boats.Wants(w, in w.Settlements.Get(sid), hid), "it would make a boat");
+            double wood0 = w.Settlements.Get(sid).Woodstore;
             Boats.Plan(w, sid);
             int bid = w.Households.Get(hid).Boat;
             Assume.That(bid != 0, "this household was the first of the village to want one");
             Assert.AreEqual(0, w.Buildings.Get(bid).Done, "laid down, not yet made");
             Assert.AreEqual(Structures.Boat, w.Buildings.Get(bid).Kind);
             Assert.IsFalse(Boats.Wants(w, in w.Settlements.Get(sid), hid), "one at a time");
-            double wood0 = w.Settlements.Get(sid).Woodstore;
+            Assert.AreEqual(Boats.Wood, wood0 - w.Settlements.Get(sid).Woodstore, 0.02, "the trunk taken from the store's timber as it is laid down");
             long mark = w.History.LastId;
             double used = Boats.Work(w, sid, hid, 200.0, 1.0, fisher);
             Assert.AreEqual(Boats.Hours, used, 0.02, "its hours");
-            Assert.AreEqual(Boats.Wood, wood0 - w.Settlements.Get(sid).Woodstore, 0.02, "the trunk from the store's timber");
             var b = w.Buildings.Get(bid);
             Assert.AreEqual(1, b.Done);
             Assert.AreEqual(fisher, b.Leader);
@@ -173,8 +183,8 @@ namespace TC2.Tests.Core
             Assume.That(w != null, "a fishing village with promising open sea");
             int hid = Fishers(w, sid, out int fisher);
             Assume.That(hid != 0, "a household that fishes");
-            int bid = Boats.Begin(w, sid, hid);
-            w.Settlements.Get(sid).Woodstore = 0;   // (no timber came)
+            int bid = Boats.Begin(w, sid, hid);   // (no hands came to it)
+            w.Settlements.Get(sid).Woodstore = 0;   // (and no timber in store for another)
             Boats.Plan(w, sid);
             Assert.AreEqual(bid, Boats.Making(w, hid), "still being made within its year");
             w.Buildings.Get(bid).Built = w.Now - SimTime.Year - SimTime.Day;   // (premise: laid down a year and a day ago)
@@ -432,7 +442,12 @@ namespace TC2.Tests.Core
         }
 
         [Test]
-        public void BoatsGoOutAlikeAtBothResolutions()
+        public void BoatsGoOutAlikeAtBothResolutions() => GoOutAlike(Structures.Boat);
+
+        [Test]
+        public void PlankBoatsGoOutAlikeAtBothResolutions() => GoOutAlike(Structures.PlankBoat);
+
+        static void GoOutAlike(byte kind)
         {
             // pooled over worlds (C9.2): every household of the coast's villages that lives by the fish given a dugout, the same days lived
             // hour by hour and as COARSE days - the boats' trips, their crews and their catch a grown person-day at par
@@ -456,7 +471,7 @@ namespace TC2.Tests.Core
                             int fisher = 0;
                             for (int j = 0; j < mem.Count && fisher == 0; j++) { var q = w.People.Get(mem[j]); double a = q.AgeYears(w.Now); if (q.Alive && a >= 16 && a < 60 && q.SkFish >= Boats.FisherSkill) fisher = mem[j]; }
                             if (fisher == 0 || w.Households.Get(hl[i]).Boat != 0) continue;
-                            Made(w, sid, hl[i], fisher);
+                            Made(w, sid, hl[i], fisher, kind);
                             boats++;
                         }
                     }
@@ -468,7 +483,7 @@ namespace TC2.Tests.Core
                         for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) ad += Adults(w, sid);
                     }
                     double trips = w.Metrics.BoatTrips - t0, kg = w.Metrics.BoatFishKg - k0, crew = w.Metrics.CrewSeats - c0, outs = w.Metrics.BoatOutings - o0;
-                    Console.WriteLine("seed " + seed + (coarse ? " COARSE" : " lived ") + ": " + boats + " boats; outings " + outs + ", trips " + trips + " (crew seats " + crew + "), " + kg.ToString("0") + " kg, " + ad.ToString("0") + " grown person-days");
+                    Console.WriteLine("seed " + seed + (coarse ? " COARSE" : " lived ") + ": " + boats + " " + Boats.NameOf(kind) + "s; outings " + outs + ", trips " + trips + " (crew seats " + crew + "), " + kg.ToString("0") + " kg, " + ad.ToString("0") + " grown person-days");
                     double fish = w.Metrics.FishKg - f0;
                     if (coarse) { tripsB += trips; kgB += kg; crewB += crew; outB += outs; adB += ad; fishB += fish; } else { tripsA += trips; kgA += kg; crewA += crew; outA += outs; adA += ad; fishA += fish; }
                 }
@@ -489,6 +504,122 @@ namespace TC2.Tests.Core
             int n = 0; var res = w.Residents(sid);
             for (int i = 0; i < res.Count; i++) { var p = w.People.Get(res[i]); if (p.Alive && p.AgeYears(w.Now) >= 16) n++; }
             return n;
+        }
+
+        [Test]
+        public void AWoodworkerHollowingADugoutFindsHowToBuildWithPlanks()
+        {
+            // C9.2b: boats of planks are found by those who practise their making - a woodworker at a dugout - where nobody knows them
+            var w = Coast(out int sid);
+            Assume.That(w != null, "a fishing village");
+            int hid = Fishers(w, sid, out int fisher);
+            Assume.That(hid != 0, "a household that fishes");
+            ref var s = ref w.Settlements.Get(sid);
+            s.TechKnown = (byte)(s.TechKnown & ~Boats.Bit); s.BestBoat = 0f;
+            var res = w.Residents(sid);
+            for (int i = 0; i < res.Count; i++) w.People.Get(res[i]).KBoat = 0f;
+            int other = 0;
+            for (int i = 0; i < res.Count && other == 0; i++) if (res[i] != fisher && w.People.Get(res[i]).AgeYears(w.Now) >= 16) other = res[i];
+            Assume.That(other != 0, "another grown person");
+            w.People.Get(other).SkWood = 0.1f;   // (no woodworker)
+            w.Learning.Practice(ref w.People.Get(other), TC2.Core.Knowledge.Tech.Boat, 1e6);
+            Assert.Less(w.People.Get(other).KBoat, 0.1f, "no woodworker's hand: nothing found");
+            w.People.Get(fisher).SkWood = 0.8f;
+            long mark = w.History.LastId;
+            w.Learning.Practice(ref w.People.Get(fisher), TC2.Core.Knowledge.Tech.Boat, 1e6);   // (hours enough that the keyed chance passes one)
+            Assert.AreEqual((float)TC2.Core.Knowledge.Tech.FirstFound, w.People.Get(fisher).KBoat, 1e-6f, "a woodworker at a dugout finds it");
+            bool told = false;
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++)
+                if (w.History.At(i).Kind == HistoryKind.TechniqueFound && w.History.At(i).ArgA == TC2.Core.Knowledge.Tech.Boat) { told = true; Console.WriteLine(HistoryText.Line(w, w.History.At(i))); }
+            Assert.IsTrue(told);
+            // a dugout's making is that practice (both resolutions call it through Boats.Work)
+            w.Settlements.Get(sid).Woodstore += Boats.Wood;
+            int bid = Boats.Begin(w, sid, hid);
+            double used = Boats.Work(w, sid, hid, 5.0, 1.0, fisher);
+            Assert.Greater(used, 0.0);
+            Assert.AreEqual(Structures.Boat, w.Buildings.Get(bid).Kind, "without a shed and the craft known, a dugout");
+        }
+
+        [Test]
+        public void AVillageThatBuildsWithPlanksRaisesABoatShedAndBuildsThemThere()
+        {
+            var w = Coast(out int sid);
+            Assume.That(w != null, "a fishing village with promising open sea");
+            int hid = Fishers(w, sid, out int fisher);
+            Assume.That(hid != 0, "a household that fishes");
+            Knows(w, sid);
+            ref var s = ref w.Settlements.Get(sid);
+            s.Project = 0; s.ProjectKind = 0; s.Wall = 0;
+            Assume.That((s.Works & Construction.Granary) != 0, "water and a store first");
+            Assert.AreEqual(Structures.Boat, Boats.WantsKind(w, in w.Settlements.Get(sid), hid), "no shed yet: a dugout would do");
+            Assert.IsTrue(Boats.ShedWanted(w, sid), "a boat wanted, and the craft known: a shed to build it in");
+            Structures.Plan(w, sid);
+            ref var s2 = ref w.Settlements.Get(sid);
+            Assert.AreEqual(Structures.BoatShed, s2.ProjectKind, "the boat shed begun");
+            int shed = s2.Project;
+            var sh = w.Buildings.Get(shed);
+            double dx = sh.X - s2.LandX, dy = sh.Y - s2.LandY;
+            Console.WriteLine("the shed " + Math.Sqrt(dx * dx + dy * dy).ToString("0") + " m from the landing");
+            Assert.Less(Math.Sqrt(dx * dx + dy * dy), 75.0, "at the head of the landing");
+            Assert.IsTrue(Shore.Dry(w.Planet, s2.LocalToSphere(sh.X, sh.Y, w.Planet.Radius)), "on dry ground");
+            Structures.Raised(w, sid, shed, Boats.ShedHours, Boats.ShedWood, fisher);
+            Assert.AreEqual(shed, w.Settlements.Get(sid).Shed, "standing");
+            // now the household builds a plank boat there - one on the stocks at a time
+            Assert.AreEqual(Structures.PlankBoat, Boats.WantsKind(w, in w.Settlements.Get(sid), hid));
+            Boats.Plan(w, sid);
+            int bid = Boats.Making(w, hid);
+            Assume.That(bid != 0, "this household was the first to want a boat");
+            var b = w.Buildings.Get(bid);
+            Assert.AreEqual(Structures.PlankBoat, b.Kind);
+            Assert.AreEqual(sh.X, b.X, 1e-3f, "on the stocks in the shed"); Assert.AreEqual(sh.Y, b.Y, 1e-3f);
+            Assert.AreEqual(bid, Boats.OnTheStocks(w, sid));
+            var hl = w.HouseholdsOf(sid);
+            for (int i = 0; i < hl.Count; i++) if (hl[i] != hid) Assert.AreEqual(0, Boats.WantsKind(w, in w.Settlements.Get(sid), hl[i]), "the others wait for the stocks");
+            // a learner works at a fifth of a master's pace
+            int learner = 0;
+            var mem = w.Members(hid);
+            for (int j = 0; j < mem.Count && learner == 0; j++) if (mem[j] != fisher && w.People.Get(mem[j]).AgeYears(w.Now) >= 14) learner = mem[j];
+            w.Settlements.Get(sid).Woodstore += 100;
+            if (learner != 0)
+            {
+                w.People.Get(learner).KBoat = 0.02f;
+                double h0 = w.Buildings.Get(bid).Hours;
+                Boats.Work(w, sid, hid, 10.0, 1.0, learner);
+                Assert.AreEqual(10.0 * Boats.Learner, w.Buildings.Get(bid).Hours - h0, 1e-3, "a learner's pace");
+            }
+            long mark = w.History.LastId;
+            Boats.Work(w, sid, hid, 1000.0, 1.0, fisher);
+            var done = w.Buildings.Get(bid);
+            Assert.AreEqual(1, done.Done, "built");
+            Assert.IsTrue(Boats.AtWater(w, in w.Settlements.Get(sid), done.X, done.Y), "off the stocks and down to the landing");
+            bool told = false;
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++)
+                if (w.History.At(i).Kind == HistoryKind.BoatBuilt) { told = true; Assert.AreEqual(Structures.PlankBoat, w.History.At(i).ArgA); Console.WriteLine(HistoryText.Line(w, w.History.At(i))); }
+            Assert.IsTrue(told);
+            Assert.AreEqual(bid, Boats.Of(w, hid));
+        }
+
+        [Test]
+        public void APlankBoatSeatsFourRidesOutHarderWeatherLastsLongerAndReachesMoreOfTheShoals()
+        {
+            Assert.AreEqual(4, Boats.SeatsOf(Structures.PlankBoat)); Assert.AreEqual(2, Boats.SeatsOf(Structures.Boat));
+            Assert.Greater(Boats.MaxOf(Structures.PlankBoat), Boats.MaxOf(Structures.Boat), "out in winds that keep dugouts ashore");
+            Assert.Less(Boats.Risk(Boats.Max, Structures.PlankBoat), Boats.Risk(Boats.Max, Structures.Boat), "safer in the same wind");
+            Assert.AreEqual(0.0, Boats.Risk(Boats.Calm, Structures.PlankBoat));
+            var w1 = Coast(out int sid); var w2 = Coast(out int sid2);
+            Assume.That(w1 != null && sid == sid2, "a fishing village");
+            int hid = Fishers(w1, sid, out int fisher);
+            Assume.That(hid != 0, "a household that fishes");
+            Knows(w1, sid);
+            int bid = Made(w1, sid, hid, fisher, Structures.PlankBoat);
+            Assert.AreEqual(bid, Boats.Of(w1, hid));
+            w1.Buildings.Get(bid).Built = w1.Now - (long)(20 * SimTime.Year);   // (premise: built twenty years ago)
+            Assert.AreEqual(bid, Boats.Of(w1, hid), "a plank boat still sound at twenty years (a dugout splits at twelve)");
+            int ground = w1.Settlements.Get(sid).Sea.A;
+            Assert.GreaterOrEqual(w1.Wild.ExpectSea(ground, true), w1.Wild.ExpectSea(ground), "an hour from a plank boat is worth at least a dugout's");
+            double plank = w1.Wild.Fish(ground, 4.0, 0.5, 777UL, 1, true, true), dug = w2.Wild.Fish(ground, 4.0, 0.5, 777UL, 1, true, false);
+            Console.WriteLine("plank boat " + plank.ToString("0.00") + " FU, dugout " + dug.ToString("0.00") + " FU at the same ground");
+            Assert.GreaterOrEqual(plank, dug);
         }
 
         [Test]

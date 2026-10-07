@@ -144,7 +144,7 @@ namespace TC2.Core.History
             if (roles.Length > 0) sb.Append("Known for: ").Append(roles).Append(".\n");
             var crafts = new StringBuilder();
             Craft(crafts, "nets", p.KNets); Craft(crafts, "the loom", p.KLoom); Craft(crafts, "querns", p.KQuern); Craft(crafts, "pots", p.KPottery);
-            Craft(crafts, "the ard", p.KArd); Craft(crafts, "copper", p.KMetal); Craft(crafts, "the bloomery (iron)", p.KIron);
+            Craft(crafts, "the ard", p.KArd); Craft(crafts, "copper", p.KMetal); Craft(crafts, "the bloomery (iron)", p.KIron); Craft(crafts, "boats of planks", p.KBoat);
             sb.Append(crafts.Length > 0 ? "Crafts they carry: " + crafts + ".\n" : "No craft beyond the everyday.\n");
             // works they were first at (history keeps the leader as Other)
             var evs = w.History.EventsOf(EntityRef.Person(pid));
@@ -168,6 +168,7 @@ namespace TC2.Core.History
             var r = new List<string>();
             int home = p.Home;
             if (p.KIron >= 0.5f) r.Add("an ironsmith");
+            if (p.KBoat >= 0.5f) r.Add(home != 0 && w.Settlements.Exists(home) && w.Settlements.Get(home).Shed != 0 ? "a boatwright at the boat shed" : "a boatwright");
             if (p.KMetal >= 0.5f) r.Add(home != 0 && w.Settlements.Exists(home) && Forge.Smithy(w, home) != 0 ? "a smith at the smithy" : "a smith");
             if (p.SkFarm >= 0.6f) r.Add("a seasoned farmer");
             if (p.SkHunt >= 0.5f) r.Add("a hunter");
@@ -233,8 +234,9 @@ namespace TC2.Core.History
             if (hh.Boat != 0 && w.Buildings.Exists(hh.Boat))
             {
                 ref var bt = ref w.Buildings.Get(hh.Boat);
-                if (bt.Done == 0) sb.Append("They are hollowing a dugout at the landing (").Append(F(100.0 * bt.Hours / Boats.Hours, "0")).Append(" % done).\n");
-                else sb.Append("A dugout of theirs lies at the landing, made in ").Append(Year(bt.Built)).Append(Boats.Sound(in bt, w.Now) ? "" : ", split with age").Append(".\n");
+                bool plank = Boats.IsPlank(bt.Kind);
+                if (bt.Done == 0) sb.Append(plank ? "They are building a boat of planks in the boat shed (" : "They are hollowing a dugout at the landing (").Append(F(100.0 * bt.Hours / Boats.HoursOf(bt.Kind), "0")).Append(" % done).\n");
+                else sb.Append(plank ? "A plank boat of theirs lies at the landing, built in " : "A dugout of theirs lies at the landing, made in ").Append(Year(bt.Built)).Append(Boats.Sound(in bt, w.Now) ? "" : ", split with age").Append(".\n");
             }
             return sb.ToString();
         }

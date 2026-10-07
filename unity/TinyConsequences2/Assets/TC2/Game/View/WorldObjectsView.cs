@@ -21,6 +21,7 @@ namespace TC2.Game
         public CameraRig Rig;
 
         Instancer _people, _granaries, _wells, _hay, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls, _woodpiles;
+        Instancer _beachedP, _afloatP;   // plank boats on the beach and out on the water (C9.2b); _beached/_afloat are the dugouts
         // the boats out this frame (C9.2): a boat's hull is drawn once, its crew seated in it
         readonly System.Collections.Generic.Dictionary<int, int> _hulls = new System.Collections.Generic.Dictionary<int, int>();
         readonly System.Collections.Generic.List<(Vector3 pos, Quaternion rotation, float scale)> _hullAt = new System.Collections.Generic.List<(Vector3 pos, Quaternion rotation, float scale)>();
@@ -62,8 +63,10 @@ namespace TC2.Game
             _huts = new Instancer(Models.Get("hut_round", ProcMeshes.House), _mat, true);
             _tents = new Instancer(Models.Get("tent", ProcMeshes.House), _mat, true);   // camps: hides over poles
             _ruins = new Instancer(Models.Get("ruin", ProcMeshes.House), _mat, true);   // the houses of abandoned villages (D2-052)
-            _beached = new Instancer(Models.Get("boat", ProcMeshes.Granary), _mat, true);   // fishing boats drawn up on the shore
-            _afloat = new Instancer(Models.Get("boat", ProcMeshes.Granary), _mat, true);    // and out on the water with their fishers
+            _beached = new Instancer(Models.Get("dugout", ProcMeshes.Granary), _mat, true);   // dugouts drawn up on the shore (C9.1)
+            _afloat = new Instancer(Models.Get("dugout", ProcMeshes.Granary), _mat, true);    // and out on the water with their crews
+            _beachedP = new Instancer(Models.Get("boat", ProcMeshes.Granary), _mat, true);    // plank boats (C9.2b)
+            _afloatP = new Instancer(Models.Get("boat", ProcMeshes.Granary), _mat, true);
             _wells = new Instancer(Models.Get("well", ProcMeshes.Granary), _mat, true);
             _works[Structures.Well] = _wells; _works[Structures.Granary] = _granaries;
             _works[Structures.Barn] = new Instancer(Models.Get("barn", ProcMeshes.House), _mat, true);
@@ -75,6 +78,7 @@ namespace TC2.Game
             _works[Structures.BogPits] = new Instancer(Models.Get("bog_pits", ProcMeshes.Granary), _mat, true);
             _works[Structures.Ground] = new Instancer(Models.Get("training_ground", ProcMeshes.Granary), _mat, true);
             _works[Structures.Market] = new Instancer(Models.Get("market_stalls", ProcMeshes.Granary), _mat, true);
+            _works[Structures.BoatShed] = new Instancer(Models.Get("boat_shed", ProcMeshes.House), _mat, true);   // (C9.2b)
             _hay = new Instancer(Models.Get("haystack", ProcMeshes.Granary), _mat, true);
             _woodpiles = new Instancer(ProcMeshes.Woodpile(), _mat, true);   // the village's woodstore, by the homes (D2-081)
             _trees = new Instancer[TreeModels.Length];
@@ -246,8 +250,8 @@ namespace TC2.Game
             }
             if ((Off & 1) == 0) for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
             _flames.Draw(cam);
-            if ((Off & 2) == 0) { _people.Draw(cam); _afloat.Draw(cam); }
-            if ((Off & 4) == 0) _beached.Draw(cam);
+            if ((Off & 2) == 0) { _people.Draw(cam); _afloat.Draw(cam); _afloatP.Draw(cam); }
+            if ((Off & 4) == 0) { _beached.Draw(cam); _beachedP.Draw(cam); }
             EmitSmoke(w);
             EmitLights();
         }
@@ -343,7 +347,7 @@ namespace TC2.Game
             for (int i = 0; i < _houseKinds.Length; i++) { _houseKinds[i].Clear(); _housePosts[i].Clear(); }
             _stonePiles.Clear();
             for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
-            _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _walls.Clear(); _woodpiles.Clear();
+            _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _woodpiles.Clear();
             _smoke.Clear(); _lights.Clear(); _watch.Clear();
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
@@ -425,6 +429,14 @@ namespace TC2.Game
             float yaw = Mathf.Atan2(s.SquareX - b.X, s.SquareY - b.Y) * Mathf.Rad2Deg + 180f + ((bid * 37) % 21 - 10);
             var inst = b.Kind < _works.Length && _works[b.Kind] != null ? _works[b.Kind] : _granaries;
             var m = Place(P, s, b.X, b.Y, yaw, ex);
+            if (b.Kind == Structures.BoatShed && s.LandAt != 0)
+            {
+                // its mouth down the beach, to the water (C9.2b; the kit's mouth at +y comes into the game at -z)
+                Vector3 at = PlanetGeo.Surface(P, s.LocalToSphere(b.X, b.Y, P.Radius)), up = at.normalized;
+                Vector3 down = PlanetGeo.Surface(P, s.LocalToSphere(b.X - s.LandUx, b.Y - s.LandUy, P.Radius)) - at;
+                down -= up * Vector3.Dot(down, up);
+                if (down.sqrMagnitude > 1e-6f) m = Matrix4x4.TRS(at, Quaternion.LookRotation(-down.normalized, up), Vector3.one * ex);
+            }
             if (b.Done == 0)
             {
                 float up = Mathf.Clamp01((float)(b.Hours / System.Math.Max(1.0, k.Hours)));
@@ -563,23 +575,25 @@ namespace TC2.Game
             if (toSea.sqrMagnitude < 1e-6f) toSea = Vector3.Cross(up, Vector3.right);
             var rot = Quaternion.LookRotation(toSea.normalized, up) * Quaternion.Euler(0f, (bid * 37) % 13 - 6, 0f);
             float bex = ex * 1.15f;
+            var inst = Boats.IsPlank(b.Kind) ? _beachedP : _beached;
             if (b.Done == 0)
             {
                 if (b.Left != 0) return;   // (left half-made when its household went)
-                float done = Mathf.Clamp01((float)(b.Hours / Boats.Hours));
+                float done = Mathf.Clamp01((float)(b.Hours / Boats.HoursOf(b.Kind)));
                 if (done <= 0.05f) return;
-                _beached.Add(0, new Color(1.10f, 1.02f, 0.86f, 1f), Matrix4x4.TRS(pos, rot, new Vector3(bex, bex * (0.4f + 0.6f * done), bex * (0.5f + 0.5f * done))));   // (the hollowing trunk)
+                // the hollowing trunk; a plank boat rising on the stocks in the shed (C9.2b)
+                inst.Add(0, new Color(1.10f, 1.02f, 0.86f, 1f), Matrix4x4.TRS(pos, rot, new Vector3(bex, bex * (0.4f + 0.6f * done), bex * (0.5f + 0.5f * done))));
                 return;
             }
             if (b.Left != 0)
             {
                 float c = (float)Homes.RuinLeft(in b, w.Now);
                 if (c <= 0.05f) return;
-                _beached.Add(0, Color.Lerp(new Color(0.45f, 0.45f, 0.42f, 1f), new Color(0.8f, 0.8f, 0.78f, 1f), c), Matrix4x4.TRS(pos - up * (0.3f * (1f - c)), rot, new Vector3(bex, bex * (0.4f + 0.6f * c), bex)));
+                inst.Add(0, Color.Lerp(new Color(0.45f, 0.45f, 0.42f, 1f), new Color(0.8f, 0.8f, 0.78f, 1f), c), Matrix4x4.TRS(pos - up * (0.3f * (1f - c)), rot, new Vector3(bex, bex * (0.4f + 0.6f * c), bex)));
                 return;
             }
             if (b.Household != 0 && w.Households.Exists(b.Household) && Boats.Aboard(w, b.Household, bid) > 0) return;   // (out at sea)
-            _beached.Add(0, Color.white, Matrix4x4.TRS(pos, rot, Vector3.one * bex));
+            inst.Add(0, Color.white, Matrix4x4.TRS(pos, rot, Vector3.one * bex));
         }
 
         /// <summary>The orchard trees and bushes in the yards of the villages near the camera (the woods are the terrain's: D2-079).</summary>
@@ -645,7 +659,7 @@ namespace TC2.Game
         void RebuildPeople(TC2.Core.Simulation.World w)
         {
             var P = w.Planet;
-            _people.Clear(); _afloat.Clear(); _hulls.Clear();
+            _people.Clear(); _afloat.Clear(); _afloatP.Clear(); _hulls.Clear();
             PeopleDrawn = 0; BoatsAfloat = 0;
             float waterR = (float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel));
             double t = Host.RenderTime;
@@ -683,7 +697,7 @@ namespace TC2.Game
                         float drift = (float)(KeyedRng.Unit(KeyedRng.Mix(fk + 1)) * 360.0 + t / 600.0);   // swinging slowly on the water
                         var brot = PlanetGeo.Upright(bpos, drift) * Quaternion.Euler(Mathf.Sin((float)(t / 7.0)) * 2f, 0, Mathf.Sin((float)(t / 5.0)) * 3f);
                         float bex = Exaggeration(bpos, 2.5f);
-                        _afloat.Add(0, Color.white, Matrix4x4.TRS(bpos, brot, Vector3.one * bex));
+                        (w.Buildings.Exists(boat) && Boats.IsPlank(w.Buildings.Get(boat).Kind) ? _afloatP : _afloat).Add(0, Color.white, Matrix4x4.TRS(bpos, brot, Vector3.one * bex));
                         BoatsAfloat++;
                         if (_hullAt.Count == _hulls.Count) { _hullAt.Add(default); _hullSeats.Add(0); }
                         _hullAt[_hulls.Count] = (bpos, brot, bex); _hullSeats[_hulls.Count] = 0;

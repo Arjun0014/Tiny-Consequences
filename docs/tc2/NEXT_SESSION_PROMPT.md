@@ -125,6 +125,12 @@ colours and draws with their own bounds took the near views from 60-70 to 90-102
 252 tests): dugouts made by fishing households, rowed out to the open sea's shoals, lost in rising wind - committed, but its final checks
 (ten seeds after the landing fix, Web build, shots) are open: SESSION_HANDOFF "Next".
 
+**Where we are (session 8, 7-8 Oct 2026)**: C9.1 closed (D2-110: boats on the sand by the water, ten seeds clean; Web build 5/5). **C9.2a the landing and the
+crew** (D2-111): one landing a village on the drawn waterline, boats in a row a metre above the sea; a boat goes out with its crew (lived days had caught a third
+less from boats than COARSE ones); nobody stands in the sea (shore fishers at the waterline; the green where the sea took the square). **C9.2b boats of
+planks** (D2-112): a technique found by woodworkers at a dugout, a boat shed at the landing, plank boats built there (four aboard, harder weather, 25 years);
+sim version 51. Next: SESSION_HANDOFF "Next" (Web build of C9.2b, then C9.3 the dock, crews beyond the household, or C10.2).
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

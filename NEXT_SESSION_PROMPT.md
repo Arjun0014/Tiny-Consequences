@@ -13,23 +13,17 @@ modify or stage it.
 4. `docs/tc2/24_TRANSPORT_AND_MARITIME.md` §5 (boats) and `docs/tc2/25_CIVILISATION_ROADMAP.md` (C1-C13, the C9 slices).
 5. `git status`, `git log --oneline -10`.
 
-## Where things stand (7 Oct 2026, ~23:00 IST)
-- Commits this session: **957403c** D2-108 (the lord answers its tributaries' wrongs once; C10.1's "population drops" were chance - no
-  systematic loss over ten seeds), **57499f3** D2-109 (Web frame rate: per-instance colours, draws with their own bounds; near views
-  90-102 fps, Web test 6/6), **c674892** C9.1 boats from the woods (D2-110, code complete, **final checks open**), then the handoff docs.
-- **Sim version 49. 252 headless tests pass on the final code** (full suite rerun at handoff, after the boats' landing fix).
-- The Web build in `tc2/web-build/web` is current to D2-109 (before boats).
+## Where things stand (8 Oct 2026, session 8 of TC2 work; Control Room run #7 session 3)
+- Commits this session: 9a2ceb7 + 23ac1c9 **C9.1 closed** (D2-110), c5fd15f **C9.2a the landing and the crew** (D2-111), then **C9.2b boats of
+  planks** (D2-112). Sim version 51; 262 headless tests pass on the final code.
+- The Web build in `tc2/web-build/web` is of 9a2ceb7 (C9.1 closed): C9.2a/b not yet in it.
 
 ## Do next, in order
-1. **Close C9.1 (D2-110 "Open")**: rerun ten seeds 300 years DEEP with a fresh copy of the binaries (tools copied to
-   `tc2/out/tools/wrun.sh` and `cmp.py` - fix their scratchpad paths to the new session's scratchpad), compare with
-   `python cmp.py c108a c91j 42 7 4 2 1 3 5 6 8 11`; check `node tc2/scripts/headless.mjs run --nobuild --load <abs save> --years 0
-   --boats <sid>` shows no "WET" boat; Web build (`node tc2/scripts/unity.mjs build-web --jobs 3`), `node tc2/scripts/webtest.mjs --tag
-   c91web --skip-away`, shots `node tc2/scripts/unity.mjs shots --tag boats2 --load "<abs save>" --village <id> --views
-   "work20@10,work20far@10,close@10,village@10"` (a village with boats: the report's `boats:` line names the one with most); judge the
-   boats on the beach and sailors at sea; update D2-110, 24, PROGRESS, SESSION_HANDOFF; commit.
-2. Then the roadmap: C9.2 plank boats and boatbuilding (a technique found by dugout owners), or C10.2 leaders, succession and the polity
-   page.
+1. Web build of the C9.2b commit (`node tc2/scripts/unity.mjs build-web --jobs 3`, ~8 min), then `node tc2/scripts/webtest.mjs --tag c92web
+   --skip-away` with nothing else running (headless tests beside it cut the page frame rates); record in D2-112.
+2. Then the roadmap (`docs/tc2/SESSION_HANDOFF.md` session 8 "Next"): C9.3 the dock (by catches landed and boats kept), crews beyond the
+   household, farther grounds for plank boats, then C9.4 cargo boats and coastal trade; or C10.2 leaders, succession and the polity page.
+   Tools: `tc2/out/tools/wrun.sh` (fix its `SCR=` to the new scratchpad) and `cmp.py` (`python cmp.py c92c c92r 42 7 4 2 1 3 5 6 8 11`).
 
 ## Rules that bite
 - Commits `[tc2] ...`, ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; never stage TC1 files or the untracked

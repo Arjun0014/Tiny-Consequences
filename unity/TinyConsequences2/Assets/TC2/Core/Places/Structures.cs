@@ -6,7 +6,7 @@ using TC2.Core.Simulation;
 namespace TC2.Core.Places
 {
     /// <summary>What a structure is for (21 §1).</summary>
-    public enum Function : byte { Dwelling = 0, Water = 1, Store = 2, Smith = 3, Quarry = 4, Train = 5, Market = 6, Gate = 7, Mine = 8, Charcoal = 9, Boat = 10 }   // (bog-ore pits are mines too)
+    public enum Function : byte { Dwelling = 0, Water = 1, Store = 2, Smith = 3, Quarry = 4, Train = 5, Market = 6, Gate = 7, Mine = 8, Charcoal = 9, Boat = 10, Boatyard = 11 }   // (bog-ore pits are mines too)
 
     /// <summary>Where a structure is laid out (21 §4).</summary>
     public enum Zone : byte { Homes = 0, Core = 1, Edge = 2, Outer = 3, Site = 4, Shore = 5 }
@@ -47,6 +47,8 @@ namespace TC2.Core.Places
         public const byte CharHearth = 18;                                            // a charcoal hearth at the woodlot (C5.2a)
         public const byte BogPits = 19;                                               // pits at a bed of bog ore (C5.2b)
         public const byte Boat = 20;                                                  // a household's dugout at the landing (C9.1, `Boats`)
+        public const byte PlankBoat = 21;                                             // a household's boat of planks (C9.2b)
+        public const byte BoatShed = 22;                                              // the village's boat shed at the landing, where plank boats are built (C9.2b)
 
         /// <summary>FU of grain a granary keeps well (~7.5 t: a raised timber store of ~10 m3).</summary>
         public const double GranaryHolds = 10000.0;
@@ -75,6 +77,8 @@ namespace TC2.Core.Places
             t[Mine] = new KindInfo("mine", Function.Mine, Zone.Site, 7.0, 40, 6, 60, 300, 0);
             t[Barn] = new KindInfo("barn", Function.Store, Zone.Edge, 7.0, 360, 90, 60, 200, BarnHolds);
             t[Boat] = new KindInfo("dugout", Function.Boat, Zone.Shore, 2.5, Boats.Hours, Boats.Wood, 5, 2, 0);   // (left unkept it splits in a few years)
+            t[PlankBoat] = new KindInfo("plank boat", Function.Boat, Zone.Shore, 3.0, Boats.PlankHours, Boats.PlankWood, 8, 3, 0);
+            t[BoatShed] = new KindInfo("boat shed", Function.Boatyard, Zone.Shore, 5.5, Boats.ShedHours, Boats.ShedWood, 30, 60, 0);   // (a naust: a long low timber shed, open to the sea)
             return t;
         }
 
@@ -146,6 +150,10 @@ namespace TC2.Core.Places
                     Begin(w, sid, CharHearth, s.OreEvent != 0 ? s.OreEvent : s.SmithEvent, CauseRel.EnabledBy); return;
                 }
             }
+            // boats of planks known and a boat wanted by one of its households: a boat shed at the landing to build them in (C9.2b) - after water
+            // and a store, never while walls rise
+            if (s.Shed == 0 && (s.TechKnown & Boats.Bit) != 0 && s.Wall != 1 && (s.Works & Construction.Granary) != 0 && Boats.ShedWanted(w, sid))
+            { Begin(w, sid, BoatShed, s.BoatEvent, CauseRel.EnabledBy); return; }
             // a competent smith and use for metal: a smithy (C1.4) - after water and a store, never while walls rise
             if (s.Smithy == 0 && (s.TechKnown & Forge.Bit) != 0 && s.Wall != 1 && (s.Works & Construction.Granary) != 0 && Forge.Use(w, in s))
             { Begin(w, sid, Smithy, s.SmithEvent, CauseRel.EnabledBy); return; }
@@ -223,6 +231,7 @@ namespace TC2.Core.Places
             if (b.Kind == BogPits) s.FeMine = bid;
             if (b.Kind == Ground) s.Ground = bid;
             if (b.Kind == Market) s.Market = bid;
+            if (b.Kind == BoatShed) s.Shed = bid;
             if (b.Kind == Smithy)
             {
                 s.Smithy = bid;
@@ -254,6 +263,7 @@ namespace TC2.Core.Places
             if (kind == Smithy) s.Smithy = id;
             if (kind == Ground) s.Ground = id;
             if (kind == Market) s.Market = id;
+            if (kind == BoatShed) s.Shed = id;
             return id;
         }
 
@@ -274,6 +284,7 @@ namespace TC2.Core.Places
             if (b.Kind == Smithy && s.Smithy == bid) s.Smithy = 0;
             if (b.Kind == Ground && s.Ground == bid) s.Ground = 0;
             if (b.Kind == Market && s.Market == bid) s.Market = 0;
+            if (b.Kind == BoatShed && s.Shed == bid) s.Shed = 0;
             if (b.Kind == Well && !Has(w, b.Settlement, Well, bid)) s.Works = (byte)(s.Works & ~Construction.Well);
         }
 
@@ -323,6 +334,7 @@ namespace TC2.Core.Places
             if (kind == CharHearth && Woods.Lot(in s) >= 0) { x = s.WoodX; y = s.WoodY; return; }   // (at the woods)
             if (kind == Mine && s.OreCell > 0) { s.SphereToLocal(w.Planet.Grid.Center[s.OreCell - 1], w.Planet.Radius, out double mx, out double my); x = (float)mx; y = (float)my; return; }   // (at the ore)
             if (kind == Quarry && s.StoneCell > 0) { s.SphereToLocal(w.Planet.Grid.Center[s.StoneCell - 1], w.Planet.Radius, out double qx, out double qy); x = (float)qx; y = (float)qy; return; }   // (at the rock)
+            if (kind == BoatShed && Boats.ShedSpot(w, sid, out x, out y)) return;   // (at the head of the landing: C9.2b)
             var k = Of(kind);
             var P = w.Planet;
             double r0, dir, r1;

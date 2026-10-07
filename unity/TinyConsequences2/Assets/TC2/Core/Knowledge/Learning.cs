@@ -68,6 +68,7 @@ namespace TC2.Core.Knowledge
                         Object = bestPid != 0 ? EntityRef.Person(bestPid) : default, ArgA = t, RootKind = RootKind.People,
                     });
                     if (t == Tech.Metal) { ref var sk = ref w.Settlements.Get(sid); sk.SmithEvent = kev; }   // (what moves its smithy: C1.4)
+                    if (t == Tech.Boat) { ref var sb = ref w.Settlements.Get(sid); sb.BoatEvent = kev; }     // (what moves its boat shed: C9.2b)
                 }
                 else if (knew && best < Tech.Forgotten)
                 {
@@ -105,7 +106,7 @@ namespace TC2.Core.Knowledge
             var res = w.Residents(sid);
             for (int t = 0; t < Tech.Count; t++)
             {
-                double chance = t == Tech.Nets ? nets : t == Tech.Loom ? loom : t == Tech.Quern ? quern : t == Tech.Pottery ? pottery : t == Tech.Ard ? ard : t == Tech.Metal ? metal : 0.0;   // (nobody begins knowing the bloomery: C5.2b)
+                double chance = t == Tech.Nets ? nets : t == Tech.Loom ? loom : t == Tech.Quern ? quern : t == Tech.Pottery ? pottery : t == Tech.Ard ? ard : t == Tech.Metal ? metal : 0.0;   // (nobody begins knowing the bloomery: C5.2b, nor boats of planks: C9.2b)
                 if (KeyedRng.Unit(seed, RngStream.Knowledge, (ulong)sid, 7000UL + (ulong)t) >= chance) continue;
                 double best = 0;
                 for (int i = 0; i < res.Count; i++)
@@ -127,11 +128,11 @@ namespace TC2.Core.Knowledge
         {
             float f = (float)v;
             if (t == Tech.Nets) s.BestNets = f; else if (t == Tech.Loom) s.BestLoom = f; else if (t == Tech.Quern) s.BestQuern = f;
-            else if (t == Tech.Pottery) s.BestPottery = f; else if (t == Tech.Ard) s.BestArd = f; else if (t == Tech.Metal) s.BestMetal = f; else s.BestIron = f;
+            else if (t == Tech.Pottery) s.BestPottery = f; else if (t == Tech.Ard) s.BestArd = f; else if (t == Tech.Metal) s.BestMetal = f; else if (t == Tech.Iron) s.BestIron = f; else s.BestBoat = f;
         }
 
         public static double Best(in Settlement s, int t) =>
-            t == Tech.Nets ? s.BestNets : t == Tech.Loom ? s.BestLoom : t == Tech.Quern ? s.BestQuern : t == Tech.Pottery ? s.BestPottery : t == Tech.Ard ? s.BestArd : t == Tech.Metal ? s.BestMetal : s.BestIron;
+            t == Tech.Nets ? s.BestNets : t == Tech.Loom ? s.BestLoom : t == Tech.Quern ? s.BestQuern : t == Tech.Pottery ? s.BestPottery : t == Tech.Ard ? s.BestArd : t == Tech.Metal ? s.BestMetal : t == Tech.Iron ? s.BestIron : s.BestBoat;
 
         /// <summary>
         /// Hours of a person's work that belongs to a technique (fishing to nets, making and mending to the loom, grinding to the
@@ -150,7 +151,10 @@ namespace TC2.Core.Knowledge
             if (t == Tech.Metal && (s.OreCell == 0 || p.KPottery < Tech.Competent)) return;   // (copper its people have seen: C5.1)
             // the bloomery wants a copper smith's furnace and bellows, and bog ore its people have seen (C5.2b)
             if (t == Tech.Iron && (s.FeCell == 0 || p.KMetal < Tech.Competent)) return;
-            double chance = Tech.Laws[t].Discover * hours * (0.5 + p.Curious / 255.0);
+            // boats of planks want a woodworker's hand at a dugout (the only practice that calls it: Boats.Work); edge tools of metal make the
+            // planks easier to split and fit (C9.2b)
+            if (t == Tech.Boat && p.SkWood < BoatWright) return;
+            double chance = Tech.Laws[t].Discover * hours * (0.5 + p.Curious / 255.0) * (t == Tech.Boat ? 0.3 + 0.7 * Tech.ToolShare(in s) : 1.0);
             double u = KeyedRng.Unit(w.Seed, RngStream.Knowledge, (ulong)p.Id, (ulong)w.Now, (ulong)t);
             if (u >= chance) return;
             Tech.Set(ref p, t, Tech.FirstFound);
@@ -162,6 +166,9 @@ namespace TC2.Core.Knowledge
             });
             w.Metrics.TechniquesFound++;
         }
+
+        /// <summary>A woodworker's skill that can find boats of planks while hollowing a dugout (C9.2b).</summary>
+        public const double BoatWright = 0.3;
 
         readonly System.Collections.Generic.List<int> _near = new System.Collections.Generic.List<int>();
 

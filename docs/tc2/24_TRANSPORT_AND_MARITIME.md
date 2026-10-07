@@ -73,6 +73,13 @@ and boatbuilding (a technique found by dugout owners), docks, cargo boats and co
 
 **Implemented (C9.2a, D2-111)**: a village keeps **one landing** - the beach nearest its square, found on the drawn waterline from the square toward the nearest sea, a metre above the sea (`Boats.EnsureLanding/Beach/Waterline/UpTheBeach`), kept while the sea is within 40 m; its boats lie in a row along it, each drawn down to the waterline and a metre up (`Landing`, `Drawn`); they follow the coast and a risen sea (`ShoreMoved`, `Plan`). **A boat goes out with its crew**: lived, the one who takes it out is joined by those of the household at leisure or mending, the same ground and return; one who chooses the sea within half an hour of its leaving catches it; a boat at sea is not taken out again (`AgentSystem.Crew`, `Outing`). Shore fishers stand at the waterline (`Boats.Edge`, `OutOfTheWater`); people gather at the village's green, its square or the dry ground nearest it where the sea took the square (`AgentSystem.Green`).
 
+**Implemented (C9.2b, D2-112)**: **boats of planks** - a technique (`Tech.Boat`) found by a woodworker hollowing a dugout (likelier with metal tools),
+carried and taught like the others; a village that knows it raises a **boat shed** at the head of its landing (`Structures.BoatShed`, when a household
+would make a boat) and builds **plank boats** there one at a time (`Structures.PlankBoat`: 240 h at the builder's knowledge of the craft, 40 loads
+taken to the shed as it is laid down, two years before a half-made one is given up): four aboard, out to 15 m/s of wind and caught out half as often,
+rowed half as fast again as a dugout, reaching more of the offshore shoals, lasting 25 years. Not yet: crews beyond the household, docks (C9.3), cargo
+boats and coastal trade (C9.4), ferries (C9.5).
+
 ## 6. Ports (C9)
 
 landing (a beach: nothing built) -> fishing jetty and boat shed -> dock (timber quay) -> harbour (stone quay, warehouses) -> shipyard.

@@ -274,7 +274,7 @@ namespace TC2.Game
             }
             if (p.Sick != 0)
                 sb.Append(p.SickPhase == TC2.Core.Health.Disease.Latent ? "carrying " : "sick with ").Append(w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick))).Append('\n');
-            if (p.KNets >= 0.1f || p.KLoom >= 0.1f || p.KQuern >= 0.1f || p.KPottery >= 0.1f || p.KArd >= 0.1f || p.KMetal >= 0.1f || p.KIron >= 0.1f)
+            if (p.KNets >= 0.1f || p.KLoom >= 0.1f || p.KQuern >= 0.1f || p.KPottery >= 0.1f || p.KArd >= 0.1f || p.KMetal >= 0.1f || p.KIron >= 0.1f || p.KBoat >= 0.1f)
             {
                 sb.Append("knows:");
                 if (p.KNets >= 0.1f) sb.Append(" nets ").Append(p.KNets.ToString("0.00", CultureInfo.InvariantCulture));
@@ -284,6 +284,7 @@ namespace TC2.Game
                 if (p.KArd >= 0.1f) sb.Append(" ard ").Append(p.KArd.ToString("0.00", CultureInfo.InvariantCulture));
                 if (p.KMetal >= 0.1f) sb.Append(" copper ").Append(p.KMetal.ToString("0.00", CultureInfo.InvariantCulture));
                 if (p.KIron >= 0.1f) sb.Append(" iron ").Append(p.KIron.ToString("0.00", CultureInfo.InvariantCulture));
+                if (p.KBoat >= 0.1f) sb.Append(" boats ").Append(p.KBoat.ToString("0.00", CultureInfo.InvariantCulture));
                 sb.Append('\n');
             }
             sb.Append("skills: farming ").Append(p.SkFarm.ToString("0.00", CultureInfo.InvariantCulture)).Append(", wood ").Append(p.SkWood.ToString("0.00", CultureInfo.InvariantCulture)).Append(", hunting ").Append(p.SkHunt.ToString("0.00", CultureInfo.InvariantCulture)).Append(", fishing ").Append(p.SkFish.ToString("0.00", CultureInfo.InvariantCulture))
@@ -424,16 +425,24 @@ namespace TC2.Game
                       .Append(" of ").Append(cap.ToString("N0", CultureInfo.InvariantCulture)).Append(s.Granary > cap ? " - the rest lies in heaps and rots fast" : "").Append('\n');
                 }
                 else if (b.Kind == Structures.Well) sb.Append("water for ").Append(s.Population).Append(" people, drawn by the pot\n");
-                else if (b.Kind == Structures.Boat)
+                else if (b.Kind == Structures.BoatShed)
                 {
-                    // a household's dugout (C9.1): whose, what the sea gives against the shore, how long it will last
+                    // the village's boat shed (C9.2b): what is on its stocks, its boatwrights
+                    int stocks = Boats.OnTheStocks(w, b.Settlement);
+                    sb.Append("plank boats are built here, one at a time");
+                    if (stocks != 0) { ref var sb2 = ref w.Buildings.Get(stocks); sb.Append(": on the stocks the ").Append(w.History.NameOf(EntityRef.Household(sb2.Household))).Append("s' (").Append((100.0 * sb2.Hours / Boats.PlankHours).ToString("0", CultureInfo.InvariantCulture)).Append(" % done)"); }
+                    sb.Append("; its best boatwright knows the craft at ").Append(s.BestBoat.ToString("0.00", CultureInfo.InvariantCulture)).Append('\n');
+                }
+                else if (Boats.IsBoat(b.Kind))
+                {
+                    // a household's dugout (C9.1) or plank boat (C9.2b): whose, what the sea gives against the shore, how long it will last
                     int owner = b.Household != 0 ? b.Household : b.Last;
                     if (owner != 0) sb.Append(b.Household != 0 ? "the " : "left by the ").Append(w.History.NameOf(EntityRef.Household(owner))).Append("s'").Append(b.Household != 0 ? " boat" : "").Append('\n');
                     if (b.Cond <= 0f) sb.Append("overturned at sea and lost\n");
                     else if (b.Done != 0 && b.Left == 0)
-                        sb.Append("seats two; rows out to the open sea's grounds within ").Append((WildFood.SeaReach / 1000.0).ToString("0.0", CultureInfo.InvariantCulture)).Append(" km: an hour there is worth ")
-                          .Append(Boats.SeaExpect(w, in s).ToString("0.0", CultureInfo.InvariantCulture)).Append(" days' food against ").Append(s.Fish.Expect.ToString("0.0", CultureInfo.InvariantCulture))
-                          .Append(" on the shore; it will split with age in about ").Append(System.Math.Max(0.0, Boats.Years - age).ToString("0", CultureInfo.InvariantCulture)).Append(" years\n");
+                        sb.Append("seats ").Append(Boats.SeatsOf(b.Kind) == 4 ? "four" : "two").Append("; goes out in winds below ").Append(Boats.MaxOf(b.Kind).ToString("0", CultureInfo.InvariantCulture)).Append(" m/s to the open sea's grounds within ").Append((WildFood.SeaReach / 1000.0).ToString("0.0", CultureInfo.InvariantCulture)).Append(" km: an hour there is worth ")
+                          .Append(Boats.SeaExpect(w, in s, Boats.IsPlank(b.Kind)).ToString("0.0", CultureInfo.InvariantCulture)).Append(" days' food against ").Append(s.Fish.Expect.ToString("0.0", CultureInfo.InvariantCulture))
+                          .Append(" on the shore; it will be past mending in about ").Append(System.Math.Max(0.0, Boats.YearsOf(b.Kind) - age).ToString("0", CultureInfo.InvariantCulture)).Append(" years\n");
                 }
                 else if (b.Kind == Structures.Smithy)
                 {

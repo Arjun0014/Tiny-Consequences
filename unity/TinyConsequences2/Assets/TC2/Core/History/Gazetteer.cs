@@ -76,18 +76,20 @@ namespace TC2.Core.History
             // its fishing and its boats (C9.1)
             if (s.Fish.A >= 0)
             {
-                int boats = 0, making = 0, hulks = 0;
+                int boats = 0, planks = 0, making = 0, hulks = 0;
                 var bl = w.BuildingsOf(sid);
                 for (int i = 0; i < bl.Count; i++)
                 {
                     ref var b = ref w.Buildings.Get(bl[i]);
                     if (!Boats.IsBoat(b.Kind)) continue;
-                    if (b.Done == 0 && b.Left == 0) making++; else if (Boats.Sound(in b, w.Now)) boats++; else if (b.Done != 0) hulks++;
+                    if (b.Done == 0 && b.Left == 0) making++; else if (Boats.Sound(in b, w.Now)) { if (Boats.IsPlank(b.Kind)) planks++; else boats++; } else if (b.Done != 0) hulks++;
                 }
                 double ldx = (double)s.LandX - s.SquareX, ldy = (double)s.LandY - s.SquareY;
-                sb.Append("It fishes from the shore").Append(boats > 0 ? " and from " + boats + (boats == 1 ? " dugout" : " dugouts") + " at its landing" : "")
+                string fleet = (boats > 0 ? boats + (boats == 1 ? " dugout" : " dugouts") : "") + (boats > 0 && planks > 0 ? " and " : "") + (planks > 0 ? planks + (planks == 1 ? " plank boat" : " plank boats") : "");
+                sb.Append("It fishes from the shore").Append(fleet.Length > 0 ? " and from " + fleet + " at its landing" : "")
+                  .Append(s.Shed != 0 ? (fleet.Length > 0 ? ", built in its boat shed" : "; it has a boat shed") : "")
                   .Append(s.LandAt != 0 ? " (the landing " + F(DMath.Sqrt(ldx * ldx + ldy * ldy), "0") + " m from the square, since " + Year(s.LandAt) + ")" : "")
-                  .Append(making > 0 ? " (" + making + " being hollowed)" : "").Append(hulks > 0 ? "; " + hulks + " old hulks on the beach" : "")
+                  .Append(making > 0 ? " (" + making + " being made)" : "").Append(hulks > 0 ? "; " + hulks + " old hulks on the beach" : "")
                   .Append(s.Sea.A >= 0 ? "; an hour at sea is worth " + F(Boats.SeaExpect(w, in s), "0.0") + " days' food against " + F(s.Fish.Expect, "0.0") + " on the shore" : "").Append(".\n");
             }
             if (s.FamineAt != 0) sb.Append("Last famine: ").Append(Year(s.FamineAt)).Append(" (").Append(F(100 * s.Memory, "0")).Append(" % of its grown people lived through it).\n");

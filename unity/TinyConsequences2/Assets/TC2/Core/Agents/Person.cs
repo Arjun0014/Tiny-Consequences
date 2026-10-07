@@ -120,6 +120,7 @@ namespace TC2.Core.Agents
         public float KPottery, KArd;         // (D2-063)
         public float KMetal;                 // (D2-064)
         public float KIron;                  // the bloomery (C5.2b)
+        public float KBoat;                  // boats of planks (C9.2b)
         public int Sick;                     // the pathogen they carry (0 none; D2-066)
         public byte SickPhase;               // 1 latent, 2 infectious (abed)
         public long SickUntil;               // the end of this phase
@@ -140,17 +141,17 @@ namespace TC2.Core.Agents
         // readers fall back to computing them where it is 0 (the same values: an exact speedup, F8)
         public byte Derived;
         public double Build;                 // the body's build (AgentSystem.ReserveCap)
-        public double Sc0, Sc1, Sc2, Sc3, Sc4, Sc5, Sc6;   // how each technique is copied, above or below the model (Knowledge.Tech.Scatter)
+        public double Sc0, Sc1, Sc2, Sc3, Sc4, Sc5, Sc6, Sc7;   // how each technique is copied, above or below the model (Knowledge.Tech.Scatter)
 
         public void Derive(ulong seed)
         {
             Build = AgentSystem.BuildOf(seed, Id);
             Sc0 = Knowledge.Tech.Scatter(seed, Id, 0); Sc1 = Knowledge.Tech.Scatter(seed, Id, 1); Sc2 = Knowledge.Tech.Scatter(seed, Id, 2);
-            Sc3 = Knowledge.Tech.Scatter(seed, Id, 3); Sc4 = Knowledge.Tech.Scatter(seed, Id, 4); Sc5 = Knowledge.Tech.Scatter(seed, Id, 5); Sc6 = Knowledge.Tech.Scatter(seed, Id, 6);
+            Sc3 = Knowledge.Tech.Scatter(seed, Id, 3); Sc4 = Knowledge.Tech.Scatter(seed, Id, 4); Sc5 = Knowledge.Tech.Scatter(seed, Id, 5); Sc6 = Knowledge.Tech.Scatter(seed, Id, 6); Sc7 = Knowledge.Tech.Scatter(seed, Id, 7);
             Derived = 1;
         }
 
-        public double ScatterOf(int t) => t == 0 ? Sc0 : t == 1 ? Sc1 : t == 2 ? Sc2 : t == 3 ? Sc3 : t == 4 ? Sc4 : t == 5 ? Sc5 : Sc6;
+        public double ScatterOf(int t) => t == 0 ? Sc0 : t == 1 ? Sc1 : t == 2 ? Sc2 : t == 3 ? Sc3 : t == 4 ? Sc4 : t == 5 ? Sc5 : t == 6 ? Sc6 : Sc7;
 
         /// <summary>DEEP: the mean health over the village step just lived (set by the step's bodies, read by its conceptions in the
         /// same call; never saved).</summary>
@@ -168,7 +169,7 @@ namespace TC2.Core.Agents
             w.Float(SkHunt); w.Float(SkFish); w.Float(Reserve); w.Float(Ate); w.Float(Carry); w.Int(Ground);
             w.Byte((byte)Act); w.Byte((byte)Step); w.Byte((byte)Why); w.Int(WhyArg); w.Int(Dest); w.Int(RouteA); w.Int(RouteB);
             w.Long(T0); w.Long(T1); w.Long(TA); w.Float(FromX); w.Float(FromY); w.Float(ToX); w.Float(ToY); w.Float(S0); w.Float(S1);
-            w.Int(ActVer); w.UInt(RngCount); w.Long(Alarm); w.Int(AlarmProc); w.Long(AlarmT); w.Int(AlarmVer); w.Int(StayDur); w.Int(Visits); w.Long(Until); w.Float(Worked); w.Float(KNets); w.Float(KLoom); w.Float(KQuern); w.Float(KPottery); w.Float(KArd); w.Float(KMetal); w.Float(KIron);
+            w.Int(ActVer); w.UInt(RngCount); w.Long(Alarm); w.Int(AlarmProc); w.Long(AlarmT); w.Int(AlarmVer); w.Int(StayDur); w.Int(Visits); w.Long(Until); w.Float(Worked); w.Float(KNets); w.Float(KLoom); w.Float(KQuern); w.Float(KPottery); w.Float(KArd); w.Float(KMetal); w.Float(KIron); w.Float(KBoat);
             w.Int(Sick); w.Byte(SickPhase); w.Long(SickUntil); w.Long(SickCause); w.Int(Imm0); w.Int(Imm1); w.Long(ImmUntil0); w.Long(ImmUntil1); w.Byte(Cargo); w.Float(CargoQty); w.Byte(CargoTo);
             w.Int(Imm2); w.Int(Imm3); w.Int(Imm4); w.Int(Imm5); w.Long(ImmUntil2); w.Long(ImmUntil3); w.Long(ImmUntil4); w.Long(ImmUntil5);
             w.Float(Hurt); w.Int(HurtDeed); w.Int(Errand); w.Int(Band); w.Float(SkFight); w.Byte(Fights);
@@ -184,7 +185,7 @@ namespace TC2.Core.Agents
             p.SkHunt = r.Float(); p.SkFish = r.Float(); p.Reserve = r.Float(); p.Ate = r.Float(); p.Carry = r.Float(); p.Ground = r.Int();
             p.Act = (ActivityKind)r.Byte(); p.Step = (StepKind)r.Byte(); p.Why = (WhyCode)r.Byte(); p.WhyArg = r.Int(); p.Dest = r.Int(); p.RouteA = r.Int(); p.RouteB = r.Int();
             p.T0 = r.Long(); p.T1 = r.Long(); p.TA = r.Long(); p.FromX = r.Float(); p.FromY = r.Float(); p.ToX = r.Float(); p.ToY = r.Float(); p.S0 = r.Float(); p.S1 = r.Float();
-            p.ActVer = r.Int(); p.RngCount = r.UInt(); p.Alarm = r.Long(); p.AlarmProc = r.Int(); p.AlarmT = r.Long(); p.AlarmVer = r.Int(); p.StayDur = r.Int(); p.Visits = r.Int(); p.Until = r.Long(); p.Worked = r.Float(); p.KNets = r.Float(); p.KLoom = r.Float(); p.KQuern = r.Float(); p.KPottery = r.Float(); p.KArd = r.Float(); p.KMetal = r.Float(); p.KIron = r.Float();
+            p.ActVer = r.Int(); p.RngCount = r.UInt(); p.Alarm = r.Long(); p.AlarmProc = r.Int(); p.AlarmT = r.Long(); p.AlarmVer = r.Int(); p.StayDur = r.Int(); p.Visits = r.Int(); p.Until = r.Long(); p.Worked = r.Float(); p.KNets = r.Float(); p.KLoom = r.Float(); p.KQuern = r.Float(); p.KPottery = r.Float(); p.KArd = r.Float(); p.KMetal = r.Float(); p.KIron = r.Float(); p.KBoat = r.Float();
             p.Sick = r.Int(); p.SickPhase = r.Byte(); p.SickUntil = r.Long(); p.SickCause = r.Long(); p.Imm0 = r.Int(); p.Imm1 = r.Int(); p.ImmUntil0 = r.Long(); p.ImmUntil1 = r.Long(); p.Cargo = r.Byte(); p.CargoQty = r.Float(); p.CargoTo = r.Byte();
             p.Imm2 = r.Int(); p.Imm3 = r.Int(); p.Imm4 = r.Int(); p.Imm5 = r.Int(); p.ImmUntil2 = r.Long(); p.ImmUntil3 = r.Long(); p.ImmUntil4 = r.Long(); p.ImmUntil5 = r.Long();
             p.Hurt = r.Float(); p.HurtDeed = r.Int(); p.Errand = r.Int(); p.Band = r.Int(); p.SkFight = r.Float(); p.Fights = r.Byte();
@@ -200,7 +201,7 @@ namespace TC2.Core.Agents
             h.Add(SkHunt); h.Add(SkFish); h.Add(Reserve); h.Add(Ate); h.Add(Carry); h.Add(Ground);
             h.Add((byte)Act); h.Add((byte)Step); h.Add((byte)Why); h.Add(WhyArg); h.Add(Dest); h.Add(RouteA); h.Add(RouteB);
             h.Add(T0); h.Add(T1); h.Add(TA); h.Add(FromX); h.Add(FromY); h.Add(ToX); h.Add(ToY); h.Add(S0); h.Add(S1);
-            h.Add(ActVer); h.Add(RngCount); h.Add(Alarm); h.Add(AlarmProc); h.Add(AlarmT); h.Add(AlarmVer); h.Add(StayDur); h.Add(Visits); h.Add(Until); h.Add(Worked); h.Add(KNets); h.Add(KLoom); h.Add(KQuern); h.Add(KPottery); h.Add(KArd); h.Add(KMetal); h.Add(KIron);
+            h.Add(ActVer); h.Add(RngCount); h.Add(Alarm); h.Add(AlarmProc); h.Add(AlarmT); h.Add(AlarmVer); h.Add(StayDur); h.Add(Visits); h.Add(Until); h.Add(Worked); h.Add(KNets); h.Add(KLoom); h.Add(KQuern); h.Add(KPottery); h.Add(KArd); h.Add(KMetal); h.Add(KIron); h.Add(KBoat);
             h.Add(Sick); h.Add(SickPhase); h.Add(SickUntil); h.Add(SickCause); h.Add(Imm0); h.Add(Imm1); h.Add(ImmUntil0); h.Add(ImmUntil1); h.Add(Cargo); h.Add(CargoQty); h.Add(CargoTo);
             h.Add(Imm2); h.Add(Imm3); h.Add(Imm4); h.Add(Imm5); h.Add(ImmUntil2); h.Add(ImmUntil3); h.Add(ImmUntil4); h.Add(ImmUntil5);
             h.Add(Hurt); h.Add(HurtDeed); h.Add(Errand); h.Add(Band); h.Add(SkFight); h.Add(Fights);

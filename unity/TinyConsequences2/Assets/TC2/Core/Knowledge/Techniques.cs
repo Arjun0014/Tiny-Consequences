@@ -13,7 +13,7 @@ namespace TC2.Core.Knowledge
     /// </summary>
     public static class Tech
     {
-        public const int Nets = 0, Loom = 1, Quern = 2, Pottery = 3, Ard = 4, Metal = 5, Iron = 6, Count = 7;
+        public const int Nets = 0, Loom = 1, Quern = 2, Pottery = 3, Ard = 4, Metal = 5, Iron = 6, Boat = 7, Count = 8;
 
         public struct Law
         {
@@ -41,6 +41,10 @@ namespace TC2.Core.Knowledge
             // the bloomery: smelting bog ore into a bloom and forging it to a bar - complex, kept by ~60 learners; found at a smithy by a
             // copper smith whose village has seen bog ore (C5.2b, D2-102)
             new Law { Name = "smelt iron in a bloomery and forge it", Now = "smelt and forge iron", Alpha = 0.30, Beta = 0.065, Discover = 2e-5 },
+            // boats of planks: the sides of a hollowed trunk raised with planks fitted and fastened along it, until the trunk is only a keel (the
+            // expanded logboat behind the northern plank boats) - kept by ~13 learners; found by woodworkers hollowing a dugout, likelier with
+            // edge tools of metal (C9.2b)
+            new Law { Name = "build boats of planks", Now = "build boats of planks", Alpha = 0.22, Beta = 0.07, Discover = 1e-4 },
         };
 
         /// <summary>Proficiency at which a person counts as a practitioner, and a village as knowing the technique.</summary>
@@ -52,13 +56,13 @@ namespace TC2.Core.Knowledge
         /// <summary>What someone who first finds a technique knows of it.</summary>
         public const double FirstFound = 0.4;
 
-        public static float Get(in Person p, int t) => t == Nets ? p.KNets : t == Loom ? p.KLoom : t == Quern ? p.KQuern : t == Pottery ? p.KPottery : t == Ard ? p.KArd : t == Metal ? p.KMetal : p.KIron;
+        public static float Get(in Person p, int t) => t == Nets ? p.KNets : t == Loom ? p.KLoom : t == Quern ? p.KQuern : t == Pottery ? p.KPottery : t == Ard ? p.KArd : t == Metal ? p.KMetal : t == Iron ? p.KIron : p.KBoat;
 
         public static void Set(ref Person p, int t, double v)
         {
             float f = (float)DMath.Clamp01(v);
             if (t == Nets) p.KNets = f; else if (t == Loom) p.KLoom = f; else if (t == Quern) p.KQuern = f; else if (t == Pottery) p.KPottery = f;
-            else if (t == Ard) p.KArd = f; else if (t == Metal) p.KMetal = f; else p.KIron = f;
+            else if (t == Ard) p.KArd = f; else if (t == Metal) p.KMetal = f; else if (t == Iron) p.KIron = f; else p.KBoat = f;
         }
 
         /// <summary>A person's own scatter in copying a technique: a standard Gumbel draw fixed by their id (Henrich's epsilon).</summary>

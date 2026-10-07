@@ -2828,4 +2828,50 @@ landing at a cell edge's midpoint and "by the water" as ground below two metres 
 15 m above the sea (`tc2/out/shots/boats3`); slots two metres from the edge left boats a few centimetres above a sea that later rose (16
 "in the water" in one world). Shots: `boats4` (Haisthorpe, seed 4, year 300: eight boats in a row on the sand above the waterline, bows to the
 sea), `boats5` (Drildbrahope, seed 3: the dugouts in a row; its people at leisure out in the sea at its drowned square - fixed by the green).
-**Open.** Crews are of the household only (a plank boat's four seats may want neighbours: C9.2b); the shots after the green: next commit.
+**Open.** Crews are of the household only (a plank boat's four seats may want neighbours). The shots after the green (`boats6`): the drowned
+town's people gather on the beach at the water's edge, none in the sea.
+
+## D2-112 — 2026-10-08 — Boats of planks: found at the dugout, built in a boat shed, four aboard, out in harder weather (C9.2b)
+
+**Context.** `24` §5 (the plank fishing boat), `25` §5 (the coastal proof: boats -> dock -> boatbuilding knowledge -> cargo). Plank boats grew out
+of dugouts in the north: a hollowed trunk's sides were raised with planks fitted along it and spread with heat and frames, until the trunk was
+only a keel (the expanded logboats behind the clinker tradition). A small clinker boat took a traditional builder a few hundred hours.
+**Decision.** (1) **A technique, not an unlock**: "build boats of planks" (`Tech.Boat`, the eighth; `Person.KBoat`, `Settlement.BestBoat`,
+copied from the village's best like any other: kept by ~13 learners, alpha 0.22, beta 0.07); found by a woodworker (wood skill 0.3,
+`Learning.BoatWright`) hollowing a dugout where nobody knows it (`Boats.Work` calls `Learning.Practice` for every hour at a dugout, both
+resolutions), 1e-4 an hour by curiosity, times 0.3 + 0.7 of the village's share of metal tools; nobody begins knowing it; its knowing is a
+record (`Settlement.BoatEvent`). (2) **The boat shed** (`Structures.BoatShed` 22, "boat shed", `Function.Boatyard`; 80 h, 24 loads; falls in 30
+years unkept): a village that knows the craft raises one at the head of its landing when one of its households would make a boat and a plank
+boat would promise it the sea's worth (`Boats.ShedWanted`, `ShedSpot`: a dozen metres up the beach, dry, clear; after water and a store,
+never while walls rise; caused by its knowing). (3) **The plank boat** (`Structures.PlankBoat` 21): 240 labour-hours and 40 loads (the logs
+taken to the shed as it is laid down), built on the shed's stocks one at a time at the pace of the builder's knowledge of the craft
+(`Boats.Craft`: a learner a fifth of a competent builder), then down to the landing; four aboard (a crew of the household), out in winds to
+15 m/s (dugouts 12) and caught out half as often at the same wind (`Risk` by kind), rowed out half as fast again as a dugout is paddled
+(`RowPace` 1.5: the row costs less of a trip, both resolutions), reaching more of the offshore shoals (`WildFood.ReachP`: max(0.5, 1 - 0.25
+offshore) against a dugout's max(0.3, 1 - 0.45); `Settlement.SeaP`), lasting 25 years. A household of a village with the craft and its shed
+makes a plank boat when its dugout is gone (waiting for the stocks); elsewhere dugouts as before. (4) **The timber goes with the boat**: a
+boat takes its trunk or logs from the store as it is laid down (both kinds; drawn in step with the work, a plank boat's 40 loads stalled when
+fuel and houses emptied the store under it); a plank boat stands two years half-made before it is given up, a dugout one (`PatienceOf`: given one year, plank boats were abandoned with 100-210 of their 240 hours in them - three and a half times the given-up hulls of C9.2a). (5) **Seen and read**: kit models `dugout` (a hollowed log, solid ends, a paddle
+in it) and `boat_shed` (a naust: plank walls on a stone footing, a thatched roof, open to the sea with a slipway); `boat` is the plank boat;
+the shed drawn with its mouth to the water, a plank boat rising on its stocks; history (built a boat of planks in the boat shed, caused by
+the village's knowing; a lost boat named by its kind), the person page (crafts, "a boatwright at the boat shed", their boat by kind), the
+place page (dugouts and plank boats, the shed), the building page (the shed's stocks and its best boatwright), headless `boats:` (plank
+boats, villages that build them, sheds, plank boats made, their fish). Sim version 51.
+**Evidence.** 262 tests (`BoatTests`: `AWoodworkerHollowingADugoutFindsHowToBuildWithPlanks` - a woodworker finds it, someone without the hand
+does not, the record told; `AVillageThatBuildsWithPlanksRaisesABoatShedAndBuildsThemThere` - a dugout wanted before the shed, the shed planned at
+the head of the landing on dry ground, then a plank boat on its stocks while the others wait, a learner at a fifth of the pace, built and down
+to the landing, its record caused by the village's knowing; `APlankBoatSeatsFourRidesOutHarderWeatherLastsLongerAndReachesMoreOfTheShoals`;
+`PlankBoatsGoOutAlikeAtBothResolutions` - 5 worlds x 24 days with a plank boat for every fishing household: fish from them a grown person-day
+COARSE/lived x0.92, all fish x1.23, crew seats 28 lived and 39 COARSE a thousand grown person-days). Ten seeds 300 years DEEP
+(`tc2/out/civ/s*_c92r`) against C9.2a (`_c92c`): the craft found in 7 of 10 worlds (first in years 0, 94, 123, 178, 193, 208, 245; never on
+seeds 1, 5, 6) and carried by those who moved: by year 300 9-26 villages build boats of planks with 7-22 sheds and 20-47 plank boats (seed 3:
+found at Lonmere in year 178, it stayed there - one village, 5 plank boats among 52 dugouts); 24-223 plank boats made; dugouts at year 300
+x0.25; people over years 200-299 x0.993 (t 0.6), fish x1.04 (t 1.6), drowned x0.90, lost at sea at par, given-up hulls x1.24 (t 1.1), the
+run's cost x1.01; births and deaths a thousand person-years both a little lower (x0.990, x0.983, t -2.4 and -2.3: the same turnover slowed,
+people at par). Shots `tc2/out/shots/planks1`, `planks2` (seed 4, year 300, village #29: the boat shed at the head of the landing, its slipway
+running out of its open mouth to the water, four plank boats in a row beside it; the first shots had the shed's mouth inland - the kit's +y
+comes into the game as -z).
+**Open.** Crews are of the household (a plank boat's four seats are often half used: crews of neighbours, shares of the catch); a village's
+sea is often fished nearly empty by year 300 (0.0-0.1 FU an hour at several villages of seed 4) - boats are still begun where the sea promises
+1.25 times a nearly empty shore; plank boats reach the same grounds as dugouts (2.5 km) - farther grounds for them would spread the
+pressure (C9.3 or later); the Web build and Web test for C9.2 (next).

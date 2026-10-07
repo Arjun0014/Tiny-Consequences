@@ -773,6 +773,48 @@ def market_stalls(name, seed=66):
     return k.finish()
 
 
+LOG_OUT = srgb(0.36, 0.26, 0.17)      # a trunk's outside, dressed and charred
+LOG_IN = srgb(0.62, 0.47, 0.30)       # the pale hewn wood inside a hollowed trunk
+
+
+def dugout(name, seed=11):
+    """A dugout (C9.1): a single trunk hollowed into a 5 m hull - thick blunt ends left solid, the inside hewn pale, a paddle in it."""
+    k = Kit(name, seed)
+    k.bowl((0, 0, 0.34), (0.38, 2.5, 0.34), LOG_OUT, cut_z=0.52, subdiv=3)      # the trunk's round belly, open above
+    k.box((0, 0, 0.20), (0.50, 3.9, 0.05), LOG_IN)                              # the hewn floor inside
+    for sy in (-1, 1):
+        k.ellipsoid((0, sy * 2.15, 0.40), (0.30, 0.42, 0.16), LOG_OUT, subdiv=2, smooth=False)   # the solid ends
+    for sx in (-1, 1):
+        k.ellipsoid((sx * 0.33, 0, 0.52), (0.05, 2.2, 0.04), LOG_IN, subdiv=1)  # the cut rim of the hollow
+    k.box((0.12, 0.4, 0.30), (0.10, 1.5, 0.03), TIMBER, rot_z=0.06)             # a paddle lying in it
+    k.box((0.12, 1.2, 0.30), (0.20, 0.36, 0.035), TIMBER, rot_z=0.06)           # its blade
+    return k.finish()
+
+
+def boat_shed(name, seed=12):
+    """A boat shed (C9.2, a naust): a long low timber shed at the head of the beach, its seaward gable open, the roof sweeping low over
+    plank walls on a footing of stones; slipway timbers running out of the mouth toward the water."""
+    k = Kit(name, seed)
+    L, W, H = 9.0, 4.6, 1.6                                                       # length along x: the mouth at -x faces the water
+    k.box((0, 0, 0.1), (L + 0.3, W + 0.3, 0.2), STONE_DARK, bevel=0.02)          # the stone footing
+    for sy in (-1, 1):
+        k.box((0.0, sy * W / 2.0, H / 2.0 + 0.2), (L, 0.16, H), WALL2, bevel=0.03)   # the long walls of planks
+    k.box((L / 2.0, 0, H / 2.0 + 0.2), (0.16, W, H), WALL2, bevel=0.03)         # the landward end wall
+    gable_walls(k, L, W, H + 0.2, 48, WALL2)                                      # (the landward gable shows; the seaward is open)
+    k.box((-L / 2.0, 0, H + 0.2), (0.18, W + 0.1, 0.18), TIMBER)                 # the tie beam over the mouth
+    for x in (-L / 2.0, -L / 6.0, L / 6.0, L / 2.0):                             # the frame's posts
+        for sy in (-1, 1):
+            k.box((x, sy * (W / 2.0 + 0.06), H / 2.0 + 0.2), (0.2, 0.08, H), TIMBER)
+    gable_roof(k, L, W, H + 0.2, 48, THATCH, overhang=0.5, thick=0.26, ridge_color=THATCH_DARK)
+    for sy in (-1, 1):                                                            # slipway timbers out of the mouth
+        k.box((-L / 2.0 - 1.6, sy * 0.55, 0.06), (3.6, 0.18, 0.12), TIMBER)
+    for x in (-L / 2.0 - 0.6, -L / 2.0 - 1.8, -L / 2.0 - 3.0):                     # its rollers
+        k.cyl((x, 0.75, 0.12), 0.08, 0.08, 1.5, TIMBER, seg=6, rot=Matrix.Rotation(math.pi / 2.0, 4, "X"))
+    # lengthwise along y with the mouth at +y, as the boats lie (+y comes into the game as -z; the view turns it to the water)
+    bmesh.ops.rotate(k.bm, verts=k.bm.verts, cent=(0.0, 0.0, 0.0), matrix=Matrix.Rotation(-math.pi / 2.0, 3, "Z"))
+    return k.finish()
+
+
 def build_all():
     objs = []
     objs.append(house("house_cottage", 7.0, 5.0, 2.6, 42, THATCH, seed=11))
@@ -788,6 +830,8 @@ def build_all():
     objs.append(tent("tent"))
     objs.append(ruin("ruin"))
     objs.append(boat("boat"))
+    objs.append(dugout("dugout"))          # the dugout (C9.1); "boat" is the plank boat (C9.2)
+    objs.append(boat_shed("boat_shed"))    # the boat shed at a landing (C9.2)
     # the wild animals (D2-035): one per species kind, at adult size
     objs.append(quadruped("animal_deer", 1.65, 1.1, 0.72, (0.55, 0.36, 0.20), belly=(0.82, 0.74, 0.62), head=0.24, neck=0.42, neck_up=55, ears=0.13, tail=0.12, antlers=0.45, seed=31))
     objs.append(quadruped("animal_hare", 0.48, 0.3, 0.12, (0.52, 0.45, 0.36), belly=(0.80, 0.76, 0.68), head=0.09, neck=0.06, neck_up=40, ears=0.12, tail=0.05, bushy=True, tail_tip=(0.95, 0.95, 0.92), snout=0.2, seed=32))

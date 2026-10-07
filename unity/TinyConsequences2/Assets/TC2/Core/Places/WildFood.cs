@@ -38,7 +38,7 @@ namespace TC2.Core.Places
         // this call's game and fish (a List's indexer copies each struct: read them once into small tables)
         readonly int[] _gq = new int[Ecology.MaxK], _fq = new int[Ecology.MaxK];
         readonly double[] _gm = new double[Ecology.MaxK], _gs = new double[Ecology.MaxK], _gk = new double[Ecology.MaxK];
-        readonly double[] _fm = new double[Ecology.MaxK], _fr = new double[Ecology.MaxK], _fb = new double[Ecology.MaxK];
+        readonly double[] _fm = new double[Ecology.MaxK], _fr = new double[Ecology.MaxK], _fb = new double[Ecology.MaxK], _fp = new double[Ecology.MaxK];
         double[] _share = new double[9 * Ecology.MaxK];   // a hunt: each ground cell's reachable animals of each kind
         int _gN, _fN;
         readonly Dictionary<int, Reach> _reach = new Dictionary<int, Reach>();   // per settlement, by its cell (geometry only)
@@ -59,6 +59,9 @@ namespace TC2.Core.Places
         /// <summary>The share of a fish people reach from a boat beyond the shore (C9.1): the open sea's shoals much more than from the beach.</summary>
         static double ReachB(in Species sp) => DMath.Max(0.3, 1.0 - 0.45 * sp.Offshore);
 
+        /// <summary>The share of a fish people reach from a plank boat (C9.2b): higher-sided, out longer lines and larger nets over deeper water.</summary>
+        static double ReachP(in Species sp) => DMath.Max(0.5, 1.0 - 0.25 * sp.Offshore);
+
         /// <summary>Mast, roots and berries people can still find in a cell before the animals next eat (kg).</summary>
         public static double MastLeft(PlanetState P, int c)
         {
@@ -77,7 +80,7 @@ namespace TC2.Core.Places
             {
                 var sp = P.Species[q];
                 if (IsGame(sp)) { _gq[_gN] = q; _gm[_gN] = sp.Mass; _gs[_gN] = sp.SlopePref; _gk[_gN] = sp.Kind; _gN++; }
-                else if (IsFish(sp)) { _fq[_fN] = q; _fm[_fN] = sp.Mass; _fr[_fN] = ReachF(sp); _fb[_fN] = ReachB(sp); _fN++; }
+                else if (IsFish(sp)) { _fq[_fN] = q; _fm[_fN] = sp.Mass; _fr[_fN] = ReachF(sp); _fb[_fN] = ReachB(sp); _fp[_fN] = ReachP(sp); _fN++; }
             }
         }
 
@@ -99,11 +102,11 @@ namespace TC2.Core.Places
             return v;
         }
 
-        double FishKg(int c, bool boat = false)
+        double FishKg(int c, bool boat = false, bool plank = false)
         {
             var P = _w.Planet; int n = P.Cells;
             if (P.IsLand(c)) return 0;
-            var reach = boat ? _fb : _fr;
+            var reach = plank ? _fp : boat ? _fb : _fr;
             double v = 0;
             for (int i = 0; i < _fN; i++)
             {
@@ -198,6 +201,7 @@ namespace TC2.Core.Places
             sea.Expect = sea.A >= 0 ? (float)ExpectSea(sea.A) : 0f;
             ref var s = ref _w.Settlements.Get(sid);
             s.Sea = sea;
+            s.SeaP = sea.A >= 0 ? (float)ExpectSea(sea.A, true) : 0f;   // (the same grounds from a plank boat: C9.2b)
         }
 
         /// <summary>
@@ -236,7 +240,7 @@ namespace TC2.Core.Places
                 // (the ground fished: the shore's or the sea's - both when they are one cell, C9.1)
                 bool one = s.Fish.A == s.Sea.A;
                 if (s.Fish.A >= 0 && (!sea || one)) { Kinds(); s.Fish.Expect = (float)ExpectFish(s.Fish.A); }
-                if (s.Sea.A >= 0 && (sea || one)) s.Sea.Expect = (float)ExpectSea(s.Sea.A);
+                if (s.Sea.A >= 0 && (sea || one)) { s.Sea.Expect = (float)ExpectSea(s.Sea.A); s.SeaP = (float)ExpectSea(s.Sea.A, true); }
             }
             else if (s.Gath.A >= 0)
             {
@@ -265,12 +269,12 @@ namespace TC2.Core.Places
             return FishRate * F / (F + FishH) * FishShare * FuPerKg;
         }
 
-        /// <summary>FU an hour an ordinary fisher can expect from a boat on a ground of open water (C9.1).</summary>
-        public double ExpectSea(int ground)
+        /// <summary>FU an hour an ordinary fisher can expect from a boat on a ground of open water (C9.1; from a plank boat, C9.2b).</summary>
+        public double ExpectSea(int ground, bool plank = false)
         {
             Kinds();
             double F = 0; int k = GroundCells(ground, false);
-            for (int i = 0; i < k; i++) F += FishKg(_ground[i], true);
+            for (int i = 0; i < k; i++) F += FishKg(_ground[i], true, plank);
             return FishRate * F / (F + FishH) * FishShare * FuPerKg;
         }
 
@@ -369,15 +373,16 @@ namespace TC2.Core.Places
         }
 
         /// <summary>A day's fishing: shoals are many, so the catch is continuous kg with the luck of the day, taken from the fields.</summary>
-        public double Fish(int ground, double hours, double skill, ulong key, int days = 1, bool boat = false)
+        public double Fish(int ground, double hours, double skill, ulong key, int days = 1, bool boat = false, bool plank = false)
         {
             var P = _w.Planet; int n = P.Cells;
             if (ground < 0 || hours <= 0 || P.IsLand(ground)) return 0;
             Kinds();
             int k = GroundCells(ground, false);
             double F = 0;
-            var reach = boat ? _fb : _fr;   // (from a boat the open sea's shoals too: C9.1)
-            for (int i = 0; i < k; i++) F += FishKg(_ground[i], boat);
+            boat |= plank;
+            var reach = plank ? _fp : boat ? _fb : _fr;   // (from a boat the open sea's shoals too: C9.1; from a plank boat more of them: C9.2b)
+            for (int i = 0; i < k; i++) F += FishKg(_ground[i], boat, plank);
             if (F <= 0) return 0;
             double luck = 0.5 + KeyedRng.Unit(key);
             double kg = DMath.Min(hours * FishRate * (0.5 + skill) * F / (F + FishH) * luck, Most(0.2, days) * F);
@@ -395,6 +400,7 @@ namespace TC2.Core.Places
             }
             _w.Metrics.FishKg += kg;
             if (boat) _w.Metrics.BoatFishKg += kg;
+            if (plank) _w.Metrics.PlankFishKg += kg;
             return kg * FishShare * FuPerKg;
         }
 

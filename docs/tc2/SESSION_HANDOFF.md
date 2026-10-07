@@ -1,5 +1,43 @@
 # TC2 Session handoff
 
+## Session 8 (7 Oct 2026 22:40 - 8 Oct 2026, Control Room continuation run #7 session 3) - in progress
+
+### Exact state (keep current)
+- **Commits this session**: 9a2ceb7 + 23ac1c9 **C9.1 closed** (D2-110: ten seeds after the landing fix found boats in the square and twice in
+  the sea - `Boats.ShoreOf` ring search, `ShoreMoved`, `Afloat`; `_c91k` clean, at par with D2-108; Web build of 9a2ceb7 tested 5/5 at 68-120 fps
+  (`tc2/out/webtest/c91webb`); shots `boats2`), c5fd15f **C9.2a the landing and the crew** (D2-111, sim version 50), then **C9.2b boats of
+  planks** (D2-112, sim version 51; 262 tests).
+- **C9.2a (D2-111)**: one landing a village (`Settlement.LandX/LandY/LandUx/LandUy/LandAt`, `Boats.EnsureLanding/Beach/Waterline/UpTheBeach/Drawn/
+  Landing`, `AtWater`/`AtSea`/`Afloat`), boats in a row on the sand a metre above the sea, following the coast (`ShoreMoved`) and a risen sea
+  (`Plan`); lived crews (`AgentSystem.Crew`, `Outing`, `CrewWait` 30 min, `BeginLocal(.., endAt, pace)`), metrics `BoatOutings`, `CrewSeats`;
+  shore fishers at the waterline (`Boats.Edge`, `OutOfTheWater`, `WildFood._edges` cache); people gather at the green (`AgentSystem.Green`/
+  `Ashore`) where the sea took the square; view: one hull per boat with its crew. C9.1's lived days caught less from boats than COARSE (x1.23);
+  now x0.90 (`BoatsGoOutAlikeAtBothResolutions`, 5 worlds x 24 days).
+- **C9.2b (D2-112)**: `Tech.Boat` (8th technique; `Person.KBoat`/`Sc7`, `Settlement.BestBoat`/`BoatEvent`), found by woodworkers at a dugout
+  (`Learning.Practice` from `Boats.Work`, `Learning.BoatWright` 0.3, tools); `Structures.PlankBoat` 21 and `BoatShed` 22 (`Function.Boatyard`),
+  `Settlement.Shed`/`SeaP`; `Boats` by kind (`IsPlank`, `YearsOf/SeatsOf/MaxOf/HoursOf/WoodOf/NameOf/RowPace/PatienceOf`, `Risk(wind, kind)`,
+  `WantsKind`, `Ready`, `ShedStands`, `OnTheStocks`, `ShedWanted`, `ShedSpot`, `Craft`); timber taken at laying-down (both kinds);
+  `WildFood.ReachP`, `ExpectSea(ground, plank)`, `Fish(.., plank)`; metrics `PlanksBuilt`, `PlankFishKg`; kit models `dugout`, `boat_shed`
+  (exported to `Game/Resources/TC2Models`; `boat` is the plank boat); view `_beachedP/_afloatP`, the shed turned mouth to the water.
+- **Runs**: `tc2/out/civ/s*_c91j` (pre-fix), `_c91k` (C9.1 final), `_c91m` (4 seeds, final rule), `_c92a/_c92b` (C9.2a tries), `_c92c` (C9.2a
+  final), `_c92p/_c92q` (C9.2b tries), `_c92r` (C9.2b final). Shots `boats2`-`boats6`, `planks1`, `planks2`.
+- **Scratchpad (session 8)**: `C:\Users\aswin\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\79f297a9-c9c6-41f5-a86c-efdd067a4516\scratchpad`
+  (`wrun.sh`, `cmp.py` - the `boats_made` regex fixed: before it read "given up half-made"; `boats_given_up` added; plank columns). Copies of
+  both in `tc2/out/tools/` (fix `SCR=` in `wrun.sh` to the new scratchpad).
+- **Headless additions**: `boats:` line - plank boats, villages that build them, sheds, plank boats made and their fish, boats in the water /
+  away from it / mean height above the sea (by village), landings (range, mean distance), outings and crew seats; `squares under the sea:`;
+  `run --load S --years 0 --boats SID` prints the landing, the next boat's spot, each boat's height above the sea.
+- **Known**: a village's sea is often fished nearly empty by year 300; boats are begun where the sea promises 1.25x even a nearly empty shore;
+  crews are of the household only; births and deaths a thousand person-years ~1-2 % lower with plank boats (people at par); COARSE never
+  counts hunting trips (D2-063 comment bug); DEEP's fish x0.8 of COARSE (D2-083 lean).
+
+### Next, in order
+1. Web build of the C9.2b commit (`node tc2/scripts/unity.mjs build-web --jobs 3`), `node tc2/scripts/webtest.mjs --tag c92web --skip-away` on a
+   quiet machine; record in D2-112.
+2. C9.3 the landing and the dock (by catches landed and boats kept: a jetty/quay where boats are many), or crews beyond the household
+   (neighbours, shares), or farther grounds for plank boats; then C9.4 cargo boats and coastal trade (the coastal proof, `25` §5).
+3. Or C10.2 leaders, succession and the polity page.
+
 ## Session 7 (7 Oct 2026, 18:50-~23:00 IST; Control Room continuation) - handed off (context full)
 
 ### Exact state (keep current)
