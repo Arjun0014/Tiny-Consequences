@@ -22,18 +22,22 @@ namespace TC2.Core.Places
         public const double HuntRate = 2.8, HuntHalf = 3000.0 * Ecology.Density;
         public const double FishRate = 3.0, FishHalf = 1500.0 * Ecology.Density;
         public const double GatherRate = 0.8, GatherHalf = 150.0 * Ecology.Density;
+        // (a ground is a cell and its neighbours: on a smaller planet a smaller patch, so what sates a worker half is per hectare, D2-085)
+        double HuntH => HuntHalf * _w.Planet.AreaScale;
+        double FishH => FishHalf * _w.Planet.AreaScale;
+        double GatherH => GatherHalf * _w.Planet.AreaScale;
         public const double MeatShare = 0.5, FishShare = 0.6;     // edible share of the live weight
         public const double FuPerKg = 0.65, FuPerKgMast = 0.9;    // food units per kg of meat or fish / of nuts, roots, berries
         public const double PeopleMastShare = 0.6;                // of a step's mast, what people can find (the rest is the animals')
         public const double WindowYears = 0.25;                   // the ecology's step: what was gathered is forgotten at each
 
         World _w;
-        readonly int[] _ground = new int[9];
+        int[] _ground = new int[9];   // (a ground's cells: a patch of the 10 km world's cell and its neighbours, D2-085)
         // this call's game and fish (a List's indexer copies each struct: read them once into small tables)
         readonly int[] _gq = new int[Ecology.MaxK], _fq = new int[Ecology.MaxK];
         readonly double[] _gm = new double[Ecology.MaxK], _gs = new double[Ecology.MaxK], _gk = new double[Ecology.MaxK];
         readonly double[] _fm = new double[Ecology.MaxK], _fr = new double[Ecology.MaxK];
-        readonly double[] _share = new double[9 * Ecology.MaxK];   // a hunt: each ground cell's reachable animals of each kind
+        double[] _share = new double[9 * Ecology.MaxK];   // a hunt: each ground cell's reachable animals of each kind
         int _gN, _fN;
         readonly Dictionary<int, Reach> _reach = new Dictionary<int, Reach>();   // per settlement, by its cell (geometry only)
         readonly List<int> _scratch = new List<int>();
@@ -102,13 +106,16 @@ namespace TC2.Core.Places
             return v;
         }
 
-        /// <summary>The cells of a ground: its centre and those of its eight neighbours in the same habitat.</summary>
+        /// <summary>The cells of a ground: its centre and those of the patch round it in the same habitat (on the 10 km world its
+        /// eight neighbours; a patch of the same size on a smaller planet, D2-085).</summary>
         int GroundCells(int ground, bool land)
         {
-            var P = _w.Planet; var g = P.Grid;
+            var P = _w.Planet;
+            var pc = P.Patch(ground);
+            if (_ground.Length < pc.Length) { _ground = new int[pc.Length]; _share = new double[pc.Length * Ecology.MaxK]; }
             int k = 0;
             _ground[k++] = ground;
-            for (int j = 0; j < 8; j++) { int nb = g.Nbr8[ground * 8 + j]; if (P.IsLand(nb) == land) _ground[k++] = nb; }
+            for (int j = 1; j < pc.Length; j++) { int nb = pc[j]; if (P.IsLand(nb) == land) _ground[k++] = nb; }
             return k;
         }
 
@@ -176,7 +183,7 @@ namespace TC2.Core.Places
             double A = 0; int k = GroundCells(s.Gath.A, true);
             for (int i = 0; i < k; i++) A += MastLeft(P, _ground[i]);
             A *= _keep;
-            s.Gath.Expect = (float)(GatherRate * A / (A + GatherHalf) * FuPerKgMast);
+            s.Gath.Expect = (float)(GatherRate * A / (A + GatherH) * FuPerKgMast);
         }
 
         int _keepSid; double _keep = 1.0;   // (the share of the mast the step's herds leave by its middle day: set by MidStep, read by Retake)
@@ -198,7 +205,7 @@ namespace TC2.Core.Places
                 double A = 0; int k = GroundCells(s.Gath.A, true);
                 for (int i = 0; i < k; i++) A += MastLeft(P, _ground[i]);
                 if (_keepSid == sid) A *= _keep;
-                s.Gath.Expect = (float)(GatherRate * A / (A + GatherHalf) * FuPerKgMast);
+                s.Gath.Expect = (float)(GatherRate * A / (A + GatherH) * FuPerKgMast);
             }
         }
 
@@ -208,7 +215,7 @@ namespace TC2.Core.Places
             Kinds();
             double B = 0; int k = GroundCells(ground, true);
             for (int i = 0; i < k; i++) B += GameKg(_ground[i]);
-            return HuntRate * B / (B + HuntHalf) * MeatShare * FuPerKg;
+            return HuntRate * B / (B + HuntH) * MeatShare * FuPerKg;
         }
 
         public double ExpectFish(int ground)
@@ -216,7 +223,7 @@ namespace TC2.Core.Places
             Kinds();
             double F = 0; int k = GroundCells(ground, false);
             for (int i = 0; i < k; i++) F += FishKg(_ground[i]);
-            return FishRate * F / (F + FishHalf) * FishShare * FuPerKg;
+            return FishRate * F / (F + FishH) * FishShare * FuPerKg;
         }
 
         public double ExpectGather(int ground)
@@ -224,7 +231,7 @@ namespace TC2.Core.Places
             var P = _w.Planet;
             double A = 0; int k = GroundCells(ground, true);
             for (int i = 0; i < k; i++) A += MastLeft(P, _ground[i]);
-            return GatherRate * A / (A + GatherHalf) * FuPerKgMast;
+            return GatherRate * A / (A + GatherH) * FuPerKgMast;
         }
 
         /// <summary>One of a village's three best grounds for a livelihood (richer more often), or -1.</summary>
@@ -263,7 +270,7 @@ namespace TC2.Core.Places
             double B = 0;
             for (int i = 0; i < k; i++) B += GameKg(_ground[i]);
             if (B <= 0) return 0;
-            double expectKg = DMath.Min(hours * HuntRate * (0.5 + skill) * B / (B + HuntHalf), Most(0.3, days) * B);
+            double expectKg = DMath.Min(hours * HuntRate * (0.5 + skill) * B / (B + HuntH), Most(0.3, days) * B);
             var rs = new RandomSequence(key);
             double kg = 0, biggest = 0;
             // each kind's kills over the whole ground are one Poisson count (most hunts take none of a kind); any kills are then
@@ -324,7 +331,7 @@ namespace TC2.Core.Places
             for (int i = 0; i < k; i++) F += FishKg(_ground[i]);
             if (F <= 0) return 0;
             double luck = 0.5 + KeyedRng.Unit(key);
-            double kg = DMath.Min(hours * FishRate * (0.5 + skill) * F / (F + FishHalf) * luck, Most(0.2, days) * F);
+            double kg = DMath.Min(hours * FishRate * (0.5 + skill) * F / (F + FishH) * luck, Most(0.2, days) * F);
             for (int i = 0; i < k; i++)
             {
                 int c = _ground[i];
@@ -351,7 +358,7 @@ namespace TC2.Core.Places
             for (int i = 0; i < k; i++) A += MastLeft(P, _ground[i]);
             if (A <= 0) return 0;
             double luck = 0.7 + 0.6 * KeyedRng.Unit(key);
-            double kg = DMath.Min(hours * GatherRate * (0.6 + 0.4 * health) * A / (A + GatherHalf) * luck, Most(0.5, days) * A);
+            double kg = DMath.Min(hours * GatherRate * (0.6 + 0.4 * health) * A / (A + GatherH) * luck, Most(0.5, days) * A);
             for (int i = 0; i < k; i++)
             {
                 int c = _ground[i];

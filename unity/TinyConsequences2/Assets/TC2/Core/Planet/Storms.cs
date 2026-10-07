@@ -130,7 +130,7 @@ namespace TC2.Core.Planet
             Vec3d h = s.Heading + steer.Normalized * (dt / (18.0 * SimTime.Hour));
             h = h - s.At * Vec3d.Dot(h, s.At);
             s.Heading = h.Normalized;
-            double a = s.Speed * dt / P.Radius;
+            double a = s.Speed * dt / PlanetState.GeoRadius;
             Vec3d axis = Vec3d.Cross(s.At, s.Heading).Normalized;
             s.At = Tectonics.Rotate(s.At, axis, DMath.Cos(a), DMath.Sin(a));
             s.Heading = Tectonics.Rotate(s.Heading, axis, DMath.Cos(a), DMath.Sin(a));

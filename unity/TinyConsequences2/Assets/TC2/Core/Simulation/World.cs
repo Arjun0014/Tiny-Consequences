@@ -327,7 +327,7 @@ namespace TC2.Core.Simulation
                 double d = Vec3d.ArcDistance(s.Anchor, t.Anchor, Planet.Radius);
                 if (d > 6000) continue;
                 u -= 1.0 / (300.0 + d);
-                if (u <= 0) return Routes.Get(this, sid, o) != null ? o : 0;
+                if (u <= 0) { if (Routes.Get(this, sid, o) == null) return 0; Diagnostics.ScaleTally.Pair(this, Diagnostics.ScaleTally.Visit, sid, o); return o; }
             }
             return 0;
         }
@@ -573,7 +573,7 @@ namespace TC2.Core.Simulation
             Vec3d at = P.Grid.Center[cell];
             for (int v = 0; v < P.Vents.Count; v++)
             {
-                double d = Vec3d.ArcDistance(P.Vents[v].At, at, P.Radius);
+                double d = Vec3d.ArcDistance(P.Vents[v].At, at, PlanetState.GeoRadius);
                 if (d < bd) { bd = d; best = v; }
             }
             long why = cause;
@@ -660,7 +660,7 @@ namespace TC2.Core.Simulation
             }
             // ash round the vent: woods and pasture suffer, and the crops of every village whose fields lie under it
             double ashR = 280.0 * DMath.Exp((vei - 2) * 0.6931);
-            double ashCos = DMath.Cos(ashR / P.Radius);
+            double ashCos = DMath.Cos(ashR / PlanetState.GeoRadius);
             Vec3d vat = g.Center[c];
             var hit = new List<int>();
             for (int a = 0; a < P.Cells; a++)
@@ -680,7 +680,7 @@ namespace TC2.Core.Simulation
                 {
                     ref var p = ref People.Get(id);
                     if (!p.Alive) continue;
-                    if (Vec3d.ArcDistance(Agents.PositionAt(p, Now), at, P.Radius) > deadR) continue;
+                    if (Vec3d.ArcDistance(Agents.PositionAt(p, Now), at, PlanetState.GeoRadius) > deadR) continue;
                     if (KeyedRng.Unit(Seed, RngStream.Death, (ulong)id, (ulong)Now, 51) < 0.55) { Agents.Kill(ref p, ev, 4); Metrics.EruptionDeaths++; }
                 }
             }
@@ -735,7 +735,7 @@ namespace TC2.Core.Simulation
                 {
                     int nb = g.Nbr8[c * 8 + k];
                     if (_qstamp[nb] == _qstampNow) continue;
-                    if (Vec3d.ArcDistance(g.Center[nb], g.Center[_qsrc[c]], P.Radius) > reach) continue;
+                    if (Vec3d.ArcDistance(g.Center[nb], g.Center[_qsrc[c]], PlanetState.GeoRadius) > reach) continue;
                     _qstamp[nb] = _qstampNow; _qsrc[nb] = _qsrc[c];
                     shaken.Add(nb);
                 }
@@ -752,7 +752,7 @@ namespace TC2.Core.Simulation
                 return ev;
             }
             if (M >= TC2.Core.Planet.Quakes.MinRecord || cause != 0) Cause();
-            double Shake(int c) => _qstamp[c] == _qstampNow ? TC2.Core.Planet.Quakes.Intensity(M, Vec3d.ArcDistance(g.Center[c], g.Center[_qsrc[c]], P.Radius)) : 0.0;
+            double Shake(int c) => _qstamp[c] == _qstampNow ? TC2.Core.Planet.Quakes.Intensity(M, Vec3d.ArcDistance(g.Center[c], g.Center[_qsrc[c]], PlanetState.GeoRadius)) : 0.0;
 
             // people: indoors, houses fall on them (most are indoors at night)
             for (int id = People.First(); id != 0; id = People.Next(id))
@@ -790,7 +790,7 @@ namespace TC2.Core.Simulation
                 int low = c; float le = P.Elev[c];
                 for (int k = 0; k < 8; k++) { int nb = g.Nbr8[c * 8 + k]; if (P.Elev[nb] < le) { le = P.Elev[nb]; low = nb; } }
                 if (low == c) continue;
-                double slope = ((double)P.Elev[c] - le) / P.CellSize;
+                double slope = ((double)P.Elev[c] - le) / P.GeoCellSize;
                 if (slope < 0.8) continue;
                 double pr = DMath.Min(0.9, 0.08 * (mmi - 6.5) * DMath.Min(2.0, slope / 0.8));
                 if (KeyedRng.Unit(Seed, RngStream.Tectonics, (ulong)c, (ulong)Now, 74) >= pr) continue;
@@ -828,7 +828,7 @@ namespace TC2.Core.Simulation
             double h0 = 15.0 * DMath.Exp(0.5 * (M - 7.0) * DMath.Log(10.0));
             double reach = 4000.0 * DMath.Exp(0.5 * (M - 7.0) * DMath.Log(10.0));
             Vec3d at0 = g.Center[c0];
-            double cosR = DMath.Cos(reach / P.Radius);
+            double cosR = DMath.Cos(reach / PlanetState.GeoRadius);
             var flooded = new List<int>();
             for (int c = 0; c < P.Cells; c++)
             {
@@ -842,7 +842,7 @@ namespace TC2.Core.Simulation
                     else if (coast > 1) for (int j = 0; j < 8; j++) if (!P.IsLand(g.Nbr8[nb * 8 + j])) { coast = 1; break; }
                 }
                 if (coast > 1) continue;
-                double d = Vec3d.ArcDistance(g.Center[c], at0, P.Radius);
+                double d = Vec3d.ArcDistance(g.Center[c], at0, PlanetState.GeoRadius);
                 double h = h0 * DMath.Sqrt(1500.0 / (d + 1500.0)) * (coast == 0 ? 1.0 : 0.5);
                 if (P.Elev[c] - P.SeaLevel >= h) continue;
                 flooded.Add(c);
@@ -920,14 +920,14 @@ namespace TC2.Core.Simulation
                     if (st.Wind >= 35f) Surge(st, Cause());
                 }
                 // the winds and the rain over everything within the storm's reach (a BFS out from its centre)
-                double cosR = DMath.Cos(st.Radius / P.Radius);
+                double cosR = DMath.Cos(st.Radius / PlanetState.GeoRadius);
                 var crops = new SortedDictionary<int, double>();
                 var reach = StormCells(cc, st.At, cosR);
                 for (int ri = 0; ri < reach.Count; ri++)
                 {
                     int c = reach[ri];
                     double dot = Vec3d.Dot(g.Center[c], st.At);
-                    double r = DMath.Acos(DMath.Min(1.0, dot)) * P.Radius;
+                    double r = DMath.Acos(DMath.Min(1.0, dot)) * PlanetState.GeoRadius;
                     double wv = TC2.Core.Planet.Storms.WindAt(st, r);
                     double rf = 1.0 - r / st.Radius;
                     P.StormRain[c] = (float)(P.StormRain[c] + 1.0 * (st.Wind / 35.0) * rf * DMath.Sqrt(rf));
@@ -956,7 +956,7 @@ namespace TC2.Core.Simulation
                         ref var p = ref People.Get(id);
                         if (!p.Alive) continue;
                         Vec3d at = Agents.PositionAt(p, Now);
-                        double wv = TC2.Core.Planet.Storms.WindAt(st, Vec3d.ArcDistance(at, st.At, P.Radius));
+                        double wv = TC2.Core.Planet.Storms.WindAt(st, Vec3d.ArcDistance(at, st.At, PlanetState.GeoRadius));
                         if (wv <= 40.0) continue;
                         if (KeyedRng.Unit(Seed, RngStream.Death, (ulong)id, (ulong)Now, 64) < 0.0003 * (wv - 40.0)) { Agents.Kill(ref p, Cause(), 7); Metrics.StormDeaths++; }
                     }
@@ -1000,7 +1000,7 @@ namespace TC2.Core.Simulation
             var P = Planet;
             var g = P.Grid;
             double h0 = 0.6 * (st.Wind - 30.0);
-            double cosR = DMath.Cos(0.6 * st.Radius / P.Radius);
+            double cosR = DMath.Cos(0.6 * st.Radius / PlanetState.GeoRadius);
             var flooded = new List<int>();
             for (int c = 0; c < P.Cells; c++)
             {

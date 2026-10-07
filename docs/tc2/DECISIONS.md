@@ -105,6 +105,7 @@ advection; positions as unit vectors + altitude; settlements carry local tangent
 variation ~1.3 (equiangular), used by climate models; N64 resolves villages and fields; R = 10 km gives a
 carrying capacity of ~20,000 pre-industrial people.
 **Invalidation.** Corner artefacts in diffusion or rendering we cannot hide; scale playtests.
+**Superseded in part (7 Oct 2026, D2-085):** the radius is 6 km (cells 137 m); the planet's laws keep geo-lengths of a 10 km sphere.
 
 ## D2-008 — 2026-10-05 — History: a causal ledger with tiers, roots, importance and compaction
 
@@ -2033,3 +2034,46 @@ not a plastic toy, not a procedural demo: colour hierarchy, controlled vegetatio
 depth and atmospheric perspective, real water, seasonal palettes; tilt-shift never smears the subject. (7) The UI gets a full art
 pass once the world's legibility stabilises; it must not ship as debug panels. (8) Every slice updates 18, DECISIONS, PROGRESS
 CURRENT STATE, SESSION_HANDOFF (and NEXT_SESSION_PROMPT when direction changes), the roadmap, benchmarks and shot locations.
+
+## D2-085 — 2026-10-07 — The planet's size: R = 6 km, the same ground at any size (supersedes D2-007's radius)
+
+**Context.** Arjun (7 Oct 2026), after D2-083: the world feels enormous and empty, settlements are visually insignificant, rivers
+barely read, people and animals are microscopic, history occupies too little of the visible world - "a dense, intimate, beautiful
+miniature planet where individual valleys, forests, rivers, villages, animals and people are visually meaningful", fewer people
+acceptable, more detail per person, settlement and feature. D2-007 had fixed R = 10 km (N64, 228 m cells, ~20,000 people) before any
+playtest. The study is `19_PLANET_SCALE.md`.
+**Alternatives.** Keep 10 km and exaggerate; R = 7, 6, 5, 4 km with N64 kept (finer cells); a smaller N at the old cell size (no
+recalibration, coarser ground - rejected: it buys nothing in detail per feature).
+**Decision.** (1) **R = 6 km** (`WorldConfig.Radius` default; surface 452 km2, land ~165 km2, cells 137 m, 1.8 ha). (2) **The ground is
+the same ground at any size**: the planet's geophysics (plates, uplift and wear, coasts, ice, drainage and river classes, quakes,
+slides, tsunamis, storms, eruptions, copper's extent, the ground's steepness) keeps its per-cell tuning in geo-lengths of a 10 km
+sphere (`PlanetState.GeoRadius`, `GeoScale`, `GeoAreaHa`, `GeoCellSize`); heights stay metres. (3) **What lives is in real units**:
+walking, reaches, fields, yields, pasture and game per hectare; laws written per cell scale by the cell's real area (`AreaScale`:
+predators' half-sated prey and territories, hunters' half-sated grounds, a cell's occupancy for dispersal, speciation and herds); a
+"cell and its eight neighbours" is a real-size patch (`Patch`, `PatchRings`: hunting grounds, herds, stone for querns); the first
+villages 1.2-3.9 km apart in metres; new homes on dry lots (`Settlement.NextDryLot` - on smaller cells the spiral of lots reached the
+sea). (4) The view follows the size: orbit and region framing, the drawn relief (`Ground.ScaleTo`: 0.4 x GeoScale), the clouds' shell,
+terrain LOD depth (the same finest quads) and haze are relative to R; village and nearer views stay metres. (5) Headless `--radius`,
+`run --scale` (`ScaleReport`, `ScaleTally`) and shots `--radius` stay as tools. Old saves keep their own radius (it is saved per world)
+and 10 km worlds live as before (every new factor is exactly 1 there; only a new home that would have stood in the water now takes the
+next dry lot); new worlds are 6 km.
+**Reason (measured; 400 years DEEP, seeds 42, 7, 1, 2 at 10/7/6/5/4 km, `tc2/out/scale/`).** At 6 km a village with its fields (~2 km)
+is 0.17 of the globe's diameter - TC1's village map was 0.16 - against 0.10 at 10 km: every human mark is 1.67x wider (2.8x the
+area) at the orbit and region framings, and the planet's curve shows from village height. Mature people: 5,471 / 1,995 / 1,116 / 7,110
+(10 km: 13,546 / 4,876 / 963 / 19,043) in 18 / 10 / 11 / 30 villages - the 2,000-8,000 Arjun asked for on every normal seed (seed 1
+is climate-limited at any size). The first century is the same at any size (~800 people at year 100); small worlds fill sooner
+(6 km by year ~200-250; 10 km still growing at 400), so scarcity, conflict and politics start earlier. A village's own social world
+is unchanged - ~8-10 villages within a day's walk at every size, marriages ~3.1-3.7 km, about two in five grown people living in
+another village than their mother at ~3-4.8 km - while the world becomes one connected region (1.1-2.1 hops across, 46-98 % of
+people reachable in a day, against 1.5-2.5 and 36-70 % at 10 km): intimate, not one village. 5 km and 4 km thin the weaker seeds to
+1,000-1,250 people in 7-8 villages with boom-and-bust after year 200, and lose wolves at 4 km; 7 km is safer in numbers but gains
+only 1.43x and less than TC1's proportion. Cost: 264 against 413 ms a world year on seed 42 (-36 %); per person-day it rises (the
+planet's fixed share: ~150-180 ms a world year is now most of a small world's cost, F8's speed target).
+**Consequences.** The great beasts are few on a small world: seals and bears die out on some seeds at 6 km (seed 42; seed 7 keeps
+its seals), aurochs ~20-40 - viability (MinViable 5) is about numbers; whether the miniature should carry denser great beasts is a
+D2-084 follow-up decided with the wildlife slice. People and animals are no larger on screen: their size depends on the camera, not
+the planet (TC1's near views showed a person 32-98 px tall, TC2's 2-20 px) - D2-084's near views and readable exaggeration. Rivers
+are brooks at any size (the largest carries < 0.3 m3/s): their reading is presentation (D2-084). Tests run at the new default (some
+premises restated). D2-084's readability pass is redone on 6 km.
+**Invalidation.** Playtests of the 6 km world finding it cramped (then 7 km) or still empty (then 5 km with denser contacts decay);
+a planet cost that makes Ancient and Deep time miss their targets.

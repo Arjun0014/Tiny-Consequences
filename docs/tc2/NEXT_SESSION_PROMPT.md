@@ -33,7 +33,7 @@ no unlock ladders: world rules, not stories.
 also compiled by `tc2/headless` with the editor's bundled dotnet), Burst kernels only where measured, no
 Entities (not on the Web); one ordered event queue `(time, phase, seq)` with lazy cancellation, serialized
 exactly; int64 seconds, 24 h days, 48-day years; resolution layers PROCESS / ACTIVITY / COARSE /
-ELABORATION - watching never changes history; equiangular cubed sphere N32/N64, R = 10 km; causal history
+ELABORATION - watching never changes history; equiangular cubed sphere N32/N64, R = 6 km (D2-085: the ground in geo-lengths of a 10 km sphere, living laws per hectare); causal history
 ledger with tiers, roots, importance, compaction; exact binary saves with an IndexedDB store; offline modes
 Gentle/Living/Ancient/Deep time; URP with WebGPU first and WebGL2 fallback, instancing without BRG;
 determinism bit-identical across dotnet / Mono / Web IL2CPP (DMath, keyed RNG, double arithmetic, ordered
@@ -89,6 +89,11 @@ chosen before any playtest; the world feels enormous and empty. Study TC1's real
 simulated - population, interaction density, travel, performance, comparable shots - decide the radius and change it now if the evidence
 supports it (old saves may be invalidated), then redo D2-084 on the chosen scale. Fewer people is fine (2,000-8,000 mature), more detail
 per person, settlement and feature; never a world where everyone reaches everyone. The study: `docs/tc2/19_PLANET_SCALE.md`.
+
+**Where we are (session 5, 7 Oct 2026)**: D2-083 closed (22cad8d). **D2-085 made: the planet is 6 km** - the same ground at any size
+(geophysics in geo-lengths of a 10 km sphere), living laws per hectare and real-size patches, the view relative to R; a village with its
+fields is 0.17 of the globe (TC1's 0.16); mature worlds of 2,000-7,100 people in 10-30 villages; 177 tests and the Mono probe at 6 km.
+Next: D2-084 on the 6 km world (SESSION_HANDOFF "Next").
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

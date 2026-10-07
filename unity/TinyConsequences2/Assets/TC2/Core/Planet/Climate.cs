@@ -55,7 +55,7 @@ namespace TC2.Core.Planet
                 _cellX[c] = x;
                 int j = (int)DMath.Floor((x + 1.0) / dx);
                 _bandOf[c] = j < 0 ? 0 : (j >= Bands ? Bands - 1 : j);
-                _cellHa[c] = P.AreaHa(c);
+                _cellHa[c] = P.GeoAreaHa(c);
                 _bandHa[_bandOf[c]] += _cellHa[c];
             }
         }
@@ -181,7 +181,7 @@ namespace TC2.Core.Planet
         public static double FreeLand(PlanetState P)
         {
             double a = 0;
-            for (int c = 0; c < P.Cells; c++) if (P.IsLand(c) && P.Ice[c] < 2f) a += P.AreaHa(c);
+            for (int c = 0; c < P.Cells; c++) if (P.IsLand(c) && P.Ice[c] < 2f) a += P.GeoAreaHa(c);
             return a;
         }
 
@@ -278,7 +278,7 @@ namespace TC2.Core.Planet
             double hmax = 0;
             for (int i = 0; i < _icedN; i++) if (P.Ice[_iced[i]] > hmax) hmax = P.Ice[_iced[i]];
             double kmax = DMath.Min(IceFlowPerM * hmax, IceFlowMax);
-            double stable = kmax > 0 ? 0.24 * P.CellSize * P.CellSize / kmax : IceSubstep;
+            double stable = kmax > 0 ? 0.24 * P.GeoCellSize * P.GeoCellSize / kmax : IceSubstep;
             int sub = 1 + (int)DMath.Floor(dt / DMath.Min(IceSubstep, stable) - 1e-9);
             double h0 = dt / sub;
             for (int k = 0; k < sub; k++) Flow(P, h0);
@@ -291,7 +291,7 @@ namespace TC2.Core.Planet
         void Flow(PlanetState P, double dt)
         {
             var g = P.Grid;
-            double cell = P.CellSize, inv = 1.0 / (cell * cell);
+            double cell = P.GeoCellSize, inv = 1.0 / (cell * cell);
             for (int i = 0; i < _icedN; i++)
             {
                 int c = _iced[i];
@@ -377,7 +377,7 @@ namespace TC2.Core.Planet
         static double OceanArea(PlanetState P, double level)
         {
             double a = 0;
-            for (int c = 0; c < P.Cells; c++) if (P.Elev[c] <= level) a += P.AreaHa(c) * 10000.0;
+            for (int c = 0; c < P.Cells; c++) if (P.Elev[c] <= level) a += P.GeoAreaHa(c) * 10000.0;
             return a;
         }
     }

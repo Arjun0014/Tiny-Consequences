@@ -182,24 +182,21 @@ namespace TC2.Core.Knowledge
             var P = _w.Planet;
             if (!Rock(cell)) return false;
             Foundation.Vec3d at = P.Grid.Center[cell];
-            for (int i = 0; i < P.Vents.Count; i++) if (Foundation.Vec3d.ArcDistance(P.Vents[i].At, at, P.Radius) <= OreReach) return true;
+            for (int i = 0; i < P.Vents.Count; i++) if (Foundation.Vec3d.ArcDistance(P.Vents[i].At, at, Planet.PlanetState.GeoRadius) <= OreReach) return true;
             return false;
         }
 
-        /// <summary>How far from a volcano copper ore shows (m).</summary>
+        /// <summary>How far from a volcano copper ore shows (geo-m: the arc's ground, D2-085).</summary>
         public const double OreReach = 3000.0;
 
         /// <summary>Rock showing near a village: a cell within two rings of it standing 40 m or more above or below a neighbour.</summary>
         public bool Rock(int cell)
         {
-            var P = _w.Planet; var g = P.Grid;
-            for (int a = 0; a < 8; a++)
-            {
-                int c1 = g.Nbr8[cell * 8 + a];
-                if (Steep(P, c1)) return true;
-                for (int b = 0; b < 8; b++) if (Steep(P, g.Nbr8[c1 * 8 + b])) return true;
-            }
-            return Steep(P, cell);
+            // (two rings on the 10 km world, ~490 m: a short walk for stone at any size - more rings on a smaller planet, D2-085)
+            var P = _w.Planet;
+            var pc = P.Patch(cell, 2 * P.PatchRings);
+            for (int a = 0; a < pc.Length; a++) if (Steep(P, pc[a])) return true;
+            return false;
         }
 
         static bool Steep(Planet.PlanetState P, int c)

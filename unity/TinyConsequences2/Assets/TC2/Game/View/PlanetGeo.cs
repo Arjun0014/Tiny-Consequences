@@ -10,7 +10,7 @@ namespace TC2.Game
     /// </summary>
     public static class PlanetGeo
     {
-        public const float VScale = 0.5f;
+        public static float VScale = 0.5f;   // (with the planet's size: Ground.ScaleTo)
 
         /// <summary>Simulated elevation at a direction: bilinear over the cell centres of its cube face.</summary>
         public static double Elevation(PlanetState P, Vec3d dir)

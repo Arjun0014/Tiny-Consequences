@@ -56,9 +56,10 @@ namespace TC2.Core.Places
         /// <summary>The animals of a species in a cell and its eight neighbours (what a herd there could be).</summary>
         double Around(int q, int c)
         {
-            var P = _w.Planet; int n = P.Cells; var g = P.Grid;
+            var P = _w.Planet; int n = P.Cells;
+            var pc = P.Patch(c);   // (the cell and the patch round it: its eight neighbours on the 10 km world, D2-085)
             double v = P.Abund[q * n + c];
-            for (int k = 0; k < 8; k++) v += P.Abund[q * n + g.Nbr8[c * 8 + k]];
+            for (int k = 1; k < pc.Length; k++) v += P.Abund[q * n + pc[k]];
             return v;
         }
 
@@ -110,7 +111,7 @@ namespace TC2.Core.Places
                     ref var o = ref w.Herds.Get(_done[j]);
                     if (o.Species != hd.Species) continue;
                     if (o.Cell == hd.Cell) join = _done[j];
-                    else for (int k = 0; k < 8; k++) if (g.Nbr8[o.Cell * 8 + k] == hd.Cell) { join = _done[j]; break; }
+                    else { var po = P.Patch(o.Cell); for (int k = 1; k < po.Length; k++) if (po[k] == hd.Cell) { join = _done[j]; break; } }
                 }
                 if (join != 0)
                 {
@@ -152,7 +153,7 @@ namespace TC2.Core.Places
                 {
                     var sp = P.Species[q];
                     if (sp.Gone != 0 || sp.Habitat != 0 || !Herding(sp.Kind, out int min, out int max)) continue;
-                    if (P.Abund[q * n + c] < 0.5) continue;
+                    if (P.Abund[q * n + c] < 0.5 * P.AreaScale) continue;
                     double free = Around(q, c) - Claimed(q, c);
                     if (free < min) continue;
                     int id = w.Ids.Next(EntityKind.Process);
@@ -167,11 +168,11 @@ namespace TC2.Core.Places
         /// <summary>What herds already count of a species round a cell (claims are only ever made in the reach).</summary>
         double Claimed(int q, int c)
         {
-            var g = _w.Planet.Grid;
+            var pc = _w.Planet.Patch(c);
             int places = _cells.Count;
             double v = 0;
             if (_in[c] == _inNow) v += _claimed[q * places + _at[c]];
-            for (int k = 0; k < 8; k++) { int nb = g.Nbr8[c * 8 + k]; if (_in[nb] == _inNow) v += _claimed[q * places + _at[nb]]; }
+            for (int k = 1; k < pc.Length; k++) { int nb = pc[k]; if (_in[nb] == _inNow) v += _claimed[q * places + _at[nb]]; }
             return v;
         }
 
@@ -198,13 +199,13 @@ namespace TC2.Core.Places
         /// <summary>A village's people killed from the ground round a cell: its herds there were hunted today.</summary>
         public void MarkHunted(int sid, int ground)
         {
-            var w = _w; var g = w.Planet.Grid;
+            var w = _w; var pg = w.Planet.Patch(ground);
             var mine = w.HerdsOf(sid);
             for (int i = 0; i < mine.Count; i++)
             {
                 ref var hd = ref w.Herds.Get(mine[i]);
                 if (hd.Cell == ground) { hd.Hunted = w.Now; continue; }
-                for (int k = 0; k < 8; k++) if (g.Nbr8[ground * 8 + k] == hd.Cell) { hd.Hunted = w.Now; break; }
+                for (int k = 1; k < pg.Length; k++) if (pg[k] == hd.Cell) { hd.Hunted = w.Now; break; }
             }
         }
 

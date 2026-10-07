@@ -91,6 +91,109 @@ namespace TC2.Game
 
         static float Frac(float x) => x - Mathf.Floor(x);
 
+        // ------------------------------------------------------------------ stands and glades (D2-084)
+        /// <summary>The woods' stands and glades: a value noise of the ground's position whose features are some 150-300 m across.</summary>
+        public const float StandScale = 210f;
+        /// <summary>The noise's cumulative distribution in 256 steps as the shader's texture keeps it (8 bits): its rank of a point is
+        /// spread evenly over 0-1, so the stands standing where the share is above the rank cover the share of the ground.</summary>
+        public static readonly float[] StandCdf = FitStands();
+
+        static uint Hash(int x, int y, int z)
+        {
+            unchecked
+            {
+                uint h = ((uint)x * 73856093u) ^ ((uint)y * 19349663u) ^ ((uint)z * 83492791u);
+                h ^= h >> 13; h *= 1274126177u; h ^= h >> 16;
+                return h;
+            }
+        }
+
+        static float Lat(int x, int y, int z) => (Hash(x, y, z) & 0xFFFFFFu) / 16777216f;
+
+        /// <summary>Value noise (0-1) on the integer lattice, smoothly interpolated (the shader's StandV: the same arithmetic).</summary>
+        static float ValueNoise(float x, float y, float z)
+        {
+            float fx = Mathf.Floor(x), fy = Mathf.Floor(y), fz = Mathf.Floor(z);
+            int ix = (int)fx + 1024, iy = (int)fy + 1024, iz = (int)fz + 1024;   // (all positive: the casts agree on every runtime)
+            float tx = x - fx, ty = y - fy, tz = z - fz;
+            tx = tx * tx * (3f - 2f * tx); ty = ty * ty * (3f - 2f * ty); tz = tz * tz * (3f - 2f * tz);
+            float a = Lat(ix, iy, iz), b = Lat(ix + 1, iy, iz), c = Lat(ix, iy + 1, iz), d = Lat(ix + 1, iy + 1, iz);
+            float e = Lat(ix, iy, iz + 1), f = Lat(ix + 1, iy, iz + 1), g = Lat(ix, iy + 1, iz + 1), h = Lat(ix + 1, iy + 1, iz + 1);
+            float ab = a + tx * (b - a), cd = c + tx * (d - c), ef = e + tx * (f - e), gh = g + tx * (h - g);
+            float lo = ab + ty * (cd - ab), hi = ef + ty * (gh - ef);
+            return lo + tz * (hi - lo);
+        }
+
+        /// <summary>The stands' noise at a point of the ground (scene metres, the planet centred at the origin): three octaves.</summary>
+        public static float StandNoise(Vector3 p)
+        {
+            float x = p.x / StandScale, y = p.y / StandScale, z = p.z / StandScale;
+            return 0.58f * ValueNoise(x, y, z) + 0.29f * ValueNoise(x * 2.07f + 17.1f, y * 2.07f + 3.3f, z * 2.07f - 9.4f)
+                 + 0.13f * ValueNoise(x * 4.31f - 4.7f, y * 4.31f + 12.9f, z * 4.31f + 6.1f);
+        }
+
+        static float[] FitStands()
+        {
+            // the noise's distribution, measured over points spread on a planet's ground (any radius of the scale: the lattice is the
+            // same everywhere), kept as the 8-bit texture keeps it
+            const int n = 16384;
+            var v = new float[n];
+            var rng = new System.Random(20261007);
+            for (int k = 0; k < n; k++)
+            {
+                float zc = 2f * (float)rng.NextDouble() - 1f, phi = 6.2831853f * (float)rng.NextDouble(), rr = Mathf.Sqrt(1f - zc * zc);
+                v[k] = StandNoise(new Vector3(rr * Mathf.Cos(phi), rr * Mathf.Sin(phi), zc) * 10000f);
+            }
+            System.Array.Sort(v);
+            var cdf = new float[256];
+            int at = 0;
+            for (int b = 0; b < 256; b++)
+            {
+                float x = (b + 0.5f) / 256f;   // (the texel's centre)
+                while (at < n && v[at] < x) at++;
+                cdf[b] = Mathf.Round(at / (float)n * 255f) / 255f;
+            }
+            return cdf;
+        }
+
+        /// <summary>A point's rank in the stands' noise (0-1, spread evenly): the CDF texture read with linear filtering, as the shader.</summary>
+        public static float StandRank(Vector3 p)
+        {
+            float x = StandNoise(p) * 256f - 0.5f;
+            if (x <= 0f) return StandCdf[0];
+            if (x >= 255f) return StandCdf[255];
+            int i = (int)x;
+            float t = x - i;
+            return StandCdf[i] + t * (StandCdf[i + 1] - StandCdf[i]);
+        }
+
+        /// <summary>
+        /// The woods' share as stands and glades at a point (D2-084, the shader's rule): where the land is wooded its share is drawn as
+        /// stands of closed canopy with edges, with glades and meadows between them - a stand where the share is above the point's rank,
+        /// so the stands cover the share of the ground; thin woods (savanna, parkland: a share under ~0.12) stay scattered trees. Near a
+        /// river's water (<paramref name="river"/>, its corridor 0-1) the rank is lowered: the woods keep to the banks.
+        /// </summary>
+        public static float Stands(float share, Vector3 p, float river = 0f)
+        {
+            float w = SmoothEdge(0.12f, 0.35f, share);
+            if (w <= 0f) return share;
+            float u = StandRank(p) - 0.30f * river;
+            return share + w * (SmoothEdge(u - 0.06f, u + 0.06f, share) - share);
+        }
+
+        static float SmoothEdge(float e0, float e1, float x) { float t = Mathf.Clamp01((x - e0) / (e1 - e0)); return t * t * (3f - 2f * t); }
+
+        /// <summary>The stands' CDF as the shader reads it (256 x 1, 8 bits, linear, clamped).</summary>
+        public static Texture2D MakeStandCdf()
+        {
+            var tex = new Texture2D(256, 1, TextureFormat.R8, false, true) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, name = "tc2-stand-cdf" };
+            var px = new byte[256];
+            for (int b = 0; b < 256; b++) px[b] = (byte)Mathf.RoundToInt(StandCdf[b] * 255f);
+            tex.SetPixelData(px, 0);
+            tex.Apply(false, true);
+            return tex;
+        }
+
         /// <summary>
         /// The canopy texture: each texel keeps the two crowns of lowest number that cover it - r, b its distance from their
         /// centres over their radius, g, a their numbers - so the shader can stand any crown whose number is below the share

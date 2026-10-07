@@ -9,23 +9,27 @@
   screenshots (orbit, region, village, close), decide the radius myself and change it now if the evidence supports it (old saves may be
   invalidated); then redo D2-084 on the chosen scale. Fewer people is fine (2,000-8,000 mature); no world where everyone reaches everyone.
   Study and decision: `docs/tc2/19_PLANET_SCALE.md`.
-- **D2-083 closed and committed** (session 5): 177 tests (the small-world herd check now a factor-2.5 bound - DECISIONS D2-083
+- **D2-083 closed and committed** (22cad8d): 177 tests (the small-world herd check now a factor-2.5 bound - DECISIONS D2-083
   "Closing checks"), COARSE 400-year hashes unchanged (42 55cfd96b471db300, 7 8c3e14c324165015).
-- **Scale tools (working tree, D2-085 in progress)**: the planet's geophysics in geo-lengths (`PlanetState.GeoRadius` = 10 km,
-  `GeoScale`, `GeoAreaHa`, `GeoCellSize`: plates, erosion, coasts, ice, drainage, quakes, storms, eruptions, tsunamis, copper's extent,
-  slides, the ground's steepness for ecology and routes) - a seed makes the same ground at any size; living laws per hectare
-  (`AreaScale`: predators' half-sated prey and territories, hunters' half-sated grounds, the occupancy of a cell for speciation and
-  herds) and grounds as a patch of real size (`PlanetState.Patch(c, rings)`, `PatchRings`: herds, hunting grounds, rock for querns);
-  initial villages 1.2-3.9 km apart in metres. **All bit-identical at R = 10 km** (12-year hash aeba16dc9bb1c04e against the D2-083
-  build). Tools: headless `--radius M`, `run --scale` (`ScaleReport.cs`: spacing, villages within a day's walk, communities and hops,
-  people reachable in a day, kin distance, polities, woods round villages, wild kinds, cost a person-day) with `Core/Diagnostics/
-  ScaleTally.cs` (distances of marriages, trades, relief, moves, foundings, takings, raids, claims, visits, tribute; tools only). View:
-  `?radius=`, shots `-tc2radius`, orbit/region framing, relief exaggeration (`Ground.ScaleTo`), terrain LOD depth and haze relative to
-  R; multi-world shot folders named by save folder. Scratchpad (session 5):
+- **D2-085 decided, made and committed: R = 6 km** (`19_PLANET_SCALE.md`, DECISIONS D2-085, 01 §2, 13 §11, roadmap W0). The ground is
+  the same ground at any size: the planet's geophysics in geo-lengths of a 10 km sphere (`PlanetState.GeoRadius`, `GeoScale`,
+  `GeoAreaHa`, `GeoCellSize`); living laws per hectare (`AreaScale`) and real-size patches (`Patch`, `PatchRings`); first villages in
+  metres; new homes on dry lots (`Settlement.NextDryLot`); the view relative to R (`Ground.ScaleTo`, CameraRig framing, TerrainLod
+  MaxLevel, Sky haze, CloudView shell). 177 tests at 6 km (eight 10 km premises restated); dotnet and Mono probes identical (gen
+  392cf8631e08dc36). Old saves keep their radius. Tools: headless `--radius M`, `run --scale` (`ScaleReport.cs`, `Core/Diagnostics/
+  ScaleTally.cs`), shots `--radius`, multi-world shot folders named by save folder. Study data: `tc2/out/scale/` (`table.txt`, runs,
+  saves `r<R>_s<seed>/world_y100|300.tc2`); shots `tc2/out/shots/scale1`, `scale2` (contact sheets `sheet_*.png`). Scratchpad (session 5):
   `C:\Users\aswin\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\a14b045d-19c2-46a3-b3ef-213aae01eceb\scratchpad`
-  (`scale_runs.sh`, `queue1.sh`, `runs.sh`, `bin_b` = the study binaries).
-- **Visual slice 1 of D2-084 is still uncompiled in Unity** (session 4's code: stands, palette, relief, rivers, tree kinds) - it will
-  compile with the first scale shot round; judge it there.
+  (`scale_runs.sh`, `scale_table.mjs`, `sheet.py` contact sheets, `runs.sh`, `bin_b`).
+- **Visual slice 1 of D2-084** (session 4's code: stands, palette, relief, rivers, tree kinds) compiled for the first time in the scale
+  shots and is committed with D2-085; it is not yet judged on its own - judge it on 6 km.
+- **Known bugs, each its own calibrated slice** (they change COARSE): COARSE hunting skill and trips never updated (`CoarseDay`, since
+  D2-063); a COARSE disease catch that falls on a child is dropped (`Disease.Visits` picks among everyone present), halving the sickness
+  visits carry home.
+- **Next**: D2-084 on the 6 km world (`18_WORLD_READABILITY.md`): people and animals readable at the near views (camera and readable
+  exaggeration), farmland that reads by season, crop, hedges, pasture and fallow (the year-300 quilt), rivers and corridors, settlements
+  as places, scars, the multi-age acceptance (shoot the 6 km saves in `tc2/out/scale/r6000_s*/`; add years 0, 25, 1,000), the great
+  beasts' viability decision, then the Web build at 60 fps (run `unity.mjs configure` first: River.mat).
 
 ## Session 4 (7 Oct 2026, from 00:16 IST) — closed into session 5
 
@@ -41,7 +45,8 @@
   people 0.85/0.87 at years 300/400 n.s. - seed 4 founded fewer villages, few epidemics -, hunting +34 % t 3.5, out for need +9 % t 7.1,
   fish -19 %), k (+ MidTake: seed 7 worse - more hunting, more out for need, famines 387 vs 312 - **reverted**; the working tree's
   Core is round j). D2-083 is written up as closed in DECISIONS/04/PROGRESS with round j's evidence and residual leans.
-  **SESSION STOPPED 7 Oct ~01:04 at Arjun's request (usage limit). NOTHING COMMITTED since 6ad57fb.** Still to do, in order:
+  **SESSION STOPPED 7 Oct ~01:04 at Arjun's request (usage limit). NOTHING COMMITTED since 6ad57fb.** (Session 5 did all of the
+  list below: D2-083 committed as 22cad8d, the visual slice with D2-085.) Still to do, in order:
   (1) `node tc2/scripts/headless.mjs test` (all tests + the new `DeepTimeTests.EachWorkerOfAStepChoosesOnTheGroundTheStepLeft`; the
   repo's bin holds the reverted round-k build until it rebuilds); (2) COARSE hashes of seeds 42/7 must still be 55cfd96b471db300 /
   8c3e14c324165015 (one-day arithmetic untouched); (3) DEEP speed on a quiet machine (no --profile, nothing else running; round f:

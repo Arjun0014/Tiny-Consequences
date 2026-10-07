@@ -54,14 +54,14 @@ namespace TC2.Game
             if (Host.CatchingUp)
             {
                 if (!_holding) { _held = Distance; _holding = true; }
-                Distance = R + CatchUpAltitude;
+                Distance = R + CatchUpAltitude * w.Planet.GeoScale;
             }
             else if (_holding) { Distance = _held; _holding = false; }
             Apply();
             UpdateSun();
         }
 
-        /// <summary>The camera's height while the world catches up an absence (m).</summary>
+        /// <summary>The camera's height while the world catches up an absence (m on the 10 km world; with the planet's size).</summary>
         public static double CatchUpAltitude = 22000;
         bool _holding;
         double _held;
@@ -197,6 +197,50 @@ namespace TC2.Game
                 LookAt(d, view == "forestfar" ? 900 : view == "forestlow" ? 95 : 260);
                 return;
             }
+            if (view.StartsWith("river"))
+            {
+                // the largest river within 6 km of the first village (D2-084: the acceptance views), seen from 600 m (riverfar: 2.5 km)
+                var P = w.Planet;
+                int best = -1; double bv = 0;
+                for (int c = 0; c < P.Cells; c++)
+                {
+                    if (!P.IsLand(c) || !P.IsStream(c) || P.RiverFlow[c] <= bv) continue;
+                    if (Vec3d.ArcDistance(P.Grid.Center[c], d, P.Radius) > 6000) continue;
+                    bv = P.RiverFlow[c]; best = c;
+                }
+                if (best >= 0) d = P.Grid.Center[best];
+                LookAt(d, view == "riverfar" ? 2500 : 600);
+                return;
+            }
+            if (view.StartsWith("town"))
+            {
+                // the most peopled place on the planet (D2-084), at the village view's height (townclose: 260 m)
+                int most = 0, bp = -1;
+                for (int s2 = w.Settlements.First(); s2 != 0; s2 = w.Settlements.Next(s2))
+                {
+                    ref var st = ref w.Settlements.Get(s2);
+                    if (st.Inhabited && st.Population > bp) { bp = st.Population; most = s2; }
+                }
+                if (most != 0) d = w.Settlements.Get(most).Anchor;
+                LookAt(d, view == "townclose" ? 260 : 900);
+                return;
+            }
+            if (view.StartsWith("scar"))
+            {
+                // the most recently burnt ground within 10 km of the first village (D2-084: does the land keep its history?)
+                var P = w.Planet;
+                int best = -1; long bt = 0;
+                for (int c = 0; c < P.Cells; c++)
+                {
+                    long t = w.Fire.BurnedAt[c];
+                    if (t <= bt || !P.IsLand(c)) continue;
+                    if (Vec3d.ArcDistance(P.Grid.Center[c], d, P.Radius) > 10000) continue;
+                    bt = t; best = c;
+                }
+                if (best >= 0) d = P.Grid.Center[best];
+                LookAt(d, view == "scarfar" ? 2500 : 700);
+                return;
+            }
             if (view.StartsWith("volcano"))
             {
                 // the volcano nearest the first village (land vents first)
@@ -211,7 +255,9 @@ namespace TC2.Game
                 LookAt(d, view == "volcanoclose" ? 650 : view == "volcanofar" ? 5200 : 2200);
                 return;
             }
-            double alt = view == "close" ? 260 : view == "low" ? 95 : view == "village" ? 900 : view == "region" ? 5000 : 22000;
+            // (orbit and region frame the planet and a part of it, so they go with its size; the village and nearer views are metres, D2-085)
+            double S = Host.World.Planet.GeoScale;
+            double alt = view == "close" ? 260 : view == "low" ? 95 : view == "village" ? 900 : view == "region" ? 5000 * S : 22000 * S;
             LookAt(d, alt);
         }
 
@@ -236,7 +282,8 @@ namespace TC2.Game
             int sid = w.Settlements.First();
             Vec3d d = sid != 0 ? w.Settlements.Get(sid).Anchor : new Vec3d(0, 0.4, 0.9).Normalized;
             string view = Browser.Param("view");
-            double alt = view == "close" ? 450 : view == "village" ? 1500 : view == "region" ? 6000 : 22000;
+            double S = w.Planet.GeoScale;
+            double alt = view == "close" ? 450 : view == "village" ? 1500 : view == "region" ? 6000 * S : 22000 * S;
             LookAt(d, alt);
         }
 
@@ -248,7 +295,8 @@ namespace TC2.Game
             FocusPoint = PlanetGeo.Surface(P, dir);
             double alt = Distance - R;
             // tilt toward the horizon close in: 0 deg from orbit, up to ~62 deg at village height
-            double tilt = Mathf.Lerp(62f, 0f, Mathf.InverseLerp(300f, 9000f, (float)alt)) * DMath.Deg2Rad;
+            float far9 = (float)(9000.0 * P.GeoScale);   // (from orbit straight down, with the planet's size)
+            double tilt = Mathf.Lerp(62f, 0f, Mathf.InverseLerp(300f, far9, (float)alt)) * DMath.Deg2Rad;
             Vector3 up = PlanetGeo.ToVector(dir);
             Vector3 north = Vector3.ProjectOnPlane(Vector3.up, up);
             if (north.sqrMagnitude < 1e-6f) north = Vector3.ProjectOnPlane(Vector3.forward, up);
@@ -263,7 +311,7 @@ namespace TC2.Game
                 _shake = Mathf.Max(0f, _shake - Time.unscaledDeltaTime * _shakeFade);
             }
             Cam.transform.position = camPos;
-            Cam.transform.rotation = Quaternion.LookRotation((FocusPoint - camPos).normalized, alt < 9000 ? north + up * 0.2f : Vector3.up);
+            Cam.transform.rotation = Quaternion.LookRotation((FocusPoint - camPos).normalized, alt < far9 ? north + up * 0.2f : Vector3.up);
             float far = (float)(Distance + R * 1.5);
             Cam.farClipPlane = far;
             Cam.nearClipPlane = Mathf.Clamp((float)alt * 0.02f, 0.3f, 400f);

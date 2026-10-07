@@ -23,6 +23,7 @@ namespace TC2.Headless
             c.Settlements = a.Int("settlements", c.Settlements);
             c.FoundersPerSettlement = a.Int("founders", c.FoundersPerSettlement);
             c.SurfaceN = a.Int("n", c.SurfaceN);
+            c.Radius = a.Double("radius", c.Radius);
             if (a.Has("lightning")) c.LightningPerCellDay = a.Double("lightning", c.LightningPerCellDay);
             if (a.Has("trips")) c.TripChancePerDecision = a.Double("trips", c.TripChancePerDecision);
             return c;
@@ -97,6 +98,8 @@ namespace TC2.Headless
             Console.WriteLine("world seed " + w.Seed + "  cells " + w.Planet.Cells + "  settlements " + w.InhabitedSettlements() + "  people " + w.LivingPeople() + "  (generated in " + genMs + " ms)");
             long span = SpanFrom(a, 2);
             long end = w.Now + span;
+            bool scale = a.Has("scale");   // (D2-085: the planet's size seen from the inside)
+            if (scale) ScaleReport.Begin(w);
             if (a.Has("coarse") || a.Has("deep")) w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
             if (a.Has("deep")) w.RequestStepDays(a.Int("deep", 12), SimTime.StartOfDay(w.Now) + SimTime.Day);   // DEEP (F8): calm villages live K days at a step
             long report = a.Has("report-days") ? SimTime.Days(a.Double("report-days", 1)) : (span > 3 * SimTime.Year ? SimTime.Year : (span > 20 * SimTime.Day ? 4 * SimTime.Day : SimTime.Day));
@@ -135,6 +138,7 @@ namespace TC2.Headless
                 double ms = lastSw.Elapsed.TotalMilliseconds; lastSw.Restart();
                 Console.WriteLine(SimTime.FormatShort(w.Now) + "  pop " + w.LivingPeople() + "  places " + w.InhabitedSettlements() + "  granary " + F(TotalGranary(w), "0") +
                                   "  fires " + w.Fire.Active.Count + "  events " + ev + "  hist " + w.History.Count + "  " + F(ms, "0.0") + " ms");
+                if (scale) Console.WriteLine(ScaleReport.Line(w));
                 if (a.Has("places"))
                 {
                     // each village: people, fields (ha of arable), granary (FU) and its ration, last harvest
@@ -168,6 +172,7 @@ namespace TC2.Headless
             double years = span / (double)SimTime.Year;
             Console.WriteLine();
             Console.WriteLine("simulated " + SimTime.FormatDuration(span) + " in " + F(total, "0") + " ms  = " + F(years / (total / 1000.0), "0.000") + " world years / s");
+            if (scale) ScaleReport.Final(w, total, years);
             var m = w.Metrics;
             Console.WriteLine("events " + m.Events + "  decisions " + m.Decisions + "  steps " + m.Steps + "  stale " + m.Stale + "  journeys " + m.Journeys +
                               "  interrupted " + m.JourneysInterrupted + "  interrupts " + m.Interrupts + "/" + m.InterruptsHandled + "  meals " + m.Meals +

@@ -96,8 +96,7 @@ namespace TC2.Tests.Core
             for (int i = 0; i < 60; i++) fu += w.Wild.Hunt(ground, 4.0, 0.5, (ulong)(1000 + i), out _);
             Assert.Greater(fu, 0.0, "sixty days of hunting bring meat home");
             var g = P.Grid;
-            var groundCells = new HashSet<int> { ground };
-            for (int j = 0; j < 8; j++) groundCells.Add(g.Nbr8[ground * 8 + j]);
+            var groundCells = new HashSet<int>(P.Patch(ground));   // (the cell and its neighbours on the 10 km world; a patch of that size on any, D2-085)
             double kg = 0;
             for (int q = 0; q < P.Species.Count; q++)
                 for (int c = 0; c < n; c++)
@@ -154,7 +153,8 @@ namespace TC2.Tests.Core
             int ground = a.Settlements.Get(sid).Gath.A;
             Assert.GreaterOrEqual(ground, 0);
             var P = a.Planet; int n = P.Cells;
-            var cells = new List<int> { ground }; for (int j = 0; j < 8; j++) if (P.IsLand(P.Grid.Nbr8[ground * 8 + j])) cells.Add(P.Grid.Nbr8[ground * 8 + j]);
+            var pc = P.Patch(ground);   // (the ground: its cell and the land of the patch round it, D2-085)
+            var cells = new List<int> { ground }; for (int j = 1; j < pc.Length; j++) if (P.IsLand(pc[j])) cells.Add(pc[j]);
             double Left() { double v = 0; foreach (int c in cells) v += WildFood.MastLeft(P, c); return v; }
             double left0 = Left();
             // a hungry village's gatherers on one ground until it is picked over (a premise: many hands, many hours)
@@ -408,7 +408,8 @@ namespace TC2.Tests.Core
                 var hd = w.Herds.Get(h);
                 int q = -1; for (int k = 0; k < P.Species.Count; k++) if (P.Species[k].Id == hd.Species) q = k;
                 Assert.GreaterOrEqual(q, 0);
-                double around = P.Abund[q * n + hd.Cell]; for (int k = 0; k < 8; k++) around += P.Abund[q * n + P.Grid.Nbr8[hd.Cell * 8 + k]];
+                var ph = P.Patch(hd.Cell);   // (a herd's ground: the patch round its cell, D2-085)
+                double around = P.Abund[q * n + hd.Cell]; for (int k = 1; k < ph.Length; k++) around += P.Abund[q * n + ph[k]];
                 Assert.LessOrEqual(hd.Count, around + 1e-3, "a herd is no more than the animals there");
             }
             // the largest herd of game: take most of its kind from the land round it (as hunters would) - the next day it is smaller
@@ -418,7 +419,8 @@ namespace TC2.Tests.Core
             var before = w.Herds.Get(big);
             int sq = -1; for (int k = 0; k < P.Species.Count; k++) if (P.Species[k].Id == before.Species) sq = k;
             P.Abund[sq * n + before.Cell] *= 0.1f;
-            for (int k = 0; k < 8; k++) P.Abund[sq * n + P.Grid.Nbr8[before.Cell * 8 + k]] *= 0.1f;
+            var pb = P.Patch(before.Cell);
+            for (int k = 1; k < pb.Length; k++) P.Abund[sq * n + pb[k]] *= 0.1f;
             w.AdvanceTo(w.Now + SimTime.Day);
             float after = w.Herds.Exists(big) ? w.Herds.Get(big).Count : 0f;
             Assert.Less(after, before.Count, "the herd is what the field holds: fewer animals, a smaller herd");

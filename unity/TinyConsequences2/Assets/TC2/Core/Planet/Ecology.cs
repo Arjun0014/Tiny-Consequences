@@ -172,7 +172,7 @@ namespace TC2.Core.Planet
                     // (hunters start few - on land their prey would not bear more; the sea's shoals bear more of theirs)
                     double share = P.Species[s].Role != Role.Predator ? 2.0 : P.Species[s].Habitat == 1 ? 1.5 : 0.3;
                     double start = suit * share * DMath.Exp(-0.25 * DMath.Log(P.Species[s].Mass / 50.0)) * Density;
-                    if (P.Species[s].Territory > 0) start = DMath.Min(start, 0.5 * P.Species[s].Territory);   // hunters start within their ranges
+                    if (P.Species[s].Territory > 0) start = DMath.Min(start, 0.5 * P.Species[s].Territory * P.AreaScale);   // hunters start within their ranges
                     P.Abund[s * P.Cells + c] = (float)start;
                     P.Cond[s * P.Cells + c] = 0.7f;
                 }
@@ -341,7 +341,7 @@ namespace TC2.Core.Planet
             var g = P.Grid;
             double hi = P.Elev[c], lo = P.Elev[c];
             for (int k = 0; k < 4; k++) { double e = P.Elev[g.Nbr4[c * 4 + k]]; if (e > hi) hi = e; if (e < lo) lo = e; }
-            return (hi - lo) / (2.0 * P.CellSize);
+            return (hi - lo) / (2.0 * P.GeoCellSize);   // the ground's own steepness (D2-085: the same ground at any size)
         }
 
         /// <summary>A step of the wild animals (dt in years; t the time, for the breeding season).</summary>
@@ -374,8 +374,9 @@ namespace TC2.Core.Planet
             var fx = _fx; var slopes = _slope; var grassEaten = _grassEaten; var browseEaten = _browseEaten;
             // what each species eats a year and the prey that sates it half: computed once a step, not in every cell
             Span<double> intake = stackalloc double[MaxK], half = stackalloc double[MaxK];
+            double areaK = P.AreaScale;   // (prey and ranges per hectare: a smaller planet's cells hold less, D2-085)
             // (half sated at less prey for a cold-blooded hunter, and for one whose rounds cover many cells)
-            for (int a = 0; a < k; a++) { intake[a] = sps[a].Intake; half[a] = HalfPrey * DMath.Exp(0.75 * DMath.Log(sps[a].Mass / 35.0)) * (sps[a].Metab / 9.0) / sps[a].Range; }
+            for (int a = 0; a < k; a++) { intake[a] = sps[a].Intake; half[a] = HalfPrey * DMath.Exp(0.75 * DMath.Log(sps[a].Mass / 35.0)) * (sps[a].Metab / 9.0) / sps[a].Range * areaK; }
             int nLand = 0, nSea = 0;
             for (int a = 0; a < k; a++) { if (sps[a].Habitat == 1) seaSp[nSea++] = a; else landSp[nLand++] = a; }
             var plank = SeaFood(w, yf);   // what the sea's plankton offers each sea cell this step (0..~1.2)
@@ -536,7 +537,7 @@ namespace TC2.Core.Planet
                         // does not make room for more wolves, the sisters compete for it
                         double kin = N;
                         if (sp.Territory > 0) for (int qi = 0; qi < nh; qi++) { int q = hs[qi]; if (q != s && sps[q].Kind == sp.Kind) kin += P.Abund[q * n + c]; }
-                        double room = sp.Territory > 0 ? DMath.Clamp01(1.0 - kin / sp.Territory) : 1.0;
+                        double room = sp.Territory > 0 ? DMath.Clamp01(1.0 - kin / (sp.Territory * areaK)) : 1.0;
                         double young = N * sp.Fecundity * DMath.Clamp01((cond - 0.5) / 0.4) * room;   // only the well fed raise young
                         if (Diag != null) Diag[s * 8 + 5] += young;
                         N += young;
@@ -583,7 +584,7 @@ namespace TC2.Core.Planet
                 {
                     int i = s * n + c;
                     double N = P.Abund[i];
-                    if (N < 0.01) continue;
+                    if (N < 0.01 * areaK) continue;
                     double wsum = 0;
                     for (int q = 0; q < 4; q++)
                     {

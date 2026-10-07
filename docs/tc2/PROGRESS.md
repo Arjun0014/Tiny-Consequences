@@ -5,10 +5,19 @@
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
-  reconsider the planet's physical size** (D2-007's 10 km reopened; `19_PLANET_SCALE.md`). D2-083 closed and committed (177 tests,
-  COARSE hashes unchanged). Scale study tools in the working tree: the planet's geophysics in geo-lengths (the same ground at any size),
-  living laws per hectare and grounds as real-size patches (bit-identical at 10 km), headless `--radius`, `run --scale`, the view's
-  framing, relief, LOD and haze relative to R. Runs: seeds 42, 7, 1, 2 at R = 10, 7, 6, 5, 4 km, 400 years DEEP.
+  reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
+  unchanged).
+  - **D2-085 decided and made: R = 6 km** (`19_PLANET_SCALE.md`). TC1 was a diorama (1,442 cells, radius 10 units, a person R/137, a
+    village's map 0.32 R); a TC2 village with its fields is 0.17 of a 6 km globe (TC1's map 0.16, 0.10 at 10 km). Four seeds at 10/7/6/5/4
+    km, 400 years DEEP, the same ground on each: 6 km keeps 2,000-7,100 people in 10-30 villages on the normal seeds (10 km 4,900-19,000;
+    5 km falls to ~1,250 in 8 on the weaker seed), a village's neighbourhood unchanged (~9 villages a day's walk; kin, brides, trade at
+    3-4 km), the world ~2 hops across instead of 2.5-3.7, about half of it reachable in a day; -25..-36 % a world year; great beasts few
+    (bears and seals lost on some seeds). The same ground at any size: the geophysics in geo-lengths of a 10 km sphere; living laws per
+    hectare (`AreaScale`) and real-size patches (`Patch`); first villages in metres; new homes on dry lots; the view relative to R
+    (framing, relief, clouds, LOD, haze). Tools: headless `--radius`, `run --scale`; shots `--radius`. Shots: `tc2/out/shots/scale1`,
+    `scale2` (contact sheets). Tests at 6 km: eight 10 km premises restated, no law loosened.
+  - **Known bug, its own calibrated slice** (it changes COARSE): a COARSE disease catch that falls on a child is dropped
+    (`Disease.Visits` picks among everyone present), halving the sickness visits carry home.
 - **Session 4 (7 Oct 2026, from 00:16 IST, closed into session 5)** - Arjun (7 Oct): finish D2-083, then **the world made legible** is the
   priority (D2-084, `18_WORLD_READABILITY.md`, roadmap phase W - "the simulation exists, but almost none of it is legible from looking
   at the world"; no simulation theatre; the order audit -> composition -> forests -> rivers -> biomes -> terrain -> settlements -> life
@@ -289,6 +298,10 @@
 |---|---|---|
 | D2-083 closed, the final tree: 400 years, no profiler (the machine shared, 50-80 % CPU from other sessions) | dotnet | DEEP 7 3.20 world years/s, COARSE 7 2.42 (same load), DEEP 42 2.23; COARSE hashes 42 55cfd96b471db300, 7 8c3e14c324165015 (unchanged) |
 | Full headless tests | dotnet | 177 pass (324 s; the DEEP-vs-COARSE herd check now a factor-2.5 bound) |
+| D2-085 scale study, 400 years DEEP, seeds 42/7/1/2 at R = 10/7/6/5/4 km (`tc2/out/scale/table.txt`) | dotnet | people at year 400: 10 km 13,546/4,876/963/19,043; 7 km 6,439/2,471/816/8,197; **6 km 5,471/1,995/1,116/7,110**; 5 km 2,564/1,238/450/5,121; 4 km 3,774/1,010/2,164/3,062; ms a world year 10 km 179-413, 6 km 188-319 (seed 42: 413 -> 264); the planet ~150-180 ms a world year at any size |
+| Planet only, seed 42, 600 years at 10 and 5 km (`tc2/out/scale/ground42_r*.txt`) | dotnet | the same tectonic history step for step (collisions, subductions, ridges, peaks, eruptions); 99 s against 82 s; at 5 km seals extinct at year 0, bears at 180 |
+| Editor shot rounds `scale1` (6 worlds x 7 views) and `scale2` (9 x 6) | editor | ~6-8 min each with the machine shared; contact sheets `sheet_*.png` |
+| Tests and determinism at 6 km (D2-085) | dotnet, editor Mono | 177 pass (351 s); probe identical on both: gen 392cf8631e08dc36, d1 67ad8d195d58819d, d2 4260ca6bd3b0f492, d3 46da96b46a778f32 |
 
 ## Measurements (session 3)
 

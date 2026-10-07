@@ -149,7 +149,7 @@ namespace TC2.Core.Worldgen
                 P.Elev[c] = (float)DMath.Clamp(h, -2200, 2900);
             }
             P.SeaLevel = 0;
-            P.Plates = Tectonics.MakePlates(poles, omega, continental, P.Radius);
+            P.Plates = Tectonics.MakePlates(poles, omega, continental, PlanetState.GeoRadius);
             Tectonics.InitCrust(P, seed);
             P.Hotspots = Volcanism.MakeHotspots(seed);
         }
@@ -255,7 +255,7 @@ namespace TC2.Core.Worldgen
             for (int c = 0; c < n; c++) if (score[c] > fb) { fb = score[c]; first = c; }
             if (first < 0) return new List<int>();
             var chosen = new List<int> { first };
-            double minSep = 5.0 * P.CellSize, maxSep = 16.0 * P.CellSize;
+            double minSep = 5.0 * P.GeoCellSize, maxSep = 16.0 * P.GeoCellSize;   // 1.2-3.9 km apart (D2-085: real metres at any size)
             int want = Math.Max(1, cfg.Settlements);
             int guard = 0;
             while (chosen.Count < want && guard++ < 50)
@@ -319,7 +319,7 @@ namespace TC2.Core.Worldgen
             {
                 int hid = w.Ids.Next(EntityKind.Household);
                 ref var srr = ref w.Settlements.Get(sid);
-                srr.LotPosition(srr.Lots++, out float hx, out float hy);
+                srr.NextDryLot(w.Planet, out float hx, out float hy);
                 var hh = new Household { Id = hid, Settlement = sid, Formed = w.Now, FamilyName = hid, HomeX = hx, HomeY = hy, Larder = 6, Shelter = Construction.House, Water = 30f, Indoor = (float)Hearth.Comfort };
                 w.Households.Add(hid, hh);
                 w.HouseholdsOf(sid).InsertSorted(hid);

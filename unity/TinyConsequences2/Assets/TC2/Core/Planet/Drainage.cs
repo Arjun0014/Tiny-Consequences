@@ -101,7 +101,7 @@ namespace TC2.Core.Planet
                 }
             }
             // drainage area: every land cell drains its own area plus all upstream, in reverse stack order
-            for (int i = 0; i < StackCount; i++) AreaHa[Stack[i]] = (float)P.AreaHa(Stack[i]);
+            for (int i = 0; i < StackCount; i++) AreaHa[Stack[i]] = (float)P.GeoAreaHa(Stack[i]);
             for (int i = StackCount - 1; i >= 0; i--)
             {
                 int c = Stack[i];
@@ -172,7 +172,7 @@ namespace TC2.Core.Planet
                 int c = BasinCells[i];
                 double depth = level - P.DrainSurface(c);
                 if (depth <= 0) break;
-                double ha = P.AreaHa(c);
+                double ha = P.GeoAreaHa(c);
                 v += depth * ha * 10000.0;
                 wetHa += ha;
             }
@@ -192,7 +192,7 @@ namespace TC2.Core.Planet
             for (int i = s; i < s + len; i++)
             {
                 int c = BasinCells[i];
-                areaM2 += P.AreaHa(c) * 10000.0;
+                areaM2 += P.GeoAreaHa(c) * 10000.0;
                 double next = i + 1 < s + len ? Math.Min(P.DrainSurface(BasinCells[i + 1]), spill) : spill;
                 if (next < level) next = level;
                 double room = areaM2 * (next - level);
@@ -216,7 +216,7 @@ namespace TC2.Core.Planet
             for (int i = 0; i < StackCount; i++)
             {
                 int c = Stack[i];
-                Discharge[c] = (float)(runoffM[c] * P.AreaHa(c) * 10000.0);
+                Discharge[c] = (float)(runoffM[c] * P.GeoAreaHa(c) * 10000.0);
             }
             for (int i = StackCount - 1; i >= 0; i--)
             {
@@ -237,7 +237,7 @@ namespace TC2.Core.Planet
             for (int i = 0; i < StackCount; i++)
             {
                 int c = Stack[i];
-                Discharge[c] = (float)(runoffM[c] * P.AreaHa(c) * 10000.0);
+                Discharge[c] = (float)(runoffM[c] * P.GeoAreaHa(c) * 10000.0);
             }
             for (int b = 0; b < BasinCount; b++) BasinInflow[b] = 0;
             double evaporated = 0;

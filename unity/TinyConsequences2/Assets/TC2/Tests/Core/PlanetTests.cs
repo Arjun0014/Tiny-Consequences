@@ -41,7 +41,7 @@ namespace TC2.Tests.Core
             var runoff = new float[P.Cells];
             double total = 0;
             for (int c = 0; c < P.Cells; c++)
-                if (P.IsLand(c)) { runoff[c] = 0.001f * (1 + c % 7); total += runoff[c] * P.AreaHa(c) * 10000.0; }
+                if (P.IsLand(c)) { runoff[c] = 0.001f * (1 + c % 7); total += runoff[c] * P.GeoAreaHa(c) * 10000.0; }   // (the drainage keeps geo-areas: the same rivers at any size, D2-085)
             d.Accumulate(P, runoff);
             double outlets = 0;
             for (int c = 0; c < P.Cells; c++)
@@ -64,7 +64,7 @@ namespace TC2.Tests.Core
                 {
                     before += P.LakeWater[c];
                     runoff[c] = P.IsLand(c) ? 0.0004f * ((c * 7 + day) % 11) : 0f;
-                    if (P.IsLand(c)) fallen += runoff[c] * P.AreaHa(c) * 10000.0;
+                    if (P.IsLand(c)) fallen += runoff[c] * P.GeoAreaHa(c) * 10000.0;   // (geo-areas, D2-085)
                 }
                 double evaporated = d.Route(P, runoff);
                 double toSea = 0;

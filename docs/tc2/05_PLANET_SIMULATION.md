@@ -1,6 +1,6 @@
 # TC2-05 — Planet simulation
 
-Grid and scale: D2-007 (equiangular cubed sphere; N32 climate, N64 surface; R = 10 km). Rates: `04` §3.
+Grid and scale: D2-007 (equiangular cubed sphere; N32 climate, N64 surface), D2-085 (R = 6 km; the geophysics below in geo-lengths of a 10 km sphere, so its rates are per cell at any size). Rates: `04` §3.
 Laws: `01_WORLD_LAWS.md`. Research: `02_RESEARCH.md` §5.
 
 ## 1. The grid
@@ -81,7 +81,7 @@ Cause tags (`11` §6) accompany the causal fields: burning, drought anomaly, flo
 - **Stress** accumulates at boundary cells by relative velocity; past a noisy threshold it releases as a quake
   event (magnitude from the stress), scheduled at a time inside the step. **Volcano pressure** gathers at arcs
   and hotspots; eruptions are events (VEI by pressure), aerosol and ash written to fields.
-- At ~1 m/year and 245 m cells a sample crosses a cell in ~250 years: coasts and ranges move over millennia.
+- At ~1 geo-m/year and 245 geo-m cells a sample crosses a cell in ~250 years: coasts and ranges move over millennia.
 - Cost: 24K rotations + cell lookups per 10 years: negligible.
 
 ### Volcanoes and the carbon cycle (implemented, D2-028)

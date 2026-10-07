@@ -34,7 +34,7 @@ namespace TC2.Core.Planet
                 int other = 0;
                 for (int k = 0; k < 8; k++) { int nb = g.Nbr8[c * 8 + k]; if (P.IsLand(nb) != land) nbs[other++] = nb; }
                 if (other < 6) continue;
-                double area = P.AreaHa(c) * 1e4;
+                double area = P.GeoAreaHa(c) * 1e4;
                 double exposure = (other - 5) / 3.0;                     // 1/3 .. 1
                 if (land)
                 {
@@ -44,7 +44,7 @@ namespace TC2.Core.Planet
                     if (drop <= 0) continue;
                     _delta[c] = (float)(_delta[c] - drop);
                     double each = drop * area / other;
-                    for (int k = 0; k < other; k++) _delta[nbs[k]] = (float)(_delta[nbs[k]] + each / (P.AreaHa(nbs[k]) * 1e4));
+                    for (int k = 0; k < other; k++) _delta[nbs[k]] = (float)(_delta[nbs[k]] + each / (P.GeoAreaHa(nbs[k]) * 1e4));
                     Moved += drop * area;
                 }
                 else
@@ -55,7 +55,7 @@ namespace TC2.Core.Planet
                     if (rise <= 0) continue;
                     _delta[c] = (float)(_delta[c] + rise);
                     double each = rise * area / other;
-                    for (int k = 0; k < other; k++) _delta[nbs[k]] = (float)(_delta[nbs[k]] - each / (P.AreaHa(nbs[k]) * 1e4));
+                    for (int k = 0; k < other; k++) _delta[nbs[k]] = (float)(_delta[nbs[k]] - each / (P.GeoAreaHa(nbs[k]) * 1e4));
                     Moved += rise * area;
                 }
             }

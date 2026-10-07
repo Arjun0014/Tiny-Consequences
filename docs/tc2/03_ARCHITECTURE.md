@@ -129,7 +129,7 @@ endpoints, same times, same effects) and is regenerated from state when the came
 
 ## 7. Planet and places
 
-- Planet: equiangular cubed sphere; N64 surface cells (~245 m), N32 climate; render textures derived.
+- Planet: equiangular cubed sphere; N64 surface cells (~137 m at R = 6 km, D2-085; the planet's laws in geo-lengths of a 10 km sphere), N32 climate; render textures derived.
   Positions are unit vectors (double) + altitude; settlements carry a local tangent frame (metres) for
   their layouts.
 - Systems are periodic events with rates by kind (`05_PLANET_SIMULATION.md`); rates are part of the world's

@@ -75,7 +75,12 @@ tests COARSE vs DEEP over centuries on several seeds (population, deaths by caus
 abandoned, harvests, famines, livestock, techniques, epidemics, trade, raids, walls, tributes, the planet's fields); (e) Ancient and
 Deep time on DEEP, measured in the browser.
 
-## W — The world made legible (D2-084; the current priority once D2-083 closes - a standing requirement after it)
+## W0 — The planet's size (D2-085, done 7 Oct 2026)
+R = 6 km with the same ground at any size (`19_PLANET_SCALE.md`): the scale study (TC1's real scale, 10/7/6/5/4 km really simulated on
+four seeds, interaction density, shots), the geophysics in geo-lengths, living laws per hectare, real-size patches, the view relative to R.
+Follow-ups carried into W: the great beasts' viability on a small world; COARSE's dropped disease catches (its own calibrated slice).
+
+## W — The world made legible (D2-084, on the 6 km world of D2-085; a standing requirement)
 The simulation is legible from the picture (`18_WORLD_READABILITY.md`): audit of state against what is drawn; landscape
 composition (relief legible, height and slope driving cover, biome palettes); forests beyond D2-080 (kinds, ages, understorey,
 edges, clearings; near forms, mid groups, far masses); rivers and river corridors; biome and ground-cover differentiation;

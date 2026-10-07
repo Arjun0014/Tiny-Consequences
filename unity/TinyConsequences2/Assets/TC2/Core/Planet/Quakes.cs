@@ -104,7 +104,7 @@ namespace TC2.Core.Planet
             Vec3d at = P.Grid.Center[c];
             for (int i = 0; i < ruptured.Count; i++)
             {
-                double d = Vec3d.ArcDistance(at, P.Grid.Center[ruptured[i]], P.Radius);
+                double d = Vec3d.ArcDistance(at, P.Grid.Center[ruptured[i]], PlanetState.GeoRadius);
                 if (d < best) best = d;
             }
             return best;

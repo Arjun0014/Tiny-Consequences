@@ -26,7 +26,7 @@ namespace TC2.Game
 
         void Start()
         {
-            _riverMat = Materials.Load("Terrain");
+            _riverMat = Materials.Load("River");   // (D2-084: the river's own water)
             _lakeMat = Materials.Load("Water");
             _lakeMat.SetColor("_Deep", new Color(0.10f, 0.30f, 0.42f));
             _lakeMat.SetColor("_Shallow", new Color(0.22f, 0.48f, 0.58f));
@@ -53,61 +53,56 @@ namespace TC2.Game
             BuildLakes(w);
         }
 
+        readonly List<Vector4> _u0 = new List<Vector4>(), _u1 = new List<Vector4>();
+
+        /// <summary>
+        /// The rivers' water (D2-084): a ribbon on each piece of the rivers' shape (<see cref="Rivers"/>) - its centre line on the
+        /// ground with the side and half width as vertex data, so the river shader can widen the planet's larger rivers to a few pixels
+        /// far off - and a round joint where each reach begins, so bends do not gap.
+        /// </summary>
         void BuildRivers(TC2.Core.Simulation.World w)
         {
-            var P = w.Planet; var d = w.Drainage;
-            _v.Clear(); _n.Clear(); _c.Clear(); _t.Clear();
-            Color water = new Color(0.26f, 0.47f, 0.56f).linear;
-            water.a = 0f; // the terrain material reads alpha as farmland
-            for (int c = 0; c < P.Cells; c++)
+            var P = w.Planet;
+            Rivers.Refresh(w, Host.WorldVersion);
+            _v.Clear(); _n.Clear(); _u0.Clear(); _u1.Clear(); _t.Clear();
+            var all = Rivers.All;
+            Vector3 sidePrev = Vector3.zero;
+            for (int q = 0; q < all.Count; q++)
             {
-                if (!P.IsLand(c) || !P.IsStream(c)) continue;
-                int r = d.Receiver[c];
-                if (r < 0) continue;
-                Vec3d a = P.Grid.Center[c];
-                Vec3d b = P.IsLand(r) ? P.Grid.Center[r] : (a * 0.35 + P.Grid.Center[r] * 0.65).Normalized; // reach into the sea
-                float width = Mathf.Clamp(Mathf.Sqrt(P.RiverFlow[c]) * 0.045f, 2.2f, 26f);
-                // a few pieces laid on the ground, so the ribbon follows the curve and the relief between centres
-                Vector3 prev = PlanetGeo.Surface(P, a, 1.2f), sidePrev = Vector3.zero;
-                for (int s = 1; s <= Pieces; s++)
-                {
-                    Vec3d along = Vec3d.Slerp(a, b, s / (double)Pieces);
-                    if (s < Pieces) along = Meander(P, along, a, b);
-                    Vector3 cur = PlanetGeo.Surface(P, along, 0.9f);
-                    Vector3 up = (prev + cur).normalized;
-                    Vector3 side = Vector3.Cross(up, cur - prev).normalized * (width * 0.5f);
-                    if (s == 1) sidePrev = side;
-                    int i = _v.Count;
-                    _v.Add(prev - sidePrev); _v.Add(prev + sidePrev); _v.Add(cur + side); _v.Add(cur - side);
-                    for (int k = 0; k < 4; k++) { _n.Add(up); _c.Add(water); }
-                    _t.Add(i); _t.Add(i + 2); _t.Add(i + 1); _t.Add(i); _t.Add(i + 3); _t.Add(i + 2);
-                    prev = cur; sidePrev = side;
-                }
-                // a round joint at the cell so bends do not gap
-                Vector3 pa = PlanetGeo.Surface(P, a, 1.25f), upA = pa.normalized;
-                Vector3 e1 = Vector3.Cross(upA, Vector3.up).sqrMagnitude > 1e-6f ? Vector3.Cross(upA, Vector3.up).normalized : Vector3.right;
-                Vector3 e2 = Vector3.Cross(upA, e1);
+                var pc = all[q];
+                bool first = q % Rivers.Pieces == 0;
+                Vector3 a = PlanetGeo.Surface(P, pc.A, 0.6f), b = PlanetGeo.Surface(P, pc.B, 0.6f);
+                Vector3 up = (a + b).normalized;
+                Vector3 side = Vector3.Cross(up, b - a).normalized;
+                if (first) sidePrev = side;
+                var u1 = new Vector4(pc.Half, pc.Rank, 0f, 0f);
+                int i = _v.Count;
+                _v.Add(a); _v.Add(a); _v.Add(b); _v.Add(b);
+                _u0.Add(new Vector4(sidePrev.x, sidePrev.y, sidePrev.z, -1f)); _u0.Add(new Vector4(sidePrev.x, sidePrev.y, sidePrev.z, 1f));
+                _u0.Add(new Vector4(side.x, side.y, side.z, 1f)); _u0.Add(new Vector4(side.x, side.y, side.z, -1f));
+                for (int k = 0; k < 4; k++) { _n.Add(up); _u1.Add(u1); }
+                _t.Add(i); _t.Add(i + 2); _t.Add(i + 1); _t.Add(i); _t.Add(i + 3); _t.Add(i + 2);
+                sidePrev = side;
+                if (!first) continue;
+                // the joint where the reach leaves its cell's centre (where the reaches above it end)
+                Vector3 e1 = Vector3.Cross(up, Vector3.up).sqrMagnitude > 1e-6f ? Vector3.Cross(up, Vector3.up).normalized : Vector3.right;
+                Vector3 e2 = Vector3.Cross(up, e1);
                 int j = _v.Count;
-                for (int k = 0; k < 6; k++)
+                for (int k = 0; k < 8; k++)
                 {
-                    float ang = k * Mathf.PI / 3f;
-                    _v.Add(pa + (e1 * Mathf.Cos(ang) + e2 * Mathf.Sin(ang)) * (width * 0.5f)); _n.Add(upA); _c.Add(water);
+                    float ang = k * Mathf.PI / 4f;
+                    Vector3 rad = e1 * Mathf.Cos(ang) + e2 * Mathf.Sin(ang);
+                    _v.Add(a); _n.Add(up); _u0.Add(new Vector4(rad.x, rad.y, rad.z, 1f)); _u1.Add(u1);
                 }
-                _v.Add(pa); _n.Add(upA); _c.Add(water);
-                for (int k = 0; k < 6; k++) { _t.Add(j + 6); _t.Add(j + k); _t.Add(j + (k + 1) % 6); }
+                _v.Add(a); _n.Add(up); _u0.Add(new Vector4(e1.x, e1.y, e1.z, 0f)); _u1.Add(u1);
+                for (int k = 0; k < 8; k++) { _t.Add(j + 8); _t.Add(j + k); _t.Add(j + (k + 1) % 8); }
             }
             _rivers.Clear();
-            _rivers.SetVertices(_v); _rivers.SetNormals(_n); _rivers.SetColors(_c); _rivers.SetTriangles(_t, 0);
-            _rivers.RecalculateBounds();
-        }
-
-        /// <summary>Rivers wind: a point on a reach is pushed sideways by a smooth noise of where it is (presentation).</summary>
-        static Vec3d Meander(TC2.Core.Planet.PlanetState P, Vec3d at, Vec3d a, Vec3d b)
-        {
-            Vec3d dir = (b - a).Normalized;
-            Vec3d side = Vec3d.Cross(at, dir).Normalized;
-            double n = Noise.Fbm(at.X * 180.0, at.Y * 180.0, at.Z * 180.0, 2);
-            return (at * P.Radius + side * (n * 34.0)).Normalized;
+            _rivers.SetVertices(_v); _rivers.SetNormals(_n); _rivers.SetUVs(0, _u0); _rivers.SetUVs(1, _u1); _rivers.SetTriangles(_t, 0);
+            // (the ribbons widen in the shader: bounds a little larger than the centre lines)
+            var bd = new Bounds(Vector3.zero, Vector3.zero);
+            if (_v.Count > 0) { bd = new Bounds(_v[0], Vector3.zero); for (int k = 1; k < _v.Count; k++) bd.Encapsulate(_v[k]); bd.Expand(400f); }
+            _rivers.bounds = bd;
         }
 
         void BuildLakes(TC2.Core.Simulation.World w)

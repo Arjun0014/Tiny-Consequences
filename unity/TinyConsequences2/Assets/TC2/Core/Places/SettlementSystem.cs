@@ -846,7 +846,7 @@ namespace TC2.Core.Places
             if (!Homes.TakeEmpty(w, hid))
             {
                 ref var s1 = ref w.Settlements.Get(sid);
-                s1.LotPosition(s1.Lots++, out float hx, out float hy);
+                s1.NextDryLot(w.Planet, out float hx, out float hy);
                 ref var nh = ref w.Households.Get(hid);
                 nh.HomeX = hx; nh.HomeY = hy;
             }
@@ -857,6 +857,7 @@ namespace TC2.Core.Places
             ref var woman = ref w.People.Get(womanId);
             ref var man = ref w.People.Get(manId);
             woman.Partner = manId; man.Partner = womanId;
+            int brideFrom = woman.Home;   // (tools: how far brides come, D2-085)
             if (woman.Home != sid)
             {
                 // she will walk to her new home when she next decides (her old village is no longer home)
@@ -872,6 +873,7 @@ namespace TC2.Core.Places
             long mev = w.Record(new HistoryEvent { Kind = HistoryKind.Marriage, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Person(womanId), Object = EntityRef.Person(manId), RootKind = RootKind.People });
             w.Record(new HistoryEvent { Kind = HistoryKind.HouseholdFormed, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Household(hid), Cause1 = mev, Rel1 = CauseRel.CausedBy });
             w.Metrics.Marriages++;
+            Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Marriage, brideFrom, sid);
         }
 
         void MoveTo(int pid, int hid)

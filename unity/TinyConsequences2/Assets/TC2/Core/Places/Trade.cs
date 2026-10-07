@@ -167,6 +167,7 @@ namespace TC2.Core.Places
             Add(ref t, take, -qh);
             p.Cargo = take; p.CargoQty = (float)qh;
             w.Metrics.TradeTrips++;
+            Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Trade, home, at);
             w.Metrics.TradeValue += (vt - vf) * qg + bestGain;
             if (g == Metal) w.Metrics.MetalTraded += qg;
             if (take == Metal) w.Metrics.MetalTraded += qh;
@@ -257,6 +258,7 @@ namespace TC2.Core.Places
                 ref var t2 = ref w.Settlements.Get(o);
                 t2.Granary += gift;
                 w.Metrics.ReliefFu += gift;
+                Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Relief, sid, o);
                 long told = 0;
                 if (t2.ReliefAt != t2.FamineEvent)
                 {

@@ -18,22 +18,25 @@ and are tuning values unless marked **fixed** (changing a fixed law needs a DECI
 A world date reads "Year 183 · Late Summer · Day 31 · 14:05". Year 0 is the world's creation (spin-up
 history before people may span thousands of years; the calendar people use may start later).
 
-## 2. Space
+## 2. Space (D2-085: a 6 km miniature; D2-007's 10 km superseded)
 
 | Quantity | Value | Notes |
 |---|---|---|
-| Planet radius | **10 km** (sim metres) | surface 1,257 km²; land ~30-40% |
-| Surface grid | cubed sphere N64 (24,576 cells, ~245 m) | ecology, hydrology, soils, land use |
-| Climate grid | N32 (6,144 cells, ~490 m) | temperature, moisture, wind, cloud |
-| Relief | ocean floor to -1,500 m, peaks ~1,000-2,500 m (uplift and wear in balance, D2-043) | vertically exaggerated rendering is presentation |
+| Planet radius | **6 km** (sim metres) | surface 452 km2; land ~30-40 % (~165 km2 on seed 42) |
+| Surface grid | cubed sphere N64 (24,576 cells, ~137 m, 1.8 ha) | ecology, hydrology, soils, land use |
+| Climate grid | N32 (6,144 cells, ~274 m) | temperature, moisture, wind, cloud |
+| **The ground's own scale** | geo-lengths of a 10 km sphere | the planet's geophysics (plates, uplift and wear, coasts, ice, drainage and river classes, quakes, slides, tsunamis, storms, eruptions) keeps its per-cell tuning at any size: a seed makes the same ground on any planet; heights stay metres |
+| Relief | ocean floor to -1,500 m, peaks ~1,000-2,500 m (uplift and wear in balance, D2-043) | drawn at 0.4 x R / 10 km of the simulated height (presentation): the ranges keep their proportion to the globe |
 | Walking | 1.25 m/s adult on open ground, slower uphill, loaded, old, young, at night | ~4.5 km/h |
-| Village footprint | 100-300 m houses; fields to ~600 m | 1-2 surface cells for the core, 4-20 for fields |
-| Neighbouring villages | 1-4 km (20 min - 1 h walk) | the world is small, but people mostly stay home |
-| Continent | 10-30 km | a few hours to a day's walk |
-| Circumference | 63 km | sea travel (boats ~2 m/s) or very long journeys |
+| Village footprint | houses within ~100-300 m; fields to ~950 m | a village with its fields is ~2 km across: 0.17 of the globe (TC1's village map: 0.16) |
+| Neighbouring villages | 1.9-4 km (25 min - 1 h walk) | ~8-10 within a day's walk (6 km), as on any size |
+| Continent | 6-18 km | a few hours' walk; the settled world is one region (1-2 day's walks across) |
+| Circumference | 38 km | ~8.5 hours of walking; sea travel or very long journeys |
 
-At saturation of pre-industrial farming (~40-60 people/km² of land) the planet supports **~20,000
-people**; typical histories hold 500-5,000. Presentation exaggerates objects when zoomed out.
+What lives is in real units: fields, yields, pasture and game per hectare, walks and reaches in metres; laws once written per cell
+scale by the cell's real area (`PlanetState.AreaScale`) and "a cell and its neighbours" is a patch of real size (`PlanetState.Patch`).
+Measured mature populations (400 years, D2-085): 2,000-7,100 people in 10-30 villages on normal seeds (a cold seed ~1,100); the
+first century is the same at any size. Presentation exaggerates objects when zoomed out.
 
 ## 3. Sky and climate
 
@@ -53,7 +56,7 @@ people**; typical histories hold 500-5,000. Presentation exaggerates objects whe
 
 ## 4. Ground
 
-- **Plates** rotate about poles at **~0.5-2 m/year** (one surface cell per one to five centuries): coasts
+- **Plates** rotate about poles at **~0.5-2 geo-m/year** (0.3-1.2 m on the 6 km world: one surface cell per one to five centuries): coasts
   and ranges visibly move over millennia. Collisions uplift up to ~1 m/year; subduction makes trenches
   and volcanic arcs; rifts open new seas; hotspots build island chains.
 - **Quakes** release boundary stress: damaging ones near active boundaries every few decades.

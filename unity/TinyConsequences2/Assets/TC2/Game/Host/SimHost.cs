@@ -96,7 +96,10 @@ namespace TC2.Game
                 ulong seed = 42;
                 string s = Browser.Param("seed");
                 if (s != null) ulong.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out seed);
-                NewWorld(seed);
+                double radius = 0;
+                string rs = Browser.Param("radius");
+                if (rs != null) double.TryParse(rs, NumberStyles.Float, CultureInfo.InvariantCulture, out radius);
+                NewWorld(seed, radius);
             }
             string sp = Browser.Param("speed");
             if (sp != null && int.TryParse(sp, NumberStyles.Integer, CultureInfo.InvariantCulture, out int si)) SpeedIndex = Mathf.Clamp(si, 0, Speeds.Length - 1);
@@ -114,20 +117,36 @@ namespace TC2.Game
             return double.TryParse(num, NumberStyles.Float, CultureInfo.InvariantCulture, out double v) ? (long)(v * mult) : 0;
         }
 
-        public void NewWorld(ulong seed)
+        public void NewWorld(ulong seed, double radius = 0)
         {
             var sw = Stopwatch.StartNew();
-            var w = WorldGenerator.Create(new WorldConfig { Seed = seed });
+            var cfg = new WorldConfig { Seed = seed };
+            if (radius > 0) cfg.Radius = radius;   // (tools and ?radius=: the planet's size, D2-085)
+            var w = WorldGenerator.Create(cfg);
             CatchingUp = false; // a new world owes no absence
             SetWorld(w);
             Debug.Log("[TC2] new world seed " + seed + " generated in " + sw.ElapsedMilliseconds + " ms: " + w.LivingPeople() + " people in " + w.InhabitedSettlements() + " places");
             SaveNow();
         }
 
+        /// <summary>Tools (shots of one world at several ages): a saved world, as it was saved - no absence to catch up.</summary>
+        public void LoadWorld(byte[] data)
+        {
+            var w = SaveFile.Load(data, out _);
+            CatchingUp = false;
+            // (a world saved by a COARSE or DEEP run goes back to lived days at its next midnight, as a catch-up ends)
+            long next = SimTime.StartOfDay(w.Now) + SimTime.Day;
+            if (w.StepDays > 1) w.RequestStepDays(1, next);
+            if (w.Resolution != TC2.Core.Simulation.Resolution.Activity) w.RequestResolution(TC2.Core.Simulation.Resolution.Activity, next);
+            SetWorld(w);
+            Debug.Log("[TC2] loaded world seed " + w.Seed + " at " + SimTime.Format(w.Now) + ": " + w.LivingPeople() + " people in " + w.InhabitedSettlements() + " places");
+        }
+
         void SetWorld(World w)
         {
             World = w;
             WorldVersion++;
+            Ground.ScaleTo(w.Planet);
             _carry = 0;
             Feed.Clear();
             _feedCursor = 0;

@@ -79,16 +79,27 @@ namespace TC2.Tests.Core
             for (int i = 0; i < resA.Count; i++) { ref var q = ref w.People.Get(resA[i]); if (q.Alive && q.Sick == 0) { w.Disease.Infect(ref q, path, w.Settlements.Get(a).Epidemic); } }
             w.AdvanceTo(w.Now + SimTime.Days(5));   // (they are infectious now: the village's day counts them)
             w.AdvanceTo(SimTime.StartOfDay(w.Now) + SimTime.Day + SimTime.Hours(1));
+            // (A counts them at its own midnight, which may come later than the world clock's: wait for it - D2-085, a village elsewhere)
+            for (int guard = 0; guard < 30 && w.Settlements.Get(a).InfNow <= 0; guard++) w.AdvanceTo(w.Now + SimTime.Hours(1));
             long epiA = w.Settlements.Get(a).Epidemic;
             Assert.AreNotEqual(0L, epiA);
-            // and people of B go visiting A (as they do: the premise only chooses the day)
+            // and people of B go visiting A (as they do: the premise only chooses the days - again the next day while none has caught it:
+            // a few hours' stay gives each a chance in three or four, and in one world eleven came home well, D2-085)
             var resB = w.Residents(b);
             int sent = 0;
-            for (int i = 0; i < resB.Count && sent < 6; i++)
+            for (int round = 0; round < 4; round++)
             {
-                var p = w.People.Get(resB[i]);
-                if (!p.Alive || p.At != b || p.AgeYears(w.Now) < 16) continue;
-                if (w.Agents.StartTrip(resB[i], a)) sent++;
+                for (int i = 0; i < resB.Count; i++)
+                {
+                    var p = w.People.Get(resB[i]);
+                    if (!p.Alive || p.At != b || p.AgeYears(w.Now) < 16) continue;
+                    if (w.Agents.StartTrip(resB[i], a)) sent++;
+                }
+                w.AdvanceTo(w.Now + SimTime.Hours(12));
+                bool caught = false;
+                for (int i = 0; i < resB.Count; i++) if (w.People.Get(resB[i]).Sick != 0) caught = true;
+                if (caught || sent == 0) break;
+                w.AdvanceTo(w.Now + SimTime.Hours(12));
             }
             Assume.That(sent > 0, "visitors set out");
             long mark = w.History.LastId;
@@ -111,10 +122,13 @@ namespace TC2.Tests.Core
         public void ACoarseDayCarriesItBetweenVillagesAtTheLivedRateOfVisits()
         {
             // (a full world whose villages lie within a walk of each other: the small test worlds' are farther apart than visits go)
-            var w = TC2.Core.Worldgen.WorldGenerator.Create(new WorldConfig { Seed = 42 });
+            // (villages of sixty: with two dozen a village's 10-18 grown people make 0.3-0.5 visits a day among five neighbours, and the
+            // whole outbreak's expected catches were one or two - none in the 6 km world, D2-085)
+            var w = TC2.Core.Worldgen.WorldGenerator.Create(new WorldConfig { Seed = 42, FoundersPerSettlement = 60 });
             Coarse(w);
             w.AdvanceTo(w.Now + SimTime.Day);
             int a = w.Settlements.First();
+            // (a COARSE catch that falls on a child is dropped, which halves them: a known bug for its own calibrated slice, PROGRESS)
             int path = w.Disease.Outbreak(a, beta: 2.0, latent: 4, infectious: 12, virulence: 0.0, immunity: Disease.ForLife);
             long mark = w.History.LastId;
             w.AdvanceTo(w.Now + SimTime.Days(120));

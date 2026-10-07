@@ -70,13 +70,15 @@ namespace TC2.Tests.Core
             int sid = w.Settlements.First();
             w.AdvanceTo(w.Now + SimTime.Day);
             ToLocalHour(w, sid, 8.0);
-            // premise: every pot in the world is empty
+            // premise: every pot in the world is empty - and again three hours on (a world's five children of six to eleven were all
+            // at play or with the herds the first time; at 10 km one of them went, D2-085)
             for (int h = w.Households.First(); h != 0; h = w.Households.Next(h)) w.Households.Get(h).Water = 0f;
             var kids = new HashSet<int>(); var grown = new HashSet<int>();
-            long end = w.Now + SimTime.Hours(4);
+            long again = w.Now + SimTime.Hours(3), end = w.Now + SimTime.Hours(7);
             while (w.Now < end)
             {
                 w.AdvanceTo(w.Now + 120);
+                if (again > 0 && w.Now >= again) { again = 0; for (int h = w.Households.First(); h != 0; h = w.Households.Next(h)) w.Households.Get(h).Water = 0f; }
                 for (int id = w.People.First(); id != 0; id = w.People.Next(id))
                 {
                     var p = w.People.Get(id);
@@ -87,7 +89,7 @@ namespace TC2.Tests.Core
             int homes = 0, watered = 0;
             var hhs = w.HouseholdsOf(sid);
             for (int i = 0; i < hhs.Count; i++) { homes++; if (w.Households.Get(hhs[i]).Water > 0) watered++; }
-            Console.WriteLine("carried water: children " + kids.Count + ", grown " + grown.Count + "; homes of the first village with water after four hours " + watered + "/" + homes);
+            Console.WriteLine("carried water: children " + kids.Count + ", grown " + grown.Count + "; homes of the first village with water four hours after the second emptying " + watered + "/" + homes);
             Assert.Greater(kids.Count, 0, "children of six and more carry water");
             Assert.Greater(grown.Count, 0, "and grown people");
             Assert.GreaterOrEqual(watered, (int)(0.9 * homes), "the pots were filled");

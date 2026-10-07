@@ -254,6 +254,7 @@ namespace TC2.Core.Society
             w.DeedBook.Learn(home, d2, KnownHow.Own);
             if (load >= FoundShare * (t2.Granary + load)) w.DeedBook.Learn(at, d2, KnownHow.Found);   // (the store visibly lower in the morning)
             w.Metrics.Takings++;
+            Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Taking, home, at);
             w.Metrics.TakenFu += load;
             if (p.Nutrition >= HungryBelow) w.Metrics.TakenBack++;
         }
@@ -475,6 +476,7 @@ namespace TC2.Core.Society
                 int deed = d.Id, doers = d.ByS;
                 d.Flags |= DeedKind.Claimed;
                 w.Metrics.Claims++;
+                Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Claim, sid, doers);
                 ref var c = ref w.People.Get(claimant);
                 if (w.Resolution == Resolution.Coarse) Answer(ref c, doers, deed);
                 else c.Errand = deed;
@@ -850,6 +852,7 @@ namespace TC2.Core.Society
             w.DeedBook.Learn(origin, deed, KnownHow.Own);
             if (b2.Motive == 1 && loot > 0) w.DeedBook.SettleBy(origin, at, loot);
             w.Metrics.Raids++;
+            Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Raid, origin, at);
             w.Metrics.RaidLoot += loot;
             if (outcome == 2) w.Metrics.RaidsBeaten++;
             // COARSE: home at once with what they carry
@@ -1041,6 +1044,7 @@ namespace TC2.Core.Society
                 Cause1 = raidEvent, Rel1 = CauseRel.InResponseTo, Magnitude = (float)TributeShare, ArgA = PolitySize(Root(lord)), RootKind = RootKind.People,
             });
             w.Metrics.Tributes++;
+            Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Tribute, sid, lord);
         }
 
         /// <summary>The village whose band last held the field here (seen, loot carried off) since a time, and that raid's event; or 0.</summary>

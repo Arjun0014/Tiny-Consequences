@@ -92,12 +92,13 @@ namespace TC2.Core.Planet
                 if (P.Species.Count >= MaxSpecies) continue;
                 // the populations of this species: groups of occupied cells with no occupied path between them
                 for (int c = 0; c < n; c++) _mark[c] = 0;
+                float occ = (float)(0.05 * P.AreaScale);   // (animals a cell holds to count as lived in: per hectare, D2-085)
                 int bestComp = -1; double bestN = 0, bestZ = 0, bestD = 0;
                 var groups = new List<(int id, double N, double z, double d, int cells, int first)>();
                 int id = 0;
                 for (int c0 = 0; c0 < n; c0++)
                 {
-                    if (_mark[c0] != 0 || P.Abund[s * n + c0] < 0.05f) continue;
+                    if (_mark[c0] != 0 || P.Abund[s * n + c0] < occ) continue;
                     id++;
                     queue.Clear(); queue.Add(c0); _mark[c0] = id;
                     double N = 0, zN = 0, dN = 0;
@@ -109,7 +110,7 @@ namespace TC2.Core.Planet
                         for (int q = 0; q < 4; q++)
                         {
                             int nb = g.Nbr4[c * 4 + q];
-                            if (_mark[nb] != 0 || P.Abund[s * n + nb] < 0.05f) continue;
+                            if (_mark[nb] != 0 || P.Abund[s * n + nb] < occ) continue;
                             _mark[nb] = id;
                             queue.Add(nb);
                         }

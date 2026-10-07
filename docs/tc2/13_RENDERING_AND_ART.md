@@ -167,3 +167,13 @@ Slice 1 (composition, forests, rivers - in progress, session 4):
   sizes and shades (never one smooth ball); the far forms as before.
 - Tools: `unity.mjs shots --load "F1;F2"` (saved worlds, each into its own folder), views `river`, `riverfar`, `town`, `townclose`,
   `scar`, `scarfar`; headless `run --snap Y1,Y2` saves the world at those years (`tc2/out/ages/sS/world_yY.tc2`).
+
+## 11. The view on a planet of any size (D2-085)
+
+The planet is 6 km now (D2-085; `19_PLANET_SCALE.md`) and the view follows `PlanetState.GeoScale` (R / 10 km): the named views frame
+the planet (orbit 2.2 R, the catch-up camera 2.2 R) and a part of it (region 0.5 R) and keep metres from the village view down (900,
+260, 95 m); the drawn relief is 0.4 x GeoScale of the simulated heights about the sea (`Ground.ScaleTo`, set with each world - the ranges
+keep their proportion to the globe; hills, gullies and beaches are drawn at their own size) and the mountains' crags with it; the cloud
+shell sits 650 x GeoScale m up (on a fixed 650 m it stood out past a small planet's limb); the terrain quadtree stops at the same finest
+quads (`TerrainLod.MaxLevel` = 7 + round(log2 GeoScale)); the haze's top and the sky's change to space go with R; the tilt toward the
+horizon reaches 0 at 0.9 R. `?radius=` (and shots `--radius`) make worlds of other sizes; a saved world keeps its own.

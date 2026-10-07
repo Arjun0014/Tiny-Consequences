@@ -50,7 +50,7 @@ namespace TC2.Core.Planet
                 double hr = d.BuiltLand(r) ? P.Elev[r] : sea;   // land and sea as the tree was built (a delta may rise meanwhile)
                 double h = P.Elev[c];
                 if (h <= hr) continue;
-                double L = Vec3d.ArcDistance(g.Center[c], g.Center[r], P.Radius);
+                double L = Vec3d.ArcDistance(g.Center[c], g.Center[r], PlanetState.GeoRadius);
                 double q = P.RiverFlow[c];
                 if (q >= MinFlow || Kh > 0)
                 {
@@ -69,14 +69,14 @@ namespace TC2.Core.Planet
                     double fall = h - top;
                     _ero[c] = (float)(_ero[c] + fall);
                     P.Elev[c] = (float)top;
-                    Failed += fall * P.AreaHa(c) * 1e4;
+                    Failed += fall * P.GeoAreaHa(c) * 1e4;
                 }
             }
             // 2. the load travels down, tributaries first; lakes, flats and the mouth keep it
             for (int k = d.StackCount - 1; k >= 0; k--)
             {
                 int c = d.Stack[k];
-                double area = P.AreaHa(c) * 1e4;
+                double area = P.GeoAreaHa(c) * 1e4;
                 double load = _load[c] + _ero[c] * area;
                 Eroded += _ero[c] * area;
                 if (load <= 0) continue;
@@ -91,7 +91,7 @@ namespace TC2.Core.Planet
                 }
                 else if (r >= 0 && d.BuiltLand(r))
                 {
-                    double slope = ((double)P.Elev[c] - P.Elev[r]) / Vec3d.ArcDistance(g.Center[c], g.Center[r], P.Radius);
+                    double slope = ((double)P.Elev[c] - P.Elev[r]) / Vec3d.ArcDistance(g.Center[c], g.Center[r], PlanetState.GeoRadius);
                     if (slope < FlatSlope)
                     {
                         double keep = load / 3.0;
@@ -116,7 +116,7 @@ namespace TC2.Core.Planet
             ToDeep += past; load -= past;
             for (int hop = 0; hop < 8 && load > 0; hop++)
             {
-                double area = P.AreaHa(c) * 1e4;
+                double area = P.GeoAreaHa(c) * 1e4;
                 double room = DMath.Max(0.0, (sea - MouthDepth - P.Elev[c]) * area);
                 double keep = DMath.Min(load, room);
                 P.Elev[c] = (float)(P.Elev[c] + keep / area);
@@ -131,7 +131,7 @@ namespace TC2.Core.Planet
             // a delta at the surface: what is left raises the mouth just above the sea (new land), then is lost to the deep
             if (load > 0)
             {
-                double area = P.AreaHa(c) * 1e4;
+                double area = P.GeoAreaHa(c) * 1e4;
                 double up = DMath.Min(load / area, sea + 0.5 - P.Elev[c]);
                 if (up > 0) { P.Elev[c] = (float)(P.Elev[c] + up); Settled += up * area; load -= up * area; }
                 ToDeep += DMath.Max(0.0, load);

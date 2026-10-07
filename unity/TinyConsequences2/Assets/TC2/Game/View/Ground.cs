@@ -15,7 +15,15 @@ namespace TC2.Game
     /// </summary>
     public static class Ground
     {
-        public const double VScale = 0.4;    // the simulation's relief as drawn, about sea level (detail is drawn at its own size)
+        public static double VScale = 0.4;   // the simulation's relief as drawn, about sea level (detail is drawn at its own size)
+        static double _crags = 1.0;          // the mountains' drawn crags, with the relief
+
+        /// <summary>
+        /// The drawn relief follows the planet's size (D2-085): a smaller world shows the same ground with its ranges in the same
+        /// proportion to the globe (0.4 of the simulated heights on the 10 km world), the fine relief - hills, gullies, beaches - at its
+        /// own size. Called when a world is set.
+        /// </summary>
+        public static void ScaleTo(PlanetState P) { VScale = 0.4 * P.GeoScale; _crags = P.GeoScale; PlanetGeo.VScale = (float)(0.5 * P.GeoScale); }
         static double _r2 = -1, _r2c;        // kernel radii squared (chord^2): elevation (exact at centres), colour (softer)
 
         static void Init(PlanetState P)
@@ -76,6 +84,47 @@ namespace TC2.Game
 
         /// <summary>A cell's elevation as drawn (sim metres; the shore ramp applied).</summary>
         public static double DrawnElev(PlanetState P, int c) { RefreshDrawn(P); return _drawn[c]; }
+
+        static float[] _relief;
+        static PlanetState _rp;
+        static int _rRelief = -1, _rCoast = -1;
+
+        /// <summary>
+        /// Where a cell lies in its land's relief (D2-084, presentation): its drawn height against the mean of the 24 cells round it
+        /// (two rings, ~1.2 km across), softly scaled to -1 (a valley floor) .. +1 (a ridge or hilltop); the sea's own cells 0. The
+        /// valleys are the drainage's (erosion cut them), so their floors gather water and its life; ridges are dry and thin-soiled.
+        /// </summary>
+        public static float Relief(PlanetState P, int c)
+        {
+            RefreshDrawn(P);
+            if (_rp != P || _rRelief != P.ReliefVersion || _rCoast != P.CoastVersion || _relief == null || _relief.Length != P.Cells)
+            {
+                _rp = P; _rRelief = P.ReliefVersion; _rCoast = P.CoastVersion;
+                int n = P.Cells;
+                if (_relief == null || _relief.Length != n) _relief = new float[n];
+                var g = P.Grid;
+                var seen = new System.Collections.Generic.HashSet<int>();
+                for (int k = 0; k < n; k++)
+                {
+                    if (!P.IsLand(k)) { _relief[k] = 0f; continue; }
+                    seen.Clear(); seen.Add(k);
+                    double sum = 0; int cnt = 0;
+                    for (int a = 0; a < 8; a++)
+                    {
+                        int nb = g.Nbr8[k * 8 + a];
+                        if (seen.Add(nb)) { sum += System.Math.Max(_drawn[nb], P.SeaLevel); cnt++; }
+                        for (int b = 0; b < 8; b++)
+                        {
+                            int nn = g.Nbr8[nb * 8 + b];
+                            if (seen.Add(nn)) { sum += System.Math.Max(_drawn[nn], P.SeaLevel); cnt++; }
+                        }
+                    }
+                    double d = cnt > 0 ? _drawn[k] - sum / cnt : 0.0;
+                    _relief[k] = (float)(d / (System.Math.Abs(d) + 35.0));
+                }
+            }
+            return _relief[c];
+        }
 
         /// <summary>The simulation's surface (rock + ice) interpolated at a direction; also returns the containing cell.</summary>
         public static double SimElevation(PlanetState P, Vec3d dir, out int cell) => SimElevation(P, dir, out cell, out _);
@@ -159,7 +208,7 @@ namespace TC2.Game
             double shore = Smooth01(rel / 22.0);                         // flat beaches, quiet coasts
             double hills = 15.0 * Noise.Fbm(x, y, z, 4);
             double mount = Smooth01((rel - 350.0) / 1300.0);
-            double crags = mount * 230.0 * Noise.Ridged(x * 1.7 + 11.3, y * 1.7 - 4.1, z * 1.7 + 7.7, 4);
+            double crags = mount * 230.0 * _crags * Noise.Ridged(x * 1.7 + 11.3, y * 1.7 - 4.1, z * 1.7 + 7.7, 4);
             double gullies = 6.0 * Noise.Fbm(x * 5.1 + 3.7, y * 5.1, z * 5.1 - 1.9, 2) * (0.4 + mount);
             return shore * (hills + crags + gullies);
         }

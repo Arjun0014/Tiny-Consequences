@@ -30,6 +30,7 @@ namespace TC2.Game
         static readonly int CanopyCover = Shader.PropertyToID("_TC2Cover");
         static readonly int CanopyK = Shader.PropertyToID("_TC2CanopyK");
         static readonly int CoverMean = Shader.PropertyToID("_TC2CoverMean");
+        static readonly int StandCdf = Shader.PropertyToID("_TC2StandCdf");
         Volume _volume;
         public Color Horizon;
 
@@ -41,6 +42,7 @@ namespace TC2.Game
             Shader.SetGlobalFloat(CanopyK, TC2.Game.Canopy.K);
             Shader.SetGlobalVector(CoverMean, TC2.Game.Canopy.CoverMean);
             Shader.SetGlobalFloat(CanopyTile, TC2.Game.Canopy.TileMetres);
+            Shader.SetGlobalTexture(StandCdf, TC2.Game.Canopy.MakeStandCdf());   // the woods' stands and glades (D2-084)
             Shader.SetGlobalFloat(FogDensity, 0f);
             if (Application.isBatchMode) Debug.Log("[TC2] canopy K " + TC2.Game.Canopy.K.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture));
             MakeGrade();
@@ -77,15 +79,18 @@ namespace TC2.Game
             Color night = new Color(0.06f, 0.09f, 0.19f), noon = new Color(0.66f, 0.79f, 0.93f), dusk = new Color(0.93f, 0.62f, 0.42f);
             float duskness = Mathf.Clamp01(1f - Mathf.Abs(elev) * 4.5f) * Mathf.Clamp01(elev * 6f + 1f);
             Horizon = Color.Lerp(Color.Lerp(night, noon, day), dusk, duskness * 0.55f);
-            float density = altitude < 14000f ? Mathf.Lerp(1f / 16000f, 1f / 150000f, Mathf.Sqrt(Mathf.InverseLerp(150f, 14000f, altitude))) : 0f;
+            // (D2-084: the haze kept to depth, not to softening the subject - about 40 % thinner than D2-026's)
+            float top = (float)(14000.0 * w.Planet.GeoScale);   // (the air's top in the picture goes with the planet's size, D2-085)
+            float density = altitude < top ? Mathf.Lerp(1f / 26000f, 1f / 240000f, Mathf.Sqrt(Mathf.InverseLerp(150f, top, altitude))) : 0f;
             Shader.SetGlobalVector(FogColor, new Vector4(Horizon.linear.r, Horizon.linear.g, Horizon.linear.b, day));
             Shader.SetGlobalFloat(FogDensity, density);
             Shader.SetGlobalVector(SunDir, toSun);
             // the moon: opposite the sun and a little to the side, so night has a light with a direction
             Vector3 moon = (Quaternion.AngleAxis(150f, Vector3.up) * toSun + Vector3.up * 0.25f).normalized;
             Shader.SetGlobalVector(MoonDir, moon);
-            // the miniature cue: strong close to the ground, gone by the region view
-            Shader.SetGlobalFloat(TiltShift, 1f - Mathf.InverseLerp(120f, 2600f, altitude));
+            // the miniature cue: a hint at the frame's top and bottom close to the ground, gone by the village view (D2-084: it softened
+            // whole views - the miniature must not cost clarity)
+            Shader.SetGlobalFloat(TiltShift, 0.55f * (1f - Mathf.InverseLerp(100f, 1100f, altitude)));
             Shader.SetGlobalFloat(SeaRadius, (float)(w.Planet.Radius + Ground.WaterHeight(w.Planet, w.Planet.SeaLevel)));
             if (GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset urp)
             {
@@ -96,7 +101,7 @@ namespace TC2.Game
                 urp.shadowDistance = gl ? Mathf.Clamp(altitude * GlShadowReach, 200f, 3000f) : Mathf.Clamp(altitude * 3.2f, 250f, 7000f);
             }
             // below the air the empty sky is the sky; from orbit it is space
-            float sky = 1f - Mathf.InverseLerp(1500f, 7000f, altitude);
+            float sky = 1f - Mathf.InverseLerp(1500f, Mathf.Max(2000f, top * 0.5f), altitude);
             Color zenith = Color.Lerp(new Color(0.01f, 0.015f, 0.035f), new Color(0.30f, 0.50f, 0.82f), day);
             Rig.Cam.backgroundColor = Color.Lerp(new Color(0.012f, 0.016f, 0.035f), Color.Lerp(zenith, Horizon, 0.45f), sky);
         }

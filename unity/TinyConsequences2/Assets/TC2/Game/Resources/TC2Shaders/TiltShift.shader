@@ -14,7 +14,7 @@ Shader "TC2/TiltShift"
         half4 Blur(float2 uv, float2 axis)
         {
             float band = abs(uv.y - 0.52) * 2.0;                      // 0 on the sharp line, 1 at the edges
-            float radius = smoothstep(0.18, 1.0, band) * _TC2TiltShift * 7.0;   // in texels
+            float radius = smoothstep(0.35, 1.0, band) * _TC2TiltShift * 7.0;   // in texels (a sharp middle: D2-084)
             float2 stepUv = axis * radius / _ScreenParams.xy;
             // 9 taps, gaussian weights
             half4 c = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, uv) * 0.2270270h;

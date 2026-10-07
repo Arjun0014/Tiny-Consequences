@@ -31,6 +31,7 @@ Shader "TC2/Terrain"
             TEXTURE2D(_TC2Detail); SAMPLER(sampler_TC2Detail);
             TEXTURE2D(_TC2Canopy); SAMPLER(sampler_TC2Canopy);
             TEXTURE2D(_TC2Cover); SAMPLER(sampler_TC2Cover);
+            TEXTURE2D(_TC2StandCdf); SAMPLER(sampler_TC2StandCdf);
             float _TC2CanopyTile;
             float _TC2CanopyK;
             float4 _TC2CoverMean;
@@ -127,6 +128,35 @@ Shader "TC2/Terrain"
 
             half CoverAt(float2 uv, half thr) { return CoverOf(SAMPLE_TEXTURE2D(_TC2Cover, sampler_TC2Cover, uv), thr); }
 
+            // the woods' stands and glades (D2-084; Canopy.StandNoise/StandRank/Stands: the same arithmetic on the CPU, where the trees
+            // near the camera stand): a value noise of the ground's position (~150-300 m features, never repeating), its rank read from
+            // the noise's distribution so that ranks spread evenly, and a stand where the woods' share is above the rank
+            uint StandHash(int3 i)
+            {
+                uint h = ((uint)i.x * 73856093u) ^ ((uint)i.y * 19349663u) ^ ((uint)i.z * 83492791u);
+                h ^= h >> 13; h *= 1274126177u; h ^= h >> 16;
+                return h;
+            }
+            float StandLat(int3 i) { return (float)(StandHash(i) & 0xFFFFFFu) / 16777216.0; }
+            float StandV(float3 x)
+            {
+                float3 fl = floor(x);
+                int3 i = (int3)fl + 1024;
+                float3 t = x - fl;
+                t = t * t * (3.0 - 2.0 * t);
+                float a = StandLat(i), b = StandLat(i + int3(1, 0, 0)), c = StandLat(i + int3(0, 1, 0)), d = StandLat(i + int3(1, 1, 0));
+                float e = StandLat(i + int3(0, 0, 1)), f = StandLat(i + int3(1, 0, 1)), g = StandLat(i + int3(0, 1, 1)), h = StandLat(i + int3(1, 1, 1));
+                float ab = a + t.x * (b - a), cd = c + t.x * (d - c), ef = e + t.x * (f - e), gh = g + t.x * (h - g);
+                float lo = ab + t.y * (cd - ab), hi = ef + t.y * (gh - ef);
+                return lo + t.z * (hi - lo);
+            }
+            float StandRank(float3 wp)
+            {
+                float3 x = wp / 210.0;
+                float v = 0.58 * StandV(x) + 0.29 * StandV(x * 2.07 + float3(17.1, 3.3, -9.4)) + 0.13 * StandV(x * 4.31 + float3(-4.7, 12.9, 6.1));
+                return SAMPLE_TEXTURE2D_LOD(_TC2StandCdf, sampler_TC2StandCdf, float2(v, 0.5), 0).r;
+            }
+
             half Tri(float3 wp, float3 bw, float scale)
             {
                 half x = SAMPLE_TEXTURE2D(_TC2Detail, sampler_TC2Detail, wp.yz * scale).r;
@@ -142,6 +172,13 @@ Shader "TC2/Terrain"
                 float3 bw = abs(n); bw = bw * bw; bw = bw * bw; bw /= (bw.x + bw.y + bw.z + 1e-5);
                 float3 camRel = i.positionWS - _WorldSpaceCameraPos;
                 float dist = length(camRel);
+                // the land's relief made legible from afar (D2-084): far off, the ground's slopes are lit as if steeper (a cartographer's
+                // hillshade), so hills, valleys and ridges read from the region and orbit views; near the camera the true slope
+                {
+                    float upn = dot(n, up);
+                    float far = smoothstep(500.0, 5000.0, dist);
+                    n = normalize(up * upn + (n - up * upn) * (1.0 + 2.2 * far));
+                }
                 // detail: a few metres and tens of metres; it fades with distance (mips) so far land stays clean
                 half near = saturate(1.0 - dist / 3500.0);
                 half d1 = Tri(i.positionWS, bw, 1.0 / 23.0) - 0.5h;
@@ -178,6 +215,15 @@ Shader "TC2/Terrain"
                     half dens = i.wood.x;
                     half con = i.wood.y, leaves = i.wood.z, snowy = i.wood.w;
                     float3 ub = abs(up); ub = ub * ub; ub = ub * ub; ub = ub * ub; ub /= (ub.x + ub.y + ub.z + 1e-5);
+                    // stands and glades (D2-084, Canopy.Stands): where the woods' share is above this point's rank a stand of closed canopy,
+                    // else a glade or meadow - the stands cover the share; thin woods stay scattered trees; where a pixel spans most of a
+                    // stand (far off) the share itself (no shimmer)
+                    {
+                        float pxs = length(fwidth(i.positionWS));
+                        half sw = smoothstep(0.12h, 0.35h, dens) * (1.0h - smoothstep(45.0h, 110.0h, (half)pxs));
+                        half rank = (half)StandRank(i.positionWS) - 0.30h * i.land.y;   // (the woods keep to a river's banks)
+                        dens = lerp(dens, smoothstep(rank - 0.06h, rank + 0.06h, dens), sw);
+                    }
                     // the crowns that stand cover the forest's share of the ground (its glades are in the share); near the camera the
                     // trees themselves stand there, at these crowns, and the canopy gives way to them (400 m to 300 m)
                     half dl = saturate(dens);

@@ -120,6 +120,71 @@ namespace TC2.Core.Planet
         public double AreaHa(int c) => Grid.Area[c] * Radius * Radius / 10000.0;
 
         /// <summary>
+        /// The ground's own scale (D2-085): the planet's geophysics - plates, uplift and wear, coasts, ice, the rivers' courses,
+        /// quakes, storms, eruptions - was tuned on the cells of a 10 km world and keeps that behaviour per cell at any size, so
+        /// a seed makes the same ground on a smaller planet. Lengths inside those laws are geo-metres (a 10 km sphere's); heights
+        /// stay metres. What lives on the ground - people, beasts, plants by the hectare, walks and reaches - uses the real size.
+        /// </summary>
+        public const double GeoRadius = 10000.0;
+
+        /// <summary>Real metres per geo-metre (1 on the 10 km world).</summary>
+        public double GeoScale => Radius / GeoRadius;
+
+        /// <summary>Cell area in geo-hectares (the planet's laws).</summary>
+        public double GeoAreaHa(int c) => Grid.Area[c] * GeoRadius * GeoRadius / 10000.0;
+
+        /// <summary>Cell spacing in geo-metres (the planet's laws).</summary>
+        public double GeoCellSize => Grid.MeanSpacing * GeoRadius;
+
+        /// <summary>
+        /// A cell's real area against the 10 km world's (1 there; 0.25 at 5 km): what living things hold or need of a cell or a ground
+        /// of cells - a hunter's half-sated prey, a pack's range - was tuned per cell there and is per hectare, so it scales by this.
+        /// </summary>
+        public double AreaScale => GeoScale * GeoScale;
+
+        /// <summary>
+        /// Rings of cells round a cell that make a patch the size of the 10 km world's cell and its eight neighbours (~680 m across):
+        /// a herd's ground, a hunting ground (D2-085). 1 there, 2 at 5-7 km, 3 at 4 km.
+        /// </summary>
+        public int PatchRings => System.Math.Max(1, (int)DMath.Floor(1.0 / GeoScale + 0.5));
+
+        System.Collections.Generic.Dictionary<int, int[][]> _patches;   // (derived, never serialized: per ring count, per cell, built when asked)
+
+        /// <summary>
+        /// The cells within <paramref name="rings"/> steps of c (0: <see cref="PatchRings"/>): c first, then ring by ring in the order
+        /// they are met (one ring: c and its eight neighbours in Nbr8 order, as the 10 km world's grounds always read them).
+        /// </summary>
+        public int[] Patch(int c, int rings = 0)
+        {
+            if (rings <= 0) rings = PatchRings;
+            if (_patches == null) _patches = new System.Collections.Generic.Dictionary<int, int[][]>();
+            if (!_patches.TryGetValue(rings, out var byCell)) { byCell = new int[Cells][]; _patches[rings] = byCell; }
+            var p = byCell[c];
+            if (p != null) return p;
+            if (rings == 1)
+            {
+                // (exactly c and its Nbr8 - a cube corner's repeated neighbour counted twice, as it always was)
+                p = new int[9]; p[0] = c;
+                for (int k = 0; k < 8; k++) p[1 + k] = Grid.Nbr8[c * 8 + k];
+                byCell[c] = p;
+                return p;
+            }
+            var list = new System.Collections.Generic.List<int> { c };
+            var seen = new System.Collections.Generic.HashSet<int> { c };
+            int from = 0;
+            for (int r = 0; r < rings; r++)
+            {
+                int to = list.Count;
+                for (int i = from; i < to; i++)
+                    for (int k = 0; k < 8; k++) { int nb = Grid.Nbr8[list[i] * 8 + k]; if (seen.Add(nb)) list.Add(nb); }
+                from = to;
+            }
+            p = list.ToArray();
+            byCell[c] = p;
+            return p;
+        }
+
+        /// <summary>
         /// How well a cell takes the plough (0..1): warm enough, wet enough but not a marsh, not steep, low.
         /// Standing forest must be cleared first: it lowers what a season's work can open.
         /// </summary>

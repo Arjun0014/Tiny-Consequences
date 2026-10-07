@@ -16,7 +16,7 @@ namespace TC2.Game
         public SimHost Host;
         public CameraRig Rig;
         const int Size = 64;
-        const float ShellHeight = 650f;    // m above the reference sphere, drawn
+        const float ShellHeight = 650f;    // m above the reference sphere, drawn (on the 10 km world)
         readonly int[] _wc = new int[9];
         readonly float[] _ww = new float[9];
         Cubemap _cover;
@@ -79,12 +79,13 @@ namespace TC2.Game
             _cover.Apply(false);
             // the shell above the land; it fades as the camera comes down under it
             float R = (float)P.Radius;
-            _shell.transform.localScale = Vector3.one * (R + ShellHeight);
+            float shell = (float)(ShellHeight * P.GeoScale);   // (with the planet's size, as its drawn relief: D2-085)
+            _shell.transform.localScale = Vector3.one * (R + shell);
             float alt = Rig.Cam.transform.position.magnitude - R;
-            float fade = Mathf.InverseLerp(ShellHeight * 1.05f, ShellHeight * 2.2f, alt);
+            float fade = Mathf.InverseLerp(shell * 1.05f, shell * 2.2f, alt);
             _shell.SetActive(fade > 0.01f);
             Shader.SetGlobalFloat(FadeId, fade);
-            Shader.SetGlobalFloat(ShellId, R + ShellHeight);
+            Shader.SetGlobalFloat(ShellId, R + shell);
         }
 
         void FillTarget(PlanetState P, int face, float[] target)

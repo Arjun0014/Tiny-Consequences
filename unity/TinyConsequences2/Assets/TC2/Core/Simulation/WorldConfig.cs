@@ -10,7 +10,7 @@ namespace TC2.Core.Simulation
     {
         public ulong Seed = 42;
         public int SurfaceN = 64;              // cubed-sphere N of the surface grid
-        public double Radius = 10000.0;        // metres
+        public double Radius = 6000.0;         // metres (D2-085: 6 km, the miniature; the ground's laws keep geo-lengths of a 10 km sphere)
         public double LandFraction = 0.36;
         public int Plates = 9;
         public int Settlements = 6;

@@ -88,7 +88,7 @@ namespace TC2.Core.Planet
         public static Vec3d Velocity(PlanetState P, int plate, Vec3d at)
         {
             var pl = P.Plates[plate];
-            return Vec3d.Cross(pl.Pole, at) * (pl.Omega * P.Radius);
+            return Vec3d.Cross(pl.Pole, at) * (pl.Omega * PlanetState.GeoRadius);
         }
 
         /// <summary>Rotates a unit vector about a unit axis by an angle (Rodrigues).</summary>
@@ -102,7 +102,7 @@ namespace TC2.Core.Planet
         /// <summary>Exact position of a cell's crust sample (gnomonic offset in the cell's tangent plane).</summary>
         public Vec3d SamplePos(PlanetState P, int c)
         {
-            return (P.Grid.Center[c] * P.Radius + _east[c] * P.CrustOx[c] + _north[c] * P.CrustOy[c]).Normalized;
+            return (P.Grid.Center[c] * PlanetState.GeoRadius + _east[c] * P.CrustOx[c] + _north[c] * P.CrustOy[c]).Normalized;
         }
 
         /// <summary>The gnomonic offset of a direction in cell c's tangent plane (the exact inverse of SamplePos).</summary>
@@ -110,8 +110,8 @@ namespace TC2.Core.Planet
         {
             double vc = Vec3d.Dot(v, P.Grid.Center[c]);
             if (vc < 1e-6) vc = 1e-6;
-            ox = (float)(P.Radius * Vec3d.Dot(v, _east[c]) / vc);
-            oy = (float)(P.Radius * Vec3d.Dot(v, _north[c]) / vc);
+            ox = (float)(PlanetState.GeoRadius * Vec3d.Dot(v, _east[c]) / vc);
+            oy = (float)(PlanetState.GeoRadius * Vec3d.Dot(v, _north[c]) / vc);
         }
 
         /// <summary>
@@ -487,7 +487,7 @@ namespace TC2.Core.Planet
         void Wearing(PlanetState P, double dt)
         {
             var g = P.Grid;
-            double h2 = P.CellSize * P.CellSize;
+            double h2 = P.GeoCellSize * P.GeoCellSize;
             double k = Wear * dt / h2;
             if (k <= 0) return;
             double sea = P.SeaLevel;

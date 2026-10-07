@@ -294,6 +294,7 @@ namespace TC2.Core.Places
                 }
             w.Queue.Push(party.Arrive, Phase.Process, EventKind.PartyArrive, pid);
             w.Metrics.Parties++;
+            if (party.Site < 0) Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Party, sid, party.Dest);
         }
 
         static int Routes0(in Party party) => RouteCache.PlaceEnd(party.Site);
@@ -348,7 +349,7 @@ namespace TC2.Core.Places
             if (!Homes.TakeEmpty(w, hid))
             {
                 ref var d = ref w.Settlements.Get(dest);
-                d.LotPosition(d.Lots++, out float hx, out float hy);
+                d.NextDryLot(w.Planet, out float hx, out float hy);
                 hh.HomeX = hx; hh.HomeY = hy; hh.Shelter = Construction.Camp; hh.Build = 0f;
             }
             var mem = w.Members(hid);
@@ -415,6 +416,7 @@ namespace TC2.Core.Places
             w.Wild.Survey(sid);
             w.SettlementSys.ScheduleFirstDaily(sid);
             w.Metrics.Foundings++;
+            Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Founding, origin, sid);
             return sid;
         }
 

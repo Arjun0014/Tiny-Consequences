@@ -67,13 +67,34 @@ namespace TC2.Game
             Debug.Log("[TC2] abandoned the first village " + years + " years ago: inhabited " + w.Settlements.Get(sid).Inhabited + ", now " + SimTime.Format(w.Now));
         }
 
+        string _out;   // where this world's shots go
+
         IEnumerator Run()
         {
             while (!Host.Ready) yield return null;
+            // (-tc2load F1;F2;..: worlds saved by the headless runner - `run --snap Y1,Y2` - each shot at its age into DIR/<its name>;
+            // else one new world into DIR)
+            string loads = Arg("-tc2load");
+            string[] files = loads != null ? loads.Split(';') : new string[] { null };
+            foreach (string file in files)
+            {
+                // (named by the save's folder and file - r6000_s42/world_y100 -> r6000_s42_world_y100 - so worlds of several runs never collide)
+                _out = files.Length > 1 ? Path.Combine(_dir, Path.GetFileName(Path.GetDirectoryName(file)) + "_" + Path.GetFileNameWithoutExtension(file)) : _dir;
+                Directory.CreateDirectory(_out);
+                var shoot = Shoot(file);
+                while (shoot.MoveNext()) yield return shoot.Current;
+            }
+            File.WriteAllText(Path.Combine(_dir, "done.txt"), SimTime.Format(Host.World.Now));
+            Debug.Log("[TC2] shots done -> " + _dir);
+        }
+
+        IEnumerator Shoot(string load)
+        {
             ulong seed = 42;
             string s = Arg("-tc2seed");
             if (s != null) ulong.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out seed);
-            Host.NewWorld(seed);
+            if (load != null) { Host.LoadWorld(File.ReadAllBytes(load)); seed = Host.World.Seed; }
+            else Host.NewWorld(seed, Parse(Arg("-tc2radius"), 0));
             Host.SpeedIndex = 0; // paused: the shots show one moment
             var w = Host.World;
             // run to the wanted day and local hour at the first village (the world lives up to that moment)
@@ -208,8 +229,6 @@ namespace TC2.Game
             }
             var tl = FindAnyObjectByType<TerrainLod>();
             if (tl != null) Debug.Log("[TC2] terrain: drawn " + tl.PatchesDrawn + " built " + tl.PatchesBuilt + " near-village patches " + tl.NearPatches + " village vertices " + tl.VillageVerts);
-            File.WriteAllText(Path.Combine(_dir, "done.txt"), SimTime.Format(w.Now));
-            Debug.Log("[TC2] shots done -> " + _dir);
         }
 
         void LateUpdate()
@@ -240,7 +259,7 @@ namespace TC2.Game
             RenderTexture.active = active;
             cam.targetTexture = prev;
             cam.aspect = aspect;
-            File.WriteAllBytes(Path.Combine(_dir, name + ".png"), tex.EncodeToPNG());
+            File.WriteAllBytes(Path.Combine(_out ?? _dir, name + ".png"), tex.EncodeToPNG());
             Destroy(tex); rt.Release(); Destroy(rt);
             Debug.Log("[TC2] shot " + name);
             var sea = FindAnyObjectByType<SeaLifeView>();
