@@ -113,7 +113,8 @@ person page (D2-099: `Core/History/Biography`, the HUD's Life page, headless `pe
 bodies seen, mined, carried and dug out - `Core/Places/Mining.cs`), C5.2a charcoal (D2-101: burnt at a hearth by the woodlot from real
 forest; smelting burns it), C5.2b iron (D2-102: bog ore, the bloomery found by copper smiths, iron tools and arms; a COARSE smith's labour
 day), C5.3a places by their ore (D2-103), C5.3b iron traded (D2-104), C5.4 whose ore (D2-105: digging another village's worked ore is a taking), C12.2 the settlement page (D2-106; the
-person page checked in a Web build). Next: SESSION_HANDOFF "Next"
+person page checked in a Web build), C10.1 the lord's call (D2-107). Next: SESSION_HANDOFF "Next" (the C10.1 population drops, the Web
+frame rate, then C5.3c)
 (SESSION_HANDOFF "Next").
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy

@@ -11,12 +11,13 @@ namespace TC2.Core.Society
     {
         public int Id, Origin, Target, Leader;
         public byte Size, Motive, State;   // Motive 1 a wrong, 0 hunger; State 0 raised, 1 fallen
+        public byte Called;                // tributaries whose people answered its lord's call (C10.1; 0: its own village's people only)
         public long Formed, Arrive, Event;
         public float Loot;
 
-        public void Write(BinWriter w) { w.Int(Id); w.Int(Origin); w.Int(Target); w.Int(Leader); w.Byte(Size); w.Byte(Motive); w.Byte(State); w.Long(Formed); w.Long(Arrive); w.Long(Event); w.Float(Loot); }
-        public static Band Read(BinReader r) => new Band { Id = r.Int(), Origin = r.Int(), Target = r.Int(), Leader = r.Int(), Size = r.Byte(), Motive = r.Byte(), State = r.Byte(), Formed = r.Long(), Arrive = r.Long(), Event = r.Long(), Loot = r.Float() };
-        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Origin); h.Add(Target); h.Add(Leader); h.Add(Size); h.Add(Motive); h.Add(State); h.Add(Formed); h.Add(Arrive); h.Add(Event); h.Add(Loot); }
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Origin); w.Int(Target); w.Int(Leader); w.Byte(Size); w.Byte(Motive); w.Byte(State); w.Long(Formed); w.Long(Arrive); w.Long(Event); w.Float(Loot); w.Byte(Called); }
+        public static Band Read(BinReader r) => new Band { Id = r.Int(), Origin = r.Int(), Target = r.Int(), Leader = r.Int(), Size = r.Byte(), Motive = r.Byte(), State = r.Byte(), Formed = r.Long(), Arrive = r.Long(), Event = r.Long(), Loot = r.Float(), Called = r.Byte() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Origin); h.Add(Target); h.Add(Leader); h.Add(Size); h.Add(Motive); h.Add(State); h.Add(Formed); h.Add(Arrive); h.Add(Event); h.Add(Loot); h.Add(Called); }
     }
 
     /// <summary>
@@ -75,6 +76,12 @@ namespace TC2.Core.Society
         public const double RaidFrom = 150.0, RaidFull = 600.0, RaidPerDay = 0.02;
         /// <summary>A band needs this many to go and takes no more than BandAtMost.</summary>
         public const int BandAtLeast = 3, BandAtMost = 12;
+        /// <summary>The most a band grows to with the men its lord's tributaries owe it (C10.1).</summary>
+        public const int CallAtMost = 36;
+        /// <summary>How readily a tributary's fit grown person answers the lord's call: owed, so a quarter even of the meek, more of the bold.</summary>
+        public const double CallOwed = 0.25, CallBold = 0.5;
+        /// <summary>The share of a raid on a tributary its lord takes as a wrong to itself (C10.1: its tribute's ground harmed).</summary>
+        public const double LordsShare = 0.5;
         /// <summary>The defenders' home ground, the strength below which a side breaks against the other, a fighter's chance to land a
         /// blow a round, a raid's fright (FU); a band goes only when it is this strong against the defence it expects.</summary>
         public const double HomeGround = 1.2, BreakAt = 0.5, HitChance = 0.5, RaidFright = 30.0, BandDares = 0.8;
@@ -691,6 +698,24 @@ namespace TC2.Core.Society
         // ------------------------------------------------------------------ raids (D2-073)
         readonly System.Collections.Generic.List<int> _band = new System.Collections.Generic.List<int>();
         readonly System.Collections.Generic.List<int> _defend = new System.Collections.Generic.List<int>();
+        readonly System.Collections.Generic.List<int> _callers = new System.Collections.Generic.List<int>();   // tributary, men answering: pairs (C10.1)
+        readonly System.Collections.Generic.List<int> _members = new System.Collections.Generic.List<int>();
+
+        /// <summary>Who may be of a band: its village's people, and when it called its tributaries, theirs (C10.1).</summary>
+        void Members(in Band b, System.Collections.Generic.List<int> into)
+        {
+            var w = _w;
+            into.Clear();
+            var res = w.Residents(b.Origin);
+            for (int i = 0; i < res.Count; i++) into.Add(res[i]);
+            if (b.Called == 0) return;
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+            {
+                if (o == b.Origin || w.Settlements.Get(o).Lord != b.Origin) continue;
+                var tres = w.Residents(o);
+                for (int i = 0; i < tres.Count; i++) into.Add(tres[i]);
+            }
+        }
 
         /// <summary>
         /// A village's day may raise a band (both resolutions): when it holds a heavy wrong against its foe, or its grown people
@@ -745,6 +770,27 @@ namespace TC2.Core.Society
                 double join = (0.15 + 0.7 * q.Bold / 255.0) * (kin ? 1.5 : 1.0) * (motive == 1 ? 1.0 : (q.Nutrition < HungryBelow ? 1.0 : 0.3));
                 if (KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)pid, (ulong)now, 51) < join) _band.Add(pid);
             }
+            // the lord's call (C10.1): against those who wronged it, a lord's tributaries owe it men - each fit grown person of a tributary
+            // within a day's walk of the foe goes as owed (a quarter even of the meek, more of the bold), never against their own kin
+            _callers.Clear();
+            if (motive == 1)
+                for (int o = w.Settlements.First(); o != 0 && _band.Count < CallAtMost; o = w.Settlements.Next(o))
+                {
+                    ref var tr = ref w.Settlements.Get(o);
+                    if (o == target || o == sid || tr.Lord != sid || !tr.Inhabited) continue;
+                    if (Vec3d.ArcDistance(tr.Anchor, w.Settlements.Get(target).Anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, o, target) == null) continue;
+                    int before = _band.Count;
+                    var tres = w.Residents(o);
+                    for (int i = 0; i < tres.Count && _band.Count < CallAtMost; i++)
+                    {
+                        int pid = tres[i];
+                        ref var q = ref w.People.Get(pid);
+                        if (!Fit(in q, now) || q.AgeYears(now) >= 50 || q.PregDue != 0 || (q.NursingUntil != 0 && q.NursingUntil - now > SimTime.Year / 2) || q.Band != 0) continue;
+                        if (KinIn(in q, target)) continue;
+                        if (KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)pid, (ulong)now, 52) < CallOwed + CallBold * q.Bold / 255.0) _band.Add(pid);
+                    }
+                    if (_band.Count > before) { _callers.Add(o); _callers.Add(_band.Count - before); }
+                }
             if (_band.Count < BandAtLeast) return;
             // too few against the defence they expect (the neighbours round the store and its watch, on their own ground): they stay
             double bandStrength = 0;
@@ -762,9 +808,22 @@ namespace TC2.Core.Society
                 Kind = HistoryKind.BandRaised, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Person(leader), Object = EntityRef.Settlement(target),
                 Cause1 = cause, Rel1 = CauseRel.InResponseTo, ArgA = _band.Count, ArgB = motive, RootKind = RootKind.People,
             });
-            w.Bands.Add(id, new Band { Id = id, Origin = sid, Target = target, Leader = leader, Size = (byte)_band.Count, Motive = motive, Formed = now, Arrive = arrive, Event = ev });
+            w.Bands.Add(id, new Band { Id = id, Origin = sid, Target = target, Leader = leader, Size = (byte)_band.Count, Motive = motive, Formed = now, Arrive = arrive, Event = ev, Called = (byte)(_callers.Count / 2) });
             for (int i = 0; i < _band.Count; i++) w.People.Get(_band[i]).Band = id;
             w.Metrics.Bands++;
+            for (int k = 0; k < _callers.Count; k += 2)
+            {
+                // each tributary whose people answered: history, caused by the band's raising
+                ref var tc = ref w.Settlements.Get(_callers[k]);
+                w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.CallAnswered, Time = now, Cell = tc.Cell, Settlement = _callers[k], Subject = EntityRef.Settlement(_callers[k]),
+                    Object = EntityRef.Settlement(sid), Other = EntityRef.Settlement(target), ArgA = _callers[k + 1], Cause1 = ev, Rel1 = CauseRel.InResponseTo,
+                    RootKind = RootKind.People,
+                });
+                w.Metrics.CalledMen += _callers[k + 1];
+            }
+            if (_callers.Count > 0) w.Metrics.CalledBands++;
             if (w.Resolution == Resolution.Coarse) Fall(id, _band);
         }
 
@@ -810,11 +869,11 @@ namespace TC2.Core.Society
             ref var b = ref w.Bands.Get(p.Band);
             if (b.State != 0 || b.Target != at) return;
             _band.Clear();
-            var res = w.Residents(b.Origin);
-            for (int i = 0; i < res.Count; i++)
+            Members(in b, _members);   // (its village's people and the tributaries' who answered the call: C10.1)
+            for (int i = 0; i < _members.Count; i++)
             {
-                ref var q = ref w.People.Get(res[i]);
-                if (q.Alive && q.Band == b.Id && (q.Id == p.Id || (q.Act == ActivityKind.TripOut && q.Why == WhyCode.Raid && q.Dest == at) || (q.At == at && q.Why == WhyCode.Raid))) _band.Add(res[i]);
+                ref var q = ref w.People.Get(_members[i]);
+                if (q.Alive && q.Band == b.Id && (q.Id == p.Id || (q.Act == ActivityKind.TripOut && q.Why == WhyCode.Raid && q.Dest == at) || (q.At == at && q.Why == WhyCode.Raid))) _band.Add(_members[i]);
             }
             Fall(b.Id, _band);
         }
@@ -891,13 +950,21 @@ namespace TC2.Core.Society
             w.DeedBook.Learn(at, deed, isSeen ? KnownHow.Saw : KnownHow.Found);
             w.DeedBook.Learn(origin, deed, KnownHow.Own);
             if (b2.Motive == 1 && loot > 0) w.DeedBook.SettleBy(origin, at, loot);
+            // a raid on a tributary seen is a wrong to its lord too (C10.1): the ground of its tribute harmed - told to it at once
+            int lordOf = w.Settlements.Get(at).Lord;
+            if (isSeen && lordOf != 0 && lordOf != origin && w.Settlements.Exists(lordOf) && w.Settlements.Get(lordOf).Inhabited)
+            {
+                int ld = w.DeedBook.Record(DeedKind.Raid, b2.Leader, origin, 0, lordOf, Trade.Grain, 0.0, LordsShare * (loot + RaidFright), ev);
+                w.DeedBook.Learn(lordOf, ld, KnownHow.Told);
+                w.Metrics.LordsWronged++;
+            }
             w.Metrics.Raids++;
             Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Raid, origin, at);
             w.Metrics.RaidLoot += loot;
             if (outcome == 2) w.Metrics.RaidsBeaten++;
             // COARSE: home at once with what they carry
             if (w.Resolution == Resolution.Coarse)
-                for (int i = 0; i < n; i++) { ref var q = ref w.People.Get(raiders[i]); if (q.CargoQty > 0f) w.Trade.Unload(ref q, origin); q.Band = 0; }
+                for (int i = 0; i < n; i++) { ref var q = ref w.People.Get(raiders[i]); if (q.CargoQty > 0f) w.Trade.Unload(ref q, q.Home); q.Band = 0; }   // (to their own homes: a tributary's people too, C10.1)
             if (w.Resolution == Resolution.Coarse) w.Bands.Remove(bandId);
         }
 
@@ -975,10 +1042,10 @@ namespace TC2.Core.Society
                 if (band.Origin != sid) continue;
                 if (band.State == 0 && now < band.Arrive + SimTime.Hours(6)) continue;
                 if (band.State != 0 && now < band.Arrive + SimTime.Day) continue;
-                var res = w.Residents(sid);
-                for (int i = 0; i < res.Count; i++) { ref var q = ref w.People.Get(res[i]); if (q.Band == b && (q.At == q.Home || !q.Alive)) q.Band = 0; }
+                Members(in band, _members);   // (and the tributaries' people who answered the call: C10.1)
+                for (int i = 0; i < _members.Count; i++) { ref var q = ref w.People.Get(_members[i]); if (q.Band == b && (q.At == q.Home || !q.Alive)) q.Band = 0; }
                 bool anyOut = false;
-                for (int i = 0; i < res.Count; i++) if (w.People.Get(res[i]).Band == b) anyOut = true;
+                for (int i = 0; i < _members.Count; i++) if (w.People.Get(_members[i]).Band == b) anyOut = true;
                 if (!anyOut) { w.Bands.Remove(b); return; }
             }
         }

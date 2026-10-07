@@ -57,8 +57,14 @@
   **Web build checked** (`tc2/out/webtest/c5web`, WebGPU): the person page renders; fixed the smithy mesh read (console errors in players).
   The build in `tc2/web-build/web` predates the settlement page and the smithy fix - rebuild before the next browser check (10 min with
   `--jobs 4`); River.mat/Road.mat are now committed.
-- **Next**: (1) the next Web build: check the settlement page shots and that the console is clean; (2) C5.3c work at a distance: when ore or
-  wood is far, smelt where it is (a bloomery at the bed or the woods: carry iron, not ore and
+- **Web build checked again** (`tc2/out/webtest/c122web`): settlement page renders, console clean (smithy fix). **Frame rate below target**:
+  35-56 fps at village/close/forest views (WebGPU). The c5web run's 57-121 fps was false: since C1.4 the smithy mesh read threw while
+  WorldObjectsView set up, so trees, woodpiles and later works were never drawn in Web builds. Measure layers with
+  `node tc2/scripts/webperf.mjs --view close` and `--view forest` on a quiet machine (web build in `tc2/web-build/web` is current up to C12.2).
+- **C10.1 the lord's call done (D2-107)**: `Conflict` `_callers/Members/CallAtMost/CallOwed/CallBold/LordsShare`, `Band.Called`, history
+  `CallAnswered` 84, metrics `CalledBands/CalledMen/LordsWronged`. Runs `tc2/out/civ/s{42,7,4,2}_c101a` against `_c54a`.
+- **Next**: (1) **follow the C10.1 population drops** (seed 7 -24 %, seed 2 -26 % with fewer hungry deaths: D2-107 "Open"); (2) the Web
+  frame rate (webperf layer costs; target 60 fps near the ground); (3) C5.3c work at a distance: when ore or wood is far, smelt where it is (a bloomery at the bed or the woods: carry iron, not ore and
   charcoal), stints of days with a camp at the site, households moving to steady work there (a work hamlet founded by its work); then C5.4
   claims (a worked bed or body known as a village's, digging it a deed; news of beds by traders). To check: whether the bloomery holds in
   small villages over long runs (a complex technique); copper ore is still dug where iron serves only some. Seen before: people walking routes across cells the

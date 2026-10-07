@@ -97,6 +97,8 @@ namespace TC2.Core.History
                 case HistoryKind.OreFound:
                     return (e.Other.IsNone ? "The people of " + subj : other + " of " + subj) + (e.ArgA == TC2.Core.Places.Mining.Iron ? " saw bog iron ore - rust-red lumps where water stands - " : " saw copper ore - green stone - showing ")
                          + F(e.Magnitude / 1000.0, "0.0") + " km from " + subj + ".";
+                case HistoryKind.CallAnswered:
+                    return e.ArgA + (e.ArgA == 1 ? " of " : " people of ") + subj + " answered the call of " + obj + ", whom they pay tribute, and went with its band against " + other + ".";
                 case HistoryKind.OreTaken:
                     return (e.Other.IsNone ? "People of " + subj : other + " of " + subj) + " dug " + (e.ArgA == TC2.Core.Places.Mining.Iron ? "bog ore at the pits" : "copper ore at the mine")
                          + " of " + obj + ": " + obj + " counts it as taken from them.";

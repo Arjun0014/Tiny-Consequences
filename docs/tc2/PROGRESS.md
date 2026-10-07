@@ -52,7 +52,10 @@
   their workers; others dig only in pressing need or with a wrong held, and each stint is a taking the owners know; on seed 7 an ore taking
   caused a taking-back of grain within a feud; 238 tests; `run --events KIND`. **C12.2 the settlement page done (D2-106)**: `Core/History/
   Gazetteer` (founding, people and homes, food, works, land and making, knowledge, neighbours and wrongs, history), HUD from a person's card
-  or a structure's page, headless `place`; 240 tests. **Next**: SESSION_HANDOFF "Next".
+  or a structure's page, headless `place`; 240 tests. **C10.1 the lord's call done (D2-107)**: tributaries' people answer their lord's call
+  against those who wronged it; a raid on a tributary is a wrong to its lord; 243 tests; seeds 7 and 2 lost a quarter of their people (open).
+  **Browser**: the settlement page renders; the true Web frame rate is 35-56 fps near the ground (below 60: earlier 57-121 fps readings
+  since C1.4 were inflated by the smithy error stopping the view's setup). **Next**: SESSION_HANDOFF "Next".
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

@@ -2634,3 +2634,24 @@ of its people and 93 iron arms, and the wrongs between it and Neldthorpe weighin
 year". It also caught a fault only a player shows: the smithy's chimney top was read from its mesh, which a player cannot read unless the
 model is imported readable - console errors in the Web build since C1.4. `smithy.fbx` is now imported readable and `PartTop` falls back to
 the mesh's top centre for any mesh that is not. The settlement page joins the Web test (`5e_place`, `5f_place_land`) for the next build.
+
+## D2-107 — 2026-10-07 — The lord's call and the lord's protection (C10.1)
+
+**Context.** `20` §5.8 and `23` §6: lords and obligations (a share of the harvest, men for a band); a lordship (D2-075) was only a tribute
+flow - its tributaries owed no men, and a raid on a tributary meant nothing to its lord.
+**Decision.** (1) **The call**: when a lord raises a band over a wrong, each fit grown person of its direct tributaries within a day's walk
+of the foe (by a route) goes as owed - a quarter even of the meek, more of the bold (`Conflict.CallOwed` 0.25 + `CallBold` 0.5 x boldness),
+never against their own kin - up to 36 in all (`CallAtMost`). The band remembers it called (`Band.Called`); arrival, disbanding and the
+COARSE return gather members from the lord's village and its tributaries (`Conflict.Members`); each goes home with their own share to their
+household. History `CallAnswered` (84): "7 people of Kubroford answered the call of Gouthorpe, whom they pay tribute, and went with its band
+against Heldholm", caused by the band's raising. (2) **Protection**: a seen raid on a tributary is a wrong to its lord too, at half its
+weight, told to it at once (`LordsShare`); the lord's grievance, bands and the call follow. Metrics `CalledBands/CalledMen/LordsWronged`;
+headless raids line. Sim version 47.
+**Evidence.** 243 tests (`LordshipTests` 3: a lord's band of 12 - 5 of its own and 7 of its tributary - and none called without the tie;
+a raid on a tributary weighed by its lord at half; every member home and unloaded after a COARSE fall). 300 years DEEP against C5.4
+(`tc2/out/civ/s{42,7,4,2}_c101a`): seed 7 - 15 bands joined by tributaries (128 men), 14 raids taken up by lords, tribute agreed 11 times
+(4), people 2,445 -> 1,856, blows 2,187 -> 2,645, wound deaths 144 -> 191; seed 2 - no calls, 19 raids taken up by lords, people 8,221 ->
+6,119 although hunger deaths fell 2,794 -> 436 and blows 2,111 -> 1,656; seed 42 6,392 -> 6,590; seed 4 identical (no lords).
+**Open (first next step).** Two of four seeds lost a quarter of their people. Seed 7's loss follows more fighting; seed 2's does not
+(fewer hungry deaths, fewer blows) and needs following (abandonments, migration, births: `run --civ`, `--events`) before LordsShare and the
+call are trusted. Check also whether a raid seen is now weighed twice in the escalation (the tributary's and the lord's bands both answer it).

@@ -84,7 +84,8 @@ namespace TC2.Core.History
         ArmsMade = 79,          // a village's smiths began to forge arms (Subject the smith, Object the village, Other the smithy; ArgA 1 from ore, 0 its tools; Cause1 what it fears; C1.4)
         OreFound = 81,          // someone of a village saw copper ore showing (Cell the body, Other who; ArgA the kind; Magnitude m from the village; C5.1)
         OreGaveOut = 82,
-        OreTaken = 83,          // people of one village dug ore at a body another works (Subject the diggers' village, Object the owners, Other the digger; ArgA the kind; Magnitude kg; C5.4)        // the last of an ore body was dug (Subject the village that dug it out, Object its mine; Magnitude kg dug from it in all; C5.1)
+        OreTaken = 83,
+        CallAnswered = 84,      // people of a tributary went with their lord's band (Subject the tributary, Object the lord, Other the target; ArgA how many; C10.1)          // people of one village dug ore at a body another works (Subject the diggers' village, Object the owners, Other the digger; ArgA the kind; Magnitude kg; C5.4)        // the last of an ore body was dug (Subject the village that dug it out, Object its mine; Magnitude kg dug from it in all; C5.1)
         WayWorn = 80,           // the way between two villages is worn into a path (ArgA 2) or beaten into a road (ArgA 3) by their people's walking (Subject, Object the villages; Magnitude the wear; C4.1)
         WorkBegun = 76,         // a village laid out a structure and began it (Object the building; ArgA its kind, ArgB granaries standing; Cause1 the need; C1.1)
         HomeTaken = 53,         // a household made its home in one that stood empty (Object: who lived there last; ArgA 1 a hut, 2 a house; D2-059)
@@ -229,6 +230,7 @@ namespace TC2.Core.History
                 case HistoryKind.OreFound:
                 case HistoryKind.OreGaveOut:
                 case HistoryKind.OreTaken:
+                case HistoryKind.CallAnswered:
                 case HistoryKind.Scouted: return Tier.Local;
                 case HistoryKind.PartySetOut: return Tier.Historical;
                 case HistoryKind.HerdHuntedOut: return Tier.Local;
@@ -312,6 +314,7 @@ namespace TC2.Core.History
                 case HistoryKind.OreFound: b = 6; break;
                 case HistoryKind.OreGaveOut: b = 7; break;
                 case HistoryKind.OreTaken: b = 7; break;
+                case HistoryKind.CallAnswered: b = 8; break;
                 case HistoryKind.PartySetOut: b = 20; break;
                 case HistoryKind.Scouted: b = 2; break;
                 case HistoryKind.HouseholdMoved: b = 1.5; break;
