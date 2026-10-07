@@ -4,6 +4,17 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 6 (7 Oct 2026, from 10:56 IST, in progress)** - Arjun's **major direction update (D2-089)**: TC2 is an *autonomous medieval
+  civilisation inside a living miniature planet* (Age-of-Empires breadth and readability, no player orders; fewer, deeper people; every
+  structure, road, army, ship, mine, wall and kingdom from simulated need). Done: state restored (clean at 057420a, nothing
+  half-finished); the audit (`20` §4 - one store per village, three works as bits, no workplaces, transport, roads by use or deposits
+  but copper; **woodcutting and fields leave the simulated forest untouched**; one text box for a person, nothing else clickable);
+  research (bloomery yields, transport cost ratios, trail formation, army rations, village layout, ship timber); the design docs
+  `20_CIVILISATION_DEPTH.md`, `21_SETTLEMENT_ECONOMY.md`, `22_MATERIALS_AND_RESOURCES.md`, `23_MILITARY_AND_WAR.md`,
+  `24_TRANSPORT_AND_MARITIME.md`, `25_CIVILISATION_ROADMAP.md`; pointers in 00, 07 (§9 the person page), 08, 09, 10, 13, 14, 17, 18.
+  **Now: C1 "the working town"** (`25` §2) - C1.1 structures (well and granary as structures with capacity, works by need with
+  causes, placement by zone, building inspector), then timber from the woods, stone, the smithy, the training ground, market and gates,
+  a pressure premise.
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

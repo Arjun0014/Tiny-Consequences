@@ -1,5 +1,8 @@
 # TC2-17 — Roadmap
 
+> **D2-089 (7 Oct 2026)**: the phases after W are restructured around the autonomous-medieval-world direction in
+> `25_CIVILISATION_ROADMAP.md` (C1-C13, with W and performance tiers P alongside; F9-F11 after). F0-F7 and W0 stay closed and are built on.
+
 Each phase is a sequence of vertical slices: research -> design -> decision -> smallest real slice ->
 compile -> test -> run -> inspect -> benchmark -> fix -> commit -> docs. A phase is done when its "done
 when" holds in headless runs **and** in the Web build. Phases overlap where independent.

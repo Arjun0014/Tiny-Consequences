@@ -1,5 +1,19 @@
 # TC2 Session handoff
 
+## Session 6 (7 Oct 2026, from 10:56 IST) — in progress
+
+### Exact state (keep current)
+- **Arjun's direction (7 Oct, D2-089 - the standing direction)**: an autonomous medieval civilisation inside a living miniature planet
+  (`20_CIVILISATION_DEPTH.md`): Age-of-Empires system breadth and readability with no player orders; fewer, deeper people (tiers A
+  100-500 dev, B 500-1,500, C 1,500-3,000); every structure from need, labour, material and knowledge (the ten questions, `20` §2);
+  presentation develops with the simulation (D2-084 stands). Roadmap `25_CIVILISATION_ROADMAP.md` (C1-C13, W and P alongside).
+- Session start: repo clean at 057420a (only the empty `Assets/Resources.meta` untracked - Unity's, harmless); no TC2 process running;
+  machine ~81 % RAM used by others (2.1 GB free of 11.4) - Unity shot rounds need ~2-3 GB: check first.
+- Docs written: 20-25 and pointers (00, 07 §9, 08 §7, 09 §10, 10 §13, 13 §12, 14 §6, 17, 18 §9), DECISIONS D2-089.
+- **Next: C1.1 structures** (D2-090): extend `Building` (condition, materials, builder, cause, stock, use), a kinds table
+  (`Core/Places/Structures.cs`), well and granary as structures (`Settlement.Works` bits kept as a cache), granary capacity, works by
+  need with causes, placement by zone, the building inspector (Hud), drawn from the table; then C1.2 timber from the woods.
+
 ## Session 5 (7 Oct 2026, from 06:40 IST) — in progress
 
 ### Exact state (keep current)

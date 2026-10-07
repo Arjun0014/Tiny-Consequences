@@ -64,3 +64,12 @@ F4. F0 has no techniques beyond implicit farming and woodcutting.
   (half their making while the village is short of tools) bring metal into its store from charcoal; metal tools quicken hands
   (up to 1.25x) and slow the wear of goods (to 0.75). Metal moves only with trade (F5).
 - F4 closed (D2-065). Not yet: iron, bronze, knowledge of places, apprenticeship as a relationship, hints in traded objects.
+
+## 10. Techniques the civilisation layer will need (D2-089; added as their slices land)
+
+Each is a technique carried by people (found by practice in the adjacent possible, copied from the best, lost by small groups -
+D2-062), never an unlock: **masonry** (dressing and laying stone: footings, stone walls, towers - found by quarriers who build), **carpentry**
+(joinery, framing, wheels, ladders, boats - found by builders), **charcoal burning** (wood smouldered in a clamp - found by smiths),
+**iron smelting** (bog and rock ore in a bloomery - needs charcoal burning and copper working), **boatbuilding** (planking - needs
+carpentry, found by fishers), **sailing** (found by those who go out in boats), **fighting traditions** (shield wall, archery - spread like
+other knowledge among those who train and fight, `23`). The building page shows which technique a structure needed and who carried it.

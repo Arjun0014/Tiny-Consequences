@@ -5,6 +5,8 @@
 Active development is **TC2** (`unity/TinyConsequences2`, `tc2/`, `docs/tc2/`). The Defold sections below
 describe the **legacy TC1** game: research material only, never modified or staged in `[tc2]` commits.
 TC2's durable memory is `docs/tc2/` - start with `docs/tc2/NEXT_SESSION_PROMPT.md`.
+Standing direction since 7 Oct 2026 (D2-089): TC2 is an autonomous medieval civilisation inside a living miniature planet
+(`docs/tc2/20_CIVILISATION_DEPTH.md`, roadmap `docs/tc2/25_CIVILISATION_ROADMAP.md`).
 
 **Compaction recovery protocol (mandatory).** If the context was compacted, summarised, reset or resumed
 with missing reasoning: DO NOT CODE YET. (1) read `docs/tc2/NEXT_SESSION_PROMPT.md`; (2) `docs/tc2/SESSION_HANDOFF.md`;

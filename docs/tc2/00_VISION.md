@@ -1,5 +1,11 @@
 # TC2-00 — Vision: Tiny Consequences 2.0
 
+> **Standing direction (D2-089, 7 Oct 2026)**: TC2 is an *autonomous medieval civilisation inside a living miniature planet* - the
+> system breadth and readability of a game like Age of Empires, with no player giving orders: the agents themselves play the
+> civilisation game, and every building, road, army, ship, mine, wall, workshop and kingdom arises from simulated need, knowledge,
+> resources, labour, politics and history. Fewer, deeper people; richer settlements; more visible civilisation. See
+> `20_CIVILISATION_DEPTH.md` and `25_CIVILISATION_ROADMAP.md`. The planet itself remains half the game.
+
 ## The promise (from the player's chair)
 
 I see a beautiful tiny world turning in space: oceans, weather, forests, ice at the poles, the glow of

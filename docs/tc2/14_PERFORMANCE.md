@@ -64,3 +64,10 @@ and step. Planet systems must stay below ~25% of that.
 - **DEEP (F8)**: a step's cost grows with what happens in it (trips, births, deaths, news are still made at their rate); only the
   per-day polling shrinks. At saturation villages became 2.3x cheaper at K = 12 and the planet (~157 ms a world year) became a quarter
   of the time: both must shrink for Ancient and Deep time.
+
+## 6. Population tiers (D2-089)
+
+Depth before numbers: build quality at tier A (~100-500 people), then B (~1,000), C (~3,000), then stress upward. Per tier measure world
+years a second, cost per person-day, relationships, economy, military, structures, history size, rendering, memory and the Web build.
+Structures never get a per-frame or per-day update of their own (decay is read from time; upkeep and damage are works and events); a
+force marches as scheduled movement; new per-day work is indexed per settlement and profiled at 30 settlements.

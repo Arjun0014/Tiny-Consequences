@@ -177,3 +177,13 @@ keep their proportion to the globe; hills, gullies and beaches are drawn at thei
 shell sits 650 x GeoScale m up (on a fixed 650 m it stood out past a small planet's limb); the terrain quadtree stops at the same finest
 quads (`TerrainLod.MaxLevel` = 7 + round(log2 GeoScale)); the haze's top and the sky's change to space go with R; the tilt toward the
 horizon reaches 0 at 0.9 R. `?radius=` (and shots `--radius`) make worlds of other sizes; a saved world keeps its own.
+
+## 12. The civilisation kit (D2-089)
+
+Every structure kind of `21` gets a distinct, readable model in one miniature art direction (low/moderate polygons, strong silhouette,
+good materials), made by headless Blender (`tc2/art/kit.py`, Claude has permission to create them): homes in material and wealth tiers
+and building traditions; workshops, granaries, barns, smithies, mills, markets, halls, training grounds, barracks; fortification pieces
+(ditch, bank, palisade stretches and gates, wooden towers, stone wall pieces, towers, gatehouses, keep parts); economy props (carts,
+barrels, crates, woodpiles, ore and stone piles, furnaces, mine entrances, quarry faces); maritime (dugout, fishing boat, cargo boat,
+sailing ship, dock modules); and more nature (tree silhouettes, shrubs, rocks, reeds, crops). Visible labour (chopping, carrying,
+quarrying, hammering, training, marching, sailing) is drawn only while the simulation says it happens.

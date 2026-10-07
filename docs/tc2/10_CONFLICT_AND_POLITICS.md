@@ -112,3 +112,9 @@ same choices at the lived rate (measured, as visits and trade are). Long runs ar
   taking, blows, refused amends, bands and raids. Carried forward: leaders, alliances, captives, gates and stone walls, multi-
   village bands, beasts as loot, the violence rate, the view of lordships and bands.
 
+
+## 13. Civilisation depth (D2-089)
+
+Force, fortification, war and sieges are designed in `23_MILITARY_AND_WAR.md` (fighters as persistent people, arms as goods, training,
+the cost of service, campaigns as logistics, fortification progression, sieges); governance - leaders, succession, obligations,
+administrative reach, rebellion, fragmentation - is roadmap phase C10 (`25`). This doc's §§1-12 remain the foundation.

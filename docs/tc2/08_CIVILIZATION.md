@@ -110,3 +110,10 @@ regular fair; "fortified" if defences stand.
 ## 6. Phase
 F3 (layout, construction, economy basics), F5 (exchange, migration, founding). F0: settlements as a few
 place nodes with granary and woodstore, fields by season, and trips between neighbours.
+
+## 7. Civilisation depth (D2-089)
+
+From 7 Oct 2026 the target is an autonomous medieval civilisation (`20_CIVILISATION_DEPTH.md`). Settlements as economies - structures
+of many kinds, works by need, workplaces, morphology, specialisation - are designed in `21_SETTLEMENT_ECONOMY.md`; materials and their
+chains in `22`; transport, roads by use and the sea in `24`; the order of work in `25_CIVILISATION_ROADMAP.md`. Sections 1-6 above stay
+true; §1's layout and building state machine are realised there.

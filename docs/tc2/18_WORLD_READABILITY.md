@@ -125,3 +125,10 @@ falling) and each view must read without the HUD.
 
 The UI (top buttons, History Book, inspector) still resembles development panels: once the world's legibility stabilises it gets a
 full art pass - it must not ship as debug UI.
+
+## 9. The civilisation made visible (D2-089)
+
+The C-phases (`25`) make this doc's requirement larger, not smaller: lumber cut and woods thinned, quarry faces and stone piles, smithy
+smoke and the smith at work, training grounds in use, roads worn by use (replacing roads drawn by distance), markets, walls and gates,
+docks and boats, forces on the move, ruins, battle damage, recovering woods - each drawn from state when its slice lands, judged at the
+orbit, region, village and street views across ages.

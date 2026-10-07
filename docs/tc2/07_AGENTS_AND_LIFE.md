@@ -152,3 +152,21 @@ People with identity, households, homes, analytic hunger/energy, health; generat
 body (sleep, eat), work (fields by season, wood), social (visit), travel (trips to a neighbouring
 village and back); demography (deaths, marriages, conception, scheduled births); the space-time index
 and the journey interrupt; why codes; history events for births, deaths, marriages, trips interrupted.
+
+## 9. The person page (D2-089: non-negotiable; C12, built slice by slice)
+
+Clicking a person shows an actual person - never "Villager #183" - and makes it possible to follow one life end to end. Sections, each
+filled only from state and history (no invented prose):
+- **Identity**: name, age, sex, birthplace, current home, household; parents, partner, children, siblings and kin.
+- **Now**: where, doing what, going where, and **why** (the decision's code and its argument, read from state); health, hunger and
+  reserves, wounds, sickness; what they carry and hold.
+- **Work**: roles read from this year's hours (farmer, woodcutter, smith, quarrier, herder, fisher, trainee ...), skills, work history,
+  the workplace and household they work for.
+- **Knowledge**: techniques and proficiency, places and deposits their village knows through them, who taught them, whom they teach.
+- **Social**: friends and rivals (when relationships exist), reputation (known deeds), debts and obligations, loyalties, grievances
+  held, leader or lord, cultural identity.
+- **Force**: training, fights and wounds (from deeds), band, arms.
+- **Economy**: the household's home, stores, animals, tools; their production; trades they carried.
+- **History**: birth, marriages, children, migrations, work, discoveries, buildings they led or worked on, raids and fights, famines,
+  sicknesses and disasters survived - each a history record with its causes.
+Roles and labels are derived; the page writes nothing.

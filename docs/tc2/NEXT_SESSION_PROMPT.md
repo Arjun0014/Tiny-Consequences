@@ -96,6 +96,14 @@ fields is 0.17 of the globe (TC1's 0.16); mature worlds of 2,000-7,100 people in
 D2-084 on 6 km began: villages keep their shape (D2-086), homes the sea takes are lost and one shore serves sim and view (D2-087,
 D2-088), people readable at the village view. Next: SESSION_HANDOFF "Next" (farmland, rivers, settlements as places, wildlife, scars).
 
+**Direction from Arjun (7 Oct 2026, D2-089) - the standing direction**: TC2 is an *autonomous medieval civilisation inside a living
+miniature planet* - the system breadth and readability of a game like Age of Empires (towns, buildings with purposes, workers, roads,
+mines, farms, docks, fighters, walls, kingdoms, wars, trade) with no player giving orders: the agents play the civilisation game.
+Fewer, deeper people (dev worlds 100-500); every structure, road, army, ship, mine, wall and kingdom arises from simulated need,
+knowledge, resources, labour, politics and history (the ten questions, `20` §2); the person page is non-negotiable; presentation develops
+with the simulation (D2-084). Read `20_CIVILISATION_DEPTH.md` (audit, architecture), `21`-`24` (settlement economy, materials, force,
+transport and sea) and `25_CIVILISATION_ROADMAP.md` (C1-C13; **the current slice is C1 "the working town"**, §2).
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

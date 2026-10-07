@@ -2123,3 +2123,47 @@ detail and exaggeration as before) and the simulation asks `Shore.Dry` - the dra
 for every new home's lot (`Homes.FreeLot`) and for the homes and camps the sea takes (`Homes.SeaTook`).
 **Evidence.** 179 tests; fresh 300-year worlds of seeds 42 and 7 (`tc2/out/scale/r6000_s{42,7}_shore`, shots `tc2/out/shots/shore1`): no
 lived-in home in the water; what stands in the shallows are the ruins of homes the sea took.
+
+## D2-089 — 2026-10-07 — Direction: an autonomous medieval civilisation inside a living miniature planet (a standing direction)
+
+**Context.** Arjun (7 Oct 2026), a major direction update: TC2 is not "mostly complete simulation systems that now need prettier
+rendering". The required scope is an autonomous medieval civilisation game played by its own agents inside a living geological and
+ecological planet, with the *system breadth and visual readability* of a game like Age of Empires as the quality bar (settlements to
+towns, buildings with distinct purposes, workers gathering, roads, mines, farms, docks and boats, fighters training, fortifications
+evolving, kingdoms, armies, wars, damage and rebuilding, trade, resources constraining expansion) - with no player giving orders:
+every building, road, army, ship, mine, wall, workshop and kingdom arises from simulated need, knowledge, resources, labour, politics
+and history. Not a clone: no assets, names, factions, tech trees, UI or exact mechanics copied.
+**Audit (`20` §4).** TC2 has strong primitives - persistent people and households, calibrated ACTIVITY/COARSE/DEEP layers, techniques
+carried by people, construction by labour and wood, deeds, the watch, blows, raids, the palisade, tribute, history with causes - and
+almost no economic geography: one store per village, three village works kept as bits, no workplaces, no transport, no roads (roads are
+drawn between every pair of villages within 4.5 km whatever their use), no deposits but copper, and a land that people use without
+changing it (**woodcutting removes no forest and fields clear none** - the view hides trees under fields; timber has no source and no
+shortage is possible). The person inspector is one text box; no structure can be clicked.
+**Decision.** (1) A standing direction, documented in `20_CIVILISATION_DEPTH.md` (target, the anti-theatre test of ten questions,
+population tiers, the audit, the architecture of shared primitives) with `21_SETTLEMENT_ECONOMY.md` (structures, works by need,
+workplaces and roles, morphology, specialisation read after the fact, culture in the built form, inspectors),
+`22_MATERIALS_AND_RESOURCES.md` (source -> extraction -> transport -> processing -> use -> scarcity for every material; deposits from the
+planet's geology, known only by seeing; stores with capacity; human impact on the land as real state), `23_MILITARY_AND_WAR.md`
+(fighters are persistent people, arms as goods, roles that emerge, training, the cost of service, escalation from state, campaigns as
+logistics, fortification progression, sieges) and `24_TRANSPORT_AND_MARITIME.md` (carrying cost in every choice, animals, sleds,
+carts, roads by use, crossings, boats as built objects, ports, communication by people walking). (2) **Population philosophy**: fewer,
+deeper people; development at tier A (100-500), testing at B (500-1,500), the first mature target C (1,500-3,000), more where land,
+resources, history and performance allow; no artificial cap. (3) **Architecture: primitives, not features** - structures as one table
+of kinds with one state machine; works chosen by need with their causes; materials in real units with stores; deposits discovered by
+people; workplaces and roles read from hours; transport and route use; force as people, arms and skill; authority from prestige and
+tribute; transmitted culture; land use as planet state; inspection pages - each lived at both resolutions, saved, hashed,
+deterministic, traced in history (`20` §5). (4) **Names describe what exists** (hamlet ... capital; tribute ... kingdom); they unlock
+nothing; a kingdom holds while its mechanisms do. (5) **Scarcity is physical** (`20` §7): conflict must become a rational possibility
+and peace must stay possible; never manufactured. (6) **Roadmap** `25_CIVILISATION_ROADMAP.md`: C1 structures and workplaces -> C2
+materials from the land -> C3 professions and chains, C4 transport and roads -> C5 mining and metallurgy; C6 force -> C7 fortification ->
+C8 war and logistics; C9 maritime; C10 governance; C11 culture; C12 inspectors; C13 historical city evolution; W (legibility) and P
+(performance tiers) alongside; F9-F11 after. (7) **The first slice is C1 "the working town"** (`25` §2): structures with function (well,
+granary with real capacity), timber from real woods, stone quarried and carried, the smithy, the training ground, market and gates, then
+a pressure premise - each sub-slice committed with tests, runs, shots and docs. (8) D2-084 stands and grows: every system is shown in
+the picture with distinct kit models (headless Blender) in one miniature art direction; activity drawn only when the simulation says it
+happens. (9) Method unchanged: no design bible without code; no subagents; the machine at ~50 %; docs are the memory.
+**Consequences.** The world's laws change in ways that move COARSE baselines (timber from the forest, workplaces taking labour): each
+such change is its own decision with long-run evidence on several seeds and both resolutions. The remaining look slices of D2-084
+(farmland, rivers, wildlife, scars, orbit) interleave with the C-slices instead of preceding them. The person, building and settlement
+pages are built slice by slice (the person page is non-negotiable).
+**Invalidation.** None expected for the direction; individual numbers (loads, rates, capacities) are tuned with evidence.
