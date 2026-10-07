@@ -16,7 +16,8 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
   the one unreportable stretch, shortened 7.0 -> 5.6 s) (D-232); `npm run deploy:wavedash` pushes a playtest build with the
   key from `.env`, never publishing (D-233). Checks: sim 210/211 (the one failure pre-existing since S25 part 4, see the
   handoff), web 11/11, lint clean; the release package probed as a player (start-up 10.4 s locally, was 14.1 s), the Wavedash
-  glue, wheel and phone checks.
+  glue, wheel and phone checks. **Wavedash: playtest build #3 `mn7f74c4rtzkhk62a22wxm8f0d8fr66g` pushed, not published**; on
+  Wavedash itself the shell's percentage climbed through the download (1 -> 45%), 70% and on to 100%, then the game showed.
 
 - **SESSION 25 part 5 (5 Oct 2026, ~07:15-07:45 IST): the mouse wheel zooms on Wavedash (D-227).** The Wavedash SDK's own `wheel`
   listener on the window stopped Chrome/Safari sending the engine its old `mousewheel` event; the page now hands each real wheel to

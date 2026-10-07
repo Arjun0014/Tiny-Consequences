@@ -3,8 +3,18 @@
 TC1 only (Defold). TC2 (`unity/`, `tc2/`, `docs/tc2/`) belongs to another session in the same folder - never touched or staged.
 
 ## FINAL STATE
-- main, committed (see `git log -1`). Wavedash: a playtest build pushed with `npm run deploy:wavedash` (build id in
-  out/wavedash_last_push.json and below) - NOT published; Arjun playtests it, then publishes on wavedash.com if he likes it.
+- main, committed (see `git log -1`). Wavedash: playtest build #3, build id `mn7f74c4rtzkhk62a22wxm8f0d8fr66g` (from a9574b7),
+  https://wavedash.com/playtest/tiny-consequences/85188015-b52e-41a4-9113-a83192308222 - NOT published; Arjun playtests it, then
+  publishes on wavedash.com (or `wavedash publish <build id>`) if he likes it.
+- On Wavedash itself (the in-app browser, a guest session): the shell first shows its own "Action required: your browser may be
+  using the lower-power GPU" notice on this dual-GPU laptop and does not create the game frame until it is dismissed ("Skip for
+  now") - 0% until then is the shell waiting, not the game. Then the shell's percentage climbed 1% -> 45% in 4.5 s (the download
+  from its CDN), 70% at the engine's first frame, and on through 77 ... 98, 100%, the loading screen gone and the game shown (the
+  title: "Playing as craftheron444" - the SDK's name). That pane was off screen, so its frames ran only when a screenshot forced
+  them: the world phase crawled there. Reproduced faithfully instead (`out/s26/shell_sim.mjs`: the package in a cross-origin
+  frame at opacity 0 until init, as the shell keeps it, a stand-in SDK posting to the parent): 33 progress messages, init at
+  11.8 s hidden vs 11.6 s shown - the hidden frame is not throttled. A fresh browser meets a sign-in wall and the CDN embed URL
+  answers 401 without the wavedash.com session, so the uploaded build was only playable here through that guest session.
 - What changed (DECISIONS D-228-D-233):
   - HUD (D-228): `game/ui/layout.lua` (corners, UI scale k on small windows, room per region); hud.gui_script rewritten for
     it; newsfeed/actions/tutorial/sound_panel compact; inspector of measured lines with folds and Follow; menus scale.
