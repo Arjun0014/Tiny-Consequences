@@ -413,6 +413,8 @@ namespace TC2.Core.Places
             });
             Structures.Plan(w, sid);   // (their first work: a well, laid out at once - C1.1)
             Woods.Choose(w, sid);      // (and where they will fell their wood: C1.2)
+            Mining.Look(w, sid);       // (and the ore they saw round their new site: C5.3)
+            { ref var sf = ref w.Settlements.Get(sid); if (sf.OreCell != 0 || sf.FeCell != 0) w.Metrics.FoundedByOre++; }
             w.Routes.Invalidate();
             w.Wild.Survey(sid);
             w.SettlementSys.ScheduleFirstDaily(sid);
@@ -471,11 +473,15 @@ namespace TC2.Core.Places
             var w = _w;
             if (!w.Settlements.Exists(sid)) return;
             w.Hazards.CellsWithin(w, at, Sites.LookRadius, _cells);
-            int best = -1; double bq = 0;
+            // ore their smiths want and know none of within reach, showing in sight: a place near it is worth more (C5.3)
+            int ore = Mining.OreInSight(w, sid, _cells, out byte oreKind);
+            int best = -1; double bq = 0; bool byOre = false;
             for (int i = 0; i < _cells.Count; i++)
             {
                 double q = Sites.Quality(w, _cells[i], _scratch);
-                if (q > bq) { bq = q; best = _cells[i]; }
+                bool near = ore >= 0 && q > 0 && Vec3d.ArcDistance(w.Planet.Grid.Center[_cells[i]], w.Planet.Grid.Center[ore], w.Planet.Radius) <= Mining.SitePull;
+                if (near) q *= Mining.SiteBonus;
+                if (q > bq) { bq = q; best = _cells[i]; byOre = near; }
             }
             Stone.Saw(w, sid, person, at);   // (and what rock shows there: C1.3)
             ref var s = ref w.Settlements.Get(sid);
@@ -488,7 +494,9 @@ namespace TC2.Core.Places
                 {
                     Kind = HistoryKind.Scouted, Time = w.Now, Cell = best, Settlement = sid, Subject = EntityRef.Settlement(sid),
                     Object = person != 0 ? EntityRef.Person(person) : EntityRef.None, Magnitude = (float)bq, RootKind = RootKind.People,
+                    ArgA = byOre ? oreKind : 0,   // (good land by the ore they want: C5.3)
                 });
+            if (byOre && bq > known + 0.05) w.Metrics.ScoutedForOre++;
         }
     }
 }

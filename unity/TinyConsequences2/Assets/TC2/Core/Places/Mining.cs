@@ -176,6 +176,40 @@ namespace TC2.Core.Places
             return w.Deposits.Add(new Deposit { Id = w.Deposits.Count + 1, Cell = c, Kind = kind, Ore = OreOf(w, c, kind), Found = w.Now, By = sid });
         }
 
+        // ---------------------------------------------------------------- places by their ore (C5.3)
+
+        /// <summary>m: a site this near ore its village lacks is worth more to its people (a short walk to the work).</summary>
+        public const double SitePull = 1000.0;
+        /// <summary>How much more such a site is worth.</summary>
+        public const double SiteBonus = 1.5;
+
+        /// <summary>
+        /// A village lacks ore of a kind: someone of it smelts it and its tools or arms want it, but it knows no body within its reach.
+        /// </summary>
+        public static bool Lacks(in Settlement s, byte kind)
+        {
+            if (CellOf(in s, kind) != 0 || !s.Inhabited) return false;
+            if (kind == Iron) return s.BestIron >= Smelter && Forge.IronWanted(in s) > 0;
+            return s.BestMetal >= Smelter && Forge.CopperWanted(in s) > 0;
+        }
+
+        /// <summary>
+        /// What a village's scout, looking over `sight`, sees of the ore their village lacks: the first such body (a deposit kept from then),
+        /// or -1. Its kind in `kind`.
+        /// </summary>
+        public static int OreInSight(World w, int sid, List<int> sight, out byte kind)
+        {
+            kind = 0;
+            ref var s = ref w.Settlements.Get(sid);
+            for (byte k = Copper; k <= Iron; k++)
+            {
+                if (!Lacks(in s, k)) continue;
+                for (int i = 0; i < sight.Count; i++)
+                    if (Seen(w, sid, sight[i], k) >= 0) { kind = k; return sight[i]; }
+            }
+            return -1;
+        }
+
         // ---------------------------------------------------------------- knowing it
 
         /// <summary>The copper body the village knows (-1 none).</summary>

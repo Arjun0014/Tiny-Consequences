@@ -44,7 +44,11 @@
   CopperWanted/IronCan/CopperCan/IronArms`, `Charcoal.PerKgIron/IronFrom/BurntIron`; the COARSE smith's labour day (AgentSystem, before the
   fields); kit `bog_pits`; headless `iron:` line. Runs `tc2/out/civ/s{42,7}_c52c` (`_c52b` was the narrow stream-only bog rule), shots `iron1`
   (`--village 6 --views work19`).
-- **Next**: **C5.3 distant work** - when ore or wood is far, smelt where it is (a bloomery at the bed or the woods: carry iron, not ore and
+- **C5.3a places by their ore done (D2-103)**: `Mining.Lacks/OreInSight/SitePull/SiteBonus`, `Migration.Look` (the pull, `Scouted` ArgA),
+  `Migration.FoundAt` calls `Mining.Look`; metrics `ScoutedForOre/FoundedByOre`; headless `ore sites:` line. Runs `tc2/out/civ/s{1..7,42}_c53a`
+  against `_c52c` (seeds 1-6 added for the comparison; `s{7,42}_c53x` = the pull switched off: identical).
+- **Next**: **C5.3b** - iron (and charcoal) as trade goods first (`Trade` goods: a village without bog ore or the bloomery buys iron), then
+  work at a distance: when ore or wood is far, smelt where it is (a bloomery at the bed or the woods: carry iron, not ore and
   charcoal), stints of days with a camp at the site, households moving to steady work there (a work hamlet founded by its work); then C5.4
   claims (a worked bed or body known as a village's, digging it a deed; news of beds by traders). To check: whether the bloomery holds in
   small villages over long runs (a complex technique); copper ore is still dug where iron serves only some. Seen before: people walking routes across cells the

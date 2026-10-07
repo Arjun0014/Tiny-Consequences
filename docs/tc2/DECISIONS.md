@@ -2548,3 +2548,24 @@ for 16 % of the people, 1,205 of 2,493 arms iron; charcoal 133 t from 666 t of w
 dug out, 98.7 t of bog ore, **12.3 t of iron**: iron tools for 61 %, 715 of 813 arms iron; charcoal 199 t from 994 t of wood (5 % of all
 felling); people 2,278. Seed 11 (no copper smiths): beds known, no iron. Voton (seed 7) saw bog ore in year 11, opened pits only when the
 bloomery reached it (117) and has dug out bed after bed since, each 1.4-1.9 km out. Shots `tc2/out/shots/iron1` (Voton's pits by the shore).
+
+## D2-103 — 2026-10-07 — Places by their ore: scouts value land by ore their village lacks; founders know the ore round their site (C5.3a)
+
+**Context.** `25` §4 (the resource town): a deposit away from the farming centre should draw people - workers travel, a camp, a settlement.
+Until now a village knew ore only within 2 km of its anchor; scouts looked at land only for warmth, water and free arable land; a new
+village learnt the ore round it only as its people happened to walk there.
+**Decision.** (1) **A village lacks ore** of a kind when someone of it smelts that metal, its tools or arms want it, and it knows no body
+within reach (`Mining.Lacks`). (2) **Scouts see ore**: when a scout of such a village looks round where they stand, ore of the lacking kind
+in sight is seen (a deposit kept from then) and a site within 1 km of it is worth half as much again (`Mining.SitePull`, `SiteBonus` 1.5);
+the place is told as "good land ..., by bog ore their smiths want" (`Scouted`, ArgA the kind) - households leave for the best place known
+by the existing rules (D2-045): no forced founding, no "mining town" flag. (3) **Founders look**: every new village's founders look over the
+land within 1 km of their site, as the first villages' do (`Mining.Look` in `Migration.FoundAt`), so a place founded by its ore knows it from
+the first day. Counters `ScoutedForOre`, `FoundedByOre`; headless `ore sites:` line. Sim version 44.
+**Evidence.** 234 tests (`OreSitesTests` 2: wanting iron raises the same site from 0.41 to 0.62 and is told as land by the ore; a new
+village's founders know the bog ore 0.4 km from their site). Eight seeds, 300 years DEEP, before (C5.2b) and after: seeds 1, 3, 5, 6 identical
+(no smelting there), seed 2 8,621 -> 8,658, seed 4 10,255 -> 10,581, seed 42 7,570 -> 6,360 and seed 7 2,278 -> 1,835 (more famines on their
+own trajectories: 49 -> 98 and 80 -> 90). Which seeds get iron is contingent: seed 2 found the bloomery before and not after (9.1 t -> 0),
+seed 4 the reverse (0 -> 20.6 t, iron tools for 32 % of its people). Land was told as by the ore 7 times on seed 4 and 9 on seed 7; 13 of 23
+villages founded on seed 4 knew ore round their site.
+**Not yet (C5.3b).** Work at a distance: smelting at the bed or the woods (carry iron, not ore and charcoal), stints with a camp at a far
+site, households moving to steady work; iron and charcoal as trade goods (the hamlet's living).

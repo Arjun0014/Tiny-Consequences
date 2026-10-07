@@ -45,7 +45,9 @@
   from 109 t of wood; 225 tests; shots `char1`. **C5.2b iron done (D2-102)**: bog ore on wet flats (forming again in 40 years), pits, the
   bloomery found by copper smiths, 8 kg ore + 15 kg charcoal a kilo, iron tools (2 kg a head, 1.4x) replacing copper, iron arms 1.15x; a
   COARSE smith now works a labour day at the forge (year parity); seed 7: 12.3 t of iron, iron tools for 61 %; 232 tests; shots `iron1`.
-  **Next: C5.3 distant work** (smelting at a far bed or the woods, stints with a camp, a work hamlet), C5.4 claims (`25` C5 plan).
+  **C5.3a places by their ore done (D2-103)**: scouts of a village lacking ore value land by ore they see (1.5x), founders know the ore round
+  their site; eight seeds compared (no systematic change; iron's arrival contingent: seed 2 lost it, seed 4 gained 20.6 t); 234 tests.
+  **Next: C5.3b** (iron and charcoal traded; smelting at the bed or the woods; stints with a camp), C5.4 claims (`25` C5 plan).
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

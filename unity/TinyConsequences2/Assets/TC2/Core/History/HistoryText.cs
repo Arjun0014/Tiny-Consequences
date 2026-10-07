@@ -106,7 +106,7 @@ namespace TC2.Core.History
                                        : "The woods near " + subj + " are cut back: its people now fetch their wood from " + F(e.Magnitude / 1000.0, "0.0") + " km away.";
                 case HistoryKind.WorkBegun: return "The people of " + subj + " began " + WorkWhy((byte)e.ArgA, e.ArgB) + ".";
                 case HistoryKind.PartySetOut: return e.ArgA + " households of " + subj + " (" + e.ArgB + " people) set out to make a new home.";
-                case HistoryKind.Scouted: return "Someone of " + subj + " saw good land near " + place + ".";
+                case HistoryKind.Scouted: return "Someone of " + subj + " saw good land near " + place + (e.ArgA == TC2.Core.Places.Mining.Iron ? ", by bog ore their smiths want." : e.ArgA == TC2.Core.Places.Mining.Copper ? ", by copper their smiths want." : ".");
                 case HistoryKind.HouseholdMoved: return "The " + subj + "s left " + place + " for " + obj + ".";
                 case HistoryKind.HerdHuntedOut: return "The " + obj + " herd near " + place + " was hunted out (" + F(e.Magnitude, "0") + " at its most).";
                 case HistoryKind.ReliefSent: return "In the famine " + subj + " sent grain to " + obj + " (" + F(e.Magnitude, "0") + " days' food for one).";

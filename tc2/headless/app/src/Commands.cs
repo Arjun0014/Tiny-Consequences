@@ -279,6 +279,7 @@ namespace TC2.Headless
                         int pop5 = w.LivingPeople();
                         Console.WriteLine("iron: " + knowBog + " of " + villages5 + " villages know bog ore (" + beds + " beds seen, " + bedsSpent + " dug out), " + pits + " pits; " + smelt + " villages smelt iron; bog ore dug " +
                                           F(w.Metrics.BogOreDug / 1000.0, "0.0") + " t, iron smelted " + F(w.Metrics.IronKg, "0") + " kg; iron tools for " + F(pop5 > 0 ? 100.0 * share / pop5 : 0, "0") + " % of the people (" + F(iron, "0") + " kg); iron arms " + F(ironArms, "0") + " of " + F(arms5, "0"));
+                        Console.WriteLine("ore sites: land told as by the ore wanted " + w.Metrics.ScoutedForOre + " times; villages founded knowing ore round their site " + w.Metrics.FoundedByOre + " of " + w.Metrics.Foundings);
                     }
                     // charcoal (C5.2a)
                     {
