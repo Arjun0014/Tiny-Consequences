@@ -88,6 +88,14 @@ try {
   const s1 = await state();
   check('time runs at 1 h/s', s1.now > s0.now, `now ${s0.now} -> ${s1.now}, achieved ${s1.achieved}`);
   await shot('5_close_running', 500);
+  // the person page (C12.1) on a fresh world: the oldest living person, now and their family
+  await cmd('speed 0');
+  await cmd('person oldest 0'); await shot('5b_person', 2500);
+  await cmd('person oldest 1'); await shot('5c_person_family', 2500);
+  await cmd('person oldest 2'); await shot('5d_person_work', 2500);
+  // the settlement page (C12.2): the biggest place, its overview and its land
+  await cmd('place big 0'); await shot('5e_place', 2500);
+  await cmd('place big 3'); await shot('5f_place_land', 2500);
 
   // save to IndexedDB, reload, the same world continues
   await cmd('speed 0'); await page.waitForTimeout(800);

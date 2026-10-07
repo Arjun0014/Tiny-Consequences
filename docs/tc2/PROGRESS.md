@@ -50,8 +50,9 @@
   **C5.3b iron traded done (D2-104)**: iron a trade good valued by each village's lack; smiths make for buyers known from real sales;
   seed 7: 3.4 t of iron traded, trade gain x3.6, markets 0 -> 2; 235 tests. **C5.4 whose ore done (D2-105)**: worked bodies belong to
   their workers; others dig only in pressing need or with a wrong held, and each stint is a taking the owners know; on seed 7 an ore taking
-  caused a taking-back of grain within a feud; 238 tests; `run --events KIND`. **Next**: C5.3c work at a distance, or the browser check of the
-  person page and the new works (SESSION_HANDOFF "Next").
+  caused a taking-back of grain within a feud; 238 tests; `run --events KIND`. **C12.2 the settlement page done (D2-106)**: `Core/History/
+  Gazetteer` (founding, people and homes, food, works, land and making, knowledge, neighbours and wrongs, history), HUD from a person's card
+  or a structure's page, headless `place`; 240 tests. **Next**: SESSION_HANDOFF "Next".
 - **Session 5 (7 Oct 2026, from 06:40 IST, in progress)** - Arjun (7 Oct, D2-085): after D2-083, **stop before D2-084's polish and
   reconsider the planet's physical size** (D2-007's 10 km reopened). D2-083 closed and committed (22cad8d: 177 tests, COARSE hashes
   unchanged).

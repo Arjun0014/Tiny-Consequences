@@ -101,6 +101,8 @@ namespace TC2.Game
         /// <summary>The top of a model's part painted in one colour (the smithy's chimney), or the model's top.</summary>
         static Vector3 PartTop(Mesh mesh, Color part)
         {
+            // (a mesh not imported readable cannot be read in a player - the Web build: its top centre then; smithy.fbx is imported readable)
+            if (!mesh.isReadable) return new Vector3(mesh.bounds.center.x, mesh.bounds.max.y, mesh.bounds.center.z);
             var v = mesh.vertices; var c = mesh.colors;
             float top = float.MinValue; Vector3 at = Vector3.zero;
             for (int i = 0; i < v.Length; i++)

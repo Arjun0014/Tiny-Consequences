@@ -39,7 +39,7 @@ namespace TC2.Core.History
             ref var p = ref w.People.Get(pid);
             var sb = new StringBuilder();
             int born = BornAt(w, pid);
-            sb.Append("Born in ").Append(Year(p.Born)).Append(born != 0 ? " in " + Place(w, born) : "")
+            sb.Append(p.Born < 0 ? "Born " + (-p.Born / SimTime.Year) + " years before the land's first year" : "Born in " + Year(p.Born)).Append(born != 0 ? " in " + Place(w, born) : "")
               .Append(p.Mother != 0 ? " to " + Name(w, p.Mother) + (p.Father != 0 ? " and " + Name(w, p.Father) : "") : ", among the first people of the land").Append(".\n");
             if (!p.Alive) { sb.Append("Died in ").Append(Year(p.Died)).Append(p.DeathEvent != 0 && w.History.TryGet(p.DeathEvent, out var de) ? ": " + HistoryText.Line(w, de) : ".").Append('\n'); return sb.ToString(); }
             sb.Append("Lives in ").Append(Place(w, p.Home));

@@ -41,6 +41,8 @@ namespace TC2.Headless
                         return Commands.Inspect(args);
                     case "person":
                         return Commands.PersonPage(args);
+                    case "place":
+                        return Commands.PlacePage(args);
                     case "planet":
                         return Commands.Planet(args);
                     case "climate":

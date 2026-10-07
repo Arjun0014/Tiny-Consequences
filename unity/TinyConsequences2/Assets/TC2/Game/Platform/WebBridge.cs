@@ -73,6 +73,15 @@ namespace TC2.Game
                         if (hud != null && pid != 0 && w.People.Exists(pid)) hud.ShowPerson(pid, a.Length > 2 ? int.Parse(a[2], inv) : 0);
                         break;
                     }
+                case "place":
+                    {
+                        // the settlement page (C12.2): "place SID [TAB]", or "place big" - the place with the most people
+                        var hud = Object.FindFirstObjectByType<Hud>(); var w = Host.World; int sid = 0;
+                        if (a.Length > 1 && a[1] != "big") sid = int.Parse(a[1], inv);
+                        else { int most = -1; for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id)) { ref var s = ref w.Settlements.Get(id); if (s.Inhabited && s.Population > most) { most = s.Population; sid = id; } } }
+                        if (hud != null && sid != 0 && w.Settlements.Exists(sid)) hud.ShowPlace(sid, a.Length > 2 ? int.Parse(a[2], inv) : 0);
+                        break;
+                    }
                 case "off": case "on": Toggle(a[1], a[0] == "on"); break;   // tools: what a frame costs without a layer
                 case "glshadow": Sky.GlCascades = int.Parse(a[1], inv); Sky.GlShadowReach = float.Parse(a[2], inv); break;   // tools: WebGL2 shadows
                 case "hashtest": _hashTest = HashTest(); break;

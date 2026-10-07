@@ -32,6 +32,9 @@ namespace TC2.Game
         // the person page (C12.1): a person's life in sections, from the world's state and its ledger (Core/History/Biography)
         bool _personPage; int _pageTab, _pagePid = -1, _pageTabBuilt = -1; float _pageAt; string _pageText = "", _pageTitle = ""; Vector2 _pageScroll; Rect _pageRect;
         static readonly string[] PageTabs = { "Now", "Family", "Work", "Deeds", "Home", "Life" };
+        // the settlement page (C12.2): a place's founding, people, food, works, land and making, neighbours and history (Core/History/Gazetteer)
+        int _placeSid, _placeTab, _placeBuilt = -1, _placeFor; float _placeAt; string _placeText = "", _placeTitle = "";
+        static readonly string[] PlaceTabs = { "Place", "Food", "Works", "Land", "Neighbours", "History" };
         // the History Book (D2-077): ages or places on the left, a chapter's lines on the right, a line's causes under it
         int _bookTab, _era = -1, _place, _bookKey = -1, _bookYear = -1;
         long _line;
@@ -239,7 +242,8 @@ namespace TC2.Game
             bool showInsp = _selected != 0 && w.People.Exists(_selected);
             if (showInsp) Inspector(insp, w);
             _pageRect = Rect.zero;
-            if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), 60, pw, sh - 130); PersonPage(_pageRect, w); }
+            if (_placeSid != 0 && w.Settlements.Exists(_placeSid)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), 60, pw, sh - 130); PlacePage(_pageRect, w); }
+            else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), 60, pw, sh - 130); PersonPage(_pageRect, w); }
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
             Vector2 m = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / _scale;
             PointerOverUi = _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || _bookRect.Contains(m) || _pageRect.Contains(m);
@@ -298,7 +302,8 @@ namespace TC2.Game
             GUILayout.Label(sb.ToString(), _small);
             GUILayout.BeginHorizontal();
             if (GUILayout.Button(_follow == _selected ? "Stop following" : "Follow", _btn)) _follow = _follow == _selected ? 0 : _selected;
-            if (GUILayout.Button(_personPage ? "Close life page" : "Life page", _btn)) { _personPage = !_personPage; _pagePid = -1; }
+            if (GUILayout.Button(_personPage ? "Close life page" : "Life page", _btn)) { _personPage = !_personPage; _pagePid = -1; _placeSid = 0; }
+            if (p.Home != 0 && GUILayout.Button("Their village", _btn)) ShowPlace(p.Home);
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
         }
@@ -340,7 +345,44 @@ namespace TC2.Game
         }
 
         /// <summary>Opens a person's page (tools: shots of the page; a click in the world selects, the button opens it).</summary>
-        public void ShowPerson(int pid, int tab = 0) { _book = false; _selected = pid; _building = 0; _personPage = true; _pageTab = tab; _pagePid = -1; }
+        public void ShowPerson(int pid, int tab = 0) { _book = false; _placeSid = 0; _selected = pid; _building = 0; _personPage = true; _pageTab = tab; _pagePid = -1; }
+
+        /// <summary>Opens a place's page (C12.2): from a person's card, a structure's page, or the tools.</summary>
+        public void ShowPlace(int sid, int tab = 0) { _book = false; _personPage = false; _placeSid = sid; _placeTab = tab; _placeBuilt = -1; }
+
+        /// <summary>
+        /// The settlement page (C12.2, D2-106): a place a section at a time - its founding and people, its food, its works, what it takes from
+        /// the land and makes, its neighbours and the wrongs between them, its history. The text comes from Gazetteer (Core), rebuilt once a
+        /// second; nothing here writes the world.
+        /// </summary>
+        void PlacePage(Rect r, TC2.Core.Simulation.World w)
+        {
+            if (_placeFor != _placeSid || _placeBuilt != _placeTab || Time.unscaledTime - _placeAt > 1f)
+            {
+                _placeFor = _placeSid; _placeBuilt = _placeTab; _placeAt = Time.unscaledTime;
+                _placeTitle = Gazetteer.Title(w, _placeSid);
+                switch (_placeTab)
+                {
+                    case 0: _placeText = Gazetteer.Overview(w, _placeSid) + "\n" + Gazetteer.Crafts(w, _placeSid); break;
+                    case 1: _placeText = Gazetteer.Food(w, _placeSid); break;
+                    case 2: _placeText = Gazetteer.Works(w, _placeSid); break;
+                    case 3: _placeText = Gazetteer.Materials(w, _placeSid); break;
+                    case 4: _placeText = Gazetteer.Neighbours(w, _placeSid); break;
+                    default: _placeText = Gazetteer.Life(w, _placeSid, 80); break;
+                }
+            }
+            GUILayout.BeginArea(r, _page);
+            GUILayout.Label(_placeTitle, _title);
+            GUILayout.BeginHorizontal();
+            for (int i = 0; i < PlaceTabs.Length; i++) if (GUILayout.Toggle(_placeTab == i, PlaceTabs[i], _btn) && _placeTab != i) _placeTab = i;
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Close", _btn)) _placeSid = 0;
+            GUILayout.EndHorizontal();
+            _pageScroll = GUILayout.BeginScrollView(_pageScroll);
+            GUILayout.Label(_placeText, _small);
+            GUILayout.EndScrollView();
+            GUILayout.EndArea();
+        }
 
         /// <summary>
         /// A structure's page (C1.1, 21 §7): what it is and is for, how sound it is, who raised it and why, what it holds, and its history -
@@ -443,7 +485,10 @@ namespace TC2.Game
             }
             GUILayout.BeginArea(r, _box);
             GUILayout.Label(sb.ToString(), _small);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Its village", _btn)) ShowPlace(b.Settlement);
             if (GUILayout.Button("Close", _btn)) _building = 0;
+            GUILayout.EndHorizontal();
             GUILayout.EndArea();
         }
 

@@ -2609,3 +2609,28 @@ seed 2 (11, 2.7 t), none on seed 42; people 6,392 / 2,445 / 10,108 / 8,221 (C5.3
 dug at Neldthorpe's copper mine four times in years 281-285; nine days after the last, "Keithvel Drostlaes of Neldthorpe took 33 days' grain
 from the store of Thestford in the night", its recorded cause the ore taking - one strand of a feud of night takings, beatings and amends
 between them. Drikkawick dug at Brernthorpe's bog pits (seed 4), Taildvehope at Mestskouford's mine (seed 2).
+
+## D2-106 — 2026-10-07 — The settlement page: a place read from state and the ledger (C12.2)
+
+**Context.** `20` §7 and `25` C12 ask for building, settlement and polity inspectors beside the person page. C5 made a village's life much
+richer (ore known and who works it, mines, pits, hearths, charcoal, copper and iron, trade, wrongs over ore) but none of it could be read
+in one place: a village was a name on the map and a list of records.
+**Decision.** `Core/History/Gazetteer` builds a place's page, reading only: its title with a size word read from its people (a hamlet under
+50, a village, a town from 300; "an abandoned place"); its founding (by whom, and the record that sent them); its people, households and
+homes (houses, on footings, huts, camps) and its palisade; its food (fields, the last harvest, the store and its days, granaries and barns,
+rationing, the last famine and how many lived through it); its works standing with the year each was raised, the one being raised, those
+left; its land and making (wood and the woodlot, stone, copper and bog ore - the body known, how much is left, who works it - charcoal,
+metal tools of copper and iron for what share of its people, arms and how many are iron, iron sold lately); the techniques its people carry;
+its neighbours (paths and roads worn to them, traders coming, tribute paid and received, the wrongs it holds and is held to, by weight);
+its history. HUD: "Their village" on a person's card and "Its village" on a structure's page open it (tabs Place, Food, Works, Land,
+Neighbours, History; rebuilt once a second); WebBridge `place SID|big [TAB]`; the Web test shoots `5e_place`, `5f_place_land`. Headless
+`place --load SAVE [--sid N | --pick big|iron|claims]`. No state change.
+**Evidence.** 240 tests (`GazetteerTests` 2: the page from state and the ledger - its size word, its standing well, its copper and "worked by
+its people" once its mine stands, its history its records only; reading every place's page leaves the state hash and ledger unchanged).
+Seed 7 at year 300 (`tc2/out/civ/s7_c54a`): Thestford, a village of 238 - walled, its copper body worked by Neldthorpe, iron tools for most
+of its people and 93 iron arms, and the wrongs between it and Neldthorpe weighing 540 and 709 days' food.
+**The Web check (person page, C5 works).** A Web build (WebGPU, `tc2/out/webtest/c5web`) shows the person page in the browser as designed
+(tabs, close, the card beside it; 57-121 fps through the test's views); the first people now read "born N years before the land's first
+year". It also caught a fault only a player shows: the smithy's chimney top was read from its mesh, which a player cannot read unless the
+model is imported readable - console errors in the Web build since C1.4. `smithy.fbx` is now imported readable and `PartTop` falls back to
+the mesh's top centre for any mesh that is not. The settlement page joins the Web test (`5e_place`, `5f_place_land`) for the next build.

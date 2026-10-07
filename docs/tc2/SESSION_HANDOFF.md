@@ -52,8 +52,13 @@
 - **C5.4 whose ore done (D2-105)**: `Mining.WorkedBy/MayDig/Claim/Pressing/ClaimDays`, settlement `ClaimDeed/ClaimOn/ClaimAt`, history
   `OreTaken` 83, metrics `OreClaimedKg/OreClaims`; `Mining.Dig(..., pid)`; headless `claims:` line, `run --events KIND`. Runs
   `tc2/out/civ/s{42,7,4,2}_c54a`. Story: seed 7 Thestford/Neldthorpe (years 281-288; `--events OreTaken`, `--events Taken`).
-- **Next**: (1) a Web build to see the person page, the mine, the hearth and the pits in the browser (`unity.mjs configure` first: River.mat,
-  Road.mat; `webtest.mjs` shoots `9_person*`); (2) C5.3c work at a distance: when ore or wood is far, smelt where it is (a bloomery at the bed or the woods: carry iron, not ore and
+- **C12.2 the settlement page done (D2-106)**: `Core/History/Gazetteer.cs`, HUD `ShowPlace` ("Their village" on a person's card, "Its village"
+  on a structure's page), WebBridge `place SID|big [TAB]`, headless `place --load SAVE [--sid N | --pick big|iron|claims]` (`Place.cs`).
+  **Web build checked** (`tc2/out/webtest/c5web`, WebGPU): the person page renders; fixed the smithy mesh read (console errors in players).
+  The build in `tc2/web-build/web` predates the settlement page and the smithy fix - rebuild before the next browser check (10 min with
+  `--jobs 4`); River.mat/Road.mat are now committed.
+- **Next**: (1) the next Web build: check the settlement page shots and that the console is clean; (2) C5.3c work at a distance: when ore or
+  wood is far, smelt where it is (a bloomery at the bed or the woods: carry iron, not ore and
   charcoal), stints of days with a camp at the site, households moving to steady work there (a work hamlet founded by its work); then C5.4
   claims (a worked bed or body known as a village's, digging it a deed; news of beds by traders). To check: whether the bloomery holds in
   small villages over long runs (a complex technique); copper ore is still dug where iron serves only some. Seen before: people walking routes across cells the
