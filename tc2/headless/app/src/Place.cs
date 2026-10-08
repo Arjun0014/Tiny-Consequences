@@ -19,6 +19,7 @@ namespace TC2.Headless
             var w = SaveFile.Load(File.ReadAllBytes(a.Get("load")), out _);
             if (a.Has("list")) { ListPlaces(w); return 0; }
             if (a.Has("standing")) { Standing(w); return 0; }
+            if (a.Has("layout")) { Layout(w, a.Int("sid", 0) != 0 ? a.Int("sid", 0) : PickPlace(w, "big")); return 0; }
             if (a.Has("households")) { ListHouseholds(w, a.Int("sid", 0) != 0 ? a.Int("sid", 0) : PickPlace(w, "big")); return 0; }
             int sid = a.Int("sid", 0);
             if (sid == 0) sid = PickPlace(w, a.Get("pick", "big"));
@@ -70,6 +71,24 @@ namespace TC2.Headless
                                   (s.Lord != 0 ? ", tributary of #" + s.Lord : "") + (lords > 0 ? ", lord of " + lords : "") + ", line " + Architecture.Line(s.Tradition) + " roof " + Architecture.RoofName(Architecture.TraditionRoof(s.Tradition)) +
                                   " shade " + Architecture.TraditionPalette(s.Tradition) + "; huts " + huts + ", plans " + J(plan) + ", covers " + J(cover) + ", walls " + J(walls) + "; works " + works + " (" + kinds + ")" + "; households " + hl.Count + " means <1/1-1.5/1.5-3/3+ " + J(mb) + ", with cattle " + cattle + ", of 8+ " + big);
             }
+        }
+
+        /// <summary>`place --load SAVE --layout [--sid N]` (C13.1): a village's plan for plotting - its square, ring, streets, and every standing
+        /// building (kind, x, y, plan, lived in) and camp, in metres of its local frame.</summary>
+        static void Layout(World w, int sid)
+        {
+            var s = w.Settlements.Get(sid);
+            Console.WriteLine("V " + sid + " " + w.History.NameOf(EntityRef.Settlement(sid)) + " " + s.Population + " " + s.SquareX.ToString("0.0") + " " + s.SquareY.ToString("0.0") + " " + s.Wall + " " + s.WallR.ToString("0.0") + " " + (int)((w.Now - s.Founded) / SimTime.Year));
+            for (int i = 0; i < s.StreetN; i++) Console.WriteLine("S " + s.StreetAt(i).ToString("0.0000"));
+            var bl = w.BuildingsOf(sid);
+            for (int i = 0; i < bl.Count; i++)
+            {
+                var b = w.Buildings.Get(bl[i]);
+                if (Homes.Fallen(in b, w.Now)) continue;
+                Console.WriteLine("B " + b.Kind + " " + b.X.ToString("0.0") + " " + b.Y.ToString("0.0") + " " + (Architecture.Has(b.Form) ? Architecture.PlanOf(b.Form) : -1) + " " + (b.Household != 0 ? 1 : 0));
+            }
+            var hl = w.HouseholdsOf(sid);
+            for (int i = 0; i < hl.Count; i++) { var h = w.Households.Get(hl[i]); if (h.Building == 0) Console.WriteLine("C " + h.HomeX.ToString("0.0") + " " + h.HomeY.ToString("0.0")); }
         }
 
         /// <summary>`place --load SAVE --standing`: over every household of the world, quantiles of what could set one apart (D2-114 means).</summary>

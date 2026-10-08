@@ -85,7 +85,9 @@ namespace TC2.Headless
         {
             var sw = Stopwatch.StartNew();
             if (a.Has("places")) { TC2.Core.Places.Livestock.Diag = new double[4 * 4096]; TC2.Core.Places.Livestock.DiagEnds = new long[4 * TC2.Core.Places.Livestock.Causes]; TC2.Core.Places.SettlementSystem.Unrests = new long[7]; TC2.Core.Agents.AgentSystem.Hours = new double[44]; TC2.Core.Places.SettlementSystem.Harvests = new double[6]; TC2.Core.Places.Migration.Weighs = new double[8]; TC2.Core.Places.SettlementSystem.Demo = new double[10]; }
-            if (a.Has("nosea")) TC2.Core.Places.Trade.NoSea = true;   // (C9.3 against C9.2b in one binary: no voyages, no relief by sea)
+            if (a.Has("nosea")) TC2.Core.Places.Trade.NoSea = true;
+            if (a.Has("seashort")) TC2.Core.Places.Trade.SeaShort = new double[3];   // (C9.4 survey: relief by sea bound by the boats' room)
+            if (a.Has("nostreets")) TC2.Core.Places.Streets.None = true;   // (C13.1 against D2-114 in one binary: no streets laid)   // (C9.3 against C9.2b in one binary: no voyages, no relief by sea)
             string vtrace = a.Get("vtrace");   // (each village each report: people, store, famine, hunger deaths, relief in and out by land and sea, who left)
             System.IO.StreamWriter vt = null;
             if (vtrace != null)
@@ -555,6 +557,8 @@ namespace TC2.Headless
             PrintFires();
             prof?.Print();
             Forms(w);   // (how the homes and works were built: D2-114)
+            if (TC2.Core.Places.Trade.SeaShort != null)
+                Console.WriteLine("sea short: relief by sea bound by the boats' room " + TC2.Core.Places.Trade.SeaShort[1] + " of " + TC2.Core.Places.Trade.SeaShort[2] + " gifts, " + F(TC2.Core.Places.Trade.SeaShort[0], "0") + " FU more would have gone");
             if (a.Has("civ")) CivTimelines(w, a.Int("civ", 4));
             if (a.Has("civ-of")) CivTimelines(w, 1, a.Int("civ-of", 0));   // (one village's timeline by its id: C5.3)
             if (a.Has("boats"))
@@ -664,7 +668,7 @@ namespace TC2.Headless
         static void Forms(World w)
         {
             var A = typeof(TC2.Core.Places.Architecture);
-            int[] plan = new int[5], roof = new int[3], cover = new int[5], walls = new int[5]; int chim = 0, n = 0, works = 0;
+            int[] plan = new int[5], roof = new int[3], cover = new int[5], walls = new int[5]; int chim = 0, n = 0, works = 0, huts = 0, fronting = 0, streets = 0, streeted = 0;
             int[,] bySize = new int[3, 5];   // villages under 100, 100-249, 250 and more: their plans
             int[] coverWorks = new int[5];
             int traditions = 0; var seen = new HashSet<int>(); var lines = new HashSet<int>();
@@ -673,6 +677,7 @@ namespace TC2.Headless
                 ref var s = ref w.Settlements.Get(sid);
                 if (!s.Inhabited) continue;
                 if (seen.Add(s.Tradition)) traditions++;
+                streets += s.StreetN; if (s.StreetN > 0) streeted++;
                 lines.Add(TC2.Core.Places.Architecture.Line(s.Tradition));
                 int size = s.Population < 100 ? 0 : s.Population < 250 ? 1 : 2;
                 var bl = w.BuildingsOf(sid);
@@ -681,8 +686,9 @@ namespace TC2.Headless
                     var b = w.Buildings.Get(bl[i]);
                     if (!TC2.Core.Places.Architecture.Has(b.Form) || TC2.Core.Places.Homes.Fallen(in b, w.Now)) continue;
                     if (!TC2.Core.Places.Structures.IsHome(b.Kind)) { works++; coverWorks[TC2.Core.Places.Architecture.CoverOf(b.Form)]++; continue; }
-                    if (b.Kind < TC2.Core.Places.Construction.House) continue;
+                    if (b.Kind < TC2.Core.Places.Construction.House) { if (b.Household != 0) huts++; continue; }
                     n++;
+                    if (TC2.Core.Places.Streets.Facing(in s, b.X, b.Y, out _, out _)) fronting++;
                     int pl = TC2.Core.Places.Architecture.PlanOf(b.Form);
                     plan[pl]++; roof[TC2.Core.Places.Architecture.RoofOf(b.Form)]++; cover[TC2.Core.Places.Architecture.CoverOf(b.Form)]++; walls[TC2.Core.Places.Architecture.WallsOf(b.Form)]++;
                     if (TC2.Core.Places.Architecture.Chimney(b.Form)) chim++;
@@ -692,6 +698,18 @@ namespace TC2.Headless
             string P(int[] a) { var sb = new StringBuilder(); for (int i = 0; i < a.Length; i++) sb.Append(i > 0 ? "/" : "").Append(a[i]); return sb.ToString(); }
             Console.WriteLine("forms: " + n + " houses in " + traditions + " traditions of " + lines.Count + " lines; plans small/cottage/long/two/hall " + P(plan) + "; roofs gable/hipped/half-hip " + P(roof) +
                               "; covers straw/reed/shingle/tile/slate " + P(cover) + "; walls daub/limewash/framed/logs/stone " + P(walls) + "; chimneys " + chim + "; rebuilt " + w.Metrics.HomesRebuilt + "; works " + works + " (covers " + P(coverWorks) + ")");
+            double seenSum = 0; int villages = 0, nearStore = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                villages++; seenSum += w.Conflict.SeenChance(sid);
+                TC2.Core.Places.Construction.GranarySpot(in s, out double gx, out double gy);
+                var hh = w.HouseholdsOf(sid);
+                for (int i = 0; i < hh.Count; i++) { var h = w.Households.Get(hh[i]); double dx = h.HomeX - gx, dy = h.HomeY - gy; if (dx * dx + dy * dy <= 2500.0) nearStore++; }
+            }
+            Console.WriteLine("streets: " + streeted + " villages with streets, " + streets + " streets; houses fronting a street " + fronting + " of " + n + "; huts lived in " + huts +
+                              "; homes within 50 m of the store " + F(villages > 0 ? (double)nearStore / villages : 0, "0.0") + " a village, a taker seen there " + F(villages > 0 ? seenSum / villages : 0, "0.000"));
             for (int z = 0; z < 3; z++)
                 Console.WriteLine("forms: villages of " + (z == 0 ? "<100" : z == 1 ? "100-249" : "250+") + " people: plans " + bySize[z, 0] + "/" + bySize[z, 1] + "/" + bySize[z, 2] + "/" + bySize[z, 3] + "/" + bySize[z, 4]);
         }

@@ -212,21 +212,51 @@ namespace TC2.Core.Places
         /// home, ruin or camp of the village stands on. Before, every new home took the next lot of an ever-longer spiral: over centuries
         /// a village of a few hundred spread its houses 400 m out (and its palisade round them all) while its old lots lay empty when
         /// their ruins had gone into the land; now new homes take those lots and a village keeps its shape. Lots in the sea or a lake are
-        /// passed over (on a smaller planet the coast lies nearer the anchor in metres).
+        /// passed over (on a smaller planet the coast lies nearer the anchor in metres). Where the village has streets (C13.1, D2-116), the
+        /// nearest free frontage lot along them is taken when it lies within `Streets.Lean` of the spiral's free lot's distance - frontage is
+        /// sought, so a village with roads grows along them; no lot lies in a street.
         /// </summary>
         public static void FreeLot(World w, int sid, int forHid, out float x, out float y)
         {
+            Streets.Refresh(w, sid);   // (its ways worn to paths laid as streets)
             ref var s = ref w.Settlements.Get(sid);
             var P = w.Planet;
             var bl = w.BuildingsOf(sid); var hl = w.HouseholdsOf(sid);
             int limit = s.Lots + 64;
+            int spiral = -1; float sx = 0f, sy = 0f; double sr = double.MaxValue;
             for (int k = 0; k < limit; k++)
             {
                 s.LotPosition(k, out float lx, out float ly);
                 if (Taken(w, bl, hl, forHid, lx, ly) || Structures.OnRing(in s, lx, ly, 4.5)) continue;   // (never astride the palisade: C1.4)
+                if (Streets.On(in s, lx, ly, Streets.Width + 2.0)) continue;   // (nor in a street: C13.1)
                 if (!Shore.Dry(P, s.LocalToSphere(lx, ly, P.Radius))) continue;   // (the ground as drawn: D2-088)
-                if (k >= s.Lots) s.Lots = k + 1;
-                x = lx; y = ly;
+                spiral = k; sx = lx; sy = ly; sr = 15.0 + 9.5 * DMath.Sqrt(k + 1.0);
+                break;
+            }
+            // the frontage along its streets (C13.1): the nearest free lot, weighed against the spiral's
+            bool front = false; double fb = sr; float fx = 0f, fy = 0f;
+            for (int i = 0; i < s.StreetN; i++)
+            {
+                for (int j = 0; Streets.Lean * (Streets.Start + j * Streets.Spacing) < fb; j++)
+                {
+                    bool got = false;
+                    for (int side = -1; side <= 1 && !got; side += 2)
+                    {
+                        Streets.Lot(in s, i, j, side, out double qx, out double qy);
+                        float lx = (float)qx, ly = (float)qy;
+                        if (Taken(w, bl, hl, forHid, lx, ly) || Structures.OnRing(in s, lx, ly, 4.5)) continue;
+                        if (Streets.On(in s, lx, ly, Streets.Width + 2.0)) continue;   // (another street's line, where two cross)
+                        if (!Shore.Dry(P, s.LocalToSphere(lx, ly, P.Radius))) continue;
+                        fb = Streets.Lean * (Streets.Start + j * Streets.Spacing); fx = lx; fy = ly; front = true; got = true;
+                    }
+                    if (got) break;
+                }
+            }
+            if (front) { x = fx; y = fy; return; }
+            if (spiral >= 0)
+            {
+                if (spiral >= s.Lots) s.Lots = spiral + 1;
+                x = sx; y = sy;
                 return;
             }
             s.LotPosition(s.Lots++, out x, out y);   // (nothing free within reach: the next lot)

@@ -215,3 +215,6 @@ training ground was a faint ring of posts in ploughland - its ground is now beat
 drawn 1.2 times life and its walls blacken with its forge's hours. (6) The plans themselves were 81 % one cottage because the household's "means"
 did not separate households (`21` §6): with a measure that does, a town shows one-room cottages, cottages, longhouses, two-storey houses in its
 core and its hall - and an old prosperous village of longhouses reads unlike a crowded late town.
+**Streets (D2-116)**: villages grow along their roads - a house that fronts a street faces it, square to it, its garden behind, its door path to the
+street, the street beaten earth out past its last house; a hamlet with no worn way keeps its houses round its green (shots `street1`,
+`street1y100`).

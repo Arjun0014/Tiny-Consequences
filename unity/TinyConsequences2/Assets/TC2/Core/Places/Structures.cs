@@ -392,6 +392,7 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             double qx = (double)s.SquareX - px, qy = (double)s.SquareY - py, sq = footprint + 8.0;   // (the green itself stays open)
             if (qx * qx + qy * qy < sq * sq) return false;
+            if (Streets.On(in s, px, py, footprint + 1.0)) return false;   // (nor in a street: C13.1)
             return !OnRing(in s, px, py, footprint + 2.5);
         }
 

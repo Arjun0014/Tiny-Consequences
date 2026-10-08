@@ -94,6 +94,19 @@ namespace TC2.Core.Agents
             }
         }
 
+        /// <summary>The ways of one village that were ever worn to a path or a road (C13.1: its streets), in key order.</summary>
+        public void PathsOf(int sid, List<Way> into)
+        {
+            into.Clear();
+            var keys = new List<long>(_ways.Keys);
+            keys.Sort();
+            for (int i = 0; i < keys.Count; i++)
+            {
+                var way = _ways[keys[i]];
+                if ((way.A == sid || way.B == sid) && way.Most >= 2) into.Add(way);
+            }
+        }
+
         /// <summary>Ways worn to nothing leave the table (yearly housekeeping).</summary>
         public void Prune(long now)
         {

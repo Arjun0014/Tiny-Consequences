@@ -23,6 +23,8 @@ namespace TC2.Core.Places
         public static double[] Diag;
         /// <summary>Tools: no voyages and no relief by sea (C9.3 against C9.2b in one binary); false in the game.</summary>
         public static bool NoSea;
+        /// <summary>Tools (C9.4 survey): FU of relief givers would have sent by sea beyond their free boats' room, the gifts so bound, and all gifts by sea; null in the game.</summary>
+        public static double[] SeaShort;
 
         public const byte None = 0, Grain = 1, Metal = 2, Fibre = 3, Hides = 4, Iron = 5;   // (Metal is copper; iron since C5.3b)
         public const int Goods = 6;
@@ -411,6 +413,12 @@ namespace TC2.Core.Places
                 // what it gave them before and has not had back weighs against giving more (D2-113)
                 double open = DMath.Clamp01(1.0 - w.DeedBook.Owed(o, sid) / (CreditDays * need));
                 double gift = DMath.Min(DMath.Min(0.05 * spare * step, carry), (ReliefUpToDays - days) * need) * open;   // (DEEP: the step's days of it)
+                if (SeaShort != null && bySea)
+                {
+                    double would = DMath.Min(0.05 * spare * step, (ReliefUpToDays - days) * need) * open;
+                    SeaShort[2] += 1;
+                    if (would > carry * open + 1e-9) { SeaShort[0] += would - carry * open; SeaShort[1] += 1; }
+                }
                 if (gift < (bySea ? MinSeaLoadFu : 1.0)) continue;   // (nobody rows a boat over the sea for a few baskets)
                 if (bySea && lived)
                 {

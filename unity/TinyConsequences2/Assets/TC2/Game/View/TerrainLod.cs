@@ -876,31 +876,87 @@ namespace TC2.Game
         readonly System.Collections.Generic.List<Vec3d> _sites = new System.Collections.Generic.List<Vec3d>();
         readonly System.Collections.Generic.List<Vector4> _grounds = new System.Collections.Generic.List<Vector4>();   // training grounds (xyz) and how beaten (w)
 
-        /// <summary>Packed earth on the square, yards round the houses, footpaths from each door to the square (and how much is bare earth).</summary>
-        static Color VillageGround(TC2.Core.Simulation.World w, in TC2.Core.Places.Settlement s, int sid, double x, double y, Color col, out float bare)
+        /// <summary>A village's ground read once a patch (C13.1): each household's home and where its door path goes (its street, or the
+        /// square), each street's direction and how far homes line it - not again for every vertex.</summary>
+        sealed class Ground1
         {
-            double dsq = System.Math.Sqrt((x - s.SquareX) * (x - s.SquareX) + (y - s.SquareY) * (y - s.SquareY));
-            float green = Mathf.Clamp01(1f - (float)(dsq - 40.0) / 45f);
-            col = Color.Lerp(col, Trodden, green * 0.35f);                                    // the village green, walked on
-            float earth = 1f - Edge(9f, 15f, (float)dsq);                         // the square
+            public float[] Hx = new float[64], Hy = new float[64], Tx = new float[64], Ty = new float[64];
+            public int N;
+            public readonly double[] Ux = new double[4], Uy = new double[4], Reach = new double[4];
+            public int Streets;
+            public double Sx, Sy;
+        }
+        readonly System.Collections.Generic.List<Ground1> _ground = new System.Collections.Generic.List<Ground1>();
+
+        static void ReadGround(TC2.Core.Simulation.World w, int sid, Ground1 g)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            g.Sx = s.SquareX; g.Sy = s.SquareY;
+            g.Streets = s.StreetN;
+            for (int i = 0; i < s.StreetN; i++) { double a = s.StreetAt(i); g.Ux[i] = System.Math.Cos(a); g.Uy[i] = System.Math.Sin(a); g.Reach[i] = 0; }
             var hhs = w.HouseholdsOf(sid);
+            if (g.Hx.Length < hhs.Count) { int n = hhs.Count * 2; g.Hx = new float[n]; g.Hy = new float[n]; g.Tx = new float[n]; g.Ty = new float[n]; }
+            g.N = hhs.Count;
             for (int i = 0; i < hhs.Count; i++)
             {
                 ref var h = ref w.Households.Get(hhs[i]);
-                double hx = h.HomeX - x, hy = h.HomeY - y;
+                bool fronts = TC2.Core.Places.Streets.Facing(in s, h.HomeX, h.HomeY, out double tx, out double ty);
+                g.Hx[i] = h.HomeX; g.Hy[i] = h.HomeY; g.Tx[i] = (float)tx; g.Ty[i] = (float)ty;
+                if (fronts)
+                {
+                    double along = System.Math.Sqrt((tx - s.SquareX) * (tx - s.SquareX) + (ty - s.SquareY) * (ty - s.SquareY));
+                    int si = StreetOf(in s, tx, ty);
+                    if (along > g.Reach[si]) g.Reach[si] = along;
+                }
+            }
+        }
+
+        /// <summary>Packed earth on the square, yards round the houses, footpaths from each door to its street or the square, the streets (and
+        /// how much is bare earth).</summary>
+        static Color VillageGround(Ground1 g, double x, double y, Color col, out float bare)
+        {
+            double dsq = System.Math.Sqrt((x - g.Sx) * (x - g.Sx) + (y - g.Sy) * (y - g.Sy));
+            float green = Mathf.Clamp01(1f - (float)(dsq - 40.0) / 45f);
+            col = Color.Lerp(col, Trodden, green * 0.35f);                                    // the village green, walked on
+            float earth = 1f - Edge(9f, 15f, (float)dsq);                         // the square
+            for (int i = 0; i < g.N; i++)
+            {
+                double hx0 = g.Hx[i], hy0 = g.Hy[i];
+                double hx = hx0 - x, hy = hy0 - y;
                 double dh = System.Math.Sqrt(hx * hx + hy * hy);
                 earth = Mathf.Max(earth, (1f - Edge(3.5f, 6.5f, (float)dh)) * 0.6f);   // the yard by the door (D2-114: before 8.5 m - in a town the yards ran together into one bare disc)
-                // the path from the door to the square
-                double ax = s.SquareX - h.HomeX, ay = s.SquareY - h.HomeY;
+                // the path from the door to its street (C13.1), or to the square
+                double ax = g.Tx[i] - hx0, ay = g.Ty[i] - hy0;
                 double len2 = ax * ax + ay * ay;
-                double t = len2 > 0 ? ((x - h.HomeX) * ax + (y - h.HomeY) * ay) / len2 : 0;
+                double t = len2 > 0 ? ((x - hx0) * ax + (y - hy0) * ay) / len2 : 0;
                 if (t < 0) t = 0; else if (t > 1) t = 1;
-                double px = h.HomeX + ax * t - x, py = h.HomeY + ay * t - y;
+                double px = hx0 + ax * t - x, py = hy0 + ay * t - y;
                 double dp = System.Math.Sqrt(px * px + py * py);
                 earth = Mathf.Max(earth, (1f - Edge(1.0f, 2.6f, (float)dp)) * 0.85f);
             }
+            // its streets (C13.1): beaten by everyone living along them, from the green out past the last house that fronts each
+            for (int i = 0; i < g.Streets; i++)
+            {
+                double reach = g.Reach[i];
+                if (reach <= 0) continue;
+                double ux = g.Ux[i], uy = g.Uy[i];
+                double px = x - g.Sx, py = y - g.Sy;
+                double along = px * ux + py * uy;
+                if (along < 0 || along > reach + 8.0) continue;
+                double off = System.Math.Abs(-px * uy + py * ux);
+                earth = Mathf.Max(earth, (1f - Edge(2.2f, 3.8f, (float)off)) * 0.9f * (1f - Edge((float)reach, (float)reach + 8f, (float)along)));
+            }
             bare = earth;
             return Color.Lerp(col, Earth, earth);
+        }
+
+        /// <summary>Which of a village's streets a point on a street's line belongs to (C13.1).</summary>
+        static int StreetOf(in TC2.Core.Places.Settlement s, double x, double y)
+        {
+            double a = System.Math.Atan2(y - s.SquareY, x - s.SquareX);
+            int best = 0; double bd = double.MaxValue;
+            for (int i = 0; i < s.StreetN; i++) { double d = TC2.Core.Places.Streets.Apart(a, s.StreetAt(i)); if (d < bd) { bd = d; best = i; } }
+            return best;
         }
 
         static readonly Color Rock = new Color(0.47f, 0.44f, 0.40f), RockDark = new Color(0.33f, 0.31f, 0.30f);
@@ -932,6 +988,12 @@ namespace TC2.Game
                     if (!st.Inhabited) continue;
                     double dd = System.Math.Acos(System.Math.Min(1.0, st.Anchor.X * pc.x + st.Anchor.Y * pc.y + st.Anchor.Z * pc.z));
                     if (dd < reach) { _near.Add(sid); NearPatches++; }
+                }
+                // (each near village's ground read once for the patch: C13.1)
+                for (int q = 0; q < _near.Count; q++)
+                {
+                    if (_ground.Count <= q) _ground.Add(new Ground1());
+                    ReadGround(w, _near[q], _ground[q]);
                 }
                 _sites.Clear();
                 for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
@@ -1033,7 +1095,7 @@ namespace TC2.Game
                         double dot = st.Anchor.X * d.X + st.Anchor.Y * d.Y + st.Anchor.Z * d.Z;
                         if (dot < System.Math.Cos(130.0 / P.Radius)) continue;
                         st.SphereToLocal(d, P.Radius, out double vx, out double vy);
-                        col = VillageGround(w, st, _near[q], vx, vy, col, out float earth);
+                        col = VillageGround(_ground[q], vx, vy, col, out float earth);
                         bare = Mathf.Max(bare, earth);
                         clear = Mathf.Max(clear, 1f - Edge(95f, 150f, (float)System.Math.Sqrt(vx * vx + vy * vy)));   // (no wood in the village)
                         VillageVerts++;

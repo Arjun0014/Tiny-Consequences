@@ -519,7 +519,9 @@ namespace TC2.Game
         bool DrawHome(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int bid, float ex, bool dark, double tOut, double woodDays)
         {
             ref var b = ref w.Buildings.Get(bid);
-            float yaw = Mathf.Atan2(s.SquareX - b.X, s.SquareY - b.Y) * Mathf.Rad2Deg + 180f + ((b.Style * 37) % 21 - 10);
+            // it faces its street where it fronts one (C13.1), square to it; else the square, a little askew
+            bool fronts = Streets.Facing(in s, b.X, b.Y, out double faceX, out double faceY);
+            float yaw = Mathf.Atan2((float)faceX - b.X, (float)faceY - b.Y) * Mathf.Rad2Deg + 180f + (fronts ? ((b.Style * 37) % 5 - 2) : ((b.Style * 37) % 21 - 10));
             float age = 0.88f + 0.2f * (float)KeyedRng.Unit(KeyedRng.Mix((ulong)b.Style + 77));   // weathering of roofs and walls
             if (Homes.Fallen(in b, w.Now) || (b.Household == 0 && Homes.Condition(in b, w.Now) < Homes.Habitable))
             {
@@ -594,7 +596,7 @@ namespace TC2.Game
             // more days of the hearths' wood the village holds
             if (woodDays >= 2.0)
             {
-                float fx = s.SquareX - b.X, fy = s.SquareY - b.Y, fl = Mathf.Max(0.01f, Mathf.Sqrt(fx * fx + fy * fy));
+                float fx = (float)faceX - b.X, fy = (float)faceY - b.Y, fl = Mathf.Max(0.01f, Mathf.Sqrt(fx * fx + fy * fy));   // (beside it, by what it faces)
                 fx /= fl; fy /= fl;
                 float side = hut ? 3.4f : 5.6f;
                 float pile = Mathf.Clamp(0.5f + (float)woodDays / 50f, 0.5f, 1.25f);

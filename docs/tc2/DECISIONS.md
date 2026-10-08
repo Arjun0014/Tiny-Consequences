@@ -3042,3 +3042,55 @@ the browser bit-identical to headless; views 59-122 fps - close 78, village 96, 
 **Open.** Streets: lots still follow the village's spiral, so a town's houses do not line streets or share walls (C13 morphology); a real household
 wealth (land held, crafts sold, rents) is C3/C10 and will replace `Means`; the lord's hall, towers, gates and keeps as real structures are C7/C10.2;
 warmth, fire and decay by material are not simulated.
+
+## D2-115 — 2026-10-08 — C9.4 surveyed: no demand for cargo boats yet; docks wait for the traffic (deferred behind exchange, C3)
+
+**Context.** C9.4 (`24` §5-6, `25` §5): cargo boats (~80 loads, a sail, 400 h, crew 3-5, 2-3 t) and docks, coastal trade at the sea's cost ratio.
+No structure without a need (D2-089): a cargo boat must be wanted because the village's sea cargo outgrows its plank boats, a jetty because its boats
+and what they land make one worth its labour.
+**Evidence (the ten `_a5` worlds at year 300, and a survey).** Sea traffic is thin: 0-318 voyages a world in 300 years (seeds 42, 2, 1, 5 none; 3, 11, 8
+the most), 6-130 t carried, nothing ever booked and left unsailed. Nearly all of it is famine relief. A survey (`run --seashort`: the relief givers would
+have sent by sea beyond their free boats' room - a tally, not state; bit-identical to `_a5`) over the five seafaring worlds: relief by sea was bound by
+the boats' room in 0-19 of 69-538 gifts, 0-8,316 FU more would have gone against 47,000-157,000 FU shipped. Trade voyages are rare because barter needs
+a double coincidence of wants - a grain-rich village spares grain, a hungry one spares nothing back (D2-113); timber and stone, valued at the hours a
+load costs to fetch, differ between coastal villages by less than 2x on a 6 km planet where every village has woods within 1.5 km, so even 100 loads
+in a hold would rarely be worth a crew's day. A jetty's gain - sparing crews the haul up and down the beach - is not modelled (launching is free).
+**Decision.** C9.4 is deferred: cargo boats and docks wait until exchange gives the sea a trade - C3 (professions, workshops, exchange within a
+settlement) and credit between villages (relief owed back, D2-113, is the first credit), so that goods move one way now and are paid later. The
+headless survey stays (`--seashort`, `Trade.SeaShort`, null in the game). Next: C13.1 streets (D2-116) - the D2-114 "Open" that every town shows.
+
+## D2-116 — 2026-10-08 — Streets: villages grow along their roads (C13.1)
+
+**Context.** D2-114's "Open": lots followed a golden-angle spiral round the square (D2-084), so every village and town was an even scatter of
+houses each facing the square - a hamlet, a village and a walled town read as the same scatter at different counts (shots `arch2lord`,
+`arch2open`). C13 (historical city evolution) begins here. Medieval villages and towns grew along their roads - street villages
+(Strassendorf), market streets, suburbs along the roads outside the gates - because frontage on the way the traffic takes is worth having.
+**Decision.** (1) **Streets are durable village state** (`Settlement.StreetN`, `Street0..3`; sim version 55): when a way of a village's people
+first wears to a path (C4.1, `Ways.PathsOf`: ever a path or a road), it is laid as a street at the bearing it actually leaves by (the way's route
+read 80 m out, `Places/Streets.cs` `Refresh`, run when a lot is sought); ways leaving within 35 degrees are one street; four at most; a street
+outlives its way (houses line it after the traffic has gone). (2) **Frontage is sought** (`Homes.FreeLot`): beside the spiral's innermost free lot
+the nearest free frontage lot along the streets is weighed - lots 13 m apart, 8 m back from the street's line, from 22 m out - and taken when it
+lies within `Streets.Lean` (0.7) of the spiral lot's distance; so a village with roads grows along them while its core still fills round the
+green, and a hamlet whose people wear no way to a neighbour keeps its houses round its green. (3) **Nothing is built in a street**: lots and works
+keep 4 m either side of its line clear (`Streets.On`; `Structures.Clear`). (4) **The view**: a house that fronts a street faces it, square to it
+(`Streets.Facing`; garden and pen behind, woodpile beside); its door path goes to the street; each street is beaten earth from the green out past
+the last house that fronts it (`TerrainLod.VillageGround`). (5) Headless: `streets:` line (villages with streets, houses fronting one, huts lived
+in, homes within 50 m of the store and the chance a taker is seen there), `place --layout` (a village's plan for plotting), `--nostreets` (the
+same binary without streets: bit-identical to D2-114's worlds).
+**Evidence.** `StreetsTests` 2 (a track is not a street, a path is, at the bearing the way leaves by to 1e-6, kept after the way fades; 7 of 12 new
+lots front a fresh street, each 8 m back from its line, none in it; no work laid out in it). Layout plots from saves (`place --layout`): by year 100
+Tovaldton, Stairby and Tesford grow along one to three roads; by year 300 Vumthorpe and Veidasford are dense cores with four streets lined beyond
+them. Ten seeds 300 years DEEP (`_b2`) against D2-114 (`_a5`; `--nostreets` on the same binary reproduces `_a5` bit for bit): 5-31 villages a world
+have streets, 19-52 % of houses front one; people over years 200-299 x1.025 (t 0.9), famines x1.07 (t 1.1), hunger deaths x0.98, births and deaths a
+thousand person-years at par; huts lived in at year 300 not raised (excluding seed 4, 138 with streets against 170 without; seed 4 197 against 34, a
+crowded late century). **Conflict falls, by a mechanism**: raids x0.56 (t -3.1), wounds x0.88 (t -2.1), palisades x0.86 (t -1.5), loads taken down on
+8 of 10 seeds - frontage lots from 22 m out put more homes near the store (homes within 50 m of it, seeds 4 and 8: 11.1 -> 16.6 and 7.0 -> 12.1 a
+village), so a taker at the store in the night is likelier seen (`Conflict.SeenChance`: 0.42 -> 0.51 and 0.28 -> 0.44), fewer take, fewer wrongs are
+held, fewer bands go out - eyes on the street. A placebo on D2-114's binary moved raids x0.66 (t -2.0): the fall is beyond it and explained. Rings:
+145 walled villages with streets against 143 without, mean ring 147 m against 146, at the 170 m most 65 against 50 - the street tails do not
+distort the palisades' economics (the ring rule is kept). Shots `tc2/out/shots/street1` (Vumthorpe at year 300: a long street to the north lined both
+sides, another to the west, the core round the green) and `street1y100` (Tesford at year 100: rows of houses facing the river road, gardens
+behind, a second street).
+**Open.** Back lanes and plots behind the frontage (burgage plots), houses sharing walls in a town's core, a market street or place widened
+where traders come, the green kept open as the village grows round it, suburbs outside a gate - C13's next pieces.
+
