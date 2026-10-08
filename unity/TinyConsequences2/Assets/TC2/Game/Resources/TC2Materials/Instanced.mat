@@ -31,5 +31,6 @@ Material:
     - _AmbientGround: {r: 0.21999997, g: 0.18999997, b: 0.15999997, a: 1}
     - _AmbientSky: {r: 0.45, g: 0.5, b: 0.62, a: 1}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _WallColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

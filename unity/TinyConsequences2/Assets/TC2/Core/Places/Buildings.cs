@@ -138,6 +138,7 @@ namespace TC2.Core.Places
             if (hh.Building == 0 || !w.Buildings.Exists(hh.Building)) return;
             int sid = hh.Settlement, bid = hh.Building;
             int before = w.Buildings.Get(bid).Form;
+            if (plan == Architecture.Hall && !Architecture.HallRoom(w, sid, bid)) plan = Architecture.Two;   // (another raised its hall meanwhile)
             int form = Architecture.HomeForm(w, sid, hid, bid, Construction.House);
             form = Architecture.Pack(plan, Architecture.RoofOf(form), Architecture.CoverOf(form), Architecture.WallsOf(form), Architecture.Chimney(form) || plan >= Architecture.Two, Architecture.PaletteOf(form));
             ref var s = ref w.Settlements.Get(sid);

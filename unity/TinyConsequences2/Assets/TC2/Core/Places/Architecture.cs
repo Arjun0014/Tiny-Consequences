@@ -153,7 +153,7 @@ namespace TC2.Core.Places
                 // up a storey where lots near the centre are dear: inside a standing ring, or in the inner half of a big village's homes
                 bool hemmed = s.Wall == 2 && s.WallR > 0f && Inside(in s, w, hid, s.WallR);
                 bool inner = s.Population >= 250 && Inside(in s, w, hid, 0.5 * HomesReach(w, sid));
-                if (rich && s.Population >= 120 && rank == 0) plan = Hall;
+                if (rich && s.Population >= 120 && rank == 0 && HallRoom(w, sid, bid)) plan = Hall;
                 else if ((hemmed && s.Population >= 150 || inner) && means >= 1.5) plan = Two;
                 else if (Cattle(w, hid) >= 1 || n >= 8) plan = Long;
                 else if (n <= 3 && means < 1.0) plan = Small;
@@ -163,6 +163,28 @@ namespace TC2.Core.Places
             int palette = (TraditionPalette(tradition) + (int)(KeyedRng.Mix((ulong)bid * 31UL + 7) % 3UL)) % 8;
             return Pack(plan, roof, cover, walls, chimney, palette);
         }
+
+        /// <summary>
+        /// Whether a village has room for another hall-house: a hall is its leading household's, so a village keeps one lived-in hall, a town one
+        /// for each `PeoplePerHall` of its people (the session 9 runs, before: each year's best-off household that rebuilt raised its own hall -
+        /// 54 to 129 in a world). Halls standing empty are taken by whoever needs a home and are not counted; `bid` (the hall being rebuilt) is not.
+        /// </summary>
+        public static bool HallRoom(World w, int sid, int bid)
+        {
+            int halls = 0, room = System.Math.Max(1, w.Settlements.Get(sid).Population / PeoplePerHall);
+            var bl = w.BuildingsOf(sid);
+            for (int i = 0; i < bl.Count; i++)
+            {
+                if (bl[i] == bid) continue;
+                ref var b = ref w.Buildings.Get(bl[i]);
+                if (b.Kind != Construction.House || b.Household == 0 || !Has(b.Form) || PlanOf(b.Form) != Hall) continue;
+                if (++halls >= room) return false;
+            }
+            return true;
+        }
+
+        /// <summary>People a village has for each hall-house it keeps (one at least).</summary>
+        public const int PeoplePerHall = 150;
 
         /// <summary>Whether a household's lot lies within r (m) of the square.</summary>
         static bool Inside(in Settlement s, World w, int hid, double r)

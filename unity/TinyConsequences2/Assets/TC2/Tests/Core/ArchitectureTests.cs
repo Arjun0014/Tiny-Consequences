@@ -149,6 +149,53 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void AVillageKeepsOneHallForEachHundredAndFiftyOfItsPeople()
+        {
+            var w = TestWorlds.Make(7);
+            int sid = w.Settlements.First();
+            int bid = HouseOf(w, sid, out int hid);
+            Assume.That(bid != 0, "a household with a house");
+            ref var s = ref w.Settlements.Get(sid);
+            int popWas = s.Population;
+            ref var hh = ref w.Households.Get(hid);
+            hh.Larder = 1e6; hh.Gear = 50f;
+            s.Population = 150;
+            Assert.AreEqual(Architecture.Hall, Architecture.PlanOf(Architecture.HomeForm(w, sid, hid, bid, Construction.House)), "the best off of 150 builds a hall");
+            // its own hall rebuilt is not counted against it
+            ref var mine = ref w.Buildings.Get(bid);
+            mine.Form = Architecture.Pack(Architecture.Hall, 0, Architecture.Straw, Architecture.Daub, true, 0);
+            Assert.IsTrue(Architecture.HallRoom(w, sid, bid), "its own hall is not another's");
+            // another household's hall stands, lived in: no room for a second in a village of 150
+            int other = 0;
+            var hl = w.HouseholdsOf(sid);
+            for (int i = 0; i < hl.Count; i++)
+                if (hl[i] != hid && w.Households.Get(hl[i]).Shelter >= Construction.House && w.Households.Get(hl[i]).Building != 0) { other = hl[i]; break; }
+            Assume.That(other != 0, "another housed household");
+            int ob = w.Households.Get(other).Building;
+            w.Buildings.Get(ob).Form = Architecture.Pack(Architecture.Hall, 0, Architecture.Straw, Architecture.Daub, true, 0);
+            int f = Architecture.HomeForm(w, sid, hid, bid, Construction.House);
+            Console.WriteLine("150 people, another's hall standing: " + Architecture.Describe(f, true));
+            Assert.AreNotEqual(Architecture.Hall, Architecture.PlanOf(f), "one hall a village");
+            // a town of 300: room for two
+            s.Population = 300;
+            Assert.AreEqual(Architecture.Hall, Architecture.PlanOf(Architecture.HomeForm(w, sid, hid, bid, Construction.House)), "a town of 300 keeps two");
+            // the other hall left empty: not counted (whoever needs a home takes it)
+            s.Population = 150;
+            ref var obb = ref w.Buildings.Get(ob);
+            int keep = obb.Household; obb.Household = 0;
+            Assert.IsTrue(Architecture.HallRoom(w, sid, bid), "an empty hall is not the village's leading house");
+            obb.Household = keep;
+            // a hall set out to be built while another was raised meanwhile: built a storey high instead
+            s.Woodstore = 1e5;
+            ref var h2 = ref w.Households.Get(hid);
+            h2.Rebuild = (byte)(1 + Architecture.Hall);
+            Homes.Rebuilt(w, hid);
+            Console.WriteLine("rebuilt with another's hall standing: " + Architecture.Describe(w.Buildings.Get(bid).Form, true));
+            Assert.AreEqual(Architecture.Two, Architecture.PlanOf(w.Buildings.Get(bid).Form));
+            s.Population = popWas;
+        }
+
+        [Test]
         public void AVillageRebuildsFewHousesAtOnceAndNotWhileRationsAreShort()
         {
             var w = TestWorlds.Make(7);
