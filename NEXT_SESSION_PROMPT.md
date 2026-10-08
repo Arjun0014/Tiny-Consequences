@@ -8,12 +8,22 @@ only - never modify or stage it.
 
 ## Read first (this order), then work autonomously
 1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the full standing prompt (architecture, rules, every direction from Arjun).
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 13"** (exact state, runs, known issues, "Next").
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 14"** (the people x0.955 investigation and the placebo to finish), then **"Session 13"**
+   (the full C4.2 build, runs, known issues).
 3. `docs/tc2/DECISIONS.md` newest entry **D2-121** (C3.2 the potter's kiln, jars and hearths' pots; clay by the ground's shape).
 4. `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` - C3's design (§1 C3.1, §2 C3.2 as built, §3 the next slices and the C3.3 survey); `docs/tc2/24_TRANSPORT_AND_MARITIME.md`
    §2 "Implemented (C4.2)" - the carts in progress (no D2-122 yet: write it when C4.2 closes).
-5. `docs/tc2/PROGRESS.md` CURRENT STATE (session 13 entry); `git status` (the untracked `unity/TinyConsequences2/Assets/Resources.meta` and the
+5. `docs/tc2/PROGRESS.md` CURRENT STATE (session 14 and 13 entries); `git status` (the untracked `unity/TinyConsequences2/Assets/Resources.meta` and the
    modified `.claude/launch.json` are not ours - leave them), `git log --oneline -10`.
+
+## Session 14 (8 Oct 2026, 19:02-19:20 IST - stopped early by Arjun; no code changed)
+- **C4.2's people x0.955 investigated** (SESSION_HANDOFF "Session 14"): per-person rates are identical with and without carts (births 43.9 vs 43.8 a
+  1,000 person-years, net growth 7.20 vs 7.21, hunger deaths lower with carts); the loss is in the level. Seed 4's loss is one bigger epidemic at
+  year 180 (1,289 sickness deaths against 734). Seed 42's is an early chance split (years 20-40) with no hunger, no sickness and only 4 cart trading
+  trips in 100 years. Diagnostics: `tc2/out/c42diag`.
+- **A placebo `_c1p`** (`--nocarts --nudge 20`) was running and stopped with the laptop: seeds 4, 42, 2, 1, 5 done (people 200-299 against `_c1n`:
+  x1.007, x0.963, x1.004, x0.857, x0.889 - carts x0.858, x0.942, x0.991, x0.887, x1.021). **The placebo alone moves a seed as much as carts do.** Finish it first
+  (seeds 3 11 8 7 6, ~8 min; the command is in SESSION_HANDOFF "Session 14" Next 0), then judge.
 
 ## Where things stand (8 Oct 2026, session 13)
 - **C3.2 is built** (D2-121, sim version 59; commit d21d09d): measured first - D2-063 gave every village that knew pottery a sealed store and every
@@ -43,9 +53,10 @@ only - never modify or stage it.
 - Open W task **W-FOREST** (Arjun, 8 Oct): forests/biomes still read as the same trees recoloured - not solved (`18` §8).
 
 ## Do next
-0. **Finish C4.2 carts** (SESSION_HANDOFF "Session 13" has the exact state): explain people x0.955 against `--nocarts` first (foundings and
-   parties: `python agg.py c1n c1`, `python cmp.py c1n c1 <seeds>`, `run --places`/`--vtrace` on a seed that lost villages - s4, s8); fix it only if
-   it is a fault, not a mechanism (re-run both arms as `_c2`/`_c2n`); then write **D2-122** (the measured state, the design, the evidence), shots
+0. **Finish C4.2 carts** (SESSION_HANDOFF "Session 14" then "Session 13"): finish the `_c1p` placebo and compare `python cmp.py c1n c1p <seeds>`
+   with `python cmp.py c1n c1 <seeds>`. If the placebo's spread is of the carts' size, record x0.955 as noise. If the placebo is clearly at par,
+   look for a mechanism (epidemics spread by cart traders' slower trips? foundings x0.93?) and fix it only if it is a fault (re-run both arms as
+   `_c2`/`_c2n`). Then write **D2-122** (the measured state, the design, the evidence, this investigation), shots
    (`node tc2/scripts/unity.mjs shots --tag c42a --load "<abs>/tc2/out/civ/s4_c1/world_y300.tc2" --village 2 --views "cart@11,cartyard@11,cartfar@14"`),
    the full suite (`node tc2/scripts/headless.mjs test`, ~12-22 min), Web build and Web test, commit, docs (`24`, `25`, PROGRESS, handoff).
 1. (done in session 13) Web build of d21d09d: Web test 6/6 (`tc2/out/webtest/c32web`, views 86-120 fps, pages 68-84); `tc2/web-build/web` is current.

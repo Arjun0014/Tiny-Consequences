@@ -1,5 +1,47 @@
 # TC2 Session handoff
 
+## Session 14 (8 Oct 2026, 19:02-19:20 IST; Control Room run #31 session 4) - C4.2's people x0.955 investigated (stopped early by Arjun)
+
+Short session: Arjun asked to stop and hand off at 19:13. No code changed; HEAD is still d6c29cf's code (sim version 60) plus docs.
+
+### Exact state (keep current)
+- **C4.2 carts is still IN PROGRESS** (built and committed in d6c29cf; Session 13 below has the full build). The one open question was why
+  people over years 200-299 are x0.955 (t -2.4) with carts against `--nocarts` (`_c1` vs `_c1n`). **Findings this session:**
+  1. **Per-person rates are unchanged.** Over years 100-299 and all ten seeds: births 43.91 vs 43.75 a 1,000 person-years, other (age) deaths
+     28.84 vs 28.68, net growth 7.20 vs 7.21 a 1,000; hunger deaths 7.03 vs 6.76 (fewer with carts); sickness deaths 0.59 vs 0.86 (driven by two
+     epidemics, below). The loss is in the *level* (person-years x0.954), not in how people live and die.
+  2. **Seed 4** (the largest loss, 6,533 -> 5,605): both arms track together to year 179; the cart arm's year-180 epidemic killed 1,289 against
+     734 (people 3,025 -> 2,357 against 2,954), and the gap stays at 15-20 % to year 300. Villages over years 200-299 at par (22.6 vs 22.9).
+  3. **Seed 42** (6,517 -> 6,142): the arms split around years 20-40 (a few FU in one granary at year 20, people apart from year 40) and the cart arm
+     grows a little slower, 1.42 % against 1.64 % a year over years 50-100, with **no hunger, no sickness and only 4 trading trips with a cart in
+     100 years** (41 carts made, mostly for wood). Diagnostic runs (100 years, `--places`; both reproduce `_c1`/`_c1n` exactly) are in
+     `tc2/out/c42diag/s42_n.*` and `s42_c.*`. Their demography lines: conceptions a weighted woman-day 0.02237 vs 0.02182, marriages 0.01168 vs 0.01120,
+     infant deaths 213 vs 233 a 1,000 infant-years - all within chance at these counts. Arable land at year 100 384 vs 343 ha follows from the
+     smaller population (fields clear the woods), it does not lead it.
+  4. **A placebo is running** (`--nocarts --nudge 20`: no carts, one FU more in one store at year 20; tag `_c1p`, binary `bin_c4` in the session
+     scratchpad = `tc2/headless/app/bin/Release/net8.0` at d6c29cf). Done when Arjun stopped: seeds 4, 42, 2, 1, 5 (people over years 200-299 against
+     `_c1n`: placebo x1.007, x0.963, x1.004, **x0.857**, **x0.889**; carts x0.858, x0.942, x0.991, x0.887, x1.021). **The placebo alone moves a seed
+     by as much as carts do** (seed 1: placebo x0.857, carts x0.887; seed 5: placebo x0.889, carts x1.021). The run dies when the laptop closes: `tc2/out/c42diag/run_c1p.log` lists the seeds that
+     finished (a seed is complete when its `.txt` has a `SCALE people` line).
+  - **Reading so far**: the x0.955 looks like chaos (one epidemic in seed 4, an early split in seed 42), not a cart fault: no mechanism found
+    that costs people, and the vital rates are identical. Confirm with the full placebo before writing D2-122.
+
+- **Partial placebo over five seeds**: placebo against `_c1n` x0.942 (geometric mean), carts against `_c1n` x0.938 - the same size.
+
+### Next, in order
+0. **Finish the `_c1p` placebo**: copy `tc2/headless/app/bin/Release/net8.0` to the scratchpad as `bin_c4` (rebuild first only if Core changed;
+   it has not since d6c29cf), set `SCR=` in a copy of `tc2/out/tools/wrun.sh`, then run the seeds missing from `tc2/out/civ/s*_c1p.txt`:
+   `BIN=bin_c4 TAG=_c1p YEARS=300 SNAP=300 EXTRA="--nocarts --nudge 20" bash wrun.sh 3 11 8 7 6` (~8 min; seed 3 was running when stopped - its files may be partial). Then `python cmp.py c1n c1p 4 42 2 1 5 3 11 8 7 6`
+   and `python cmp.py c1n c1 ...` side by side: if the placebo's people_200_299 ratio and t are of the carts' size, record x0.955 as
+   inside the noise (the D2-113 / D2-114 pattern); if the placebo is clearly at par, look for a mechanism (epidemic spread by cart traders' longer
+   trips at 0.85 pace? foundings x0.93?).
+1. Then close C4.2 as Session 13's list says: **D2-122** (the measured state, the design in `24` §2 "Implemented (C4.2)", the ten seeds and this
+   investigation), shots (`node tc2/scripts/unity.mjs shots --tag c42a --load "<abs>/tc2/out/civ/s4_c1/world_y300.tc2" --village 2 --views
+   "cart@11,cartyard@11,cartfar@14"`), the full suite (`node tc2/scripts/headless.mjs test`, ~12-22 min; last full pass 302/302 was before carts),
+   Web build (`node tc2/scripts/unity.mjs build-web --jobs 3`) and Web test (`node tc2/scripts/webtest.mjs --tag c42web`), commit, docs (`24`,
+   `25`, PROGRESS, this file, both NEXT_SESSION_PROMPTs).
+2. Then Session 13's "Next" items 2-4 (C3.3 exchange between households; roles from practice for smiths and boatwrights; C9.4 / C3.4).
+
 ## Session 13 (8 Oct 2026, from 16:11 IST; Control Room run #31 session 3) - C3.2 the potter's kiln, jars and hearths' pots (D2-121)
 
 ### Exact state (keep current)
