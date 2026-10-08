@@ -36,7 +36,9 @@
   6 -> 13, people 9,095 -> 10,158; big towns use all their wares (8 looms short), mid towns sell, small villages wear bought wares.
 
 ### Next, in order
-1. **C3.2 the potter's kiln** (`26` §2): pots and storage jars made at a kiln by the village's potters, the store keeps better by pots made (not
+1. **C3.2 the potter's kiln** (`26` §2) - **surveyed** (`run --rot`, a tools tally, trajectories unchanged): **14.6-17.3 % of the harvest rots in
+   store** (seed 4: 6.78 M of 39.3 M FU, seed 7: 2.66 M of 18.3 M; heaps beyond the granaries add <0.5 %) under today's 12 %/year x the best
+   potter's 0.65 - a real job for pots. Pots and storage jars made at a kiln by the village's potters, the store keeps better by pots made (not
    by the best potter: D2-063), charcoal at the kiln, clay dug at a clay pit - the weaver's shed's pattern (makers by skill, a need, real
    material, a product that lasts). Or C3.3 exchange between households (payment in kind: makers paid; export looms then pay).
 2. Roles from practice for smiths, potters, boatwrights (a year-300 person is "known for" every craft).

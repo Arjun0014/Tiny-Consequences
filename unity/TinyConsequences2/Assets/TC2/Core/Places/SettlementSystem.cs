@@ -338,6 +338,7 @@ namespace TC2.Core.Places
                 if (Harvests != null) { Harvests[0] += yield; Harvests[1] += s.FieldHa; Harvests[2]++; Harvests[3] += DMath.Clamp01(s.CropGrowth); Harvests[4] += s.Sown; Harvests[5] += s.Harvested; }
                 s.Granary += yield;
                 s.LastHarvest = yield;
+                if (Structures.RotTally != null) Structures.RotTally[2] += yield;
                 // and the flax grown on a corner of the fields: fibre for clothes and cordage (D2-063)
                 s.Fibre += s.FieldHa * FibrePerHa * DMath.Clamp01(s.ExpectedHarvest > 0 ? yield / s.ExpectedHarvest : 1.0);
                 s.Crop = CropStage.Harvested; s.CropWorkNeed = 0; s.CropWork = 0;
