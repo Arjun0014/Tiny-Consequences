@@ -234,7 +234,6 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             var P = w.Planet;
             double cx = s.LandX + 12.0 * s.LandUx, cy = s.LandY + 12.0 * s.LandUy;
-            double foot = Structures.Of(Structures.BoatShed).Footprint;
             for (double r = 0.0; r <= 60.0; r += 3.0)
             {
                 int steps = r <= 0.0 ? 1 : (int)DMath.Max(8.0, DMath.Floor(2.0 * DMath.PI * r / 3.0));
@@ -242,7 +241,7 @@ namespace TC2.Core.Places
                 {
                     double a = 2.0 * DMath.PI * k / steps;
                     double qx = cx + r * DMath.Cos(a), qy = cy + r * DMath.Sin(a);
-                    if (!Shore.Dry(P, s.LocalToSphere(qx, qy, P.Radius)) || !Structures.Clear(w, sid, qx, qy, foot)) continue;
+                    if (!Shore.Dry(P, s.LocalToSphere(qx, qy, P.Radius)) || !Footprints.WorkFits(w, sid, qx, qy, Structures.BoatShed, 0.0, false)) continue;   // (its ground clear: C13.3)
                     x = (float)qx; y = (float)qy;
                     return true;
                 }

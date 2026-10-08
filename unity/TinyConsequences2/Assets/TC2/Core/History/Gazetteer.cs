@@ -60,6 +60,23 @@ namespace TC2.Core.History
               .Append(footed > 0 ? " (" + footed + " on stone footings)" : "").Append(", ").Append(huts).Append(huts == 1 ? " hut" : " huts").Append(camps > 0 ? ", " + camps + " in camps" : "").Append(".\n");
             if (s.Wall == 2) sb.Append("Walled: a palisade ").Append(F(2.0 * DMath.PI * (double)s.WallR, "0")).Append(" m round").Append(s.OldR > 0f ? ", an older ring inside" : "").Append(".\n");
             else if (s.Wall == 1) sb.Append("Raising a palisade.\n");
+            // its streets and their core (C13.1-C13.3): rows of narrow town houses on the divided plots, the market place its traders widened
+            if (s.StreetN > 0)
+            {
+                int rows = 0, fronting = 0;
+                var bl = w.BuildingsOf(sid);
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    ref var b = ref w.Buildings.Get(bl[i]);
+                    if (!Structures.IsHome(b.Kind) || Homes.Fallen(in b, w.Now)) continue;
+                    if (Streets.Facing(in s, b.X, b.Y, out _, out _)) fronting++;
+                    if (b.Kind >= Structures.House && Architecture.Has(b.Form) && Architecture.PlanOf(b.Form) == Architecture.Row) rows++;
+                }
+                sb.Append(s.StreetN).Append(s.StreetN == 1 ? " street" : " streets").Append(", ").Append(fronting).Append(" homes along its streets and lanes");
+                if (s.CoreR > 0f) sb.Append("; its frontage divided into narrow plots ").Append(F((double)s.CoreR, "0")).Append(" m out from the green, ").Append(rows).Append(rows == 1 ? " narrow town house" : " narrow town houses");
+                sb.Append(".\n");
+            }
+            if (s.MarketR > 0f) sb.Append("A market place ").Append(F(2.0 * (double)s.MarketR, "0")).Append(" m across, widened by the traders who came.\n");
             return sb.ToString();
         }
 

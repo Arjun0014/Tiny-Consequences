@@ -197,6 +197,7 @@ namespace TC2.Core.Places
             int id = w.Ids.Next(EntityKind.Building);
             w.Buildings.Add(id, new Building { Id = id, Settlement = sid, X = x, Y = y, Kind = kind, Style = sid, Built = w.Now, Cond = 1f, Cause = cause });
             w.BuildingsOf(sid).InsertSorted(id);
+            Laid(w, sid, id);
             ref var s2 = ref w.Settlements.Get(sid);
             s2.Project = id; s2.ProjectKind = kind;
             if (kind == Market) w.Buildings.Get(id).Stock = s2.TradeIn;   // (how many traders came the year it was laid out)
@@ -231,7 +232,7 @@ namespace TC2.Core.Places
             if (b.Kind == CharHearth) s.CharHearth = bid;
             if (b.Kind == BogPits) s.FeMine = bid;
             if (b.Kind == Ground) s.Ground = bid;
-            if (b.Kind == Market) s.Market = bid;
+            if (b.Kind == Market) { s.Market = bid; if (s.MarketR < MarketFirst) { s.MarketR = (float)MarketFirst; Opened(w, sid); } }   // (its market place: C13.3)
             if (b.Kind == BoatShed) s.Shed = bid;
             if (b.Kind == Smithy)
             {
@@ -253,6 +254,7 @@ namespace TC2.Core.Places
             var k = Of(kind);
             w.Buildings.Add(id, new Building { Id = id, Settlement = sid, X = x, Y = y, Kind = kind, Style = sid, Built = w.Now, Cond = 1f, Done = 1, Hours = (float)k.Hours, Wood = (float)k.Wood });
             w.BuildingsOf(sid).InsertSorted(id);
+            Laid(w, sid, id);
             w.Buildings.Get(id).Form = Architecture.WorkForm(w, sid, id);   // (D2-114)
             ref var s = ref w.Settlements.Get(sid);
             if (kind == Well) s.Works |= Construction.Well;
@@ -332,33 +334,117 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             if (kind == Well && !HasAny(w, sid, Well)) { x = s.WellX; y = s.WellY; return; }
             if (kind == Granary && !HasAny(w, sid, Granary)) { Construction.GranarySpot(in s, out double gx, out double gy); x = (float)gx; y = (float)gy; return; }
-            if (kind == BogPits && s.FeCell > 0) { s.SphereToLocal(w.Planet.Grid.Center[s.FeCell - 1], w.Planet.Radius, out double bx, out double by); x = (float)bx; y = (float)by; return; }   // (at the bed)
-            if (kind == CharHearth && Woods.Lot(in s) >= 0) { x = s.WoodX; y = s.WoodY; return; }   // (at the woods)
-            if (kind == Mine && s.OreCell > 0) { s.SphereToLocal(w.Planet.Grid.Center[s.OreCell - 1], w.Planet.Radius, out double mx, out double my); x = (float)mx; y = (float)my; return; }   // (at the ore)
-            if (kind == Quarry && s.StoneCell > 0) { s.SphereToLocal(w.Planet.Grid.Center[s.StoneCell - 1], w.Planet.Radius, out double qx, out double qy); x = (float)qx; y = (float)qy; return; }   // (at the rock)
+            if (kind == BogPits && s.FeCell > 0) { s.SphereToLocal(w.Planet.Grid.Center[s.FeCell - 1], w.Planet.Radius, out double bx, out double by); AtSite(w, sid, kind, bx, by, out x, out y); return; }   // (at the bed)
+            if (kind == CharHearth && Woods.Lot(in s) >= 0) { AtSite(w, sid, kind, s.WoodX, s.WoodY, out x, out y); return; }   // (at the woods)
+            if (kind == Mine && s.OreCell > 0) { s.SphereToLocal(w.Planet.Grid.Center[s.OreCell - 1], w.Planet.Radius, out double mx, out double my); AtSite(w, sid, kind, mx, my, out x, out y); return; }   // (at the ore)
+            if (kind == Quarry && s.StoneCell > 0) { s.SphereToLocal(w.Planet.Grid.Center[s.StoneCell - 1], w.Planet.Radius, out double qx, out double qy); AtSite(w, sid, kind, qx, qy, out x, out y); return; }   // (at the rock)
             if (kind == BoatShed && Boats.ShedSpot(w, sid, out x, out y)) return;   // (at the head of the landing: C9.2b)
             var k = Of(kind);
             var P = w.Planet;
-            double r0, dir, r1;
+            double r0, dir, r1, wr = Footprints.WorkR(kind);
+            bool green = kind == Market;   // (a market is held on the green: its cross stands in the open, its stalls round it - C13.3)
             switch (k.Zone)
             {
-                case Zone.Edge: r0 = HomesReach(w, sid) + k.Footprint + 4.0; dir = MainRoad(w, sid); r1 = r0 + 40.0; break;
-                case Zone.Outer: r0 = HomesReach(w, sid) + k.Footprint + 10.0; dir = DMath.Atan2(-(double)s.FieldY + s.SquareY, -(double)s.FieldX + s.SquareX); r1 = r0 + 60.0; break;
-                default: r0 = 12.0 + k.Footprint; dir = 0.0; r1 = 70.0; break;
+                case Zone.Edge: r0 = HomesReach(w, sid) + wr + 4.0; dir = MainRoad(w, sid); r1 = r0 + 40.0; break;
+                case Zone.Outer: r0 = HomesReach(w, sid) + wr + 10.0; dir = DMath.Atan2(-(double)s.FieldY + s.SquareY, -(double)s.FieldX + s.SquareX); r1 = r0 + 60.0; break;
+                default: r0 = green ? 0.0 : Footprints.Green(in s) + wr; dir = 0.0; r1 = green ? Footprints.Green(in s) + 30.0 : r0 + 60.0; break;
             }
             for (double r = r0; r <= r1; r += 3.0)
             {
-                int steps = (int)DMath.Max(8.0, DMath.Floor(2.0 * DMath.PI * r / 4.0));
+                int steps = r < 1.0 ? 1 : (int)DMath.Max(8.0, DMath.Floor(2.0 * DMath.PI * r / 4.0));
                 for (int j = 0; j < steps; j++)
                 {
                     // (from the zone's direction outward to both sides, so the nearest good spot to the road or the green comes first)
                     int side = (j & 1) == 0 ? 1 : -1;
                     double a = dir + side * ((j + 1) >> 1) * (2.0 * DMath.PI / steps);
                     double px = s.SquareX + r * DMath.Cos(a), py = s.SquareY + r * DMath.Sin(a);
-                    if (Clear(w, sid, px, py, k.Footprint) && Shore.Dry(P, s.LocalToSphere(px, py, P.Radius))) { x = (float)px; y = (float)py; return; }
+                    // (its ground clear of every building's, camp, street, ring - and of the green and market place but for a market: C13.3)
+                    if (Footprints.WorkFits(w, sid, px, py, kind, green ? MarketRoom : 0.0, green) && Shore.Dry(P, s.LocalToSphere(px, py, P.Radius))) { x = (float)px; y = (float)py; return; }
                 }
             }
             x = (float)(s.SquareX + r1 * DMath.Cos(dir)); y = (float)(s.SquareY + r1 * DMath.Sin(dir));
+        }
+
+        /// <summary>
+        /// A work at its site (C13.3): the rock, the ore, the bed or the woods where it is (the middle of the ground they lie in) - but where that lies
+        /// within the village, as far out from its square along the same bearing as its homes reach and the work's ground needs; a worked-out work of
+        /// the same kind standing there gives way to it (a clamp burnt again where the old one stood).
+        /// </summary>
+        static void AtSite(World w, int sid, byte kind, double px, double py, out float x, out float y)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            double wr = Footprints.WorkR(kind);
+            double dx = px - s.SquareX, dy = py - s.SquareY, d = DMath.Sqrt(dx * dx + dy * dy);
+            double out0 = Footprints.Green(in s) + wr + 2.0;
+            if (d < HomesReach(w, sid) + wr && !Footprints.WorkFits(w, sid, px, py, kind, 0.0, false))
+            {
+                double a = d > 1.0 ? DMath.Atan2(dy, dx) : DMath.Atan2(-(double)s.FieldY + s.SquareY, -(double)s.FieldX + s.SquareX);   // (from the square, or away from the fields)
+                for (double r = DMath.Max(out0, d); r <= HomesReach(w, sid) + wr + 20.0; r += 3.0)
+                {
+                    double qx = s.SquareX + r * DMath.Cos(a), qy = s.SquareY + r * DMath.Sin(a);
+                    if (Footprints.WorkFits(w, sid, qx, qy, kind, 0.0, false)) { px = qx; py = qy; break; }
+                }
+            }
+            var bl = w.BuildingsOf(sid);
+            for (int i = 0; i < bl.Count; i++)
+            {
+                ref var o = ref w.Buildings.Get(bl[i]);
+                if (o.Kind != kind || o.Left == 0 || Homes.RuinLeft(in o, w.Now) <= 0) continue;
+                double ox = (double)o.X - px, oy = (double)o.Y - py, rr = 2.0 * wr;
+                if (ox * ox + oy * oy < rr * rr) o.Left = w.Now - DMath.ToLong((Homes.FallYears(in o) + Homes.RuinYears(in o)) * SimTime.Year) - 1;   // (gone: the old one gives way)
+            }
+            x = (float)px; y = (float)py;
+        }
+
+        /// <summary>m round a market's cross kept clear of other works where it is laid out (its stalls stand round it: C13.3).</summary>
+        public const double MarketRoom = 4.0;
+
+        /// <summary>m: the market place's radius when its market is first held (the green and the stalls round the cross); the most it widens to;
+        /// m2 of ground each trader who comes to deal there adds to it (C13.3, D2-118).</summary>
+        public const double MarketFirst = 20.0, MarketMost = 36.0, MarketArea = 16.0;
+
+        /// <summary>
+        /// The market place (C13.3, D2-118): the open ground round the square where a market is held - from the green and its stalls when the market
+        /// stands, widened by every trader who comes to deal (`MarketArea` m2 each, up to `MarketMost` m), never narrowed (the place stays open
+        /// ground when trade fades). Nothing new is built in it; houses standing in it stay until they are left and fall (`Homes.TakeEmpty`), so the
+        /// place opens as the town round its green is rebuilt.
+        /// </summary>
+        public static void MarketDealt(World w, int sid)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.Market == 0 || !w.Buildings.Exists(s.Market) || !Working(in w.Buildings.Get(s.Market), w.Now)) return;
+            double r = DMath.Max((double)s.MarketR, MarketFirst);
+            r = DMath.Min(MarketMost, DMath.Sqrt(r * r + MarketArea / DMath.PI));
+            if (r <= (double)s.MarketR) return;
+            s.MarketR = (float)r;
+            Opened(w, sid);
+        }
+
+        /// <summary>
+        /// The open ground has grown (the market place widened, C13.3): homes standing empty in it are taken down, and households camped on lots it
+        /// now takes (their homes not yet raised) camp on a free lot instead - nothing new stands in the market place.
+        /// </summary>
+        public static void Opened(World w, int sid)
+        {
+            var bl = w.BuildingsOf(sid);
+            for (int i = 0; i < bl.Count; i++)
+            {
+                ref var b = ref w.Buildings.Get(bl[i]);
+                if (!IsHome(b.Kind) || b.Household != 0 || Homes.RuinLeft(in b, w.Now) <= 0) continue;
+                Homes.Clear(w, bl[i], b.Last, false);
+            }
+            var hl = w.HouseholdsOf(sid);
+            for (int i = 0; i < hl.Count; i++)
+            {
+                ref var h = ref w.Households.Get(hl[i]);
+                if (h.Building != 0) continue;
+                ref var s = ref w.Settlements.Get(sid);
+                int plan = Footprints.LotPlan(in s, h.HomeX, h.HomeY);
+                if (Footprints.Open(in s, h.HomeX, h.HomeY, Footprints.FaceAt(in s, h.HomeX, h.HomeY, hl[i]), plan)) continue;
+                Homes.FreeLot(w, sid, hl[i], out float x, out float y);
+                ref var h2 = ref w.Households.Get(hl[i]);
+                h2.HomeX = x; h2.HomeY = y; h2.Build = 0f;
+            }
         }
 
         static bool HasAny(World w, int sid, byte kind)
@@ -368,32 +454,12 @@ namespace TC2.Core.Places
             return false;
         }
 
-        /// <summary>Clearance a structure or lot keeps: a home's lot 6 m (D2-086), a work its footprint and a little more.</summary>
-        public static double Clearance(byte kind) => IsHome(kind) ? 6.0 : Of(kind).Footprint + 3.0;
-
-        /// <summary>No structure, ruin, lot of a home or camp within the clearance of either.</summary>
-        public static bool Clear(World w, int sid, double px, double py, double footprint)
+        /// <summary>A work laid out faces the square, a few degrees off by its builders' hand (as the game drew works before): its bearing kept (C13.3).</summary>
+        static void Laid(World w, int sid, int id)
         {
-            var bl = w.BuildingsOf(sid);
-            for (int i = 0; i < bl.Count; i++)
-            {
-                ref var b = ref w.Buildings.Get(bl[i]);
-                double dx = (double)b.X - px, dy = (double)b.Y - py, need = footprint + Clearance(b.Kind);
-                if (dx * dx + dy * dy < need * need) return false;
-            }
-            var hl = w.HouseholdsOf(sid);
-            for (int i = 0; i < hl.Count; i++)
-            {
-                ref var h = ref w.Households.Get(hl[i]);
-                if (h.Building != 0) continue;
-                double dx = (double)h.HomeX - px, dy = (double)h.HomeY - py, need = footprint + 6.0;
-                if (dx * dx + dy * dy < need * need) return false;
-            }
             ref var s = ref w.Settlements.Get(sid);
-            double qx = (double)s.SquareX - px, qy = (double)s.SquareY - py, sq = footprint + 8.0;   // (the green itself stays open)
-            if (qx * qx + qy * qy < sq * sq) return false;
-            if (Streets.On(in s, px, py, footprint + 1.0)) return false;   // (nor in a street: C13.1)
-            return !OnRing(in s, px, py, footprint + 2.5);
+            ref var b = ref w.Buildings.Get(id);
+            b.Face = (float)Footprints.FaceOf(in s, in b); b.Faced = 1;
         }
 
         /// <summary>Where the palisade's ring at angle a (radians, local frame) stands on dry ground (never in the sea or a lake: C1.6).</summary>

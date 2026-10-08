@@ -19,6 +19,7 @@ namespace TC2.Headless
             var w = SaveFile.Load(File.ReadAllBytes(a.Get("load")), out _);
             if (a.Has("list")) { ListPlaces(w); return 0; }
             if (a.Has("standing")) { Standing(w); return 0; }
+            if (a.Has("overlaps")) { Overlaps(w, a.Int("sid", 0)); return 0; }
             if (a.Has("layout")) { Layout(w, a.Int("sid", 0) != 0 ? a.Int("sid", 0) : PickPlace(w, "big")); return 0; }
             if (a.Has("households")) { ListHouseholds(w, a.Int("sid", 0) != 0 ? a.Int("sid", 0) : PickPlace(w, "big")); return 0; }
             int sid = a.Int("sid", 0);
@@ -30,7 +31,7 @@ namespace TC2.Headless
 
         /// <summary>
         /// `place --load SAVE --list` (D2-114, picking villages to look at): each inhabited place - its people, age, wall, lord, tradition, and its
-        /// standing houses by plan (small/cottage/long/two/hall), roof cover and walls, and its works.
+        /// standing houses by plan (small/cottage/long/two/hall/row), roof cover and walls, and its works.
         /// </summary>
         static void ListPlaces(World w)
         {
@@ -41,7 +42,7 @@ namespace TC2.Headless
             foreach (int id in order)
             {
                 var s = w.Settlements.Get(id);
-                int[] plan = new int[5], cover = new int[5], walls = new int[5]; int huts = 0, works = 0, lords = 0;
+                int[] plan = new int[6], cover = new int[5], walls = new int[5]; int huts = 0, works = 0, lords = 0;
                 var kinds = new System.Text.StringBuilder();
                 var bl = w.BuildingsOf(id);
                 for (int i = 0; i < bl.Count; i++)
@@ -68,7 +69,7 @@ namespace TC2.Headless
                 }
                 string J(int[] v) => string.Join("/", v);
                 Console.WriteLine("#" + id + " " + w.History.NameOf(EntityRef.Settlement(id)) + ": " + s.Population + " people, " + (year - (int)(s.Founded / SimTime.Year)) + " y old, wall " + s.Wall +
-                                  (s.Lord != 0 ? ", tributary of #" + s.Lord : "") + (lords > 0 ? ", lord of " + lords : "") + ", line " + Architecture.Line(s.Tradition) + " roof " + Architecture.RoofName(Architecture.TraditionRoof(s.Tradition)) +
+                                  (s.Lord != 0 ? ", tributary of #" + s.Lord : "") + (lords > 0 ? ", lord of " + lords : "") + ", traders " + s.TradeIn.ToString("0.0") + (s.Market != 0 ? " market" : "") + ", line " + Architecture.Line(s.Tradition) + " roof " + Architecture.RoofName(Architecture.TraditionRoof(s.Tradition)) +
                                   " shade " + Architecture.TraditionPalette(s.Tradition) + "; huts " + huts + ", plans " + J(plan) + ", covers " + J(cover) + ", walls " + J(walls) + "; works " + works + " (" + kinds + ")" + "; households " + hl.Count + " means <1/1-1.5/1.5-3/3+ " + J(mb) + ", with cattle " + cattle + ", of 8+ " + big);
             }
         }
@@ -78,17 +79,102 @@ namespace TC2.Headless
         static void Layout(World w, int sid)
         {
             var s = w.Settlements.Get(sid);
-            Console.WriteLine("V " + sid + " " + w.History.NameOf(EntityRef.Settlement(sid)) + " " + s.Population + " " + s.SquareX.ToString("0.0") + " " + s.SquareY.ToString("0.0") + " " + s.Wall + " " + s.WallR.ToString("0.0") + " " + (int)((w.Now - s.Founded) / SimTime.Year));
+            Console.WriteLine("V " + sid + " " + w.History.NameOf(EntityRef.Settlement(sid)) + " " + s.Population + " " + s.SquareX.ToString("0.0") + " " + s.SquareY.ToString("0.0") + " " + s.Wall + " " + s.WallR.ToString("0.0") + " " + (int)((w.Now - s.Founded) / SimTime.Year)
+                              + " " + Footprints.Green(in s).ToString("0.0") + " " + s.CoreR.ToString("0.0") + " " + s.TradeIn.ToString("0.0") + " " + s.OldR.ToString("0.0"));
             for (int i = 0; i < s.StreetN; i++) Console.WriteLine("S " + s.StreetAt(i).ToString("0.0000"));
             var bl = w.BuildingsOf(sid);
             for (int i = 0; i < bl.Count; i++)
             {
                 var b = w.Buildings.Get(bl[i]);
                 if (Homes.Fallen(in b, w.Now)) continue;
-                Console.WriteLine("B " + b.Kind + " " + b.X.ToString("0.0") + " " + b.Y.ToString("0.0") + " " + (Architecture.Has(b.Form) ? Architecture.PlanOf(b.Form) : -1) + " " + (b.Household != 0 ? 1 : 0));
+                // B kind x y plan lived face, then each of its rectangles (homes: cx cz hx hz in its frame) or its disc's radius (works)
+                bool home = Structures.IsHome(b.Kind);
+                int plan = home ? Footprints.PlanOf(in b) : -1;
+                var line = new System.Text.StringBuilder();
+                double face = Footprints.FaceOf(in s, in b);
+                bool open = !home || Footprints.Open(in s, b.X, b.Y, face, plan) && !Footprints.Wet(w, in s, b.X, b.Y, face, plan);
+                line.Append("B " + b.Kind + " " + b.X.ToString("0.00") + " " + b.Y.ToString("0.00") + " " + (Architecture.Has(b.Form) ? Architecture.PlanOf(b.Form) : -1) + " " + (b.Household != 0 ? 1 : 0) + " " + face.ToString("0.0000") + " " + (open ? 0 : 1));
+                if (home)
+                    for (int r = 0; r < Footprints.Count(plan); r++)
+                    {
+                        Footprints.Rect(plan, r, out double cx, out double cz, out double hx, out double hz);
+                        line.Append(" " + cx.ToString("0.00") + " " + cz.ToString("0.00") + " " + hx.ToString("0.00") + " " + hz.ToString("0.00"));
+                    }
+                else line.Append(" R " + Footprints.WorkR(b.Kind).ToString("0.00"));
+                Console.WriteLine(line.ToString());
             }
             var hl = w.HouseholdsOf(sid);
             for (int i = 0; i < hl.Count; i++) { var h = w.Households.Get(hl[i]); if (h.Building == 0) Console.WriteLine("C " + h.HomeX.ToString("0.0") + " " + h.HomeY.ToString("0.0")); }
+        }
+
+        /// <summary>`place --load SAVE --overlaps [--sid N]` (C13.3): each inhabited village's ground - buildings whose ground overlaps (home and home,
+        /// home and work, work and work) and homes in a street, the green or astride the ring - and the world's sums.</summary>
+        static void Overlaps(World w, int only)
+        {
+            int th = 0, tw = 0, tk = 0, to = 0, homes = 0;
+            for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id))
+            {
+                var s = w.Settlements.Get(id);
+                if (!s.Inhabited || (only != 0 && id != only)) continue;
+                Footprints.Audit(w, id, out int hh, out int hw, out int ww, out int open);
+                int n = 0; var bl = w.BuildingsOf(id);
+                for (int i = 0; i < bl.Count; i++) { var b = w.Buildings.Get(bl[i]); if (Structures.IsHome(b.Kind) && !Homes.Fallen(in b, w.Now)) n++; }
+                th += hh; tw += hw; tk += ww; to += open; homes += n;
+                if (hh + hw + ww + open > 0 || only != 0)
+                    Console.WriteLine("#" + id + " " + w.History.NameOf(EntityRef.Settlement(id)) + ": " + s.Population + " people, " + n + " homes; overlapping home/home " + hh + ", home/work " + hw + ", work/work " + ww + "; homes in a street, the green or a ring " + open);
+            }
+            Console.WriteLine("overlaps: homes " + homes + "; home/home " + th + ", home/work " + tw + ", work/work " + tk + "; homes in the open " + to);
+            if (only == 0) return;
+            // (one village: each home in the open and why - a street or lane, the green or market place, a ring - and each pair that overlaps)
+            var s1 = w.Settlements.Get(only);
+            var bl1 = w.BuildingsOf(only);
+            Console.WriteLine("  ring: wall " + s1.Wall + " at " + s1.WallR.ToString("0.0") + " m, old " + s1.OldR.ToString("0.0") + " m; one laid now would stand at " + w.Conflict.WallRadius(only).ToString("0.0") + " m");
+            for (int i = 0; i < bl1.Count; i++)
+            {
+                var b = w.Buildings.Get(bl1[i]);
+                if (Homes.Fallen(in b, w.Now) || Boats.IsBoat(b.Kind)) continue;
+                bool home = Structures.IsHome(b.Kind);
+                double f = Footprints.FaceOf(in s1, in b);
+                double dx = b.X - s1.SquareX, dy = b.Y - s1.SquareY, d = Math.Sqrt(dx * dx + dy * dy);
+                if (home && Footprints.Open(in s1, b.X, b.Y, f, Footprints.PlanOf(in b)) && Footprints.Wet(w, in s1, b.X, b.Y, f, Footprints.PlanOf(in b)))
+                    Console.WriteLine("  open: b" + bl1[i] + " kind " + b.Kind + " plan " + Footprints.PlanOf(in b) + " at " + d.ToString("0.0") + " m, built y" + (b.Built / SimTime.Year) + " RIVER");
+                if (home && !Footprints.Open(in s1, b.X, b.Y, f, Footprints.PlanOf(in b)))
+                {
+                    int plan = Footprints.PlanOf(in b);
+                    bool green = false;
+                    for (int r = 0; r < Footprints.Count(plan); r++) { Footprints.Rect(plan, r, out double cx, out double cz, out double hx, out double hz); green |= Footprints.BoxDisc(b.X, b.Y, f, cx, cz, hx, hz, s1.SquareX, s1.SquareY, Footprints.Green(in s1), 0.0); }
+                    bool ring = s1.OldR > 0f && Math.Abs(d - s1.OldR) < Footprints.Reach(plan) + 1.5 || (s1.Wall == 1 || s1.Wall == 2) && Math.Abs(d - s1.WallR) < Footprints.Reach(plan) + 1.5;
+                    Console.WriteLine("  open: b" + bl1[i] + " kind " + b.Kind + " plan " + plan + " at " + d.ToString("0.0") + " m, built y" + (b.Built / SimTime.Year) + ", faced " + b.Faced + (green ? " GREEN" : "") + (ring ? " RING" : "") + (!green && !ring ? " STREET" : ""));
+                }
+                if (home)
+                    for (int j = i + 1; j < bl1.Count; j++)
+                    {
+                        var o = w.Buildings.Get(bl1[j]);
+                        if (Homes.Fallen(in o, w.Now) || !Structures.IsHome(o.Kind)) continue;
+                        int pa = Footprints.PlanOf(in b), pb = Footprints.PlanOf(in o);
+                        double of = Footprints.FaceOf(in s1, in o);
+                        bool hit = false;
+                        for (int r = 0; r < Footprints.Count(pa); r++)
+                            for (int q = 0; q < Footprints.Count(pb); q++)
+                            {
+                                Footprints.Rect(pa, r, out double cx, out double cz, out double hx, out double hz);
+                                Footprints.Rect(pb, q, out double qx, out double qz, out double qhx, out double qhz);
+                                hit |= Footprints.Boxes(b.X, b.Y, f, cx, cz, hx, hz, o.X, o.Y, of, qx, qz, qhx, qhz, 0.0);
+                            }
+                        if (hit) Console.WriteLine("  OVERLAP: b" + bl1[i] + " kind " + b.Kind + " plan " + pa + " (built y" + (b.Built / SimTime.Year) + ", left " + (b.Left != 0 ? "y" + (b.Left / SimTime.Year) : "-") + ") and b" + bl1[j] + " kind " + o.Kind + " plan " + pb + " (built y" + (o.Built / SimTime.Year) + ", left " + (o.Left != 0 ? "y" + (o.Left / SimTime.Year) : "-") + ") at " + b.X.ToString("0.0") + "," + b.Y.ToString("0.0") + " / " + o.X.ToString("0.0") + "," + o.Y.ToString("0.0"));
+                    }
+                if (!home)
+                    for (int j = 0; j < bl1.Count; j++)
+                    {
+                        if (j == i) continue;
+                        var o = w.Buildings.Get(bl1[j]);
+                        if (Homes.Fallen(in o, w.Now) || Boats.IsBoat(o.Kind)) continue;
+                        double ex = o.X - b.X, ey = o.Y - b.Y, dd = Math.Sqrt(ex * ex + ey * ey);
+                        double need = Footprints.WorkR(b.Kind) + (Structures.IsHome(o.Kind) ? Footprints.Reach(Footprints.PlanOf(in o)) : Footprints.WorkR(o.Kind));
+                        if (dd < need && (Structures.IsHome(o.Kind) || j > i))
+                            Console.WriteLine("  near: work b" + bl1[i] + " kind " + b.Kind + " (built y" + (b.Built / SimTime.Year) + ") and b" + bl1[j] + " kind " + o.Kind + " (built y" + (o.Built / SimTime.Year) + ") " + dd.ToString("0.0") + " m apart, discs " + need.ToString("0.0"));
+                    }
+            }
         }
 
         /// <summary>`place --load SAVE --standing`: over every household of the world, quantiles of what could set one apart (D2-114 means).</summary>

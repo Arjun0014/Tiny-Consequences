@@ -3121,3 +3121,78 @@ build on this shared machine - to be measured again on a quiet one).
 its green; plots are not owned (a house's croft is drawn, not held); shared walls and rows in a town's core, the market place, suburbs outside
 the gates - C13's next pieces.
 
+
+## D2-118 — 2026-10-08 — A town's ground: footprints, divided plots and rows in its core, the market place (C13.3)
+
+**Context.** C13.3 (Arjun, 8 Oct 2026): dense medieval town-core rows, divided/infill frontage lots, narrow and tall houses where the physical lot
+requires them, **absolutely no overlapping houses**, a market place that grows from actual trade, the green and market kept open. An audit of the
+C13.2 worlds first: lots were points kept 6 m apart (`Homes.Taken`, D2-086), but a longhouse is 12 m long and a hall 15 m with its wing - on seed 4
+at year 300 **280 pairs of homes overlapped among 3,234** (seed 7: 90/1,040; seed 2: 312/3,826) and 366 homes reached into a street, the green or
+across a ring (`place --overlaps` on `_c2`; plot `tc2/out/c133/before_s4.png`). A house's bearing was not state: the view turned houses to their
+street or the square each frame (so a street laid later turned old houses round), and turned them about a world-fixed forward instead of the
+village's own frame.
+**Decision.**
+(1) **Footprints** (`Core/Places/Footprints.cs`). A home's ground is its plan's rectangles as the kit builds them - walls and eaves (one-room
+4.8 x 3.8, cottage 7.0 x 5.0, longhouse 12.0 x 5.4, two-storey 6.6 x 5.4 jettied 0.5 to the front, hall 10.0 x 6.2 with its porch and its 5.2 x 8.6
+cross wing, the narrow town house 4.6 x 6.2 jettied 0.4, a hut 2.3 m round) - turned to its bearing; a work's ground is a disc holding all of it
+as drawn (a barn 9.4 m, a smithy drawn larger 6.0, a market's cross 2.6). Separating-axis tests (`Boxes`, `BoxDisc`). **`Building.Face`** (state,
+sim version 56): the bearing a building faces, recorded when it is raised or rebuilt (square to the street or lane it fronts, a couple of degrees
+off; else toward the square, up to ten off; a work toward the square), so a house never turns on its lot.
+(2) **Every lot, plan and work by its ground.** A lot is free where the ground it keeps (a hut's, which holds a one-room cottage turned any way; a
+narrow house's on a divided plot) meets no building, ruin, camp, street, lane, ring, green or market place (`HomeFits`; `FreeLot`'s `Free`). A
+house is built to the plan its household wants if that stands clear where it is, else the next smaller of its kind (a hall a two-storey house, a
+longhouse a cottage...; `Architecture.Fit`); a rebuild that no plan fits does not happen. A camp whose lot was built over meanwhile moves before
+its home is raised. Works are laid out by their discs (`WorkFits`), never in the green or market place but for the market itself; works at their
+sites (quarry, mine, bog pits, charcoal hearth) are moved out along their bearing where the site lies inside the village, and a worked-out work of
+the same kind there gives way.
+(3) **A town's core divided** (`Streets.Grow`, `CorePlot`; `Settlement.CoreR`, state): once a village is a town (250 people) the frontage of its
+streets out to `CoreR` = 25 m + people / 12 (at most 110 m; never given back) is plotted at half the step - 6.5 m plots - and a house raised or
+rebuilt on a divided plot must keep within it: **the narrow town house** (`Architecture.Row`, new kit plan `home_row_g/h/j`, `frame_row`: 4.6 m of
+frontage, 6.2 deep, two storeys and an attic jettied over the street, gable to the street, door and shop window in the gable) or, for the poorest,
+a one-room cottage. Old wide houses keep standing until rebuilt; then they too are narrow, and the half-step plots between them fill - rows of
+tall narrow houses along the main streets near the green, as burgage plots were divided in medieval towns.
+(4) **The market place** (`Settlement.MarketR`, state; `Structures.MarketDealt`): when a village's market stands its green becomes a market
+place 20 m round, widened by every trader who comes to deal (16 m2 each, up to 36 m); never narrowed. The market's cross is laid out in the green.
+Nothing new is built in it; camps on lots it takes move; homes standing empty in it are taken down.
+(5) **The open kept open.** A home standing in a street or lane, the green or market place, or across a ring (laid after it was built) is never
+renewed there, and when it is left it is taken down - gone at once, half its timber back in the woodstore, `HistoryKind.HomeCleared` 89 - so the
+ways and the market place open as their households leave or die out. A street is laid at the bearing within 20 degrees of its way's that runs
+through fewest standing buildings and camps (none where there is a gap; at most three: `Streets.MostCuts`); a lane that would run through one stays
+shut (`Settlement.LanesShut`, state) until its line is clear (`OpenLanes`). A ring is laid at the radius inward from its reach with no home or camp
+across it (else the fewest); camps on its line move.
+(6) **Rivers** (`Core/Planet/RiverLines.cs`): the river's drawn line moved from the view into the core - one line serves the simulation and the view,
+as one shore does (D2-088). A reach ends where it meets the drawn water (its mouth at the waterline, 2 m in - the ribbon had run 65 % of the way
+into the sea cell, out over the water) or runs on across a wide beach to it. Homes and works keep their ground `RiverMargin` (1.5 m) off a river's
+bank (half its width by its flow); a house a shifting river reaches counts as in the open (`Homes.InOpenOrWet` 4). Before, only a lot's middle
+was kept on dry ground: 4-28 homes a world stood on a river's ribbon (Vodrothorpe, seed 2: 18).
+(7) **The view** draws every building by its recorded bearing in the village's exact frame (`PlaceFaced`: the village's east and north carried onto
+the ground); far off a building is drawn larger only as far as its neighbours leave room (`Footprints.Room`); kitchen gardens, pens and woodpiles
+only on free ground (`YardFree`); the market's stalls in rings round the cross and along the market place's edge on free ground; stone and hay
+stacked round the granary on free ground (they stood 22-35 m out, among the homes); the market place trodden bare; the narrow town houses with
+their framing, chimney and plinth. Headless: `place --overlaps [--sid]`, `--layout` with each building's bearing and rectangles
+(`tc2/out/tools/plotfoot.py`), the `town:` line of `run`; the settlement page tells the streets, the divided core and the market place.
+**Evidence.** `FootprintsTests` 6 (rectangles meet only where they overlap; a town of 110 new houses on two streets: none overlapping, none in a
+street, the green or a ring, every house on a divided plot narrow - 12 narrow town houses, 10 plots at the half step; a village below 250 keeps
+whole lots; the market place widens 20 -> 36 m over 176 traders and nothing new is built in it; a home left in the market place is taken down,
+its timber kept, history tells it, and is never renewed there; a street is laid along the bearing that runs through fewest buildings); two
+charcoal tests updated to the site rule (a hearth whose woods lie in the village's middle is laid just past the homes). 284 headless tests.
+Seed 4 alone, rule by rule (`tc2/out/civ/s4_d1`..`_d5`): footprint lots and plans 280 -> 0 overlapping pairs; the open (streets laid through
+houses, rings across camps, the market place widening over houses) 366 -> 169 -> 33 -> 4 homes in the open; a street laid only through a clear
+corridor cut the streets from 94 to 39 (old villages grown round their green have none), so up to three houses (`MostCuts`) - 82 streets.
+**Ten seeds 300 years DEEP (`_d7`, the final rules) against C13.2 (`_c2`)**: overlapping homes **0 in every world** (C13.2: 90-312 a world),
+home/work 0-1, work/work 0-1 (works at their sites), homes in the open 0-30 (houses a later street or market place reached, waiting to be left;
+none on a river); 0-23 towns a world with a divided core (reach 58-79 m), 5-243 narrow town houses standing (9-345 raised); 0-6 market places a
+world (radius 25-30 m, the most 36 m). People over years 200-299 x1.003 (t 0.1), births x1.005, deaths x1.006, famines x0.92, hunger x0.97, wounds
+x0.87, raids x0.99, tributes x0.91 - inside the placebo's spread (D2-114's `_a5p`: wounds x0.85, raids x0.66, tributes x0.71). Run cost a
+person-day x1.2 against `_c2`'s (a seed-42 profile on the `_d6`/`_d7` binaries puts most of it in noise: systems this slice does not touch ran
+20 % slower in the same run; no ground check shows among the costs). The river rule alone (`_d6` -> `_d7`): 4-28 homes a world had stood on a
+river's ribbon; 0 after. The view: the kit's frame measured in the game (bounds: front +z, x mirrored - the hall's wing at -x, `WingSide`
+set from it after a `--ground` shot showed its rectangle on the porch side). Shots `tc2/out/shots/c133a` (Rainthorpe, 860 people: the north street
+lined both sides with narrow gable-fronted town houses, the market place with its cross, stalls and granaries, the rows at street level),
+`c133g` (the ground plates under every house: no plate meets another), `c133b`-`c133d` (the final worlds). Layout plots `tc2/out/c133/*.png`
+(`before_s4.png`: C13.2's overlaps outlined red).
+**Open.** Market places are rare because trade is: 0-5 traders a year at most villages (barter's double coincidence, D2-115) - exchange (C3) will
+widen them where it brings traders. Houses a market place, street or ring reaches stay until their household leaves (decades); no household
+moves out to rebuild elsewhere. Rows are of the one narrow plan (built in a town's tradition and materials) - no merged plots for a rich
+household's wide town house, no shops below. Lanes stay straight; streets are straight rays bent at most 20 degrees from their way. Plots are not
+owned (a household's croft is drawn, not held). The run costs 9 % more (no spatial index for the ground checks yet).

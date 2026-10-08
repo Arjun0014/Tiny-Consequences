@@ -97,7 +97,7 @@ namespace TC2.Tests.Core
             Assert.AreEqual(Structures.Granary, b.Kind);
             Assert.AreEqual(0, b.Done, "laid out, not yet standing");
             Assert.AreEqual(h2, b.Cause, "its cause is the harvest that overfilled the store");
-            Assert.IsTrue(Structures.Clear(w, sid, b.X, b.Y, 0.0) == false, "its ground is taken by it");
+            Assert.IsFalse(Footprints.WorkFits(w, sid, b.X, b.Y, Structures.Granary, 0.0, true), "its ground is taken by it");
             // history tells it was begun and why
             bool begun = false; var evs = w.History.EventsOf(new EntityRef(EntityKind.Building, bid));
             Assert.IsNotNull(evs);

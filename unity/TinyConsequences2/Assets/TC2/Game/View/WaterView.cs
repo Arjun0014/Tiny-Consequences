@@ -80,7 +80,7 @@ namespace TC2.Game
             for (int q = 0; q < all.Count; q++)
             {
                 var pc = all[q];
-                bool first = q % Rivers.Pieces == 0;
+                bool first = q == 0 || all[q].Cell != all[q - 1].Cell;   // (a reach's first piece: reaches end at the water, D2-118)
                 Vector3 a = PlanetGeo.Surface(P, pc.A, 0.6f), b = PlanetGeo.Surface(P, pc.B, 0.6f);
                 Vector3 up = (a + b).normalized;
                 Vector3 side = Vector3.Cross(up, b - a).normalized;

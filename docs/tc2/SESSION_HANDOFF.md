@@ -1,5 +1,35 @@
 # TC2 Session handoff
 
+## Session 11 (8 Oct 2026, from 09:23 IST; Control Room run #23 session 3) - C13.3 a town's ground (D2-118)
+
+### Exact state (keep current)
+- **C13.3 done (D2-118), sim version 56.** `Core/Places/Footprints.cs` (rectangles of each plan as the kit builds it, `Boxes`/`BoxDisc`, `HomeFits`,
+  `WorkFits`, `Open`, `Audit`, `Room`, `YardFree`, `LineCuts`, `FaceAt`/`FaceOf`, `WingSide` = -1 measured in the game); `Building.Face`/`Faced`;
+  `Settlement.MarketR`, `CoreR`, `LanesShut`; `Architecture.Row` (plan 5) and `Fit`/`Fallback`; `Homes.FreeLot` by ground with half-step plots in a
+  town's core, `Homes.InOpen`/`Clear` (`HistoryKind.HomeCleared` 89), raising re-lots a camp whose lot was built over; `Streets.Grow`/`CorePlot`/
+  `Shut`/`OpenLanes`/`StreetCuts`/`LaneCuts` (a street laid through at most 3 buildings, `Bend` 20 degrees); `Structures.MarketDealt`/`Opened`/
+  `AtSite`/`Laid` (`Clear`/`Clearance` removed); `Conflict.WallRadius` between houses (`Astride` counts camps); Gazetteer tells streets, core, market
+  place; metrics `HomesCleared`, `TownHouses`. View: `PlaceFaced` (the village's own frame), `Plot` cache (`ReadPlots`), stalls, store stacks,
+  market ground (TerrainLod), the row-house overlays, `ShowGround` (shots `--ground`), camera views `rowclose/rowlow/rowstreet/rowmarket/hall/mouth/
+  mouthfar`; `Rivers.Mouth` (the river-ribbon-over-the-sea fix). Kit: `home_row_g/h/j`, `frame_row` (+ metas). Tests `FootprintsTests` 6;
+  `CharcoalTests` updated; 285 headless tests.
+- **Rivers** (`Core/Planet/RiverLines.cs`): the river line moved from the view into the core (one line for sim and view); mouths at the drawn
+  waterline or carried across a beach; `Footprints.Wet`/`WetDisc` keep homes and works 1.5 m off the bank; `Homes.InOpenOrWet` (4 a river).
+  The view's `Rivers` reads it (widths, ranks); `WaterView` joints by reach.
+- **Runs**: `tc2/out/civ/s*_d7` (ten seeds, final rules: the reference for the next slice; saves 50/100/200/300), `_d6` (before the river rule),
+  `s4_d1`..`_d5` (rule by rule); profiles `tc2/out/c133/prof_bin_d6.txt`, `prof_bin_d7.txt`. Tools in
+  `tc2/out/tools/` (`plotfoot.py` draws the ground; `wrun.sh`, `cmp.py`); this session's scratchpad holds `wrun.sh` with its path.
+- **Shots**: `tc2/out/shots/c133a` (Rainthorpe), `c133g` (ground plates), `c133b` (Vodrothorpe, seed 2), `c133c` (Souhope's busy market, seed 42),
+  `c133d` (hall with ground plates after the wing fix). Layout plots `tc2/out/c133/`.
+- **W-FOREST** (Arjun 8 Oct): forests and biomes still read as the same trees recoloured - an open W task (`18` §8, `25`), NOT solved.
+
+### Next, in order
+1. Web build of the C13.3 commit and Web test; re-measure the person/place pages on a quiet machine (C13.2 read 54-59 fps against C13.1's 75-85).
+2. **C3 exchange** (chosen over C10.2 - trade is 0-5 traders a year at most villages and markets are rare because barter needs a double coincidence
+   of wants; lordships rarely hold): design in `21` / a new `26` doc, first slice workshops and wares (a skilled maker's workshop by need, wares made
+   for the village and traded), then exchange within a village and between villages; it gives the market places (C13.3) and the sea (C9.4) a trade.
+3. C13.4 suburbs and a second wall; C10.2 when lordships hold.
+
 ## Session 10 (8 Oct 2026, 06:15 - ~09:10 IST; Control Room run #23 session 2) - D2-114 closed, C9.4 deferred, C13.1 and C13.2 closed
 
 ### Exact state (keep current)

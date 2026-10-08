@@ -19,6 +19,9 @@ C1 structures & workplaces ──┬─> C2 materials from the land ──┬─
                              └─> C12 inspectors & biographies (a part of every slice; its own pages in C12)
 C1-C11 ─> C13 historical city evolution (morphology over centuries, rebuilding, the 1,000-year acceptance)
 P (performance tiers A/B/C) and W (legibility) run alongside; E (ecology richness, human impact) with C2 and after.
+**Open W task, not solved: W-FOREST** (`18` §8, Arjun 8 Oct 2026) - forests and biomes still read as the same trees recoloured; a dedicated
+ecology/art pass (biome-specific composition and silhouettes, species/height/age variation, interiors/edges/regrowth/old growth, wet/dry/
+cold/warm/riparian vegetation, ground cover and palettes) follows the current civilisation slices unless a C-slice touches it.
 ```
 
 | Phase | Content | Done when |
@@ -80,7 +83,8 @@ Acceptance: a tier-A world (one to three settlements, 100-500 people) shot at it
 views shows the differentiation; every structure is clickable; headless runs at both resolutions and DEEP agree within tolerance.
 
 ### C13 historical city evolution, by slices (D2-116): ~~C13.1 streets - villages grow along their roads, houses face them~~ (done); ~~C13.2 back lanes~~ (done, D2-117);
-C13.3 a town's core of rows, the market place; C13.4 suburbs outside the gates, a second wall. (C9.4 docks and cargo boats deferred
+~~C13.3 a town's ground: footprints (no house in another), divided plots and rows of narrow town houses in its core, the market place~~ (done, D2-118);
+C13.4 suburbs outside the gates, a second wall; later: merged plots for wide town houses, shops below, lanes that bend, plots held. (C9.4 docks and cargo boats deferred
 behind exchange, D2-115.)
 
 ## 3. Later proofs (from the direction): resource town, coastal civilisation, the 1,000-year world

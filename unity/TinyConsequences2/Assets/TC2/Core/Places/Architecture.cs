@@ -14,8 +14,9 @@ namespace TC2.Core.Places
     /// </summary>
     public static class Architecture
     {
-        /// <summary>Plans: a one-room cottage, a cottage, a longhouse with its byre, a two-storey house, a hall-house with its cross wing.</summary>
-        public const int Small = 0, Cottage = 1, Long = 2, Two = 3, Hall = 4, Plans = 5;
+        /// <summary>Plans: a one-room cottage, a cottage, a longhouse with its byre, a two-storey house, a hall-house with its cross wing, and the
+        /// narrow town house of a divided plot in a town's core - tall, gable to the street (C13.3, D2-118).</summary>
+        public const int Small = 0, Cottage = 1, Long = 2, Two = 3, Hall = 4, Row = 5, Plans = 6;
         /// <summary>Roof forms.</summary>
         public const int Gable = 0, Hipped = 1, HalfHip = 2;
         /// <summary>Roof covers.</summary>
@@ -149,8 +150,19 @@ namespace TC2.Core.Places
         /// The form of a home a household raises now (Homes.Raised): its plan by its size and means and the village's, its roof by its tradition
         /// (steeper half-hips under snow), its materials by the ground and the village's knowledge, a palette shade of its tradition.
         /// </summary>
-        public static int HomeForm(World w, int sid, int hid, int bid, byte kind)
+        public static int HomeForm(World w, int sid, int hid, int bid, byte kind) => HomeForm(w, sid, hid, bid, kind, out _, out _);
+
+        /// <summary>The same, with the bearing it is laid out facing (see the full form).</summary>
+        public static int HomeForm(World w, int sid, int hid, int bid, byte kind, out double face) => HomeForm(w, sid, hid, bid, kind, out face, out _);
+
+        /// <summary>
+        /// The same, with the bearing it is laid out facing (C13.3, D2-118): its plan is the one its household would build that fits its lot - on a
+        /// divided plot of a town's core a narrow house (`Row`, a one-room cottage for the poorest), elsewhere the wanted plan or the next smaller
+        /// that stands clear of its neighbours, the streets, the green and the ring (`Footprints.HomeFits`).
+        /// </summary>
+        public static int HomeForm(World w, int sid, int hid, int bid, byte kind, out double face, out bool fits)
         {
+            fits = true;
             ref var s = ref w.Settlements.Get(sid);
             var mem = w.Members(hid);
             int n = mem.Count;
@@ -162,22 +174,75 @@ namespace TC2.Core.Places
             int roof = TraditionRoof(tradition);
             if (w.Planet.TMean[s.Cell] < 2.0 && roof == Hipped) roof = HalfHip;   // (snow slides off the steep gables of the cold)
             int plan;
-            if (kind < Construction.House) plan = Small;
+            if (kind < Construction.House)
+            {
+                plan = Small;   // (a hut: round, on the ground its lot keeps)
+                face = w.Buildings.Exists(bid) ? Footprints.FaceAt(in s, w.Buildings.Get(bid).X, w.Buildings.Get(bid).Y, w.Buildings.Get(bid).Style) : 0.0;
+            }
             else
             {
                 // up a storey where lots near the centre are dear: inside a standing ring, or in the inner half of a big village's homes
                 bool hemmed = s.Wall == 2 && s.WallR > 0f && Inside(in s, w, hid, s.WallR);
                 bool inner = s.Population >= 250 && Inside(in s, w, hid, 0.5 * HomesReach(w, sid));
                 Beasts(w, hid, out int cattle, out int small);
-                if (rich && s.Population >= 120 && rank == 0 && HallRoom(w, sid, bid)) plan = Hall;
+                bool core = w.Buildings.Exists(bid) && Streets.CorePlot(in s, w.Buildings.Get(bid).X, w.Buildings.Get(bid).Y);
+                bool poor = n <= 2 && means < 1.0 || n <= 3 && means < 0.6;
+                if (core) plan = poor ? Small : Row;   // (a divided plot in a town's core: a narrow house, built up - C13.3)
+                else if (rich && s.Population >= 120 && rank == 0 && HallRoom(w, sid, bid)) plan = Hall;
                 else if ((hemmed && s.Population >= 200 || inner) && (means >= 0.5 || n >= 3)) plan = Two;   // (a town's core builds up, all but the poorest)
                 else if (cattle >= 1 || small >= 4 || n >= 7) plan = Long;   // (a byre for its beasts under the one roof; a big family's long hall)
-                else if (n <= 2 && means < 1.0 || n <= 3 && means < 0.6) plan = Small;
+                else if (poor) plan = Small;
                 else plan = Cottage;
-                if (plan == Hall || plan == Two) chimney = true;
+                plan = Fit(w, sid, hid, bid, plan, core, out face, out fits);
+                if (plan == Hall || plan == Two || plan == Row) chimney = true;
             }
             int palette = (TraditionPalette(tradition) + (int)(KeyedRng.Mix((ulong)bid * 31UL + 7) % 3UL)) % 8;
             return Pack(plan, roof, cover, walls, chimney, palette);
+        }
+
+        /// <summary>
+        /// The plan a house is built to on its lot (C13.3): the wanted one if it stands clear there as it would face, else the next smaller of its
+        /// kind (a hall a two-storey house, a longhouse a cottage, ...) - on a divided plot only one that keeps within the plot's width. A lot keeps
+        /// the ground of a one-room cottage, so that one stands at the least.
+        /// </summary>
+        static int Fit(World w, int sid, int hid, int bid, int want, bool core, out double face, out bool fits)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            fits = true;
+            if (!w.Buildings.Exists(bid)) { face = 0.0; return want; }
+            ref var b = ref w.Buildings.Get(bid);
+            double x = b.X, y = b.Y;
+            // facing as it would be laid out now (its street or the square); else as it stands (a street laid since may turn a lot the other way)
+            for (int turn = 0; turn < 2; turn++)
+            {
+                if (turn == 1 && b.Faced == 0) break;
+                face = turn == 0 ? Footprints.FaceAt(in s, x, y, b.Style) : b.Face;
+                for (int i = 0; i < 5; i++)
+                {
+                    int p = Fallback(want, i);
+                    if (p < 0) break;
+                    if (core && !Footprints.Narrow(p)) continue;
+                    if (Footprints.HomeFits(w, sid, x, y, face, p, bid, hid)) return p;
+                }
+            }
+            // nothing fits (a camp's lot is checked before its home is raised, so this is a house to be rebuilt): it stays as it stands
+            fits = false;
+            face = b.Faced != 0 ? b.Face : Footprints.FaceAt(in s, x, y, b.Style);
+            return b.Kind >= Construction.House && Has(b.Form) ? PlanOf(b.Form) : Small;
+        }
+
+        /// <summary>The i-th plan to try for a wanted plan: itself, then smaller ones as its builders would settle for.</summary>
+        static int Fallback(int want, int i)
+        {
+            switch (want)
+            {
+                case Hall: return i == 0 ? Hall : i == 1 ? Two : i == 2 ? Row : i == 3 ? Cottage : Small;
+                case Long: return i == 0 ? Long : i == 1 ? Cottage : i == 2 ? Row : i == 3 ? Small : -1;
+                case Two: return i == 0 ? Two : i == 1 ? Row : i == 2 ? Cottage : i == 3 ? Small : -1;
+                case Cottage: return i == 0 ? Cottage : i == 1 ? Row : i == 2 ? Small : -1;
+                case Row: return i == 0 ? Row : i == 1 ? Small : -1;
+                default: return i == 0 ? Small : -1;
+            }
         }
 
         /// <summary>
@@ -241,7 +306,7 @@ namespace TC2.Core.Places
         }
 
         /// <summary>A plan's size against a cottage's (its labour and timber to raise).</summary>
-        public static double Size(int plan) => plan == Small ? 0.6 : plan == Cottage ? 1.0 : plan == Long ? 1.4 : plan == Two ? 1.7 : 2.5;
+        public static double Size(int plan) => plan == Small ? 0.6 : plan == Cottage ? 1.0 : plan == Long ? 1.4 : plan == Two ? 1.7 : plan == Row ? 1.6 : 2.5;
 
         /// <summary>How much better one form is than another (D2-114: a bigger plan, better walls and roof, a chimney); 0 for no form before.</summary>
         public static double Gain(int now, int before)
@@ -253,13 +318,13 @@ namespace TC2.Core.Places
         static double Worth(int f)
         {
             int p = PlanOf(f), c = CoverOf(f), wl = WallsOf(f);
-            double v = p == Small ? 0 : p == Cottage ? 1.0 : p == Long ? 1.5 : p == Two ? 2.5 : 3.5;
+            double v = p == Small ? 0 : p == Cottage ? 1.0 : p == Long ? 1.5 : p == Two || p == Row ? 2.5 : 3.5;
             v += c == Straw ? 0 : c == Reed ? 0.2 : c == Shingle ? 0.8 : 1.2;
             v += wl == Daub ? 0 : wl == Limewash ? 0.3 : wl == Logs ? 0.6 : wl == Framed ? 0.8 : 1.5;
             return v + (Chimney(f) ? 0.5 : 0);
         }
 
-        public static string PlanName(int plan) => plan == Small ? "one-room cottage" : plan == Cottage ? "cottage" : plan == Long ? "longhouse with its byre" : plan == Two ? "two-storey house" : "hall-house with a cross wing";
+        public static string PlanName(int plan) => plan == Small ? "one-room cottage" : plan == Cottage ? "cottage" : plan == Long ? "longhouse with its byre" : plan == Two ? "two-storey house" : plan == Row ? "narrow town house" : "hall-house with a cross wing";
         public static string CoverName(int c) => c == Straw ? "straw thatch" : c == Reed ? "reed thatch" : c == Shingle ? "wooden shingles" : c == Tile ? "fired tiles" : "stone slates";
         public static string WallsName(int c) => c == Daub ? "wattle and daub" : c == Limewash ? "limewashed daub" : c == Framed ? "timber framing" : c == Logs ? "logs" : "stone";
         public static string RoofName(int r) => r == Gable ? "gabled" : r == Hipped ? "hipped" : "half-hipped";
@@ -269,7 +334,7 @@ namespace TC2.Core.Places
         {
             if (!Has(form)) return "house";
             int p = PlanOf(form);
-            string plan = p == Small ? "one-room cottage" : p == Cottage ? "cottage" : p == Long ? "longhouse" : p == Two ? "two-storey house" : "hall-house";
+            string plan = p == Small ? "one-room cottage" : p == Cottage ? "cottage" : p == Long ? "longhouse" : p == Two ? "two-storey house" : p == Row ? "narrow town house" : "hall-house";
             return plan + " of " + WallsName(WallsOf(form)) + " under " + CoverName(CoverOf(form));
         }
 
@@ -285,7 +350,8 @@ namespace TC2.Core.Places
             {
                 int p = PlanOf(form);
                 sb.Append(p == Small ? "one room: a household of few and little in hand" : p == Cottage ? "a cottage of two rooms" : p == Long ? "a longhouse: its beasts stalled at one end under the one roof, or a big household"
-                    : p == Two ? "built up a storey: lots near the middle of a town are dear" : "a hall-house: the house of its village's best-off household").Append("; ");
+                    : p == Two ? "built up a storey: lots near the middle of a town are dear" : p == Row ? "a narrow town house, tall and gable to the street: the plots along a town's streets near its green are divided"
+                    : "a hall-house: the house of its village's best-off household").Append("; ");
             }
             int c = CoverOf(form), wl = WallsOf(form);
             sb.Append(c == Straw ? "thatched with straw from the fields" : c == Reed ? "thatched with reed from the wet ground near" : c == Shingle ? "shingles split from the woods with iron tools"

@@ -192,6 +192,7 @@ namespace TC2.Core.Places
             p.Cargo = take; p.CargoQty = (float)qh;
             w.Metrics.TradeTrips++;
             t.TradeIn = (float)((double)t.TradeIn + 1.0);   // (one more trader came to deal here: C1.6)
+            Structures.MarketDealt(w, at);   // (and to its market: its market place widens - C13.3)
             Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Trade, home, at);
             w.Metrics.TradeValue += (vt - vf) * qg + bestGain;
             if (g == Metal) w.Metrics.MetalTraded += qg;

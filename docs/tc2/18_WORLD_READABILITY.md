@@ -126,6 +126,19 @@ falling) and each view must read without the HUD.
 The UI (top buttons, History Book, inspector) still resembles development panels: once the world's legibility stabilises it gets a
 full art pass - it must not ship as debug UI.
 
+**W-FOREST - forests and biomes still read as the same trees (OPEN; Arjun, 8 Oct 2026 - NOT solved, never mark it done without his
+judgement in real shots).** Slices 3 and 5 above were begun (D2-080 to D2-082, D2-084 slice 1) but the result is not accepted: many forests
+read as the same handful of trees recoloured, and a biome's identity is weak. A dedicated ecology/art pass (after the current civilisation
+slices, unless a C-slice touches it directly) must deliver:
+- strongly biome-specific tree composition and silhouettes (boreal spires, temperate broadleaf domes, dry open pine/oak savanna, wet
+  alder/willow carr, riparian galleries, montane krummholz, warm evergreen) - not one kit recoloured;
+- far more species, form, height and age variation inside a stand (saplings, poles, mature, veterans, snags);
+- forest interiors vs edges vs young regrowth vs old growth readable as different structure (density, height, gaps, understorey);
+- distinct wet / dry / cold / warm / riparian vegetation, read from the simulation's climate, moisture, streams and disturbance;
+- much stronger ground-cover and biome palette differences (heath, bracken, sedge, steppe grass, tundra cushions, leaf litter);
+- forests that look genuinely different by climate and ecology - the test: shots of four climates side by side must not be confusable.
+Real state where a meaningful difference cannot be drawn (`18` §5; e.g. stand age / disturbance kind per cell, forest composition as state).
+
 ## 9. The civilisation made visible (D2-089)
 
 Done so far (D2-090-D2-097): works drawn from the structure table (granaries on staddles, barns, the smithy with smoke while a smith works,

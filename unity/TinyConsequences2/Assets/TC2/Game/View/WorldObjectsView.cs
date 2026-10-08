@@ -36,14 +36,16 @@ namespace TC2.Game
         float _treeTimer, _placeTimer;
         public int PeopleDrawn, TreesDrawn, BoatsAfloat;
         public static int Off;   // tools (webperf): parts not drawn - 1 trees, 2 people, 4 buildings and yards
+        public static bool ShowGround;   // tools (shots -tc2ground): each home's ground as the simulation holds it (C13.3), a red plate under it
 
         // homes by their recorded form (D2-114): a model a plan and roof form, overlays composed per house; dimensions as the kit builds them
-        static readonly string[] PlanNames = { "small", "cottage", "long", "two", "hall" };
+        // (and the narrow town house of a divided plot, gable to the street: C13.3, D2-118)
+        static readonly string[] PlanNames = { "small", "cottage", "long", "two", "hall", "row" };
         static readonly string[] RoofNames = { "g", "h", "j" };
-        static readonly float[] PlanL = { 4.8f, 7.0f, 12.0f, 6.6f, 10.0f }, PlanW = { 3.8f, 5.0f, 5.4f, 5.4f, 6.2f }, PlanRidge = { 4.3f, 5.0f, 5.2f, 8.6f, 7.1f };
-        static readonly int[] PlanRoom = { 3, 6, 8, 8, 10 };   // people a plan houses before they build on a lean-to
+        static readonly float[] PlanL = { 4.8f, 7.0f, 12.0f, 6.6f, 10.0f, 4.6f }, PlanW = { 3.8f, 5.0f, 5.4f, 5.4f, 6.2f, 6.2f }, PlanRidge = { 4.3f, 5.0f, 5.2f, 8.6f, 7.1f, 9.2f };
+        static readonly int[] PlanRoom = { 3, 6, 8, 8, 10, 8 };   // people a plan houses before they build on a lean-to
         // (where a plan's chimney stands, kit metres: x along the house, y across it (+y the back), and its top)
-        static readonly Vector3[] ChimneyAt = { new Vector3(1.2f, 0.3f, 4.9f), new Vector3(2.0f, 0.4f, 5.7f), new Vector3(-2.4f, 0.4f, 5.9f), new Vector3(-2.0f, 0.3f, 9.3f), new Vector3(-1.5f, 3.45f, 7.7f) };
+        static readonly Vector3[] ChimneyAt = { new Vector3(1.2f, 0.3f, 4.9f), new Vector3(2.0f, 0.4f, 5.7f), new Vector3(-2.4f, 0.4f, 5.9f), new Vector3(-2.0f, 0.3f, 9.3f), new Vector3(-1.5f, 3.45f, 7.7f), new Vector3(0f, 1.9f, 9.9f) };
         // the roof covers and the walls, by what they are made of (sRGB albedo; the kit paints them a neutral 0.86 and 0.90)
         static readonly Color[] CoverCol = { new Color(0.74f, 0.61f, 0.36f), new Color(0.60f, 0.53f, 0.40f), new Color(0.46f, 0.38f, 0.30f), new Color(0.74f, 0.35f, 0.21f), new Color(0.42f, 0.44f, 0.48f) };
         static readonly Color[][] WallCol =
@@ -326,6 +328,80 @@ namespace TC2.Game
             return Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, yaw), Vector3.one * scale);
         }
 
+        /// <summary>
+        /// A model at (x, y) of a village's frame, its front (+z) turned to the bearing `face` (radians in that frame: C13.3, D2-118) - the village's
+        /// own east and north carried onto the ground, so a house is drawn exactly as the simulation laid it out (`Footprints`). Before, a yaw read in
+        /// the village's frame was turned about a world-fixed forward, and houses stood a few degrees to a few tens off their streets by where the
+        /// village lay on the globe.
+        /// </summary>
+        static Matrix4x4 PlaceFaced(PlanetState P, in Settlement s, double x, double y, double face, float scale, float lift = 0f)
+        {
+            Vec3d d = s.LocalToSphere(x, y, P.Radius);
+            Vector3 pos = PlanetGeo.Surface(P, d, lift);
+            Vector3 up = pos.normalized;
+            Vector3 f = Vector3.ProjectOnPlane(PlanetGeo.ToVector(s.East * DMath.Cos(face) + s.North * DMath.Sin(face)), up);
+            if (f.sqrMagnitude < 1e-10f) f = Vector3.Cross(up, Vector3.right);
+            return Matrix4x4.TRS(pos, Quaternion.LookRotation(f.normalized, up), Vector3.one * scale);
+        }
+
+        /// <summary>A point of a building's frame (mx along its front, mz toward it) in its village's frame.</summary>
+        static void Local(double x, double y, double face, double mx, double mz, out double lx, out double ly)
+        {
+            double fx = DMath.Cos(face), fy = DMath.Sin(face);
+            lx = x - fy * mx + fx * mz; ly = y + fx * mx + fy * mz;
+        }
+
+        /// <summary>
+        /// What the view knows of each building's ground (D2-118), read again only when a village's buildings change: how much larger than life it
+        /// may be drawn before it meets a neighbour (`Footprints.Room`), and where its yard has free ground - a kitchen garden behind or beside, a
+        /// pen behind, a woodpile at its end or its back - so no garden, pen or woodpile is drawn into another house, a street or the green.
+        /// </summary>
+        sealed class Plot { public float Room; public bool Back, Pen, SideL, SideR, WoodEnd, WoodBack; }
+        readonly Dictionary<int, Plot> _plots = new Dictionary<int, Plot>();
+        readonly Dictionary<int, long> _plotSig = new Dictionary<int, long>();
+        readonly Dictionary<int, float> _plotAt = new Dictionary<int, float>();
+
+        void ReadPlots(TC2.Core.Simulation.World w, int sid)
+        {
+            // (the ground changes when a building is laid out, rebuilt to another form or gone into the land, the market place widens or a street
+            // is laid; all of a village again at most every two seconds - a building new since is read at once on its own)
+            var bl = w.BuildingsOf(sid);
+            long sig = bl.Count;
+            for (int i = 0; i < bl.Count; i++) { ref var b = ref w.Buildings.Get(bl[i]); sig = sig * 1000003L + bl[i] * 31L + b.Form * 7L + b.Kind; }
+            ref var s = ref w.Settlements.Get(sid);
+            sig = sig * 31L + (long)(s.MarketR * 10f) + s.StreetN * 7L;
+            if (_plotSig.TryGetValue(sid, out long old) && old == sig) return;
+            bool all = !_plotAt.TryGetValue(sid, out float at) || Time.unscaledTime - at >= 2f;
+            if (all) { _plotSig[sid] = sig; _plotAt[sid] = Time.unscaledTime; }
+            for (int i = 0; i < bl.Count; i++)
+            {
+                if (Boats.IsBoat(w.Buildings.Get(bl[i]).Kind)) continue;
+                if (!all && _plots.ContainsKey(bl[i])) continue;
+                ReadPlot(w, sid, bl[i]);
+            }
+        }
+
+        void ReadPlot(TC2.Core.Simulation.World w, int sid, int bid)
+        {
+            ref var b = ref w.Buildings.Get(bid);
+            if (!_plots.TryGetValue(bid, out var pl)) { pl = new Plot(); _plots[bid] = pl; }
+            pl.Room = (float)Footprints.Room(w, sid, bid, 2.5);
+            if (!Structures.IsHome(b.Kind)) return;
+            bool hut = b.Kind < Construction.House;
+            int plan = hut ? 0 : Footprints.PlanOf(in b);
+            float L = hut ? 4.6f : PlanL[plan], W = hut ? 4.6f : PlanW[plan];   // (a hut: 2.3 m round)
+            // (the zones, in the house's frame: the garden 6 x 4.4 behind past a lean-to's depth, or beside; the pen behind; the woodpile at its end
+            // or behind a back corner)
+            pl.Back = Footprints.YardFree(w, sid, bid, 0.0, -W / 2.0 - 2.4 - 1.5 - 2.3, 3.8, 2.4);
+            pl.Pen = Footprints.YardFree(w, sid, bid, 0.0, -W / 2.0 - 3.2 - 2.1, 4.4, 2.3);
+            pl.SideL = Footprints.YardFree(w, sid, bid, -(L / 2.0 + 4.6), -W / 2.0 - 0.6, 3.9, 2.4);
+            pl.SideR = Footprints.YardFree(w, sid, bid, L / 2.0 + 4.6, -W / 2.0 - 0.6, 3.9, 2.4);
+            pl.WoodEnd = Footprints.YardFree(w, sid, bid, L / 2.0 + 1.6, 0.0, 1.0, 1.3);
+            pl.WoodBack = Footprints.YardFree(w, sid, bid, L / 2.0 - 1.2, -W / 2.0 - 1.4, 1.3, 1.0);
+        }
+
+        Plot PlotOf(int bid) => _plots.TryGetValue(bid, out var p) ? p : null;
+
         void RebuildPlaces(TC2.Core.Simulation.World w)
         {
             var P = w.Planet;
@@ -351,6 +427,7 @@ namespace TC2.Game
                 // (and how many days its woodstore holds against what its hearths burn: the woodpiles by the homes, D2-081)
                 double woodDays = s.FuelDay > 1e-6f ? s.Woodstore / s.FuelDay : (s.Woodstore > 0 ? 30.0 : 0.0);
                 int litHomes = 0;
+                ReadPlots(w, sid);   // (what each building's ground leaves it: C13.3)
                 var bl = w.BuildingsOf(sid);
                 for (int i = 0; i < bl.Count; i++)
                 {
@@ -366,12 +443,12 @@ namespace TC2.Game
                 {
                     ref var h = ref w.Households.Get(hhs[i]);
                     if (h.Building != 0 || h.Party != 0) continue;
-                    float yaw = Mathf.Atan2(s.SquareX - h.HomeX, s.SquareY - h.HomeY) * Mathf.Rad2Deg + 180f + ((hhs[i] * 37) % 21 - 10);
+                    double tface = Footprints.FaceAt(in s, h.HomeX, h.HomeY, hhs[i]);   // (as the home to come will face: C13.3)
                     float age = 0.88f + 0.2f * (float)KeyedRng.Unit(KeyedRng.Mix((ulong)hhs[i] + 77));
                     bool awake = SomeoneAwakeHome(w, hhs[i], out bool cooking);
                     bool lit = dark && awake;
                     if (lit) litHomes++;
-                    var tm = Place(P, s, h.HomeX, h.HomeY, yaw, ex);
+                    var tm = PlaceFaced(P, s, h.HomeX, h.HomeY, tface, Mathf.Min(ex, 1.3f));
                     _tents.Add((int)(age * 10) + (lit ? 100 : 0), new Color(age, age * 0.97f, age * 0.92f, 1f), tm, lit ? -1f : 0f);
                     if (awake && (cooking || h.Indoor - Hearth.Indoors(tOut, h.Shelter, 0.0) > 0.5))
                     {
@@ -391,18 +468,46 @@ namespace TC2.Game
                 if (s.Wall == 1 || s.Wall == 2 || s.OldR > 0f) DrawWall(w, P, in s, sid, ex);
                 if (!s.Inhabited) continue;   // (an abandoned village's well and granary decay as structures: C1.1)
                 // the stone in its store, stacked by the store: a pile for every ~40 loads, up to four (C1.3)
+                // (round the first granary, on ground no building, stall or street takes: C13.3 - the haystacks stood 22-35 m out, where homes stand)
+                Construction.GranarySpot(in s, out double gsx, out double gsy);
+                int spot = 0;
                 if (s.Stone >= 5)
                 {
-                    Construction.GranarySpot(in s, out double sx, out double sy);
                     int piles = Mathf.Clamp(Mathf.CeilToInt((float)(s.Stone / 40.0)), 1, 4);
-                    for (int k = 0; k < piles; k++) _stonePiles.Add(0, Color.white, Place(P, s, sx - 7.0 - k * 2.4, sy + 5.0 + (k % 2) * 1.8, 20f * k, ex * 1.1f));
+                    for (int k = 0; k < piles; k++)
+                        if (StoreSpot(w, in s, sid, gsx, gsy, ref spot, out double px, out double py)) _stonePiles.Add(0, Color.white, PlaceFaced(P, s, px, py, 0.35 * k, Mathf.Min(ex, 1.3f) * 1.1f));
                 }
                 // haystacks once the harvest is in
                 float fill = Mathf.Clamp01((float)(s.Granary / System.Math.Max(1.0, s.Population * 30.0)));
                 if (s.Crop == CropStage.Harvested || s.Crop == CropStage.Fallow)
                     for (int k = 0; k < Mathf.RoundToInt(fill * 4); k++)
-                        _hay.Add(0, Color.white, Place(P, s, s.SquareX + 22 + k * 4.5, s.SquareY - 16 + (k % 2) * 3.0, k * 40f, ex * (0.8f + 0.1f * k)));
+                        if (StoreSpot(w, in s, sid, gsx, gsy, ref spot, out double hx, out double hy)) _hay.Add(0, Color.white, PlaceFaced(P, s, hx, hy, 0.7 * k, Mathf.Min(ex, 1.3f) * (0.8f + 0.1f * k)));
             }
+        }
+
+        /// <summary>The next free spot round the village's store for a stack (stone, hay): on a ring 5.5 m round the first granary, from the side
+        /// toward the square, clear of every building's ground, the market's stalls and the streets.</summary>
+        static bool StoreSpot(TC2.Core.Simulation.World w, in Settlement s, int sid, double gx, double gy, ref int spot, out double x, out double y)
+        {
+            double a0 = DMath.Atan2(s.SquareY - gy, s.SquareX - gx);
+            var bl = w.BuildingsOf(sid);
+            for (; spot < 12; spot++)
+            {
+                double a = a0 + ((spot & 1) == 0 ? 1 : -1) * ((spot + 1) >> 1) * 0.55;
+                x = gx + 5.5 * DMath.Cos(a); y = gy + 5.5 * DMath.Sin(a);
+                bool clear = !Streets.On(in s, x, y, Streets.Width);
+                for (int j = 0; j < bl.Count && clear; j++)
+                {
+                    ref var o = ref w.Buildings.Get(bl[j]);
+                    if (Homes.RuinLeft(in o, w.Now) <= 0 || Boats.IsBoat(o.Kind)) continue;
+                    double ox = o.X - x, oy = o.Y - y;
+                    double need = (Structures.IsHome(o.Kind) ? Footprints.Reach(Footprints.PlanOf(in o)) : o.Kind == Structures.Market ? 11.0 : Footprints.WorkR(o.Kind)) + 1.6;
+                    if (ox * ox + oy * oy < need * need) clear = false;
+                }
+                if (clear) { spot++; return true; }
+            }
+            x = gx; y = gy;
+            return false;
         }
 
         /// <summary>
@@ -413,9 +518,11 @@ namespace TC2.Game
         {
             ref var b = ref w.Buildings.Get(bid);
             var k = Structures.Of(b.Kind);
-            float yaw = Mathf.Atan2(s.SquareX - b.X, s.SquareY - b.Y) * Mathf.Rad2Deg + 180f + ((bid * 37) % 21 - 10);
+            double face = Footprints.FaceOf(in s, in b);   // (as it was laid out: C13.3)
+            var plot = PlotOf(bid);
+            if (plot != null) ex = Mathf.Min(ex, plot.Room);
             var inst = b.Kind < _works.Length && _works[b.Kind] != null ? _works[b.Kind] : _granaries;
-            var m = Place(P, s, b.X, b.Y, yaw, ex);
+            var m = PlaceFaced(P, s, b.X, b.Y, face, ex);
             if (b.Kind == Structures.BoatShed && s.LandAt != 0)
             {
                 // its mouth down the beach, to the water (C9.2b; the kit's mouth at +y comes into the game at -z)
@@ -437,7 +544,7 @@ namespace TC2.Game
                 float c = (float)Homes.RuinLeft(in b, w.Now);
                 if (c <= 0.03f) return;
                 if (b.Kind == Structures.Well) inst.Add(1, Color.Lerp(moss, new Color(0.75f, 0.80f, 0.70f, 1f), c), m * Matrix4x4.Scale(new Vector3(1f, 0.4f, 1f)));
-                else _ruins.Add((int)(c * 4), Color.Lerp(moss, Color.white, c), Place(P, s, b.X, b.Y, yaw, 1f) * Matrix4x4.Scale(new Vector3(ex * 0.7f, ex * 0.7f * (0.25f + 0.75f * c), ex * 0.7f)));
+                else _ruins.Add((int)(c * 4), Color.Lerp(moss, Color.white, c), PlaceFaced(P, s, b.X, b.Y, face, 1f) * Matrix4x4.Scale(new Vector3(ex * 0.7f, ex * 0.7f * (0.25f + 0.75f * c), ex * 0.7f)));
                 return;
             }
             float cond = (float)Structures.Condition(in b, w.Now);
@@ -496,16 +603,44 @@ namespace TC2.Game
                 return;
             }
             inst.Add(0, look, m);
-            if (b.Kind == Structures.Market)
+            if (b.Kind == Structures.Market) Stalls(w, P, in s, bid, ex);
+        }
+
+        /// <summary>
+        /// The market's stalls (C1.6, C13.3): as many as its traders keep coming (traders a year), each awning its own dye - set out in a ring round
+        /// the cross and, in a wide market place (`Settlement.MarketR`), another along its edge, on ground no building stands on, facing in.
+        /// </summary>
+        void Stalls(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int bid, float ex)
+        {
+            ref var b = ref w.Buildings.Get(bid);
+            int stalls = Mathf.Clamp(Mathf.RoundToInt(s.TradeIn / 1.5f), 2, 16);
+            double place = Footprints.Green(in s);
+            int sid = b.Settlement, put = 0;
+            var bl = w.BuildingsOf(sid);
+            for (int ring = 0; ring < 2 && put < stalls; ring++)
             {
-                // the market's stalls round its cross: as many as its traders keep coming (C1.6: traders a year), each awning its own dye
-                int stalls = Mathf.Clamp(Mathf.RoundToInt(s.TradeIn / 1.5f), 2, 12);
-                for (int i = 0; i < stalls; i++)
+                double r = ring == 0 ? 8.5 : place - 4.0;
+                if (ring == 1 && r < 15.0) break;
+                int slots = (int)(2.0 * DMath.PI * r / 4.2);
+                for (int i = 0; i < slots && put < stalls; i++)
                 {
-                    float a = (i + 0.5f) / stalls * 360f + (bid * 23) % 30;
-                    float r = 7.5f + (i % 2) * 2.5f;
-                    var sm = m * Matrix4x4.TRS(Quaternion.Euler(0f, a, 0f) * new Vector3(0f, 0f, r), Quaternion.Euler(0f, a, 0f), Vector3.one);
-                    _stalls.Add(0, Dyes[(bid + i * 3) % Dyes.Length], sm);
+                    double a = (i + 0.5) / slots * 2.0 * DMath.PI + (bid % 7) * 0.13 + ring * 0.21;
+                    double cx = ring == 0 ? b.X : s.SquareX, cy = ring == 0 ? b.Y : s.SquareY;
+                    double x = cx + r * DMath.Cos(a), y = cy + r * DMath.Sin(a);
+                    bool clear = true;
+                    for (int j = 0; j < bl.Count && clear; j++)
+                    {
+                        if (bl[j] == bid) continue;
+                        ref var o = ref w.Buildings.Get(bl[j]);
+                        if (Homes.RuinLeft(in o, w.Now) <= 0) continue;
+                        double ox = o.X - x, oy = o.Y - y;
+                        double need = (Structures.IsHome(o.Kind) ? Footprints.Reach(Footprints.PlanOf(in o)) : Footprints.WorkR(o.Kind)) + 2.0;
+                        if (ox * ox + oy * oy < need * need) clear = false;
+                    }
+                    if (!clear || Streets.On(in s, x, y, Streets.Width * 0.5)) continue;
+                    double facing = DMath.Atan2(b.Y - y, b.X - x);   // (its front to the cross)
+                    _stalls.Add(0, Dyes[(bid + put * 3) % Dyes.Length], PlaceFaced(P, s, x, y, facing, ex));
+                    put++;
                 }
             }
         }
@@ -519,16 +654,18 @@ namespace TC2.Game
         bool DrawHome(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int bid, float ex, bool dark, double tOut, double woodDays)
         {
             ref var b = ref w.Buildings.Get(bid);
-            // it faces its street where it fronts one (C13.1), square to it; else the square, a little askew
-            bool fronts = Streets.Facing(in s, b.X, b.Y, out double faceX, out double faceY);
-            float yaw = Mathf.Atan2((float)faceX - b.X, (float)faceY - b.Y) * Mathf.Rad2Deg + 180f + (fronts ? ((b.Style * 37) % 5 - 2) : ((b.Style * 37) % 21 - 10));
+            // it faces its street where it fronts one (C13.1), square to it; else the square, a little askew - as it was laid out (C13.3: `Building.Face`);
+            // drawn larger far off only as far as its neighbours leave it room (D2-118)
+            double face = Footprints.FaceOf(in s, in b);
+            var plot = PlotOf(bid);
+            if (plot != null) ex = Mathf.Min(ex, plot.Room);
             float age = 0.88f + 0.2f * (float)KeyedRng.Unit(KeyedRng.Mix((ulong)b.Style + 77));   // weathering of roofs and walls
             if (Homes.Fallen(in b, w.Now) || (b.Household == 0 && Homes.Condition(in b, w.Now) < Homes.Habitable))
             {
                 // past mending its roof is gone (the walls stand roofless), then it falls in and sinks (RuinLeft: 1 while it stands)
                 float c = (float)Homes.RuinLeft(in b, w.Now);
                 if (c <= 0.03f) return false;
-                var mr = Place(P, s, b.X, b.Y, yaw, 1f);
+                var mr = PlaceFaced(P, s, b.X, b.Y, face, 1f);
                 float size = ex * (b.Kind >= Construction.House ? 1f : 0.6f);
                 mr = mr * Matrix4x4.Scale(new Vector3(size, size * (0.25f + 0.75f * c), size));   // the walls fall lower
                 Color moss = new Color(0.50f, 0.60f, 0.40f, 1f);
@@ -542,11 +679,20 @@ namespace TC2.Game
             Color tint = new Color(age, age * 0.98f, age * 0.94f, 1f);
             if (!lived) tint = Color.Lerp(new Color(0.55f, 0.58f, 0.48f, 1f), tint, 0.45f + 0.55f * (float)Homes.Condition(in b, w.Now));   // an empty home weathers
             int key = (int)(age * 10) + (lit ? 100 : 0) + (lived ? 0 : 200);
-            var m = Place(P, s, b.X, b.Y, yaw, ex);
+            var m = PlaceFaced(P, s, b.X, b.Y, face, ex);
             bool hut = b.Kind < Construction.House;
             int form = Architecture.Has(b.Form) ? b.Form : Architecture.Pack(Architecture.Cottage, Architecture.Gable, Architecture.Straw, Architecture.Daub, false, 0);
             int plan = Architecture.PlanOf(form);
             Vector3 smokeAt = Vector3.zero;
+            if (ShowGround)
+            {
+                int gp = Footprints.PlanOf(in b);
+                for (int r = 0; r < Footprints.Count(gp); r++)
+                {
+                    Footprints.Rect(gp, r, out double gcx, out double gcz, out double ghx, out double ghz);
+                    _plinths.Add(0, new Color(1f, 0.1f, 0.1f, 1f), m * Matrix4x4.TRS(new Vector3((float)gcx, 0f, (float)gcz), Quaternion.identity, new Vector3(2f * (float)ghx, 0.3f, 2f * (float)ghz)));
+                }
+            }
             if (hut) _huts.Add(300 + key, tint, m, lit ? -1f : 0f);
             else
             {
@@ -564,7 +710,7 @@ namespace TC2.Game
                 {
                     // on stone footings (C1.3): a course of stone round its walls (and its wing's)
                     _plinths.Add(0, Color.white, m * Matrix4x4.Scale(new Vector3(L + 0.3f, 1f, W + 0.3f)));
-                    if (plan == Architecture.Hall) _plinths.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3(L / 2f + 2.3f, 0f, 0f), Quaternion.identity, new Vector3(5.5f, 1f, 8.9f)));
+                    if (plan == Architecture.Hall) _plinths.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3((float)Footprints.WingSide * (L / 2f + 2.3f), 0f, 0f), Quaternion.identity, new Vector3(5.5f, 1f, 8.9f)));   // (its wing's side as the model comes in: D2-118)
                 }
                 var ch = ChimneyAt[plan];
                 if (Architecture.Chimney(form))
@@ -577,30 +723,34 @@ namespace TC2.Game
                 {
                     int n = w.Members(b.Household).Count;
                     if (n > PlanRoom[plan]) _outshuts.Add(0, roof, walls, m * Matrix4x4.TRS(new Vector3(0f, 0f, -W / 2f), Quaternion.identity, new Vector3(L * 0.55f, 1f, 1f)));
+                    // its pen and its kitchen garden (D2-114), only on ground its neighbours, the streets and the green leave free (D2-118): the pen behind;
+                    // the garden behind past a lean-to, or beside where the pen is - worked by its hands, as wide as they are; none in a town's built-up core
                     bool beasts = HasBeasts(w, b.Household);
-                    if (beasts) Pen(m, W, plan == Architecture.Hall ? 4 : 3);
-                    // its kitchen garden (D2-114): worked by its hands - behind the house, or beside it where the beasts' pen is; none in a town's
-                    // built-up core (a two-storey house's yard) - as wide as its working hands
+                    bool pen = beasts && plot != null && plot.Pen;
+                    if (pen) Pen(m, W, plan == Architecture.Hall ? 4 : 3);
                     int hands = Hands(w, b.Household);
-                    if (hands > 0 && plan != Architecture.Two)
+                    if (hands > 0 && plan != Architecture.Two && plan != Architecture.Row && plot != null)
                     {
                         float gw = 0.75f + 0.12f * Mathf.Min(4, hands);
-                        float back = -W / 2f - (n > PlanRoom[plan] ? 2.4f : 0f) - 2.5f;
-                        Vector3 at = beasts ? new Vector3((L / 2f + 3.1f * gw + 0.6f) * ((bid & 1) == 0 ? 1f : -1f), 0f, -W / 2f - 0.6f) : new Vector3(0f, 0f, back);
-                        _gardens.Add(0, Color.white, m * Matrix4x4.TRS(at, Quaternion.identity, new Vector3(gw, 1f, 1f)));
+                        float back = -W / 2f - 2.4f - 1.5f - 2.3f;
+                        float want = (bid & 1) == 0 ? 1f : -1f;   // (the side it would take: by the house)
+                        bool wantFree = want > 0f ? plot.SideR : plot.SideL, otherFree = want > 0f ? plot.SideL : plot.SideR;
+                        float sx = wantFree ? want : -want;
+                        if (!pen && plot.Back) _gardens.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3(0f, 0f, back), Quaternion.identity, new Vector3(gw, 1f, 1f)));
+                        else if (wantFree || otherFree) _gardens.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3((L / 2f + 4.6f) * sx, 0f, -W / 2f - 0.6f), Quaternion.identity, new Vector3(Mathf.Min(gw, 1.25f), 1f, 1f)));
                     }
                 }
             }
             if (!lived) return false;
             // its share of the village's woodstore stacked by the wall (D2-081): none when the store is all but empty, a bigger pile the
-            // more days of the hearths' wood the village holds
-            if (woodDays >= 2.0)
+            // more days of the hearths' wood the village holds - by its end wall, or behind a back corner where a neighbour stands close (D2-118)
+            if (woodDays >= 2.0 && plot != null && (plot.WoodEnd || plot.WoodBack))
             {
-                float fx = (float)faceX - b.X, fy = (float)faceY - b.Y, fl = Mathf.Max(0.01f, Mathf.Sqrt(fx * fx + fy * fy));   // (beside it, by what it faces)
-                fx /= fl; fy /= fl;
-                float side = hut ? 3.4f : 5.6f;
                 float pile = Mathf.Clamp(0.5f + (float)woodDays / 50f, 0.5f, 1.25f);
-                _woodpiles.Add(0, Color.white, Place(P, s, b.X + fy * side - fx * 1.2f, b.Y - fx * side - fy * 1.2f, yaw + 90f, ex * pile));
+                double L0 = hut ? 4.6 : PlanL[plan], W0 = hut ? 4.6 : PlanW[plan];
+                double mx = plot.WoodEnd ? L0 / 2.0 + 1.6 : L0 / 2.0 - 1.2, mz = plot.WoodEnd ? 0.0 : -W0 / 2.0 - 1.4;
+                Local(b.X, b.Y, face, mx * ex, mz * ex, out double wx, out double wy);
+                _woodpiles.Add(0, Color.white, PlaceFaced(P, s, wx, wy, face + (plot.WoodEnd ? 0.0 : DMath.HalfPi), ex * pile));
             }
             if (!awake) return lit;
             // a fire in the hearth: while someone cooks, and all day while it burns against the cold (what today's fire adds to the

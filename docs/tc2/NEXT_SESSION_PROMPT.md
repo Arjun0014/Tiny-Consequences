@@ -136,6 +136,13 @@ to famines - its relief raises famines x1.18 over ten seeds: find why first (D2-
 
 **Where we are (session 10, 8 Oct 2026)**: **D2-114 building variety closed** - judged in real shots: the first towns were one cottage repeated under one dull thatch or one orange tile on a bare disc, because the household's "means" separated nobody (larders hold days; the grain is the village's). Now means read beasts, boats, goods beyond need, working hands and the years of grain in the granary; one hall a village (one per 150 people); plans spread over ten worlds 37/28/13/21/1 % (one-room/cottage/long/two/hall); roofs are kept and weathered house by house, kitchen gardens, doorstep yards, beaten training grounds, a sooted smithy; the pages tell how a house was built and why. Ten seeds inside the noise; Web 6/6. Then **C9.4 surveyed and deferred** (D2-115: no demand for cargo boats in a barter economy - it waits for C3 exchange) and **C13.1 streets** (D2-116, sim version 55): ways worn to paths become durable streets, frontage is sought, villages grow along their roads and houses face them; conflict falls by a traced mechanism (more homes near the store, takers likelier seen); Web 6/6. Then **C13.2 back lanes** (D2-117): a lane either side of each street, filled behind its frontage - big villages read as towns of streets and lanes; Web 6/6. **Next**: C13.3 (rows in a town's core, the market place) or C10.2 (the political centre: needs lordships that hold) - SESSION_HANDOFF "Session 10".
 
+**Where we are (session 11, 8 Oct 2026)**: **C13.3 a town's ground (D2-118)** - every building covers real ground (`Footprints`: plans' rectangles
+turned to their recorded bearing `Building.Face`; works as discs); no house ever stands in another (C13.2 had 90-312 overlapping pairs a world: 0 now
+in all ten seeds); a town's street frontage near its green is divided into narrow plots with rows of the new narrow town house (gable to the
+street); a market place widens with the traders who come and is kept open; streets, lanes and rings laid between houses; houses drawn in the
+village's own frame (they had stood off their streets). **Open W task W-FOREST** (Arjun): forests/biomes still read as the same trees recoloured -
+not solved (`18` §8). **Next**: Web test, page fps on a quiet machine, then **C3 exchange** (SESSION_HANDOFF "Session 11").
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

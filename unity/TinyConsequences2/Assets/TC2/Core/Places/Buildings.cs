@@ -30,10 +30,12 @@ namespace TC2.Core.Places
         public float Stock;          // what it holds (a work's own goods; the village's grain stays in Settlement.Granary)
         public float Use;            // hours worked at it
         public int Form;             // how it was built: plan, roof, cover, walls, chimney, shade (Architecture, D2-114; 0 before)
+        public float Face;           // the bearing it faces, radians in its village's frame (its front's direction: C13.3, D2-118)
+        public byte Faced;           // 1 when laid out with its bearing (else read from where it stands: Footprints.FaceOf)
 
-        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(X); w.Float(Y); w.Byte(Kind); w.Int(Household); w.Int(Last); w.Int(Style); w.Long(Built); w.Long(Left); w.Float(Cond); w.Byte(Done); w.Float(Hours); w.Float(Wood); w.Float(Stone); w.Byte(Mat); w.Int(Leader); w.Long(Cause); w.Long(Event); w.Float(Stock); w.Float(Use); w.Int(Form); }
-        public static Building Read(BinReader r) => new Building { Id = r.Int(), Settlement = r.Int(), X = r.Float(), Y = r.Float(), Kind = r.Byte(), Household = r.Int(), Last = r.Int(), Style = r.Int(), Built = r.Long(), Left = r.Long(), Cond = r.Float(), Done = r.Byte(), Hours = r.Float(), Wood = r.Float(), Stone = r.Float(), Mat = r.Byte(), Leader = r.Int(), Cause = r.Long(), Event = r.Long(), Stock = r.Float(), Use = r.Float(), Form = r.Int() };
-        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(X); h.Add(Y); h.Add(Kind); h.Add(Household); h.Add(Last); h.Add(Style); h.Add(Built); h.Add(Left); h.Add(Cond); h.Add(Done); h.Add(Hours); h.Add(Wood); h.Add(Stone); h.Add(Mat); h.Add(Leader); h.Add(Cause); h.Add(Event); h.Add(Stock); h.Add(Use); h.Add(Form); }
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(X); w.Float(Y); w.Byte(Kind); w.Int(Household); w.Int(Last); w.Int(Style); w.Long(Built); w.Long(Left); w.Float(Cond); w.Byte(Done); w.Float(Hours); w.Float(Wood); w.Float(Stone); w.Byte(Mat); w.Int(Leader); w.Long(Cause); w.Long(Event); w.Float(Stock); w.Float(Use); w.Int(Form); w.Float(Face); w.Byte(Faced); }
+        public static Building Read(BinReader r) => new Building { Id = r.Int(), Settlement = r.Int(), X = r.Float(), Y = r.Float(), Kind = r.Byte(), Household = r.Int(), Last = r.Int(), Style = r.Int(), Built = r.Long(), Left = r.Long(), Cond = r.Float(), Done = r.Byte(), Hours = r.Float(), Wood = r.Float(), Stone = r.Float(), Mat = r.Byte(), Leader = r.Int(), Cause = r.Long(), Event = r.Long(), Stock = r.Float(), Use = r.Float(), Form = r.Int(), Face = r.Float(), Faced = r.Byte() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(X); h.Add(Y); h.Add(Kind); h.Add(Household); h.Add(Last); h.Add(Style); h.Add(Built); h.Add(Left); h.Add(Cond); h.Add(Done); h.Add(Hours); h.Add(Wood); h.Add(Stone); h.Add(Mat); h.Add(Leader); h.Add(Cause); h.Add(Event); h.Add(Stock); h.Add(Use); h.Add(Form); h.Add(Face); h.Add(Faced); }
     }
 
     /// <summary>
@@ -79,14 +81,32 @@ namespace TC2.Core.Places
                 // its hut made a house: rebuilt in the form its people would build now (D2-114)
                 ref var hb = ref w.Buildings.Get(hh.Building);
                 hb.Kind = hh.Shelter;
-                hb.Form = Architecture.HomeForm(w, hh.Settlement, hid, hh.Building, hh.Shelter);
+                int f = Architecture.HomeForm(w, hh.Settlement, hid, hh.Building, hh.Shelter, out double face);
+                ref var hb2 = ref w.Buildings.Get(hh.Building);
+                hb2.Form = f; hb2.Face = (float)face; hb2.Faced = 1;   // (laid out facing its street or the square: C13.3)
+                if (hh.Shelter >= Construction.House && Architecture.PlanOf(f) == Architecture.Row) w.Metrics.TownHouses++;
                 return;
             }
+            // (C13.3) raised only where its lot is still free - a camp kept since the lot was taken (a party that never left, a lot built over meanwhile)
+            // moves to a free one first
+            {
+                ref var sv = ref w.Settlements.Get(hh.Settlement);
+                if (!Footprints.HomeFits(w, hh.Settlement, hh.HomeX, hh.HomeY, Footprints.FaceAt(in sv, hh.HomeX, hh.HomeY, hid), Footprints.LotPlan(in sv, hh.HomeX, hh.HomeY), 0, hid))
+                {
+                    FreeLot(w, hh.Settlement, hid, out float lx, out float ly);
+                    ref var hm = ref w.Households.Get(hid);
+                    hm.HomeX = lx; hm.HomeY = ly;
+                }
+            }
+            ref var hh1 = ref w.Households.Get(hid);
             int id = w.Ids.Next(EntityKind.Building);
-            w.Buildings.Add(id, new Building { Id = id, Settlement = hh.Settlement, X = hh.HomeX, Y = hh.HomeY, Kind = hh.Shelter, Household = hid, Last = hid, Style = hid, Built = w.Now, Cond = 1f, Done = 1 });
-            w.BuildingsOf(hh.Settlement).InsertSorted(id);
-            hh.Building = id;
-            w.Buildings.Get(id).Form = Architecture.HomeForm(w, hh.Settlement, hid, id, hh.Shelter);   // (how its builders built it: D2-114)
+            w.Buildings.Add(id, new Building { Id = id, Settlement = hh1.Settlement, X = hh1.HomeX, Y = hh1.HomeY, Kind = hh1.Shelter, Household = hid, Last = hid, Style = hid, Built = w.Now, Cond = 1f, Done = 1 });
+            w.BuildingsOf(hh1.Settlement).InsertSorted(id);
+            hh1.Building = id;
+            int form = Architecture.HomeForm(w, hh1.Settlement, hid, id, hh1.Shelter, out double fc);   // (how its builders built it: D2-114)
+            ref var nb = ref w.Buildings.Get(id);
+            nb.Form = form; nb.Face = (float)fc; nb.Faced = 1;
+            if (nb.Kind >= Construction.House && Architecture.PlanOf(form) == Architecture.Row) w.Metrics.TownHouses++;
         }
 
         /// <summary>
@@ -111,9 +131,11 @@ namespace TC2.Core.Places
                 if (hh.Rebuild != 0 || hh.Party != 0 || hh.Shelter < Construction.House || hh.Building == 0 || !w.Buildings.Exists(hh.Building)) continue;
                 ref var b = ref w.Buildings.Get(hh.Building);
                 if (b.Household != hid) continue;
+                if (InOpenOrWet(w, hh.Building) != 0) continue;   // (never renewed where a way, the market place, a ring or a river now runs: C13.3)
                 double years = (w.Now - b.Built) / (double)SimTime.Year;
                 if (years < 20.0 || Architecture.Means(w, hid) < 1.5) continue;
-                int now = Architecture.HomeForm(w, sid, hid, hh.Building, Construction.House);
+                int now = Architecture.HomeForm(w, sid, hid, hh.Building, Construction.House, out _, out bool fits);
+                if (!fits) continue;   // (no house it would build stands clear on its lot: C13.3)
                 double gain = Architecture.Gain(now, b.Form);
                 if (!(gain >= 1.0 || years >= RenewYears)) continue;
                 Construction.NextShelter(Construction.Hut, out _, out double wood0);
@@ -139,7 +161,13 @@ namespace TC2.Core.Places
             int sid = hh.Settlement, bid = hh.Building;
             int before = w.Buildings.Get(bid).Form;
             if (plan == Architecture.Hall && !Architecture.HallRoom(w, sid, bid)) plan = Architecture.Two;   // (another raised its hall meanwhile)
-            int form = Architecture.HomeForm(w, sid, hid, bid, Construction.House);
+            int form = Architecture.HomeForm(w, sid, hid, bid, Construction.House, out double face, out bool fits);
+            if (!fits) return;   // (a neighbour built meanwhile and no house stands clear on its lot now: it keeps the one it has - C13.3)
+            // the plan it set out to build, if it still stands clear on its lot (C13.3: a neighbour may have built meanwhile) - else what fits now
+            ref var s0 = ref w.Settlements.Get(sid);
+            ref var b0 = ref w.Buildings.Get(bid);
+            if (plan != Architecture.PlanOf(form) && (Streets.CorePlot(in s0, b0.X, b0.Y) && !Footprints.Narrow(plan) || !Footprints.HomeFits(w, sid, b0.X, b0.Y, face, plan, bid, hid)))
+                plan = Architecture.PlanOf(form);
             form = Architecture.Pack(plan, Architecture.RoofOf(form), Architecture.CoverOf(form), Architecture.WallsOf(form), Architecture.Chimney(form) || plan >= Architecture.Two, Architecture.PaletteOf(form));
             ref var s = ref w.Settlements.Get(sid);
             if (Architecture.WallsOf(form) == Architecture.Stone)
@@ -149,7 +177,8 @@ namespace TC2.Core.Places
                 else form = Architecture.Pack(plan, Architecture.RoofOf(form), Architecture.CoverOf(form), Architecture.Limewash, Architecture.Chimney(form), Architecture.PaletteOf(form));
             }
             ref var b = ref w.Buildings.Get(bid);
-            b.Form = form; b.Built = w.Now;
+            b.Form = form; b.Built = w.Now; b.Face = (float)face; b.Faced = 1;   // (laid out anew on its lot, facing its street or the square: C13.3)
+            if (plan == Architecture.Row) w.Metrics.TownHouses++;
             Stone.Footings(w, sid, bid);   // (on stone footings, when the store has them: C1.3)
             w.Record(new HistoryEvent
             {
@@ -166,12 +195,69 @@ namespace TC2.Core.Places
         public static void Leave(World w, int hid)
         {
             ref var hh = ref w.Households.Get(hid);
-            if (hh.Building != 0 && w.Buildings.Exists(hh.Building))
+            int bid = hh.Building;
+            if (bid != 0 && w.Buildings.Exists(bid))
             {
-                ref var b = ref w.Buildings.Get(hh.Building);
+                ref var b = ref w.Buildings.Get(bid);
                 if (b.Household == hid) { b.Household = 0; b.Left = w.Now; }
             }
             hh.Building = 0; hh.Shelter = Construction.Camp; hh.Build = 0f; hh.Rebuild = 0;
+            if (bid != 0 && w.Buildings.Exists(bid) && w.Buildings.Get(bid).Household == 0) Clear(w, bid, hid, false);   // (one left in a street, the market place or a ring: taken down - C13.3)
+        }
+
+        /// <summary>Why a standing home is in the open (C13.3): 0 it is not, 1 a street or lane runs through it, 2 the green or market place, 3 a ring.</summary>
+        public static int InOpen(World w, int bid)
+        {
+            ref var b = ref w.Buildings.Get(bid);
+            if (!w.Settlements.Exists(b.Settlement) || !Structures.IsHome(b.Kind)) return 0;
+            ref var s = ref w.Settlements.Get(b.Settlement);
+            int plan = Footprints.PlanOf(in b);
+            double face = Footprints.FaceOf(in s, in b);
+            if (Footprints.Open(in s, b.X, b.Y, face, plan)) return 0;
+            for (int r = 0; r < Footprints.Count(plan); r++)
+            {
+                Footprints.Rect(plan, r, out double cx, out double cz, out double hx, out double hz);
+                if (Footprints.BoxDisc(b.X, b.Y, face, cx, cz, hx, hz, s.SquareX, s.SquareY, Footprints.Green(in s), 0.0)) return 2;
+            }
+            double dx = (double)b.X - s.SquareX, dy = (double)b.Y - s.SquareY, d = DMath.Sqrt(dx * dx + dy * dy), reach = Footprints.Reach(plan) + 1.5;
+            if (s.OldR > 0f && DMath.Abs(d - (double)s.OldR) < reach || (s.Wall == 1 || s.Wall == 2) && DMath.Abs(d - (double)s.WallR) < reach) return 3;
+            return 1;
+        }
+
+        /// <summary>Why a standing home is in the open or the water (C13.3): `InOpen`'s reasons, and 4 a river that runs through its ground.</summary>
+        public static int InOpenOrWet(World w, int bid)
+        {
+            int why = InOpen(w, bid);
+            if (why != 0) return why;
+            ref var b = ref w.Buildings.Get(bid);
+            if (!w.Settlements.Exists(b.Settlement) || !Structures.IsHome(b.Kind)) return 0;
+            ref var s = ref w.Settlements.Get(b.Settlement);
+            return Footprints.Wet(w, in s, b.X, b.Y, Footprints.FaceOf(in s, in b), Footprints.PlanOf(in b)) ? 4 : 0;
+        }
+
+        /// <summary>
+        /// A home standing empty in the open - a street or lane laid since it was built, the market place widened over it, a ring raised across it - is
+        /// taken down (C13.3, D2-118): gone at once (its ground free; the table drops it at the year's end), half its timber back in the village's
+        /// woodstore; history tells it. So the ways and the market place open as the households in them leave or die out.
+        /// </summary>
+        public static bool Clear(World w, int bid, int hid, bool moved)
+        {
+            int why = InOpenOrWet(w, bid);
+            if (why == 0) return false;
+            ref var b = ref w.Buildings.Get(bid);
+            int sid = b.Settlement;
+            b.Household = 0;
+            b.Left = w.Now - DMath.ToLong((FallYears(in b) + RuinYears(in b)) * SimTime.Year) - 1;   // (gone: RuinLeft 0)
+            ref var s = ref w.Settlements.Get(sid);
+            double wood = b.Kind >= Construction.House ? Construction.HouseWood * Architecture.Size(Footprints.PlanOf(in b) == Footprints.HutPlan ? Architecture.Small : Architecture.PlanOf(b.Form)) : Construction.HutWood;
+            s.Woodstore += 0.5 * wood;
+            w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.HomeCleared, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = hid != 0 ? EntityRef.Household(hid) : default,
+                Object = new EntityRef(EntityKind.Building, bid), ArgA = why, ArgB = moved ? 1 : 0, RootKind = RootKind.People,
+            });
+            w.Metrics.HomesCleared++;
+            return true;
         }
 
         /// <summary>
@@ -187,6 +273,7 @@ namespace TC2.Core.Places
             {
                 ref var b = ref w.Buildings.Get(list[i]);
                 if (b.Household != 0 || !Structures.IsHome(b.Kind)) continue;   // (a home: not the village's well or granary, C1.1)
+                if (InOpenOrWet(w, list[i]) != 0) continue;   // (one standing in the market place, a street, a ring or a river is left to come down: C13.3)
                 double c = Condition(in b, w.Now);
                 if (c < Habitable) continue;
                 double v = b.Kind + c;
@@ -208,63 +295,77 @@ namespace TC2.Core.Places
         }
 
         /// <summary>
-        /// The lot a household without a home camps on (D2-084, D2-085): the innermost lot of its village's spiral on dry land that no
-        /// home, ruin or camp of the village stands on. Before, every new home took the next lot of an ever-longer spiral: over centuries
-        /// a village of a few hundred spread its houses 400 m out (and its palisade round them all) while its old lots lay empty when
-        /// their ruins had gone into the land; now new homes take those lots and a village keeps its shape. Lots in the sea or a lake are
-        /// passed over (on a smaller planet the coast lies nearer the anchor in metres). Where the village has streets (C13.1, D2-116), the
-        /// nearest free frontage lot along them is taken when it lies within `Streets.Lean` of the spiral's free lot's distance - frontage is
-        /// sought, so a village with roads grows along them; no lot lies in a street.
+        /// The lot a household without a home camps on (D2-084, D2-085): the innermost lot of its village's spiral on dry land where the ground a lot
+        /// keeps is clear. Before, every new home took the next lot of an ever-longer spiral: over centuries a village of a few hundred spread its
+        /// houses 400 m out (and its palisade round them all) while its old lots lay empty when their ruins had gone into the land; now new homes
+        /// take those lots and a village keeps its shape. Lots in the sea or a lake are passed over (on a smaller planet the coast lies nearer the
+        /// anchor in metres). Where the village has streets (C13.1, D2-116), the nearest free frontage lot along them is taken when it lies within
+        /// `Streets.Lean` of the spiral's free lot's distance - frontage is sought, so a village with roads grows along them; in a town's core the
+        /// street frontage is divided into plots half as wide (C13.3, D2-118). A lot is free where the ground it keeps meets no building, ruin, camp,
+        /// street, lane, ring, green or market place (`Footprints.HomeFits`: D2-116's 6 m between lots let houses stand in each other).
         /// </summary>
         public static void FreeLot(World w, int sid, int forHid, out float x, out float y)
         {
             Streets.Refresh(w, sid);   // (its ways worn to paths laid as streets)
+            Streets.OpenLanes(w, sid);   // (and lanes opened where nothing stands in them now: C13.3)
+            Streets.Grow(ref w.Settlements.Get(sid));   // (a town's divided core reaches as far as it has grown: C13.3)
             ref var s = ref w.Settlements.Get(sid);
             var P = w.Planet;
-            var bl = w.BuildingsOf(sid); var hl = w.HouseholdsOf(sid);
             int limit = s.Lots + 64;
             int spiral = -1; float sx = 0f, sy = 0f; double sr = double.MaxValue;
             for (int k = 0; k < limit; k++)
             {
                 s.LotPosition(k, out float lx, out float ly);
-                if (Taken(w, bl, hl, forHid, lx, ly) || Structures.OnRing(in s, lx, ly, 4.5)) continue;   // (never astride the palisade: C1.4)
-                if (Streets.On(in s, lx, ly, Streets.Width + 2.0)) continue;   // (nor in a street: C13.1)
-                if (!Shore.Dry(P, s.LocalToSphere(lx, ly, P.Radius))) continue;   // (the ground as drawn: D2-088)
+                if (!Free(w, sid, forHid, lx, ly)) continue;
                 spiral = k; sx = lx; sy = ly; sr = 15.0 + 9.5 * DMath.Sqrt(k + 1.0);
                 break;
             }
-            // the frontage along its streets (C13.1) and their back lanes (C13.2): the nearest free lot of each line, weighed against the spiral's
+            // the frontage along its streets (C13.1) and their back lanes (C13.2): the nearest free lot of each line, weighed against the spiral's -
+            // a street's frontage in a town's core in plots half as wide (C13.3)
+            ref var s1 = ref w.Settlements.Get(sid);
             bool front = false; double fb = sr; float fx = 0f, fy = 0f;
-            int lines = Streets.Lines(in s);
+            int lines = Streets.Lines(in s1);
             for (int i = 0; i < lines; i++)
             {
-                double lean = Streets.IsLane(i) ? Streets.LaneLean : Streets.Lean;
-                double first = Streets.IsLane(i) ? Streets.LaneStart : Streets.Start;
-                for (int j = 0; lean * (first + j * Streets.Spacing) < fb; j++)
+                bool lane = Streets.IsLane(i);
+                if (Streets.Shut(in s1, i)) continue;   // (a lane not yet open: C13.3)
+                double lean = lane ? Streets.LaneLean : Streets.Lean;
+                double first = lane ? Streets.LaneStart : Streets.Start;
+                double core = lane ? 0.0 : (double)s1.CoreR;
+                for (double j = 0; lean * (first + j * Streets.Spacing) < fb; j = first + (j + 0.5) * Streets.Spacing <= core + 1e-9 ? j + 0.5 : DMath.Floor(j) + 1.0)
                 {
                     bool got = false;
                     for (int side = -1; side <= 1 && !got; side += 2)
                     {
-                        Streets.Lot(in s, i, j, side, out double qx, out double qy);
-                        double score = Streets.Weigh(in s, i, j, qx, qy);
+                        Streets.Lot(in s1, i, j, side, out double qx, out double qy);
+                        double score = Streets.Weigh(in s1, i, j, qx, qy);
                         if (score >= fb) continue;
                         float lx = (float)qx, ly = (float)qy;
-                        if (Taken(w, bl, hl, forHid, lx, ly) || Structures.OnRing(in s, lx, ly, 4.5)) continue;
-                        if (Streets.On(in s, lx, ly, Streets.Width + 2.0)) continue;   // (another street's or lane's line, where two cross)
-                        if (!Shore.Dry(P, s.LocalToSphere(lx, ly, P.Radius))) continue;
+                        if (!Free(w, sid, forHid, lx, ly)) continue;
                         fb = score; fx = lx; fy = ly; front = true; got = true;
                     }
                     if (got) break;
                 }
             }
+            ref var s2 = ref w.Settlements.Get(sid);
             if (front) { x = fx; y = fy; return; }
             if (spiral >= 0)
             {
-                if (spiral >= s.Lots) s.Lots = spiral + 1;
+                if (spiral >= s2.Lots) s2.Lots = spiral + 1;
                 x = sx; y = sy;
                 return;
             }
-            s.LotPosition(s.Lots++, out x, out y);   // (nothing free within reach: the next lot)
+            s2.LotPosition(s2.Lots++, out x, out y);   // (nothing free within reach: the next lot)
+        }
+
+        /// <summary>Whether a lot is free for a household to camp on (C13.3): on dry land, its ground clear (`Footprints.HomeFits` of the ground a lot
+        /// keeps, as it would face).</summary>
+        static bool Free(World w, int sid, int forHid, float lx, float ly)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            if (!Shore.Dry(w.Planet, s.LocalToSphere(lx, ly, w.Planet.Radius))) return false;   // (the ground as drawn: D2-088)
+            int plan = Footprints.LotPlan(in s, lx, ly);
+            return Footprints.HomeFits(w, sid, lx, ly, Footprints.FaceAt(in s, lx, ly, forHid), plan, 0, forHid);
         }
 
         /// <summary>
@@ -313,26 +414,6 @@ namespace TC2.Core.Places
                         ArgA = lost, Cause1 = cause, Rel1 = CauseRel.CausedBy, RootKind = cause == 0 ? RootKind.Nature : RootKind.Unknown,
                     });
             }
-        }
-
-        /// <summary>A home, a ruin or another household's camp stands within 6 m of a lot (lots lie ~8-9 m apart).</summary>
-        static bool Taken(World w, IntList buildings, IntList households, int forHid, float lx, float ly)
-        {
-            for (int i = 0; i < buildings.Count; i++)
-            {
-                ref var b = ref w.Buildings.Get(buildings[i]);
-                double dx = (double)b.X - lx, dy = (double)b.Y - ly, need = Structures.IsHome(b.Kind) ? 6.0 : Structures.Of(b.Kind).Footprint + 6.0;
-                if (dx * dx + dy * dy < need * need) return true;
-            }
-            for (int i = 0; i < households.Count; i++)
-            {
-                if (households[i] == forHid) continue;
-                ref var h = ref w.Households.Get(households[i]);
-                if (h.Building != 0) continue;   // (its home is among the buildings)
-                double dx = (double)h.HomeX - lx, dy = (double)h.HomeY - ly;
-                if (dx * dx + dy * dy < 36.0) return true;
-            }
-            return false;
         }
 
         static readonly System.Collections.Generic.List<int> _gone = new System.Collections.Generic.List<int>();

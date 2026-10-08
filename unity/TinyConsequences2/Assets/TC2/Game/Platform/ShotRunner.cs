@@ -137,6 +137,7 @@ namespace TC2.Game
             w.AdvanceTo(target, ref b);
             // seals live on a shore anywhere on the planet: when only they are shot, the world goes on to the same hour at the
             // shore they haul out on now (a daylight shot)
+            if (Arg("-tc2ground") != null) WorldObjectsView.ShowGround = true;   // (C13.3 tools: the simulation's ground under each home)
             string viewsArg = Arg("-tc2views") ?? "";
             if (viewsArg.Length > 0 && System.Array.TrueForAll(viewsArg.Split(','), v => v.StartsWith("seals")))
             {
@@ -252,7 +253,7 @@ namespace TC2.Game
                 _pending = spec.Trim().Replace('@', '_').Replace('+', 'd'); _pendingW = width; _pendingH = height; _saved = false;
                 while (!_saved) yield return null;
             }
-            foreach (var mn in new[] { "person", "home_cottage_g", "tree_broadleaf", "granary" })
+            foreach (var mn in new[] { "person", "home_cottage_g", "tree_broadleaf", "granary", "home_hall_g", "home_row_g", "home_two_g" })
             {
                 var mm = Models.Get(mn, ProcMeshes.Person);
                 Debug.Log("[TC2] model " + mn + " bounds " + mm.bounds.size.ToString("F2") + " centre " + mm.bounds.center.ToString("F2"));

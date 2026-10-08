@@ -1101,6 +1101,7 @@ namespace TC2.Core.Society
                 ref var s2 = ref w.Settlements.Get(sid);
                 s2.Wall = 1; s2.WallR = (float)r; s2.WallCond = 0f; s2.WallKeep = 1;
                 s2.WallDry = (float)Places.Structures.DryShare(w, in s2, r);   // (its posts on dry ground only: C1.6)
+                Places.Structures.Opened(w, sid);   // (camps on its line move; empty homes across it come down: C13.3)
                 s2.WallEvent = w.Record(new HistoryEvent
                 {
                     Kind = HistoryKind.WallPlanned, Time = now, Cell = s2.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
@@ -1128,6 +1129,7 @@ namespace TC2.Core.Society
                         {
                             s3.OldR = s3.WallR; s3.OldCond = s3.WallCond;
                             s3.Wall = 1; s3.WallR = (float)r; s3.WallCond = 0f; s3.WallKeep = 1; s3.WallDry = (float)dry; s3.WorkBuild = 0f;
+                            Places.Structures.Opened(w, sid);   // (C13.3)
                             s3.WallEvent = w.Record(new HistoryEvent
                             {
                                 Kind = HistoryKind.WallPlanned, Time = now, Cell = s3.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
@@ -1167,7 +1169,44 @@ namespace TC2.Core.Society
                 double d = DMath.Sqrt(dx * dx + dy * dy) + k.Footprint + 3.0 - 15.0;   // (its far side clear of the posts)
                 if (d > far) far = d;
             }
-            return DMath.Clamp(far + 15.0, 25.0, 170.0);   // (its pens and yards behind the homes inside)
+            double r = DMath.Clamp(far + 15.0, 25.0, 170.0);   // (its pens and yards behind the homes inside)
+            // (C13.3) a ring held to its greatest reach runs between houses, never through one: the nearest radius inward where none stands across it
+            // (those beyond stand outside it, as suburbs do)
+            // (the fewest across it where no radius is clear: those are taken down when they stand empty - Homes.Clear)
+            double best = r; int least = int.MaxValue;
+            for (double dr = 0.0; dr <= 30.0 && r - dr >= 25.0; dr += 1.0)
+            {
+                int n = Astride(sid, r - dr);
+                if (n == 0) return r - dr;
+                if (n < least) { least = n; best = r - dr; }
+            }
+            return best;
+        }
+
+        /// <summary>How many homes of the village - standing, or a camp's lot kept for one - would stand across a ring of radius r (their ground within
+        /// 1.5 m of the posts).</summary>
+        int Astride(int sid, double r)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(sid);
+            int n = 0;
+            var bl = w.BuildingsOf(sid);
+            for (int i = 0; i < bl.Count; i++)
+            {
+                ref var b = ref w.Buildings.Get(bl[i]);
+                if (!Places.Structures.IsHome(b.Kind) || Places.Homes.RuinLeft(in b, w.Now) <= 0) continue;
+                double dx = (double)b.X - s.SquareX, dy = (double)b.Y - s.SquareY;
+                if (DMath.Abs(DMath.Sqrt(dx * dx + dy * dy) - r) < Places.Footprints.Reach(Places.Footprints.PlanOf(in b)) + 1.5) n++;
+            }
+            var hl = w.HouseholdsOf(sid);
+            for (int i = 0; i < hl.Count; i++)
+            {
+                ref var h = ref w.Households.Get(hl[i]);
+                if (h.Building != 0) continue;
+                double dx = (double)h.HomeX - s.SquareX, dy = (double)h.HomeY - s.SquareY;
+                if (DMath.Abs(DMath.Sqrt(dx * dx + dy * dy) - r) < Places.Footprints.Reach(Places.Footprints.LotPlan(in s, h.HomeX, h.HomeY)) + 1.5) n++;
+            }
+            return n;
         }
 
         // ------------------------------------------------------------------ tribute and lordship (D2-075; both resolutions)

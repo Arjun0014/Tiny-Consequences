@@ -761,6 +761,7 @@ PLANS = {
     "long":   (12.0, 5.4, 2.3, 47),
     "two":    (6.6, 5.4, 5.1, 50),
     "hall":   (10.0, 6.2, 3.4, 50),
+    "row":    (4.6, 6.2, 5.6, 55),    # (C13.3, D2-118) the narrow town house: 4.6 m of frontage (x), 6.2 deep (y), gable to the street
 }
 
 
@@ -866,6 +867,36 @@ def home(name, plan, form, seed=20):
     k = Kit(name, seed)
     L, W, H, pitch = PLANS[plan]
     y = W / 2.0 + 0.03
+    if plan == "row":
+        # (C13.3, D2-118) a narrow town house on a divided plot: tall and deep, its gable to the street (the front, -y), the upper storeys jettied
+        # out 0.4 m over the street on their joists, the door and the shop window in the gable end, a window in each storey's front and the
+        # attic's; its ridge runs back from the street
+        h1 = 2.7
+        k.box((0, 0, h1 / 2.0), (L, W, h1), WALL_T, bevel=0.03)
+        corner_posts(k, L, W, h1)
+        J = 0.4
+        W2 = W + J
+        cy2 = -J / 2.0
+        k.box((0, cy2 - 0.02, h1 + 0.1), (L + 0.12, W2 + 0.1, 0.2), BEAM)   # the jetty's bressumer and joist ends
+        k.box((0, cy2, h1 + 0.2 + (H - h1 - 0.2) / 2.0), (L + 0.06, W2, H - h1 - 0.2), WALL_T, bevel=0.03)
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                k.box((sx * (L + 0.06) / 2.0, cy2 + sy * W2 / 2.0, (h1 + H) / 2.0 + 0.1), (0.2, 0.2, H - h1 - 0.2), BEAM)
+        fy = W / 2.0 + 0.03                                   # the ground storey's front
+        fy2 = W2 / 2.0 + 0.03 - cy2                           # the upper storeys' front (jettied)
+        k.box((-0.95, -fy, 0.98), (0.95, 0.1, 1.95), DOOR)
+        k.box((-0.95, -(fy + 0.03), 2.0), (1.15, 0.1, 0.12), BEAM)
+        k.box((0.95, -fy, 1.35), (1.3, 0.08, 0.9), GLASS)    # the shop window by the door, its board below
+        k.box((0.95, -(fy + 0.05), 0.8), (1.5, 0.14, 0.1), BEAM)
+        for x in (-1.05, 1.05):
+            window(k, x, fy2, 3.75, w=0.62, h=0.75)
+        window(k, 0.0, fy2, 6.25, w=0.5, h=0.55, shutters=False)   # (the attic's, high in the gable)
+        window(k, 0.0, W2 / 2.0 + 0.03 + cy2, 3.75, w=0.6, h=0.7, side=1)
+        for yy in (-1.0, 1.4):
+            k.box((L / 2.0 + 0.06, yy, 3.75), (0.08, 0.55, 0.62), GLASS)   # a window on its side, above its neighbour's eaves
+        end_walls(k, W2, L + 0.06, H, pitch, form, cy=cy2, along_y=True)
+        roof_form(k, W2, L + 0.06, H, pitch, form, cy=cy2, along_y=True)
+        return k.finish()
     if plan == "two":
         # a two-storey house: the upper storey jettied out over the street front on its joists
         h1 = 2.6
@@ -969,7 +1000,10 @@ def framing(name, plan, seed=21):
             p = (cx, cy + e * (L0 / 2.0 + off), z0 + h * 0.5) if along_y else (cx + e * (L0 / 2.0 + off), cy, z0 + h * 0.5)
             k.box(p, (W0, 0.06, 0.12) if along_y else (0.06, W0, 0.12), BEAM)
 
-    if plan == "two":
+    if plan == "row":
+        wall_frame(W, L, 0.0, 2.7, along_y=True)
+        wall_frame(W + 0.4, L + 0.06, 2.9, H - 2.9, cy=-0.2, along_y=True)
+    elif plan == "two":
         wall_frame(L, W, 0.0, 2.6)
         wall_frame(L + 0.2, W + 0.5, 2.8, H - 2.8, cy=-0.25)
     elif plan == "hall":
@@ -1032,7 +1066,7 @@ def garden(name, seed=27):
 
 def homes():
     objs = []
-    for plan in ("small", "cottage", "long", "two", "hall"):
+    for plan in ("small", "cottage", "long", "two", "hall", "row"):
         for form in ("g", "h", "j"):
             objs.append(home("home_%s_%s" % (plan, form), plan, form))
         objs.append(framing("frame_%s" % plan, plan))

@@ -218,3 +218,23 @@ core and its hall - and an old prosperous village of longhouses reads unlike a c
 **Streets (D2-116)**: villages grow along their roads - a house that fronts a street faces it, square to it, its garden behind, its door path to the
 street, the street beaten earth out past its last house; a hamlet with no worn way keeps its houses round its green (shots `street1`,
 `street1y100`). Back lanes (D2-117) parallel to each street fill behind its frontage: a town of streets and lanes (shot `lanes1`).
+
+## 14. A town's ground drawn as the simulation holds it (C13.3, D2-118)
+
+- **Bearings in the village's own frame.** Every building is drawn by the bearing it was laid out facing (`Building.Face`) through
+  `WorldObjectsView.PlaceFaced`: the village's east and north carried onto the ground and `Quaternion.LookRotation` on them. Before, a yaw read in
+  the village's frame was turned about a world-fixed forward (`PlanetGeo.Upright`), so houses stood off their streets by an angle that depended on
+  where the village lay on the globe, and every house re-faced each frame (a street laid later turned old houses round).
+- **The kit's frame in the game**: a model's front (the door) is +z; its x comes in mirrored by the FBX import (measured: the hall's bounds centre
+  is at x -2.45, its cross wing at -x) - overlays and footprints that sit on one side read `Footprints.WingSide`. Bounds logged by the shot runner
+  (`home_cottage_g` 7.76 x 5.76, `home_two_g` 7.56 x 6.66 centre z 0.25, `home_row_g` 5.42 x 7.36 centre z 0.20) match `Footprints.Rect`.
+- **No exaggeration into a neighbour**: far off a building is drawn larger only as far as its neighbours leave it room (`Footprints.Room`, read per
+  village when its buildings change, at most every 2 s); kitchen gardens, pens and woodpiles go only where the ground beside or behind is free
+  (`Footprints.YardFree`); stone and hay are stacked round the granary on free ground; the market's stalls in a ring round the cross and along the
+  market place's edge.
+- **The narrow town house** (`home_row_g/h/j`, `frame_row`): 4.6 m of frontage, 6.2 deep, two storeys and an attic jettied 0.4 m over the street,
+  gable to the street, door and shop window in the gable, a window high in the gable; chimney on the ridge toward the back.
+- **The market place** is trodden earth out to `Settlement.MarketR` (TerrainLod `VillageGround`).
+- Tools: shots `--ground` lay each home's simulated ground under it as a plate (`WorldObjectsView.ShowGround`); views `rowclose`, `rowlow`,
+  `rowstreet`, `rowmarket` (the street with most narrow town houses, the market place), `hall`, `mouth`/`mouthfar` (the largest river mouth near
+  the village: rivers end at the drawn waterline, `Rivers.Mouth`).

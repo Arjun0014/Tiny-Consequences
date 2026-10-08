@@ -103,6 +103,9 @@ namespace TC2.Core.Places
         public float BestFight;         // its best fighter's skill (the one the others learn from), read once a day
         public int Market;              // its market (0 none; C1.6)
         public float TradeIn;           // traders arriving to deal here, a year (a count halving each year: what makes a market)
+        public float MarketR;           // m: the open market place round the square, widened by the traders who came to its market (C13.3, D2-118; 0 none)
+        public float CoreR;             // m: how far along its streets from the green a town's frontage is divided into narrow plots (C13.3, D2-118; 0 none)
+        public byte LanesShut;          // the back lanes not yet open - laid through houses standing when their street was laid (bit 2k, 2k+1: street k's two; C13.3)
         public float WallDry;           // the share of its palisade's ring on dry ground (C1.6: posts are never set in the sea; 0 = all)
         public float OldR, OldCond;     // an old, smaller ring left inside a grown town, unmended until it rots (0 none; C7.1)
         public int OreCell;             // the nearest copper body its people have seen that still has ore, + 1 (0 none; C5.1, `Mining`)
@@ -195,6 +198,7 @@ namespace TC2.Core.Places
             w.Double(Ahead); w.Long(AheadFrom); w.Long(AheadTo);
             w.Int(Project); w.Byte(ProjectKind); w.Byte(Granaries); w.Byte(Barns); w.Long(HarvestEvent); w.Int(WoodLot); w.Float(WoodDist); w.Byte(WoodFar); w.Long(WoodLook); w.Int(StoneCell); w.Float(StoneDist); w.Long(StoneEvent); w.Double(Stone); w.Float(StoneWant); w.Int(Quarry); w.Int(Smithy); w.Long(SmithEvent); w.Double(Arms); w.Int(Ground); w.Float(BestFight); w.Int(Market); w.Float(TradeIn); w.Float(WallDry); w.Float(OldR); w.Float(OldCond); w.Int(OreCell); w.Float(OreDist); w.Long(OreEvent); w.Double(Ore); w.Float(OreWant); w.Int(Mine); w.Double(Charcoal); w.Float(CharcoalWant); w.Int(CharHearth); w.Long(ClampUntil); w.Float(BestIron); w.Double(Iron); w.Double(IronArms); w.Int(FeCell); w.Float(FeDist); w.Long(FeEvent); w.Double(FeOre); w.Float(FeOreWant); w.Int(FeMine); w.Float(IronSold); w.Int(ClaimDeed); w.Int(ClaimOn); w.Long(ClaimAt); Sea.Write(w); w.Float(LandX); w.Float(LandY); w.Float(LandUx); w.Float(LandUy); w.Long(LandAt); w.Float(BestBoat); w.Long(BoatEvent); w.Int(Shed); w.Float(SeaP);
             w.Float(SquareX); w.Float(SquareY); w.Float(FieldX); w.Float(FieldY); w.Float(WoodX); w.Float(WoodY); w.Float(WellX); w.Float(WellY);
+            w.Float(MarketR); w.Float(CoreR); w.Byte(LanesShut);   // (C13.3, sim version 56)
         }
 
         public static Settlement Read(BinReader r)
@@ -210,6 +214,7 @@ namespace TC2.Core.Places
             s.Ahead = r.Double(); s.AheadFrom = r.Long(); s.AheadTo = r.Long();
             s.Project = r.Int(); s.ProjectKind = r.Byte(); s.Granaries = r.Byte(); s.Barns = r.Byte(); s.HarvestEvent = r.Long(); s.WoodLot = r.Int(); s.WoodDist = r.Float(); s.WoodFar = r.Byte(); s.WoodLook = r.Long(); s.StoneCell = r.Int(); s.StoneDist = r.Float(); s.StoneEvent = r.Long(); s.Stone = r.Double(); s.StoneWant = r.Float(); s.Quarry = r.Int(); s.Smithy = r.Int(); s.SmithEvent = r.Long(); s.Arms = r.Double(); s.Ground = r.Int(); s.BestFight = r.Float(); s.Market = r.Int(); s.TradeIn = r.Float(); s.WallDry = r.Float(); s.OldR = r.Float(); s.OldCond = r.Float(); s.OreCell = r.Int(); s.OreDist = r.Float(); s.OreEvent = r.Long(); s.Ore = r.Double(); s.OreWant = r.Float(); s.Mine = r.Int(); s.Charcoal = r.Double(); s.CharcoalWant = r.Float(); s.CharHearth = r.Int(); s.ClampUntil = r.Long(); s.BestIron = r.Float(); s.Iron = r.Double(); s.IronArms = r.Double(); s.FeCell = r.Int(); s.FeDist = r.Float(); s.FeEvent = r.Long(); s.FeOre = r.Double(); s.FeOreWant = r.Float(); s.FeMine = r.Int(); s.IronSold = r.Float(); s.ClaimDeed = r.Int(); s.ClaimOn = r.Int(); s.ClaimAt = r.Long(); s.Sea = Grounds.Read(r); s.LandX = r.Float(); s.LandY = r.Float(); s.LandUx = r.Float(); s.LandUy = r.Float(); s.LandAt = r.Long(); s.BestBoat = r.Float(); s.BoatEvent = r.Long(); s.Shed = r.Int(); s.SeaP = r.Float();
             s.SquareX = r.Float(); s.SquareY = r.Float(); s.FieldX = r.Float(); s.FieldY = r.Float(); s.WoodX = r.Float(); s.WoodY = r.Float(); s.WellX = r.Float(); s.WellY = r.Float();
+            s.MarketR = r.Float(); s.CoreR = r.Float(); s.LanesShut = r.Byte();
             return s;
         }
 
@@ -225,6 +230,7 @@ namespace TC2.Core.Places
             if (AheadTo != 0) { h.Add(Ahead); h.Add(AheadFrom); h.Add(AheadTo); }   // (only DEEP sets them: other worlds hash as before)
             h.Add(Project); h.Add(ProjectKind); h.Add(Granaries); h.Add(Barns); h.Add(HarvestEvent); h.Add(WoodLot); h.Add(WoodDist); h.Add(WoodFar); h.Add(WoodLook); h.Add(StoneCell); h.Add(StoneDist); h.Add(StoneEvent); h.Add(Stone); h.Add(StoneWant); h.Add(Quarry); h.Add(Smithy); h.Add(SmithEvent); h.Add(Arms); h.Add(Ground); h.Add(BestFight); h.Add(Market); h.Add(TradeIn); h.Add(WallDry); h.Add(OldR); h.Add(OldCond); h.Add(OreCell); h.Add(OreDist); h.Add(OreEvent); h.Add(Ore); h.Add(OreWant); h.Add(Mine); h.Add(Charcoal); h.Add(CharcoalWant); h.Add(CharHearth); h.Add(ClampUntil); h.Add(BestIron); h.Add(Iron); h.Add(IronArms); h.Add(FeCell); h.Add(FeDist); h.Add(FeEvent); h.Add(FeOre); h.Add(FeOreWant); h.Add(FeMine); h.Add(IronSold); h.Add(ClaimDeed); h.Add(ClaimOn); h.Add(ClaimAt); Sea.Hash(ref h); h.Add(LandX); h.Add(LandY); h.Add(LandUx); h.Add(LandUy); h.Add(LandAt); h.Add(BestBoat); h.Add(BoatEvent); h.Add(Shed); h.Add(SeaP);
             h.Add(SquareX); h.Add(SquareY); h.Add(FieldX); h.Add(FieldY); h.Add(WoodX); h.Add(WoodY); h.Add(WellX); h.Add(WellY);
+            h.Add(MarketR); h.Add(CoreR); h.Add(LanesShut);
         }
 
         internal static void WriteV(BinWriter w, Vec3d v) { w.Double(v.X); w.Double(v.Y); w.Double(v.Z); }

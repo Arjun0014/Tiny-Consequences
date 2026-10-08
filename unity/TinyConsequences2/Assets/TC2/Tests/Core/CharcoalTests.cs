@@ -28,6 +28,21 @@ namespace TC2.Tests.Core
             return w;
         }
 
+        /// <summary>A hearth stands at the woodlot - or, where the woods lie inside the village and their spot is taken (C13.3: a work at its site is
+        /// never laid in the village's middle), further out along the same bearing, just past the homes.</summary>
+        static void AtTheWoods(World w, int sid, in Building b)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            double d = Math.Sqrt((b.X - s.WoodX) * (b.X - s.WoodX) + (b.Y - s.WoodY) * (b.Y - s.WoodY));
+            if (d < 0.01) return;
+            double wood = Math.Sqrt((s.WoodX - s.SquareX) * (s.WoodX - s.SquareX) + (s.WoodY - s.SquareY) * (s.WoodY - s.SquareY));
+            double here = Math.Sqrt((b.X - s.SquareX) * (b.X - s.SquareX) + (b.Y - s.SquareY) * (b.Y - s.SquareY));
+            Console.WriteLine("the woods' spot " + wood.ToString("0.0") + " m from the square lies in the village: the hearth laid " + here.ToString("0.0") + " m out");
+            Assert.Less(wood, Structures.HomesReach(w, sid) + Footprints.WorkR(Structures.CharHearth), "moved only from a spot inside the village");
+            Assert.Greater(here, wood, "further out");
+            Assert.LessOrEqual(here, Structures.HomesReach(w, sid) + Footprints.WorkR(Structures.CharHearth) + 20.0 + 1e-6, "just past the homes");
+        }
+
         [Test]
         public void AHearthIsLaidOutAtTheWoodlotWhenItsSmithsWantCharcoal()
         {
@@ -42,7 +57,7 @@ namespace TC2.Tests.Core
             Assert.AreNotEqual(0, bid);
             var b = w.Buildings.Get(bid);
             Assert.AreEqual(Structures.CharHearth, b.Kind, "a charcoal hearth begun");
-            Assert.AreEqual(s.WoodX, b.X, 0.01); Assert.AreEqual(s.WoodY, b.Y, 0.01);
+            AtTheWoods(w, sid, in b);
             // nobody who smelts: no charcoal wanted
             s.BestMetal = 0.1f;
             Assert.AreEqual(0.0, Charcoal.Want(w, sid));
@@ -105,7 +120,7 @@ namespace TC2.Tests.Core
             Structures.Plan(w, sid);
             var b = w.Buildings.Get(w.Settlements.Get(sid).Project);
             Assert.AreEqual(Structures.CharHearth, b.Kind, "the next hearth begun");
-            Assert.AreEqual(s.WoodX, b.X, 0.01, "at the woods");
+            AtTheWoods(w, sid, in b);
             Assert.AreNotEqual(0L, w.Buildings.Get(old).Left, "the old one left");
             Assert.AreEqual(0, Charcoal.Site(w, sid));
         }

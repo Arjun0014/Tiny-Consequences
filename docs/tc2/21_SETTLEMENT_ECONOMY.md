@@ -83,6 +83,15 @@ Growth history then shows: a hamlet's irregular lots -> a green with its well an
 a defensive ring -> a denser centre and a market -> houses outside the ring along the roads -> a second, larger ring (C7, C13). Old
 walls left inside a grown town stay as structures until quarried.
 
+**The ground (C13.3, D2-118).** Every building covers real ground: a home its plan's rectangles (walls and eaves) turned to the bearing it
+was laid out facing (`Building.Face`), a work a disc holding all of it (`Core/Places/Footprints.cs`). Lots, plans and works are laid out only
+where their ground meets nothing else's and no street, lane, ring, green or market place - no house stands in another (the C13.2 worlds had
+90-312 overlapping pairs a world). A house is built to the plan its household wants if it fits its lot, else the next smaller. A town's
+(250+) street frontage near its green is divided into 6.5 m plots that take the **narrow town house** (gable to the street, two storeys and an
+attic) - rows along the main streets. A market place round the square widens with every trader who comes to its market (20 -> 36 m) and is
+kept open; homes left standing in a street, the market place or across a ring are taken down; a street is laid through as few standing
+houses as its way allows; a lane through standing houses stays shut until its line clears.
+
 ## 5. Specialisation, read after the fact
 
 A settlement's hours by work kind (annals, per year) and what it trades name it retrospectively: farming village, fishing port, mining

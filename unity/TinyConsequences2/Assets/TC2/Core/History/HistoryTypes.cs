@@ -86,6 +86,7 @@ namespace TC2.Core.History
         OreGaveOut = 82,
         OreTaken = 83,
         BoatBuilt = 85,         // a household made a boat (Subject the household, Object the boat, Other who led the making; C9.1)
+        HomeCleared = 89,       // a house standing in a street or lane, the green or market place, or across a ring was taken down - left empty, or its household moved out to build anew on a free lot (Subject the household that lived in it last, Object the house; ArgA 1 a street or lane, 2 the green or market place, 3 a ring, 4 a river; ArgB 1 its household moved out; C13.3, D2-118)
         HomeRebuilt = 88,       // a household rebuilt its house as its people build now (Subject the household, Object the house; ArgA the plan built, ArgB the one before; D2-114)
         ReliefReturned = 87,    // a village gave back grain it was given in a famine (Subject who gave it back, Object the giver; Magnitude FU first returned; ArgA 1 by sea; Cause1 the gift; D2-113)
         BoatLost = 86,          // a boat overturned at sea and was lost (Subject the household, Object the boat, Other who was aboard; Magnitude the wind; ArgA 1 they drowned)
@@ -250,6 +251,7 @@ namespace TC2.Core.History
                 case HistoryKind.ReliefSent: return Tier.Historical;
                 case HistoryKind.ReliefReturned: return Tier.Local;
                 case HistoryKind.HomeRebuilt: return Tier.Local;
+                case HistoryKind.HomeCleared: return Tier.Local;
                 case HistoryKind.Taken: return Tier.Local;
                 case HistoryKind.TakingSeen: return Tier.Local;
                 case HistoryKind.Struck: return Tier.Local;
@@ -339,6 +341,7 @@ namespace TC2.Core.History
                 case HistoryKind.ReliefSent: b = 10; break;
                 case HistoryKind.ReliefReturned: b = 4; break;
                 case HistoryKind.HomeRebuilt: b = 2; break;
+                case HistoryKind.HomeCleared: b = 2; break;
                 case HistoryKind.Taken: b = 6; break;
                 case HistoryKind.TakingSeen: b = 8; break;
                 case HistoryKind.Struck: b = 10; break;

@@ -121,6 +121,71 @@ namespace TC2.Game
                 LookAt(Vec3d.FromLatLon(lat, lon), double.Parse(parts[2], ci));
                 return;
             }
+            if (view.StartsWith("mouth"))
+            {
+                // (D2-118) the largest river mouth within 4 km of the framed village - where a stream cell drains into the sea - "mouth" 350 m up,
+                // "mouthfar" 900 m: the river's ribbon must end at the drawn waterline
+                var P = w.Planet; var dr = w.Drainage;
+                int best = -1; double bf = -1;
+                for (int c = 0; c < P.Cells && dr != null; c++)
+                {
+                    if (!P.IsLand(c) || !P.IsStream(c)) continue;
+                    int r = dr.Receiver[c];
+                    if (r < 0 || P.IsLand(r)) continue;
+                    if (Vec3d.ArcDistance(P.Grid.Center[c], d, P.Radius) > 4000) continue;
+                    if (P.RiverFlow[c] > bf) { bf = P.RiverFlow[c]; best = c; }
+                }
+                if (best >= 0) { d = P.Grid.Center[best]; Debug.Log("[TC2] river mouth cell " + best + " flow " + bf.ToString("0")); }
+                LookAt(d, view == "mouthfar" ? 900 : 350);
+                return;
+            }
+            if (view == "hall" && sid != 0)
+            {
+                // (C13.3) the framed village's hall-house, 40 m up: its cross wing against its footprint
+                ref var st = ref w.Settlements.Get(sid);
+                var bl = w.BuildingsOf(sid);
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    var b = w.Buildings.Get(bl[i]);
+                    if (b.Kind < TC2.Core.Places.Construction.House || !TC2.Core.Places.Structures.IsHome(b.Kind) || TC2.Core.Places.Homes.Fallen(in b, w.Now) || !TC2.Core.Places.Architecture.Has(b.Form)) continue;
+                    if (TC2.Core.Places.Architecture.PlanOf(b.Form) != TC2.Core.Places.Architecture.Hall) continue;
+                    d = st.LocalToSphere(b.X, b.Y, w.Planet.Radius);
+                    Debug.Log("[TC2] hall b" + bl[i] + " at " + b.X.ToString("0.0") + "," + b.Y.ToString("0.0") + " facing " + TC2.Core.Places.Footprints.FaceOf(in st, in b).ToString("0.000") + " stone footings " + b.Mat);
+                    break;
+                }
+                LookAt(d, 40);
+                return;
+            }
+            if (view.StartsWith("row") && sid != 0)
+            {
+                // (C13.3) a town's core rows: over the street whose frontage holds most narrow town houses, at the middle of them - "rowclose" 120 m up,
+                // "rowlow" 55 m, "rowstreet" 22 m (as the village views: the camera tilts toward the horizon close in); the market place ("rowmarket")
+                ref var st = ref w.Settlements.Get(sid);
+                int lines = TC2.Core.Places.Streets.Lines(in st);
+                int[] count = new int[lines + 1]; double[] along = new double[lines + 1];
+                var bl = w.BuildingsOf(sid);
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    var b = w.Buildings.Get(bl[i]);
+                    if (!TC2.Core.Places.Structures.IsHome(b.Kind) || TC2.Core.Places.Homes.Fallen(in b, w.Now) || !TC2.Core.Places.Architecture.Has(b.Form)) continue;
+                    if (TC2.Core.Places.Architecture.PlanOf(b.Form) != TC2.Core.Places.Architecture.Row) continue;
+                    if (!TC2.Core.Places.Streets.Facing(in st, b.X, b.Y, out double fx, out double fy, out int line) || line < 0) continue;
+                    count[line]++; along[line] += System.Math.Sqrt((fx - st.SquareX) * (fx - st.SquareX) + (fy - st.SquareY) * (fy - st.SquareY));
+                }
+                int bestLine = -1;
+                for (int i = 0; i < lines; i++) if (count[i] > 0 && (bestLine < 0 || count[i] > count[bestLine])) bestLine = i;
+                double tx = st.SquareX, ty = st.SquareY;
+                if (bestLine >= 0 && view != "rowmarket")
+                {
+                    TC2.Core.Places.Streets.Line(in st, bestLine, out double ox, out double oy, out double ux, out double uy, out _);
+                    double a = along[bestLine] / count[bestLine];
+                    tx = ox + ux * a; ty = oy + uy * a;
+                    Debug.Log("[TC2] rows: line " + bestLine + " with " + count[bestLine] + " narrow town houses, framed " + a.ToString("0") + " m out");
+                }
+                d = st.LocalToSphere(tx, ty, w.Planet.Radius);
+                LookAt(d, view == "rowstreet" ? 22 : view == "rowlow" ? 55 : view == "rowmarket" ? 70 : 120);
+                return;
+            }
             if (view.StartsWith("voyage"))
             {
                 // a boat on a voyage (C9.3): the first crew found rowing a way over the sea; "voyagestay": the other landing where a crew

@@ -81,7 +81,7 @@ namespace TC2.Tests.Core
             Console.WriteLine(fronting + " of 12 new lots front the street");
             Assert.Greater(fronting, 6, "frontage is sought first");
             ref var s3 = ref w.Settlements.Get(sid);
-            Assert.IsFalse(Structures.Clear(w, sid, s3.SquareX + 60.0, s3.SquareY, 4.0), "no work laid out in the street");
+            Assert.IsFalse(Footprints.WorkFits(w, sid, s3.SquareX + 60.0 * Math.Cos(s3.StreetAt(0)), s3.SquareY + 60.0 * Math.Sin(s3.StreetAt(0)), Structures.Granary, 0.0, true), "no work laid out in the street");
         }
 
         [Test]

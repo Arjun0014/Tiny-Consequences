@@ -13,6 +13,10 @@ namespace TC2.Core.Places
     /// (the spiral of lots, D2-084). A street is durable: laid once, at the bearing at which the way actually leaves the village (read along
     /// its route), it stays while houses line it even when the way falls out of use; ways leaving within 35 degrees of each other are one
     /// street; four at most. Nothing is built in a street (its half-width is kept clear of houses and works).
+    /// A town's core (C13.3, D2-118): once a village is a town (`TownPeople`), the frontage of its streets near the green is dear and its plots
+    /// are divided - lots at half the step (`Spacing` / 2) out to `CoreR` along each street, each a narrow plot that takes only a narrow house
+    /// (the burgage plots of medieval towns, split as the town filled): rows of tall narrow town houses along the main streets. The reach grows
+    /// with the town and is never given back (a divided plot stays divided).
     /// Back lanes (C13.2, D2-117): behind each street's frontage, a lane runs parallel to it on either side (`LaneOff` out, so the
     /// frontage's gardens and the lane's meet back to back), lined from `LaneStart` out - the two-row village with its back lanes, the
     /// town's blocks between street and lane. A lane's lots are sought less than the street's frontage (`LaneLean`, by their distance
@@ -38,6 +42,11 @@ namespace TC2.Core.Places
         /// <summary>m from a street's line to each of its back lanes (C13.2); where a lane's frontage begins along it; a lane's lot is
         /// weighed as this share of its distance from the square.</summary>
         public const double LaneOff = 36.0, LaneStart = 30.0, LaneLean = 0.85;
+
+        /// <summary>People at which a village is a town whose core frontage is divided (C13.3); the reach of its divided core along its streets:
+        /// `CoreFrom` + people / `CorePer` m, at most `CoreMost`.</summary>
+        public const int TownPeople = 250;
+        public const double CoreFrom = 25.0, CorePer = 12.0, CoreMost = 110.0;
 
         static readonly List<Way> _ways = new List<Way>();
 
@@ -69,9 +78,66 @@ namespace TC2.Core.Places
                 bool same = false;
                 for (int k = 0; k < s.StreetN; k++) if (Apart(a, s.StreetAt(k)) < Merge) { same = true; break; }
                 if (same) continue;
-                s.SetStreet(s.StreetN, a);
-                s.StreetN++;
+                // (C13.3) laid where it runs clearest of what stands: of the bearings within `Bend` of the way's, the one whose street runs through
+                // fewest buildings (at most `MostCuts`: those are never renewed in it and come down when left - Homes.Clear - so the street opens over
+                // the years), then whose lanes cut fewest, ties to the way's own; a lane that would cut one stays shut until its line is clear. A way
+                // that threads between more houses than that is no street yet - it is laid when they have gone
+                double best = 0; int least = int.MaxValue, shut = 0;
+                for (int k = 0; k <= 2 * BendSteps && least > 0; k++)
+                {
+                    double b = a + ((k & 1) == 0 ? 1 : -1) * ((k + 1) >> 1) * (Bend / BendSteps);
+                    int c = StreetCuts(w, sid, b);
+                    if (c > MostCuts) continue;
+                    int l1 = LaneCuts(w, sid, b, 1), l2 = LaneCuts(w, sid, b, -1);
+                    int score = c * 1000 + l1 + l2;
+                    if (score < least) { least = score; best = b; shut = (l1 > 0 ? 1 : 0) | (l2 > 0 ? 2 : 0); }
+                }
+                if (least == int.MaxValue) continue;
+                ref var s2 = ref w.Settlements.Get(sid);
+                same = false;
+                for (int k = 0; k < s2.StreetN; k++) if (Apart(best, s2.StreetAt(k)) < Merge) { same = true; break; }
+                if (same) continue;
+                s2.SetStreet(s2.StreetN, best);
+                s2.LanesShut = (byte)((s2.LanesShut & ~(3 << (2 * s2.StreetN))) | (shut << (2 * s2.StreetN)));
+                s2.StreetN++;
             }
+        }
+
+        /// <summary>A shut lane opens once nothing stands in its line (C13.3: the houses it would have run through gone - left and taken down, fallen,
+        /// rebuilt elsewhere). Read when a lot is sought.</summary>
+        public static void OpenLanes(World w, int sid)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.LanesShut == 0) return;
+            for (int k = 0; k < s.StreetN; k++)
+                for (int side = 0; side < 2; side++)
+                {
+                    int bit = 1 << (2 * k + side);
+                    if ((w.Settlements.Get(sid).LanesShut & bit) == 0) continue;
+                    if (LaneCuts(w, sid, w.Settlements.Get(sid).StreetAt(k), side == 0 ? 1 : -1) > 0) continue;
+                    ref var s2 = ref w.Settlements.Get(sid);
+                    s2.LanesShut = (byte)(s2.LanesShut & ~bit);
+                }
+        }
+
+        /// <summary>Radians a street may be laid off its way's bearing to run clear of the houses standing (20 degrees), in steps of 2; the most
+        /// standing buildings a street is laid through.</summary>
+        public const double Bend = 0.3490658503988659;
+        public const int BendSteps = 10, MostCuts = 3;
+
+        /// <summary>The standing buildings and camps a street at bearing b would run through (C13.3).</summary>
+        public static int StreetCuts(World w, int sid, double b)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            return Footprints.LineCuts(w, sid, s.SquareX, s.SquareY, DMath.Cos(b), DMath.Sin(b), 12.0);
+        }
+
+        /// <summary>The same for the lane on one side (+1 line 3k+1, -1 line 3k+2) of a street at bearing b.</summary>
+        public static int LaneCuts(World w, int sid, double b, int side)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            double ux = DMath.Cos(b), uy = DMath.Sin(b);
+            return Footprints.LineCuts(w, sid, s.SquareX - uy * LaneOff * side, s.SquareY + ux * LaneOff * side, ux, uy, LaneStart - 4.0);
         }
 
         /// <summary>The angle between two bearings (0 to pi).</summary>
@@ -98,11 +164,17 @@ namespace TC2.Core.Places
             int m = i % 3;
             double off = m == 0 ? 0.0 : m == 1 ? LaneOff : -LaneOff;
             ox = s.SquareX - uy * off; oy = s.SquareY + ux * off;
-            from = m == 0 ? 12.0 : LaneStart - 4.0;
+            from = m == 0 ? 12.0 : Shut(in s, i) ? Closed : LaneStart - 4.0;   // (a lane not yet open is lined nowhere: C13.3)
         }
 
-        /// <summary>A lot along line i: the j-th (from 0), on side -1 or +1, set back from the line.</summary>
-        public static void Lot(in Settlement s, int i, int j, int side, out double x, out double y)
+        /// <summary>m along a lane not yet open from which it would be lined: beyond any village.</summary>
+        public const double Closed = 1e9;
+
+        /// <summary>Whether line i is a back lane not yet open (C13.3: it would run through houses that stood when its street was laid).</summary>
+        public static bool Shut(in Settlement s, int i) => i % 3 != 0 && (s.LanesShut & (1 << (2 * (i / 3) + (i % 3) - 1))) != 0;
+
+        /// <summary>A lot along line i: the j-th (from 0; a half step is a divided plot in a town's core), on side -1 or +1, set back from the line.</summary>
+        public static void Lot(in Settlement s, int i, double j, int side, out double x, out double y)
         {
             Line(in s, i, out double ox, out double oy, out double ux, out double uy, out _);
             double d = (IsLane(i) ? LaneStart : Start) + j * Spacing;
@@ -111,11 +183,31 @@ namespace TC2.Core.Places
         }
 
         /// <summary>How a lot along line i is weighed against the scatter round the green (lower is sought first).</summary>
-        public static double Weigh(in Settlement s, int i, int j, double x, double y)
+        public static double Weigh(in Settlement s, int i, double j, double x, double y)
         {
             if (!IsLane(i)) return Lean * (Start + j * Spacing);
             double dx = x - s.SquareX, dy = y - s.SquareY;
             return LaneLean * DMath.Sqrt(dx * dx + dy * dy);
+        }
+
+        /// <summary>A town's divided core reaches further as it grows (C13.3): read when a lot is sought; never shrinks.</summary>
+        public static void Grow(ref Settlement s)
+        {
+            if (None || s.Population < TownPeople || s.StreetN == 0) return;
+            double r = DMath.Min(CoreMost, CoreFrom + s.Population / CorePer);
+            if (r > s.CoreR) s.CoreR = (float)r;
+        }
+
+        /// <summary>
+        /// Whether a lot at (x, y) is a divided plot of a town's core (C13.3): on a street's frontage (not a lane's) within the core's reach of the
+        /// green - a plot half a lot wide, that takes a narrow house.
+        /// </summary>
+        public static bool CorePlot(in Settlement s, double x, double y)
+        {
+            if (s.CoreR <= 0f) return false;
+            if (!Facing(in s, x, y, out double fx, out double fy, out int line) || IsLane(line)) return false;
+            double dx = fx - s.SquareX, dy = fy - s.SquareY;
+            return dx * dx + dy * dy <= (double)s.CoreR * s.CoreR + 1e-6;
         }
 
         /// <summary>Whether a point lies in a street or a lane (within `half` of its line, where it is lined).</summary>

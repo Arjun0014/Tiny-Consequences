@@ -885,13 +885,14 @@ namespace TC2.Game
             public readonly double[] Ox = new double[12], Oy = new double[12], Ux = new double[12], Uy = new double[12], Reach = new double[12];
             public int Lines;   // (streets and their back lanes: C13.1, C13.2)
             public double Sx, Sy;
+            public double Market;   // the market place's radius (C13.3; 0 none)
         }
         readonly System.Collections.Generic.List<Ground1> _ground = new System.Collections.Generic.List<Ground1>();
 
         static void ReadGround(TC2.Core.Simulation.World w, int sid, Ground1 g)
         {
             ref var s = ref w.Settlements.Get(sid);
-            g.Sx = s.SquareX; g.Sy = s.SquareY;
+            g.Sx = s.SquareX; g.Sy = s.SquareY; g.Market = s.MarketR;
             g.Lines = TC2.Core.Places.Streets.Lines(in s);
             for (int i = 0; i < g.Lines; i++)
             {
@@ -921,7 +922,8 @@ namespace TC2.Game
             double dsq = System.Math.Sqrt((x - g.Sx) * (x - g.Sx) + (y - g.Sy) * (y - g.Sy));
             float green = Mathf.Clamp01(1f - (float)(dsq - 40.0) / 45f);
             col = Color.Lerp(col, Trodden, green * 0.35f);                                    // the village green, walked on
-            float earth = 1f - Edge(9f, 15f, (float)dsq);                         // the square
+            // the square - and where a market is held, its market place, trodden bare by the traders and their beasts (C13.3)
+            float earth = g.Market > 0 ? (1f - Edge((float)g.Market - 7f, (float)g.Market + 0.5f, (float)dsq)) * 0.92f : 1f - Edge(9f, 15f, (float)dsq);
             for (int i = 0; i < g.N; i++)
             {
                 double hx0 = g.Hx[i], hy0 = g.Hy[i];
