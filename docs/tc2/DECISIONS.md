@@ -3435,7 +3435,7 @@ x1.01, every outcome inside the noise (people x1.01, famines x1.07, t 0.8). Over
 trades x0.67-0.70 and famines x0.83-0.89.
 Shots: `tc2/out/shots/c42a` (seed 4 year 300: a handcart with a trader on a market green; the yard camera framed a roof; woodcutters with their
 handcarts standing out in the sea - D2-123), `c42c` (Tovaldton, `_c2` year 300: a handcart parked by a hut's end wall beside its garden and woodpile;
-woodcutters with their handcarts on the sand by the water). Full suite 308/308 (carts, the hunger rule, D2-123's spots). WEB_PLACEHOLDER
+woodcutters with their handcarts on the sand by the water). Full suite 308/308 (carts, the hunger rule, D2-123's spots). Web build of this code (with D2-123 to D2-125; commit 96e38ab): Web test 6/6 (`tc2/out/webtest/s15web`: WebGPU, the browser bit-identical to headless, views 77-121 fps, the person and place pages 69-88 fps, a day away catches up 96 years in 60 s, no console errors).
 **Open.** Carts serve their own household only (no lending, no village carting of the harvest, a palisade's stone or a lord's tribute); no pack
 animals or sleds; no road works or upkeep (C4.1's wear is the only road); the cart's ox works no field the day it draws (the ard is separate).
 Crossings were surveyed (D2-124): every stream a worn way crosses is fordable.
@@ -3516,7 +3516,7 @@ thousand at par, famines x0.93 (t -0.9), hunger a thousand person-years x0.98, t
 smithies 68 -> 80 (seed 4: Fomthaenstead, Veidasford and Toularndal keep two); smiths read from practice 116 / 80 / 24 in the three metal worlds,
 all of whom worked, the busiest hand 38-49 % of a smithy's hours (6 % before), smithy-years up to 23 hands (355 before); iron smelted x0.59 / x1.05 /
 x2.08 by world, iron traded 22.4 -> 8.7 t (seed 4's exporter 14.4 -> 2.0 t), iron tools for 39 / 32 / 45 % of the people against 52 / 28 / 32 %, copper
-x0.88; boatwrights 15-51 a world. SHOTS_WEB_PLACEHOLDER
+x0.88; boatwrights 15-51 a world. Shots `tc2/out/shots/c14b` (Fomthaenstead #20, seed 4 `_s3` year 300: its two smithies side by side at the village edge, smoke from the one a smith works at). Web build of this code (with D2-123 to D2-125; commit 96e38ab): Web test 6/6 (`tc2/out/webtest/s15web`: WebGPU, the browser bit-identical to headless, views 77-121 fps, the person and place pages 69-88 fps, a day away catches up 96 years in 60 s, no console errors).
 **Open.** A village sells iron only from what its places spare beyond its own people: demand it cannot meet is not seen (no unmet ask), so an
 exporter's smiths do not grow with their buyers - the bloomery at the ore with its own crew (C5.3c, work at a distance) is where iron towns
 belong. The open hearth (a village without a smithy) still lets every smith smelt at home; apprenticeship beside a master (C3.5).

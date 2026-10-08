@@ -27,7 +27,7 @@
   places alone: iron x0.83, iron trade x0.35), `_s2` (another smithy on short days alone: 68 -> 218 smithies).
 - **Verified**: full suite 314/314 (12 min) on the final code; ten seeds as above; shots `tc2/out/shots/c42a`/`c42b`/`c42c` (carts: on the green, in the yard, the earlier
   woodcutters in the sea), `c14b` (Fomthaenstead #20, seed 4 `_s3` y300: two smithies side by side, smoke from the worked one; woodcutters with handcarts
-  at cut-over woods; handcarts at the market green). WEB_HANDOFF
+  at cut-over woods; handcarts at the market green). Web build of 96e38ab: Web test 6/6 (`tc2/out/webtest/s15web`, views 77-121 fps, pages 69-88 fps); `tc2/web-build/web` is current.
 - **Machine**: Control Room's Resource Governor LOW (CPU 50 %, RAM 75 % for all work; one heavy job at a time). The machine's own baseline sits at
   ~73-75 % RAM (the Claude apps ~2.5 GB, an `oracle` process); a Unity run takes it to ~85-88 % while it runs. A `chrome-headless-shell` not started
   by this session took ~70 % CPU for an hour (left alone). `dotnet build-server shutdown` frees this session's compiler servers.
