@@ -601,6 +601,9 @@ namespace TC2.Core.Places
             return need;
         }
 
+        /// <summary>Tools: hunger deaths by village (sid); null in the game.</summary>
+        public static double[] HungerBy;
+
         void Demography(int sid, int days)
         {
             var w = _w;
@@ -645,6 +648,7 @@ namespace TC2.Core.Places
                     // the body's reserve is spent: they die of hunger, the village's famine their cause
                     w.Agents.Kill(ref p, FamineCause(sid), 2);
                     w.Metrics.HungerDeaths++;
+                    if (HungerBy != null && sid < HungerBy.Length) HungerBy[sid]++;
                     continue;
                 }
                 // health follows the reserve once half of it is gone; it mends slowly when the body is full again
@@ -776,6 +780,7 @@ namespace TC2.Core.Places
             {
                 w.Agents.Kill(ref p, FamineCause(sid), 2);
                 w.Metrics.HungerDeaths++;
+                if (HungerBy != null && sid < HungerBy.Length) HungerBy[sid]++;
                 return;
             }
             double rr = p.Reserve / cap;

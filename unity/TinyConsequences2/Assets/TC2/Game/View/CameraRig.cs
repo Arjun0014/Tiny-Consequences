@@ -121,6 +121,26 @@ namespace TC2.Game
                 LookAt(Vec3d.FromLatLon(lat, lon), double.Parse(parts[2], ci));
                 return;
             }
+            if (view.StartsWith("voyage"))
+            {
+                // a boat on a voyage (C9.3): the first crew found rowing a way over the sea; "voyagestay": the other landing where a crew
+                // is ashore, its boat drawn up there (none: the framed village)
+                for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+                {
+                    ref var vp = ref w.People.Get(id);
+                    if (!vp.Alive || vp.Voyage == 0) continue;
+                    if (view == "voyagestay")
+                    {
+                        if (vp.At == 0 || vp.At == vp.Home || vp.Step == TC2.Core.Agents.StepKind.Travel || !w.Settlements.Exists(vp.At)) continue;
+                        ref var vs = ref w.Settlements.Get(vp.At);
+                        d = vs.LocalToSphere(vs.LandX, vs.LandY, w.Planet.Radius);
+                        break;
+                    }
+                    if (vp.Act == TC2.Core.Agents.ActivityKind.Voyage && vp.Step == TC2.Core.Agents.StepKind.Travel) { d = w.Agents.PositionAt(vp, Host.RenderTime); break; }
+                }
+                LookAt(d, view == "voyagefar" ? 320 : view == "voyagestay" ? 110 : view == "voyagenear" ? 160 : 90);
+                return;
+            }
             if (view.StartsWith("work") && sid != 0)
             {
                 // a structure of the framed village (C1 tools): "work13" its quarry, "work11" a granary - from 90 m ("work13far": 250 m)

@@ -77,8 +77,18 @@ and boatbuilding (a technique found by dugout owners), docks, cargo boats and co
 carried and taught like the others; a village that knows it raises a **boat shed** at the head of its landing (`Structures.BoatShed`, when a household
 would make a boat) and builds **plank boats** there one at a time (`Structures.PlankBoat`: 240 h at the builder's knowledge of the craft, 40 loads
 taken to the shed as it is laid down, two years before a half-made one is given up): four aboard, out to 15 m/s of wind and caught out half as often,
-rowed half as fast again as a dugout, reaching more of the offshore shoals, lasting 25 years. Not yet: crews beyond the household, docks (C9.3), cargo
-boats and coastal trade (C9.4), ferries (C9.5).
+rowed half as fast again as a dugout, reaching more of the offshore shoals, lasting 25 years.
+
+**Implemented (C9.3, D2-113)**: **voyages** - ways over the sea between two villages' landings (`Places/SeaRoutes.cs`: A* over the sea's cells,
+cached by the pair and the coast; none past 16 km); a plank boat carries a load of 500 kg (twenty walkers' loads) in trade with the coastal
+village that offers the best deal for it (`Trade.BestSeaPartner`, worth a crew's day), and grain to a famine beyond a day's walk in a calm sea;
+grain goes by sea only in a worthwhile load (a fifth of a boatload) and only in a boat its household can man (two who can take an oar). Relief is
+**owed back** (social storage): a giver gives less to a village that has not returned its gifts; a village with grain to spare gives back what it
+was given, by land or by sea (its own boat, or the giver's come to fetch it). **Lived**, a voyage is booked by the village's day on a free boat
+and sailed in the morning by the household's crew: down to the landing together, rowed along the way at the boat's pace, the load dealt or given
+at the other landing, a stay of three hours, home together (`AgentSystem.StartVoyage`, `ActivityKind.Voyage`); COARSE takes it whole at once, at
+par (tests). Drawn: the hull at its crew on the way, drawn up at the other landing during the stay. Not yet: crews beyond the household, docks
+and cargo boats, coastal trade at the sea's cost ratio (C9.4), ferries (C9.5).
 
 ## 6. Ports (C9)
 

@@ -148,12 +148,12 @@ namespace TC2.Core.Places
         public static double Risk(double wind, byte kind = Structures.Boat) =>
             wind <= Calm ? 0.0 : (IsPlank(kind) ? PlankCaughtOut : CaughtOut) * DMath.Clamp01((wind - Calm) / (MaxOf(kind) - Calm));
 
-        /// <summary>How many of the household are out in its boat now (lived: those at sea in it).</summary>
+        /// <summary>How many of the household are out in its boat now (lived: those at sea in it, fishing or on a voyage - C9.3).</summary>
         public static int Aboard(World w, int hid, int bid)
         {
             var mem = w.Members(hid);
             int n = 0;
-            for (int i = 0; i < mem.Count; i++) { ref var q = ref w.People.Get(mem[i]); if (q.Alive && q.Act == Agents.ActivityKind.Sail && q.WhyArg == bid) n++; }
+            for (int i = 0; i < mem.Count; i++) { ref var q = ref w.People.Get(mem[i]); if (q.Alive && ((q.Act == Agents.ActivityKind.Sail && q.WhyArg == bid) || q.Voyage == bid)) n++; }
             return n;
         }
 

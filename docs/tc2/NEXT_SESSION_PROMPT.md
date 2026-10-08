@@ -132,6 +132,8 @@ planks** (D2-112): a technique found by woodworkers at a dugout, a boat shed at 
 sim version 51 (Web test 5/5). **C9.3 voyages** (D2-113, IN PROGRESS, sim version 52): ways over the sea, a boat's load in trade, grain by sea
 to famines - its relief raises famines x1.18 over ten seeds: find why first (D2-113 "Open", SESSION_HANDOFF "Next").
 
+**Where we are (session 9, 8 Oct 2026)**: **C9.3 closed** (D2-113): relief by sea's extra famines traced and fixed by **social storage** (relief owed back - a giver gives less to a village that has not returned its gifts; given back when the harvest allows); **voyages lived** by real crews along the sea ways, at par with COARSE. **Direction from Arjun (8 Oct 2026, D2-114) - a standing visual requirement**: building variety - homes vary by household size, means, material, age, history and tradition (families of plans, roofs, materials, extensions, chimneys, yards, wear; never random colours); functional buildings recognisable at a glance; richer, larger, older places denser and more substantial; judged in real shots at close, village and region views (root `NEXT_SESSION_PROMPT.md`, SESSION_HANDOFF "Session 9").
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

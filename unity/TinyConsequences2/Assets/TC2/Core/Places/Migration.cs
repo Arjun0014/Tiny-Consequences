@@ -48,6 +48,8 @@ namespace TC2.Core.Places
         /// <summary>Tools: the yearly weighing - villages weighed, the sums of their pressure, crowding, short rations and famine memory,
         /// those pressed, the households that could go and those that chose to; null in the game.</summary>
         public static double[] Weighs;
+        /// <summary>Tools: people who set out from each village (sid); null in the game.</summary>
+        public static double[] LeftBy;
 
         public void Bind(World w) { _w = w; }
 
@@ -294,6 +296,7 @@ namespace TC2.Core.Places
                 }
             w.Queue.Push(party.Arrive, Phase.Process, EventKind.PartyArrive, pid);
             w.Metrics.Parties++;
+            if (LeftBy != null && sid < LeftBy.Length) LeftBy[sid] += people;
             if (party.Site < 0) Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Party, sid, party.Dest);
         }
 

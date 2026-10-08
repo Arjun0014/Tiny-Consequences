@@ -61,11 +61,11 @@ Sub-slices, each committed with tests, runs, shots and docs:
 
 **C4.1 roads by use done (D2-097). C7.1 rings that grow done (D2-098). C12.1 the person page done (D2-099). C5.1 copper ore bodies and
 mines done (D2-100). C12.2 the settlement page done (D2-106). C10.1 the lord's call done (D2-107); the lord answers for its tributaries, once (D2-108). C9.1 boats from the woods (D2-110, closed). C9.2a the landing
-and the crew (D2-111). C9.2b boats of planks (D2-112).**
+and the crew (D2-111). C9.2b boats of planks (D2-112). C9.3 voyages, relief owed back (D2-113).**
 
 ### C9 maritime, by slices (D2-110): C9.1 the dugout - made from the woods, owned, rowed out to the open sea's shoals, lost in rising wind
 (closed in session 8: 9a2ceb7, 23ac1c9); **C9.2a the landing and the crew** (D2-111: one landing a village, boats in a row on it, a boat goes out with its crew, nobody stands in the sea); **C9.2b plank boats and boatbuilding** (D2-112: a technique found by
-woodworkers at a dugout; a boat shed at the landing; plank boats built there); **C9.3 voyages** (D2-113, in progress: ways over the sea, a boat's load in trade, grain by sea to famines); C9.4 the dock (by catches landed
+woodworkers at a dugout; a boat shed at the landing; plank boats built there); **C9.3 voyages** (D2-113, closed: ways over the sea, a boat's load in trade, grain by sea to famines, relief owed back - social storage -, voyages lived by their crews); C9.4 the dock (by catches landed
 and loads moved) and cargo boats, coastal trade at the sea's cost ratio; C9.5 ferries; then the coastal proof (`§5`).
 
 ### C5 mining and metallurgy, by slices (D2-100): ~~C5.1 copper ore bodies, the mine, depletion~~ (done); ~~C5.2a charcoal~~ (done, D2-101); ~~C5.2b

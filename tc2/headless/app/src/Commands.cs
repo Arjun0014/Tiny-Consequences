@@ -85,6 +85,16 @@ namespace TC2.Headless
         {
             var sw = Stopwatch.StartNew();
             if (a.Has("places")) { TC2.Core.Places.Livestock.Diag = new double[4 * 4096]; TC2.Core.Places.Livestock.DiagEnds = new long[4 * TC2.Core.Places.Livestock.Causes]; TC2.Core.Places.SettlementSystem.Unrests = new long[7]; TC2.Core.Agents.AgentSystem.Hours = new double[44]; TC2.Core.Places.SettlementSystem.Harvests = new double[6]; TC2.Core.Places.Migration.Weighs = new double[8]; TC2.Core.Places.SettlementSystem.Demo = new double[10]; }
+            if (a.Has("nosea")) TC2.Core.Places.Trade.NoSea = true;   // (C9.3 against C9.2b in one binary: no voyages, no relief by sea)
+            string vtrace = a.Get("vtrace");   // (each village each report: people, store, famine, hunger deaths, relief in and out by land and sea, who left)
+            System.IO.StreamWriter vt = null;
+            if (vtrace != null)
+            {
+                TC2.Core.Places.Trade.Diag = new double[4 * 4096]; TC2.Core.Places.SettlementSystem.HungerBy = new double[4096]; TC2.Core.Places.Migration.LeftBy = new double[4096];
+                vt = new System.IO.StreamWriter(vtrace);
+                vt.WriteLine("year,sid,name,pop,granary,days,ration,memory,pressure,arable_ha,famine,hunger,land_out,sea_out,land_in,sea_in,left,planks,lord");
+            }
+            var voySeen = new HashSet<long>();
             World w;
             if (a.Has("load"))
             {
@@ -100,6 +110,13 @@ namespace TC2.Headless
             long end = w.Now + span;
             bool scale = a.Has("scale");   // (D2-085: the planet's size seen from the inside)
             if (scale) ScaleReport.Begin(w);
+            if (a.Has("lived"))
+            {
+                // (a world saved by a COARSE or DEEP run back to lived days at its next midnight - as the game's LoadWorld does)
+                long next0 = SimTime.StartOfDay(w.Now) + SimTime.Day;
+                if (w.StepDays > 1) w.RequestStepDays(1, next0);
+                if (w.Resolution != Resolution.Activity) w.RequestResolution(Resolution.Activity, next0);
+            }
             if (a.Has("coarse") || a.Has("deep")) w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
             if (a.Has("deep")) w.RequestStepDays(a.Int("deep", 12), SimTime.StartOfDay(w.Now) + SimTime.Day);   // DEEP (F8): calm villages live K days at a step
             long report = a.Has("report-days") ? SimTime.Days(a.Double("report-days", 1)) : (span > 3 * SimTime.Year ? SimTime.Year : (span > 20 * SimTime.Day ? 4 * SimTime.Day : SimTime.Day));
@@ -120,12 +137,19 @@ namespace TC2.Headless
                     snapAt.Add(start0 + SimTime.Years(y)); snapName.Add(ys.Trim());
                 }
             string snapDir = a.Get("snapdir", Path.Combine("tc2", "out", "ages", "s" + w.Seed));
+            // (--nudge Y: a placebo - one FU more in the first village's store Y years in, so the world's chaos alone can be measured)
+            long nudgeAt = a.Has("nudge") ? start0 + SimTime.Years(a.Double("nudge", 150)) : 0;
             while (w.Now < end || (snapAt.Count > 0 && snapAt[0] <= w.Now))
             {
                 long next = Math.Min(end, w.Now + report);
                 bool snapNow = snapAt.Count > 0 && snapAt[0] <= next;
                 if (snapNow) next = snapAt[0];
                 w.AdvanceTo(next);
+                if (nudgeAt > 0 && w.Now >= nudgeAt)
+                {
+                    for (int ns = w.Settlements.First(); ns != 0; ns = w.Settlements.Next(ns)) if (w.Settlements.Get(ns).Inhabited) { w.Settlements.Get(ns).Granary += 1.0; break; }
+                    nudgeAt = 0;
+                }
                 if (snapNow)
                 {
                     Directory.CreateDirectory(snapDir);
@@ -139,6 +163,8 @@ namespace TC2.Headless
                 Console.WriteLine(SimTime.FormatShort(w.Now) + "  pop " + w.LivingPeople() + "  places " + w.InhabitedSettlements() + "  granary " + F(TotalGranary(w), "0") +
                                   "  fires " + w.Fire.Active.Count + "  events " + ev + "  hist " + w.History.Count + "  " + F(ms, "0.0") + " ms");
                 if (scale) Console.WriteLine(ScaleReport.Line(w));
+                if (vt != null) VTrace(w, vt);
+                if (a.Has("voyagers")) Voyagers(w, voySeen);   // (each boat seen on a voyage, once a leg: C9.3)
                 if (a.Has("places"))
                 {
                     // each village: people, fields (ha of arable), granary (FU) and its ration, last harvest
@@ -168,6 +194,7 @@ namespace TC2.Headless
                 }
                 histCursor = w.History.LastId;
             }
+            vt?.Close();
             double total = sw.Elapsed.TotalMilliseconds;
             double years = span / (double)SimTime.Year;
             Console.WriteLine();
@@ -437,12 +464,12 @@ namespace TC2.Headless
                 }
                 Console.WriteLine("raids: bands raised " + m.Bands + ", raids " + m.Raids + " (driven off " + m.RaidsBeaten + "), loot " + F(m.RaidLoot, "0") + " FU; bands joined by tributaries " + m.CalledBands + " (" + m.CalledMen + " men answered the call), bands lords raised over their tributaries' wrongs " + m.LordsAnswered);
                 Console.WriteLine("answers: amends asked " + m.Claims + ", made " + m.Amends + ", refused " + m.Refusals + "; loads taken back " + m.TakenBack);
-                Console.WriteLine("trade: trades " + m.TradeTrips + ", gain " + F(m.TradeValue, "0") + ", metal moved " + F(m.MetalTraded, "0") + " kg; relief " + F(m.ReliefFu, "0") + " FU");
+                Console.WriteLine("trade: trades " + m.TradeTrips + ", gain " + F(m.TradeValue, "0") + ", metal moved " + F(m.MetalTraded, "0") + " kg; relief " + F(m.ReliefFu, "0") + " FU, given back " + F(m.ReliefReturnedFu, "0") + " FU");
                 {
                     // by sea (C9.3): voyages, cargo, and the villages traders come to most (a port's custom)
                     int topIn = 0; float most = 0f; int markets = 0;
                     for (int sid8 = w.Settlements.First(); sid8 != 0; sid8 = w.Settlements.Next(sid8)) { var st8 = w.Settlements.Get(sid8); if (!st8.Inhabited) continue; if (st8.Market != 0) markets++; if (st8.LandAt != 0 && st8.TradeIn > most) { most = st8.TradeIn; topIn = sid8; } }
-                    Console.WriteLine("sea trade: voyages " + m.Voyages + ", cargo " + F(m.SeaCargoKg / 1000.0, "0.0") + " t; relief by sea " + F(m.ReliefBySeaFu, "0") + " FU; markets " + markets +
+                    Console.WriteLine("sea trade: voyages " + m.Voyages + " (" + m.VoyageSeats + " seats, " + m.VoyagesLapsed + " booked and not sailed), cargo " + F(m.SeaCargoKg / 1000.0, "0.0") + " t; relief by sea " + F(m.ReliefBySeaFu, "0") + " FU; markets " + markets +
                                       (topIn != 0 ? "; the landing traders come to most: " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(topIn)) + " #" + topIn + " (" + F(most, "0") + " a year)" : ""));
                 }
                 Console.WriteLine("techniques: found " + m.TechniquesFound + ", lost by villages " + m.TechniquesLost + "  metal smelted " + F(m.MetalKg, "0") + " kg");
@@ -612,6 +639,48 @@ namespace TC2.Headless
                 }
             }
             return 0;
+        }
+
+        /// <summary>Each boat rowing a way over the sea now (C9.3), once a leg: when, whose, from and to, its crew and load.</summary>
+        static void Voyagers(World w, HashSet<long> seen)
+        {
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+            {
+                var p = w.People.Get(id);
+                if (!p.Alive || p.Act != TC2.Core.Agents.ActivityKind.Voyage || p.Step != TC2.Core.Agents.StepKind.Travel) continue;
+                long key = ((long)p.WhyArg << 32) ^ p.T1;
+                if (!seen.Add(key)) continue;
+                int crew = 0; var mem = w.Members(p.Household);
+                for (int i = 0; i < mem.Count; i++) { var q = w.People.Get(mem[i]); if (q.Alive && q.Voyage == p.Voyage && q.Step == TC2.Core.Agents.StepKind.Travel) crew++; }
+                var r = w.Agents.RouteOf(in p);
+                int from = r == null ? 0 : (p.S0 <= 0.5f ? r.A : r.B);
+                Console.WriteLine("VOYAGE " + SimTime.Format(w.Now) + " boat " + p.WhyArg + " from " + w.History.NameOf(EntityRef.Settlement(from)) + " #" + from + " to " + w.History.NameOf(EntityRef.Settlement(p.Dest)) + " #" + p.Dest +
+                                  " crew " + crew + " load " + p.Cargo + " " + F(p.CargoQty, "0") + " (as " + p.CargoTo + ") leg " + SimTime.Format(p.T0) + " -> " + SimTime.Format(p.T1) + (r != null ? " way " + F(r.Length, "0") + " m" : ""));
+            }
+        }
+
+        /// <summary>One line a village (D2-113's tracing): its people and store now, and what the tallies counted since the last line.</summary>
+        static void VTrace(World w, System.IO.StreamWriter vt)
+        {
+            var d = TC2.Core.Places.Trade.Diag; var hb = TC2.Core.Places.SettlementSystem.HungerBy; var lb = TC2.Core.Places.Migration.LeftBy;
+            int year = (int)(w.Now / SimTime.Year);
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var st = ref w.Settlements.Get(sid);
+                if (sid >= hb.Length) continue;
+                bool any = d[sid * 4] + d[sid * 4 + 1] + d[sid * 4 + 2] + d[sid * 4 + 3] + hb[sid] + lb[sid] > 0;
+                if (!st.Inhabited && !any) continue;
+                double days = TC2.Core.Places.Trade.DaysOfFood(w, in st, out _);
+                bool famine = st.FamineAt != 0 && w.Now - st.FamineAt <= SimTime.Year;
+                int planks = 0;
+                var bl = w.BuildingsOf(sid);
+                for (int i = 0; i < bl.Count; i++) { ref var b = ref w.Buildings.Get(bl[i]); if (TC2.Core.Places.Boats.IsPlank(b.Kind) && TC2.Core.Places.Boats.Sound(in b, w.Now) && b.Household != 0) planks++; }
+                vt.WriteLine(year + "," + sid + "," + w.History.NameOf(EntityRef.Settlement(sid)) + "," + st.Population + "," + F(st.Granary, "0") + "," + F(days, "0.0") + "," + F(st.Ration, "0.00") + "," +
+                             F(st.Memory, "0.00") + "," + F(w.Migration.Pressure(in st), "0.00") + "," + F(st.ArableHa, "0") + "," + (famine ? 1 : 0) + "," + hb[sid] + "," +
+                             F(d[sid * 4], "0") + "," + F(d[sid * 4 + 1], "0") + "," + F(d[sid * 4 + 2], "0") + "," + F(d[sid * 4 + 3], "0") + "," + lb[sid] + "," + planks + "," + st.Lord);
+                d[sid * 4] = d[sid * 4 + 1] = d[sid * 4 + 2] = d[sid * 4 + 3] = 0; hb[sid] = 0; lb[sid] = 0;
+            }
+            vt.Flush();
         }
 
         static double TotalGranary(World w)

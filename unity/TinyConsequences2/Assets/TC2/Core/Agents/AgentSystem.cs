@@ -60,7 +60,7 @@ namespace TC2.Core.Agents
         {
             if (p.Step == StepKind.Travel)
             {
-                var r = _w.Routes.Get(_w, p.RouteA, p.RouteB);
+                var r = RouteOf(in p);
                 if (r != null) return r.PointAt(RouteSAt(p, t));
             }
             int sid = p.At != 0 ? p.At : p.Home;
@@ -146,8 +146,11 @@ namespace TC2.Core.Agents
             Schedule(in p);
             RegisterLeg(ref p, r);
             _w.Metrics.Journeys++;
-            _w.Ways.Walk(_w, r.A, r.B, 1.0);   // (and its walking wears it: C4.1)
+            if (act != ActivityKind.Voyage) _w.Ways.Walk(_w, r.A, r.B, 1.0);   // (and its walking wears it: C4.1; the sea keeps no tracks)
         }
+
+        /// <summary>The way a traveller is on: a road between villages, or the way over the sea between their landings on a voyage (C9.3).</summary>
+        public Route RouteOf(in Person p) => p.Act == ActivityKind.Voyage ? _w.SeaRoutes.Get(_w, p.RouteA, p.RouteB) : _w.Routes.Get(_w, p.RouteA, p.RouteB);
 
         /// <summary>A traveller standing still on the road (waiting), as a travel step with S0 = S1.</summary>
         void BeginRoadWait(ref Person p, Route r, double s, long dur, int dest)
@@ -200,7 +203,7 @@ namespace TC2.Core.Agents
             {
                 ref var p = ref _w.People.Get(id);
                 if (!p.Alive || p.Step != StepKind.Travel) continue;
-                var r = _w.Routes.Get(_w, p.RouteA, p.RouteB);
+                var r = RouteOf(in p);
                 if (r == null) continue;
                 // the same entries RegisterLeg made, without re-checking hazards (their interrupts are in the queue)
                 double s0 = p.S0, s1 = p.S1, lo = Math.Min(s0, s1), hi = Math.Max(s0, s1), span = hi - lo;
@@ -257,7 +260,8 @@ namespace TC2.Core.Agents
         void OnTravelEnd(ref Person p)
         {
             var w = _w;
-            var r = w.Routes.Get(w, p.RouteA, p.RouteB);
+            var r = RouteOf(in p);
+            if (p.Act == ActivityKind.Voyage) { VoyageLanded(ref p, r); return; }   // (at a landing: C9.3)
             if (p.Act == ActivityKind.Wait && r != null)
             {
                 // finished waiting on the road: go on if the way ahead is clear, else back, else wait again
@@ -332,7 +336,7 @@ namespace TC2.Core.Agents
             w.Metrics.InterruptsHandled++;
             if (p.Step == StepKind.Travel)
             {
-                var r = w.Routes.Get(w, p.RouteA, p.RouteB);
+                var r = RouteOf(in p);
                 if (r == null) return;
                 double s = RouteSAt(p, w.Now);
                 double end = p.S1, start = p.S0;
@@ -830,6 +834,10 @@ namespace TC2.Core.Agents
                 return;
             }
 
+            // 0a. a voyage under way (C9.3): gathered at the landing, the crew put out together; at the other landing, back to the boat
+            //     when the stay is over and home over the sea
+            if (p.Voyage != 0 && VoyageStep(ref p)) return;
+
             // 0b. a catch reaches the larder when its carrier gets home with it (D2-042)
             if (p.Carry > 0f && p.At == p.Home)
             {
@@ -921,7 +929,7 @@ namespace TC2.Core.Agents
             // 4. visiting elsewhere: stay a while, then go home
             if (!atHome)
             {
-                if (now >= p.Until || lsec > 16 * SimTime.Hour)
+                if (p.Voyage == 0 && (now >= p.Until || lsec > 16 * SimTime.Hour))
                 {
                     var r = w.Routes.Get(w, p.At, p.Home);
                     if (r != null && !FireNearRoute(r, 0, r.Length))
@@ -1114,6 +1122,12 @@ namespace TC2.Core.Agents
                 tradeTo = w.Trade.BestPartner(p.Home, out double gain);
                 if (tradeTo != 0) { double u = 0.9; if (u > best) { best = u; choice = 12; } }
             }
+            int voyage = -1;
+            if (atHome && lsec >= 6 * SimTime.Hour && lsec < 12 * SimTime.Hour && (voyage = w.Trade.BookingOf(p.Household)) >= 0 && Trade.CanSail(in p, p.Home, now))
+            {
+                // the village has booked the household's boat for a voyage (C9.3): one of them takes it out with a crew of the household
+                double u = 1.1; if (u > best) { best = u; choice = 21; }
+            }
             if (day && atHome && lsec < 14 * SimTime.Hour && (age < 16 || lsec >= 9 * SimTime.Hour) && TendDue(here.Id))
             {
                 // the animals wait to go out: a youth's chore first, a grown member's when no child has taken them by mid-morning (D2-050)
@@ -1148,6 +1162,10 @@ namespace TC2.Core.Agents
                     return;
                 case 12:
                     if (StartTrade(ref p, tradeTo)) return;
+                    break;
+                case 21:
+                    if (StartVoyage(ref p, voyage)) return;
+                    if (!p.Alive) return;   // (caught out by the wind as they put out: C9.3)
                     break;
                 case 13:
                     if (StartErrand(ref p)) return;
@@ -1343,6 +1361,7 @@ namespace TC2.Core.Agents
             var w = _w;
             int b = Boats.Of(w, p.Household);
             if (b == 0 || w.Buildings.Get(b).Settlement != here.Id) return 0;
+            if (!_seatsOn && w.Trade.IsBooked(b)) return 0;   // (it is to sail on a voyage today: C9.3)
             byte bk = w.Buildings.Get(b).Kind;
             SeaHere(in here, out double wind);
             if (wind >= Boats.MaxOf(bk)) return 0;   // (a plank boat goes out in winds that keep dugouts ashore: C9.2b)
@@ -1506,6 +1525,7 @@ namespace TC2.Core.Agents
         public void EnterCoarse()
         {
             var w = _w;
+            w.Trade.ClearBookings();   // (nobody will sail what was booked: C9.3)
             for (int id = w.People.First(); id != 0; id = w.People.Next(id))
             {
                 ref var p = ref w.People.Get(id);
@@ -1513,7 +1533,8 @@ namespace TC2.Core.Agents
                 if (p.Step == StepKind.Local || p.Step == StepKind.Stay) CutStep(ref p);
                 if (p.At != 0 && p.At != p.Home) w.Visitors(p.At).Remove(p.Id);
                 p.At = p.Home;
-                if (p.CargoQty > 0f && w.Settlements.Exists(p.Home)) w.Trade.Unload(ref p, p.Home);   // (a trader's load reaches home with them: D2-067)
+                if ((p.CargoQty > 0f || p.CargoTo != Trade.ToStore) && w.Settlements.Exists(p.Home)) w.Trade.Unload(ref p, p.Home);   // (a trader's load reaches home with them: D2-067; a boat's too, C9.3)
+                p.Voyage = 0;
                 p.Act = ActivityKind.Idle; p.Step = StepKind.None; p.Why = WhyCode.None; p.Dest = 0;
                 p.ActVer++; // cancels the pending step
                 if (w.Households.Exists(p.Household)) { ref var hh = ref w.Households.Get(p.Household); p.FromX = hh.HomeX; p.FromY = hh.HomeY; p.ToX = hh.HomeX; p.ToY = hh.HomeY; }
@@ -1999,6 +2020,188 @@ namespace TC2.Core.Agents
             BeginTravel(ref p, ActivityKind.Scout, WhyCode.LookForLand, r, 0.0, r.Length, RouteCache.PlaceEnd(target));
             w.Metrics.Scouts++;
             return true;
+        }
+
+        // ---------------------------------------------------------------- voyages (C9.3)
+        /// <summary>How long a boat's crew is given to gather at the landing before it puts out.</summary>
+        public const long VoyageGather = 20 * SimTime.Minute;
+        /// <summary>How long a crew stays at the other landing's village before they row home (a COARSE voyage's stay is VisitHoursCoarse).</summary>
+        public const long VoyageStay = 3 * SimTime.Hour;
+
+        /// <summary>The time a boat takes over a way by sea: rowed at a walker's pace times the boat's (a plank boat half as fast again).</summary>
+        long VoyageLeg(Route way, int bid)
+        {
+            byte kind = _w.Buildings.Exists(bid) ? _w.Buildings.Get(bid).Kind : Structures.PlankBoat;
+            return Math.Max(60L, DMath.ToLong(DMath.RoundHalfUp(way.Length / (_w.Config.WalkSpeed * Boats.RowPace(kind)))));
+        }
+
+        /// <summary>
+        /// Lived (C9.3): the village booked the household's boat for a voyage - this one takes it out. The weather over the way's middle
+        /// must serve (a calm sea for grain; a trade's load in any wind the boat would fish in: else they wait, the booking lapsing at the
+        /// village's next day); two of the household at least who can take an oar (all who can, a seat each); the load aboard; the sea's
+        /// chance as they put out (as a COARSE voyage has it); then all walk down to the landing and put out together.
+        /// </summary>
+        bool StartVoyage(ref Person p, int bi)
+        {
+            var w = _w;
+            long now = w.Now;
+            if (bi < 0 || bi >= w.Trade.Bookings) return false;
+            var bk = w.Trade.BookingAt(bi);
+            int sid = p.Home, bid = bk.Boat, hid = p.Household;
+            if (bk.From != sid || !w.Buildings.Exists(bid) || !w.Settlements.Exists(bk.To) || !w.Settlements.Get(bk.To).Inhabited) { w.Trade.Unbook(bi); return false; }
+            ref var b = ref w.Buildings.Get(bid);
+            byte kind = b.Kind;
+            if (!Boats.Sound(in b, now) || b.Household != hid || Boats.Aboard(w, hid, bid) > 0) { w.Trade.Unbook(bi); return false; }
+            var way = w.SeaRoutes.Get(w, sid, bk.To);
+            if (way == null) { w.Trade.Unbook(bi); return false; }
+            double wind = Boats.WindAt(w, way.PointAt(0.5 * way.Length));
+            if (bk.Kind == Trade.ForTrade ? wind >= Boats.MaxOf(kind) : wind > Boats.Calm) return false;   // (they wait for the weather)
+            // the crew: the household's who can take an oar, a seat each, the one who takes it out first
+            var crew = _voyCrew; crew.Clear(); crew.Add(p.Id);
+            var mem = w.Members(hid);
+            for (int i = 0; i < mem.Count && crew.Count < Boats.SeatsOf(kind); i++)
+            {
+                if (mem[i] == p.Id) continue;
+                ref var q = ref w.People.Get(mem[i]);
+                if (!Trade.CanSail(in q, sid, now) || q.Act == ActivityKind.Sleep || q.Act == ActivityKind.Ill) continue;
+                crew.Add(mem[i]);
+            }
+            if (crew.Count < 2) return false;   // (a boat's load wants two at the oars at least: they wait for hands)
+            w.Trade.Unbook(bi);
+            double kg = w.Trade.LoadAboard(ref p, in bk);
+            if (kg <= 0) return false;   // (nothing to carry now: the deal is gone, the grain eaten)
+            // the sea's chance as they put out: overturned, the boat is lost with its load and all of them are in the water
+            if (Boats.Trip(w, sid, hid, bid, p.Id, wind, out _, 1, true) != 0)
+            {
+                for (int i = 1; i < crew.Count; i++) Boats.Overturned(w, sid, hid, bid, crew[i], wind, out _, true);
+                if (p.Alive) { p.Cargo = Trade.None; p.CargoQty = 0f; p.CargoTo = Trade.ToStore; }
+                return false;
+            }
+            // down to the landing together, then out
+            ref var s = ref w.Settlements.Get(sid);
+            long off = now + VoyageGather;
+            for (int i = 0; i < crew.Count; i++)
+            {
+                ref var q = ref w.People.Get(crew[i]);
+                if (i > 0 && (q.Step == StepKind.Local || q.Step == StepKind.Stay)) CutStep(ref q);   // (the others leave what they were doing)
+                q.Voyage = bid; q.Dest = bk.To; q.Until = off;
+                BeginLocal(ref q, ActivityKind.Voyage, WhyCode.Voyage, bid, s.LandX + 1.5 * (i - 1), s.LandY, 0, off);
+            }
+            w.Metrics.Voyages++;
+            if (bk.Kind == Trade.ForTrade) w.Metrics.VoyageSeats += crew.Count;   // (the seats of trade voyages, as COARSE counts them)
+            if (bk.Kind != Trade.ForFetch) w.Metrics.SeaCargoKg += kg;
+            return true;
+        }
+
+        readonly List<int> _voyCrew = new List<int>();
+
+        /// <summary>
+        /// A voyage's next step (C9.3), true when it took the decision: gathered at the landing at home, out over the sea to the other landing;
+        /// at the other village, down to its landing when the stay is nearly over, then home over the sea - the crew together (their times are
+        /// the boat's, not each one's). A boat lost or a way gone ends the voyage: home by the road, or home.
+        /// </summary>
+        bool VoyageStep(ref Person p)
+        {
+            var w = _w;
+            long now = w.Now;
+            int bid = p.Voyage;
+            bool boat = w.Buildings.Exists(bid) && w.Buildings.Get(bid).Cond > 0f && w.Buildings.Get(bid).Left == 0;
+            if (p.At == p.Home)
+            {
+                if (p.Act != ActivityKind.Voyage || p.Step != StepKind.Local || p.Dest == 0 || !boat) { EndVoyage(ref p); return false; }
+                var way = w.SeaRoutes.Get(w, p.Home, p.Dest);
+                if (way == null) { EndVoyage(ref p); return false; }
+                PutOut(ref p, way, p.Home, p.Dest, Math.Max(p.Until, now) + VoyageLeg(way, bid));
+                return true;
+            }
+            // at the other village
+            if (!boat || !w.Settlements.Exists(p.At)) { EndVoyage(ref p); return false; }
+            if (now < p.Until - 15 * SimTime.Minute) return false;   // (their stay: as any visitor)
+            ref var here = ref w.Settlements.Get(p.At);
+            if (now < p.Until)
+            {
+                // down to the boat at its landing
+                double lx = here.LandAt != 0 ? here.LandX : here.SquareX, ly = here.LandAt != 0 ? here.LandY : here.SquareY;
+                BeginLocal(ref p, ActivityKind.Visit, WhyCode.Voyage, 0, lx, ly, 0, p.Until);
+                return true;
+            }
+            var back = w.SeaRoutes.Get(w, p.At, p.Home);
+            if (back == null) { EndVoyage(ref p); return false; }
+            PutOut(ref p, back, p.At, p.Home, Math.Max(p.Until, now) + VoyageLeg(back, bid));
+            return true;
+        }
+
+        /// <summary>
+        /// The boat puts out from a landing (C9.3): the one whose step brought it and every other of its crew there go aboard together -
+        /// whatever they are doing - and row the way with the one time of arrival (a crew is one boat, never people on their own times).
+        /// </summary>
+        void PutOut(ref Person p, Route way, int from, int to, long arrive)
+        {
+            var w = _w;
+            int bid = p.Voyage;
+            double sFrom = from == way.A ? 0.0 : way.Length, sTo = to == way.A ? 0.0 : way.Length;
+            var mem = w.Members(p.Household);
+            for (int i = 0; i < mem.Count; i++)
+            {
+                if (mem[i] == p.Id) continue;
+                ref var q = ref w.People.Get(mem[i]);
+                if (!q.Alive || q.Voyage != bid || q.At != from || q.Step == StepKind.Travel) continue;
+                if (q.Step == StepKind.Local || q.Step == StepKind.Stay) CutStep(ref q);
+                if (from != q.Home) w.Visitors(from).Remove(q.Id);
+                BeginTravel(ref q, ActivityKind.Voyage, WhyCode.Voyage, way, sFrom, sTo, to, arrive);
+                q.WhyArg = bid;
+            }
+            if (from != p.Home) w.Visitors(from).Remove(p.Id);
+            BeginTravel(ref p, ActivityKind.Voyage, WhyCode.Voyage, way, sFrom, sTo, to, arrive);
+            p.WhyArg = bid;
+        }
+
+        /// <summary>A voyage over or given up: whatever they still carry is home (or goes home with them by the road).</summary>
+        void EndVoyage(ref Person p)
+        {
+            var w = _w;
+            if (p.At == p.Home && (p.CargoQty > 0f || p.CargoTo != Trade.ToStore) && w.Settlements.Exists(p.Home)) w.Trade.Unload(ref p, p.Home);
+            p.Voyage = 0;
+            if (p.At != p.Home && p.At != 0 && w.Routes.Get(w, p.At, p.Home) == null)
+            {
+                // (no road home from there: they come home with the next boat - the island's people do not keep them)
+                w.Visitors(p.At).Remove(p.Id);
+                p.At = p.Home;
+                if ((p.CargoQty > 0f || p.CargoTo != Trade.ToStore) && w.Settlements.Exists(p.Home)) w.Trade.Unload(ref p, p.Home);
+                if (w.Households.Exists(p.Household)) { ref var hh = ref w.Households.Get(p.Household); p.FromX = hh.HomeX; p.FromY = hh.HomeY; p.ToX = p.FromX; p.ToY = p.FromY; }
+            }
+        }
+
+        /// <summary>
+        /// A voyage's crew at a landing (C9.3): home - the load into the store, the voyage over; at the other village - visitors there for the
+        /// stay (what they may catch, the news), the one with the load dealing it: a trade for the return load, grain given to a famine,
+        /// grain given back, or grain fetched back aboard.
+        /// </summary>
+        void VoyageLanded(ref Person p, Route r)
+        {
+            var w = _w;
+            long now = w.Now;
+            int arrived = r == null ? p.Home : (p.S1 <= 0.5f ? r.A : r.B);
+            if (!w.Settlements.Exists(arrived)) arrived = p.Home;
+            ref var s = ref w.Settlements.Get(arrived);
+            double lx = s.LandAt != 0 ? s.LandX : s.SquareX, ly = s.LandAt != 0 ? s.LandY : s.SquareY;
+            p.At = arrived;
+            p.Step = StepKind.Local; p.Act = ActivityKind.Visit; p.FromX = (float)lx; p.FromY = (float)ly; p.ToX = p.FromX; p.ToY = p.FromY; p.TA = now; p.T0 = now;
+            p.Dest = 0;
+            if (arrived == p.Home)
+            {
+                if (p.CargoQty > 0f || p.CargoTo != Trade.ToStore) w.Trade.Unload(ref p, arrived);   // (the load home: C9.3)
+                p.Voyage = 0;
+                Decide(ref p);
+                return;
+            }
+            w.Visitors(arrived).InsertSorted(p.Id);
+            p.Until = now + VoyageStay;
+            p.Visits++;
+            w.Disease.Arrive(ref p, arrived, VoyageStay);   // what they may catch there and carry home (D2-066)
+            if (p.CargoQty > 0f || p.CargoTo != Trade.ToStore) w.Trade.Deliver(ref p, arrived);
+            w.DeedBook.Meet(p.Home, arrived);              // the news each village tells (D2-072)
+            Decide(ref p);
         }
 
         /// <summary>A trader's chance a morning decision to go, given a deal (fitted to Trade.TripsPerAdultDay at COARSE: D2-067).</summary>

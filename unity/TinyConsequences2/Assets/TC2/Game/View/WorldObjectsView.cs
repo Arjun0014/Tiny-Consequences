@@ -592,8 +592,47 @@ namespace TC2.Game
                 inst.Add(0, Color.Lerp(new Color(0.45f, 0.45f, 0.42f, 1f), new Color(0.8f, 0.8f, 0.78f, 1f), c), Matrix4x4.TRS(pos - up * (0.3f * (1f - c)), rot, new Vector3(bex, bex * (0.4f + 0.6f * c), bex)));
                 return;
             }
-            if (b.Household != 0 && w.Households.Exists(b.Household) && Boats.Aboard(w, b.Household, bid) > 0) return;   // (out at sea)
+            if (b.Household != 0 && w.Households.Exists(b.Household) && Away(w, b.Household, bid)) return;   // (out at sea, or at another landing)
             inst.Add(0, Color.white, Matrix4x4.TRS(pos, rot, Vector3.one * bex));
+        }
+
+        /// <summary>
+        /// Whether a household's boat is away from its beach (C9.3): out fishing in it, or on a voyage past its landing - rowing the way or
+        /// drawn up at the other landing (while its crew gather at the landing at home it still lies there).
+        /// </summary>
+        static bool Away(TC2.Core.Simulation.World w, int hid, int bid)
+        {
+            var mem = w.Members(hid);
+            for (int i = 0; i < mem.Count; i++)
+            {
+                ref var q = ref w.People.Get(mem[i]);
+                if (!q.Alive) continue;
+                if (q.Act == ActivityKind.Sail && q.WhyArg == bid) return true;
+                if (q.Voyage == bid && (q.Step == StepKind.Travel || q.At != q.Home)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>A voyage's boat drawn up at the other village's landing while its crew stay there (C9.3), once a boat.</summary>
+        void DrawVisitingBoat(TC2.Core.Simulation.World w, PlanetState P, int boat, int at)
+        {
+            if (_hulls.ContainsKey(boat) || !w.Settlements.Exists(at)) return;
+            ref var s = ref w.Settlements.Get(at);
+            if (s.LandAt == 0) return;
+            // along the beach beside the landing's own boats, bow to the water
+            double side = 6.0 + (boat % 5) * 3.5;
+            double x = s.LandX - s.LandUy * side, y = s.LandY + s.LandUx * side;
+            Vector3 pos = PlanetGeo.Surface(P, s.LocalToSphere(x, y, P.Radius));
+            Vector3 up = pos.normalized;
+            Vector3 toSea = PlanetGeo.Surface(P, s.LocalToSphere(x - s.LandUx, y - s.LandUy, P.Radius)) - pos;
+            toSea -= up * Vector3.Dot(toSea, up);
+            if (toSea.sqrMagnitude < 1e-6f) toSea = Vector3.Cross(up, Vector3.right);
+            var rot = Quaternion.LookRotation(toSea.normalized, up);
+            float bex = Exaggeration(pos, 1.6f) * 1.15f;
+            (w.Buildings.Exists(boat) && Boats.IsPlank(w.Buildings.Get(boat).Kind) ? _afloatP : _afloat).Add(0, Color.white, Matrix4x4.TRS(pos, rot, Vector3.one * bex));
+            if (_hullAt.Count == _hulls.Count) { _hullAt.Add(default); _hullSeats.Add(0); }
+            _hullAt[_hulls.Count] = (pos, rot, bex); _hullSeats[_hulls.Count] = 99;   // (ashore: nobody seated in it)
+            _hulls[boat] = _hulls.Count;
         }
 
         /// <summary>The orchard trees and bushes in the yards of the villages near the camera (the woods are the terrain's: D2-079).</summary>
@@ -675,14 +714,19 @@ namespace TC2.Game
                 float age = (float)p.AgeYears((long)t);
                 // out in the household's boat (C9.1): drawn in it wherever they are on the water - rowing out, fishing, rowing home. A boat
                 // goes out with its crew (C9.2): one hull for the boat, where the first of its crew on the water is, the others seated in it
-                if (p.Act == ActivityKind.Sail)
+                // on a voyage (C9.3): rowing the way over the sea in the household's boat - its bow along the way; ashore at the other landing,
+                // the boat drawn up on its beach
+                bool voyaging = p.Act == ActivityKind.Voyage && p.Step == StepKind.Travel;
+                if (p.Voyage != 0 && !voyaging && p.At != 0 && p.At != p.Home) DrawVisitingBoat(w, P, p.Voyage, p.At);
+                if (p.Act == ActivityKind.Sail || voyaging)
                 {
                     Vec3d onWater = d;
-                    if (Ground.Height(P, onWater) < P.SeaLevel - 0.3)
+                    bool wet = Ground.Height(P, onWater) < P.SeaLevel - 0.3;
+                    if (wet || voyaging)
                     {
                         int boat = p.WhyArg;
                         int dyeF = (int)(KeyedRng.Mix((ulong)id * 0x2545F4914F6CDD1DUL) % (ulong)Dyes.Length);
-                        if (_hulls.TryGetValue(boat, out int hi))
+                        if (_hulls.TryGetValue(boat, out int hi) && _hullSeats[hi] < 99)
                         {
                             var hull = _hullAt[hi];
                             int seat = ++_hullSeats[hi];
@@ -692,10 +736,17 @@ namespace TC2.Game
                             continue;
                         }
                         ulong fk = KeyedRng.Mix((ulong)boat * 0x9E3779B97F4A7C15UL ^ 0xB0A7);
-                        Vector3 bpos = PlanetGeo.ToVector(onWater) * waterR;
+                        Vector3 bpos = wet ? PlanetGeo.ToVector(onWater) * waterR : pos;   // (a voyage's first and last metres are over the beach)
                         Vector3 bup = bpos.normalized;
                         float drift = (float)(KeyedRng.Unit(KeyedRng.Mix(fk + 1)) * 360.0 + t / 600.0);   // swinging slowly on the water
                         var brot = PlanetGeo.Upright(bpos, drift) * Quaternion.Euler(Mathf.Sin((float)(t / 7.0)) * 2f, 0, Mathf.Sin((float)(t / 5.0)) * 3f);
+                        if (voyaging)
+                        {
+                            // bow along the way it is rowed
+                            Vector3 ahead = PlanetGeo.Surface(P, w.Agents.PositionAt(p, t + 30.0)) - PlanetGeo.Surface(P, d);
+                            ahead -= bup * Vector3.Dot(ahead, bup);
+                            if (ahead.sqrMagnitude > 1e-6f) brot = Quaternion.LookRotation(ahead.normalized, bup) * Quaternion.Euler(Mathf.Sin((float)(t / 7.0)) * 2f, 0, Mathf.Sin((float)(t / 5.0)) * 3f);
+                        }
                         float bex = Exaggeration(bpos, 2.5f);
                         (w.Buildings.Exists(boat) && Boats.IsPlank(w.Buildings.Get(boat).Kind) ? _afloatP : _afloat).Add(0, Color.white, Matrix4x4.TRS(bpos, brot, Vector3.one * bex));
                         BoatsAfloat++;

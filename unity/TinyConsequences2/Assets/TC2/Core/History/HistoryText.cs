@@ -121,6 +121,7 @@ namespace TC2.Core.History
                     return "The " + TC2.Core.Places.Boats.NameOf((byte)e.ArgB) + " of the " + subj + "s of " + place + " overturned at sea in a rising wind (" + F(e.Magnitude, "0") + " m/s)" +
                            (e.Other.IsNone ? "." : e.ArgA == 1 ? ": " + other + " drowned." : ": " + other + " clung to it and came ashore.");
                 case HistoryKind.HerdHuntedOut: return "The " + obj + " herd near " + place + " was hunted out (" + F(e.Magnitude, "0") + " at its most).";
+                case HistoryKind.ReliefReturned: return subj + " gave back to " + obj + (e.ArgA == 1 ? ", by sea," : "") + " the grain it was given in its famine (" + F(e.Magnitude, "0") + " days' food for one, the first of it).";
                 case HistoryKind.ReliefSent: return "In the famine " + subj + " sent grain to " + obj + (e.ArgA == 1 ? " by sea, a boatload along the coast" : "") + " (" + F(e.Magnitude, "0") + " days' food for one).";
                 case HistoryKind.Taken: return subj + " of " + other + " took " + F(e.Magnitude, "0") + " days' grain from the store of " + obj + " in the night.";
                 case HistoryKind.TakingSeen: return subj + " of " + other + " was seen at the store of " + obj + " in the night and ran, leaving the grain.";
@@ -222,7 +223,9 @@ namespace TC2.Core.History
                     if (p.Why == WhyCode.Raid) return "coming home to " + home + " from a raid in the night" + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "") + (p.Hurt > 0f ? ", hurt" : "");
                     if (p.Why == WhyCode.Take) return p.CargoQty > 0f ? "hurrying home to " + home + " in the dark with " + Load(p.Cargo, p.CargoQty) + " taken from a neighbour's store" : "running home to " + home + " in the dark: seen at the store, they left the grain";
                     return "walking home to " + home + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "");
-                case ActivityKind.Visit: return "visiting " + at;
+                case ActivityKind.Visit:
+                    if (p.Voyage != 0) return "at " + at + ", come over the sea in the household's boat: they row home when the boat's business is done";
+                    return "visiting " + at;
                 case ActivityKind.Flee: return "keeping to shelter: a fire is near";
                 case ActivityKind.Wait: return "waiting on the road for the fire ahead to burn out";
                 case ActivityKind.Hunt:
@@ -233,8 +236,20 @@ namespace TC2.Core.History
                         string why = p.Why == WhyCode.NoFood ? ": nothing is left to eat at home" : p.Why == WhyCode.FoodShort ? ": rations are short in " + home : ": food for the table";
                         return what + ground + why;
                     }
+                case ActivityKind.Voyage:
+                    {
+                        // (C9.3) down at the landing, rowing over, or rowing home
+                        string other = dest.Length > 0 ? dest : "another landing";
+                        string what = p.CargoTo == TC2.Core.Places.Trade.AsGift ? " with grain for its famine" :
+                                      p.CargoTo == TC2.Core.Places.Trade.AsReturn ? " with grain given back for what " + other + " gave in famine" :
+                                      p.CargoTo == TC2.Core.Places.Trade.ToFetch ? " to fetch the grain " + other + " owes " + home :
+                                      p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) + " to trade: " + home + " spares it and they want it" : "";
+                        if (p.Step == StepKind.Travel && p.Dest == p.Home) return "rowing home to " + home + " over the sea in the household's boat" + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "");
+                        if (p.Step == StepKind.Travel) return "rowing over the sea to " + other + " in the household's boat" + what;
+                        return "down at " + home + "'s landing with the household's boat: it puts out for " + other + what;
+                    }
                 case ActivityKind.Sail:
-                    return "out in the household's dugout, fishing the open sea" + (p.Why == WhyCode.NoFood ? ": nothing is left to eat at home" : p.Why == WhyCode.FoodShort ? ": rations are short in " + home : ": the shoals beyond the shore");
+                    return "out in the household's " + (w.Buildings.Exists(p.WhyArg) ? TC2.Core.Places.Boats.NameOf(w.Buildings.Get(p.WhyArg).Kind) : "boat") + ", fishing the open sea" + (p.Why == WhyCode.NoFood ? ": nothing is left to eat at home" : p.Why == WhyCode.FoodShort ? ": rations are short in " + home : ": the shoals beyond the shore");
                 case ActivityKind.Haul: return "carrying the catch home";
                 case ActivityKind.Build:
                     if (p.Why == WhyCode.NoRoof) return "raising a roof for the household: they live in a camp or a hut";

@@ -125,10 +125,81 @@ namespace TC2.Tests.Core
             long mark = w.History.LastId;
             w.AdvanceTo(w.Now + SimTime.Days(4));
             int told = 0;
-            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.ReliefSent && e.Settlement == b) { told++; Console.WriteLine(HistoryText.Line(w, e)); } }
+            var givers = new System.Collections.Generic.HashSet<int>();
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Kind != HistoryKind.ReliefSent || e.Settlement != b) continue;
+                told++; Console.WriteLine(HistoryText.Line(w, e));
+                Assert.IsTrue(givers.Add(e.Subject.Id), "each giver told once for the famine, not every day of it (D2-113: each gift is owed back on its own)");
+            }
             Console.WriteLine("relief " + w.Metrics.ReliefFu.ToString("0") + " FU");
             Assert.Greater(w.Metrics.ReliefFu, 0.0, "grain went to the famine");
-            Assert.AreEqual(1, told, "told once for the famine, not every day of it");
+            Assert.Greater(told, 0, "told");
+        }
+
+        /// <summary>
+        /// Relief is owed back (D2-113, social storage): a giver gives the less the more of its gifts stand unreturned (famine after famine of
+        /// the same village, less each time); the village gives back what it was given when it has grain to spare (told, caused by the gift),
+        /// and its giver's hands open again.
+        /// </summary>
+        [Test]
+        public void ReliefIsOwedBackAndGivenBackWhenTheHarvestAllows()
+        {
+            var w = Pair(out int a, out int b);
+            Assume.That(b != 0, "two villages a walk apart");
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o)) w.Settlements.Get(o).FamineEvent = 0;
+            w.Settlements.Get(a).Granary = 200000;
+            double need = w.Settlements.Get(b).Population * w.Config.FoodPerAdultDay * 0.8;
+            // famine after famine at b: twelve days each, its store eaten as it comes
+            double Famine()
+            {
+                ref var sb = ref w.Settlements.Get(b);
+                sb.FamineAt = w.Now;
+                sb.FamineEvent = w.Record(new HistoryEvent { Kind = HistoryKind.Famine, Time = w.Now, Cell = sb.Cell, Settlement = b, Subject = EntityRef.Settlement(b), RootKind = RootKind.Nature });
+                double got = 0;
+                for (int d = 0; d < 12; d++)
+                {
+                    w.Settlements.Get(b).Granary = 0;
+                    w.Trade.Day(a);
+                    got += w.Settlements.Get(b).Granary;
+                }
+                w.Settlements.Get(b).Granary = 0;
+                return got;
+            }
+            long mark = w.History.LastId;
+            double g1 = Famine(), g2 = Famine(), g3 = Famine();
+            double owed = w.DeedBook.Owed(b, a);
+            Console.WriteLine("given in three famines: " + (g1 / need).ToString("0.0") + ", " + (g2 / need).ToString("0.0") + ", " + (g3 / need).ToString("0.0") + " days of their need; owed " + (owed / need).ToString("0.0") + " days");
+            Assert.Greater(g1, 0.0, "the first famine is relieved");
+            Assert.Less(g2, g1, "less the second time: the first gift stands unreturned");
+            Assert.Less(g3, g2);
+            Assert.LessOrEqual(owed, Trade.CreditDays * need + 3.0 * need, "no more than two months of their need (and a day's carrying) stands open");
+            long sent = 0;
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.ReliefSent && e.Settlement == b) sent = e.Id; }
+            Assert.AreNotEqual(0L, sent, "the gift is told");
+            // b's harvest is good: it gives back, the oldest gift first, and a's hands open again
+            double a0 = w.Settlements.Get(a).Granary, back = 0;
+            w.Settlements.Get(b).Granary = 100000;
+            for (int d = 0; d < 40 && w.DeedBook.Owed(b, a) >= 1.0; d++) { double before = w.Settlements.Get(b).Granary; w.Trade.Day(b); back += before - w.Settlements.Get(b).Granary; }
+            Console.WriteLine("given back " + (back / need).ToString("0.0") + " days of their need; a's store +" + (w.Settlements.Get(a).Granary - a0).ToString("0") + "; owed now " + w.DeedBook.Owed(b, a).ToString("0.0"));
+            Assert.AreEqual(owed, back, 1.0, "what was owed came back");
+            Assert.AreEqual(back, w.Settlements.Get(a).Granary - a0, 1e-6, "into the giver's store");
+            Assert.AreEqual(back, w.Metrics.ReliefReturnedFu, 1e-6);
+            int told = 0;
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Kind != HistoryKind.ReliefReturned) continue;
+                told++; Console.WriteLine(HistoryText.Line(w, e));
+                Assert.AreEqual(sent, e.Cause1, "caused by the gift");
+                Assert.AreEqual(b, e.Subject.Id); Assert.AreEqual(a, e.Object.Id);
+            }
+            Assert.AreEqual(1, told, "told once, at the first grain back");
+            w.Settlements.Get(b).Granary = 0;
+            double g4 = Famine();
+            Console.WriteLine("the next famine: " + (g4 / need).ToString("0.0") + " days of their need");
+            Assert.Greater(g4, g3, "given back, they are given again");
         }
 
         [Test]

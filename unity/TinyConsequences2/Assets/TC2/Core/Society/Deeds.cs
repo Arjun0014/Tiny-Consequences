@@ -17,8 +17,8 @@ namespace TC2.Core.Society
         public const byte Refusal = 7;      // a village would not make amends when asked (a harm; Answer: the wrong claimed)
         public const byte Raid = 8;         // a band fell on a village's store (a harm: the loot and the fright; D2-073)
         public static bool Harm(byte k) => k == Take || k == TriedToTake || k == Wound || k == Kill || k == Refusal || k == Raid;
-        /// <summary>Flags: the one struck was taking when struck; amends were asked for it; amends made it good.</summary>
-        public const byte InTheAct = 1, Claimed = 2, Made = 4;   // (Made: amends made it good)
+        /// <summary>Flags: the one struck was taking when struck; amends were asked for it; amends made it good; relief whose return has begun.</summary>
+        public const byte InTheAct = 1, Claimed = 2, Made = 4, Returned = 8;   // (Made: amends made it good; Returned: D2-113)
         public static bool Blood(byte k) => k == Wound || k == Kill;
     }
 
@@ -221,6 +221,54 @@ namespace TC2.Core.Society
             if (!_sums.TryGetValue(Key(sid, other), out var s)) return 0;
             double y = (double)(_w.Now - s.At) / SimTime.Year;
             return s.Help * DMath.Exp(-Ln2 * y / HelpHalfLife);
+        }
+
+        /// <summary>
+        /// What a village was given in famine by another and has not given back (D2-113, social storage): the weight now of the giver's
+        /// relief deeds to it, as it saw them given - read from the deeds, never stored. What is older than `OwedYears` weighs little.
+        /// </summary>
+        public double Owed(int receiver, int giver)
+        {
+            if (receiver <= 0 || receiver >= _known.Length || _known[receiver] == null) return 0;
+            var list = _known[receiver];
+            var w = _w;
+            long now = w.Now, since = now - OwedYears * SimTime.Year;
+            double s = 0;
+            for (int i = list.Count - 1; i >= 0; i--)
+            {
+                ref var d = ref w.Deeds.Get(list[i].Deed);
+                if (d.Time < since) break;   // (ids rise with time)
+                if (d.Kind == DeedKind.Relief && d.ByS == giver && d.ToS == receiver) s += Weight(in d, now);
+            }
+            return s;
+        }
+
+        /// <summary>Years back a gift is still weighed as owed (four of help's half-lives: a sixteenth of it is left).</summary>
+        public const int OwedYears = 16;
+
+        /// <summary>Whether a village owes thanks to any other (its help sums: a cheap first look before reading its deeds).</summary>
+        public bool OwesAny(int sid, double atLeast)
+        {
+            if (sid <= 0 || sid >= _others.Length || _others[sid] == null) return false;
+            var list = _others[sid];
+            for (int i = 0; i < list.Count; i++) if (Gratitude(sid, list[i]) >= atLeast) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Grain given back for relief (D2-113): the deed weighs `back` less now (its worth lowered by what that is at its age); the
+        /// receiver's thanks fall with it. Returns the weight it had before.
+        /// </summary>
+        public double GiveBack(int deedId, double back)
+        {
+            ref var d = ref _w.Deeds.Get(deedId);
+            double wt = Weight(in d, _w.Now);
+            if (wt <= 0 || back <= 0) return wt;
+            double worth = (double)d.Worth * DMath.Min(1.0, back / wt);
+            AddWorth(deedId, 0.0, -worth);
+            ref var d2 = ref _w.Deeds.Get(deedId);
+            d2.Flags |= DeedKind.Returned;
+            return wt;
         }
 
         /// <summary>Whether a wrong was made good (amends answered it).</summary>
