@@ -143,6 +143,16 @@ street); a market place widens with the traders who come and is kept open; stree
 village's own frame (they had stood off their streets). **Open W task W-FOREST** (Arjun): forests/biomes still read as the same trees recoloured -
 not solved (`18` §8). **Next**: Web test, page fps on a quiet machine, then **C3 exchange** (SESSION_HANDOFF "Session 11").
 
+**Where we are (session 12, 8 Oct 2026)**: **C3.1 the weaver's shed and the village's wares (D2-119)** - measured first: goods sit at target, people
+idle ~8 h a day, home making costs only spare hours, fibre is what is short - so wares last (0.6 of homespun's wear), a shed stands where a village's
+wear keeps six makers busy (larger places), its eight best weavers make wares there from real fibre, households take them before making their own,
+and wares are traded, valued by the hours they save: trade x3, home making hours x0.28, market places x1.35, people at par (wares go
+mostly for fibre - the flax chain; little grain). **A lived save and load
+continue exactly again** (pre-existing: caches of the day's lakes and flows - the green, the drawn shore, the river lines - went stale in a running
+world): never cache what moves daily without keying it to that day (`PlanetState.WaterDay`) or deriving it from the ground's shape only
+(`PlanetState.InBasin`); test `SaveLoadContinuesIdenticallyWhileLakesRiseAndFall`. Works on the main road are laid beside it. **Next**: SESSION_HANDOFF
+"Session 12" (C3.1b more looms for towns, or C3.2 the potter's kiln).
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

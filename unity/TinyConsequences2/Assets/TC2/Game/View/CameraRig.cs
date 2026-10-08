@@ -214,13 +214,16 @@ namespace TC2.Game
                 {
                     var bl = w.BuildingsOf(sid);
                     ref var vs = ref w.Settlements.Get(sid);
-                    for (int i = 0; i < bl.Count; i++)
-                    {
-                        ref var b = ref w.Buildings.Get(bl[i]);
-                        if (b.Kind != kind) continue;
-                        d = vs.LocalToSphere(b.X, b.Y, w.Planet.Radius);
-                        break;
-                    }
+                    bool found = false;
+                    for (int pass = 0; pass < 2 && !found; pass++)   // (a standing one first; else whatever is left of one)
+                        for (int i = 0; i < bl.Count; i++)
+                        {
+                            ref var b = ref w.Buildings.Get(bl[i]);
+                            if (b.Kind != kind || (pass == 0 && !TC2.Core.Places.Structures.Working(in b, w.Now))) continue;
+                            d = vs.LocalToSphere(b.X, b.Y, w.Planet.Radius);
+                            found = true;
+                            break;
+                        }
                 }
                 LookAt(d, view.EndsWith("far") ? 250 : view.EndsWith("near") ? 45 : 90);   // ("work23near": 45 m)
                 return;

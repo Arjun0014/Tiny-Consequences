@@ -3197,3 +3197,76 @@ widen them where it brings traders. Houses a market place, street or ring reache
 moves out to rebuild elsewhere. Rows are of the one narrow plan (built in a town's tradition and materials) - no merged plots for a rich
 household's wide town house, no shops below. Lanes stay straight; streets are straight rays bent at most 20 degrees from their way. Plots are not
 owned (a household's croft is drawn, not held). The run costs 9 % more (no spatial index for the ground checks yet).
+
+## D2-119 — 2026-10-08 — The weaver's shed and the village's wares (C3.1); a lived save and load continue exactly again
+
+**Context.** C3 (`26`): exchange needs specialisation - things one village makes that its neighbours lack. The first C3.1 design (session 11) had
+wares valued by "goods short a head" and a workshop raised where wares run short. Measured before any code (the `_d7` saves at year 300:
+`place --standing`/`--list`, `timeuse`): households' goods sit at their target (1.17-1.20 a head in three quarters of households against 1.2),
+grown people idle ~8 hours a day outside the harvest, making and mending takes ~0.5 h a person-day - goods are never short and home making costs
+only spare hours, so that design would have made neither a need nor a trade. What is short is **fibre**: 0.1-1.2 kg a head in store against
+2.5 kg a person's goods take (1 kg a field-hectare a harvest, used as it comes); and every village knows the loom (best 1.00 everywhere).
+**Decision.**
+(1) **Wares last.** Goods woven close on a broad loom and fulled, finished by practised hands, wear at `Weaving.WaresWear` (0.6) of homespun's rate -
+the same flax clothes 1.7 times the people. A household holds wares as part of its goods (`Household.Wares` <= `Gear`; inherited and shared out
+with them); its members wear the mix (`Goods.Wear`; bit-identical to before where no wares are held).
+(2) **The weaver's shed** (`Structures.Workshop` 23, Function Craft, Zone Edge, 220 h and 35 loads, falls in 40 years; kit `weavers_shed`): raised
+by a village that knows the loom where its people's wear of goods (people x 1/300 x tool wear) would keep six makers at its looms all year
+(`MakersFrom` 6 x a maker's day at the village's best loom: ~165 people with stone tools, more with metal ones) - larger places only - after
+water and a store, never while walls rise; its cause the loom's technique event (`Settlement.LoomEvent`), else the founding.
+(3) **Its makers** are the village's eight best weavers (`Looms`; `Settlement.LoomBar`/`LoomBarId`, the eighth best by loom + practice, read
+daily and when the shed is raised; ties to the lower id): the same people from day to day, the practised keeping their looms. Lived, a choice by
+day (u 0.5, as the smithy's) to `ActivityKind.Weave` (35, `WhyCode.Weave` 45) at the shed; COARSE/DEEP, a labour day there before the shared
+field work (the smithy's law, D2-093). At the shed: `Pace` 1.5 x the maker's home rate x (0.8 + 0.4 `Person.SkCraft`), practice growing 0.0015 an
+hour; wares take real fibre, 2.5 kg each (no cloth from bark and grass); made up to `Target` = 0.15 a head + what was sold lately
+(`Settlement.WaresSold`, halving each year - demand known from real sales, as the smiths' iron, C5.3b).
+(4) **Households take wares** from the store before their own hands make more - in the hearths' day after the wear and before any making choice
+at both resolutions (`Weaving.Draw`; `Settlement.WaresOut` halving each year; `WaresHeld` daily).
+(5) **Trade**: `Trade.Wares` (6; 3 kg a ware) valued by each village at what a ware saves a village whose people wear none - ~300 hours of home
+making over its life at the wild's ~0.09 days' food an hour (the marginal product of spare hands in these worlds): `0.5 + 25 x (1 - share in
+wares)`; spared beyond 0.1 a head.
+(6) **Pages**: the building page (its looms by name, wares made in hours, store against target, taken, sold, fibre), the person page ("a weaver at
+the weaver's shed" read from practice - before, every competent loom-weaver, i.e. nearly every adult, was "a weaver"; the household's goods and
+how many are wares), the settlement page ("Cloth and goods"). The view: the shed tinted as its village builds, cloth on tenters behind it while the
+village holds wares (a second length when it holds wares to sell) - kit `tenter`; camera view `work23near`. Headless: `wares:` line, `--noweave`.
+Sim version 57.
+(7) **A lived save and load continue exactly again** (pre-existing; found by C3.1's save test). A world saved and loaded mid-day went another way
+within days (seed 615, day 6: a child sent to play 4 m elsewhere). Cause: a village whose square lies in the water has its green on the shore of a
+lake; lake depths move every day (`Drainage.Derive` from the day's routing) with no version, but the agents cached the green for good - a loaded
+world read the lake afresh. The same flaw lay in the drawn shore (its lake beds by the day's depths) and the river lines (D2-118: streams and
+mouths by the day's flows and lake levels, rebuilt only with the drainage). Now: the green is cached for the day's water routing
+(`PlanetState.WaterDay`); the drawn shore and the river lines follow only the ground's shape - depressions from the drainage
+(`PlanetState.InBasin`, `Shore.DryLand`); river lines are laid for every reach draining 10 ha or more and asked daily whether it is a stream
+(`RiverLines.Stream`) by homes and the view. A first fix keyed the caches on every lake or stream flip (29 a day on seed 4): +15 % run time;
+the structural lines cost nothing day to day.
+(8) **Works on the main road are laid beside it**, never on its line: an Edge work (smithy, barn, weaver's shed) keeps `Structures.RoadClear` (4 m)
+off the bearing of the nearest village beyond the homes, where the way out runs (`Structures.Place`).
+**Evidence.** `WeavingTests` 7: a shed only where the wear keeps its looms busy (from ~152 people at a 0.80 loom with stone tools; none for a
+village of 18, none without the loom, none while walls rise; laid past the homes); the eight best weavers have the looms, ties to the lower id, and a
+practised hand takes the weakest one's place; at the shed wares come at 1.5 x the home rate x the hand's practice from 2.5 kg of fibre each, none
+without fibre, none past the target; wares wear at 0.6 (and the mix in proportion); households take wares before making their own (home making 24 h
+against 251 h in three days); makers work at the shed at both resolutions (COARSE 9.0 h a maker-day, lived 6.8) and a save in the middle of it
+continues as the world does; wares go where they are lacked, for grain, and what is sold raises the target. `SaveLoadContinuesIdenticallyWhileLakesRiseAndFall`
+(seed 615, four saves over a fortnight); 293 headless tests. **Ten seeds 300 years DEEP (`_w4`) against the same binary without sheds
+(`--noweave`, `_w4n`)**: at year 300 sheds stand in 1-27 villages a world (the largest without one 29-245 people; the smallest with one 8-201: a shed
+outlives its village's shrinking), 8-223 makers; every world's households wear wares, bought ones too (villages without a shed wearing them 0-7 a
+world); home making hours x0.283 (t -8.9) - with the sheds' hours, the labour of goods about halved; trades x3.03 (t 5.6), trade gain x3.78 (t 4.0),
+market places x1.35 (t 1.4), markets 22 -> 24; people over years 200-299 x1.037 (t 1.3), births and deaths a thousand person-years x1.003 / x0.995,
+hunger a thousand person-years x0.96, famines x1.03; households setting out, foundings and relief at par (x1.31 / 0.99 / 1.00 - a first run, `_w3`,
+before the road rule, had shown 0.88 / 0.91 / 0.82: noise, not a mechanism); run cost a person-day x1.005. **Where the cloth goes** (seed 4,
+`run --waresflow`, a tools tally that changes nothing): 4,688 wares traded in 300 years (2,789 from shed villages to villages without) for 6,364 kg of
+fibre, 5,446 days' grain, 929 hides and 331 kg of metal - the flax chain is the main return; the grain is small beside relief (298,515 FU): in these
+worlds cloth does not feed a town (an hour of spare hands is worth the wild's 0.09 days' food). Shots on the first run showed a shed standing in the
+road out of its village (Edge works were laid on the bearing of the nearest village, where the way runs): Edge works now keep `RoadClear` (4 m) off
+that line, beside the road (`_w3` -> `_w4`: people x1.02, hunger x0.94 - inside the noise). The save/load fix and the road rule together (`_d7` ->
+`_w4n`): people x0.99, famines x1.06, palisades x0.96 - inside the noise. Shots `tc2/out/shots/c31v11` (Toularndal: a tiled shed, weavers in its open
+bays, the dye vat, the yarn rack), `c31c5` (Stairby: the shed and the smithy beside the road at the village's edge, madder-red cloth on the tenter),
+`c31b14` (Demtrerhope: the shed among the town's houses, a barn, the smithy out by the fields), `c31a` (Brernthorpe), `c31v5` (the shed in the road,
+before the rule). Kit preview `weavers_shed`/`tenter`. Web build of this code: Web test 6/6 (`tc2/out/webtest/c31web`: the browser bit-identical
+to headless; views 74-121 fps, the person and place pages 76-85 fps; a day away catches up 96 years in 57 s); the settlement page shows "Cloth and goods".
+**Open.** A town's eight looms cannot keep up (towns of 500+ keep no wares and wear them for 67-96 % of their people; their households still make
+homespun) - more looms or a second shed where the makers work full while the store stays short (C3.1b). A shed outlives a shrinking village. A COARSE
+maker-day (9.0 h) is a third longer than a lived one (6.8 h): the target binds most days; calibrate when capacity binds (C3.1b). Wares are the
+village's and free to its households - payment in kind and household holdings are C3.3. Roles other than the weaver's are still read from what a
+person knows, so at year 300 one person is "known for" every craft: read them from practice as the weaver's is. The tenters stand at the shed's end and
+behind it; from some angles a house hides them, and the looms inside are dim from above.

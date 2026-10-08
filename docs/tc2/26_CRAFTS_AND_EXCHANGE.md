@@ -45,7 +45,14 @@ The slice was rebuilt on that:
 - **Done when**: sheds stand in larger villages only; their wares are worn by households that did not make them (home making hours fall);
   wares are traded to villages without sheds; ten seeds at par in people and food or better; shots of the shed; tests at both resolutions.
 
+**Result (D2-119, ten seeds against the same binary without sheds):** trades x3.0, trade gain x3.8, home making hours x0.28, market places x1.35,
+people at par; wares go mostly for fibre (the flax chain), little grain - cloth does not feed a town in these worlds. Towns of 500+ cannot keep
+up with eight looms (C3.1b).
+
 ## 2. Later slices
+- **C3.1b more looms for towns**: a village whose makers worked full days at their looms for a year while its store stayed below its target
+  raises another shed (as an overfilled store raises another granary): eight more makers, the next best weavers; the COARSE maker-day
+  calibrated against the lived one once capacity binds.
 - **C3.2 the potter's kiln**: pots and storage jars (Pottery: the store keeps better - D2-063's rule read from pots made, not a village's best
   potter), charcoal at a kiln; clay dug (a clay pit at the river's clay).
 - **C3.3 exchange between households**: a household's holdings (its own grain, wares, beasts) and payment in kind for what it takes - the

@@ -3,28 +3,37 @@
 ## Session 12 (8 Oct 2026, from 12:13 IST; Control Room run #31 session 2) - C3.1 the weaver's shed and wares (D2-119); lived save/load exact again
 
 ### Exact state (keep current)
-- **C3.1 built and committed as IN PROGRESS (f89d537, sim version 57)**: `Core/Places/Weaving.cs` (shed wanted where wear keeps 6 makers busy; makers
+- **C3.1 DONE (D2-119; commits f89d537, 3cbfcf3, a8fb590 and the closing commit; sim version 57)**: `Core/Places/Weaving.cs` (shed wanted where wear keeps 6 makers busy; makers
   = the village's 8 best weavers by `LoomBar`; `Work` 1.5x pace from real fibre; `Draw`; `Target`; `Share`), `Goods.Wear` (wares wear 0.6),
   `Household.Wares`, `Person.SkCraft`, `Settlement.Workshop/LoomEvent/Wares/WaresHeld/WaresOut/WaresSold/LoomBar/LoomBarId`, `Structures.Workshop`
   23, `ActivityKind.Weave` 35, `WhyCode.Weave` 45, `Trade.Wares` 6, metrics `WaresMade/WaresDrawn/WaresTraded/ShedHours`; pages (Gazetteer
   "Cloth and goods", Biography role from practice, HUD building page); kit `weavers_shed`, `tenter` (exported; **Unity .meta files not yet made**:
-  run `node tc2/scripts/unity.mjs configure` and commit the metas of `Weaving.cs`, `WeavingTests.cs`, the two FBX); view (tinted shed, tenters
-  while wares are in store), camera `work23near`; headless `wares:` and `water caches:` lines, `place --list` wares, `run --noweave`.
+  done, committed); view (tinted shed, tenters
+  while wares are in store; the first at the shed's free end), camera `work23near` (a standing shed first); headless `wares:` and `water caches:`
+  lines, `place --list` wares, `person --pick weaver`, `run --noweave`, `run --waresflow` (tools tally: what wares were traded for).
+  Edge works keep `Structures.RoadClear` off the main road's line (a shed stood in the road in the first shots).
   `WeavingTests` 7; 293 headless tests pass.
 - **Save/load fix (D2-119 (7))**: lived worlds saved and loaded diverged (pre-existing): the green cache kept while lakes moved; shore and river
   lines cached from the day's lakes/flows. Now `PlanetState.WaterDay` (green), `PlanetState.InBasin`/`BasinVersion` (shore, `Shore.DryLand`),
   `RiverLines` for every reach >= 10 ha draining, filtered by `RiverLines.Stream` (homes, view). Test `SaveLoadContinuesIdenticallyWhileLakesRiseAndFall`.
 - **Measured before the design** (`26` §1): goods at target everywhere, ~8 idle hours a day, fibre the scarce input.
-- **Runs**: `tc2/out/civ/s*_w3` (ten seeds, C3.1, saves 50/100/200/300), `s*_w3n` (same binary `--noweave`: the control) - running/compare with
-  `python cmp.py w3n w3 ...` and `python wares.py w3 ...` (scratchpad copies; wares.py new). Draft decision text in the scratchpad `d2119_draft.md`.
+- **Runs**: `tc2/out/civ/s*_w4` (ten seeds, C3.1 final: the reference for the next slice; saves 50/100/200/300), `s*_w4n` (same binary `--noweave`:
+  the control), `_w3`/`_w3n` (before the road rule). Tools in `tc2/out/tools/`: `wrun.sh`, `cmp.py`, `wares.py` (the C3.1 lines a seed), `agg.py`
+  (report quantities' ratios between tags). Results: trades x3.0 (t 5.6), gain x3.8, home making hours x0.28, market places x1.35, people x1.04,
+  births/deaths a thousand at par; `_w3` had shown foundings x0.91 / relief x0.82 - gone in `_w4`: noise. Seed 4 `--waresflow`: 4,688 wares for
+  6,364 kg fibre, 5,446 FU grain, 929 hides, 331 kg metal.
+- **Shots** `tc2/out/shots/c31a` (Brernthorpe), `c31v5` (a shed in the road - before the rule), `c31v11` (Toularndal: open bays, weavers, vat, yarn),
+  `c31c5` (Stairby: beside the road, cloth on the tenter), `c31b14` (Demtrerhope). **Web test 6/6** (`tc2/out/webtest/c31web`: views 74-121 fps,
+  pages 76-85 fps); the Web build in `tc2/web-build/web` is current.
 - Seed 4 first look (`_w3` vs `_d7`): sheds in 23 of 28 villages (smallest 167, largest without 154), home making -76 % hours, trades x2.0, markets
   6 -> 13, people 9,095 -> 10,158; big towns use all their wares (8 looms short), mid towns sell, small villages wear bought wares.
 
 ### Next, in order
-1. Ten-seed reading (`_w3` vs `_w3n`; `_w3n` vs `_d7` for the save/load fix's own effect); relief doubled on seed 4 - check it over seeds.
-2. Unity configure (metas), shots of a shed (`--views "work23near@10,work23@10,village@10"` on a `_w3` save), Web build + test.
-3. D2-119 into DECISIONS (from the draft), PROGRESS, this handoff, both NEXT_SESSION_PROMPTs; commit.
-4. Then C3.1b (a second shed where the makers cannot keep up?) or C3.2 the potter's kiln (`26` §2).
+1. **C3.1b more looms for towns** (`26` §2): towns of 500+ keep no wares (worn by 67-96 % of their people), their households still make
+   homespun - another shed where the makers worked full days for a year while the store stayed short; makers 8 a shed; then calibrate the
+   COARSE maker-day (9.0 h) against the lived one (6.8 h). Or **C3.2 the potter's kiln**.
+2. Roles from practice for smiths, potters, boatwrights (a year-300 person is "known for" every craft).
+3. C3.3 exchange between households (payment in kind), C3.4 the mill; C9.4 / C10.2 re-weighed with the traffic.
 
 ## Session 11 (8 Oct 2026, 09:23 - ~12:15 IST; Control Room run #31 session 1) - C13.3 a town's ground (D2-118) closed; C3.1 designed
 

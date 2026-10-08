@@ -87,7 +87,8 @@ namespace TC2.Headless
             if (a.Has("places")) { TC2.Core.Places.Livestock.Diag = new double[4 * 4096]; TC2.Core.Places.Livestock.DiagEnds = new long[4 * TC2.Core.Places.Livestock.Causes]; TC2.Core.Places.SettlementSystem.Unrests = new long[7]; TC2.Core.Agents.AgentSystem.Hours = new double[44]; TC2.Core.Places.SettlementSystem.Harvests = new double[6]; TC2.Core.Places.Migration.Weighs = new double[8]; TC2.Core.Places.SettlementSystem.Demo = new double[10]; }
             if (a.Has("nosea")) TC2.Core.Places.Trade.NoSea = true;
             if (a.Has("seashort")) TC2.Core.Places.Trade.SeaShort = new double[3];   // (C9.4 survey: relief by sea bound by the boats' room)
-            if (a.Has("noweave")) TC2.Core.Places.Weaving.Off = true;   // (C3.1 against C13.3 in one binary: no weaver's sheds)
+            if (a.Has("noweave")) TC2.Core.Places.Weaving.Off = true;
+            if (a.Has("waresflow")) TC2.Core.Places.Trade.WaresFor = new double[6];   // (C3.1: what wares were traded for)   // (C3.1 against C13.3 in one binary: no weaver's sheds)
             if (a.Has("nostreets")) TC2.Core.Places.Streets.None = true;   // (C13.1 against D2-114 in one binary: no streets laid)   // (C9.3 against C9.2b in one binary: no voyages, no relief by sea)
             string vtrace = a.Get("vtrace");   // (each village each report: people, store, famine, hunger deaths, relief in and out by land and sea, who left)
             System.IO.StreamWriter vt = null;
@@ -429,6 +430,8 @@ namespace TC2.Headless
                             Console.WriteLine("wares: " + sheds + " weaver's sheds of " + places + " villages (smallest with one " + (sheds > 0 ? smallShed.ToString() : "-") + " people, largest without " + bigNone + "); makers " + makers + " (" + skilled + " practised); made " + F(w.Metrics.WaresMade, "0") +
                                               " in " + F(w.Metrics.ShedHours, "0") + " h, taken by households " + F(w.Metrics.WaresDrawn, "0") + ", traded " + F(w.Metrics.WaresTraded, "0") + "; in stores " + F(store, "0") + ", worn " + F(held / Math.Max(1.0, people * TC2.Core.Places.Goods.Target) * 100, "0") +
                                               " % of the people; villages wearing them " + wearing + " (" + bought + " without a shed); fibre in store " + F(fibre / Math.Max(1.0, people), "0.00") + " kg a head; home making " + F(w.Metrics.CraftHours, "0") + " h");
+                            var wf = TC2.Core.Places.Trade.WaresFor;
+                            if (wf != null) Console.WriteLine("wares traded for: " + F(wf[0], "0") + " wares given (" + F(wf[5], "0") + " from shed villages to villages without) for grain " + F(wf[1], "0") + " FU, fibre " + F(wf[2], "0") + " kg, hides " + F(wf[3], "0") + ", metal/iron " + F(wf[4], "0") + " kg");
                             Console.WriteLine("water caches: days routed " + w.Planet.WaterDay + ", drainage rebuilt " + w.Planet.BasinVersion + "; drawn shore rebuilt " + TC2.Core.Planet.Shore.Refreshes + ", river lines rebuilt " + TC2.Core.Planet.RiverLines.Version + " (" + TC2.Core.Planet.RiverLines.All.Count + " pieces)");
                         }
                     }

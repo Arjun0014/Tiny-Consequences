@@ -36,6 +36,7 @@ namespace TC2.Headless
                 {
                     case "smith": v = p.KMetal * 100 + age; break;
                     case "fighter": v = p.SkFight * 100 + p.Fights; break;
+                    case "weaver": v = p.SkCraft * 100 + p.KLoom; break;   // (the most practised maker at a weaver's shed: C3.1)
                     case "elder": v = age > 50 ? 1000 - age : -1; break;
                     case "child": v = age < 12 ? age : -1; break;
                     default: v = age; break;

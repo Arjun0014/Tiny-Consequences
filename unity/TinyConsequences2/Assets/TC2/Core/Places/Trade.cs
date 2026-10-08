@@ -23,6 +23,9 @@ namespace TC2.Core.Places
         public static double[] Diag;
         /// <summary>Tools: no voyages and no relief by sea (C9.3 against C9.2b in one binary); false in the game.</summary>
         public static bool NoSea;
+        /// <summary>Tools (C3.1): what wares were traded for - wares given, grain (FU), fibre (kg), hides, metal and iron (kg) taken for them, and the
+        /// wares the shed villages' traders gave (to a village without a shed); null in the game.</summary>
+        public static double[] WaresFor;
         /// <summary>Tools (C9.4 survey): FU of relief givers would have sent by sea beyond their free boats' room, the gifts so bound, and all gifts by sea; null in the game.</summary>
         public static double[] SeaShort;
 
@@ -203,6 +206,12 @@ namespace TC2.Core.Places
             if (g == Iron) w.Metrics.IronTraded += qg;
             if (take == Iron) w.Metrics.IronTraded += qh;
             if (g == Wares) w.Metrics.WaresTraded += qg;
+            if (WaresFor != null && g == Wares)
+            {
+                WaresFor[0] += qg;
+                WaresFor[take == Grain ? 1 : take == Fibre ? 2 : take == Hides ? 3 : 4] += qh;
+                if (Weaving.Shed(w, home) != 0 && Weaving.Shed(w, at) == 0) WaresFor[5] += qg;
+            }
             if (take == Wares) w.Metrics.WaresTraded += qh;
         }
 
