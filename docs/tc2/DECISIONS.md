@@ -3300,7 +3300,8 @@ towns (500-1,025 people: 2-4 sheds) and places that were larger once (sheds outl
 8-360; home making hours x0.67 (t -4.2), market places x1.18 (t 2.3), markets x1.22 (t 2.1), trades x1.07, people over years 200-299 x0.99, births
 and deaths a thousand at par, famines x0.97; run cost a person-day x0.94. Against the same worlds without sheds (`_w4n`): trades x3.18 (t 4.8),
 trade gain x3.6, home making hours x0.19 (t -8.9), market places x1.48 (t 2.2), markets x1.38, people over years 200-299 x1.03 (t 1.1), famines
-x1.00.
+x1.00. Web build of this code: Web test 6/6 (`tc2/out/webtest/c31bweb`: the browser bit-identical; views 81-120 fps, the pages
+71-84 fps). Shot `tc2/out/shots/c31d` (Dahope, seed 42, 866 people, three sheds: a walled market town of streets).
 **Open.** No looms for buyers: a village that sells all it spares does not raise looms for them (sales raise its target, never its sheds) - export
 crafts wait for exchange that pays the makers (C3.3). Sheds outlive their village's shrinking (a second shed in a village of 200 that was 500).
 The COARSE maker-day stays ~1.1 times a lived one over a year.

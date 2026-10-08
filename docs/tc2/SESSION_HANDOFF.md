@@ -8,7 +8,8 @@
   `Year` (at `Migration.DecideDay`: >= 30 short days and `NeedsMore` - its people in wares would outwear its looms), `MoreWanted` -> another
   `Workshop` in `Structures.Plan`; `Structures.Lost` hands the first-shed role on. Ten seeds `tc2/out/civ/s*_w7` (the reference now) vs `_w4`:
   home making x0.67, market places x1.18, people at par; towns of 500+ carry 2-4 sheds. Rejected rules: `_w5` (target shortfall: sales
-  drained the store), `_w6` (shortfall alone: the change-over from homespun). `WeavingTests` 8; full suite and Web test: see below.
+  drained the store), `_w6` (shortfall alone: the change-over from homespun). `WeavingTests` 8; 294 headless tests; **Web test 6/6**
+  (`tc2/out/webtest/c31bweb`, views 81-120 fps, pages 71-84; the Web build in `tc2/web-build/web` is current); shot `c31d` (Dahope, 3 sheds).
 - **C3.1 DONE (D2-119; commits f89d537, 3cbfcf3, a8fb590 and the closing commit; sim version 57)**: `Core/Places/Weaving.cs` (shed wanted where wear keeps 6 makers busy; makers
   = the village's 8 best weavers by `LoomBar`; `Work` 1.5x pace from real fibre; `Draw`; `Target`; `Share`), `Goods.Wear` (wares wear 0.6),
   `Household.Wares`, `Person.SkCraft`, `Settlement.Workshop/LoomEvent/Wares/WaresHeld/WaresOut/WaresSold/LoomBar/LoomBarId`, `Structures.Workshop`
