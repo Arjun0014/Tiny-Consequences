@@ -1,6 +1,6 @@
 # TC2 Session handoff
 
-## Session 11 (8 Oct 2026, from 09:23 IST; Control Room run #23 session 3) - C13.3 a town's ground (D2-118)
+## Session 11 (8 Oct 2026, 09:23 - ~12:15 IST; Control Room run #31 session 1) - C13.3 a town's ground (D2-118) closed; C3.1 designed
 
 ### Exact state (keep current)
 - **C13.3 done (D2-118), sim version 56.** `Core/Places/Footprints.cs` (rectangles of each plan as the kit builds it, `Boxes`/`BoxDisc`, `HomeFits`,

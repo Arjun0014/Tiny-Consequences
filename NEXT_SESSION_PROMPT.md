@@ -2,56 +2,61 @@
 
 You are continuing **Tiny Consequences 2.0 (TC2)**: a Unity 6.6 Web game in `unity/TinyConsequences2` whose standing direction
 (Arjun, D2-089) is *an autonomous medieval civilisation inside a living miniature planet* - no player orders; every structure,
-road, mine, boat, army and polity arises from simulated need, labour, material, knowledge and history; nothing scripted; presentation
-never invents state. The legacy Defold game (TC1: `game/`, `sim/`, `docs/` outside `docs/tc2/`) is research material only - never
-modify or stage it.
+road, mine, boat, market, army and polity arises from simulated need, labour, material, knowledge and history; nothing scripted;
+presentation never invents state. The legacy Defold game (TC1: `game/`, `sim/`, `docs/` outside `docs/tc2/`) is research material
+only - never modify or stage it.
 
 ## Read first (this order), then work autonomously
 1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the full standing prompt (architecture, rules, every direction from Arjun).
-2. `docs/tc2/SESSION_HANDOFF.md` - top block "Session 10" (exact state, runs, "Next").
-3. `docs/tc2/DECISIONS.md` newest entries **D2-114 to D2-117** (building variety; C9.4 deferred with its survey; C13.1 streets; C13.2 back lanes).
-4. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 10 entry); for C9.4 `docs/tc2/24_TRANSPORT_AND_MARITIME.md` §5-6 and
-   `docs/tc2/25_CIVILISATION_ROADMAP.md` §5; building variety is a standing requirement: `docs/tc2/13_RENDERING_AND_ART.md` §13, `21` §6.
-5. `git status` (the untracked `unity/TinyConsequences2/Assets/Resources.meta` is not ours - leave it), `git log --oneline -10`.
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 11"** (exact state, runs, known issues, "Next").
+3. `docs/tc2/DECISIONS.md` newest entry **D2-118** (C13.3 a town's ground) and D2-115 (why C9.4 waits for exchange).
+4. `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` - **the C3 design; §1 C3.1 is the next slice** (the weaver's workshop and the village's wares).
+5. `docs/tc2/PROGRESS.md` CURRENT STATE (session 11 entry); `git status` (the untracked `unity/TinyConsequences2/Assets/Resources.meta` and the
+   modified `.claude/launch.json` are not ours - leave them), `git log --oneline -10`.
 
-## Standing direction (Arjun, 8 Oct 2026): building variety
-Settlements must not look like repeated same-colour, same-shape models. Houses vary by real circumstances (household size, means,
-material at hand, age, the village's history, its building tradition); functional buildings are recognisable at a glance; richer,
-larger, older places get denser and more substantial. Every new structure ships with its own silhouette and is judged in real shots at
-close, village and region views - never from code. (D2-114 built the first answer; streets and real household wealth are open.)
+## Where things stand (8 Oct 2026, end of session 11)
+- **C13.3 is closed** (commits e6ab82f, bebbf39; sim version 56): every building covers real ground (`Core/Places/Footprints.cs`, a recorded
+  bearing `Building.Face`) - **no house ever stands in another** (C13.2 had 90-312 overlapping pairs a world; 0 in all ten seeds now); a town's
+  (250+) street frontage near its green is divided into 6.5 m plots with rows of the narrow town house (`Architecture.Row`, kit `home_row_*`);
+  the market place widens with traders and is kept open; streets/lanes/rings laid between houses; the river line lives in Core
+  (`Core/Planet/RiverLines.cs`) - homes keep off it, its ribbon ends at the drawn waterline. 285 tests; ten seeds `tc2/out/civ/s*_d7` at par;
+  Web test 6/6 (`tc2/out/webtest/c133web`, 64-120 fps; person/place pages 67-83 fps).
+- **Open W task W-FOREST** (Arjun, 8 Oct): forests and biomes still read as the same trees recoloured - NOT solved; recorded in
+  `docs/tc2/18_WORLD_READABILITY.md` §8 and `25_CIVILISATION_ROADMAP.md`. A dedicated ecology/art pass later, unless a C-slice touches it.
+- Known cosmetic: a river into a sea cell across a wide beach can end on the sand short of the water (Vodrothorpe, seed 2).
 
-## Do next (SESSION_HANDOFF "Session 10" -> "Next")
-1. **C13.3** a town's core of rows (houses sharing walls where lots are dear), the market place where traders come, the green kept open; or
-   **C10.2** the political centre made real (a lord's seat raised with tribute labour, gates where streets cross a ring, towers) - lords are 0-2 a
-   world with one tributary each, so lordships that hold come first. Judge from the shots (`lanes1`, `street1`).
-2. C9.4 docks and cargo boats wait for C3 exchange (D2-115: no demand for them in a barter economy - re-run `run --seashort` when trade grows).
-3. Ten-seed reference runs are `tc2/out/civ/s*_c2` (sim version 55, every rule to D2-117); compare with `cmp.py c2 <tag> ...` and a placebo (`--nudge 150`).
+## Do next
+1. **C3.1 the weaver's workshop and the village's wares** (`26` §1; chosen over C10.2 because trade is 0-5 traders a year at most villages
+   and lordships rarely hold). Hooks: lived choice in `Core/Agents/AgentSystem.cs` (~line 1009: the smithy's `Forge.Wanted` -> choice 15 - add a
+   workshop choice and an `ActivityKind`), COARSE labour day (~line 1803, `Forge.Work`), household goods wear in `SettlementSystem` (~line 215:
+   draw from the village's wares before making), `Trade.Value`/`Spare` (wares as a good), a new structure kind (Zone Edge) with a kit model,
+   pages (building/person/settlement). Both resolutions, tests, ten seeds against `_d7` with a placebo, shots, Web.
+2. Then C3.2-C3.6 (`26` §2); re-weigh C9.4 docks/cargo (`run --seashort`) and C10.2 when trade and polities grow; C13.4 suburbs.
 
 ## Tools
-- Copy `tc2/out/tools/wrun.sh` and `cmp.py` to the new session's scratchpad and set `SCR=` in `wrun.sh`; copy the binaries
-  `tc2/headless/app/bin/Release/net8.0` there as `bin_<tag>` before each ten-seed run (two chains in parallel, ~10-15 min).
-- Headless: `place --load S --list` (each village: plans, covers, walls, means, works with their hours), `--households [--sid N]`, `--standing`,
-  `--layout --sid N` (a village's plan; plot with `python tc2/out/tools/plotlay.py out.png layout.txt ...`); `run --nostreets` (D2-114 in the same binary);
-  `person --load S`; `run --load S --lived`, `--voyagers`, `--vtrace FILE`, `--nosea`, `--nudge Y` (a placebo); report lines `forms:`,
-  `sea trade:`, `trade:`, `boats:`.
-- Shots: `node tc2/scripts/unity.mjs shots --tag T --load "<abs save>" --village ID --views "close@10,low@10,street@10,village@10,work12@10"`
-  (`work<kind>`: the village's structure of that kind - 11 granary, 12 smithy, 13 quarry, 14 training ground, 15 market, 16 barn, 22 boat shed;
-  `voyage*` views wait for a real voyage). About a minute each.
+- Copy `tc2/out/tools/wrun.sh` and `cmp.py` to the session's scratchpad and set `SCR=` in `wrun.sh`; copy
+  `tc2/headless/app/bin/Release/net8.0` there as `bin_<tag>` before each ten-seed run (sequential, ~15 min for ten).
+- Headless: `place --load S --list | --layout --sid N | --overlaps [--sid N] | --households | --standing`; plot a layout's ground with
+  `python tc2/scripts/plotfoot.py out.png layout.txt ... [--zoom R]`; run report lines `town:` (overlaps, cores, rows, market places),
+  `forms:`, `streets:`, `trade:`; `run --profile` for costs.
+- Shots: `node tc2/scripts/unity.mjs shots --tag T --load "<abs save>" --village ID --views "rowclose@10,rowlow@10,rowstreet@10,rowmarket@10,close@10,village@10"`
+  (`row*`: the street with most narrow town houses / the market place; `hall`; `mouth`/`mouthfar`; `work<kind>`; `--ground` lays each home's
+  simulated ground under it as a red plate).
 
 ## Rules that bite
-- Commits `[tc2] ...`, ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; never stage TC1 files or the untracked
-  `unity/TinyConsequences2/Assets/Resources.meta`; never force-push. New `.cs` and model files need their Unity `.meta` committed.
-- **No subagents. Keep the machine around 50 % CPU/RAM; one heavy job at a time** (Unity build or shots, the full test suite; two headless
-  300-year runs in parallel are fine). Time single runs sequentially on a quiet machine - parallel timings are noise (a +30 % reading was).
-- Bash heredocs break on backticks and apostrophes in this harness: write patch scripts, docs and commit messages with the Write tool into the
-  scratchpad, then `python file.py` / `git commit -F file`.
-- The Web test compares the browser with `tc2/headless/app/bin/Release/net8.0/tc2.dll` - it must be a build of the same Core as the Web build.
-- Core is pure C#, deterministic, **no float arithmetic** (`headless.mjs test` lints it); every mechanism at both resolutions and checked at
-  par over pooled worlds; judge by century means over ten seeds, and size the noise with a placebo (`--nudge 150` on the same binary) before
-  calling an effect real - conflict counts (raids, wounds, palisades) move x0.66-x1.5 under a one-FU nudge.
+- Commits `[tc2] ...`, ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; never stage TC1 files or the two files above;
+  never force-push. New `.cs` and model files need their Unity `.meta` committed (run `node tc2/scripts/unity.mjs configure` to make them).
+- **No subagents. Keep the machine around 50 % CPU/RAM (11 GB, often <2 GB free); one heavy job at a time** (Unity build or shots, the full
+  test suite ~12 min, ten-seed runs). Never kill processes you did not start.
+- Bash heredocs break on long scripts with backticks/apostrophes in this harness: write patch scripts with the Write tool into the scratchpad,
+  then `python file.py`; long commit messages via a file.
+- The Web test compares the browser with `tc2/headless/app/bin/Release/net8.0/tc2.dll` - build it from the same Core as the Web build.
+- Core is pure C#, deterministic, **no float arithmetic** (`headless.mjs test` lints it); every mechanism at both resolutions; judge by
+  century means over ten seeds and a placebo (`--nudge 150`) - conflict counts move x0.66-x1.5 under a one-FU nudge.
+- The kit's models come into Unity with x mirrored (front +z): `Footprints.WingSide` = -1; check new asymmetric models with a `--ground` shot.
 
 ## Commands
-- Tests: `node tc2/scripts/headless.mjs test [--filter Name] [--nobuild]` (full suite ~12 min, 278 tests at C13.2's close).
-- Runs: `BIN=bin_x TAG=_x YEARS=300 SNAP=50,100,200,300 bash wrun.sh 42 4 11 3 8` and `... 2 7 1 5 6`; `python cmp.py TAG_A TAG_B seeds...`.
-- Web: `node tc2/scripts/unity.mjs build-web --jobs 3` (~8-16 min), `node tc2/scripts/webtest.mjs --tag T`.
-- Kit: `"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tc2/art/kit.py -- --out <dir> [--only a,b] [--tint] [--grid N] [--preview <dir>]`.
+- Tests: `node tc2/scripts/headless.mjs test [--filter Name] [--nobuild]`.
+- Runs: `BIN=bin_x TAG=_x YEARS=300 SNAP=50,100,200,300 bash wrun.sh 4 42 2 1 5 3 11 8 7 6`; `python cmp.py d7 <tag> 4 42 2 1 5 3 11 8 7 6`.
+- Web: `node tc2/scripts/unity.mjs build-web --jobs 3` (~11 min), `node tc2/scripts/webtest.mjs --tag T`.
+- Kit: `"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tc2/art/kit.py -- --out unity/TinyConsequences2/Assets/TC2/Game/Resources/TC2Models [--only a,b] [--preview <dir>]`.
