@@ -21,10 +21,14 @@
   (ten seeds: the reference for the next slice), `_b3` / `_b3n` (A/B in one binary, `--nostreets`). 277 tests; Web test 6/6 (`c131web`).
   Shots `street1`, `street1y100`. Layout plots: `place --layout` and the scratchpad's `plotlay.py` (copy in `tc2/out/tools/`).
 
+- **C13.2 back lanes closed (D2-117)**: `Streets.Lines/Line/IsLane/Weigh` (lanes derived from streets, no new state), `Homes.FreeLot` over all
+  lines, the view (`Facing` with its line; lanes' ground). Runs `_c1` (seed 4), `_c2` (ten seeds: the reference now). Shots `lanes1`.
+
 ### Next, in order
-1. **C13.2** - back lanes and plots behind the frontage, a town's core of shared walls (rows), the market place widened where traders come, the
-   green kept open; or **C10.2** the lord's seat (a hall raised with tribute labour), gates where ways cross a ring, towers - real structures for the
-   political centre (Arjun's D2-114 requirement: a political centre must not read as a village).
+1. **C13.3** - a town's core of rows (houses sharing walls along its main street where lots are dear), the market place widened where traders
+   come, the green kept open; or **C10.2** the political centre made real (a lord's seat raised with tribute labour, gates where streets cross a
+   ring, towers). Data (D2-117 session): lords are 0-2 a world, almost all with one tributary - C10.2 needs lordships that hold first; walled
+   villages are common (up to 29 a world).
 2. C9.4 waits for C3 exchange (D2-115).
 
 ## Session 9 (8 Oct 2026, 04:31 - ~06:30 IST; Control Room run #23 session 1) - handed off (context full; D2-114 in progress)

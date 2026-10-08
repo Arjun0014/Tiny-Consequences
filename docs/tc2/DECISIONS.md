@@ -3095,3 +3095,27 @@ behind, a second street). 277 headless tests. Web build of 7b17902: Web test 6/6
 **Open.** Back lanes and plots behind the frontage (burgage plots), houses sharing walls in a town's core, a market street or place widened
 where traders come, the green kept open as the village grows round it, suburbs outside a gate - C13's next pieces.
 
+## D2-117 — 2026-10-08 — Back lanes: a growing village fills its lanes behind the street frontage (C13.2)
+
+**Context.** D2-116 lined the streets, but the lots behind the frontage still came from the spiral round the green, so a big town's body stayed a
+scatter between its streets (shot `street1`: Vumthorpe's core). Medieval two-row villages had back lanes behind their crofts; town blocks lay
+between a street and its back lane.
+**Decision.** (1) **Back lanes** (`Places/Streets.cs`, derived from the streets: no new state): each street has a lane on either side, parallel to
+it `LaneOff` (36 m) out - so a frontage house's garden and a lane house's garden meet back to back -, lined from `LaneStart` (30 m) along it. A
+village's lines are its streets and their lanes (`Lines`, `Line`, `IsLane`; line 3k street k, 3k+1 and 3k+2 its lanes). (2) **Lots**: a lane's lots
+(13 m apart, 8 m back, both sides) are weighed at `LaneLean` (0.85) of their distance from the green (`Weigh`) - less sought than a street's
+frontage (0.7), more than the scatter round the green -, so a village fills its street near the green first, then its lanes, while its core
+still fills round the green. Nothing is built in a lane (`On`). (3) **The view**: houses face the street or lane they front (`Facing` with its
+line); each lane is beaten earth from its first house out past its last (`TerrainLod.Ground1`: lines' origins and reach).
+**Evidence.** `StreetsTests` 3 (+ `BackLanesAreLinedOnceTheStreetsFrontageNearTheGreenIsTaken`: of 60 new lots with one street, 13 on the street, 18 on
+its lanes from the 6th on, each 8 m back from its line, none in a street or lane). Seed 4 (`_c1`): 2,554 of 3,192 houses front a street or a lane
+(D2-116: 1,949 of 3,896 a street); layout plots - Vumthorpe at year 300 rows along four streets and their lanes. Shots `tc2/out/shots/lanes1`
+(Vumthorpe, 681 people, year 300: a main street north lined both sides with its lanes behind, the crossing road lined east and west, houses facing
+them, gardens behind, the green in the middle with its granaries, well and sheep). Ten seeds 300 years DEEP (`_c2`) against D2-116 (`_b2`): houses
+fronting a street or a lane 48-80 % a world (streets alone 19-52 %); people over years 200-299 x0.974 (t -1.2), famines x0.98, hunger deaths
+x1.01, births and deaths a thousand person-years at par, raids x0.91, wounds x0.92, palisades x0.98 - inside the noise; homes within 50 m of the
+store 9.9-17.6 a village. Web: see below.
+**Open.** Lanes are straight and parallel to their street (no lane follows the ground or joins two streets); a town's core still fills round
+its green; plots are not owned (a house's croft is drawn, not held); shared walls and rows in a town's core, the market place, suburbs outside
+the gates - C13's next pieces.
+

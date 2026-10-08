@@ -882,8 +882,8 @@ namespace TC2.Game
         {
             public float[] Hx = new float[64], Hy = new float[64], Tx = new float[64], Ty = new float[64];
             public int N;
-            public readonly double[] Ux = new double[4], Uy = new double[4], Reach = new double[4];
-            public int Streets;
+            public readonly double[] Ox = new double[12], Oy = new double[12], Ux = new double[12], Uy = new double[12], Reach = new double[12];
+            public int Lines;   // (streets and their back lanes: C13.1, C13.2)
             public double Sx, Sy;
         }
         readonly System.Collections.Generic.List<Ground1> _ground = new System.Collections.Generic.List<Ground1>();
@@ -892,21 +892,24 @@ namespace TC2.Game
         {
             ref var s = ref w.Settlements.Get(sid);
             g.Sx = s.SquareX; g.Sy = s.SquareY;
-            g.Streets = s.StreetN;
-            for (int i = 0; i < s.StreetN; i++) { double a = s.StreetAt(i); g.Ux[i] = System.Math.Cos(a); g.Uy[i] = System.Math.Sin(a); g.Reach[i] = 0; }
+            g.Lines = TC2.Core.Places.Streets.Lines(in s);
+            for (int i = 0; i < g.Lines; i++)
+            {
+                TC2.Core.Places.Streets.Line(in s, i, out double ox, out double oy, out double ux, out double uy, out _);
+                g.Ox[i] = ox; g.Oy[i] = oy; g.Ux[i] = ux; g.Uy[i] = uy; g.Reach[i] = 0;
+            }
             var hhs = w.HouseholdsOf(sid);
             if (g.Hx.Length < hhs.Count) { int n = hhs.Count * 2; g.Hx = new float[n]; g.Hy = new float[n]; g.Tx = new float[n]; g.Ty = new float[n]; }
             g.N = hhs.Count;
             for (int i = 0; i < hhs.Count; i++)
             {
                 ref var h = ref w.Households.Get(hhs[i]);
-                bool fronts = TC2.Core.Places.Streets.Facing(in s, h.HomeX, h.HomeY, out double tx, out double ty);
+                bool fronts = TC2.Core.Places.Streets.Facing(in s, h.HomeX, h.HomeY, out double tx, out double ty, out int line);
                 g.Hx[i] = h.HomeX; g.Hy[i] = h.HomeY; g.Tx[i] = (float)tx; g.Ty[i] = (float)ty;
                 if (fronts)
                 {
-                    double along = System.Math.Sqrt((tx - s.SquareX) * (tx - s.SquareX) + (ty - s.SquareY) * (ty - s.SquareY));
-                    int si = StreetOf(in s, tx, ty);
-                    if (along > g.Reach[si]) g.Reach[si] = along;
+                    double along = (tx - g.Ox[line]) * g.Ux[line] + (ty - g.Oy[line]) * g.Uy[line];
+                    if (along > g.Reach[line]) g.Reach[line] = along;
                 }
             }
         }
@@ -934,29 +937,21 @@ namespace TC2.Game
                 double dp = System.Math.Sqrt(px * px + py * py);
                 earth = Mathf.Max(earth, (1f - Edge(1.0f, 2.6f, (float)dp)) * 0.85f);
             }
-            // its streets (C13.1): beaten by everyone living along them, from the green out past the last house that fronts each
-            for (int i = 0; i < g.Streets; i++)
+            // its streets and lanes (C13.1, C13.2): beaten by everyone living along them, from the green (a lane from its first house) out past
+            // the last house that fronts each
+            for (int i = 0; i < g.Lines; i++)
             {
                 double reach = g.Reach[i];
                 if (reach <= 0) continue;
                 double ux = g.Ux[i], uy = g.Uy[i];
-                double px = x - g.Sx, py = y - g.Sy;
+                double px = x - g.Ox[i], py = y - g.Oy[i];
                 double along = px * ux + py * uy;
-                if (along < 0 || along > reach + 8.0) continue;
+                if (along < (i % 3 == 0 ? 0.0 : TC2.Core.Places.Streets.LaneStart - 10.0) || along > reach + 8.0) continue;
                 double off = System.Math.Abs(-px * uy + py * ux);
                 earth = Mathf.Max(earth, (1f - Edge(2.2f, 3.8f, (float)off)) * 0.9f * (1f - Edge((float)reach, (float)reach + 8f, (float)along)));
             }
             bare = earth;
             return Color.Lerp(col, Earth, earth);
-        }
-
-        /// <summary>Which of a village's streets a point on a street's line belongs to (C13.1).</summary>
-        static int StreetOf(in TC2.Core.Places.Settlement s, double x, double y)
-        {
-            double a = System.Math.Atan2(y - s.SquareY, x - s.SquareX);
-            int best = 0; double bd = double.MaxValue;
-            for (int i = 0; i < s.StreetN; i++) { double d = TC2.Core.Places.Streets.Apart(a, s.StreetAt(i)); if (d < bd) { bd = d; best = i; } }
-            return best;
         }
 
         static readonly Color Rock = new Color(0.47f, 0.44f, 0.40f), RockDark = new Color(0.33f, 0.31f, 0.30f);

@@ -233,21 +233,26 @@ namespace TC2.Core.Places
                 spiral = k; sx = lx; sy = ly; sr = 15.0 + 9.5 * DMath.Sqrt(k + 1.0);
                 break;
             }
-            // the frontage along its streets (C13.1): the nearest free lot, weighed against the spiral's
+            // the frontage along its streets (C13.1) and their back lanes (C13.2): the nearest free lot of each line, weighed against the spiral's
             bool front = false; double fb = sr; float fx = 0f, fy = 0f;
-            for (int i = 0; i < s.StreetN; i++)
+            int lines = Streets.Lines(in s);
+            for (int i = 0; i < lines; i++)
             {
-                for (int j = 0; Streets.Lean * (Streets.Start + j * Streets.Spacing) < fb; j++)
+                double lean = Streets.IsLane(i) ? Streets.LaneLean : Streets.Lean;
+                double first = Streets.IsLane(i) ? Streets.LaneStart : Streets.Start;
+                for (int j = 0; lean * (first + j * Streets.Spacing) < fb; j++)
                 {
                     bool got = false;
                     for (int side = -1; side <= 1 && !got; side += 2)
                     {
                         Streets.Lot(in s, i, j, side, out double qx, out double qy);
+                        double score = Streets.Weigh(in s, i, j, qx, qy);
+                        if (score >= fb) continue;
                         float lx = (float)qx, ly = (float)qy;
                         if (Taken(w, bl, hl, forHid, lx, ly) || Structures.OnRing(in s, lx, ly, 4.5)) continue;
-                        if (Streets.On(in s, lx, ly, Streets.Width + 2.0)) continue;   // (another street's line, where two cross)
+                        if (Streets.On(in s, lx, ly, Streets.Width + 2.0)) continue;   // (another street's or lane's line, where two cross)
                         if (!Shore.Dry(P, s.LocalToSphere(lx, ly, P.Radius))) continue;
-                        fb = Streets.Lean * (Streets.Start + j * Streets.Spacing); fx = lx; fy = ly; front = true; got = true;
+                        fb = score; fx = lx; fy = ly; front = true; got = true;
                     }
                     if (got) break;
                 }

@@ -217,4 +217,4 @@ did not separate households (`21` §6): with a measure that does, a town shows o
 core and its hall - and an old prosperous village of longhouses reads unlike a crowded late town.
 **Streets (D2-116)**: villages grow along their roads - a house that fronts a street faces it, square to it, its garden behind, its door path to the
 street, the street beaten earth out past its last house; a hamlet with no worn way keeps its houses round its green (shots `street1`,
-`street1y100`).
+`street1y100`). Back lanes (D2-117) parallel to each street fill behind its frontage: a town of streets and lanes (shot `lanes1`).

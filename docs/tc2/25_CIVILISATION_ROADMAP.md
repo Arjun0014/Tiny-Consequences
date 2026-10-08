@@ -79,8 +79,8 @@ deposits that deplete.
 Acceptance: a tier-A world (one to three settlements, 100-500 people) shot at its founding and decades later at the village and street
 views shows the differentiation; every structure is clickable; headless runs at both resolutions and DEEP agree within tolerance.
 
-### C13 historical city evolution, by slices (D2-116): ~~C13.1 streets - villages grow along their roads, houses face them~~ (done); C13.2 back lanes
-and plots, a town's core of shared walls, the market place; C13.3 suburbs outside the gates, a second wall. (C9.4 docks and cargo boats deferred
+### C13 historical city evolution, by slices (D2-116): ~~C13.1 streets - villages grow along their roads, houses face them~~ (done); ~~C13.2 back lanes~~ (done, D2-117);
+C13.3 a town's core of rows, the market place; C13.4 suburbs outside the gates, a second wall. (C9.4 docks and cargo boats deferred
 behind exchange, D2-115.)
 
 ## 3. Later proofs (from the direction): resource town, coastal civilisation, the 1,000-year world

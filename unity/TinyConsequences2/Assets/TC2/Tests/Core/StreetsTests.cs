@@ -83,5 +83,32 @@ namespace TC2.Tests.Core
             ref var s3 = ref w.Settlements.Get(sid);
             Assert.IsFalse(Structures.Clear(w, sid, s3.SquareX + 60.0, s3.SquareY, 4.0), "no work laid out in the street");
         }
+
+        [Test]
+        public void BackLanesAreLinedOnceTheStreetsFrontageNearTheGreenIsTaken()
+        {
+            var w = TestWorlds.Make(7);
+            int sid = w.Settlements.First();
+            ref var s = ref w.Settlements.Get(sid);
+            s.SetStreet(0, 0.0); s.StreetN = 1;
+            int street = 0, lane = 0, firstLane = -1;
+            for (int k = 0; k < 60; k++)
+            {
+                Homes.FreeLot(w, sid, 0, out float x, out float y);
+                ref var s2 = ref w.Settlements.Get(sid);
+                Assert.IsFalse(Streets.On(in s2, x, y, Streets.Width + 2.0), "never in a street or a lane");
+                if (Streets.Facing(in s2, x, y, out double fx, out double fy, out int line))
+                {
+                    Assert.AreEqual(Streets.Setback, Math.Sqrt((x - fx) * (x - fx) + (y - fy) * (y - fy)), 0.01, "set back from its line");
+                    if (Streets.IsLane(line)) { lane++; if (firstLane < 0) firstLane = k; } else street++;
+                }
+                int hid = w.Ids.Next(EntityKind.Household);
+                w.Households.Add(hid, new Household { Id = hid, Settlement = sid, HomeX = x, HomeY = y, Shelter = Construction.Camp });
+                w.HouseholdsOf(sid).InsertSorted(hid);
+            }
+            Console.WriteLine("of 60 new lots: " + street + " on the street, " + lane + " on its back lanes (the first the " + (firstLane + 1) + "th)");
+            Assert.Greater(lane, 0, "the lanes are lined");
+            Assert.Greater(firstLane, 3, "after the street's own frontage near the green");
+        }
     }
 }
