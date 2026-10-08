@@ -24,8 +24,12 @@ namespace TC2.Core.Places
     {
         /// <summary>A maker at the shed works this many times as fast as at home: the broad loom, the warping frame, the work laid out.</summary>
         public const double Pace = 1.5;
-        /// <summary>The shed's looms: its makers are the village's this many best weavers.</summary>
+        /// <summary>A shed's looms: its makers are the village's this many best weavers for each shed it has.</summary>
         public const int Looms = 8;
+        /// <summary>The most sheds a village raises (C3.1b): another where its makers left its store short most of a year.</summary>
+        public const int MaxSheds = 4;
+        /// <summary>Days of a year (of 48) its households drained its store with fibre to weave (`Tally`), from which it wants another shed.</summary>
+        public const int ShortDays = 30;
         /// <summary>Wares wear at this share of homespun's rate: woven close on the broad loom, fulled, finished by practised hands.</summary>
         public const double WaresWear = 0.6;
         /// <summary>A village raises a shed where its people's wear of goods would keep this many makers at its looms all year.</summary>
@@ -51,7 +55,10 @@ namespace TC2.Core.Places
         /// <summary>Tools: no weaver's sheds (the same binary as before C3.1, for A/B runs); false in the game.</summary>
         public static bool Off;
 
-        /// <summary>The village's working weaver's shed (0 none).</summary>
+        /// <summary>The looms a village's sheds hold: its makers are its this many best weavers (C3.1b).</summary>
+        public static int LoomsOf(in Settlement s) => Looms * (s.Sheds > 1 ? s.Sheds : 1);
+
+        /// <summary>The village's (first) working weaver's shed (0 none).</summary>
         public static int Shed(World w, int sid)
         {
             ref var s = ref w.Settlements.Get(sid);
@@ -100,14 +107,64 @@ namespace TC2.Core.Places
             return k > s.LoomBar || (k == s.LoomBar && p.Id <= s.LoomBarId);
         }
 
-        /// <summary>A maker of this village has work at its shed now.</summary>
+        /// <summary>A maker of this village has work at its sheds now (`shed`: the one they work at).</summary>
         public static bool Wanted(World w, in Settlement s, in Person p, out int shed)
         {
             shed = 0;
             if (s.Workshop == 0 || !Use(in s) || !Maker(in s, in p, w.Now)) return false;
-            shed = Shed(w, s.Id);
+            shed = ShedFor(w, in s, in p);
             return shed != 0;
         }
+
+        /// <summary>The shed a maker works at: the working one nearest their home (one shed: that one; C3.1b).</summary>
+        public static int ShedFor(World w, in Settlement s, in Person p)
+        {
+            if (s.Sheds <= 1) return Shed(w, s.Id);
+            double hx = s.SquareX, hy = s.SquareY;
+            if (w.Households.Exists(p.Household)) { ref var hh = ref w.Households.Get(p.Household); hx = hh.HomeX; hy = hh.HomeY; }
+            int best = 0; double bd = double.MaxValue;
+            var bl = w.BuildingsOf(s.Id);
+            for (int i = 0; i < bl.Count; i++)
+            {
+                ref var b = ref w.Buildings.Get(bl[i]);
+                if (b.Kind != Structures.Workshop || !Structures.Working(in b, w.Now)) continue;
+                double dx = (double)b.X - hx, dy = (double)b.Y - hy, d = dx * dx + dy * dy;
+                if (d < bd) { bd = d; best = bl[i]; }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// The village's day (C3.1b): a day its own households had drawn its store below half what it keeps back from trade (`Kept`) while it held
+        /// fibre for a day's work at every loom is a day short - its looms, not its flax, could not keep up with its people. (Traders take only what
+        /// lies above `Kept`: a store drained to it by sales says nothing of the looms - counted so, every village that sold wanted more sheds.)
+        /// </summary>
+        public static void Tally(World w, int sid, int days)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.Workshop == 0 || s.Wares >= 0.5 * Kept * s.Population) return;
+            if (s.Fibre < LoomsOf(in s) * MakerDay(in s) * Goods.MaterialPerGood) return;
+            s.ShedShort = (byte)System.Math.Min(255, s.ShedShort + days);
+        }
+
+        /// <summary>
+        /// The yearly weighing (the day households weigh leaving, C3.1b): a village whose makers were short on `ShortDays` or more of the year's days,
+        /// and whose people wear through more wares than its looms make even once all wear wares (`NeedsMore`: not only while their homespun is
+        /// still wearing out - counted on shortfall alone, villages of 150-270 raised a second shed as they changed over), wants another shed - eight
+        /// more looms for its next best weavers - as an overfilled store wants another granary; the count starts again.
+        /// </summary>
+        public static void Year(World w, int sid)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.Workshop != 0 && s.Sheds >= 1 && s.Sheds < MaxSheds && s.ShedShort >= ShortDays && NeedsMore(in s)) s.ShedMore = 1;
+            s.ShedShort = 0;
+        }
+
+        /// <summary>Its people, all in wares, would wear through more a day than its looms make (C3.1b: ~500 people for a second shed, ~730 a third).</summary>
+        public static bool NeedsMore(in Settlement s) => Wear(in s) * WaresWear > LoomsOf(in s) * MakerDay(in s);
+
+        /// <summary>A village wants another shed now (C3.1b): wanted since its last yearly weighing, water and a store, no walls rising.</summary>
+        public static bool MoreWanted(in Settlement s) => !Off && s.ShedMore != 0 && s.Workshop != 0 && s.Sheds < MaxSheds && s.Wall != 1 && (s.Works & Construction.Granary) != 0;
 
         /// <summary>
         /// The village's bar for a loom at its shed (daily, and when the shed is raised): the `Looms`-th best of its able weavers by `Key`, ties
@@ -121,7 +178,8 @@ namespace TC2.Core.Places
             var res = w.Residents(sid);
             long now = w.Now;
             double barK = double.MaxValue; int barId = int.MinValue;
-            for (int k = 0; k < Looms; k++)
+            int looms = LoomsOf(in s);
+            for (int k = 0; k < looms; k++)
             {
                 // the next in order below the last taken: the highest key, then the lowest id
                 double bk = 0; int bid = 0; bool found = false;

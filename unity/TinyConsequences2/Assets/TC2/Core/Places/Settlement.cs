@@ -145,6 +145,9 @@ namespace TC2.Core.Places
         public float WaresSold;         // wares it parted with in trade, halving each year: what its makers make for the next buyers
         public double LoomBar;          // the bar for a loom at its shed: its eighth best weaver's loom and practice (read daily; -1: all its weavers)
         public int LoomBarId;           // and that weaver (ties go to the lower id)
+        public byte Sheds;              // its working weaver's sheds (C3.1b: another where its makers cannot keep up; `Workshop` is the first)
+        public byte ShedShort;          // days this year its makers left its store short with fibre to weave (counted daily, weighed yearly)
+        public byte ShedMore;           // another shed wanted: its makers fell short most of last year (laid out when no work is under way)
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
@@ -208,6 +211,7 @@ namespace TC2.Core.Places
             w.Float(SquareX); w.Float(SquareY); w.Float(FieldX); w.Float(FieldY); w.Float(WoodX); w.Float(WoodY); w.Float(WellX); w.Float(WellY);
             w.Float(MarketR); w.Float(CoreR); w.Byte(LanesShut);   // (C13.3, sim version 56)
             w.Int(Workshop); w.Long(LoomEvent); w.Double(Wares); w.Float(WaresHeld); w.Float(WaresOut); w.Float(WaresSold); w.Double(LoomBar); w.Int(LoomBarId);   // (C3.1, sim version 57)
+            w.Byte(Sheds); w.Byte(ShedShort); w.Byte(ShedMore);   // (C3.1b, sim version 58)
         }
 
         public static Settlement Read(BinReader r)
@@ -225,6 +229,7 @@ namespace TC2.Core.Places
             s.SquareX = r.Float(); s.SquareY = r.Float(); s.FieldX = r.Float(); s.FieldY = r.Float(); s.WoodX = r.Float(); s.WoodY = r.Float(); s.WellX = r.Float(); s.WellY = r.Float();
             s.MarketR = r.Float(); s.CoreR = r.Float(); s.LanesShut = r.Byte();
             s.Workshop = r.Int(); s.LoomEvent = r.Long(); s.Wares = r.Double(); s.WaresHeld = r.Float(); s.WaresOut = r.Float(); s.WaresSold = r.Float(); s.LoomBar = r.Double(); s.LoomBarId = r.Int();
+            s.Sheds = r.Byte(); s.ShedShort = r.Byte(); s.ShedMore = r.Byte();
             return s;
         }
 
@@ -242,6 +247,7 @@ namespace TC2.Core.Places
             h.Add(SquareX); h.Add(SquareY); h.Add(FieldX); h.Add(FieldY); h.Add(WoodX); h.Add(WoodY); h.Add(WellX); h.Add(WellY);
             h.Add(MarketR); h.Add(CoreR); h.Add(LanesShut);
             h.Add(Workshop); h.Add(LoomEvent); h.Add(Wares); h.Add(WaresHeld); h.Add(WaresOut); h.Add(WaresSold); h.Add(LoomBar); h.Add(LoomBarId);
+            h.Add(Sheds); h.Add(ShedShort); h.Add(ShedMore);
         }
 
         internal static void WriteV(BinWriter w, Vec3d v) { w.Double(v.X); w.Double(v.Y); w.Double(v.Z); }

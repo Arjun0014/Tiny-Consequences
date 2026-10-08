@@ -1,8 +1,14 @@
 # TC2 Session handoff
 
-## Session 12 (8 Oct 2026, from 12:13 IST; Control Room run #31 session 2) - C3.1 the weaver's shed and wares (D2-119); lived save/load exact again
+## Session 12 (8 Oct 2026, from 12:13 IST; Control Room run #31 session 2) - C3.1 the weaver's shed and wares (D2-119); lived save/load exact again; C3.1b more sheds (D2-120)
 
 ### Exact state (keep current)
+- **C3.1b DONE (D2-120, sim version 58)**: `Settlement.Sheds/ShedShort/ShedMore`; `Weaving.LoomsOf` (8 a shed), `ShedFor` (the nearest working shed;
+  lived, the shed's id rides in `WhyArg`), `Tally` (a day the households drained the store below half `Kept` with fibre for every loom),
+  `Year` (at `Migration.DecideDay`: >= 30 short days and `NeedsMore` - its people in wares would outwear its looms), `MoreWanted` -> another
+  `Workshop` in `Structures.Plan`; `Structures.Lost` hands the first-shed role on. Ten seeds `tc2/out/civ/s*_w7` (the reference now) vs `_w4`:
+  home making x0.67, market places x1.18, people at par; towns of 500+ carry 2-4 sheds. Rejected rules: `_w5` (target shortfall: sales
+  drained the store), `_w6` (shortfall alone: the change-over from homespun). `WeavingTests` 8; full suite and Web test: see below.
 - **C3.1 DONE (D2-119; commits f89d537, 3cbfcf3, a8fb590 and the closing commit; sim version 57)**: `Core/Places/Weaving.cs` (shed wanted where wear keeps 6 makers busy; makers
   = the village's 8 best weavers by `LoomBar`; `Work` 1.5x pace from real fibre; `Draw`; `Target`; `Share`), `Goods.Wear` (wares wear 0.6),
   `Household.Wares`, `Person.SkCraft`, `Settlement.Workshop/LoomEvent/Wares/WaresHeld/WaresOut/WaresSold/LoomBar/LoomBarId`, `Structures.Workshop`
@@ -29,11 +35,11 @@
   6 -> 13, people 9,095 -> 10,158; big towns use all their wares (8 looms short), mid towns sell, small villages wear bought wares.
 
 ### Next, in order
-1. **C3.1b more looms for towns** (`26` §2): towns of 500+ keep no wares (worn by 67-96 % of their people), their households still make
-   homespun - another shed where the makers worked full days for a year while the store stayed short; makers 8 a shed; then calibrate the
-   COARSE maker-day (9.0 h) against the lived one (6.8 h). Or **C3.2 the potter's kiln**.
+1. **C3.2 the potter's kiln** (`26` §2): pots and storage jars made at a kiln by the village's potters, the store keeps better by pots made (not
+   by the best potter: D2-063), charcoal at the kiln, clay dug at a clay pit - the weaver's shed's pattern (makers by skill, a need, real
+   material, a product that lasts). Or C3.3 exchange between households (payment in kind: makers paid; export looms then pay).
 2. Roles from practice for smiths, potters, boatwrights (a year-300 person is "known for" every craft).
-3. C3.3 exchange between households (payment in kind), C3.4 the mill; C9.4 / C10.2 re-weighed with the traffic.
+3. C3.4 the mill; C9.4 / C10.2 re-weighed with the traffic.
 
 ## Session 11 (8 Oct 2026, 09:23 - ~12:15 IST; Control Room run #31 session 1) - C13.3 a town's ground (D2-118) closed; C3.1 designed
 

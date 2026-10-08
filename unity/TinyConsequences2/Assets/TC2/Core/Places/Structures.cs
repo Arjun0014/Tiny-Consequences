@@ -163,6 +163,13 @@ namespace TC2.Core.Places
             // and a store, never while walls rise
             if (Weaving.ShedWanted(w, in s))
             { Begin(w, sid, Workshop, s.LoomEvent != 0 ? s.LoomEvent : s.FoundedEvent, CauseRel.EnabledBy); return; }
+            // its makers left its store short most of last year: another weaver's shed, eight more looms (C3.1b)
+            if (Weaving.MoreWanted(in s))
+            {
+                s.ShedMore = 0;
+                long first = w.Buildings.Exists(s.Workshop) ? w.Buildings.Get(s.Workshop).Event : 0;
+                Begin(w, sid, Workshop, first, CauseRel.CausedBy); return;
+            }
             // traders come often to deal: a market on its green (C1.6)
             if (s.Market == 0 && s.TradeIn >= Trade.MarketFrom && s.Population >= 100 && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
             { Begin(w, sid, Market, 0, CauseRel.None); return; }
@@ -240,7 +247,7 @@ namespace TC2.Core.Places
             if (b.Kind == Ground) s.Ground = bid;
             if (b.Kind == Market) { s.Market = bid; if (s.MarketR < MarketFirst) { s.MarketR = (float)MarketFirst; Opened(w, sid); } }   // (its market place: C13.3)
             if (b.Kind == BoatShed) s.Shed = bid;
-            if (b.Kind == Workshop) { s.Workshop = bid; Weaving.Bar(w, sid); }   // (its best weavers have the looms from today: C3.1)
+            if (b.Kind == Workshop) { if (s.Workshop == 0) s.Workshop = bid; s.Sheds++; Weaving.Bar(w, sid); }   // (its best weavers have the looms from today: C3.1, C3.1b)
             if (b.Kind == Smithy)
             {
                 s.Smithy = bid;
@@ -275,7 +282,7 @@ namespace TC2.Core.Places
             if (kind == Ground) s.Ground = id;
             if (kind == Market) s.Market = id;
             if (kind == BoatShed) s.Shed = id;
-            if (kind == Workshop) { s.Workshop = id; Weaving.Bar(w, sid); }
+            if (kind == Workshop) { if (s.Workshop == 0) s.Workshop = id; s.Sheds++; Weaving.Bar(w, sid); }
             return id;
         }
 
@@ -297,7 +304,22 @@ namespace TC2.Core.Places
             if (b.Kind == Ground && s.Ground == bid) s.Ground = 0;
             if (b.Kind == Market && s.Market == bid) s.Market = 0;
             if (b.Kind == BoatShed && s.Shed == bid) s.Shed = 0;
-            if (b.Kind == Workshop && s.Workshop == bid) s.Workshop = 0;
+            if (b.Kind == Workshop)
+            {
+                // (one shed fewer; the first lost, another standing takes its place: C3.1b)
+                if (s.Sheds > 0) s.Sheds--;
+                if (s.Workshop == bid)
+                {
+                    s.Workshop = 0;
+                    var others = w.BuildingsOf(b.Settlement);
+                    for (int i = 0; i < others.Count && s.Workshop == 0; i++)
+                    {
+                        if (others[i] == bid) continue;
+                        ref var o = ref w.Buildings.Get(others[i]);
+                        if (o.Kind == Workshop && Working(in o, w.Now)) s.Workshop = others[i];
+                    }
+                }
+            }
             if (b.Kind == Well && !Has(w, b.Settlement, Well, bid)) s.Works = (byte)(s.Works & ~Construction.Well);
         }
 

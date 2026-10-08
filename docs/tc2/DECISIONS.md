@@ -3270,3 +3270,37 @@ maker-day (9.0 h) is a third longer than a lived one (6.8 h): the target binds m
 village's and free to its households - payment in kind and household holdings are C3.3. Roles other than the weaver's are still read from what a
 person knows, so at year 300 one person is "known for" every craft: read them from practice as the weaver's is. The tenters stand at the shed's end and
 behind it; from some angles a house hides them, and the looms inside are dim from above.
+
+## D2-120 — 2026-10-08 — More weaver's sheds where a town's looms cannot keep up with its people (C3.1b)
+
+**Context.** D2-119's Open: towns of 500+ kept no wares and wore them for 67-96 % of their people while their households still made homespun -
+eight looms make ~0.7 wares a day, a town of 800 wears through ~1.6 of homespun's worth (~1.0 of wares). Medieval towns had as many weavers as their
+cloth called for.
+**Decision.** (1) **Another shed where its people outrun its looms** (`Weaving.Tally`/`Year`/`MoreWanted`; `Settlement.Sheds`, `ShedShort`,
+`ShedMore`; sim version 58): each day a village's own households have drawn its store below half what it keeps back from trade (`Kept`, 0.05 a head)
+while it holds fibre for a day's work at every loom is a day short - its looms, not its flax, could not keep up; at the yearly weighing (the day
+households weigh leaving) a village short on `ShortDays` (30 of 48) or more wants another shed - eight more looms for its next best weavers - laid
+out when no work is under way, after water and a store, never while walls rise, its cause the first shed's raising; up to `MaxSheds` (4). A first
+rule counted a day short when the store was under half its target: traders take every ware above `Kept`, so a village that sold kept its store at
+`Kept` under a target raised by those sales and was "short" every day - most villages of 200+ raised two to four sheds and hamlets of 20-50 kept
+two (`_w5`); sales say nothing of the looms. And the shortfall alone is not enough: while a village's people change over from homespun they draw
+at homespun's rate, so villages of 150-270 raised a second shed they would not need once all wore wares (`_w6`) - another shed is wanted only where
+its people, all in wares, would wear through more than its looms make (`NeedsMore`: ~340-490 people for a second shed by the loom and the tools,
+~730 a third). (2) **Makers**: the village's `Looms` x sheds best weavers (`LoomsOf`; the bar read daily); each works at
+the working shed nearest their home (`ShedFor`; lived, the shed's id rides on the activity). (3) A shed lost (the sea) hands the village's first-shed
+role to another standing one (`Structures.Lost`). (4) Pages: the settlement page counts the sheds, their wares and hours and the short days; the
+building page names the makers of that shed. Headless: `wares:` counts sheds and villages with more than one, `place --list` "N WEAVER'S SHEDS".
+**Calibration checked**: a maker's day at the shed over a whole year (two worlds, makers always wanted, seasons natural): COARSE 7.8-7.9 h, lived
+6.8-7.3 h (x1.07-1.17, as near as the two worlds to each other) - the smithy's law kept.
+**Evidence.** `WeavingTests` 8 (+ `ATownWhoseLoomsCannotKeepUpRaisesAnotherShed`: no short day without fibre, none for a store drained by sales to
+what it keeps back; a village short most of a year but whose people in wares would wear less than its looms make wants no shed; past that (337
+people at a 0.8 loom, stone tools) it does, begun for the first shed's raising; sixteen looms; makers to the nearer shed (2 and 7); the first lost,
+the second is the village's shed). Ten seeds 300 years DEEP (`_w7`) against C3.1 (`_w4`): 1-45 sheds a world, villages with more than one 0-15 - the
+towns (500-1,025 people: 2-4 sheds) and places that were larger once (sheds outlive a village's shrinking: Kubroford, 277 people, three); makers
+8-360; home making hours x0.67 (t -4.2), market places x1.18 (t 2.3), markets x1.22 (t 2.1), trades x1.07, people over years 200-299 x0.99, births
+and deaths a thousand at par, famines x0.97; run cost a person-day x0.94. Against the same worlds without sheds (`_w4n`): trades x3.18 (t 4.8),
+trade gain x3.6, home making hours x0.19 (t -8.9), market places x1.48 (t 2.2), markets x1.38, people over years 200-299 x1.03 (t 1.1), famines
+x1.00.
+**Open.** No looms for buyers: a village that sells all it spares does not raise looms for them (sales raise its target, never its sheds) - export
+crafts wait for exchange that pays the makers (C3.3). Sheds outlive their village's shrinking (a second shed in a village of 200 that was 500).
+The COARSE maker-day stays ~1.1 times a lived one over a year.

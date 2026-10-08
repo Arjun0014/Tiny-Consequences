@@ -83,8 +83,8 @@ Acceptance: a tier-A world (one to three settlements, 100-500 people) shot at it
 views shows the differentiation; every structure is clickable; headless runs at both resolutions and DEEP agree within tolerance.
 
 ### C3 professions and exchange, by slices (`26`): ~~C3.1 the weaver's shed and the village's wares~~ (done, D2-119: wares last longer than homespun,
-the village's best weavers make them at a shed in larger places, households take them, they are traded - trade x3, home making hours x0.28); next
-C3.1b more looms where a town's makers cannot keep up, C3.2 the potter's kiln, C3.3 exchange between households, C3.4 the mill, C3.5 apprenticeship,
+the village's best weavers make them at a shed in larger places, households take them, they are traded - trade x3, home making hours x0.28); ~~C3.1b more sheds where a town's
+looms cannot keep up~~ (done, D2-120); next C3.2 the potter's kiln, C3.3 exchange between households, C3.4 the mill, C3.5 apprenticeship,
 C3.6 other workshops.
 
 ### C13 historical city evolution, by slices (D2-116): ~~C13.1 streets - villages grow along their roads, houses face them~~ (done); ~~C13.2 back lanes~~ (done, D2-117);

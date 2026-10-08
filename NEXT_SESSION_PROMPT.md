@@ -27,20 +27,22 @@ only - never modify or stage it.
   (`PlanetState.WaterDay`) or derived only from the ground's shape (`PlanetState.InBasin`)**; river lines are laid for every reach of 10 ha or more
   and asked daily whether they are streams (`RiverLines.Stream`). Test `SaveLoadContinuesIdenticallyWhileLakesRiseAndFall`.
 - **Works on the main road are laid beside it** (a shed stood in the road): `Structures.RoadClear`.
+- **C3.1b more sheds (D2-120, sim version 58)**: another shed where the households drain the store most of a year with fibre to weave and the people
+  in wares would outwear the looms (`Weaving.Tally/Year/NeedsMore`); towns of 500+ carry 2-4; makers at the shed nearest home. Reference runs
+  `tc2/out/civ/s*_w7` (C3.1b), `s*_w4n` (no sheds).
 - Open W task **W-FOREST** (Arjun, 8 Oct): forests/biomes still read as the same trees recoloured - not solved (`18` §8).
 
 ## Do next
 1. If the handoff says the Web test or the docs are unfinished, finish them first.
-2. **C3.1b more looms for towns** (D2-119 Open: towns of 500+ keep no wares, 67-96 % worn, households still make homespun): a second shed (or more
-   looms) where the makers worked full days for a year while the store stayed short - the granary's "another when overfilled" law; makers 8 per
-   shed; calibrate the COARSE maker-day (9.0 h) to the lived one (6.8 h) once capacity binds. Or **C3.2 the potter's kiln** (`26` §2).
+2. **C3.2 the potter's kiln** (`26` §2): makers by skill at a kiln, pots that keep the store (by pots made, not the best potter), clay dug, charcoal -
+   the weaver's shed's pattern. Or **C3.3 exchange between households** (payment in kind; export looms then pay their makers).
 3. Roles read from practice for smiths, potters, boatwrights (as the weaver's now) - a year-300 person is "known for" every craft.
 4. Then C3.3 exchange between households (payment in kind), C3.4 the mill; re-weigh C9.4 docks/cargo and C10.2 when trade and polities grow.
 
 ## Tools
 - Copy `tc2/out/tools/wrun.sh`, `cmp.py`, `wares.py` to the session's scratchpad and set `SCR=` in `wrun.sh`; copy
   `tc2/headless/app/bin/Release/net8.0` there as `bin_<tag>` before each ten-seed run (sequential, ~15 min for ten).
-- Reference runs: `tc2/out/civ/s*_w4` (C3.1 final, saves 50/100/200/300) and `s*_w4n` (same binary `--noweave`).
+- Reference runs: `tc2/out/civ/s*_w7` (C3.1b, saves 50/100/200/300, `--waresflow`), `s*_w4` (C3.1) and `s*_w4n` (same binary as `_w4`, `--noweave`).
 - Headless: `place --load S --list` (now with wares, WEAVER'S SHED) `| --layout --sid N | --overlaps | --households | --standing`; `person --pick weaver`;
   run report lines `wares:`, `water caches:`, `town:`, `trade:`; `run --waresflow` (what wares were traded for), `--noweave`.
 - Shots: `node tc2/scripts/unity.mjs shots --tag T --load "<abs save>" --village ID --views "work23near@11,work23@11,village@11"` (`work23`: the

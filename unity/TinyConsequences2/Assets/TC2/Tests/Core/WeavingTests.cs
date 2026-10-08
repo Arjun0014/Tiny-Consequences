@@ -229,6 +229,78 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void ATownWhoseLoomsCannotKeepUpRaisesAnotherShed()
+        {
+            // (C3.1b) a village with a shed whose store its households drain while it holds fibre: its looms, not its flax, hold it back
+            var w = TestWorlds.Make(617);
+            int sid = w.Settlements.First();
+            Weavers(w, sid);
+            int first = StandingShed(w, sid);
+            ref var s = ref w.Settlements.Get(sid);
+            Assert.AreEqual(1, s.Sheds); Assert.AreEqual(first, s.Workshop);
+            s.Project = 0; s.Wall = 0;
+            // fibre short: the flax holds it back - no day counts
+            s.Wares = 0; s.WaresSold = 500f; s.Fibre = 0;
+            for (int d = 0; d < 48; d++) Weaving.Tally(w, sid, 1);
+            Assert.AreEqual(0, w.Settlements.Get(sid).ShedShort, "no flax: more looms would not help");
+            // a store at what it keeps back from trade (traders drained it): not short - sales say nothing of the looms
+            ref var s0 = ref w.Settlements.Get(sid); s0.Fibre = 5000; s0.Wares = Weaving.Kept * s0.Population;
+            for (int d = 0; d < 48; d++) Weaving.Tally(w, sid, 1);
+            Assert.AreEqual(0, w.Settlements.Get(sid).ShedShort, "a store drained by sales is not short");
+            // drained by its own households, fibre for every loom: each short day counts; most of a year short wants another shed
+            ref var s1 = ref w.Settlements.Get(sid); s1.Fibre = 5000; s1.Wares = 0;
+            for (int d = 0; d < Weaving.ShortDays - 1; d++) Weaving.Tally(w, sid, 1);
+            Weaving.Year(w, sid);
+            Assert.AreEqual(0, w.Settlements.Get(sid).ShedMore, "short on fewer than the days it takes");
+            Assert.AreEqual(0, w.Settlements.Get(sid).ShedShort, "the count starts again each year");
+            for (int d = 0; d < 36; d++) Weaving.Tally(w, sid, 1);
+            Weaving.Year(w, sid);
+            Assert.AreEqual(0, w.Settlements.Get(sid).ShedMore, "short, but a village of " + w.Settlements.Get(sid).Population + " in wares would wear less than its looms make");
+            ref var sg = ref w.Settlements.Get(sid);
+            int pop0 = sg.Population;
+            sg.Population = (int)(Weaving.LoomsOf(in sg) * Weaving.MakerDay(in sg) / (Goods.WearPerDay * Tech.ToolWear(in sg) * Weaving.WaresWear)) + 10;   // premise: a town grown past its looms
+            Assert.IsTrue(Weaving.NeedsMore(in w.Settlements.Get(sid)));
+            Console.WriteLine("a second shed from " + (sg.Population - 10) + " people");
+            for (int d = 0; d < 36; d++) Weaving.Tally(w, sid, 1);
+            Weaving.Year(w, sid);
+            Assert.AreEqual(1, w.Settlements.Get(sid).ShedMore, "short most of the year, and outgrown its looms");
+            Structures.Plan(w, sid);
+            ref var s2 = ref w.Settlements.Get(sid);
+            Assert.AreNotEqual(0, s2.Project, "a work begun");
+            var nb = w.Buildings.Get(s2.Project);
+            Assert.AreEqual(Structures.Workshop, nb.Kind, "another weaver's shed");
+            Assert.AreEqual(w.Buildings.Get(first).Event, nb.Cause, "because the first could not keep up");
+            Assert.AreEqual(0, s2.ShedMore);
+            int second = s2.Project;
+            Structures.Raised(w, sid, second, Weaving.ShedHours, Weaving.ShedWood, 0);
+            var s3 = w.Settlements.Get(sid);
+            Assert.AreEqual(2, s3.Sheds); Assert.AreEqual(first, s3.Workshop, "the first stays the first");
+            Assert.AreEqual(2 * Weaving.Looms, Weaving.LoomsOf(in s3), "eight more looms");
+            // makers go to the shed nearest their home
+            var res = w.Residents(sid);
+            int toFirst = 0, toSecond = 0;
+            for (int i = 0; i < res.Count; i++)
+            {
+                var p = w.People.Get(res[i]);
+                if (!Weaving.Maker(in s3, in p, w.Now)) continue;
+                int at = Weaving.ShedFor(w, in s3, in p);
+                var hh = w.Households.Get(p.Household);
+                var b1 = w.Buildings.Get(first); var b2 = w.Buildings.Get(second);
+                double d1 = (b1.X - hh.HomeX) * (b1.X - hh.HomeX) + (b1.Y - hh.HomeY) * (b1.Y - hh.HomeY), d2 = (b2.X - hh.HomeX) * (b2.X - hh.HomeX) + (b2.Y - hh.HomeY) * (b2.Y - hh.HomeY);
+                Assert.AreEqual(d1 <= d2 ? first : second, at, "the nearer shed");
+                if (at == first) toFirst++; else toSecond++;
+            }
+            Console.WriteLine("makers to the first shed " + toFirst + ", to the second " + toSecond);
+            // the first lost (the sea took it): the other carries on as the village's shed
+            ref var bf = ref w.Buildings.Get(first); bf.Left = w.Now - SimTime.Years(200);
+            Structures.Lost(w, first);
+            var s4 = w.Settlements.Get(sid);
+            Assert.AreEqual(1, s4.Sheds); Assert.AreEqual(second, s4.Workshop, "the second is the village's shed now");
+            Assert.AreEqual(second, Weaving.Shed(w, sid));
+            ref var se = ref w.Settlements.Get(sid); se.Population = pop0;
+        }
+
+        [Test]
         public void WaresGoWhereTheyAreLackedAndWhatIsSoldIsMadeAgain()
         {
             var w = TestWorlds.Make(616);

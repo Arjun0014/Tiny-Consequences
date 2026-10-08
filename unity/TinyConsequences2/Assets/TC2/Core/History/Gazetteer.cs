@@ -159,7 +159,10 @@ namespace TC2.Core.History
                 {
                     int makers = 0; var res = w.Residents(sid);
                     for (int i = 0; i < res.Count; i++) if (Weaving.Maker(in s, in w.People.Get(res[i]), w.Now)) makers++;
-                    sb.Append("Its weaver's shed: ").Append(makers).Append(makers == 1 ? " maker" : " makers").Append(" at its looms (its best weavers); ").Append(F(w.Buildings.Get(s.Workshop).Stock, "0")).Append(" wares made there in ").Append(F(w.Buildings.Get(s.Workshop).Use, "0")).Append(" hours.\n");
+                    double made = 0, hours = 0; var bl = w.BuildingsOf(sid);
+                    for (int i = 0; i < bl.Count; i++) { var b = w.Buildings.Get(bl[i]); if (b.Kind == Structures.Workshop) { made += b.Stock; hours += b.Use; } }
+                    sb.Append(s.Sheds > 1 ? "Its " + s.Sheds + " weaver's sheds: " : "Its weaver's shed: ").Append(makers).Append(makers == 1 ? " maker" : " makers").Append(" at its looms (its best weavers); ").Append(F(made, "0")).Append(" wares made there in ").Append(F(hours, "0")).Append(" hours")
+                      .Append(s.ShedShort > 0 ? "; its makers fell short " + s.ShedShort + " days this year" : "").Append(".\n");
                 }
             }
             else sb.Append("its households make their own.\n");

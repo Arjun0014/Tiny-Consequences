@@ -458,7 +458,7 @@ namespace TC2.Game
                 {
                     // the weaver's shed (C3.1): its makers - the village's best weavers - what they made, what its households took and its traders sold
                     var makers = new System.Collections.Generic.List<string>(); var res = w.Residents(b.Settlement);
-                    for (int i = 0; i < res.Count; i++) if (Weaving.Maker(in s, in w.People.Get(res[i]), w.Now)) makers.Add(w.History.NameOf(EntityRef.Person(res[i])));
+                    for (int i = 0; i < res.Count; i++) if (Weaving.Maker(in s, in w.People.Get(res[i]), w.Now) && Weaving.ShedFor(w, in s, in w.People.Get(res[i])) == _building) makers.Add(w.History.NameOf(EntityRef.Person(res[i])));
                     sb.Append("broad looms, a warping frame, a dye vat: ").Append(place).Append("'s best weavers make its wares here, half as fast again as at home and lasting longer than homespun; ")
                       .Append(b.Stock.ToString("N0", CultureInfo.InvariantCulture)).Append(" wares made in ").Append(b.Use.ToString("N0", CultureInfo.InvariantCulture)).Append(" hours\n")
                       .Append("its looms: ").Append(makers.Count > 0 ? string.Join(", ", makers) : "nobody").Append('\n')

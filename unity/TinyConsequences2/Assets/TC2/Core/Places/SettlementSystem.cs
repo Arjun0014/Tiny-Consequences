@@ -63,7 +63,7 @@ namespace TC2.Core.Places
             if (days > 1) Ahead(sid, g0, days);   // (the step's own work reads its store as days lived hold it too: F8)
             prof?.Begin(10002); prof?.Begin(10007); w.Wild.Survey(sid); prof?.End(10007); Boats.Plan(w, sid, days); prof?.Begin(10008); w.HerdSys.Update(sid); prof?.End(10008); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
             if (days > 1) w.Wild.MidStep(sid, w.Stock.MidStepMast(sid, days));   // (DEEP: the woods as the step's middle day finds them)
-            if (doy == Migration.DecideDay) { prof?.Begin(10003); w.Migration.Weigh(sid); Homes.WeighRebuilding(w, sid); prof?.End(10003); }   // who leaves (D2-045); who rebuilds (D2-114)
+            if (doy == Migration.DecideDay) { prof?.Begin(10003); w.Migration.Weigh(sid); Homes.WeighRebuilding(w, sid); Weaving.Year(w, sid); prof?.End(10003); }   // who leaves (D2-045); who rebuilds (D2-114); another shed (C3.1b)
             if (w.Resolution == Resolution.Coarse) { prof?.Begin(10004); w.Agents.CoarseDay(sid, days); prof?.End(10004); }
             // DEEP: the step's later days grow the crop after its work, as days lived grow each day on the work done before it (grown
             // before the step's weeding, a growing step's days were three-quarters tended - harvests fell and households left: F8)
@@ -73,6 +73,7 @@ namespace TC2.Core.Places
             prof?.Begin(10005); Demography(sid, days); prof?.End(10005);
             prof?.Begin(10014); w.Learning.Day(sid, days); prof?.End(10014);   // the young copy the best they can watch (D2-062)
             Weaving.Bar(w, sid);            // its best weavers, who have the looms at its weaver's shed (C3.1)
+            Weaving.Tally(w, sid, days);    // a day its looms, not its flax, left its wares short (C3.1b)
             Training.Daily(w, sid, days);   // fighting skill fades unused; the village's best is known (C1.5)
             prof?.Begin(10015); w.Disease.Day(sid, days); prof?.End(10015);    // sickness: its course, its spread, new ones from the animals (D2-066)
             if (days > 1) Ahead(sid, g0, days);                                 // (its store as days lived would hold it: F8)

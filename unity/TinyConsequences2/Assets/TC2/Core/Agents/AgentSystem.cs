@@ -516,7 +516,8 @@ namespace TC2.Core.Agents
                 case ActivityKind.Weave:
                     if (p.At != 0 && p.At == p.Home && hours > 0)
                     {
-                        int wid = Weaving.Shed(w, p.At);   // (weaving and finishing the village's wares at its weaver's shed: C3.1)
+                        int wid = p.WhyArg != 0 && w.Buildings.Exists(p.WhyArg) && w.Buildings.Get(p.WhyArg).Kind == Structures.Workshop && Structures.Working(in w.Buildings.Get(p.WhyArg), w.Now)
+                            ? p.WhyArg : Weaving.Shed(w, p.At);   // (weaving and finishing the village's wares at the shed they went to: C3.1, C3.1b)
                         if (wid != 0) Weaving.Work(w, ref p, p.At, wid, hours);
                     }
                     break;
@@ -1207,7 +1208,7 @@ namespace TC2.Core.Agents
                 case 22:
                     {
                         ref var wb = ref w.Buildings.Get(shed);
-                        BeginLocal(ref p, ActivityKind.Weave, WhyCode.Weave, 0, wb.X + rs.Range(-3, 3), wb.Y + rs.Range(-3, 3), SimTime.Hours(3.0 + 1.5 * rs.NextUnit()));
+                        BeginLocal(ref p, ActivityKind.Weave, WhyCode.Weave, shed, wb.X + rs.Range(-3, 3), wb.Y + rs.Range(-3, 3), SimTime.Hours(3.0 + 1.5 * rs.NextUnit()));
                         return;
                     }
                 case 15:

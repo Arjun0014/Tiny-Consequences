@@ -150,8 +150,8 @@ and wares are traded, valued by the hours they save: trade x3, home making hours
 mostly for fibre - the flax chain; little grain). **A lived save and load
 continue exactly again** (pre-existing: caches of the day's lakes and flows - the green, the drawn shore, the river lines - went stale in a running
 world): never cache what moves daily without keying it to that day (`PlanetState.WaterDay`) or deriving it from the ground's shape only
-(`PlanetState.InBasin`); test `SaveLoadContinuesIdenticallyWhileLakesRiseAndFall`. Works on the main road are laid beside it. **Next**: SESSION_HANDOFF
-"Session 12" (C3.1b more looms for towns, or C3.2 the potter's kiln).
+(`PlanetState.InBasin`); test `SaveLoadContinuesIdenticallyWhileLakesRiseAndFall`. Works on the main road are laid beside it. **C3.1b (D2-120)**: more sheds where a town's people outrun its
+looms (towns of 500+ carry 2-4). **Next**: SESSION_HANDOFF "Session 12" (C3.2 the potter's kiln, or C3.3 exchange between households).
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

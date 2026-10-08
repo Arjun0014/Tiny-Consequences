@@ -413,21 +413,21 @@ namespace TC2.Headless
                                           ", hours at the smithies " + F(w.Metrics.SmithyHours, "0") + ", metal smelted " + F(w.Metrics.MetalKg, "0") + " kg");
                         {
                             // cloth and goods (C3.1): the weaver's sheds, their makers, wares made, taken, traded; who wears them
-                            int sheds = 0, makers = 0, skilled = 0, wearing = 0, bought = 0, places = 0; int smallShed = int.MaxValue, bigNone = 0; double store = 0, held = 0, people = 0, fibre = 0;
+                            int sheds = 0, makers = 0, skilled = 0, wearing = 0, bought = 0, places = 0, buildings = 0, more = 0; int smallShed = int.MaxValue, bigNone = 0; double store = 0, held = 0, people = 0, fibre = 0;
                             for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
                             {
                                 var st2 = w.Settlements.Get(sid2);
                                 if (!st2.Inhabited) continue;
                                 places++; store += st2.Wares; held += st2.WaresHeld; people += st2.Population; fibre += st2.Fibre;
                                 bool shed = TC2.Core.Places.Weaving.Shed(w, sid2) != 0;
-                                if (shed) { sheds++; if (st2.Population < smallShed) smallShed = st2.Population; }
+                                if (shed) { sheds++; buildings += st2.Sheds; if (st2.Sheds > 1) more++; if (st2.Population < smallShed) smallShed = st2.Population; }
                                 else if (st2.Population > bigNone) bigNone = st2.Population;
                                 if (st2.WaresHeld > 0.1f * st2.Population) { wearing++; if (!shed) bought++; }
                                 if (!shed) continue;
                                 var res2 = w.Residents(sid2);
                                 for (int i = 0; i < res2.Count; i++) { var q = w.People.Get(res2[i]); if (TC2.Core.Places.Weaving.Maker(in st2, in q, w.Now)) { makers++; if (q.SkCraft >= 0.3f) skilled++; } }
                             }
-                            Console.WriteLine("wares: " + sheds + " weaver's sheds of " + places + " villages (smallest with one " + (sheds > 0 ? smallShed.ToString() : "-") + " people, largest without " + bigNone + "); makers " + makers + " (" + skilled + " practised); made " + F(w.Metrics.WaresMade, "0") +
+                            Console.WriteLine("wares: " + sheds + " weaver's sheds of " + places + " villages (" + buildings + " sheds, " + more + " villages with more than one; smallest with one " + (sheds > 0 ? smallShed.ToString() : "-") + " people, largest without " + bigNone + "); makers " + makers + " (" + skilled + " practised); made " + F(w.Metrics.WaresMade, "0") +
                                               " in " + F(w.Metrics.ShedHours, "0") + " h, taken by households " + F(w.Metrics.WaresDrawn, "0") + ", traded " + F(w.Metrics.WaresTraded, "0") + "; in stores " + F(store, "0") + ", worn " + F(held / Math.Max(1.0, people * TC2.Core.Places.Goods.Target) * 100, "0") +
                                               " % of the people; villages wearing them " + wearing + " (" + bought + " without a shed); fibre in store " + F(fibre / Math.Max(1.0, people), "0.00") + " kg a head; home making " + F(w.Metrics.CraftHours, "0") + " h");
                             var wf = TC2.Core.Places.Trade.WaresFor;
