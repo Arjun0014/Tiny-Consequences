@@ -1,6 +1,6 @@
 # TC2 Session handoff
 
-## Session 10 (8 Oct 2026, from 06:15 IST; Control Room run #23 session 2)
+## Session 10 (8 Oct 2026, 06:15 - ~09:10 IST; Control Room run #23 session 2) - D2-114 closed, C9.4 deferred, C13.1 and C13.2 closed
 
 ### Exact state (keep current)
 - **D2-114 building variety closed** (DECISIONS D2-114, closing evidence; `13` §13 "what the real shots taught", `21` §6 "a household's means").
@@ -25,11 +25,18 @@
   lines, the view (`Facing` with its line; lanes' ground). Runs `_c1` (seed 4), `_c2` (ten seeds: the reference now). Shots `lanes1`.
 
 ### Next, in order
-1. **C13.3** - a town's core of rows (houses sharing walls along its main street where lots are dear), the market place widened where traders
-   come, the green kept open; or **C10.2** the political centre made real (a lord's seat raised with tribute labour, gates where streets cross a
-   ring, towers). Data (D2-117 session): lords are 0-2 a world, almost all with one tributary - C10.2 needs lordships that hold first; walled
-   villages are common (up to 29 a world).
+1. **C13.3 rows in a town's core** (designed, not begun): where a town's street frontage near its green is taken (a village of 250+, frontage
+   within ~60 m of the green), the plots are divided - infill lots at the half-step between the 13 m frontage lots (`Streets.Lot` at j + 0.5;
+   `Homes.Taken` keeps 6 m, so 6.5 m infill passes). A narrow plot forces a narrow, tall house: `Architecture.HomeForm` gives a lot narrower than
+   10 m along its line (nearest home on the same line, `Streets.Facing` with its line) only `Two` (6.6 m long) or `Small` (4.8 m), never a longhouse
+   or hall (12-15 m would overlap its neighbours) - so two-storey houses stand wall to wall in rows along the main streets, as burgage plots were
+   divided in medieval towns. Check overlaps in `place --layout` plots (`plotlay.py` draws houses as points: add plan lengths), shots
+   `close`/`low`/`street` of a town of 600+ (`s4_c2` Vumthorpe #19 or Rainthorpe #7), ten seeds against `_c2`, Web. Then the market place (the
+   green widened where traders come: `Settlement.TradeIn`, lots kept clear within a radius growing with it) and the green kept open.
+   Or **C10.2** the political centre (a lord's seat raised with tribute labour, gates where streets cross a ring, towers): lords are 0-2 a world,
+   almost all with one tributary - lordships that hold come first; walled villages are common (up to 29 a world).
 2. C9.4 waits for C3 exchange (D2-115).
+3. Re-measure the Web person/place pages on a quiet machine (54-59 fps in `c132web` against 75-85 in `c131web`).
 
 ## Session 9 (8 Oct 2026, 04:31 - ~06:30 IST; Control Room run #23 session 1) - handed off (context full; D2-114 in progress)
 
