@@ -22,9 +22,15 @@
 - **Shots**: `tc2/out/shots/c133a` (Rainthorpe), `c133g` (ground plates), `c133b` (Vodrothorpe, seed 2), `c133c` (Souhope's busy market, seed 42),
   `c133d` (hall with ground plates after the wing fix). Layout plots `tc2/out/c133/`.
 - **W-FOREST** (Arjun 8 Oct): forests and biomes still read as the same trees recoloured - an open W task (`18` §8, `25`), NOT solved.
+- Known (cosmetic): a river draining into a sea cell drawn as a wide beach can end on the sand short of the water (the sea cell's direction is
+  not the water's: Vodrothorpe, seed 2); no ribbon runs over water any more.
+- **C3.1 design** written (`26_CRAFTS_AND_EXCHANGE.md` §1: the weaver's workshop and the village's wares); no code yet. Hooks found: lived
+  choice block in `AgentSystem` (~line 1009, the smithy's `Forge.Wanted` -> choice 15; add a weave choice and `ActivityKind`), COARSE labour
+  day (~line 1803, `Forge.Work`), household wear in `SettlementSystem` (~line 215: draw wares before making), `Trade.Value/Spare` (a wares good).
 
 ### Next, in order
-1. Web build of the C13.3 commit and Web test; re-measure the person/place pages on a quiet machine (C13.2 read 54-59 fps against C13.1's 75-85).
+1. (done) Web build of e6ab82f: Web test 6/6 (`tc2/out/webtest/c133web`, views 64-120 fps); the person/place pages 67-83 fps - the C13.2 dip
+   (54-59) was machine load, not a regression. The Web build in `tc2/web-build/web` is current.
 2. **C3 exchange** (chosen over C10.2 - trade is 0-5 traders a year at most villages and markets are rare because barter needs a double coincidence
    of wants; lordships rarely hold): design in `21` / a new `26` doc, first slice workshops and wares (a skilled maker's workshop by need, wares made
    for the village and traded), then exchange within a village and between villages; it gives the market places (C13.3) and the sea (C9.4) a trade.

@@ -3186,7 +3186,8 @@ world (radius 25-30 m, the most 36 m). People over years 200-299 x1.003 (t 0.1),
 x0.87, raids x0.99, tributes x0.91 - inside the placebo's spread (D2-114's `_a5p`: wounds x0.85, raids x0.66, tributes x0.71). Run cost a
 person-day x1.2 against `_c2`'s (a seed-42 profile on the `_d6`/`_d7` binaries puts most of it in noise: systems this slice does not touch ran
 20 % slower in the same run; no ground check shows among the costs). The river rule alone (`_d6` -> `_d7`): 4-28 homes a world had stood on a
-river's ribbon; 0 after. The view: the kit's frame measured in the game (bounds: front +z, x mirrored - the hall's wing at -x, `WingSide`
+river's ribbon; 0 after. Web build of e6ab82f: Web test 6/6 (`tc2/out/webtest/c133web`: the browser bit-identical to headless; views 64-120 fps;
+the person and place pages 67-83 fps - C13.2's 54-59 was the shared machine's load, C13.1 read 75-85). The view: the kit's frame measured in the game (bounds: front +z, x mirrored - the hall's wing at -x, `WingSide`
 set from it after a `--ground` shot showed its rectangle on the porch side). Shots `tc2/out/shots/c133a` (Rainthorpe, 860 people: the north street
 lined both sides with narrow gable-fronted town houses, the market place with its cross, stalls and granaries, the rows at street level),
 `c133g` (the ground plates under every house: no plate meets another), `c133b`-`c133d` (the final worlds). Layout plots `tc2/out/c133/*.png`
