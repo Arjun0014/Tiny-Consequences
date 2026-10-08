@@ -10,7 +10,8 @@ only - never modify or stage it.
 1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the full standing prompt (architecture, rules, every direction from Arjun).
 2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 13"** (exact state, runs, known issues, "Next").
 3. `docs/tc2/DECISIONS.md` newest entry **D2-121** (C3.2 the potter's kiln, jars and hearths' pots; clay by the ground's shape).
-4. `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` - C3's design (§1 C3.1, §2 C3.2 as built, §3 the next slices).
+4. `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` - C3's design (§1 C3.1, §2 C3.2 as built, §3 the next slices and the C3.3 survey); `docs/tc2/24_TRANSPORT_AND_MARITIME.md`
+   §2 "Implemented (C4.2)" - the carts in progress (no D2-122 yet: write it when C4.2 closes).
 5. `docs/tc2/PROGRESS.md` CURRENT STATE (session 13 entry); `git status` (the untracked `unity/TinyConsequences2/Assets/Resources.meta` and the
    modified `.claude/launch.json` are not ours - leave them), `git log --oneline -10`.
 
@@ -27,12 +28,26 @@ only - never modify or stage it.
   at par, famines x1.06 (t 0.7). A town buys its jars from the potters' villages round it.
 - **Tests**: 302 headless, Web test 6/6 (`PotteryTests` 8; `TheCoarseDayRaisesBandsAtTheLivedRate` now six worlds - bands are rare). Shots `tc2/out/shots/c32b2`
   (Krumere), `c32c21` (Krailddal: ware in straw for sale).
+- **C3.3 surveyed and deferred** (3db3cec, `26` §3): a tools household ledger (`run --ledger Y`) - the village's store moves 31 % of the food
+  households draw from 43 % givers to 57 % takers; household property needs a moral economy (sharing by need, debts), household fields and
+  inheritance: a phase, weighed with C10 (lords' rents).
+- **C4.2 carts - IN PROGRESS** (d6c29cf, sim version 60; `24` §2 "Implemented (C4.2)"): `Core/Places/Carts.cs` - a household's handcart (120 kg,
+  0.85 pace) or ox cart (500 kg, 0.7) made in its own hours where its backs were too small three times within two years (a trader's back's load on
+  a path/road where more was spared and wanted; wood or stone from 400 m+), with an able wright; cart loads in `Trade.Load/Exchange`, pace in
+  `BeginTravel`, `Woods.Rate`/`Stone.Rate` by the cartload; pages, view (parked and travelling carts, the ox, a load), camera `cart`/`cartyard`,
+  kit `handcart`/`ox_cart`/`cart_load`; `CartsTests` 5/5. Ten seeds `tc2/out/civ/s*_c1` vs `s*_c1n` (`--nocarts`, which reproduces `_k1` exactly):
+  famines x0.83 (t -3.4), hunger deaths x0.93, trades x0.70, **people over years 200-299 x0.955 (t -2.4), not yet explained** - leads: foundings
+  x0.93 (t -1.6), households setting out x1.46, fewer villages at year 300 in 5 of 10 seeds.
+- **Verified at the handoff**: carts 5/5, pottery 8/8, save/load 8/8, Unity 0 errors. **Not yet**: the full suite since carts, cart shots, the Web
+  build/test (`tc2/web-build/web` is still C3.2's d21d09d).
 - Open W task **W-FOREST** (Arjun, 8 Oct): forests/biomes still read as the same trees recoloured - not solved (`18` §8).
 
 ## Do next
-0. **C4.2 carts is IN PROGRESS** (committed as work in progress at the session-13 handoff; SESSION_HANDOFF "Session 13" has the exact state): the
-   ten seeds show famines x0.83 but people over years 200-299 x0.955 (t -2.4) against the same binary without carts - explain that first, then
-   D2-122, shots, the full suite, Web build and test.
+0. **Finish C4.2 carts** (SESSION_HANDOFF "Session 13" has the exact state): explain people x0.955 against `--nocarts` first (foundings and
+   parties: `python agg.py c1n c1`, `python cmp.py c1n c1 <seeds>`, `run --places`/`--vtrace` on a seed that lost villages - s4, s8); fix it only if
+   it is a fault, not a mechanism (re-run both arms as `_c2`/`_c2n`); then write **D2-122** (the measured state, the design, the evidence), shots
+   (`node tc2/scripts/unity.mjs shots --tag c42a --load "<abs>/tc2/out/civ/s4_c1/world_y300.tc2" --village 2 --views "cart@11,cartyard@11,cartfar@14"`),
+   the full suite (`node tc2/scripts/headless.mjs test`, ~12-22 min), Web build and Web test, commit, docs (`24`, `25`, PROGRESS, handoff).
 1. (done in session 13) Web build of d21d09d: Web test 6/6 (`tc2/out/webtest/c32web`, views 86-120 fps, pages 68-84); `tc2/web-build/web` is current.
 2. **C3.3 exchange between households** (`26` §3): the weaver's and the potter's ware is the village's and free to its households - payment in kind
    (makers paid), households' own holdings replacing D2-114's `Means`; export crafts (looms and kilns for buyers) wait for it. Measure first.
@@ -43,7 +58,8 @@ only - never modify or stage it.
 - Copy `tc2/out/tools/wrun.sh`, `cmp.py`, `wares.py`, `pots.py`, `agg.py` to the session's scratchpad and set `SCR=` in `wrun.sh`; copy
   `tc2/headless/app/bin/Release/net8.0` there as `bin_<tag>` before each ten-seed run (sequential, ~15 min for ten).
 - Reference runs: `tc2/out/civ/s*_k1` (C3.2, saves 50/100/200/300, `--rot --potsflow`), `s*_k1n` (same binary, `--nokiln`), `s*_w7` (C3.1b).
-- Headless: `place --load S --stores` (stores, jars, clay, hearths, wood), `place --load S --list` (wares, WEAVER'S SHED, KILN, jars) `| --layout --sid N | --overlaps | --households | --standing`; `person --pick weaver`;
+- Headless: `place --load S --haul` (oxen, wrights, woodlot/quarry distances, ways by state), `run --loads` (trading loads bound by a back's load),
+  `--nocarts`, `carts:` line, `run --ledger Y` (households' harvest share against their draws, C3.3); `place --load S --stores` (stores, jars, clay, hearths, wood), `place --load S --list` (wares, WEAVER'S SHED, KILN, jars) `| --layout --sid N | --overlaps | --households | --standing`; `person --pick weaver`;
   run report lines `pots:`, `wares:`, `water caches:`, `town:`, `trade:`; `run --potsflow`/`--waresflow` (what ware/wares went for), `--nokiln`,
   `--noweave`, `--rot` (grain rotted vs harvested); `tc2/out/tools/agg.py A B [A2 B2]` (report quantities' ratios over the ten seeds), `wares.py TAG seeds`.
 - Shots: `node tc2/scripts/unity.mjs shots --tag T --load "<abs save>" --village ID --views "work23near@11,work23@11,village@11"` (`work23`: the

@@ -159,7 +159,10 @@ pots are made of real clay with real fire and break: clay by the ground's shape 
 granaries keep the grain they seal, only from a kiln; a household that cannot fire its own cooks in kiln pots or on the full wood; a kiln at the clay
 where the store's grain lacks two months of jars, its four best potters at both resolutions, ware from the clay and the village's wood; ware a trade
 good valued by the grain it keeps; the potter's role from practice. Ten seeds against the same binary without kilns: 84 kilns in 169 villages,
-2,000 t of ware traded, trades x5.4, **markets x3.6**, people and rot at par. **Next**: SESSION_HANDOFF "Session 13" (C3.3 exchange between households).
+2,000 t of ware traded, trades x5.4, **markets x3.6**, people and rot at par. C3.3 (exchange between households) was surveyed and deferred as a phase
+(the village's store moves 31 % of the food households draw: household property needs a moral economy). **C4.2 carts is in progress** (households'
+handcarts and ox carts where their backs are too small; famines x0.83 but people x0.955 over ten seeds - to be explained first). **Next**:
+SESSION_HANDOFF "Session 13".
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

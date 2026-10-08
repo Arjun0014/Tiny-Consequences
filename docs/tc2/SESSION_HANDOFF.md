@@ -40,7 +40,14 @@
   hunger deaths x0.93 (t -2.3)**, trades x0.70 (fewer, bigger loads), trade gain x0.93, markets x0.93, wood felled x0.985, births/deaths a
   thousand at par - but **people over years 200-299 x0.955 (t -2.4)** (seed 4 9,655 vs 10,791; 42 7,138 vs 7,701). NOT YET EXPLAINED - find
   why first (villages fewer? foundings, households setting out, the cart hours taken from building homes so households camp longer, grain sold
-  away in cart loads, a tally `cmp.py c1n c1` and `agg.py c1n c1` - parties/foundings/relief).
+  away in cart loads, a tally `cmp.py c1n c1` and `agg.py c1n c1` - parties/foundings/relief). **Leads** (read from the reports at the handoff):
+  foundings x0.926 (t -1.6), households setting out x1.46 (t 1.5), relief x0.88, home making hours x1.02; villages at year 300 fewer in 5 of 10
+  seeds (s4 28 vs 30, s42 18/19, s2 27/29, s1 7/8, s8 11/13) and people lower in 6 - fewer new villages founded may be the loss (land is what
+  bounds people). Look at the parties that set out and did not found (`tools`: `run --places`, `vtrace`), and whether carts change who leaves
+  (`Migration.Weigh`: hardship read from stores sold away in cart loads?).
+- **Verified at the handoff (d6c29cf)**: `CartsTests` 5/5, `PotteryTests` 8/8, `SaveLoad` 8/8 on the committed code; Unity compiles with 0 errors.
+  **Not verified since carts**: the full headless suite (last 302/302 at d21d09d, before carts and the C3.3 ledger hooks), shots of carts, the Web
+  build (`tc2/web-build/web` is still d21d09d, C3.2) and the Web test.
 
 ### Next, in order
 0. **Finish C4.2**: explain the people x0.955 (above) and fix it if it is a fault (not a mechanism), then D2-122, shots (`cart`, `cartyard`
