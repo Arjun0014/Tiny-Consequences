@@ -576,6 +576,7 @@ namespace TC2.Game
                 {
                     ref var q = ref w.People.Get(res[i]);
                     if (q.Act != ActivityKind.Smith || q.At != b.Settlement || q.Step == StepKind.Travel) continue;
+                    if (q.WhyArg != 0 && q.WhyArg != bid) continue;   // (at another of its smithies: C1.4b)
                     Vector3 top = (m * Matrix4x4.Scale(new Vector3(1.2f, 1.2f, 1.2f))).MultiplyPoint3x4(_forgeTop);   // (the smithy is drawn 1.2 times life)
                     _smoke.Add(new Vector4(top.x, top.y, top.z, 1.2f));
                     break;

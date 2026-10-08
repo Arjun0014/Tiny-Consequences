@@ -36,6 +36,168 @@ namespace TC2.Core.Places
 
         public static int Bit => 1 << Knowledge.Tech.Metal;
 
+        /// <summary>
+        /// The places at a smithy (C1.4b, D2-125): its hearth and bellows, the anvil, the bloomery's furnace - its four best smiths by craft and
+        /// practice work there (`Settlement.SmithBar`, read daily). Measured before: every smith of the village who could work copper worked
+        /// at it in turn, in the order its people happened to come - a median 3 hands a year, up to 355 in a year of iron for tools (24,000
+        /// hours in one smithy-year), the busiest hand 6 % of a smithy's hours: no village smith, and crowds at the forge.
+        /// </summary>
+        public const int Places = 4;
+        /// <summary>The most smithies a village keeps (C1.4b, as its weaver's sheds: C3.1b).</summary>
+        public const int MaxSmithies = 4;
+        /// <summary>Days of a year its smithies' places could not do the work it wanted, from which it wants another smithy (the shed's 30: C3.1b).</summary>
+        public const int ShortDays = 30;
+        /// <summary>Practice a smith gains an hour at the smithy or the open hearth (`Person.SkSmith`; the potter's and the weaver's rate).</summary>
+        public const double SkillRate = 0.0015;
+        /// <summary>Tools: the smithy's law before C1.4b on the same binary (every smith who can work copper works there; no practice in the pace);
+        /// false in the game.</summary>
+        public static bool CrewOff;
+
+        /// <summary>The places a village's smithies hold: its this many best smiths have them (C1.4b).</summary>
+        public static int PlacesOf(in Settlement s) => Places * (s.Smithies > 1 ? s.Smithies : 1);
+
+        /// <summary>
+        /// Hours of work the village wants at its smithies now that its stores can feed (C1.4b): copper and iron still wanted as far as its ore and
+        /// charcoal go, at its best smiths' pace, and the forging of the arms it still wants. Ore or charcoal short is not a smiths' shortfall.
+        /// </summary>
+        public static double Backlog(in Settlement s)
+        {
+            double cu = Knowledge.Tech.MetalAt(s.BestMetal) * Pace, fe = Knowledge.Tech.IronAt(s.BestIron) * Pace, h = 0.0;
+            if (cu > 0) h += DMath.Min(CopperWanted(in s), CopperCan(in s)) / cu;
+            if (fe > 0 && s.BestIron >= Mining.Smelter) h += DMath.Min(IronWanted(in s), IronCan(in s)) / fe;
+            double arms = ArmsWant(in s) - s.Arms;
+            if (arms > 0 && (cu > 0 || fe > 0)) h += arms * ArmHours;
+            return h;
+        }
+
+        /// <summary>
+        /// The village's day (C1.4b): a day its smithies' places could not do the work it wanted - its smiths, not its ore or its charcoal, fell
+        /// short (the work before them more than all its places' labour day) - is a short day.
+        /// </summary>
+        public static void Tally(World w, int sid, int days)
+        {
+            if (CrewOff) return;
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.Smithy == 0) return;
+            if (Backlog(in s) <= PlacesOf(in s) * AgentSystem.LabourDay * days) return;
+            s.SmithShort = (byte)System.Math.Min(255, s.SmithShort + days);
+        }
+
+        /// <summary>
+        /// The yearly weighing (the day households weigh leaving, as the weaver's sheds: C3.1b): a village whose smiths were short on `ShortDays` or
+        /// more of the year's days, with more able smiths than its smithies have places, wants another smithy - four more places for its next best
+        /// smiths; the count starts again.
+        /// </summary>
+        public static void Year(World w, int sid)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.Smithy != 0 && s.Smithies >= 1 && s.Smithies < MaxSmithies && s.SmithShort >= ShortDays && NeedsMore(in s) && AbleCount(w, sid) > PlacesOf(in s)) s.SmithMore = 1;
+            s.SmithShort = 0;
+        }
+
+        /// <summary>
+        /// Hours a year its smiths need once its people are equipped (C1.4b): the tools that wear out (`Tech.ToolLoss` a year: iron where it smelts
+        /// iron, else copper), the iron it sold over the past year, and the arms it keeps (worn `ArmsDecay` a year) - at its best smiths' pace.
+        /// </summary>
+        public static double YearNeed(in Settlement s)
+        {
+            double cu = Knowledge.Tech.MetalAt(s.BestMetal) * Pace, fe = Knowledge.Tech.IronAt(s.BestIron) * Pace, h = 0.0;
+            bool iron = fe > 0 && s.BestIron >= Mining.Smelter;
+            if (iron) h += (Knowledge.Tech.IronPerHead * s.Population * Knowledge.Tech.ToolLoss + s.IronSold) / fe;
+            else if (cu > 0) h += Knowledge.Tech.MetalPerHead * s.Population * Knowledge.Tech.ToolLoss / cu;
+            double rate = iron && IronArms(in s) ? fe : cu;
+            if (rate > 0) h += ArmsWant(in s) * ArmsDecay * (ArmKg / rate + ArmHours);
+            return h;
+        }
+
+        /// <summary>
+        /// Its smiths could not keep up even once its people are equipped (C1.4b; as the looms' `NeedsMore`, C3.1b): its year's need is more than
+        /// its places' year. Counted on shortfall alone, nearly every village that smelted iron raised three or four smithies for the years of its
+        /// first equipping (seed 4: 95 standing against 27) - work a smith does once, over some years.
+        /// </summary>
+        public static bool NeedsMore(in Settlement s) => YearNeed(in s) > PlacesOf(in s) * AgentSystem.LabourDay * SimTime.DaysPerYear;
+
+        /// <summary>A village wants another smithy now (C1.4b): wanted since its last yearly weighing, a store, no walls rising.</summary>
+        public static bool MoreWanted(in Settlement s) => !CrewOff && s.SmithMore != 0 && s.Smithy != 0 && s.Smithies < MaxSmithies && s.Wall != 1 && (s.Works & Construction.Granary) != 0;
+
+        /// <summary>The village's able smiths (copper competent, 16-59).</summary>
+        public static int AbleCount(World w, int sid)
+        {
+            var res = w.Residents(sid);
+            int n = 0;
+            for (int i = 0; i < res.Count; i++) if (Able(in w.People.Get(res[i]), w.Now)) n++;
+            return n;
+        }
+
+        /// <summary>The smithy a smith works at: the working one nearest their home (one smithy: that one; C1.4b).</summary>
+        public static int SmithyFor(World w, in Settlement s, in Person p)
+        {
+            if (s.Smithies <= 1) return Smithy(w, s.Id);
+            double hx = s.SquareX, hy = s.SquareY;
+            if (w.Households.Exists(p.Household)) { ref var hh = ref w.Households.Get(p.Household); hx = hh.HomeX; hy = hh.HomeY; }
+            int best = 0; double bd = double.MaxValue;
+            var bl = w.BuildingsOf(s.Id);
+            for (int i = 0; i < bl.Count; i++)
+            {
+                ref var b = ref w.Buildings.Get(bl[i]);
+                if (b.Kind != Structures.Smithy || !Structures.Working(in b, w.Now)) continue;
+                double dx = (double)b.X - hx, dy = (double)b.Y - hy, d = dx * dx + dy * dy;
+                if (d < bd) { bd = d; best = bl[i]; }
+            }
+            return best;
+        }
+
+        /// <summary>A smith's hand: practice quickens it, 0.8 for a new hand to 1.2 for a practised one (as the potter's and the weaver's).</summary>
+        public static double Hand(in Person p) => CrewOff ? 1.0 : 0.8 + 0.4 * p.SkSmith;
+
+        /// <summary>A person's standing among the village's smiths: their craft in copper and iron, and their practice.</summary>
+        public static double Key(in Person p) => (double)p.KMetal + p.KIron + p.SkSmith;
+
+        /// <summary>Of an age and craft for a place at the smithy (a smith who can work copper, 16-59).</summary>
+        static bool Able(in Person p, long now)
+        {
+            if (!p.Alive || p.KMetal < Knowledge.Tech.Competent) return false;
+            double age = p.AgeYears(now);
+            return age >= 16 && age < 60;
+        }
+
+        /// <summary>One of the village's best smiths, who have its smithy's places: at or above its bar, ties to the lower id.</summary>
+        public static bool Maker(in Settlement s, in Person p, long now)
+        {
+            if (!Able(in p, now)) return false;
+            double k = Key(in p);
+            return k > s.SmithBar || (k == s.SmithBar && p.Id <= s.SmithBarId);
+        }
+
+        /// <summary>
+        /// The village's bar for a place at its smithy (daily, and when the smithy is raised): the `Places`-th best of its able smiths by `Key`,
+        /// ties broken by the lower id. Fewer able smiths than places: all of them.
+        /// </summary>
+        public static void Bar(World w, int sid)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.Smithy == 0) return;
+            var res = w.Residents(sid);
+            long now = w.Now;
+            double barK = double.MaxValue; int barId = int.MinValue;
+            int places = PlacesOf(in s);
+            for (int k = 0; k < places; k++)
+            {
+                double bk = 0; int bid = 0; bool found = false;
+                for (int i = 0; i < res.Count; i++)
+                {
+                    ref var p = ref w.People.Get(res[i]);
+                    if (!Able(in p, now)) continue;
+                    double key = Key(in p); int id = res[i];
+                    if (!(key < barK || (key == barK && id > barId))) continue;
+                    if (!found || key > bk || (key == bk && id < bid)) { bk = key; bid = id; found = true; }
+                }
+                if (!found) { s.SmithBar = -1.0; s.SmithBarId = int.MaxValue; return; }
+                barK = bk; barId = bid;
+            }
+            s.SmithBar = barK; s.SmithBarId = barId;
+        }
+
         /// <summary>The village's working smithy (0 none).</summary>
         public static int Smithy(World w, int sid)
         {
@@ -92,7 +254,8 @@ namespace TC2.Core.Places
         {
             smithy = 0;
             if (p.KMetal < Knowledge.Tech.Competent || s.Smithy == 0) return false;
-            smithy = Smithy(w, s.Id);
+            if (!CrewOff && !Maker(in s, in p, w.Now)) return false;   // (its places are its best smiths': C1.4b)
+            smithy = CrewOff ? Smithy(w, s.Id) : SmithyFor(w, in s, in p);   // (at the smithy nearest home: C1.4b)
             return smithy != 0 && Use(w, in s);
         }
 
@@ -105,8 +268,8 @@ namespace TC2.Core.Places
         {
             if (hours <= 0 || smithy == 0) return 0;
             ref var s = ref w.Settlements.Get(sid);
-            double rate = Knowledge.Tech.MetalPerHour(in p) * Pace;   // kg of copper an hour smelted and worked
-            double feRate = Knowledge.Tech.IronPerHour(in p) * Pace;  // kg of bar iron an hour from the bloomery and the anvil
+            double rate = Knowledge.Tech.MetalPerHour(in p) * Pace * Hand(in p);   // kg of copper an hour smelted and worked (practice quickens it: C1.4b)
+            double feRate = Knowledge.Tech.IronPerHour(in p) * Pace * Hand(in p);  // kg of bar iron an hour from the bloomery and the anvil
             if (rate <= 0) return 0;
             bool fe = p.KIron >= Mining.Smelter && feRate > 0 && IronCan(in s) > 1e-6;
             bool ore = CopperCan(in s) > 1e-6;
@@ -199,6 +362,7 @@ namespace TC2.Core.Places
             w.Metrics.SmithyHours += used;
             TC2.Core.Diagnostics.HouseLedger.Craft(w, p.Household, used);   // (tools: whose hours the smithy's were; null in the game)
             TC2.Core.Diagnostics.CraftTally.Add(TC2.Core.Diagnostics.CraftTally.Smithy, p.Id, used, w, sid);
+            p.SkSmith = (float)DMath.Min(1.0, p.SkSmith + SkillRate * used);   // (their practised hand: their role is read from it, C1.4b)
             w.Learning.Practice(ref p, Knowledge.Tech.Metal, used);
             w.Learning.Practice(ref p, Knowledge.Tech.Iron, used);   // (a copper smith who has seen bog ore may find the bloomery: C5.2b)
             return used;

@@ -166,6 +166,13 @@ namespace TC2.Core.Places
             // a competent smith and use for metal: a smithy (C1.4) - after water and a store, never while walls rise
             if (s.Smithy == 0 && (s.TechKnown & Forge.Bit) != 0 && s.Wall != 1 && (s.Works & Construction.Granary) != 0 && Forge.Use(w, in s))
             { Begin(w, sid, Smithy, s.SmithEvent, CauseRel.EnabledBy); return; }
+            // its smiths could not keep up with the work it wanted most of last year: another smithy, four more places (C1.4b)
+            if (Forge.MoreWanted(in s))
+            {
+                s.SmithMore = 0;
+                long first = w.Buildings.Exists(s.Smithy) ? w.Buildings.Get(s.Smithy).Event : 0;
+                Begin(w, sid, Smithy, first, CauseRel.CausedBy); return;
+            }
             // a village that knows the loom and whose people's wear of goods would keep several makers busy: a weaver's shed (C3.1) - after water
             // and a store, never while walls rise
             if (Weaving.ShedWanted(w, in s))
@@ -262,7 +269,9 @@ namespace TC2.Core.Places
             if (b.Kind == Kiln) { s.Kiln = bid; Pottery.Bar(w, sid); }   // (its best potters work there from today: C3.2)
             if (b.Kind == Smithy)
             {
-                s.Smithy = bid;
+                if (s.Smithy == 0) s.Smithy = bid;
+                s.Smithies++;
+                Forge.Bar(w, sid);   // (its best smiths have its places from today: C1.4b)
                 if (s.Stone >= Forge.HearthStone) { s.Stone -= Forge.HearthStone; b.Stone = (float)(b.Stone + Forge.HearthStone); b.Mat = 1; }   // (a hearth of stone when there is stone)
             }
             b.Event = w.Record(new HistoryEvent
@@ -290,7 +299,7 @@ namespace TC2.Core.Places
             if (kind == Mine) s.Mine = id;
             if (kind == CharHearth) s.CharHearth = id;
             if (kind == BogPits) s.FeMine = id;
-            if (kind == Smithy) s.Smithy = id;
+            if (kind == Smithy) { if (s.Smithy == 0) s.Smithy = id; s.Smithies++; Forge.Bar(w, sid); }
             if (kind == Ground) s.Ground = id;
             if (kind == Market) s.Market = id;
             if (kind == BoatShed) s.Shed = id;
@@ -313,7 +322,22 @@ namespace TC2.Core.Places
             if (b.Kind == Mine && s.Mine == bid) s.Mine = 0;
             if (b.Kind == CharHearth && s.CharHearth == bid) s.CharHearth = 0;
             if (b.Kind == BogPits && s.FeMine == bid) s.FeMine = 0;
-            if (b.Kind == Smithy && s.Smithy == bid) s.Smithy = 0;
+            if (b.Kind == Smithy)
+            {
+                // (one smithy fewer; the first lost, another standing takes its place: C1.4b)
+                if (s.Smithies > 0) s.Smithies--;
+                if (s.Smithy == bid)
+                {
+                    s.Smithy = 0;
+                    var others = w.BuildingsOf(b.Settlement);
+                    for (int i = 0; i < others.Count && s.Smithy == 0; i++)
+                    {
+                        if (others[i] == bid) continue;
+                        ref var o = ref w.Buildings.Get(others[i]);
+                        if (o.Kind == Smithy && Working(in o, w.Now)) s.Smithy = others[i];
+                    }
+                }
+            }
             if (b.Kind == Ground && s.Ground == bid) s.Ground = 0;
             if (b.Kind == Market && s.Market == bid) s.Market = 0;
             if (b.Kind == BoatShed && s.Shed == bid) s.Shed = 0;

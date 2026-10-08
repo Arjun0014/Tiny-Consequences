@@ -147,6 +147,7 @@ namespace TC2.Core.Agents
         public int Voyage;                   // the boat they are on a voyage in, from the landing at home and back (0 none; C9.3)
         public float SkCraft;                // a maker's practised hand at a workshop, 0..1: grown by hours at the weaver's shed (C3.1); their role is read from it
         public float SkPot;                  // a potter's practised hand at the kiln, 0..1: grown by hours there (C3.2); their role is read from it
+        public float SkSmith;                // a smith's practised hand at the smithy or the open hearth, 0..1: grown by hours there (C1.4b, D2-125); their role is read from it
 
         // derived from the world's seed and the person's id - never saved or hashed: filled when a person is made or loaded (Derive);
         // readers fall back to computing them where it is 0 (the same values: an exact speedup, F8)
@@ -183,7 +184,7 @@ namespace TC2.Core.Agents
             w.Int(ActVer); w.UInt(RngCount); w.Long(Alarm); w.Int(AlarmProc); w.Long(AlarmT); w.Int(AlarmVer); w.Int(StayDur); w.Int(Visits); w.Long(Until); w.Float(Worked); w.Float(KNets); w.Float(KLoom); w.Float(KQuern); w.Float(KPottery); w.Float(KArd); w.Float(KMetal); w.Float(KIron); w.Float(KBoat);
             w.Int(Sick); w.Byte(SickPhase); w.Long(SickUntil); w.Long(SickCause); w.Int(Imm0); w.Int(Imm1); w.Long(ImmUntil0); w.Long(ImmUntil1); w.Byte(Cargo); w.Float(CargoQty); w.Byte(CargoTo);
             w.Int(Imm2); w.Int(Imm3); w.Int(Imm4); w.Int(Imm5); w.Long(ImmUntil2); w.Long(ImmUntil3); w.Long(ImmUntil4); w.Long(ImmUntil5);
-            w.Float(Hurt); w.Int(HurtDeed); w.Int(Errand); w.Int(Band); w.Float(SkFight); w.Byte(Fights); w.Int(Voyage); w.Float(SkCraft); w.Float(SkPot);
+            w.Float(Hurt); w.Int(HurtDeed); w.Int(Errand); w.Int(Band); w.Float(SkFight); w.Byte(Fights); w.Int(Voyage); w.Float(SkCraft); w.Float(SkPot); w.Float(SkSmith);
         }
 
         public static Person Read(BinReader r)
@@ -199,7 +200,7 @@ namespace TC2.Core.Agents
             p.ActVer = r.Int(); p.RngCount = r.UInt(); p.Alarm = r.Long(); p.AlarmProc = r.Int(); p.AlarmT = r.Long(); p.AlarmVer = r.Int(); p.StayDur = r.Int(); p.Visits = r.Int(); p.Until = r.Long(); p.Worked = r.Float(); p.KNets = r.Float(); p.KLoom = r.Float(); p.KQuern = r.Float(); p.KPottery = r.Float(); p.KArd = r.Float(); p.KMetal = r.Float(); p.KIron = r.Float(); p.KBoat = r.Float();
             p.Sick = r.Int(); p.SickPhase = r.Byte(); p.SickUntil = r.Long(); p.SickCause = r.Long(); p.Imm0 = r.Int(); p.Imm1 = r.Int(); p.ImmUntil0 = r.Long(); p.ImmUntil1 = r.Long(); p.Cargo = r.Byte(); p.CargoQty = r.Float(); p.CargoTo = r.Byte();
             p.Imm2 = r.Int(); p.Imm3 = r.Int(); p.Imm4 = r.Int(); p.Imm5 = r.Int(); p.ImmUntil2 = r.Long(); p.ImmUntil3 = r.Long(); p.ImmUntil4 = r.Long(); p.ImmUntil5 = r.Long();
-            p.Hurt = r.Float(); p.HurtDeed = r.Int(); p.Errand = r.Int(); p.Band = r.Int(); p.SkFight = r.Float(); p.Fights = r.Byte(); p.Voyage = r.Int(); p.SkCraft = r.Float(); p.SkPot = r.Float();
+            p.Hurt = r.Float(); p.HurtDeed = r.Int(); p.Errand = r.Int(); p.Band = r.Int(); p.SkFight = r.Float(); p.Fights = r.Byte(); p.Voyage = r.Int(); p.SkCraft = r.Float(); p.SkPot = r.Float(); p.SkSmith = r.Float();
             return p;
         }
 
@@ -215,7 +216,7 @@ namespace TC2.Core.Agents
             h.Add(ActVer); h.Add(RngCount); h.Add(Alarm); h.Add(AlarmProc); h.Add(AlarmT); h.Add(AlarmVer); h.Add(StayDur); h.Add(Visits); h.Add(Until); h.Add(Worked); h.Add(KNets); h.Add(KLoom); h.Add(KQuern); h.Add(KPottery); h.Add(KArd); h.Add(KMetal); h.Add(KIron); h.Add(KBoat);
             h.Add(Sick); h.Add(SickPhase); h.Add(SickUntil); h.Add(SickCause); h.Add(Imm0); h.Add(Imm1); h.Add(ImmUntil0); h.Add(ImmUntil1); h.Add(Cargo); h.Add(CargoQty); h.Add(CargoTo);
             h.Add(Imm2); h.Add(Imm3); h.Add(Imm4); h.Add(Imm5); h.Add(ImmUntil2); h.Add(ImmUntil3); h.Add(ImmUntil4); h.Add(ImmUntil5);
-            h.Add(Hurt); h.Add(HurtDeed); h.Add(Errand); h.Add(Band); h.Add(SkFight); h.Add(Fights); h.Add(Voyage); h.Add(SkCraft); h.Add(SkPot);
+            h.Add(Hurt); h.Add(HurtDeed); h.Add(Errand); h.Add(Band); h.Add(SkFight); h.Add(Fights); h.Add(Voyage); h.Add(SkCraft); h.Add(SkPot); h.Add(SkSmith);
         }
     }
 }

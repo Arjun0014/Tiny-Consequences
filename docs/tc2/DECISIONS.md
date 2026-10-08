@@ -3374,3 +3374,149 @@ straw for sale - it sold 2 t lately). Web build of this code: Web test 6/6 (`tc2
 **Open.** Ware is the village's and free to its households (payment in kind: C3.3). Pottery makes most of the world's trade now (2,000 t over ten
 worlds): market places come where potters' villages sell - re-weigh C9.4 (cargo by sea) with this traffic. Kilns do not multiply in towns (one a
 village); a kiln's crew is four. Clay-less villages without traders in reach rot at the full rate.
+
+## D2-122 — 2026-10-09 — Carts: a household's handcart or ox cart where its backs are too small (C4.2)
+
+**Context.** C4's second slice (`24` §2; roadmap `25` C4). Measured first on the C3.2 worlds (seed 4, `run --loads`, `place --haul`): **83 % of the
+trading loads set out were bound by what one person carries** (`Trade.LoadKg` 25 kg) - more was spared at home and wanted at the other end; grown
+oxen are scarce in mature worlds (1-2 % of households at year 300, 13 % at year 100: fields have taken the pasture), so ox carts alone would change
+little; the ways between villages are mostly paths and roads by year 300 (seed 4: 84 paths, 34 roads, 8 tracks); woodlots lie 350-1,130 m out.
+Carrying, not cutting, was most of the work of wood and stone from far off (`24` §1).
+**Decision.** `Core/Places/Carts.cs` - carts are household property (`Household.CartKind/CartState/CartHours/CartAt/CartNeed`), nothing on the
+village's ground.
+(1) **Two carts**: a **handcart** (two wheels, a bed of planks, shafts; pushed or pulled by its person: `HandKg` 120 kg at `HandPace` 0.85 of a
+walker's pace) or, where the household keeps a grown ox, an **ox cart** (`OxKg` 500 kg at `OxPace` 0.7) - which stands in the yard while the
+household keeps no grown ox.
+(2) **Wanted** when the household's backs were too small `NeedTrips` (3) times, none `NeedYears` (2) apart: a trader of it carried a back's load
+where more was spared and wanted along a way worn to a path or a road (`Carts.Want` from `Trade.Load`; a track takes no wheels), or a stint of it
+carried wood or stone home from `HaulFrom` (400 m) or more (`WantHaul` from `Woods.Cut`/`Stone.Cut`) - and one of its able people (16-59, well)
+works wood well enough to shape a wheel and an axle (`Wright`, `SkWood` 0.4). After one trip, carts were made that then stood in the yard.
+(3) **Made** in the household's hours like a boat (C9.1): begun by the village's day when the store's wood allows (3 loads, an ox cart 10, after
+two days of the hearths' wood) - **never while hunger sends the village to the wild** (`AgentSystem.WildNeed` above `ShortBound` 0.42, the bound
+at which its people forage instead of making it): begun so, 66 % of a hungry world's carts were begun short and 95-97 % of those given up were given
+up short, most with no hour in them; it waits, wanted, for a fed season. `HandHours` 30 (`OxHours` 80) at the maker's building pace; lived, a choice
+in the yard (u 0.5, `WhyCode.Cart` 47, the maker's woodworking grows); COARSE/DEEP, up to `HoursADay` 2 h of a grown member's day **before** the
+village's building (given only what building left, half the carts begun were never made). Given up when not made in `PatienceYears` (2): its
+timber goes back to the woodpile.
+History `CartMade` (90) under the household with its maker. **Worn** after `HandYears` 12 (`OxYears` 20), left in the yard; the household may
+want another. The heir takes the cart when a household ends, and the last to leave a household takes it along.
+(4) **Used** - one law at both resolutions: a trader of a household with a usable cart loads a cart's load on a worn way (`Carts.LoadFor` in
+`Trade.Load`; the return load in `Trade.Exchange`) and travels at its pace (`AgentSystem.BeginTravel`, `Carts.Pace`: a cart's pace only while the
+load is more than a back's); wood and stone come home by the cartload - the walk home shared by a trip's loads (`Woods.Rate`/`Stone.Rate` with
+`trip` loads at `pace`, `Carts.Haul`). Over the sea nothing changes (a boat's load). `--nocarts` (`Carts.Off`) gives the world before carts on the
+same binary - the rates reduce exactly to the old ones (`_c1n` equals `_k1` bit for bit).
+(5) **Pages and view**: the person page (the household keeps a handcart made in year N; is making one, hours of 30; wants one; worn past mending;
+"no grown ox to draw it now"), the settlement page ("Carts": handcarts, ox carts, being made), cargo "on the household's handcart", the history
+line (who shaped its wheels), the activity "shaping wheels and an axle for the household's handcart in the yard: what they carry is more than their
+backs can take". The view: carts parked in the yards by the end wall away from the woodpile where the ground is free (`Plot.CartEnd/OxEnd`), a
+handcart pulled behind its trader on the road (a load of sacks while it carries more than a back's load), an ox cart behind its ox with the person
+at the ox's head, a cart beside its people at the woods or a quarry. Kit `handcart`, `ox_cart`, `cart_load`. Camera `cart`, `cartfar`,
+`cartyard`. Headless `carts:` line, `--nocarts`, `--loads` (the survey), `--carttally` (why carts are given up), `place --haul`. Sim version 60.
+**Evidence.** `CartsTests` 6: a trader whose back was too small three times along a path brings a cart home (an ox cart where the household keeps a
+grown ox; from the store's wood); needs years apart never add up; no wheels on a track, no cart without a wright; far woods want one, near woods do
+not; a cart is made in the household's hours at both resolutions (COARSE 11 days, lived 4, seen in the yard, told in history) and a save with one
+half made continues as the world does; on a path a handcart's load at its pace, a back's on a track, an ox cart only while it keeps a grown ox, and
+`Off` is the world before carts; wood and stone come home by the cartload (woods 800 m: 0.91 loads an hour on the back, 1.11 by handcart, 1.17 by ox
+cart; 200 m: no gain); worn carts are left and the heir takes one; **no cart is begun while hunger sends the village to the wild, and one given up
+goes back to the woodpile**. **Ten seeds, 300 years DEEP (`_c2`) against the same binary without carts (`_c1n`, `--nocarts`, which reproduces the
+C3.2 reference `_k1` exactly)**: at year 300 6,119 handcarts and 133 ox carts among 15,322 households (41 %); over 300 years 58,072 carts begun,
+54,766 made, 2,824 given up (4.9 %); 12,758 trading trips with a cart, 861 t carried out. **Trades x0.67 (t -4.8)** - fewer trips, bigger loads -,
+trade gain x0.90 (t -1.2), market places x0.87 (t -1.7); people over years 200-299 x0.97 (t -1.1), births and deaths a thousand person-years
+x0.999 / x1.003, hunger deaths a thousand person-years x0.99, **famines x0.89 (t -1.5)**, wood felled x0.98, run cost a person-day x1.00. The first
+run (`_c1`, carts begun in hunger): famines x0.83 (t -3.4), hunger deaths x0.93 (t -2.3), trades x0.70 (t -4.9) and people over years 200-299 x0.955
+(t -2.4) - **investigated (session 14)**: the per-person rates were identical (births 43.9 vs 43.8 a 1,000 person-years, net growth 7.20 vs 7.21,
+hunger deaths lower with carts); seed 4's loss was one bigger epidemic at year 180 (1,289 sickness deaths against 734), seed 42's an early chance
+split (years 20-40, with no hunger, no sickness and 4 cart trading trips in 100 years); a placebo over the ten seeds (`--nocarts --nudge 20`,
+`_c1p`: one FU more in one store at year 20) spreads as widely (people x0.982, the sd of the log ratio 0.069 against the carts' 0.061; seed 1
+x0.857, seed 5 x0.889) - carts against the placebo x0.972 (t -1.06): noise. The placebo moves blows (x0.88, t -3.2) and watch nights (x0.90, t -3.5)
+as far as carts do: conflict counts are noise at this spread. The hunger rule (`_c1` -> `_c2`): carts given up 15.5 % -> 4.9 % (`run --carttally`:
+in the hungry worlds 34-66 % of carts had been begun short and 95-97 % of those given up were given up short, most with no hour in them), carts made
+x1.01, every outcome inside the noise (people x1.01, famines x1.07, t 0.8). Over two runs the carts' effects that a placebo does not reproduce are
+trades x0.67-0.70 and famines x0.83-0.89.
+Shots: `tc2/out/shots/c42a` (seed 4 year 300: a handcart with a trader on a market green; the yard camera framed a roof; woodcutters with their
+handcarts standing out in the sea - D2-123), `c42c` (Tovaldton, `_c2` year 300: a handcart parked by a hut's end wall beside its garden and woodpile;
+woodcutters with their handcarts on the sand by the water). Full suite 308/308 (carts, the hunger rule, D2-123's spots). WEB_PLACEHOLDER
+**Open.** Carts serve their own household only (no lending, no village carting of the harvest, a palisade's stone or a lord's tribute); no pack
+animals or sleds; no road works or upkeep (C4.1's wear is the only road); the cart's ox works no field the day it draws (the ard is separate).
+Crossings were surveyed (D2-124): every stream a worn way crosses is fordable.
+
+## D2-123 — 2026-10-09 — Nobody works in the water: lived work spots on dry ground (the `wet` audit)
+
+**Context.** C4.2's first shots showed people with their handcarts standing out in the sea. D2-111 had kept shore fishers and a drowned square's
+people out of the water; the other work spots were never checked. A new headless audit, `wet --load SAVE [--days N]`, lives a saved world from its
+next midnight hour by hour and counts every person not out in a boat whose place is under the drawn water (`Boats.Afloat`: the sea, or a lake
+deeper than 0.3 m) by activity and village, with the standing buildings on wet ground. Seed 4 at year 300 (`_c2`): **0.64 % of all person-hours
+were spent in the water** - field work 2,078 of 2,535 (four villages - Veidasford, Deirokton, Tildalstead, Vumthorpe - whose field spot, set at the
+founding 170 m out toward its arable land, now lies in a lake or the sea), hunting 193, woodcutting 120 (coastal woodlots: the cell's centre
++-50 m), then people eating and idling where they stood. No standing home or work was on wet ground.
+**Decision.** (1) Every lived work spot scattered round a place is moved to the nearest dry ground (`AgentSystem.Ashore` = `Boats.OutOfTheWater`,
+rings out to 300 m): the field hands' spot, the woodcutters' spot, and every wild ground's point (`WildFood.GroundPoint`: before, fishers only). The
+stint's work is unchanged (a lived stint is timed from arrival); the walk moves by metres. COARSE and DEEP do not place people. (2) **Woods above
+the shore** (as a quarry's rock, C1.3): a woodlot is chosen only on a cell whose middle stands on dry ground (`Shore.Dry`: above the sea's
+two-metre margin, no lake over it) - 0-3 woodlots a world lay on the shore, drawn as a bare beach, their cutters and carts on the sand felling
+woods nobody sees; a woodlot the sea has taken is chosen again (`Woods.Ensure`). This one changes every resolution.
+**Evidence.** `wet` on the same save: 0.637 % -> **0.051 %** of person-hours (2,535 -> 204 in two days); what is left is people walking a straight
+line across a lake between two dry spots, and an evening when a day's lake rose over Gaby's works (a flood the simulation does not yet answer).
+Tests: `FieldHandsWoodcuttersAndHuntersWorkOnDryGround` (a coastal village's field and woodlot spots moved out over the sea: three lived days,
+294 person-hours at the fields, the woods and the wild, none heading into the water - and it fails with the field spot's `Ashore` removed);
+`WoodsAreFelledAboveTheShore` (the densest woods within reach on a shore cell, sparser woods on dry ground farther off: the dry ones chosen, three
+villages; every woodlot of five worlds on dry ground). Ten seeds with the woodlot rule (`_c3`) against `_c2`: people over years 200-299 x1.04 (t 1.3), births and
+deaths a thousand at par, famines x1.09 (t 1.2), foundings x1.07, wood felled x1.04 - inside the noise. `wet` on the year-300 save of `_c3`: 0.078 % (367 of 472,317 person-hours) - people within 4 m of a waterline and walks drawn as straight lines across a lake (a cook 104 m out on the way home).
+Full suite 314/314 on the code of D2-122 to D2-125.
+**Open.** Local walks are straight lines (across a lake between two dry spots); a lake risen over works or homes is not yet a flood people answer
+(they stay and work in it) - a flood slice (C2/E) with the water's own rise.
+
+## D2-124 — 2026-10-09 — River crossings surveyed: every stream a way crosses is fordable (C4.3 deferred)
+
+**Context.** `24` §4 plans fords, ferries and bridges where heavily used ways cross rivers - and C4.2's carts need wheeled crossings. Measured first
+(`place --load SAVE --crossings`: each way worn to a track or more, the streams its route crosses - runs of cells whose smoothed flow makes a stream,
+`PlanetState.IsStream` - the largest flow crossed and the drainage above it, and the world's largest flows), five worlds at year 300 (`_c1`,
+seeds 4, 42, 2, 7, 3): **the largest flow on any of them is 0.08-0.23 m3/s** (7,300-19,600 m3 a day) - a brook a person steps or wades across;
+13-140 stream crossings on the worn ways a world, all of them brooks (most under 0.07 m3/s, a few up to 0.2). The 6 km planet's catchments
+(D2-085: 166 km2 of land in all) make no river a walker or a cart cannot ford.
+**Decision.** No crossings slice now: a ford, a ferry or a bridge would carry nothing the simulation needs (theatre). C4.3 waits for a river a
+walker cannot ford - a flood (D2-123 "Open") or a larger world. The survey tool stays (`place --crossings`).
+
+## D2-125 — 2026-10-09 — The village smith: a smithy's four places, a smith's practice, roles read from practice (C1.4b)
+
+**Context.** Measured first (`run --crafttally`: hours each person spends at each craft, by person and by village-year; seeds 4 and 7, 300 years,
+the `_c3` binary): (1) the person page called **5,730 of seed 4's people "a smith" and "a boatwright"** at year 300 - everyone competent in copper
+or in the planks' craft - where 175 had worked at a smithy in two years (22 for 50 h or more) and 10 had built a plank boat (weavers and potters
+were already read from practice, D2-119/D2-121); (2) **smithies had no smiths**: every copper-competent person worked at the village's smithy in
+turn, in the order its people happened to come (`Forge.Wanted`: competent and work left) - smithy-years had a median of 35 hours and 3 hands, but
+p99 2,900-11,100 hours and **up to 24,000 hours by 355 different people in one year** (a town's iron tools at the bloomery: 2 kg a head at 0.06
+kg an hour), the busiest hand doing 6 % of a smithy's hours; a lived day sent a crowd to the forge.
+**Decision.** (1) **A smithy's places** (`Forge.Places` 4: the hearth and bellows, the anvil, the bloomery's furnace) are its village's best smiths
+by `Key` = copper + iron + practice (`Settlement.SmithBar/SmithBarId`, read daily and when a smithy is raised; able smiths only: copper competent,
+16-59); only they work there, at both resolutions (lived, a smith's id of smithy rides in `WhyArg`). (2) **Practice** (`Person.SkSmith`, 0.0015 an
+hour at the smithy or the open hearth) quickens the hand: `Forge.Hand` = 0.8 + 0.4 x practice on copper and iron (the potter's and the weaver's
+law). (3) **More smithies where the smiths cannot keep up** (C3.1b's pattern): a day the work the village wants at its smithies - copper and iron
+still wanted as far as its ore and charcoal go, at its best smiths' pace, and the forging of the arms it wants (`Forge.Backlog`) - is more than all
+its places' labour day is a short day (`Tally`; ore or charcoal short is not the smiths' shortfall); at the yearly weighing a village short on 30
+or more days, whose steady need outruns its places' year (`NeedsMore`: the tools that wear out - `Tech.ToolLoss` 3 % a year -, the iron it sold
+over the year and its arms' upkeep, at its best smiths' pace; a first equipping is work done once, over some years), and with more able smiths
+than places wants another smithy (`Year`, `SmithMore`, up to `MaxSmithies` 4), raised as the first was (caused
+by the first's event); each smith works at the smithy nearest home (`SmithyFor`); a lost first smithy hands its role on. (4) **Roles from
+practice**: "a smith" / "an ironsmith" (one who knows the bloomery) from 0.3 of practice (~200 hours), "at the smithy" while they have a place
+there; "a boatwright (N plank boats)" from the plank boats they led the building of (history keeps the leader as the boat's record's Other,
+`Biography.PlankBoats`). The building page names a smithy's smiths ("practised" / "new to it"); the settlement page counts its smithies, smiths and
+short days; the view's smoke rises only from the smithy a smith is at. `--nosmithcrew` (`Forge.CrewOff`) is the law before on the same binary
+(it reproduces `_c3` exactly, annals identical). Sim version 61 (`Person.SkSmith`; `Settlement.SmithBar/SmithBarId/Smithies/SmithShort/SmithMore`).
+**Evidence.** `ForgeTests` 8: the smithy's four places go to its four best smiths and a practised hand outranks a better-taught one, a fifth smith
+finds no place, practice quickens the hand (0.8 -> 1.2) and comes by the hour, `CrewOff` is the law before; at both resolutions only its four best
+smiths worked at it (COARSE 223 h, lived 186 h in six days); ore or charcoal short is no smiths' shortfall; a first equipping raises no second
+smithy, a village selling iron beyond its places' year does - caused by the first smithy's event, eight places for its eight best, each smith at
+the smithy nearest home, a lost first smithy hands its role on, too few smiths want no more places; the exact-output tests (`ForgeTests`,
+`IronTests`) take the hand. `BiographyTests`: knowing copper, iron and the planks is no role; practice makes "an ironsmith", a plank boat led "a
+boatwright (1 plank boat)", a dugout does not. **Ten seeds, 300 years DEEP** (three of the ten worlds work metal: seeds 4, 2, 7): `_s1` (four places
+alone) - people x0.994, famines x0.92, but iron smelted x0.83 (seed 4 x0.60) and iron traded x0.35 (seed 4's exporter x0.13); `_s2` (another smithy on
+short days alone) - standing smithies 68 -> 218, every iron village raising three or four for its first equipping: rejected. **`_s3` (the slice)
+against `_c3`** (the same binary with `--nosmithcrew` reproduces `_c3` exactly): people over years 200-299 x0.993 (t -0.6), births and deaths a
+thousand at par, famines x0.93 (t -0.9), hunger a thousand person-years x0.98, trades x0.98, conflict at par (blows x1.03, raids x1.03); standing
+smithies 68 -> 80 (seed 4: Fomthaenstead, Veidasford and Toularndal keep two); smiths read from practice 116 / 80 / 24 in the three metal worlds,
+all of whom worked, the busiest hand 38-49 % of a smithy's hours (6 % before), smithy-years up to 23 hands (355 before); iron smelted x0.59 / x1.05 /
+x2.08 by world, iron traded 22.4 -> 8.7 t (seed 4's exporter 14.4 -> 2.0 t), iron tools for 39 / 32 / 45 % of the people against 52 / 28 / 32 %, copper
+x0.88; boatwrights 15-51 a world. SHOTS_WEB_PLACEHOLDER
+**Open.** A village sells iron only from what its places spare beyond its own people: demand it cannot meet is not seen (no unmet ask), so an
+exporter's smiths do not grow with their buyers - the bloomery at the ore with its own crew (C5.3c, work at a distance) is where iron towns
+belong. The open hearth (a village without a smithy) still lets every smith smelt at home; apprenticeship beside a master (C3.5).

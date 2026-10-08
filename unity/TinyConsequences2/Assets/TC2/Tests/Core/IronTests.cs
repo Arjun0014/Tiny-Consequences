@@ -141,9 +141,10 @@ namespace TC2.Tests.Core
             ref var s = ref w.Settlements.Get(sid);
             s.FeOre = 800; s.Charcoal = 1500; s.Ore = 0; s.Iron = 0; s.Metal = 0; s.Wall = 0; s.FoeWorth = 0; s.WatchEvent = 0;
             Assert.IsTrue(Forge.Use(w, in w.Settlements.Get(sid)), "bog ore and charcoal, tools short of iron");
+            double hand = Forge.Hand(in w.People.Get(smith));   // (practice quickens a smith's hand: C1.4b)
             double used = Forge.Work(w, ref w.People.Get(smith), sid, smithy, 10.0);
             var s2 = w.Settlements.Get(sid);
-            double kg = Tech.IronPerHour(in w.People.Get(smith)) * Forge.Pace * 10.0;
+            double kg = Tech.IronPerHour(in w.People.Get(smith)) * Forge.Pace * hand * 10.0;
             Console.WriteLine("10 h at the bloomery: " + s2.Iron.ToString("0.00") + " kg of bar iron from " + (800 - s2.FeOre).ToString("0.0") + " kg of bog ore and " + (1500 - s2.Charcoal).ToString("0.0") + " kg of charcoal");
             Assert.AreEqual(10.0, used, 1e-9);
             Assert.AreEqual(kg, s2.Iron, 1e-9);

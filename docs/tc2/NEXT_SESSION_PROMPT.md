@@ -170,6 +170,17 @@ early split in seed 42 with almost no cart trade), and a ten-seed placebo spread
 The carts' real effects: famines x0.83, hunger deaths x0.93, trades x0.70. **Next**: close C4.2 (D2-122, shots, the full suite, Web) -
 SESSION_HANDOFF "Session 14".
 
+**Where we are (session 15, 8-9 Oct 2026)**: **C4.2 carts closed (D2-122)** after its shots found three faults, each measured and fixed: carts were begun
+while hunger sent the village to the wild and never worked (15.5 % given up -> 4.9 %); **nobody works in the water (D2-123)** - a new audit (`wet`)
+found 0.64 % of all person-hours spent standing in the sea or a lake (field spots the water had come over, coastal woodlots, hunters): lived work
+spots now go ashore and woodlots are chosen above the shore (0.05-0.08 % left); the yard camera framed a roof. **River crossings surveyed (D2-124)**:
+every stream a worn way crosses is a fordable brook (0.08-0.23 m3/s at most) - bridges deferred. **C1.4b the village smith (D2-125, sim version 61)**:
+the person page had called 5,730 people "a smith" and "a boatwright" (all who knew the craft) and smithies had no smiths (every copper-competent
+person worked at one in turn, up to 355 hands a year); now a smithy's four places go to its best smiths by craft and practice, practice quickens the
+hand, another smithy rises only where the steady need outruns the places, and smiths and boatwrights are read from their work - people and food at
+par over ten seeds; iron exports shrink where a town cannot smelt beyond its places (open: the bloomery at the ore, C5.3c). **Next**:
+SESSION_HANDOFF "Session 15".
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

@@ -449,8 +449,16 @@ namespace TC2.Game
                 else if (b.Kind == Structures.Smithy)
                 {
                     double share = TC2.Core.Knowledge.Tech.MetalShare(s.Metal, s.Population), want = Forge.ArmsWant(in s);
+                    // its smiths (C1.4b): the village's best, who have its four places - and how practised a hand each has
+                    var smiths = new System.Collections.Generic.List<string>(); var res = w.Residents(b.Settlement);
+                    for (int i = 0; i < res.Count; i++)
+                    {
+                        ref var q = ref w.People.Get(res[i]);
+                        if (Forge.Maker(in s, in q, w.Now) && Forge.SmithyFor(w, in s, in q) == _building) smiths.Add(w.History.NameOf(EntityRef.Person(res[i])) + (q.SkSmith >= 0.3f ? " (practised)" : " (new to it)"));
+                    }
                     sb.Append("the smith's workshop: smelts and forges at twice an open hearth's pace").Append(b.Mat >= 1 ? ", on a hearth of stone" : "").Append("; ")
                       .Append(b.Use.ToString("N0", CultureInfo.InvariantCulture)).Append(" hours worked here\n")
+                      .Append("its smiths: ").Append(smiths.Count > 0 ? string.Join(", ", smiths) : "nobody").Append('\n')
                       .Append(place).Append("'s tools: ").Append(s.Metal.ToString("0", CultureInfo.InvariantCulture)).Append(" kg of metal (").Append((share * 100).ToString("0", CultureInfo.InvariantCulture)).Append("% of what its people want); arms ")
                       .Append(s.Arms.ToString("0", CultureInfo.InvariantCulture)).Append(want > 0 ? " - it wants " + want.ToString("0", CultureInfo.InvariantCulture) + ": it fears its neighbours" : "").Append('\n');
                 }

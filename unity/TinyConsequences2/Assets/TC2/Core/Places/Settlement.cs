@@ -157,6 +157,11 @@ namespace TC2.Core.Places
         public float HearthShort;       // kg of pots its hearths that cannot fire their own still lacked today (read daily)
         public double PotBar;           // the bar for a place at its kiln: its fourth best potter's skill and practice (read daily; -1: all its potters)
         public int PotBarId;            // and that potter (ties go to the lower id)
+        public double SmithBar;         // the bar for a place at its smithy: its fourth best smith's skill and practice (read daily; -1: all its smiths; C1.4b)
+        public int SmithBarId;          // and that smith (ties go to the lower id)
+        public byte Smithies;           // its working smithies (C1.4b: another where its smiths cannot keep up; `Smithy` is the first)
+        public byte SmithShort;         // days this year its smithies' places could not do the day's work it wanted (C1.4b)
+        public byte SmithMore;          // it wants another smithy (weighed yearly, C1.4b)
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
@@ -222,6 +227,7 @@ namespace TC2.Core.Places
             w.Int(Workshop); w.Long(LoomEvent); w.Double(Wares); w.Float(WaresHeld); w.Float(WaresOut); w.Float(WaresSold); w.Double(LoomBar); w.Int(LoomBarId);   // (C3.1, sim version 57)
             w.Byte(Sheds); w.Byte(ShedShort); w.Byte(ShedMore);   // (C3.1b, sim version 58)
             w.Int(Kiln); w.Long(PotEvent); w.Double(Pots); w.Double(Jars); w.Float(PotsOut); w.Float(PotsSold); w.Float(HearthShort); w.Double(PotBar); w.Int(PotBarId);   // (C3.2, sim version 59)
+            w.Double(SmithBar); w.Int(SmithBarId); w.Byte(Smithies); w.Byte(SmithShort); w.Byte(SmithMore);   // (C1.4b, sim version 61)
         }
 
         public static Settlement Read(BinReader r)
@@ -241,6 +247,7 @@ namespace TC2.Core.Places
             s.Workshop = r.Int(); s.LoomEvent = r.Long(); s.Wares = r.Double(); s.WaresHeld = r.Float(); s.WaresOut = r.Float(); s.WaresSold = r.Float(); s.LoomBar = r.Double(); s.LoomBarId = r.Int();
             s.Sheds = r.Byte(); s.ShedShort = r.Byte(); s.ShedMore = r.Byte();
             s.Kiln = r.Int(); s.PotEvent = r.Long(); s.Pots = r.Double(); s.Jars = r.Double(); s.PotsOut = r.Float(); s.PotsSold = r.Float(); s.HearthShort = r.Float(); s.PotBar = r.Double(); s.PotBarId = r.Int();
+            s.SmithBar = r.Double(); s.SmithBarId = r.Int(); s.Smithies = r.Byte(); s.SmithShort = r.Byte(); s.SmithMore = r.Byte();
             return s;
         }
 
@@ -260,6 +267,7 @@ namespace TC2.Core.Places
             h.Add(Workshop); h.Add(LoomEvent); h.Add(Wares); h.Add(WaresHeld); h.Add(WaresOut); h.Add(WaresSold); h.Add(LoomBar); h.Add(LoomBarId);
             h.Add(Sheds); h.Add(ShedShort); h.Add(ShedMore);
             h.Add(Kiln); h.Add(PotEvent); h.Add(Pots); h.Add(Jars); h.Add(PotsOut); h.Add(PotsSold); h.Add(HearthShort); h.Add(PotBar); h.Add(PotBarId);
+            h.Add(SmithBar); h.Add(SmithBarId); h.Add(Smithies); h.Add(SmithShort); h.Add(SmithMore);
         }
 
         internal static void WriteV(BinWriter w, Vec3d v) { w.Double(v.X); w.Double(v.Y); w.Double(v.Z); }

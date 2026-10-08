@@ -92,6 +92,9 @@ namespace TC2.Core.Knowledge
         /// <summary>Kg of metal tools a person's toolkit holds (a knife, a sickle, an axe-head, an awl: D2-064).</summary>
         public const double MetalPerHead = 0.5;
 
+        /// <summary>Share of a village's metal tools lost, broken and worn past mending in a year (copper and iron alike: D2-064, C5.2b).</summary>
+        public const double ToolLoss = 0.03;
+
         /// <summary>The share of its people a village's metal can equip.</summary>
         public static double MetalShare(double metalKg, int people) => people > 0 ? DMath.Clamp01(metalKg / (MetalPerHead * people)) : 0.0;
 
@@ -102,7 +105,10 @@ namespace TC2.Core.Knowledge
         public static double MetalWear(double share) => 1.0 - 0.25 * share;
 
         /// <summary>Kg of metal an hour at the furnace and the anvil brings, by the smith's proficiency (D2-064).</summary>
-        public static double MetalPerHour(in Person p) => 0.08 * p.KMetal;
+        public static double MetalPerHour(in Person p) => MetalAt(p.KMetal);
+
+        /// <summary>The same by a proficiency (a village's best smith's, for the work its smithies have before them: C1.4b).</summary>
+        public static double MetalAt(double k) => 0.08 * k;
 
         /// <summary>Kg of iron tools a person's toolkit holds (a knife, a sickle, an axe, a spade's shoe, the ard's share, nails: C5.2b).</summary>
         public const double IronPerHead = 2.0;
@@ -132,7 +138,10 @@ namespace TC2.Core.Knowledge
 
         /// <summary>Kg of bar iron an hour at a bloomery and the anvil, by the smith's proficiency (a smelt a day of a few kilos of bloom,
         /// half of it lost forging it to a bar; at a smithy twice this: C5.2b).</summary>
-        public static double IronPerHour(in Person p) => 0.03 * p.KIron;
+        public static double IronPerHour(in Person p) => IronAt(p.KIron);
+
+        /// <summary>The same by a proficiency (C1.4b).</summary>
+        public static double IronAt(double k) => 0.03 * k;
 
         // (the charcoal a kilo of metal burns: `Places.Charcoal.PerKg`, made at the village's charcoal hearth since C5.2a)
 

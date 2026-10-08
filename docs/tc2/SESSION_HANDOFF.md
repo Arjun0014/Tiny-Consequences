@@ -1,5 +1,49 @@
 # TC2 Session handoff
 
+## Session 15 (8 Oct 2026 19:54 IST - 9 Oct; Control Room run #31 session 5) - C4.2 carts closed (D2-122), nobody in the water (D2-123), crossings surveyed (D2-124), C1.4b the village smith (D2-125)
+
+### Exact state (keep current)
+- **C4.2 carts closed (D2-122)** - the closing checks found and fixed three faults: carts begun while hunger sent the village to the wild were never
+  worked (15.5 % of carts given up -> 4.9 %: `Carts.ShortBound`, the timber of a cart given up back to the woodpile; `run --carttally`); woodcutters
+  with their carts stood in the sea (D2-123); the yard camera framed a roof (`CameraRig` "cartyard": the parked cart with the fewest buildings on the
+  camera's side, `Footprints.LineCuts`). Ten seeds `tc2/out/civ/s*_c2` (the hunger rule) vs `_c1n` (no carts): trades x0.67, famines x0.89, people
+  x0.97 (t -1.1), vital rates at par; `_c1` -> `_c2` inside the noise.
+- **D2-123 nobody works in the water**: headless `wet --load S [--days N]` (a lived world hour by hour: who stands under the drawn water, by
+  activity and village, and standing buildings on wet ground). Seed 4 y300: 0.64 % of person-hours in the water -> 0.05-0.08 % after: lived field,
+  woodlot and wild-ground spots go ashore (`AgentSystem.Ashore`, `WildFood.GroundPoint` for every kind) and woodlots are chosen above the shore
+  (`Woods.Choose` `Shore.Dry`; `Ensure` re-chooses one the sea took). Ten seeds `_c3` (woodlot rule) vs `_c2`: inside the noise. What is left:
+  straight local walks across lakes, spots within 4 m of a waterline, a day's lake over works (no flood response yet).
+- **D2-124 crossings surveyed**: `place --crossings` - the largest flow on five worlds is 0.08-0.23 m3/s; every stream a worn way crosses is
+  fordable; C4.3 (fords, bridges) deferred until a river cannot be forded.
+- **C1.4b the village smith (D2-125, sim version 61)**: `Forge.Places` 4 (`SmithBar`, `Key` = copper + iron + practice, `Maker`, `Bar` daily),
+  `Person.SkSmith` (0.0015 an hour; `Forge.Hand` 0.8-1.2), more smithies where the smiths fell short 30 days of a year (`Backlog`, `Tally`, `Year`,
+  `SmithMore`, `MoreWanted`, `SmithyFor`, up to 4), roles from practice (smith/ironsmith from `SkSmith` >= 0.3; boatwright from plank boats led,
+  `Biography.PlankBoats`), building page names its smiths, settlement page counts smithies/smiths/short days, view smoke per smithy,
+  `--nosmithcrew` (reproduces `_c3` exactly). Tools: `run --crafttally` (hours by person and village-year per craft: smithy, plank boats, shed,
+  kiln), `place --list` shows SMITHY / N SMITHIES. Runs `tc2/out/civ/s*_s1` (four places, no second smithy), `s*_s2` (the slice).
+  Results (`_s3` vs `_c3` = the same binary with `--nosmithcrew`): people, famines, vital rates, trade, conflict at par; standing smithies 68 -> 80;
+  smiths from practice 24-116 in the three metal worlds (seeds 4, 2, 7), at most 23 hands a smithy-year (355 before), busiest hand 38-49 %; iron
+  smelted x0.59 / x1.05 / x2.08, iron traded 22 -> 9 t (seed 4's exporter cannot sell beyond its places: open). Rejected on the way: `_s1` (four
+  places alone: iron x0.83, iron trade x0.35), `_s2` (another smithy on short days alone: 68 -> 218 smithies).
+- **Verified**: full suite 314/314 (12 min) on the final code; ten seeds as above; shots `tc2/out/shots/c42a`/`c42b`/`c42c` (carts: on the green, in the yard, the earlier
+  woodcutters in the sea), `c14b` (Fomthaenstead #20, seed 4 `_s3` y300: two smithies side by side, smoke from the worked one; woodcutters with handcarts
+  at cut-over woods; handcarts at the market green). WEB_HANDOFF
+- **Machine**: Control Room's Resource Governor LOW (CPU 50 %, RAM 75 % for all work; one heavy job at a time). The machine's own baseline sits at
+  ~73-75 % RAM (the Claude apps ~2.5 GB, an `oracle` process); a Unity run takes it to ~85-88 % while it runs. A `chrome-headless-shell` not started
+  by this session took ~70 % CPU for an hour (left alone). `dotnet build-server shutdown` frees this session's compiler servers.
+- Scratchpad (session 15): `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/31c113f7-7357-46b4-9c76-c4b097feb4cb/scratchpad`
+  (`wrun.sh`, `smith.py` - the metal chain between two tags; copies of both in `tc2/out/tools/`).
+
+### Next, in order
+1. **C5.3c the bloomery at the ore** (D2-125 "Open"): iron smelted where the bog ore lies, by a crew of its own (stints with a camp, households moving to
+   the work - a mining or iron hamlet; the resource-town proof, `25` §4), and an unmet ask counted (a trader who wanted iron and found none) so a
+   seller's smiths grow with their buyers. Measure first (`run --crafttally`, iron by world, `place --list` SMITHIES).
+2. **C3.3 exchange between households** (`26` §3: a phase - household property, sharing by need, debts) or **C3.4 the mill** (measure first: the
+   quern's hours a person-day).
+3. D2-123 "Open": a lake risen over works or homes is not a flood people answer (they stay and work in it); local walks are straight lines across
+   lakes. A flood slice with the water's own rise.
+4. W-FOREST (Arjun, 8 Oct): forests and biomes still read as the same trees recoloured - an art pass.
+
 ## Session 14 (8 Oct 2026, 19:02-19:26 IST; Control Room run #31 session 4) - C4.2's people x0.955 explained as noise (stopped early by Arjun)
 
 Short session: Arjun asked to stop and hand off at 19:13. No code changed; HEAD is still d6c29cf's code (sim version 60) plus docs.

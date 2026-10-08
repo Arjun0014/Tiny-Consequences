@@ -85,7 +85,7 @@ namespace TC2.Headless
         /// worked at it since the tally began - by village, summed over the world.</summary>
         static void CraftReport(World w)
         {
-            string[] names = { "smithy (a smith: copper competent)", "plank boats (a boatwright: boats of planks competent)", "weaver's shed (a weaver: SkCraft 0.3)", "kiln (a potter: SkPot 0.3)" };
+            string[] names = { "smithy (a smith: SkSmith 0.3)", "plank boats (a boatwright: led a plank boat's building)", "weaver's shed (a weaver: SkCraft 0.3)", "kiln (a potter: SkPot 0.3)" };
             for (int k = 0; k < TC2.Core.Diagnostics.CraftTally.Kinds; k++)
             {
                 var by = TC2.Core.Diagnostics.CraftTally.By[k];
@@ -100,7 +100,7 @@ namespace TC2.Headless
                     {
                         var p = w.People.Get(res[i]);
                         if (!p.Alive || p.AgeYears(w.Now) < 16) continue;
-                        bool isRole = k == 0 ? p.KMetal >= 0.5f : k == 1 ? p.KBoat >= 0.5f : k == 2 ? p.SkCraft >= 0.3f : p.SkPot >= 0.3f;
+                        bool isRole = k == 0 ? p.SkSmith >= 0.3f : k == 1 ? TC2.Core.History.Biography.PlankBoats(w, p.Id) > 0 : k == 2 ? p.SkCraft >= 0.3f : p.SkPot >= 0.3f;   // (the person page's roles, C1.4b)
                         by.TryGetValue(p.Id, out double ph);
                         if (isRole) r++;
                         if (ph >= 1) { wk++; if (isRole) rw++; }
@@ -136,6 +136,7 @@ namespace TC2.Headless
             if (a.Has("waresflow")) TC2.Core.Places.Trade.WaresFor = new double[6];
             if (a.Has("ledger")) { TC2.Core.Diagnostics.HouseLedger.By = new System.Collections.Generic.Dictionary<int, double[]>(); TC2.Core.Diagnostics.HouseLedger.From = (long)a.Int("ledger", 250) * TC2.Core.Foundation.SimTime.Year; }   // (C3.3 survey: what each household brings in and draws)
             if (a.Has("nocarts")) TC2.Core.Places.Carts.Off = true;   // (C4.2 against C3.2 in one binary: no carts)
+            if (a.Has("nosmithcrew")) TC2.Core.Places.Forge.CrewOff = true;   // (C1.4b against the smithy before it in one binary: every smith at it, no practice)
             if (a.Has("carttally")) TC2.Core.Diagnostics.CartTally.T = new double[12];   // (C4.2 closing: why carts begun are given up)
             if (a.Has("crafttally")) { var ct = new System.Collections.Generic.Dictionary<int, double>[TC2.Core.Diagnostics.CraftTally.Kinds]; for (int k = 0; k < ct.Length; k++) ct[k] = new System.Collections.Generic.Dictionary<int, double>(); TC2.Core.Diagnostics.CraftTally.By = ct; var vy = new System.Collections.Generic.Dictionary<long, double>[TC2.Core.Diagnostics.CraftTally.Kinds]; for (int k = 0; k < vy.Length; k++) vy[k] = new System.Collections.Generic.Dictionary<long, double>(); TC2.Core.Diagnostics.CraftTally.VillageYear = vy; }   // (roles from practice: whose hours at each craft)
             if (a.Has("loads")) TC2.Core.Places.Trade.LoadTally = new double[4];   // (C4.2 survey: trading loads bound by what one person carries)

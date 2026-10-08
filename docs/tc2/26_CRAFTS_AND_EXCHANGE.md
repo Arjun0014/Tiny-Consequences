@@ -100,6 +100,41 @@ the potters' villages round it); 1,988 t of ware traded, mostly for grain; 6 % o
 (23 -> 99), market places x3.2 - pottery is now most of the world's trade; rot at par (real jars seal what D2-063 sealed for nothing), wood felled
 x1.03, people, births, deaths at par, famines inside the noise. A kiln at a month's work went to hamlets of 25: two months' (5,800 FU unsealed).
 
+## 2b. The village smith: a smithy's places and roles from practice (C1.4b, D2-125)
+
+**What the worlds said before any code** (`run --crafttally`: the hours each person spends at each craft, by village-year; seeds 4 and 7, 300
+years): the person page called **5,730 of seed 4's people "a smith" and "a boatwright"** at year 300 - everyone who could work copper or knew the
+planks' craft - where 175 had worked at a smithy in two years (22 for 50 hours or more) and 10 had built a plank boat. Weavers and potters were
+already read from practice (C3.1, C3.2). Worse, the smithy itself had no smiths: every person of the village who could work copper worked at it in
+turn, in the order its people happened to come - smithy-years had a median of 35 hours and 3 hands, but up to **24,000 hours and 355 different
+people in one year** (iron for a town's tools at the bloomery), and the busiest hand did 6 % of a smithy's hours. A lived day sent a crowd to the
+forge.
+
+**Design** (`Core/Places/Forge.cs`; the kiln's pattern, C3.2):
+- **A smithy's places** (`Forge.Places` 4: the hearth and its bellows, the anvil, the bloomery's furnace) are its village's four best smiths by
+  `Key` = craft in copper + craft in iron + practice (`Settlement.SmithBar`/`SmithBarId`, read daily and when the smithy is raised; ties to the
+  lower id) - able smiths only (copper competent, 16-59). Only they work there, at both resolutions; the work a village wants (tools, iron, arms)
+  takes as long as four can do it.
+- **More smithies where the smiths cannot keep up** (C3.1b's pattern; with four places alone, iron towns smelted 40 % less and sold a third of the
+  iron): a day the work wanted at its smithies (`Forge.Backlog`: copper and iron still wanted as far as its ore and charcoal go, at its best
+  smiths' pace, and the arms' forging) is more than all its places' labour day is a short day; a village short on 30 days of a year **whose steady
+  need outruns its places' year** (`NeedsMore`: tools worn out at 3 % a year, the iron it sold, its arms' upkeep - a first equipping is work done
+  once, over some years: counted on short days alone, nearly every iron village raised three or four smithies) and with more able smiths than
+  places raises another smithy (up to 4), its next best four smiths there; each smith works at the smithy nearest home.
+- **Practice** (`Person.SkSmith`, `SkillRate` 0.0015 an hour at the smithy or the open hearth) quickens the hand: `Hand` = 0.8 + 0.4 x practice (the
+  potter's and the weaver's law) on copper and iron alike.
+- **Roles from practice**: "a smith" or "an ironsmith" (one who knows the bloomery) from 0.3 of practice (some 200 hours), "at the smithy" while
+  they have a place there; "a boatwright (N plank boats)" from the plank boats they led the building of (history keeps the leader as the boat's
+  record's Other) - knowing a craft is not practising it. The building page names its smiths ("practised" or "new to it"); the settlement page
+  counts them.
+- `--nosmithcrew` (`Forge.CrewOff`) gives the smithy's law before on the same binary (it reproduces `_c3` exactly).
+
+**Result (D2-125, ten seeds against the same binary with the smithy's law before, `--nosmithcrew`):** people, famines, vital rates, trade and
+conflict at par; three of the ten worlds work metal - in them the smiths read from practice are 116, 80 and 24 people, all of whom worked, the
+busiest hand does 38-49 % of a smithy's hours (6 % before) and a smithy-year has at most 23 hands (355 before); standing smithies 68 -> 80 (three
+towns of seed 4 keep two); iron smelted x0.59 / x1.05 / x2.08 by world, iron traded 22 -> 9 t - seed 4's exporter can no longer smelt beyond its
+places for buyers it cannot see (open: an unmet ask, and the bloomery at the ore with its own crew, C5.3c).
+
 ## 3. Later slices
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and
   the people in wares would outwear the looms; eight more makers a shed, each at the shed nearest home; towns of 500+ carry 2-4.

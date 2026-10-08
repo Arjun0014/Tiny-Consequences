@@ -512,7 +512,8 @@ namespace TC2.Core.Agents
                 case ActivityKind.Smith:
                     if (p.At != 0 && p.At == p.Home && hours > 0)
                     {
-                        int fid = Forge.Smithy(w, p.At);   // (smelting, working metal, forging arms at the smithy: C1.4)
+                        int fid = p.WhyArg != 0 && w.Buildings.Exists(p.WhyArg) && w.Buildings.Get(p.WhyArg).Kind == Structures.Smithy && Structures.Working(in w.Buildings.Get(p.WhyArg), w.Now)
+                            ? p.WhyArg : Forge.Smithy(w, p.At);   // (smelting, working metal, forging arms at the smithy they went to: C1.4, C1.4b)
                         if (fid != 0) Forge.Work(w, ref p, p.At, fid, hours);
                     }
                     break;
@@ -636,7 +637,7 @@ namespace TC2.Core.Agents
             ref var s = ref w.Settlements.Get(p.Home);
             if (Knowledge.Tech.CopperWanted(in s) <= 0 || Mining.MetalIn(in s) <= 1e-6 || s.Charcoal <= 1e-6) return hours;   // (ore dug and carried home, charcoal burnt: C5.1, C5.2a)
             double h = 0.5 * hours;
-            double kg = Knowledge.Tech.MetalPerHour(in p) * h;
+            double kg = Knowledge.Tech.MetalPerHour(in p) * h * Forge.Hand(in p);   // (practice quickens a smith's hand: C1.4b)
             if (days > 1)
             {
                 // (DEEP: days lived stop smelting the day the village has its metal - a step smelted all its days past it: F8)
@@ -649,6 +650,7 @@ namespace TC2.Core.Agents
             Charcoal.Burnt(ref s, kg, 1.0);
             Mining.Smelt(ref s, kg);
             w.Metrics.MetalKg += kg;
+            p.SkSmith = (float)DMath.Min(1.0, p.SkSmith + Forge.SkillRate * h);   // (the open hearth's hours make a smith too: C1.4b)
             w.Learning.Practice(ref p, Knowledge.Tech.Metal, h);
             return hours - h;
         }
@@ -1253,7 +1255,7 @@ namespace TC2.Core.Agents
                 case 15:
                     {
                         ref var sb = ref w.Buildings.Get(smithy);
-                        BeginLocal(ref p, ActivityKind.Smith, WhyCode.Forge, 0, sb.X + rs.Range(-2, 2), sb.Y + rs.Range(-2, 2), SimTime.Hours(3.0 + 1.5 * rs.NextUnit()));
+                        BeginLocal(ref p, ActivityKind.Smith, WhyCode.Forge, smithy, sb.X + rs.Range(-2, 2), sb.Y + rs.Range(-2, 2), SimTime.Hours(3.0 + 1.5 * rs.NextUnit()));
                         return;
                     }
                 case 19:

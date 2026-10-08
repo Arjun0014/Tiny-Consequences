@@ -63,7 +63,7 @@ namespace TC2.Core.Places
             if (days > 1) Ahead(sid, g0, days);   // (the step's own work reads its store as days lived hold it too: F8)
             prof?.Begin(10002); prof?.Begin(10007); w.Wild.Survey(sid); prof?.End(10007); Boats.Plan(w, sid, days); Carts.Plan(w, sid); prof?.Begin(10008); w.HerdSys.Update(sid); prof?.End(10008); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
             if (days > 1) w.Wild.MidStep(sid, w.Stock.MidStepMast(sid, days));   // (DEEP: the woods as the step's middle day finds them)
-            if (doy == Migration.DecideDay) { prof?.Begin(10003); w.Migration.Weigh(sid); Homes.WeighRebuilding(w, sid); Weaving.Year(w, sid); prof?.End(10003); }   // who leaves (D2-045); who rebuilds (D2-114); another shed (C3.1b)
+            if (doy == Migration.DecideDay) { prof?.Begin(10003); w.Migration.Weigh(sid); Homes.WeighRebuilding(w, sid); Weaving.Year(w, sid); Forge.Year(w, sid); prof?.End(10003); }   // who leaves (D2-045); who rebuilds (D2-114); another shed (C3.1b)
             if (w.Resolution == Resolution.Coarse) { prof?.Begin(10004); w.Agents.CoarseDay(sid, days); prof?.End(10004); }
             // DEEP: the step's later days grow the crop after its work, as days lived grow each day on the work done before it (grown
             // before the step's weeding, a growing step's days were three-quarters tended - harvests fell and households left: F8)
@@ -75,6 +75,8 @@ namespace TC2.Core.Places
             Weaving.Bar(w, sid);            // its best weavers, who have the looms at its weaver's shed (C3.1)
             Weaving.Tally(w, sid, days);    // a day its looms, not its flax, left its wares short (C3.1b)
             Pottery.Bar(w, sid);            // its best potters, who work at its kiln (C3.2)
+            Forge.Bar(w, sid);              // its best smiths, who have the places at its smithies (C1.4b)
+            Forge.Tally(w, sid, days);      // a day its smiths, not its ore, left the work it wanted undone (C1.4b)
             Training.Daily(w, sid, days);   // fighting skill fades unused; the village's best is known (C1.5)
             prof?.Begin(10015); w.Disease.Day(sid, days); prof?.End(10015);    // sickness: its course, its spread, new ones from the animals (D2-066)
             if (days > 1) Ahead(sid, g0, days);                                 // (its store as days lived would hold it: F8)
@@ -529,8 +531,8 @@ namespace TC2.Core.Places
             // stored hides rot and are eaten by vermin (~20 % a year), fibre less (~5 %): a store holds what is used (D2-063)
             s.Hides *= days == 1 ? 1.0 - 0.20 / SimTime.DaysPerYear : Keep(0.20 / SimTime.DaysPerYear, days);
             s.Fibre *= days == 1 ? 1.0 - 0.05 / SimTime.DaysPerYear : Keep(0.05 / SimTime.DaysPerYear, days);
-            s.Metal *= days == 1 ? 1.0 - 0.03 / SimTime.DaysPerYear : Keep(0.03 / SimTime.DaysPerYear, days);   // tools lost, broken, worn past mending (D2-064)
-            if (s.Iron > 0) s.Iron *= days == 1 ? 1.0 - 0.03 / SimTime.DaysPerYear : Keep(0.03 / SimTime.DaysPerYear, days);   // (iron rusts and is lost too: C5.2b)
+            s.Metal *= days == 1 ? 1.0 - Knowledge.Tech.ToolLoss / SimTime.DaysPerYear : Keep(Knowledge.Tech.ToolLoss / SimTime.DaysPerYear, days);   // tools lost, broken, worn past mending (D2-064)
+            if (s.Iron > 0) s.Iron *= days == 1 ? 1.0 - Knowledge.Tech.ToolLoss / SimTime.DaysPerYear : Keep(Knowledge.Tech.ToolLoss / SimTime.DaysPerYear, days);   // (iron rusts and is lost too: C5.2b)
             if (s.IronArms > s.Arms) s.IronArms = s.Arms;   // (iron arms are lost with the rest)
             // (DEEP: empty as days lived would find it after their first day - a step's larders and decay at once could empty a lean
             // store that days lived would not, and record a hunger: F8)

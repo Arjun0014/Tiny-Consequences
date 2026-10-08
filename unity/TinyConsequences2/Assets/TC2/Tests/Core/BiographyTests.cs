@@ -3,6 +3,7 @@ using NUnit.Framework;
 using TC2.Core.Agents;
 using TC2.Core.Foundation;
 using TC2.Core.History;
+using TC2.Core.Places;
 using TC2.Core.Simulation;
 
 namespace TC2.Tests.Core
@@ -73,6 +74,34 @@ namespace TC2.Tests.Core
             StringAssert.Contains("a potter", after);
             StringAssert.Contains("a fisher", after);
             StringAssert.Contains("2 fights lived through", Biography.Deeds(w, pid));
+        }
+
+        [Test]
+        public void SmithsAndBoatwrightsAreReadFromTheirWorkNotTheirKnowledge()
+        {
+            // (C1.4b, D2-125: a year-300 world read 5,730 of its people as "a smith" and "a boatwright" - all who could work copper or knew the
+            // planks' craft - where 175 had worked at a smithy and 10 had built a plank boat)
+            var w = TestWorlds.Make(1204);
+            int pid = 0;
+            for (int id = w.People.First(); id != 0 && pid == 0; id = w.People.Next(id)) { var q = w.People.Get(id); if (q.Alive && q.AgeYears(w.Now) >= 20 && q.Household != 0) pid = id; }
+            Assume.That(pid != 0);
+            ref var p = ref w.People.Get(pid);
+            p.KMetal = 0.9f; p.KIron = 0.8f; p.KBoat = 0.9f; p.SkSmith = 0f;   // (they know the crafts)
+            string before = Biography.Work(w, pid);
+            StringAssert.DoesNotContain("an ironsmith", before);
+            StringAssert.DoesNotContain("a smith", before);
+            StringAssert.DoesNotContain("a boatwright", before);
+            p.SkSmith = 0.4f;   // (hours at the smithy or the open hearth)
+            w.Record(new HistoryEvent { Kind = HistoryKind.BoatBuilt, Time = w.Now, Settlement = p.Home, Subject = EntityRef.Household(p.Household), Other = EntityRef.Person(pid), ArgA = Structures.PlankBoat, RootKind = RootKind.People });
+            string after = Biography.Work(w, pid);
+            Console.WriteLine(after);
+            StringAssert.Contains("an ironsmith", after);
+            StringAssert.Contains("a boatwright", after);
+            StringAssert.Contains("(1 plank boat)", after);
+            Assert.AreEqual(1, Biography.PlankBoats(w, pid));
+            // a dugout they hollowed is no plank boat
+            w.Record(new HistoryEvent { Kind = HistoryKind.BoatBuilt, Time = w.Now, Settlement = p.Home, Subject = EntityRef.Household(p.Household), Other = EntityRef.Person(pid), ArgA = Structures.Boat, RootKind = RootKind.People });
+            Assert.AreEqual(1, Biography.PlankBoats(w, pid));
         }
 
         [Test]

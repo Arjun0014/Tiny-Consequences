@@ -163,14 +163,30 @@ namespace TC2.Core.History
             sb.Append(what).Append(' ').Append(F(k, "0.00")).Append(k >= 0.5f ? " (competent)" : "");
         }
 
+        /// <summary>The plank boats a person led the building of (history keeps the leader of a boat's building as its record's Other).</summary>
+        public static int PlankBoats(World w, int pid)
+        {
+            var evs = w.History.EventsOf(EntityRef.Person(pid));
+            if (evs == null) return 0;
+            long me = EntityRef.Person(pid).Packed;
+            int n = 0;
+            for (int i = 0; i < evs.Count; i++)
+                if (w.History.TryGet(evs[i], out var e) && e.Kind == HistoryKind.BoatBuilt && e.Other.Packed == me && e.ArgA == Structures.PlankBoat) n++;
+            return n;
+        }
+
         /// <summary>Roles read from what they have practised (skills and crafts at their village's workplaces) - never assigned.</summary>
         static string Roles(World w, in Person p)
         {
             var r = new List<string>();
             int home = p.Home;
-            if (p.KIron >= 0.5f) r.Add("an ironsmith");
-            if (p.KBoat >= 0.5f) r.Add(home != 0 && w.Settlements.Exists(home) && w.Settlements.Get(home).Shed != 0 ? "a boatwright at the boat shed" : "a boatwright");
-            if (p.KMetal >= 0.5f) r.Add(home != 0 && w.Settlements.Exists(home) && Forge.Smithy(w, home) != 0 ? "a smith at the smithy" : "a smith");
+            // (a smith from their hours at the smithy or the open hearth, a boatwright from the plank boats they led the building of - before, everyone
+            // who could work copper or knew the planks' craft: 5,730 "smiths" and "boatwrights" in a year-300 world where 175 worked at a smithy
+            // and 10 built a plank boat: C1.4b, D2-125)
+            if (p.SkSmith >= 0.3f)
+                r.Add((p.KIron >= 0.5f ? "an ironsmith" : "a smith") + (home != 0 && w.Settlements.Exists(home) && Forge.Smithy(w, home) != 0 && Forge.Maker(in w.Settlements.Get(home), in p, w.Now) ? " at the smithy" : ""));
+            int planks = PlankBoats(w, p.Id);
+            if (planks > 0) r.Add((home != 0 && w.Settlements.Exists(home) && w.Settlements.Get(home).Shed != 0 ? "a boatwright at the boat shed" : "a boatwright") + " (" + planks + (planks == 1 ? " plank boat" : " plank boats") + ")");
             if (p.SkFarm >= 0.6f) r.Add("a seasoned farmer");
             if (p.SkHunt >= 0.5f) r.Add("a hunter");
             if (p.SkFish >= 0.5f) r.Add("a fisher");

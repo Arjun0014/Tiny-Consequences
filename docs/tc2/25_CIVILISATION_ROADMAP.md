@@ -86,12 +86,17 @@ views shows the differentiation; every structure is clickable; headless runs at 
 the village's best weavers make them at a shed in larger places, households take them, they are traded - trade x3, home making hours x0.28); ~~C3.1b more sheds where a town's
 looms cannot keep up~~ (done, D2-120); ~~C3.2 the potter's kiln, jars and hearths' pots of real clay~~ (done, D2-121: 84 kilns in 169 villages over
 ten worlds, pottery most of the world's trade, markets x3.6); C3.3 exchange between households - surveyed and deferred as a phase (`26` §3: the
-village's store moves 31 % of the food households draw; household property needs a moral economy, household fields, debt, inheritance); C3.4
-the mill, C3.5 apprenticeship, C3.6 other workshops.
+village's store moves 31 % of the food households draw; household property needs a moral economy, household fields, debt, inheritance);
+~~C1.4b the village smith~~ (done, D2-125, `26` §2b: a smithy's four places for its best smiths by craft and practice, practice quickening the hand,
+another smithy only where the steady need outruns the places, smiths and boatwrights read from their work - before, every copper-competent person
+worked at the smithy in turn, up to 355 hands a smithy-year, and 5,730 people were "smiths"); C3.4 the mill, C3.5 apprenticeship, C3.6 other
+workshops.
 
-### C4 transport, by slices: ~~C4.1 roads by use~~ (D2-097); **C4.2 carts** (D2-122, `24` §2: a household's handcart or ox cart where its backs were
-too small - 83 % of trading loads were bound by what one carries; loads on paths and roads, wood and stone home by the cartload); next: road
-works and upkeep, fords and bridges, pack trains, carts for the lords' and armies' supplies (C8).
+### C4 transport, by slices: ~~C4.1 roads by use~~ (D2-097); ~~C4.2 carts~~ (closed, D2-122, `24` §2: a household's handcart or ox cart where its backs
+were too small - 83 % of trading loads were bound by what one carries; loads on paths and roads, wood and stone home by the cartload; trades x0.67,
+famines x0.83-0.89; none begun in hunger); C4.3 fords and bridges **surveyed and deferred** (D2-124: every stream a worn way crosses is a fordable
+brook, 0.08-0.23 m3/s at most); next: road works and upkeep, pack trains, carts for the lords' and armies' supplies (C8). (D2-123, found by the cart
+shots: nobody works in the water - lived work spots ashore, woodlots above the shore; `wet` audit.)
 
 ### C13 historical city evolution, by slices (D2-116): ~~C13.1 streets - villages grow along their roads, houses face them~~ (done); ~~C13.2 back lanes~~ (done, D2-117);
 ~~C13.3 a town's ground: footprints (no house in another), divided plots and rows of narrow town houses in its core, the market place~~ (done, D2-118);

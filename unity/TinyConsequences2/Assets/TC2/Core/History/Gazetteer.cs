@@ -156,6 +156,16 @@ namespace TC2.Core.History
             sb.Append("Tools: metal for ").Append(F(100 * Tech.ToolShare(in s), "0")).Append(" % of its people (").Append(F(s.Metal, "0")).Append(" kg of copper, ").Append(F(s.Iron, "0")).Append(" kg of iron)");
             if (s.Arms > 0.5) sb.Append("; arms ").Append(F(s.Arms, "0")).Append(s.IronArms > 0.5 ? " (" + F(s.IronArms, "0") + " of iron)" : "");
             sb.Append(".\n");
+            if (Forge.Smithy(w, sid) != 0)
+            {
+                // its smithy's smiths (C1.4b): the village's best, who have its four places
+                int smiths = 0, practised = 0; var sres = w.Residents(sid);
+                for (int i = 0; i < sres.Count; i++) { ref var q = ref w.People.Get(sres[i]); if (Forge.Maker(in s, in q, w.Now)) { smiths++; if (q.SkSmith >= 0.3f) practised++; } }
+                double hours = 0; var sbl = w.BuildingsOf(sid);
+                for (int i = 0; i < sbl.Count; i++) { ref var sb2 = ref w.Buildings.Get(sbl[i]); if (sb2.Kind == Structures.Smithy && Structures.Working(in sb2, w.Now)) hours += sb2.Use; }
+                sb.Append(s.Smithies > 1 ? "Its " + s.Smithies + " smithies: " : "Its smithy: ").Append(smiths).Append(smiths == 1 ? " smith" : " smiths").Append(" (its best; ").Append(practised).Append(" with a practised hand); ")
+                  .Append(F(hours, "0")).Append(" hours worked there").Append(s.SmithShort > 0 ? "; its smiths could not keep up on " + s.SmithShort + " days this year" : "").Append(".\n");
+            }
             if (s.IronSold > 1f) sb.Append("It sold ").Append(F(s.IronSold, "0")).Append(" kg of iron lately (halving each year).\n");
             // cloth and goods (C3.1): what its households wear, its wares, its weaver's shed and who works there
             sb.Append("Cloth and goods: fibre ").Append(F(s.Fibre, "0")).Append(" kg in store; ");
