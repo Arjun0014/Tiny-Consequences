@@ -37,10 +37,9 @@ only - never modify or stage it.
 - Open W task **W-FOREST** (Arjun, 8 Oct): forests/biomes still read as the same trees recoloured - not solved (`18` §8).
 
 ## Do next
-1. **C5.3c the bloomery at the ore** (D2-125 "Open"; roadmap `25` §4 the resource town): iron smelted where the bog ore lies by a crew of its own
-   (stints with a camp, households moving to the work - an iron hamlet), and an **unmet ask** counted (a trader who wanted iron and found none) so a
-   seller's smiths and bloomeries grow with their buyers. Measure first: `run --crafttally` (smithy-years, hands), iron by world
-   (`tc2/out/tools/smith.py A B`), `place --list` (SMITHY / N SMITHIES), `iron:` and `force:` report lines.
+1. **C5.3c re-weighed** (SESSION_HANDOFF "Session 15" Next 1: measured - carrying bog ore home is ~0.5 % of the iron chain's labour, smelting the
+   rest; a bloomery at the ore saves almost nothing). The open part of D2-125 is an **unmet ask** (a trader who wanted iron and found none, counted
+   at the seller, so its `NeedsMore` sees its buyers) - small (iron trade 9 t against pottery's ~2,000 t). Weigh it against item 2.
 2. **C3.3 exchange between households** (`26` §3: a phase - household property, sharing by need, debts) or **C3.4 the mill** (measure the quern's
    hours a person-day first).
 3. D2-123 "Open": a lake risen over works or homes is not a flood people answer; local walks cross lakes in straight lines.

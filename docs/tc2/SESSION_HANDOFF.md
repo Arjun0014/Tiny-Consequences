@@ -35,9 +35,12 @@
   (`wrun.sh`, `smith.py` - the metal chain between two tags; copies of both in `tc2/out/tools/`).
 
 ### Next, in order
-1. **C5.3c the bloomery at the ore** (D2-125 "Open"): iron smelted where the bog ore lies, by a crew of its own (stints with a camp, households moving to
-   the work - a mining or iron hamlet; the resource-town proof, `25` §4), and an unmet ask counted (a trader who wanted iron and found none) so a
-   seller's smiths grow with their buyers. Measure first (`run --crafttally`, iron by world, `place --list` SMITHIES).
+1. **C5.3c re-weighed (measured at the end of session 15, no code)**: the premise "smelt at the ore to save carrying it" does not hold here - seed 4
+   `_s3` dug 148 t of bog ore for 18 t of iron in 300 years: carried home in ~5,900 loads, at most ~2,600 hours, against **552,000 hours at the
+   smithies** (bloomery iron at 0.06 kg an hour is the bottleneck; carrying is ~0.5 % of the chain). A bloomery at the bed saves almost nothing, so
+   iron hamlets would be theatre unless something else draws them (charcoal from far woods? a crew camping out?). What D2-125 left open is smaller:
+   an **unmet ask** (a trader who wanted iron and found none, counted at the seller) so a seller's `NeedsMore` sees its buyers. Iron trade is small
+   beside pottery (9 t against ~2,000 t over ten worlds) - weigh it against item 2.
 2. **C3.3 exchange between households** (`26` §3: a phase - household property, sharing by need, debts) or **C3.4 the mill** (measure first: the
    quern's hours a person-day).
 3. D2-123 "Open": a lake risen over works or homes is not a flood people answer (they stay and work in it); local walks are straight lines across
