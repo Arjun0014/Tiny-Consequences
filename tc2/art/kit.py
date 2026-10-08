@@ -1337,6 +1337,62 @@ def ware_stack(name, seed=75):
     return k.finish()
 
 
+CART_WOOD = srgb(0.58, 0.43, 0.27)      # a cart's planks, weathered
+
+
+def wheel(k, x, y, z, r, spokes=6, width=0.12):
+    """A wooden wheel standing upright at (x, y, z) - its axle along x: a felloe rim, spokes, a hub."""
+    rot = Matrix.Rotation(math.pi / 2.0, 4, "Y")
+    k.cyl((x - width / 2.0, y, z), r, r, width, BEAM, seg=12, rot=rot)                 # the rim (a solid disc reads at a distance)
+    k.cyl((x - width * 0.6, y, z), r * 0.82, r * 0.82, width * 1.2, BOARD, seg=12, rot=rot)   # the inner face, darker between the spokes
+    for i in range(spokes):
+        a = i * math.pi / spokes
+        k.limb((x, y + math.cos(a) * r * 0.85, z + math.sin(a) * r * 0.85), (x, y - math.cos(a) * r * 0.85, z - math.sin(a) * r * 0.85), 0.035, 0.035, TIMBER, seg=4)
+    k.cyl((x - width, y, z), r * 0.16, r * 0.16, width * 2.0, TIMBER, seg=8, rot=rot)   # the hub
+
+
+def handcart(name, seed=76):
+    """A handcart (C4.2): a bed of planks with low sides on two wheels and an axle, two shafts forward for the one who pushes or pulls it. Its
+    front (the shafts) faces -y; parked, the shafts rest on the ground."""
+    k = Kit(name, seed)
+    L, W, z = 1.6, 0.95, 0.55
+    k.box((0, 0.1, z), (W, L, 0.08), CART_WOOD)                                    # the bed
+    for sx in (-1, 1):
+        k.box((sx * (W / 2.0 - 0.03), 0.1, z + 0.17), (0.05, L, 0.28), CART_WOOD)  # its sides
+    k.box((0, 0.1 + L / 2.0 - 0.03, z + 0.17), (W, 0.05, 0.28), CART_WOOD)        # the tailboard
+    k.box((0, 0.25, z - 0.08), (W + 0.3, 0.09, 0.09), TIMBER)                  # the axle
+    for sx in (-1, 1):
+        wheel(k, sx * (W / 2.0 + 0.12), 0.25, 0.45, 0.45)
+        k.limb((sx * 0.32, -L / 2.0 + 0.1, z), (sx * 0.30, -L / 2.0 - 1.2, 0.08), 0.035, 0.03, TIMBER, seg=5)   # the shafts, resting on the ground
+    return k.finish()
+
+
+def ox_cart(name, seed=77):
+    """An ox cart (C4.2): a long bed with rails on two tall wheels, a pole forward to the yoke of the ox (drawn apart). Front -y."""
+    k = Kit(name, seed)
+    L, W, z = 2.6, 1.35, 0.95
+    k.box((0, 0.2, z), (W, L, 0.1), CART_WOOD)                                     # the bed
+    for sx in (-1, 1):                                                          # the rails on stakes
+        k.box((sx * (W / 2.0 - 0.04), 0.2, z + 0.45), (0.06, L, 0.06), BEAM)
+        for j in range(4):
+            k.box((sx * (W / 2.0 - 0.04), 0.2 - L / 2.0 + 0.2 + j * (L - 0.4) / 3.0, z + 0.22), (0.05, 0.05, 0.45), BEAM)
+    k.box((0, 0.35, z - 0.1), (W + 0.4, 0.12, 0.12), TIMBER)                   # the axle
+    for sx in (-1, 1):
+        wheel(k, sx * (W / 2.0 + 0.16), 0.35, 0.72, 0.72, spokes=8, width=0.14)
+    k.limb((0, -L / 2.0 + 0.3, z - 0.02), (0, -L / 2.0 - 2.0, 0.85), 0.06, 0.05, TIMBER, seg=6)   # the pole
+    k.box((0, -L / 2.0 - 2.0, 0.9), (1.2, 0.12, 0.12), TIMBER)                 # the yoke
+    return k.finish()
+
+
+def cart_load(name, seed=78):
+    """A cart's load (C4.2): sacks and a bundle tied on - drawn on a cart that carries more than a back's load."""
+    k = Kit(name, seed)
+    for i, (x, y) in enumerate(((-0.2, -0.3), (0.2, -0.25), (-0.15, 0.3), (0.2, 0.32))):
+        k.ellipsoid((x, y, 0.2), (0.22, 0.3, 0.2), CLOTH_W if i % 2 == 0 else srgb(0.62, 0.52, 0.36), subdiv=2)
+    k.box((0, 0.0, 0.42), (0.55, 0.9, 0.18), srgb(0.55, 0.42, 0.26), bevel=0.04)   # a bundle on top
+    return k.finish()
+
+
 def market_stall(name, seed=66):
     """A market stall (C1.6, D2-114): a trestle of goods under a dyed awning on four poles - the game sets out as many as traders come to the
     market, each awning its own dye (alpha 1: tinted per instance)."""
@@ -1423,6 +1479,9 @@ def build_all():
     objs.append(clay_pit("clay_pit"))
     objs.append(storage_jars("storage_jars"))
     objs.append(ware_stack("ware_stack"))
+    objs.append(handcart("handcart"))          # (C4.2)
+    objs.append(ox_cart("ox_cart"))
+    objs.append(cart_load("cart_load"))
     objs.append(grass_tuft("grass_tuft", 31))
     objs.append(flowers("flowers", 32))
     objs.append(reeds("reeds", 33))

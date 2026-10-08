@@ -61,7 +61,7 @@ namespace TC2.Core.Places
             { ref var sw = ref w.Settlements.Get(sid); sw.StoneWant = (float)Stone.Want(w, sid); sw.OreWant = (float)Mining.Want(w, sid); sw.CharcoalWant = (float)Charcoal.Want(w, sid); sw.FeOreWant = (float)Mining.Want(w, sid, Mining.Iron); }   // (stone for its next houses' footings: C1.3; ore for its smiths: C5.1)
             Structures.Plan(w, sid);   // what its people want built next, by need (C1.1)
             if (days > 1) Ahead(sid, g0, days);   // (the step's own work reads its store as days lived hold it too: F8)
-            prof?.Begin(10002); prof?.Begin(10007); w.Wild.Survey(sid); prof?.End(10007); Boats.Plan(w, sid, days); prof?.Begin(10008); w.HerdSys.Update(sid); prof?.End(10008); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
+            prof?.Begin(10002); prof?.Begin(10007); w.Wild.Survey(sid); prof?.End(10007); Boats.Plan(w, sid, days); Carts.Plan(w, sid); prof?.Begin(10008); w.HerdSys.Update(sid); prof?.End(10008); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
             if (days > 1) w.Wild.MidStep(sid, w.Stock.MidStepMast(sid, days));   // (DEEP: the woods as the step's middle day finds them)
             if (doy == Migration.DecideDay) { prof?.Begin(10003); w.Migration.Weigh(sid); Homes.WeighRebuilding(w, sid); Weaving.Year(w, sid); prof?.End(10003); }   // who leaves (D2-045); who rebuilds (D2-114); another shed (C3.1b)
             if (w.Resolution == Resolution.Coarse) { prof?.Begin(10004); w.Agents.CoarseDay(sid, days); prof?.End(10004); }
@@ -259,10 +259,11 @@ namespace TC2.Core.Places
                 to.Gear = (float)(to.Gear + (double)hh.Gear);
                 to.Wares = (float)(to.Wares + (double)hh.Wares);   // (C3.1)
                 to.Pots = (float)(to.Pots + (double)hh.Pots);      // (C3.2)
+                if (hh.CartState == Carts.Made && to.CartState != Carts.Made) { to.CartKind = hh.CartKind; to.CartState = Carts.Made; to.CartHours = hh.CartHours; to.CartAt = hh.CartAt; }   // (the cart to the heir: C4.2)
                 w.Stock.Inherit(hid, heir);
             }
             else w.Stock.FeralHousehold(hid, w.Settlements.Get(sid).Cell);
-            hh.Larder = 0; hh.Ready = 0; hh.Gear = 0f; hh.Wares = 0f; hh.Pots = 0f;
+            hh.Larder = 0; hh.Ready = 0; hh.Gear = 0f; hh.Wares = 0f; hh.Pots = 0f; hh.CartState = Carts.NoCart;
             hh.Dissolved = w.Now;
             w.History.EndEntity(EntityRef.Household(hid), w.Now);
             w.HouseholdsOf(sid).Remove(hid);
@@ -933,6 +934,7 @@ namespace TC2.Core.Places
                 w.Households.Get(hid).Gear = (float)(w.Households.Get(hid).Gear + gear);
                 w.Households.Get(hid).Wares = (float)(w.Households.Get(hid).Wares + wares);
                 if (left == 0) { w.Households.Get(hid).Pots = (float)(w.Households.Get(hid).Pots + (double)oh.Pots); oh.Pots = 0f; }   // (the hearth's pots go with its last: C3.2)
+                if (left == 0 && oh.CartState == Carts.Made && w.Households.Get(hid).CartState != Carts.Made) { ref var nh = ref w.Households.Get(hid); nh.CartKind = oh.CartKind; nh.CartState = Carts.Made; nh.CartAt = oh.CartAt; oh.CartState = Carts.NoCart; }   // (and its cart: C4.2)
                 if (left == 0) { Homes.Leave(w, old); Boats.Leave(w, old, hid); oh.Dissolved = w.Now; w.History.EndEntity(EntityRef.Household(old), w.Now); w.HouseholdsOf(oh.Settlement).Remove(old); w.Stock.Inherit(old, hid); }
                 else w.Stock.Endow(old, hid);   // and a share of the herd (D2-048)
             }

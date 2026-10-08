@@ -137,6 +137,17 @@ namespace TC2.Core.History
         {
             ref var s = ref w.Settlements.Get(sid);
             var sb = new StringBuilder();
+            {
+                // its carts (C4.2): handcarts and ox carts among its households
+                int hand = 0, ox = 0, making = 0; var hc = w.HouseholdsOf(sid);
+                for (int i = 0; i < hc.Count; i++)
+                {
+                    var h = w.Households.Get(hc[i]);
+                    if (h.CartState == Carts.Made && !Carts.WornOut(in h, w.Now)) { if (h.CartKind == Carts.Ox) ox++; else hand++; }
+                    else if (h.CartState == Carts.Making) making++;
+                }
+                if (hand + ox + making > 0) sb.Append("Carts: ").Append(hand).Append(hand == 1 ? " handcart" : " handcarts").Append(ox > 0 ? " and " + ox + (ox == 1 ? " ox cart" : " ox carts") : "").Append(" among its households").Append(making > 0 ? ", " + making + " being made" : "").Append(".\n");
+            }
             sb.Append("Wood: ").Append(F(s.Woodstore, "0")).Append(" loads in store; ").Append(Woods.Lot(in s) >= 0 ? (s.WoodDist < 100f ? "it fells by its homes" : "it fells " + F(s.WoodDist, "0") + " m out") : "no woods left within reach").Append(".\n");
             if (s.StoneCell > 0) sb.Append("Stone: rock known ").Append(F(s.StoneDist, "0")).Append(" m out").Append(Stone.Quarry(w, sid) != 0 ? ", quarried" : "").Append("; ").Append(F(s.Stone, "0")).Append(" loads in store.\n");
             Ore(w, sid, Mining.Copper, sb);

@@ -90,6 +90,8 @@ namespace TC2.Headless
             if (a.Has("noweave")) TC2.Core.Places.Weaving.Off = true;
             if (a.Has("waresflow")) TC2.Core.Places.Trade.WaresFor = new double[6];
             if (a.Has("ledger")) { TC2.Core.Diagnostics.HouseLedger.By = new System.Collections.Generic.Dictionary<int, double[]>(); TC2.Core.Diagnostics.HouseLedger.From = (long)a.Int("ledger", 250) * TC2.Core.Foundation.SimTime.Year; }   // (C3.3 survey: what each household brings in and draws)
+            if (a.Has("nocarts")) TC2.Core.Places.Carts.Off = true;   // (C4.2 against C3.2 in one binary: no carts)
+            if (a.Has("loads")) TC2.Core.Places.Trade.LoadTally = new double[4];   // (C4.2 survey: trading loads bound by what one person carries)
             if (a.Has("nokiln")) TC2.Core.Places.Pottery.Off = true;   // (C3.2 against D2-063 in one binary: no kilns - pots and jars from knowing how)
             if (a.Has("potsflow")) TC2.Core.Places.Trade.PotsFor = new double[8];   // (C3.2: what ware was traded for)
             if (a.Has("rot")) TC2.Core.Places.Structures.RotTally = new double[3];   // (C3.2 survey: grain rotted against harvested)   // (C3.1: what wares were traded for)   // (C3.1 against C13.3 in one binary: no weaver's sheds)
@@ -488,6 +490,27 @@ namespace TC2.Headless
                                                   " % of what they drew); " + pos + " net givers (workers a member " + F(Mean(depPos), "0.00") + "), " + (hh - pos) + " net takers (" + F(Mean(depNeg), "0.00") + "); net a person-year by decile 10/30/50/70/90 % " + Q(0.1) + "/" + Q(0.3) + "/" + Q(0.5) + "/" + Q(0.7) + "/" + Q(0.9) +
                                                   " FU; a giver's surplus " + F(posYear / Math.Max(1, pos), "0") + " FU a year; households of workshop makers " + lmakers + " (net " + F(makerNet / Math.Max(1, makerPy), "0") + " FU a person-year, others " + F(otherNet / Math.Max(1, otherPy), "0") + ")");
                             }
+                            {
+                                // carts (C4.2): households with a handcart or an ox cart, being made, wanted; trading trips with a cart and what they carried
+                                int hand = 0, ox = 0, making = 0, wanted = 0, hhs = 0, villagesWith = 0;
+                                for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
+                                {
+                                    if (!w.Settlements.Get(sid2).Inhabited) continue;
+                                    var hl2 = w.HouseholdsOf(sid2); bool any = false;
+                                    for (int i = 0; i < hl2.Count; i++)
+                                    {
+                                        var h2 = w.Households.Get(hl2[i]); hhs++;
+                                        if (h2.CartState == TC2.Core.Places.Carts.Made && !TC2.Core.Places.Carts.WornOut(in h2, w.Now)) { any = true; if (h2.CartKind == TC2.Core.Places.Carts.Ox) ox++; else hand++; }
+                                        else if (h2.CartState == TC2.Core.Places.Carts.Making) making++;
+                                        else if (h2.CartState == TC2.Core.Places.Carts.Wanted) wanted++;
+                                    }
+                                    if (any) villagesWith++;
+                                }
+                                Console.WriteLine("carts: " + hand + " handcarts and " + ox + " ox carts among " + hhs + " households (in " + villagesWith + " villages), " + making + " being made, " + wanted + " wanted; begun " + w.Metrics.CartsBegun + ", made " + w.Metrics.CartsMade +
+                                                  ", worn out " + w.Metrics.CartsWorn + ", given up " + w.Metrics.CartsGivenUp + "; trading trips with a cart " + w.Metrics.CartTrips + " carrying out " + F(w.Metrics.CartKg / 1000, "0") + " t");
+                            }
+                            var lt = TC2.Core.Places.Trade.LoadTally;
+                            if (lt != null) Console.WriteLine("loads: " + F(lt[0], "0") + " trading loads set out (" + F(lt[3] / 1000, "0") + " t), " + F(100 * lt[1] / Math.Max(1, lt[0]), "0") + " % of them bound by what one carries (more was spared and wanted), return loads so bound " + F(100 * lt[2] / Math.Max(1, lt[0]), "0") + " %");
                             var rt = TC2.Core.Places.Structures.RotTally;
                             if (rt != null) Console.WriteLine("grain rotted: " + F(rt[0], "0") + " FU in the granaries, " + F(rt[1], "0") + " FU in heaps beyond them, against " + F(rt[2], "0") + " FU harvested (" + F(100 * (rt[0] + rt[1]) / Math.Max(1.0, rt[2]), "0.0") + " %)");
                             var wf = TC2.Core.Places.Trade.WaresFor;

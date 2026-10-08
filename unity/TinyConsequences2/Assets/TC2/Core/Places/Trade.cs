@@ -29,6 +29,9 @@ namespace TC2.Core.Places
         /// <summary>Tools (C3.2): kg of ware traded; what came back for it - grain (FU), fibre (kg), hides, metal and iron (kg), wares; kg from a kiln village to one
         /// without; kg to villages with no clay within reach; null in the game.</summary>
         public static double[] PotsFor;
+        /// <summary>Tools (C4.2 survey): trading loads set out, of them bound by what one person carries (the spare was more), return loads so bound, and kg
+        /// carried out; null in the game.</summary>
+        public static double[] LoadTally;
         /// <summary>Tools (C9.4 survey): FU of relief givers would have sent by sea beyond their free boats' room, the gifts so bound, and all gifts by sea; null in the game.</summary>
         public static double[] SeaShort;
 
@@ -37,6 +40,8 @@ namespace TC2.Core.Places
         /// <summary>A trader's load (kg) and each good's weight a unit (a FU of grain, a kg of metal or fibre, a hide).</summary>
         public const double LoadKg = 25.0;
         static double Kg(byte g) => g == Grain ? 0.75 : g == Hides ? 3.0 : g == Wares ? 3.0 : 1.0;   // (a ware: a person's cloth and goods, ~3 kg)
+        /// <summary>Kg a unit of a good weighs.</summary>
+        public static double KgOf(byte g) => Kg(g);
         /// <summary>Trading trips a healthy grown person makes a day when a deal is to be had (COARSE: fitted to lived days).</summary>
         public const double TripsPerAdultDay = 0.01;
         /// <summary>The least gain (in the villages' own values) worth a day's walk.</summary>
@@ -169,10 +174,16 @@ namespace TC2.Core.Places
         {
             var w = _w;
             if (p.CargoQty > 0f && w.Settlements.Exists(p.Home)) Unload(ref p, p.Home);   // (whatever they still carry is home first: goods are never lost)
+            bool land = loadKg == LoadKg;
+            if (land) loadKg = Carts.LoadFor(w, p.Household, from, to);   // (over land: the household's cart on a worn way, C4.2)
             if (Plan(from, to, out byte give, out double qty, out _, loadKg) <= 0 || give == None) return;
             ref var s = ref w.Settlements.Get(from);
             qty = DMath.Min(qty, Stock(ref s, give));
             if (qty <= 0) return;
+            bool bound = Spare(from, give) > loadKg / Kg(give) + 1e-9;   // (the load, not the spare, bound it)
+            if (LoadTally != null) { LoadTally[0]++; LoadTally[3] += qty * Kg(give); if (bound) LoadTally[1]++; }
+            if (land && loadKg > LoadKg) { w.Metrics.CartTrips++; w.Metrics.CartKg += qty * Kg(give); }
+            else if (land && bound) Carts.Want(w, p.Household, from, to);   // (a back's load where more was spared and wanted: a cart, C4.2)
             Add(ref s, give, -qty);
             p.Cargo = give; p.CargoQty = (float)qty; p.CargoTo = ToStore;
         }
@@ -183,6 +194,7 @@ namespace TC2.Core.Places
             var w = _w;
             if (p.Cargo == None || p.CargoQty <= 0) return;
             int home = p.Home;
+            if (loadKg == LoadKg) loadKg = Carts.LoadFor(w, p.Household, home, at);   // (the cart they came with takes the return load: C4.2)
             byte g = p.Cargo; double qg = p.CargoQty;
             ref var t = ref w.Settlements.Get(at);
             // what they give back for it, valued at the middle (from the trader's village's side: what it wants that this one spares)
@@ -199,6 +211,7 @@ namespace TC2.Core.Places
                 if (gain > bestGain) { bestGain = gain; take = h; qh = q; }
             }
             if (take == None) return;   // nothing they want for it now: the load goes home again
+            if (LoadTally != null && Spare(at, take) > loadKg / Kg(take) + 1e-9 && qg * (vf + vt) / (Value(home, take) + Value(at, take)) > loadKg / Kg(take) + 1e-9) LoadTally[2]++;   // (and the return load)
             Add(ref t, g, qg);
             Add(ref t, take, -qh);
             p.Cargo = take; p.CargoQty = (float)qh;

@@ -206,6 +206,37 @@ namespace TC2.Game
                 LookAt(d, view == "voyagefar" ? 320 : view == "voyagestay" ? 110 : view == "voyagenear" ? 160 : 90);
                 return;
             }
+            if (view.StartsWith("cart"))
+            {
+                // carts (C4.2): "cart" a person out with their household's cart - on the road with a load, or at the woods or a quarry - the nearest the framed
+                // village ("cartfar" from farther); "cartyard" a house of the framed village with its cart in the yard
+                var P0 = w.Planet;
+                Vec3d near = sid != 0 ? w.Settlements.Get(sid).Anchor : d;
+                double bestD = double.MaxValue;
+                for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+                {
+                    ref var cp = ref w.People.Get(id);
+                    if (!cp.Alive || cp.Household == 0) continue;
+                    if (view == "cartyard")
+                    {
+                        if (cp.Home != sid || !w.Households.Exists(cp.Household)) continue;
+                        ref var ch = ref w.Households.Get(cp.Household);
+                        if (ch.CartState != TC2.Core.Places.Carts.Made || ch.Building == 0) continue;
+                        ref var cs = ref w.Settlements.Get(sid);
+                        d = cs.LocalToSphere(ch.HomeX, ch.HomeY, P0.Radius);
+                        break;
+                    }
+                    bool trade = (cp.Act == TC2.Core.Agents.ActivityKind.TripOut || cp.Act == TC2.Core.Agents.ActivityKind.TripHome) && cp.Cargo != TC2.Core.Places.Trade.None
+                                 && TC2.Core.Places.Trade.KgOf(cp.Cargo) * cp.CargoQty > TC2.Core.Places.Trade.LoadKg + 1e-6;
+                    bool haul = cp.Act == TC2.Core.Agents.ActivityKind.Wood || cp.Act == TC2.Core.Agents.ActivityKind.Quarry;
+                    if ((!trade && !haul) || TC2.Core.Places.Carts.Usable(w, cp.Household) == TC2.Core.Places.Carts.None) continue;
+                    Vec3d at = w.Agents.PositionAt(cp, Host.RenderTime);
+                    double dist = Vec3d.ArcDistance(at, near, P0.Radius) - (trade ? 400.0 : 0.0);   // (one on the road first)
+                    if (dist < bestD) { bestD = dist; d = at; }
+                }
+                LookAt(d, view == "cartfar" ? 90 : view == "cartyard" ? 32 : 36);
+                return;
+            }
             if (view.StartsWith("work") && sid != 0)
             {
                 // a structure of the framed village (C1 tools): "work13" its quarry, "work11" a granary - from 90 m ("work13far": 250 m, "work23near" 45 m)

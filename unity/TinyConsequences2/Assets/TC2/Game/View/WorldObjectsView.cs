@@ -32,6 +32,8 @@ namespace TC2.Game
         Instancer _chimneys, _plinths, _outshuts, _pens, _stalls, _cross, _gardens;   // overlays, pens, the market, kitchen gardens (D2-114)
         Instancer _tenters;   // cloth stretched to dry by a weaver's shed while its village has wares (C3.1)
         Instancer _clayPits, _jars, _ware;   // the clay pit by a kiln, sealed jars by a granary, ware set out for sale (C3.2)
+        Instancer _handcarts, _oxcarts, _cartLoads, _oxen;   // households' carts out with their people, a load on them, the ox before an ox cart (C4.2)
+        Instancer _parked, _parkedOx;                        // and parked in their yards (rebuilt with the places, not every frame)
         Instancer _stonePiles;     // stone carried home and stacked by the store (C1.3)
         Instancer[] _trees;
         Material _mat;
@@ -114,6 +116,12 @@ namespace TC2.Game
             _clayPits = new Instancer(Models.Get("clay_pit", ProcMeshes.Granary), _mat, true);
             _jars = new Instancer(Models.Get("storage_jars", ProcMeshes.Granary), _mat, true);
             _ware = new Instancer(Models.Get("ware_stack", ProcMeshes.Granary), _mat, true);
+            _handcarts = new Instancer(Models.Get("handcart", ProcMeshes.Granary), _mat, true);   // (C4.2)
+            _oxcarts = new Instancer(Models.Get("ox_cart", ProcMeshes.Granary), _mat, true);
+            _cartLoads = new Instancer(Models.Get("cart_load", ProcMeshes.Granary), _mat, true);
+            _oxen = new Instancer(Models.Get("animal_cow", ProcMeshes.Granary), _mat, true);
+            _parked = new Instancer(Models.Get("handcart", ProcMeshes.Granary), _mat, true);
+            _parkedOx = new Instancer(Models.Get("ox_cart", ProcMeshes.Granary), _mat, true);
             _hay = new Instancer(Models.Get("haystack", ProcMeshes.Granary), _mat, true);
             _woodpiles = new Instancer(ProcMeshes.Woodpile(), _mat, true);   // the village's woodstore, by the homes (D2-081)
             _trees = new Instancer[TreeModels.Length];
@@ -248,7 +256,7 @@ namespace TC2.Game
             {
                 for (int i = 0; i < _homes.Length; i++) _homes[i].Draw(cam);
                 for (int i = 0; i < _frames.Length; i++) _frames[i].Draw(cam);
-                _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam); _gardens.Draw(cam); _tenters.Draw(cam); _clayPits.Draw(cam); _jars.Draw(cam); _ware.Draw(cam);
+                _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam); _gardens.Draw(cam); _tenters.Draw(cam); _clayPits.Draw(cam); _jars.Draw(cam); _ware.Draw(cam); _handcarts.Draw(cam); _oxcarts.Draw(cam); _cartLoads.Draw(cam); _oxen.Draw(cam); _parked.Draw(cam); _parkedOx.Draw(cam);
                 _stonePiles.Draw(cam);
                 for (int i = 0; i < _works.Length; i++) _works[i]?.Draw(cam);
                 _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _woodpiles.Draw(cam);
@@ -366,7 +374,7 @@ namespace TC2.Game
         /// may be drawn before it meets a neighbour (`Footprints.Room`), and where its yard has free ground - a kitchen garden behind or beside, a
         /// pen behind, a woodpile at its end or its back - so no garden, pen or woodpile is drawn into another house, a street or the green.
         /// </summary>
-        sealed class Plot { public float Room; public bool Back, Pen, SideL, SideR, WoodEnd, WoodBack; }
+        sealed class Plot { public float Room; public bool Back, Pen, SideL, SideR, WoodEnd, WoodBack, CartEnd, OxEnd; }
         readonly Dictionary<int, Plot> _plots = new Dictionary<int, Plot>();
         readonly Dictionary<int, long> _plotSig = new Dictionary<int, long>();
         readonly Dictionary<int, float> _plotAt = new Dictionary<int, float>();
@@ -408,6 +416,8 @@ namespace TC2.Game
             pl.SideR = Footprints.YardFree(w, sid, bid, L / 2.0 + 4.6, -W / 2.0 - 0.6, 3.9, 2.4);
             pl.WoodEnd = Footprints.YardFree(w, sid, bid, L / 2.0 + 1.6, 0.0, 1.0, 1.3);
             pl.WoodBack = Footprints.YardFree(w, sid, bid, L / 2.0 - 1.2, -W / 2.0 - 1.4, 1.3, 1.0);
+            pl.CartEnd = Footprints.YardFree(w, sid, bid, -(L / 2.0 + 1.9), -0.3, 1.0, 1.7);   // (a handcart by the other end wall, its shafts along it: C4.2)
+            pl.OxEnd = Footprints.YardFree(w, sid, bid, -(L / 2.0 + 2.1), -0.8, 1.2, 2.8);     // (an ox cart and its pole)
         }
 
         Plot PlotOf(int bid) => _plots.TryGetValue(bid, out var p) ? p : null;
@@ -417,7 +427,7 @@ namespace TC2.Game
             var P = w.Planet;
             for (int i = 0; i < _homes.Length; i++) _homes[i].Clear();
             for (int i = 0; i < _frames.Length; i++) _frames[i].Clear();
-            _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear(); _gardens.Clear(); _tenters.Clear(); _clayPits.Clear(); _jars.Clear(); _ware.Clear();
+            _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear(); _gardens.Clear(); _tenters.Clear(); _clayPits.Clear(); _jars.Clear(); _ware.Clear(); _parked.Clear(); _parkedOx.Clear();
             _stonePiles.Clear();
             for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
             _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _woodpiles.Clear();
@@ -801,6 +811,21 @@ namespace TC2.Game
                 }
             }
             if (!lived) return false;
+            // its cart in the yard (C4.2: the household's own, while nobody is out with it) - by the other end wall from the woodpile
+            if (plot != null && w.Households.Exists(b.Household))
+            {
+                ref var hc = ref w.Households.Get(b.Household);
+                if (hc.CartState == Carts.Made && !Carts.WornOut(in hc, w.Now) && !CartOut(w, b.Household))
+                {
+                    bool ox = hc.CartKind == Carts.Ox;
+                    if (ox ? plot.OxEnd : plot.CartEnd)
+                    {
+                        double L1 = hut ? 4.6 : PlanL[plan];
+                        Local(b.X, b.Y, face, -(L1 / 2.0 + (ox ? 2.1 : 1.9)) * ex, (ox ? -0.8 : -0.3) * ex, out double cx, out double cy);
+                        (ox ? _parkedOx : _parked).Add(0, Color.white, PlaceFaced(P, s, cx, cy, face, ex));
+                    }
+                }
+            }
             // its share of the village's woodstore stacked by the wall (D2-081): none when the store is all but empty, a bigger pile the
             // more days of the hearths' wood the village holds - by its end wall, or behind a back corner where a neighbour stands close (D2-118)
             if (woodDays >= 2.0 && plot != null && (plot.WoodEnd || plot.WoodBack))
@@ -1037,6 +1062,46 @@ namespace TC2.Game
             }
         }
 
+        /// <summary>
+        /// The household's cart a person has out (C4.2: the simulation's own carts, never for show): a trader carrying more than a back's load on a
+        /// trip out or home, or someone of a household with a cart at its woods or quarry - its kind, or None.
+        /// </summary>
+        static byte WithCart(TC2.Core.Simulation.World w, in Person p)
+        {
+            if (p.Household == 0) return Carts.None;
+            bool trade = (p.Act == ActivityKind.TripOut || p.Act == ActivityKind.TripHome) && p.Cargo != Trade.None && Trade.KgOf(p.Cargo) * p.CargoQty > Trade.LoadKg + 1e-6;
+            bool haul = p.Act == ActivityKind.Wood || p.Act == ActivityKind.Quarry;
+            if (!trade && !haul) return Carts.None;
+            return Carts.Usable(w, p.Household);
+        }
+
+        /// <summary>A member of the household is out with its cart.</summary>
+        static bool CartOut(TC2.Core.Simulation.World w, int hid)
+        {
+            var mem = w.Members(hid);
+            for (int i = 0; i < mem.Count; i++) { ref var q = ref w.People.Get(mem[i]); if (q.Alive && WithCart(w, in q) != Carts.None) return true; }
+            return false;
+        }
+
+        /// <summary>
+        /// A cart with its person: walking, a handcart pulled behind them by its shafts, an ox cart behind its ox with the person at the ox's head;
+        /// standing at the woods or a quarry, beside them. A load of sacks on it while it carries more than a back's load.
+        /// </summary>
+        void DrawCart(in Person p, Vector3 pos, float yaw, float sc, bool walking, byte kind)
+        {
+            Vector3 up = pos.normalized;
+            Quaternion rot = PlanetGeo.Upright(pos, yaw);
+            Vector3 fwd = rot * Vector3.forward, right = rot * Vector3.right;
+            bool ox = kind == Carts.Ox;
+            Vector3 at;
+            if (walking) at = pos - fwd * ((ox ? 4.2f : 1.9f) * sc) + (ox ? right * (0.9f * sc) : Vector3.zero);
+            else { at = pos + right * (1.6f * sc); rot = PlanetGeo.Upright(pos, yaw + 70f); }
+            (ox ? _oxcarts : _handcarts).Add(0, Color.white, Matrix4x4.TRS(at, rot, Vector3.one * sc));
+            if (ox) _oxen.Add(0, new Color(0.78f, 0.62f, 0.46f, 1f), Matrix4x4.TRS(at + (rot * Vector3.forward) * (3.4f * sc), rot, Vector3.one * sc));
+            if (p.Cargo != Trade.None && Trade.KgOf(p.Cargo) * p.CargoQty > Trade.LoadKg + 1e-6)
+                _cartLoads.Add(0, Color.white, Matrix4x4.TRS(at + up * ((ox ? 1.0f : 0.6f) * sc) + (rot * Vector3.forward) * (0.1f * sc), rot, Vector3.one * (ox ? 1.6f * sc : sc)));
+        }
+
         readonly List<Vector3> _workDiscs = new List<Vector3>();   // a village's works (x, y, radius) while its yard trees are laid out
 
         bool OnWork(double x, double y)
@@ -1078,7 +1143,7 @@ namespace TC2.Game
         void RebuildPeople(TC2.Core.Simulation.World w)
         {
             var P = w.Planet;
-            _people.Clear(); _afloat.Clear(); _afloatP.Clear(); _hulls.Clear();
+            _people.Clear(); _afloat.Clear(); _afloatP.Clear(); _hulls.Clear(); _handcarts.Clear(); _oxcarts.Clear(); _cartLoads.Clear(); _oxen.Clear();
             PeopleDrawn = 0; BoatsAfloat = 0;
             float waterR = (float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel));
             double t = Host.RenderTime;
@@ -1153,6 +1218,8 @@ namespace TC2.Game
                 }
                 _people.Add(dye + (walking ? 100 : 0), Dyes[dye], Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, yaw), Vector3.one * sc), 0f, walking ? 1f : 0f);
                 PeopleDrawn++;
+                byte cart = WithCart(w, in p);
+                if (cart != Carts.None) DrawCart(in p, pos, yaw, sc, walking, cart);
             }
         }
     }

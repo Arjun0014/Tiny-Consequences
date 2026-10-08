@@ -25,6 +25,28 @@ Transport capacity shapes trade, construction, mining, armies and growth - and i
 Animals working do not graze or give milk that day; a household with an ox may lend it (C4). Military wagons and pack trains are the
 same means (`23` §7).
 
+**Implemented (C4.2, D2-122)** - measured first (`run --loads`, `place --haul`; seed 4, the C3.2 worlds): **83 % of trading loads set out were bound
+by what one person carries** (more was spared at home and wanted at the other end); grown oxen are scarce in mature worlds (1-2 % of households at
+year 300, 13 % at year 100 - fields have taken the pasture), so ox carts alone would change little; the ways between villages are mostly paths and
+roads by year 300 (seed 4: 84 paths, 34 roads, 8 tracks); woodlots lie 350-1,130 m out on average. So `Core/Places/Carts.cs`, a household's
+**handcart** (two wheels, a bed, shafts: 120 kg at 0.85 of a walker's pace) or, where it keeps a grown ox, an **ox cart** (500 kg at 0.7) - kept in
+its yard as household property (`Household.CartKind/CartState/CartHours/CartAt/CartNeed`; no building row: nothing on the village's ground).
+- **Wanted** when the household's backs were too small three times (`NeedTrips`), none two years apart (`NeedYears`): a trader's back's load where
+  more was spared and wanted along a way worn to a path or a road (`Trade.Load`), or a stint carrying wood or stone home from 400 m or more
+  (`HaulFrom`) - and one of its able people (16-59, well) works wood well enough to shape a wheel (`Wright`, SkWood 0.4). (After one trip, carts were
+  made that then stood in the yard.)
+- **Made** in the household's hours like a boat: begun when the store's wood allows (3 loads, an ox cart 10), 30 h (80); lived, a choice in the
+  yard (u 0.5, `WhyCode.Cart` 47); COARSE, up to 2 h a grown member's day before the village's building (given only what building left, half the
+  carts begun were never made; given two years). History `CartMade` (90). Worn out after 12 years (an ox cart 20); an ox cart stands while the
+  household keeps no grown ox. The heir takes it.
+- **Used**: a trader of a household with a cart, on a path or road, loads a cart's load (`Trade.Load`/`Exchange`) and travels at its pace
+  (`AgentSystem.BeginTravel`, `Carts.Pace`); wood and stone come home by the cartload - the walk home is shared by its loads (`Woods.Rate`,
+  `Stone.Rate`: `trip` loads at `pace`). One law at both resolutions. `--nocarts` gives the world before carts on the same binary (the rates reduce
+  exactly to the old ones).
+- **Seen**: carts parked in the yards (by the end wall opposite the woodpile, where the ground is free), a handcart pulled behind its trader or
+  an ox cart behind its ox on the road with a load of sacks, a cart beside its people at the woods or the quarry; pages: the household's cart,
+  the village's carts, a cargo "on the household's handcart".
+
 ## 3. Roads emerge from use (C4)
 
 Repeated travel creates paths; heavy, useful paths are improved; unused ones fade (Helbing's active walkers: people prefer ground

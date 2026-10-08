@@ -109,28 +109,30 @@ namespace TC2.Core.Places
         public static double CutRate(in Agents.Person p, double tools) => CutPerHour * (0.5 + 0.5 * p.Health) * tools;
 
         /// <summary>Loads an hour of quarrying brings home from a quarry this far: every load carried both ways.</summary>
-        public static double Rate(double r0, double dist, double walk) => r0 / (1.0 + r0 * 2.0 * dist / walk / 3600.0);
+        public static double Rate(double r0, double dist, double walk, double trip = 1.0, double pace = 1.0) => r0 / (1.0 + r0 * 2.0 * dist / (walk * pace) / 3600.0 / trip);
 
         /// <summary>The share of a COARSE day's quarrying hours left after the walk out and home once a stint.</summary>
-        public static double AfterWalk(double dist, double walk) => Woods.Stint / (Woods.Stint + 2.0 * dist / walk / 3600.0);
+        public static double AfterWalk(double dist, double walk, double pace = 1.0) => Woods.Stint / (Woods.Stint + 2.0 * dist / (walk * pace) / 3600.0);
 
         /// <summary>Loads an hour of quarrying brings home at the village's quarry now.</summary>
-        public static double HourRate(World w, int sid, int quarry, double r0, bool coarse)
+        public static double HourRate(World w, int sid, int quarry, double r0, bool coarse, int hid = 0)
         {
             if (quarry == 0) return 0;
             ref var s = ref w.Settlements.Get(sid);
             double walk = w.Config.WalkSpeed, d = s.StoneDist;
-            return Rate(r0, d, walk) * (coarse ? AfterWalk(d, walk) : 1.0);
+            Carts.Haul(w, hid, out double trip, out double pace);   // (the household's cart carries the stone home: C4.2)
+            return Rate(r0, d, walk, trip, pace) * (coarse ? AfterWalk(d, walk, pace) : 1.0);
         }
 
         /// <summary>
         /// Quarrying hours given at the village's quarry: the loads cut and carried home into its store; the quarry's face grows by them.
         /// Returns loads.
         /// </summary>
-        public static double Cut(World w, int sid, int quarry, double hours, double r0, bool coarse)
+        public static double Cut(World w, int sid, int quarry, double hours, double r0, bool coarse, int hid = 0)
         {
             if (hours <= 0 || quarry == 0) return 0;
-            double loads = hours * HourRate(w, sid, quarry, r0, coarse);
+            double loads = hours * HourRate(w, sid, quarry, r0, coarse, hid);
+            if (Carts.Usable(w, hid) == Carts.None) Carts.WantHaul(w, hid, w.Settlements.Get(sid).StoneDist);
             ref var s = ref w.Settlements.Get(sid);
             s.Stone += loads;
             ref var q = ref w.Buildings.Get(quarry);

@@ -84,7 +84,7 @@ namespace TC2.Core.History
             if (p.Sick != 0) sb.Append(p.SickPhase == Health.Disease.Latent ? ", carrying " : ", sick with ").Append(w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick)));
             if (p.PregDue != 0) sb.Append(", with child (due ").Append(SimTime.FormatShort(p.PregDue)).Append(")");
             sb.Append(".\n");
-            if (p.CargoQty > 0f) sb.Append("Carrying ").Append(F(p.CargoQty, "0.0")).Append(p.Cargo == Trade.Metal ? " kg of copper" : p.Cargo == Trade.Iron ? " kg of iron" : p.Cargo == Trade.Grain ? " days' grain" : p.Cargo == Trade.Fibre ? " kg of fibre" : p.Cargo == Trade.Wares ? " wares (a person's cloth and goods each)" : p.Cargo == Trade.Pots ? " kg of pots and jars" : " hides").Append(".\n");
+            if (p.CargoQty > 0f) sb.Append("Carrying ").Append(F(p.CargoQty, "0.0")).Append(p.Cargo == Trade.Metal ? " kg of copper" : p.Cargo == Trade.Iron ? " kg of iron" : p.Cargo == Trade.Grain ? " days' grain" : p.Cargo == Trade.Fibre ? " kg of fibre" : p.Cargo == Trade.Wares ? " wares (a person's cloth and goods each)" : p.Cargo == Trade.Pots ? " kg of pots and jars" : " hides").Append(Trade.KgOf(p.Cargo) * p.CargoQty > Trade.LoadKg + 1e-6 && Carts.Usable(w, p.Household) != Carts.None ? " on the household's " + Carts.NameOf(Carts.Usable(w, p.Household)) : "").Append(".\n");
             return sb.ToString();
         }
 
@@ -230,6 +230,12 @@ namespace TC2.Core.History
                 sb.Append("It cooks ").Append(own ? "in pots it fires itself" : hh.Pots > 0.05f ? "in " + F(hh.Pots, "0.0") + " kg of kiln pots" : "without fired pots - " + (w.Settlements.Exists(hh.Settlement) && w.Learning.Clay(w.Settlements.Get(hh.Settlement).Cell) ? "nobody in it can fire them" : "no clay within reach and none from a kiln"))
                   .Append(" (its cooking burns ").Append(F(100 * Pottery.CookFactor(w, p.Household), "0")).Append(" % of the wood it would without them).\n");
             }
+            // its cart (C4.2): kept, being made, or wanted
+            if (hh.CartState == Carts.Made)
+                sb.Append(Carts.WornOut(in hh, w.Now) ? "Its " + Carts.NameOf(hh.CartKind) + " is worn past mending.\n"
+                    : "It keeps " + (hh.CartKind == Carts.Ox ? "an ox cart" : "a handcart") + ", made in " + Year(hh.CartAt) + (hh.CartKind == Carts.Ox && !w.Stock.HasOx(p.Household) ? " - no grown ox to draw it now" : "") + ".\n");
+            else if (hh.CartState == Carts.Making) sb.Append("It is making " + (hh.CartKind == Carts.Ox ? "an ox cart" : "a handcart") + " (" + F(hh.CartHours, "0") + " of " + F(Carts.HoursOf(hh.CartKind), "0") + " hours).\n");
+            else if (hh.CartState == Carts.Wanted) sb.Append("It wants a cart: what it carries is more than its backs can take.\n");
             int cattle = 0, goats = 0, pigs = 0; var beasts = w.BeastsOf(p.Household);
             for (int i = 0; i < beasts.Count; i++) { byte k = w.Beasts.Get(beasts[i]).Kind; if (k == Livestock.Cattle) cattle++; else if (k == Livestock.Goat) goats++; else pigs++; }
             var an = new List<string>();

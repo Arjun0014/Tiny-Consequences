@@ -69,6 +69,7 @@ namespace TC2.Core.Agents
         Rebuild = 44,     // the household rebuilds its house as its people build now (D2-114)
         Weave = 45,       // the village's wares are short of what it keeps: one of its best weavers works at its weaver's shed (C3.1)
         Pot = 46,         // the village's jars or pots are short: one of its best potters works at its kiln (C3.2)
+        Cart = 47,        // the household makes a cart: its traders carried a back's load where more was spared and wanted (C4.2)
     }
 
     public static class Sex { public const byte Female = 0, Male = 1; }

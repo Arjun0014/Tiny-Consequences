@@ -30,6 +30,9 @@ only - never modify or stage it.
 - Open W task **W-FOREST** (Arjun, 8 Oct): forests/biomes still read as the same trees recoloured - not solved (`18` §8).
 
 ## Do next
+0. **C4.2 carts is IN PROGRESS** (committed as work in progress at the session-13 handoff; SESSION_HANDOFF "Session 13" has the exact state): the
+   ten seeds show famines x0.83 but people over years 200-299 x0.955 (t -2.4) against the same binary without carts - explain that first, then
+   D2-122, shots, the full suite, Web build and test.
 1. (done in session 13) Web build of d21d09d: Web test 6/6 (`tc2/out/webtest/c32web`, views 86-120 fps, pages 68-84); `tc2/web-build/web` is current.
 2. **C3.3 exchange between households** (`26` §3): the weaver's and the potter's ware is the village's and free to its households - payment in kind
    (makers paid), households' own holdings replacing D2-114's `Means`; export crafts (looms and kilns for buyers) wait for it. Measure first.

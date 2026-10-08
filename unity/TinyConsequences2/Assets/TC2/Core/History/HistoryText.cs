@@ -117,6 +117,9 @@ namespace TC2.Core.History
                     return e.ArgA == TC2.Core.Places.Structures.PlankBoat
                         ? "The " + subj + "s of " + place + " built a boat of planks in the boat shed" + (e.Other.IsNone ? "" : ", " + other + " leading the work") + ": four can row it out to the open sea's shoals."
                         : "The " + subj + "s of " + place + " hollowed a dugout from a trunk of the woods" + (e.Other.IsNone ? "" : ", " + other + " leading the work") + ": the open sea holds more fish than the shore.";
+                case HistoryKind.CartMade:
+                    return "The " + subj + "s of " + place + " made " + (e.ArgA == TC2.Core.Places.Carts.Ox ? "an ox cart" : "a handcart") + (e.Other.IsNone ? "" : ", " + other + " shaping its wheels") +
+                           ": what they carried - their traders' loads along a worn way, wood and stone from far off - had been more than their backs could take.";
                 case HistoryKind.BoatLost:
                     return "The " + TC2.Core.Places.Boats.NameOf((byte)e.ArgB) + " of the " + subj + "s of " + place + " overturned at sea in a rising wind (" + F(e.Magnitude, "0") + " m/s)" +
                            (e.Other.IsNone ? "." : e.ArgA == 1 ? ": " + other + " drowned." : ": " + other + " clung to it and came ashore.");
@@ -257,6 +260,7 @@ namespace TC2.Core.History
                     if (p.Why == WhyCode.NoRoof) return "raising a roof for the household: they live in a camp or a hut";
                     if (p.Why == WhyCode.Rebuild && w.Households.Exists(p.Household)) return "rebuilding the household's house as a " + Places.Architecture.PlanName(w.Households.Get(p.Household).Rebuild - 1) + ": they have the means, and the old one is old or poor beside what they would build now";
                     if (p.Why == WhyCode.Boat) return "hollowing a trunk into a dugout for the household: the open sea holds more fish than the shore";
+                    if (p.Why == WhyCode.Cart) return "shaping wheels and an axle for the household's " + (w.Households.Exists(p.Household) ? TC2.Core.Places.Carts.NameOf(w.Households.Get(p.Household).CartKind) : "cart") + " in the yard: what they carry - their traders' loads, wood and stone from far off - is more than their backs can take";
                     if (w.Settlements.Exists(p.Home) && TC2.Core.Places.Construction.NextWork(w.Settlements.Get(p.Home)) == TC2.Core.Places.Construction.Structure && w.Buildings.Exists(w.Settlements.Get(p.Home).Project))
                     {
                         ref var pb = ref w.Buildings.Get(w.Settlements.Get(p.Home).Project);

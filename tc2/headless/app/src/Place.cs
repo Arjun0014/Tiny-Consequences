@@ -20,6 +20,7 @@ namespace TC2.Headless
             if (a.Has("list")) { ListPlaces(w); return 0; }
             if (a.Has("standing")) { Standing(w); return 0; }
             if (a.Has("stores")) { Stores(w); return 0; }
+            if (a.Has("haul")) { Haul(w); return 0; }
             if (a.Has("overlaps")) { Overlaps(w, a.Int("sid", 0)); return 0; }
             if (a.Has("layout")) { Layout(w, a.Int("sid", 0) != 0 ? a.Int("sid", 0) : PickPlace(w, "big")); return 0; }
             if (a.Has("households")) { ListHouseholds(w, a.Int("sid", 0) != 0 ? a.Int("sid", 0) : PickPlace(w, "big")); return 0; }
@@ -147,6 +148,35 @@ namespace TC2.Headless
             Console.WriteLine("WORLD " + order.Count + " villages, " + nPeople + " people: store " + tStore.ToString("0") + " FU = " + (tStore / Math.Max(1, tNeed)).ToString("0.00") + " y of need (capacity " + tCap.ToString("0") + "); villages by years in store <0.25/0.5/1/2/2+ " + string.Join("/", yb) +
                               "; last harvests " + (tHarv / Math.Max(1, tNeed)).ToString("0.00") + " y; rots " + tRot.ToString("0") + " FU/y (" + (100 * tRot / Math.Max(1, tHarv)).ToString("0.0") + " % of the harvests); pottery known in " + nKnow + " (" + pKnow + " people), clay at " + nClay + " (" + pClay + " people), both " + nKnowClay +
                               "; potters " + potters + "; households cooking in pots " + potHh + "/" + allHh + "; cooking " + (100 * tCook / Math.Max(0.01, tFuel)).ToString("0") + " % of the wood burnt");
+        }
+
+        /// <summary>`place --load SAVE --haul` (C4.2 survey): each village's hauling - its woodlot's and quarry's distance, its households with a grown
+        /// ox and with a woodworker - and the world's sums, with the ways between villages by state.</summary>
+        static void Haul(World w)
+        {
+            int hh = 0, ox = 0, oxWood = 0, villages = 0, nq = 0; double wood = 0, quarry = 0;
+            var ways = new System.Collections.Generic.List<TC2.Core.Agents.Way>();
+            w.Ways.Collect(w.Now, ways);
+            int[] byState = new int[4];
+            foreach (var wy in ways) byState[TC2.Core.Agents.Ways.StateOf(w.Ways.UseOf(w.Now, wy.A, wy.B))]++;
+            for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id))
+            {
+                var s = w.Settlements.Get(id);
+                if (!s.Inhabited) continue;
+                villages++;
+                var hl = w.HouseholdsOf(id); int o = 0, ow = 0;
+                for (int i = 0; i < hl.Count; i++)
+                {
+                    if (!w.Stock.HasOx(hl[i])) continue;
+                    o++;
+                    var mem = w.Members(hl[i]); bool wd = false;
+                    for (int j = 0; j < mem.Count; j++) { var p = w.People.Get(mem[j]); if (p.Alive && p.SkWood >= 0.4f && p.AgeYears(w.Now) >= 16) wd = true; }
+                    if (wd) ow++;
+                }
+                hh += hl.Count; ox += o; oxWood += ow; wood += s.WoodDist; if (s.Quarry != 0) { quarry += s.StoneDist; nq++; }
+                Console.WriteLine("#" + id + " " + w.History.NameOf(EntityRef.Settlement(id)) + ": " + s.Population + " people, " + hl.Count + " households, " + o + " with a grown ox (" + ow + " with a woodworker too); woodlot " + s.WoodDist.ToString("0") + " m, quarry " + (s.Quarry != 0 ? s.StoneDist.ToString("0") + " m" : "none") + ", stone " + s.Stone.ToString("0") + " / " + s.StoneWant.ToString("0") + " loads");
+            }
+            Console.WriteLine("WORLD " + villages + " villages, " + hh + " households, " + ox + " with a grown ox (" + oxWood + " with a woodworker too); woodlots " + (wood / Math.Max(1, villages)).ToString("0") + " m out on average, quarries " + (quarry / Math.Max(1, nq)).ToString("0") + " m (" + nq + "); ways none/track/path/road " + string.Join("/", byState));
         }
 
         /// <summary>`place --load SAVE --layout [--sid N]` (C13.1): a village's plan for plotting - its square, ring, streets, and every standing

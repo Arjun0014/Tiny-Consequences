@@ -289,9 +289,14 @@ namespace TC2.Core.Places
         public byte Rebuild;         // rebuilding its house: 1 + the plan it builds (0 not; Build holds the hours put in: D2-114)
         public float Wares;          // of its goods, those that are wares from a weaver's shed (they wear slower: C3.1; never more than Gear)
         public float Pots;           // kg of kiln pots it cooks in (a household that cannot fire its own: C3.2)
+        public byte CartKind;        // its cart: 1 a handcart, 2 an ox cart (C4.2, `Carts`)
+        public byte CartState;       // 0 none, 1 wanted, 2 being made, 3 made
+        public float CartHours;      // labour-hours into the one being made
+        public long CartAt;          // when it was last wanted, begun or made (its years are counted from the making)
+        public byte CartNeed;        // its traders' trips with a back's load too small, counted while they come within two years of each other
 
-        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(HomeX); w.Float(HomeY); w.Double(Larder); w.Long(Formed); w.Long(Dissolved); w.Int(FamilyName); w.Byte(Shelter); w.Float(Build); w.Int(Party); w.Double(Ready); w.Float(Water); w.Float(Indoor); w.Float(Gear); w.Int(Building); w.Int(Boat); w.Byte(Rebuild); w.Float(Wares); w.Float(Pots); }
-        public static Household Read(BinReader r) => new Household { Id = r.Int(), Settlement = r.Int(), HomeX = r.Float(), HomeY = r.Float(), Larder = r.Double(), Formed = r.Long(), Dissolved = r.Long(), FamilyName = r.Int(), Shelter = r.Byte(), Build = r.Float(), Party = r.Int(), Ready = r.Double(), Water = r.Float(), Indoor = r.Float(), Gear = r.Float(), Building = r.Int(), Boat = r.Int(), Rebuild = r.Byte(), Wares = r.Float(), Pots = r.Float() };
-        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(HomeX); h.Add(HomeY); h.Add(Larder); h.Add(Formed); h.Add(Dissolved); h.Add(FamilyName); h.Add(Shelter); h.Add(Build); h.Add(Party); h.Add(Ready); h.Add(Water); h.Add(Indoor); h.Add(Gear); h.Add(Building); h.Add(Boat); h.Add(Rebuild); h.Add(Wares); h.Add(Pots); }
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(HomeX); w.Float(HomeY); w.Double(Larder); w.Long(Formed); w.Long(Dissolved); w.Int(FamilyName); w.Byte(Shelter); w.Float(Build); w.Int(Party); w.Double(Ready); w.Float(Water); w.Float(Indoor); w.Float(Gear); w.Int(Building); w.Int(Boat); w.Byte(Rebuild); w.Float(Wares); w.Float(Pots); w.Byte(CartKind); w.Byte(CartState); w.Float(CartHours); w.Long(CartAt); w.Byte(CartNeed); }
+        public static Household Read(BinReader r) => new Household { Id = r.Int(), Settlement = r.Int(), HomeX = r.Float(), HomeY = r.Float(), Larder = r.Double(), Formed = r.Long(), Dissolved = r.Long(), FamilyName = r.Int(), Shelter = r.Byte(), Build = r.Float(), Party = r.Int(), Ready = r.Double(), Water = r.Float(), Indoor = r.Float(), Gear = r.Float(), Building = r.Int(), Boat = r.Int(), Rebuild = r.Byte(), Wares = r.Float(), Pots = r.Float(), CartKind = r.Byte(), CartState = r.Byte(), CartHours = r.Float(), CartAt = r.Long(), CartNeed = r.Byte() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(HomeX); h.Add(HomeY); h.Add(Larder); h.Add(Formed); h.Add(Dissolved); h.Add(FamilyName); h.Add(Shelter); h.Add(Build); h.Add(Party); h.Add(Ready); h.Add(Water); h.Add(Indoor); h.Add(Gear); h.Add(Building); h.Add(Boat); h.Add(Rebuild); h.Add(Wares); h.Add(Pots); h.Add(CartKind); h.Add(CartState); h.Add(CartHours); h.Add(CartAt); h.Add(CartNeed); }
     }
 }

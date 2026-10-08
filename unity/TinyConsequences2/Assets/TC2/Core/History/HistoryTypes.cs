@@ -86,6 +86,7 @@ namespace TC2.Core.History
         OreGaveOut = 82,
         OreTaken = 83,
         BoatBuilt = 85,         // a household made a boat (Subject the household, Object the boat, Other who led the making; C9.1)
+        CartMade = 90,          // a household made a cart (Subject the household, Other who made it; ArgA 1 a handcart, 2 an ox cart; C4.2)
         HomeCleared = 89,       // a house standing in a street or lane, the green or market place, or across a ring was taken down - left empty, or its household moved out to build anew on a free lot (Subject the household that lived in it last, Object the house; ArgA 1 a street or lane, 2 the green or market place, 3 a ring, 4 a river; ArgB 1 its household moved out; C13.3, D2-118)
         HomeRebuilt = 88,       // a household rebuilt its house as its people build now (Subject the household, Object the house; ArgA the plan built, ArgB the one before; D2-114)
         ReliefReturned = 87,    // a village gave back grain it was given in a famine (Subject who gave it back, Object the giver; Magnitude FU first returned; ArgA 1 by sea; Cause1 the gift; D2-113)
@@ -238,6 +239,7 @@ namespace TC2.Core.History
                 case HistoryKind.CallAnswered:
                 case HistoryKind.BoatBuilt:
                 case HistoryKind.BoatLost:
+                case HistoryKind.CartMade:
                 case HistoryKind.Scouted: return Tier.Local;
                 case HistoryKind.PartySetOut: return Tier.Historical;
                 case HistoryKind.HerdHuntedOut: return Tier.Local;
@@ -326,6 +328,7 @@ namespace TC2.Core.History
                 case HistoryKind.OreTaken: b = 7; break;
                 case HistoryKind.CallAnswered: b = 8; break;
                 case HistoryKind.BoatBuilt: b = 3; break;
+                case HistoryKind.CartMade: b = 2; break;
                 case HistoryKind.BoatLost: b = 6; break;
                 case HistoryKind.PartySetOut: b = 20; break;
                 case HistoryKind.Scouted: b = 2; break;

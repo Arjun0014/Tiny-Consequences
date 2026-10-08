@@ -84,8 +84,14 @@ views shows the differentiation; every structure is clickable; headless runs at 
 
 ### C3 professions and exchange, by slices (`26`): ~~C3.1 the weaver's shed and the village's wares~~ (done, D2-119: wares last longer than homespun,
 the village's best weavers make them at a shed in larger places, households take them, they are traded - trade x3, home making hours x0.28); ~~C3.1b more sheds where a town's
-looms cannot keep up~~ (done, D2-120); next C3.2 the potter's kiln, C3.3 exchange between households, C3.4 the mill, C3.5 apprenticeship,
-C3.6 other workshops.
+looms cannot keep up~~ (done, D2-120); ~~C3.2 the potter's kiln, jars and hearths' pots of real clay~~ (done, D2-121: 84 kilns in 169 villages over
+ten worlds, pottery most of the world's trade, markets x3.6); C3.3 exchange between households - surveyed and deferred as a phase (`26` §3: the
+village's store moves 31 % of the food households draw; household property needs a moral economy, household fields, debt, inheritance); C3.4
+the mill, C3.5 apprenticeship, C3.6 other workshops.
+
+### C4 transport, by slices: ~~C4.1 roads by use~~ (D2-097); **C4.2 carts** (D2-122, `24` §2: a household's handcart or ox cart where its backs were
+too small - 83 % of trading loads were bound by what one carries; loads on paths and roads, wood and stone home by the cartload); next: road
+works and upkeep, fords and bridges, pack trains, carts for the lords' and armies' supplies (C8).
 
 ### C13 historical city evolution, by slices (D2-116): ~~C13.1 streets - villages grow along their roads, houses face them~~ (done); ~~C13.2 back lanes~~ (done, D2-117);
 ~~C13.3 a town's ground: footprints (no house in another), divided plots and rows of narrow town houses in its core, the market place~~ (done, D2-118);

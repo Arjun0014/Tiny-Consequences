@@ -21,7 +21,30 @@
 - **Found and fixed on the way**: the view's works table had 24 slots (the kiln is kind 24: Start threw and left later instancers null); a
   yard tree grew out of the kiln's dome (yard trees now keep off every work's ground).
 
+- **C3.3 surveyed and deferred** (commit 3db3cec; `26` §3): a tools household ledger (`run --ledger Y`, `Core/Diagnostics/HouseLedger.cs`, null in the
+  game) - the village's store moves 31 % of the food households draw from 43 % givers to 57 % takers; household property needs a moral economy
+  (sharing by need, gifts or debts), household fields and inheritance: a phase, weighed with C10.
+- **C4.2 carts - IN PROGRESS, uncommitted evaluation open (D2-122 not yet written; sim version 60)**. Built: `Core/Places/Carts.cs` (handcart 120 kg
+  at 0.85 pace, ox cart 500 kg at 0.7 where the household keeps a grown ox; household fields `CartKind/CartState/CartHours/CartAt/CartNeed`;
+  wanted after `NeedTrips` 3 back-bound needs within `NeedYears` 2 - a trader's back's load where more was spared and wanted on a path or road
+  (`Trade.Load`), or a wood/stone stint from 400 m+ (`Woods.Cut`, `Stone.Cut`) - with an able wright (SkWood 0.4, 16-59, well); made in household
+  hours (lived choice 24 `WhyCode.Cart` 47 u 0.5; COARSE up to `HoursADay` 2 h before the village's building - given only what building left, half
+  the carts begun were never made); `Trade.Load/Exchange` cart loads on worn ways; `BeginTravel` at `Carts.Pace`; `Woods.Rate`/`Stone.Rate` take
+  `trip` loads and `pace`; `HistoryKind.CartMade` 90; metrics `CartsBegun/Made/Worn/GivenUp/CartTrips/CartKg`; pages (household cart, settlement
+  "Carts", cargo "on the household's handcart"); view (parked carts `_parked/_parkedOx` at the yard's end wall, carts with traders/haulers
+  `DrawCart`, an ox before an ox cart, a load of sacks); camera `cart`, `cartfar`, `cartyard`; kit `handcart`, `ox_cart`, `cart_load`; headless
+  `carts:` and `loads:` lines, `--nocarts`, `--loads`, `place --haul`. `CartsTests` 5/5; Unity compiles (0 errors). `TimeUse` counts all kinds.
+  Measured first: 83 % of trading loads bound by a back's load; grown oxen in 1-2 % of households at year 300; ways mostly paths/roads.
+- **C4.2 ten seeds** `tc2/out/civ/s*_c1` (carts; saves 100/200/300) vs `s*_c1n` (same binary `--nocarts`; equals `_k1` exactly - seed 4 10,791):
+  at year 300 ~35-45 % of households keep a cart (seed 4: 1,098 handcarts, 45 ox carts; 3 % of carts begun given up); **famines x0.83 (t -3.4),
+  hunger deaths x0.93 (t -2.3)**, trades x0.70 (fewer, bigger loads), trade gain x0.93, markets x0.93, wood felled x0.985, births/deaths a
+  thousand at par - but **people over years 200-299 x0.955 (t -2.4)** (seed 4 9,655 vs 10,791; 42 7,138 vs 7,701). NOT YET EXPLAINED - find
+  why first (villages fewer? foundings, households setting out, the cart hours taken from building homes so households camp longer, grain sold
+  away in cart loads, a tally `cmp.py c1n c1` and `agg.py c1n c1` - parties/foundings/relief).
+
 ### Next, in order
+0. **Finish C4.2**: explain the people x0.955 (above) and fix it if it is a fault (not a mechanism), then D2-122, shots (`cart`, `cartyard`
+   views on `s4_c1/world_y300.tc2`), full suite, Web build + Web test, commit, docs.
 1. (done) Full suite 302/302; Web build of d21d09d: Web test 6/6 (`tc2/out/webtest/c32web`, views 86-120 fps, pages 68-84 fps); the Web build in
    `tc2/web-build/web` is current.
 2. **C3.3 exchange between households** (payment in kind: makers paid; households' own holdings replacing D2-114's `Means`) - the weaver's and the

@@ -141,8 +141,8 @@ namespace TC2.Core.Agents
             p.S0 = (float)sFrom; p.S1 = (float)sTo;
             double len = DMath.Abs(sTo - sFrom);
             p.T0 = now;
-            // (a worn way is quicker underfoot: C4.1)
-            p.T1 = arriveAt > 0 ? Math.Max(now + 1, arriveAt) : now + Math.Max(1L, DMath.ToLong(DMath.RoundHalfUp(len / (Speed(p, now) * _w.Ways.Speed(now, r.A, r.B)))));
+            // (a worn way is quicker underfoot: C4.1; a loaded cart slower than a walker: C4.2)
+            p.T1 = arriveAt > 0 ? Math.Max(now + 1, arriveAt) : now + Math.Max(1L, DMath.ToLong(DMath.RoundHalfUp(len / (Speed(p, now) * _w.Ways.Speed(now, r.A, r.B) * (act == ActivityKind.Voyage ? 1.0 : Carts.Pace(_w, in p))))));
             Schedule(in p);
             RegisterLeg(ref p, r);
             _w.Metrics.Journeys++;
@@ -431,7 +431,7 @@ namespace TC2.Core.Agents
                     if (p.At != 0)
                     {
                         // felled at the village's woodlot, carried home from there (C1.2: the woods it came from are thinner by it)
-                        Woods.Cut(w, p.At, hours, (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * Tools(p.Household), false);
+                        Woods.Cut(w, p.At, hours, (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * Tools(p.Household), false, p.Household);
                         p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * hours);
                     }
                     break;
@@ -498,6 +498,7 @@ namespace TC2.Core.Agents
                     if (p.At != 0 && p.At == p.Home && hours > 0)
                     {
                         if (p.Why == WhyCode.Boat) Boats.Work(w, p.At, p.Household, hours, BuildRate(in p) * Tools(p.Household), p.Id);   // (the household's boat: C9.1)
+                        else if (p.Why == WhyCode.Cart) Carts.Work(w, p.Household, hours, BuildRate(in p) * Tools(p.Household), p.Id);   // (the household's cart: C4.2)
                         else Construction.Work(w, p.At, p.Household, hours, BuildRate(in p) * Tools(p.Household), p.Id);
                     }
                     break;
@@ -555,7 +556,7 @@ namespace TC2.Core.Agents
                     {
                         // stone cut at the quarry and carried home, a load at a time (C1.3)
                         int qid = Stone.Quarry(w, p.At);
-                        if (qid != 0) Stone.Cut(w, p.At, qid, hours, Stone.CutRate(in p, Tools(p.Household)), false);
+                        if (qid != 0) Stone.Cut(w, p.At, qid, hours, Stone.CutRate(in p, Tools(p.Household)), false, p.Household);
                     }
                     break;
                 case ActivityKind.Craft:
@@ -1007,7 +1008,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying, 15 the smithy, 16 practice, 17 mining, 18 charcoal, 19 bog ore, 20 the household's boat, 21 a voyage, 22 the weaver's shed, 23 the kiln
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying, 15 the smithy, 16 practice, 17 mining, 18 charcoal, 19 bog ore, 20 the household's boat, 21 a voyage, 22 the weaver's shed, 23 the kiln, 24 the household's cart
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -1130,6 +1131,13 @@ namespace TC2.Core.Agents
                 // the household is making a boat (C9.1): its grown members fell, drag down and hollow the trunk, as they would raise a roof
                 double u = 0.42 * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
                 if (u > best) { best = u; choice = 20; }
+            }
+            if (day && atHome && age >= 16 && age < 60 && p.Health > 0.6 && Carts.HasWork(w, p.Household))
+            {
+                // the household is making a cart (C4.2): its grown members cut and shape the wheels, the axle and the bed in the yard - their own small job,
+                // taken up beside the village's building
+                double u = 0.5 * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
+                if (u > best) { best = u; choice = 24; }
             }
             int wildKind = -1, wildBoat = 0;
             if (day && lsec < 15 * SimTime.Hour)
@@ -1267,6 +1275,12 @@ namespace TC2.Core.Agents
                     {
                         ref var qb = ref w.Buildings.Get(quarry);
                         BeginLocal(ref p, ActivityKind.Quarry, WhyCode.Stone, 0, qb.X + rs.Range(-6, 6), qb.Y + rs.Range(-6, 6), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
+                        return;
+                    }
+                case 24:
+                    {
+                        ref var ch = ref w.Households.Get(p.Household);   // (in the yard by the house)
+                        BeginLocal(ref p, ActivityKind.Build, WhyCode.Cart, 0, ch.HomeX + rs.Range(-4, 4), ch.HomeY + rs.Range(-4, 4), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
                         return;
                     }
                 case 20:
@@ -1887,11 +1901,11 @@ namespace TC2.Core.Agents
                 if (fuelWanted > 0 && hours > 0)
                 {
                     // (C1.2: at the woodlot's distance, the walk out once a stint and every load home - felled from its woods)
-                    double r0 = (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * tools, rate = Woods.HourRate(w, sid, r0, true);
+                    double r0 = (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * tools, rate = Woods.HourRate(w, sid, r0, true, p.Household);
                     if (rate > 0)
                     {
                         double h = DMath.Min(hours, fuelWanted / rate);
-                        double loads = Woods.Cut(w, sid, h, r0, true);
+                        double loads = Woods.Cut(w, sid, h, r0, true, p.Household);
                         fuelWanted -= loads; hours -= h; if (Hours != null) Hours[0] += h;
                         p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * h);
                     }
@@ -1904,6 +1918,13 @@ namespace TC2.Core.Agents
                     TC2.Core.Diagnostics.HouseLedger.Work(p.Household, h * rate);
                     w.Learning.Practice(ref p, Knowledge.Tech.Ard, h);
                     p.SkFarm = (float)DMath.Min(1.0, p.SkFarm + 0.0015 * h);
+                }
+                if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Carts.HasWork(w, p.Household) && !(shortNow && WildNeed(in s, now, ration) > 0.42))
+                {
+                    // the household is making a cart (C4.2): a couple of its grown members' hours a day go to it before the village's building - their own
+                    // small job, as a lived day takes it up beside the village's work (given only what building left, half the carts begun were never made)
+                    double used = Carts.Work(w, p.Household, DMath.Min(hours, Carts.HoursADay * days), BuildRate(in p) * tools, p.Id);
+                    hours -= used;
                 }
                 // building, as a lived day builds: in every free hour it beats idling for, unless hunger sends them out first (D2-045)
                 bool ownRoof = false, noWood = false;
@@ -2004,11 +2025,11 @@ namespace TC2.Core.Agents
                 if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Stone.Wanted(w, in s, out int qid))
                 {
                     // the village wants stone and its quarry stands (C1.3): cut and carry it in the free hours, up to what it wants
-                    double r0 = Stone.CutRate(in p, tools), rate = Stone.HourRate(w, sid, qid, r0, true);
+                    double r0 = Stone.CutRate(in p, tools), rate = Stone.HourRate(w, sid, qid, r0, true, p.Household);
                     if (rate > 0)
                     {
                         double h = DMath.Min(hours * 0.5, (s.StoneWant - s.Stone) / rate);
-                        Stone.Cut(w, sid, qid, h, r0, true);
+                        Stone.Cut(w, sid, qid, h, r0, true, p.Household);
                         hours -= h;
                     }
                 }
@@ -2049,7 +2070,7 @@ namespace TC2.Core.Agents
                 if (hours > 0 && s.Woodstore < woodTarget && Woods.Lot(in s) >= 0)
                 {
                     double h = hours * 0.4;
-                    Woods.Cut(w, sid, h, (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * tools, true);   // (C1.2)
+                    Woods.Cut(w, sid, h, (0.6 + p.SkWood) * (0.5 + 0.5 * p.Health) * tools, true, p.Household);   // (C1.2)
                     p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * h);
                     hours -= h; if (Hours != null) Hours[5] += h;
                 }

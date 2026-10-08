@@ -42,11 +42,12 @@ namespace TC2.Core.Places
         /// </summary>
         public static double ExtraHours(double dist, double walk) => DMath.Max(0.0, 2.0 * (dist - Near) / walk / 3600.0);
 
-        /// <summary>Loads an hour of woodcutting brings home, for a cutter who fells and splits r0 loads an hour, at a woodlot this far.</summary>
-        public static double Rate(double r0, double dist, double walk) => r0 / (1.0 + r0 * ExtraHours(dist, walk));
+        /// <summary>Loads an hour of woodcutting brings home, for a cutter who fells and splits r0 loads an hour, at a woodlot this far - `trip` loads
+        /// a trip home at `pace` of a walker's (a cart: C4.2; a back carries one at a walk).</summary>
+        public static double Rate(double r0, double dist, double walk, double trip = 1.0, double pace = 1.0) => r0 / (1.0 + r0 * ExtraHours(dist, walk * pace) / trip);
 
-        /// <summary>The share of a COARSE day's woodcutting hours left after walking out to the woodlot and home once a stint.</summary>
-        public static double AfterWalk(double dist, double walk) => Stint / (Stint + ExtraHours(dist, walk));
+        /// <summary>The share of a COARSE day's woodcutting hours left after walking out to the woodlot and home once a stint (at a cart's pace with one).</summary>
+        public static double AfterWalk(double dist, double walk, double pace = 1.0) => Stint / (Stint + ExtraHours(dist, walk * pace));
 
         static readonly List<int> _cells = new List<int>();
 
@@ -132,26 +133,29 @@ namespace TC2.Core.Places
         }
 
         /// <summary>Loads an hour of woodcutting brings home now at the village's woodlot (0 with none within reach).</summary>
-        public static double HourRate(World w, int sid, double r0, bool coarse)
+        public static double HourRate(World w, int sid, double r0, bool coarse, int hid = 0)
         {
             if (Ensure(w, sid) < 0) return 0;
             ref var s = ref w.Settlements.Get(sid);
             double walk = w.Config.WalkSpeed;
-            return Rate(r0, s.WoodDist, walk) * (coarse ? AfterWalk(s.WoodDist, walk) : 1.0);
+            Carts.Haul(w, hid, out double trip, out double pace);   // (the household's cart: its loads a trip, its pace - C4.2)
+            return Rate(r0, s.WoodDist, walk, trip, pace) * (coarse ? AfterWalk(s.WoodDist, walk, pace) : 1.0);
         }
 
         /// <summary>
         /// Woodcutting hours given at a village: the loads they bring home at its woodlot's distance, felled from the woods, into its store.
         /// `coarse`: a COARSE/DEEP share of a day also pays the walk out and home once a stint (a lived stint walks it). Returns loads.
         /// </summary>
-        public static double Cut(World w, int sid, double hours, double r0, bool coarse)
+        public static double Cut(World w, int sid, double hours, double r0, bool coarse, int hid = 0)
         {
             if (hours <= 0 || r0 <= 0) return 0;
             if (Ensure(w, sid) < 0) return 0;
             ref var s2 = ref w.Settlements.Get(sid);
             double walk = w.Config.WalkSpeed;
-            double eff = hours * (coarse ? AfterWalk(s2.WoodDist, walk) : 1.0);
-            double loads = Fell(w, sid, eff * Rate(r0, s2.WoodDist, walk));
+            Carts.Haul(w, hid, out double trip, out double pace);   // (carried home by the household's cart: C4.2)
+            if (trip <= 1.0) Carts.WantHaul(w, hid, s2.WoodDist);
+            double eff = hours * (coarse ? AfterWalk(s2.WoodDist, walk, pace) : 1.0);
+            double loads = Fell(w, sid, eff * Rate(r0, s2.WoodDist, walk, trip, pace));
             ref var s3 = ref w.Settlements.Get(sid);
             s3.Woodstore += loads;
             return loads;
