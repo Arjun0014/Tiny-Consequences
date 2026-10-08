@@ -84,6 +84,55 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void WoodsAreFelledAboveTheShore()
+        {
+            // (D2-123: a woodlot whose cell's middle lay in the sea's margin was drawn as a bare beach - its cutters and their carts stood on the sand
+            // or out in the sea.) Premise: the densest woods within reach on a cell drawn as shore, sparser woods on dry ground farther off
+            int tried = 0;
+            for (ulong seed = 701; seed < 741 && tried < 3; seed++)
+            {
+                var w = TestWorlds.Make(seed);
+                var P = w.Planet;
+                for (int sid = w.Settlements.First(); sid != 0 && tried < 3; sid = w.Settlements.Next(sid))
+                {
+                    ref var s = ref w.Settlements.Get(sid);
+                    var near = new System.Collections.Generic.List<int>();
+                    w.Hazards.CellsWithin(w, s.Cell, Woods.Reach, near);
+                    int wet = -1, dry = -1;
+                    foreach (int c in near)
+                    {
+                        if (!P.IsLand(c) || P.FieldOwner[c] != 0 || P.Ice[c] > 0.5f || Vec3d.ArcDistance(s.Anchor, P.Grid.Center[c], P.Radius) > Woods.Reach) continue;
+                        if (!TC2.Core.Planet.Shore.Dry(P, P.Grid.Center[c])) { if (wet < 0) wet = c; }
+                        else if (dry < 0 && Vec3d.ArcDistance(s.Anchor, P.Grid.Center[c], P.Radius) > 300) dry = c;
+                    }
+                    if (wet < 0 || dry < 0) continue;
+                    tried++;
+                    foreach (int c in near) P.Forest[c] = 0.03f;
+                    P.Forest[wet] = 1.0f; P.Forest[dry] = 0.5f;
+                    int lot = Woods.Choose(w, sid);
+                    Console.WriteLine("seed " + seed + " village " + sid + ": dense woods on the shore's cell " + wet + ", sparser on dry ground " + dry + " -> woodlot " + lot);
+                    Assert.AreNotEqual(wet, lot, "never the woods drawn as shore");
+                    Assert.AreEqual(dry, lot, "the woods on dry ground");
+                }
+            }
+            Assert.Greater(tried, 0, "a village with a shore within reach");
+            // and over whole worlds, every woodlot chosen stands on dry ground
+            int lots = 0;
+            for (ulong seed = 801; seed < 806; seed++)
+            {
+                var w = TestWorlds.Make(seed);
+                for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                {
+                    int c = Woods.Choose(w, sid);
+                    if (c < 0) continue;
+                    lots++;
+                    Assert.IsTrue(TC2.Core.Planet.Shore.Dry(w.Planet, w.Planet.Grid.Center[c]), "seed " + seed + " village " + sid);
+                }
+            }
+            Assert.Greater(lots, 0);
+        }
+
+        [Test]
         public void FieldsKeepTheWoodsOffWhatTheyFarmAndReleasedFieldsGrowBack()
         {
             var w = TestWorlds.Make(603);

@@ -21,6 +21,7 @@ namespace TC2.Headless
             if (a.Has("standing")) { Standing(w); return 0; }
             if (a.Has("stores")) { Stores(w); return 0; }
             if (a.Has("haul")) { Haul(w); return 0; }
+            if (a.Has("crossings")) { Crossings(w); return 0; }
             if (a.Has("overlaps")) { Overlaps(w, a.Int("sid", 0)); return 0; }
             if (a.Has("layout")) { Layout(w, a.Int("sid", 0) != 0 ? a.Int("sid", 0) : PickPlace(w, "big")); return 0; }
             if (a.Has("households")) { ListHouseholds(w, a.Int("sid", 0) != 0 ? a.Int("sid", 0) : PickPlace(w, "big")); return 0; }
@@ -176,7 +177,72 @@ namespace TC2.Headless
                 hh += hl.Count; ox += o; oxWood += ow; wood += s.WoodDist; if (s.Quarry != 0) { quarry += s.StoneDist; nq++; }
                 Console.WriteLine("#" + id + " " + w.History.NameOf(EntityRef.Settlement(id)) + ": " + s.Population + " people, " + hl.Count + " households, " + o + " with a grown ox (" + ow + " with a woodworker too); woodlot " + s.WoodDist.ToString("0") + " m, quarry " + (s.Quarry != 0 ? s.StoneDist.ToString("0") + " m" : "none") + ", stone " + s.Stone.ToString("0") + " / " + s.StoneWant.ToString("0") + " loads");
             }
+            int lots = 0, wetLots = 0, seaLots = 0;
+            for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id))
+            {
+                var s = w.Settlements.Get(id);
+                if (!s.Inhabited || TC2.Core.Places.Woods.Lot(in s) < 0) continue;
+                var c0 = w.Planet.Grid.Center[TC2.Core.Places.Woods.Lot(in s)];
+                lots++;
+                if (!TC2.Core.Planet.Shore.Dry(w.Planet, c0)) wetLots++;
+                if (Boats.AtSea(w.Planet, c0)) seaLots++;
+            }
+            Console.WriteLine("woodlots " + lots + ": centre not on dry ground " + wetLots + " (at the sea's surface " + seaLots + ")");
             Console.WriteLine("WORLD " + villages + " villages, " + hh + " households, " + ox + " with a grown ox (" + oxWood + " with a woodworker too); woodlots " + (wood / Math.Max(1, villages)).ToString("0") + " m out on average, quarries " + (quarry / Math.Max(1, nq)).ToString("0") + " m (" + nq + "); ways none/track/path/road " + string.Join("/", byState));
+        }
+
+        /// <summary>`place --load SAVE --crossings` (C4.3 survey): each way between villages worn to a track or more - the streams and rivers its route
+        /// crosses (runs of cells whose smoothed flow makes a stream, `PlanetState.IsStream`), the largest flow crossed and the drainage above it, by the
+        /// way's state; and the world's largest flows.</summary>
+        static void Crossings(World w)
+        {
+            var P = w.Planet;
+            var ways = new System.Collections.Generic.List<TC2.Core.Agents.Way>();
+            w.Ways.Collect(w.Now, ways);
+            // classes of the largest flow crossed (m3 a day): none, < 6,000 (a brook), < 30,000, < 150,000, more
+            double[] bounds = { 6000, 30000, 150000 };
+            int[,] byState = new int[4, 5]; double[,] useBy = new double[4, 5];
+            int crossings = 0;
+            foreach (var wy in ways)
+            {
+                byte st = TC2.Core.Agents.Ways.StateOf(w.Ways.UseOf(w.Now, wy.A, wy.B));
+                if (st == 0) continue;
+                var r = w.Routes.Get(w, wy.A, wy.B);
+                if (r == null) continue;
+                double maxQ = 0, maxHa = 0; int runs = 0; bool inRun = false;
+                for (int k = 0; k < r.Cell.Length; k++)
+                {
+                    int c = r.Cell[k];
+                    bool water = c >= 0 && P.IsStream(c);
+                    if (water && !inRun) runs++;
+                    inRun = water;
+                    if (water && P.RiverFlow[c] > maxQ) { maxQ = P.RiverFlow[c]; maxHa = w.Drainage.AreaHa[c]; }
+                }
+                int cls = runs == 0 ? 0 : maxQ < bounds[0] ? 1 : maxQ < bounds[1] ? 2 : maxQ < bounds[2] ? 3 : 4;
+                byState[st, cls]++; useBy[st, cls] += w.Ways.UseOf(w.Now, wy.A, wy.B);
+                crossings += runs;
+                if (st >= 2 && cls >= 2)
+                    Console.WriteLine(w.History.NameOf(EntityRef.Settlement(wy.A)) + " - " + w.History.NameOf(EntityRef.Settlement(wy.B)) + ": " + (st == 3 ? "road" : "path") + " " + r.Length.ToString("0") + " m, use " + w.Ways.UseOf(w.Now, wy.A, wy.B).ToString("0") +
+                                      "; crosses " + runs + " streams, the largest " + maxQ.ToString("0") + " m3/day (" + (maxQ / 86400.0).ToString("0.00") + " m3/s), draining " + maxHa.ToString("0") + " ha");
+            }
+            string[] cn = { "no stream", "brooks < 6k", "6k-30k", "30k-150k", "150k+" };
+            string[] sn = { "-", "tracks", "paths", "roads" };
+            for (int st = 1; st < 4; st++)
+            {
+                var line = new System.Text.StringBuilder(sn[st] + ":");
+                for (int c = 0; c < 5; c++) line.Append("  " + cn[c] + " " + byState[st, c] + " (use " + useBy[st, c].ToString("0") + ")");
+                Console.WriteLine(line.ToString());
+            }
+            // the world's flows: how many land cells carry each class
+            int[] cells = new int[5]; double top = 0;
+            for (int c = 0; c < P.Cells; c++)
+            {
+                if (!P.IsStream(c)) continue;
+                double q = P.RiverFlow[c];
+                cells[q < bounds[0] ? 1 : q < bounds[1] ? 2 : q < bounds[2] ? 3 : 4]++;
+                if (q > top) top = q;
+            }
+            Console.WriteLine("WORLD stream cells: brooks " + cells[1] + ", 6k-30k " + cells[2] + ", 30k-150k " + cells[3] + ", 150k+ " + cells[4] + "; the largest flow " + top.ToString("0") + " m3/day (" + (top / 86400.0).ToString("0.0") + " m3/s); stream crossings on the worn ways " + crossings);
         }
 
         /// <summary>`place --load SAVE --layout [--sid N]` (C13.1): a village's plan for plotting - its square, ring, streets, and every standing

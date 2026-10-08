@@ -66,6 +66,9 @@ namespace TC2.Core.Places
             {
                 int c = _cells[i];
                 if (!P.IsLand(c) || P.Ice[c] > 0.5f || P.FieldOwner[c] != 0 || P.Forest[c] < Worth) continue;
+                // (woods above the shore, as a quarry's rock (C1.3): a cell whose middle lies in the sea's margin or under a lake is drawn as sand
+                // and water - its woodcutters, and their carts, stood on a bare beach or out in the sea, felling woods nobody sees: D2-123)
+                if (!Shore.Dry(P, P.Grid.Center[c])) continue;
                 double d = Vec3d.ArcDistance(s.Anchor, P.Grid.Center[c], P.Radius);
                 if (d > Reach) continue;
                 double v = (d + 200.0) / ((double)P.Forest[c] + 0.2);
@@ -126,7 +129,7 @@ namespace TC2.Core.Places
         {
             ref var s = ref w.Settlements.Get(sid);
             int c = Lot(in s);
-            if (c >= 0 && w.Planet.Forest[c] >= Worth) return c;
+            if (c >= 0 && w.Planet.Forest[c] >= Worth && !Boats.AtSea(w.Planet, w.Planet.Grid.Center[c])) return c;   // (a woodlot the sea has taken is chosen again)
             if (c < 0 && s.WoodLook != 0 && w.Now - s.WoodLook < 12 * SimTime.Day) return -1;
             s.WoodLook = w.Now;
             return Choose(w, sid);

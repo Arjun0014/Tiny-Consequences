@@ -1198,12 +1198,21 @@ namespace TC2.Core.Agents
             switch (choice)
             {
                 case 1:
-                    BeginLocal(ref p, ActivityKind.Fields, here.Crop == CropStage.Ripe ? WhyCode.Harvest : WhyCode.CropNeedsWork, 0,
-                        here.FieldX + rs.Range(-60, 60), here.FieldY + rs.Range(-60, 60), SimTime.Hours(3 + 1.5 * rs.NextUnit()));
+                {
+                    // (out of the water: a village's field spot lies where its founders' arable land lay, and where the sea or a lake has come over it
+                    // since, its field hands stood in the water - 0.6 % of all person-hours in a year-300 world, `wet`; D2-111's rule)
+                    double fx = here.FieldX + rs.Range(-60, 60), fy = here.FieldY + rs.Range(-60, 60);
+                    Ashore(here.Id, ref fx, ref fy);
+                    BeginLocal(ref p, ActivityKind.Fields, here.Crop == CropStage.Ripe ? WhyCode.Harvest : WhyCode.CropNeedsWork, 0, fx, fy, SimTime.Hours(3 + 1.5 * rs.NextUnit()));
                     return;
+                }
                 case 2:
-                    BeginLocal(ref p, ActivityKind.Wood, WhyCode.WoodLow, 0, here.WoodX + rs.Range(-50, 50), here.WoodY + rs.Range(-50, 50), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
+                {
+                    double wx = here.WoodX + rs.Range(-50, 50), wy = here.WoodY + rs.Range(-50, 50);
+                    Ashore(here.Id, ref wx, ref wy);   // (a woodlot by the shore: its cutters - and their carts - stood in the sea, C4.2's shots)
+                    BeginLocal(ref p, ActivityKind.Wood, WhyCode.WoodLow, 0, wx, wy, SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
                     return;
+                }
                 case 3:
                     BeginWater(ref p, in here, ref rs);
                     return;
@@ -1919,7 +1928,7 @@ namespace TC2.Core.Agents
                     w.Learning.Practice(ref p, Knowledge.Tech.Ard, h);
                     p.SkFarm = (float)DMath.Min(1.0, p.SkFarm + 0.0015 * h);
                 }
-                if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Carts.HasWork(w, p.Household) && !(shortNow && WildNeed(in s, now, ration) > 0.42))
+                if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Carts.HasWork(w, p.Household) && !(shortNow && WildNeed(in s, now, ration) > Carts.ShortBound))
                 {
                     // the household is making a cart (C4.2): a couple of its grown members' hours a day go to it before the village's building - their own
                     // small job, as a lived day takes it up beside the village's work (given only what building left, half the carts begun were never made)

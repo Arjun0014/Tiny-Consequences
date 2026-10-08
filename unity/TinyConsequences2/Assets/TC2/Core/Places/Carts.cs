@@ -39,6 +39,8 @@ namespace TC2.Core.Places
         public const double PatienceYears = 2.0;
         /// <summary>Hours a day a grown member gives the household's cart in a COARSE day before the village's building (their own small job).</summary>
         public const double HoursADay = 2.0;
+        /// <summary>The village's need of the wild (`AgentSystem.WildNeed`) above which its people forage instead of making a cart - and no cart is begun.</summary>
+        public const double ShortBound = 0.42;
 
         /// <summary>Tools: no carts (the same binary as before C4.2, for A/B runs); false in the game.</summary>
         public static bool Off;
@@ -149,17 +151,27 @@ namespace TC2.Core.Places
                 int hid = hl[i];
                 ref var hh = ref w.Households.Get(hid);
                 if (hh.CartState == Made) { if (WornOut(in hh, w.Now)) Worn(w, hid); continue; }   // (worn ones left)
-                if (hh.CartState == Making && w.Now - hh.CartAt > (long)(PatienceYears * SimTime.Year)) { hh.CartState = NoCart; hh.CartHours = 0f; w.Metrics.CartsGivenUp++; continue; }
+                if (hh.CartState == Making && w.Now - hh.CartAt > (long)(PatienceYears * SimTime.Year))
+                {
+                    // (given up: its timber goes back to the woodpile - nothing laid out is lost)
+                    Diagnostics.CartTally.GivenUp(w, sid, hid);
+                    w.Settlements.Get(sid).Woodstore += WoodOf(hh.CartKind);
+                    hh.CartState = NoCart; hh.CartHours = 0f; w.Metrics.CartsGivenUp++; continue;
+                }
                 if (hh.CartState != Wanted) continue;
                 if (!HasWright(w, hid)) { hh.CartState = NoCart; continue; }   // (its wright died or grew old while the wood was short)
-                byte kind = w.Stock.HasOx(hid) ? Ox : Hand;
                 ref var s = ref w.Settlements.Get(sid);
+                // (not while hunger sends its people to the wild - they would not work at it (the bound of `AgentSystem`'s labour day): begun so, 95 % of
+                // the carts given up in the hungry worlds were given up short, most with no hour in them; it waits, wanted, for a fed season)
+                if (AgentSystem.WildNeed(in s, w.Now) > ShortBound) continue;
+                byte kind = w.Stock.HasOx(hid) ? Ox : Hand;
                 double wood = WoodOf(kind);
                 if (s.Woodstore < wood + 2.0 * s.FuelDay) continue;   // (the hearths' wood first)
                 s.Woodstore -= wood;
                 ref var h2 = ref w.Households.Get(hid);
                 h2.CartKind = kind; h2.CartState = Making; h2.CartHours = 0f; h2.CartAt = w.Now;
                 w.Metrics.CartsBegun++;
+                Diagnostics.CartTally.Begun(w, sid, hid);
             }
         }
 

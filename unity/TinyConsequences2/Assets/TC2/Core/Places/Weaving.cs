@@ -224,6 +224,7 @@ namespace TC2.Core.Places
             w.Learning.Practice(ref p, Knowledge.Tech.Loom, used);
             w.Metrics.ShedHours += used; w.Metrics.WaresMade += made;
             TC2.Core.Diagnostics.HouseLedger.Craft(w, p.Household, used);
+            TC2.Core.Diagnostics.CraftTally.Add(TC2.Core.Diagnostics.CraftTally.Shed, p.Id, used, w, sid);   // (tools: whose hours; null in the game)
             return used;
         }
 

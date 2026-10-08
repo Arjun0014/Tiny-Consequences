@@ -348,6 +348,7 @@ namespace TC2.Core.Places
             double doable = DMath.Min(hours * rate, left);
             if (doable <= 0) return 0;
             b.Hours = (float)(b.Hours + doable);
+            if (IsPlank(kind)) TC2.Core.Diagnostics.CraftTally.Add(TC2.Core.Diagnostics.CraftTally.Plank, worker, doable / rate, w, sid);   // (tools: whose hours; null in the game)
             if (b.Leader == 0 && worker != 0) b.Leader = worker;
             if (b.Hours >= need - Construction.Done)
             {

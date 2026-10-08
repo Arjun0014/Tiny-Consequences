@@ -448,7 +448,7 @@ namespace TC2.Core.Places
             s.SphereToLocal(at, P.Radius, out x, out y);
             double j0 = fishing ? 25 : 70;
             x += rs.Range(-j0, j0); y += rs.Range(-j0, j0);
-            if (fishing) Boats.OutOfTheWater(_w, in s, ref x, ref y);   // (at the waterline, on the sand: never standing in the sea)
+            Boats.OutOfTheWater(_w, in s, ref x, ref y);   // (fishers at the waterline, on the sand; hunters and gatherers by a lake or the shore on dry ground too: never standing in the water)
         }
 
         struct EdgeOf { public int Coast, Land, Water; }

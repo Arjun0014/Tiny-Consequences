@@ -81,6 +81,51 @@ namespace TC2.Headless
             }
         }
 
+        /// <summary>`run --crafttally` (roles from practice): for each craft, the people its role reads today (the person page's test) against those who
+        /// worked at it since the tally began - by village, summed over the world.</summary>
+        static void CraftReport(World w)
+        {
+            string[] names = { "smithy (a smith: copper competent)", "plank boats (a boatwright: boats of planks competent)", "weaver's shed (a weaver: SkCraft 0.3)", "kiln (a potter: SkPot 0.3)" };
+            for (int k = 0; k < TC2.Core.Diagnostics.CraftTally.Kinds; k++)
+            {
+                var by = TC2.Core.Diagnostics.CraftTally.By[k];
+                int role = 0, roleWorked = 0, worked = 0, worked50 = 0, villages = 0; double hours = 0, topSum = 0;
+                for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                {
+                    var s = w.Settlements.Get(sid);
+                    if (!s.Inhabited) continue;
+                    var res = w.Residents(sid);
+                    int r = 0, rw = 0, wk = 0, w50 = 0; double h = 0, top = 0;
+                    for (int i = 0; i < res.Count; i++)
+                    {
+                        var p = w.People.Get(res[i]);
+                        if (!p.Alive || p.AgeYears(w.Now) < 16) continue;
+                        bool isRole = k == 0 ? p.KMetal >= 0.5f : k == 1 ? p.KBoat >= 0.5f : k == 2 ? p.SkCraft >= 0.3f : p.SkPot >= 0.3f;
+                        by.TryGetValue(p.Id, out double ph);
+                        if (isRole) r++;
+                        if (ph >= 1) { wk++; if (isRole) rw++; }
+                        if (ph >= 50) w50++;
+                        h += ph; if (ph > top) top = ph;
+                    }
+                    if (h <= 0 && r == 0) continue;
+                    if (h > 0) villages++;
+                    role += r; roleWorked += rw; worked += wk; worked50 += w50; hours += h; topSum += top;
+                }
+                var vy = TC2.Core.Diagnostics.CraftTally.VillageYear[k];
+                if (vy.Count > 0)
+                {
+                    var hrs = new System.Collections.Generic.List<double>(); var hands = new System.Collections.Generic.List<int>();
+                    foreach (var kv in vy) { hrs.Add(kv.Value); hands.Add(TC2.Core.Diagnostics.CraftTally.HandsOf(k, kv.Key)); }
+                    hrs.Sort(); hands.Sort();
+                    Func<System.Collections.Generic.List<double>, double, double> q = (l, f) => l[Math.Min(l.Count - 1, (int)(f * l.Count))];
+                    Console.WriteLine("craft " + k + " village-years " + hrs.Count + ": hours median " + q(hrs, 0.5).ToString("0") + ", p90 " + q(hrs, 0.9).ToString("0") + ", p99 " + q(hrs, 0.99).ToString("0") + ", max " + hrs[hrs.Count - 1].ToString("0") +
+                                      "; hands median " + hands[hands.Count / 2] + ", p90 " + hands[Math.Min(hands.Count - 1, (int)(0.9 * hands.Count))] + ", max " + hands[hands.Count - 1]);
+                }
+                Console.WriteLine("craft " + names[k] + ": the role read today " + role + " (of them worked " + roleWorked + "); worked 1 h+ " + worked + ", 50 h+ " + worked50 +
+                                  "; in " + villages + " villages, " + hours.ToString("0") + " h (the busiest hand's share " + (100 * topSum / Math.Max(1, hours)).ToString("0") + " %)");
+            }
+        }
+
         public static int Run(Args a)
         {
             var sw = Stopwatch.StartNew();
@@ -91,6 +136,8 @@ namespace TC2.Headless
             if (a.Has("waresflow")) TC2.Core.Places.Trade.WaresFor = new double[6];
             if (a.Has("ledger")) { TC2.Core.Diagnostics.HouseLedger.By = new System.Collections.Generic.Dictionary<int, double[]>(); TC2.Core.Diagnostics.HouseLedger.From = (long)a.Int("ledger", 250) * TC2.Core.Foundation.SimTime.Year; }   // (C3.3 survey: what each household brings in and draws)
             if (a.Has("nocarts")) TC2.Core.Places.Carts.Off = true;   // (C4.2 against C3.2 in one binary: no carts)
+            if (a.Has("carttally")) TC2.Core.Diagnostics.CartTally.T = new double[12];   // (C4.2 closing: why carts begun are given up)
+            if (a.Has("crafttally")) { var ct = new System.Collections.Generic.Dictionary<int, double>[TC2.Core.Diagnostics.CraftTally.Kinds]; for (int k = 0; k < ct.Length; k++) ct[k] = new System.Collections.Generic.Dictionary<int, double>(); TC2.Core.Diagnostics.CraftTally.By = ct; var vy = new System.Collections.Generic.Dictionary<long, double>[TC2.Core.Diagnostics.CraftTally.Kinds]; for (int k = 0; k < vy.Length; k++) vy[k] = new System.Collections.Generic.Dictionary<long, double>(); TC2.Core.Diagnostics.CraftTally.VillageYear = vy; }   // (roles from practice: whose hours at each craft)
             if (a.Has("loads")) TC2.Core.Places.Trade.LoadTally = new double[4];   // (C4.2 survey: trading loads bound by what one person carries)
             if (a.Has("nokiln")) TC2.Core.Places.Pottery.Off = true;   // (C3.2 against D2-063 in one binary: no kilns - pots and jars from knowing how)
             if (a.Has("potsflow")) TC2.Core.Places.Trade.PotsFor = new double[8];   // (C3.2: what ware was traded for)
@@ -509,6 +556,9 @@ namespace TC2.Headless
                                 Console.WriteLine("carts: " + hand + " handcarts and " + ox + " ox carts among " + hhs + " households (in " + villagesWith + " villages), " + making + " being made, " + wanted + " wanted; begun " + w.Metrics.CartsBegun + ", made " + w.Metrics.CartsMade +
                                                   ", worn out " + w.Metrics.CartsWorn + ", given up " + w.Metrics.CartsGivenUp + "; trading trips with a cart " + w.Metrics.CartTrips + " carrying out " + F(w.Metrics.CartKg / 1000, "0") + " t");
                             }
+                            if (TC2.Core.Diagnostics.CraftTally.By != null) CraftReport(w);
+                            var ctt = TC2.Core.Diagnostics.CartTally.T;
+                            if (ctt != null) Console.WriteLine("cart tally: begun " + F(ctt[0], "0") + " (" + F(ctt[1], "0") + " while short, " + F(ctt[10], "0") + " in villages under 60); given up " + F(ctt[2], "0") + ": " + F(ctt[3], "0") + " with no hours in, " + F(ctt[4], "0") + " under half made, " + F(ctt[5], "0") + " short then, " + F(ctt[6], "0") + " with no able wright, " + F(ctt[7], "0") + " with one able member or none (mean able " + F(ctt[8] / Math.Max(1, ctt[2]), "0.0") + ", hours in " + F(ctt[11] / Math.Max(1, ctt[2]), "0.0") + "), " + F(ctt[9], "0") + " in villages under 60");
                             var lt = TC2.Core.Places.Trade.LoadTally;
                             if (lt != null) Console.WriteLine("loads: " + F(lt[0], "0") + " trading loads set out (" + F(lt[3] / 1000, "0") + " t), " + F(100 * lt[1] / Math.Max(1, lt[0]), "0") + " % of them bound by what one carries (more was spared and wanted), return loads so bound " + F(100 * lt[2] / Math.Max(1, lt[0]), "0") + " %");
                             var rt = TC2.Core.Places.Structures.RotTally;

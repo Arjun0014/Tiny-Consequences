@@ -90,6 +90,38 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void NoCartIsBegunWhileHungerSendsTheVillageToTheWildAndOneGivenUpGoesBackToTheWoodpile()
+        {
+            // (measured: begun in a hungry village, nobody worked at it - 95 % of the carts given up in the hungry worlds were given up short, most
+            // with no hour in them, their wood laid out for nothing)
+            var w = TestWorlds.Make(641);
+            int a = w.Settlements.First();
+            int hid = Wrights(w, a);
+            Assume.That(hid != 0);
+            ref var hh = ref w.Households.Get(hid); hh.CartState = Carts.Wanted;
+            ref var s = ref w.Settlements.Get(a); s.Woodstore = 200; s.Granary = 40 * s.Population;
+            s.Ration = 0.5f;   // a deep cut: everyone who can goes out for food
+            Assume.That(AgentSystem.WildNeed(in s, w.Now), Is.GreaterThan(Carts.ShortBound));
+            Carts.Plan(w, a);
+            Assert.AreEqual(Carts.Wanted, w.Households.Get(hid).CartState, "short: it waits, still wanted");
+            Assert.AreEqual(200, w.Settlements.Get(a).Woodstore, 1e-9, "no wood laid out");
+            w.Settlements.Get(a).Ration = 1f;   // fed again
+            Assume.That(AgentSystem.WildNeed(in w.Settlements.Get(a), w.Now), Is.LessThanOrEqualTo(Carts.ShortBound));
+            Carts.Plan(w, a);
+            Assert.AreEqual(Carts.Making, w.Households.Get(hid).CartState, "fed: begun");
+            double wood1 = w.Settlements.Get(a).Woodstore;
+            Assert.Less(wood1, 200);
+            // not made in its years: given up, its timber back on the woodpile
+            ref var h1 = ref w.Households.Get(hid); h1.CartAt -= (long)((Carts.PatienceYears + 0.1) * SimTime.Year); h1.CartHours = 4f;
+            byte kind = h1.CartKind;
+            long given = w.Metrics.CartsGivenUp;
+            Carts.Plan(w, a);
+            Assert.AreEqual(given + 1, w.Metrics.CartsGivenUp);
+            Assert.AreEqual(wood1 + Carts.WoodOf(kind), w.Settlements.Get(a).Woodstore, 1e-9, "the timber laid out goes back to the woodpile");
+            Assert.AreNotEqual(Carts.Making, w.Households.Get(hid).CartState);
+        }
+
+        [Test]
         public void ACartIsMadeInTheHouseholdsHoursAtBothResolutions()
         {
             var days = new int[2];

@@ -442,6 +442,46 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void FieldHandsWoodcuttersAndHuntersWorkOnDryGround()
+        {
+            // (D2-123, the `wet` audit: 0.6 % of a year-300 world's person-hours were spent in the water - field hands whose village's field spot
+            // the sea or a lake had come over, woodcutters at a woodlot by the shore, hunters and gatherers round a ground by the water.) Premise: a
+            // coastal village's field and woodlot spots moved out over the sea
+            var w = Coast(out int sid);
+            Assume.That(w != null, "a coastal village");
+            var P = w.Planet;
+            ref var s = ref w.Settlements.Get(sid);
+            double wx = double.NaN, wy = 0;
+            for (double r = 20.0; r <= 600.0 && double.IsNaN(wx); r += 10.0)
+                for (int k = 0; k < 36 && double.IsNaN(wx); k++)
+                {
+                    double qx = s.SquareX + r * Math.Cos(k * Math.PI / 18.0), qy = s.SquareY + r * Math.Sin(k * Math.PI / 18.0);
+                    if (Boats.AtSea(P, s.LocalToSphere(qx, qy, P.Radius)) && Boats.AtSea(P, s.LocalToSphere(qx + 30, qy + 30, P.Radius)) && Boats.AtSea(P, s.LocalToSphere(qx - 30, qy - 30, P.Radius))) { wx = qx; wy = qy; }
+                }
+            Assume.That(!double.IsNaN(wx), "the sea near the village");
+            s.FieldX = (float)wx; s.FieldY = (float)wy; s.WoodX = (float)wx; s.WoodY = (float)wy;
+            s.Woodstore = 0.0;   // (its people go out for wood)
+            int seen = 0, fields = 0, wood = 0;
+            for (int h = 0; h < 3 * 24; h++)
+            {
+                w.AdvanceTo(w.Now + SimTime.Hour);
+                var res = w.Residents(sid);
+                ref var s2 = ref w.Settlements.Get(sid);
+                if (s2.Woodstore > 2.0) s2.Woodstore = 0.0;
+                for (int i = 0; i < res.Count; i++)
+                {
+                    var q = w.People.Get(res[i]);
+                    if (!q.Alive || q.Step != StepKind.Local) continue;
+                    if (q.Act != ActivityKind.Fields && q.Act != ActivityKind.Wood && q.Act != ActivityKind.Hunt && q.Act != ActivityKind.Gather && q.Act != ActivityKind.Fish) continue;
+                    seen++; if (q.Act == ActivityKind.Fields) fields++; if (q.Act == ActivityKind.Wood) wood++;
+                    Assert.IsFalse(Boats.Afloat(P, s2.LocalToSphere(q.ToX, q.ToY, P.Radius)), q.Act + " in the water, hour " + h);
+                }
+            }
+            Console.WriteLine(seen + " person-hours at the fields, the woods and the wild (fields " + fields + ", woods " + wood + ") - none in the water");
+            Assert.Greater(fields + wood, 0);
+        }
+
+        [Test]
         public void BoatsGoOutAlikeAtBothResolutions() => GoOutAlike(Structures.Boat);
 
         [Test]

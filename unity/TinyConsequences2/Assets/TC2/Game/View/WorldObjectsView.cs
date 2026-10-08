@@ -46,7 +46,7 @@ namespace TC2.Game
         // (and the narrow town house of a divided plot, gable to the street: C13.3, D2-118)
         static readonly string[] PlanNames = { "small", "cottage", "long", "two", "hall", "row" };
         static readonly string[] RoofNames = { "g", "h", "j" };
-        static readonly float[] PlanL = { 4.8f, 7.0f, 12.0f, 6.6f, 10.0f, 4.6f }, PlanW = { 3.8f, 5.0f, 5.4f, 5.4f, 6.2f, 6.2f }, PlanRidge = { 4.3f, 5.0f, 5.2f, 8.6f, 7.1f, 9.2f };
+        internal static readonly float[] PlanL = { 4.8f, 7.0f, 12.0f, 6.6f, 10.0f, 4.6f }, PlanW = { 3.8f, 5.0f, 5.4f, 5.4f, 6.2f, 6.2f }, PlanRidge = { 4.3f, 5.0f, 5.2f, 8.6f, 7.1f, 9.2f };
         static readonly int[] PlanRoom = { 3, 6, 8, 8, 10, 8 };   // people a plan houses before they build on a lean-to
         // (where a plan's chimney stands, kit metres: x along the house, y across it (+y the back), and its top)
         static readonly Vector3[] ChimneyAt = { new Vector3(1.2f, 0.3f, 4.9f), new Vector3(2.0f, 0.4f, 5.7f), new Vector3(-2.4f, 0.4f, 5.9f), new Vector3(-2.0f, 0.3f, 9.3f), new Vector3(-1.5f, 3.45f, 7.7f), new Vector3(0f, 1.9f, 9.9f) };
@@ -1076,7 +1076,7 @@ namespace TC2.Game
         }
 
         /// <summary>A member of the household is out with its cart.</summary>
-        static bool CartOut(TC2.Core.Simulation.World w, int hid)
+        internal static bool CartOut(TC2.Core.Simulation.World w, int hid)
         {
             var mem = w.Members(hid);
             for (int i = 0; i < mem.Count; i++) { ref var q = ref w.People.Get(mem[i]); if (q.Alive && WithCart(w, in q) != Carts.None) return true; }
@@ -1097,7 +1097,7 @@ namespace TC2.Game
             if (walking) at = pos - fwd * ((ox ? 4.2f : 1.9f) * sc) + (ox ? right * (0.9f * sc) : Vector3.zero);
             else { at = pos + right * (1.6f * sc); rot = PlanetGeo.Upright(pos, yaw + 70f); }
             (ox ? _oxcarts : _handcarts).Add(0, Color.white, Matrix4x4.TRS(at, rot, Vector3.one * sc));
-            if (ox) _oxen.Add(0, new Color(0.78f, 0.62f, 0.46f, 1f), Matrix4x4.TRS(at + (rot * Vector3.forward) * (3.4f * sc), rot, Vector3.one * sc));
+            if (ox) _oxen.Add(0, new Color(0.42f, 0.34f, 0.28f, 1f), Matrix4x4.TRS(at + (rot * Vector3.forward) * (3.4f * sc), rot, Vector3.one * sc));
             if (p.Cargo != Trade.None && Trade.KgOf(p.Cargo) * p.CargoQty > Trade.LoadKg + 1e-6)
                 _cartLoads.Add(0, Color.white, Matrix4x4.TRS(at + up * ((ox ? 1.0f : 0.6f) * sc) + (rot * Vector3.forward) * (0.1f * sc), rot, Vector3.one * (ox ? 1.6f * sc : sc)));
         }

@@ -284,6 +284,7 @@ namespace TC2.Core.Places
             w.Learning.Practice(ref p, Knowledge.Tech.Pottery, used);
             w.Metrics.KilnHours += used; w.Metrics.PotsMade += made;
             TC2.Core.Diagnostics.HouseLedger.Craft(w, p.Household, used);
+            TC2.Core.Diagnostics.CraftTally.Add(TC2.Core.Diagnostics.CraftTally.Kiln, p.Id, used, w, sid);   // (tools: whose hours; null in the game)
             return used;
         }
 

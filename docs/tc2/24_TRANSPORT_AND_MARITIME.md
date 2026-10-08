@@ -35,14 +35,18 @@ its yard as household property (`Household.CartKind/CartState/CartHours/CartAt/C
   more was spared and wanted along a way worn to a path or a road (`Trade.Load`), or a stint carrying wood or stone home from 400 m or more
   (`HaulFrom`) - and one of its able people (16-59, well) works wood well enough to shape a wheel (`Wright`, SkWood 0.4). (After one trip, carts were
   made that then stood in the yard.)
-- **Made** in the household's hours like a boat: begun when the store's wood allows (3 loads, an ox cart 10), 30 h (80); lived, a choice in the
-  yard (u 0.5, `WhyCode.Cart` 47); COARSE, up to 2 h a grown member's day before the village's building (given only what building left, half the
-  carts begun were never made; given two years). History `CartMade` (90). Worn out after 12 years (an ox cart 20); an ox cart stands while the
-  household keeps no grown ox. The heir takes it.
+- **Made** in the household's hours like a boat: begun when the store's wood allows (3 loads, an ox cart 10) - never while hunger sends the
+  village to the wild (`ShortBound`, the bound at which its people forage instead; begun so, a third to two thirds of a hungry world's carts were
+  never worked and given up) -, 30 h (80); lived, a choice in the yard (u 0.5, `WhyCode.Cart` 47); COARSE, up to 2 h a grown member's day before the
+  village's building (given only what building left, half the carts begun were never made; given two years, then its timber goes back to the
+  woodpile). History `CartMade` (90). Worn out after 12 years (an ox cart 20); an ox cart stands while the household keeps no grown ox. The heir
+  takes it.
 - **Used**: a trader of a household with a cart, on a path or road, loads a cart's load (`Trade.Load`/`Exchange`) and travels at its pace
   (`AgentSystem.BeginTravel`, `Carts.Pace`); wood and stone come home by the cartload - the walk home is shared by its loads (`Woods.Rate`,
   `Stone.Rate`: `trip` loads at `pace`). One law at both resolutions. `--nocarts` gives the world before carts on the same binary (the rates reduce
   exactly to the old ones).
+- **Measured** (D2-122, ten seeds against the same binary without carts): at year 300 41 % of households keep a cart (6,119 handcarts, 133 ox
+  carts), 4.9 % of carts begun given up; trades x0.67 (fewer, bigger loads), famines x0.83-0.89 over two runs, people and vital rates at par.
 - **Seen**: carts parked in the yards (by the end wall opposite the woodpile, where the ground is free), a handcart pulled behind its trader or
   an ox cart behind its ox on the road with a load of sacks, a cart beside its people at the woods or the quarry; pages: the household's cart,
   the village's carts, a cargo "on the household's handcart".
@@ -69,6 +73,10 @@ use only (ground roads by wear; ribbons kept visible far off for the beaten road
 
 Fords where a stream is small (the drainage's discharge class); ferries (a boat and a ferryman) on larger rivers; a bridge when a
 crossing is heavily used and timber or stone is at hand. Crossings become strategic places (C8).
+
+**Surveyed (D2-124, `place --crossings`)**: on five worlds at year 300 the largest flow anywhere is 0.08-0.23 m3/s - a brook; the worn ways cross
+13-140 streams a world, every one fordable on foot or by cart. The 6 km planet's catchments (166 km2 of land) make no river a walker cannot cross,
+so a ford, ferry or bridge would carry nothing real: C4.3 waits for a river that cannot be forded (a flood, or a larger world).
 
 ## 5. Boats and ships (C9)
 

@@ -213,19 +213,39 @@ namespace TC2.Game
                 var P0 = w.Planet;
                 Vec3d near = sid != 0 ? w.Settlements.Get(sid).Anchor : d;
                 double bestD = double.MaxValue;
+                if (view == "cartyard" && sid != 0)
+                {
+                    // the cart itself where the view parks it (by the end wall away from the woodpile, on free ground) - one standing south of its
+                    // house first, so the roof does not hide it from a camera that looks north (the house's centre framed the roof)
+                    ref var cs = ref w.Settlements.Get(sid);
+                    var hl = w.HouseholdsOf(sid);
+                    double bestY = double.MaxValue;
+                    for (int i = 0; i < hl.Count; i++)
+                    {
+                        ref var ch = ref w.Households.Get(hl[i]);
+                        if (ch.CartState != TC2.Core.Places.Carts.Made || TC2.Core.Places.Carts.WornOut(in ch, w.Now) || ch.Building == 0 || !w.Buildings.Exists(ch.Building)) continue;
+                        if (WorldObjectsView.CartOut(w, hl[i])) continue;
+                        ref var cb = ref w.Buildings.Get(ch.Building);
+                        bool hut = cb.Kind < TC2.Core.Places.Construction.House, ox = ch.CartKind == TC2.Core.Places.Carts.Ox;
+                        double L = hut ? 4.6 : WorldObjectsView.PlanL[TC2.Core.Places.Footprints.PlanOf(in cb)];
+                        double mx = -(L / 2.0 + (ox ? 2.1 : 1.9)), mz = ox ? -0.8 : -0.3;
+                        if (!TC2.Core.Places.Footprints.YardFree(w, sid, ch.Building, mx, mz, ox ? 1.2 : 1.0, ox ? 2.8 : 1.7)) continue;
+                        double face = TC2.Core.Places.Footprints.FaceOf(in cs, in cb), fx = DMath.Cos(face), fy = DMath.Sin(face);
+                        double lx = cb.X - fy * mx + fx * mz, ly = cb.Y + fx * mx + fy * mz;
+                        // (the camera stands ~23 m south of what it frames, 12 m up: the cart with the fewest buildings between it and the camera's side
+                        // - a ray south of it - first, then one south of its own house, then the nearest the square)
+                        int cuts = TC2.Core.Places.Footprints.LineCuts(w, sid, lx, ly, 0.0, -1.0, 1.0);
+                        double south = ly - cb.Y;   // (< 0: the cart stands on the camera's side of its house)
+                        double score = cuts * 1000.0 + (south < 0 ? 0.0 : 100.0) + 0.002 * ((lx - cs.SquareX) * (lx - cs.SquareX) + (ly - cs.SquareY) * (ly - cs.SquareY));
+                        if (score < bestY) { bestY = score; d = cs.LocalToSphere(lx, ly, P0.Radius); }
+                    }
+                    LookAt(d, 26);
+                    return;
+                }
                 for (int id = w.People.First(); id != 0; id = w.People.Next(id))
                 {
                     ref var cp = ref w.People.Get(id);
                     if (!cp.Alive || cp.Household == 0) continue;
-                    if (view == "cartyard")
-                    {
-                        if (cp.Home != sid || !w.Households.Exists(cp.Household)) continue;
-                        ref var ch = ref w.Households.Get(cp.Household);
-                        if (ch.CartState != TC2.Core.Places.Carts.Made || ch.Building == 0) continue;
-                        ref var cs = ref w.Settlements.Get(sid);
-                        d = cs.LocalToSphere(ch.HomeX, ch.HomeY, P0.Radius);
-                        break;
-                    }
                     bool trade = (cp.Act == TC2.Core.Agents.ActivityKind.TripOut || cp.Act == TC2.Core.Agents.ActivityKind.TripHome) && cp.Cargo != TC2.Core.Places.Trade.None
                                  && TC2.Core.Places.Trade.KgOf(cp.Cargo) * cp.CargoQty > TC2.Core.Places.Trade.LoadKg + 1e-6;
                     bool haul = cp.Act == TC2.Core.Agents.ActivityKind.Wood || cp.Act == TC2.Core.Agents.ActivityKind.Quarry;
