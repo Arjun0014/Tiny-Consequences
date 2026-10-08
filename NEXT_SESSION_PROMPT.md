@@ -9,7 +9,7 @@ modify or stage it.
 ## Read first (this order), then work autonomously
 1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the full standing prompt (architecture, rules, every direction from Arjun).
 2. `docs/tc2/SESSION_HANDOFF.md` - top block "Session 9" (exact state, tools, runs, "Next").
-3. `docs/tc2/DECISIONS.md` newest entries **D2-112 .. D2-114** (D2-113 C9.3 closed; D2-114 building variety, see the handoff for its state).
+3. `docs/tc2/DECISIONS.md` newest entries **D2-112 .. D2-114** (D2-113 C9.3 closed; D2-114 building variety IN PROGRESS - its "Open").
 4. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 9 entry); `docs/tc2/24_TRANSPORT_AND_MARITIME.md` §5; `docs/tc2/25_CIVILISATION_ROADMAP.md`;
    for D2-114 `docs/tc2/21_SETTLEMENT_ECONOMY.md` §6 and `docs/tc2/13_RENDERING_AND_ART.md` §12-13.
 5. `git status` (the untracked `unity/TinyConsequences2/Assets/Resources.meta` is not ours - leave it), `git log --oneline -10`.
@@ -22,6 +22,17 @@ Functional buildings must be recognisable at a glance (smithy, training ground, 
 towers, gates, keeps dominating the silhouette). Richer, larger, older places get denser and more substantial; a hamlet, a village, a
 walled town and a political centre must not read as the same houses at different counts. Modular families + variants, Blender is free
 to use; judge real screenshots at close, village and region views - never call it solved from code.
+
+## Do next (D2-114 is in progress - SESSION_HANDOFF "Session 9" has the exact state)
+1. Check `tc2/out/unity_configure_d2114.txt` (the Unity compile of the new view and shader, started at the handoff): fix errors; commit the
+   `.meta` files Unity made for the new models and `Tests/Core/ArchitectureTests.cs`.
+2. Cap hall-houses (`Architecture.HomeForm`: one standing lived-in hall a village, or one per ~150 people) - rebuilding made 54-129 a world.
+3. Rerun ten seeds with rebuilding and compare with `_d5s` (`python cmp.py d5s <tag> 42 7 4 2 1 3 5 6 8 11`): people, famines, hunger, wood;
+   rebuilding costs labour and wood, so it must not starve villages; a placebo (`--nudge 150`) sizes the noise.
+4. Real shots of villages at several sizes and ages (close, village, region; zoom crops), judged against the requirement; tune the kit and the
+   colours (`WorldObjectsView.CoverCol`/`WallCol`, `Weathered`); the building and person pages (`Architecture.Describe`).
+5. Full headless suite, Web build and frame rate; close D2-114 in DECISIONS, PROGRESS, SESSION_HANDOFF; commit.
+6. Then C9.4 docks, cargo boats and coastal trade (`25` §5), or C10.2 leaders - halls, towers, gates and keeps as real structures.
 
 ## Tools
 - Copy `tc2/out/tools/wrun.sh` and `cmp.py` to the new session's scratchpad and set `SCR=` in `wrun.sh`; copy the binaries

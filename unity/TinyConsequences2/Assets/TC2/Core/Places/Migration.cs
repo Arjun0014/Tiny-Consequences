@@ -406,6 +406,7 @@ namespace TC2.Core.Places
             if (wl < 1) { wx = 0; wy = 200; wl = 200; }
             s.WoodX = (float)(wx / wl * 210); s.WoodY = (float)(wy / wl * 210);
             s.WellX = 8f; s.WellY = -6f;
+            s.Tradition = Architecture.TraditionAt(w, sid, origin);   // (how its founders build: the tradition they bring, D2-114)
             w.Settlements.Add(sid, s);
             w.IndexSettlementCells(sid);
             w.History.Register(EntityRef.Settlement(sid), Worldgen.Names.Place(w.Seed, sid), w.Now);

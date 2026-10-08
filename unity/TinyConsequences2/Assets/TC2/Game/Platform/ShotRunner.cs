@@ -252,7 +252,7 @@ namespace TC2.Game
                 _pending = spec.Trim().Replace('@', '_').Replace('+', 'd'); _pendingW = width; _pendingH = height; _saved = false;
                 while (!_saved) yield return null;
             }
-            foreach (var mn in new[] { "person", "house_cottage", "tree_broadleaf", "granary" })
+            foreach (var mn in new[] { "person", "home_cottage_g", "tree_broadleaf", "granary" })
             {
                 var mm = Models.Get(mn, ProcMeshes.Person);
                 Debug.Log("[TC2] model " + mn + " bounds " + mm.bounds.size.ToString("F2") + " centre " + mm.bounds.center.ToString("F2"));

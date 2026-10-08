@@ -29,10 +29,11 @@ namespace TC2.Core.Places
         public long Event;           // its completion in history (0 while being raised)
         public float Stock;          // what it holds (a work's own goods; the village's grain stays in Settlement.Granary)
         public float Use;            // hours worked at it
+        public int Form;             // how it was built: plan, roof, cover, walls, chimney, shade (Architecture, D2-114; 0 before)
 
-        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(X); w.Float(Y); w.Byte(Kind); w.Int(Household); w.Int(Last); w.Int(Style); w.Long(Built); w.Long(Left); w.Float(Cond); w.Byte(Done); w.Float(Hours); w.Float(Wood); w.Float(Stone); w.Byte(Mat); w.Int(Leader); w.Long(Cause); w.Long(Event); w.Float(Stock); w.Float(Use); }
-        public static Building Read(BinReader r) => new Building { Id = r.Int(), Settlement = r.Int(), X = r.Float(), Y = r.Float(), Kind = r.Byte(), Household = r.Int(), Last = r.Int(), Style = r.Int(), Built = r.Long(), Left = r.Long(), Cond = r.Float(), Done = r.Byte(), Hours = r.Float(), Wood = r.Float(), Stone = r.Float(), Mat = r.Byte(), Leader = r.Int(), Cause = r.Long(), Event = r.Long(), Stock = r.Float(), Use = r.Float() };
-        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(X); h.Add(Y); h.Add(Kind); h.Add(Household); h.Add(Last); h.Add(Style); h.Add(Built); h.Add(Left); h.Add(Cond); h.Add(Done); h.Add(Hours); h.Add(Wood); h.Add(Stone); h.Add(Mat); h.Add(Leader); h.Add(Cause); h.Add(Event); h.Add(Stock); h.Add(Use); }
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(X); w.Float(Y); w.Byte(Kind); w.Int(Household); w.Int(Last); w.Int(Style); w.Long(Built); w.Long(Left); w.Float(Cond); w.Byte(Done); w.Float(Hours); w.Float(Wood); w.Float(Stone); w.Byte(Mat); w.Int(Leader); w.Long(Cause); w.Long(Event); w.Float(Stock); w.Float(Use); w.Int(Form); }
+        public static Building Read(BinReader r) => new Building { Id = r.Int(), Settlement = r.Int(), X = r.Float(), Y = r.Float(), Kind = r.Byte(), Household = r.Int(), Last = r.Int(), Style = r.Int(), Built = r.Long(), Left = r.Long(), Cond = r.Float(), Done = r.Byte(), Hours = r.Float(), Wood = r.Float(), Stone = r.Float(), Mat = r.Byte(), Leader = r.Int(), Cause = r.Long(), Event = r.Long(), Stock = r.Float(), Use = r.Float(), Form = r.Int() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(X); h.Add(Y); h.Add(Kind); h.Add(Household); h.Add(Last); h.Add(Style); h.Add(Built); h.Add(Left); h.Add(Cond); h.Add(Done); h.Add(Hours); h.Add(Wood); h.Add(Stone); h.Add(Mat); h.Add(Leader); h.Add(Cause); h.Add(Event); h.Add(Stock); h.Add(Use); h.Add(Form); }
     }
 
     /// <summary>
@@ -73,12 +74,92 @@ namespace TC2.Core.Places
         public static void Raised(World w, int hid)
         {
             ref var hh = ref w.Households.Get(hid);
-            if (hh.Building != 0 && w.Buildings.Exists(hh.Building)) { w.Buildings.Get(hh.Building).Kind = hh.Shelter; return; }
+            if (hh.Building != 0 && w.Buildings.Exists(hh.Building))
+            {
+                // its hut made a house: rebuilt in the form its people would build now (D2-114)
+                ref var hb = ref w.Buildings.Get(hh.Building);
+                hb.Kind = hh.Shelter;
+                hb.Form = Architecture.HomeForm(w, hh.Settlement, hid, hh.Building, hh.Shelter);
+                return;
+            }
             int id = w.Ids.Next(EntityKind.Building);
             w.Buildings.Add(id, new Building { Id = id, Settlement = hh.Settlement, X = hh.HomeX, Y = hh.HomeY, Kind = hh.Shelter, Household = hid, Last = hid, Style = hid, Built = w.Now, Cond = 1f, Done = 1 });
             w.BuildingsOf(hh.Settlement).InsertSorted(id);
             hh.Building = id;
+            w.Buildings.Get(id).Form = Architecture.HomeForm(w, hh.Settlement, hid, id, hh.Shelter);   // (how its builders built it: D2-114)
         }
+
+        /// <summary>
+        /// The year's weighing of houses (D2-114; the day households weigh leaving): a household rebuilds its house when what it would build now
+        /// stands well above what it lives in (a bigger plan, better walls and roof, a chimney: `Architecture.Gain`) and the house is twenty years
+        /// old, or when it is old (`RenewYears`) - if it is of some means, housed, not leaving, its village not short and holding the wood, and
+        /// no more than a tenth of the village rebuilding at once. The labour and wood are its own building's (Construction.OwnStage), after the
+        /// village's works.
+        /// </summary>
+        public static void WeighRebuilding(World w, int sid)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.Ration < 1.0 || s.Wall == 1) return;
+            var hl = w.HouseholdsOf(sid);
+            int busy = 0;
+            for (int i = 0; i < hl.Count; i++) if (w.Households.Get(hl[i]).Rebuild != 0) busy++;
+            int most = System.Math.Max(1, hl.Count / 10);
+            for (int i = 0; i < hl.Count && busy < most; i++)
+            {
+                int hid = hl[i];
+                ref var hh = ref w.Households.Get(hid);
+                if (hh.Rebuild != 0 || hh.Party != 0 || hh.Shelter < Construction.House || hh.Building == 0 || !w.Buildings.Exists(hh.Building)) continue;
+                ref var b = ref w.Buildings.Get(hh.Building);
+                if (b.Household != hid) continue;
+                double years = (w.Now - b.Built) / (double)SimTime.Year;
+                if (years < 20.0 || Architecture.Means(w, hid) < 1.5) continue;
+                int now = Architecture.HomeForm(w, sid, hid, hh.Building, Construction.House);
+                double gain = Architecture.Gain(now, b.Form);
+                if (!(gain >= 1.0 || years >= RenewYears)) continue;
+                Construction.NextShelter(Construction.Hut, out _, out double wood0);
+                if (s.Woodstore < wood0 * Architecture.Size(Architecture.PlanOf(now))) continue;
+                hh.Rebuild = (byte)(1 + Architecture.PlanOf(now)); hh.Build = 0f;
+                busy++;
+            }
+        }
+
+        /// <summary>Years after which a house is rebuilt whatever its people would build now (timber and thatch do not last for ever).</summary>
+        public const double RenewYears = 70.0;
+
+        /// <summary>
+        /// A household's house rebuilt (D2-114): in the form its people build now - the plan it set out to build, the walls and roof the village's
+        /// ground and knowledge give (stone walls take their stone from the store) -, its years counted again from now; history tells it.
+        /// </summary>
+        public static void Rebuilt(World w, int hid)
+        {
+            ref var hh = ref w.Households.Get(hid);
+            int plan = hh.Rebuild - 1;
+            hh.Rebuild = 0; hh.Build = 0f;
+            if (hh.Building == 0 || !w.Buildings.Exists(hh.Building)) return;
+            int sid = hh.Settlement, bid = hh.Building;
+            int before = w.Buildings.Get(bid).Form;
+            int form = Architecture.HomeForm(w, sid, hid, bid, Construction.House);
+            form = Architecture.Pack(plan, Architecture.RoofOf(form), Architecture.CoverOf(form), Architecture.WallsOf(form), Architecture.Chimney(form) || plan >= Architecture.Two, Architecture.PaletteOf(form));
+            ref var s = ref w.Settlements.Get(sid);
+            if (Architecture.WallsOf(form) == Architecture.Stone)
+            {
+                // stone walls are the store's stone, carried and laid
+                if (s.Stone >= StoneWallLoads) s.Stone -= StoneWallLoads;
+                else form = Architecture.Pack(plan, Architecture.RoofOf(form), Architecture.CoverOf(form), Architecture.Limewash, Architecture.Chimney(form), Architecture.PaletteOf(form));
+            }
+            ref var b = ref w.Buildings.Get(bid);
+            b.Form = form; b.Built = w.Now;
+            Stone.Footings(w, sid, bid);   // (on stone footings, when the store has them: C1.3)
+            w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.HomeRebuilt, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Household(hid),
+                Object = new EntityRef(EntityKind.Building, bid), ArgA = plan, ArgB = Architecture.PlanOf(before), RootKind = RootKind.People,
+            });
+            w.Metrics.HomesRebuilt++;
+        }
+
+        /// <summary>Loads of stone a house of stone walls takes from the store.</summary>
+        public const double StoneWallLoads = 30.0;
 
         /// <summary>A household leaves its home (it dies out, it moves away): the building stands empty from now; the household is a camp.</summary>
         public static void Leave(World w, int hid)
@@ -89,7 +170,7 @@ namespace TC2.Core.Places
                 ref var b = ref w.Buildings.Get(hh.Building);
                 if (b.Household == hid) { b.Household = 0; b.Left = w.Now; }
             }
-            hh.Building = 0; hh.Shelter = Construction.Camp; hh.Build = 0f;
+            hh.Building = 0; hh.Shelter = Construction.Camp; hh.Build = 0f; hh.Rebuild = 0;
         }
 
         /// <summary>

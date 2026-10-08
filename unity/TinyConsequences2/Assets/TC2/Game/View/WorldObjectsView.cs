@@ -28,16 +28,32 @@ namespace TC2.Game
         readonly System.Collections.Generic.List<int> _hullSeats = new System.Collections.Generic.List<int>();
         /// <summary>The village works by structure kind (C1.1; the civilisation kit, D2-089); null where a kind has no model yet.</summary>
         readonly Instancer[] _works = new Instancer[24];
-        Instancer[] _housePosts;   // the same homes on earth-fast posts: no stone footings (C1.3)
+        Instancer[] _homes, _frames;   // homes by plan and roof form; the timber framing of framed ones (D2-114)
+        Instancer _chimneys, _plinths, _outshuts, _pens, _stalls, _cross;   // overlays, pens, the market (D2-114)
         Instancer _stonePiles;     // stone carried home and stacked by the store (C1.3)
-        Instancer[] _houseKinds, _trees;
+        Instancer[] _trees;
         Material _mat;
         float _treeTimer, _placeTimer;
         public int PeopleDrawn, TreesDrawn, BoatsAfloat;
         public static int Off;   // tools (webperf): parts not drawn - 1 trees, 2 people, 4 buildings and yards
 
-        static readonly string[] HouseModels = { "house_cottage", "house_timber", "house_long", "house_small" };
-        static readonly float[] HouseShare = { 0.40f, 0.22f, 0.18f, 0.20f };
+        // homes by their recorded form (D2-114): a model a plan and roof form, overlays composed per house; dimensions as the kit builds them
+        static readonly string[] PlanNames = { "small", "cottage", "long", "two", "hall" };
+        static readonly string[] RoofNames = { "g", "h", "j" };
+        static readonly float[] PlanL = { 4.8f, 7.0f, 12.0f, 6.6f, 10.0f }, PlanW = { 3.8f, 5.0f, 5.4f, 5.4f, 6.2f }, PlanRidge = { 4.3f, 5.0f, 5.2f, 8.6f, 7.1f };
+        static readonly int[] PlanRoom = { 3, 6, 8, 8, 10 };   // people a plan houses before they build on a lean-to
+        // (where a plan's chimney stands, kit metres: x along the house, y across it (+y the back), and its top)
+        static readonly Vector3[] ChimneyAt = { new Vector3(1.2f, 0.3f, 4.9f), new Vector3(2.0f, 0.4f, 5.7f), new Vector3(-2.4f, 0.4f, 5.9f), new Vector3(-2.0f, 0.3f, 9.3f), new Vector3(-1.5f, 3.45f, 7.7f) };
+        // the roof covers and the walls, by what they are made of (sRGB albedo; the kit paints them a neutral 0.86 and 0.90)
+        static readonly Color[] CoverCol = { new Color(0.74f, 0.61f, 0.36f), new Color(0.60f, 0.53f, 0.40f), new Color(0.46f, 0.38f, 0.30f), new Color(0.74f, 0.35f, 0.21f), new Color(0.42f, 0.44f, 0.48f) };
+        static readonly Color[][] WallCol =
+        {
+            new[] { new Color(0.78f, 0.67f, 0.50f), new Color(0.71f, 0.63f, 0.53f), new Color(0.80f, 0.71f, 0.57f), new Color(0.69f, 0.59f, 0.47f) },   // daub
+            new[] { new Color(0.96f, 0.94f, 0.89f), new Color(0.95f, 0.89f, 0.75f), new Color(0.93f, 0.81f, 0.77f), new Color(0.94f, 0.85f, 0.63f), new Color(0.85f, 0.88f, 0.89f), new Color(0.87f, 0.89f, 0.81f) },   // limewash
+            new[] { new Color(0.95f, 0.92f, 0.84f), new Color(0.94f, 0.88f, 0.74f), new Color(0.92f, 0.82f, 0.78f), new Color(0.93f, 0.86f, 0.66f), new Color(0.86f, 0.88f, 0.88f), new Color(0.90f, 0.88f, 0.80f) },   // framed: the infill
+            new[] { new Color(0.50f, 0.37f, 0.25f), new Color(0.44f, 0.32f, 0.22f), new Color(0.54f, 0.41f, 0.29f) },   // logs
+            new[] { new Color(0.71f, 0.69f, 0.63f), new Color(0.65f, 0.63f, 0.59f), new Color(0.75f, 0.71f, 0.63f) },   // stone
+        };
         const int Conifer = 0, ConiferSmall = 1, Broadleaf = 2, BroadleafRound = 3, Birch = 4, Bush = 5;
         static readonly string[] TreeModels = { "tree_conifer", "tree_conifer_small", "tree_broadleaf", "tree_broadleaf_round", "tree_birch", "bush" };
 
@@ -53,10 +69,17 @@ namespace TC2.Game
             _mat = Materials.Load("Instanced");
             _mat.enableInstancing = true;
             _people = new Instancer(Models.Get("person", ProcMeshes.Person), _mat, true);
-            _houseKinds = new Instancer[HouseModels.Length];
-            for (int i = 0; i < HouseModels.Length; i++) _houseKinds[i] = new Instancer(Models.Get(HouseModels[i], ProcMeshes.House), _mat, true);
-            _housePosts = new Instancer[HouseModels.Length];
-            for (int i = 0; i < HouseModels.Length; i++) _housePosts[i] = new Instancer(Models.Get(HouseModels[i] + "_posts", ProcMeshes.House), _mat, true);
+            _homes = new Instancer[PlanNames.Length * RoofNames.Length];
+            for (int p = 0; p < PlanNames.Length; p++)
+                for (int r = 0; r < RoofNames.Length; r++) _homes[p * RoofNames.Length + r] = new Instancer(Models.Get("home_" + PlanNames[p] + "_" + RoofNames[r], ProcMeshes.House), _mat, true);
+            _frames = new Instancer[PlanNames.Length];
+            for (int p = 0; p < PlanNames.Length; p++) _frames[p] = new Instancer(Models.Get("frame_" + PlanNames[p], ProcMeshes.House), _mat, true);
+            _chimneys = new Instancer(Models.Get("chimney", ProcMeshes.Granary), _mat, true);
+            _plinths = new Instancer(Models.Get("plinth", ProcMeshes.Granary), _mat, true);
+            _outshuts = new Instancer(Models.Get("outshut", ProcMeshes.House), _mat, true);
+            _pens = new Instancer(Models.Get("fence", ProcMeshes.Granary), _mat, true);
+            _stalls = new Instancer(Models.Get("market_stall", ProcMeshes.Granary), _mat, true);
+            _cross = new Instancer(Models.Get("market_cross", ProcMeshes.Granary), _mat, true);
             _stonePiles = new Instancer(Models.Get("stone_pile", ProcMeshes.Granary), _mat, true);
             _granaries = new Instancer(Models.Get("granary", ProcMeshes.Granary), _mat, true);
             _walls = new Instancer(Models.Get("palisade", ProcMeshes.Palisade), _mat, true);   // walled villages (D2-074)
@@ -71,56 +94,23 @@ namespace TC2.Game
             _works[Structures.Well] = _wells; _works[Structures.Granary] = _granaries;
             _works[Structures.Barn] = new Instancer(Models.Get("barn", ProcMeshes.House), _mat, true);
             _works[Structures.Smithy] = new Instancer(Models.Get("smithy", ProcMeshes.House), _mat, true);
-            _forgeTop = PartTop(Models.Get("smithy", ProcMeshes.House), new Color(0.274f, 0.234f, 0.205f));   // (the kit's CHIMNEY colour, linear)
+            _forgeTop = new Vector3(-3.0f, 6.6f, -0.6f);   // (the top of the smithy's stone chimney, as the kit builds it: D2-114)
             _works[Structures.Quarry] = new Instancer(Models.Get("quarry_face", ProcMeshes.Granary), _mat, true);
             _works[Structures.Mine] = new Instancer(Models.Get("mine_pit", ProcMeshes.Granary), _mat, true);
             _works[Structures.CharHearth] = new Instancer(Models.Get("charcoal_clamp", ProcMeshes.Granary), _mat, true);
             _works[Structures.BogPits] = new Instancer(Models.Get("bog_pits", ProcMeshes.Granary), _mat, true);
             _works[Structures.Ground] = new Instancer(Models.Get("training_ground", ProcMeshes.Granary), _mat, true);
-            _works[Structures.Market] = new Instancer(Models.Get("market_stalls", ProcMeshes.Granary), _mat, true);
+            _works[Structures.Market] = _cross;   // (the market: its cross, and stalls round it - DrawWork)
             _works[Structures.BoatShed] = new Instancer(Models.Get("boat_shed", ProcMeshes.House), _mat, true);   // (C9.2b)
             _hay = new Instancer(Models.Get("haystack", ProcMeshes.Granary), _mat, true);
             _woodpiles = new Instancer(ProcMeshes.Woodpile(), _mat, true);   // the village's woodstore, by the homes (D2-081)
             _trees = new Instancer[TreeModels.Length];
             for (int i = 0; i < TreeModels.Length; i++) _trees[i] = new Instancer(Models.Get(TreeModels[i], i <= ConiferSmall ? (System.Func<Mesh>)ProcMeshes.Conifer : ProcMeshes.Broadleaf), _mat, true);
             _flames = new Instancer(ProcMeshes.Flame(), _mat, false);
-            // where each house's chimney stands (the top of its tallest part); the small house has none
-            _chimneyTop = new Vector3[HouseModels.Length];
-            _hasChimney = new bool[HouseModels.Length];
-            for (int i = 0; i < HouseModels.Length; i++)
-            {
-                if (HouseModels[i] == "house_small") continue;
-                var mesh = Models.Get(HouseModels[i], ProcMeshes.House);
-                var v = mesh.vertices;
-                if (v.Length == 0) continue;
-                float top = float.MinValue;
-                foreach (var p in v) if (p.y > top) top = p.y;
-                Vector3 sum = Vector3.zero; int n = 0;
-                foreach (var p in v) if (p.y > top - 0.12f) { sum += p; n++; }
-                _chimneyTop[i] = sum / Mathf.Max(1, n);
-                _hasChimney[i] = true;
-            }
         }
 
-        Vector3[] _chimneyTop;
-        bool[] _hasChimney;
         Vector3 _forgeTop;   // the smithy's chimney top in its model's frame (C1.4): smoke while a smith works there
 
-        /// <summary>The top of a model's part painted in one colour (the smithy's chimney), or the model's top.</summary>
-        static Vector3 PartTop(Mesh mesh, Color part)
-        {
-            // (a mesh not imported readable cannot be read in a player - the Web build: its top centre then; smithy.fbx is imported readable)
-            if (!mesh.isReadable) return new Vector3(mesh.bounds.center.x, mesh.bounds.max.y, mesh.bounds.center.z);
-            var v = mesh.vertices; var c = mesh.colors;
-            float top = float.MinValue; Vector3 at = Vector3.zero;
-            for (int i = 0; i < v.Length; i++)
-            {
-                bool ofPart = c != null && c.Length == v.Length && Mathf.Abs(c[i].r - part.r) < 0.03f && Mathf.Abs(c[i].g - part.g) < 0.03f && Mathf.Abs(c[i].b - part.b) < 0.03f;
-                if (ofPart && v[i].y > top) { top = v[i].y; at = v[i]; }
-            }
-            if (top == float.MinValue) foreach (var p in v) if (p.y > top) { top = p.y; at = p; }
-            return at;
-        }
         readonly List<Vector4> _smoke = new List<Vector4>();   // chimney tops with smoke (xyz) and how much (w)
         readonly List<Vector4> _lights = new List<Vector4>();  // villages at night (xyz) and how many of their homes are lit (w)
         readonly List<Vector4> _watch = new List<Vector4>();   // the watch fires at village stores tonight (xyz)
@@ -243,7 +233,9 @@ namespace TC2.Game
             var cam = Rig != null ? Rig.Cam : Camera.main;
             if ((Off & 4) == 0)
             {
-                for (int i = 0; i < _houseKinds.Length; i++) { _houseKinds[i].Draw(cam); _housePosts[i].Draw(cam); }
+                for (int i = 0; i < _homes.Length; i++) _homes[i].Draw(cam);
+                for (int i = 0; i < _frames.Length; i++) _frames[i].Draw(cam);
+                _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam);
                 _stonePiles.Draw(cam);
                 for (int i = 0; i < _works.Length; i++) _works[i]?.Draw(cam);
                 _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _woodpiles.Draw(cam);
@@ -254,14 +246,6 @@ namespace TC2.Game
             if ((Off & 4) == 0) { _beached.Draw(cam); _beachedP.Draw(cam); }
             EmitSmoke(w);
             EmitLights();
-        }
-
-        static int HouseKind(int household)
-        {
-            float u = (float)KeyedRng.Unit(KeyedRng.Mix((ulong)household * 0x9E3779B97F4A7C15UL));
-            float acc = 0;
-            for (int i = 0; i < HouseShare.Length; i++) { acc += HouseShare[i]; if (u < acc) return i; }
-            return 0;
         }
 
         static bool SomeoneAwakeHome(TC2.Core.Simulation.World w, int household, out bool cooking)
@@ -344,7 +328,9 @@ namespace TC2.Game
         void RebuildPlaces(TC2.Core.Simulation.World w)
         {
             var P = w.Planet;
-            for (int i = 0; i < _houseKinds.Length; i++) { _houseKinds[i].Clear(); _housePosts[i].Clear(); }
+            for (int i = 0; i < _homes.Length; i++) _homes[i].Clear();
+            for (int i = 0; i < _frames.Length; i++) _frames[i].Clear();
+            _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear();
             _stonePiles.Clear();
             for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
             _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _woodpiles.Clear();
@@ -491,7 +477,28 @@ namespace TC2.Game
                 float dug = 1.5f * (0.7f + 0.3f * Mathf.Clamp01(b.Stock / 3000f) + 0.25f * Mathf.Clamp01((b.Stock - 3000f) / 15000f));
                 m = m * Matrix4x4.Scale(new Vector3(dug, dug, dug));
             }
-            inst.Add(0, Color.Lerp(moss, Color.white, 0.45f + 0.55f * cond), m);
+            Color look = Color.Lerp(moss, Color.white, 0.45f + 0.55f * cond);
+            if (Architecture.Has(b.Form) && (b.Kind == Structures.Barn || b.Kind == Structures.Granary || b.Kind == Structures.Smithy))
+            {
+                // (D2-114) roofed with what its village roofs with, the smithy's walls of its village's walls
+                float years = (float)((w.Now - b.Built) / (double)SimTime.Year);
+                Color roof = Color.Lerp(moss, Weathered(Architecture.CoverOf(b.Form), years), 0.45f + 0.55f * cond);
+                inst.Add(0, roof, Color.Lerp(moss, WallTint(b.Form), 0.45f + 0.55f * cond), m);
+                return;
+            }
+            inst.Add(0, look, m);
+            if (b.Kind == Structures.Market)
+            {
+                // the market's stalls round its cross: as many as its traders keep coming (C1.6: traders a year), each awning its own dye
+                int stalls = Mathf.Clamp(Mathf.RoundToInt(s.TradeIn / 1.5f), 2, 12);
+                for (int i = 0; i < stalls; i++)
+                {
+                    float a = (i + 0.5f) / stalls * 360f + (bid * 23) % 30;
+                    float r = 7.5f + (i % 2) * 2.5f;
+                    var sm = m * Matrix4x4.TRS(Quaternion.Euler(0f, a, 0f) * new Vector3(0f, 0f, r), Quaternion.Euler(0f, a, 0f), Vector3.one);
+                    _stalls.Add(0, Dyes[(bid + i * 3) % Dyes.Length], sm);
+                }
+            }
         }
 
         /// <summary>
@@ -526,9 +533,42 @@ namespace TC2.Game
             int key = (int)(age * 10) + (lit ? 100 : 0) + (lived ? 0 : 200);
             var m = Place(P, s, b.X, b.Y, yaw, ex);
             bool hut = b.Kind < Construction.House;
-            int kind = hut ? -1 : HouseKind(b.Style);
+            int form = Architecture.Has(b.Form) ? b.Form : Architecture.Pack(Architecture.Cottage, Architecture.Gable, Architecture.Straw, Architecture.Daub, false, 0);
+            int plan = Architecture.PlanOf(form);
+            Vector3 smokeAt = Vector3.zero;
             if (hut) _huts.Add(300 + key, tint, m, lit ? -1f : 0f);
-            else (b.Mat >= 1 ? _houseKinds[kind] : _housePosts[kind]).Add(key, tint, m, lit ? -1f : 0f);   // (on stone footings or on posts: C1.3)
+            else
+            {
+                // (D2-114) the home as its builders built it: its plan and roof form, its cover weathered by its years, its walls, its framing,
+                // its footing, its chimney; a lean-to where its household has outgrown it, a pen where it keeps beasts
+                float years = (float)((w.Now - b.Built) / (double)SimTime.Year);
+                Color roof = Weathered(Architecture.CoverOf(form), years) * new Color(age, age, age, 1f);
+                Color walls = WallTint(form);
+                if (!lived) { float c0 = (float)Homes.Condition(in b, w.Now); roof = Color.Lerp(new Color(0.55f, 0.58f, 0.48f, 1f), roof, 0.45f + 0.55f * c0); walls = Color.Lerp(new Color(0.62f, 0.64f, 0.56f, 1f), walls, 0.45f + 0.55f * c0); }
+                roof.a = tint.a;
+                _homes[plan * RoofNames.Length + Architecture.RoofOf(form)].Add(key, roof, walls, m, lit ? -1f : 0f);
+                if (Architecture.WallsOf(form) == Architecture.Framed) _frames[plan].Add(0, tint, m);
+                float L = PlanL[plan], W = PlanW[plan];
+                if (b.Mat >= 1)
+                {
+                    // on stone footings (C1.3): a course of stone round its walls (and its wing's)
+                    _plinths.Add(0, Color.white, m * Matrix4x4.Scale(new Vector3(L + 0.3f, 1f, W + 0.3f)));
+                    if (plan == Architecture.Hall) _plinths.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3(L / 2f + 2.3f, 0f, 0f), Quaternion.identity, new Vector3(5.5f, 1f, 8.9f)));
+                }
+                var ch = ChimneyAt[plan];
+                if (Architecture.Chimney(form))
+                {
+                    _chimneys.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3(ch.x, 0f, -ch.y), Quaternion.identity, new Vector3(1f, ch.z, 1f)));
+                    smokeAt = m.MultiplyPoint3x4(new Vector3(ch.x, ch.z + 0.15f, -ch.y));
+                }
+                else smokeAt = m.MultiplyPoint3x4(new Vector3(plan == Architecture.Long ? -L * 0.25f : 0f, PlanRidge[plan] + 0.1f, 0f));   // (a smoke-hole in the roof)
+                if (lived)
+                {
+                    int n = w.Members(b.Household).Count;
+                    if (n > PlanRoom[plan]) _outshuts.Add(0, roof, walls, m * Matrix4x4.TRS(new Vector3(0f, 0f, -W / 2f), Quaternion.identity, new Vector3(L * 0.55f, 1f, 1f)));
+                    if (HasBeasts(w, b.Household)) Pen(m, W, plan == Architecture.Hall ? 4 : 3);
+                }
+            }
             if (!lived) return false;
             // its share of the village's woodstore stacked by the wall (D2-081): none when the store is all but empty, a bigger pile the
             // more days of the hearths' wood the village holds
@@ -547,13 +587,47 @@ namespace TC2.Game
             double heat = h.Indoor - Hearth.Indoors(tOut, h.Shelter, 0.0);
             if (cooking || heat > 0.5)
             {
-                Vector3 top;
-                if (hut) top = m.MultiplyPoint3x4(new Vector3(0f, 4.5f, 0f));
-                else if (_hasChimney != null && _hasChimney[kind]) top = m.MultiplyPoint3x4(_chimneyTop[kind]);
-                else return lit;
+                Vector3 top = hut ? m.MultiplyPoint3x4(new Vector3(0f, 4.5f, 0f)) : smokeAt;
                 _smoke.Add(new Vector4(top.x, top.y, top.z, cooking ? 1f : (float)(0.35 + 0.4 * System.Math.Min(1.0, heat / 8.0))));
             }
             return lit;
+        }
+
+        /// <summary>A roof's cover as its years have weathered it (D2-114): thatch greys and darkens, shingles silver, tiles darken a little.</summary>
+        static Color Weathered(int cover, float years)
+        {
+            Color c = CoverCol[cover];
+            if (cover == Architecture.Straw || cover == Architecture.Reed) c = Color.Lerp(c, new Color(0.46f, 0.43f, 0.35f), 0.6f * Mathf.Clamp01(years / 80f));
+            else if (cover == Architecture.Shingle) c = Color.Lerp(c, new Color(0.56f, 0.55f, 0.53f), 0.55f * Mathf.Clamp01(years / 60f));
+            else if (cover == Architecture.Tile) c = Color.Lerp(c, new Color(0.52f, 0.30f, 0.22f), 0.35f * Mathf.Clamp01(years / 150f));
+            return new Color(c.r / 0.86f, c.g / 0.86f, c.b / 0.86f, 1f);   // (the kit paints covers 0.86)
+        }
+
+        /// <summary>A building's walls by their material and its tradition's shade (D2-114).</summary>
+        static Color WallTint(int form)
+        {
+            var set = WallCol[Architecture.WallsOf(form)];
+            Color c = set[Architecture.PaletteOf(form) % set.Length];
+            return new Color(c.r / 0.90f, c.g / 0.90f, c.b / 0.90f, 1f);   // (the kit paints walls 0.90)
+        }
+
+        static bool HasBeasts(TC2.Core.Simulation.World w, int hid)
+        {
+            var bl = w.BeastsOf(hid);
+            for (int i = 0; i < bl.Count; i++) if (w.Beasts.Get(bl[i]).Alive) return true;
+            return false;
+        }
+
+        /// <summary>A fenced pen behind a house whose household keeps beasts (D2-114): its back and two sides of hurdles, so many sections wide.</summary>
+        void Pen(Matrix4x4 m, float W, int across)
+        {
+            const float sect = 2.1f;
+            const int deep = 2;
+            float z0 = -W / 2f - 3.2f, z1 = z0 - deep * sect, x0 = -across * sect / 2f;
+            for (int i = 0; i < across; i++) _pens.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3(x0 + (i + 0.5f) * sect, 0f, z1), Quaternion.identity, Vector3.one));
+            for (int j = 0; j < deep; j++)
+                for (int e = -1; e <= 1; e += 2)
+                    _pens.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3(e * -x0, 0f, z0 - (j + 0.5f) * sect), Quaternion.Euler(0f, 90f, 0f), Vector3.one));
         }
 
         /// <summary>

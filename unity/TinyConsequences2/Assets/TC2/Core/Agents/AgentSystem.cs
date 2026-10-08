@@ -1045,7 +1045,7 @@ namespace TC2.Core.Agents
             {
                 // a camp wants a roof now; a hut wants to become a house; the village wants its well and its granary (D2-045)
                 byte shelter = w.Households.Exists(p.Household) ? w.Households.Get(p.Household).Shelter : Construction.House;
-                double need = ownRoof ? (shelter == Construction.Camp ? 0.85 : 0.4) : 0.45;
+                double need = ownRoof ? (shelter == Construction.Camp ? 0.85 : shelter == Construction.Hut ? 0.4 : 0.3) : 0.45;   // (a house rebuilt waits on the rest: D2-114)
                 double u = need * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
                 if (u > best) { best = u; choice = 7; }
             }
@@ -1239,11 +1239,12 @@ namespace TC2.Core.Agents
                     {
                         // at their own lot, or at the village's well or granary
                         // (where their hours go: their own roof, or the village's work - C7.1: a rising palisade before a hut is made a house)
-                        bool own = Construction.OwnFirst(w, in here, p.Household) || (Construction.NextWork(in here) == 0 && w.Households.Exists(p.Household) && w.Households.Get(p.Household).Shelter < Construction.House);
+                        bool own = Construction.OwnWork(w, in here, p.Household);
                         Construction.WorkSpot(w, in here, Construction.NextWork(in here), rs.NextUnit(), out double gx, out double gy);
                         double bx = own ? homeX : gx;
                         double by = own ? homeY : gy;
-                        BeginLocal(ref p, ActivityKind.Build, own ? WhyCode.NoRoof : WhyCode.VillageWork, 0, bx + rs.Range(-3, 3), by + rs.Range(-3, 3), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
+                        bool rebuild = own && w.Households.Exists(p.Household) && w.Households.Get(p.Household).Shelter >= Construction.House;
+                        BeginLocal(ref p, ActivityKind.Build, rebuild ? WhyCode.Rebuild : own ? WhyCode.NoRoof : WhyCode.VillageWork, 0, bx + rs.Range(-3, 3), by + rs.Range(-3, 3), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
                         return;
                     }
                 case 5:
@@ -1835,7 +1836,7 @@ namespace TC2.Core.Agents
                 if (build)
                 {
                     byte shelter = w.Households.Exists(p.Household) ? w.Households.Get(p.Household).Shelter : Construction.House;
-                    buildUrge = ownRoof ? (shelter == Construction.Camp ? 0.85 : 0.4) : 0.45;
+                    buildUrge = ownRoof ? (shelter == Construction.Camp ? 0.85 : shelter == Construction.Hut ? 0.4 : 0.3) : 0.45;   // (a house rebuilt waits on the rest: D2-114)
                     if (!(shortNow && WildNeed(in s, now, ration) > buildUrge))
                     {
                         double used = Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0 * days), BuildRate(in p) * tools, p.Id);

@@ -280,19 +280,6 @@ def tent(name, seed=8):
     return k.finish()
 
 
-def granary(name, seed=4):
-    k = Kit(name, seed)
-    for sx in (-1, 1):
-        for sy in (-1, 1):
-            k.cyl((sx * 1.15, sy * 1.15, 0), 0.14, 0.12, 0.9, TIMBER, seg=6)
-            k.cyl((sx * 1.15, sy * 1.15, 0.9), 0.28, 0.28, 0.12, STONE, seg=8)  # rat stones
-    k.box((0, 0, 1.02 + 0.06), (3.0, 3.0, 0.12), TIMBER)
-    k.box((0, 0, 1.14 + 1.0), (2.7, 2.7, 2.0), WALL2, bevel=0.04)
-    k.cyl((0, 0, 3.1), 2.35, 0.1, 1.8, THATCH, seg=4)
-    k.box((0, -1.37, 1.9), (0.7, 0.08, 1.1), DOOR)
-    return k.finish()
-
-
 def conifer(name, height, seed):
     k = Kit(name, seed)
     r = k.rng
@@ -597,50 +584,6 @@ ROCK = srgb(0.58, 0.56, 0.52)
 ROCK_CUT = srgb(0.70, 0.68, 0.63)
 
 
-def barn(name, seed=61):
-    """A great timber barn (a large store, C1.1): long, tall, steep thatch, wide double doors on the long side, no chimney, no windows."""
-    k = Kit(name, seed)
-    L, W, H = 12.0, 7.0, 3.4
-    k.box((0, 0, 0.15), (L + 0.3, W + 0.3, 0.3), STONE, bevel=0.03)          # a stone sill against the damp
-    k.box((0, 0, 0.3 + (H - 0.3) / 2.0), (L, W, H - 0.3), WALL2, bevel=0.04)
-    for x in (-L / 2.0, -L / 6.0, L / 6.0, L / 2.0):                        # the frame's posts and a rail
-        for sy in (-1, 1):
-            k.box((x, sy * (W / 2.0 + 0.03), H / 2.0 + 0.1), (0.24, 0.08, H - 0.1), TIMBER)
-    for sy in (-1, 1):
-        k.box((0, sy * (W / 2.0 + 0.04), H * 0.5), (L, 0.07, 0.16), TIMBER)
-    gable_walls(k, L, W, H, 52, WALL2)
-    for sx in (-1, 1):                                                        # the double doors, a wagon's width
-        k.box((sx * 0.85, -(W / 2.0 + 0.05), 1.35), (1.6, 0.1, 2.7), DOOR)
-    k.box((0, -(W / 2.0 + 0.08), 2.78), (3.6, 0.14, 0.18), TIMBER)
-    gable_roof(k, L, W, H, 52, THATCH, overhang=0.45, thick=0.28, ridge_color=THATCH_DARK)
-    return k.finish()
-
-
-def smithy(name, seed=62):
-    """A smithy (C1.4): an open-fronted timber shop over a stone forge with its chimney, an anvil on a stump, a quench trough, charcoal."""
-    k = Kit(name, seed)
-    L, W, H = 6.0, 4.6, 2.5
-    k.box((0, 0, 0.08), (L + 0.6, W + 0.6, 0.16), STONE_DARK, bevel=0.02)   # a beaten floor of stones
-    k.box((0, W / 2.0 - 0.1, H / 2.0), (L, 0.2, H), WALL2, bevel=0.03)     # the back wall
-    for sx in (-1, 1):
-        k.box((sx * L / 2.0, 0.2, H / 2.0), (0.2, W - 0.4, H), WALL2, bevel=0.03)   # side walls
-    for sx in (-1, 1):
-        k.box((sx * (L / 2.0 - 0.1), -W / 2.0 + 0.1, H / 2.0), (0.2, 0.2, H), TIMBER)   # the open front's posts
-    gable_walls(k, L, W, H, 30, WALL2)
-    gable_roof(k, L, W, H, 30, TILE, overhang=0.4, thick=0.18, ridge_color=srgb(0.5, 0.22, 0.14, 1.0))
-    k.box((-L * 0.22, W / 2.0 - 0.75, 0.55), (1.6, 1.1, 1.1), STONE, bevel=0.05)   # the forge hearth
-    k.box((-L * 0.22, W / 2.0 - 0.75, 1.12), (1.2, 0.8, 0.05), CHARCOAL)
-    k.box((-L * 0.22, W / 2.0 - 0.35, 2.4), (0.8, 0.7, 3.0), CHIMNEY, bevel=0.03)   # its chimney through the roof
-    k.cyl((-L * 0.22 + 1.1, W / 2.0 - 0.6, 0.6), 0.32, 0.2, 0.5, srgb(0.45, 0.30, 0.18), seg=6)   # the bellows
-    k.cyl((L * 0.12, -0.2, 0.0), 0.32, 0.30, 0.6, TIMBER, seg=8)            # the anvil's stump
-    k.box((L * 0.12, -0.2, 0.72), (0.62, 0.24, 0.24), IRON, bevel=0.02)       # the anvil
-    k.box((L * 0.34, 0.5, 0.3), (1.0, 0.5, 0.6), TIMBER)                     # the quench trough
-    k.box((L * 0.34, 0.5, 0.58), (0.86, 0.36, 0.04), WELL_WATER)
-    for i in range(5):                                                        # charcoal heaped by the forge
-        k.blob((-L * 0.5 - 0.8 + k.rng.uniform(-0.3, 0.3), W * 0.1 + k.rng.uniform(-0.6, 0.6), 0.25), 0.45, CHARCOAL, jitter=0.3, squash=0.6)
-    return k.finish()
-
-
 def quarry_face(name, seed=63):
     """A quarry (C1.3): a rock face cut in steps, loose blocks at its foot, a sled for hauling."""
     k = Kit(name, seed)
@@ -756,23 +699,6 @@ def training_ground(name, seed=65):
     return k.finish()
 
 
-def market_stalls(name, seed=66):
-    """A market (C1.6): three stalls with cloth awnings, tables of goods, barrels and crates."""
-    k = Kit(name, seed)
-    for i, x in enumerate((-3.6, 0.0, 3.6)):
-        for sx in (-1, 1):
-            for sy in (-1, 1):
-                k.box((x + sx * 1.3, sy * 0.9, 1.1), (0.1, 0.1, 2.2), TIMBER)
-        k.box((x, 0, 2.25), (2.9, 2.1, 0.06), CLOTH, rot_z=0.0)                # the awning
-        k.box((x, -0.6, 0.8), (2.4, 0.7, 0.08), TIMBER)                         # the table
-        for j in range(3):
-            k.box((x - 0.7 + j * 0.7, -0.6, 0.95), (0.4, 0.35, 0.22), (STRAW, WALL2, srgb(0.62, 0.36, 0.22))[(i + j) % 3])
-    for j in range(4):                                                          # barrels and crates
-        k.cyl((-5.6 + (j % 2) * 0.7, 1.2 - (j // 2) * 0.8, 0), 0.32, 0.32, 0.8, srgb(0.45, 0.30, 0.17), seg=8)
-        k.box((5.4, 1.0 - j * 0.6, 0.25), (0.55, 0.5, 0.5), TIMBER)
-    return k.finish()
-
-
 LOG_OUT = srgb(0.36, 0.26, 0.17)      # a trunk's outside, dressed and charred
 LOG_IN = srgb(0.62, 0.47, 0.30)       # the pale hewn wood inside a hollowed trunk
 
@@ -815,6 +741,403 @@ def boat_shed(name, seed=12):
     return k.finish()
 
 
+# --------------------------------------------------------------------------- architecture (D2-114)
+# Homes in families, never one repeated box: five plans (a one-room cottage, a cottage, a longhouse with its byre, a two-storey jettied
+# house, a hall-house with its cross wing) under three roof forms (gable, hipped, half-hipped). Walls are painted for the second tint
+# channel (vertex alpha 0.25: daub, limewash, logs, stone - the game's wall colour), roofs for the first (alpha 1: thatch, shingle, tile,
+# slate); timber, doors and windows keep their colours. What a house is made of and how it is roofed is read from the world (the
+# builders' tradition, their means, the village's ground and knowledge) and drawn by tinting; the overlays (timber framing, a chimney,
+# a stone plinth, a lean-to) are separate models composed per house.
+ROOF_T = srgb(0.86, 0.86, 0.86, 1.0)      # a roof's cover, tinted per instance
+RIDGE_T = srgb(0.60, 0.60, 0.60, 1.0)     # its ridge, a shade darker under the same tint
+WALL_T = srgb(0.90, 0.90, 0.90, 0.25)     # walls, tinted per instance by their material
+BEAM = srgb(0.30, 0.20, 0.12)             # framing, sills, bands
+SHUTTER = srgb(0.36, 0.30, 0.22)
+
+PLANS = {
+    #          L     W    eave  pitch
+    "small":  (4.8, 3.8, 2.2, 47),
+    "cottage": (7.0, 5.0, 2.5, 45),
+    "long":   (12.0, 5.4, 2.3, 47),
+    "two":    (6.6, 5.4, 5.1, 50),
+    "hall":   (10.0, 6.2, 3.4, 50),
+}
+
+
+def slab(k, pts, thick, color):
+    """A roof plane as a slab lying on the plane through pts (its underside: the walls' top meets it) and `thick` above it."""
+    top = [k.bm.verts.new(Vector(p) + Vector((0, 0, thick))) for p in pts]
+    bot = [k.bm.verts.new(Vector(p)) for p in pts]
+    faces = [k.bm.faces.new(top), k.bm.faces.new(list(reversed(bot)))]
+    n = len(pts)
+    for i in range(n):
+        j = (i + 1) % n
+        faces.append(k.bm.faces.new([top[i], bot[i], bot[j], top[j]]))
+    k.paint(faces, color)
+    return faces
+
+
+def roof_form(k, L, W, eave, pitch, form, overhang=0.38, thick=0.24, cx=0.0, cy=0.0, along_y=False):
+    """A roof over an L x W plan (ridge along x, or along y): its planes pass through the walls' top at eave. form: g gable, h hipped,
+    j half-hipped. Returns the ridge height."""
+    t = math.tan(math.radians(pitch))
+    Lo, Wo = L / 2.0 + overhang, W / 2.0 + overhang
+    zlo = eave - overhang * t
+    R = eave + (W / 2.0) * t
+
+    def P(x, y, z):
+        return (cx + y, cy + x, z) if along_y else (cx + x, cy + y, z)
+
+    planes = []
+    if form == "g":
+        for s in (-1, 1):
+            planes.append([P(-Lo, s * Wo, zlo), P(Lo, s * Wo, zlo), P(Lo, 0, R), P(-Lo, 0, R)])
+    elif form == "h":
+        d = min(Wo, Lo)
+        for s in (-1, 1):
+            planes.append([P(-Lo, s * Wo, zlo), P(Lo, s * Wo, zlo), P(Lo - d, 0, R), P(-(Lo - d), 0, R)])
+        for e in (-1, 1):
+            planes.append([P(e * Lo, -Wo, zlo), P(e * Lo, Wo, zlo), P(e * (Lo - d), 0, R)])
+    else:   # half-hipped: the gable's top 40 % hipped back
+        f = 0.6
+        yc = (W / 2.0) * (1 - f)
+        zc = eave + f * (W / 2.0) * t
+        d = (1 - f) * (W / 2.0)
+        for s in (-1, 1):
+            planes.append([P(-Lo, s * Wo, zlo), P(Lo, s * Wo, zlo), P(Lo, s * yc, zc), P(Lo - d, 0, R), P(-(Lo - d), 0, R), P(-Lo, s * yc, zc)])
+        for e in (-1, 1):
+            planes.append([P(e * Lo, -yc, zc), P(e * Lo, yc, zc), P(e * (Lo - d), 0, R)])
+    for pts in planes:
+        slab(k, pts, thick, ROOF_T)
+    # the ridge, a shade darker
+    rl = 2 * Lo if form == "g" else (2 * (Lo - min(Wo, Lo)) if form == "h" else 2 * (Lo - (0.4 * W / 2.0)))
+    if rl > 0.3:
+        size = (0.30, rl, 0.20) if along_y else (rl, 0.30, 0.20)
+        k.box((cx, cy, R + thick * 1.05), size, RIDGE_T)
+    return R
+
+
+def end_walls(k, L, W, eave, pitch, form, cx=0.0, cy=0.0, along_y=False, color=WALL_T):
+    """The walls under a gable (a triangle) or a half-hip (a trapezoid); a hipped roof has none."""
+    if form == "h":
+        return
+    t = math.tan(math.radians(pitch))
+    for e in (-1, 1):
+        x = e * L / 2.0
+        if form == "g":
+            pts = [(x, -W / 2.0, eave), (x, W / 2.0, eave), (x, 0.0, eave + (W / 2.0) * t)]
+        else:
+            f = 0.6
+            yc = (W / 2.0) * (1 - f)
+            zc = eave + f * (W / 2.0) * t
+            pts = [(x, -W / 2.0, eave), (x, W / 2.0, eave), (x, yc, zc), (x, -yc, zc)]
+        if along_y:
+            pts = [(cx + p[1], cy + p[0], p[2]) for p in pts]
+        else:
+            pts = [(cx + p[0], cy + p[1], p[2]) for p in pts]
+        if e < 0:
+            pts = list(reversed(pts))
+        k.quad_strip([Vector(p) for p in pts], color)
+
+
+def window(k, x, y, z, w=0.7, h=0.62, side=-1, shutters=True):
+    """A window in a long wall (side -1 front, +1 back), its sill and shutters."""
+    yy = side * y
+    k.box((x, yy, z), (w, 0.08, h), GLASS)
+    k.box((x, yy + side * 0.04, z - h / 2.0 - 0.05), (w + 0.16, 0.1, 0.08), BEAM)
+    if shutters:
+        for sx in (-1, 1):
+            k.box((x + sx * (w / 2.0 + 0.14), yy + side * 0.03, z), (0.24, 0.05, h), SHUTTER)
+
+
+def door(k, x, y, w=0.95, h=1.95, side=-1):
+    k.box((x, side * y, h / 2.0), (w, 0.1, h), DOOR)
+    k.box((x, side * (y + 0.03), h + 0.06), (w + 0.2, 0.1, 0.12), BEAM)
+
+
+def corner_posts(k, L, W, h, z0=0.0):
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            k.box((sx * L / 2.0, sy * W / 2.0, z0 + h / 2.0), (0.2, 0.2, h), BEAM)
+
+
+def home(name, plan, form, seed=20):
+    """A home of one plan under one roof form (D2-114)."""
+    k = Kit(name, seed)
+    L, W, H, pitch = PLANS[plan]
+    y = W / 2.0 + 0.03
+    if plan == "two":
+        # a two-storey house: the upper storey jettied out over the street front on its joists
+        h1 = 2.6
+        k.box((0, 0, h1 / 2.0), (L, W, h1), WALL_T, bevel=0.03)
+        corner_posts(k, L, W, h1)
+        L2, W2 = L + 0.2, W + 0.5
+        cy2 = -0.25
+        k.box((0, cy2, h1 + 0.1), (L2 + 0.1, W2 + 0.1, 0.2), BEAM)   # the jetty's bressumer and joist ends
+        k.box((0, cy2, h1 + 0.2 + (H - h1 - 0.2) / 2.0), (L2, W2, H - h1 - 0.2), WALL_T, bevel=0.03)
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                k.box((sx * L2 / 2.0, cy2 + sy * W2 / 2.0, (h1 + H) / 2.0 + 0.1), (0.2, 0.2, H - h1 - 0.2), BEAM)
+        door(k, -L * 0.2, y)
+        window(k, L * 0.24, y, 1.45)
+        for x in (-L * 0.3, 0.0, L * 0.3):
+            window(k, x, W2 / 2.0 + 0.03 - cy2, 3.9, w=0.62, h=0.7)
+        window(k, 0.0, W2 / 2.0 + 0.03 + cy2, 3.9, w=0.62, h=0.7, side=1)
+        k.box((L2 / 2.0 + 0.03, cy2, 3.9), (0.08, 0.6, 0.62), GLASS)
+        end_walls(k, L2, W2, H, pitch, form, cy=cy2)
+        roof_form(k, L2, W2, H, pitch, form, cy=cy2)
+        return k.finish()
+    if plan == "hall":
+        # a hall-house: the open hall, tall-roofed with its porch, and a two-storey cross wing at one end (the chamber over the store)
+        k.box((0, 0, H / 2.0), (L, W, H), WALL_T, bevel=0.04)
+        corner_posts(k, L, W, H)
+        door(k, -L * 0.28, y, w=1.1, h=2.2)
+        for x in (-L * 0.02, L * 0.2):
+            window(k, x, y, 1.9, w=0.8, h=1.3)
+        window(k, -L * 0.1, y, 1.9, w=0.8, h=1.3, side=1)
+        # the porch over the door
+        k.box((-L * 0.28, -(W / 2.0 + 0.9), 1.15), (1.9, 1.8, 2.3), WALL_T, bevel=0.03)
+        k.box((-L * 0.28, -(W / 2.0 + 1.82), 0.95), (0.95, 0.06, 1.9), DOOR)
+        end_walls(k, 1.8, 1.9, 2.3, 50, "g", cx=-L * 0.28, cy=-(W / 2.0 + 0.9), along_y=True)
+        roof_form(k, 1.8, 1.9, 2.3, 50, "g", overhang=0.2, thick=0.16, cx=-L * 0.28, cy=-(W / 2.0 + 0.9), along_y=True)
+        end_walls(k, L, W, H, pitch, form)
+        roof_form(k, L, W, H, pitch, form)
+        # the cross wing at +x: two storeys, its ridge across the hall's
+        wl, ww, wh = 8.6, 5.2, 5.4
+        cx = L / 2.0 + ww / 2.0 - 0.3
+        k.box((cx, 0, wh / 2.0), (ww, wl, wh), WALL_T, bevel=0.04)
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                k.box((cx + sx * ww / 2.0, sy * wl / 2.0, wh / 2.0), (0.2, 0.2, wh), BEAM)
+        k.box((cx, 0, 2.7), (ww + 0.08, wl + 0.08, 0.16), BEAM)   # the floor between its storeys
+        for z in (1.5, 4.1):
+            for sy in (-1, 1):
+                k.box((cx + ww / 2.0 + 0.03, sy * wl * 0.25, z), (0.08, 0.7, 0.7), GLASS)
+        k.box((cx, -(wl / 2.0 + 0.03), 4.1), (0.8, 0.08, 0.8), GLASS)
+        end_walls(k, wl, ww, wh, 50, "g" if form != "h" else "j", cx=cx, along_y=True)
+        roof_form(k, wl, ww, wh, 50, "g" if form != "h" else "j", cx=cx, along_y=True)
+        return k.finish()
+    # one storey: a one-room cottage, a cottage, a longhouse
+    k.box((0, 0, H / 2.0), (L, W, H), WALL_T, bevel=0.04)
+    corner_posts(k, L, W, H)
+    if plan == "long":
+        # the dwelling at -x, the byre at +x: its wide door in the end wall, a hatch over it, no windows on the byre's side
+        door(k, -L * 0.12, y)
+        for x in (-L * 0.36, -L * 0.28 + 2.5):
+            window(k, x, y, 1.4, w=0.6, h=0.55)
+        window(k, -L * 0.3, y, 1.4, w=0.6, h=0.55, side=1)
+        k.box((L / 2.0 + 0.04, 0, 0.95), (0.1, 1.6, 1.9), DOOR)
+        k.box((L / 2.0 + 0.06, 0, 2.0), (0.1, 1.9, 0.14), BEAM)
+        for x in (L * 0.12, L * 0.32):
+            k.box((x, -(W / 2.0 + 0.03), 1.75), (0.5, 0.06, 0.25), BEAM)   # the byre's slit vents
+    elif plan == "small":
+        door(k, -L * 0.16, y, w=0.85, h=1.8)
+        window(k, L * 0.24, y, 1.35, w=0.5, h=0.45, shutters=False)
+    else:
+        door(k, -L * 0.05, y)
+        for x in (-L * 0.32, L * 0.28):
+            window(k, x, y, 1.45)
+        window(k, 0.0, y, 1.45, side=1)
+        k.box((L / 2.0 + 0.03, 0.0, 1.45), (0.08, 0.7, 0.6), GLASS)
+    end_walls(k, L, W, H, pitch, form)
+    roof_form(k, L, W, H, pitch, form)
+    return k.finish()
+
+
+def framing(name, plan, seed=21):
+    """The timber frame of a framed house (an overlay drawn over its walls): posts, rails, braces on the long and end walls."""
+    k = Kit(name, seed)
+    L, W, H, pitch = PLANS[plan]
+    off = 0.045
+
+    def wall_frame(L0, W0, z0, h, cy=0.0, cx=0.0, along_y=False):
+        n = max(2, int(round(L0 / 1.25)))
+        for s in (-1, 1):
+            for i in range(n + 1):
+                x = -L0 / 2.0 + i * L0 / n
+                p = (cx + s * (W0 / 2.0 + off), cy + x, z0 + h / 2.0) if along_y else (cx + x, cy + s * (W0 / 2.0 + off), z0 + h / 2.0)
+                k.box(p, (0.06, 0.14, h) if along_y else (0.14, 0.06, h), BEAM)
+            for z in (z0 + h * 0.5, z0 + h - 0.06):
+                p = (cx + s * (W0 / 2.0 + off), cy, z) if along_y else (cx, cy + s * (W0 / 2.0 + off), z)
+                k.box(p, (0.06, L0, 0.12) if along_y else (L0, 0.06, 0.12), BEAM)
+        m = max(1, int(round(W0 / 1.4)))
+        for e in (-1, 1):
+            for i in range(1, m):
+                y = -W0 / 2.0 + i * W0 / m
+                p = (cx + y, cy + e * (L0 / 2.0 + off), z0 + h / 2.0) if along_y else (cx + e * (L0 / 2.0 + off), cy + y, z0 + h / 2.0)
+                k.box(p, (0.14, 0.06, h) if along_y else (0.06, 0.14, h), BEAM)
+            p = (cx, cy + e * (L0 / 2.0 + off), z0 + h * 0.5) if along_y else (cx + e * (L0 / 2.0 + off), cy, z0 + h * 0.5)
+            k.box(p, (W0, 0.06, 0.12) if along_y else (0.06, W0, 0.12), BEAM)
+
+    if plan == "two":
+        wall_frame(L, W, 0.0, 2.6)
+        wall_frame(L + 0.2, W + 0.5, 2.8, H - 2.8, cy=-0.25)
+    elif plan == "hall":
+        wall_frame(L, W, 0.0, H)
+        wall_frame(8.6, 5.2, 0.0, 2.7, cx=L / 2.0 + 2.6 - 0.3, along_y=True)
+        wall_frame(8.6, 5.2, 2.7, 2.7, cx=L / 2.0 + 2.6 - 0.3, along_y=True)
+    else:
+        wall_frame(L, W, 0.0, H)
+    return k.finish()
+
+
+def chimney(name, seed=22):
+    """A stone chimney stack (unit height 1: the game scales it to the house), its cap and pot."""
+    k = Kit(name, seed)
+    k.box((0, 0, 0.5), (0.75, 0.75, 1.0), STONE, bevel=0.03)
+    k.box((0, 0, 1.0), (0.9, 0.9, 0.08), STONE_DARK)
+    return k.finish()
+
+
+def plinth(name, seed=23):
+    """A stone footing (unit 1 x 1 plan, 0.32 m: the game scales it to the house's plan)."""
+    k = Kit(name, seed)
+    k.box((0, 0, 0.16), (1.0, 1.0, 0.32), STONE, bevel=0.02)
+    return k.finish()
+
+
+def outshut(name, seed=24):
+    """A lean-to along a house's back wall (a unit 1 m of it: the game scales it along the wall): a low wall and a roof sloping away."""
+    k = Kit(name, seed)
+    d, hi, lo = 2.4, 2.1, 1.3
+    k.box((0, d / 2.0, lo / 2.0), (1.0, d, lo), WALL_T)
+    t = (hi - lo) / d
+    slab(k, [(-0.5, -0.1, hi + 0.05), (0.5, -0.1, hi + 0.05), (0.5, d + 0.35, lo - 0.35 * t), (-0.5, d + 0.35, lo - 0.35 * t)], 0.18, ROOF_T)
+    for s in (-1, 1):
+        k.quad_strip([Vector(p) for p in ((s * 0.5, 0.0, lo), (s * 0.5, d, lo), (s * 0.5, 0.0, hi))][:: (1 if s > 0 else -1)], WALL_T)
+    return k.finish()
+
+
+def homes():
+    objs = []
+    for plan in ("small", "cottage", "long", "two", "hall"):
+        for form in ("g", "h", "j"):
+            objs.append(home("home_%s_%s" % (plan, form), plan, form))
+        objs.append(framing("frame_%s" % plan, plan))
+    objs.append(chimney("chimney"))
+    objs.append(plinth("plinth"))
+    objs.append(outshut("outshut"))
+    return objs
+
+
+# --------------------------------------------------------------------------- the village's works, each its own silhouette (D2-114)
+BOARD = srgb(0.30, 0.22, 0.15)        # weatherboard, tarred dark (barns, granaries)
+BOARD_SEAM = srgb(0.22, 0.16, 0.11)
+GLOW = srgb(0.95, 0.42, 0.10, 0.5)    # coals in a forge (alpha 0.5: lit as a window is)
+
+
+def barn(name, seed=61):
+    """A great aisled barn (C1.1, D2-114): long and low-walled under a huge half-hipped roof that is most of it, tarred weatherboard, a tall
+    cart porch (the midstrey) on the front with doors a loaded wagon goes through; no windows, no chimney."""
+    k = Kit(name, seed)
+    L, W, H, pitch = 15.0, 8.4, 2.5, 52
+    k.box((0, 0, 0.15), (L + 0.3, W + 0.3, 0.3), STONE, bevel=0.03)
+    k.box((0, 0, 0.3 + (H - 0.3) / 2.0), (L, W, H - 0.3), BOARD, bevel=0.03)
+    x = -L / 2.0 + 0.5
+    while x < L / 2.0:                                                        # the boards' battens
+        for sy in (-1, 1):
+            k.box((x, sy * (W / 2.0 + 0.02), H / 2.0 + 0.15), (0.07, 0.05, H - 0.3), BOARD_SEAM)
+        x += 0.75
+    end_walls(k, L, W, H, pitch, "j", color=BOARD)
+    roof_form(k, L, W, H, pitch, "j", overhang=0.5, thick=0.3)
+    # the midstrey: a tall gabled porch on the front long side, its ridge running into the great roof
+    pw, pd, ph = 4.4, 3.0, 4.4
+    py = -(W / 2.0 + pd / 2.0 - 0.2)
+    k.box((0, py, ph / 2.0), (pw, pd, ph), BOARD, bevel=0.03)
+    end_walls(k, pd + 1.6, pw, ph, 50, "g", cy=py - 0.8, along_y=True, color=BOARD)
+    roof_form(k, pd + 1.6, pw, ph, 50, "g", overhang=0.35, thick=0.26, cy=py - 0.8, along_y=True)
+    for sx in (-1, 1):                                                        # its great doors, a loaded wagon's height
+        k.box((sx * 0.92, py - pd / 2.0 - 0.05, 1.9), (1.75, 0.1, 3.8), DOOR)
+    k.box((0, py - pd / 2.0 - 0.09, 3.9), (4.0, 0.14, 0.2), BEAM)
+    return k.finish()
+
+
+def granary(name, seed=4):
+    """A granary (C1.1, D2-114): a small boarded store lifted off the ground on staddle stones against rats and damp, steps to its door, a
+    hipped roof - a raised box nobody would take for a home."""
+    k = Kit(name, seed)
+    for sx in (-1.3, 0.0, 1.3):
+        for sy in (-1.0, 1.0):
+            k.cyl((sx, sy, 0), 0.16, 0.10, 0.62, STONE, seg=6)              # the staddle's stem
+            k.cyl((sx, sy, 0.62), 0.36, 0.30, 0.14, STONE, seg=8)           # and its cap
+    k.box((0, 0, 0.82), (3.5, 2.7, 0.12), BEAM)
+    k.box((0, 0, 0.88 + 1.05), (3.2, 2.4, 2.1), BOARD, bevel=0.03)
+    for xx in (-1.2, -0.4, 0.4, 1.2):
+        for sy in (-1, 1):
+            k.box((xx, sy * 1.22, 1.93), (0.06, 0.04, 2.0), BOARD_SEAM)
+    k.box((0.6, -1.23, 1.75), (0.75, 0.08, 1.4), DOOR)
+    for i in range(3):                                                        # the steps up to it
+        k.box((0.6, -1.65 - i * 0.3, 0.12 + (2 - i) * 0.22), (0.9, 0.32, 0.24 + (2 - i) * 0.44), STONE)
+    roof_form(k, 3.2, 2.4, 2.98, 48, "h", overhang=0.4, thick=0.22)
+    return k.finish()
+
+
+def smithy(name, seed=62):
+    """A smithy (C1.4, D2-114): an open-fronted forge shed under a low roof, dominated by its great stone chimney over the hearth; the anvil on its
+    stump in the open front, the quench trough, a grindstone, iron bars racked, charcoal heaped by the wall."""
+    k = Kit(name, seed)
+    L, W, H, pitch = 6.4, 4.8, 2.4, 32
+    k.box((0, 0, 0.06), (L + 1.4, W + 1.4, 0.12), STONE_DARK)                 # a floor of trodden stones
+    k.box((0, W / 2.0 - 0.12, H / 2.0), (L, 0.24, H), WALL_T, bevel=0.03)    # the back wall
+    k.box((L / 2.0 - 0.12, 0.2, H / 2.0), (0.24, W - 0.4, H), WALL_T, bevel=0.03)   # one side wall; the other end is the chimney's
+    for sx in (-1, 1):
+        k.box((sx * (L / 2.0 - 0.1), -W / 2.0 + 0.1, H / 2.0), (0.22, 0.22, H), BEAM)   # the open front's posts
+    k.box((0, -W / 2.0 + 0.1, H - 0.1), (L, 0.24, 0.2), BEAM)
+    end_walls(k, L, W, H, pitch, "g")
+    roof_form(k, L, W, H, pitch, "g", overhang=0.45, thick=0.2)
+    # the chimney: a stone stack at the hearth's end, standing well above the ridge
+    cx = -L / 2.0 + 0.2
+    k.box((cx, 0.6, 3.2), (1.5, 1.6, 6.4), STONE, bevel=0.05)
+    k.box((cx, 0.6, 6.45), (1.7, 1.8, 0.14), STONE_DARK)
+    k.box((cx + 1.1, 0.6, 0.5), (1.0, 1.4, 1.0), STONE, bevel=0.04)           # the hearth in the shed
+    k.box((cx + 1.1, 0.6, 1.02), (0.8, 1.1, 0.06), GLOW)                      # its coals
+    k.cyl((cx + 1.1, 1.75, 0.5), 0.38, 0.22, 0.6, srgb(0.45, 0.30, 0.18), seg=6, rot=Matrix.Rotation(math.pi / 2.0, 4, "X"))   # the bellows
+    k.cyl((0.6, -W / 2.0 - 0.4, 0.0), 0.34, 0.32, 0.62, BEAM, seg=8)         # the anvil's stump, out in the open front
+    k.box((0.6, -W / 2.0 - 0.4, 0.74), (0.66, 0.26, 0.26), IRON, bevel=0.02)  # the anvil
+    k.box((1.8, -W / 2.0 - 0.2, 0.3), (1.1, 0.5, 0.6), BEAM)                  # the quench trough
+    k.box((1.8, -W / 2.0 - 0.2, 0.58), (0.94, 0.36, 0.04), WELL_WATER)
+    k.cyl((L / 2.0 + 0.6, -0.8, 0.55), 0.55, 0.55, 0.16, ROCK_CUT, seg=10, rot=Matrix.Rotation(math.pi / 2.0, 4, "Y"))   # a grindstone
+    for i in range(4):                                                        # iron bars racked against the side wall
+        k.box((L / 2.0 + 0.2, 0.6 + i * 0.18, 0.9), (0.06, 0.06, 1.8), IRON, rot_z=0.0)
+    for i in range(5):                                                        # charcoal heaped by the back wall
+        k.blob((-0.6 + i * 0.5, W / 2.0 + 0.6, 0.25), 0.45, CHARCOAL, jitter=0.3, squash=0.6)
+    return k.finish()
+
+
+def market_stall(name, seed=66):
+    """A market stall (C1.6, D2-114): a trestle of goods under a dyed awning on four poles - the game sets out as many as traders come to the
+    market, each awning its own dye (alpha 1: tinted per instance)."""
+    k = Kit(name, seed)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            k.box((sx * 1.3, sy * 0.95, 1.15 if sy < 0 else 1.0), (0.1, 0.1, 2.3 if sy < 0 else 2.0), BEAM)
+    slab(k, [(-1.5, -1.2, 2.3), (1.5, -1.2, 2.3), (1.5, 1.2, 1.95), (-1.5, 1.2, 1.95)], 0.05, CLOTH)   # the awning, sloped to the back
+    for sx in (-1, 1):                                                         # its valance
+        pass
+    k.box((0, -1.22, 2.18), (3.0, 0.04, 0.26), CLOTH)
+    k.box((0, -0.55, 0.8), (2.5, 0.75, 0.08), BEAM)                            # the trestle
+    for sx in (-1, 1):
+        k.box((sx * 1.0, -0.55, 0.4), (0.08, 0.6, 0.8), BEAM)
+    goods = (STRAW, srgb(0.62, 0.36, 0.22), WALL2, srgb(0.42, 0.50, 0.30))
+    for j in range(4):
+        k.box((-0.9 + j * 0.6, -0.55, 0.96), (0.42, 0.4, 0.24), goods[(j + seed) % 4])
+    k.cyl((1.7, 0.6, 0), 0.3, 0.3, 0.75, srgb(0.45, 0.30, 0.17), seg=8)       # a barrel
+    k.box((-1.75, 0.6, 0.22), (0.5, 0.5, 0.44), BEAM)                          # a crate
+    return k.finish()
+
+
+def market_cross(name, seed=67):
+    """A market cross (C1.6, D2-114): a stone shaft and head on stepped stone, where a market is held - the centre of a market green."""
+    k = Kit(name, seed)
+    for i, (r, h) in enumerate(((1.8, 0.3), (1.35, 0.3), (0.9, 0.3))):
+        k.box((0, 0, i * 0.3 + h / 2.0), (r * 2, r * 2, h), STONE, bevel=0.03)
+    k.box((0, 0, 0.9 + 0.2), (0.7, 0.7, 0.4), STONE_DARK, bevel=0.03)
+    k.box((0, 0, 1.3 + 1.6), (0.32, 0.32, 3.2), STONE, bevel=0.02)
+    k.box((0, 0, 4.2), (1.1, 0.26, 0.26), STONE, bevel=0.02)
+    k.box((0, 0, 4.55), (0.28, 0.28, 0.5), STONE, bevel=0.02)
+    return k.finish()
+
+
 def build_all():
     objs = []
     objs.append(house("house_cottage", 7.0, 5.0, 2.6, 42, THATCH, seed=11))
@@ -826,6 +1149,7 @@ def build_all():
     objs.append(house("house_timber_posts", 8.0, 5.4, 3.2, 45, TILE, wall=srgb(0.90, 0.86, 0.76), frame=True, seed=12, plinth=False))
     objs.append(house("house_long_posts", 11.5, 5.2, 2.2, 40, THATCH, wall=WALL2, chimney=True, seed=13, plinth=False))
     objs.append(house("house_small_posts", 4.6, 3.8, 2.3, 44, THATCH, wall=srgb(0.80, 0.74, 0.62), chimney=False, seed=14, plinth=False))
+    objs.extend(homes())                   # the house families (D2-114)
     objs.append(round_hut("hut_round", 2.3, 2.1, 2.6))
     objs.append(tent("tent"))
     objs.append(ruin("ruin"))
@@ -867,7 +1191,8 @@ def build_all():
     objs.append(charcoal_clamp("charcoal_clamp"))
     objs.append(bog_pits("bog_pits"))
     objs.append(training_ground("training_ground"))
-    objs.append(market_stalls("market_stalls"))
+    objs.append(market_stall("market_stall"))
+    objs.append(market_cross("market_cross"))
     objs.append(grass_tuft("grass_tuft", 31))
     objs.append(flowers("flowers", 32))
     objs.append(reeds("reeds", 33))
@@ -888,9 +1213,38 @@ def export(objs, out):
         print("[kit] exported", path, len(o.data.polygons), "faces")
 
 
+GRID = 0          # (--grid N: the preview lays models out N to a row)
+GRID_STEP = 18.0
+
+
 def preview(objs, out):
     """A contact sheet: every model in a row, workbench with vertex colours, soft studio light."""
     os.makedirs(out, exist_ok=True)
+    if GRID:
+        rows = [objs[i:i + GRID] for i in range(0, len(objs), GRID)]
+        x = 0.0
+        for ri, row in enumerate(rows):
+            for ci, o in enumerate(row):
+                o.location = (ci * GRID_STEP, -ri * GRID_STEP, 0)
+        scene = bpy.context.scene
+        scene.render.engine = "BLENDER_WORKBENCH"
+        sh = scene.display.shading
+        sh.light = "STUDIO"; sh.color_type = "VERTEX"; sh.show_shadows = True; sh.show_cavity = True; sh.cavity_type = "BOTH"
+        scene.display.shadow_focus = 0.4
+        scene.render.resolution_x = 2400; scene.render.resolution_y = 1500
+        cam_data = bpy.data.cameras.new("cam"); cam_data.type = "ORTHO"
+        wd, ht = (GRID - 1) * GRID_STEP, (len(rows) - 1) * GRID_STEP
+        cam_data.ortho_scale = max(wd, ht * 1.6) + GRID_STEP * 1.1
+        cam = bpy.data.objects.new("cam", cam_data); scene.collection.objects.link(cam)
+        cx, cy = wd / 2.0, -ht / 2.0
+        cam.location = (cx - 60.0 * 0.0, cy - 60.0, 50.0)
+        cam.rotation_euler = (math.radians(50), 0, 0)
+        scene.camera = cam
+        scene.world = bpy.data.worlds.new("w")
+        scene.render.filepath = os.path.join(os.path.abspath(out), "kit_preview.png")
+        bpy.ops.render.render(write_still=True)
+        print("[kit] preview", scene.render.filepath)
+        return
     rows = [objs] if len(objs) <= 10 else [objs[: (len(objs) + 1) // 2], objs[(len(objs) + 1) // 2:]]
     width = 0.0
     for ri, row in enumerate(rows):
@@ -939,6 +1293,8 @@ def main():
     for o in list(bpy.data.objects):
         bpy.data.objects.remove(o)
     only = argv[argv.index("--only") + 1] if "--only" in argv else None
+    global GRID
+    GRID = int(argv[argv.index("--grid") + 1]) if "--grid" in argv else 0
     objs = build_all()
     if only:
         # just these models (by name prefix); the others are dropped before export and preview
@@ -947,6 +1303,21 @@ def main():
                 bpy.data.objects.remove(o)
                 objs.remove(o)
     export(objs, out)
+    if "--tint" in argv:
+        # (the preview only, after export: each model's roof and walls painted with sample materials, cycling)
+        roofs = [(0.62, 0.50, 0.30), (0.42, 0.36, 0.30), (0.66, 0.30, 0.18), (0.40, 0.42, 0.46), (0.55, 0.47, 0.34)]
+        walls = [(0.93, 0.91, 0.86), (0.80, 0.66, 0.46), (0.45, 0.33, 0.22), (0.62, 0.60, 0.56), (0.88, 0.80, 0.70)]
+        for i, o in enumerate(objs):
+            cl = o.data.color_attributes[0] if o.data.color_attributes else None
+            if cl is None:
+                continue
+            r, wcol = roofs[i % len(roofs)], walls[(i // 2) % len(walls)]
+            for d in cl.data:
+                c = d.color
+                if c[3] > 0.9:
+                    d.color = (c[0] * r[0] ** 2.2, c[1] * r[1] ** 2.2, c[2] * r[2] ** 2.2, 1.0)
+                elif 0.15 < c[3] < 0.35:
+                    d.color = (c[0] * wcol[0] ** 2.2, c[1] * wcol[1] ** 2.2, c[2] * wcol[2] ** 2.2, 1.0)
     if prev:
         if only:
             for o in objs:

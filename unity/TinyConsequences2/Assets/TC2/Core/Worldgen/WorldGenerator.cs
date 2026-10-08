@@ -305,6 +305,7 @@ namespace TC2.Core.Worldgen
             s.WoodX = (float)(DMath.Cos(wa) * 210); s.WoodY = (float)(DMath.Sin(wa) * 210);
             s.WellX = (float)rs.Range(-12, 12); s.WellY = (float)rs.Range(-12, 12);
             s.SquareX = 0; s.SquareY = 0;
+            s.Tradition = Architecture.TraditionAt(w, sid, 0);   // (each first people its own way of building: D2-114)
             w.Settlements.Add(sid, s);
             w.IndexSettlementCells(sid);
             string name = Names.Place(seed, sid);

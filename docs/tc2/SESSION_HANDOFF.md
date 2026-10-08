@@ -1,35 +1,44 @@
 # TC2 Session handoff
 
-## Session 9 (8 Oct 2026, from 04:31 IST; Control Room continuation) - in progress
+## Session 9 (8 Oct 2026, 04:31 - ~06:30 IST; Control Room run #23 session 1) - handed off (context full; D2-114 in progress)
 
 ### Exact state (keep current)
-- **C9.3 closed (D2-113)**: why relief by sea raised famines was traced village by village (seed 2: an epidemic one world had and the other not -
-  chance; seeds 11 and 8: relief an unconditional subsidy holding land-short villages over their land for ever) and fixed by **social storage**:
-  relief is owed back (`DeedBook.Owed`, `Trade.CreditDays` 60, `Trade.GiveBack`, `ReliefReturned` 87, `ReliefReturnedFu`; `ReliefSent` a giver and a
-  famine). **Lived voyages**: the village day books (`Trade.Booking`), the household sails in the morning (`AgentSystem.StartVoyage`,
-  `VoyageStep`, `PutOut`, `VoyageLanded`; `ActivityKind.Voyage` 34, `WhyCode.Voyage` 43, `Person.Voyage`), delivery at the other landing
-  (`Trade.Deliver`, `LoadAboard`); one rule at both resolutions (`Trade.Crewed`, `CanSail`, `MinSeaLoadFu`); the view draws a voyage's hull and the
-  boat at the other landing. Sim version 53; 269 tests. Ten seeds `tc2/out/civ/s*_d5s` (and `_d5n` no sea) against `_c92r`: famines x0.971, hunger
-  per person-year x0.999, people x0.955 (social storage); sea vs no sea inside the placebo's spread (`_d2p`). Web build of the C9.3 code: Web test
-  6/6 (`tc2/out/webtest/c93web`, views 55-120 fps). Shots `voyage1`, `voyage2`. Commit: "[tc2] C9.3 closed (D2-113)".
-- **D2-114 building variety - IN PROGRESS, uncommitted in the working tree at the C9.3 commit** (Arjun's new standing requirement, see the root
-  `NEXT_SESSION_PROMPT.md`): `Core/Places/Architecture.cs` (forms: plan, roof form, cover, walls, chimney, shade - from the household's size and
-  means, the village's size, ring and lots, ground, knowledge and climate; `Settlement.Tradition` carried by founders with drift), `Building.Form`
-  (set in `Homes.Raised`, `Structures.Raised`/`Standing`), sim version 54, headless `forms:` line; the kit (`tc2/art/kit.py`): `homes()` - five
-  plans x three roof forms (`home_<plan>_<g|h|j>`), `frame_<plan>`, `chimney`, `plinth`, `outshut`; new `barn` (aisled, cart porch), `granary`
-  (on staddles), `smithy` (great chimney), `market_stall` + `market_cross`. Scratchpad patch scripts (session 9 scratchpad) for the view
-  (`p_view_arch.py`: the shader's wall colour channel and `Instancer.Add(.., wall, ..)`; `p_view_arch2.py`: homes drawn from their form, overlays,
-  pens, works tinted, the market) and for **rebuilding** (`p_rebuild.py`: `Household.Rebuild`, `Homes.WeighRebuilding`/`Rebuilt`,
-  `Construction.OwnWork`/`OwnStage`, `HomeRebuilt` 88, `WhyCode.Rebuild` 44) - not yet applied when C9.3 was committed.
+- **C9.3 closed (D2-113), commit 3900ec2**: relief by sea's extra famines traced village by village (seed 2: an epidemic one world had and the
+  other not - chance; seeds 11 and 8: relief an unconditional subsidy holding land-short villages over their land for ever) and fixed by **social
+  storage** (relief owed back: `DeedBook.Owed`, `Trade.CreditDays` 60, `Trade.GiveBack`, `ReliefReturned` 87); **lived voyages** (`Trade.Booking`,
+  `AgentSystem.StartVoyage`/`VoyageStep`/`PutOut`/`VoyageLanded`, `Trade.Deliver`/`LoadAboard`, `ActivityKind.Voyage` 34, `Person.Voyage`); one rule
+  at both resolutions (`Trade.Crewed`, `CanSail`, `MinSeaLoadFu`). Sim version 53; 269 tests at that commit. Ten seeds `tc2/out/civ/s*_d5s`
+  (and `_d5n` no sea) against `_c92r`: famines x0.971, hunger per person-year x0.999, people x0.955; sea vs no sea inside the placebo's spread
+  (`_d2p`). Web build of the C9.3 code: Web test 6/6 (`tc2/out/webtest/c93web`; views 55-120 fps - the forest at low altitude 55, the person page
+  48-58: lower than C9.2b's 73-120, re-measure on a quiet machine). Shots `tc2/out/shots/voyage1`, `voyage2`.
+- **D2-114 building variety - IN PROGRESS (Arjun's standing requirement, see the root `NEXT_SESSION_PROMPT.md`)**. DECISIONS D2-114 records the
+  design and evidence so far; `13` §13, `18` (end), `21` §6 carry the requirement. In the tree (committed as work in progress at the handoff, see
+  `git log`): `Core/Places/Architecture.cs` (forms, traditions with drift, `Means`, `Gain`, `Size`, `Describe`), `Building.Form`,
+  `Settlement.Tradition`, `Household.Rebuild`, `Homes.WeighRebuilding`/`Rebuilt` (yearly, at `Migration.DecideDay`), `Construction.OwnWork`/
+  `OwnStage`, `HomeRebuilt` 88, `WhyCode.Rebuild` 44, `Metrics.HomesRebuilt`, sim version 54; `Tests/Core/ArchitectureTests.cs` (5 pass); headless
+  `forms:` lines; the kit `tc2/art/kit.py` (homes x15, frames x5, chimney, plinth, outshut, barn, granary, smithy, market_stall, market_cross),
+  exported to `Game/Resources/TC2Models` (old `house_*` and `market_stalls` removed); the view (`WorldObjectsView`: homes from their form,
+  overlays, pens, works tinted, the market; `Instancer.Add(.., wall, ..)`; `Instanced.shader` `_WallColor`).
+- **Verified**: headless build, float lint, `ArchitectureTests` 5/5 (the full suite was NOT rerun after the rebuilding patch); without rebuilding
+  the trajectory is bit-identical to `_d5s` (seed 4). **Not yet verified**: the Unity compile of the view/shader (a `unity.mjs configure` was
+  started at the handoff - its log `tc2/out/unity_configure_d2114.txt`; it also makes the new models' and `ArchitectureTests.cs`'s `.meta` files,
+  which must be committed); no in-game shot of the new houses yet; no Web build.
+- **Runs**: `tc2/out/civ/s*_a3` (ten seeds with rebuilding; saves at 50/100/200/300). First three (seeds 4, 2, 7): 367-906 houses rebuilt in 300
+  years, two-storey houses 125-302 (36 on seed 4 without rebuilding), but **hall-houses 54-129 - too many** (each rebuild by whoever is best off
+  that year adds a hall: cap it - one standing hall a village, or one per ~150 people); people at year 200-299 +0-10 %, famines up on all three
+  (74->99, 111->163, 107->131) - judge only with all ten against `_d5s` and the placebo's spread.
 - Scratchpad (session 9): `C:\Users\aswin\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\9cd1c516-cc19-4358-8f6c-acaaf0252961\scratchpad`
-  (`wrun.sh`, `cmp.py` with relief and sea columns, `bin_d5` = the C9.3 binary, the patch scripts above).
+  (`wrun.sh`, `cmp.py`; copies in `tc2/out/tools/`).
 
 ### Next, in order
-1. D2-114: apply the view and rebuilding patches; export the kit to `Game/Resources/TC2Models` (remove the old `house_*` models and
-   `market_stalls`); Unity compile; headless tests; ten seeds (rebuilding costs labour and wood - check people and famines at par); shots of
-   villages at close/village/region at several ages and sizes (a hamlet, a village, a walled town, a lord's village) and judge them; Web build
-   and frame rate; DECISIONS D2-114, `21` §6, `13` §13, `18` §9, PROGRESS, this file; commit.
-2. Then C9.4 docks, cargo boats and coastal trade (`25` §5), or C10.2 leaders and the polity page - and halls/keeps as real structures.
+1. Check the Unity compile log (`tc2/out/unity_configure_d2114.txt`); fix any error; commit the new `.meta` files.
+2. Cap hall-houses (one standing hall a village, or by population) and re-read the ten `_a3` seeds after the fix against `_d5s` with `cmp.py`
+   (people, famines, hunger, the wood store: rebuilding takes labour and wood) - a placebo if an effect looks small.
+3. Shots: `node tc2/scripts/unity.mjs shots --tag arch1 --load "<abs>/tc2/out/civ/s4_a3/world_y300.tc2" --village big --views "close@10,village@10,region@10"`
+   and a small young village (`world_y50`), a walled town, a lord's village; judge silhouettes and colours (zoom crops); tune the kit and colours.
+4. The building and person pages: `Architecture.Describe(b.Form, home)`; then a Web build and its frame rate (more home models = more draws).
+5. Then D2-114 closed in DECISIONS/PROGRESS/handoff; then C9.4 docks, cargo boats and coastal trade, or C10.2 leaders - halls, towers, gates and
+   keeps as real structures.
 
 ## Session 8 (7 Oct 2026 22:40 - 8 Oct 2026 ~02:20 IST, Control Room run #7 session 3) - handed off (context full; C9.3 in progress)
 

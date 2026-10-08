@@ -121,6 +121,7 @@ namespace TC2.Core.History
                     return "The " + TC2.Core.Places.Boats.NameOf((byte)e.ArgB) + " of the " + subj + "s of " + place + " overturned at sea in a rising wind (" + F(e.Magnitude, "0") + " m/s)" +
                            (e.Other.IsNone ? "." : e.ArgA == 1 ? ": " + other + " drowned." : ": " + other + " clung to it and came ashore.");
                 case HistoryKind.HerdHuntedOut: return "The " + obj + " herd near " + place + " was hunted out (" + F(e.Magnitude, "0") + " at its most).";
+                case HistoryKind.HomeRebuilt: return Cap(subj) + " rebuilt their house as a " + Places.Architecture.PlanName(e.ArgA) + (e.ArgB != e.ArgA ? " (it had been a " + Places.Architecture.PlanName(e.ArgB) + ")" : "") + ".";
                 case HistoryKind.ReliefReturned: return subj + " gave back to " + obj + (e.ArgA == 1 ? ", by sea," : "") + " the grain it was given in its famine (" + F(e.Magnitude, "0") + " days' food for one, the first of it).";
                 case HistoryKind.ReliefSent: return "In the famine " + subj + " sent grain to " + obj + (e.ArgA == 1 ? " by sea, a boatload along the coast" : "") + " (" + F(e.Magnitude, "0") + " days' food for one).";
                 case HistoryKind.Taken: return subj + " of " + other + " took " + F(e.Magnitude, "0") + " days' grain from the store of " + obj + " in the night.";
@@ -253,6 +254,7 @@ namespace TC2.Core.History
                 case ActivityKind.Haul: return "carrying the catch home";
                 case ActivityKind.Build:
                     if (p.Why == WhyCode.NoRoof) return "raising a roof for the household: they live in a camp or a hut";
+                    if (p.Why == WhyCode.Rebuild && w.Households.Exists(p.Household)) return "rebuilding the household's house as a " + Places.Architecture.PlanName(w.Households.Get(p.Household).Rebuild - 1) + ": they have the means, and the old one is old or poor beside what they would build now";
                     if (p.Why == WhyCode.Boat) return "hollowing a trunk into a dugout for the household: the open sea holds more fish than the shore";
                     if (w.Settlements.Exists(p.Home) && TC2.Core.Places.Construction.NextWork(w.Settlements.Get(p.Home)) == TC2.Core.Places.Construction.Structure && w.Buildings.Exists(w.Settlements.Get(p.Home).Project))
                     {

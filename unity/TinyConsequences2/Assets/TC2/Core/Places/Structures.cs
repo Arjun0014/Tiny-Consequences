@@ -220,6 +220,7 @@ namespace TC2.Core.Places
             var k = Of(b.Kind);
             if (b.Hours < k.Hours - Construction.Done) return;
             b.Done = 1;
+            b.Form = Architecture.WorkForm(w, sid, bid);   // (built of what its people build with: D2-114)
             ref var s = ref w.Settlements.Get(sid);
             s.Project = 0; s.ProjectKind = 0;
             if (b.Kind == Well) s.Works |= Construction.Well;
@@ -252,6 +253,7 @@ namespace TC2.Core.Places
             var k = Of(kind);
             w.Buildings.Add(id, new Building { Id = id, Settlement = sid, X = x, Y = y, Kind = kind, Style = sid, Built = w.Now, Cond = 1f, Done = 1, Hours = (float)k.Hours, Wood = (float)k.Wood });
             w.BuildingsOf(sid).InsertSorted(id);
+            w.Buildings.Get(id).Form = Architecture.WorkForm(w, sid, id);   // (D2-114)
             ref var s = ref w.Settlements.Get(sid);
             if (kind == Well) s.Works |= Construction.Well;
             if (kind == Granary) { s.Works |= Construction.Granary; s.Granaries++; }

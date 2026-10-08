@@ -64,6 +64,7 @@ namespace TC2.Core.Agents
         Charcoal = 40,    // the village's smiths want charcoal and its hearth stands: someone burns it (C5.2a)
         Boat = 42,        // the household makes a boat: the sea beyond the shore promises more fish (C9.1)
         Voyage = 43,      // the village sends the household's boat to another landing: a load to trade, grain to a famine, grain given back (C9.3)
+        Rebuild = 44,     // the household rebuilds its house as its people build now (D2-114)
     }
 
     public static class Sex { public const byte Female = 0, Male = 1; }

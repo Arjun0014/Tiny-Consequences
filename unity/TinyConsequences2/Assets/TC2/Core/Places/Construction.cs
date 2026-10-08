@@ -37,6 +37,25 @@ namespace TC2.Core.Places
             else { hours = 0; wood = 0; }
         }
 
+        /// <summary>Labour and wood a household's own building asks now: the next stage of its shelter, or the house it is rebuilding (D2-114).</summary>
+        public static void OwnStage(in Household hh, out double hours, out double wood)
+        {
+            if (hh.Shelter >= House && hh.Rebuild != 0) { double f = Architecture.Size(hh.Rebuild - 1); hours = HouseHours * f; wood = HouseWood * f; return; }
+            NextShelter(hh.Shelter, out hours, out wood);
+        }
+
+        /// <summary>
+        /// Whether a household's hours go to its own building: a camp's roof, a hut made a house (OwnFirst, or when the village has no work), or
+        /// its house rebuilt - only when the village has no work waiting (D2-114).
+        /// </summary>
+        public static bool OwnWork(World w, in Settlement s, int hid)
+        {
+            if (OwnFirst(w, in s, hid)) return true;
+            if (hid == 0 || NextWork(in s) != 0 || !w.Households.Exists(hid)) return false;
+            ref var hh = ref w.Households.Get(hid);
+            return hh.Settlement == s.Id && (hh.Shelter < House || hh.Rebuild != 0);
+        }
+
         /// <summary>
         /// The village work to do next: the structure its people are raising (planned by need: a well first, then a granary once there is
         /// a harvest to keep, another when the store overfills - `Structures.Plan`, C1.1), then its palisade and its mending, or 0.
@@ -119,13 +138,18 @@ namespace TC2.Core.Places
         {
             if (hours <= 0) return 0;
             ref var s = ref w.Settlements.Get(sid);
-            if (OwnFirst(w, in s, hid) || NextWork(in s) == 0 && hid != 0 && w.Households.Exists(hid) && w.Households.Get(hid).Shelter < House && w.Households.Get(hid).Settlement == sid)
+            if (OwnWork(w, in s, hid))
             {
                 ref var hh = ref w.Households.Get(hid);
                 {
-                    NextShelter(hh.Shelter, out double need, out double wood);
+                    OwnStage(in hh, out double need, out double wood);
                     double done = Spend(ref s, hours * rate, need - hh.Build, wood / need);
                     hh.Build = (float)(hh.Build + done);
+                    if (hh.Build >= need - Done && hh.Shelter >= House && hh.Rebuild != 0)
+                    {
+                        Homes.Rebuilt(w, hid);   // (its house rebuilt as its people would build now: D2-114)
+                        return rate > 0 ? done / rate : 0;
+                    }
                     if (hh.Build >= need - Done)
                     {
                         hh.Shelter++; hh.Build = 0f;
@@ -201,12 +225,12 @@ namespace TC2.Core.Places
         public static bool HasWork(World w, in Settlement s, int hid, out bool ownRoof, out bool woodShort)
         {
             ownRoof = false; woodShort = false;
-            if (OwnFirst(w, in s, hid) || NextWork(in s) == 0 && hid != 0 && w.Households.Exists(hid) && w.Households.Get(hid).Shelter < House && w.Households.Get(hid).Settlement == s.Id)
+            if (OwnWork(w, in s, hid))
             {
                 ref var hh = ref w.Households.Get(hid);
                 {
                     ownRoof = true;
-                    NextShelter(hh.Shelter, out double need, out double wood);
+                    OwnStage(in hh, out double need, out double wood);
                     woodShort = s.Woodstore < wood / need;
                     return !woodShort;
                 }

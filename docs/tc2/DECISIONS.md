@@ -2951,3 +2951,57 @@ at Kreingrithwick's landing during the stay) and `voyage2` (a relief boat nearin
 **Open.** Crews are of the household only; plank boats reach the same fishing grounds as dugouts; a voyage's risk is drawn once as it puts out
 (not on the way back), and a storm that rises after it put out does not meet it; cargo boats, docks and coastal trade at the sea's cost ratio
 are C9.4.
+
+## D2-114 — 2026-10-08 — Building variety: buildings built as their builders could, traditions carried by founders, houses rebuilt as means grow (IN PROGRESS)
+
+**Context.** Arjun (8 Oct 2026), a standing visual requirement: settlements must not look like collections of repeated same-colour,
+same-shape models. Houses vary by real circumstances (household size, means, material at hand, age, the settlement's history, its
+building tradition) - families of plans and deterministic variants (footprints, one or two storeys, roof shapes, roof and wall
+materials, timber/stone/plaster, extensions, chimneys, yards and fences, wear), never random colours; functional buildings are
+recognisable at a glance (smithy, training ground, granary, market, boathouse, mine and quarry, hall; later towers, gates and keeps
+dominating the silhouette); richer, larger, older places get denser and more substantial - a hamlet, a village, a walled town and a political
+centre must not read as the same houses at different counts. Judged in real shots at close, village and region views. Before: four house
+models (cottage, timber, long, small) picked by a hash of the household's id in fixed shares, on posts or footings, one tint; the barn and
+the smithy were houses in other sizes (`tc2/out/shots`... kit render in the session 9 scratchpad).
+**Decision (so far).** (1) **How a building is built is real state, recorded when it is raised** (`Building.Form`, `Core/Places/Architecture.cs`;
+sim version 54): a home's plan (a one-room cottage, a cottage, a longhouse with its byre, a two-storey house, a hall-house with its cross wing),
+its roof form, cover (straw or reed thatch, wooden shingles, fired tiles, stone slates), walls (wattle and daub, limewashed daub, timber framing,
+logs, stone), chimney and shade - from the household's size, means (`Architecture.Means`: beasts, larder against a month's need, goods) and
+cattle (a byre), its rank in the village (the best off of a village of 120 builds a hall), the village's size, its ring and how near the centre the
+lot lies (up a storey where central lots are dear), and what the ground and knowledge give (rock and a quarry or stone in store, clay, pottery,
+iron tools, the woods it fells - conifers in the cold -, wet ground for reed, the climate). A house raised early keeps its early form while the
+village changes: the town's history stands in its houses. Works take their village's cover and walls (`WorkForm`). The view draws what is
+recorded; nothing in the simulation reads it (warmth, fire and decay by material are later). (2) **Building traditions** (`Settlement.Tradition`,
+C11's first trait): the first peoples each their own; a founded village carries the tradition of the village its founders came from, with a
+founder's drift (`Drift` 0.3: one trait, the roof's form or the walls' shade, changes) - regions of one descent look alike and drift apart.
+(3) **Rebuilding** (C13's first piece; real labour and material): at the yearly weighing a household of means (`Means` 1.5) rebuilds its house
+when what it would build now stands well above it (`Architecture.Gain` 1.0: a bigger plan, better walls and roof, a chimney) and the house is 20
+years old, or when the house is 70 years old (`Homes.RenewYears`) - if its village is not short, not walling itself and has the wood, a tenth of
+its households at most at once (`Homes.WeighRebuilding`, `Household.Rebuild`); the hours and wood are its own building's after the village's
+works (`Construction.OwnWork`/`OwnStage`: a cottage's 240 h and 35 loads times the plan's size, `Architecture.Size`), stone walls take 30 loads of
+the store's stone; history `HomeRebuilt` 88, `WhyCode.Rebuild` 44, metric `HomesRebuilt`. (4) **The kit** (`tc2/art/kit.py`, exported to
+`Game/Resources/TC2Models`; the old `house_*` models and `market_stalls` removed): `home_<small|cottage|long|two|hall>_<g|h|j>` (five plans x
+gable, hipped, half-hipped), `frame_<plan>` (timber framing overlays), `chimney`, `plinth` (stone footings), `outshut` (a lean-to); walls painted
+for a second tint channel (vertex alpha 0.25), roofs for the first (alpha 1); new works with their own silhouettes - `barn` (aisled, a huge
+half-hipped roof over low tarred-board walls, a tall cart porch), `granary` (a boarded box raised on staddle stones, steps to its door),
+`smithy` (an open forge shed dominated by a great stone chimney, anvil, trough, grindstone), `market_stall` (a dyed awning) and `market_cross`.
+(5) **The view** (`WorldObjectsView`, `Instancer`, `TC2/Instanced` shader): a per-instance wall colour (`_WallColor`); a home drawn from its
+form - its model by plan and roof form, its cover weathered by its years (thatch greys, shingles silver, tiles darken), its walls by material and
+shade, framing, a plinth where it stands on footings (C1.3), a chimney (smoke from it, or from a smoke-hole in the roof), a lean-to when its
+household outgrows the plan (`PlanRoom`), a fenced pen behind when it keeps beasts; barns, granaries and smithies roofed and walled as their
+village builds; the market as its cross with as many dyed stalls as traders come (`TradeIn`). Headless `forms:` lines (plans, roofs, covers,
+walls, chimneys, rebuilt, by village size).
+**Evidence so far.** `ArchitectureTests` 5 pass (every home and work has its form, roofed in its village's way; a plan follows the household
+and its village - the poor and few a one-room cottage, a household with cattle a longhouse, the best off of 150 a hall-house with a chimney, tiles
+where pottery and clay are known; traditions kept by line, 283 of 400 daughters as their mother; a household of means rebuilds its old poor house
+with 336 h and 49 loads of the village's wood, told, the poor do not; short rations stop rebuilding, a tenth at most at once). Without rebuilding
+the simulation's trajectory is untouched (seed 4, 300 years: annals bit-identical to `_d5s`); seed 4 at year 300 then had 3,555 houses - covers
+straw 1,996, reed 1,211, tile 294, shingle 54; walls limewash 2,217, framed 626, daub 623, logs 46, stone 43; 14 hall-houses, 196 longhouses; roofs
+gable 1,661, hipped 986, half-hipped 908 in 11 traditions of 6 lines (before drift: 3,500 of 3,555 hipped) - but only 36 two-storey houses: inner
+lots are taken while a village is small, so its core stays cottages; rebuilding is what densifies it (a first rule had put half of all houses in two
+storeys by village size alone). Ten seeds with rebuilding are `tc2/out/civ/s*_a3` (being read at the handoff).
+**Open (next).** Read `_a3` against `_d5s` (rebuilding costs labour and wood: people, famines and the wood store at par?; what the towns become);
+compile in Unity (the view, the shader's wall channel, the new models' metas); shots of villages at several sizes and ages at close, village and
+region views, judged (and the kit tuned: roof and wall colours, pens, plinths, chimney heights); a Web build and its frame rate (more home models:
+draw calls); the pages (`Architecture.Describe` in the building and person pages); halls, keeps, towers and gates as real structures belong to
+C7/C10.

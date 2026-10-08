@@ -188,3 +188,18 @@ and building traditions; workshops, granaries, barns, smithies, mills, markets, 
 barrels, crates, woodpiles, ore and stone piles, furnaces, mine entrances, quarry faces); maritime (dugout, fishing boat, cargo boat,
 sailing ship, dock modules); and more nature (tree silhouettes, shrubs, rocks, reeds, crops). Visible labour (chopping, carrying,
 quarrying, hammering, training, marching, sailing) is drawn only while the simulation says it happens.
+
+## 13. Building variety (Arjun, 8 Oct 2026; D2-114) - a standing requirement
+
+A settlement must never read as repeated same-colour, same-shape models. **Homes** vary by real circumstances - household size, means,
+material at hand, age, the settlement's history, its building tradition (later regional cultures) - as families of plans with deterministic
+variants: footprints, one or two storeys, roof forms, roof and wall materials, timber/stone/plaster, extensions, chimneys, yards and fences,
+wear; never random colours. **Functional buildings** are recognisable at a glance by footprint, height, silhouette, roof, materials, props and the
+activity round them (smithy, training ground, granary, market, boathouse, mine and quarry, hall; later towers, gates and keeps dominating the
+silhouette). **Places grow in substance**: richer, larger, older settlements become denser and more substantial - a hamlet, a village, a walled
+town and a political centre never read as the same houses at different counts. Modular families plus variants (not hundreds of unique meshes);
+judged in real shots at close, village and region views at several ages, never from code.
+First implementation (D2-114): a building's form is real state recorded when it is raised (`Building.Form`, `Core/Places/Architecture.cs`), a
+village's building tradition is carried by its founders with drift (`Settlement.Tradition`), households of means rebuild old or poor houses
+(`Homes.WeighRebuilding`); the kit's five plans x three roof forms with framing, chimney, plinth and lean-to overlays, walls and roofs as two
+tint channels (`_WallColor`); barns, granaries, smithies and the market with silhouettes of their own.

@@ -28,15 +28,16 @@ namespace TC2.Game
 
         const int BatchSize = 1023;
         readonly List<Matrix4x4> _m = new List<Matrix4x4>(256);
-        readonly List<Vector4> _c = new List<Vector4>(256);
+        readonly List<Vector4> _c = new List<Vector4>(256), _w = new List<Vector4>(256);
         readonly List<float> _e = new List<float>(256), _a = new List<float>(256);
         readonly List<Vector3> _min = new List<Vector3>(), _max = new List<Vector3>();   // per batch
         // (the property block's arrays keep the length they were first set with: always the whole batch)
         readonly Matrix4x4[] _bm = new Matrix4x4[BatchSize];
-        readonly Vector4[] _bc = new Vector4[BatchSize];
+        readonly Vector4[] _bc = new Vector4[BatchSize], _bw = new Vector4[BatchSize];
         readonly float[] _be = new float[BatchSize], _ba = new float[BatchSize];
         readonly MaterialPropertyBlock _mpb = new MaterialPropertyBlock();
         static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
+        static readonly int WallColor = Shader.PropertyToID("_WallColor");   // (the kit's walls: vertex alpha 0.25, D2-114)
         static readonly int Emission = Shader.PropertyToID("_Emission");
         static readonly int Anim = Shader.PropertyToID("_Anim");
         static readonly Bounds World = new Bounds(Vector3.zero, Vector3.one * 60000f);
@@ -52,8 +53,8 @@ namespace TC2.Game
 
         public void Clear()
         {
-            _m.Clear(); _c.Clear(); _e.Clear(); _a.Clear(); _min.Clear(); _max.Clear();
-            _lastColor = new Color(-1f, -1f, -1f, -1f);
+            _m.Clear(); _c.Clear(); _w.Clear(); _e.Clear(); _a.Clear(); _min.Clear(); _max.Clear();
+            _lastColor = new Color(-1f, -1f, -1f, -1f); _lastWall = new Color(-1f, -1f, -1f, -1f);
         }
 
         // (colours come in runs: convert each only when it changes)
@@ -62,9 +63,16 @@ namespace TC2.Game
 
         /// <summary>Adds an instance with its colour (sRGB, as a material colour), emission and walk. <paramref name="group"/> is
         /// the caller's own grouping (it orders nothing here: kept so callers read as before).</summary>
-        public void Add(int group, Color color, Matrix4x4 m, float emission = 0f, float anim = 0f)
+        public void Add(int group, Color color, Matrix4x4 m, float emission = 0f, float anim = 0f) => Add(group, color, Color.white, m, emission, anim);
+
+        Color _lastWall = new Color(-1f, -1f, -1f, -1f);
+        Vector4 _lastWallLinear;
+
+        /// <summary>Adds an instance with its colour (the kit's tinted parts: roofs, clothes) and its walls' colour (D2-114).</summary>
+        public void Add(int group, Color color, Color wall, Matrix4x4 m, float emission = 0f, float anim = 0f)
         {
             if (color != _lastColor) { _lastColor = color; _lastLinear = Linear ? (Vector4)color.linear : (Vector4)color; }
+            if (wall != _lastWall) { _lastWall = wall; _lastWallLinear = Linear ? (Vector4)wall.linear : (Vector4)wall; }
             // its batch's bounds: where it stands, padded by its mesh at its largest scale
             float sx = m.m00 * m.m00 + m.m10 * m.m10 + m.m20 * m.m20, sy = m.m01 * m.m01 + m.m11 * m.m11 + m.m21 * m.m21, sz = m.m02 * m.m02 + m.m12 * m.m12 + m.m22 * m.m22;
             float pad = Mathf.Sqrt(Mathf.Max(sx, Mathf.Max(sy, sz))) * _meshRadius;
@@ -72,7 +80,7 @@ namespace TC2.Game
             int bi = _m.Count / BatchSize;
             if (bi == _min.Count) { _min.Add(lo); _max.Add(hi); }
             else { _min[bi] = Vector3.Min(_min[bi], lo); _max[bi] = Vector3.Max(_max[bi], hi); }
-            _m.Add(m); _c.Add(_lastLinear); _e.Add(emission); _a.Add(anim);
+            _m.Add(m); _c.Add(_lastLinear); _w.Add(_lastWallLinear); _e.Add(emission); _a.Add(anim);
         }
 
         public void Draw(Camera cam)
@@ -83,8 +91,9 @@ namespace TC2.Game
             for (int start = 0, bi = 0; start < total; start += BatchSize, bi++)
             {
                 int n = Mathf.Min(BatchSize, total - start);
-                _m.CopyTo(start, _bm, 0, n); _c.CopyTo(start, _bc, 0, n); _e.CopyTo(start, _be, 0, n); _a.CopyTo(start, _ba, 0, n);
+                _m.CopyTo(start, _bm, 0, n); _c.CopyTo(start, _bc, 0, n); _w.CopyTo(start, _bw, 0, n); _e.CopyTo(start, _be, 0, n); _a.CopyTo(start, _ba, 0, n);
                 _mpb.SetVectorArray(BaseColor, _bc);
+                _mpb.SetVectorArray(WallColor, _bw);
                 _mpb.SetFloatArray(Emission, _be);
                 _mpb.SetFloatArray(Anim, _ba);
                 var bounds = World;

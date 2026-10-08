@@ -5,6 +5,7 @@ Shader "TC2/Instanced"
     Properties
     {
         _BaseColor ("Color", Color) = (1, 1, 1, 1)
+        _WallColor ("Walls", Color) = (1, 1, 1, 1)
         _Emission ("Emission", Float) = 0
         _Anim ("Walk", Float) = 0
         _AmbientSky ("Ambient Sky", Color) = (0.45, 0.50, 0.62, 1)
@@ -32,6 +33,7 @@ Shader "TC2/Instanced"
             CBUFFER_END
             UNITY_INSTANCING_BUFFER_START(PerInstance)
                 UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
+                UNITY_DEFINE_INSTANCED_PROP(float4, _WallColor)
                 UNITY_DEFINE_INSTANCED_PROP(float, _Emission)
                 UNITY_DEFINE_INSTANCED_PROP(float, _Anim)
             UNITY_INSTANCING_BUFFER_END(PerInstance)
@@ -40,13 +42,14 @@ Shader "TC2/Instanced"
             float4 _TC2MoonDir;
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; UNITY_VERTEX_INPUT_INSTANCE_ID };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; half4 base : TEXCOORD2; half emission : TEXCOORD3; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; half4 base : TEXCOORD2; half emission : TEXCOORD3; half4 wall : TEXCOORD4; };
 
             Varyings vert(Attributes v)
             {
                 Varyings o;
                 UNITY_SETUP_INSTANCE_ID(v);
                 o.base = (half4)UNITY_ACCESS_INSTANCED_PROP(PerInstance, _BaseColor);
+                o.wall = (half4)UNITY_ACCESS_INSTANCED_PROP(PerInstance, _WallColor);
                 o.emission = (half)UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Emission);
                 float anim = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Anim);
                 float3 lp = v.positionOS.xyz;
@@ -88,10 +91,14 @@ Shader "TC2/Instanced"
                 half hemi = dot(n, up) * 0.5h + 0.5h;
                 half3 amb = lerp(_AmbientGround.rgb, _AmbientSky.rgb, hemi);
                 half day = saturate(dot(up, l.direction) * 3.0h + 0.25h);
-                // the kit marks tintable parts (clothes, roofs) with vertex alpha 1; the rest keeps its colour, scaled by alpha
+                // the kit marks tintable parts (clothes, roofs) with vertex alpha 1 and walls with 0.25 (their own colour, D2-114); the
+                // rest keeps its colour, scaled by alpha
                 half4 baseC = i.base;
                 half emission = i.emission;
-                half3 albedo = i.color.rgb * lerp(baseC.aaa, baseC.rgb, i.color.a);
+                half3 tint = lerp(baseC.aaa, baseC.rgb, i.color.a);
+                half wallM = step(0.15h, i.color.a) * step(i.color.a, 0.35h);
+                tint = lerp(tint, i.wall.rgb * baseC.a, wallM);
+                half3 albedo = i.color.rgb * tint;
                 half wrap = saturate((dot(n, l.direction) + 0.2h) / 1.2h);
                 // _Emission > 0 lights the whole object (fire); < 0 lights only its windows (vertex alpha 0.5)
                 half window = step(0.4h, i.color.a) * step(i.color.a, 0.6h);

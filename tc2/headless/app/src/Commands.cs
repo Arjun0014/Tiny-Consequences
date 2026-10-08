@@ -554,6 +554,7 @@ namespace TC2.Headless
                               ", fire pages held " + w.Fire.Procs.PagesHeld + ")  managed heap " + F(GC.GetTotalMemory(true) / 1048576.0, "0") + " MB");
             PrintFires();
             prof?.Print();
+            Forms(w);   // (how the homes and works were built: D2-114)
             if (a.Has("civ")) CivTimelines(w, a.Int("civ", 4));
             if (a.Has("civ-of")) CivTimelines(w, 1, a.Int("civ-of", 0));   // (one village's timeline by its id: C5.3)
             if (a.Has("boats"))
@@ -657,6 +658,42 @@ namespace TC2.Headless
                 Console.WriteLine("VOYAGE " + SimTime.Format(w.Now) + " boat " + p.WhyArg + " from " + w.History.NameOf(EntityRef.Settlement(from)) + " #" + from + " to " + w.History.NameOf(EntityRef.Settlement(p.Dest)) + " #" + p.Dest +
                                   " crew " + crew + " load " + p.Cargo + " " + F(p.CargoQty, "0") + " (as " + p.CargoTo + ") leg " + SimTime.Format(p.T0) + " -> " + SimTime.Format(p.T1) + (r != null ? " way " + F(r.Length, "0") + " m" : ""));
             }
+        }
+
+        /// <summary>How the world's standing homes were built (D2-114): plans, roofs, covers, walls, chimneys - overall and by the size of their village.</summary>
+        static void Forms(World w)
+        {
+            var A = typeof(TC2.Core.Places.Architecture);
+            int[] plan = new int[5], roof = new int[3], cover = new int[5], walls = new int[5]; int chim = 0, n = 0, works = 0;
+            int[,] bySize = new int[3, 5];   // villages under 100, 100-249, 250 and more: their plans
+            int[] coverWorks = new int[5];
+            int traditions = 0; var seen = new HashSet<int>(); var lines = new HashSet<int>();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                if (seen.Add(s.Tradition)) traditions++;
+                lines.Add(TC2.Core.Places.Architecture.Line(s.Tradition));
+                int size = s.Population < 100 ? 0 : s.Population < 250 ? 1 : 2;
+                var bl = w.BuildingsOf(sid);
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    var b = w.Buildings.Get(bl[i]);
+                    if (!TC2.Core.Places.Architecture.Has(b.Form) || TC2.Core.Places.Homes.Fallen(in b, w.Now)) continue;
+                    if (!TC2.Core.Places.Structures.IsHome(b.Kind)) { works++; coverWorks[TC2.Core.Places.Architecture.CoverOf(b.Form)]++; continue; }
+                    if (b.Kind < TC2.Core.Places.Construction.House) continue;
+                    n++;
+                    int pl = TC2.Core.Places.Architecture.PlanOf(b.Form);
+                    plan[pl]++; roof[TC2.Core.Places.Architecture.RoofOf(b.Form)]++; cover[TC2.Core.Places.Architecture.CoverOf(b.Form)]++; walls[TC2.Core.Places.Architecture.WallsOf(b.Form)]++;
+                    if (TC2.Core.Places.Architecture.Chimney(b.Form)) chim++;
+                    bySize[size, pl]++;
+                }
+            }
+            string P(int[] a) { var sb = new StringBuilder(); for (int i = 0; i < a.Length; i++) sb.Append(i > 0 ? "/" : "").Append(a[i]); return sb.ToString(); }
+            Console.WriteLine("forms: " + n + " houses in " + traditions + " traditions of " + lines.Count + " lines; plans small/cottage/long/two/hall " + P(plan) + "; roofs gable/hipped/half-hip " + P(roof) +
+                              "; covers straw/reed/shingle/tile/slate " + P(cover) + "; walls daub/limewash/framed/logs/stone " + P(walls) + "; chimneys " + chim + "; rebuilt " + w.Metrics.HomesRebuilt + "; works " + works + " (covers " + P(coverWorks) + ")");
+            for (int z = 0; z < 3; z++)
+                Console.WriteLine("forms: villages of " + (z == 0 ? "<100" : z == 1 ? "100-249" : "250+") + " people: plans " + bySize[z, 0] + "/" + bySize[z, 1] + "/" + bySize[z, 2] + "/" + bySize[z, 3] + "/" + bySize[z, 4]);
         }
 
         /// <summary>One line a village (D2-113's tracing): its people and store now, and what the tallies counted since the last line.</summary>

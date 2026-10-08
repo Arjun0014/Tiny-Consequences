@@ -138,3 +138,7 @@ The C-phases (`25`) make this doc's requirement larger, not smaller: lumber cut 
 smoke and the smith at work, training grounds in use, roads worn by use (replacing roads drawn by distance), markets, walls and gates,
 docks and boats, forces on the move, ruins, battle damage, recovering woods - each drawn from state when its slice lands, judged at the
 orbit, region, village and street views across ages.
+
+**Building variety (D2-114, standing).** Settlements read by their buildings: homes differ by household, means, material, age, history and
+tradition; works are recognisable by silhouette; places get denser and more substantial as they grow richer and older (`13` §13). Judged at the
+close, village and region views and across ages - the core of an old town and its newer edges should read differently.

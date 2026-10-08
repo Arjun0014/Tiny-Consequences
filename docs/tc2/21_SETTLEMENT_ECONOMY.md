@@ -94,6 +94,10 @@ Each household carries a few traits (building tradition: roof form and pitch, wa
 customs) copied from its founders, drifting slowly, spread by marriage and migration and, more slowly, by copying respected neighbours
 (Axelrod's dissemination of culture). A structure is raised in its builders' tradition with the materials at hand, so regions look
 different because their people and their ground differ - never by faction.
+**Begun (D2-114)**: a village's building tradition (roof form, walls' shade) is carried by its founders from the village they came from and
+drifts at a founding (one trait in three foundings); a building's form - plan, roof, cover, walls, chimney - is recorded when it is raised from
+its household's size and means and its village's size, lots, ground and knowledge; households of means rebuild old or poor houses with their own
+labour and the village's wood, so a town's core densifies as it grows rich (C13's first piece).
 
 ## 7. Inspectors (C12; part of every slice)
 
