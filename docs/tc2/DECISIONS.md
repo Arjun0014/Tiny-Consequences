@@ -3090,7 +3090,8 @@ held, fewer bands go out - eyes on the street. A placebo on D2-114's binary move
 145 walled villages with streets against 143 without, mean ring 147 m against 146, at the 170 m most 65 against 50 - the street tails do not
 distort the palisades' economics (the ring rule is kept). Shots `tc2/out/shots/street1` (Vumthorpe at year 300: a long street to the north lined both
 sides, another to the west, the core round the green) and `street1y100` (Tesford at year 100: rows of houses facing the river road, gardens
-behind, a second street).
+behind, a second street). 277 headless tests. Web build of 7b17902: Web test 6/6 (`tc2/out/webtest/c131web`: the browser bit-identical; views
+75-123 fps, close 86 - the village ground now read once a terrain patch instead of every household's street at every vertex).
 **Open.** Back lanes and plots behind the frontage (burgage plots), houses sharing walls in a town's core, a market street or place widened
 where traders come, the green kept open as the village grows round it, suburbs outside a gate - C13's next pieces.
 

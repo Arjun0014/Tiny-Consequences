@@ -14,12 +14,18 @@
 - **Found, not ours**: a river mesh continues past the shore out over the sea (browser shot `d2114web/4_close.png`, `arch2lord/village_10.png`) -
   offered to Arjun as a separate task chip ("Fix the river ribbon drawn out into the sea").
 
+- **C9.4 surveyed and deferred (D2-115)**: sea traffic is thin (0-318 voyages a world in 300 years, nothing left unsailed) and relief by sea was
+  bound by the boats' room in 0-19 of 69-538 gifts (`run --seashort`): no demand for cargo boats; docks and cargo wait for exchange (C3).
+- **C13.1 streets closed (D2-116)**, commit 7b17902, sim version 55: `Places/Streets.cs`, `Settlement.StreetN/Street0..3`, `Homes.FreeLot` frontage,
+  `Structures.Clear`, the view (houses face their street, door paths, street ground; `TerrainLod.Ground1` read once a patch). Runs `_b1`, `_b2`
+  (ten seeds: the reference for the next slice), `_b3` / `_b3n` (A/B in one binary, `--nostreets`). 277 tests; Web test 6/6 (`c131web`).
+  Shots `street1`, `street1y100`. Layout plots: `place --layout` and the scratchpad's `plotlay.py` (copy in `tc2/out/tools/`).
+
 ### Next, in order
-1. **C9.4 docks, cargo boats and coastal trade** (`24` §5-6, `25` §5): goods worth carrying by sea and not by land - timber and stone, valued at
-   the hours a load costs the village to fetch itself (`Woods.Rate`, `Stone.Rate`), spared by villages with near woods or a quarry; cargo boats
-   (~80 loads, a sail of the loom's cloth, 400 h, crew 3-5, 2-3 t) built at the boat shed when a village's sea trade outgrows its plank boats; a
-   jetty/quay chosen by the traffic landed; both resolutions at par; ten seeds against `_a5` with a placebo; shots; Web.
-2. Then C10.2 leaders - halls, towers, gates and keeps as real structures - or C13 morphology (streets: lots along ways, rows in a town's core).
+1. **C13.2** - back lanes and plots behind the frontage, a town's core of shared walls (rows), the market place widened where traders come, the
+   green kept open; or **C10.2** the lord's seat (a hall raised with tribute labour), gates where ways cross a ring, towers - real structures for the
+   political centre (Arjun's D2-114 requirement: a political centre must not read as a village).
+2. C9.4 waits for C3 exchange (D2-115).
 
 ## Session 9 (8 Oct 2026, 04:31 - ~06:30 IST; Control Room run #23 session 1) - handed off (context full; D2-114 in progress)
 
