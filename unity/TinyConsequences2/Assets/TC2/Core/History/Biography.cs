@@ -84,7 +84,7 @@ namespace TC2.Core.History
             if (p.Sick != 0) sb.Append(p.SickPhase == Health.Disease.Latent ? ", carrying " : ", sick with ").Append(w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick)));
             if (p.PregDue != 0) sb.Append(", with child (due ").Append(SimTime.FormatShort(p.PregDue)).Append(")");
             sb.Append(".\n");
-            if (p.CargoQty > 0f) sb.Append("Carrying ").Append(F(p.CargoQty, "0.0")).Append(p.Cargo == Trade.Metal ? " kg of copper" : p.Cargo == Trade.Iron ? " kg of iron" : p.Cargo == Trade.Grain ? " days' grain" : p.Cargo == Trade.Fibre ? " kg of fibre" : " hides").Append(".\n");
+            if (p.CargoQty > 0f) sb.Append("Carrying ").Append(F(p.CargoQty, "0.0")).Append(p.Cargo == Trade.Metal ? " kg of copper" : p.Cargo == Trade.Iron ? " kg of iron" : p.Cargo == Trade.Grain ? " days' grain" : p.Cargo == Trade.Fibre ? " kg of fibre" : p.Cargo == Trade.Wares ? " wares (a person's cloth and goods each)" : " hides").Append(".\n");
             return sb.ToString();
         }
 
@@ -176,7 +176,7 @@ namespace TC2.Core.History
             if (p.SkFish >= 0.5f) r.Add("a fisher");
             if (p.SkWood >= 0.6f) r.Add("a woodcutter and builder");
             if (p.KPottery >= 0.5f) r.Add("a potter");
-            if (p.KLoom >= 0.5f) r.Add("a weaver");
+            if (p.SkCraft >= 0.3f) r.Add(home != 0 && w.Settlements.Exists(home) && Weaving.Shed(w, home) != 0 && Weaving.Maker(in w.Settlements.Get(home), in p, w.Now) ? "a weaver at the weaver's shed" : "a weaver");   // (from their hours at a shed: C3.1)
             if (p.SkFight >= 0.3f) r.Add(p.Fights > 0 ? "a fighter who has fought" : "a trained fighter");
             return string.Join(", ", r);
         }
@@ -223,7 +223,7 @@ namespace TC2.Core.History
             sb.Append("The ").Append(w.History.NameOf(EntityRef.Household(p.Household))).Append("s live in a ").Append(HomeWord(w, in hh));
             if (hh.Building != 0 && w.Buildings.Exists(hh.Building)) sb.Append(" raised in ").Append(Year(w.Buildings.Get(hh.Building).Built));
             sb.Append(". Larder ").Append(F(hh.Larder, "0")).Append(" days' food, ").Append(F(hh.Ready, "0.0")).Append(" made ready; water ").Append(F(hh.Water, "0")).Append(" l; ")
-              .Append(hh.Indoor < Hearth.Comfort - 0.5 ? F(hh.Indoor, "0") + " C indoors" + (hh.Indoor < Hearth.ChillLine ? ", cold" : "") : "warm enough indoors").Append("; clothes and tools ").Append(F((double)hh.Gear / System.Math.Max(1, w.Members(p.Household).Count), "0.00")).Append(" a head.\n");
+              .Append(hh.Indoor < Hearth.Comfort - 0.5 ? F(hh.Indoor, "0") + " C indoors" + (hh.Indoor < Hearth.ChillLine ? ", cold" : "") : "warm enough indoors").Append("; clothes and tools ").Append(F((double)hh.Gear / System.Math.Max(1, w.Members(p.Household).Count), "0.00")).Append(" a head").Append(hh.Wares > 0.05f ? " (" + F((double)hh.Wares / System.Math.Max(1, w.Members(p.Household).Count), "0.00") + " of it wares from a weaver's shed)" : "").Append(".\n");
             int cattle = 0, goats = 0, pigs = 0; var beasts = w.BeastsOf(p.Household);
             for (int i = 0; i < beasts.Count; i++) { byte k = w.Beasts.Get(beasts[i]).Kind; if (k == Livestock.Cattle) cattle++; else if (k == Livestock.Goat) goats++; else pigs++; }
             var an = new List<string>();

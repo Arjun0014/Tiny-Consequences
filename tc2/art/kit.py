@@ -1161,6 +1161,86 @@ def smithy(name, seed=62):
     return k.finish()
 
 
+def loom(k, x, y, rot=0.0):
+    """A broad treadle loom (C3.1) standing at (x, y): two side frames, the breast and back beams, the cloth on the beam, a weaver's bench."""
+    c, s = math.cos(rot), math.sin(rot)
+
+    def P(px, py):
+        return (x + px * c - py * s, y + px * s + py * c)
+    for sx in (-0.85, 0.85):                                                  # the side frames
+        for sy in (-0.55, 0.55):
+            k.box((*P(sx, sy), 0.75), (0.09, 0.09, 1.5), BEAM, rot_z=rot)
+        k.box((*P(sx, 0.0), 1.45), (0.09, 1.2, 0.09), BEAM, rot_z=rot)
+    k.box((*P(0.0, -0.55), 0.85), (1.8, 0.1, 0.1), BEAM, rot_z=rot)         # the breast beam
+    k.box((*P(0.0, 0.55), 0.85), (1.8, 0.1, 0.1), BEAM, rot_z=rot)          # the back beam
+    k.box((*P(0.0, 0.0), 0.84), (1.5, 1.0, 0.02), CLOTH_W, rot_z=rot)       # the warp and the cloth woven on it
+    k.box((*P(0.0, -0.55), 0.95), (1.5, 0.16, 0.14), CLOTH_W, rot_z=rot)    # cloth rolled on the beam
+    k.box((*P(0.0, -1.0), 0.45), (1.2, 0.3, 0.08), BEAM, rot_z=rot)         # the bench
+    for sx in (-0.5, 0.5):
+        k.box((*P(sx, -1.0), 0.22), (0.07, 0.25, 0.44), BEAM, rot_z=rot)
+
+
+CLOTH_W = srgb(0.84, 0.80, 0.70)       # undyed woollen cloth and warp
+DYE_BLUE = srgb(0.20, 0.30, 0.52)      # woad
+DYE_RED = srgb(0.62, 0.20, 0.16)       # madder
+DYE_YELLOW = srgb(0.78, 0.64, 0.24)    # weld
+
+
+def weavers_shed(name, seed=70):
+    """A weaver's shed (C3.1): a long low timber shed whose front is open bays between posts - the light the looms want - with broad treadle
+    looms seen inside, a lean-to over the warping frame at one end, a dye vat on its hearth and hanks of dyed yarn on a rack outside. Walls and
+    roof are tinted per instance (what its builders build with: D2-114). The front (open bays) faces -y."""
+    k = Kit(name, seed)
+    L, W, H, pitch = 10.0, 5.0, 2.6, 45
+    k.box((0, 0, 0.08), (L + 0.4, W + 0.4, 0.16), STONE_DARK)                 # a sill of stones, the floor beaten inside
+    k.box((0, W / 2.0 - 0.12, H / 2.0), (L, 0.24, H), WALL_T, bevel=0.03)    # the back wall
+    for sx in (-1, 1):
+        k.box((sx * (L / 2.0 - 0.12), 0.0, H / 2.0), (0.24, W, H), WALL_T, bevel=0.03)   # the end walls
+    for x in (-L / 2.0 + 0.1, -L / 6.0, L / 6.0, L / 2.0 - 0.1):             # the open front: posts and a wall plate, low sill walls
+        k.box((x, -W / 2.0 + 0.1, H / 2.0), (0.24, 0.24, H), BEAM)
+    k.box((0, -W / 2.0 + 0.1, H - 0.1), (L, 0.26, 0.22), BEAM)
+    for x0, x1 in ((-L / 2.0, -L / 6.0), (L / 6.0, L / 2.0)):
+        k.box(((x0 + x1) / 2.0, -W / 2.0 + 0.1, 0.4), (x1 - x0 - 0.2, 0.22, 0.8), WALL_T)
+    end_walls(k, L, W, H, pitch, "g")
+    roof_form(k, L, W, H, pitch, "g", overhang=0.5, thick=0.22)
+    for i, x in enumerate((-3.0, 0.0, 3.0)):                                   # the looms, seen through the bays
+        loom(k, x, 0.35, 0.0)
+    # the lean-to over the warping frame at the east end
+    lx = L / 2.0 + 1.1
+    for sy in (-1.6, 1.6):
+        k.box((lx + 0.9, sy, 0.95), (0.16, 0.16, 1.9), BEAM)
+    slab(k, [(L / 2.0, -2.0, 2.3), (L / 2.0 + 2.3, -2.0, 1.75), (L / 2.0 + 2.3, 2.0, 1.75), (L / 2.0, 2.0, 2.3)], 0.14, ROOF_T)
+    k.box((lx, 0.0, 0.85), (0.08, 2.6, 1.7), BEAM)                           # the warping frame: its uprights' pegs and the threads
+    for z in (0.4, 0.8, 1.2, 1.55):
+        k.box((lx - 0.05, 0.0, z), (0.04, 2.5, 0.03), CLOTH_W)
+    # the dye vat on its hearth, out front by the west end
+    vx, vy = -L / 2.0 + 0.9, -W / 2.0 - 1.4
+    k.box((vx, vy, 0.25), (1.3, 1.3, 0.5), STONE, bevel=0.04)
+    k.cyl((vx, vy, 0.5), 0.55, 0.6, 0.55, BOARD, seg=10)
+    k.cyl((vx, vy, 1.0), 0.48, 0.48, 0.04, DYE_BLUE, seg=10)
+    # hanks of dyed yarn drying on a rack
+    rx, ry = 1.6, -W / 2.0 - 1.3
+    for sx in (-1.0, 1.0):
+        k.box((rx + sx, ry, 0.8), (0.1, 0.1, 1.6), BEAM)
+    k.box((rx, ry, 1.6), (2.2, 0.08, 0.08), BEAM)
+    for j, col in enumerate((DYE_BLUE, DYE_RED, DYE_YELLOW, CLOTH_W, DYE_BLUE)):
+        k.box((rx - 0.8 + j * 0.4, ry, 1.25), (0.16, 0.12, 0.62), col)
+    return k.finish()
+
+
+def tenter(name, seed=71):
+    """A tenter frame (C3.1): a length of fulled cloth stretched on hooks between two rails on posts to dry square - drawn by a weaver's shed while
+    its village has wares (the cloth tinted per instance: its dye)."""
+    k = Kit(name, seed)
+    L = 6.0
+    for x in (-L / 2.0, -L / 6.0, L / 6.0, L / 2.0):
+        k.box((x, 0.0, 0.75), (0.12, 0.12, 1.5), BEAM)
+    for z in (0.45, 1.45):
+        k.box((0.0, 0.0, z), (L + 0.2, 0.1, 0.08), BEAM)
+    k.box((0.0, 0.02, 0.95), (L - 0.3, 0.03, 0.92), CLOTH)                   # the cloth, its dye the instance's tint
+    return k.finish()
+
+
 def market_stall(name, seed=66):
     """A market stall (C1.6, D2-114): a trestle of goods under a dyed awning on four poles - the game sets out as many as traders come to the
     market, each awning its own dye (alpha 1: tinted per instance)."""
@@ -1241,6 +1321,8 @@ def build_all():
     objs.append(training_ground("training_ground"))
     objs.append(market_stall("market_stall"))
     objs.append(market_cross("market_cross"))
+    objs.append(weavers_shed("weavers_shed"))   # (C3.1)
+    objs.append(tenter("tenter"))
     objs.append(grass_tuft("grass_tuft", 31))
     objs.append(flowers("flowers", 32))
     objs.append(reeds("reeds", 33))

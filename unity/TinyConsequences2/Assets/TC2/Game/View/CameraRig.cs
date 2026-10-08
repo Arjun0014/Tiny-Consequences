@@ -208,8 +208,8 @@ namespace TC2.Game
             }
             if (view.StartsWith("work") && sid != 0)
             {
-                // a structure of the framed village (C1 tools): "work13" its quarry, "work11" a granary - from 90 m ("work13far": 250 m)
-                string num = view.Substring(4).Replace("far", "");
+                // a structure of the framed village (C1 tools): "work13" its quarry, "work11" a granary - from 90 m ("work13far": 250 m, "work23near" 45 m)
+                string num = view.Substring(4).Replace("far", "").Replace("near", "");
                 if (int.TryParse(num, out int kind))
                 {
                     var bl = w.BuildingsOf(sid);
@@ -222,7 +222,7 @@ namespace TC2.Game
                         break;
                     }
                 }
-                LookAt(d, view.EndsWith("far") ? 250 : 90);
+                LookAt(d, view.EndsWith("far") ? 250 : view.EndsWith("near") ? 45 : 90);   // ("work23near": 45 m)
                 return;
             }
             if (view.StartsWith("herd") && sid != 0)

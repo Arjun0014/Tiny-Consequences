@@ -26,11 +26,11 @@ namespace TC2.Core.Places
         /// <summary>Tools (C9.4 survey): FU of relief givers would have sent by sea beyond their free boats' room, the gifts so bound, and all gifts by sea; null in the game.</summary>
         public static double[] SeaShort;
 
-        public const byte None = 0, Grain = 1, Metal = 2, Fibre = 3, Hides = 4, Iron = 5;   // (Metal is copper; iron since C5.3b)
-        public const int Goods = 6;
+        public const byte None = 0, Grain = 1, Metal = 2, Fibre = 3, Hides = 4, Iron = 5, Wares = 6;   // (Metal is copper; iron since C5.3b; wares since C3.1)
+        public const int Goods = 7;
         /// <summary>A trader's load (kg) and each good's weight a unit (a FU of grain, a kg of metal or fibre, a hide).</summary>
         public const double LoadKg = 25.0;
-        static double Kg(byte g) => g == Grain ? 0.75 : g == Hides ? 3.0 : 1.0;
+        static double Kg(byte g) => g == Grain ? 0.75 : g == Hides ? 3.0 : g == Wares ? 3.0 : 1.0;   // (a ware: a person's cloth and goods, ~3 kg)
         /// <summary>Trading trips a healthy grown person makes a day when a deal is to be had (COARSE: fitted to lived days).</summary>
         public const double TripsPerAdultDay = 0.01;
         /// <summary>The least gain (in the villages' own values) worth a day's walk.</summary>
@@ -63,6 +63,7 @@ namespace TC2.Core.Places
                 case Fibre: return 0.5 + 2.0 * DMath.Clamp01(1.0 - s.Fibre / (2.0 * pop));
                 case Hides: return 1.0 + 3.0 * DMath.Clamp01(1.0 - s.Hides / (1.0 * pop));
                 case Iron: return 8.0 * (1.0 - Knowledge.Tech.IronShare(in s)) + 0.5;   // (iron tools, by the share of its people they leave unequipped: C5.3b)
+                case Wares: return 0.5 + Weaving.Worth * (1.0 - Weaving.Share(in s));   // (the hours wares save, for the share of its people in none yet: C3.1)
             }
             return 0;
         }
@@ -79,15 +80,17 @@ namespace TC2.Core.Places
                 case Fibre: return DMath.Max(0.0, s.Fibre - 2.0 * s.Population);
                 case Hides: return DMath.Max(0.0, s.Hides - 1.0 * s.Population);
                 case Iron: return DMath.Max(0.0, s.Iron - Knowledge.Tech.IronPerHead * s.Population);
+                case Wares: return DMath.Max(0.0, s.Wares - Weaving.Kept * s.Population);
             }
             return 0;
         }
 
-        static double Stock(ref Settlement s, byte g) => g == Grain ? s.Granary : g == Metal ? s.Metal : g == Fibre ? s.Fibre : g == Iron ? s.Iron : s.Hides;
+        static double Stock(ref Settlement s, byte g) => g == Grain ? s.Granary : g == Metal ? s.Metal : g == Fibre ? s.Fibre : g == Iron ? s.Iron : g == Wares ? s.Wares : s.Hides;
         static void Add(ref Settlement s, byte g, double q)
         {
             if (g == Grain) s.Granary += q; else if (g == Metal) s.Metal += q; else if (g == Fibre) s.Fibre += q; else if (g == Hides) s.Hides += q;
             else if (g == Iron) { s.Iron += q; if (q < 0) s.IronSold = (float)((double)s.IronSold - q); }   // (iron parted with: its smiths make that much more for the next buyers, C5.3b)
+            else if (g == Wares) { s.Wares += q; if (q < 0) s.WaresSold = (float)((double)s.WaresSold - q); }   // (wares parted with: its makers make that much more, C3.1)
         }
 
         /// <summary>
@@ -199,6 +202,8 @@ namespace TC2.Core.Places
             if (take == Metal) w.Metrics.MetalTraded += qh;
             if (g == Iron) w.Metrics.IronTraded += qg;
             if (take == Iron) w.Metrics.IronTraded += qh;
+            if (g == Wares) w.Metrics.WaresTraded += qg;
+            if (take == Wares) w.Metrics.WaresTraded += qh;
         }
 
         /// <summary>Home again: the load into the village's store.</summary>

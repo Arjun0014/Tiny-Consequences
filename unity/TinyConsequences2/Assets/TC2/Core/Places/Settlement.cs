@@ -137,6 +137,14 @@ namespace TC2.Core.Places
         public long BoatEvent;          // the history record of its knowing it (what moves its boat shed)
         public int Shed;                // its boat shed (a structure at the landing; 0 none)
         public float SeaP;              // FU an hour an ordinary fisher can expect from a plank boat at its sea's best ground (the offshore shoals farther)
+        public int Workshop;            // its weaver's shed (0 none; C3.1, `Weaving`)
+        public long LoomEvent;          // the history record of its knowing the loom (what moves its weaver's shed; 0: its founders knew it)
+        public double Wares;            // person-equivalents of goods in its store, made at its shed or traded in (as `Household.Gear`)
+        public float WaresHeld;         // what its households hold of wares (read daily: the share of its people in wares)
+        public float WaresOut;          // wares its households took from the store, halving each year: the demand known from real use
+        public float WaresSold;         // wares it parted with in trade, halving each year: what its makers make for the next buyers
+        public double LoomBar;          // the bar for a loom at its shed: its eighth best weaver's loom and practice (read daily; -1: all its weavers)
+        public int LoomBarId;           // and that weaver (ties go to the lower id)
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
@@ -199,6 +207,7 @@ namespace TC2.Core.Places
             w.Int(Project); w.Byte(ProjectKind); w.Byte(Granaries); w.Byte(Barns); w.Long(HarvestEvent); w.Int(WoodLot); w.Float(WoodDist); w.Byte(WoodFar); w.Long(WoodLook); w.Int(StoneCell); w.Float(StoneDist); w.Long(StoneEvent); w.Double(Stone); w.Float(StoneWant); w.Int(Quarry); w.Int(Smithy); w.Long(SmithEvent); w.Double(Arms); w.Int(Ground); w.Float(BestFight); w.Int(Market); w.Float(TradeIn); w.Float(WallDry); w.Float(OldR); w.Float(OldCond); w.Int(OreCell); w.Float(OreDist); w.Long(OreEvent); w.Double(Ore); w.Float(OreWant); w.Int(Mine); w.Double(Charcoal); w.Float(CharcoalWant); w.Int(CharHearth); w.Long(ClampUntil); w.Float(BestIron); w.Double(Iron); w.Double(IronArms); w.Int(FeCell); w.Float(FeDist); w.Long(FeEvent); w.Double(FeOre); w.Float(FeOreWant); w.Int(FeMine); w.Float(IronSold); w.Int(ClaimDeed); w.Int(ClaimOn); w.Long(ClaimAt); Sea.Write(w); w.Float(LandX); w.Float(LandY); w.Float(LandUx); w.Float(LandUy); w.Long(LandAt); w.Float(BestBoat); w.Long(BoatEvent); w.Int(Shed); w.Float(SeaP);
             w.Float(SquareX); w.Float(SquareY); w.Float(FieldX); w.Float(FieldY); w.Float(WoodX); w.Float(WoodY); w.Float(WellX); w.Float(WellY);
             w.Float(MarketR); w.Float(CoreR); w.Byte(LanesShut);   // (C13.3, sim version 56)
+            w.Int(Workshop); w.Long(LoomEvent); w.Double(Wares); w.Float(WaresHeld); w.Float(WaresOut); w.Float(WaresSold); w.Double(LoomBar); w.Int(LoomBarId);   // (C3.1, sim version 57)
         }
 
         public static Settlement Read(BinReader r)
@@ -215,6 +224,7 @@ namespace TC2.Core.Places
             s.Project = r.Int(); s.ProjectKind = r.Byte(); s.Granaries = r.Byte(); s.Barns = r.Byte(); s.HarvestEvent = r.Long(); s.WoodLot = r.Int(); s.WoodDist = r.Float(); s.WoodFar = r.Byte(); s.WoodLook = r.Long(); s.StoneCell = r.Int(); s.StoneDist = r.Float(); s.StoneEvent = r.Long(); s.Stone = r.Double(); s.StoneWant = r.Float(); s.Quarry = r.Int(); s.Smithy = r.Int(); s.SmithEvent = r.Long(); s.Arms = r.Double(); s.Ground = r.Int(); s.BestFight = r.Float(); s.Market = r.Int(); s.TradeIn = r.Float(); s.WallDry = r.Float(); s.OldR = r.Float(); s.OldCond = r.Float(); s.OreCell = r.Int(); s.OreDist = r.Float(); s.OreEvent = r.Long(); s.Ore = r.Double(); s.OreWant = r.Float(); s.Mine = r.Int(); s.Charcoal = r.Double(); s.CharcoalWant = r.Float(); s.CharHearth = r.Int(); s.ClampUntil = r.Long(); s.BestIron = r.Float(); s.Iron = r.Double(); s.IronArms = r.Double(); s.FeCell = r.Int(); s.FeDist = r.Float(); s.FeEvent = r.Long(); s.FeOre = r.Double(); s.FeOreWant = r.Float(); s.FeMine = r.Int(); s.IronSold = r.Float(); s.ClaimDeed = r.Int(); s.ClaimOn = r.Int(); s.ClaimAt = r.Long(); s.Sea = Grounds.Read(r); s.LandX = r.Float(); s.LandY = r.Float(); s.LandUx = r.Float(); s.LandUy = r.Float(); s.LandAt = r.Long(); s.BestBoat = r.Float(); s.BoatEvent = r.Long(); s.Shed = r.Int(); s.SeaP = r.Float();
             s.SquareX = r.Float(); s.SquareY = r.Float(); s.FieldX = r.Float(); s.FieldY = r.Float(); s.WoodX = r.Float(); s.WoodY = r.Float(); s.WellX = r.Float(); s.WellY = r.Float();
             s.MarketR = r.Float(); s.CoreR = r.Float(); s.LanesShut = r.Byte();
+            s.Workshop = r.Int(); s.LoomEvent = r.Long(); s.Wares = r.Double(); s.WaresHeld = r.Float(); s.WaresOut = r.Float(); s.WaresSold = r.Float(); s.LoomBar = r.Double(); s.LoomBarId = r.Int();
             return s;
         }
 
@@ -231,6 +241,7 @@ namespace TC2.Core.Places
             h.Add(Project); h.Add(ProjectKind); h.Add(Granaries); h.Add(Barns); h.Add(HarvestEvent); h.Add(WoodLot); h.Add(WoodDist); h.Add(WoodFar); h.Add(WoodLook); h.Add(StoneCell); h.Add(StoneDist); h.Add(StoneEvent); h.Add(Stone); h.Add(StoneWant); h.Add(Quarry); h.Add(Smithy); h.Add(SmithEvent); h.Add(Arms); h.Add(Ground); h.Add(BestFight); h.Add(Market); h.Add(TradeIn); h.Add(WallDry); h.Add(OldR); h.Add(OldCond); h.Add(OreCell); h.Add(OreDist); h.Add(OreEvent); h.Add(Ore); h.Add(OreWant); h.Add(Mine); h.Add(Charcoal); h.Add(CharcoalWant); h.Add(CharHearth); h.Add(ClampUntil); h.Add(BestIron); h.Add(Iron); h.Add(IronArms); h.Add(FeCell); h.Add(FeDist); h.Add(FeEvent); h.Add(FeOre); h.Add(FeOreWant); h.Add(FeMine); h.Add(IronSold); h.Add(ClaimDeed); h.Add(ClaimOn); h.Add(ClaimAt); Sea.Hash(ref h); h.Add(LandX); h.Add(LandY); h.Add(LandUx); h.Add(LandUy); h.Add(LandAt); h.Add(BestBoat); h.Add(BoatEvent); h.Add(Shed); h.Add(SeaP);
             h.Add(SquareX); h.Add(SquareY); h.Add(FieldX); h.Add(FieldY); h.Add(WoodX); h.Add(WoodY); h.Add(WellX); h.Add(WellY);
             h.Add(MarketR); h.Add(CoreR); h.Add(LanesShut);
+            h.Add(Workshop); h.Add(LoomEvent); h.Add(Wares); h.Add(WaresHeld); h.Add(WaresOut); h.Add(WaresSold); h.Add(LoomBar); h.Add(LoomBarId);
         }
 
         internal static void WriteV(BinWriter w, Vec3d v) { w.Double(v.X); w.Double(v.Y); w.Double(v.Z); }
@@ -258,9 +269,10 @@ namespace TC2.Core.Places
         public int Building;         // the building it lives in (0: a camp; D2-059)
         public int Boat;             // its boat (a structure; 0 none; being made while not Done: C9.1)
         public byte Rebuild;         // rebuilding its house: 1 + the plan it builds (0 not; Build holds the hours put in: D2-114)
+        public float Wares;          // of its goods, those that are wares from a weaver's shed (they wear slower: C3.1; never more than Gear)
 
-        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(HomeX); w.Float(HomeY); w.Double(Larder); w.Long(Formed); w.Long(Dissolved); w.Int(FamilyName); w.Byte(Shelter); w.Float(Build); w.Int(Party); w.Double(Ready); w.Float(Water); w.Float(Indoor); w.Float(Gear); w.Int(Building); w.Int(Boat); w.Byte(Rebuild); }
-        public static Household Read(BinReader r) => new Household { Id = r.Int(), Settlement = r.Int(), HomeX = r.Float(), HomeY = r.Float(), Larder = r.Double(), Formed = r.Long(), Dissolved = r.Long(), FamilyName = r.Int(), Shelter = r.Byte(), Build = r.Float(), Party = r.Int(), Ready = r.Double(), Water = r.Float(), Indoor = r.Float(), Gear = r.Float(), Building = r.Int(), Boat = r.Int(), Rebuild = r.Byte() };
-        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(HomeX); h.Add(HomeY); h.Add(Larder); h.Add(Formed); h.Add(Dissolved); h.Add(FamilyName); h.Add(Shelter); h.Add(Build); h.Add(Party); h.Add(Ready); h.Add(Water); h.Add(Indoor); h.Add(Gear); h.Add(Building); h.Add(Boat); h.Add(Rebuild); }
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(HomeX); w.Float(HomeY); w.Double(Larder); w.Long(Formed); w.Long(Dissolved); w.Int(FamilyName); w.Byte(Shelter); w.Float(Build); w.Int(Party); w.Double(Ready); w.Float(Water); w.Float(Indoor); w.Float(Gear); w.Int(Building); w.Int(Boat); w.Byte(Rebuild); w.Float(Wares); }
+        public static Household Read(BinReader r) => new Household { Id = r.Int(), Settlement = r.Int(), HomeX = r.Float(), HomeY = r.Float(), Larder = r.Double(), Formed = r.Long(), Dissolved = r.Long(), FamilyName = r.Int(), Shelter = r.Byte(), Build = r.Float(), Party = r.Int(), Ready = r.Double(), Water = r.Float(), Indoor = r.Float(), Gear = r.Float(), Building = r.Int(), Boat = r.Int(), Rebuild = r.Byte(), Wares = r.Float() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(HomeX); h.Add(HomeY); h.Add(Larder); h.Add(Formed); h.Add(Dissolved); h.Add(FamilyName); h.Add(Shelter); h.Add(Build); h.Add(Party); h.Add(Ready); h.Add(Water); h.Add(Indoor); h.Add(Gear); h.Add(Building); h.Add(Boat); h.Add(Rebuild); h.Add(Wares); }
     }
 }

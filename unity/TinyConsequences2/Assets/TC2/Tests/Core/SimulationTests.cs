@@ -189,6 +189,26 @@ namespace TC2.Tests.Core
             }
         }
 
+        /// <summary>
+        /// D2-119: a world whose village's square lies in the water, its green found on the shore of a lake that rises and falls day by day. The
+        /// green was cached once and kept while the lake moved, so a world saved and loaded - reading the water afresh - sent its children to
+        /// play elsewhere and went another way; caches of the water now follow the day's lakes (the green) or only the ground's shape (the shore,
+        /// the river lines). Several saves over a fortnight, each continued for days.
+        /// </summary>
+        [Test]
+        public void SaveLoadContinuesIdenticallyWhileLakesRiseAndFall()
+        {
+            var a = TestWorlds.Make(615);
+            foreach (double days in new[] { 2.4, 6.0, 9.7, 13.1 })
+            {
+                a.AdvanceTo(SimTime.Days(days));
+                var b = SaveFile.Load(SaveFile.Save(a, 0, OfflineMode.Paused), out _);
+                long t = a.Now + SimTime.Days(2);
+                a.AdvanceTo(t); b.AdvanceTo(t);
+                Assert.AreEqual(a.StateHash(), b.StateHash(), "continuation after day " + days);
+            }
+        }
+
         [Test]
         public void InvariantsHoldOverAMonth()
         {

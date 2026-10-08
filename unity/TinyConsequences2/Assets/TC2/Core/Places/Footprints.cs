@@ -239,6 +239,7 @@ namespace TC2.Core.Places
             for (int i = 0; i < _near.Count; i++)
             {
                 var pc = RiverLines.All[_near[i]];
+                if (!RiverLines.Stream(P, in pc)) continue;   // (a reach dry this season: D2-119)
                 double half = RiverLines.HalfWidth(P.RiverFlow[pc.Cell]) + RiverMargin;
                 s.SphereToLocal(pc.A, P.Radius, out double ax, out double ay);
                 s.SphereToLocal(pc.B, P.Radius, out double bx, out double by);
@@ -266,6 +267,7 @@ namespace TC2.Core.Places
             for (int i = 0; i < _near.Count; i++)
             {
                 var pc = RiverLines.All[_near[i]];
+                if (!RiverLines.Stream(P, in pc)) continue;   // (a reach dry this season: D2-119)
                 s.SphereToLocal(pc.A, P.Radius, out double ax, out double ay);
                 s.SphereToLocal(pc.B, P.Radius, out double bx, out double by);
                 if (SegBox(ax - x, ay - y, bx - x, by - y, 0.0, 0.0) < radius + RiverMargin + RiverLines.HalfWidth(P.RiverFlow[pc.Cell])) return true;

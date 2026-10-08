@@ -111,6 +111,10 @@ namespace TC2.Core.Planet
             BuildBasins(P);
             BuiltSeaLevel = sea;
             Version++;
+            // the depressions, for what is drawn and laid out from the ground's shape and not from the lakes' levels (D2-119)
+            if (P.InBasin == null || P.InBasin.Length != n) P.InBasin = new byte[n];
+            for (int c = 0; c < n; c++) P.InBasin[c] = (byte)(BasinOf[c] >= 0 ? 1 : 0);
+            P.BasinVersion++;
         }
 
         void BuildBasins(PlanetState P)
@@ -233,6 +237,7 @@ namespace TC2.Core.Planet
         /// </summary>
         public double Route(PlanetState P, float[] runoffM)
         {
+            P.WaterDay++;   // (lake levels move today: D2-119)
             for (int c = 0; c < Cells; c++) Discharge[c] = 0;
             for (int i = 0; i < StackCount; i++)
             {

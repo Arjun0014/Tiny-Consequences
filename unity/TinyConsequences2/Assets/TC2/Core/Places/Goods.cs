@@ -57,5 +57,25 @@ namespace TC2.Core.Places
 
         /// <summary>Person-equivalents of goods an hour of making brings (a child of 8-11 half as much).</summary>
         public static double MakePerHour(double age, double health) => (age < 12 ? 0.5 : 1.0) * (0.5 + 0.5 * health) / MakeHours;
+
+        /// <summary>
+        /// A household's goods worn over a step of days (D2-058), slower with metal tools (toolWear, D2-064): its members wear the mix they hold -
+        /// homespun at the full rate, wares from a weaver's shed at `Weaving.WaresWear` of it (C3.1).
+        /// </summary>
+        public static void Wear(ref Household hh, int members, int days, double toolWear)
+        {
+            double use = members * WearPerDay * days * toolWear;
+            double gear = hh.Gear, wares = DMath.Min((double)hh.Wares, gear);
+            if (wares <= 0)
+            {
+                hh.Gear = (float)DMath.Max(0.0, gear - use);   // (no wares: as before C3.1)
+                hh.Wares = 0f;
+                return;
+            }
+            double wf = wares / gear;
+            double home = DMath.Max(0.0, gear - wares - use * (1.0 - wf));
+            wares = DMath.Max(0.0, wares - use * wf * Weaving.WaresWear);
+            hh.Gear = (float)(home + wares); hh.Wares = (float)wares;
+        }
     }
 }

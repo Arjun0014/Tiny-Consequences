@@ -15,24 +15,35 @@ So C3 begins where the smithy left off: **people of skill making for others at a
 neighbours** - the specialisation that real exchange rests on. No profession is assigned: a maker is whoever has the skill and spends their
 hours at the workshop because the village's wares run short; their role is read from their hours (the person page).
 
-## 1. C3.1 The weaver's workshop and the village's wares (first slice)
+## 1. C3.1 The weaver's workshop and the village's wares (first slice; built in session 12, D2-119)
 
-- **Wares** (`Settlement.Wares`, person-equivalents of goods, as `Household.Gear`): goods made for others and kept in the village's store.
-  A household short of goods takes from the store before its own hands make more (`Goods.Draw`); what it takes is counted (the village's
-  wares given out: a demand known from real use).
-- **The workshop** (structure kind: a weaver's shed - looms, a warping frame, a dye vat; Zone Edge): raised when a competent weaver lives in
-  the village (`KLoom` >= competent) and the village's yearly wear of goods is more than about three full-time makers' output (so a workshop
-  and a maker's year pay back: larger places only). Cause: the weaver's technique event and the village's size.
-- **Making**: at the workshop a weaver works `Pace` (1.5) times as fast as at home (the big loom, the warping frame) on the store's fibre
-  and hides (`Goods.Materials`), into the wares store, up to a target (half a goods a head, plus what was taken lately); lived days walk them
-  there (an activity with a place and a why); COARSE/DEEP gives the same hours by the same rule (the smithy's law, D2-093/D2-102).
-- **Trade**: wares become a trade good valued by each village's goods short a head (`Trade.Value`), spared beyond a buffer - so a village
-  with a weaver's shed has something its neighbours lack, traders carry it, and markets (C1.6) and their market places (C13.3) grow where
-  the wares are dealt.
-- **Pages**: the building page tells the makers and the wares made; the person page "Known for: weaver" from the hours at the workshop;
-  the settlement page the wares in store, made and given out.
-- **Done when**: workshops stand in larger villages only; their wares are taken by households that did not make them (hours freed for the
-  fields); wares are traded; ten seeds at par in people and food or better; shots of the workshop; tests at both resolutions.
+**What the worlds said before any code** (the `_d7` saves at year 300, `place --standing`/`--list`, `timeuse`): households' goods sit at their
+target (1.17-1.20 a head against 1.2 in three quarters of households), grown people idle ~8 hours a day outside the harvest, and making and
+mending takes ~0.5 h a person-day - **goods are never short and home making costs only spare hours**. So the first design (wares valued by
+"goods short a head", a workshop where wares run short) would have made neither need nor trade. What is short is **fibre**: 0.1-1.2 kg a head
+in store against 2.5 kg a person's goods (1 kg a field-hectare a harvest, used as fast as it comes) - and every village knows the loom.
+The slice was rebuilt on that:
+
+- **Wares last** (`Weaving.WaresWear` 0.6): close-woven, fulled cloth and a practised maker's goods wear at 0.6 of homespun's rate - the same
+  flax clothes 1.7 times the people. A household holds wares as part of its goods (`Household.Wares` <= `Gear`); its members wear the mix
+  (`Goods.Wear`).
+- **The weaver's shed** (`Structures.Workshop` 23, Zone Edge; 220 h, 35 loads; kit `weavers_shed`): raised by a village that knows the loom
+  where its people's wear of goods would keep six makers at its looms all year (`MakersFrom`; ~165 people with stone tools, more with metal) -
+  larger places only - after water and a store, never while walls rise. Cause: the loom's technique event (or the founding).
+- **Its makers** are the village's eight best weavers (`Looms`; `Settlement.LoomBar` read daily from loom + practice, ties to the lower id), so
+  the same people work there from day to day; lived, a choice by day (u 0.5) to `ActivityKind.Weave` at the shed; COARSE/DEEP, a labour day
+  there before the shared field work (the smithy's law). At the shed: `Pace` 1.5 x a home maker's rate x (0.8 + 0.4 practice); practice
+  (`Person.SkCraft`) grows by the hour and their role is read from it ("a weaver at the weaver's shed"). Wares take real fibre (2.5 kg each; no
+  improvised cloth). Makers make up to `Target` = 0.15 a head + what was sold lately (halving each year).
+- **Households take wares** from the store before their own hands make more - in the hearths' day after the wear, and before any making
+  choice at both resolutions (`Weaving.Draw`, counted in `Settlement.WaresOut`).
+- **Trade**: `Trade.Wares` (3 kg a ware) valued at what a ware saves a village whose people wear none: ~300 hours of home making over its
+  life at the wild's ~0.09 days' food an hour (the marginal product of spare hands) - `0.5 + 25 x (1 - share in wares)`; spared beyond 0.1 a
+  head; sales counted (`WaresSold`) and made again.
+- **Pages**: building (its looms by name, wares made, store against target, taken, sold, fibre), person ("a weaver at the weaver's shed" from
+  practice; the household's goods and how many are wares), settlement ("Cloth and goods").
+- **Done when**: sheds stand in larger villages only; their wares are worn by households that did not make them (home making hours fall);
+  wares are traded to villages without sheds; ten seeds at par in people and food or better; shots of the shed; tests at both resolutions.
 
 ## 2. Later slices
 - **C3.2 the potter's kiln**: pots and storage jars (Pottery: the store keeps better - D2-063's rule read from pots made, not a village's best

@@ -149,7 +149,11 @@ namespace TC2.Core.Planet
         public int PatchRings => System.Math.Max(1, (int)DMath.Floor(1.0 / GeoScale + 0.5));
 
         // the ground between cell centres (Shore, D2-088): derived, never saved or hashed
-        public float[] ShoreDrawn; public int ShoreRelief = -1, ShoreCoast = -1; public double ShoreSea = double.NaN;
+        public float[] ShoreDrawn; public int ShoreRelief = -1, ShoreCoast = -1, ShoreBasins = -1; public double ShoreSea = double.NaN;
+        // the depressions a lake can fill (the drainage's basins: 1 in one), rebuilt with the drainage - the ground's own shape, which the lakes'
+        // day-to-day levels never change - and its count of rebuilds; and the days' water routed (lake levels move every day). Derived, never
+        // saved or hashed: what is cached from them is rebuilt from the same state by a loaded world (D2-119)
+        public byte[] InBasin; public int BasinVersion, WaterDay;
 
         System.Collections.Generic.Dictionary<int, int[][]> _patches;   // (derived, never serialized: per ring count, per cell, built when asked)
 

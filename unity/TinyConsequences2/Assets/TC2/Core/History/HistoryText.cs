@@ -269,6 +269,7 @@ namespace TC2.Core.History
                 case ActivityKind.Smith:
                     return "at " + home + "'s smithy, " + (w.Settlements.Exists(p.Home) && w.Settlements.Get(p.Home).Arms < TC2.Core.Places.Forge.ArmsWant(w.Settlements.Get(p.Home)) ? "forging arms: " + home + " fears its neighbours" : "smelting and working metal for the village's tools");
                 case ActivityKind.Burn: return "burning charcoal at " + home + "'s hearth by the woodlot: its smiths want charcoal to smelt";
+                case ActivityKind.Weave: return "at " + home + "'s weaver's shed, weaving and finishing cloth and goods for its store: one of its best weavers, and its wares are short of what it keeps";
                 case ActivityKind.Mine: return p.Why == WhyCode.BogOre ? "digging bog iron ore at " + home + "'s pits and carrying it home: its smiths want iron" : "digging copper ore at " + home + "'s mine and carrying it home: its smiths want ore for tools and arms";
                 case ActivityKind.Quarry: return "cutting stone at " + home + "'s quarry and carrying it home: the village wants stone for its houses' footings";
                 case ActivityKind.Scout: return "gone to look at the land beyond: " + home + " is crowded or hungry and knows no good place";
@@ -293,11 +294,12 @@ namespace TC2.Core.History
             if (kind == TC2.Core.Places.Structures.Mine) return "a mine at the copper they found: ore for their smiths";
             if (kind == TC2.Core.Places.Structures.Quarry) return "a quarry at the rock they found: stone for their houses' footings";
             if (kind == TC2.Core.Places.Structures.BoatShed) return "a boat shed at the landing: they build boats of planks";
+            if (kind == TC2.Core.Places.Structures.Workshop) return "a weaver's shed: their people wear out enough goods to keep its looms busy, and they weave on the loom";
             return "a " + TC2.Core.Places.Structures.Name(kind);
         }
 
         static string Load(byte g, float q) =>
-            g == 1 ? F(q, "0") + " days' grain" : g == 2 ? F(q, "0.0") + " kg of copper" : g == 3 ? F(q, "0") + " kg of fibre" : g == 4 ? F(q, "0") + " hides" : g == 5 ? F(q, "0.0") + " kg of iron" : "a load";
+            g == 1 ? F(q, "0") + " days' grain" : g == 2 ? F(q, "0.0") + " kg of copper" : g == 3 ? F(q, "0") + " kg of fibre" : g == 4 ? F(q, "0") + " hides" : g == 5 ? F(q, "0.0") + " kg of iron" : g == 6 ? F(q, "0.0") + " wares from a weaver's shed" : "a load";
 
         static string Cap(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
 

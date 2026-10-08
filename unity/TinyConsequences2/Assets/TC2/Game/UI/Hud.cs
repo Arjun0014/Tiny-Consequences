@@ -418,7 +418,7 @@ namespace TC2.Game
             else if (w.Settlements.Exists(b.Settlement))
             {
                 ref var s = ref w.Settlements.Get(b.Settlement);
-                if (Architecture.Has(b.Form) && (b.Kind == Structures.Barn || b.Kind == Structures.Granary || b.Kind == Structures.Smithy)) sb.Append(Architecture.Describe(b.Form, false)).Append(" (").Append(Architecture.Why(b.Form, false)).Append(")\n");
+                if (Architecture.Has(b.Form) && (b.Kind == Structures.Barn || b.Kind == Structures.Granary || b.Kind == Structures.Smithy || b.Kind == Structures.Workshop)) sb.Append(Architecture.Describe(b.Form, false)).Append(" (").Append(Architecture.Why(b.Form, false)).Append(")\n");
                 if (k.Function == Function.Store)
                 {
                     double cap = Structures.StoreCapacity(in s);
@@ -453,6 +453,18 @@ namespace TC2.Game
                       .Append(b.Use.ToString("N0", CultureInfo.InvariantCulture)).Append(" hours worked here\n")
                       .Append(place).Append("'s tools: ").Append(s.Metal.ToString("0", CultureInfo.InvariantCulture)).Append(" kg of metal (").Append((share * 100).ToString("0", CultureInfo.InvariantCulture)).Append("% of what its people want); arms ")
                       .Append(s.Arms.ToString("0", CultureInfo.InvariantCulture)).Append(want > 0 ? " - it wants " + want.ToString("0", CultureInfo.InvariantCulture) + ": it fears its neighbours" : "").Append('\n');
+                }
+                else if (b.Kind == Structures.Workshop)
+                {
+                    // the weaver's shed (C3.1): its makers - the village's best weavers - what they made, what its households took and its traders sold
+                    var makers = new System.Collections.Generic.List<string>(); var res = w.Residents(b.Settlement);
+                    for (int i = 0; i < res.Count; i++) if (Weaving.Maker(in s, in w.People.Get(res[i]), w.Now)) makers.Add(w.History.NameOf(EntityRef.Person(res[i])));
+                    sb.Append("broad looms, a warping frame, a dye vat: ").Append(place).Append("'s best weavers make its wares here, half as fast again as at home and lasting longer than homespun; ")
+                      .Append(b.Stock.ToString("N0", CultureInfo.InvariantCulture)).Append(" wares made in ").Append(b.Use.ToString("N0", CultureInfo.InvariantCulture)).Append(" hours\n")
+                      .Append("its looms: ").Append(makers.Count > 0 ? string.Join(", ", makers) : "nobody").Append('\n')
+                      .Append("in store ").Append(s.Wares.ToString("0", CultureInfo.InvariantCulture)).Append(" of the ").Append(Weaving.Target(in s).ToString("0", CultureInfo.InvariantCulture)).Append(" it keeps; its households took ")
+                      .Append(s.WaresOut.ToString("0", CultureInfo.InvariantCulture)).Append(" lately and wear wares for ").Append((100.0 * System.Math.Min(1.0, s.WaresHeld / System.Math.Max(1.0, Goods.Target * s.Population))).ToString("0", CultureInfo.InvariantCulture))
+                      .Append(" % of its people").Append(s.WaresSold > 0.5f ? "; sold " + s.WaresSold.ToString("0", CultureInfo.InvariantCulture) + " lately" : "").Append("; fibre ").Append(s.Fibre.ToString("0", CultureInfo.InvariantCulture)).Append(" kg in store\n");
                 }
                 else if (b.Kind == Structures.Market)
                     sb.Append("stalls on the green: traders come from up to ").Append((Trade.MarketReach / 1000.0).ToString("0", CultureInfo.InvariantCulture))

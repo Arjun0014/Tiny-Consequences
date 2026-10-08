@@ -6,7 +6,7 @@ using TC2.Core.Simulation;
 namespace TC2.Core.Places
 {
     /// <summary>What a structure is for (21 §1).</summary>
-    public enum Function : byte { Dwelling = 0, Water = 1, Store = 2, Smith = 3, Quarry = 4, Train = 5, Market = 6, Gate = 7, Mine = 8, Charcoal = 9, Boat = 10, Boatyard = 11 }   // (bog-ore pits are mines too)
+    public enum Function : byte { Dwelling = 0, Water = 1, Store = 2, Smith = 3, Quarry = 4, Train = 5, Market = 6, Gate = 7, Mine = 8, Charcoal = 9, Boat = 10, Boatyard = 11, Craft = 12 }   // (bog-ore pits are mines too)
 
     /// <summary>Where a structure is laid out (21 §4).</summary>
     public enum Zone : byte { Homes = 0, Core = 1, Edge = 2, Outer = 3, Site = 4, Shore = 5 }
@@ -49,6 +49,7 @@ namespace TC2.Core.Places
         public const byte Boat = 20;                                                  // a household's dugout at the landing (C9.1, `Boats`)
         public const byte PlankBoat = 21;                                             // a household's boat of planks (C9.2b)
         public const byte BoatShed = 22;                                              // the village's boat shed at the landing, where plank boats are built (C9.2b)
+        public const byte Workshop = 23;                                              // the village's weaver's shed, where its best weavers make its wares (C3.1)
 
         /// <summary>FU of grain a granary keeps well (~7.5 t: a raised timber store of ~10 m3).</summary>
         public const double GranaryHolds = 10000.0;
@@ -79,6 +80,7 @@ namespace TC2.Core.Places
             t[Boat] = new KindInfo("dugout", Function.Boat, Zone.Shore, 2.5, Boats.Hours, Boats.Wood, 5, 2, 0);   // (left unkept it splits in a few years)
             t[PlankBoat] = new KindInfo("plank boat", Function.Boat, Zone.Shore, 3.0, Boats.PlankHours, Boats.PlankWood, 8, 3, 0);
             t[BoatShed] = new KindInfo("boat shed", Function.Boatyard, Zone.Shore, 5.5, Boats.ShedHours, Boats.ShedWood, 30, 60, 0);   // (a naust: a long low timber shed, open to the sea)
+            t[Workshop] = new KindInfo("weaver's shed", Function.Craft, Zone.Edge, 6.6, Weaving.ShedHours, Weaving.ShedWood, 40, 120, 0);   // (looms in a long shed with wide bays for light; tenters and a dye vat outside)
             return t;
         }
 
@@ -157,6 +159,10 @@ namespace TC2.Core.Places
             // a competent smith and use for metal: a smithy (C1.4) - after water and a store, never while walls rise
             if (s.Smithy == 0 && (s.TechKnown & Forge.Bit) != 0 && s.Wall != 1 && (s.Works & Construction.Granary) != 0 && Forge.Use(w, in s))
             { Begin(w, sid, Smithy, s.SmithEvent, CauseRel.EnabledBy); return; }
+            // a village that knows the loom and whose people's wear of goods would keep several makers busy: a weaver's shed (C3.1) - after water
+            // and a store, never while walls rise
+            if (Weaving.ShedWanted(w, in s))
+            { Begin(w, sid, Workshop, s.LoomEvent != 0 ? s.LoomEvent : s.FoundedEvent, CauseRel.EnabledBy); return; }
             // traders come often to deal: a market on its green (C1.6)
             if (s.Market == 0 && s.TradeIn >= Trade.MarketFrom && s.Population >= 100 && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
             { Begin(w, sid, Market, 0, CauseRel.None); return; }
@@ -234,6 +240,7 @@ namespace TC2.Core.Places
             if (b.Kind == Ground) s.Ground = bid;
             if (b.Kind == Market) { s.Market = bid; if (s.MarketR < MarketFirst) { s.MarketR = (float)MarketFirst; Opened(w, sid); } }   // (its market place: C13.3)
             if (b.Kind == BoatShed) s.Shed = bid;
+            if (b.Kind == Workshop) { s.Workshop = bid; Weaving.Bar(w, sid); }   // (its best weavers have the looms from today: C3.1)
             if (b.Kind == Smithy)
             {
                 s.Smithy = bid;
@@ -268,6 +275,7 @@ namespace TC2.Core.Places
             if (kind == Ground) s.Ground = id;
             if (kind == Market) s.Market = id;
             if (kind == BoatShed) s.Shed = id;
+            if (kind == Workshop) { s.Workshop = id; Weaving.Bar(w, sid); }
             return id;
         }
 
@@ -289,6 +297,7 @@ namespace TC2.Core.Places
             if (b.Kind == Ground && s.Ground == bid) s.Ground = 0;
             if (b.Kind == Market && s.Market == bid) s.Market = 0;
             if (b.Kind == BoatShed && s.Shed == bid) s.Shed = 0;
+            if (b.Kind == Workshop && s.Workshop == bid) s.Workshop = 0;
             if (b.Kind == Well && !Has(w, b.Settlement, Well, bid)) s.Works = (byte)(s.Works & ~Construction.Well);
         }
 

@@ -146,6 +146,23 @@ namespace TC2.Core.History
             if (s.Arms > 0.5) sb.Append("; arms ").Append(F(s.Arms, "0")).Append(s.IronArms > 0.5 ? " (" + F(s.IronArms, "0") + " of iron)" : "");
             sb.Append(".\n");
             if (s.IronSold > 1f) sb.Append("It sold ").Append(F(s.IronSold, "0")).Append(" kg of iron lately (halving each year).\n");
+            // cloth and goods (C3.1): what its households wear, its wares, its weaver's shed and who works there
+            sb.Append("Cloth and goods: fibre ").Append(F(s.Fibre, "0")).Append(" kg in store; ");
+            if (s.Workshop != 0 || s.Wares > 0.05 || s.WaresHeld > 0.5f)
+            {
+                sb.Append(F(s.Wares, "0.0")).Append(" wares in store").Append(Weaving.Shed(w, sid) != 0 ? " (its makers keep " + F(Weaving.Target(in s), "0") + ")" : "")
+                  .Append(", its households wear wares for ").Append(F(100 * DMath.Clamp01((double)s.WaresHeld / (Goods.Target * System.Math.Max(1, s.Population))), "0")).Append(" % of its people");
+                if (s.WaresOut > 0.5f) sb.Append("; they took ").Append(F(s.WaresOut, "0")).Append(" from the store lately");
+                if (s.WaresSold > 0.5f) sb.Append("; it sold ").Append(F(s.WaresSold, "0")).Append(" lately");
+                sb.Append(" (halving each year).\n");
+                if (Weaving.Shed(w, sid) != 0)
+                {
+                    int makers = 0; var res = w.Residents(sid);
+                    for (int i = 0; i < res.Count; i++) if (Weaving.Maker(in s, in w.People.Get(res[i]), w.Now)) makers++;
+                    sb.Append("Its weaver's shed: ").Append(makers).Append(makers == 1 ? " maker" : " makers").Append(" at its looms (its best weavers); ").Append(F(w.Buildings.Get(s.Workshop).Stock, "0")).Append(" wares made there in ").Append(F(w.Buildings.Get(s.Workshop).Use, "0")).Append(" hours.\n");
+                }
+            }
+            else sb.Append("its households make their own.\n");
             return sb.ToString();
         }
 

@@ -513,6 +513,13 @@ namespace TC2.Core.Agents
                         if (fid != 0) Forge.Work(w, ref p, p.At, fid, hours);
                     }
                     break;
+                case ActivityKind.Weave:
+                    if (p.At != 0 && p.At == p.Home && hours > 0)
+                    {
+                        int wid = Weaving.Shed(w, p.At);   // (weaving and finishing the village's wares at its weaver's shed: C3.1)
+                        if (wid != 0) Weaving.Work(w, ref p, p.At, wid, hours);
+                    }
+                    break;
                 case ActivityKind.Burn:
                     if (p.At != 0 && p.At == p.Home && hours > 0)
                     {
@@ -589,7 +596,7 @@ namespace TC2.Core.Agents
         /// <summary>Activities that are work: they count toward a day's labour.</summary>
         static bool IsWork(ActivityKind a) => a == ActivityKind.Fields || a == ActivityKind.Wood || a == ActivityKind.Build || a == ActivityKind.Hunt ||
                                               a == ActivityKind.Fish || a == ActivityKind.Gather || a == ActivityKind.Haul || a == ActivityKind.Tend ||
-                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry || a == ActivityKind.Smith || a == ActivityKind.Train || a == ActivityKind.Mine || a == ActivityKind.Burn || a == ActivityKind.Sail;
+                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry || a == ActivityKind.Smith || a == ActivityKind.Train || a == ActivityKind.Mine || a == ActivityKind.Burn || a == ActivityKind.Sail || a == ActivityKind.Weave;
 
         /// <summary>How much a day's labour still leaves for the slack's work: whole until five hours, a fifth past eight.</summary>
         static double DayLeft(in Person p) => DMath.Clamp(1.0 - (p.Worked - 5.0) / 3.0, 0.2, 1.0);
@@ -633,6 +640,17 @@ namespace TC2.Core.Agents
             w.Metrics.MetalKg += kg;
             w.Learning.Practice(ref p, Knowledge.Tech.Metal, h);
             return hours - h;
+        }
+
+        /// <summary>A household short of goods takes wares from its village's store before its own hands make more (C3.1, `Weaving.Draw`).</summary>
+        void TakeWares(int hid)
+        {
+            var w = _w;
+            if (!w.Households.Exists(hid)) return;
+            ref var hh = ref w.Households.Get(hid);
+            if (!w.Settlements.Exists(hh.Settlement)) return;
+            ref var s = ref w.Settlements.Get(hh.Settlement);
+            if (s.Wares > 1e-9) Weaving.Draw(w, ref s, ref hh, w.Members(hid).Count);
         }
 
         /// <summary>The household's goods against what it keeps its members in (1 = the target), counting what is being made.</summary>
@@ -958,7 +976,9 @@ namespace TC2.Core.Agents
                 UnderWay(p.Household, out double cooking, out double fetching);
                 if (hh.Water + fetching < 0.5 * WaterTarget(p.Household) && rs.Chance(0.7)) { BeginWater(ref p, in here, ref rs); return; }
                 if (age >= 8 && hh.Ready + cooking < MealOf(p.Household) && CanCook(in p) && rs.Chance(0.5)) { BeginCook(ref p, WhyCode.MealsToMake, homeX, homeY, ref rs); return; }
-                // from eight a hand at the spinning and the plaiting when the household's goods are wearing thin (D2-058)
+                // from eight a hand at the spinning and the plaiting when the household's goods are wearing thin (D2-058) - wares from the
+                // village's store first (C3.1)
+                TakeWares(p.Household);
                 UnderWay(p.Household, out _, out _, out double making);
                 if (age >= 8 && GoodsHeld(p.Household, making) < 0.85 && rs.Chance(0.35)) { BeginCraft(ref p, homeX, homeY, 1.0 + rs.NextUnit(), ref rs); return; }
             }
@@ -977,7 +997,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying, 15 the smithy, 16 practice, 17 mining, 18 charcoal, 19 bog ore, 20 the household's boat
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying, 15 the smithy, 16 practice, 17 mining, 18 charcoal, 19 bog ore, 20 the household's boat, 21 a voyage, 22 the weaver's shed
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -1012,6 +1032,13 @@ namespace TC2.Core.Agents
                 // a smith with work at the village's smithy (C1.4): its tools short of metal with ore near, or arms wanted - their craft
                 double u = (here.Arms < Forge.ArmsWant(in here) ? 0.7 : 0.5) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
                 if (u > best) { best = u; choice = 15; }
+            }
+            int shed = 0;
+            if (day && atHome && lsec < 16 * SimTime.Hour && Weaving.Wanted(w, in here, in p, out shed))
+            {
+                // one of the village's best weavers, with work at its weaver's shed (C3.1): its wares short of what it keeps - their craft
+                double u = 0.5 * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
+                if (u > best) { best = u; choice = 22; }
             }
             int quarry = 0;
             if (day && atHome && lsec < 15 * SimTime.Hour && age >= 16 && age < 60 && p.Health > 0.6 && Stone.Wanted(w, in here, out quarry))
@@ -1070,7 +1097,8 @@ namespace TC2.Core.Agents
             if (atHome && w.Households.Exists(p.Household))
             {
                 // making and mending (D2-058): the household's clothes and tools below what it keeps its members in - by day,
-                // and by the fire in the evening (night is sleep, above)
+                // and by the fire in the evening (night is sleep, above) - once it has taken what wares the village's store holds (C3.1)
+                TakeWares(p.Household);
                 UnderWay(p.Household, out _, out _, out double making);
                 double held = GoodsHeld(p.Household, making);
                 if (held < 1.0)
@@ -1174,6 +1202,12 @@ namespace TC2.Core.Agents
                     {
                         ref var gb = ref w.Buildings.Get(ground);
                         BeginLocal(ref p, ActivityKind.Train, WhyCode.Train, 0, gb.X + rs.Range(-8, 8), gb.Y + rs.Range(-6, 6), SimTime.Hours(Training.Session));
+                        return;
+                    }
+                case 22:
+                    {
+                        ref var wb = ref w.Buildings.Get(shed);
+                        BeginLocal(ref p, ActivityKind.Weave, WhyCode.Weave, 0, wb.X + rs.Range(-3, 3), wb.Y + rs.Range(-3, 3), SimTime.Hours(3.0 + 1.5 * rs.NextUnit()));
                         return;
                     }
                 case 15:
@@ -1501,17 +1535,18 @@ namespace TC2.Core.Agents
         {
             var w = _w; var P = w.Planet;
             ref var s = ref w.Settlements.Get(sid);
-            if (_greens.TryGetValue(sid, out var g) && g.Coast == P.CoastVersion && g.Sea == P.SeaLevel && g.Sx == s.SquareX && g.Sy == s.SquareY) { x = g.X; y = g.Y; return; }
+            if (_greens.TryGetValue(sid, out var g) && g.Coast == P.CoastVersion && g.Relief == P.ReliefVersion && g.Water == P.WaterDay && g.Sea == P.SeaLevel && g.Sx == s.SquareX && g.Sy == s.SquareY) { x = g.X; y = g.Y; return; }
             x = s.SquareX; y = s.SquareY;
             Boats.OutOfTheWater(w, in s, ref x, ref y);
-            _greens[sid] = new GreenAt { Coast = P.CoastVersion, Sea = P.SeaLevel, Sx = s.SquareX, Sy = s.SquareY, X = x, Y = y };
+            _greens[sid] = new GreenAt { Coast = P.CoastVersion, Relief = P.ReliefVersion, Water = P.WaterDay, Sea = P.SeaLevel, Sx = s.SquareX, Sy = s.SquareY, X = x, Y = y };
         }
 
         /// <summary>A spot near the green that falls in the water moved to the nearest one out of it.</summary>
         void Ashore(int sid, ref double x, ref double y) => Boats.OutOfTheWater(_w, in _w.Settlements.Get(sid), ref x, ref y);
 
-        struct GreenAt { public int Coast; public double Sea; public float Sx, Sy; public double X, Y; }
-        readonly System.Collections.Generic.Dictionary<int, GreenAt> _greens = new System.Collections.Generic.Dictionary<int, GreenAt>();   // (a cache of each village's green: by the coast and the sea's level)
+        struct GreenAt { public int Coast, Relief, Water; public double Sea; public float Sx, Sy; public double X, Y; }
+        readonly System.Collections.Generic.Dictionary<int, GreenAt> _greens = new System.Collections.Generic.Dictionary<int, GreenAt>();   // (a cache of each village's green: by the coast, the relief, the sea's level and the day's lakes - the ground and water round it; a
+        // green kept while a lake rose made a loaded world, which reads the water afresh, go another way: D2-119)
 
         /// <summary>Building pace: a woodworker's hand and a body's strength (labour-hours of progress per hour).</summary>
         static double BuildRate(in Person p) => (0.7 + 0.6 * p.SkWood) * (0.5 + 0.5 * p.Health);
@@ -1604,6 +1639,7 @@ namespace TC2.Core.Agents
             if (maxH <= 0 || !w.Households.Exists(p.Household)) return;
             int members = w.Members(p.Household).Count;
             if (members == 0) return;
+            TakeWares(p.Household);   // (wares from the village's store before its own hands make more: C3.1)
             ref var hh = ref w.Households.Get(p.Household);
             double want = below * members * Goods.Target - hh.Gear;
             if (want <= 0) return;
@@ -1808,6 +1844,14 @@ namespace TC2.Core.Agents
                     double give = DMath.Max(hours, LabourDay * (age > 60 ? 0.85 : 1.0) * days - chore);
                     double used = Forge.Work(w, ref p, sid, fid, give, days);
                     if (used > hours) { smithExtra = used - hours; hours = 0; } else hours -= used;
+                }
+                if (hours > 0 && Weaving.Wanted(w, in s, in p, out int wid))
+                {
+                    // one of the village's best weavers with work at its weaver's shed (C3.1): their labour day there, less the household's own
+                    // work, before the village's shared field work - as the smith's (D2-093)
+                    double give = DMath.Max(hours, LabourDay * days - chore);
+                    double used = Weaving.Work(w, ref p, sid, wid, give, days);
+                    if (used > hours) { smithExtra += used - hours; hours = 0; } else hours -= used;
                 }
                 if (fuelWanted > 0 && hours > 0)
                 {

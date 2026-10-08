@@ -7,7 +7,8 @@ namespace TC2.Core.Planet
     /// Where the rivers run on the ground (D2-084's river shape, moved into the core by D2-118 so one line serves the simulation and the view, as one
     /// shore does since D2-088): for every stream cell, its reach to the cell it drains into - the drainage's own path, laid in pieces that meander
     /// by a smooth noise of where they are - ending where it meets the drawn water (the waterline, a couple of metres in), or carried on across a
-    /// beach to it where the sea lies beyond. Homes and works keep their ground off a river (`Places.Footprints`); the view draws its ribbon on the
+    /// beach to it where the sea lies beyond. Laid for every reach draining enough ground to be a stream in some season; whether it is one
+    /// today is its flow's (`Stream`) - the lines themselves follow only the drainage, so a loaded world lays the same (D2-119). Homes and works keep their ground off a river (`Places.Footprints`); the view draws its ribbon on the
     /// same pieces. Derived from the drainage, rebuilt when it changes; never saved.
     /// </summary>
     public static class RiverLines
@@ -24,6 +25,15 @@ namespace TC2.Core.Planet
         /// <summary>Bumped whenever the shape is rebuilt (the view rebuilds its ribbons).</summary>
         public static int Version;
 
+        /// <summary>
+        /// Upstream ground (ha) from which a reach is laid: a smoothed flow of 1000 m3/day (a stream, `PlanetState.IsStream`) needs 10 ha even under
+        /// 10 mm of runoff a day for a month - a headwater cell alone never carries one.
+        /// </summary>
+        public const double StreamAreaHa = 10.0;
+
+        /// <summary>The reach of this piece is a stream now (by its flow and the lakes today): the only ones homes keep off and the view draws.</summary>
+        public static bool Stream(PlanetState P, in Piece p) => P.IsStream(p.Cell);
+
         /// <summary>Half a river's width on the ground (m) for its flow (m3/day) - about 2.5 times a real river's at that flow (the miniature).</summary>
         public static double HalfWidth(double flow) => 0.5 * DMath.Clamp(0.07 * DMath.Sqrt(DMath.Max(0.0, flow)), 1.5, 60.0);
 
@@ -36,12 +46,14 @@ namespace TC2.Core.Planet
             All.Clear(); _byCell.Clear();
             for (int c = 0; c < P.Cells; c++)
             {
-                if (!P.IsLand(c) || !P.IsStream(c)) continue;
+                // (every reach that drains enough ground to be a stream in some season - its flow decides daily whether it is one: `Stream`; the shape
+                // is the drainage's own, so a loaded world lays the same lines: D2-119)
+                if (!P.IsLand(c) || d.AreaHa[c] < StreamAreaHa || d.BasinOf[c] >= 0) continue;
                 int r = d.Receiver[c];
                 if (r < 0) continue;
                 Vec3d a = P.Grid.Center[c];
                 Vec3d b = P.IsLand(r) ? P.Grid.Center[r] : (a * 0.35 + P.Grid.Center[r] * 0.65).Normalized;   // (into the sea)
-                if (!Shore.Dry(P, a)) continue;   // (its own cell's middle under the drawn water: the sea or a lake draws it)
+                if (!Shore.DryLand(P, a)) continue;   // (its own cell's middle under the drawn water: the sea or a lake draws it)
                 Vec3d prev = a;
                 bool reached = false;
                 for (int s = 1; s <= Pieces && !reached; s++)
@@ -50,7 +62,7 @@ namespace TC2.Core.Planet
                     if (s < Pieces) along = Meander(P, along, a, b, seed);
                     // the river ends where it meets the drawn water: its mouth at the waterline (before, a reach into a sea cell ran 65 % of the way to
                     // that cell's middle - out over the sea, D2-118)
-                    reached = !Shore.Dry(P, along);
+                    reached = !Shore.DryLand(P, along);
                     if (reached) along = Mouth(P, prev, along);
                     Add(P, c, prev, along);
                     prev = along;
@@ -61,7 +73,7 @@ namespace TC2.Core.Planet
                 for (double t = 8.0; t <= 400.0; t += 8.0)
                 {
                     Vec3d q = (prev * P.Radius + dir * t).Normalized;
-                    if (Shore.Dry(P, q)) { last = q; continue; }
+                    if (Shore.DryLand(P, q)) { last = q; continue; }
                     Vec3d end = Mouth(P, last, q);
                     int n = 1 + (int)DMath.Floor(Vec3d.ArcDistance(prev, end, P.Radius) / 30.0);
                     Vec3d from = prev;
@@ -94,7 +106,7 @@ namespace TC2.Core.Planet
             for (int i = 0; i < 14; i++)
             {
                 Vec3d mid = Vec3d.Slerp(lo, hi, 0.5);
-                if (Shore.Dry(P, mid)) lo = mid; else hi = mid;
+                if (Shore.DryLand(P, mid)) lo = mid; else hi = mid;
             }
             double left = Vec3d.ArcDistance(lo, wet, P.Radius);
             return left > 1e-6 ? Vec3d.Slerp(lo, wet, DMath.Min(1.0, 2.0 / left)) : hi;
@@ -138,6 +150,7 @@ namespace TC2.Core.Planet
                 for (int i = 0; i < list.Count; i++)
                 {
                     var p = All[list[i]];
+                    if (!P.IsStream(p.Cell)) continue;
                     double dd = SegDist(dir, p.A, p.B) * P.Radius;
                     if (dd < best) { best = dd; half = HalfWidth(P.RiverFlow[p.Cell]); }
                 }

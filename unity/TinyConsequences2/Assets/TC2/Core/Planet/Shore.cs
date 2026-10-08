@@ -20,8 +20,9 @@ namespace TC2.Core.Planet
 
         static void Refresh(PlanetState P)
         {
-            if (P.ShoreDrawn != null && P.ShoreRelief == P.ReliefVersion && P.ShoreCoast == P.CoastVersion && P.ShoreSea == P.SeaLevel) return;
-            P.ShoreRelief = P.ReliefVersion; P.ShoreCoast = P.CoastVersion; P.ShoreSea = P.SeaLevel;
+            if (P.ShoreDrawn != null && P.ShoreRelief == P.ReliefVersion && P.ShoreCoast == P.CoastVersion && P.ShoreSea == P.SeaLevel && P.ShoreBasins == P.BasinVersion) return;
+            P.ShoreRelief = P.ReliefVersion; P.ShoreCoast = P.CoastVersion; P.ShoreSea = P.SeaLevel; P.ShoreBasins = P.BasinVersion;
+            Refreshes++;
             int n = P.Cells;
             var g = P.Grid;
             if (P.ShoreDrawn == null || P.ShoreDrawn.Length != n) P.ShoreDrawn = new float[n];
@@ -54,7 +55,8 @@ namespace TC2.Core.Planet
             {
                 double e = P.Elev[c];
                 int d = dist[c] == int.MaxValue ? 9 : dist[c];
-                if (P.LakeDepth[c] > 0f) drawn[c] = (float)e;                       // lakes keep their beds and shores
+                if (P.InBasin != null && P.InBasin[c] != 0) drawn[c] = (float)e;    // lake beds keep their shape: a depression is never ramped (by
+                                                                                    // the ground's shape, not the lake's level of the day: D2-119)
                 else if (e > sea) drawn[c] = (float)DMath.Min(e, sea + 45.0 + 110.0 * d);
                 else drawn[c] = (float)DMath.Max(e, sea - 60.0 - 400.0 * d);
             }
@@ -92,6 +94,19 @@ namespace TC2.Core.Planet
             double u = 1.0 - d2 / r2;
             double w = u * u;
             s += w * v; sl += w * lv; sw += w;
+        }
+
+        /// <summary>Tools: times the drawn shore was rebuilt.</summary>
+        public static long Refreshes;
+
+        /// <summary>
+        /// The ground at a direction stands above the sea and outside any depression a lake can fill - read from the ground's shape only, never the
+        /// lakes' day-to-day levels (D2-119: what is cached from it - the river lines - changes only with the relief, the coast and the sea).
+        /// </summary>
+        public static bool DryLand(PlanetState P, Vec3d dir)
+        {
+            double e = At(P, dir, out int c, out _);
+            return P.IsLand(c) && e > P.SeaLevel + 2.0 && (P.InBasin == null || P.InBasin[c] == 0);
         }
 
         /// <summary>The ground at a direction stands above the sea and no lake covers it (with a margin of a metre or two: a home is never on the waterline).</summary>

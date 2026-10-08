@@ -69,6 +69,7 @@ namespace TC2.Core.Knowledge
                     });
                     if (t == Tech.Metal) { ref var sk = ref w.Settlements.Get(sid); sk.SmithEvent = kev; }   // (what moves its smithy: C1.4)
                     if (t == Tech.Boat) { ref var sb = ref w.Settlements.Get(sid); sb.BoatEvent = kev; }     // (what moves its boat shed: C9.2b)
+                    if (t == Tech.Loom) { ref var sl = ref w.Settlements.Get(sid); sl.LoomEvent = kev; }     // (what moves its weaver's shed: C3.1)
                 }
                 else if (knew && best < Tech.Forgotten)
                 {

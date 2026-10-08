@@ -87,6 +87,7 @@ namespace TC2.Headless
             if (a.Has("places")) { TC2.Core.Places.Livestock.Diag = new double[4 * 4096]; TC2.Core.Places.Livestock.DiagEnds = new long[4 * TC2.Core.Places.Livestock.Causes]; TC2.Core.Places.SettlementSystem.Unrests = new long[7]; TC2.Core.Agents.AgentSystem.Hours = new double[44]; TC2.Core.Places.SettlementSystem.Harvests = new double[6]; TC2.Core.Places.Migration.Weighs = new double[8]; TC2.Core.Places.SettlementSystem.Demo = new double[10]; }
             if (a.Has("nosea")) TC2.Core.Places.Trade.NoSea = true;
             if (a.Has("seashort")) TC2.Core.Places.Trade.SeaShort = new double[3];   // (C9.4 survey: relief by sea bound by the boats' room)
+            if (a.Has("noweave")) TC2.Core.Places.Weaving.Off = true;   // (C3.1 against C13.3 in one binary: no weaver's sheds)
             if (a.Has("nostreets")) TC2.Core.Places.Streets.None = true;   // (C13.1 against D2-114 in one binary: no streets laid)   // (C9.3 against C9.2b in one binary: no voyages, no relief by sea)
             string vtrace = a.Get("vtrace");   // (each village each report: people, store, famine, hunger deaths, relief in and out by land and sea, who left)
             System.IO.StreamWriter vt = null;
@@ -409,6 +410,27 @@ namespace TC2.Headless
                         }
                         Console.WriteLine("force: " + smithies + " smithies; " + fearing + " villages fear their neighbours, " + armed + " hold arms (" + F(arms, "0") + "); arms forged " + F(w.Metrics.ArmsMade, "0") +
                                           ", hours at the smithies " + F(w.Metrics.SmithyHours, "0") + ", metal smelted " + F(w.Metrics.MetalKg, "0") + " kg");
+                        {
+                            // cloth and goods (C3.1): the weaver's sheds, their makers, wares made, taken, traded; who wears them
+                            int sheds = 0, makers = 0, skilled = 0, wearing = 0, bought = 0, places = 0; int smallShed = int.MaxValue, bigNone = 0; double store = 0, held = 0, people = 0, fibre = 0;
+                            for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
+                            {
+                                var st2 = w.Settlements.Get(sid2);
+                                if (!st2.Inhabited) continue;
+                                places++; store += st2.Wares; held += st2.WaresHeld; people += st2.Population; fibre += st2.Fibre;
+                                bool shed = TC2.Core.Places.Weaving.Shed(w, sid2) != 0;
+                                if (shed) { sheds++; if (st2.Population < smallShed) smallShed = st2.Population; }
+                                else if (st2.Population > bigNone) bigNone = st2.Population;
+                                if (st2.WaresHeld > 0.1f * st2.Population) { wearing++; if (!shed) bought++; }
+                                if (!shed) continue;
+                                var res2 = w.Residents(sid2);
+                                for (int i = 0; i < res2.Count; i++) { var q = w.People.Get(res2[i]); if (TC2.Core.Places.Weaving.Maker(in st2, in q, w.Now)) { makers++; if (q.SkCraft >= 0.3f) skilled++; } }
+                            }
+                            Console.WriteLine("wares: " + sheds + " weaver's sheds of " + places + " villages (smallest with one " + (sheds > 0 ? smallShed.ToString() : "-") + " people, largest without " + bigNone + "); makers " + makers + " (" + skilled + " practised); made " + F(w.Metrics.WaresMade, "0") +
+                                              " in " + F(w.Metrics.ShedHours, "0") + " h, taken by households " + F(w.Metrics.WaresDrawn, "0") + ", traded " + F(w.Metrics.WaresTraded, "0") + "; in stores " + F(store, "0") + ", worn " + F(held / Math.Max(1.0, people * TC2.Core.Places.Goods.Target) * 100, "0") +
+                                              " % of the people; villages wearing them " + wearing + " (" + bought + " without a shed); fibre in store " + F(fibre / Math.Max(1.0, people), "0.00") + " kg a head; home making " + F(w.Metrics.CraftHours, "0") + " h");
+                            Console.WriteLine("water caches: days routed " + w.Planet.WaterDay + ", drainage rebuilt " + w.Planet.BasinVersion + "; drawn shore rebuilt " + TC2.Core.Planet.Shore.Refreshes + ", river lines rebuilt " + TC2.Core.Planet.RiverLines.Version + " (" + TC2.Core.Planet.RiverLines.All.Count + " pieces)");
+                        }
                     }
                     sb.Append("  most granaries ").Append(most).Append(mostSid != 0 ? " (" + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(mostSid)) + ", " + w.Settlements.Get(mostSid).Population + " people)" : "").Append("; grain beyond the granaries now ").Append(F(over, "0")).Append(" FU");
                     Console.WriteLine(sb.ToString());

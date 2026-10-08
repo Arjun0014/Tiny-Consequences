@@ -33,19 +33,17 @@ namespace TC2.Game
             var P = w.Planet;
             if (w.Drainage == null) return;
             RiverLines.Ensure(P, w.Drainage, w.Seed);
-            if (_lines == RiverLines.Version && _world == worldVersion)
-            {
-                if (Time.realtimeSinceStartup - _widthsAt < 4f) return;
-                Widths(P);
-                return;
-            }
+            if (_lines == RiverLines.Version && _world == worldVersion && Time.realtimeSinceStartup - _widthsAt < 4f) return;
+            // (the reaches that are streams now - a river's flow decides with the seasons, D2-119 - re-read as often as the widths)
             _lines = RiverLines.Version; _world = worldVersion;
             All.Clear(); _byCell.Clear();
             var src = RiverLines.All;
             for (int i = 0; i < src.Count; i++)
             {
+                if (!RiverLines.Stream(P, src[i])) continue;
+                int at = All.Count;
                 All.Add(new Piece { A = src[i].A, B = src[i].B, Cell = src[i].Cell });
-                Index(P.Grid.CellOf(src[i].A), i); Index(P.Grid.CellOf(src[i].B), i); Index(P.Grid.CellOf(Vec3d.Slerp(src[i].A, src[i].B, 0.5)), i);
+                Index(P.Grid.CellOf(src[i].A), at); Index(P.Grid.CellOf(src[i].B), at); Index(P.Grid.CellOf(Vec3d.Slerp(src[i].A, src[i].B, 0.5)), at);
             }
             Widths(P);
         }

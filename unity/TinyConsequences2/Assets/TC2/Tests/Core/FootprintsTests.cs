@@ -220,6 +220,7 @@ namespace TC2.Tests.Core
                     ref var sq = ref t.Settlements.Get(q);
                     foreach (var pc in TC2.Core.Planet.RiverLines.All)
                     {
+                        if (!TC2.Core.Planet.RiverLines.Stream(t.Planet, pc)) continue;   // (a stream now: D2-119)
                         sq.SphereToLocal(pc.A, t.Planet.Radius, out double px, out double py);
                         if (Math.Sqrt((px - sq.SquareX) * (px - sq.SquareX) + (py - sq.SquareY) * (py - sq.SquareY)) < 120.0) { w = t; sid = q; near = pc; break; }
                     }
@@ -239,17 +240,17 @@ namespace TC2.Tests.Core
                 var b = w.Buildings.Get(w.Households.Get(hid).Building);
                 Assert.IsFalse(Footprints.Wet(w, in s2, b.X, b.Y, Footprints.FaceOf(in s2, in b), Footprints.PlanOf(in b)), "no house on the river");
             }
-            // every reach ends on dry ground or at the drawn waterline - never out over the water
+            // every reach ends on dry ground or at the drawn waterline (the sea, or a depression a lake fills) - never out over the water
             int ends = 0;
             var all = TC2.Core.Planet.RiverLines.All;
             for (int i = 0; i < all.Count; i++)
             {
                 bool last = i == all.Count - 1 || all[i + 1].Cell != all[i].Cell;
-                if (!last || TC2.Core.Planet.Shore.Dry(P, all[i].B)) continue;
+                if (!last || TC2.Core.Planet.Shore.DryLand(P, all[i].B)) continue;
                 ends++;
                 // its mouth: the last dry point is within a few metres
                 Vec3d probe = Vec3d.Slerp(all[i].B, all[i].A, Math.Min(1.0, 6.0 / Math.Max(1e-6, Vec3d.ArcDistance(all[i].A, all[i].B, P.Radius))));
-                Assert.IsTrue(TC2.Core.Planet.Shore.Dry(P, probe) || Vec3d.ArcDistance(all[i].A, all[i].B, P.Radius) < 6.0, "it ends a couple of metres into the water");
+                Assert.IsTrue(TC2.Core.Planet.Shore.DryLand(P, probe) || Vec3d.ArcDistance(all[i].A, all[i].B, P.Radius) < 6.0, "it ends a couple of metres into the water");
             }
             Console.WriteLine(all.Count + " river pieces; " + ends + " reaches end at the water's edge");
         }

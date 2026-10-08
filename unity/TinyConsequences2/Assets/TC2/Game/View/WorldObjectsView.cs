@@ -30,6 +30,7 @@ namespace TC2.Game
         readonly Instancer[] _works = new Instancer[24];
         Instancer[] _homes, _frames;   // homes by plan and roof form; the timber framing of framed ones (D2-114)
         Instancer _chimneys, _plinths, _outshuts, _pens, _stalls, _cross, _gardens;   // overlays, pens, the market, kitchen gardens (D2-114)
+        Instancer _tenters;   // cloth stretched to dry by a weaver's shed while its village has wares (C3.1)
         Instancer _stonePiles;     // stone carried home and stacked by the store (C1.3)
         Instancer[] _trees;
         Material _mat;
@@ -105,6 +106,8 @@ namespace TC2.Game
             _works[Structures.Ground] = new Instancer(Models.Get("training_ground", ProcMeshes.Granary), _mat, true);
             _works[Structures.Market] = _cross;   // (the market: its cross, and stalls round it - DrawWork)
             _works[Structures.BoatShed] = new Instancer(Models.Get("boat_shed", ProcMeshes.House), _mat, true);   // (C9.2b)
+            _works[Structures.Workshop] = new Instancer(Models.Get("weavers_shed", ProcMeshes.House), _mat, true);   // (C3.1)
+            _tenters = new Instancer(Models.Get("tenter", ProcMeshes.Granary), _mat, true);
             _hay = new Instancer(Models.Get("haystack", ProcMeshes.Granary), _mat, true);
             _woodpiles = new Instancer(ProcMeshes.Woodpile(), _mat, true);   // the village's woodstore, by the homes (D2-081)
             _trees = new Instancer[TreeModels.Length];
@@ -238,7 +241,7 @@ namespace TC2.Game
             {
                 for (int i = 0; i < _homes.Length; i++) _homes[i].Draw(cam);
                 for (int i = 0; i < _frames.Length; i++) _frames[i].Draw(cam);
-                _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam); _gardens.Draw(cam);
+                _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam); _gardens.Draw(cam); _tenters.Draw(cam);
                 _stonePiles.Draw(cam);
                 for (int i = 0; i < _works.Length; i++) _works[i]?.Draw(cam);
                 _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _woodpiles.Draw(cam);
@@ -407,7 +410,7 @@ namespace TC2.Game
             var P = w.Planet;
             for (int i = 0; i < _homes.Length; i++) _homes[i].Clear();
             for (int i = 0; i < _frames.Length; i++) _frames[i].Clear();
-            _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear(); _gardens.Clear();
+            _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear(); _gardens.Clear(); _tenters.Clear();
             _stonePiles.Clear();
             for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
             _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _woodpiles.Clear();
@@ -586,7 +589,7 @@ namespace TC2.Game
                 m = m * Matrix4x4.Scale(new Vector3(dug, dug, dug));
             }
             Color look = Color.Lerp(moss, Color.white, 0.45f + 0.55f * cond);
-            if (Architecture.Has(b.Form) && (b.Kind == Structures.Barn || b.Kind == Structures.Granary || b.Kind == Structures.Smithy))
+            if (Architecture.Has(b.Form) && (b.Kind == Structures.Barn || b.Kind == Structures.Granary || b.Kind == Structures.Smithy || b.Kind == Structures.Workshop))
             {
                 // (D2-114) roofed with what its village roofs with, the smithy's walls of its village's walls
                 Color roof = Color.Lerp(moss, RoofColour(w, in b, Architecture.CoverOf(b.Form), bid), 0.45f + 0.55f * cond);
@@ -600,10 +603,25 @@ namespace TC2.Game
                     m = m * Matrix4x4.Scale(new Vector3(1.2f, 1.2f, 1.2f));
                 }
                 inst.Add(0, roof, wallC, m);
+                if (b.Kind == Structures.Workshop && b.Left == 0) Tenters(in s, bid, m, cond);
                 return;
             }
             inst.Add(0, look, m);
             if (b.Kind == Structures.Market) Stalls(w, P, in s, bid, ex);
+        }
+
+        static readonly Color[] ClothDyes = { new Color(0.42f, 0.52f, 0.78f, 1f), new Color(0.86f, 0.46f, 0.36f, 1f), new Color(1.0f, 0.86f, 0.46f, 1f), new Color(1.0f, 0.98f, 0.92f, 1f) };
+
+        /// <summary>
+        /// Cloth on the tenters behind a weaver's shed (C3.1): one length while its village has wares in store, a second when it holds a store
+        /// beyond what its makers keep (wares to sell) - the simulation's own wares, never for show; each length its dye.
+        /// </summary>
+        void Tenters(in Settlement s, int bid, Matrix4x4 m, float cond)
+        {
+            if (s.Wares < 1.0) return;
+            int rows = s.Wares > Weaving.Target(in s) * 0.8 ? 2 : 1;
+            for (int r = 0; r < rows; r++)
+                _tenters.Add(0, ClothDyes[(bid + r * 3) % ClothDyes.Length], m * Matrix4x4.Translate(new Vector3(0f, 0f, -4.4f - 1.2f * r)));   // (behind the shed: the kit's +y)
         }
 
         /// <summary>
