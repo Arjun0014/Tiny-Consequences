@@ -8,55 +8,48 @@ modify or stage it.
 
 ## Read first (this order), then work autonomously
 1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the full standing prompt (architecture, rules, every direction from Arjun).
-2. `docs/tc2/SESSION_HANDOFF.md` - top block "Session 9" (exact state, tools, runs, "Next").
-3. `docs/tc2/DECISIONS.md` newest entries **D2-112 .. D2-114** (D2-113 C9.3 closed; D2-114 building variety IN PROGRESS - its "Open").
-4. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 9 entry); `docs/tc2/24_TRANSPORT_AND_MARITIME.md` §5; `docs/tc2/25_CIVILISATION_ROADMAP.md`;
-   for D2-114 `docs/tc2/21_SETTLEMENT_ECONOMY.md` §6 and `docs/tc2/13_RENDERING_AND_ART.md` §12-13.
+2. `docs/tc2/SESSION_HANDOFF.md` - top block "Session 10" (exact state, runs, "Next").
+3. `docs/tc2/DECISIONS.md` newest entries **D2-113, D2-114** (D2-114 building variety closed in session 10).
+4. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 10 entry); for C9.4 `docs/tc2/24_TRANSPORT_AND_MARITIME.md` §5-6 and
+   `docs/tc2/25_CIVILISATION_ROADMAP.md` §5; building variety is a standing requirement: `docs/tc2/13_RENDERING_AND_ART.md` §13, `21` §6.
 5. `git status` (the untracked `unity/TinyConsequences2/Assets/Resources.meta` is not ours - leave it), `git log --oneline -10`.
 
-## Standing direction added by Arjun on 8 Oct 2026 (session 9): building variety
+## Standing direction (Arjun, 8 Oct 2026): building variety
 Settlements must not look like repeated same-colour, same-shape models. Houses vary by real circumstances (household size, means,
-material at hand, age, the village's history, its building tradition); several house families with deterministic variants (footprints,
-one/two storeys, roof shapes, roof and wall materials, timber/stone/plaster, extensions, chimneys, yards, wear) - never random RGB.
-Functional buildings must be recognisable at a glance (smithy, training ground, granary, market, boathouse, mine/quarry, hall; later
-towers, gates, keeps dominating the silhouette). Richer, larger, older places get denser and more substantial; a hamlet, a village, a
-walled town and a political centre must not read as the same houses at different counts. Modular families + variants, Blender is free
-to use; judge real screenshots at close, village and region views - never call it solved from code.
+material at hand, age, the village's history, its building tradition); functional buildings are recognisable at a glance; richer,
+larger, older places get denser and more substantial. Every new structure ships with its own silhouette and is judged in real shots at
+close, village and region views - never from code. (D2-114 built the first answer; streets and real household wealth are open.)
 
-## Do next (D2-114 is in progress - SESSION_HANDOFF "Session 9" has the exact state)
-1. Check `tc2/out/unity_configure_d2114.txt` (the Unity compile of the new view and shader, started at the handoff): fix errors; commit the
-   `.meta` files Unity made for the new models and `Tests/Core/ArchitectureTests.cs`.
-2. Cap hall-houses (`Architecture.HomeForm`: one standing lived-in hall a village, or one per ~150 people) - rebuilding made 54-129 a world.
-3. Rerun ten seeds with rebuilding and compare with `_d5s` (`python cmp.py d5s <tag> 42 7 4 2 1 3 5 6 8 11`): people, famines, hunger, wood;
-   rebuilding costs labour and wood, so it must not starve villages; a placebo (`--nudge 150`) sizes the noise.
-4. Real shots of villages at several sizes and ages (close, village, region; zoom crops), judged against the requirement; tune the kit and the
-   colours (`WorldObjectsView.CoverCol`/`WallCol`, `Weathered`); the building and person pages (`Architecture.Describe`).
-5. Full headless suite, Web build and frame rate; close D2-114 in DECISIONS, PROGRESS, SESSION_HANDOFF; commit.
-6. Then C9.4 docks, cargo boats and coastal trade (`25` §5), or C10.2 leaders - halls, towers, gates and keeps as real structures.
+## Do next
+1. **C9.4 docks, cargo boats and coastal trade** (SESSION_HANDOFF "Session 10" -> "Next"): goods worth carrying by sea and not by land
+   (timber and stone valued at the hours a load costs a village to fetch itself), cargo boats built at the boat shed when sea trade outgrows
+   the plank boats, a jetty/quay chosen by the traffic landed; at par at both resolutions; ten seeds against `_a5` with a placebo; shots; Web.
+2. Then C10.2 leaders (halls, towers, gates, keeps as real structures) or C13 morphology (streets).
 
 ## Tools
 - Copy `tc2/out/tools/wrun.sh` and `cmp.py` to the new session's scratchpad and set `SCR=` in `wrun.sh`; copy the binaries
-  `tc2/headless/app/bin/Release/net8.0` there as `bin_<tag>` before each ten-seed run (two chains in parallel, ~15 min).
-- Headless: `run --load S --lived` (a DEEP save back to lived days), `--voyagers` (each boat on a sea way), `--vtrace FILE` (each village
-  each report: people, store, famine, hunger deaths, relief in/out by land and sea, who left), `--nosea` (no voyages or sea relief: A/B in one
-  binary), `--nudge Y` (a placebo: one FU more in one store at year Y - the chaos of ten worlds measured); report lines `sea trade:`,
-  `trade:` (relief, given back), `boats:`, `forms:` (D2-114: plans, roofs, covers, walls, chimneys, by village size).
-- Shots: views `voyage`, `voyagenear`, `voyagefar`, `voyagestay` wait (lived) until a real voyage is in that state; `work<kind>`.
+  `tc2/headless/app/bin/Release/net8.0` there as `bin_<tag>` before each ten-seed run (two chains in parallel, ~10-15 min).
+- Headless: `place --load S --list` (each village: plans, covers, walls, means, works with their hours), `--households [--sid N]`, `--standing`;
+  `person --load S`; `run --load S --lived`, `--voyagers`, `--vtrace FILE`, `--nosea`, `--nudge Y` (a placebo); report lines `forms:`,
+  `sea trade:`, `trade:`, `boats:`.
+- Shots: `node tc2/scripts/unity.mjs shots --tag T --load "<abs save>" --village ID --views "close@10,low@10,street@10,village@10,work12@10"`
+  (`work<kind>`: the village's structure of that kind - 11 granary, 12 smithy, 13 quarry, 14 training ground, 15 market, 16 barn, 22 boat shed;
+  `voyage*` views wait for a real voyage). About a minute each.
 
 ## Rules that bite
 - Commits `[tc2] ...`, ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; never stage TC1 files or the untracked
-  `unity/TinyConsequences2/Assets/Resources.meta`; never force-push. New `.cs` files need their Unity `.meta` committed.
+  `unity/TinyConsequences2/Assets/Resources.meta`; never force-push. New `.cs` and model files need their Unity `.meta` committed.
 - **No subagents. Keep the machine around 50 % CPU/RAM; one heavy job at a time** (Unity build or shots, the full test suite; two headless
-  300-year runs in parallel are fine). Web tests read low frame rates if anything heavy runs beside them.
+  300-year runs in parallel are fine). Time single runs sequentially on a quiet machine - parallel timings are noise (a +30 % reading was).
 - Bash heredocs break on backticks and apostrophes in this harness: write patch scripts, docs and commit messages with the Write tool into the
   scratchpad, then `python file.py` / `git commit -F file`.
 - The Web test compares the browser with `tc2/headless/app/bin/Release/net8.0/tc2.dll` - it must be a build of the same Core as the Web build.
 - Core is pure C#, deterministic, **no float arithmetic** (`headless.mjs test` lints it); every mechanism at both resolutions and checked at
-  par over pooled worlds; judge by century means over ten seeds, and size the noise with a placebo before calling an effect real.
+  par over pooled worlds; judge by century means over ten seeds, and size the noise with a placebo (`--nudge 150` on the same binary) before
+  calling an effect real - conflict counts (raids, wounds, palisades) move x0.66-x1.5 under a one-FU nudge.
 
 ## Commands
-- Tests: `node tc2/scripts/headless.mjs test [--filter Name] [--nobuild]` (full suite ~12 min, 269 tests at C9.3's close).
-- Runs: `BIN=bin_x TAG=_x YEARS=300 SNAP=100,200,300 bash wrun.sh 42 7 4 2 1 3 5 6 8 11`; `python cmp.py TAG_A TAG_B seeds...`.
-- Shots: `node tc2/scripts/unity.mjs shots --tag T --load "<abs save>" --village ID --views "village@10,close@10"`.
-- Web: `node tc2/scripts/unity.mjs build-web --jobs 3` (~16 min), `node tc2/scripts/webtest.mjs --tag T`.
+- Tests: `node tc2/scripts/headless.mjs test [--filter Name] [--nobuild]` (full suite ~12 min, 275 tests at D2-114's close).
+- Runs: `BIN=bin_x TAG=_x YEARS=300 SNAP=50,100,200,300 bash wrun.sh 42 4 11 3 8` and `... 2 7 1 5 6`; `python cmp.py TAG_A TAG_B seeds...`.
+- Web: `node tc2/scripts/unity.mjs build-web --jobs 3` (~8-16 min), `node tc2/scripts/webtest.mjs --tag T`.
 - Kit: `"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tc2/art/kit.py -- --out <dir> [--only a,b] [--tint] [--grid N] [--preview <dir>]`.

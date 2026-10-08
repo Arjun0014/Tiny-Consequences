@@ -1,5 +1,26 @@
 # TC2 Session handoff
 
+## Session 10 (8 Oct 2026, from 06:15 IST; Control Room run #23 session 2)
+
+### Exact state (keep current)
+- **D2-114 building variety closed** (DECISIONS D2-114, closing evidence; `13` §13 "what the real shots taught", `21` §6 "a household's means").
+  Commits: 5d4bbc2 (hall cap `Architecture.HallRoom`, Unity metas of the new kit), 5805423 (means v2, roofs kept and weathered, kitchen gardens,
+  doorstep yards, training grounds beaten, the smithy sooted, the pages, headless `place --list/--households/--standing`), and the closing docs
+  commit. Sim version 54 (unchanged: no format change since session 9). 275 headless tests pass. Web build of this code tested 6/6
+  (`tc2/out/webtest/d2114web`, 59-122 fps); the Web build in `tc2/web-build/web` is current.
+- **Runs**: `tc2/out/civ/s*_a4` (hall cap, first means), `_a5` (every D2-114 rule: the reference for the next slice), `_a5p` (placebo: `--nudge 150`
+  on the `_a5` binary). Saves at 50/100/200/300 in `s*_a5/`. Tools in this session's scratchpad (`wrun.sh`, `cmp.py`; copies in `tc2/out/tools/`).
+- **Shots**: `tc2/out/shots/arch1*` (before), `arch2lord`, `arch2open`, `arch2y100`, `arch2works`, `arch2works2`, `arch3works`, `arch4`.
+- **Found, not ours**: a river mesh continues past the shore out over the sea (browser shot `d2114web/4_close.png`, `arch2lord/village_10.png`) -
+  offered to Arjun as a separate task chip ("Fix the river ribbon drawn out into the sea").
+
+### Next, in order
+1. **C9.4 docks, cargo boats and coastal trade** (`24` §5-6, `25` §5): goods worth carrying by sea and not by land - timber and stone, valued at
+   the hours a load costs the village to fetch itself (`Woods.Rate`, `Stone.Rate`), spared by villages with near woods or a quarry; cargo boats
+   (~80 loads, a sail of the loom's cloth, 400 h, crew 3-5, 2-3 t) built at the boat shed when a village's sea trade outgrows its plank boats; a
+   jetty/quay chosen by the traffic landed; both resolutions at par; ten seeds against `_a5` with a placebo; shots; Web.
+2. Then C10.2 leaders - halls, towers, gates and keeps as real structures - or C13 morphology (streets: lots along ways, rows in a town's core).
+
 ## Session 9 (8 Oct 2026, 04:31 - ~06:30 IST; Control Room run #23 session 1) - handed off (context full; D2-114 in progress)
 
 ### Exact state (keep current)

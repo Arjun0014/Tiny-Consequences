@@ -2952,7 +2952,7 @@ at Kreingrithwick's landing during the stay) and `voyage2` (a relief boat nearin
 (not on the way back), and a storm that rises after it put out does not meet it; cargo boats, docks and coastal trade at the sea's cost ratio
 are C9.4.
 
-## D2-114 — 2026-10-08 — Building variety: buildings built as their builders could, traditions carried by founders, houses rebuilt as means grow (IN PROGRESS)
+## D2-114 — 2026-10-08 — Building variety: buildings built as their builders could, traditions carried by founders, houses rebuilt as means grow
 
 **Context.** Arjun (8 Oct 2026), a standing visual requirement: settlements must not look like collections of repeated same-colour,
 same-shape models. Houses vary by real circumstances (household size, means, material at hand, age, the settlement's history, its
@@ -3000,8 +3000,45 @@ straw 1,996, reed 1,211, tile 294, shingle 54; walls limewash 2,217, framed 626,
 gable 1,661, hipped 986, half-hipped 908 in 11 traditions of 6 lines (before drift: 3,500 of 3,555 hipped) - but only 36 two-storey houses: inner
 lots are taken while a village is small, so its core stays cottages; rebuilding is what densifies it (a first rule had put half of all houses in two
 storeys by village size alone). Ten seeds with rebuilding are `tc2/out/civ/s*_a3` (being read at the handoff).
-**Open (next).** Read `_a3` against `_d5s` (rebuilding costs labour and wood: people, famines and the wood store at par?; what the towns become);
-compile in Unity (the view, the shader's wall channel, the new models' metas); shots of villages at several sizes and ages at close, village and
-region views, judged (and the kit tuned: roof and wall colours, pens, plinths, chimney heights); a Web build and its frame rate (more home models:
-draw calls); the pages (`Architecture.Describe` in the building and person pages); halls, keeps, towers and gates as real structures belong to
-C7/C10.
+**Decision (session 10, judged in real shots).** (6) **One hall a village** (`Architecture.HallRoom`): a hall-house is its leading household's -
+one lived-in hall a village, one for each `PeoplePerHall` (150) of a town's people; empty halls (taken by whoever needs a home) and the hall being
+rebuilt are not counted; a hall set out while another was raised meanwhile is built a storey high (session 9's runs had 54-129 halls a world: each
+year's best-off rebuilder raised its own). (7) **Means that set households apart** (`Architecture.Means`, see `21` §6): beasts (cattle 1, small stock a
+quarter, four at most), a boat (plank 0.75, dugout 0.25), goods held beyond need (two at most), working hands beyond the first (0.3 each, 0.9 at
+most) and the years of food in the village's granary (1.5 at most). The first measure (beasts, the larder against a month, clothes against people)
+put 94 % of a world's households between 1.0 and 1.5 - larders hold days (the grain is the village's), clothes were capped at need, herds are rare
+late - and the plans came out 2/81/7/9/1 % (one-room/cottage/long/two/hall over ten worlds): a town was one cottage repeated. Plans now: a hall for
+the best off of 120+ (means 2 among the top tenth, `RichMeans`) where there is room; two storeys on a town's dear lots (inside a standing ring of a
+village of 200, or the inner half of a village of 250) for all but the poorest (means 0.5 or three people); a longhouse for cattle, four small stock or
+seven people; a one-room cottage for two people under means 1 or three under 0.6; else a cottage. (8) **Roofs kept and weathered** (view,
+`WorldObjectsView.RoofColour`): a cover's colour is its material weathered by the years since it was last laid; a lived-in house or a work in use is
+kept - straw re-laid every ~28 years, reed ~45, shingles ~40, each house on its own turn (keyed by its id) - so a village shows fresh golden thatch
+beside greyed and mossy; tiles and slates come in batches (a kiln's firing, a quarry's bed) and darken over a century; a building left empty weathers
+from the day it was left. Daub walls lighter and warmer. (9) **Ground and yards** (view): a house's earth yard shrinks from 8.5 m to a doorstep
+(3.5-6.5 m) - in a town the yards had run together into one bare disc; a **kitchen garden** (kit `garden`: raised beds of greens, wattle hurdles)
+behind each house whose household has working hands, as wide as its hands (beside the house where the beasts' pen is), none in a town's two-storey
+core; a training ground's ground beaten pale by the hours of practice put in there (`b.Use`, `TerrainLod._grounds`); the smithy drawn 1.2 times
+life, its walls sooted by its forge's hours. (10) **The pages**: the building page tells how a house or a barn, granary or smithy was built and why
+(`Architecture.Describe` + `Why`: each reason is the condition the rule required); the person page names the home ("a longhouse of logs under fired
+tiles on stone footings", `Architecture.Short`). Headless `place --list` (each village: plans, covers, walls, means, works with their hours),
+`--households` (each household's people, larder, gear, beasts, means, house), `--standing` (quantiles of what could set households apart).
+**Evidence (closing).** 275 headless tests (`ArchitectureTests` 6: + `AVillageKeepsOneHallForEachHundredAndFiftyOfItsPeople`; the plan test
+follows the new means; a year of grain in the granary adds exactly one). Ten seeds 300 years DEEP: `_a4` (the hall cap, the first means) and `_a5`
+(every rule) against C9.3 (`_d5s`). `_a5`: people over years 200-299 x1.023 (t 0.6), famines x1.065 (t 0.7), hunger deaths a thousand person-years
+x1.15 (t 1.0), births and deaths a thousand person-years x1.001 and x1.006 - inside a placebo's spread; raids x1.94 (t 2.45), wounds x1.30 (t 2.4),
+relief given back x0.80 (t -2.4) - but a placebo on the same binary (`_a5p`: one FU more in one store at year 150) moves raids x0.66 (t -2.0),
+wounds x0.85 (t -1.9), palisades x0.88 (t -2.0): conflict over two centuries is chaotic and these are not effects of building. `_a4` (and session 9's
+`_a3`) raised people x1.06 (t 2.6): rebuilding's timber is felled from the woodlots, and felled woods raise the cells' arability, so villages claim more
+field (arable at year 300 +4 % to +14 % on the seeds that grew, s4 4,223 against 3,896 ha) - a real coupling (the great clearances); with the new
+means the effect is x1.02. Plans over ten worlds now 37/28/13/21/1 %, covers straw/reed/shingle/tile 59/20/1/20 %, walls daub/limewash/framed/logs/stone
+25/53/9/3/10 %; 10,700 houses rebuilt in 300 years (5,533 with the first means); halls 242 standing among 19,926 houses (1.2 %). Run cost: seed 7, 300
+years, sequential on a quiet machine, 53.4 s against 51.3 s (+4 %; a first reading of +30 % was the machine's noise). Unity compiles; shots
+`tc2/out/shots/arch1`, `arch1y50`, `arch1open` (the first means and colours: towns of one cottage under one brown thatch or one orange tile on a
+bare disc), `arch2lord`, `arch2open`, `arch2y100`, `arch2works`, `arch2works2`, `arch3works` (the lord's walled seat Tovaldton at year 300: two-storey
+log and framed houses in its core, fresh and old thatch, tile batches, chimneys, gardens, its market and granaries on staddles; the open village
+Rainthorpe of 689 spread with gardens; Stairby at year 100 a village of tiled and framed longhouses; barns, the boat shed with its boats and the quarry
+read at a glance; `arch4` the training ground beaten pale and the smithy sooted). Web build of this code: Web test 6/6 (`tc2/out/webtest/d2114web`:
+the browser bit-identical to headless; views 59-122 fps - close 78, village 96, the place page on the land 59; C9.3's were 55-120).
+**Open.** Streets: lots still follow the village's spiral, so a town's houses do not line streets or share walls (C13 morphology); a real household
+wealth (land held, crafts sold, rents) is C3/C10 and will replace `Means`; the lord's hall, towers, gates and keeps as real structures are C7/C10.2;
+warmth, fire and decay by material are not simulated.
