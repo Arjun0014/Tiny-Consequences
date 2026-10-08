@@ -89,6 +89,7 @@ namespace TC2.Headless
             if (a.Has("seashort")) TC2.Core.Places.Trade.SeaShort = new double[3];   // (C9.4 survey: relief by sea bound by the boats' room)
             if (a.Has("noweave")) TC2.Core.Places.Weaving.Off = true;
             if (a.Has("waresflow")) TC2.Core.Places.Trade.WaresFor = new double[6];
+            if (a.Has("ledger")) { TC2.Core.Diagnostics.HouseLedger.By = new System.Collections.Generic.Dictionary<int, double[]>(); TC2.Core.Diagnostics.HouseLedger.From = (long)a.Int("ledger", 250) * TC2.Core.Foundation.SimTime.Year; }   // (C3.3 survey: what each household brings in and draws)
             if (a.Has("nokiln")) TC2.Core.Places.Pottery.Off = true;   // (C3.2 against D2-063 in one binary: no kilns - pots and jars from knowing how)
             if (a.Has("potsflow")) TC2.Core.Places.Trade.PotsFor = new double[8];   // (C3.2: what ware was traded for)
             if (a.Has("rot")) TC2.Core.Places.Structures.RotTally = new double[3];   // (C3.2 survey: grain rotted against harvested)   // (C3.1: what wares were traded for)   // (C3.1 against C13.3 in one binary: no weaver's sheds)
@@ -461,6 +462,31 @@ namespace TC2.Headless
                                                   " % of the grain in granaries; villages half sealed or more " + sealedV + " (" + sealedNoKiln + " without a kiln); ware in stores " + F(ware, "0") + " kg; hearths firing their own pots " + hhOwn + ", in kiln pots " + hhKiln + ", without " + hhNone);
                                 var pf = TC2.Core.Places.Trade.PotsFor;
                                 if (pf != null) Console.WriteLine("pots traded for: " + F(pf[0], "0") + " kg (" + F(pf[6], "0") + " from kiln villages to villages without, " + F(pf[7], "0") + " to villages with no clay) for grain " + F(pf[1], "0") + " FU, fibre " + F(pf[2], "0") + " kg, hides " + F(pf[3], "0") + ", metal/iron " + F(pf[4], "0") + " kg, wares " + F(pf[5], "0"));
+                            }
+                            var hl0 = TC2.Core.Diagnostics.HouseLedger.By;
+                            if (hl0 != null)
+                            {
+                                // (C3.3 survey) what each household brought in against what it drew: its share of the harvests by its crop work, wild food
+                                // and herd produce, against what its larder took from the village's store - over households that lived a year or more
+                                var nets = new System.Collections.Generic.List<double>(); var depPos = new System.Collections.Generic.List<double>(); var depNeg = new System.Collections.Generic.List<double>();
+                                double P = 0, C = 0, moved = 0, py = 0, makerNet = 0, makerPy = 0, otherNet = 0, otherPy = 0, posYear = 0; int hh = 0, pos = 0, lmakers = 0;
+                                foreach (var kv in hl0)
+                                {
+                                    var r = kv.Value;
+                                    if (r[7] < TC2.Core.Foundation.SimTime.DaysPerYear || r[5] <= 0) continue;
+                                    hh++;
+                                    double lyears = r[7] / TC2.Core.Foundation.SimTime.DaysPerYear, pyr = r[5] / TC2.Core.Foundation.SimTime.DaysPerYear;
+                                    double prod = r[0] + r[1] + r[2], cons = r[3] + r[2], net = prod - cons;
+                                    P += prod; C += cons; py += pyr; if (net > 0) { moved += net; pos++; posYear += net / lyears; depPos.Add(r[6] / r[5]); } else depNeg.Add(r[6] / r[5]);
+                                    nets.Add(net / pyr);
+                                    if (r[4] / lyears > 100) { lmakers++; makerNet += net; makerPy += pyr; } else { otherNet += net; otherPy += pyr; }
+                                }
+                                nets.Sort();
+                                string Q(double q) => nets.Count > 0 ? F(nets[(int)Math.Min(nets.Count - 1, Math.Floor(q * nets.Count))], "0") : "-";
+                                double Mean(System.Collections.Generic.List<double> v) { double s2 = 0; foreach (var x in v) s2 += x; return v.Count > 0 ? s2 / v.Count : 0; }
+                                Console.WriteLine("ledger: " + hh + " households a year or more since year " + (TC2.Core.Diagnostics.HouseLedger.From / TC2.Core.Foundation.SimTime.Year) + ": brought in " + F(P, "0") + " FU, drew " + F(C, "0") + " FU; moved between them by the store " + F(moved, "0") + " FU (" + F(100 * moved / Math.Max(1, C), "0") +
+                                                  " % of what they drew); " + pos + " net givers (workers a member " + F(Mean(depPos), "0.00") + "), " + (hh - pos) + " net takers (" + F(Mean(depNeg), "0.00") + "); net a person-year by decile 10/30/50/70/90 % " + Q(0.1) + "/" + Q(0.3) + "/" + Q(0.5) + "/" + Q(0.7) + "/" + Q(0.9) +
+                                                  " FU; a giver's surplus " + F(posYear / Math.Max(1, pos), "0") + " FU a year; households of workshop makers " + lmakers + " (net " + F(makerNet / Math.Max(1, makerPy), "0") + " FU a person-year, others " + F(otherNet / Math.Max(1, otherPy), "0") + ")");
                             }
                             var rt = TC2.Core.Places.Structures.RotTally;
                             if (rt != null) Console.WriteLine("grain rotted: " + F(rt[0], "0") + " FU in the granaries, " + F(rt[1], "0") + " FU in heaps beyond them, against " + F(rt[2], "0") + " FU harvested (" + F(100 * (rt[0] + rt[1]) / Math.Max(1.0, rt[2]), "0.0") + " %)");

@@ -197,6 +197,7 @@ namespace TC2.Core.Places
             ref var b = ref w.Buildings.Get(smithy);
             b.Use = (float)(b.Use + used);
             w.Metrics.SmithyHours += used;
+            TC2.Core.Diagnostics.HouseLedger.Craft(w, p.Household, used);   // (tools: whose hours the smithy's were; null in the game)
             w.Learning.Practice(ref p, Knowledge.Tech.Metal, used);
             w.Learning.Practice(ref p, Knowledge.Tech.Iron, used);   // (a copper smith who has seen bog ore may find the bloomery: C5.2b)
             return used;

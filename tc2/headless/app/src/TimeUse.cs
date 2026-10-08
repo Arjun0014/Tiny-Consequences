@@ -22,7 +22,7 @@ namespace TC2.Headless
             long end = w.Now + SimTime.Days(a.Double("days", 4));
             long every = a.Int("every", 300);
             string[] groups = { "0-5", "6-11", "12-15", "16-59", "60+" };
-            int kinds = 32;
+            int kinds = 40;   // (every ActivityKind: Pot is 36)
             var tally = new double[groups.Length, kinds];
             var samples = new double[groups.Length];
             while (w.Now < end)

@@ -734,6 +734,7 @@ namespace TC2.Core.Places
                 ref var hh = ref w.Households.Get(hid);
                 double keep = DMath.Min(fu, DMath.Max(0.0, 4.0 * w.SettlementSys.HouseholdNeed(hid) - hh.Larder));
                 hh.Larder += keep; fu -= keep;
+                TC2.Core.Diagnostics.HouseLedger.Bring(w, hid, sid, keep, fu);
             }
             if (fu > 0) w.Settlements.Get(sid).Granary += fu;
         }

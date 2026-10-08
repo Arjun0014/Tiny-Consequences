@@ -223,6 +223,7 @@ namespace TC2.Core.Places
             p.SkCraft = (float)DMath.Min(1.0, p.SkCraft + SkillRate * used);
             w.Learning.Practice(ref p, Knowledge.Tech.Loom, used);
             w.Metrics.ShedHours += used; w.Metrics.WaresMade += made;
+            TC2.Core.Diagnostics.HouseLedger.Craft(w, p.Household, used);
             return used;
         }
 

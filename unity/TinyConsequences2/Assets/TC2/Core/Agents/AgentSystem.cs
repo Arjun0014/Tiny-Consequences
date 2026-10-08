@@ -420,7 +420,9 @@ namespace TC2.Core.Agents
                     if (p.At != 0)
                     {
                         ref var s = ref w.Settlements.Get(p.At);
-                        s.CropWork += hours * (0.6 + p.SkFarm) * (0.5 + 0.5 * p.Health) * Tools(p.Household) * Knowledge.Tech.ArdFactor(in p, w.Stock.HasOx(p.Household));
+                        double cw = hours * (0.6 + p.SkFarm) * (0.5 + 0.5 * p.Health) * Tools(p.Household) * Knowledge.Tech.ArdFactor(in p, w.Stock.HasOx(p.Household));
+                        s.CropWork += cw;
+                        TC2.Core.Diagnostics.HouseLedger.Work(p.Household, cw);   // (tools: whose work the crop was; null in the game)
                         w.Learning.Practice(ref p, Knowledge.Tech.Ard, hours);
                         p.SkFarm = (float)DMath.Min(1.0, p.SkFarm + 0.0015 * hours);
                     }
@@ -1899,6 +1901,7 @@ namespace TC2.Core.Agents
                     double rate = (0.6 + p.SkFarm) * (0.5 + 0.5 * p.Health) * tools * Knowledge.Tech.ArdFactor(in p, w.Stock.HasOx(p.Household));
                     double h = Math.Min(hours, cropNeed / rate);
                     s.CropWork += h * rate; cropNeed -= h * rate; hours -= h; if (Hours != null) Hours[1] += h;
+                    TC2.Core.Diagnostics.HouseLedger.Work(p.Household, h * rate);
                     w.Learning.Practice(ref p, Knowledge.Tech.Ard, h);
                     p.SkFarm = (float)DMath.Min(1.0, p.SkFarm + 0.0015 * h);
                 }

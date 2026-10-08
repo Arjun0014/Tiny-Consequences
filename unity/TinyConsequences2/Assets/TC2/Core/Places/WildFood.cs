@@ -485,6 +485,7 @@ namespace TC2.Core.Places
                 double room = DMath.Max(0.0, 4.0 * w.SettlementSys.HouseholdNeed(p.Household) - hh.Larder);
                 double keep = DMath.Min(fu, room);
                 hh.Larder += keep; fu -= keep;
+                TC2.Core.Diagnostics.HouseLedger.Bring(w, p.Household, home, keep, fu);
             }
             if (fu > 0 && w.Settlements.Exists(home)) w.Settlements.Get(home).Granary += fu;
         }

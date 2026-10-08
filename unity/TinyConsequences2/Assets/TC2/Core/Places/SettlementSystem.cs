@@ -220,6 +220,7 @@ namespace TC2.Core.Places
                 Weaving.Draw(w, ref s, ref hh, members);   // (short of goods: wares from the village's store before its own hands make more)
                 held += hh.Wares;
                 Pottery.Wear(ref hh, members, days);   // (kiln pots cracked on the fire: C3.2)
+                TC2.Core.Diagnostics.HouseLedger.Days(w, hhs[i], sid, days);
                 hearthShort += Pottery.Draw(w, ref s, ref hh, hhs[i], members);   // (a hearth that cannot fire its own takes kiln pots from the store)
                 if (members > 0 && hh.Indoor < Goods.ChillLine(Goods.Condition(hh.Gear, members))) cold++;
             }
@@ -343,6 +344,7 @@ namespace TC2.Core.Places
                 if (Harvests != null) { Harvests[0] += yield; Harvests[1] += s.FieldHa; Harvests[2]++; Harvests[3] += DMath.Clamp01(s.CropGrowth); Harvests[4] += s.Sown; Harvests[5] += s.Harvested; }
                 s.Granary += yield;
                 s.LastHarvest = yield;
+                TC2.Core.Diagnostics.HouseLedger.Harvest(w, s.Id, yield);   // (tools: the harvest by whose work it was; null in the game)
                 if (Structures.RotTally != null) Structures.RotTally[2] += yield;
                 // and the flax grown on a corner of the fields: fibre for clothes and cordage (D2-063)
                 s.Fibre += s.FieldHa * FibrePerHa * DMath.Clamp01(s.ExpectedHarvest > 0 ? yield / s.ExpectedHarvest : 1.0);
@@ -510,6 +512,7 @@ namespace TC2.Core.Places
                 double give = Math.Min(want, want * share);
                 give = Math.Min(give, s.Granary);
                 hh.Larder += give; s.Granary -= give;
+                TC2.Core.Diagnostics.HouseLedger.Draw(w, hid, s.Id, give);
             }
             prof?.End(10011);
             // spoilage of stored grain (~12% a year; less kept sealed in fired pots: D2-063 - in the jars its granaries hold since C3.2)

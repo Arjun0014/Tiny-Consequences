@@ -104,8 +104,16 @@ x1.03, people, births, deaths at par, famines inside the noise. A kiln at a mont
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and
   the people in wares would outwear the looms; eight more makers a shed, each at the shed nearest home; towns of 500+ carry 2-4.
 - ~~**C3.2 the potter's kiln**~~ (built, §2, D2-121).
-- **C3.3 exchange between households**: a household's holdings (its own grain, wares, beasts) and payment in kind for what it takes - the
-  makers paid; real household wealth replacing D2-114's `Means`.
+- **C3.3 exchange between households** - **surveyed in session 13, deferred as a phase of its own**: a household's holdings (its own grain,
+  wares, beasts) and payment in kind for what it takes - the makers paid; real household wealth replacing D2-114's `Means`. Measured with a
+  tools ledger (`run --ledger 250`: each household's share of the harvest by its crop work, its wild food and herd produce, against what its
+  larder drew from the store; seed 4, years 250-300, 5,861 households; the run is the same run): **the village's store moves 31 % of all the
+  food households draw** from the 43 % who bring in more than they eat to the 57 % who bring in less (net a person-year by decile -29/-17/-5/
+  +12/+46 FU against ~40-48 eaten); the givers' surplus is ~69 FU a year each and most of it feeds the takers; workshop makers' households are
+  takers (the village feeds its craftsmen). So a household's own grain without the village's sharing would starve most households: C3.3 needs
+  a **moral economy** - sharing by need kept in shortage, and gifts or debts recorded for what the takers drew (young families in debt, older
+  households with grown children wealthy: the household's cycle) - and, under it, household fields (who works which ground), inheritance of
+  land and claims, labour for others. That is a phase (land, property, debt, labour), not a slice; it is weighed again with C10 (lords' rents).
 - **C3.4 the mill** (water or animal): grinding for the village, the miller's toll; a quern's hours freed.
 - **C3.5 apprenticeship**: skill passed by working beside a master at a workshop (not only by being near: D2-062).
 - **C3.6 workshops of other crafts** (carpenter, tanner, cooper) as their goods are needed.
