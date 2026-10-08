@@ -1,6 +1,6 @@
 # TC2 Session handoff
 
-## Session 14 (8 Oct 2026, 19:02-19:20 IST; Control Room run #31 session 4) - C4.2's people x0.955 investigated (stopped early by Arjun)
+## Session 14 (8 Oct 2026, 19:02-19:26 IST; Control Room run #31 session 4) - C4.2's people x0.955 explained as noise (stopped early by Arjun)
 
 Short session: Arjun asked to stop and hand off at 19:13. No code changed; HEAD is still d6c29cf's code (sim version 60) plus docs.
 
@@ -18,24 +18,21 @@ Short session: Arjun asked to stop and hand off at 19:13. No code changed; HEAD 
      `tc2/out/c42diag/s42_n.*` and `s42_c.*`. Their demography lines: conceptions a weighted woman-day 0.02237 vs 0.02182, marriages 0.01168 vs 0.01120,
      infant deaths 213 vs 233 a 1,000 infant-years - all within chance at these counts. Arable land at year 100 384 vs 343 ha follows from the
      smaller population (fields clear the woods), it does not lead it.
-  4. **A placebo is running** (`--nocarts --nudge 20`: no carts, one FU more in one store at year 20; tag `_c1p`, binary `bin_c4` in the session
-     scratchpad = `tc2/headless/app/bin/Release/net8.0` at d6c29cf). Done when Arjun stopped: seeds 4, 42, 2, 1, 5 (people over years 200-299 against
-     `_c1n`: placebo x1.007, x0.963, x1.004, **x0.857**, **x0.889**; carts x0.858, x0.942, x0.991, x0.887, x1.021). **The placebo alone moves a seed
-     by as much as carts do** (seed 1: placebo x0.857, carts x0.887; seed 5: placebo x0.889, carts x1.021). The run dies when the laptop closes: `tc2/out/c42diag/run_c1p.log` lists the seeds that
-     finished (a seed is complete when its `.txt` has a `SCALE people` line).
-  - **Reading so far**: the x0.955 looks like chaos (one epidemic in seed 4, an early split in seed 42), not a cart fault: no mechanism found
-    that costs people, and the vital rates are identical. Confirm with the full placebo before writing D2-122.
-
-- **Partial placebo over five seeds**: placebo against `_c1n` x0.942 (geometric mean), carts against `_c1n` x0.938 - the same size.
+  4. **The placebo, all ten seeds** (`--nocarts --nudge 20`: no carts, one FU more in one store at year 20; tag `_c1p`, `tc2/out/civ/s*_c1p`,
+     same binary as `_c1`/`_c1n`, d6c29cf). People over years 200-299 against `_c1n`, seed by seed (4 42 2 1 5 3 11 8 7 6):
+     placebo x1.007 0.963 1.004 0.857 0.889 0.998 1.075 1.032 1.016 0.999 (mean x0.982, t -0.8, sd of the log ratio 0.069);
+     carts   x0.858 0.942 0.991 0.887 1.021 0.951 1.001 0.904 1.014 0.993 (mean x0.955, t -2.4, sd 0.061).
+     **Carts against the placebo: x0.972, t -1.06.** The placebo moves single seeds as far as carts do (seed 1 x0.857, seed 5 x0.889).
+     What the placebo does NOT reproduce (so these are the carts' real effects): famines x0.83 (t -3.4; placebo x0.98, t -0.2), hunger deaths x0.93
+     (t -2.3; placebo x0.99), trades x0.70 (t -4.9; placebo x1.01). Foundings x0.93 (t -1.6) against the placebo's x1.01 (t 0.6) is weak.
+  - **Verdict: the people x0.955 is inside the noise - no cart fault.** The vital rates are identical, the two big losses are an epidemic
+    (seed 4) and an early chance split with almost no cart trade (seed 42), and the placebo's spread covers it. Nothing to fix; it goes into D2-122
+    as evidence (the D2-113 / D2-114 pattern).
 
 ### Next, in order
-0. **Finish the `_c1p` placebo**: copy `tc2/headless/app/bin/Release/net8.0` to the scratchpad as `bin_c4` (rebuild first only if Core changed;
-   it has not since d6c29cf), set `SCR=` in a copy of `tc2/out/tools/wrun.sh`, then run the seeds missing from `tc2/out/civ/s*_c1p.txt`:
-   `BIN=bin_c4 TAG=_c1p YEARS=300 SNAP=300 EXTRA="--nocarts --nudge 20" bash wrun.sh 3 11 8 7 6` (~8 min; seed 3 was running when stopped - its files may be partial). Then `python cmp.py c1n c1p 4 42 2 1 5 3 11 8 7 6`
-   and `python cmp.py c1n c1 ...` side by side: if the placebo's people_200_299 ratio and t are of the carts' size, record x0.955 as
-   inside the noise (the D2-113 / D2-114 pattern); if the placebo is clearly at par, look for a mechanism (epidemic spread by cart traders' longer
-   trips at 0.85 pace? foundings x0.93?).
-1. Then close C4.2 as Session 13's list says: **D2-122** (the measured state, the design in `24` §2 "Implemented (C4.2)", the ten seeds and this
+0. (done) The `_c1p` placebo finished (19:24): x0.955 is noise (above).
+1. **Close C4.2** - the investigation is finished, only the closing steps are left:
+   **D2-122** (the measured state, the design in `24` §2 "Implemented (C4.2)", the ten seeds and this
    investigation), shots (`node tc2/scripts/unity.mjs shots --tag c42a --load "<abs>/tc2/out/civ/s4_c1/world_y300.tc2" --village 2 --views
    "cart@11,cartyard@11,cartfar@14"`), the full suite (`node tc2/scripts/headless.mjs test`, ~12-22 min; last full pass 302/302 was before carts),
    Web build (`node tc2/scripts/unity.mjs build-web --jobs 3`) and Web test (`node tc2/scripts/webtest.mjs --tag c42web`), commit, docs (`24`,

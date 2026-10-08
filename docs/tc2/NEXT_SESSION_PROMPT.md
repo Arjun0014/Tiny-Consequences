@@ -166,8 +166,9 @@ SESSION_HANDOFF "Session 13".
 
 **Where we are (session 14, 8 Oct 2026, evening; a short session stopped by Arjun)**: C4.2 carts is still in progress. The people x0.955 was
 investigated: the per-person rates are identical with and without carts. The loss in level comes from chance (one larger epidemic in seed 4, an
-early split in seed 42 with almost no cart trade), and a placebo moves single seeds as much (5 of 10 seeds done). **Next**: finish the placebo, then
-close C4.2 (D2-122, shots, the full suite, Web) - SESSION_HANDOFF "Session 14".
+early split in seed 42 with almost no cart trade), and a ten-seed placebo spreads as widely (carts against it x0.972, t -1.06): noise, no fault.
+The carts' real effects: famines x0.83, hunger deaths x0.93, trades x0.70. **Next**: close C4.2 (D2-122, shots, the full suite, Web) -
+SESSION_HANDOFF "Session 14".
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

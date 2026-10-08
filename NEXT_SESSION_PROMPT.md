@@ -16,14 +16,14 @@ only - never modify or stage it.
 5. `docs/tc2/PROGRESS.md` CURRENT STATE (session 14 and 13 entries); `git status` (the untracked `unity/TinyConsequences2/Assets/Resources.meta` and the
    modified `.claude/launch.json` are not ours - leave them), `git log --oneline -10`.
 
-## Session 14 (8 Oct 2026, 19:02-19:20 IST - stopped early by Arjun; no code changed)
+## Session 14 (8 Oct 2026, 19:02-19:26 IST - stopped early by Arjun; no code changed)
 - **C4.2's people x0.955 investigated** (SESSION_HANDOFF "Session 14"): per-person rates are identical with and without carts (births 43.9 vs 43.8 a
   1,000 person-years, net growth 7.20 vs 7.21, hunger deaths lower with carts); the loss is in the level. Seed 4's loss is one bigger epidemic at
   year 180 (1,289 sickness deaths against 734). Seed 42's is an early chance split (years 20-40) with no hunger, no sickness and only 4 cart trading
   trips in 100 years. Diagnostics: `tc2/out/c42diag`.
-- **A placebo `_c1p`** (`--nocarts --nudge 20`) was running and stopped with the laptop: seeds 4, 42, 2, 1, 5 done (people 200-299 against `_c1n`:
-  x1.007, x0.963, x1.004, x0.857, x0.889 - carts x0.858, x0.942, x0.991, x0.887, x1.021). **The placebo alone moves a seed as much as carts do.** Finish it first
-  (seeds 3 11 8 7 6, ~8 min; the command is in SESSION_HANDOFF "Session 14" Next 0), then judge.
+- **The ten-seed placebo `_c1p`** (`--nocarts --nudge 20`) finished at 19:24: people 200-299 x0.982 against `_c1n`, with a seed-to-seed spread as
+  wide as the carts' (sd 0.069 vs 0.061; seed 1 x0.857, seed 5 x0.889); **carts against the placebo x0.972 (t -1.06): x0.955 is noise, no fault**.
+  The carts' real effects are those the placebo does not reproduce: famines x0.83 (t -3.4), hunger deaths x0.93 (t -2.3), trades x0.70 (t -4.9).
 
 ## Where things stand (8 Oct 2026, session 13)
 - **C3.2 is built** (D2-121, sim version 59; commit d21d09d): measured first - D2-063 gave every village that knew pottery a sealed store and every
@@ -46,17 +46,15 @@ only - never modify or stage it.
   a path/road where more was spared and wanted; wood or stone from 400 m+), with an able wright; cart loads in `Trade.Load/Exchange`, pace in
   `BeginTravel`, `Woods.Rate`/`Stone.Rate` by the cartload; pages, view (parked and travelling carts, the ox, a load), camera `cart`/`cartyard`,
   kit `handcart`/`ox_cart`/`cart_load`; `CartsTests` 5/5. Ten seeds `tc2/out/civ/s*_c1` vs `s*_c1n` (`--nocarts`, which reproduces `_k1` exactly):
-  famines x0.83 (t -3.4), hunger deaths x0.93, trades x0.70, **people over years 200-299 x0.955 (t -2.4), not yet explained** - leads: foundings
+  famines x0.83 (t -3.4), hunger deaths x0.93, trades x0.70, **people over years 200-299 x0.955 (t -2.4) - noise, settled in session 14 by a placebo**; the leads then were: foundings
   x0.93 (t -1.6), households setting out x1.46, fewer villages at year 300 in 5 of 10 seeds.
 - **Verified at the handoff**: carts 5/5, pottery 8/8, save/load 8/8, Unity 0 errors. **Not yet**: the full suite since carts, cart shots, the Web
   build/test (`tc2/web-build/web` is still C3.2's d21d09d).
 - Open W task **W-FOREST** (Arjun, 8 Oct): forests/biomes still read as the same trees recoloured - not solved (`18` §8).
 
 ## Do next
-0. **Finish C4.2 carts** (SESSION_HANDOFF "Session 14" then "Session 13"): finish the `_c1p` placebo and compare `python cmp.py c1n c1p <seeds>`
-   with `python cmp.py c1n c1 <seeds>`. If the placebo's spread is of the carts' size, record x0.955 as noise. If the placebo is clearly at par,
-   look for a mechanism (epidemics spread by cart traders' slower trips? foundings x0.93?) and fix it only if it is a fault (re-run both arms as
-   `_c2`/`_c2n`). Then write **D2-122** (the measured state, the design, the evidence, this investigation), shots
+0. **Close C4.2 carts** (SESSION_HANDOFF "Session 14" then "Session 13"). The people x0.955 is answered: noise (the placebo, above).
+   Write **D2-122** (the measured state, the design, the evidence, this investigation), shots
    (`node tc2/scripts/unity.mjs shots --tag c42a --load "<abs>/tc2/out/civ/s4_c1/world_y300.tc2" --village 2 --views "cart@11,cartyard@11,cartfar@14"`),
    the full suite (`node tc2/scripts/headless.mjs test`, ~12-22 min), Web build and Web test, commit, docs (`24`, `25`, PROGRESS, handoff).
 1. (done in session 13) Web build of d21d09d: Web test 6/6 (`tc2/out/webtest/c32web`, views 86-120 fps, pages 68-84); `tc2/web-build/web` is current.
