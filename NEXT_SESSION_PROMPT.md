@@ -9,7 +9,7 @@ modify or stage it.
 ## Read first (this order), then work autonomously
 1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the full standing prompt (architecture, rules, every direction from Arjun).
 2. `docs/tc2/SESSION_HANDOFF.md` - top block "Session 10" (exact state, runs, "Next").
-3. `docs/tc2/DECISIONS.md` newest entries **D2-114 to D2-116** (building variety closed; C9.4 deferred with its survey; C13.1 streets closed).
+3. `docs/tc2/DECISIONS.md` newest entries **D2-114 to D2-117** (building variety; C9.4 deferred with its survey; C13.1 streets; C13.2 back lanes).
 4. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 10 entry); for C9.4 `docs/tc2/24_TRANSPORT_AND_MARITIME.md` §5-6 and
    `docs/tc2/25_CIVILISATION_ROADMAP.md` §5; building variety is a standing requirement: `docs/tc2/13_RENDERING_AND_ART.md` §13, `21` §6.
 5. `git status` (the untracked `unity/TinyConsequences2/Assets/Resources.meta` is not ours - leave it), `git log --oneline -10`.
@@ -21,10 +21,11 @@ larger, older places get denser and more substantial. Every new structure ships 
 close, village and region views - never from code. (D2-114 built the first answer; streets and real household wealth are open.)
 
 ## Do next (SESSION_HANDOFF "Session 10" -> "Next")
-1. **C13.2** back lanes and plots behind the frontage, a town's core of shared walls, the market place; or **C10.2** the political centre made
-   real (a lord's seat raised with tribute labour, gates where ways cross a ring, towers) - judge which the shots need more.
+1. **C13.3** a town's core of rows (houses sharing walls where lots are dear), the market place where traders come, the green kept open; or
+   **C10.2** the political centre made real (a lord's seat raised with tribute labour, gates where streets cross a ring, towers) - lords are 0-2 a
+   world with one tributary each, so lordships that hold come first. Judge from the shots (`lanes1`, `street1`).
 2. C9.4 docks and cargo boats wait for C3 exchange (D2-115: no demand for them in a barter economy - re-run `run --seashort` when trade grows).
-3. Ten-seed reference runs are `tc2/out/civ/s*_b2` (sim version 55); compare with `cmp.py b2 <tag> ...` and a placebo (`--nudge 150`).
+3. Ten-seed reference runs are `tc2/out/civ/s*_c2` (sim version 55, every rule to D2-117); compare with `cmp.py c2 <tag> ...` and a placebo (`--nudge 150`).
 
 ## Tools
 - Copy `tc2/out/tools/wrun.sh` and `cmp.py` to the new session's scratchpad and set `SCR=` in `wrun.sh`; copy the binaries
@@ -50,7 +51,7 @@ close, village and region views - never from code. (D2-114 built the first answe
   calling an effect real - conflict counts (raids, wounds, palisades) move x0.66-x1.5 under a one-FU nudge.
 
 ## Commands
-- Tests: `node tc2/scripts/headless.mjs test [--filter Name] [--nobuild]` (full suite ~12 min, 277 tests at C13.1's close).
+- Tests: `node tc2/scripts/headless.mjs test [--filter Name] [--nobuild]` (full suite ~12 min, 278 tests at C13.2's close).
 - Runs: `BIN=bin_x TAG=_x YEARS=300 SNAP=50,100,200,300 bash wrun.sh 42 4 11 3 8` and `... 2 7 1 5 6`; `python cmp.py TAG_A TAG_B seeds...`.
 - Web: `node tc2/scripts/unity.mjs build-web --jobs 3` (~8-16 min), `node tc2/scripts/webtest.mjs --tag T`.
 - Kit: `"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tc2/art/kit.py -- --out <dir> [--only a,b] [--tint] [--grid N] [--preview <dir>]`.

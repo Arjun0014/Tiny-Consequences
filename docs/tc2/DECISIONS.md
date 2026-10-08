@@ -3114,7 +3114,9 @@ its lanes from the 6th on, each 8 m back from its line, none in a street or lane
 them, gardens behind, the green in the middle with its granaries, well and sheep). Ten seeds 300 years DEEP (`_c2`) against D2-116 (`_b2`): houses
 fronting a street or a lane 48-80 % a world (streets alone 19-52 %); people over years 200-299 x0.974 (t -1.2), famines x0.98, hunger deaths
 x1.01, births and deaths a thousand person-years at par, raids x0.91, wounds x0.92, palisades x0.98 - inside the noise; homes within 50 m of the
-store 9.9-17.6 a village. Web: see below.
+store 9.9-17.6 a village. 278 headless tests. Web build of 0478ddc: Web test 6/6 (`tc2/out/webtest/c132web`: the browser bit-identical; views
+54-121 fps - close 105, village 87; the person and place pages 54-59 where the C13.1 build read 75-85: page views have read 48-85 from build to
+build on this shared machine - to be measured again on a quiet one).
 **Open.** Lanes are straight and parallel to their street (no lane follows the ground or joins two streets); a town's core still fills round
 its green; plots are not owned (a house's croft is drawn, not held); shared walls and rows in a town's core, the market place, suburbs outside
 the gates - C13's next pieces.
