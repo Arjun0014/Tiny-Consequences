@@ -52,7 +52,7 @@ up with eight looms (C3.1b).
 ## 2. Later slices
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and
   the people in wares would outwear the looms; eight more makers a shed, each at the shed nearest home; towns of 500+ carry 2-4.
-- **C3.2 the potter's kiln**: pots and storage jars (Pottery: the store keeps better - D2-063's rule read from pots made, not a village's best
+- **C3.2 the potter's kiln** (surveyed session 12, `run --rot`: 14.6-17.3 % of every harvest rots in store under the best-potter rule): pots and storage jars (Pottery: the store keeps better - D2-063's rule read from pots made, not a village's best
   potter), charcoal at a kiln; clay dug (a clay pit at the river's clay).
 - **C3.3 exchange between households**: a household's holdings (its own grain, wares, beasts) and payment in kind for what it takes - the
   makers paid; real household wealth replacing D2-114's `Means`.

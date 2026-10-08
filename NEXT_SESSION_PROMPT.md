@@ -33,18 +33,25 @@ only - never modify or stage it.
 - Open W task **W-FOREST** (Arjun, 8 Oct): forests/biomes still read as the same trees recoloured - not solved (`18` §8).
 
 ## Do next
-1. If the handoff says the Web test or the docs are unfinished, finish them first.
-2. **C3.2 the potter's kiln** (`26` §2): makers by skill at a kiln, pots that keep the store (by pots made, not the best potter), clay dug, charcoal -
-   the weaver's shed's pattern. Or **C3.3 exchange between households** (payment in kind; export looms then pay their makers).
+Everything of session 12 is committed and verified (last commit 506d254; 294 headless tests at 14b5124, Weaving 8/8 and SaveLoad 8/8 at HEAD; Web
+test 6/6 on the C3.1b build `tc2/out/webtest/c31bweb`; the Web build in `tc2/web-build/web` is current).
+1. **C3.2 the potter's kiln** (`26` §2) - **surveyed, not designed in code yet**: `run --rot` (a tools tally, trajectories unchanged) shows
+   **14.6-17.3 % of every harvest rots in store** (seed 4: 6.78 M of 39.3 M FU; seed 7: 2.66 M of 18.3 M; heaps beyond the granaries <0.5 %) under
+   today's 12 %/year x the village's best potter's 0.65 (`Knowledge.Tech.PotteryKeeps`, `SettlementSystem` ~line 510) - pots have real work.
+   Measure first as C3.1 did (what households and stores hold, labour, clay: `Learning.Clay`), then the weaver's shed's pattern: a kiln raised by
+   need where a potter lives, makers by skill (`LoomBar`-style bar), jars from real clay and fuel (charcoal or wood), the store's rot read from the
+   jars it holds (not the best potter), households' jars for cooking fuel; ten seeds against a `--no...` control on the same binary; shots; Web.
+2. Or **C3.3 exchange between households** (payment in kind; export looms would then pay their makers - D2-120 Open).
 3. Roles read from practice for smiths, potters, boatwrights (as the weaver's now) - a year-300 person is "known for" every craft.
-4. Then C3.3 exchange between households (payment in kind), C3.4 the mill; re-weigh C9.4 docks/cargo and C10.2 when trade and polities grow.
+4. Then C3.4 the mill; re-weigh C9.4 docks/cargo and C10.2 when trade and polities grow. W-FOREST stays open for a dedicated art pass.
 
 ## Tools
 - Copy `tc2/out/tools/wrun.sh`, `cmp.py`, `wares.py` to the session's scratchpad and set `SCR=` in `wrun.sh`; copy
   `tc2/headless/app/bin/Release/net8.0` there as `bin_<tag>` before each ten-seed run (sequential, ~15 min for ten).
 - Reference runs: `tc2/out/civ/s*_w7` (C3.1b, saves 50/100/200/300, `--waresflow`), `s*_w4` (C3.1) and `s*_w4n` (same binary as `_w4`, `--noweave`).
 - Headless: `place --load S --list` (now with wares, WEAVER'S SHED) `| --layout --sid N | --overlaps | --households | --standing`; `person --pick weaver`;
-  run report lines `wares:`, `water caches:`, `town:`, `trade:`; `run --waresflow` (what wares were traded for), `--noweave`.
+  run report lines `wares:`, `water caches:`, `town:`, `trade:`; `run --waresflow` (what wares were traded for), `--noweave`, `--rot` (grain rotted vs
+  harvested); `tc2/out/tools/agg.py A B [A2 B2]` (report quantities' ratios over the ten seeds), `wares.py TAG seeds`.
 - Shots: `node tc2/scripts/unity.mjs shots --tag T --load "<abs save>" --village ID --views "work23near@11,work23@11,village@11"` (`work23`: the
   weaver's shed, a standing one first; `row*`, `hall`, `mouth`, `work<kind>`; `--ground`).
 
