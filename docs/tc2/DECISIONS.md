@@ -3305,3 +3305,71 @@ x1.00. Web build of this code: Web test 6/6 (`tc2/out/webtest/c31bweb`: the brow
 **Open.** No looms for buyers: a village that sells all it spares does not raise looms for them (sales raise its target, never its sheds) - export
 crafts wait for exchange that pays the makers (C3.3). Sheds outlive their village's shrinking (a second shed in a village of 200 that was 500).
 The COARSE maker-day stays ~1.1 times a lived one over a year.
+
+
+## D2-121 — 2026-10-08 — The potter's kiln, the village's jars and its hearths' pots of real clay (C3.2); clay by the ground's shape
+
+**Context.** C3's second craft (`26` §2). Measured first (the `_w7` saves at years 100 and 300, `place --stores`, `run --rot`): D2-063 kept a
+village's store at 0.65 of the open store's rot because its *best potter* could fire jars, and a household cooked on 0.8 of the wood because one
+of its people could fire pots - with no clay, fire or hours. Pottery is known in nearly every village (its best 1.00; 70 % of people competent, 98 %
+of households holding one), so the 25-60 % of villages with **no clay within reach** kept sealed stores and cooking pots they could not have made,
+and every adult was "a potter" on the person page. Stores are large (3-7 years of need at year 100, 0.4-1.4 at year 300; 14.6-17.3 % of every
+harvest rots); cooking burns 72-91 % of a village's wood. The clay test itself read the day's streams and lakes: a dry spell took a village's clay.
+**Decision.**
+(1) **Clay by the ground's shape** (`Learning.Clay`/`ClayCell`): ground within 1.2 km where a reach drains `ClayAreaHa` (200 ha) or more - a river
+with a floodplain - or a depression (a lake's bed), wet or dry this season; from the drainage only (cached by its version - D2-119's rule; a loaded
+world rebuilds the drainage as it was built). Over six worlds it gives about as many clay villages as the daily test did (s42 15/15, s3 7/7, s1
+2/2, s6 12/10, s4 26/20, s2 22/15). Used by discovery, founders, building materials, kilns and hearths alike.
+(2) **Jars** (`Settlement.Jars`, kg standing in its granaries and barns; a kg seals `Pottery.JarHolds` 4 FU): the store rots at `1 - Seal x sealed`
+of the open store's rate (`Seal` 0.35: D2-063's 0.65 when all is sealed), sealed = jars x 4 / the grain its granaries hold (heaps beyond them are
+never in jars); jars break at `JarBreak` 5 % a year. Large jars want a kiln's even fire: they come only from a kiln, the village's own or bought.
+Ware in store is stood as jars as far as the grain lacks them, after the hearths have drawn (`Pottery.Day`).
+(3) **Hearths**: a household one of whose people can fire pots where its village has clay fires its cooking pots among its goods (D2-058's hours;
+D2-063's 0.8 of the wood by its best potter); one that cannot cooks in **kiln pots** it holds (`Household.Pots`, kg; `PerHead` 2 kg a member;
+broken with use, `PotDays` 400), drawn daily from its village's ware - or on the full wood (`Pottery.CookFactor`); what its hearths still lack is
+known to its potters and its traders (`Settlement.HearthShort`).
+(4) **The potter's kiln** (`Structures.Kiln` 24, Function Craft, Zone Site, 120 h and 15 loads, falls in 40 years): raised at its clay - the nearest
+clay ground, off the river's bank and dry, or the village's edge where the clay is in it - by a village that can fire pots, with clay within reach,
+a store, no walls rising, where the jars its granaries' grain lacks would keep a potter at work two months (`KilnFrom` 1,440 kg, ~5,800 FU
+unsealed). At a month's work (720 kg) hamlets of 25 raised kilns and spent their few grown hands' free days at them (a test world's lived band
+went with them); a firing wants its crew and loads through a season, and a hamlet fires its few pots in the open and buys its jars. Cause: the
+pottery technique's event (`Settlement.PotEvent`), else the founding.
+(5) **Its potters** are the village's `Hands` (4) best by skill and practice (`Settlement.PotBar`/`PotBarId` daily; `Person.SkPot` grows 0.0015
+an hour) - lived, a choice by day (u 0.5) to `ActivityKind.Pot` (36, `WhyCode.Pot` 46) at the kiln; COARSE/DEEP, a labour day there less the walk
+out to the clay (`Stone.AfterWalk`) before the shared field work (the smithy's law). `KgPerHour` 2.5 x (1 + 0.6 skill) x (0.8 + 0.4 practice)
+x health of fired ware - clay dug by it and worked, thrown and coiled, dried and fired - on the village's wood (`WoodPerKg` 0.05 loads; none in
+store, no firing; the woodcutters cut for it, `Pottery.WoodDay` in `FuelDay`), up to `Target`: the jars its grain lacks + the pots its hearths lack
++ `Keep` 1 kg a head + what it sold lately (halving each year).
+(6) **Trade**: `Trade.Pots` (7, kg), valued `0.3 + 2.5 x unsealed x (a store worth sealing) + 0.6 x its hearths' lack` - a kg seals 4 FU and keeps
+~3 FU over its twenty years - spared beyond `Kept` 0.5 kg a head. A sale raises the seller's target (its potters make for the next buyers).
+(7) **Roles from practice**: "a potter at the kiln" (or "a potter") from hours at a kiln (`SkPot` >= 0.3) - no longer everyone who can fire a pot.
+(8) **Pages and view**: the building page (its potters by name, ware fired in hours, its jars and the grain they keep sealed, ware against target,
+pots its hearths took, sold), the person page (the role; how the household cooks and on how much wood), the settlement page ("Pots and jars").
+Kit `kiln` (an updraught kiln - a beehive dome of daubed clay on a stone footing, its stoke-hole sooted, a vent - beside an open drying shed of
+unfired pots, the wheel, the fuel), `clay_pit` (wider as the ware fired there grows), `storage_jars` (by a granary while its village's jars keep
+its grain), `ware_stack` (in straw by the kiln while it holds ware to sell); smoke from the vent while a potter works at it; camera `work24`. Yard
+trees are no longer drawn on a work's ground (one grew out of the kiln's dome). Headless: `pots:` line, `--nokiln` (D2-063's rules on the same
+binary), `--potsflow` (what ware was traded for), `place --stores` (the survey), `place --list` jars. Sim version 59.
+**Evidence.** `PotteryTests` 8: clay is the nearest ground the rule names and stays through a dry season (24 villages over six worlds: 17 with
+clay, 7 without); a kiln is wanted only with clay, the craft, a store and grain enough unsealed, never while walls rise, laid at the clay on dry
+ground and caused by the craft; the four best potters work it and a practised hand takes a place (the role read from practice); ware comes at the
+hand's rate on the village's wood, less the walk in COARSE, none without wood or past the target; jars keep 0.65 sealed and in proportion, never
+heaps, and break a twentieth a year (Off: D2-063's rule, no ware traded); a hearth without clay draws kiln pots, cooks on 0.8 of the wood, breaks
+them with use, and in a running world burns less wood than without; potters work at the kiln at both resolutions (COARSE 7.6 h a maker-day, lived
+6.8 - the weaver's ratio) and a save in the middle of it continues as the world does; ware goes for grain to a village whose grain lies unsealed,
+and the sale raises the seller's target. `BiographyTests` follows the role to practice; `TheCoarseDayRaisesBandsAtTheLivedRate` now counts six
+worlds (bands are one in three worlds: jars moved the one lived band of the first three to the next three by a store a few per cent lower - with
+D2-063's rules it came back; six worlds: lived 1 / COARSE 2 with kilns, 2 / 2 without). 302 headless tests. **Ten seeds 300 years DEEP (`_k1`)
+against the same binary without kilns (`--nokiln`, `_k1n`)**: at year 300 84 kilns in 169 villages (113 with clay), 334 potters; 8,366 t fired
+(95 % stood as jars), 1,988 t traded (mostly for grain: seed 4 367 t for 115,703 FU); jars seal 80-100 % of the grain in granaries, 68 villages
+half sealed or more without a kiln (a town buys its jars from the potters' villages round it: seed 4's largest, 842 people, clay and no kiln, 100 %
+sealed); hearths 11,677 firing their own pots, 3,663 in kiln pots, 968 without (6 %). Trades x5.4 (t 13.9), trade gain x5.4 (t 12.3), **markets x3.6
+(23 -> 99, t 3.9)**, market places x3.2; home making x0.94; wood felled x1.03 (the kilns' firing); grain rotted against harvested at par (x0.98: the
+jars seal what D2-063 sealed for nothing); people over years 200-299 x0.99 (t -0.8), births and deaths a thousand x1.006 / x1.012, hunger a
+thousand person-years x1.07 (t 1.2), famines x1.06 (t 0.7), takings x1.17 (t 1.5) - inside the noise; run cost a person-day x1.05. The clay rule
+alone (`_w7` -> `_k1n`): people x1.03, famines x1.05 - inside the noise. Shots `tc2/out/shots/c32a`/`c32b2` (Krumere, seed 4 year 300: the kiln at
+the village's edge with its drying shed, wood and clay pit, storage jars by the granaries at the market), `c32c21` (Krailddal: ware set out in
+straw for sale - it sold 2 t lately).
+**Open.** Ware is the village's and free to its households (payment in kind: C3.3). Pottery makes most of the world's trade now (2,000 t over ten
+worlds): market places come where potters' villages sell - re-weigh C9.4 (cargo by sea) with this traffic. Kilns do not multiply in towns (one a
+village); a kiln's crew is four. Clay-less villages without traders in reach rot at the full rate.

@@ -74,6 +74,7 @@ namespace TC2.Core.Places
             prof?.Begin(10014); w.Learning.Day(sid, days); prof?.End(10014);   // the young copy the best they can watch (D2-062)
             Weaving.Bar(w, sid);            // its best weavers, who have the looms at its weaver's shed (C3.1)
             Weaving.Tally(w, sid, days);    // a day its looms, not its flax, left its wares short (C3.1b)
+            Pottery.Bar(w, sid);            // its best potters, who work at its kiln (C3.2)
             Training.Daily(w, sid, days);   // fighting skill fades unused; the village's best is known (C1.5)
             prof?.Begin(10015); w.Disease.Day(sid, days); prof?.End(10015);    // sickness: its course, its spread, new ones from the animals (D2-066)
             if (days > 1) Ahead(sid, g0, days);                                 // (its store as days lived would hold it: F8)
@@ -201,11 +202,11 @@ namespace TC2.Core.Places
                 want += Hearth.Wanted(tOut, w.Households.Get(hhs[i]).Shelter) * Hearth.WarmFuel;
                 cook += HouseholdNeed(hhs[i]) * Hearth.CookFuel;
             }
-            s.FuelDay = (float)(want + cook);   // what tomorrow's hearths will want: the wood to cut is judged by it
+            s.FuelDay = (float)(want + cook + Pottery.WoodDay(in s));   // what tomorrow's hearths (and its kiln, while its potters have work: C3.2) will want: the wood to cut is judged by it
             double share = want > 1e-9 ? DMath.Min(1.0, s.Woodstore / (want * days)) : 1.0;   // (DEEP: the step's fires)
             s.Woodstore = DMath.Max(0.0, s.Woodstore - want * days * share);
             int cold = 0;
-            double held = 0;
+            double held = 0, hearthShort = 0;
             for (int i = 0; i < hhs.Count; i++)
             {
                 ref var hh = ref w.Households.Get(hhs[i]);
@@ -218,9 +219,12 @@ namespace TC2.Core.Places
                 Goods.Wear(ref hh, members, days, Knowledge.Tech.ToolWear(in s));
                 Weaving.Draw(w, ref s, ref hh, members);   // (short of goods: wares from the village's store before its own hands make more)
                 held += hh.Wares;
+                Pottery.Wear(ref hh, members, days);   // (kiln pots cracked on the fire: C3.2)
+                hearthShort += Pottery.Draw(w, ref s, ref hh, hhs[i], members);   // (a hearth that cannot fire its own takes kiln pots from the store)
                 if (members > 0 && hh.Indoor < Goods.ChillLine(Goods.Condition(hh.Gear, members))) cold++;
             }
             s.WaresHeld = (float)held;   // (what its households hold of wares: the share of its people in them, `Weaving.Share`)
+            Pottery.Day(w, sid, hearthShort, days);   // (ware stood in its granaries as jars; jars broken; what its hearths lack known: C3.2)
             if (cold > 0 && s.ColdEvent == 0)
             {
                 s.ColdEvent = w.Record(new HistoryEvent
@@ -253,10 +257,11 @@ namespace TC2.Core.Places
                 to.Larder += hh.Larder + hh.Ready;
                 to.Gear = (float)(to.Gear + (double)hh.Gear);
                 to.Wares = (float)(to.Wares + (double)hh.Wares);   // (C3.1)
+                to.Pots = (float)(to.Pots + (double)hh.Pots);      // (C3.2)
                 w.Stock.Inherit(hid, heir);
             }
             else w.Stock.FeralHousehold(hid, w.Settlements.Get(sid).Cell);
-            hh.Larder = 0; hh.Ready = 0; hh.Gear = 0f; hh.Wares = 0f;
+            hh.Larder = 0; hh.Ready = 0; hh.Gear = 0f; hh.Wares = 0f; hh.Pots = 0f;
             hh.Dissolved = w.Now;
             w.History.EndEntity(EntityRef.Household(hid), w.Now);
             w.HouseholdsOf(sid).Remove(hid);
@@ -507,14 +512,16 @@ namespace TC2.Core.Places
                 hh.Larder += give; s.Granary -= give;
             }
             prof?.End(10011);
-            // spoilage of stored grain (~12% a year; less kept in fired pots: D2-063)
-            double rot = 0.12 / SimTime.DaysPerYear * Knowledge.Tech.PotteryKeeps(s.BestPottery);
+            // spoilage of stored grain (~12% a year; less kept sealed in fired pots: D2-063 - in the jars its granaries hold since C3.2)
+            double rot = 0.12 / SimTime.DaysPerYear * Pottery.RotFactor(in s);
             Structures.Rot(ref s, rot, days);   // (what lies beyond the granaries' capacity rots faster: C1.1)
             if (s.Arms > 0) s.Arms *= Keep(Forge.ArmsDecay / SimTime.DaysPerYear, days);   // (arms broken, lost, rusted: C1.4)
             if (s.TradeIn > 0f) s.TradeIn = (float)((double)s.TradeIn * Keep(0.693147 / SimTime.DaysPerYear, days));   // (traders' coming, a year: C1.6)
             if (s.IronSold > 0f) s.IronSold = (float)((double)s.IronSold * Keep(0.693147 / SimTime.DaysPerYear, days));   // (iron sold, a year: C5.3b)
             if (s.WaresOut > 0f) s.WaresOut = (float)((double)s.WaresOut * Keep(0.693147 / SimTime.DaysPerYear, days));   // (wares given out to its households, a year: C3.1)
             if (s.WaresSold > 0f) s.WaresSold = (float)((double)s.WaresSold * Keep(0.693147 / SimTime.DaysPerYear, days));   // (and sold: its makers make that much more for the next buyers)
+            if (s.PotsOut > 0f) s.PotsOut = (float)((double)s.PotsOut * Keep(0.693147 / SimTime.DaysPerYear, days));   // (pots its hearths took, a year: C3.2)
+            if (s.PotsSold > 0f) s.PotsSold = (float)((double)s.PotsSold * Keep(0.693147 / SimTime.DaysPerYear, days));   // (and ware sold: its potters make that much more)
             // stored hides rot and are eaten by vermin (~20 % a year), fibre less (~5 %): a store holds what is used (D2-063)
             s.Hides *= days == 1 ? 1.0 - 0.20 / SimTime.DaysPerYear : Keep(0.20 / SimTime.DaysPerYear, days);
             s.Fibre *= days == 1 ? 1.0 - 0.05 / SimTime.DaysPerYear : Keep(0.05 / SimTime.DaysPerYear, days);
@@ -922,6 +929,7 @@ namespace TC2.Core.Places
                 oh.Wares = (float)DMath.Max(0.0, DMath.Min((double)oh.Gear, oh.Wares - wares));
                 w.Households.Get(hid).Gear = (float)(w.Households.Get(hid).Gear + gear);
                 w.Households.Get(hid).Wares = (float)(w.Households.Get(hid).Wares + wares);
+                if (left == 0) { w.Households.Get(hid).Pots = (float)(w.Households.Get(hid).Pots + (double)oh.Pots); oh.Pots = 0f; }   // (the hearth's pots go with its last: C3.2)
                 if (left == 0) { Homes.Leave(w, old); Boats.Leave(w, old, hid); oh.Dissolved = w.Now; w.History.EndEntity(EntityRef.Household(old), w.Now); w.HouseholdsOf(oh.Settlement).Remove(old); w.Stock.Inherit(old, hid); }
                 else w.Stock.Endow(old, hid);   // and a share of the herd (D2-048)
             }

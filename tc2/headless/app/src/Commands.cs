@@ -89,6 +89,8 @@ namespace TC2.Headless
             if (a.Has("seashort")) TC2.Core.Places.Trade.SeaShort = new double[3];   // (C9.4 survey: relief by sea bound by the boats' room)
             if (a.Has("noweave")) TC2.Core.Places.Weaving.Off = true;
             if (a.Has("waresflow")) TC2.Core.Places.Trade.WaresFor = new double[6];
+            if (a.Has("nokiln")) TC2.Core.Places.Pottery.Off = true;   // (C3.2 against D2-063 in one binary: no kilns - pots and jars from knowing how)
+            if (a.Has("potsflow")) TC2.Core.Places.Trade.PotsFor = new double[8];   // (C3.2: what ware was traded for)
             if (a.Has("rot")) TC2.Core.Places.Structures.RotTally = new double[3];   // (C3.2 survey: grain rotted against harvested)   // (C3.1: what wares were traded for)   // (C3.1 against C13.3 in one binary: no weaver's sheds)
             if (a.Has("nostreets")) TC2.Core.Places.Streets.None = true;   // (C13.1 against D2-114 in one binary: no streets laid)   // (C9.3 against C9.2b in one binary: no voyages, no relief by sea)
             string vtrace = a.Get("vtrace");   // (each village each report: people, store, famine, hunger deaths, relief in and out by land and sea, who left)
@@ -431,6 +433,35 @@ namespace TC2.Headless
                             Console.WriteLine("wares: " + sheds + " weaver's sheds of " + places + " villages (" + buildings + " sheds, " + more + " villages with more than one; smallest with one " + (sheds > 0 ? smallShed.ToString() : "-") + " people, largest without " + bigNone + "); makers " + makers + " (" + skilled + " practised); made " + F(w.Metrics.WaresMade, "0") +
                                               " in " + F(w.Metrics.ShedHours, "0") + " h, taken by households " + F(w.Metrics.WaresDrawn, "0") + ", traded " + F(w.Metrics.WaresTraded, "0") + "; in stores " + F(store, "0") + ", worn " + F(held / Math.Max(1.0, people * TC2.Core.Places.Goods.Target) * 100, "0") +
                                               " % of the people; villages wearing them " + wearing + " (" + bought + " without a shed); fibre in store " + F(fibre / Math.Max(1.0, people), "0.00") + " kg a head; home making " + F(w.Metrics.CraftHours, "0") + " h");
+                            {
+                                // pots and jars (C3.2): kilns, their potters, ware made, taken by hearths, stood as jars, traded; the grain jars keep sealed; hearths
+                                int kilns = 0, clay = 0, potters = 0, practised = 0, sealedV = 0, sealedNoKiln = 0, hhOwn = 0, hhKiln = 0, hhNone = 0; double jars = 0, grain = 0, sealedFu = 0, ware = 0;
+                                for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
+                                {
+                                    var st2 = w.Settlements.Get(sid2);
+                                    if (!st2.Inhabited) continue;
+                                    bool kiln = TC2.Core.Places.Pottery.Kiln(w, sid2) != 0;
+                                    if (kiln) kilns++;
+                                    if (w.Learning.Clay(st2.Cell)) clay++;
+                                    double held2 = Math.Min(st2.Granary, TC2.Core.Places.Structures.StoreCapacity(in st2));
+                                    jars += st2.Jars; ware += st2.Pots; grain += held2; sealedFu += Math.Min(held2, st2.Jars * TC2.Core.Places.Pottery.JarHolds);
+                                    if (TC2.Core.Places.Pottery.Sealed(in st2) >= 0.5) { sealedV++; if (!kiln) sealedNoKiln++; }
+                                    var hl2 = w.HouseholdsOf(sid2);
+                                    for (int i = 0; i < hl2.Count; i++)
+                                    {
+                                        var h2 = w.Households.Get(hl2[i]);
+                                        if (TC2.Core.Places.Pottery.FiresOwn(w, sid2, TC2.Core.Places.Pottery.Best(w, hl2[i]))) hhOwn++; else if (h2.Pots > 0.5f * w.Members(hl2[i]).Count) hhKiln++; else hhNone++;
+                                    }
+                                    if (!kiln) continue;
+                                    var res2 = w.Residents(sid2);
+                                    for (int i = 0; i < res2.Count; i++) { var q = w.People.Get(res2[i]); if (TC2.Core.Places.Pottery.Maker(in st2, in q, w.Now)) { potters++; if (q.SkPot >= 0.3f) practised++; } }
+                                }
+                                Console.WriteLine("pots: " + kilns + " kilns of " + places + " villages (" + clay + " with clay within reach); potters " + potters + " (" + practised + " practised); fired " + F(w.Metrics.PotsMade, "0") + " kg in " + F(w.Metrics.KilnHours, "0") +
+                                                  " h, taken by hearths " + F(w.Metrics.PotsDrawn, "0") + " kg, stood as jars " + F(w.Metrics.JarsSet, "0") + " kg, traded " + F(w.Metrics.PotsTraded, "0") + " kg; jars standing " + F(jars, "0") + " kg sealing " + F(100 * sealedFu / Math.Max(1.0, grain), "0") +
+                                                  " % of the grain in granaries; villages half sealed or more " + sealedV + " (" + sealedNoKiln + " without a kiln); ware in stores " + F(ware, "0") + " kg; hearths firing their own pots " + hhOwn + ", in kiln pots " + hhKiln + ", without " + hhNone);
+                                var pf = TC2.Core.Places.Trade.PotsFor;
+                                if (pf != null) Console.WriteLine("pots traded for: " + F(pf[0], "0") + " kg (" + F(pf[6], "0") + " from kiln villages to villages without, " + F(pf[7], "0") + " to villages with no clay) for grain " + F(pf[1], "0") + " FU, fibre " + F(pf[2], "0") + " kg, hides " + F(pf[3], "0") + ", metal/iron " + F(pf[4], "0") + " kg, wares " + F(pf[5], "0"));
+                            }
                             var rt = TC2.Core.Places.Structures.RotTally;
                             if (rt != null) Console.WriteLine("grain rotted: " + F(rt[0], "0") + " FU in the granaries, " + F(rt[1], "0") + " FU in heaps beyond them, against " + F(rt[2], "0") + " FU harvested (" + F(100 * (rt[0] + rt[1]) / Math.Max(1.0, rt[2]), "0.0") + " %)");
                             var wf = TC2.Core.Places.Trade.WaresFor;

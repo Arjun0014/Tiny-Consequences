@@ -153,6 +153,14 @@ world): never cache what moves daily without keying it to that day (`PlanetState
 (`PlanetState.InBasin`); test `SaveLoadContinuesIdenticallyWhileLakesRiseAndFall`. Works on the main road are laid beside it. **C3.1b (D2-120)**: more sheds where a town's people outrun its
 looms (towns of 500+ carry 2-4). **Next**: SESSION_HANDOFF "Session 12" (C3.2 the potter's kiln, or C3.3 exchange between households).
 
+**Where we are (session 13, 8 Oct 2026)**: **C3.2 the potter's kiln, the village's jars and its hearths' pots (D2-121)** - measured first: D2-063 gave
+every village that knew pottery a sealed store and every household with a potter its cooking pots, also the villages with no clay within reach. Now
+pots are made of real clay with real fire and break: clay by the ground's shape (a river draining 200 ha or a lake's bed within 1.2 km); jars in the
+granaries keep the grain they seal, only from a kiln; a household that cannot fire its own cooks in kiln pots or on the full wood; a kiln at the clay
+where the store's grain lacks two months of jars, its four best potters at both resolutions, ware from the clay and the village's wood; ware a trade
+good valued by the grain it keeps; the potter's role from practice. Ten seeds against the same binary without kilns: 84 kilns in 169 villages,
+2,000 t of ware traded, trades x5.4, **markets x3.6**, people and rot at par. **Next**: SESSION_HANDOFF "Session 13" (C3.3 exchange between households).
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

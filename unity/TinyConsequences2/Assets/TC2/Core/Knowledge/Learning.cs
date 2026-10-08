@@ -70,6 +70,7 @@ namespace TC2.Core.Knowledge
                     if (t == Tech.Metal) { ref var sk = ref w.Settlements.Get(sid); sk.SmithEvent = kev; }   // (what moves its smithy: C1.4)
                     if (t == Tech.Boat) { ref var sb = ref w.Settlements.Get(sid); sb.BoatEvent = kev; }     // (what moves its boat shed: C9.2b)
                     if (t == Tech.Loom) { ref var sl = ref w.Settlements.Get(sid); sl.LoomEvent = kev; }     // (what moves its weaver's shed: C3.1)
+                    if (t == Tech.Pottery) { ref var sp = ref w.Settlements.Get(sid); sp.PotEvent = kev; }   // (what moves its kiln: C3.2)
                 }
                 else if (knew && best < Tech.Forgotten)
                 {
@@ -173,19 +174,44 @@ namespace TC2.Core.Knowledge
 
         readonly System.Collections.Generic.List<int> _near = new System.Collections.Generic.List<int>();
 
-        /// <summary>Clay near a village (D2-063): a stream or a lake within 1.2 km of it, whose floods and shores lay it.</summary>
-        public bool Clay(int cell)
+        /// <summary>
+        /// Clay near a village (D2-063): ground within 1.2 km where floods and still water have laid it over the ages - a river with a floodplain (a
+        /// reach draining `ClayAreaHa` or more) or a depression (a lake's bed) - wet or dry this season. By the ground's shape since C3.2 (before, by
+        /// the day's streams and lakes: a dry spell took a village's clay away and gave it back, D2-121).
+        /// </summary>
+        public bool Clay(int cell) => ClayCell(cell) >= 0;
+
+        /// <summary>The clay ground nearest a cell within reach (-1 none): where a kiln is laid out (C3.2). Derived from the drainage only.</summary>
+        public int ClayCell(int cell)
         {
-            var P = _w.Planet;
-            _w.Hazards.CellsWithin(_w, cell, ClayReach, _near);
-            for (int i = 0; i < _near.Count; i++) if (Wet(P, _near[i])) return true;
-            return false;
+            var w = _w; var P = w.Planet; var d = w.Drainage;
+            if (d == null) return -1;
+            if (_clayVer != d.Version || _clayDrain != d) { _clay.Clear(); _clayVer = d.Version; _clayDrain = d; }
+            if (_clay.TryGetValue(cell, out int known)) return known;
+            w.Hazards.CellsWithin(w, cell, ClayReach, _near);
+            int best = -1; double bd = double.MaxValue;
+            for (int i = 0; i < _near.Count; i++)
+            {
+                int c = _near[i];
+                if (!P.IsLand(c)) continue;
+                bool clay = (d.BasinOf[c] < 0 && d.AreaHa[c] >= ClayAreaHa) || (P.InBasin != null && P.InBasin[c] != 0);
+                if (!clay) continue;
+                double dist = Vec3d.ArcDistance(P.Grid.Center[cell], P.Grid.Center[c], P.Radius);
+                if (dist < bd || (dist == bd && c < best)) { bd = dist; best = c; }
+            }
+            _clay[cell] = best;
+            return best;
         }
+
+        readonly System.Collections.Generic.Dictionary<int, int> _clay = new System.Collections.Generic.Dictionary<int, int>();   // (a cache by the drainage's version: the ground's shape)
+        int _clayVer = -1; Planet.Drainage _clayDrain;
 
         /// <summary>How far a village fetches its clay (m).</summary>
         public const double ClayReach = 1200.0;
 
-        static bool Wet(Planet.PlanetState P, int c) => P.IsLand(c) && (P.IsStream(c) || P.LakeDepth[c] > 0.3f);
+        /// <summary>Ground (ha) a reach drains from which its floods lay clay along it (a river with a floodplain: C3.2's survey - by the day's flows,
+        /// 2-20 villages a world had clay; by this, about as many, every day).</summary>
+        public const double ClayAreaHa = 200.0;
 
         /// <summary>Rock showing near a village: a cell within two rings of it standing 40 m or more above or below a neighbour.</summary>
         public bool Rock(int cell)

@@ -63,11 +63,11 @@ namespace TC2.Tests.Core
             var w = TestWorlds.Make(1202);
             int pid = w.People.First();
             ref var p = ref w.People.Get(pid);
-            p.SkFight = 0f; p.Fights = 0; p.KPottery = 0f; p.SkFish = 0f;
+            p.SkFight = 0f; p.Fights = 0; p.KPottery = 0.8f; p.SkPot = 0f; p.SkFish = 0f;   // (knowing how to fire pots is not being a potter: C3.2)
             string before = Biography.Work(w, pid);
             StringAssert.DoesNotContain("fighter", before);
             StringAssert.DoesNotContain("a potter", before);
-            p.SkFight = 0.5f; p.Fights = 2; p.KPottery = 0.6f; p.SkFish = 0.7f;
+            p.SkFight = 0.5f; p.Fights = 2; p.SkPot = 0.4f; p.SkFish = 0.7f;   // (hours at a kiln make a potter)
             string after = Biography.Work(w, pid);
             StringAssert.Contains("a fighter who has fought", after);
             StringAssert.Contains("a potter", after);

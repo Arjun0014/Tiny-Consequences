@@ -1241,6 +1241,102 @@ def tenter(name, seed=71):
     return k.finish()
 
 
+FIRED = srgb(0.74, 0.45, 0.28)         # fired earthenware: a warm terracotta
+FIRED_DARK = srgb(0.58, 0.34, 0.22)
+CLAY_RAW = srgb(0.70, 0.60, 0.43)      # raw clay, grey-brown, unfired pots drying
+CLAY_WET = srgb(0.40, 0.35, 0.28)      # clay puddled and wet in the pit
+KILN_DAUB = srgb(0.66, 0.47, 0.34)     # the kiln's dome: clay daubed over stone, burnt to a rosy brown
+SOOT = srgb(0.17, 0.15, 0.14)
+
+
+def pot(k, x, y, z, h, r, col, neck=0.42):
+    """A pot standing at (x, y, z): its swelling body and a neck with a rolled rim."""
+    k.ellipsoid((x, y, z + h * 0.44), (r, r, h * 0.46), col, subdiv=2)
+    k.cyl((x, y, z + h * 0.80), r * neck, r * (neck + 0.12), h * 0.2, col, seg=10)
+
+
+def kiln(name, seed=72):
+    """A potter's kiln (C3.2): an updraught kiln - a beehive dome of clay daubed over stone on a stone footing, its stoke-hole at the front black
+    with soot, a vent at its crown - and beside it an open drying shed of posts under a roof (tinted per instance: what its builders roof with,
+    D2-114) with shelves of unfired pots, the potter's wheel under its eave, a heap of fuel by the kiln. The front faces -y."""
+    k = Kit(name, seed)
+    k.cyl((0, 0, 0), 5.2, 5.2, 0.05, srgb(0.50, 0.41, 0.31), seg=16)          # the trodden ground, clay-stained
+    kx, ky = -2.1, 0.2
+    k.cyl((kx, ky, 0.0), 1.75, 1.7, 0.3, STONE, seg=12)                         # the stone footing
+    k.cyl((kx, ky, 0.3), 1.55, 1.45, 0.9, KILN_DAUB, seg=12)                    # the firing chamber's wall
+    k.ellipsoid((kx, ky, 1.2), (1.45, 1.45, 1.15), KILN_DAUB, subdiv=2)         # the dome over the ware
+    k.cyl((kx, ky, 2.25), 0.34, 0.26, 0.32, SOOT, seg=8)                        # the vent at its crown
+    k.box((kx, ky - 1.5, 0.48), (0.8, 0.5, 0.8), SOOT)                          # the stoke-hole's mouth
+    k.box((kx, ky - 1.62, 0.94), (1.15, 0.3, 0.16), STONE)                      # its lintel
+    for i in range(3):                                                          # soot licked up the dome over it
+        k.box((kx + (i - 1) * 0.25, ky - 1.45, 1.3 + 0.12 * i), (0.32, 0.12, 0.5), SOOT, rot_z=0.0)
+    for row in range(3):                                                        # billets stacked for the firing
+        for j in range(5):
+            k.limb((kx - 1.4 + j * 0.42, ky - 2.6, 0.18 + row * 0.34), (kx - 1.4 + j * 0.42 + 0.05, ky - 3.9, 0.18 + row * 0.34), 0.16, 0.15, srgb(0.50, 0.38, 0.25), seg=6)
+    # the drying shed: an open shed of posts, its roof's ridge along x
+    sx0, L, W, H = 2.0, 4.0, 2.8, 2.1
+    for px in (sx0 - L / 2.0 + 0.1, sx0, sx0 + L / 2.0 - 0.1):
+        for py in (-W / 2.0 + 0.1, W / 2.0 - 0.1):
+            k.box((px, py, H / 2.0), (0.18, 0.18, H), BEAM)
+    for py in (-W / 2.0 + 0.1, W / 2.0 - 0.1):
+        k.box((sx0, py, H - 0.08), (L, 0.2, 0.18), BEAM)
+    roof_form(k, L, W, H, 34, "g", overhang=0.45, thick=0.2, cx=sx0)
+    for z in (0.55, 1.15):                                                      # shelves along its back, pots drying on them
+        k.box((sx0, W / 2.0 - 0.45, z), (L - 0.4, 0.55, 0.06), BOARD)
+        for j in range(7):
+            pot(k, sx0 - L / 2.0 + 0.55 + j * 0.48, W / 2.0 - 0.45, z + 0.03, 0.34, 0.15, CLAY_RAW)
+    # the wheel under the eave at the front: its flywheel, the head, the potter's seat, a lump of clay on it
+    wx, wy = sx0 - 0.6, -W / 2.0 + 0.5
+    k.cyl((wx, wy, 0.05), 0.42, 0.42, 0.1, BEAM, seg=12)
+    k.cyl((wx, wy, 0.15), 0.05, 0.05, 0.5, BEAM, seg=6)
+    k.cyl((wx, wy, 0.65), 0.24, 0.24, 0.06, BEAM, seg=10)
+    k.ellipsoid((wx, wy, 0.78), (0.13, 0.13, 0.1), CLAY_RAW, subdiv=1)
+    k.box((wx, wy + 0.6, 0.25), (0.5, 0.35, 0.5), BEAM)
+    # fired ware set out by the kiln's mouth: storage jars and pots, cooling
+    for j, (x, y, h, r) in enumerate(((-0.5, -1.8, 0.95, 0.36), (0.25, -2.2, 0.8, 0.3), (-0.2, -2.8, 0.42, 0.18), (0.55, -2.9, 0.36, 0.16))):
+        pot(k, x, y, 0.05, h, r, FIRED if j % 2 == 0 else FIRED_DARK)
+    return k.finish()
+
+
+def clay_pit(name, seed=73):
+    """The clay pit by a kiln (C3.2): a hollow dug in the bank, its floor wet clay with water standing in it, the dug clay heaped beside, a
+    puddling trough where it is trodden, a spade - drawn larger as the ware fired at its kiln grows."""
+    k = Kit(name, seed)
+    k.cyl((0, 0, 0), 2.6, 2.4, 0.08, CLAY_RAW, seg=12)                          # the pit's lip, clay trodden out
+    k.cyl((0, 0, 0.02), 2.0, 1.7, 0.08, CLAY_WET, seg=12)                       # its floor, wet
+    k.cyl((0.4, -0.3, 0.06), 0.8, 0.7, 0.05, WELL_WATER, seg=9)                 # water standing in it
+    for i in range(6):                                                          # the dug clay heaped beside it
+        k.blob((2.4 + k.rng.uniform(-0.5, 0.5), 1.0 + k.rng.uniform(-0.6, 0.6), 0.3), 0.55 + 0.1 * (i % 3), CLAY_RAW, subdiv=2, jitter=0.15, squash=0.55)
+    k.box((-2.4, 1.2, 0.2), (1.6, 0.9, 0.4), BOARD)                             # the puddling trough
+    k.box((-2.4, 1.2, 0.41), (1.4, 0.7, 0.04), CLAY_WET)
+    k.limb((-1.6, -1.8, 0.0), (-1.2, -2.2, 1.3), 0.035, 0.035, TIMBER)          # a spade
+    return k.finish()
+
+
+def storage_jars(name, seed=74):
+    """Storage jars (C3.2): great jars of fired clay, lidded and sealed, standing by a granary - drawn while its village's jars keep its grain."""
+    k = Kit(name, seed)
+    for j, (x, y, h, r) in enumerate(((0.0, 0.0, 1.15, 0.42), (0.85, 0.15, 1.05, 0.38), (0.4, 0.8, 1.1, 0.4), (-0.6, 0.6, 0.6, 0.24))):
+        col = FIRED if j % 2 == 0 else FIRED_DARK
+        pot(k, x, y, 0.0, h, r, col, neck=0.5)
+        k.cyl((x, y, h * 0.99), r * 0.52, r * 0.42, 0.06, CLAY_RAW, seg=10)      # its sealing lid of clay
+    return k.finish()
+
+
+def ware_stack(name, seed=75):
+    """Ware for sale (C3.2): fired pots stacked in straw, bowls nested, a pair of jars - set out by a kiln while its village holds ware beyond what
+    it keeps."""
+    k = Kit(name, seed)
+    k.box((0, 0, 0.06), (2.2, 1.4, 0.12), STRAW)                                # straw laid down
+    for i in range(3):
+        for j in range(2):
+            pot(k, -0.7 + i * 0.6, -0.3 + j * 0.6, 0.12, 0.42, 0.2, FIRED if (i + j) % 2 == 0 else FIRED_DARK)
+    for i in range(3):                                                          # bowls nested in a stack
+        k.cyl((0.95, 0.4, 0.12 + i * 0.1), 0.22, 0.3, 0.12, FIRED, seg=10)
+    pot(k, 0.95, -0.35, 0.12, 0.7, 0.26, FIRED_DARK)
+    return k.finish()
+
+
 def market_stall(name, seed=66):
     """A market stall (C1.6, D2-114): a trestle of goods under a dyed awning on four poles - the game sets out as many as traders come to the
     market, each awning its own dye (alpha 1: tinted per instance)."""
@@ -1323,6 +1419,10 @@ def build_all():
     objs.append(market_cross("market_cross"))
     objs.append(weavers_shed("weavers_shed"))   # (C3.1)
     objs.append(tenter("tenter"))
+    objs.append(kiln("kiln"))                  # (C3.2)
+    objs.append(clay_pit("clay_pit"))
+    objs.append(storage_jars("storage_jars"))
+    objs.append(ware_stack("ware_stack"))
     objs.append(grass_tuft("grass_tuft", 31))
     objs.append(flowers("flowers", 32))
     objs.append(reeds("reeds", 33))

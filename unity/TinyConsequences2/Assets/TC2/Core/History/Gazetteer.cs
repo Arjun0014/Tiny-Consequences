@@ -166,6 +166,30 @@ namespace TC2.Core.History
                 }
             }
             else sb.Append("its households make their own.\n");
+            // pots and jars (C3.2): the clay within reach, the jars that keep its grain, its hearths' pots, its kiln and who works there
+            {
+                double held = System.Math.Min(s.Granary, Structures.StoreCapacity(in s));
+                bool clay = w.Learning.Clay(s.Cell);
+                sb.Append("Pots and jars: ").Append(clay ? "clay within reach" : "no clay within reach").Append("; ").Append(F(s.Jars, "0")).Append(" kg of jars in its granaries keep ")
+                  .Append(F(100 * Pottery.Sealed(in s), "0")).Append(" % of the ").Append(F(held, "0")).Append(" days' grain there sealed; ").Append(F(s.Pots, "0")).Append(" kg of ware in store");
+                int own = 0, kiln = 0, none = 0; var hl = w.HouseholdsOf(sid);
+                for (int i = 0; i < hl.Count; i++)
+                {
+                    if (Pottery.FiresOwn(w, sid, Pottery.Best(w, hl[i]))) own++;
+                    else if ((double)w.Households.Get(hl[i]).Pots > 0.5 * w.Members(hl[i]).Count) kiln++; else none++;
+                }
+                sb.Append("; its hearths: ").Append(own).Append(" fire their own pots, ").Append(kiln).Append(" cook in kiln pots, ").Append(none).Append(" in none");
+                if (s.PotsSold > 0.5f) sb.Append("; it sold ").Append(F(s.PotsSold, "0")).Append(" kg lately (halving each year)");
+                sb.Append(".\n");
+                if (Pottery.Kiln(w, sid) != 0)
+                {
+                    int makers = 0; var res = w.Residents(sid);
+                    for (int i = 0; i < res.Count; i++) if (Pottery.Maker(in s, in w.People.Get(res[i]), w.Now)) makers++;
+                    var kb = w.Buildings.Get(s.Kiln);
+                    sb.Append("Its kiln at the clay, ").Append(F(Pottery.Dist(w, in s, s.Kiln), "0")).Append(" m out: ").Append(makers).Append(makers == 1 ? " potter" : " potters").Append(" (its best); ")
+                      .Append(F(kb.Stock, "0")).Append(" kg fired there in ").Append(F(kb.Use, "0")).Append(" hours.\n");
+                }
+            }
             return sb.ToString();
         }
 

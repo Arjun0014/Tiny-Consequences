@@ -1,5 +1,33 @@
 # TC2 Session handoff
 
+## Session 13 (8 Oct 2026, from 16:11 IST; Control Room run #31 session 3) - C3.2 the potter's kiln, jars and hearths' pots (D2-121)
+
+### Exact state (keep current)
+- **C3.2 built (D2-121, sim version 59)**: `Core/Places/Pottery.cs` (jars `Settlement.Jars` seal the store's grain: `RotFactor`; `Day` stands ware as
+  jars and breaks them; hearths `Household.Pots`, `Draw`, `Wear`, `CookFactor`, `FiresOwn`; the kiln `KilnWanted` (two months of a potter's jars,
+  `KilnFrom` 1,440 kg), `Site` at the clay, `Bar`/`Maker` (4 `Hands`), `Work` (lived; COARSE less the walk), `WoodDay` in `FuelDay`; `Worth`/`Spare`
+  for `Trade.Pots` 7), `Learning.Clay`/`ClayCell` by the ground's shape (`ClayAreaHa` 200 ha or a depression; cached by the drainage's version),
+  `Structures.Kiln` 24, `ActivityKind.Pot` 36, `WhyCode.Pot` 46, `Person.SkPot`, `Settlement.Kiln/PotEvent/Pots/Jars/PotsOut/PotsSold/HearthShort/
+  PotBar/PotBarId`, metrics `PotsMade/KilnHours/PotsDrawn/JarsSet/PotsTraded`. Pages: HUD building page, person page (role "a potter at the kiln"
+  from practice; how the household cooks), settlement page "Pots and jars". View: kiln (x1.15), clay pit (grows with ware fired), ware in straw
+  (ware to sell), storage jars by granaries (sealed >= 30 %), smoke while a potter works; yard trees kept off works. Kit `kiln`, `clay_pit`,
+  `storage_jars`, `ware_stack` (+ metas). Headless `pots:` line, `--nokiln`, `--potsflow`, `place --stores` (the survey), `place --list` jars.
+- **Runs**: `tc2/out/civ/s*_k1` (C3.2, saves 50/100/200/300, `--rot --potsflow`: the reference for the next slice), `s*_k1n` (same binary,
+  `--nokiln`: D2-063's rules; saves 100/300). Smoke run `tc2/out/c32/s4_p1` (100 years, KilnFrom 720). Tools in `tc2/out/tools/`: `pots.py TAG
+  [seeds]` (the pots: lines), `agg.py` (now with felled, rot_pct, pots_traded, kilns).
+- **Results** (`_k1` vs `_k1n`): 84 kilns in 169 villages, 1,988 t traded, jars seal 80-100 %, trades x5.4, markets x3.6, rot/people at par,
+  famines x1.06 (t 0.7). Tests: `PotteryTests` 8/8; `BiographyTests` (role from practice); `TheCoarseDayRaisesBandsAtTheLivedRate` six worlds.
+- **Shots** `tc2/out/shots/c32a`, `c32b2` (Krumere #2, seed 4 y300), `c32c21` (Krailddal #21: ware in straw). Kit previews in the session scratchpad.
+- **Found and fixed on the way**: the view's works table had 24 slots (the kiln is kind 24: Start threw and left later instancers null); a
+  yard tree grew out of the kiln's dome (yard trees now keep off every work's ground).
+
+### Next, in order
+1. (this session, if not done) the full suite, Web build and Web test of this code; commit.
+2. **C3.3 exchange between households** (payment in kind: makers paid; households' own holdings replacing D2-114's `Means`) - the weaver's and the
+   potter's ware is the village's and free to its households; export crafts wait for it.
+3. Roles from practice for smiths and boatwrights (the potter's and the weaver's are now from practice).
+4. C9.4 (cargo by sea) re-weighed with the pottery traffic (markets x3.6); C3.4 the mill. W-FOREST stays open for an art pass.
+
 ## Session 12 (8 Oct 2026, from 12:13 IST; Control Room run #31 session 2) - C3.1 the weaver's shed and wares (D2-119); lived save/load exact again; C3.1b more sheds (D2-120)
 
 ### Exact state (keep current)

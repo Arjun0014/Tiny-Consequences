@@ -630,8 +630,10 @@ namespace TC2.Tests.Core
         [Test]
         public void TheCoarseDayRaisesBandsAtTheLivedRate()
         {
+            // (six worlds: bands are rare - one in three worlds - and a single event is no rate; C3.2's jars moved the one lived band of the first three
+            // worlds to the next three by a store a few per cent lower)
             long lived = 0, coarse = 0;
-            foreach (ulong seed in new ulong[] { 42, 43, 44 })
+            foreach (ulong seed in new ulong[] { 42, 43, 44, 45, 46, 47 })
                 for (int k = 0; k < 2; k++)
                 {
                     var w = Pair(out int a, out int b, seed);
@@ -643,8 +645,9 @@ namespace TC2.Tests.Core
                     long n0 = w.Metrics.Bands;
                     for (int d = 0; d < 60; d++) { Full(w, a); w.AdvanceTo(w.Now + SimTime.Day); }
                     if (k == 0) lived += w.Metrics.Bands - n0; else coarse += w.Metrics.Bands - n0;
+                    Console.WriteLine("  seed " + seed + (k == 0 ? " lived" : " COARSE") + ": bands " + (w.Metrics.Bands - n0) + ", the wronged village's store " + w.Settlements.Get(b).Granary.ToString("0") + " FU");
                 }
-            Console.WriteLine("bands raised in 60 days of a killing unanswered, three worlds: lived " + lived + ", COARSE " + coarse);
+            Console.WriteLine("bands raised in 60 days of a killing unanswered, six worlds: lived " + lived + ", COARSE " + coarse);
             Assert.Greater(lived, 0);
             Assert.That((double)coarse / Math.Max(1, lived), Is.InRange(0.5, 2.0), "the same daily choice at both resolutions");
         }

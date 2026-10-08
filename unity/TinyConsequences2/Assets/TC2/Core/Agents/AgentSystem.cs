@@ -521,6 +521,13 @@ namespace TC2.Core.Agents
                         if (wid != 0) Weaving.Work(w, ref p, p.At, wid, hours);
                     }
                     break;
+                case ActivityKind.Pot:
+                    if (p.At != 0 && p.At == p.Home && hours > 0)
+                    {
+                        int kid = Pottery.Kiln(w, p.At);   // (clay dug, pots and jars thrown and fired at the village's kiln: C3.2)
+                        if (kid != 0) Pottery.Work(w, ref p, p.At, kid, hours);
+                    }
+                    break;
                 case ActivityKind.Burn:
                     if (p.At != 0 && p.At == p.Home && hours > 0)
                     {
@@ -576,7 +583,7 @@ namespace TC2.Core.Agents
                         s.Granary -= fromStore;
                         double done = fromLarder + fromStore;
                         hh.Ready += done;
-                        s.Woodstore = DMath.Max(0.0, s.Woodstore - done * Hearth.CookFuel * Knowledge.Tech.PotteryFuel(HouseholdBest(p.Household, Knowledge.Tech.Pottery)));
+                        s.Woodstore = DMath.Max(0.0, s.Woodstore - done * Hearth.CookFuel * Pottery.CookFactor(w, p.Household));   // (in fired pots, its own or a kiln's: D2-063, C3.2)
                         w.Metrics.PrepHours += hours; w.Metrics.PrepFu += done;
                         w.Learning.Practice(ref p, Knowledge.Tech.Pottery, hours);
                     }
@@ -597,7 +604,7 @@ namespace TC2.Core.Agents
         /// <summary>Activities that are work: they count toward a day's labour.</summary>
         static bool IsWork(ActivityKind a) => a == ActivityKind.Fields || a == ActivityKind.Wood || a == ActivityKind.Build || a == ActivityKind.Hunt ||
                                               a == ActivityKind.Fish || a == ActivityKind.Gather || a == ActivityKind.Haul || a == ActivityKind.Tend ||
-                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry || a == ActivityKind.Smith || a == ActivityKind.Train || a == ActivityKind.Mine || a == ActivityKind.Burn || a == ActivityKind.Sail || a == ActivityKind.Weave;
+                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry || a == ActivityKind.Smith || a == ActivityKind.Train || a == ActivityKind.Mine || a == ActivityKind.Burn || a == ActivityKind.Sail || a == ActivityKind.Weave || a == ActivityKind.Pot;
 
         /// <summary>How much a day's labour still leaves for the slack's work: whole until five hours, a fifth past eight.</summary>
         static double DayLeft(in Person p) => DMath.Clamp(1.0 - (p.Worked - 5.0) / 3.0, 0.2, 1.0);
@@ -998,7 +1005,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying, 15 the smithy, 16 practice, 17 mining, 18 charcoal, 19 bog ore, 20 the household's boat, 21 a voyage, 22 the weaver's shed
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying, 15 the smithy, 16 practice, 17 mining, 18 charcoal, 19 bog ore, 20 the household's boat, 21 a voyage, 22 the weaver's shed, 23 the kiln
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -1040,6 +1047,13 @@ namespace TC2.Core.Agents
                 // one of the village's best weavers, with work at its weaver's shed (C3.1): its wares short of what it keeps - their craft
                 double u = 0.5 * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
                 if (u > best) { best = u; choice = 22; }
+            }
+            int kiln = 0;
+            if (day && atHome && lsec < 15 * SimTime.Hour && Pottery.Wanted(w, in here, in p, out kiln))
+            {
+                // one of the village's best potters, with work at its kiln (C3.2): its jars or its hearths' pots short - their craft
+                double u = 0.5 * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
+                if (u > best) { best = u; choice = 23; }
             }
             int quarry = 0;
             if (day && atHome && lsec < 15 * SimTime.Hour && age >= 16 && age < 60 && p.Health > 0.6 && Stone.Wanted(w, in here, out quarry))
@@ -1203,6 +1217,12 @@ namespace TC2.Core.Agents
                     {
                         ref var gb = ref w.Buildings.Get(ground);
                         BeginLocal(ref p, ActivityKind.Train, WhyCode.Train, 0, gb.X + rs.Range(-8, 8), gb.Y + rs.Range(-6, 6), SimTime.Hours(Training.Session));
+                        return;
+                    }
+                case 23:
+                    {
+                        ref var kb = ref w.Buildings.Get(kiln);
+                        BeginLocal(ref p, ActivityKind.Pot, WhyCode.Pot, kiln, kb.X + rs.Range(-4, 4), kb.Y + rs.Range(-4, 4), SimTime.Hours(3.0 + 1.5 * rs.NextUnit()));
                         return;
                     }
                 case 22:
@@ -1732,7 +1752,7 @@ namespace TC2.Core.Agents
                     left = 0;
                 }
                 double made = raw - left;
-                s.Woodstore = DMath.Max(0.0, s.Woodstore - made * Hearth.CookFuel * Knowledge.Tech.PotteryFuel(HouseholdBest(hid, Knowledge.Tech.Pottery)));
+                s.Woodstore = DMath.Max(0.0, s.Woodstore - made * Hearth.CookFuel * Pottery.CookFactor(w, hid));   // (in fired pots, its own or a kiln's: D2-063, C3.2)
                 w.Metrics.PrepHours += hoursAll; w.Metrics.PrepFu += made;
                 // water: the day's litres, a pot a trip
                 double wleft = stepLitres, wh = 0;
@@ -1852,6 +1872,14 @@ namespace TC2.Core.Agents
                     // work, before the village's shared field work - as the smith's (D2-093)
                     double give = DMath.Max(hours, LabourDay * days - chore);
                     double used = Weaving.Work(w, ref p, sid, wid, give, days);
+                    if (used > hours) { smithExtra += used - hours; hours = 0; } else hours -= used;
+                }
+                if (hours > 0 && Pottery.Wanted(w, in s, in p, out int kid))
+                {
+                    // one of the village's best potters with work at its kiln (C3.2): their labour day there, less the household's own work and the
+                    // walk out to the clay, before the village's shared field work - as the smith's (D2-093)
+                    double give = DMath.Max(hours, LabourDay * days - chore);
+                    double used = Pottery.Work(w, ref p, sid, kid, give, days, true);
                     if (used > hours) { smithExtra += used - hours; hours = 0; } else hours -= used;
                 }
                 if (fuelWanted > 0 && hours > 0)

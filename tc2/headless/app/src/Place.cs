@@ -19,6 +19,7 @@ namespace TC2.Headless
             var w = SaveFile.Load(File.ReadAllBytes(a.Get("load")), out _);
             if (a.Has("list")) { ListPlaces(w); return 0; }
             if (a.Has("standing")) { Standing(w); return 0; }
+            if (a.Has("stores")) { Stores(w); return 0; }
             if (a.Has("overlaps")) { Overlaps(w, a.Int("sid", 0)); return 0; }
             if (a.Has("layout")) { Layout(w, a.Int("sid", 0) != 0 ? a.Int("sid", 0) : PickPlace(w, "big")); return 0; }
             if (a.Has("households")) { ListHouseholds(w, a.Int("sid", 0) != 0 ? a.Int("sid", 0) : PickPlace(w, "big")); return 0; }
@@ -72,9 +73,80 @@ namespace TC2.Headless
                 Console.WriteLine("#" + id + " " + w.History.NameOf(EntityRef.Settlement(id)) + ": " + s.Population + " people, " + (year - (int)(s.Founded / SimTime.Year)) + " y old, wall " + s.Wall +
                                   ", food " + (s.Granary / Math.Max(1.0, s.Population * w.Config.FoodPerAdultDay * 0.8)).ToString("0") + " d, fibre " + (s.Fibre / Math.Max(1, s.Population)).ToString("0.0") + " kg/hd, hides " + (s.Hides / Math.Max(1, s.Population)).ToString("0.0") + "/hd, goods " + (gear / Math.Max(1, s.Population)).ToString("0.00") + "/hd, loom " + s.BestLoom.ToString("0.00") +
                                   (TC2.Core.Places.Weaving.Shed(w, id) != 0 ? (s.Sheds > 1 ? ", " + s.Sheds + " WEAVER'S SHEDS" : ", WEAVER'S SHED") : "") + ", wares " + s.Wares.ToString("0") + " (worn " + (100.0 * s.WaresHeld / Math.Max(1.0, TC2.Core.Places.Goods.Target * s.Population)).ToString("0") + "%, sold " + s.WaresSold.ToString("0") + ")" +
+                                  (Pottery.Kiln(w, id) != 0 ? ", KILN" : "") + ", jars seal " + (100 * Pottery.Sealed(in s)).ToString("0") + "% (ware " + s.Pots.ToString("0") + " kg, sold " + s.PotsSold.ToString("0") + ")" +
                                   (s.Lord != 0 ? ", tributary of #" + s.Lord : "") + (lords > 0 ? ", lord of " + lords : "") + ", traders " + s.TradeIn.ToString("0.0") + (s.Market != 0 ? " market" : "") + ", line " + Architecture.Line(s.Tradition) + " roof " + Architecture.RoofName(Architecture.TraditionRoof(s.Tradition)) +
                                   " shade " + Architecture.TraditionPalette(s.Tradition) + "; huts " + huts + ", plans " + J(plan) + ", covers " + J(cover) + ", walls " + J(walls) + "; works " + works + " (" + kinds + ")" + "; households " + hl.Count + " means <1/1-1.5/1.5-3/3+ " + J(mb) + ", with cattle " + cattle + ", of 8+ " + big);
             }
+        }
+
+        /// <summary>
+        /// `place --load SAVE --stores` (C3.2 survey): each inhabited place's store - grain in FU and in years of its need, its granaries' and barns'
+        /// capacity, its last harvest in years of need, what rots a year at today's rate - its pottery (best, known, clay within reach, potters,
+        /// households cooking in pots) and its wood (in store, a day's burning and the cooking's share, the woodlot's distance); then the world's sums.
+        /// </summary>
+        static void Stores(World w)
+        {
+            var order = new System.Collections.Generic.List<int>();
+            for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id)) if (w.Settlements.Get(id).Inhabited) order.Add(id);
+            order.Sort((x, y) => { int c = w.Settlements.Get(y).Population.CompareTo(w.Settlements.Get(x).Population); return c != 0 ? c : x.CompareTo(y); });
+            double tStore = 0, tCap = 0, tRot = 0, tHarv = 0, tNeed = 0, tCook = 0, tFuel = 0; int nKnow = 0, nClay = 0, nKnowClay = 0, nPeople = 0, potters = 0, potHh = 0, allHh = 0, pClay = 0, pKnow = 0;
+            int[] yb = new int[5];
+            foreach (int id in order)
+            {
+                var s = w.Settlements.Get(id);
+                var hl = w.HouseholdsOf(id);
+                double need = 0, cook = 0; int hhPots = 0;
+                for (int i = 0; i < hl.Count; i++)
+                {
+                    double n = w.SettlementSys.HouseholdNeed(hl[i]); need += n;
+                    var mem = w.Members(hl[i]); double best = 0;
+                    for (int j = 0; j < mem.Count; j++) { double k = w.People.Get(mem[j]).KPottery; if (k > best) best = k; }
+                    double cf = Pottery.CookFactor(w, hl[i]);
+                    if (cf < 0.9) hhPots++;
+                    cook += n * Hearth.CookFuel * cf;
+                }
+                int pots = 0; var res = w.Residents(id);
+                for (int i = 0; i < res.Count; i++) { var p = w.People.Get(res[i]); if (p.Alive && p.KPottery >= 0.5f) pots++; }
+                double cap = Structures.StoreCapacity(in s), year = Math.Max(1e-9, need * SimTime.DaysPerYear);
+                double r = 0.12 * Pottery.RotFactor(in s);
+                double rotYr = Math.Min(s.Granary, cap) * r + Math.Max(0.0, s.Granary - cap) * Math.Min(0.9 * SimTime.DaysPerYear, r * Structures.HeapRot);
+                bool clay = w.Learning.Clay(s.Cell), know = (s.TechKnown & (1 << TC2.Core.Knowledge.Tech.Pottery)) != 0;
+                double sy = s.Granary / year; yb[sy < 0.25 ? 0 : sy < 0.5 ? 1 : sy < 1 ? 2 : sy < 2 ? 3 : 4]++;
+                Console.WriteLine("#" + id + " " + w.History.NameOf(EntityRef.Settlement(id)) + ": " + s.Population + " people; store " + s.Granary.ToString("0") + " FU = " + sy.ToString("0.00") + " y of need (cap " + cap.ToString("0") + " in " + s.Granaries + "g/" + s.Barns + "b)" +
+                                  ", harvest " + (s.LastHarvest / year).ToString("0.00") + " y, rots " + rotYr.ToString("0") + " FU/y (" + (100 * rotYr / Math.Max(1.0, s.LastHarvest)).ToString("0") + " % of the harvest); pottery " + s.BestPottery.ToString("0.00") + (know ? " known" : "") + (clay ? " CLAY" : " no clay") +
+                                  ", potters " + pots + (Pottery.Kiln(w, id) != 0 ? ", KILN" : "") + ", jars " + s.Jars.ToString("0") + " kg (sealed " + (100 * Pottery.Sealed(in s)).ToString("0") + "%), ware " + s.Pots.ToString("0") + " kg, sold " + s.PotsSold.ToString("0") + ", households cooking in pots " + hhPots + "/" + hl.Count + "; wood " + s.Woodstore.ToString("0") + " (" + (s.Woodstore / Math.Max(0.01, s.FuelDay)).ToString("0") + " d), burns " + s.FuelDay.ToString("0.0") + "/d, cooking " + (100 * cook / Math.Max(0.01, s.FuelDay)).ToString("0") + " %, woodlot " + s.WoodDist.ToString("0") + " m (far " + s.WoodFar + "), ration " + s.Ration.ToString("0.00"));
+                tStore += s.Granary; tCap += cap; tRot += rotYr; tHarv += s.LastHarvest; tNeed += year; tCook += cook; tFuel += s.FuelDay; nPeople += s.Population;
+                if (know) { nKnow++; pKnow += s.Population; }
+                if (clay) { nClay++; pClay += s.Population; }
+                if (know && clay) nKnowClay++;
+                potters += pots; potHh += hhPots; allHh += hl.Count;
+            }
+            // clay by the ground's shape (C3.2 survey): the largest drainage within the clay's reach, a depression (a lake bed) within it - against
+            // today's test (a stream or lake by the day's flows)
+            var near = new System.Collections.Generic.List<int>();
+            int[] th = { 10, 50, 200, 1000, 5000 }; int[] byTh = new int[th.Length]; int basin = 0, daily = 0, either200 = 0;
+            var D = w.Drainage; var Pl = w.Planet;
+            var line = new System.Text.StringBuilder("CLAY max drainage ha (basin) by village:");
+            foreach (int id in order)
+            {
+                var s = w.Settlements.Get(id);
+                w.Hazards.CellsWithin(w, s.Cell, TC2.Core.Knowledge.Learning.ClayReach, near);
+                double maxA = 0; bool bas = false;
+                for (int i = 0; i < near.Count; i++)
+                {
+                    int c = near[i]; if (!Pl.IsLand(c)) continue;
+                    if (D != null && D.BasinOf[c] < 0 && D.AreaHa[c] > maxA) maxA = D.AreaHa[c];
+                    if (Pl.InBasin != null && Pl.InBasin[c] != 0) bas = true;
+                }
+                for (int k = 0; k < th.Length; k++) if (maxA >= th[k]) byTh[k]++;
+                if (bas) basin++; if (w.Learning.Clay(s.Cell)) daily++; if (bas || maxA >= 200) either200++;
+                line.Append(" " + maxA.ToString("0") + (bas ? "b" : ""));
+            }
+            Console.WriteLine(line.ToString());
+            Console.WriteLine("CLAY villages with a reach draining >= 10/50/200/1000/5000 ha within reach " + string.Join("/", byTh) + ", a depression " + basin + ", either (200 ha) " + either200 + ", today's test " + daily + " of " + order.Count);
+            Console.WriteLine("WORLD " + order.Count + " villages, " + nPeople + " people: store " + tStore.ToString("0") + " FU = " + (tStore / Math.Max(1, tNeed)).ToString("0.00") + " y of need (capacity " + tCap.ToString("0") + "); villages by years in store <0.25/0.5/1/2/2+ " + string.Join("/", yb) +
+                              "; last harvests " + (tHarv / Math.Max(1, tNeed)).ToString("0.00") + " y; rots " + tRot.ToString("0") + " FU/y (" + (100 * tRot / Math.Max(1, tHarv)).ToString("0.0") + " % of the harvests); pottery known in " + nKnow + " (" + pKnow + " people), clay at " + nClay + " (" + pClay + " people), both " + nKnowClay +
+                              "; potters " + potters + "; households cooking in pots " + potHh + "/" + allHh + "; cooking " + (100 * tCook / Math.Max(0.01, tFuel)).ToString("0") + " % of the wood burnt");
         }
 
         /// <summary>`place --load SAVE --layout [--sid N]` (C13.1): a village's plan for plotting - its square, ring, streets, and every standing

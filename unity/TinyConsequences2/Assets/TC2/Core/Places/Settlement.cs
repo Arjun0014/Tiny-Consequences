@@ -148,6 +148,15 @@ namespace TC2.Core.Places
         public byte Sheds;              // its working weaver's sheds (C3.1b: another where its makers cannot keep up; `Workshop` is the first)
         public byte ShedShort;          // days this year its makers left its store short with fibre to weave (counted daily, weighed yearly)
         public byte ShedMore;           // another shed wanted: its makers fell short most of last year (laid out when no work is under way)
+        public int Kiln;                // its potter's kiln, at its clay (0 none; C3.2, `Pottery`)
+        public long PotEvent;           // the history record of its knowing how to fire pots (what moves its kiln; 0: its founders knew)
+        public double Pots;             // kg of fired ware in its store - made at its kiln or traded in - not yet in use
+        public double Jars;             // kg of storage jars standing in its granaries and barns: the grain they hold kept sealed
+        public float PotsOut;           // kg of pots its hearths took from the store, halving each year
+        public float PotsSold;          // kg of ware it parted with in trade, halving each year: what its makers make for the next buyers
+        public float HearthShort;       // kg of pots its hearths that cannot fire their own still lacked today (read daily)
+        public double PotBar;           // the bar for a place at its kiln: its fourth best potter's skill and practice (read daily; -1: all its potters)
+        public int PotBarId;            // and that potter (ties go to the lower id)
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
@@ -212,6 +221,7 @@ namespace TC2.Core.Places
             w.Float(MarketR); w.Float(CoreR); w.Byte(LanesShut);   // (C13.3, sim version 56)
             w.Int(Workshop); w.Long(LoomEvent); w.Double(Wares); w.Float(WaresHeld); w.Float(WaresOut); w.Float(WaresSold); w.Double(LoomBar); w.Int(LoomBarId);   // (C3.1, sim version 57)
             w.Byte(Sheds); w.Byte(ShedShort); w.Byte(ShedMore);   // (C3.1b, sim version 58)
+            w.Int(Kiln); w.Long(PotEvent); w.Double(Pots); w.Double(Jars); w.Float(PotsOut); w.Float(PotsSold); w.Float(HearthShort); w.Double(PotBar); w.Int(PotBarId);   // (C3.2, sim version 59)
         }
 
         public static Settlement Read(BinReader r)
@@ -230,6 +240,7 @@ namespace TC2.Core.Places
             s.MarketR = r.Float(); s.CoreR = r.Float(); s.LanesShut = r.Byte();
             s.Workshop = r.Int(); s.LoomEvent = r.Long(); s.Wares = r.Double(); s.WaresHeld = r.Float(); s.WaresOut = r.Float(); s.WaresSold = r.Float(); s.LoomBar = r.Double(); s.LoomBarId = r.Int();
             s.Sheds = r.Byte(); s.ShedShort = r.Byte(); s.ShedMore = r.Byte();
+            s.Kiln = r.Int(); s.PotEvent = r.Long(); s.Pots = r.Double(); s.Jars = r.Double(); s.PotsOut = r.Float(); s.PotsSold = r.Float(); s.HearthShort = r.Float(); s.PotBar = r.Double(); s.PotBarId = r.Int();
             return s;
         }
 
@@ -248,6 +259,7 @@ namespace TC2.Core.Places
             h.Add(MarketR); h.Add(CoreR); h.Add(LanesShut);
             h.Add(Workshop); h.Add(LoomEvent); h.Add(Wares); h.Add(WaresHeld); h.Add(WaresOut); h.Add(WaresSold); h.Add(LoomBar); h.Add(LoomBarId);
             h.Add(Sheds); h.Add(ShedShort); h.Add(ShedMore);
+            h.Add(Kiln); h.Add(PotEvent); h.Add(Pots); h.Add(Jars); h.Add(PotsOut); h.Add(PotsSold); h.Add(HearthShort); h.Add(PotBar); h.Add(PotBarId);
         }
 
         internal static void WriteV(BinWriter w, Vec3d v) { w.Double(v.X); w.Double(v.Y); w.Double(v.Z); }
@@ -276,9 +288,10 @@ namespace TC2.Core.Places
         public int Boat;             // its boat (a structure; 0 none; being made while not Done: C9.1)
         public byte Rebuild;         // rebuilding its house: 1 + the plan it builds (0 not; Build holds the hours put in: D2-114)
         public float Wares;          // of its goods, those that are wares from a weaver's shed (they wear slower: C3.1; never more than Gear)
+        public float Pots;           // kg of kiln pots it cooks in (a household that cannot fire its own: C3.2)
 
-        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(HomeX); w.Float(HomeY); w.Double(Larder); w.Long(Formed); w.Long(Dissolved); w.Int(FamilyName); w.Byte(Shelter); w.Float(Build); w.Int(Party); w.Double(Ready); w.Float(Water); w.Float(Indoor); w.Float(Gear); w.Int(Building); w.Int(Boat); w.Byte(Rebuild); w.Float(Wares); }
-        public static Household Read(BinReader r) => new Household { Id = r.Int(), Settlement = r.Int(), HomeX = r.Float(), HomeY = r.Float(), Larder = r.Double(), Formed = r.Long(), Dissolved = r.Long(), FamilyName = r.Int(), Shelter = r.Byte(), Build = r.Float(), Party = r.Int(), Ready = r.Double(), Water = r.Float(), Indoor = r.Float(), Gear = r.Float(), Building = r.Int(), Boat = r.Int(), Rebuild = r.Byte(), Wares = r.Float() };
-        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(HomeX); h.Add(HomeY); h.Add(Larder); h.Add(Formed); h.Add(Dissolved); h.Add(FamilyName); h.Add(Shelter); h.Add(Build); h.Add(Party); h.Add(Ready); h.Add(Water); h.Add(Indoor); h.Add(Gear); h.Add(Building); h.Add(Boat); h.Add(Rebuild); h.Add(Wares); }
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(HomeX); w.Float(HomeY); w.Double(Larder); w.Long(Formed); w.Long(Dissolved); w.Int(FamilyName); w.Byte(Shelter); w.Float(Build); w.Int(Party); w.Double(Ready); w.Float(Water); w.Float(Indoor); w.Float(Gear); w.Int(Building); w.Int(Boat); w.Byte(Rebuild); w.Float(Wares); w.Float(Pots); }
+        public static Household Read(BinReader r) => new Household { Id = r.Int(), Settlement = r.Int(), HomeX = r.Float(), HomeY = r.Float(), Larder = r.Double(), Formed = r.Long(), Dissolved = r.Long(), FamilyName = r.Int(), Shelter = r.Byte(), Build = r.Float(), Party = r.Int(), Ready = r.Double(), Water = r.Float(), Indoor = r.Float(), Gear = r.Float(), Building = r.Int(), Boat = r.Int(), Rebuild = r.Byte(), Wares = r.Float(), Pots = r.Float() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(HomeX); h.Add(HomeY); h.Add(Larder); h.Add(Formed); h.Add(Dissolved); h.Add(FamilyName); h.Add(Shelter); h.Add(Build); h.Add(Party); h.Add(Ready); h.Add(Water); h.Add(Indoor); h.Add(Gear); h.Add(Building); h.Add(Boat); h.Add(Rebuild); h.Add(Wares); h.Add(Pots); }
     }
 }

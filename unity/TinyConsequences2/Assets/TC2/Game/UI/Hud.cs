@@ -418,7 +418,7 @@ namespace TC2.Game
             else if (w.Settlements.Exists(b.Settlement))
             {
                 ref var s = ref w.Settlements.Get(b.Settlement);
-                if (Architecture.Has(b.Form) && (b.Kind == Structures.Barn || b.Kind == Structures.Granary || b.Kind == Structures.Smithy || b.Kind == Structures.Workshop)) sb.Append(Architecture.Describe(b.Form, false)).Append(" (").Append(Architecture.Why(b.Form, false)).Append(")\n");
+                if (Architecture.Has(b.Form) && (b.Kind == Structures.Barn || b.Kind == Structures.Granary || b.Kind == Structures.Smithy || b.Kind == Structures.Workshop || b.Kind == Structures.Kiln)) sb.Append(Architecture.Describe(b.Form, false)).Append(" (").Append(Architecture.Why(b.Form, false)).Append(")\n");
                 if (k.Function == Function.Store)
                 {
                     double cap = Structures.StoreCapacity(in s);
@@ -465,6 +465,20 @@ namespace TC2.Game
                       .Append("in store ").Append(s.Wares.ToString("0", CultureInfo.InvariantCulture)).Append(" of the ").Append(Weaving.Target(in s).ToString("0", CultureInfo.InvariantCulture)).Append(" it keeps; its households took ")
                       .Append(s.WaresOut.ToString("0", CultureInfo.InvariantCulture)).Append(" lately and wear wares for ").Append((100.0 * System.Math.Min(1.0, s.WaresHeld / System.Math.Max(1.0, Goods.Target * s.Population))).ToString("0", CultureInfo.InvariantCulture))
                       .Append(" % of its people").Append(s.WaresSold > 0.5f ? "; sold " + s.WaresSold.ToString("0", CultureInfo.InvariantCulture) + " lately" : "").Append("; fibre ").Append(s.Fibre.ToString("0", CultureInfo.InvariantCulture)).Append(" kg in store\n");
+                }
+                else if (b.Kind == Structures.Kiln)
+                {
+                    // the potter's kiln (C3.2): its potters - the village's best - what they fired, the jars its granaries hold, the pots its hearths took, sold
+                    var makers = new System.Collections.Generic.List<string>(); var res = w.Residents(b.Settlement);
+                    for (int i = 0; i < res.Count; i++) if (Pottery.Maker(in s, in w.People.Get(res[i]), w.Now)) makers.Add(w.History.NameOf(EntityRef.Person(res[i])));
+                    double held = System.Math.Min(s.Granary, Structures.StoreCapacity(in s));
+                    sb.Append("an updraught kiln by ").Append(place).Append("'s clay, ").Append(Pottery.Dist(w, in s, _building).ToString("0", CultureInfo.InvariantCulture)).Append(" m out: its best potters dig the clay, throw and fire jars and pots here on the village's wood; ")
+                      .Append(b.Stock.ToString("N0", CultureInfo.InvariantCulture)).Append(" kg fired in ").Append(b.Use.ToString("N0", CultureInfo.InvariantCulture)).Append(" hours\n")
+                      .Append("its potters: ").Append(makers.Count > 0 ? string.Join(", ", makers) : "nobody").Append('\n')
+                      .Append("jars in its granaries: ").Append(s.Jars.ToString("0", CultureInfo.InvariantCulture)).Append(" kg, keeping ").Append((100.0 * Pottery.Sealed(in s)).ToString("0", CultureInfo.InvariantCulture)).Append(" % of the ")
+                      .Append(held.ToString("0", CultureInfo.InvariantCulture)).Append(" days' grain there sealed; ware in store ").Append(s.Pots.ToString("0", CultureInfo.InvariantCulture)).Append(" of the ").Append(Pottery.Target(in s).ToString("0", CultureInfo.InvariantCulture)).Append(" kg it keeps")
+                      .Append(s.PotsOut > 0.5f ? "; hearths that cannot fire their own took " + s.PotsOut.ToString("0", CultureInfo.InvariantCulture) + " kg lately" : "")
+                      .Append(s.PotsSold > 0.5f ? "; sold " + s.PotsSold.ToString("0", CultureInfo.InvariantCulture) + " kg lately" : "").Append('\n');
                 }
                 else if (b.Kind == Structures.Market)
                     sb.Append("stalls on the green: traders come from up to ").Append((Trade.MarketReach / 1000.0).ToString("0", CultureInfo.InvariantCulture))

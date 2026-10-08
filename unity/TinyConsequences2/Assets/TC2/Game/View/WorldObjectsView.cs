@@ -27,10 +27,11 @@ namespace TC2.Game
         readonly System.Collections.Generic.List<(Vector3 pos, Quaternion rotation, float scale)> _hullAt = new System.Collections.Generic.List<(Vector3 pos, Quaternion rotation, float scale)>();
         readonly System.Collections.Generic.List<int> _hullSeats = new System.Collections.Generic.List<int>();
         /// <summary>The village works by structure kind (C1.1; the civilisation kit, D2-089); null where a kind has no model yet.</summary>
-        readonly Instancer[] _works = new Instancer[24];
+        readonly Instancer[] _works = new Instancer[25];   // (by structure kind: the kiln is 24, C3.2)
         Instancer[] _homes, _frames;   // homes by plan and roof form; the timber framing of framed ones (D2-114)
         Instancer _chimneys, _plinths, _outshuts, _pens, _stalls, _cross, _gardens;   // overlays, pens, the market, kitchen gardens (D2-114)
         Instancer _tenters;   // cloth stretched to dry by a weaver's shed while its village has wares (C3.1)
+        Instancer _clayPits, _jars, _ware;   // the clay pit by a kiln, sealed jars by a granary, ware set out for sale (C3.2)
         Instancer _stonePiles;     // stone carried home and stacked by the store (C1.3)
         Instancer[] _trees;
         Material _mat;
@@ -108,6 +109,11 @@ namespace TC2.Game
             _works[Structures.BoatShed] = new Instancer(Models.Get("boat_shed", ProcMeshes.House), _mat, true);   // (C9.2b)
             _works[Structures.Workshop] = new Instancer(Models.Get("weavers_shed", ProcMeshes.House), _mat, true);   // (C3.1)
             _tenters = new Instancer(Models.Get("tenter", ProcMeshes.Granary), _mat, true);
+            _works[Structures.Kiln] = new Instancer(Models.Get("kiln", ProcMeshes.House), _mat, true);   // (C3.2)
+            _kilnTop = new Vector3(2.1f, 2.4f, -0.2f);   // (the vent at the dome's crown, as the kit builds it - its x mirrored, its y to -z)
+            _clayPits = new Instancer(Models.Get("clay_pit", ProcMeshes.Granary), _mat, true);
+            _jars = new Instancer(Models.Get("storage_jars", ProcMeshes.Granary), _mat, true);
+            _ware = new Instancer(Models.Get("ware_stack", ProcMeshes.Granary), _mat, true);
             _hay = new Instancer(Models.Get("haystack", ProcMeshes.Granary), _mat, true);
             _woodpiles = new Instancer(ProcMeshes.Woodpile(), _mat, true);   // the village's woodstore, by the homes (D2-081)
             _trees = new Instancer[TreeModels.Length];
@@ -116,6 +122,7 @@ namespace TC2.Game
         }
 
         Vector3 _forgeTop;   // the smithy's chimney top in its model's frame (C1.4): smoke while a smith works there
+        Vector3 _kilnTop;    // the kiln's vent in its model's frame (C3.2): smoke while a potter works at it
 
         readonly List<Vector4> _smoke = new List<Vector4>();   // chimney tops with smoke (xyz) and how much (w)
         readonly List<Vector4> _lights = new List<Vector4>();  // villages at night (xyz) and how many of their homes are lit (w)
@@ -241,7 +248,7 @@ namespace TC2.Game
             {
                 for (int i = 0; i < _homes.Length; i++) _homes[i].Draw(cam);
                 for (int i = 0; i < _frames.Length; i++) _frames[i].Draw(cam);
-                _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam); _gardens.Draw(cam); _tenters.Draw(cam);
+                _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam); _gardens.Draw(cam); _tenters.Draw(cam); _clayPits.Draw(cam); _jars.Draw(cam); _ware.Draw(cam);
                 _stonePiles.Draw(cam);
                 for (int i = 0; i < _works.Length; i++) _works[i]?.Draw(cam);
                 _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _woodpiles.Draw(cam);
@@ -410,7 +417,7 @@ namespace TC2.Game
             var P = w.Planet;
             for (int i = 0; i < _homes.Length; i++) _homes[i].Clear();
             for (int i = 0; i < _frames.Length; i++) _frames[i].Clear();
-            _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear(); _gardens.Clear(); _tenters.Clear();
+            _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear(); _gardens.Clear(); _tenters.Clear(); _clayPits.Clear(); _jars.Clear(); _ware.Clear();
             _stonePiles.Clear();
             for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
             _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _woodpiles.Clear();
@@ -581,6 +588,9 @@ namespace TC2.Game
                 }
             }
             if (b.Kind == Structures.BogPits) m = m * Matrix4x4.Scale(new Vector3(1.4f, 1.4f, 1.4f));   // (larger than life, as the mine: C5.2b)
+            if (b.Kind == Structures.Kiln) m = m * Matrix4x4.Scale(new Vector3(1.15f, 1.15f, 1.15f));   // (a little larger than life to read, as the smithy: C3.2)
+            if (b.Kind == Structures.Kiln && b.Left == 0) Kiln(w, in s, in b, m);
+            if ((b.Kind == Structures.Granary || b.Kind == Structures.Barn) && b.Left == 0) Jars(in s, in b, m);
             if (b.Kind == Structures.Mine)
             {
                 // the spoil heap and the workings grow with the ore dug (C5.1: kg carried out of the ground)
@@ -589,7 +599,7 @@ namespace TC2.Game
                 m = m * Matrix4x4.Scale(new Vector3(dug, dug, dug));
             }
             Color look = Color.Lerp(moss, Color.white, 0.45f + 0.55f * cond);
-            if (Architecture.Has(b.Form) && (b.Kind == Structures.Barn || b.Kind == Structures.Granary || b.Kind == Structures.Smithy || b.Kind == Structures.Workshop))
+            if (Architecture.Has(b.Form) && (b.Kind == Structures.Barn || b.Kind == Structures.Granary || b.Kind == Structures.Smithy || b.Kind == Structures.Workshop || b.Kind == Structures.Kiln))
             {
                 // (D2-114) roofed with what its village roofs with, the smithy's walls of its village's walls
                 Color roof = Color.Lerp(moss, RoofColour(w, in b, Architecture.CoverOf(b.Form), bid), 0.45f + 0.55f * cond);
@@ -608,6 +618,36 @@ namespace TC2.Game
             }
             inst.Add(0, look, m);
             if (b.Kind == Structures.Market) Stalls(w, P, in s, bid, ex);
+        }
+
+        /// <summary>
+        /// The kiln's place (C3.2): smoke from its vent while a potter of the village works at it (the simulation's own work, never for show); the clay
+        /// pit dug behind it, wider as the ware fired there grows (kg made: the clay dug); ware set out in straw while the village holds more than it
+        /// keeps - ware to sell.
+        /// </summary>
+        void Kiln(TC2.Core.Simulation.World w, in Settlement s, in Building b, Matrix4x4 m)
+        {
+            var res = w.Residents(b.Settlement);
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var q = ref w.People.Get(res[i]);
+                if (q.Act != ActivityKind.Pot || q.At != b.Settlement || q.Step == StepKind.Travel || w.Now < q.TA) continue;   // (there, not on the way)
+                Vector3 top = m.MultiplyPoint3x4(_kilnTop);
+                _smoke.Add(new Vector4(top.x, top.y, top.z, 1.4f));
+                break;
+            }
+            float dug = 0.75f + 0.35f * Mathf.Clamp01(b.Stock / 20000f) + 0.3f * Mathf.Clamp01((b.Stock - 20000f) / 150000f);
+            _clayPits.Add(0, Color.white, m * Matrix4x4.Translate(new Vector3(0f, 0f, -7.2f)) * Matrix4x4.Scale(new Vector3(dug, dug, dug)));   // (behind it: the kit's +y)
+            if (s.Pots > Pottery.Kept * s.Population + 20.0)
+                _ware.Add(0, Color.white, m * Matrix4x4.Translate(new Vector3(-3.4f, 0f, 3.9f)) * Matrix4x4.Rotate(Quaternion.Euler(0f, 20f, 0f)));
+        }
+
+        /// <summary>Storage jars standing by a granary or barn while its village's jars keep a good part of its grain sealed (C3.2: `Pottery.Sealed`).</summary>
+        void Jars(in Settlement s, in Building b, Matrix4x4 m)
+        {
+            if (s.Jars < 25.0 || Pottery.Sealed(in s) < 0.3) return;
+            Vector3 at = b.Kind == Structures.Barn ? new Vector3(8.6f, 0f, 1.6f) : new Vector3(2.6f, 0f, 0.5f);
+            _jars.Add(0, Color.white, m * Matrix4x4.Translate(at));
         }
 
         static readonly Color[] ClothDyes = { new Color(0.42f, 0.52f, 0.78f, 1f), new Color(0.86f, 0.46f, 0.36f, 1f), new Color(1.0f, 0.86f, 0.46f, 1f), new Color(1.0f, 0.98f, 0.92f, 1f) };
@@ -967,6 +1007,15 @@ namespace TC2.Game
                 ref var s = ref w.Settlements.Get(sid);
                 if (!s.Inhabited) continue;
                 if (Vector3.Distance(PlanetGeo.Surface(P, s.Anchor), Rig.FocusPoint) > 2500f) continue;
+                // (the village's works and their ground: no yard tree is drawn on a work - one grew out of a kiln's dome, C3.2)
+                _workDiscs.Clear();
+                var wl = w.BuildingsOf(sid);
+                for (int i = 0; i < wl.Count; i++)
+                {
+                    ref var wb = ref w.Buildings.Get(wl[i]);
+                    if (Structures.IsHome(wb.Kind) || Boats.IsBoat(wb.Kind) || Homes.Fallen(in wb, w.Now)) continue;
+                    _workDiscs.Add(new Vector3(wb.X, wb.Y, (float)Footprints.WorkR(wb.Kind) * 1.2f + 4f));   // (a yard tree's crown is ~3 m across; works are drawn a little larger than life)
+                }
                 var hhs = w.HouseholdsOf(sid);
                 for (int i = 0; i < hhs.Count; i++)
                 {
@@ -978,6 +1027,7 @@ namespace TC2.Game
                         double a = away + (KeyedRng.Unit(KeyedRng.Mix(hh + (ulong)k)) - 0.5) * 1.6;
                         double r = 9.0 + 6.0 * KeyedRng.Unit(KeyedRng.Mix(hh + 11 + (ulong)k));
                         double x = hd.HomeX + System.Math.Sin(a) * r, y = hd.HomeY + System.Math.Cos(a) * r;
+                        if (OnWork(x, y)) continue;
                         int kind = k == 2 ? Bush : BroadleafRound;
                         float sc = k == 2 ? 0.8f : 0.55f + 0.2f * k;
                         _trees[kind].Add(1, new Color(0.98f, 0.98f, 0.98f, 0.98f), Place(P, s, x, y, k * 70f, sc * ex));
@@ -985,6 +1035,19 @@ namespace TC2.Game
                     }
                 }
             }
+        }
+
+        readonly List<Vector3> _workDiscs = new List<Vector3>();   // a village's works (x, y, radius) while its yard trees are laid out
+
+        bool OnWork(double x, double y)
+        {
+            for (int i = 0; i < _workDiscs.Count; i++)
+            {
+                var d = _workDiscs[i];
+                double dx = x - d.x, dy = y - d.y;
+                if (dx * dx + dy * dy < (double)d.z * d.z) return true;
+            }
+            return false;
         }
 
         void RebuildFire(TC2.Core.Simulation.World w)

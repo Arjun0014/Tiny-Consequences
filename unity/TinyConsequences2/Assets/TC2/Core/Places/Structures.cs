@@ -50,6 +50,7 @@ namespace TC2.Core.Places
         public const byte PlankBoat = 21;                                             // a household's boat of planks (C9.2b)
         public const byte BoatShed = 22;                                              // the village's boat shed at the landing, where plank boats are built (C9.2b)
         public const byte Workshop = 23;                                              // the village's weaver's shed, where its best weavers make its wares (C3.1)
+        public const byte Kiln = 24;                                                  // the village's potter's kiln at its clay, where its best potters fire its jars and pots (C3.2)
 
         /// <summary>FU of grain a granary keeps well (~7.5 t: a raised timber store of ~10 m3).</summary>
         public const double GranaryHolds = 10000.0;
@@ -64,7 +65,7 @@ namespace TC2.Core.Places
 
         static KindInfo[] Build()
         {
-            var t = new KindInfo[24];
+            var t = new KindInfo[25];
             t[Hut] = new KindInfo("hut", Function.Dwelling, Zone.Homes, 3.0, Construction.HutHours, Construction.HutWood, 20, 80, 0);
             t[House] = new KindInfo("house", Function.Dwelling, Zone.Homes, 4.5, Construction.HouseHours, Construction.HouseWood, 60, 300, 0);
             t[Well] = new KindInfo("well", Function.Water, Zone.Core, 2.0, Construction.WellHours, Construction.WellWood, 150, 600, 0);
@@ -81,6 +82,7 @@ namespace TC2.Core.Places
             t[PlankBoat] = new KindInfo("plank boat", Function.Boat, Zone.Shore, 3.0, Boats.PlankHours, Boats.PlankWood, 8, 3, 0);
             t[BoatShed] = new KindInfo("boat shed", Function.Boatyard, Zone.Shore, 5.5, Boats.ShedHours, Boats.ShedWood, 30, 60, 0);   // (a naust: a long low timber shed, open to the sea)
             t[Workshop] = new KindInfo("weaver's shed", Function.Craft, Zone.Edge, 6.6, Weaving.ShedHours, Weaving.ShedWood, 40, 120, 0);   // (looms in a long shed with wide bays for light; tenters and a dye vat outside)
+            t[Kiln] = new KindInfo("potter's kiln", Function.Craft, Zone.Site, 5.0, Pottery.KilnHours, Pottery.KilnWood, 40, 150, 0);   // (an updraught kiln of clay and stone, a drying shed, the clay pit beside)
             return t;
         }
 
@@ -175,6 +177,10 @@ namespace TC2.Core.Places
                 long first = w.Buildings.Exists(s.Workshop) ? w.Buildings.Get(s.Workshop).Event : 0;
                 Begin(w, sid, Workshop, first, CauseRel.CausedBy); return;
             }
+            // a village that can fire pots, with clay within reach, whose granaries' grain lacks jars for two months of a potter's work: a kiln at its
+            // clay (C3.2) - after water and a store, never while walls rise
+            if (Pottery.KilnWanted(w, in s))
+            { Begin(w, sid, Kiln, s.PotEvent != 0 ? s.PotEvent : s.FoundedEvent, CauseRel.EnabledBy); return; }
             // traders come often to deal: a market on its green (C1.6)
             if (s.Market == 0 && s.TradeIn >= Trade.MarketFrom && s.Population >= 100 && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
             { Begin(w, sid, Market, 0, CauseRel.None); return; }
@@ -253,6 +259,7 @@ namespace TC2.Core.Places
             if (b.Kind == Market) { s.Market = bid; if (s.MarketR < MarketFirst) { s.MarketR = (float)MarketFirst; Opened(w, sid); } }   // (its market place: C13.3)
             if (b.Kind == BoatShed) s.Shed = bid;
             if (b.Kind == Workshop) { if (s.Workshop == 0) s.Workshop = bid; s.Sheds++; Weaving.Bar(w, sid); }   // (its best weavers have the looms from today: C3.1, C3.1b)
+            if (b.Kind == Kiln) { s.Kiln = bid; Pottery.Bar(w, sid); }   // (its best potters work there from today: C3.2)
             if (b.Kind == Smithy)
             {
                 s.Smithy = bid;
@@ -288,6 +295,7 @@ namespace TC2.Core.Places
             if (kind == Market) s.Market = id;
             if (kind == BoatShed) s.Shed = id;
             if (kind == Workshop) { if (s.Workshop == 0) s.Workshop = id; s.Sheds++; Weaving.Bar(w, sid); }
+            if (kind == Kiln) { s.Kiln = id; Pottery.Bar(w, sid); }
             return id;
         }
 
@@ -309,6 +317,7 @@ namespace TC2.Core.Places
             if (b.Kind == Ground && s.Ground == bid) s.Ground = 0;
             if (b.Kind == Market && s.Market == bid) s.Market = 0;
             if (b.Kind == BoatShed && s.Shed == bid) s.Shed = 0;
+            if (b.Kind == Kiln && s.Kiln == bid) s.Kiln = 0;   // (its potters fire no more; another is raised where its jars are still wanted: C3.2)
             if (b.Kind == Workshop)
             {
                 // (one shed fewer; the first lost, another standing takes its place: C3.1b)
@@ -375,6 +384,7 @@ namespace TC2.Core.Places
             if (kind == Mine && s.OreCell > 0) { s.SphereToLocal(w.Planet.Grid.Center[s.OreCell - 1], w.Planet.Radius, out double mx, out double my); AtSite(w, sid, kind, mx, my, out x, out y); return; }   // (at the ore)
             if (kind == Quarry && s.StoneCell > 0) { s.SphereToLocal(w.Planet.Grid.Center[s.StoneCell - 1], w.Planet.Radius, out double qx, out double qy); AtSite(w, sid, kind, qx, qy, out x, out y); return; }   // (at the rock)
             if (kind == BoatShed && Boats.ShedSpot(w, sid, out x, out y)) return;   // (at the head of the landing: C9.2b)
+            if (kind == Kiln && Pottery.Site(w, sid, out double kx, out double ky)) { AtSite(w, sid, kind, kx, ky, out x, out y); return; }   // (at the clay: C3.2)
             var k = Of(kind);
             var P = w.Planet;
             double r0, dir, r1, wr = Footprints.WorkR(kind);
