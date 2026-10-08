@@ -57,17 +57,22 @@ namespace TC2.Tests.Core
             Assume.That(bid != 0, "a household with a house");
             ref var s = ref w.Settlements.Get(sid);
             int people = w.Members(hid).Count;
-            // poor and few: a one-room cottage
+            // poor and few, nothing in the village's granary: a one-room cottage
             ref var hh = ref w.Households.Get(hid);
-            hh.Larder = 0; hh.Gear = 0f;
+            double granaryWas = s.Granary;
+            hh.Larder = 0; hh.Gear = 0f; s.Granary = 0;
             int poor = Architecture.HomeForm(w, sid, hid, bid, Construction.House);
-            Console.WriteLine("household of " + people + ", nothing in hand: " + Architecture.Describe(poor, true));
-            int cattle = 0;
+            double poorMeans = Architecture.Means(w, hid);
+            Console.WriteLine("household of " + people + ", nothing in hand (means " + poorMeans.ToString("0.00") + "): " + Architecture.Describe(poor, true));
+            int cattle = 0, small = 0;
             var beasts = w.BeastsOf(hid);
-            for (int i = 0; i < beasts.Count; i++) { var bb = w.Beasts.Get(beasts[i]); if (bb.Alive && bb.Kind == Livestock.Cattle) cattle++; }
-            if (cattle > 0 || people >= 8) Assert.AreEqual(Architecture.Long, Architecture.PlanOf(poor), "cattle (or many) want a byre-house");
-            else if (people <= 3) Assert.AreEqual(Architecture.Small, Architecture.PlanOf(poor));
+            for (int i = 0; i < beasts.Count; i++) { var bb = w.Beasts.Get(beasts[i]); if (!bb.Alive) continue; if (bb.Kind == Livestock.Cattle) cattle++; else small++; }
+            if (cattle > 0 || small >= 4 || people >= 7) Assert.AreEqual(Architecture.Long, Architecture.PlanOf(poor), "beasts (or many) want a byre-house");
+            else if (people <= 2 && poorMeans < 1.0 || people <= 3 && poorMeans < 0.6) Assert.AreEqual(Architecture.Small, Architecture.PlanOf(poor));
             else Assert.AreEqual(Architecture.Cottage, Architecture.PlanOf(poor));
+            // a village with grain in its granary: its people's means are the more (they have hours to build)
+            s.Granary = s.Population * w.Config.FoodPerAdultDay * 365.0;
+            Assert.AreEqual(1.0, Architecture.Means(w, hid) - poorMeans, 1e-9, "a year of food in the village's granary");
             // the best off in a village of 150: a hall-house with its chimney
             hh.Larder = 1e6; hh.Gear = 50f;
             int popWas = s.Population; s.Population = 150;
@@ -82,7 +87,7 @@ namespace TC2.Tests.Core
             int tiled = Architecture.HomeForm(w, sid, hid, bid, Construction.House);
             Console.WriteLine("knowing pottery (clay near: " + clay + "): " + Architecture.Describe(tiled, true));
             if (clay) Assert.AreEqual(Architecture.Tile, Architecture.CoverOf(tiled));
-            s.Population = popWas;
+            s.Population = popWas; s.Granary = granaryWas;
         }
 
         [Test]

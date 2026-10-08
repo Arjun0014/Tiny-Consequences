@@ -57,7 +57,8 @@ namespace TC2.Core.History
         {
             if (hh.Building == 0 || !w.Buildings.Exists(hh.Building)) return "camp";
             ref var b = ref w.Buildings.Get(hh.Building);
-            return b.Kind == Structures.House ? (b.Mat >= 1 ? "house on stone footings" : "house") : "hut";
+            string house = Architecture.Has(b.Form) ? Architecture.Short(b.Form) : "house";   // (how it was built: D2-114)
+            return b.Kind == Structures.House ? (b.Mat >= 1 ? house + " on stone footings" : house) : "hut";
         }
 
         /// <summary>The village they were born in (their birth's record), or 0.</summary>

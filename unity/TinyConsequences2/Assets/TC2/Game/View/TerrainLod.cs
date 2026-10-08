@@ -793,6 +793,7 @@ namespace TC2.Game
         }
 
         static readonly Color Earth = new Color(0.56f, 0.47f, 0.35f), Trodden = new Color(0.52f, 0.54f, 0.34f), Road = new Color(0.58f, 0.50f, 0.38f);
+        static readonly Color Beaten = new Color(0.69f, 0.62f, 0.49f);   // (a training ground's dust, paler than ploughland: D2-114)
         // roads: the villages' own routes, smoothed, indexed by the cells they pass (rebuilt now and then)
         readonly System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<Vector4>> _roads = new System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<Vector4>>();   // (segment ends; w: how worn, C4.1)
         readonly System.Collections.Generic.List<TC2.Core.Agents.Way> _ways = new System.Collections.Generic.List<TC2.Core.Agents.Way>();
@@ -873,6 +874,7 @@ namespace TC2.Game
         readonly System.Collections.Generic.List<int> _near = new System.Collections.Generic.List<int>();
         /// <summary>Works out on the land near this patch - quarries (C1.3): cut rock where they stand, no fields or woods over them.</summary>
         readonly System.Collections.Generic.List<Vec3d> _sites = new System.Collections.Generic.List<Vec3d>();
+        readonly System.Collections.Generic.List<Vector4> _grounds = new System.Collections.Generic.List<Vector4>();   // training grounds (xyz) and how beaten (w)
 
         /// <summary>Packed earth on the square, yards round the houses, footpaths from each door to the square (and how much is bare earth).</summary>
         static Color VillageGround(TC2.Core.Simulation.World w, in TC2.Core.Places.Settlement s, int sid, double x, double y, Color col, out float bare)
@@ -887,7 +889,7 @@ namespace TC2.Game
                 ref var h = ref w.Households.Get(hhs[i]);
                 double hx = h.HomeX - x, hy = h.HomeY - y;
                 double dh = System.Math.Sqrt(hx * hx + hy * hy);
-                earth = Mathf.Max(earth, (1f - Edge(4.5f, 8.5f, (float)dh)) * 0.75f);   // the yard
+                earth = Mathf.Max(earth, (1f - Edge(3.5f, 6.5f, (float)dh)) * 0.6f);   // the yard by the door (D2-114: before 8.5 m - in a town the yards ran together into one bare disc)
                 // the path from the door to the square
                 double ax = s.SquareX - h.HomeX, ay = s.SquareY - h.HomeY;
                 double len2 = ax * ax + ay * ay;
@@ -946,6 +948,19 @@ namespace TC2.Game
                         if (dq < reach) _sites.Add(at);
                     }
                 }
+                // the beaten earth of training grounds (C1.5, D2-114): bare by the hours of practice put in there (b.Use) - none before
+                _grounds.Clear();
+                for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                {
+                    ref var st = ref w.Settlements.Get(sid);
+                    if (st.Ground == 0 || !w.Buildings.Exists(st.Ground)) continue;
+                    ref var gb = ref w.Buildings.Get(st.Ground);
+                    float worn = Mathf.Clamp01(gb.Use / 1500f) * (gb.Left == 0 ? 1f : (float)TC2.Core.Places.Homes.Condition(in gb, w.Now));
+                    if (worn <= 0.02f) continue;
+                    Vec3d at = st.LocalToSphere(gb.X, gb.Y, P.Radius);
+                    double dq = System.Math.Acos(System.Math.Min(1.0, at.X * pc.x + at.Y * pc.y + at.Z * pc.z));
+                    if (dq < reach) _grounds.Add(new Vector4((float)at.X, (float)at.Y, (float)at.Z, worn));
+                }
             }
             for (int o = 0; o < cols.Length; o++)
             {
@@ -990,6 +1005,14 @@ namespace TC2.Game
                         site = Mathf.Max(site, 1f - Edge(16f, 28f, (float)(ang * P.Radius)));
                     }
                     farm *= 1f - site;
+                    float beaten = 0f;
+                    for (int q = 0; q < _grounds.Count; q++)
+                    {
+                        Vector4 gv = _grounds[q];
+                        double ang = System.Math.Acos(System.Math.Min(1.0, gv.x * d.X + gv.y * d.Y + gv.z * d.Z));
+                        beaten = Mathf.Max(beaten, (1f - Edge(6.5f, 10f, (float)(ang * P.Radius))) * gv.w);
+                    }
+                    farm *= 1f - beaten;
                     // farmland: the shader draws plots, furrows and hedges in the village's own grid
                     p.Plots[o] = Vector2.zero; p.Farm[o] = Vector2.zero;
                     if (owner != 0 && w.Settlements.Exists(owner))
@@ -1015,6 +1038,7 @@ namespace TC2.Game
                         clear = Mathf.Max(clear, 1f - Edge(95f, 150f, (float)System.Math.Sqrt(vx * vx + vy * vy)));   // (no wood in the village)
                         VillageVerts++;
                     }
+                    if (beaten > 0f) { col = Color.Lerp(col, Beaten, beaten * 0.85f); bare = Mathf.Max(bare, beaten); clear = Mathf.Max(clear, beaten); }
                     float road = RoadAt(P, d, c, quad) * roadLod;
                     bare = Mathf.Max(bare, road);
                     if (road > 0) col = Color.Lerp(col, Road, road * 0.85f);

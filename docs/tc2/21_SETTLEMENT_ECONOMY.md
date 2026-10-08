@@ -98,6 +98,14 @@ different because their people and their ground differ - never by faction.
 drifts at a founding (one trait in three foundings); a building's form - plan, roof, cover, walls, chimney - is recorded when it is raised from
 its household's size and means and its village's size, lots, ground and knowledge; households of means rebuild old or poor houses with their own
 labour and the village's wood, so a town's core densifies as it grows rich (C13's first piece).
+**A household's means for its house (D2-114, session 10)**: the economy keeps a village's grain in its granary - a household's larder holds days,
+its clothes and tools meet its need, and herds are rare in crowded centuries - so a first measure (beasts, larder against a month, clothes) put
+94 % of a world's households between 1.0 and 1.5 and nearly every house was the same cottage. `Architecture.Means` now reads what does set
+households and villages apart: beasts (cattle 1, small stock a quarter, four at most), a boat (plank 0.75, dugout 0.25), goods held beyond need
+(inherited and made over, two at most), working hands beyond the first (0.3 each: the labour to raise and keep a larger house) and the years of food
+in the village's granary (one and a half at most: grain in hand frees its people's hours). Early villages with grain and herds build longhouses and
+framed houses; the crowded towns of later centuries build one-room cottages for the many, two storeys on dear central lots and one hall for each
+150 people (`HallRoom`). A real household wealth - land held, crafts sold, rents - belongs to C3/C10 and will replace this measure.
 
 ## 7. Inspectors (C12; part of every slice)
 

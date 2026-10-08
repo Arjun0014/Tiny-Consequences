@@ -412,11 +412,13 @@ namespace TC2.Game
                 if (b.Household != 0 && w.Households.Exists(b.Household)) sb.Append("home of the ").Append(w.History.NameOf(EntityRef.Household(b.Household))).Append("s (").Append(w.Members(b.Household).Count).Append(" people)\n");
                 else sb.Append("standing empty").Append(b.Last != 0 ? "; the " + w.History.NameOf(EntityRef.Household(b.Last)) + "s lived in it last" : "").Append('\n');
                 if (b.Style != 0) sb.Append("raised by the ").Append(w.History.NameOf(EntityRef.Household(b.Style))).Append("s\n");
+                if (Architecture.Has(b.Form) && b.Kind == Structures.House) sb.Append(Architecture.Describe(b.Form, true)).Append(" (").Append(Architecture.Why(b.Form, true)).Append(")\n");   // (how it was built: D2-114)
                 if (b.Kind == Structures.House) sb.Append(b.Mat >= 1 ? "on stone footings (" + b.Stone.ToString("0", CultureInfo.InvariantCulture) + " loads of stone): it stands twice as long once left\n" : "on earth-fast posts: no stone near enough\n");
             }
             else if (w.Settlements.Exists(b.Settlement))
             {
                 ref var s = ref w.Settlements.Get(b.Settlement);
+                if (Architecture.Has(b.Form) && (b.Kind == Structures.Barn || b.Kind == Structures.Granary || b.Kind == Structures.Smithy)) sb.Append(Architecture.Describe(b.Form, false)).Append(" (").Append(Architecture.Why(b.Form, false)).Append(")\n");
                 if (k.Function == Function.Store)
                 {
                     double cap = Structures.StoreCapacity(in s);

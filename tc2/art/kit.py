@@ -1008,6 +1008,28 @@ def outshut(name, seed=24):
     return k.finish()
 
 
+def garden(name, seed=27):
+    """A household's kitchen garden behind its house (D2-114): beds of dug earth in rows of greens, wattle hurdles on three sides (the open side
+    toward the house, kit -y). 6 x 4.4 m; the game scales it by the household's hands and turns it with the house."""
+    k = Kit(name, seed)
+    k.box((0, 0, 0.025), (6.0, 4.4, 0.05), srgb(0.44, 0.34, 0.24))            # the plot's trodden earth
+    greens = (srgb(0.30, 0.47, 0.20), srgb(0.38, 0.52, 0.24), srgb(0.27, 0.40, 0.22), srgb(0.46, 0.55, 0.30))
+    for i in range(4):
+        y = -1.45 + i * 0.97
+        k.box((0, y, 0.08), (5.3, 0.62, 0.08), srgb(0.33, 0.25, 0.18))       # a raised bed
+        g = greens[i % len(greens)]
+        for j in range(7):
+            x = -2.3 + j * 0.77 + k.rng.uniform(-0.08, 0.08)
+            h = k.rng.uniform(0.22, 0.36) if i != 2 else k.rng.uniform(0.45, 0.6)   # (a row of beans on short poles)
+            k.box((x, y + k.rng.uniform(-0.06, 0.06), 0.12 + h / 2.0), (0.34, 0.34, h), g, rot_z=k.rng.uniform(0, 1.2))
+    wattle = srgb(0.46, 0.35, 0.23)
+    for (cx, cy, lx, ly) in ((0.0, 2.2, 6.0, 0.08), (-3.0, 0.0, 0.08, 4.4), (3.0, 0.0, 0.08, 4.4)):
+        k.box((cx, cy, 0.42), (lx, ly, 0.84), wattle)                            # the hurdles
+    for (x, y) in ((-3.0, 2.2), (3.0, 2.2), (-3.0, -2.2), (3.0, -2.2), (0.0, 2.2)):
+        k.box((x, y, 0.5), (0.12, 0.12, 1.0), srgb(0.36, 0.27, 0.18))          # stakes
+    return k.finish()
+
+
 def homes():
     objs = []
     for plan in ("small", "cottage", "long", "two", "hall"):
@@ -1017,6 +1039,7 @@ def homes():
     objs.append(chimney("chimney"))
     objs.append(plinth("plinth"))
     objs.append(outshut("outshut"))
+    objs.append(garden("garden"))
     return objs
 
 
@@ -1140,16 +1163,7 @@ def market_cross(name, seed=67):
 
 def build_all():
     objs = []
-    objs.append(house("house_cottage", 7.0, 5.0, 2.6, 42, THATCH, seed=11))
-    objs.append(house("house_timber", 8.0, 5.4, 3.2, 45, TILE, wall=srgb(0.90, 0.86, 0.76), frame=True, seed=12))
-    objs.append(house("house_long", 11.5, 5.2, 2.2, 40, THATCH, wall=WALL2, chimney=True, seed=13))
-    objs.append(house("house_small", 4.6, 3.8, 2.3, 44, THATCH, wall=srgb(0.80, 0.74, 0.62), chimney=False, seed=14))
-    # the same homes on earth-fast posts (no stone footings: C1.3 - only villages that quarry stone raise houses on a stone sill)
-    objs.append(house("house_cottage_posts", 7.0, 5.0, 2.6, 42, THATCH, seed=11, plinth=False))
-    objs.append(house("house_timber_posts", 8.0, 5.4, 3.2, 45, TILE, wall=srgb(0.90, 0.86, 0.76), frame=True, seed=12, plinth=False))
-    objs.append(house("house_long_posts", 11.5, 5.2, 2.2, 40, THATCH, wall=WALL2, chimney=True, seed=13, plinth=False))
-    objs.append(house("house_small_posts", 4.6, 3.8, 2.3, 44, THATCH, wall=srgb(0.80, 0.74, 0.62), chimney=False, seed=14, plinth=False))
-    objs.extend(homes())                   # the house families (D2-114)
+    objs.extend(homes())                   # the house families (D2-114; the four old house_* models are gone)
     objs.append(round_hut("hut_round", 2.3, 2.1, 2.6))
     objs.append(tent("tent"))
     objs.append(ruin("ruin"))

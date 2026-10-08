@@ -29,7 +29,7 @@ namespace TC2.Game
         /// <summary>The village works by structure kind (C1.1; the civilisation kit, D2-089); null where a kind has no model yet.</summary>
         readonly Instancer[] _works = new Instancer[24];
         Instancer[] _homes, _frames;   // homes by plan and roof form; the timber framing of framed ones (D2-114)
-        Instancer _chimneys, _plinths, _outshuts, _pens, _stalls, _cross;   // overlays, pens, the market (D2-114)
+        Instancer _chimneys, _plinths, _outshuts, _pens, _stalls, _cross, _gardens;   // overlays, pens, the market, kitchen gardens (D2-114)
         Instancer _stonePiles;     // stone carried home and stacked by the store (C1.3)
         Instancer[] _trees;
         Material _mat;
@@ -48,7 +48,7 @@ namespace TC2.Game
         static readonly Color[] CoverCol = { new Color(0.74f, 0.61f, 0.36f), new Color(0.60f, 0.53f, 0.40f), new Color(0.46f, 0.38f, 0.30f), new Color(0.74f, 0.35f, 0.21f), new Color(0.42f, 0.44f, 0.48f) };
         static readonly Color[][] WallCol =
         {
-            new[] { new Color(0.78f, 0.67f, 0.50f), new Color(0.71f, 0.63f, 0.53f), new Color(0.80f, 0.71f, 0.57f), new Color(0.69f, 0.59f, 0.47f) },   // daub
+            new[] { new Color(0.82f, 0.71f, 0.53f), new Color(0.77f, 0.68f, 0.56f), new Color(0.85f, 0.75f, 0.59f), new Color(0.74f, 0.63f, 0.49f) },   // daub
             new[] { new Color(0.96f, 0.94f, 0.89f), new Color(0.95f, 0.89f, 0.75f), new Color(0.93f, 0.81f, 0.77f), new Color(0.94f, 0.85f, 0.63f), new Color(0.85f, 0.88f, 0.89f), new Color(0.87f, 0.89f, 0.81f) },   // limewash
             new[] { new Color(0.95f, 0.92f, 0.84f), new Color(0.94f, 0.88f, 0.74f), new Color(0.92f, 0.82f, 0.78f), new Color(0.93f, 0.86f, 0.66f), new Color(0.86f, 0.88f, 0.88f), new Color(0.90f, 0.88f, 0.80f) },   // framed: the infill
             new[] { new Color(0.50f, 0.37f, 0.25f), new Color(0.44f, 0.32f, 0.22f), new Color(0.54f, 0.41f, 0.29f) },   // logs
@@ -78,6 +78,7 @@ namespace TC2.Game
             _plinths = new Instancer(Models.Get("plinth", ProcMeshes.Granary), _mat, true);
             _outshuts = new Instancer(Models.Get("outshut", ProcMeshes.House), _mat, true);
             _pens = new Instancer(Models.Get("fence", ProcMeshes.Granary), _mat, true);
+            _gardens = new Instancer(Models.Get("garden", ProcMeshes.Granary), _mat, true);
             _stalls = new Instancer(Models.Get("market_stall", ProcMeshes.Granary), _mat, true);
             _cross = new Instancer(Models.Get("market_cross", ProcMeshes.Granary), _mat, true);
             _stonePiles = new Instancer(Models.Get("stone_pile", ProcMeshes.Granary), _mat, true);
@@ -235,7 +236,7 @@ namespace TC2.Game
             {
                 for (int i = 0; i < _homes.Length; i++) _homes[i].Draw(cam);
                 for (int i = 0; i < _frames.Length; i++) _frames[i].Draw(cam);
-                _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam);
+                _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam); _gardens.Draw(cam);
                 _stonePiles.Draw(cam);
                 for (int i = 0; i < _works.Length; i++) _works[i]?.Draw(cam);
                 _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _woodpiles.Draw(cam);
@@ -330,7 +331,7 @@ namespace TC2.Game
             var P = w.Planet;
             for (int i = 0; i < _homes.Length; i++) _homes[i].Clear();
             for (int i = 0; i < _frames.Length; i++) _frames[i].Clear();
-            _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear();
+            _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear(); _gardens.Clear();
             _stonePiles.Clear();
             for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
             _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _woodpiles.Clear();
@@ -448,7 +449,7 @@ namespace TC2.Game
                 {
                     ref var q = ref w.People.Get(res[i]);
                     if (q.Act != ActivityKind.Smith || q.At != b.Settlement || q.Step == StepKind.Travel) continue;
-                    Vector3 top = m.MultiplyPoint3x4(_forgeTop);
+                    Vector3 top = (m * Matrix4x4.Scale(new Vector3(1.2f, 1.2f, 1.2f))).MultiplyPoint3x4(_forgeTop);   // (the smithy is drawn 1.2 times life)
                     _smoke.Add(new Vector4(top.x, top.y, top.z, 1.2f));
                     break;
                 }
@@ -481,9 +482,17 @@ namespace TC2.Game
             if (Architecture.Has(b.Form) && (b.Kind == Structures.Barn || b.Kind == Structures.Granary || b.Kind == Structures.Smithy))
             {
                 // (D2-114) roofed with what its village roofs with, the smithy's walls of its village's walls
-                float years = (float)((w.Now - b.Built) / (double)SimTime.Year);
-                Color roof = Color.Lerp(moss, Weathered(Architecture.CoverOf(b.Form), years), 0.45f + 0.55f * cond);
-                inst.Add(0, roof, Color.Lerp(moss, WallTint(b.Form), 0.45f + 0.55f * cond), m);
+                Color roof = Color.Lerp(moss, RoofColour(w, in b, Architecture.CoverOf(b.Form), bid), 0.45f + 0.55f * cond);
+                Color wallC = Color.Lerp(moss, WallTint(b.Form), 0.45f + 0.55f * cond);
+                if (b.Kind == Structures.Smithy)
+                {
+                    // a forge's walls blacken with the smoke of the hours worked at it (b.Use); drawn a little larger than life to read
+                    float soot = 0.55f * Mathf.Clamp01(b.Use / 800f);
+                    wallC = Color.Lerp(wallC, new Color(0.30f, 0.27f, 0.25f, 1f), soot);
+                    roof = Color.Lerp(roof, new Color(0.28f, 0.26f, 0.25f, 1f), soot * 0.6f);
+                    m = m * Matrix4x4.Scale(new Vector3(1.2f, 1.2f, 1.2f));
+                }
+                inst.Add(0, roof, wallC, m);
                 return;
             }
             inst.Add(0, look, m);
@@ -541,8 +550,8 @@ namespace TC2.Game
             {
                 // (D2-114) the home as its builders built it: its plan and roof form, its cover weathered by its years, its walls, its framing,
                 // its footing, its chimney; a lean-to where its household has outgrown it, a pen where it keeps beasts
-                float years = (float)((w.Now - b.Built) / (double)SimTime.Year);
-                Color roof = Weathered(Architecture.CoverOf(form), years) * new Color(age, age, age, 1f);
+                float shade = 0.95f + 0.1f * (age - 0.88f) / 0.2f;   // (a little lighter or darker house by house)
+                Color roof = RoofColour(w, in b, Architecture.CoverOf(form), bid) * new Color(shade, shade, shade, 1f);
                 Color walls = WallTint(form);
                 if (!lived) { float c0 = (float)Homes.Condition(in b, w.Now); roof = Color.Lerp(new Color(0.55f, 0.58f, 0.48f, 1f), roof, 0.45f + 0.55f * c0); walls = Color.Lerp(new Color(0.62f, 0.64f, 0.56f, 1f), walls, 0.45f + 0.55f * c0); }
                 roof.a = tint.a;
@@ -566,7 +575,18 @@ namespace TC2.Game
                 {
                     int n = w.Members(b.Household).Count;
                     if (n > PlanRoom[plan]) _outshuts.Add(0, roof, walls, m * Matrix4x4.TRS(new Vector3(0f, 0f, -W / 2f), Quaternion.identity, new Vector3(L * 0.55f, 1f, 1f)));
-                    if (HasBeasts(w, b.Household)) Pen(m, W, plan == Architecture.Hall ? 4 : 3);
+                    bool beasts = HasBeasts(w, b.Household);
+                    if (beasts) Pen(m, W, plan == Architecture.Hall ? 4 : 3);
+                    // its kitchen garden (D2-114): worked by its hands - behind the house, or beside it where the beasts' pen is; none in a town's
+                    // built-up core (a two-storey house's yard) - as wide as its working hands
+                    int hands = Hands(w, b.Household);
+                    if (hands > 0 && plan != Architecture.Two)
+                    {
+                        float gw = 0.75f + 0.12f * Mathf.Min(4, hands);
+                        float back = -W / 2f - (n > PlanRoom[plan] ? 2.4f : 0f) - 2.5f;
+                        Vector3 at = beasts ? new Vector3((L / 2f + 3.1f * gw + 0.6f) * ((bid & 1) == 0 ? 1f : -1f), 0f, -W / 2f - 0.6f) : new Vector3(0f, 0f, back);
+                        _gardens.Add(0, Color.white, m * Matrix4x4.TRS(at, Quaternion.identity, new Vector3(gw, 1f, 1f)));
+                    }
                 }
             }
             if (!lived) return false;
@@ -593,14 +613,66 @@ namespace TC2.Game
             return lit;
         }
 
-        /// <summary>A roof's cover as its years have weathered it (D2-114): thatch greys and darkens, shingles silver, tiles darken a little.</summary>
-        static Color Weathered(int cover, float years)
+        /// <summary>
+        /// A roof's cover as it stands now (D2-114): its material's colour, weathered by the years since it was last laid. A lived-in house (a
+        /// work in use) is kept - its thatch re-laid every ~28 years (straw) or ~45 (reed), its shingles every ~40, each house on its own turn -
+        /// so a village shows fresh golden thatch beside greyed and mossy; tiles and slates are not re-laid and darken and gather lichen over a
+        /// century; a building left empty weathers from the day it was left. Tiles and slates come in batches (a kiln's firing, a quarry's bed).
+        /// </summary>
+        static Color RoofColour(TC2.Core.Simulation.World w, in Building b, int cover, int bid)
         {
-            Color c = CoverCol[cover];
-            if (cover == Architecture.Straw || cover == Architecture.Reed) c = Color.Lerp(c, new Color(0.46f, 0.43f, 0.35f), 0.6f * Mathf.Clamp01(years / 80f));
-            else if (cover == Architecture.Shingle) c = Color.Lerp(c, new Color(0.56f, 0.55f, 0.53f), 0.55f * Mathf.Clamp01(years / 60f));
-            else if (cover == Architecture.Tile) c = Color.Lerp(c, new Color(0.52f, 0.30f, 0.22f), 0.35f * Mathf.Clamp01(years / 150f));
+            float years = (float)((w.Now - b.Built) / (double)SimTime.Year);
+            float t = years;   // years since the cover was laid
+            ulong h = KeyedRng.Mix((ulong)bid * 2654435761UL + 13UL);
+            float period = cover == Architecture.Straw ? 28f : cover == Architecture.Reed ? 45f : cover == Architecture.Shingle ? 40f : 0f;
+            if (period > 0f)
+            {
+                float first = period * (0.7f + 0.6f * (float)((h >> 8) % 1000UL) / 1000f);   // (its first re-laying, then every period)
+                float kept = b.Left != 0 ? (float)((b.Left - b.Built) / (double)SimTime.Year) : years;
+                float laid = kept < first ? kept : (kept - first) % period;
+                t = laid + (years - kept);
+            }
+            Color c;
+            switch (cover)
+            {
+                case Architecture.Straw:
+                    c = Color.Lerp(new Color(0.81f, 0.69f, 0.43f), new Color(0.74f, 0.62f, 0.40f), Mathf.Clamp01(t / 5f));
+                    c = Color.Lerp(c, new Color(0.58f, 0.51f, 0.38f), Mathf.Clamp01((t - 5f) / 13f));
+                    c = Color.Lerp(c, new Color(0.47f, 0.46f, 0.35f), Mathf.Clamp01((t - 18f) / 16f));   // (greyed, a green bloom of moss)
+                    break;
+                case Architecture.Reed:
+                    c = Color.Lerp(new Color(0.74f, 0.63f, 0.44f), new Color(0.57f, 0.51f, 0.40f), Mathf.Clamp01(t / 18f));
+                    c = Color.Lerp(c, new Color(0.46f, 0.44f, 0.37f), Mathf.Clamp01((t - 18f) / 25f));
+                    break;
+                case Architecture.Shingle:
+                    c = Color.Lerp(new Color(0.66f, 0.49f, 0.33f), new Color(0.58f, 0.56f, 0.53f), Mathf.Clamp01(t / 14f));   // (oak silvers)
+                    c = Color.Lerp(c, new Color(0.47f, 0.47f, 0.46f), Mathf.Clamp01((t - 14f) / 26f));
+                    break;
+                case Architecture.Tile:
+                {
+                    int batch = (int)((h >> 20) % 3UL);
+                    c = batch == 0 ? new Color(0.66f, 0.36f, 0.25f) : batch == 1 ? new Color(0.59f, 0.31f, 0.22f) : new Color(0.70f, 0.45f, 0.31f);
+                    c = Color.Lerp(c, new Color(0.47f, 0.35f, 0.27f), 0.45f * Mathf.Clamp01(t / 120f));   // (darkened, lichen)
+                    break;
+                }
+                default:
+                {
+                    int batch = (int)((h >> 20) % 3UL);
+                    c = batch == 0 ? new Color(0.40f, 0.42f, 0.46f) : batch == 1 ? new Color(0.35f, 0.36f, 0.39f) : new Color(0.46f, 0.45f, 0.45f);
+                    c = Color.Lerp(c, new Color(0.47f, 0.47f, 0.40f), 0.3f * Mathf.Clamp01(t / 150f));
+                    break;
+                }
+            }
             return new Color(c.r / 0.86f, c.g / 0.86f, c.b / 0.86f, 1f);   // (the kit paints covers 0.86)
+        }
+
+        /// <summary>A household's working hands (15 to 59): who keeps its kitchen garden.</summary>
+        static int Hands(TC2.Core.Simulation.World w, int hid)
+        {
+            var mem = w.Members(hid);
+            int n = 0;
+            for (int i = 0; i < mem.Count; i++) { double a = w.People.Get(mem[i]).AgeYears(w.Now); if (a >= 15.0 && a < 60.0) n++; }
+            return n;
         }
 
         /// <summary>A building's walls by their material and its tradition's shade (D2-114).</summary>

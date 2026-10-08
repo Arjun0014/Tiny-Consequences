@@ -203,3 +203,15 @@ First implementation (D2-114): a building's form is real state recorded when it 
 village's building tradition is carried by its founders with drift (`Settlement.Tradition`), households of means rebuild old or poor houses
 (`Homes.WeighRebuilding`); the kit's five plans x three roof forms with framing, chimney, plinth and lean-to overlays, walls and roofs as two
 tint channels (`_WallColor`); barns, granaries, smithies and the market with silhouettes of their own.
+What the real shots taught (session 10, `tc2/out/shots/arch1`-`arch3works`): (1) every old thatch had weathered to one dull brown and every tile was
+one saturated orange - now a roof's colour is its material weathered by the years since it was last laid (`WorldObjectsView.RoofColour`): a
+lived-in house or a work in use is kept, its straw re-laid every ~28 years, reed ~45, shingles ~40, each on its own turn, so a village shows fresh
+golden thatch beside greyed and mossy; tiles and slates come in kiln and quarry batches and darken over a century; a building left empty weathers
+from the day it was left. (2) Daub walls read as dark as old thatch - lightened and warmed. (3) Each house's 8.5 m earth yard ran together into one
+bare brown disc in a town - the yard is now a doorstep (3.5-6.5 m), paths and the square stay. (4) A kitchen garden (`garden`: raised beds of greens,
+wattle hurdles) behind each house whose household has working hands, as wide as its hands, beside the house where the beasts' pen is; none in a
+town's built-up core. (5) Works: barns, granaries on staddles, the market's cross and stalls, the boat shed and the quarry read at a glance; the
+training ground was a faint ring of posts in ploughland - its ground is now beaten pale by the hours of practice put in (`b.Use`); the smithy is
+drawn 1.2 times life and its walls blacken with its forge's hours. (6) The plans themselves were 81 % one cottage because the household's "means"
+did not separate households (`21` §6): with a measure that does, a town shows one-room cottages, cottages, longhouses, two-storey houses in its
+core and its hall - and an old prosperous village of longhouses reads unlike a crowded late town.

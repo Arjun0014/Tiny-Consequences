@@ -65,8 +65,13 @@ namespace TC2.Core.Places
         public static int Line(int tradition) => tradition >> 5;
 
         /// <summary>
-        /// What a household's means are now: its beasts (a head of cattle 1, the small stock a quarter), its larder against a month of its need,
-        /// its clothes and tools against its people - a measure for its house, not a wealth anything else reads.
+        /// What a household could put into a house now - a measure for its house, not a wealth anything else reads: its beasts (a head of cattle 1,
+        /// the small stock a quarter, four at most), its boat (a plank boat 0.75, a dugout 0.25), the clothes, tools and vessels it holds beyond what
+        /// it wears out (inherited, made over: two at most), its working hands beyond the first (0.3 each: the labour to raise and keep a larger
+        /// house), and the years of food in its village's granary (one and a half at most: a village with grain in hand frees its people's hours).
+        /// Session 9's first measure (beasts, a larder against a month, clothes against people) put nearly every household of a world between 1.0
+        /// and 1.5 - a household's larder holds days (the grain is the village's), clothes were capped at its need and herds are rare late - so every
+        /// house was the same cottage. Early villages with grain and herds in hand build better than the crowded ones of later centuries.
         /// </summary>
         public static double Means(World w, int hid)
         {
@@ -77,17 +82,27 @@ namespace TC2.Core.Places
             double beasts = 0;
             var bl = w.BeastsOf(hid);
             for (int i = 0; i < bl.Count; i++) { ref var b = ref w.Beasts.Get(bl[i]); if (b.Alive) beasts += b.Kind == Livestock.Cattle ? 1.0 : 0.25; }
-            double larder = hh.Larder / DMath.Max(1.0, n * w.Config.FoodPerAdultDay * 30.0);
-            return beasts + DMath.Min(2.0, larder) + DMath.Min(1.0, (double)hh.Gear / n);
+            double boat = 0;
+            if (hh.Boat != 0 && w.Buildings.Exists(hh.Boat)) boat = Boats.IsPlank(w.Buildings.Get(hh.Boat).Kind) ? 0.75 : 0.25;
+            double goods = DMath.Clamp((double)hh.Gear / n - Goods.Target, 0.0, 2.0);
+            int hands = 0;
+            for (int i = 0; i < mem.Count; i++) { double age = w.People.Get(mem[i]).AgeYears(w.Now); if (age >= 15.0 && age < 60.0) hands++; }
+            double labour = DMath.Min(0.9, 0.3 * DMath.Max(0.0, hands - 1.0));
+            double store = 0;
+            if (w.Settlements.Exists(hh.Settlement))
+            {
+                ref var s = ref w.Settlements.Get(hh.Settlement);
+                store = DMath.Min(1.5, s.Granary / DMath.Max(1.0, s.Population * w.Config.FoodPerAdultDay * 365.0));
+            }
+            return DMath.Min(4.0, beasts) + boat + goods + labour + store;
         }
 
-        /// <summary>The cattle a household keeps (a longhouse's byre is for them).</summary>
-        static int Cattle(World w, int hid)
+        /// <summary>The beasts a household keeps: its cattle and its small stock.</summary>
+        static void Beasts(World w, int hid, out int cattle, out int small)
         {
-            int c = 0;
+            cattle = 0; small = 0;
             var bl = w.BeastsOf(hid);
-            for (int i = 0; i < bl.Count; i++) { ref var b = ref w.Beasts.Get(bl[i]); if (b.Alive && b.Kind == Livestock.Cattle) c++; }
-            return c;
+            for (int i = 0; i < bl.Count; i++) { ref var b = ref w.Beasts.Get(bl[i]); if (!b.Alive) continue; if (b.Kind == Livestock.Cattle) cattle++; else small++; }
         }
 
         /// <summary>The household's place among its village's by means (0 the best off; how many are better off).</summary>
@@ -141,7 +156,7 @@ namespace TC2.Core.Places
             int n = mem.Count;
             double means = Means(w, hid);
             int rank = Rank(w, sid, hid, means);
-            bool rich = means >= 3.0 && rank <= System.Math.Max(1, w.HouseholdsOf(sid).Count / 10);
+            bool rich = means >= RichMeans && rank <= System.Math.Max(1, w.HouseholdsOf(sid).Count / 10);
             Materials(w, in s, means, rich, out int cover, out int walls, out bool chimney);
             int tradition = s.Tradition != 0 ? s.Tradition : TraditionAt(w, sid, 0);
             int roof = TraditionRoof(tradition);
@@ -153,10 +168,11 @@ namespace TC2.Core.Places
                 // up a storey where lots near the centre are dear: inside a standing ring, or in the inner half of a big village's homes
                 bool hemmed = s.Wall == 2 && s.WallR > 0f && Inside(in s, w, hid, s.WallR);
                 bool inner = s.Population >= 250 && Inside(in s, w, hid, 0.5 * HomesReach(w, sid));
+                Beasts(w, hid, out int cattle, out int small);
                 if (rich && s.Population >= 120 && rank == 0 && HallRoom(w, sid, bid)) plan = Hall;
-                else if ((hemmed && s.Population >= 150 || inner) && means >= 1.5) plan = Two;
-                else if (Cattle(w, hid) >= 1 || n >= 8) plan = Long;
-                else if (n <= 3 && means < 1.0) plan = Small;
+                else if ((hemmed && s.Population >= 200 || inner) && (means >= 0.5 || n >= 3)) plan = Two;   // (a town's core builds up, all but the poorest)
+                else if (cattle >= 1 || small >= 4 || n >= 7) plan = Long;   // (a byre for its beasts under the one roof; a big family's long hall)
+                else if (n <= 2 && means < 1.0 || n <= 3 && means < 0.6) plan = Small;
                 else plan = Cottage;
                 if (plan == Hall || plan == Two) chimney = true;
             }
@@ -182,6 +198,9 @@ namespace TC2.Core.Places
             }
             return true;
         }
+
+        /// <summary>Means at which a household among its village's best off (the top tenth) builds as the rich do: stone walls, a hall when first.</summary>
+        public const double RichMeans = 2.0;
 
         /// <summary>People a village has for each hall-house it keeps (one at least).</summary>
         public const int PeoplePerHall = 150;
@@ -244,6 +263,38 @@ namespace TC2.Core.Places
         public static string CoverName(int c) => c == Straw ? "straw thatch" : c == Reed ? "reed thatch" : c == Shingle ? "wooden shingles" : c == Tile ? "fired tiles" : "stone slates";
         public static string WallsName(int c) => c == Daub ? "wattle and daub" : c == Limewash ? "limewashed daub" : c == Framed ? "timber framing" : c == Logs ? "logs" : "stone";
         public static string RoofName(int r) => r == Gable ? "gabled" : r == Hipped ? "hipped" : "half-hipped";
+
+        /// <summary>"two-storey house of timber framing under fired tiles" (the person page's home).</summary>
+        public static string Short(int form)
+        {
+            if (!Has(form)) return "house";
+            int p = PlanOf(form);
+            string plan = p == Small ? "one-room cottage" : p == Cottage ? "cottage" : p == Long ? "longhouse" : p == Two ? "two-storey house" : "hall-house";
+            return plan + " of " + WallsName(WallsOf(form)) + " under " + CoverName(CoverOf(form));
+        }
+
+        /// <summary>
+        /// Why it was built so (the building page): each part's reason is the condition the rule that chose it required when it was raised - the
+        /// household and the village then, what the ground, the woods and the village's knowledge gave.
+        /// </summary>
+        public static string Why(int form, bool home)
+        {
+            if (!Has(form)) return "";
+            var sb = new System.Text.StringBuilder();
+            if (home)
+            {
+                int p = PlanOf(form);
+                sb.Append(p == Small ? "one room: a household of few and little in hand" : p == Cottage ? "a cottage of two rooms" : p == Long ? "a longhouse: its beasts stalled at one end under the one roof, or a big household"
+                    : p == Two ? "built up a storey: lots near the middle of a town are dear" : "a hall-house: the house of its village's best-off household").Append("; ");
+            }
+            int c = CoverOf(form), wl = WallsOf(form);
+            sb.Append(c == Straw ? "thatched with straw from the fields" : c == Reed ? "thatched with reed from the wet ground near" : c == Shingle ? "shingles split from the woods with iron tools"
+                : c == Tile ? "tiles fired from clay by a village that knew pottery" : "slates split from rock at hand, against the cold").Append("; ");
+            sb.Append(wl == Daub ? "walls of wattle and daub" : wl == Limewash ? "daub washed with lime burnt from the rock" : wl == Framed ? "a frame of broadleaf timber cut with metal tools"
+                : wl == Logs ? "logs of the conifer woods" : "walls of stone from the village's store");
+            if (Chimney(form)) sb.Append("; a stone chimney");
+            return sb.ToString();
+        }
 
         /// <summary>"a two-storey house of timber framing under fired tiles, hipped, with a stone chimney" (the pages).</summary>
         public static string Describe(int form, bool home)
