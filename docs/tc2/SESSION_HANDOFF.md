@@ -41,8 +41,8 @@
    iron hamlets would be theatre unless something else draws them (charcoal from far woods? a crew camping out?). What D2-125 left open is smaller:
    an **unmet ask** (a trader who wanted iron and found none, counted at the seller) so a seller's `NeedsMore` sees its buyers. Iron trade is small
    beside pottery (9 t against ~2,000 t over ten worlds) - weigh it against item 2.
-2. **C3.3 exchange between households** (`26` §3: a phase - household property, sharing by need, debts) or **C3.4 the mill** (measure first: the
-   quern's hours a person-day).
+2. **C3.3 exchange between households** (`26` §3: a phase - household property, sharing by need, debts). **C3.4 the mill was surveyed at the end of
+   session 15 and deferred** (`timeuse --load`: grown people spend 0.7 h a day preparing food and 7.9 h idle - a mill frees spare hours only; `26` §3).
 3. D2-123 "Open": a lake risen over works or homes is not a flood people answer (they stay and work in it); local walks are straight lines across
    lakes. A flood slice with the water's own rise.
 4. W-FOREST (Arjun, 8 Oct): forests and biomes still read as the same trees recoloured - an art pass.

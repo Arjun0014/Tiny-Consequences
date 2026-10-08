@@ -13,11 +13,21 @@ namespace TC2.Headless
         /// <summary>
         /// How people spend their days in ACTIVITY time: every living person sampled every few minutes for N days, hours a day
         /// by activity for each age group (0-5, 6-11, 12-15, 16-59, 60+) - the evidence that a lived day is believable. Reads only.
-        /// Usage: timeuse [--seed N] [--from-day D] [--days N] [--every S]
+        /// Usage: timeuse [--seed N | --load SAVE] [--from-day D] [--days N] [--every S]
         /// </summary>
         public static int TimeUse(Args a)
         {
-            var w = WorldGenerator.Create(ConfigFrom(a));
+            World w;
+            if (a.Has("load"))
+            {
+                // (a saved world - a mature one, C3.4 survey - lived from its next midnight, as the game loads it)
+                w = TC2.Core.Persistence.SaveFile.Load(System.IO.File.ReadAllBytes(a.Get("load")), out _);
+                long next0 = SimTime.StartOfDay(w.Now) + SimTime.Day;
+                if (w.StepDays > 1) w.RequestStepDays(1, next0);
+                if (w.Resolution != Resolution.Activity) w.RequestResolution(Resolution.Activity, next0);
+                w.AdvanceTo(next0 + SimTime.Hour);
+            }
+            else w = WorldGenerator.Create(ConfigFrom(a));
             w.AdvanceTo(w.Now + SimTime.Days(a.Double("from-day", 1)));
             long end = w.Now + SimTime.Days(a.Double("days", 4));
             long every = a.Int("every", 300);

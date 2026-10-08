@@ -149,7 +149,11 @@ places for buyers it cannot see (open: an unmet ask, and the bloomery at the ore
   a **moral economy** - sharing by need kept in shortage, and gifts or debts recorded for what the takers drew (young families in debt, older
   households with grown children wealthy: the household's cycle) - and, under it, household fields (who works which ground), inheritance of
   land and claims, labour for others. That is a phase (land, property, debt, labour), not a slice; it is weighed again with C10 (lords' rents).
-- **C3.4 the mill** (water or animal): grinding for the village, the miller's toll; a quern's hours freed.
+- **C3.4 the mill** (water or animal): grinding for the village, the miller's toll; a quern's hours freed. **Surveyed in session 15 and deferred**
+  (`timeuse --load`, seed 4 `_s3` year 300, two lived days): grown people spend **0.7 h a day preparing food** - grinding and cooking together, the
+  household quern already quickening it up to 1.8x (D2-062) - and **7.9 h idle**; a mill would free spare hours only (C3.1's first design fell into the
+  same trap). It waits until labour binds (a town's hands short at harvest) or comes as the lord's toll-taking mill (C10). The streams could drive one:
+  0.08-0.23 m3/s at most (D2-124) is a small horizontal mill's water.
 - **C3.5 apprenticeship**: skill passed by working beside a master at a workshop (not only by being near: D2-062).
 - **C3.6 workshops of other crafts** (carpenter, tanner, cooper) as their goods are needed.
 Then C9.4 (cargo by sea) and C10.2 can be weighed again against the traffic.

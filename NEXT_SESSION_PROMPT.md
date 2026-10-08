@@ -40,8 +40,8 @@ only - never modify or stage it.
 1. **C5.3c re-weighed** (SESSION_HANDOFF "Session 15" Next 1: measured - carrying bog ore home is ~0.5 % of the iron chain's labour, smelting the
    rest; a bloomery at the ore saves almost nothing). The open part of D2-125 is an **unmet ask** (a trader who wanted iron and found none, counted
    at the seller, so its `NeedsMore` sees its buyers) - small (iron trade 9 t against pottery's ~2,000 t). Weigh it against item 2.
-2. **C3.3 exchange between households** (`26` §3: a phase - household property, sharing by need, debts) or **C3.4 the mill** (measure the quern's
-   hours a person-day first).
+2. **C3.3 exchange between households** (`26` §3: a phase - household property, sharing by need, debts). C3.4 the mill was surveyed and deferred
+   (grown people spend 0.7 h a day preparing food and 7.9 h idle: `timeuse --load S`, `26` §3).
 3. D2-123 "Open": a lake risen over works or homes is not a flood people answer; local walks cross lakes in straight lines.
 4. W-FOREST (art pass).
 
