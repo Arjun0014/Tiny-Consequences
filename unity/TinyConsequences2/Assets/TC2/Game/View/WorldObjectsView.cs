@@ -620,8 +620,9 @@ namespace TC2.Game
         {
             if (s.Wares < 1.0) return;
             int rows = s.Wares > Weaving.Target(in s) * 0.8 ? 2 : 1;
-            for (int r = 0; r < rows; r++)
-                _tenters.Add(0, ClothDyes[(bid + r * 3) % ClothDyes.Length], m * Matrix4x4.Translate(new Vector3(0f, 0f, -4.4f - 1.2f * r)));   // (behind the shed: the kit's +y)
+            // (the first at the shed's free gable end - the vat's end, the lean-to's is the other - seen from most sides; the second behind it)
+            _tenters.Add(0, ClothDyes[bid % ClothDyes.Length], m * Matrix4x4.Translate(new Vector3(5.9f, 0f, -0.7f)) * Matrix4x4.Rotate(Quaternion.Euler(0f, 90f, 0f)));
+            if (rows > 1) _tenters.Add(0, ClothDyes[(bid + 3) % ClothDyes.Length], m * Matrix4x4.Translate(new Vector3(0f, 0f, -4.4f)));   // (behind the shed: the kit's +y)
         }
 
         /// <summary>

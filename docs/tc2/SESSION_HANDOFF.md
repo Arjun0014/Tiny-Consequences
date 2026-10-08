@@ -1,5 +1,31 @@
 # TC2 Session handoff
 
+## Session 12 (8 Oct 2026, from 12:13 IST; Control Room run #31 session 2) - C3.1 the weaver's shed and wares (D2-119); lived save/load exact again
+
+### Exact state (keep current)
+- **C3.1 built and committed as IN PROGRESS (f89d537, sim version 57)**: `Core/Places/Weaving.cs` (shed wanted where wear keeps 6 makers busy; makers
+  = the village's 8 best weavers by `LoomBar`; `Work` 1.5x pace from real fibre; `Draw`; `Target`; `Share`), `Goods.Wear` (wares wear 0.6),
+  `Household.Wares`, `Person.SkCraft`, `Settlement.Workshop/LoomEvent/Wares/WaresHeld/WaresOut/WaresSold/LoomBar/LoomBarId`, `Structures.Workshop`
+  23, `ActivityKind.Weave` 35, `WhyCode.Weave` 45, `Trade.Wares` 6, metrics `WaresMade/WaresDrawn/WaresTraded/ShedHours`; pages (Gazetteer
+  "Cloth and goods", Biography role from practice, HUD building page); kit `weavers_shed`, `tenter` (exported; **Unity .meta files not yet made**:
+  run `node tc2/scripts/unity.mjs configure` and commit the metas of `Weaving.cs`, `WeavingTests.cs`, the two FBX); view (tinted shed, tenters
+  while wares are in store), camera `work23near`; headless `wares:` and `water caches:` lines, `place --list` wares, `run --noweave`.
+  `WeavingTests` 7; 293 headless tests pass.
+- **Save/load fix (D2-119 (7))**: lived worlds saved and loaded diverged (pre-existing): the green cache kept while lakes moved; shore and river
+  lines cached from the day's lakes/flows. Now `PlanetState.WaterDay` (green), `PlanetState.InBasin`/`BasinVersion` (shore, `Shore.DryLand`),
+  `RiverLines` for every reach >= 10 ha draining, filtered by `RiverLines.Stream` (homes, view). Test `SaveLoadContinuesIdenticallyWhileLakesRiseAndFall`.
+- **Measured before the design** (`26` §1): goods at target everywhere, ~8 idle hours a day, fibre the scarce input.
+- **Runs**: `tc2/out/civ/s*_w3` (ten seeds, C3.1, saves 50/100/200/300), `s*_w3n` (same binary `--noweave`: the control) - running/compare with
+  `python cmp.py w3n w3 ...` and `python wares.py w3 ...` (scratchpad copies; wares.py new). Draft decision text in the scratchpad `d2119_draft.md`.
+- Seed 4 first look (`_w3` vs `_d7`): sheds in 23 of 28 villages (smallest 167, largest without 154), home making -76 % hours, trades x2.0, markets
+  6 -> 13, people 9,095 -> 10,158; big towns use all their wares (8 looms short), mid towns sell, small villages wear bought wares.
+
+### Next, in order
+1. Ten-seed reading (`_w3` vs `_w3n`; `_w3n` vs `_d7` for the save/load fix's own effect); relief doubled on seed 4 - check it over seeds.
+2. Unity configure (metas), shots of a shed (`--views "work23near@10,work23@10,village@10"` on a `_w3` save), Web build + test.
+3. D2-119 into DECISIONS (from the draft), PROGRESS, this handoff, both NEXT_SESSION_PROMPTs; commit.
+4. Then C3.1b (a second shed where the makers cannot keep up?) or C3.2 the potter's kiln (`26` §2).
+
 ## Session 11 (8 Oct 2026, 09:23 - ~12:15 IST; Control Room run #31 session 1) - C13.3 a town's ground (D2-118) closed; C3.1 designed
 
 ### Exact state (keep current)

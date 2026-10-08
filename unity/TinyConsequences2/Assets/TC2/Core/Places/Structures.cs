@@ -367,6 +367,9 @@ namespace TC2.Core.Places
                     int side = (j & 1) == 0 ? 1 : -1;
                     double a = dir + side * ((j + 1) >> 1) * (2.0 * DMath.PI / steps);
                     double px = s.SquareX + r * DMath.Cos(a), py = s.SquareY + r * DMath.Sin(a);
+                    // (beside the main road, never on it: the way out to the nearest village runs along its bearing - a work laid on its line
+                    // stood in the road, D2-119)
+                    if (k.Zone == Zone.Edge && DMath.Cos(a - dir) > 0 && r * DMath.Abs(DMath.Sin(a - dir)) < wr + RoadClear) continue;
                     // (its ground clear of every building's, camp, street, ring - and of the green and market place but for a market: C13.3)
                     if (Footprints.WorkFits(w, sid, px, py, kind, green ? MarketRoom : 0.0, green) && Shore.Dry(P, s.LocalToSphere(px, py, P.Radius))) { x = (float)px; y = (float)py; return; }
                 }
@@ -404,6 +407,9 @@ namespace TC2.Core.Places
             }
             x = (float)px; y = (float)py;
         }
+
+        /// <summary>m an Edge work's ground keeps off the main road's line (half a beaten road and a margin: D2-119).</summary>
+        public const double RoadClear = 4.0;
 
         /// <summary>m round a market's cross kept clear of other works where it is laid out (its stalls stand round it: C13.3).</summary>
         public const double MarketRoom = 4.0;
