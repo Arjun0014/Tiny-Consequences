@@ -3369,7 +3369,8 @@ jars seal what D2-063 sealed for nothing); people over years 200-299 x0.99 (t -0
 thousand person-years x1.07 (t 1.2), famines x1.06 (t 0.7), takings x1.17 (t 1.5) - inside the noise; run cost a person-day x1.05. The clay rule
 alone (`_w7` -> `_k1n`): people x1.03, famines x1.05 - inside the noise. Shots `tc2/out/shots/c32a`/`c32b2` (Krumere, seed 4 year 300: the kiln at
 the village's edge with its drying shed, wood and clay pit, storage jars by the granaries at the market), `c32c21` (Krailddal: ware set out in
-straw for sale - it sold 2 t lately).
+straw for sale - it sold 2 t lately). Web build of this code: Web test 6/6 (`tc2/out/webtest/c32web`: the browser bit-identical to headless; views
+86-120 fps, the person and place pages 68-84 fps - the place page tells "Pots and jars"; a day away catches up 96 years in 57 s).
 **Open.** Ware is the village's and free to its households (payment in kind: C3.3). Pottery makes most of the world's trade now (2,000 t over ten
 worlds): market places come where potters' villages sell - re-weigh C9.4 (cargo by sea) with this traffic. Kilns do not multiply in towns (one a
 village); a kiln's crew is four. Clay-less villages without traders in reach rot at the full rate.

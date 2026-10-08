@@ -22,7 +22,8 @@
   yard tree grew out of the kiln's dome (yard trees now keep off every work's ground).
 
 ### Next, in order
-1. (this session, if not done) the full suite, Web build and Web test of this code; commit.
+1. (done) Full suite 302/302; Web build of d21d09d: Web test 6/6 (`tc2/out/webtest/c32web`, views 86-120 fps, pages 68-84 fps); the Web build in
+   `tc2/web-build/web` is current.
 2. **C3.3 exchange between households** (payment in kind: makers paid; households' own holdings replacing D2-114's `Means`) - the weaver's and the
    potter's ware is the village's and free to its households; export crafts wait for it.
 3. Roles from practice for smiths and boatwrights (the potter's and the weaver's are now from practice).
