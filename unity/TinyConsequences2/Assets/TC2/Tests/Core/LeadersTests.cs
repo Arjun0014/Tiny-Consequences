@@ -226,6 +226,16 @@ namespace TC2.Tests.Core
                             int villages0 = w.InhabitedSettlements();
                             w.AdvanceTo(w.Now + SimTime.Days(6));
                             Assert.Greater(w.InhabitedSettlements(), villages0, "a village of their own");
+                            // the pages tell it: the village they left (its overview and its history), and the village they founded
+                            int founded = 0;
+                            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o)) if (w.Settlements.Get(o).Inhabited && w.Settlements.Get(o).Founded > 0) founded = o;
+                            Assume.That(founded != 0);
+                            string ov = TC2.Core.History.Gazetteer.Overview(w, sid);
+                            StringAssert.Contains("Split in", ov);
+                            StringAssert.Contains(w.History.NameOf(EntityRef.Settlement(founded)), ov, "where they went");
+                            StringAssert.Contains("would not follow", TC2.Core.History.Gazetteer.Life(w, sid), "the split in the village's history");
+                            StringAssert.Contains("would not follow", TC2.Core.History.Gazetteer.Overview(w, founded), "why its founders left");
+                            System.Console.WriteLine(TC2.Core.History.Gazetteer.Overview(w, founded));
                         }
                         else Assert.IsFalse(split, rivalN == 6 ? "--nosplit" : "a rival followed by too few stays");
                     }
@@ -259,6 +269,14 @@ namespace TC2.Tests.Core
             Leaders.Day(w, sid);
             Assert.AreEqual(0, w.Households.Get(rival).Party, "no place known: they stay for now");
             Assert.AreEqual(rival, w.Settlements.Get(sid).SplitHh, "and look for land");
+            {
+                // a faction looking for land is kept by a save
+                var w2 = TC2.Core.Persistence.SaveFile.Load(TC2.Core.Persistence.SaveFile.Save(w, 0, TC2.Core.Persistence.OfflineMode.Paused, 0, 0, ""), out _);
+                var a = w.Settlements.Get(sid); var b = w2.Settlements.Get(sid);
+                Assert.AreEqual(a.SplitHh, b.SplitHh); Assert.AreEqual(a.SplitSince, b.SplitSince); Assert.AreEqual(a.SplitCause, b.SplitCause);
+                Assert.AreNotEqual(0, a.SplitCause, "its cause the death");
+                Assert.AreEqual(w.StateHash(), w2.StateHash());
+            }
             { ref var sf = ref w.Settlements.Get(sid); sf.Founded = w.Now - SimTime.Years(4); sf.ScoutAt = w.Now - SimTime.Days(7); }   // (premise: a village past its first years, nobody out looking this week)
             Assert.IsTrue(w.Migration.WantsScout(in w.Settlements.Get(sid)), "the village sends someone to look");
             // a scout finds the place: they go

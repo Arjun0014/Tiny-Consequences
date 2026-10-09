@@ -32,10 +32,13 @@ namespace TC2.Tests.Core
             Structures.Place(w, sid, Structures.Mine, out float x, out float y);
             Structures.Standing(w, sid, Structures.Mine, x, y);
             StringAssert.Contains("worked by its people", Gazetteer.Materials(w, sid));
-            // every line of its history is one of its records
+            // every line of its history is one of its records - its own and its political events (its headmen, its splits: C10.2, C10.3)
             var evs = w.History.EventsOf(EntityRef.Settlement(sid));
+            var pe = w.History.PlaceEventsOf(sid);
+            Assume.That(pe != null && pe.Count > 0, "a village with a headman");
             string life = Gazetteer.Life(w, sid, 100000);
-            Assert.AreEqual(evs.Count, life.Split('\n').Length - 1, "nothing but its records");
+            Assert.AreEqual(evs.Count + pe.Count, life.Split('\n').Length - 1, "nothing but its records");
+            StringAssert.Contains("became first among the people of", life, "its headman in its history");
         }
 
         [Test]

@@ -3621,3 +3621,48 @@ in villages under 100 people, 24 % at 100-200, 20 % at 200-400, 8 % at 400+; the
 up to 90 - scalar stress, the evidence for C10.3. Cost: none measurable (a person-day x0.90 in the noise).
 **Open.** C10.3: a contested succession (an unbound rival's following near the new first's) splits the village - the rival leads its following
 away to a known site; the headman does not yet decide tribute, walls or bands; the hungry poor do not take from their own village's store.
+
+## D2-128 — 2026-10-09 — A contested succession splits a village (C10.3)
+
+**Context.** D2-127 measured scalar stress (`place --binding`, the `_l3` saves at years 100/200/300, 402 village-ages): the households bound to a
+village's first household (it and its following) fall with size - median 43 % under 100 people, 24 % at 100-200, 20 % at 200-400, 8 % at 400+ - and
+the largest following among the unbound reaches 34 households (p90) and up to 90 in towns. Big men's successions are contested and villages fission
+past ~130-200 people unless their people are bound together (Sahlins 1963; Alberti 2014, Hutterite fission data; Chagnon); fission needs somewhere
+to go (Carneiro 1970: where land is circumscribed, factions cannot leave).
+**Decision.** `Core/Society/Leaders.cs` `Contest`/`Pending`, `Core/Places/Migration.cs` `Split`/`KnowsSite` (sim version 64). (a) **The trigger is an
+event, not a rate**: at a vacancy (the first among the people died or left), once the new first is weighed, the household with the largest following
+among those not bound to it - counting itself and only its unbound followers, none of them setting out - will not follow when that following is at
+least half the first's (`Hold`) and a village's worth (`SplitHouseholds` 6, `SplitPeople` 20). (b) **It leads them away to found a village at the best
+place the village knows** (`Migration.Split`: one party with the split's record as its cause; households with a birth near stay; the place taken from
+the village's lore). History: `VillageSplit` (92), its cause the death that opened the succession; the party's setting out and the founding follow it.
+(c) **No place known: the faction looks for land** (`Settlement.SplitHh/SplitCause/SplitSince`, saved and hashed): the village sends scouts for it as
+for land pressure (`Migration.WantsScout`/`ScoutsDue`); it is weighed again the day a place is known (`Leaders.Pending`) and goes if it still
+qualifies; it gives up after `SplitYears` 3 and stays; it lapses if its household is gone or has become the first. (d) **Pages**: a village founded by
+a split says why its founders left ("Founded in year 254 by people of Rakwick (14 households ... set out to make a new home): Igresta Sarnfair and the
+Gustneins would not follow Dold Vastbruth: 16 households, 61 people of Rakwick, bound to them by kin, by grain owed or given, went with them to make a
+village of their own"); the village left says "Split in year Y: ... - Reirndal"; its history tab now carries its headmen and splits
+(`HistoryLedger.PlaceEventsOf`, a page-only index of political events by the village they happened in: they name people and households, so the
+entity index never found them, and the entity index is not widened because the storm code reads a village's last twelve indexed events).
+Headless: `place --splits` (each split, the village it founded and both villages now; foundings by a split or not; raids between villages a split made
+kin), the `contests:` line (`--contests`: why successions did not split, and what became of factions that looked for land), `--nosplit` (C10.2 alone
+on the same binary: reproduces `_l3` exactly).
+**Evidence.** `LeadersTests` 7 (a rival followed by six unbound households leads them away and they found a village; the first's following stays and
+keeps the place; a rival of two stays; `--nosplit` nothing; no place known: they stay and look for land, the village sends a scout, a save keeps the
+faction, land found they go, three years without they stay; the pages of both villages tell the split). **The first version** (`_l4`: a split only to a
+place already known) was at par (people x1.02, foundings x0.975) but made 10 splits in 3,000 world-years: on seed 6, of 205 vacancies 107 had no unbound
+rival of six households, 42 a rival under half the first's following, and of ~50 that qualified 49 failed only for want of a known place (villages
+scouted only when land was short). **The slice** (`_l5`, ten seeds, 300 years DEEP, against `_l3` = the same mechanics without splits): 42 splits
+(0-12 a world; 19 in the first century, 18 in the second, 5 in the third), factions of 6-16 households (median 7) and 20-61 people (median 27); of
+1,848 weighings 970 found no unbound rival of six households, 347 a rival under half the first's following, 72 too few people, 377 a faction that knew no
+place - on seeds 4 and 6, of 99 factions that looked for land 64 gave up after three years, 19 dissolved into the village or rose to be its first, 13
+found a place. **Land decides, not the thresholds**: foundings 123 -> 119 (x0.94, t -1.2; parties x0.91) - splits take the good places land-pressure
+parties would have taken and make 35 % of all foundings; 41 of the 42 villages they founded stand at year 300 (311 people on average, the others 260 -
+they are older). People x0.992 (t -0.3), births and deaths a thousand at par (x1.005/x1.010), hunger deaths x1.03 (t 0.5), famines x0.98, blows x1.13
+(t 0.9), raids x0.99, relief x0.87 (t -1.5); 2 of 91 raids fell between villages a split made kin; stores a person (years 100-300) x1.08 (t 2.3).
+**Villages stay smaller for longer while land is open**: at year 100 94 villages against 83 (median 68 people against 94) and 2,553 people in villages
+under 90 people against 1,498 (2,227 against 1,825 at year 200) - too small for a weaver's shed, so home making rises x1.10 (t 4.3, in all eight
+worlds with splits); at year 300 172 villages against 178, 23 towns of 500+ in both. **Towns that hold**: in towns of 400+ the share bound to the
+first household rises from 8 % to 15 % (bound households median 12 -> 24), but their largest unbound followings grow too (median 8 -> 21, p90 34 -> 40):
+the factions a full land cannot shed stay inside. Cost: none (simulated time x0.97, t -1.0). Headmen risen 3,762 -> 3,680.
+**Open.** A faction that cannot leave contests from within (it could take the first place, or quarrel - wrongs between households of one village); the
+headman does not yet decide tribute, walls or bands; debts have no consequence beyond repayment; the hungry do not take from their own village's store.

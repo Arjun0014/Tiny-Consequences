@@ -1,5 +1,29 @@
 # TC2 Session handoff
 
+## Session 16, second context (9 Oct 2026, from 12:22 IST; Control Room run #39 session 2, Resource Governor MEDIUM) - C10.3 closed (D2-128)
+
+### Exact state (keep current)
+- **C10.3 a contested succession splits a village - closed (D2-128, sim version 64; `10` §12d)**. Ten seeds `tc2/out/civ/s*_l5` (bin_l5 = 78ac1ee's
+  build, `--contests`, saves 100/200/300) against `_l3` (= `--nosplit`): 42 splits, foundings 123 -> 119, people x0.992, vital rates and conflict at
+  par, home making x1.10 explained (more people in villages too small for a shed while land is open). Seeds 4 and 6 again on the final build (`_l5t`,
+  annals byte-identical to `_l5`) for the factions' outcomes (64 of 99 gave up after three years, 19 gone, 13 found a place).
+- Added this context (no change to the simulation): `Leaders.ContestTally` slots 6/9/10 (factions' outcomes), the `contests:` line; `place --splits`
+  (headless `Place.cs`); the pages - `Gazetteer.Overview` (a village founded by a split says why; the village left says "Split in year Y ... - V"),
+  `Gazetteer.Life` merges `HistoryLedger.PlaceEventsOf` (a page-only index of `HeadmanRose`/`VillageSplit` by village: not the entity index, which
+  the storm code reads); `LeadersTests` 7 (a save keeps a faction looking for land; both villages' pages tell the split); `LeadersTests.cs.meta`
+  (Unity configure).
+- Scratchpad (this context): `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/83fa9e96-395d-4137-b152-8cc71ac55fa5/scratchpad`
+  (`wrun.sh`, `bind.sh TAG` -> `binding_TAG.csv`, `bindcmp.py A B` - village sizes and binding by size and year, `splits_l5.txt`, `d2128.md`,
+  `p_gaz.py`; copies of the new tools in `tc2/out/tools/`).
+
+### Next, in order
+1. Commit "C10.3 closed"; Web build (`node tc2/scripts/unity.mjs build-web --jobs 3`, alone) and Web test (`node tc2/scripts/webtest.mjs --tag
+   s16web`): the person/place pages show the grain, first-household and split lines.
+2. From the evidence (D2-128 "Open", D2-126 "Open"): famine amid plenty - 98 % of hunger deaths in households with no grain of their own while the
+   store holds others' grain, and the hungry never take from their own village's store; factions a full land cannot shed stay inside towns (unbound
+   followings median 21 households in towns of 400+) - wrongs within a village and the headman settling them; debts' consequences; household land.
+   Also C9.4 cargo, D2-125's unmet iron ask, D2-123 floods, W-FOREST.
+
 ## Session 16 (9 Oct 2026, from 09:11 IST; Control Room, Resource Governor MEDIUM: CPU 70 %, RAM 85 %, two heavy jobs) - C3.3 the household's grain, debts, makers paid, hard times (D2-126); C10.2 the village's first household (D2-127)
 
 ### Exact state (keep current)

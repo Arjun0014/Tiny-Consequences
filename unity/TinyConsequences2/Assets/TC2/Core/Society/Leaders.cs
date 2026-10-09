@@ -208,18 +208,22 @@ namespace TC2.Core.Society
         {
             ref var s = ref w.Settlements.Get(sid);
             int r = s.SplitHh;
-            if (SplitOff || !w.Households.Exists(r) || w.Households.Get(r).Dissolved != 0 || w.Households.Get(r).Settlement != sid || r == s.HeadHh
-                || w.Now - s.SplitSince > SplitYears * SimTime.Year) { s.SplitHh = 0; return; }
+            var t = ContestTally;
+            if (SplitOff || !w.Households.Exists(r) || w.Households.Get(r).Dissolved != 0 || w.Households.Get(r).Settlement != sid || r == s.HeadHh)
+            { s.SplitHh = 0; if (t != null) t[9]++; return; }
+            if (w.Now - s.SplitSince > SplitYears * SimTime.Year) { s.SplitHh = 0; if (t != null) t[6]++; return; }
             if (!w.Migration.KnowsSite(sid)) return;
             Followings(w, sid);
             long cause = s.SplitCause;
             s.SplitHh = 0;
+            if (t != null) t[10]++;
             Contest(w, sid, s.HeadHh, cause, r);
         }
 
-        /// <summary>Tools: contested successions weighed - [0] vacancies weighed, [1] no unbound rival of a village's worth, [2] its following under
-        /// half the first's, [3] too few people, [4] no place known (or none could go), [5] splits, [7] sum of rivals' followings, [8] of the firsts'.
-        /// Null in the game.</summary>
+        /// <summary>Tools: contested successions weighed - [0] weighings (vacancies and factions weighed again), [1] no unbound rival of a village's
+        /// worth, [2] its following under half the first's, [3] too few people, [4] no place known: they look for land, [5] splits, [7] sum of rivals'
+        /// followings, [8] of the firsts'; a faction looking for land: [6] gave up after `SplitYears`, [9] gone (its household dissolved, moved or
+        /// risen to first), [10] a place found and weighed again (of these [0]-[5] count again). Null in the game.</summary>
         public static double[] ContestTally;
 
         /// <summary>The village's day: a headman dead or gone leaves the place vacant - weighed at once; a village without one weighs its first.</summary>

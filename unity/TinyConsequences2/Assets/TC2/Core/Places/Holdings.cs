@@ -264,20 +264,40 @@ namespace TC2.Core.Places
 
         /// <summary>
         /// Tools: hunger deaths by the household's own grain at the death (days of its food: [0] none, [1] under 5, [2] 5-20, [3] 20 or more), [4] in
-        /// villages whose sharing had contracted, [5] in households in debt, [6] in households with no close kin in the village. Null in the game.
+        /// villages whose sharing had contracted, [5] in households in debt, [6] in households with no close kin in the village; in villages whose sharing
+        /// had contracted, what the others hold beyond their own needs at the village's ration to the harvest (and the common grain), in the dead
+        /// household's needs at that ration to the harvest: [7] enough to feed it (1 or more), [8] a quarter to 1, [9] under a quarter, [10] the sum
+        /// (each death at most 10), [11] deaths with an empty store besides (under a day of the village's food). Null in the game.
         /// </summary>
         public static double[] HungerTally;
 
-        /// <summary>Tools: a hunger death in a household (counted by its own grain, the village's sharing, its debts and kin).</summary>
+        /// <summary>Tools: a hunger death in a household (counted by its own grain, the village's sharing, its debts and kin, and what others spare).</summary>
         public static void HungerDeath(World w, int sid, int hid)
         {
             var t = HungerTally;
             if (t == null || !w.Households.Exists(hid)) return;
             double need = w.SettlementSys.HouseholdNeed(hid), d = need > 0 ? w.Households.Get(hid).Grain / need : 0;
             t[d <= 0.01 ? 0 : d < 5 ? 1 : d < 20 ? 2 : 3]++;
-            if (w.Settlements.Exists(sid) && Hard(in w.Settlements.Get(sid))) t[4]++;
             if (w.Holdings.Owes(hid, out _) > 0.05) t[5]++;
             if (KinOf(w, sid, hid).Count == 0) t[6]++;
+            if (!w.Settlements.Exists(sid) || !Hard(in w.Settlements.Get(sid))) return;
+            t[4]++;
+            ref var s = ref w.Settlements.Get(sid);
+            int doy = SimTime.DayOfYear(w.Now + Planet.PlanetState.LocalOffset(s.Anchor));
+            if (s.Anchor.Y < 0) doy = (doy + 24) % SimTime.DaysPerYear;
+            int toHarvest = 39 - doy; if (toHarvest <= 0) toHarvest += SimTime.DaysPerYear;
+            double horizon = s.Ration * (toHarvest + Reserve), spare = DMath.Max(0.0, s.Common), daily = 0;
+            var hl = w.HouseholdsOf(sid);
+            for (int i = 0; i < hl.Count; i++)
+            {
+                double n = w.SettlementSys.HouseholdNeed(hl[i]);
+                daily += n;
+                if (hl[i] != hid) spare += DMath.Max(0.0, w.Households.Get(hl[i]).Grain - n * horizon);
+            }
+            double y = need > 0 && horizon > 0 ? spare / (need * horizon) : 0;
+            t[y >= 1 ? 7 : y >= 0.25 ? 8 : 9]++;
+            t[10] += DMath.Min(10.0, y);
+            if (s.Granary < daily) t[11]++;
         }
 
         /// <summary>Whether a village's sharing has contracted: its store cannot feed it to the harvest at more than <see cref="Contract"/> of its meals.</summary>

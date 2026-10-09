@@ -42,7 +42,11 @@ namespace TC2.Core.History
             if (s.FoundedEvent != 0 && w.History.TryGet(s.FoundedEvent, out var fe) && fe.Kind == HistoryKind.SettlementFounded)
             {
                 if (fe.Object.Kind == EntityKind.Settlement && fe.Object.Id != 0 && fe.Object.Id != sid) { sb.Append(" by people of ").Append(Name(w, fe.Object.Id)); origin = true; }
-                if (fe.Cause1 != 0 && w.History.TryGet(fe.Cause1, out var fc)) sb.Append(" (").Append(HistoryText.Describe(w, in fc).TrimEnd('.')).Append(')');
+                if (fe.Cause1 != 0 && w.History.TryGet(fe.Cause1, out var fc))
+                {
+                    sb.Append(" (").Append(HistoryText.Describe(w, in fc).TrimEnd('.')).Append(')');
+                    if (fc.Cause1 != 0 && w.History.TryGet(fc.Cause1, out var fs) && fs.Kind == HistoryKind.VillageSplit) sb.Append(": ").Append(HistoryText.Describe(w, in fs).TrimEnd('.'));   // (C10.3)
+                }
             }
             if (!origin && s.Founded == 0) sb.Append(", among the first places of the land");
             sb.Append(".\n");
@@ -66,6 +70,18 @@ namespace TC2.Core.History
                   .Append(" (").Append(kin).Append(" of kin, ").Append(owing).Append(" owing them grain, ").Append(fed).Append(" fed by them or lent to lately)");
                 if (s.Head != 0 && w.People.Exists(s.Head)) sb.Append("; first among its people ").Append(w.History.NameOf(EntityRef.Person(s.Head))).Append(", ").Append(F(w.People.Get(s.Head).AgeYears(w.Now), "0")).Append(", since ").Append(Year(s.HeadSince));
                 sb.Append(".\n");
+            }
+            {
+                // its splits (C10.3): factions that would not follow a new first and left to found villages of their own
+                var pe = w.History.PlaceEventsOf(sid);
+                int splits = 0; HistoryEvent last = default;
+                for (int i = 0; pe != null && i < pe.Count; i++) if (w.History.TryGet(pe[i], out var e) && e.Kind == HistoryKind.VillageSplit) { splits++; last = e; }
+                if (splits > 0)
+                {
+                    int to = SplitTo(w, sid, last.Id);
+                    sb.Append(splits == 1 ? "Split in " : "Split " + splits + " times, the last in ").Append(Year(last.Time)).Append(": ").Append(HistoryText.Describe(w, in last).TrimEnd('.'))
+                      .Append(to != 0 ? " - " + Name(w, to) : "").Append(".\n");
+                }
             }
             if (s.Wall == 2) sb.Append("Walled: a palisade ").Append(F(2.0 * DMath.PI * (double)s.WallR, "0")).Append(" m round").Append(s.OldR > 0f ? ", an older ring inside" : "").Append(".\n");
             else if (s.Wall == 1) sb.Append("Raising a palisade.\n");
@@ -291,12 +307,36 @@ namespace TC2.Core.History
         public static string Life(World w, int sid, int max = 60)
         {
             var evs = w.History.EventsOf(EntityRef.Settlement(sid));
-            if (evs == null || evs.Count == 0) return "Nothing of it is kept in the history.\n";
+            var pe = w.History.PlaceEventsOf(sid);   // (its headmen and splits: C10.2, C10.3)
+            int ne = evs == null ? 0 : evs.Count, np = pe == null ? 0 : pe.Count;
+            if (ne + np == 0) return "Nothing of it is kept in the history.\n";
+            // both lists are in id order: merged, the last `max`
+            var ids = new System.Collections.Generic.List<long>(ne + np);
+            for (int i = 0, j = 0; i < ne || j < np;)
+            {
+                long id = j >= np || (i < ne && evs[i] <= pe[j]) ? evs[i++] : pe[j++];
+                if (ids.Count == 0 || ids[ids.Count - 1] != id) ids.Add(id);
+            }
             var sb = new StringBuilder();
-            int from = System.Math.Max(0, evs.Count - max);
+            int from = System.Math.Max(0, ids.Count - max);
             if (from > 0) sb.Append("(... ").Append(from).Append(" earlier records)\n");
-            for (int i = from; i < evs.Count; i++) if (w.History.TryGet(evs[i], out var e)) sb.Append(HistoryText.Line(w, e)).Append('\n');
+            for (int i = from; i < ids.Count; i++) if (w.History.TryGet(ids[i], out var e)) sb.Append(HistoryText.Line(w, e)).Append('\n');
             return sb.ToString();
+        }
+
+        /// <summary>The village a split founded (0 if none is kept): the party that set out from `sid` for the split, and the village it founded.</summary>
+        static int SplitTo(World w, int sid, long split)
+        {
+            var evs = w.History.EventsOf(EntityRef.Settlement(sid));
+            if (evs == null) return 0;
+            long setOut = 0;
+            for (int i = 0; i < evs.Count; i++)
+            {
+                if (evs[i] <= split || !w.History.TryGet(evs[i], out var e)) continue;
+                if (setOut == 0 && e.Kind == HistoryKind.PartySetOut && e.Cause1 == split) setOut = e.Id;
+                else if (setOut != 0 && e.Kind == HistoryKind.SettlementFounded && e.Cause1 == setOut) return e.Settlement;
+            }
+            return 0;
         }
 
         /// <summary>The whole page as text (headless `place`, tests).</summary>

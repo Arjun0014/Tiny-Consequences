@@ -4,6 +4,16 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 16, second context (9 Oct 2026, from 12:22 IST; Control Room run #39 session 2)** - **C10.3 a contested succession splits a village
+  closed (D2-128, sim version 64)**: at a vacancy the household with the largest following among those not bound to the new first leads them away to
+  found a village at the best place the village knows when that following is half the first's and a village's worth; knowing no place, the faction
+  looks for land (the village scouts for it) and goes when a place is known, or gives up after three years. Pages: a village founded by a split says
+  why its founders left, the village left says when and where they went, its history tab carries its headmen and splits (a page-only index of
+  political events: the storm code reads a village's last twelve indexed events, so the entity index stays as it was). Tools: `place --splits`, the
+  `contests:` line (factions' outcomes). Ten seeds against `--nosplit`: 42 splits (the first version 10), factions of 6-16 households; land decides
+  how many villages are founded (foundings 123 -> 119: splits take 35 % of them), factions in full lands give up (64 of 99); people, vital rates and
+  conflict at par; villages stay smaller while land is open (home making x1.10, explained); towns of 400+ bind more households to the first (8 ->
+  15 %) but keep large unbound factions. `LeadersTests` 7 (save of a faction looking for land; both villages' pages).
 - **Session 16, later** - **C10.2 standing and the village's first household (D2-127, sim version 63)**: a household's following (its close kin
   households, those that owe it grain, those it fed in hard times or lent to lately - the patron tie outlives the debt); the household most follow is
   the village's first and its eldest grown member first among its people, kept until a rival is followed by more than twice as many, passing within

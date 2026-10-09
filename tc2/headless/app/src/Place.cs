@@ -47,6 +47,7 @@ namespace TC2.Headless
                 }
                 return 0;
             }
+            if (a.Has("splits")) { Splits(w); return 0; }
             if (a.Has("binding"))
             {
                 // (C10.3 survey) each village: households and people; bound to its first household (the household itself and its following); the
@@ -248,6 +249,60 @@ namespace TC2.Headless
             }
             Console.WriteLine("woodlots " + lots + ": centre not on dry ground " + wetLots + " (at the sea's surface " + seaLots + ")");
             Console.WriteLine("WORLD " + villages + " villages, " + hh + " households, " + ox + " with a grown ox (" + oxWood + " with a woodworker too); woodlots " + (wood / Math.Max(1, villages)).ToString("0") + " m out on average, quarries " + (quarry / Math.Max(1, nq)).ToString("0") + " m (" + nq + "); ways none/track/path/road " + string.Join("/", byState));
+        }
+
+        /// <summary>`place --load SAVE --splits` (C10.3): each village split at a contested succession (from the ledger) - when, from where, the faction's
+        /// households and people, the village it founded and both villages now; then every founding in the ledger by what sent its party (a split or
+        /// not) and how many of those villages still stand and how large they are.</summary>
+        static void Splits(World w)
+        {
+            var H = w.History;
+            var setOutBySplit = new System.Collections.Generic.Dictionary<long, long>();   // a split party's setting out -> the split
+            var foundedBy = new System.Collections.Generic.Dictionary<long, int>();       // a split -> the village it founded
+            var splits = new System.Collections.Generic.List<HistoryEvent>();
+            int[] n = new int[2], alive = new int[2]; long[] pop = new long[2];
+            for (int i = 0; i < H.Count; i++)
+            {
+                var e = H.At(i);
+                if (e.Kind == HistoryKind.VillageSplit) splits.Add(e);
+                else if (e.Kind == HistoryKind.PartySetOut && e.Cause1 != 0 && H.TryGet(e.Cause1, out var c) && c.Kind == HistoryKind.VillageSplit) setOutBySplit[e.Id] = c.Id;
+                else if (e.Kind == HistoryKind.SettlementFounded && e.Cause1 != 0 && !e.Object.IsNone)   // (a party's founding: the first villages have no origin)
+                {
+                    int sid = e.Settlement;
+                    bool bySplit = setOutBySplit.TryGetValue(e.Cause1, out long sp);
+                    if (bySplit) foundedBy[sp] = sid;
+                    int k = bySplit ? 1 : 0;
+                    n[k]++;
+                    if (w.Settlements.Exists(sid) && w.Settlements.Get(sid).Inhabited) { alive[k]++; pop[k] += w.Settlements.Get(sid).Population; }
+                }
+            }
+            string V(int sid)
+            {
+                if (sid == 0 || !w.Settlements.Exists(sid)) return "-";
+                var s = w.Settlements.Get(sid);
+                return "#" + sid + " " + H.NameOf(EntityRef.Settlement(sid)) + (s.Inhabited ? " " + s.Population + " people now" : " abandoned year " + (s.Abandoned / (double)SimTime.Year).ToString("0"));
+            }
+            for (int i = 0; i < splits.Count; i++)
+            {
+                var e = splits[i];
+                foundedBy.TryGetValue(e.Id, out int to);
+                Console.WriteLine("  year " + (e.Time / (double)SimTime.Year).ToString("0.0") + " from " + V(e.Settlement) + ": " + e.ArgA + " households, " + e.ArgB + " people -> " + (to != 0 ? V(to) : "(no founding kept)"));
+            }
+            // raids between villages a split made kin (the village left and the village founded, or two founded from one) against all raids
+            var mother = new System.Collections.Generic.Dictionary<int, int>();
+            for (int i = 0; i < splits.Count; i++) if (foundedBy.TryGetValue(splits[i].Id, out int to)) mother[to] = splits[i].Settlement;
+            int raids = 0, kinRaids = 0;
+            for (int i = 0; i < H.Count; i++)
+            {
+                var e = H.At(i);
+                if (e.Kind != HistoryKind.Raid) continue;
+                raids++;
+                int a = e.Subject.Id, b = e.Object.Id;
+                mother.TryGetValue(a, out int ma); mother.TryGetValue(b, out int mb);
+                if (ma == b || mb == a || (ma != 0 && ma == mb)) { kinRaids++; Console.WriteLine("  raid year " + (e.Time / (double)SimTime.Year).ToString("0.0") + ": " + V(a) + " on " + V(b) + " (split kin)"); }
+            }
+            Console.WriteLine("raids " + raids + ", between villages a split made kin " + kinRaids);
+            Console.WriteLine("splits " + splits.Count + "; foundings in the ledger: by a split " + n[1] + " (standing " + alive[1] + ", " + (pop[1] / (double)Math.Max(1, alive[1])).ToString("0") + " people a village), others " + n[0] + " (standing " + alive[0] + ", " + (pop[0] / (double)Math.Max(1, alive[0])).ToString("0") + " people a village)");
         }
 
         /// <summary>`place --load SAVE --crossings` (C4.3 survey): each way between villages worn to a track or more - the streams and rivers its route

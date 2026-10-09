@@ -188,8 +188,11 @@ own grain, the common grain, kin's spare (gifts), then loans recorded as debts a
 maker-days their make took) as far as the taker's grain pays, the village paying jars and smiths from its common grain then a levy; in hard times
 sharing contracts to the household and its kin (famine amid plenty). **C10.2 the village's first household (D2-127, 78ac1ee)**: followings of kin,
 debtors and clients (`Core/Society/Leaders.cs`); the household most follow leads, its eldest is first among the people; it feeds the hungry in hard
-times; tribute goes to the lord's first household. **C10.3 a contested succession splits a village is IN PROGRESS** (committed as such): built and
-unit-tested, the pending-split version (a faction that knows no place looks for land) not yet run over ten seeds. **Next**: SESSION_HANDOFF "Session 16".
+times; tribute goes to the lord's first household. **C10.3 a contested succession splits a village (D2-128)**: at a vacancy an unbound rival's
+following (half the first's, six households) leads them away to the best place the village knows, or looks for land and gives up after three years;
+42 splits over ten worlds, people at par; land decides how many villages are founded (splits take 35 % of foundings); towns of 400+ keep large
+unbound factions a full land cannot shed. The pages tell splits and headmen (a page-only index of political events). **Next**: SESSION_HANDOFF
+"Session 16, second context".
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

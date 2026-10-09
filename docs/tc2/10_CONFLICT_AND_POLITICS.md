@@ -154,8 +154,19 @@ Built on C3.3 (D2-126: household grain, loans recorded as debts, gifts). `Core/S
   with the largest following among those not bound to it - counting itself and only its unbound followers, none of them setting out - will not
   follow when that following is at least half the first's (`Hold`) and a village's worth (6 households, 20 people): it leads them away to found
   a village at the best place the village knows (`Migration.Split`: a party with the split's record as its cause; households with a birth near
-  stay). No place known, no split. History: `VillageSplit` (92), its cause the death. Sahlins: conflict at a big man's passing; villages fission
+  stay). History: `VillageSplit` (92), its cause the death. Sahlins: conflict at a big man's passing; villages fission
   past ~130-200 people unless their people are bound together (Alberti 2014; Chagnon).
+- **No place known: the faction looks for land** (`Settlement.SplitHh/SplitCause/SplitSince`): the village sends scouts for it as for land
+  pressure; it is weighed again the day a place is known and goes if it still qualifies; after three years (`SplitYears`) it gives up and stays.
+  (The first version split only to a place already known: 10 splits in ten worlds - 49 of ~50 qualifying contests on seed 6 had no place.)
+- **Pages**: a village founded by a split says why its founders left; the village left says when it split and where they went; its history tab
+  carries its headmen and splits (`HistoryLedger.PlaceEventsOf`, a page-only index). Headless `place --splits`, the `contests:` line.
+- **Result (D2-128, ten seeds against `--nosplit`)**: 42 splits (0-12 a world), 37 of them in the first two centuries; factions of 6-16 households
+  (median 7, 27 people). Land decides, not the thresholds: foundings 123 -> 119 - splits take the places land-pressure parties would have taken
+  (35 % of foundings) - and once land is full factions look and give up (64 of 99 on seeds 4 and 6). People, vital rates and conflict at par; 2 of
+  91 raids between villages a split made kin. Villages stay smaller while land is open (more people in villages too small for a weaver's shed: home
+  making x1.10); towns of 400+ bind more of their households to the first (8 % -> 15 %) but keep large unbound factions (median 8 -> 21 households) -
+  Carneiro's circumscription: the factions a full land cannot shed stay inside, the condition for contests from within (next).
 - `--nosplit` gives C10.2 alone on the same binary.
 
 ## 13. Civilisation depth (D2-089)

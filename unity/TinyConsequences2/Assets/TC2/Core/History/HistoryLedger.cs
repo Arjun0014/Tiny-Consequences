@@ -37,6 +37,9 @@ namespace TC2.Core.History
         int _n;
         readonly Dictionary<long, LongList> _byEntity = new Dictionary<long, LongList>();
         readonly Dictionary<long, EntityInfo> _entities = new Dictionary<long, EntityInfo>();
+        // a village's political events by the village they happened in - its headmen, its splits (C10.2, C10.3): they name people and households,
+        // not the village, so the entity index would not find them; for the pages only (the simulation never reads this index)
+        readonly Dictionary<int, LongList> _byPlace = new Dictionary<int, LongList>();
         long _compactedThrough; // events with id <= this have been examined by compaction at least once
         public long Dropped;     // total events dropped by compaction (statistics)
 
@@ -75,6 +78,7 @@ namespace TC2.Core.History
             Index(e.Subject, e.Id);
             Index(e.Object, e.Id);
             Index(e.Other, e.Id);
+            IndexPlace(in e);
             return e.Id;
         }
 
@@ -98,6 +102,18 @@ namespace TC2.Core.History
             if (!_byEntity.TryGetValue(r.Packed, out var list)) { list = new LongList(); _byEntity[r.Packed] = list; }
             list.Add(id);
         }
+
+        static bool PlaceEvent(HistoryKind k) => k == HistoryKind.HeadmanRose || k == HistoryKind.VillageSplit;
+
+        void IndexPlace(in HistoryEvent e)
+        {
+            if (!PlaceEvent(e.Kind) || e.Settlement == 0) return;
+            if (!_byPlace.TryGetValue(e.Settlement, out var list)) { list = new LongList(); _byPlace[e.Settlement] = list; }
+            list.Add(e.Id);
+        }
+
+        /// <summary>A village's political events (its headmen risen, its splits), oldest first; null if none (pages only).</summary>
+        public LongList PlaceEventsOf(int sid) => _byPlace.TryGetValue(sid, out var l) ? l : null;
 
         /// <summary>Binary search by id; -1 if not kept.</summary>
         public int IndexOf(long id)
@@ -231,12 +247,13 @@ namespace TC2.Core.History
 
         void RebuildIndex()
         {
-            _byEntity.Clear();
+            _byEntity.Clear(); _byPlace.Clear();
             for (int i = 0; i < _n; i++)
             {
                 Index(_ev[i].Subject, _ev[i].Id);
                 Index(_ev[i].Object, _ev[i].Id);
                 Index(_ev[i].Other, _ev[i].Id);
+                IndexPlace(in _ev[i]);
             }
         }
 
