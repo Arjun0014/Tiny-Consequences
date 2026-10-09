@@ -48,6 +48,9 @@ namespace TC2.Core.Places
         /// <summary>Tools: the yearly weighing - villages weighed, the sums of their pressure, crowding, short rations and famine memory,
         /// those pressed, the households that could go and those that chose to; null in the game.</summary>
         public static double[] Weighs;
+        /// <summary>Tools (null in the game): households that chose to leave holding no land [0], less than their want [1], their want [2] (C3.6d).</summary>
+        public static double[] LeaveTally;
+        readonly List<double> _press = new List<double>();
         /// <summary>Tools: people who set out from each village (sid); null in the game.</summary>
         public static double[] LeftBy;
 
@@ -62,6 +65,22 @@ namespace TC2.Core.Places
             var cfg = _w.Config;
             double need = DMath.Max(1.0, s.Population * cfg.FieldHaPerPerson);
             double crowding = DMath.Clamp01(1.0 - s.ArableHa / need);
+            double shortage = DMath.Max(0.0, 1.0 - s.Ration);
+            return crowding + 0.6 * shortage + 0.4 * s.Memory;
+        }
+
+        /// <summary>Tools: households weigh leaving by their village's crowding, as before land was held (--villageleave; C3.6d off).</summary>
+        public static bool VillageLeave;
+
+        /// <summary>
+        /// What presses one household to leave (C3.6d, D2-135): the share of its people's want that its own land - with its part of the village's
+        /// unheld land, given out at sowing - does not cover, in place of the village's crowding; the village's cut rations and famine memory as
+        /// before. A household holding its want feels no crowding however crowded its neighbours; the landless feel all of it.
+        /// </summary>
+        public double Pressure(in Settlement s, int hid, double unheldEach)
+        {
+            double want = _w.Holdings.LandWant(hid);
+            double crowding = want > 0 ? DMath.Clamp01(1.0 - (_w.Households.Get(hid).Land + unheldEach) / want) : 0.0;
             double shortage = DMath.Max(0.0, 1.0 - s.Ration);
             return crowding + 0.6 * shortage + 0.4 * s.Memory;
         }
@@ -103,25 +122,41 @@ namespace TC2.Core.Places
                 Weighs[0]++; Weighs[1] += pressure; Weighs[2] += DMath.Clamp01(1.0 - s.ArableHa / need); Weighs[3] += DMath.Max(0.0, 1.0 - s.Ration); Weighs[4] += s.Memory;
                 if (pressure >= 0.15) Weighs[5]++;
             }
-            if (pressure < 0.15) return;
+            // each household weighs its own land (C3.6d): the village's crowding counts no more, so a village with land enough but held by others
+            // still sends its landless away
+            bool own = !VillageLeave && !Holdings.LandOff;
+            if (!own && pressure < 0.15) return;
             // the place: the best the village knows that is still free and still good (or none)
-            int site = BestSite(sid, out double q);
+            int site = own ? -1 : BestSite(sid, out _);
             _leaving.Clear();
+            _press.Clear();
             int people = 0;
             var hhs = w.HouseholdsOf(sid);
+            double unheldEach = 0;
+            if (own)
+            {
+                // the unheld land is given out at sowing to the households short of their want: each counts its part of it
+                int shortN = 0;
+                for (int i = 0; i < hhs.Count; i++) { ref var h0 = ref w.Households.Get(hhs[i]); if (h0.Party == 0 && h0.Land < w.Holdings.LandWant(hhs[i]) - 1e-9) shortN++; }
+                if (shortN > 0) unheldEach = w.Holdings.Unheld(sid) / shortN;
+            }
             for (int i = 0; i < hhs.Count; i++)
             {
                 int hid = hhs[i];
                 ref var hh = ref w.Households.Get(hid);
                 if (hh.Party != 0 || !Mobile(hid)) continue;
-                double chance = DMath.Clamp(1.1 * pressure - 0.12, 0.0, 0.45) * (w.Now - hh.Formed < SimTime.Years(6) ? 1.4 : 1.0);
+                double ph = own ? Pressure(in s, hid, unheldEach) : pressure;
+                double chance = DMath.Clamp(1.1 * ph - 0.12, 0.0, 0.45) * (w.Now - hh.Formed < SimTime.Years(6) ? 1.4 : 1.0);
                 if (Weighs != null) Weighs[6]++;
                 if (KeyedRng.Unit(w.Seed, RngStream.Demography, (ulong)hid, (ulong)SimTime.FloorDiv(w.Now, SimTime.Day), 41) >= chance) continue;
                 if (Weighs != null) Weighs[7]++;
                 _leaving.Add(hid);
+                _press.Add(ph);
                 people += w.Members(hid).Count;
             }
             if (_leaving.Count == 0) return;
+            if (own) site = BestSite(sid, out _);
+            if (LeaveTally != null) for (int i = 0; i < _leaving.Count; i++) { ref var lh = ref w.Households.Get(_leaving[i]); double want = w.Holdings.LandWant(_leaving[i]); LeaveTally[lh.Land < 0.05 ? 0 : lh.Land < want - 0.05 ? 1 : 2]++; }
             if (site >= 0 && _leaving.Count >= MinHouseholds && people >= MinPeople)
             {
                 // together, to found a village at the place their people saw
@@ -135,7 +170,7 @@ namespace TC2.Core.Places
             for (int i = 0; i < _leaving.Count; i++)
             {
                 int hid = _leaving[i];
-                int dest = VillageToJoin(sid, hid, pressure);
+                int dest = VillageToJoin(sid, hid, _press[i]);
                 if (dest == 0) continue;
                 int pid = NewParty(sid, -1, dest);
                 w.Households.Get(hid).Party = pid;

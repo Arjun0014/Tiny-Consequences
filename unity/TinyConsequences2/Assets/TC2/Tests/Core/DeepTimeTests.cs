@@ -145,6 +145,7 @@ namespace TC2.Tests.Core
         {
             // the same small worlds lived 60 years at COARSE and at DEEP: the same people and laws, a longer step - how many live, are
             // born, die and of what, what the fields and the herds give, in the same ranges
+            var pc = new int[Livestock.Kinds]; var pd = new int[Livestock.Kinds];
             foreach (ulong seed in new ulong[] { 33, 34 })
             {
                 var c = Lived(seed, 1);
@@ -171,15 +172,19 @@ namespace TC2.Tests.Core
                 Assert.AreEqual(mc.Births, md.Births, 0.30 * mc.Births + 10, "births");
                 Assert.AreEqual(mc.Deaths, md.Deaths, 0.30 * mc.Deaths + 10, "deaths");
                 Assert.AreEqual(mc.Marriages, md.Marriages, 0.30 * mc.Marriages + 10, "marriages");
-                // the herds keep their mix (a step that read its first day for all its days bred cattle three times as often, and culled
-                // pigs to a fourteenth): a beast count on a four-village world at one moment swings with a few herds' culls, so the test
-                // catches a factor of 2.5 (D2-083: the six-seed 400-year comparison is the calibration - goats 1.11, pigs 0.73, n.s.)
-                for (int k = 0; k < Livestock.Kinds; k++)
-                {
-                    double ratio = (kd[k] + 15.0) / (kc[k] + 15.0);
-                    System.Console.WriteLine("  " + Livestock.Laws[k].Name + " " + kc[k] + " / " + kd[k] + " (x" + ratio.ToString("0.00") + ")");
-                    Assert.That(ratio, Is.InRange(1.0 / 2.5, 2.5), Livestock.Laws[k].Name);
-                }
+                for (int k = 0; k < Livestock.Kinds; k++) { pc[k] += kc[k]; pd[k] += kd[k]; System.Console.WriteLine("  " + Livestock.Laws[k].Name + " " + kc[k] + " / " + kd[k]); }
+            }
+            // the herds keep their mix (a step that read its first day for all its days bred cattle three times as often, and culled
+            // pigs to a fourteenth): a beast count on a four-village world swings with a few herds' culls and with the villages its
+            // trajectory founds, so the test catches a factor of 2.5 in the two worlds' herds together (D2-083: the six-seed 400-year
+            // comparison is the calibration - goats 1.11, pigs 0.73, n.s.; D2-135: twelve small worlds, 60 years, DEEP against COARSE:
+            // cattle x0.96, goats x0.92, pigs x1.23, single worlds x0.3-x3.7 either way, with households leaving by their own land or
+            // by their village's crowding alike - one world at a time the guard read chance)
+            for (int k = 0; k < Livestock.Kinds; k++)
+            {
+                double ratio = (pd[k] + 15.0) / (pc[k] + 15.0);
+                System.Console.WriteLine("  both worlds' " + Livestock.Laws[k].Name + " " + pc[k] + " / " + pd[k] + " (x" + ratio.ToString("0.00") + ")");
+                Assert.That(ratio, Is.InRange(1.0 / 2.5, 2.5), Livestock.Laws[k].Name);
             }
         }
     }

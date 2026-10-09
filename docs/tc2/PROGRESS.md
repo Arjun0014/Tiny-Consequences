@@ -4,6 +4,11 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 16, third context, later - C3.6d who leaves (D2-135, sim version 70)**: each household weighs leaving by its own land (its holding
+  and its part of the unheld land against its want) instead of the village's crowding - the landless choose to go, the landed stay. Ten seeds
+  against `--villageleave` (= `_c1` exactly): every aggregate at par; land concentrates (landless at year 300 13-46 % -> 17-66 %, Gini up to 0.93):
+  in full lands the landless find nowhere to go. The DEEP guard now reads its two worlds' herds together (twelve small worlds: DEEP against COARSE
+  cattle x0.96, goats x0.92, pigs x1.23; single worlds x0.3-x3.7 either way, with or without the rule). `LandTests` 8.
 - **Session 16, third context, later - C3.6c the harvest by land and labour (D2-134, sim version 69)**: a harvest (and each day's sheaves) is
   shared half by the land each household holds (the unheld part the village's) and half by the hands it gives the fields (the metayer's half-share;
   the commune still works its fields together). Ten seeds against the same holdings with the harvest by mouths (`--bymouths` = `_h1` exactly):

@@ -267,8 +267,11 @@ two in five men landless where land binds.
   together; the half-share of the metayer, `LandShare` 0.5). Ten seeds against the same holdings by mouths: hunger a person-year x0.74 (t -2.8),
   births and deaths a person-year x0.98 and x0.96, people at par; the landless took half their mouths' share, those with their want 1.6-2.3; women
   married later (20.6-22.0 -> 20.5-22.8) and more never (by 45-59 94-100 % -> 67-100 %) - the preventive check from the households' economy.
-- **C3.6d next**: who leaves - the landless and younger sons first (a village's leavers are drawn by its pressure, not their own land); then
-  service in other households; a land market (letting, buying); partible customs (C11); the land's half as rents (C10).
+- **C3.6d who leaves (built, D2-135)**: each household weighs leaving by its own land (its holding and its part of the unheld, against its want)
+  in place of the village's crowding - the landless and land-short choose to go, the landed stay. In full lands most find nowhere: every aggregate
+  at par, and the land concentrates (landless 17-66 % at year 300, Gini 0.70-0.93).
+- **Next of the phase**: a counterweight to concentration and somewhere for the landless - service in landed households, a land market
+  (letting, buying), partible customs (C11), the land's half as rents (C10), towns (C13).
 
 ## 3. Later slices
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and

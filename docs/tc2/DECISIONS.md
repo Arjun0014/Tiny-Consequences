@@ -3894,3 +3894,26 @@ the preventive check where the positive check was** - and it came from the house
 **Open.** Who leaves: a village's leavers are drawn by its pressure, not by their own land - the landless and the younger sons would go first
 (C3.6d); service (the young of the landless working in landed households); a land market (letting, buying, engrossing); partible customs with
 a village's tradition (C11); the land's half as lords' rents (C10).
+
+## D2-135 — 2026-10-09 — Who leaves: each household weighs its own land (C3.6d)
+
+**Context.** Since D2-045 a village's households weighed leaving by the village's pressure - its crowding (its arable against its people's want),
+its cut rations, its famine memory - each with the same keyed chance (young households x1.4): a household holding all the land it would sow
+left as readily as a landless one, its holding then given out to others at sowing. With holdings (D2-133, D2-134) that is untrue: holders kept
+their land, the landless and the younger sons went (to found villages, or to join one with land to spare).
+**Decision.** `Migration` (sim version 70): **each household's pressure reads its own land** (`Pressure(s, hid, unheldEach)`): the share of
+its people's want that its holding - with its part of the village's unheld land, given out at sowing to those short of it - does not cover,
+in place of the village's crowding; the village's cut rations and famine memory as before. A village whose land is enough but held by others
+now sends its landless away; a household holding its want feels no crowding. The place they go (`BestSite`, the villages to join) is chosen as
+before, after the choices. `--villageleave` keeps the old weighing (reproduces `_c1` exactly - seed 4's annals byte-identical). Tools: the
+`land:` line counts the households that chose to leave by their land.
+**Evidence.** `LandTests` 8 (the landless feel all the crowding, a household holding its want none, its part of the unheld land counts as its
+own). Ten seeds, `_d1` against `_c1`: those who chose to go were landless or land-short (seed 4 over 300 years: 58,382 and 13,918 choices, 2,180 by
+households holding their want) but in full lands most found nowhere to go; **every aggregate at par** (people x1.00, hunger x1.10 t 0.5, births
+x0.99, foundings x1.14 t 0.7); with the landed no longer leaving their holdings to be shared out, **land concentrates**: landless households at
+year 300 13-46 % -> 17-66 %, the land's Gini 0.62-0.88 -> 0.70-0.93 (seeds 4, 2, 8, 42: three in five households hold no land). The DEEP guard
+(`DeepLivesTheWorldAsCoarseDoes`) failed once on seed 33's cattle (x2.81: COARSE and DEEP founded 7 and 9 villages): over twelve small worlds DEEP
+against COARSE gives cattle x0.96, goats x0.92, pigs x1.23 with this rule (x0.90, x1.05, x1.05 without), single worlds x0.3-x3.7 either way -
+the guard now reads the two worlds' herds together (same x2.5 band; D2-083's six-seed comparison remains the calibration).
+**Open.** A full world gives the landless nowhere to go: service in landed households, a land market (letting, buying, engrossing - the
+concentration has no counterweight), the land's half as rents (C10), towns that take the landless (C13).

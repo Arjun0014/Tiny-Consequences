@@ -178,6 +178,26 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void TheLandlessFeelTheCrowdingTheLandedDoNot()
+        {
+            var w = TestWorlds.Make(5108);
+            int sid = w.Settlements.First();
+            var hl = w.HouseholdsOf(sid);
+            Assume.That(hl.Count >= 2);
+            int a = hl[0], b = hl[1];
+            double wantA = w.Holdings.LandWant(a), wantB = w.Holdings.LandWant(b);
+            Assume.That(wantA > 0 && wantB > 0);
+            w.Households.Get(a).Land = 0;
+            w.Households.Get(b).Land = wantB;
+            var s = w.Settlements.Get(sid);
+            double pa = w.Migration.Pressure(in s, a, 0), pb = w.Migration.Pressure(in s, b, 0);
+            Assert.AreEqual(pb + 1.0, pa, 1e-9, "the landless feel all the crowding, a household holding its want none (C3.6d)");
+            Assert.AreEqual(pb + 0.5, w.Migration.Pressure(in s, a, 0.5 * wantA), 1e-9, "its part of the unheld land counts as its own");
+            w.Households.Get(b).Land = 3 * wantB;
+            Assert.AreEqual(pb, w.Migration.Pressure(in s, b, 0), 1e-9, "more than its want: no crowding, not less than none");
+        }
+
+        [Test]
         public void HoldingsMoveNothingElse()
         {
             int people0 = 0, people1 = 0; double grain0 = 0, grain1 = 0; long births0 = 0, births1 = 0;

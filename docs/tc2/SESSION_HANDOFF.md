@@ -31,9 +31,10 @@
 2. (done: the hungry gap measured and the first sheaves built, D2-132; full suite 345/345.)
 3. (done: **C3.6b household land** D2-133, 4f9b94b - holdings move nothing, annals = `_s3`; **C3.6c the harvest by land and labour** D2-134 - hunger
    a person-year x0.74, the preventive check; runs `s*_h1`, `s*_c1`, `s4_c1m` = `--bymouths`.)
-4. **C3.6d who leaves**: a village's leavers are drawn by its pressure (`Migration.Weigh`: a chance a household from the village's crowding, short
-   rations, famine memory; young households x1.4) - make each household weigh its own land (the landless and land-short go first, the landed stay);
-   measure foundings, landlessness, hunger. Then the Web build/test of C3.6b-d, the full suite, the handoff.
+4. (done: **C3.6d who leaves**, D2-135 - each household weighs its own land; aggregates at par, land concentrates; runs `s*_d1`, `s4_d1v` = `--villageleave`;
+   the DEEP guard reads its two worlds' herds together.)
+5. Web build + Web test of C3.6b-d, the full suite once, the handoff. Then the phase's next (D2-135 "Open"): a counterweight to concentration and
+   somewhere for the landless - service in landed households or a land market (letting) first; measure what the landless do with their days.
 
 ## Session 16, second context (9 Oct 2026, 12:22-16:00 IST; Control Room run #39 session 2, Resource Governor MEDIUM) - C10.3 closed (D2-128); C3.5 household formation (D2-129); W-FOREST pass 1 (D2-130)
 
