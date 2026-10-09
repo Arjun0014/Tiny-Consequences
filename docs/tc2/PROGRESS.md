@@ -8,7 +8,8 @@
   and its part of the unheld land against its want) instead of the village's crowding - the landless choose to go, the landed stay. Ten seeds
   against `--villageleave` (= `_c1` exactly): every aggregate at par; land concentrates (landless at year 300 13-46 % -> 17-66 %, Gini up to 0.93):
   in full lands the landless find nowhere to go. The DEEP guard now reads its two worlds' herds together (twelve small worlds: DEEP against COARSE
-  cattle x0.96, goats x0.92, pigs x1.23; single worlds x0.3-x3.7 either way, with or without the rule). `LandTests` 8.
+  cattle x0.96, goats x0.92, pigs x1.23; single worlds x0.3-x3.7 either way, with or without the rule). `LandTests` 8. Web build of 26127b5:
+  Web test `s16web8` 6/6 (bit-identical; the Land tab shows each village's holdings); full suite 353/353 on 26127b5.
 - **Session 16, third context, later - C3.6c the harvest by land and labour (D2-134, sim version 69)**: a harvest (and each day's sheaves) is
   shared half by the land each household holds (the unheld part the village's) and half by the hands it gives the fields (the metayer's half-share;
   the commune still works its fields together). Ten seeds against the same holdings with the harvest by mouths (`--bymouths` = `_h1` exactly):

@@ -1,6 +1,15 @@
 # TC2 Session handoff
 
-## Session 16, third context (9 Oct 2026, from 16:10 IST; Control Room run #39 session 3, Resource Governor MEDIUM) - C3.6a working the land harder (D2-131)
+## Session 16, third context (9 Oct 2026, from 16:10 IST; Control Room run #39 session 3, Resource Governor MEDIUM) - C3.6a working the land harder (D2-131), the first sheaves (D2-132), household land C3.6b-d (D2-133..135)
+
+**State at the latest update (keep current)**: HEAD 26127b5 + the Web/suite record commit; sim version 70. Verified: Web build of 26127b5 (`tc2/web-build/web`),
+Web test `s16web8` 6/6 (bit-identical; the settlement page's Land tab shows "Land: 9 households hold 14 ha of its fields (the most the Doldseinds,
+2.2 ha)"); the full suite on 26127b5: 353/353. `LandTests.cs.meta` made by the Unity build (commit it). Nothing else running.
+**The phase in one paragraph**: C3.6a (more work a hectare where land binds) and the first sheaves (the harvest's grain as it is reaped) each ended in
+Malthus - the villages grew into the food; then holdings (C3.6b: each household's hectares, by founding shares, portions of spare land, the last out,
+heirs, given out at sowing), the harvest by land and labour (C3.6c: the land's half to holders, the labour's half by hands - the landless get half
+their mouths' share, marry later or never: **hunger a person-year x0.74**, the preventive check), and who leaves (C3.6d: by their own land - the
+landless choose to go but in full lands find nowhere, and the land concentrates: 17-66 % landless at year 300).
 
 ### Exact state (keep current)
 - **C3.6a working the land harder (D2-131, sim version 66; `26` §2d)**: `SettlementSystem` - `TilthFor` (the plan at sowing: fields short of the
@@ -33,8 +42,12 @@
    a person-year x0.74, the preventive check; runs `s*_h1`, `s*_c1`, `s4_c1m` = `--bymouths`.)
 4. (done: **C3.6d who leaves**, D2-135 - each household weighs its own land; aggregates at par, land concentrates; runs `s*_d1`, `s4_d1v` = `--villageleave`;
    the DEEP guard reads its two worlds' herds together.)
-5. Web build + Web test of C3.6b-d, the full suite once, the handoff. Then the phase's next (D2-135 "Open"): a counterweight to concentration and
-   somewhere for the landless - service in landed households or a land market (letting) first; measure what the landless do with their days.
+5. (done: Web build + Web test `s16web8` 6/6 of C3.6b-d; the full suite.)
+6. **Next: life-cycle service (C3.6e)** - the NW European institution Hajnal ties to late marriage: the unmarried young of landless and land-short
+   households live and work in landed households (a mouth fed there, its hands counted there, a wage in grain saved for its marriage). Measure first
+   (a `place` probe on the `_d1` saves): unmarried 15-29 by their household's land; food a mouth by land; hands against land in landed households;
+   hunger deaths by land (extend `Holdings.HungerDeath` with the household's land). Then the smallest real slice. Alternatives: debts' consequences
+   (creditors taking land - concentration - or labour), partible customs by tradition (C11), a land market.
 
 ## Session 16, second context (9 Oct 2026, 12:22-16:00 IST; Control Room run #39 session 2, Resource Governor MEDIUM) - C10.3 closed (D2-128); C3.5 household formation (D2-129); W-FOREST pass 1 (D2-130)
 
