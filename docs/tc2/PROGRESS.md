@@ -12,7 +12,8 @@
   the first sheaves were eaten at full meals; rationing the ripe stage alone left the rest of the year rationed a week short. Final, ten seeds
   against `--nosheaves` (= `_t1` exactly): the deaths beside the sheaves are gone (within 5 days of the harvest's day 49 % -> 1 %), the gap now
   falls before the grain ripens, and hunger a person-year is not lower (median 3.9 -> 4.7, mixed by world; people x1.05-1.08): the saved
-  children grow the villages and the same food brings the check back earlier. `SheavesTests` 5.
+  children grow the villages and the same food brings the check back earlier. `SheavesTests` 5; full suite 345/345 (3d0c346); Web
+  test `s16web7` 6/6 (bit-identical; `tc2/web-build/web` is of 3d0c346).
 - **Session 16, third context (9 Oct 2026, from 16:10 IST; Control Room run #39 session 3) - C3.6a working the land harder (D2-131, sim
   version 66)**: measured first (`--landtally`, new: harvests and COARSE working days by whether the village's arable within reach is short of its
   people's need, by crop stage): in land-bound villages labour never limited a stage (sown and brought in 1.000; 2.7-4.0 h a working day left after
