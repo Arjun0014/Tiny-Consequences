@@ -409,9 +409,9 @@ namespace TC2.Game
             // what it is for
             if (home)
             {
-                if (b.Household != 0 && w.Households.Exists(b.Household)) sb.Append("home of the ").Append(w.History.NameOf(EntityRef.Household(b.Household))).Append("s (").Append(w.Members(b.Household).Count).Append(" people)\n");
-                else sb.Append("standing empty").Append(b.Last != 0 ? "; the " + w.History.NameOf(EntityRef.Household(b.Last)) + "s lived in it last" : "").Append('\n');
-                if (b.Style != 0) sb.Append("raised by the ").Append(w.History.NameOf(EntityRef.Household(b.Style))).Append("s\n");
+                if (b.Household != 0 && w.Households.Exists(b.Household)) sb.Append("home of the ").Append(TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Household)))).Append(" (").Append(w.Members(b.Household).Count).Append(" people)\n");
+                else sb.Append("standing empty").Append(b.Last != 0 ? "; the " + TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Last))) + " lived in it last" : "").Append('\n');
+                if (b.Style != 0) sb.Append("raised by the ").Append(TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Style)))).Append("\n");
                 if (Architecture.Has(b.Form) && b.Kind == Structures.House) sb.Append(Architecture.Describe(b.Form, true)).Append(" (").Append(Architecture.Why(b.Form, true)).Append(")\n");   // (how it was built: D2-114)
                 if (b.Kind == Structures.House) sb.Append(b.Mat >= 1 ? "on stone footings (" + b.Stone.ToString("0", CultureInfo.InvariantCulture) + " loads of stone): it stands twice as long once left\n" : "on earth-fast posts: no stone near enough\n");
             }
@@ -432,14 +432,14 @@ namespace TC2.Game
                     // the village's boat shed (C9.2b): what is on its stocks, its boatwrights
                     int stocks = Boats.OnTheStocks(w, b.Settlement);
                     sb.Append("plank boats are built here, one at a time");
-                    if (stocks != 0) { ref var sb2 = ref w.Buildings.Get(stocks); sb.Append(": on the stocks the ").Append(w.History.NameOf(EntityRef.Household(sb2.Household))).Append("s' (").Append((100.0 * sb2.Hours / Boats.PlankHours).ToString("0", CultureInfo.InvariantCulture)).Append(" % done)"); }
+                    if (stocks != 0) { ref var sb2 = ref w.Buildings.Get(stocks); sb.Append(": on the stocks the ").Append(TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(sb2.Household)))).Append("' (").Append((100.0 * sb2.Hours / Boats.PlankHours).ToString("0", CultureInfo.InvariantCulture)).Append(" % done)"); }
                     sb.Append("; its best boatwright knows the craft at ").Append(s.BestBoat.ToString("0.00", CultureInfo.InvariantCulture)).Append('\n');
                 }
                 else if (Boats.IsBoat(b.Kind))
                 {
                     // a household's dugout (C9.1) or plank boat (C9.2b): whose, what the sea gives against the shore, how long it will last
                     int owner = b.Household != 0 ? b.Household : b.Last;
-                    if (owner != 0) sb.Append(b.Household != 0 ? "the " : "left by the ").Append(w.History.NameOf(EntityRef.Household(owner))).Append("s'").Append(b.Household != 0 ? " boat" : "").Append('\n');
+                    if (owner != 0) sb.Append(b.Household != 0 ? "the " : "left by the ").Append(TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(owner)))).Append("'").Append(b.Household != 0 ? " boat" : "").Append('\n');
                     if (b.Cond <= 0f) sb.Append("overturned at sea and lost\n");
                     else if (b.Done != 0 && b.Left == 0)
                         sb.Append("seats ").Append(Boats.SeatsOf(b.Kind) == 4 ? "four" : "two").Append("; goes out in winds below ").Append(Boats.MaxOf(b.Kind).ToString("0", CultureInfo.InvariantCulture)).Append(" m/s to the open sea's grounds within ").Append((WildFood.SeaReach / 1000.0).ToString("0.0", CultureInfo.InvariantCulture)).Append(" km: an hour there is worth ")

@@ -32,7 +32,7 @@ namespace TC2.Core.History
                         return subj + " died" + how + " in " + place + ", aged " + F(e.Magnitude, "0") + ".";
                     }
                 case HistoryKind.Marriage: return subj + " and " + obj + " married in " + place + ".";
-                case HistoryKind.HouseholdFormed: return "The household of the " + subj + "s was formed in " + place + ".";
+                case HistoryKind.HouseholdFormed: return "The household of the " + Plural(subj) + " was formed in " + place + ".";
                 case HistoryKind.LightningStrike: return (e.RootKind == RootKind.You ? "Your lightning" : "Lightning") + " struck near " + place + ".";
                 case HistoryKind.FireStarted: return "A fire started near " + place + ".";
                 case HistoryKind.Wildfire: return "A wildfire spread near " + place + " (" + F(e.Magnitude, "0") + " cells burnt so far).";
@@ -80,11 +80,11 @@ namespace TC2.Core.History
                 case HistoryKind.Famine: return "Famine in " + subj + ": people are dying of hunger.";
                 case HistoryKind.Rationing: return subj + " began to ration its grain (" + F(e.Magnitude * 100.0, "0") + "% portions) to last until the harvest.";
                 case HistoryKind.WildFood: return "The people of " + subj + " turned to the woods and the shore for food.";
-                case HistoryKind.HomeBuilt: return "The " + subj + "s raised " + (e.ArgA >= 2 ? "a house" : "a hut") + " in " + place + ".";
+                case HistoryKind.HomeBuilt: return "The " + Plural(subj) + " raised " + (e.ArgA >= 2 ? "a house" : "a hut") + " in " + place + ".";
                 case HistoryKind.HomesDrowned:
                     return "The sea took " + (e.ArgA == 1 ? "a home" : e.ArgA + " homes") + " of " + place + ": their people made new homes on higher ground.";
                 case HistoryKind.HomeTaken:
-                    return "The " + subj + "s made their home in " + (e.Object.IsNone ? (e.ArgA >= 2 ? "an empty house" : "an empty hut") : "the " + (e.ArgA >= 2 ? "house" : "hut") + " the " + obj + "s had left") + " in " + place + ".";
+                    return "The " + Plural(subj) + " made their home in " + (e.Object.IsNone ? (e.ArgA >= 2 ? "an empty house" : "an empty hut") : "the " + (e.ArgA >= 2 ? "house" : "hut") + " the " + Plural(obj) + " had left") + " in " + place + ".";
                 case HistoryKind.WorkBuilt:
                     if (e.ArgA == TC2.Core.Places.Structures.Well) return "The people of " + subj + " dug a well" + (e.Other.IsNone ? "." : ", " + other + " the first at the digging.");
                     if (e.ArgA == TC2.Core.Places.Structures.Granary && e.ArgB > 1) return "The people of " + subj + " built another granary (" + e.ArgB + " now)" + (e.Other.IsNone ? "." : ", " + other + " the first at the work.");
@@ -112,22 +112,22 @@ namespace TC2.Core.History
                 case HistoryKind.WorkBegun: return "The people of " + subj + " began " + WorkWhy((byte)e.ArgA, e.ArgB) + ".";
                 case HistoryKind.PartySetOut: return e.ArgA + " households of " + subj + " (" + e.ArgB + " people) set out to make a new home.";
                 case HistoryKind.Scouted: return "Someone of " + subj + " saw good land near " + place + (e.ArgA == TC2.Core.Places.Mining.Iron ? ", by bog ore their smiths want." : e.ArgA == TC2.Core.Places.Mining.Copper ? ", by copper their smiths want." : ".");
-                case HistoryKind.HouseholdMoved: return "The " + subj + "s left " + place + " for " + obj + ".";
+                case HistoryKind.HouseholdMoved: return "The " + Plural(subj) + " left " + place + " for " + obj + ".";
                 case HistoryKind.BoatBuilt:
                     return e.ArgA == TC2.Core.Places.Structures.PlankBoat
-                        ? "The " + subj + "s of " + place + " built a boat of planks in the boat shed" + (e.Other.IsNone ? "" : ", " + other + " leading the work") + ": four can row it out to the open sea's shoals."
-                        : "The " + subj + "s of " + place + " hollowed a dugout from a trunk of the woods" + (e.Other.IsNone ? "" : ", " + other + " leading the work") + ": the open sea holds more fish than the shore.";
+                        ? "The " + Plural(subj) + " of " + place + " built a boat of planks in the boat shed" + (e.Other.IsNone ? "" : ", " + other + " leading the work") + ": four can row it out to the open sea's shoals."
+                        : "The " + Plural(subj) + " of " + place + " hollowed a dugout from a trunk of the woods" + (e.Other.IsNone ? "" : ", " + other + " leading the work") + ": the open sea holds more fish than the shore.";
                 case HistoryKind.VillageSplit:
-                    return Cap(subj) + " and the " + obj + "s would not follow " + (e.Other.IsNone ? "the new first among them" : other) + ": " + e.ArgA + " households, " + e.ArgB + " people of " + place +
+                    return Cap(subj) + " and the " + Plural(obj) + " would not follow " + (e.Other.IsNone ? "the new first among them" : other) + ": " + e.ArgA + " households, " + e.ArgB + " people of " + place +
                            ", bound to them by kin, by grain owed or given, went with them to make a village of their own.";
                 case HistoryKind.HeadmanRose:
                     return Cap(subj) + " became first among the people of " + place + (e.ArgB == 1 && !e.Other.IsNone ? ", after " + other + " of the same household" : e.ArgB == 2 && !e.Other.IsNone ? " in the place of " + other : "") +
-                           ": " + e.ArgA + (e.ArgA == 1 ? " household follows" : " households follow") + " the " + obj + "s - kin, those who owe them grain, those they fed or lent to lately.";
+                           ": " + e.ArgA + (e.ArgA == 1 ? " household follows" : " households follow") + " the " + Plural(obj) + " - kin, those who owe them grain, those they fed or lent to lately.";
                 case HistoryKind.CartMade:
-                    return "The " + subj + "s of " + place + " made " + (e.ArgA == TC2.Core.Places.Carts.Ox ? "an ox cart" : "a handcart") + (e.Other.IsNone ? "" : ", " + other + " shaping its wheels") +
+                    return "The " + Plural(subj) + " of " + place + " made " + (e.ArgA == TC2.Core.Places.Carts.Ox ? "an ox cart" : "a handcart") + (e.Other.IsNone ? "" : ", " + other + " shaping its wheels") +
                            ": what they carried - their traders' loads along a worn way, wood and stone from far off - had been more than their backs could take.";
                 case HistoryKind.BoatLost:
-                    return "The " + TC2.Core.Places.Boats.NameOf((byte)e.ArgB) + " of the " + subj + "s of " + place + " overturned at sea in a rising wind (" + F(e.Magnitude, "0") + " m/s)" +
+                    return "The " + TC2.Core.Places.Boats.NameOf((byte)e.ArgB) + " of the " + Plural(subj) + " of " + place + " overturned at sea in a rising wind (" + F(e.Magnitude, "0") + " m/s)" +
                            (e.Other.IsNone ? "." : e.ArgA == 1 ? ": " + other + " drowned." : ": " + other + " clung to it and came ashore.");
                 case HistoryKind.HerdHuntedOut: return "The " + obj + " herd near " + place + " was hunted out (" + F(e.Magnitude, "0") + " at its most).";
                 case HistoryKind.HomeCleared: return "The house of " + subj + (e.ArgA == 1 ? ", standing in a street, " : e.ArgA == 2 ? ", standing in the market place, " : e.ArgA == 4 ? ", standing in the river's way, " : ", standing across the ring, ") + (e.ArgB == 1 ? "was taken down when they moved out to build anew." : "was taken down when it stood empty.");
@@ -321,6 +321,15 @@ namespace TC2.Core.History
             g == 1 ? F(q, "0") + " days' grain" : g == 2 ? F(q, "0.0") + " kg of copper" : g == 3 ? F(q, "0") + " kg of fibre" : g == 4 ? F(q, "0") + " hides" : g == 5 ? F(q, "0.0") + " kg of iron" : g == 6 ? F(q, "0.0") + " wares from a weaver's shed" : g == 7 ? F(q, "0") + " kg of pots and jars" : "a load";
 
         static string Cap(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
+
+        /// <summary>A family by its name, all of them: "the Gairnstaers", "the Memvases" (a name ending in s, x, z, sh or ch takes -es).</summary>
+        public static string Plural(string family)
+        {
+            if (string.IsNullOrEmpty(family)) return family;
+            bool es = family.EndsWith("s", System.StringComparison.Ordinal) || family.EndsWith("x", System.StringComparison.Ordinal) || family.EndsWith("z", System.StringComparison.Ordinal)
+                      || family.EndsWith("sh", System.StringComparison.Ordinal) || family.EndsWith("ch", System.StringComparison.Ordinal);
+            return family + (es ? "es" : "s");
+        }
 
         /// <summary>The sickness an epidemic event names (its pathogen), for a death it caused.</summary>
         static string Sickness(World w, long cause)

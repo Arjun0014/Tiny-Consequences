@@ -46,7 +46,7 @@ namespace TC2.Core.History
             if (w.Households.Exists(p.Household))
             {
                 ref var hh = ref w.Households.Get(p.Household);
-                sb.Append(", in the ").Append(HomeWord(w, in hh)).Append(" of the ").Append(w.History.NameOf(EntityRef.Household(p.Household))).Append("s (")
+                sb.Append(", in the ").Append(HomeWord(w, in hh)).Append(" of the ").Append(HistoryText.Plural(w.History.NameOf(EntityRef.Household(p.Household)))).Append(" (")
                   .Append(w.Members(p.Household).Count).Append(" people)");
             }
             sb.Append(".\n");
@@ -238,7 +238,7 @@ namespace TC2.Core.History
             if (!w.Households.Exists(p.Household)) return "No household.\n";
             ref var hh = ref w.Households.Get(p.Household);
             var sb = new StringBuilder();
-            sb.Append("The ").Append(w.History.NameOf(EntityRef.Household(p.Household))).Append("s live in a ").Append(HomeWord(w, in hh));
+            sb.Append("The ").Append(HistoryText.Plural(w.History.NameOf(EntityRef.Household(p.Household)))).Append(" live in a ").Append(HomeWord(w, in hh));
             if (hh.Building != 0 && w.Buildings.Exists(hh.Building)) sb.Append(" raised in ").Append(Year(w.Buildings.Get(hh.Building).Built));
             sb.Append(". Larder ").Append(F(hh.Larder, "0")).Append(" days' food, ").Append(F(hh.Ready, "0.0")).Append(" made ready; water ").Append(F(hh.Water, "0")).Append(" l; ")
               .Append(hh.Indoor < Hearth.Comfort - 0.5 ? F(hh.Indoor, "0") + " C indoors" + (hh.Indoor < Hearth.ChillLine ? ", cold" : "") : "warm enough indoors").Append("; clothes and tools ").Append(F((double)hh.Gear / System.Math.Max(1, w.Members(p.Household).Count), "0.00")).Append(" a head").Append(hh.Wares > 0.05f ? " (" + F((double)hh.Wares / System.Math.Max(1, w.Members(p.Household).Count), "0.00") + " of it wares from a weaver's shed)" : "").Append(".\n");

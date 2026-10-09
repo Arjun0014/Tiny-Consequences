@@ -552,7 +552,7 @@ namespace TC2.Core.Places
                     if (d.Since < since) since = d.Since;
                 }
                 sb.Append("It owes ").Append(Days(owes)).Append(" days' grain").Append(need > 0 ? " (" + Days(owes / need) + " days of its food)" : "")
-                  .Append(" - the most to the ").Append(w.History.NameOf(EntityRef.Household(big))).Append("s").Append(to > 1 ? " and " + (to - 1) + (to == 2 ? " other household" : " other households") : "")
+                  .Append(" - the most to the ").Append(TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(big)))).Append(to > 1 ? " and " + (to - 1) + (to == 2 ? " other household" : " other households") : "")
                   .Append(", since year ").Append(since / SimTime.Year).Append(".\n");
             }
             double owed = hs.Owed(hid, out int by);
@@ -579,7 +579,7 @@ namespace TC2.Core.Places
             }
             var sb = new System.Text.StringBuilder();
             sb.Append("Grain: its households keep ").Append(held.ToString("0", System.Globalization.CultureInfo.InvariantCulture)).Append(" days' grain in its store, the village ").Append(s.Common.ToString("0", System.Globalization.CultureInfo.InvariantCulture)).Append(" of its own");
-            if (n > 1) sb.Append("; from ").Append(Days(least)).Append(" to ").Append(Days(most)).Append(" days of their food a household (the most, the ").Append(w.History.NameOf(EntityRef.Household(mostHid))).Append("s)");
+            if (n > 1) sb.Append("; from ").Append(Days(least)).Append(" to ").Append(Days(most)).Append(" days of their food a household (the most, the ").Append(TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(mostHid)))).Append(")");
             int debtors = 0, last = 0; double debt = 0; var by = new Dictionary<int, int>();
             var hs = w.Holdings;
             for (int j = 0; j < hs._debts.Count; j++)
@@ -595,7 +595,7 @@ namespace TC2.Core.Places
                 int top = 0, topN = 0;
                 foreach (var kv in by) if (kv.Value > topN || (kv.Value == topN && kv.Key < top)) { topN = kv.Value; top = kv.Key; }
                 sb.Append("; ").Append(debtors).Append(debtors == 1 ? " household owes " : " households owe ").Append(debt.ToString("0", System.Globalization.CultureInfo.InvariantCulture)).Append(" days' grain to ").Append(by.Count).Append(by.Count == 1 ? " other" : " others")
-                  .Append(topN > 1 ? " (" + topN + " of them to the " + w.History.NameOf(EntityRef.Household(top)) + "s)" : "");
+                  .Append(topN > 1 ? " (" + topN + " of them to the " + TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(top))) + ")" : "");
             }
             sb.Append(".\n");
             return sb.ToString();

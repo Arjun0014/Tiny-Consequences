@@ -16,9 +16,13 @@
   (`wrun.sh`, `bind.sh TAG` -> `binding_TAG.csv`, `bindcmp.py A B` - village sizes and binding by size and year, `splits_l5.txt`, `d2128.md`,
   `p_gaz.py`; copies of the new tools in `tc2/out/tools/`).
 
+- **Committed d891d16 (C10.3 closed; full suite 333/333). Web build of d891d16: Web test 6/6** (`tc2/out/webtest/s16web`: browser bit-identical,
+  views 60-121 fps, pages 73-82 fps; the century-later life page shows the headman lines; the fresh world's pages at 06:07 of day 1 come before any
+  village has weighed its first). Then family plurals fixed in every page and history line (`HistoryText.Plural`: "the Memvases", not "the
+  Memvass"; Unity configure compiles the HUD).
+
 ### Next, in order
-1. Commit "C10.3 closed"; Web build (`node tc2/scripts/unity.mjs build-web --jobs 3`, alone) and Web test (`node tc2/scripts/webtest.mjs --tag
-   s16web`): the person/place pages show the grain, first-household and split lines.
+1. (done: commit, Web build, Web test s16web 6/6)
 2. From the evidence (D2-128 "Open", D2-126 "Open"): famine amid plenty - 98 % of hunger deaths in households with no grain of their own while the
    store holds others' grain, and the hungry never take from their own village's store; factions a full land cannot shed stay inside towns (unbound
    followings median 21 households in towns of 400+) - wrongs within a village and the headman settling them; debts' consequences; household land.

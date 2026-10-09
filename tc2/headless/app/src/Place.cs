@@ -41,7 +41,7 @@ namespace TC2.Headless
                         var hh = w.Households.Get(s.HeadHh);
                         double need = System.Math.Max(1e-9, w.SettlementSys.HouseholdNeed(s.HeadHh));
                         string form = hh.Building != 0 && w.Buildings.Exists(hh.Building) ? Architecture.Describe(w.Buildings.Get(hh.Building).Form, false) : "(no house)";
-                        line += ": first the " + w.History.NameOf(EntityRef.Household(s.HeadHh)) + "s, following " + f + " (kin " + kin + ", owing " + owing + ", fed " + fed + "), grain " + (hh.Grain / need).ToString("0") + " d, held " + ((w.Now - s.HeadSince) / (double)SimTime.Year).ToString("0.0") + " y, means " + Architecture.Means(w, s.HeadHh).ToString("0.00") + ", " + form;
+                        line += ": first the " + TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(s.HeadHh))) + ", following " + f + " (kin " + kin + ", owing " + owing + ", fed " + fed + "), grain " + (hh.Grain / need).ToString("0") + " d, held " + ((w.Now - s.HeadSince) / (double)SimTime.Year).ToString("0.0") + " y, means " + Architecture.Means(w, s.HeadHh).ToString("0.00") + ", " + form;
                     }
                     Console.WriteLine(line);
                 }
