@@ -4,6 +4,12 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 16, fourth context - C3.6f the soil (D2-139, sim version 74; work in progress: seven of ten seeds, full suite pending)**: the fields
+  have a heart - they tire with the crops they bear, rest and the herds' dung give back, villages rest a share by what their crops have shown, new
+  land comes in fresh, the people judge their land by what it bears. `--nosoil` reproduces `_k2` exactly. Worlds carry x0.55-0.7 of their people
+  (D2-085's mature range again), bound villages rest 13-17 % with a sown hectare at 0.73-0.79 of a fresh crop - but **births do not answer** (42 a
+  1,000 before and after) and hunger a person-year rose x1.9 (4.7 -> 9.3 over years 200-299), wounds x2: C3.5's rule never binds (couples bring two
+  years of bread). Next: C3.5b the niche (a couple marries when its land and hands keep it; `--niche`, measured, off by default).
 - **Session 16, fourth context - the land economy over 900 years with C3.6e (sim version 73), seed 4 (`s4_k2` + `s4_l9k`, against `s4_l9`, sim 70;
   one world - seed 42 not yet run)**: more people in centuries 300-600 (13,200-15,900 against 10,300-11,600: births 40-42 a 1,000 against 29-36 -
   heirs marry as the land comes) and **hunger 8.7-11.2 a 1,000 person-years against 1.0-5.1**: the old's grip on the land had been a preventive
