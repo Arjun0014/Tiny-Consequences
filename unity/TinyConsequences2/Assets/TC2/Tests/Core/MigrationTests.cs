@@ -237,5 +237,148 @@ namespace TC2.Tests.Core
             Assert.Greater(w.Metrics.Foundings, 0, "they arrived and founded");
             Assert.IsNull(TestWorlds.Audit(w));
         }
+
+        // ---------------------------------------------------------------- two villages on one spot (D2-137)
+        /// <summary>Hour by hour until a party of the village is on its way to the place it knows; 0 if none set out.</summary>
+        static int PartyOnItsWay(World w, int sid)
+        {
+            for (int h = 0; h < 24 * 60; h++)
+            {
+                if (h % 24 == 0) { ref var s = ref w.Settlements.Get(sid); s.FamineAt = w.Now - SimTime.Day; }
+                w.AdvanceTo(w.Now + SimTime.Hour);
+                for (int p = w.Parties.First(); p != 0; p = w.Parties.Next(p)) if (w.Parties.Get(p).State == 1 && w.Parties.Get(p).Site >= 0) return p;
+            }
+            return 0;
+        }
+
+        [Test]
+        public void APartyFindingAVillageAtItsPlaceMakesItsHomeThere()
+        {
+            var w = PressedVillageWithAKnownPlace(403, out int sid, out int site, activity: false);
+            Assert.GreaterOrEqual(site, 0, "the village knows a place");
+            int pid = PartyOnItsWay(w, sid);
+            Assert.AreNotEqual(0, pid, "a party set out");
+            // premise: while they walk, their place becomes a village's ground (another village of the world stands there)
+            int there = 0;
+            for (int s = w.Settlements.First(); s != 0; s = w.Settlements.Next(s)) if (s != sid && w.Settlements.Get(s).Inhabited) { there = s; break; }
+            Assert.AreNotEqual(0, there);
+            w.Parties.Get(pid).Site = w.Settlements.Get(there).Cell;
+            long setOut = w.Parties.Get(pid).Event;
+            var going = new List<int>();
+            for (int h = w.Households.First(); h != 0; h = w.Households.Next(h)) if (w.Households.Get(h).Party == pid) going.Add(h);
+            Assert.Greater(going.Count, 0);
+            long foundings = w.Metrics.Foundings, mark = w.History.LastId;
+            for (int h = 0; h < 24 * 10 && w.Parties.Exists(pid); h++) w.AdvanceTo(w.Now + SimTime.Hour);
+            Assert.IsFalse(w.Parties.Exists(pid), "the party arrived");
+            Assert.AreEqual(foundings, w.Metrics.Foundings, "no village founded on another's ground");
+            for (int i = 0; i < going.Count; i++)
+            {
+                var hh = w.Households.Get(going[i]);
+                if (hh.Dissolved != 0) continue;
+                Assert.AreEqual(there, hh.Settlement, "they made their home in the village standing there");
+                Assert.IsTrue(w.HouseholdsOf(there).Contains(going[i]));
+            }
+            int joined = 0;
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Kind != HistoryKind.PartyJoined) continue;
+                joined++;
+                Assert.AreEqual(sid, e.Subject.Id, "the village they left");
+                Assert.AreEqual(there, e.Object.Id, "the village they joined");
+                Assert.AreEqual(setOut, e.Cause1, "because they set out");
+                StringAssert.Contains("made their home", HistoryText.Line(w, e));
+            }
+            Assert.AreEqual(1, joined, "the joining recorded once");
+            w.AdvanceTo(w.Now + SimTime.Days(3));
+            Assert.IsNull(TestWorlds.Audit(w));
+        }
+
+        [Test]
+        public void ATravellerOnAWayOfNoLengthArrivesWhereTheyWereGoing()
+        {
+            // the bug's own premise (a Web catch-up of 2026-10-09 ran out of memory): a party founds on its own village's spot - villages on one
+            // cell, a way of no length between them - and their kin visit across it; each must arrive where they were going, not walk it forever
+            var w = PressedVillageWithAKnownPlace(405, out int sid, out int site, activity: true);
+            Assert.GreaterOrEqual(site, 0);
+            int pid = PartyOnItsWay(w, sid);
+            Assert.AreNotEqual(0, pid, "a party set out");
+            Migration.JoinOff = true;
+            try
+            {
+                w.Parties.Get(pid).Site = w.Settlements.Get(sid).Cell;
+                // (its anchor at its cell's centre, as a village a party founded has: two such on one cell have one anchor)
+                { ref var so = ref w.Settlements.Get(sid); so.Anchor = w.Planet.Grid.Center[so.Cell]; }
+                w.Routes.Invalidate();
+                for (int h = 0; h < 24 * 10 && w.Parties.Exists(pid); h++) w.AdvanceTo(w.Now + SimTime.Hour);
+                int b = 0;
+                for (int s = w.Settlements.First(); s != 0; s = w.Settlements.Next(s)) if (s != sid && w.Settlements.Get(s).Cell == w.Settlements.Get(sid).Cell && w.Settlements.Get(s).Inhabited) b = s;
+                Assert.AreNotEqual(0, b, "premise: a village on the same cell");
+                var r = w.Routes.Get(w, sid, b);
+                Assert.IsNotNull(r);
+                Assert.LessOrEqual(r.Length, 1.0, "premise: a way of no length");
+                // premise: someone of the new village at home goes over to the old one (their kin's), then lives on by their own choices
+                int walker = 0;
+                for (int i = 0; i < 24 * 4 && walker == 0; i++)
+                {
+                    var res = w.Residents(b);
+                    for (int k = 0; k < res.Count && walker == 0; k++) { var q = w.People.Get(res[k]); if (q.Alive && q.At == b && q.AgeYears(w.Now) >= 16 && q.Step != StepKind.Travel) walker = q.Id; }
+                    if (walker == 0) w.AdvanceTo(w.Now + SimTime.Hour);
+                }
+                Assert.AreNotEqual(0, walker, "premise: someone of the new village at home");
+                int visits0 = w.People.Get(walker).Visits;
+                w.Agents.Walk(walker, r, r.A == b, w.Now + SimTime.Minute, sid);
+                var ver = new Dictionary<int, int>();
+                for (int id = w.People.First(); id != 0; id = w.People.Next(id)) { var p = w.People.Get(id); if (p.Alive) ver[id] = p.ActVer; }
+                bool there = false, backHome = false;
+                for (int h = 0; h < 24 * 20; h++)
+                {
+                    w.AdvanceTo(w.Now + SimTime.Hour);
+                    var p = w.People.Get(walker);
+                    if (!p.Alive) break;
+                    if (p.At == sid) there = true;
+                    else if (there && p.At == b) backHome = true;
+                }
+                int most = 0;
+                for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+                {
+                    var p = w.People.Get(id);
+                    if (p.Alive && ver.TryGetValue(id, out int v0)) most = Math.Max(most, p.ActVer - v0);
+                }
+                Assert.IsTrue(there, "they got to the old village");
+                Assert.Greater(w.People.Get(walker).Visits, visits0, "a visit");
+                Assert.IsTrue(backHome, "and came home - not back to where they were, again and again");
+                Assert.Less(most, 2000, "nobody walks a way of no length forever (a day lived is some 20 activities)");
+                Assert.Less(w.Travel.LiveEntries, 20000, "the travel index holds live journeys only");
+                Assert.IsNull(TestWorlds.Audit(w));
+            }
+            finally { Migration.JoinOff = false; }
+        }
+
+        [Test]
+        public void TheTravelIndexDropsStaleLegsBeforeItGrows()
+        {
+            // two indexes alike: one swept when full, one not - every query reads the same, the swept one has room again
+            var a = new TravelIndex(16); var b = new TravelIndex(16);
+            for (int i = 0; i < 1024; i++) { a.Add(i % 16, 1 + i % 8, 1, i, 2000 + i); b.Add(i % 16, 1 + i % 8, 1, i, 2000 + i); }
+            Assert.IsTrue(a.Full);
+            Func<int, int> ver = p => p <= 4 ? 2 : 1;   // (persons 1-4 have moved on to another activity)
+            a.Sweep(100, ver);
+            Assert.IsFalse(a.Full, "room again");
+            Assert.AreEqual(512, a.LiveEntries);
+            var qa = new List<(int, long, long)>(); var qb = new List<(int, long, long)>();
+            for (int c = 0; c < 16; c++)
+            {
+                qa.Clear(); qb.Clear();
+                a.Query(c, 100, ver, qa); b.Query(c, 100, ver, qb);
+                CollectionAssert.AreEqual(qb, qa, "cell " + c + " reads the same, in the same order");
+            }
+            // all live: the pool doubles at once rather than sweeping at every leg
+            var d = new TravelIndex(4);
+            for (int i = 0; i < 1024; i++) d.Add(i % 4, 1, 1, 0, 5000);
+            d.Sweep(100, p => 1);
+            Assert.AreEqual(1024, d.LiveEntries);
+            Assert.IsFalse(d.Full);
+        }
     }
 }

@@ -25,6 +25,7 @@ namespace TC2.Core.Agents
         readonly List<int> _tmp = new List<int>();
 
         public void Bind(World w) { _w = w; }
+        System.Func<int, int> _versionOf;   // (a person's activity version for the travel index's sweep, -1 gone: D2-137)
 
         // ---------------------------------------------------------------- body and motion
         public double Speed(in Person p, long now)
@@ -167,6 +168,12 @@ namespace TC2.Core.Agents
         void RegisterLeg(ref Person p, Route r)
         {
             _leg.Clear();
+            if (_w.Travel.Full)
+            {
+                // stale legs of cells nobody looked at, dropped before the index grows (derived state: D2-137)
+                if (_versionOf == null) _versionOf = pid => _w.People.Exists(pid) && _w.People.Get(pid).Alive ? _w.People.Get(pid).ActVer : -1;   // (as the hazards' queries read it)
+                _w.Travel.Sweep(_w.Now, _versionOf);
+            }
             double s0 = p.S0, s1 = p.S1;
             double lo = Math.Min(s0, s1), hi = Math.Max(s0, s1);
             double span = hi - lo;
@@ -294,7 +301,7 @@ namespace TC2.Core.Agents
                 return;
             }
             // arrival
-            int arrived = r == null ? p.Home : (p.S1 <= 0.5f ? r.A : r.B);
+            int arrived = r == null ? p.Home : (r.Length <= 1.0 && p.Dest != 0 && (p.Dest == r.A || p.Dest == r.B) ? p.Dest : (p.S1 <= 0.5f ? r.A : r.B));   // (a way of no length: where they were going - D2-137)
             if (!w.Settlements.Exists(arrived)) arrived = p.Home;
             p.At = arrived;
             Green(arrived, out double ax, out double ay);   // (at its green: C9.2)
@@ -2304,7 +2311,7 @@ namespace TC2.Core.Agents
         {
             var w = _w;
             long now = w.Now;
-            int arrived = r == null ? p.Home : (p.S1 <= 0.5f ? r.A : r.B);
+            int arrived = r == null ? p.Home : (r.Length <= 1.0 && p.Dest != 0 && (p.Dest == r.A || p.Dest == r.B) ? p.Dest : (p.S1 <= 0.5f ? r.A : r.B));   // (a way of no length: where they were going - D2-137)
             if (!w.Settlements.Exists(arrived)) arrived = p.Home;
             ref var s = ref w.Settlements.Get(arrived);
             double lx = s.LandAt != 0 ? s.LandX : s.SquareX, ly = s.LandAt != 0 ? s.LandY : s.SquareY;

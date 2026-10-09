@@ -1,7 +1,8 @@
 // The TC2 Web test (15 §1): load the build in headless Chromium on the real GPU (ANGLE D3D11; WebGPU enabled),
 // check it starts without errors, compare the in-browser determinism probe with the headless one, take
 // screenshots from orbit to village, save to IndexedDB, reload, come back "a day later" and watch the catch-up.
-// Usage: node tc2/scripts/webtest.mjs [--webgl2] [--no-gpu] [--tag NAME] [--skip-away]
+// Usage: node tc2/scripts/webtest.mjs [--webgl2] [--no-gpu] [--tag NAME] [--skip-away] [--export]
+// (--export: writes the game's saves - before the day away and during the catch-up - to the tag's folder, and traces the wasm heap)
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -42,6 +43,33 @@ page.on('pageerror', (e) => consoleLines.push(`[pageerror] ${e.message}`));
 page.on('response', (r) => { if (r.status() >= 400) consoleLines.push(`[http ${r.status()}] ${r.url()}`); });
 
 async function state() { return page.evaluate(() => window.__TC2 || null); }
+// (--export: the game's own save read from its IndexedDB store - the world as the browser lived it, for headless runs: `run --load F`)
+async function exportSave(name) {
+  const b64 = await page.evaluate(() => new Promise((res) => {
+    try {
+      const rq = indexedDB.open('tiny-consequences-2', 1);
+      rq.onerror = () => res('');
+      rq.onsuccess = () => {
+        try {
+          const g = rq.result.transaction('saves', 'readonly').objectStore('saves').get('world');
+          g.onerror = () => { rq.result.close(); res(''); };
+          g.onsuccess = () => {
+            const v = g.result; rq.result.close();
+            if (!v) { res(''); return; }
+            const u = new Uint8Array(v); let s = '';
+            for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+            res(btoa(s));
+          };
+        } catch (e) { res(''); }
+      };
+    } catch (e) { res(''); }
+  }));
+  if (!b64) { console.log('export ' + name + ': no save'); return; }
+  fs.writeFileSync(path.join(outDir, name + '.tc2'), Buffer.from(b64, 'base64'));
+  console.log('exported ' + name + '.tc2 (' + Math.round(b64.length * 0.75 / 1024) + ' KB)');
+}
+// the wasm heap's size in MB (Unity's instance), or -1
+async function heapMb() { return page.evaluate(() => { try { const M = window.__TC2_INSTANCE && window.__TC2_INSTANCE.Module; const b = M && (M.HEAPU8 || M.HEAP8); return b ? Math.round(b.buffer.byteLength / 1048576) : -1; } catch (e) { return -1; } }); }
 async function cmd(c) { await page.evaluate((x) => { (window.__TC2_CMDS = window.__TC2_CMDS || []).push(x); }, c); }
 async function waitFor(fn, arg, timeout = 180000) { return page.waitForFunction(fn, arg, { timeout, polling: 200 }); }
 async function shot(name, settle = 1500) {
@@ -113,6 +141,7 @@ try {
     // come back a day later (Living: ~96 world years), watch the catch-up
     await cmd('save');
     await page.waitForTimeout(1500);
+    if (flag('--export')) await exportSave('away_start');
     const tAway = Date.now();
     await page.goto(`${base}?speed=0&absence=24h${gfxParam}`);
     await waitFor(() => window.__TC2 && window.__TC2.ready === true, null, 300000);
@@ -121,6 +150,13 @@ try {
       const s = await state();
       if (s && s.catchingUp) sawCatchUp = true;
       if (i === 8) await shot('6_catchup', 0);
+      if (flag('--export') && i % 60 === 30 && s) {
+        // (every half minute: where the catch-up is, the wasm heap, and the game's latest catch-up save)
+        const mb = await heapMb();
+        console.log(`catch-up ${((Date.now() - tAway) / 1000).toFixed(0)} s: year ${s.year}, ${s.people} people in ${s.places} places, heap ${mb} MB`);
+        (report.catchUpTrace = report.catchUpTrace || []).push({ s: Math.round((Date.now() - tAway) / 1000), year: s.year, people: s.people, places: s.places, heapMb: mb });
+        if (s.catchingUp) await exportSave('catchup_y' + s.year);
+      }
       if (s && sawCatchUp && !s.catchingUp) break;
       await page.waitForTimeout(500);
     }

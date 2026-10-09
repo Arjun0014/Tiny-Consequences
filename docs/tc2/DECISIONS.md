@@ -3941,3 +3941,36 @@ The heirs' children marry sooner: births a person-year x1.06 (t 4.7), people at 
 tributes x1.6 (t 3.7), raids x1.9 (t 1.7) - more people in villages that bound sooner.
 **Open.** The old's home left empty (the young might move into the larger house); retirement within the household (stem families) rather
 than moving; the elderly landless (no holding to hand on) living on their kin as before.
+
+## D2-137 — 2026-10-09 — Two villages on one spot: a founding party joins the village standing at its place; a way of no length arrives where it goes (the Web catch-up's out-of-memory)
+
+**Context.** The Web build of C3.6e (5dd947a) failed the Web test's "a day away" catch-up, deterministically: year 35 of 96, then the browser
+aborted out of memory. Headless runs were healthy, and the browser's world (17 places at year 35) looked unlike a headless `run --seed 42
+--coarse` (9-10), which was read as the browser diverging. **It does not**: a Living catch-up of a small world is not COARSE at all
+(`PlanCatchUp` goes COARSE above 40,000 person-years; seed 42's 96 years x ~145 people are ~14,000), so the browser lives the century in
+ACTIVITY, and a headless `run --seed 42 --years 96` with the same binary is the same world - 17 places at year 28, then out of memory under a 512 MB
+heap cap (`--hot`, new, names who began the most activities between reports). The browser's own saves, read out of its IndexedDB store
+(`webtest.mjs --export`, new: the save before the day away and every half minute of the catch-up), replayed headless, gave the cause: four
+people of Skolmere visiting kin in Ustwick took ~17,000 trips a day between the two. **Both villages had been founded in year 27 on the same
+cell** - a party arriving at its place founds there "all the same" even when another party's village was founded on it meanwhile - so their
+anchors coincide and the way between them has no length; a traveller's arrival was read from the arc length (`S1 <= 0.5 ? A : B`), so on a way
+of no length a trip home ended where it began, one second later, again and again. Each trip's leg went into the travel index, which drops stale
+entries only when a cell is queried (by a fire near it): 120,000-186,000 entries a day, never freed - the out-of-memory. C3.6e only changed the
+trajectory that met it: the fault is D2-045's (parties), the loop the arrival rule's. `place --near` (new) over ten seeds' saves at years 100 and
+300: villages closer than the spacing occur (most from world generation), on one cell never.
+**Decision.** (sim version 72) (a) **A founding party that finds a village standing at its place - within `Sites.Spacing` (1,900 m), where no
+village is founded - makes its home in the nearest one** (`Migration.Arrive`, `VillageNear`), as a party joining a village does; recorded
+`PartyJoined` (95, Local: "N households of X (M people), come to make a new home, found Y standing where they meant to settle and made their home
+among its people", caused by its setting out). (b) **A traveller arrives where they were going**: on a way of a metre or less the arc length
+tells nothing, the trip's destination does (`AgentSystem.OnTravelEnd`, `VoyageLanded`). (c) **The travel index sweeps its stale entries before
+it grows** (`TravelIndex.Full`/`Sweep`, from `RegisterLeg`): the entries a query would drop, so queries read the same in the same order;
+derived state. `--nojoin` founds as before.
+**Evidence.** Tests (MigrationTests): `APartyFindingAVillageAtItsPlaceMakesItsHomeThere` (no founding; its households in the village standing
+there; `PartyJoined` once, caused by the setting out), `ATravellerOnAWayOfNoLengthArrivesWhereTheyWereGoing` (the bug's premise: a village founded
+on its own village's cell, someone walks across - fails with the old rule: they never get home), `TheTravelIndexDropsStaleLegsBeforeItGrows`
+(the same queries, room again; a pool of live legs doubles at once). The browser's year-34 save replayed with the fix: ~1,000-1,500 events a half
+day (54,000 before), the travel index in the hundreds. Headless ACTIVITY `run --seed 42 --years 96` (the browser's catch-up): 96 years in 43 s,
+488 people in 16 places. **Ten seeds DEEP 300 years (`_j1`): every world's annals byte-identical to `_e1`** - in 3,000 village-years no party
+arrived at a taken place, so (a) and (b) change nothing else, and (c) nothing at all. Full suite 358/358 (C3.6e's first full run too).
+**Open.** Parties of different villages weigh leaving on the same day and may choose one place; the second now joins the first's village -
+whether scouts' news of a founding should reach a party before it sets out (lore of places founded) is left to the knowledge of places (C11).

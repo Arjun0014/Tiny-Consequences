@@ -382,9 +382,31 @@ namespace TC2.Core.Places
             int dest = party.Dest;
             if (party.Site >= 0)
             {
-                // the place may have been taken meanwhile (another party, a village grown near): they found it all the same - a
-                // party on the land does not turn back for a report it never had
-                dest = FoundAt(party.Site, party.Event, party.Origin);
+                // the place may have been taken meanwhile (another party, a village grown near): a party on the land does not turn back
+                // for a report it never had - where a village now stands within the spacing no village is founded (`Sites.Spacing`), they
+                // make their home in the nearest; else they found theirs (two villages on one spot had a way of no length between them,
+                // and their visitors walked it forever: D2-137)
+                int there = JoinOff ? 0 : VillageNear(party.Site);
+                if (there != 0)
+                {
+                    dest = there;
+                    int hh0 = 0, people = 0, households = 0;
+                    for (int hid = w.Households.First(); hid != 0; hid = w.Households.Next(hid))
+                    {
+                        ref var ph = ref w.Households.Get(hid);
+                        if (ph.Party != pid || ph.Dissolved != 0) continue;
+                        if (hh0 == 0) hh0 = hid;
+                        households++; people += w.Members(hid).Count;
+                    }
+                    ref var ts = ref w.Settlements.Get(there);
+                    w.Record(new HistoryEvent
+                    {
+                        Kind = HistoryKind.PartyJoined, Time = w.Now, Cell = ts.Cell, Settlement = there, Subject = EntityRef.Settlement(party.Origin),
+                        Object = EntityRef.Settlement(there), Other = hh0 != 0 ? EntityRef.Household(hh0) : default, Cause1 = party.Event,
+                        Rel1 = party.Event != 0 ? CauseRel.CausedBy : CauseRel.None, ArgA = households, ArgB = people, RootKind = RootKind.People,
+                    });
+                }
+                else dest = FoundAt(party.Site, party.Event, party.Origin);
             }
             if (dest == 0 || !w.Settlements.Exists(dest) || !w.Settlements.Get(dest).Inhabited)
             {
@@ -406,6 +428,25 @@ namespace TC2.Core.Places
             }
             w.Holdings.Arrive(dest, _arrived, party.Food);   // (the food they carried is theirs at their new home: C3.3)
             w.Parties.Remove(pid);
+        }
+
+        /// <summary>Tools: a party founds its village at its place even where one now stands (`--nojoin`, before D2-137).</summary>
+        public static bool JoinOff;
+
+        /// <summary>The inhabited village nearest a place within `Sites.Spacing` of it (where no village may be founded; ties to the lower id), 0 none.</summary>
+        int VillageNear(int cell)
+        {
+            var w = _w; var P = w.Planet;
+            Vec3d at = P.Grid.Center[cell];
+            int best = 0; double bd = Sites.Spacing;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                double d = Vec3d.ArcDistance(at, s.Anchor, P.Radius);
+                if (d < bd) { bd = d; best = sid; }
+            }
+            return best;
         }
 
         /// <summary>A household moves its home to another village: a home left empty there, else a new lot and a camp; its people with it.</summary>

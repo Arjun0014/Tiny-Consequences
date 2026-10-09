@@ -27,6 +27,35 @@ namespace TC2.Core.Agents
             _used = 0; _free = -1; LiveEntries = 0;
         }
 
+        /// <summary>Whether the next entry would grow the pool.</summary>
+        public bool Full => _free < 0 && _used == _pool.Length;
+
+        /// <summary>
+        /// Drops every stale entry (past its exit, or of an older activity) in every cell - the entries a query of that cell would drop - so the
+        /// pool grows only for live journeys: cells nobody queries kept every leg walked through them since the load (D2-137). The live entries
+        /// keep their order in each cell; if they still fill more than half the pool it is doubled now, so sweeps stay rare.
+        /// </summary>
+        public void Sweep(long now, Func<int, int> versionOf)
+        {
+            for (int cell = 0; cell < _head.Length; cell++)
+            {
+                int prev = -1, i = _head[cell];
+                while (i >= 0)
+                {
+                    int next = _pool[i].Next;
+                    ref Entry e = ref _pool[i];
+                    if (e.TExit < now || versionOf(e.Person) != e.Version)
+                    {
+                        if (prev < 0) _head[cell] = next; else _pool[prev].Next = next;
+                        e.Next = _free; _free = i; LiveEntries--;
+                    }
+                    else prev = i;
+                    i = next;
+                }
+            }
+            if (LiveEntries > _pool.Length / 2) Array.Resize(ref _pool, _pool.Length * 2);
+        }
+
         public void Add(int cell, int person, int version, long tEnter, long tExit)
         {
             int i;

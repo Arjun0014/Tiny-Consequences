@@ -81,6 +81,32 @@ namespace TC2.Headless
             }
         }
 
+        /// <summary>`run --hot N`: the N people who began the most activities since the last report (each new activity raises `ActVer`), with where
+        /// they are, where they live and what they do - a person caught in a loop of zero-length steps shows at once. Reads only.</summary>
+        static void Hot(World w, Dictionary<int, int> last, int n)
+        {
+            var rows = new List<(int d, int id)>();
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+            {
+                ref var p = ref w.People.Get(id);
+                if (!p.Alive) continue;
+                int d = last.TryGetValue(id, out int v) ? p.ActVer - v : 0;
+                last[id] = p.ActVer;
+                if (d > 0) rows.Add((d, id));
+            }
+            rows.Sort((x, y) => x.d != y.d ? y.d.CompareTo(x.d) : x.id.CompareTo(y.id));
+            for (int i = 0; i < Math.Min(n, rows.Count); i++)
+            {
+                ref var p = ref w.People.Get(rows[i].id);
+                int hh = p.Household;
+                bool hx = hh != 0 && w.Households.Exists(hh);
+                Console.WriteLine("    hot " + p.Id + " +" + rows[i].d + " acts  age " + F(p.AgeYears(w.Now), "0") + "  act " + p.Act + " step " + p.Step + " why " + p.Why +
+                                  "  at " + p.At + " home " + p.Home + " dest " + p.Dest + " route " + p.RouteA + "-" + p.RouteB + " s " + F(p.S0, "0") + "->" + F(p.S1, "0") +
+                                  " t " + (p.T1 - p.T0) + " s  household " + hh + (hx ? " (of " + w.Households.Get(hh).Settlement + ", party " + w.Households.Get(hh).Party + ", dissolved " + w.Households.Get(hh).Dissolved + ")" : " (gone)") +
+                                  "  home inhabited " + (w.Settlements.Exists(p.Home) && w.Settlements.Get(p.Home).Inhabited) + "  travel index " + w.Travel.LiveEntries);
+            }
+        }
+
         /// <summary>`run --crafttally` (roles from practice): for each craft, the people its role reads today (the person page's test) against those who
         /// worked at it since the tally began - by village, summed over the world.</summary>
         static void CraftReport(World w)
@@ -136,6 +162,7 @@ namespace TC2.Headless
             if (a.Has("waresflow")) TC2.Core.Places.Trade.WaresFor = new double[6];
             if (a.Has("ledger")) { TC2.Core.Diagnostics.HouseLedger.By = new System.Collections.Generic.Dictionary<int, double[]>(); TC2.Core.Diagnostics.HouseLedger.From = (long)a.Int("ledger", 250) * TC2.Core.Foundation.SimTime.Year; }
             if (a.Has("ledgeryears")) TC2.Core.Diagnostics.HouseLedger.Years = new System.Collections.Generic.List<double[]>();   // (C3.3 design: household-years with their kin, written to the named csv)   // (C3.3 survey: what each household brings in and draws)
+            if (a.Has("nojoin")) TC2.Core.Places.Migration.JoinOff = true;   // (D2-137 against C3.6e in one binary: a party founds at its place even where a village now stands)
             if (a.Has("nocarts")) TC2.Core.Places.Carts.Off = true;   // (C4.2 against C3.2 in one binary: no carts)
             if (a.Has("nohold")) TC2.Core.Places.Holdings.Off = true;   // (C3.3 against C1.4b in one binary: the village's store as before - no bins, no debts)
             if (a.Has("holdmeansoff")) TC2.Core.Places.Holdings.MeansOff = true;
@@ -175,6 +202,7 @@ namespace TC2.Headless
                 vt.WriteLine("year,sid,name,pop,granary,days,ration,memory,pressure,arable_ha,famine,hunger,land_out,sea_out,land_in,sea_in,left,planks,lord");
             }
             var voySeen = new HashSet<long>();
+            var hotVer = new Dictionary<int, int>();
             World w;
             if (a.Has("load"))
             {
@@ -245,6 +273,7 @@ namespace TC2.Headless
                 if (scale) Console.WriteLine(ScaleReport.Line(w));
                 if (vt != null) VTrace(w, vt);
                 if (a.Has("voyagers")) Voyagers(w, voySeen);   // (each boat seen on a voyage, once a leg: C9.3)
+                if (a.Has("hot")) Hot(w, hotVer, a.Int("hot", 5));   // (who began the most activities since the last report: a person caught in a loop)
                 if (a.Has("places"))
                 {
                     // each village: people, fields (ha of arable), granary (FU) and its ration, last harvest

@@ -48,6 +48,8 @@ namespace TC2.Headless
                 return 0;
             }
             if (a.Has("splits")) { Splits(w); return 0; }
+            if (a.Has("near")) { Near(w); return 0; }
+            if (a.Has("heads")) { Heads(w); return 0; }
             if (a.Has("marriage")) { Marriage(w); return 0; }
             if (a.Has("heirs")) { Heirs(w); return 0; }
             if (a.Has("landless")) { Landless(w); return 0; }
@@ -493,6 +495,76 @@ namespace TC2.Headless
         /// <summary>`place --load SAVE --splits` (C10.3): each village split at a contested succession (from the ledger) - when, from where, the faction's
         /// households and people, the village it founded and both villages now; then every founding in the ledger by what sent its party (a split or
         /// not) and how many of those villages still stand and how large they are.</summary>
+        /// <summary>`place --near`: inhabited villages closer to each other than a new village may be founded (`Sites.Spacing`), with their distance,
+        /// cells and the length of the way between them - two on one cell have a way of no length (the catch-up loop of session 17). Reads only.</summary>
+        static void Near(World w)
+        {
+            var P = w.Planet;
+            int pairs = 0, sameCell = 0, nil = 0, villages = 0;
+            for (int a = w.Settlements.First(); a != 0; a = w.Settlements.Next(a))
+            {
+                ref var sa = ref w.Settlements.Get(a);
+                if (!sa.Inhabited) continue;
+                villages++;
+                for (int b = w.Settlements.Next(a); b != 0; b = w.Settlements.Next(b))
+                {
+                    ref var sb = ref w.Settlements.Get(b);
+                    if (!sb.Inhabited) continue;
+                    double d = Vec3d.ArcDistance(sa.Anchor, sb.Anchor, P.Radius);
+                    if (d >= TC2.Core.Places.Sites.Spacing) continue;
+                    pairs++;
+                    if (sa.Cell == sb.Cell) sameCell++;
+                    var r = w.Routes.Get(w, a, b);
+                    if (r != null && r.Length <= 0.5) nil++;
+                    Console.WriteLine("  #" + a + " " + w.History.NameOf(new EntityRef(EntityKind.Settlement, a)) + " (" + sa.Population + ", founded y" + (sa.Founded / SimTime.Year) + ", cell " + sa.Cell + ") and #" + b + " " +
+                                      w.History.NameOf(new EntityRef(EntityKind.Settlement, b)) + " (" + sb.Population + ", founded y" + (sb.Founded / SimTime.Year) + ", cell " + sb.Cell + "): " + d.ToString("0") + " m apart, way " +
+                                      (r == null ? "none" : r.Length.ToString("0") + " m"));
+                }
+            }
+            Console.WriteLine("near: " + villages + " villages; " + pairs + " pairs closer than " + TC2.Core.Places.Sites.Spacing.ToString("0") + " m, " + sameCell + " on one cell, " + nil + " with a way of no length");
+        }
+
+        /// <summary>`place --heads`: who became first among a village's people and why - after a death (the event's cause), or with the one before
+        /// still living (a yearly weighing, or the headman gone to live in another household: C3.6e's retirements); contested splits by the same
+        /// (a split whose vacancy was a living headman's move has no cause). Reads only.</summary>
+        static void Heads(World w)
+        {
+            var H = w.History;
+            var retiredAt = new System.Collections.Generic.Dictionary<(int, int), System.Collections.Generic.List<long>>();   // (village, its eldest) -> the times of their retirements
+            int retired = 0;
+            for (int i = 0; i < H.Count; i++)
+            {
+                var e = H.At(i);
+                if (e.Kind != HistoryKind.Retired) continue;
+                retired++;
+                if (!retiredAt.TryGetValue((e.Settlement, e.Other.Id), out var ts)) retiredAt[(e.Settlement, e.Other.Id)] = ts = new System.Collections.Generic.List<long>();
+                ts.Add(e.Time);
+            }
+            int rose = 0, afterDeath = 0, living = 0, atRetire = 0, splits = 0, splitsLiving = 0;
+            int[] how = new int[3], howRetire = new int[3];
+            for (int i = 0; i < H.Count; i++)
+            {
+                var e = H.At(i);
+                if (e.Kind == HistoryKind.HeadmanRose)
+                {
+                    rose++; if (e.ArgB >= 0 && e.ArgB < 3) how[e.ArgB]++;
+                    if (e.Cause1 != 0) afterDeath++;
+                    else if (!e.Other.IsNone)
+                    {
+                        living++;
+                        // (the weighing runs on the village's next day - in DEEP its next step, up to twelve days on - after the retirement)
+                        bool r = false;
+                        if (retiredAt.TryGetValue((e.Settlement, e.Other.Id), out var ts)) foreach (long t in ts) if (t <= e.Time && e.Time - t <= 13 * SimTime.Day) r = true;
+                        if (r) { atRetire++; if (e.ArgB >= 0 && e.ArgB < 3) howRetire[e.ArgB]++; }
+                    }
+                }
+                else if (e.Kind == HistoryKind.VillageSplit) { splits++; if (e.Cause1 == 0) splitsLiving++; }
+            }
+            Console.WriteLine("heads: " + rose + " rose (first " + how[0] + ", within the household " + how[1] + ", another household " + how[2] + "); after a death " + afterDeath +
+                              ", the one before living " + living + " (of them at a retirement of theirs " + atRetire + ": within " + howRetire[1] + ", another household " + howRetire[2] + ")" +
+                              "; retirements recorded " + retired + "; splits " + splitsLiving + " of " + splits + " at a living headman's move");
+        }
+
         static void Splits(World w)
         {
             var H = w.History;
