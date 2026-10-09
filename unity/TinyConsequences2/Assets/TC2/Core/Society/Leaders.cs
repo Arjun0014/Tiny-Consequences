@@ -27,6 +27,9 @@ namespace TC2.Core.Society
         public const int SplitHouseholds = 6, SplitPeople = 20;
         /// <summary>Years a faction that would not follow looks for land before it gives up and stays.</summary>
         public const int SplitYears = 3;
+        /// <summary>`--nostanding`: a headman gone to live in another household of the village leaves the place vacant (contested), and a household's
+        /// clients do not follow the household that took it in (before D2-138).</summary>
+        public static bool StandingOff;
         /// <summary>`--notribhead`: tribute to a lord village is its common grain, not its first household's (C10.2 headmen alone).</summary>
         public static bool TributeOff;
         /// <summary>An incumbent household keeps the first place while its following is at least this share of the largest.</summary>
@@ -122,12 +125,21 @@ namespace TC2.Core.Society
             }
             if (best == 0) { s.Head = 0; s.HeadHh = 0; s.HeadSince = w.Now; return; }
             int inc = s.HeadHh;
+            // the first household gone into another with its headman (the old to live with a child: C3.6e) - its people, land, grain, claims and
+            // followers are there: that household is the incumbent now (D2-138)
+            if (!StandingOff && inc != 0 && w.Households.Exists(inc) && w.Households.Get(inc).Dissolved != 0 && s.Head != 0 && w.People.Exists(s.Head))
+            {
+                ref var hp = ref w.People.Get(s.Head);
+                if (hp.Alive && hp.Home == sid && hp.Household != inc && w.Households.Exists(hp.Household)) inc = hp.Household;
+            }
             bool keep = inc != 0 && w.Households.Exists(inc) && w.Households.Get(inc).Settlement == sid && w.Households.Get(inc).Dissolved == 0
                         && w.Households.Get(inc).Party == 0 && Eldest(w, sid, inc) != 0 && FollowingOf(inc) >= Hold * bestF;
             int house = keep ? inc : best;
             int head = s.Head;
             bool headStays = head != 0 && w.People.Exists(head) && w.People.Get(head).Alive && w.People.Get(head).Home == sid && w.People.Get(head).Household == house;
             if (headStays && house == s.HeadHh) return;
+            // the same person first, their household now the one theirs went into (the old gone to live with a child: C3.6e) - nobody rose (D2-138)
+            if (headStays && !vacancy && !StandingOff) { s.HeadHh = house; return; }
             int prev = head, prevHouse = s.HeadHh;
             int now = headStays ? head : Eldest(w, sid, house);
             if (now == 0) return;
@@ -236,7 +248,8 @@ namespace TC2.Core.Society
             if (s.Head == 0) { if (w.HouseholdsOf(sid).Count > 0 && (s.HeadSince == 0 || w.Now - s.HeadSince >= SimTime.Year)) Weigh(w, sid); return; }   // (none could lead: weighed again a year on)
             if (!w.People.Exists(s.Head)) { Weigh(w, sid); return; }
             ref var p = ref w.People.Get(s.Head);
-            if (!p.Alive || p.Home != sid || p.Household != s.HeadHh) Weigh(w, sid, p.Alive ? 0 : p.DeathEvent, true);
+            if (!p.Alive || p.Home != sid || (StandingOff && p.Household != s.HeadHh)) Weigh(w, sid, p.Alive ? 0 : p.DeathEvent, true);   // dead or gone: the place is vacant
+            else if (p.Household != s.HeadHh) Weigh(w, sid);   // living on in another household of the village (gone to live with a child, a marriage): weighed again, nothing to contest (D2-138)
         }
 
         /// <summary>The village's first household (0 none) - the one whose grain opens to the hungry in hard times (`Holdings.Draw`).</summary>

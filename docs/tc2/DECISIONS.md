@@ -3974,3 +3974,27 @@ day (54,000 before), the travel index in the hundreds. Headless ACTIVITY `run --
 arrived at a taken place, so (a) and (b) change nothing else, and (c) nothing at all. Full suite 358/358 (C3.6e's first full run too).
 **Open.** Parties of different villages weigh leaving on the same day and may choose one place; the second now joins the first's village -
 whether scouts' news of a founding should reach a party before it sets out (lore of places founded) is left to the knowledge of places (C11).
+
+## D2-138 — 2026-10-09 — A headman gone to live with their child stays first; a household's followers follow the household that took it in (C3.6e with C10.2)
+
+**Context.** C3.6e (D2-136) sends an old landholding household to live with a child's household; when it was the village's first, its headman
+now lived in another household, and `Leaders.Day` read that as a vacancy (as a death): the place was weighed again **and contested** (C10.3),
+and recorded "another household rose" - usually naming the same man, still the eldest of the household he went into. Measured (`place --heads`,
+new; ten seeds, 300 years, `_j1`): 37-127 such successions a world (of 197-903 headmen), and 4 of the 20 contested splits came from a living
+headman's move. Beneath it a gap since C10.2: the households a household fed or lent to followed it (`Household.Patron`) and lost the tie when it
+was absorbed - into the household its last member went to (a marriage, now the old's retirement) or an heir's - though its debts and claims
+went over (C3.3 `Transfer`): a first household that retired lost its following with its name.
+**Decision.** (sim version 73) (a) **A headman alive and still in the village but in another household is no vacancy**: the place is weighed
+again as the yearly weighing does (`Leaders.Day` -> `Weigh` without `vacancy`; nothing is contested); if the household they went into holds the
+first place, the same person stays first and nothing is recorded (`Weigh`: `HeadHh` follows them). A death, or leaving the village, is a vacancy
+as before. (b) **A household's clients follow the household that took it in** (`Holdings.Clients`, from `Close` and `Inherit` in the same
+village): the grain, the claims and the people are there now, and so is the tie (the years it lasts count from the feeding); a household that
+followed the one it went into follows no one. (c) **The household that took the first household in is the incumbent** (`Weigh`): it keeps the
+place while its following is at least half the largest (`Hold`), as the first household would have. `--nostanding` keeps the old reading (all three).
+**Evidence.** `LeadersTests.AHeadmanGoneToLiveWithTheirChildStaysFirstAndTheirFollowersFollow` (the same person first in the household that took
+them in, nobody rose, nothing contested, every client following it; `--nostanding`: the place fell vacant and was filled). Ten seeds DEEP 300 years (`_k2` against `_j1`): successions at a
+headman's retirement 37-127 a world -> 0-17 (the household that took them in outstood more than twice over); headmen a world x0.83 (5,315 -> 4,423
+over the ten: the place changes hands less); contested splits at a living headman's move 4 -> 2 (the two left are headmen who left the village);
+people (end x0.98, years 200-299 x1.00), births, deaths and hunger at par; conflict lower but inside the noise (takings x0.56 t -1.1, blows x0.75,
+palisades x0.86, raids x0.83); tribute agreements 17 -> 8 over the ten worlds (low counts, two worlds made 9 of the 17: watched, not explained). A
+first form without (c) (`_k1`) only halved the successions at a retirement (20-63): the incumbency had stayed with the household that was gone.

@@ -169,6 +169,18 @@ Built on C3.3 (D2-126: household grain, loans recorded as debts, gifts). `Core/S
   Carneiro's circumscription: the factions a full land cannot shed stay inside, the condition for contests from within (next).
 - `--nosplit` gives C10.2 alone on the same binary.
 
+## 12e. Implemented: a headman gone to live with their child; a household's followers follow it (D2-138)
+- **Why**: C3.6e (D2-136) sends old landholding households to live with a child's household; a first household's headman then lived in another
+  household, which `Leaders.Day` read as a vacancy - contested, and recorded "another household rose" for the same man (`place --heads`: 37-127 such
+  successions a world over 300 years, 4 of 20 splits). Under it a gap since C10.2: a household's clients (`Patron`) lost their tie when it was
+  absorbed (the last out's new household, an heir's), though its debts went over.
+- **Now**: a headman alive and in the village but in another household is weighed again without a contest; **the household that took the first
+  household in is the incumbent** (it keeps the place while followed by at least half the largest); the same person stays first and nothing is
+  recorded; **a household's clients follow the household that took it in** (`Holdings.Clients`). A death or leaving the village is a vacancy as
+  before. `--nostanding` keeps the old reading.
+- **Result** (ten seeds against `_j1`): successions at a retirement 37-127 -> 0-17 a world, headmen x0.83 (the place changes hands less), splits at
+  a living headman's move 4 -> 2; people and vital rates at par; conflict lower inside the noise; tribute agreements 17 -> 8 (low counts).
+
 ## 13. Civilisation depth (D2-089)
 
 Force, fortification, war and sieges are designed in `23_MILITARY_AND_WAR.md` (fighters as persistent people, arms as goods, training,

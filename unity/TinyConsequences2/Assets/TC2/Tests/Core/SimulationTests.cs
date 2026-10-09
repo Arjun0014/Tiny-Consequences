@@ -45,7 +45,7 @@ namespace TC2.Tests.Core
         }
 
         /// <summary>Every living person has exactly one live (non-stale) step event, and lists agree with state.</summary>
-        public static string Audit(World w)
+        public static string Audit(World w, bool oneCellOk = false)
         {
             var live = new Dictionary<int, int>();
             for (int i = 0; i < w.Queue.RawCount; i++)
@@ -74,6 +74,10 @@ namespace TC2.Tests.Core
             int alive = 0;
             for (int id = w.People.First(); id != 0; id = w.People.Next(id)) if (w.People.Get(id).Alive) alive++;
             if (pop != alive) return "population cache " + pop + " != living " + alive;
+            // no two inhabited villages on one cell: the way between them has no length (D2-137)
+            var cells = new HashSet<int>();
+            for (int s = w.Settlements.First(); s != 0; s = w.Settlements.Next(s))
+                if (!oneCellOk && w.Settlements.Get(s).Inhabited && !cells.Add(w.Settlements.Get(s).Cell)) return "two villages on cell " + w.Settlements.Get(s).Cell + " (#" + s + ")";
             // livestock (D2-048): every live animal in its household's list and only there, kept by a household that exists
             int listed = 0, beasts = 0;
             for (int id = w.Beasts.First(); id != 0; id = w.Beasts.Next(id))

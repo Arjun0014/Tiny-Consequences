@@ -291,6 +291,58 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void AHeadmanGoneToLiveWithTheirChildStaysFirstAndTheirFollowersFollow()
+        {
+            // D2-138: the old first household goes to live with a child's household (C3.6e) - no vacancy, nobody rises, nothing to contest; the
+            // households that followed it follow the one that took it in. `--nostanding`: the place falls vacant as before.
+            foreach (bool off in new[] { false, true })
+            {
+                Leaders.StandingOff = off;
+                try
+                {
+                    var w = Village(944, out int sid);
+                    var hl = w.HouseholdsOf(sid);
+                    Assume.That(hl.Count >= 5);
+                    int old = hl[0], child = hl[1];
+                    // premise: an old household holding land, one of the next household's people its child, every other household fed by it lately
+                    var om = w.Members(old);
+                    for (int k = 0; k < om.Count; k++) { ref var p = ref w.People.Get(om[k]); p.Born = w.Now - SimTime.Years(64 + k); p.Health = 1f; }
+                    { ref var oh = ref w.Households.Get(old); oh.Land = 3.0; oh.Grain = 500; }
+                    { ref var q = ref w.People.Get(w.Members(child)[0]); q.Mother = om[0]; }
+                    for (int i = 1; i < hl.Count; i++) { ref var h = ref w.Households.Get(hl[i]); h.Patron = old; h.PatronAt = w.Now; }
+                    Leaders.Weigh(w, sid);
+                    Assert.AreEqual(old, w.Settlements.Get(sid).HeadHh, "premise: the old household is the village's first");
+                    int head = w.Settlements.Get(sid).Head;
+                    long mark = w.History.LastId;
+                    w.SettlementSys.Retire(sid);
+                    int took = w.People.Get(head).Household;
+                    Assert.AreNotEqual(old, took, "premise: they went to live with another household");
+                    Leaders.Day(w, sid);
+                    ref var s = ref w.Settlements.Get(sid);
+                    int rose = 0, splits = 0;
+                    for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++)
+                    {
+                        var e = w.History.At(i);
+                        if (e.Kind == HistoryKind.HeadmanRose) rose++;
+                        if (e.Kind == HistoryKind.VillageSplit) splits++;
+                    }
+                    if (off) { Assert.Greater(rose, 0, "--nostanding: the place fell vacant and was filled"); continue; }
+                    Assert.AreEqual(took, s.HeadHh, "the first household is the one theirs went into");
+                    Assert.AreEqual(head, s.Head, "the same person first among the people");
+                    Assert.AreEqual(0, rose, "nobody rose");
+                    Assert.AreEqual(0, splits, "nothing to contest");
+                    Assert.AreEqual(0, s.SplitHh);
+                    for (int i = 0; i < hl.Count; i++)
+                    {
+                        if (hl[i] == old || !w.Households.Exists(hl[i]) || w.Households.Get(hl[i]).Dissolved != 0) continue;
+                        Assert.AreEqual(hl[i] == took ? 0 : took, w.Households.Get(hl[i]).Patron, "household " + hl[i] + " follows the household that took theirs in");
+                    }
+                }
+                finally { Leaders.StandingOff = false; }
+            }
+        }
+
+        [Test]
         public void ALivedAndACoarseVillageFindTheirFirstAndSaveIt()
         {
             foreach (bool coarse in new[] { false, true })

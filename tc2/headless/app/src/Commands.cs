@@ -162,7 +162,8 @@ namespace TC2.Headless
             if (a.Has("waresflow")) TC2.Core.Places.Trade.WaresFor = new double[6];
             if (a.Has("ledger")) { TC2.Core.Diagnostics.HouseLedger.By = new System.Collections.Generic.Dictionary<int, double[]>(); TC2.Core.Diagnostics.HouseLedger.From = (long)a.Int("ledger", 250) * TC2.Core.Foundation.SimTime.Year; }
             if (a.Has("ledgeryears")) TC2.Core.Diagnostics.HouseLedger.Years = new System.Collections.Generic.List<double[]>();   // (C3.3 design: household-years with their kin, written to the named csv)   // (C3.3 survey: what each household brings in and draws)
-            if (a.Has("nojoin")) TC2.Core.Places.Migration.JoinOff = true;   // (D2-137 against C3.6e in one binary: a party founds at its place even where a village now stands)
+            if (a.Has("nojoin")) TC2.Core.Places.Migration.JoinOff = true;
+            if (a.Has("nostanding")) TC2.Core.Society.Leaders.StandingOff = true;   // (D2-138 against D2-137 in one binary: a headman's move is a vacancy, clients' ties lapse)   // (D2-137 against C3.6e in one binary: a party founds at its place even where a village now stands)
             if (a.Has("nocarts")) TC2.Core.Places.Carts.Off = true;   // (C4.2 against C3.2 in one binary: no carts)
             if (a.Has("nohold")) TC2.Core.Places.Holdings.Off = true;   // (C3.3 against C1.4b in one binary: the village's store as before - no bins, no debts)
             if (a.Has("holdmeansoff")) TC2.Core.Places.Holdings.MeansOff = true;

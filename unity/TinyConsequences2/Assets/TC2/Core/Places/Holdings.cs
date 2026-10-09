@@ -556,6 +556,7 @@ namespace TC2.Core.Places
             {
                 w.Households.Get(heir).Grain += hh.Grain;
                 Transfer(hid, heir);
+                if (w.Households.Get(heir).Settlement == hh.Settlement) Clients(hid, heir, hh.Settlement);
             }
             else
             {
@@ -578,7 +579,7 @@ namespace TC2.Core.Places
             if (!LandOff && same) { w.Households.Get(to).Land += oh.Land; if (LandTally != null) LandTally[2] += oh.Land; }   // (the land goes with the last to leave it in the village: C3.6b)
             oh.Land = 0;
             if (Off) return;
-            if (same) Transfer(old, to);
+            if (same) { Transfer(old, to); Clients(old, to, oh.Settlement); }
             else
             {
                 if (w.Settlements.Exists(oh.Settlement)) w.Settlements.Get(oh.Settlement).Common += oh.Grain;
@@ -1073,6 +1074,19 @@ namespace TC2.Core.Places
                 if (j >= 0) { var e = _debts[j]; e.Fu += d.Fu; if (d.Since < e.Since) e.Since = d.Since; _debts[j] = e; }
                 else _debts.Insert(~j, d);
             }
+        }
+
+        /// <summary>
+        /// The households a household fed or lent to follow the household that took it in (an heir's, the one its last member went to - the old gone to
+        /// live with a child: C3.6e): the grain, the claims and the people are there now, and so is the tie (C10.2; the years it lasts count from the
+        /// feeding). A household that followed the one it went into follows no one. (D2-138; `--nostanding`: the ties lapse with the household.)
+        /// </summary>
+        void Clients(int from, int to, int sid)
+        {
+            if (Society.Leaders.StandingOff) return;
+            var w = _w;
+            var hl = w.HouseholdsOf(sid);
+            for (int i = 0; i < hl.Count; i++) { ref var h = ref w.Households.Get(hl[i]); if (h.Patron == from) h.Patron = hl[i] == to ? 0 : to; }
         }
 
         /// <summary>Every debt a household owes or is owed lapses; the grain they stood for.</summary>

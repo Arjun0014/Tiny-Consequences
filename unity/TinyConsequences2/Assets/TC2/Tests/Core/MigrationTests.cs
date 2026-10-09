@@ -350,7 +350,7 @@ namespace TC2.Tests.Core
                 Assert.IsTrue(backHome, "and came home - not back to where they were, again and again");
                 Assert.Less(most, 2000, "nobody walks a way of no length forever (a day lived is some 20 activities)");
                 Assert.Less(w.Travel.LiveEntries, 20000, "the travel index holds live journeys only");
-                Assert.IsNull(TestWorlds.Audit(w));
+                Assert.IsNull(TestWorlds.Audit(w, oneCellOk: true));   // (the premise is two villages on one cell)
             }
             finally { Migration.JoinOff = false; }
         }

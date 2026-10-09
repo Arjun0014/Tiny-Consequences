@@ -4,6 +4,12 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 16, fourth context - D2-138 a headman gone to live with their child stays first (sim version 73)**: C3.6e's retirements put the first
+  household's headman in another household 37-127 times a world, read as a contested vacancy ("another household rose" for the same man; 4 of 20
+  splits). Now a living headman's move is weighed again without a contest, the household that took the first household in is the incumbent, and a
+  household's clients follow the household that took it in (a gap since C10.2). Ten seeds (`_k2` against `_j1`): successions at a retirement
+  0-17 a world, headmen x0.83, splits at a living move 4 -> 2; people and vital rates at par; tributes 17 -> 8 (low counts, watched).
+  `LeadersTests` 8; `place --heads`.
 - **Session 16, fourth context - the Web catch-up's out-of-memory traced and fixed (D2-137, sim version 72)**: a Living catch-up of a small world is
   ACTIVITY, not COARSE (under 40,000 person-years), so the browser's world is headless `run --seed 42 --years 96` - which ran out of memory the same way
   (17 places at year 28). The browser's own saves (`webtest.mjs --export`, new) replayed headless with `run --hot` (new): four people walking a way of
