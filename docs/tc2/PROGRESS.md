@@ -4,6 +4,16 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 16, second context, later** - Web test s16web 6/6 on C10.3 (bit-identical; family plurals fixed in every page). Then the next slice
+  chosen by measurement: **there is no famine amid plenty** (D2-126 corrected: at 95 % of ~40,000 hard-times hunger deaths the households with grain
+  could spare under a quarter of what the grainless needed; the store held under a day's food in 69 %; deaths 5-12 days before the harvest) - hunger
+  was chronic (19 % of deaths) and nothing answered scarcity before death: women married at 20.3 in every world and season. **C3.5 household
+  formation (D2-129, sim version 65)**: a couple marries when what it brings of its households' grain keeps it to the next harvest of the village it
+  will live in; otherwise the match waits, brides marry into villages with grain, some never marry. Pages (person family section, settlement
+  overview "Marriages wait: ...", the marriage's record "setting up their household with N days' bread of their own"), `place --marriage`,
+  `--nomeans` (= `_d3`). Ten seeds: hunger deaths x0.69, famines x0.70, births x0.88, deaths x0.87, people at par over years 200-299 (x0.935 at year
+  300), conflict at par; age at first marriage 20.3 -> 21.4 (22-24 in poor worlds), never married by 45-59 0 -> 4 % (7-24 % in poor worlds).
+  `HouseholdFormationTests` 3.
 - **Session 16, second context (9 Oct 2026, from 12:22 IST; Control Room run #39 session 2)** - **C10.3 a contested succession splits a village
   closed (D2-128, sim version 64)**: at a vacancy the household with the largest following among those not bound to the new first leads them away to
   found a village at the best place the village knows when that following is half the first's and a village's worth; knowing no place, the faction

@@ -31,7 +31,7 @@ namespace TC2.Core.History
                         string how = e.ArgA == 2 ? " of hunger" : (e.ArgA == 3 ? " in childbirth" : (e.ArgA == 4 ? " in the eruption" : (e.ArgA == 5 ? " when the earthquake brought the house down" : (e.ArgA == 6 ? " in the great wave" : (e.ArgA == 7 ? " in the storm" : (e.ArgA == 8 ? " when the storm drove the sea ashore" : (e.ArgA == 9 ? " of the cold" : (e.ArgA == 10 ? " of " + Sickness(w, e.Cause1) : (e.ArgA == 11 ? " of the wounds of a fight in the night" : (e.ArgA == 12 ? " at sea, when their boat overturned" : ""))))))))));
                         return subj + " died" + how + " in " + place + ", aged " + F(e.Magnitude, "0") + ".";
                     }
-                case HistoryKind.Marriage: return subj + " and " + obj + " married in " + place + ".";
+                case HistoryKind.Marriage: return subj + " and " + obj + " married in " + place + (e.ArgA > 0 ? ", setting up their household with " + e.ArgA + (e.ArgA == 1 ? " day's" : " days'") + " bread of their own" : "") + ".";
                 case HistoryKind.HouseholdFormed: return "The household of the " + Plural(subj) + " was formed in " + place + ".";
                 case HistoryKind.LightningStrike: return (e.RootKind == RootKind.You ? "Your lightning" : "Lightning") + " struck near " + place + ".";
                 case HistoryKind.FireStarted: return "A fire started near " + place + ".";

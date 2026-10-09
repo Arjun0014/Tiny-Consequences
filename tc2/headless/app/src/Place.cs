@@ -48,6 +48,7 @@ namespace TC2.Headless
                 return 0;
             }
             if (a.Has("splits")) { Splits(w); return 0; }
+            if (a.Has("marriage")) { Marriage(w); return 0; }
             if (a.Has("binding"))
             {
                 // (C10.3 survey) each village: households and people; bound to its first household (the household itself and its following); the
@@ -249,6 +250,57 @@ namespace TC2.Headless
             }
             Console.WriteLine("woodlots " + lots + ": centre not on dry ground " + wetLots + " (at the sea's surface " + seaLots + ")");
             Console.WriteLine("WORLD " + villages + " villages, " + hh + " households, " + ox + " with a grown ox (" + oxWood + " with a woodworker too); woodlots " + (wood / Math.Max(1, villages)).ToString("0") + " m out on average, quarries " + (quarry / Math.Max(1, nq)).ToString("0") + " m (" + nq + "); ways none/track/path/road " + string.Join("/", byState));
+        }
+
+        /// <summary>`place --load SAVE --marriage` (household formation): the living women by age - the share who ever married (a Marriage event of
+        /// theirs in the ledger, kept while they live), their age at first marriage; the marriages of the last 50 years by the days after their village's
+        /// harvest; and the women 18-36 unmarried now.</summary>
+        static void Marriage(World w)
+        {
+            var H = w.History;
+            int[] women = new int[6], wed = new int[6];   // ages 18-21, 22-25, 26-29, 30-36, 37-44, 45-60
+            double ageSum = 0; int ageN = 0;
+            int[] season = new int[4];   // marriages by days after the harvest: 0-11, 12-23, 24-35, 36-47
+            int unwed1836 = 0, n1836 = 0;
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+            {
+                var p = w.People.Get(id);
+                if (!p.Alive || !p.IsFemale) continue;
+                double age = p.AgeYears(w.Now);
+                if (age < 18 || age >= 60) continue;
+                int band = age < 22 ? 0 : age < 26 ? 1 : age < 30 ? 2 : age < 37 ? 3 : age < 45 ? 4 : 5;
+                women[band]++;
+                long first = long.MaxValue;
+                var evs = H.EventsOf(EntityRef.Person(id));
+                for (int i = 0; evs != null && i < evs.Count; i++)
+                {
+                    if (!H.TryGet(evs[i], out var e) || e.Kind != HistoryKind.Marriage || e.Subject.Id != id) continue;
+                    if (e.Time < first) first = e.Time;
+                    if (w.Now - e.Time <= 50 * SimTime.Year && w.Settlements.Exists(e.Settlement))
+                    {
+                        var s = w.Settlements.Get(e.Settlement);
+                        int doy = SimTime.DayOfYear(e.Time + TC2.Core.Planet.PlanetState.LocalOffset(s.Anchor));
+                        if (s.Anchor.Y < 0) doy = (doy + 24) % SimTime.DaysPerYear;
+                        int after = ((doy - 39) % SimTime.DaysPerYear + SimTime.DaysPerYear) % SimTime.DaysPerYear;   // (the harvest is day 39)
+                        season[Math.Min(3, after / 12)]++;
+                    }
+                }
+                if (first != long.MaxValue)
+                {
+                    wed[band]++;
+                    if (w.Now - first <= 50 * SimTime.Year) { ageSum += (first - p.Born) / (double)SimTime.Year; ageN++; }
+                }
+                if (age < 37) { n1836++; if (p.Partner == 0 && first == long.MaxValue) unwed1836++; }
+            }
+            string[] names = { "18-21", "22-25", "26-29", "30-36", "37-44", "45-59" };
+            var sb = new System.Text.StringBuilder("marriage: women ever married by age");
+            for (int b = 0; b < 6; b++) sb.Append(' ').Append(names[b]).Append(' ').Append(women[b] > 0 ? (100.0 * wed[b] / women[b]).ToString("0") : "-").Append(" % (").Append(women[b]).Append(')');
+            sb.Append("; age at first marriage (living women wed in the last 50 years) ").Append(ageN > 0 ? (ageSum / ageN).ToString("0.0") : "-").Append(" (").Append(ageN).Append(')');
+            int ns = season[0] + season[1] + season[2] + season[3];
+            sb.Append("; their marriages by days after the harvest 0-11/12-23/24-35/36-47 ");
+            for (int k = 0; k < 4; k++) sb.Append(k > 0 ? "/" : "").Append(ns > 0 ? (100.0 * season[k] / ns).ToString("0") : "-");
+            sb.Append(" %; women 18-36 never married ").Append(unwed1836).Append(" of ").Append(n1836);
+            Console.WriteLine(sb.ToString());
         }
 
         /// <summary>`place --load SAVE --splits` (C10.3): each village split at a contested succession (from the ledger) - when, from where, the faction's

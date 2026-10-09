@@ -98,6 +98,15 @@ namespace TC2.Core.History
             sb.Append("Mother: ").Append(p.Mother != 0 ? Kin(w, p.Mother) : "unknown (among the first people)").Append('\n');
             sb.Append("Father: ").Append(p.Father != 0 ? Kin(w, p.Father) : "unknown (among the first people)").Append('\n');
             if (p.Partner != 0) sb.Append("Partner: ").Append(Kin(w, p.Partner)).Append('\n');
+            else if (p.Alive && Places.SettlementSystem.MeansCount && p.AgeYears(w.Now) >= 18 && p.AgeYears(w.Now) <= (p.IsFemale ? 36 : 48) && w.Households.Exists(p.Household))
+            {
+                // unmarried, of an age to marry: whether a household of their own could be kept now (C3.5)
+                int at = w.Households.Get(p.Household).Settlement, toHarvest = w.SettlementSys.ToHarvest(at);
+                double own = w.SettlementSys.OwnDays(pid);
+                sb.Append("Unmarried. ").Append(p.IsFemale ? "Her" : "His").Append(" share of the household's grain would keep ").Append(p.IsFemale ? "her " : "him ").Append(F(own, "0")).Append(own < 1.5 && own >= 0.5 ? " day" : " days")
+                  .Append("; the harvest is ").Append(toHarvest).Append(toHarvest == 1 ? " day" : " days").Append(" off")
+                  .Append(own < toHarvest + Places.Holdings.Reserve ? " - a match waits for the means of a household (a couple marries when what they bring keeps them to the harvest).\n" : ".\n");
+            }
             var children = new List<int>(); var sibs = new List<int>(); int grand = 0;
             for (int id = w.People.First(); id != 0; id = w.People.Next(id))
             {

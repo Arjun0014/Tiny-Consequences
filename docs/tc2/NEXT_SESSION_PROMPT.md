@@ -191,8 +191,11 @@ debtors and clients (`Core/Society/Leaders.cs`); the household most follow leads
 times; tribute goes to the lord's first household. **C10.3 a contested succession splits a village (D2-128)**: at a vacancy an unbound rival's
 following (half the first's, six households) leads them away to the best place the village knows, or looks for land and gives up after three years;
 42 splits over ten worlds, people at par; land decides how many villages are founded (splits take 35 % of foundings); towns of 400+ keep large
-unbound factions a full land cannot shed. The pages tell splits and headmen (a page-only index of political events). **Next**: SESSION_HANDOFF
-"Session 16, second context".
+unbound factions a full land cannot shed. The pages tell splits and headmen (a page-only index of political events). Then measured, not assumed:
+**there is no famine amid plenty** (D2-126 corrected: hard-times hunger deaths are real shortage, in the last days before the harvest) and nothing
+answered scarcity before death - so **C3.5 household formation (D2-129, sim version 65)**: a couple marries when what it brings of its households'
+grain keeps it to the next harvest; else the match waits, brides marry where the grain is, some never marry. Hunger deaths x0.69, famines x0.70,
+births x0.88, people at par over years 200-299. **Next**: SESSION_HANDOFF "Session 16, second context".
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

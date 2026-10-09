@@ -83,6 +83,28 @@ namespace TC2.Core.History
                       .Append(to != 0 ? " - " + Name(w, to) : "").Append(".\n");
                 }
             }
+            if (SettlementSystem.MeansCount)
+            {
+                // its matches waiting for the means of a household (C3.5): the unmarried women of an age to marry whose share of their household's
+                // grain could not keep them to the harvest, and what a mouth holds here
+                int unwed = 0, waiting = 0, toHarvest = w.SettlementSys.ToHarvest(sid);
+                var res = w.Residents(sid);
+                for (int i = 0; i < res.Count; i++)
+                {
+                    ref var q = ref w.People.Get(res[i]);
+                    if (!q.Alive || !q.IsFemale || q.Partner != 0 || q.AgeYears(w.Now) < 18 || q.AgeYears(w.Now) > 36) continue;
+                    unwed++;
+                    if (w.SettlementSys.OwnDays(res[i]) < toHarvest + Holdings.Reserve) waiting++;
+                }
+                if (waiting > 0)
+                {
+                    double food = 0, need = 0;
+                    var hs = w.HouseholdsOf(sid);
+                    for (int i = 0; i < hs.Count; i++) { ref var hh = ref w.Households.Get(hs[i]); food += hh.Grain + hh.Larder; need += w.SettlementSys.HouseholdNeed(hs[i]); }
+                    sb.Append("Marriages wait: ").Append(waiting).Append(" of its ").Append(unwed).Append(" unmarried women of an age to marry could not yet keep a household - its households' own grain keeps a mouth ")
+                      .Append(F(need > 0 ? food / need : 0, "0")).Append(" days, the harvest is ").Append(toHarvest).Append(toHarvest == 1 ? " day off.\n" : " days off.\n");
+                }
+            }
             if (s.Wall == 2) sb.Append("Walled: a palisade ").Append(F(2.0 * DMath.PI * (double)s.WallR, "0")).Append(" m round").Append(s.OldR > 0f ? ", an older ring inside" : "").Append(".\n");
             else if (s.Wall == 1) sb.Append("Raising a palisade.\n");
             // its streets and their core (C13.1-C13.3): rows of narrow town houses on the divided plots, the market place its traders widened

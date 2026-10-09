@@ -146,6 +146,27 @@ with dependants first (TC1 primitives B, C).
   crowding, both bounded. Dense worlds of 5,000-16,000 people see a plague every century or two and recover; famine, not
   sickness, holds them at their land's size.
 
+## 7e. Household formation: marriage waits for the means of a household (C3.5, D2-129)
+
+- **Measured first** (session 16): women married at 20.3 on average and all of them by 30, at the same rate in every season, in rich
+  villages and starving ones alike; hunger was the only check on numbers - hunger deaths were 9-27 % of all deaths, chronic in half the worlds
+  (in 120-177 of 200 years), and they were real shortage (the households with grain could spare under a quarter of what the grainless needed
+  in 95 % of the deaths; the store under a day's food in 69 %), in the last 5-12 days before the harvest.
+- **The rule**: marriage is neolocal - a new household, each spouse bringing their mouth's share of their household's grain and larder
+  (C3.3; a household of another village keeps its grain in its own store). On her day to look for a match (the courting rate by age, as
+  before) a woman's suitors are only the men with whom she could keep a household: what the two of them bring feeds them to the next harvest
+  of the village they will live in (his) and six days beyond (`SettlementSystem.CoupleDays`, `ToHarvest`, `Holdings.Reserve`). None: her
+  match waits - the clock runs only while the means are there. So where the harvest feeds a village through its year nothing changes;
+  where it does not, marriages wait for the harvest and its grain, brides marry into villages with grain, and those who never find the
+  means by 36 stay unmarried (Hajnal 1965 and 1982: late marriage and a household of one's own; Razi 1980: in Halesowen 1270-1400
+  marriage followed land; Wrigley & Schofield 1981: the preventive check carried England's adjustment; Kussmaul 1990: arable parishes
+  married after the harvest). Marital fertility is untouched (it already falls with the body's health).
+- Pages: the person page's family section ("Unmarried. Her share of the household's grain would keep her N days; the harvest is H days
+  off - a match waits for the means of a household"), the settlement overview ("Marriages wait: W of its U unmarried women of an age to
+  marry could not yet keep a household..."), the marriage's record ("... setting up their household with N days' bread of their own").
+  Headless `place --marriage` (ever married by age, age at first marriage, marriages by days after the harvest), the `marriages by what the
+  couple brought` line; `--nomeans` gives the rule before C3.5 on the same binary.
+
 ## 8. Proof-of-concept subset (F0)
 
 People with identity, households, homes, analytic hunger/energy, health; generators: urgent (fire),

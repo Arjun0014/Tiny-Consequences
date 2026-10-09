@@ -1,8 +1,18 @@
 # TC2 Session handoff
 
-## Session 16, second context (9 Oct 2026, from 12:22 IST; Control Room run #39 session 2, Resource Governor MEDIUM) - C10.3 closed (D2-128)
+## Session 16, second context (9 Oct 2026, from 12:22 IST; Control Room run #39 session 2, Resource Governor MEDIUM) - C10.3 closed (D2-128); C3.5 household formation (D2-129)
 
 ### Exact state (keep current)
+- **C3.5 household formation (D2-129, sim version 65; `07` §7e)**: `SettlementSystem` marriage loop - a woman's suitors are only the men with whom
+  what the couple brings (`CoupleDays`: each one's mouth's share of their household's grain and larder; nothing from a household of another
+  village) keeps them to the next harvest of his village (`ToHarvest`, `HarvestDay` 39) and 6 days beyond; none: the match waits. `--nomeans` (=
+  `_d3` exactly, checked on seed 4 with the final binary). Pages: `Biography.Family` (unmarried of an age to marry: their share's days, the harvest,
+  a match waiting), `Gazetteer.Overview` ("Marriages wait: ..."), the Marriage record's ArgA (days of bread; "setting up their household with N
+  days' bread of their own"). Tools: `place --marriage`, `marriages by what the couple brought` line (`SettlementSystem.MarriageTally`), the hunger
+  line's spare-against-need part (`Holdings.HungerTally` 7-12). `HouseholdFormationTests` 3 (+ `.meta` from Unity configure).
+  Runs: `tc2/out/civ/s*_d2` (hunger diagnostic, sim as `_l5`), `_d3` (+ marriage tally; the control), `_m1` (first build: the bride's village's
+  harvest), `_m2` (final), `_m2n` (seed 4, `--nomeans`). Marriage tables: scratchpad `marriage_d3.txt`, `marriage_m1.txt` (read with bin_m1,
+  v64), `marriage_m2.txt`; `marr.py A B YEAR`.
 - **C10.3 a contested succession splits a village - closed (D2-128, sim version 64; `10` §12d)**. Ten seeds `tc2/out/civ/s*_l5` (bin_l5 = 78ac1ee's
   build, `--contests`, saves 100/200/300) against `_l3` (= `--nosplit`): 42 splits, foundings 123 -> 119, people x0.992, vital rates and conflict at
   par, home making x1.10 explained (more people in villages too small for a shed while land is open). Seeds 4 and 6 again on the final build (`_l5t`,
@@ -22,11 +32,13 @@
   Memvass"; Unity configure compiles the HUD).
 
 ### Next, in order
-1. (done: commit, Web build, Web test s16web 6/6)
-2. From the evidence (D2-128 "Open", D2-126 "Open"): famine amid plenty - 98 % of hunger deaths in households with no grain of their own while the
-   store holds others' grain, and the hungry never take from their own village's store; factions a full land cannot shed stay inside towns (unbound
-   followings median 21 households in towns of 400+) - wrongs within a village and the headman settling them; debts' consequences; household land.
-   Also C9.4 cargo, D2-125's unmet iron ask, D2-123 floods, W-FOREST.
+1. (done: C10.3 commit, Web build, Web test s16web 6/6; famine amid plenty measured and refuted; C3.5 built and measured)
+2. (done: C3.5 closed - full suite 336/336, no measurable cost, D2-129, committed.) Web build of C3.5 and Web test (`--tag s16web2`): the pages'
+   new lines.
+3. From the evidence (D2-129 "Open"): hunger is still 17 % of deaths, in the hungry gap before the harvest - measure what a village does in its last
+   weeks (the ration's floor 0.45, wild food, slaughter, relief) before choosing; household land and holdings (marriage on a holding, the NW
+   European pattern) when land binds; life-cycle service; factions a full land cannot shed (D2-128); debts' consequences; C9.4 cargo; D2-125's iron
+   ask; D2-123 floods; W-FOREST.
 
 ## Session 16 (9 Oct 2026, from 09:11 IST; Control Room, Resource Governor MEDIUM: CPU 70 %, RAM 85 %, two heavy jobs) - C3.3 the household's grain, debts, makers paid, hard times (D2-126); C10.2 the village's first household (D2-127)
 

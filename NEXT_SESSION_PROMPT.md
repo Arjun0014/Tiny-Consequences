@@ -11,9 +11,9 @@ for a real external blocker (credentials, payment, UAC, an irreversible product 
 ## Read first (this order), then work autonomously
 1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the full standing prompt (architecture, rules, every direction from Arjun; "Where we are (session 16)").
 2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 16, second context"** (then "Session 16") (exact state, the running/unfinished work, Next in order).
-3. `docs/tc2/DECISIONS.md` newest entries **D2-128** (C10.3 a contested succession splits a village), **D2-126** (C3.3 household grain, debts, makers paid, hard times) and **D2-127** (C10.2 the first household).
-4. `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` §2c (C3.3 design and result); `docs/tc2/10_CONFLICT_AND_POLITICS.md` §12c (C10.2) and §12d (C10.3).
-5. `docs/tc2/PROGRESS.md` CURRENT STATE (three session 16 entries); `git status` (the modified `.claude/launch.json` and untracked
+3. `docs/tc2/DECISIONS.md` newest entries **D2-129** (C3.5 household formation; it corrects D2-126), **D2-128** (C10.3 a contested succession splits a village), **D2-126** (C3.3 household grain, debts, makers paid, hard times) and **D2-127** (C10.2 the first household).
+4. `docs/tc2/07_AGENTS_AND_LIFE.md` §7e (C3.5); `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` §2c (C3.3 design, result and its correction); `docs/tc2/10_CONFLICT_AND_POLITICS.md` §12c (C10.2) and §12d (C10.3).
+5. `docs/tc2/PROGRESS.md` CURRENT STATE (four session 16 entries); `git status` (the modified `.claude/launch.json` and untracked
    `unity/TinyConsequences2/Assets/Resources.meta` are not ours - leave them), `git log --oneline -5`.
 
 ## Where things stand (9 Oct 2026, session 16's second context)
@@ -25,17 +25,23 @@ for a real external blocker (credentials, payment, UAC, an irreversible product 
   people x0.992, foundings 123 -> 119 (land decides how many; splits take 35 %), conflict at par, home making x1.10 (more people in villages too small
   for a shed while land is open); towns of 400+ keep large unbound factions. Pages: both villages tell the split; the history tab carries headmen and
   splits (`HistoryLedger.PlaceEventsOf`). Tools: `place --splits`, the `contests:` line. Full suite 333/333.
-- A diagnostic for the next slice was added with it (tools only): the `hunger by household:` line now says, for hunger deaths in villages whose sharing
-  had contracted, what the others spared beyond their own needs at the village's ration to the harvest (famine amid plenty or real scarcity).
-- **The Web build in `tc2/web-build/web` is stale/mixed**: rebuild before any Web test. Last good Web test: s15web.
+- **Measured after C10.3 (Web test s16web 6/6 on it)**: there is no famine amid plenty - at 95 % of ~40,000 hard-times hunger deaths the households
+  with grain could spare under a quarter of what the grainless needed; the store held under a day's food in 69 %; deaths 5-12 days before the harvest.
+  Hunger was 19 % of deaths and chronic, and women married at 20.3 in every world and season whatever the bread.
+- **C3.5 household formation (D2-129, sim version 65; `07` §7e)**: a woman's suitors are only the men with whom what the couple brings of their
+  households' grain and larder keeps them to the next harvest of his village and six days beyond; none: the match waits. Pages (person family
+  section, settlement "Marriages wait: ...", the marriage's record), `place --marriage`, `--nomeans` (= `_d3`). Ten seeds `_m2` vs `_d3`: hunger deaths
+  x0.69, famines x0.70, births x0.88, people at par over years 200-299 (x0.935 at year 300); age at first marriage 20.3 -> 21.4, never married by
+  45-59 0 -> 4 %. `HouseholdFormationTests` 3; full suite 336/336; no measurable cost.
+- **The Web build in `tc2/web-build/web` is of d891d16 (C10.3)**: rebuild before testing C3.5. Last good Web test: s16web (6/6).
 - Open W task **W-FOREST** (Arjun, 8 Oct): forests/biomes still read as the same trees recoloured.
 
 ## Do next
-1. Web build (`node tc2/scripts/unity.mjs build-web --jobs 3`, ~12 min; RAM peaks ~95 % - run nothing beside it) and Web test (`node tc2/scripts/webtest.mjs
-   --tag s16web`): the person/place pages should show "Its own grain in the village's granary...", "Its first household..." and splits.
-2. Measure famine amid plenty (ten seeds with the new `hunger by household:` line) and choose the next slice from the evidence: the hungry taking from
-   their own village's store and the village (its first household) judging it; factions a full land cannot shed contesting from within; debts'
-   consequences; household land when it binds; C9.4 cargo; D2-125's unmet iron ask; D2-123 floods; W-FOREST.
+1. If not yet done (SESSION_HANDOFF says): Web build of C3.5 (`node tc2/scripts/unity.mjs build-web --jobs 3`, ~8-12 min; RAM peaks ~95 % - run
+   nothing beside it) and Web test (`node tc2/scripts/webtest.mjs --tag s16web2`).
+2. From the evidence (D2-129 "Open"): hunger is still 17 % of deaths, in the hungry gap before the harvest - measure what a village does in its last
+   weeks (the ration's floor 0.45, wild food, slaughter, relief) before choosing; household land and holdings (marriage on a holding) when land
+   binds; life-cycle service; factions a full land cannot shed (D2-128); debts' consequences; C9.4 cargo; D2-125's iron ask; D2-123 floods; W-FOREST.
 
 ## Tools (all in `tc2/out/tools/`; copy to the session scratchpad and set `SCR=` in `wrun.sh`)
 - `wrun.sh` (ten-seed runs; `EXTRA=` for switches), `cmp.py A B seeds` (paired annals/report ratios), `agg.py A B` (report quantities), `hold.py TAG`
@@ -43,7 +49,7 @@ for a real external blocker (credentials, payment, UAC, an irreversible product 
   binding; needs a save of the repo build's sim version), `ly.py`/`lycf.py` (household-year ledger), `patch.py FILE OLD NEW` (line-ending-aware replace), `bind.sh TAG` (binding table of a tag's saves) and
   `bindcmp.py A.csv B.csv` (village sizes and binding by size and year).
 - Headless switches: `--nohold`, `--holdmeansoff`, `--nopay`, `--nohard`, `--nohead`, `--notribhead`, `--nosplit`, `--contests`, `--ledger Y --ledgeryears F`;
-  `place --load S --households | --debts | --leaders | --binding | --splits`.
+  `place --load S --households | --debts | --leaders | --binding | --splits | --marriage`, `--nomeans`; scratchpad `marr.py A B YEAR` (marriage tables).
 
 ## Rules that bite
 - Commits `[tc2] ...` ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; stage only TC2 files; never force-push. New `.cs` files need

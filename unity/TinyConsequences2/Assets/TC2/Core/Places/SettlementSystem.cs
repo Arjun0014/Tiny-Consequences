@@ -342,7 +342,7 @@ namespace TC2.Core.Places
             {
                 s.Crop = CropStage.Ripe; s.CropWork = 0; s.CropWorkNeed = s.FieldHa * 45.0;
             }
-            else if (s.Crop == CropStage.Ripe && doy >= 39)
+            else if (s.Crop == CropStage.Ripe && doy >= HarvestDay)
             {
                 s.Harvested = DMath.Clamp01(s.CropWork / Math.Max(1.0, s.CropWorkNeed));
                 double yield = s.FieldHa * cfg.FieldYieldPerHa * DMath.Clamp01(s.CropGrowth) * s.Sown * s.Harvested * (1.0 - s.CropBurnt);
@@ -488,7 +488,7 @@ namespace TC2.Core.Places
             var hhs = w.HouseholdsOf(s.Id);
             for (int i = 0; i < hhs.Count; i++) daily += HouseholdNeed(hhs[i]);
             prof?.End(10010);
-            int toHarvest = 39 - doy; if (toHarvest <= 0) toHarvest += SimTime.DaysPerYear;
+            int toHarvest = HarvestDay - doy; if (toHarvest <= 0) toHarvest += SimTime.DaysPerYear;
             double lasts = daily > 0 ? DMath.Clamp(s.Granary / (daily * (toHarvest + 6)), 0.45, 1.0) : 1.0;
             double keep = 6.0 + 30.0 * s.Memory;
             double prudent = daily > 0 ? DMath.Clamp(s.Granary / (daily * (toHarvest + 6 + keep)), 0.8, 1.0) : 1.0;
@@ -740,6 +740,20 @@ namespace TC2.Core.Places
                     AddSuitors(in woman, o, now);
                 }
                 if (_men.Count == 0) continue;
+                if (!MeansOff && !Holdings.Off)
+                {
+                    // a couple marries when they can keep a household of their own: what they bring of their households' grain feeds the two
+                    // of them to the next harvest and a few days beyond - else her match waits (C3.5: Hajnal 1965, a household of one's own;
+                    // Razi 1980, no holding no marriage; Wrigley & Schofield 1981, the preventive check)
+                    int keep = 0;
+                    for (int k = 0; k < _men.Count; k++)
+                    {
+                        int m = _men[k], at = w.People.Get(m).Home;   // (they will live in his village: its store, its harvest)
+                        if (CoupleDays(at, pid, m) >= ToHarvest(at) + Holdings.Reserve) _men[keep++] = m;
+                    }
+                    _men.RemoveRange(keep, _men.Count - keep);
+                    if (_men.Count == 0) { if (MarriageTally != null) MarriageTally[7]++; continue; }
+                }
                 int pick = _men[KeyedRng.Below(KeyedRng.Hash(seed, RngStream.Marriage, (ulong)pid, (ulong)day, 1), _men.Count)];
                 Marry(w.People.Get(pick).Home, pid, pick);
                 if (Demo != null) Demo[8]++;
@@ -876,9 +890,77 @@ namespace TC2.Core.Places
         /// <summary>Premise (tests, tools): a woman and a man of a village marry now, as the village's day would have them do.</summary>
         public void Wed(int sid, int womanId, int manId) => Marry(sid, womanId, manId);
 
+        /// <summary>The day of the year the ripe crop is brought in (its own calendar).</summary>
+        public const int HarvestDay = 39;
+
+        /// <summary>`--nomeans`: a couple marries whatever its means (the rule before C3.5) on the same binary.</summary>
+        public static bool MeansOff;
+
+        /// <summary>
+        /// What a couple would bring to a new household in village `sid`, in days of their bread: each one's mouth's share of their household's own
+        /// grain and larder (C3.3: what `MoveTo` moves with them; a household of another village keeps its grain in its own store) against the two
+        /// of them's needs.
+        /// </summary>
+        public double CoupleDays(int sid, int womanId, int manId)
+        {
+            double need = 0, grain = Bring(sid, womanId, ref need) + Bring(sid, manId, ref need);
+            return need > 0 ? grain / need : 0.0;
+        }
+
+        /// <summary>Pages: the days one person's mouth's share of their household's grain and larder would keep them (their household's own village).</summary>
+        public double OwnDays(int pid)
+        {
+            var w = _w;
+            if (!w.People.Exists(pid) || !w.Households.Exists(w.People.Get(pid).Household)) return 0;
+            double need = 0, grain = Bring(w.Households.Get(w.People.Get(pid).Household).Settlement, pid, ref need);
+            return need > 0 ? grain / need : 0.0;
+        }
+
+        /// <summary>Whether the means of a household are what a village's matches wait for now (C3.5 on, the households' grain reckoned).</summary>
+        public static bool MeansCount => !MeansOff && !Holdings.Off;
+
+        /// <summary>The same in years of their bread (tools, pages).</summary>
+        public double CoupleMeans(int sid, int womanId, int manId) => CoupleDays(sid, womanId, manId) / SimTime.DaysPerYear;
+
+        /// <summary>Days from today to a village's next harvest (its own calendar: the southern seasons half a year on); 48 on the harvest's day.</summary>
+        public int ToHarvest(int sid)
+        {
+            ref var s = ref _w.Settlements.Get(sid);
+            int doy = SimTime.DayOfYear(_w.Now + Planet.PlanetState.LocalOffset(s.Anchor));
+            if (s.Anchor.Y < 0) doy = (doy + 24) % SimTime.DaysPerYear;
+            int toHarvest = HarvestDay - doy;
+            return toHarvest <= 0 ? toHarvest + SimTime.DaysPerYear : toHarvest;
+        }
+
+        double Bring(int sid, int pid, ref double need)
+        {
+            var w = _w;
+            ref var p = ref w.People.Get(pid);
+            double np = w.Agents.DailyNeed(in p, w.Now);
+            need += np;
+            if (!w.Households.Exists(p.Household)) return 0;
+            ref var hh = ref w.Households.Get(p.Household);
+            if (hh.Settlement != sid) return 0;
+            double nh = HouseholdNeed(p.Household), food = hh.Grain + hh.Larder;   // (the larder too: a DEEP step has filled it for its days - lived days for two)
+            return nh > 0 ? food * DMath.Min(1.0, np / nh) : food;
+        }
+
+        /// <summary>Tools: marriages by what the couple brought, in years of their bread: [0] under a quarter, [1] to a half, [2] to one, [3] to two,
+        /// [4] two or more; [5] in villages whose sharing had contracted; [6] the sum of years (each at most 5). Null in the game.</summary>
+        public static double[] MarriageTally;
+
         void Marry(int sid, int womanId, int manId)
         {
             var w = _w;
+            int brought = MeansCount ? (int)DMath.Min(9999.0, DMath.RoundHalfUp(CoupleDays(sid, womanId, manId))) : 0;   // (days of their bread: the record tells it - C3.5)
+            var mt = MarriageTally;
+            if (mt != null && !Holdings.Off)
+            {
+                double y = CoupleMeans(sid, womanId, manId);
+                mt[y < 0.25 ? 0 : y < 0.5 ? 1 : y < 1 ? 2 : y < 2 ? 3 : 4]++;
+                if (Holdings.Hard(in w.Settlements.Get(sid))) mt[5]++;
+                mt[6] += DMath.Min(5.0, y);
+            }
             ref var s = ref w.Settlements.Get(sid);
             int hid = w.Ids.Next(EntityKind.Household);
             int manHh = w.People.Get(manId).Household;
@@ -915,7 +997,7 @@ namespace TC2.Core.Places
                 else if (woman.At != 0 && woman.At != sid) { w.Visitors(woman.At).InsertSorted(womanId); woman.Until = w.Now; }
                 else if (woman.At == sid) w.Visitors(sid).Remove(womanId);
             }
-            long mev = w.Record(new HistoryEvent { Kind = HistoryKind.Marriage, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Person(womanId), Object = EntityRef.Person(manId), RootKind = RootKind.People });
+            long mev = w.Record(new HistoryEvent { Kind = HistoryKind.Marriage, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Person(womanId), Object = EntityRef.Person(manId), ArgA = brought, RootKind = RootKind.People });
             w.Record(new HistoryEvent { Kind = HistoryKind.HouseholdFormed, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Household(hid), Cause1 = mev, Rel1 = CauseRel.CausedBy });
             w.Metrics.Marriages++;
             Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Marriage, brideFrom, sid);

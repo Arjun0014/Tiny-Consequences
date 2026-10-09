@@ -3583,6 +3583,9 @@ and they ran beside other jobs.
 **Open.** Debts have no consequence yet beyond repayment (no work for a creditor, no flight from debt, no standing); land is the commune's (the
 harvest by mouths) - household fields, inheritance of land and labour for others wait until land binds; trade between villages is still the
 village's own (grain sold falls on every bin by its share); the hungry poor never take from their own village's store at night (only neighbours').
+**Corrected by D2-129.** The reading "famine amid plenty" above is wrong: measured at each hunger death, what the households with grain could spare
+beyond their own needs at the village's ration covered under a quarter of the grainless households' needs in 95 % of the deaths; hard times decide
+who goes hungry in a real shortage, not whether there is one.
 
 ## D2-127 — 2026-10-09 — Standing and the village's first household: followings, headmen, the lord's tribute (C10.2)
 
@@ -3666,3 +3669,49 @@ first household rises from 8 % to 15 % (bound households median 12 -> 24), but t
 the factions a full land cannot shed stay inside. Cost: none (simulated time x0.97, t -1.0). Headmen risen 3,762 -> 3,680.
 **Open.** A faction that cannot leave contests from within (it could take the first place, or quarrel - wrongs between households of one village); the
 headman does not yet decide tribute, walls or bands; debts have no consequence beyond repayment; the hungry do not take from their own village's store.
+
+## D2-129 — 2026-10-09 — Household formation: a couple marries when it can keep a household to the next harvest (C3.5)
+
+**Context.** After C10.3 the evidence pointed at famine amid plenty (D2-126: 98 % of hunger deaths in households with no grain of their own;
+sharing contracts in hard times) and at the hungry taking from their own village's store. Measured before any design (session 16, ten seeds,
+the `hunger by household:` diagnostic, `_d2`): at each hard-times hunger death, what the households with grain could spare beyond their own
+needs at the village's ration to the harvest (and the common grain) covered under a quarter of what all the grainless households needed in 95 %
+of ~40,000 deaths (mean 0.04-0.11 of it; enough for all of them in 31); the store held under a day of the village's food in 69 %; the deaths fell
+5-12 days before the harvest on average. **There is no famine amid plenty: D2-126's reading is corrected** - contracted sharing decides who goes
+hungry in a real shortage, and theft within the village would move hunger, not relieve it (that slice was dropped). The shortage was chronic:
+hunger deaths were 9-27 % of all deaths (19 % over ten worlds, 7.1 a thousand person-years), in 120-177 of 200 years in half the worlds. And
+nothing in a household's life answered scarcity before death did: women married at 20.3 on average in every world, 99 % of them by 26-29, at
+the same rate in every season (`place --marriage`, new); under the old rule half of all couples (49 %, up to 70 % in the starving worlds)
+married bringing under a year's bread, a quarter to a third under three months' (`marriages by what the couple brought`, new).
+**Decision.** `SettlementSystem` (sim version 65). (a) **A couple marries when it can keep a household of its own to the next harvest**: on
+her day to look for a match (the courting rate by age, unchanged) a woman's suitors are only the men with whom what the two of them bring - each
+one's mouth's share of their household's grain and larder (C3.3: what `MoveTo` moves; a household of another village keeps its grain in its own
+store) - feeds them to the next harvest of the village they will live in (his) and `Holdings.Reserve` (6) days beyond (`CoupleDays`,
+`ToHarvest`, `HarvestDay` 39). None: her match waits; the clock runs only while the means are there. Where the harvest feeds a village through
+its year nothing changes; where it does not, marriages wait for the harvest's grain, brides marry into villages with grain, and those who never
+find the means by 36 stay unmarried (Hajnal 1965, 1982; Razi 1980; Wrigley & Schofield 1981; Kussmaul 1990). Marital fertility is untouched
+(it already falls with the body's health). (b) Pages: the person page's family section (an unmarried person of an age to marry: their share's
+days of bread, the harvest's distance, whether a match waits), the settlement overview ("Marriages wait: W of its U unmarried women of an age
+to marry could not yet keep a household - its households' own grain keeps a mouth N days, the harvest is H days off"), the marriage's record
+("... setting up their household with N days' bread of their own"). Headless: `place --marriage`, the `marriages by what the couple brought`
+line (with matches that waited), the hunger diagnostic's spare-against-need line; `--nomeans` (reproduces `_d3` exactly - checked on seed 4
+with the final binary).
+**Evidence.** `HouseholdFormationTests` 3 (no grain of their own: the match waits, with `--nomeans` they marry; given a year's grain they marry
+and the record tells their bread; what a couple brings is each one's mouth's share of grain and larder, nothing from a household of another
+village; a widow of a village with no grain marries into a neighbour with grain). **Ten seeds, 300 years DEEP**, against `_d3` (the same mechanics
+without the rule): `_m2` (the final binary): hunger deaths x0.69 (t -2.0; 7.1 -> 5.6 a thousand person-years over years 100-299, 19 % -> 17 % of
+deaths), famines x0.70 (t -2.5), births x0.88 (t -3.2; 44.2 -> 40.6 a thousand) and deaths x0.87 (36.9 -> 33.8 a thousand), relief x0.63 (t -2.4),
+sickness deaths x0.15 and epidemics x0.24 (rare events: three worlds missed their great epidemic; `_m1` x0.53 - not claimed as an effect), people over years 200-299 at par
+(x0.998) and at year 300 x0.935 (t -2.1); blows, raids and walls at par; foundings at par. `_m1` (the first build, the harvest of the bride's
+village) gave the same picture with more weight on conflict: hunger x0.63 (t -3.4), famines x0.65, births x0.87, people x0.96, blows x0.76 (t -3.0),
+takings x0.79, watch nights x0.70; the two builds differ only for couples across the equator, so single worlds diverge (seed 4's hunger deaths
+1,832 in one, 5,425 in the other) - judge the aggregate. **Marriage at year 300** (`_m2` against `_d3`): age at first marriage 20.3 -> 21.4
+(22.3-23.6 in the poor worlds 1, 5, 11, 6), ever married by 26-29 99 % -> 93 %, by 45-59 100 % -> 96 % (76-93 % in the poor worlds); matches that
+waited 1,564 (seed 4) to 3,974 (seed 11). **Cost**: none measurable - from the same year-200 save of seed 4, 24 years three times each, 11.0-12.0 s
+with the rule and 11.4-11.9 s without (the runs' x1.07 a person-day is the worlds' difference). Full suite 336/336. Seasonality is mixed (marriages by days after the harvest 24/20/25/31 % against 27/23/26/24 %;
+`_m1` 35/35/16/15 %): villages short of a year's bread marry in the last days before the harvest, because in this commune a new household shares
+the next harvest by its mouths, so a little bread suffices then - the incentive of a commune that shares by "eaters" (the Russian mir, with early
+and universal marriage); the NW European pattern (late marriage after the harvest, a holding to marry on) needs household land.
+**Open.** Household land and holdings (marriage on a holding; the NW European pattern); life-cycle service (the unmarried young working in other
+households); hunger is still 17 % of deaths - the hungry gap before the harvest (famine foods, the ration's floor of 0.45, the store's prudence)
+is the next thing to measure; the base courting rate gives a younger marriage age (20-21) than medieval NW Europe's (mid-20s).

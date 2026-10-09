@@ -194,6 +194,12 @@ spreads Gini 0.51-0.77; 6,458 of 15,979 households owe (mostly a season's credit
 households of elders with grain and beasts, one owed by up to 159; makers' households hold more grain a member than the others in all ten worlds;
 98 % of hunger deaths fall in households with no grain of their own. Open: debts' consequences (work, flight, standing), household land, households'
 own trade, taking from one's own village's store.
+**Corrected (D2-129, measured in session 16):** "famine amid plenty" does not describe these deaths. At each hard-times hunger death the households
+with grain could spare, beyond their own needs at the village's ration to the harvest, under a quarter of what all the grainless households needed in
+95 % of ~40,000 deaths over ten worlds (mean 0.04-0.11 of it; enough for all of them in ~30); the store held under a day of the village's food in 69 %;
+the deaths fall 5-12 days before the harvest. Contracted sharing decides who goes hungry in a real shortage, not whether there is one; hunger was
+chronic (in 120-177 of 200 years in half the worlds) because nothing in the household's life answered scarcity before death did - C3.5 (marriage
+waits for the means of a household, D2-129).
 
 ## 3. Later slices
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and
