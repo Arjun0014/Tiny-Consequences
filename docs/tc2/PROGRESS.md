@@ -13,7 +13,10 @@
   3/4 of an ordinary hour's harvest, the last a tenth); only the work done counts; history `FieldsWorkedHarder`, the settlement page's food section;
   `--notilth` (= `_m2` exactly), `TilthTests` 4. Ten seeds against `--notilth`: in bound villages the extra (0.41-0.63 of the season's hours) was all
   done, yields a hectare +16-24 %, harvests 0.83-0.97 -> 0.91-1.02 of the people's bread; lived days do it too. Then the people grew into it: years
-  200-299 x1.17, year 300 x1.27, hunger a person-year unchanged (x0.98), famines a person-year x0.78, raids x0.37; run time unchanged.
+  200-299 x1.17, year 300 x1.27, hunger a person-year unchanged (x0.98), famines a person-year x0.78, raids x0.37; run time unchanged. Full
+  suite 340/340 (1000a8b). Web build of 1000a8b: Web test 6/6 twice (`s16web6`, `s16web6b`: WebGPU, bit-identical; the century-later world 472
+  people in 13 places in both - the rule lives in the browser too); frame rates swung with the machine's load (the same build's two runs differ
+  up to 2.6x in a view: village 98 / 55, person page 37 / 70 fps) - the views of the fresh world are untouched by the rule.
 - **Session 16, second context, W-FOREST pass 1 (D2-130, presentation only)** - measured first: the wooded land is mostly hot (22-30 degC) or cool
   (2-10 degC), and seed 42's tropical forest was drawn as temperate lumps. Now each crown's kind of wood is read from the simulation's climate and
   water at its point (rain forest, dry tropical woodland, warm temperate, broadleaf, cool mixed, boreal, treeline, wet carr, river gallery); ten new

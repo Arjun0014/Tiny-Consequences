@@ -15,8 +15,11 @@
   (`wrun.sh` pointed here, `pt.py` - line-ending-aware patching: `exec(open(pt).read()); patch(path, [(old, new)])` with LF texts - patch scripts
   `p_*.py`, `d2131.md`). **Never `sed -i` a CRLF file here: Git Bash's sed strips the CRs** (SettlementSystem.cs had to be restored).
 
+- **Verified**: full suite 340/340 on 1000a8b; Web build of 1000a8b (`tc2/web-build/web` is current): Web test 6/6 twice (`tc2/out/webtest/s16web6`,
+  `s16web6b`; bit-identical; fps swung with the machine's load - up to 2.6x between two runs of the same build).
+
 ### Next, in order
-1. Commit C3.6a; Web build + Web test (bigger villages: the browser's cost of a fifth more people).
+1. (done: C3.6a committed 1000a8b; Web test 6/6.)
 2. **The hungry gap** (hunger a person-year unchanged by C3.6a; 17 % of deaths): a tools tally is written (`--gaptally`: hunger deaths by days to
    the harvest, crop stage, age, store, days hungry, land) - run it on ten seeds, then choose: eating the grain as it is reaped (the ripe crop stands
    nine days while the store is empty?), household land and marriage on a holding (the preventive check), or C3.6b the herds' dung.
