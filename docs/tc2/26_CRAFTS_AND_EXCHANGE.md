@@ -262,10 +262,13 @@ two in five men landless where land binds.
   of spare land: the north-western custom (partible customs later with a village's tradition, C11). Pages: the household's land, the village's
   "Land:" line. Nothing else reads it: the annals of ten worlds are byte-identical. At year 300: 32-60 % of households landless, Gini 0.74-0.92;
   the largest holders are the villages' creditors.
-- **C3.6c the harvest by land and labour (next)**: the land's half to those who hold it, the labour's half to the hands that worked (the commune
-  still works its fields together; the half-share of the métayer) - the landless live by their hands, poorer, and C3.5's rule delays their
-  marriages: the preventive check from economics.
-- **C3.6d (if needed)**: marriage on a holding as a rule of its own; service in other households; a land market (letting, buying).
+- **C3.6c the harvest by land and labour (built, D2-134)**: the land's half to those who hold it (the unheld land's part the village's), the
+  labour's half to the hands that worked (`Hands`: grown people a hand, youths 0.6, the old half, by health; the commune still works its fields
+  together; the half-share of the metayer, `LandShare` 0.5). Ten seeds against the same holdings by mouths: hunger a person-year x0.74 (t -2.8),
+  births and deaths a person-year x0.98 and x0.96, people at par; the landless took half their mouths' share, those with their want 1.6-2.3; women
+  married later (20.6-22.0 -> 20.5-22.8) and more never (by 45-59 94-100 % -> 67-100 %) - the preventive check from the households' economy.
+- **C3.6d next**: who leaves - the landless and younger sons first (a village's leavers are drawn by its pressure, not their own land); then
+  service in other households; a land market (letting, buying); partible customs (C11); the land's half as rents (C10).
 
 ## 3. Later slices
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and

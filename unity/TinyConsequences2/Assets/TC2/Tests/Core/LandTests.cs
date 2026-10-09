@@ -11,7 +11,7 @@ namespace TC2.Tests.Core
     /// Household land (C3.6b, D2-133): each household holds hectares of its village's fields - founders by their heads, a marrying child a portion of
     /// what the family's land can spare, the last to leave a household the rest, an heir what a household that died out held; those who set out
     /// leave theirs to the village, and at sowing land lost is lost from every holding by the same share while unheld land goes to the least landed
-    /// first. Holdings move nothing else (yet). Mechanisms, not outcomes.
+    /// first; the harvest is shared by land and labour (C3.6c, D2-134). Mechanisms, not outcomes.
     /// </summary>
     [TestFixture]
     public class LandTests
@@ -134,12 +134,57 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void TheHarvestIsSharedByLandAndByHands()
+        {
+            foreach (bool mouths in new[] { false, true })
+            {
+                Holdings.ByMouths = mouths;
+                try
+                {
+                    var w = TestWorlds.Make(5107);
+                    int sid = w.Settlements.First();
+                    var hl = w.HouseholdsOf(sid);
+                    Assume.That(hl.Count >= 3);
+                    // premise: one household holds no land, the rest of the arable unequally held, some of it unheld
+                    ref var s = ref w.Settlements.Get(sid);
+                    double arable = s.ArableHa;
+                    w.Households.Get(hl[0]).Land = 0;
+                    w.Households.Get(hl[1]).Land = 0.5 * arable;
+                    for (int i = 2; i < hl.Count; i++) w.Households.Get(hl[i]).Land = 0.3 * arable / (hl.Count - 2);
+                    double unheld = w.Holdings.Unheld(sid);
+                    Assume.That(unheld > 0.1);
+                    var before = new double[hl.Count];
+                    for (int i = 0; i < hl.Count; i++) before[i] = w.Households.Get(hl[i]).Grain;
+                    double common0 = w.Settlements.Get(sid).Common, hands = 0;
+                    for (int i = 0; i < hl.Count; i++) hands += w.Holdings.Hands(hl[i]);
+                    double y = 1000;
+                    ref var s1 = ref w.Settlements.Get(sid); s1.Granary += y;
+                    w.Holdings.Harvest(sid, y, false);
+                    if (mouths)
+                    {
+                        Assert.AreEqual(common0, w.Settlements.Get(sid).Common, 1e-6, "--bymouths: all to the households by their mouths");
+                        continue;
+                    }
+                    for (int i = 0; i < hl.Count; i++)
+                    {
+                        double want = y * Holdings.LandShare * w.Households.Get(hl[i]).Land / arable + y * (1.0 - Holdings.LandShare) * w.Holdings.Hands(hl[i]) / hands;
+                        Assert.AreEqual(want, w.Households.Get(hl[i]).Grain - before[i], 1e-6, "its land's part and its hands' part");
+                    }
+                    Assert.AreEqual(y * Holdings.LandShare * unheld / arable, w.Settlements.Get(sid).Common - common0, 1e-6, "the unheld land's part is the village's");
+                    Assert.Greater(w.Holdings.Hands(hl[0]), 0.0, "premise: the landless household has hands");
+                }
+                finally { Holdings.ByMouths = false; }
+            }
+        }
+
+        [Test]
         public void HoldingsMoveNothingElse()
         {
             int people0 = 0, people1 = 0; double grain0 = 0, grain1 = 0; long births0 = 0, births1 = 0;
+            // (with the harvest shared by mouths, as before C3.6c: the holdings alone move nothing)
             foreach (bool off in new[] { true, false })
             {
-                Holdings.LandOff = off;
+                Holdings.LandOff = off; Holdings.ByMouths = true;
                 try
                 {
                     var w = TestWorlds.Make(5105);
@@ -149,7 +194,7 @@ namespace TC2.Tests.Core
                     for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) g += w.Settlements.Get(sid).Granary;
                     if (off) { people0 = n; grain0 = g; births0 = w.Metrics.Births; } else { people1 = n; grain1 = g; births1 = w.Metrics.Births; }
                 }
-                finally { Holdings.LandOff = false; }
+                finally { Holdings.LandOff = false; Holdings.ByMouths = false; }
             }
             Assert.AreEqual(people0, people1, "the same people");
             Assert.AreEqual(births0, births1);

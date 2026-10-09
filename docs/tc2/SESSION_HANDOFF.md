@@ -29,10 +29,11 @@
 ### Next, in order
 1. (done: C3.6a committed 1000a8b; Web test 6/6.)
 2. (done: the hungry gap measured and the first sheaves built, D2-132; full suite 345/345.)
-3. **The preventive check: household land and marriage on a holding** (D2-131 and D2-132 both ended in Malthus: more food or better timing grows the
-   villages and the check returns; hunger a person-year is set by births against food). Measure first what a holding would be in these worlds
-   (fields a household works, heirs, the landless), then design the smallest real slice. Alternatives if that measures badly: C3.6b the herds'
-   dung, famine foods and early crops.
+3. (done: **C3.6b household land** D2-133, 4f9b94b - holdings move nothing, annals = `_s3`; **C3.6c the harvest by land and labour** D2-134 - hunger
+   a person-year x0.74, the preventive check; runs `s*_h1`, `s*_c1`, `s4_c1m` = `--bymouths`.)
+4. **C3.6d who leaves**: a village's leavers are drawn by its pressure (`Migration.Weigh`: a chance a household from the village's crowding, short
+   rations, famine memory; young households x1.4) - make each household weigh its own land (the landless and land-short go first, the landed stay);
+   measure foundings, landlessness, hunger. Then the Web build/test of C3.6b-d, the full suite, the handoff.
 
 ## Session 16, second context (9 Oct 2026, 12:22-16:00 IST; Control Room run #39 session 2, Resource Governor MEDIUM) - C10.3 closed (D2-128); C3.5 household formation (D2-129); W-FOREST pass 1 (D2-130)
 

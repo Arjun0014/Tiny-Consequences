@@ -149,7 +149,8 @@ namespace TC2.Headless
             if (a.Has("gaptally")) { TC2.Core.Places.SettlementSystem.GapTally = new double[TC2.Core.Places.SettlementSystem.GapK]; TC2.Core.Places.SettlementSystem.SheafTally = new double[3]; }   // (the hungry gap survey)
             if (a.Has("nosheaves")) TC2.Core.Places.SettlementSystem.SheavesOff = true;   // (D2-132 off: the whole harvest comes in on its last day)
             if (a.Has("noland")) TC2.Core.Places.Holdings.LandOff = true;   // (C3.6b off: no holdings kept)
-            if (a.Has("landholds")) TC2.Core.Places.Holdings.LandTally = new double[8];   // (C3.6b: where land went)
+            if (a.Has("landholds")) { TC2.Core.Places.Holdings.LandTally = new double[8]; TC2.Core.Places.Holdings.ShareTally = new double[5]; }   // (C3.6b: where land went; C3.6c: the harvest's shares)
+            if (a.Has("bymouths")) TC2.Core.Places.Holdings.ByMouths = true;   // (C3.6c off: the harvest shared by mouths)
             if (a.Has("landtally")) { TC2.Core.Agents.AgentSystem.LandHours = new double[2 * 5 * TC2.Core.Agents.AgentSystem.LandK]; TC2.Core.Places.SettlementSystem.LandTally = new double[2 * TC2.Core.Places.SettlementSystem.LandTallyK]; }   // (C3.6 survey: hours by crop stage and harvests where land binds)   // (C3.5 off: a couple marries whatever its means)
             if (a.Has("contests")) TC2.Core.Society.Leaders.ContestTally = new double[11];   // (C10.3: why contested successions did not split)
             TC2.Core.Places.Holdings.HungerTally = new double[13]; TC2.Core.Places.SettlementSystem.MarriageTally = new double[8];   // (C3.3c: who dies of hunger - by the household's own grain, debts and kin)   // (C3.3: the accounting alone - Means reads the village's granary as before)
@@ -579,6 +580,7 @@ namespace TC2.Headless
                                     var ltl = TC2.Core.Places.Holdings.LandTally;
                                     Console.WriteLine("land: " + lph.Count + " households hold " + F(heldAll, "0") + " ha against their want " + F(wantAll, "0") + " ha, unheld " + F(unheld, "0") + " ha; landless " + landless + ", under half their want " + short2 +
                                                       "; ha a head p10/50/90 " + LQ(0.1) + "/" + LQ(0.5) + "/" + LQ(0.9) + ", Gini " + F(lg, "0.00") +
+                                                      (TC2.Core.Places.Holdings.ShareTally != null && TC2.Core.Places.Holdings.ShareTally[0] > 0 ? "; of the harvests the landless took " + F(TC2.Core.Places.Holdings.ShareTally[1] / Math.Max(1e-9, TC2.Core.Places.Holdings.ShareTally[2]), "0.00") + " of their mouths' share, those with their want " + F(TC2.Core.Places.Holdings.ShareTally[3] / Math.Max(1e-9, TC2.Core.Places.Holdings.ShareTally[4]), "0.00") : "") +
                                                       (ltl != null ? "; portions " + F(ltl[0], "0") + " (" + F(ltl[1], "0") + " ha), the last out took " + F(ltl[2], "0") + " ha, heirs " + F(ltl[3], "0") + " ha, left by those who went " + F(ltl[4], "0") + " ha, given out " + F(ltl[5], "0") + " ha to " + F(ltl[6], "0") + ", lost " + F(ltl[7], "0") + " ha" : ""));
                                 }
                                 // makers paid in kind (C3.3b): what households paid makers, what makers earned (and were owed), smiths' pay, the villages' levies; and

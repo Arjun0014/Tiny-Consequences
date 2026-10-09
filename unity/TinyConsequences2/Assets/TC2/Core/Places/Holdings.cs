@@ -202,6 +202,7 @@ namespace TC2.Core.Places
             Reconcile(sid, s.Granary - yield);
             Begin(sid, SimTime.DaysPerYear);
             var hhs = w.HouseholdsOf(sid);
+            if (!LandOff && !ByMouths) { ByLandAndHands(sid, yield); if (repay) Repay(sid); return; }
             double total = 0;
             for (int i = 0; i < hhs.Count; i++) if (w.Households.Get(hhs[i]).Party == 0) total += NeedOf(hhs[i]);
             if (total <= 0) { s.Common += yield; return; }
@@ -212,6 +213,100 @@ namespace TC2.Core.Places
                 hh.Grain += yield * NeedOf(hhs[i]) / total;
             }
             if (repay) Repay(sid);   // (the sheaves before the harvest's day share without settling the year's debts: D2-132)
+        }
+
+        /// <summary>Tools: the harvest shared by mouths, as before holdings counted (--bymouths; C3.6c off).</summary>
+        public static bool ByMouths;
+
+        /// <summary>The land's share of a harvest (C3.6c): the half-share of the metayer - half to the land, half to the hands that worked it.</summary>
+        public const double LandShare = 0.5;
+
+        /// <summary>
+        /// A harvest shared by land and labour (C3.6c, D2-134): its land's half by the hectares each household holds of the village's arable (the
+        /// unheld land's part the village's own grain), its labour's half by the hands each household gave the fields - the village still works its
+        /// fields together, so every hand is paid alike: grown people a hand, youths of 12-15 six tenths, the old half, all by their health; the sick
+        /// and the badly hurt abed none. Households setting out take no share.
+        /// </summary>
+        void ByLandAndHands(int sid, double yield)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(sid);
+            var hhs = w.HouseholdsOf(sid);
+            double landPart = yield * LandShare, handsPart = yield - landPart;
+            double arable = s.ArableHa, held = 0, hands = 0;
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                ref var hh = ref w.Households.Get(hhs[i]);
+                if (hh.Party != 0) continue;
+                held += hh.Land; hands += Hands(hhs[i]);
+            }
+            if (arable < held) arable = held;
+            if (arable > 0)
+            {
+                for (int i = 0; i < hhs.Count; i++)
+                {
+                    ref var hh = ref w.Households.Get(hhs[i]);
+                    if (hh.Party != 0 || hh.Land <= 0) continue;
+                    hh.Grain += landPart * hh.Land / arable;
+                }
+                s.Common += landPart * (arable - held) / arable;
+            }
+            else s.Common += landPart;
+            if (hands > 0)
+            {
+                for (int i = 0; i < hhs.Count; i++)
+                {
+                    ref var hh = ref w.Households.Get(hhs[i]);
+                    if (hh.Party != 0) continue;
+                    double h = Hands(hhs[i]);
+                    if (h > 0) hh.Grain += handsPart * h / hands;
+                }
+            }
+            else s.Common += handsPart;
+            if (ShareTally != null) Tally(sid, yield);
+        }
+
+        /// <summary>The hands a household gives the fields (C3.6c): as the village's working day weighs its people.</summary>
+        public double Hands(int hid)
+        {
+            var w = _w;
+            var mem = w.Members(hid);
+            double h = 0;
+            long now = w.Now;
+            for (int i = 0; i < mem.Count; i++)
+            {
+                ref var p = ref w.People.Get(mem[i]);
+                if (!p.Alive) continue;
+                double age = p.AgeYears(now);
+                if (age < 12 || p.Health < 0.3 || p.SickPhase == TC2.Core.Health.Disease.Infectious || p.Hurt >= TC2.Core.Society.Conflict.AbedHurt) continue;
+                h += (age > 60 ? 0.5 : age < 16 ? 0.6 : 1.0) * (0.5 + 0.5 * p.Health);
+            }
+            return h;
+        }
+
+        /// <summary>Tools (null in the game): the harvests' grain shared [0]; to households with no land [1], their mouths' share of the village's [2];
+        /// to households holding at least their want [3], their mouths' share [4].</summary>
+        public static double[] ShareTally;
+
+        void Tally(int sid, double yield)
+        {
+            var w = _w;
+            var hhs = w.HouseholdsOf(sid);
+            double mouths = 0;
+            for (int i = 0; i < hhs.Count; i++) if (w.Households.Get(hhs[i]).Party == 0) mouths += NeedOf(hhs[i]);
+            if (mouths <= 0) return;
+            ShareTally[0] += yield;
+            double arable = DMath.Max(w.Settlements.Get(sid).ArableHa, 1e-9), hands = 0;
+            for (int i = 0; i < hhs.Count; i++) if (w.Households.Get(hhs[i]).Party == 0) hands += Hands(hhs[i]);
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                ref var hh = ref w.Households.Get(hhs[i]);
+                if (hh.Party != 0) continue;
+                double got = yield * LandShare * hh.Land / arable + (hands > 0 ? yield * (1.0 - LandShare) * Hands(hhs[i]) / hands : 0.0);
+                double fair = yield * NeedOf(hhs[i]) / mouths;
+                if (hh.Land < 0.05) { ShareTally[1] += got; ShareTally[2] += fair; }
+                else if (hh.Land >= LandWant(hhs[i]) - 0.05) { ShareTally[3] += got; ShareTally[4] += fair; }
+            }
         }
 
         /// <summary>Each debtor of the village repays what it can spare beyond a year's needs, its oldest debts first.</summary>

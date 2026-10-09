@@ -49,29 +49,34 @@ namespace TC2.Tests.Core
         [Test]
         public void TheHarvestIsSharedByMouthsAndAHouseholdsCatchIsItsOwn()
         {
-            var w = TestWorlds.Make(912);
-            int sid = w.Settlements.First();
-            ref var s = ref w.Settlements.Get(sid);
-            var hl = w.HouseholdsOf(sid);
-            Assume.That(hl.Count >= 2);
-            var before = new double[hl.Count];
-            for (int i = 0; i < hl.Count; i++) before[i] = w.Households.Get(hl[i]).Grain;
-            double yield = 1000;
-            s.Granary += yield;
-            w.Holdings.Harvest(sid, yield);
-            double total = 0;
-            for (int i = 0; i < hl.Count; i++) total += w.SettlementSys.HouseholdNeed(hl[i]);
-            for (int i = 0; i < hl.Count; i++)
-                Assert.AreEqual(before[i] + yield * w.SettlementSys.HouseholdNeed(hl[i]) / total, w.Households.Get(hl[i]).Grain, 1e-6, "its share by its mouths");
-            // a household's catch beyond its larder goes into the store as its own grain
-            int hid = hl[0];
-            var p = w.People.Get(w.Members(hid)[0]);
-            double g0 = w.Households.Get(hid).Grain, others0 = Held(w, sid) - g0;
-            ref var hh = ref w.Households.Get(hid); hh.Larder = 1e6;   // (premise: its larder full)
-            w.Wild.Deposit(p.Id, 30);
-            Assert.AreEqual(g0 + 30, w.Households.Get(hid).Grain, 1e-6, "its catch, its own");
-            Assert.AreEqual(others0, Held(w, sid) - w.Households.Get(hid).Grain, 1e-6, "nobody else's");
-            Assert.AreEqual(w.Settlements.Get(sid).Granary, Held(w, sid), 1e-6);
+            Holdings.ByMouths = true;   // (the harvest by mouths, as C3.3 shared it before land counted: C3.6c)
+            try
+            {
+                var w = TestWorlds.Make(912);
+                int sid = w.Settlements.First();
+                ref var s = ref w.Settlements.Get(sid);
+                var hl = w.HouseholdsOf(sid);
+                Assume.That(hl.Count >= 2);
+                var before = new double[hl.Count];
+                for (int i = 0; i < hl.Count; i++) before[i] = w.Households.Get(hl[i]).Grain;
+                double yield = 1000;
+                s.Granary += yield;
+                w.Holdings.Harvest(sid, yield);
+                double total = 0;
+                for (int i = 0; i < hl.Count; i++) total += w.SettlementSys.HouseholdNeed(hl[i]);
+                for (int i = 0; i < hl.Count; i++)
+                    Assert.AreEqual(before[i] + yield * w.SettlementSys.HouseholdNeed(hl[i]) / total, w.Households.Get(hl[i]).Grain, 1e-6, "its share by its mouths");
+                // a household's catch beyond its larder goes into the store as its own grain
+                int hid = hl[0];
+                var p = w.People.Get(w.Members(hid)[0]);
+                double g0 = w.Households.Get(hid).Grain, others0 = Held(w, sid) - g0;
+                ref var hh = ref w.Households.Get(hid); hh.Larder = 1e6;   // (premise: its larder full)
+                w.Wild.Deposit(p.Id, 30);
+                Assert.AreEqual(g0 + 30, w.Households.Get(hid).Grain, 1e-6, "its catch, its own");
+                Assert.AreEqual(others0, Held(w, sid) - w.Households.Get(hid).Grain, 1e-6, "nobody else's");
+                Assert.AreEqual(w.Settlements.Get(sid).Granary, Held(w, sid), 1e-6);
+            }
+            finally { Holdings.ByMouths = false; }
         }
 
         [Test]
@@ -131,31 +136,36 @@ namespace TC2.Tests.Core
         [Test]
         public void ADebtIsRepaidFromTheNextHarvestsSurplusOldestFirst()
         {
-            var w = TestWorlds.Make(914);
-            int sid = w.Settlements.First();
-            var hl = w.HouseholdsOf(sid);
-            Assume.That(hl.Count >= 3);
-            int a = hl[0], b = hl[1], c = hl[2];
-            // premise: a owes c 40 run up lately and b 30 run up a year before
-            w.Holdings.Owe(a, c, 40, w.Now);
-            w.Holdings.Owe(a, b, 30, w.Now - SimTime.Year);
-            Assert.AreEqual(70, w.Holdings.Owes(a, out int to), 1e-6);
-            Assert.AreEqual(2, to);
-            // the harvest leaves a 35 FU beyond a year's needs: the oldest debt (to b) first
-            double needA = w.SettlementSys.HouseholdNeed(a);
-            double ownYear = needA * (SimTime.DaysPerYear + Holdings.Reserve);
-            double total = 0;
-            for (int i = 0; i < hl.Count; i++) total += w.SettlementSys.HouseholdNeed(hl[i]);
-            double yield = (ownYear + 35 - w.Households.Get(a).Grain) * total / needA;
-            double b0 = w.Households.Get(b).Grain, c0 = w.Households.Get(c).Grain;
-            ref var s3 = ref w.Settlements.Get(sid); s3.Granary += yield;
-            w.Holdings.Harvest(sid, yield);
-            double shareB = yield * w.SettlementSys.HouseholdNeed(b) / total, shareC = yield * w.SettlementSys.HouseholdNeed(c) / total;
-            Assert.AreEqual(b0 + shareB + 30, w.Households.Get(b).Grain, 1e-4, "b, lent first, is repaid in full");
-            Assert.AreEqual(c0 + shareC + 5, w.Households.Get(c).Grain, 1e-4, "c gets what is left");
-            Assert.AreEqual(35, w.Holdings.Owes(a, out to), 1e-4);
-            Assert.AreEqual(1, to);
-            Assert.AreEqual(ownYear, w.Households.Get(a).Grain, 1e-4, "a keeps a year's needs");
+            Holdings.ByMouths = true;   // (the harvest by mouths, as C3.3 shared it before land counted: C3.6c)
+            try
+            {
+                var w = TestWorlds.Make(914);
+                int sid = w.Settlements.First();
+                var hl = w.HouseholdsOf(sid);
+                Assume.That(hl.Count >= 3);
+                int a = hl[0], b = hl[1], c = hl[2];
+                // premise: a owes c 40 run up lately and b 30 run up a year before
+                w.Holdings.Owe(a, c, 40, w.Now);
+                w.Holdings.Owe(a, b, 30, w.Now - SimTime.Year);
+                Assert.AreEqual(70, w.Holdings.Owes(a, out int to), 1e-6);
+                Assert.AreEqual(2, to);
+                // the harvest leaves a 35 FU beyond a year's needs: the oldest debt (to b) first
+                double needA = w.SettlementSys.HouseholdNeed(a);
+                double ownYear = needA * (SimTime.DaysPerYear + Holdings.Reserve);
+                double total = 0;
+                for (int i = 0; i < hl.Count; i++) total += w.SettlementSys.HouseholdNeed(hl[i]);
+                double yield = (ownYear + 35 - w.Households.Get(a).Grain) * total / needA;
+                double b0 = w.Households.Get(b).Grain, c0 = w.Households.Get(c).Grain;
+                ref var s3 = ref w.Settlements.Get(sid); s3.Granary += yield;
+                w.Holdings.Harvest(sid, yield);
+                double shareB = yield * w.SettlementSys.HouseholdNeed(b) / total, shareC = yield * w.SettlementSys.HouseholdNeed(c) / total;
+                Assert.AreEqual(b0 + shareB + 30, w.Households.Get(b).Grain, 1e-4, "b, lent first, is repaid in full");
+                Assert.AreEqual(c0 + shareC + 5, w.Households.Get(c).Grain, 1e-4, "c gets what is left");
+                Assert.AreEqual(35, w.Holdings.Owes(a, out to), 1e-4);
+                Assert.AreEqual(1, to);
+                Assert.AreEqual(ownYear, w.Households.Get(a).Grain, 1e-4, "a keeps a year's needs");
+            }
+            finally { Holdings.ByMouths = false; }
         }
 
         /// <summary>A household of the village that is not close kin to <paramref name="of"/> (and not it), else 0.</summary>

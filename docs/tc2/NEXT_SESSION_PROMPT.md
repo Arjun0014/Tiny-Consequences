@@ -205,7 +205,11 @@ the people grew into it (x1.17 over years 200-299, x1.27 at year 300) with hunge
 unchanged. Then **the first sheaves (D2-132, sim version 67)**: 66 % of hunger deaths fell in the ripe stage beside the reaped crop (the harvest
 reached the store on its last day); now the grain comes in as it is reaped and villages ration to their next new grain - the gap falls before the
 grain ripens, as the year's did, and hunger a person-year is not lower (Malthus again). **Next**: SESSION_HANDOFF "Session 16, third context" (the
-preventive check: household land and marriage on a holding).
+preventive check: household land and marriage on a holding). Then **C3.6b household land (D2-133)** - each household holds hectares of its
+village's fields (founders by heads, portions of spare land, the last out, heirs, land given out at sowing to the least landed) - and **C3.6c the
+harvest by land and labour (D2-134, sim version 69)**: half by the land held, half by the hands that worked; the landless live by their hands and
+marry later or never (C3.5's rule) - hunger a person-year x0.74, people at par: the preventive check from the households' economy. **Next**:
+SESSION_HANDOFF "Session 16, third context" (C3.6d who leaves: the landless first).
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

@@ -4,6 +4,12 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 16, third context, later - C3.6c the harvest by land and labour (D2-134, sim version 69)**: a harvest (and each day's sheaves) is
+  shared half by the land each household holds (the unheld part the village's) and half by the hands it gives the fields (the metayer's half-share;
+  the commune still works its fields together). Ten seeds against the same holdings with the harvest by mouths (`--bymouths` = `_h1` exactly):
+  **hunger a person-year x0.74 (t -2.8)**, births a person-year x0.98, deaths x0.96, people at par; the landless took half their mouths' share and
+  married later or never (women's first marriage 20.6-22.0 -> 20.5-22.8; ever married by 45-59 94-100 % -> 67-100 %): the preventive check, from
+  the households' economy. `LandTests` 7; two C3.3 tests now run their checks with the harvest by mouths.
 - **Session 16, third context, later - C3.6b household land, first step (D2-133, sim version 68)**: measured first (`place --heirs`): men marry
   at 19-23, a man's father dies when he is 22-24, a family raises 1.55-1.93 sons to 20. Built: each household holds hectares of its village's
   fields (founders by heads; a marrying child a portion of what the family's land spares; the last out the rest; an heir the land of a household

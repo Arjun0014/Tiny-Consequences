@@ -3867,3 +3867,30 @@ town: the Nouskeirns hold 19 ha of 278 and are owed grain by 91 of 348 household
 **Next (C3.6c).** The harvest shared by land and labour - the land's half to those who hold it, the labour's half to the hands that worked
 (the half-share of the métayer; the commune still works its fields together) - so that the landless live by their hands, poorer, and the
 C3.5 rule (a couple marries when it can keep a household to the next grain) delays their marriages: the preventive check, from economics.
+
+## D2-134 — 2026-10-09 — The harvest shared by land and labour: the landless live by their hands, and marriages wait (C3.6c)
+
+**Context.** D2-133 gave each household a holding but nothing read it: the harvest was still the commune's, shared by mouths (D2-126). D2-131
+and D2-132 had shown that in these worlds hunger a person-year is set by births against food; the check the medieval north-west had on births
+was economic - a couple married when it could keep a household, and the landless could seldom do so young (Hajnal 1965, 1982; Razi 1980;
+Kussmaul 1981). TC2 already has the rule (C3.5, D2-129: a couple marries when what it brings keeps it to the next new grain); what it lacked was
+households that are poor because they hold no land.
+**Decision.** `Holdings` (sim version 69). **A harvest - and each day's sheaves - is shared half by land and half by labour** (`ByLandAndHands`):
+the land's half by the hectares each household holds of the village's arable, the unheld land's part the village's own grain; the labour's
+half by the hands each household gives the fields (`Hands`: as the village's working day weighs its people - grown people a hand, youths of
+12-15 six tenths, the old half, all by their health; the sick and the badly hurt abed none). The village still works its fields together, so
+every hand is paid alike: the half-share of the metayer, the commonest medieval share between land and labour (`LandShare` 0.5). Nothing else
+changes: the moral economy (common grain, kin's gifts, loans, hard times) and the marriage rule read the households' grain as before.
+`--bymouths` keeps the old sharing (reproduces `_h1` exactly - seed 4's annals byte-identical). Tools: the `land:` line's "of the harvests the
+landless took F of their mouths' share, those with their want G".
+**Evidence.** `LandTests` 7 (each household's share is its land's part and its hands' part, the unheld land's part the village's; `--bymouths`
+shares by mouths). Ten seeds, 300 years DEEP, `_c1` against `_h1` (the same holdings, the harvest by mouths): **hunger deaths a person-year
+x0.74 (t -2.8)**, hunger deaths x0.74 (t -2.7), births a person-year x0.98 (t -1.8), deaths a person-year x0.96 (t -2.3), people over years
+200-299 at par (x1.01), famines x0.98, wounds x0.75, walls x0.77, foundings x0.90. The landless took 0.50-0.52 of their mouths' share of the
+harvests, the households holding their want 1.6-2.3 of theirs; and the landless married later or never: women's age at first marriage
+20.6-22.0 -> 20.5-22.8, ever married by 45-59 94-100 % -> 67-100 % (seed 7 67 %, seeds 1 and 6 76-84 %). Fewer landless households were formed
+(landless at year 300 32-60 % -> 13-46 %, the land's Gini 0.74-0.92 -> 0.62-0.88). **The same people, fewer of them born and fewer dying -
+the preventive check where the positive check was** - and it came from the households' own economy, no rule about land and marriage written.
+**Open.** Who leaves: a village's leavers are drawn by its pressure, not by their own land - the landless and the younger sons would go first
+(C3.6d); service (the young of the landless working in landed households); a land market (letting, buying, engrossing); partible customs with
+a village's tradition (C11); the land's half as lords' rents (C10).
