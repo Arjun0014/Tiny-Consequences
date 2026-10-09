@@ -4,78 +4,61 @@ You are continuing **Tiny Consequences 2.0 (TC2)**: a Unity 6.6 Web game in `uni
 (Arjun, D2-089) is *an autonomous medieval civilisation inside a living miniature planet* - no player orders; every structure,
 road, mine, boat, market, army and polity arises from simulated need, labour, material, knowledge and history; nothing scripted;
 presentation never invents state. The legacy Defold game (TC1: `game/`, `sim/`, `docs/` outside `docs/tc2/`) is research material
-only - never modify or stage it.
+only - never modify or stage it. **Do not stop at a milestone**: after each slice choose the next highest-value dependency from the
+evidence and keep going; context handoffs are a continuation mechanism (Control Room writes this file), not a stop condition. Stop only
+for a real external blocker (credentials, payment, UAC, an irreversible product decision).
 
 ## Read first (this order), then work autonomously
-1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the full standing prompt (architecture, rules, every direction from Arjun).
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 15"** (exact state, results, machine notes, Next).
-3. `docs/tc2/DECISIONS.md` newest entries **D2-122** (carts), **D2-123** (nobody works in the water), **D2-124** (crossings surveyed), **D2-125**
-   (the village smith).
-4. `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` §2b (C1.4b as built) and §3 (the next slices, the C3.3 survey); `docs/tc2/24_TRANSPORT_AND_MARITIME.md` §2
-   (carts as built), §4 (the crossings survey); `docs/tc2/25_CIVILISATION_ROADMAP.md` §4 (the resource town proof).
-5. `docs/tc2/PROGRESS.md` CURRENT STATE (session 15 entry); `git status` (the untracked `unity/TinyConsequences2/Assets/Resources.meta` and the
-   modified `.claude/launch.json` are not ours - leave them), `git log --oneline -10`.
+1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the full standing prompt (architecture, rules, every direction from Arjun; "Where we are (session 16)").
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 16"** (exact state, the running/unfinished work, Next in order).
+3. `docs/tc2/DECISIONS.md` newest entries **D2-126** (C3.3 household grain, debts, makers paid, hard times) and **D2-127** (C10.2 the first household).
+4. `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` §2c (C3.3 design and result); `docs/tc2/10_CONFLICT_AND_POLITICS.md` §12c (C10.2) and §12d (C10.3, in progress).
+5. `docs/tc2/PROGRESS.md` CURRENT STATE (two session 16 entries); `git status` (the modified `.claude/launch.json` and untracked
+   `unity/TinyConsequences2/Assets/Resources.meta` are not ours - leave them), `git log --oneline -5` (HEAD 78ac1ee).
 
-## Where things stand (9 Oct 2026, end of session 15)
-- **C4.2 carts closed (D2-122)**. Its closing checks found three faults, each measured and fixed: carts begun while hunger sent the village to the
-  wild were never worked (15.5 % of carts given up -> 4.9 %: `Carts.ShortBound`, a cart given up returns its timber; `run --carttally`); woodcutters
-  with their handcarts stood out in the sea (D2-123); the yard camera framed a roof. Carts against no carts over ten seeds: trades x0.67, famines
-  x0.83-0.89, people and vital rates at par.
-- **D2-123 nobody works in the water**: `wet --load S [--days N]` lives a save hour by hour and counts who stands under the drawn water. A year-300
-  world spent 0.64 % of person-hours in the sea or a lake (field spots the water had covered, coastal woodlots, hunters); now lived field, woodlot
-  and wild spots go ashore and woodlots are chosen above the shore: 0.05-0.08 % left (straight walks across lakes; a day's lake over works).
-- **D2-124 crossings surveyed**: every stream a worn way crosses is a fordable brook (largest flow 0.08-0.23 m3/s on five worlds) - C4.3 bridges
-  deferred.
-- **C1.4b the village smith (D2-125, sim version 61)**: measured - 5,730 people read as "a smith"/"a boatwright" where 175 had worked at a smithy and
-  10 built a plank boat; smithies had no smiths (up to 355 hands and 24,000 hours in a smithy-year). Now a smithy's four places go to its best
-  smiths by craft and practice (`Forge.Places`, `SmithBar`), practice quickens the hand (`Person.SkSmith`, `Forge.Hand`), another smithy rises only
-  where the steady need outruns the places (`Backlog`/`Tally`/`NeedsMore`/`Year`, up to 4, smiths at the nearest), smiths/ironsmiths and boatwrights
-  (plank boats led) are read from their work. Ten seeds `_s3` vs `_c3` (= `--nosmithcrew`): people, famines, trade, conflict at par; smithies
-  68 -> 80; at most 23 hands a smithy-year; iron traded 22 -> 9 t (a seller's smiths cannot see demand beyond their places: open).
-- **Verified**: full suite 314/314; ten-seed runs `tc2/out/civ/s*_c2` (carts, hunger rule), `_c3` (woodlot rule), `_s1`/`_s2` (rejected smith
-  variants), `_s3` (the smith slice, saves 100/200/300); shots `tc2/out/shots/c42a`-`c42c`, `c14b`. Web test 6/6 (`tc2/out/webtest/s15web`, views 77-121 fps, pages 69-88); `tc2/web-build/web` is current (96e38ab).
-- Open W task **W-FOREST** (Arjun, 8 Oct): forests/biomes still read as the same trees recoloured - not solved (`18` §8).
+## Where things stand (9 Oct 2026, end of session 16's first context)
+- **C3.3a-c committed (889263b, sim version 62)**: `Core/Places/Holdings.cs` - each household's grain in the village's granary (the harvest by mouths;
+  own beasts' and catch's produce own), the village's common grain, a daily account (losses nobody drew borne by all by their shares), the moral economy
+  (own grain -> common grain -> kin's spare as gifts -> loans recorded as debts, repaid from surplus), makers paid the food of the maker-days their make
+  took as far as the taker's grain pays, the village's levy for jars and smiths, sharing contracting to household and kin below a ration of 0.7. Ten
+  seeds: people at par, famines x1.25 with hunger deaths x0.9-0.95 (famine amid plenty), takings/raids down. Full suite 326/326.
+- **C10.2 committed (78ac1ee, sim version 63)**: `Core/Society/Leaders.cs` - followings (kin, debtors, clients via `Household.Patron`), the first household
+  and headman (`Settlement.Head/HeadHh`, `Hold` 0.5, succession within the household), its gifts in hard times, tribute to the lord's first household.
+  Ten seeds `_l3` vs `_h5`: people x1.03, vital rates at par. Full suite 331/331 on C10.2.
+- **C10.3 IN PROGRESS (in 78ac1ee, sim version 64)**: at a vacancy an unbound rival with half the first's following and a village's worth leads its
+  following away to a known place (`Leaders.Contest`, `Migration.Split`, `VillageSplit`, `--nosplit` = `_l3` exactly). The first version was at par but
+  rare (49 of ~50 qualifying contests lacked a known place), so a faction that knows no place now looks for land (`Settlement.SplitHh`, scouting,
+  `Leaders.Pending`, gives up after 3 years). Verified on 78ac1ee: `LeadersTests` 7/7, `HoldingsTests` 12/12, Migration 6/6, SaveLoad 8/8. **Not yet**:
+  ten seeds of the pending-split version, the full suite on it, D2-128, `LeadersTests.cs.meta` (run Unity configure).
+- **The Web build in `tc2/web-build/web` is stale/mixed** (C10.2 sources were edited during it): rebuild before any Web test. Last good Web test: s15web.
+- Open W task **W-FOREST** (Arjun, 8 Oct): forests/biomes still read as the same trees recoloured.
 
 ## Do next
-1. **C5.3c re-weighed** (SESSION_HANDOFF "Session 15" Next 1: measured - carrying bog ore home is ~0.5 % of the iron chain's labour, smelting the
-   rest; a bloomery at the ore saves almost nothing). The open part of D2-125 is an **unmet ask** (a trader who wanted iron and found none, counted
-   at the seller, so its `NeedsMore` sees its buyers) - small (iron trade 9 t against pottery's ~2,000 t). Weigh it against item 2.
-2. **C3.3 exchange between households** (`26` §3: a phase - household property, sharing by need, debts). C3.4 the mill was surveyed and deferred
-   (grown people spend 0.7 h a day preparing food and 7.9 h idle: `timeuse --load S`, `26` §3).
-3. D2-123 "Open": a lake risen over works or homes is not a flood people answer; local walks cross lakes in straight lines.
-4. W-FOREST (art pass).
+1. `node tc2/scripts/unity.mjs configure` (makes `LeadersTests.cs.meta`; commit it). Copy `tc2/headless/app/bin/Release/net8.0` to the scratchpad as
+   `bin_l5` and run ten seeds: `BIN=bin_l5 TAG=_l5 YEARS=300 SNAP=100,200,300 EXTRA=--contests bash wrun.sh 4 42 2 1 5 3 11 8 7 6`; compare with `_l3`
+   (`python cmp.py l3 l5 ...`, `agg.py l3 l5`, `leaders.py l5`, the `contests:` line, foundings and village sizes `bash sizes.sh _l5 300`). Accept if
+   splits become real (tens a world) with people at par and towns that hold integrate (lords, large followings); else weigh the thresholds or reject.
+2. Full suite (`node tc2/scripts/headless.mjs test`, ~13 min), D2-128 (`10` §12d has the design and the first version's numbers), PROGRESS, SESSION_HANDOFF,
+   commit "C10.3 closed".
+3. Web build (`node tc2/scripts/unity.mjs build-web --jobs 3`, ~12 min; RAM peaks ~95 % - run nothing beside it) and Web test (`node tc2/scripts/webtest.mjs
+   --tag s16web`): the person/place pages (shots 5b-5f) should show "Its own grain in the village's granary..." and "Its first household...".
+4. Then from the evidence: the headman deciding (tribute, walls, bands), debts' consequences (work for a creditor, flight), the hungry taking from their
+   own village's store, household land when it binds; C9.4 cargo once exchange carries volume; D2-125's unmet iron ask; D2-123 floods; W-FOREST.
 
-## Tools
-- Copy `tc2/out/tools/wrun.sh`, `cmp.py`, `agg.py`, `smith.py`, `wares.py`, `pots.py` to the session's scratchpad and set `SCR=` in `wrun.sh`; copy
-  `tc2/headless/app/bin/Release/net8.0` there as `bin_<tag>` before each ten-seed run (sequential, ~13-20 min for ten).
-- Reference runs now: `tc2/out/civ/s*_s3` (the smith slice; saves 100/200/300); controls on the same binary: `--nosmithcrew` (= `_c3`), `--nocarts`.
-- Headless: `wet --load S [--days N]` (who stands in the water), `place --load S --crossings` (streams the worn ways cross), `place --load S --haul`,
-  `run --carttally`, `run --crafttally` (hours by person and village-year: smithy, plank boats, sheds, kilns), `run --loads`, `run --ledger Y`,
-  `place --load S --list` (wares, sheds, KILN, SMITHY/N SMITHIES, jars) `| --stores | --layout --sid N | --overlaps | --households | --standing`;
-  `person --pick smith|weaver|fighter`; report lines `carts:`, `cart tally:`, `craft ...`, `iron:`, `force:`, `pots:`, `wares:`, `trade:`.
-- Shots: `node tc2/scripts/unity.mjs shots --tag T --load "<abs save>" --village ID --views "work12near@11,work12@11,cart@11,cartyard@11,cartfar@14"`
-  (`work<kind>` a structure of the framed village - 12 smithy, 23 weaver's shed, 24 kiln; `cart*` carts; `row*`, `hall`, `mouth`; `--ground`).
+## Tools (all in `tc2/out/tools/`; copy to the session scratchpad and set `SCR=` in `wrun.sh`)
+- `wrun.sh` (ten-seed runs; `EXTRA=` for switches), `cmp.py A B seeds` (paired annals/report ratios), `agg.py A B` (report quantities), `hold.py TAG`
+  (C3.3 `hold:`/`makers paid:`), `leaders.py TAG` (C10.2 `leaders:`), `forms.py TAG...` (house plans, markets), `sizes.sh TAG YEAR` (village sizes and
+  binding; needs a save of the repo build's sim version), `ly.py`/`lycf.py` (household-year ledger), `patch.py FILE OLD NEW` (line-ending-aware replace).
+- Headless switches: `--nohold`, `--holdmeansoff`, `--nopay`, `--nohard`, `--nohead`, `--notribhead`, `--nosplit`, `--contests`, `--ledger Y --ledgeryears F`;
+  `place --load S --households | --debts | --leaders | --binding`.
 
 ## Rules that bite
-- Commits `[tc2] ...`, ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; never stage TC1 files or the two files above;
-  never force-push. New `.cs` and model files need their Unity `.meta` committed (a Unity run - shots or `configure` - makes them).
-- **No subagents. Control Room's Resource Governor LOW: CPU 50 %, RAM 75 % for all work; one heavy job at a time** (Unity build or shots, the full
-  suite ~12-18 min, a ten-seed run ~13-20 min). The machine's own baseline sits near 73-75 % RAM; a Unity run takes it to ~85 % while it runs - start
-  heavy jobs when RAM reads <= 75 % and run nothing else beside them. `dotnet build-server shutdown` frees this session's compiler servers. Never kill
-  processes you did not start (a `chrome-headless-shell` not ours took ~70 % CPU for an hour in session 15).
-- Bash heredocs mangle backslashes in this harness (`\n` inside a Python string became a newline; Windows paths with `\U` broke a script): write patch
-  scripts with the Write tool into the scratchpad (forward slashes in paths), then `python file.py`; long commit messages via a file.
-- The Web test compares the browser with `tc2/headless/app/bin/Release/net8.0/tc2.dll` - build it from the same Core as the Web build.
-- Core is pure C#, deterministic, **no float arithmetic** (`headless.mjs test` lints it); every mechanism at both resolutions; judge by century
-  means over ten seeds against a control on the same binary (a `--no...` switch) - aggregate counts move x0.8-x1.3 between reruns; a placebo
-  (`--nudge Y`) shows the spread when an effect looks small.
-- Lived work spots must be on dry ground (`AgentSystem.Ashore`); check new spots with `wet`.
-- A new structure kind needs a slot in `WorldObjectsView._works` (sized by kind) and a line in `HistoryText.WorkWhy`. In Python patch strings write a C#
-  newline escape as a doubled backslash and n.
-
-## Commands
-- Tests: `node tc2/scripts/headless.mjs test [--filter Name] [--nobuild]` (the filter is a substring, not a regex).
-- Runs: `BIN=bin_x TAG=_x YEARS=300 SNAP=100,200,300 bash wrun.sh 4 42 2 1 5 3 11 8 7 6`; `python cmp.py A B 4 42 2 1 5 3 11 8 7 6`; `python agg.py A B`;
-  `python smith.py A B`.
-- Web: `node tc2/scripts/unity.mjs build-web --jobs 3` (~11 min), `node tc2/scripts/webtest.mjs --tag T`.
-- Kit: `"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tc2/art/kit.py -- --out unity/TinyConsequences2/Assets/TC2/Game/Resources/TC2Models [--only a,b] [--preview <dir>]`.
+- Commits `[tc2] ...` ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; stage only TC2 files; never force-push. New `.cs` files need
+  their Unity `.meta` committed (a Unity configure makes them).
+- **No subagents. Resource Governor MEDIUM: CPU 70 %, RAM 85 %, at most two heavy jobs** (two ten-seed runs fit; a Unity run must run alone - it takes RAM
+  to ~95 %). The machine idles at ~70-78 % RAM. Never kill processes you did not start.
+- Docs are CRLF: edit them with the Edit tool or `patch.py`, never with plain Python `replace` on `\n` text. Bash heredocs break on nested quotes and
+  backslashes: write patch scripts and texts to files with the Write tool.
+- Don't rebuild the headless binaries while a suite or run uses them (runs use scratchpad copies `bin_*`; the suite uses the repo build).
+- Core is pure C#, deterministic, no float arithmetic (`headless.mjs test` lints it); judge by ten seeds against a control on the same binary (a
+  `--no...` switch); aggregate counts move x0.8-x1.3 between reruns.

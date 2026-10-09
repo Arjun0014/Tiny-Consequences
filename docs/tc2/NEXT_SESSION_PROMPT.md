@@ -181,6 +181,16 @@ hand, another smithy rises only where the steady need outruns the places, and sm
 par over ten seeds; iron exports shrink where a town cannot smelt beyond its places (open: the bloomery at the ore, C5.3c). **Next**:
 SESSION_HANDOFF "Session 15".
 
+**Where we are (session 16, 9 Oct 2026)**: **C3.3 exchange between households (D2-126, 889263b)** - measured first: dividing the harvest by each
+household's field work would have turned the COARSE scheduler's order (oldest residents to the fields first) into property; so the commune's harvest is
+shared by mouths into each household's own grain in the village's granary (`Core/Places/Holdings.cs`), beside the village's common grain; larders draw
+own grain, the common grain, kin's spare (gifts), then loans recorded as debts and repaid from surplus; makers are paid in kind (the food of the
+maker-days their make took) as far as the taker's grain pays, the village paying jars and smiths from its common grain then a levy; in hard times
+sharing contracts to the household and its kin (famine amid plenty). **C10.2 the village's first household (D2-127, 78ac1ee)**: followings of kin,
+debtors and clients (`Core/Society/Leaders.cs`); the household most follow leads, its eldest is first among the people; it feeds the hungry in hard
+times; tribute goes to the lord's first household. **C10.3 a contested succession splits a village is IN PROGRESS** (committed as such): built and
+unit-tested, the pending-split version (a faction that knows no place looks for land) not yet run over ten seeds. **Next**: SESSION_HANDOFF "Session 16".
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.
