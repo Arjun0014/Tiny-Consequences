@@ -12,7 +12,9 @@ COARSE from the next midnight, ACTIVITY for the last two days) to year 96 - the 
 (17 places) differs from headless COARSE (9 places): find why first (reproduce the browser's catch-up headless exactly - the SimHost loop's
 catch-up step, budgets, saves during the catch-up - or build 5dd947a with `Retire` switched off to confirm C3.6e is the cause). The full suite has
 NOT been run on 5dd947a (LandTests 10, Holdings 12, Migration 6, Biography 4 pass). Do not build on C3.6e until this is resolved; revert it if the
-cause cannot be found.
+cause cannot be found. Targeted tests on HEAD 7abbaa5 at handoff (21:35 IST): `LandTests` 10, `SheavesTests` 5, `TilthTests` 4,
+`DeepTimeTests` 8, `HouseholdFormationTests` 3 pass. Tools of this context copied to `tc2/out/tools/` (`pt.py` line-ending-aware patching, `gap.py`,
+`loadrun.sh` - runs saves forward, `coarsescan.sh`, `wrun.sh`); the seed-42 browser opening state lived headless: `scratchpad/web42/world.tc2`.
 **State before C3.6e**: 26127b5 + cc1f436 verified (Web `s16web8` 6/6, full suite 353/353); sim version 70. Verified: Web build of 26127b5 (`tc2/web-build/web`),
 Web test `s16web8` 6/6 (bit-identical; the settlement page's Land tab shows "Land: 9 households hold 14 ha of its fields (the most the Doldseinds,
 2.2 ha)"); the full suite on 26127b5: 353/353. `LandTests.cs.meta` made by the Unity build (commit it). Nothing else running.
