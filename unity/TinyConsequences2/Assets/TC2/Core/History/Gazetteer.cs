@@ -134,6 +134,14 @@ namespace TC2.Core.History
             var sb = new StringBuilder();
             double days = Trade.DaysOfFood(w, in s, out _);
             sb.Append(F(s.FieldHa, "0")).Append(" ha of fields (").Append(s.Crop.ToString().ToLowerInvariant()).Append("); last harvest ").Append(F(s.LastHarvest, "0")).Append(" days' food.\n");
+            if (s.Tilth > 0)
+            {
+                // working the land harder (C3.6): the land within reach against what its people want, the extra hours and what they gave
+                double want = s.Population * w.Config.FieldHaPerPerson * (1.0 + 0.5 * s.Memory);
+                sb.Append("Its arable within reach (").Append(F(s.ArableHa, "0")).Append(" ha) is short of the ").Append(F(want, "0")).Append(" ha its people would sow: they plough and hoe each hectare harder this year, ")
+                  .Append(F(100.0 * s.Tilth, "0")).Append(" % more hours").Append(s.TilthGain > 0f ? " (the last harvest " + F(100.0 * s.TilthGain, "0") + " % larger for it)" : "").Append(".\n");
+            }
+            else if (s.TilthGain > 0f) sb.Append("Its last harvest was ").Append(F(100.0 * s.TilthGain, "0")).Append(" % larger for the extra ploughing and hoeing.\n");
             sb.Append("The store holds ").Append(F(s.Granary, "0")).Append(" days' food (").Append(F(days, "0")).Append(" days for its people), in ")
               .Append(s.Granaries).Append(s.Granaries == 1 ? " granary" : " granaries").Append(s.Barns > 0 ? " and " + s.Barns + (s.Barns == 1 ? " barn" : " barns") : "")
               .Append(" holding ").Append(F(Structures.StoreCapacity(in s), "0")).Append(s.Ration < 0.999 ? "; meals rationed to " + F(100 * s.Ration, "0") + " %" : "").Append(".\n");

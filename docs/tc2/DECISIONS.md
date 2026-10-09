@@ -3746,3 +3746,52 @@ forest a lumpier relief from afar; shots `wf6/before_after_far.png`; Web test 6/
 **Open (W-FOREST stays open for Arjun's judgement in real shots).** ground cover by kind of wood; stand age as state (only fire's is real; felling and windthrow leave none); the dry
 tropics' ground drawn lush where moisture is 0.5; a straight snow/no-snow seam on one boreal patch; perhaps too many bare boles between the rain
 forest's flat crowns.
+
+## D2-131 — 2026-10-09 — Working the land harder: more ploughing and hoeing where the land within reach is short (C3.6a)
+
+**Context.** C3.6 was left open between two answers to land binding (`26` §3): working the land harder (Boserup 1965) or household land
+(who holds it). Measured first (session 16 third context; a tools-only tally `--landtally`: harvests and COARSE working days by whether the
+village's arable within reach is short of its people's need, by crop stage; seeds 4 and 5, years 200-223 from the `_m2` saves): land bound
+80 % and 62 % of harvests; in bound villages **labour never limited a crop stage** - sown 1.000 and brought in 1.000 - and a working day had
+2.7-4.0 hours left after the crops in every stage (sowing 3.3, hoeing 4.0, reaping 2.7); the hungry spent 0.6-3.1 of them in the wild for
+0.02-0.08 FU an hour, against ~1.7 FU an hour in the fields - nothing let them put an hour into their own hectares (the crop's work had a
+fixed need: 40 h a ha to sow, 24 to hoe, 45 to reap, and work beyond it gave nothing). D2-129 had shown the hunger is a real shortage, not
+its sharing: who holds the land changes who eats, not how much. So the missing margin was the intensive one.
+**Decision.** `SettlementSystem` (sim version 66). (a) **At sowing a village whose fields are short of what its people want to sow** (its
+heads x 0.5 ha, more where famine is remembered - the want it already claims fields for) **plans extra ploughing and hoeing a hectare**:
+enough to bring the harvest of the hectares it has up to what the wanted ones would give, as far as falling returns allow (`TilthFor`;
+`Settlement.Tilth`, a share of the ordinary season's 109 work-hours a hectare; none where its fields are enough - Boserup: people do not take
+on more work an hour returns less for until they must). (b) **Falling returns**: what the extra work done adds to the yield is
+`GainOf(e)` = 0.30 x (1 - exp(-e / 0.4)) - the first extra hour returns three quarters of an ordinary hour's harvest, an hour at the most a
+village plans (`TilthMax` 0.8: +80 % of the hours, +26 % of the yield) a tenth of it; the harvest an hour falls with every hour (field
+trials: a second and third weeding of a weedy cereal +29-42 % each for ever more hours; marled and manured land in medieval demesnes +20-55 %;
+Brunt's off-farm manures +20 %). (c) **Only work done counts**: half the extra hours go to the sowing (a second ploughing, the harrowing),
+half to the hoeing (two more hoeings); the crop's need in each stage rises by them; the ordinary work is done first, and at the harvest the
+yield is multiplied by `1 + GainOf(min(planned, done))` (`TilthDone`, `TilthGain`); the ordinary weeding's effect on growth is as before. Both
+resolutions draw the hours where they did: COARSE days put them before building and the wild (as the crops were); lived days choose the
+fields while their need is unmet. (d) **History**: `FieldsWorkedHarder` (93, Local) once when a village begins - "the N ha of arable within
+their reach no longer fed their M people at their old work (X % more hours a hectare)" - its cause the famine it remembers if any, else its
+people; told again only after its land has covered its want with a tenth to spare; indexed for the settlement page's history. (e) Pages: the
+settlement page's food section ("Its arable within reach (A ha) is short of the W ha its people would sow: they plough and hoe each hectare
+harder this year, X % more hours (the last harvest Y % larger for it)"). Tools: `--notilth` (reproduces `_m2` exactly: seed 4's annals
+byte-identical), `--landtally` (the survey lines and the extra work planned, done and what it added).
+**Evidence.** `TilthTests` 4 (the plan follows the shortfall and stops at the most; returns and the harvest an hour fall with every hour; a
+cramped village plans the extra work, records it, its page and history tell it, the ordinary sowing is done first, the extra is done and the
+harvest gains what the work done gives - by about that much against the same world with `--notilth`; a village with land enough works as
+before; a save in the hoeing continues identically through the harvest). **Ten seeds, 300 years DEEP**, `_t1` against `_t0` (the same binary
+with `--notilth` = `_m2`): in land-bound villages the extra work planned was 0.41-0.63 of the season's hours and all of it was done; the yield
+a hectare rose 106-125 -> 124-150 FU (+16-24 %); the harvest went from 0.83-0.97 to 0.91-1.02 of their people's bread; the work added 14-18.5 %
+of the harvests; crop hours a working day rose 0.4-0.8 h in the sowing and hoeing stages (seed 4's wild hours 34 -> 16 million). Lived days do
+it too (seed 5, a lived year from year 200: planned 0.508, done 0.508). **Then the people grew into it**: people over years 200-299 x1.17
+(t 4.2), at year 300 x1.27 (t 10.9; every world x1.19-1.45), births x1.16, deaths x1.11; the land binds harder again (bound villages' arable
+a head 0.68-0.82 -> 0.61-0.79 of the need) and **hunger a person-year is unchanged** (x0.98), famines a person-year x0.78 (t -2.3), raids
+x0.37 (t -3.1), wounds a person-year x0.77, takings x0.90; relief by sea x2.0 (more coastal people), epidemics x1.7 (rare events, t 0.9).
+**Cost**: none measurable - the ten runs took the same time (x0.998) with a fifth more people (fewer hungry villages, more calm DEEP steps).
+**This is Boserup's and Malthus's world together**: the land is worked harder where it binds, at a falling return an hour, and the people
+multiply until it binds again; the gain is density and towns, not welfare. It raises the worlds' scale (D2-085): a fifth to a quarter more
+people at year 300 (seed 4 9,400 -> 11,189), the run's cost unchanged; the browser's (more people drawn in larger villages) is checked in the
+Web test.
+**Open.** The herds' dung (manure carried to the fields: a real flow, the medieval manure gap - bound villages keep 0.3-0.6 beasts a field
+hectare, ~1.5-3 kg of fodder a day: a tenth of a manuring) - C3.6b; household land and marriage on a holding (the preventive check that would
+turn the gain into welfare rather than numbers: the NW European pattern, D2-129 "Open"); fallow and the soil's fertility (fields are cropped
+every year at no cost today: a generous base).

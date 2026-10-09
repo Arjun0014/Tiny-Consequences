@@ -1,5 +1,26 @@
 # TC2 Session handoff
 
+## Session 16, third context (9 Oct 2026, from 16:10 IST; Control Room run #39 session 3, Resource Governor MEDIUM) - C3.6a working the land harder (D2-131)
+
+### Exact state (keep current)
+- **C3.6a working the land harder (D2-131, sim version 66; `26` §2d)**: `SettlementSystem` - `TilthFor` (the plan at sowing: fields short of the
+  want -> extra ploughing and hoeing a hectare, a share of the season's 109 work-hours, at most `TilthMax` 0.8), `GainOf` (0.30 x (1 - exp(-e/0.4))),
+  `SowHa/TendHa/ReapHa/SeasonHa`, `Tilled` (the history episode), `Settlement.Tilth/TilthDone/TilthGain/TilthEvent`; `HistoryKind.FieldsWorkedHarder`
+  93 (Local, place-indexed); the settlement page's food section (`Gazetteer.Food`). Headless: `--notilth` (= `_m2` exactly, seed 4's annals
+  byte-identical), `--landtally` (`land open/bound:` lines - harvests, arable and fields against need, FU a ha, harvest against bread, the extra
+  planned/done/added - and `land hours` by crop stage; `AgentSystem.LandHours`, `SettlementSystem.LandTally`). `TilthTests` 4.
+- Runs: `tc2/out/civ/s*_t1` (the slice, `--landtally`, saves 100/200/300) and `s*_t0` (`--notilth --landtally`, the control = `_m2`); lived year
+  checks `scratchpad/lived_s5_t1.txt`/`_t0.txt`; the survey before the code `scratchpad/land_s4.txt`, `land_s5.txt` (bin_t1 on the `_m2` saves).
+- Scratchpad (this context): `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/75232637-109e-4256-9e55-bbecfdd2e0eb/scratchpad`
+  (`wrun.sh` pointed here, `pt.py` - line-ending-aware patching: `exec(open(pt).read()); patch(path, [(old, new)])` with LF texts - patch scripts
+  `p_*.py`, `d2131.md`). **Never `sed -i` a CRLF file here: Git Bash's sed strips the CRs** (SettlementSystem.cs had to be restored).
+
+### Next, in order
+1. Commit C3.6a; Web build + Web test (bigger villages: the browser's cost of a fifth more people).
+2. **The hungry gap** (hunger a person-year unchanged by C3.6a; 17 % of deaths): a tools tally is written (`--gaptally`: hunger deaths by days to
+   the harvest, crop stage, age, store, days hungry, land) - run it on ten seeds, then choose: eating the grain as it is reaped (the ripe crop stands
+   nine days while the store is empty?), household land and marriage on a holding (the preventive check), or C3.6b the herds' dung.
+
 ## Session 16, second context (9 Oct 2026, 12:22-16:00 IST; Control Room run #39 session 2, Resource Governor MEDIUM) - C10.3 closed (D2-128); C3.5 household formation (D2-129); W-FOREST pass 1 (D2-130)
 
 **Handoff state (end of this context)**: HEAD 284471c (+ this handoff commit); everything committed; nothing running. Verified at handoff:

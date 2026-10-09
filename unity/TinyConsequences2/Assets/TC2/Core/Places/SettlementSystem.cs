@@ -168,6 +168,31 @@ namespace TC2.Core.Places
         /// in; null in the game.</summary>
         public static double[] Harvests;
 
+        /// <summary>Tools (C3.6 survey; null in the game): the harvests by whether the village's arable within reach is short of its people's need
+        /// (0 open, 1 bound) - count, yield, field ha, need ha, growth, sown, brought in, burnt, a year's bread, its beasts' daily intake (kg), arable
+        /// ha, its beasts' head; the extra work planned and done (C3.6: shares of the ordinary season's hours), what it added (FU), harvests worked
+        /// harder.</summary>
+        public static double[] LandTally;
+        public const int LandTallyK = 16;
+
+        void TallyLand(in Settlement s, double yield)
+        {
+            var w = _w;
+            double needHa = s.Population * w.Config.FieldHaPerPerson;
+            int o = (s.ArableHa < needHa ? 1 : 0) * LandTallyK;
+            double intake = 0; int head = 0;
+            var hhs = w.HouseholdsOf(s.Id);
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                var mine = w.BeastsOf(hhs[i]);
+                for (int k = 0; k < mine.Count; k++) { ref var b = ref w.Beasts.Get(mine[k]); if (b.Alive) { intake += Livestock.IntakeDay(b.Kind); head++; } }
+            }
+            var t = LandTally;
+            t[o]++; t[o + 1] += yield; t[o + 2] += s.FieldHa; t[o + 3] += needHa; t[o + 4] += DMath.Clamp01(s.CropGrowth); t[o + 5] += s.Sown;
+            t[o + 6] += s.Harvested; t[o + 7] += s.CropBurnt; t[o + 8] += s.Population * (double)SimTime.DaysPerYear; t[o + 9] += intake; t[o + 10] += s.ArableHa; t[o + 11] += head;
+            t[o + 12] += s.Tilth; t[o + 13] += DMath.Min(s.Tilth, s.FieldHa > 0 ? s.TilthDone / (s.FieldHa * SeasonHa) : 0.0); t[o + 14] += yield - yield / (1.0 + s.TilthGain); if (s.Tilth > 0) t[o + 15]++;
+        }
+
         /// <summary>Tools: demography - person-days, natural deaths, -, infant-days, infant deaths, conception exposure weighted by fertility
         /// and health, conceptions, marriage exposure weighted by age, marriages, conception woman-days; null in the game.</summary>
         public static double[] Demo;
@@ -310,6 +335,51 @@ namespace TC2.Core.Places
         /// <summary>Kg of flax fibre a hectare of the village's fields gives a year (a corner of them sown with flax: D2-063).</summary>
         public const double FibrePerHa = 1.0;
 
+        // ---------------------------------------------------------------- working the land harder (C3.6, D2-131)
+        /// <summary>The ordinary season's work a hectare, by stage: ploughing and sowing, weeding and keeping the crop, reaping (work-hours).</summary>
+        public const double SowHa = 40.0, TendHa = 24.0, ReapHa = 45.0, SeasonHa = SowHa + TendHa + ReapHa;
+        /// <summary>The most extra ploughing and hoeing can add to a hectare's yield (a second ploughing and harrowing, two more hoeings).</summary>
+        public const double TilthGainMax = 0.30;
+        /// <summary>Extra hours, as a share of the ordinary season's, that bring 63 % of that: returns fall with every hour (Boserup 1965).</summary>
+        public const double TilthScale = 0.4;
+        /// <summary>The most extra work a village plans (+80 % of the season's hours: +26 % of the yield, its last hour returning a tenth
+        /// of an ordinary hour's).</summary>
+        public const double TilthMax = 0.8;
+        /// <summary>Tools: the village works its land as before whatever its want (--notilth).</summary>
+        public static bool TilthOff;
+
+        /// <summary>What extra work e (a share of the ordinary season's hours a hectare) adds to the yield: a share of the harvest.</summary>
+        public static double GainOf(double e) => e <= 0 ? 0.0 : TilthGainMax * (1.0 - DMath.Exp(-e / TilthScale));
+
+        /// <summary>
+        /// The extra work a village plans at sowing (C3.6): none while its fields are what its people want; else enough more ploughing and
+        /// hoeing a hectare to bring the harvest of the hectares it has up to what the wanted ones would give, as far as falling returns allow.
+        /// </summary>
+        public static double TilthFor(double fieldHa, double wantHa)
+        {
+            if (TilthOff || fieldHa <= 0 || wantHa <= fieldHa) return 0.0;
+            double g = wantHa / fieldHa - 1.0;
+            if (g >= GainOf(TilthMax)) return TilthMax;
+            return -TilthScale * DMath.Log(1.0 - g / TilthGainMax);
+        }
+
+        /// <summary>The years a village works its land harder, told once (until its land within reach covers its want with a tenth to spare).</summary>
+        void Tilled(ref Settlement s, double wantHa)
+        {
+            var w = _w;
+            if (s.Tilth > 0 && s.TilthEvent == 0 && s.Population > 0)
+            {
+                long fam = s.FamineEvent != 0 && s.Memory > 0.3 ? s.FamineEvent : 0;   // (a village that remembers famine wants more: D2-042)
+                s.TilthEvent = w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.FieldsWorkedHarder, Time = w.Now, Cell = s.FieldCell, Settlement = s.Id, Subject = EntityRef.Settlement(s.Id),
+                    Cause1 = fam, Rel1 = fam != 0 ? CauseRel.InResponseTo : CauseRel.None, Magnitude = (float)s.Tilth,
+                    ArgA = (int)DMath.RoundHalfUp(s.ArableHa), ArgB = s.Population, RootKind = fam != 0 ? RootKind.Unknown : RootKind.People,
+                });
+            }
+            else if (s.TilthEvent != 0 && s.ArableHa >= 1.1 * wantHa) s.TilthEvent = 0;
+        }
+
         /// <summary>The crop calendar over a step's days, each as a day of its own (DEEP, F8: a step never crosses a stage's day).</summary>
         void Crops(ref Settlement s, int doy, int days)
         {
@@ -328,25 +398,35 @@ namespace TC2.Core.Places
                 double perPerson = cfg.FieldHaPerPerson * (1.0 + 0.5 * s.Memory);
                 ClaimFields(ref s, s.Population * perPerson);
                 s.FieldHa = Math.Max(0.5, Math.Min(s.Population * perPerson, s.ArableHa));
-                s.CropWorkNeed = s.FieldHa * 40.0;
-                s.ExpectedHarvest = s.FieldHa * cfg.FieldYieldPerHa * 0.8;
+                // where the land within reach is short of that, the village works each hectare harder (C3.6): more ploughing and hoeing
+                s.Tilth = TilthFor(s.FieldHa, s.Population * perPerson); s.TilthDone = 0;
+                s.CropWorkNeed = s.FieldHa * (SowHa + 0.5 * s.Tilth * SeasonHa);
+                s.ExpectedHarvest = s.FieldHa * cfg.FieldYieldPerHa * 0.8 * (1.0 + GainOf(s.Tilth));
+                Tilled(ref s, s.Population * perPerson);
             }
             else if (s.Crop == CropStage.Sown && doy >= 12)
             {
-                s.Sown = DMath.Clamp01(s.CropWork / Math.Max(1.0, s.CropWorkNeed));
+                double sow = s.FieldHa * SowHa;
+                s.Sown = DMath.Clamp01(s.CropWork / Math.Max(1.0, sow));
+                s.TilthDone += DMath.Max(0.0, s.CropWork - sow);   // (the second ploughing and the harrowing: C3.6)
                 // weeding, and keeping birds and beasts off the young crop: ~24 hours a hectare over the stage (hand weeding of a
-                // cereal took 50-100 hours a hectare a season; D2-058)
-                s.Crop = CropStage.Growing; s.CropWork = 0; s.CropWorkNeed = s.FieldHa * 24.0;
+                // cereal took 50-100 hours a hectare a season; D2-058) - and as much more hoeing as the village planned (C3.6)
+                s.Crop = CropStage.Growing; s.CropWork = 0; s.CropWorkNeed = s.FieldHa * (TendHa + 0.5 * s.Tilth * SeasonHa);
             }
             else if (s.Crop == CropStage.Growing && doy >= 30)
             {
-                s.Crop = CropStage.Ripe; s.CropWork = 0; s.CropWorkNeed = s.FieldHa * 45.0;
+                s.TilthDone += DMath.Max(0.0, s.CropWork - s.FieldHa * TendHa);   // (the extra hoeing: C3.6)
+                s.Crop = CropStage.Ripe; s.CropWork = 0; s.CropWorkNeed = s.FieldHa * ReapHa;
             }
             else if (s.Crop == CropStage.Ripe && doy >= HarvestDay)
             {
                 s.Harvested = DMath.Clamp01(s.CropWork / Math.Max(1.0, s.CropWorkNeed));
-                double yield = s.FieldHa * cfg.FieldYieldPerHa * DMath.Clamp01(s.CropGrowth) * s.Sown * s.Harvested * (1.0 - s.CropBurnt);
+                // what the extra ploughing and hoeing done added, never more than the village planned (C3.6)
+                double gain = GainOf(DMath.Min(s.Tilth, s.FieldHa > 0 ? s.TilthDone / (s.FieldHa * SeasonHa) : 0.0));
+                s.TilthGain = (float)gain;
+                double yield = s.FieldHa * cfg.FieldYieldPerHa * DMath.Clamp01(s.CropGrowth) * s.Sown * s.Harvested * (1.0 - s.CropBurnt) * (1.0 + gain);
                 if (Harvests != null) { Harvests[0] += yield; Harvests[1] += s.FieldHa; Harvests[2]++; Harvests[3] += DMath.Clamp01(s.CropGrowth); Harvests[4] += s.Sown; Harvests[5] += s.Harvested; }
+                if (LandTally != null) TallyLand(in s, yield);
                 s.Granary += yield;
                 s.LastHarvest = yield;
                 TC2.Core.Diagnostics.HouseLedger.Harvest(w, s.Id, yield);   // (tools: the harvest by whose work it was; null in the game)
@@ -393,7 +473,8 @@ namespace TC2.Core.Places
                 }
                 // the weeds grow with the crop: a field is kept while its weeding keeps pace with the season so far (D2-058)
                 double season = DMath.Clamp((doy - 11) / 18.0, 0.05, 1.0);
-                double tend = 0.75 + 0.25 * DMath.Clamp01(s.CropWork / Math.Max(1.0, s.CropWorkNeed * season));
+                double tendHa = s.FieldHa * TendHa;   // (the ordinary weeding: the extra hoeing's gain comes at the harvest, C3.6)
+                double tend = 0.75 + 0.25 * DMath.Clamp01(DMath.Min(s.CropWork, tendHa) / Math.Max(1.0, tendHa * season));
                 s.CropGrowth = DMath.Clamp01(s.CropGrowth + tf * wf * tend / 16.0);
             }
         }

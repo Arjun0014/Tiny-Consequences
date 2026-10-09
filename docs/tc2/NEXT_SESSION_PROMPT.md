@@ -197,8 +197,12 @@ answered scarcity before death - so **C3.5 household formation (D2-129, sim vers
 grain keeps it to the next harvest; else the match waits, brides marry where the grain is, some never marry. Hunger deaths x0.69, famines x0.70,
 births x0.88, people at par over years 200-299. **W-FOREST pass 1 (D2-130, presentation)**: each tree's kind of wood is read from the
 simulation's climate and water (rain forest, dry tropics, warm temperate, broadleaf, mixed, boreal, treeline, carr, gallery), with ten new forms,
-stand ages, palettes, far forms and the far canopy by kind - still OPEN for Arjun's judgement in real shots. **Next**: SESSION_HANDOFF "Session 16,
-second context" (land, C3.6, measured: it binds for 91 % of people by year 300 while labour idles).
+stand ages, palettes, far forms and the far canopy by kind - still OPEN for Arjun's judgement in real shots. Then **C3.6a working the land harder
+(D2-131, sim version 66)**: measured first - where land bound, labour never limited a crop stage and the hungry gathered at 0.02-0.08 FU an hour
+against ~1.7 in the fields; now a village whose fields are short of its want plans extra ploughing and hoeing a hectare at sowing (at most +80 % of
+the season's hours for +26 % of the yield, at falling returns; only work done counts). Ten seeds: yields a hectare +16-24 % where land binds, then
+the people grew into it (x1.17 over years 200-299, x1.27 at year 300) with hunger a person-year unchanged - Boserup and Malthus together; run time
+unchanged. **Next**: SESSION_HANDOFF "Session 16, third context" (the hungry gap, measured with `--gaptally`; then the preventive check or the dung).
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

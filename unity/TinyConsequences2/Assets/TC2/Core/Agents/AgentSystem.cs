@@ -1682,6 +1682,12 @@ namespace TC2.Core.Agents
         /// people had, and the person-days they had them for; null in the game.</summary>
         public static double[] Hours;
 
+        /// <summary>Tools (C3.6 survey; null in the game): a COARSE working person's day by whether its village's arable within reach is short
+        /// of its people's need (0 open, 1 bound) and the crop's stage (5) - person-days, crop hours, hours left after the crops, wild hours, wild FU.</summary>
+        public static double[] LandHours;
+        public const int LandK = 5;
+        static int LandSlot(World w, in Settlement s) => ((s.ArableHa < s.Population * w.Config.FieldHaPerPerson ? 1 : 0) * 5 + (int)s.Crop) * LandK;
+
         /// <summary>A COARSE day's making and mending for one person (D2-058): up to maxH hours while the household holds less than
         /// `below` of what it keeps its members in.</summary>
         void CoarseCraft(ref Person p, double age, double maxH, double below, int days = 1)
@@ -1924,15 +1930,19 @@ namespace TC2.Core.Agents
                         p.SkWood = (float)DMath.Min(1.0, p.SkWood + 0.0015 * h);
                     }
                 }
+                double cropH = 0;
                 if (cropNeed > 0)
                 {
                     double rate = (0.6 + p.SkFarm) * (0.5 + 0.5 * p.Health) * tools * Knowledge.Tech.ArdFactor(in p, w.Stock.HasOx(p.Household));
                     double h = Math.Min(hours, cropNeed / rate);
+                    cropH = h;
                     s.CropWork += h * rate; cropNeed -= h * rate; hours -= h; if (Hours != null) Hours[1] += h;
                     TC2.Core.Diagnostics.HouseLedger.Work(p.Household, h * rate);
                     w.Learning.Practice(ref p, Knowledge.Tech.Ard, h);
                     p.SkFarm = (float)DMath.Min(1.0, p.SkFarm + 0.0015 * h);
                 }
+                int lslot = -1;
+                if (LandHours != null) { lslot = LandSlot(w, in s); LandHours[lslot] += days; LandHours[lslot + 1] += cropH; LandHours[lslot + 2] += hours; }
                 if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Carts.HasWork(w, p.Household) && !(shortNow && WildNeed(in s, now, ration) > Carts.ShortBound))
                 {
                     // the household is making a cart (C4.2): a couple of its grown members' hours a day go to it before the village's building - their own
@@ -2022,6 +2032,7 @@ namespace TC2.Core.Agents
                                 if (days > 1) w.Wild.Retake(sid, wk, boat != 0);   // (DEEP: the next chooses on the ground this step's take left)
                                 w.Metrics.WildHours += hw; w.Metrics.WildFu += fu;
                                 hours = DMath.Max(0.0, hours - hw);
+                                if (lslot >= 0) { LandHours[lslot + 3] += hw; LandHours[lslot + 4] += fu; }
                                 if (shortNow) w.SettlementSys.NoteWildFood(sid);
                             }
                         }

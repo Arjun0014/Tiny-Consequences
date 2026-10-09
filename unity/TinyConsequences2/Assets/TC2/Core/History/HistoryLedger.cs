@@ -103,7 +103,7 @@ namespace TC2.Core.History
             list.Add(id);
         }
 
-        static bool PlaceEvent(HistoryKind k) => k == HistoryKind.HeadmanRose || k == HistoryKind.VillageSplit;
+        static bool PlaceEvent(HistoryKind k) => k == HistoryKind.HeadmanRose || k == HistoryKind.VillageSplit || k == HistoryKind.FieldsWorkedHarder;
 
         void IndexPlace(in HistoryEvent e)
         {

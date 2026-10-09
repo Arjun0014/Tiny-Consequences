@@ -144,7 +144,9 @@ namespace TC2.Headless
             if (a.Has("nohead")) TC2.Core.Society.Leaders.Off = true;   // (C3.3 alone: no first household, no headman)
             if (a.Has("notribhead")) TC2.Core.Society.Leaders.TributeOff = true;   // (C10.2 headmen alone: tribute to the lord village's common grain)
             if (a.Has("nosplit")) TC2.Core.Society.Leaders.SplitOff = true;   // (C10.2 alone: a contested succession never splits a village)
-            if (a.Has("nomeans")) TC2.Core.Places.SettlementSystem.MeansOff = true;   // (C3.5 off: a couple marries whatever its means)
+            if (a.Has("nomeans")) TC2.Core.Places.SettlementSystem.MeansOff = true;
+            if (a.Has("notilth")) TC2.Core.Places.SettlementSystem.TilthOff = true;   // (C3.6 off: villages work their land as before whatever its want)
+            if (a.Has("landtally")) { TC2.Core.Agents.AgentSystem.LandHours = new double[2 * 5 * TC2.Core.Agents.AgentSystem.LandK]; TC2.Core.Places.SettlementSystem.LandTally = new double[2 * TC2.Core.Places.SettlementSystem.LandTallyK]; }   // (C3.6 survey: hours by crop stage and harvests where land binds)   // (C3.5 off: a couple marries whatever its means)
             if (a.Has("contests")) TC2.Core.Society.Leaders.ContestTally = new double[11];   // (C10.3: why contested successions did not split)
             TC2.Core.Places.Holdings.HungerTally = new double[13]; TC2.Core.Places.SettlementSystem.MarriageTally = new double[8];   // (C3.3c: who dies of hunger - by the household's own grain, debts and kin)   // (C3.3: the accounting alone - Means reads the village's granary as before)
             if (a.Has("nosmithcrew")) TC2.Core.Places.Forge.CrewOff = true;   // (C1.4b against the smithy before it in one binary: every smith at it, no practice)
@@ -740,6 +742,29 @@ namespace TC2.Headless
                 if (hv != null && hv[2] > 0)
                     Console.WriteLine("harvests " + F(hv[2], "0") + ": " + F(hv[0] / Math.Max(1e-9, hv[1]), "0.0") + " FU a hectare, crop grown " + F(hv[3] / hv[2], "0.000") +
                                       ", sown " + F(hv[4] / hv[2], "0.000") + ", brought in " + F(hv[5] / hv[2], "0.000") + "  (" + F(hv[0], "0") + " FU on " + F(hv[1], "0") + " ha)");
+                var lt = TC2.Core.Places.SettlementSystem.LandTally;
+                if (lt != null)
+                {
+                    int K = TC2.Core.Places.SettlementSystem.LandTallyK;
+                    for (int g = 0; g < 2; g++)
+                    {
+                        int o = g * K; double n = Math.Max(1e-9, lt[o]);
+                        Console.WriteLine("land " + (g == 1 ? "bound" : "open ") + ": harvests " + F(lt[o], "0") + "  arable/need " + F(lt[o + 10] / Math.Max(1e-9, lt[o + 3]), "0.000") + "  fields/need " + F(lt[o + 2] / Math.Max(1e-9, lt[o + 3]), "0.000") +
+                                          "  FU a ha " + F(lt[o + 1] / Math.Max(1e-9, lt[o + 2]), "0.0") + "  harvest/bread " + F(lt[o + 1] / Math.Max(1e-9, lt[o + 8]), "0.000") + "  grown " + F(lt[o + 4] / n, "0.000") + "  sown " + F(lt[o + 5] / n, "0.000") +
+                                          "  brought in " + F(lt[o + 6] / n, "0.000") + "  burnt " + F(lt[o + 7] / n, "0.000") + "  beasts a field ha " + F(lt[o + 11] / Math.Max(1e-9, lt[o + 2]), "0.00") + "  their intake kg a field ha a day " + F(lt[o + 9] / Math.Max(1e-9, lt[o + 2]), "0.00") +
+                                          "  worked harder " + F(lt[o + 15], "0") + " (extra planned " + F(lt[o + 12] / n, "0.000") + ", done " + F(lt[o + 13] / n, "0.000") + " of the season's hours; added " + F(lt[o + 14], "0") + " FU, " + F(lt[o + 14] / Math.Max(1e-9, lt[o + 1]) * 100.0, "0.0") + " % of the harvests)");
+                    }
+                    var lh = TC2.Core.Agents.AgentSystem.LandHours;
+                    string[] stn = { "after harvest", "sowing", "growing", "ripe", "harvested" };
+                    int LK = TC2.Core.Agents.AgentSystem.LandK;
+                    for (int g = 0; g < 2; g++)
+                        for (int st = 0; st < 5; st++)
+                        {
+                            int o = (g * 5 + st) * LK; if (lh[o] <= 0) continue;
+                            Console.WriteLine("  land hours " + (g == 1 ? "bound" : "open ") + " " + stn[st] + ": person-days " + F(lh[o], "0") + "  crops " + F(lh[o + 1] / lh[o], "0.000") + "  left after crops " + F(lh[o + 2] / lh[o], "0.000") +
+                                              "  wild " + F(lh[o + 3] / lh[o], "0.000") + " h a day (" + F(lh[o + 4] / Math.Max(1e-9, lh[o + 3]), "0.000") + " FU an hour)");
+                        }
+                }
                 var dm = TC2.Core.Places.SettlementSystem.Demo;
                 if (dm != null && dm[0] > 0)
                     Console.WriteLine("demography: deaths " + F(dm[1] / dm[0] * 1000 * SimTime.DaysPerYear, "0.00") + " a 1000 person-years, infants " + F(dm[3] > 0 ? dm[4] / dm[3] * 1000 * SimTime.DaysPerYear : 0, "0.0") +

@@ -92,8 +92,10 @@ smith's work, sharing contracting to the household and its kin in hard times - f
 people at par; open: household land, debts' consequences, households' own trade);
 ~~C1.4b the village smith~~ (done, D2-125, `26` §2b: a smithy's four places for its best smiths by craft and practice, practice quickening the hand,
 another smithy only where the steady need outruns the places, smiths and boatwrights read from their work - before, every copper-competent person
-worked at the smithy in turn, up to 355 hands a smithy-year, and 5,730 people were "smiths"); C3.4 the mill, C3.5 apprenticeship, C3.6 other
-workshops.
+worked at the smithy in turn, up to 355 hands a smithy-year, and 5,730 people were "smiths"); ~~C3.5 household formation~~ (done, D2-129: a
+couple marries when it can keep a household to the next harvest); ~~C3.6a working the land harder~~ (done, D2-131, `26` §2d: more ploughing and
+hoeing a hectare where the land within reach is short, at falling returns - yields +16-24 % where land binds, then the people grow into it);
+C3.6b the herds' dung, household land and marriage on a holding; C3.4 the mill; C3.7 apprenticeship; C3.8 other workshops.
 
 ### C4 transport, by slices: ~~C4.1 roads by use~~ (D2-097); ~~C4.2 carts~~ (closed, D2-122, `24` §2: a household's handcart or ox cart where its backs
 were too small - 83 % of trading loads were bound by what one carries; loads on paths and roads, wood and stone home by the cartload; trades x0.67,

@@ -4,6 +4,16 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 16, third context (9 Oct 2026, from 16:10 IST; Control Room run #39 session 3) - C3.6a working the land harder (D2-131, sim
+  version 66)**: measured first (`--landtally`, new: harvests and COARSE working days by whether the village's arable within reach is short of its
+  people's need, by crop stage): in land-bound villages labour never limited a stage (sown and brought in 1.000; 2.7-4.0 h a working day left after
+  the crops in every stage) while the hungry gathered at 0.02-0.08 FU an hour against ~1.7 in the fields - the crop's work had a fixed need and an
+  hour beyond it gave nothing. Built: at sowing a village whose fields are short of its want plans extra ploughing and hoeing a hectare (enough to
+  bring its hectares' harvest up to the wanted ones', at most +80 % of the season's hours), at falling returns (+30 % at most; the first extra hour
+  3/4 of an ordinary hour's harvest, the last a tenth); only the work done counts; history `FieldsWorkedHarder`, the settlement page's food section;
+  `--notilth` (= `_m2` exactly), `TilthTests` 4. Ten seeds against `--notilth`: in bound villages the extra (0.41-0.63 of the season's hours) was all
+  done, yields a hectare +16-24 %, harvests 0.83-0.97 -> 0.91-1.02 of the people's bread; lived days do it too. Then the people grew into it: years
+  200-299 x1.17, year 300 x1.27, hunger a person-year unchanged (x0.98), famines a person-year x0.78, raids x0.37; run time unchanged.
 - **Session 16, second context, W-FOREST pass 1 (D2-130, presentation only)** - measured first: the wooded land is mostly hot (22-30 degC) or cool
   (2-10 degC), and seed 42's tropical forest was drawn as temperate lumps. Now each crown's kind of wood is read from the simulation's climate and
   water at its point (rain forest, dry tropical woodland, warm temperate, broadleaf, cool mixed, boreal, treeline, wet carr, river gallery); ten new

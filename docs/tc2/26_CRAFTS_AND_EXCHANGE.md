@@ -201,6 +201,36 @@ the deaths fall 5-12 days before the harvest. Contracted sharing decides who goe
 chronic (in 120-177 of 200 years in half the worlds) because nothing in the household's life answered scarcity before death did - C3.5 (marriage
 waits for the means of a household, D2-129).
 
+## 2d. C3.6a Working the land harder: more ploughing and hoeing where the land within reach is short (D2-131)
+
+**What the worlds said before any code** (session 16, `--landtally`: harvests and COARSE working days by whether the village's arable within
+reach is short of its people's need, by crop stage; seeds 4 and 5, years 200-223): land bound 80 % and 62 % of harvests, and there labour
+never limited a stage (sown 1.000, brought in 1.000) - a working day kept 2.7-4.0 hours after the crops in every stage, and the hungry spent
+0.6-3.1 of them in the wild at 0.02-0.08 FU an hour against ~1.7 in the fields. The crop's work had a fixed need (40 h a ha to sow, 24 to hoe,
+45 to reap): an hour beyond it gave nothing. Who holds the land would change who eats (D2-129: the hunger is a real shortage), not how much.
+
+**Design** (`SettlementSystem`, sim version 66):
+- **The plan at sowing** (`TilthFor`): a village whose fields are short of what its people want to sow (heads x 0.5 ha, more where famine is
+  remembered) plans enough extra work a hectare to bring the harvest of its hectares up to what the wanted ones would give, up to `TilthMax` 0.8
+  (+80 % of the ordinary season's 109 work-hours a hectare). None while its fields are enough (Boserup: the extra hour returns less, so people
+  take it on only under pressure). `Settlement.Tilth`.
+- **Falling returns** (`GainOf`): the work done adds 0.30 x (1 - exp(-e / 0.4)) of the yield (e: extra hours as a share of the season's) - the
+  first extra hour three quarters of an ordinary hour's harvest, the last a tenth; at the most +26 %. Half the extra goes to the sowing (a second
+  ploughing, the harrowing), half to the hoeing (two more hoeings): each stage's need rises; the ordinary work is done first; only the extra done
+  counts (`TilthDone`; `TilthGain` the last harvest's share). The ordinary weeding's effect on growth is unchanged.
+- **History and pages**: `FieldsWorkedHarder` once when a village begins (cause: the famine it remembers, else its people), told again only after
+  its land covered its want with a tenth to spare; the settlement page's food section tells the land against the want, the extra hours and what
+  the last harvest gained. Tools: `--notilth` (= `_m2` exactly), `--landtally`.
+- **Done when**: the extra work is planned only where land binds, done in both resolutions, and the harvest gains only what the work done gives
+  at falling returns; tests; ten seeds against `--notilth`.
+
+**Result (D2-131, ten seeds, `_t1` against `_t0`):** in land-bound villages the extra planned was 0.41-0.63 of the season's hours and all of it
+was done (lived days too); yields a hectare +16-24 %; the harvest 0.83-0.97 -> 0.91-1.02 of the people's bread; 14-18.5 % of the harvests came of
+the extra work; crop hours +0.4-0.8 h a working day in sowing and hoeing. Then the people grew into it: years 200-299 x1.17, year 300 x1.27 (every
+world x1.19-1.45), the land bound harder again, **hunger a person-year unchanged** (x0.98), famines a person-year x0.78, raids x0.37, wounds a
+person-year x0.77; run time unchanged. Boserup and Malthus together: density and towns, not welfare - the preventive check (marriage on a
+holding) or the manure flow would change that (C3.6b, §3).
+
 ## 3. Later slices
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and
   the people in wares would outwear the looms; eight more makers a shed, each at the shed nearest home; towns of 500+ carry 2-4.
@@ -224,7 +254,7 @@ waits for the means of a household, D2-129).
   same trap). It waits until labour binds (a town's hands short at harvest) or comes as the lord's toll-taking mill (C10). The streams could drive one:
   0.08-0.23 m3/s at most (D2-124) is a small horizontal mill's water.
 - ~~**C3.5 household formation**~~ (done, D2-129, `07` §7e): a couple marries when what it brings keeps it to the next harvest.
-- **C3.6 household land, or working the land harder - measured in session 16, not yet chosen** (`place --land`, `_m2` saves, ten worlds): land
+- **C3.6 household land, or working the land harder - measured in session 16; C3.6a working the land harder built (§2d, D2-131)** (`place --land`, `_m2` saves, ten worlds): land
   binds almost everywhere once worlds fill - at year 100 43 % of people live in villages whose arable within reach is under their need (0.5 ha a
   head), at year 200 84 %, at year 300 91 % (149 of 171 villages; arable/need median 0.79; the median last harvest 0.86 of a year's bread, 0.76 in
   villages under 0.8 of their need). Yet labour is idle: from the year-200 saves of seeds 5 and 4, a working person-day has 4.4-4.7 hours after the
@@ -232,6 +262,10 @@ waits for the means of a household, D2-129).
   under pressure more labour a hectare - tillage, weeding, manuring with the herds' dung - for yields at falling returns; it raises the land's
   ceiling, so it changes the worlds' scale, D2-085) and **household land** (holdings inherited, landless households and labour for others, lords'
   land and rents - C10; marriage on a holding, the NW European pattern, D2-129 "Open"; it changes who eats, not how much).
+  **Chosen by measurement (D2-131)**: in bound villages labour never limited a stage and the hungry gathered at 0.02-0.08 FU an hour - the
+  intensive margin was missing, so C3.6a came first. Next of the phase: **C3.6b the herds' dung** (manure carried from the pens to the fields:
+  bound villages keep 0.3-0.6 beasts a field hectare, ~1.5-3 kg of fodder a day - a tenth of a medieval manuring; the manure gap), and
+  **household land** (holdings, the landless, marriage on a holding - the preventive check that would turn the land's gain into welfare).
 - **C3.7 apprenticeship**: skill passed by working beside a master at a workshop (not only by being near: D2-062).
 - **C3.8 workshops of other crafts** (carpenter, tanner, cooper) as their goods are needed.
 Then C9.4 (cargo by sea) and C10.2 can be weighed again against the traffic.
