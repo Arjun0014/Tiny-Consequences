@@ -18,11 +18,21 @@
 - **Verified**: full suite 340/340 on 1000a8b; Web build of 1000a8b (`tc2/web-build/web` is current): Web test 6/6 twice (`tc2/out/webtest/s16web6`,
   `s16web6b`; bit-identical; fps swung with the machine's load - up to 2.6x between two runs of the same build).
 
+- **The first sheaves (D2-132, sim version 67; `26` §2e)**: `SettlementSystem` - `CropYield`/`Reaped` (Settlement), `Sheaves` (each morning of the ripe
+  stage, `k == 0` only: a calm village's step takes its grain at the step's end), the harvest's day takes the rest (`max(Reaped, CropYield x (1 - burnt)
+  x Harvested)`), `Holdings.Harvest(sid, fu, repay)`, the ration to the next new grain (`ToBread`, `SheafDay` 31; `ToHarvest` reads it for the
+  marriage rule and the pages), `SheavesOff` (`--nosheaves` = `_t1` exactly), `GapTally`/`SheafTally` (`--gaptally`), the settlement page's "The harvest
+  is coming in". `SheavesTests` 5; WorldGenerator sets `CropYield` for a world begun in the ripe stage.
+- Runs: `s*_s0` (`--nosheaves`, = `_t1`, with the gap tally), `s*_s1` (sheaves alone - worse), `s*_s2` (+ the ripe stage's ration), `s*_s3` (final), `s4_s3n`
+  (the final binary with `--nosheaves`: annals = `_t1`); `s*_g1` (the gap survey from the `_t1` year-200 saves). Scripts: `gap.py TAG seeds`, `loadrun.sh`.
+
 ### Next, in order
 1. (done: C3.6a committed 1000a8b; Web test 6/6.)
-2. **The hungry gap** (hunger a person-year unchanged by C3.6a; 17 % of deaths): a tools tally is written (`--gaptally`: hunger deaths by days to
-   the harvest, crop stage, age, store, days hungry, land) - run it on ten seeds, then choose: eating the grain as it is reaped (the ripe crop stands
-   nine days while the store is empty?), household land and marriage on a holding (the preventive check), or C3.6b the herds' dung.
+2. (done: the hungry gap measured and the first sheaves built, D2-132; full suite 345/345.)
+3. **The preventive check: household land and marriage on a holding** (D2-131 and D2-132 both ended in Malthus: more food or better timing grows the
+   villages and the check returns; hunger a person-year is set by births against food). Measure first what a holding would be in these worlds
+   (fields a household works, heirs, the landless), then design the smallest real slice. Alternatives if that measures badly: C3.6b the herds'
+   dung, famine foods and early crops.
 
 ## Session 16, second context (9 Oct 2026, 12:22-16:00 IST; Control Room run #39 session 2, Resource Governor MEDIUM) - C10.3 closed (D2-128); C3.5 household formation (D2-129); W-FOREST pass 1 (D2-130)
 

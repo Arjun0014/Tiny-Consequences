@@ -168,6 +168,40 @@ namespace TC2.Core.Places
         /// in; null in the game.</summary>
         public static double[] Harvests;
 
+        /// <summary>
+        /// Tools (the hungry gap survey; null in the game): hunger deaths by days to the village's harvest [0-47], by its crop's stage [48-52], by age
+        /// (under 2, 2-11, 12-59, 60+) [53-56], by its store in days of its people's food (under 1, 1-5, 5-20, 20+) [57-60], by days the dead had been
+        /// hungry (under 6, 6-12, 12-24, 24+) [61-64], by whether its land binds [65-66]; the sums of its last harvest in years of its people's bread
+        /// [67], its ration [68], its wild food in the last day per person (FU) - not kept, 0 - [69], and its beasts per person [70].
+        /// </summary>
+        public static double[] GapTally;
+        public const int GapK = 71;
+
+        void GapDeath(int sid, in Person p)
+        {
+            var w = _w;
+            var t = GapTally;
+            ref var s = ref w.Settlements.Get(sid);
+            int doy = SimTime.DayOfYear(w.Now + Planet.PlanetState.LocalOffset(s.Anchor));
+            if (s.Anchor.Y < 0) doy = (doy + 24) % SimTime.DaysPerYear;
+            int toHarvest = HarvestDay - doy; if (toHarvest < 0) toHarvest += SimTime.DaysPerYear;
+            t[Math.Min(47, toHarvest)]++;
+            t[48 + (int)s.Crop]++;
+            double age = p.AgeYears(w.Now);
+            t[age < 2 ? 53 : age < 12 ? 54 : age < 60 ? 55 : 56]++;
+            double daily = DMath.Max(1.0, s.Population * w.Config.FoodPerAdultDay);
+            double sd = s.Granary / daily;
+            t[sd < 1 ? 57 : sd < 5 ? 58 : sd < 20 ? 59 : 60]++;
+            double hd = p.HungryFrom != 0 ? (w.Now - p.HungryFrom) / (double)SimTime.Day : 0.0;
+            t[hd < 6 ? 61 : hd < 12 ? 62 : hd < 24 ? 63 : 64]++;
+            t[s.ArableHa < s.Population * w.Config.FieldHaPerPerson ? 66 : 65]++;
+            t[67] += s.LastHarvest / DMath.Max(1.0, s.Population * (double)SimTime.DaysPerYear);
+            t[68] += s.Ration;
+            int beasts = 0; var hhs = w.HouseholdsOf(sid);
+            for (int i = 0; i < hhs.Count; i++) beasts += w.BeastsOf(hhs[i]).Count;
+            t[70] += beasts / DMath.Max(1.0, (double)s.Population);
+        }
+
         /// <summary>Tools (C3.6 survey; null in the game): the harvests by whether the village's arable within reach is short of its people's need
         /// (0 open, 1 bound) - count, yield, field ha, need ha, growth, sown, brought in, burnt, a year's bread, its beasts' daily intake (kg), arable
         /// ha, its beasts' head; the extra work planned and done (C3.6: shares of the ordinary season's hours), what it added (FU), harvests worked
@@ -335,6 +369,27 @@ namespace TC2.Core.Places
         /// <summary>Kg of flax fibre a hectare of the village's fields gives a year (a corner of them sown with flax: D2-063).</summary>
         public const double FibrePerHa = 1.0;
 
+        // ---------------------------------------------------------------- the first sheaves (the hungry gap, D2-132)
+        /// <summary>Tools: the whole harvest comes into the store on its last day, as before (--nosheaves).</summary>
+        public static bool SheavesOff;
+
+        /// <summary>Tools (null in the game): harvests, their grain, and the grain of them that came in as it was reaped, before the harvest's day.</summary>
+        public static double[] SheafTally;
+
+        /// <summary>
+        /// The ripe stage's sheaves (D2-132): at each day's start the grain reaped so far - the reaped share of what the fields bear, less what fire
+        /// took standing - comes into the store and its households' bins by their mouths, so a hungry village eats from its first sheaves rather than
+        /// starving beside them. The year's debts wait for the harvest's day.
+        /// </summary>
+        void Sheaves(ref Settlement s)
+        {
+            double reaped = DMath.Clamp01(s.CropWork / Math.Max(1.0, s.CropWorkNeed));
+            double add = s.CropYield * (1.0 - s.CropBurnt) * reaped - s.Reaped;
+            if (add <= 1e-9) return;
+            s.Granary += add; s.Reaped += add;
+            _w.Holdings.Harvest(s.Id, add, false);
+        }
+
         // ---------------------------------------------------------------- working the land harder (C3.6, D2-131)
         /// <summary>The ordinary season's work a hectare, by stage: ploughing and sowing, weeding and keeping the crop, reaping (work-hours).</summary>
         public const double SowHa = 40.0, TendHa = 24.0, ReapHa = 45.0, SeasonHa = SowHa + TendHa + ReapHa;
@@ -417,20 +472,38 @@ namespace TC2.Core.Places
             {
                 s.TilthDone += DMath.Max(0.0, s.CropWork - s.FieldHa * TendHa);   // (the extra hoeing: C3.6)
                 s.Crop = CropStage.Ripe; s.CropWork = 0; s.CropWorkNeed = s.FieldHa * ReapHa;
+                // the crop is grown: what its fields bear, to be reaped over the stage (the first sheaves feed the village: D2-132)
+                s.TilthGain = (float)GainOf(DMath.Min(s.Tilth, s.FieldHa > 0 ? s.TilthDone / (s.FieldHa * SeasonHa) : 0.0));
+                s.CropYield = s.FieldHa * cfg.FieldYieldPerHa * DMath.Clamp01(s.CropGrowth) * s.Sown * (1.0 + s.TilthGain);
+                s.Reaped = 0;
             }
             else if (s.Crop == CropStage.Ripe && doy >= HarvestDay)
             {
                 s.Harvested = DMath.Clamp01(s.CropWork / Math.Max(1.0, s.CropWorkNeed));
-                // what the extra ploughing and hoeing done added, never more than the village planned (C3.6)
-                double gain = GainOf(DMath.Min(s.Tilth, s.FieldHa > 0 ? s.TilthDone / (s.FieldHa * SeasonHa) : 0.0));
-                s.TilthGain = (float)gain;
-                double yield = s.FieldHa * cfg.FieldYieldPerHa * DMath.Clamp01(s.CropGrowth) * s.Sown * s.Harvested * (1.0 - s.CropBurnt) * (1.0 + gain);
+                double yield, inNow;
+                if (SheavesOff)
+                {
+                    // what the extra ploughing and hoeing done added, never more than the village planned (C3.6)
+                    double gain = GainOf(DMath.Min(s.Tilth, s.FieldHa > 0 ? s.TilthDone / (s.FieldHa * SeasonHa) : 0.0));
+                    s.TilthGain = (float)gain;
+                    yield = s.FieldHa * cfg.FieldYieldPerHa * DMath.Clamp01(s.CropGrowth) * s.Sown * s.Harvested * (1.0 - s.CropBurnt) * (1.0 + gain);
+                    inNow = yield;
+                }
+                else
+                {
+                    // the last of it brought in (D2-132): what was reaped, less what fire took standing - sheaves already in the store are not
+                    // burnt again
+                    yield = DMath.Max(s.Reaped, s.CropYield * (1.0 - s.CropBurnt) * s.Harvested);
+                    inNow = yield - s.Reaped;
+                    s.Reaped = yield;
+                }
                 if (Harvests != null) { Harvests[0] += yield; Harvests[1] += s.FieldHa; Harvests[2]++; Harvests[3] += DMath.Clamp01(s.CropGrowth); Harvests[4] += s.Sown; Harvests[5] += s.Harvested; }
                 if (LandTally != null) TallyLand(in s, yield);
-                s.Granary += yield;
+                if (SheafTally != null) { SheafTally[0]++; SheafTally[1] += yield; SheafTally[2] += yield - inNow; }
+                s.Granary += inNow;
                 s.LastHarvest = yield;
                 TC2.Core.Diagnostics.HouseLedger.Harvest(w, s.Id, yield);   // (tools: the harvest by whose work it was; null in the game)
-                w.Holdings.Harvest(s.Id, yield);   // (shared among its households by their mouths; the year's debts repaid: C3.3)
+                w.Holdings.Harvest(s.Id, inNow);   // (shared among its households by their mouths; the year's debts repaid: C3.3)
                 if (Structures.RotTally != null) Structures.RotTally[2] += yield;
                 // and the flax grown on a corner of the fields: fibre for clothes and cordage (D2-063)
                 s.Fibre += s.FieldHa * FibrePerHa * DMath.Clamp01(s.ExpectedHarvest > 0 ? yield / s.ExpectedHarvest : 1.0);
@@ -448,6 +521,7 @@ namespace TC2.Core.Places
                     });
                 }
             }
+            if (s.Crop == CropStage.Ripe && k == 0 && !SheavesOff) Sheaves(ref s);
             if (s.Crop == CropStage.Growing)
             {
                 // growth on the claimed cells, weighted by their arable area (the weather of each field)
@@ -570,9 +644,19 @@ namespace TC2.Core.Places
             for (int i = 0; i < hhs.Count; i++) daily += HouseholdNeed(hhs[i]);
             prof?.End(10010);
             int toHarvest = HarvestDay - doy; if (toHarvest <= 0) toHarvest += SimTime.DaysPerYear;
-            double lasts = daily > 0 ? DMath.Clamp(s.Granary / (daily * (toHarvest + 6)), 0.45, 1.0) : 1.0;
+            // rationed to the next new grain (D2-132): the first sheaves, the day after the crop ripens; once it is ripe, the grain in and the crop
+            // still standing are the year's bread, rationed to next year's first sheaves (rationed only to this harvest's last day, the first
+            // sheaves were eaten at full meals and the next year starved; rationed to the last day all year, every year was rationed a week short)
+            double inHand = s.Granary;
+            int horizon = toHarvest;
+            if (!SheavesOff)
+            {
+                horizon = ToBread(doy, s.Crop);
+                if (s.Crop == CropStage.Ripe && s.CropYield > 0) inHand += DMath.Max(0.0, s.CropYield * (1.0 - s.CropBurnt) - s.Reaped);
+            }
+            double lasts = daily > 0 ? DMath.Clamp(inHand / (daily * (horizon + 6)), 0.45, 1.0) : 1.0;
             double keep = 6.0 + 30.0 * s.Memory;
-            double prudent = daily > 0 ? DMath.Clamp(s.Granary / (daily * (toHarvest + 6 + keep)), 0.8, 1.0) : 1.0;
+            double prudent = daily > 0 ? DMath.Clamp(inHand / (daily * (horizon + 6 + keep)), 0.8, 1.0) : 1.0;
             double ration = DMath.Min(lasts, prudent);
             s.Ration = ration;
             if (ration < 0.85 && s.RationEvent == 0 && s.Population > 0)
@@ -599,7 +683,7 @@ namespace TC2.Core.Places
                 if (want <= 0) continue;
                 double give = Math.Min(want, want * share);
                 give = Math.Min(give, s.Granary);
-                give = w.Holdings.Provide(s.Id, hid, give, toHarvest);   // (its own grain, the common grain, its kin's spare, a loan; in hard times no more: C3.3)
+                give = w.Holdings.Provide(s.Id, hid, give, horizon);   // (its own grain, the common grain, its kin's spare, a loan; in hard times no more: C3.3)
                 hh.Larder += give; s.Granary -= give;
                 TC2.Core.Diagnostics.HouseLedger.Draw(w, hid, s.Id, give);
             }
@@ -756,6 +840,7 @@ namespace TC2.Core.Places
                 {
                     // the body's reserve is spent: they die of hunger, the village's famine their cause
                     Holdings.HungerDeath(w, sid, p.Household);   // (tools: whose household; null in the game)
+                    if (GapTally != null) GapDeath(sid, in p);
                     w.Agents.Kill(ref p, FamineCause(sid), 2);
                     w.Metrics.HungerDeaths++;
                     if (HungerBy != null && sid < HungerBy.Length) HungerBy[sid]++;
@@ -903,6 +988,7 @@ namespace TC2.Core.Places
             if (p.Reserve <= 0f)
             {
                 Holdings.HungerDeath(w, sid, p.Household);   // (tools: whose household; null in the game)
+                if (GapTally != null) GapDeath(sid, in p);
                 w.Agents.Kill(ref p, FamineCause(sid), 2);
                 w.Metrics.HungerDeaths++;
                 if (HungerBy != null && sid < HungerBy.Length) HungerBy[sid]++;
@@ -1003,14 +1089,27 @@ namespace TC2.Core.Places
         /// <summary>The same in years of their bread (tools, pages).</summary>
         public double CoupleMeans(int sid, int womanId, int manId) => CoupleDays(sid, womanId, manId) / SimTime.DaysPerYear;
 
-        /// <summary>Days from today to a village's next harvest (its own calendar: the southern seasons half a year on); 48 on the harvest's day.</summary>
+        /// <summary>Days from today to a village's next new grain (its own calendar: the southern seasons half a year on): its first sheaves
+        /// (D2-132; --nosheaves: its harvest's day, 48 on that day).</summary>
         public int ToHarvest(int sid)
         {
             ref var s = ref _w.Settlements.Get(sid);
             int doy = SimTime.DayOfYear(_w.Now + Planet.PlanetState.LocalOffset(s.Anchor));
             if (s.Anchor.Y < 0) doy = (doy + 24) % SimTime.DaysPerYear;
+            if (!SheavesOff) return ToBread(doy, s.Crop);
             int toHarvest = HarvestDay - doy;
             return toHarvest <= 0 ? toHarvest + SimTime.DaysPerYear : toHarvest;
+        }
+
+        /// <summary>The day of the year the first sheaves come in (the crop ripens on day 30 and the first day's reaping is in the next morning).</summary>
+        public const int SheafDay = 31;
+
+        /// <summary>Days from a day of the year to the next new grain: the first sheaves; once the crop is ripe, next year's (D2-132).</summary>
+        public static int ToBread(int doy, CropStage crop)
+        {
+            int d = SheafDay - doy;
+            if (crop == CropStage.Ripe || d <= 0) d += SimTime.DaysPerYear;
+            return d;
         }
 
         double Bring(int sid, int pid, ref double need)

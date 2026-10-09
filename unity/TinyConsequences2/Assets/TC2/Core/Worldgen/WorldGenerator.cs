@@ -369,6 +369,7 @@ namespace TC2.Core.Worldgen
             st.Sown = 0.9; st.CropGrowth = doy < 12 ? 0 : 0.5;
             st.CropWorkNeed = st.Crop == CropStage.Sown ? st.FieldHa * 40 : (st.Crop == CropStage.Growing ? st.FieldHa * 8 : (st.Crop == CropStage.Ripe ? st.FieldHa * 45 : 0));
             st.ExpectedHarvest = st.FieldHa * cfg.FieldYieldPerHa * 0.8;
+            if (st.Crop == CropStage.Ripe) st.CropYield = st.FieldHa * cfg.FieldYieldPerHa * DMath.Clamp01(st.CropGrowth) * st.Sown;   // (what it bears, to reap: D2-132)
             w.Wild.Survey(sid);   // the founders know the grounds round their new home (D2-042)
             w.SettlementSys.ScheduleFirstDaily(sid);
         }

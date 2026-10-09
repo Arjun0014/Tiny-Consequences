@@ -146,6 +146,8 @@ namespace TC2.Headless
             if (a.Has("nosplit")) TC2.Core.Society.Leaders.SplitOff = true;   // (C10.2 alone: a contested succession never splits a village)
             if (a.Has("nomeans")) TC2.Core.Places.SettlementSystem.MeansOff = true;
             if (a.Has("notilth")) TC2.Core.Places.SettlementSystem.TilthOff = true;   // (C3.6 off: villages work their land as before whatever its want)
+            if (a.Has("gaptally")) { TC2.Core.Places.SettlementSystem.GapTally = new double[TC2.Core.Places.SettlementSystem.GapK]; TC2.Core.Places.SettlementSystem.SheafTally = new double[3]; }   // (the hungry gap survey)
+            if (a.Has("nosheaves")) TC2.Core.Places.SettlementSystem.SheavesOff = true;   // (D2-132 off: the whole harvest comes in on its last day)
             if (a.Has("landtally")) { TC2.Core.Agents.AgentSystem.LandHours = new double[2 * 5 * TC2.Core.Agents.AgentSystem.LandK]; TC2.Core.Places.SettlementSystem.LandTally = new double[2 * TC2.Core.Places.SettlementSystem.LandTallyK]; }   // (C3.6 survey: hours by crop stage and harvests where land binds)   // (C3.5 off: a couple marries whatever its means)
             if (a.Has("contests")) TC2.Core.Society.Leaders.ContestTally = new double[11];   // (C10.3: why contested successions did not split)
             TC2.Core.Places.Holdings.HungerTally = new double[13]; TC2.Core.Places.SettlementSystem.MarriageTally = new double[8];   // (C3.3c: who dies of hunger - by the household's own grain, debts and kin)   // (C3.3: the accounting alone - Means reads the village's granary as before)
@@ -742,6 +744,22 @@ namespace TC2.Headless
                 if (hv != null && hv[2] > 0)
                     Console.WriteLine("harvests " + F(hv[2], "0") + ": " + F(hv[0] / Math.Max(1e-9, hv[1]), "0.0") + " FU a hectare, crop grown " + F(hv[3] / hv[2], "0.000") +
                                       ", sown " + F(hv[4] / hv[2], "0.000") + ", brought in " + F(hv[5] / hv[2], "0.000") + "  (" + F(hv[0], "0") + " FU on " + F(hv[1], "0") + " ha)");
+                var gt = TC2.Core.Places.SettlementSystem.GapTally;
+                if (gt != null)
+                {
+                    double gn = 0; for (int i = 0; i < 48; i++) gn += gt[i];
+                    var sbg = new System.Text.StringBuilder("hungry gap: hunger deaths " + F(gn, "0") + " by days to the harvest (0..47):");
+                    for (int i = 0; i < 48; i++) sbg.Append(' ').Append(F(gt[i], "0"));
+                    Console.WriteLine(sbg.ToString());
+                    double q = Math.Max(1e-9, gn);
+                    Console.WriteLine("  by the crop: after harvest " + F(gt[48] / q * 100, "0") + " %, sowing " + F(gt[49] / q * 100, "0") + " %, growing " + F(gt[50] / q * 100, "0") + " %, ripe " + F(gt[51] / q * 100, "0") + " %, harvested " + F(gt[52] / q * 100, "0") +
+                                      " %;  by age: under 2 " + F(gt[53] / q * 100, "0") + " %, 2-11 " + F(gt[54] / q * 100, "0") + " %, 12-59 " + F(gt[55] / q * 100, "0") + " %, 60+ " + F(gt[56] / q * 100, "0") + " %");
+                    var sht = TC2.Core.Places.SettlementSystem.SheafTally;
+                    if (sht != null && sht[0] > 0) Console.WriteLine("  harvests " + F(sht[0], "0") + ", grain " + F(sht[1], "0") + " FU, of it in the store before the harvest's day " + F(sht[2] / Math.Max(1e-9, sht[1]) * 100, "0.0") + " %");
+                    Console.WriteLine("  the store (days of its people's food): under 1 " + F(gt[57] / q * 100, "0") + " %, 1-5 " + F(gt[58] / q * 100, "0") + " %, 5-20 " + F(gt[59] / q * 100, "0") + " %, 20+ " + F(gt[60] / q * 100, "0") +
+                                      " %;  hungry for: under 6 days " + F(gt[61] / q * 100, "0") + " %, 6-12 " + F(gt[62] / q * 100, "0") + " %, 12-24 " + F(gt[63] / q * 100, "0") + " %, 24+ " + F(gt[64] / q * 100, "0") +
+                                      " %;  land bound " + F(gt[66] / q * 100, "0") + " %;  mean last harvest " + F(gt[67] / q, "0.00") + " years' bread, ration " + F(gt[68] / q, "0.00") + ", beasts a person " + F(gt[70] / q, "0.00"));
+                }
                 var lt = TC2.Core.Places.SettlementSystem.LandTally;
                 if (lt != null)
                 {

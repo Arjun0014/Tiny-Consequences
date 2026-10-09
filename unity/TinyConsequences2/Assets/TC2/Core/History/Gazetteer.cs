@@ -134,6 +134,8 @@ namespace TC2.Core.History
             var sb = new StringBuilder();
             double days = Trade.DaysOfFood(w, in s, out _);
             sb.Append(F(s.FieldHa, "0")).Append(" ha of fields (").Append(s.Crop.ToString().ToLowerInvariant()).Append("); last harvest ").Append(F(s.LastHarvest, "0")).Append(" days' food.\n");
+            if (s.Crop == CropStage.Ripe && s.CropYield > 0)
+                sb.Append("The harvest is coming in: ").Append(F(s.Reaped, "0")).Append(" days' food reaped of the ").Append(F(s.CropYield * (1.0 - s.CropBurnt), "0")).Append(" its fields bear.\n");
             if (s.Tilth > 0)
             {
                 // working the land harder (C3.6): the land within reach against what its people want, the extra hours and what they gave

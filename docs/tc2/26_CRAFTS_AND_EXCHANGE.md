@@ -231,6 +231,23 @@ world x1.19-1.45), the land bound harder again, **hunger a person-year unchanged
 person-year x0.77; run time unchanged. Boserup and Malthus together: density and towns, not welfare - the preventive check (marriage on a
 holding) or the manure flow would change that (C3.6b, §3).
 
+## 2e. The first sheaves: the hungry gap (D2-132)
+
+**What the worlds said** (`--gaptally`, ten worlds, years 200-299 after C3.6a): 66 % of hunger deaths fell in the last nine days before the
+harvest's day - the ripe stage - with the store under a day's food; mostly children. The whole harvest came into the store on its last day while
+villages reaped through the stage: they starved beside their sheaves.
+
+**Design** (`SettlementSystem`, sim version 67): the grown crop's yield is known when it ripens (`CropYield`); at each day's start in the ripe
+stage the reaped share of it comes into the store and the households' bins by mouths (`Sheaves`; debts wait for the harvest's day; sheaves in the
+store are not burnt with the stubble); the village rations to its next new grain - the first sheaves on day 31, and once ripe, the crop still
+standing counted and rationed to next year's (`ToBread`, read by the kin's spare and the marriage rule too). The settlement page tells the
+reaping. Tools `--nosheaves` (= `_t1` exactly), `--gaptally`.
+
+**Result (D2-132):** the deaths beside the sheaves are gone and the gap falls where the year's did, before the grain ripens; hunger a
+person-year is not lower (median 3.9 -> 4.7 a 1,000 person-years, mixed by world), people x1.05-1.08 - the children saved grow the villages and
+the same food brings the check back a fortnight earlier. With D2-131 this closes the question the hunger kept asking: in this world hunger a
+person-year is set by births against food, and the next lever is a check on births before the food fails (household land, marriage on a holding).
+
 ## 3. Later slices
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and
   the people in wares would outwear the looms; eight more makers a shed, each at the shed nearest home; towns of 500+ carry 2-4.

@@ -4,6 +4,15 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 16, third context, later - the first sheaves (D2-132, sim version 67)**: measured the hungry gap (`--gaptally`, new): 66 % of hunger
+  deaths fell in the ripe stage, the store empty, the dead mostly children - the whole harvest reached the store on its last day while villages
+  reaped through the stage. Now the grown crop's yield is known when it ripens and the reaped share comes into the store and the households' bins
+  each morning (debts on the harvest's day; sheaves in the store not burnt with the stubble), and villages ration to their next new grain (the
+  first sheaves; once ripe, the standing crop counted, to next year's). The first build (sheaves only) made it worse - hunger x1.65, raids x2.7:
+  the first sheaves were eaten at full meals; rationing the ripe stage alone left the rest of the year rationed a week short. Final, ten seeds
+  against `--nosheaves` (= `_t1` exactly): the deaths beside the sheaves are gone (within 5 days of the harvest's day 49 % -> 1 %), the gap now
+  falls before the grain ripens, and hunger a person-year is not lower (median 3.9 -> 4.7, mixed by world; people x1.05-1.08): the saved
+  children grow the villages and the same food brings the check back earlier. `SheavesTests` 5.
 - **Session 16, third context (9 Oct 2026, from 16:10 IST; Control Room run #39 session 3) - C3.6a working the land harder (D2-131, sim
   version 66)**: measured first (`--landtally`, new: harvests and COARSE working days by whether the village's arable within reach is short of its
   people's need, by crop stage): in land-bound villages labour never limited a stage (sown and brought in 1.000; 2.7-4.0 h a working day left after

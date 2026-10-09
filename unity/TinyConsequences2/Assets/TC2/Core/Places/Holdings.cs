@@ -194,7 +194,7 @@ namespace TC2.Core.Places
         /// A village's harvest (already in its granary) shared among its households by their mouths - those setting out to a new home take no share
         /// - and then the year's debts repaid from what each can spare beyond a year's needs.
         /// </summary>
-        public void Harvest(int sid, double yield)
+        public void Harvest(int sid, double yield, bool repay = true)
         {
             if (Off) return;
             var w = _w;
@@ -211,7 +211,7 @@ namespace TC2.Core.Places
                 if (hh.Party != 0) continue;
                 hh.Grain += yield * NeedOf(hhs[i]) / total;
             }
-            Repay(sid);
+            if (repay) Repay(sid);   // (the sheaves before the harvest's day share without settling the year's debts: D2-132)
         }
 
         /// <summary>Each debtor of the village repays what it can spare beyond a year's needs, its oldest debts first.</summary>

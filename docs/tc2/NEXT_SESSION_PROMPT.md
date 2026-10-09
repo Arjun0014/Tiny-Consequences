@@ -202,7 +202,10 @@ stand ages, palettes, far forms and the far canopy by kind - still OPEN for Arju
 against ~1.7 in the fields; now a village whose fields are short of its want plans extra ploughing and hoeing a hectare at sowing (at most +80 % of
 the season's hours for +26 % of the yield, at falling returns; only work done counts). Ten seeds: yields a hectare +16-24 % where land binds, then
 the people grew into it (x1.17 over years 200-299, x1.27 at year 300) with hunger a person-year unchanged - Boserup and Malthus together; run time
-unchanged. **Next**: SESSION_HANDOFF "Session 16, third context" (the hungry gap, measured with `--gaptally`; then the preventive check or the dung).
+unchanged. Then **the first sheaves (D2-132, sim version 67)**: 66 % of hunger deaths fell in the ripe stage beside the reaped crop (the harvest
+reached the store on its last day); now the grain comes in as it is reaped and villages ration to their next new grain - the gap falls before the
+grain ripens, as the year's did, and hunger a person-year is not lower (Malthus again). **Next**: SESSION_HANDOFF "Session 16, third context" (the
+preventive check: household land and marriage on a holding).
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

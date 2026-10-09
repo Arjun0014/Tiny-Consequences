@@ -3795,3 +3795,42 @@ Web test.
 hectare, ~1.5-3 kg of fodder a day: a tenth of a manuring) - C3.6b; household land and marriage on a holding (the preventive check that would
 turn the gain into welfare rather than numbers: the NW European pattern, D2-129 "Open"); fallow and the soil's fertility (fields are cropped
 every year at no cost today: a generous base).
+
+## D2-132 — 2026-10-09 — The first sheaves: a ripe crop's grain feeds the village as it is reaped (the hungry gap)
+
+**Context.** After C3.6a hunger a person-year was unchanged (D2-131): 17 % of deaths. Measured where in the year they fall (`--gaptally`, new:
+hunger deaths by days to the village's harvest, its crop's stage, age, its store, how long the dead had been hungry; ten worlds, years 200-299
+from the `_t1` saves): **66 % fell in the last nine days before the harvest's day - the ripe stage, the grown crop standing or reaped in the
+fields** (half within five days; by world 50-98 % in the ripe stage), with under a day of the village's food in its store in 61-97 % of them; the
+dead were children (2-11: 35-71 %; under 2: 13-35 %), the ration at its floor (0.45). The model brought the whole harvest into the store on its
+last day (day 39) while villages reap through the ripe stage: they starved beside their sheaves. The year's hungry gap ended with the harvest's
+beginning - the first sheaves were threshed and eaten (Lammas, the loaf-mass) - not with its end.
+**Decision.** `SettlementSystem` (sim version 67). (a) **The grown crop's yield is known when it ripens** (`Settlement.CropYield`: fields x
+yield x growth x sown x the extra work's gain) and **the grain comes in as it is reaped** (`Sheaves`): at each day's start in the ripe stage the
+reaped share of it, less what fire took standing, enters the store and the households' bins by their mouths (`Holdings.Harvest(sid, fu, false)`:
+no debts settled); on the harvest's day the rest, the year's debts, the harvest's record, tribute and fibre on the whole (`Reaped`); sheaves
+already in the store are not burnt with the stubble. A calm village living a step through the ripe stage takes its grain at the step's end as
+before (it is not hungry). (b) **Rationed to the next new grain**: the village rations its store to its first sheaves (the day after the crop
+ripens, `SheafDay` 31) rather than to the harvest's last day, and once the crop is ripe it counts the crop still standing and rations the whole
+to next year's first sheaves (`ToBread`; the kin's spare and the marriage rule read the same horizon through `ToHarvest`). Both were needed:
+the first build (sheaves alone, rationed to the harvest's last day) let villages eat the first sheaves at full meals and starve the next
+summer - hunger x1.65, famines x1.34, raids x2.7 (stores filled in the ripe stage while the ration rule saw nine days to feed); rationing the
+ripe stage alone (`_s2`) removed the raids (wounds x0.6) but left every other day of the year rationed a week short. (c) Pages: the settlement
+page's food section during the reaping ("The harvest is coming in: N days' food reaped of the M its fields bear"). Tools: `--nosheaves` (the
+whole harvest on its last day: reproduces `_t1` exactly - seed 4's annals byte-identical with the final binary), `--gaptally` (the survey
+lines and the share of the grain in before the harvest's day).
+**Evidence.** `SheavesTests` 5 (the sheaves come in as they are reaped, never more than the reaped share, the harvest all of it, the households'
+bins take their shares; a sheaf's share settles no debt, the harvest's day does; a village with an empty store at ripening holds grain and eats
+better within four days, against the same world with `--nosheaves`; sheaves in the store are not burnt with the stubble; a save in the reaping
+continues identically). **Ten seeds, 300 years DEEP**, `_s3` (the final binary) against `_s0` (= `--nosheaves` = `_t1`): 6-23 % of each world's
+grain came in before the harvest's day (the villages living day by day - the hungry); **the deaths beside the sheaves are gone** (within five days
+of the harvest's day 49 % -> 1 % of hunger deaths; in the ripe stage 50-93 % -> 12-40 % by world) **and the hungry gap now falls where the
+year's did, in the last days before the grain ripens** (the growing stage 59-77 % of them; 52 % fall 10-19 days before the harvest's day). **Hunger a person-year is not
+lower**: by world it fell in four and rose in six (median 3.9 -> 4.7, mean 4.2 -> 5.1 a 1,000 person-years; t 1.45), people over years 100-199
+x1.08 and 200-299 x1.05, births a person-year x1.013, deaths a person-year x1.034 (t 3.2), famines x1.26 (t 1.8; one a village-year: deaths
+spread over more village-years). The children who starved beside the sheaves live, the villages grow by them, and the same year's food brings
+the check back a fortnight earlier - the positive check of a Malthusian world, as with C3.6a: neither the timing of the gap nor the land's
+yield lowers hunger a person-year; only a check on births before the food fails (marriage on a holding, the NW European pattern) or more food
+than people would.
+**Open.** The preventive check: household land and marriage on a holding (D2-129 "Open"); famine foods and the green harvest in the last
+fortnight (no early crops - peas, beans - are sown).

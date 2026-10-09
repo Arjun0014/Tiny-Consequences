@@ -171,6 +171,8 @@ namespace TC2.Core.Places
         public double TilthDone;        // work-hours done this season beyond the ordinary sowing and tending
         public float TilthGain;         // what that work added to its last harvest (a share of the harvest it would have had)
         public long TilthEvent;         // the history record of the years it has worked its land harder (0: it works it as before)
+        public double CropYield;        // what its grown crop bears this year (FU, before reaping and fire; set when it ripens: D2-132)
+        public double Reaped;           // of it, the grain brought into the store so far this harvest
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
@@ -241,6 +243,7 @@ namespace TC2.Core.Places
             w.Int(Head); w.Int(HeadHh); w.Long(HeadSince); w.Long(HeadEvent);   // (C10.2, sim version 63)
             w.Int(SplitHh); w.Long(SplitCause); w.Long(SplitSince);   // (C10.3, sim version 64)
             w.Double(Tilth); w.Double(TilthDone); w.Float(TilthGain); w.Long(TilthEvent);   // (C3.6, sim version 66)
+            w.Double(CropYield); w.Double(Reaped);   // (D2-132, sim version 67)
         }
 
         public static Settlement Read(BinReader r)
@@ -265,6 +268,7 @@ namespace TC2.Core.Places
             s.Head = r.Int(); s.HeadHh = r.Int(); s.HeadSince = r.Long(); s.HeadEvent = r.Long();
             s.SplitHh = r.Int(); s.SplitCause = r.Long(); s.SplitSince = r.Long();
             s.Tilth = r.Double(); s.TilthDone = r.Double(); s.TilthGain = r.Float(); s.TilthEvent = r.Long();
+            s.CropYield = r.Double(); s.Reaped = r.Double();
             return s;
         }
 
@@ -289,6 +293,7 @@ namespace TC2.Core.Places
             h.Add(Head); h.Add(HeadHh); h.Add(HeadSince); h.Add(HeadEvent);
             h.Add(SplitHh); h.Add(SplitCause); h.Add(SplitSince);
             h.Add(Tilth); h.Add(TilthDone); h.Add(TilthGain); h.Add(TilthEvent);
+            h.Add(CropYield); h.Add(Reaped);
         }
 
         internal static void WriteV(BinWriter w, Vec3d v) { w.Double(v.X); w.Double(v.Y); w.Double(v.Z); }
