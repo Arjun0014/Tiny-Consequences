@@ -277,7 +277,14 @@ two in five men landless where land binds.
 - **Next of the phase**: service in landed households (needs each household to work its own holding), a land market, partible customs (C11), the
   land's half as rents (C10), towns (C13).
 
-## 2g. The soil: fallow and the herds' dung - research and design (session 16, fourth context; not built)
+## 2g. C3.6f The soil: fallow and the herds' dung (D2-139, built in session 16's fourth context)
+
+**Built (D2-139, sim version 74)**: `Settlement.Tired` (the fields' tiredness), `TiredSeen`, `Rest`, `Grazed`; `SettlementSystem.Heart`, `SoilYear`,
+`HaPerHead` (the land judged by what it bears), `Rested` (history `FieldsRested`); the settlement page's soil line; `--nosoil` (= the worlds before,
+byte-identical), `--norest`, `--nodung`. Ten worlds: they carry ~0.6-0.7 of their people (full lands at ~0.6 of the output a hectare of arable);
+bound villages rest 13-17 % of their arable, a sown hectare bearing 0.73-0.79 of a fresh crop - **but births did not answer the poorer land** (42 a
+1,000 person-years before and after) and hunger a person-year rose ~x1.9: the marriage rule (C3.5) does not bind (couples bring two years of bread
+on average). Next: the household's niche (a couple marries when it has a living). The research and design below are as written before the build.
 
 **Why.** The fields have no fertility: a harvest is `FieldHa x FieldYieldPerHa x growth x sown x (1 + tilth)` - every hectare bears a fresh
 field's crop every year, cropped without rest, forever. So nothing rests, a beast is worth its milk and meat but nothing to the land, and a

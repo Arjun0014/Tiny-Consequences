@@ -207,7 +207,7 @@ namespace TC2.Core.Places
         /// ha, its beasts' head; the extra work planned and done (C3.6: shares of the ordinary season's hours), what it added (FU), harvests worked
         /// harder.</summary>
         public static double[] LandTally;
-        public const int LandTallyK = 16;
+        public const int LandTallyK = 20;
 
         void TallyLand(in Settlement s, double yield)
         {
@@ -225,6 +225,7 @@ namespace TC2.Core.Places
             t[o]++; t[o + 1] += yield; t[o + 2] += s.FieldHa; t[o + 3] += needHa; t[o + 4] += DMath.Clamp01(s.CropGrowth); t[o + 5] += s.Sown;
             t[o + 6] += s.Harvested; t[o + 7] += s.CropBurnt; t[o + 8] += s.Population * (double)SimTime.DaysPerYear; t[o + 9] += intake; t[o + 10] += s.ArableHa; t[o + 11] += head;
             t[o + 12] += s.Tilth; t[o + 13] += DMath.Min(s.Tilth, s.FieldHa > 0 ? s.TilthDone / (s.FieldHa * SeasonHa) : 0.0); t[o + 14] += yield - yield / (1.0 + s.TilthGain); if (s.Tilth > 0) t[o + 15]++;
+            t[o + 16] += s.Tired; t[o + 17] += s.ArableHa > 0 ? 1.0 - DMath.Clamp01(s.FieldHa / s.ArableHa) : 0.0; t[o + 18] += Heart(in s); t[o + 19] += s.ArableHa > 0 ? s.Grazed / SimTime.DaysPerYear / s.ArableHa : 0.0;   // (C3.6f)
         }
 
         /// <summary>Tools: demography - person-days, natural deaths, -, infant-days, infant deaths, conception exposure weighted by fertility
@@ -530,6 +531,72 @@ namespace TC2.Core.Places
             else if (s.TilthEvent != 0 && s.ArableHa >= 1.1 * wantHa) s.TilthEvent = 0;
         }
 
+        /// <summary>The first year a village rests a tenth or more of its arable is history (C3.6f); the record ends when it crops nearly all again.</summary>
+        void Rested(ref Settlement s)
+        {
+            var w = _w;
+            if (s.Rest >= 0.1f && s.RestEvent == 0 && s.Population > 0)
+            {
+                s.RestEvent = w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.FieldsRested, Time = w.Now, Cell = s.FieldCell, Settlement = s.Id, Subject = EntityRef.Settlement(s.Id), Magnitude = s.Rest,
+                    ArgA = (int)DMath.RoundHalfUp(100.0 * Heart(in s)), ArgB = (int)DMath.RoundHalfUp(s.ArableHa), RootKind = RootKind.People,
+                });
+            }
+            else if (s.RestEvent != 0 && s.Rest < 0.05f) s.RestEvent = 0;
+        }
+
+        // ---------------------------------------------------------------- the soil: the fields' heart, rest and the herds' dung (C3.6f, D2-139)
+        /// <summary>Tools: the fields never tire (--nosoil: every hectare bears a fresh field's crop every year, as before).</summary>
+        public static bool SoilOff;
+        /// <summary>Tools: the fields tire but no village rests them (--norest).</summary>
+        public static bool RestOff;
+        /// <summary>Tools: the herds' dung gives nothing back to the fields (--nodung).</summary>
+        public static bool DungOff;
+        /// <summary>What fields worn out bear, of a fresh field's crop: what rain and the soil alone give back (Broadbalk's unmanured wheat settled
+        /// near half the yield of nitrogen-fed plots; old varieties and weeds less).</summary>
+        public const double SoilFloor = 0.35;
+        /// <summary>The tiredness a full crop leaves on the land that bore it (a year's).</summary>
+        public const double SoilTake = 0.08;
+        /// <summary>The share of its tiredness the land gets back in a year from rain and the soil alone (cropped every year, unmanured, fields
+        /// settle near 0.45 of a fresh crop in a decade or two).</summary>
+        public const double SoilBack = 0.0426;
+        /// <summary>The share of its tiredness a year at rest gives back to the land resting (grass, weeds turned in, the soil's own mending).</summary>
+        public const double RestBack = 0.5;
+        /// <summary>The share of the fields' tiredness a year's dung gives back for each kg a day the village's herds eat off the waste a hectare of
+        /// its arable (beasts make no fertility: they carry the waste's onto the fields).</summary>
+        public const double DungBack = 0.01;
+        /// <summary>The share of its arable a village rests for each unit of the tiredness it has seen in its crops, and the most.</summary>
+        public const double RestK = 0.4, RestMax = 0.5;
+
+        /// <summary>
+        /// The hectares a head its people would sow (C3.6f): half a hectare of fresh land's crop, more where their crops have shown the land tired -
+        /// they judge their land by what it bears (what they claim and give out, how short of land a household feels, where a household would go).
+        /// </summary>
+        public static double HaPerHead(World w, in Settlement s) => SoilOff ? w.Config.FieldHaPerPerson : w.Config.FieldHaPerPerson / (1.0 - (1.0 - SoilFloor) * s.TiredSeen);
+
+        /// <summary>What a sown hectare of the village's fields bears, of a fresh field's crop (1 land first broken; `SoilFloor` worn).</summary>
+        public static double Heart(in Settlement s) => SoilOff ? 1.0 : 1.0 - (1.0 - SoilFloor) * s.Tired;
+
+        /// <summary>
+        /// The fields' year, at the harvest (C3.6f): the crop takes from the land that bore it by what it bore (of a fresh field's crop, on the share
+        /// of the arable sown); rain and the soil's own mending, the land at rest and the dung of the herds that grazed the waste give back a share of
+        /// the tiredness; its people see it in their crops a few harvests late. Pure: the tests call it.
+        /// </summary>
+        public static void SoilYear(ref Settlement s, double yield, double freshPerHa)
+        {
+            double arable = s.ArableHa;
+            double grazed = s.Grazed;
+            s.Grazed = 0;
+            if (SoilOff || arable <= 0 || s.FieldHa <= 0) return;
+            double sown = DMath.Clamp01(s.FieldHa / arable);
+            double bore = DMath.Clamp(yield / (s.FieldHa * freshPerHa), 0.0, 1.5);
+            double dung = DungOff ? 0.0 : DungBack * DMath.Min(20.0, grazed / SimTime.DaysPerYear / arable);
+            double back = DMath.Min(1.0, SoilBack + RestBack * (1.0 - sown) + dung);
+            s.Tired = DMath.Clamp01(s.Tired + SoilTake * bore * sown - back * s.Tired);
+            s.TiredSeen = (float)(s.TiredSeen + 0.5 * (s.Tired - s.TiredSeen));
+        }
+
         /// <summary>The crop calendar over a step's days, each as a day of its own (DEEP, F8: a step never crosses a stage's day).</summary>
         void Crops(ref Settlement s, int doy, int days)
         {
@@ -545,15 +612,21 @@ namespace TC2.Core.Places
             {
                 s.Crop = CropStage.Sown; s.CropWork = 0; s.Sown = 0; s.Harvested = 0; s.CropGrowth = 0; s.CropBurnt = 0; s.CropCause = 0;
                 // a village that remembers famine sows more than it needs, as far as its land allows (D2-042)
-                double perPerson = cfg.FieldHaPerPerson * (1.0 + 0.5 * s.Memory);
-                ClaimFields(ref s, s.Population * perPerson);
+                double perPerson = HaPerHead(w, in s) * (1.0 + 0.5 * s.Memory);   // (more where the land is seen tired: C3.6f)
+                // the fields' rest (C3.6f): a share of the arable rests this year by the tiredness its people have seen in their crops, and the
+                // village would hold that much more land to sow what it wants; land newly broken or cleared comes in fresh (an assart)
+                s.Rest = SoilOff || RestOff ? 0f : (float)DMath.Min(RestMax, RestK * s.TiredSeen);
+                double arable0 = s.ArableHa;
+                ClaimFields(ref s, s.Population * perPerson / (1.0 - s.Rest));
+                if (!SoilOff && s.ArableHa > arable0) s.Tired = arable0 > 0 ? s.Tired * arable0 / s.ArableHa : 0.0;
                 w.Holdings.LandYear(s.Id);   // (whose the fields are: lost land from all, unheld land to the least landed - C3.6b)
-                s.FieldHa = Math.Max(0.5, Math.Min(s.Population * perPerson, s.ArableHa));
+                s.FieldHa = Math.Max(0.5, Math.Min(s.Population * perPerson, s.ArableHa * (1.0 - s.Rest)));
                 // where the land within reach is short of that, the village works each hectare harder (C3.6): more ploughing and hoeing
                 s.Tilth = TilthFor(s.FieldHa, s.Population * perPerson); s.TilthDone = 0;
                 s.CropWorkNeed = s.FieldHa * (SowHa + 0.5 * s.Tilth * SeasonHa);
-                s.ExpectedHarvest = s.FieldHa * cfg.FieldYieldPerHa * 0.8 * (1.0 + GainOf(s.Tilth));
+                s.ExpectedHarvest = s.FieldHa * cfg.FieldYieldPerHa * 0.8 * (1.0 + GainOf(s.Tilth)) * Heart(in s);
                 Tilled(ref s, s.Population * perPerson);
+                Rested(ref s);
             }
             else if (s.Crop == CropStage.Sown && doy >= 12)
             {
@@ -570,7 +643,7 @@ namespace TC2.Core.Places
                 s.Crop = CropStage.Ripe; s.CropWork = 0; s.CropWorkNeed = s.FieldHa * ReapHa;
                 // the crop is grown: what its fields bear, to be reaped over the stage (the first sheaves feed the village: D2-132)
                 s.TilthGain = (float)GainOf(DMath.Min(s.Tilth, s.FieldHa > 0 ? s.TilthDone / (s.FieldHa * SeasonHa) : 0.0));
-                s.CropYield = s.FieldHa * cfg.FieldYieldPerHa * DMath.Clamp01(s.CropGrowth) * s.Sown * (1.0 + s.TilthGain);
+                s.CropYield = s.FieldHa * cfg.FieldYieldPerHa * DMath.Clamp01(s.CropGrowth) * s.Sown * (1.0 + s.TilthGain) * Heart(in s);
                 s.Reaped = 0;
             }
             else if (s.Crop == CropStage.Ripe && doy >= HarvestDay)
@@ -582,7 +655,7 @@ namespace TC2.Core.Places
                     // what the extra ploughing and hoeing done added, never more than the village planned (C3.6)
                     double gain = GainOf(DMath.Min(s.Tilth, s.FieldHa > 0 ? s.TilthDone / (s.FieldHa * SeasonHa) : 0.0));
                     s.TilthGain = (float)gain;
-                    yield = s.FieldHa * cfg.FieldYieldPerHa * DMath.Clamp01(s.CropGrowth) * s.Sown * s.Harvested * (1.0 - s.CropBurnt) * (1.0 + gain);
+                    yield = s.FieldHa * cfg.FieldYieldPerHa * DMath.Clamp01(s.CropGrowth) * s.Sown * s.Harvested * (1.0 - s.CropBurnt) * (1.0 + gain) * Heart(in s);
                     inNow = yield;
                 }
                 else
@@ -598,6 +671,7 @@ namespace TC2.Core.Places
                 if (SheafTally != null) { SheafTally[0]++; SheafTally[1] += yield; SheafTally[2] += yield - inNow; }
                 s.Granary += inNow;
                 s.LastHarvest = yield;
+                SoilYear(ref s, yield, cfg.FieldYieldPerHa);   // (what the crop took from the fields, what rest, the floor and the herds' dung gave back: C3.6f)
                 TC2.Core.Diagnostics.HouseLedger.Harvest(w, s.Id, yield);   // (tools: the harvest by whose work it was; null in the game)
                 w.Holdings.Harvest(s.Id, inNow);   // (shared among its households by their mouths; the year's debts repaid: C3.3)
                 if (Structures.RotTally != null) Structures.RotTally[2] += yield;
@@ -1011,12 +1085,22 @@ namespace TC2.Core.Places
                     for (int k = 0; k < _men.Count; k++)
                     {
                         int m = _men[k], at = w.People.Get(m).Home;   // (they will live in his village: its store, its harvest)
-                        if (CoupleDays(at, pid, m) >= ToHarvest(at) + Holdings.Reserve) _men[keep++] = m;
+                        double days = CoupleDays(at, pid, m);
+                        if (days < ToHarvest(at) + Holdings.Reserve) continue;
+                        // a living (C3.5b, `--niche`): the land they would hold and the hands they would give keep a household of two a year, else what
+                        // they bring carries the shortfall for `NicheYears` (Hajnal's niche: no holding, no marriage - a little later for those with grain)
+                        if (NicheOn && !Holdings.LandOff)
+                        {
+                            double living = CoupleLiving(at, pid, m), years = days / SimTime.DaysPerYear;
+                            if (living < 1.0 && years < (1.0 - living) * NicheYears) { if (NicheTally != null) NicheTally[12]++; continue; }
+                        }
+                        _men[keep++] = m;
                     }
                     _men.RemoveRange(keep, _men.Count - keep);
                     if (_men.Count == 0) { if (MarriageTally != null) MarriageTally[7]++; continue; }
                 }
                 int pick = _men[KeyedRng.Below(KeyedRng.Hash(seed, RngStream.Marriage, (ulong)pid, (ulong)day, 1), _men.Count)];
+                if (NicheTally != null) TallyNiche(w.People.Get(pick).Home, pid, pick);   // (tools: before they move)
                 Marry(w.People.Get(pick).Home, pid, pick);
                 if (Demo != null) Demo[8]++;
             }
@@ -1168,6 +1252,54 @@ namespace TC2.Core.Places
         {
             double need = 0, grain = Bring(sid, womanId, ref need) + Bring(sid, manId, ref need);
             return need > 0 ? grain / need : 0.0;
+        }
+
+        // ---------------------------------------------------------------- a living: the household's niche (C3.5b)
+        /// <summary>Tools and the next slice (`--niche`): a couple marries only when the land they would hold and the hands they would give keep them a
+        /// year at the village's last harvest, or what they bring carries the shortfall for `NicheYears`.</summary>
+        public static bool NicheOn;
+        /// <summary>The years of a shortfall what a couple brings must carry before they marry without a living (C3.5b).</summary>
+        public static double NicheYears = 4.0;
+        /// <summary>Tools (null in the game): marriages by the couple's living (of a year's bread: under a half, to three quarters, to one, one or
+        /// more) times what they brought (under a year, to two, two or more) - [4 x 3]; [12] matches a living turned away.</summary>
+        public static double[] NicheTally;
+        int _handsSid = -1; long _handsDay = -1; double _handsAll;
+
+        /// <summary>
+        /// A couple's living in village `sid` (C3.5b), in years of their bread a year: at its last harvest, the land's half by the hectares they would
+        /// hold (his family's portion, and hers if her family is of the village: land does not travel) over its arable, and the labour's half by
+        /// their two hands over all its hands (C3.6c's shares). Wild food, herds and crafts are not counted: a niche is a holding or a place in
+        /// the fields.
+        /// </summary>
+        public double CoupleLiving(int sid, int womanId, int manId)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.ArableHa <= 0 || s.LastHarvest <= 0) return 1.0;   // (a village yet to bring in its first harvest: nothing to judge by)
+            long day = SimTime.FloorDiv(w.Now, SimTime.Day);
+            if (_handsSid != sid || _handsDay != day)
+            {
+                _handsSid = sid; _handsDay = day; _handsAll = 0;
+                var hl = w.HouseholdsOf(sid);
+                for (int i = 0; i < hl.Count; i++) if (w.Households.Get(hl[i]).Party == 0) _handsAll += w.Holdings.Hands(hl[i]);
+            }
+            double land = 0;
+            int mh = w.People.Get(manId).Household, wh = w.People.Get(womanId).Household;
+            if (w.Households.Exists(mh) && w.Households.Get(mh).Settlement == sid) land += w.Holdings.PortionFor(mh);
+            if (w.Households.Exists(wh) && w.Households.Get(wh).Settlement == sid && wh != mh) land += w.Holdings.PortionFor(wh);
+            double hands = w.Holdings.HandOf(womanId) + w.Holdings.HandOf(manId);
+            double yearly = s.LastHarvest * (Holdings.LandShare * DMath.Min(1.0, land / s.ArableHa) + (1.0 - Holdings.LandShare) * (_handsAll > 0 ? DMath.Min(1.0, hands / _handsAll) : 0.0));
+            double need = (w.Agents.DailyNeed(in w.People.Get(womanId), w.Now) + w.Agents.DailyNeed(in w.People.Get(manId), w.Now)) * SimTime.DaysPerYear;
+            return need > 0 ? yearly / need : 1.0;
+        }
+
+        void TallyNiche(int sid, int womanId, int manId)
+        {
+            var t = NicheTally;
+            if (t == null || Holdings.LandOff) return;
+            double living = CoupleLiving(sid, womanId, manId), years = CoupleDays(sid, womanId, manId) / SimTime.DaysPerYear;
+            int a = living < 0.5 ? 0 : living < 0.75 ? 1 : living < 1.0 ? 2 : 3, b = years < 1 ? 0 : years < 2 ? 1 : 2;
+            t[a * 3 + b]++;
         }
 
         /// <summary>Pages: the days one person's mouth's share of their household's grain and larder would keep them (their household's own village).</summary>

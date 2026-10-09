@@ -62,8 +62,7 @@ namespace TC2.Core.Places
         /// </summary>
         public double Pressure(in Settlement s)
         {
-            var cfg = _w.Config;
-            double need = DMath.Max(1.0, s.Population * cfg.FieldHaPerPerson);
+            double need = DMath.Max(1.0, s.Population * SettlementSystem.HaPerHead(_w, in s));   // (by what the land bears: C3.6f)
             double crowding = DMath.Clamp01(1.0 - s.ArableHa / need);
             double shortage = DMath.Max(0.0, 1.0 - s.Ration);
             return crowding + 0.6 * shortage + 0.4 * s.Memory;
@@ -117,8 +116,7 @@ namespace TC2.Core.Places
             double pressure = Pressure(in s);
             if (Weighs != null)
             {
-                var cfg = w.Config;
-                double need = DMath.Max(1.0, s.Population * cfg.FieldHaPerPerson);
+                double need = DMath.Max(1.0, s.Population * SettlementSystem.HaPerHead(w, in s));
                 Weighs[0]++; Weighs[1] += pressure; Weighs[2] += DMath.Clamp01(1.0 - s.ArableHa / need); Weighs[3] += DMath.Max(0.0, 1.0 - s.Ration); Weighs[4] += s.Memory;
                 if (pressure >= 0.15) Weighs[5]++;
             }
@@ -229,7 +227,7 @@ namespace TC2.Core.Places
         {
             var w = _w; var P = w.Planet; var cfg = w.Config;
             ref var s = ref w.Settlements.Get(sid);
-            double need = w.Members(hid).Count * cfg.FieldHaPerPerson;
+            int heads = w.Members(hid).Count;
             int best = 0; double bs = 0;
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
             {
@@ -240,7 +238,7 @@ namespace TC2.Core.Places
                 if (d > cfg.MarriageReach) continue;
                 double p = Pressure(in t);
                 if (p > homePressure - 0.1) continue;
-                double spare = SpareLand(o) - need;
+                double spare = SpareLand(o) - heads * SettlementSystem.HaPerHead(w, in t);   // (what they would sow there, by what its land bears: C3.6f)
                 if (spare <= 0) continue;
                 if (w.Routes.Get(w, sid, o) == null) continue;
                 double score = DMath.Min(spare, 10.0) / (1.0 + d / 2000.0) * (1.0 - DMath.Min(0.9, p)) * (KinIn(hid, o) ? 2.0 : 1.0);
@@ -262,7 +260,7 @@ namespace TC2.Core.Places
                 if (!P.IsLand(c) || (P.FieldOwner[c] != 0 && P.FieldOwner[c] != sid) || w.SettlementAtCell(c) != 0 && w.SettlementAtCell(c) != sid) continue;
                 ha += P.AreaHa(c) * P.Arability(c, w.PlanetSys.MeanTemp(c));
             }
-            return ha - s.Population * w.Config.FieldHaPerPerson;
+            return ha - s.Population * SettlementSystem.HaPerHead(w, in s);
         }
 
         /// <summary>Whether a household has kin living in a village (a parent, a child or a sibling of one of its members).</summary>

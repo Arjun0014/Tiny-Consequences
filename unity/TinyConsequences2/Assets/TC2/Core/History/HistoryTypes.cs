@@ -86,6 +86,7 @@ namespace TC2.Core.History
         OreGaveOut = 82,
         OreTaken = 83,
         BoatBuilt = 85,         // a household made a boat (Subject the household, Object the boat, Other who led the making; C9.1)
+        FieldsRested = 96,      // a village began to rest a share of its arable each year: its crops a hectare had fallen (Magnitude the share resting; ArgA what a sown hectare bears, % of a fresh field's crop; ArgB its arable ha; C3.6f)
         PartyJoined = 95,       // a party that set out to found a village found one standing at its place and made its home there (Subject the village it left, Object the village it joined, Other its first household; ArgA households, ArgB people; Cause1 its setting out; D2-137)
         Retired = 94,           // an old household went to live with a younger one, taking its land and grain there for its keep (Subject the old household, Object the household that took them in, Other its eldest; ArgA ha handed over, ArgB 1 a child's household, 0 not kin; Magnitude FU of grain; C3.6e)
         FieldsWorkedHarder = 93, // a village began to plough and hoe its fields more than before: the land within reach no longer fed its people (Magnitude the extra work planned, a share of the ordinary; ArgA its arable ha, ArgB its people; Cause1 the famine it remembers, if any; C3.6)
@@ -251,6 +252,7 @@ namespace TC2.Core.History
                 case HistoryKind.VillageSplit: return Tier.Historical;
                 case HistoryKind.PartySetOut: return Tier.Historical;
                 case HistoryKind.PartyJoined: return Tier.Local;
+                case HistoryKind.FieldsRested: return Tier.Local;
                 case HistoryKind.HerdHuntedOut: return Tier.Local;
                 case HistoryKind.ColdHomes: return Tier.Local;
                 case HistoryKind.TechniqueFound: return Tier.Historical;
@@ -342,6 +344,7 @@ namespace TC2.Core.History
                 case HistoryKind.FieldsWorkedHarder: b = 6; break;
                 case HistoryKind.Retired: b = 2; break;
                 case HistoryKind.PartyJoined: b = 10; break;
+                case HistoryKind.FieldsRested: b = 6; break;
                 case HistoryKind.VillageSplit: b = 25; break;
                 case HistoryKind.BoatLost: b = 6; break;
                 case HistoryKind.PartySetOut: b = 20; break;

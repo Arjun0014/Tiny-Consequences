@@ -30,16 +30,16 @@ for a real external blocker (credentials, payment, UAC, an irreversible product 
 - **Waiting on Arjun**: W-FOREST (D2-130) until he judges the shots (`tc2/out/shots/wf2/sheet4.png`, `wf4/forest.png`, `wf6/before_after_far.png`).
 
 ## Do next, in order
-1. **The land economy over 900 years again** (C3.6e with D2-137/138): `bash gate.sh bash l9k.sh 4`, then `... l9k.sh 42` (scratchpad scripts, copies
-   in `tc2/out/tools/`; from the `_k2` year-300 saves, 600 more years, ~20 min each); compare with `s4_l9`, `s42_l9` (sim 70): hunger a 1,000 person-years
-   by century, the landless share, the land-rich households' days of grain (`place --landless`), tributes (D2-138 measured 17 -> 8 over ten worlds).
-2. **Choose the next slice from that evidence**. Measured at year 300 (`_k2`): land binds (bound villages' arable 0.68-0.75 of their need; working
-   harder adds 10-15 % to their harvests), 98 % of hunger deaths are in landless or land-short households, and bound villages keep 0.34-0.42 beasts a
-   field hectare against 0.69-1.11 in open ones. **There is no soil fertility in the model at all** (yield = FieldHa x a constant x growth x sown x
-   tilth): no fallow, no manure - so beasts are worth their milk and meat but nothing to the land, and a surplus has no productive sink. Candidates:
-   the herds' dung / fallow (a phase: it changes world scale - measure first), work for grain, each household working its own holding (service),
-   a land market, partible customs (C11).
-3. Run the full suite once at the end of the next slice (none since D2-138; targeted LeadersTests, LandTests, MigrationTests pass).
+0. **Work in progress (committed 10 Oct, ~01:45 IST)**: the soil C3.6f (D2-139, sim version 74: seven of ten seeds measured, full suite pending) and
+   the niche measurement C3.5b (off by default). SESSION_HANDOFF "Later in this context" has the state and the queue (`q_s2.sh` -> `q_suite.sh` ->
+   `q_n1.sh`, gated on RAM; logs in the session scratchpad - copies of the scripts in `tc2/out/tools/`). If the scratchpad is gone, re-run: ten
+   seeds `_s2` (`BIN=<build> TAG=_s2 SNAP=100,200,300 EXTRA="--gaptally --landtally --landholds" bash gwrun.sh 4 5 1 6 11 2 3 7 8 42`), the full
+   suite, then `_n1` with `--niche --nichetally`.
+1. Commit D2-139 with its ten-seed numbers (worlds x0.55-0.7 people; bound villages rest 13-17 %; births unchanged, hunger a person-year x1.9: the
+   marriage rule does not bind). Then **C3.5b the niche**: a couple marries when its land and hands keep it (or its grain carries the shortfall) -
+   measure `_n1` against `_s2`; make it the rule if births answer the land.
+2. The soil's 900-year check (seeds 4, 42), the Web build + Web test, the soil in real shots; then the remaining candidates (herds on the stubble and
+   fallow, a land market, partible customs C11, work for grain).
 
 ## Tools (local; `tc2/out/tools/` has copies - put them in the session scratchpad and set `S=`/`SCR=` in the scripts)
 - `wrun.sh` (ten-seed runs; `EXTRA=` switches), `loadrun.sh` (saves run forward), `cmp.py A B seeds`, `gap.py`, `pt.py` (line-ending-aware patching:

@@ -139,11 +139,16 @@ namespace TC2.Core.History
             if (s.Tilth > 0)
             {
                 // working the land harder (C3.6): the land within reach against what its people want, the extra hours and what they gave
-                double want = s.Population * w.Config.FieldHaPerPerson * (1.0 + 0.5 * s.Memory);
+                double want = s.Population * Places.SettlementSystem.HaPerHead(w, in s) * (1.0 + 0.5 * s.Memory);
                 sb.Append("Its arable within reach (").Append(F(s.ArableHa, "0")).Append(" ha) is short of the ").Append(F(want, "0")).Append(" ha its people would sow: they plough and hoe each hectare harder this year, ")
                   .Append(F(100.0 * s.Tilth, "0")).Append(" % more hours").Append(s.TilthGain > 0f ? " (the last harvest " + F(100.0 * s.TilthGain, "0") + " % larger for it)" : "").Append(".\n");
             }
             else if (s.TilthGain > 0f) sb.Append("Its last harvest was ").Append(F(100.0 * s.TilthGain, "0")).Append(" % larger for the extra ploughing and hoeing.\n");
+            // the fields' heart and their rest (C3.6f)
+            double heart = Places.SettlementSystem.Heart(in s);
+            if (!Places.SettlementSystem.SoilOff && s.ArableHa > 0 && (heart < 0.95 || s.Rest > 0.01f))
+                sb.Append("Its fields are ").Append(heart < 0.6 ? "worn" : heart < 0.85 ? "tired" : "a little tired").Append(": a sown hectare bears ").Append(F(100.0 * heart, "0"))
+                  .Append(" % of what new land would").Append(s.Rest > 0.01f ? "; " + F(100.0 * s.Rest, "0") + " % of its arable rests this year" : "").Append(".\n");
             sb.Append("The store holds ").Append(F(s.Granary, "0")).Append(" days' food (").Append(F(days, "0")).Append(" days for its people), in ")
               .Append(s.Granaries).Append(s.Granaries == 1 ? " granary" : " granaries").Append(s.Barns > 0 ? " and " + s.Barns + (s.Barns == 1 ? " barn" : " barns") : "")
               .Append(" holding ").Append(F(Structures.StoreCapacity(in s), "0")).Append(s.Ration < 0.999 ? "; meals rationed to " + F(100 * s.Ration, "0") + " %" : "").Append(".\n");

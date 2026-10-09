@@ -31,17 +31,32 @@ incumbent, the same person stays first with nothing recorded; and a household's 
   `d2137.md`, `d2138.md`). **Resource Governor LOW since 23:10 (CPU 50 %, RAM 75 %, one heavy job)**; the machine's RAM sits at 80-90 % from other
   applications (Chrome, WebView, other Claude sessions): `gate.sh CMD` runs a command once RAM is under 72 %; `webgate.sh TAG` (build + Web test).
 
+### Later in this context (10 Oct, 00:00-01:40 IST) - the 900-year check, the soil (C3.6f, D2-139, committed as work in progress), the niche measurement
+- **900 years with C3.6e, seed 4** (`s4_l9k.csv`; PROGRESS): hunger 8.7-11.2 a 1,000 person-years in centuries 300-600 (sim 70: 1.0-5.1), births
+  40-42 (29-36): the old's grip on the land had been a preventive check; a plague at 746-753 (~9,000 dead) then post-plague plenty. Seed 42 not run.
+- **The soil, C3.6f (D2-139 in DECISIONS with seven seeds; sim version 74; committed as work in progress - the last three seeds and the full suite pending)**: `Settlement.Tired/TiredSeen/
+  Rest/Grazed/RestEvent`; `SettlementSystem.Heart/SoilYear/HaPerHead/Rested` + constants; `Livestock.Day` tallies grazing; history `FieldsRested`
+  (96); Gazetteer soil line; `--nosoil/--norest/--nodung`; land tally soil fields; TilthTests +5 (9 pass). Runs: `s*_s1` (first form), `s*_s2`
+  (the land judged by what it bears; 7 of 10 seeds done at handoff time, 7/8/42 queued), `s5/s42_s1n`, `s5_s2n` (= `_k2` byte-identical with
+  `--nosoil`). **Finding**: worlds x0.55-0.7 people (as designed), bound villages rest 13-17 %, a sown ha 0.73-0.79 of a fresh crop - **but births do
+  not answer** (42 a 1,000 before and after): hunger a person-year x1.9 (4.7 -> 9.3), wounds x2 - the marriage rule (C3.5) does not bind (couples
+  bring two years of bread: 83 of 8,635 matches ever waited).
+- **The niche (C3.5b), measurement code in the working tree (off by default)**: `SettlementSystem.CoupleLiving` (land's half by the portions the
+  couple would hold + labour's half by their hands, at the village's last harvest, against their year's need), `NicheOn`/`NicheYears` (`--niche`,
+  `--nicheyears N`: marry when the living keeps them or their grain carries the shortfall N years), `NicheTally` (`--nichetally`), `Holdings.HandOf`,
+  `Holdings.PortionFor`.
+- **Queued (gated on RAM, scratchpad)**: `q_s2.sh` (last 3 seeds) -> `q_suite.sh` (full suite of the working tree -> `suite_s2.txt`) -> `q_n1.sh`
+  (`_n0`: seeds 4, 42 with `--nichetally`, must equal `_s2`; `_n1`: ten seeds `--niche`). Logs `q_*.log`.
+
 ### Next, in order
-1. (done: D2-137 the catch-up's out-of-memory; D2-138 the headman's retirement. Full suite 358/358 on D2-137; on D2-138 targeted tests
-   (LeadersTests 8, LandTests 10, MigrationTests 9) - the full suite on 4bf4888 not yet
-   run: run it once at the end of the next slice.)
-2. **The land economy over 900 years again** with C3.6e and D2-137/138: `bash l9k.sh 4` and `bash l9k.sh 42` (scratchpad; from the `_k2` year-300
-   saves, 600 more years, annals `s*_l9k.csv`, saves `s*_l9k/world_y600|900.tc2`, ~20 min each, one at a time if RAM is high); compare with `s4_l9`,
-   `s42_l9` (sim 70): hunger a 1,000 person-years by century, landless share, the land-rich households' days of grain (`place --landless`), tributes.
-3. Then the next slice from that evidence (SESSION_HANDOFF of the third context, items 6-8): what the landless do with their days and where a
-   surplus goes - (a) work for grain (households with grain hire the hungry for their own projects at a day's bread a day), (b) alms by standing,
-   (c) each household working its own holding (service's economic base); the herds' dung (`26` §3 C3.6: bound villages manure a tenth of a medieval
-   field); debts' consequences, partible customs (C11), a land market.
+1. When the queue ends: check `suite_s2.txt` (all pass?), `q_n1.log` (`_n0` = `_s2`; the niche tallies), `python cmp.py s2 n1 <ten seeds>` and the
+   absolute rates (years 200-299: hunger, births, deaths a 1,000 person-years; `_k2` 4.7/42.2/32.8, `_s2` 9.3/42.3/38.1 on seven seeds).
+2. **Close D2-139 (the soil)**: its final ten-seed numbers into DECISIONS and PROGRESS, the full suite's result; commit.
+3. **C3.5b the niche** (`--niche`): if births answer the land (hunger a person-year back toward `_k2`'s, people at par or fewer), make it the rule
+   (D2-140, `--noniche` the control), tests (a couple with a living marries; a landless couple waits unless its grain carries the shortfall), docs.
+4. Then the soil's 900-year check (seeds 4, 42), the Web build and Web test, the soil's look in real shots (fallow plots: the view draws a village's
+   plots by the share sown), and the remaining candidates (herds on the stubble and fallow, a land market, partible customs C11).
+5. Earlier list (third context, 6-8): work for grain, alms by standing, households working their own holdings, debts' consequences.
 
 ## Session 16, third context (9 Oct 2026, from 16:10 IST; Control Room run #39 session 3, Resource Governor MEDIUM) - C3.6a working the land harder (D2-131), the first sheaves (D2-132), household land C3.6b-d (D2-133..135)
 

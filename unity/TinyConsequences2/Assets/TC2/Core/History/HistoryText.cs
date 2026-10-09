@@ -120,6 +120,9 @@ namespace TC2.Core.History
                 case HistoryKind.VillageSplit:
                     return Cap(subj) + " and the " + Plural(obj) + " would not follow " + (e.Other.IsNone ? "the new first among them" : other) + ": " + e.ArgA + " households, " + e.ArgB + " people of " + place +
                            ", bound to them by kin, by grain owed or given, went with them to make a village of their own.";
+                case HistoryKind.FieldsRested:
+                    return "The people of " + place + " began to rest a share of their fields each year: a sown hectare had come to bear " + e.ArgA + " % of what new land gave, and " +
+                           F(100.0 * e.Magnitude, "0") + " % of their " + e.ArgB + " ha lies fallow this year.";
                 case HistoryKind.PartyJoined:
                     return e.ArgA + " households of " + subj + " (" + e.ArgB + " people), come to make a new home, found " + obj + " standing where they meant to settle and made their home among its people.";
                 case HistoryKind.Retired:

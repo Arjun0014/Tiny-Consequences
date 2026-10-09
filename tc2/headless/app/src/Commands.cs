@@ -163,7 +163,12 @@ namespace TC2.Headless
             if (a.Has("ledger")) { TC2.Core.Diagnostics.HouseLedger.By = new System.Collections.Generic.Dictionary<int, double[]>(); TC2.Core.Diagnostics.HouseLedger.From = (long)a.Int("ledger", 250) * TC2.Core.Foundation.SimTime.Year; }
             if (a.Has("ledgeryears")) TC2.Core.Diagnostics.HouseLedger.Years = new System.Collections.Generic.List<double[]>();   // (C3.3 design: household-years with their kin, written to the named csv)   // (C3.3 survey: what each household brings in and draws)
             if (a.Has("nojoin")) TC2.Core.Places.Migration.JoinOff = true;
-            if (a.Has("nostanding")) TC2.Core.Society.Leaders.StandingOff = true;   // (D2-138 against D2-137 in one binary: a headman's move is a vacancy, clients' ties lapse)   // (D2-137 against C3.6e in one binary: a party founds at its place even where a village now stands)
+            if (a.Has("nostanding")) TC2.Core.Society.Leaders.StandingOff = true;
+            if (a.Has("nosoil")) TC2.Core.Places.SettlementSystem.SoilOff = true;   // (C3.6f against D2-138 in one binary: the fields never tire)
+            if (a.Has("norest")) TC2.Core.Places.SettlementSystem.RestOff = true;   // (the fields tire, nobody rests them)
+            if (a.Has("nodung")) TC2.Core.Places.SettlementSystem.DungOff = true;   // (the herds' dung gives nothing back)
+            if (a.Has("niche")) { TC2.Core.Places.SettlementSystem.NicheOn = true; if (a.Has("nicheyears")) TC2.Core.Places.SettlementSystem.NicheYears = a.Double("nicheyears", 4); }   // (C3.5b candidate: a couple marries when it has a living)
+            if (a.Has("nichetally")) TC2.Core.Places.SettlementSystem.NicheTally = new double[13];   // (C3.5b survey: marriages by the couple's living and what it brought)   // (D2-138 against D2-137 in one binary: a headman's move is a vacancy, clients' ties lapse)   // (D2-137 against C3.6e in one binary: a party founds at its place even where a village now stands)
             if (a.Has("nocarts")) TC2.Core.Places.Carts.Off = true;   // (C4.2 against C3.2 in one binary: no carts)
             if (a.Has("nohold")) TC2.Core.Places.Holdings.Off = true;   // (C3.3 against C1.4b in one binary: the village's store as before - no bins, no debts)
             if (a.Has("holdmeansoff")) TC2.Core.Places.Holdings.MeansOff = true;
@@ -659,6 +664,16 @@ namespace TC2.Headless
                                 if (ct != null) Console.WriteLine("contests: vacancies " + F(ct[0] - ct[10], "0") + " (and " + F(ct[10], "0") + " factions weighed again when a place was found); no unbound rival of 6+ households " + F(ct[1], "0") + ", rival under half the first's following " + F(ct[2], "0") + ", too few people " + F(ct[3], "0") + ", looked for land " + F(ct[4], "0") + ", splits " + F(ct[5], "0") + "; looking for land: gave up " + F(ct[6], "0") + ", gone " + F(ct[9], "0") + ", a place found " + F(ct[10], "0") + "; mean rival " + F(ct[7] / Math.Max(1, ct[0]), "0.0") + " vs first " + F(ct[8] / Math.Max(1, ct[0]), "0.0") + " households");
                                 var ht = TC2.Core.Places.Holdings.HungerTally;
                                 var mtl = TC2.Core.Places.SettlementSystem.MarriageTally;
+                                var ntl = TC2.Core.Places.SettlementSystem.NicheTally;
+                                if (ntl != null)
+                                {
+                                    // (C3.5b survey: marriages by the couple's living at the village's last harvest and what it brought)
+                                    string[] liv = { "living under a half", "to three quarters", "to one", "one or more" };
+                                    var sb = new StringBuilder("marriages by the couple's living (of a year's bread) and what it brought (under a year / to two / more):");
+                                    for (int li = 0; li < 4; li++) sb.Append("  ").Append(liv[li]).Append(' ').Append(F(ntl[li * 3], "0")).Append('/').Append(F(ntl[li * 3 + 1], "0")).Append('/').Append(F(ntl[li * 3 + 2], "0"));
+                                    sb.Append(";  matches a living turned away ").Append(F(ntl[12], "0"));
+                                    Console.WriteLine(sb.ToString());
+                                }
                                 if (mtl != null) { double mn = mtl[0] + mtl[1] + mtl[2] + mtl[3] + mtl[4]; Console.WriteLine("marriages by what the couple brought (years of their bread): under a quarter " + F(mtl[0], "0") + ", to a half " + F(mtl[1], "0") + ", to one " + F(mtl[2], "0") + ", to two " + F(mtl[3], "0") + ", more " + F(mtl[4], "0") + " (mean " + F(mtl[6] / Math.Max(1.0, mn), "0.00") + "); in villages whose sharing had contracted " + F(mtl[5], "0") + "; matches that waited for the means of a household " + F(mtl[7], "0")); }
                                 if (ht != null && ht.Length > 15) Console.WriteLine("hunger deaths by the household's land: none " + F(ht[13], "0") + ", short of its want " + F(ht[14], "0") + ", its want " + F(ht[15], "0"));
                                 if (ht != null) Console.WriteLine("hunger by household: own grain none " + F(ht[0], "0") + ", under 5 days " + F(ht[1], "0") + ", 5-20 " + F(ht[2], "0") + ", 20+ " + F(ht[3], "0") + "; in villages whose sharing had contracted " + F(ht[4], "0") + ", in households in debt " + F(ht[5], "0") + ", with no close kin in the village " + F(ht[6], "0") + "; in those villages what the households with grain spared beyond their own needs at the village's ration to the harvest would carry all the households without grain to it " + F(ht[7], "0") + ", a quarter to all of it " + F(ht[8], "0") + ", less " + F(ht[9], "0") + " (mean " + F(ht[10] / Math.Max(1.0, ht[4]), "0.00") + " of their need), with under a day of food in the store " + F(ht[11], "0") + ", " + F(ht[12] / Math.Max(1.0, ht[4]), "0.0") + " days to the harvest on average");
@@ -838,7 +853,8 @@ namespace TC2.Headless
                         Console.WriteLine("land " + (g == 1 ? "bound" : "open ") + ": harvests " + F(lt[o], "0") + "  arable/need " + F(lt[o + 10] / Math.Max(1e-9, lt[o + 3]), "0.000") + "  fields/need " + F(lt[o + 2] / Math.Max(1e-9, lt[o + 3]), "0.000") +
                                           "  FU a ha " + F(lt[o + 1] / Math.Max(1e-9, lt[o + 2]), "0.0") + "  harvest/bread " + F(lt[o + 1] / Math.Max(1e-9, lt[o + 8]), "0.000") + "  grown " + F(lt[o + 4] / n, "0.000") + "  sown " + F(lt[o + 5] / n, "0.000") +
                                           "  brought in " + F(lt[o + 6] / n, "0.000") + "  burnt " + F(lt[o + 7] / n, "0.000") + "  beasts a field ha " + F(lt[o + 11] / Math.Max(1e-9, lt[o + 2]), "0.00") + "  their intake kg a field ha a day " + F(lt[o + 9] / Math.Max(1e-9, lt[o + 2]), "0.00") +
-                                          "  worked harder " + F(lt[o + 15], "0") + " (extra planned " + F(lt[o + 12] / n, "0.000") + ", done " + F(lt[o + 13] / n, "0.000") + " of the season's hours; added " + F(lt[o + 14], "0") + " FU, " + F(lt[o + 14] / Math.Max(1e-9, lt[o + 1]) * 100.0, "0.0") + " % of the harvests)");
+                                          "  worked harder " + F(lt[o + 15], "0") + " (extra planned " + F(lt[o + 12] / n, "0.000") + ", done " + F(lt[o + 13] / n, "0.000") + " of the season's hours; added " + F(lt[o + 14], "0") + " FU, " + F(lt[o + 14] / Math.Max(1e-9, lt[o + 1]) * 100.0, "0.0") + " % of the harvests)" +
+                                          "  soil: tired " + F(lt[o + 16] / n, "0.000") + ", resting " + F(lt[o + 17] / n, "0.000") + " of the arable, a sown ha bears " + F(lt[o + 18] / n, "0.000") + " of a fresh crop, herds' grazing " + F(lt[o + 19] / n, "0.00") + " kg an arable ha a day");
                     }
                     var lh = TC2.Core.Agents.AgentSystem.LandHours;
                     string[] stn = { "after harvest", "sowing", "growing", "ripe", "harvested" };

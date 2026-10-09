@@ -173,6 +173,11 @@ namespace TC2.Core.Places
         public long TilthEvent;         // the history record of the years it has worked its land harder (0: it works it as before)
         public double CropYield;        // what its grown crop bears this year (FU, before reaping and fire; set when it ripens: D2-132)
         public double Reaped;           // of it, the grain brought into the store so far this harvest
+        public double Tired;            // how tired its fields are: 0 land first broken, 1 worn to what rain and the soil alone give back (C3.6f, D2-139)
+        public float TiredSeen;         // that tiredness as its people have seen it in their crops (a few harvests' memory)
+        public float Rest;              // the share of its arable it rests this year (fallow)
+        public double Grazed;           // kg of grass its herds have eaten off the waste since the last harvest (their dung comes back to the fields)
+        public long RestEvent;          // the history record of the years it has rested its fields (0: it crops all it sows)
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
@@ -244,6 +249,7 @@ namespace TC2.Core.Places
             w.Int(SplitHh); w.Long(SplitCause); w.Long(SplitSince);   // (C10.3, sim version 64)
             w.Double(Tilth); w.Double(TilthDone); w.Float(TilthGain); w.Long(TilthEvent);   // (C3.6, sim version 66)
             w.Double(CropYield); w.Double(Reaped);   // (D2-132, sim version 67)
+            w.Double(Tired); w.Float(TiredSeen); w.Float(Rest); w.Double(Grazed); w.Long(RestEvent);   // (C3.6f, sim version 74)
         }
 
         public static Settlement Read(BinReader r)
@@ -269,6 +275,7 @@ namespace TC2.Core.Places
             s.SplitHh = r.Int(); s.SplitCause = r.Long(); s.SplitSince = r.Long();
             s.Tilth = r.Double(); s.TilthDone = r.Double(); s.TilthGain = r.Float(); s.TilthEvent = r.Long();
             s.CropYield = r.Double(); s.Reaped = r.Double();
+            s.Tired = r.Double(); s.TiredSeen = r.Float(); s.Rest = r.Float(); s.Grazed = r.Double(); s.RestEvent = r.Long();
             return s;
         }
 
@@ -294,6 +301,7 @@ namespace TC2.Core.Places
             h.Add(SplitHh); h.Add(SplitCause); h.Add(SplitSince);
             h.Add(Tilth); h.Add(TilthDone); h.Add(TilthGain); h.Add(TilthEvent);
             h.Add(CropYield); h.Add(Reaped);
+            h.Add(Tired); h.Add(TiredSeen); h.Add(Rest); h.Add(Grazed); h.Add(RestEvent);
         }
 
         internal static void WriteV(BinWriter w, Vec3d v) { w.Double(v.X); w.Double(v.Y); w.Double(v.Z); }

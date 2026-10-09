@@ -272,16 +272,20 @@ namespace TC2.Core.Places
             var w = _w;
             var mem = w.Members(hid);
             double h = 0;
-            long now = w.Now;
-            for (int i = 0; i < mem.Count; i++)
-            {
-                ref var p = ref w.People.Get(mem[i]);
-                if (!p.Alive) continue;
-                double age = p.AgeYears(now);
-                if (age < 12 || p.Health < 0.3 || p.SickPhase == TC2.Core.Health.Disease.Infectious || p.Hurt >= TC2.Core.Society.Conflict.AbedHurt) continue;
-                h += (age > 60 ? 0.5 : age < 16 ? 0.6 : 1.0) * (0.5 + 0.5 * p.Health);
-            }
+            for (int i = 0; i < mem.Count; i++) h += HandOf(mem[i]);
             return h;
+        }
+
+        /// <summary>One person's hand in the fields (C3.6c): grown a hand, youths of 12-15 six tenths, the old half, by health; the sick and the
+        /// badly hurt abed none.</summary>
+        public double HandOf(int pid)
+        {
+            var w = _w;
+            ref var p = ref w.People.Get(pid);
+            if (!p.Alive) return 0.0;
+            double age = p.AgeYears(w.Now);
+            if (age < 12 || p.Health < 0.3 || p.SickPhase == TC2.Core.Health.Disease.Infectious || p.Hurt >= TC2.Core.Society.Conflict.AbedHurt) return 0.0;
+            return (age > 60 ? 0.5 : age < 16 ? 0.6 : 1.0) * (0.5 + 0.5 * p.Health);
         }
 
         /// <summary>Tools (null in the game): the harvests' grain shared [0]; to households with no land [1], their mouths' share of the village's [2];
@@ -649,7 +653,8 @@ namespace TC2.Core.Places
             var w = _w;
             ref var hh = ref w.Households.Get(hid);
             double memory = w.Settlements.Exists(hh.Settlement) ? w.Settlements.Get(hh.Settlement).Memory : 0.0;
-            return w.Members(hid).Count * w.Config.FieldHaPerPerson * (1.0 + 0.5 * memory);
+            double head = w.Settlements.Exists(hh.Settlement) ? SettlementSystem.HaPerHead(w, in w.Settlements.Get(hh.Settlement)) : w.Config.FieldHaPerPerson;   // (by what the land bears: C3.6f)
+            return w.Members(hid).Count * head * (1.0 + 0.5 * memory);
         }
 
         /// <summary>The village's arable not held by any of its households (ha): the land its people have taken in and not yet given out.</summary>
@@ -724,6 +729,20 @@ namespace TC2.Core.Places
         /// A child marrying out of a household of the village (already gone from its members) takes a portion of its land: what the land can spare
         /// beyond what its remaining people would sow, up to the child's own want - where the family's land is short, nothing (C3.6b).
         /// </summary>
+        /// <summary>The land a child marrying out of a household would take (C3.6b's portion, reckoned before anyone moves; a household's last member
+        /// takes all it holds): the niche a match can count on (C3.5b).</summary>
+        public double PortionFor(int family)
+        {
+            if (LandOff || !_w.Households.Exists(family)) return 0.0;
+            var w = _w;
+            ref var a = ref w.Households.Get(family);
+            if (!w.Settlements.Exists(a.Settlement) || w.Members(family).Count <= 1) return 0.0;   // (the last to leave takes it all: Close - reckoned as the whole)
+            ref var s = ref w.Settlements.Get(a.Settlement);
+            double head = SettlementSystem.HaPerHead(w, in s) * (1.0 + 0.5 * s.Memory);
+            double spare = a.Land - (w.Members(family).Count - 1) * head;
+            return DMath.Clamp(spare, 0.0, head);
+        }
+
         public void Portion(int from, int to)
         {
             if (LandOff || !_w.Households.Exists(from) || !_w.Households.Exists(to)) return;
@@ -734,7 +753,7 @@ namespace TC2.Core.Places
             double spare = a.Land - LandWant(from);
             if (spare <= 1e-9) return;
             ref var s = ref w.Settlements.Get(a.Settlement);
-            double give = DMath.Min(spare, w.Config.FieldHaPerPerson * (1.0 + 0.5 * s.Memory));
+            double give = DMath.Min(spare, SettlementSystem.HaPerHead(w, in s) * (1.0 + 0.5 * s.Memory));
             a.Land -= give; b.Land += give;
             if (LandTally != null) { LandTally[0]++; LandTally[1] += give; }
         }

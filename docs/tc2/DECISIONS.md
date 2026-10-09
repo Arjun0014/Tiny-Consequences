@@ -4000,3 +4000,49 @@ over the ten: the place changes hands less); contested splits at a living headma
 people (end x0.98, years 200-299 x1.00), births, deaths and hunger at par; conflict lower but inside the noise (takings x0.56 t -1.1, blows x0.75,
 palisades x0.86, raids x0.83); tribute agreements 17 -> 8 over the ten worlds (low counts, two worlds made 9 of the 17: watched, not explained). A
 first form without (c) (`_k1`) only halved the successions at a retirement (20-63): the incumbency had stayed with the household that was gone.
+
+## D2-139 — 2026-10-10 — The soil: the fields tire, rest and the herds' dung give back (C3.6f)
+
+**Context.** The fields had no fertility: a harvest was `FieldHa x FieldYieldPerHa x growth x sown x (1 + tilth)` - a fresh field's crop on
+every hectare every year, forever. Nothing rested, a beast was worth its milk and meat but nothing to the land, and land bound villages
+(arable 0.68-0.75 of their want at year 300, `_k2`) cropped every hectare with no consequence; bound villages kept 0.34-0.42 beasts a field
+hectare against 0.69-1.11 where land was open. The medieval record: pre-modern arable needed rest - fallow rebuilt nitrates and cleared weeds,
+a half to two-thirds of the arable was ploughed in a year (Overton); arable spreading over pasture under pressure meant fewer beasts, less dung
+and falling yields (Postan; Titow's Winchester yields), disputed in its cause (Clark 1992); beasts make no fertility, they move it from the
+pasture and the waste onto the fields (stubble and fallow grazed, folds); continuous unmanured wheat settles at a floor (Broadbalk: about half the
+yield of nitrogen-fed plots).
+**Decision.** (sim version 74; `26` §2g) One number a village, **`Settlement.Tired`** (0 land first broken, 1 worn to the floor): a sown hectare
+bears `1 - 0.65 x Tired` of a fresh field's crop (`SoilFloor` 0.35, old varieties and weeds below Broadbalk's half). At each harvest
+(`SoilYear`): the crop takes `SoilTake` 0.08 x what a sown hectare bore (of a fresh crop) x the share of the arable sown; rain and the soil give
+back `SoilBack` 0.0426 of the tiredness a year, the land at rest `RestBack` 0.5 of its tiredness for the share resting, and **the herds' dung**
+`DungBack` 0.01 for each kg a day they ate off the waste a hectare of arable (`Settlement.Grazed`, from `Livestock.Day`). Cropped every year
+unmanured, a sown hectare settles at 0.48 of a fresh crop in a few decades; resting a fifth, 0.79; half, 0.93; per hectare of arable a fifth at
+rest gives 0.63 against 0.48. **Rest is the village's choice from its crops**: its people see the tiredness a few harvests late (`TiredSeen`, a
+half each year) and rest `RestK` 0.4 of it (at most half the arable: `Settlement.Rest`); they would hold that much more land to sow their want
+(claims), and **land newly broken or cleared comes in fresh** (an assart dilutes the tiredness by area); where land binds they sow less and work
+the sown harder (C3.6a). No rotation is written: two- or three-field rest is what experience settles on. History `FieldsRested` (96, Local):
+"The people of X began to rest a share of their fields each year: a sown hectare had come to bear N % of what new land gave, and M % of their K
+ha lies fallow this year"; the settlement page's food section: "Its fields are tired/worn: a sown hectare bears N % of what new land would; M % of
+its arable rests this year". The view already draws a village's plots by the share sown. **The people judge their land by what it bears**
+(`HaPerHead`: half a hectare of a fresh field's crop a head over the heart they have seen): what a village claims and sows, the land a household
+wants and is given, how crowded a village or a household feels and where a household would go. `--nosoil` (the fields never tire: = `_k2` exactly,
+seeds 5 and 42 byte-identical annals), `--norest`, `--nodung`; the `land open/bound` lines carry the soil.
+**The world's scale (D2-085, D2-089).** The constant `FieldYieldPerHa` is now a fresh field's crop, not every hectare's every year: where land
+binds, output a hectare of arable falls to ~0.6, and full worlds carry ~0.6 of their people. Kept, not recalibrated: the `_k2` worlds at year 300
+had grown past D2-085's mature range (2,000-7,100 people at 6 km: seeds 4, 42 and 2 held 9,400-14,200), and D2-089 asks for fewer, deeper people.
+**Evidence.** Tests (TilthTests 9): cropped every year a sown hectare falls (0.477 at its floor; a fifth resting 0.792, half 0.926; a fifth at
+rest gives more a hectare of arable), the herds' dung mends the fields (more grazing, more back; `--nodung` nothing), a tired village rests a share
+and new land comes in fresh (recorded once), `--nosoil` bears a fresh crop, a save keeps the heart. Ten seeds DEEP 300 years, the first form (`_s1`,
+the land judged at a fresh field's crop) and the final (`_s2`, seven of the ten seeds when written; the last three and the full suite pending at the commit) against `_k2`: **the worlds carry ~0.6-0.7 of their
+people** (people at year 300 x0.55-0.57, t -7 to -8; years 200-299 x0.65-0.69; years 100-199 x0.91-0.94 - the early, open centuries barely
+change); bound villages settle at tiredness 0.32-0.41, resting 13-17 % of their arable, a sown hectare bearing 0.73-0.79 of a fresh crop, their
+harvests 0.65-0.82 of a year's bread (0.90 before). **But births do not answer the poorer land** (42 a 1,000 person-years before and after): over
+years 200-299 hunger rose from 4.7 to 7.8 (`_s1`) and 9.3 (`_s2`) a 1,000 person-years, deaths from 33 to 38, wounds from 0.11 to 0.23-0.24 (the
+takings and raids of scarcity), famines x1.4-1.5. Judging the land by what it bears (`_s2`) kept more people (x1.07-1.09 against `_s1`) but not
+less hunger. The cause is in C3.5, not the soil: a couple marries when its grain keeps it to the next new grain, and couples bring two years of
+bread on average (seed 4: 8,635 marriages, 936 under half a year, 83 matches ever waited) - **the preventive check does not bind**, and scarcity
+is answered by death. Before the soil it was already so (hunger 14 % of deaths); the soil makes it plain.
+**Open (next).** The household's niche (Hajnal): a couple marries when it has a living - land and hands that will keep a household, not grain in
+hand - so that births answer what the land bears; then the soil's 900-year check. Later: herds grazing the stubble and the fallow (the commons:
+today they graze only off the fields), legumes and the three-field course as knowledge (C11), manure carted to a household's own holding, beasts
+bought with grain.
