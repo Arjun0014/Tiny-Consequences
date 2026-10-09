@@ -38,6 +38,7 @@ namespace TC2.Game
             public Vector2[] Plots;   // field plot coordinates in the owning village's frame (m)
             public Vector2[] Farm;    // x: share of the land the village works, y: crop stage
             public Vector4[] Wood;    // the woods here (D2-079): x forest share, y conifers' share, z the leaves' season, w snow
+            public Vector2[] Kind;    // the kind of wood (W-FOREST): x how tropical (warmth), y how seasonally dry among the tropical
             public Vector4[] Land;    // the land's own (D2-081): x dryness of the climate, y meadow (grass where no wood), z bare earth or rock, w beach
             public Vector3[] Pos, Nrm; // the vertices as drawn and their normals (where the woods' trees and the ground cover stand)
             public Matrix4x4[] Trees; public byte[] TreeKind; public ushort[] TreeGroup; public int TreeCount;   // the woods' trees (finest level)
@@ -393,7 +394,7 @@ namespace TC2.Game
             int count = V * V + 4 * V;
             var pos = new Vector3[count];
             var nrm = new Vector3[count];
-            if (p.Dirs == null || p.Dirs.Length != count) { p.Dirs = new Vector3[count]; p.Cells = new int[count]; p.Rel = new float[count]; p.Slope = new float[count]; p.Colours = new Color[count]; p.Plots = new Vector2[count]; p.Farm = new Vector2[count]; p.Wood = new Vector4[count]; p.Land = new Vector4[count]; }
+            if (p.Dirs == null || p.Dirs.Length != count) { p.Dirs = new Vector3[count]; p.Cells = new int[count]; p.Rel = new float[count]; p.Slope = new float[count]; p.Colours = new Color[count]; p.Plots = new Vector2[count]; p.Farm = new Vector2[count]; p.Wood = new Vector4[count]; p.Kind = new Vector2[count]; p.Land = new Vector4[count]; }
             for (int j = 0; j < V; j++)
                 for (int i = 0; i < V; i++)
                 {
@@ -442,6 +443,7 @@ namespace TC2.Game
             m.SetUVs(1, p.Farm);
             m.SetUVs(2, p.Wood);
             m.SetUVs(3, p.Land);
+            m.SetUVs(4, p.Kind);
             m.triangles = FixWinding(p.Face, pos, nrm);
             m.RecalculateBounds();
             p.Built = true;
@@ -881,6 +883,7 @@ namespace TC2.Game
                 p.Mesh.SetUVs(1, p.Farm);
                 p.Mesh.SetUVs(2, p.Wood);
                 p.Mesh.SetUVs(3, p.Land);
+                p.Mesh.SetUVs(4, p.Kind);
                 long today = SimTime.FloorDiv(w.Now, SimTime.Day);
                 if (p.Level >= MaxLevel && p.Pos != null && p.Nrm != null && p.PlacedDay != today)
                 {
@@ -1128,6 +1131,7 @@ namespace TC2.Game
                 float rel = p.Rel[o], slope = p.Slope[o];
                 Color col;
                 p.Wood[o] = Vector4.zero;
+                p.Kind[o] = Vector2.zero;
                 p.Land[o] = Vector4.zero;
                 if (rel < 0)
                 {
@@ -1260,6 +1264,10 @@ namespace TC2.Game
                         float leaves = f < 0.5f ? 0f : (f < 0.875f ? (f - 0.5f) / 0.375f * 0.8f : 1f);
                         leaves *= 1f - Edge(17f, 22f, tm);   // (no autumn in the tropics)
                         p.Wood[o] = new Vector4(wood, con, leaves, snow);
+                        // (W-FOREST) the far canopy's kind: the rain forest's deep greens where it is hot, the dry tropics' olive where hot and
+                        // seasonally dry - ForestTypes' own thresholds, smoothed so the woods blend across a climate's edge
+                        float warm = Edge(16f, 22f, tm);
+                        p.Kind[o] = new Vector2(warm, warm * (1f - Edge(0.45f, 0.62f, moist)));
                     }
                     // the land's own (D2-081): how dry its climate is (leaves olive, grass straw), how near a river's water (D2-084: its
                     // corridor), bare earth or rock, the beach's width

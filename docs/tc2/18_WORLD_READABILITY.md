@@ -152,8 +152,8 @@ boreal woods and many where a fire passed in the last 30 years; edges and glades
 scattered, a carr's pools) and **stature** (the rain forest 1.45x, emergents above it; the treeline knee- to man-high). **Palettes by kind**: the rain
 forest's deep glossy greens, the dry tropics' olive, the carr's grey-greens, warm evergreens' dark olive, palms, birches' light leaves golden in
 autumn (4,096 colour groups). Camera views `forest:KIND[:low|:far]` frame the most wooded ground of a kind in the first village's half of the day.
-Shots `tc2/out/shots/wf2/sheet4.png` (rain, dry, mixed, boreal side by side), `wf2`, `wf3`. Not yet: the far canopy (the shader) by kind, ground
-cover by kind, stand age as state (only fire's is real; felling and windthrow leave none), a straight snow/no-snow seam seen on one boreal patch.
+Shots `tc2/out/shots/wf2/sheet4.png` (rain, dry, mixed, boreal side by side), `wf2`, `wf3`. The far canopy (the terrain shader) takes the kind
+too (UV4: how tropical, how seasonally dry; `wf6/before_after_far.png`). Not yet: ground cover by kind, stand age as state (only fire's is real; felling and windthrow leave none), a straight snow/no-snow seam seen on one boreal patch.
 
 ## 9. The civilisation made visible (D2-089)
 

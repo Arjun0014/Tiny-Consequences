@@ -43,8 +43,8 @@ Shader "TC2/Terrain"
             float _TC2FogDensity;
             float _TC2SeaRadius;
 
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; float4 uv2 : TEXCOORD2; float4 uv3 : TEXCOORD3; };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; float4 farm : TEXCOORD2; half4 wood : TEXCOORD3; half4 land : TEXCOORD4; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; float4 uv2 : TEXCOORD2; float4 uv3 : TEXCOORD3; float2 uv4 : TEXCOORD4; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; float4 farm : TEXCOORD2; half4 wood : TEXCOORD3; half4 land : TEXCOORD4; half2 kind : TEXCOORD5; };
 
             Varyings vert(Attributes v)
             {
@@ -57,6 +57,7 @@ Shader "TC2/Terrain"
                 o.farm = float4(v.uv0, v.uv1);
                 o.wood = v.uv2;
                 o.land = v.uv3;
+                o.kind = v.uv4;   // (W-FOREST: x how tropical, y how seasonally dry)
                 return o;
             }
 
@@ -270,6 +271,11 @@ Shader "TC2/Terrain"
                     half hue = frac(cid * 5.31h);   // (the trees near the camera take the same green: TerrainLod.Tints)
                     half3 broad = lerp(lerp(half3(0.046h, 0.125h, 0.036h), half3(0.090h, 0.200h, 0.040h), saturate(hue * 2.0h)), half3(0.170h, 0.262h, 0.046h), saturate(hue * 2.0h - 1.0h));
                     broad = lerp(broad, half3(broad.r * 1.6h + 0.015h, broad.g * 0.90h, broad.b * 0.60h), dry * 0.8h);   // (dry lands: olive)
+                    // (W-FOREST) the kind of wood: the rain forest's deep glossy greens, the dry tropics' olive - TerrainLod.Tints' palettes 2 and 3
+                    half warm = i.kind.x, seas = i.kind.y;
+                    half3 rainC = lerp(lerp(half3(0.010h, 0.059h, 0.013h), half3(0.020h, 0.089h, 0.016h), saturate(hue * 2.0h)), half3(0.040h, 0.120h, 0.017h), saturate(hue * 2.0h - 1.0h));
+                    half3 dryC = lerp(half3(0.069h, 0.119h, 0.024h), half3(0.140h, 0.170h, 0.040h), hue);
+                    broad = lerp(broad, lerp(rainC, dryC, saturate(seas / max(warm, 0.01h))), warm);
                     broad = lerp(broad, lerp(half3(0.52h, 0.31h, 0.035h), half3(0.42h, 0.11h, 0.025h), hue), turn);
                     broad = lerp(broad, half3(0.105h, 0.082h, 0.064h), bare);
                     half3 needle = lerp(half3(0.020h, 0.058h, 0.028h), half3(0.040h, 0.092h, 0.042h), hue);
@@ -286,6 +292,7 @@ Shader "TC2/Terrain"
                     half fade = smoothstep(1.3h, 3.0h, (half)pxw);
                     half3 summer = lerp(half3(0.072h, 0.160h, 0.036h), half3(0.120h, 0.228h, 0.044h), hue);
                     summer = lerp(summer, half3(summer.r * 1.6h + 0.015h, summer.g * 0.90h, summer.b * 0.60h), dry * 0.8h);
+                    summer = lerp(summer, lerp(lerp(half3(0.014h, 0.068h, 0.015h), half3(0.032h, 0.105h, 0.017h), hue), lerp(half3(0.075h, 0.125h, 0.026h), half3(0.120h, 0.160h, 0.036h), hue), saturate(seas / max(warm, 0.01h))), warm);   // (W-FOREST)
                     half3 meanCrown = lerp(lerp(lerp(summer, half3(0.47h, 0.21h, 0.03h), turn), half3(0.105h, 0.082h, 0.064h), bare),
                                            lerp(half3(0.026h, 0.068h, 0.032h), half3(0.70h, 0.72h, 0.76h), snowy * 0.35h), con) * 0.70h;
                     // stands of a few hundred metres, older and darker or younger and lighter: the far woods' own grain (from orbit too)
@@ -299,7 +306,7 @@ Shader "TC2/Terrain"
                     floorOcc = lerp(1.0h - 0.55h * dl * (1.0h - mask), 1.0h - 0.55h * dl * (1.0h - fc), fade);
                     // each crown - far off, each clump of crowns - bends the light it takes (a bump from its height, without tangents:
                     // Mikkelsen 2010): the clumps' sunward sides lit, their far sides in shade
-                    float hm = lerp(h * 5.0, fc * 7.0, fade);
+                    float hm = lerp(h * 5.0, fc * 7.0, fade) * (1.0 + 0.6 * warm * (1.0 - saturate(seas / max(warm, 0.01h))));   // (W-FOREST: the rain forest's emergents)
                     float3 dpdx = ddx(i.positionWS), dpdy = ddy(i.positionWS);
                     float3 r1 = cross(dpdy, n), r2 = cross(n, dpdx);
                     float det = dot(dpdx, r1);

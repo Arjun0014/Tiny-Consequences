@@ -31,8 +31,14 @@
   village has weighed its first). Then family plurals fixed in every page and history line (`HistoryText.Plural`: "the Memvases", not "the
   Memvass"; Unity configure compiles the HUD).
 
+- **W-FOREST pass 1 (D2-130, ee5044c + the far canopy commit)**: kinds of wood from the climate (`Game/View/ForestTypes.cs`), ten new forms, stand ages,
+  palettes, far forms per kind, the far canopy by kind (UV4 in `TerrainLod`/`Terrain.shader`); views `forest:KIND[:low|:far]`; shots `tc2/out/shots/wf2`
+  (sheet4.png), `wf4`, `wf6`; Web tests s16web4/s16web5 6/6. W-FOREST stays OPEN for Arjun's judgement (sheet sent to him).
+- Unity shots: a view name may not contain ':' in a file name (ShotRunner fixed); `unity.mjs shots` works after a Web build (the earlier failure
+  was the shot runner's own bug, not the build target).
+
 ### Next, in order
-1. (done: C10.3 commit, Web build, Web test s16web 6/6; famine amid plenty measured and refuted; C3.5 built and measured)
+1. (done: C10.3 commit, Web build, Web test s16web 6/6; famine amid plenty measured and refuted; C3.5 built and measured; W-FOREST pass 1)
 2. (done: C3.5 closed - full suite 336/336, no measurable cost, D2-129, b8f4830; Web build of b8f4830: Web test s16web2 6/6, bit-identical, the life
    page shows the marriage's bread; spans of bread now read in years past a year - "a year's", "21 years'" - `HistoryText.Span/Bread`.)
 3. From the evidence (D2-129 "Open"): hunger is still 17 % of deaths, in the hungry gap before the harvest - measure what a village does in its last

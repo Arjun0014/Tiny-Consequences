@@ -3740,7 +3740,9 @@ half of the day) for the four-climates test.
 `wf3` (umbrella trees, snags), `wf4/forest.png` (seed 42's forest: tropical to its far trees). Two faults found in the shots and fixed: umbrella
 trees read as beige mushrooms (a short trunk, tan crowns: now a forked trunk twice as tall under an olive crown); boreal pines (a bare bole under a
 flat crown) read as palms in the snow (pines now only on dry boreal ground). Web: Web test 6/6 (`tc2/out/webtest/s16web4`, bit-identical; seed 42's forest views 80-83 fps, against 60-67 before the pass - the machine's load varies: no measurable cost).
-**Open (W-FOREST stays open for Arjun's judgement in real shots).** The far canopy beyond 440 m (the terrain shader) still colours woods by conifer
-share, season and dryness only; ground cover by kind of wood; stand age as state (only fire's is real; felling and windthrow leave none); the dry
+(g) **The far canopy by kind** (later the same day): the terrain patches carry a kind channel (UV4: how tropical, how seasonally dry - ForestTypes'
+thresholds smoothed) and the shader's canopy takes the rain forest's deep greens and the dry tropics' olive (the near palettes in linear), the rain
+forest a lumpier relief from afar; shots `wf6/before_after_far.png`; Web test 6/6 (`s16web5`, WebGPU, forest views 69-82 fps).
+**Open (W-FOREST stays open for Arjun's judgement in real shots).** ground cover by kind of wood; stand age as state (only fire's is real; felling and windthrow leave none); the dry
 tropics' ground drawn lush where moisture is 0.5; a straight snow/no-snow seam on one boreal patch; perhaps too many bare boles between the rain
 forest's flat crowns.
