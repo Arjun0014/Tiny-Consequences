@@ -4,6 +4,13 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 16, fourth context - the land economy over 900 years with C3.6e (sim version 73), seed 4 (`s4_k2` + `s4_l9k`, against `s4_l9`, sim 70;
+  one world - seed 42 not yet run)**: more people in centuries 300-600 (13,200-15,900 against 10,300-11,600: births 40-42 a 1,000 against 29-36 -
+  heirs marry as the land comes) and **hunger 8.7-11.2 a 1,000 person-years against 1.0-5.1**: the old's grip on the land had been a preventive
+  check (an artefact C3.6e removed); without it the villages fill to the positive check. A plague in years 746-753 killed ~9,000 (16,800 -> 8,100);
+  after it no hunger and 2.4 million FU in the stores (post-plague plenty), 18,700 people by year 900. (The year-900 save was lost to a double
+  rename; `s4_l9k.csv` is complete, `s4_l9k/world_y600.tc2` the year-600 save.) The fields' heart (C3.6f, in progress) changes this equilibrium:
+  its own 900-year check follows it.
 - **Session 16, fourth context - D2-138 a headman gone to live with their child stays first (sim version 73)**: C3.6e's retirements put the first
   household's headman in another household 37-127 times a world, read as a contested vacancy ("another household rose" for the same man; 4 of 20
   splits). Now a living headman's move is weighed again without a contest, the household that took the first household in is the incumbent, and a
