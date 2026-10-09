@@ -4,6 +4,13 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 16, third context, later - the land economy over 900 years** (seeds 4 and 42, `s*_l9`, saves 300/600/900, sim version 70): no collapse and
+  no runaway. Seed 42 settles after the filling (years 200-299: hunger 6.6 a 1,000 person-years) at ~8,600-8,800 people for six centuries, births =
+  deaths = 28-29 a 1,000, **hunger 0.2-0.8 a 1,000 person-years** - a low-pressure regime held by the preventive check; seed 4 is livelier (9-15k
+  people, hunger 0.15-5.1 by century, raids 45-90 a century). Landless households 54-77 % at years 300/600/900 (die-outs without heirs keep giving
+  land back), but **the households holding their want keep decades of grain** (800-2,975 days' food, seed 4 at year 600 62 years' worth for 1.4
+  people): no sink but rot, the village's sales and loans - the next problem (D2-126 "Open": households' own trade). Cost: seed 4's 900 years in
+  25 min (0.6 world years a second at 12-15k people).
 - **Session 16, third context, later - C3.6d who leaves (D2-135, sim version 70)**: each household weighs leaving by its own land (its holding
   and its part of the unheld land against its want) instead of the village's crowding - the landless choose to go, the landed stay. Ten seeds
   against `--villageleave` (= `_c1` exactly): every aggregate at par; land concentrates (landless at year 300 13-46 % -> 17-66 %, Gini up to 0.93):

@@ -143,6 +143,7 @@ namespace TC2.Headless
             string[] cls = { "landless", "short", "their want" };
             var n = new double[3]; var people = new double[3]; var young = new double[3]; var youngM = new double[3]; var kids = new double[3]; var hands = new double[3]; var grainDays = new double[3]; var land = new double[3]; var want = new double[3];
             var hpaList = new System.Collections.Generic.List<double>();
+            var rebuild = new double[3]; var carts = new double[3]; var shelter = new double[3];
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
                 if (!w.Settlements.Get(sid).Inhabited) continue;
@@ -167,12 +168,14 @@ namespace TC2.Headless
                         else if (age < 30 && p.Partner == 0) { young[c]++; if (!p.IsFemale) youngM[c]++; }
                     }
                     if (c > 0 && hh.Land > 0) hpaList.Add(hd / hh.Land);
+                    if (hh.Rebuild != 0) rebuild[c]++; if (hh.CartState == TC2.Core.Places.Carts.Wanted || hh.CartState == TC2.Core.Places.Carts.Making) carts[c]++; if (hh.Shelter < TC2.Core.Places.Construction.House) shelter[c]++;
                 }
             }
             double all = n[0] + n[1] + n[2];
             for (int c = 0; c < 3; c++)
                 Console.WriteLine("households " + cls[c] + ": " + n[c] + " (" + (100 * n[c] / Math.Max(1, all)).ToString("0") + " %), people " + people[c] + " (" + (people[c] / Math.Max(1, n[c])).ToString("0.00") + " each), unmarried 15-29 " + young[c] + " (men " + youngM[c] + "), children under 15 " + kids[c] +
                                   ", hands " + (hands[c] / Math.Max(1, n[c])).ToString("0.00") + " each, own grain " + (grainDays[c] / Math.Max(1, n[c])).ToString("0") + " days a household's food, land " + (land[c] / Math.Max(1e-9, want[c])).ToString("0.00") + " of their want");
+            for (int c = 0; c < 3; c++) Console.WriteLine("  " + cls[c] + ": rebuilding their house " + rebuild[c] + ", a cart wanted or being made " + carts[c] + ", in a camp or hut " + shelter[c]);
             hpaList.Sort();
             if (hpaList.Count > 0) Console.WriteLine("  landed households' hands a hectare p10/50/90 " + hpaList[hpaList.Count / 10].ToString("0.00") + "/" + hpaList[hpaList.Count / 2].ToString("0.00") + "/" + hpaList[9 * hpaList.Count / 10].ToString("0.00"));
         }

@@ -54,6 +54,12 @@ landless choose to go but in full lands find nowhere, and the land concentrates:
    projects (rebuilding, carts, boats) at a day's bread for a day's work (C3.3b's makers' price), so the landless earn in hard times and the rich
    build; (b) alms by standing in hard times (beyond the first household's, C10.2); (c) each household works its own holding and hires hands - the
    deep version that would give service an economic base; then debts' consequences, partible customs (C11), a land market.
+7. **The land economy over 900 years** (`s4_l9`, `s42_l9`; PROGRESS): stable, hunger 0.2-0.8 a 1,000 person-years in seed 42's last six centuries;
+   landless 54-77 %; **the households holding their want keep decades of grain (800-2,975 days)** - grain with no sink but rot, the village's sales
+   and loans. This outranks (a)-(c) above: measure where a rich household's surplus goes now (rot, the village's sales borne by bins, loans,
+   gifts, makers paid) and what real sinks a medieval surplus had (beasts, land, buildings, goods, feasts, alms, rents, tithes), then the smallest
+   real slice - e.g. households buying beasts and goods with grain (households' own trade, D2-126 "Open") or the rich feeding the hungry as
+   patrons (C10.2's first-household rule for every household with years of grain, followings by it).
 
 ## Session 16, second context (9 Oct 2026, 12:22-16:00 IST; Control Room run #39 session 2, Resource Governor MEDIUM) - C10.3 closed (D2-128); C3.5 household formation (D2-129); W-FOREST pass 1 (D2-130)
 
