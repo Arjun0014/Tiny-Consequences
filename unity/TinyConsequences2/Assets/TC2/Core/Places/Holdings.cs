@@ -454,6 +454,8 @@ namespace TC2.Core.Places
             if (Off) return;
             var w = _w;
             ref var hh = ref w.Households.Get(hid);
+            if (!LandOff && heir != 0 && w.Households.Exists(heir) && w.Households.Get(heir).Settlement == hh.Settlement) { w.Households.Get(heir).Land += hh.Land; if (LandTally != null) LandTally[3] += hh.Land; }   // (its land to the heir; none: the village's - C3.6b)
+            hh.Land = 0;
             if (heir != 0 && w.Households.Exists(heir))
             {
                 w.Households.Get(heir).Grain += hh.Grain;
@@ -473,10 +475,13 @@ namespace TC2.Core.Places
         /// </summary>
         public void Close(int old, int to)
         {
-            if (Off || !_w.Households.Exists(old)) return;
+            if (!_w.Households.Exists(old)) return;
             var w = _w;
             ref var oh = ref w.Households.Get(old);
             bool same = w.Households.Exists(to) && w.Households.Get(to).Settlement == oh.Settlement;
+            if (!LandOff && same) { w.Households.Get(to).Land += oh.Land; if (LandTally != null) LandTally[2] += oh.Land; }   // (the land goes with the last to leave it in the village: C3.6b)
+            oh.Land = 0;
+            if (Off) return;
             if (same) Transfer(old, to);
             else
             {
@@ -492,8 +497,9 @@ namespace TC2.Core.Places
         /// </summary>
         public void SetOut(int sid, List<int> leaving, double food)
         {
-            if (Off) return;
             var w = _w;
+            for (int i = 0; i < leaving.Count; i++) { ref var lh = ref w.Households.Get(leaving[i]); if (LandTally != null) LandTally[4] += lh.Land; lh.Land = 0; }   // (their land is left to the village: C3.6b)
+            if (Off) return;
             ref var s = ref w.Settlements.Get(sid);
             double bins = 0;
             for (int i = 0; i < leaving.Count; i++) bins += w.Households.Get(leaving[i]).Grain;
@@ -532,8 +538,139 @@ namespace TC2.Core.Places
             s.Common = 0;
         }
 
+        // ------------------------------------------------------------------ land (C3.6b, D2-133): each household's holding of its village's fields
+        /// <summary>Tools: no holdings are kept (--noland).</summary>
+        public static bool LandOff;
+
+        /// <summary>Tools (null in the game): portions given at marriages [0] and their ha [1], the last-out's land [2] ha, inherited [3] ha, left to
+        /// the village by those setting out [4] ha, allotted from the unheld [5] ha to [6] households, lost with the arable [7] ha.</summary>
+        public static double[] LandTally;
+
+        /// <summary>The fields a household's people would sow (the village's want a head - more where famine is remembered - times its members).</summary>
+        public double LandWant(int hid)
+        {
+            var w = _w;
+            ref var hh = ref w.Households.Get(hid);
+            double memory = w.Settlements.Exists(hh.Settlement) ? w.Settlements.Get(hh.Settlement).Memory : 0.0;
+            return w.Members(hid).Count * w.Config.FieldHaPerPerson * (1.0 + 0.5 * memory);
+        }
+
+        /// <summary>The village's arable not held by any of its households (ha): the land its people have taken in and not yet given out.</summary>
+        public double Unheld(int sid)
+        {
+            var w = _w;
+            double held = 0;
+            var hhs = w.HouseholdsOf(sid);
+            for (int i = 0; i < hhs.Count; i++) held += w.Households.Get(hhs[i]).Land;
+            return DMath.Max(0.0, w.Settlements.Get(sid).ArableHa - held);
+        }
+
+        /// <summary>A new village's fields (world generation): held by its founding households by their heads.</summary>
+        public void LandFound(int sid)
+        {
+            if (LandOff) return;
+            var w = _w;
+            var hhs = w.HouseholdsOf(sid);
+            double heads = 0;
+            for (int i = 0; i < hhs.Count; i++) heads += w.Members(hhs[i]).Count;
+            if (heads <= 0) return;
+            double ha = w.Settlements.Get(sid).ArableHa;
+            for (int i = 0; i < hhs.Count; i++) w.Households.Get(hhs[i]).Land = ha * w.Members(hhs[i]).Count / heads;
+        }
+
+        readonly List<(double perHead, int hid)> _short = new List<(double, int)>();
+
+        /// <summary>
+        /// At sowing, after the village has claimed its fields (C3.6b): land it lost (released, gone to wood or water) is lost from every holding by
+        /// the same share; land it holds unheld - taken in for its people's want, left by those who went or died without heirs - is given out to its
+        /// households short of what they would sow, the least landed a head first.
+        /// </summary>
+        public void LandYear(int sid)
+        {
+            if (LandOff) return;
+            var w = _w;
+            var hhs = w.HouseholdsOf(sid);
+            double held = 0;
+            for (int i = 0; i < hhs.Count; i++) held += w.Households.Get(hhs[i]).Land;
+            double arable = w.Settlements.Get(sid).ArableHa;
+            if (held > arable + 1e-9)
+            {
+                double f = held > 0 ? arable / held : 0.0;
+                for (int i = 0; i < hhs.Count; i++) w.Households.Get(hhs[i]).Land *= f;
+                if (LandTally != null) LandTally[7] += held - arable;
+                return;
+            }
+            double free = arable - held;
+            if (free <= 1e-9) return;
+            _short.Clear();
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                int hid = hhs[i];
+                ref var hh = ref w.Households.Get(hid);
+                int n = w.Members(hid).Count;
+                if (hh.Party != 0 || n == 0) continue;
+                if (hh.Land < LandWant(hid) - 1e-9) _short.Add((hh.Land / n, hid));
+            }
+            _short.Sort((a, b) => a.perHead != b.perHead ? a.perHead.CompareTo(b.perHead) : a.hid.CompareTo(b.hid));
+            for (int i = 0; i < _short.Count && free > 1e-9; i++)
+            {
+                int hid = _short[i].hid;
+                ref var hh = ref w.Households.Get(hid);
+                double give = DMath.Min(free, LandWant(hid) - hh.Land);
+                if (give <= 0) continue;
+                hh.Land += give; free -= give;
+                if (LandTally != null) { LandTally[5] += give; LandTally[6]++; }
+            }
+        }
+
+        /// <summary>
+        /// A child marrying out of a household of the village (already gone from its members) takes a portion of its land: what the land can spare
+        /// beyond what its remaining people would sow, up to the child's own want - where the family's land is short, nothing (C3.6b).
+        /// </summary>
+        public void Portion(int from, int to)
+        {
+            if (LandOff || !_w.Households.Exists(from) || !_w.Households.Exists(to)) return;
+            var w = _w;
+            ref var a = ref w.Households.Get(from);
+            ref var b = ref w.Households.Get(to);
+            if (a.Settlement != b.Settlement || w.Members(from).Count == 0) return;   // (the last to leave takes it all: Close)
+            double spare = a.Land - LandWant(from);
+            if (spare <= 1e-9) return;
+            ref var s = ref w.Settlements.Get(a.Settlement);
+            double give = DMath.Min(spare, w.Config.FieldHaPerPerson * (1.0 + 0.5 * s.Memory));
+            a.Land -= give; b.Land += give;
+            if (LandTally != null) { LandTally[0]++; LandTally[1] += give; }
+        }
+
         // ------------------------------------------------------------------ pages (read only)
         static string Days(double d) => d >= 9.5 ? d.ToString("0", System.Globalization.CultureInfo.InvariantCulture) : d.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+        static string Ha(double ha) => (ha >= 9.5 ? ha.ToString("0", System.Globalization.CultureInfo.InvariantCulture) : ha.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)) + " ha";
+
+        /// <summary>The settlement page's land line (C3.6b): how its fields are held - households with land and without, the largest holding, the unheld.</summary>
+        public static string LandLine(World w, int sid)
+        {
+            if (LandOff) return "";
+            var hl = w.HouseholdsOf(sid);
+            int with = 0, without = 0, n = 0, most = 0; double held = 0, mostHa = 0;
+            for (int i = 0; i < hl.Count; i++)
+            {
+                if (w.Members(hl[i]).Count == 0) continue;
+                n++;
+                double l = w.Households.Get(hl[i]).Land;
+                held += l;
+                if (l < 0.05) without++; else with++;
+                if (l > mostHa) { mostHa = l; most = hl[i]; }
+            }
+            if (n == 0) return "";
+            var sb = new System.Text.StringBuilder();
+            sb.Append("Land: ").Append(with).Append(with == 1 ? " household holds " : " households hold ").Append(Ha(held)).Append(" of its fields");
+            if (most != 0 && with > 1) sb.Append(" (the most the ").Append(TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(most)))).Append(", ").Append(Ha(mostHa)).Append(")");
+            if (without > 0) sb.Append("; ").Append(without).Append(without == 1 ? " household holds none" : " households hold none");
+            double free = w.Holdings.Unheld(sid);
+            if (free >= 0.05) sb.Append("; ").Append(Ha(free)).Append(" unheld");
+            sb.Append(".\n");
+            return sb.ToString();
+        }
 
         /// <summary>The household page's line: its grain in the store in days of its members' food, what it owes and to whom, what it is owed.</summary>
         public static string Line(World w, int hid)
@@ -542,6 +679,13 @@ namespace TC2.Core.Places
             ref var hh = ref w.Households.Get(hid);
             double need = w.SettlementSys.HouseholdNeed(hid);
             var sb = new System.Text.StringBuilder();
+            if (!LandOff)
+            {
+                // its land (C3.6b): the hectares it holds against what its people would sow
+                double want = w.Holdings.LandWant(hid);
+                if (hh.Land < 0.05) sb.Append("It holds no land of the village's fields").Append(want > 0 ? " (its people would sow " + Ha(want) + ")" : "").Append(".\n");
+                else sb.Append("It holds ").Append(Ha(hh.Land)).Append(" of the village's fields").Append(want > 0 ? (hh.Land >= want - 0.05 ? ", as much as its people would sow" : ", where its people would sow " + Ha(want)) : "").Append(".\n");
+            }
             sb.Append("Its own grain in the village's granary: ").Append(Days(need > 0 ? hh.Grain / need : 0)).Append(" days' food for its people");
             if (hh.WaresDue > 0.05 || hh.PotsDue > 0.5) sb.Append("; of its makers' work in the store, not yet taken: ").Append(hh.WaresDue > 0.05 ? Days(hh.WaresDue) + " wares" : "").Append(hh.WaresDue > 0.05 && hh.PotsDue > 0.5 ? " and " : "").Append(hh.PotsDue > 0.5 ? hh.PotsDue.ToString("0", System.Globalization.CultureInfo.InvariantCulture) + " kg of ware" : "");
             sb.Append(".\n");

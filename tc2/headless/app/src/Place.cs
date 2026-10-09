@@ -49,6 +49,7 @@ namespace TC2.Headless
             }
             if (a.Has("splits")) { Splits(w); return 0; }
             if (a.Has("marriage")) { Marriage(w); return 0; }
+            if (a.Has("heirs")) { Heirs(w); return 0; }
             if (a.Has("woods"))
             {
                 // (W-FOREST survey) the wooded land's climate: cells with forest over 0.25 by annual mean temperature and by moisture, and how
@@ -129,6 +130,89 @@ namespace TC2.Headless
             if (sid == 0) { Console.WriteLine("no place to pick"); return 1; }
             Console.Write(Gazetteer.All(w, sid));
             return 0;
+        }
+
+        /// <summary>
+        /// `place --load SAVE --heirs` (household land survey, C3.6b): what holdings passed from father to son would be in this world - the men who
+        /// married in the last 40 years (their household's founding) by their age then and whether their father was alive; when the fathers who
+        /// died did (the son's age then); how many sons of a family reach 20; and each village's fields a household now.
+        /// </summary>
+        static void Heirs(World w)
+        {
+            long now = w.Now, yr = SimTime.Year;
+            int married = 0, fatherAlive = 0, fatherDeadBefore = 0, fatherUnknown = 0;
+            var ageAtMarriage = new System.Collections.Generic.List<double>();
+            var womenAge = new System.Collections.Generic.List<double>();
+            var sonAgeAtFatherDeath = new System.Collections.Generic.List<double>();
+            int[] waitBins = new int[6];   // years from marriage to the father's death: <0 (dead before), 0-5, 5-10, 10-20, 20+, alive now
+            for (int hid = w.Households.First(); hid != 0; hid = w.Households.Next(hid))
+            {
+                var hh = w.Households.Get(hid);
+                if (hh.Formed <= 0 || now - hh.Formed > 40 * yr || hh.Formed < 2 * yr) continue;
+                // the couple who founded it: a man and a woman among its members or the dead who belonged to it are not kept; use living members married
+                var mem = w.Members(hid);
+                for (int i = 0; i < mem.Count; i++)
+                {
+                    var p = w.People.Get(mem[i]);
+                    if (!p.Alive || p.Partner == 0) continue;
+                    double age = (hh.Formed - p.Born) / (double)yr;
+                    if (age < 14 || age > 60) continue;
+                    if (p.IsFemale) { womenAge.Add(age); continue; }
+                    married++; ageAtMarriage.Add(age);
+                    if (p.Father == 0 || !w.People.Exists(p.Father)) { fatherUnknown++; continue; }
+                    var f = w.People.Get(p.Father);
+                    if (f.Alive) { fatherAlive++; waitBins[5]++; continue; }
+                    double gap = (f.Died - hh.Formed) / (double)yr;
+                    if (gap < 0) { fatherDeadBefore++; waitBins[0]++; }
+                    else waitBins[gap < 5 ? 1 : gap < 10 ? 2 : gap < 20 ? 3 : 4]++;
+                }
+            }
+            // every man alive now of 20 or more: his age when his father died (if he did)
+            int men = 0, orphan = 0;
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+            {
+                var p = w.People.Get(id);
+                if (!p.Alive || p.IsFemale || p.AgeYears(now) < 20) continue;
+                men++;
+                if (p.Father == 0 || !w.People.Exists(p.Father)) continue;
+                var f = w.People.Get(p.Father);
+                if (f.Alive) continue;
+                orphan++; sonAgeAtFatherDeath.Add((f.Died - p.Born) / (double)yr);
+            }
+            // sons of a family reaching 20: fathers dead at 45 or more within the last 60 years (their sons mostly grown), counting the sons kept
+            var sonsBy = new System.Collections.Generic.Dictionary<int, int>();
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+            {
+                var p = w.People.Get(id);
+                if (p.IsFemale || p.Father == 0) continue;
+                double reached = ((p.Alive ? now : p.Died) - p.Born) / (double)yr;
+                if (reached < 20) continue;
+                sonsBy[p.Father] = (sonsBy.TryGetValue(p.Father, out int n) ? n : 0) + 1;
+            }
+            int[] sonsBins = new int[5]; int fathers = 0; double sonsSum = 0;
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+            {
+                var f = w.People.Get(id);
+                if (f.Alive || f.IsFemale || now - f.Died > 60 * yr || (f.Died - f.Born) / (double)yr < 45 || f.Partner == 0 && !sonsBy.ContainsKey(id)) continue;
+                int n = sonsBy.TryGetValue(id, out int k) ? k : 0;
+                fathers++; sonsSum += n; sonsBins[Math.Min(4, n)]++;
+            }
+            string Q(System.Collections.Generic.List<double> v) { if (v.Count == 0) return "-"; v.Sort(); return v[v.Count / 4].ToString("0.0") + "/" + v[v.Count / 2].ToString("0.0") + "/" + v[3 * v.Count / 4].ToString("0.0") + " (n " + v.Count + ")"; }
+            Console.WriteLine("heirs: men married in the last 40 years " + married + ", their age then p25/50/75 " + Q(ageAtMarriage) + "; women " + Q(womenAge));
+            Console.WriteLine("  their father then: dead already " + fatherDeadBefore + ", died 0-5 years after " + waitBins[1] + ", 5-10 " + waitBins[2] + ", 10-20 " + waitBins[3] + ", 20+ " + waitBins[4] + ", alive now " + fatherAlive + ", not known " + fatherUnknown);
+            Console.WriteLine("  men of 20+ now " + men + ", fatherless " + orphan + "; their age when the father died p25/50/75 " + Q(sonAgeAtFatherDeath));
+            Console.WriteLine("  fathers dead at 45+ in the last 60 years " + fathers + ": sons reaching 20 each " + (fathers > 0 ? (sonsSum / fathers).ToString("0.00") : "-") + "; with 0/1/2/3/4+ sons " + string.Join("/", sonsBins));
+            // each village: households and its fields a household, against a household's need
+            double hhAll = 0, haAll = 0, needAll = 0; int bound = 0, villages = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                var s = w.Settlements.Get(sid);
+                if (!s.Inhabited || s.Population == 0) continue;
+                villages++; int hc = w.HouseholdsOf(sid).Count; hhAll += hc; haAll += s.FieldHa; needAll += s.Population * w.Config.FieldHaPerPerson;
+                if (s.ArableHa < s.Population * w.Config.FieldHaPerPerson) bound++;
+            }
+            Console.WriteLine("  villages " + villages + " (land bound " + bound + "), households " + hhAll + ", members a household " + (needAll / w.Config.FieldHaPerPerson / Math.Max(1, hhAll)).ToString("0.00") +
+                              ", fields a household " + (haAll / Math.Max(1, hhAll)).ToString("0.00") + " ha against its need " + (needAll / Math.Max(1, hhAll)).ToString("0.00") + " ha; died out " + w.Metrics.DiedOut);
         }
 
         /// <summary>

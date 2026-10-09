@@ -3834,3 +3834,36 @@ yield lowers hunger a person-year; only a check on births before the food fails 
 than people would.
 **Open.** The preventive check: household land and marriage on a holding (D2-129 "Open"); famine foods and the green harvest in the last
 fortnight (no early crops - peas, beans - are sown).
+
+## D2-133 — 2026-10-09 — Household land, first slice: each household holds hectares of its village's fields (C3.6b)
+
+**Context.** D2-131 and D2-132 both ended in Malthus: more food a hectare or a better-timed harvest grew the villages, and hunger a person-year
+came back to where it was - it is set by births against food. What holds births back in the medieval north-west is the household's own land:
+no holding, no marriage (Hajnal 1965; Razi 1980; Ohlin's "niche"); TC2's land is the commune's, its harvest shared by mouths (D2-126). Measured
+first (`place --heirs`, new; five worlds at year 300): men marry at a median 19-23, women 20-21; at marriage a man's father is already dead in
+34-41 % of cases; a man's father dies when he is a median 22-24; a family raises 1.55-1.93 sons to 20 (a third one son, 18-29 % three or more);
+households are small (2.7-3.2 people) and every village is land-bound (~1 ha of fields a household against ~1.5 ha of want). Holdings passed to
+one heir would make heirs of men in their early twenties and leave about two in five landless where land binds.
+**Decision.** `Holdings` (sim version 68), the first of three steps (as C3.3a: the accounting first, moving nothing). (a) **Each household holds
+hectares of its village's fields** (`Household.Land`): the founders by their heads (`LandFound`); **a child marrying out takes a portion** - what
+the family's land can spare beyond what its remaining people would sow, up to the child's own want; where the family's land is short, nothing
+(`Portion`, in `MoveTo`); **the last to leave a household for a new one in the village takes what it held** (`Close`); **an heir takes the land
+of a household that died out** (`Inherit`, D2-059's heir: a child's household, else a parent's, else a sibling's), none - the village's;
+**those who set out leave theirs to the village**. (b) **At sowing**, after the village has claimed its fields (`LandYear`): land it lost
+(released, gone to wood or water) is lost from every holding by the same share; unheld land - taken in for its people's want, left by those who
+went or died without heirs - is given out to the households short of what they would sow, the least landed a head first. The custom is one heir
+(impartible) and portions only of spare land: the north-western custom of a family's holding kept whole; partible customs could later come
+with a village's tradition (C11). (c) Pages: the person page's home section ("It holds N ha of the village's fields, where its people would sow
+M ha" / "It holds no land"), the settlement page ("Land: H households hold N ha of its fields (the most the Xs, M ha); L households hold none;
+U ha unheld"). Tools: the `land:` line (households with and without land, ha a head and its Gini, against the want), `--landholds` (where land
+went), `--noland`, `place --heirs`. Nothing else reads the holdings yet: the harvest is still shared by mouths.
+**Evidence.** `LandTests` 6 (founders hold all the arable by their heads; a portion only of what the land can spare; the last out, the heir and
+those who go; unheld land to the least landed first, land lost from all by the same share; holdings move nothing else; a save keeps them).
+Ten seeds (`_h1`): **every world's annals byte-identical to `_s3`** (the bookkeeping moves nothing). At year 300 the fields are held very unevenly:
+32-60 % of households hold no land, 15-35 % under half their want; land a head p50 0.00-0.17 ha (p90 0.5-1.0) against a want of ~0.5; Gini 0.74-0.92;
+over 300 years the largest flow is inheritance (seed 4: heirs took 7,486 ha, portions 2,604 ha in 5,255 marriages, the last out 1,598 ha, unheld
+land given out 8,362 ha to 6,815 households; those who went left 2,629 ha). The largest holders are the villages' creditors (seed 4's largest
+town: the Nouskeirns hold 19 ha of 278 and are owed grain by 91 of 348 households).
+**Next (C3.6c).** The harvest shared by land and labour - the land's half to those who hold it, the labour's half to the hands that worked
+(the half-share of the métayer; the commune still works its fields together) - so that the landless live by their hands, poorer, and the
+C3.5 rule (a couple marries when it can keep a household to the next grain) delays their marriages: the preventive check, from economics.

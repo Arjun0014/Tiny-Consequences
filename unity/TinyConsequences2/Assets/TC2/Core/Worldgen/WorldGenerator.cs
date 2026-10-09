@@ -360,6 +360,7 @@ namespace TC2.Core.Worldgen
             st.Woodstore = st.Population * 4;
             st.Fibre = st.Population * 1.5; st.Hides = st.Population * 0.5;   // fibre and hides put by (D2-063)
             w.SettlementSys.ClaimInitialFields(sid, st.Population * cfg.FieldHaPerPerson);
+            w.Holdings.LandFound(sid);   // (its founding households hold its fields by their heads: C3.6b)
             ref var st2 = ref w.Settlements.Get(sid);
             st2.FieldHa = Math.Max(0.5, Math.Min(st2.Population * cfg.FieldHaPerPerson, st2.ArableHa));
             // the crop already in the ground for the season the world starts in

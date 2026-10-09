@@ -452,6 +452,7 @@ namespace TC2.Core.Places
                 // a village that remembers famine sows more than it needs, as far as its land allows (D2-042)
                 double perPerson = cfg.FieldHaPerPerson * (1.0 + 0.5 * s.Memory);
                 ClaimFields(ref s, s.Population * perPerson);
+                w.Holdings.LandYear(s.Id);   // (whose the fields are: lost land from all, unheld land to the least landed - C3.6b)
                 s.FieldHa = Math.Max(0.5, Math.Min(s.Population * perPerson, s.ArableHa));
                 // where the land within reach is short of that, the village works each hectare harder (C3.6): more ploughing and hoeing
                 s.Tilth = TilthFor(s.FieldHa, s.Population * perPerson); s.TilthDone = 0;
@@ -1193,6 +1194,7 @@ namespace TC2.Core.Places
                 double needP = w.Agents.DailyNeed(in p, w.Now), needOld = HouseholdNeed(old);   // (their mouth's share of its grain comes along: C3.3)
                 w.Members(old).Remove(pid);
                 w.Holdings.Split(old, hid, needOld > 0 ? needP / needOld : 1.0);
+                w.Holdings.Portion(old, hid);   // (and a portion of its land, as far as it can spare it: C3.6b)
                 ref var oh = ref w.Households.Get(old);
                 // a share of the old larder comes along
                 int left = w.Members(old).Count;

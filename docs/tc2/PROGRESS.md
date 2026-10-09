@@ -4,6 +4,12 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 16, third context, later - C3.6b household land, first step (D2-133, sim version 68)**: measured first (`place --heirs`): men marry
+  at 19-23, a man's father dies when he is 22-24, a family raises 1.55-1.93 sons to 20. Built: each household holds hectares of its village's
+  fields (founders by heads; a marrying child a portion of what the family's land spares; the last out the rest; an heir the land of a household
+  that died out; those who go leave theirs; at sowing lost land from all, unheld land to the least landed). Pages: "It holds N ha of the
+  village's fields", the settlement's "Land:" line. Ten seeds: annals byte-identical to `_s3` (the bookkeeping moves nothing); at year 300 32-60 %
+  of households landless, Gini 0.74-0.92, the largest holders the villages' creditors. `LandTests` 6. Next: the harvest by land and labour (C3.6c).
 - **Session 16, third context, later - the first sheaves (D2-132, sim version 67)**: measured the hungry gap (`--gaptally`, new): 66 % of hunger
   deaths fell in the ripe stage, the store empty, the dead mostly children - the whole harvest reached the store on its last day while villages
   reaped through the stage. Now the grown crop's yield is known when it ripens and the reaped share comes into the store and the households' bins

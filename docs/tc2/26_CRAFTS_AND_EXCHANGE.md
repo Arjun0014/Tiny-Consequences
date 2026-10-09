@@ -248,6 +248,25 @@ person-year is not lower (median 3.9 -> 4.7 a 1,000 person-years, mixed by world
 the same food brings the check back a fortnight earlier. With D2-131 this closes the question the hunger kept asking: in this world hunger a
 person-year is set by births against food, and the next lever is a check on births before the food fails (household land, marriage on a holding).
 
+## 2f. C3.6b Household land: each household's holding of its village's fields (D2-133)
+
+**Why** (D2-131, D2-132): more food a hectare or a better-timed harvest grew the villages until hunger a person-year was back - it is set by
+births against food; what held births back in the medieval north-west was the household's land (no holding, no marriage). Measured first
+(`place --heirs`): men marry at 19-23, a man's father dies when he is 22-24, a family raises 1.55-1.93 sons to 20; one heir would leave about
+two in five men landless where land binds.
+
+**Design, three steps** (`Holdings`, sim version 68):
+- **C3.6b holdings (built, D2-133)** - `Household.Land`: founders by heads; a marrying child a portion of what the family's land spares beyond
+  its remaining people's want; the last out of a household the rest; an heir the land of a household that died out (else the village); those who
+  set out leave theirs; at sowing land lost is lost from all by the same share and unheld land goes to the least landed first. One heir, portions
+  of spare land: the north-western custom (partible customs later with a village's tradition, C11). Pages: the household's land, the village's
+  "Land:" line. Nothing else reads it: the annals of ten worlds are byte-identical. At year 300: 32-60 % of households landless, Gini 0.74-0.92;
+  the largest holders are the villages' creditors.
+- **C3.6c the harvest by land and labour (next)**: the land's half to those who hold it, the labour's half to the hands that worked (the commune
+  still works its fields together; the half-share of the métayer) - the landless live by their hands, poorer, and C3.5's rule delays their
+  marriages: the preventive check from economics.
+- **C3.6d (if needed)**: marriage on a holding as a rule of its own; service in other households; a land market (letting, buying).
+
 ## 3. Later slices
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and
   the people in wares would outwear the looms; eight more makers a shed, each at the shed nearest home; towns of 500+ carry 2-4.
