@@ -2,7 +2,18 @@
 
 ## Session 16, third context (9 Oct 2026, from 16:10 IST; Control Room run #39 session 3, Resource Governor MEDIUM) - C3.6a working the land harder (D2-131), the first sheaves (D2-132), household land C3.6b-d (D2-133..135)
 
-**State at the latest update (keep current)**: HEAD 26127b5 + the Web/suite record commit; sim version 70. Verified: Web build of 26127b5 (`tc2/web-build/web`),
+**OPEN BLOCKER FIRST (end of this context, 21:30 IST)**: HEAD 5dd947a (C3.6e retirement, sim version 71) + this handoff commit. **The Web build of
+5dd947a FAILS the Web test's catch-up, deterministically** (`tc2/out/webtest/s16web9` and `s16web9b`, identical): checks 1-4 pass (bit-identical
+probe), then "a day away" stalls - year 35, 243 people in 17 places, 620 s - and the browser aborts `OOM` (`abortOnCannotGrowMemory`) then
+`memory access out of bounds` (console.txt). The previous build (26127b5, C3.6d) passed the same test (`s16web8`: year 96, 518 people, 14 places).
+Headless is healthy: ten seeds DEEP 300 years (`_e1`), six worlds COARSE 100 years (`scratchpad/cscan_*.txt`, 4-5 years/s), the managed heap at
+par with `--noretire`. The browser's path: new world (00:38), lived to 12:21 of day 1, saved, reloaded, then `OfflineProgress.PlanCatchUp` (Living:
+COARSE from the next midnight, ACTIVITY for the last two days) to year 96 - the same as `run --coarse` in principle, but the browser's year-35 state
+(17 places) differs from headless COARSE (9 places): find why first (reproduce the browser's catch-up headless exactly - the SimHost loop's
+catch-up step, budgets, saves during the catch-up - or build 5dd947a with `Retire` switched off to confirm C3.6e is the cause). The full suite has
+NOT been run on 5dd947a (LandTests 10, Holdings 12, Migration 6, Biography 4 pass). Do not build on C3.6e until this is resolved; revert it if the
+cause cannot be found.
+**State before C3.6e**: 26127b5 + cc1f436 verified (Web `s16web8` 6/6, full suite 353/353); sim version 70. Verified: Web build of 26127b5 (`tc2/web-build/web`),
 Web test `s16web8` 6/6 (bit-identical; the settlement page's Land tab shows "Land: 9 households hold 14 ha of its fields (the most the Doldseinds,
 2.2 ha)"); the full suite on 26127b5: 353/353. `LandTests.cs.meta` made by the Unity build (commit it). Nothing else running.
 **The phase in one paragraph**: C3.6a (more work a hectare where land binds) and the first sheaves (the harvest's grain as it is reaped) each ended in

@@ -4,6 +4,9 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **OPEN (end of session 16, third context)**: the Web build of 5dd947a (C3.6e) fails the Web test's catch-up deterministically (year 35, 243 people
+  in 17 places, the browser out of memory; `s16web9`, `s16web9b`); headless runs are healthy; the full suite not yet run on 5dd947a - see
+  SESSION_HANDOFF "OPEN BLOCKER FIRST".
 - **Session 16, third context, later - C3.6e the old hand on their holding (D2-136, sim version 71)**: the land-rich were the old (youngest 55+:
   63-89 % of the land-rich's land, most of their grain); now a landholding household whose youngest is 60+ goes to live with a child's household
   (else a land-short household with hands, for its keep), its land and grain with it (`Retired` in history). Ten seeds against `--noretire` (= `_d1`
