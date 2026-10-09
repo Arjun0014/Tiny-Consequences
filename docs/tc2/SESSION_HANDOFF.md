@@ -1,6 +1,11 @@
 # TC2 Session handoff
 
-## Session 16, second context (9 Oct 2026, from 12:22 IST; Control Room run #39 session 2, Resource Governor MEDIUM) - C10.3 closed (D2-128); C3.5 household formation (D2-129)
+## Session 16, second context (9 Oct 2026, 12:22-16:00 IST; Control Room run #39 session 2, Resource Governor MEDIUM) - C10.3 closed (D2-128); C3.5 household formation (D2-129); W-FOREST pass 1 (D2-130)
+
+**Handoff state (end of this context)**: HEAD 284471c (+ this handoff commit); everything committed; nothing running. Verified at handoff:
+`HouseholdFormationTests` 3, `LeadersTests` 7, `GazetteerTests` 2, `BiographyTests` 4; the last full suite 336/336 was on C3.5 (b8f4830 - the commits
+since touch only the view, page text and headless tools); Web test s16web5 6/6 on 284471c (`tc2/web-build/web` is of it). Open: W-FOREST waits for
+Arjun's judgement; the next simulation slice is C3.6 land (`26` §3, measured, not chosen).
 
 ### Exact state (keep current)
 - **C3.5 household formation (D2-129, sim version 65; `07` §7e)**: `SettlementSystem` marriage loop - a woman's suitors are only the men with whom
@@ -38,10 +43,14 @@
   was the shot runner's own bug, not the build target).
 
 ### Next, in order
-1. (done: C10.3 commit, Web build, Web test s16web 6/6; famine amid plenty measured and refuted; C3.5 built and measured; W-FOREST pass 1)
+1. (done: C10.3 commit, Web build, Web test s16web 6/6; famine amid plenty measured and refuted; C3.5 built and measured; W-FOREST pass 1 and 1b.)
+   If Arjun answers about W-FOREST, act on it first (pass 2 candidates: D2-130 "Open").
 2. (done: C3.5 closed - full suite 336/336, no measurable cost, D2-129, b8f4830; Web build of b8f4830: Web test s16web2 6/6, bit-identical, the life
    page shows the marriage's bread; spans of bread now read in years past a year - "a year's", "21 years'" - `HistoryText.Span/Bread`.)
-3. From the evidence (D2-129 "Open"): hunger is still 17 % of deaths, in the hungry gap before the harvest - measure what a village does in its last
+3. **C3.6 land** (`26` §3: land binds for 91 % of people by year 300 while grown people keep ~4.5-5 free hours a day): measure which binds harder -
+   labour a hectare (Boserup: more work a hectare at falling returns - tillage, weeding, manure from the herds) or who holds the land (holdings,
+   landless households, labour for others; marriage on a holding) - then build the smaller real slice.
+4. From the evidence (D2-129 "Open"): hunger is still 17 % of deaths, in the hungry gap before the harvest - measure what a village does in its last
    weeks (the ration's floor 0.45, wild food, slaughter, relief) before choosing; household land and holdings (marriage on a holding, the NW
    European pattern) when land binds; life-cycle service; factions a full land cannot shed (D2-128); debts' consequences; C9.4 cargo; D2-125's iron
    ask; D2-123 floods; W-FOREST.

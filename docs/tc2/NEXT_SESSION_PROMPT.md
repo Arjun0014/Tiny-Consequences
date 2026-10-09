@@ -195,7 +195,10 @@ unbound factions a full land cannot shed. The pages tell splits and headmen (a p
 **there is no famine amid plenty** (D2-126 corrected: hard-times hunger deaths are real shortage, in the last days before the harvest) and nothing
 answered scarcity before death - so **C3.5 household formation (D2-129, sim version 65)**: a couple marries when what it brings of its households'
 grain keeps it to the next harvest; else the match waits, brides marry where the grain is, some never marry. Hunger deaths x0.69, famines x0.70,
-births x0.88, people at par over years 200-299. **Next**: SESSION_HANDOFF "Session 16, second context".
+births x0.88, people at par over years 200-299. **W-FOREST pass 1 (D2-130, presentation)**: each tree's kind of wood is read from the
+simulation's climate and water (rain forest, dry tropics, warm temperate, broadleaf, mixed, boreal, treeline, carr, gallery), with ten new forms,
+stand ages, palettes, far forms and the far canopy by kind - still OPEN for Arjun's judgement in real shots. **Next**: SESSION_HANDOFF "Session 16,
+second context" (land, C3.6, measured: it binds for 91 % of people by year 300 while labour idles).
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

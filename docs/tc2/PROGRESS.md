@@ -9,7 +9,9 @@
   water at its point (rain forest, dry tropical woodland, warm temperate, broadleaf, cool mixed, boreal, treeline, wet carr, river gallery); ten new
   forms (firs, krummholz, emergents, rain forest canopy, palms, umbrella trees, alders, poplars, mangroves, snags), stand ages (saplings, poles,
   veterans, snags after fire), openness and stature by kind, eight palettes, far forms per kind; camera views `forest:KIND`. Shots `wf2/sheet4.png`
-  (four climates no longer confusable), Web test s16web4 6/6 (forest views 80-83 fps). W-FOREST stays open for Arjun's judgement.
+  (four climates no longer confusable), Web test s16web4 6/6 (forest views 80-83 fps). Then the far canopy by kind (the terrain shader: a kind
+  channel on the patches - the rain forest's deep greens and the dry tropics' olive from afar; `wf6/before_after_far.png`; Web test s16web5 6/6 on
+  WebGPU). W-FOREST stays open for Arjun's judgement. Handoff checks: HouseholdFormation 3, Leaders 7, Gazetteer 2, Biography 4 pass.
 - **Session 16, second context, later** - Web test s16web 6/6 on C10.3 (bit-identical; family plurals fixed in every page). Then the next slice
   chosen by measurement: **there is no famine amid plenty** (D2-126 corrected: at 95 % of ~40,000 hard-times hunger deaths the households with grain
   could spare under a quarter of what the grainless needed; the store held under a day's food in 69 %; deaths 5-12 days before the harvest) - hunger
