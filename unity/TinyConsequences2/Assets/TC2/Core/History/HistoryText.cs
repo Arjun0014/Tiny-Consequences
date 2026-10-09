@@ -31,7 +31,7 @@ namespace TC2.Core.History
                         string how = e.ArgA == 2 ? " of hunger" : (e.ArgA == 3 ? " in childbirth" : (e.ArgA == 4 ? " in the eruption" : (e.ArgA == 5 ? " when the earthquake brought the house down" : (e.ArgA == 6 ? " in the great wave" : (e.ArgA == 7 ? " in the storm" : (e.ArgA == 8 ? " when the storm drove the sea ashore" : (e.ArgA == 9 ? " of the cold" : (e.ArgA == 10 ? " of " + Sickness(w, e.Cause1) : (e.ArgA == 11 ? " of the wounds of a fight in the night" : (e.ArgA == 12 ? " at sea, when their boat overturned" : ""))))))))));
                         return subj + " died" + how + " in " + place + ", aged " + F(e.Magnitude, "0") + ".";
                     }
-                case HistoryKind.Marriage: return subj + " and " + obj + " married in " + place + (e.ArgA > 0 ? ", setting up their household with " + e.ArgA + (e.ArgA == 1 ? " day's" : " days'") + " bread of their own" : "") + ".";
+                case HistoryKind.Marriage: return subj + " and " + obj + " married in " + place + (e.ArgA > 0 ? ", setting up their household with " + Bread(e.ArgA) + " bread of their own" : "") + ".";
                 case HistoryKind.HouseholdFormed: return "The household of the " + Plural(subj) + " was formed in " + place + ".";
                 case HistoryKind.LightningStrike: return (e.RootKind == RootKind.You ? "Your lightning" : "Lightning") + " struck near " + place + ".";
                 case HistoryKind.FireStarted: return "A fire started near " + place + ".";
@@ -321,6 +321,23 @@ namespace TC2.Core.History
             g == 1 ? F(q, "0") + " days' grain" : g == 2 ? F(q, "0.0") + " kg of copper" : g == 3 ? F(q, "0") + " kg of fibre" : g == 4 ? F(q, "0") + " hides" : g == 5 ? F(q, "0.0") + " kg of iron" : g == 6 ? F(q, "0.0") + " wares from a weaver's shed" : g == 7 ? F(q, "0") + " kg of pots and jars" : "a load";
 
         static string Cap(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
+
+        /// <summary>A span of days as a reader counts them: days under a year, then years (a 48-day year): "4 days", "a year", "21 years".</summary>
+        public static string Span(double days)
+        {
+            int d = (int)TC2.Core.Foundation.DMath.RoundHalfUp(days);
+            if (d < TC2.Core.Foundation.SimTime.DaysPerYear) return d + (d == 1 ? " day" : " days");
+            int years = (d + TC2.Core.Foundation.SimTime.DaysPerYear / 2) / TC2.Core.Foundation.SimTime.DaysPerYear;
+            return years == 1 ? "a year" : years + " years";
+        }
+
+        /// <summary>Days of bread as a reader counts them: days under a year, then years (a 48-day year).</summary>
+        public static string Bread(int days)
+        {
+            if (days < TC2.Core.Foundation.SimTime.DaysPerYear) return days + (days == 1 ? " day's" : " days'");
+            int years = (days + TC2.Core.Foundation.SimTime.DaysPerYear / 2) / TC2.Core.Foundation.SimTime.DaysPerYear;
+            return years == 1 ? "a year's" : years + " years'";
+        }
 
         /// <summary>A family by its name, all of them: "the Gairnstaers", "the Memvases" (a name ending in s, x, z, sh or ch takes -es).</summary>
         public static string Plural(string family)

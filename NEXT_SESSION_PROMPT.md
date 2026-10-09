@@ -33,12 +33,12 @@ for a real external blocker (credentials, payment, UAC, an irreversible product 
   section, settlement "Marriages wait: ...", the marriage's record), `place --marriage`, `--nomeans` (= `_d3`). Ten seeds `_m2` vs `_d3`: hunger deaths
   x0.69, famines x0.70, births x0.88, people at par over years 200-299 (x0.935 at year 300); age at first marriage 20.3 -> 21.4, never married by
   45-59 0 -> 4 %. `HouseholdFormationTests` 3; full suite 336/336; no measurable cost.
-- **The Web build in `tc2/web-build/web` is of d891d16 (C10.3)**: rebuild before testing C3.5. Last good Web test: s16web (6/6).
+- **The Web build in `tc2/web-build/web` is of b8f4830 (C3.5)**: Web test s16web2 6/6 (bit-identical).
 - Open W task **W-FOREST** (Arjun, 8 Oct): forests/biomes still read as the same trees recoloured.
 
 ## Do next
-1. If not yet done (SESSION_HANDOFF says): Web build of C3.5 (`node tc2/scripts/unity.mjs build-web --jobs 3`, ~8-12 min; RAM peaks ~95 % - run
-   nothing beside it) and Web test (`node tc2/scripts/webtest.mjs --tag s16web2`).
+1. (done: Web build and Web test s16web2 6/6 of C3.5.) Web builds: `node tc2/scripts/unity.mjs build-web --jobs 3` (~7 min; RAM peaks ~95 % - run
+   nothing beside it), then `node tc2/scripts/webtest.mjs --tag NAME`.
 2. From the evidence (D2-129 "Open"): hunger is still 17 % of deaths, in the hungry gap before the harvest - measure what a village does in its last
    weeks (the ration's floor 0.45, wild food, slaughter, relief) before choosing; household land and holdings (marriage on a holding) when land
    binds; life-cycle service; factions a full land cannot shed (D2-128); debts' consequences; C9.4 cargo; D2-125's iron ask; D2-123 floods; W-FOREST.

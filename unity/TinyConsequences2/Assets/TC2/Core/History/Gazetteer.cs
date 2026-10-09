@@ -102,7 +102,7 @@ namespace TC2.Core.History
                     var hs = w.HouseholdsOf(sid);
                     for (int i = 0; i < hs.Count; i++) { ref var hh = ref w.Households.Get(hs[i]); food += hh.Grain + hh.Larder; need += w.SettlementSys.HouseholdNeed(hs[i]); }
                     sb.Append("Marriages wait: ").Append(waiting).Append(" of its ").Append(unwed).Append(" unmarried women of an age to marry could not yet keep a household - its households' own grain keeps a mouth ")
-                      .Append(F(need > 0 ? food / need : 0, "0")).Append(" days, the harvest is ").Append(toHarvest).Append(toHarvest == 1 ? " day off.\n" : " days off.\n");
+                      .Append(HistoryText.Span(need > 0 ? food / need : 0)).Append(" on average, the harvest is ").Append(toHarvest).Append(toHarvest == 1 ? " day off.\n" : " days off.\n");
                 }
             }
             if (s.Wall == 2) sb.Append("Walled: a palisade ").Append(F(2.0 * DMath.PI * (double)s.WallR, "0")).Append(" m round").Append(s.OldR > 0f ? ", an older ring inside" : "").Append(".\n");

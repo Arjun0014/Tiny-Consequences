@@ -33,8 +33,8 @@
 
 ### Next, in order
 1. (done: C10.3 commit, Web build, Web test s16web 6/6; famine amid plenty measured and refuted; C3.5 built and measured)
-2. (done: C3.5 closed - full suite 336/336, no measurable cost, D2-129, committed.) Web build of C3.5 and Web test (`--tag s16web2`): the pages'
-   new lines.
+2. (done: C3.5 closed - full suite 336/336, no measurable cost, D2-129, b8f4830; Web build of b8f4830: Web test s16web2 6/6, bit-identical, the life
+   page shows the marriage's bread; spans of bread now read in years past a year - "a year's", "21 years'" - `HistoryText.Span/Bread`.)
 3. From the evidence (D2-129 "Open"): hunger is still 17 % of deaths, in the hungry gap before the harvest - measure what a village does in its last
    weeks (the ration's floor 0.45, wild food, slaughter, relief) before choosing; household land and holdings (marriage on a holding, the NW
    European pattern) when land binds; life-cycle service; factions a full land cannot shed (D2-128); debts' consequences; C9.4 cargo; D2-125's iron
