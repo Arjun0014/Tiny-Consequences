@@ -1,5 +1,48 @@
 # TC2 Session handoff
 
+## Session 16, fourth context (9 Oct 2026, from 21:33 IST; Control Room run #39 session 4, Resource Governor MEDIUM) - the Web catch-up's out-of-memory traced and fixed (D2-137); a headman gone to live with their child (D2-138)
+
+**The blocker of the third context is resolved (D2-137).** The previous context compared the browser's catch-up with headless `run --coarse` and
+read the difference as the browser diverging. Wrong premise: `PlanCatchUp` lives a span COARSE only above 40,000 person-years; seed 42's 96 years x
+~145 people are ~14,000, so **the Web test's "a day away" is lived in ACTIVITY** and its world is headless `run --seed 42 --years 96` (C3.6e's binary
+ran out of memory there too, at year 28 under a 512 MB heap cap - browser = headless). `webtest.mjs --export` (new) reads the game's own saves out of
+IndexedDB (before the day away and every half minute of the catch-up) into the tag's folder; `run --load SAVE --hot N` (new) names who began the most
+activities between reports. Cause: two parties founded villages on one cell in year 27 (Ustwick, Skolmere: a party "founds all the same" where
+another party's village now stands); the way between them had no length; visitors' arrival was read from the arc length, so a trip home ended where
+it began, ~17,000 times a day; each leg went into the travel index, pruned only by queries. Fixed (sim version 72, 741565c): a founding party that finds
+a village within `Sites.Spacing` of its place joins the nearest (`PartyJoined` 95); on a way of a metre or less a traveller arrives at their
+destination (both arrival sites, land and sea); `TravelIndex.Sweep` before the pool grows. Ten seeds DEEP 300 years `_j1`: annals byte-identical to
+`_e1` (the case never arose in DEEP). Full suite 358/358 (C3.6e's first full run too). The browser's year-34 save, its header set to 72, replays
+cleanly with the fix (`scratchpad/web_y34_v72.tc2`).
+
+**Then D2-138** (`place --heads`, new): C3.6e's retirements made the first household's headman live in another household 37-127 times a world;
+`Leaders.Day` read it as a vacancy (contested; 4 of 20 splits came from it) and recorded "another household rose" for the same man. Now (sim version
+73): a living headman in another household of the village is weighed again without a contest, the household that absorbed the first household is the
+incumbent, the same person stays first with nothing recorded; and a household's clients (`Patron`) follow the household that took it in
+(`Holdings.Clients` from `Close`/`Inherit`) - a gap since C10.2. `--nostanding` keeps the old reading. LeadersTests 8 (one new).
+
+### Exact state (keep current)
+- HEAD: 741565c (D2-137), 4bf4888 (D2-138, sim version 73) + 4b6572f (Web result) + this handoff. Web build of 4bf4888 in `tc2/web-build/web`; **Web test
+  `s17web1` 6/6** (the day away to year 96 in 106 s, 487 people in 16 places = headless ACTIVITY's 488 in 16).
+- Runs (`tc2/out/civ`): `s*_j1` (D2-137, = `_e1`), `s*_k1` (D2-138 first form, clients and no contest), `s*_k2` (D2-138 final, the absorbing household
+  the incumbent). Browser exports: `tc2/out/webtest/s17exp/` (away_start.tc2, catchup_y30/y34.tc2, sim version 71).
+- Scratchpad (this context): `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/6dc4a248-f0c6-410d-a245-27452f45cb7d/scratchpad`
+  (`wrun.sh` pointed here; `j1batch.sh`, `k2batch.sh`, `k1wait.sh` - waits for RAM under 84 % then runs ten seeds one batch at a time; `p_*.py` patches;
+  `d2137.md`, `d2138.md`). **Resource Governor LOW since 23:10 (CPU 50 %, RAM 75 %, one heavy job)**; the machine's RAM sits at 80-90 % from other
+  applications (Chrome, WebView, other Claude sessions): `gate.sh CMD` runs a command once RAM is under 72 %; `webgate.sh TAG` (build + Web test).
+
+### Next, in order
+1. (done: D2-137 the catch-up's out-of-memory; D2-138 the headman's retirement. Full suite 358/358 on D2-137; on D2-138 targeted tests
+   (LeadersTests 8, LandTests 10, MigrationTests 9) - the full suite on 4bf4888 not yet
+   run: run it once at the end of the next slice.)
+2. **The land economy over 900 years again** with C3.6e and D2-137/138: `bash l9k.sh 4` and `bash l9k.sh 42` (scratchpad; from the `_k2` year-300
+   saves, 600 more years, annals `s*_l9k.csv`, saves `s*_l9k/world_y600|900.tc2`, ~20 min each, one at a time if RAM is high); compare with `s4_l9`,
+   `s42_l9` (sim 70): hunger a 1,000 person-years by century, landless share, the land-rich households' days of grain (`place --landless`), tributes.
+3. Then the next slice from that evidence (SESSION_HANDOFF of the third context, items 6-8): what the landless do with their days and where a
+   surplus goes - (a) work for grain (households with grain hire the hungry for their own projects at a day's bread a day), (b) alms by standing,
+   (c) each household working its own holding (service's economic base); the herds' dung (`26` §3 C3.6: bound villages manure a tenth of a medieval
+   field); debts' consequences, partible customs (C11), a land market.
+
 ## Session 16, third context (9 Oct 2026, from 16:10 IST; Control Room run #39 session 3, Resource Governor MEDIUM) - C3.6a working the land harder (D2-131), the first sheaves (D2-132), household land C3.6b-d (D2-133..135)
 
 **OPEN BLOCKER FIRST (end of this context, 21:30 IST)**: HEAD 5dd947a (C3.6e retirement, sim version 71) + this handoff commit. **The Web build of

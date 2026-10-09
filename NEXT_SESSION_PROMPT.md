@@ -10,55 +10,54 @@ for a real external blocker (credentials, payment, UAC, an irreversible product 
 
 ## Read first (this order), then work autonomously
 1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the full standing prompt (architecture, rules, every direction from Arjun; "Where we are (session 16)").
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 16, third context"**: its **"OPEN BLOCKER FIRST"** paragraph, "Exact state", "Next, in order".
-3. `docs/tc2/DECISIONS.md` newest entries **D2-136** (the old hand on their holding - the build that fails in the browser), **D2-135** (who leaves),
-   **D2-134** (the harvest by land and labour), **D2-133** (household land), **D2-132** (the first sheaves), **D2-131** (working the land harder).
-4. Domain doc: `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` §2d-§2f (C3.6a-e, the first sheaves); `docs/tc2/PROGRESS.md` CURRENT STATE (the "OPEN" entry first).
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 16, fourth context"**: "Exact state", "Next, in order".
+3. `docs/tc2/DECISIONS.md` newest entries **D2-138** (a headman gone to live with their child), **D2-137** (the Web catch-up's out-of-memory: two
+   villages on one spot), **D2-136** (the old hand on their holding), D2-135, D2-134, D2-133.
+4. Domain docs: `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` §2d-§2f (the land phase C3.6), `docs/tc2/10_CONFLICT_AND_POLITICS.md` §12c-§12e (headmen);
+   `docs/tc2/PROGRESS.md` CURRENT STATE.
 5. `git status` (the modified `.claude/launch.json` and untracked `unity/TinyConsequences2/Assets/Resources.meta` are not ours - leave them),
-   `git log --oneline -14` (HEAD 7abbaa5 or a handoff commit on it).
+   `git log --oneline -8` (HEAD 4b6572f or a handoff commit on it).
 
-## Where things stand (9 Oct 2026, 21:35 IST, end of session 16's third context)
-- **Committed and verified** (sim version 70, 26127b5 + cc1f436): C3.6a working the land harder (D2-131), the first sheaves (D2-132), C3.6b household
-  land (D2-133), C3.6c the harvest shared half by land, half by labour (D2-134: **hunger a person-year x0.74** - the preventive check from the
-  households' economy), C3.6d each household weighs leaving by its own land (D2-135). Full suite 353/353; Web test `s16web8` 6/6 (bit-identical).
-  A 900-year check of that economy (`tc2/out/civ/s4_l9`, `s42_l9`): stable; seed 42 hunger 0.2-0.8 a 1,000 person-years for six centuries.
-- **Committed, NOT verified in the browser** (sim version 71, 5dd947a): **C3.6e the old hand on their holding** (D2-136: a landholding household whose
-  youngest is 60+ goes to live with a child's household, else a land-short one with hands, its land and grain with it; headless ten seeds: landless
-  17-66 % -> 6-44 %, the decades-long hoards gone, births x1.06, hunger at par). **Its Web build fails the Web test's catch-up, deterministically**
-  (`tc2/out/webtest/s16web9`, `s16web9b`: year 35 of 96, 243 people in 17 places, then the browser aborts out of memory and "memory access out of
-  bounds"). Headless is healthy (ten seeds DEEP 300 years; six seeds COARSE 100 years at 4-5 years/s; managed heap at par with `--noretire`). The
-  full suite has not been run on 5dd947a; targeted tests pass (Land 10, Sheaves 5, Tilth 4, DeepTime 8, HouseholdFormation 3).
-- **Waiting on Arjun**: W-FOREST (D2-130) stays open until he judges the shots (`tc2/out/shots/wf2/sheet4.png`, `wf4/forest.png`, `wf6/before_after_far.png`).
+## Where things stand (9 Oct 2026, ~23:30 IST, session 16's fourth context)
+- **Resolved**: the Web build of C3.6e failed the Web test's catch-up (out of memory). A Living catch-up of a small world is lived in ACTIVITY (not
+  COARSE: under 40,000 person-years), so headless `run --seed 42 --years 96` is the browser's world. Two parties had founded villages on one cell; their
+  visitors walked the way of no length between them forever and filled the travel index. **D2-137** (sim version 72, 741565c): a founding party joins a
+  village standing at its place; a way of no length arrives where it goes; the travel index sweeps stale legs. Ten seeds byte-identical to before.
+  Full suite 358/358.
+- **D2-138** (sim version 73, 4bf4888): a headman gone to live with their child (C3.6e) is no contested vacancy; the household that took the first
+  household in is the incumbent; a household's clients follow the household that took it in. Ten seeds (`_k2`): people at par, headmen x0.83.
+- **Verified in the browser**: Web build of 4bf4888, Web test `s17web1` 6/6 (the day away to year 96 in 106 s, 487 people in 16 places = headless).
+- **Waiting on Arjun**: W-FOREST (D2-130) until he judges the shots (`tc2/out/shots/wf2/sheet4.png`, `wf4/forest.png`, `wf6/before_after_far.png`).
 
 ## Do next, in order
-1. **Resolve the browser catch-up failure of C3.6e first.** The browser's path: a new seed-42 world at 00:38 of day 1, lived to 12:21, saved,
-   reloaded, then `OfflineProgress.PlanCatchUp` (Living mode: COARSE from the next midnight, ACTIVITY for the last two days) toward year 96, run by
-   `Game/Host/SimHost.cs`'s catch-up loop. Its year-35 world (17 places) differs from a headless `run --seed 42 --coarse` (9-10 places at year 40):
-   reproduce the browser's catch-up headless exactly (the lived opening, the save/load, the same plan and step budgets; `scratchpad/web42/world.tc2`
-   holds the opening state lived headless), look for a runaway (households, parties, history, events) or an unbounded loop in `Retire`/`MoveTo`
-   (a household moving into one that retires the same day? a party household? the eldest-last ordering?), and confirm with a Web build of 5dd947a
-   with `Retire` switched off. Fix and re-verify (Web test 6/6, full suite) - or revert C3.6e if no cause is found, and record it either way (D2-136).
-2. Then the next slice from the evidence (SESSION_HANDOFF items 6-8): what the landless do with their days and where a surplus goes - work for grain
-   (households with grain hire the hungry for their own projects at a day's bread a day), alms by standing in hard times, or each household working
-   its own holding (service's economic base); then debts' consequences, partible customs by tradition (C11), a land market; the 900-year check again.
-3. Web builds: `node tc2/scripts/unity.mjs build-web --jobs 3` (~6-8 min; RAM peaks ~95 % - run nothing beside it, edit no Core source while it
-   runs), then `node tc2/scripts/webtest.mjs --tag NAME`.
+1. **The land economy over 900 years again** (C3.6e with D2-137/138): `bash gate.sh bash l9k.sh 4`, then `... l9k.sh 42` (scratchpad scripts, copies
+   in `tc2/out/tools/`; from the `_k2` year-300 saves, 600 more years, ~20 min each); compare with `s4_l9`, `s42_l9` (sim 70): hunger a 1,000 person-years
+   by century, the landless share, the land-rich households' days of grain (`place --landless`), tributes (D2-138 measured 17 -> 8 over ten worlds).
+2. **Choose the next slice from that evidence**. Measured at year 300 (`_k2`): land binds (bound villages' arable 0.68-0.75 of their need; working
+   harder adds 10-15 % to their harvests), 98 % of hunger deaths are in landless or land-short households, and bound villages keep 0.34-0.42 beasts a
+   field hectare against 0.69-1.11 in open ones. **There is no soil fertility in the model at all** (yield = FieldHa x a constant x growth x sown x
+   tilth): no fallow, no manure - so beasts are worth their milk and meat but nothing to the land, and a surplus has no productive sink. Candidates:
+   the herds' dung / fallow (a phase: it changes world scale - measure first), work for grain, each household working its own holding (service),
+   a land market, partible customs (C11).
+3. Run the full suite once at the end of the next slice (none since D2-138; targeted LeadersTests, LandTests, MigrationTests pass).
 
-## Tools (local, `tc2/out/tools/`; copy to the session scratchpad and set `SCR=`/`OLD=` in `wrun.sh`, `loadrun.sh`, `coarsescan.sh`)
-- `wrun.sh` (ten-seed runs; `EXTRA=` switches), `loadrun.sh` (saves run forward: `BIN FROM TAG Y0 YEARS EXTRA`), `cmp.py A B seeds` (tags without
-  the underscore), `gap.py TAG seeds`, `pt.py` (line-ending-aware patching: `exec(open(pt).read()); patch(path, [(old, new)])`).
-- Headless switches added this context: `--landtally`, `--gaptally`, `--landholds`; controls `--notilth`, `--nosheaves`, `--noland`, `--bymouths`,
-  `--villageleave`, `--noretire`; `place --heirs`, `place --landless`.
-- Control runs on disk (`tc2/out/civ`): `s*_t0`/`_t1` (C3.6a), `_s0`/`_s3` (sheaves), `_h1` (holdings), `_c1` (land and labour), `_d1` (who leaves),
-  `_e1` (retirement), `s4_l9`/`s42_l9` (900 years, sim 70).
+## Tools (local; `tc2/out/tools/` has copies - put them in the session scratchpad and set `S=`/`SCR=` in the scripts)
+- `wrun.sh` (ten-seed runs; `EXTRA=` switches), `loadrun.sh` (saves run forward), `cmp.py A B seeds`, `gap.py`, `pt.py` (line-ending-aware patching:
+  `exec(open(pt).read()); patch(path, [(old, new)])`), `gate.sh CMD` (runs once RAM is under 72 %), `webgate.sh TAG` (Web build + Web test),
+  `l9k.sh SEED` (900 years from a `_k2` save).
+- Headless switches new this context: `run --hot N` (who began the most activities between reports), `--nojoin`, `--nostanding`; `place --near`
+  (villages closer than the spacing), `place --heads` (successions: after a death, a living move, a retirement). `webtest.mjs --export` writes the
+  game's own saves from IndexedDB (before the day away, every half minute of the catch-up) for headless replay (`run --load F`; a save of another
+  sim version can be replayed by setting the header's int at byte 6, the format being unchanged).
 
 ## Rules that bite
 - Commits `[tc2] ...` ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; stage only TC2 files; never force-push. New `.cs` files
   need their Unity `.meta` committed (a Unity build makes them).
-- **No subagents. Resource Governor MEDIUM: CPU 70 %, RAM 85 %, at most two heavy jobs** (two ten-seed runs fit; a Unity build runs alone and its
-  pressure notices are the build itself; the user's Edge windows hold ~2.6 GB). Never kill processes you did not start.
+- **No subagents. Resource Governor LOW since 23:10 on 9 Oct: CPU 50 %, RAM 75 %, ONE heavy job at a time** (a ten-seed batch runs its seeds one after
+  another; a Unity build runs alone). Other applications keep RAM at 80-90 %: gate heavy jobs on RAM (`gate.sh`); never kill processes you did not
+  start; `dotnet build ... --disable-build-servers` leaves no compiler servers behind (`dotnet build-server shutdown` after `headless.mjs test`).
 - Line endings differ by file (docs and most Core files CRLF; tests and some files LF): patch with `pt.py` or read/write bytes. **Never `sed -i`
   in Git Bash - it strips CRs from CRLF files.** Bash heredocs mangle backslashes and quotes: write patch scripts with the Write tool.
 - Core is pure C#, deterministic, no float arithmetic (`headless.mjs test` lints it); judge simulation changes by ten seeds against a control on the
   same binary (a `--no...` switch that reproduces the previous runs' annals byte-identically); aggregate counts move x0.8-x1.3 between reruns.
-  Presentation never invents state.
+  Presentation never invents state. The Web test's "day away" is ACTIVITY for small worlds: its headless twin is `run --seed 42 --years 96`.
