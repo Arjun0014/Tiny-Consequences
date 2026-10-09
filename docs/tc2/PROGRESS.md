@@ -9,7 +9,8 @@
   splits). Now a living headman's move is weighed again without a contest, the household that took the first household in is the incumbent, and a
   household's clients follow the household that took it in (a gap since C10.2). Ten seeds (`_k2` against `_j1`): successions at a retirement
   0-17 a world, headmen x0.83, splits at a living move 4 -> 2; people and vital rates at par; tributes 17 -> 8 (low counts, watched).
-  `LeadersTests` 8; `place --heads`.
+  `LeadersTests` 8; `place --heads`. **Web build of 4bf4888: Web test `s17web1` 6/6** (bit-identical probe; the day away to year 96 in 106 s, 487
+  people in 16 places - headless 488 in 16; C3.6e, D2-137 and D2-138 verified in the browser).
 - **Session 16, fourth context - the Web catch-up's out-of-memory traced and fixed (D2-137, sim version 72)**: a Living catch-up of a small world is
   ACTIVITY, not COARSE (under 40,000 person-years), so the browser's world is headless `run --seed 42 --years 96` - which ran out of memory the same way
   (17 places at year 28). The browser's own saves (`webtest.mjs --export`, new) replayed headless with `run --hot` (new): four people walking a way of

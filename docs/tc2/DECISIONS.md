@@ -3971,7 +3971,9 @@ on its own village's cell, someone walks across - fails with the old rule: they 
 (the same queries, room again; a pool of live legs doubles at once). The browser's year-34 save replayed with the fix: ~1,000-1,500 events a half
 day (54,000 before), the travel index in the hundreds. Headless ACTIVITY `run --seed 42 --years 96` (the browser's catch-up): 96 years in 43 s,
 488 people in 16 places. **Ten seeds DEEP 300 years (`_j1`): every world's annals byte-identical to `_e1`** - in 3,000 village-years no party
-arrived at a taken place, so (a) and (b) change nothing else, and (c) nothing at all. Full suite 358/358 (C3.6e's first full run too).
+arrived at a taken place, so (a) and (b) change nothing else, and (c) nothing at all. Full suite 358/358 (C3.6e's first full run too). **Web
+test `s17web1` 6/6** on 4bf4888 (with D2-138): the day away caught up to year 96 in 106 s, 487 people in 16 places (headless ACTIVITY at year 96:
+488 in 16 - the browser's world is headless's, its target half a day later).
 **Open.** Parties of different villages weigh leaving on the same day and may choose one place; the second now joins the first's village -
 whether scouts' news of a founding should reach a party before it sets out (lore of places founded) is left to the knowledge of places (C11).
 
