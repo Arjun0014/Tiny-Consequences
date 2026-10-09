@@ -277,6 +277,37 @@ two in five men landless where land binds.
 - **Next of the phase**: service in landed households (needs each household to work its own holding), a land market, partible customs (C11), the
   land's half as rents (C10), towns (C13).
 
+## 2g. The soil: fallow and the herds' dung - research and design (session 16, fourth context; not built)
+
+**Why.** The fields have no fertility: a harvest is `FieldHa x FieldYieldPerHa x growth x sown x (1 + tilth)` - every hectare bears a fresh
+field's crop every year, cropped without rest, forever. So nothing rests, a beast is worth its milk and meat but nothing to the land, and a
+household's surplus has no productive use (C3.6e). Measured at year 300 (`_k2`, the `land open/bound:` lines): in villages whose land binds,
+arable is 0.68-0.75 of their want, every arable hectare is sown, working harder adds 10-15 % of their harvests, and they keep 0.34-0.42 beasts a
+field hectare (1.96-2.31 kg of their intake a field hectare a day) against 0.69-1.11 (4.2-6.6 kg) where land is open; 98 % of hunger deaths fall
+on landless and land-short households.
+
+**What the medieval record says.** Pre-modern arable needed rest: fallow rebuilt nitrates and cleared weeds (Overton); only a half to two-thirds
+of the arable was ploughed in a year (two- and three-field systems). Postan: arable spreading over pasture under pressure meant fewer beasts, less
+dung and falling yields (Titow's Winchester yields fell in the later 13th century) - disputed by Clark (1992: cultivators knew pasture restored the
+land, their horizon was short). Beasts make no nitrogen: they move it from the pasture and the waste onto the fields (sheep folded on the fallow;
+stubble grazed after harvest). Continuous unmanured wheat does not fall to nothing: Broadbalk's unmanured plots settled at about half the yield of
+nitrogen-fed ones (rain and free fixation feed a floor).
+
+**Design sketch (to be measured and decided).** One number a village, `Settlement.Soil` (the fields' heart, 1 = land first broken; fresh land
+claimed comes in at 1 and mixes by area - an assart is fertile): a harvest takes from it by the crop it bore; a floor of rain and free fixation
+gives back a little each year; land at rest recovers toward 1; the herds give back by the grass they ate off the waste and the stubble (dung, a
+share of their intake), so beasts carry the waste's fertility onto the fields. A hectare bears `a + (1 - a) x Soil` of a fresh field's crop
+(`a` ~0.4: the floor with old varieties and weeds). With that, per arable hectare: cropped every year ~0.4 of a fresh crop, two fields ~0.48,
+three fields ~0.59 - so under pressure the three-field rest wins, as it spread in the 12th-13th centuries. **Rest is the village's choice from its
+own harvests** (as famine memory is): where land is open, what lies beyond the want rests anyway; where it binds, a village rests a share when its
+remembered yields a hectare fall below what rested land gave - no rotation is written in. The cells resting each year follow from the village's
+rest share and the year (derived, never stored), so the view can draw stubble, fallow grazed by the herds and the sown strips from state.
+**The crux is the world's scale (D2-085)**: today's constant is a fresh field's crop on every hectare every year; with a soil, the output a
+hectare of arable falls to ~0.5-0.6 of it - either the constant becomes "a fresh hectare's crop" and is raised so the rested regime keeps the
+worlds' scale, or the worlds shrink. Measure first (the 900-year check; a survey of what each village crops and what its herds eat), then decide.
+**What it would open**: beasts worth buying with grain (households' own trade, D2-126 "Open"; the commons' grazing; the landed manure their
+holdings), the Postan squeeze where land binds, legumes and the three-field course as knowledge (C11), fields that read as a landscape.
+
 ## 3. Later slices
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and
   the people in wares would outwear the looms; eight more makers a shed, each at the shed nearest home; towns of 500+ carry 2-4.
