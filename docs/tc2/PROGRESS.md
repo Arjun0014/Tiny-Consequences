@@ -4,6 +4,11 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 16, third context, later - C3.6e the old hand on their holding (D2-136, sim version 71)**: the land-rich were the old (youngest 55+:
+  63-89 % of the land-rich's land, most of their grain); now a landholding household whose youngest is 60+ goes to live with a child's household
+  (else a land-short household with hands, for its keep), its land and grain with it (`Retired` in history). Ten seeds against `--noretire` (= `_d1`
+  exactly): 950-3,600 retirements a world; landless at year 300 17-66 % -> 6-44 %, Gini 0.70-0.93 -> 0.50-0.65, the hoards gone (168-224 days of
+  grain in the land-rich households, from 305-1,594); births a person-year x1.06 (t 4.7), people x1.09, hunger at par. `LandTests` 10.
 - **Session 16, third context, later - the land economy over 900 years** (seeds 4 and 42, `s*_l9`, saves 300/600/900, sim version 70): no collapse and
   no runaway. Seed 42 settles after the filling (years 200-299: hunger 6.6 a 1,000 person-years) at ~8,600-8,800 people for six centuries, births =
   deaths = 28-29 a 1,000, **hunger 0.2-0.8 a 1,000 person-years** - a low-pressure regime held by the preventive check; seed 4 is livelier (9-15k

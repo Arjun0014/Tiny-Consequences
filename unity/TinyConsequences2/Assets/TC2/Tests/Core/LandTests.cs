@@ -197,6 +197,67 @@ namespace TC2.Tests.Core
             Assert.AreEqual(pb, w.Migration.Pressure(in s, b, 0), 1e-9, "more than its want: no crowding, not less than none");
         }
 
+        /// <summary>Premise: every member of a household made old (born far enough back).</summary>
+        static void MakeOld(World w, int hid, double age)
+        {
+            var mem = w.Members(hid);
+            for (int k = 0; k < mem.Count; k++) { ref var p = ref w.People.Get(mem[k]); p.Born = w.Now - SimTime.Years(age + k); }
+        }
+
+        [Test]
+        public void TheOldHandTheirLandToAChildsHouseholdForTheirKeep()
+        {
+            var w = TestWorlds.Make(5109);
+            int sid = w.Settlements.First();
+            var hl = w.HouseholdsOf(sid);
+            Assume.That(hl.Count >= 3);
+            int old = hl[0], child = hl[1], other = hl[2];
+            // premise: an old household holding land and grain; one of the next household's people its child
+            MakeOld(w, old, 66);
+            ref var oh = ref w.Households.Get(old); oh.Land = 3.0; oh.Grain = 500;
+            ref var q = ref w.People.Get(w.Members(child)[0]); q.Mother = w.Members(old)[0];
+            double childLand = w.Households.Get(child).Land, childGrain = w.Households.Get(child).Grain;
+            var oldPeople = new List<int>(); { var om0 = w.Members(old); for (int i = 0; i < om0.Count; i++) oldPeople.Add(om0[i]); }
+            long t0 = w.History.Count;
+            w.SettlementSys.Retire(sid);
+            Assert.AreNotEqual(0L, w.Households.Get(old).Dissolved, "the old household is no more");
+            for (int i = 0; i < oldPeople.Count; i++) Assert.AreEqual(child, w.People.Get(oldPeople[i]).Household, "its people live with their child's household");
+            Assert.AreEqual(childLand + 3.0, w.Households.Get(child).Land, 1e-9, "its land went with them");
+            Assert.AreEqual(childGrain + 500, w.Households.Get(child).Grain, 1e-6, "and its grain");
+            Assert.Greater(w.History.Count, t0, "recorded");
+        }
+
+        [Test]
+        public void WithNoChildTheOldGoToALandShortHouseholdWithHands()
+        {
+            foreach (bool off in new[] { false, true })
+            {
+                SettlementSystem.RetireOff = off;
+                try
+                {
+                    var w = TestWorlds.Make(5110);
+                    int sid = w.Settlements.First();
+                    var hl = w.HouseholdsOf(sid);
+                    Assume.That(hl.Count >= 3);
+                    int old = hl[0];
+                    MakeOld(w, old, 70);
+                    // premise: no child of theirs in the village; every other household landless but one with the most hands
+                    var om = w.Members(old);
+                    for (int i = 1; i < hl.Count; i++) { var m2 = w.Members(hl[i]); for (int k = 0; k < m2.Count; k++) { ref var p = ref w.People.Get(m2[k]); for (int j = 0; j < om.Count; j++) { if (p.Mother == om[j]) p.Mother = 0; if (p.Father == om[j]) p.Father = 0; } } }
+                    ref var oh = ref w.Households.Get(old); oh.Land = 2.0;
+                    for (int i = 1; i < hl.Count; i++) w.Households.Get(hl[i]).Land = 0;
+                    int best = 0; double most = 0.9;
+                    for (int i = 1; i < hl.Count; i++) { double h = w.Holdings.Hands(hl[i]); if (h > most) { most = h; best = hl[i]; } }
+                    Assume.That(best != 0, "a landless household with a grown hand");
+                    w.SettlementSys.Retire(sid);
+                    if (off) { Assert.AreEqual(0L, w.Households.Get(old).Dissolved, "--noretire: they keep their land"); continue; }
+                    Assert.AreNotEqual(0L, w.Households.Get(old).Dissolved);
+                    Assert.AreEqual(2.0, w.Households.Get(best).Land, 1e-9, "the household with the most hands took their land and keeps them");
+                }
+                finally { SettlementSystem.RetireOff = false; }
+            }
+        }
+
         [Test]
         public void HoldingsMoveNothingElse()
         {

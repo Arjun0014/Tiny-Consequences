@@ -144,6 +144,7 @@ namespace TC2.Headless
             var n = new double[3]; var people = new double[3]; var young = new double[3]; var youngM = new double[3]; var kids = new double[3]; var hands = new double[3]; var grainDays = new double[3]; var land = new double[3]; var want = new double[3];
             var hpaList = new System.Collections.Generic.List<double>();
             var rebuild = new double[3]; var carts = new double[3]; var shelter = new double[3];
+            var old55 = new double[3]; var oldWithChild = new double[3]; var oldLand = new double[3]; var oldGrain = new double[3];
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
                 if (!w.Settlements.Get(sid).Inhabited) continue;
@@ -168,6 +169,8 @@ namespace TC2.Headless
                         else if (age < 30 && p.Partner == 0) { young[c]++; if (!p.IsFemale) youngM[c]++; }
                     }
                     if (c > 0 && hh.Land > 0) hpaList.Add(hd / hh.Land);
+                    { double youngest = 999; for (int k = 0; k < mem.Count; k++) { double ag = w.People.Get(mem[k]).AgeYears(now); if (ag < youngest) youngest = ag; }
+                      if (youngest >= 55) { old55[c]++; if (ChildHousehold(w, sid, hid) != 0) oldWithChild[c]++; oldLand[c] += hh.Land; oldGrain[c] += hh.Grain; } }
                     if (hh.Rebuild != 0) rebuild[c]++; if (hh.CartState == TC2.Core.Places.Carts.Wanted || hh.CartState == TC2.Core.Places.Carts.Making) carts[c]++; if (hh.Shelter < TC2.Core.Places.Construction.House) shelter[c]++;
                 }
             }
@@ -175,9 +178,23 @@ namespace TC2.Headless
             for (int c = 0; c < 3; c++)
                 Console.WriteLine("households " + cls[c] + ": " + n[c] + " (" + (100 * n[c] / Math.Max(1, all)).ToString("0") + " %), people " + people[c] + " (" + (people[c] / Math.Max(1, n[c])).ToString("0.00") + " each), unmarried 15-29 " + young[c] + " (men " + youngM[c] + "), children under 15 " + kids[c] +
                                   ", hands " + (hands[c] / Math.Max(1, n[c])).ToString("0.00") + " each, own grain " + (grainDays[c] / Math.Max(1, n[c])).ToString("0") + " days a household's food, land " + (land[c] / Math.Max(1e-9, want[c])).ToString("0.00") + " of their want");
+            for (int c = 0; c < 3; c++) Console.WriteLine("  " + cls[c] + ": households whose youngest is 55+ " + old55[c] + " (with a child's household in the village " + oldWithChild[c] + "), holding " + oldLand[c].ToString("0") + " ha of the class's " + land[c].ToString("0") + " and " + oldGrain[c].ToString("0") + " FU");
             for (int c = 0; c < 3; c++) Console.WriteLine("  " + cls[c] + ": rebuilding their house " + rebuild[c] + ", a cart wanted or being made " + carts[c] + ", in a camp or hut " + shelter[c]);
             hpaList.Sort();
             if (hpaList.Count > 0) Console.WriteLine("  landed households' hands a hectare p10/50/90 " + hpaList[hpaList.Count / 10].ToString("0.00") + "/" + hpaList[hpaList.Count / 2].ToString("0.00") + "/" + hpaList[9 * hpaList.Count / 10].ToString("0.00"));
+        }
+
+        /// <summary>A household of the village one of whose members is a child of a member of <paramref name="hid"/> (0 none).</summary>
+        static int ChildHousehold(World w, int sid, int hid)
+        {
+            var mem = w.Members(hid); var hl = w.HouseholdsOf(sid);
+            for (int i = 0; i < hl.Count; i++)
+            {
+                if (hl[i] == hid) continue;
+                var m2 = w.Members(hl[i]);
+                for (int k = 0; k < m2.Count; k++) { var q = w.People.Get(m2[k]); for (int j = 0; j < mem.Count; j++) if (q.Mother == mem[j] || q.Father == mem[j]) return hl[i]; }
+            }
+            return 0;
         }
 
         /// <summary>

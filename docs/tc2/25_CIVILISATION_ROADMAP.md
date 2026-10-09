@@ -98,7 +98,8 @@ hoeing a hectare where the land within reach is short, at falling returns - yiel
 ~~the first sheaves~~ (done, D2-132, `26` §2e: the harvest's grain feeds the village as it is reaped; the hungry gap falls before the grain
 ripens); ~~C3.6b household land~~ (done, D2-133: each household holds hectares of its village's fields); ~~C3.6c the harvest by land and
 labour~~ (done, D2-134: the landless live by their hands; hunger a person-year x0.74 - the preventive check from the households' economy); ~~C3.6d
-who leaves~~ (done, D2-135: each household by its own land; in full lands the land concentrates); service, a land market; the herds' dung; C3.4 the mill; C3.7 apprenticeship; C3.8 other workshops.
+who leaves~~ (done, D2-135: each household by its own land; in full lands the land concentrates); ~~C3.6e the old hand on their holding~~ (done,
+D2-136: retirement to a child's household - the hoards go, landlessness falls); service, a land market; the herds' dung; C3.4 the mill; C3.7 apprenticeship; C3.8 other workshops.
 
 ### C4 transport, by slices: ~~C4.1 roads by use~~ (D2-097); ~~C4.2 carts~~ (closed, D2-122, `24` §2: a household's handcart or ox cart where its backs
 were too small - 83 % of trading loads were bound by what one carries; loads on paths and roads, wood and stone home by the cartload; trades x0.67,

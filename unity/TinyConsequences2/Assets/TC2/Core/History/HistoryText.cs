@@ -120,6 +120,9 @@ namespace TC2.Core.History
                 case HistoryKind.VillageSplit:
                     return Cap(subj) + " and the " + Plural(obj) + " would not follow " + (e.Other.IsNone ? "the new first among them" : other) + ": " + e.ArgA + " households, " + e.ArgB + " people of " + place +
                            ", bound to them by kin, by grain owed or given, went with them to make a village of their own.";
+                case HistoryKind.Retired:
+                    return "The " + Plural(subj) + " of " + place + ", too old to work their land, went to live with " + (e.ArgB == 1 ? "their child's household, " : "") + "the " + Plural(obj) +
+                           (e.ArgA > 0 ? ", who took their " + e.ArgA + " ha and keep them" : ", who keep them") + ".";
                 case HistoryKind.FieldsWorkedHarder:
                     return "The people of " + place + " began to work their fields harder, ploughing them again and hoeing the crop more often: the " + e.ArgA + " ha of arable within their reach no longer fed their " +
                            e.ArgB + " people at their old work (" + F(100.0 * e.Magnitude, "0") + " % more hours a hectare).";

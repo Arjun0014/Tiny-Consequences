@@ -86,6 +86,7 @@ namespace TC2.Core.History
         OreGaveOut = 82,
         OreTaken = 83,
         BoatBuilt = 85,         // a household made a boat (Subject the household, Object the boat, Other who led the making; C9.1)
+        Retired = 94,           // an old household went to live with a younger one, taking its land and grain there for its keep (Subject the old household, Object the household that took them in, Other its eldest; ArgA ha handed over, ArgB 1 a child's household, 0 not kin; Magnitude FU of grain; C3.6e)
         FieldsWorkedHarder = 93, // a village began to plough and hoe its fields more than before: the land within reach no longer fed its people (Magnitude the extra work planned, a share of the ordinary; ArgA its arable ha, ArgB its people; Cause1 the famine it remembers, if any; C3.6)
         VillageSplit = 92,      // a household would not follow a village's new first and led its following away to found a village (Subject its eldest, Object the household, Other the new first among the people; ArgA households, ArgB people; Cause1 the death that opened the succession; C10.3)
         HeadmanRose = 91,       // someone became first among a village's people (Subject the person, Object their household, Other the one before; Magnitude and ArgA the households following theirs; ArgB 0 the first, 1 within the same household, 2 another household rose; Cause1 the one before's death; C10.2)
@@ -337,6 +338,7 @@ namespace TC2.Core.History
                 case HistoryKind.CartMade: b = 2; break;
                 case HistoryKind.HeadmanRose: b = 12; break;
                 case HistoryKind.FieldsWorkedHarder: b = 6; break;
+                case HistoryKind.Retired: b = 2; break;
                 case HistoryKind.VillageSplit: b = 25; break;
                 case HistoryKind.BoatLost: b = 6; break;
                 case HistoryKind.PartySetOut: b = 20; break;

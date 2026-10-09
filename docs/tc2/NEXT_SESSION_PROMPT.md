@@ -209,7 +209,9 @@ preventive check: household land and marriage on a holding). Then **C3.6b househ
 village's fields (founders by heads, portions of spare land, the last out, heirs, land given out at sowing to the least landed) - and **C3.6c the
 harvest by land and labour (D2-134, sim version 69)**: half by the land held, half by the hands that worked; the landless live by their hands and
 marry later or never (C3.5's rule) - hunger a person-year x0.74, people at par: the preventive check from the households' economy. **Next**:
-SESSION_HANDOFF "Session 16, third context" (C3.6d who leaves: the landless first).
+SESSION_HANDOFF "Session 16, third context". Since: **C3.6d who leaves (D2-135)** - each household weighs leaving by its own land (in full lands
+the land concentrates) - and **C3.6e the old hand on their holding (D2-136, sim version 71)** - an old landholding household goes to live with a
+child's household (else a land-short one with hands) with its land and grain: the decades-long hoards and most landlessness were the old's.
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

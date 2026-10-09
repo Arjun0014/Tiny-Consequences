@@ -64,7 +64,7 @@ namespace TC2.Core.Places
             if (days > 1) Ahead(sid, g0, days);   // (the step's own work reads its store as days lived hold it too: F8)
             prof?.Begin(10002); prof?.Begin(10007); w.Wild.Survey(sid); prof?.End(10007); Boats.Plan(w, sid, days); Carts.Plan(w, sid); prof?.Begin(10008); w.HerdSys.Update(sid); prof?.End(10008); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
             if (days > 1) w.Wild.MidStep(sid, w.Stock.MidStepMast(sid, days));   // (DEEP: the woods as the step's middle day finds them)
-            if (doy == Migration.DecideDay) { prof?.Begin(10003); w.Migration.Weigh(sid); Society.Leaders.Weigh(w, sid); Homes.WeighRebuilding(w, sid); Weaving.Year(w, sid); Forge.Year(w, sid); prof?.End(10003); }   // who leaves (D2-045); who rebuilds (D2-114); another shed (C3.1b)
+            if (doy == Migration.DecideDay) { prof?.Begin(10003); Retire(sid); w.Migration.Weigh(sid); Society.Leaders.Weigh(w, sid); Homes.WeighRebuilding(w, sid); Weaving.Year(w, sid); Forge.Year(w, sid); prof?.End(10003); }   // who leaves (D2-045); who rebuilds (D2-114); another shed (C3.1b)
             if (w.Resolution == Resolution.Coarse) { prof?.Begin(10004); w.Agents.CoarseDay(sid, days); prof?.End(10004); }
             // DEEP: the step's later days grow the crop after its work, as days lived grow each day on the work done before it (grown
             // before the step's weeding, a growing step's days were three-quarters tended - harvests fell and households left: F8)
@@ -368,6 +368,101 @@ namespace TC2.Core.Places
 
         /// <summary>Kg of flax fibre a hectare of the village's fields gives a year (a corner of them sown with flax: D2-063).</summary>
         public const double FibrePerHa = 1.0;
+
+        // ---------------------------------------------------------------- the old hand on their holding (C3.6e, D2-136)
+        /// <summary>The age of a household's youngest member past which it no longer works its own land (the old's half day: COARSE hours).</summary>
+        public const double RetireAge = 60.0;
+        /// <summary>Tools: the old keep their land and live on alone (--noretire).</summary>
+        public static bool RetireOff;
+        /// <summary>Tools (null in the game): retirements [0], to a child's household [1], ha handed [2], FU of grain [3], households that held land and
+        /// had nobody to go to [4].</summary>
+        public static double[] RetireTally;
+        readonly List<int> _old = new List<int>();
+
+        /// <summary>
+        /// The yearly weighing (C3.6e): a household that holds land and whose youngest member is past working it hands it on in return for its keep -
+        /// it goes to live with a child's household in the village (the one with the least land a head), else, by an agreement for its keep, with the
+        /// household of the village short of land that has the most hands; its land, grain, goods and beasts go with its people (`MoveTo`, `Close`), its
+        /// home stands empty (maintenance agreements: Homans 1941; E. Clark 1982; R. Smith 1984).
+        /// </summary>
+        public void Retire(int sid)
+        {
+            if (RetireOff || Holdings.LandOff) return;
+            var w = _w;
+            long now = w.Now;
+            _old.Clear();
+            var hhs = w.HouseholdsOf(sid);
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                int hid = hhs[i];
+                ref var hh = ref w.Households.Get(hid);
+                if (hh.Party != 0 || hh.Land < 0.05) continue;
+                var mem = w.Members(hid);
+                if (mem.Count == 0) continue;
+                bool old = true;
+                for (int k = 0; k < mem.Count && old; k++) if (w.People.Get(mem[k]).AgeYears(now) < RetireAge) old = false;
+                if (old) _old.Add(hid);
+            }
+            for (int i = 0; i < _old.Count; i++)
+            {
+                int hid = _old[i];
+                if (!w.Households.Exists(hid) || w.Households.Get(hid).Dissolved != 0 || w.Members(hid).Count == 0) continue;
+                int to = Successor(sid, hid, out bool kin);
+                if (to == 0) { if (RetireTally != null) RetireTally[4]++; continue; }
+                var mem = w.Members(hid);
+                int eldest = 0; double ea = -1;
+                for (int k = 0; k < mem.Count; k++) { double a = w.People.Get(mem[k]).AgeYears(now); if (a > ea) { ea = a; eldest = mem[k]; } }
+                ref var hh = ref w.Households.Get(hid);
+                double land = hh.Land, grain = hh.Grain;
+                w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.Retired, Time = now, Cell = w.Settlements.Get(sid).Cell, Settlement = sid, Subject = EntityRef.Household(hid), Object = EntityRef.Household(to),
+                    Other = EntityRef.Person(eldest), ArgA = (int)DMath.RoundHalfUp(land), ArgB = kin ? 1 : 0, Magnitude = (float)grain, RootKind = RootKind.People,
+                });
+                // its people move in, the eldest last (the last out takes the land: C3.6b)
+                _moving.Clear();
+                for (int k = 0; k < mem.Count; k++) _moving.Add(mem[k]);
+                _moving.Sort((a, b) => a == eldest ? 1 : b == eldest ? -1 : a.CompareTo(b));
+                for (int k = 0; k < _moving.Count; k++) MoveTo(_moving[k], to);
+                if (RetireTally != null) { RetireTally[0]++; if (kin) RetireTally[1]++; RetireTally[2] += land; RetireTally[3] += grain; }
+            }
+        }
+        readonly List<int> _moving = new List<int>();
+
+        /// <summary>Who takes an old household in (C3.6e): a child's household of the village with the least land a head; else the village's household
+        /// short of its want with the most hands (not itself old); 0 none.</summary>
+        int Successor(int sid, int hid, out bool kin)
+        {
+            var w = _w;
+            kin = false;
+            var mem = w.Members(hid);
+            var hhs = w.HouseholdsOf(sid);
+            int best = 0; double bestPer = double.MaxValue;
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                int o = hhs[i];
+                if (o == hid || w.Households.Get(o).Party != 0) continue;
+                var m2 = w.Members(o);
+                if (m2.Count == 0) continue;
+                bool child = false;
+                for (int k = 0; k < m2.Count && !child; k++) { ref var q = ref w.People.Get(m2[k]); for (int j = 0; j < mem.Count; j++) if (q.Mother == mem[j] || q.Father == mem[j]) { child = true; break; } }
+                if (!child) continue;
+                double per = w.Households.Get(o).Land / m2.Count;
+                if (per < bestPer) { bestPer = per; best = o; }
+            }
+            if (best != 0) { kin = true; return best; }
+            double mostHands = 0.9;   // (at least a grown hand to work the land)
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                int o = hhs[i];
+                if (o == hid) continue;
+                ref var oh = ref w.Households.Get(o);
+                if (oh.Party != 0 || w.Members(o).Count == 0 || oh.Land >= w.Holdings.LandWant(o) - 1e-9) continue;
+                double h = w.Holdings.Hands(o);
+                if (h > mostHands) { mostHands = h; best = o; }
+            }
+            return best;
+        }
 
         // ---------------------------------------------------------------- the first sheaves (the hungry gap, D2-132)
         /// <summary>Tools: the whole harvest comes into the store on its last day, as before (--nosheaves).</summary>

@@ -54,6 +54,9 @@ landless choose to go but in full lands find nowhere, and the land concentrates:
    projects (rebuilding, carts, boats) at a day's bread for a day's work (C3.3b's makers' price), so the landless earn in hard times and the rich
    build; (b) alms by standing in hard times (beyond the first household's, C10.2); (c) each household works its own holding and hires hands - the
    deep version that would give service an economic base; then debts' consequences, partible customs (C11), a land market.
+8. (done: **C3.6e the old hand on their holding**, D2-136, sim version 71 - the hoards and most of the landlessness were the old's; runs `s*_e1`,
+   `s4_e1n` = `--noretire`.) Next: the full suite and the Web build/test of C3.6e; then re-run the 900-year check (`_l9` with C3.6e) and choose
+   from 6 (a)-(c) - the hoards are gone, so alms matter less; service needs households working their own holdings.
 7. **The land economy over 900 years** (`s4_l9`, `s42_l9`; PROGRESS): stable, hunger 0.2-0.8 a 1,000 person-years in seed 42's last six centuries;
    landless 54-77 %; **the households holding their want keep decades of grain (800-2,975 days)** - grain with no sink but rot, the village's sales
    and loans. This outranks (a)-(c) above: measure where a rich household's surplus goes now (rot, the village's sales borne by bins, loans,

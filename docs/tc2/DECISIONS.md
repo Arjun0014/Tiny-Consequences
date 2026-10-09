@@ -3917,3 +3917,27 @@ against COARSE gives cattle x0.96, goats x0.92, pigs x1.23 with this rule (x0.90
 the guard now reads the two worlds' herds together (same x2.5 band; D2-083's six-seed comparison remains the calibration).
 **Open.** A full world gives the landless nowhere to go: service in landed households, a land market (letting, buying, engrossing - the
 concentration has no counterweight), the land's half as rents (C10), towns that take the landless (C13).
+
+## D2-136 — 2026-10-09 — The old hand on their holding for their keep (C3.6e)
+
+**Context.** Over 900 years (D2-135's land economy, `s4_l9`, `s42_l9`) the households holding their want kept decades of grain (800-2,975 days'
+food) while 54-77 % of households held no land. Measured (`place --landless`, extended): the land-rich were mostly the old - households whose
+youngest member is 55 or more held 63-89 % of the land-rich households' land and most of their grain (seed 4 at year 600: 212 such households,
+3,689 of 4,124 ha, 1.15 million FU), many with a child's household in the village. Nothing in their lives handed land on before death; a holding
+passed only when its last member died or left. In medieval England the old surrendered their holdings to a child, or by contract to a younger
+household, in return for their keep - board, a room, fuel (Homans 1941; E. Clark 1982; R. Smith 1984).
+**Decision.** `SettlementSystem.Retire` (sim version 71), at the yearly weighing before households weigh leaving: **a household that holds land
+and whose youngest member is past working it (`RetireAge` 60, the COARSE day's half-hand) goes to live with a child's household in the village**
+(the one with the least land a head), **else, by an agreement for its keep, with the village's household short of land that has the most hands**
+(at least a grown hand); none, it stays. Its people move in one by one, the eldest last (`MoveTo`: their mouths' share of its grain, its larder,
+goods, beasts; the last out takes the land - C3.6b's `Close`), its home stands empty. History: `Retired` (94, Personal): "The Xs of P, too old to
+work their land, went to live with their child's household, the Ys, who took their N ha and keep them". `--noretire` keeps the old as before
+(reproduces `_d1` exactly - seed 4's annals byte-identical). Tools: the `land:` line's retirements (to a child's household, ha, FU, nobody to go to).
+**Evidence.** `LandTests` 10 (an old household goes to its child's household with its land and grain, recorded; with no child, to the land-short
+household with the most hands; `--noretire`: they keep it). Ten seeds, `_e1` against `_d1`: 947-3,584 retirements a world over 300 years; **the
+land spreads and the hoards go**: landless households at year 300 17-66 % -> 6-44 %, the land's Gini 0.70-0.93 -> 0.50-0.65; the land-rich now
+ordinary households (seeds 4, 42: 2.5-2.9 people, 1.6x their want, 168-224 days of grain - before 1.5-1.8 people, 2.6-5.7x, 305-1,594 days).
+The heirs' children marry sooner: births a person-year x1.06 (t 4.7), people at year 300 x1.09 (t 1.5), hunger a person-year at par (x1.05, t 0.2);
+tributes x1.6 (t 3.7), raids x1.9 (t 1.7) - more people in villages that bound sooner.
+**Open.** The old's home left empty (the young might move into the larger house); retirement within the household (stem families) rather
+than moving; the elderly landless (no holding to hand on) living on their kin as before.

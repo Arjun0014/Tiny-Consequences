@@ -270,8 +270,12 @@ two in five men landless where land binds.
 - **C3.6d who leaves (built, D2-135)**: each household weighs leaving by its own land (its holding and its part of the unheld, against its want)
   in place of the village's crowding - the landless and land-short choose to go, the landed stay. In full lands most find nowhere: every aggregate
   at par, and the land concentrates (landless 17-66 % at year 300, Gini 0.70-0.93).
-- **Next of the phase**: a counterweight to concentration and somewhere for the landless - service in landed households, a land market
-  (letting, buying), partible customs (C11), the land's half as rents (C10), towns (C13).
+- **C3.6e the old hand on their holding (built, D2-136)**: over 900 years the land-rich were the old (households whose youngest is 55+ held 63-89 %
+  of the land-rich's land) keeping decades of grain; now a landholding household whose youngest is 60+ goes to live with a child's household (else
+  a land-short household with hands, for its keep), its land and grain with it. Landless at year 300 17-66 % -> 6-44 %, Gini 0.70-0.93 -> 0.50-0.65,
+  the hoards gone; births a person-year x1.06 (heirs marry as the land comes), hunger at par.
+- **Next of the phase**: service in landed households (needs each household to work its own holding), a land market, partible customs (C11), the
+  land's half as rents (C10), towns (C13).
 
 ## 3. Later slices
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and
